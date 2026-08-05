@@ -37,7 +37,7 @@ s.addText([
 s.addText("Chemical-free separation · the only profitable equation", {
   x: 9.0, y: 0.16, w: 3.9, h: 0.28, fontFace: FONT, fontSize: 9.5, color: MINT, align: "right", margin: 0,
 });
-s.addText("Myung-geun Jung · jmk4893@dynamicindustry.kr · Aug 2026", {
+s.addText("Jason Jeong · jmk4893@dynamicindustry.kr · Aug 2026", {
   x: 9.0, y: 0.55, w: 3.9, h: 0.28, fontFace: FONT, fontSize: 9, color: GREEN_LT, align: "right", margin: 0,
 });
 

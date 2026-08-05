@@ -130,7 +130,7 @@ function statCard(slide, x, y, w, h, value, label, valColor) {
     });
   });
 
-  s.addText("Myung-geun Jung, Co-founder   ·   Aug 2026   ·   For investment review only", {
+  s.addText("Jason Jeong, Co-founder   ·   Aug 2026   ·   For investment review only", {
     x: 0.85, y: 7.02, w: 8, h: 0.3, fontFace: FONT, fontSize: 9.5, color: GREEN_LT, margin: 0,
   });
 }
@@ -472,7 +472,7 @@ function statCard(slide, x, y, w, h, value, label, valColor) {
   s.addText("$15M to make waste panels a resource — India's circular economy", {
     x: 0.9, y: 6.6, w: 6.9, h: 0.5, fontFace: FONT, fontSize: 12, bold: true, color: "FFFFFF", margin: 0, valign: "middle",
   });
-  s.addText("Myung-geun Jung, Co-founder · jmk4893@dynamicindustry.kr", {
+  s.addText("Jason Jeong, Co-founder · jmk4893@dynamicindustry.kr", {
     x: 7.8, y: 6.6, w: 4.7, h: 0.5, fontFace: FONT, fontSize: 10.5, color: GREEN_LT, align: "right", margin: 0, valign: "middle",
   });
 }
