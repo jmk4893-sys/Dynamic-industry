@@ -1,4 +1,5 @@
 const pptxgen = require("pptxgenjs");
+const LOGO = "image/png;base64," + require("fs").readFileSync(__dirname + "/logo.png").toString("base64");
 
 const pres = new pptxgen();
 pres.layout = "LAYOUT_WIDE"; // 13.33 x 7.5
@@ -32,8 +33,9 @@ function footer(slide, num) {
 }
 
 function header(slide, tag, title) {
+  slide.addImage({ data: LOGO, x: 0.55, y: 0.25, w: 0.36, h: 0.32 });
   slide.addText("DYNAMIC INDUSTRY", {
-    x: 0.55, y: 0.32, w: 4.0, h: 0.3, fontFace: FONT, fontSize: 11,
+    x: 1.02, y: 0.32, w: 4.0, h: 0.3, fontFace: FONT, fontSize: 11,
     bold: true, color: DARK, charSpacing: 2, margin: 0,
   });
   slide.addText(tag, {
@@ -81,12 +83,13 @@ function statCard(slide, x, y, w, h, value, label, valColor) {
   orbit(s, 11.4, 1.35, [1.15, 1.85, 2.6]);
   s.addShape("ellipse", { x: 10.62, y: 0.55, w: 0.16, h: 0.16, fill: { color: AMBER }, line: { type: "none" } });
 
+  s.addImage({ data: LOGO, x: 0.85, y: 0.74, w: 0.78, h: 0.7 });
   s.addText("DYNAMIC INDUSTRY", {
-    x: 0.85, y: 0.75, w: 6, h: 0.4, fontFace: FONT, fontSize: 15, bold: true,
+    x: 1.8, y: 0.78, w: 6, h: 0.4, fontFace: FONT, fontSize: 15, bold: true,
     color: "FFFFFF", charSpacing: 3, margin: 0,
   });
   s.addText("SOLAR PANEL RECYCLING · INDIA", {
-    x: 0.85, y: 1.18, w: 6, h: 0.3, fontFace: FONT, fontSize: 10.5,
+    x: 1.8, y: 1.21, w: 6, h: 0.3, fontFace: FONT, fontSize: 10.5,
     color: GREEN_LT, charSpacing: 2, margin: 0,
   });
 
@@ -443,9 +446,10 @@ function statCard(slide, x, y, w, h, value, label, valColor) {
   orbit(s, 1.3, 6.4, [1.0, 1.7, 2.5]);
   s.addShape("ellipse", { x: 12.42, y: 0.62, w: 0.16, h: 0.16, fill: { color: AMBER }, line: { type: "none" } });
 
+  s.addImage({ data: LOGO, x: 0.85, y: 0.53, w: 0.47, h: 0.42 });
   s.addText("DYNAMIC INDUSTRY", {
-    x: 0.85, y: 0.6, w: 6, h: 0.35, fontFace: FONT, fontSize: 13, bold: true,
-    color: "FFFFFF", charSpacing: 3, margin: 0,
+    x: 1.47, y: 0.57, w: 6, h: 0.35, fontFace: FONT, fontSize: 13, bold: true,
+    color: "FFFFFF", charSpacing: 3, margin: 0, valign: "middle",
   });
 
   s.addText([

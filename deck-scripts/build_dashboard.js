@@ -1,4 +1,5 @@
 const pptxgen = require("pptxgenjs");
+const LOGO = "image/png;base64," + require("fs").readFileSync(__dirname + "/logo.png").toString("base64");
 
 const pres = new pptxgen();
 pres.layout = "LAYOUT_WIDE"; // 13.33 x 7.5
@@ -22,8 +23,9 @@ s.background = { color: "FFFFFF" };
 
 // ================= HEADER BAND (dark) =================
 s.addShape("rect", { x: 0, y: 0, w: 13.333, h: 1.0, fill: { color: DARK }, line: { type: "none" } });
+s.addImage({ data: LOGO, x: 0.45, y: 0.2, w: 0.67, h: 0.6 });
 s.addText("DYNAMIC INDUSTRY", {
-  x: 0.45, y: 0.14, w: 4, h: 0.3, fontFace: FONT, fontSize: 12, bold: true,
+  x: 1.3, y: 0.14, w: 4, h: 0.3, fontFace: FONT, fontSize: 12, bold: true,
   color: "FFFFFF", charSpacing: 2.5, margin: 0,
 });
 s.addText([
@@ -31,7 +33,7 @@ s.addText([
   { text: "고품위 은광석", options: { color: AMBER } },
   { text: "으로", options: { color: "FFFFFF" } },
 ], {
-  x: 0.45, y: 0.42, w: 9.2, h: 0.5, fontFace: FONT, fontSize: 21, bold: true, margin: 0, valign: "middle",
+  x: 1.3, y: 0.42, w: 8.4, h: 0.5, fontFace: FONT, fontSize: 21, bold: true, margin: 0, valign: "middle",
 });
 s.addText("화학공정 없는 물리선별 · 유일한 흑자 방정식", {
   x: 9.0, y: 0.16, w: 3.9, h: 0.28, fontFace: FONT, fontSize: 10, color: MINT, align: "right", margin: 0,
