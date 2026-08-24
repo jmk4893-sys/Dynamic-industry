@@ -112,6 +112,49 @@ def _table(headers: list[str], rows: list[list[str]]) -> str:
 
 
 
+#: 셀별 목표 체류시간 (최대 처리량 기준, 분).
+TARGET_RESIDENCE_MIN = {"FC-101": 8.0, "FC-102": 10.0, "FC-103": 8.0}
+
+
+def _dimension_checks(d: CircuitDesign) -> list[dict]:
+    """확정 셀이 최대 처리량에서 목표 체류시간을 만족하는지 검증한다.
+
+    미달이면 그 처리량에 필요한 셀 치수를 함께 돌려주어, 확정 치수를
+    그대로 쓸 수 없다는 사실이 계산서에 드러나게 한다.
+    """
+    out: list[dict] = []
+    for tag, target in TARGET_RESIDENCE_MIN.items():
+        geom = d.cell(tag).geometry
+        unit = {
+            "FC-101": d.result_peak.rougher,
+            "FC-102": d.result_peak.scavenger,
+            "FC-103": d.result_peak.cleaner,
+        }[tag]
+        required = sizing_check(d.result_peak, tag, target)
+        needed = cell_geometry(
+            required,
+            gas_holdup=geom.gas_holdup,
+            froth_depth_m=geom.froth_depth_m,
+            freeboard_m=geom.shell_height_m - geom.lip_height_m,
+            height_to_width=geom.shell_height_m / geom.width_m,
+        )
+        out.append(
+            {
+                "tag": tag,
+                "target": target,
+                "required_m3": required,
+                "actual_m3": geom.effective_slurry_volume_m3,
+                "residence": unit.residence_min,
+                "required_width_mm": needed.width_m * 1000,
+                "required_height_mm": needed.shell_height_m * 1000,
+                "actual_width_mm": geom.width_m * 1000,
+                "actual_height_mm": geom.shell_height_m * 1000,
+                "ok": geom.effective_slurry_volume_m3 >= required * 0.98,
+            }
+        )
+    return out
+
+
 def _pct(x: float, digits: int = 1) -> str:
     return f"{x * 100:.{digits}f}"
 
@@ -132,9 +175,22 @@ def render(design: CircuitDesign | None = None) -> str:
 
     add("# 부유선별 회로 설계 계산서 (러퍼 – 스캐빈저 – 클리너)")
     add("")
-    add("> `python -m flotation_design` 로 자동 생성됨. "
+    add("> `PYTHONPATH=src python -m flotation_design` 로 자동 생성됨. "
         "설계 기준은 `src/flotation_design/design_basis.py` 참조.")
     add("")
+    undersized = [c for c in _dimension_checks(d) if not c["ok"]]
+    if undersized:
+        add("> [!WARNING]")
+        add(f"> **확정 셀이 이 처리량({f.peak_tph:.2f} t/h)에 미달한다** — "
+            + ", ".join(
+                f"{c['tag']} {c['residence']:.1f} min (목표 {c['target']:.0f} min)"
+                for c in undersized
+            )
+            + ". 셀 치수는 `design_basis.py` 에 확정값으로 박혀 있어 처리량을 바꿔도 "
+            "재산정되지 않는다. 본 계산서는 **기존 셀의 성능 계산**으로만 유효하며, "
+            "§3 의 로터·급기 선정과 §4 의 성능 예측은 이 처리량에 사용할 수 없다. "
+            "필요한 셀 치수는 §9 참조.")
+        add("")
 
     # 1. 급광 -------------------------------------------------------------
     add("## 1. 급광 사양")
@@ -151,6 +207,8 @@ def render(design: CircuitDesign | None = None) -> str:
             ["신급광 슬러리 체적유량",
              f"{d.pulp_avg.volumetric_flow_m3h:.3f} / "
              f"{d.pulp_peak.volumetric_flow_m3h:.3f} m3/h (평균/최대)"],
+            ["설계 기준 처리량 (design_basis)",
+             f"{db.FEED.average_tph:.2f} / {db.FEED.peak_tph:.2f} t/h"],
         ],
     ))
     add("")
@@ -250,7 +308,9 @@ def render(design: CircuitDesign | None = None) -> str:
     # 4. 물질수지 ----------------------------------------------------------
     add("## 4. 회로 물질수지")
     add("")
-    for label, res in (("최대 0.50 t/h", d.result_peak), ("평균 0.30 t/h", d.result_avg)):
+    peak_label = f"최대 {f.peak_tph:.2f} t/h"
+    avg_label = f"평균 {f.average_tph:.2f} t/h"
+    for label, res in ((peak_label, d.result_peak), (avg_label, d.result_avg)):
         add(f"### {label}")
         add("")
         add(_table(
@@ -363,7 +423,7 @@ def render(design: CircuitDesign | None = None) -> str:
         ],
     ))
     add("")
-    add("최대 처리량 기준. 회수율 이득보다 **품위 이득이 훨씬 크다** — 정광의 Si 가 "
+    add(f"{peak_label} 기준. 회수율 이득보다 **품위 이득이 훨씬 크다** — 정광의 Si 가 "
         "대부분 제거되어 후단 침출 물량이 줄고, 같은 Ag 를 훨씬 작은 반응조에서 "
         "처리할 수 있게 된다.")
     add("")
@@ -394,7 +454,7 @@ def render(design: CircuitDesign | None = None) -> str:
     add("")
     add("투입량은 **신급광 건조 고체 1 t 당** 유효성분 g 수다 (순환류 제외).")
     add("")
-    for tph, label in ((f.average_tph, "평균 0.30 t/h"), (f.peak_tph, "최대 0.50 t/h")):
+    for tph, label in ((f.average_tph, avg_label), (f.peak_tph, peak_label)):
         add(f"### {label}")
         add("")
         add(_table(
@@ -455,30 +515,31 @@ def render(design: CircuitDesign | None = None) -> str:
     ))
     add("")
 
-    # 9. 확정 치수 검증 -----------------------------------------------------
+    # 9. 확정 치수 검증 ----------------------------------------------------
     add("## 9. 확정 치수 검증")
     add("")
+    add("셀 3기는 **확정된 제작 치수**이며, 본 계산서는 그 셀을 주어진 처리량에서 "
+        "운전했을 때의 성능 계산이다. 처리량을 바꿔 계산하면 셀은 그대로인 채 "
+        "체류시간이 변하므로, 아래 표에서 목표 체류시간을 만족하는지 반드시 확인해야 한다. "
+        "NG 가 나오면 §3 의 로터·급기 선정도 그 처리량에는 유효하지 않다.")
+    add("")
+    checks = _dimension_checks(d)
     add(_table(
-        ["셀", "목표 체류시간", "필요 유효 체적", "확정 유효 체적", "실제 체류시간", "판정"],
+        ["셀", "목표 체류시간", "필요 유효 체적", "확정 유효 체적", "실제 체류시간",
+         "필요 치수 (재계산)", "확정 치수", "판정"],
         [
             [
-                tag,
-                f"{target:.1f} min",
-                f"{sizing_check(d.result_peak, tag, target):.4f} m3",
-                f"{d.cell(tag).geometry.effective_slurry_volume_m3:.4f} m3",
-                f"{res.residence_min:.2f} min",
-                "OK" if d.cell(tag).geometry.effective_slurry_volume_m3
-                >= sizing_check(d.result_peak, tag, target) * 0.98 else "NG",
+                c["tag"], f"{c['target']:.1f} min", f"{c['required_m3']:.4f} m3",
+                f"{c['actual_m3']:.4f} m3", f"{c['residence']:.2f} min",
+                f"{c['required_width_mm']:.0f} x {c['required_height_mm']:.0f} mm",
+                f"{c['actual_width_mm']:.0f} x {c['actual_height_mm']:.0f} mm",
+                "OK" if c["ok"] else "**NG**",
             ]
-            for tag, target, res in (
-                ("FC-101", 8.0, d.result_peak.rougher),
-                ("FC-102", 10.0, d.result_peak.scavenger),
-                ("FC-103", 8.0, d.result_peak.cleaner),
-            )
+            for c in checks
         ],
     ))
     add("")
-    add("최대 처리량 기준. 러퍼는 Phase 1 에서 확정한 셀을 그대로 쓰므로 "
+    add(f"{peak_label} 기준. 러퍼는 Phase 1 에서 확정한 셀을 그대로 쓰므로 "
         "순환부하가 실린 뒤에도 8분 이상을 확보하는지가 검증 항목이다.")
     add("")
     return "\n".join(lines)

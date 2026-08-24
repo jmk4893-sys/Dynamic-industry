@@ -18,7 +18,7 @@
 | 설치 전력 | 9.74 kW |
 
 전체 수치 계산 과정은 [설계 계산서](design-calculation.md) 에 있고,
-그 계산서는 `python -m flotation_design` 로 코드에서 자동 생성된다.
+그 계산서는 `PYTHONPATH=src python -m flotation_design` 로 코드에서 자동 생성된다.
 
 ---
 
@@ -440,12 +440,20 @@ Phase 1 만으로도 운전은 가능하다. 다만 송풍기는 처음부터 3�
 
 ## 13. 코드로 재계산하기
 
+패키지가 `src/` 레이아웃이므로 설치 없이 실행할 때는 `PYTHONPATH=src` 를 붙인다
+(`pip install -e .` 로 설치했다면 `flotation-design` 으로 바로 실행).
+
 ```bash
-python -m flotation_design                                   # 회로 계산서 표준출력
-python -m flotation_design -o docs/design-calculation.md     # 파일로 저장
-python -m flotation_design --average-tph 0.4 --peak-tph 0.6  # 처리량 변경
-python -m unittest discover -s tests -t .                    # 검증
+PYTHONPATH=src python -m flotation_design                               # 회로 계산서 표준출력
+PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
+PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
+python -m unittest discover -s tests -t .                               # 검증
 ```
+
+`--average-tph` / `--peak-tph` 는 **재사이징이 아니라 확정 셀의 성능 계산**이다.
+셀 치수를 바꾸려면 `design_basis.py` 의 확정 치수 상수를 직접 고쳐야 한다.
+확정 셀이 목표 체류시간에 미달하면 계산서 상단에 경고가 붙고, §9 에 그 처리량에
+필요한 셀 치수가 함께 표시된다.
 
 설계 전제(급광 조성, 셀 형상, 약제, 2속도 모델 파라미터, 순환 조건)는 모두
 `src/flotation_design/design_basis.py` 한 곳에 있다. 시험 결과가 나오면 이 파일만

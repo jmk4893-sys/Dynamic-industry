@@ -1,3 +1,7 @@
+import os
+import pathlib
+import subprocess
+import sys
 import unittest
 
 from . import _path  # noqa: F401
@@ -113,3 +117,92 @@ class TestGeneratedDocumentIsCurrent(unittest.TestCase):
             expected,
             "계산서가 코드와 어긋남 — `python -m flotation_design -o docs/design-calculation.md` 재실행 필요",
         )
+
+
+class TestDocumentedCommandsRun(unittest.TestCase):
+    """README·설계문서의 셸 코드블록에 적힌 실행 명령이 실제로 동작하는지 확인.
+
+    패키지가 src 레이아웃이라 PYTHONPATH 없이 ``python -m flotation_design`` 을
+    적어두면 신규 체크아웃에서 `No module named flotation_design` 로 실패한다.
+    문서와 실제 동작이 어긋나지 않도록 코드블록에서 명령을 뽑아 그대로 실행한다.
+    """
+
+    ROOT = pathlib.Path(__file__).resolve().parents[1]
+    DOCS = ("README.md", "docs/flotation-separator-design.md")
+
+    def _documented_commands(self) -> list[tuple[str, str]]:
+        """문서의 ```bash 코드블록 안에 있는 flotation_design 실행 명령."""
+        found: list[tuple[str, str]] = []
+        for rel in self.DOCS:
+            in_shell_block = False
+            for line in (self.ROOT / rel).read_text(encoding="utf-8").splitlines():
+                if line.startswith("```"):
+                    in_shell_block = line.strip() == "```bash"
+                    continue
+                if not in_shell_block:
+                    continue
+                command = line.split("#")[0].strip()
+                if "python -m flotation_design" in command:
+                    found.append((rel, command))
+        return found
+
+    def test_documented_commands_are_found(self):
+        self.assertGreaterEqual(len(self._documented_commands()), 4)
+
+    def test_every_documented_command_succeeds(self):
+        for rel, command in self._documented_commands():
+            with self.subTest(doc=rel, command=command):
+                prefix = "PYTHONPATH=src "
+                self.assertTrue(
+                    command.startswith(prefix),
+                    f"{rel}: src 레이아웃이므로 {prefix.strip()} 가 필요함 — {command}",
+                )
+                args = command[len(prefix) :].split()
+                self.assertEqual(args[0], "python")
+                if "-o" in args:  # 커밋된 계산서를 덮어쓰지 않도록 출력을 버린다
+                    args[args.index("-o") + 1] = os.devnull
+                proc = subprocess.run(
+                    [sys.executable, *args[1:]],
+                    cwd=self.ROOT,
+                    env={**os.environ, "PYTHONPATH": "src"},
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(proc.returncode, 0, f"{rel}: {command}\n{proc.stderr}")
+
+
+class TestThroughputOverrideIsHonest(unittest.TestCase):
+    """처리량을 바꾸면 셀은 확정 치수 그대로이므로, 계산서가 그 사실을 드러내야 한다."""
+
+    @classmethod
+    def setUpClass(cls):
+        from dataclasses import replace
+
+        from flotation_design import design_basis as db
+
+        cls.oversized = render(build_circuit(replace(db.FEED, average_tph=0.4, peak_tph=0.6)))
+        cls.nominal = render(build_circuit())
+
+    def test_nominal_case_has_no_warning(self):
+        self.assertNotIn("[!WARNING]", self.nominal)
+        self.assertNotIn("**NG**", self.nominal)
+
+    def test_override_beyond_cell_capacity_warns(self):
+        self.assertIn("[!WARNING]", self.oversized)
+        self.assertIn("**NG**", self.oversized)
+        self.assertIn("기존 셀의 성능 계산", self.oversized)
+
+    def test_override_reports_required_cell_size(self):
+        # 확정 치수로는 부족하다면, 필요한 치수를 함께 제시해야 한다.
+        self.assertIn("필요 치수 (재계산)", self.oversized)
+        self.assertIn("726 x 841 mm", self.oversized)
+
+    def test_override_relabels_operating_points(self):
+        self.assertIn("최대 0.60 t/h", self.oversized)
+        self.assertIn("평균 0.40 t/h", self.oversized)
+        self.assertNotIn("최대 0.50 t/h", self.oversized)
+        self.assertNotIn("평균 0.30 t/h", self.oversized)
+
+    def test_override_still_records_the_design_basis(self):
+        self.assertIn("설계 기준 처리량 (design_basis)", self.oversized)
+        self.assertIn("0.30 / 0.50 t/h", self.oversized)

@@ -1,7 +1,12 @@
-"""CLI: 설계 계산서를 표준출력 또는 파일로 출력.
+"""CLI: 회로 설계 계산서를 표준출력 또는 파일로 출력.
 
-    python -m flotation_design                 # 표준출력
-    python -m flotation_design -o docs/x.md    # 파일로 저장
+패키지가 src 레이아웃이므로 설치 없이 쓰려면 PYTHONPATH 를 지정한다.
+
+    PYTHONPATH=src python -m flotation_design               # 표준출력
+    PYTHONPATH=src python -m flotation_design -o docs/x.md  # 파일로 저장
+
+`pip install -e .` 로 설치했다면 PYTHONPATH 없이 `flotation-design` 으로
+실행할 수 있다.
 """
 
 from __future__ import annotations
@@ -17,9 +22,19 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="flotation_design", description=__doc__)
     parser.add_argument("-o", "--output", type=pathlib.Path, help="출력 파일 경로 (.md)")
     parser.add_argument(
-        "--average-tph", type=float, default=None, help="평균 처리량 재정의 (t/h)"
+        "--average-tph",
+        type=float,
+        default=None,
+        help="평균 처리량 재정의 (t/h). 셀 치수는 design_basis.py 의 확정값이 "
+        "그대로 쓰이므로, 이는 재사이징이 아니라 기존 셀의 성능 계산이다.",
     )
-    parser.add_argument("--peak-tph", type=float, default=None, help="최대 처리량 재정의 (t/h)")
+    parser.add_argument(
+        "--peak-tph",
+        type=float,
+        default=None,
+        help="최대 처리량 재정의 (t/h). 확정 셀이 목표 체류시간에 미달하면 "
+        "계산서 상단에 경고가 붙고 §9 에 필요한 셀 치수가 표시된다.",
+    )
     args = parser.parse_args(argv)
 
     from dataclasses import replace

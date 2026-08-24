@@ -21,19 +21,26 @@ Dynamic industry Development
 
 ### 사용법
 
+패키지가 `src/` 레이아웃이므로 설치 없이 실행할 때는 `PYTHONPATH=src` 를 붙인다.
+
 ```bash
-python -m flotation_design                                   # 계산서 출력
-python -m flotation_design -o docs/design-calculation.md     # 파일로 저장
-python -m flotation_design --average-tph 0.4 --peak-tph 0.6  # 처리량 변경
-python -m unittest discover -s tests -t .                    # 테스트
+PYTHONPATH=src python -m flotation_design                               # 계산서 출력
+PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
+PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
+python -m unittest discover -s tests -t .                               # 테스트
 ```
 
-설치해서 쓰려면:
+설치하면 `PYTHONPATH` 없이 쓸 수 있다.
 
 ```bash
 pip install -e .
 flotation-design
 ```
+
+`--average-tph` / `--peak-tph` 는 **재사이징이 아니라 기존 셀의 성능 계산**이다.
+셀 치수는 `design_basis.py` 에 확정값으로 박혀 있어 처리량을 바꿔도 재산정되지
+않는다. 확정 셀이 목표 체류시간에 미달하면 계산서 상단에 경고가 붙고, §9 에
+그 처리량에 필요한 셀 치수가 표시된다.
 
 ### 구조
 

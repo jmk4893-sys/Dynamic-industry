@@ -41,6 +41,6 @@ jobs:
         run: |
           if ! git diff --exit-code -- docs/design-calculation.md; then
             echo "::error file=docs/design-calculation.md::계산서가 코드와 어긋납니다. \
-          'python -m flotation_design -o docs/design-calculation.md' 를 실행하고 커밋하세요."
+          'PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md' 를 실행하고 커밋하세요."
             exit 1
           fi
