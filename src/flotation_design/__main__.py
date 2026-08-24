@@ -10,7 +10,7 @@ import argparse
 import pathlib
 import sys
 
-from .report import build_design, render
+from .report import render
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -34,7 +34,9 @@ def main(argv: list[str] | None = None) -> int:
             peak_tph=args.peak_tph if args.peak_tph is not None else feed.peak_tph,
         )
 
-    text = render(build_design(feed))
+    from .circuit_design import build_circuit
+
+    text = render(build_circuit(feed))
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(text + "\n", encoding="utf-8")

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 WATER_DENSITY = 1000.0  # kg/m3, 20 degC
 

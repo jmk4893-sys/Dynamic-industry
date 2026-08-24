@@ -23,14 +23,24 @@ from .sizing import (
     residence_time,
 )
 from .kinetics import (
-    FloatComponentModel,
+    ComponentKinetics,
     SeparationResult,
     StreamAssay,
+    n_cells_in_series_recovery,
     perfect_mixer_recovery,
     simulate,
 )
+from .circuit import (
+    CircuitResult,
+    FlotationUnit,
+    Stream,
+    UnitResult,
+    float_unit,
+    solve_circuit,
+)
 from .reagents import Reagent, ReagentDose, reagent_schedule
 from .conditioning import ConditionerDesign, conditioner_train
+from .circuit_design import CellDesign, CircuitDesign, build_circuit, solve_at
 
 __all__ = [
     "Component",
@@ -47,16 +57,27 @@ __all__ = [
     "impeller_design",
     "required_slurry_volume",
     "residence_time",
-    "FloatComponentModel",
+    "ComponentKinetics",
     "SeparationResult",
     "StreamAssay",
+    "n_cells_in_series_recovery",
     "perfect_mixer_recovery",
     "simulate",
+    "CircuitResult",
+    "FlotationUnit",
+    "Stream",
+    "UnitResult",
+    "float_unit",
+    "solve_circuit",
     "Reagent",
     "ReagentDose",
     "reagent_schedule",
     "ConditionerDesign",
     "conditioner_train",
+    "CellDesign",
+    "CircuitDesign",
+    "build_circuit",
+    "solve_at",
 ]
 
 __version__ = "0.1.0"

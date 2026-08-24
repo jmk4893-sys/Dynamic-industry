@@ -51,9 +51,22 @@ class TestSchedule(unittest.TestCase):
         for dose in reagent_schedule(REAGENTS, 0.3):
             self.assertGreater(dose.solution_l_h, 0.1, dose.reagent.name)
 
-    def test_collector_dose_matches_design_basis(self):
-        pax = next(d for d in reagent_schedule(REAGENTS, 0.5) if d.reagent.name.startswith("PAX"))
-        self.assertAlmostEqual(pax.active_kg_h, 0.060, places=9)
+    def test_staged_doses_sum_to_intended_totals(self):
+        """러퍼·스캐빈저로 분할 투입해도 총 투입량은 설계값과 같아야 한다."""
+        by_role: dict[str, float] = {}
+        for dose in reagent_schedule(REAGENTS, 0.5):
+            by_role[dose.reagent.role] = by_role.get(dose.reagent.role, 0.0) + dose.reagent.dose_g_per_t
+        self.assertAlmostEqual(by_role["포수제 (주)"], 120.0, places=9)
+        self.assertAlmostEqual(by_role["포수제 (보조)"], 40.0, places=9)
+        self.assertAlmostEqual(by_role["기포제"], 30.0, places=9)
+        self.assertAlmostEqual(by_role["황화제"], 350.0, places=9)
+
+    def test_collector_is_split_between_rougher_and_scavenger(self):
+        pax = [d for d in reagent_schedule(REAGENTS, 0.5) if d.reagent.name.startswith("PAX")]
+        self.assertEqual(len(pax), 2)
+        points = {d.reagent.addition_point for d in pax}
+        self.assertEqual(points, {"CT-2", "FC-102 급광박스"})
+        self.assertAlmostEqual(sum(d.active_kg_h for d in pax), 0.060, places=9)
 
 
 if __name__ == "__main__":

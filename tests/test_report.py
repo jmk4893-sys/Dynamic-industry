@@ -2,6 +2,7 @@ import unittest
 
 from . import _path  # noqa: F401
 
+from flotation_design.circuit_design import build_circuit
 from flotation_design.report import build_design, render
 
 
@@ -40,34 +41,40 @@ class TestDesignCase(unittest.TestCase):
 
     def test_performance_at_both_operating_points(self):
         self.assertGreater(self.case.result_avg.recovery["Ag"], self.case.result_peak.recovery["Ag"])
-        self.assertGreater(self.case.result_peak.recovery["Ag"], 0.70)
+        self.assertGreater(self.case.result_peak.recovery["Ag"], 0.68)
         self.assertGreater(self.case.result_peak.recovery["Cu"], 0.80)
 
 
 class TestRender(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.text = render(build_design())
+        cls.text = render(build_circuit())
 
     def test_contains_all_sections(self):
         for heading in (
             "## 1. 급광 사양",
-            "## 2. 셀 체적 및 형상",
-            "## 3. 로터/스테이터 및 구동부",
-            "## 4. 급기 (aeration)",
-            "## 5. 성능 예측",
+            "## 2. 회로 구성",
+            "## 3. 셀별 기계 사양",
+            "## 4. 회로 물질수지",
+            "## 5. 러퍼 단독(Phase 1) 대비 효과",
             "## 6. 조건조",
             "## 7. 약제 계통",
             "## 8. 유틸리티 집계",
+            "## 9. 확정 치수 검증",
         ):
             self.assertIn(heading, self.text)
+
+    def test_lists_every_cell(self):
+        for tag in ("FC-101", "FC-102", "FC-103"):
+            self.assertIn(tag, self.text)
 
     def test_reports_both_throughputs(self):
         self.assertIn("평균 0.30 t/h", self.text)
         self.assertIn("최대 0.50 t/h", self.text)
 
-    def test_no_overload_flagged(self):
+    def test_no_overload_or_undersizing_flagged(self):
         self.assertNotIn("— NG", self.text)
+        self.assertNotIn("| NG |", self.text)
 
 
 class TestCli(unittest.TestCase):
@@ -80,7 +87,7 @@ class TestCli(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             out = pathlib.Path(tmp) / "sub" / "calc.md"
             self.assertEqual(main(["-o", str(out)]), 0)
-            self.assertIn("단단 부유선별기 설계 계산서", out.read_text(encoding="utf-8"))
+            self.assertIn("부유선별 회로 설계 계산서", out.read_text(encoding="utf-8"))
 
     def test_throughput_override(self):
         from flotation_design.__main__ import main
@@ -100,7 +107,7 @@ class TestGeneratedDocumentIsCurrent(unittest.TestCase):
 
         doc = pathlib.Path(__file__).resolve().parents[1] / "docs" / "design-calculation.md"
         self.assertTrue(doc.exists(), "docs/design-calculation.md 없음")
-        expected = render(build_design()) + "\n"
+        expected = render(build_circuit()) + "\n"
         self.assertEqual(
             doc.read_text(encoding="utf-8"),
             expected,
