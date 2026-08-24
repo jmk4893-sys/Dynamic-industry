@@ -718,10 +718,13 @@ class FragSolver:
         nhy = int((m.y_hi - hy0 + 20.0) / cell) + 2
         height = np.zeros((nhx, nhy))
         radius = m.radius
-        # 이미 바닥에 닿아 있는(최하단이 굴착선 아래인) 파쇄체는 그 자리에 둔다.
-        settled = com[:, 2] + z_bot <= m.toe_z + radius
+        # '바닥에 닿음' 과 '멈춤' 은 다르다. 굴착선을 걸친 저항선 파쇄체는 시작부터
+        # 바닥에 닿아 있지만, 자유면 쪽으로는 마찰을 받으며 계속 미끄러져 나가야 한다.
+        # 착지를 곧 정지로 처리하면 저항선이 전혀 이동하지 못한다.
+        settled = np.zeros(n_frag, dtype=bool)
         dt = cfg.ballistic_dt
         g = cfg.gravity
+        mu = cfg.friction
         n_steps = max(1, int((cfg.total_duration - t) / dt))
 
         for step in range(n_steps):
@@ -729,27 +732,43 @@ class FragSolver:
             if live.any():
                 cvel[live, 2] -= g * dt
                 com[live] += cvel[live] * dt
+
                 ix = np.clip(((com[:, 0] - hx0) / cell).astype(int), 0, nhx - 1)
                 iy = np.clip(((com[:, 1] - hy0) / cell).astype(int), 0, nhy - 1)
-                ground = m.toe_z + height[ix, iy] + radius
-                land = live & (com[:, 2] + z_bot <= ground) & (cvel[:, 2] < 0.0)
-                if land.any():
-                    com[land, 2] = ground[land] - z_bot[land]
-                    cvel[land] = 0.0
-                    settled[land] = True
-                    # 착지한 만큼 그 자리의 적재 높이를 올린다
-                    np.add.at(height, (ix[land], iy[land]),
-                              cnt[land] * m.volume / (cell * cell))
+                # 파쇄체가 지면에 놓였을 때의 무게중심 높이
+                rest = m.toe_z + height[ix, iy] + radius - z_bot
+
+                touch = live & (com[:, 2] <= rest)
+                if touch.any():
+                    com[touch, 2] = rest[touch]
+                    cvel[touch, 2] = np.maximum(cvel[touch, 2], 0.0)
+                    # 바닥 마찰로 수평 감속
+                    vh = cvel[touch, :2]
+                    sp = np.linalg.norm(vh, axis=1)
+                    keep = np.where(sp > 1e-9,
+                                    np.maximum(0.0, 1.0 - mu * g * dt / np.maximum(sp, 1e-9)),
+                                    0.0)
+                    cvel[touch, :2] = vh * keep[:, None]
+
+                    # 수평속도가 사실상 0 이면 그 자리에서 멈추고 적재 높이를 올린다
+                    stop = np.zeros(n_frag, dtype=bool)
+                    idx_t = np.flatnonzero(touch)
+                    stop[idx_t[np.linalg.norm(cvel[idx_t, :2], axis=1) < 0.05]] = True
+                    if stop.any():
+                        settled[stop] = True
+                        cvel[stop] = 0.0
+                        np.add.at(height, (ix[stop], iy[stop]),
+                                  cnt[stop] * m.volume / (cell * cell))
             t += dt
             if t >= next_frame:
                 pos[movable] = com[inv] + offset
-                sp = np.zeros(m.n)
-                sp[movable] = np.linalg.norm(cvel[inv], axis=1)
-                frames.append((t, pos.copy(), sp))
+                sp_all = np.zeros(m.n)
+                sp_all[movable] = np.linalg.norm(cvel[inv], axis=1)
+                frames.append((t, pos.copy(), sp_all))
                 next_frame += frame_dt
             if cfg.progress and step % max(1, n_steps // 10) == 0:
                 print(f"\r  DEM[탄도] {100.0 * step / n_steps:5.1f}%  t={t * 1e3:7.0f} ms  "
-                      f"착지 {int(settled.sum()):,}/{n_frag:,} 파쇄체", end="", flush=True)
+                      f"정지 {int(settled.sum()):,}/{n_frag:,} 파쇄체", end="", flush=True)
 
         pos[movable] = com[inv] + offset
         return t, next_frame
