@@ -277,3 +277,9 @@ FILTER_CYCLE_MIN = {"concentrate": 480.0, "tailings": 120.0}
 
 #: 상용 최소 여과판 크기 (mm).
 FILTER_MIN_PLATE_MM = {"concentrate": 470.0, "tailings": 800.0}
+
+#: 여액 회수처. 필터프레스 여액은 공정수 탱크로 흘려보내지 않고
+#: **부선 회로의 첫 단(러퍼)** 급광으로 되돌린다. 여액에는 여포를 빠져나온
+#: 미립자가 남아 있어, 공정수로 희석해 버리면 그 안의 Ag 를 그대로 잃는다.
+#: 첫 단으로 돌리면 한 번 더 부선 기회를 얻는다.
+FILTRATE_RETURN_TO = {"mechanical": "FC-201 러퍼 급광", "rfc": "CT-1 조건조 (FC-101 급광)"}

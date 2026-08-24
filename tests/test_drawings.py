@@ -55,15 +55,16 @@ class TestDrawingDocument(unittest.TestCase):
             closed = len(re.findall(rf"</{tag}>", self.html))
             self.assertEqual(opened, closed, f"<{tag}> 태그 불균형")
 
-    def test_four_sheets_present(self):
-        for no in ("DWG-001", "DWG-002", "DWG-003", "DWG-004"):
+    def test_seven_sheets_present(self):
+        for no in ("DWG-001", "DWG-002", "DWG-003", "DWG-004",
+                   "DWG-005", "DWG-006", "DWG-007"):
             self.assertIn(no, self.html, no)
-        self.assertEqual(len(re.findall(r"<svg", self.html)), 4)
+        self.assertEqual(len(re.findall(r"<svg", self.html)), 7)
 
     def test_every_figure_is_labelled_for_screen_readers(self):
-        self.assertEqual(len(re.findall(r'role="img"', self.html)), 4)
-        self.assertEqual(len(re.findall(r"aria-label=", self.html)), 4)
-        self.assertEqual(len(re.findall(r"<figcaption>", self.html)), 4)
+        self.assertEqual(len(re.findall(r'role="img"', self.html)), 7)
+        self.assertEqual(len(re.findall(r"aria-label=", self.html)), 7)
+        self.assertEqual(len(re.findall(r"<figcaption>", self.html)), 7)
 
 
 class TestDrawingMatchesDesign(unittest.TestCase):
@@ -183,6 +184,44 @@ class TestDrawingMatchesDesign(unittest.TestCase):
         self.assertFigure(
             f"분산구 {opt.cells[0].shaft.discharge_ports}개", "로터 허브 분산구"
         )
+
+    def test_cell_detail_sheets_match_mechanical_sizing(self):
+        # DWG-005~007 — 셀별 상세도면의 치수·성능이 코드 산출값과 같은지.
+        from flotation_design.plant import build_mechanical_option
+
+        opt = build_mechanical_option()
+        res = opt.result_peak
+        units = {"FC-201": res.rougher, "FC-202": res.scavenger,
+                 "FC-203": res.cleaner}
+        for c in opt.cells:
+            g, i, a, s = c.geometry, c.impeller, c.aeration, c.shaft
+            u = units[c.tag]
+            self.assertFigure(f"{c.tag} 사양", c.tag + " 사양표")
+            self.assertFigure(
+                f"Ø{g.width_m * 1000:,.0f} × {g.shell_height_m * 1000:,.0f} mm",
+                c.tag + " 동체")
+            self.assertFigure(
+                f"{g.effective_slurry_volume_m3:.3f} m³", c.tag + " 유효 체적")
+            self.assertFigure(
+                f"{g.lip_height_m * 1000:,.0f} / {g.froth_depth_m * 1000:,.0f} mm",
+                c.tag + " 립·거품층")
+            self.assertFigure(f"Ø{i.stator_od_m * 1000:,.0f}", c.tag + " 스테이터")
+            self.assertFigure(
+                f"{i.bottom_clearance_m * 1000:,.0f} mm", c.tag + " 저부 간극")
+            self.assertFigure(f"{i.tip_speed_m_s:.2f} m/s", c.tag + " 주속")
+            self.assertFigure(
+                f"{a.bubble_surface_area_flux_1_s:.1f} s⁻¹", c.tag + " Sb")
+            self.assertFigure(
+                f"{a.air_flow_min_m3h:.1f}–{a.air_flow_max_m3h:.1f} m³/h",
+                c.tag + " 급기 조절 범위")
+            self.assertFigure(f"{u.residence_min:.2f} min", c.tag + " 체류시간")
+            self.assertFigure(
+                f"Ø{s.bore_mm:.0f} / Ø{s.outer_diameter_mm:.0f} mm / "
+                f"{s.length_m:.2f} m", c.tag + " 중공축")
+
+    def test_filtrate_returns_to_flotation_feed(self):
+        # 여액은 공정수 탱크가 아니라 부선 급광으로 되돌린다.
+        self.assertIn("여액 0.47 m³/h → 급광 순환", self.html)
 
     def test_patent_disclosure_present(self):
         # 실시권 리스크는 도면에서 빠지면 안 되는 항목이다.
@@ -354,6 +393,8 @@ class TestModel3dMatchesDesign(unittest.TestCase):
     def test_recycle_streams_are_named(self):
         self.assertIn("스캐빈저 정광", self.html)
         self.assertIn("클리너 미광", self.html)
+        # 필터프레스 여액은 러퍼 급광으로 순환한다.
+        self.assertIn("여액 → 러퍼 급광 순환", self.html)
 
     def test_states_it_is_not_a_cad_model(self):
         self.assertIn("제작용 CAD 가 아니며", self.html)

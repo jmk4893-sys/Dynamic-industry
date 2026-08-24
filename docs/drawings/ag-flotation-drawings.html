@@ -413,7 +413,7 @@
     <p class="lede">
       박리·분쇄된 c-Si 셀 분획에서 은을 부유선별로 농축해 후단 침출·제련 물량을 1/76 로
       줄이는 설비의 기본설계 도면이다. 공정 흐름도, 부선조 상세 단면도, 장치 형식 대안
-      비교도, 중공축 급기 상세 4매로 구성한다.
+      비교도, 중공축 급기 상세, 그리고 러퍼·스캐빈저·클리너 셀별 상세 7매로 구성한다.
     </p>
     <dl class="keyfacts">
       <div><dt>처리량 (평균 / 최대)</dt><dd>0.30 / 0.50 t/h</dd></div>
@@ -561,7 +561,8 @@
           <!-- water recycle -->
           <polyline class="wt-l" points="646,440 646,478 248,478 248,254" marker-end="url(#a1wt)"></polyline>
           <polyline class="wt-l" points="802,448 802,478 646,478"></polyline>
-          <text class="t-mono t-wt" x="756" y="498" text-anchor="middle">여액 0.46 m³/h</text>
+          <polyline class="wt-t" points="860,112 890,112 890,478 802,478"></polyline>
+          <text class="t-mono t-wt" x="756" y="498" text-anchor="middle">여액 0.47 m³/h → 급광 순환</text>
           <circle class="stream-n" cx="430" cy="478" r="11"></circle>
           <text class="stream-t" x="430" y="482" text-anchor="middle">6</text>
           <text class="t-mono t-wt" x="300" y="498" text-anchor="start">공정수 회수 10.1 m³/h · 블리드 10 %</text>
@@ -571,7 +572,8 @@
         급광은 조건조 CT-1 에서 포수제·촉진제와 5 분 접촉한 뒤 부선조 FC-101 한 대를
         지나며 갈라진다. 질량의 1.3 % 만 정광으로 넘어가고 나머지는 미광으로 빠진다.
         두 산물은 각각 농축조에서 물의 대부분을 뺀 뒤 필터프레스로 케이크가 된다.
-        농축조 월류수와 여과기 여액은 전량 조건조로 돌아간다.
+        농축조 월류수는 공정수로, 필터프레스 여액은 여포를 빠져나온 미립 Ag 에
+        한 번 더 부선 기회를 주기 위해 부선 급광(조건조)으로 직접 되돌린다.
       </figcaption>
     </figure>
 
@@ -1120,6 +1122,428 @@
     </div>
   </section>
 
+  <!-- ================= SHEET 5 : FC-201 ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-005</span>
+      <span class="sheet-title">FC-201 러퍼 상세</span>
+      <span class="sheet-sub">수직 단면 · 중공축 급기 · 최대 처리량 기준 성능</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1000 620" role="img"
+             aria-label="FC-201 러퍼 셀의 수직 단면 상세도. 내경 1,000 밀리미터, 동체 높이 1,300 밀리미터, 거품층 75 밀리미터. 중공축 보어 20 밀리미터로 급기가 내려와 로터 허브에서 분산되고, 정광은 런더로 넘치며 미광은 저부 다트밸브로 나간다.">
+          <defs>
+            <marker id="a5" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="currentColor"></polygon>
+            </marker>
+            <marker id="a5ag" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--ag)"></polygon>
+            </marker>
+          </defs>
+
+          <rect class="zone" x="164" y="198" width="172" height="201"></rect>
+          <rect class="ag-b" x="164" y="185" width="172" height="13"></rect>
+          <line class="ln" x1="164" y1="175" x2="164" y2="398"></line>
+          <line class="ln" x1="336" y1="175" x2="336" y2="398"></line>
+          <polygon fill="none" class="ln" points="164,398 240,448 260,448 336,398"></polygon>
+          <line class="ln" x1="240" y1="448" x2="240" y2="476"></line>
+          <line class="ln" x1="260" y1="448" x2="260" y2="476"></line>
+          <line class="wt-t" x1="164" y1="198" x2="336" y2="198" stroke-dasharray="6 4"></line>
+          <rect class="ag-f" x="143" y="176" width="21" height="28"></rect>
+          <rect class="ag-f" x="336" y="176" width="21" height="28"></rect>
+          <line class="ln-h" x1="147" y1="137" x2="353" y2="137"></line>
+          <line class="ln-t" x1="174" y1="137" x2="174" y2="175"></line>
+          <line class="ln-t" x1="326" y1="137" x2="326" y2="175"></line>
+          <rect class="box" x="209" y="335" width="9" height="28"></rect>
+          <rect class="box" x="282" y="335" width="9" height="28"></rect>
+          <polygon class="box" points="226,343 274,343 280,362 220,362"></polygon>
+          <line class="ln" x1="233" y1="362" x2="215" y2="379" marker-end="url(#a5)"></line>
+          <line class="ln" x1="244" y1="362" x2="238" y2="379" marker-end="url(#a5)"></line>
+          <line class="ln" x1="256" y1="362" x2="262" y2="379" marker-end="url(#a5)"></line>
+          <line class="ln" x1="267" y1="362" x2="285" y2="379" marker-end="url(#a5)"></line>
+          <rect class="box" x="243" y="78" width="14" height="265"></rect>
+          <rect class="zone" x="248" y="78" width="3" height="265"></rect>
+          <line class="ln-t" x1="250" y1="78" x2="250" y2="362" stroke-dasharray="7 3 2 3"></line>
+          <rect class="box" x="231" y="102" width="38" height="15"></rect>
+          <rect class="zone" x="235" y="51" width="29" height="28"></rect>
+          <rect class="box" fill="none" x="235" y="51" width="29" height="28"></rect>
+          <line class="ln-h" x1="181" y1="64" x2="235" y2="64" marker-end="url(#a5)"></line>
+          <text class="t-mono" x="174" y="68" text-anchor="end">급기 10.8 m³/h</text>
+          <text class="t-mono" x="271" y="37" text-anchor="start">로터리 조인트</text>
+          <rect class="box" x="119" y="209" width="34" height="41"></rect>
+          <line class="ln-h" x1="88" y1="230" x2="119" y2="230" marker-end="url(#a5)"></line>
+          <text class="t-mono" x="136" y="266" text-anchor="middle">급광 박스</text>
+          <rect class="box" x="350" y="330" width="31" height="52"></rect>
+          <line class="ln-h" x1="365" y1="381" x2="365" y2="423" marker-end="url(#a5)"></line>
+          <text class="t-mono" x="365" y="443" text-anchor="middle">미광 (다트밸브)</text>
+          <line class="ag-l" x1="143" y1="185" x2="102" y2="185" marker-end="url(#a5ag)"></line>
+          <text class="t-mono t-ag" x="143" y="168" text-anchor="end">정광 17.89 kg/h</text>
+          <line class="ln-t" x1="164" y1="36" x2="336" y2="36"></line>
+          <line class="ln-t" x1="164" y1="30" x2="164" y2="42"></line>
+          <line class="ln-t" x1="336" y1="30" x2="336" y2="42"></line>
+          <text class="t-dim" x="250" y="28" text-anchor="middle">Ø1,000</text>
+          <line class="ln-t" x1="408" y1="175" x2="408" y2="398"></line>
+          <line class="ln-t" x1="402" y1="175" x2="414" y2="175"></line>
+          <line class="ln-t" x1="402" y1="398" x2="414" y2="398"></line>
+          <text class="t-dim" x="418" y="287" text-anchor="start">1,300</text>
+          <line class="ln-t" x1="336" y1="185" x2="388" y2="185"></line>
+          <line class="ln-t" x1="336" y1="198" x2="388" y2="198"></line>
+          <text class="t-dim" x="391" y="195" text-anchor="start">거품층 75</text>
+          <line class="ln-t" x1="147" y1="362" x2="147" y2="398"></line>
+          <line class="ln-t" x1="141" y1="362" x2="220" y2="362"></line>
+          <line class="ln-t" x1="141" y1="398" x2="153" y2="398"></line>
+          <text class="t-dim" x="139" y="384" text-anchor="end">간극 210</text>
+          <line class="ln-t" x1="268" y1="353" x2="388" y2="324"></line>
+          <text class="t-dim" x="391" y="328" text-anchor="start">로터 Ø350 · 290 rpm</text>
+          <line class="ln-t" x1="291" y1="343" x2="388" y2="345"></line>
+          <text class="t-dim" x="391" y="349" text-anchor="start">스테이터 Ø473</text>
+          <line class="ln-t" x1="257" y1="156" x2="388" y2="145"></line>
+          <text class="t-dim" x="391" y="149" text-anchor="start">중공축 Ø20 / Ø80</text>
+          <line x1="600" y1="24" x2="600" y2="600" stroke="var(--rule)" stroke-width="1.5"></line>
+          <text class="t-eq" x="620" y="46" text-anchor="start">FC-201 사양</text>
+          <line class="ln-t" x1="620" y1="58" x2="980" y2="58"></line>
+          <text class="t-mono" x="620" y="80" text-anchor="start">역할</text>
+          <text class="t-mono" x="980" y="80" text-anchor="end">러퍼 (Rougher)</text>
+          <text class="t-mono" x="620" y="102" text-anchor="start">동체 내경 × 높이</text>
+          <text class="t-mono t-ag" x="980" y="102" text-anchor="end">Ø1,000 × 1,300 mm</text>
+          <text class="t-mono" x="620" y="124" text-anchor="start">유효 슬러리 체적</text>
+          <text class="t-mono" x="980" y="124" text-anchor="end">0.990 m³</text>
+          <text class="t-mono" x="620" y="146" text-anchor="start">립 높이 / 거품층</text>
+          <text class="t-mono t-ag" x="980" y="146" text-anchor="end">1,240 / 75 mm</text>
+          <text class="t-mono" x="620" y="168" text-anchor="start">로터 Ø · 회전수 · 주속</text>
+          <text class="t-mono" x="980" y="168" text-anchor="end">Ø350 mm · 290 rpm · 5.31 m/s</text>
+          <text class="t-mono" x="620" y="190" text-anchor="start">스테이터 외경 / 저부 간극</text>
+          <text class="t-mono" x="980" y="190" text-anchor="end">Ø473 / 210 mm</text>
+          <text class="t-mono" x="620" y="212" text-anchor="start">모터 (비동력)</text>
+          <text class="t-mono" x="980" y="212" text-anchor="end">4.00 kW (2.23 kW/m³)</text>
+          <text class="t-mono" x="620" y="234" text-anchor="start">중공축 보어 / 외경 / 길이</text>
+          <text class="t-mono t-ag" x="980" y="234" text-anchor="end">Ø20 / Ø80 mm / 1.85 m</text>
+          <text class="t-mono" x="620" y="256" text-anchor="start">축 내 공기 유속</text>
+          <text class="t-mono" x="980" y="256" text-anchor="end">14.3 m/s</text>
+          <text class="t-mono" x="620" y="278" text-anchor="start">설계 Jg (조절 범위)</text>
+          <text class="t-mono" x="980" y="278" text-anchor="end">0.30 cm/s (5.4–16.2 m³/h)</text>
+          <text class="t-mono" x="620" y="300" text-anchor="start">급기량 · 기포경 d32</text>
+          <text class="t-mono" x="980" y="300" text-anchor="end">10.8 m³/h · 0.8 mm</text>
+          <text class="t-mono" x="620" y="322" text-anchor="start">기포 표면적 flux Sb</text>
+          <text class="t-mono" x="980" y="322" text-anchor="end">22.5 s⁻¹</text>
+          <text class="t-mono" x="620" y="344" text-anchor="start">체류시간 (최대유량)</text>
+          <text class="t-mono t-ag" x="980" y="344" text-anchor="end">8.32 min</text>
+          <text class="t-mono" x="620" y="366" text-anchor="start">급광</text>
+          <text class="t-mono" x="980" y="366" text-anchor="end">7.14 m³/h · 521.1 kg/h</text>
+          <text class="t-mono" x="620" y="388" text-anchor="start">정광 (mass pull)</text>
+          <text class="t-mono" x="980" y="388" text-anchor="end">17.89 kg/h (3.43 %)</text>
+          <text class="t-mono" x="620" y="410" text-anchor="start">단 Ag 회수율</text>
+          <text class="t-mono t-ag" x="980" y="410" text-anchor="end">86.2 %</text>
+          <text class="t-mono" x="620" y="432" text-anchor="start">펄프 밀도</text>
+          <text class="t-mono" x="980" y="432" text-anchor="end">1,042 kg/m³</text>
+          <line class="ln-t" x1="620" y1="446" x2="980" y2="446"></line>
+          <text class="t-eq" x="620" y="476" text-anchor="start">러퍼 — 속부선 분획을 표준 조건에서 회수</text>
+          <text class="t-sm" x="620" y="498" text-anchor="start">급광 Ag 의 74 % 가 속부선 분획이라 표준 거품층</text>
+          <text class="t-sm" x="620" y="516" text-anchor="start">(75 mm)과 중간 Jg 로 1단에서 86.2 % 가 부상한다.</text>
+          <text class="t-sm" x="620" y="534" text-anchor="start">정광은 낮은 가대의 클리너로 자연유하하고,</text>
+          <text class="t-sm" x="620" y="552" text-anchor="start">필터프레스 여액도 이 급광 박스로 순환해 들어온다.</text>
+        </svg>
+      </div>
+      <figcaption>
+        러퍼는 회로의 첫 단이다. 신급광에 스캐빈저 정광·클리너 미광·필터프레스 여액이 합류해 들어오고, 정광은 클리너로 자연유하한다.
+      </figcaption>
+    </figure>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>DWG-005</b></div>
+      <div><span>도면명</span><b>FC-201 러퍼 상세</b></div>
+      <div><span>축척</span><b>NTS</b></div>
+      <div><span>단위</span><b>mm</b></div>
+      <div><span>REV</span><b>A</b></div>
+      <div><span>근거</span><b>계산서 §3</b></div>
+    </div>
+  </section>
+
+  <!-- ================= SHEET 6 : FC-202 ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-006</span>
+      <span class="sheet-title">FC-202 스캐빈저 상세</span>
+      <span class="sheet-sub">수직 단면 · 중공축 급기 · 최대 처리량 기준 성능</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1000 620" role="img"
+             aria-label="FC-202 스캐빈저 셀의 수직 단면 상세도. 내경 1,050 밀리미터, 동체 높이 1,450 밀리미터, 거품층 50 밀리미터. 중공축 보어 20 밀리미터로 급기가 내려와 로터 허브에서 분산되고, 정광은 런더로 넘치며 미광은 저부 다트밸브로 나간다.">
+          <defs>
+            <marker id="a6" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="currentColor"></polygon>
+            </marker>
+            <marker id="a6ag" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--ag)"></polygon>
+            </marker>
+          </defs>
+
+          <rect class="zone" x="165" y="184" width="170" height="218"></rect>
+          <rect class="ag-b" x="165" y="176" width="170" height="8"></rect>
+          <line class="ln" x1="165" y1="166" x2="165" y2="402"></line>
+          <line class="ln" x1="335" y1="166" x2="335" y2="402"></line>
+          <polygon fill="none" class="ln" points="165,402 240,451 260,451 335,402"></polygon>
+          <line class="ln" x1="240" y1="451" x2="240" y2="477"></line>
+          <line class="ln" x1="260" y1="451" x2="260" y2="477"></line>
+          <line class="wt-t" x1="165" y1="184" x2="335" y2="184" stroke-dasharray="6 4"></line>
+          <rect class="ag-f" x="144" y="168" width="20" height="26"></rect>
+          <rect class="ag-f" x="335" y="168" width="20" height="26"></rect>
+          <line class="ln-h" x1="149" y1="131" x2="351" y2="131"></line>
+          <line class="ln-t" x1="174" y1="131" x2="174" y2="166"></line>
+          <line class="ln-t" x1="326" y1="131" x2="326" y2="166"></line>
+          <rect class="box" x="209" y="339" width="9" height="27"></rect>
+          <rect class="box" x="282" y="339" width="9" height="27"></rect>
+          <polygon class="box" points="226,347 274,347 280,366 220,366"></polygon>
+          <line class="ln" x1="233" y1="366" x2="215" y2="382" marker-end="url(#a6)"></line>
+          <line class="ln" x1="244" y1="366" x2="238" y2="382" marker-end="url(#a6)"></line>
+          <line class="ln" x1="256" y1="366" x2="262" y2="382" marker-end="url(#a6)"></line>
+          <line class="ln" x1="267" y1="366" x2="285" y2="382" marker-end="url(#a6)"></line>
+          <rect class="box" x="244" y="75" width="13" height="272"></rect>
+          <rect class="zone" x="248" y="75" width="3" height="272"></rect>
+          <line class="ln-t" x1="250" y1="75" x2="250" y2="366" stroke-dasharray="7 3 2 3"></line>
+          <rect class="box" x="232" y="98" width="36" height="15"></rect>
+          <rect class="zone" x="236" y="49" width="28" height="26"></rect>
+          <rect class="box" fill="none" x="236" y="49" width="28" height="26"></rect>
+          <line class="ln-h" x1="185" y1="62" x2="236" y2="62" marker-end="url(#a6)"></line>
+          <text class="t-mono" x="179" y="66" text-anchor="end">급기 13.5 m³/h</text>
+          <text class="t-mono" x="269" y="36" text-anchor="start">로터리 조인트</text>
+          <rect class="box" x="123" y="200" width="32" height="39"></rect>
+          <line class="ln-h" x1="93" y1="219" x2="123" y2="219" marker-end="url(#a6)"></line>
+          <text class="t-mono" x="139" y="255" text-anchor="middle">급광 박스</text>
+          <rect class="box" x="348" y="337" width="29" height="49"></rect>
+          <line class="ln-h" x1="363" y1="386" x2="363" y2="425" marker-end="url(#a6)"></line>
+          <text class="t-mono" x="363" y="444" text-anchor="middle">미광 (다트밸브)</text>
+          <line class="ag-l" x1="144" y1="176" x2="105" y2="176" marker-end="url(#a6ag)"></line>
+          <text class="t-mono t-ag" x="144" y="160" text-anchor="end">정광 9.68 kg/h</text>
+          <line class="ln-t" x1="165" y1="36" x2="335" y2="36"></line>
+          <line class="ln-t" x1="165" y1="30" x2="165" y2="42"></line>
+          <line class="ln-t" x1="335" y1="30" x2="335" y2="42"></line>
+          <text class="t-dim" x="250" y="28" text-anchor="middle">Ø1,050</text>
+          <line class="ln-t" x1="403" y1="166" x2="403" y2="402"></line>
+          <line class="ln-t" x1="397" y1="166" x2="409" y2="166"></line>
+          <line class="ln-t" x1="397" y1="402" x2="409" y2="402"></line>
+          <text class="t-dim" x="413" y="284" text-anchor="start">1,450</text>
+          <line class="ln-t" x1="335" y1="176" x2="384" y2="176"></line>
+          <line class="ln-t" x1="335" y1="184" x2="384" y2="184"></line>
+          <text class="t-dim" x="387" y="184" text-anchor="start">거품층 50</text>
+          <line class="ln-t" x1="149" y1="366" x2="149" y2="402"></line>
+          <line class="ln-t" x1="143" y1="366" x2="220" y2="366"></line>
+          <line class="ln-t" x1="143" y1="402" x2="155" y2="402"></line>
+          <text class="t-dim" x="141" y="388" text-anchor="end">간극 222</text>
+          <line class="ln-t" x1="268" y1="356" x2="384" y2="328"></line>
+          <text class="t-dim" x="387" y="332" text-anchor="start">로터 Ø370 · 270 rpm</text>
+          <line class="ln-t" x1="291" y1="347" x2="384" y2="349"></line>
+          <text class="t-dim" x="387" y="353" text-anchor="start">스테이터 Ø499</text>
+          <line class="ln-t" x1="256" y1="149" x2="384" y2="139"></line>
+          <text class="t-dim" x="387" y="143" text-anchor="start">중공축 Ø20 / Ø80</text>
+          <line x1="600" y1="24" x2="600" y2="600" stroke="var(--rule)" stroke-width="1.5"></line>
+          <text class="t-eq" x="620" y="46" text-anchor="start">FC-202 사양</text>
+          <line class="ln-t" x1="620" y1="58" x2="980" y2="58"></line>
+          <text class="t-mono" x="620" y="80" text-anchor="start">역할</text>
+          <text class="t-mono" x="980" y="80" text-anchor="end">스캐빈저 (Scavenger)</text>
+          <text class="t-mono" x="620" y="102" text-anchor="start">동체 내경 × 높이</text>
+          <text class="t-mono t-ag" x="980" y="102" text-anchor="end">Ø1,050 × 1,450 mm</text>
+          <text class="t-mono" x="620" y="124" text-anchor="start">유효 슬러리 체적</text>
+          <text class="t-mono" x="980" y="124" text-anchor="end">1.256 m³</text>
+          <text class="t-mono" x="620" y="146" text-anchor="start">립 높이 / 거품층</text>
+          <text class="t-mono t-ag" x="980" y="146" text-anchor="end">1,390 / 50 mm</text>
+          <text class="t-mono" x="620" y="168" text-anchor="start">로터 Ø · 회전수 · 주속</text>
+          <text class="t-mono" x="980" y="168" text-anchor="end">Ø370 mm · 270 rpm · 5.23 m/s</text>
+          <text class="t-mono" x="620" y="190" text-anchor="start">스테이터 외경 / 저부 간극</text>
+          <text class="t-mono" x="980" y="190" text-anchor="end">Ø499 / 222 mm</text>
+          <text class="t-mono" x="620" y="212" text-anchor="start">모터 (비동력)</text>
+          <text class="t-mono" x="980" y="212" text-anchor="end">4.00 kW (1.87 kW/m³)</text>
+          <text class="t-mono" x="620" y="234" text-anchor="start">중공축 보어 / 외경 / 길이</text>
+          <text class="t-mono t-ag" x="980" y="234" text-anchor="end">Ø20 / Ø80 mm / 2.00 m</text>
+          <text class="t-mono" x="620" y="256" text-anchor="start">축 내 공기 유속</text>
+          <text class="t-mono" x="980" y="256" text-anchor="end">17.5 m/s</text>
+          <text class="t-mono" x="620" y="278" text-anchor="start">설계 Jg (조절 범위)</text>
+          <text class="t-mono" x="980" y="278" text-anchor="end">0.34 cm/s (7.1–19.8 m³/h)</text>
+          <text class="t-mono" x="620" y="300" text-anchor="start">급기량 · 기포경 d32</text>
+          <text class="t-mono" x="980" y="300" text-anchor="end">13.5 m³/h · 0.8 mm</text>
+          <text class="t-mono" x="620" y="322" text-anchor="start">기포 표면적 flux Sb</text>
+          <text class="t-mono" x="980" y="322" text-anchor="end">25.5 s⁻¹</text>
+          <text class="t-mono" x="620" y="344" text-anchor="start">체류시간 (최대유량)</text>
+          <text class="t-mono t-ag" x="980" y="344" text-anchor="end">11.21 min</text>
+          <text class="t-mono" x="620" y="366" text-anchor="start">급광</text>
+          <text class="t-mono" x="980" y="366" text-anchor="end">6.72 m³/h · 503.2 kg/h</text>
+          <text class="t-mono" x="620" y="388" text-anchor="start">정광 (mass pull)</text>
+          <text class="t-mono" x="980" y="388" text-anchor="end">9.68 kg/h (1.92 %)</text>
+          <text class="t-mono" x="620" y="410" text-anchor="start">단 Ag 회수율</text>
+          <text class="t-mono t-ag" x="980" y="410" text-anchor="end">73.0 %</text>
+          <text class="t-mono" x="620" y="432" text-anchor="start">펄프 밀도</text>
+          <text class="t-mono" x="980" y="432" text-anchor="end">1,043 kg/m³</text>
+          <line class="ln-t" x1="620" y1="446" x2="980" y2="446"></line>
+          <text class="t-eq" x="620" y="476" text-anchor="start">스캐빈저 — 지연부선만 남아, 러퍼보다 크다</text>
+          <text class="t-sm" x="620" y="498" text-anchor="start">러퍼 미광에는 지연부선 분획만 남는다 (k 비 9배).</text>
+          <text class="t-sm" x="620" y="516" text-anchor="start">같은 회수율에 더 긴 체류시간(11.2 min)이 필요해</text>
+          <text class="t-sm" x="620" y="534" text-anchor="start">셀이 회로에서 가장 크다. 거품층은 얕게(50 mm),</text>
+          <text class="t-sm" x="620" y="552" text-anchor="start">Jg 는 높게(0.34), 포수제는 분할 투입 — 품위는</text>
+          <text class="t-sm" x="620" y="570" text-anchor="start">버리고 회수만 본다. 정광이 러퍼로 되돌아간다.</text>
+        </svg>
+      </div>
+      <figcaption>
+        스캐빈저는 러퍼 미광의 지연부선 분획을 긁어내는 단으로, 체류시간이 길어 셀이 회로에서 가장 크다. 정광은 러퍼 급광으로 순환한다.
+      </figcaption>
+    </figure>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>DWG-006</b></div>
+      <div><span>도면명</span><b>FC-202 스캐빈저 상세</b></div>
+      <div><span>축척</span><b>NTS</b></div>
+      <div><span>단위</span><b>mm</b></div>
+      <div><span>REV</span><b>A</b></div>
+      <div><span>근거</span><b>계산서 §3</b></div>
+    </div>
+  </section>
+
+  <!-- ================= SHEET 7 : FC-203 ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-007</span>
+      <span class="sheet-title">FC-203 클리너 상세</span>
+      <span class="sheet-sub">수직 단면 · 중공축 급기 · 최대 처리량 기준 성능</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1000 620" role="img"
+             aria-label="FC-203 클리너 셀의 수직 단면 상세도. 내경 400 밀리미터, 동체 높이 650 밀리미터, 거품층 150 밀리미터. 중공축 보어 10 밀리미터로 급기가 내려와 로터 허브에서 분산되고, 정광은 런더로 넘치며 미광은 저부 다트밸브로 나간다.">
+          <defs>
+            <marker id="a7" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="currentColor"></polygon>
+            </marker>
+            <marker id="a7ag" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--ag)"></polygon>
+            </marker>
+          </defs>
+
+          <rect class="zone" x="201" y="289" width="99" height="108"></rect>
+          <rect class="ag-b" x="201" y="252" width="99" height="37"></rect>
+          <line class="ln" x1="201" y1="237" x2="201" y2="397"></line>
+          <line class="ln" x1="299" y1="237" x2="299" y2="397"></line>
+          <polygon fill="none" class="ln" points="201,397 235,426 265,426 299,397"></polygon>
+          <line class="ln" x1="235" y1="426" x2="235" y2="465"></line>
+          <line class="ln" x1="265" y1="426" x2="265" y2="465"></line>
+          <line class="wt-t" x1="201" y1="289" x2="299" y2="289" stroke-dasharray="6 4"></line>
+          <rect class="ag-f" x="183" y="240" width="17" height="39"></rect>
+          <rect class="ag-f" x="299" y="240" width="17" height="39"></rect>
+          <line class="ln-h" x1="176" y1="183" x2="324" y2="183"></line>
+          <line class="ln-t" x1="215" y1="183" x2="215" y2="237"></line>
+          <line class="ln-t" x1="285" y1="183" x2="285" y2="237"></line>
+          <rect class="box" x="227" y="361" width="5" height="16"></rect>
+          <rect class="box" x="268" y="361" width="5" height="16"></rect>
+          <polygon class="box" points="236,366 264,366 267,377 233,377"></polygon>
+          <line class="ln" x1="241" y1="377" x2="230" y2="390" marker-end="url(#a7)"></line>
+          <line class="ln" x1="247" y1="377" x2="243" y2="390" marker-end="url(#a7)"></line>
+          <line class="ln" x1="253" y1="377" x2="257" y2="390" marker-end="url(#a7)"></line>
+          <line class="ln" x1="259" y1="377" x2="270" y2="390" marker-end="url(#a7)"></line>
+          <rect class="box" x="244" y="99" width="12" height="267"></rect>
+          <rect class="zone" x="249" y="99" width="3" height="267"></rect>
+          <line class="ln-t" x1="250" y1="99" x2="250" y2="377" stroke-dasharray="7 3 2 3"></line>
+          <rect class="box" x="223" y="134" width="54" height="22"></rect>
+          <rect class="zone" x="229" y="60" width="42" height="39"></rect>
+          <rect class="box" fill="none" x="229" y="60" width="42" height="39"></rect>
+          <line class="ln-h" x1="151" y1="79" x2="229" y2="79" marker-end="url(#a7)"></line>
+          <text class="t-mono" x="142" y="83" text-anchor="end">급기 1.2 m³/h</text>
+          <text class="t-mono" x="280" y="40" text-anchor="start">로터리 조인트</text>
+          <rect class="box" x="144" y="273" width="41" height="45"></rect>
+          <line class="ln-h" x1="100" y1="295" x2="144" y2="295" marker-end="url(#a7)"></line>
+          <text class="t-mono" x="165" y="334" text-anchor="middle">급광 박스</text>
+          <rect class="box" x="319" y="314" width="41" height="59"></rect>
+          <line class="ln-h" x1="340" y1="373" x2="340" y2="432" marker-end="url(#a7)"></line>
+          <text class="t-mono" x="340" y="462" text-anchor="middle">미광 (다트밸브)</text>
+          <line class="wt-l" x1="324" y1="212" x2="287" y2="212"></line>
+          <line class="wt-l" x1="287" y1="212" x2="287" y2="247" marker-end="url(#a7)"></line>
+          <line class="wt-t" x1="213" y1="247" x2="287" y2="247"></line>
+          <text class="t-mono t-wt" x="331" y="216" text-anchor="start">세척수 링</text>
+          <line class="ag-l" x1="183" y1="252" x2="124" y2="252" marker-end="url(#a7ag)"></line>
+          <text class="t-mono t-ag" x="183" y="232" text-anchor="end">정광 6.47 kg/h</text>
+          <line class="ln-t" x1="201" y1="36" x2="299" y2="36"></line>
+          <line class="ln-t" x1="201" y1="30" x2="201" y2="42"></line>
+          <line class="ln-t" x1="299" y1="30" x2="299" y2="42"></line>
+          <text class="t-dim" x="250" y="28" text-anchor="middle">Ø400</text>
+          <line class="ln-t" x1="403" y1="237" x2="403" y2="397"></line>
+          <line class="ln-t" x1="397" y1="237" x2="409" y2="237"></line>
+          <line class="ln-t" x1="397" y1="397" x2="409" y2="397"></line>
+          <text class="t-dim" x="413" y="317" text-anchor="start">650</text>
+          <line class="ln-t" x1="299" y1="252" x2="373" y2="252"></line>
+          <line class="ln-t" x1="299" y1="289" x2="373" y2="289"></line>
+          <text class="t-dim" x="378" y="274" text-anchor="start">거품층 150</text>
+          <line class="ln-t" x1="176" y1="377" x2="176" y2="397"></line>
+          <line class="ln-t" x1="170" y1="377" x2="233" y2="377"></line>
+          <line class="ln-t" x1="170" y1="397" x2="182" y2="397"></line>
+          <text class="t-dim" x="168" y="391" text-anchor="end">간극 84</text>
+          <line class="ln-t" x1="260" y1="371" x2="373" y2="355"></line>
+          <text class="t-dim" x="378" y="359" text-anchor="start">로터 Ø140 · 610 rpm</text>
+          <line class="ln-t" x1="273" y1="366" x2="373" y2="367"></line>
+          <text class="t-dim" x="378" y="371" text-anchor="start">스테이터 Ø189</text>
+          <line class="ln-t" x1="256" y1="210" x2="373" y2="195"></line>
+          <text class="t-dim" x="378" y="199" text-anchor="start">중공축 Ø10 / Ø50</text>
+          <line x1="600" y1="24" x2="600" y2="600" stroke="var(--rule)" stroke-width="1.5"></line>
+          <text class="t-eq" x="620" y="46" text-anchor="start">FC-203 사양</text>
+          <line class="ln-t" x1="620" y1="58" x2="980" y2="58"></line>
+          <text class="t-mono" x="620" y="80" text-anchor="start">역할</text>
+          <text class="t-mono" x="980" y="80" text-anchor="end">클리너 (Cleaner)</text>
+          <text class="t-mono" x="620" y="102" text-anchor="start">동체 내경 × 높이</text>
+          <text class="t-mono t-ag" x="980" y="102" text-anchor="end">Ø400 × 650 mm</text>
+          <text class="t-mono" x="620" y="124" text-anchor="start">유효 슬러리 체적</text>
+          <text class="t-mono" x="980" y="124" text-anchor="end">0.062 m³</text>
+          <text class="t-mono" x="620" y="146" text-anchor="start">립 높이 / 거품층</text>
+          <text class="t-mono t-ag" x="980" y="146" text-anchor="end">590 / 150 mm</text>
+          <text class="t-mono" x="620" y="168" text-anchor="start">로터 Ø · 회전수 · 주속</text>
+          <text class="t-mono" x="980" y="168" text-anchor="end">Ø140 mm · 610 rpm · 4.47 m/s</text>
+          <text class="t-mono" x="620" y="190" text-anchor="start">스테이터 외경 / 저부 간극</text>
+          <text class="t-mono" x="980" y="190" text-anchor="end">Ø189 / 84 mm</text>
+          <text class="t-mono" x="620" y="212" text-anchor="start">모터 (비동력)</text>
+          <text class="t-mono" x="980" y="212" text-anchor="end">0.37 kW (3.45 kW/m³)</text>
+          <text class="t-mono" x="620" y="234" text-anchor="start">중공축 보어 / 외경 / 길이</text>
+          <text class="t-mono t-ag" x="980" y="234" text-anchor="end">Ø10 / Ø50 mm / 1.20 m</text>
+          <text class="t-mono" x="620" y="256" text-anchor="start">축 내 공기 유속</text>
+          <text class="t-mono" x="980" y="256" text-anchor="end">7.1 m/s</text>
+          <text class="t-mono" x="620" y="278" text-anchor="start">설계 Jg (조절 범위)</text>
+          <text class="t-mono" x="980" y="278" text-anchor="end">0.20 cm/s (0.6–2.0 m³/h)</text>
+          <text class="t-mono" x="620" y="300" text-anchor="start">급기량 · 기포경 d32</text>
+          <text class="t-mono" x="980" y="300" text-anchor="end">1.2 m³/h · 0.8 mm</text>
+          <text class="t-mono" x="620" y="322" text-anchor="start">기포 표면적 flux Sb</text>
+          <text class="t-mono" x="980" y="322" text-anchor="end">15.0 s⁻¹</text>
+          <text class="t-mono" x="620" y="344" text-anchor="start">체류시간 (최대유량)</text>
+          <text class="t-mono t-ag" x="980" y="344" text-anchor="end">8.81 min</text>
+          <text class="t-mono" x="620" y="366" text-anchor="start">급광</text>
+          <text class="t-mono" x="980" y="366" text-anchor="end">0.42 m³/h · 17.9 kg/h</text>
+          <text class="t-mono" x="620" y="388" text-anchor="start">정광 (mass pull)</text>
+          <text class="t-mono" x="980" y="388" text-anchor="end">6.47 kg/h (36.14 %)</text>
+          <text class="t-mono" x="620" y="410" text-anchor="start">단 Ag 회수율</text>
+          <text class="t-mono t-ag" x="980" y="410" text-anchor="end">89.9 %</text>
+          <text class="t-mono" x="620" y="432" text-anchor="start">펄프 밀도</text>
+          <text class="t-mono" x="980" y="432" text-anchor="end">1,024 kg/m³</text>
+          <line class="ln-t" x1="620" y1="446" x2="980" y2="446"></line>
+          <text class="t-eq" x="620" y="476" text-anchor="start">클리너 — 깊은 거품층으로 맥석을 배수</text>
+          <text class="t-sm" x="620" y="498" text-anchor="start">급광을 5 wt% 로 희석하고 거품층을 150 mm 로</text>
+          <text class="t-sm" x="620" y="516" text-anchor="start">깊게 가져가 동반 혼입 맥석이 거품층 안에서</text>
+          <text class="t-sm" x="620" y="534" text-anchor="start">배수되게 한다. 세척수 링이 배수를 돕는다.</text>
+          <text class="t-sm" x="620" y="552" text-anchor="start">미광은 러퍼로 순환하므로 Ag 는 잃지 않는다.</text>
+        </svg>
+      </div>
+      <figcaption>
+        클리너는 품위를 만드는 단이다. 깊은 거품층과 세척수로 동반 맥석을 배수시키고, 미광은 러퍼로 되돌려 Ag 손실을 막는다.
+      </figcaption>
+    </figure>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>DWG-007</b></div>
+      <div><span>도면명</span><b>FC-203 클리너 상세</b></div>
+      <div><span>축척</span><b>NTS</b></div>
+      <div><span>단위</span><b>mm</b></div>
+      <div><span>REV</span><b>A</b></div>
+      <div><span>근거</span><b>계산서 §3</b></div>
+    </div>
+  </section>
+
   <!-- ================= NOTES ================= -->
   <section class="notes">
     <h2>도면 주기 (General Notes)</h2>
@@ -1130,7 +1554,7 @@
       <li>설계 고체 농도 <strong>7 wt%</strong> 는 회분식 실증에서 검증된 값이다. 같은 Ø350 mm 동체는 15 wt% 에서 1.14 t/h, 30 wt% 에서 2.51 t/h 를 낼 수 있으나 <strong>PV 원료로는 미검증</strong>이므로 설계 기준으로 삼지 않았다.</li>
       <li><strong>bias 제어(FFIC-106)가 이 설비의 전부다.</strong> bias 가 음수로 넘어가면 세척 효과가 사라져 정광 품위가 무너지고, 과도하면 회수율이 떨어진다. 세척수 유량과 미광 배출을 협조 제어해 Jb 를 직접 연산한다.</li>
       <li>pH 조정제·황화제·억제제를 쓰지 않는다. 포수제가 금속 Ag 표면에 직접 선택 흡착하므로 <strong>자연 pH</strong> 에서 운전하며, H₂S·CS₂ 위험이 설계상 존재하지 않는다.</li>
-      <li>공정수 <strong>10.1 m³/h</strong> 는 농축조 월류수와 필터프레스 여액에서 회수해 재사용한다(블리드 10 %). 7 wt% 라는 낮은 고체 농도가 물 회수 설비를 크게 만드는 유일한 대가다.</li>
+      <li>공정수 <strong>10.1 m³/h</strong> 를 회수해 재사용한다(블리드 10 %). 농축조 월류수는 공정수 탱크로, <strong>필터프레스 여액 0.47 m³/h 는 부선 회로 첫 단 급광으로 직접 순환</strong>한다(1안 CT-1, 2안 FC-201 러퍼) — 여포를 빠져나온 미립 Ag 를 잃지 않기 위해서다. 7 wt% 라는 낮은 고체 농도가 물 회수 설비를 크게 만드는 유일한 대가다.</li>
       <li>정광·미광 필터프레스는 <strong>서로 다른 기준으로 규격이 정해진다.</strong> 미광기(FL-102/FL-202)는 사이클당 케이크 부피가 챔버 총용적 702 L 를 결정하고, 정광기(FL-101/FL-201)는 필요 면적이 0.1 m² 에 못 미쳐 <strong>상용 최소 기종</strong>이 하한이 된다. 그래도 교차오염 손실이 회수한 은보다 클 수 있어 미광기와 합치지 않는다.</li>
       <li>2안의 급기는 스파저가 아니라 <strong>중공축</strong>으로 넣는다(DWG-004). 축 외경은 비틀림이 아니라 <strong>세장비(L/D ≤ 25)</strong> 가 정하며, 조인트·보어 손실 약 6 kPa 를 송풍기 토출압에 반영했다.</li>
       <li>1안의 장치 형식은 <strong>특허 가출원 대상</strong>(AU 2025902821)이다. 상업화 시 실시권 검토가 필요하며, 불발 시 2안이 현실적 차선이다.</li>

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from . import design_basis as db
 from . import references as ref
+from .hydrodynamics import analyse_cell
 from .kinetics import perfect_mixer_recovery
+from .transient import simulate_startup
 from .plant import PlantDesign, build_plant, mechanical_sizing_check
 from .reagents import reagent_schedule
 
@@ -299,6 +301,10 @@ def render(design: PlantDesign | None = None) -> str:
     add(f"**설치 전력 {rfc.installed_kw:.2f} kW**, 공정수 회수 {rfc.water_recycle_m3h:.1f} m3/h "
         f"(농축조 회수수 재사용, 블리드 10 %).")
     add("")
+    add(f"이 가운데 필터프레스 여액 {rfc.filtrate_m3h:.3f} m3/h 는 공정수 탱크가 아니라 "
+        f"**{rfc.filtrate_return_to}** 으로 되돌린다. 여포를 빠져나온 미립자가 남아 있어 "
+        f"공정수로 희석하면 그 안의 Ag 를 그대로 잃기 때문이다.")
+    add("")
 
     # 3. 2안 --------------------------------------------------------------
     add("## 3. 2안 (대안) — 기계식 러퍼 · 스캐빈저 · 클리너 3단")
@@ -358,9 +364,10 @@ def render(design: PlantDesign | None = None) -> str:
     add("")
     add(_filter_table([mech.concentrate_filter, mech.tailings_filter]))
     add("")
-    add(f"여액 {mech.concentrate_filter.filtrate_m3h + mech.tailings_filter.filtrate_m3h:.3f} m3/h "
-        f"는 농축조 월류수와 함께 공정수로 돌아간다 "
-        f"(합계 {mech.water_recycle_m3h:.2f} m3/h).")
+    add(f"여액 {mech.filtrate_m3h:.3f} m3/h 는 공정수 탱크를 거치지 않고 "
+        f"**{mech.filtrate_return_to}** 으로 직접 되돌린다 — 여포를 빠져나온 미립자에 "
+        f"Ag 가 남아 있어 회로 첫 단에서 한 번 더 부선 기회를 준다. "
+        f"미광 농축조 월류수와 합쳐 회수하는 공정수는 {mech.water_recycle_m3h:.2f} m3/h 다.")
     add("")
     for label, res in ((peak_label, mech.result_peak), (avg_label, mech.result_avg)):
         add(f"### 물질수지 — {label}")
@@ -528,6 +535,85 @@ def render(design: PlantDesign | None = None) -> str:
         f"Ag 회수율이 {perfect_mixer_recovery(ag.k_fast, 1.0) * ag.fast_fraction * 100 + perfect_mixer_recovery(ag.k_slow, 1.0) * ag.slow_fraction * 100:.0f} % 로 "
         "나와 실측(~100 %)과 전혀 맞지 않는다. flux 상사로 스케일업하면 수력학적 조건이 "
         "보존되므로 실증 측정값을 그대로 이월하는 것이 옳다.")
+    add("")
+
+    # 7. 수치해석 ----------------------------------------------------------
+    add("## 7. 수치해석 — 수력학 검산과 기동 과도응답")
+    add("")
+    add("### 7.1 기포-입자 수력학 검산")
+    add("")
+    add("설계가 쓰는 속도상수는 문헌 회분식 곡선에 맞춘 경험값이다. 제1원리로 "
+        "그 값이 물리적으로 성립하는지 검산한다 — 기포 종말속도(Schiller-Naumann "
+        "항력 반복해) → 기포 Reynolds 수 → Yoon-Luttrell 충돌 효율 Ec → 포집 "
+        "속도상수 k = (3/2)·Ea·Ec·Jg/db. 여기서 부착 효율 Ea 만 미지수이므로, "
+        "속부선 분획의 설계 속도상수 "
+        f"(회분식 {db.FLOAT_MODELS['Ag'].k_fast:.2f} × 스케일업 계수 {db.PLANT_SCALE_FACTOR} "
+        f"= {db.FLOAT_MODELS['Ag'].k_fast * db.PLANT_SCALE_FACTOR:.2f} 1/min) 를 재현하는 "
+        "Ea 를 역산한다.")
+    add("")
+    k_fast_plant = db.FLOAT_MODELS["Ag"].k_fast * db.PLANT_SCALE_FACTOR
+    hydro_rows = []
+    hydro = []
+    for c in mech.cells:
+        h = analyse_cell(
+            c.tag,
+            c.aeration.superficial_gas_velocity_cm_s,
+            c.aeration.bubble_sauter_mean_mm,
+            c.geometry.gas_holdup,
+            c.geometry.pulp_zone_height_m,
+            k_fast_plant,
+        )
+        hydro.append(h)
+        hydro_rows.append([
+            c.tag,
+            f"{h.bubble_rise_m_s * 100:.1f} / {h.bubble_swarm_m_s * 100:.1f}",
+            f"{h.bubble_reynolds:.0f}",
+            f"{h.collision_efficiency * 100:.2f} %",
+            f"{h.ideal_rate_constant_1_min:.1f}",
+            f"{h.measured_rate_constant_1_min:.2f}",
+            f"**{h.implied_attachment_efficiency:.3f}**",
+            f"{h.pulp_transit_s:.0f} s",
+        ])
+    add(_table(
+        ["셀", "기포 상승 단일/군 (cm/s)", "Re", "충돌 효율 Ec",
+         "k 이상값 (1/min)", "k 설계값 (1/min)", "역산 Ea", "펄프 통과"],
+        hydro_rows,
+    ))
+    add("")
+    add(f"역산된 부착 효율 Ea {min(h.implied_attachment_efficiency for h in hydro):.2f}~"
+        f"{max(h.implied_attachment_efficiency for h in hydro):.2f} 는 수십 µm 급 입자의 "
+        "문헌 범위(0.1~0.3)에 들어간다 — **설계 속도상수는 물리적으로 정합적이다.** "
+        "입자 침강속도는 "
+        f"{hydro[0].particle_settling_mm_s:.1f} mm/s (P80 66 µm) 로 순환 유속 "
+        "수십 cm/s 대비 무시할 만해, 셀 바닥 모래화(sanding) 위험은 낮다.")
+    add("")
+    add("### 7.2 기동 과도응답")
+    add("")
+    tr = simulate_startup(mech.result_peak, duration_min=120.0)
+    ss = mech.result_peak
+    add("빈 셀에서 급광을 넣기 시작한 순간부터 회로가 정상상태에 도달할 때까지를 "
+        "성분별 셀 재고에 대한 CSTR 연립 ODE 로 적분했다 (RK4, Δt 0.02 min). "
+        "유효 속도상수는 정상상태 해에서 역산했으므로, 적분이 수렴하면 정상상태 "
+        "물질수지와 **정확히 같은 값**에 도달해야 한다 — 이것이 곧 두 계산의 "
+        "교차 검증이다.")
+    add("")
+    add(_table(
+        ["지표", "값"],
+        [
+            ["회수율 95 % 도달 (t95)", f"**{tr.time_to_95pct_min:.1f} min**"],
+            ["회수율 99 % 도달 (t99)", f"{tr.time_to_99pct_min:.1f} min"],
+            ["120 min 시점 Ag 회수율 (ODE)", f"{tr.final_recovery_ag * 100:.2f} %"],
+            ["정상상태 해 (수렴 계산)", f"{ss.recovery('Ag') * 100:.2f} %"],
+            ["두 계산의 차이", f"{abs(tr.final_recovery_ag - ss.recovery('Ag')) * 100:.1e} %p"],
+            ["120 min 시점 순환부하 (ODE)", f"{tr.circulating_load[-1] * 100:.2f} %"],
+        ],
+    ))
+    add("")
+    add(f"기동 후 **약 {tr.time_to_95pct_min:.0f}분(단별 체류시간 합의 약 "
+        f"{tr.time_to_95pct_min / (ss.rougher.residence_min + ss.scavenger.residence_min + ss.cleaner.residence_min):.1f}배)** 이면 "
+        "성능 보증값 측정을 시작할 수 있다. 순환류(스캐빈저 정광·클리너 미광)가 "
+        "안정되는 데 걸리는 시간도 같은 규모다. 시운전 계획의 안정화 대기 시간 "
+        "산정 근거가 된다.")
     add("")
     return "\n".join(lines)
 

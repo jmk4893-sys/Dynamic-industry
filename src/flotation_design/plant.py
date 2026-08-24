@@ -112,13 +112,23 @@ class RfcOption:
         )
 
     @property
+    def filtrate_m3h(self) -> float:
+        """필터프레스 여액 — 러퍼(1안은 조건조) 급광으로 되돌린다."""
+        return (
+            self.concentrate_filter.filtrate_m3h + self.tailings_filter.filtrate_m3h
+        )
+
+    @property
+    def filtrate_return_to(self) -> str:
+        return db.FILTRATE_RETURN_TO["rfc"]
+
+    @property
     def water_recycle_m3h(self) -> float:
         """농축조에서 회수해 재사용하는 물."""
         return (
             self.tailings_thickener.overflow_m3h
             + self.concentrate_thickener.overflow_m3h
-            + self.concentrate_filter.filtrate_m3h
-            + self.tailings_filter.filtrate_m3h
+            + self.filtrate_m3h
         )
 
 
@@ -189,13 +199,20 @@ class MechanicalOption:
         )
 
     @property
+    def filtrate_m3h(self) -> float:
+        """필터프레스 여액 — 러퍼 급광으로 되돌린다."""
+        return (
+            self.concentrate_filter.filtrate_m3h + self.tailings_filter.filtrate_m3h
+        )
+
+    @property
+    def filtrate_return_to(self) -> str:
+        return db.FILTRATE_RETURN_TO["mechanical"]
+
+    @property
     def water_recycle_m3h(self) -> float:
         """농축조 월류수 + 여액."""
-        return (
-            self.tailings_thickener.overflow_m3h
-            + self.concentrate_filter.filtrate_m3h
-            + self.tailings_filter.filtrate_m3h
-        )
+        return self.tailings_thickener.overflow_m3h + self.filtrate_m3h
 
 
 @dataclass(frozen=True)
