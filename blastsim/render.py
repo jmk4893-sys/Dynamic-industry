@@ -34,8 +34,15 @@ def _writer(path: str, fps: float):
 
 
 def _fig_to_rgb(fig) -> np.ndarray:
+    """matplotlib figure -> RGB 배열. 폭·높이를 짝수로 맞춘다.
+
+    h264(yuv420p)는 크로마 서브샘플링 때문에 가로·세로가 모두 짝수여야 한다.
+    홀수 치수를 넘기면 인코더가 아예 열리지 않고 'Broken pipe' 로 죽는다.
+    """
     fig.canvas.draw()
-    return np.asarray(fig.canvas.buffer_rgba())[:, :, :3].copy()
+    rgb = np.asarray(fig.canvas.buffer_rgba())[:, :, :3]
+    h, w = rgb.shape[:2]
+    return rgb[: h - (h % 2), : w - (w % 2)].copy()
 
 
 # ---------------------------------------------------------------------------

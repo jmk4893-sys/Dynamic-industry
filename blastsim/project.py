@@ -218,20 +218,26 @@ class BlastProject:
 
     # ---- 영상 --------------------------------------------------------------
     def make_videos(self, log=print) -> list[str]:
+        """영상 생성. 하나가 실패해도 나머지와 보고서·그래프는 살린다."""
         from . import render
         out = []
         os.makedirs(self.cfg.outdir, exist_ok=True)
+        jobs = []
         if self.frag:
-            p = os.path.join(self.cfg.outdir, "frag_video.mp4")
-            out.append(render.animate_fragmentation(
-                self.frag["result"], p, fps=min(30.0, self.q["fps"])))
+            jobs.append(("파쇄·비산", lambda: render.animate_fragmentation(
+                self.frag["result"],
+                os.path.join(self.cfg.outdir, "frag_video.mp4"),
+                fps=min(30.0, self.q["fps"]))))
         if self.vib and self.vib["result"].snapshots:
-            p = os.path.join(self.cfg.outdir, "vibration_video.mp4")
+            jobs.append(("지표 진동", lambda: render.animate_vibration(
+                self.vib["result"], self.pattern,
+                os.path.join(self.cfg.outdir, "vibration_video.mp4"))))
+        for name, fn in jobs:
             try:
-                out.append(render.animate_vibration(
-                    self.vib["result"], self.pattern, p))
-            except ValueError as e:
-                log(f"  [건너뜀] 진동 영상: {e}")
+                out.append(fn())
+            except Exception as exc:                      # noqa: BLE001
+                log(f"  [건너뜀] {name} 영상 생성 실패: "
+                    f"{type(exc).__name__}: {str(exc)[:200]}")
         self.videos = out
         return out
 
