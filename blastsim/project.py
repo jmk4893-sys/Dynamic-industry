@@ -320,8 +320,12 @@ class BlastProject:
              f"    (참고로 연결성분이 주는 값: X50 = {s['X50']:.1f} m — 과대)", ""]
         ) + [
                       "  [이동 · 비산]",
-                      f"    저항선 평균 이동거리 = {s['throw_mean']:.2f} m "
-                      f"(최대 {s['throw_max']:.1f} m)",
+                      f"    저항선 영역 평균 이동 = {s['burden_mean']:.2f} m,  "
+                      f"1 m 초과 {s['burden_moved']:.0%},  자유면 밖으로 "
+                      f"{s['out_face']:.0%}",
+                      f"    이동한 암반 평균 이동 = {s['throw_mean']:.2f} m "
+                      f"(최대 {s['throw_max']:.1f} m,  전체 자유입자의 "
+                      f"{s['moved_frac']:.0%}가 이동)",
                       f"    최대 입자속도        = {s['v_max']:.1f} m/s "
                       f"(평균 {s['v_mean']:.1f} m/s)",
                       f"    비산 최원거리        = {s['flyrock_range']:.1f} m "
@@ -442,6 +446,21 @@ def fragmentation_stats(result, model) -> dict:
     moved = free & (disp > 0.5 * model.d)
     throw_mean = float(disp[moved].mean()) if moved.any() else 0.0
     throw_max = float(disp[free].max()) if free.any() else 0.0
+    moved_frac = float(moved.sum() / max(int(free.sum()), 1))
+
+    # 저항선 영역(자유면 ~ 첫 열, 굴착선 위)만 따로 본다. 전체 자유입자에는
+    # 배후 암반이 섞여 있어 평균이 희석된다.
+    pat = model.pattern
+    x_first = min(h.x for h in pat.holes)
+    burden_zone = (free & (model.pos0[:, 0] < x_first)
+                   & (model.pos0[:, 2] > model.toe_z))
+    if burden_zone.any():
+        bd = disp[burden_zone]
+        burden_mean = float(bd.mean())
+        burden_moved = float((bd > 1.0).mean())
+        out_face = float((result.pos[burden_zone, 0] < model.face_x).mean())
+    else:
+        burden_mean = burden_moved = out_face = 0.0
 
     v = result.peak_speed
     v_max = float(v[free].max()) if free.any() else 0.0
@@ -464,6 +483,8 @@ def fragmentation_stats(result, model) -> dict:
         "mass_max": float(mass.max()), "Xc": xc, "n_rr": float(n_rr),
         "oversize": oversize, "oversize_limit": over_lim,
         "throw_mean": throw_mean, "throw_max": throw_max,
+        "moved_frac": moved_frac, "burden_mean": burden_mean,
+        "burden_moved": burden_moved, "out_face": out_face,
         "v_max": v_max, "v_mean": v_mean,
         "flyrock_range": fly_range, "n_flyrock": n_fly,
         "flyrock_frac": n_fly / max(int(free.sum()), 1),
