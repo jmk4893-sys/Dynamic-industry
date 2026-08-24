@@ -49,15 +49,15 @@ class TestFeedSpec(unittest.TestCase):
         self.assertAlmostEqual(feed.solids_specific_gravity, 8.0 / 3.0, places=9)
 
     def test_design_basis_solids_sg(self):
-        self.assertAlmostEqual(FEED.solids_specific_gravity, 2.511, places=3)
+        self.assertAlmostEqual(FEED.solids_specific_gravity, 2.374, places=3)
 
     def test_component_tph_splits_feed(self):
         parts = FEED.component_tph(0.5)
         self.assertAlmostEqual(sum(parts.values()), 0.5, places=12)
-        self.assertAlmostEqual(parts["Ag"], 0.5 * 0.0045, places=12)
+        self.assertAlmostEqual(parts["Ag"], 0.5 * FEED.grade_ppm("Ag") / 1e6, places=12)
 
     def test_grade_ppm(self):
-        self.assertAlmostEqual(FEED.grade_ppm("Ag"), 4500.0, places=6)
+        self.assertAlmostEqual(FEED.grade_ppm("Ag"), 5900.0, places=6)
         with self.assertRaises(KeyError):
             FEED.grade_ppm("Au")
 
@@ -67,19 +67,19 @@ class TestPulpProperties(unittest.TestCase):
         self.pulp = pulp_at(FEED, 0.5)
 
     def test_water_and_slurry_mass(self):
-        # 25 wt% 고체 → 고체 1 에 물 3
-        self.assertAlmostEqual(self.pulp.water_tph, 1.5, places=9)
-        self.assertAlmostEqual(self.pulp.slurry_tph, 2.0, places=9)
+        w = FEED.solids_mass_fraction
+        self.assertAlmostEqual(self.pulp.water_tph, 0.5 * (1 - w) / w, places=9)
+        self.assertAlmostEqual(self.pulp.slurry_tph, 0.5 / w, places=9)
 
     def test_volumetric_flow(self):
-        expected = 0.5 / FEED.solids_specific_gravity + 1.5
+        expected = 0.5 / FEED.solids_specific_gravity + self.pulp.water_tph
         self.assertAlmostEqual(self.pulp.volumetric_flow_m3h, expected, places=9)
-        self.assertAlmostEqual(self.pulp.volumetric_flow_m3h, 1.699, places=3)
+        self.assertAlmostEqual(self.pulp.volumetric_flow_m3h, 6.853, places=3)
 
     def test_pulp_sg_between_water_and_solids(self):
         self.assertGreater(self.pulp.pulp_specific_gravity, 1.0)
         self.assertLess(self.pulp.pulp_specific_gravity, FEED.solids_specific_gravity)
-        self.assertAlmostEqual(self.pulp.pulp_specific_gravity, 1.177, places=3)
+        self.assertAlmostEqual(self.pulp.pulp_specific_gravity, 1.042, places=3)
 
     def test_solids_volume_fraction_consistent_with_flows(self):
         expected = (0.5 / FEED.solids_specific_gravity) / self.pulp.volumetric_flow_m3h

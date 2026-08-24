@@ -1,105 +1,12 @@
-"""설계 계산 결과를 Markdown 리포트로 출력."""
+"""설계 계산서 생성 (Markdown)."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from . import design_basis as db
-from .circuit_design import CircuitDesign, build_circuit, sizing_check
-from .conditioning import ConditionerDesign, conditioner_train
-from .feed import FeedSpec, PulpProperties, pulp_at
-from .kinetics import SeparationResult, simulate
+from . import references as ref
+from .kinetics import perfect_mixer_recovery
+from .plant import PlantDesign, build_plant, mechanical_sizing_check
 from .reagents import reagent_schedule
-from .sizing import (
-    AerationDesign,
-    CellGeometry,
-    ImpellerDesign,
-    aeration_design,
-    cell_geometry,
-    froth_loading,
-    impeller_design,
-    required_slurry_volume,
-    residence_time,
-    rounded_cell,
-)
-
-
-@dataclass(frozen=True)
-class DesignCase:
-    """설계 기준 전체를 한 번에 계산한 결과 묶음."""
-
-    feed: FeedSpec
-    pulp_avg: PulpProperties
-    pulp_peak: PulpProperties
-    calculated_geometry: CellGeometry
-    geometry: CellGeometry
-    impeller: ImpellerDesign
-    aeration: AerationDesign
-    tau_avg_min: float
-    tau_peak_min: float
-    result_avg: SeparationResult
-    result_peak: SeparationResult
-    conditioners: tuple[ConditionerDesign, ...]
-
-
-def build_design(feed: FeedSpec = db.FEED) -> DesignCase:
-    """설계 기준으로부터 전체 계산을 수행한다."""
-    pulp_avg = pulp_at(feed, feed.average_tph)
-    pulp_peak = pulp_at(feed, feed.peak_tph)
-
-    needed = required_slurry_volume(
-        pulp_peak.volumetric_flow_m3h, db.TARGET_RESIDENCE_AT_PEAK_MIN
-    )
-    calc = cell_geometry(
-        needed,
-        gas_holdup=db.GAS_HOLDUP,
-        froth_depth_m=db.FROTH_DEPTH_M,
-        freeboard_m=db.FREEBOARD_M,
-        height_to_width=db.HEIGHT_TO_WIDTH,
-    )
-    geom = rounded_cell(calc, db.CELL_WIDTH_M, db.CELL_SHELL_HEIGHT_M)
-
-    impeller = impeller_design(
-        geom,
-        pulp_peak.pulp_density_kg_m3,
-        diameter_ratio=db.IMPELLER_DIAMETER_RATIO,
-        tip_speed_m_s=db.IMPELLER_TIP_SPEED_M_S,
-        power_number=db.IMPELLER_POWER_NUMBER,
-    )
-    aer = aeration_design(
-        geom,
-        pulp_peak.pulp_density_kg_m3,
-        sparger_clearance_m=impeller.bottom_clearance_m,
-        jg_cm_s=db.JG_DESIGN_CM_S,
-        bubble_d32_mm=db.BUBBLE_D32_MM,
-    )
-
-    tau_avg = residence_time(geom, pulp_avg.volumetric_flow_m3h, feed.average_tph).residence_min
-    tau_peak = residence_time(geom, pulp_peak.volumetric_flow_m3h, feed.peak_tph).residence_min
-
-    result_avg = simulate(
-        feed.component_tph(feed.average_tph), db.FLOAT_MODELS, tau_avg, db.WATER_RECOVERY
-    )
-    result_peak = simulate(
-        feed.component_tph(feed.peak_tph), db.FLOAT_MODELS, tau_peak, db.WATER_RECOVERY
-    )
-
-    conditioners = conditioner_train(db.CONDITIONER_STAGES, pulp_peak.volumetric_flow_m3h)
-
-    return DesignCase(
-        feed=feed,
-        pulp_avg=pulp_avg,
-        pulp_peak=pulp_peak,
-        calculated_geometry=calc,
-        geometry=geom,
-        impeller=impeller,
-        aeration=aer,
-        tau_avg_min=tau_avg,
-        tau_peak_min=tau_peak,
-        result_avg=result_avg,
-        result_peak=result_peak,
-        conditioners=conditioners,
-    )
 
 
 def _table(headers: list[str], rows: list[list[str]]) -> str:
@@ -110,51 +17,6 @@ def _table(headers: list[str], rows: list[list[str]]) -> str:
     return "\n".join(out)
 
 
-
-
-#: 셀별 목표 체류시간 (최대 처리량 기준, 분).
-TARGET_RESIDENCE_MIN = {"FC-101": 8.0, "FC-102": 10.0, "FC-103": 8.0}
-
-
-def _dimension_checks(d: CircuitDesign) -> list[dict]:
-    """확정 셀이 최대 처리량에서 목표 체류시간을 만족하는지 검증한다.
-
-    미달이면 그 처리량에 필요한 셀 치수를 함께 돌려주어, 확정 치수를
-    그대로 쓸 수 없다는 사실이 계산서에 드러나게 한다.
-    """
-    out: list[dict] = []
-    for tag, target in TARGET_RESIDENCE_MIN.items():
-        geom = d.cell(tag).geometry
-        unit = {
-            "FC-101": d.result_peak.rougher,
-            "FC-102": d.result_peak.scavenger,
-            "FC-103": d.result_peak.cleaner,
-        }[tag]
-        required = sizing_check(d.result_peak, tag, target)
-        needed = cell_geometry(
-            required,
-            gas_holdup=geom.gas_holdup,
-            froth_depth_m=geom.froth_depth_m,
-            freeboard_m=geom.shell_height_m - geom.lip_height_m,
-            height_to_width=geom.shell_height_m / geom.width_m,
-        )
-        out.append(
-            {
-                "tag": tag,
-                "target": target,
-                "required_m3": required,
-                "actual_m3": geom.effective_slurry_volume_m3,
-                "residence": unit.residence_min,
-                "required_width_mm": needed.width_m * 1000,
-                "required_height_mm": needed.shell_height_m * 1000,
-                "actual_width_mm": geom.width_m * 1000,
-                "actual_height_mm": geom.shell_height_m * 1000,
-                "ok": geom.effective_slurry_volume_m3 >= required * 0.98,
-            }
-        )
-    return out
-
-
 def _pct(x: float, digits: int = 1) -> str:
     return f"{x * 100:.{digits}f}"
 
@@ -163,58 +25,90 @@ def _kgh(x: float, digits: int = 2) -> str:
     return f"{x * 1000:.{digits}f}"
 
 
-# --------------------------------------------------------------------------
-# 회로 계산서
-# --------------------------------------------------------------------------
-def render(design: CircuitDesign | None = None) -> str:
-    """러퍼-스캐빈저-클리너 회로 설계 계산서 (Markdown)."""
-    d = design if design is not None else build_circuit()
-    f = d.feed
+def _delta(model: float, published: float) -> str:
+    if published == 0:
+        return "—"
+    return f"{(model - published) / published * 100:+.1f} %"
+
+
+def render(design: PlantDesign | None = None) -> str:
+    """태양광 셀 Ag 회수 부선 설비 설계 계산서."""
+    d = design if design is not None else build_plant()
+    f, rfc, mech = d.feed, d.rfc, d.mechanical
+    trial = ref.CONTINUOUS_TRIAL
+    batch = ref.BATCH_TAP_WATER
+    peak_label = f"최대 {f.peak_tph:.2f} t/h"
+    avg_label = f"평균 {f.average_tph:.2f} t/h"
     lines: list[str] = []
     add = lines.append
 
-    add("# 부유선별 회로 설계 계산서 (러퍼 – 스캐빈저 – 클리너)")
+    add("# 태양광 셀 은(Ag) 회수 부선 설비 설계 계산서")
     add("")
     add("> `PYTHONPATH=src python -m flotation_design` 로 자동 생성됨. "
-        "설계 기준은 `src/flotation_design/design_basis.py` 참조.")
+        "설계 기준은 `src/flotation_design/design_basis.py`, "
+        "근거 실험값은 `src/flotation_design/references.py` 참조.")
     add("")
-    undersized = [c for c in _dimension_checks(d) if not c["ok"]]
-    if undersized:
-        add("> [!WARNING]")
-        add(f"> **확정 셀이 이 처리량({f.peak_tph:.2f} t/h)에 미달한다** — "
-            + ", ".join(
-                f"{c['tag']} {c['residence']:.1f} min (목표 {c['target']:.0f} min)"
-                for c in undersized
-            )
-            + ". 셀 치수는 `design_basis.py` 에 확정값으로 박혀 있어 처리량을 바꿔도 "
-            "재산정되지 않는다. 본 계산서는 **기존 셀의 성능 계산**으로만 유효하며, "
-            "§3 의 로터·급기 선정과 §4 의 성능 예측은 이 처리량에 사용할 수 없다. "
-            "필요한 셀 치수는 §9 참조.")
-        add("")
+
+    # 0. 설계 근거 ---------------------------------------------------------
+    add("## 0. 설계 근거")
+    add("")
+    add("본 설계는 아래 두 실증 결과를 1차 근거로 삼는다. 모델 파라미터는 이 수치를 "
+        "재현하도록 보정했고, `tests/test_references.py` 가 재현성을 검증한다.")
+    add("")
+    add(_table(
+        ["출처", "장치", "조건", "결과"],
+        [
+            ["[1] Minerals Engineering 242 (2026) 110189",
+             f"{batch.cell_volume_l:.0f} L 회분식 기계식 셀",
+             f"{batch.solids_wt_percent:.0f} wt%, Jg {batch.jg_cm_s:.2f} cm/s, "
+             f"{batch.reagent_g_per_t:.0f} g/t, {batch.flotation_time_min:.0f} min, 수돗물, 자연 pH",
+             f"Ag 회수율 {batch.ag_recovery_percent:.1f} %, 정광 {batch.concentrate_ag_wt_percent:.1f} wt% Ag, "
+             f"농축비 {batch.ag_upgrade:.1f}, 질량수율 {batch.mass_yield_percent:.2f} %"],
+            ["[1] 동상 — 러퍼+클리너 개방회로", "동상", "클리너 1단 추가",
+             f"Ag 회수율 {ref.BATCH_ROUGHER_CLEANER['ag_recovery_percent']:.1f} %, "
+             f"정광 {ref.BATCH_ROUGHER_CLEANER['concentrate_ag_wt_percent']:.1f} wt% Ag, "
+             f"농축비 {ref.BATCH_ROUGHER_CLEANER['ag_upgrade']:.1f}"],
+            ["[2] ChemRxiv 2026 (프리프린트)",
+             f"연속 1단 부선조 {trial.cross_section_mm[0]:.0f}x{trial.cross_section_mm[1]:.0f} mm",
+             f"Jf {trial.feed_flux_cm_s:.1f} / Jg {trial.air_flux_cm_s:.1f} / "
+             f"Jw {trial.wash_water_flux_cm_s:.2f} cm/s, 기액 체류 {trial.gas_liquid_residence_min:.0f} min, "
+             f"{trial.solids_wt_percent:.0f} wt%",
+             f"Ag 회수율 ~{trial.ag_recovery_percent:.0f} %, 정광 {trial.concentrate_ag_wt_percent:.1f} wt% Ag, "
+             f"농축비 {trial.ag_upgrade:.0f}, 질량수율 {trial.solids_yield_percent:.2f} %"],
+        ],
+    ))
+    add("")
+    add("> [!IMPORTANT]")
+    add("> [2] 는 심사 전 프리프린트이며, 저자들이 해당 공정에 대해 호주 가출원"
+        "(No. 2025902821, \"Recovery of silver from photovoltaic cells\")을 제출한 상태다. "
+        "상업화 전 실시권 검토가 필요하다.")
+    add("")
 
     # 1. 급광 -------------------------------------------------------------
     add("## 1. 급광 사양")
     add("")
     add(_table(
-        ["항목", "값"],
+        ["항목", "값", "근거"],
         [
-            ["평균 처리량 (건조 고체)", f"{f.average_tph:.2f} t/h"],
-            ["최대 처리량 (건조 고체)", f"{f.peak_tph:.2f} t/h"],
-            ["급광 입도 P80", f"{f.p80_micron:.0f} um"],
-            ["탈니(deslime) 컷", f"{f.deslime_cut_micron:.0f} um"],
-            ["고체 평균 비중", f"{f.solids_specific_gravity:.3f}"],
-            ["러퍼 급광 고체 농도 (순환류 포함)", f"{db.ROUGHER_FEED_SOLIDS * 100:.0f} wt%"],
-            ["신급광 슬러리 체적유량",
-             f"{d.pulp_avg.volumetric_flow_m3h:.3f} / "
-             f"{d.pulp_peak.volumetric_flow_m3h:.3f} m3/h (평균/최대)"],
-            ["설계 기준 처리량 (design_basis)",
-             f"{db.FEED.average_tph:.2f} / {db.FEED.peak_tph:.2f} t/h"],
+            ["평균 / 최대 처리량", f"{f.average_tph:.2f} / {f.peak_tph:.2f} t/h (건조 고체)", "요구사항"],
+            ["원료", "박리된 c-Si 셀 분획 (습식 로드밀 분쇄)", "[1][2]"],
+            ["급광 입도 P80", f"{f.p80_micron:.0f} um", "[2]"],
+            ["설계 고체 농도", f"{f.solids_mass_fraction * 100:.0f} wt%",
+             f"[1] 회분식 검증값. [2] 연속 실증은 {trial.solids_wt_percent:.0f} wt%, "
+             f"저자 주장 상한 {trial.max_feasible_solids_wt_percent:.0f} wt% (PV 원료 미검증)"],
+            ["고체 평균 비중", f"{f.solids_specific_gravity:.3f}", "성분 조성 가중"],
+            ["pH", "조정 없음 (자연 pH)", "[1][2] 모두 무조정 운전"],
+            ["모듈 대비 셀 분획 비율", f"{ref.CELL_FRACTION_OF_MODULE * 100:.1f} %", "[2]"],
+            ["환산 모듈 처리량",
+             f"{f.average_tph / ref.CELL_FRACTION_OF_MODULE:.1f} / "
+             f"{f.peak_tph / ref.CELL_FRACTION_OF_MODULE:.1f} t/h",
+             "상류 박리 설비가 감당해야 할 규모"],
         ],
     ))
     add("")
     add(_table(
         ["성분", "질량분율 (wt%)", "품위 (g/t)", "비중", "속부선", "지연부선", "비부선",
-         "k_fast (1/min)", "k_slow (1/min)"],
+         "k_fast", "k_slow", "출처"],
         [
             [
                 c.name,
@@ -226,250 +120,306 @@ def render(design: CircuitDesign | None = None) -> str:
                 _pct(db.FLOAT_MODELS[c.name].nonfloating_fraction, 0),
                 f"{db.FLOAT_MODELS[c.name].k_fast:.2f}",
                 f"{db.FLOAT_MODELS[c.name].k_slow:.2f}",
+                {"Ag": "[2] assay", "Cu": "[1] Table 2", "Pb": "[1] Table 2"}.get(c.name, "추정"),
             ]
             for c in f.components
         ],
     ))
     add("")
-    add("속부선/지연부선/비부선 분획은 백분율이다. Ag 의 비부선 12 % 는 Si 내부에 "
-        "완전히 갇혀 표면에 노출되지 않은 분획으로, 부선으로는 원리적으로 회수할 수 없다.")
+    add(f"속도상수는 **회분식 기준**이며, 실기 연속 셀에는 스케일업 계수 "
+        f"{db.PLANT_SCALE_FACTOR:.1f} 를 곱해 쓴다. Ag 의 비부선 분획 "
+        f"{db.FLOAT_MODELS['Ag'].nonfloating_fraction * 100:.1f} % 는 [1] 의 TIMA 해리도 분석"
+        f"(>90 % 해리 {ref.LIBERATION['fully_liberated_above_90pct'] * 100:.0f} %, "
+        f">60 % 해리 {ref.LIBERATION['above_60pct_liberation'] * 100:.0f} %)과 회분식 극한 회수율에 맞춘 값이다.")
+    add("")
+    add("### 정광 품위의 물리적 상한")
+    add("")
+    add(f"Ag 는 순수 입자가 아니라 Si 웨이퍼에 소결된 전극이다. 표면이 소수성이 되어 부상해도 "
+        f"**Si 코어를 함께 끌고 올라간다.** 부상 Ag 1 kg 당 동반 맥석 "
+        f"{db.COMPOSITE_CARRY_RATIO:.1f} kg 으로 두면 정광 품위 상한은 "
+        f"1/(1+{db.COMPOSITE_CARRY_RATIO:.1f}) = **{100 / (1 + db.COMPOSITE_CARRY_RATIO):.1f} wt% Ag** 다. "
+        f"[2] 의 연속 정광이 {trial.concentrate_ag_wt_percent:.1f} wt%, [1] 의 러퍼+클리너 정광이 "
+        f"{ref.BATCH_ROUGHER_CLEANER['concentrate_ag_wt_percent']:.1f} wt% 에서 멈춘 것이 이 상한으로 설명된다. "
+        f"이 동반분은 **수분 동반과 달리 세척수로 제거되지 않는다** — 클리너를 아무리 더 붙여도 "
+        f"넘을 수 없는 벽이다.")
     add("")
 
-    # 2. 회로 구성 ---------------------------------------------------------
-    add("## 2. 회로 구성")
+    # 2. 1안 --------------------------------------------------------------
+    add("## 2. 1안 (주설계) — 세척수 bias 연속 부선조 1단")
     add("")
-    add("```")
-    add("  신급광 ─┐")
-    add("          ├─→ FC-101 러퍼 ─정광→ (희석) → FC-103 클리너 ─정광→ 최종 정광")
-    add("  순환류 ─┘        │                          │")
-    add("     ↑             미광                       미광")
-    add("     │              ↓                          │")
-    add("     │        FC-102 스캐빈저 ─정광─────────────┤")
-    add("     │              │                          │")
-    add("     └──────────────┼──────────────────────────┘")
-    add("                   미광")
-    add("                    ↓")
-    add("                 최종 미광")
-    add("```")
+    rd = rfc.design
+    add(_table(
+        ["항목", "값", "비고"],
+        [
+            ["기기 번호 / 역할", f"{rd.tag} / {rd.duty}", ""],
+            ["**동체 내경**", f"**{rd.diameter_m * 1000:.0f} mm**",
+             f"단면적 {rd.area_m2:.4f} m2"],
+            ["라이저 높이", f"{rd.riser_height_m:.2f} m",
+             f"기액 체류시간 {rd.gas_liquid_residence_min:.0f} min 유지"],
+            ["라이저 체적", f"{rd.riser_volume_m3:.3f} m3", ""],
+            ["급광 flux Jf", f"{rd.feed_flux_cm_s:.2f} cm/s", "[2] 실증값 유지"],
+            ["기체 flux Jg", f"{rd.air_flux_cm_s:.2f} cm/s", "[2] 실증값 유지"],
+            ["세척수 flux Jw", f"{rd.wash_water_flux_cm_s:.2f} cm/s", "[2] 실증값 유지"],
+            ["bias flux Jb", f"{rd.bias_flux_cm_s:.2f} cm/s",
+             "양수 = 거품층 하향 순유량. 동반 맥석을 씻어내린다"],
+            ["경사판", f"{rd.inclined_channel_angle_deg:.0f}° / 간격 "
+             f"{rd.inclined_channel_spacing_mm:.0f} mm", "미광부 침강 강화"],
+            ["기포 크기", f"{trial.bubble_size_mm[0]:.1f}~{trial.bubble_size_mm[1]:.1f} mm", "[2]"],
+            ["송풍기", f"{rd.blower_rating_kw:.2f} kW, "
+             f"{rd.air_m3h:.1f} m3/h @ {rd.blower_pressure_kpa:.0f} kPa", ""],
+        ],
+    ))
+    add("")
+    add("스케일업은 **flux 상사**로 한다. 실증에서 확인된 급광·기체·세척수 flux 를 그대로 두고 "
+        "단면적만 처리량에 비례해 키우면 기액 체류시간과 bias 조건이 보존된다. "
+        "체적을 키우는 것이 아니라 단면적을 키우는 것이 핵심이다.")
     add("")
     add(_table(
-        ["기기", "역할", "내부 치수 (mm)", "거품층 (mm)", "기공률", "유효 슬러리 체적 (m3)"],
+        ["운전점", "고체 농도", "급광 flux", "급광", "공기", "세척수", "월류수", "여유"],
         [
             [
-                c.tag, c.duty,
-                f"{c.geometry.width_m * 1000:.0f} x {c.geometry.width_m * 1000:.0f} x "
-                f"{c.geometry.shell_height_m * 1000:.0f}(H)",
-                f"{c.geometry.froth_depth_m * 1000:.0f}",
-                f"{c.geometry.gas_holdup * 100:.0f} %",
-                f"{c.geometry.effective_slurry_volume_m3:.4f}",
+                label,
+                f"{op.solids_wt * 100:.0f} wt%",
+                f"{op.feed_flux_cm_s:.2f} cm/s",
+                f"{op.feed_m3h:.2f} m3/h",
+                f"{op.air_m3h:.2f} m3/h",
+                f"{op.wash_water_m3h:.2f} m3/h",
+                f"{op.overflow_water_m3h:.2f} m3/h",
+                f"{(1 - op.turndown_ratio) * 100:.0f} %" if op.within_capacity else "**초과**",
             ]
-            for c in d.cells
+            for label, op in ((avg_label, rfc.point_avg), (peak_label, rfc.point_peak))
         ],
     ))
     add("")
-    add("스캐빈저는 러퍼와 **동일 동체**다 (예비품·구동부 공용화). 회수 위주 duty 이므로 "
-        "거품층을 얕게(50 mm) 가져가 유효 체적이 오히려 러퍼보다 크다. 반대로 클리너는 "
-        "품위 위주라 거품층을 깊게(150 mm) 가져가 배수를 유도한다.")
+    add(f"턴다운은 고체 농도를 유지한 채 세 flux 를 같은 비율로 낮춰 bias 비와 기액 체류시간을 "
+        f"보존한다. 고체 농도를 올리면 같은 동체로 훨씬 큰 처리량이 나온다 — "
+        f"{f.solids_mass_fraction * 100:.0f} wt% 에서 {rd.capacity_tph:.2f} t/h, "
+        f"15 wt% 에서 {rd.capacity_at_solids(0.15):.2f} t/h, "
+        f"{trial.max_feasible_solids_wt_percent:.0f} wt% 에서 "
+        f"{rd.capacity_at_solids(trial.max_feasible_solids_wt_percent / 100):.2f} t/h. "
+        f"다만 고농도 운전은 PV 원료로 미검증이므로 설계는 검증값에 둔다.")
     add("")
-
-    # 3. 셀별 기계 사양 -----------------------------------------------------
-    add("## 3. 셀별 기계 사양")
-    add("")
-    add(_table(
-        ["항목"] + [c.tag for c in d.cells],
-        [
-            ["로터 지름 (mm)"] + [f"{c.impeller.diameter_m * 1000:.0f}" for c in d.cells],
-            ["스테이터 외경 (mm)"] + [f"{c.impeller.stator_od_m * 1000:.0f}" for c in d.cells],
-            ["회전수 (rpm)"] + [f"{c.impeller.speed_rpm:.0f}" for c in d.cells],
-            ["주속 (m/s)"] + [f"{c.impeller.tip_speed_m_s:.2f}" for c in d.cells],
-            ["축동력 무급기 (kW)"]
-            + [f"{c.impeller.ungassed_power_w / 1000:.2f}" for c in d.cells],
-            ["단위체적 동력 (kW/m3)"]
-            + [f"{c.impeller.specific_power_kw_m3:.2f}" for c in d.cells],
-            ["**모터 (kW)**"] + [f"**{c.impeller.motor_rating_kw:.2f}**" for c in d.cells],
-            ["설계 Jg (cm/s)"]
-            + [f"{c.aeration.superficial_gas_velocity_cm_s:.1f}" for c in d.cells],
-            ["급기량 (m3/h)"] + [f"{c.aeration.air_flow_m3h:.1f}" for c in d.cells],
-            ["급기 제어범위 (m3/h)"]
-            + [f"{c.aeration.air_flow_min_m3h:.1f}~{c.aeration.air_flow_max_m3h:.1f}"
-               for c in d.cells],
-            ["기포 표면적 플럭스 Sb (1/s)"]
-            + [f"{c.aeration.bubble_surface_area_flux_1_s:.0f}" for c in d.cells],
-            ["급광 슬러리 밀도 (kg/m3)"] + [f"{c.pulp_density_kg_m3:.0f}" for c in d.cells],
-        ],
-    ))
-    add("")
-    add(f"**송풍기는 3기 공용 1대**로 선정한다 — "
-        f"셀별 최대 급기량 합계 {d.blower_flow_m3h:.0f} m3/h x "
-        f"{d.blower_pressure_kpa:.0f} kPa, **{d.blower_rating_kw:.2f} kW** 측류형. "
-        f"분기마다 열식 질량유량계와 제어밸브를 두어 셀별 Jg 를 독립 제어한다.")
-    add("")
-
-    # 4. 물질수지 ----------------------------------------------------------
-    add("## 4. 회로 물질수지")
-    add("")
-    peak_label = f"최대 {f.peak_tph:.2f} t/h"
-    avg_label = f"평균 {f.average_tph:.2f} t/h"
-    for label, res in ((peak_label, d.result_peak), (avg_label, d.result_avg)):
-        add(f"### {label}")
+    for label, perf in ((peak_label, rfc.performance_peak), (avg_label, rfc.performance_avg)):
+        add(f"### 물질수지 — {label}")
         add("")
         add(_table(
-            ["셀", "체류시간 (min)", "급광 (kg/h)", "급광 (m3/h)", "고체농도",
-             "정광 (kg/h)", "mass pull", "Ag 회수율", "Cu 회수율"],
-            [
-                [
-                    u.unit.tag, f"{u.residence_min:.2f}", _kgh(u.feed.dry_tph, 1),
-                    f"{u.feed_volume_m3h:.3f}", f"{_pct(u.feed.solids_mass_fraction)} %",
-                    _kgh(u.concentrate.dry_tph, 1), f"{_pct(u.mass_pull)} %",
-                    f"{_pct(u.recovery('Ag'))} %", f"{_pct(u.recovery('Cu'))} %",
-                ]
-                for u in (res.rougher, res.scavenger, res.cleaner)
-            ],
-        ))
-        add("")
-        add(_table(
-            ["성분", "신급광 (kg/h)", "최종 정광 (kg/h)", "최종 미광 (kg/h)",
-             "회로 회수율 (%)", "정광 품위 (%)", "미광 품위 (g/t)"],
+            ["성분", "급광 (kg/h)", "정광 (kg/h)", "미광 (kg/h)", "회수율 (%)",
+             "정광 품위 (%)", "미광 품위 (g/t)"],
             [
                 [
                     name,
-                    _kgh(res.new_feed.component_tph(name)),
-                    _kgh(res.concentrate.component_tph(name)),
-                    _kgh(res.tailings.component_tph(name)),
-                    _pct(res.recovery(name)),
-                    f"{res.concentrate.grade_fraction(name) * 100:.2f}",
-                    f"{res.tailings.grade_fraction(name) * 1e6:,.0f}",
+                    _kgh(perf.feed_tph[name]),
+                    _kgh(perf.concentrate_tph[name], 3),
+                    _kgh(perf.tailings_tph[name]),
+                    _pct(perf.recovery(name), 2),
+                    f"{perf.concentrate_grade(name) * 100:.2f}",
+                    f"{perf.tailings_grade(name) * 1e6:,.0f}",
                 ]
-                for name in res.new_feed.components
+                for name in perf.feed_tph
             ]
-            + [
-                [
-                    "**합계**",
-                    f"**{_kgh(res.new_feed.dry_tph, 1)}**",
-                    f"**{_kgh(res.concentrate.dry_tph, 1)}**",
-                    f"**{_kgh(res.tailings.dry_tph, 1)}**",
-                    f"**{_pct(res.mass_pull)}** (mass pull)",
-                    "**100.00**",
-                    "—",
-                ]
+            + [[
+                "**합계**", f"**{_kgh(perf.feed_dry_tph, 1)}**",
+                f"**{_kgh(perf.concentrate_dry_tph, 2)}**",
+                f"**{_kgh(perf.tailings_dry_tph, 1)}**",
+                f"**{_pct(perf.mass_yield, 2)}** (질량수율)", "**100.00**", "—",
+            ]],
+        ))
+        add("")
+        add(_table(
+            ["지표", "값"],
+            [
+                ["**Ag 회수율**", f"**{_pct(perf.recovery('Ag'), 1)} %**"],
+                ["**Ag 정광 품위**", f"**{perf.concentrate_grade('Ag') * 100:.1f} wt%**"],
+                ["Ag 농축비", f"{perf.upgrade('Ag'):.1f} 배"],
+                ["Ag 미광 손실", f"{_kgh(perf.tailings_tph['Ag'], 3)} kg/h "
+                 f"({perf.tailings_grade('Ag') * 1e6:.0f} g/t)"],
+                ["정광량", f"{_kgh(perf.concentrate_dry_tph, 2)} kg/h "
+                 f"(급광의 {_pct(perf.mass_yield, 2)} %)"],
+                ["후단 침출 물량 감소", f"{1 / perf.mass_yield:.0f} 배"],
+                ["물질수지 폐합 오차", f"{perf.mass_balance_error_tph() * 1e6:.1e} g/h"],
             ],
         ))
         add("")
-        fl_r = d.froth_loading("FC-101", res)
-        fl_s = d.froth_loading("FC-102", res)
-        fl_c = d.froth_loading("FC-103", res)
+
+    add("### 부대 설비")
+    add("")
+    add(_table(
+        ["기기", "역할", "사양"],
+        [
+            [c.tag, c.duty,
+             f"유효 {c.working_volume_m3:.3f} m3 / 탱크 {c.tank_volume_m3:.2f} m3, "
+             f"Ø{c.diameter_m * 1000:.0f} x {c.height_m * 1000:.0f} mm, 교반 {c.agitator_kw:.2f} kW"]
+            for c in rfc.conditioners
+        ]
+        + [
+            [t.tag, t.duty,
+             f"월류 {t.overflow_m3h:.2f} m3/h, 상승속도 {t.rise_rate_m_h:.1f} m/h, "
+             f"Ø{t.diameter_m:.1f} m"]
+            for t in (rfc.tailings_thickener, rfc.concentrate_thickener)
+        ]
+        + [
+            ["P-101", "급광 펌프", "1.5 kW"],
+            ["P-102", "미광 펌프", "0.75 kW"],
+            ["FL-101", "정광 여과 (필터프레스)", f"고형물 {_kgh(rfc.performance_peak.concentrate_dry_tph, 1)} kg/h"],
+        ],
+    ))
+    add("")
+    add(f"**설치 전력 {rfc.installed_kw:.2f} kW**, 공정수 회수 {rfc.water_recycle_m3h:.1f} m3/h "
+        f"(농축조 회수수 재사용, 블리드 10 %).")
+    add("")
+
+    # 3. 2안 --------------------------------------------------------------
+    add("## 3. 2안 (대안) — 기계식 러퍼 뱅크 + 클리너")
+    add("")
+    add("기존 부선 설비를 그대로 쓰거나 범용 장비로 구성해야 할 때의 대안이다. "
+        "회로는 러퍼 뱅크(동일 셀 2기 직렬) → 클리너, 클리너 미광은 러퍼 급광으로 순환한다.")
+    add("")
+    add(_table(
+        ["항목"] + [f"{c.tag} ({c.cells_in_series}기)" for c in mech.cells],
+        [
+            ["역할"] + [c.duty for c in mech.cells],
+            ["셀당 내부 치수 (mm)"]
+            + [f"{c.geometry.width_m * 1000:.0f} x {c.geometry.width_m * 1000:.0f} x "
+               f"{c.geometry.shell_height_m * 1000:.0f}(H)" for c in mech.cells],
+            ["거품층 (mm)"] + [f"{c.geometry.froth_depth_m * 1000:.0f}" for c in mech.cells],
+            ["셀당 유효 슬러리 체적 (m3)"]
+            + [f"{c.geometry.effective_slurry_volume_m3:.3f}" for c in mech.cells],
+            ["로터 지름 (mm)"] + [f"{c.impeller.diameter_m * 1000:.0f}" for c in mech.cells],
+            ["회전수 (rpm)"] + [f"{c.impeller.speed_rpm:.0f}" for c in mech.cells],
+            ["주속 (m/s)"] + [f"{c.impeller.tip_speed_m_s:.2f}" for c in mech.cells],
+            ["셀당 모터 (kW)"] + [f"{c.impeller.motor_rating_kw:.2f}" for c in mech.cells],
+            ["설계 Jg (cm/s)"]
+            + [f"{c.aeration.superficial_gas_velocity_cm_s:.2f}" for c in mech.cells],
+            ["셀당 급기량 (m3/h)"] + [f"{c.aeration.air_flow_m3h:.1f}" for c in mech.cells],
+            ["체류시간 (min, 최대유량)"]
+            + [f"{u.residence_min:.2f}" for u in (mech.result_peak.rougher, mech.result_peak.cleaner)],
+        ],
+    ))
+    add("")
+    add(f"송풍기 공용 1대 {mech.blower_rating_kw:.2f} kW "
+        f"({mech.blower_flow_m3h:.0f} m3/h @ {mech.blower_pressure_kpa:.0f} kPa), "
+        f"미광 농축조 {mech.tailings_thickener.tag} Ø{mech.tailings_thickener.diameter_m:.1f} m. "
+        f"**설치 전력 {mech.installed_kw:.2f} kW.**")
+    add("")
+    for label, res in ((peak_label, mech.result_peak), (avg_label, mech.result_avg)):
+        add(f"### 물질수지 — {label}")
+        add("")
+        add(_table(
+            ["단", "체류시간 (min)", "급광 (kg/h)", "정광 (kg/h)", "mass pull", "Ag 회수율"],
+            [
+                [u.unit.tag, f"{u.residence_min:.2f}", _kgh(u.feed.dry_tph, 1),
+                 _kgh(u.concentrate.dry_tph, 2), f"{_pct(u.mass_pull, 2)} %",
+                 f"{_pct(u.recovery('Ag'))} %"]
+                for u in (res.rougher, res.cleaner)
+            ],
+        ))
+        add("")
         add(_table(
             ["지표", "값"],
             [
                 ["**Ag 회로 회수율**", f"**{_pct(res.recovery('Ag'))} %**"],
-                ["Ag 정광 품위",
-                 f"{res.concentrate.grade_fraction('Ag') * 1e6:,.0f} g/t "
-                 f"({res.concentrate.grade_fraction('Ag') * 100:.2f} %)"],
-                ["Ag 농축비", f"{res.enrichment_ratio('Ag'):.2f} 배"],
-                ["Ag 선별효율 (Newton)", f"{_pct(res.separation_efficiency('Ag'))} %"],
-                ["Ag 미광 손실", f"{_kgh(res.tailings.component_tph('Ag'))} kg/h "
-                 f"({res.tailings.grade_fraction('Ag') * 1e6:,.0f} g/t)"],
-                ["**Cu 회로 회수율**", f"**{_pct(res.recovery('Cu'))} %**"],
-                ["Cu 정광 품위", f"{res.concentrate.grade_fraction('Cu') * 100:.1f} %"],
-                ["정광 질량 회수율", f"{_pct(res.mass_pull)} %"],
-                ["정광 고체 농도", f"{_pct(res.concentrate.solids_mass_fraction)} wt%"],
-                ["**순환부하**", f"**{_pct(res.circulating_load)} %** "
-                 f"({_kgh(res.recycle.dry_tph, 1)} kg/h)"],
+                ["**Ag 정광 품위**", f"**{res.concentrate.grade_fraction('Ag') * 100:.1f} wt%**"],
+                ["Ag 농축비", f"{res.enrichment_ratio('Ag'):.1f} 배"],
+                ["Ag 미광 손실", f"{_kgh(res.tailings.component_tph('Ag'), 3)} kg/h "
+                 f"({res.tailings.grade_fraction('Ag') * 1e6:.0f} g/t)"],
+                ["정광량", f"{_kgh(res.concentrate.dry_tph, 2)} kg/h ({_pct(res.mass_pull, 2)} %)"],
+                ["순환부하", f"{_pct(res.circulating_load, 1)} %"],
                 ["신수 소요량", f"{res.fresh_water_m3h:.2f} m3/h"],
-                ["Froth carry rate (R/S/C)",
-                 f"{fl_r.carry_rate_tph_m2:.3f} / {fl_s.carry_rate_tph_m2:.3f} / "
-                 f"{fl_c.carry_rate_tph_m2:.3f} t/h/m2 (한계 1.5) — "
-                 f"{'OK' if all((fl_r.carry_rate_ok, fl_s.carry_rate_ok, fl_c.carry_rate_ok)) else 'NG'}"],
-                ["Lip loading (R/S/C)",
-                 f"{fl_r.lip_loading_tph_m:.3f} / {fl_s.lip_loading_tph_m:.3f} / "
-                 f"{fl_c.lip_loading_tph_m:.3f} t/h/m (한계 1.5) — "
-                 f"{'OK' if all((fl_r.lip_loading_ok, fl_s.lip_loading_ok, fl_c.lip_loading_ok)) else 'NG'}"],
-                ["물질수지 폐합 오차", f"{res.mass_balance_error_tph() * 1e6:.2e} g/h "
-                 f"(반복 {res.iterations} 회)"],
+                ["물질수지 폐합 오차", f"{res.mass_balance_error_tph() * 1e6:.1e} g/h"],
             ],
         ))
         add("")
-
-    # 5. 러퍼 단독 대비 ------------------------------------------------------
-    add("## 5. 러퍼 단독(Phase 1) 대비 효과")
-    add("")
-    base = build_design(f)
-    peak = d.result_peak
-    add(_table(
-        ["지표", "러퍼 단독", "러퍼+스캐빈저+클리너", "차이"],
-        [
-            ["Ag 회수율", f"{_pct(base.result_peak.recovery['Ag'])} %",
-             f"{_pct(peak.recovery('Ag'))} %",
-             f"{(peak.recovery('Ag') - base.result_peak.recovery['Ag']) * 100:+.1f} %p"],
-            ["Cu 회수율", f"{_pct(base.result_peak.recovery['Cu'])} %",
-             f"{_pct(peak.recovery('Cu'))} %",
-             f"{(peak.recovery('Cu') - base.result_peak.recovery['Cu']) * 100:+.1f} %p"],
-            ["정광 Ag 품위",
-             f"{base.result_peak.concentrate.grade_fraction('Ag') * 100:.2f} %",
-             f"{peak.concentrate.grade_fraction('Ag') * 100:.2f} %",
-             f"{peak.enrichment_ratio('Ag') / base.result_peak.enrichment_ratio('Ag'):.2f} 배"],
-            ["정광 Si 함량",
-             f"{base.result_peak.concentrate.grade_fraction('Si') * 100:.1f} %",
-             f"{peak.concentrate.grade_fraction('Si') * 100:.1f} %",
-             f"{(peak.concentrate.grade_fraction('Si') - base.result_peak.concentrate.grade_fraction('Si')) * 100:+.1f} %p"],
-            ["정광량 (후단 침출 부하)",
-             f"{_kgh(base.result_peak.concentrate.dry_tph, 1)} kg/h",
-             f"{_kgh(peak.concentrate.dry_tph, 1)} kg/h",
-             f"{(peak.concentrate.dry_tph / base.result_peak.concentrate.dry_tph - 1) * 100:+.0f} %"],
-            ["Ag 선별효율 (Newton)",
-             f"{_pct(base.result_peak.separation_efficiency('Ag'))} %",
-             f"{_pct(peak.separation_efficiency('Ag'))} %",
-             f"{(peak.separation_efficiency('Ag') - base.result_peak.separation_efficiency('Ag')) * 100:+.1f} %p"],
-        ],
-    ))
-    add("")
-    add(f"{peak_label} 기준. 회수율 이득보다 **품위 이득이 훨씬 크다** — 정광의 Si 가 "
-        "대부분 제거되어 후단 침출 물량이 줄고, 같은 Ag 를 훨씬 작은 반응조에서 "
-        "처리할 수 있게 된다.")
-    add("")
-
-    # 6. 조건조 ------------------------------------------------------------
-    add("## 6. 조건조 (conditioner)")
+    add("#### 확정 치수 검증")
     add("")
     add(_table(
-        ["기기", "역할", "체류시간 (min)", "유효 체적 (m3)", "탱크 체적 (m3)",
-         "내경 x 높이 (mm)", "교반기 (kW)"],
+        ["셀", "목표 체류시간", "필요 유효 체적", "확정 유효 체적", "실제 체류시간", "판정"],
         [
             [
-                c.tag, c.duty, f"{c.residence_min:.0f}", f"{c.working_volume_m3:.3f}",
-                f"{c.tank_volume_m3:.2f}",
-                f"{c.diameter_m * 1000:.0f} x {c.height_m * 1000:.0f}",
-                f"{c.agitator_kw:.2f}",
+                tag, f"{target:.1f} min",
+                f"{mechanical_sizing_check(mech.result_peak, tag, target):.3f} m3",
+                f"{mech.cell(tag).geometry.effective_slurry_volume_m3 * mech.cell(tag).cells_in_series:.3f} m3",
+                f"{res.residence_min:.2f} min",
+                "OK" if mech.cell(tag).geometry.effective_slurry_volume_m3
+                * mech.cell(tag).cells_in_series
+                >= mechanical_sizing_check(mech.result_peak, tag, target) * 0.98 else "**NG**",
             ]
-            for c in d.conditioners
+            for tag, target, res in (
+                ("FC-201", db.ROUGHER_RESIDENCE_MIN, mech.result_peak.rougher),
+                ("FC-202", db.CLEANER_RESIDENCE_MIN, mech.result_peak.cleaner),
+            )
         ],
     ))
     add("")
-    add("조건조는 **순환류를 포함한 러퍼 급광 유량** 기준으로 산정했다 "
-        f"(최대 {d.result_peak.rougher.feed_volume_m3h:.3f} m3/h).")
+    add("**스캐빈저는 두지 않는다.** [1] 의 러퍼 미광 Ag 품위가 "
+        f"{batch.tailings_ag_wt_percent * 10000:.0f} g/t 로 이미 회수할 것이 거의 남지 않았고, "
+        "본 모델에서도 러퍼 미광의 속부선 분획은 대부분 소진된 상태다. "
+        "스캐빈저 1기를 더해도 Ag 회수율 이득은 1 %p 수준이다.")
     add("")
 
-    # 7. 약제 --------------------------------------------------------------
-    add("## 7. 약제 계통")
+    # 4. 비교 -------------------------------------------------------------
+    add("## 4. 두 안 비교")
     add("")
-    add("투입량은 **신급광 건조 고체 1 t 당** 유효성분 g 수다 (순환류 제외).")
+    rp, mp = rfc.performance_peak, mech.result_peak
+    add(_table(
+        ["지표", "1안 연속 부선조", "2안 기계식 러퍼+클리너", "판정"],
+        [
+            ["Ag 회수율", f"**{_pct(rp.recovery('Ag'))} %**", f"{_pct(mp.recovery('Ag'))} %",
+             f"1안 {(rp.recovery('Ag') - mp.recovery('Ag')) * 100:+.1f} %p"],
+            ["Ag 정광 품위", f"{rp.concentrate_grade('Ag') * 100:.1f} wt%",
+             f"{mp.concentrate.grade_fraction('Ag') * 100:.1f} wt%", "동등 (복합입자 상한)"],
+            ["Ag 미광 손실", f"{perf_tail(rp):.0f} g/t",
+             f"{mp.tailings.grade_fraction('Ag') * 1e6:.0f} g/t", "1안 압도적"],
+            ["부선기 대수", "1기", f"{sum(c.cells_in_series for c in mech.cells)}기", "1안"],
+            ["설치 전력", f"**{rfc.installed_kw:.2f} kW**", f"{mech.installed_kw:.2f} kW",
+             f"1안 {(1 - rfc.installed_kw / mech.installed_kw) * 100:.0f} % 절감"],
+            ["부선기 설치 면적", f"Ø{rd.diameter_m * 1000:.0f} mm x {rd.riser_height_m + 1.2:.1f} m(H)",
+             f"{mech.cells[0].geometry.width_m * 2.2:.1f} x "
+             f"{mech.cells[0].geometry.width_m * 1.3:.1f} m", "1안"],
+            ["체류시간", f"{rd.gas_liquid_residence_min:.0f} min (기액)",
+             f"{mp.rougher.residence_min:.1f} + {mp.cleaner.residence_min:.1f} min", "1안"],
+            ["순환류", "없음", f"{_pct(mp.circulating_load, 1)} % (클리너 미광)", "1안"],
+            ["기술 성숙도", "TRL 5 (연속 실증 90 min)", "범용 장비, 회분식만 실증", "2안이 조달 유리"],
+            ["지식재산", "가출원 대상 — 실시권 검토 필요", "제약 없음", "2안이 유리"],
+        ],
+    ))
     add("")
-    for tph, label in ((f.average_tph, avg_label), (f.peak_tph, peak_label)):
-        add(f"### {label}")
+    add("**권고 — 1안.** 회수율이 "
+        f"{(rp.recovery('Ag') - mp.recovery('Ag')) * 100:.1f} %p 높고 전력은 "
+        f"{(1 - rfc.installed_kw / mech.installed_kw) * 100:.0f} % 낮으며 장치가 1기다. "
+        "정광 품위는 두 안이 같은데, 이는 품위가 장치가 아니라 복합입자 동반이라는 "
+        "**원료 자체의 성질**로 결정되기 때문이다. 다만 1안은 특정 장치 형식에 의존하고 "
+        "특허 가출원 대상이므로, 조달·실시권 리스크가 크다면 2안이 현실적 차선이다.")
+    add("")
+
+    # 5. 약제 -------------------------------------------------------------
+    add("## 5. 약제 계통")
+    add("")
+    add("**pH 조정제·황화제·억제제를 쓰지 않는다.** 디티오포스핀산계 포수제가 금속 Ag 표면에 "
+        "직접 선택 흡착하기 때문이다 ([1] ToF-SIMS: Ag 위 신호가 주변 대비 약 100배). "
+        "이전 설계의 소다회·Na2S·규산소다 계통이 통째로 사라지면서 H2S 위험과 "
+        "pH·ORP 제어 루프도 함께 없어진다.")
+    add("")
+    for tph, water, label in (
+        (f.average_tph, rfc.point_avg.water_tph, avg_label),
+        (f.peak_tph, rfc.point_peak.water_tph, peak_label),
+    ):
+        add(f"### {label} (1안 기준, 물 {water:.2f} m3/h)")
         add("")
         add(_table(
-            ["약제", "역할", "투입량 (g/t)", "유효성분 (kg/h)", "조제농도",
+            ["약제", "역할", "투입량", "환산 (g/t)", "유효성분 (kg/h)", "조제농도",
              "펌프 유량 (L/h)", "펌프 선정 (L/h)", "투입 지점"],
             [
                 [
-                    dose.reagent.name, dose.reagent.role, f"{dose.reagent.dose_g_per_t:.0f}",
+                    dose.reagent.name, dose.reagent.role,
+                    f"{dose.reagent.dose:.0f} {dose.reagent.dose_unit}",
+                    f"{dose.equivalent_g_per_t:.0f}",
                     f"{dose.active_kg_h:.3f}",
                     f"{dose.reagent.solution_strength * 100:.0f}%"
                     if dose.reagent.solution_strength < 1 else "원액",
                     f"{dose.solution_l_h:.2f}", f"{dose.pump_rating_l_h():.1f}",
                     dose.reagent.addition_point,
                 ]
-                for dose in reagent_schedule(db.REAGENTS, tph)
+                for dose in reagent_schedule(db.REAGENTS, tph, water)
             ],
         ))
         add("")
@@ -480,66 +430,47 @@ def render(design: CircuitDesign | None = None) -> str:
             add(f"- **{r.name}** — {r.note}")
     add("")
 
-    # 8. 유틸리티 ----------------------------------------------------------
-    add("## 8. 유틸리티 집계")
+    # 6. 모델 검증 ---------------------------------------------------------
+    add("## 6. 모델 검증 — 문헌 재현")
     add("")
-    rotor_kw = sum(c.impeller.motor_rating_kw for c in d.cells)
-    agitator_kw = sum(c.agitator_kw for c in d.conditioners)
-    pump_kw = 0.75 + 0.75 + 0.55  # 급광 + 순환 + 정광 이송
-    installed = rotor_kw + d.blower_rating_kw + agitator_kw + pump_kw + 0.5
-    running = (
-        sum(c.impeller.gassed_power_w for c in d.cells) / 1000.0
-        + (d.blower_flow_m3h / 3600.0) * (d.blower_pressure_kpa * 1000.0) / 0.55 / 1000.0 * 0.7
-        + sum(c.working_volume_m3 * c.specific_power_kw_m3 for c in d.conditioners)
-        + pump_kw * 0.7
-        + 0.3
-    )
-    add(_table(
-        ["항목", "값"],
-        [
-            ["로터 구동 (3기 합계)", f"{rotor_kw:.2f} kW"],
-            ["송풍기 (공용 1대)", f"{d.blower_rating_kw:.2f} kW"],
-            ["조건조 교반기", f"{agitator_kw:.2f} kW"],
-            ["펌프 (급광·순환·정광)", f"{pump_kw:.2f} kW"],
-            ["약제 정량펌프 (10대)", "0.50 kW"],
-            ["**설치 전력 합계**", f"**{installed:.2f} kW**"],
-            ["상시 소비 전력 (최대 운전시 추정)", f"{running:.2f} kW"],
-            ["신수 소요량 (최대)", f"{d.result_peak.fresh_water_m3h:.2f} m3/h "
-             f"(거품 세척수 {db.CLEANER_WASH_WATER_M3H:.2f} 포함)"],
-            ["급기", f"{d.blower_flow_m3h:.0f} m3/h @ {d.blower_pressure_kpa:.0f} kPa"],
-            ["최종 정광", f"{_kgh(d.result_peak.concentrate.dry_tph, 1)} kg/h @ "
-             f"{_pct(d.result_peak.concentrate.solids_mass_fraction)} wt%"],
-            ["최종 미광", f"{_kgh(d.result_peak.tailings.dry_tph, 1)} kg/h @ "
-             f"{_pct(d.result_peak.tailings.solids_mass_fraction)} wt%"],
-        ],
-    ))
+    ag = db.FLOAT_MODELS["Ag"]
+    rows = []
+    for t_min, published in ref.BATCH_KINETIC_POINTS:
+        model = ag.batch_flotation_recovery(t_min)
+        rows.append([f"[1] 회분식 Ag 회수율 @ {t_min:.0f} min", f"{published * 100:.1f} %",
+                     f"{model * 100:.1f} %", _delta(model, published)])
+    rows.append(["[1] 회분식 Ag 극한 회수율",
+                 f"{batch.ag_recovery_percent:.1f} %", f"{ag.r_max * 100:.1f} %",
+                 _delta(ag.r_max, batch.ag_recovery_percent / 100)])
+    for metal, data in ref.BATCH_BASE_METALS.items():
+        model = db.FLOAT_MODELS[metal].batch_flotation_recovery(batch.flotation_time_min)
+        rows.append([f"[1] 회분식 {metal} 회수율 @ 3 min", f"{data['recovery_percent']:.1f} %",
+                     f"{model * 100:.1f} %", _delta(model, data["recovery_percent"] / 100)])
+    rows.append(["[2] 연속 Ag 회수율", f"{trial.ag_recovery_percent:.1f} %",
+                 f"{rp.recovery('Ag') * 100:.1f} %",
+                 _delta(rp.recovery("Ag"), trial.ag_recovery_percent / 100)])
+    rows.append(["[2] 연속 질량수율", f"{trial.solids_yield_percent:.2f} %",
+                 f"{rp.mass_yield * 100:.2f} %",
+                 _delta(rp.mass_yield, trial.solids_yield_percent / 100)])
+    rows.append(["[2] 연속 정광 Ag 품위", f"{trial.concentrate_ag_wt_percent:.1f} wt%",
+                 f"{rp.concentrate_grade('Ag') * 100:.1f} wt%",
+                 _delta(rp.concentrate_grade("Ag"), trial.concentrate_ag_wt_percent / 100)])
+    rows.append(["[1] 러퍼+클리너 정광 Ag 품위",
+                 f"{ref.BATCH_ROUGHER_CLEANER['concentrate_ag_wt_percent']:.1f} wt%",
+                 f"{mp.concentrate.grade_fraction('Ag') * 100:.1f} wt%",
+                 _delta(mp.concentrate.grade_fraction("Ag"),
+                        ref.BATCH_ROUGHER_CLEANER["concentrate_ag_wt_percent"] / 100)])
+    add(_table(["항목", "문헌값", "모델값", "차이"], rows))
     add("")
-
-    # 9. 확정 치수 검증 ----------------------------------------------------
-    add("## 9. 확정 치수 검증")
-    add("")
-    add("셀 3기는 **확정된 제작 치수**이며, 본 계산서는 그 셀을 주어진 처리량에서 "
-        "운전했을 때의 성능 계산이다. 처리량을 바꿔 계산하면 셀은 그대로인 채 "
-        "체류시간이 변하므로, 아래 표에서 목표 체류시간을 만족하는지 반드시 확인해야 한다. "
-        "NG 가 나오면 §3 의 로터·급기 선정도 그 처리량에는 유효하지 않다.")
-    add("")
-    checks = _dimension_checks(d)
-    add(_table(
-        ["셀", "목표 체류시간", "필요 유효 체적", "확정 유효 체적", "실제 체류시간",
-         "필요 치수 (재계산)", "확정 치수", "판정"],
-        [
-            [
-                c["tag"], f"{c['target']:.1f} min", f"{c['required_m3']:.4f} m3",
-                f"{c['actual_m3']:.4f} m3", f"{c['residence']:.2f} min",
-                f"{c['required_width_mm']:.0f} x {c['required_height_mm']:.0f} mm",
-                f"{c['actual_width_mm']:.0f} x {c['actual_height_mm']:.0f} mm",
-                "OK" if c["ok"] else "**NG**",
-            ]
-            for c in checks
-        ],
-    ))
-    add("")
-    add(f"{peak_label} 기준. 러퍼는 Phase 1 에서 확정한 셀을 그대로 쓰므로 "
-        "순환부하가 실린 뒤에도 8분 이상을 확보하는지가 검증 항목이다.")
+    add("연속 부선조는 **반응속도 모델을 쓰지 않는다.** 완전혼합조가 아니라 스파저·유동층·"
+        "경사판·세척수 bias 로 구성된 흐름 장치라, 기액 체류시간 1분을 CSTR 식에 대입하면 "
+        f"Ag 회수율이 {perfect_mixer_recovery(ag.k_fast, 1.0) * ag.fast_fraction * 100 + perfect_mixer_recovery(ag.k_slow, 1.0) * ag.slow_fraction * 100:.0f} % 로 "
+        "나와 실측(~100 %)과 전혀 맞지 않는다. flux 상사로 스케일업하면 수력학적 조건이 "
+        "보존되므로 실증 측정값을 그대로 이월하는 것이 옳다.")
     add("")
     return "\n".join(lines)
+
+
+def perf_tail(perf) -> float:
+    """RFC 미광 Ag 품위 (g/t) — 표 작성 헬퍼."""
+    return perf.tailings_grade("Ag") * 1e6

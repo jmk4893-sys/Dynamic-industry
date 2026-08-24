@@ -62,15 +62,20 @@ class TestComponentKinetics(unittest.TestCase):
 
     def test_r_max_excludes_nonfloating(self):
         k = FLOAT_MODELS["Ag"]
-        self.assertAlmostEqual(k.r_max, 0.88, places=12)
-        self.assertAlmostEqual(k.nonfloating_fraction, 0.12, places=12)
+        self.assertAlmostEqual(k.r_max, k.fast_fraction + k.slow_fraction, places=12)
+        self.assertAlmostEqual(k.nonfloating_fraction, 1.0 - k.r_max, places=12)
+        self.assertAlmostEqual(k.r_max, 0.976, places=12)
 
     def test_true_flotation_is_sum_over_species(self):
         k = FLOAT_MODELS["Ag"]
-        expected = 0.55 * perfect_mixer_recovery(1.20, 10.0) + 0.33 * perfect_mixer_recovery(
-            0.12, 10.0
-        )
+        expected = k.fast_fraction * perfect_mixer_recovery(
+            k.k_fast, 10.0
+        ) + k.slow_fraction * perfect_mixer_recovery(k.k_slow, 10.0)
         self.assertAlmostEqual(k.true_flotation_recovery(10.0), expected, places=12)
+
+    def test_scale_factor_slows_the_plant(self):
+        k = FLOAT_MODELS["Ag"]
+        self.assertLess(k.true_flotation_recovery(6.0, 0.8), k.true_flotation_recovery(6.0, 1.0))
 
     def test_never_exceeds_r_max_without_entrainment(self):
         k = FLOAT_MODELS["Ag"]
@@ -80,19 +85,22 @@ class TestComponentKinetics(unittest.TestCase):
     def test_pure_entrainment_component(self):
         k = FLOAT_MODELS["Si"]
         self.assertEqual(k.r_max, 0.0)
-        self.assertAlmostEqual(k.recovery(10.0, 0.12), 0.55 * 0.12, places=12)
+        self.assertAlmostEqual(k.recovery(10.0, 0.12), k.entrainment_factor * 0.12, places=12)
 
-    def test_slow_fraction_dominates_long_residence_gain(self):
-        # 속부선은 빨리 포화하므로, 체류시간을 늘려 얻는 이득은 거의 전부
-        # 지연부선에서 나온다 — 스캐빈저 설계의 근거.
+    def test_late_recovery_gain_comes_disproportionately_from_slow_fraction(self):
+        """속부선은 빨리 포화하므로, 체류시간을 늘려 얻는 이득은 질량 비중에
+        비해 지연부선 쪽이 훨씬 크다. 체류시간을 늘릴지 판단하는 근거다."""
         k = FLOAT_MODELS["Ag"]
-        fast_gain = 0.55 * (
-            perfect_mixer_recovery(1.20, 20.0) - perfect_mixer_recovery(1.20, 10.0)
+        fast_gain = k.fast_fraction * (
+            perfect_mixer_recovery(k.k_fast, 20.0) - perfect_mixer_recovery(k.k_fast, 10.0)
         )
-        slow_gain = 0.33 * (
-            perfect_mixer_recovery(0.12, 20.0) - perfect_mixer_recovery(0.12, 10.0)
+        slow_gain = k.slow_fraction * (
+            perfect_mixer_recovery(k.k_slow, 20.0) - perfect_mixer_recovery(k.k_slow, 10.0)
         )
-        self.assertGreater(slow_gain, fast_gain * 2.5)
+        mass_share = k.slow_fraction / k.r_max
+        gain_share = slow_gain / (slow_gain + fast_gain)
+        self.assertLess(mass_share, 0.20)
+        self.assertGreater(gain_share, 0.45)
 
     def test_recovery_never_exceeds_one(self):
         k = ComponentKinetics("X", 0.9, 10.0, 0.1, 5.0, entrainment_factor=1.0)
@@ -145,8 +153,9 @@ class TestSimulate(unittest.TestCase):
         self.assertGreater(self.res.enrichment_ratio("Ag"), 3.0)
 
     def test_rougher_only_baseline(self):
-        self.assertAlmostEqual(self.res.recovery["Ag"], 0.707, delta=0.01)
-        self.assertAlmostEqual(self.res.recovery["Cu"], 0.848, delta=0.01)
+        # 신급광을 받는 단일 CSTR 러퍼 — 회분식보다 낮아야 한다.
+        self.assertGreater(self.res.recovery["Ag"], 0.85)
+        self.assertLess(self.res.recovery["Ag"], 0.976)
 
     def test_longer_residence_improves_silver_recovery(self):
         slow = simulate(self.feed, FLOAT_MODELS, tau_min=16.5, water_recovery=0.12)

@@ -42,31 +42,37 @@ class TestReagentDose(unittest.TestCase):
 
 
 class TestSchedule(unittest.TestCase):
+    WATER_M3H = 6.64  # 최대 처리량 · 7 wt% 기준
+
     def test_schedule_covers_every_reagent(self):
-        sched = reagent_schedule(REAGENTS, 0.5)
+        sched = reagent_schedule(REAGENTS, 0.5, self.WATER_M3H)
         self.assertEqual(len(sched), len(REAGENTS))
         self.assertEqual([d.reagent.name for d in sched], [r.name for r in REAGENTS])
 
     def test_all_pump_flows_are_practically_dosable(self):
-        for dose in reagent_schedule(REAGENTS, 0.3):
+        for dose in reagent_schedule(REAGENTS, 0.3, self.WATER_M3H * 0.6):
             self.assertGreater(dose.solution_l_h, 0.1, dose.reagent.name)
 
-    def test_staged_doses_sum_to_intended_totals(self):
-        """러퍼·스캐빈저로 분할 투입해도 총 투입량은 설계값과 같아야 한다."""
-        by_role: dict[str, float] = {}
-        for dose in reagent_schedule(REAGENTS, 0.5):
-            by_role[dose.reagent.role] = by_role.get(dose.reagent.role, 0.0) + dose.reagent.dose_g_per_t
-        self.assertAlmostEqual(by_role["포수제 (주)"], 120.0, places=9)
-        self.assertAlmostEqual(by_role["포수제 (보조)"], 40.0, places=9)
-        self.assertAlmostEqual(by_role["기포제"], 30.0, places=9)
-        self.assertAlmostEqual(by_role["황화제"], 350.0, places=9)
+    def test_solids_basis_scales_with_throughput(self):
+        collector = next(r for r in REAGENTS if r.basis == "solids")
+        low = ReagentDose(collector, 0.3, self.WATER_M3H)
+        high = ReagentDose(collector, 0.5, self.WATER_M3H)
+        self.assertAlmostEqual(high.active_kg_h / low.active_kg_h, 5 / 3, places=9)
 
-    def test_collector_is_split_between_rougher_and_scavenger(self):
-        pax = [d for d in reagent_schedule(REAGENTS, 0.5) if d.reagent.name.startswith("PAX")]
-        self.assertEqual(len(pax), 2)
-        points = {d.reagent.addition_point for d in pax}
-        self.assertEqual(points, {"CT-2", "FC-102 급광박스"})
-        self.assertAlmostEqual(sum(d.active_kg_h for d in pax), 0.060, places=9)
+    def test_water_basis_scales_with_water_not_solids(self):
+        frother = next(r for r in REAGENTS if r.basis == "water")
+        same_water = ReagentDose(frother, 0.9, self.WATER_M3H)
+        base = ReagentDose(frother, 0.3, self.WATER_M3H)
+        self.assertAlmostEqual(same_water.active_kg_h, base.active_kg_h, places=12)
+        more_water = ReagentDose(frother, 0.3, self.WATER_M3H * 2)
+        self.assertAlmostEqual(more_water.active_kg_h, base.active_kg_h * 2, places=12)
+
+    def test_water_basis_equivalent_dose_falls_at_higher_solids(self):
+        """고체 농도를 올리면 물이 줄어 t 당 기포제 소요량이 준다."""
+        frother = next(r for r in REAGENTS if r.basis == "water")
+        dilute = ReagentDose(frother, 0.5, 6.64)   # 7 wt%
+        dense = ReagentDose(frother, 0.5, 1.17)    # 30 wt%
+        self.assertLess(dense.equivalent_g_per_t, dilute.equivalent_g_per_t)
 
 
 if __name__ == "__main__":

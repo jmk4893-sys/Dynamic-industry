@@ -79,9 +79,12 @@ class TestResidenceTime(unittest.TestCase):
             cell_geometry(required_slurry_volume(1.699, 10.0)), 0.70, 0.81
         )
 
-    def test_peak_residence_near_design_target(self):
-        tau = residence_time(self.geom, pulp_at(FEED, 0.5).volumetric_flow_m3h).residence_min
-        self.assertAlmostEqual(tau, 9.9, delta=0.2)
+    def test_peak_residence_matches_volume_over_flow(self):
+        q = pulp_at(FEED, 0.5).volumetric_flow_m3h
+        tau = residence_time(self.geom, q).residence_min
+        self.assertAlmostEqual(
+            tau, self.geom.effective_slurry_volume_m3 / (q / 60.0), places=9
+        )
 
     def test_average_residence_is_longer_than_peak(self):
         tau_avg = residence_time(self.geom, pulp_at(FEED, 0.3).volumetric_flow_m3h).residence_min

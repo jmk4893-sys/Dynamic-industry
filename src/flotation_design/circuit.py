@@ -139,6 +139,10 @@ class FlotationUnit:
             만큼 희석수를 넣는다 (None 이면 희석 없음).
         collector_boost: 약제 분할 투입 효과 — 지연부선 분획의 속도상수에
             곱하는 계수. 스캐빈저에 포수제를 추가 투입할 때 1 보다 크게 준다.
+        cells_in_series: 이 단을 구성하는 동일 체적 셀의 개수. 2 이상이면
+            tanks-in-series 로 계산한다. 같은 총 체적이라도 직렬 분할이
+            단일 완전혼합조보다 회수율이 높다.
+        rate_scale_factor: 회분식 속도상수를 실기로 옮길 때 곱하는 계수.
     """
 
     tag: str
@@ -149,6 +153,8 @@ class FlotationUnit:
     wash_water_m3h: float = 0.0
     dilution_target_solids: float | None = None
     collector_boost: float = 1.0
+    cells_in_series: int = 1
+    rate_scale_factor: float = 1.0
 
     def __post_init__(self) -> None:
         if (self.effective_volume_m3 is None) == (self.target_residence_min is None):
@@ -157,6 +163,10 @@ class FlotationUnit:
             )
         if not 0.0 <= self.water_recovery < 1.0:
             raise ValueError(f"{self.tag}: water_recovery 는 0 이상 1 미만")
+        if self.cells_in_series < 1:
+            raise ValueError(f"{self.tag}: cells_in_series 는 1 이상")
+        if self.rate_scale_factor <= 0.0:
+            raise ValueError(f"{self.tag}: rate_scale_factor 는 양수")
 
     def residence_min(self, feed_volume_m3h: float) -> float:
         if self.target_residence_min is not None:
@@ -201,12 +211,24 @@ def float_unit(
     unit: FlotationUnit,
     kinetics: dict[str, ComponentKinetics],
     specific_gravity: dict[str, float],
+    composite_carry_ratio: float = 0.0,
 ) -> UnitResult:
     """셀 1기를 통과시켜 정광/미광으로 나눈다.
 
     분획별로 진부선 회수율을 적용하고, 부상하지 못한 고체에 대해서만
     수분 동반 혼입을 더한다. 거품 세척수는 정광 물에는 더해지지만
     entrainment 계산에는 들어가지 않는다.
+
+    ``cells_in_series`` 가 2 이상이면 총 체류시간을 균등 분할한
+    tanks-in-series 로 계산한다.
+
+    Args:
+        composite_carry_ratio: 부상한 유용성분 1 kg 이 **같은 입자의 일부로**
+            달고 올라가는 맥석의 kg. Ag 는 순수 입자가 아니라 Si 웨이퍼에
+            소결된 전극이므로, 표면이 소수성이 되어 부상해도 Si 코어를 함께
+            끌고 온다. 이것은 수분 동반(entrainment)과 달리 **세척수로
+            제거되지 않으며**, 정광 품위의 물리적 상한을 만든다.
+            상한 품위 = 1 / (1 + carry_ratio).
     """
     diluted, added_water = dilute(feed, unit.dilution_target_solids)
     volume = diluted.volumetric_flow_m3h(specific_gravity)
@@ -219,13 +241,18 @@ def float_unit(
         rates = (kin.k_fast, kin.k_slow * unit.collector_boost, 0.0)
         c: list[float] = []
         t: list[float] = []
+        n = unit.cells_in_series
         for tph, k in zip(vals, rates):
-            floated = tph * perfect_mixer_recovery(k, tau)
+            kt = k * unit.rate_scale_factor * (tau / n)
+            floated = tph * (1.0 - (1.0 / (1.0 + kt)) ** n)
             entrained = (tph - floated) * kin.entrainment_factor * unit.water_recovery
             c.append(floated + entrained)
             t.append(tph - floated - entrained)
         conc[name] = (c[0], c[1], c[2])
         tail[name] = (t[0], t[1], t[2])
+
+    if composite_carry_ratio > 0.0:
+        _add_composite_carry(diluted, kinetics, conc, tail, composite_carry_ratio)
 
     conc_water = diluted.water_tph * unit.water_recovery + unit.wash_water_m3h
     tail_water = diluted.water_tph * (1.0 - unit.water_recovery)
@@ -240,6 +267,36 @@ def float_unit(
     )
 
 
+def _add_composite_carry(
+    feed: Stream,
+    kinetics: dict[str, ComponentKinetics],
+    conc: dict[str, tuple[float, float, float]],
+    tail: dict[str, tuple[float, float, float]],
+    carry_ratio: float,
+) -> None:
+    """부상한 유용성분에 물리적으로 붙어 함께 올라가는 맥석을 정광으로 옮긴다.
+
+    맥석 성분(진부선 없음) 사이에는 미광에 남아 있는 질량에 비례해 배분하고,
+    남은 양을 초과하지 않도록 자른다. ``conc``/``tail`` 을 제자리에서 고친다.
+    """
+    valuable = sum(sum(conc[n]) for n in conc if kinetics[n].r_max > 0.0)
+    gangue = [n for n in conc if kinetics[n].r_max == 0.0]
+    available = {n: sum(tail[n]) for n in gangue}
+    total_available = sum(available.values())
+    if valuable <= 0.0 or total_available <= 0.0:
+        return
+    demand = min(carry_ratio * valuable, total_available)
+    for name in gangue:
+        share = demand * available[name] / total_available
+        c, t = list(conc[name]), list(tail[name])
+        # 맥석은 전량 비부선 분획이므로 세 번째 슬롯에서 옮긴다.
+        moved = min(share, t[2])
+        c[2] += moved
+        t[2] -= moved
+        conc[name] = (c[0], c[1], c[2])
+        tail[name] = (t[0], t[1], t[2])
+
+
 # --------------------------------------------------------------------------
 # 회로
 # --------------------------------------------------------------------------
@@ -249,7 +306,7 @@ class CircuitResult:
 
     new_feed: Stream
     rougher: UnitResult
-    scavenger: UnitResult
+    scavenger: UnitResult | None
     cleaner: UnitResult
     concentrate: Stream
     tailings: Stream
@@ -299,9 +356,10 @@ def solve_circuit(
     kinetics: dict[str, ComponentKinetics],
     specific_gravity: dict[str, float],
     rougher: FlotationUnit,
-    scavenger: FlotationUnit,
+    scavenger: FlotationUnit | None,
     cleaner: FlotationUnit,
     rougher_feed_solids: float = 0.25,
+    composite_carry_ratio: float = 0.0,
     max_iterations: int = 500,
     tolerance_tph: float = 1e-12,
 ) -> CircuitResult:
@@ -337,11 +395,18 @@ def solve_circuit(
         fresh_water = max(0.0, required_water - recycle.water_tph)
         rougher_feed = solids_only.with_water(fresh_water) + recycle
 
-        r_res = float_unit(rougher_feed, rougher, kinetics, specific_gravity)
-        s_res = float_unit(r_res.tailings, scavenger, kinetics, specific_gravity)
-        c_res = float_unit(r_res.concentrate, cleaner, kinetics, specific_gravity)
+        ccr = composite_carry_ratio
+        r_res = float_unit(rougher_feed, rougher, kinetics, specific_gravity, ccr)
+        s_res = (
+            float_unit(r_res.tailings, scavenger, kinetics, specific_gravity, ccr)
+            if scavenger is not None
+            else None
+        )
+        c_res = float_unit(r_res.concentrate, cleaner, kinetics, specific_gravity, ccr)
 
-        new_recycle = s_res.concentrate + c_res.tailings
+        new_recycle = c_res.tailings
+        if s_res is not None:
+            new_recycle = s_res.concentrate + new_recycle
         residual = new_recycle.max_abs_difference(recycle)
         recycle = new_recycle
         if residual <= tolerance_tph:
@@ -355,13 +420,13 @@ def solve_circuit(
         scavenger=s_res,
         cleaner=c_res,
         concentrate=c_res.concentrate,
-        tailings=s_res.tailings,
+        tailings=s_res.tailings if s_res is not None else r_res.tailings,
         recycle=recycle,
         iterations=iteration,
         residual_tph=residual,
         fresh_water_m3h=fresh_water
         + c_res.dilution_water_m3h
         + cleaner.wash_water_m3h
-        + scavenger.wash_water_m3h
+        + (scavenger.wash_water_m3h if scavenger is not None else 0.0)
         + rougher.wash_water_m3h,
     )

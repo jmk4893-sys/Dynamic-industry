@@ -24,6 +24,7 @@ Kelsall 형 2속도 모델을 사용한다.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 #: 성분을 나누는 부선 분획의 이름 (순서 고정).
@@ -48,6 +49,18 @@ def n_cells_in_series_recovery(
         raise ValueError("n_cells >= 1")
     kt = k_per_min * (tau_total_min / n_cells)
     return r_max * (1.0 - (1.0 / (1.0 + kt)) ** n_cells)
+
+
+def batch_recovery(k_per_min: float, t_min: float) -> float:
+    """회분식(batch) 셀의 1차 회수율 ``1 - exp(-k t)``.
+
+    실험실 배치 시험 데이터를 속도상수로 환산하거나, 역으로 모델이 문헌의
+    배치 결과를 재현하는지 검증할 때 쓴다. 연속 셀에는
+    :func:`perfect_mixer_recovery` 를 써야 한다.
+    """
+    if k_per_min < 0 or t_min < 0:
+        raise ValueError("k, t 는 음수일 수 없음")
+    return 1.0 - math.exp(-k_per_min * t_min)
 
 
 @dataclass(frozen=True)
@@ -100,10 +113,22 @@ class ComponentKinetics:
         """(속부선, 지연부선, 비부선) 속도상수 — 비부선은 0."""
         return (self.k_fast, self.k_slow, 0.0)
 
-    def true_flotation_recovery(self, tau_min: float) -> float:
-        """진부선(entrainment 제외) 회수율."""
+    def true_flotation_recovery(self, tau_min: float, scale_factor: float = 1.0) -> float:
+        """연속 완전혼합 셀의 진부선(entrainment 제외) 회수율.
+
+        Args:
+            scale_factor: 실기 스케일업 계수. 속도상수에 곱한다 (1 미만이면
+                실기가 배치보다 느리다는 뜻).
+        """
         return sum(
-            frac * perfect_mixer_recovery(k, tau_min)
+            frac * perfect_mixer_recovery(k * scale_factor, tau_min)
+            for frac, k in zip(self.species_fractions, self.species_rate_constants)
+        )
+
+    def batch_flotation_recovery(self, t_min: float) -> float:
+        """회분식 셀의 진부선 회수율 — 문헌 배치 데이터와 직접 비교용."""
+        return sum(
+            frac * batch_recovery(k, t_min)
             for frac, k in zip(self.species_fractions, self.species_rate_constants)
         )
 
