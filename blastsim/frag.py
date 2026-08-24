@@ -706,6 +706,10 @@ class FragSolver:
         cvel = np.column_stack([np.bincount(inv, weights=vel[movable, c],
                                             minlength=n_frag) / cnt for c in range(3)])
         offset = pos[movable] - com[inv]
+        # 강체의 지면 판정은 무게중심이 아니라 **최하단 입자**로 해야 한다.
+        # 무게중심으로 하면 굴착선을 걸친 파쇄체가 통째로 바닥을 뚫고 내려간다.
+        z_bot = np.full(n_frag, 0.0)
+        np.minimum.at(z_bot, inv, offset[:, 2])
 
         # 적재 높이맵 (굴착선 기준)
         cell = max(2.0 * m.d, 1.0)
@@ -714,9 +718,8 @@ class FragSolver:
         nhy = int((m.y_hi - hy0 + 20.0) / cell) + 2
         height = np.zeros((nhx, nhy))
         radius = m.radius
-        # 굴착선 아래(근저부)에 있는 파쇄체는 이미 바닥에 있다. 지면 판정에 걸려
-        # 위로 끌어올려지지 않도록 시작부터 '착지'로 표시한다.
-        settled = com[:, 2] < m.toe_z + radius
+        # 이미 바닥에 닿아 있는(최하단이 굴착선 아래인) 파쇄체는 그 자리에 둔다.
+        settled = com[:, 2] + z_bot <= m.toe_z + radius
         dt = cfg.ballistic_dt
         g = cfg.gravity
         n_steps = max(1, int((cfg.total_duration - t) / dt))
@@ -729,9 +732,9 @@ class FragSolver:
                 ix = np.clip(((com[:, 0] - hx0) / cell).astype(int), 0, nhx - 1)
                 iy = np.clip(((com[:, 1] - hy0) / cell).astype(int), 0, nhy - 1)
                 ground = m.toe_z + height[ix, iy] + radius
-                land = live & (com[:, 2] <= ground) & (cvel[:, 2] < 0.0)
+                land = live & (com[:, 2] + z_bot <= ground) & (cvel[:, 2] < 0.0)
                 if land.any():
-                    com[land, 2] = ground[land]
+                    com[land, 2] = ground[land] - z_bot[land]
                     cvel[land] = 0.0
                     settled[land] = True
                     # 착지한 만큼 그 자리의 적재 높이를 올린다
