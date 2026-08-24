@@ -740,7 +740,9 @@ class FragSolver:
 
                 touch = live & (com[:, 2] <= rest)
                 if touch.any():
-                    com[touch, 2] = rest[touch]
+                    # 지면 위로 끌어올리는 보정은 한 스텝에 입자 지름 이내로 제한한다.
+                    # (적재 높이맵이 잘못 커지면 순간이동으로 수십 m 를 날아간다)
+                    com[touch, 2] = np.minimum(rest[touch], com[touch, 2] + m.d)
                     cvel[touch, 2] = np.maximum(cvel[touch, 2], 0.0)
                     # 바닥 마찰로 수평 감속
                     vh = cvel[touch, :2]
@@ -757,8 +759,15 @@ class FragSolver:
                     if stop.any():
                         settled[stop] = True
                         cvel[stop] = 0.0
-                        np.add.at(height, (ix[stop], iy[stop]),
-                                  cnt[stop] * m.volume / (cell * cell))
+                        # 적재 높이는 **입자별로** 쌓아야 한다. 파쇄체 전체 부피를
+                        # 무게중심 셀 한 칸에 몰아넣으면 1,000 입자 파쇄체가 150 m
+                        # 높이를 만들고, 그 위로 다른 파쇄체가 순간이동한다.
+                        sel_p = stop[inv]
+                        if sel_p.any():
+                            pp = com[inv[sel_p]] + offset[sel_p]
+                            px = np.clip(((pp[:, 0] - hx0) / cell).astype(int), 0, nhx - 1)
+                            py = np.clip(((pp[:, 1] - hy0) / cell).astype(int), 0, nhy - 1)
+                            np.add.at(height, (px, py), m.volume / (cell * cell))
             t += dt
             if t >= next_frame:
                 pos[movable] = com[inv] + offset
