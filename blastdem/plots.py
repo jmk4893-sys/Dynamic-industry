@@ -102,10 +102,18 @@ def plot_waveforms(records: list[SensorRecord], path: str, max_n: int = 5) -> No
 
 def plot_spectra(records: list[SensorRecord], path: str, max_n: int = 5) -> None:
     fig, ax = plt.subplots(figsize=(7.5, 4))
+    drawn = 0
     for r in records[:max_n]:
         f, a = r.spectrum()
         m = (f > 0) & (f < 300)
-        ax.plot(f[m], a[m] / a[m].max(), lw=1.1, label=f"{r.name} ({r.distance:.0f}m)")
+        peak = float(a[m].max()) if m.any() else 0.0
+        if peak <= 0:                      # 신호가 없거나 기록이 너무 짧은 경우
+            continue
+        ax.plot(f[m], a[m] / peak, lw=1.1, label=f"{r.name} ({r.distance:.0f}m)")
+        drawn += 1
+    if drawn == 0:
+        plt.close(fig)
+        return
     ax.set_xlabel(L("주파수 [Hz]", "Frequency [Hz]"))
     ax.set_ylabel(L("정규화 진폭", "Normalized amplitude"))
     ax.set_title(L("진동 주파수 스펙트럼", "Vibration spectra"))
@@ -122,7 +130,13 @@ def plot_surface_ppv(result, pattern, records: list[SensorRecord], path: str) ->
     pos, ppv = result.surface_pos, result.surface_ppv * 1000.0
     fig, ax = plt.subplots(figsize=(8, 6.2))
     tri = _surface_tri(pos)
-    lv = np.logspace(np.log10(max(ppv[ppv > 0].min(), 1e-3)), np.log10(ppv.max()), 24)
+    hi = float(ppv.max())
+    if not np.isfinite(hi) or hi <= 0:      # 진동이 지표에 도달하지 않은 경우
+        plt.close(fig)
+        return
+    pos_vals = ppv[ppv > 0]
+    lo = max(float(pos_vals.min()) if pos_vals.size else hi / 1e4, hi / 1e4)
+    lv = np.logspace(np.log10(lo), np.log10(hi), 24)
     cf = ax.tricontourf(tri, np.maximum(ppv, lv[0]), levels=lv, cmap="turbo",
                         norm=matplotlib.colors.LogNorm())
     cb = fig.colorbar(cf, ax=ax, label="PPV [mm/s]")
@@ -153,7 +167,10 @@ def plot_snapshots(result, pattern, path: str) -> None:
     fig, axes = plt.subplots(nrow, ncol, figsize=(3.4 * ncol, 3.0 * nrow), squeeze=False)
     pos = result.surface_pos
     tri = _surface_tri(pos)
-    vmax = max(s.max() for s in snaps.values()) * 1000.0
+    vmax = max(float(s.max()) for s in snaps.values()) * 1000.0
+    if not np.isfinite(vmax) or vmax <= 0:
+        plt.close(fig)
+        return
     hp = pattern.positions()
     for k, t in enumerate(ts):
         ax = axes[k // ncol][k % ncol]

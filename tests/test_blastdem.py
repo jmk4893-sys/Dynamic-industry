@@ -378,6 +378,38 @@ def test_source_scales_with_charge_and_explosive():
             < 0.2 * BlastSource(lat, full, e).hole_pressure[0])
 
 
+def test_degenerate_run_does_not_crash(tmpdir: str = None):
+    """진동이 계측점에 도달하지 못하는 짧은 해석에서도 보고서/그림이 안전해야 한다.
+
+    빈 스펙트럼 대역, 0 진폭, 계측점 1개 회귀 등 퇴화 입력에서 예외가 났었다.
+    """
+    import shutil
+    import tempfile
+
+    e = get_explosive("low_vod")
+    pat = BlastPattern(e, burden=2.0, spacing=2.4, bench_height=5.0, n_rows=1, n_cols=1)
+    pts, names = line_array((0, 0), (1, 0), [30])
+    sim = BlastSimulation(
+        rock=get_rock("weathered"), explosive=e, pattern=pat,
+        sensor_points=pts, sensor_names=names,
+        domain=DomainConfig(spacing=3.0, max_particles=100_000),
+        solver_cfg=SolverConfig(duration=0.002, progress=False),
+    ).run()
+
+    r = sim.records[0]
+    assert r.ppv == 0.0 and r.dominant_frequency == 0.0
+    assert r.peak_displacement == 0.0 and r.peak_acceleration == 0.0
+    assert math.isnan(sim.fitted_law().n)          # 계측점 1개 -> 회귀 불가
+    assert len(sim.report()) > 100                 # 보고서는 그래도 나와야 한다
+
+    out = tempfile.mkdtemp()
+    try:
+        sim.save_figures(out)                      # 예외 없이 통과해야 한다
+        sim.save_csv(out + "/s.csv")
+    finally:
+        shutil.rmtree(out, ignore_errors=True)
+
+
 # ---------------------------------------------------------------------------
 def _run_all() -> int:
     fns = [(k, v) for k, v in sorted(globals().items())

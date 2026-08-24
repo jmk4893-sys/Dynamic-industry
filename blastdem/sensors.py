@@ -76,6 +76,8 @@ class SensorRecord:
         과대평가된다. 계측 실무와 동일하게 '성분 신호'로 스펙트럼을 구한다.
         """
         sig = self.velocity[:, self.dominant_component if comp is None else comp]
+        if sig.size < 4:
+            return np.zeros(0), np.zeros(0)
         sig = sig - sig.mean()
         dt = float(self.time[1] - self.time[0])
         amp = np.abs(np.fft.rfft(sig * np.hanning(sig.size)))
@@ -87,11 +89,15 @@ class SensorRecord:
         """탁월주파수 [Hz]."""
         f, a = self.spectrum()
         m = (f > 2.0) & (f < 500.0)
-        return float(f[m][np.argmax(a[m])]) if m.any() else 0.0
+        if not m.any() or a[m].max() <= 0:
+            return 0.0
+        return float(f[m][np.argmax(a[m])])
 
     @property
     def peak_displacement(self) -> float:
         """최대변위 [mm] — 속도 적분."""
+        if self.time.size < 2:
+            return 0.0
         dt = float(self.time[1] - self.time[0])
         u = np.cumsum(self.velocity, axis=0) * dt
         u -= np.linspace(0, 1, u.shape[0])[:, None] * u[-1]   # 선형 드리프트 제거
@@ -100,6 +106,8 @@ class SensorRecord:
     @property
     def peak_acceleration(self) -> float:
         """최대가속도 [g]."""
+        if self.time.size < 2:
+            return 0.0
         dt = float(self.time[1] - self.time[0])
         a = np.gradient(self.velocity, dt, axis=0)
         return float(np.linalg.norm(a, axis=1).max() / 9.81)

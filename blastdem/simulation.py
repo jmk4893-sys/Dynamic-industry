@@ -136,7 +136,9 @@ class BlastSimulation:
     def _frequency_note(self) -> str:
         """탁월주파수가 격자 해상한계에 붙어 있으면 신뢰할 수 없음을 알린다."""
         f_grid = self.lattice.max_frequency
-        f_obs = max(r.dominant_frequency for r in self.records)
+        f_obs = max((r.dominant_frequency for r in self.records), default=0.0)
+        if f_obs <= 0.0:
+            return "  (탁월주파수를 산정할 수 없습니다 — 신호가 너무 짧거나 진폭이 0입니다)"
         if f_obs < 0.8 * f_grid:
             return f"  (격자 해상한계 {f_grid:.0f} Hz — 관측 탁월주파수가 그 아래이므로 유효)"
         return (
