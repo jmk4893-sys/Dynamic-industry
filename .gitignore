@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# blastdem 해석 결과
+output/
+*.png.bak
