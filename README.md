@@ -8,7 +8,7 @@ Dynamic industry Development
 설비의 설계와 계산 코드.
 
 - 평균 **0.30 t/h**, 최대 **0.50 t/h** (건조 고체 기준)
-- **세척수 bias 연속 부선조 1단, Ø350 mm × 라이저 2.4 m** (대안: 기계식 러퍼 뱅크 + 클리너)
+- **세척수 bias 연속 부선조 1단, Ø350 mm × 라이저 2.4 m** (대안: 기계식 러퍼·스캐빈저·클리너 3단)
 - Ag 회수율 **99.7 %**, 정광 **6.6 kg/h @ 44.8 wt% Ag** (농축비 76배)
 - 기액 체류시간 **1 분**, 설치 전력 **3.6 kW**
 - 황화제·pH 조정제·억제제 없음 — 약제는 포수제·촉진제·기포제 3종뿐
@@ -32,7 +32,7 @@ Dynamic industry Development
 | [docs/flotation-separator-design.md](docs/flotation-separator-design.md) | 설계 사양서 — 근거, 두 안, 계장·안전, 시운전 계획 |
 | [docs/design-calculation.md](docs/design-calculation.md) | 설계 계산서 (코드에서 자동 생성) |
 | [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 3매** — 공정 흐름도, 부선조 상세 단면도, 장치 대안 비교도 (브라우저로 열 것) |
-| [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 컷어웨이 모델** — FC-101 / FC-201 입체 단면, 회전·절단 조작 (브라우저로 열 것) |
+| [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드, 셀당 19개 부품 분해 (브라우저로 열 것) |
 
 ### 사용법
 

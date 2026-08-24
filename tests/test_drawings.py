@@ -159,7 +159,7 @@ if __name__ == "__main__":
 
 
 class TestModel3dDocument(unittest.TestCase):
-    """3D 컷어웨이 모델 — 단독 HTML 로서의 성립과 자립성."""
+    """3단 회로 3D 모델 — 단독 HTML 로서의 성립과 자립성."""
 
     @classmethod
     def setUpClass(cls):
@@ -167,7 +167,7 @@ class TestModel3dDocument(unittest.TestCase):
 
     def test_is_standalone_document(self):
         self.assertTrue(MODEL_3D.exists())
-        standalone_document_checks(self, self.html, "Ag 부선조 3D 컷어웨이")
+        standalone_document_checks(self, self.html, "3단 부선기 분해 조립도")
 
     def test_no_external_3d_library(self):
         # WebGL 을 직접 쓴다 — 아티팩트 CSP 는 CDN 을 막으므로 라이브러리 반입 금지.
@@ -179,15 +179,31 @@ class TestModel3dDocument(unittest.TestCase):
         self.assertIn('id="fallback"', self.html)
         self.assertIn("WebGL", self.html)
 
-    def test_builds_both_vessels(self):
-        self.assertIn("function buildFC101()", self.html)
-        self.assertIn("function buildFC201()", self.html)
+    def test_builds_all_three_cells(self):
+        for tag in ("FC-201", "FC-202", "FC-203"):
+            self.assertIn(tag, self.html, tag)
+        self.assertIn("function buildCell(", self.html)
+        self.assertIn("function buildPiping(", self.html)
+
+    def test_has_explode_and_cutaway_controls(self):
+        self.assertIn('id="exp"', self.html)
+        self.assertIn('id="cut"', self.html)
+        self.assertIn('aria-label="분해 정도"', self.html)
+
+    def test_every_part_declares_an_explode_vector_and_anchor(self):
+        # part(id, name, mat, ex, anchor, fn) — 분해 방향과 라벨 앵커가 모두 있어야 한다.
+        calls = re.findall(r'part\("[^"]+","[^"]+","[a-z]+",(\[[^\]]*\]),(\[[^\]]*\])',
+                           self.html)
+        self.assertGreaterEqual(len(calls), 26)
+        for ex, anchor in calls:
+            self.assertEqual(len(ex.split(",")), 3, ex)
+            self.assertEqual(len(anchor.split(",")), 3, anchor)
 
     def test_respects_reduced_motion(self):
         self.assertIn("prefers-reduced-motion", self.html)
 
     def test_controls_are_labelled(self):
-        for probe in ('aria-label="장치 선택"', 'aria-label="컷어웨이 정도"', 'aria-pressed'):
+        for probe in ('aria-label="보기 대상"', 'aria-label="컷어웨이 정도"', 'aria-pressed'):
             self.assertIn(probe, self.html, probe)
 
     def test_container_tags_balance(self):
@@ -202,17 +218,16 @@ class TestModel3dMatchesDesign(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        from flotation_design.plant import build_mechanical_option
+
         cls.html = MODEL_3D.read_text(encoding="utf-8")
-        sg = db.FEED.solids_specific_gravity
-        cls.rfc = size_rfc(
-            db.RFC_TAG, db.RFC_DUTY, db.FEED.peak_tph, sg, db.DESIGN_SOLIDS_WT
-        )
-        cls.perf = rfc_separation(
-            db.FEED.component_tph(db.FEED.peak_tph),
-            db.FLOAT_MODELS,
-            db.RFC_AG_RECOVERY,
-            db.COMPOSITE_CARRY_RATIO,
-        )
+        cls.opt = build_mechanical_option()
+        cls.res = cls.opt.result_peak
+        cls.unit = {
+            "FC-201": cls.res.rougher,
+            "FC-202": cls.res.scavenger,
+            "FC-203": cls.res.cleaner,
+        }
 
     def assertFigure(self, text, label):
         self.assertTrue(
@@ -221,46 +236,65 @@ class TestModel3dMatchesDesign(unittest.TestCase):
             f"design_basis.py 를 고쳤다면 모델 수치도 갱신할 것.",
         )
 
-    def test_vessel_geometry(self):
-        self.assertFigure(f"Ø{self.rfc.diameter_m * 1000:.0f} mm", "FC-101 동체 내경")
-        self.assertFigure(f"{self.rfc.riser_height_m:.2f} m", "라이저 높이")
+    def test_cell_dimensions(self):
+        for c in self.opt.cells:
+            self.assertFigure(
+                f"Ø{c.geometry.width_m * 1000:,.0f} × "
+                f"{c.geometry.shell_height_m * 1000:,.0f} mm",
+                c.tag + " 동체",
+            )
 
-    def test_design_fluxes(self):
-        self.assertFigure(f"{self.rfc.feed_flux_cm_s:.2f} cm/s", "급광 flux")
-        self.assertFigure(f"{self.rfc.wash_water_flux_cm_s:.2f} cm/s", "세척수 flux")
-        self.assertFigure(f"{self.rfc.bias_flux_cm_s:.2f} cm/s", "bias flux")
-        self.assertFigure(f"{self.rfc.feed_m3h:.2f} m³/h", "급광 유량")
-        self.assertFigure(f"{self.rfc.wash_water_m3h:.2f} m³/h", "세척수 유량")
+    def test_froth_depths_differ_by_duty(self):
+        d = {c.tag: c.geometry.froth_depth_m for c in self.opt.cells}
+        self.assertLess(d["FC-202"], d["FC-201"])   # 스캐빈저는 얕게 — 회수 우선
+        self.assertGreater(d["FC-203"], d["FC-201"])  # 클리너는 깊게 — 품위 우선
+        for tag, v in d.items():
+            self.assertFigure(f"{v * 1000:.0f} mm", tag + " 거품층")
 
-    def test_performance_figures(self):
-        self.assertFigure(f"{self.perf.recovery('Ag') * 100:.1f} %", "Ag 회수율")
-        self.assertFigure(
-            f"{self.perf.concentrate_dry_tph * 1000:.2f} kg/h @ "
-            f"{self.perf.concentrate_grade('Ag') * 100:.1f} wt% Ag",
-            "정광",
-        )
-        self.assertFigure(
-            f"{self.perf.tailings_grade('Ag') * 1e6:.0f} g/t", "미광 Ag 품위"
-        )
+    def test_rotor_specs(self):
+        for c in self.opt.cells:
+            self.assertFigure(
+                f"Ø{c.impeller.diameter_m * 1000:.0f} mm · "
+                f"{c.impeller.speed_rpm:.0f} rpm",
+                c.tag + " 로터",
+            )
+            kw = c.impeller.motor_rating_kw
+            self.assertTrue(
+                any(f"{kw:.{d}f} kW" in self.html for d in (0, 1, 2)),
+                f"{c.tag} 모터 용량 {kw} kW 가 3D 모델에 없음",
+            )
 
-    def test_mechanical_alternative_figures(self):
-        rougher = db.ROUGHER_CELL
-        self.assertFigure(
-            f"{rougher.width_m * 1000:.0f} × {rougher.width_m * 1000:.0f} × "
-            f"{rougher.shell_height_m * 1000:.0f} mm",
-            "FC-201 내부 치수",
-        )
-        self.assertFigure(
-            f"{rougher.froth_depth_m * 1000:.0f} mm", "FC-201 거품층"
-        )
+    def test_residence_times(self):
+        for tag, u in self.unit.items():
+            self.assertFigure(f"{u.residence_min:.1f} min", tag + " 체류시간")
 
-    def test_inclined_channel_spec(self):
+    def test_scavenger_is_the_largest_cell(self):
+        w = {c.tag: c.geometry.width_m for c in self.opt.cells}
+        self.assertGreater(w["FC-202"], w["FC-201"])
+
+    def test_circuit_performance(self):
+        self.assertFigure(f"{self.res.recovery('Ag') * 100:.1f} %", "회로 Ag 회수율")
         self.assertFigure(
-            f"{self.rfc.inclined_channel_angle_deg:.0f}° / "
-            f"{self.rfc.inclined_channel_spacing_mm:.0f} mm",
-            "경사판 사양",
+            f"{self.res.concentrate.dry_tph * 1000:.2f} kg/h @ "
+            f"{self.res.concentrate.grade_fraction('Ag') * 100:.1f} wt% Ag",
+            "최종 정광",
         )
+        self.assertFigure(
+            f"{self.res.tailings.grade_fraction('Ag') * 1e6:.0f} g/t", "최종 미광 Ag"
+        )
+        self.assertFigure(f"{self.res.circulating_load * 100:.1f} %", "순환부하")
+
+    def test_stage_recoveries(self):
+        for tag, u in self.unit.items():
+            self.assertFigure(f"{u.recovery('Ag') * 100:.1f} %", tag + " 단 회수율")
+
+    def test_recycle_streams_are_named(self):
+        self.assertIn("스캐빈저 정광", self.html)
+        self.assertIn("클리너 미광", self.html)
 
     def test_states_it_is_not_a_cad_model(self):
-        # 개략 형상임을 모델 주기에 반드시 남긴다.
-        self.assertIn("제작용 CAD 모델이 아니며", self.html)
+        self.assertIn("제작용 CAD 가 아니며", self.html)
+
+
+if __name__ == "__main__":
+    unittest.main()

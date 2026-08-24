@@ -114,10 +114,14 @@ FREEBOARD_M = 0.06
 HEIGHT_TO_WIDTH = 1.15
 
 #: [1] 의 운전 조건 — 기계식 셀은 급기를 매우 낮게 가져간다.
-MECHANICAL_JG_CM_S = {"FC-201": 0.30, "FC-202": 0.20}
-MECHANICAL_JG_RANGE_CM_S = {"FC-201": (0.15, 0.45), "FC-202": (0.10, 0.35)}
-MECHANICAL_TIP_SPEED_M_S = {"FC-201": 5.3, "FC-202": 4.5}
-MECHANICAL_WATER_RECOVERY = {"FC-201": 0.06, "FC-202": 0.04}
+MECHANICAL_JG_CM_S = {"FC-201": 0.30, "FC-202": 0.34, "FC-203": 0.20}
+MECHANICAL_JG_RANGE_CM_S = {
+    "FC-201": (0.15, 0.45),
+    "FC-202": (0.18, 0.50),
+    "FC-203": (0.10, 0.35),
+}
+MECHANICAL_TIP_SPEED_M_S = {"FC-201": 5.3, "FC-202": 5.3, "FC-203": 4.5}
+MECHANICAL_WATER_RECOVERY = {"FC-201": 0.06, "FC-202": 0.05, "FC-203": 0.04}
 IMPELLER_DIAMETER_RATIO = 0.35
 IMPELLER_POWER_NUMBER = 4.2
 BUBBLE_D32_MM = 0.8
@@ -142,16 +146,29 @@ def _cell(
 #: 러퍼 FC-201 / 클리너 FC-202 확정 치수.
 #: 7 wt% 운전은 슬러리 체적이 커서 기계식 셀이 크게 나온다 —
 #: 이것이 2안이 1안보다 불리한 핵심 이유다.
-ROUGHER_CELL = _cell(0.80, 0.92, 0.075, GAS_HOLDUP)
+#: 러퍼 FC-201 / 스캐빈저 FC-202 / 클리너 FC-203 확정 치수 (원통형).
+#: 7 wt% 운전은 슬러리 체적이 커서 기계식 셀이 크게 나온다 —
+#: 이것이 2안이 1안보다 불리한 핵심 이유다.
+ROUGHER_CELL = _cell(1.00, 1.30, 0.075, GAS_HOLDUP)
 
-#: 러퍼는 동일 셀 2기 직렬(뱅크). 같은 총 체적이라도 직렬 분할이
-#: 단일 완전혼합조보다 Ag 회수율이 5.6 %p 높다.
-ROUGHER_CELLS_IN_SERIES = 2
-CLEANER_CELL = _cell(0.45, 0.62, 0.150, 0.12)
+#: 스캐빈저는 **러퍼보다 크다.** 지연부선 분획을 끝까지 긁어내야 해
+#: 체류시간을 8분으로 길게 잡기 때문이다. 거품층은 얕게(50 mm) 가져가고
+#: 급기를 늘려 회수 위주로 운전하며, 포수제를 분할 투입한다.
+SCAVENGER_CELL = _cell(1.05, 1.45, 0.050, GAS_HOLDUP)
+
+#: 클리너는 품위 위주 — 거품층을 깊게(150 mm) 가져가 배수를 유도한다.
+CLEANER_CELL = _cell(0.40, 0.65, 0.150, 0.12)
+
+#: 단별 목표 체류시간 (분, 최대 처리량 기준).
+MECHANICAL_RESIDENCE_MIN = {"FC-201": 6.0, "FC-202": 8.0, "FC-203": 6.0}
+
+#: 스캐빈저 포수제 분할 투입 효과 — 지연부선 속도상수에 곱하는 계수.
+MECHANICAL_SCAVENGER_BOOST = 1.4
 
 MECHANICAL_CELLS = (
     ("FC-201", "러퍼 (Rougher)", ROUGHER_CELL),
-    ("FC-202", "클리너 (Cleaner)", CLEANER_CELL),
+    ("FC-202", "스캐빈저 (Scavenger)", SCAVENGER_CELL),
+    ("FC-203", "클리너 (Cleaner)", CLEANER_CELL),
 )
 
 #: 클리너 급광 희석 목표와 세척수.

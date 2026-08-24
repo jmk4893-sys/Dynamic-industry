@@ -231,8 +231,11 @@ class TestMechanicalCircuit(unittest.TestCase):
         self.assertLess(self.res.iterations, 200)
         self.assertLess(self.res.residual_tph, 1e-11)
 
-    def test_no_scavenger(self):
-        self.assertIsNone(self.res.scavenger)
+    def test_three_stages_present(self):
+        self.assertIsNotNone(self.res.scavenger)
+        self.assertEqual(self.res.rougher.unit.tag, "FC-201")
+        self.assertEqual(self.res.scavenger.unit.tag, "FC-202")
+        self.assertEqual(self.res.cleaner.unit.tag, "FC-203")
 
     def test_overall_mass_balance_closes(self):
         self.assertLess(self.res.mass_balance_error_tph(), 1e-9)
@@ -240,15 +243,40 @@ class TestMechanicalCircuit(unittest.TestCase):
             self.res.concentrate.dry_tph + self.res.tailings.dry_tph, 0.5, places=9
         )
 
-    def test_final_tailings_are_rougher_tailings(self):
+    def test_final_tailings_are_scavenger_tailings(self):
         self.assertAlmostEqual(
-            self.res.tailings.dry_tph, self.res.rougher.tailings.dry_tph, places=12
+            self.res.tailings.dry_tph, self.res.scavenger.tailings.dry_tph, places=12
         )
 
-    def test_recycle_is_cleaner_tailings_only(self):
+    def test_scavenger_treats_rougher_tailings(self):
         self.assertAlmostEqual(
-            self.res.recycle.dry_tph, self.res.cleaner.tailings.dry_tph, places=12
+            self.res.scavenger.feed.dry_tph, self.res.rougher.tailings.dry_tph, places=12
         )
+
+    def test_recycle_is_scavenger_concentrate_plus_cleaner_tailings(self):
+        self.assertAlmostEqual(
+            self.res.recycle.dry_tph,
+            self.res.scavenger.concentrate.dry_tph + self.res.cleaner.tailings.dry_tph,
+            places=12,
+        )
+
+    def test_scavenger_is_larger_than_rougher(self):
+        """지연부선 분획을 잡아야 하므로 체류시간이 길고 셀이 크다."""
+        self.assertGreater(
+            db.SCAVENGER_CELL.effective_slurry_volume_m3,
+            db.ROUGHER_CELL.effective_slurry_volume_m3,
+        )
+        self.assertGreater(self.res.scavenger.residence_min, self.res.rougher.residence_min)
+
+    def test_scavenger_lifts_recovery(self):
+        """스캐빈저가 실제로 회수율을 올리는지 — 없는 회로와 비교."""
+        r, sc, c = build_mechanical_units()
+        without = solve_circuit(
+            db.FEED.component_tph(0.5), K, SG, r, None, c,
+            rougher_feed_solids=db.FEED.solids_mass_fraction,
+            composite_carry_ratio=db.COMPOSITE_CARRY_RATIO,
+        )
+        self.assertGreater(self.res.recovery("Ag"), without.recovery("Ag") + 0.02)
 
     def test_grades_sum_to_unity(self):
         for stream in (self.res.concentrate, self.res.tailings):
@@ -269,7 +297,7 @@ class TestMechanicalCircuit(unittest.TestCase):
         )
 
     def test_performance_targets(self):
-        self.assertGreater(self.res.recovery("Ag"), 0.88)
+        self.assertGreater(self.res.recovery("Ag"), 0.93)
         self.assertGreater(self.res.concentrate.grade_fraction("Ag"), 0.40)
         self.assertLess(self.res.mass_pull, 0.03)
 
@@ -278,15 +306,15 @@ class TestMechanicalCircuit(unittest.TestCase):
         self.assertGreater(avg.recovery("Ag"), self.res.recovery("Ag"))
 
     def test_missing_kinetics_raises(self):
-        r, c = build_mechanical_units()
+        r, sc, c = build_mechanical_units()
         with self.assertRaises(KeyError):
-            solve_circuit({"Au": 0.1}, K, SG, r, None, c)
+            solve_circuit({"Au": 0.1}, K, SG, r, sc, c)
 
     def test_non_convergence_raises(self):
-        r, c = build_mechanical_units()
+        r, sc, c = build_mechanical_units()
         with self.assertRaises(RuntimeError):
             solve_circuit(
-                db.FEED.component_tph(0.5), K, SG, r, None, c,
+                db.FEED.component_tph(0.5), K, SG, r, sc, c,
                 max_iterations=2, tolerance_tph=1e-18,
             )
 

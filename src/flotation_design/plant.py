@@ -122,7 +122,11 @@ class MechanicalOption:
         raise KeyError(tag)
 
     def froth_loading(self, tag: str, result: CircuitResult) -> FrothLoading:
-        unit = {"FC-201": result.rougher, "FC-202": result.cleaner}[tag]
+        unit = {
+        "FC-201": result.rougher,
+        "FC-202": result.scavenger,
+        "FC-203": result.cleaner,
+    }[tag]
         return froth_loading(self.cell(tag).geometry, unit.concentrate.dry_tph)
 
     @property
@@ -197,36 +201,46 @@ def build_rfc_option(feed: FeedSpec = db.FEED) -> RfcOption:
 # --------------------------------------------------------------------------
 # 2안
 # --------------------------------------------------------------------------
-def build_mechanical_units() -> tuple[FlotationUnit, FlotationUnit]:
+def build_mechanical_units() -> tuple[FlotationUnit, FlotationUnit, FlotationUnit]:
+    """러퍼 → 스캐빈저 → 클리너 3단.
+
+    스캐빈저 정광과 클리너 미광은 모두 러퍼 급광으로 되돌린다.
+    """
     rougher = FlotationUnit(
         tag="FC-201",
-        duty="러퍼 뱅크 (Rougher bank)",
+        duty="러퍼 (Rougher)",
         water_recovery=db.MECHANICAL_WATER_RECOVERY["FC-201"],
-        effective_volume_m3=db.ROUGHER_CELL.effective_slurry_volume_m3
-        * db.ROUGHER_CELLS_IN_SERIES,
-        cells_in_series=db.ROUGHER_CELLS_IN_SERIES,
+        effective_volume_m3=db.ROUGHER_CELL.effective_slurry_volume_m3,
         rate_scale_factor=db.PLANT_SCALE_FACTOR,
     )
-    cleaner = FlotationUnit(
+    scavenger = FlotationUnit(
         tag="FC-202",
-        duty="클리너 (Cleaner)",
+        duty="스캐빈저 (Scavenger)",
         water_recovery=db.MECHANICAL_WATER_RECOVERY["FC-202"],
+        effective_volume_m3=db.SCAVENGER_CELL.effective_slurry_volume_m3,
+        rate_scale_factor=db.PLANT_SCALE_FACTOR,
+        collector_boost=db.MECHANICAL_SCAVENGER_BOOST,
+    )
+    cleaner = FlotationUnit(
+        tag="FC-203",
+        duty="클리너 (Cleaner)",
+        water_recovery=db.MECHANICAL_WATER_RECOVERY["FC-203"],
         effective_volume_m3=db.CLEANER_CELL.effective_slurry_volume_m3,
         rate_scale_factor=db.PLANT_SCALE_FACTOR,
         wash_water_m3h=db.CLEANER_WASH_WATER_M3H,
         dilution_target_solids=db.CLEANER_FEED_SOLIDS,
     )
-    return rougher, cleaner
+    return rougher, scavenger, cleaner
 
 
 def solve_mechanical(feed: FeedSpec, dry_tph: float) -> CircuitResult:
-    rougher, cleaner = build_mechanical_units()
+    rougher, scavenger, cleaner = build_mechanical_units()
     return solve_circuit(
         feed.component_tph(dry_tph),
         db.FLOAT_MODELS,
         db.SPECIFIC_GRAVITY,
         rougher,
-        None,
+        scavenger,
         cleaner,
         rougher_feed_solids=feed.solids_mass_fraction,
         composite_carry_ratio=db.COMPOSITE_CARRY_RATIO,
@@ -236,8 +250,12 @@ def solve_mechanical(feed: FeedSpec, dry_tph: float) -> CircuitResult:
 def build_mechanical_option(feed: FeedSpec = db.FEED) -> MechanicalOption:
     result_peak = solve_mechanical(feed, feed.peak_tph)
     result_avg = solve_mechanical(feed, feed.average_tph)
-    unit_results = {"FC-201": result_peak.rougher, "FC-202": result_peak.cleaner}
-    series = {"FC-201": db.ROUGHER_CELLS_IN_SERIES, "FC-202": 1}
+    unit_results = {
+        "FC-201": result_peak.rougher,
+        "FC-202": result_peak.scavenger,
+        "FC-203": result_peak.cleaner,
+    }
+    series = {"FC-201": 1, "FC-202": 1, "FC-203": 1}
 
     cells: list[MechanicalCell] = []
     for tag, duty, geometry in db.MECHANICAL_CELLS:
@@ -297,5 +315,9 @@ def build_plant(feed: FeedSpec = db.FEED) -> PlantDesign:
 
 def mechanical_sizing_check(result: CircuitResult, tag: str, target_min: float) -> float:
     """확정 기계식 셀이 목표 체류시간에 필요한 유효 체적 (m3)."""
-    unit = {"FC-201": result.rougher, "FC-202": result.cleaner}[tag]
+    unit = {
+        "FC-201": result.rougher,
+        "FC-202": result.scavenger,
+        "FC-203": result.cleaner,
+    }[tag]
     return required_slurry_volume(unit.feed_volume_m3h, target_min)

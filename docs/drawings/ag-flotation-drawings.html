@@ -797,13 +797,13 @@
     <div class="sheet-head">
       <span class="sheet-no">DWG-003</span>
       <span class="sheet-title">장치 형식 대안 비교</span>
-      <span class="sheet-sub">같은 급광 · 같은 정광 품위 · 다른 장치 구성</span>
+      <span class="sheet-sub">같은 급광 · 같은 정광 품위 · 다른 장치 구성 (2안은 3단)</span>
     </div>
 
     <figure>
       <div class="canvas">
         <svg viewBox="0 0 1000 400" role="img"
-             aria-label="1안은 부선조 한 대로 은 99.7 퍼센트를 회수하고 미광 품위 18 그램 매톤에 설치전력 3.6 킬로와트인 반면, 2안은 러퍼 두 대와 클리너 한 대에 순환류가 붙어 은 91.0 퍼센트, 미광 535 그램 매톤, 설치전력 10.3 킬로와트로 같은 정광 품위를 내는 비교도">
+             aria-label="1안은 부선조 한 대로 은 99.7 퍼센트를 회수하고 미광 품위 18 그램 매톤에 설치전력 3.6 킬로와트인 반면, 2안은 러퍼·스캐빈저·클리너 세 대에 순환류가 붙어 은 95.4 퍼센트, 미광 274 그램 매톤, 설치전력 12.7 킬로와트로 같은 정광 품위를 내는 비교도">
           <defs>
             <marker id="a3" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
               <polygon points="0,0 10,4 0,8" fill="currentColor"></polygon>
@@ -837,51 +837,55 @@
           <line x1="20" y1="206" x2="700" y2="206" stroke="var(--rule)" stroke-width="1.5"></line>
 
           <!-- ===== option 2 ===== -->
-          <text class="t-eq" x="20" y="244" text-anchor="start">2안 — 기계식 러퍼 뱅크 + 클리너</text>
-          <text class="t-sm" x="252" y="244" text-anchor="start">범용 장비 · 실시권 제약 없음</text>
+          <text class="t-eq" x="20" y="244" text-anchor="start">2안 — 기계식 러퍼 · 스캐빈저 · 클리너 3단</text>
+          <text class="t-sm" x="330" y="244" text-anchor="start">범용 장비 · 실시권 제약 없음</text>
 
-          <line class="ln-h" x1="20" y1="322" x2="96" y2="322" marker-end="url(#a3)"></line>
+          <line class="ln-h" x1="20" y1="322" x2="86" y2="322" marker-end="url(#a3)"></line>
           <text class="t-mono" x="20" y="312" text-anchor="start">급광 500 kg/h</text>
 
-          <rect class="box" x="100" y="292" width="60" height="62" rx="2"></rect>
-          <text class="t-mono" x="130" y="328" text-anchor="middle">FC-201a</text>
-          <line class="ln" x1="160" y1="322" x2="176" y2="322" marker-end="url(#a3)"></line>
-          <rect class="box" x="180" y="292" width="60" height="62" rx="2"></rect>
-          <text class="t-mono" x="210" y="328" text-anchor="middle">FC-201b</text>
-          <text class="t-mono" x="170" y="374" text-anchor="middle">러퍼 뱅크 2기</text>
+          <rect class="box" x="90" y="292" width="62" height="62" rx="2"></rect>
+          <text class="t-mono" x="121" y="320" text-anchor="middle">FC-201</text>
+          <text class="t-mono" x="121" y="334" text-anchor="middle">러퍼</text>
 
-          <line class="ln-h" x1="240" y1="340" x2="470" y2="340" marker-end="url(#a3)"></line>
-          <text class="t-mono" x="476" y="336" text-anchor="start">미광 535 g/t</text>
+          <line class="ln-h" x1="152" y1="340" x2="196" y2="340" marker-end="url(#a3)"></line>
+          <rect class="box" x="200" y="292" width="66" height="66" rx="2"></rect>
+          <text class="t-mono" x="233" y="320" text-anchor="middle">FC-202</text>
+          <text class="t-mono" x="233" y="334" text-anchor="middle">스캐빈저</text>
+          <text class="t-mono" x="233" y="378" text-anchor="middle">Ø1,050 — 최대</text>
 
-          <polyline class="ag-l" points="240,302 268,302 268,262" marker-end="url(#a3ag)"></polyline>
-          <rect class="box" x="290" y="228" width="66" height="60" rx="2"></rect>
-          <text class="t-mono" x="323" y="262" text-anchor="middle">FC-202</text>
-          <text class="t-mono" x="323" y="304" text-anchor="middle">클리너</text>
-          <line class="ln" x1="268" y1="258" x2="286" y2="258"></line>
+          <line class="ln-h" x1="266" y1="340" x2="470" y2="340" marker-end="url(#a3)"></line>
+          <text class="t-mono" x="476" y="336" text-anchor="start">미광 274 g/t</text>
 
-          <line class="ag-l" x1="356" y1="246" x2="470" y2="246" marker-end="url(#a3ag)"></line>
-          <text class="t-mono t-ag" x="476" y="242" text-anchor="start">정광 43.6 wt% Ag</text>
-          <text class="t-mono" x="476" y="258" text-anchor="start">6.15 kg/h</text>
+          <polyline class="ag-l" points="152,304 176,304 176,262" marker-end="url(#a3ag)"></polyline>
+          <rect class="box" x="290" y="228" width="62" height="58" rx="2"></rect>
+          <text class="t-mono" x="321" y="252" text-anchor="middle">FC-203</text>
+          <text class="t-mono" x="321" y="266" text-anchor="middle">클리너</text>
+          <line class="ln" x1="176" y1="258" x2="286" y2="258"></line>
 
-          <!-- recycle -->
-          <polyline class="dash" points="323,288 323,388 80,388 80,322" marker-end="url(#a3)"></polyline>
-          <text class="t-mono" x="200" y="382" text-anchor="middle">클리너 미광 순환 2.2 %</text>
+          <line class="ag-l" x1="352" y1="248" x2="470" y2="248" marker-end="url(#a3ag)"></line>
+          <text class="t-mono t-ag" x="476" y="244" text-anchor="start">정광 43.5 wt% Ag</text>
+          <text class="t-mono" x="476" y="260" text-anchor="start">6.47 kg/h</text>
+
+          <!-- 순환: 스캐빈저 정광 + 클리너 미광 -->
+          <polyline class="dash" points="321,286 321,392 70,392 70,322" marker-end="url(#a3)"></polyline>
+          <polyline class="dash" points="233,292 233,272 210,272 210,392"></polyline>
+          <text class="t-mono" x="150" y="386" text-anchor="middle">순환 4.2 % (스캐빈저 정광 + 클리너 미광)</text>
 
           <!-- ===== difference panel ===== -->
           <line x1="712" y1="24" x2="712" y2="392" stroke="var(--rule)" stroke-width="1.5"></line>
           <text class="t-mono" x="736" y="42" text-anchor="start">차이 (1안 기준)</text>
 
           <text class="t-mono" x="736" y="80" text-anchor="start">Ag 회수율</text>
-          <text class="t-eq t-ag" x="736" y="102" text-anchor="start">+8.7 %p</text>
-          <text class="t-mono" x="736" y="120" text-anchor="start">99.7 % vs 91.0 %</text>
+          <text class="t-eq t-ag" x="736" y="102" text-anchor="start">+4.3 %p</text>
+          <text class="t-mono" x="736" y="120" text-anchor="start">99.7 % vs 95.4 %</text>
 
           <text class="t-mono" x="736" y="162" text-anchor="start">미광 Ag 손실</text>
-          <text class="t-eq t-ag" x="736" y="184" text-anchor="start">1/30</text>
-          <text class="t-mono" x="736" y="202" text-anchor="start">18 vs 535 g/t</text>
+          <text class="t-eq t-ag" x="736" y="184" text-anchor="start">1/15</text>
+          <text class="t-mono" x="736" y="202" text-anchor="start">18 vs 274 g/t</text>
 
           <text class="t-mono" x="736" y="244" text-anchor="start">설치 전력</text>
-          <text class="t-eq t-ag" x="736" y="266" text-anchor="start">−65 %</text>
-          <text class="t-mono" x="736" y="284" text-anchor="start">3.6 vs 10.3 kW</text>
+          <text class="t-eq t-ag" x="736" y="266" text-anchor="start">−72 %</text>
+          <text class="t-mono" x="736" y="284" text-anchor="start">3.6 vs 12.7 kW</text>
 
           <text class="t-mono" x="736" y="326" text-anchor="start">정광 품위</text>
           <text class="t-eq" x="736" y="348" text-anchor="start">동등</text>
