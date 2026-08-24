@@ -154,6 +154,14 @@ class BlastSource:
         h = self.pattern.holes[0]
         p_b = self.exp.borehole_pressure(h.charge_dia, h.hole_dia)
         n_node = sum(i.size for i in self.hole_idx)
+        f_lo, f_hi = self.exp.corner_frequencies
+        f_grid = self.lat.max_frequency
+        lost = self.exp.energy_fraction_above(f_grid)
+        note = (f"\n  폭원 평탄대역 {f_lo:.0f}~{f_hi:.0f} Hz,  격자 해상한계 {f_grid:.0f} Hz"
+                f"  ->  격자가 버리는 방사에너지 {lost * 100:.0f}%")
+        if lost > 0.5:
+            note += ("\n  [!] 폭원 에너지의 절반 이상이 격자 상한을 넘습니다. 절대 진폭이 과소평가되며"
+                     "\n      보정(eta)이 필수입니다. 격자를 조밀하게 하면 개선됩니다.")
         return (
             f"[폭원] 등가공동 반경 r_eq = {self.r_eq:.2f} m, "
             f"파쇄대 반경 r_c = {self.crush_radius(h) * 100:.1f} cm\n"
@@ -162,4 +170,5 @@ class BlastSource:
             f"  하중 절점 {n_node:,}개 / {len(self.hole_idx)}공, "
             f"탄성코어 {self.core_idx.size:,}입자 (r<{self.cfg.elastic_core * self.r_eq:.1f} m),  "
             f"작동구간 {self.active_window[0] * 1e3:.0f}~{self.active_window[1] * 1e3:.0f} ms"
+            + note
         )

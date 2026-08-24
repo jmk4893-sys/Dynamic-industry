@@ -66,6 +66,10 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--max-particles", type=int, default=350_000, help="입자수 상한")
     g.add_argument("--cfl", type=float, default=0.25, help="시간간격 안전계수")
     g.add_argument("--efficiency", type=float, default=1.0, help="폭원 전달효율 eta")
+    g.add_argument("--damp-band", type=float, nargs=2, default=[10.0, 120.0],
+                   metavar=("F1", "F2"),
+                   help="Rayleigh 감쇠가 목표 감쇠비를 만족하는 주파수 대역 [Hz]. "
+                        "상한을 낮추면 고주파를 더 강하게 감쇠시켜 절리 산란효과를 근사한다")
     g.add_argument("--no-breakage", action="store_true", help="본드 파괴 비활성(순수 탄성)")
     g.add_argument("--snapshots", type=float, nargs="*", help="파면 저장 시각 [ms]")
 
@@ -73,6 +77,8 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--out", default="output", help="결과 저장 폴더")
     g.add_argument("--law", default="kr_mean", choices=list(empirical.SD_LAWS),
                    help="비교 경험식")
+    g.add_argument("--calibrate", action="store_true",
+                   help="해석 PPV 를 --law 경험식에 맞추도록 폭원 효율을 자동 보정")
     g.add_argument("--no-figures", action="store_true", help="그림 생성 생략")
     g.add_argument("--quiet", action="store_true", help="진행률 표시 생략")
     return p
@@ -120,14 +126,22 @@ def main(argv: list[str] | None = None) -> int:
         subdrill=args.subdrill, stemming=args.stemming,
         delay_hole=args.delay_hole / 1000.0, delay_row=args.delay_row / 1000.0,
     )
-    if args.charge:   # 장약량 직접 지정 -> 전색장을 늘려 장약장 맞춤
+    if args.charge:   # 장약량 직접 지정 -> 전색장을 줄여 장약장을 맞춘다
         need = exp.charge_length(args.charge, charge_dia)
         depth = pat.bench_height + pat.subdrill
-        pat.stemming = max(0.5, depth - need)
+        min_stem = max(0.5, 15.0 * hole_dia)      # 전색장 하한 (천공경의 15배)
+        if need > depth - min_stem:
+            fits = exp.charge_weight(depth - min_stem, charge_dia)
+            print(f"  [경고] 요청 장약량 {args.charge:.1f} kg 은 장약장 {need:.2f} m 가 필요하나,\n"
+                  f"         천공장 {depth:.2f} m 에서 전색장 {min_stem:.2f} m 를 확보하면 "
+                  f"최대 {fits:.1f} kg 까지만 가능합니다.\n"
+                  f"         {fits:.1f} kg 으로 진행합니다. 더 넣으려면 --bench 를 키우거나 "
+                  f"--charge-dia 를 늘리십시오.\n")
+        stem = max(min_stem, depth - need)
         pat = BlastPattern(
             exp, burden=args.burden, spacing=args.spacing, bench_height=args.bench,
             hole_dia=hole_dia, charge_dia=charge_dia, n_rows=args.rows, n_cols=args.cols,
-            subdrill=args.subdrill, stemming=pat.stemming,
+            subdrill=args.subdrill, stemming=stem,
             delay_hole=args.delay_hole / 1000.0, delay_row=args.delay_row / 1000.0,
         )
 
@@ -144,6 +158,7 @@ def main(argv: list[str] | None = None) -> int:
         source_cfg=SourceConfig(efficiency=args.efficiency),
         solver_cfg=SolverConfig(
             duration=args.duration, cfl=args.cfl,
+            damping_f1=args.damp_band[0], damping_f2=args.damp_band[1],
             allow_breakage=not args.no_breakage, progress=not args.quiet,
             snapshot_times=[t / 1000.0 for t in (args.snapshots or [])],
         ),
@@ -154,6 +169,9 @@ def main(argv: list[str] | None = None) -> int:
     print(sim.solver.summary())
     print()
     sim.run()
+    if args.calibrate:
+        f = sim.apply_calibration(args.law)
+        print(f"\n  폭원 효율 보정: eta = {f:.2f} ({empirical.SD_LAWS[args.law].name} 기준)")
 
     report = sim.report(args.law)
     print("\n" + report)

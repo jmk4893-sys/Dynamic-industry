@@ -64,6 +64,7 @@ class BlastSimulation:
     solver: DEMSolver = field(init=False, default=None)
     result: Result = field(init=False, default=None)
     records: list = field(init=False, default_factory=list)
+    calibration: float = field(init=False, default=1.0)
 
     # ---- 모델 구성 -------------------------------------------------------
     def build(self) -> "BlastSimulation":
@@ -131,6 +132,38 @@ class BlastSimulation:
             self.pattern.max_charge_per_delay, empirical.SD_LAWS[target],
         )
 
+    def _frequency_note(self) -> str:
+        """탁월주파수가 격자 해상한계에 붙어 있으면 신뢰할 수 없음을 알린다."""
+        f_grid = self.lattice.max_frequency
+        f_obs = max(r.dominant_frequency for r in self.records)
+        if f_obs < 0.8 * f_grid:
+            return f"  (격자 해상한계 {f_grid:.0f} Hz — 관측 탁월주파수가 그 아래이므로 유효)"
+        return (
+            f"  [!] 탁월주파수({f_obs:.0f} Hz)가 격자 해상한계({f_grid:.0f} Hz)에 근접합니다.\n"
+            f"      주파수 값은 신뢰하지 마십시오. PPV 는 저주파가 지배하므로 상대적으로 덜 민감합니다.\n"
+            f"      개선: 격자를 조밀하게(--grid, --max-freq) 하거나, 절리 산란에 의한 고주파\n"
+            f"      감쇠를 --damp-band 상한을 낮춰 근사하십시오 (예: --damp-band 10 60).")
+
+    def apply_calibration(self, target: str = "kr_mean", factor: float | None = None) -> float:
+        """폭원 전달효율 eta 를 보정해 계측결과를 재척도한다.
+
+        모델은 폭원 세기에 **선형**이므로(본드 파괴가 없는 한) 속도 이력에 배수를
+        곱하는 것으로 eta 를 바꾼 재해석과 동일하다. 본드가 파괴된 경우에는
+        비선형이므로 eta 를 직접 지정해 재해석해야 한다.
+        """
+        if self.result.broken_bonds > 0:
+            print(f"  [경고] 본드 {self.result.broken_bonds:,}개가 파괴되어 모델이 비선형입니다. "
+                  f"SourceConfig(efficiency=...) 로 재해석하세요.")
+        f = float(factor if factor is not None else self.calibration_factor(target))
+        for r in self.records:
+            r.velocity = r.velocity * f
+        if self.result.surface_ppv is not None:
+            self.result.surface_ppv = self.result.surface_ppv * f
+        for k in list(self.result.snapshots):
+            self.result.snapshots[k] = self.result.snapshots[k] * f
+        self.calibration *= f
+        return f
+
     def report(self, target: str = "kr_mean") -> str:
         r = self.records
         w = self.pattern.max_charge_per_delay
@@ -158,14 +191,29 @@ class BlastSimulation:
             "  계측점별 진동 결과",
             "-" * 78,
             sensors.table(r),
+            self._frequency_note(),
             "",
             "-" * 78,
             "  환산거리 회귀 (지발당 최대장약량 W = %.1f kg)" % w,
             "-" * 78,
             f"  DEM 해석   : {law}",
             f"  참조 경험식 : {ref}",
-            f"  폭원효율 보정배수 eta_cal = {self.calibration_factor(target):.2f}  "
-            f"(1.0 이면 해석이 경험식과 일치)",
+            f"  감쇠지수 비교: DEM n = {law.n:.2f}  vs  경험식 n = {ref.n:.2f}  "
+            f"({'양호' if abs(law.n - ref.n) < 0.3 else '차이 큼 — 격자/감쇠 재검토'})",
+            "",]
+        if abs(self.calibration - 1.0) < 1e-9:
+            lines += [
+                f"  [!] 폭원 미보정 상태입니다. 경험식 대비 보정배수 eta_cal = "
+                f"{self.calibration_factor(target):.2f}",
+                "      등가공동 폭원은 공벽(수십 mm)의 파쇄·가스침투·자유면 이완 같은",
+                "      비탄성 결합과정을 압력감쇠식으로 치환하므로 절대 진폭에 큰 불확실성이",
+                "      있습니다. 절대값이 필요하면 시험발파 실측으로 eta 를 보정하십시오",
+                "      (--calibrate 또는 sim.apply_calibration()).",
+                "      * 감쇠지수 n 과 패턴 변경의 '상대 효과'는 보정과 무관하게 유효합니다.",
+            ]
+        else:
+            lines += [f"  폭원 보정 적용됨: eta = {self.calibration:.2f} (기준 {ref.name})"]
+        lines += [
             "",
             "-" * 78,
             f"  규제기준 검토  (최근접 계측점 {near.name}, D = {near.distance:.0f} m)",

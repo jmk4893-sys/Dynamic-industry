@@ -91,6 +91,31 @@ class Explosive:
         """폭원 탁월주파수 근사 [Hz] — 상승시간 기반."""
         return 1.0 / (4.0 * self.rise_time)
 
+    @property
+    def corner_frequencies(self) -> tuple[float, float]:
+        """방사 속도 스펙트럼이 평탄한 구간 [Hz].
+
+        P(w) ∝ (b-a)/((a+iw)(b+iw)),  a=1/td, b=1/tr 이고 원방 입자속도는
+        dP/dt 에 비례하므로 속도 스펙트럼 w*P(w) 는 a~b 구간에서 평탄하다.
+        """
+        return (1.0 / (2.0 * math.pi * self.decay_time),
+                1.0 / (2.0 * math.pi * self.rise_time))
+
+    def energy_fraction_above(self, freq: float) -> float:
+        """폭원 방사에너지 중 주파수 freq 를 넘는 비율 (0~1).
+
+        격자가 해상할 수 있는 상한을 넘는 에너지는 수치분산·감쇠로 사라지므로,
+        이 값이 크면 해석이 폭원 에너지의 상당 부분을 버리고 있다는 뜻이다.
+        """
+        dt = self.rise_time / 40.0
+        t = np.arange(0.0, 30.0 * self.decay_time, dt)
+        p = self.pressure_history(t)
+        vel = np.gradient(p, dt)                 # 원방 속도 ∝ dP/dt
+        amp = np.abs(np.fft.rfft(vel)) ** 2
+        f = np.fft.rfftfreq(t.size, dt)
+        total = amp.sum()
+        return float(amp[f > freq].sum() / total) if total > 0 else 0.0
+
     # ---- 장약량 ----------------------------------------------------------
     def charge_length(self, weight: float, charge_dia: float) -> float:
         """장약량 W[kg] 을 장약경 dc[m] 의 기둥으로 환산한 장약장 [m]."""

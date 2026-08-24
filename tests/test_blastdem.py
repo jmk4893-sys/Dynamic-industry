@@ -324,6 +324,60 @@ def test_end_to_end_small():
     assert sim.result.peak_domain_velocity < 50.0, "탄성코어 밖 속도 발산"
 
 
+def test_calibration_linearity():
+    """PPV 가 폭원 효율 eta 에 정확히 선형인가.
+
+    apply_calibration() 이 '배수를 곱하는 것'으로 재해석을 대신할 수 있는 근거다.
+    본드 파괴가 없어야 성립하므로 allow_breakage=False 로 확인한다.
+    """
+    e = get_explosive("emulsion")
+    pat = BlastPattern(e, burden=3.0, spacing=3.5, bench_height=6.0, n_rows=1, n_cols=1)
+    pts, names = line_array((0, 0), (1, 0), [15, 25])
+
+    def run(eta):
+        return BlastSimulation(
+            rock=get_rock("granite"), explosive=e, pattern=pat,
+            sensor_points=pts, sensor_names=names,
+            domain=DomainConfig(spacing=2.0, max_particles=200_000),
+            source_cfg=SourceConfig(efficiency=eta),
+            solver_cfg=SolverConfig(duration=0.04, allow_breakage=False, progress=False),
+        ).run()
+
+    a, b = run(1.0), run(3.0)
+    assert a.result.broken_bonds == 0 and b.result.broken_bonds == 0
+    for ra, rb in zip(a.records, b.records):
+        ratio = rb.ppv / ra.ppv
+        assert abs(ratio - 3.0) < 1e-6, f"{ra.name}: 비 {ratio:.6f} != 3 (비선형)"
+
+    # apply_calibration 이 같은 결과를 주는가
+    c = run(1.0)
+    c.apply_calibration(factor=3.0)
+    for rc, rb in zip(c.records, b.records):
+        assert abs(rc.ppv - rb.ppv) / rb.ppv < 1e-9, "apply_calibration 과 재해석 불일치"
+    assert abs(c.calibration - 3.0) < 1e-12
+
+
+def test_source_scales_with_charge_and_explosive():
+    """장약량·폭약 위력이 커지면 폭원 세기도 커져야 한다 (단조성)."""
+    from blastdem.source import BlastSource
+    rock = get_rock("granite")
+    lat = Lattice(rock, (-12, 12), (-12, 12), 14, 1.5)
+    strengths = {}
+    for key in ("low_vod", "anfo", "emulsion", "dynamite"):
+        e = get_explosive(key)
+        pat = BlastPattern(e, bench_height=8.0, n_rows=1, n_cols=1)
+        src = BlastSource(lat, pat, e)
+        strengths[key] = src.hole_pressure[0]
+    assert strengths["low_vod"] < strengths["anfo"] < strengths["emulsion"] < strengths["dynamite"]
+
+    # 디커플링(장약경 축소)은 폭원을 약화시켜야 한다
+    e = get_explosive("precision")
+    full = BlastPattern(e, bench_height=8.0, hole_dia=0.076, charge_dia=0.076, n_rows=1, n_cols=1)
+    dec = BlastPattern(e, bench_height=8.0, hole_dia=0.076, charge_dia=0.032, n_rows=1, n_cols=1)
+    assert (BlastSource(lat, dec, e).hole_pressure[0]
+            < 0.2 * BlastSource(lat, full, e).hole_pressure[0])
+
+
 # ---------------------------------------------------------------------------
 def _run_all() -> int:
     fns = [(k, v) for k, v in sorted(globals().items())
