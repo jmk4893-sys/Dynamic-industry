@@ -50,7 +50,9 @@ class FragConfig:
     depth_below_toe: float = 2.0     # 굴착선 아래 추가 두께 [m]
 
     friction: float = 0.60           # 입자간 마찰계수
-    restitution: float = 0.25        # 반발계수
+    restitution: float = 0.15        # 반발계수(공칭). 인장 클램핑 때문에 실효값은
+                                     # 이보다 다소 크다 (0.15 -> 실측 약 0.28).
+                                     # 암석 대 암석 실효 반발계수 0.1~0.3 에 맞춘 값.
     contact_softening: float = 50.0  # 접촉강성 = 본드강성 / 이 값
 
     gas_gamma: float = 1.30          # 폭굉가스 단열지수
@@ -255,15 +257,11 @@ class BlastLoad:
             self.vented.append(math.inf)
 
         self.burden = p.burden
-        # 공벽 근방 본드는 파괴 금지. 그 영역의 파쇄는 이미 압력감쇠식에 반영돼
-        # 있고, 본드가 끊기면 입자가 구속을 잃고 비물리적으로 가속된다.
-        if self.cells:
-            core = np.unique(np.concatenate(self.cells))
-            prot = np.zeros(m.n, dtype=bool)
-            prot[core] = True
-            m.bond_breakable = ~(prot[m.bi] | prot[m.bj])
-        else:
-            m.bond_breakable = np.ones(m.bi.size, dtype=bool)
+        # 진동해석(source.py)에서는 공벽 근방 본드를 파괴 금지로 두지만, 파쇄해석은
+        # 목적이 반대다. 근접부는 실제로 파쇄되어야 하고, 보호하면 무한 응력을
+        # 견디는 인공 강체 코어가 되어 가스가 그것을 통해 암반 전체를 찢는다.
+        # 공벽 속도는 Lysmer 방사감쇠(반음해)가 P/(rho*Vp) 로 묶어 준다.
+        m.bond_breakable = np.ones(m.bi.size, dtype=bool)
         # 주변 암반의 방사 임피던스 rho*Vp — 공벽 속도를 P/(rho*Vp) 로 제한한다
         self.impedance = m.rock.density * m.rock.p_velocity
 
@@ -381,18 +379,38 @@ class BlastLoad:
         return info
 
     def energy_budget(self) -> dict:
-        """에너지 수지 [MJ] — 물리적 타당성 자체 점검용."""
+        """에너지 수지 [MJ] — 물리적 타당성 자체 점검용.
+
+        가스는 설계상 E = eta*W*Q 로 정박되지만, 충격파는 압력감쇠식이 주는 값을
+        그대로 쓰므로 상한이 없다. 공벽 속도가 임피던스로 v = P/(rho*Vp) 에 묶이므로
+        충격파가 하는 일은
+
+            W_shock = (A / (rho*Vp)) * integral P(t)^2 dt
+
+        로 추정된다. 이 값과 가스일의 합이 화학에너지를 넘으면 모델이 과대하다.
+        """
         w = sum(self.charge)
         chem = w * self.exp.energy
         gas = sum(p * v / (self.cfg.gas_gamma - 1.0) for p, v in
                   zip(self.p_gas0, self.v0)) / 1e6
+
+        dt = self.exp.rise_time / 40.0
+        t = np.arange(0.0, 15.0 * self.exp.decay_time, dt)
+        f2 = float(np.sum(self.exp.pressure_history(t) ** 2) * dt)
+        shock = 0.0
+        for n, idx in enumerate(self.cells):
+            area = 2.0 * math.pi * self.r0[n] * self.length[n]
+            shock += area / self.impedance * self.p_shock[n] ** 2 * f2
+        shock /= 1e6
         return {"장약량_kg": w, "화학에너지_MJ": chem, "가스일_MJ": gas,
-                "가스효율": gas / chem if chem else 0.0}
+                "충격파일_MJ": shock, "가스효율": gas / chem if chem else 0.0,
+                "총효율": (gas + shock) / chem if chem else 0.0}
 
     def summary(self) -> str:
         grade, d = self.stemming_check()
         e = self.energy_budget()
         mode = "완전 전색" if self.cfg.stemming_full else "부분 전색"
+        warn = "  [!] 화학에너지 초과 — 모델 과대" if e["총효율"] > 1.0 else ""
         return (
             f"[발파하중] {mode},  전색장 {self.m.pattern.stemming:.2f} m "
             f"(T/B = {d['T/B']:.2f}, T/천공경 = {d['T/dh']:.0f})  ->  {grade}\n"
@@ -400,8 +418,9 @@ class BlastLoad:
             f"(파쇄를 만든다)\n"
             f"  가스 초기압력 {self.p_gas0[0] / 1e6:.1f} MPa, 단열지수 "
             f"{self.cfg.gas_gamma} (이동·비산을 만든다)\n"
-            f"  에너지 수지: 화학 {e['화학에너지_MJ']:,.0f} MJ  ->  가스일 "
-            f"{e['가스일_MJ']:,.0f} MJ (효율 {e['가스효율']:.0%})\n"
+            f"  에너지 수지: 화학 {e['화학에너지_MJ']:,.0f} MJ  ->  충격파 "
+            f"{e['충격파일_MJ']:,.0f} + 가스 {e['가스일_MJ']:,.0f} MJ = "
+            f"{e['총효율']:.0%}{warn}\n"
             f"  참고: 가스추력 {d['thrust_MN']:,.0f} MN, 전색재 {d['stem_mass_kg']:.0f} kg, "
             f"전압력 유지 시 분출까지 {d['t_eject_ms']:.1f} ms\n"
             f"  하중 입자 {sum(i.size for i in self.cells):,}개 / {len(self.cells)}공"
@@ -495,7 +514,10 @@ class FragSolver:
 
         dv = vel[j] - vel[i]
         vn = np.einsum("ij,ij->i", dv, n)
-        fn = np.maximum(m.k_contact * ov + self.c_n * vn, 0.0)   # 인장 전달 없음
+        # n 은 i->j 방향이므로 vn > 0 이면 서로 멀어지는 중이다.
+        # 점성항은 상대운동을 거스르는 -c*vn 이라야 한다. +c*vn 로 두면 분리할 때
+        # 반발력이 커져 충돌마다 에너지가 주입되고, 결국 해석이 발산한다.
+        fn = np.maximum(m.k_contact * ov - self.c_n * vn, 0.0)   # 인장 전달 없음
 
         vt = dv - vn[:, None] * n
         vt_mag = np.linalg.norm(vt, axis=1)
@@ -512,10 +534,15 @@ class FragSolver:
 
     def _contact_forces(self, pos, vel, force, pairs) -> None:
         m = self.m
-        # (a) 끊어진 본드 쌍 — 자기 초기길이를 기준으로 다시 닿으면 반발
+        # (a) 끊어진 본드 쌍
+        #     기준거리는 min(L0, 2r) 이다. L0 를 그대로 쓰면 2차 이웃 본드
+        #     (L0 ~ 1.41 d > 2r) 가 끊길 때 **닿지도 않은 입자 사이에** 수십 MN 의
+        #     유령 반발력이 생겨 연쇄 파괴로 발산한다. 반대로 2r 만 쓰면 교란 배치의
+        #     짧은 본드에서 초기 겹침이 생긴다. 둘 중 작은 값이 정답이다.
         dead = ~m.bond_alive
         if dead.any():
-            self._pair_contact(pos, vel, force, m.bi[dead], m.bj[dead], m.blen[dead])
+            ref = np.minimum(m.blen[dead], 2.0 * m.radius)
+            self._pair_contact(pos, vel, force, m.bi[dead], m.bj[dead], ref)
         # (b) 원래 이웃이 아니었던 새 접촉 — 구-구 접촉
         if pairs.size:
             key = pairs[:, 0].astype(np.int64) * m.n + pairs[:, 1].astype(np.int64)
@@ -581,6 +608,14 @@ class FragSolver:
         for t_end, dt, label in stages:
             if t_end <= prev_end:
                 continue
+            # 비산 단계의 큰 dt 는 '본드가 대부분 끊겼다'는 전제 위에 있다.
+            # 아직 많이 살아 있으면 본드 강성이 지배하므로 작은 dt 를 유지한다.
+            alive_frac = float(m.bond_alive.mean())
+            if label == "비산" and alive_frac > 0.15:
+                dt = m.dt_bond()
+                if cfg.progress:
+                    print(f"  (본드 {alive_frac:.0%} 생존 -> 비산 단계도 "
+                          f"dt={dt * 1e6:.1f} us 유지)")
             n_steps = max(1, int(round((t_end - prev_end) / dt)))
             for step in range(n_steps):
                 if step % cfg.rebuild_every == 0:

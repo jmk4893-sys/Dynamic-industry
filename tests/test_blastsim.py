@@ -540,6 +540,165 @@ def test_fdm_rayleigh_wave_speed():
 
 
 # ---------------------------------------------------------------------------
+# 7. DEM 근거리 파쇄·비산 (frag.py)
+# ---------------------------------------------------------------------------
+def _frag_setup(particle=0.5, **kw):
+    from blastsim.frag import BlastLoad, FragConfig, FragModel, FragSolver
+    e = get_explosive("emulsion")
+    pat = BlastPattern(e, burden=3.0, spacing=3.5, bench_height=10.0,
+                       n_rows=1, n_cols=2)
+    cfg = FragConfig(particle_size=particle, progress=False, **kw)
+    m = FragModel(get_rock("granite"), pat, cfg)
+    load = BlastLoad(m, e, cfg, SourceConfig())
+    return m, load, FragSolver(m, load, cfg), cfg
+
+
+def test_frag_initial_equilibrium():
+    """t=0 에서 본드력·접촉력이 정확히 0 이어야 한다.
+
+    교란 배치에서 접촉 기준거리를 일률적으로 2r 로 두면 초기부터 20% 넘는 쌍이
+    '겹친' 상태가 되어, 본드가 끊기는 순간 수십 MN 의 가짜 반발력이 터진다.
+    쌍별 기준거리(원래 본드는 자기 L0)를 쓰면 이 문제가 사라진다.
+    """
+    m, _, sv, _ = _frag_setup()
+    pos = m.pos0.copy()
+    vel = np.zeros((m.n, 3))
+    force = np.zeros((m.n, 3))
+    sv._contact_forces(pos, vel, force, np.empty((0, 2), np.int32))
+    assert np.abs(force).max() == 0.0, "초기 접촉력이 0 이 아니다"
+    sv._bond_forces(pos, force)
+    assert np.abs(force).max() < 1e-6, "초기 본드력이 0 이 아니다"
+    assert m.bond_alive.all(), "초기에 파괴된 본드가 있다"
+
+
+def test_frag_two_free_face_boundary():
+    """2자유면: 상부면과 벤치면은 자유, 굴착선 아래 면쪽은 하부 소단으로 구속."""
+    m, _, _, _ = _frag_setup()
+    p = m.pos0
+    t = 1.01 * m.d
+    # y 경계 입자는 별도로 구속되므로 판정에서 뺀다
+    mid_y = (p[:, 1] > m.y_lo + t) & (p[:, 1] < m.y_hi - t)
+    # 벤치면(x_lo) 쪽 굴착선 위 -> 자유
+    upper = (p[:, 0] < m.x_lo + t) & (p[:, 2] > m.toe_z) & mid_y
+    assert upper.any() and not m.fixed[upper].any(), "벤치면 상부는 자유면이어야 한다"
+    # 벤치면 쪽 굴착선 아래 -> 구속
+    lower = (p[:, 0] < m.x_lo + t) & (p[:, 2] < m.toe_z) & mid_y
+    assert lower.any() and m.fixed[lower].all(), "굴착선 아래는 구속되어야 한다"
+    # 상부면(z=0) 은 자유 (x, y 경계 제외)
+    top = (p[:, 2] > -t) & mid_y & (p[:, 0] > m.x_lo + t) & (p[:, 0] < m.x_hi - t)
+    assert top.any() and not m.fixed[top].any(), "상부면은 자유면이어야 한다"
+
+
+def test_blast_load_energy_budget():
+    """가스가 하는 총 일이 폭약 화학에너지를 넘으면 안 된다.
+
+    등가공동 압력으로 P0*V0/(gamma-1) 을 계산하면 화학에너지의 몇 배가 나온다.
+    그래서 거꾸로 E = eta*W*Q 에서 P0 를 역산한다.
+    """
+    _, load, _, cfg = _frag_setup()
+    e = load.energy_budget()
+    assert e["가스일_MJ"] < e["화학에너지_MJ"], "가스일이 화학에너지를 초과"
+    assert abs(e["가스효율"] - cfg.gas_efficiency) < 1e-6
+
+    # 이 에너지가 전부 운동에너지가 될 때의 저항선 속도가 실무 범위(10~30 m/s)
+    pat = load.m.pattern
+    mass = pat.burden * pat.spacing * pat.bench_height * load.m.rock.density * len(load.cells)
+    v = math.sqrt(2.0 * e["가스일_MJ"] * 1e6 / mass)
+    assert 5.0 < v < 40.0, f"저항선 이동속도 {v:.1f} m/s 가 비현실적"
+
+
+def test_blast_load_wall_velocity_bounded():
+    """공벽 속도가 임피던스 한계 v = P/(rho*Vp) 근처로 묶이는가.
+
+    압력만 가하고 방사감쇠가 없으면 공벽 입자가 자유가속해 수천 m/s 로 발산한다.
+    완화시간 m/c 가 dt 의 4~5 배뿐이라 반음해로 풀어야 한다.
+    """
+    m, load, _, _ = _frag_setup()
+    dt = m.dt_bond()
+    idx = load.cells[0]
+    pos = m.pos0.copy()
+    vel = np.zeros((m.n, 3))
+    force = np.zeros((m.n, 3))
+    for k in range(400):
+        force[:] = 0.0
+        load.apply(pos, vel, force, k * dt, dt=dt, mass=m.mass)
+        vel += force / m.mass * dt
+    nrm = load.normal[0]
+    vr = vel[idx, 0] * nrm[:, 0] + vel[idx, 1] * nrm[:, 1]
+    ps = load.p_shock[0] * float(load.exp.pressure_history(np.array([400 * dt]))[0])
+    v_limit = ps / load.impedance
+    assert 0.0 < vr.mean() < 4.0 * max(v_limit, 0.5), \
+        f"공벽속도 {vr.mean():.1f} m/s 가 임피던스 한계 {v_limit:.1f} m/s 대비 과대"
+
+
+def test_stemming_criterion():
+    """전색 판정은 T/B 와 T/천공경 기하기준을 따른다."""
+    from blastsim.frag import BlastLoad, FragConfig, FragModel
+    e = get_explosive("emulsion")
+    grades = {}
+    for stem in (0.6, 1.6, 3.0):
+        pat = BlastPattern(e, burden=3.0, spacing=3.5, bench_height=10.0,
+                           n_rows=1, n_cols=1, stemming=stem)
+        cfg = FragConfig(particle_size=0.6, progress=False)
+        m = FragModel(get_rock("granite"), pat, cfg)
+        grades[stem] = BlastLoad(m, e, cfg, SourceConfig()).stemming_check()[0]
+    assert "불량" in grades[0.6], grades[0.6]
+    assert "양호" in grades[3.0], grades[3.0]
+
+
+def test_contact_restitution_dissipates():
+    """접촉이 반드시 에너지를 소산해야 한다 (분리속도 < 접근속도).
+
+    법선 점성항 부호가 반대이면(+c*vn) 분리할 때 반발력이 커져 충돌마다 에너지가
+    주입되고 해석이 발산한다. 이 테스트가 그 회귀를 막는다.
+    """
+    from blastsim.frag import BlastLoad, FragConfig, FragModel, FragSolver
+    e = get_explosive("emulsion")
+    pat = BlastPattern(e, burden=3.0, spacing=3.5, bench_height=10.0,
+                       n_rows=1, n_cols=1)
+    prev = 0.0
+    for rest in (0.1, 0.3, 0.6, 0.9):
+        cfg = FragConfig(particle_size=0.5, restitution=rest, progress=False)
+        m = FragModel(get_rock("granite"), pat, cfg)
+        sv = FragSolver(m, BlastLoad(m, e, cfg, SourceConfig()), cfg)
+        r = m.radius
+        pos = np.array([[0.0, 0.0, 0.0], [2 * r + 1e-3, 0.0, 0.0]])
+        vel = np.array([[5.0, 0.0, 0.0], [-5.0, 0.0, 0.0]])
+        force = np.zeros((2, 3))
+        dt = m.dt_contact() * 0.2
+        i, j = np.array([0]), np.array([1])
+        v_in = vel[0, 0] - vel[1, 0]
+        for k in range(200_000):
+            force[:] = 0.0
+            sv._pair_contact(pos, vel, force, i, j, 2 * r)
+            vel += force / m.mass * dt
+            pos += vel * dt
+            if pos[1, 0] - pos[0, 0] > 2 * r and k > 10:
+                break
+        e_meas = (vel[1, 0] - vel[0, 0]) / v_in
+        assert 0.0 < e_meas < 1.0, f"반발계수 {e_meas:.3f} 가 물리적 범위 밖"
+        assert e_meas > prev, "설정 반발계수가 커지면 실측도 커져야 한다"
+        prev = e_meas
+    assert prev > 0.7, f"e=0.9 에서 실측 {prev:.2f} — 감쇠가 과도"
+
+
+def test_fragment_analysis_connectivity():
+    """본드 연결성분이 파쇄체가 된다 — 전부 살아 있으면 한 덩어리."""
+    from blastsim.frag import fragment_analysis
+    m, _, _, _ = _frag_setup(particle=0.7)
+    _, size, mass = fragment_analysis(m)
+    assert size.size == 1, "초기에는 하나의 덩어리여야 한다"
+    total = m.n * m.volume * m.rock.density
+    assert abs(mass.sum() - total) / total < 1e-9, "질량 보존 위배"
+
+    # 본드를 전부 끊으면 입자 수만큼의 파쇄체
+    m.bond_alive[:] = False
+    _, size2, mass2 = fragment_analysis(m)
+    assert size2.size == m.n
+    assert abs(mass2.sum() - total) / total < 1e-9
+
+
+# ---------------------------------------------------------------------------
 def _run_all() -> int:
     fns = [(k, v) for k, v in sorted(globals().items())
            if k.startswith("test_") and callable(v)]
