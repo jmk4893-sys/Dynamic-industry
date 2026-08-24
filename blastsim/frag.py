@@ -100,7 +100,15 @@ class FragModel:
         self.x_hi = max(xs_h) + p.burden + c.margin
         self.y_lo = min(ys_h) - p.spacing / 2 - c.margin
         self.y_hi = max(ys_h) + p.spacing / 2 + c.margin
-        self.z_lo = -(p.bench_height + p.subdrill + c.depth_below_toe)
+        # z 격자는 **굴착선에 정렬**해야 한다. 정렬하지 않으면 굴착선 바로 위
+        # 입자열이 바닥 접촉 기준면(toe_z + r)보다 아래에 놓이는 경우가 생기고,
+        # 그 입자가 자유면 앞으로 넘어오는 순간 겹침이 한꺼번에 살아나 쏘아
+        # 올려진다. 입자 지름에 따라 되기도 하고 안 되기도 하는 복불복이었다
+        # (d=0.60 은 0.10 m 여유, d=0.45 는 0.20 m 겹침 -> 145 m/s 비산체).
+        # 아래 정렬은 굴착선 위 첫 입자열이 정확히 toe_z + d/2 에 오게 한다.
+        toe = -p.bench_height
+        want = -(p.bench_height + p.subdrill + c.depth_below_toe)
+        self.z_lo = toe - math.ceil((toe - want) / d) * d
         self.z_hi = 0.0
 
         nx = max(2, int(round((self.x_hi - self.x_lo) / d)))
@@ -554,16 +562,29 @@ class FragSolver:
                 self._pair_contact(pos, vel, force, fresh[:, 0], fresh[:, 1],
                                    2.0 * m.radius)
 
-    def _ground(self, pos, vel, force) -> None:
-        """하부 소단 바닥면 (자유면 앞쪽 x < face_x, z = toe_z) 과의 접촉."""
+    def _ground(self, pos, vel, force, dt: float) -> None:
+        """하부 소단 바닥면 (자유면 앞쪽 x < face_x, z = toe_z) 과의 접촉.
+
+        penalty 강성은 매우 뻣뻣하다. 이미 깊이 겹친 상태에서 접촉이 '켜지면'
+        입자를 쏘아 올린다. 실제로 그런 일이 생긴다 — 저항선(x > face_x)에는
+        바닥이 없다(굴착선 아래로도 암반이 이어진다). 그 입자가 자유면 앞으로
+        넘어가는 순간 hit 이 참이 되면서 그동안의 겹침이 한꺼번에 살아난다.
+
+        그래서 바닥힘에 상한을 둔다. 바닥이 할 수 있는 일은 **하강을 막는 것**
+        까지이고, 그 이상은 에너지 주입이다. 한 스텝에 연직속도를 0 으로 만드는
+        데 필요한 만큼(이미 걸린 다른 힘을 뺀 값)을 상한으로 쓴다. 위에 쌓인
+        암반의 무게도 이 상한에 자동으로 포함된다.
+        """
         m = self.m
         pen = (m.toe_z + m.radius) - pos[:, 2]
         hit = (pos[:, 0] < m.face_x) & (pen > 0.0)
         if not hit.any():
             return
         k, c = m.k_contact, self.c_n
-        fz = k * pen[hit] - c * vel[hit, 2]
-        fz = np.maximum(fz, 0.0)
+        vz = vel[hit, 2]
+        fz = np.maximum(k * pen[hit] - c * vz, 0.0)
+        need = -m.mass * vz / dt - force[hit, 2]
+        fz = np.minimum(fz, np.maximum(need, 0.0))
         force[hit, 2] += fz
         # 바닥 마찰
         vh = vel[hit, :2]
@@ -625,7 +646,7 @@ class FragSolver:
                 force[:] = m.mass * g
                 broken += self._bond_forces(pos, force)
                 self._contact_forces(pos, vel, force, pairs)
-                self._ground(pos, vel, force)
+                self._ground(pos, vel, force, dt)
                 info = self.load.apply(pos, vel, force, t, dt=dt, mass=m.mass)
                 force -= bdamp * vel
 

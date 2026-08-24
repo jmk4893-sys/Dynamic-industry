@@ -595,6 +595,49 @@ def test_frag_initial_equilibrium():
     assert m.bond_alive.all(), "초기에 파괴된 본드가 있다"
 
 
+def test_ground_contact_cannot_launch():
+    """바닥 접촉이 입자를 쏘아 올려서는 안 된다.
+
+    저항선(x > face_x)에는 바닥이 없다 — 굴착선 아래로도 암반이 이어지기
+    때문이다. 자유면 앞(x < face_x)에만 바닥이 있다. 저항선 입자가 자유면
+    앞으로 넘어오는 순간 그동안의 겹침이 한꺼번에 '켜지는데', penalty 를 그대로
+    쓰면 k*pen = 3.7e7 N (a = 1.5e5 m/s^2) 이 되어 입자를 쏘아 올린다.
+    실제로 이것 때문에 45 cm 입자 해석에서 145 m/s 짜리 비산체와 398 m 짜리
+    비산거리가 나왔다(60 cm 에서는 격자가 우연히 어긋나 있어 멀쩡했다).
+    """
+    from blastsim.frag import BlastLoad, FragConfig, FragModel, FragSolver
+
+    rock, e = get_rock("granite"), get_explosive("emulsion")
+    pat = BlastPattern(e, burden=3.0, spacing=3.5, bench_height=10.0,
+                       n_rows=1, n_cols=1)
+    cfg = FragConfig(particle_size=0.45, progress=False)
+    m = FragModel(rock, pat, cfg, face_x=-3.0)
+    sv = FragSolver(m, BlastLoad(m, e, cfg, SourceConfig()), cfg)
+
+    # (1) z 격자가 굴착선에 정렬되어야 한다 — 계통적 겹침이 없어야 한다
+    gz = m.z_lo + (np.arange(int(round((m.z_hi - m.z_lo) / m.d))) + 0.5) * m.d
+    first = gz[gz > m.toe_z][0]
+    assert abs(first - (m.toe_z + m.radius)) < 1e-9, (
+        f"굴착선 위 첫 입자열 {first:.4f} != 기준면 {m.toe_z + m.radius:.4f}")
+
+    # (2) 그래도 깊이 겹친 입자가 생겼을 때 쏘아 올려지면 안 된다
+    dt = m.dt_bond()
+    pos = np.array([[-3.01, 0.0, m.toe_z + m.radius - 0.20]])   # 0.20 m 겹침
+    vel = np.zeros((1, 3))
+    force = np.array([[0.0, 0.0, -m.mass * cfg.gravity]])
+    sv._ground(pos, vel, force, dt)
+    dv = force[0, 2] / m.mass * dt
+    assert dv < 0.05, f"바닥이 정지한 입자를 {dv:.2f} m/s 로 밀어 올린다"
+
+    # (3) 그러면서도 낙하하는 입자는 제대로 멈춰야 한다 (구속 기능 유지)
+    vel = np.array([[0.0, 0.0, -8.0]])
+    force = np.array([[0.0, 0.0, -m.mass * cfg.gravity]])
+    sv._ground(pos, vel, force, dt)
+    vz_new = vel[0, 2] + force[0, 2] / m.mass * dt
+    assert vz_new > -8.0, "바닥이 하강을 전혀 막지 못한다"
+    assert vz_new <= 0.05, f"바닥이 반발로 되튀긴다 (vz={vz_new:.2f} m/s)"
+
+
 def test_frag_two_free_face_boundary():
     """2자유면: 상부면과 벤치면은 자유, 굴착선 아래 면쪽은 하부 소단으로 구속."""
     m, _, _, _ = _frag_setup()
