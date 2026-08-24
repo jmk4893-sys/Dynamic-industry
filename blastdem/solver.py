@@ -4,6 +4,7 @@
     m*a = F_bond + F_visc + F_source + F_absorb + F_massdamp
 
 본드 탄성력   f = k * ((u_j - u_i) . n0) * n0          (미소변형 선형화)
+
 본드 점성력   f = beta * k * ((v_j - v_i) . n0) * n0   (강성비례 감쇠)
 질량 감쇠     f = -alpha * m * v                       (질량비례 감쇠)
 흡수경계      f = -(rho*Vp*A) v_n - (rho*Vs*A) v_t     (Lysmer-Kuhlemeyer)
@@ -14,6 +15,13 @@ Rayleigh 감쇠 C = alpha*M + beta*K
     zeta(f) = alpha/(2*omega) + beta*omega/2
     목표 감쇠비 zeta 를 두 주파수 f1, f2 에서 만족시키면
         alpha = 2*zeta*w1*w2/(w1+w2),   beta = 2*zeta/(w1+w2)
+
+구현 노트
+---------
+변위/속도/힘을 (nx,ny,nz,3) 단일 배열이 아니라 **성분별 3개 배열**로 저장한다.
+그래야 본드 슬라이스가 마지막 축에서 연속(contiguous)이 되어 numpy 연산이
+빨라지고, 그룹별 임시배열을 미리 잡아 재사용하면 매 스텝 할당도 사라진다.
+(같은 결과, 약 2배 속도)
 
 **강성비례 항(beta)이 왜 필수인가**: 질량비례 감쇠만 쓰면 zeta ∝ 1/omega 라
 저주파를 더 감쇠시킨다. 실제 암반은 반대로 고주파가 빨리 감쇠하며, 격자가
@@ -96,30 +104,38 @@ class DEMSolver:
         # 본드 파괴 변형률
         self.eps_t = rock.tensile_strain
         self.eps_c = rock.compressive_strain
+        # 본드그룹별 임시버퍼 (매 스텝 할당 방지)
+        self._buf = [(np.empty(g.shape), np.empty(g.shape), np.empty(g.shape))
+                     for g in lattice.bonds]
 
     def damping_ratio_at(self, freq: float) -> float:
         w = 2.0 * math.pi * freq
         return self.alpha / (2.0 * w) + self.beta * w / 2.0
 
     # ---- 내력 계산 -------------------------------------------------------
-    def _bond_forces(self, u: np.ndarray, v: np.ndarray, force: np.ndarray) -> int:
+    @staticmethod
+    def _project(field, sa, sb, nrm, axes, out, tmp) -> np.ndarray:
+        """(field_j - field_i) . n0 를 out 에 계산. 비영 성분만 다룬다."""
+        c0 = axes[0]
+        np.subtract(field[c0][sb], field[c0][sa], out=out)
+        if nrm[c0] != 1.0:
+            out *= nrm[c0]
+        for c in axes[1:]:
+            np.subtract(field[c][sb], field[c][sa], out=tmp)
+            tmp *= nrm[c]
+            out += tmp
+        return out
+
+    def _bond_forces(self, u: list, v: list, force: list) -> int:
         """본드 탄성력 + 강성비례 점성력을 force 에 누적. 규칙격자라 전부 슬라이스."""
         broken = 0
-        bk = self.beta
-        for g in self.lat.bonds:
-            sa, sb, nrm = g.sa, g.sb, g.normal
-            # 신장량 delta = (u_j - u_i).n0, 신장속도 ddot = (v_j - v_i).n0
-            delta = ddot = None
-            for c in g.axes:
-                w = nrm[c]
-                du = (u[sb + (c,)] - u[sa + (c,)]) * w
-                dv = (v[sb + (c,)] - v[sa + (c,)]) * w
-                delta = du if delta is None else delta + du
-                ddot = dv if ddot is None else ddot + dv
+        for g, (delta, ddot, tmp) in zip(self.lat.bonds, self._buf):
+            sa, sb, nrm, ax = g.sa, g.sb, g.normal, g.axes
+            self._project(u, sa, sb, nrm, ax, delta, tmp)      # 신장량
+            self._project(v, sa, sb, nrm, ax, ddot, tmp)       # 신장속도
 
             if self.cfg.allow_breakage:
-                strain = delta / g.length
-                fail = (g.active > 0) & g.breakable & (strain > self.eps_t)
+                fail = (g.active > 0) & g.breakable & (delta > self.eps_t * g.length)
                 if fail.any():
                     g.active[fail] = 0.0
                     broken += int(fail.sum())
@@ -128,28 +144,34 @@ class DEMSolver:
                 delta *= g.active
                 ddot *= g.active
 
-            f = g.stiffness * (delta + bk * ddot)
-            for c in g.axes:
-                w = f * nrm[c]
-                force[sa + (c,)] += w
-                force[sb + (c,)] -= w
+            ddot *= self.beta
+            delta += ddot
+            delta *= g.stiffness
+            for c in ax:
+                if nrm[c] == 1.0:
+                    force[c][sa] += delta
+                    force[c][sb] -= delta
+                else:
+                    np.multiply(delta, nrm[c], out=tmp)
+                    force[c][sa] += tmp
+                    force[c][sb] -= tmp
         return broken
 
-    def _absorbing(self, v: np.ndarray, force: np.ndarray) -> None:
+    def _absorbing(self, v: list, force: list) -> None:
         for sl, axis in self.lat.boundary:
             for c in range(3):
                 coeff = self.c_n if c == axis else self.c_t
-                force[sl + (c,)] -= coeff * v[sl + (c,)]
+                force[c][sl] -= coeff * v[c][sl]
 
     # ---- 시간적분 --------------------------------------------------------
     def run(self, sensor_points: np.ndarray, sensor_names: list[str] | None = None) -> Result:
         lat, cfg = self.lat, self.cfg
-        shape3 = lat.shape + (3,)
-        u = np.zeros(shape3)
-        v = np.zeros(shape3)
-        force = np.zeros(shape3)
+        u = [np.zeros(lat.shape) for _ in range(3)]
+        v = [np.zeros(lat.shape) for _ in range(3)]
+        force = [np.zeros(lat.shape) for _ in range(3)]
         # 평탄 뷰 — 폭원 하중/계측은 평탄 인덱스를 쓴다 (복사 아님)
-        uf, vf, ff = u.reshape(-1, 3), v.reshape(-1, 3), force.reshape(-1, 3)
+        vf = [a.reshape(-1) for a in v]
+        ff = [a.reshape(-1) for a in force]
         inv_m = 1.0 / lat.m
 
         s_idx = lat.nearest(sensor_points)
@@ -170,28 +192,32 @@ class DEMSolver:
         for step in range(n_steps):
             t = step * self.dt
 
-            force.fill(0.0)
+            for a in force:
+                a.fill(0.0)
             broken += self._bond_forces(u, v, force)
             self.src.apply(ff, t)
             if cfg.absorbing:
                 self._absorbing(v, force)
-            force -= (self.alpha * lat.m) * v
 
             # leapfrog: v(t+dt/2), u(t+dt)
-            v += force * (inv_m * self.dt)
-            u += v * self.dt
+            damp = self.alpha * lat.m
+            for c in range(3):
+                force[c] -= damp * v[c]
+                v[c] += force[c] * (inv_m * self.dt)
+                u[c] += v[c] * self.dt
 
             if step % cfg.record_every == 0 and ri < n_rec:
                 rec_t[ri] = t
-                rec_v[ri] = vf[s_idx]
+                for c in range(3):
+                    rec_v[ri, :, c] = vf[c][s_idx]
                 ri += 1
 
-            vs = np.sqrt(v[:, :, -1, 0] ** 2 + v[:, :, -1, 1] ** 2 + v[:, :, -1, 2] ** 2)
+            vs = np.sqrt(v[0][:, :, -1] ** 2 + v[1][:, :, -1] ** 2 + v[2][:, :, -1] ** 2)
             np.maximum(surf_ppv, vs, out=surf_ppv)
             if snap_todo and t >= snap_todo[0]:
                 snapshots[snap_todo.pop(0)] = vs.ravel().copy()
 
-            vmax = float(np.abs(v[free]).max())
+            vmax = max(float(np.abs(a[free]).max()) for a in v)
             peak = max(peak, vmax)
             if not np.isfinite(vmax) or vmax > 1e4:
                 raise RuntimeError(

@@ -132,23 +132,30 @@ class BlastSource:
             self.core_idx = np.empty(0, dtype=np.int64)
 
     # ---- 시간별 하중 -----------------------------------------------------
-    def apply(self, force: np.ndarray, t: float) -> None:
-        """시각 t 의 폭원 하중을 force 배열(평탄 (N,3) 뷰)에 누적."""
+    # 압력이 사실상 0 이 되는 시점 (exp(-12) ~ 6e-6)
+    TAIL = 12.0
+
+    def apply(self, force: list, t: float) -> None:
+        """시각 t 의 폭원 하중을 force 에 누적.
+
+        force 는 성분별 평탄배열 3개 [(N,), (N,), (N,)] 이다 (솔버 내부 표현).
+        """
         for idx, load, t0 in zip(self.hole_idx, self.hole_load, self.hole_delay):
             dt = t - t0
-            if dt <= 0.0 or dt > 20.0 * self.exp.decay_time:
+            if dt <= 0.0 or dt > self.TAIL * self.exp.decay_time:
                 continue
             f = float(self.exp.pressure_history(np.array([dt]))[0])
             if f <= 1e-6:
                 continue
-            np.add.at(force, idx, load * f)
+            for c in range(3):
+                np.add.at(force[c], idx, load[:, c] * f)
 
     @property
     def active_window(self) -> tuple[float, float]:
         """폭원이 작동하는 시간 구간 [s]."""
         if not self.hole_delay:
             return (0.0, 0.0)
-        return (min(self.hole_delay), max(self.hole_delay) + 20.0 * self.exp.decay_time)
+        return (min(self.hole_delay), max(self.hole_delay) + self.TAIL * self.exp.decay_time)
 
     def summary(self) -> str:
         h = self.pattern.holes[0]

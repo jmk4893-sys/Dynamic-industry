@@ -133,9 +133,9 @@ class _PulseSource:
     def __init__(self, idx: int, amp: float, duration: float) -> None:
         self.idx, self.amp, self.T = idx, amp, duration
 
-    def apply(self, force: np.ndarray, t: float) -> None:
+    def apply(self, force: list, t: float) -> None:
         if 0.0 < t < self.T:
-            force[self.idx, 0] += self.amp * math.sin(math.pi * t / self.T)
+            force[0][self.idx] += self.amp * math.sin(math.pi * t / self.T)
 
 
 def test_wave_speed_time_domain():

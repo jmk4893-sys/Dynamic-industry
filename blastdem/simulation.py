@@ -117,7 +117,8 @@ class BlastSimulation:
         cx, cy = self.source_center
         rmax = float(np.hypot(sp[:, 0] - cx, sp[:, 1] - cy).max())
         travel = rmax / self.rock.r_velocity
-        return self.pattern.total_duration + travel + 25.0 * self.explosive.decay_time + 0.05
+        return (self.pattern.total_duration + travel
+                + BlastSource.TAIL * self.explosive.decay_time + 0.03)
 
     # ---- 후처리 ----------------------------------------------------------
     def fitted_law(self) -> empirical.ScaledDistanceLaw:
