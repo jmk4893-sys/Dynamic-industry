@@ -68,6 +68,7 @@ class FragConfig:
     ballistic_dt: float = 2.0e-3     # 탄도 단계 시간간격 [s]
     cfl: float = 0.20
     boundary_damping: float = 0.60   # 고정 경계 점성 (파 반사 저감)
+    throw_speed_min: float = 0.5     # 탄도 단계로 넘길 '던져진 암반' 속도 하한 [m/s]
     rebuild_every: int = 25          # 접촉 이웃탐색 갱신 주기 [스텝]
     snapshot_fps: float = 60.0       # 영상용 프레임 저장률
     progress: bool = True
@@ -675,14 +676,26 @@ class FragSolver:
         착지한 파쇄체는 그 자리의 적재 높이 위에 쌓인다(높이맵).
         """
         m, cfg = self.m, self.cfg
-        labels, _, _ = fragment_analysis(m)
         free = ~m.fixed
-        # 배후 암반(고정 입자와 같은 파쇄체)은 움직이지 않는다
-        anchored = np.zeros(labels.max() + 1, dtype=bool)
-        anchored[labels[m.fixed]] = True
-        movable = free & ~anchored[labels]
+
+        # 무엇이 '던져진 암반'인가를 연결성분으로 판정하면 안 된다.
+        # 본드 파괴율 40~50% 에서는 퍼콜레이션 때문에 전체가 한 클러스터로 남고,
+        # 그 클러스터가 고정 경계와 이어져 있어 결국 아무것도 움직이지 않게 된다.
+        # 판정 기준은 속도다 — DEM 단계 끝에서 실제로 움직이고 있는 입자가 던져진
+        # 암반이고, 정지해 있는 것이 배후 암반이다.
+        speed = np.linalg.norm(vel, axis=1)
+        movable = free & (speed > cfg.throw_speed_min)
         if not movable.any():
             return t, next_frame
+
+        # 강체 결합은 '움직이는 입자들 사이'의 살아 있는 본드로만 정의한다
+        alive = m.bond_alive
+        both = movable[m.bi] & movable[m.bj] & alive
+        from scipy.sparse import coo_matrix
+        from scipy.sparse.csgraph import connected_components
+        i_, j_ = m.bi[both], m.bj[both]
+        adj = coo_matrix((np.ones(i_.size), (i_, j_)), shape=(m.n, m.n))
+        _, labels = connected_components(adj, directed=False)
 
         lab = labels[movable]
         uniq, inv = np.unique(lab, return_inverse=True)
