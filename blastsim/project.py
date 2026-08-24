@@ -212,6 +212,7 @@ class BlastProject:
         log(model.summary()); log(load.summary()); log(solver.summary()); log("")
         res = solver.run()
         stats = fragmentation_stats(res, model)
+        stats["kuz_ram"] = kuz_ram(self.pattern, self.rock, self.explosive)
         self.frag = {"model": model, "load": load, "solver": solver,
                      "result": res, "stats": stats}
         return self.frag
@@ -292,21 +293,32 @@ class BlastProject:
 
         if self.frag:
             s = self.frag["stats"]
+            kr = s["kuz_ram"]
             r = self.frag["result"]
             lines += ["-" * 78, "  [2] 근거리 파쇄·비산 (DEM)", "-" * 78,
                       self.frag["model"].summary(), "",
                       self.frag["load"].summary(), "",
                       f"  파괴본드 {r.broken:,} / {r.total_bonds:,} "
-                      f"({100 * r.broken / max(1, r.total_bonds):.1f}%)",
+                      f"({100 * s['broken_frac']:.1f}%)  <- 손상도 지표",
                       "",
-                      "  [파쇄 입도]",
-                      f"    X50 (50% 통과)  = {s['X50']:.2f} m",
-                      f"    X80 (80% 통과)  = {s['X80']:.2f} m",
-                      f"    최대 파쇄체     = {s['X_max']:.2f} m "
-                      f"({s['mass_max'] / 1000:.1f} t)",
-                      f"    Rosin-Rammler   : Xc = {s['Xc']:.2f} m, 균등지수 n = {s['n_rr']:.2f}",
-                      f"    과대석(>{s['oversize_limit']:.1f} m) 비율 = {s['oversize']:.1%}",
-                      "",
+                      "  [파쇄 입도 — Kuz-Ram 경험모델]",
+                      f"    X50 (50% 통과)  = {kr['X50']:.2f} m",
+                      f"    X80 (80% 통과)  = {kr['X80']:.2f} m",
+                      f"    Rosin-Rammler   : Xc = {kr['Xc']:.2f} m, 균등지수 n = {kr['n']:.2f}"
+                      f"  (암반계수 A = {kr['A']:.1f})",
+                      f"    과대석(>1 m) 비율 = {kr['oversize_1m']:.1%}",
+                      ""] + (
+            [f"  [파쇄 입도 — DEM 연결성분]",
+             f"    X50 = {s['X50']:.2f} m, X80 = {s['X80']:.2f} m, "
+             f"최대 {s['X_max']:.2f} m ({s['mass_max'] / 1000:.1f} t)", ""]
+            if s["size_reliable"] else
+            ["  [파쇄 입도 — DEM 연결성분: 신뢰할 수 없음]",
+             f"    본드 파괴율 {s['broken_frac']:.0%} 로는 입도를 셀 수 없습니다.",
+             "    본드망에서 덩어리를 세는 것은 본드 퍼콜레이션 문제인데, 배위수 12~16",
+             "    격자는 본드를 90% 넘게 끊어야 비로소 쪼개집니다(44% 파괴에서도 여전히",
+             "    100%가 한 덩어리). 위 Kuz-Ram 값을 쓰십시오.",
+             f"    (참고로 연결성분이 주는 값: X50 = {s['X50']:.1f} m — 과대)", ""]
+        ) + [
                       "  [이동 · 비산]",
                       f"    저항선 평균 이동거리 = {s['throw_mean']:.2f} m "
                       f"(최대 {s['throw_max']:.1f} m)",
@@ -371,6 +383,36 @@ class BlastProject:
 
 
 # ---------------------------------------------------------------------------
+def kuz_ram(pattern, rock, explosive) -> dict:
+    """Kuz-Ram 파쇄입도 예측 — 발파 실무의 표준 경험모델.
+
+        X50 [cm] = A * K^(-0.8) * Q^(1/6) * (115/RWS)^(19/30)
+        n        = (2.2 - 14B/D) * sqrt((1+S/B)/2) * (1-W/B) * (L/H)
+
+    A(암반계수)는 7(연암) ~ 13(경암·괴상). 여기서는 UCS 로부터 환산한다.
+    DEM 연결성분 해석이 퍼콜레이션 때문에 못 주는 값을 이 모델이 채운다.
+    """
+    B, S, H = pattern.burden, pattern.spacing, pattern.bench_height
+    D_mm = pattern.hole_dia * 1000.0
+    Q = pattern.charge_per_hole
+    K = pattern.powder_factor
+    L = pattern.holes[0].charge_length
+    A = float(np.clip(7.0 + 6.0 * (rock.ucs / 1e6 - 30.0) / 170.0, 7.0, 13.0))
+
+    x50 = A * K ** -0.8 * Q ** (1.0 / 6.0) * (115.0 / explosive.rws) ** (19.0 / 30.0)
+    x50 /= 100.0                                     # cm -> m
+
+    w_acc = 0.1                                      # 천공 정밀도 표준편차 [m]
+    n = ((2.2 - 14.0 * B / D_mm) * math.sqrt((1.0 + S / B) / 2.0)
+         * (1.0 - w_acc / B) * (L / H))
+    n = float(np.clip(n, 0.7, 2.2))
+    xc = x50 / (math.log(2.0) ** (1.0 / n))          # Rosin-Rammler 특성입경
+    x80 = xc * (math.log(5.0)) ** (1.0 / n)
+    oversize = math.exp(-((1.0 / xc) ** n))          # >1 m 비율
+    return {"A": A, "X50": x50, "X80": x80, "Xc": xc, "n": n,
+            "oversize_1m": oversize}
+
+
 def fragmentation_stats(result, model) -> dict:
     """파쇄 입도 · 이동 · 비산 통계."""
     size, mass = result.fragment_size, result.fragment_mass
@@ -391,7 +433,7 @@ def fragmentation_stats(result, model) -> dict:
         n_rr, b = np.polyfit(x, y, 1)
         xc = float(np.exp(-b / n_rr)) if n_rr else x50
     else:
-        n_rr, xc = 1.0, x50
+            n_rr, xc = 1.0, x50
     over_lim = 1.0
     oversize = float(m_sorted[s_sorted > over_lim].sum() / max(m_sorted.sum(), 1e-12))
 
@@ -411,7 +453,13 @@ def fragmentation_stats(result, model) -> dict:
     fly_thresh = 20.0                               # m/s 이상을 비산 위험으로 본다
     n_fly = int((v[free] > fly_thresh).sum())
     fly_range = float(np.percentile(ranges, 99.9)) if ranges.size else 0.0
+    # 본드 연결성분으로 파쇄체를 세는 것은 본드 퍼콜레이션 문제다. 배위수 12~16
+    # 격자에서는 본드를 90% 넘게 끊어야 비로소 덩어리가 쪼개지므로(44% 파괴에서는
+    # 여전히 100% 가 하나의 클러스터), 그 미만에서는 입도값이 의미가 없다.
+    broken_frac = result.broken / max(result.total_bonds, 1)
+    reliable = broken_frac >= 0.90
     return {
+        "broken_frac": broken_frac, "size_reliable": reliable,
         "X50": x50, "X80": x80, "X_max": float(size.max()),
         "mass_max": float(mass.max()), "Xc": xc, "n_rr": float(n_rr),
         "oversize": oversize, "oversize_limit": over_lim,

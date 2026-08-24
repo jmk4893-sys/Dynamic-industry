@@ -246,27 +246,40 @@ def plot_source(explosive, source, path: str) -> None:
 
 # ---------------------------------------------------------------------------
 def plot_fragmentation(result, stats: dict, path: str) -> None:
-    """파쇄 입도 분포 (누적통과율 + Rosin-Rammler 회귀)."""
+    """파쇄 입도 분포 — Kuz-Ram 경험모델을 주곡선으로, DEM 연결성분은 참고로.
+
+    DEM 본드망의 연결성분으로 덩어리를 세는 것은 본드 퍼콜레이션 문제라,
+    본드를 90% 넘게 끊기 전에는 전부 한 덩어리로 나온다. 그래서 실무 표준인
+    Kuz-Ram 을 주곡선으로 그리고, 신뢰구간 밖이면 DEM 곡선에 경고를 붙인다.
+    """
     size = stats["size_sorted"]
     cum = stats["cum"]
-    if size.size < 2:
+    kr = stats.get("kuz_ram")
+    if size.size < 2 and not kr:
         return
     fig, ax = plt.subplots(1, 2, figsize=(10.5, 4.2))
 
-    ax[0].semilogx(size, cum * 100, "o-", ms=3, lw=1.4, color="tab:blue",
-                   label=L("DEM 해석", "DEM"))
-    xs = np.logspace(np.log10(max(size.min(), 1e-3)), np.log10(size.max()), 120)
-    rr = 1.0 - np.exp(-((xs / max(stats["Xc"], 1e-6)) ** stats["n_rr"]))
-    ax[0].semilogx(xs, rr * 100, "--", lw=1.3, color="tab:red",
-                   label=f"Rosin-Rammler  Xc={stats['Xc']:.2f} m, n={stats['n_rr']:.2f}")
-    for frac, key, col in ((50, "X50", "0.4"), (80, "X80", "0.6")):
-        ax[0].axhline(frac, color=col, lw=0.7, ls=":")
-        ax[0].axvline(stats[key], color=col, lw=0.7, ls=":")
-        ax[0].text(stats[key], 3, f" {key}={stats[key]:.2f}m", fontsize=7, color="0.3")
+    if kr:
+        xs = np.logspace(-2, 1, 200)
+        rr = 1.0 - np.exp(-((xs / kr["Xc"]) ** kr["n"]))
+        ax[0].semilogx(xs, rr * 100, "-", lw=2.0, color="tab:red",
+                       label=f"Kuz-Ram  X50={kr['X50']:.2f} m, n={kr['n']:.2f}")
+        for frac, key in ((50, "X50"), (80, "X80")):
+            ax[0].axhline(frac, color="0.6", lw=0.7, ls=":")
+            ax[0].axvline(kr[key], color="0.6", lw=0.7, ls=":")
+            ax[0].text(kr[key], 3, f" {key}={kr[key]:.2f}m", fontsize=7, color="0.3")
+
+    if size.size >= 2:
+        ok = stats.get("size_reliable", False)
+        ax[0].semilogx(size, cum * 100, "o--", ms=3, lw=1.0,
+                       color="tab:blue" if ok else "0.65",
+                       label=L("DEM 연결성분" + ("" if ok else " (퍼콜레이션 한계 — 과대)"),
+                               "DEM connectivity"))
     ax[0].set_xlabel(L("파쇄체 등가입경 [m]", "Fragment size [m]"))
     ax[0].set_ylabel(L("누적 통과율 [%]", "Cumulative passing [%]"))
     ax[0].set_title(L("파쇄 입도 분포", "Fragment size distribution"))
     ax[0].set_ylim(0, 100)
+    ax[0].set_xlim(0.02, 12)
     ax[0].legend(fontsize=7, loc="upper left")
 
     v = result.peak_speed

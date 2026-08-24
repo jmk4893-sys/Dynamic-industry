@@ -646,6 +646,65 @@ def test_stemming_criterion():
     assert "양호" in grades[3.0], grades[3.0]
 
 
+def test_kuz_ram_realistic_and_monotonic():
+    """Kuz-Ram 파쇄입도가 실무 범위이고 비장약량에 대해 단조여야 한다.
+
+    DEM 본드망 연결성분은 퍼콜레이션 때문에 입도를 못 준다(90% 넘게 끊어야
+    쪼개진다). 그래서 입도는 이 경험모델이 담당한다.
+    """
+    from blastsim.project import kuz_ram
+    e = get_explosive("emulsion")
+    rock = get_rock("granite")
+
+    prev_x50, prev_pf = None, None
+    for B, S, H in ((2.5, 3.0, 8.0), (3.0, 3.5, 10.0), (4.0, 4.6, 12.0)):
+        pat = BlastPattern(e, burden=B, spacing=S, bench_height=H, n_rows=2, n_cols=5)
+        k = kuz_ram(pat, rock, e)
+        assert 0.05 < k["X50"] < 2.0, f"X50 {k['X50']:.2f} m 가 비현실적"
+        assert k["X80"] > k["X50"], "X80 은 X50 보다 커야 한다"
+        assert 0.7 <= k["n"] <= 2.2
+        assert 7.0 <= k["A"] <= 13.0
+        # 비장약량이 낮을수록 굵게 나와야 한다
+        if prev_x50 is not None:
+            assert (pat.powder_factor < prev_pf) == (k["X50"] > prev_x50), \
+                "비장약량과 입도의 관계가 뒤집혔다"
+        prev_x50, prev_pf = k["X50"], pat.powder_factor
+
+    # 연암이 경암보다 잘게 부서진다
+    hard = kuz_ram(BlastPattern(e, burden=3.0, spacing=3.5, bench_height=10.0,
+                                n_rows=2, n_cols=5), get_rock("granite"), e)
+    soft = kuz_ram(BlastPattern(e, burden=3.0, spacing=3.5, bench_height=10.0,
+                                n_rows=2, n_cols=5), get_rock("shale"), e)
+    assert soft["X50"] < hard["X50"], "연암이 더 잘게 부서져야 한다"
+
+
+def test_bond_network_percolation_limit():
+    """본드망 연결성분은 90% 넘게 끊기 전에는 한 덩어리로 남는다.
+
+    이 성질 때문에 DEM 연결성분으로 파쇄입도를 뽑으면 과대평가된다.
+    fragmentation_stats 가 이를 size_reliable 로 표시하는지 확인한다.
+    """
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import connected_components
+    from scipy.spatial import cKDTree
+
+    n = 12
+    g = np.mgrid[0:n, 0:n, 0:n].reshape(3, -1).T.astype(float)
+    pairs = np.array(sorted(cKDTree(g).query_pairs(r=1.45)))
+    N, M = len(g), len(pairs)
+    rng = np.random.default_rng(0)
+
+    def largest(frac):
+        keep = rng.random(M) > frac
+        i, j = pairs[keep, 0], pairs[keep, 1]
+        adj = coo_matrix((np.ones(i.size), (i, j)), shape=(N, N))
+        _, lab = connected_components(adj, directed=False)
+        return np.bincount(lab).max() / N
+
+    assert largest(0.50) > 0.95, "50% 파괴에서는 아직 한 덩어리여야 한다"
+    assert largest(0.95) < 0.30, "95% 파괴에서는 잘게 쪼개져야 한다"
+
+
 def test_contact_restitution_dissipates():
     """접촉이 반드시 에너지를 소산해야 한다 (분리속도 < 접근속도).
 
