@@ -52,7 +52,7 @@ def plot_ppv_distance(records: list[SensorRecord], charge: float,
     dd = np.linspace(max(d.min() * 0.6, 1.0), d.max() * 1.4, 200)
     for name, law in laws.items():
         ax[0].plot(dd, law.ppv(dd, charge), "--", lw=1.2, label=str(law))
-    ax[0].plot(d, v, "o-", color="crimson", lw=1.8, ms=6, label=L("DEM 해석", "DEM result"))
+    ax[0].plot(d, v, "o-", color="crimson", lw=1.8, ms=6, label=L("FDM 해석", "FDM result"))
     for name, lim in REGULATION:
         ax[0].axhline(lim, color="gray", lw=0.7, ls=":")
         ax[0].text(dd[-1], lim, f" {name}" if KO else f" {lim:g}", va="bottom",
@@ -64,7 +64,7 @@ def plot_ppv_distance(records: list[SensorRecord], charge: float,
     ax[0].legend(fontsize=7, loc="upper right")
 
     sd = d / charge ** 0.5
-    ax[1].loglog(sd, v, "o", color="crimson", ms=7, label=L("DEM 해석", "DEM"))
+    ax[1].loglog(sd, v, "o", color="crimson", ms=7, label=L("FDM 해석", "FDM"))
     if len(sd) > 2:
         s, i = np.polyfit(np.log10(sd), np.log10(v), 1)
         xs = np.linspace(sd.min(), sd.max(), 50)
