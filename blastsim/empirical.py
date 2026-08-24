@@ -94,7 +94,7 @@ def fit_law(distances, ppv_mm, charge: float, b: float = 0.5) -> ScaledDistanceL
                                  name="회귀 불가 (유효 계측점 2개 미만)")
     sd = d[m] / charge ** b
     slope, intercept = np.polyfit(np.log10(sd), np.log10(v[m] / 10.0), 1)
-    return ScaledDistanceLaw(K=10.0 ** intercept, n=-slope, b=b, name="DEM 해석 회귀")
+    return ScaledDistanceLaw(K=10.0 ** intercept, n=-slope, b=b, name="FDM 해석 회귀")
 
 
 def calibrate_efficiency(

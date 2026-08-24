@@ -285,7 +285,7 @@ class BlastProject:
             lines += ["-" * 78, "  [1] 원거리 진동 (FDM)", "-" * 78,
                       self.vib["model"].summary(), "",
                       sensors.table(recs), "",
-                      f"  DEM 회귀식 : {law}",
+                      f"  해석 회귀식 : {law}",
                       f"  참조 경험식 : {empirical.SD_LAWS[c.law]}",
                       f"  폭원 보정계수 eta = {self.vib['calibration']:.2f}"
                       + ("  (경험식에 맞춤)" if c.calibrate else "  (미보정)"), "",
