@@ -1,0 +1,934 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="폐 태양광 셀 은 회수 부유선별 설비의 공정 흐름도·부선조 상세 단면도·장치 대안 비교도.">
+<title>태양광 셀 Ag 회수 설계도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
+
+<style>
+  :root {
+    --bg: #EDF0F3;
+    --surface: #FFFFFF;
+    --surface-2: #F6F8FA;
+    --ink: #171F26;
+    --ink-2: #57646F;
+    --ink-3: #7E8B96;
+    --line: #A8B3BE;
+    --line-2: #6B7883;
+    --rule: #D3DAE1;
+    --ag: #9C6B15;
+    --ag-fill: rgba(156, 107, 21, 0.13);
+    --water: #276D77;
+    --water-fill: rgba(39, 109, 119, 0.13);
+    --air-fill: rgba(120, 133, 146, 0.10);
+    --warn: #9E3623;
+    --sans: "IBM Plex Sans KR", system-ui, -apple-system, "Malgun Gothic", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0E1317;
+      --surface: #151B21;
+      --surface-2: #1B2329;
+      --ink: #E2E8EE;
+      --ink-2: #9DAAB6;
+      --ink-3: #7A8894;
+      --line: #4E5A65;
+      --line-2: #86939F;
+      --rule: #2A343C;
+      --ag: #DCA847;
+      --ag-fill: rgba(220, 168, 71, 0.16);
+      --water: #63ADB7;
+      --water-fill: rgba(99, 173, 183, 0.16);
+      --air-fill: rgba(157, 170, 182, 0.12);
+      --warn: #E08770;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0E1317;
+    --surface: #151B21;
+    --surface-2: #1B2329;
+    --ink: #E2E8EE;
+    --ink-2: #9DAAB6;
+    --ink-3: #7A8894;
+    --line: #4E5A65;
+    --line-2: #86939F;
+    --rule: #2A343C;
+    --ag: #DCA847;
+    --ag-fill: rgba(220, 168, 71, 0.16);
+    --water: #63ADB7;
+    --water-fill: rgba(99, 173, 183, 0.16);
+    --air-fill: rgba(157, 170, 182, 0.12);
+    --warn: #E08770;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-weight: 400;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-bottom: 28px;
+    border-bottom: 2px solid var(--line-2);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(28px, 4.4vw, 44px);
+    font-weight: 600;
+    line-height: 1.18;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .lede {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--ink-2);
+    font-size: 16px;
+    font-weight: 300;
+  }
+
+  .keyfacts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .keyfacts div {
+    background: var(--surface);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .keyfacts dt {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0;
+  }
+
+  .keyfacts dd {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 19px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+
+  .keyfacts dd.hi { color: var(--ag); }
+
+  /* ---------- sheets ---------- */
+  .sheet {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sheet-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 16px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .sheet-no {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--ag);
+  }
+
+  .sheet-title {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .sheet-sub {
+    font-size: 13px;
+    color: var(--ink-3);
+    font-weight: 300;
+  }
+
+  figure { margin: 0; }
+
+  .canvas {
+    overflow-x: auto;
+    padding: 24px 20px 8px;
+    background: var(--surface-2);
+  }
+
+  .canvas svg {
+    display: block;
+    min-width: 660px;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+    color: var(--line-2);
+  }
+
+  figcaption {
+    padding: 4px 20px 18px;
+    background: var(--surface-2);
+    color: var(--ink-2);
+    font-size: 13.5px;
+    font-weight: 300;
+    max-width: 78ch;
+  }
+
+  /* ---------- title block ---------- */
+  .titleblock {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    border-top: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11.5px;
+  }
+
+  .titleblock div {
+    padding: 8px 14px;
+    border-right: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .titleblock div:last-child { border-right: none; }
+
+  .titleblock span {
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .titleblock b {
+    font-weight: 500;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- tables ---------- */
+  .tablewrap { overflow-x: auto; padding: 0 20px 22px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  caption {
+    text-align: left;
+    padding: 18px 0 10px;
+    font-size: 12px;
+    font-family: var(--mono);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  th, td {
+    padding: 7px 12px 7px 0;
+    text-align: left;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+
+  thead th {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom: 1px solid var(--line-2);
+  }
+
+  td.num, th.num { text-align: right; font-family: var(--mono); }
+  td.tag { font-family: var(--mono); color: var(--ag); font-weight: 500; }
+  tbody tr:last-child td { border-bottom: none; }
+  tr.total td { font-weight: 600; border-top: 1px solid var(--line-2); }
+
+  /* ---------- notes ---------- */
+  .notes {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 22px 24px 26px;
+  }
+
+  .notes h2 {
+    margin: 0 0 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .notes ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    counter-reset: note;
+  }
+
+  .notes li {
+    position: relative;
+    padding-left: 34px;
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--ink-2);
+    max-width: 84ch;
+  }
+
+  .notes li::before {
+    counter-increment: note;
+    content: counter(note, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 1px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--ag);
+  }
+
+  .notes strong { color: var(--ink); font-weight: 500; }
+
+  .footer {
+    font-size: 12.5px;
+    color: var(--ink-3);
+    font-weight: 300;
+    border-top: 1px solid var(--rule);
+    padding-top: 18px;
+    max-width: 80ch;
+  }
+
+  .footer code {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+  }
+
+  /* ---------- svg drawing classes ---------- */
+  .ln    { fill: none; stroke: currentColor; stroke-width: 1.4; }
+  .ln-h  { fill: none; stroke: currentColor; stroke-width: 2.2; }
+  .ln-t  { fill: none; stroke: currentColor; stroke-width: 1; opacity: 0.65; }
+  .dash  { fill: none; stroke: currentColor; stroke-width: 1.1; stroke-dasharray: 5 4; opacity: 0.8; }
+  .box   { fill: var(--surface); stroke: var(--line-2); stroke-width: 1.6; }
+  .box-d { fill: none; stroke: var(--line); stroke-width: 1.4; stroke-dasharray: 6 4; }
+  .zone  { fill: var(--air-fill); stroke: none; }
+
+  .ag-l  { fill: none; stroke: var(--ag); stroke-width: 2.2; }
+  .ag-f  { fill: var(--ag-fill); stroke: var(--ag); stroke-width: 1.6; }
+  .ag-b  { fill: var(--ag-fill); stroke: none; }
+  .wt-l  { fill: none; stroke: var(--water); stroke-width: 2; }
+  .wt-t  { fill: none; stroke: var(--water); stroke-width: 1.2; }
+  .wt-f  { fill: var(--water-fill); stroke: var(--water); stroke-width: 1.4; }
+
+  text {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 400;
+    fill: var(--ink);
+  }
+
+  .t-sm  { font-size: 11.5px; fill: var(--ink-2); font-weight: 300; }
+  .t-eq  { font-size: 13.5px; font-weight: 600; fill: var(--ink); }
+  .t-mono{ font-family: var(--mono); font-size: 11.5px; fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .t-ag  { fill: var(--ag); font-weight: 500; }
+  .t-wt  { fill: var(--water); font-weight: 500; }
+  .t-dim { font-family: var(--mono); font-size: 11px; fill: var(--ink-3); }
+
+  .stream-n { fill: var(--surface); stroke: var(--line-2); stroke-width: 1.3; }
+  .stream-t { font-family: var(--mono); font-size: 11px; font-weight: 600; fill: var(--ink); }
+  .instr   { fill: var(--surface); stroke: var(--ag); stroke-width: 1.6; }
+  .instr-t { font-family: var(--mono); font-size: 9.5px; font-weight: 500; fill: var(--ag); }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 32px 14px 72px; gap: 28px; }
+    .canvas { padding: 16px 12px 6px; }
+    figcaption, .tablewrap { padding-left: 14px; padding-right: 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">기본설계 도면집 · REV A</div>
+    <h1>폐 태양광 셀 은(Ag) 회수 부유선별 설비</h1>
+    <p class="lede">
+      박리·분쇄된 c-Si 셀 분획에서 은을 부유선별로 농축해 후단 침출·제련 물량을 1/76 로
+      줄이는 설비의 기본설계 도면이다. 공정 흐름도, 부선조 상세 단면도, 장치 형식 대안
+      비교도 3매로 구성한다.
+    </p>
+    <dl class="keyfacts">
+      <div><dt>처리량 (평균 / 최대)</dt><dd>0.30 / 0.50 t/h</dd></div>
+      <div><dt>Ag 회수율</dt><dd class="hi">99.7 %</dd></div>
+      <div><dt>정광 품위</dt><dd>44.8 wt% Ag</dd></div>
+      <div><dt>부선조</dt><dd>Ø350 × 2.4 m</dd></div>
+      <div><dt>기액 체류시간</dt><dd>1 min</dd></div>
+      <div><dt>설치 전력</dt><dd>3.6 kW</dd></div>
+    </dl>
+  </header>
+
+  <!-- ================= SHEET 1 : PFD ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-001</span>
+      <span class="sheet-title">공정 흐름도</span>
+      <span class="sheet-sub">최대 처리량 0.50 t/h 기준 · 유량은 정상상태 값</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1040 510" role="img"
+             aria-label="급광이 조건조와 급광펌프를 거쳐 부선조 FC-101 로 들어가고, 정광 6.56 kg/h 는 농축·여과를 거쳐 최종 정광으로, 미광 493 kg/h 는 농축조를 거쳐 잔사로 나가며, 농축조 월류수 9.6 세제곱미터 매시는 조건조로 순환하는 공정 흐름도">
+          <defs>
+            <marker id="a1" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="currentColor"></polygon>
+            </marker>
+            <marker id="a1ag" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--ag)"></polygon>
+            </marker>
+            <marker id="a1wt" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--water)"></polygon>
+            </marker>
+          </defs>
+
+          <!-- upstream (outside battery limit) -->
+          <rect class="box-d" x="16" y="176" width="132" height="68" rx="2"></rect>
+          <text class="t-sm" x="82" y="203" text-anchor="middle">상류 공정 (범위 외)</text>
+          <text class="t-sm" x="82" y="220" text-anchor="middle">박리 → 습식 로드밀</text>
+          <text class="t-mono" x="82" y="236" text-anchor="middle">P80 66 µm</text>
+
+          <!-- feed line -->
+          <line class="ln-h" x1="148" y1="210" x2="190" y2="210" marker-end="url(#a1)"></line>
+          <circle class="stream-n" cx="169" cy="188" r="11"></circle>
+          <text class="stream-t" x="169" y="192" text-anchor="middle">1</text>
+
+          <!-- reagent skid -->
+          <rect class="box" x="196" y="70" width="104" height="38" rx="2"></rect>
+          <text class="t-sm" x="248" y="86" text-anchor="middle">약제 스키드</text>
+          <text class="t-mono" x="248" y="101" text-anchor="middle">3418A / AF242</text>
+          <line class="ln" x1="222" y1="108" x2="222" y2="164" marker-end="url(#a1)"></line>
+          <line class="ln" x1="274" y1="108" x2="274" y2="164" marker-end="url(#a1)"></line>
+          <text class="t-mono" x="308" y="140" text-anchor="start">300 g/t ×2</text>
+
+          <!-- CT-1 conditioner -->
+          <rect class="box" x="196" y="166" width="104" height="86" rx="2"></rect>
+          <line class="ln" x1="248" y1="150" x2="248" y2="234"></line>
+          <line class="ln" x1="234" y1="234" x2="262" y2="234"></line>
+          <line class="ln-t" x1="204" y1="196" x2="292" y2="196"></line>
+          <text class="t-eq" x="248" y="272" text-anchor="middle">CT-1</text>
+          <text class="t-mono" x="248" y="288" text-anchor="middle">0.70 m³ · 5 min</text>
+
+          <!-- pump P-101 -->
+          <line class="ln-h" x1="300" y1="210" x2="334" y2="210"></line>
+          <circle class="box" cx="352" cy="210" r="17"></circle>
+          <polygon points="345,201 366,210 345,219" fill="var(--line-2)"></polygon>
+          <text class="t-mono" x="352" y="248" text-anchor="middle">P-101</text>
+          <line class="ln-h" x1="370" y1="210" x2="414" y2="210" marker-end="url(#a1)"></line>
+
+          <!-- MIBC -->
+          <line class="ln" x1="398" y1="152" x2="398" y2="204" marker-end="url(#a1)"></line>
+          <text class="t-mono" x="398" y="144" text-anchor="middle">MIBC 30 ppm</text>
+
+          <!-- wash water supply -->
+          <polyline class="wt-l" points="330,44 442,44 442,66" marker-end="url(#a1wt)"></polyline>
+          <text class="t-mono t-wt" x="322" y="48" text-anchor="end">세척수 2.81 m³/h</text>
+          <circle class="stream-n" cx="412" cy="26" r="11"></circle>
+          <text class="stream-t" x="412" y="30" text-anchor="middle">2</text>
+
+          <!-- FC-101 vessel -->
+          <rect class="box" x="418" y="66" width="96" height="306" rx="2"></rect>
+          <rect class="ag-b" x="419" y="67" width="94" height="46"></rect>
+          <line class="ln-t" x1="418" y1="113" x2="514" y2="113"></line>
+          <rect class="zone" x="419" y="264" width="94" height="26"></rect>
+          <line class="ln-t" x1="418" y1="264" x2="514" y2="264"></line>
+          <line class="ln-t" x1="418" y1="290" x2="514" y2="290"></line>
+          <g class="ln-t">
+            <line x1="424" y1="306" x2="452" y2="330"></line>
+            <line x1="442" y1="306" x2="470" y2="330"></line>
+            <line x1="460" y1="306" x2="488" y2="330"></line>
+            <line x1="478" y1="306" x2="506" y2="330"></line>
+          </g>
+          <text class="t-eq" x="466" y="392" text-anchor="middle">FC-101 부선조</text>
+          <text class="t-mono" x="466" y="408" text-anchor="middle">Ø350 × 2.4 m · 1기</text>
+
+          <!-- blower / air -->
+          <circle class="box" cx="352" cy="322" r="17"></circle>
+          <path class="ln" d="M344 314 L360 322 L344 330"></path>
+          <text class="t-mono" x="352" y="360" text-anchor="middle">B-101</text>
+          <polyline class="ln" points="370,322 396,322 396,277 414,277" marker-end="url(#a1)"></polyline>
+          <circle class="stream-n" cx="396" cy="300" r="11"></circle>
+          <text class="stream-t" x="396" y="304" text-anchor="middle">3</text>
+          <text class="t-mono" x="330" y="392" text-anchor="middle">6.93 m³/h</text>
+
+          <!-- concentrate train -->
+          <line class="ag-l" x1="514" y1="88" x2="596" y2="88" marker-end="url(#a1ag)"></line>
+          <circle class="stream-n" cx="556" cy="66" r="11"></circle>
+          <text class="stream-t" x="556" y="70" text-anchor="middle">4</text>
+          <rect class="ag-f" x="600" y="58" width="92" height="62" rx="2"></rect>
+          <text class="t-sm" x="646" y="84" text-anchor="middle">TK-102</text>
+          <text class="t-mono" x="646" y="101" text-anchor="middle">정광 농축</text>
+          <line class="ag-l" x1="692" y1="88" x2="752" y2="88" marker-end="url(#a1ag)"></line>
+          <rect class="ag-f" x="756" y="58" width="84" height="62" rx="2"></rect>
+          <text class="t-sm" x="798" y="84" text-anchor="middle">FL-101</text>
+          <text class="t-mono" x="798" y="101" text-anchor="middle">여과기</text>
+          <line class="ag-l" x1="840" y1="88" x2="912" y2="88" marker-end="url(#a1ag)"></line>
+          <rect class="ag-f" x="916" y="52" width="110" height="74" rx="2"></rect>
+          <text class="t-eq t-ag" x="971" y="76" text-anchor="middle">최종 정광</text>
+          <text class="t-mono" x="971" y="93" text-anchor="middle">6.56 kg/h</text>
+          <text class="t-mono t-ag" x="971" y="109" text-anchor="middle">44.8 wt% Ag</text>
+
+          <!-- tailings train -->
+          <polyline class="ln-h" points="466,372 466,404 596,404" marker-end="url(#a1)"></polyline>
+          <circle class="stream-n" cx="540" cy="382" r="11"></circle>
+          <text class="stream-t" x="540" y="386" text-anchor="middle">5</text>
+          <rect class="box" x="600" y="368" width="92" height="72" rx="2"></rect>
+          <text class="t-sm" x="646" y="396" text-anchor="middle">TK-101</text>
+          <text class="t-mono" x="646" y="413" text-anchor="middle">미광 농축</text>
+          <line class="ln-h" x1="692" y1="404" x2="912" y2="404" marker-end="url(#a1)"></line>
+          <rect class="box" x="916" y="374" width="110" height="62" rx="2"></rect>
+          <text class="t-eq" x="971" y="398" text-anchor="middle">최종 미광</text>
+          <text class="t-mono" x="971" y="415" text-anchor="middle">493 kg/h · 18 g/t</text>
+
+          <!-- water recycle -->
+          <polyline class="wt-l" points="646,440 646,478 248,478 248,254" marker-end="url(#a1wt)"></polyline>
+          <circle class="stream-n" cx="430" cy="478" r="11"></circle>
+          <text class="stream-t" x="430" y="482" text-anchor="middle">6</text>
+          <text class="t-mono t-wt" x="452" y="466" text-anchor="start">공정수 회수 9.6 m³/h · 블리드 10 %</text>
+        </svg>
+      </div>
+      <figcaption>
+        급광은 조건조 CT-1 에서 포수제·촉진제와 5 분 접촉한 뒤 부선조 FC-101 한 대를
+        지나며 갈라진다. 질량의 1.3 % 만 정광으로 넘어가고 나머지는 미광으로 빠진다.
+        농축조 월류수는 전량 조건조로 돌아가며, TK-102 월류수도 같은 계통에 합류한다.
+      </figcaption>
+    </figure>
+
+    <div class="tablewrap">
+      <table>
+        <caption>스트림 물질수지 — 최대 0.50 t/h</caption>
+        <thead>
+          <tr>
+            <th>번호</th><th>스트림</th>
+            <th class="num">고체 kg/h</th><th class="num">슬러리 m³/h</th>
+            <th class="num">고체 wt%</th><th class="num">Ag 품위</th><th class="num">Ag kg/h</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="tag">1</td><td>급광</td><td class="num">500.0</td><td class="num">6.93</td><td class="num">7.0</td><td class="num">5,900 g/t</td><td class="num">2.95</td></tr>
+          <tr><td class="tag">2</td><td>세척수</td><td class="num">—</td><td class="num">2.81</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+          <tr><td class="tag">3</td><td>공기</td><td class="num">—</td><td class="num">6.93</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+          <tr><td class="tag">4</td><td>정광</td><td class="num">6.56</td><td class="num">1.94</td><td class="num">0.3</td><td class="num">44.8 wt%</td><td class="num">2.94</td></tr>
+          <tr><td class="tag">5</td><td>미광</td><td class="num">493.4</td><td class="num">7.72</td><td class="num">6.2</td><td class="num">18 g/t</td><td class="num">0.01</td></tr>
+          <tr><td class="tag">6</td><td>회수 공정수</td><td class="num">—</td><td class="num">9.60</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+          <tr class="total"><td></td><td>정광 + 미광</td><td class="num">500.0</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">2.95</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>DWG-001</b></div>
+      <div><span>도면명</span><b>공정 흐름도</b></div>
+      <div><span>축척</span><b>NTS</b></div>
+      <div><span>단위</span><b>mm / kg·h⁻¹</b></div>
+      <div><span>REV</span><b>A</b></div>
+      <div><span>근거</span><b>계산서 §5</b></div>
+    </div>
+  </section>
+
+  <!-- ================= SHEET 2 : VESSEL SECTION ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-002</span>
+      <span class="sheet-title">부선조 FC-101 상세 단면도</span>
+      <span class="sheet-sub">세척수 bias 방식 · 계장 포함</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 900 660" role="img"
+             aria-label="부선조 수직 단면도. 위에서부터 정광 월류 런더, 세척수 분배관과 거품층, 포집부, 스파저, 70도 경사판, 미광 배출부 순으로 배치되며, 급광과 공기가 각각 2.0 세제곱센티미터 매초 flux 로 스파저에 들어가고 세척수 0.81 에서 월류수 0.56 을 뺀 0.25 센티미터 매초의 하향 bias 가 거품층을 씻어내린다">
+          <defs>
+            <marker id="a2" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="currentColor"></polygon>
+            </marker>
+            <marker id="a2ag" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--ag)"></polygon>
+            </marker>
+            <marker id="a2wt" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--water)"></polygon>
+            </marker>
+            <marker id="d2" viewBox="0 0 10 8" refX="5" refY="4" markerWidth="7" markerHeight="6" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--ink-3)"></polygon>
+            </marker>
+          </defs>
+
+          <!-- launders -->
+          <rect class="ag-f" x="226" y="72" width="34" height="30"></rect>
+          <rect class="ag-f" x="400" y="72" width="34" height="30"></rect>
+
+          <!-- vessel shell -->
+          <path class="box" d="M260 72 L260 500 L296 552 L364 552 L400 500 L400 72 Z"></path>
+
+          <!-- froth zone -->
+          <rect class="ag-b" x="261" y="73" width="138" height="94"></rect>
+          <line class="ln-t" x1="260" y1="167" x2="400" y2="167"></line>
+          <circle class="ln-t" cx="286" cy="146" r="6"></circle>
+          <circle class="ln-t" cx="308" cy="132" r="4.5"></circle>
+          <circle class="ln-t" cx="332" cy="150" r="7"></circle>
+          <circle class="ln-t" cx="356" cy="134" r="5"></circle>
+          <circle class="ln-t" cx="376" cy="150" r="5.5"></circle>
+
+          <!-- wash water distributor -->
+          <line class="wt-l" x1="268" y1="112" x2="392" y2="112"></line>
+          <g class="wt-t">
+            <line x1="286" y1="112" x2="286" y2="126" marker-end="url(#a2wt)"></line>
+            <line x1="316" y1="112" x2="316" y2="126" marker-end="url(#a2wt)"></line>
+            <line x1="346" y1="112" x2="346" y2="126" marker-end="url(#a2wt)"></line>
+            <line x1="376" y1="112" x2="376" y2="126" marker-end="url(#a2wt)"></line>
+          </g>
+
+          <!-- bias arrow -->
+          <line class="wt-l" x1="330" y1="176" x2="330" y2="212" marker-end="url(#a2wt)"></line>
+          <text class="t-mono t-wt" x="342" y="200" text-anchor="start">Jb 하향</text>
+
+          <!-- sparger -->
+          <rect class="zone" x="261" y="330" width="138" height="34"></rect>
+          <rect class="ln" x="286" y="336" width="88" height="22" rx="3"></rect>
+          <text class="t-mono" x="330" y="352" text-anchor="middle">스파저</text>
+
+          <!-- inclined channels -->
+          <g class="ln-t">
+            <line x1="266" y1="490" x2="316" y2="400"></line>
+            <line x1="286" y1="490" x2="336" y2="400"></line>
+            <line x1="306" y1="490" x2="356" y2="400"></line>
+            <line x1="326" y1="490" x2="376" y2="400"></line>
+            <line x1="346" y1="490" x2="396" y2="400"></line>
+            <line x1="264" y1="450" x2="286" y2="410"></line>
+            <line x1="366" y1="490" x2="398" y2="432"></line>
+          </g>
+
+          <!-- zone labels -->
+          <text class="t-sm" x="332" y="93" text-anchor="middle">정광 월류</text>
+          <text class="t-sm" x="176" y="248" text-anchor="middle">포집부</text>
+          <text class="t-sm" x="330" y="248" text-anchor="middle">기포–입자 부착</text>
+          <text class="t-mono" x="330" y="266" text-anchor="middle">기액 체류 1 min</text>
+          <text class="t-sm" x="330" y="424" text-anchor="middle">경사판</text>
+          <text class="t-mono" x="330" y="440" text-anchor="middle">70° / 12 mm</text>
+
+          <!-- concentrate out -->
+          <line class="ag-l" x1="226" y1="87" x2="150" y2="87" marker-end="url(#a2ag)"></line>
+          <text class="t-mono t-ag" x="144" y="82" text-anchor="end">정광 Jo 0.56</text>
+          <text class="t-mono" x="144" y="98" text-anchor="end">1.94 m³/h</text>
+
+          <!-- wash water in -->
+          <polyline class="wt-l" points="150,40 470,40 470,112 400,112" marker-end="url(#a2wt)"></polyline>
+          <text class="t-mono t-wt" x="150" y="32" text-anchor="start">세척수 Jw 0.81 cm/s · 2.81 m³/h</text>
+
+          <!-- feed in -->
+          <line class="ln-h" x1="150" y1="312" x2="256" y2="312" marker-end="url(#a2)"></line>
+          <line class="ln" x1="256" y1="312" x2="256" y2="340"></line>
+          <line class="ln" x1="256" y1="340" x2="282" y2="340" marker-end="url(#a2)"></line>
+          <text class="t-mono" x="144" y="307" text-anchor="end">급광 Jf 2.0 cm/s</text>
+          <text class="t-mono" x="144" y="323" text-anchor="end">6.93 m³/h · 7 wt%</text>
+
+          <!-- air in -->
+          <line class="ln-h" x1="150" y1="378" x2="240" y2="378" marker-end="url(#a2)"></line>
+          <polyline class="ln" points="240,378 240,354 282,354" marker-end="url(#a2)"></polyline>
+          <text class="t-mono" x="144" y="373" text-anchor="end">공기 Jg 2.0 cm/s</text>
+          <text class="t-mono" x="144" y="389" text-anchor="end">6.93 m³/h · 기포 0.5–1 mm</text>
+
+          <!-- tailings out -->
+          <line class="ln-h" x1="330" y1="552" x2="330" y2="588"></line>
+          <polygon points="318,582 342,582 318,600 342,600" fill="none" stroke="currentColor" stroke-width="1.5"></polygon>
+          <line class="ln-h" x1="330" y1="600" x2="330" y2="624" marker-end="url(#a2)"></line>
+          <text class="t-mono" x="352" y="622" text-anchor="start">미광 493 kg/h · 18 g/t</text>
+
+          <!-- dimensions -->
+          <line class="ln-t" x1="260" y1="66" x2="260" y2="48"></line>
+          <line class="ln-t" x1="400" y1="66" x2="400" y2="48"></line>
+          <line x1="260" y1="56" x2="400" y2="56" stroke="var(--ink-3)" stroke-width="1"
+                marker-start="url(#d2)" marker-end="url(#d2)"></line>
+          <text class="t-dim" x="330" y="50" text-anchor="middle">Ø350</text>
+
+          <line class="ln-t" x1="404" y1="167" x2="524" y2="167"></line>
+          <line class="ln-t" x1="404" y1="330" x2="524" y2="330"></line>
+          <line x1="512" y1="167" x2="512" y2="330" stroke="var(--ink-3)" stroke-width="1"
+                marker-start="url(#d2)" marker-end="url(#d2)"></line>
+          <text class="t-dim" x="520" y="252" text-anchor="start">라이저 2.40 m</text>
+
+          <line class="ln-t" x1="404" y1="72" x2="580" y2="72"></line>
+          <line class="ln-t" x1="404" y1="552" x2="580" y2="552"></line>
+          <line x1="568" y1="72" x2="568" y2="552" stroke="var(--ink-3)" stroke-width="1"
+                marker-start="url(#d2)" marker-end="url(#d2)"></line>
+          <text class="t-dim" x="576" y="316" text-anchor="start">전고 ≈ 3.6 m</text>
+
+          <!-- instrumentation -->
+          <circle class="instr" cx="678" cy="112" r="18"></circle>
+          <text class="instr-t" x="678" y="109" text-anchor="middle">FIC</text>
+          <text class="instr-t" x="678" y="121" text-anchor="middle">104</text>
+          <line class="dash" x1="660" y1="112" x2="474" y2="112"></line>
+
+          <circle class="instr" cx="678" cy="378" r="18"></circle>
+          <text class="instr-t" x="678" y="375" text-anchor="middle">FIC</text>
+          <text class="instr-t" x="678" y="387" text-anchor="middle">103</text>
+          <line class="dash" x1="660" y1="378" x2="248" y2="378"></line>
+
+          <circle class="instr" cx="678" cy="197" r="18"></circle>
+          <text class="instr-t" x="678" y="194" text-anchor="middle">LIC</text>
+          <text class="instr-t" x="678" y="206" text-anchor="middle">105</text>
+          <line class="dash" x1="660" y1="197" x2="404" y2="172"></line>
+
+          <circle class="instr" cx="678" cy="591" r="18"></circle>
+          <text class="instr-t" x="678" y="588" text-anchor="middle">FIC</text>
+          <text class="instr-t" x="678" y="600" text-anchor="middle">110</text>
+          <line class="dash" x1="660" y1="591" x2="346" y2="591"></line>
+
+          <circle class="instr" cx="790" cy="352" r="24" stroke-width="2.2"></circle>
+          <circle class="ln-t" cx="790" cy="352" r="19"></circle>
+          <text class="instr-t" x="790" y="348" text-anchor="middle">FFIC</text>
+          <text class="instr-t" x="790" y="360" text-anchor="middle">106</text>
+          <path class="dash" d="M696 112 L790 112 L790 328"></path>
+          <path class="dash" d="M696 591 L790 591 L790 376"></path>
+          <text class="t-mono t-ag" x="820" y="348" text-anchor="start">bias 연산</text>
+          <text class="t-mono" x="820" y="364" text-anchor="start">Jb ≥ 0.20 cm/s</text>
+
+          <!-- callouts -->
+          <line class="ln-t" x1="366" y1="140" x2="470" y2="140"></line>
+          <text class="t-sm" x="476" y="136" text-anchor="start">세척수가 거품층을 아래로 지나며</text>
+          <text class="t-sm" x="476" y="152" text-anchor="start">동반 맥석을 씻어내린다</text>
+        </svg>
+      </div>
+      <figcaption>
+        이 장치의 설계 변수는 체적이 아니라 단면적 기준 flux 다. 급광·공기·세척수 flux 를
+        실증값 그대로 두고 단면적만 처리량에 비례해 키우면 기액 체류시간과 bias 조건이
+        보존된다. 거품층을 아래로 지나는 순 하향류 <em>Jb = Jw − Jo</em> 가 동반 맥석을
+        씻어내므로, 기계식 셀의 러퍼+클리너 2단이 하는 일을 한 대가 해낸다.
+      </figcaption>
+    </figure>
+
+    <div class="tablewrap">
+      <table>
+        <caption>설계 flux 및 주요 치수</caption>
+        <thead>
+          <tr><th>항목</th><th>기호</th><th class="num">설계값</th><th class="num">유량</th><th>비고</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>급광 flux</td><td class="tag">Jf</td><td class="num">2.00 cm/s</td><td class="num">6.93 m³/h</td><td>7 wt% 고체</td></tr>
+          <tr><td>기체 flux</td><td class="tag">Jg</td><td class="num">2.00 cm/s</td><td class="num">6.93 m³/h</td><td>Jf 에 1:1 연동</td></tr>
+          <tr><td>세척수 flux</td><td class="tag">Jw</td><td class="num">0.81 cm/s</td><td class="num">2.81 m³/h</td><td>Jw/Jf = 0.405</td></tr>
+          <tr><td>월류수 flux</td><td class="tag">Jo</td><td class="num">0.56 cm/s</td><td class="num">1.94 m³/h</td><td>정광 동반수</td></tr>
+          <tr><td>bias flux</td><td class="tag">Jb</td><td class="num">0.25 cm/s</td><td class="num">0.87 m³/h</td><td>하한 0.20 — 제어 대상</td></tr>
+          <tr><td>동체 내경</td><td class="tag">D</td><td class="num">Ø350 mm</td><td class="num">0.0962 m²</td><td>단면적</td></tr>
+          <tr><td>라이저 높이</td><td class="tag">H</td><td class="num">2.40 m</td><td class="num">0.231 m³</td><td>기액 체류 1 min</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>DWG-002</b></div>
+      <div><span>도면명</span><b>부선조 상세 단면</b></div>
+      <div><span>축척</span><b>NTS</b></div>
+      <div><span>단위</span><b>mm / cm·s⁻¹</b></div>
+      <div><span>REV</span><b>A</b></div>
+      <div><span>근거</span><b>계산서 §5.2</b></div>
+    </div>
+  </section>
+
+  <!-- ================= SHEET 3 : OPTION COMPARISON ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-003</span>
+      <span class="sheet-title">장치 형식 대안 비교</span>
+      <span class="sheet-sub">같은 급광 · 같은 정광 품위 · 다른 장치 구성</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1000 400" role="img"
+             aria-label="1안은 부선조 한 대로 은 99.7 퍼센트를 회수하고 미광 품위 18 그램 매톤에 설치전력 3.6 킬로와트인 반면, 2안은 러퍼 두 대와 클리너 한 대에 순환류가 붙어 은 91.0 퍼센트, 미광 535 그램 매톤, 설치전력 10.3 킬로와트로 같은 정광 품위를 내는 비교도">
+          <defs>
+            <marker id="a3" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="currentColor"></polygon>
+            </marker>
+            <marker id="a3ag" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--ag)"></polygon>
+            </marker>
+          </defs>
+
+          <!-- ===== option 1 ===== -->
+          <text class="t-eq t-ag" x="20" y="40" text-anchor="start">1안 — 세척수 bias 부선조</text>
+          <text class="t-sm" x="184" y="40" text-anchor="start">권고안</text>
+
+          <line class="ln-h" x1="20" y1="104" x2="96" y2="104" marker-end="url(#a3)"></line>
+          <text class="t-mono" x="20" y="94" text-anchor="start">급광 500 kg/h</text>
+
+          <rect class="ag-f" x="100" y="62" width="72" height="86" rx="2" stroke-width="2.4"></rect>
+          <text class="t-mono t-ag" x="136" y="100" text-anchor="middle">FC-101</text>
+          <text class="t-mono" x="136" y="116" text-anchor="middle">Ø350</text>
+          <text class="t-mono" x="136" y="166" text-anchor="middle">1기</text>
+
+          <line class="ag-l" x1="172" y1="80" x2="300" y2="80" marker-end="url(#a3ag)"></line>
+          <text class="t-mono t-ag" x="306" y="76" text-anchor="start">정광 44.8 wt% Ag</text>
+          <text class="t-mono" x="306" y="92" text-anchor="start">6.56 kg/h</text>
+
+          <line class="ln-h" x1="172" y1="132" x2="300" y2="132" marker-end="url(#a3)"></line>
+          <text class="t-mono" x="306" y="128" text-anchor="start">미광 18 g/t</text>
+          <text class="t-mono" x="306" y="144" text-anchor="start">493 kg/h</text>
+
+          <!-- divider -->
+          <line x1="20" y1="206" x2="700" y2="206" stroke="var(--rule)" stroke-width="1.5"></line>
+
+          <!-- ===== option 2 ===== -->
+          <text class="t-eq" x="20" y="244" text-anchor="start">2안 — 기계식 러퍼 뱅크 + 클리너</text>
+          <text class="t-sm" x="252" y="244" text-anchor="start">범용 장비 · 실시권 제약 없음</text>
+
+          <line class="ln-h" x1="20" y1="322" x2="96" y2="322" marker-end="url(#a3)"></line>
+          <text class="t-mono" x="20" y="312" text-anchor="start">급광 500 kg/h</text>
+
+          <rect class="box" x="100" y="292" width="60" height="62" rx="2"></rect>
+          <text class="t-mono" x="130" y="328" text-anchor="middle">FC-201a</text>
+          <line class="ln" x1="160" y1="322" x2="176" y2="322" marker-end="url(#a3)"></line>
+          <rect class="box" x="180" y="292" width="60" height="62" rx="2"></rect>
+          <text class="t-mono" x="210" y="328" text-anchor="middle">FC-201b</text>
+          <text class="t-mono" x="170" y="374" text-anchor="middle">러퍼 뱅크 2기</text>
+
+          <line class="ln-h" x1="240" y1="340" x2="470" y2="340" marker-end="url(#a3)"></line>
+          <text class="t-mono" x="476" y="336" text-anchor="start">미광 535 g/t</text>
+
+          <polyline class="ag-l" points="240,302 268,302 268,262" marker-end="url(#a3ag)"></polyline>
+          <rect class="box" x="290" y="228" width="66" height="60" rx="2"></rect>
+          <text class="t-mono" x="323" y="262" text-anchor="middle">FC-202</text>
+          <text class="t-mono" x="323" y="304" text-anchor="middle">클리너</text>
+          <line class="ln" x1="268" y1="258" x2="286" y2="258"></line>
+
+          <line class="ag-l" x1="356" y1="246" x2="470" y2="246" marker-end="url(#a3ag)"></line>
+          <text class="t-mono t-ag" x="476" y="242" text-anchor="start">정광 43.6 wt% Ag</text>
+          <text class="t-mono" x="476" y="258" text-anchor="start">6.15 kg/h</text>
+
+          <!-- recycle -->
+          <polyline class="dash" points="323,288 323,388 80,388 80,322" marker-end="url(#a3)"></polyline>
+          <text class="t-mono" x="200" y="382" text-anchor="middle">클리너 미광 순환 2.2 %</text>
+
+          <!-- ===== difference panel ===== -->
+          <line x1="712" y1="24" x2="712" y2="392" stroke="var(--rule)" stroke-width="1.5"></line>
+          <text class="t-mono" x="736" y="42" text-anchor="start">차이 (1안 기준)</text>
+
+          <text class="t-mono" x="736" y="80" text-anchor="start">Ag 회수율</text>
+          <text class="t-eq t-ag" x="736" y="102" text-anchor="start">+8.7 %p</text>
+          <text class="t-mono" x="736" y="120" text-anchor="start">99.7 % vs 91.0 %</text>
+
+          <text class="t-mono" x="736" y="162" text-anchor="start">미광 Ag 손실</text>
+          <text class="t-eq t-ag" x="736" y="184" text-anchor="start">1/30</text>
+          <text class="t-mono" x="736" y="202" text-anchor="start">18 vs 535 g/t</text>
+
+          <text class="t-mono" x="736" y="244" text-anchor="start">설치 전력</text>
+          <text class="t-eq t-ag" x="736" y="266" text-anchor="start">−65 %</text>
+          <text class="t-mono" x="736" y="284" text-anchor="start">3.6 vs 10.3 kW</text>
+
+          <text class="t-mono" x="736" y="326" text-anchor="start">정광 품위</text>
+          <text class="t-eq" x="736" y="348" text-anchor="start">동등</text>
+          <text class="t-mono" x="736" y="366" text-anchor="start">복합입자 상한</text>
+        </svg>
+      </div>
+      <figcaption>
+        두 안의 정광 품위가 같다는 점이 핵심이다. 품위는 장치가 아니라 원료의 복합입자
+        성질이 결정한다 — Ag 는 Si 웨이퍼에 소결된 전극이라 부상할 때 Si 코어를 함께
+        끌고 올라오고, 이 비율이 정광 품위의 물리적 상한 1/(1+1.1) ≈ 47.6 wt% 를 만든다.
+        장치 선정으로 바꿀 수 있는 것은 회수율·전력·설치면적뿐이다.
+      </figcaption>
+    </figure>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>DWG-003</b></div>
+      <div><span>도면명</span><b>대안 비교</b></div>
+      <div><span>축척</span><b>NTS</b></div>
+      <div><span>기준</span><b>최대 0.50 t/h</b></div>
+      <div><span>REV</span><b>A</b></div>
+      <div><span>근거</span><b>계산서 §7</b></div>
+    </div>
+  </section>
+
+  <!-- ================= NOTES ================= -->
+  <section class="notes">
+    <h2>도면 주기 (General Notes)</h2>
+    <ol>
+      <li>본 도면은 <strong>기본설계(basic design)</strong> 수준이며 제작도가 아니다. 배관 구경, 밸브 형식, 재질 사양, 지지 구조는 상세설계에서 확정한다.</li>
+      <li>모든 유량은 <strong>최대 처리량 0.50 t/h</strong> 정상상태 기준이다. 평균 0.30 t/h 에서는 고체 농도를 유지한 채 세 flux 를 같은 비율로 낮추므로 분리 조건과 성능이 동일하다.</li>
+      <li>DWG-002 는 <strong>축척 없음(NTS)</strong>. 실제 부선조는 내경 대비 전고가 약 10:1 로, 도면보다 훨씬 가늘고 길다.</li>
+      <li>설계 고체 농도 <strong>7 wt%</strong> 는 회분식 실증에서 검증된 값이다. 같은 Ø350 mm 동체는 15 wt% 에서 1.14 t/h, 30 wt% 에서 2.51 t/h 를 낼 수 있으나 <strong>PV 원료로는 미검증</strong>이므로 설계 기준으로 삼지 않았다.</li>
+      <li><strong>bias 제어(FFIC-106)가 이 설비의 전부다.</strong> bias 가 음수로 넘어가면 세척 효과가 사라져 정광 품위가 무너지고, 과도하면 회수율이 떨어진다. 세척수 유량과 미광 배출을 협조 제어해 Jb 를 직접 연산한다.</li>
+      <li>pH 조정제·황화제·억제제를 쓰지 않는다. 포수제가 금속 Ag 표면에 직접 선택 흡착하므로 <strong>자연 pH</strong> 에서 운전하며, H₂S·CS₂ 위험이 설계상 존재하지 않는다.</li>
+      <li>공정수 9.6 m³/h 는 농축조에서 회수해 재사용한다(블리드 10 %). 7 wt% 라는 낮은 고체 농도가 물 회수 설비를 크게 만드는 유일한 대가다.</li>
+      <li>1안의 장치 형식은 <strong>특허 가출원 대상</strong>(AU 2025902821)이다. 상업화 시 실시권 검토가 필요하며, 불발 시 2안이 현실적 차선이다.</li>
+      <li>도면의 모든 수치는 <code>design_basis.py</code> 로부터 코드로 산출된 값이다. 시운전 시험 결과로 설계 기준을 갱신하면 수치가 달라질 수 있다.</li>
+    </ol>
+  </section>
+
+  <p class="footer">
+    근거 — Saffarian, Galvin, Firouzi, <em>Minerals Engineering</em> 242 (2026) 110189 (회분식 실증) 및
+    ChemRxiv doi:10.26434/chemrxiv.15003814/v1 (연속 정상상태 실증).
+    수치 재현은 <code>tests/test_references.py</code> 가 검증한다.
+  </p>
+
+</div>
+
+</body>
+</html>

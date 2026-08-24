@@ -16,6 +16,9 @@
 
 전체 계산 과정은 [설계 계산서](design-calculation.md) 에 있고, 그 계산서는
 `PYTHONPATH=src python -m flotation_design` 로 코드에서 자동 생성된다.
+도면은 [설계도 3매](drawings/ag-flotation-drawings.html) — 공정 흐름도(DWG-001),
+부선조 상세 단면도(DWG-002), 장치 대안 비교도(DWG-003) — 로 별도 정리했다
+(브라우저로 열어야 한다).
 
 ---
 

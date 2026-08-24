@@ -31,6 +31,7 @@ Dynamic industry Development
 |---|---|
 | [docs/flotation-separator-design.md](docs/flotation-separator-design.md) | 설계 사양서 — 근거, 두 안, 계장·안전, 시운전 계획 |
 | [docs/design-calculation.md](docs/design-calculation.md) | 설계 계산서 (코드에서 자동 생성) |
+| [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 3매** — 공정 흐름도, 부선조 상세 단면도, 장치 대안 비교도 (브라우저로 열 것) |
 
 ### 사용법
 
