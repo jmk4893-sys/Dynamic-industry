@@ -79,7 +79,11 @@ def animate_fragmentation(
     z_hi = max(2.0, all_pos[..., 2].max() + 1)
 
     writer, real = _writer(path, fps)
-    size = float(np.clip(2200.0 / max(sel.size, 1), 1.0, 14.0))
+    # 마커 크기는 '솎아내기 전의 밀도'를 유지하도록 잡는다. 예전 휴리스틱
+    # (2200/n)은 입자가 많아질수록 작아져 하한 1 pt^2 에 붙어 버렸고, 3만 입자
+    # 해석에서는 화면이 암반이 아니라 먼지처럼 보였다. 기준은 적재 그림
+    # (plot_muckpile)이 전 입자를 s=3 으로 그려 잘 읽히는 것이다.
+    size = float(np.clip(3.0 * n / max(sel.size, 1), 3.0, 40.0))
     try:
         for n_f, (t, _, _) in enumerate(result.frames):
             pos, spd = all_pos[n_f], all_spd[n_f]
@@ -87,7 +91,8 @@ def animate_fragmentation(
 
             ax = fig.add_subplot(121, projection="3d")
             ax.scatter(pos[:, 0], pos[:, 1], pos[:, 2], c=spd, cmap="inferno",
-                       vmin=0, vmax=vmax, s=size, depthshade=False, linewidths=0)
+                       vmin=0, vmax=vmax, s=size * 0.6, depthshade=False,
+                       linewidths=0)
             ax.set_xlim(x_lo, x_hi); ax.set_ylim(y_lo, y_hi); ax.set_zlim(z_lo, z_hi)
             ax.set_xlabel("X [m]"); ax.set_ylabel("Y [m]"); ax.set_zlabel("Z [m]")
             ax.view_init(elev=18, azim=-62)
@@ -99,7 +104,7 @@ def animate_fragmentation(
 
             ax2 = fig.add_subplot(122)
             sc = ax2.scatter(pos[:, 0], pos[:, 2], c=spd, cmap="inferno",
-                             vmin=0, vmax=vmax, s=size * 1.6, linewidths=0)
+                             vmin=0, vmax=vmax, s=size, linewidths=0)
             ax2.axvline(result.face_x, color="tab:cyan", lw=1.0, ls="--")
             ax2.axhline(result.toe_z, color="tab:cyan", lw=1.0, ls="--")
             ax2.axhline(0.0, color="0.6", lw=0.8)
