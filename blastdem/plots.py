@@ -134,17 +134,25 @@ def plot_surface_ppv(result, pattern, records: list[SensorRecord], path: str) ->
     if not np.isfinite(hi) or hi <= 0:      # 진동이 지표에 도달하지 않은 경우
         plt.close(fig)
         return
-    pos_vals = ppv[ppv > 0]
-    lo = max(float(pos_vals.min()) if pos_vals.size else hi / 1e4, hi / 1e4)
+    lo = hi / 300.0                      # 표시 동적범위 약 2.5 decade
     lv = np.logspace(np.log10(lo), np.log10(hi), 24)
-    cf = ax.tricontourf(tri, np.maximum(ppv, lv[0]), levels=lv, cmap="turbo",
-                        norm=matplotlib.colors.LogNorm())
-    cb = fig.colorbar(cf, ax=ax, label="PPV [mm/s]")
-    for name, lim in REGULATION[:4]:
+    cf = ax.tricontourf(tri, np.clip(ppv, lv[0], lv[-1]), levels=lv, cmap="turbo",
+                        norm=matplotlib.colors.LogNorm(vmin=lo, vmax=hi))
+    cb = fig.colorbar(cf, ax=ax, label="PPV [mm/s]", shrink=0.85)
+    ticks = [t for t in (0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
+             if lo <= t <= hi]
+    if len(ticks) >= 2:
+        cb.set_ticks(ticks)
+        cb.set_ticklabels([f"{t:g}" for t in ticks])
+    # 규제기준 등고선 — 해석 범위 안에 드는 기준만
+    for name, lim in REGULATION:
+        if not (lv[0] < lim < hi):
+            continue
         try:
-            cs = ax.tricontour(tri, np.maximum(ppv, lv[0]), levels=[lim],
-                               colors="white", linewidths=1.1, linestyles="--")
-            ax.clabel(cs, fmt=lambda x, n=name: (n if KO else f"{x:g}"), fontsize=7)
+            cs = ax.tricontour(tri, np.clip(ppv, lv[0], lv[-1]), levels=[lim],
+                               colors="white", linewidths=1.4, linestyles="--")
+            ax.clabel(cs, fmt=lambda x, n=name: (f"{n} {x:g}" if KO else f"{x:g}"),
+                      fontsize=7, colors="white")
         except Exception:
             pass
     hp = pattern.positions()
@@ -164,8 +172,11 @@ def plot_snapshots(result, pattern, path: str) -> None:
         return
     ts = sorted(snaps)
     ncol = min(4, len(ts)); nrow = int(np.ceil(len(ts) / ncol))
-    fig, axes = plt.subplots(nrow, ncol, figsize=(3.4 * ncol, 3.0 * nrow), squeeze=False)
     pos = result.surface_pos
+    ar = (pos[:, 1].max() - pos[:, 1].min()) / max(pos[:, 0].max() - pos[:, 0].min(), 1e-9)
+    w = 3.4
+    fig, axes = plt.subplots(nrow, ncol, figsize=(w * ncol, w * ar * nrow + 0.6),
+                             squeeze=False)
     tri = _surface_tri(pos)
     vmax = max(float(s.max()) for s in snaps.values()) * 1000.0
     if not np.isfinite(vmax) or vmax <= 0:
