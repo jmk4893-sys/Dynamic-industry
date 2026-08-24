@@ -112,6 +112,12 @@ class BenchGeometry:
         return (Z <= 0.0) & (X >= self.face_x - shift) | (Z <= -self.bench_height)
 
 
+#: 흡수경계(Cerjan 스펀지) 기본 두께 [셀].  계측점은 반드시 이 층 밖에 두어야
+#: 한다 — 안쪽에 두면 인위적으로 감쇠된 값을 읽는다.
+SPONGE_CELLS = 20
+SPONGE_ALPHA = 0.30
+
+
 @dataclass
 class FDMConfig:
     """FDM 해석 설정."""
@@ -122,8 +128,8 @@ class FDMConfig:
     points_per_wavelength: float = 6.0   # 4차 격자는 5~6개면 충분
     max_cells: int = 3_000_000
     cfl: float = 0.75                # dt = cfl * dt_max
-    sponge_cells: int = 20           # 흡수층 두께 [셀]
-    sponge_alpha: float = 0.30       # 흡수 강도 (층 전체 기준)
+    sponge_cells: int = SPONGE_CELLS   # 흡수층 두께 [셀]
+    sponge_alpha: float = SPONGE_ALPHA  # 흡수 강도 (층 전체 기준)
     duration: float = 0.5
     record_every: int = 1
     snapshot_times: list[float] = field(default_factory=list)
@@ -142,8 +148,8 @@ class FDMModel:
         spacing: float,
         geometry: BenchGeometry | None = None,
         poisson: float | None = None,
-        sponge_cells: int = 20,
-        sponge_alpha: float = 0.30,
+        sponge_cells: int = SPONGE_CELLS,
+        sponge_alpha: float = SPONGE_ALPHA,
         air_cells: int = 4,
     ) -> None:
         self.rock = rock
@@ -266,6 +272,18 @@ class FDMModel:
                     sl[axis] = m if side == 0 else self.shape[axis] - 1 - m
                     np.multiply(w[tuple(sl)], taper[m], out=w[tuple(sl)])
         self.sponge = w
+
+    def sponge_weight(self, pts: np.ndarray) -> np.ndarray:
+        """주어진 좌표에서의 스펀지 가중치(1.0 = 흡수층 밖).
+
+        계측점이 흡수층 안에 들어가면 그 기록은 인위적으로 감쇠된 값이라
+        감쇠지수도 보정계수도 모두 틀어진다. 해석 전에 확인하기 위한 것.
+        """
+        pts = np.atleast_2d(np.asarray(pts, dtype=float))
+        i = np.clip(np.rint((pts[:, 0] - self.x0) / self.h).astype(int), 0, self.nx - 1)
+        j = np.clip(np.rint((pts[:, 1] - self.y0) / self.h).astype(int), 0, self.ny - 1)
+        k = np.clip(np.rint((pts[:, 2] + self.depth) / self.h).astype(int), 0, self.nz - 1)
+        return self.sponge[i, j, k]
 
     # ---- 수치 파라미터 ------------------------------------------------------
     @property

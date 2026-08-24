@@ -489,6 +489,30 @@ def test_fdm_timestep_stability_margin():
     assert abs(z(sv.cfg.damping_freq) - rock.damping_ratio) < 1e-12
 
 
+def test_fdm_sensors_outside_sponge():
+    """계측점이 흡수층(스펀지) 안에 들어가면 안 된다.
+
+    흡수층 안의 기록은 인위적으로 감쇠된 값이라, 감쇠지수 n 이 실제보다 크게
+    나오고 경험식 보정계수 eta 까지 함께 틀어진다. 예전 격자산정은 흡수층
+    두께를 여유로 잡지 않아서 80 m 계측점이 층 안(가중치 0.45)에 들어갔다.
+    """
+    from blastsim.project import ProjectConfig, BlastProject, QUALITY_PRESETS
+
+    for quality in QUALITY_PRESETS:
+        for dists in ([30.0, 50.0, 80.0], [30.0, 50.0, 80.0, 120.0], [15.0, 200.0]):
+            pr = BlastProject(ProjectConfig(quality=quality, distances=list(dists)))
+            model, pts, names = pr.vibration_model()
+            w = model.sponge_weight(pts)
+            assert w.min() > 0.999, (
+                f"{quality} {dists}: 계측점이 흡수층 안 "
+                f"(최소 가중치 {w.min():.3f}, h={model.h:.2f} m)")
+            assert model.n <= QUALITY_PRESETS[quality]["fdm_max_cells"] * 1.02, (
+                f"{quality} {dists}: 셀 예산 초과 {model.n:,}")
+
+    # 시험이 헛돌지 않는지 — 스펀지는 실제로 감쇠해야 한다
+    assert model.sponge.min() < 0.95, "스펀지가 실제로 감쇠하지 않는다"
+
+
 def test_fdm_rayleigh_wave_speed():
     """자유면 위 Rayleigh 파 속도가 이론값과 맞는가 (탄성 + 자유면 동시 검증).
 

@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from . import empirical, plots, sensors
+from . import empirical, fdm, plots, sensors
 from .explosives import get_explosive
 from .fdm import BenchGeometry, CavitySource, FDMConfig, FDMModel, FDMSolver
 from .frag import BlastLoad, FragConfig, FragModel, FragSolver
@@ -135,38 +135,71 @@ class BlastProject:
         return float(hp[:, 0].mean()), float(hp[:, 1].mean())
 
     # ---- FDM 진동 ----------------------------------------------------------
-    def run_vibration(self, log=print) -> dict:
+    def vibration_model(self) -> tuple:
+        """계측점 배치와 FDM 격자를 함께 결정한다.
+
+        흡수층(Cerjan 스펀지)은 해석영역 "밖"의 여유분이어야 한다. 계측점이 그
+        안에 들어가면 인위적으로 감쇠된 값을 읽게 되고, 그러면 감쇠지수도 폭원
+        보정계수도 함께 틀어진다. 스펀지 두께는 nb*h 로 격자간격에 비례하는데
+        h 는 셀 예산에 따라 정해지므로, 둘을 함께 풀어야 한다.
+
+        returns: (model, pts, names)
+        """
         c, q = self.cfg, self.q
         cx, cy = self.source_center
         th = math.radians(c.azimuth_deg)
         pts, names = sensors.line_array((cx, cy), (math.cos(th), math.sin(th)),
                                         c.distances)
         r_max = max(c.distances)
-
-        # 측방 반폭이 부족하면 파가 경계에 스치듯 입사해 기하감쇠가 과소평가된다
-        half = max(0.6 * r_max, 20.0)
         hp = self.pattern.positions()
-        x_range = (min(hp[:, 0].min(), pts[:, 0].min(), cx - half) - 10.0,
-                   max(hp[:, 0].max(), pts[:, 0].max(), cx + half) + 10.0)
-        y_range = (min(hp[:, 1].min(), pts[:, 1].min(), cy - half) - 10.0,
-                   max(hp[:, 1].max(), pts[:, 1].max(), cy + half) + 10.0)
-        depth = max(2.0 * (c.bench_height + self.pattern.subdrill), 0.6 * r_max, 25.0)
+        nb = fdm.SPONGE_CELLS
+        half = max(0.45 * r_max, 20.0)   # 측방 반폭 (경계 스침입사 방지)
+
+        def _grid(h: float):
+            pad = (nb + 2) * h           # 스펀지 두께 + 여유 2셀
+            x = (min(hp[:, 0].min() - 10.0, pts[:, 0].min() - pad, cx - half - pad),
+                 max(hp[:, 0].max() + 10.0, pts[:, 0].max() + pad, cx + half + pad))
+            y = (min(hp[:, 1].min() - 10.0, pts[:, 1].min() - pad, cy - half - pad),
+                 max(hp[:, 1].max() + 10.0, pts[:, 1].max() + pad, cy + half + pad))
+            # 바닥 스펀지도 표면파의 침투심도(~1파장)를 침범하면 안 된다
+            dz = max(2.0 * (c.bench_height + self.pattern.subdrill),
+                     0.45 * r_max, 25.0) + pad
+            # FDMModel 은 지표 위에 진공층(n_air)을 더 쌓는다
+            n_air = max(fdm.HALO + 2, 4)
+            cells = (((x[1] - x[0]) / h + 1) * ((y[1] - y[0]) / h + 1)
+                     * (dz / h + 1 + n_air))
+            return x, y, dz, cells
 
         # 해상 주파수 요구와 함께, 격자가 발파공 배치를 표현할 수 있어야 한다.
         # 등가공동 반경이 격자간격에 비례하므로 h 가 저항선만큼 커지면 폭원이
         # 패턴 전체로 번져 버린다.
         h = min(self.rock.s_velocity / 6.0 / q["fdm_max_freq"],
                 min(c.burden, c.spacing) / 2.0)
-        ext = (x_range[1] - x_range[0], y_range[1] - y_range[0], depth)
-        while (ext[0] / h + 1) * (ext[1] / h + 1) * (ext[2] / h + 1) > q["fdm_max_cells"]:
+        x_range, y_range, depth, cells = _grid(h)
+        while cells > q["fdm_max_cells"]:
             h *= 1.12
+            x_range, y_range, depth, cells = _grid(h)
 
         geom = BenchGeometry(bench_height=c.bench_height, face_x=self.face_x,
                             face_angle=c.face_angle_deg,
                             two_free_face=c.two_free_face)
         model = FDMModel(self.rock, x_range, y_range, depth, h, geometry=geom,
                          poisson=c.poisson)
+        return model, pts, names
+
+    def run_vibration(self, log=print) -> dict:
+        c, q = self.cfg, self.q
+        cx, cy = self.source_center
+        r_max = max(c.distances)
+        model, pts, names = self.vibration_model()
         src = CavitySource(model, self.pattern.holes, self.explosive, self.source_cfg)
+
+        w = model.sponge_weight(pts)
+        if float(w.min()) < 0.999:
+            bad = [f"{n}({wi:.3f})" for n, wi in zip(names, w) if wi < 0.999]
+            log("  [경고] 계측점이 흡수층 안에 있습니다: " + ", ".join(bad)
+                + "\n         해당 기록은 인위적으로 감쇠되어 감쇠지수·보정계수를"
+                  " 왜곡합니다. --distances 를 줄이거나 --quality 를 낮추십시오.")
 
         travel = r_max / self.rock.r_velocity
         dur = (self.pattern.total_duration + travel
