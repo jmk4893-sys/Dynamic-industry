@@ -289,10 +289,15 @@ class BlastProject:
         if self.cfg.run_fragmentation:
             log("=" * 70); log("  [2] DEM 근거리 파쇄·비산해석"); log("=" * 70)
             self.run_fragmentation(log)
+        # 보고서·그래프를 영상보다 **먼저** 저장한다. 영상 생성은 가장 느리고
+        # 가장 잘 깨지는 단계라, 여기서 죽으면 몇십 분짜리 해석 결과가 통째로
+        # 날아간다. (개별 영상 실패는 make_videos 안에서 따로 막는다.)
+        self.save(log)
         if self.cfg.make_video:
             log("=" * 70); log("  [3] 영상 생성"); log("=" * 70)
             self.make_videos(log)
-        self.save(log)
+            if self.videos:
+                self.save(log)          # 영상 목록을 보고서에 반영
         log(f"\n총 소요시간 {time.time() - t0:.1f} s,  결과: {self.cfg.outdir}/")
         return {"vibration": self.vib, "fragmentation": self.frag,
                 "videos": self.videos}
