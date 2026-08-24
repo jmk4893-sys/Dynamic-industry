@@ -316,3 +316,146 @@ def froth_loading(
         carry_rate_limit_tph_m2=carry_rate_limit_tph_m2,
         lip_loading_limit_tph_m=lip_loading_limit_tph_m,
     )
+
+
+# --------------------------------------------------------------------------
+# 중공축 급기 (hollow-shaft aeration)
+# --------------------------------------------------------------------------
+@dataclass(frozen=True)
+class HollowShaftDesign:
+    """공기를 축 내부로 보내 로터에서 분산시키는 중공축.
+
+    별도 스파저 없이 로터가 직접 기포를 잘게 부수므로 기계식 셀의 표준
+    급기 방식이다. 축 상단의 로터리 조인트로 공기를 넣고, 축 하단
+    로터 허브의 분산구로 내보낸다.
+
+    Attributes:
+        bore_mm: 축 내경 (공기 통로).
+        outer_diameter_mm: 축 외경.
+        air_velocity_m_s: 축 내부 공기 유속.
+        torque_nm: 전달 토크.
+        shear_stress_mpa: 비틀림 전단응력.
+        governed_by: 외경을 결정한 기준 ("비틀림" 또는 "처짐·위험속도").
+        bore_pressure_drop_kpa: 축 내부 마찰 손실.
+        joint_pressure_drop_kpa: 로터리 조인트 손실.
+    """
+
+    tag: str
+    bore_mm: float
+    outer_diameter_mm: float
+    length_m: float
+    air_velocity_m_s: float
+    torque_nm: float
+    shear_stress_mpa: float
+    allowable_shear_mpa: float
+    governed_by: str
+    bore_pressure_drop_kpa: float
+    joint_pressure_drop_kpa: float
+    discharge_ports: int
+
+    @property
+    def total_pressure_drop_kpa(self) -> float:
+        return self.bore_pressure_drop_kpa + self.joint_pressure_drop_kpa
+
+    @property
+    def wall_thickness_mm(self) -> float:
+        return (self.outer_diameter_mm - self.bore_mm) / 2.0
+
+    @property
+    def is_safe(self) -> bool:
+        return self.shear_stress_mpa <= self.allowable_shear_mpa
+
+
+#: 표준 축 외경 계열 (mm).
+_SHAFT_OD_MM = (30, 40, 50, 60, 70, 80, 90, 100, 110, 125, 140)
+#: 표준 축 내경(보어) 계열 (mm).
+_SHAFT_BORE_MM = (10, 12, 15, 20, 25, 32, 40, 50, 65)
+
+
+def hollow_shaft(
+    tag: str,
+    shaft_power_kw: float,
+    speed_rpm: float,
+    air_m3h: float,
+    length_m: float,
+    target_air_velocity_m_s: float = 18.0,
+    allowable_shear_mpa: float = 40.0,
+    slenderness_limit: float = 25.0,
+    air_density_kg_m3: float = 1.20,
+    friction_factor: float = 0.028,
+    joint_loss_kpa: float = 6.0,
+    discharge_ports: int = 8,
+) -> HollowShaftDesign:
+    """중공축의 내경·외경과 급기 압력손실을 산정한다.
+
+    내경은 **공기 유속**으로, 외경은 **비틀림 강도와 처짐** 중 큰 쪽으로
+    정한다. 부선기 축은 길고 가늘어 대개 처짐(위험속도)이 지배한다.
+
+    Args:
+        shaft_power_kw: 로터 축동력.
+        air_m3h: 이 축으로 보내는 공기량.
+        length_m: 로터리 조인트에서 로터까지의 축 길이.
+        target_air_velocity_m_s: 축 내부 목표 유속. 너무 빠르면 압력손실이,
+            너무 느리면 축이 굵어진다. 15~25 m/s 가 통상 범위.
+        slenderness_limit: 외경 하한을 정하는 세장비 ``L/D``. 교반축 관행 25.
+
+    Raises:
+        ValueError: 입력이 물리적으로 성립하지 않을 때.
+    """
+    if shaft_power_kw <= 0 or speed_rpm <= 0 or air_m3h <= 0 or length_m <= 0:
+        raise ValueError("동력·회전수·급기량·길이는 모두 양수여야 함")
+
+    # 내경 — 목표 유속을 넘지 않는 최소 표준 보어
+    q = air_m3h / 3600.0
+    need_area = q / target_air_velocity_m_s
+    need_bore_mm = math.sqrt(4.0 * need_area / math.pi) * 1000.0
+    bore_mm = next((b for b in _SHAFT_BORE_MM if b >= need_bore_mm), None)
+    if bore_mm is None:
+        raise ValueError("표준 보어 계열을 초과 — 급기 분할 검토 필요")
+
+    torque = shaft_power_kw * 1000.0 / (2.0 * math.pi * speed_rpm / 60.0)
+
+    # 외경 — 비틀림 기준과 처짐(세장비) 기준 중 큰 쪽
+    d = bore_mm / 1000.0
+    torsion_od_mm = None
+    for od in _SHAFT_OD_MM:
+        D = od / 1000.0
+        if D <= d:
+            continue
+        section = math.pi * (D**4 - d**4) / (16.0 * D)     # 극단면계수
+        if torque / section / 1e6 <= allowable_shear_mpa:
+            torsion_od_mm = od
+            break
+    if torsion_od_mm is None:
+        raise ValueError("표준 외경 계열로 토크를 감당할 수 없음")
+
+    slender_od_mm = next(
+        (od for od in _SHAFT_OD_MM if od >= length_m / slenderness_limit * 1000.0), None
+    )
+    if slender_od_mm is None:
+        raise ValueError("표준 외경 계열로 세장비를 만족할 수 없음")
+
+    outer_mm = max(torsion_od_mm, slender_od_mm)
+    governed_by = "비틀림" if torsion_od_mm >= slender_od_mm else "처짐·위험속도"
+
+    D = outer_mm / 1000.0
+    section = math.pi * (D**4 - d**4) / (16.0 * D)
+    shear = torque / section / 1e6
+
+    velocity = q / (math.pi * d**2 / 4.0)
+    dp = friction_factor * (length_m / d) * air_density_kg_m3 * velocity**2 / 2.0 / 1000.0
+
+    return HollowShaftDesign(
+        tag=tag,
+        bore_mm=bore_mm,
+        outer_diameter_mm=outer_mm,
+        length_m=length_m,
+        air_velocity_m_s=velocity,
+        torque_nm=torque,
+        shear_stress_mpa=shear,
+        allowable_shear_mpa=allowable_shear_mpa,
+        governed_by=governed_by,
+        bore_pressure_drop_kpa=dp,
+        joint_pressure_drop_kpa=joint_loss_kpa,
+        discharge_ports=discharge_ports,
+    )

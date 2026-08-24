@@ -413,7 +413,7 @@
     <p class="lede">
       박리·분쇄된 c-Si 셀 분획에서 은을 부유선별로 농축해 후단 침출·제련 물량을 1/76 로
       줄이는 설비의 기본설계 도면이다. 공정 흐름도, 부선조 상세 단면도, 장치 형식 대안
-      비교도 3매로 구성한다.
+      비교도, 중공축 급기 상세 4매로 구성한다.
     </p>
     <dl class="keyfacts">
       <div><dt>처리량 (평균 / 최대)</dt><dd>0.30 / 0.50 t/h</dd></div>
@@ -421,7 +421,7 @@
       <div><dt>정광 품위</dt><dd>44.8 wt% Ag</dd></div>
       <div><dt>부선조</dt><dd>Ø350 × 2.4 m</dd></div>
       <div><dt>기액 체류시간</dt><dd>1 min</dd></div>
-      <div><dt>설치 전력</dt><dd>3.6 kW</dd></div>
+      <div><dt>설치 전력</dt><dd>6.5 kW</dd></div>
     </dl>
   </header>
 
@@ -436,7 +436,7 @@
     <figure>
       <div class="canvas">
         <svg viewBox="0 0 1040 510" role="img"
-             aria-label="급광이 조건조와 급광펌프를 거쳐 부선조 FC-101 로 들어가고, 정광 6.56 kg/h 는 농축·여과를 거쳐 최종 정광으로, 미광 493 kg/h 는 농축조를 거쳐 잔사로 나가며, 농축조 월류수 9.6 세제곱미터 매시는 조건조로 순환하는 공정 흐름도">
+             aria-label="급광이 조건조와 급광펌프를 거쳐 부선조 FC-101 로 들어가고, 정광 6.56 kg/h 는 농축조 TK-102 와 필터프레스 FL-101 을 거쳐 최종 정광 케이크로, 미광 493 kg/h 는 농축조 TK-101 과 필터프레스 FL-102 를 거쳐 미광 케이크로 나가며, 농축조 월류수와 여액을 합한 공정수 10.1 세제곱미터 매시는 조건조로 순환하는 공정 흐름도">
           <defs>
             <marker id="a1" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
               <polygon points="0,0 10,4 0,8" fill="currentColor"></polygon>
@@ -466,7 +466,7 @@
           <text class="t-mono" x="248" y="101" text-anchor="middle">3418A / AF242</text>
           <line class="ln" x1="222" y1="108" x2="222" y2="164" marker-end="url(#a1)"></line>
           <line class="ln" x1="274" y1="108" x2="274" y2="164" marker-end="url(#a1)"></line>
-          <text class="t-mono" x="308" y="140" text-anchor="start">300 g/t ×2</text>
+          <text class="t-mono" x="308" y="126" text-anchor="start">300 g/t ×2</text>
 
           <!-- CT-1 conditioner -->
           <rect class="box" x="196" y="166" width="104" height="86" rx="2"></rect>
@@ -506,8 +506,8 @@
             <line x1="460" y1="306" x2="488" y2="330"></line>
             <line x1="478" y1="306" x2="506" y2="330"></line>
           </g>
-          <text class="t-eq" x="466" y="392" text-anchor="middle">FC-101 부선조</text>
-          <text class="t-mono" x="466" y="408" text-anchor="middle">Ø350 × 2.4 m · 1기</text>
+          <text class="t-eq" x="466" y="440" text-anchor="middle">FC-101 부선조</text>
+          <text class="t-mono" x="466" y="456" text-anchor="middle">Ø350 × 2.4 m · 1기</text>
 
           <!-- blower / air -->
           <circle class="box" cx="352" cy="322" r="17"></circle>
@@ -525,15 +525,18 @@
           <rect class="ag-f" x="600" y="58" width="92" height="62" rx="2"></rect>
           <text class="t-sm" x="646" y="84" text-anchor="middle">TK-102</text>
           <text class="t-mono" x="646" y="101" text-anchor="middle">정광 농축</text>
-          <line class="ag-l" x1="692" y1="88" x2="752" y2="88" marker-end="url(#a1ag)"></line>
-          <rect class="ag-f" x="756" y="58" width="84" height="62" rx="2"></rect>
-          <text class="t-sm" x="798" y="84" text-anchor="middle">FL-101</text>
-          <text class="t-mono" x="798" y="101" text-anchor="middle">여과기</text>
-          <line class="ag-l" x1="840" y1="88" x2="912" y2="88" marker-end="url(#a1ag)"></line>
-          <rect class="ag-f" x="916" y="52" width="110" height="74" rx="2"></rect>
-          <text class="t-eq t-ag" x="971" y="76" text-anchor="middle">최종 정광</text>
-          <text class="t-mono" x="971" y="93" text-anchor="middle">6.56 kg/h</text>
-          <text class="t-mono t-ag" x="971" y="109" text-anchor="middle">44.8 wt% Ag</text>
+          <line class="ag-l" x1="692" y1="88" x2="740" y2="88" marker-end="url(#a1ag)"></line>
+          <rect class="ag-f" x="744" y="46" width="116" height="86" rx="2"></rect>
+          <text class="t-sm" x="802" y="68" text-anchor="middle">FL-101</text>
+          <text class="t-mono" x="802" y="86" text-anchor="middle">정광 필터프레스</text>
+          <text class="t-mono" x="802" y="104" text-anchor="middle">470 mm × 6 챔버</text>
+          <text class="t-mono" x="802" y="122" text-anchor="middle">2.25 m²</text>
+          <line class="ag-l" x1="864" y1="88" x2="900" y2="88" marker-end="url(#a1ag)"></line>
+          <rect class="ag-f" x="904" y="46" width="132" height="86" rx="2"></rect>
+          <text class="t-eq t-ag" x="970" y="68" text-anchor="middle">최종 정광</text>
+          <text class="t-mono" x="970" y="86" text-anchor="middle">6.56 kg/h</text>
+          <text class="t-mono t-ag" x="970" y="104" text-anchor="middle">44.8 wt% Ag</text>
+          <text class="t-mono" x="970" y="122" text-anchor="middle">케이크 8.0 kg/h</text>
 
           <!-- tailings train -->
           <polyline class="ln-h" points="466,372 466,404 596,404" marker-end="url(#a1)"></polyline>
@@ -542,22 +545,33 @@
           <rect class="box" x="600" y="368" width="92" height="72" rx="2"></rect>
           <text class="t-sm" x="646" y="396" text-anchor="middle">TK-101</text>
           <text class="t-mono" x="646" y="413" text-anchor="middle">미광 농축</text>
-          <line class="ln-h" x1="692" y1="404" x2="912" y2="404" marker-end="url(#a1)"></line>
-          <rect class="box" x="916" y="374" width="110" height="62" rx="2"></rect>
-          <text class="t-eq" x="971" y="398" text-anchor="middle">최종 미광</text>
-          <text class="t-mono" x="971" y="415" text-anchor="middle">493 kg/h · 18 g/t</text>
+          <line class="ln-h" x1="692" y1="404" x2="740" y2="404" marker-end="url(#a1)"></line>
+          <rect class="box" x="744" y="362" width="116" height="86" rx="2"></rect>
+          <text class="t-sm" x="802" y="384" text-anchor="middle">FL-102</text>
+          <text class="t-mono" x="802" y="402" text-anchor="middle">미광 필터프레스</text>
+          <text class="t-mono" x="802" y="420" text-anchor="middle">800 mm × 43 챔버</text>
+          <text class="t-mono" x="802" y="438" text-anchor="middle">46.78 m²</text>
+          <line class="ln-h" x1="864" y1="404" x2="900" y2="404" marker-end="url(#a1)"></line>
+          <rect class="box" x="904" y="362" width="132" height="86" rx="2"></rect>
+          <text class="t-eq" x="970" y="384" text-anchor="middle">미광 케이크</text>
+          <text class="t-mono" x="970" y="402" text-anchor="middle">493 kg/h · 18 g/t</text>
+          <text class="t-mono" x="970" y="420" text-anchor="middle">케이크 633 kg/h</text>
+          <text class="t-mono" x="970" y="438" text-anchor="middle">함수 22 wt%</text>
 
           <!-- water recycle -->
           <polyline class="wt-l" points="646,440 646,478 248,478 248,254" marker-end="url(#a1wt)"></polyline>
+          <polyline class="wt-l" points="802,448 802,478 646,478"></polyline>
+          <text class="t-mono t-wt" x="756" y="498" text-anchor="middle">여액 0.46 m³/h</text>
           <circle class="stream-n" cx="430" cy="478" r="11"></circle>
           <text class="stream-t" x="430" y="482" text-anchor="middle">6</text>
-          <text class="t-mono t-wt" x="452" y="466" text-anchor="start">공정수 회수 9.6 m³/h · 블리드 10 %</text>
+          <text class="t-mono t-wt" x="300" y="498" text-anchor="start">공정수 회수 10.1 m³/h · 블리드 10 %</text>
         </svg>
       </div>
       <figcaption>
         급광은 조건조 CT-1 에서 포수제·촉진제와 5 분 접촉한 뒤 부선조 FC-101 한 대를
         지나며 갈라진다. 질량의 1.3 % 만 정광으로 넘어가고 나머지는 미광으로 빠진다.
-        농축조 월류수는 전량 조건조로 돌아가며, TK-102 월류수도 같은 계통에 합류한다.
+        두 산물은 각각 농축조에서 물의 대부분을 뺀 뒤 필터프레스로 케이크가 된다.
+        농축조 월류수와 여과기 여액은 전량 조건조로 돌아간다.
       </figcaption>
     </figure>
 
@@ -603,7 +617,7 @@
 
     <figure>
       <div class="canvas">
-        <svg viewBox="0 0 900 660" role="img"
+        <svg viewBox="-40 0 1010 660" role="img"
              aria-label="부선조 수직 단면도. 위에서부터 정광 월류 런더, 세척수 분배관과 거품층, 포집부, 스파저, 70도 경사판, 미광 배출부 순으로 배치되며, 급광과 공기가 각각 2.0 세제곱센티미터 매초 flux 로 스파저에 들어가고 세척수 0.81 에서 월류수 0.56 을 뺀 0.25 센티미터 매초의 하향 bias 가 거품층을 씻어내린다">
           <defs>
             <marker id="a2" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
@@ -803,7 +817,7 @@
     <figure>
       <div class="canvas">
         <svg viewBox="0 0 1000 400" role="img"
-             aria-label="1안은 부선조 한 대로 은 99.7 퍼센트를 회수하고 미광 품위 18 그램 매톤에 설치전력 3.6 킬로와트인 반면, 2안은 러퍼·스캐빈저·클리너 세 대에 순환류가 붙어 은 95.4 퍼센트, 미광 274 그램 매톤, 설치전력 12.7 킬로와트로 같은 정광 품위를 내는 비교도">
+             aria-label="1안은 부선조 한 대로 은 99.7 퍼센트를 회수하고 미광 품위 18 그램 매톤에 설치전력 6.5 킬로와트인 반면, 2안은 러퍼·스캐빈저·클리너 세 대에 순환류가 붙어 은 95.4 퍼센트, 미광 274 그램 매톤, 설치전력 16.0 킬로와트로 같은 정광 품위를 내는 비교도">
           <defs>
             <marker id="a3" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
               <polygon points="0,0 10,4 0,8" fill="currentColor"></polygon>
@@ -818,7 +832,8 @@
           <text class="t-sm" x="184" y="40" text-anchor="start">권고안</text>
 
           <line class="ln-h" x1="20" y1="104" x2="96" y2="104" marker-end="url(#a3)"></line>
-          <text class="t-mono" x="20" y="94" text-anchor="start">급광 500 kg/h</text>
+          <text class="t-mono" x="20" y="78" text-anchor="start">급광</text>
+          <text class="t-mono" x="20" y="94" text-anchor="start">500 kg/h</text>
 
           <rect class="ag-f" x="100" y="62" width="72" height="86" rx="2" stroke-width="2.4"></rect>
           <text class="t-mono t-ag" x="136" y="100" text-anchor="middle">FC-101</text>
@@ -837,11 +852,12 @@
           <line x1="20" y1="206" x2="700" y2="206" stroke="var(--rule)" stroke-width="1.5"></line>
 
           <!-- ===== option 2 ===== -->
-          <text class="t-eq" x="20" y="244" text-anchor="start">2안 — 기계식 러퍼 · 스캐빈저 · 클리너 3단</text>
-          <text class="t-sm" x="330" y="244" text-anchor="start">범용 장비 · 실시권 제약 없음</text>
+          <text class="t-eq" x="20" y="238" text-anchor="start">2안 — 기계식 3단</text>
+          <text class="t-sm" x="182" y="238" text-anchor="start">범용 장비 · 대안</text>
 
           <line class="ln-h" x1="20" y1="322" x2="86" y2="322" marker-end="url(#a3)"></line>
-          <text class="t-mono" x="20" y="312" text-anchor="start">급광 500 kg/h</text>
+          <text class="t-mono" x="20" y="296" text-anchor="start">급광</text>
+          <text class="t-mono" x="20" y="312" text-anchor="start">500 kg/h</text>
 
           <rect class="box" x="90" y="292" width="62" height="62" rx="2"></rect>
           <text class="t-mono" x="121" y="320" text-anchor="middle">FC-201</text>
@@ -869,7 +885,7 @@
           <!-- 순환: 스캐빈저 정광 + 클리너 미광 -->
           <polyline class="dash" points="321,286 321,392 70,392 70,322" marker-end="url(#a3)"></polyline>
           <polyline class="dash" points="233,292 233,272 210,272 210,392"></polyline>
-          <text class="t-mono" x="150" y="386" text-anchor="middle">순환 4.2 % (스캐빈저 정광 + 클리너 미광)</text>
+          <text class="t-mono" x="340" y="386" text-anchor="start">순환 4.2 % — 스캐빈저 정광 + 클리너 미광</text>
 
           <!-- ===== difference panel ===== -->
           <line x1="712" y1="24" x2="712" y2="392" stroke="var(--rule)" stroke-width="1.5"></line>
@@ -884,8 +900,8 @@
           <text class="t-mono" x="736" y="202" text-anchor="start">18 vs 274 g/t</text>
 
           <text class="t-mono" x="736" y="244" text-anchor="start">설치 전력</text>
-          <text class="t-eq t-ag" x="736" y="266" text-anchor="start">−72 %</text>
-          <text class="t-mono" x="736" y="284" text-anchor="start">3.6 vs 12.7 kW</text>
+          <text class="t-eq t-ag" x="736" y="266" text-anchor="start">−59 %</text>
+          <text class="t-mono" x="736" y="284" text-anchor="start">6.5 vs 16.0 kW</text>
 
           <text class="t-mono" x="736" y="326" text-anchor="start">정광 품위</text>
           <text class="t-eq" x="736" y="348" text-anchor="start">동등</text>
@@ -896,7 +912,8 @@
         두 안의 정광 품위가 같다는 점이 핵심이다. 품위는 장치가 아니라 원료의 복합입자
         성질이 결정한다 — Ag 는 Si 웨이퍼에 소결된 전극이라 부상할 때 Si 코어를 함께
         끌고 올라오고, 이 비율이 정광 품위의 물리적 상한 1/(1+1.1) ≈ 47.6 wt% 를 만든다.
-        장치 선정으로 바꿀 수 있는 것은 회수율·전력·설치면적뿐이다.
+        장치 선정으로 바꿀 수 있는 것은 회수율·전력·설치면적뿐이다. 2안을 남겨 두는 이유는
+        성능이 아니라 조달이다 — 범용 장비로 구성할 수 있고 실시권 제약이 없다.
       </figcaption>
     </figure>
 
@@ -910,6 +927,199 @@
     </div>
   </section>
 
+  <!-- ================= SHEET 4 : HOLLOW SHAFT ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-004</span>
+      <span class="sheet-title">중공축 급기 상세 (2안)</span>
+      <span class="sheet-sub">FC-201 기준 단면 · 스파저 없음 · 로터 허브 직접 분산</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1000 470" role="img"
+             aria-label="공기가 축 상단 로터리 조인트로 들어가 지름 20 밀리미터 중공축 보어를 따라 내려간 뒤 로터 허브의 분산구 여덟 개로 나와, 회전하는 로터 날개가 그 자리에서 기포를 부수는 중공축 급기 계통의 단면 상세도. 축 외경은 세 셀 모두 비틀림이 아니라 세장비가 결정한다.">
+          <defs>
+            <marker id="a4" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="currentColor"></polygon>
+            </marker>
+            <marker id="a4wt" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--water)"></polygon>
+            </marker>
+          </defs>
+
+          <!-- ===== A. 축 단면 (좌) ===== -->
+          <text class="t-eq" x="24" y="34" text-anchor="start">A — 축 계통 단면</text>
+
+          <!-- 송풍기 -->
+          <circle class="box" cx="52" cy="82" r="17"></circle>
+          <path class="ln" d="M44 74 L60 82 L44 90"></path>
+          <text class="t-mono" x="52" y="118" text-anchor="middle">B-201</text>
+          <text class="t-mono" x="52" y="133" text-anchor="middle">45 kPa</text>
+          <line class="ln-h" x1="70" y1="82" x2="126" y2="82" marker-end="url(#a4)"></line>
+          <text class="t-mono" x="98" y="72" text-anchor="middle">38 m³/h</text>
+
+          <!-- 로터리 조인트 -->
+          <rect class="zone" x="130" y="62" width="80" height="40"></rect>
+          <rect class="box" x="130" y="62" width="80" height="40" rx="2"></rect>
+          <line class="ln-t" x1="130" y1="82" x2="210" y2="82"></line>
+          <text class="t-mono" x="170" y="52" text-anchor="middle">로터리 조인트</text>
+          <text class="t-dim" x="216" y="86" text-anchor="start">손실 6.0 kPa</text>
+
+          <!-- 축 (외경 Ø80 / 보어 Ø20) -->
+          <rect class="box" x="152" y="102" width="14" height="228"></rect>
+          <rect class="box" x="174" y="102" width="14" height="228"></rect>
+          <rect class="zone" x="166" y="102" width="8" height="228"></rect>
+          <line class="ln-t" x1="170" y1="102" x2="170" y2="330" stroke-dasharray="7 3 2 3"></line>
+
+          <!-- 데크 · 베어링 콘 -->
+          <line class="ln-h" x1="96" y1="150" x2="244" y2="150"></line>
+          <polygon class="box" points="140,150 200,150 190,196 150,196"></polygon>
+          <text class="t-mono" x="252" y="154" text-anchor="start">데크 · 베어링 콘</text>
+
+          <!-- 펄프 수면 -->
+          <line class="wt-t" x1="72" y1="236" x2="268" y2="236" stroke-dasharray="6 4"></line>
+          <text class="t-mono t-wt" x="72" y="228" text-anchor="start">펄프 수면</text>
+
+          <!-- 스테이터 · 로터 -->
+          <rect class="box" x="108" y="300" width="16" height="40"></rect>
+          <rect class="box" x="216" y="300" width="16" height="40"></rect>
+          <text class="t-mono" x="76" y="324" text-anchor="start">스테이터</text>
+          <polygon class="box" points="134,302 206,302 214,338 126,338"></polygon>
+          <text class="t-mono" x="170" y="326" text-anchor="middle">로터 허브</text>
+
+          <!-- 분산구에서 나오는 공기 -->
+          <g class="ln">
+            <line x1="140" y1="330" x2="118" y2="356" marker-end="url(#a4)"></line>
+            <line x1="158" y1="338" x2="150" y2="366" marker-end="url(#a4)"></line>
+            <line x1="182" y1="338" x2="190" y2="366" marker-end="url(#a4)"></line>
+            <line x1="200" y1="330" x2="222" y2="356" marker-end="url(#a4)"></line>
+          </g>
+          <text class="t-mono" x="170" y="390" text-anchor="middle">분산구 8개 → 기포 생성</text>
+
+          <!-- 치수 -->
+          <line class="ln-t" x1="152" y1="418" x2="188" y2="418"></line>
+          <line class="ln-t" x1="152" y1="412" x2="152" y2="424"></line>
+          <line class="ln-t" x1="188" y1="412" x2="188" y2="424"></line>
+          <text class="t-dim" x="196" y="422" text-anchor="start">외경 Ø80 (벽두께 30)</text>
+          <line class="ln-t" x1="166" y1="440" x2="174" y2="440"></line>
+          <text class="t-dim" x="196" y="444" text-anchor="start">보어 Ø20 · 공기 14.3 m/s</text>
+
+          <!-- ===== B. 허브 평면 (중) ===== -->
+          <line x1="316" y1="24" x2="316" y2="446" stroke="var(--rule)" stroke-width="1.5"></line>
+          <text class="t-eq" x="344" y="34" text-anchor="start">B — 로터 허브 평면 (분산구 배치)</text>
+
+          <circle class="box" cx="452" cy="212" r="98"></circle>
+          <circle class="zone" cx="452" cy="212" r="16"></circle>
+          <circle class="box" cx="452" cy="212" r="16"></circle>
+          <circle class="dash" cx="452" cy="212" r="66" fill="none"></circle>
+          <g class="box">
+            <circle cx="452" cy="146" r="7"></circle>
+            <circle cx="499" cy="165" r="7"></circle>
+            <circle cx="518" cy="212" r="7"></circle>
+            <circle cx="499" cy="259" r="7"></circle>
+            <circle cx="452" cy="278" r="7"></circle>
+            <circle cx="405" cy="259" r="7"></circle>
+            <circle cx="386" cy="212" r="7"></circle>
+            <circle cx="405" cy="165" r="7"></circle>
+          </g>
+          <line class="ln-t" x1="452" y1="212" x2="518" y2="212"></line>
+          <text class="t-dim" x="470" y="204" text-anchor="start">P.C.D.</text>
+          <text class="t-mono" x="452" y="336" text-anchor="middle">분산구 8 × 등간격 45°</text>
+          <text class="t-mono" x="452" y="352" text-anchor="middle">보어 Ø20 → 허브 방사 유로</text>
+          <text class="t-sm" x="452" y="382" text-anchor="middle">공기가 나오는 자리가 곧 로터 날개 끝단이다.</text>
+          <text class="t-sm" x="452" y="398" text-anchor="middle">전단이 가장 센 지점에서 기포가 부서지므로</text>
+          <text class="t-sm" x="452" y="414" text-anchor="middle">스파저보다 기포가 잘고 균일하다.</text>
+
+          <!-- ===== C. 사양 (우) ===== -->
+          <line x1="588" y1="24" x2="588" y2="446" stroke="var(--rule)" stroke-width="1.5"></line>
+          <text class="t-eq" x="616" y="34" text-anchor="start">C — 셀별 축 사양</text>
+
+          <line class="ln-t" x1="616" y1="52" x2="976" y2="52"></line>
+          <text class="t-mono" x="616" y="70" text-anchor="start">항목</text>
+          <text class="t-mono" x="782" y="70" text-anchor="middle">FC-201</text>
+          <text class="t-mono" x="870" y="70" text-anchor="middle">FC-202</text>
+          <text class="t-mono" x="956" y="70" text-anchor="middle">FC-203</text>
+          <line class="ln-t" x1="616" y1="80" x2="976" y2="80"></line>
+
+          <text class="t-mono" x="616" y="100" text-anchor="start">보어 (mm)</text>
+          <text class="t-mono t-ag" x="782" y="100" text-anchor="middle">Ø20</text>
+          <text class="t-mono t-ag" x="870" y="100" text-anchor="middle">Ø20</text>
+          <text class="t-mono t-ag" x="956" y="100" text-anchor="middle">Ø10</text>
+
+          <text class="t-mono" x="616" y="122" text-anchor="start">외경 (mm)</text>
+          <text class="t-mono" x="782" y="122" text-anchor="middle">Ø80</text>
+          <text class="t-mono" x="870" y="122" text-anchor="middle">Ø80</text>
+          <text class="t-mono" x="956" y="122" text-anchor="middle">Ø50</text>
+
+          <text class="t-mono" x="616" y="144" text-anchor="start">축 길이 (m)</text>
+          <text class="t-mono" x="782" y="144" text-anchor="middle">1.85</text>
+          <text class="t-mono" x="870" y="144" text-anchor="middle">2.00</text>
+          <text class="t-mono" x="956" y="144" text-anchor="middle">1.20</text>
+
+          <text class="t-mono" x="616" y="166" text-anchor="start">급기량 (m³/h)</text>
+          <text class="t-mono" x="782" y="166" text-anchor="middle">10.8</text>
+          <text class="t-mono" x="870" y="166" text-anchor="middle">13.5</text>
+          <text class="t-mono" x="956" y="166" text-anchor="middle">1.2</text>
+
+          <text class="t-mono" x="616" y="188" text-anchor="start">보어 유속 (m/s)</text>
+          <text class="t-mono" x="782" y="188" text-anchor="middle">14.3</text>
+          <text class="t-mono" x="870" y="188" text-anchor="middle">17.5</text>
+          <text class="t-mono" x="956" y="188" text-anchor="middle">7.1</text>
+
+          <text class="t-mono" x="616" y="210" text-anchor="start">전달 토크 (N·m)</text>
+          <text class="t-mono" x="782" y="210" text-anchor="middle">85</text>
+          <text class="t-mono" x="870" y="210" text-anchor="middle">98</text>
+          <text class="t-mono" x="956" y="210" text-anchor="middle">4</text>
+
+          <text class="t-mono" x="616" y="232" text-anchor="start">전단응력/허용 (MPa)</text>
+          <text class="t-mono" x="782" y="232" text-anchor="middle">0.9 / 40</text>
+          <text class="t-mono" x="870" y="232" text-anchor="middle">1.0 / 40</text>
+          <text class="t-mono" x="956" y="232" text-anchor="middle">0.2 / 40</text>
+
+          <text class="t-mono" x="616" y="254" text-anchor="start">외경 결정 기준</text>
+          <text class="t-mono" x="782" y="254" text-anchor="middle">세장비</text>
+          <text class="t-mono" x="870" y="254" text-anchor="middle">세장비</text>
+          <text class="t-mono" x="956" y="254" text-anchor="middle">세장비</text>
+
+          <text class="t-mono" x="616" y="276" text-anchor="start">급기 압력손실 (kPa)</text>
+          <text class="t-mono" x="782" y="276" text-anchor="middle">6.3</text>
+          <text class="t-mono" x="870" y="276" text-anchor="middle">6.5</text>
+          <text class="t-mono" x="956" y="276" text-anchor="middle">6.1</text>
+
+          <text class="t-mono" x="616" y="298" text-anchor="start">소요 토출압 (kPa)</text>
+          <text class="t-mono" x="782" y="298" text-anchor="middle">31.1</text>
+          <text class="t-mono" x="870" y="298" text-anchor="middle">33.0</text>
+          <text class="t-mono" x="956" y="298" text-anchor="middle">24.7</text>
+          <line class="ln-t" x1="616" y1="312" x2="976" y2="312"></line>
+
+          <text class="t-eq" x="616" y="344" text-anchor="start">외경을 정하는 것은 강도가 아니다</text>
+          <text class="t-sm" x="616" y="366" text-anchor="start">전단응력이 허용치의 2.5 % 도 안 된다. 축 굵기는</text>
+          <text class="t-sm" x="616" y="384" text-anchor="start">세장비 L/D ≤ 25 — 즉 처짐과 위험속도가 정한다.</text>
+          <text class="t-sm" x="616" y="402" text-anchor="start">부선기 축은 길고 가늘어 진동이 먼저 한계가 된다.</text>
+          <text class="t-sm" x="616" y="424" text-anchor="start">보어는 반대로 공기 유속(목표 18 m/s)이 정한다 —</text>
+          <text class="t-sm" x="616" y="442" text-anchor="start">굵으면 응축수가 고이고 가늘면 압력손실이 커진다.</text>
+        </svg>
+      </div>
+      <figcaption>
+        급기를 셀 바닥 스파저가 아니라 로터 축 안으로 넣는 구성이다. 공기는 축 상단
+        로터리 조인트 → 축 보어 → 로터 허브 분산구 8개 순으로 흘러, 로터 날개가
+        나오는 자리에서 바로 기포를 부순다. 셀 바닥에 막힐 부품이 없어지는 것이
+        태양광 셀 분쇄물처럼 미분이 많은 급광에서 실질적인 이점이다. 대가는
+        조인트·보어 손실 약 6 kPa 로, 송풍기 토출압을 그만큼 높여 잡았다.
+      </figcaption>
+    </figure>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>DWG-004</b></div>
+      <div><span>도면명</span><b>중공축 급기 상세</b></div>
+      <div><span>축척</span><b>NTS</b></div>
+      <div><span>단위</span><b>mm / kPa</b></div>
+      <div><span>REV</span><b>A</b></div>
+      <div><span>근거</span><b>계산서 §3</b></div>
+    </div>
+  </section>
+
   <!-- ================= NOTES ================= -->
   <section class="notes">
     <h2>도면 주기 (General Notes)</h2>
@@ -920,7 +1130,9 @@
       <li>설계 고체 농도 <strong>7 wt%</strong> 는 회분식 실증에서 검증된 값이다. 같은 Ø350 mm 동체는 15 wt% 에서 1.14 t/h, 30 wt% 에서 2.51 t/h 를 낼 수 있으나 <strong>PV 원료로는 미검증</strong>이므로 설계 기준으로 삼지 않았다.</li>
       <li><strong>bias 제어(FFIC-106)가 이 설비의 전부다.</strong> bias 가 음수로 넘어가면 세척 효과가 사라져 정광 품위가 무너지고, 과도하면 회수율이 떨어진다. 세척수 유량과 미광 배출을 협조 제어해 Jb 를 직접 연산한다.</li>
       <li>pH 조정제·황화제·억제제를 쓰지 않는다. 포수제가 금속 Ag 표면에 직접 선택 흡착하므로 <strong>자연 pH</strong> 에서 운전하며, H₂S·CS₂ 위험이 설계상 존재하지 않는다.</li>
-      <li>공정수 9.6 m³/h 는 농축조에서 회수해 재사용한다(블리드 10 %). 7 wt% 라는 낮은 고체 농도가 물 회수 설비를 크게 만드는 유일한 대가다.</li>
+      <li>공정수 <strong>10.1 m³/h</strong> 는 농축조 월류수와 필터프레스 여액에서 회수해 재사용한다(블리드 10 %). 7 wt% 라는 낮은 고체 농도가 물 회수 설비를 크게 만드는 유일한 대가다.</li>
+      <li>정광·미광 필터프레스는 <strong>서로 다른 기준으로 규격이 정해진다.</strong> 미광기(FL-102/FL-202)는 사이클당 케이크 부피가 챔버 총용적 702 L 를 결정하고, 정광기(FL-101/FL-201)는 필요 면적이 0.1 m² 에 못 미쳐 <strong>상용 최소 기종</strong>이 하한이 된다. 그래도 교차오염 손실이 회수한 은보다 클 수 있어 미광기와 합치지 않는다.</li>
+      <li>2안의 급기는 스파저가 아니라 <strong>중공축</strong>으로 넣는다(DWG-004). 축 외경은 비틀림이 아니라 <strong>세장비(L/D ≤ 25)</strong> 가 정하며, 조인트·보어 손실 약 6 kPa 를 송풍기 토출압에 반영했다.</li>
       <li>1안의 장치 형식은 <strong>특허 가출원 대상</strong>(AU 2025902821)이다. 상업화 시 실시권 검토가 필요하며, 불발 시 2안이 현실적 차선이다.</li>
       <li>도면의 모든 수치는 <code>design_basis.py</code> 로부터 코드로 산출된 값이다. 시운전 시험 결과로 설계 기준을 갱신하면 수치가 달라질 수 있다.</li>
     </ol>

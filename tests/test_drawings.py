@@ -55,15 +55,15 @@ class TestDrawingDocument(unittest.TestCase):
             closed = len(re.findall(rf"</{tag}>", self.html))
             self.assertEqual(opened, closed, f"<{tag}> 태그 불균형")
 
-    def test_three_sheets_present(self):
-        for no in ("DWG-001", "DWG-002", "DWG-003"):
+    def test_four_sheets_present(self):
+        for no in ("DWG-001", "DWG-002", "DWG-003", "DWG-004"):
             self.assertIn(no, self.html, no)
-        self.assertEqual(len(re.findall(r"<svg", self.html)), 3)
+        self.assertEqual(len(re.findall(r"<svg", self.html)), 4)
 
     def test_every_figure_is_labelled_for_screen_readers(self):
-        self.assertEqual(len(re.findall(r'role="img"', self.html)), 3)
-        self.assertEqual(len(re.findall(r"aria-label=", self.html)), 3)
-        self.assertEqual(len(re.findall(r"<figcaption>", self.html)), 3)
+        self.assertEqual(len(re.findall(r'role="img"', self.html)), 4)
+        self.assertEqual(len(re.findall(r"aria-label=", self.html)), 4)
+        self.assertEqual(len(re.findall(r"<figcaption>", self.html)), 4)
 
 
 class TestDrawingMatchesDesign(unittest.TestCase):
@@ -147,6 +147,41 @@ class TestDrawingMatchesDesign(unittest.TestCase):
             f"{self.rfc.inclined_channel_angle_deg:.0f}° / "
             f"{self.rfc.inclined_channel_spacing_mm:.0f} mm",
             "경사판 사양",
+        )
+
+    def test_filter_press_line_is_drawn(self):
+        from flotation_design.plant import build_rfc_option
+
+        opt = build_rfc_option()
+        for f in (opt.concentrate_filter, opt.tailings_filter):
+            self.assertFigure(f.tag, f.tag + " 태그")
+            self.assertFigure(f"{f.plate_mm:.0f} mm × {f.chambers} 챔버", f.tag + " 여과판")
+            self.assertFigure(f"{f.filter_area_m2:.2f} m²", f.tag + " 여과 면적")
+        # 미광도 케이크로 나간다 — 슬러리로 끝나면 도면이 설계와 다르다.
+        self.assertFigure("미광 케이크", "미광 케이크 산물")
+
+    def test_water_recycle_includes_filtrate(self):
+        from flotation_design.plant import build_rfc_option
+
+        opt = build_rfc_option()
+        self.assertFigure(f"{opt.water_recycle_m3h:.1f} m³/h", "공정수 회수량")
+
+    def test_hollow_shaft_sheet_matches_shaft_sizing(self):
+        from flotation_design.plant import build_mechanical_option
+
+        opt = build_mechanical_option()
+        for c in opt.cells:
+            s = c.shaft
+            self.assertFigure(f"Ø{s.bore_mm:.0f}", c.tag + " 보어")
+            self.assertFigure(f"Ø{s.outer_diameter_mm:.0f}", c.tag + " 외경")
+            self.assertFigure(
+                f"{s.total_pressure_drop_kpa:.1f}", c.tag + " 급기 압력손실"
+            )
+            # 강도가 아니라 세장비가 외경을 정한다는 것이 이 도면의 요지다.
+            self.assertEqual(s.governed_by, "처짐·위험속도", c.tag)
+        self.assertFigure(f"{opt.blower_pressure_kpa:.0f} kPa", "송풍기 토출압")
+        self.assertFigure(
+            f"분산구 {opt.cells[0].shaft.discharge_ports}개", "로터 허브 분산구"
         )
 
     def test_patent_disclosure_present(self):
@@ -287,6 +322,34 @@ class TestModel3dMatchesDesign(unittest.TestCase):
     def test_stage_recoveries(self):
         for tag, u in self.unit.items():
             self.assertFigure(f"{u.recovery('Ag') * 100:.1f} %", tag + " 단 회수율")
+
+    def test_hollow_shaft_parts_are_modelled(self):
+        # 급기를 축으로 넣는 설계이므로 스파저가 아니라 축·조인트가 부품으로 있어야 한다.
+        self.assertIn("중공축", self.html)
+        self.assertIn("로터리 조인트", self.html)
+        for c in self.opt.cells:
+            s = c.shaft
+            self.assertFigure(f"Ø{s.bore_mm:.0f} / Ø{s.outer_diameter_mm:.0f}",
+                              c.tag + " 중공축 보어·외경")
+
+    def test_blower_matches_shaft_losses(self):
+        self.assertFigure(
+            f"{self.opt.blower_flow_m3h:.0f} m³/h @ "
+            f"{self.opt.blower_pressure_kpa:.0f} kPa",
+            "송풍기 사양",
+        )
+
+    def test_filter_presses_are_modelled(self):
+        for f in (self.opt.concentrate_filter, self.opt.tailings_filter):
+            self.assertFigure(f.tag, f.tag + " 태그")
+            self.assertFigure(
+                f"{f.plate_mm:.0f} mm × {f.chambers} 챔버 · {f.filter_area_m2:.2f} m²",
+                f.tag + " 여과판 사양",
+            )
+        self.assertIn("TK-201", self.html)
+
+    def test_installed_power_matches(self):
+        self.assertFigure(f"{self.opt.installed_kw:.2f} kW", "설치 전력")
 
     def test_recycle_streams_are_named(self):
         self.assertIn("스캐빈저 정광", self.html)

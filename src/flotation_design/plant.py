@@ -15,6 +15,7 @@ from .conditioning import ConditionerDesign, conditioner_train
 from .feed import FeedSpec
 from .rfc import RfcDesign, RfcOperatingPoint, RfcPerformance, rfc_separation, size_rfc
 from .sizing import (
+    HollowShaftDesign,
     AerationDesign,
     CellGeometry,
     FrothLoading,
@@ -22,9 +23,11 @@ from .sizing import (
     aeration_design,
     froth_loading,
     impeller_design,
+    hollow_shaft,
     required_slurry_volume,
     select_motor_kw,
 )
+from .dewatering import FilterPress, filter_press
 
 WATER_DENSITY = 1000.0
 
@@ -54,6 +57,32 @@ class Thickener:
         return math.ceil(math.sqrt(4.0 * self.area_m2 / math.pi) * 2.0) / 2.0
 
 
+def _concentrate_filter(tag: str, dry_tph: float, solids_sg: float) -> FilterPress:
+    """정광 필터프레스 — 값이 나가는 산물이라 함수율을 낮게 잡는다."""
+    return filter_press(
+        tag, "정광 탈수 (제련·침출 급광)", dry_tph,
+        feed_solids_wt=db.THICKENER_UNDERFLOW_SOLIDS["concentrate"],
+        solids_sg=solids_sg,
+        cake_moisture=db.CAKE_MOISTURE["concentrate"],
+        specific_rate_kg_m2_h=db.FILTER_SPECIFIC_RATE["concentrate"],
+        cycle_min=db.FILTER_CYCLE_MIN["concentrate"],
+        min_plate_mm=db.FILTER_MIN_PLATE_MM["concentrate"],
+    )
+
+
+def _tailings_filter(tag: str, dry_tph: float, solids_sg: float) -> FilterPress:
+    """미광 필터프레스 — 물 회수와 건식 적치가 목적."""
+    return filter_press(
+        tag, "미광 탈수 (공정수 회수 · 건식 적치)", dry_tph,
+        feed_solids_wt=db.THICKENER_UNDERFLOW_SOLIDS["tailings"],
+        solids_sg=solids_sg,
+        cake_moisture=db.CAKE_MOISTURE["tailings"],
+        specific_rate_kg_m2_h=db.FILTER_SPECIFIC_RATE["tailings"],
+        cycle_min=db.FILTER_CYCLE_MIN["tailings"],
+        min_plate_mm=db.FILTER_MIN_PLATE_MM["tailings"],
+    )
+
+
 @dataclass(frozen=True)
 class RfcOption:
     """1안 — 세척수 bias 연속 부선조 1단."""
@@ -66,6 +95,8 @@ class RfcOption:
     conditioners: tuple[ConditionerDesign, ...]
     tailings_thickener: Thickener
     concentrate_thickener: Thickener
+    concentrate_filter: FilterPress
+    tailings_filter: FilterPress
 
     @property
     def installed_kw(self) -> float:
@@ -76,12 +107,19 @@ class RfcOption:
             + 0.75
             + sum(c.agitator_kw for c in self.conditioners)
             + 0.2
+            + self.concentrate_filter.pump_rating_kw
+            + self.tailings_filter.pump_rating_kw
         )
 
     @property
     def water_recycle_m3h(self) -> float:
         """농축조에서 회수해 재사용하는 물."""
-        return self.tailings_thickener.overflow_m3h + self.concentrate_thickener.overflow_m3h
+        return (
+            self.tailings_thickener.overflow_m3h
+            + self.concentrate_thickener.overflow_m3h
+            + self.concentrate_filter.filtrate_m3h
+            + self.tailings_filter.filtrate_m3h
+        )
 
 
 @dataclass(frozen=True)
@@ -94,11 +132,17 @@ class MechanicalCell:
     cells_in_series: int
     impeller: ImpellerDesign
     aeration: AerationDesign
+    shaft: HollowShaftDesign
     pulp_density_kg_m3: float
 
     @property
     def installed_kw(self) -> float:
         return self.impeller.motor_rating_kw * self.cells_in_series
+
+    @property
+    def air_supply_pressure_kpa(self) -> float:
+        """중공축 손실을 포함한 이 셀의 소요 급기 압력."""
+        return self.aeration.total_pressure_kpa + self.shaft.total_pressure_drop_kpa
 
 
 @dataclass(frozen=True)
@@ -114,6 +158,8 @@ class MechanicalOption:
     blower_pressure_kpa: float
     blower_rating_kw: float
     tailings_thickener: Thickener
+    concentrate_filter: FilterPress
+    tailings_filter: FilterPress
 
     def cell(self, tag: str) -> MechanicalCell:
         for c in self.cells:
@@ -123,10 +169,10 @@ class MechanicalOption:
 
     def froth_loading(self, tag: str, result: CircuitResult) -> FrothLoading:
         unit = {
-        "FC-201": result.rougher,
-        "FC-202": result.scavenger,
-        "FC-203": result.cleaner,
-    }[tag]
+            "FC-201": result.rougher,
+            "FC-202": result.scavenger,
+            "FC-203": result.cleaner,
+        }[tag]
         return froth_loading(self.cell(tag).geometry, unit.concentrate.dry_tph)
 
     @property
@@ -138,6 +184,17 @@ class MechanicalOption:
             + 1.5
             + 0.75
             + 0.2
+            + self.concentrate_filter.pump_rating_kw
+            + self.tailings_filter.pump_rating_kw
+        )
+
+    @property
+    def water_recycle_m3h(self) -> float:
+        """농축조 월류수 + 여액."""
+        return (
+            self.tailings_thickener.overflow_m3h
+            + self.concentrate_filter.filtrate_m3h
+            + self.tailings_filter.filtrate_m3h
         )
 
 
@@ -194,6 +251,12 @@ def build_rfc_option(feed: FeedSpec = db.FEED) -> RfcOption:
         concentrate_thickener=Thickener(
             "TK-102", "정광 농축 · 여과 전단", point_peak.overflow_water_m3h,
             THICKENER_RISE_RATE_M_H,
+        ),
+        concentrate_filter=_concentrate_filter(
+            "FL-101", perf_peak.concentrate_dry_tph, feed.solids_specific_gravity
+        ),
+        tailings_filter=_tailings_filter(
+            "FL-102", perf_peak.tailings_dry_tph, feed.solids_specific_gravity
         ),
     )
 
@@ -280,10 +343,25 @@ def build_mechanical_option(feed: FeedSpec = db.FEED) -> MechanicalOption:
             jg_max_cm_s=jg_max,
             bubble_d32_mm=db.BUBBLE_D32_MM,
         )
-        cells.append(MechanicalCell(tag, duty, geometry, series[tag], impeller, aer, density))
+        shaft = hollow_shaft(
+            tag,
+            shaft_power_kw=impeller.ungassed_power_w / 1000.0,
+            speed_rpm=impeller.speed_rpm,
+            air_m3h=aer.air_flow_max_m3h,
+            length_m=geometry.shell_height_m + db.SHAFT_LENGTH_MARGIN_M,
+            target_air_velocity_m_s=db.SHAFT_AIR_VELOCITY_M_S,
+            joint_loss_kpa=db.SHAFT_JOINT_LOSS_KPA,
+            discharge_ports=db.SHAFT_DISCHARGE_PORTS,
+        )
+        cells.append(
+            MechanicalCell(tag, duty, geometry, series[tag], impeller, aer, shaft, density)
+        )
 
     blower_flow = sum(c.aeration.air_flow_max_m3h * c.cells_in_series for c in cells)
-    blower_pressure = max(c.aeration.selection_pressure_kpa for c in cells)
+    # 중공축 급기이므로 축 보어 마찰과 로터리 조인트 손실을 더해 선정한다.
+    blower_pressure = (
+        math.ceil(max(c.air_supply_pressure_kpa for c in cells) * 1.3 / 5.0) * 5.0
+    )
     blower_shaft = (blower_flow / 3600.0) * (blower_pressure * 1000.0) / 0.55
 
     tail_water = result_peak.tailings.water_tph
@@ -300,6 +378,12 @@ def build_mechanical_option(feed: FeedSpec = db.FEED) -> MechanicalOption:
         blower_rating_kw=select_motor_kw(blower_shaft, service_factor=1.5),
         tailings_thickener=Thickener(
             "TK-201", "미광 농축 · 공정수 회수", tail_water, THICKENER_RISE_RATE_M_H
+        ),
+        concentrate_filter=_concentrate_filter(
+            "FL-201", result_peak.concentrate.dry_tph, feed.solids_specific_gravity
+        ),
+        tailings_filter=_tailings_filter(
+            "FL-202", result_peak.tailings.dry_tph, feed.solids_specific_gravity
         ),
     )
 

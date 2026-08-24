@@ -17,6 +17,36 @@ def _table(headers: list[str], rows: list[list[str]]) -> str:
     return "\n".join(out)
 
 
+def _filter_row(f) -> list[str]:
+    return [f.tag, f.duty,
+            f"여과판 {f.plate_mm:.0f} mm x {f.chambers} 챔버, 면적 {f.filter_area_m2:.2f} m2"]
+
+
+def _filter_table(presses) -> str:
+    """필터프레스 사양표."""
+    return _table(
+        ["항목"] + [f.tag for f in presses],
+        [
+            ["역할"] + [f.duty for f in presses],
+            ["급광 고체 (kg/h)"] + [f"{f.dry_tph * 1000:.2f}" for f in presses],
+            ["급광 농도 (농축조 U/F)"] + [f"{f.feed_solids_wt * 100:.0f} wt%" for f in presses],
+            ["여과판"] + [f"{f.plate_mm:.0f} x {f.plate_mm:.0f} mm" for f in presses],
+            ["챔버 수"] + [f"{f.chambers}" for f in presses],
+            ["**여과 면적 (m2)**"] + [f"**{f.filter_area_m2:.2f}**" for f in presses],
+            ["챔버 총용적 (L)"] + [f"{f.chamber_volume_m3 * 1000:.1f}" for f in presses],
+            ["사이클 시간 (min)"] + [f"{f.cycle_min:.0f}" for f in presses],
+            ["사이클/일"] + [f"{f.cycles_per_day:.1f}" for f in presses],
+            ["사이클당 건조 고체 (kg)"] + [f"{f.dry_per_cycle_kg:.1f}" for f in presses],
+            ["챔버 충전율"] + [f"{f.chamber_utilisation * 100:.0f} %" for f in presses],
+            ["케이크 함수율"] + [f"{f.cake_moisture * 100:.0f} wt%" for f in presses],
+            ["**케이크 생산량 (kg/h)**"] + [f"**{f.cake_tph * 1000:.1f}**" for f in presses],
+            ["여액 (m3/h)"] + [f"{f.filtrate_m3h:.3f}" for f in presses],
+            ["급광 펌프 (kW)"] + [f"{f.pump_rating_kw:.2f}" for f in presses],
+            ["규격 결정 기준"] + [f.governed_by for f in presses],
+        ],
+    )
+
+
 def _pct(x: float, digits: int = 1) -> str:
     return f"{x * 100:.{digits}f}"
 
@@ -260,19 +290,23 @@ def render(design: PlantDesign | None = None) -> str:
         + [
             ["P-101", "급광 펌프", "1.5 kW"],
             ["P-102", "미광 펌프", "0.75 kW"],
-            ["FL-101", "정광 여과 (필터프레스)", f"고형물 {_kgh(rfc.performance_peak.concentrate_dry_tph, 1)} kg/h"],
-        ],
+        ]
+        + [_filter_row(f) for f in (rfc.concentrate_filter, rfc.tailings_filter)],
     ))
+    add("")
+    add(_filter_table([rfc.concentrate_filter, rfc.tailings_filter]))
     add("")
     add(f"**설치 전력 {rfc.installed_kw:.2f} kW**, 공정수 회수 {rfc.water_recycle_m3h:.1f} m3/h "
         f"(농축조 회수수 재사용, 블리드 10 %).")
     add("")
 
     # 3. 2안 --------------------------------------------------------------
-    add("## 3. 2안 (대안) — 기계식 러퍼 뱅크 + 클리너")
+    add("## 3. 2안 (대안) — 기계식 러퍼 · 스캐빈저 · 클리너 3단")
     add("")
     add("기존 부선 설비를 그대로 쓰거나 범용 장비로 구성해야 할 때의 대안이다. "
-        "회로는 러퍼 뱅크(동일 셀 2기 직렬) → 클리너, 클리너 미광은 러퍼 급광으로 순환한다.")
+        "러퍼 정광은 클리너로, 러퍼 미광은 스캐빈저로 간다. 스캐빈저 정광과 "
+        "클리너 미광은 러퍼 급광으로 되돌린다. "
+        "급기는 **중공축**으로 넣어 로터가 직접 분산시킨다 (별도 스파저 없음).")
     add("")
     add(_table(
         ["항목"] + [f"{c.tag} ({c.cells_in_series}기)" for c in mech.cells],
@@ -292,14 +326,41 @@ def render(design: PlantDesign | None = None) -> str:
             + [f"{c.aeration.superficial_gas_velocity_cm_s:.2f}" for c in mech.cells],
             ["셀당 급기량 (m3/h)"] + [f"{c.aeration.air_flow_m3h:.1f}" for c in mech.cells],
             ["체류시간 (min, 최대유량)"]
-            + [f"{u.residence_min:.2f}" for u in (mech.result_peak.rougher, mech.result_peak.cleaner)],
+            + [f"{u.residence_min:.2f}" for u in (
+                mech.result_peak.rougher, mech.result_peak.scavenger, mech.result_peak.cleaner)],
+            ["**중공축 보어 (mm)**"] + [f"**Ø{c.shaft.bore_mm:.0f}**" for c in mech.cells],
+            ["중공축 외경 (mm)"] + [f"Ø{c.shaft.outer_diameter_mm:.0f}" for c in mech.cells],
+            ["축 길이 (m)"] + [f"{c.shaft.length_m:.2f}" for c in mech.cells],
+            ["축 내부 공기 유속 (m/s)"] + [f"{c.shaft.air_velocity_m_s:.1f}" for c in mech.cells],
+            ["전달 토크 (N·m)"] + [f"{c.shaft.torque_nm:.0f}" for c in mech.cells],
+            ["비틀림 전단응력 (MPa)"]
+            + [f"{c.shaft.shear_stress_mpa:.1f} / {c.shaft.allowable_shear_mpa:.0f}"
+               for c in mech.cells],
+            ["외경 결정 기준"] + [c.shaft.governed_by for c in mech.cells],
+            ["급기 압력손실 (kPa)"]
+            + [f"{c.shaft.total_pressure_drop_kpa:.1f}" for c in mech.cells],
         ],
     ))
+    add("")
+    add("**중공축 급기.** 축 상단 로터리 조인트로 공기를 넣어 축 내부 보어를 지나 "
+        f"로터 허브의 분산구 {mech.cells[0].shaft.discharge_ports}개로 내보낸다. "
+        "로터가 직접 기포를 부수므로 스파저 방식보다 기포가 잘고 균일하다. "
+        "축 외경은 세 셀 모두 **비틀림이 아니라 처짐(위험속도)** 이 정한다 — "
+        "부선기 축은 길고 가늘어 강도보다 진동이 먼저 문제가 된다. "
+        "송풍기 압력은 펄프 수두에 축 보어 마찰과 조인트 손실을 더해 선정했다.")
     add("")
     add(f"송풍기 공용 1대 {mech.blower_rating_kw:.2f} kW "
         f"({mech.blower_flow_m3h:.0f} m3/h @ {mech.blower_pressure_kpa:.0f} kPa), "
         f"미광 농축조 {mech.tailings_thickener.tag} Ø{mech.tailings_thickener.diameter_m:.1f} m. "
         f"**설치 전력 {mech.installed_kw:.2f} kW.**")
+    add("")
+    add("### 탈수 라인")
+    add("")
+    add(_filter_table([mech.concentrate_filter, mech.tailings_filter]))
+    add("")
+    add(f"여액 {mech.concentrate_filter.filtrate_m3h + mech.tailings_filter.filtrate_m3h:.3f} m3/h "
+        f"는 농축조 월류수와 함께 공정수로 돌아간다 "
+        f"(합계 {mech.water_recycle_m3h:.2f} m3/h).")
     add("")
     for label, res in ((peak_label, mech.result_peak), (avg_label, mech.result_avg)):
         add(f"### 물질수지 — {label}")
@@ -310,7 +371,7 @@ def render(design: PlantDesign | None = None) -> str:
                 [u.unit.tag, f"{u.residence_min:.2f}", _kgh(u.feed.dry_tph, 1),
                  _kgh(u.concentrate.dry_tph, 2), f"{_pct(u.mass_pull, 2)} %",
                  f"{_pct(u.recovery('Ag'))} %"]
-                for u in (res.rougher, res.cleaner)
+                for u in (res.rougher, res.scavenger, res.cleaner)
             ],
         ))
         add("")
