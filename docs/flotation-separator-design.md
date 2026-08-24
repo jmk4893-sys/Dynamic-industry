@@ -19,6 +19,7 @@
 도면은 [설계도 3매](drawings/ag-flotation-drawings.html) — 공정 흐름도(DWG-001),
 부선조 상세 단면도(DWG-002), 장치 대안 비교도(DWG-003) — 로 별도 정리했다
 (브라우저로 열어야 한다).
+같은 부선조를 입체로 본 [3D 컷어웨이 모델](drawings/ag-flotation-3d.html) 도 있다.
 
 ---
 
