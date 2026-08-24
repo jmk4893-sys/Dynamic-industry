@@ -62,8 +62,10 @@ class FragConfig:
     vent_time: float = 0.010         # 자유면 개방 후 가스 방출 시정수 [s]
 
     gravity: float = 9.81            # 중력가속도 [m/s^2] — 비산 탄도와 적재를 지배
-    bond_phase: float = 0.10         # 본드 단계 해석시간 [s]
-    total_duration: float = 1.20     # 전체 해석시간 [s]
+    bond_phase: float = 0.10         # 본드(파쇄) 단계 해석시간 [s]
+    throw_phase: float = 0.20        # 파쇄+초기 이동까지 DEM 으로 푸는 시간 [s]
+    total_duration: float = 1.60     # 탄도·적재까지 포함한 전체 시간 [s]
+    ballistic_dt: float = 2.0e-3     # 탄도 단계 시간간격 [s]
     cfl: float = 0.20
     boundary_damping: float = 0.60   # 고정 경계 점성 (파 반사 저감)
     rebuild_every: int = 25          # 접촉 이웃탐색 갱신 주기 [스텝]
@@ -602,20 +604,16 @@ class FragSolver:
         next_frame = 0.0
         t0 = time.time()
 
+        # 본드가 하나라도 살아 있으면 dt 는 본드 강성이 지배한다. 파쇄가 끝난 뒤
+        # 남는 본드는 대부분 '움직이지 않는 배후 암반'과 '파쇄체 내부'의 것이라
+        # 작은 dt 를 계속 쓰는 것은 낭비다. 그래서 DEM 은 throw_phase 까지만 돌리고,
+        # 그 뒤는 각 파쇄체를 강체로 보고 탄도 적분한다 (_ballistic 참조).
         stages = ((cfg.bond_phase, m.dt_bond(), "본드"),
-                  (cfg.total_duration, m.dt_contact(), "비산"))
+                  (cfg.throw_phase, m.dt_bond(), "이동"))
         prev_end = 0.0
         for t_end, dt, label in stages:
             if t_end <= prev_end:
                 continue
-            # 비산 단계의 큰 dt 는 '본드가 대부분 끊겼다'는 전제 위에 있다.
-            # 아직 많이 살아 있으면 본드 강성이 지배하므로 작은 dt 를 유지한다.
-            alive_frac = float(m.bond_alive.mean())
-            if label == "비산" and alive_frac > 0.15:
-                dt = m.dt_bond()
-                if cfg.progress:
-                    print(f"  (본드 {alive_frac:.0%} 생존 -> 비산 단계도 "
-                          f"dt={dt * 1e6:.1f} us 유지)")
             n_steps = max(1, int(round((t_end - prev_end) / dt)))
             for step in range(n_steps):
                 if step % cfg.rebuild_every == 0:
@@ -652,6 +650,9 @@ class FragSolver:
                           f"파괴본드={broken:,}/{m.bi.size:,}", end="", flush=True)
             prev_end = t_end
 
+        if cfg.total_duration > t:
+            t, next_frame = self._ballistic(pos, vel, t, frames, next_frame, frame_dt)
+
         if cfg.progress:
             print(f"\r  DEM 완료  ({time.time() - t0:.1f} s)" + " " * 40)
 
@@ -662,12 +663,88 @@ class FragSolver:
                           wall_time=time.time() - t0, face_x=m.face_x, toe_z=m.toe_z,
                           pressure_log=plog)
 
+    # ---- 탄도·적재 단계 -----------------------------------------------------
+    def _ballistic(self, pos, vel, t, frames, next_frame, frame_dt):
+        """파쇄 완료 후 각 파쇄체를 강체로 보고 탄도 적분한다.
+
+        본드가 살아 있는 한 dt 는 sqrt(m/k) 에 묶인다(수십 us). 그러나 파쇄가 끝난
+        뒤의 관심사는 '어디까지 날아가 어떻게 쌓이나' 이고, 이는 강체 병진 + 중력 +
+        지면 충돌로 충분하다. 본드 강성이 빠지므로 dt 를 100배 키울 수 있다.
+
+        각 파쇄체는 회전 없이 무게중심 속도로 평행이동한다. 지면은 굴착선(toe_z)이며,
+        착지한 파쇄체는 그 자리의 적재 높이 위에 쌓인다(높이맵).
+        """
+        m, cfg = self.m, self.cfg
+        labels, _, _ = fragment_analysis(m)
+        free = ~m.fixed
+        # 배후 암반(고정 입자와 같은 파쇄체)은 움직이지 않는다
+        anchored = np.zeros(labels.max() + 1, dtype=bool)
+        anchored[labels[m.fixed]] = True
+        movable = free & ~anchored[labels]
+        if not movable.any():
+            return t, next_frame
+
+        lab = labels[movable]
+        uniq, inv = np.unique(lab, return_inverse=True)
+        n_frag = uniq.size
+        cnt = np.bincount(inv, minlength=n_frag).astype(float)
+        com = np.column_stack([np.bincount(inv, weights=pos[movable, c],
+                                           minlength=n_frag) / cnt for c in range(3)])
+        cvel = np.column_stack([np.bincount(inv, weights=vel[movable, c],
+                                            minlength=n_frag) / cnt for c in range(3)])
+        offset = pos[movable] - com[inv]
+
+        # 적재 높이맵 (굴착선 기준)
+        cell = max(2.0 * m.d, 1.0)
+        hx0, hy0 = m.x_lo - 60.0, m.y_lo - 20.0
+        nhx = int((m.x_hi - hx0 + 60.0) / cell) + 2
+        nhy = int((m.y_hi - hy0 + 20.0) / cell) + 2
+        height = np.zeros((nhx, nhy))
+        radius = m.radius
+        # 굴착선 아래(근저부)에 있는 파쇄체는 이미 바닥에 있다. 지면 판정에 걸려
+        # 위로 끌어올려지지 않도록 시작부터 '착지'로 표시한다.
+        settled = com[:, 2] < m.toe_z + radius
+        dt = cfg.ballistic_dt
+        g = cfg.gravity
+        n_steps = max(1, int((cfg.total_duration - t) / dt))
+
+        for step in range(n_steps):
+            live = ~settled
+            if live.any():
+                cvel[live, 2] -= g * dt
+                com[live] += cvel[live] * dt
+                ix = np.clip(((com[:, 0] - hx0) / cell).astype(int), 0, nhx - 1)
+                iy = np.clip(((com[:, 1] - hy0) / cell).astype(int), 0, nhy - 1)
+                ground = m.toe_z + height[ix, iy] + radius
+                land = live & (com[:, 2] <= ground) & (cvel[:, 2] < 0.0)
+                if land.any():
+                    com[land, 2] = ground[land]
+                    cvel[land] = 0.0
+                    settled[land] = True
+                    # 착지한 만큼 그 자리의 적재 높이를 올린다
+                    np.add.at(height, (ix[land], iy[land]),
+                              cnt[land] * m.volume / (cell * cell))
+            t += dt
+            if t >= next_frame:
+                pos[movable] = com[inv] + offset
+                sp = np.zeros(m.n)
+                sp[movable] = np.linalg.norm(cvel[inv], axis=1)
+                frames.append((t, pos.copy(), sp))
+                next_frame += frame_dt
+            if cfg.progress and step % max(1, n_steps // 10) == 0:
+                print(f"\r  DEM[탄도] {100.0 * step / n_steps:5.1f}%  t={t * 1e3:7.0f} ms  "
+                      f"착지 {int(settled.sum()):,}/{n_frag:,} 파쇄체", end="", flush=True)
+
+        pos[movable] = com[inv] + offset
+        return t, next_frame
+
     def summary(self) -> str:
         m = self.m
         return (f"[DEM 솔버] dt 본드단계 {m.dt_bond() * 1e6:.1f} us / "
                 f"비산단계 {m.dt_contact() * 1e6:.1f} us,  "
-                f"본드 {self.cfg.bond_phase * 1e3:.0f} ms + 비산 "
-                f"{(self.cfg.total_duration - self.cfg.bond_phase) * 1e3:.0f} ms\n"
+                f"탄도단계 {self.cfg.ballistic_dt * 1e3:.1f} ms,  "
+                f"DEM {self.cfg.throw_phase * 1e3:.0f} ms + 탄도 "
+                f"{(self.cfg.total_duration - self.cfg.throw_phase) * 1e3:.0f} ms\n"
                 f"  마찰계수 {self.cfg.friction}, 반발계수 {self.cfg.restitution}, "
                 f"중력 {self.cfg.gravity} m/s^2")
 

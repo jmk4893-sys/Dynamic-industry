@@ -25,13 +25,16 @@ from .rock import get_rock
 from .source import SourceConfig
 
 # 품질 프리셋 — 격자/입자 해상도와 해석시간을 함께 조절한다
+# DEM 은 본드가 살아 있는 한 dt 가 sqrt(m/k) 에 묶인다. 그래서 DEM 으로 푸는 구간
+# (throw)은 파쇄와 초기 이동이 끝나는 시점까지만 잡고, 그 뒤는 각 파쇄체를 강체로
+# 보는 탄도 단계로 넘긴다 (frag.FragSolver._ballistic).
 QUALITY_PRESETS: dict[str, dict] = {
     "빠름": dict(fdm_max_freq=60.0, fdm_max_cells=400_000, particle=0.60,
-                 bond_phase=0.05, frag_total=0.60, fps=20.0),
-    "보통": dict(fdm_max_freq=100.0, fdm_max_cells=1_200_000, particle=0.40,
-                 bond_phase=0.08, frag_total=1.00, fps=30.0),
-    "정밀": dict(fdm_max_freq=140.0, fdm_max_cells=3_000_000, particle=0.28,
-                 bond_phase=0.12, frag_total=1.50, fps=48.0),
+                 bond_phase=0.06, throw=0.12, frag_total=1.40, fps=20.0),
+    "보통": dict(fdm_max_freq=100.0, fdm_max_cells=1_200_000, particle=0.45,
+                 bond_phase=0.08, throw=0.15, frag_total=1.60, fps=25.0),
+    "정밀": dict(fdm_max_freq=140.0, fdm_max_cells=3_000_000, particle=0.32,
+                 bond_phase=0.10, throw=0.20, frag_total=2.00, fps=30.0),
 }
 
 
@@ -149,7 +152,11 @@ class BlastProject:
                    max(hp[:, 1].max(), pts[:, 1].max(), cy + half) + 10.0)
         depth = max(2.0 * (c.bench_height + self.pattern.subdrill), 0.6 * r_max, 25.0)
 
-        h = self.rock.s_velocity / 6.0 / q["fdm_max_freq"]
+        # 해상 주파수 요구와 함께, 격자가 발파공 배치를 표현할 수 있어야 한다.
+        # 등가공동 반경이 격자간격에 비례하므로 h 가 저항선만큼 커지면 폭원이
+        # 패턴 전체로 번져 버린다.
+        h = min(self.rock.s_velocity / 6.0 / q["fdm_max_freq"],
+                min(c.burden, c.spacing) / 2.0)
         ext = (x_range[1] - x_range[0], y_range[1] - y_range[0], depth)
         while (ext[0] / h + 1) * (ext[1] / h + 1) * (ext[2] / h + 1) > q["fdm_max_cells"]:
             h *= 1.12
@@ -193,7 +200,8 @@ class BlastProject:
         c, q = self.cfg, self.q
         fcfg = FragConfig(
             particle_size=q["particle"], bond_phase=q["bond_phase"],
-            total_duration=q["frag_total"], snapshot_fps=q["fps"],
+            throw_phase=q["throw"], total_duration=q["frag_total"],
+            snapshot_fps=q["fps"],
             stemming_full=c.full_stemming, gas_efficiency=c.gas_efficiency,
             progress=True,
         )

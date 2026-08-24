@@ -85,9 +85,9 @@ def print_catalog() -> None:
               f"RWS={e.rws:3.0f}")
     print("\n" + "=" * 72, "\n  해석 품질 (--quality)\n" + "=" * 72)
     for k, q in QUALITY_PRESETS.items():
-        print(f"  {k:<6s} FDM 최대주파수 {q['fdm_max_freq']:5.0f} Hz / 셀 상한 "
-              f"{q['fdm_max_cells']:>9,},  DEM 입자 {q['particle'] * 100:.0f} cm, "
-              f"해석 {q['frag_total']:.1f} s")
+        print(f"  {k:<6s} FDM {q['fdm_max_freq']:5.0f} Hz / 셀 {q['fdm_max_cells']:>9,}"
+              f"  |  DEM 입자 {q['particle'] * 100:.0f} cm, DEM {q['throw'] * 1e3:.0f} ms"
+              f" + 탄도 {(q['frag_total'] - q['throw']) * 1e3:.0f} ms")
     print("\n" + "=" * 72, "\n  비교 경험식 (--law)\n" + "=" * 72)
     for k, law in empirical.SD_LAWS.items():
         print(f"  {k:<12s} {law}")
