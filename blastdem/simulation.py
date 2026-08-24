@@ -91,6 +91,10 @@ class BlastSimulation:
         extent = (x_range[1] - x_range[0], y_range[1] - y_range[0], depth)
         d = self.domain.spacing or auto_spacing(self.rock, self.pattern, self.domain, extent)
 
+        # 해석시간을 여기서 확정해야 solver.summary() 의 스텝수가 맞는다
+        if not self.solver_cfg.duration or self.solver_cfg.duration <= 0:
+            self.solver_cfg.duration = self._auto_duration()
+
         self.lattice = Lattice(self.rock, x_range, y_range, depth, d)
         self.source = BlastSource(self.lattice, self.pattern, self.explosive, self.source_cfg)
         self.solver = DEMSolver(self.lattice, self.source, self.solver_cfg)
@@ -105,8 +109,6 @@ class BlastSimulation:
     def run(self) -> "BlastSimulation":
         if self.lattice is None:
             self.build()
-        if not self.solver_cfg.duration or self.solver_cfg.duration <= 0:
-            self.solver_cfg.duration = self._auto_duration()
         self.result = self.solver.run(self.sensor_points, self.sensor_names)
         self.records = sensors.build_records(self.result, self.source_center)
         return self
