@@ -7,9 +7,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from blastdem import BlastPattern, BlastSimulation, get_explosive, get_rock, line_array
-from blastdem.simulation import DomainConfig
-from blastdem.solver import SolverConfig
+from blastsim import BlastPattern, BlastSimulation, get_explosive, get_rock, line_array
+from blastsim.simulation import DomainConfig
+from blastsim.solver import SolverConfig
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "output", "01_bench")
 

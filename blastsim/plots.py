@@ -242,3 +242,68 @@ def plot_source(explosive, source, path: str) -> None:
     ax[1].set_ylabel(L("정규화 진폭", "Normalized"))
     ax[1].set_title(L("폭원 주파수 특성", "Source spectrum"))
     fig.tight_layout(); fig.savefig(path); plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+def plot_fragmentation(result, stats: dict, path: str) -> None:
+    """파쇄 입도 분포 (누적통과율 + Rosin-Rammler 회귀)."""
+    size = stats["size_sorted"]
+    cum = stats["cum"]
+    if size.size < 2:
+        return
+    fig, ax = plt.subplots(1, 2, figsize=(10.5, 4.2))
+
+    ax[0].semilogx(size, cum * 100, "o-", ms=3, lw=1.4, color="tab:blue",
+                   label=L("DEM 해석", "DEM"))
+    xs = np.logspace(np.log10(max(size.min(), 1e-3)), np.log10(size.max()), 120)
+    rr = 1.0 - np.exp(-((xs / max(stats["Xc"], 1e-6)) ** stats["n_rr"]))
+    ax[0].semilogx(xs, rr * 100, "--", lw=1.3, color="tab:red",
+                   label=f"Rosin-Rammler  Xc={stats['Xc']:.2f} m, n={stats['n_rr']:.2f}")
+    for frac, key, col in ((50, "X50", "0.4"), (80, "X80", "0.6")):
+        ax[0].axhline(frac, color=col, lw=0.7, ls=":")
+        ax[0].axvline(stats[key], color=col, lw=0.7, ls=":")
+        ax[0].text(stats[key], 3, f" {key}={stats[key]:.2f}m", fontsize=7, color="0.3")
+    ax[0].set_xlabel(L("파쇄체 등가입경 [m]", "Fragment size [m]"))
+    ax[0].set_ylabel(L("누적 통과율 [%]", "Cumulative passing [%]"))
+    ax[0].set_title(L("파쇄 입도 분포", "Fragment size distribution"))
+    ax[0].set_ylim(0, 100)
+    ax[0].legend(fontsize=7, loc="upper left")
+
+    v = result.peak_speed
+    v = v[v > 0.1]
+    if v.size:
+        ax[1].hist(v, bins=50, color="tab:orange", edgecolor="none")
+        ax[1].axvline(20.0, color="crimson", lw=1.2, ls="--")
+        ax[1].text(20.0, ax[1].get_ylim()[1] * 0.9,
+                   L(" 비산 기준 20 m/s", " flyrock 20 m/s"), fontsize=7, color="crimson")
+    ax[1].set_yscale("log")
+    ax[1].set_xlabel(L("입자 최대속도 [m/s]", "Peak particle speed [m/s]"))
+    ax[1].set_ylabel(L("입자 수", "count"))
+    ax[1].set_title(L(f"속도 분포 (최대 {stats['v_max']:.0f} m/s, "
+                      f"비산거리 {stats['flyrock_range']:.0f} m)",
+                      "Speed distribution"))
+    fig.tight_layout(); fig.savefig(path); plt.close(fig)
+
+
+def plot_muckpile(result, path: str) -> None:
+    """발파 전후 측면도 — 저항선 이동과 파쇄암 적재 형상."""
+    p0, p1 = result.pos0, result.pos
+    disp = np.linalg.norm(p1 - p0, axis=1)
+    fig, ax = plt.subplots(1, 2, figsize=(11, 4.2), sharex=True, sharey=True)
+
+    ax[0].scatter(p0[:, 0], p0[:, 2], s=3, c="0.55", linewidths=0)
+    ax[0].set_title(L("발파 전", "Before"))
+    sc = ax[1].scatter(p1[:, 0], p1[:, 2], s=3, c=disp, cmap="viridis", linewidths=0)
+    ax[1].set_title(L("발파 후 (색 = 이동거리)", "After (color = displacement)"))
+    fig.colorbar(sc, ax=ax[1], label=L("이동거리 [m]", "displacement [m]"), shrink=0.85)
+
+    for a in ax:
+        a.axvline(result.face_x, color="tab:cyan", lw=1.1, ls="--")
+        a.axhline(result.toe_z, color="tab:cyan", lw=1.1, ls="--")
+        a.axhline(0.0, color="0.6", lw=0.8)
+        a.set_aspect("equal")
+        a.set_xlabel("X [m]")
+    ax[0].set_ylabel("Z [m]")
+    fig.suptitle(L("파쇄암 이동 및 적재 (측면도, 자유면 방향 →)",
+                   "Muckpile (side view)"), fontsize=10)
+    fig.tight_layout(); fig.savefig(path); plt.close(fig)

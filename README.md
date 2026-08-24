@@ -1,6 +1,6 @@
 # Dynamic-industry
 
-## blastdem — 암발파 진동전파 3D DEM 해석 프로그램
+## blastsim — 암발파 진동전파 3D DEM 해석 프로그램
 
 폭약 종류 · 장약량 · 저항선 · 공간격 · 지발시차를 입력해, 발파진동이 암반을 통해
 전파되는 과정을 **3차원 개별요소법(DEM)** 으로 해석하고 임의 위치의 PPV(최대입자속도)와
@@ -20,15 +20,15 @@
 pip install -r requirements.txt
 
 # 사용 가능한 암종/폭약/경험식 목록
-python -m blastdem --list
+python -m blastsim --list
 
 # 화강암 벤치에서 에멀젼 2열x5공 발파, 30~120 m 진동 해석
-python -m blastdem --rock granite --explosive emulsion \
+python -m blastsim --rock granite --explosive emulsion \
     --burden 3.0 --spacing 3.5 --bench 10 --rows 2 --cols 5 \
     --distances 30 50 80 120 --out output
 
 # 폭원 효율을 경험식에 자동 보정 (절대 진폭이 필요할 때 — 6.1절 필독)
-python -m blastdem ... --calibrate --law kr_mean
+python -m blastsim ... --calibrate --law kr_mean
 
 # 예제 스크립트
 python examples/01_bench_blast.py        # 전체 보고서 + 그림 7종
@@ -36,13 +36,13 @@ python examples/02_compare_explosives.py # 폭약 종류별 진동 비교
 python examples/03_pattern_study.py      # 저항선·공간격·지발시차 파라미터 스터디
 
 # 검증 테스트
-python tests/test_blastdem.py
+python tests/test_blastsim.py
 ```
 
 Python API:
 
 ```python
-from blastdem import *
+from blastsim import *
 
 exp = get_explosive("emulsion")
 pattern = BlastPattern(exp, burden=3.0, spacing=3.5, bench_height=10.0,
@@ -130,7 +130,7 @@ Rayleigh 감쇠 `C = αM + βK`, `ζ(f) = α/(2ω) + βω/2` 를 두 기준주�
 
 ## 3. 검증 결과
 
-`python tests/test_blastdem.py` — **18/18 통과**
+`python tests/test_blastsim.py` — **18/18 통과**
 
 ### 격자 분산관계 (동역학행렬 고유값, 이론값 대비)
 
@@ -238,7 +238,7 @@ Rayleigh 감쇠 `C = αM + βK`, `ζ(f) = α/(2ω) + βω/2` 를 두 기준주�
 전반의 상황이며, 그래서 실무 모델은 모두 현장 보정을 쓴다.
 
 ```bash
-python -m blastdem ... --calibrate          # 경험식에 자동 보정
+python -m blastsim ... --calibrate          # 경험식에 자동 보정
 ```
 ```python
 eta = sim.apply_calibration("kr_mean")      # 또는 실측값으로

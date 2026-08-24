@@ -10,10 +10,10 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from blastdem import BlastPattern, BlastSimulation, get_explosive, get_rock, line_array
-from blastdem.empirical import evaluate
-from blastdem.simulation import DomainConfig
-from blastdem.solver import SolverConfig
+from blastsim import BlastPattern, BlastSimulation, get_explosive, get_rock, line_array
+from blastsim.empirical import evaluate
+from blastsim.simulation import DomainConfig
+from blastsim.solver import SolverConfig
 
 CASES = [
     ("anfo",      0.076),   # 완전결합

@@ -1,7 +1,7 @@
-"""blastdem 검증 테스트.
+"""blastsim 검증 테스트.
 
     python -m pytest tests/ -v        (pytest 있을 때)
-    python tests/test_blastdem.py     (없을 때 — 자체 러너)
+    python tests/test_blastsim.py     (없을 때 — 자체 러너)
 
 물리 검증의 핵심은 test_lattice_elastic_constants / test_wave_speed 두 개다.
 격자가 이론 탄성파 속도를 재현하지 못하면 나머지 결과는 의미가 없다.
@@ -16,13 +16,13 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from blastdem import (BlastPattern, BlastSimulation, Lattice, get_explosive,
+from blastsim import (BlastPattern, BlastSimulation, Lattice, get_explosive,
                       get_rock, line_array)
-from blastdem.empirical import SD_LAWS, fit_law
-from blastdem.rock import LATTICE_POISSON, Rock
-from blastdem.simulation import DomainConfig
-from blastdem.solver import SolverConfig
-from blastdem.source import SourceConfig
+from blastsim.empirical import SD_LAWS, fit_law
+from blastsim.rock import LATTICE_POISSON, Rock
+from blastsim.simulation import DomainConfig
+from blastsim.solver import SolverConfig
+from blastsim.source import SourceConfig
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +144,7 @@ def test_wave_speed_time_domain():
     경계·자유면 영향을 피하려고 큰 영역 깊은 곳에 폭원과 측점을 둔다.
     정밀 검증은 test_lattice_dispersion_long_wavelength 가 담당한다.
     """
-    from blastdem.solver import DEMSolver
+    from blastsim.solver import DEMSolver
 
     rock = Rock("t", density=2650, young=60e9, ucs=1e12, tensile=1e12, damping_ratio=0.0)
     lat = Lattice(rock, (-30, 30), (-30, 30), 40, 1.0)
@@ -165,9 +165,9 @@ def test_wave_speed_time_domain():
 
 def test_rayleigh_damping_targets():
     """Rayleigh 계수가 목표 감쇠비를 두 기준주파수에서 정확히 만족하는가."""
-    from blastdem.solver import DEMSolver
-    from blastdem.pattern import BlastPattern
-    from blastdem.source import BlastSource
+    from blastsim.solver import DEMSolver
+    from blastsim.pattern import BlastPattern
+    from blastsim.source import BlastSource
 
     rock = get_rock("granite")
     e = get_explosive("emulsion")
@@ -245,7 +245,7 @@ def test_source_mesh_independence():
 
     P_eq ∝ 1/r_eq, 공동 표면적 ∝ r_eq 이므로 곱은 상수가 된다.
     """
-    from blastdem.source import BlastSource
+    from blastsim.source import BlastSource
     rock, e = get_rock("granite"), get_explosive("emulsion")
     pat = BlastPattern(e, burden=3.0, spacing=3.5, bench_height=8.0, n_rows=1, n_cols=1)
     line, node = [], []
@@ -260,7 +260,7 @@ def test_source_mesh_independence():
 
 def test_source_zero_net_force():
     """폭원 하중의 합력은 0 이어야 한다(강체 이동 방지)."""
-    from blastdem.source import BlastSource
+    from blastsim.source import BlastSource
     rock, e = get_rock("granite"), get_explosive("emulsion")
     pat = BlastPattern(e, bench_height=8.0, n_rows=1, n_cols=2)
     lat = Lattice(rock, (-12, 14), (-12, 12), 14, 1.0)
@@ -271,7 +271,7 @@ def test_source_zero_net_force():
 
 def test_elastic_core_protected():
     """폭원 근방 본드는 파괴 금지로 표시된다."""
-    from blastdem.source import BlastSource
+    from blastsim.source import BlastSource
     rock, e = get_rock("granite"), get_explosive("emulsion")
     pat = BlastPattern(e, bench_height=8.0, n_rows=1, n_cols=1)
     lat = Lattice(rock, (-12, 12), (-12, 12), 14, 1.0)
@@ -359,7 +359,7 @@ def test_calibration_linearity():
 
 def test_source_scales_with_charge_and_explosive():
     """장약량·폭약 위력이 커지면 폭원 세기도 커져야 한다 (단조성)."""
-    from blastdem.source import BlastSource
+    from blastsim.source import BlastSource
     rock = get_rock("granite")
     lat = Lattice(rock, (-12, 12), (-12, 12), 14, 1.5)
     strengths = {}
@@ -408,6 +408,135 @@ def test_degenerate_run_does_not_crash(tmpdir: str = None):
         sim.save_csv(out + "/s.csv")
     finally:
         shutil.rmtree(out, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# 6. FDM 원거리 진동 (fdm.py)
+# ---------------------------------------------------------------------------
+def _rayleigh_exact(nu: float) -> float:
+    """Rayleigh 방정식 x^6-8x^4+(24-16k2)x^2+16(k2-1)=0 의 근 (VR/Vs)."""
+    k2 = (1 - 2 * nu) / (2 * (1 - nu))
+    f = lambda x: x ** 6 - 8 * x ** 4 + (24 - 16 * k2) * x ** 2 + 16 * (k2 - 1)
+    lo, hi = 0.5, 1.0
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        if f(lo) * f(mid) <= 0:
+            hi = mid
+        else:
+            lo = mid
+    return (lo + hi) / 2
+
+
+def test_fdm_elastic_moduli():
+    """FDM 은 DEM 격자와 달리 포아송비를 자유롭게 쓴다."""
+    from blastsim.fdm import BenchGeometry, FDMModel
+    rock = get_rock("granite")
+    for nu in (0.15, 0.25, 0.35):
+        m = FDMModel(rock, (0, 20), (0, 20), 20, 2.0,
+                     geometry=BenchGeometry(two_free_face=False), poisson=nu)
+        mu = rock.young / (2 * (1 + nu))
+        lam = rock.young * nu / ((1 + nu) * (1 - 2 * nu))
+        assert abs(m.mu - mu) / mu < 1e-12
+        assert abs(m.lam - lam) / lam < 1e-12
+        assert abs(m.vp - math.sqrt((lam + 2 * mu) / rock.density)) < 1e-9
+        # Vp/Vs 는 nu 에 따라 달라져야 한다 (격자 DEM 은 sqrt(3) 고정)
+        assert abs(m.vp / m.vs - math.sqrt(2 * (1 - nu) / (1 - 2 * nu))) < 1e-9
+
+
+def test_fdm_free_surface_and_two_faces():
+    """진공 정식화: 지표 위는 진공, 전단계수 0 (= 자유면). 2자유면 형상 확인."""
+    from blastsim.fdm import BenchGeometry, FDMModel
+    geom = BenchGeometry(bench_height=10.0, face_x=0.0, two_free_face=True)
+    m = FDMModel(get_rock("granite"), (-20, 40), (-20, 20), 30, 2.0, geometry=geom)
+
+    ks, j = m.k_surface, m.ny // 2
+    assert abs(m.zs[ks]) < 1e-9, "k_surface 가 z=0 이 아니다"
+    assert m.n_air >= 4, "자유면 성립에 필요한 진공층이 부족"
+
+    i_bench = int((10 - m.x0) / m.h)
+    assert m.solid[i_bench, j, ks], "벤치 상부는 암반"
+    assert not m.solid[i_bench, j, ks + 1], "지표 위는 진공"
+    assert m.lam2mu[i_bench, j, ks + 2] == 0.0, "진공 셀의 탄성계수는 0"
+    # 자유면 전단응력점의 전단계수는 0 (조화평균에 진공이 섞이므로)
+    assert m.mu_xz[i_bench, j, ks] == 0.0
+    assert m.mu_yz[i_bench, j, ks] == 0.0
+
+    # 제2자유면(벤치면): 면 앞쪽은 굴착선 위가 비어 있어야 한다
+    i_front = int((-8 - m.x0) / m.h)
+    assert not m.solid[i_front, j, ks], "벤치면 앞 상부는 굴착된 공간"
+    k_toe = int((-10 + m.depth) / m.h)
+    assert m.solid[i_front, j, k_toe], "굴착선 아래는 하부 소단 암반"
+
+    # 1자유면으로 바꾸면 벤치면이 사라진다
+    m1 = FDMModel(get_rock("granite"), (-20, 40), (-20, 20), 30, 2.0,
+                  geometry=BenchGeometry(two_free_face=False))
+    assert m1.solid[int((-8 - m1.x0) / m1.h), j, m1.k_surface]
+
+
+def test_fdm_timestep_stability_margin():
+    """점성(Kelvin-Voigt)은 임계 dt 를 줄이며, 실제 dt 는 그보다 작아야 한다."""
+    from blastsim.fdm import BenchGeometry, CavitySource, FDMConfig, FDMModel, FDMSolver
+    rock, e = get_rock("granite"), get_explosive("emulsion")
+    pat = BlastPattern(e, bench_height=8.0, n_rows=1, n_cols=1)
+    m = FDMModel(rock, (-20, 20), (-20, 20), 25, 2.0,
+                 geometry=BenchGeometry(two_free_face=False))
+    sv = FDMSolver(m, CavitySource(m, pat.holes, e, SourceConfig()), FDMConfig())
+    assert sv.dt_max_damped < m.dt_max, "점성항이 임계 dt 를 줄여야 한다"
+    assert sv.dt < sv.dt_max_damped
+    # 저주파는 거의 감쇠되지 않고 고주파일수록 강하게 감쇠되어야 한다
+    z = lambda f: math.pi * f * sv.beta
+    assert z(10) < z(60) < z(300)
+    assert abs(z(sv.cfg.damping_freq) - rock.damping_ratio) < 1e-12
+
+
+def test_fdm_rayleigh_wave_speed():
+    """자유면 위 Rayleigh 파 속도가 이론값과 맞는가 (탄성 + 자유면 동시 검증).
+
+    두 측점 간 연직속도 상호상관으로 위상속도를 재고, 이론 VR = xi(nu)*Vs 와
+    비교한다. 이 검증이 통과하면 탄성계수·자유면·시간적분이 모두 맞는 것이다.
+    """
+    from blastsim.fdm import BenchGeometry, FDMConfig, FDMModel, FDMSolver
+
+    class _PointPressure:
+        def __init__(self, model, ijk, amp, fc):
+            self.idx = int(np.ravel_multi_index(ijk, model.shape))
+            self.amp, self.fc, self.prev = amp, fc, 0.0
+
+        def apply(self, sxx, syy, szz, t):
+            a = (math.pi * self.fc * (t - 1.5 / self.fc)) ** 2
+            p = self.amp * (1 - 2 * a) * math.exp(-a)
+            dp, self.prev = p - self.prev, p
+            for arr in (sxx, syy, szz):
+                arr[self.idx] -= dp
+
+    def lag(a, b, dt):
+        a, b = a - a.mean(), b - b.mean()
+        c = np.correlate(b, a, "full")
+        k = int(np.argmax(c))
+        dk = 0.0
+        if 0 < k < len(c) - 1:
+            y0, y1, y2 = c[k - 1], c[k], c[k + 1]
+            den = y0 - 2 * y1 + y2
+            if den:
+                dk = 0.5 * (y0 - y2) / den
+        return (k - (len(a) - 1) + dk) * dt
+
+    nu = 0.25
+    rock = Rock("t", density=2650, young=60e9, poisson=nu, damping_ratio=0.0)
+    h, fc, x1, x2 = 2.0, 120.0, 100.0, 180.0
+    m = FDMModel(rock, (-30, 260), (-40, 40), 40, h,
+                 geometry=BenchGeometry(two_free_face=False), poisson=nu)
+    vr_th = _rayleigh_exact(nu) * m.vs
+    src = _PointPressure(m, (int((0 - m.x0) / h), m.ny // 2, m.k_surface - 3), 5e9, fc)
+    dur = 1.5 / fc + x2 / vr_th + 5.0 / fc
+    sv = FDMSolver(m, src, FDMConfig(duration=dur, cfl=0.75, progress=False))
+    res = sv.run(np.array([[x1, 0, 0], [x2, 0, 0]]))
+
+    dl = lag(res.velocity[:, 0, 2], res.velocity[:, 1, 2], res.dt)
+    assert dl > 0, "두 번째 측점이 더 늦게 도달해야 한다"
+    vr = (x2 - x1) / dl
+    err = abs(vr - vr_th) / vr_th
+    assert err < 0.05, f"VR 측정 {vr:.0f} vs 이론 {vr_th:.0f} (오차 {err:.1%})"
 
 
 # ---------------------------------------------------------------------------
