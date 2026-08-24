@@ -318,6 +318,7 @@ class BlastProject:
             lines += ["-" * 78, "  [1] 원거리 진동 (FDM)", "-" * 78,
                       self.vib["model"].summary(), "",
                       sensors.table(recs), "",
+                      self._frequency_note(recs),
                       f"  해석 회귀식 : {law}",
                       f"  참조 경험식 : {empirical.SD_LAWS[c.law]}",
                       f"  폭원 보정계수 eta = {self.vib['calibration']:.2f}"
@@ -374,6 +375,24 @@ class BlastProject:
             lines += [""]
         lines.append("=" * 78)
         return "\n".join(lines)
+
+    def _frequency_note(self, recs) -> str:
+        """탁월주파수가 격자 해상한계에 붙었는지 알린다.
+
+        균질 탄성 모델에는 절리 산란감쇠가 없어서 고주파가 살아남고, 그 결과
+        탁월주파수가 격자 상한 근처에 붙는다. 실제 원거리 계측은 보통 10~80 Hz
+        이므로, 이 값으로 주파수 기준 규제를 검토하면 안 된다.
+        """
+        f_grid = self.vib["model"].max_frequency
+        hi = [r for r in recs if r.dominant_frequency > 0.7 * f_grid]
+        if not hi:
+            return "  탁월주파수는 격자 해상한계 아래에 있다 — 해석값으로 볼 수 있다.\n"
+        names = ", ".join(f"{r.name} {r.dominant_frequency:.0f} Hz" for r in hi)
+        return ("  [경고] 탁월주파수가 격자 해상한계"
+                f" {f_grid:.0f} Hz 에 붙어 있습니다 ({names}).\n"
+                "         균질 탄성 모델에 절리 산란감쇠가 없어 고주파가 과대평가된\n"
+                "         것입니다. 실제 원거리 계측은 보통 10~80 Hz 입니다.\n"
+                "         규제 검토는 주파수가 아니라 PPV 기준으로 하십시오.\n")
 
     def save(self, log=print) -> list[str]:
         out = self.cfg.outdir
