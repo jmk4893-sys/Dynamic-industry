@@ -70,7 +70,7 @@ class TestCellGeometry(unittest.TestCase):
         self.assertAlmostEqual(r.width_m, 0.70)
         self.assertAlmostEqual(r.shell_height_m - r.lip_height_m, 0.06, places=9)
         self.assertAlmostEqual(r.froth_depth_m, self.geom.froth_depth_m)
-        self.assertAlmostEqual(r.cross_section_m2, 0.49, places=9)
+        self.assertAlmostEqual(r.cross_section_m2, math.pi * 0.70**2 / 4.0, places=9)
 
 
 class TestResidenceTime(unittest.TestCase):
@@ -154,7 +154,7 @@ class TestAeration(unittest.TestCase):
     def test_air_flow_from_superficial_velocity(self):
         expected = 0.01 * self.geom.cross_section_m2 * 3600.0
         self.assertAlmostEqual(self.aer.air_flow_m3h, expected, places=9)
-        self.assertAlmostEqual(self.aer.air_flow_m3h, 17.64, places=2)
+        self.assertAlmostEqual(self.aer.air_flow_m3h, 13.85, places=2)
 
     def test_bubble_surface_area_flux_in_target_band(self):
         self.assertAlmostEqual(self.aer.bubble_surface_area_flux_1_s, 50.0, places=6)
@@ -179,8 +179,10 @@ class TestFrothLoading(unittest.TestCase):
         fl = froth_loading(geom, concentrate_tph=0.085)
         self.assertTrue(fl.carry_rate_ok)
         self.assertTrue(fl.lip_loading_ok)
-        self.assertAlmostEqual(fl.lip_length_m, 1.4, places=9)
-        self.assertAlmostEqual(fl.carry_rate_tph_m2, 0.085 / 0.49, places=9)
+        self.assertAlmostEqual(fl.lip_length_m, math.pi * 0.70, places=9)
+        self.assertAlmostEqual(
+            fl.carry_rate_tph_m2, 0.085 / (math.pi * 0.70**2 / 4.0), places=9
+        )
 
     def test_flags_overload(self):
         geom = rounded_cell(cell_geometry(required_slurry_volume(1.699, 10.0)), 0.70, 0.81)

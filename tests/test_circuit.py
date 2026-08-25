@@ -183,7 +183,7 @@ class TestFloatUnit(unittest.TestCase):
 
 
 class TestCompositeCarry(unittest.TestCase):
-    """Ag 는 Si 코어를 달고 부상한다 — 정광 품위에 물리적 상한이 생긴다."""
+    """Ag-실리콘 복합입자는 하나의 보존 성분으로 각 단을 통과한다."""
 
     def setUp(self):
         self.unit = FlotationUnit("FC-201", "러퍼", 0.06, effective_volume_m3=0.85)
@@ -192,10 +192,19 @@ class TestCompositeCarry(unittest.TestCase):
         res = float_unit(feed_stream(), self.unit, K, SG, composite_carry_ratio=ratio)
         return res.concentrate.grade_fraction("Ag"), res
 
-    def test_carry_lowers_concentrate_grade(self):
+    def test_legacy_carry_is_not_applied_twice(self):
         without, _ = self._grade(0.0)
         with_carry, _ = self._grade(db.COMPOSITE_CARRY_RATIO)
-        self.assertLess(with_carry, without)
+        self.assertAlmostEqual(with_carry, without, places=12)
+
+    def test_locked_gangue_stays_paired_with_silver(self):
+        _, res = self._grade(db.COMPOSITE_CARRY_RATIO)
+        for stream in (res.feed, res.concentrate, res.tailings):
+            self.assertAlmostEqual(
+                stream.component_tph("Ag_locked_gangue") / stream.component_tph("Ag"),
+                db.COMPOSITE_CARRY_RATIO,
+                places=10,
+            )
 
     def test_grade_cannot_exceed_theoretical_limit(self):
         limit = 1.0 / (1.0 + db.COMPOSITE_CARRY_RATIO)
@@ -211,14 +220,14 @@ class TestCompositeCarry(unittest.TestCase):
                 places=12,
             )
 
-    def test_carry_cannot_exceed_available_gangue(self):
-        # 터무니없이 큰 carry ratio 를 줘도 맥석보다 많이 옮길 수 없다.
+    def test_legacy_carry_argument_cannot_move_free_gangue(self):
+        # 잠금 성분이 있는 새 급광에는 과거 호환용 carry 인자를 재적용하지 않는다.
         res = float_unit(feed_stream(), self.unit, K, SG, composite_carry_ratio=1e6)
         for name in ("Si", "Al"):
-            self.assertGreaterEqual(res.tailings.component_tph(name), -1e-12)
-            self.assertLessEqual(
-                res.concentrate.component_tph(name),
-                res.feed.component_tph(name) + 1e-12,
+            self.assertAlmostEqual(
+                res.recovery(name),
+                K[name].entrainment_factor * self.unit.water_recovery,
+                places=12,
             )
 
 
@@ -304,6 +313,20 @@ class TestMechanicalCircuit(unittest.TestCase):
     def test_lower_throughput_improves_recovery(self):
         avg = solve_mechanical(db.FEED, 0.3)
         self.assertGreater(avg.recovery("Ag"), self.res.recovery("Ag"))
+
+    def test_filter_press_filtrate_replaces_fresh_rougher_water(self):
+        returned = solve_mechanical(db.FEED, 0.5, filtrate_return_m3h=0.47)
+        self.assertAlmostEqual(returned.filtrate_return_m3h, 0.47, places=12)
+        self.assertAlmostEqual(
+            returned.fresh_water_m3h,
+            self.res.fresh_water_m3h - 0.47,
+            places=9,
+        )
+        self.assertAlmostEqual(
+            returned.rougher.feed.solids_mass_fraction,
+            db.FEED.solids_mass_fraction,
+            places=9,
+        )
 
     def test_missing_kinetics_raises(self):
         r, sc, c = build_mechanical_units()

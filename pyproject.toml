@@ -9,6 +9,13 @@ description = "태양광 패널 재활용용 단단 부유선별기 설계 계�
 requires-python = ">=3.10"
 dependencies = []
 
+[project.optional-dependencies]
+simulation = [
+  "numpy>=1.24",
+  "matplotlib>=3.7",
+  "imageio-ffmpeg>=0.4.9",
+]
+
 [project.scripts]
 flotation-design = "flotation_design.__main__:main"
 

@@ -1,4 +1,4 @@
-"""설비 전체 조립 — 1안(연속 부선조)과 2안(기계식 러퍼+클리너).
+"""설비 전체 조립 — 1안(연속 부선조)과 2안(기계식 3단).
 
 두 안 모두 동일한 급광 사양과 동일한 부선 거동 모델을 쓰므로 직접 비교할
 수 있다. 차이는 오직 **장치 형식**에서 온다.
@@ -124,12 +124,31 @@ class RfcOption:
 
     @property
     def water_recycle_m3h(self) -> float:
-        """농축조에서 회수해 재사용하는 물."""
+        """농축조 월류수와 필터 여액의 총 회수량 (블리드 전)."""
         return (
             self.tailings_thickener.overflow_m3h
             + self.concentrate_thickener.overflow_m3h
             + self.filtrate_m3h
         )
+
+    @property
+    def thickener_overflow_m3h(self) -> float:
+        return (
+            self.tailings_thickener.overflow_m3h
+            + self.concentrate_thickener.overflow_m3h
+        )
+
+    @property
+    def bleed_m3h(self) -> float:
+        return self.thickener_overflow_m3h * db.PROCESS_WATER_BLEED_FRACTION
+
+    @property
+    def fresh_makeup_m3h(self) -> float:
+        cake_water = (
+            self.concentrate_filter.cake_water_tph
+            + self.tailings_filter.cake_water_tph
+        )
+        return cake_water + self.bleed_m3h
 
 
 @dataclass(frozen=True)
@@ -168,6 +187,7 @@ class MechanicalOption:
     blower_pressure_kpa: float
     blower_rating_kw: float
     tailings_thickener: Thickener
+    concentrate_thickener: Thickener
     concentrate_filter: FilterPress
     tailings_filter: FilterPress
 
@@ -211,8 +231,31 @@ class MechanicalOption:
 
     @property
     def water_recycle_m3h(self) -> float:
-        """농축조 월류수 + 여액."""
-        return self.tailings_thickener.overflow_m3h + self.filtrate_m3h
+        """정광·미광 농축조 월류수 + 여액 (블리드 전)."""
+        return (
+            self.tailings_thickener.overflow_m3h
+            + self.concentrate_thickener.overflow_m3h
+            + self.filtrate_m3h
+        )
+
+    @property
+    def thickener_overflow_m3h(self) -> float:
+        return (
+            self.tailings_thickener.overflow_m3h
+            + self.concentrate_thickener.overflow_m3h
+        )
+
+    @property
+    def bleed_m3h(self) -> float:
+        return self.thickener_overflow_m3h * db.PROCESS_WATER_BLEED_FRACTION
+
+    @property
+    def fresh_makeup_m3h(self) -> float:
+        cake_water = (
+            self.concentrate_filter.cake_water_tph
+            + self.tailings_filter.cake_water_tph
+        )
+        return cake_water + self.bleed_m3h
 
 
 @dataclass(frozen=True)
@@ -245,16 +288,33 @@ def build_rfc_option(feed: FeedSpec = db.FEED) -> RfcOption:
         feed.component_tph(feed.peak_tph),
         db.FLOAT_MODELS,
         db.RFC_AG_RECOVERY,
-        db.COMPOSITE_CARRY_RATIO,
+        0.0,  # Ag_locked_gangue 성분으로 결합 맥석을 직접 추적
     )
     perf_avg = rfc_separation(
         feed.component_tph(feed.average_tph),
         db.FLOAT_MODELS,
         db.RFC_AG_RECOVERY,
-        db.COMPOSITE_CARRY_RATIO,
+        0.0,
     )
     conditioners = conditioner_train(db.CONDITIONER_STAGES, point_peak.feed_m3h)
-    tail_water = point_peak.feed_m3h + point_peak.wash_water_m3h - point_peak.overflow_water_m3h
+    # 필터를 먼저 정한 뒤, 농축조 월류는 '부선 산물 물 - U/F 물'로 계산한다.
+    # 슬러리 체적(고체 체적 포함)을 물로 계상하거나 U/F 물을 중복 회수하지 않는다.
+    concentrate_filter = _concentrate_filter(
+        "FL-101", perf_peak.concentrate_dry_tph, feed.solids_specific_gravity
+    )
+    tailings_filter = _tailings_filter(
+        "FL-102", perf_peak.tailings_dry_tph, feed.solids_specific_gravity
+    )
+    concentrate_water = point_peak.overflow_water_m3h
+    tail_water = (
+        point_peak.water_tph
+        + point_peak.wash_water_m3h
+        - concentrate_water
+    )
+    concentrate_overflow = max(
+        0.0, concentrate_water - concentrate_filter.feed_water_tph
+    )
+    tail_overflow = max(0.0, tail_water - tailings_filter.feed_water_tph)
     return RfcOption(
         design=design,
         point_avg=point_avg,
@@ -263,18 +323,14 @@ def build_rfc_option(feed: FeedSpec = db.FEED) -> RfcOption:
         performance_peak=perf_peak,
         conditioners=conditioners,
         tailings_thickener=Thickener(
-            "TK-101", "미광 농축 · 공정수 회수", tail_water, THICKENER_RISE_RATE_M_H
+            "TK-101", "미광 농축 · 공정수 회수", tail_overflow, THICKENER_RISE_RATE_M_H
         ),
         concentrate_thickener=Thickener(
-            "TK-102", "정광 농축 · 여과 전단", point_peak.overflow_water_m3h,
+            "TK-102", "정광 농축 · 여과 전단", concentrate_overflow,
             THICKENER_RISE_RATE_M_H,
         ),
-        concentrate_filter=_concentrate_filter(
-            "FL-101", perf_peak.concentrate_dry_tph, feed.solids_specific_gravity
-        ),
-        tailings_filter=_tailings_filter(
-            "FL-102", perf_peak.tailings_dry_tph, feed.solids_specific_gravity
-        ),
+        concentrate_filter=concentrate_filter,
+        tailings_filter=tailings_filter,
     )
 
 
@@ -313,7 +369,9 @@ def build_mechanical_units() -> tuple[FlotationUnit, FlotationUnit, FlotationUni
     return rougher, scavenger, cleaner
 
 
-def solve_mechanical(feed: FeedSpec, dry_tph: float) -> CircuitResult:
+def solve_mechanical(
+    feed: FeedSpec, dry_tph: float, filtrate_return_m3h: float = 0.0
+) -> CircuitResult:
     rougher, scavenger, cleaner = build_mechanical_units()
     return solve_circuit(
         feed.component_tph(dry_tph),
@@ -323,13 +381,36 @@ def solve_mechanical(feed: FeedSpec, dry_tph: float) -> CircuitResult:
         scavenger,
         cleaner,
         rougher_feed_solids=feed.solids_mass_fraction,
-        composite_carry_ratio=db.COMPOSITE_CARRY_RATIO,
+        composite_carry_ratio=0.0,  # Ag_locked_gangue 성분으로 결합 상태 추적
+        filtrate_return_m3h=filtrate_return_m3h,
     )
 
 
 def build_mechanical_option(feed: FeedSpec = db.FEED) -> MechanicalOption:
-    result_peak = solve_mechanical(feed, feed.peak_tph)
-    result_avg = solve_mechanical(feed, feed.average_tph)
+    # 고체 산물량으로 필터 여액을 먼저 구한 뒤, 해당 여액을 러퍼 수력부하에
+    # 포함해 최종 회로를 다시 푼다. 목표 7 wt%는 유지되고 신수만 감소한다.
+    preliminary_peak = solve_mechanical(feed, feed.peak_tph)
+    concentrate_filter = _concentrate_filter(
+        "FL-201", preliminary_peak.concentrate.dry_tph, feed.solids_specific_gravity
+    )
+    tailings_filter = _tailings_filter(
+        "FL-202", preliminary_peak.tailings.dry_tph, feed.solids_specific_gravity
+    )
+    filtrate_peak = concentrate_filter.filtrate_m3h + tailings_filter.filtrate_m3h
+    result_peak = solve_mechanical(feed, feed.peak_tph, filtrate_peak)
+
+    preliminary_avg = solve_mechanical(feed, feed.average_tph)
+    avg_concentrate_filter = _concentrate_filter(
+        "FL-201", preliminary_avg.concentrate.dry_tph, feed.solids_specific_gravity
+    )
+    avg_tailings_filter = _tailings_filter(
+        "FL-202", preliminary_avg.tailings.dry_tph, feed.solids_specific_gravity
+    )
+    result_avg = solve_mechanical(
+        feed,
+        feed.average_tph,
+        avg_concentrate_filter.filtrate_m3h + avg_tailings_filter.filtrate_m3h,
+    )
     unit_results = {
         "FC-201": result_peak.rougher,
         "FC-202": result_peak.scavenger,
@@ -359,16 +440,18 @@ def build_mechanical_option(feed: FeedSpec = db.FEED) -> MechanicalOption:
             jg_min_cm_s=jg_min,
             jg_max_cm_s=jg_max,
             bubble_d32_mm=db.BUBBLE_D32_MM,
+            sparger_loss_kpa=0.0,  # 별도 스파저 없음 — 중공축 분산구 손실은 아래에서 계산
         )
         shaft = hollow_shaft(
             tag,
-            shaft_power_kw=impeller.ungassed_power_w / 1000.0,
+            shaft_power_kw=impeller.motor_rating_kw,
             speed_rpm=impeller.speed_rpm,
             air_m3h=aer.air_flow_max_m3h,
             length_m=geometry.shell_height_m + db.SHAFT_LENGTH_MARGIN_M,
             target_air_velocity_m_s=db.SHAFT_AIR_VELOCITY_M_S,
             joint_loss_kpa=db.SHAFT_JOINT_LOSS_KPA,
             discharge_ports=db.SHAFT_DISCHARGE_PORTS,
+            impeller_mass_kg=db.IMPELLER_ASSEMBLY_MASS_KG[tag],
         )
         cells.append(
             MechanicalCell(tag, duty, geometry, series[tag], impeller, aer, shaft, density)
@@ -382,6 +465,11 @@ def build_mechanical_option(feed: FeedSpec = db.FEED) -> MechanicalOption:
     blower_shaft = (blower_flow / 3600.0) * (blower_pressure * 1000.0) / 0.55
 
     tail_water = result_peak.tailings.water_tph
+    concentrate_water = result_peak.concentrate.water_tph
+    tail_overflow = max(0.0, tail_water - tailings_filter.feed_water_tph)
+    concentrate_overflow = max(
+        0.0, concentrate_water - concentrate_filter.feed_water_tph
+    )
     return MechanicalOption(
         cells=tuple(cells),
         units=build_mechanical_units(),
@@ -394,14 +482,14 @@ def build_mechanical_option(feed: FeedSpec = db.FEED) -> MechanicalOption:
         blower_pressure_kpa=blower_pressure,
         blower_rating_kw=select_motor_kw(blower_shaft, service_factor=1.5),
         tailings_thickener=Thickener(
-            "TK-201", "미광 농축 · 공정수 회수", tail_water, THICKENER_RISE_RATE_M_H
+            "TK-201", "미광 농축 · 공정수 회수", tail_overflow, THICKENER_RISE_RATE_M_H
         ),
-        concentrate_filter=_concentrate_filter(
-            "FL-201", result_peak.concentrate.dry_tph, feed.solids_specific_gravity
+        concentrate_thickener=Thickener(
+            "TK-202", "정광 농축 · 여과 전단", concentrate_overflow,
+            THICKENER_RISE_RATE_M_H,
         ),
-        tailings_filter=_tailings_filter(
-            "FL-202", result_peak.tailings.dry_tph, feed.solids_specific_gravity
-        ),
+        concentrate_filter=concentrate_filter,
+        tailings_filter=tailings_filter,
     )
 
 

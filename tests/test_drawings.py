@@ -178,8 +178,13 @@ class TestDrawingMatchesDesign(unittest.TestCase):
             self.assertFigure(
                 f"{s.total_pressure_drop_kpa:.1f}", c.tag + " 급기 압력손실"
             )
-            # 강도가 아니라 세장비가 외경을 정한다는 것이 이 도면의 요지다.
-            self.assertEqual(s.governed_by, "처짐·위험속도", c.tag)
+            self.assertEqual(s.governed_by, "로터동역학", c.tag)
+            self.assertFigure(
+                f"{s.discharge_ports}×Ø{s.discharge_port_diameter_mm:.0f}",
+                c.tag + " 허브 토출구",
+            )
+            self.assertFigure(f"{s.critical_speed_rpm:.0f}", c.tag + " 1차 위험속도")
+            self.assertFigure(f"{s.static_deflection_mm:.2f}", c.tag + " 정적 처짐")
         self.assertFigure(f"{opt.blower_pressure_kpa:.0f} kPa", "송풍기 토출압")
         self.assertFigure(
             f"분산구 {opt.cells[0].shaft.discharge_ports}개", "로터 허브 분산구"
@@ -386,6 +391,7 @@ class TestModel3dMatchesDesign(unittest.TestCase):
                 f.tag + " 여과판 사양",
             )
         self.assertIn("TK-201", self.html)
+        self.assertIn("TK-202", self.html)
 
     def test_installed_power_matches(self):
         self.assertFigure(f"{self.opt.installed_kw:.2f} kW", "설치 전력")

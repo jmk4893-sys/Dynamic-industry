@@ -223,12 +223,13 @@ def float_unit(
     tanks-in-series 로 계산한다.
 
     Args:
-        composite_carry_ratio: 부상한 유용성분 1 kg 이 **같은 입자의 일부로**
+        composite_carry_ratio: 부상한 Ag 1 kg 이 **같은 입자의 일부로**
             달고 올라가는 맥석의 kg. Ag 는 순수 입자가 아니라 Si 웨이퍼에
             소결된 전극이므로, 표면이 소수성이 되어 부상해도 Si 코어를 함께
             끌고 온다. 이것은 수분 동반(entrainment)과 달리 **세척수로
             제거되지 않으며**, 정광 품위의 물리적 상한을 만든다.
-            상한 품위 = 1 / (1 + carry_ratio).
+            상한 품위 = 1 / (1 + carry_ratio). ``Ag_locked_gangue`` 성분이
+            있으면 이미 급광부터 추적하므로 이 호환용 근사는 적용하지 않는다.
     """
     diluted, added_water = dilute(feed, unit.dilution_target_solids)
     volume = diluted.volumetric_flow_m3h(specific_gravity)
@@ -251,7 +252,9 @@ def float_unit(
         conc[name] = (c[0], c[1], c[2])
         tail[name] = (t[0], t[1], t[2])
 
-    if composite_carry_ratio > 0.0:
+    # 신규 설계는 Ag 와 결합된 Si 를 ``Ag_locked_gangue`` 성분으로 처음부터
+    # 추적한다. 이 성분이 없는 구형/범용 입력에만 1회성 근사모델을 허용한다.
+    if composite_carry_ratio > 0.0 and "Ag_locked_gangue" not in diluted.species_tph:
         _add_composite_carry(diluted, kinetics, conc, tail, composite_carry_ratio)
 
     conc_water = diluted.water_tph * unit.water_recovery + unit.wash_water_m3h
@@ -279,7 +282,9 @@ def _add_composite_carry(
     맥석 성분(진부선 없음) 사이에는 미광에 남아 있는 질량에 비례해 배분하고,
     남은 양을 초과하지 않도록 자른다. ``conc``/``tail`` 을 제자리에서 고친다.
     """
-    valuable = sum(sum(conc[n]) for n in conc if kinetics[n].r_max > 0.0)
+    # carry_ratio 는 Ag-Si 복합입자에서 유도한 값이므로 Cu/Pb 등 다른
+    # 부상성분까지 합산하지 않는다.
+    valuable = sum(conc.get("Ag", (0.0, 0.0, 0.0)))
     gangue = [n for n in conc if kinetics[n].r_max == 0.0]
     available = {n: sum(tail[n]) for n in gangue}
     total_available = sum(available.values())
@@ -302,7 +307,12 @@ def _add_composite_carry(
 # --------------------------------------------------------------------------
 @dataclass(frozen=True)
 class CircuitResult:
-    """수렴된 회로 물질수지."""
+    """수렴된 회로 물질수지.
+
+    ``fresh_water_m3h``는 부선 회로 경계에서 필요한 희석·세척수 중 필터 여액을
+    제외한 양이다. 설비 전체의 외부 신수는 농축조 월류 재사용·블리드·케이크
+    수분까지 닫은 :class:`plant.MechanicalOption.fresh_makeup_m3h`로 평가한다.
+    """
 
     new_feed: Stream
     rougher: UnitResult
@@ -314,6 +324,7 @@ class CircuitResult:
     iterations: int
     residual_tph: float
     fresh_water_m3h: float
+    filtrate_return_m3h: float = 0.0
 
     @property
     def circulating_load(self) -> float:
@@ -360,6 +371,7 @@ def solve_circuit(
     cleaner: FlotationUnit,
     rougher_feed_solids: float = 0.25,
     composite_carry_ratio: float = 0.0,
+    filtrate_return_m3h: float = 0.0,
     max_iterations: int = 500,
     tolerance_tph: float = 1e-12,
 ) -> CircuitResult:
@@ -371,6 +383,8 @@ def solve_circuit(
     Args:
         feed_component_tph: 신급광 성분별 건조 고체 유량.
         rougher_feed_solids: 러퍼 급광 목표 고체 질량분율.
+        filtrate_return_m3h: 필터프레스에서 러퍼로 직접 되돌리는 여액.
+            내부 회수수이므로 신수 소요량에서는 제외하지만 수력부하에는 포함한다.
 
     Returns:
         수렴된 :class:`CircuitResult`.
@@ -392,8 +406,12 @@ def solve_circuit(
     for iteration in range(1, max_iterations + 1):
         total_dry = dry + recycle.dry_tph
         required_water = total_dry * (1.0 - rougher_feed_solids) / rougher_feed_solids
-        fresh_water = max(0.0, required_water - recycle.water_tph)
-        rougher_feed = solids_only.with_water(fresh_water) + recycle
+        fresh_water = max(
+            0.0, required_water - recycle.water_tph - filtrate_return_m3h
+        )
+        rougher_feed = solids_only.with_water(
+            fresh_water + filtrate_return_m3h
+        ) + recycle
 
         ccr = composite_carry_ratio
         r_res = float_unit(rougher_feed, rougher, kinetics, specific_gravity, ccr)
@@ -415,7 +433,7 @@ def solve_circuit(
         raise RuntimeError(f"회로가 {max_iterations} 회 안에 수렴하지 않음 (잔차 {residual:.3e})")
 
     return CircuitResult(
-        new_feed=solids_only.with_water(fresh_water),
+        new_feed=solids_only.with_water(fresh_water + filtrate_return_m3h),
         rougher=r_res,
         scavenger=s_res,
         cleaner=c_res,
@@ -429,4 +447,5 @@ def solve_circuit(
         + cleaner.wash_water_m3h
         + (scavenger.wash_water_m3h if scavenger is not None else 0.0)
         + rougher.wash_water_m3h,
+        filtrate_return_m3h=filtrate_return_m3h,
     )

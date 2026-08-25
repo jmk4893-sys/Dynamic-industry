@@ -119,18 +119,17 @@ class TestTurndown(unittest.TestCase):
 
     def test_turndown_scales_all_fluxes_together(self):
         op = self.d.operating_point(db.FEED.average_tph)
-        self.assertAlmostEqual(
-            op.feed_flux_cm_s / self.d.feed_flux_cm_s,
-            op.wash_water_flux_cm_s / self.d.wash_water_flux_cm_s,
-            places=12,
-        )
-        self.assertAlmostEqual(
-            op.air_flux_cm_s / self.d.air_flux_cm_s, op.turndown_ratio, places=12
-        )
+        self.assertAlmostEqual(op.feed_flux_cm_s, self.d.feed_flux_cm_s, places=12)
+        self.assertAlmostEqual(op.air_flux_cm_s, self.d.air_flux_cm_s, places=12)
+        self.assertAlmostEqual(op.wash_water_flux_cm_s, self.d.wash_water_flux_cm_s,
+                               places=12)
+        self.assertAlmostEqual(op.gas_liquid_residence_min, 1.0, places=12)
 
-    def test_turndown_preserves_solids_concentration(self):
+    def test_turndown_reduces_solids_to_preserve_flux(self):
         op = self.d.operating_point(db.FEED.average_tph)
-        self.assertAlmostEqual(op.solids_wt, db.FEED.solids_mass_fraction, places=12)
+        self.assertLess(op.solids_wt, db.FEED.solids_mass_fraction)
+        self.assertAlmostEqual(self.d.capacity_at_solids(op.solids_wt),
+                               db.FEED.average_tph, places=9)
 
     def test_overload_is_flagged(self):
         op = self.d.operating_point(5.0)
@@ -165,12 +164,22 @@ class TestSeparation(unittest.TestCase):
 
     def test_gangue_reports_only_by_composite_carry(self):
         """세척수 bias 가 있으면 수분 동반이 사실상 0 이므로,
-        정광의 맥석은 전량 복합입자 동반분이다."""
+        자유 맥석은 정광으로 가지 않고 잠금 맥석만 Ag와 함께 간다."""
         no_carry = rfc_separation(
             db.FEED.component_tph(0.5), db.FLOAT_MODELS, db.RFC_AG_RECOVERY, 0.0
         )
         self.assertAlmostEqual(no_carry.recovery("Si"), 0.0, places=12)
-        self.assertGreater(self.perf.recovery("Si"), 0.0)
+        self.assertAlmostEqual(
+            self.perf.recovery("Ag_locked_gangue"),
+            self.perf.recovery("Ag"),
+            places=12,
+        )
+        self.assertAlmostEqual(
+            self.perf.concentrate_tph["Ag_locked_gangue"]
+            / self.perf.concentrate_tph["Ag"],
+            db.COMPOSITE_CARRY_RATIO,
+            places=12,
+        )
 
     def test_zero_silver_floatability_raises(self):
         from flotation_design.kinetics import ComponentKinetics

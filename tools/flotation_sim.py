@@ -1,20 +1,24 @@
-"""FC-201 러퍼 작동 물리 시뮬레이션 → mp4.
+"""FC-201 러퍼 축약차수 입자 애니메이션 → mp4.
 
 실행 (저장소 루트에서):
-    pip install numpy matplotlib imageio-ffmpeg
+    pip install -e '.[simulation]'
     SIM_KOREAN_FONT=/path/to/NanumGothic.ttf python tools/flotation_sim.py out.mp4
 
 설계 패키지(src/flotation_design)에서 셀 치수·기포 상승속도·기동 ODE 를
-직접 읽으므로, design_basis.py 를 바꾸면 영상의 물리도 함께 바뀐다.
+직접 읽으므로, design_basis.py 를 바꾸면 영상도 함께 바뀐다. 다만 이 도구는
+CFD/DEM 검증 계산이 아니라 설계값으로 보정한 **축약차수 교육용 모델**이다.
 
 2D 단면에서 기포·입자를 개별 추적한다. 속도 스케일은 전부 설계 계산값:
   - 기포군 상승속도 6.5 cm/s (hydrodynamics.swarm_velocity)
   - 입자 침강속도 3.2 mm/s
   - 로터 순환 유속 ~0.5 m/s, 로터 Ø350 @ y 0.21
-  - 중공축 Ø80 (보어 Ø20) — 기포는 로터 허브 분산구에서만 생성
+  - 중공축 외경·보어 — 기포는 로터 허브 분산구에서만 생성
 힘/규칙: 유동장 이류 + 종말속도 슬립 + 난류 요동, 기포-입자 충돌 반경 내
 확률 부착 (속부선/지연부선/맥석 구분), 거품층 배수(맥석 탈착), 립 월류 회수,
 다트밸브 미광 배출, 급광·여액 연속 주입.
+
+충돌·부착·탈착 확률은 시각화를 위한 경험계수이며 설계 보증값에 쓰지 않는다.
+정량 검증에는 별도의 다상 CFD/입자추적과 파일럿 시험이 필요하다.
 """
 import sys
 import numpy as np
@@ -23,10 +27,10 @@ matplotlib.use("Agg")
 import matplotlib.animation
 from matplotlib import font_manager, pyplot as plt
 from matplotlib.patches import FancyArrow, Polygon, Rectangle
-import imageio_ffmpeg
 
 import os
 import pathlib
+import shutil
 
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _FONT = os.environ.get("SIM_KOREAN_FONT", "")   # NanumGothic.ttf 경로 (한글 라벨용)
@@ -35,7 +39,17 @@ if _FONT and pathlib.Path(_FONT).exists():
     plt.rcParams["font.family"] = font_manager.FontProperties(fname=_FONT).get_name()
 else:
     print("경고: SIM_KOREAN_FONT 미지정 — 한글 라벨이 깨질 수 있다", file=sys.stderr)
-plt.rcParams["animation.ffmpeg_path"] = imageio_ffmpeg.get_ffmpeg_exe()
+try:
+    import imageio_ffmpeg
+
+    _FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
+except ImportError:
+    _FFMPEG = shutil.which("ffmpeg")
+    if not _FFMPEG:
+        raise RuntimeError(
+            "ffmpeg를 찾지 못했습니다. pip install -e '.[simulation]'을 실행하세요."
+        )
+plt.rcParams["animation.ffmpeg_path"] = _FFMPEG
 
 sys.path.insert(0, str(_ROOT / "src"))
 from flotation_design.plant import build_mechanical_option
@@ -120,9 +134,12 @@ def preload_bubbles():
 preload_bubbles()
 
 DT = 1 / 60
-FPS = 30
-SECONDS = 26
-FRAMES = SECONDS * FPS
+FPS = int(os.environ.get("SIM_FPS", "30"))
+SECONDS = float(os.environ.get("SIM_SECONDS", "26"))
+if FPS <= 0 or SECONDS <= 0:
+    raise ValueError("SIM_FPS와 SIM_SECONDS는 0보다 커야 한다")
+FRAMES = max(1, round(SECONDS * FPS))
+SUBSTEPS = max(1, round((1 / FPS) / DT))
 
 def step(t):
     global b_pos, b_age, p_pos, p_cls, p_att
@@ -325,13 +342,13 @@ sc_b = ax.scatter([], [], s=13, facecolors="none", edgecolors="#9FD4DE", linewid
 sc_g = ax.scatter([], [], s=5, c="#7B8794", zorder=7)
 sc_ag = ax.scatter([], [], s=13, c=AG, zorder=8)
 sc_att = ax.scatter([], [], s=18, c="#FFCE63", edgecolors="#8A6410", linewidths=0.6, zorder=9)
-hud = ax.text(-1.13, 1.62, "", color=INK, fontsize=9.5, va="top", family="NanumGothic")
+hud = ax.text(-1.13, 1.62, "", color=INK, fontsize=9.5, va="top")
 note = None
 ln_rec, = ax2.plot([], [], color=AG, lw=2, label="입자 시뮬레이션")
 ax2.set_xlim(0, SECONDS); ax2.set_ylim(0, 105)
 ax2.set_xlabel("시뮬레이션 시간 (s)", color=SUB, fontsize=9)
 ax2.set_ylabel("Ag 입자 회수율 (%)", color=SUB, fontsize=9)
-ax2.set_title("물리 시뮬레이션 — 기포 부착으로 회수된 Ag", color=INK, fontsize=10)
+ax2.set_title("축약차수 입자 모델 — 기포 부착으로 회수된 Ag", color=INK, fontsize=10)
 
 writer_cls = matplotlib.animation.FFMpegWriter
 writer = writer_cls(fps=FPS, codec="h264",
@@ -340,7 +357,7 @@ out = sys.argv[1] if len(sys.argv) > 1 else "fc201-simulation.mp4"
 with writer.saving(fig, out, dpi=100):
     t = 0.0
     for frame in range(FRAMES):
-        for _ in range(2):
+        for _ in range(SUBSTEPS):
             step(t); attach_pass(); drainage_pass(); t += DT
         # 아티스트 갱신
         sc_b.set_offsets(b_pos if len(b_pos) else np.zeros((0, 2)))
@@ -350,7 +367,7 @@ with writer.saving(fig, out, dpi=100):
         sc_g.set_offsets(p_pos[free_g] if free_g.any() else np.zeros((0, 2)))
         sc_ag.set_offsets(p_pos[free_a] if free_a.any() else np.zeros((0, 2)))
         sc_att.set_offsets(p_pos[attm] if attm.any() else np.zeros((0, 2)))
-        ag_in = counts["conc_ag"] + counts["tail_ag"]
+        ag_in = counts["feed_ag"]
         rec = counts["conc_ag"] / ag_in * 100 if ag_in else 0.0
         hist_t.append(t); hist_rec.append(rec)
         ln_rec.set_data(hist_t, hist_rec)
@@ -364,7 +381,8 @@ with writer.saving(fig, out, dpi=100):
         if frame % 120 == 0:
             print(f"frame {frame}/{FRAMES} t={t:.1f}s bubbles={len(b_pos)} particles={len(p_pos)}", flush=True)
 
-ag_in = counts["conc_ag"] + counts["tail_ag"]
+ag_in = counts["feed_ag"]
 print("DONE", out)
-print("입자 기준 Ag 회수율:", f"{counts['conc_ag']/ag_in*100:.1f} %" if ag_in else "N/A",
+print("누적 급광 입자 기준 Ag 회수율:",
+      f"{counts['conc_ag']/ag_in*100:.1f} %" if ag_in else "N/A",
       "| conc gangue:", counts["conc_gangue"], "| tail:", counts["tail_ag"], counts["tail_gangue"])

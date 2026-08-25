@@ -108,8 +108,10 @@ class TestContinuousTrialReproduction(unittest.TestCase):
         )
 
     def test_gangue_recovery_matches_measurement(self):
+        gangue_feed = sum(v for k, v in self.perf.feed_tph.items() if k != "Ag")
+        gangue_conc = sum(v for k, v in self.perf.concentrate_tph.items() if k != "Ag")
         self.assertAlmostEqual(
-            self.perf.recovery("Si"), db.RFC_GANGUE_RECOVERY, delta=0.002
+            gangue_conc / gangue_feed, db.RFC_GANGUE_RECOVERY, delta=0.002
         )
 
     def test_mass_balance_closes(self):

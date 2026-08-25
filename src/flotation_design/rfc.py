@@ -124,14 +124,21 @@ class RfcDesign:
     def operating_point(self, dry_tph: float, solids_wt: float | None = None) -> "RfcOperatingPoint":
         """지정 처리량에서의 운전 조건.
 
-        턴다운은 **고체 농도를 유지한 채 flux 를 함께 낮추는** 방식으로 한다.
-        급광·공기·세척수 flux 를 같은 비율로 줄이면 bias 비와 기액 체류시간이
-        보존되므로, 실증에서 확인된 분리 조건이 그대로 유지된다.
-        고체 농도를 낮춰 flux 를 유지하는 방식은 물 사용량만 늘릴 뿐이다.
+        ``solids_wt`` 를 생략하면 실증 flux와 1분 기액 체류시간을 보존하도록
+        슬러리 유량을 고정하고 고체 농도를 조절한다. 고정 높이 장치에서 세 flux를
+        함께 낮추면 체류시간은 증가하므로, 이를 '상사 운전'으로 취급하면 안 된다.
+
+        ``solids_wt`` 를 명시한 경우에는 해당 농도에서 실제 flux와 체류시간을
+        계산해 반환한다. 이 모드는 파일럿 검증 없이 기준 성능을 보증하지 않는다.
         """
-        w = self.design_solids_wt if solids_wt is None else solids_wt
-        q = slurry_volumetric_flow_m3h(dry_tph, self.solids_sg, w)
-        ratio = q / self.feed_m3h
+        if solids_wt is None:
+            w = self.solids_required_for(dry_tph)
+            q = self.feed_m3h
+            ratio = 1.0
+        else:
+            w = solids_wt
+            q = slurry_volumetric_flow_m3h(dry_tph, self.solids_sg, w)
+            ratio = q / self.feed_m3h
         return RfcOperatingPoint(
             design=self,
             dry_tph=dry_tph,
@@ -188,7 +195,16 @@ class RfcOperatingPoint:
 
     @property
     def within_capacity(self) -> bool:
-        return self.turndown_ratio <= 1.0 + 1e-9
+        return (
+            self.turndown_ratio <= 1.0 + 1e-9
+            and self.solids_wt <= self.design.design_solids_wt + 1e-9
+        )
+
+    @property
+    def gas_liquid_residence_min(self) -> float:
+        """현재 flux에서의 실제 기액 체류시간."""
+        combined_m_s = (self.feed_flux_cm_s + self.air_flux_cm_s) / 100.0
+        return self.design.riser_height_m / combined_m_s / 60.0
 
 
 def size_rfc(
@@ -315,7 +331,8 @@ def rfc_separation(
 
     Args:
         ag_recovery: 실증 Ag 회수율.
-        composite_carry_ratio: 부상 유용성분 1 kg 당 함께 올라가는 맥석 kg.
+        composite_carry_ratio: Ag 1 kg당 함께 올라가는 맥석 kg. 잠금 맥석을
+            별도 성분으로 주지 않은 구형 입력에만 적용하는 호환용 근사값이다.
         entrainment_recovery: 세척수 bias 를 넘어 남는 수분 동반 혼입.
             양의 bias 에서는 사실상 0 이다.
     """
@@ -339,10 +356,17 @@ def rfc_separation(
         conc[name] = tph * r
         tail[name] = tph * (1.0 - r)
 
-    valuable = sum(conc[n] for n in conc if kinetics[n].r_max > 0.0)
+    # 신규 설계는 결합 Si 를 Ag_locked_gangue 성분으로 직접 추적한다.
+    # 이 성분이 없는 구형 입력에만 Ag 질량 기준 근사를 적용한다.
+    valuable = conc.get("Ag", 0.0)
     available = {n: tail[n] for n in gangue}
     total_available = sum(available.values())
-    if valuable > 0.0 and total_available > 0.0:
+    if (
+        "Ag_locked_gangue" not in feed_component_tph
+        and composite_carry_ratio > 0.0
+        and valuable > 0.0
+        and total_available > 0.0
+    ):
         demand = min(composite_carry_ratio * valuable, total_available)
         for name in gangue:
             moved = demand * available[name] / total_available

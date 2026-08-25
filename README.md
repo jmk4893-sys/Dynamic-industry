@@ -9,8 +9,8 @@ Dynamic industry Development
 
 - 평균 **0.30 t/h**, 최대 **0.50 t/h** (건조 고체 기준)
 - **세척수 bias 연속 부선조 1단, Ø350 mm × 라이저 2.4 m** (대안: 기계식 러퍼·스캐빈저·클리너 3단)
-- Ag 회수율 **99.7 %**, 정광 **6.6 kg/h @ 44.8 wt% Ag** (농축비 76배)
-- 기액 체류시간 **1 분**, 설치 전력 **3.6 kW**
+- Ag 회수율 **99.7 %**, 정광 **6.36 kg/h @ 46.3 wt% Ag** (농축비 78배)
+- 기액 체류시간 **1 분**, 설치 전력 **6.52 kW** (탈수 보조설비 포함)
 - 황화제·pH 조정제·억제제 없음 — 약제는 포수제·촉진제·기포제 3종뿐
 
 ### 설계 근거
@@ -42,7 +42,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (281건)
+python -m unittest discover -s tests -t .                               # 테스트 (286건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
@@ -52,9 +52,17 @@ pip install -e .
 flotation-design
 ```
 
-`--average-tph` / `--peak-tph` 는 **재사이징이 아니라 기존 설비의 성능 계산**이다.
-동체 치수는 `design_basis.py` 에 확정값으로 박혀 있어 처리량을 바꿔도 재산정되지
-않는다. 확정 설비가 목표에 미달하면 계산서에 경고와 필요 치수가 표시된다.
+`--average-tph` / `--peak-tph` 를 바꾸면 RFC와 농축·여과 보조설비는 새 유량으로
+재산정한다. 기계식 셀 동체는 `design_basis.py` 의 확정 치수를 유지해 새 처리량에서
+성능을 계산하며, 목표에 미달하면 계산서에 경고와 필요 치수를 표시한다.
+
+축약차수 입자 애니메이션은 선택 의존성을 설치해 만든다. 이는 CFD/DEM 검증이 아니라
+기포 상승·입자 침강·부착/탈착을 보여주는 교육용 모델이다.
+
+```bash
+pip install -e '.[simulation]'
+python tools/flotation_sim.py fc201-simulation.mp4
+```
 
 ### 구조
 

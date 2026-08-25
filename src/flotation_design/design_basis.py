@@ -30,11 +30,18 @@ from .sizing import CellGeometry
 # --------------------------------------------------------------------------
 # 급광
 # --------------------------------------------------------------------------
+#: 부상 Ag 1 kg 과 같은 복합입자에 결합된 Si 계 맥석의 kg.
+#: 이 질량은 별도 성분으로 처음부터 추적해, 각 부선 단계에서 맥석을 새로
+#: 붙이는 비물리적 계산을 막는다.
+COMPOSITE_CARRY_RATIO = 1.1
+AG_LOCKED_GANGUE_FRACTION = 0.00590 * COMPOSITE_CARRY_RATIO
+
 #: 박리된 c-Si 셀 분획의 대표 조성 (건조 고체 기준 질량분율).
 #: Ag·Cu·Pb 는 [2] 및 [1] Table 2 의 실측 assay, Al 은 후면 전극 페이스트
 #: 기준 추정, 나머지는 Si 웨이퍼와 미량 잔재.
 CELL_FRACTION = (
-    Component("Si", 0.88200, 2.33),
+    Component("Si", 0.88200 - AG_LOCKED_GANGUE_FRACTION, 2.33),
+    Component("Ag_locked_gangue", AG_LOCKED_GANGUE_FRACTION, 2.33),
     Component("Al", 0.10000, 2.70),
     Component("Ag", 0.00590, 10.49),
     Component("Pb", 0.00096, 11.34),
@@ -71,6 +78,11 @@ FLOAT_MODELS = {
     # Ag: [1] 회분식 곡선 R(1min)=0.80, R(3min)=0.90, R(inf)=0.976 에 맞춤.
     # 비부선 2.4 % 는 TIMA 상 사실상 봉입된 극소량.
     "Ag": ComponentKinetics("Ag", 0.820, 2.60, 0.156, 0.30, entrainment_factor=0.35),
+    # Ag 와 같은 입자에 결합된 Si 계 맥석. Ag 와 동일한 분획·속도로 이동하므로
+    # 러퍼에서 한 번 붙이고 클리너에서 또 붙이는 중복계상이 생기지 않는다.
+    "Ag_locked_gangue": ComponentKinetics(
+        "Ag_locked_gangue", 0.820, 2.60, 0.156, 0.30, entrainment_factor=0.35
+    ),
     # Cu: [1] Table 2 회수율 81.4 % @ 3 min 에 맞춤.
     "Cu": ComponentKinetics("Cu", 0.680, 2.20, 0.220, 0.30, entrainment_factor=0.35),
     # Pb: [1] Table 2 회수율 20.9 % @ 3 min. 땜납 잔재로 부상성이 낮다.
@@ -179,8 +191,13 @@ SHAFT_LENGTH_MARGIN_M = 0.55
 #: 단별 목표 체류시간 (분, 최대 처리량 기준).
 MECHANICAL_RESIDENCE_MIN = {"FC-201": 6.0, "FC-202": 8.0, "FC-203": 6.0}
 
-#: 스캐빈저 포수제 분할 투입 효과 — 지연부선 속도상수에 곱하는 계수.
-MECHANICAL_SCAVENGER_BOOST = 1.4
+#: 스캐빈저 추가 포수제 효과는 실증값이 없으므로 기본설계 성능에 반영하지
+#: 않는다. 록사이클 시험으로 추가 투입량과 속도 증가가 확인된 뒤 갱신한다.
+MECHANICAL_SCAVENGER_BOOST = 1.0
+
+#: 예비 로터동역학 검산에 쓰는 로터·허브 추정 질량. 제작도 확정 후 실측
+#: 질량과 실제 베어링 스팬으로 다시 검증해야 한다.
+IMPELLER_ASSEMBLY_MASS_KG = {"FC-201": 15.0, "FC-202": 18.0, "FC-203": 3.0}
 
 MECHANICAL_CELLS = (
     ("FC-201", "러퍼 (Rougher)", ROUGHER_CELL),
@@ -255,7 +272,8 @@ CONDITIONER_STAGES = (
 #: **정광 품위의 물리적 상한 1/(1+r) 을 만든다.**
 #: 연속 실증 정광이 48.8 wt% Ag 에서 멈춘 것, 회분식 러퍼+클리너가
 #: 46.7 wt% 에서 멈춘 것이 모두 이 상한으로 설명된다 (1/(1+1.1) = 47.6 %).
-COMPOSITE_CARRY_RATIO = 1.1
+#: 실제 계산에서는 ``Ag_locked_gangue`` 성분으로 처음부터 결합 상태를
+#: 추적한다. 이 상수는 해당 급광 질량을 만들고 이론 품위 상한을 표시한다.
 
 
 # --------------------------------------------------------------------------
@@ -283,3 +301,7 @@ FILTER_MIN_PLATE_MM = {"concentrate": 470.0, "tailings": 800.0}
 #: 미립자가 남아 있어, 공정수로 희석해 버리면 그 안의 Ag 를 그대로 잃는다.
 #: 첫 단으로 돌리면 한 번 더 부선 기회를 얻는다.
 FILTRATE_RETURN_TO = {"mechanical": "FC-201 러퍼 급광", "rfc": "CT-1 조건조 (FC-101 급광)"}
+
+#: 용존염·미립자 축적을 막기 위한 농축조 월류수 블리드. 필터프레스 여액은
+#: Ag 미립자 재회수를 위해 전량 첫 단으로 직송하므로 블리드 대상에서 제외한다.
+PROCESS_WATER_BLEED_FRACTION = 0.10

@@ -85,7 +85,7 @@ class TestHollowShaft(unittest.TestCase):
 
     def test_torque_from_power_and_speed(self):
         import math
-        expected = 1550.0 / (2 * math.pi * 290 / 60)
+        expected = 2.0 * 1550.0 / (2 * math.pi * 290 / 60)
         self.assertAlmostEqual(self.s.torque_nm, expected, places=9)
 
     def test_bore_meets_air_velocity_target(self):
@@ -100,10 +100,11 @@ class TestHollowShaft(unittest.TestCase):
         self.assertGreater(self.s.wall_thickness_mm, 0.0)
         self.assertGreater(self.s.outer_diameter_mm, self.s.bore_mm)
 
-    def test_slenderness_governs_a_long_slim_shaft(self):
-        """부선기 축은 길고 가늘어 강도가 아니라 처짐이 외경을 정한다."""
-        self.assertEqual(self.s.governed_by, "처짐·위험속도")
-        self.assertGreaterEqual(self.s.outer_diameter_mm, self.s.length_m / 25 * 1000)
+    def test_rotordynamics_governs_a_long_slim_shaft(self):
+        """장축 외경은 1차 굽힘 위험속도와 정적 처짐으로 예비 선정한다."""
+        self.assertEqual(self.s.governed_by, "로터동역학")
+        self.assertGreaterEqual(self.s.critical_speed_ratio, 1.5)
+        self.assertLessEqual(self.s.static_deflection_mm, self.s.allowable_deflection_mm)
 
     def test_torsion_governs_a_short_high_torque_shaft(self):
         stub = hollow_shaft("S", shaft_power_kw=40.0, speed_rpm=60,
@@ -115,16 +116,22 @@ class TestHollowShaft(unittest.TestCase):
         self.assertGreater(longer.bore_pressure_drop_kpa, self.s.bore_pressure_drop_kpa)
 
     def test_rejects_a_shaft_too_long_for_the_standard_series(self):
-        """세장비 하한이 표준 외경 계열(최대 Ø140)을 넘으면 거절한다 — 축 길이 3.5 m 한계."""
+        """위험속도·처짐을 만족하는 표준 외경이 없으면 거절한다."""
         with self.assertRaises(ValueError):
             hollow_shaft("X", 1.55, 290, 12.7, length_m=4.0)
 
     def test_total_drop_includes_joint(self):
         self.assertAlmostEqual(
             self.s.total_pressure_drop_kpa,
-            self.s.bore_pressure_drop_kpa + self.s.joint_pressure_drop_kpa,
+            self.s.bore_pressure_drop_kpa + self.s.joint_pressure_drop_kpa
+            + self.s.discharge_pressure_drop_kpa,
             places=12,
         )
+
+    def test_discharge_ports_meet_velocity_target(self):
+        self.assertGreater(self.s.discharge_ports, 0)
+        self.assertGreater(self.s.discharge_port_diameter_mm, 0.0)
+        self.assertLessEqual(self.s.discharge_velocity_m_s, 25.0 + 1e-9)
 
     def test_rejects_bad_inputs(self):
         for kwargs in ({"shaft_power_kw": 0}, {"speed_rpm": 0},
@@ -156,6 +163,14 @@ class TestPlantIntegration(unittest.TestCase):
         pulp_only = max(c.aeration.total_pressure_kpa for c in mech.cells)
         self.assertGreater(max(c.air_supply_pressure_kpa for c in mech.cells), pulp_only)
 
+    def test_hollow_shaft_has_no_sparger_loss(self):
+        for c in self.plant.mechanical.cells:
+            self.assertAlmostEqual(
+                c.aeration.total_pressure_kpa,
+                c.aeration.static_pressure_kpa,
+                places=12,
+            )
+
     def test_both_options_have_two_filter_presses(self):
         for opt in (self.plant.rfc, self.plant.mechanical):
             self.assertIsInstance(opt.concentrate_filter, FilterPress)
@@ -180,6 +195,30 @@ class TestPlantIntegration(unittest.TestCase):
                 opt.water_recycle_m3h,
                 opt.concentrate_filter.filtrate_m3h + opt.tailings_filter.filtrate_m3h,
             )
+
+    def test_mechanical_option_has_two_thickeners_and_closed_water_balance(self):
+        m = self.plant.mechanical
+        for thickener, press, product in (
+            (m.concentrate_thickener, m.concentrate_filter, m.result_peak.concentrate),
+            (m.tailings_thickener, m.tailings_filter, m.result_peak.tailings),
+        ):
+            self.assertAlmostEqual(
+                thickener.overflow_m3h + press.feed_water_tph,
+                product.water_tph,
+                places=9,
+            )
+        self.assertAlmostEqual(
+            m.result_peak.filtrate_return_m3h,
+            m.filtrate_m3h,
+            places=9,
+        )
+        self.assertAlmostEqual(
+            m.fresh_makeup_m3h,
+            m.concentrate_filter.cake_water_tph
+            + m.tailings_filter.cake_water_tph
+            + m.bleed_m3h,
+            places=9,
+        )
 
     def test_filter_pumps_are_in_installed_power(self):
         m = self.plant.mechanical

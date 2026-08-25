@@ -32,10 +32,10 @@ def required_slurry_volume(
 
 @dataclass(frozen=True)
 class CellGeometry:
-    """정사각 단면 기계식 부선셀의 형상.
+    """원통형 기계식 부선셀의 형상.
 
     Attributes:
-        width_m: 내부 한 변 길이 (정사각 단면).
+        width_m: 동체 내경. 이전 API 호환을 위해 ``width_m`` 이름을 유지한다.
         shell_height_m: 셀 동체 전체 높이.
         lip_height_m: 정광 월류 립(lip) 높이 = 운전 액면.
         froth_depth_m: 거품층 두께.
@@ -50,7 +50,12 @@ class CellGeometry:
 
     @property
     def cross_section_m2(self) -> float:
-        return self.width_m**2
+        return math.pi * self.width_m**2 / 4.0
+
+    @property
+    def diameter_m(self) -> float:
+        """동체 내경 — ``width_m`` 의 의미가 드러나는 별칭."""
+        return self.width_m
 
     @property
     def shell_volume_m3(self) -> float:
@@ -82,22 +87,24 @@ def cell_geometry(
     freeboard_m: float = 0.06,
     height_to_width: float = 1.15,
 ) -> CellGeometry:
-    """필요 슬러리 체적으로부터 정사각 셀 형상을 역산한다.
+    """필요 슬러리 체적으로부터 원통형 셀 형상을 역산한다.
 
     거품층 두께와 여유고(freeboard)는 높이에 상수로 더해지므로,
-    한 변 길이 ``L`` 에 대해 ``L**2 * (h_pulp + froth + freeboard) = L**3 * r``
+    내경 ``D`` 에 대해
+    ``pi/4 * D**2 * (r*D - froth - freeboard) = V_pulp``
     형태의 3차식을 뉴턴법으로 푼다.
     """
     if not 0.0 <= gas_holdup < 1.0:
         raise ValueError("gas_holdup 은 0 이상 1 미만")
     pulp_zone = required_slurry_m3 / (1.0 - gas_holdup)
 
-    # f(L) = r*L**3 - L**2*(froth + freeboard) - pulp_zone = 0
+    # f(D) = pi/4 * D**2 * (r*D - extra) - pulp_zone = 0
     extra = froth_depth_m + freeboard_m
-    l = (pulp_zone / height_to_width) ** (1.0 / 3.0)
+    area_factor = math.pi / 4.0
+    l = (pulp_zone / (area_factor * height_to_width)) ** (1.0 / 3.0)
     for _ in range(80):
-        f = height_to_width * l**3 - extra * l**2 - pulp_zone
-        df = 3.0 * height_to_width * l**2 - 2.0 * extra * l
+        f = area_factor * (height_to_width * l**3 - extra * l**2) - pulp_zone
+        df = area_factor * (3.0 * height_to_width * l**2 - 2.0 * extra * l)
         step = f / df
         l -= step
         if abs(step) < 1e-12:
@@ -299,14 +306,17 @@ class FrothLoading:
 def froth_loading(
     geometry: CellGeometry,
     concentrate_tph: float,
-    lip_sides: int = 2,
+    lip_fraction: float = 1.0,
     crowder_area_ratio: float = 1.0,
     carry_rate_limit_tph_m2: float = 1.5,
     lip_loading_limit_tph_m: float = 1.5,
 ) -> FrothLoading:
     """정광 배출 능력 검토 (froth carry rate / lip loading)."""
     area = geometry.cross_section_m2 * crowder_area_ratio
-    lip = geometry.width_m * lip_sides
+    if not 0.0 < lip_fraction <= 1.0:
+        raise ValueError("lip_fraction 은 0 초과 1 이하")
+    # 3D/상세도와 동일한 원주형 환상 라운더. 일부 원주만 쓰면 비율로 줄인다.
+    lip = math.pi * geometry.diameter_m * lip_fraction
     return FrothLoading(
         concentrate_tph=concentrate_tph,
         froth_area_m2=area,
@@ -335,7 +345,7 @@ class HollowShaftDesign:
         air_velocity_m_s: 축 내부 공기 유속.
         torque_nm: 전달 토크.
         shear_stress_mpa: 비틀림 전단응력.
-        governed_by: 외경을 결정한 기준 ("비틀림" 또는 "처짐·위험속도").
+        governed_by: 외경을 결정한 기준 ("비틀림" 또는 "로터동역학").
         bore_pressure_drop_kpa: 축 내부 마찰 손실.
         joint_pressure_drop_kpa: 로터리 조인트 손실.
     """
@@ -352,10 +362,23 @@ class HollowShaftDesign:
     bore_pressure_drop_kpa: float
     joint_pressure_drop_kpa: float
     discharge_ports: int
+    discharge_port_diameter_mm: float
+    discharge_velocity_m_s: float
+    discharge_pressure_drop_kpa: float
+    critical_speed_rpm: float
+    critical_speed_ratio: float
+    minimum_critical_speed_ratio: float
+    static_deflection_mm: float
+    allowable_deflection_mm: float
+    impeller_mass_kg: float
 
     @property
     def total_pressure_drop_kpa(self) -> float:
-        return self.bore_pressure_drop_kpa + self.joint_pressure_drop_kpa
+        return (
+            self.bore_pressure_drop_kpa
+            + self.joint_pressure_drop_kpa
+            + self.discharge_pressure_drop_kpa
+        )
 
     @property
     def wall_thickness_mm(self) -> float:
@@ -363,13 +386,19 @@ class HollowShaftDesign:
 
     @property
     def is_safe(self) -> bool:
-        return self.shear_stress_mpa <= self.allowable_shear_mpa
+        return (
+            self.shear_stress_mpa <= self.allowable_shear_mpa
+            and self.critical_speed_ratio >= self.minimum_critical_speed_ratio
+            and self.static_deflection_mm <= self.allowable_deflection_mm
+        )
 
 
 #: 표준 축 외경 계열 (mm).
 _SHAFT_OD_MM = (30, 40, 50, 60, 70, 80, 90, 100, 110, 125, 140)
 #: 표준 축 내경(보어) 계열 (mm).
 _SHAFT_BORE_MM = (10, 12, 15, 20, 25, 32, 40, 50, 65)
+#: 로터 허브 방사형 분산구 표준 드릴 지름 (mm).
+_PORT_DIAMETER_MM = (3, 4, 5, 6, 8, 10, 12)
 
 
 def hollow_shaft(
@@ -380,16 +409,25 @@ def hollow_shaft(
     length_m: float,
     target_air_velocity_m_s: float = 18.0,
     allowable_shear_mpa: float = 40.0,
-    slenderness_limit: float = 25.0,
+    impeller_mass_kg: float = 10.0,
+    critical_speed_ratio_min: float = 1.5,
+    allowable_deflection_mm: float = 5.0,
+    elastic_modulus_pa: float = 200.0e9,
+    shaft_density_kg_m3: float = 7850.0,
+    torque_service_factor: float = 2.0,
     air_density_kg_m3: float = 1.20,
     friction_factor: float = 0.028,
     joint_loss_kpa: float = 6.0,
     discharge_ports: int = 8,
+    discharge_target_velocity_m_s: float = 25.0,
+    discharge_loss_coefficient: float = 2.0,
 ) -> HollowShaftDesign:
     """중공축의 내경·외경과 급기 압력손실을 산정한다.
 
-    내경은 **공기 유속**으로, 외경은 **비틀림 강도와 처짐** 중 큰 쪽으로
-    정한다. 부선기 축은 길고 가늘어 대개 처짐(위험속도)이 지배한다.
+    내경은 **공기 유속**으로, 외경은 **비틀림 강도와 예비 로터동역학** 중
+    큰 쪽으로 정한다. 예비 로터동역학은 축을 보수적인 외팔보로 보고 로터
+    집중질량과 축 분포질량을 포함한 1차 굽힘 고유진동수와 정적 처짐을 계산한다.
+    실제 제작 전에는 확정 베어링 스팬과 로터 불평형 하중으로 재검증해야 한다.
 
     Args:
         shaft_power_kw: 로터 축동력.
@@ -397,12 +435,19 @@ def hollow_shaft(
         length_m: 로터리 조인트에서 로터까지의 축 길이.
         target_air_velocity_m_s: 축 내부 목표 유속. 너무 빠르면 압력손실이,
             너무 느리면 축이 굵어진다. 15~25 m/s 가 통상 범위.
-        slenderness_limit: 외경 하한을 정하는 세장비 ``L/D``. 교반축 관행 25.
+        impeller_mass_kg: 로터·허브 조립체 질량의 예비값.
 
     Raises:
         ValueError: 입력이 물리적으로 성립하지 않을 때.
     """
-    if shaft_power_kw <= 0 or speed_rpm <= 0 or air_m3h <= 0 or length_m <= 0:
+    if (
+        shaft_power_kw <= 0
+        or speed_rpm <= 0
+        or air_m3h <= 0
+        or length_m <= 0
+        or impeller_mass_kg <= 0
+        or discharge_ports < 1
+    ):
         raise ValueError("동력·회전수·급기량·길이는 모두 양수여야 함")
 
     # 내경 — 목표 유속을 넘지 않는 최소 표준 보어
@@ -413,9 +458,14 @@ def hollow_shaft(
     if bore_mm is None:
         raise ValueError("표준 보어 계열을 초과 — 급기 분할 검토 필요")
 
-    torque = shaft_power_kw * 1000.0 / (2.0 * math.pi * speed_rpm / 60.0)
+    torque = (
+        shaft_power_kw
+        * 1000.0
+        / (2.0 * math.pi * speed_rpm / 60.0)
+        * torque_service_factor
+    )
 
-    # 외경 — 비틀림 기준과 처짐(세장비) 기준 중 큰 쪽
+    # 외경 — 비틀림 기준
     d = bore_mm / 1000.0
     torsion_od_mm = None
     for od in _SHAFT_OD_MM:
@@ -429,21 +479,62 @@ def hollow_shaft(
     if torsion_od_mm is None:
         raise ValueError("표준 외경 계열로 토크를 감당할 수 없음")
 
-    slender_od_mm = next(
-        (od for od in _SHAFT_OD_MM if od >= length_m / slenderness_limit * 1000.0), None
-    )
-    if slender_od_mm is None:
-        raise ValueError("표준 외경 계열로 세장비를 만족할 수 없음")
+    def rotor_dynamics(od_mm: float) -> tuple[float, float, float]:
+        """(임계회전수, 운전/임계 여유비, 정적 처짐 mm)."""
+        D = od_mm / 1000.0
+        area = math.pi * (D**2 - d**2) / 4.0
+        inertia = math.pi * (D**4 - d**4) / 64.0
+        shaft_mass = shaft_density_kg_m3 * area * length_m
+        stiffness = 3.0 * elastic_modulus_pa * inertia / length_m**3
+        effective_mass = impeller_mass_kg + 0.236 * shaft_mass
+        omega = math.sqrt(stiffness / effective_mass)
+        critical_rpm = omega * 60.0 / (2.0 * math.pi)
+        ratio = critical_rpm / speed_rpm
+        point_load = impeller_mass_kg * G
+        distributed_load = shaft_density_kg_m3 * area * G
+        deflection_m = (
+            point_load * length_m**3 / (3.0 * elastic_modulus_pa * inertia)
+            + distributed_load * length_m**4 / (8.0 * elastic_modulus_pa * inertia)
+        )
+        return critical_rpm, ratio, deflection_m * 1000.0
 
-    outer_mm = max(torsion_od_mm, slender_od_mm)
-    governed_by = "비틀림" if torsion_od_mm >= slender_od_mm else "처짐·위험속도"
+    dynamic_od_mm = None
+    for od in _SHAFT_OD_MM:
+        if od <= bore_mm:
+            continue
+        _, ratio, deflection = rotor_dynamics(od)
+        if ratio >= critical_speed_ratio_min and deflection <= allowable_deflection_mm:
+            dynamic_od_mm = od
+            break
+    if dynamic_od_mm is None:
+        raise ValueError("표준 외경 계열로 임계회전수·처짐 기준을 만족할 수 없음")
+
+    outer_mm = max(torsion_od_mm, dynamic_od_mm)
+    governed_by = "비틀림" if torsion_od_mm >= dynamic_od_mm else "로터동역학"
 
     D = outer_mm / 1000.0
     section = math.pi * (D**4 - d**4) / (16.0 * D)
     shear = torque / section / 1e6
+    critical_rpm, critical_ratio, deflection_mm = rotor_dynamics(outer_mm)
 
     velocity = q / (math.pi * d**2 / 4.0)
     dp = friction_factor * (length_m / d) * air_density_kg_m3 * velocity**2 / 2.0 / 1000.0
+
+    # 로터 허브 분산구 — 목표 출구 유속을 넘지 않는 최소 표준 드릴 지름.
+    need_port_area = q / (discharge_ports * discharge_target_velocity_m_s)
+    need_port_mm = math.sqrt(4.0 * need_port_area / math.pi) * 1000.0
+    port_mm = next((p for p in _PORT_DIAMETER_MM if p >= need_port_mm), None)
+    if port_mm is None:
+        raise ValueError("표준 분산구로 급기량 처리 불가 — 분산구 수 증가 필요")
+    port_area = math.pi * (port_mm / 1000.0) ** 2 / 4.0
+    port_velocity = q / (discharge_ports * port_area)
+    port_dp = (
+        discharge_loss_coefficient
+        * air_density_kg_m3
+        * port_velocity**2
+        / 2.0
+        / 1000.0
+    )
 
     return HollowShaftDesign(
         tag=tag,
@@ -458,4 +549,13 @@ def hollow_shaft(
         bore_pressure_drop_kpa=dp,
         joint_pressure_drop_kpa=joint_loss_kpa,
         discharge_ports=discharge_ports,
+        discharge_port_diameter_mm=port_mm,
+        discharge_velocity_m_s=port_velocity,
+        discharge_pressure_drop_kpa=port_dp,
+        critical_speed_rpm=critical_rpm,
+        critical_speed_ratio=critical_ratio,
+        minimum_critical_speed_ratio=critical_speed_ratio_min,
+        static_deflection_mm=deflection_mm,
+        allowable_deflection_mm=allowable_deflection_mm,
+        impeller_mass_kg=impeller_mass_kg,
     )

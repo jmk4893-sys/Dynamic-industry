@@ -44,3 +44,23 @@ jobs:
           'PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md' 를 실행하고 커밋하세요."
             exit 1
           fi
+
+  simulation-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 시뮬레이션 선택 의존성 설치
+        run: python -m pip install -e '.[simulation]'
+
+      - name: 짧은 MP4 생성 확인
+        env:
+          SIM_SECONDS: "1"
+          SIM_FPS: "2"
+        run: |
+          python tools/flotation_sim.py /tmp/fc201-smoke.mp4
+          test -s /tmp/fc201-smoke.mp4

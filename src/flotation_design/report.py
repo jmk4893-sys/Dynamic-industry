@@ -6,6 +6,7 @@ from . import design_basis as db
 from . import references as ref
 from .hydrodynamics import analyse_cell
 from .kinetics import perfect_mixer_recovery
+from .circuit import solve_circuit
 from .transient import simulate_startup
 from .plant import PlantDesign, build_plant, mechanical_sizing_check
 from .reagents import reagent_schedule
@@ -207,24 +208,27 @@ def render(design: PlantDesign | None = None) -> str:
         "체적을 키우는 것이 아니라 단면적을 키우는 것이 핵심이다.")
     add("")
     add(_table(
-        ["운전점", "고체 농도", "급광 flux", "급광", "공기", "세척수", "월류수", "여유"],
+            ["운전점", "고체 농도", "급광 flux", "기액 체류", "급광", "공기", "세척수", "월류수", "농도 여유"],
         [
             [
                 label,
                 f"{op.solids_wt * 100:.0f} wt%",
                 f"{op.feed_flux_cm_s:.2f} cm/s",
+                f"{op.gas_liquid_residence_min:.2f} min",
                 f"{op.feed_m3h:.2f} m3/h",
                 f"{op.air_m3h:.2f} m3/h",
                 f"{op.wash_water_m3h:.2f} m3/h",
                 f"{op.overflow_water_m3h:.2f} m3/h",
-                f"{(1 - op.turndown_ratio) * 100:.0f} %" if op.within_capacity else "**초과**",
+                f"{(rd.design_solids_wt - op.solids_wt) * 100:.1f} %p"
+                if op.within_capacity else "**초과**",
             ]
             for label, op in ((avg_label, rfc.point_avg), (peak_label, rfc.point_peak))
         ],
     ))
     add("")
-    add(f"턴다운은 고체 농도를 유지한 채 세 flux 를 같은 비율로 낮춰 bias 비와 기액 체류시간을 "
-        f"보존한다. 고체 농도를 올리면 같은 동체로 훨씬 큰 처리량이 나온다 — "
+    add(f"평균 처리량에서는 슬러리·공기·세척수 flux 를 실증값에 유지하고 급광 고체 농도를 "
+        f"낮춰 1분 체류시간을 보존한다. 세 flux를 함께 낮추면 체류시간이 늘어나므로 같은 "
+        f"성능으로 간주하지 않는다. 고체 농도를 올리면 같은 동체로 더 큰 처리량이 나오지만 — "
         f"{f.solids_mass_fraction * 100:.0f} wt% 에서 {rd.capacity_tph:.2f} t/h, "
         f"15 wt% 에서 {rd.capacity_at_solids(0.15):.2f} t/h, "
         f"{trial.max_feasible_solids_wt_percent:.0f} wt% 에서 "
@@ -298,8 +302,9 @@ def render(design: PlantDesign | None = None) -> str:
     add("")
     add(_filter_table([rfc.concentrate_filter, rfc.tailings_filter]))
     add("")
-    add(f"**설치 전력 {rfc.installed_kw:.2f} kW**, 공정수 회수 {rfc.water_recycle_m3h:.1f} m3/h "
-        f"(농축조 회수수 재사용, 블리드 10 %).")
+    add(f"**설치 전력 {rfc.installed_kw:.2f} kW**, 공정수 회수 {rfc.water_recycle_m3h:.2f} m3/h. "
+        f"농축조 월류 블리드 {rfc.bleed_m3h:.2f} m3/h와 케이크 잔류수를 합한 "
+        f"신수 보충량은 **{rfc.fresh_makeup_m3h:.2f} m3/h** 다.")
     add("")
     add(f"이 가운데 필터프레스 여액 {rfc.filtrate_m3h:.3f} m3/h 는 공정수 탱크가 아니라 "
         f"**{rfc.filtrate_return_to}** 으로 되돌린다. 여포를 빠져나온 미립자가 남아 있어 "
@@ -319,7 +324,7 @@ def render(design: PlantDesign | None = None) -> str:
         [
             ["역할"] + [c.duty for c in mech.cells],
             ["셀당 내부 치수 (mm)"]
-            + [f"{c.geometry.width_m * 1000:.0f} x {c.geometry.width_m * 1000:.0f} x "
+            + [f"Ø{c.geometry.diameter_m * 1000:.0f} x "
                f"{c.geometry.shell_height_m * 1000:.0f}(H)" for c in mech.cells],
             ["거품층 (mm)"] + [f"{c.geometry.froth_depth_m * 1000:.0f}" for c in mech.cells],
             ["셀당 유효 슬러리 체적 (m3)"]
@@ -345,19 +350,31 @@ def render(design: PlantDesign | None = None) -> str:
             ["외경 결정 기준"] + [c.shaft.governed_by for c in mech.cells],
             ["급기 압력손실 (kPa)"]
             + [f"{c.shaft.total_pressure_drop_kpa:.1f}" for c in mech.cells],
+            ["분산구"] + [
+                f"{c.shaft.discharge_ports} x Ø{c.shaft.discharge_port_diameter_mm:.0f} mm"
+                for c in mech.cells
+            ],
+            ["1차 임계회전수 / 운전비"] + [
+                f"{c.shaft.critical_speed_rpm:.0f} rpm / {c.shaft.critical_speed_ratio:.2f}x"
+                for c in mech.cells
+            ],
+            ["예비 정적 처짐 (mm)"]
+            + [f"{c.shaft.static_deflection_mm:.2f}" for c in mech.cells],
         ],
     ))
     add("")
     add("**중공축 급기.** 축 상단 로터리 조인트로 공기를 넣어 축 내부 보어를 지나 "
         f"로터 허브의 분산구 {mech.cells[0].shaft.discharge_ports}개로 내보낸다. "
         "로터가 직접 기포를 부수므로 스파저 방식보다 기포가 잘고 균일하다. "
-        "축 외경은 세 셀 모두 **비틀림이 아니라 처짐(위험속도)** 이 정한다 — "
-        "부선기 축은 길고 가늘어 강도보다 진동이 먼저 문제가 된다. "
-        "송풍기 압력은 펄프 수두에 축 보어 마찰과 조인트 손실을 더해 선정했다.")
+        "축 외경은 단순 L/D가 아니라 로터 집중질량을 포함한 외팔보 예비 모델로 "
+        "1차 임계회전수와 정적 처짐을 검산했다. 실제 제작 전에는 확정 베어링 스팬·"
+        "불평형 하중으로 로터동역학을 다시 확인해야 한다. 송풍기 압력은 펄프 수두에 "
+        "축 보어·로터리 조인트·허브 분산구 손실을 더해 선정했다.")
     add("")
     add(f"송풍기 공용 1대 {mech.blower_rating_kw:.2f} kW "
         f"({mech.blower_flow_m3h:.0f} m3/h @ {mech.blower_pressure_kpa:.0f} kPa), "
-        f"미광 농축조 {mech.tailings_thickener.tag} Ø{mech.tailings_thickener.diameter_m:.1f} m. "
+        f"미광/정광 농축조 {mech.tailings_thickener.tag}/{mech.concentrate_thickener.tag} "
+        f"Ø{mech.tailings_thickener.diameter_m:.1f}/{mech.concentrate_thickener.diameter_m:.1f} m. "
         f"**설치 전력 {mech.installed_kw:.2f} kW.**")
     add("")
     add("### 탈수 라인")
@@ -367,7 +384,9 @@ def render(design: PlantDesign | None = None) -> str:
     add(f"여액 {mech.filtrate_m3h:.3f} m3/h 는 공정수 탱크를 거치지 않고 "
         f"**{mech.filtrate_return_to}** 으로 직접 되돌린다 — 여포를 빠져나온 미립자에 "
         f"Ag 가 남아 있어 회로 첫 단에서 한 번 더 부선 기회를 준다. "
-        f"미광 농축조 월류수와 합쳐 회수하는 공정수는 {mech.water_recycle_m3h:.2f} m3/h 다.")
+        f"두 농축조 월류수와 합친 공정수 회수량은 {mech.water_recycle_m3h:.2f} m3/h, "
+        f"블리드 {mech.bleed_m3h:.2f} m3/h와 케이크 잔류수를 보충하는 신수는 "
+        f"**{mech.fresh_makeup_m3h:.2f} m3/h** 다.")
     add("")
     for label, res in ((peak_label, mech.result_peak), (avg_label, mech.result_avg)):
         add(f"### 물질수지 — {label}")
@@ -392,7 +411,9 @@ def render(design: PlantDesign | None = None) -> str:
                  f"({res.tailings.grade_fraction('Ag') * 1e6:.0f} g/t)"],
                 ["정광량", f"{_kgh(res.concentrate.dry_tph, 2)} kg/h ({_pct(res.mass_pull, 2)} %)"],
                 ["순환부하", f"{_pct(res.circulating_load, 1)} %"],
-                ["신수 소요량", f"{res.fresh_water_m3h:.2f} m3/h"],
+                ["회로 희석·세척수 요구량 (여액 제외)",
+                 f"{res.fresh_water_m3h:.2f} m3/h"],
+                ["필터 여액 러퍼 직송", f"{res.filtrate_return_m3h:.3f} m3/h"],
                 ["물질수지 폐합 오차", f"{res.mass_balance_error_tph() * 1e6:.1e} g/h"],
             ],
         ))
@@ -412,16 +433,31 @@ def render(design: PlantDesign | None = None) -> str:
                 >= mechanical_sizing_check(mech.result_peak, tag, target) * 0.98 else "**NG**",
             ]
             for tag, target, res in (
-                ("FC-201", db.ROUGHER_RESIDENCE_MIN, mech.result_peak.rougher),
-                ("FC-202", db.CLEANER_RESIDENCE_MIN, mech.result_peak.cleaner),
+                ("FC-201", db.MECHANICAL_RESIDENCE_MIN["FC-201"], mech.result_peak.rougher),
+                ("FC-202", db.MECHANICAL_RESIDENCE_MIN["FC-202"], mech.result_peak.scavenger),
+                ("FC-203", db.MECHANICAL_RESIDENCE_MIN["FC-203"], mech.result_peak.cleaner),
             )
         ],
     ))
     add("")
-    add("**스캐빈저는 두지 않는다.** [1] 의 러퍼 미광 Ag 품위가 "
-        f"{batch.tailings_ag_wt_percent * 10000:.0f} g/t 로 이미 회수할 것이 거의 남지 않았고, "
-        "본 모델에서도 러퍼 미광의 속부선 분획은 대부분 소진된 상태다. "
-        "스캐빈저 1기를 더해도 Ag 회수율 이득은 1 %p 수준이다.")
+    rougher, _, cleaner = mech.units
+    without_scavenger = solve_circuit(
+        f.component_tph(f.peak_tph),
+        db.FLOAT_MODELS,
+        db.SPECIFIC_GRAVITY,
+        rougher,
+        None,
+        cleaner,
+        rougher_feed_solids=f.solids_mass_fraction,
+        composite_carry_ratio=0.0,
+    )
+    add("**스캐빈저 효과.** 같은 러퍼·클리너 회로에서 스캐빈저만 빼면 Ag 회수율은 "
+        f"{without_scavenger.recovery('Ag') * 100:.1f} %이고, 3단 폐회로는 "
+        f"{mech.result_peak.recovery('Ag') * 100:.1f} %다 "
+        f"(+{(mech.result_peak.recovery('Ag') - without_scavenger.recovery('Ag')) * 100:.1f} %p). "
+        f"미광 Ag도 {without_scavenger.tailings.grade_fraction('Ag') * 1e6:.0f} → "
+        f"{mech.result_peak.tailings.grade_fraction('Ag') * 1e6:.0f} g/t로 낮아진다. "
+        "스캐빈저 포수제 추가량은 실증 근거가 없어 기본계산에는 증량을 적용하지 않았다.")
     add("")
 
     # 4. 비교 -------------------------------------------------------------
@@ -429,7 +465,7 @@ def render(design: PlantDesign | None = None) -> str:
     add("")
     rp, mp = rfc.performance_peak, mech.result_peak
     add(_table(
-        ["지표", "1안 연속 부선조", "2안 기계식 러퍼+클리너", "판정"],
+        ["지표", "1안 연속 부선조", "2안 기계식 3단", "판정"],
         [
             ["Ag 회수율", f"**{_pct(rp.recovery('Ag'))} %**", f"{_pct(mp.recovery('Ag'))} %",
              f"1안 {(rp.recovery('Ag') - mp.recovery('Ag')) * 100:+.1f} %p"],
