@@ -8,9 +8,10 @@ Dynamic industry Development
 설비의 설계와 계산 코드.
 
 - 평균 **0.30 t/h**, 최대 **0.50 t/h** (건조 고체 기준)
-- **세척수 bias 연속 부선조 1단, Ø350 mm × 라이저 2.4 m** (대안: 기계식 러퍼·스캐빈저·클리너 3단)
-- Ag 회수율 **99.7 %**, 정광 **6.36 kg/h @ 46.3 wt% Ag** (농축비 78배)
-- 기액 체류시간 **1 분**, 설치 전력 **6.52 kW** (탈수 보조설비 포함)
+- 현재 제작 기본안: **기계식 러퍼·스캐빈저·클리너 3단** (R/S 공용 규격)
+- 참조 Ag 회수율 **93.1 %**, 정광 **6.08 kg/h @ 45.2 wt% Ag**
+- 최대 처리량 기준 체류시간 6.5/7.1/6.9분, 설치 전력 **15.07 kW**
+- 기술 대안: 세척수 bias 연속 부선조 1단 (실제 원료 파일럿·실시권 확인 후)
 - 황화제·pH 조정제·억제제 없음 — 약제는 포수제·촉진제·기포제 3종뿐
 
 ### 설계 근거
@@ -31,6 +32,7 @@ Dynamic industry Development
 |---|---|
 | [docs/flotation-separator-design.md](docs/flotation-separator-design.md) | 설계 사양서 — 근거, 두 안, 계장·안전, 시운전 계획 |
 | [docs/design-calculation.md](docs/design-calculation.md) | 설계 계산서 (코드에서 자동 생성) |
+| [docs/claude-adoption-review.md](docs/claude-adoption-review.md) | 클로드 설계 중 채택·보완·보류 항목과 현재 공장 원료 적용 경계 |
 | [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 7매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
 
@@ -82,6 +84,10 @@ src/flotation_design/
 ```
 
 ### 모델에서 알아둘 두 가지
+
+**현재 프로젝트의 제작 기본안은 기계식 3단이다.** 연속 1단 부선조는 회수율과
+전력 면에서 유망하지만, 실제 고속분쇄·체분급·열처리/attrition 블랙파우더와
+0.5 t/h 규모에서의 검증 및 실시권 확인 전에는 대안기술로 관리한다.
 
 **정광 품위에는 물리적 상한이 있다.** Ag 는 Si 웨이퍼에 소결된 전극이라 부상할 때
 Si 코어를 달고 온다. 부상 Ag 1 kg 당 맥석 1.1 kg 이면 상한은 1/(1+1.1) = 47.6 wt%

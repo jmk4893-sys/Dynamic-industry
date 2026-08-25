@@ -227,6 +227,8 @@ class TestDrawingMatchesDesign(unittest.TestCase):
     def test_filtrate_returns_to_flotation_feed(self):
         # 여액은 공정수 탱크가 아니라 부선 급광으로 되돌린다.
         self.assertIn("여액 0.47 m³/h → 급광 순환", self.html)
+        self.assertIn("QI-106 적합 시 직송", self.html)
+        self.assertIn("W113 우회", self.html)
 
     def test_patent_disclosure_present(self):
         # 실시권 리스크는 도면에서 빠지면 안 되는 항목이다.
@@ -405,6 +407,7 @@ class TestModel3dMatchesDesign(unittest.TestCase):
         self.assertIn("클리너 미광", self.html)
         # 필터프레스 여액은 러퍼 급광으로 순환한다.
         self.assertIn("여액 → 러퍼 급광 순환", self.html)
+        self.assertIn("QI-106", self.html)
 
     def test_states_it_is_not_a_cad_model(self):
         self.assertIn("제작용 CAD 가 아니며", self.html)
