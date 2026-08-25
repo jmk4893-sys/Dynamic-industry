@@ -44,10 +44,8 @@ class TestPlantDesign(unittest.TestCase):
         from flotation_design.plant import mechanical_sizing_check
 
         mech = self.plant.mechanical
-        for tag, target in (
-            ("FC-201", db.ROUGHER_RESIDENCE_MIN),
-            ("FC-202", db.CLEANER_RESIDENCE_MIN),
-        ):
+        for tag in ("FC-201", "FC-202", "FC-203"):
+            target = db.MECHANICAL_RESIDENCE_MIN[tag]
             cell = mech.cell(tag)
             available = cell.geometry.effective_slurry_volume_m3 * cell.cells_in_series
             self.assertGreaterEqual(

@@ -269,11 +269,14 @@ class TestMechanicalCircuit(unittest.TestCase):
             places=12,
         )
 
-    def test_scavenger_is_larger_than_rougher(self):
-        """지연부선 분획을 잡아야 하므로 체류시간이 길고 셀이 크다."""
-        self.assertGreater(
-            db.SCAVENGER_CELL.effective_slurry_volume_m3,
-            db.ROUGHER_CELL.effective_slurry_volume_m3,
+    def test_scavenger_standardizes_rougher_vessel(self):
+        """미검증 대형화 대신 러퍼와 동체를 공용하고 운전조건만 달리한다."""
+        self.assertEqual(db.SCAVENGER_CELL.width_m, db.ROUGHER_CELL.width_m)
+        self.assertEqual(
+            db.SCAVENGER_CELL.shell_height_m, db.ROUGHER_CELL.shell_height_m
+        )
+        self.assertLess(
+            db.SCAVENGER_CELL.froth_depth_m, db.ROUGHER_CELL.froth_depth_m
         )
         self.assertGreater(self.res.scavenger.residence_min, self.res.rougher.residence_min)
 

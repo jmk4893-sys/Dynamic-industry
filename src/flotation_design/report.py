@@ -363,6 +363,13 @@ def render(design: PlantDesign | None = None) -> str:
         ],
     ))
     add("")
+    add("**러퍼·스캐빈저 표준화.** 첨부 문헌에는 스캐빈저 단독 시험이나 "
+        "8분 체류시간의 근거가 없으므로, FC-202를 임의로 대형화하지 않고 "
+        "FC-201과 같은 동체·로터·구동부로 통일했다. FC-202는 거품층을 더 얕게 "
+        "운전하므로 같은 동체에서도 유효 체적과 실제 체류시간이 조금 더 크다. "
+        "locked-cycle 시험에서 추가 체류시간의 유효성이 확인될 때만 예비 공간에 "
+        "2차 스캐빈저를 직렬 증설한다.")
+    add("")
     add("**중공축 급기.** 축 상단 로터리 조인트로 공기를 넣어 축 내부 보어를 지나 "
         f"로터 허브의 분산구 {mech.cells[0].shaft.discharge_ports}개로 내보낸다. "
         "로터가 직접 기포를 부수므로 스파저 방식보다 기포가 잘고 균일하다. "
@@ -480,8 +487,10 @@ def render(design: PlantDesign | None = None) -> str:
              f"{mech.cells[0].geometry.width_m * 2.2:.1f} x "
              f"{mech.cells[0].geometry.width_m * 1.3:.1f} m", "1안"],
             ["체류시간", f"{rd.gas_liquid_residence_min:.0f} min (기액)",
-             f"{mp.rougher.residence_min:.1f} + {mp.cleaner.residence_min:.1f} min", "1안"],
-            ["순환류", "없음", f"{_pct(mp.circulating_load, 1)} % (클리너 미광)", "1안"],
+             f"{mp.rougher.residence_min:.1f} + {mp.scavenger.residence_min:.1f} + "
+             f"{mp.cleaner.residence_min:.1f} min", "1안"],
+            ["순환류", "없음", f"{_pct(mp.circulating_load, 1)} % "
+             "(스캐빈저 정광 + 클리너 미광)", "1안"],
             ["기술 성숙도", "TRL 5 (연속 실증 90 min)", "범용 장비, 회분식만 실증", "2안이 조달 유리"],
             ["지식재산", "가출원 대상 — 실시권 검토 필요", "제약 없음", "2안이 유리"],
         ],

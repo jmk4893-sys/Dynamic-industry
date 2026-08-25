@@ -347,9 +347,13 @@ class TestModel3dMatchesDesign(unittest.TestCase):
         for tag, u in self.unit.items():
             self.assertFigure(f"{u.residence_min:.1f} min", tag + " 체류시간")
 
-    def test_scavenger_is_the_largest_cell(self):
-        w = {c.tag: c.geometry.width_m for c in self.opt.cells}
-        self.assertGreater(w["FC-202"], w["FC-201"])
+    def test_scavenger_reuses_rougher_vessel(self):
+        cells = {c.tag: c for c in self.opt.cells}
+        self.assertEqual(cells["FC-202"].geometry.width_m,
+                         cells["FC-201"].geometry.width_m)
+        self.assertEqual(cells["FC-202"].geometry.shell_height_m,
+                         cells["FC-201"].geometry.shell_height_m)
+        self.assertIn("러퍼와 공용", self.html)
 
     def test_circuit_performance(self):
         self.assertFigure(f"{self.res.recovery('Ag') * 100:.1f} %", "회로 Ag 회수율")
