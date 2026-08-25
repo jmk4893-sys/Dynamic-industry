@@ -173,7 +173,7 @@ class TestReportSection(unittest.TestCase):
             / "docs"
             / "design-calculation.md"
         ).read_text(encoding="utf-8")
-        self.assertIn("## 7. 수치해석", doc)
+        self.assertIn("## 8. 수치해석", doc)
         self.assertIn("Yoon-Luttrell", doc)
         self.assertIn("t95", doc)
 

@@ -394,11 +394,79 @@ class HollowShaftDesign:
 
 
 #: 표준 축 외경 계열 (mm).
-_SHAFT_OD_MM = (30, 40, 50, 60, 70, 80, 90, 100, 110, 125, 140)
+SHAFT_OD_SERIES_MM = (30, 40, 50, 60, 70, 80, 90, 100, 110, 125, 140)
 #: 표준 축 내경(보어) 계열 (mm).
 _SHAFT_BORE_MM = (10, 12, 15, 20, 25, 32, 40, 50, 65)
 #: 로터 허브 방사형 분산구 표준 드릴 지름 (mm).
 _PORT_DIAMETER_MM = (3, 4, 5, 6, 8, 10, 12)
+
+
+def torsional_section_modulus_m3(outer_diameter_mm: float, bore_mm: float = 0.0) -> float:
+    """중공(또는 중실) 원형 축의 극단면계수 (m3).
+
+    ``bore_mm = 0`` 이면 중실축이다. 비틀림 전단응력은 ``T / Z`` 로 구한다.
+    """
+    D = outer_diameter_mm / 1000.0
+    d = bore_mm / 1000.0
+    if D <= d:
+        raise ValueError("외경은 내경보다 커야 함")
+    return math.pi * (D**4 - d**4) / (16.0 * D)
+
+
+@dataclass(frozen=True)
+class RotorDynamics:
+    """외팔보 축의 예비 로터동역학 결과.
+
+    Attributes:
+        critical_speed_rpm: 1차 굽힘 임계회전수.
+        critical_speed_ratio: 임계회전수 / 운전회전수. 1 보다 충분히 커야 한다.
+        static_deflection_mm: 로터 집중하중과 축 자중에 의한 자유단 처짐.
+    """
+
+    critical_speed_rpm: float
+    critical_speed_ratio: float
+    static_deflection_mm: float
+
+
+def cantilever_rotor_dynamics(
+    outer_diameter_mm: float,
+    bore_mm: float,
+    length_m: float,
+    speed_rpm: float,
+    overhung_mass_kg: float,
+    elastic_modulus_pa: float = 200.0e9,
+    shaft_density_kg_m3: float = 7850.0,
+) -> RotorDynamics:
+    """축을 보수적인 외팔보로 보고 1차 임계회전수와 정적 처짐을 구한다.
+
+    로터(임펠러) 질량을 자유단 집중질량으로, 축 자중은 등가질량 계수 0.236 을
+    적용한 분포질량으로 다룬다. 실제 제작 전에는 확정 베어링 스팬과 로터
+    불평형 하중으로 다시 검증해야 하는 **예비 검산**이다.
+    """
+    if length_m <= 0 or speed_rpm <= 0 or overhung_mass_kg <= 0:
+        raise ValueError("길이·회전수·로터 질량은 양수여야 함")
+    D = outer_diameter_mm / 1000.0
+    d = bore_mm / 1000.0
+    if D <= d:
+        raise ValueError("외경은 내경보다 커야 함")
+    area = math.pi * (D**2 - d**2) / 4.0
+    inertia = math.pi * (D**4 - d**4) / 64.0
+    shaft_mass = shaft_density_kg_m3 * area * length_m
+    stiffness = 3.0 * elastic_modulus_pa * inertia / length_m**3
+    effective_mass = overhung_mass_kg + 0.236 * shaft_mass
+    omega = math.sqrt(stiffness / effective_mass)
+    critical_rpm = omega * 60.0 / (2.0 * math.pi)
+    point_load = overhung_mass_kg * G
+    distributed_load = shaft_density_kg_m3 * area * G
+    deflection_m = (
+        point_load * length_m**3 / (3.0 * elastic_modulus_pa * inertia)
+        + distributed_load * length_m**4 / (8.0 * elastic_modulus_pa * inertia)
+    )
+    return RotorDynamics(
+        critical_speed_rpm=critical_rpm,
+        critical_speed_ratio=critical_rpm / speed_rpm,
+        static_deflection_mm=deflection_m * 1000.0,
+    )
 
 
 def hollow_shaft(
@@ -468,42 +536,31 @@ def hollow_shaft(
     # 외경 — 비틀림 기준
     d = bore_mm / 1000.0
     torsion_od_mm = None
-    for od in _SHAFT_OD_MM:
-        D = od / 1000.0
-        if D <= d:
+    for od in SHAFT_OD_SERIES_MM:
+        if od <= bore_mm:
             continue
-        section = math.pi * (D**4 - d**4) / (16.0 * D)     # 극단면계수
+        section = torsional_section_modulus_m3(od, bore_mm)
         if torque / section / 1e6 <= allowable_shear_mpa:
             torsion_od_mm = od
             break
     if torsion_od_mm is None:
         raise ValueError("표준 외경 계열로 토크를 감당할 수 없음")
 
-    def rotor_dynamics(od_mm: float) -> tuple[float, float, float]:
-        """(임계회전수, 운전/임계 여유비, 정적 처짐 mm)."""
-        D = od_mm / 1000.0
-        area = math.pi * (D**2 - d**2) / 4.0
-        inertia = math.pi * (D**4 - d**4) / 64.0
-        shaft_mass = shaft_density_kg_m3 * area * length_m
-        stiffness = 3.0 * elastic_modulus_pa * inertia / length_m**3
-        effective_mass = impeller_mass_kg + 0.236 * shaft_mass
-        omega = math.sqrt(stiffness / effective_mass)
-        critical_rpm = omega * 60.0 / (2.0 * math.pi)
-        ratio = critical_rpm / speed_rpm
-        point_load = impeller_mass_kg * G
-        distributed_load = shaft_density_kg_m3 * area * G
-        deflection_m = (
-            point_load * length_m**3 / (3.0 * elastic_modulus_pa * inertia)
-            + distributed_load * length_m**4 / (8.0 * elastic_modulus_pa * inertia)
+    def rotor_dynamics(od_mm: float) -> RotorDynamics:
+        return cantilever_rotor_dynamics(
+            od_mm, bore_mm, length_m, speed_rpm, impeller_mass_kg,
+            elastic_modulus_pa, shaft_density_kg_m3,
         )
-        return critical_rpm, ratio, deflection_m * 1000.0
 
     dynamic_od_mm = None
-    for od in _SHAFT_OD_MM:
+    for od in SHAFT_OD_SERIES_MM:
         if od <= bore_mm:
             continue
-        _, ratio, deflection = rotor_dynamics(od)
-        if ratio >= critical_speed_ratio_min and deflection <= allowable_deflection_mm:
+        rd = rotor_dynamics(od)
+        if (
+            rd.critical_speed_ratio >= critical_speed_ratio_min
+            and rd.static_deflection_mm <= allowable_deflection_mm
+        ):
             dynamic_od_mm = od
             break
     if dynamic_od_mm is None:
@@ -512,10 +569,8 @@ def hollow_shaft(
     outer_mm = max(torsion_od_mm, dynamic_od_mm)
     governed_by = "비틀림" if torsion_od_mm >= dynamic_od_mm else "로터동역학"
 
-    D = outer_mm / 1000.0
-    section = math.pi * (D**4 - d**4) / (16.0 * D)
-    shear = torque / section / 1e6
-    critical_rpm, critical_ratio, deflection_mm = rotor_dynamics(outer_mm)
+    shear = torque / torsional_section_modulus_m3(outer_mm, bore_mm) / 1e6
+    dynamics = rotor_dynamics(outer_mm)
 
     velocity = q / (math.pi * d**2 / 4.0)
     dp = friction_factor * (length_m / d) * air_density_kg_m3 * velocity**2 / 2.0 / 1000.0
@@ -552,10 +607,10 @@ def hollow_shaft(
         discharge_port_diameter_mm=port_mm,
         discharge_velocity_m_s=port_velocity,
         discharge_pressure_drop_kpa=port_dp,
-        critical_speed_rpm=critical_rpm,
-        critical_speed_ratio=critical_ratio,
+        critical_speed_rpm=dynamics.critical_speed_rpm,
+        critical_speed_ratio=dynamics.critical_speed_ratio,
         minimum_critical_speed_ratio=critical_speed_ratio_min,
-        static_deflection_mm=deflection_mm,
+        static_deflection_mm=dynamics.static_deflection_mm,
         allowable_deflection_mm=allowable_deflection_mm,
         impeller_mass_kg=impeller_mass_kg,
     )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from . import design_basis as db
 from . import references as ref
+from .attrition import concentrate_grade_ceiling, short_circuit_fraction
 from .hydrodynamics import analyse_cell
 from .kinetics import perfect_mixer_recovery
 from .circuit import solve_circuit
@@ -68,6 +69,18 @@ def render(design: PlantDesign | None = None) -> str:
     """태양광 셀 Ag 회수 부선 설비 설계 계산서."""
     d = design if design is not None else build_plant()
     f, rfc, mech = d.feed, d.rfc, d.mechanical
+    pre = d.pretreatment
+    sc, dil = pre.scrubber, pre.dilution
+    g, dr, sh = sc.geometry, sc.drive, sc.shaft
+    ag_peak_tph = f.component_tph(f.peak_tph)["Ag"]
+    solids_dose_g_t = sum(r.dose for r in db.REAGENTS if r.basis == "solids")
+    reagent_saving_kg_y = (
+        solids_dose_g_t
+        * (1.0 - 1.0 / ref.WET_FEED_REAGENT_FACTOR)
+        * f.average_tph
+        * db.ANNUAL_OPERATING_HOURS
+        / 1000.0
+    )
     trial = ref.CONTINUOUS_TRIAL
     batch = ref.BATCH_TAP_WATER
     peak_label = f"최대 {f.peak_tph:.2f} t/h"
@@ -170,15 +183,271 @@ def render(design: PlantDesign | None = None) -> str:
     add(f"Ag 는 순수 입자가 아니라 Si 웨이퍼에 소결된 전극이다. 표면이 소수성이 되어 부상해도 "
         f"**Si 코어를 함께 끌고 올라간다.** 부상 Ag 1 kg 당 동반 맥석 "
         f"{db.COMPOSITE_CARRY_RATIO:.1f} kg 으로 두면 정광 품위 상한은 "
-        f"1/(1+{db.COMPOSITE_CARRY_RATIO:.1f}) = **{100 / (1 + db.COMPOSITE_CARRY_RATIO):.1f} wt% Ag** 다. "
+        f"1/(1+{db.COMPOSITE_CARRY_RATIO:.1f}) = "
+        f"**{concentrate_grade_ceiling(db.COMPOSITE_CARRY_RATIO) * 100:.1f} wt% Ag** 다. "
         f"[2] 의 연속 정광이 {trial.concentrate_ag_wt_percent:.1f} wt%, [1] 의 러퍼+클리너 정광이 "
         f"{ref.BATCH_ROUGHER_CLEANER['concentrate_ag_wt_percent']:.1f} wt% 에서 멈춘 것이 이 상한으로 설명된다. "
         f"이 동반분은 **수분 동반과 달리 세척수로 제거되지 않는다** — 클리너를 아무리 더 붙여도 "
         f"넘을 수 없는 벽이다.")
     add("")
 
-    # 2. 1안 --------------------------------------------------------------
-    add("## 2. 1안 (주설계) — 세척수 bias 연속 부선조 1단")
+    # 2. 전처리 -----------------------------------------------------------
+    add("## 2. 전처리 — 어트리션 스크러버 (공통 설비)")
+    add("")
+    add("로드밀 배출 슬러리를 **묽히기 전에** 고농도 그대로 받아 입자끼리 문질러 "
+        "표면을 벗기고, 희석박스에서 부선 농도로 묽혀 조건조로 보낸다. 두 안이 "
+        "함께 쓰는 공통 설비이므로 1안·2안 어느 쪽 설치 전력에도 포함하지 않고 "
+        "따로 계상한다. 분쇄기가 아니라는 점이 중요하다 — 입자를 깨는 것이 아니라 "
+        "**표면에 붙은 것을 떼는 것**이 목적이다.")
+    add("")
+    add("무엇을 떼려는가:")
+    add("")
+    add("1. **박리 잔막** — EVA 봉지재·접착층을 벗겨낸 표면에 남은 유기 잔막. "
+        "포수제가 Ag 전극에 닿는 것을 막고, 그 자체가 소수성이라 무차별 부상해 정광을 희석한다.")
+    add(f"2. **슬라임 코팅** — 습식 분쇄면에 붙은 미립 Si. [2] 가 관측한 "
+        f"\"습식 분쇄물은 건조 원료의 {ref.WET_FEED_REAGENT_FACTOR:.0f}배를 써야 거품이 선다\" "
+        f"(150 → {db.REAGENTS[0].dose:.0f} g/t)의 유력한 원인 후보다.")
+    add(f"3. **Ag 전극 박편** — Ag 는 Si 표면에 소결된 층이라 벌크 Si 보다 약하다. "
+        f"표면 마모로 일부가 떨어지면 복합입자 동반비 r 이 내려가고 정광 품위 상한 "
+        f"1/(1+r) 이 올라간다 (아래 상방 시나리오).")
+    add("")
+    add("> [!IMPORTANT]")
+    add("> **성능 크레딧 없음.** [1][2] 어디에도 어트리션 시험이 없다. 위 셋은 전부 "
+        "가설이므로 이 계산서의 회수율·품위·약제 투입량은 **어트리션이 없는 것과 같은 "
+        f"값**이다 (`ATTRITION_PERFORMANCE_CREDIT = {db.ATTRITION_PERFORMANCE_CREDIT:.1f}`). "
+        f"대신 전량 바이패스({pre.bypass})를 두어 없는 것처럼 운전할 수 있게 하고, "
+        "이득을 정량화할 시험(§2.4)과 합격 기준을 설계에 넣었다. "
+        "시험에서 이득이 확인되지 않으면 바이패스로 두거나 철거하는 편이 낫다.")
+    add("")
+    add("### 2.1 운전 기준 — 고체 농도가 전부다")
+    add("")
+    add(_table(
+        ["항목", "값", "근거 · 판정"],
+        [
+            ["기기 번호 / 역할", f"{sc.tag} / {sc.duty}", "공통 설비"],
+            ["**스크러빙 고체 농도**", f"**{sc.solids_mass_fraction * 100:.0f} wt%**",
+             "실리카사 스크러빙 표준 70~75 wt%"],
+            ["**고체 체적분율**", f"**{sc.solids_volume_fraction * 100:.1f} vol%**",
+             f"하한 {sc.minimum_solids_volume_fraction * 100:.0f} vol% — "
+             + ("OK" if sc.solids_volume_fraction_ok else "**NG**")
+             + ". 이 정도라야 입자끼리 닿는다"],
+            ["슬러리 밀도", f"{sc.pulp.pulp_density_kg_m3:.0f} kg/m3", "동력 계산 기준"],
+            ["슬러리 유량 (최대)", f"{sc.pulp.volumetric_flow_m3h:.3f} m3/h",
+             f"같은 고체를 {f.solids_mass_fraction * 100:.0f} wt% 로 묽히면 "
+             f"{d.rfc.point_peak.feed_m3h:.2f} m3/h — **{d.rfc.point_peak.feed_m3h / sc.pulp.volumetric_flow_m3h:.0f}배**"],
+            ["상류 로드밀 배출 농도 요구",
+             f"≥ {db.ATTRITION_MILL_DISCHARGE_MIN_SOLIDS_WT * 100:.0f} wt%",
+             f"봉형밀 배출 통상 65~75 wt% 라 대개 만족한다. 절대 하한은 "
+             f"{sc.minimum_solids_mass_fraction * 100:.0f} wt% "
+             f"(= {sc.minimum_solids_volume_fraction * 100:.0f} vol%) 이고 그 아래는 "
+             f"어트리션이 아니라 교반이다. 미달 시 앞단 사이클론 탈수 — "
+             f"**상류 계약 인터페이스 조건**"],
+            ["직렬 셀 수", f"{sc.cells} 기",
+             f"1기면 급광의 {short_circuit_fraction(1) * 100:.0f} % 가 평균 체류시간의 절반도 "
+             f"못 채우고 통과. {sc.cells}기면 {sc.short_circuit_fraction * 100:.0f} %, "
+             f"3기라야 {short_circuit_fraction(3) * 100:.0f} % — 이 규모에서 3기는 값을 못 한다"],
+            ["설계 체류시간", f"{sc.design_residence_min:.0f} min (총)", "표면 정정 통상 5~15 min"],
+            ["**실제 체류시간**",
+             f"**{sc.residence_min(f.peak_tph):.1f} min** ({peak_label}) / "
+             f"{sc.residence_min(f.average_tph):.1f} min ({avg_label})",
+             f"규격 결정 기준: **{sc.governed_by}**"],
+        ],
+    ))
+    add("")
+    add(f"체류시간이 설계값보다 긴 것은 문제가 아니다. 상용 최소 기종이 "
+        f"{sc.nominal_cell_m3 * 1000:.0f} L 라 필요량("
+        f"{sc.pulp.volumetric_flow_m3h * sc.design_residence_min / 60.0 / sc.cells * 1000:.0f} L/셀)"
+        f"보다 큰 것을 살 수밖에 없기 때문이고, 어트리션의 실제 제어변수는 체류시간이 "
+        f"아니라 **비에너지(kWh/t)** 이기 때문이다 (§2.3). 필터프레스 정광 라인이 "
+        f"같은 이유로 상용 최소 기종에 걸린 것과 같은 상황이다.")
+    add("")
+    add("### 2.2 기계 사양")
+    add("")
+    add(_table(
+        ["항목", "값", "비고"],
+        [
+            ["조 형식", f"팔각조 {sc.cells} 기 직렬",
+             "배플 없이 vortex 를 깨는 표준 형상"],
+            ["**셀 내부 치수**",
+             f"**AF {g.across_flats_m * 1000:.0f} mm x {g.depth_m * 1000:.0f} mm(D)**",
+             f"대각 {g.circumscribed_diameter_m * 1000:.0f} mm, 여유고 "
+             f"{g.freeboard_m * 1000:.0f} mm, 전고 {g.shell_height_m * 1000:.0f} mm"],
+            ["셀당 유효 체적", f"{g.working_volume_m3 * 1000:.1f} L",
+             f"상용 계열 {sc.nominal_cell_m3 * 1000:.0f} L 선정"],
+            ["**총 유효 체적**", f"**{sc.total_working_volume_m3 * 1000:.1f} L**", ""],
+            ["임펠러", f"대향 피치 축류 {dr.impellers_per_shaft} 단/축",
+             "위는 아래로, 아래는 위로 밀어 중간 높이에 **전단면**을 만든다"],
+            ["임펠러 지름 / 간격",
+             f"Ø{dr.diameter_m * 1000:.0f} mm / {dr.spacing_m * 1000:.0f} mm",
+             f"조 폭 대비 {dr.diameter_m / g.across_flats_m:.2f} "
+             f"(부선셀 로터 {db.IMPELLER_DIAMETER_RATIO:.2f} 보다 크다 — 조 전체를 움직여야 한다)"],
+            ["설계 회전수 / 주속", f"{dr.speed_rpm:.0f} rpm / {dr.tip_speed_m_s:.2f} m/s",
+             f"허용 {dr.tip_speed_min_m_s:.1f}~{dr.tip_speed_max_m_s:.1f} m/s — "
+             + ("OK" if dr.tip_speed_ok else "**NG**")],
+            ["VFD 조정 범위",
+             f"{dr.tip_speed_min_m_s:.1f}~{dr.tip_speed_ceiling_m_s:.2f} m/s "
+             f"({dr.speed_rpm_at_tip_speed(dr.tip_speed_min_m_s):.0f}~"
+             f"{dr.speed_rpm_at_tip_speed(dr.tip_speed_ceiling_m_s):.0f} rpm)",
+             f"상한은 흡수동력이 모터 정격/{dr.service_factor:.1f} 을 넘지 않는 점"],
+            ["셀당 흡수동력 / 모터",
+             f"{dr.absorbed_power_w / 1000.0:.2f} kW / **{dr.motor_rating_kw:.1f} kW**",
+             f"P = {dr.impellers_per_shaft} x Np {dr.power_number:.1f} x rho x N^3 x D^5"],
+            ["**체적당 동력**", f"**{sc.specific_power_kw_m3:.1f} kW/m3**",
+             f"상용 어트리션 셀 통상 {sc.specific_power_range_kw_m3[0]:.0f}~"
+             f"{sc.specific_power_range_kw_m3[1]:.0f} kW/m3 — "
+             + ("OK" if sc.specific_power_ok else "**NG**")],
+            ["**교반축 외경**", f"**Ø{sh.outer_diameter_mm:.0f} mm** (중실)",
+             f"길이 {sh.length_m:.2f} m, 결정 기준 **{sh.governed_by}**"],
+            ["축 토크 / 전단응력",
+             f"{sh.torque_nm:.1f} N·m / {sh.shear_stress_mpa:.1f} MPa",
+             f"서비스계수 {sh.service_factor:.1f} (굳은 슬러리 기동 토크), "
+             f"허용 {sh.allowable_shear_mpa:.0f} MPa"],
+            ["1차 임계회전수 / 운전비",
+             f"{sh.critical_speed_rpm:.0f} rpm / {sh.critical_speed_ratio:.2f}x",
+             f"하한 {sh.minimum_critical_speed_ratio:.1f}x — "
+             + ("OK" if sh.critical_speed_ratio >= sh.minimum_critical_speed_ratio else "**NG**")],
+            ["예비 정적 처짐", f"{sh.static_deflection_mm:.2f} mm",
+             f"허용 {sh.allowable_deflection_mm:.0f} mm"],
+            ["마모 방호", sc.liner, "Si 는 모스 6.5 대의 각진 입자 — 미끄럼 마모가 심하다"],
+            ["급광 방식", "중력 급광" if sc.feed_pump_kw == 0 else f"PC 펌프 {sc.feed_pump_kw:.2f} kW",
+             f"{sc.solids_volume_fraction * 100:.0f} vol% 슬러리는 원심펌프로 보낼 수 없다"],
+        ],
+    ))
+    add("")
+    add(f"**축은 비틀림이 아니라 {sh.governed_by}이 지배한다.** 전단응력은 허용치의 "
+        f"{sh.shear_stress_mpa / sh.allowable_shear_mpa * 100:.0f} % 에 불과하지만, "
+        f"{sh.length_m:.2f} m 외팔보 끝에 임펠러 조립체 {sh.overhung_mass_kg:.0f} kg 이 "
+        f"매달리므로 1차 굽힘 임계회전수가 운전 회전수에 가까워진다. 임펠러 질량은 "
+        f"D^3 비례 예비값이므로 제작도 확정 후 실측 질량과 실제 베어링 스팬으로 "
+        f"재검증해야 한다.")
+    add("")
+    add("### 2.3 비에너지 — 실제 제어변수")
+    add("")
+    add(f"어트리션의 스크러빙 강도는 체류시간이 아니라 **투입 에너지 / 처리량**으로 "
+        f"결정된다. 상용 최소 기종을 샀으므로 체적은 남고, 처리량이 줄면 같은 회전수에서 "
+        f"t 당 에너지가 오히려 커진다. 따라서 VFD 로 주속을 낮춰 목표 범위 "
+        f"{sc.specific_energy_range_kwh_t[0]:.0f}~{sc.specific_energy_range_kwh_t[1]:.0f} kWh/t "
+        f"안에 유지한다.")
+    add("")
+    add(_table(
+        ["처리량", "설계 주속 유지 시", "권장 주속", "그때 흡수동력", "그때 비에너지"],
+        [
+            [
+                label,
+                f"{sc.specific_energy_kwh_t(tph):.2f} kWh/t",
+                f"{sc.recommended_tip_speed_m_s(tph):.2f} m/s "
+                f"({dr.speed_rpm_at_tip_speed(sc.recommended_tip_speed_m_s(tph)):.0f} rpm)",
+                f"{dr.power_w_at_tip_speed(sc.recommended_tip_speed_m_s(tph)) * sc.cells / 1000.0:.2f} kW",
+                f"**{sc.specific_energy_kwh_t(tph, sc.recommended_tip_speed_m_s(tph)):.2f} kWh/t**",
+            ]
+            for label, tph in ((peak_label, f.peak_tph), (avg_label, f.average_tph))
+        ],
+    ))
+    add("")
+    add(f"주속에는 하한이 있으므로({dr.tip_speed_min_m_s:.1f} m/s — 이보다 느리면 "
+        f"{sc.solids_volume_fraction * 100:.0f} vol% 층이 움직이지 않는다) 동력도 더 내려가지 "
+        f"않는다. 따라서 처리량이 **{sc.minimum_dry_tph:.2f} t/h** 아래로 내려가면 최저 "
+        f"주속에서도 과다 스크러빙이 된다. 그 아래에서는 캠페인 운전하거나 바이패스한다.")
+    add("")
+    add("### 2.4 상방 시나리오와 시험 계획")
+    add("")
+    add("이 설비가 값을 하는 경로는 두 가지이고, 둘 다 **시험으로만 확인된다.**")
+    add("")
+    add(f"**(가) 정광 품위 상한.** Ag 박편이 Si 에서 떨어지면 동반비 r 이 내려간다. "
+        f"현재 r = {db.COMPOSITE_CARRY_RATIO:.1f} 에서 상한은 "
+        f"{concentrate_grade_ceiling(db.COMPOSITE_CARRY_RATIO) * 100:.1f} wt% 이고, "
+        f"실제 정광이 {d.rfc.performance_peak.concentrate_grade('Ag') * 100:.1f} wt% 로 "
+        f"거기 붙어 있다. **클리너를 더 붙여도 못 넘는 벽을 넘는 유일한 수단**이다.")
+    add("")
+    add(_table(
+        ["동반비 r", "정광 품위 상한", "Ag + 결합 맥석 (최대 처리량)", "급광 대비"],
+        [
+            [
+                f"{r:.1f}" + (" (현재 설계)" if r == db.COMPOSITE_CARRY_RATIO else ""),
+                f"{concentrate_grade_ceiling(r) * 100:.1f} wt% Ag",
+                f"{ag_peak_tph * (1.0 + r) * 1000:.2f} kg/h",
+                f"급광의 {ag_peak_tph * (1.0 + r) / f.peak_tph * 100:.2f} %",
+            ]
+            for r in db.ATTRITION_CARRY_RATIO_CASES
+        ],
+    ))
+    add("")
+    add(f"**(나) 약제 절감.** [2] 는 습식 분쇄물에 건조 원료의 "
+        f"{ref.WET_FEED_REAGENT_FACTOR:.0f}배 약제가 필요했다고 보고했다. 그 원인이 "
+        f"슬라임 코팅이라면 어트리션으로 되돌릴 수 있다. 전량 회복 시 고체 기준 약제 "
+        f"{solids_dose_g_t:.0f} → {solids_dose_g_t / ref.WET_FEED_REAGENT_FACTOR:.0f} g/t, "
+        f"{avg_label} · 연 {db.ANNUAL_OPERATING_HOURS:,.0f} 시간 기준 **연 "
+        f"{reagent_saving_kg_y:,.0f} kg** 의 포수제·촉진제 절감이다.")
+    add("")
+    add("| 시험 | 방법 | 판정 |")
+    add("|---|---|---|")
+    add(f"| T-1 스크럽 강도 스윕 | 실험실 어트리션 셀에서 0 / 1 / 3 / "
+        f"{sc.specific_energy_range_kwh_t[1]:.0f} kWh/t 처리 후 동일 조건 부선 | "
+        f"회수율·정광 품위·소요 약제량의 kWh/t 응답 곡선 |")
+    add("| T-2 동반비 r 측정 | 세척수 bias 를 올려 수분 동반을 0 에 가깝게 만든 상태의 "
+        "정광 품위 g 에서 r = (1-g)/g 를 역산, 스크럽 전후 비교 | r 이 유의하게 "
+        "내려가면 (가) 성립 |")
+    add(f"| T-3 실기 A/B | 바이패스를 8 시간씩 교대 개폐하며 미광 Ag·정광 품위·"
+        f"약제 소요량 비교 | 실기 조건에서의 최종 확인 |")
+    add(f"| T-4 미립 생성 | 스크럽 전후 -10 um 질량분율 | 증가 "
+        f"**{db.ATTRITION_FINES_ACCEPTANCE_PP:.0f} %p 이하** — 넘으면 표면 정정이 아니라 "
+        f"분쇄를 하고 있다는 뜻 |")
+    add("")
+    add(f"**미립 생성이 이 설비의 진짜 위험이다.** 문헌 공정을 그대로 따라 "
+        f"탈니(desliming)를 하지 않으므로, 떨어져 나온 슬라임은 걸러지지 않고 회로에 "
+        f"그대로 남는다. 1안은 세척수 bias 가 거품층에서 그것을 씻어내리므로 "
+        f"(맥석 회수율 {db.RFC_GANGUE_RECOVERY * 100:.2f} %) 상대적으로 안전하지만, "
+        f"2안은 수분 동반 계수가 "
+        f"{db.FLOAT_MODELS['Si'].entrainment_factor:.2f} 이라 미립이 늘면 정광이 그만큼 "
+        f"희석된다. **어트리션은 1안과 더 잘 맞는다.**")
+    add("")
+    add("### 2.5 희석박스와 물수지")
+    add("")
+    add(_table(
+        ["항목", "값", "비고"],
+        [
+            ["기기 번호 / 역할", f"{dil.tag} / {dil.duty}", ""],
+            ["입구 / 출구 농도",
+             f"{dil.inlet_solids_wt * 100:.0f} → {dil.outlet_solids_wt * 100:.0f} wt%",
+             "출구 농도는 밀도계로 제어 — 조건조 급광을 고정한다"],
+            ["**희석수**", f"**{dil.dilution_water_m3h:.2f} m3/h**",
+             "공정수 탱크에서 받는다 (아래 수급 확인)"],
+            ["출구 유량", f"{dil.outlet_m3h:.2f} m3/h", "조건조 CT-1 급광"],
+            ["체류시간 / 유효 체적",
+             f"{dil.residence_min:.0f} min / {dil.working_volume_m3:.3f} m3",
+             f"박스 {dil.box_volume_m3:.2f} m3"],
+            ["교반기", f"{dil.agitator_kw:.2f} kW",
+             "P80 66 um 입자의 Stokes 침강이 mm/s 급이라 2 분이면 수십 cm 를 가라앉는다"],
+            ["바이패스", pre.bypass, "어트리션 없이 운전·A/B 시험용"],
+        ],
+    ))
+    add("")
+    add(f"희석수는 **설비 전체 물수지를 바꾸지 않는다.** 부선 농도 "
+        f"{f.solids_mass_fraction * 100:.0f} wt% 를 맞추려고 어차피 들어가던 물이고, "
+        f"어트리션은 그 물의 **투입 지점을 뒤로 미룰 뿐**이다. 계 밖으로 나가는 물"
+        f"(케이크 잔류수 + 블리드)이 그대로이므로 신수 보충량도 그대로다. 바뀌는 것은 "
+        f"공정수 탱크가 감당해야 할 유량뿐이다.")
+    add("")
+    add(f"희석수 {dil.dilution_water_m3h:.2f} m3/h 는 **계통에서 가장 큰 단일 공정수 "
+        f"소비처**다 — 1안 세척수 {rfc.point_peak.wash_water_m3h:.2f} m3/h 의 "
+        f"{dil.dilution_water_m3h / rfc.point_peak.wash_water_m3h:.1f}배다. 공정수 배관과 "
+        f"밀도제어 밸브를 이 유량으로 잡는다. 회수 공정수(1안 {rfc.water_recycle_m3h:.2f} / "
+        f"2안 {mech.water_recycle_m3h:.2f} m3/h)와 신수 보충(1안 {rfc.fresh_makeup_m3h:.2f} / "
+        f"2안 {mech.fresh_makeup_m3h:.2f} m3/h)이 이 수요를 받치며, 두 안 모두 수급이 "
+        f"성립한다"
+        + (" — OK." if pre.water_supply_ok(rfc) and pre.water_supply_ok(mech) else " — **NG**.")
+        + " 신수 보충량 자체는 어트리션 도입 전과 같다.")
+    add("")
+    add(f"**설치 전력 {pre.installed_kw:.2f} kW** "
+        f"(어트리션 {sc.installed_kw:.2f} + 희석박스 교반 {dil.agitator_kw:.2f}). "
+        f"1안과 합치면 {d.total_installed_kw(rfc):.2f} kW 로, 전처리가 계통 전체의 "
+        f"**{pre.installed_kw / d.total_installed_kw(rfc) * 100:.0f} %** 를 쓴다. "
+        f"성능 크레딧이 0 인 설비로서는 결코 작지 않은 비용이며, 바이패스와 시험 계획을 "
+        f"설계에 넣은 이유가 이것이다.")
+    add("")
+
+    # 3. 1안 --------------------------------------------------------------
+    add("## 3. 1안 (주설계) — 세척수 bias 연속 부선조 1단")
     add("")
     rd = rfc.design
     add(_table(
@@ -311,8 +580,8 @@ def render(design: PlantDesign | None = None) -> str:
         f"공정수로 희석하면 그 안의 Ag 를 그대로 잃기 때문이다.")
     add("")
 
-    # 3. 2안 --------------------------------------------------------------
-    add("## 3. 2안 (대안) — 기계식 러퍼 · 스캐빈저 · 클리너 3단")
+    # 4. 2안 --------------------------------------------------------------
+    add("## 4. 2안 (대안) — 기계식 러퍼 · 스캐빈저 · 클리너 3단")
     add("")
     add("기존 부선 설비를 그대로 쓰거나 범용 장비로 구성해야 할 때의 대안이다. "
         "러퍼 정광은 클리너로, 러퍼 미광은 스캐빈저로 간다. 스캐빈저 정광과 "
@@ -467,8 +736,8 @@ def render(design: PlantDesign | None = None) -> str:
         "스캐빈저 포수제 추가량은 실증 근거가 없어 기본계산에는 증량을 적용하지 않았다.")
     add("")
 
-    # 4. 비교 -------------------------------------------------------------
-    add("## 4. 두 안 비교")
+    # 5. 비교 -------------------------------------------------------------
+    add("## 5. 두 안 비교")
     add("")
     rp, mp = rfc.performance_peak, mech.result_peak
     add(_table(
@@ -481,8 +750,12 @@ def render(design: PlantDesign | None = None) -> str:
             ["Ag 미광 손실", f"{perf_tail(rp):.0f} g/t",
              f"{mp.tailings.grade_fraction('Ag') * 1e6:.0f} g/t", "1안 압도적"],
             ["부선기 대수", "1기", f"{sum(c.cells_in_series for c in mech.cells)}기", "1안"],
-            ["설치 전력", f"**{rfc.installed_kw:.2f} kW**", f"{mech.installed_kw:.2f} kW",
+            ["설치 전력 (부선 계통)", f"**{rfc.installed_kw:.2f} kW**", f"{mech.installed_kw:.2f} kW",
              f"1안 {(1 - rfc.installed_kw / mech.installed_kw) * 100:.0f} % 절감"],
+            ["설치 전력 (공용 전처리 포함)",
+             f"**{d.total_installed_kw(rfc):.2f} kW**",
+             f"{d.total_installed_kw(mech):.2f} kW",
+             f"전처리 {pre.installed_kw:.2f} kW 는 두 안 공통 (§2)"],
             ["부선기 설치 면적", f"Ø{rd.diameter_m * 1000:.0f} mm x {rd.riser_height_m + 1.2:.1f} m(H)",
              f"{mech.cells[0].geometry.width_m * 2.2:.1f} x "
              f"{mech.cells[0].geometry.width_m * 1.3:.1f} m", "1안"],
@@ -504,8 +777,8 @@ def render(design: PlantDesign | None = None) -> str:
         "특허 가출원 대상이므로, 조달·실시권 리스크가 크다면 2안이 현실적 차선이다.")
     add("")
 
-    # 5. 약제 -------------------------------------------------------------
-    add("## 5. 약제 계통")
+    # 6. 약제 -------------------------------------------------------------
+    add("## 6. 약제 계통")
     add("")
     add("**pH 조정제·황화제·억제제를 쓰지 않는다.** 디티오포스핀산계 포수제가 금속 Ag 표면에 "
         "직접 선택 흡착하기 때문이다 ([1] ToF-SIMS: Ag 위 신호가 주변 대비 약 100배). "
@@ -543,8 +816,8 @@ def render(design: PlantDesign | None = None) -> str:
             add(f"- **{r.name}** — {r.note}")
     add("")
 
-    # 6. 모델 검증 ---------------------------------------------------------
-    add("## 6. 모델 검증 — 문헌 재현")
+    # 7. 모델 검증 ---------------------------------------------------------
+    add("## 7. 모델 검증 — 문헌 재현")
     add("")
     ag = db.FLOAT_MODELS["Ag"]
     rows = []
@@ -582,10 +855,10 @@ def render(design: PlantDesign | None = None) -> str:
         "보존되므로 실증 측정값을 그대로 이월하는 것이 옳다.")
     add("")
 
-    # 7. 수치해석 ----------------------------------------------------------
-    add("## 7. 수치해석 — 수력학 검산과 기동 과도응답")
+    # 8. 수치해석 ----------------------------------------------------------
+    add("## 8. 수치해석 — 수력학 검산과 기동 과도응답")
     add("")
-    add("### 7.1 기포-입자 수력학 검산")
+    add("### 8.1 기포-입자 수력학 검산")
     add("")
     add("설계가 쓰는 속도상수는 문헌 회분식 곡선에 맞춘 경험값이다. 제1원리로 "
         "그 값이 물리적으로 성립하는지 검산한다 — 기포 종말속도(Schiller-Naumann "
@@ -632,7 +905,7 @@ def render(design: PlantDesign | None = None) -> str:
         f"{hydro[0].particle_settling_mm_s:.1f} mm/s (P80 66 µm) 로 순환 유속 "
         "수십 cm/s 대비 무시할 만해, 셀 바닥 모래화(sanding) 위험은 낮다.")
     add("")
-    add("### 7.2 기동 과도응답")
+    add("### 8.2 기동 과도응답")
     add("")
     tr = simulate_startup(mech.result_peak, duration_min=120.0)
     ss = mech.result_peak
