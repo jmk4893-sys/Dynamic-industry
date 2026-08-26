@@ -11,6 +11,7 @@ from __future__ import annotations
 import math
 import os
 import sys
+import unittest
 
 import numpy as np
 
@@ -822,6 +823,28 @@ def test_fragment_analysis_connectivity():
     _, size2, mass2 = fragment_analysis(m)
     assert size2.size == m.n
     assert abs(mass2.sum() - total) / total < 1e-9
+
+
+# ---------------------------------------------------------------------------
+# unittest 연동
+#
+# 위 검증은 전부 평범한 함수로 썼다 — 물리식 옆에 assert 를 두는 편이 읽기 쉽고,
+# 아래 _run_all 로 의존성 없이 그냥 돌려볼 수 있기 때문이다. 다만 저장소 CI 는
+# `python -m unittest discover` 로 tests/ 전체를 훑으므로, 그대로 두면 이 파일은
+# import 만 되고 한 건도 실행되지 않는다. 그래서 함수들을 TestCase 메서드로
+# 옮겨 담아 discover 가 집어가게 한다.
+def _as_test_case() -> type:
+    ns: dict = {}
+    for name, fn in sorted(globals().items()):
+        if not (name.startswith("test_") and callable(fn)):
+            continue
+        method = (lambda f: lambda self: f())(fn)
+        method.__name__, method.__doc__ = name, fn.__doc__
+        ns[name] = method
+    return type("BlastSimTests", (unittest.TestCase,), ns)
+
+
+BlastSimTests = _as_test_case()
 
 
 # ---------------------------------------------------------------------------
