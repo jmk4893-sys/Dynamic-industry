@@ -18,6 +18,15 @@ except ImportError:  # pragma: no cover - 선택 의존성 미설치 환경
     HAVE_SIM = False
 
 
+class SimImportGuardTest(unittest.TestCase):
+    """CI 의 simulation-smoke 잡에서는 스킵이 실패다 (CI_REQUIRE_SIM=1)."""
+
+    def test_sim_modules_import_when_required(self):
+        import os
+        if os.environ.get("CI_REQUIRE_SIM") == "1":
+            self.assertTrue(HAVE_SIM, "시뮬레이션 모듈 import 실패 — 스킵이 아니라 실패다")
+
+
 @unittest.skipUnless(HAVE_SIM, "numpy 미설치 — [simulation] extra 필요")
 class TerminalVelocityTest(unittest.TestCase):
     """정지 공기 중 종말속도가 힘 평형 해와 일치하는지."""

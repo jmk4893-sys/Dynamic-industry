@@ -235,16 +235,51 @@ def summarise(res, composition=None):
     return table, total
 
 
+# ── 분급 물리 (벡터화) ───────────────────────────────────────────
+RHO_AIR, MU_AIR = 1.2, 1.81e-5
+
+
+def vt_field_vec(rho, d_m, accel, iters=80):
+    """가속도장 accel 에서의 종말속도 [m/s] — Schiller-Naumann, numpy 벡터화.
+
+    screen_sizing.vt_in_field 와 같은 식이다. 회로 평가에서 입자마다
+    파이썬 루프를 돌리지 않기 위한 벡터판.
+    """
+    rho = np.asarray(rho, float); d_m = np.asarray(d_m, float)
+    v = np.full(np.broadcast(rho, d_m).shape, 1e-3)
+    for _ in range(iters):
+        re = np.maximum(RHO_AIR * v * d_m / MU_AIR, 1e-12)
+        cd = np.where(re < 0.1, 24.0 / re,
+                      24.0 / re * (1.0 + 0.15 * re ** 0.687)
+                      + 0.42 / (1.0 + 42500.0 * re ** -1.16))
+        v = np.sqrt(4.0 * accel * d_m * (rho - RHO_AIR) / (3.0 * cd * RHO_AIR))
+    return v
+
+
+def classify(mats, L, I, S, v_cut, accel=9.81):
+    """분급기 통과 판정 — 재질 이름이 아니라 종말속도로 가른다.
+
+    입자 형상은 부피등가 구경 d_eq = (L·I·S)^(1/3) 로만 반영한다(1차 근사).
+    반환: heavy(bool 배열) — 종말속도가 커트보다 커서 중량측으로 가는 입자.
+    """
+    from classifier_sim import MATERIALS
+    rho = np.array([MATERIALS[m]["rho"] for m in mats], float)
+    d_eq = np.cbrt(L * I * S) * 1e-6
+    return vt_field_vec(rho, d_eq, accel) > v_cut
+
+
 # ── 전체 회로 (SV-01 → TC-01 → SS-01) ───────────────────────────
 def circuit(ultrasonic=True, ss01=True, cfg=CONFIG, n_per_material=6000,
-            seed=0, orient_exp=ORIENT_EXP, basis="mass", decks=None):
+            seed=0, orient_exp=ORIENT_EXP, basis="mass", decks=None,
+            v_cut=None, accel=9.81):
     """Rev.4 회로 전체의 제품별 회수율을 체 거동 모델로 직접 계산한다.
 
     설계서 §6.7 은 데크 효율 90 % 를 **가정**했다. 여기서는 그 값을
     형상·근접입자·눈막힘 모델에서 계산해 검증한다.
 
-    구리는 분급기 중량측, 나머지는 전량 경량측으로 간다(§6.7 에서 마진 2.3 배 확인).
-    따라서 SS-01 공급물 = (+106, +75 분획) - 구리.
+    분급기는 종말속도 물리(classify)로 가른다 — 과거의 재질 오라클
+    (구리면 중량측)은 분급기를 완전하다고 가정하는 것이라 폐기했다.
+    v_cut/accel 로 운전점을 지정하며, 기본은 중력장 + 밴드 기하평균.
     """
     from classifier_sim import COMPOSITION, SIZE_DIST
     decks = decks or DECKS
@@ -257,9 +292,15 @@ def circuit(ultrasonic=True, ss01=True, cfg=CONFIG, n_per_material=6000,
     p3 = fr[f"+{decks[0]}"].copy()               # 최상단 오버 → P3 직행
     to_tc = sum(fr[f"+{a}"] for a in decks[1:])  # 중간 분획 → 분급기
 
-    is_cu = mats == "구리"
-    p2 = np.where(is_cu, to_tc, 0.0)             # 분급기 중량측 → P2 구리
-    light = np.where(is_cu, 0.0, to_tc)          # 경량측 → SS-01 또는 P3
+    # 분급기 — 재질 오라클이 아니라 종말속도 물리로 가른다.
+    # v_cut 미지정 시 분리 밴드(비구리 상한~구리 하한)의 기하평균.
+    if v_cut is None:
+        import screen_sizing as ssz
+        cu_lo, non_hi, _ = ssz.separation_bounds(decks[-1], decks[0], accel)
+        v_cut = math.sqrt(cu_lo * non_hi)
+    heavy = classify(mats, L, I, S, v_cut, accel)
+    p2 = np.where(heavy, to_tc, 0.0)             # 중량측 → P2 구리
+    light = np.where(~heavy, to_tc, 0.0)         # 경량측 → SS-01 또는 P3
 
     ss_diag = None
     if ss01:

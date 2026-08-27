@@ -124,13 +124,14 @@ class Sieve2D:
         self.wire_x = (np.arange(nw) + 0.5) * pitch
         self.wire_r = c["wire"] / 2.0
 
-        # 수치 파라미터
+        # 수치 파라미터 — 감쇠는 접촉마다 환산질량으로 계산한다.
+        # 전역 상수(cn ∝ √m_min)로 두면 반발계수가 질량에 따라 표류한다:
+        # 무거운 구리는 설정 0.35 대신 ~0.87 로 튀어 오분류가 커진다.
         kn = c["kn"]
-        m_min = self.m.min()
         e = c["restitution"]
-        self.cn = -2.0 * math.log(e) * math.sqrt(
-            m_min * kn / (math.pi ** 2 + math.log(e) ** 2))
-        t_c = math.pi * math.sqrt(m_min / kn)
+        self._damp_coef = -2.0 * math.log(e) / math.sqrt(
+            math.pi ** 2 + math.log(e) ** 2)      # cn = coef·√(m_red·kn)
+        t_c = math.pi * math.sqrt(self.m.min() / kn)
         self.dt = t_c / c["steps_per_contact"]
         self.t = 0.0
         self.max_overlap = 0.0       # 수치적 관통 진단
@@ -166,15 +167,20 @@ class Sieve2D:
         self.nb_i, self.nb_j = np.where(np.triu(ok, 1))
         self._nb_age = 0
 
-    def _contact(self, dpos, dvel, overlap, kn):
-        """법선 스프링-대시팟 + Coulomb 마찰. dpos 는 단위법선."""
+    def _contact(self, dpos, dvel, overlap, kn, m_red):
+        """법선 스프링-대시팟 + Coulomb 마찰. dpos 는 단위법선.
+
+        m_red 는 접촉의 환산질량 — 감쇠 cn = coef·√(m_red·kn) 을 접촉별로
+        계산해 반발계수가 입자 질량과 무관하게 설정값을 유지한다.
+        """
         if len(overlap):
             self.max_overlap = max(self.max_overlap, float(np.max(overlap)))
+        cn = self._damp_coef * np.sqrt(np.asarray(m_red, float) * kn)
         vn = (dvel * dpos).sum(1)
-        fn = np.maximum(kn * overlap - self.cn * vn, 0.0)
+        fn = np.maximum(kn * overlap - cn * vn, 0.0)
         vt = dvel - vn[:, None] * dpos
         vt_mag = np.linalg.norm(vt, axis=1) + 1e-30
-        ft = np.minimum(self.cfg["mu"] * fn, self.cn * vt_mag)
+        ft = np.minimum(self.cfg["mu"] * fn, cn * vt_mag)
         return fn[:, None] * dpos - ft[:, None] * vt / vt_mag[:, None]
 
     def step(self):
@@ -208,7 +214,8 @@ class Sieve2D:
                                                  self.om[ci] * ri[:, 0]])
             vj = self.vel[cj] + np.column_stack([-self.om[cj] * rj[:, 1],
                                                  self.om[cj] * rj[:, 0]])
-            f = self._contact(nrm, vi - vj, rs - dd, kn)
+            mi, mj = self.m[ci], self.m[cj]
+            f = self._contact(nrm, vi - vj, rs - dd, kn, mi * mj / (mi + mj))
             self._accumulate(F, T, ii, f, ri)
             self._accumulate(F, T, jj, -f, rj)
 
@@ -225,7 +232,8 @@ class Sieve2D:
             ri = dw[ii] - self.pos[ci]
             vi = self.vel[ci] + np.column_stack([-self.om[ci] * ri[:, 1],
                                                  self.om[ci] * ri[:, 0]])
-            f = self._contact(nrm, vi, self.rad[ii] + self.wire_r - dist2[ii, kk], kn)
+            f = self._contact(nrm, vi, self.rad[ii] + self.wire_r - dist2[ii, kk],
+                              kn, self.m[ci])        # 벽·체선은 무한질량
             self._accumulate(F, T, ii, f, ri)
 
         # 원판-측벽
@@ -240,7 +248,7 @@ class Sieve2D:
                 ri = dw[ii] - self.pos[ci]
                 vi = self.vel[ci] + np.column_stack([-self.om[ci] * ri[:, 1],
                                                      self.om[ci] * ri[:, 0]])
-                f = self._contact(nrm, vi, self.rad[ii] - gap[ii], kn)
+                f = self._contact(nrm, vi, self.rad[ii] - gap[ii], kn, self.m[ci])
                 self._accumulate(F, T, ii, f, ri)
 
         # 중력 + 가진 관성력

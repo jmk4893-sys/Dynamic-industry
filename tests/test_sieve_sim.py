@@ -103,8 +103,11 @@ class CircuitTest(unittest.TestCase):
         Rev.4 는 '200 µm 오버에는 구리가 없다' 고 보고 P3 로 직행시켰는데,
         실제 컷이 개구보다 작아 150~200 µm 구리가 여기서 버려진다.
         """
-        lost200 = sv.circuit(decks=[200, 106, 75], n_per_material=4000)["recovery"]["구리"]["P3"]
-        lost250 = sv.circuit(decks=[250, 106, 75], n_per_material=4000)["recovery"]["구리"]["P3"]
+        # 체 효과만 비교하기 위해 분급기 컷은 회수 우선값(0.82 m/s)으로 고정
+        lost200 = sv.circuit(decks=[200, 106, 75], n_per_material=4000,
+                             v_cut=0.82)["recovery"]["구리"]["P3"]
+        lost250 = sv.circuit(decks=[250, 106, 75], n_per_material=4000,
+                             v_cut=0.82)["recovery"]["구리"]["P3"]
         self.assertGreater(lost200, 0.10, "200 µm 데크의 구리 유실이 무시할 수준이 아니다")
         self.assertLess(lost250, lost200 / 3.0, "250 µm 로 키우면 대부분 회수된다")
 

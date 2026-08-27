@@ -60,10 +60,10 @@ jobs:
       # unittest 잡은 numpy 를 설치하지 않아 분급 solver 테스트가 전부 skip 된다.
       # 의존성이 갖춰진 이 잡에서 실제로 돌려 물리 코어를 검증한다.
       - name: 분급 solver 검증
-        run: python -m unittest tests.test_classifier_sim -v
+        run: CI_REQUIRE_SIM=1 python -m unittest tests.test_classifier_sim -v
 
       - name: 체분리 solver 검증
-        run: python -m unittest tests.test_sieve_sim -v
+        run: CI_REQUIRE_SIM=1 python -m unittest tests.test_sieve_sim -v
 
       - name: 짧은 MP4 생성 확인
         env:
