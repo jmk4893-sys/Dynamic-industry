@@ -208,14 +208,13 @@ class SieveLeakTest(unittest.TestCase):
         return cs.UniformCell(), ss.centrifugal_acceleration(200, 0.075)
 
     def test_leak_hits_the_requested_mass_fraction(self):
+        """등질량 퀀텀 방식 — 이월 질량비는 곧 주입 퀀텀 개수비다."""
         rng = numpy.random.default_rng(0)
         mats, dias, rhos = cs.sample_primaries(rng, 800, 75.0, 106.0)
-        base = (numpy.pi / 6 * dias ** 3 * rhos).sum()
         for target in (0.05, 0.20):
             m2, d2, r2 = cs.add_oversize_leak(rng, mats, dias, rhos, target)
-            total = (numpy.pi / 6 * d2 ** 3 * r2).sum()
-            got = (total - base) / total
-            self.assertAlmostEqual(got, target, delta=0.03,
+            got = (len(d2) - len(dias)) / len(d2)
+            self.assertAlmostEqual(got, target, delta=0.01,
                                    msg=f"이월 질량비가 목표({target})에서 벗어났다: {got:.3f}")
 
     def test_zero_leak_is_a_no_op(self):

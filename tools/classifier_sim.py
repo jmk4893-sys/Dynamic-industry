@@ -226,7 +226,10 @@ COMPOSITION = {"EVA": 0.33, "백시트+EVA": 0.26, "실리콘+은": 0.32, "구�
 
 SIZE_DIST = {                       # 절단 로그정규 (중앙값 µm, 기하표준편차)
     "구리":       dict(median=120.0, gsd=1.35),
-    "실리콘+은":  dict(median=45.0,  gsd=1.55),
+    # Rev.6 — §1 전제("75 µm 이하에 질량 95 % 이상")와 정합하도록 재보정.
+    # 종전 (45, 1.55) 는 절단 후 <75 µm 질량이 88 % 라 전제와 모순이었고,
+    # 그 모순이 은 회수율을 9 포인트 깎아 내렸다.
+    "실리콘+은":  dict(median=38.0,  gsd=1.5),
     "백시트+EVA": dict(median=230.0, gsd=1.60),
     "EVA":        dict(median=230.0, gsd=1.60),
 }
@@ -418,24 +421,78 @@ def aggregate_properties(diameters, densities):
     return float(d_eff), float(rho_eff)
 
 
+def _norm_cdf(x):
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+
+def _truncated_lognormal_massbasis(rng, median_mass, gsd, lo_um, hi_um, n):
+    """질량기준 로그정규를 [lo, hi] 로 절단해 n 개 표본 [µm].
+
+    SIZE_DIST 의 중앙값은 체분석(질량기준)이다. 여기서 뽑힌 입경은
+    '질량 퀀텀'의 입경 — 입자 하나가 같은 질량을 대표하므로, 통계는
+    개수 비율이 곧 질량 비율이다(중요도 표본추출).
+    """
+    mu, sigma = math.log(median_mass), math.log(gsd)
+    a = _norm_cdf((math.log(lo_um) - mu) / sigma)
+    b = _norm_cdf((math.log(hi_um) - mu) / sigma)
+    u = rng.uniform(a, b, n)
+    # 역CDF — 이분법 (벡터화)
+    lo = np.full(n, -8.0); hi = np.full(n, 8.0)
+    for _ in range(60):
+        mid = 0.5 * (lo + hi)
+        c = 0.5 * (1.0 + np.vectorize(math.erf)(mid / math.sqrt(2.0)))
+        lo = np.where(c < u, mid, lo)
+        hi = np.where(c < u, hi, mid)
+    return np.exp(mu + sigma * 0.5 * (lo + hi))
+
+
+def mass_fraction_in(name, lo_um, hi_um):
+    """재질 name 의 전체 질량 중 [lo, hi]∩존재범위 에 드는 비율 (질량기준 CDF)."""
+    m, p = MATERIALS[name], SIZE_DIST[name]
+    mu, sigma = math.log(p["median"]), math.log(p["gsd"])
+    a = max(lo_um, m["d_lo"] * 1e6)
+    b = min(hi_um, m["d_hi"] * 1e6)
+    if b <= a:
+        return 0.0
+    # 존재범위 절단 정규화
+    fa = _norm_cdf((math.log(m["d_lo"] * 1e6) - mu) / sigma)
+    fb = _norm_cdf((math.log(m["d_hi"] * 1e6) - mu) / sigma)
+    ga = _norm_cdf((math.log(a) - mu) / sigma)
+    gb = _norm_cdf((math.log(b) - mu) / sigma)
+    return (gb - ga) / max(fb - fa, 1e-12)
+
+
 def sample_primaries(rng, n, lo_um, hi_um):
-    """분획 [lo, hi] 안의 1차 입자를 조성·입도분포에서 표본추출."""
+    """분획 [lo, hi] 안의 1차 입자를 표본추출한다 — 등질량 퀀텀 방식.
+
+    (Rev.6 정정) 종전에는 질량기준 중앙값으로 **개수기준** 표본을 뽑고
+    뒤에서 d³ρ 로 다시 질량 가중했다 — 이중 가중으로 굵은 쪽이 부풀었다.
+    지금은 질량기준 분포에서 직접 뽑고 입자마다 같은 질량을 대표시킨다.
+    재질별 개수는 조성(질량비) × 분획 내 질량비율에 비례한다.
+    """
     names = list(COMPOSITION)
-    probs = np.array([COMPOSITION[k] for k in names], float)
-    probs /= probs.sum()
+    w = np.array([COMPOSITION[k] * mass_fraction_in(k, lo_um, hi_um)
+                  for k in names], float)
+    if w.sum() <= 0:
+        return np.array([]), np.array([]), np.array([])
+    w /= w.sum()
+    counts = np.floor(w * n).astype(int)
+    for _ in range(n - counts.sum()):          # 잔여를 큰 순으로 배분
+        counts[np.argmax(w * n - counts)] += 1
     mats, dias, rhos = [], [], []
-    guard = 0
-    while len(mats) < n and guard < n * 500:
-        guard += 1
-        nm = names[rng.choice(len(names), p=probs)]
+    for nm, cnt in zip(names, counts):
+        if cnt == 0:
+            continue
         m, p = MATERIALS[nm], SIZE_DIST[nm]
-        d = rng.lognormal(math.log(p["median"]), math.log(p["gsd"]))
-        if not (m["d_lo"] * 1e6 <= d <= m["d_hi"] * 1e6):
-            continue
-        if not (lo_um <= d <= hi_um):
-            continue
-        mats.append(nm); dias.append(d * 1e-6); rhos.append(float(m["rho"]))
-    return np.array(mats), np.array(dias), np.array(rhos)
+        a = max(lo_um, m["d_lo"] * 1e6)
+        b = min(hi_um, m["d_hi"] * 1e6)
+        d = _truncated_lognormal_massbasis(rng, p["median"], p["gsd"], a, b, cnt)
+        mats.append(np.full(cnt, nm))
+        dias.append(d * 1e-6)
+        rhos.append(np.full(cnt, float(m["rho"])))
+    order = rng.permutation(n)
+    return (np.concatenate(mats)[order], np.concatenate(dias)[order],
+            np.concatenate(rhos)[order])
 
 
 def agglomerate(rng, mats, dias, rhos, dispersion_efficiency=0.0, max_size=8):
@@ -483,7 +540,8 @@ def evaluate_with_agglomeration(cell, lo_um, hi_um, v_cut, accel, sigma_abs=0.20
     top, _ = simulate(cell, agg_rho, agg_d, v_cut, n=len(agg_d), dt=dt,
                       t_max=t_max, seed=seed + 1, accel=accel, sigma_abs=sigma_abs)
     heavy = ~top[cluster_of]                       # 1차 입자별 중량측 여부
-    mass = np.pi / 6.0 * dias ** 3 * rhos
+    # 등질량 퀀텀 — 개수 비율이 곧 질량 비율 (sample_primaries 참조)
+    mass = np.ones(len(dias))
     is_cu = mats == "구리"
     cu_mass = mass[is_cu].sum()
     heavy_mass = mass[heavy].sum()
@@ -508,14 +566,11 @@ def add_oversize_leak(rng, mats, dias, rhos, mass_fraction,
     if mass_fraction <= 0.0:
         return mats, dias, rhos
     rho_leak = float(MATERIALS[material]["rho"])
-    base_mass = (np.pi / 6.0 * dias ** 3 * rhos).sum()
-    target = mass_fraction / (1.0 - mass_fraction) * base_mass
-    d_leak, acc = [], 0.0
-    while acc < target:
-        d = rng.uniform(lo_um * 1e-6, hi_um * 1e-6)
-        d_leak.append(d)
-        acc += np.pi / 6.0 * d ** 3 * rho_leak
-    d_leak = np.array(d_leak)
+    # 등질량 퀀텀 — 이월 질량비는 곧 이월 퀀텀 개수비
+    n_leak = max(1, round(mass_fraction / (1.0 - mass_fraction) * len(dias)))
+    p = SIZE_DIST[material]
+    d_leak = _truncated_lognormal_massbasis(rng, p["median"], p["gsd"],
+                                            lo_um, hi_um, n_leak) * 1e-6
     return (np.concatenate([mats, np.full(len(d_leak), material)]),
             np.concatenate([dias, d_leak]),
             np.concatenate([rhos, np.full(len(d_leak), rho_leak)]))
@@ -534,20 +589,22 @@ def evaluate_feed(cell, lo_um, hi_um, v_cut, accel, sigma_abs=0.20,
     """
     rng = np.random.default_rng(seed)
     mats, dias, rhos = sample_primaries(rng, n_primary, lo_um, hi_um)
+    n_native = len(dias)
     mats, dias, rhos = add_oversize_leak(rng, mats, dias, rhos, sieve_leak,
                                          *leak_range_um)
+    n_leak = len(dias) - n_native
     agg_d, agg_rho, cluster_of = agglomerate(
         rng, mats, dias, rhos, dispersion_efficiency)
     top, _ = simulate(cell, agg_rho, agg_d, v_cut, n=len(agg_d), dt=dt,
                       t_max=t_max, seed=seed + 1, accel=accel, sigma_abs=sigma_abs)
     heavy = ~top[cluster_of]
-    mass = np.pi / 6.0 * dias ** 3 * rhos
+    mass = np.ones(len(dias))                 # 등질량 퀀텀
     is_cu = mats == "구리"
     cu_mass, heavy_mass = mass[is_cu].sum(), mass[heavy].sum()
     cu_heavy = mass[is_cu & heavy].sum()
     return dict(
         cu_recovery=cu_heavy / cu_mass if cu_mass > 0 else float("nan"),
         cu_grade=cu_heavy / heavy_mass if heavy_mass > 0 else float("nan"),
-        leak_mass_fraction=float(mass[mats == "백시트+EVA"].sum() / mass.sum())
-        if sieve_leak else 0.0,
+        # 주입된 이월분만 계상 — 분획 안의 원생 백시트와 구분한다
+        leak_mass_fraction=float(n_leak / len(dias)) if sieve_leak else 0.0,
     )

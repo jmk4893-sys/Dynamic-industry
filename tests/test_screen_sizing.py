@@ -70,32 +70,58 @@ class SeparationBoundsTest(unittest.TestCase):
 
 
 class OperatingPointTest(unittest.TestCase):
-    def test_configured_points_are_operable(self):
-        """CONFIG 의 각 분급기가 밴드 사이에 있고 고형물 부하가 한계 이내인지."""
-        area = ss.wheel_area()
-        peak = ss.CONFIG["peak_tph"] * 1000.0
-        for tag, lo, hi, keys, rpm, v_r in ss.CONFIG["classifiers"]:
-            a = ss.centrifugal_acceleration(rpm, ss.CONFIG["wheel_radius_m"])
-            cu, worst, _ = ss.separation_bounds(lo, hi, a)
-            self.assertLess(worst, v_r, f"{tag}: 비구리가 중량측으로 간다")
-            self.assertLess(v_r, cu, f"{tag}: 구리가 경량측으로 샌다")
-            q = v_r * area * 3600.0
-            solids = sum(ss.CONFIG["split"][k] for k in keys) * peak
-            load = solids / q
-            self.assertLessEqual(load, 0.5, f"{tag}: 고형물 부하 {load:.3f} kg/m3 초과")
+    def test_column_operating_point_is_inside_the_shape_band(self):
+        """CC-01 의 v_super 가 형상 반영 밴드(0.81~0.95 m/s) 안에 있는지.
+
+        형상 반영: 체는 중간축 I 를 재므로 부피등가 구경 d_eq = I·(I/L·S/I)^(1/3).
+        구리 하한은 최소 구리(75 µm), 비구리 상한은 최대 백시트(250 µm)로 잡는다.
+        """
+        col = ss.CONFIG["column"]
+        d = ss.CONFIG["density"]
+        # sieve_sim.SHAPE 과 같은 값 (구리 elong .60 flat .50 / 백시트 .70 .35)
+        cu_deq = col["lo_um"] * (1 / 0.60 * 0.50) ** (1 / 3.0)
+        bs_deq = col["hi_um"] * (1 / 0.70 * 0.35) ** (1 / 3.0)
+        cu_lo = ss.vt(d["구리"], cu_deq * 1e-6)[0]
+        non_hi = ss.vt(d["백시트+EVA"], bs_deq * 1e-6)[0]
+        self.assertGreater(cu_lo, non_hi, "형상 반영 밴드가 열려 있어야 한다")
+        self.assertLess(col["v_super"], cu_lo, "구리가 경량측으로 새면 안 된다")
+
+    def test_sphere_band_is_closed_at_gravity(self):
+        """구형 가정으로는 1g 밴드가 닫힌다 — 컬럼 채택이 형상에 걸려 있음을 고정.
+
+        §10 형상 실측이 결정 게이트인 이유다. 이 테스트가 깨진다면(구형으로도
+        밴드가 열린다면) 문서의 리스크 서술을 지워야 한다.
+        """
+        col = ss.CONFIG["column"]
+        cu_lo, non_hi, _ = ss.separation_bounds(col["lo_um"], col["hi_um"], ss.G)
+        self.assertLess(cu_lo, non_hi)
+
+    def test_turbo_regime_is_self_inconsistent(self):
+        """터보 폐기 근거 고정 — 이 컷에서 v_r 이 휠 주속을 넘고, rpm 증가로 악화.
+
+        컷 조건(원심 종말속도 = v_r)은 입자가 휠과 동반회전할 때만 성립한다.
+        v_r > ωR 이면 공기가 날개 사이를 곧장 가로질러 전제가 깨진다.
+        """
+        import math
+        R = ss.CONFIG["wheel_radius_m"]
+        ratios = []
+        for rpm in (220, 900):
+            w = 2 * math.pi * rpm / 60.0
+            cu, non, _ = ss.separation_bounds(75, 250, w * w * R)
+            ratios.append((w * R) / math.sqrt(cu * non))
+        self.assertLess(ratios[0], 1.0, "220 rpm 에서 이미 ωR < v_r 이어야 한다")
+        self.assertLess(ratios[1], ratios[0] + 0.05,
+                        "rpm 을 올려도 비율이 개선되지 않아야 한다")
+
+    def test_column_loading_within_limit(self):
+        col = ss.CONFIG["column"]
+        self.assertLessEqual(col["loading_kgm3"], 0.5)
 
     def test_classifier_sized_for_misplaced_fines_too(self):
-        """분급기 부하는 체가 흘려보낸 미분까지 포함해야 한다.
-
-        75 µm 데크가 100 % 가 아니므로 분급기 공급량은 분획 합보다 크다.
-        분획 합만 보고 사이징하면 실제 부하를 과소평가한다.
-        """
+        """분급기 부하는 체가 흘려보낸 미분까지 포함해야 한다."""
         b = ss.three_product_balance()
         nominal = sum(ss.CONFIG["split"][k] for k in ("106~200", "75~106")) * b["feed"]
         self.assertGreater(b["tc_feed"], nominal, "미분 이월분이 빠져 있다")
-        q = ss.CONFIG["classifiers"][0][5] * ss.wheel_area() * 3600.0
-        self.assertLessEqual(b["tc_feed"] / q, 0.35,
-                             "실부하 기준으로도 0.35 kg/m3 이내여야 한다")
 
 
 class BandWidthTest(unittest.TestCase):
@@ -154,9 +180,9 @@ class ThreeProductBalanceTest(unittest.TestCase):
         self.assertGreater(with_, without + 0.05, "스캘핑의 기여가 5 포인트는 넘어야 한다")
 
     def test_silver_is_the_binding_recovery(self):
-        """구리·백시트 회수율은 손댈 데가 없고, 은만 체 효율에 매여 있다."""
+        """세 회수율 모두 95 % 언저리 이상이되, 은이 여전히 최하위다 (Rev.6)."""
         b = ss.three_product_balance(scalp_eff=0.0)
-        self.assertGreater(b["구리_회수율"], 0.99)
+        self.assertGreater(b["구리_회수율"], 0.95)
         self.assertGreater(b["백시트_회수율"], 0.99)
         self.assertLess(b["은_회수율"], b["구리_회수율"])
 

@@ -128,11 +128,16 @@ class CircuitTest(unittest.TestCase):
         self.assertGreater(gain, 0.02, "그래도 유의미한 기여는 있어야 한다")
         self.assertLess(gain, 0.09, "설계서의 9 포인트 가정보다는 작아야 한다")
 
-    def test_silver_recovery_is_below_the_assumed_ninety_percent(self):
-        """설계서 §6.7 의 '데크 효율 90 %' 가정이 낙관이었음을 고정한다."""
+    def test_silver_recovery_band_rev6(self):
+        """은 회수율은 ~90 % — 전제 정합 분포(Rev.6)에서의 계산값.
+
+        Rev.5 의 80.5 % 는 실리콘 분포가 §1 전제('75 µm 이하 질량 95 %')와
+        모순인 채 계산된 값이었다. 정합 분포에서는 ~90 % 로 돌아오며,
+        100 % 가 못 되는 것은 여전히 실제 체 거동(Gaudin·배향) 때문이다.
+        """
         c = sv.circuit(decks=self.DECKS, n_per_material=6000)
-        self.assertLess(c["recovery"]["실리콘+은"]["P1"], 0.90)
-        self.assertGreater(c["recovery"]["실리콘+은"]["P1"], 0.70)
+        self.assertGreater(c["recovery"]["실리콘+은"]["P1"], 0.84)
+        self.assertLess(c["recovery"]["실리콘+은"]["P1"], 0.95)
 
     def test_conclusion_is_robust_to_shape_assumption(self):
         """배향 지수를 0.5~1.5 로 바꿔도 결론(80 % 내외)이 뒤집히지 않는다."""

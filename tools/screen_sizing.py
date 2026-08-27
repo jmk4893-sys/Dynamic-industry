@@ -31,23 +31,24 @@ CONFIG = {
     # Rev.5 — 상단 데크 250 µm (§6.8: 200 은 근접입자 구리를 15 % 유실)
     "sieve_decks": [(250, 0.50), (106, 0.30), (75, 0.20)],
     "sieve_area_factor": 0.90,
-    # 터보(디플렉터 휠) 분급기 — (태그, 하한 µm, 상한 µm, 분획키들, 회전수, 반경방향 풍속)
-    # v_r 은 밴드(비구리 상한 ~ 구리 하한)의 기하평균 — 양쪽 여유를 같게 둔다.
-    # Rev.4 — 회수율이 목적함수가 되어 좁은 분획을 만들 이유가 없어졌다.
-    # 75~106 과 106~200 을 합류시켜 분급기 한 대로 처리한다(§6.4).
-    "classifiers": [
-        ("TC-01", 75, 200, ("106~200", "75~106"), 220, 2.66),
-    ],
-    "wheel_radius_m": 0.075,         # Ø150 디플렉터 휠 (Rev.3 과 동일 — 예비품 공용)
-    "wheel_height_m": 0.095,         # 합류로 공급량이 늘어 h65 -> h95
+    # Rev.6 — 터보(디플렉터 휠) 폐기. 이 컷에서는 반경방향 풍속이 휠
+    # 주속을 넘어(v_r/ωR ≈ 1.7, rpm 을 올리면 악화) 컷 조건의 전제인
+    # 동반회전 자체가 성립하지 않는다(§6.4). 균일류 향류 컬럼으로 교체.
+    "column": dict(tag="CC-01", lo_um=75, hi_um=250, v_super=0.82,
+                   id_m=0.45, loading_kgm3=0.30),
+    # (구식·이력용) 휠 기하 — §6.5 의 정정 서사 재현에만 쓰인다
+    "wheel_radius_m": 0.075,
+    "wheel_height_m": 0.095,
     # 구리의 공급물 중 질량비 (가정 — 체분석으로 검증할 것)
     "cu_mass_fraction": 0.09,
-    # 체 효율 — 75 µm 데크가 은 회수율을 직접 결정한다 (§6.3)
-    "deck_efficiency": 0.90,         # SV-01 75 µm 데크
-    "scalp_efficiency": 0.90,        # SS-01 스캘핑 시브
-    # 분급기 성능 — tools/classifier_sim.py 의 수치해석 결과 (분산효율 85 % 기준)
-    "classifier_cu_recovery": 0.999,
-    "classifier_cu_grade": 0.986,
+    # 체 효율 — sieve_sim.circuit 의 계산값으로 맞춘 등가 효율 (§6.7)
+    "deck_efficiency": 0.872,        # 실리콘이 PAN 까지 도달하는 비율
+    "scalp_efficiency": 0.275,       # SS-01 이 유실분에서 되찾는 비율
+    # 회로 성적 — tools/sieve_sim.py circuit() (Rev.6: 형상 반영 분급,
+    # v_cut 0.82 m/s, 전제 정합 실리콘 분포, 시드 3 평균). 간이 수지의
+    # 기본값은 이 정밀 계산을 재현하도록 맞춘다.
+    "classifier_cu_recovery": 0.969,
+    "classifier_cu_grade": 0.949,
     "hood_face_velocity_min": 2.0,   # 개방형 후드가 실내 기류에 지지 않을 최소 면속도
     # 응집 판정
     "hamaker_J": 6.5e-20,
@@ -303,25 +304,22 @@ def report(cfg=CONFIG):
     print("=" * 76)
     print("6. 은 손실 / 구리 오염 경로")
     print("=" * 76)
-    for tag, lo, hi, _key, rpm, v_r in cfg["classifiers"]:
-        a = centrifugal_acceleration(rpm, cfg["wheel_radius_m"])
-        d_si = _diameter_at_field_velocity(d["실리콘(+Ag)"], v_r, a) * 1e6
-        print(f"  {tag} {lo:3d}~{hi:3d} µm (v_r {v_r:.2f} m/s, a/g={a/G:.1f}): "
-              f"실리콘 {d_si:5.1f} µm 이하 -> 경량측(은 손실), 초과 -> 중량측(구리 오염)")
+    col = cfg["column"]
+    d_si = diameter_at_vt(d["실리콘(+Ag)"], col["v_super"]) * 1e6
+    print(f"  {col['tag']} {col['lo_um']}~{col['hi_um']} µm "
+          f"(v {col['v_super']:.2f} m/s, 중력장): 실리콘 {d_si:5.1f} µm 이하 -> "
+          f"경량측(은 손실), 초과 -> 중량측(구리 오염)")
 
     print()
     print("=" * 76)
     print(f"7. 원형 시브 소요면적 (최대 {peak*1000:.0f} kg/h)")
     print("=" * 76)
-    order = ["200~500", "106~200", "75~106"]
-    carried, need = 1.0, 0.0
-    for (ap, cap), key in zip(cfg["sieve_decks"], order):
-        load = peak * carried
-        area = load / cap
+    need = 0.0
+    caps = dict(cfg["sieve_decks"])
+    for ap, load, area in deck_loads(cfg):
         need = max(need, area)
-        print(f"  {ap:3d} µm 데크  통과부하={load*1000:5.0f} kg/h  "
-              f"능력={cap:.2f} t/h/m2 -> 소요 {area:.2f} m2")
-        carried -= cfg["split"][key]
+        print(f"  {ap:3d} µm 데크  통과부하={load:5.0f} kg/h  "
+              f"능력={caps[ap]:.2f} t/h/m2 -> 소요 {area:.2f} m2")
     print(f"\n  지배 소요면적 = {need:.2f} m2")
     for dia in (1000, 1200, 1500):
         a = math.pi / 4 * (dia / 1000) ** 2 * cfg["sieve_area_factor"]
@@ -329,40 +327,40 @@ def report(cfg=CONFIG):
 
     print()
     print("=" * 76)
-    print("8. 터보(디플렉터 휠) 분급기 — 밀도 선별")
+    print("8. CC-01 균일류 향류 분급 컬럼 — 밀도 선별")
     print("=" * 76)
-    A = wheel_area(cfg)
-    print(f"  휠 Ø{cfg['wheel_radius_m']*2000:.0f} mm × h{cfg['wheel_height_m']*1000:.0f} mm"
-          f"  ->  원통면적 {A:.4f} m2\n")
-    total_q = 0.0
+    col = cfg["column"]
     bal = three_product_balance(cfg)
-    for tag, lo, hi, keys, rpm, v_r in cfg["classifiers"]:
-        a = centrifugal_acceleration(rpm, cfg["wheel_radius_m"])
-        cu, worst, who = separation_bounds(lo, hi, a, cfg)
-        q = v_r * A * 3600
-        total_q += q
-        nominal = peak * 1000 * sum(cfg["split"][k] for k in keys)
-        solids = bal["tc_feed"]          # 체가 놓친 미분까지 포함한 실부하
-        print(f"  {tag}  {lo:3d}~{hi:3d} µm  {rpm} rpm (a/g={a/G:.1f})")
-        print(f"        구리 하한 {cu:5.2f} | 비구리 상한 {worst:5.2f} ({who}) "
-              f"| 여유비 {cu/worst:.2f}")
-        print(f"        v_r {v_r:.2f} m/s -> {q:4.0f} m3/h, 고형물 {solids:5.1f} kg/h "
-              f"(분획 {nominal:.1f} + 체가 놓친 미분), 부하 {solids/q:.3f} kg/m3")
-    print(f"\n  분급기 풍량 합계 {total_q:.0f} m3/h  (+ 시브 커버 환기·집진 별도)")
-    print("\n  ※ 원심장이 여유비에 미치는 영향은 분획 폭에 따라 부호가 뒤집힌다 —")
-    print("     임계 분획폭은 밀도비의 세제곱근(구리/백시트 = 1.96:1).")
-    print("     Rev.4 의 75~200 µm(폭 2.67)는 이를 넘으므로 회전수를 올릴수록 여유비가 넓어진다.")
+    solids = peak * 1000 * (cfg["split"]["106~200"] + cfg["split"]["75~106"]
+                            + _mass_fraction_below(col["hi_um"], cfg)
+                            - _mass_fraction_below(200, cfg))
+    q = solids / col["loading_kgm3"]
+    area_col = q / 3600.0 / col["v_super"]
+    dia = math.sqrt(4 * area_col / math.pi)
+    re_d = RHO_A * col["v_super"] * col["id_m"] / MU
+    print(f"  {col['tag']}  {col['lo_um']}~{col['hi_um']} µm  "
+          f"v_super {col['v_super']:.2f} m/s (중력장)")
+    print(f"        고형물 {solids:5.1f} kg/h, 부하 {col['loading_kgm3']:.2f} kg/m3 "
+          f"-> 풍량 {q:4.0f} m3/h -> 소요 단면 {area_col:.3f} m2 (Ø{dia*1000:.0f} mm)")
+    print(f"        Re_D = {re_d:,.0f} — 난류 평탄 프로파일. 정류격자(허니컴) 병용")
+    print()
+    print("  ※ 터보(디플렉터 휠)는 Rev.6 에서 폐기 — 이 컷에서는 v_r 이 휠")
+    print("     주속을 넘어(220 rpm: v_r 3.0 vs ωR 1.7 m/s) 동반회전 전제가")
+    print("     깨지고, rpm 을 올리면 비율이 더 나빠진다(§6.4).")
+    print("  ※ 컬럼의 분리 밴드는 입자 형상에 걸려 있다 — 구형 가정이면 밴드가")
+    print("     닫히고(여유비 0.96), 박편 형상을 반영하면 열린다(1.17).")
+    print("     §10 형상 실측이 결정 게이트, 대안은 진동 에어테이블.")
 
     print()
     print("=" * 76)
-    print("9. 3제품 물질수지 — Rev.4 의 목적함수는 회수율이다")
+    print("9. 3제품 물질수지 — 목적함수는 회수율이다 (출처: sieve_sim.circuit)")
     print("=" * 76)
     print(f"  공급 {bal['feed']:.1f} kg/h "
           f"(75 µm 데크 효율 {cfg['deck_efficiency']:.0%}, "
           f"스캘핑 효율 {cfg['scalp_efficiency']:.0%})\n")
     for k in ("P1_실리콘+은", "P2_구리", "P3_백시트"):
         print(f"  {k:14s} {bal[k]:7.1f} kg/h")
-    print(f"\n  SS-01 스캘핑 공급 (TC-01 경량측) {bal['스캘핑_공급']:.1f} kg/h"
+    print(f"\n  SS-01 스캘핑 공급 (CC-01 경량측) {bal['스캘핑_공급']:.1f} kg/h"
           f"  -> 소요면적 {bal['스캘핑_공급']/200.0:.2f} m2"
           f" (Ø900 유효 {sieve_area(0.9, cfg):.2f} m2)\n")
     for k in ("구리_회수율", "백시트_회수율", "은_회수율"):
