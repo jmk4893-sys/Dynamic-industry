@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """다단 원형 스크린 + 에어석션 사이징 계산기.
 
-docs/원형스크린-다단-설계.md 의 수치를 재현·재산출한다.
+docs/multi-stage-screen-design.md 의 수치를 재현·재산출한다.
 실측치가 확보되면 CONFIG 만 고쳐서 다시 돌리면 된다.
 
-    python3 docs/sizing.py
+    python3 tools/screen_sizing.py
 """
 import math
 
