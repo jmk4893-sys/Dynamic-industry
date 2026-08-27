@@ -6,10 +6,11 @@ docs/multi-stage-screen-design.md 의 수치를 재현·재산출한다.
 
     python3 tools/screen_sizing.py
 
-Rev.3 — 실 입도 35~500 µm, 유리 제거 후 스트림.
-        직사각 경사(스캘핑) + 다단 원형 시브(입도 분급) + 터보 분급기(밀도 선별).
-        Rev.2 의 중력식 지그재그 컬럼은 실용 범위(0.3~10 mm) 밖이라 폐기하고,
-        디플렉터 휠(터보) 분급기로 교체했다.
+Rev.4 — 목적함수가 품위에서 **회수율**로 바뀌었다. 제품은 3개
+        (실리콘+은 / 구리 / 백시트)이고, 은은 실리콘과 결합된 상태 그대로 받는다.
+        분급기를 2대 → 1대(75~200 µm 합류)로 합치고, 경량측 스캘핑 시브를 신설해
+        은 회수율을 90 → 99 % 로 올렸다. 106 µm 데크는 밴드가 아니라
+        75 µm 데크의 부하를 덜기 위해 남긴다.
 """
 import math
 
@@ -29,14 +30,23 @@ CONFIG = {
     # 원형 시브 데크 (개구 µm, 기준 처리능력 t/h/m2 — 초음파 적용 기준)
     "sieve_decks": [(200, 0.50), (106, 0.30), (75, 0.20)],
     "sieve_area_factor": 0.90,
-    # 터보(디플렉터 휠) 분급기 — (태그, 하한 µm, 상한 µm, 분획키, 회전수, 반경방향 풍속)
+    # 터보(디플렉터 휠) 분급기 — (태그, 하한 µm, 상한 µm, 분획키들, 회전수, 반경방향 풍속)
     # v_r 은 밴드(비구리 상한 ~ 구리 하한)의 기하평균 — 양쪽 여유를 같게 둔다.
+    # Rev.4 — 회수율이 목적함수가 되어 좁은 분획을 만들 이유가 없어졌다.
+    # 75~106 과 106~200 을 합류시켜 분급기 한 대로 처리한다(§6.4).
     "classifiers": [
-        ("TC-01", 75, 106, "75~106", 200, 2.07),
-        ("TC-02", 106, 200, "106~200", 150, 1.88),
+        ("TC-01", 75, 200, ("106~200", "75~106"), 220, 2.66),
     ],
-    "wheel_radius_m": 0.075,         # Ø150 디플렉터 휠 (두 대 공통)
-    "wheel_height_m": 0.065,         # 고형물 부하를 0.35 kg/m3 이하로 낮추기 위해 h50 -> h65
+    "wheel_radius_m": 0.075,         # Ø150 디플렉터 휠 (Rev.3 과 동일 — 예비품 공용)
+    "wheel_height_m": 0.095,         # 합류로 공급량이 늘어 h65 -> h95
+    # 구리의 공급물 중 질량비 (가정 — 체분석으로 검증할 것)
+    "cu_mass_fraction": 0.09,
+    # 체 효율 — 75 µm 데크가 은 회수율을 직접 결정한다 (§6.3)
+    "deck_efficiency": 0.90,         # SV-01 75 µm 데크
+    "scalp_efficiency": 0.90,        # SS-01 스캘핑 시브
+    # 분급기 성능 — tools/classifier_sim.py 의 수치해석 결과 (분산효율 85 % 기준)
+    "classifier_cu_recovery": 0.999,
+    "classifier_cu_grade": 0.986,
     "hood_face_velocity_min": 2.0,   # 개방형 후드가 실내 기류에 지지 않을 최소 면속도
     # 응집 판정
     "hamaker_J": 6.5e-20,
@@ -150,6 +160,71 @@ def wheel_area(cfg=CONFIG):
     return 2.0 * math.pi * cfg["wheel_radius_m"] * cfg["wheel_height_m"]
 
 
+def sieve_area(diameter_m, cfg=CONFIG):
+    """원형 시브의 유효 체면적 [m2]. 프레임·클램프 손실을 계수로 반영."""
+    return math.pi * (diameter_m / 2.0) ** 2 * cfg["sieve_area_factor"]
+
+
+def deck_loads(cfg=CONFIG, tph=None):
+    """SV-01 각 데크의 통과부하 [kg/h] 와 소요면적 [m2].
+
+    데크는 위에서부터 걸러지므로, 어떤 데크의 통과부하는
+    '그 위 데크들을 모두 빠져나온 양' 이다. 106 µm 데크를 빼면
+    75 µm 데크의 부하가 그만큼 늘어난다 — 은 회수의 병목이 여기다.
+    """
+    feed = (tph if tph is not None else cfg["peak_tph"]) * 1000.0
+    sp = cfg["split"]
+    below = {200: sp["106~200"] + sp["75~106"] + sp["<75"],
+             106: sp["75~106"] + sp["<75"],
+             75: sp["<75"]}
+    out = []
+    remaining = feed
+    for aperture, capacity in cfg["sieve_decks"]:
+        out.append((aperture, remaining, remaining / (capacity * 1000.0)))
+        remaining = below[aperture] * feed
+    return out
+
+
+def three_product_balance(cfg=CONFIG, tph=None, deck_eff=None, scalp_eff=None):
+    """3제품(실리콘+은 / 구리 / 백시트) 물질수지와 회수율 [kg/h].
+
+    Rev.4 의 목적함수는 품위가 아니라 회수율이므로, 설계 성적을
+    분급기 품위가 아니라 제품별 회수율로 직접 계산한다.
+
+    75 µm 데크를 빠져나가지 못한 미분은 분급기로 넘어가 **경량측**으로 간다
+    (75 µm 실리콘의 원심 종말속도가 커트의 1/4 수준이라 예외가 없다).
+    그래서 은 손실은 구리가 아니라 백시트 제품으로 나가며,
+    경량측에 스캘핑 시브를 걸면 되돌릴 수 있다.
+    """
+    feed = (tph if tph is not None else cfg["peak_tph"]) * 1000.0
+    sp = cfg["split"]
+    eta = cfg["deck_efficiency"] if deck_eff is None else deck_eff
+    eta2 = cfg["scalp_efficiency"] if scalp_eff is None else scalp_eff
+
+    fines = sp["<75"] * feed                    # 실리콘+은 전량
+    misplaced = (1.0 - eta) * fines             # 데크를 못 빠져나간 미분
+    copper = cfg["cu_mass_fraction"] * feed
+    polymer = feed - fines - copper
+
+    tc_feed = (sp["106~200"] + sp["75~106"]) * feed + misplaced
+    heavy_cu = copper * cfg["classifier_cu_recovery"]
+    heavy = heavy_cu / cfg["classifier_cu_grade"]
+    light = tc_feed - heavy
+    recovered = eta2 * misplaced                # 스캘핑으로 되찾은 미분
+
+    p1 = eta * fines + recovered
+    p2 = heavy
+    p3 = sp["200~500"] * feed + light - recovered
+    return {
+        "feed": feed, "tc_feed": tc_feed, "light": light,
+        "P1_실리콘+은": p1, "P2_구리": p2, "P3_백시트": p3,
+        "은_회수율": p1 / fines,
+        "구리_회수율": heavy_cu / copper,
+        "백시트_회수율": (sp["200~500"] * feed + light - misplaced) / polymer,
+        "스캘핑_공급": light,
+    }
+
+
 def report(cfg=CONFIG):
     d = cfg["density"]
     peak = cfg["peak_tph"]
@@ -240,21 +315,41 @@ def report(cfg=CONFIG):
     print(f"  휠 Ø{cfg['wheel_radius_m']*2000:.0f} mm × h{cfg['wheel_height_m']*1000:.0f} mm"
           f"  ->  원통면적 {A:.4f} m2\n")
     total_q = 0.0
-    for tag, lo, hi, key, rpm, v_r in cfg["classifiers"]:
+    bal = three_product_balance(cfg)
+    for tag, lo, hi, keys, rpm, v_r in cfg["classifiers"]:
         a = centrifugal_acceleration(rpm, cfg["wheel_radius_m"])
         cu, worst, who = separation_bounds(lo, hi, a, cfg)
         q = v_r * A * 3600
         total_q += q
-        solids = peak * 1000 * cfg["split"][key]
+        nominal = peak * 1000 * sum(cfg["split"][k] for k in keys)
+        solids = bal["tc_feed"]          # 체가 놓친 미분까지 포함한 실부하
         print(f"  {tag}  {lo:3d}~{hi:3d} µm  {rpm} rpm (a/g={a/G:.1f})")
         print(f"        구리 하한 {cu:5.2f} | 비구리 상한 {worst:5.2f} ({who}) "
               f"| 여유비 {cu/worst:.2f}")
-        print(f"        v_r {v_r:.2f} m/s -> {q:4.0f} m3/h, 고형물 {solids:5.1f} kg/h, "
-              f"부하 {solids/q:.3f} kg/m3")
+        print(f"        v_r {v_r:.2f} m/s -> {q:4.0f} m3/h, 고형물 {solids:5.1f} kg/h "
+              f"(분획 {nominal:.1f} + 체가 놓친 미분), 부하 {solids/q:.3f} kg/m3")
     print(f"\n  분급기 풍량 합계 {total_q:.0f} m3/h  (+ 시브 커버 환기·집진 별도)")
-    print("\n  ※ 원심장은 분리 여유비를 넓히지 않는다(오히려 미세하게 좁다).")
-    print("     터보로 가는 이유는 중력식 지그재그가 이 입도에서 작동 범위 밖이고,")
-    print("     회전수와 풍량 두 노브로 컷을 독립 조절할 수 있기 때문이다.")
+    print("\n  ※ 원심장이 여유비에 미치는 영향은 분획 폭에 따라 부호가 뒤집힌다 —")
+    print("     임계 분획폭은 밀도비의 세제곱근(구리/백시트 = 1.96:1).")
+    print("     Rev.4 의 75~200 µm(폭 2.67)는 이를 넘으므로 회전수를 올릴수록 여유비가 넓어진다.")
+
+    print()
+    print("=" * 76)
+    print("9. 3제품 물질수지 — Rev.4 의 목적함수는 회수율이다")
+    print("=" * 76)
+    print(f"  공급 {bal['feed']:.1f} kg/h "
+          f"(75 µm 데크 효율 {cfg['deck_efficiency']:.0%}, "
+          f"스캘핑 효율 {cfg['scalp_efficiency']:.0%})\n")
+    for k in ("P1_실리콘+은", "P2_구리", "P3_백시트"):
+        print(f"  {k:14s} {bal[k]:7.1f} kg/h")
+    print(f"\n  SS-01 스캘핑 공급 (TC-01 경량측) {bal['스캘핑_공급']:.1f} kg/h"
+          f"  -> 소요면적 {bal['스캘핑_공급']/200.0:.2f} m2"
+          f" (Ø900 유효 {sieve_area(0.9, cfg):.2f} m2)\n")
+    for k in ("구리_회수율", "백시트_회수율", "은_회수율"):
+        print(f"  {k:14s} {bal[k]*100:6.2f} %")
+    without = three_product_balance(cfg, scalp_eff=0.0)["은_회수율"]
+    print(f"\n  ※ 스캘핑 시브가 없으면 은 회수율은 {without*100:.1f} % 로 떨어진다.")
+    print("     세 회수율 중 관리 대상은 은 하나이며, 전적으로 두 체의 효율에 달려 있다.")
 
 
 if __name__ == "__main__":
