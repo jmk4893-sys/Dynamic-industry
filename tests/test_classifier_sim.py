@@ -190,5 +190,65 @@ class AgglomerationEffectTest(unittest.TestCase):
                            "품위 손실이 회수율 손실보다 훨씬 커야 한다")
 
 
+@unittest.skipUnless(HAVE_SIM, "numpy 미설치 — [simulation] extra 필요")
+class SieveLeakTest(unittest.TestCase):
+    """체 이월 — 분획 상한을 넘는 폴리머가 분급기 공급물에 섞여 들어오는 경우."""
+
+    def _field(self):
+        import screen_sizing as ss
+        return cs.UniformCell(), ss.centrifugal_acceleration(200, 0.075)
+
+    def test_leak_hits_the_requested_mass_fraction(self):
+        rng = numpy.random.default_rng(0)
+        mats, dias, rhos = cs.sample_primaries(rng, 800, 75.0, 106.0)
+        base = (numpy.pi / 6 * dias ** 3 * rhos).sum()
+        for target in (0.05, 0.20):
+            m2, d2, r2 = cs.add_oversize_leak(rng, mats, dias, rhos, target)
+            total = (numpy.pi / 6 * d2 ** 3 * r2).sum()
+            got = (total - base) / total
+            self.assertAlmostEqual(got, target, delta=0.03,
+                                   msg=f"이월 질량비가 목표({target})에서 벗어났다: {got:.3f}")
+
+    def test_zero_leak_is_a_no_op(self):
+        rng = numpy.random.default_rng(0)
+        mats, dias, rhos = cs.sample_primaries(rng, 200, 75.0, 106.0)
+        m2, d2, r2 = cs.add_oversize_leak(rng, mats, dias, rhos, 0.0)
+        self.assertEqual(len(m2), len(mats))
+
+    def test_leak_destroys_grade_but_not_recovery(self):
+        """이월은 굵은 폴리머를 중량측으로 보내므로 품위만 무너뜨린다."""
+        cell, accel = self._field()
+        clean = cs.evaluate_feed(cell, 75.0, 106.0, 2.07, accel,
+                                 sieve_leak=0.0, n_primary=1200, seed=7)
+        leaky = cs.evaluate_feed(cell, 75.0, 106.0, 2.07, accel,
+                                 sieve_leak=0.10, n_primary=1200, seed=7)
+        self.assertGreater(clean["cu_grade"] - leaky["cu_grade"], 0.05,
+                           "이월 10 % 면 품위가 뚜렷이 나빠져야 한다")
+        self.assertAlmostEqual(clean["cu_recovery"], leaky["cu_recovery"], delta=0.02,
+                               msg="회수율은 거의 영향받지 않아야 한다")
+
+    def test_grade_falls_monotonically_with_leak(self):
+        cell, accel = self._field()
+        prev = 1.01
+        for leak in (0.0, 0.05, 0.10, 0.20):
+            g = cs.evaluate_feed(cell, 75.0, 106.0, 2.07, accel, sieve_leak=leak,
+                                 n_primary=1200, seed=7)["cu_grade"]
+            self.assertLess(g, prev + 1e-9)
+            prev = g
+
+    def test_sieve_precision_matters_more_than_classifier_precision(self):
+        """체 이월 10 % 의 피해가 v_r 을 15 % 틀어놓는 것보다 크다 — 설계서 §6.3.1."""
+        cell, accel = self._field()
+        base = cs.evaluate_feed(cell, 75.0, 106.0, 2.07, accel, n_primary=1200, seed=7)
+        leak = cs.evaluate_feed(cell, 75.0, 106.0, 2.07, accel, sieve_leak=0.10,
+                                n_primary=1200, seed=7)
+        detuned = cs.evaluate_feed(cell, 75.0, 106.0, 2.07 * 1.15, accel,
+                                   n_primary=1200, seed=7)
+        leak_loss = base["cu_grade"] - leak["cu_grade"]
+        tune_loss = base["cu_grade"] - detuned["cu_grade"]
+        self.assertGreater(leak_loss, tune_loss,
+                           "체가 새는 쪽이 분급기가 틀어지는 쪽보다 치명적이어야 한다")
+
+
 if __name__ == "__main__":
     unittest.main()

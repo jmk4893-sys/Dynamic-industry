@@ -496,3 +496,58 @@ def evaluate_with_agglomeration(cell, lo_um, hi_um, v_cut, accel, sigma_abs=0.20
         singlet_fraction=float((sizes == 1).sum() / len(sizes)),
         n_primary=len(mats), n_agg=len(agg_d),
     )
+
+
+def add_oversize_leak(rng, mats, dias, rhos, mass_fraction,
+                      lo_um=150.0, hi_um=250.0, material="백시트+EVA"):
+    """체 이월을 모사한다 — 분획 상한을 넘는 폴리머가 분급기 공급물에 섞여 들어온다.
+
+    체눈 파손·눈막힘·응집체가 포락 입경으로 체질되는 경우 모두 이 형태로 나타난다.
+    mass_fraction 은 최종 공급물 질량 대비 이월분의 비율이다.
+    """
+    if mass_fraction <= 0.0:
+        return mats, dias, rhos
+    rho_leak = float(MATERIALS[material]["rho"])
+    base_mass = (np.pi / 6.0 * dias ** 3 * rhos).sum()
+    target = mass_fraction / (1.0 - mass_fraction) * base_mass
+    d_leak, acc = [], 0.0
+    while acc < target:
+        d = rng.uniform(lo_um * 1e-6, hi_um * 1e-6)
+        d_leak.append(d)
+        acc += np.pi / 6.0 * d ** 3 * rho_leak
+    d_leak = np.array(d_leak)
+    return (np.concatenate([mats, np.full(len(d_leak), material)]),
+            np.concatenate([dias, d_leak]),
+            np.concatenate([rhos, np.full(len(d_leak), rho_leak)]))
+
+
+def evaluate_feed(cell, lo_um, hi_um, v_cut, accel, sigma_abs=0.20,
+                  dispersion_efficiency=1.0, sieve_leak=0.0,
+                  leak_range_um=(150.0, 250.0), n_primary=2500, seed=0,
+                  dt=1e-3, t_max=4.0):
+    """분급기 성능을 두 가지 불완전성과 함께 평가한다.
+
+    dispersion_efficiency — 응집(§6.6). 1.0 이면 완전 분산.
+    sieve_leak            — 체 이월(§6.3.1). 0.0 이면 완전한 체.
+
+    성적은 1차 입자 질량 기준으로 집계한다.
+    """
+    rng = np.random.default_rng(seed)
+    mats, dias, rhos = sample_primaries(rng, n_primary, lo_um, hi_um)
+    mats, dias, rhos = add_oversize_leak(rng, mats, dias, rhos, sieve_leak,
+                                         *leak_range_um)
+    agg_d, agg_rho, cluster_of = agglomerate(
+        rng, mats, dias, rhos, dispersion_efficiency)
+    top, _ = simulate(cell, agg_rho, agg_d, v_cut, n=len(agg_d), dt=dt,
+                      t_max=t_max, seed=seed + 1, accel=accel, sigma_abs=sigma_abs)
+    heavy = ~top[cluster_of]
+    mass = np.pi / 6.0 * dias ** 3 * rhos
+    is_cu = mats == "구리"
+    cu_mass, heavy_mass = mass[is_cu].sum(), mass[heavy].sum()
+    cu_heavy = mass[is_cu & heavy].sum()
+    return dict(
+        cu_recovery=cu_heavy / cu_mass if cu_mass > 0 else float("nan"),
+        cu_grade=cu_heavy / heavy_mass if heavy_mass > 0 else float("nan"),
+        leak_mass_fraction=float(mass[mats == "백시트+EVA"].sum() / mass.sum())
+        if sieve_leak else 0.0,
+    )
