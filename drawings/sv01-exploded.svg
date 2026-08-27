@@ -72,7 +72,7 @@
 <line x1="240.0" y1="283.2" x2="170.0" y2="283.2" class="lead"/>
 <circle cx="170.0" cy="283.2" r="11.0" class="bal"/>
 <text x="170.0" y="287.2" class="tb" text-anchor="middle">2</text>
-<text x="152.0" y="287.2" class="ts" text-anchor="end">스크린 프레임 250 µm</text>
+<text x="152.0" y="287.2" class="ts" text-anchor="end">스크린 프레임 280 µm</text>
 <ellipse cx="430.0" cy="343.0" rx="190.0" ry="32.3" class="fillB"/>
 <ellipse cx="430.0" cy="343.0" rx="167.2" ry="28.4" class="ln2"/>
 <line x1="240.0" y1="348.0" x2="170.0" y2="348.0" class="lead"/>
@@ -198,7 +198,7 @@
 <text x="1130.0" y="683.0" class="ts" text-anchor="start">STS304 t3</text>
 <text x="1340.0" y="683.0" class="td" text-anchor="start">1</text>
 <text x="770.0" y="700.0" class="td" text-anchor="start">2</text>
-<text x="814.0" y="700.0" class="ts" text-anchor="start">스크린 프레임 (250 µm)</text>
+<text x="814.0" y="700.0" class="ts" text-anchor="start">스크린 프레임 (280 µm)</text>
 <text x="1130.0" y="700.0" class="ts" text-anchor="start">STS304 / 메쉬 STS316</text>
 <text x="1340.0" y="700.0" class="td" text-anchor="start">1</text>
 <text x="770.0" y="717.0" class="td" text-anchor="start">3</text>

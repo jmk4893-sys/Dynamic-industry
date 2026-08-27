@@ -179,12 +179,16 @@ class ThreeProductBalanceTest(unittest.TestCase):
         self.assertAlmostEqual(without, ss.CONFIG["deck_efficiency"], places=6)
         self.assertGreater(with_, without + 0.05, "스캘핑의 기여가 5 포인트는 넘어야 한다")
 
-    def test_silver_is_the_binding_recovery(self):
-        """세 회수율 모두 95 % 언저리 이상이되, 은이 여전히 최하위다 (Rev.6)."""
+    def test_recoveries_meet_targets_conservatively(self):
+        """간이수지(보수 모델 보정)가 목표선 위에 있는지 — Cu ≥90, BS ≥95, Si ≥85.
+
+        구리 93.4 % 는 베드 부하 보정(보수) 모델값이다. 무보정 모델은 98.6 %
+        — 실제는 이 사이이며 §10 파일럿(4-5 비교체질)이 확정한다.
+        """
         b = ss.three_product_balance(scalp_eff=0.0)
-        self.assertGreater(b["구리_회수율"], 0.95)
-        self.assertGreater(b["백시트_회수율"], 0.99)
-        self.assertLess(b["은_회수율"], b["구리_회수율"])
+        self.assertGreater(b["구리_회수율"], 0.90)
+        self.assertGreater(b["백시트_회수율"], 0.95)
+        self.assertGreater(b["은_회수율"], 0.85)
 
     def test_dropping_the_106_deck_overloads_the_critical_deck(self):
         """106 µm 데크를 빼면 75 µm 데크가 Ø1200 로는 감당되지 않는다.

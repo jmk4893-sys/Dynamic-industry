@@ -81,7 +81,7 @@
 <path d="M1008.0,288.0 L1008.0,314.0 A92.0,15.6 0 0 0 1192.0,314.0 L1192.0,288.0 A92.0,15.6 0 0 1 1008.0,288.0 Z" class="fillG"/>
 <path d="M1008.0,262.0 L1008.0,288.0 A92.0,15.6 0 0 0 1192.0,288.0 L1192.0,262.0 A92.0,15.6 0 0 1 1008.0,262.0 Z" class="fillA"/>
 <ellipse cx="1100.0" cy="262.0" rx="92.0" ry="15.6" class="fillA"/>
-<text x="1100.0" y="116.0" class="td" text-anchor="middle">250 µm</text>
+<text x="1100.0" y="116.0" class="td" text-anchor="middle">280 µm</text>
 <circle cx="1100.0" cy="142.0" r="13.0" class="bal"/>
 <text x="1100.0" y="147.0" class="tb" text-anchor="middle">6</text>
 <path d="M1204.0,344 L1186.0,344" class="dim"/>
@@ -150,7 +150,7 @@
 <text x="982.0" y="491.0" class="tb" text-anchor="middle">3</text>
 <text x="1004.0" y="491.0" class="th" text-anchor="start">데크 적층</text>
 <text x="976.0" y="526.0" class="td" text-anchor="start">·</text>
-<text x="990.0" y="526.0" class="ts" text-anchor="start">아래에서부터 팬 → 75 → 106 → 250 µm 순으로 쌓는다</text>
+<text x="990.0" y="526.0" class="ts" text-anchor="start">아래에서부터 팬 → 75 → 106 → 280 µm 순으로 쌓는다</text>
 <text x="976.0" y="548.0" class="td" text-anchor="start">·</text>
 <text x="990.0" y="548.0" class="ts" text-anchor="start">데크마다 신품 실리콘 개스킷을 끼운다 (재사용 금지)</text>
 <text x="976.0" y="570.0" class="td" text-anchor="start">·</text>

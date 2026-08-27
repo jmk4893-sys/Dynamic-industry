@@ -28,13 +28,14 @@ CONFIG = {
     # 입도 분획별 중량비 (가정 — 체분석으로 검증할 것)
     "split": {"200~500": 0.317, "106~200": 0.202, "75~106": 0.127, "<75": 0.354},
     # 원형 시브 데크 (개구 µm, 기준 처리능력 t/h/m2 — 초음파 적용 기준)
-    # Rev.5 — 상단 데크 250 µm (§6.8: 200 은 근접입자 구리를 15 % 유실)
-    "sieve_decks": [(250, 0.50), (106, 0.30), (75, 0.20)],
+    # Rev.6 — 상단 데크 280 µm (ISO 표준체). 베드 부하 보정 유무 두 모델
+    # 모두에서 구리·백시트 최악값이 목표선 위에 있는 유일한 개구(§6.8).
+    "sieve_decks": [(280, 0.50), (106, 0.30), (75, 0.20)],
     "sieve_area_factor": 0.90,
     # Rev.6 — 터보(디플렉터 휠) 폐기. 이 컷에서는 반경방향 풍속이 휠
     # 주속을 넘어(v_r/ωR ≈ 1.7, rpm 을 올리면 악화) 컷 조건의 전제인
     # 동반회전 자체가 성립하지 않는다(§6.4). 균일류 향류 컬럼으로 교체.
-    "column": dict(tag="CC-01", lo_um=75, hi_um=250, v_super=0.82,
+    "column": dict(tag="CC-01", lo_um=75, hi_um=280, v_super=0.82,
                    id_m=0.45, loading_kgm3=0.30),
     # (구식·이력용) 휠 기하 — §6.5 의 정정 서사 재현에만 쓰인다
     "wheel_radius_m": 0.075,
@@ -42,13 +43,13 @@ CONFIG = {
     # 구리의 공급물 중 질량비 (가정 — 체분석으로 검증할 것)
     "cu_mass_fraction": 0.09,
     # 체 효율 — sieve_sim.circuit 의 계산값으로 맞춘 등가 효율 (§6.7)
-    "deck_efficiency": 0.872,        # 실리콘이 PAN 까지 도달하는 비율
-    "scalp_efficiency": 0.275,       # SS-01 이 유실분에서 되찾는 비율
+    "deck_efficiency": 0.881,        # 실리콘이 PAN 까지 도달하는 비율 (280 구성)
+    "scalp_efficiency": 0.185,       # SS-01 이 유실분에서 되찾는 비율
     # 회로 성적 — tools/sieve_sim.py circuit() (Rev.6: 형상 반영 분급,
     # v_cut 0.82 m/s, 전제 정합 실리콘 분포, 시드 3 평균). 간이 수지의
     # 기본값은 이 정밀 계산을 재현하도록 맞춘다.
-    "classifier_cu_recovery": 0.969,
-    "classifier_cu_grade": 0.949,
+    "classifier_cu_recovery": 0.934,   # 보수(베드 보정) 모델. 무보정 0.986
+    "classifier_cu_grade": 0.888,      # P2 = Cu 29.4 + BS·EVA 이월 3.7 kg/h
     "hood_face_velocity_min": 2.0,   # 개방형 후드가 실내 기류에 지지 않을 최소 면속도
     # 응집 판정
     "hamaker_J": 6.5e-20,

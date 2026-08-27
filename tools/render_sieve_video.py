@@ -5,6 +5,7 @@
 """
 import argparse
 import json
+import sys
 import math
 import os
 import subprocess
@@ -39,8 +40,10 @@ def render(npz, out_mp4, fps=30, dpi=110, frame_dir=None):
     wire_x, wire_r = z["wire_x"], float(z["wire_r"])
     ap, W = cfg["aperture"], cfg["width"]
 
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from sieve_dem import MATERIAL as _MAT          # 밀도 단일 출처
     mass = math.pi / 6.0 * (width * ar) * width ** 2 * np.array(
-        [{"구리": 8960, "실리콘+은": 2500, "백시트+EVA": 1200}[n] for n in name])
+        [_MAT[n]["rho"] for n in name])
     mats = sorted(set(name.tolist()))
     colors = np.array([COL[n] for n in name])[owner]
 

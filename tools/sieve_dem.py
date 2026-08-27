@@ -22,11 +22,16 @@ import math
 import os
 import numpy as np
 
-# 물질 — (밀도, 2D 세장비, 원판 수, 색)
+# 물질 — 밀도는 classifier_sim.MATERIALS 단일 출처에서 가져온다.
+# (검수 지적: 밀도·색이 4곳에 하드코딩되어 발산 위험)
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from classifier_sim import MATERIALS as _M
+
 MATERIAL = {
-    "구리":       dict(rho=8960, ar=3.3, n=3, color="#B4652A"),
-    "실리콘+은":  dict(rho=2500, ar=2.2, n=2, color="#B0357A"),
-    "백시트+EVA": dict(rho=1200, ar=4.1, n=3, color="#0071B0"),
+    "구리":       dict(rho=_M["구리"]["rho"],       ar=3.3, n=3, color="#B4652A"),
+    "실리콘+은":  dict(rho=_M["실리콘+은"]["rho"],  ar=2.2, n=2, color="#B0357A"),
+    "백시트+EVA": dict(rho=_M["백시트+EVA"]["rho"], ar=4.1, n=3, color="#0071B0"),
 }
 
 DEFAULTS = dict(
@@ -44,6 +49,7 @@ DEFAULTS = dict(
     cycles=5.0,
     steps_per_contact=15,
     nb_every=40,             # 이웃리스트 재구축 주기 [스텝]
+    init_relax=250,          # 초기 중첩 이완 스텝 (속도 동결)
     d_min=50e-6,             # 최소 입자 폭 — 시간간격을 지배한다
     seed=3,
 )
@@ -141,6 +147,18 @@ class Sieve2D:
         self.nb_i = np.array([], int)
         self.nb_j = np.array([], int)
 
+        # 초기 중첩 이완 — 무작위 배치의 겹침을 속도 동결 상태로 풀어낸다.
+        # 이완 없이 시작하면 강성 접촉이 소수 입자를 ~20 m/s 로 사출시켜
+        # 시뮬레이션 내내 영역 밖을 떠돌게 된다.
+        for _ in range(c["init_relax"]):
+            self.step()
+            self.vel[:] = 0.0
+            self.om[:] = 0.0
+        self.t = 0.0
+        self.max_overlap = 0.0
+        self.t_exit[:] = np.nan
+        self.alive[:] = True
+
     # ── 접촉력 ──────────────────────────────────────────────────
     def _disc_world(self):
         o = self.owner
@@ -208,8 +226,11 @@ class Sieve2D:
         if len(ii):
             nrm = dv / dd[:, None]
             ci, cj = self.owner[ii], self.owner[jj]
-            ri = dw[ii] - self.pos[ci]
-            rj = dw[jj] - self.pos[cj]
+            # 접촉점 = 두 원판 표면의 중간 — 여기서 속도·팔을 평가해야
+            # 자전 슬립이 마찰 토크로 감쇠한다 (원판 중심 평가는 스핀 무마찰)
+            cp = dw[ii] - nrm * self.rad[ii][:, None]
+            ri = cp - self.pos[ci]
+            rj = cp - self.pos[cj]
             vi = self.vel[ci] + np.column_stack([-self.om[ci] * ri[:, 1],
                                                  self.om[ci] * ri[:, 0]])
             vj = self.vel[cj] + np.column_stack([-self.om[cj] * rj[:, 1],
@@ -229,7 +250,8 @@ class Sieve2D:
         if len(ii):
             nrm = d2[ii, kk] / dist2[ii, kk][:, None]
             ci = self.owner[ii]
-            ri = dw[ii] - self.pos[ci]
+            cp = dw[ii] - nrm * self.rad[ii][:, None]      # 원판 표면 접촉점
+            ri = cp - self.pos[ci]
             vi = self.vel[ci] + np.column_stack([-self.om[ci] * ri[:, 1],
                                                  self.om[ci] * ri[:, 0]])
             f = self._contact(nrm, vi, self.rad[ii] + self.wire_r - dist2[ii, kk],
@@ -245,7 +267,8 @@ class Sieve2D:
                 nrm = np.column_stack([np.full(len(ii), sign),
                                        np.zeros(len(ii))])
                 ci = self.owner[ii]
-                ri = dw[ii] - self.pos[ci]
+                cp = dw[ii] - nrm * self.rad[ii][:, None]  # 표면 접촉점
+                ri = cp - self.pos[ci]
                 vi = self.vel[ci] + np.column_stack([-self.om[ci] * ri[:, 1],
                                                      self.om[ci] * ri[:, 0]])
                 f = self._contact(nrm, vi, self.rad[ii] - gap[ii], kn, self.m[ci])

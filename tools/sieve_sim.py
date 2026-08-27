@@ -132,9 +132,15 @@ def passage_probability(I, S, aperture_um, wire_um, blinded=0.0,
     return f * geom * orient
 
 
-def presentations(cfg=CONFIG):
-    """체류 중 한 입자가 개구에 제시되는 유효 횟수."""
-    return cfg["vib_hz"] * cfg["residence_s"] / cfg["bed_layers"]
+def presentations(cfg=CONFIG, load_scale=1.0):
+    """체류 중 한 입자가 개구에 제시되는 유효 횟수.
+
+    bed_layers 는 기준 데크(75 µm, 공급의 ~48 % 통과) 기준값이고,
+    load_scale 은 해당 데크 통과부하의 그 기준 대비 배수다 — 부하가
+    크면 베드가 두꺼워져 바닥층 접촉 빈도가 떨어진다(검수 지적 반영).
+    층분리(stratification)는 여전히 미모델 — §10 실측 대상.
+    """
+    return cfg["vib_hz"] * cfg["residence_s"] / (cfg["bed_layers"] * load_scale)
 
 
 # ── 눈막힘 ───────────────────────────────────────────────────────
@@ -147,25 +153,27 @@ def near_mesh_mass_fraction(I, mass, aperture_um, band=NEAR_MESH):
 
 
 def blinded_steady_state(near_mesh_frac, ultrasonic, cfg=CONFIG):
-    """정상상태 눈막힘 면적비.
+    """정상상태 눈막힘 면적비 B = peg / (peg + clear).
 
-    박힘 = peg_rate x 근접입자 비율,  이탈 = clear_rate.
-    B = peg / (peg + clear) 로 수렴한다.
+    박힘·이탈이 모두 '가진 1주기당' 확률이라 주파수는 정상상태에서
+    정확히 소거된다 — 그래서 식에 넣지 않는다(검수 지적 명시화).
+    남는 감도는 근접입자 비율뿐이며, 절대 공급률·데크 면적 의존성은
+    이 0차 모델의 한계로 §10 눈막힘 진행곡선 실측(4-4)이 대체한다.
     """
-    peg = cfg["peg_rate"] * near_mesh_frac * cfg["vib_hz"]
-    clear = (cfg["ultrasonic_clear"] if ultrasonic else cfg["passive_clear"]) * cfg["vib_hz"]
+    peg = cfg["peg_rate"] * near_mesh_frac
+    clear = cfg["ultrasonic_clear"] if ultrasonic else cfg["passive_clear"]
     return peg / (peg + clear) if (peg + clear) > 0 else 0.0
 
 
 # ── 데크 1 단 ────────────────────────────────────────────────────
 def screen_deck(L, I, S, mass, aperture_um, wire_um, ultrasonic=True,
-                cfg=CONFIG, orient_exp=ORIENT_EXP):
+                cfg=CONFIG, orient_exp=ORIENT_EXP, load_scale=1.0):
     """한 데크를 통과시킨다. (통과 여부 bool 배열, 진단 dict) 반환."""
     nm = near_mesh_mass_fraction(I, mass, aperture_um)
     B = blinded_steady_state(nm, ultrasonic, cfg)
     p = passage_probability(I, S, aperture_um, wire_um, blinded=B,
                             orient_exp=orient_exp)
-    n = presentations(cfg)
+    n = presentations(cfg, load_scale)
     passed_prob = 1.0 - (1.0 - p) ** n
     return passed_prob, dict(near_mesh=nm, blinded=B, presentations=n,
                              open_area=open_area_fraction(aperture_um, wire_um))
@@ -193,7 +201,7 @@ def build_feed(rng, n_per_material, composition, size_dist, basis="mass"):
 
 def cascade(rng=None, ultrasonic=True, cfg=CONFIG, orient_exp=ORIENT_EXP,
             n_per_material=6000, composition=None, size_dist=None, seed=0,
-            basis="mass", decks=None):
+            basis="mass", decks=None, bed_load=True):
     """3 메쉬 + PAN 을 통과시켜 분획별 물질 질량표를 만든다.
 
     데크는 위에서부터 걸러진다. 어떤 데크의 O/S 는 그 분획의 제품이 되고,
@@ -207,12 +215,16 @@ def cascade(rng=None, ultrasonic=True, cfg=CONFIG, orient_exp=ORIENT_EXP,
                                      size_dist, basis)
 
     remaining = mass.copy()          # 아직 아래로 내려가는 질량
+    total0 = mass.sum()
+    REF_SHARE = 0.481                # 기준: 75 µm 데크 도달분 (~48 %)
     fractions, diag = {}, {}
     for aperture in (decks or DECKS):
         wire = MESH.get(aperture, 0.65 * aperture)
+        load_scale = (max(0.2, (remaining.sum() / total0) / REF_SHARE)
+                      if bed_load else 1.0)
         p_pass, d = screen_deck(L, I, S, remaining, aperture, wire,
                                 ultrasonic=ultrasonic, cfg=cfg,
-                                orient_exp=orient_exp)
+                                orient_exp=orient_exp, load_scale=load_scale)
         through = remaining * p_pass
         over = remaining - through
         fractions[f"+{aperture}"] = over
@@ -271,7 +283,7 @@ def classify(mats, L, I, S, v_cut, accel=9.81):
 # ── 전체 회로 (SV-01 → TC-01 → SS-01) ───────────────────────────
 def circuit(ultrasonic=True, ss01=True, cfg=CONFIG, n_per_material=6000,
             seed=0, orient_exp=ORIENT_EXP, basis="mass", decks=None,
-            v_cut=None, accel=9.81):
+            v_cut=None, accel=9.81, bed_load=True):
     """Rev.4 회로 전체의 제품별 회수율을 체 거동 모델로 직접 계산한다.
 
     설계서 §6.7 은 데크 효율 90 % 를 **가정**했다. 여기서는 그 값을
@@ -284,7 +296,8 @@ def circuit(ultrasonic=True, ss01=True, cfg=CONFIG, n_per_material=6000,
     from classifier_sim import COMPOSITION, SIZE_DIST
     decks = decks or DECKS
     r = cascade(ultrasonic=ultrasonic, cfg=cfg, n_per_material=n_per_material,
-                seed=seed, orient_exp=orient_exp, basis=basis, decks=decks)
+                seed=seed, orient_exp=orient_exp, basis=basis, decks=decks,
+                bed_load=bed_load)
     mats, L, I, S = r["mats"], r["L"], r["I"], r["S"]
     fr = r["fractions"]
 

@@ -228,18 +228,18 @@
 <line x1="567.4" y1="367.8" x2="567.4" y2="373.8" class="thin"/>
 <line x1="576.2" y1="367.8" x2="576.2" y2="373.8" class="thin"/>
 <line x1="585.0" y1="367.8" x2="585.0" y2="373.8" class="thin"/>
-<text x="360.0" y="362.8" class="td" text-anchor="middle">250 µm 메쉬</text>
+<text x="360.0" y="362.8" class="td" text-anchor="middle">280 µm 메쉬</text>
 <text x="360.0" y="385.8" class="ts" text-anchor="middle">STS316 평직 · 상단</text>
 <line x1="120.0" y1="330.0" x2="600.0" y2="330.0" class="thin"/>
 <path d="M120.0,330.0 L120.0,314.0 L330.0,270.0 L390.0,270.0 L600.0,314.0 L600.0,330.0 Z" class="fillG"/>
 <rect x="330.0" y="246.0" width="60.0" height="24.0" class="fillG" />
 <text x="360.0" y="236.0" class="td" text-anchor="middle">피드 인렛 Ø150</text>
 <polygon points="600.0,337.2 676.0,346.0 676.0,384.0 600.0,375.2" class="fillG"/>
-<text x="684.0" y="369.0" class="td" text-anchor="start">250 O/S → P3</text>
+<text x="684.0" y="369.0" class="td" text-anchor="start">280 O/S → P3</text>
 <polygon points="600.0,385.2 676.0,394.0 676.0,432.0 600.0,423.2" class="fillG"/>
-<text x="684.0" y="417.0" class="td" text-anchor="start">106 O/S → TC-01</text>
+<text x="684.0" y="417.0" class="td" text-anchor="start">106 O/S → CC-01</text>
 <polygon points="600.0,433.2 676.0,442.0 676.0,480.0 600.0,471.2" class="fillG"/>
-<text x="684.0" y="465.0" class="td" text-anchor="start">75 O/S → TC-01</text>
+<text x="684.0" y="465.0" class="td" text-anchor="start">75 O/S → CC-01</text>
 <polygon points="600.0,481.2 676.0,490.0 676.0,528.0 600.0,519.2" class="fillG"/>
 <text x="684.0" y="513.0" class="td" text-anchor="start">PAN U/S → P1</text>
 <rect x="94.0" y="345.2" width="26.0" height="22.0" class="fillA" />
@@ -275,7 +275,7 @@
 <circle cx="1235.2" cy="335.7" r="7.0" class="fillA"/>
 <line x1="1248.0" y1="400.0" x2="1301.2" y2="400.0" class="ln"/>
 <circle cx="1301.2" cy="400.0" r="9.0" class="fillC"/>
-<text x="1316.2" y="404.0" class="td" text-anchor="start">250 O/S</text>
+<text x="1316.2" y="404.0" class="td" text-anchor="start">280 O/S</text>
 <line x1="1164.0" y1="254.5" x2="1190.6" y2="208.4" class="ln"/>
 <circle cx="1190.6" cy="208.4" r="9.0" class="fillC"/>
 <text x="1198.1" y="199.4" class="td" text-anchor="start">PAN U/S</text>
@@ -289,12 +289,12 @@
 <text x="1080.0" y="632.0" class="ts" text-anchor="middle">유효 체면 Ø1138 = 1.02 m²</text>
 <text x="1278.0" y="226.0" class="ts" text-anchor="start">토글 클램프 8 EA</text>
 <text x="60.0" y="820.0" class="th" text-anchor="start">배출 흐름</text>
-<text x="60.0" y="842.0" class="td" text-anchor="start">250 O/S</text>
-<text x="150.0" y="842.0" class="ts" text-anchor="start">250~500 µm 조대 폴리머 — 구리 없음 → P3 백시트</text>
+<text x="60.0" y="842.0" class="td" text-anchor="start">280 O/S</text>
+<text x="150.0" y="842.0" class="ts" text-anchor="start">280~500 µm 조대 폴리머 — 구리 없음 → P3 백시트</text>
 <text x="60.0" y="859.0" class="td" text-anchor="start">106 O/S</text>
-<text x="150.0" y="859.0" class="ts" text-anchor="start">106~250 µm → TC-01 분급기 (합류)</text>
+<text x="150.0" y="859.0" class="ts" text-anchor="start">106~280 µm → CC-01 향류 컬럼 (합류)</text>
 <text x="60.0" y="876.0" class="td" text-anchor="start">75 O/S</text>
-<text x="150.0" y="876.0" class="ts" text-anchor="start">75~106 µm → TC-01 분급기 (합류)</text>
+<text x="150.0" y="876.0" class="ts" text-anchor="start">75~106 µm → CC-01 향류 컬럼 (합류)</text>
 <text x="60.0" y="893.0" class="td" text-anchor="start">PAN U/S</text>
 <text x="150.0" y="893.0" class="ts" text-anchor="start">< 75 µm 실리콘 + 은 농축물 → P1 침출</text>
 <rect x="1000.0" y="800.0" width="400.0" height="84.0" class="ln2" />
