@@ -96,5 +96,99 @@ class ColumnTest(unittest.TestCase):
         self.assertGreater(poly.mean(), 0.90, "폴리머는 경량측으로 가야 한다")
 
 
+@unittest.skipUnless(HAVE_SIM, "numpy 미설치 — [simulation] extra 필요")
+class AgglomerateGeometryTest(unittest.TestCase):
+    """프랙탈 응집체의 유효 입경·유효 밀도."""
+
+    def test_single_particle_is_itself(self):
+        d, rho = cs.aggregate_properties([100e-6], [8960.0])
+        self.assertAlmostEqual(d, 100e-6, places=9)
+        self.assertAlmostEqual(rho, 8960.0, places=6)
+
+    def test_solid_volume_is_conserved(self):
+        ds = [80e-6, 100e-6, 120e-6]
+        rhos = [8960.0, 1200.0, 1200.0]
+        d_eff, rho_eff = cs.aggregate_properties(ds, rhos)
+        v_solid = sum(math.pi / 6 * x ** 3 for x in ds)
+        m_total = sum(math.pi / 6 * x ** 3 * r for x, r in zip(ds, rhos))
+        v_env = math.pi / 6 * d_eff ** 3
+        self.assertGreater(v_env, v_solid, "포락 부피가 고체 부피보다 커야 한다")
+        self.assertAlmostEqual(rho_eff * v_env / m_total, 1.0, places=6,
+                               msg="유효밀도 x 포락부피 = 총 질량이어야 한다")
+
+    def test_aggregate_is_diluted_and_larger(self):
+        """입자가 늘수록 커지고 묽어진다 — 프랙탈 차원 2.4 의 귀결."""
+        prev_d, prev_rho = cs.aggregate_properties([100e-6], [1200.0])
+        for n in (2, 4, 8):
+            d, rho = cs.aggregate_properties([100e-6] * n, [1200.0] * n)
+            self.assertGreater(d, prev_d)
+            self.assertLess(rho, prev_rho)
+            prev_d, prev_rho = d, rho
+
+
+@unittest.skipUnless(HAVE_SIM, "numpy 미설치 — [simulation] extra 필요")
+class BondNumberTest(unittest.TestCase):
+    def test_copper_sticks_less_than_polymer(self):
+        """같은 입경이면 무거운 구리가 Bo 가 낮다 — 덜 붙는다."""
+        bo_cu = cs.bond("구리", 8960.0, 100e-6)
+        bo_poly = cs.bond("백시트+EVA", 1200.0, 100e-6)
+        self.assertLess(bo_cu, bo_poly)
+        self.assertLess(bo_cu, 1.0, "100 µm 구리는 자중이 이겨야 한다")
+        self.assertGreater(bo_poly, 1.0, "100 µm 폴리머는 부착이 이겨야 한다")
+
+    def test_bond_falls_with_size(self):
+        prev = float("inf")
+        for d in (20e-6, 50e-6, 100e-6, 200e-6):
+            bo = cs.bond("백시트+EVA", 1200.0, d)
+            self.assertLess(bo, prev)
+            prev = bo
+
+
+@unittest.skipUnless(HAVE_SIM, "numpy 미설치 — [simulation] extra 필요")
+class AgglomerationEffectTest(unittest.TestCase):
+    def _cell_and_field(self):
+        import screen_sizing as ss
+        return cs.UniformCell(), ss.centrifugal_acceleration(200, 0.075)
+
+    def test_full_dispersion_gives_all_singlets(self):
+        rng = numpy.random.default_rng(0)
+        mats, dias, rhos = cs.sample_primaries(rng, 300, 75.0, 106.0)
+        _, _, cluster_of = cs.agglomerate(rng, mats, dias, rhos,
+                                          dispersion_efficiency=1.0)
+        self.assertEqual(len(set(cluster_of.tolist())), len(mats),
+                         "완전 분산이면 모든 입자가 단독이어야 한다")
+
+    def test_no_dispersion_forms_clusters(self):
+        rng = numpy.random.default_rng(0)
+        mats, dias, rhos = cs.sample_primaries(rng, 300, 75.0, 106.0)
+        _, _, cluster_of = cs.agglomerate(rng, mats, dias, rhos,
+                                          dispersion_efficiency=0.0)
+        self.assertLess(len(set(cluster_of.tolist())), len(mats))
+
+    def test_ideal_case_reproduces_no_agglomeration_result(self):
+        """분산효율 1.0 이면 이상 모델(회수·품위 100 %)로 되돌아와야 한다."""
+        cell, accel = self._cell_and_field()
+        r = cs.evaluate_with_agglomeration(cell, 75.0, 106.0, 2.07, accel,
+                                           dispersion_efficiency=1.0,
+                                           n_primary=800, seed=3)
+        self.assertGreater(r["cu_recovery"], 0.99)
+        self.assertGreater(r["cu_grade"], 0.99)
+
+    def test_agglomeration_hurts_grade_more_than_recovery(self):
+        """응집의 주된 피해는 회수율이 아니라 품위다 — 설계서의 주장."""
+        cell, accel = self._cell_and_field()
+        good = cs.evaluate_with_agglomeration(cell, 75.0, 106.0, 2.07, accel,
+                                              dispersion_efficiency=1.0,
+                                              n_primary=1500, seed=3)
+        bad = cs.evaluate_with_agglomeration(cell, 75.0, 106.0, 2.07, accel,
+                                             dispersion_efficiency=0.0,
+                                             n_primary=1500, seed=3)
+        grade_drop = good["cu_grade"] - bad["cu_grade"]
+        rec_drop = good["cu_recovery"] - bad["cu_recovery"]
+        self.assertGreater(grade_drop, 0.05, "품위가 뚜렷이 나빠져야 한다")
+        self.assertGreater(grade_drop, rec_drop * 3,
+                           "품위 손실이 회수율 손실보다 훨씬 커야 한다")
+
+
 if __name__ == "__main__":
     unittest.main()

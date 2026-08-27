@@ -80,8 +80,39 @@ def fig_partition(tabs, path):
     return path
 
 
+def fig_agglomeration(path):
+    """분산기 효율에 따른 구리 품위·회수율."""
+    import json
+    data = json.load(open("sim_out/agglomeration.json"))
+    fig, ax = plt.subplots(figsize=(6.4, 4.4))
+    colors = {"TC-01": CU, "TC-02": POLY}
+    for tag, (etas, grade, rec) in data.items():
+        e = np.array(etas) * 100
+        ax.plot(e, np.array(grade) * 100, "-", color=colors[tag], lw=2.2,
+                label=f"{tag} 구리 품위", zorder=3)
+        ax.plot(e, np.array(rec) * 100, "--", color=colors[tag], lw=1.3,
+                label=f"{tag} 구리 회수율", zorder=3)
+        need = float(np.interp(0.98, grade, etas)) * 100
+        ax.plot(need, 98, "o", color=colors[tag], ms=8, mec="white", mew=1.6, zorder=5)
+        dx = (-6, -20) if tag == "TC-02" else (6, -20)
+        ax.annotate(f"{tag} {need:.0f} %", (need, 98), textcoords="offset points",
+                    xytext=dx, fontsize=8.5, color=colors[tag], fontweight="bold",
+                    ha="right" if tag == "TC-02" else "left")
+    ax.axhline(98, color="#63736F", ls=":", lw=1.0, zorder=1)
+    ax.text(2, 98.4, "품위 목표 98 %", fontsize=8.5, color="#63736F")
+    ax.set_xlabel("분산기 효율 [%]"); ax.set_ylabel("구리 품위 · 회수율 [%]")
+    ax.set_title("응집이 무너뜨리는 것은 회수율이 아니라 품위다",
+                 fontsize=11.5, pad=10, loc="left")
+    ax.set_xlim(-2, 102); ax.set_ylim(80, 101.5); ax.grid(True, zorder=0)
+    ax.legend(frameon=False, loc="lower right", fontsize=8.5, ncol=2)
+    for sp in ("top", "right"): ax.spines[sp].set_visible(False)
+    fig.tight_layout(); fig.savefig(path, bbox_inches="tight"); plt.close(fig)
+    return path
+
+
 if __name__ == "__main__":
     vel, res, _ = pickle.load(open("sim_out/sweep.pkl", "rb"))
     tabs = pickle.load(open("sim_out/partition.pkl", "rb"))
     print(fig_grade_recovery(vel, res, "sim_out/fig1_grade_recovery.png"))
     print(fig_partition(tabs, "sim_out/fig2_partition.png"))
+    print(fig_agglomeration("sim_out/fig3_agglomeration.png"))

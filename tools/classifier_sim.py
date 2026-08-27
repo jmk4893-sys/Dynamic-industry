@@ -357,3 +357,142 @@ def best_point(rows, min_recovery=0.85):
     pool = ok if ok else rows
     key = (lambda r: r["cu_grade"]) if ok else (lambda r: r["cu_recovery"] * r["cu_grade"])
     return max(pool, key=key)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  응집 모델
+# ══════════════════════════════════════════════════════════════════
+#
+# 지금까지의 해석은 입자를 서로 독립인 구로 두었다. 실제로는 Bo ≈ 1 부근에서
+# 부착력이 자중을 이기므로 응집체가 생기고, 응집체는 '구성 입자들의 평균 밀도'로
+# 거동한다. 구리가 폴리머 응집체에 갇히면 경량측으로 가고(회수율 손실),
+# 폴리머가 구리에 붙으면 중량측으로 간다(품위 손실). 이것이 이상 모델의
+# 낙관 편향을 만드는 주된 기전이다.
+#
+# 모델링 수준: 완전한 응집 DEM 대신, (1) Bo 로 부착 확률을 주고 (2) 프랙탈
+# 응집체의 유효 입경·유효 밀도를 계산해 (3) 기존 solver 에 넣는다.
+# 응집체 내부 투과유동(permeability)은 무시한다 — 이 때문에 응집체의 항력이
+# 실제보다 조금 크게 잡히고, 결과는 여전히 낙관 쪽으로 치우친다.
+
+HAMAKER_J = 6.5e-20
+CONTACT_GAP_M = 4.0e-10
+ASPERITY_R_M = 0.2e-6
+FRACTAL_DIM = 2.4          # 건식 응집체의 통상 범위 2.2~2.5
+
+# 재질별 부착력 배수 — EVA 는 연질·점착성이라 vdW 외에 소성접촉이 더해진다
+TACKINESS = {"구리": 1.0, "실리콘+은": 1.0, "백시트+EVA": 2.0, "EVA": 3.0}
+
+
+def adhesion_force(mat_a, mat_b):
+    """두 입자 사이 부착력 [N]. 표면조도 보정이라 입경과 무관하다."""
+    base = HAMAKER_J * ASPERITY_R_M / (6.0 * CONTACT_GAP_M ** 2)
+    return base * math.sqrt(TACKINESS[mat_a] * TACKINESS[mat_b])
+
+
+def particle_weight(rho, d):
+    return math.pi / 6.0 * d ** 3 * rho * G
+
+
+def bond(mat, rho, d):
+    """표면조도 보정 Bond 수 = 부착력 / 자중."""
+    return adhesion_force(mat, mat) / particle_weight(rho, d)
+
+
+def aggregate_properties(diameters, densities):
+    """프랙탈 응집체의 (유효 입경, 유효 밀도).
+
+    고체 부피는 보존되고 포락 부피는 N^(3/Df) 로 커지므로
+    rho_eff = rho_mass * N^(1 - 3/Df) 로 묽어진다.
+    """
+    d = np.asarray(diameters, dtype=float)
+    rho = np.asarray(densities, dtype=float)
+    n = len(d)
+    vol = np.pi / 6.0 * d ** 3
+    mass = vol * rho
+    rho_mass = mass.sum() / vol.sum()                 # 질량가중 고체밀도
+    d_solid = (6.0 * vol.sum() / np.pi) ** (1.0 / 3.0)  # 고체부피 등가경
+    if n == 1:
+        return float(d_solid), float(rho_mass)
+    d_eff = d_solid * n ** (1.0 / FRACTAL_DIM - 1.0 / 3.0)
+    rho_eff = rho_mass * n ** (1.0 - 3.0 / FRACTAL_DIM)
+    return float(d_eff), float(rho_eff)
+
+
+def sample_primaries(rng, n, lo_um, hi_um):
+    """분획 [lo, hi] 안의 1차 입자를 조성·입도분포에서 표본추출."""
+    names = list(COMPOSITION)
+    probs = np.array([COMPOSITION[k] for k in names], float)
+    probs /= probs.sum()
+    mats, dias, rhos = [], [], []
+    guard = 0
+    while len(mats) < n and guard < n * 500:
+        guard += 1
+        nm = names[rng.choice(len(names), p=probs)]
+        m, p = MATERIALS[nm], SIZE_DIST[nm]
+        d = rng.lognormal(math.log(p["median"]), math.log(p["gsd"]))
+        if not (m["d_lo"] * 1e6 <= d <= m["d_hi"] * 1e6):
+            continue
+        if not (lo_um <= d <= hi_um):
+            continue
+        mats.append(nm); dias.append(d * 1e-6); rhos.append(float(m["rho"]))
+    return np.array(mats), np.array(dias), np.array(rhos)
+
+
+def agglomerate(rng, mats, dias, rhos, dispersion_efficiency=0.0, max_size=8):
+    """1차 입자를 응집체로 묶는다.
+
+    부착 확률 = Bo/(1+Bo) × (1 - 분산기 효율).
+    dispersion_efficiency = 1.0 이면 완전 분산(= 기존 이상 모델).
+
+    반환: (응집체별 유효입경, 유효밀도, 1차입자 -> 응집체 index)
+    """
+    n = len(dias)
+    order = rng.permutation(n)
+    cluster_of = np.full(n, -1, dtype=int)
+    clusters = []
+    for i in order:
+        bo = bond(mats[i], rhos[i], dias[i])
+        p_stick = (bo / (1.0 + bo)) * (1.0 - dispersion_efficiency)
+        open_c = [k for k, c in enumerate(clusters) if len(c) < max_size]
+        if open_c and rng.random() < p_stick:
+            k = open_c[rng.integers(len(open_c))]
+            clusters[k].append(int(i))
+            cluster_of[i] = k
+        else:
+            clusters.append([int(i)])
+            cluster_of[i] = len(clusters) - 1
+    agg_d = np.empty(len(clusters))
+    agg_rho = np.empty(len(clusters))
+    for k, c in enumerate(clusters):
+        agg_d[k], agg_rho[k] = aggregate_properties(dias[c], rhos[c])
+    return agg_d, agg_rho, cluster_of
+
+
+def evaluate_with_agglomeration(cell, lo_um, hi_um, v_cut, accel, sigma_abs=0.20,
+                                dispersion_efficiency=0.0, n_primary=3000,
+                                seed=0, dt=1e-3, t_max=4.0):
+    """응집을 반영한 구리 회수율/품위.
+
+    응집체 단위로 분리되지만 성적은 1차 입자 질량 기준으로 집계한다 —
+    폴리머 응집체에 갇힌 구리는 회수 실패로 계산된다.
+    """
+    rng = np.random.default_rng(seed)
+    mats, dias, rhos = sample_primaries(rng, n_primary, lo_um, hi_um)
+    agg_d, agg_rho, cluster_of = agglomerate(
+        rng, mats, dias, rhos, dispersion_efficiency)
+    top, _ = simulate(cell, agg_rho, agg_d, v_cut, n=len(agg_d), dt=dt,
+                      t_max=t_max, seed=seed + 1, accel=accel, sigma_abs=sigma_abs)
+    heavy = ~top[cluster_of]                       # 1차 입자별 중량측 여부
+    mass = np.pi / 6.0 * dias ** 3 * rhos
+    is_cu = mats == "구리"
+    cu_mass = mass[is_cu].sum()
+    heavy_mass = mass[heavy].sum()
+    cu_heavy = mass[is_cu & heavy].sum()
+    sizes = np.bincount(cluster_of, minlength=len(agg_d))
+    return dict(
+        cu_recovery=cu_heavy / cu_mass if cu_mass > 0 else float("nan"),
+        cu_grade=cu_heavy / heavy_mass if heavy_mass > 0 else float("nan"),
+        mean_cluster=float(sizes.mean()),
+        singlet_fraction=float((sizes == 1).sum() / len(sizes)),
+        n_primary=len(mats), n_agg=len(agg_d),
+    )
