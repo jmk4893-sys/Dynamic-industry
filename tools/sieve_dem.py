@@ -33,15 +33,18 @@ DEFAULTS = dict(
     aperture=75e-6, wire=50e-6,
     width=3.0e-3,            # 해석 영역 폭
     n_particles=170,
-    gamma=5.0,               # 무차원 가진강도 (peak a / g)
+    gamma=3.0,               # 무차원 가진강도 (peak a / g)
     freq=16.0,               # Hz — 자이라토리 960 rpm
-    kn=8.0,                  # 법선 강성 [N/m] — 겹침이 반경의 10 % 이내가 되도록
+    # 법선 강성 — 너무 낮으면 개구보다 큰 입자가 눌려 빠져나가는 수치적 관통이
+    # 생긴다. kn=8 에서는 실제로 90 µm 입자가 75 µm 개구를 9 % 통과했다.
+    # 최대 겹침이 개구의 2 % 이내가 되도록 kn 을 잡고, 그 대가로 dt 가 작아진다.
+    kn=300.0,
     restitution=0.35,
     mu=0.45,                 # 마찰계수
-    cycles=10.0,
+    cycles=5.0,
     steps_per_contact=15,
     nb_every=40,             # 이웃리스트 재구축 주기 [스텝]
-    d_min=25e-6,             # 최소 입자 폭 — 시간간격을 지배한다
+    d_min=50e-6,             # 최소 입자 폭 — 시간간격을 지배한다
     seed=3,
 )
 G = 9.81
@@ -64,7 +67,7 @@ def build_clumps(rng, cfg):
         elif nm == "구리":
             w = rng.uniform(75e-6, 106e-6)
         else:
-            w = rng.uniform(80e-6, 150e-6)
+            w = rng.uniform(80e-6, 120e-6)
         width_um.append(w); rho.append(m["rho"]); colors.append(m["color"])
         ar.append(m["ar"]); discs.append(m["n"])
     return (np.array(width_um), np.array(discs), np.array(rho),
@@ -130,6 +133,7 @@ class Sieve2D:
         t_c = math.pi * math.sqrt(m_min / kn)
         self.dt = t_c / c["steps_per_contact"]
         self.t = 0.0
+        self.max_overlap = 0.0       # 수치적 관통 진단
         self.n_steps = int(c["cycles"] / c["freq"] / self.dt)
         self.nb_every = c["nb_every"]
         self._nb_age = 10 ** 9          # 첫 스텝에서 즉시 구축
@@ -164,6 +168,8 @@ class Sieve2D:
 
     def _contact(self, dpos, dvel, overlap, kn):
         """법선 스프링-대시팟 + Coulomb 마찰. dpos 는 단위법선."""
+        if len(overlap):
+            self.max_overlap = max(self.max_overlap, float(np.max(overlap)))
         vn = (dvel * dpos).sum(1)
         fn = np.maximum(kn * overlap - self.cn * vn, 0.0)
         vt = dvel - vn[:, None] * dpos
@@ -275,6 +281,7 @@ def run(out_npz, cfg=None, sample_every=2000, verbose=True):
         pos=np.array(frames_pos), th=np.array(frames_th),
         alive=np.array(frames_alive), times=np.array(times),
         width=s.width, ar=s.ar, owner=s.owner, off=s.off, rad=s.rad,
+        max_overlap=s.max_overlap,
         color=s.color, name=s.name, wire_x=s.wire_x, wire_r=s.wire_r,
         t_exit=s.t_exit, cfg=json.dumps({k: v for k, v in s.cfg.items()}),
         dt=s.dt, n_steps=s.n_steps)
@@ -298,7 +305,13 @@ def summary(npz_path):
             passed_n=int((sel & passed).sum()),
             passed_mass=float(mass[sel & passed].sum() / mass[sel].sum()),
         )
-    fine = width < float(json.loads(str(z["cfg"]))["aperture"])
+    ap = float(json.loads(str(z["cfg"]))["aperture"])
+    fine, over = width < ap, width > ap
+    out["_진단"] = dict(
+        max_overlap_um=round(float(z["max_overlap"]) * 1e6, 3),
+        overlap_vs_aperture_pct=round(float(z["max_overlap"]) / ap * 100, 2),
+        oversize_passed_pct=round(float(passed[over].mean() * 100), 2) if over.sum() else 0.0,
+    )
     out["_전체"] = dict(
         n=int(len(name)), passed_n=int(passed.sum()),
         passed_mass=float(mass[passed].sum() / mass.sum()),

@@ -140,3 +140,57 @@ class CircuitTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(HAVE_SIM, "numpy 필요")
+class DemNumericsTest(unittest.TestCase):
+    """DEM 의 수치 건전성 — 느린 전체 해석 대신 파라미터만 검증한다."""
+
+    def setUp(self):
+        import sieve_dem as sd
+        self.sd = sd
+        self.s = sd.Sieve2D(dict(n_particles=40))
+
+    def test_timestep_resolves_contact(self):
+        """접촉 지속시간을 15 스텝 이상으로 쪼개야 접촉력이 제대로 적분된다."""
+        import math
+        t_c = math.pi * math.sqrt(self.s.m.min() / self.s.cfg["kn"])
+        self.assertGreaterEqual(t_c / self.s.dt, 12.0)
+
+    def test_stiffness_prevents_numerical_tunnelling(self):
+        """겹침이 개구에 비해 작아야 한다.
+
+        강성이 낮으면 개구보다 큰 입자가 눌려 빠져나간다 — kn=8 에서 실제로
+        90 µm 입자가 75 µm 개구를 9 % 통과했다. 최대 겹침 추정치
+        delta = v * sqrt(m/k) 를 개구의 3.5 % 이내로 묶는다.
+
+        3.5 % 는 관통 가능한 입경 상한이 개구 + 2*delta = 79.5 µm 라는 뜻이다.
+        (과거 kn=8 설정에서는 이 상한이 107 µm 였다.) 질량이 가장 큰 입자는
+        구리다 — 밀도가 8,960 이라 크기가 작아도 강성 요구를 지배한다.
+        """
+        import math
+        c = self.s.cfg
+        v = c["gamma"] * 9.81 / (2 * math.pi * c["freq"])      # 데크 속도 진폭
+        delta = v * math.sqrt(self.s.m.max() / c["kn"])
+        self.assertLess(delta / c["aperture"], 0.035,
+                        f"겹침 {delta*1e6:.2f} µm 가 개구의 3.5 % 를 넘는다")
+
+    def test_soft_setting_would_fail_the_same_check(self):
+        """이 검사가 실제로 문제를 잡아내는지 — 과거 설정으로는 떨어져야 한다."""
+        import math
+        c = dict(self.s.cfg, kn=8.0, gamma=5.0)
+        v = c["gamma"] * 9.81 / (2 * math.pi * c["freq"])
+        delta = v * math.sqrt(self.s.m.max() / c["kn"])
+        self.assertGreater(delta / c["aperture"], 0.10,
+                           "과거 설정에서는 관통 상한이 개구의 10 % 를 넘었다")
+
+    def test_wire_geometry_matches_aperture(self):
+        """체선 피치 - 선경 = 개구. 통과 판정이 기하에서 나오려면 이게 맞아야 한다."""
+        c = self.s.cfg
+        pitch = self.s.wire_x[1] - self.s.wire_x[0]
+        self.assertAlmostEqual(pitch - 2 * self.s.wire_r, c["aperture"], places=9)
+
+    def test_clump_axes_give_requested_aspect_ratio(self):
+        off, r = self.sd.body_frame(100e-6, 3, 3.0)
+        length = (off.max() - off.min()) + 2 * r
+        self.assertAlmostEqual(length / (2 * r), 3.0, places=6)
