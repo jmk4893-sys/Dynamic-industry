@@ -62,6 +62,9 @@ jobs:
       - name: 분급 solver 검증
         run: python -m unittest tests.test_classifier_sim -v
 
+      - name: 체분리 solver 검증
+        run: python -m unittest tests.test_sieve_sim -v
+
       - name: 짧은 MP4 생성 확인
         env:
           SIM_SECONDS: "1"
