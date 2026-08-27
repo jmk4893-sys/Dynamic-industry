@@ -102,13 +102,13 @@
 <line x1="40.0" y1="502.0" x2="476.0" y2="502.0" class="ln2"/>
 <circle cx="62.0" cy="486.0" r="12.0" class="fillA"/>
 <text x="62.0" y="491.0" class="tb" text-anchor="middle">1</text>
-<text x="84.0" y="491.0" class="th" text-anchor="start">베이스 · 모터 거치</text>
+<text x="84.0" y="491.0" class="th" text-anchor="start">베이스 링 앵커링</text>
 <text x="56.0" y="526.0" class="td" text-anchor="start">·</text>
-<text x="70.0" y="526.0" class="ts" text-anchor="start">베이스 프레임을 레벨 ±0.5 mm/m 이내로 앵커링</text>
+<text x="70.0" y="526.0" class="ts" text-anchor="start">베이스 링을 레벨 ±0.5 mm/m 이내로 앵커링</text>
 <text x="56.0" y="548.0" class="td" text-anchor="start">·</text>
-<text x="70.0" y="548.0" class="ts" text-anchor="start">진동모터 절연저항 ≥ 5 MΩ 확인 후 결선</text>
+<text x="70.0" y="548.0" class="ts" text-anchor="start">모터가 지나갈 중앙 공동의 간섭 여부 확인</text>
 <text x="56.0" y="570.0" class="td" text-anchor="start">·</text>
-<text x="70.0" y="570.0" class="ts" text-anchor="start">상·하 불평형추 위상각 45° (초기값) — 시운전에서 재조정</text>
+<text x="70.0" y="570.0" class="ts" text-anchor="start">스프링 시트 청소·이물 제거</text>
 <rect x="40.0" y="642.0" width="436.0" height="152.0" class="ln2" />
 <line x1="40.0" y1="674.0" x2="476.0" y2="674.0" class="ln2"/>
 <circle cx="62.0" cy="658.0" r="12.0" class="fillA"/>
@@ -124,13 +124,15 @@
 <line x1="500.0" y1="502.0" x2="936.0" y2="502.0" class="ln2"/>
 <circle cx="522.0" cy="486.0" r="12.0" class="fillA"/>
 <text x="522.0" y="491.0" class="tb" text-anchor="middle">2</text>
-<text x="544.0" y="491.0" class="th" text-anchor="start">스프링 · 진동체 안착</text>
+<text x="544.0" y="491.0" class="th" text-anchor="start">진동 테이블 + 모터</text>
 <text x="516.0" y="526.0" class="td" text-anchor="start">·</text>
-<text x="530.0" y="526.0" class="ts" text-anchor="start">코일스프링 6 EA 를 120° 간격 3 조로 배치</text>
+<text x="530.0" y="526.0" class="ts" text-anchor="start">진동모터를 테이블 하면에 체결 (모터는 반드시 스프링 위 진동체에)</text>
 <text x="516.0" y="548.0" class="td" text-anchor="start">·</text>
-<text x="530.0" y="548.0" class="ts" text-anchor="start">자유장 편차 ≤ 1 mm 인 것끼리 짝지어 대각선 배치</text>
+<text x="530.0" y="548.0" class="ts" text-anchor="start">절연저항 ≥ 5 MΩ 확인 후 결선, 배선은 플렉시블 루프</text>
 <text x="516.0" y="570.0" class="td" text-anchor="start">·</text>
-<text x="530.0" y="570.0" class="ts" text-anchor="start">진동체를 올린 뒤 수평도 ±1 mm 확인</text>
+<text x="530.0" y="570.0" class="ts" text-anchor="start">상·하 불평형추 위상각 45° (초기값) — 시운전에서 재조정</text>
+<text x="516.0" y="592.0" class="td" text-anchor="start">·</text>
+<text x="530.0" y="592.0" class="ts" text-anchor="start">스프링 6 EA(자유장 편차 ≤ 1 mm 짝) 위에 테이블 안착, 수평 ±1 mm</text>
 <rect x="500.0" y="642.0" width="436.0" height="152.0" class="ln2" />
 <line x1="500.0" y1="674.0" x2="936.0" y2="674.0" class="ln2"/>
 <circle cx="522.0" cy="658.0" r="12.0" class="fillA"/>

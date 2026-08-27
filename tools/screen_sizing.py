@@ -28,7 +28,8 @@ CONFIG = {
     # 입도 분획별 중량비 (가정 — 체분석으로 검증할 것)
     "split": {"200~500": 0.317, "106~200": 0.202, "75~106": 0.127, "<75": 0.354},
     # 원형 시브 데크 (개구 µm, 기준 처리능력 t/h/m2 — 초음파 적용 기준)
-    "sieve_decks": [(200, 0.50), (106, 0.30), (75, 0.20)],
+    # Rev.5 — 상단 데크 250 µm (§6.8: 200 은 근접입자 구리를 15 % 유실)
+    "sieve_decks": [(250, 0.50), (106, 0.30), (75, 0.20)],
     "sieve_area_factor": 0.90,
     # 터보(디플렉터 휠) 분급기 — (태그, 하한 µm, 상한 µm, 분획키들, 회전수, 반경방향 풍속)
     # v_r 은 밴드(비구리 상한 ~ 구리 하한)의 기하평균 — 양쪽 여유를 같게 둔다.
@@ -165,23 +166,42 @@ def sieve_area(diameter_m, cfg=CONFIG):
     return math.pi * (diameter_m / 2.0) ** 2 * cfg["sieve_area_factor"]
 
 
+def _mass_fraction_below(aperture_um, cfg=CONFIG):
+    """공급물 중 aperture 미만의 질량비.
+
+    분획표(split)의 경계(75/106/200/500)와 다른 개구는 해당 빈 안에서
+    로그균등으로 보간한다 — 예: 250 µm 는 200~500 빈의 ln(250/200)/ln(500/200)
+    = 24.4 % 를 추가로 통과시킨다.
+    """
+    sp = cfg["split"]
+    edges = [(75, sp["<75"]), (106, sp["75~106"]), (200, sp["106~200"]),
+             (500, sp["200~500"])]
+    lo, acc = 35.0, 0.0
+    for hi, frac in edges:
+        if aperture_um >= hi:
+            acc += frac
+        elif aperture_um > lo:
+            acc += frac * math.log(aperture_um / lo) / math.log(hi / lo)
+            break
+        else:
+            break
+        lo = hi
+    return acc
+
+
 def deck_loads(cfg=CONFIG, tph=None):
     """SV-01 각 데크의 통과부하 [kg/h] 와 소요면적 [m2].
 
     데크는 위에서부터 걸러지므로, 어떤 데크의 통과부하는
-    '그 위 데크들을 모두 빠져나온 양' 이다. 106 µm 데크를 빼면
+    '그 위 데크를 빠져나온 양' 이다. 106 µm 데크를 빼면
     75 µm 데크의 부하가 그만큼 늘어난다 — 은 회수의 병목이 여기다.
     """
     feed = (tph if tph is not None else cfg["peak_tph"]) * 1000.0
-    sp = cfg["split"]
-    below = {200: sp["106~200"] + sp["75~106"] + sp["<75"],
-             106: sp["75~106"] + sp["<75"],
-             75: sp["<75"]}
     out = []
     remaining = feed
     for aperture, capacity in cfg["sieve_decks"]:
         out.append((aperture, remaining, remaining / (capacity * 1000.0)))
-        remaining = below[aperture] * feed
+        remaining = _mass_fraction_below(aperture, cfg) * feed
     return out
 
 

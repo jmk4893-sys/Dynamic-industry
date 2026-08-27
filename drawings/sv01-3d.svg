@@ -160,8 +160,8 @@
 <path d="M402.5,473.5 L402.5,613.5 A157.5,26.8 0 0 0 717.5,613.5 L717.5,473.5 A157.5,26.8 0 0 1 402.5,473.5 Z" class="fillG"/>
 <ellipse cx="560.0" cy="473.5" rx="157.5" ry="26.8" class="fillG"/>
 <line x1="402.5" y1="543.5" x2="328.0" y2="543.5" class="lead"/>
-<text x="320.0" y="547.5" class="ts" text-anchor="end">베이스 프레임 Ø900</text>
-<text x="320.0" y="563.5" class="ts" text-anchor="end">수직축 진동모터 2.2 kW 내장</text>
+<text x="320.0" y="547.5" class="ts" text-anchor="end">베이스 링 Ø900 (앵커)</text>
+<text x="320.0" y="563.5" class="ts" text-anchor="end">진동모터는 스프링 위 진동 테이블에 체결</text>
 <rect x="66.0" y="252.0" width="150.0" height="76.0" class="fillA" />
 <text x="141.0" y="276.0" class="td" text-anchor="middle">초음파 제너레이터</text>
 <text x="141.0" y="294.0" class="td" text-anchor="middle">3 ch · 600 W</text>

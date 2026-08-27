@@ -61,7 +61,9 @@ def render(npz, out_mp4, fps=30, dpi=110, frame_dir=None):
             sp.set_color(GRID)
 
     axS.set_xlim(0, W * um)
-    axS.set_ylim(-6 * ap * um, 1.7e-3 * um)
+    # 시야를 실제 비행 높이에 맞춘다 — 고정 창은 투척된 입자를 놓친다
+    y_top = min(4.0e-3, max(1.2e-3, -pos[:, :, 1].min() * 1.15))
+    axS.set_ylim(-6 * ap * um, y_top * um)
     axS.set_aspect("equal")
     axS.set_xlabel("x [µm]", color=FG, fontsize=9)
     axS.set_ylabel("z [µm]   (데크면 = 0)", color=FG, fontsize=9)
@@ -128,7 +130,7 @@ def render(npz, out_mp4, fps=30, dpi=110, frame_dir=None):
         lines += ["", f"< 75 µm 입자 통과율 {100*(gone & fine).sum()/max(fine.sum(),1):5.1f} %",
                   f"근접입자(0.8~1.3 a) {100*((width>0.8*ap)&(width<1.3*ap)).sum()/len(width):4.1f} %"]
         axB.text(0, 1, "\n".join(lines), va="top", ha="left", fontsize=9.5,
-                 color=FG, family="monospace", transform=axB.transAxes)
+                 color=FG, transform=axB.transAxes)   # 기본 패밀리 — 한글 폴백
 
         fig.savefig(os.path.join(frame_dir, f"f{k:05d}.png"),
                     facecolor=BG, dpi=dpi)
@@ -136,12 +138,31 @@ def render(npz, out_mp4, fps=30, dpi=110, frame_dir=None):
             print(f"  frame {k}/{n_fr}", flush=True)
     plt.close(fig)
 
-    cmd = [FFMPEG, "-y", "-framerate", str(fps), "-i",
-           os.path.join(frame_dir, "f%05d.png"), "-c:v", "libx264",
-           "-pix_fmt", "yuv420p", "-crf", "20", "-movflags", "+faststart", out_mp4]
-    subprocess.run(cmd, check=True,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return out_mp4
+    rc = subprocess.run(
+        [FFMPEG, "-y", "-framerate", str(fps), "-i",
+         os.path.join(frame_dir, "f%05d.png"), "-c:v", "libx264",
+         "-pix_fmt", "yuv420p", "-crf", "20", "-movflags", "+faststart", out_mp4],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
+    if rc == 0:
+        return out_mp4
+    # Playwright 동봉 ffmpeg 는 png demuxer 가 없다 — PIL 로 JPEG 를
+    # image2pipe 에 흘려 VP8/webm 으로 만든다.
+    from PIL import Image
+    out_webm = os.path.splitext(out_mp4)[0] + ".webm"
+    p = subprocess.Popen(
+        [FFMPEG, "-y", "-f", "image2pipe", "-vcodec", "mjpeg",
+         "-framerate", str(fps), "-i", "pipe:0", "-c:v", "libvpx",
+         "-pix_fmt", "yuv420p", "-b:v", "4M", "-quality", "good",
+         "-cpu-used", "2", out_webm],
+        stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for fjpg in sorted(os.listdir(frame_dir)):
+        if fjpg.endswith(".png"):
+            Image.open(os.path.join(frame_dir, fjpg)).convert("RGB").save(
+                p.stdin, "JPEG", quality=90)
+    p.stdin.close()
+    if p.wait() != 0:
+        raise RuntimeError("mp4/webm 인코딩 모두 실패")
+    return out_webm
 
 
 if __name__ == "__main__":

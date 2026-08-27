@@ -41,7 +41,8 @@ PART = [
     (8,  "토글 클램프 링",         "STS304",              D["clamp_n"]),
     (9,  "초음파 트랜스듀서",       "35 kHz · 200 W",      3),
     (10, "초음파 제너레이터",       "3 ch · 600 W",        1),
-    (11, "베이스 프레임",          "SS400 도장 / STS304",  1),
+    (11, "베이스 링 (앵커)",        "SS400 도장",          1),
+    (17, "진동 테이블 (모터 캐리어)", "SS400 / STS304 클래드", 1),
     (12, "코일 스프링",           "SUP9 Ø60×120",        6),
     (13, "수직축 진동모터",         "2.2 kW · 960 rpm",    1),
     (14, "상·하 불평형추",         "주조강",              2),
@@ -145,7 +146,7 @@ DEFS = '''<defs>
 
 
 # ── 시트 1 : 2D 총조립도 (정면 단면 + 평면) ──────────────────────
-LEVELS = dict(base=(0, 400), spring=(400, 520), pan=(520, 640),
+LEVELS = dict(base=(0, 260), spring=(260, 420), table=(420, 520), pan=(520, 640),
               d75=(640, 760), d106=(760, 880), d250=(880, 1000),
               cover=(1000, 1150), feed=(1150, 1210))
 SPOUT_Z = {"d250": (940, +1), "d106": (820, -1), "d75": (700, +1),
@@ -165,24 +166,19 @@ def ga_drawing():
     g.text(40, 56, "SV-01 다단 원형 시브 Ø1200 · 3 메쉬 + 팬 · 초음파 3단 · 최대 350 kg/h", "ts")
     g.text(cx, 96, "정면 단면 A-A", "th", "middle")
 
-    # 베이스 프레임 · 모터 · 불평형추
+    # 베이스 링(앵커) — 모터가 지나가도록 속이 비어 있다
     b0, b1 = LEVELS["base"]
-    g.rect(X(-RB), Y(b1), 2 * RB * s, (b1 - b0) * s, "fillG")
-    mh, mo = D["motor_h"] * s, D["motor_od"] * s
-    g.rect(X(0) - mo / 2, Y(b0 + 40 + D["motor_h"]), mo, mh, "hatchf")
-    g.text(X(0), Y(b0 + 200) + 4, "M", "tb", "middle")
-    g.line(X(0) + mo / 2, Y(b0 + 200), X(RB) + 26, Y(b0 + 200), "lead")
-    g.text(X(RB) + 32, Y(b0 + 200) + 4, "수직축 진동모터 2.2 kW · 960 rpm", "ts")
-    for zz, lab in ((b0 + 40 + D["motor_h"] + 18, "불평형추 (상)"),
-                    (b0 + 12, "불평형추 (하)")):
-        g.rect(X(0) - mo * 0.44, Y(zz + 26), mo * 0.88, 26 * s, "fillA")
-        g.line(X(0) - mo * 0.44, Y(zz + 13), X(-RB) + 14, Y(zz + 13), "lead")
-        g.text(X(-RB) + 10, Y(zz + 13) + 4, lab, "ts", "end")
-    g.line(X(-RB), Y(b0 + 150), X(-RB) - 30, Y(b0 + 150), "lead")
-    g.text(X(-RB) - 34, Y(b0 + 150) + 4, "베이스 프레임 Ø900", "ts", "end")
+    for side in (-1, 1):
+        g.rect(X(side * RB) - (0 if side < 0 else 46), Y(b1), 46, (b1 - b0) * s, "fillG")
+    g.rect(X(-RB), Y(b0 + 26), 2 * RB * s, 26 * s, "fillG")
+    g.line(X(-RB), Y(b0 + 130), X(-RB) - 30, Y(b0 + 130), "lead")
+    g.text(X(-RB) - 34, Y(b0 + 130) + 4, "베이스 링 Ø900 (앵커)", "ts", "end")
 
-    # 스프링
+    # 스프링 — 베이스 링과 진동 테이블 사이. 가진원을 절연하는 것이 아니라
+    # 진동체 전체(테이블+모터+데크)를 바닥에서 절연한다.
     sp0, sp1 = LEVELS["spring"]
+    for sx in (-RB * 0.78, RB * 0.78):
+        g.rect(X(sx) - 17, Y(sp0), 34, (sp0 - b0 - 26) * s, "fillG")
     for sx in (-RB * 0.78, RB * 0.78):
         n, top, bot = 7, Y(sp1), Y(sp0)
         d = f"M{X(sx) - 13:.1f},{bot:.1f}"
@@ -191,6 +187,22 @@ def ga_drawing():
                   f"{bot - (bot - top) * (i + 1) / (n * 2):.1f}")
         g.path(d, "ln2")
     g.text(40, Y((sp0 + sp1) / 2) + 4, "코일스프링 6 EA", "ts")
+
+    # 진동 테이블 + 모터 — 모터는 테이블 하면에 볼트 체결되어 스프링 위에서
+    # 데크와 함께 진동한다. 베이스 공동으로 내려와 있을 뿐 베이스와 닿지 않는다.
+    t0, t1 = LEVELS["table"]
+    g.rect(X(-RB * 0.92), Y(t1), 2 * RB * 0.92 * s, (t1 - t0) * s, "fillG")
+    mh, mo = D["motor_h"] * s, D["motor_od"] * s
+    g.rect(X(0) - mo / 2, Y(t0), mo, mh, "hatchf")
+    g.text(X(0), Y(t0 - D["motor_h"] / 2) + 4, "M", "tb", "middle")
+    g.line(X(0) + mo / 2, Y(t0 - 140), X(RB) + 26, Y(t0 - 140), "lead")
+    g.text(X(RB) + 32, Y(t0 - 140) + 4, "수직축 진동모터 2.2 kW · 960 rpm", "ts")
+    g.text(X(RB) + 32, Y(t0 - 140) + 20, "— 진동 테이블 하면 체결 (스프링 위)", "ts")
+    for zz, lab in ((t0 - 22, "불평형추 (상)"),
+                    (t0 - D["motor_h"] + 2, "불평형추 (하)")):
+        g.rect(X(0) - mo * 0.44, Y(zz), mo * 0.88, 20 * s, "fillA")
+        g.line(X(0) - mo * 0.44, Y(zz - 8), X(-RB) + 14, Y(zz - 8), "lead")
+        g.text(X(-RB) + 10, Y(zz - 8) + 4, lab, "ts", "end")
 
     # 데크 스택
     order = [("pan", "PAN (배출반)", None),
@@ -399,8 +411,8 @@ def iso_drawing():
     bh = D["base_h"] * S
     iso_cyl(g, cx, y, rb, bh, "fillG")
     g.line(cx - rb, y + bh * 0.5, LX + 8, y + bh * 0.5, "lead")
-    g.text(LX, y + bh * 0.5 + 4, "베이스 프레임 Ø900", "ts", "end")
-    g.text(LX, y + bh * 0.5 + 20, "수직축 진동모터 2.2 kW 내장", "ts", "end")
+    g.text(LX, y + bh * 0.5 + 4, "베이스 링 Ø900 (앵커)", "ts", "end")
+    g.text(LX, y + bh * 0.5 + 20, "진동모터는 스프링 위 진동 테이블에 체결", "ts", "end")
 
     # 초음파 제너레이터 — 트랜스듀서 옆에 짧은 리더로
     gx, gy = 66.0, 252.0
@@ -516,14 +528,15 @@ def exploded_drawing():
 
 # ── 시트 4 : 조립도 ─────────────────────────────────────────────
 ASSY = [
-    ("1", "베이스 · 모터 거치", [
-        "베이스 프레임을 레벨 ±0.5 mm/m 이내로 앵커링",
-        "진동모터 절연저항 ≥ 5 MΩ 확인 후 결선",
-        "상·하 불평형추 위상각 45° (초기값) — 시운전에서 재조정"]),
-    ("2", "스프링 · 진동체 안착", [
-        "코일스프링 6 EA 를 120° 간격 3 조로 배치",
-        "자유장 편차 ≤ 1 mm 인 것끼리 짝지어 대각선 배치",
-        "진동체를 올린 뒤 수평도 ±1 mm 확인"]),
+    ("1", "베이스 링 앵커링", [
+        "베이스 링을 레벨 ±0.5 mm/m 이내로 앵커링",
+        "모터가 지나갈 중앙 공동의 간섭 여부 확인",
+        "스프링 시트 청소·이물 제거"]),
+    ("2", "진동 테이블 + 모터", [
+        "진동모터를 테이블 하면에 체결 (모터는 반드시 스프링 위 진동체에)",
+        "절연저항 ≥ 5 MΩ 확인 후 결선, 배선은 플렉시블 루프",
+        "상·하 불평형추 위상각 45° (초기값) — 시운전에서 재조정",
+        "스프링 6 EA(자유장 편차 ≤ 1 mm 짝) 위에 테이블 안착, 수평 ±1 mm"]),
     ("3", "데크 적층", [
         "아래에서부터 팬 → 75 → 106 → 250 µm 순으로 쌓는다",
         "데크마다 신품 실리콘 개스킷을 끼운다 (재사용 금지)",
@@ -619,9 +632,12 @@ def maintenance_drawing():
     R, RB, wall = D["body_od"] / 2, D["base_od"] / 2, 12
 
     b0, b1 = LEVELS["base"]
-    g.rect(X(-RB), Y(b1), 2 * RB * s, (b1 - b0) * s, "fillG")
+    for side in (-1, 1):
+        g.rect(X(side * RB) - (0 if side < 0 else 40), Y(b1), 40, (b1 - b0) * s, "fillG")
+    t0, t1 = LEVELS["table"]
+    g.rect(X(-RB * 0.92), Y(t1), 2 * RB * 0.92 * s, (t1 - t0) * s, "fillG")
     mo, mh = D["motor_od"] * s, D["motor_h"] * s
-    g.rect(X(0) - mo / 2, Y(b0 + 40 + D["motor_h"]), mo, mh, "hatchf")
+    g.rect(X(0) - mo / 2, Y(t0), mo, mh, "hatchf")
     sp0, sp1 = LEVELS["spring"]
     for sx in (-RB * 0.78, RB * 0.78):
         n2, t_, b_ = 6, Y(sp1), Y(sp0)
@@ -648,8 +664,8 @@ def maintenance_drawing():
         "D": (X(R) - wall - 40, Y(LEVELS["d250"][0] + 18), X(R) + 70, Y(1010)),
         "E": (X(R), Y(LEVELS["d106"][1]), X(R) + 70, Y(880)),
         "F": (X(RB * 0.78), Y((sp0 + sp1) / 2), X(R) + 70, Y(560)),
-        "G": (X(0) + mo / 2, Y(b0 + 200), X(R) + 70, Y(300)),
-        "H": (X(0) - mo * 0.4, Y(b0 + 30), X(-R) - 80, Y(160)),
+        "G": (X(0) + mo / 2, Y(t0 - 160), X(R) + 70, Y(300)),
+        "H": (X(0) - mo * 0.4, Y(t0 - 300), X(-R) - 80, Y(160)),
         "I": (X(-RB), Y(b0 + 60), X(-R) - 80, Y(30)),
     }
     for tag, (px, py, bx, by) in pts.items():

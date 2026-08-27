@@ -29,10 +29,12 @@
 </style>
 <text x="40.0" y="36.0" class="th" text-anchor="start">SHEET 5 — 정비도 (MAINTENANCE)</text>
 <text x="40.0" y="56.0" class="ts" text-anchor="start">은 회수율은 두 체(75 µm 데크 · SS-01)의 상태에 직결된다 — A·C·D 를 최우선으로 관리한다.</text>
-<rect x="207.0" y="524.0" width="306.0" height="136.0" class="fillG" />
-<rect x="315.8" y="534.2" width="88.4" height="112.2" class="hatchf" />
-<path d="M230.7,524.0 L250.7,520.6 L230.7,517.2 L250.7,513.8 L230.7,510.4 L250.7,507.0 L230.7,503.6 L250.7,500.2 L230.7,496.8 L250.7,493.4 L230.7,490.0 L250.7,486.6 L230.7,483.2" class="ln2"/>
-<path d="M469.3,524.0 L489.3,520.6 L469.3,517.2 L489.3,513.8 L469.3,510.4 L489.3,507.0 L469.3,503.6 L489.3,500.2 L469.3,496.8 L489.3,493.4 L469.3,490.0 L489.3,486.6 L469.3,483.2" class="ln2"/>
+<rect x="207.0" y="571.6" width="40.0" height="88.4" class="fillG" />
+<rect x="473.0" y="571.6" width="40.0" height="88.4" class="fillG" />
+<rect x="219.2" y="483.2" width="281.5" height="34.0" class="fillG" />
+<rect x="315.8" y="517.2" width="88.4" height="112.2" class="hatchf" />
+<path d="M230.7,571.6 L250.7,567.1 L230.7,562.5 L250.7,558.0 L230.7,553.5 L250.7,548.9 L230.7,544.4 L250.7,539.9 L230.7,535.3 L250.7,530.8 L230.7,526.3 L250.7,521.7 L230.7,517.2" class="ln2"/>
+<path d="M469.3,571.6 L489.3,567.1 L469.3,562.5 L489.3,558.0 L469.3,553.5 L489.3,548.9 L469.3,544.4 L489.3,539.9 L469.3,535.3 L489.3,530.8 L469.3,526.3 L489.3,521.7 L469.3,517.2" class="ln2"/>
 <rect x="156.0" y="442.4" width="12.0" height="40.8" class="hatchf" />
 <rect x="552.0" y="442.4" width="12.0" height="40.8" class="hatchf" />
 <line x1="156.0" y1="442.4" x2="564.0" y2="442.4" class="thin"/>
@@ -64,13 +66,13 @@
 <line x1="564.0" y1="360.8" x2="634.0" y2="360.8" class="lead"/>
 <circle cx="634.0" cy="360.8" r="11.0" class="bal"/>
 <text x="634.0" y="364.8" class="tb" text-anchor="middle">E</text>
-<line x1="479.3" y1="503.6" x2="634.0" y2="469.6" class="lead"/>
+<line x1="479.3" y1="544.4" x2="634.0" y2="469.6" class="lead"/>
 <circle cx="634.0" cy="469.6" r="11.0" class="bal"/>
 <text x="634.0" y="473.6" class="tb" text-anchor="middle">F</text>
-<line x1="404.2" y1="592.0" x2="634.0" y2="558.0" class="lead"/>
+<line x1="404.2" y1="571.6" x2="634.0" y2="558.0" class="lead"/>
 <circle cx="634.0" cy="558.0" r="11.0" class="bal"/>
 <text x="634.0" y="562.0" class="tb" text-anchor="middle">G</text>
-<line x1="324.6" y1="649.8" x2="76.0" y2="605.6" class="lead"/>
+<line x1="324.6" y1="619.2" x2="76.0" y2="605.6" class="lead"/>
 <circle cx="76.0" cy="605.6" r="11.0" class="bal"/>
 <text x="76.0" y="609.6" class="tb" text-anchor="middle">H</text>
 <line x1="207.0" y1="639.6" x2="76.0" y2="649.8" class="lead"/>
