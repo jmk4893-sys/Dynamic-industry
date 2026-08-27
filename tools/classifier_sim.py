@@ -80,9 +80,37 @@ class ZigZagColumn:
         return 0.20 * u_super
 
 
+class UniformCell:
+    """균일 유동 분리 셀 — 터보 분급기의 휠 외주 조건.
+
+    ZigZagColumn 은 포물선 분포(중심속도 = 겉보기의 1.5배)를 갖는 중력 컬럼이라
+    '겉보기 풍속'과 '입자가 겪는 국소 속도'가 다르다. 터보 분급기의 분급은 휠 외주에서
+    일어나고 거기서 반경방향 풍속 v_r 은 균일하므로, 설계값이 곧 국소값이다.
+    이 클래스를 써야 설계식(v_r)과 수치해석이 같은 양을 가리킨다.
+    """
+
+    def __init__(self, width=0.20, height=0.40, turbulence_intensity=0.20):
+        self.W = width
+        self.H = height
+        self.height = height
+        self.n = 1
+        self._ti = turbulence_intensity
+
+    def gas_velocity(self, x, y, u_super):
+        return np.zeros_like(np.asarray(x, dtype=float)), np.full_like(
+            np.asarray(y, dtype=float), u_super)
+
+    def turbulence_rms(self, u_super):
+        return self._ti * u_super
+
+
 def simulate(column, rho_p, d, u_super, n=400, dt=2e-4, t_max=6.0,
-             seed=0, turbulence=True, record=None):
+             seed=0, turbulence=True, record=None, accel=None, sigma_abs=None):
     """입자군을 컬럼 중단에 투입하고 상단(경량) / 하단(중량) 도달을 판정한다.
+
+    accel 을 주면 중력 대신 그 가속도장(원심 분급기의 omega^2 R)에서 푼다.
+    sigma_abs 를 주면 난류 변동을 풍속 비례가 아니라 절대값으로 고정한다 —
+    같은 기계 난류에서 분리력만 키웠을 때의 효과를 보려면 이쪽을 쓴다.
 
     반환: (입자별 상단배출 bool 배열, 입자별 탈출시각)
     record 가 dict 이면 궤적을 기록한다(영상용).
@@ -96,8 +124,14 @@ def simulate(column, rho_p, d, u_super, n=400, dt=2e-4, t_max=6.0,
     vx = np.zeros(n)
     vy = np.zeros(n)
 
-    g_eff = -G * (1.0 - RHO_AIR / rho)                 # 부력 보정 중력(아래 방향 음수)
-    sigma = column.turbulence_rms(u_super) if turbulence else 0.0
+    body_accel = G if accel is None else accel         # 원심장이면 omega^2 R 을 넣는다
+    g_eff = -body_accel * (1.0 - RHO_AIR / rho)        # 부력 보정 체적력(분리 방향 음수)
+    if not turbulence:
+        sigma = 0.0
+    elif sigma_abs is not None:
+        sigma = sigma_abs                              # 기계 고유 난류(절대값)
+    else:
+        sigma = column.turbulence_rms(u_super)
     eddy_life = 0.02
     fluct = rng.normal(0.0, sigma, size=(2, n)) if turbulence else np.zeros((2, n))
     t_eddy = rng.random(n) * eddy_life

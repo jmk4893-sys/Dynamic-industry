@@ -6,9 +6,10 @@ docs/multi-stage-screen-design.md 의 수치를 재현·재산출한다.
 
     python3 tools/screen_sizing.py
 
-Rev.2 — 실 입도 35~500 µm, 유리 제거 후 스트림.
-        직사각 경사(스캘핑) + 다단 원형 시브(분급) + 향류 컬럼(에어분급) 하이브리드.
-        Rev.1 은 0.6~12 mm 조립 가정이었고, 그 영역의 논리는 여기서 성립하지 않는다.
+Rev.3 — 실 입도 35~500 µm, 유리 제거 후 스트림.
+        직사각 경사(스캘핑) + 다단 원형 시브(입도 분급) + 터보 분급기(밀도 선별).
+        Rev.2 의 중력식 지그재그 컬럼은 실용 범위(0.3~10 mm) 밖이라 폐기하고,
+        디플렉터 휠(터보) 분급기로 교체했다.
 """
 import math
 
@@ -28,9 +29,14 @@ CONFIG = {
     # 원형 시브 데크 (개구 µm, 기준 처리능력 t/h/m2 — 초음파 적용 기준)
     "sieve_decks": [(200, 0.50), (106, 0.30), (75, 0.20)],
     "sieve_area_factor": 0.90,
-    # 에어분급 컬럼 (하한 µm, 상한 µm, 분획 키)
-    "columns": [(75, 106, "75~106"), (106, 200, "106~200")],
-    "column_area_m2": 0.030,
+    # 터보(디플렉터 휠) 분급기 — (태그, 하한 µm, 상한 µm, 분획키, 회전수, 반경방향 풍속)
+    # v_r 은 밴드(비구리 상한 ~ 구리 하한)의 기하평균 — 양쪽 여유를 같게 둔다.
+    "classifiers": [
+        ("TC-01", 75, 106, "75~106", 200, 2.07),
+        ("TC-02", 106, 200, "106~200", 150, 1.88),
+    ],
+    "wheel_radius_m": 0.075,         # Ø150 디플렉터 휠 (두 대 공통)
+    "wheel_height_m": 0.065,         # 고형물 부하를 0.35 kg/m3 이하로 낮추기 위해 h50 -> h65
     "hood_face_velocity_min": 2.0,   # 개방형 후드가 실내 기류에 지지 않을 최소 면속도
     # 응집 판정
     "hamaker_J": 6.5e-20,
@@ -81,6 +87,67 @@ def cut_velocity(lo_um, hi_um, cfg=CONFIG):
     v_cu_lo, _ = vt(d["구리"], lo_um * 1e-6)
     v_poly_hi, _ = vt(d["백시트+EVA"], hi_um * 1e-6)
     return (v_cu_lo + v_poly_hi) / 2, v_cu_lo - v_poly_hi
+
+
+def centrifugal_acceleration(rpm, radius_m):
+    """디플렉터 휠 외주의 원심가속도 [m/s2] = omega^2 R."""
+    return (2.0 * math.pi * rpm / 60.0) ** 2 * radius_m
+
+
+def vt_in_field(rho, d_m, accel, iters=300):
+    """가속도장 accel 에서의 종말속도 [m/s].
+
+    터보 분급기의 컷 조건은 '원심장 종말속도 = 반경방향 공기속도' 이므로,
+    중력 g 를 omega^2 R 로 바꾼 같은 문제가 된다.
+    """
+    v = 1e-4
+    for _ in range(iters):
+        re = max(RHO_A * v * d_m / MU, 1e-12)
+        cd = (24 / re if re < 0.1
+              else 24 / re * (1 + 0.15 * re ** 0.687) + 0.42 / (1 + 42500 * re ** -1.16))
+        v = math.sqrt(4 * accel * d_m * (rho - RHO_A) / (3 * cd * RHO_A))
+    return v
+
+
+def _diameter_at_field_velocity(rho, v_target, accel, lo=1e-6, hi=3e-3):
+    """가속도장 accel 에서 종말속도가 v_target 이 되는 입경 [m]."""
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        if vt_in_field(rho, mid, accel) < v_target:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+# 재질별 실제 입도 범위 [µm] — 밴드 상한을 정할 때 이 범위를 넘겨 쓰면 안 된다.
+SIZE_RANGE_UM = {"구리": (75, 200), "실리콘(+Ag)": (20, 120),
+                 "백시트+EVA": (75, 500), "EVA": (75, 500)}
+
+
+def separation_bounds(lo_um, hi_um, accel, cfg=CONFIG):
+    """분획 안에서 (구리 최저속도, 비구리 최고속도, 제약 재질).
+
+    비구리 상한은 폴리머만이 아니라 실리콘까지 포함해서 잡아야 한다 —
+    75~106 µm 에서는 실리콘이 제약이고, 폴리머만 보면 여유비를 과대평가한다.
+    """
+    d = cfg["density"]
+    cu = vt_in_field(d["구리"], max(lo_um, SIZE_RANGE_UM["구리"][0]) * 1e-6, accel)
+    worst, who = 0.0, ""
+    for name, (dlo, dhi) in SIZE_RANGE_UM.items():
+        if name == "구리":
+            continue
+        dd = min(hi_um, dhi)
+        if dd < max(lo_um, dlo):
+            continue
+        v = vt_in_field(d[name], dd * 1e-6, accel)
+        if v > worst:
+            worst, who = v, f"{name}@{dd:.0f}µm"
+    return cu, worst, who
+
+
+def wheel_area(cfg=CONFIG):
+    return 2.0 * math.pi * cfg["wheel_radius_m"] * cfg["wheel_height_m"]
 
 
 def report(cfg=CONFIG):
@@ -141,10 +208,10 @@ def report(cfg=CONFIG):
     print("=" * 76)
     print("6. 은 손실 / 구리 오염 경로")
     print("=" * 76)
-    for lo, hi, _ in cfg["columns"]:
-        v, _ = cut_velocity(lo, hi, cfg)
-        d_si = diameter_at_vt(d["실리콘(+Ag)"], v) * 1e6
-        print(f"  {lo:3d}~{hi:3d} µm 컬럼 (커트 {v:.2f} m/s): "
+    for tag, lo, hi, _key, rpm, v_r in cfg["classifiers"]:
+        a = centrifugal_acceleration(rpm, cfg["wheel_radius_m"])
+        d_si = _diameter_at_field_velocity(d["실리콘(+Ag)"], v_r, a) * 1e6
+        print(f"  {tag} {lo:3d}~{hi:3d} µm (v_r {v_r:.2f} m/s, a/g={a/G:.1f}): "
               f"실리콘 {d_si:5.1f} µm 이하 -> 경량측(은 손실), 초과 -> 중량측(구리 오염)")
 
     print()
@@ -167,17 +234,27 @@ def report(cfg=CONFIG):
 
     print()
     print("=" * 76)
-    print(f"8. 에어분급 컬럼 (단면 {cfg['column_area_m2']:.3f} m2)")
+    print("8. 터보(디플렉터 휠) 분급기 — 밀도 선별")
     print("=" * 76)
+    A = wheel_area(cfg)
+    print(f"  휠 Ø{cfg['wheel_radius_m']*2000:.0f} mm × h{cfg['wheel_height_m']*1000:.0f} mm"
+          f"  ->  원통면적 {A:.4f} m2\n")
     total_q = 0.0
-    for lo, hi, key in cfg["columns"]:
-        v, _ = cut_velocity(lo, hi, cfg)
-        q = v * cfg["column_area_m2"] * 3600
+    for tag, lo, hi, key, rpm, v_r in cfg["classifiers"]:
+        a = centrifugal_acceleration(rpm, cfg["wheel_radius_m"])
+        cu, worst, who = separation_bounds(lo, hi, a, cfg)
+        q = v_r * A * 3600
         total_q += q
         solids = peak * 1000 * cfg["split"][key]
-        print(f"  {lo:3d}~{hi:3d} µm : 커트 {v:.2f} m/s -> {q:5.0f} m3/h, "
-              f"고형물 {solids:5.1f} kg/h, 부하 {solids/q:.2f} kg/m3")
-    print(f"\n  컬럼 합계 {total_q:.0f} m3/h  (+ 시브 커버 환기·집진 별도)")
+        print(f"  {tag}  {lo:3d}~{hi:3d} µm  {rpm} rpm (a/g={a/G:.1f})")
+        print(f"        구리 하한 {cu:5.2f} | 비구리 상한 {worst:5.2f} ({who}) "
+              f"| 여유비 {cu/worst:.2f}")
+        print(f"        v_r {v_r:.2f} m/s -> {q:4.0f} m3/h, 고형물 {solids:5.1f} kg/h, "
+              f"부하 {solids/q:.3f} kg/m3")
+    print(f"\n  분급기 풍량 합계 {total_q:.0f} m3/h  (+ 시브 커버 환기·집진 별도)")
+    print("\n  ※ 원심장은 분리 여유비를 넓히지 않는다(오히려 미세하게 좁다).")
+    print("     터보로 가는 이유는 중력식 지그재그가 이 입도에서 작동 범위 밖이고,")
+    print("     회전수와 풍량 두 노브로 컷을 독립 조절할 수 있기 때문이다.")
 
 
 if __name__ == "__main__":
