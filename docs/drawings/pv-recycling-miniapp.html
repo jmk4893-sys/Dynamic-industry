@@ -1754,20 +1754,54 @@ html>body{padding:0}</style>
     </table></div>
     <p class="text-small">결론: 폐회로에 <strong>수냉 열교환기(HX-101)</strong>를 넣고 <strong>분쇄 챔버를 자켓 냉각</strong>해 루프를 45 °C 이하로 유지합니다. 풍량 증대만으로 해결하려면 IDF-101 과 집진기를 5배 이상 키워야 합니다.</p>
 
+    <strong>모터 계열 발열 — 수냉 대상이 아닌 이유</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="모터 발열">
+      <thead><tr><th>모터</th><th class="text-end">정격</th><th class="text-end">축동력</th><th class="text-end">손실</th><th>처리</th></tr></thead>
+      <tbody>
+        <tr><td>M-101 HSG-101</td><td class="text-end">37 kW</td><td class="text-end">34.04 kW</td><td class="text-end">2.56 kW</td><td>TEFC 자기냉각 · 실내 방열</td></tr>
+        <tr><td>CH-601 칠러 압축기</td><td class="text-end">22 kW</td><td class="text-end">18.70 kW</td><td class="text-end">1.41 kW</td><td>옥외 · 실외 방열</td></tr>
+        <tr><td>M-AS-101 어트리션</td><td class="text-end">11 kW</td><td class="text-end">8.25 kW</td><td class="text-end">0.62 kW</td><td>TEFC · 실내 방열</td></tr>
+        <tr><td>VP-401A/B 진공펌프</td><td class="text-end">7.5 kW</td><td class="text-end">6.38 kW</td><td class="text-end">0.48 kW</td><td>모터는 공랭 · 압축열은 AC-401 수냉</td></tr>
+        <tr><td>M-301 / M-302 슈레더</td><td class="text-end">22 / 18.5 kW</td><td class="text-end">11.34 kW</td><td class="text-end">0.85 kW</td><td>TEFC · 감속기 오일만 GB-301 수냉</td></tr>
+        <tr><td colspan="3"><strong>전 모터 합계 (축동력 117.4 kW)</strong></td><td class="text-end"><strong>8.83 kW</strong></td><td>실내 환기부하</td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small">모터 손실은 <strong>수냉 대상이 아닙니다</strong> — TEFC 는 축단 팬으로 자기냉각하므로 손실이 실내 공기로 나갑니다.
+      다만 두 가지는 설계에 반영해야 합니다. ① VFD 로 기저속도의 30% 이하에서 장시간 운전하는 모터는 축단 팬 풍량이 부족해
+      <strong>별도 강제환기 블로어 키트</strong>가 필요합니다. ② 손실 8.83 kW 는 그대로 실내 환기부하가 됩니다.
+      절연 F / 온도상승 B 조합은 25 K 여유가 있어 적정합니다.</p>
+
+    <strong>사이클론 발열과 이중자켓 — HSG 회로 열 분담</strong>
+    <p class="text-small">HSG-101 축동력 34.0 kW 는 폐회로 공기와 제품에 실린 채 CY-101 → CC-201 → CY-201 로 흐릅니다.
+      사이클론은 체류시간이 길고 벽면 접촉이 많아 <strong>EVA 가 가장 먼저 눌어붙는 지점</strong>이므로,
+      열을 한 곳(HX-101)에서만 빼지 않고 자켓으로 분산해 벽면 온도를 직접 낮춥니다.</p>
+    <div class="table-responsive"><table class="table table-sm" aria-label="HSG 회로 열 분담">
+      <thead><tr><th>분담처</th><th class="text-end">비율</th><th class="text-end">부하</th><th>형식</th></tr></thead>
+      <tbody>
+        <tr><td>HX-101 환수측 공기냉각기</td><td class="text-end">36%</td><td class="text-end">12.25 kW</td><td>공기-수 핀튜브 · BF-101 후단</td></tr>
+        <tr><td>JK-101 분쇄챔버 자켓</td><td class="text-end">28%</td><td class="text-end">9.53 kW</td><td>이중자켓 · 라이너 배면</td></tr>
+        <tr><td class="dd-warning">JK-CY101 <strong>CY-101 이중자켓</strong></td><td class="text-end">16%</td><td class="text-end">5.45 kW</td><td class="dd-warning">Ø500 원통·콘부 이중벽 · 나선 배플로 편류 방지</td></tr>
+        <tr><td class="dd-warning">JK-CY201 <strong>CY-201 이중자켓</strong></td><td class="text-end">10%</td><td class="text-end">3.40 kW</td><td class="dd-warning">Ø680 원통·콘부 이중벽 · 청정가스측이라 부하 작음</td></tr>
+        <tr><td>표면·제품 방열</td><td class="text-end">10%</td><td class="text-end">3.40 kW</td><td>실내 환기부하로 계상</td></tr>
+      </tbody>
+    </table></div>
+
     <strong>냉각수 계통 부하 (CWS 32 °C / CWR 40 °C · ΔT 8 K)</strong>
     <div class="table-responsive"><table class="table table-sm" aria-label="냉각수 부하">
       <thead><tr><th>Tag</th><th>냉각 대상</th><th class="text-end">부하 kW</th><th class="text-end">수량 m³/h</th><th>형식 · 비고</th></tr></thead>
       <tbody>
-        <tr><td>HX-101</td><td>HSG 폐회로 공기</td><td class="text-end">17.02</td><td class="text-end">1.83</td><td>공기-수 핀튜브 · BF-101 후단, IDF-101 전단 삽입</td></tr>
-        <tr><td>JK-101</td><td>HSG-101 분쇄 챔버 자켓</td><td class="text-end">13.62</td><td class="text-end">1.46</td><td>이중자켓 · 라이너 배면 · 결로 방지 최소유량 유지</td></tr>
+        <tr><td>HX-101</td><td>HSG 폐회로 공기</td><td class="text-end">12.25</td><td class="text-end">1.32</td><td>공기-수 핀튜브 · BF-101 후단, IDF-101 전단</td></tr>
+        <tr><td>JK-101</td><td>HSG-101 분쇄 챔버 자켓</td><td class="text-end">9.53</td><td class="text-end">1.03</td><td>이중자켓 · 라이너 배면 · 결로 방지 최소유량</td></tr>
         <tr><td>AC-401</td><td>VP-401A/B 진공펌프 후냉각</td><td class="text-end">6.38</td><td class="text-end">0.69</td><td>무급유 펌프 토출 120–180 °C · 셸튜브</td></tr>
-        <tr><td>PC-601</td><td>LCP 6면 반내 냉각</td><td class="text-end">4.95</td><td class="text-end">—</td><td>IP54 2면 필터팬 · IP65/66 4면 공랭 열교환기·패널 에어컨</td></tr>
-        <tr><td>AS-CL</td><td>AS-101 슬러리 회로</td><td class="text-end">2.48</td><td class="text-end">0.27</td><td>TK-101 코일 또는 판형 · 비드 마모 고려 개방형 금지</td></tr>
+        <tr><td>JK-CY101</td><td>CY-101 사이클론 이중자켓</td><td class="text-end">5.45</td><td class="text-end">0.59</td><td>Ø500 원통·콘부 · 나선 배플</td></tr>
+        <tr><td>JK-CY201</td><td>CY-201 사이클론 이중자켓</td><td class="text-end">3.40</td><td class="text-end">0.37</td><td>Ø680 원통·콘부 · 청정가스측</td></tr>
+        <tr><td>AS-CL</td><td>AS-101 슬러리 회로</td><td class="text-end">2.48</td><td class="text-end">0.27</td><td>TK-101 코일 또는 판형 · 개방형 금지</td></tr>
         <tr><td>OC-301</td><td>HPU-301 유압유</td><td class="text-end">2.25</td><td class="text-end">0.24</td><td>유-수 판형 · 유온 ≤60 °C 서모스탯</td></tr>
-        <tr><td>AC-201</td><td>AB-201A/B 블로어 후냉각</td><td class="text-end">1.87</td><td class="text-end">0.20</td><td>토출 60–90 °C · 부선 셀 급기온도 관리</td></tr>
-        <tr><td>GB-301</td><td>ICSH-301 감속기 오일</td><td class="text-end">1.70</td><td class="text-end">0.18</td><td>저속 대토크 · 오일 스플래시 + 외장 냉각핀 우선 검토</td></tr>
-        <tr><td>CF-BR</td><td>CF-204 베어링·케이싱</td><td class="text-end">0.84</td><td class="text-end">0.09</td><td>1,800 rpm · 베어링 온도 트립과 연동</td></tr>
-        <tr><td colspan="2"><strong>합계</strong></td><td class="text-end"><strong>51.10</strong></td><td class="text-end"><strong>—</strong></td><td>설계여유 15% 적용 <strong>58.8 kW</strong></td></tr>
+        <tr><td>AC-201</td><td>AB-201A/B 블로어 후냉각</td><td class="text-end">1.87</td><td class="text-end">0.20</td><td>토출 60–90 °C</td></tr>
+        <tr><td>GB-301</td><td>ICSH-301 감속기 오일</td><td class="text-end">1.70</td><td class="text-end">0.18</td><td>외장 냉각핀 우선 검토</td></tr>
+        <tr><td>CF-BR</td><td>CF-204 베어링·케이싱</td><td class="text-end">0.84</td><td class="text-end">0.09</td><td>베어링 온도 트립 연동</td></tr>
+        <tr><td colspan="2"><strong>수냉 합계</strong></td><td class="text-end"><strong>46.15</strong></td><td class="text-end"><strong>4.98</strong></td><td>설계여유 15% 적용 <strong>53.1 kW</strong> · <strong>5.7 m³/h</strong></td></tr>
+        <tr><td>PC-601</td><td>LCP 6면 반내 냉각</td><td class="text-end">4.95</td><td class="text-end">—</td><td class="dd-warning">공랭이므로 수냉 부하에서 분리 · 실내 환기부하로 이관</td></tr>
       </tbody>
     </table></div>
 
@@ -1775,8 +1809,8 @@ html>body{padding:0}</style>
     <div class="table-responsive"><table class="table table-sm" aria-label="냉각 설비 사양">
       <thead><tr><th>Tag</th><th>설비</th><th>사양</th><th>비고</th></tr></thead>
       <tbody>
-        <tr><td>CH-601</td><td>공랭식 인버터 칠러</td><td>16.7 RT (58.8 kW) · CWS 32 °C · 압축기 입력 19.6 kW (COP 3.0 가정)</td><td class="dd-warning">외기 35 °C 기준 · 제작사 선정 HOLD · 프리쿨링 드라이쿨러 병용 검토</td></tr>
-        <tr><td>P-601A/B</td><td>냉각수 순환펌프</td><td>6.3 m³/h · 양정 32 m · 축동력 0.79 kW → 정격 2.2 kW · 1운전 1예비</td><td>듀티 교대 · 최소유량 바이패스</td></tr>
+        <tr><td>CH-601</td><td>공랭식 인버터 칠러</td><td>15.1 RT (53.1 kW) · CWS 32 °C · 압축기 입력 17.7 kW (COP 3.0 가정) · 정격 22 kW 유지</td><td class="dd-warning">외기 35 °C 기준 · 제작사 선정 HOLD · 프리쿨링 드라이쿨러 병용 검토</td></tr>
+        <tr><td>P-601A/B</td><td>냉각수 순환펌프</td><td>5.7 m³/h · 양정 32 m · 축동력 0.79 kW → 정격 2.2 kW · 1운전 1예비</td><td>듀티 교대 · 최소유량 바이패스</td></tr>
         <tr><td>TK-601</td><td>완충·팽창 탱크</td><td>0.5 m³ · 자동 보충수 · 에어벤트</td><td>루프 체적 안정화로 압축기 단속운전 방지</td></tr>
         <tr><td>F-601</td><td>Y형 스트레이너</td><td>DN50 · 800 µm</td><td>펌프 흡입측 · 차압 감시</td></tr>
         <tr><td>헤더·배관</td><td>공급·환수 헤더</td><td>DN50 (유속 2.0 m/s 기준 내경 33 mm) · 지관 DN20–32</td><td>보온·결로방지 · 동파 대비 부동액 30% 검토</td></tr>
@@ -1793,7 +1827,166 @@ html>body{padding:0}</style>
       <li>동절기 — 옥외 스키드 동파방지 히팅케이블, 부동액 농도 관리, 최소유량 순환</li>
     </ul>
 
+    <strong>실내 환기부하 — 수냉이 가져가지 않는 열</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="실내 환기부하">
+      <thead><tr><th>항목</th><th class="text-end">부하</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td>모터 손실 (전 모터)</td><td class="text-end">8.83 kW</td><td>TEFC 자기냉각 · 실내 방열</td></tr>
+        <tr><td>설비 표면방열</td><td class="text-end">7.57 kW</td><td>HSG 회로 10% + 그 외 5% 가정</td></tr>
+        <tr><td>분전반 반내 발열</td><td class="text-end">4.96 kW</td><td>VFD 손실 3% + 부스바·차단기 0.5% + 제어 0.2 kW</td></tr>
+        <tr><td class="dd-warning">패널 에어컨 입력</td><td class="text-end">2.05 kW</td><td class="dd-warning">IP66 3면 · 반내 열을 <strong>실내로</strong> 버리므로 압축기 입력까지 실내부하</td></tr>
+        <tr><td colspan="1"><strong>실내 합계</strong></td><td class="text-end"><strong>23.4 kW</strong></td><td>칠러는 옥외이므로 응축열은 실외 방출</td></tr>
+      </tbody>
+    </table></div>
+    <div class="table-responsive"><table class="table table-sm" aria-label="환기량">
+      <thead><tr><th class="text-end">실내 허용 ΔT</th><th class="text-end">필요 환기량</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td class="text-end">6 K</td><td class="text-end">11,650 m³/h</td><td>여름 외기 35 °C 기준 실내 41 °C</td></tr>
+        <tr><td class="text-end">8 K</td><td class="text-end">8,738 m³/h</td><td>권장 — 패널·모터 주위온도 40 °C 이내</td></tr>
+        <tr><td class="text-end">10 K</td><td class="text-end">6,990 m³/h</td><td>케이블 주위온도 보정계수 재확인 필요</td></tr>
+      </tbody>
+    </table></div>
     <p class="text-small dd-warning">부하율(M-101 0.92 · 슈레더 0.28 · HPU 0.30 등)은 설계 가정입니다. 실측 소비전력과 제작사 발열 보증치로 대체해야 하며, 특히 HSG 폐회로의 자켓/공기냉각 분담(40 : 50 : 10)은 제작사 열해석으로 확정해야 합니다.</p>
+  </details>
+
+  <details class="card hsg3d-validation" id="plant-panel-piping" data-panel-id="piping" data-panel-category="장비·공정">
+    <summary>배관 재질·마모 설계 — 강관 / 우레탄 / 세라믹 구분</summary>
+    <p class="text-small dd-warning">현장에서 <strong>엘보와 연결부에 구멍이 나는</strong> 문제가 보고되었습니다. 원인은 재질 하나가 아니라 ① 반송속도 ② 엘보 형상 ③ 라이닝 선택 ④ 연결부 내경 단차의 조합이며, 넷을 함께 바꿔야 해결됩니다.</p>
+
+    <strong>왜 엘보에서 뚫리는가</strong>
+    <ul class="text-small">
+      <li>PV 분쇄물은 <strong>유리(Mohs 5.5–6.5)＋실리콘(6.5)</strong> 이고 파단면이 예리해 산업 분체 중에서도 침식성이 최상급입니다.</li>
+      <li>침식률은 속도의 <strong>2.5–3 제곱</strong>에 비례합니다. 직관 대비 엘보에서 마모가 집중되는 이유는 입자가 벽에 직접 충돌하기 때문입니다.</li>
+      <li>탄소강 같은 <strong>연성재</strong>는 충돌각 20–30°에서 침식이 최대입니다. 단반경 엘보(R/D 1.5)의 외측 힐(heel)이 정확히 그 각도라 한 점에 구멍이 납니다.</li>
+      <li>연결부는 <strong>내경 단차</strong>가 원인입니다. 플랜지 보어 불일치, 개스킷 돌출, 용접 이면 비드, 커플링 간극이 모두 국부 충돌면을 만듭니다.</li>
+    </ul>
+
+    <strong>① 반송속도 — 가장 값싼 대책</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="속도별 상대 마모율">
+      <thead><tr><th class="text-end">반송속도</th><th class="text-end">상대 마모율 (n=2.5)</th><th class="text-end">(n=3.0)</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td class="text-end">24 m/s</td><td class="text-end">1.50</td><td class="text-end">1.63</td><td>—</td></tr>
+        <tr><td class="text-end">22 m/s</td><td class="text-end">1.21</td><td class="text-end">1.25</td><td>—</td></tr>
+        <tr><td class="text-end"><strong>20.4 m/s</strong></td><td class="text-end"><strong>1.00</strong></td><td class="text-end"><strong>1.00</strong></td><td class="dd-warning">현재 설계 (PC-101 DN125 · 900 m³/h)</td></tr>
+        <tr><td class="text-end">18 m/s</td><td class="text-end">0.73</td><td class="text-end">0.69</td><td>—</td></tr>
+        <tr><td class="text-end">17 m/s</td><td class="text-end">0.63</td><td class="text-end">0.58</td><td>권장 — 마모 약 42% 감소 · <strong>DN150 으로 증경</strong> (필요 내경 137 mm)</td></tr>
+        <tr><td class="text-end">15 m/s</td><td class="text-end">0.46</td><td class="text-end">0.40</td><td class="dd-warning">희박상 하한 근처 · 퇴적·폐색 위험</td></tr>
+      </tbody>
+    </table></div>
+
+    <strong>② 엘보 형식별 상대 수명</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="엘보 형식별 수명">
+      <thead><tr><th>형식</th><th class="text-end">상대 수명</th><th>적용 · 주의</th></tr></thead>
+      <tbody>
+        <tr><td class="dd-warning">표준 단반경 엘보 R/D 1.5</td><td class="text-end">1×</td><td class="dd-warning">현재 구멍이 나는 형식 — 신규 적용 금지</td></tr>
+        <tr><td>장반경 엘보 R/D 5–10</td><td class="text-end">2–4×</td><td>충돌각·법선속도 감소 · 공간 필요</td></tr>
+        <tr><td>블라인드 티(사각 포켓)</td><td class="text-end">5–20×</td><td>정체층이 벽을 대신해 맞음 · 압손 증가 · 점착성 물질엔 부적합</td></tr>
+        <tr><td>우레탄 라이닝 엘보</td><td class="text-end">3–8×</td><td class="dd-warning">탄성 반발로 저각도 마모에 강함 · <strong>60–80 °C 한계</strong> · 예리한 유리 고속 충돌엔 제한적</td></tr>
+        <tr><td>세라믹(알루미나 92–95%) 라이닝</td><td class="text-end">10–40×</td><td>Mohs 9 · 고온 가능 · 취성이라 큰 덩어리 충격엔 파손 주의</td></tr>
+        <tr><td>와류(포켓형) 엘보</td><td class="text-end">8–25×</td><td>포켓 와류로 벽 접촉 회피 · 점착성 물질 부적합</td></tr>
+      </tbody>
+    </table></div>
+
+    <strong>③ 계통별 재질 지정</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="계통별 배관 재질">
+      <thead><tr><th>계통</th><th>유체·입자</th><th>운전온도</th><th>직관</th><th>엘보·티</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td>PC-101 / PC-201 음압 이송</td><td class="dd-warning">건식 유리·실리콘 ≤500 µm · 17–20 m/s</td><td>≤45 °C (냉각 후)</td><td>SS400 / SM400 강관 t6.0</td><td class="dd-warning"><strong>알루미나 세라믹 라이닝 장반경</strong> R/D≥5</td><td>고속·예리한 유리 · 우레탄으로는 수명 부족</td></tr>
+        <tr><td>SCV-R1/P1 밀폐 스크루 슈트</td><td>건식 ≤10 mm 파쇄물 · 저속</td><td>≤60 °C</td><td>SS400 + <strong>Hardox 450 라이너</strong></td><td>세라믹 타일 국부 부착</td><td>덩어리 충격 — 세라믹 전면 라이닝은 파손</td></tr>
+        <tr><td>CC-201 공기분급 덕트</td><td>건식 미분 · 중속</td><td>≤45 °C</td><td>SS400 강관</td><td>장반경 + 세라믹 힐 패치</td><td>미분이라 마모 완화</td></tr>
+        <tr><td>BF/IDF 청정가스 덕트</td><td>청정공기 · 잔류 미분</td><td>≤45 °C</td><td>SS400 강관</td><td>장반경 강관</td><td>고형분 거의 없음 · 라이닝 불필요</td></tr>
+        <tr><td>P-101/102 슬러리 (어트리션)</td><td class="dd-warning">습식 슬러리 · 비드 마모</td><td>≤40 °C</td><td class="dd-warning"><strong>우레탄 라이닝 강관</strong> t8</td><td>우레탄 라이닝 장반경</td><td>습식 저각도 미끄럼 마모 — 우레탄 최적 · 온도 여유 충분</td></tr>
+        <tr><td>FC-201/202/203 부선 배관</td><td>습식 슬러리 · 약알칼리</td><td>≤35 °C</td><td>우레탄 라이닝 또는 HDPE PE100</td><td>우레탄 라이닝</td><td>내약품성·저마찰 · 펌프동력 유리</td></tr>
+        <tr><td>P-301 필터프레스 급액</td><td>습식 고농도 · 1.0 MPa</td><td>≤40 °C</td><td>우레탄 라이닝 강관 (압력등급 확인)</td><td>우레탄 라이닝</td><td>압력 때문에 강관 몸체 필수</td></tr>
+        <tr><td>여액·공정수 회수</td><td>미세 고형분 함유 수</td><td>≤40 °C</td><td>HDPE PE100 또는 STS304</td><td>동일</td><td>부식 우세 · 마모 경미</td></tr>
+        <tr><td>CW-601 냉각수</td><td>청수＋부동액</td><td>32–40 °C</td><td>STS304 또는 아연도강관</td><td>동일</td><td>마모 없음 · 부식·스케일 관리</td></tr>
+        <tr><td>RS-201/202/203 약품</td><td>정량 약품</td><td>상온</td><td>PVDF 또는 PP</td><td>동일</td><td>내약품성 우선</td></tr>
+        <tr><td>AR-201 압축공기 / 진공</td><td>청정공기</td><td>≤90 °C (후냉각 전)</td><td>STS304 / 아연도강관</td><td>동일</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small"><strong>우레탄과 세라믹의 갈림길은 온도와 충돌각입니다.</strong> 표준 우레탄은 연속 60 °C, 고성능품도 80 °C 부근이 한계이므로
+      냉각 전 HSG 회로처럼 뜨거운 건식 라인에는 쓸 수 없습니다. 반대로 습식 슬러리는 40 °C 이하에 저각도 미끄럼 마모라 우레탄이 최적입니다.
+      <strong>냉각 계통과 배관 재질은 한 묶음</strong>입니다 — 회로를 45 °C 이하로 잡아야 우레탄 선택지가 열립니다.</p>
+
+    <strong>④ 연결부 — 구멍의 두 번째 원인</strong>
+    <ul class="text-small">
+      <li><strong>보어 정합</strong> — 플랜지·스풀 내경을 ±1 mm 이내로 맞추고 단차는 1:4 이상으로 테이퍼 가공. 단차가 곧 국부 충돌면입니다.</li>
+      <li><strong>개스킷 비돌출</strong> — 내경측으로 튀어나오지 않는 규격 사용. 튀어나온 개스킷은 그 뒤 벽을 갉습니다.</li>
+      <li><strong>용접 이면 그라인딩</strong> — 맞대기 용접 이면 비드를 내면과 평활하게 제거.</li>
+      <li><strong>마모구간 커플링 금지</strong> — 그루브드 커플링의 간극은 침식 시작점. 마모 구간은 플랜지 접속으로 통일.</li>
+      <li><strong>회전 설치</strong> — 라이닝하지 않는 강관 스풀은 정기적으로 90° 회전 설치해 마모면을 분산.</li>
+    </ul>
+
+    <strong>⑤ 마모 감시</strong>
+    <ul class="text-small">
+      <li>모든 엘보 외측 힐에 <strong>UT 두께 측정점을 마킹</strong>하고 번호 부여 · 초기 두께 기록</li>
+      <li>측정 주기 — 세라믹 라이닝 6개월, 강관 장반경 3개월, 우레탄 라이닝 6개월. 최소 잔여두께 도달 시 교체</li>
+      <li>고위험 엘보 2–3개소에 <strong>마모 감지 파일럿 홀 또는 도전성 필름</strong>을 두어 관통 전에 경보</li>
+      <li>교체 시 <strong>스풀 단위 예비품</strong>을 보유해 정지시간을 최소화 (엘보 현장 절단·용접 금지 — 내경 단차 재발)</li>
+    </ul>
+
+    <p class="text-small dd-warning">상대 수명 배수는 업계 경험범위이며 입자 형상·경도·속도·온도에 따라 크게 달라집니다. 실제 적용 전 동일 서비스 실적과 제작사 보증, 그리고 현 라인의 마모 이력(구멍 위치·관통까지의 운전시간)을 대조해 확정하십시오.</p>
+  </details>
+
+  <details class="card hsg3d-validation" id="plant-panel-vibration" data-panel-id="vibration" data-panel-category="장비·공정">
+    <summary>진동 설계 — HSG-101 고속분쇄기 중심</summary>
+    <p class="text-small">HSG-101 은 Ø450 로터를 1,500 rpm 으로 돌립니다. 가진 1× <strong>25 Hz</strong>, 4날 통과 <strong>100 Hz</strong> 이며, 플랜트에서 진동 유발이 가장 큰 설비입니다.</p>
+
+    <strong>가진력 — 불평형이 자라면 어떻게 되는가</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="불평형별 가진력">
+      <thead><tr><th>상태</th><th class="text-end">잔류편심 e</th><th class="text-end">불평형 U</th><th class="text-end">가진력 (25 Hz)</th><th>등가 밸런싱 등급</th></tr></thead>
+      <tbody>
+        <tr><td>신품 밸런싱 (ISO 21940-11 G2.5)</td><td class="text-end">15.9 µm</td><td class="text-end">7 g·m</td><td class="text-end">177 N</td><td>G2.5</td></tr>
+        <tr><td>초기 마모</td><td class="text-end">50 µm</td><td class="text-end">23 g·m</td><td class="text-end">555 N</td><td>G7.9</td></tr>
+        <tr><td>날 편마모 진행</td><td class="text-end">100 µm</td><td class="text-end">45 g·m</td><td class="text-end">1,110 N</td><td>G15.7</td></tr>
+        <tr><td class="dd-warning">EVA 편측 부착＋날 결손</td><td class="text-end">250 µm</td><td class="text-end">113 g·m</td><td class="text-end dd-warning">2,776 N</td><td class="dd-warning">G39.3</td></tr>
+        <tr><td class="dd-warning">날 1매 탈락</td><td class="text-end">500 µm</td><td class="text-end">225 g·m</td><td class="text-end dd-warning">5,552 N</td><td class="dd-warning">G78.5</td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small">가진력은 편심에 <strong>비례</strong>하고 회전수의 <strong>제곱</strong>에 비례합니다(F = m·e·ω²). 로터 450 kg 가정.
+      즉 진동 문제의 본질은 설계보다 <strong>운전 중 불평형 증가</strong>이며, 냉각으로 EVA 부착을 막는 것이 진동 대책이기도 합니다.</p>
+
+    <strong>방진 마운트 선정 (전달률 T = 1/((f/f<sub>n</sub>)²−1), f = 25 Hz)</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="방진 마운트 선정">
+      <thead><tr><th class="text-end">고유진동수 f<sub>n</sub></th><th class="text-end">정적처짐</th><th class="text-end">전달률</th><th class="text-end">차단율</th><th>형식</th></tr></thead>
+      <tbody>
+        <tr><td class="text-end">10 Hz</td><td class="text-end">2.5 mm</td><td class="text-end">19.0%</td><td class="text-end">81.0%</td><td>고무패드 — 부족</td></tr>
+        <tr><td class="text-end">7.5 Hz</td><td class="text-end">4.4 mm</td><td class="text-end">9.9%</td><td class="text-end">90.1%</td><td>고무마운트 — 최소 수준</td></tr>
+        <tr><td class="text-end">5 Hz</td><td class="text-end">10.0 mm</td><td class="text-end">4.2%</td><td class="text-end">95.8%</td><td>저강성 고무</td></tr>
+        <tr><td class="text-end"><strong>4 Hz</strong></td><td class="text-end"><strong>15.6 mm</strong></td><td class="text-end"><strong>2.6%</strong></td><td class="text-end"><strong>97.4%</strong></td><td><strong>스프링 아이솔레이터 8점 — 채택</strong></td></tr>
+        <tr><td class="text-end">3 Hz</td><td class="text-end">27.8 mm</td><td class="text-end">1.5%</td><td class="text-end">98.5%</td><td>스프링＋관성블록</td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small">채택안에서 e = 250 µm 로 악화되어도 기초 전달력은 <strong>73 N</strong> 에 그칩니다(2,776 N × 2.6%).
+      기존 「방진마운트 8점」은 형식이 명시돼 있지 않았는데, <strong>정적처짐 15 mm 급 스프링</strong>으로 지정해야 이 성능이 나옵니다.
+      고무패드(처짐 2.5 mm)로는 81% 밖에 차단하지 못합니다.</p>
+
+    <strong>적용 설계</strong>
+    <ul class="text-small">
+      <li><strong>스프링 아이솔레이터 8점</strong> · 정적처짐 15 mm (f<sub>n</sub> 4 Hz) · 수평 스토퍼 내장 · 기동/정지 시 공진 통과용 스너버</li>
+      <li><strong>관성블록</strong> 기계질량 4.6 t 의 3배 = 13.8 t 콘크리트 (계 18.4 t) → 같은 스프링에서 진폭 1/4. 층상 설치 시 필수</li>
+      <li><strong>기초</strong> — 블록 기초 고유진동수를 25 Hz 와 100 Hz 에서 각각 ±25% 이상 이격. 지반·구조 연성 검토 필요</li>
+      <li><strong>로터 위험속도</strong> — 1차 굽힘 위험속도를 운전의 1.3배 이상, 즉 <strong>1,950 rpm 이상</strong>으로 확보</li>
+      <li><strong>밸런싱</strong> — 신품 ISO 21940-11 <strong>G2.5</strong> · 날은 <strong>중량 매칭 세트</strong>로만 교체(개별 교체 금지) · 라이너·날 교체 후 <strong>현장 트림 밸런싱</strong></li>
+      <li><strong>유연연결</strong> — 급기·배기 덕트, 냉각수 지관, 전기 배관을 모두 유연연결. 강접속은 아이솔레이터를 무력화하고 덕트에 균열을 만듦</li>
+      <li><strong>배관 지지</strong> — 방진 행거로 25 Hz·100 Hz 전달 차단 · 지지 간격을 배관 고유진동수가 100 Hz 를 피하도록 설정</li>
+    </ul>
+
+    <strong>감시 기준 (ISO 10816-3 · Group 2 · 유연지지)</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="진동 감시 기준">
+      <thead><tr><th>구역</th><th class="text-end">진동속도 rms</th><th>조치</th></tr></thead>
+      <tbody>
+        <tr><td>A — 신품 인수</td><td class="text-end">≤ 3.5 mm/s</td><td>시운전 합격 기준</td></tr>
+        <tr><td>B — 장기 연속운전 허용</td><td class="text-end">≤ 7.1 mm/s</td><td>정상 운전 범위</td></tr>
+        <tr><td class="dd-warning">C — 제한 운전</td><td class="text-end">≤ 11.0 mm/s</td><td class="dd-warning">경보 · 정비계획 수립 · 트림 밸런싱</td></tr>
+        <tr><td class="dd-warning">D — 손상 우려</td><td class="text-end">&gt; 11.0 mm/s</td><td class="dd-warning">트립 · 날·라이너 점검 후 재밸런싱</td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small">DE/NDE 베어링 하우징에 진동속도 센서를 두고 <strong>1× 25 Hz 성분과 4× 100 Hz 성분을 분리 추세관리</strong>합니다.
+      1× 상승은 불평형(부착·편마모), 4× 상승은 날·라이너 손상 또는 간극 이상을 뜻합니다. PT100 베어링 온도와 함께 봅니다.</p>
+
+    <p class="text-small dd-warning">로터 질량 450 kg 은 3D 형상에서 역산한 가정값이고, 기계질량 4.6 t 는 스키드 포함 예상값입니다.
+      제작사 실제 로터 질량·관성·1차 위험속도와 기초 지반 조건으로 다시 계산해야 하며, 관성블록 채택 여부는 구조 검토 결과에 따릅니다.</p>
   </details>
 
   <div hidden data-category-storage></div>
@@ -1826,7 +2019,7 @@ html>body{padding:0}</style>
   const categories = {
     operation: { label: "운전·제어", title: "통합운전·PLC", panels: ["master-plc", "dry-plc", "wet-plc"] },
     equipment: { label: "장비·공정", title: "영상·장비", panels: ["video-controls", "equipment"] },
-    process: { label: "장비·공정", title: "공정값·해석", panels: ["process-live", "analysis", "noise", "cooling"] },
+    process: { label: "장비·공정", title: "공정값·해석", panels: ["process-live", "analysis", "noise", "cooling", "piping", "vibration"] },
     layout: { label: "상세설계", title: "6개 장비 DD-R4 2D·3D 설치·전력·배치설계", panels: ["layout"] },
     maintenance: { label: "제작·설치", title: "BOM·체결구·설치 인터페이스", panels: ["maintenance"] },
     validation: { label: "검증·근거", title: "검수·데이터", panels: ["validation", "data-source"] }
@@ -15641,6 +15834,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addBox(parts.P01, { x: 5.00, y: 0.12, z: 0.14 }, { x: 0.25, y: 0.06, z: 0.73 }, material.frame, "P01");
     [-2.10, -1.25, -0.40, 0.45, 1.30, 2.15, 2.60].forEach((x) => {
       addBox(parts.P01, { x: 0.14, y: 0.12, z: 1.46 }, { x, y: 0.06, z: 0 }, material.frame, "P01");
+      // 25 Hz 가진에 대해 fn 4 Hz(정적처짐 15 mm) 스프링 8점 — 전달률 2.6%.
+      // 종전 「방진마운트 8점」은 형식이 없었고 고무패드(처짐 2.5 mm)면 81% 밖에 못 막는다.
+      [-0.62, 0.62].forEach((dz) => {
+        addBox(parts.P01, { x: 0.20, y: 0.020, z: 0.20 }, { x, y: -0.02, z: dz }, material.silverClamp, "P01");
+        for (let coil = 0; coil < 5; coil += 1) {
+          addMesh(parts.P01, new THREE.TorusGeometry(0.055, 0.010, 6, 20), material.safety,
+            { x, y: -0.005 + coil * 0.018, z: dz }, { x: Math.PI / 2 }, "P01", false);
+        }
+        addBox(parts.P01, { x: 0.22, y: 0.022, z: 0.22 }, { x, y: 0.088, z: dz }, material.silverClamp, "P01");
+      });
     });
     [-2.08, -0.55, 1.00, 2.58].forEach((x) => {
       [-0.71, 0.71].forEach((z) => {
@@ -15910,6 +16113,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addMesh(parts.P15, new THREE.CylinderGeometry(0.085, cycloneRadius, cycloneConeHeight, 48, 1, true), material.equipmentAir, { x: cycloneX, y: cycloneY - 0.54, z: cycloneZ }, null, "P15", true);
     addCylinder(parts.P15, 0.082, 0.42, { x: cycloneX, y: cycloneY + 0.32, z: cycloneZ }, material.equipmentAir, "P15", "y", 30, false);
     addBox(parts.P15, { x: 0.30, y: 0.18, z: 0.13 }, { x: cycloneX - 0.25, y: cycloneY + 0.12, z: cycloneZ + 0.20 }, material.equipmentAir, "P15", null, false);
+    // JK-CY101 이중자켓. 사이클론은 체류시간이 길고 벽면 접촉이 많아 EVA 가 가장 먼저
+    // 눌어붙는 지점이라, 열을 HX-101 한 곳에서만 빼지 않고 벽면을 직접 냉각한다.
+    addCylinder(parts.P15, cycloneRadius + 0.035, cycloneCylinderHeight - 0.04, { x: cycloneX, y: cycloneY, z: cycloneZ }, material.equipmentWater, "P15", "y", 48, true);
+    addMesh(parts.P15, new THREE.CylinderGeometry(0.12, cycloneRadius + 0.035, cycloneConeHeight - 0.06, 48, 1, true), material.equipmentWater, { x: cycloneX, y: cycloneY - 0.54, z: cycloneZ }, null, "P15", true);
+    for (let turn = 0; turn < 5; turn += 1) {
+      addMesh(parts.P15, new THREE.TorusGeometry(cycloneRadius + 0.036, 0.008, 6, 40), material.silverClamp,
+        { x: cycloneX, y: cycloneY - 0.20 + turn * 0.11, z: cycloneZ }, { x: Math.PI / 2 }, "P15", false);
+    }
+    addCylinder(parts.P15, 0.026, 0.14, { x: cycloneX + cycloneRadius + 0.10, y: cycloneY - 0.62, z: cycloneZ }, material.pipeWater, "P15", "x", 14, false);
+    addCylinder(parts.P15, 0.026, 0.14, { x: cycloneX + cycloneRadius + 0.10, y: cycloneY + 0.20, z: cycloneZ }, material.pipeWater, "P15", "x", 14, false);
     [[cycloneX - 0.22, cycloneZ - 0.20], [cycloneX + 0.22, cycloneZ + 0.20]].forEach(([x, z]) => {
       addBox(parts.P15, { x: 0.055, y: 1.02, z: 0.055 }, { x, y: 0.54, z }, material.frame, "P15");
       addBox(parts.P15, { x: 0.28, y: 0.05, z: 0.28 }, { x, y: 0.025, z }, material.frame, "P15");
@@ -16364,6 +16577,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addCylinder(parts.P21, 0.34, 0.58, { x: cyclone2Center.x, y: 1.54, z: cyclone2Center.z }, material.equipmentAir, "P21", "y", 48, true);
     addMesh(parts.P21, openFrustumGeometry(0.14, 0.14, 0.68, 0.68, 0.72), material.equipmentAir, { x: cyclone2Center.x, y: 0.53, z: cyclone2Center.z }, null, "P21", true);
     addCylinder(parts.P21, 0.12, 0.42, { x: cyclone2Center.x, y: 2.00, z: cyclone2Center.z }, material.equipmentAir, "P21", "y", 24, false);
+    // JK-CY201 이중자켓 (청정가스측이라 부하는 작지만 미분 부착은 같은 이유로 생긴다)
+    addCylinder(parts.P21, 0.375, 0.54, { x: cyclone2Center.x, y: 1.54, z: cyclone2Center.z }, material.equipmentWater, "P21", "y", 48, true);
+    addMesh(parts.P21, openFrustumGeometry(0.17, 0.17, 0.75, 0.75, 0.68), material.equipmentWater, { x: cyclone2Center.x, y: 0.53, z: cyclone2Center.z }, null, "P21", true);
+    for (let turn = 0; turn < 4; turn += 1) {
+      addMesh(parts.P21, new THREE.TorusGeometry(0.378, 0.008, 6, 40), material.silverClamp,
+        { x: cyclone2Center.x, y: 1.34 + turn * 0.13, z: cyclone2Center.z }, { x: Math.PI / 2 }, "P21", false);
+    }
+    addCylinder(parts.P21, 0.026, 0.14, { x: cyclone2Center.x + 0.44, y: 0.72, z: cyclone2Center.z }, material.pipeWater, "P21", "x", 14, false);
+    addCylinder(parts.P21, 0.026, 0.14, { x: cyclone2Center.x + 0.44, y: 1.74, z: cyclone2Center.z }, material.pipeWater, "P21", "x", 14, false);
     const rv202Rotor = new THREE.Group();
     rv202Rotor.position.set(cyclone2Center.x, 0.38, cyclone2Center.z);
     parts.P21.add(rv202Rotor);
