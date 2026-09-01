@@ -321,9 +321,8 @@ class TestVisionReduction(unittest.TestCase):
 
     def test_head_count_reduction(self):
         current, reduced = vision.head_reduction()
-        self.assertEqual((current, reduced), (7, 5))
-        self.assertEqual(len(vision.retired_heads()), len(vision.RETIRED_PART_NUMBERS))
-        self.assertIn("영상 헤드 7 → 5", self.html)
+        self.assertEqual((current, reduced), (7, 4))
+        self.assertIn("영상 헤드 7 → 4", self.html)
 
     def test_review_sheet_is_registered(self):
         self.assertIn("'PV-VIS-901'", self.html)

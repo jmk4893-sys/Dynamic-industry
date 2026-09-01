@@ -97,8 +97,10 @@ STATIONS: dict[str, Station] = {
                 (7050, 3050, 2800), 900),
         Station("afr", "PV-AFR-101-GA-4101", "AFR-101 · 알루미늄 프레임 분리셀",
                 (11500, 4700, 2800), 950),
-        Station("post", "PV-GLASS-301-GA-5101", "CV-102/GI-301 · SG-301 · GI-302 유리 후단",
-                (9400, 4900, 2800), 950),
+        # V-4 적용: 잔사 검사와 레시피 판정을 연마 후 한 광학 스테이션으로 통합.
+        # CV-102 는 광학을 떼고 이송만 3,700→2,800, 통합 검사대는 2,000→2,400. 순 −500 mm.
+        Station("post", "PV-GLASS-301-GA-5101", "CV-102 · SG-301 · GI-301/302 통합 유리 후단",
+                (8900, 4900, 2800), 950),
         # X 7,000 → 8,700: R-A/R-B 캐리지 2열의 부품 실측 span 이 8,675 라 외형을 넘었다.
         Station("buffer", "PV-GBR-301-GA-5201", "GBR-301 · R-A/R-B/HOLD 레시피 버퍼",
                 (8700, 7100, 2800), 1050),
@@ -113,7 +115,7 @@ ZONE_SEED: tuple[tuple[str, str, int, str, tuple[int, int, int] | None], ...] = 
     ("jbr", "JBR-201", 2025, "케이블·JBOX", None),
     ("gate", "JB/AFR", 2450, "MAP", (HANDOFF_CLEARANCE_MM, 2200, 2800)),
     ("afr", "AFR-101", 1200, "단축→장축", None),
-    ("post", "CV/GI · SG · GI", 1100, "검사·연마·판정", None),
+    ("post", "CV · SG · GI", 1100, "이송·연마·통합검사", None),
     ("buffer", "GBR · BUFFER", 0, "R-A/R-B/HOLD", None),
 )
 

@@ -59,7 +59,7 @@ FEEDERS: tuple[Feeder, ...] = (
            6.5, 0.80, 20, "4C×4 mm² Cu", "GA 명시"),
     Feeder("F4", "LP-AFR", "HPU-601 7.5 kW · 장축 LM 캐리지 4축",
            11.5, 0.70, 32, "4C×10 mm² Cu", "GA 명시(HPU)"),
-    Feeder("F5", "LP-GLASS", "SG-301 양측 연마 · CV-102/GI-301 · GI-302 광학",
+    Feeder("F5", "LP-GLASS", "SG-301 양측 연마 · CV-102 이송 · GI-301/302 통합 광학검사",
            9.0, 0.70, 32, "4C×6 mm² Cu", "계획"),
     Feeder("F6", "LP-GBR", "GBR-301 수평셔틀 서보 · 도킹 도크",
            4.0, 0.50, 16, "4C×4 mm² Cu", "계획"),
