@@ -1656,6 +1656,7 @@ html>body{padding:0}</style>
           <tr><td>어트리션·부유선별 수치모델</td><td>TK-001·AS-101·TK-101·FC-201/202/203</td><td>40 L·600 rpm·5분, 부선 180/190/30 L 운전값 적용</td></tr>
           <tr><td>필터프레스 설계-3D</td><td>CF-204·FP-301·TK-401·P-401</td><td>정광/광미 분리탈수와 여액회수 연동</td></tr>
           <tr><td>신규 통합부</td><td>SS-201 &lt;75 µm → VR-401→BH-101→RV-401→SF-401→WC-401</td><td>진공승강·밀폐 완충·정량·습윤 후 TK-001/AS-101 공급</td></tr>
+          <tr><td>구동부 명판 회전수</td><td>ICSH-301 상부 12 / 하부 20 rpm · HSG-101 로터 1,500 rpm · SV-201 25 Hz · 그 외 DRIVE_RPM 표</td><td>화면 회전은 명판값에서 유도하되 60 fps 앨리어싱 한계(0.18 rev/frame ≈ 648 rpm)에서 접어 표시 · HSG-101 충격 해석은 접촉 솔버 전용 각속도(5.2 rad/s)를 유지하고 충격에너지는 명판 1,500 rpm 선단속도로 계산</td></tr>
         </tbody>
       </table>
     </div>
@@ -15313,7 +15314,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     [-1.72, 1.72].forEach((dx) => [-1.02, 1.02].forEach((z) => addCylinder(parts.P23, 0.065, 0.10, { x: shredderCenter.x + dx, y: -0.01, z }, material.shredPanel, "P23", "y", 20, false)));
     addBox(parts.P23, { x: 2.58, y: 1.84, z: 2.16 }, { x: shredderCenter.x, y: 1.08, z: 0 }, material.shredShell, "P23");
     addBox(parts.P23, { x: 2.48, y: 1.66, z: 0.040 }, { x: shredderCenter.x, y: 1.10, z: 1.10 }, material.shredPanel, "P23");
-    [-0.62, 0.62].forEach((dx) => addBox(parts.P23, { x: 1.13, y: 1.50, z: 0.032 }, { x: shredderCenter.x + dx, y: 1.10, z: 1.125 }, material.cover, "P23"));
+    [-0.68, 0.68].forEach((dx) => addBox(parts.P23, { x: 1.01, y: 1.50, z: 0.032 }, { x: shredderCenter.x + dx, y: 1.10, z: 1.125 }, material.cover, "P23"));
     addMesh(parts.P23, openFrustumGeometry(1.60, 0.85, 2.80, 1.80, 1.20), material.shredMetal, { x: shredderCenter.x, y: 2.00, z: 0 }, null, "P23", true);
 
     // Rev.G dual anti-ejection system: 11 pendulum flaps, chain curtain and deflector.
@@ -15355,6 +15356,17 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         addBox(shredderShaftA, { x: 0.026, y: 0.105, z: 0.055 }, { x, y: Math.cos(angle) * 0.205, z: Math.sin(angle) * 0.205 }, material.knife, "P24", { x: angle }, false);
       }
     }
+    // Non-drive end carried through the +X wall: stub, 8-slot target wheel, index flag.
+    addCylinder(shredderShaftA, 0.055, 0.36, { x: 1.34, y: 0, z: 0 }, material.silverClamp, "P24", "x", 24, false);
+    addCylinder(shredderShaftA, 0.095, 0.018, { x: 1.46, y: 0, z: 0 }, material.silverClamp, "P24", "x", 40, false);
+    for (let slot = 0; slot < 8; slot += 1) {
+      const angle = Math.PI * 2 * slot / 8;
+      addBox(shredderShaftA, { x: 0.022, y: 0.040, z: 0.026 }, {
+        x: 1.468, y: Math.cos(angle) * 0.072, z: Math.sin(angle) * 0.072
+      }, material.dark, "P24", { x: angle }, false);
+    }
+    addBox(shredderShaftA, { x: 0.012, y: 0.058, z: 0.034 }, { x: 1.478, y: 0.055, z: 0 }, material.safety, "P24", null, false);
+
     shredderShaftB.position.set(shredderCenter.x, 1.16, 0);
     parts.P24.add(shredderShaftB);
     addCylinder(shredderShaftB, 0.065, 2.02, { x: 0, y: 0, z: 0 }, material.silverClamp, "P24", "z", 32, false);
@@ -15368,6 +15380,23 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         }
       }
     }
+
+    // Non-drive end carried through the +Z wall, between the two access covers.
+    addCylinder(shredderShaftB, 0.052, 0.36, { x: 0, y: 0, z: 1.16 }, material.silverClamp, "P24", "z", 24, false);
+    addCylinder(shredderShaftB, 0.088, 0.018, { x: 0, y: 0, z: 1.28 }, material.silverClamp, "P24", "z", 40, false);
+    for (let slot = 0; slot < 8; slot += 1) {
+      const angle = Math.PI * 2 * slot / 8;
+      addBox(shredderShaftB, { x: 0.040, y: 0.022, z: 0.026 }, {
+        x: Math.cos(angle) * 0.066, y: Math.sin(angle) * 0.066, z: 1.288
+      }, material.dark, "P24", { z: angle }, false);
+    }
+    addBox(shredderShaftB, { x: 0.054, y: 0.012, z: 0.034 }, { x: 0.052, y: 0, z: 1.298 }, material.safety, "P24", null, false);
+
+    // Fixed bearing housings and speed pickups for the two indexed shaft ends.
+    addBox(parts.P24, { x: 0.22, y: 0.28, z: 0.28 }, { x: shredderCenter.x + 1.30, y: 1.58, z: 0 }, material.shredPanel, "P24");
+    addCylinder(parts.P24, 0.020, 0.10, { x: shredderCenter.x + 1.468, y: 1.75, z: 0 }, material.motor, "P24", "y", 18, false);
+    addBox(parts.P24, { x: 0.28, y: 0.28, z: 0.22 }, { x: shredderCenter.x, y: 1.16, z: 1.14 }, material.shredPanel, "P24");
+    addCylinder(parts.P24, 0.020, 0.10, { x: shredderCenter.x, y: 1.33, z: 1.288 }, material.motor, "P24", "y", 18, false);
 
     // Independent VFD drives: upper 22 kW / 12 rpm, lower 18.5 kW / 20 rpm.
     const upperMotorCenter = new THREE.Vector3(shredderCenter.x - 1.66, 1.58, 0);
@@ -15500,6 +15529,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     [0.82, 1.18].forEach((y) => {
       addCylinder(parts.P02, 0.032, 0.11, { x: grinderX - 0.50, y, z: 0.41 }, material.frame, "P02", "y", 18);
     });
+    // SE-101 speed pickup: bracket off the cover, barrel sensor aimed at the target wheel rim.
+    addBox(parts.P02, { x: 0.045, y: 0.30, z: 0.030 }, { x: grinderX, y: grinderY + 0.30, z: 0.47 }, material.frame, "P02", null, false);
+    addCylinder(parts.P02, 0.020, 0.11, { x: grinderX, y: grinderY + 0.175, z: 0.505 }, material.motor, "P02", "y", 18, false);
     addBox(parts.P03, { x: 0.42, y: 0.13, z: 0.34 }, { x: grinderX, y: 1.48, z: 0 }, material.frame, "P03");
     addMesh(parts.P03, frustumGeometry(0.34, 0.28, 0.70, 0.52, 0.60), material.shell, { x: grinderX, y: 1.51, z: 0 }, null, "P03", true);
     addBox(parts.P03, { x: 0.74, y: 0.07, z: 0.055 }, { x: grinderX, y: 2.14, z: -0.285 }, material.frame, "P03");
@@ -15535,6 +15567,21 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addCylinder(rotorPivot, 0.060, 1.12, { x: 0, y: 0, z: 0 }, material.frame, "P04", "z", 36);
     addCylinder(rotorPivot, 0.15, 0.40, { x: 0, y: 0, z: 0 }, material.frame, "P04", "z", 44);
     [-0.16, 0, 0.16].forEach((z) => addCylinder(rotorPivot, 0.30, 0.030, { x: 0, y: 0, z }, material.frame, "P04", "z", 48));
+
+    // Non-drive shaft end (z 0.41-0.56 is clear of the cover and its bolt circle):
+    // 12-slot target wheel + one high-visibility index flag, plus the fixed proximity
+    // sensor that reads it. Children of rotorPivot, so they turn with the rotor.
+    addCylinder(rotorPivot, 0.105, 0.016, { x: 0, y: 0, z: 0.50 }, material.silverClamp, "P04", "z", 48, false);
+    for (let slot = 0; slot < 12; slot += 1) {
+      const angle = Math.PI * 2 * slot / 12;
+      addBox(rotorPivot, { x: 0.028, y: 0.042, z: 0.020 }, {
+        x: Math.cos(angle) * 0.082,
+        y: Math.sin(angle) * 0.082,
+        z: 0.505
+      }, material.dark, "P04", { z: angle }, false);
+    }
+    addBox(rotorPivot, { x: 0.038, y: 0.066, z: 0.012 }, { x: 0, y: 0.062, z: 0.514 }, material.safety, "P04", null, false);
+    addCylinder(rotorPivot, 0.040, 0.030, { x: 0, y: 0, z: 0.522 }, material.dark, "P04", "z", 20, false);
 
     const knifePivot = new THREE.Group();
     knifePivot.position.set(grinderX, grinderY, 0);
@@ -15616,6 +15663,19 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const beltNormal = new THREE.Vector2(-beltAxis.y, beltAxis.x);
     const BELT_PITCH_RADIUS = 0.18;
     const MOTOR_PULLEY_RADIUS = 0.20;
+    // Ø392 driven over Ø400 motor: the motor turns 0.98× the rotor, so a 1,500 rpm
+    // rotor puts M-101 at 1,470 rpm. Previously written inline as the literal 196/200.
+    const GRINDER_BELT_RATIO = 0.196 / MOTOR_PULLEY_RADIUS;
+    // The cannon-es blades are kinematic bodies teleported once per frame, and the particle
+    // stabiliser was calibrated against this sweep rate. Stepping them at the nameplate
+    // speed instead measured 13 numerical resets and product out falling 2.82 -> 0.78 kg
+    // over the same 7 process-minutes: the blades simply launch particles out of the
+    // chamber. So the impact solver keeps this rate while everything drawn — rotor, knives,
+    // pulleys, belt, motor fan and the SE-101 target wheel — runs at DRIVE_RPM.grinderRotor.
+    // Fracture events are gated by contactCooldown and requiredImpacts, not by blade phase,
+    // and at the drawn speed the four arms are an unresolvable blur, so the two rates are
+    // not visibly in conflict. Impact energy still comes from ROTOR_TIP_SPEED_MS (1,500 rpm).
+    const SOLVER_ROTOR_OMEGA = 5.2;   // rad/s · 접촉 해석 전용
     const beltLoopLength = beltSpan * 2 + Math.PI * BELT_PITCH_RADIUS * 2;
     const BELT_SEGMENTS_PER_GROOVE = 44;
     const BELT_GROOVES = 4;
@@ -15833,6 +15893,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       shredderFeedRoller: 25,     // 가정 · 압입롤
       shredderAntiBridge: 18,     // 가정 · 브리징축
       shredderMotorFan: 1750,     // 가정 · 4극 60 Hz
+      grinderRotor: 1500,         // 명판 · HSG-101 로터 Ø450 × 1,500 rpm
       returnRotaryValve: 32,      // 명판 · SCV-R1 계열 로터리
       productRotaryValve: 38,     // 명판 · 제품측 로터리
       inducedFan: 1750,           // 가정 · 4극 60 Hz ID 팬
@@ -17494,7 +17555,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const MODEL_PRODUCT_DMAX_MM = 0.5000;
     const RETURN_PASS_RECYCLE_FRACTION = 0.368037;
     const ROTOR_DIAMETER_M = 0.45;
-    const ROTOR_RPM = 1500;
+    const ROTOR_RPM = DRIVE_RPM.grinderRotor;
     const MOTOR_POWER_KW = 37;
     const TRANSFER_REQUIRED_KGH = 400;
     const TRANSFER_SCREW_RPM = 55;
@@ -17558,8 +17619,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     root.querySelector("[data-hsg-duct-velocity]").textContent = PNEUMATIC_DUCT_VELOCITY_MS.toFixed(1);
     root.querySelector("[data-hsg-pressure-drop]").textContent = PNEUMATIC_PRESSURE_DROP_KPA.toFixed(1);
     let randomSeed = 450350;
+    // rotorAngle is the impact solver's angle; rotorDisplayAngle is what is drawn. See
+    // SOLVER_ROTOR_OMEGA below for why the two are not the same number.
     let rotorAngle = 0;
     let previousRotorAngle = 0;
+    let rotorDisplayAngle = 0;
     let motorAngle = 0;
     let beltPhase = 0;
     let lastFrame = performance.now();
@@ -18076,6 +18140,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       state.running = masterPlcState.line === "run" && masterPlcState.feedRelease && plcState.line === "run" && wetPlcState.line === "run";
       rotorAngle = 0;
       previousRotorAngle = 0;
+      rotorDisplayAngle = 0;
       motorAngle = 0;
       beltPhase = 0;
       shredderShaftA.rotation.x = 0;
@@ -18111,23 +18176,29 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
 
     function updateBladeBodies(dt) {
-      const visualOmega = 5.2;
+      // The rotor used to be animated at a hard-coded 5.2 rad/s (~50 rpm) while every
+      // process number on the page was computed from the 1,500 rpm nameplate. It now runs
+      // from DRIVE_RPM like every other shaft; shaftRadians folds the drawn rate down to
+      // DISPLAY_REV_PER_FRAME so the four-armed rotor blurs instead of aliasing backwards.
+      const rotorStep = shaftRadians(DRIVE_RPM.grinderRotor, dt);
+      const motorStep = rotorStep * GRINDER_BELT_RATIO;
+      const motorOmega = dt > 0 ? motorStep / dt : 0;
+      rotorDisplayAngle += rotorStep;
+      motorAngle += motorStep;
       previousRotorAngle = rotorAngle;
-      rotorAngle += visualOmega * dt;
-      motorAngle += visualOmega * dt * (196 / 200);
-      const motorVisualOmega = visualOmega * (196 / 200);
-      beltPhase = (beltPhase - motorVisualOmega * MOTOR_PULLEY_RADIUS * dt / beltLoopLength + 1) % 1;
+      rotorAngle += SOLVER_ROTOR_OMEGA * dt;
+      beltPhase = (beltPhase - motorOmega * MOTOR_PULLEY_RADIUS * dt / beltLoopLength + 1) % 1;
       for (let i = 0; i < bladeBodies.length; i += 1) {
         const angle = rotorAngle + i * Math.PI / 2;
         const body = bladeBodies[i];
         body.position.set(grinderX + Math.cos(angle) * BLADE_RADIUS, grinderY + Math.sin(angle) * BLADE_RADIUS, 0);
         body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), angle);
-        body.velocity.set(-Math.sin(angle) * BLADE_RADIUS * visualOmega, Math.cos(angle) * BLADE_RADIUS * visualOmega, 0);
-        body.angularVelocity.set(0, 0, visualOmega);
+        body.velocity.set(-Math.sin(angle) * BLADE_RADIUS * SOLVER_ROTOR_OMEGA, Math.cos(angle) * BLADE_RADIUS * SOLVER_ROTOR_OMEGA, 0);
+        body.angularVelocity.set(0, 0, SOLVER_ROTOR_OMEGA);
       }
-      rotorPivot.rotation.z = rotorAngle;
-      knifePivot.rotation.z = rotorAngle;
-      drivenPulley.rotation.z = rotorAngle;
+      rotorPivot.rotation.z = rotorDisplayAngle;
+      knifePivot.rotation.z = rotorDisplayAngle;
+      drivenPulley.rotation.z = rotorDisplayAngle;
       motorPulley.rotation.z = motorAngle;
       motorFan.rotation.z = motorAngle;
       motorShaftRotor.rotation.z = motorAngle;
@@ -19995,7 +20066,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         // VR-201/VR-401 공통 진공펌프. 2대 설치 1대 운전이므로 연결부하는 15.0 kW,
         // 최대수요는 7.5 kW 로 계상한다. 종전 PC-202/PC-401 은 전력 스케줄에
         // 계상돼 있지 않았고 예비기도 없었다.
-        {tag:"VP-401A/B",qty:2,duty:1,kw:7.5,drive:"VFD · A/B 듀티교대",status:"용량 vendor HOLD · 인입강하 2.31%로 분기 여유 0.69% · 분기 15 m 초과 시 4 mm²"},
+        {tag:"VP-401A/B",qty:2,duty:1,kw:7.5,drive:"VFD · A/B 듀티교대",status:"용량 vendor HOLD · 인입강하 2.31%로 분기 여유 0.69% · 실측 15 m 에서 2.5→4 mm² 증경"},
         {tag:"CP-SV-201",qty:1,duty:1,kw:0.18,drive:"380/220 V TR+24 VDC SMPS",status:"예비 보조부하"}
       ]
     },
@@ -20036,11 +20107,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
   };
   const feederCurrent = (kw) => kw * 1000 / (Math.sqrt(3) * electricalBasis.voltage * electricalBasis.efficiency * electricalBasis.powerFactor);
-  // Branch runs are not dimensioned in this model, so a nominal length is used for the
-  // drop check and stated with the result. Sizing on ampacity alone (Iz >= In) let a
+  // Branch run length for the drop check — 15 m from the site survey. Sizing on ampacity alone (Iz >= In) let a
   // 7.5 kW branch land on 2.5 mm², which clears the breaker but not the 3% limit once the
   // feeder has already spent most of the budget.
-  const BRANCH_ROUTE_LENGTH_M = 25;
+  const BRANCH_ROUTE_LENGTH_M = 15;   // 실측 배선 길이
   const cableDropPct = (current, size, lengthM) => {
     const resistance = 22.31 / size;
     const reactance = 0.08;
@@ -20095,13 +20165,25 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
   plantPower.transformerKva = transformerRatings.find((rating) => rating >= plantPower.demandKva * 1.25)
     ?? transformerRatings.at(-1);
   plantPower.transformerLoadingPct = plantPower.demandKva / plantPower.transformerKva * 100;
+  // LCP enclosure size, shared by the 3D panel, its BOM rows and the panel wiring diagram.
+  const PANEL_ASSEMBLY="전력 인입·LCP";
+  const PANEL_W=.62, PANEL_H=1.25, PANEL_D=.32;
   const powerBom = (key,prefix) => {
     const power = powerPackages[key];
     return [
       {code:`EL-${prefix}-01`,assembly:"전력 인입·LCP",name:`${power.panel} 동력·제어반`,qty:1,material:"SS400 epoxy / Vendor",spec:`${power.isolatorA} A bus · ${power.ip} · IEC 61439-1/-2`,note:"SCCR·온도상승·회로분리 설계검증"},
       {code:`EL-${prefix}-02`,assembly:"전력 인입·LCP",name:"잠금형 주전원 개폐기",qty:1,material:"Vendor",spec:`${power.isolatorA} A · 3P · AC-23A · door interlock`,note:"LOTO용 · STO는 전기적 격리 대체 불가"},
       {code:`EL-${prefix}-03`,assembly:"전력 인입·LCP",name:"주전원 인입 케이블",qty:1,material:"Cu/XLPE/PVC",spec:`3×${power.cable.size} mm² + PE ${power.pe} mm² · 0.6/1 kV`,note:"길이·포설·단락내량 확정 후 발주"},
-      {code:`EL-${prefix}-04`,assembly:"전력 인입·LCP",name:"PE 바·등전위 본딩 세트",qty:1,material:"Tinned Cu / braid",spec:`PE ${power.pe} mm² + M8 bonding studs`,note:"스키드·모터·배관·덕트·가드 연속성 시험"}
+      {code:`EL-${prefix}-04`,assembly:"전력 인입·LCP",name:"PE 바·등전위 본딩 세트",qty:1,material:"Tinned Cu / braid",spec:`PE ${power.pe} mm² + M8 bonding studs`,note:"스키드·모터·배관·덕트·가드 연속성 시험"},
+      // 내부 배선 구성품: 3D 분전반 내부와 분전반 배선도가 같은 목록을 쓴다.
+      {code:`EL-${prefix}-05`,assembly:"전력 인입·LCP",name:"기기 취부판",qty:1,material:"아연도강판 2.0 t",spec:`${Math.round((PANEL_W-.06)*1000)} × ${Math.round((PANEL_H-.06)*1000)} mm`,note:"PE 본딩 스터드 포함"},
+      {code:`EL-${prefix}-06`,assembly:"전력 인입·LCP",name:"DIN 레일·배선덕트",qty:4,material:"EN 60715 TH35 / PVC",spec:"TH35 × 4단 · 덕트 40 × 60",note:"동력·제어 덕트 분리"},
+      {code:`EL-${prefix}-07`,assembly:"전력 인입·LCP",name:"3상 부스바",qty:3,material:"Cu 도금",spec:`${power.isolatorA} A · L1/L2/L3`,note:"단락강도 SCCR 검증 후 확정"},
+      {code:`EL-${prefix}-08`,assembly:"전력 인입·LCP",name:"반내 배선 세트",qty:1,material:"H07V-K / 제어 0.75 mm²",spec:"IEC 60446 상색 L1 갈·L2 흑·L3 회 · 제어 청",note:"동력·제어 이격 포설"},
+      {code:`EL-${prefix}-09`,assembly:"전력 인입·LCP",name:"VFD",qty:power.branches.filter((branch) => /VFD/.test(branch.drive)).length,material:"Vendor",spec:"STO 내장 · 입력 리액터/EMC 필터",note:"고조파·케이블 길이 제한 확인"},
+      {code:`EL-${prefix}-10`,assembly:"전력 인입·LCP",name:"제어전원 TR＋24 VDC SMPS",qty:1,material:"Vendor",spec:"380/220 V 절연변압기 → 24 VDC PELV",note:"제어회로 접지방식 확정 HOLD"},
+      {code:`EL-${prefix}-11`,assembly:"전력 인입·LCP",name:"원격 I/O",qty:1,material:"Vendor",spec:`PROFINET · DO ${power.branches.length} / DI ${power.branches.length}`,note:"PLC-001/101/401 연동"},
+      {code:`EL-${prefix}-12`,assembly:"전력 인입·LCP",name:"출력 단자대",qty:1,material:"스프링 클램프",spec:`${power.branches.length * 4} 극 + PE`,note:"현장 케이블 번호 결선표 기준"}
     ];
   };
   const equipments = {
@@ -20591,6 +20673,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
             <button class="btn" type="button" data-dd-mode="xray" aria-pressed="false">투명 내부</button>
             <button class="btn" type="button" data-dd-mode="exploded" aria-pressed="false">3D 분해</button>
             <button class="btn" type="button" data-dd-mode="fasteners" aria-pressed="false">볼트·너트 강조</button>
+            <button class="btn" type="button" data-dd-panel-open aria-pressed="false">분전반 열기</button>
           </div>
           <div class="dd-camera-nav" aria-label="3D 카메라 보기">
             <button class="btn btn-ghost" type="button" data-dd-camera="iso">등각</button><button class="btn btn-ghost" type="button" data-dd-camera="front">정면</button><button class="btn btn-ghost" type="button" data-dd-camera="top">평면</button><button class="btn btn-ghost" type="button" data-dd-camera="side">측면</button>
@@ -20605,7 +20688,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         </div>
       </div>
       <hr>
-      <div class="dd-view-nav" aria-label="2D 투상도 선택"><button class="btn btn-primary" type="button" data-dd-view="front" aria-pressed="true">정면도</button><button class="btn" type="button" data-dd-view="top" aria-pressed="false">평면도</button><button class="btn" type="button" data-dd-view="side" aria-pressed="false">측면도</button><button class="btn" type="button" data-dd-view="section" aria-pressed="false">단면·체결 상세</button><button class="btn" type="button" data-dd-view="foundation" aria-pressed="false">기초·앵커 평면</button><button class="btn" type="button" data-dd-view="power" aria-pressed="false">전력 인입 단선도</button><button class="btn" type="button" data-dd-view="motor" aria-pressed="false">주회로도</button><button class="btn" type="button" data-dd-view="plc" aria-pressed="false">PLC 제어회로도</button><button class="btn" type="button" data-dd-view="interconnect" aria-pressed="false">결선·연결도</button></div>
+      <div class="dd-view-nav" aria-label="2D 투상도 선택"><button class="btn btn-primary" type="button" data-dd-view="front" aria-pressed="true">정면도</button><button class="btn" type="button" data-dd-view="top" aria-pressed="false">평면도</button><button class="btn" type="button" data-dd-view="side" aria-pressed="false">측면도</button><button class="btn" type="button" data-dd-view="section" aria-pressed="false">단면·체결 상세</button><button class="btn" type="button" data-dd-view="foundation" aria-pressed="false">기초·앵커 평면</button><button class="btn" type="button" data-dd-view="power" aria-pressed="false">전력 인입 단선도</button><button class="btn" type="button" data-dd-view="motor" aria-pressed="false">주회로도</button><button class="btn" type="button" data-dd-view="plc" aria-pressed="false">PLC 제어회로도</button><button class="btn" type="button" data-dd-view="interconnect" aria-pressed="false">결선·연결도</button><button class="btn" type="button" data-dd-view="panelwiring" aria-pressed="false">분전반 배선도</button></div>
       <div class="dd-drawing-wrap"><svg class="dd-drawing" data-dd-drawing viewBox="0 0 1200 760" role="img" aria-label="선택 장비 2D 상세도"></svg></div>
       <details><summary>전체 상세배치도 · 건식/습식 2구역 · 장비별 배치</summary>
         <div class="dd-view-nav" aria-label="상세 배치도 선택">${Object.entries(layoutLabels).map(([key,label],i)=>`<button class="btn${i===0?" btn-primary":""}" type="button" data-dd-layout="${key}" aria-pressed="${i===0}">${label}</button>`).join("")}</div>
@@ -20623,10 +20706,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         <strong>6개 장비 전력 부하·인입 요약</strong>
         <div class="table-responsive"><table class="table table-sm"><thead><tr><th>장비 / 패널</th><th class="text-end">연결부하</th><th class="text-end">최대수요</th><th class="text-end">운전전류</th><th class="text-end">설계전류</th><th>인입 MCCB</th><th>주전원 케이블 / PE</th><th class="text-end">50 m 전압강하</th></tr></thead><tbody data-dd-plant-power-body></tbody></table></div>
         <strong>선택 장비 분기회로</strong>
-        <div class="table-responsive"><table class="table table-sm"><thead><tr><th>부하 Tag</th><th>수량 / 운전</th><th class="text-end">개별 정격</th><th>기동방식</th><th class="text-end">계산전류</th><th>예비 보호기기</th><th>분기 케이블 / PE</th><th class="text-end">분기 ΔU / 누적</th><th>설계상태</th></tr></thead><tbody data-dd-power-branch-body></tbody></table></div>
+        <div class="table-responsive"><table class="table table-sm"><thead><tr><th>부하 Tag</th><th>수량 / 운전</th><th class="text-end">개별 정격</th><th>기동방식</th><th class="text-end">계산전류</th><th>예비 보호기기</th><th>분기 케이블 / PE</th><th class="text-end">분기 ΔU (${BRANCH_ROUTE_LENGTH_M} m) / 누적</th><th>설계상태</th></tr></thead><tbody data-dd-power-branch-body></tbody></table></div>
         <strong>전력 설치·검사 HOLD</strong>
         <div class="table-responsive"><table class="table table-sm"><thead><tr><th>ID</th><th>단계</th><th>검사항목</th><th>필수 기록</th><th>Gate</th></tr></thead><tbody data-dd-power-hold-body></tbody></table></div>
-        <p class="text-small dd-warning">표시 케이블은 Cu/XLPE 90°C·트레이 1회로·주위 40°C·거리 50 m의 예비선정입니다. 현장 단락전류, 실제 길이, 집합·주위온도, 토양/트레이 조건, VFD 제조사 보호기기와 관할 KEC 검토 후 확정합니다.</p>
+        <p class="text-small dd-warning">인입은 거리 50 m, 분기는 실측 배선 길이 ${BRANCH_ROUTE_LENGTH_M} m 기준이며 Cu/XLPE 90°C·트레이 1회로·주위 40°C 예비선정입니다. 현장 단락전류, 실제 길이, 집합·주위온도, 토양/트레이 조건, VFD 제조사 보호기기와 관할 KEC 검토 후 확정합니다.</p>
       </details>
       <details><summary>인양계획·설치 순서</summary><div class="table-responsive"><table class="table table-sm"><thead><tr><th>인양품</th><th>예상질량</th><th>인양점</th><th>최소 SWL</th><th>인출/인양 경로</th></tr></thead><tbody data-dd-lifting-body></tbody></table></div><ol data-dd-erection></ol></details>
       <details><summary>제작·설치·시운전 검사 및 HOLD</summary><div class="dd-interface-grid"><div><strong>장비 성능검사</strong><ul data-dd-acceptance></ul></div><div><strong>적용 설계기준</strong><ul data-dd-standards></ul></div></div><div class="table-responsive"><table class="table table-sm"><thead><tr><th>ID</th><th>단계</th><th>검사항목</th><th>필수 기록</th><th>Gate</th></tr></thead><tbody data-dd-hold-body></tbody></table></div></details>
@@ -20644,7 +20727,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       <details><summary>도면·제작 데이터 계층</summary><div class="table-responsive"><table class="table table-sm"><tbody><tr><th>총조립도 GA</th><td>외형·중량중심·인양·정비공간·기초·노즐 방향</td></tr><tr><th>배치도 LAY</th><td>전체·건식·습식 2구역·장비별 좌표·정비공간·공정흐름</td></tr><tr><th>제작도 FAB</th><td>용접구조·판재·축·로터·탱크·스키드 치수와 공차</td></tr><tr><th>조립도 ASSY</th><td>베어링·씰·구동·메시·임펠러·필터판 조립 순서</td></tr><tr><th>체결도 FST</th><td>볼트·너트·평와셔·잠금와셔/웨지락·앵커 위치와 수량</td></tr><tr><th>전력도 ELD</th><td>380 V·3Φ·60 Hz 단선도, 부하·차단기·케이블·PE·LOTO·검사게이트</td></tr><tr><th>설치도 DD-R4 / IFC-HOLD</th><td>앵커좌표·노즐·전원·계장·인양·설치순서·검사게이트. 현장·법정검토 완료 후 IFC 전환</td></tr></tbody></table></div></details>
     </div>`;
 
-  const state = { equipment:"shredder", view:"front", layout:"overall", mode:"assembled", explode:0, assembly:"전체", selectedCode:null };
+  const state = { equipment:"shredder", view:"front", layout:"overall", mode:"assembled", explode:0, assembly:"전체", selectedCode:null, panelOpen:false };
   const allEquipmentButtons = [...root.querySelectorAll("[data-dd-equipment]")];
   const allAssemblyNavs = [...root.querySelectorAll("[data-dd-assembly-nav]")];
   const drawingSvg = root.querySelector("[data-dd-drawing]");
@@ -20784,7 +20867,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     torqueBody.innerHTML=fasteners.map(row=>{const t=torqueGuidance(row);return`<tr><td>${esc(row.code)}</td><td>${esc(row.spec)} / ${esc(row.material)}</td><td class="text-end">${row.qty}</td><td>${esc(t.preload)}</td><td>${esc(t.torque)}</td><td>${esc(t.method)}</td></tr>`;}).join("");
   }
 
-  const viewLabels={front:"정면도",top:"평면도",side:"측면도",section:"A-A 단면·체결상세",foundation:"기초·앵커 평면",power:"380 V 전력 인입 단선도",motor:"주회로도",plc:"PLC 제어회로도",interconnect:"결선·연결도"};
+  const viewLabels={front:"정면도",top:"평면도",side:"측면도",section:"A-A 단면·체결상세",foundation:"기초·앵커 평면",power:"380 V 전력 인입 단선도",motor:"주회로도",plc:"PLC 제어회로도",interconnect:"결선·연결도",panelwiring:"분전반 배선도"};
   function dim(x1,y1,x2,y2,label,offset=0) {
     const vertical=Math.abs(y2-y1)>Math.abs(x2-x1);
     if(vertical){const x=x1+offset;return `<path class="dd-ext" d="M${x1} ${y1}H${x+8}M${x2} ${y2}H${x+8}"/><path class="dd-dim" d="M${x} ${y1}V${y2}"/><text x="${x+8}" y="${(y1+y2)/2}" transform="rotate(-90 ${x+8} ${(y1+y2)/2})" text-anchor="middle">${esc(label)}</text>`;}
@@ -20908,6 +20991,81 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       <text class="dd-small" x="78" y="690">본 연결도는 개념 결선이며 제작사 승인도면이 우선한다</text></g>`;
   }
 
+  // 분전반 배선도 · panel internal wiring. Left half is the mounting-plate elevation the
+  // 3D panel is built from (same devices, same order); right half is the wiring schedule
+  // that names every core, terminal and outgoing cable. Both come from powerPackages, so
+  // adding a load to the schedule adds it here too.
+  function panelWiringSketch(eqKey){
+    const power=powerPackages[eqKey];
+    const prefix=powerPrefixes[eqKey];
+    const shown=power.branches.slice(0,8);
+    const drives=shown.filter((branch)=>/VFD/.test(branch.drive)).length;
+    // --- mounting-plate elevation -------------------------------------------
+    const px=70,py=100,pw=520,ph=470;                       // enclosure inner face
+    const railY=[164,268,362,452];
+    const rails=railY.map((ry)=>`<path class="dd-line" d="M${px+16} ${ry}H${px+pw-16}"/>`).join("");
+    const busY=[210,226,242];
+    const bus=busY.map((by,i)=>`<path class="dd-power-line" d="M${px+120} ${by}H${px+pw-24}"/><text class="dd-small" x="${px+pw-18}" y="${by+4}">L${i+1}</text>`).join("");
+    const step=Math.min(84,Math.floor((pw-150)/Math.max(1,shown.length)));
+    const devices=shown.map((branch,index)=>{
+      const dx=px+130+index*step+step/2;
+      const vfd=/VFD/.test(branch.drive);
+      const drop=`<path class="dd-power-line" d="M${dx} ${busY[2]}V276"/>`;
+      const drive=vfd?`<rect class="dd-power-device" x="${dx-Math.min(30,step/2-3)}" y="366" width="${Math.min(60,step-6)}" height="52"/><text class="dd-small" x="${dx}" y="396" text-anchor="middle">U${index+1}</text>`
+        +`<path class="dd-power-line" d="M${dx} 324V366"/><path class="dd-power-line" d="M${dx} 418V${railY[3]}"/>`
+        :`<path class="dd-power-line" d="M${dx} 324V${railY[3]}"/>`;
+      return `${drop}<rect class="dd-power-device" x="${dx-Math.min(30,step/2-3)}" y="276" width="${Math.min(60,step-6)}" height="48"/>`
+        +`<text class="dd-small" x="${dx}" y="304" text-anchor="middle">Q${index+1}</text>${drive}`
+        +`<text class="dd-small" x="${dx}" y="${railY[3]+20}" text-anchor="middle">${index*4+1}</text>`;
+    }).join("");
+    const elevation=`<rect class="dd-power-device" x="${px}" y="${py}" width="${pw}" height="${ph}"/>
+      <text class="dd-small" x="${px+10}" y="${py-10}">기기 취부판 ${Math.round((PANEL_W-.06)*1000)} × ${Math.round((PANEL_H-.06)*1000)} · 문 개방 상태</text>
+      ${rails}
+      <rect class="dd-power-device" x="${px+18}" y="${py+34}" width="88" height="66"/>
+      <text class="dd-small" x="${px+62}" y="${py+62}" text-anchor="middle">Q0</text>
+      <text class="dd-small" x="${px+62}" y="${py+82}" text-anchor="middle">${power.isolatorA} A</text>
+      ${busY.map((by,i)=>`<path class="dd-power-line" d="M${px+50+i*12} ${py+100}V${by}H${px+120}"/>`).join("")}
+      ${bus}${devices}
+      <rect class="dd-power-device" x="${px+18}" y="492" width="66" height="46"/><text class="dd-small" x="${px+51}" y="520" text-anchor="middle">TR</text>
+      <rect class="dd-power-device" x="${px+94}" y="492" width="70" height="46"/><text class="dd-small" x="${px+129}" y="520" text-anchor="middle">SMPS</text>
+      <rect class="dd-power-device" x="${px+174}" y="492" width="140" height="46"/><text class="dd-small" x="${px+244}" y="520" text-anchor="middle">RIO · PROFINET</text>
+      <path class="dd-power-line" d="M${px+18} 515H${px+8}V${busY[1]}"/>
+      <path class="dd-power-line" d="M${px+84} 515H${px+94}"/>
+      <path class="dd-power-line" d="M${px+164} 515H${px+174}"/>
+      <path class="dd-power-line" d="M${px+16} ${railY[3]}H${px+pw-16}"/>
+      <text class="dd-small" x="${px+20}" y="${railY[3]-8}">X1 출력 단자대</text>
+      <path class="dd-pe-line" d="M${px+16} ${py+ph-12}H${px+pw-16}"/>
+      <text class="dd-small" x="${px+18}" y="${py+ph-22}">PE 바 ${power.pe} mm² · 문·취부판·레일 본딩</text>`;
+    // --- wiring schedule -----------------------------------------------------
+    const tx=628,ty=132,rowH=Math.min(46,Math.floor(360/Math.max(1,shown.length)));
+    const cols=[0,96,196,306,404];
+    const head=["회로 · 부하","반내 보호","반내 배선","단자대","반외 케이블"]
+      .map((label,i)=>`<text class="dd-small" x="${tx+cols[i]}" y="${ty-12}">${label}</text>`).join("");
+    const rows=shown.map((branch,index)=>{
+      const sel=branchSelection(branch,power.voltageDropPct);
+      const y=ty+index*rowH+16;
+      const vfd=/VFD/.test(branch.drive);
+      return `<path class="dd-line" d="M${tx} ${y+8}H1152"/>
+        <text class="dd-small" x="${tx+cols[0]}" y="${y}">Q${index+1} ${esc(branch.tag)}</text>
+        <text class="dd-small" x="${tx+cols[1]}" y="${y}">${sel.breaker} A ${vfd?"MCCB":"MPCB"}</text>
+        <text class="dd-small" x="${tx+cols[2]}" y="${y}">${index+1}L1/L2/L3 갈·흑·회</text>
+        <text class="dd-small" x="${tx+cols[3]}" y="${y}">X1:${index*4+1}–${index*4+4}</text>
+        <text class="dd-small" x="${tx+cols[4]}" y="${y}">W-${prefix}-${String(index+1).padStart(2,"0")} 3×${sel.cable.size}+PE ${sel.pe}</text>`;
+    }).join("");
+    const more=power.branches.length>shown.length
+      ?`<text class="dd-small" x="${tx}" y="${ty+shown.length*rowH+34}">외 ${power.branches.length-shown.length}개 회로는 부하 스케줄·결선도 참조</text>`:"";
+    return `<g><text class="dd-title" x="60" y="52">PANEL INTERNAL WIRING · ${esc(power.panel)} · ${esc(power.ip)}</text>
+      <text class="dd-small" x="60" y="76">인입 ${esc(power.source)} ${power.breakerA} A · ${cableLabel(power)} · 인입 ΔU ${power.voltageDropPct.toFixed(2)}% · 분기 실측 ${BRANCH_ROUTE_LENGTH_M} m</text>
+      ${elevation}
+      <text class="dd-small" x="${tx}" y="104">반내 배선 일람 · 회로 ${power.branches.length}개 · VFD ${drives}대</text>
+      ${head}<path class="dd-line" d="M${tx} ${ty-4}H1152"/>${rows}${more}
+      <text class="dd-small" x="60" y="596">Q0 문연동 잠금형 개폐기 → 부스바 → Q1..Qn → (VFD U1..Un) → X1 단자대 · 제어는 TR＋SMPS 24 VDC PELV 로 분리</text>
+      <text class="dd-small" x="60" y="618">상색 IEC 60446 L1 갈 · L2 흑 · L3 회 · PE 녹황 · 제어 청 · 동력과 제어는 별도 덕트</text>
+      <text class="dd-small" x="60" y="640">차폐선 접지는 패널측 1점 · VFD 출력측은 차폐 케이블 · EMC 필터·리액터는 케이블 길이 확정 후 선정</text>
+      <text class="dd-small" x="60" y="662">STO 는 기능안전 정지이며 전기적 격리를 대체하지 않는다 · 정비 시 Q0 LOTO</text>
+      <text class="dd-small" x="60" y="684">단자번호·케이블번호는 본 도면 자동부여 · 제작사 승인도면과 반내 실측 결선표가 우선한다</text></g>`;
+  }
+
   function powerSketch(eqKey){
     const power=powerPackages[eqKey];
     const branchRows=power.branches.map((branch,index)=>{const selected=branchSelection(branch,power.voltageDropPct);const y=115+index*58;return `<path class="dd-power-line" d="M720 ${y}H790"/><rect class="dd-power-device" x="790" y="${y-20}" width="285" height="40"/><text x="802" y="${y-3}">${esc(branch.tag)} · ${branch.kw.toFixed(2)} kW × ${branch.qty}</text><text class="dd-small" x="802" y="${y+14}">${selected.breaker} A · 3×${selected.cable.size}+PE ${selected.pe} mm² · ΔU ${(power.voltageDropPct+selected.dropPct).toFixed(2)}%</text>`;}).join("");
@@ -20927,6 +21085,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     if(view==="motor")return motorCircuitSketch(eqKey);
     if(view==="plc")return plcControlSketch(eqKey);
     if(view==="interconnect")return interconnectSketch(eqKey);
+    if(view==="panelwiring")return panelWiringSketch(eqKey);
     if(view==="section"){
       const detail={shredder:["M24 앵커 + 2N + PW","M20 하우징 10.9","M16 라이너 12.9"],grinder:["M24 앵커 8.8","M16 날 12.9 + 웨지락","M20 하우징 10.9"],sieve:["M12 데크 A4-80","실리콘 가스켓 18t","진동모터 M16 10.9"],attrition:["M20 브리지 A4-80","DN50 PN10 가스켓","M12 스크린 A4-80"],flotation:["F10T M20 구조접합","M16 셀 A4-80","M12 라우더 A4-80"],filterpress:["M30 사이드바 10.9","M24 헤드 10.9","M16 보조스키드 A4-80"]}[eqKey];
       return `<g transform="translate(75 90)"><rect class="dd-object" x="0" y="120" width="460" height="210"/><path class="dd-hidden" d="M40 160H420M40 205H420M40 250H420"/>${bolts(55,145,8,52)}<circle class="dd-wet" cx="230" cy="225" r="72"/><path class="dd-center" d="M120 225H340M230 115V335"/><text class="dd-title" x="0" y="35">A-A 주요 조립 단면</text><text x="20" y="375">접액/내마모부와 구동·지지부 분리</text></g><g transform="translate(650 90)"><rect class="dd-title-block" x="0" y="0" width="430" height="340"/><text class="dd-title" x="20" y="32">체결 상세 FST-01</text><rect class="dd-object" x="55" y="125" width="300" height="34"/><rect class="dd-object" x="55" y="190" width="300" height="34"/><path class="dd-line" d="M205 90V260"/><polygon class="dd-fastener" points="180,90 190,74 220,74 230,90 220,106 190,106"/><rect class="dd-fastener" x="186" y="159" width="38" height="12"/><rect class="dd-fastener" x="186" y="178" width="38" height="12"/><polygon class="dd-fastener" points="180,260 190,244 220,244 230,260 220,276 190,276"/>${detail.map((t,i)=>`<text x="20" y="${300+i*20}" class="dd-small">${i+1}. ${esc(t)}</text>`).join("")}</g>`;
@@ -20959,7 +21118,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
   function renderDrawing(){
     const eq=current();
-    const drawingUnit=["power","motor","plc","interconnect"].includes(state.view)?"V / A / kW":"mm";
+    const drawingUnit=["power","motor","plc","interconnect","panelwiring"].includes(state.view)?"V / A / kW":"mm";
     drawingSvg.innerHTML=`<defs><marker id="dd-arrow-start" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto"><path d="M8 0L0 4L8 8" fill="none" stroke="currentColor"/></marker><marker id="dd-arrow-end" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="currentColor"/></marker></defs><rect class="dd-title-block" x="20" y="20" width="1160" height="720"/>${sketch(state.equipment,state.view)}<g transform="translate(720 610)"><rect class="dd-title-block" width="460" height="130"/><path class="dd-line" d="M0 42H460M0 82H460M310 42V130"/><text class="dd-title" x="12" y="28">${esc(eq.label)} · ${viewLabels[state.view]}</text><text x="12" y="68">DWG ${esc(eq.drawing)}</text><text x="12" y="108">DESIGN VALUES GOVERN · DO NOT SCALE</text><text x="325" y="68">REV ${eq.revision}</text><text x="325" y="108">UNIT ${drawingUnit}</text></g><text class="dd-small" x="40" y="720">설치도 상태: DD-R4 / IFC-HOLD · 현장 실측, 제작사 GA, 건축·구조·전기·안전 검토 후 IFC 승인</text>`;
     root.querySelectorAll("[data-dd-view]").forEach(n=>{const a=n.dataset.ddView===state.view;n.classList.toggle("btn-primary",a);n.setAttribute("aria-pressed",String(a));});
   }
@@ -20967,12 +21126,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
   let THREE, renderer, scene, camera, model, fastenerGroup, resizeObserver, animationFrame;
   let yaw=.72,pitch=.42,distance=9,target={x:0,y:1,z:0},dragging=false,lastX=0,lastY=0;
   const canvas=root.querySelector("[data-dd-canvas]");
-  const palette={frame:0x384a50,body:0x31565e,wet:0x344b5e,motor:0x284d60,metal:0x929aa0,liner:0x8e4f43,fastener:0xc0c5c8,screen:0x8d8153,pipe:0x1f7477};
+  const palette={frame:0x384a50,body:0x31565e,wet:0x344b5e,motor:0x284d60,metal:0x929aa0,liner:0x8e4f43,fastener:0xc0c5c8,screen:0x8d8153,pipe:0x1f7477,
+    // 분전반 내부: IEC 60446 상색과 기기 색상
+    plate:0x9aa3a8,din:0xb4bcc0,breaker:0x2b3238,vfd:0x3b4a52,plcMod:0x2f5d63,tb:0x8a6b2c,
+    wireL1:0x7a4a26,wireL2:0x23262a,wireL3:0x8f959a,wirePe:0x4f7a24,wireCtrl:0x2f6ea8,busbar:0xb08a3a};
   function mat(color,opts={}){return new THREE.MeshStandardMaterial({color,roughness:.58,metalness:.26,transparent:Boolean(opts.transparent),opacity:opts.opacity??1,side:THREE.DoubleSide});}
   function mark(obj,assembly,code,explode=[0,0,0]){obj.userData.assembly=assembly;obj.userData.code=code;obj.userData.base=obj.position.clone();obj.userData.explode=new THREE.Vector3(...explode);return obj;}
   function box(parent,size,pos,color,assembly,code,explode=[0,0,0]){const m=new THREE.Mesh(new THREE.BoxGeometry(...size),mat(color));m.position.set(...pos);mark(m,assembly,code,explode);parent.add(m);return m;}
   function cyl(parent,r,len,pos,color,assembly,code,axis="y",explode=[0,0,0],segments=32){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,segments),mat(color));if(axis==="x")m.rotation.z=Math.PI/2;if(axis==="z")m.rotation.x=Math.PI/2;m.position.set(...pos);mark(m,assembly,code,explode);parent.add(m);return m;}
   function torus(parent,r,t,pos,color,assembly,code,rotation=[Math.PI/2,0,0],explode=[0,0,0]){const m=new THREE.Mesh(new THREE.TorusGeometry(r,t,12,32),mat(color));m.rotation.set(...rotation);m.position.set(...pos);mark(m,assembly,code,explode);parent.add(m);return m;}
+  function wire(parent,points,radius,color,assembly,code,explode=[0,0,0]){const curve=new THREE.CatmullRomCurve3(points.map(pt=>new THREE.Vector3(...pt)));const m=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.max(8,points.length*6),radius,8,false),mat(color));mark(m,assembly,code,explode);parent.add(m);return m;}
   function bolt(parent,pos,scale,code,index){const g=new THREE.Group();g.position.set(...pos);g.scale.setScalar(scale);const fm=mat(palette.fastener);const sh=new THREE.Mesh(new THREE.CylinderGeometry(.008,.008,.07,12),fm);sh.position.y=.015;g.add(sh);const head=new THREE.Mesh(new THREE.CylinderGeometry(.016,.016,.012,6),fm);head.position.y=.056;g.add(head);const nut=new THREE.Mesh(new THREE.CylinderGeometry(.015,.015,.014,6),fm);nut.position.y=-.026;g.add(nut);for(const y of [-.016,.045]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.019,.019,.003,20),fm);w.position.y=y;g.add(w);}mark(g,"체결구",code,[0,.35+(index%5)*.04,0]);parent.add(g);return g;}
   function anchorBolt(parent,pos,diameter,length,code,index){const g=new THREE.Group();g.position.set(...pos);const fm=mat(palette.fastener);const r=diameter/2;const sh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,length,16),fm);sh.position.y=-length/2+.045;g.add(sh);const washer=new THREE.Mesh(new THREE.CylinderGeometry(r*1.9,r*1.9,.004,24),fm);washer.position.y=.012;g.add(washer);for(const y of [.025,.05]){const nut=new THREE.Mesh(new THREE.CylinderGeometry(r*1.65,r*1.65,diameter*.8,6),fm);nut.position.y=y;g.add(nut);}mark(g,"체결구",code,[0,.5+(index%5)*.04,0]);parent.add(g);return g;}
   function fasteners(parent,eq,bounds){const rows=eq.bom.filter(r=>r.type==="fastener");const anchorRow=rows.find(r=>/앵커/.test(r.name));let cursor=0;if(anchorRow){const match=anchorRow.spec.match(/M(\d+)(?:×(\d+))?/);const diameter=Number(match?.[1]||20)/1000,length=Number(match?.[2]||350)/1000;currentInstall().foundation.anchors.forEach(a=>anchorBolt(parent,[a.x/1000,bounds[2],-a.y/1000],diameter,length,anchorRow.code,cursor++));}rows.filter(row=>row!==anchorRow).forEach((row,rowIndex)=>{for(let i=0;i<row.qty;i++){const per=Math.max(1,Math.ceil(Math.sqrt(row.qty)));const layer=Math.floor(i/(per*4));const side=Math.floor(i/per)%4;const p=i%per;const t=per===1 ? .5 : p/(per-1);let x=0,z=0;if(side===0){x=(t-.5)*bounds[0];z=-bounds[1]/2;}else if(side===1){x=bounds[0]/2;z=(t-.5)*bounds[1];}else if(side===2){x=(.5-t)*bounds[0];z=bounds[1]/2;}else{x=-bounds[0]/2;z=(.5-t)*bounds[1];}bolt(parent,[x,bounds[2]+layer*.045+rowIndex*.012,z],.75+Math.min(1,rowIndex*.03),row.code,cursor++);}});}
@@ -20987,21 +21150,106 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
   function buildFilterpress(g){baseFrame(g,6.2,2.4);for(const z of [-.55,.55])box(g,[3.8,.12,.12],[-.25,1.15,z],palette.frame,"FP-301 프레임","FP-002",[-.3,.45,z>0 ? .4 : -.4]);box(g,[.22,1.45,1.3],[-2.2,1.05,0],palette.body,"FP-301 프레임","FP-003",[-.9,.2,0]);box(g,[.22,1.45,1.3],[1.7,1.05,0],palette.body,"FP-301 프레임","FP-004",[.9,.2,0]);for(let i=0;i<18;i++)box(g,[.055,1.05,.82],[-1.75+i*.19,1.05,0],i%2?palette.wet:palette.metal,"필터판·여과포",i%2?"FP-011":"FP-010",[(i-9)*.08,(i%2)*.12,0]);cyl(g,.2,1.1,[2.35,1.05,0],palette.motor,"유압 폐쇄부","FP-020","x",[1.1,.2,0]);box(g,[1.1,.7,.85],[2.5,.55,-.85],palette.motor,"유압 폐쇄부","FP-021",[1.0,-.2,-.5]);box(g,[2.4,.14,.65],[-.25,.25,0],palette.body,"케이크 이송","FP-060",[0,-.6,0]);for(const x of [-2.5,-2.05])cyl(g,.18,.4,[x,.45,-.95],palette.motor,"P-301 A/B 급액","FP-031","x",[-.7,-.2,-.5]);cyl(g,.22,.78,[2.45,.62,.95],palette.body,"압착·코어블로","FP-040","y",[.8,.3,.5]);cyl(g,.28,.7,[1.75,.55,.95],palette.wet,"포세척·드립트레이","FP-050","y",[.5,.2,.5]);fasteners(g,current(),[6.0,2.2,.25]);}
   const powerPanelPositions={shredder:[-1.7,.95,1.35],grinder:[1.65,.95,.95],sieve:[-1.05,1.0,.95],attrition:[2.15,1.0,1.15],flotation:[-2.45,1.0,1.55],filterpress:[2.75,1.0,1.35]};
   const powerPrefixes={shredder:"SH",grinder:"HG",sieve:"SV",attrition:"AS",flotation:"FC",filterpress:"FP"};
+  // The LCP used to be a closed box, so "분전반" was a shape with no content. It is now
+  // built as a real enclosure: hinged door, mounting plate, DIN rails, incoming isolator,
+  // one branch device per row of powerPackages[key].branches, control TR/SMPS, RIO, the
+  // terminal strip and PE bar — wired together. Open the door to see the wiring.
   function powerEntry3D(parent,key){
     const [x,y,z]=powerPanelPositions[key],prefix=powerPrefixes[key],power=powerPackages[key];
-    box(parent,[.62,1.25,.32],[x,y,z],palette.frame,"전력 인입·LCP",`EL-${prefix}-01`,[0,.85,z>0?.55:-.55]);
-    box(parent,[.16,.20,.08],[x+.18,y+.15,z+(z>0?-.18:.18)],palette.motor,"전력 인입·LCP",`EL-${prefix}-02`,[.3,.85,z>0?.65:-.65]);
-    cyl(parent,.035,.75,[x,y-.75,z],palette.motor,"전력 인입·LCP",`EL-${prefix}-03`,"y",[0,-.45,z>0?.45:-.45],16);
-    box(parent,[.42,.045,.06],[x,y-.50,z+(z>0?-.19:.19)],palette.metal,"전력 인입·LCP",`EL-${prefix}-04`,[0,-.35,z>0?.5:-.5]);
+    const face=z>0?1:-1;                    // which way the door faces
+    const code=(n)=>`EL-${prefix}-${n}`;
+    const out=[0,.85,face*.55];
+    // enclosure: back, two sides, top and bottom. The front is the door, so it is left open.
+    box(parent,[PANEL_W,PANEL_H,.02],[x,y,z-face*PANEL_D/2],palette.frame,PANEL_ASSEMBLY,code("01"),out);
+    for(const sx of [-1,1]) box(parent,[.02,PANEL_H,PANEL_D],[x+sx*PANEL_W/2,y,z],palette.frame,PANEL_ASSEMBLY,code("01"),out);
+    for(const sy of [-1,1]) box(parent,[PANEL_W,.02,PANEL_D],[x,y+sy*PANEL_H/2,z],palette.frame,PANEL_ASSEMBLY,code("01"),out);
+    // gland plate and incoming cable from the MCC
+    box(parent,[PANEL_W-.06,.03,PANEL_D-.06],[x,y-PANEL_H/2-.02,z],palette.metal,PANEL_ASSEMBLY,code("03"),[0,-.35,face*.45]);
+    cyl(parent,.035,.75,[x,y-.75,z],palette.motor,PANEL_ASSEMBLY,code("03"),"y",[0,-.45,face*.45],16);
+
+    // --- door: a hinged group so the internals are reachable ------------------
+    const door=new THREE.Group();
+    door.position.set(x-PANEL_W/2,y,z+face*PANEL_D/2);
+    mark(door,PANEL_ASSEMBLY,code("01"),[0,.85,face*.55]);
+    parent.add(door);
+    door.userData.openAngle=-face*1.92;     // ~110 deg, swinging clear of the enclosure
+    box(door,[PANEL_W,PANEL_H,.022],[PANEL_W/2,0,0],palette.frame,PANEL_ASSEMBLY,code("01"));
+    // door-interlocked lockable isolator handle + HMI + lamps, all on the door leaf
+    box(door,[.16,.20,.06],[PANEL_W-.14,PANEL_H/2-.20,face*.04],palette.motor,PANEL_ASSEMBLY,code("02"));
+    cyl(door,.020,.07,[PANEL_W-.14,PANEL_H/2-.20,face*.08],palette.metal,PANEL_ASSEMBLY,code("02"),"z",[0,0,0],14);
+    box(door,[.22,.15,.02],[PANEL_W/2-.08,PANEL_H/2-.22,face*.02],palette.plcMod,PANEL_ASSEMBLY,code("02"));
+    for(let i=0;i<3;i++) cyl(door,.017,.02,[PANEL_W/2-.16+i*.08,PANEL_H/2-.42,face*.02],[0x3f7d4c,0xb08a3a,0x9c4536][i],PANEL_ASSEMBLY,code("02"),"z",[0,0,0],14);
+
+    // --- internals on the mounting plate -------------------------------------
+    const zp=z-face*.09;                    // plate face where devices sit
+    const zd=z-face*.03;                    // device fronts
+    const zw=z+face*.01;                    // wire routing plane, just proud of the devices
+    box(parent,[PANEL_W-.06,PANEL_H-.06,.012],[x,y,z-face*.11],palette.plate,PANEL_ASSEMBLY,code("05"),[0,.55,face*.35]);
+    const rails=[.46,.22,-.06,-.30];
+    rails.forEach((ry,i)=>box(parent,[PANEL_W-.10,.035,.012],[x,y+ry+.06,zp],palette.din,PANEL_ASSEMBLY,code("06"),[0,.35+i*.03,face*.30]));
+
+    // incoming isolator + 3-phase busbar
+    box(parent,[.15,.17,.09],[x-.19,y+.46,zd],palette.breaker,PANEL_ASSEMBLY,code("02"),[-.25,.45,face*.35]);
+    const busY=[.375,.345,.315];
+    busY.forEach((by,i)=>box(parent,[PANEL_W-.14,.014,.012],[x,y+by,zp+face*.02],palette.busbar,PANEL_ASSEMBLY,code("07"),[0,.30,face*.28]));
+    const phase=[palette.wireL1,palette.wireL2,palette.wireL3];
+    busY.forEach((by,i)=>wire(parent,[[x-.19,y+.40,zw],[x-.19+.02*i,y+.395,zw],[x-.16+.03*i,y+by,zw]],.006,phase[i],PANEL_ASSEMBLY,code("08"),[0,.30,face*.30]));
+
+    // one branch device per scheduled load, wired bus -> device -> terminal strip
+    const branches=power.branches;
+    const pitch=(PANEL_W-.12)/Math.max(1,branches.length);
+    branches.forEach((branch,i)=>{
+      const bx=x-(PANEL_W-.12)/2+pitch*(i+.5);
+      const vfd=/VFD/.test(branch.drive);
+      box(parent,[Math.min(.075,pitch*.72),.14,.075],[bx,y+.22,zd],palette.breaker,PANEL_ASSEMBLY,code("02"),[(bx-x)*1.6,.25,face*.32]);
+      if(vfd) box(parent,[Math.min(.080,pitch*.78),.19,.085],[bx,y-.06,zd],palette.vfd,PANEL_ASSEMBLY,code("09"),[(bx-x)*1.6,0,face*.34]);
+      // 3 phases down from the busbar into the breaker
+      busY.forEach((by,ph)=>wire(parent,[[x-.20+.03*ph,y+by,zw],[bx-.02+.02*ph,y+by-.02,zw],[bx-.02+.02*ph,y+.30,zw]],.005,phase[ph],PANEL_ASSEMBLY,code("08"),[(bx-x)*1.6,.25,face*.34]));
+      // breaker -> drive -> outgoing terminals
+      const midY=vfd?y-.06:y+.06;
+      busY.forEach((_,ph)=>wire(parent,[[bx-.02+.02*ph,y+.15,zw],[bx-.02+.02*ph,midY+.06,zw],[bx-.02+.02*ph,midY,zw]],.005,phase[ph],PANEL_ASSEMBLY,code("08"),[(bx-x)*1.6,.1,face*.34]));
+      busY.forEach((_,ph)=>wire(parent,[[bx-.02+.02*ph,midY-.10,zw],[bx-.02+.02*ph,y-.34,zw],[bx-.02+.02*ph,y-.44,zw]],.005,phase[ph],PANEL_ASSEMBLY,code("08"),[(bx-x)*1.6,-.15,face*.34]));
+      // PE for the same branch
+      wire(parent,[[bx+.05,midY-.10,zw],[bx+.05,y-.50,zw],[bx+.03,y-.545,zw]],.005,palette.wirePe,PANEL_ASSEMBLY,code("04"),[(bx-x)*1.6,-.2,face*.34]);
+    });
+
+    // control section: 380/220 V isolating transformer, 24 VDC SMPS, RIO with its loom
+    box(parent,[.13,.13,.10],[x-.19,y-.30,zd],palette.motor,PANEL_ASSEMBLY,code("10"),[-.25,-.1,face*.34]);
+    box(parent,[.09,.13,.08],[x-.03,y-.30,zd],palette.plcMod,PANEL_ASSEMBLY,code("10"),[0,-.1,face*.34]);
+    box(parent,[.20,.13,.07],[x+.16,y-.30,zd],palette.plcMod,PANEL_ASSEMBLY,code("11"),[.25,-.1,face*.34]);
+    wire(parent,[[x-.19,y-.24,zw],[x-.11,y-.22,zw],[x-.03,y-.24,zw]],.005,palette.wireCtrl,PANEL_ASSEMBLY,code("08"),[0,-.1,face*.36]);
+    wire(parent,[[x-.03,y-.24,zw],[x+.07,y-.20,zw],[x+.16,y-.24,zw]],.005,palette.wireCtrl,PANEL_ASSEMBLY,code("08"),[0,-.1,face*.36]);
+    branches.filter((b)=>!/SMPS|TR\+/.test(b.drive)).slice(0,5).forEach((branch,i)=>{
+      const bx=x-(PANEL_W-.12)/2+pitch*(i+.5);
+      wire(parent,[[x+.16,y-.36,zw],[x+.10-i*.02,y-.44,zw],[bx,y-.47,zw]],.004,palette.wireCtrl,PANEL_ASSEMBLY,code("08"),[0,-.2,face*.36]);
+    });
+
+    // outgoing terminal strip and PE bar
+    box(parent,[PANEL_W-.12,.05,.05],[x,y-.47,zd],palette.tb,PANEL_ASSEMBLY,code("12"),[0,-.25,face*.34]);
+    box(parent,[PANEL_W-.14,.030,.020],[x,y-.55,zp+face*.02],palette.wirePe,PANEL_ASSEMBLY,code("04"),[0,-.35,face*.30]);
     parent.userData.powerPanel=power.panel;
+    parent.userData.panelDoor=door;
+    parent.userData.panelBranches=branches.length;
   }
   const baseBuilders={shredder:buildShredder,grinder:buildGrinder,sieve:buildSieve,attrition:buildAttrition,flotation:buildFlotation,filterpress:buildFilterpress};
   const builders=Object.fromEntries(Object.entries(baseBuilders).map(([key,builder])=>[key,(group)=>{builder(group);powerEntry3D(group,key);}]));
   function clearModel(){if(!model)return;scene.remove(model);model.traverse(o=>{if(o.geometry)o.geometry.dispose?.();if(o.material){(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.dispose?.());}});model=null;fastenerGroup=new THREE.Group();}
-  function buildModel(){clearModel();model=new THREE.Group();scene.add(model);fastenerGroup=new THREE.Group();builders[state.equipment](model);fitCamera();applyModelState();}
-  function applyModelState(){if(!model)return;const explode=state.mode==="exploded"?Math.max(.25,state.explode/100):0;model.traverse(o=>{if(o.userData.base)o.position.copy(o.userData.base).addScaledVector(o.userData.explode||new THREE.Vector3(),explode);if(o.material){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>{const assembly=o.userData.assembly||o.parent?.userData?.assembly;const selected=state.assembly==="전체"||assembly===state.assembly;const isFast=assembly==="체결구";m.transparent=state.mode==="xray"&&!isFast;m.opacity=(state.mode==="xray"&&!isFast)?0.22:1;if(m.emissive){m.emissive.setHex(selected?0x18383a:0x000000);m.emissiveIntensity=selected?0.45:0;}if(state.mode==="fasteners"&&isFast){m.emissive?.setHex(0x8f5a18);m.emissiveIntensity=.9;}m.needsUpdate=true;});}});root.querySelector("[data-dd-3d-note]").textContent=`${current().tag} · ${state.assembly} · ${state.mode==="fasteners"?"볼트·너트·와셔 강조":"3D "+state.mode}`;root.querySelectorAll("[data-dd-selection]").forEach(n=>n.textContent=state.assembly+" 선택 · BOM 행과 3D 부품군이 연동됩니다.");}
+  function buildModel(){clearModel();model=new THREE.Group();scene.add(model);fastenerGroup=new THREE.Group();builders[state.equipment](model);fitCamera();applyModelState();if(state.panelOpen)focusPanel();}
+  function applyModelState(){if(!model)return;const explode=state.mode==="exploded"?Math.max(.25,state.explode/100):0;model.traverse(o=>{if(o.userData.base)o.position.copy(o.userData.base).addScaledVector(o.userData.explode||new THREE.Vector3(),explode);if(o.material){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>{const assembly=o.userData.assembly||o.parent?.userData?.assembly;const selected=state.assembly==="전체"||assembly===state.assembly;const isFast=assembly==="체결구";m.transparent=state.mode==="xray"&&!isFast;m.opacity=(state.mode==="xray"&&!isFast)?0.22:1;if(m.emissive){m.emissive.setHex(selected?0x18383a:0x000000);m.emissiveIntensity=selected?0.45:0;}if(state.mode==="fasteners"&&isFast){m.emissive?.setHex(0x8f5a18);m.emissiveIntensity=.9;}m.needsUpdate=true;});}});const door=model.userData.panelDoor;if(door)door.rotation.y=state.panelOpen?door.userData.openAngle:0;root.querySelectorAll("[data-dd-panel-open]").forEach(n=>{n.textContent=state.panelOpen?"분전반 닫기":"분전반 열기";n.classList.toggle("btn-primary",state.panelOpen);n.setAttribute("aria-pressed",String(state.panelOpen));});root.querySelector("[data-dd-3d-note]").textContent=`${current().tag} · ${state.assembly} · ${state.mode==="fasteners"?"볼트·너트·와셔 강조":"3D "+state.mode}${state.panelOpen?" · 분전반 문 개방 · 내부 배선 표시":""}`;root.querySelectorAll("[data-dd-selection]").forEach(n=>n.textContent=state.assembly+" 선택 · BOM 행과 3D 부품군이 연동됩니다.");}
   function updateCamera(){if(!camera)return;const cp=Math.cos(pitch);camera.position.set(target.x+distance*cp*Math.sin(yaw),target.y+distance*Math.sin(pitch),target.z+distance*cp*Math.cos(yaw));camera.lookAt(target.x,target.y,target.z);}
   function fitCamera(){const eq=current();if(model&&THREE){const bounds=new THREE.Box3().setFromObject(model);const center=bounds.getCenter(new THREE.Vector3());const size=bounds.getSize(new THREE.Vector3());target={x:center.x,y:center.y,z:center.z};distance=Math.max(size.x,size.y,size.z)/Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*.72+1.1;}else{distance=Math.max(eq.dimensions.l,eq.dimensions.w,eq.dimensions.h)/1000*1.55+2.5;target={x:0,y:Math.min(2.7,Math.max(.9,eq.dimensions.h/2000)),z:0};}yaw=.72;pitch=.42;updateCamera();}
+  // Opening the door is useless if the camera is still framing the whole 5 m skid, and
+  // the wheel bottoms out at 2 m, so opening also flies to the panel; closing restores fit.
+  function focusPanel(){
+    if(!model||!THREE)return false;
+    const pos=powerPanelPositions[state.equipment];
+    if(!pos)return false;
+    const face=pos[2]>0?1:-1;
+    target={x:pos[0],y:pos[1],z:pos[2]};
+    // 0.62 x 1.25 m door at fov 38 needs ~1.8 m to fit; 2.1 leaves the frame and the
+    // swung-open leaf in shot. Yaw is offset toward the latch side so the leaf never blocks.
+    distance=2.1;yaw=face>0?.34:Math.PI-.34;pitch=.12;updateCamera();return true;
+  }
   function cameraPreset(key){if(key==="front"){yaw=0;pitch=.05;}else if(key==="top"){yaw=0;pitch=1.48;}else if(key==="side"){yaw=Math.PI/2;pitch=.05;}else{yaw=.72;pitch=.42;}updateCamera();}
   async function init3D(){THREE=window.__HSG_THREE__??await import("https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js");renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(38,1,.01,100);scene.add(new THREE.HemisphereLight(0xffffff,0x48545a,2.0));const key=new THREE.DirectionalLight(0xffffff,2.3);key.position.set(6,10,8);key.castShadow=true;scene.add(key);const floor=new THREE.Mesh(new THREE.PlaneGeometry(18,12),new THREE.MeshStandardMaterial({color:0x879097,roughness:.95,transparent:true,opacity:.16}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);const grid=new THREE.GridHelper(18,36,0x718087,0x9aa2a5);grid.material.transparent=true;grid.material.opacity=.18;scene.add(grid);buildModel();resize3D();animate();}
   function resize3D(){if(!renderer||!camera)return;const rect=canvas.parentElement.getBoundingClientRect();const w=Math.max(320,Math.round(rect.width||800)),h=Math.max(360,Math.round(rect.height||540));renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
@@ -21009,7 +21257,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
   canvas.addEventListener("pointerdown",e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId);});
   canvas.addEventListener("pointermove",e=>{if(!dragging)return;yaw-=(e.clientX-lastX)*.008;pitch=Math.max(-1.35,Math.min(1.48,pitch+(e.clientY-lastY)*.008));lastX=e.clientX;lastY=e.clientY;updateCamera();});
   canvas.addEventListener("pointerup",e=>{dragging=false;canvas.releasePointerCapture?.(e.pointerId);});
-  canvas.addEventListener("wheel",e=>{e.preventDefault();distance=Math.max(2,Math.min(24,distance*Math.exp(e.deltaY*.001)));updateCamera();},{passive:false});
+  canvas.addEventListener("wheel",e=>{e.preventDefault();distance=Math.max(.6,Math.min(24,distance*Math.exp(e.deltaY*.001)));updateCamera();},{passive:false});
   // Keyboard equivalents for the pointer-only detail camera.
   canvas.setAttribute("tabindex","0");
   canvas.addEventListener("keydown",e=>{
@@ -21034,6 +21282,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const equip=event.target.closest?.("[data-dd-equipment]");if(equip){selectEquipment(equip.dataset.ddEquipment);return;}
     const assy=event.target.closest?.("[data-dd-assembly]");if(assy){state.assembly=assy.dataset.ddAssembly;state.selectedCode=null;renderAssemblyNavs();renderBom();applyModelState();return;}
     const view=event.target.closest?.("[data-dd-view]");if(view){state.view=view.dataset.ddView;renderDrawing();return;}
+    if(event.target.closest?.("[data-dd-panel-open]")){state.panelOpen=!state.panelOpen;if(state.panelOpen)state.assembly=PANEL_ASSEMBLY;renderAssemblyNavs();renderBom();applyModelState();if(state.panelOpen)focusPanel();else fitCamera();return;}
     const mode=event.target.closest?.("[data-dd-mode]");if(mode){state.mode=mode.dataset.ddMode;if(state.mode==="exploded"&&state.explode<35){state.explode=55;root.querySelector("[data-dd-explode]").value=55;root.querySelector("[data-dd-explode-value]").textContent="55%";}root.querySelectorAll("[data-dd-mode]").forEach(n=>{const a=n.dataset.ddMode===state.mode;n.classList.toggle("btn-primary",a);n.setAttribute("aria-pressed",String(a));});applyModelState();return;}
     const cam=event.target.closest?.("[data-dd-camera]");if(cam){cameraPreset(cam.dataset.ddCamera);return;}
     const code=event.target.closest?.("[data-dd-code]");if(code){state.selectedCode=code.dataset.ddCode;const row=current().bom.find(r=>r.code===state.selectedCode);if(row){state.assembly=row.assembly;renderAssemblyNavs();renderBom();applyModelState();}return;}
