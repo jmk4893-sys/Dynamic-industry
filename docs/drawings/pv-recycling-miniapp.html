@@ -16968,6 +16968,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       showLabels: false,
       explodeScale: 0,
       cutawayScale: 0.66,
+      tourFlow: false,
       numericalResets: 0,
       drainComplete: false
     };
@@ -17366,6 +17367,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return 4;
     }
     function wetAnimationAllowed(activation) {
+      // The tour is an explanatory walkthrough, not an operating claim: it animates the
+      // material path so the chain is legible without first driving the 60-minute
+      // PLC-001 start-up sequence to completion.
+      if (state.tourFlow) return true;
       if (wetPlcState.line === "run") return true;
       const required = wetActivationStep(activation);
       if (wetPlcState.line === "starting") return wetPlcState.step >= required;
@@ -18091,10 +18096,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       shredReturnRotor.rotation.y += Math.PI * 2 * 32 / 60 * dt;
       shredProductRotor.rotation.y += Math.PI * 2 * 38 / 60 * dt;
       const showShredFlow = state.mode === "simulation" || state.mode === "flow";
-      const showInputPanels = state.mode === "assembled" || state.mode === "simulation" || state.mode === "flow" || state.mode === "cutaway";
       const reducedMotion = prefersReducedMotion;
-      shredInputPanelGroup.visible = showInputPanels;
-      shredInputPanels.forEach((panel) => {
+      // Superseded by the CV-001 infeed conveyor, which shows the same panels arriving
+      // from a visible origin instead of materialising above the hopper. The group stays
+      // in the scene (its geometry is shared with the conveyor's panels) but is never
+      // shown, so skip its per-frame pose maths entirely.
+      shredInputPanelGroup.visible = false;
+      if (shredInputPanelGroup.visible) shredInputPanels.forEach((panel) => {
         const phase = reducedMotion
           ? panel.userData.phaseOffset
           : ((state.processSeconds / 120) + panel.userData.phaseOffset) % 1;
@@ -18117,7 +18125,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
           scaleX = THREE.MathUtils.lerp(1, 0.58, fracture);
           scaleY = THREE.MathUtils.lerp(0.46, 0.08, fracture);
         }
-        panel.visible = showInputPanels && phase < 0.985;
+        panel.visible = phase < 0.985;
         panel.position.set(shredderCenter.x, y, 0);
         panel.scale.set(scaleX, scaleY, 1);
         panel.rotation.z = Math.sin(phase * Math.PI * 2) * 0.012;
@@ -18492,6 +18500,124 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return mass > 0 ? value / mass : null;
     }
 
+    // ---- CV-001 패널 투입 컨베이어 -------------------------------------------
+    // Panels arrive on an inclined belt and tip into the ICSH-301 hopper. The hopper is
+    // an open frustum (top 2.80 x 1.80, throat 1.60 x 0.85, H1.20) centred at y = 2.00,
+    // so its rim sits at y = 2.60; the belt discharges just above and inboard of that.
+    const panelInfeed = new THREE.Group();
+    panelInfeed.name = "CV-001-PANEL-INFEED";
+    circuit.add(panelInfeed);
+    const beltTail = new THREE.Vector3(shredderCenter.x - 7.10, 0.46, 0);
+    const beltHead = new THREE.Vector3(shredderCenter.x - 1.22, 3.00, 0);
+    const beltRun = new THREE.Vector3().subVectors(beltHead, beltTail);
+    const beltLength = beltRun.length();
+    const beltAngle = Math.atan2(beltRun.y, beltRun.x);          // ~25.4° incline
+    const beltMid = new THREE.Vector3().addVectors(beltTail, beltHead).multiplyScalar(0.5);
+    const PANEL_L = 1.65;                                        // 60-cell module, 1650 x 1000 x 35
+    const PANEL_W = 1.00;
+    const PANEL_T = 0.035;
+
+    // Belt, side frames and skirts, all aligned to the incline.
+    addBox(panelInfeed, { x: beltLength, y: 0.05, z: 1.30 }, beltMid, material.belt, "P23", { z: beltAngle });
+    [-0.70, 0.70].forEach((z) => {
+      addBox(panelInfeed, { x: beltLength, y: 0.30, z: 0.06 },
+        { x: beltMid.x, y: beltMid.y - 0.06, z }, material.frame, "P23", { z: beltAngle });
+      addBox(panelInfeed, { x: beltLength, y: 0.16, z: 0.03 },
+        { x: beltMid.x, y: beltMid.y + 0.13, z: z * 0.93 }, material.shredPanel, "P23", { z: beltAngle });
+    });
+    // Head and tail pulleys, plus idlers along the run.
+    const headPulley = addCylinder(panelInfeed, 0.17, 1.32, beltHead, material.pulley, "P23", "z", 28, false);
+    const tailPulley = addCylinder(panelInfeed, 0.17, 1.32, beltTail, material.pulley, "P23", "z", 28, false);
+    const beltIdlers = [];
+    for (let i = 1; i <= 7; i += 1) {
+      const t = i / 8;
+      const at = new THREE.Vector3().lerpVectors(beltTail, beltHead, t);
+      beltIdlers.push(addCylinder(panelInfeed, 0.075, 1.24, at, material.pulley, "P23", "z", 18, false));
+    }
+    // Support legs down to the floor.
+    [0.16, 0.42, 0.68, 0.94].forEach((t) => {
+      const at = new THREE.Vector3().lerpVectors(beltTail, beltHead, t);
+      [-0.62, 0.62].forEach((z) => {
+        addBox(panelInfeed, { x: 0.08, y: at.y - 0.18, z: 0.08 },
+          { x: at.x, y: (at.y - 0.18) / 2, z }, material.frame, "P23");
+      });
+    });
+    // Drive at the head end.
+    addBox(panelInfeed, { x: 0.46, y: 0.34, z: 0.34 },
+      { x: beltHead.x + 0.40, y: beltHead.y - 0.34, z: 0.82 }, material.motor, "P23");
+    addCylinder(panelInfeed, 0.10, 0.16, { x: beltHead.x + 0.18, y: beltHead.y - 0.34, z: 0.82 },
+      material.pulley, "P23", "z", 20, false);
+
+    // Same module as createInputPanel (0.96 x 1.92 x 0.040 with a 4 x 8 cell grid) so the
+    // panels on the belt and the ones entering the rotors are visibly the same product.
+    // An inner group holds the "lying flat" pose; the outer group carries the belt incline
+    // and the tip to vertical, so one rotation drives the whole hand-off.
+    const feedPanels = [];
+    const PANEL_COUNT = 8;
+    for (let i = 0; i < PANEL_COUNT; i += 1) {
+      const carrier = new THREE.Group();
+      const panel = new THREE.Group();
+      panel.rotation.set(-Math.PI / 2, Math.PI / 2, 0);   // long axis along travel, face up
+      carrier.add(panel);
+      addBox(panel, { x: PANEL_W, y: PANEL_L, z: 0.040 }, { x: 0, y: 0, z: 0 }, material.panelBack, "P23", null, true);
+      for (let row = 0; row < 8; row += 1) {
+        for (let column = 0; column < 4; column += 1) {
+          addBox(panel, { x: 0.195, y: 0.205, z: 0.012 }, {
+            x: -0.345 + column * 0.23,
+            y: -0.805 + row * 0.23,
+            z: 0.027
+          }, material.panelCell, "P23", null, false);
+        }
+      }
+      carrier.userData.phase = i / PANEL_COUNT;
+      carrier.userData.panel = panel;
+      panelInfeed.add(carrier);
+      feedPanels.push(carrier);
+    }
+    // Where a panel lets go of the belt and drops into the hopper mouth.
+    const panelDrop = new THREE.Vector3(shredderCenter.x - 0.10, 2.34, 0);
+    const BELT_FRACTION = 0.78;   // rest of the cycle is the drop
+    let panelFeedSeconds = 0;
+
+    function updatePanelInfeed(realDt) {
+      const running = (state.mode === "simulation" || state.mode === "flow") && !state.playbackPaused;
+      panelInfeed.visible = state.mode !== "particles";
+      if (running) {
+        // 60 panels/h at the model's 60x process acceleration is one panel per real
+        // second; with PANEL_COUNT on the loop that is a PANEL_COUNT-second cycle.
+        panelFeedSeconds += realDt * state.speed / PANEL_COUNT;
+        const spin = realDt * state.speed * 2.4;
+        headPulley.rotation.x += spin;
+        tailPulley.rotation.x += spin;
+        beltIdlers.forEach((idler) => { idler.rotation.x += spin; });
+      }
+      feedPanels.forEach((carrier) => {
+        const cycle = (carrier.userData.phase + panelFeedSeconds) % 1;
+        const panel = carrier.userData.panel;
+        panel.scale.set(1, 1, 1);
+        if (cycle < BELT_FRACTION) {
+          // Riding the belt, lying flat on the incline.
+          const t = cycle / BELT_FRACTION;
+          carrier.position.lerpVectors(beltTail, beltHead, t);
+          carrier.position.y += 0.08;
+          carrier.rotation.set(0, 0, beltAngle);
+          carrier.visible = true;
+        } else {
+          const u = (cycle - BELT_FRACTION) / (1 - BELT_FRACTION);
+          // Tip to vertical over the hopper — 장변 수직 하향 투입 — then descend.
+          carrier.position.lerpVectors(beltHead, panelDrop, Math.min(1, u * 1.45));
+          carrier.rotation.set(0, 0, beltAngle + (-Math.PI / 2 - beltAngle) * Math.min(1, u * 1.6));
+          if (u > 0.62) {
+            // Taken by the upper X rotor: the panel is drawn down and consumed.
+            const bite = Math.min(1, (u - 0.62) / 0.38);
+            carrier.position.y = panelDrop.y - 1.05 * bite;
+            panel.scale.set(1, THREE.MathUtils.lerp(1, 0.30, bite), 1);
+          }
+          carrier.visible = u < 0.97;
+        }
+      });
+    }
+
     const origins = new Map(Object.values(parts).map((group) => [group, group.position.clone()]));
     const targets = new Map(Object.values(parts).map((group) => [group, group.position.clone()]));
 
@@ -18518,8 +18644,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         child.userData.explodeDirection = direction.normalize();
       });
     }
+    origins.set(panelInfeed, panelInfeed.position.clone());
+    targets.set(panelInfeed, panelInfeed.position.clone());
     // Everything the explode animation may move, dry and wet alike.
-    const movableGroups = [...Object.values(parts), ...wetMovers];
+    const movableGroups = [...Object.values(parts), ...wetMovers, panelInfeed];
 
     // Every mesh the cutaway may open up, dry parts and wet process together.
     function forEachCutawayMesh(callback) {
@@ -18599,7 +18727,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         // Previously this opened up only 7 of the 28 dry parts and never touched the wet
         // process, so most of the plant stayed solid in cutaway. Apply it to every mesh in
         // the circuit, with the depth taken from the cutaway control.
-        const depth = mode === "cutaway" ? state.cutawayScale : 0.66;
+        const depth = state.cutawayScale;
         // Shells open further than internals, so rotors, screens and meshes stay readable.
         const shellOpacity = THREE.MathUtils.lerp(1.0, 0.08, depth);
         const internalOpacity = THREE.MathUtils.lerp(1.0, 0.34, depth);
@@ -18645,6 +18773,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         setTarget("P26", -0.85 * e, 0.82 * e, 0.92 * e);
         setTarget("P27", -0.45 * e, 0.55 * e, -1.05 * e);
         setTarget("P28", -1.05 * e, 0.20 * e, -0.65 * e);
+        targets.get(panelInfeed).copy(origins.get(panelInfeed)).add(new THREE.Vector3(-2.10 * e, 0.30 * e, 0));
         // The wet section separates radially from its own centre by the same control.
         wetMovers.forEach((child) => {
           targets.get(child).copy(origins.get(child)).addScaledVector(child.userData.explodeDirection, 2.4 * e);
@@ -19025,7 +19154,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       polisher: new THREE.Vector3(polisherCenter.x, 0.32, polisherCenter.z)
     };
 
+    // Every floating text sprite inside the plant (wet equipment captions, the magnet and
+    // SS-201 stream labels). They were always on and covered the model; the existing
+    // "장비 라벨" switch now controls them together with the HTML tags, off by default.
+    const plantLabelSprites = [];
+    circuit.traverse((object) => { if (object.isSprite) plantLabelSprites.push(object); });
+    plantLabelSprites.forEach((sprite) => { sprite.visible = false; });
+
     function updateEquipmentTags() {
+      plantLabelSprites.forEach((sprite) => { sprite.visible = state.showLabels; });
       root.querySelectorAll("[data-hsg-tag]").forEach((tag) => {
         const point = tagPoints[tag.dataset.hsgTag].clone().project(camera);
         const inside = point.z > -1 && point.z < 1 && Math.abs(point.x) < 1.05 && Math.abs(point.y) < 1.05;
@@ -19056,8 +19193,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // wet equipment tags it covers and the frame is computed from their real geometry,
     // so it stays correct if anything is repositioned.
     const processTour = [
-      { title: "PV 라미네이트 패널 투입", note: "장변 수직 하향 투입 · 평균 60장/h · 300 kg/h · 브리징축＋펜듈럼 플랩으로 역비산 억제",
-        parts: ["P23"], wet: [] },
+      { title: "PV 라미네이트 패널 투입", note: "CV-001 경사 컨베이어 → 장변 수직 하향 투입 · 평균 60장/h · 300 kg/h · 브리징축＋펜듈럼 플랩으로 역비산 억제",
+        parts: ["P23"], wet: [], infeed: true },
       { title: "ICSH-301 직교 2축 파쇄", note: "상부 X축 Ø420 12 rpm 조대파쇄 → 420 mm 아래 하부 Y축 Ø350 20 rpm 미세파쇄",
         parts: ["P23", "P24"], wet: [] },
       { title: "SCR-001 10 mm 선별 · 밀폐이송", note: ">10 mm는 SCV-R1로 호퍼 재투입 · ≤10 mm는 SCV-P1으로 FD-101 정량공급",
@@ -19095,6 +19232,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         const group = parts[id];
         if (group) box.union(scratch.setFromObject(group));
       });
+      if (stage.infeed) box.union(scratch.setFromObject(panelInfeed));
       if (stage.wet.length) {
         unifiedWet.traverse((object) => {
           if (!object.isMesh) return;
@@ -19115,9 +19253,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     function showTourStage(index) {
       if (!processTour.length) return;
       tourIndex = (index + processTour.length) % processTour.length;
+      state.tourFlow = true;
       const stage = processTour[tourIndex];
-      // The tour is about the plant, so leave inspection mode if we are in it.
-      if (state.mode === "particles") setMode("simulation");
+      // Flow mode ghosts the whole plant and shows the material markers, which is exactly
+      // what the tour is for — following the material, not inspecting the shells.
+      if (state.mode !== "flow") setMode("flow");
       if (tourCaption) tourCaption.textContent = stage.title + " · " + stage.note;
       if (tourStep) tourStep.textContent = (tourIndex + 1) + "/" + processTour.length;
       fitCountdown = 0;
@@ -19142,6 +19282,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     function setTourPlaying(playing) {
       tourPlaying = playing;
+      state.tourFlow = playing || tourIndex >= 0;
       tourNextAtMs = performance.now() + TOUR_DWELL_MS;
       const button = root.querySelector("[data-tour-play]");
       if (button) {
@@ -19607,6 +19748,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       shredderFlowGroup.visible = showParticles;
       updateInspectionFlex(now);
       updateUnifiedWet(realDt, now);
+      updatePanelInfeed(realDt);
       tickTour(now);
       updateClock();
       if (now - lastReadoutMs >= READOUT_INTERVAL_MS && readoutVisible()) {
