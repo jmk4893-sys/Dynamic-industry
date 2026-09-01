@@ -43,7 +43,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (340건)
+python -m unittest discover -s tests -t .                               # 테스트 (341건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
@@ -105,9 +105,9 @@ flux 상사로 스케일업하면 수력학적 조건이 보존되므로 실증 
 3D 작동 시뮬레이션과 도면 프로그램(2D 제작도·3D 분해도·전체 배치도·도면 목록·부품표)이
 모두 들어 있다.
 
-- 영구설비 **47,750 × 8,300 × 5,050 mm** — 셀별 GA 외형에서 파생
+- 영구설비 **44,750 × 8,300 × 5,050 mm** — 셀별 GA 외형에서 파생
 - JBR–AFR 인계 게이트는 3D 실측 가드-가드 이격(325 mm)에 앵커·심 여유를 얹은 350 mm
-- AFR-101 11,500 → 9,900 mm — CV-101 투입롤러를 CV-102 와 같은 2,800 이송 규격으로 맞추고, ±5,750 대칭이던 가드를 장비 실측(−4,650…+4,300)에 여유 475 균등 적용
+- AFR-101 11,500 → 6,900 mm — ±5,750 대칭이던 가드에 여유 475 균등 적용, JBR 출구 롤러와 AFR 베드를 1,800 공용 인계롤러로 직결(셀별 투입 컨베이어 폐지), 프레임 회수함을 90° 횡배치(길이 −1,100 / 폭 +900)
 - GBR 버퍼 8,700 → 9,550 mm — 2열 캐리지 X 250 mm 겹침(피치 2,500 < 모듈 2,750)과 위험원을 못 감싸던 안전가드를 3D 실측 피치 2,900 · 여유 475 로 수정
 - 스택 → 반전카세트 투입 경로(분리헤드·포획빔·셔틀·승강)를 도면에 전개하고 여섯 단계 시퀀스를 뷰에 표시
 - 장비 밴드 Y 0–7,100, 보행·정비 통로 Y 7,100–8,300 (장비 포락선 **밖**)

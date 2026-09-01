@@ -49,6 +49,32 @@ def part_span(block: str, tag: str, axis: int = 0) -> tuple[float, float]:
     return at[axis] - size[axis] / 2, at[axis] + size[axis] / 2
 
 
+def solid_part_rows(block: str) -> list[tuple[str, list[int], list[int]]]:
+    """가드·참조·포락선을 뺀 실물 부품만 (tag, size, at) 으로 돌려준다.
+
+    가드는 셀 경계 자체이고 참조 외형('guard' 종류)은 인접 셀 설비를 점선으로 그린 것이라,
+    "가드가 장비에서 얼마나 떨어져 있나"를 잴 때 둘 다 장비로 세면 답이 0 이 된다.
+    """
+    rows = []
+    for line in block.splitlines():
+        if "'sweep'" in line or "'guard'" in line:
+            continue
+        found = re.search(r"part\('([^']*)', '[^']*', \[([-\d, ]+)\], \[([-\d, ]+)\]", line)
+        if found:
+            rows.append((found.group(1),
+                         [int(v) for v in found.group(2).split(",")],
+                         [int(v) for v in found.group(3).split(",")]))
+    return rows
+
+
+def catalog_size(html: str, part_number: str) -> list[int]:
+    """부품 카탈로그 한 줄의 외형 (L, W, H)."""
+    found = re.search(r'\["%s","[^"]*","[^"]*","[^"]*",\[(\d+),(\d+),(\d+)\]' % re.escape(part_number), html)
+    if found is None:
+        raise AssertionError(f"{part_number} 를 카탈로그에서 못 찾았다")
+    return [int(v) for v in found.groups()]
+
+
 def part_rows(block: str) -> list[tuple[list[int], list[int]]]:
     """한 셀 블록에서 (size, at) 목록을 뽑는다. 회전포락선은 형상이 아니라 제외한다."""
     rows = []
@@ -592,22 +618,44 @@ class TestLineLengthReduction(unittest.TestCase):
         cls.html = read_drawing()
         cls.stations = station_blocks(cls.html)
 
-    def test_two_transport_conveyors_share_one_length(self):
-        """같은 2,500 mm 패널을 옮기는 순수 이송인데 규격이 둘이면 안 된다."""
-        cv101 = part_span(self.stations["afr"], "CV-101")
-        cv102 = part_span(self.stations["post"], "CV-102")
-        self.assertEqual(cv101[1] - cv101[0], 2800)
-        self.assertEqual(cv102[1] - cv102[0], 2800)
+    def test_afr_has_no_dedicated_infeed_conveyor(self):
+        """B안 — 셀마다 투입 컨베이어를 따로 두지 않는다.
+
+        AFR 이 자기 투입롤러(3,700)를 갖고 있어서 JBR 출구 롤러와 합쳐 2,500 짜리 패널
+        한 장을 넘기는 데 롤러가 5,325 mm 였다. 지금은 JBR 롤러 끝과 AFR 베드를 공용
+        인계롤러로 직결하고, AFR 시트에는 가드를 통과하는 참조 구간만 남는다.
+        """
+        block = self.stations["afr"]
+        solid = {tag for tag, _, _ in solid_part_rows(block)}
+        self.assertNotIn("CV-101", solid, "AFR 이 아직 자기 투입롤러를 갖고 있다")
+        self.assertIn("CV-JA", block, "공용 인계롤러 참조 구간이 도면에 없다")
+        for line in block.splitlines():
+            if "part('CV-JA'" in line:
+                self.assertIn("'guard'", line, "공용 인계롤러는 참조(점선)로 그려야 한다")
+        # 카탈로그도 같이 따라와야 한다 — 실물이 아직 3,700 이면 도면만 줄인 셈이다.
+        self.assertEqual(catalog_size(self.html, "AFR-CV-101")[0], 1800)
+        self.assertIn('["AFR-CV-101","JBR·AFR 공용"', self.html)
+
+    def test_frame_bin_is_transverse(self):
+        """A안 — 회수함 장축을 라인 직각으로 돌려 길이를 폭과 바꾼다."""
+        size = catalog_size(self.html, "AFR-FH-501")
+        self.assertLess(size[0], size[1], "회수함이 아직 라인 방향으로 길다")
+        lo, hi = part_span(self.stations["afr"], "FH-501")
+        self.assertEqual(hi - lo, size[0], "도면 부품과 카탈로그 외형이 다르다")
+        depth_lo, depth_hi = part_span(self.stations["afr"], "FH-501", axis=2)
+        self.assertEqual(depth_hi - depth_lo, size[1])
+        # 통로측 횡인출 1,200 MIN — 가드까지의 Z 여유가 그만큼 나와야 한다.
+        guard_lo, guard_hi = part_span(self.stations["afr"], "GUARD", axis=2)
+        self.assertGreaterEqual(depth_lo - guard_lo, 1200)
+        self.assertGreaterEqual(guard_hi - depth_hi, 1200)
 
     def test_afr_guard_clearance_is_equal_on_both_sides(self):
         """가드가 ±5,750 대칭인데 장비가 비대칭이라 하류에만 1,450 이 비어 있었다."""
         block = self.stations["afr"]
         guard = part_span(block, "GUARD")
-        rows = [(size, at) for size, at in part_rows(block)]
-        hardware_lo = min(at[0] - size[0] / 2 for size, at in rows
-                          if size[0] != guard[1] - guard[0])
-        hardware_hi = max(at[0] + size[0] / 2 for size, at in rows
-                          if size[0] != guard[1] - guard[0])
+        rows = solid_part_rows(block)
+        hardware_lo = min(at[0] - size[0] / 2 for _, size, at in rows)
+        hardware_hi = max(at[0] + size[0] / 2 for _, size, at in rows)
         upstream = hardware_lo - guard[0]
         downstream = guard[1] - hardware_hi
         self.assertEqual(upstream, downstream, "가드 여유가 상·하류에서 다르다")
