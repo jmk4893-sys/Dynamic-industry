@@ -15317,7 +15317,6 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addBox(parts.P23, { x: 2.48, y: 1.66, z: 0.040 }, { x: shredderCenter.x, y: 1.10, z: 1.10 }, material.shredPanel, "P23");
     [-0.62, 0.62].forEach((dx) => addBox(parts.P23, { x: 1.13, y: 1.50, z: 0.032 }, { x: shredderCenter.x + dx, y: 1.10, z: 1.125 }, material.cover, "P23"));
     addMesh(parts.P23, openFrustumGeometry(1.60, 0.85, 2.80, 1.80, 1.20), material.shredMetal, { x: shredderCenter.x, y: 2.00, z: 0 }, null, "P23", true);
-    addBox(parts.P23, { x: 2.86, y: 0.065, z: 1.86 }, { x: shredderCenter.x, y: 3.20, z: 0 }, material.silverClamp, "P23");
 
     // Rev.G dual anti-ejection system: 11 pendulum flaps, chain curtain and deflector.
     for (let i = 0; i < 11; i += 1) {
@@ -18508,14 +18507,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     panelInfeed.name = "CV-001-PANEL-INFEED";
     circuit.add(panelInfeed);
     const beltTail = new THREE.Vector3(shredderCenter.x - 7.10, 0.46, 0);
-    const beltHead = new THREE.Vector3(shredderCenter.x - 1.22, 3.00, 0);
+    const beltHead = new THREE.Vector3(shredderCenter.x - 1.52, 3.30, 0);
     const beltRun = new THREE.Vector3().subVectors(beltHead, beltTail);
     const beltLength = beltRun.length();
     const beltAngle = Math.atan2(beltRun.y, beltRun.x);          // ~25.4° incline
     const beltMid = new THREE.Vector3().addVectors(beltTail, beltHead).multiplyScalar(0.5);
     const PANEL_L = 1.65;                                        // 60-cell module, 1650 x 1000 x 35
     const PANEL_W = 1.00;
-    const PANEL_T = 0.035;
 
     // Belt, side frames and skirts, all aligned to the incline.
     addBox(panelInfeed, { x: beltLength, y: 0.05, z: 1.30 }, beltMid, material.belt, "P23", { z: beltAngle });
@@ -18548,35 +18546,44 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addCylinder(panelInfeed, 0.10, 0.16, { x: beltHead.x + 0.18, y: beltHead.y - 0.34, z: 0.82 },
       material.pulley, "P23", "z", 20, false);
 
-    // Same module as createInputPanel (0.96 x 1.92 x 0.040 with a 4 x 8 cell grid) so the
-    // panels on the belt and the ones entering the rotors are visibly the same product.
-    // An inner group holds the "lying flat" pose; the outer group carries the belt incline
-    // and the tip to vertical, so one rotation drives the whole hand-off.
+    // With the glass and the aluminium frame already removed, what reaches the shredder is
+    // a limp laminate sheet, not a rigid module. Each panel is therefore a hinged chain of
+    // transverse strips (one per cell row) rather than one solid slab: it lies flat on the
+    // belt and drapes over the head pulley under its own weight as it falls into the
+    // hopper. Local frame per link: +X = travel, +Y = up, +Z = across the belt.
+    const PANEL_SEGMENTS = 8;
+    const SEG_LEN = PANEL_L / PANEL_SEGMENTS;          // 1.92 / 8 = 0.24
     const feedPanels = [];
-    const PANEL_COUNT = 8;
+    const PANEL_COUNT = 3;
     for (let i = 0; i < PANEL_COUNT; i += 1) {
       const carrier = new THREE.Group();
-      const panel = new THREE.Group();
-      panel.rotation.set(-Math.PI / 2, Math.PI / 2, 0);   // long axis along travel, face up
-      carrier.add(panel);
-      addBox(panel, { x: PANEL_W, y: PANEL_L, z: 0.040 }, { x: 0, y: 0, z: 0 }, material.panelBack, "P23", null, true);
-      for (let row = 0; row < 8; row += 1) {
+      panelInfeed.add(carrier);
+      const links = [];
+      let parent = carrier;
+      for (let seg = 0; seg < PANEL_SEGMENTS; seg += 1) {
+        const link = new THREE.Group();
+        // Every link but the first hangs off the previous one, so a joint rotation bends
+        // everything downstream of it — the sheet folds instead of pivoting rigidly.
+        link.position.set(seg === 0 ? 0 : SEG_LEN, 0, 0);
+        parent.add(link);
+        addBox(link, { x: SEG_LEN, y: 0.040, z: PANEL_W },
+          { x: SEG_LEN / 2, y: 0, z: 0 }, material.panelBack, "P23", null, true);
         for (let column = 0; column < 4; column += 1) {
-          addBox(panel, { x: 0.195, y: 0.205, z: 0.012 }, {
-            x: -0.345 + column * 0.23,
-            y: -0.805 + row * 0.23,
-            z: 0.027
-          }, material.panelCell, "P23", null, false);
+          addBox(link, { x: 0.205, y: 0.012, z: 0.195 },
+            { x: SEG_LEN / 2, y: 0.027, z: -0.345 + column * 0.23 },
+            material.panelCell, "P23", null, false);
         }
+        links.push(link);
+        parent = link;
       }
       carrier.userData.phase = i / PANEL_COUNT;
-      carrier.userData.panel = panel;
-      panelInfeed.add(carrier);
+      carrier.userData.links = links;
       feedPanels.push(carrier);
     }
-    // Where a panel lets go of the belt and drops into the hopper mouth.
-    const panelDrop = new THREE.Vector3(shredderCenter.x - 0.10, 2.34, 0);
-    const BELT_FRACTION = 0.78;   // rest of the cycle is the drop
+    const beltDir = beltRun.clone().normalize();
+    const MAX_JOINT = 0.14;   // 7 joints x 0.14 rad = a ~56 deg drape, not a roll-up
+    const FALL_RUN = 0.95;                              // travel budget for the drop
+    const CYCLE_LEN = beltLength + FALL_RUN;
     let panelFeedSeconds = 0;
 
     function updatePanelInfeed(realDt) {
@@ -18586,35 +18593,48 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         // 60 panels/h at the model's 60x process acceleration is one panel per real
         // second; with PANEL_COUNT on the loop that is a PANEL_COUNT-second cycle.
         panelFeedSeconds += realDt * state.speed / PANEL_COUNT;
+        // addCylinder orients an "z" roller with rotation.x = PI/2, so adding the spin to
+        // rotation.x tumbles it end-over-end instead of turning it. With Euler order XYZ
+        // the Y term is applied first, i.e. about the cylinder's own axis — that is the
+        // channel the spin belongs in.
         const spin = realDt * state.speed * 2.4;
-        headPulley.rotation.x += spin;
-        tailPulley.rotation.x += spin;
-        beltIdlers.forEach((idler) => { idler.rotation.x += spin; });
+        headPulley.rotation.y += spin;
+        tailPulley.rotation.y += spin;
+        beltIdlers.forEach((idler) => { idler.rotation.y += spin; });
       }
       feedPanels.forEach((carrier) => {
         const cycle = (carrier.userData.phase + panelFeedSeconds) % 1;
-        const panel = carrier.userData.panel;
-        panel.scale.set(1, 1, 1);
-        if (cycle < BELT_FRACTION) {
-          // Riding the belt, lying flat on the incline.
-          const t = cycle / BELT_FRACTION;
-          carrier.position.lerpVectors(beltTail, beltHead, t);
-          carrier.position.y += 0.08;
-          carrier.rotation.set(0, 0, beltAngle);
-          carrier.visible = true;
-        } else {
-          const u = (cycle - BELT_FRACTION) / (1 - BELT_FRACTION);
-          // Tip to vertical over the hopper — 장변 수직 하향 투입 — then descend.
-          carrier.position.lerpVectors(beltHead, panelDrop, Math.min(1, u * 1.45));
-          carrier.rotation.set(0, 0, beltAngle + (-Math.PI / 2 - beltAngle) * Math.min(1, u * 1.6));
-          if (u > 0.62) {
-            // Taken by the upper X rotor: the panel is drawn down and consumed.
-            const bite = Math.min(1, (u - 0.62) / 0.38);
-            carrier.position.y = panelDrop.y - 1.05 * bite;
-            panel.scale.set(1, THREE.MathUtils.lerp(1, 0.30, bite), 1);
-          }
-          carrier.visible = u < 0.97;
+        // s is the trailing edge's distance along the belt line; the sheet occupies
+        // s .. s + PANEL_L, so its leading edge overhangs the head before the tail does.
+        const s = cycle * CYCLE_LEN;
+        const onBelt = Math.min(s, beltLength);
+        carrier.position.copy(beltTail).addScaledVector(beltDir, onBelt);
+        carrier.position.y += 0.08;
+        carrier.rotation.set(0, 0, beltAngle);
+        let drop = 0;
+        if (s > beltLength) {
+          // The whole sheet has left the belt: carry a little forward and fall.
+          const fall = s - beltLength;
+          carrier.position.addScaledVector(beltDir, fall * 0.34);
+          drop = 1.55 * fall * fall;
+          carrier.position.y -= drop;
         }
+        // Each joint droops once it is past the head pulley and unsupported. The further
+        // beyond the head, the deeper the fold — the sheet curls as it drops.
+        const freeFall = s > beltLength;
+        carrier.userData.links.forEach((link, index) => {
+          if (index === 0) { link.rotation.z = 0; return; }
+          if (freeFall) {
+            // Airborne: hold the drape it left the pulley with, plus a little flutter.
+            const fall = s - beltLength;
+            link.rotation.z = -MAX_JOINT + Math.sin(fall * 3.4 + index * 0.7) * 0.022;
+            return;
+          }
+          const beyond = Math.max(0, (s + index * SEG_LEN) - beltLength);
+          link.rotation.z = -Math.min(MAX_JOINT, beyond * 0.42);
+        });
+        // Gone once it is down inside the hopper throat.
+        carrier.visible = carrier.position.y > 1.95;
       });
     }
 
