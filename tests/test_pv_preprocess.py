@@ -14,7 +14,7 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import layout
+from pv_preprocess import electrical, layout, vision
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
 
@@ -214,6 +214,107 @@ class TestDrawingDocument(unittest.TestCase):
             }
             with self.subTest(attribute=attribute):
                 self.assertEqual(targets - ids, set(), f"{attribute} 가 없는 id 를 가리킨다")
+
+
+class TestElectricalIncomer(unittest.TestCase):
+    """전기 인입도(PV-PLANT-EL-1005)가 부하 계산과 어긋나지 않는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_feeder_table_matches_the_model(self):
+        """도면 안의 피더 리터럴이 electrical.py 와 같은 값인지."""
+        block = self.html[self.html.index("  var feeders = ["):self.html.index("  function electricalTotals()")]
+        rows = re.findall(
+            r"\['(F\d)', '([\w-]+)', '([^']*)', ([\d.]+), ([\d.]+), (\d+), '([^']*)', '([^']*)'\]", block)
+        self.assertEqual(len(rows), len(electrical.FEEDERS), "도면과 모델의 피더 수가 다르다")
+        for drawn, feeder in zip(rows, electrical.FEEDERS):
+            with self.subTest(feeder=feeder.tag):
+                self.assertEqual(drawn[0], feeder.tag)
+                self.assertEqual(drawn[1], feeder.panel)
+                self.assertEqual(drawn[2], feeder.served)
+                self.assertAlmostEqual(float(drawn[3]), feeder.installed_kw, places=3)
+                self.assertAlmostEqual(float(drawn[4]), feeder.diversity, places=3)
+                self.assertEqual(int(drawn[5]), feeder.breaker_at)
+                self.assertEqual(drawn[6], feeder.cable)
+                self.assertEqual(drawn[7], feeder.source)
+
+    def test_supply_constants_match(self):
+        self.assertIn(f"var SUPPLY_VOLTAGE_V = {electrical.SUPPLY_VOLTAGE_V};", self.html)
+        self.assertIn(f"var POWER_FACTOR = {electrical.POWER_FACTOR:.2f};", self.html)
+        self.assertIn(f"var MAIN_BREAKER_FRAME_A = {electrical.MAIN_BREAKER_FRAME_A};", self.html)
+        self.assertIn(f"var CONTRACT_MARGIN = {electrical.CONTRACT_MARGIN};", self.html)
+
+    def test_main_breaker_carries_the_demand(self):
+        """주 차단기는 수요 전류에 10 % 여유를 얹고도 남아야 한다."""
+        self.assertGreaterEqual(electrical.main_breaker_at(), electrical.demand_current_a() * 1.1)
+        self.assertLessEqual(electrical.main_breaker_at(), electrical.MAIN_BREAKER_FRAME_A)
+
+    def test_every_feeder_breaker_carries_its_own_load(self):
+        """피더 차단기도 자기 설치 부하 전류를 견뎌야 한다."""
+        for feeder in electrical.FEEDERS:
+            current = feeder.installed_kw * 1000 / (
+                3 ** 0.5 * electrical.SUPPLY_VOLTAGE_V * electrical.POWER_FACTOR)
+            with self.subTest(feeder=feeder.tag):
+                self.assertGreaterEqual(feeder.breaker_at, current, "피더 차단기가 설치 부하보다 작다")
+
+    def test_demand_never_exceeds_installed(self):
+        self.assertLess(electrical.demand_kw(), electrical.installed_kw())
+        for feeder in electrical.FEEDERS:
+            with self.subTest(feeder=feeder.tag):
+                self.assertLessEqual(feeder.diversity, 1.0)
+                self.assertGreater(feeder.diversity, 0.0)
+
+    def test_drawing_is_registered(self):
+        self.assertIn("'PV-PLANT-EL-1005'", self.html)
+        self.assertIn('id="pv-tab-electrical"', self.html)
+        self.assertIn('id="pv-electrical-svg"', self.html)
+
+
+class TestVisionReduction(unittest.TestCase):
+    """비전 최소화가 도면·부품표·3D 에 일관되게 반영됐는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_retired_parts_are_gone_from_the_catalog(self):
+        for part_no in vision.RETIRED_PART_NUMBERS:
+            with self.subTest(part=part_no):
+                self.assertNotIn(f'["{part_no}"', self.html, "부품표에 제거 대상이 남아 있다")
+
+    def test_retired_heads_are_hidden_in_3d(self):
+        """부품표에서 뺀 헤드가 3D 에만 남으면 BOM 과 화면이 어긋난다."""
+        block = self.html[self.html.index("function retireReducedVisionHeads()"):]
+        block = block[:block.index("}());")]
+        for label in vision.RETIRED_MESH_LABELS:
+            with self.subTest(label=label):
+                self.assertIn(f"'{label}'", block)
+
+    def test_transport_and_data_gate_survive(self):
+        """JB/AFR 게이트의 이송·데이터 기능은 남겨야 한다 — 영상 헤드만 뺀 것이다."""
+        for kept in ("JB/AFR-301 직결 동기 인계 롤러", "JB/AFR-301 데이터 인계 게이트"):
+            with self.subTest(mesh=kept):
+                self.assertIn(kept, self.html)
+                self.assertNotIn(f"'{kept}'", self.html[self.html.index("var retired = ["):
+                                                        self.html.index("var hidden = 0;")])
+
+    def test_safety_channels_are_untouched(self):
+        """안전 채널은 감축 대상이 아니다 — SISTEMA 재계산 없이 손댈 수 없다."""
+        for part_no in vision.PROTECTED_SAFETY_PARTS:
+            with self.subTest(part=part_no):
+                self.assertIn(f'["{part_no}"', self.html, "보호 대상 안전 부품이 사라졌다")
+
+    def test_head_count_reduction(self):
+        current, reduced = vision.head_reduction()
+        self.assertEqual((current, reduced), (7, 5))
+        self.assertEqual(len(vision.retired_heads()), len(vision.RETIRED_PART_NUMBERS))
+        self.assertIn("영상 헤드 7 → 5", self.html)
+
+    def test_review_sheet_is_registered(self):
+        self.assertIn("'PV-VIS-901'", self.html)
+        self.assertIn('id="jb-vision-reduction"', self.html)
 
 
 class TestCutawayAndExplode(unittest.TestCase):

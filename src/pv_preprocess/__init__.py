@@ -5,6 +5,7 @@
 한쪽만 고치면 테스트가 실패한다.
 """
 
+from . import electrical, vision
 from .layout import (
     AISLE_WIDTH_MM,
     MACHINE_BAND_Y_MM,
@@ -18,6 +19,8 @@ from .layout import (
 
 __all__ = [
     "AISLE_WIDTH_MM",
+    "electrical",
+    "vision",
     "MACHINE_BAND_Y_MM",
     "STATIONS",
     "ZONE_SEED",

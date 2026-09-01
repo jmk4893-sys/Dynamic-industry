@@ -43,7 +43,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (310건)
+python -m unittest discover -s tests -t .                               # 테스트 (322건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
@@ -82,6 +82,8 @@ src/flotation_design/
   report.py         Markdown 계산서 생성
 src/pv_preprocess/
   layout.py         전처리 플랜트 배치 — 셀 외형에서 존·전체 포락선 파생
+  electrical.py     전기 인입 부하 집계 · 차단기·계약전력 산정
+  vision.py         비전 센서 최소화 검토 결과 (안전 채널은 보호 대상)
 ```
 
 ### 모델에서 알아둘 두 가지
@@ -105,10 +107,12 @@ flux 상사로 스케일업하면 수력학적 조건이 보존되므로 실증 
 
 - 영구설비 **49,900 × 8,300 × 5,050 mm** — 셀별 GA 외형에서 파생
 - 장비 밴드 Y 0–7,100, 보행·정비 통로 Y 7,100–8,300 (장비 포락선 **밖**)
-- 설비 셀 7개 + JB/AFR 인계 게이트 1개, 부품 150품목
+- 설비 셀 7개 + JB/AFR 인계 게이트 1개, 부품 148품목
+- 전기 인입 3Φ 4W 380 V · 설치 68.0 kW · 수요 50.2 kW · 주 차단기 125 AF/100 AT · 계약 75.4 kVA
+- 비전 최소화 검토 반영 — 영상 헤드 7 → 5 (안전 센서는 감축 없음)
 - 컷어웨이(단면)·분해를 메인 3D 영상과 도면 3D 분해도 양쪽에서 조작 — 절단축 5종(X 상/하류, Y 앞/뒤, Z 위), 절단 위치와 분해 거리는 슬라이더로 조정
 
-배치 수치는 `src/pv_preprocess/layout.py` 가 단일 출처이고, 존 X·Y·높이를 셀 외형에서
-파생한다. `tests/test_pv_preprocess.py` 가 도면 안의 리터럴과 이 모델을 대조하므로
+배치 수치는 `src/pv_preprocess/layout.py`, 전기 부하는 `electrical.py`, 비전 구성은
+`vision.py` 가 각각 단일 출처다. 존 X·Y·높이는 셀 외형에서 파생한다. `tests/test_pv_preprocess.py` 가 도면 안의 리터럴과 이 모델을 대조하므로
 한쪽만 고치면 테스트가 실패한다. 존이 자기 장비보다 짧아지는 것, 통로가 장비에 덮이는 것,
 부품이 자기 외형을 넘는 것은 불변식 테스트로 막는다.
