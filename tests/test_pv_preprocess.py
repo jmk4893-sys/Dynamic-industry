@@ -23,6 +23,34 @@ def read_drawing() -> str:
     return DRAWING.read_text(encoding="utf-8")
 
 
+def station_blocks(html: str) -> dict[str, str]:
+    """도면의 `stations` 객체를 키별 원문 블록으로 쪼갠다."""
+    block = html[html.index("  var stations = {"):html.index("  var register = [")]
+    blocks: dict[str, list[str]] = {}
+    current: str | None = None
+    for line in block.splitlines():
+        key = re.match(r"\s{4}(\w+): \{$", line)
+        if key:
+            current = key.group(1)
+            blocks[current] = []
+        if current:
+            blocks[current].append(line)
+    return {key: "\n".join(lines) for key, lines in blocks.items()}
+
+
+def part_rows(block: str) -> list[tuple[list[int], list[int]]]:
+    """한 셀 블록에서 (size, at) 목록을 뽑는다. 회전포락선은 형상이 아니라 제외한다."""
+    rows = []
+    for line in block.splitlines():
+        if "'sweep'" in line:
+            continue
+        found = re.search(r"part\('[^']*', '[^']*', \[([-\d, ]+)\], \[([-\d, ]+)\]", line)
+        if found:
+            rows.append(([int(v) for v in found.group(1).split(",")],
+                         [int(v) for v in found.group(2).split(",")]))
+    return rows
+
+
 class TestLayoutInvariants(unittest.TestCase):
     """배치 모델 자체가 성립하는지 — 도면과 무관하게 항상 참이어야 한다."""
 
@@ -392,6 +420,157 @@ class TestRemovalHeadCapacity(unittest.TestCase):
         self.assertIn("var HEAD_COUNT = 3;", self.html)
         for head in ("HD-1", "HD-2", "HD-3"):
             self.assertIn(f"part('{head}'", self.html, f"{head} 가 JBR-201 부품표에 없다")
+
+
+class TestInfeedHandoff(unittest.TestCase):
+    """스택 → 반전카세트 투입 경로가 도면에 실제로 그려져 있는지.
+
+    REV.22-P01 이전에는 3D 모델에만 있던 분리헤드·셔틀·승강캐리지·포획빔이 도면
+    부품표에는 없었다. 그래서 "패널이 어떻게 반전기에 들어가는가"를 도면만 보고는
+    알 수 없었다. 좌표는 3D 모델 실측값에서 왔으므로 두 문서가 같은 기계를 가리킨다.
+    """
+
+    #: 투입 체인 부품과 3D 실측 (size, at). afu 는 월드 X + 15,400, bfc 는 월드 X + 14,800·Z + 1,600.
+    AFU_CHAIN = {
+        "SEP-A": ([2180, 80, 120], [-1250, 2060, -1900]),
+        "SEP-B": ([2180, 80, 120], [-1250, 2060, 1900]),
+        "CAR-A": ([2720, 100, 1220], [-1250, 1760, -1900]),
+        "CAR-B": ([2720, 100, 1220], [-1250, 1760, 1900]),
+        "SHT-A": ([2280, 80, 1410], [-325, 1640, -1750]),
+        "SHT-B": ([2280, 80, 1410], [-325, 1640, 1750]),
+        "CD-A": ([4460, 60, 1540], [-325, 2020, -1600]),
+        "CD-B": ([4460, 60, 1540], [-325, 2020, 1600]),
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+        cls.stations = station_blocks(cls.html)
+
+    def test_afu_carries_the_measured_handoff_chain(self):
+        block = self.stations["afu"]
+        for tag, (size, at) in self.AFU_CHAIN.items():
+            with self.subTest(part=tag):
+                found = re.search(
+                    r"part\('%s', '[^']*', \[([-\d, ]+)\], \[([-\d, ]+)\]" % re.escape(tag), block)
+                self.assertIsNotNone(found, f"{tag} 가 AFU 부품표에 없다 — 투입 경로가 도면에서 끊긴다")
+                self.assertEqual([int(v) for v in found.group(1).split(",")], size)
+                self.assertEqual([int(v) for v in found.group(2).split(",")], at)
+
+    def test_flip_cassette_is_detailed_not_massing(self):
+        """반전카세트가 일반 매싱 상자가 아니라 실물 부품으로 전개돼 있는지."""
+        block = self.stations["bfc"]
+        tags = set(re.findall(r"part\('([^']+)'", block))
+        for tag in ("SEP", "CAR", "SHT", "RNG-L", "RNG-R", "BGD", "CLP-U", "CLP-L", "CDR"):
+            self.assertIn(tag, tags, f"{tag} 가 BFC 조립도에 없다")
+        for tag in ("VC-1", "VC-2", "VC-3", "VC-4"):
+            self.assertIn(tag, tags, "진공 4구역 컵이 없다 — 겹장검출 구역이 도면에 안 보인다")
+        for index in range(1, 5):
+            self.assertIn(f"CD-{index}", tags, "포획빔 4열이 다 그려져 있지 않다")
+            self.assertIn(f"PAD-{index}", tags, "4점 클램프 패드가 다 그려져 있지 않다")
+        self.assertGreaterEqual(len(tags), 25, "반전카세트 부품 수가 상세설계 수준이 아니다")
+
+    def test_end_ring_matches_the_3d_torus(self):
+        """엔드링 ⌀1,980 · 튜브 180 — 3D 장면의 TorusGeometry(0.9, 0.09) 와 같은 물건인지."""
+        block = self.stations["bfc"]
+        for tag in ("RNG-L", "RNG-R"):
+            found = re.search(
+                r"part\('%s', '[^']*', \[([-\d, ]+)\][^\n]*'ring'\)" % tag, block)
+            self.assertIsNotNone(found, f"{tag} 가 ring 으로 그려져 있지 않다")
+            self.assertEqual([int(v) for v in found.group(1).split(",")], [180, 1980, 1980])
+
+    def test_key_heights_agree_across_the_two_sheets(self):
+        """AFU GA 와 BFC 조립도가 같은 레벨을 쓰는지 — 3D 의 Gt=1,880 · At=3,300 · li=2,100."""
+        for key in ("afu", "bfc"):
+            block = self.stations[key]
+            for level in ("PICK 1,880", "HANDOFF 2,100", "SHUTTLE 1,640"):
+                with self.subTest(station=key, level=level):
+                    self.assertIn(level, block)
+            self.assertRegex(block, r"\[3300, '(FLIP )?AXIS 3,300'\]")
+        bfc = self.stations["bfc"]
+        # 셔틀 1,640 · 캐리지 1,760 · 분리헤드 2,060 · 포획빔 2,020 은 3D 의 Gt 오프셋에서 온다.
+        for tag, height in (("SHT", 1640), ("CAR", 1760), ("SEP", 2060), ("CD-1", 2020)):
+            found = re.search(r"part\('%s', '[^']*', \[[-\d, ]+\], \[-?\d+, (-?\d+)," % re.escape(tag), bfc)
+            self.assertIsNotNone(found, f"{tag} 를 못 찾았다")
+            self.assertEqual(int(found.group(1)), height, f"{tag} 높이가 3D 실측과 다르다")
+
+    def test_every_sheet_with_a_sequence_numbers_it_in_order(self):
+        for key, block in self.stations.items():
+            marks = re.findall(r"step\('(\d+)'", block)
+            if not marks:
+                continue
+            with self.subTest(station=key):
+                self.assertEqual(marks, [str(i + 1) for i in range(len(marks))],
+                                 "투입 시퀀스 번호가 1부터 이어지지 않는다")
+
+    def test_sequence_endpoints_stay_inside_the_cell(self):
+        """시퀀스 화살표가 부품 바운딩박스 밖으로 나가면 뷰 프레임을 넘는다."""
+        for key, block in self.stations.items():
+            steps = re.findall(r"step\('\d+', '[^']*', \[([-\d, ]+)\], \[([-\d, ]+)\]", block)
+            if not steps:
+                continue
+            rows = part_rows(block)
+            box = [
+                (min(at[a] - size[a] / 2 for size, at in rows),
+                 max(at[a] + size[a] / 2 for size, at in rows))
+                for a in range(3)
+            ]
+            for from_text, to_text in steps:
+                for point_text in (from_text, to_text):
+                    point = [int(v) for v in point_text.split(",")]
+                    for a, name in enumerate("XYZ"):
+                        with self.subTest(station=key, axis=name, point=point_text):
+                            self.assertGreaterEqual(point[a], box[a][0] - 1)
+                            self.assertLessEqual(point[a], box[a][1] + 1)
+
+    def test_both_sheets_explain_the_same_six_steps(self):
+        afu = re.findall(r"step\('\d+', '([^']*)'", self.stations["afu"])
+        bfc = re.findall(r"step\('\d+', '([^']*)'", self.stations["bfc"])
+        self.assertEqual(len(afu), 6)
+        self.assertEqual(len(bfc), 6)
+        for index, (left, right) in enumerate(zip(afu, bfc), start=1):
+            with self.subTest(step=index):
+                # 표현은 시트마다 달라도 되지만 같은 동작이어야 한다 — 핵심어로 대조한다.
+                key = ("370", "전개", "1,874", "1,420", "180°", "1,200")[index - 1]
+                self.assertIn(key, left)
+                self.assertIn(key, right)
+
+    def test_capture_beam_is_a_safety_channel(self):
+        """포획빔은 낙하 포획이라 안전 색으로 구분돼야 한다."""
+        for key in ("afu", "bfc"):
+            for line in self.stations[key].splitlines():
+                if re.search(r"part\('CD-[A-B1-4]'", line):
+                    with self.subTest(station=key, line=line.strip()[:40]):
+                        self.assertIn("'safety'", line)
+
+
+class TestForkliftWheels(unittest.TestCase):
+    """지게차 바퀴가 실제 이동거리로 구르는지.
+
+    REV.22-P01 이전에는 `rotation.z = f*18 - g*18` 이었다. 바퀴 실린더는 이미
+    `[Math.PI/2, 0, 0]` 로 눕혀 놓았으므로 그 위에 z 를 돌리면 축이 어긋나 흔들리고,
+    18 이라는 계수도 이동거리와 아무 관계가 없었다. 접지점도 30 mm 떠 있었다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_wheel_radius_and_start_are_named_constants(self):
+        self.assertIn("var Tp=[],Fwr=.27,Fwx0=-23.2;", self.html)
+
+    def test_wheel_sits_on_the_floor(self):
+        """바퀴 중심 높이가 반지름과 같아야 접지한다 — 굴러가는데 떠 있으면 안 된다."""
+        self.assertIn("Ee(jt,Fwr,.18,[i,Fwr,e],M.rubber,null,null,[Math.PI/2,0,0])", self.html)
+
+    def test_roll_comes_from_travel_not_a_magic_factor(self):
+        self.assertIn("let x=-(_-Fwx0)/Fwr;Tp.forEach(W=>{W.rotation.y=x})", self.html)
+        self.assertNotIn("f*18-g*18", self.html)
+        self.assertNotIn("W.rotation.z=x", self.html)
+
+    def test_roll_axis_is_the_cylinder_axis(self):
+        """실린더는 로컬 Y 가 축이고 pre-rotation 이 X 라, 구름은 rotation.y 여야 한다."""
+        self.assertNotRegex(self.html, r"Tp\.forEach\(W=>\{W\.rotation\.[xz]=")
 
 
 if __name__ == "__main__":  # pragma: no cover
