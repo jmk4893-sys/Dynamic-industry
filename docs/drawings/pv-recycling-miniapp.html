@@ -1018,6 +1018,10 @@ html>body{padding:0}</style>
   #hsgTrueThreeDeckScreenRevO .hsg3d-loading { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); color: var(--card-foreground); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-stage-controls { position: absolute; right: 10px; top: 8px; z-index: 3; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; max-width: min(560px, calc(100% - 20px)); padding: 5px; border-radius: 8px; background: color-mix(in srgb, var(--card) 88%, transparent); border: 1px solid var(--muted); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-stage-controls .btn { font-size: 12px; padding: 3px 8px; }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-stage-sliders { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: flex-end; padding-top: 4px; border-top: 1px solid var(--muted); }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-stage-sliders label { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--card-foreground); }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-stage-sliders input[type="range"] { width: 96px; }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-stage-sliders output { min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-stage-controls-sep { width: 1px; align-self: stretch; background: var(--muted); margin: 0 2px; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
   #hsgTrueThreeDeckScreenRevO canvas:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
@@ -1218,6 +1222,8 @@ html>body{padding:0}</style>
     <button class="btn" type="button" data-hsg-speed="2" aria-pressed="false">2×</button>
     <label class="form-label" for="hsg-explode-range">분해 거리 <span data-hsg-explode-value>0%</span></label>
     <input class="form-range" id="hsg-explode-range" data-hsg-explode type="range" min="0" max="100" value="0" step="1" aria-label="부품 분해거리 0에서 100퍼센트">
+    <label class="form-label" for="hsg-cutaway-range">컷어웨이 깊이 <span data-hsg-cutaway-value>66%</span></label>
+    <input class="form-range" id="hsg-cutaway-range" data-hsg-cutaway type="range" min="0" max="100" value="66" step="1" aria-label="컷어웨이 깊이 0에서 100퍼센트">
     <div class="form-check form-switch">
       <input class="form-check-input" id="hsg-equipment-labels" data-hsg-equipment-labels type="checkbox">
       <label class="form-check-label" for="hsg-equipment-labels">장비 라벨</label>
@@ -1392,6 +1398,10 @@ html>body{padding:0}</style>
         <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-mode=&quot;flow&quot;]">유동</button>
         <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-mode=&quot;cutaway&quot;]">컷어웨이</button>
         <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-mode=&quot;exploded&quot;]">분해</button>
+        <div class="hsg3d-stage-sliders">
+          <label>분해 <input type="range" min="0" max="100" step="1" value="0" data-stage-range="[data-hsg-explode]" aria-label="분해 거리"><output data-stage-range-out="[data-hsg-explode]">0%</output></label>
+          <label>컷어웨이 <input type="range" min="0" max="100" step="1" value="66" data-stage-range="[data-hsg-cutaway]" aria-label="컷어웨이 깊이"><output data-stage-range-out="[data-hsg-cutaway]">66%</output></label>
+        </div>
       </div>
       <div class="hsg3d-visually-hidden" role="status" aria-live="polite" data-plant-live-status></div>
       <div class="hsg3d-hint text-small text-muted">수동 카메라 · 드래그: 회전 · 휠/핀치: 확대 · 부품 클릭: 선택 · 키보드: Tab으로 포커스 후 방향키 회전 · +/− 확대 · Home 전체보기</div>
@@ -15117,6 +15127,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       clearParticles();
       companyLogoTexture.dispose();
       companyLogoMaterial.dispose();
+      gridMinor.geometry.dispose();
+      gridMajor.geometry.dispose();
+      gridMinorMaterial.dispose();
+      gridMajorMaterial.dispose();
       renderer.dispose();
       if (window[runtimeKey] === runtime) delete window[runtimeKey];
     };
@@ -16385,20 +16399,61 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     });
 
     const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(25.0, 6.0),
+      new THREE.PlaneGeometry(1, 1),
       new THREE.MeshStandardMaterial({ color: color.card, roughness: 0.94, metalness: 0, transparent: true, opacity: 0.52 })
     );
     floor.rotation.x = -Math.PI / 2;
-    floor.position.x = 6.0;
     floor.position.y = -0.07;
     floor.receiveShadow = true;
     scene.add(floor);
-    const grid = new THREE.GridHelper(25.0, 72, color.border, color.border);
-    grid.position.x = 6.0;
-    grid.position.y = -0.065;
-    grid.material.transparent = true;
-    grid.material.opacity = 0.28;
-    scene.add(grid);
+
+    // Rectangular floor grid. A THREE.GridHelper is always square, so the old
+    // GridHelper(25.0) drew a 25 x 25 m grid under a plant whose footprint is a long
+    // narrow strip — the mesh ran far past the equipment on both sides. These two
+    // LineSegments are sized from the model's real bounds in fitGroundToPlant().
+    const gridMinorMaterial = new THREE.LineBasicMaterial({ color: color.border, transparent: true, opacity: 0.26 });
+    const gridMajorMaterial = new THREE.LineBasicMaterial({ color: color.steel, transparent: true, opacity: 0.34 });
+    const gridMinor = new THREE.LineSegments(new THREE.BufferGeometry(), gridMinorMaterial);
+    const gridMajor = new THREE.LineSegments(new THREE.BufferGeometry(), gridMajorMaterial);
+    gridMinor.position.y = -0.065;
+    gridMajor.position.y = -0.064;
+    scene.add(gridMinor);
+    scene.add(gridMajor);
+
+    // Fits the ground to the assembled plant. Called once the whole model exists, and
+    // deliberately measured on the assembled pose so an explode does not grow the floor.
+    function fitGroundToPlant() {
+      const bounds = new THREE.Box3().setFromObject(circuit);
+      if (!Number.isFinite(bounds.min.x) || bounds.isEmpty()) return;
+      const size = bounds.getSize(new THREE.Vector3());
+      const centre = bounds.getCenter(new THREE.Vector3());
+      const margin = 1.4;                                  // walking clearance around the plant
+      const width = Math.max(2, size.x + margin * 2);      // along the process line
+      const depth = Math.max(2, size.z + margin * 2);
+      floor.geometry.dispose();
+      floor.geometry = new THREE.PlaneGeometry(width, depth);
+      floor.position.set(centre.x, floor.position.y, centre.z);
+
+      const cell = 0.5;                                    // 500 mm floor grid
+      const halfW = width / 2;
+      const halfD = depth / 2;
+      const stepsX = Math.floor(halfW / cell);
+      const stepsZ = Math.floor(halfD / cell);
+      const minor = [];
+      const major = [];
+      for (let i = -stepsX; i <= stepsX; i += 1) {
+        const x = centre.x + i * cell;
+        (i % 5 === 0 ? major : minor).push(x, 0, centre.z - halfD, x, 0, centre.z + halfD);
+      }
+      for (let i = -stepsZ; i <= stepsZ; i += 1) {
+        const z = centre.z + i * cell;
+        (i % 5 === 0 ? major : minor).push(centre.x - halfW, 0, z, centre.x + halfW, 0, z);
+      }
+      gridMinor.geometry.dispose();
+      gridMajor.geometry.dispose();
+      gridMinor.geometry = new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(minor, 3));
+      gridMajor.geometry = new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(major, 3));
+    }
     // Illumination is theme-independent. Tinting these with color.foreground meant the
     // key light was rgb(26,28,31) in light mode — a black light — which rendered the whole
     // plant as a silhouette. Intensities are re-tuned for genuinely white light.
@@ -16901,6 +16956,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       selectedEquipment: null,
       showLabels: false,
       explodeScale: 0,
+      cutawayScale: 0.66,
       numericalResets: 0,
       drainComplete: false
     };
@@ -18428,6 +18484,41 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const origins = new Map(Object.values(parts).map((group) => [group, group.position.clone()]));
     const targets = new Map(Object.values(parts).map((group) => [group, group.position.clone()]));
 
+    // The wet process is one flat group that was never registered in `parts`, so explode
+    // and cutaway both stopped at the dry side. Give each of its direct children an
+    // outward vector (from the wet section's own bounding centre, which is robust even
+    // where a child's local position is the origin) so the whole plant separates.
+    const wetMovers = unifiedWet.children.slice();
+    const wetCentre = new THREE.Vector3();
+    const wetChildCentres = new Map();
+    if (wetMovers.length) {
+      const scratch = new THREE.Box3();
+      wetMovers.forEach((child) => {
+        const centre = scratch.setFromObject(child).getCenter(new THREE.Vector3());
+        wetChildCentres.set(child, centre);
+        wetCentre.add(centre);
+      });
+      wetCentre.divideScalar(wetMovers.length);
+      wetMovers.forEach((child) => {
+        origins.set(child, child.position.clone());
+        targets.set(child, child.position.clone());
+        const direction = wetChildCentres.get(child).clone().sub(wetCentre);
+        if (direction.lengthSq() < 1e-6) direction.set(0, 1, 0);
+        child.userData.explodeDirection = direction.normalize();
+      });
+    }
+    // Everything the explode animation may move, dry and wet alike.
+    const movableGroups = [...Object.values(parts), ...wetMovers];
+
+    // Every mesh the cutaway may open up, dry parts and wet process together.
+    function forEachCutawayMesh(callback) {
+      circuit.traverse((object) => {
+        if (!object.isMesh || !object.material) return;
+        if (object.material.userData.preserveTransparency === true) return; // company logo decal
+        callback(object);
+      });
+    }
+
     function restoreGroupOpacity(group) {
       group.traverse((object) => {
         if (!object.isMesh) return;
@@ -18478,11 +18569,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       explodeInput.disabled = false;
       explodeInput.value = String(Math.round(state.explodeScale * 100));
       root.querySelector("[data-hsg-explode-value]").textContent = Math.round(state.explodeScale * 100) + "%";
-      Object.values(parts).forEach((group) => targets.get(group).copy(origins.get(group)));
+      movableGroups.forEach((group) => targets.get(group).copy(origins.get(group)));
       card3d.hidden = false;
       circuit.visible = mode !== "particles";
       inspectionGroup.visible = mode === "particles";
-      [parts.P02, parts.P03, parts.P10, parts.P12, parts.P13, parts.P14, parts.P15, parts.P16, parts.P17, parts.P18, parts.P19, parts.P20, parts.P21, parts.P22, parts.P23, parts.P24, parts.P25, parts.P26, parts.P27, parts.P28].forEach(restoreGroupOpacity);
+      // Restore across the whole circuit: the cutaway now opens the wet process too, so
+      // leaving it out here would strand it transparent after switching modes.
+      restoreGroupOpacity(circuit);
       if (mode === "assembled" || mode === "exploded") {
         [parts.P02, parts.P03, parts.P10, parts.P12, parts.P13, parts.P14, parts.P15, parts.P16, parts.P17, parts.P18, parts.P19, parts.P20, parts.P21, parts.P22, parts.P23, parts.P24, parts.P25, parts.P26, parts.P27, parts.P28].forEach(setGroupOpaque);
       }
@@ -18492,12 +18585,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         sieveDeckMeshes.forEach((deck) => setMeshOpacity(deck, 0.82));
       }
       if (mode === "flow" || mode === "cutaway") {
-        [parts.P20, parts.P21, parts.P22, parts.P23, parts.P25, parts.P26, parts.P27].forEach((group) => {
-          group.traverse((object) => {
-            if (!object.isMesh) return;
-            const isScreen = object.material.userData.baseOpacity < 0.8;
-            setMeshOpacity(object, isScreen ? 0.46 : 0.34);
-          });
+        // Previously this opened up only 7 of the 28 dry parts and never touched the wet
+        // process, so most of the plant stayed solid in cutaway. Apply it to every mesh in
+        // the circuit, with the depth taken from the cutaway control.
+        const depth = mode === "cutaway" ? state.cutawayScale : 0.66;
+        // Shells open further than internals, so rotors, screens and meshes stay readable.
+        const shellOpacity = THREE.MathUtils.lerp(1.0, 0.08, depth);
+        const internalOpacity = THREE.MathUtils.lerp(1.0, 0.34, depth);
+        forEachCutawayMesh((object) => {
+          const isInternal = (object.material.userData.baseOpacity ?? 1) < 0.8;
+          setMeshOpacity(object, isInternal ? internalOpacity : shellOpacity);
         });
       }
       parts.P04.visible = mode !== "assembled";
@@ -18537,6 +18634,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         setTarget("P26", -0.85 * e, 0.82 * e, 0.92 * e);
         setTarget("P27", -0.45 * e, 0.55 * e, -1.05 * e);
         setTarget("P28", -1.05 * e, 0.20 * e, -0.65 * e);
+        // The wet section separates radially from its own centre by the same control.
+        wetMovers.forEach((child) => {
+          targets.get(child).copy(origins.get(child)).addScaledVector(child.userData.explodeDirection, 2.4 * e);
+        });
       }
       root.querySelectorAll("[data-hsg-mode]").forEach((button) => {
         const active = button.dataset.hsgMode === mode;
@@ -18829,6 +18930,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         pitch = 0.30;
         updateCamera();
       });
+    });
+    root.querySelector("[data-hsg-cutaway]").addEventListener("input", (event) => {
+      state.cutawayScale = Number(event.currentTarget.value) / 100;
+      root.querySelector("[data-hsg-cutaway-value]").textContent = event.currentTarget.value + "%";
+      // Re-apply immediately so the depth is visible while dragging.
+      if (state.mode === "cutaway" || state.mode === "flow") setMode(state.mode);
+      else setMode("cutaway");
     });
     root.querySelector("[data-hsg-explode]").addEventListener("input", (event) => {
       const scale = Number(event.currentTarget.value) / 100;
@@ -19313,7 +19421,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         renderMasterPlc();
       }
       const blend = prefersReducedMotion ? 1 : 0.11;
-      Object.values(parts).forEach((group) => group.position.lerp(targets.get(group), blend));
+      movableGroups.forEach((group) => group.position.lerp(targets.get(group), blend));
       if (selectionBox.visible && state.selectedPart) selectionBox.setFromObject(parts[state.selectedPart]);
       updateSieveMotion(now / 1000);
       if ((state.mode === "simulation" || state.mode === "flow") && state.running) {
@@ -19381,6 +19489,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       frameHandle = requestAnimationFrame(animate);
     }
 
+    fitGroundToPlant();
     resize();
     updateCamera();
     resetSimulation();
@@ -20517,6 +20626,41 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
   proxies.forEach(({ target }) => proxyObserver.observe(target, {
     attributes: true, attributeFilter: ["aria-pressed", "class"], childList: true, characterData: true, subtree: true
   }));
+
+  // --- Stage slider bridge ---------------------------------------------------
+  // Same idea as the button proxies: the real range inputs live in the panel, these
+  // mirror them onto the stage so cutaway depth and explode distance can be dialled in
+  // while actually watching the model. The panel input stays the source of truth.
+  const rangeProxies = [...root.querySelectorAll("[data-stage-range]")].map((proxy) => {
+    const target = root.querySelector(proxy.dataset.stageRange);
+    if (!target) {
+      proxy.closest("label")?.remove();
+      return null;
+    }
+    const output = root.querySelector(`[data-stage-range-out="${proxy.dataset.stageRange}"]`);
+    proxy.addEventListener("input", () => {
+      target.value = proxy.value;
+      target.dispatchEvent(new Event("input", { bubbles: true }));
+      if (output) output.textContent = proxy.value + "%";
+    });
+    return { proxy, target, output };
+  }).filter(Boolean);
+
+  function syncRanges() {
+    rangeProxies.forEach(({ proxy, target, output }) => {
+      if (document.activeElement === proxy) return;   // don't fight the pointer mid-drag
+      if (proxy.value !== target.value) proxy.value = target.value;
+      if (output) output.textContent = target.value + "%";
+    });
+  }
+  syncRanges();
+  // The panel inputs are updated programmatically by setMode(), which fires no event.
+  const rangeObserver = new MutationObserver(syncRanges);
+  rangeProxies.forEach(({ target }) => {
+    rangeObserver.observe(target, { attributes: true, attributeFilter: ["value"] });
+    target.addEventListener("input", syncRanges);
+  });
+  root.addEventListener("click", () => requestAnimationFrame(syncRanges));
 
   // --- Persistent live region ----------------------------------------------
   // 8 of the 10 aria-live regions sit inside panels that are parked in a [hidden]
