@@ -1221,6 +1221,8 @@ html>body{padding:0}</style>
   <div class="viz-controls" aria-label="시뮬레이션 재생·보기 제어">
     <button class="btn" type="button" data-hsg-run>일시정지</button>
     <button class="btn" type="button" data-hsg-restart>처음부터</button>
+    <button class="btn" type="button" data-hsg-speed="0.1" aria-pressed="false">0.1× 슬로우</button>
+    <button class="btn" type="button" data-hsg-speed="0.25" aria-pressed="false">0.25×</button>
     <button class="btn" type="button" data-hsg-speed="1" aria-pressed="true">1×</button>
     <button class="btn" type="button" data-hsg-speed="2" aria-pressed="false">2×</button>
     <label class="form-label" for="hsg-explode-range">분해 거리 <span data-hsg-explode-value>0%</span></label>
@@ -1395,6 +1397,7 @@ html>body{padding:0}</style>
       <div class="hsg3d-clock text-small">운전 00:00 / 60:00</div>
       <div class="hsg3d-stage-controls" role="group" aria-label="3D 스테이지 상시 제어">
         <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-run]">일시정지</button>
+        <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-speed=&quot;0.1&quot;]">0.1× 슬로우</button>
         <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-restart]">처음부터</button>
         <span class="hsg3d-stage-controls-sep" aria-hidden="true"></span>
         <button class="btn btn-sm" type="button" data-tour-prev aria-label="이전 공정 단계">‹</button>
@@ -1662,6 +1665,72 @@ html>body{padding:0}</style>
     </div>
   </details>
 
+  <details class="card hsg3d-validation" id="plant-panel-noise" data-panel-id="noise" data-panel-category="장비·공정">
+    <summary>공정별 예상 소음·진동 수준</summary>
+    <p class="text-small dd-warning">아래 수치는 <strong>설계단계 예측치</strong>입니다. 장비 종류·정격출력·회전수와 동종설비 경험치에서 추정한 값이며 측정값도 제작사 보증치도 아닙니다. 제작사 소음보증치(ISO 3744 음향파워)와 시운전 실측(ISO 11201 작업위치 음압)으로 대체해야 합니다.</p>
+
+    <strong>장비별 예상 소음 · 진동</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="장비별 예상 소음·진동 수준">
+      <thead><tr><th>Tag · 장비</th><th>구동</th><th class="text-end">Lp @1 m<br>dB(A)</th><th>지배 주파수 특성</th><th>진동 특성</th><th>비고 · 저감</th></tr></thead>
+      <tbody>
+        <tr><td>CV-001 투입 컨베이어</td><td>기어드모터</td><td class="text-end">68–74</td><td>저주파 · 롤러 통과음</td><td>미미</td><td>—</td></tr>
+        <tr><td><strong>ICSH-301</strong> 직교 2축 슈레더</td><td>22 + 18.5 kW · 12 / 20 rpm</td><td class="text-end">85–92<br><span class="text-small text-muted">파단 피크 100–105</span></td><td>저주파 충격 · 파단 시 광대역</td><td>구조 전달 우세 · 기초 2–7 mm/s rms</td><td>방진마운트 · 밀폐 하우징 · 구조 분리</td></tr>
+        <tr><td>SCR-001 10 mm 경사스크린</td><td>2.2 kW · 25 Hz</td><td class="text-end">82–88</td><td>25 Hz 기본 + 메시 충격 고조파</td><td>스프링 상부 3 mm p-p · 하부 전달 ≤2 mm/s</td><td>스프링 베이스 · 유연커넥터</td></tr>
+        <tr><td>SCV-R1 / P1 밀폐 스크루</td><td>4.0 / 2.2 kW</td><td class="text-end">75–82</td><td>저주파 · 플라이트 접촉음</td><td>낮음</td><td>—</td></tr>
+        <tr><td><strong>HSG-101</strong> 고속분쇄기</td><td>37 kW · 1,500 rpm · 선단 35.3 m/s</td><td class="text-end"><strong>95–102</strong></td><td>25 Hz 축 + 100 Hz 날통과 + 광대역 공력음</td><td>ISO 10816-3 Group 2 · 신품 ≤2.8 mm/s</td><td class="dd-warning">플랜트 최대 소음원 · 방음커버·흡음 검토 필수</td></tr>
+        <tr><td>M-101 벨트구동부</td><td>V-벨트 4열</td><td class="text-end">78–84</td><td>벨트 통과주파수</td><td>불평형 민감</td><td>가드 내 흡음재</td></tr>
+        <tr><td>SC-500 / SV-201 시브 선별</td><td>2 × 1.5 kW · 25 Hz</td><td class="text-end">85–92</td><td>25 Hz + 메시·입자 충격</td><td>진폭 3 mm p-p (throw 45°)</td><td>방진 스프링 · 덕트 유연연결</td></tr>
+        <tr><td>SS-201 75 µm 분리</td><td>2.2 kW · 960 rpm (16 Hz)</td><td class="text-end">82–88</td><td>16 Hz 기본</td><td>3 mm p-p 급</td><td>스프링 베이스</td></tr>
+        <tr><td>CC-201 공기분급</td><td>공기 유동</td><td class="text-end">85–90</td><td>광대역 공력음</td><td>낮음</td><td>덕트 흡음 · 소음기</td></tr>
+        <tr><td>BF-101/201 + IDF-101 집진</td><td>5.5 kW · 1,750 rpm</td><td class="text-end">85–92</td><td>날통과주파수(BPF) + 광대역</td><td>불평형 · 덕트 공진 주의</td><td class="dd-warning">토출 소음기 · 덕트 방진행거</td></tr>
+        <tr><td>PC-101/201 음압 이송배관</td><td>—</td><td class="text-end">82–88</td><td>배관 방사음 · 유동 난류음</td><td>배관 진동 전달</td><td>클램프 간격 · 차음 랩</td></tr>
+        <tr><td>AS-101 어트리션 스크러버</td><td>11 kW · 600 rpm</td><td class="text-end">78–85</td><td>10 Hz 축 + 비드 충격</td><td>슬러리 하중 변동</td><td>습식이라 상대적으로 낮음</td></tr>
+        <tr><td>TK-001/101 교반</td><td>3.0 kW · 60 rpm</td><td class="text-end">70–76</td><td>저주파</td><td>낮음</td><td>—</td></tr>
+        <tr><td>FC-201/202/203 부유선별</td><td>3.0 / 1.5 / 3.0 kW · 360–420 rpm</td><td class="text-end">72–80</td><td>임펠러 + 기포 파열음</td><td>낮음</td><td>—</td></tr>
+        <tr><td>AB-201A/B 무급유 블로어</td><td>2.2 kW · 2,900 rpm</td><td class="text-end">88–95</td><td>고주파 맥동 · 2극 회전음</td><td>맥동 전달</td><td class="dd-warning">방음커버 필수 · 흡배기 소음기</td></tr>
+        <tr><td>VP-401A/B 공통 진공펌프</td><td>7.5 kW · 2,900 rpm</td><td class="text-end">85–92</td><td>고주파 + 배기 맥동</td><td>맥동 전달</td><td class="dd-warning">방음커버 · 배기 소음기</td></tr>
+        <tr><td>P-101/102/301 슬러리 펌프</td><td>1.5–2.2 kW · 1,750 rpm</td><td class="text-end">78–85</td><td>29 Hz 축 + BPF</td><td>캐비테이션 시 급증</td><td>NPSH 확보</td></tr>
+        <tr><td>FP-301 멤브레인 필터프레스</td><td>HPU 7.5 kW</td><td class="text-end">75–82<br><span class="text-small text-muted">개판·케이크 낙하 88–92</span></td><td>유압 맥동 + 충격음</td><td>프레임 충격 전달</td><td>개판 속도 제어 · 드립트레이 방진</td></tr>
+        <tr><td>HPW-301 고압 포세척</td><td>5.5 kW</td><td class="text-end">88–95</td><td>노즐 고주파 분사음</td><td>낮음</td><td class="dd-warning">세척 시 출입통제 · 보호구</td></tr>
+        <tr><td>CF-204 원심탈수기</td><td>8.0 kW · 1,800 rpm</td><td class="text-end">85–92</td><td>30 Hz 축 + 불평형 성분</td><td class="dd-warning">불평형 민감 · ISO 10816-3 감시</td><td>방진마운트 · 진동 트립 설정</td></tr>
+      </tbody>
+    </table></div>
+
+    <strong>구역별 합성 소음과 노출관리</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="구역별 합성 소음과 노출관리">
+      <thead><tr><th>구역</th><th class="text-end">예상 작업위치 dB(A)</th><th class="text-end">허용 노출시간</th><th>요구 조치</th></tr></thead>
+      <tbody>
+        <tr><td>건식 파쇄·분쇄 (ICSH-301 · HSG-101)</td><td class="text-end">95–100</td><td class="text-end">2–4 h</td><td class="dd-warning">청력보호구 필수 · 체류시간 관리 · 원격감시 우선</td></tr>
+        <tr><td>건식 선별·집진 (SV/SS/CC/BF)</td><td class="text-end">88–93</td><td class="text-end">4–8 h</td><td>청력보호구 착용 · 청력보존프로그램</td></tr>
+        <tr><td>탈수·세척 (FP-301 · CF-204 · HPW)</td><td class="text-end">85–92</td><td class="text-end">8 h 이상</td><td>세척 작업 시 보호구 · 출입통제</td></tr>
+        <tr><td>습식 슬러리·부선 (AS-101 · FC-201/202/203)</td><td class="text-end">80–86</td><td class="text-end">제한 없음</td><td>블로어·진공펌프 근접 시 보호구</td></tr>
+        <tr><td>제어실 (차음 구획)</td><td class="text-end">≤60</td><td class="text-end">제한 없음</td><td>차음벽·이중창으로 확보</td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small">합성값은 개별 음원의 로그합에 작업위치까지의 거리감쇠(−3 ~ −6 dB)를 반영한 개념값입니다. 허용 노출시간은 90 dB(A) 8시간·5 dB 교환율 기준입니다.</p>
+
+    <strong>적용 기준</strong>
+    <ul class="text-small">
+      <li>산업안전보건기준에 관한 규칙 소음작업 — 8시간 85 dB(A) 이상 청력보존프로그램, 90 dB(A) 8시간 노출기준(95 dB 4시간 · 100 dB 2시간)</li>
+      <li>소음·진동관리법 사업장 소음 배출허용기준 — 부지경계 기준은 지역 구분별로 확인 (일반공업지역 예: 주간 70 · 야간 60 dB(A))</li>
+      <li>KS I ISO 3744 음향파워 측정 · ISO 11201 작업위치 방출음압 — 제작사 보증치 제출 근거</li>
+      <li>ISO 10816-3 기계 진동 평가 — 15–300 kW Group 2 기준 zone A/B 2.8 · B/C 4.5 · C/D 7.1 mm/s rms</li>
+      <li>ISO 2631-1 인체 전신진동 · ISO 10137 구조물 사용성 — 제어실·통로 바닥 진동 검토</li>
+    </ul>
+
+    <strong>모델 표시 배율 (실제값과 다른 부분)</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="3D 표시 배율">
+      <thead><tr><th>항목</th><th>실제값</th><th>화면 표시</th><th>이유</th></tr></thead>
+      <tbody>
+        <tr><td>시브·스크린 진폭</td><td>3 mm p-p</td><td>×16 (48 mm p-p 상당)</td><td>플랜트 전경 카메라에서 3 mm 는 1 px 미만이라 정지한 것으로 보임</td></tr>
+        <tr><td>가진주파수</td><td>25 Hz / 16 Hz</td><td>정수 분주 (÷6 / ÷4)</td><td>60 fps 로 25 Hz 를 그리면 앨리어싱</td></tr>
+        <tr><td>회전수 표시</td><td>명판 rpm (최대 2,900)</td><td>648 rpm 에서 접음</td><td>프레임당 0.18 회전 초과 시 마차바퀴 현상 · 0.1× 슬로우로 실회전 확인</td></tr>
+        <tr><td>HSG-101 접촉 해석</td><td>1,500 rpm</td><td>솔버 5.2 rad/s</td><td>kinematic 블레이드를 명판 속도로 돌리면 입자가 챔버를 이탈</td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small dd-warning">소음·진동은 배치·차음·기초 설계에 직접 영향을 주므로, E0/E1 단계에서 제작사 보증치를 받아 구역별 합성과 부지경계 예측을 다시 수행해야 합니다. 본 표는 그 전 단계의 설계 가정입니다.</p>
+  </details>
+
   <div hidden data-category-storage></div>
   <dialog class="card hsg3d-panel-dialog" id="plant-category-dialog" aria-labelledby="plant-category-dialog-title">
     <div class="viz-row hsg3d-panel-dialog-head">
@@ -1692,7 +1761,7 @@ html>body{padding:0}</style>
   const categories = {
     operation: { label: "운전·제어", title: "통합운전·PLC", panels: ["master-plc", "dry-plc", "wet-plc"] },
     equipment: { label: "장비·공정", title: "영상·장비", panels: ["video-controls", "equipment"] },
-    process: { label: "장비·공정", title: "공정값·해석", panels: ["process-live", "analysis"] },
+    process: { label: "장비·공정", title: "공정값·해석", panels: ["process-live", "analysis", "noise"] },
     layout: { label: "상세설계", title: "6개 장비 DD-R4 2D·3D 설치·전력·배치설계", panels: ["layout"] },
     maintenance: { label: "제작·설치", title: "BOM·체결구·설치 인터페이스", panels: ["maintenance"] },
     validation: { label: "검증·근거", title: "검수·데이터", panels: ["validation", "data-source"] }
@@ -15932,7 +16001,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const SECONDARY_SIEVE_RPM = 960;                                     // 명판 · SV-201 2.2 kW 진동모터
     const SECONDARY_SIEVE_FREQUENCY_HZ = SECONDARY_SIEVE_RPM / 60;       // 16 Hz
     const SECONDARY_VISUAL_FREQUENCY_HZ = SECONDARY_SIEVE_FREQUENCY_HZ / 4;
-    const SIEVE_VISUAL_DISPLACEMENT_SCALE = 4;
+    // 실제 throw 는 3 mm p-p — 플랜트 전경 카메라에서 1 px 도 안 되므로 정지한 것처럼 보인다.
+    // 가진주파수를 정수 분주해 그리는 것과 같은 이유로 진폭도 배율을 명시해 키운다.
+    // 모델값(3 mm)은 그대로이고 화면 표시만 배율이 걸린다. 소음·진동 패널에 병기.
+    const SIEVE_VISUAL_DISPLACEMENT_SCALE = 16;
     const SIEVE_VISUAL_PEAK_M = SIEVE_PEAK_TO_PEAK_M * 0.5 * SIEVE_VISUAL_DISPLACEMENT_SCALE;
     const SIEVE_THROW_ANGLE_RAD = THREE.MathUtils.degToRad(45);
     const SIEVE_DECK_BASE_Y = Object.freeze([0.92]);
@@ -18175,26 +18247,47 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       root.querySelector("[data-hsg-run]").textContent = state.running ? "일시정지" : "계속 재생";
     }
 
+    // 건식 구동부가 도는 조건. 종전에는 state.running 하나였는데 이 값은 PLC-001·101·401 이
+    // 모두 RUN 이어야 참이라, 60분 기동 시퀀스 내내 그리고 공정 투어 내내 슈레더·분쇄기·
+    // 스크린·집진이 통째로 멈춰 있었다. 습식만 투어 예외(wetAnimationAllowed)를 갖고 있었다.
+    // 이제 각 구동부가 자기를 기동하는 시퀀스 단계를 따르므로, 실제 플랜트처럼 단계별로
+    // 하나씩 살아난다.
+    //   0 집진·배출계 · 1 스크린·이송계 · 2 HSG-101 · 3 ICSH-301 · 4 원료투입
+    function dryDriveOn(step) {
+      if (state.playbackPaused) return false;
+      if (state.tourFlow) return true;
+      if (plcState.line === "trip") return false;
+      if (plcState.mode === "manual") return true;
+      if (plcState.line === "run") return true;
+      if (plcState.line === "starting" || plcState.line === "stopping") return plcState.step >= step;
+      return false;
+    }
+
     function updateBladeBodies(dt) {
+      const dustOn = dryDriveOn(0);
+      const conveyOn = dryDriveOn(1);
+      const millOn = dryDriveOn(2);
+      const shredOn = dryDriveOn(3);
       // The rotor used to be animated at a hard-coded 5.2 rad/s (~50 rpm) while every
       // process number on the page was computed from the 1,500 rpm nameplate. It now runs
       // from DRIVE_RPM like every other shaft; shaftRadians folds the drawn rate down to
       // DISPLAY_REV_PER_FRAME so the four-armed rotor blurs instead of aliasing backwards.
-      const rotorStep = shaftRadians(DRIVE_RPM.grinderRotor, dt);
+      const rotorStep = millOn ? shaftRadians(DRIVE_RPM.grinderRotor, dt) : 0;
       const motorStep = rotorStep * GRINDER_BELT_RATIO;
       const motorOmega = dt > 0 ? motorStep / dt : 0;
       rotorDisplayAngle += rotorStep;
       motorAngle += motorStep;
       previousRotorAngle = rotorAngle;
-      rotorAngle += SOLVER_ROTOR_OMEGA * dt;
+      rotorAngle += millOn ? SOLVER_ROTOR_OMEGA * dt : 0;
       beltPhase = (beltPhase - motorOmega * MOTOR_PULLEY_RADIUS * dt / beltLoopLength + 1) % 1;
       for (let i = 0; i < bladeBodies.length; i += 1) {
         const angle = rotorAngle + i * Math.PI / 2;
         const body = bladeBodies[i];
         body.position.set(grinderX + Math.cos(angle) * BLADE_RADIUS, grinderY + Math.sin(angle) * BLADE_RADIUS, 0);
         body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), angle);
-        body.velocity.set(-Math.sin(angle) * BLADE_RADIUS * SOLVER_ROTOR_OMEGA, Math.cos(angle) * BLADE_RADIUS * SOLVER_ROTOR_OMEGA, 0);
-        body.angularVelocity.set(0, 0, SOLVER_ROTOR_OMEGA);
+        const omega = millOn ? SOLVER_ROTOR_OMEGA : 0;
+        body.velocity.set(-Math.sin(angle) * BLADE_RADIUS * omega, Math.cos(angle) * BLADE_RADIUS * omega, 0);
+        body.angularVelocity.set(0, 0, omega);
       }
       rotorPivot.rotation.z = rotorDisplayAngle;
       knifePivot.rotation.z = rotorDisplayAngle;
@@ -18202,22 +18295,25 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       motorPulley.rotation.z = motorAngle;
       motorFan.rotation.z = motorAngle;
       motorShaftRotor.rotation.z = motorAngle;
-      shredderShaftA.rotation.x += shaftRadians(DRIVE_RPM.shredderUpperShaft, dt);
-      shredderShaftB.rotation.z -= shaftRadians(DRIVE_RPM.shredderLowerShaft, dt);
-      shredMotorFanA.rotation.x += shaftRadians(DRIVE_RPM.shredderMotorFan, dt);
-      shredMotorFanB.rotation.z -= shaftRadians(DRIVE_RPM.shredderMotorFan, dt);
-      shredFeedRollerFront.rotation.x += shaftRadians(DRIVE_RPM.shredderFeedRoller, dt);
-      shredFeedRollerRear.rotation.x -= shaftRadians(DRIVE_RPM.shredderFeedRoller, dt);
-      shredAntiBridgeShaft.rotation.x += shaftRadians(DRIVE_RPM.shredderAntiBridge, dt);
-      shredReturnRotor.rotation.y += shaftRadians(DRIVE_RPM.returnRotaryValve, dt);
-      shredProductRotor.rotation.y += shaftRadians(DRIVE_RPM.productRotaryValve, dt);
+      const shredDt = shredOn ? dt : 0;
+      shredderShaftA.rotation.x += shaftRadians(DRIVE_RPM.shredderUpperShaft, shredDt);
+      shredderShaftB.rotation.z -= shaftRadians(DRIVE_RPM.shredderLowerShaft, shredDt);
+      shredMotorFanA.rotation.x += shaftRadians(DRIVE_RPM.shredderMotorFan, shredDt);
+      shredMotorFanB.rotation.z -= shaftRadians(DRIVE_RPM.shredderMotorFan, shredDt);
+      shredFeedRollerFront.rotation.x += shaftRadians(DRIVE_RPM.shredderFeedRoller, shredDt);
+      shredFeedRollerRear.rotation.x -= shaftRadians(DRIVE_RPM.shredderFeedRoller, shredDt);
+      shredAntiBridgeShaft.rotation.x += shaftRadians(DRIVE_RPM.shredderAntiBridge, shredDt);
+      const conveyDt = conveyOn ? dt : 0;
+      shredReturnRotor.rotation.y += shaftRadians(DRIVE_RPM.returnRotaryValve, conveyDt);
+      shredProductRotor.rotation.y += shaftRadians(DRIVE_RPM.productRotaryValve, conveyDt);
       const showShredFlow = state.mode === "simulation" || state.mode === "flow";
       const reducedMotion = prefersReducedMotion;
+      const shredFlowRunning = shredOn && dt > 0;
       // The panels that used to be posed here are now delivered by the CV-001 conveyor,
       // which shows them arriving from a visible origin instead of materialising above
       // the hopper. The old geometry and its pose maths are gone.
       shredderFlowGroup.visible = showShredFlow;
-      if (showShredFlow && state.running && !reducedMotion) {
+      if (showShredFlow && shredFlowRunning && !reducedMotion) {
         shredFeedMarkers.forEach((marker) => {
           marker.userData.phase = (marker.userData.phase + dt * 0.16) % 1;
           marker.position.copy(shredFeedCurve.getPoint(marker.userData.phase));
@@ -18230,12 +18326,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
           marker.rotation.y += dt * 2.4;
         });
       }
-      transferScrewRotor.rotation.y += shaftRadians(TRANSFER_SCREW_RPM, dt);
-      returnScrewRotor.rotation.y += shaftRadians(RETURN_SCREW_RPM, dt);
-      airlockRotor.rotation.z -= Math.PI * 2 * 18 / 60 * dt;
-      rv102Rotor.rotation.z -= Math.PI * 2 * 10 / 60 * dt;
-      inducedFanRotor.rotation.z += shaftRadians(DRIVE_RPM.inducedFan, dt);
-      updateAirflowMarkers(dt);
+      transferScrewRotor.rotation.y += shaftRadians(TRANSFER_SCREW_RPM, conveyDt);
+      returnScrewRotor.rotation.y += shaftRadians(RETURN_SCREW_RPM, conveyDt);
+      const dustDt = dustOn ? dt : 0;
+      airlockRotor.rotation.z -= Math.PI * 2 * 18 / 60 * dustDt;
+      rv102Rotor.rotation.z -= Math.PI * 2 * 10 / 60 * dustDt;
+      inducedFanRotor.rotation.z += shaftRadians(DRIVE_RPM.inducedFan, dustDt);
+      updateAirflowMarkers(dustDt);
       updateBeltSegments();
     }
 
@@ -18513,7 +18610,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
 
     function updatePhysics(dt) {
-      updateBladeBodies(dt);
+      // updateBladeBodies 는 애니메이션 루프가 매 프레임 한 번 부른다. 여기서 또 부르면
+      // 운전 중에만 두 번 돌아 축이 두 배 속도로 보인다.
       world.step(1 / 60, dt, 8);
       for (let i = physicalParticles.length - 1; i >= 0; i -= 1) {
         const particle = physicalParticles[i];
@@ -18803,8 +18901,25 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       targets.get(parts[id]).copy(origins.get(parts[id])).add(new THREE.Vector3(x, y, z));
     }
 
+    function exitTour() {
+      tourPlaying = false;
+      tourIndex = -1;
+      state.tourFlow = false;
+      const button = root.querySelector("[data-tour-play]");
+      if (button) {
+        button.textContent = "공정 투어";
+        button.setAttribute("aria-pressed", "false");
+        button.classList.remove("btn-primary");
+      }
+      const bar = root.querySelector("[data-tour-bar]");
+      if (bar) bar.hidden = true;
+    }
+
     function setMode(mode, requestedExplode = null) {
       const previousMode = state.mode;
+      // 투어는 유동 모드 자체다. 다른 보기로 나가면 투어에서도 나가야 tourFlow 가 남아
+      // PLC 상태와 무관하게 계속 도는 일이 없다.
+      if (mode !== "flow" && state.tourFlow) exitTour();
       state.mode = mode;
       const explodeInput = root.querySelector("[data-hsg-explode]");
       if (mode === "exploded") {
@@ -19122,7 +19237,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       }
     }
 
-    plcUi.start.addEventListener("click", () => plcStartSequence(false));
+    plcUi.start.addEventListener("click", () => { if (state.tourFlow) exitTour(); plcStartSequence(false); });
     plcUi.stop.addEventListener("click", plcNormalStop);
     plcUi.reset.addEventListener("click", plcResetTrip);
     plcUi.estop.addEventListener("change", (event) => {
@@ -19627,10 +19742,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       });
     }
 
-    function updateSieveMotion(timeSeconds) {
-      const enabled = (state.mode === "simulation" || state.mode === "flow")
-        && state.running
-        && !prefersReducedMotion;
+    function updateSieveMotion(timeSeconds, driveDt) {
+      // 스크린·분급은 S2(스크린·이송계)에서, 집진 팬·로터리는 S1(집진·배출계)에서 기동한다.
+      const enabled = dryDriveOn(1) && !prefersReducedMotion;
+      const dustEnabled = dryDriveOn(0) && !prefersReducedMotion;
+      // BF-101/201 흡인팬은 집진계 기동과 함께 돈다. 절대시간이 아니라 증분으로 돌려야
+      // 정지했을 때 그 자리에 서 있고 재기동하면 이어서 돈다.
+      bfFanRotor.rotation.z -= shaftRadians(DRIVE_RPM.inducedFan, dustEnabled ? driveDt : 0);
       if (enabled) {
         const phase = Math.PI * 2 * SIEVE_VISUAL_FREQUENCY_HZ * timeSeconds;
         const displacement = Math.sin(phase) * SIEVE_VISUAL_PEAK_M;
@@ -19655,7 +19773,6 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         ccHeavyAirlockRotor.rotation.z = -timeSeconds * Math.PI * 2 * 10 / 60;
         rv202Rotor.rotation.z = -timeSeconds * Math.PI * 2 * 12 / 60;
         rv203Rotor.rotation.z = -timeSeconds * Math.PI * 2 * 10 / 60;
-        bfFanRotor.rotation.z = -timeSeconds * 18.0;
         const polisherPhase = Math.PI * 2 * 4.2 * timeSeconds;
         polisherMotionOffset.set(
           Math.sin(polisherPhase) * 0.0040,
@@ -19673,7 +19790,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       sieveVibratingGroup.position.copy(sieveMotionOffset);
       secondaryGroup.position.copy(secondaryMotionOffset);
       polisherGroup.position.copy(polisherMotionOffset);
-      if (!state.running) {
+      if (!enabled) {
         travelParticles.forEach((track) => {
           if (track.phase === "sieve") track.mesh.position.copy(travelPosition(track));
         });
@@ -19812,8 +19929,17 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       const blend = prefersReducedMotion ? 1 : 0.11;
       movableGroups.forEach((group) => group.position.lerp(targets.get(group), blend));
       if (selectionBox.visible && state.selectedPart) selectionBox.setFromObject(parts[state.selectedPart]);
-      updateSieveMotion(now / 1000);
-      if ((state.mode === "simulation" || state.mode === "flow") && state.running) {
+      // 구동부는 운전상태와 무관하게 매 프레임 갱신하고, 무엇이 도는지는 dryDriveOn 이 판단한다.
+      // 원료가 실제로 흐르는 운전 중에는 재생배속을, 투어·기동 중에는 실시간을, 수동 점검
+      // 모드에서는 조그 속도를 쓴다.
+      const running = (state.mode === "simulation" || state.mode === "flow") && state.running;
+      const driveDt = state.playbackPaused ? 0
+        : running ? realDt * state.speed
+        : plcState.mode === "manual" ? realDt * 0.35
+        : realDt;
+      updateBladeBodies(driveDt);
+      updateSieveMotion(now / 1000, driveDt);
+      if (running) {
         const processDt = realDt * 60 * state.speed;
         state.processSeconds = Math.min(PROCESS_HORIZON_S, state.processSeconds + processDt);
         const feedEnabled = masterPlcState.line === "run" && masterPlcState.feedRelease && plcState.line === "run" && wetPlcState.line === "run";
@@ -19850,8 +19976,6 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
           spawnPhysicalParticle("fresh", PARCEL_MASS, FEED_DMAX_MM);
         }
         updatePhysics(realDt * state.speed);
-      } else if (plcState.mode === "manual" && plcState.line !== "trip") {
-        updateBladeBodies(realDt * 0.35);
       }
       const showParticles = state.mode === "simulation" || state.mode === "flow";
       physicalParticles.forEach((particle) => { particle.mesh.visible = showParticles; });
