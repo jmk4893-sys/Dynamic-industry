@@ -51,7 +51,7 @@ class Feeder:
 
 #: 주 분전반(MDB-101) 피더. 순서가 인입도의 위→아래 순서다.
 FEEDERS: tuple[Feeder, ...] = (
-    Feeder("F1", "LP-AFU", "LFT-101A/B 서보 승강 · BFC-101A/B 반전 · CD-101 포획빔 · 투입 비전",
+    Feeder("F1", "LP-AFU", "LFT-101A/B 유압 승강(HPU-101) · BFC-101A/B 반전 · CD-101 포획빔 · 투입 비전",
            12.0, 0.70, 40, "4C×10 mm² Cu", "계획"),
     Feeder("F2", "LP-RB", "RB-101 로봇 제어반 · EOAT 진공 · PT-101 정렬정반",
            9.0, 0.60, 32, "4C×6 mm² Cu", "계획"),

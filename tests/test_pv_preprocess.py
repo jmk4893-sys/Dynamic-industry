@@ -841,5 +841,85 @@ class TestProcessSequences(unittest.TestCase):
         self.assertLess(bin_top, roller_bottom, "회수함이 반출롤러를 관통한다")
 
 
+class TestFlipPortalAndLift(unittest.TestCase):
+    """반전카세트 포탈 재배치와 유압 시저 리프트 — 통과 간섭이 되돌아오지 않는지.
+
+    종전 승강기둥·LM가이드는 반전축 선상(z 0)에 서서, 스택에서 반전 중심으로
+    셔틀·승강하는 패널(통과대역 z −1,000…+700)을 3D 스윕 실측으로 t 7.5–12.4 s
+    동안 관통했다. 포탈 기둥은 그 대역 밖에 서야 한다.
+    """
+
+    #: 패널 통과대역 (bfc 로컬 z). 스택 위치 −300±700 과 반전 위치 0±700 의 합집합.
+    BAND = (-1000, 700)
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+        cls.stations = station_blocks(cls.html)
+        cls.bfc = cls.stations["bfc"]
+
+    def test_portal_columns_stand_outside_the_panel_band(self):
+        for tag in ("PLO", "PLI", "PRO", "PRI"):
+            z_lo, z_hi = part_span(self.bfc, tag, axis=2)
+            with self.subTest(part=tag):
+                self.assertTrue(z_hi <= self.BAND[0] or z_lo >= self.BAND[1],
+                                f"{tag} 가 패널 통과대역 {self.BAND} 안에 서 있다")
+
+    def test_no_full_height_member_crosses_the_band(self):
+        """통과대역 안에 서 있는 전고(全高) 부재가 하나도 없어야 한다 — 일반 불변식."""
+        for tag, size, at in solid_part_rows(self.bfc):
+            y_lo, y_hi = at[1] - size[1] / 2, at[1] + size[1] / 2
+            # 셔틀 높이(1,850…1,910)를 가로지르는 부재만 위험하다
+            if not (y_lo < 1850 and y_hi > 1910):
+                continue
+            z_lo, z_hi = at[2] - size[2] / 2, at[2] + size[2] / 2
+            x_lo, x_hi = at[0] - size[0] / 2, at[0] + size[0] / 2
+            # 패널 스윕 X: 스택 −1,850±1,250 → 축 0±1,250
+            if x_hi < -3100 or x_lo > 1250:
+                continue
+            with self.subTest(part=tag):
+                self.assertTrue(z_hi <= self.BAND[0] or z_lo >= self.BAND[1],
+                                f"{tag} 가 셔틀 높이에서 패널 경로를 가로지른다")
+
+    def test_crossbeams_clear_the_clamp_sweep(self):
+        """크로스빔은 클램프바 끝(x ±1,430) 밖에서만 하중을 받아야 한다."""
+        for tag in ("CB-L", "CB-R"):
+            x_lo, x_hi = part_span(self.bfc, tag)
+            with self.subTest(part=tag):
+                self.assertTrue(x_hi <= -1430 or x_lo >= 1430,
+                                f"{tag} 가 회전·클램프 포락선 안에 있다")
+
+    def test_bearing_blocks_sit_on_the_flip_axis(self):
+        for tag in ("BB-L", "BB-R"):
+            z_lo, z_hi = part_span(self.bfc, tag, axis=2)
+            self.assertEqual((z_lo + z_hi) / 2, 0, f"{tag} 가 반전축 위에 있지 않다")
+
+    def test_lift_is_hydraulic_with_a_power_unit(self):
+        """리프트가 유압 시저 + HPU-101 로 구현되고 세 문서가 일치하는지."""
+        self.assertIn('"30장 팔레트 유압 시저 리프트 A/B"', self.html)
+        self.assertIn('["AFU-HPU-101"', self.html)
+        self.assertIn("part('LHP', 'HPU-101 리프트 유압유닛'", self.stations["afu"])
+        self.assertEqual(
+            self.html.count("LFT-101A/B 유압 승강(HPU-101)"), 1,
+            "도면 피더 F1 라벨이 유압 승강을 반영해야 한다")
+        self.assertIn("유압 승강(HPU-101)", electrical.FEEDERS[0].served)
+
+    def test_lift_hardware_lives_in_the_3d_scene(self):
+        for label in ("LFT-101A/B 유압 시저 베이스", "LFT-101A/B 유압 시저 암",
+                      "LFT-101A/B 유압 실린더", "LFT HPU-101 유압 파워유닛"):
+            with self.subTest(label=label):
+                self.assertIn(label, self.html, f"{label} 메시가 3D 장면에 없다")
+
+    def test_deck_scissor_and_cylinder_are_animated_together(self):
+        """플랫폼·시저 각·실린더가 같은 데크 높이에서 파생돼야 한다 — 팔레트만 떠오르면 안 된다."""
+        self.assertIn("du[K].position.y=Gdy", self.html)
+        self.assertIn("ga.rotation.z=ga.userData.gs*Gth", self.html)
+        self.assertIn("cp(gc.b,g0,g1)", self.html)
+
+    def test_portal_labels_replace_the_old_posts_in_3d(self):
+        self.assertIn("포탈 기둥·LM가이드", self.html)
+        self.assertNotIn("벽체형 승강·반전카세트`", self.html.replace("벽체형 수평셔틀", ""))
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
