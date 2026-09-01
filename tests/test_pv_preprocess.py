@@ -695,5 +695,151 @@ class TestLineLengthReduction(unittest.TestCase):
         self.assertNotIn("전체 49,000", self.html)
 
 
+class TestCarriageLoader(unittest.TestCase):
+    """캐리지 슬롯 적재기 — 3안 독립 설계·2렌즈 적대 심사의 조합 권고안이 유지되는지.
+
+    골격은 데크-도크 순틈(X 100…325) 트윈마스트 + 2단 텔레스코픽 콤포크이고,
+    심사 지적 4건(픽업 후퇴·선단받이·기계 동기·제어반 위치)이 반영돼 있어야 한다.
+    """
+
+    ROWS = {"A": -2350, "H": 0, "B": 2350}
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+        cls.stations = station_blocks(cls.html)
+        cls.buffer = cls.stations["buffer"]
+
+    def test_every_row_has_the_full_loader_set(self):
+        tags = set(re.findall(r"part\('([^']+)'", self.buffer))
+        for row in self.ROWS:
+            for prefix in ("MSO", "MSI", "TIE", "LFO", "LFI", "FKO", "FKI", "TGO", "TGI"):
+                self.assertIn(f"{prefix}-{row}", tags, f"{prefix}-{row} 적재기 부품이 없다")
+        for shared in ("CTL-L", "SCN-L", "SCN-R"):
+            self.assertIn(shared, tags)
+
+    def test_masts_stand_in_the_deck_dock_gap(self):
+        """마스트가 순틈 225(X 100…325) 안에만 서야 셀이 안 커지고 교환로가 산다."""
+        for row in self.ROWS:
+            for tag in (f"MSO-{row}", f"MSI-{row}"):
+                lo, hi = part_span(self.buffer, tag)
+                with self.subTest(part=tag):
+                    self.assertGreaterEqual(lo, 100)
+                    self.assertLessEqual(hi, 325)
+
+    def test_tie_beam_stays_under_the_guard_ceiling(self):
+        for row in self.ROWS:
+            found = re.search(r"part\('TIE-%s', '[^']*', \[160, 120, 2200\], \[205, (\d+)," % row, self.buffer)
+            self.assertIsNotNone(found, f"TIE-{row} 를 못 찾았다")
+            self.assertLessEqual(int(found.group(1)) + 60, 2800, "타이빔이 가드 천장을 뚫는다")
+
+    def test_pickup_clears_the_sensor_pack(self):
+        """심사 지적 1: 픽업 중심 X −1,500 → 패널(−2,750…−250)이 센서팩(−240…) 앞에서 끝난다."""
+        fork_lo, fork_hi = part_span(self.buffer, "FKO-A")
+        pickup_center = (fork_lo + fork_hi) / 2
+        self.assertEqual(pickup_center, -1500)
+        sensor_lo, _ = part_span(self.buffer, "SENSOR")
+        self.assertLess(pickup_center + 1250, sensor_lo, "픽업 패널이 센서팩과 겹친다")
+
+    def test_fork_stroke_fits_a_two_stage_telescope(self):
+        """도크 중심 1,700 까지 3,200 — 수납 2,600 의 1.6배 안이어야 2단으로 성립한다."""
+        fork_lo, fork_hi = part_span(self.buffer, "FKI-B")
+        length = fork_hi - fork_lo
+        stroke = 1700 - (fork_lo + fork_hi) / 2
+        self.assertLessEqual(stroke, 1.6 * length, "2단 텔레스코픽 범위를 넘는 스트로크다")
+
+    def test_fork_lanes_clear_the_slot_rails(self):
+        """포크(z 행중심 ±620±60)와 슬롯 레일 내측(±702.5)의 z 분리 — 관문 값 22.5."""
+        for row, center in self.ROWS.items():
+            for tag, sign in ((f"FKO-{row}", -1), (f"FKI-{row}", 1)):
+                z_lo, z_hi = part_span(self.buffer, tag, axis=2)
+                edge = max(abs(z_lo - center), abs(z_hi - center))
+                with self.subTest(part=tag):
+                    self.assertLessEqual(edge, 702.5 - 20, "포크가 슬롯 레일 공간을 침범한다")
+
+    def test_tip_guides_ride_with_the_carriage(self):
+        """심사 지적 2: 선단받이 레일은 캐리지 X 구간 안(볼트온)이어야 교환을 막지 않는다."""
+        dock_lo, dock_hi = part_span(self.buffer, "A-501A")
+        for row in self.ROWS:
+            lo, hi = part_span(self.buffer, f"TGO-{row}")
+            with self.subTest(row=row):
+                self.assertGreaterEqual(lo, dock_lo)
+                self.assertLessEqual(hi, dock_hi)
+
+    def test_control_cabinet_is_out_of_the_exchange_corridor(self):
+        """심사 지적 4: 제어반은 교환 회랑(X ≥ 325)이 아니라 틈 스트립에 있어야 한다."""
+        lo, hi = part_span(self.buffer, "CTL-L")
+        self.assertLessEqual(hi, 325, "제어반이 캐리지 교환 회랑 바닥에 서 있다")
+
+    def test_catalog_matches_the_sheet(self):
+        self.assertEqual(catalog_size(self.html, "AFR-TF-810"), [2600, 120, 95])
+        self.assertEqual(catalog_size(self.html, "AFR-ML-811"), [170, 2770, 2200])
+        self.assertEqual(catalog_size(self.html, "AFR-TG-813"), [60, 50, 2100])
+        fork_lo, fork_hi = part_span(self.buffer, "FKO-A")
+        self.assertEqual(fork_hi - fork_lo, catalog_size(self.html, "AFR-TF-810")[0])
+
+    def test_loader_appears_in_the_3d_scene(self):
+        """카탈로그 sceneLabels 와 3D 메시가 같은 라벨을 써야 목록↔화면이 맞는다."""
+        for label in ("AFR ML-811 적재기 트윈마스트", "AFR TF-810 텔레스코픽 콤포크"):
+            with self.subTest(label=label):
+                self.assertGreaterEqual(self.html.count(label), 2, f"{label} 가 3D 장면에 없다")
+
+    def test_loading_animation_is_staged_not_diagonal(self):
+        """3D 영상에서 적재가 분기→승강→삽입 순서로 나뉘어야 한다 — 대각선 비행 금지."""
+        self.assertIn("le(Ri,r.x,Gz)", self.html)
+        self.assertIn("le(1.145,r.y,Gw)", self.html)
+        self.assertIn("le(0,r.z,Gq)", self.html)
+        self.assertNotIn("Ds.position.set(W,le(1.145,r.y,X),le(0,r.z,X))", self.html)
+
+
+class TestProcessSequences(unittest.TestCase):
+    """정션박스 제거·프레임 분리·반출 과정이 도면에서 읽히는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+        cls.stations = station_blocks(cls.html)
+
+    def test_jbr_explains_the_jbox_removal(self):
+        steps = re.findall(r"step\('\d+', '([^']*)'", self.stations["jbr"])
+        self.assertEqual(len(steps), 7)
+        text = " ".join(steps)
+        for key in ("브리지", "박리", "포획", "수거함", "반출"):
+            self.assertIn(key, text, f"JBOX 제거 시퀀스에 '{key}' 단계가 없다")
+        self.assertIn("part('BIN'", self.stations["jbr"], "정션박스 수거함이 도면에 없다")
+
+    def test_afr_explains_the_frame_separation(self):
+        steps = re.findall(r"step\('\d+', '([^']*)'", self.stations["afr"])
+        self.assertEqual(len(steps), 6)
+        text = " ".join(steps)
+        for key in ("클램프", "단축", "장축", "회수함", "반출"):
+            self.assertIn(key, text, f"프레임 분리 시퀀스에 '{key}' 단계가 없다")
+
+    def test_afr_discharge_gap_is_bridgeable(self):
+        """베드 끝-CV-102 구간은 패널(2,500)보다 짧은 지지 공백만 남아야 한다.
+
+        반출롤러 이전에는 2,950 이 비어 있어 패널이 공중에 뜨는 구간이 있었다.
+        검사: 베드·반출롤러가 연속이고, 롤러 끝-셀 하류 가드 끝의 남는 거리가
+        패널 길이 미만인지 (post 쪽 CV-102 는 가드 여유 475 에서 바로 시작한다).
+        """
+        bed_lo, bed_hi = part_span(self.stations["afr"], "BED")
+        cv_lo, cv_hi = part_span(self.stations["afr"], "CV-AP")
+        self.assertLessEqual(cv_lo, bed_hi, "베드와 반출롤러가 이어지지 않는다")
+        guard_lo, guard_hi = part_span(self.stations["afr"], "GUARD")
+        # 롤러 끝 → (가드 여유 475) → post 가드 여유 475 → CV-102 시작
+        remaining = (guard_hi - cv_hi) + 475
+        # 패널이 브리징하려면 공백이 패널 길이보다 짧은 것만으로는 부족하다 —
+        # 인계 순간 양단 물림이 최소 300 은 남아야 한다 (2,500 − 300).
+        self.assertLessEqual(remaining, 2200, "남는 무지지 구간이 패널 물림 여유를 넘는다")
+
+    def test_discharge_roller_passes_over_the_frame_bin(self):
+        """반출롤러(하면)와 회수함(상면)이 겹치면 물리적으로 못 지나간다."""
+        found = re.search(r"part\('FH-501', '[^']*', \[\d+, (\d+), \d+\], \[\d+, (\d+),", self.stations["afr"])
+        bin_top = int(found.group(2)) + int(found.group(1)) / 2
+        found = re.search(r"part\('CV-AP', '[^']*', \[\d+, (\d+), \d+\], \[\d+, (\d+),", self.stations["afr"])
+        roller_bottom = int(found.group(2)) - int(found.group(1)) / 2
+        self.assertLess(bin_top, roller_bottom, "회수함이 반출롤러를 관통한다")
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
