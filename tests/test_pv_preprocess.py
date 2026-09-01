@@ -216,6 +216,54 @@ class TestDrawingDocument(unittest.TestCase):
                 self.assertEqual(targets - ids, set(), f"{attribute} 가 없는 id 를 가리킨다")
 
 
+class TestCutawayAndExplode(unittest.TestCase):
+    """컷어웨이·분해 조작이 메인 3D 영상과 도면 3D 분해도 양쪽에 같은 축으로 붙어 있는지."""
+
+    #: 두 화면이 공유해야 하는 절단축. 한쪽에만 축을 추가하면 조작이 어긋난다.
+    CUT_AXES = ("x+", "x-", "z+", "z-", "y+")
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_bundle_exports_scene_handles(self):
+        """3D 번들이 씬 핸들을 내보내야 컷어웨이를 읽을 수 있는 코드로 구현할 수 있다."""
+        self.assertIn("Ae.__pvScene=Object.freeze({", self.html)
+        for handle in ("scene:", "camera:", "controls:", "renderer:", "pickables:",
+                       "Plane:", "Group:", "Vector3:"):
+            with self.subTest(handle=handle):
+                self.assertIn(handle, self.html)
+
+    def test_scene_controls_offer_every_axis(self):
+        for axis in self.CUT_AXES:
+            with self.subTest(axis=axis):
+                self.assertIn(f'<option value="{axis}"', self.html)
+        self.assertIn('id="pv-cut-enable"', self.html)
+        self.assertIn('id="pv-cut-position"', self.html)
+        self.assertIn('id="pv-scene-explode"', self.html)
+        self.assertIn('id="pv-cut-reset"', self.html)
+
+    def test_drawing_tab_offers_the_same_axes(self):
+        block = self.html[self.html.index("  var CUT_AXES = {"):self.html.index("  var state = { tab: 'fab'")]
+        found = tuple(re.findall(r"'([xyz][+-])': \{ axis:", block))
+        self.assertEqual(found, self.CUT_AXES, "도면 3D 분해도의 절단축이 메인 영상과 다르다")
+        self.assertIn('id="pv-explode-cut-axis"', self.html)
+        self.assertIn('id="pv-explode-cut-at"', self.html)
+
+    def test_cut_axis_maps_to_a_real_box_axis(self):
+        """축 인덱스는 part.size/at 의 [X, 상하, 깊이] 순서를 따라야 한다."""
+        block = self.html[self.html.index("  var CUT_AXES = {"):self.html.index("  var state = { tab: 'fab'")]
+        expected = {"x+": 0, "x-": 0, "z+": 2, "z-": 2, "y+": 1}
+        for key, axis in re.findall(r"'([xyz][+-])': \{ axis: (\d)", block):
+            with self.subTest(axis=key):
+                self.assertEqual(int(axis), expected[key])
+
+    def test_section_faces_use_a_distinct_fill(self):
+        """절단으로 새로 생긴 면은 단면색으로 채워 잘린 자리를 드러내야 한다."""
+        self.assertIn("section: css('--destructive'", self.html)
+        self.assertIn("face.section ? fills.section", self.html)
+
+
 class TestRemovalHeadCapacity(unittest.TestCase):
     """구동 용량 검산의 상수가 도면 목록의 헤드 사양과 맞는지."""
 
