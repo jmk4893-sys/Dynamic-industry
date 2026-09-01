@@ -20036,7 +20036,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
   const peSize = (phaseSize) => phaseSize <= 16 ? phaseSize : phaseSize <= 35 ? 16 : phaseSize / 2;
   const powerPackages = {
     shredder:{
-      panel:"LCP-SH-301",source:"MCC-101",area:"건식·분진구역",ip:"IP54 패널 / IP65 현장기기",maxDemandKw:49.40,
+      panel:"LCP-SH-301",source:"MCC-101",area:"건식·분진구역",ip:"IP54 패널 / IP65 현장기기",declaredDemandKw:49.40,
       branches:[
         {tag:"M-301",qty:1,duty:1,kw:22,drive:"VFD+STO",status:"확정 설계값"},
         {tag:"M-302",qty:1,duty:1,kw:18.5,drive:"VFD+STO",status:"확정 설계값"},
@@ -20047,7 +20047,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       ]
     },
     grinder:{
-      panel:"LCP-HG-101",source:"MCC-101",area:"건식·분진구역",ip:"IP54 패널 / IP65 현장기기",maxDemandKw:46.40,
+      panel:"LCP-HG-101",source:"MCC-101",area:"건식·분진구역",ip:"IP54 패널 / IP65 현장기기",declaredDemandKw:46.40,
       branches:[
         {tag:"M-101",qty:1,duty:1,kw:37,drive:"45 kW HD VFD",status:"확정 설계값"},
         {tag:"M-CV-101",qty:1,duty:1,kw:1.1,drive:"VFD",status:"확정 설계값"},
@@ -20059,7 +20059,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       ]
     },
     sieve:{
-      panel:"LCP-SV-201",source:"MCC-101",area:"건식·미분진동구역",ip:"IP65 패널 / IP66 진동기기",maxDemandKw:11.05,
+      panel:"LCP-SV-201",source:"MCC-101",area:"건식·미분진동구역",ip:"IP65 패널 / IP66 진동기기",declaredDemandKw:11.05,
       branches:[
         {tag:"M-SV-1/2",qty:2,duty:2,kw:1.5,drive:"동기 VFD",status:"확정 설계값"},
         {tag:"M-RV-201",qty:1,duty:1,kw:0.37,drive:"VFD",status:"확정 설계값"},
@@ -20071,7 +20071,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       ]
     },
     attrition:{
-      panel:"LCP-AS-101",source:"MCC-401",area:"습식·슬러리구역",ip:"IP66 / 내식형",maxDemandKw:21.20,
+      panel:"LCP-AS-101",source:"MCC-401",area:"습식·슬러리구역",ip:"IP66 / 내식형",declaredDemandKw:21.20,
       branches:[
         {tag:"M-AS-101",qty:1,duty:1,kw:11,drive:"VFD+STO",status:"현행 DD 설계값·제작사 확인"},
         {tag:"M-AG-001",qty:1,duty:1,kw:3.0,drive:"VFD",status:"확정 설계값"},
@@ -20082,7 +20082,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       ]
     },
     flotation:{
-      panel:"LCP-FC-201",source:"MCC-401",area:"습식·약품구역",ip:"IP66 / 내식형",maxDemandKw:12.24,
+      panel:"LCP-FC-201",source:"MCC-401",area:"습식·약품구역",ip:"IP66 / 내식형",declaredDemandKw:12.24,
       branches:[
         {tag:"M-FC-201",qty:1,duty:1,kw:3.0,drive:"VFD",status:"확정 설계값"},
         {tag:"M-FC-202",qty:1,duty:1,kw:1.5,drive:"VFD",status:"확정 설계값"},
@@ -20094,7 +20094,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       ]
     },
     filterpress:{
-      panel:"LCP-FP-301",source:"MCC-401",area:"습식·고압세척구역",ip:"IP66 / 내식형",maxDemandKw:25.20,
+      panel:"LCP-FP-301",source:"MCC-401",area:"습식·고압세척구역",ip:"IP66 / 내식형",declaredDemandKw:25.20,
       branches:[
         {tag:"HPU-301",qty:1,duty:1,kw:7.5,drive:"DOL/VFD",status:"확정 설계값"},
         {tag:"M-AG-301",qty:1,duty:1,kw:2.2,drive:"VFD",status:"확정 설계값"},
@@ -20118,8 +20118,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     return Math.sqrt(3) * current * (resistance * electricalBasis.powerFactor + reactance * sinPhi)
       * lengthM / 1000 / electricalBasis.voltage * 100;
   };
+  // A schedule row is drawn as ONE circuit — one breaker, one cable, one terminal block —
+  // so its load is every unit that runs on it. kw is per device, so duty units share the
+  // circuit: M-SV-1/2 (duty 2 x 1.5 kW) is a 3.0 kW circuit, not 1.5 kW. An A/B pair keeps
+  // duty 1 because only the lead runs, so those rows are unchanged.
+  const circuitKw = (branch) => branch.kw * branch.duty;
   const branchSelection = (branch, feederDropPct = 0) => {
-    const current = feederCurrent(branch.kw);
+    const current = feederCurrent(circuitKw(branch));
     const breaker = nextRating(current * 1.25);
     let cable = selectCable(breaker);
     // Whatever the feeder has already used comes out of the same 3% budget, so the branch
@@ -20138,6 +20143,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
   Object.entries(powerPackages).forEach(([key,power]) => {
     power.key = key;
     power.connectedKw = power.branches.reduce((sum,branch) => sum + branch.kw * branch.qty, 0);
+    // Maximum demand is the sum of what actually runs — kw x duty, so an A/B pair counts once
+    // and a synchronised pair counts twice. It used to be hard-coded per package; five of the
+    // six declared values already equalled this sum, and LCP-FP-301 sat 2.20 kW below it with
+    // no stated diversity basis, which under-sized its feeder current and drop. The declared
+    // figure is kept as design intent and the larger of the two governs, so a future
+    // documented diversity factor can lower it deliberately rather than by drift.
+    power.dutyKw = power.branches.reduce((sum,branch) => sum + branch.kw * branch.duty, 0);
+    power.maxDemandKw = Math.max(power.declaredDemandKw, power.dutyKw);
+    power.demandRaised = power.maxDemandKw > power.declaredDemandKw + 1e-9;
     power.runningCurrentA = feederCurrent(power.maxDemandKw);
     power.designCurrentA = power.runningCurrentA * electricalBasis.feederReserve;
     power.breakerA = Math.max(16,nextRating(power.designCurrentA));
@@ -20168,6 +20182,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
   // LCP enclosure size, shared by the 3D panel, its BOM rows and the panel wiring diagram.
   const PANEL_ASSEMBLY="전력 인입·LCP";
   const PANEL_W=.62, PANEL_H=1.25, PANEL_D=.32;
+  // The 전원 line used to be typed by hand per equipment and drifted: LCP-SV-201 still read
+  // 3.55 kW after the VP-401A/B pair took its connected load to 18.55 kW. Generate it.
+  const powerService = (key) => {
+    const power = powerPackages[key];
+    return `전원: ${electricalBasis.voltage} V, ${electricalBasis.phases}Φ, ${electricalBasis.frequency} Hz`
+      + ` · 연결 ${power.connectedKw.toFixed(2)} kW / 최대수요 ${power.maxDemandKw.toFixed(2)} kW · ${power.panel}`;
+  };
   const powerBom = (key,prefix) => {
     const power = powerPackages[key];
     return [
@@ -20192,7 +20213,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       capacity: "신규 300 kg/h · 평균 60장/h · 최대 80장/h", overall: "4,200 L × 2,300 W × 3,500 H mm", mass: "예상 7.8 t · 제작사 중량중심 확인",
       foundation: "베이스 4,000 × 2,300 mm · M24 화학/선매립 앵커 16SET · 비수축 그라우트 40 mm",
       basis: "장변 수직 하향 투입 · 2,800×1,800×H1,200 호퍼 · 상부 X축 12 rpm / 하부 Y축 20 rpm · 10 mm 폐회로",
-      services: ["전원: 380 V, 3Φ, 60 Hz · 연결 49.40 kW · LCP-SH-301", "집진: DN80, 설계 음압 -1.0 kPa", "제품: SCR-001 ≤10 mm → SCV-P1", "환류: SCR-001 >10 mm → SCV-R1 55°"],
+      services: [powerService("shredder"), "집진: DN80, 설계 음압 -1.0 kPa", "제품: SCR-001 ≤10 mm → SCV-P1", "환류: SCR-001 >10 mm → SCV-R1 55°"],
       installation: ["상부 패널 투입·크레인 여유 H≥2,500 mm", "구동측 정비공간 1,200 mm, 반대측 900 mm", "로터 인출축 방향 3,000 mm 확보", "콘크리트 설계하중은 동하중계수 1.5 포함 구조검토"],
       acceptance: ["무부하 2 h 진동·베어링온도", "정격부하 8 h 처리량·10 mm 분리", "E-stop/도어/역회전 인터록", "축 정렬·기어박스 백래시 기록"],
       dimensions: { l: 4200, w: 2300, h: 3500 },
@@ -20237,7 +20258,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       capacity:"신규 ≤300 kg/h · 환류 포함 총부하 ≤400 kg/h", overall:"5,000 L × 1,600 W × 2,500 H mm", mass:"예상 4.6 t · 스키드 포함",
       foundation:"스키드 5,000×1,600 mm · M24 앵커 12SET · 방진패드 12EA · 그라우트 30 mm",
       basis:"Dmax 10 mm · 로터 Ø450×350 · 1,500 rpm(최대 1,800) · SC-500 500 µm 폐회로 · D95 0.438 mm",
-      services:["전원: 380 V, 3Φ, 60 Hz · 연결 46.40 kW · LCP-HG-101", "흡인: DN125 · 900 m³/h · BF-101/IDF-101", "투입: FD-101, 밀폐 유연슈트", "제품/환류: SC-500 <500 µm / ≥500 µm"],
+      services:[powerService("grinder"), "흡인: DN125 · 900 m³/h · BF-101/IDF-101", "투입: FD-101, 밀폐 유연슈트", "제품/환류: SC-500 <500 µm / ≥500 µm"],
       installation:["로터 인출측 1,800 mm", "스크린 교체 하부공간 900 mm", "필터백 상부 인출공간 1,200 mm", "회전체 레이저 정렬·벨트장력 기록"],
       acceptance:["무부하 1,500 rpm 2 h", "베어링 진동 ISO 20816 Zone B 이하", "400 kg/h 8 h 폐회로 성능", "분진누설·음압·집진 ΔP 확인"],
       dimensions:{l:5000,w:1600,h:2500}, assemblies:["전체","스키드·하우징","로터·날","스크린·라이너","M-101 구동","FD/CV 이송","SC-500 환류","집진·음압","전력 인입·LCP","체결구"],
@@ -20278,7 +20299,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       capacity:"건식 미분 최대 300 kg/h · 4분획", overall:"2,600 L × 1,800 W × 2,700 H mm", mass:"예상 2.2 t · PC-201 포함",
       foundation:"독립 스키드 2,400×1,600 mm · M20 앵커 12SET · 스프링 베이스는 비고정 유연연결",
       basis:"Ø1,200 · 3단 280/106/75 µm · 960 rpm · 상부 VS-501 → 밀폐 분배 → 4개 제품슈트",
-      services:["전원: 380 V, 3Φ, 60 Hz · 연결 3.55 kW · LCP-SV-201", "이송: PC-201 DN100 음압리프트", "집진: DN80 branch → BF-201", "배출: 280–500 / 106–280 / 75–106 / <75 µm"],
+      services:[powerService("sieve"), "이송: PC-201 DN100 음압리프트", "집진: DN80 branch → BF-201", "배출: 280–500 / 106–280 / 75–106 / <75 µm"],
       installation:["진동체 주변 100 mm 비접촉 간극", "메시 교환 상부 H1,000 mm", "유연커넥터 축방향 여유 ±25 mm", "기초와 진동스키드 사이 케이블 루프 적용"],
       acceptance:["960 rpm 공진통과 기록", "메시 장력 편차 ≤10%", "4개 토출 누설·교차오염 검사", "진폭·베어링온도 8 h"],
       dimensions:{l:2600,w:1800,h:2700}, assemblies:["전체","스키드·스프링","상부 수신·분배","1단 280 µm","2단 106 µm","3단 75 µm","진동구동","제품슈트·집진","전력 인입·LCP","체결구"],
@@ -20317,7 +20338,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       capacity:"평균 176 kg/h · 최대 250 kg/h · AS 체류 5 min", overall:"5,200 L × 2,200 W × 2,600 H mm", mass:"운전중량 예상 3.9 t",
       foundation:"공용 스키드 5,000×2,000 mm · M20 앵커 16SET · 케미컬 커브 100 mm",
       basis:"TK-001 55–70 wt% → AS-101 40 L·600 rpm·5 min → BS-101A/B → TK-101 10–30 wt%",
-      services:["전원: 380 V, 3Φ, 60 Hz · 연결 24.90 kW / 최대수요 21.20 kW · LCP-AS-101", "공정수: DN25, 최대 1.5 m³/h", "슬러리: DN50/65, P-101/102 A/B", "비드: 99.5% Al₂O₃, BM-101/BR-101"],
+      services:[powerService("attrition"), "공정수: DN25, 최대 1.5 m³/h", "슬러리: DN50/65, P-101/102 A/B", "비드: 99.5% Al₂O₃, BM-101/BR-101"],
       installation:["탱크 상부 교반축 인출 H1,800 mm", "펌프 전면 1,000 mm 정비공간", "방유턱·내약품 바닥코팅", "모든 습식 플랜지 등전위 본딩"],
       acceptance:["AS-101 물부하 600 rpm 2 h", "5 min RTD tracer 확인", "비드 보유율·BS-101 ΔP", "농도·유량·질량수지 교정"],
       dimensions:{l:5200,w:2200,h:2600}, assemblies:["전체","스키드·배관","TK-001 조정조","AS-101 본체","교반·중공축","비드 보유·회수","TK-101 컨디셔닝","P-101/102 A/B","전력 인입·LCP","체결구"],
@@ -20355,7 +20376,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       capacity:"러퍼 180 L · 클리너 30 L · 스캐빈저 190 L", overall:"6,200 L × 3,600 W × 5,200 H mm", mass:"운전중량 예상 8.6 t · 2층 구조 포함",
       foundation:"ST-201 4주각 베이스 · M24 앵커 24SET · 2층 활하중 5.0 kN/m²",
       basis:"FC-201 420 rpm/0.060 Nm³/min · FC-202 360 rpm/0.020 · FC-203 360 rpm/0.075 · 환류 완결",
-      services:["전원: 380 V, 3Φ, 60 Hz · 연결 14.44 kW / 최대수요 12.24 kW · LCP-FC-201", "공기: AR-201, 0.4–0.6 MPa, 셀별 FIC", "약품: RS-201/202/203, DN15 정량주입", "슬러리: DN40/50/65, 러퍼·클리너·스캐빈저"],
+      services:[powerService("flotation"), "공기: AR-201, 0.4–0.6 MPa, 셀별 FIC", "약품: RS-201/202/203, DN15 정량주입", "슬러리: DN40/50/65, 러퍼·클리너·스캐빈저"],
       installation:["2층 작업대 난간 H1,100·토보드 100", "셀 모터 인출 H1,200", "계단 유효폭 800·경사 ≤45°", "미끄럼방지 그레이팅·드레인팬"],
       acceptance:["셀별 물부하 공기분산 균일성", "러퍼/클리너/스캐빈저 환류 추적", "FIC·약품펌프 교정", "거품 월류·라우더 수평도 1/1000"],
       dimensions:{l:6200,w:3600,h:5200}, assemblies:["전체","ST-201 구조물","FC-201 러퍼","FC-202 클리너","FC-203 스캐빈저","셀 구동·임펠러","공기 A/B","약품 RS-201/203","환류·배관","전력 인입·LCP","체결구"],
@@ -20394,7 +20415,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       capacity:"Si 광미 18판 멤브레인 프레스 · Ag 정광 CF-204 병렬", overall:"7,200 L × 3,200 W × 2,300 H mm", mass:"운전중량 예상 9.4 t",
       foundation:"FP-301 4,200×1,500 mm + 보조스키드 · M24 앵커 20SET · 배수구 2점",
       basis:"800×800 mm 판 18EA · 여과면적 약 18.5 m² · 고압급액·멤브레인압착·코어블로·포세척",
-      services:["전원: 380 V, 3Φ, 60 Hz · 연결 29.60 kW / 최대수요 25.20 kW · LCP-FP-301", "슬러리: DN50, 설계 1.0 MPa", "압착공기/수: 0.8 MPa / DN32", "여액: DN40 → TK-401"],
+      services:[powerService("filterpress"), "슬러리: DN50, 설계 1.0 MPa", "압착공기/수: 0.8 MPa / DN32", "여액: DN40 → TK-401"],
       installation:["판 인출측 1,500 mm", "유압실린더 후방 1,200 mm", "케이크 컨베이어 하부 H800 mm", "여과포 세척 방수구획·바닥 1:100 구배"],
       acceptance:["수압 1.25× 설계압력", "판 평행도·폐쇄압력 기록", "18판 누설·여액탁도", "코어블로·세척·안전광커튼"],
       dimensions:{l:7200,w:3200,h:2300}, assemblies:["전체","FP-301 프레임","필터판·여과포","유압 폐쇄부","P-301 A/B 급액","압착·코어블로","포세척·드립트레이","케이크 이송","CF-204 정광탈수","전력 인입·LCP","체결구"],
@@ -20791,13 +20812,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const power=powerPackages[state.equipment];
     powerSummary.innerHTML=`
       <div><dl><dt>인입 계통</dt><dd>${electricalBasis.voltage} V · ${electricalBasis.phases}Φ · ${electricalBasis.frequency} Hz · ${electricalBasis.conductors}</dd><dt>전원 / 현장반</dt><dd>${esc(power.source)} → ${esc(power.panel)}</dd><dt>구역·보호등급</dt><dd>${esc(power.area)} · ${esc(power.ip)}</dd></dl></div>
-      <div><dl><dt>연결 / 최대수요 부하</dt><dd>${power.connectedKw.toFixed(2)} / ${power.maxDemandKw.toFixed(2)} kW</dd><dt>운전 / 설계전류</dt><dd>${power.runningCurrentA.toFixed(1)} / ${power.designCurrentA.toFixed(1)} A</dd><dt>인입 보호</dt><dd>3P MCCB ${power.breakerA} A · Icu/Ics ≥ 현장 Ik'' · 예비 최소 25 kA</dd></dl></div>
+      <div><dl><dt>연결 / 최대수요 부하</dt><dd>${power.connectedKw.toFixed(2)} / ${power.maxDemandKw.toFixed(2)} kW${power.demandRaised?` <span class="dd-warning">· duty 합계로 상향 (원 명세 ${power.declaredDemandKw.toFixed(2)} kW)</span>`:""}</dd><dt>운전 / 설계전류</dt><dd>${power.runningCurrentA.toFixed(1)} / ${power.designCurrentA.toFixed(1)} A</dd><dt>인입 보호</dt><dd>3P MCCB ${power.breakerA} A · Icu/Ics ≥ 현장 Ik'' · 예비 최소 25 kA</dd></dl></div>
       <div><dl><dt>주전원 케이블</dt><dd>${cableLabel(power)} · Iz(40°C) ${power.cable.iz.toFixed(1)} A</dd><dt>현장 격리</dt><dd>3P ${power.isolatorA} A AC-23A 잠금형 개폐기</dd><dt>50 m 전압강하</dt><dd class="${power.voltageDropPct<=electricalBasis.voltageDropLimit?"dd-power-ok":"dd-warning"}">${power.voltageDropPct.toFixed(2)}% / 설계한도 ${electricalBasis.voltageDropLimit}%</dd></dl></div>
       <div><dl><dt>제어전원</dt><dd>380/220 V 절연변압기 → 24 VDC PELV 이중 SMPS</dd><dt>접지·본딩</dt><dd>${esc(electricalBasis.earthing)} · 스키드/모터/탱크/가드/덕트 본딩</dd><dt>VFD·EMC</dt><dd>입력리액터/DC choke · 차폐 모터케이블 · 360° 글랜드 · 장거리 dv/dt 검토</dd></dl></div>
       <div><dl><dt>전체 플랜트 예비 부하</dt><dd>${plantPower.connectedKw.toFixed(2)} kW 연결 · ${plantPower.demandKw.toFixed(2)} kW 최대수요</dd><dt>MDB-001 예비 인입</dt><dd>${plantPower.mainBreakerA} A · ${plantPower.mainBreakerA} A bus · ${plantPower.transformerKva} kVA 공급원 권장 (부하 ${plantPower.demandKva.toFixed(1)} kVA · 부하율 ${plantPower.transformerLoadingPct.toFixed(1)}%)</dd><dt>주간선 예비안</dt><dd>2회로 병렬 3×120 mm² Cu + PE 70 mm² 또는 400 A busduct</dd></dl></div>`
       + (overRange.length ? `<div class="dd-warning"><strong>정격표 범위 초과 · HOLD</strong><ul>${overRange.map((item) => `<li>${esc(item)}</li>`).join("")}</ul></div>` : "");
     plantPowerBody.innerHTML=Object.entries(powerPackages).map(([key,item])=>`<tr><td>${esc(equipments[key].label)}<br><span class="text-small text-muted">${esc(item.panel)}</span></td><td class="text-end">${item.connectedKw.toFixed(2)} kW</td><td class="text-end">${item.maxDemandKw.toFixed(2)} kW</td><td class="text-end">${item.runningCurrentA.toFixed(1)} A</td><td class="text-end">${item.designCurrentA.toFixed(1)} A</td><td>${item.breakerA} A 3P</td><td>${cableLabel(item)}</td><td class="text-end">${item.voltageDropPct.toFixed(2)}%</td></tr>`).join("");
-    powerBranchBody.innerHTML=power.branches.map(branch=>{const selected=branchSelection(branch,power.voltageDropPct);const protection=/VFD/.test(branch.drive)?`${selected.breaker} A 3P MCCB/fuse · VFD 협조`:`${selected.breaker} A 3P MPCB/MCB`;return `<tr><td>${esc(branch.tag)}</td><td>${branch.qty} / ${branch.duty}</td><td class="text-end">${branch.kw.toFixed(2)} kW</td><td>${esc(branch.drive)}</td><td class="text-end">${selected.current.toFixed(1)} A</td><td>${esc(protection)}</td><td>3×${selected.cable.size} mm² + PE ${selected.pe} mm²</td><td class="text-end ${selected.dropOk?"dd-power-ok":"dd-warning"}">${selected.dropPct.toFixed(2)}%<br><span class="text-small text-muted">누적 ${(power.voltageDropPct+selected.dropPct).toFixed(2)}%</span></td><td>${esc(branch.status)}</td></tr>`;}).join("");
+    powerBranchBody.innerHTML=power.branches.map(branch=>{const selected=branchSelection(branch,power.voltageDropPct);const protection=/VFD/.test(branch.drive)?`${selected.breaker} A 3P MCCB/fuse · VFD 협조`:`${selected.breaker} A 3P MPCB/MCB`;return `<tr><td>${esc(branch.tag)}</td><td>${branch.qty} / ${branch.duty}</td><td class="text-end">${branch.kw.toFixed(2)} kW${branch.duty>1?`<br><span class="text-small text-muted">회로 ${circuitKw(branch).toFixed(2)} kW</span>`:""}</td><td>${esc(branch.drive)}</td><td class="text-end">${selected.current.toFixed(1)} A</td><td>${esc(protection)}</td><td>3×${selected.cable.size} mm² + PE ${selected.pe} mm²</td><td class="text-end ${selected.dropOk?"dd-power-ok":"dd-warning"}">${selected.dropPct.toFixed(2)}%<br><span class="text-small text-muted">누적 ${(power.voltageDropPct+selected.dropPct).toFixed(2)}%</span></td><td>${esc(branch.status)}</td></tr>`;}).join("");
     powerHoldBody.innerHTML=powerHoldPoints.map(point=>`<tr><td>${esc(point.id)}</td><td>${esc(point.stage)}</td><td>${esc(point.check)}</td><td>${esc(point.record)}</td><td><span class="viz-badge">${esc(point.gate)}</span></td></tr>`).join("");
   }
   function renderInstallation(){
@@ -20910,7 +20931,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         <path class="dd-pe-line" d="M${x} 478V524"/>
         
         <text x="${x}" y="552" text-anchor="middle">${esc(branch.tag)}</text>
-        <text class="dd-small" x="${x}" y="570" text-anchor="middle">${branch.kw.toFixed(2)} kW × ${branch.qty}</text>
+        <text class="dd-small" x="${x}" y="570" text-anchor="middle">${branch.kw.toFixed(2)} kW × ${branch.qty}${branch.duty>1?` · 회로 ${circuitKw(branch).toFixed(2)}`:""}</text>
         <text class="dd-small" x="${x}" y="588" text-anchor="middle">ΔU ${(power.voltageDropPct + sel.dropPct).toFixed(2)}%</text>`;
     }).join("");
     const more = power.branches.length > shown.length
@@ -21068,7 +21089,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
   function powerSketch(eqKey){
     const power=powerPackages[eqKey];
-    const branchRows=power.branches.map((branch,index)=>{const selected=branchSelection(branch,power.voltageDropPct);const y=115+index*58;return `<path class="dd-power-line" d="M720 ${y}H790"/><rect class="dd-power-device" x="790" y="${y-20}" width="285" height="40"/><text x="802" y="${y-3}">${esc(branch.tag)} · ${branch.kw.toFixed(2)} kW × ${branch.qty}</text><text class="dd-small" x="802" y="${y+14}">${selected.breaker} A · 3×${selected.cable.size}+PE ${selected.pe} mm² · ΔU ${(power.voltageDropPct+selected.dropPct).toFixed(2)}%</text>`;}).join("");
+    const branchRows=power.branches.map((branch,index)=>{const selected=branchSelection(branch,power.voltageDropPct);const y=115+index*58;return `<path class="dd-power-line" d="M720 ${y}H790"/><rect class="dd-power-device" x="790" y="${y-20}" width="285" height="40"/><text x="802" y="${y-3}">${esc(branch.tag)} · ${branch.kw.toFixed(2)} kW × ${branch.qty}${branch.duty>1?` (회로 ${circuitKw(branch).toFixed(2)} kW)`:""}</text><text class="dd-small" x="802" y="${y+14}">${selected.breaker} A · 3×${selected.cable.size}+PE ${selected.pe} mm² · ΔU ${(power.voltageDropPct+selected.dropPct).toFixed(2)}%</text>`;}).join("");
     const busTop=95,busBottom=115+(power.branches.length-1)*58+25;
     return `<g><text class="dd-title" x="60" y="58">POWER INCOMING SINGLE-LINE · 380 V · 3Φ · 60 Hz · 3P+PE</text>
       <rect class="dd-power-device" x="55" y="220" width="130" height="80"/><text x="75" y="250">${esc(power.source)}</text><text class="dd-small" x="75" y="273">MDB-001 400 A</text>
