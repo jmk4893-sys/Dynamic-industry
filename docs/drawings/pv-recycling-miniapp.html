@@ -1875,7 +1875,7 @@ html>body{padding:0}</style>
     const THREE = modules[0];
     const CANNON = modules[1];
 
-    function themeNumber(variable) {
+    function resolveThemeCss(variable) {
       const probe = document.createElement("span");
       probe.style.position = "absolute";
       probe.style.opacity = "0";
@@ -1883,10 +1883,24 @@ html>body{padding:0}</style>
       root.appendChild(probe);
       const resolved = getComputedStyle(probe).color;
       probe.remove();
+      return resolved;
+    }
+
+    // --background is opaque by design and is what every translucent token composites over.
+    const themeBaseCss = resolveThemeCss("--background");
+
+    function themeNumber(variable) {
+      const resolved = resolveThemeCss(variable);
       const sampler = document.createElement("canvas");
       sampler.width = 1;
       sampler.height = 1;
       const sample = sampler.getContext("2d");
+      // Composite over the opaque background before reading. Several tokens are
+      // translucent ink (--muted-foreground is rgba(26,28,31,0.494), --muted 0.1,
+      // --border 0.08); sampling them onto a transparent canvas discarded the alpha and
+      // returned the near-black base colour instead of the grey a viewer actually sees.
+      sample.fillStyle = themeBaseCss;
+      sample.fillRect(0, 0, 1, 1);
       sample.fillStyle = resolved;
       sample.fillRect(0, 0, 1, 1);
       const pixel = sample.getImageData(0, 0, 1, 1).data;
@@ -3342,15 +3356,21 @@ html>body{padding:0}</style>
     grid.material.transparent = true;
     grid.material.opacity = 0.28;
     scene.add(grid);
-    scene.add(new THREE.HemisphereLight(color.foreground, color.steel, 2.1));
-    const keyLight = new THREE.DirectionalLight(color.foreground, 3.2);
+    // Illumination is theme-independent. Tinting these with color.foreground meant the
+    // key light was rgb(26,28,31) in light mode — a black light — which rendered the whole
+    // plant as a silhouette. Intensities are re-tuned for genuinely white light.
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x5b666e, 1.45));
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.35);
     keyLight.position.set(3.5, 5.6, 4.4);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(1024, 1024);
     scene.add(keyLight);
-    const rimLight = new THREE.DirectionalLight(color.steel, 1.4);
+    const rimLight = new THREE.DirectionalLight(0xbccbd6, 0.85);
     rimLight.position.set(-3, 2.8, -3.6);
     scene.add(rimLight);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.55);
+    fillLight.position.set(-2.4, 3.2, 5.2);
+    scene.add(fillLight);
 
     const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.81, 0) });
     world.defaultContactMaterial.friction = 0.46;
