@@ -21,6 +21,21 @@ MACHINE_BAND_Y_MM = 7100
 #: 보행·정비 통로 폭 (mm). 장비 밴드 바깥에 별도로 확보한다.
 AISLE_WIDTH_MM = 1200
 
+#: JBR–AFR 인계 게이트 길이 (mm).
+#:
+#: REV.21 은 1,250 mm 로 잡혀 있었는데 그 구간에 자기 하드웨어가 하나도 없었다.
+#: 3D 모델 실측으로 확인한 것:
+#:
+#: * JBR 셀 구조 하류 끝(가드 상부 횡빔)  x = −25 mm
+#: * AFR 셀 구조 상류 시작(SF-701 가드)   x = +300 mm  → 가드-가드 이격 325 mm
+#: * JB/AFR-301 인계 롤러(+641…+731)와 데이터 게이트(+1,220…+1,320)는
+#:   둘 다 AFR 베이스(550…11,950) **안쪽**에 붙어 있다.
+#: * 제거한 VS-301 검증헤드(−2,832…−2,548)는 JBR 셀 **안쪽**이었다 —
+#:   즉 비전 감축으로 라인 길이가 줄어든 것은 아니다.
+#:
+#: 그래서 게이트는 실측 이격 325 mm 에 앵커·심 여유를 얹은 값으로 잡는다.
+HANDOFF_CLEARANCE_MM = 350
+
 
 @dataclass(frozen=True)
 class Station:
@@ -96,7 +111,7 @@ ZONE_SEED: tuple[tuple[str, str, int, str, tuple[int, int, int] | None], ...] = 
     ("afu", "LFT-A/B · BFC", 0, "2 Bay·비전·반전", None),
     ("robot", "RB-101 · PT", 1600, "직접픽업·정렬", None),
     ("jbr", "JBR-201", 2025, "케이블·JBOX", None),
-    ("gate", "JB/AFR", 2450, "MAP", (1250, 2200, 2800)),
+    ("gate", "JB/AFR", 2450, "MAP", (HANDOFF_CLEARANCE_MM, 2200, 2800)),
     ("afr", "AFR-101", 1200, "단축→장축", None),
     ("post", "CV/GI · SG · GI", 1100, "검사·연마·판정", None),
     ("buffer", "GBR · BUFFER", 0, "R-A/R-B/HOLD", None),

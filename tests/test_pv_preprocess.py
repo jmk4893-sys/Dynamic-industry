@@ -147,6 +147,19 @@ class TestDrawingMatchesModel(unittest.TestCase):
     def test_machine_band_and_aisle_match(self):
         self.assertIn(f"var MACHINE_BAND_Y = {layout.MACHINE_BAND_Y_MM};", self.html)
         self.assertIn(f"var AISLE_WIDTH = {layout.AISLE_WIDTH_MM};", self.html)
+        self.assertIn(f"var HANDOFF_CLEARANCE = {layout.HANDOFF_CLEARANCE_MM};", self.html)
+
+    def test_handoff_gate_is_derived_not_hand_set(self):
+        """게이트 존은 실측 이격에서 파생해야 한다.
+
+        REV.21 의 1,250 mm 는 그 구간에 자기 하드웨어가 하나도 없는 자리표시였다.
+        인계 롤러·데이터 게이트는 AFR 베이스에, VS-301 검증헤드는 JBR 셀 안쪽에 있었다.
+        """
+        gate = next(zone for zone in layout.build_zones() if zone.key == "gate")
+        self.assertEqual(gate.length_mm, layout.HANDOFF_CLEARANCE_MM)
+        # 3D 실측 가드-가드 이격 325 mm 보다 작아지면 두 셀 가드가 닿는다.
+        self.assertGreaterEqual(layout.HANDOFF_CLEARANCE_MM, 325)
+        self.assertNotIn("'gate', 'JB/AFR', 2450, 'MAP', 1250", self.html)
 
     def test_downstream_span_text_matches(self):
         """AFR-101–GBR-301 구간 치수는 존에서 파생한 값과 같아야 한다."""

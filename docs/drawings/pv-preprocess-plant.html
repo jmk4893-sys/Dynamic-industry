@@ -1396,7 +1396,7 @@ html>body{padding:0}</style>
       <div class="pv-layout-toolbar viz-controls" aria-label="배치도 제어">
         <label class="form-label" for="pv-layout-focus">배치 초점
           <select class="form-select" id="pv-layout-focus">
-            <option value="all" selected>전체 49,900 × 8,300</option>
+            <option value="all" selected>전체 49,000 × 8,300</option>
             <option value="upstream">투입·반전·로봇</option>
             <option value="jbr">정렬·JBR</option>
             <option value="afr">AFR·후단·버퍼</option>
@@ -1462,7 +1462,7 @@ html>body{padding:0}</style>
             <td><code>V-3</code></td>
             <td><b>JB/AFR-VS-301 검증헤드 제거</b></td>
             <td>박리 후 검증(36.8–38 s)은 이미 JBR 45 s 창 안에서 직렬로 돈다. 그 시점 패널은 JBR 정반 위에 있고 브리지 카메라가 바로 위에 있다. 헤드만 후퇴시키고 같은 자리에서 재촬영하면 된다.</td>
-            <td>사이클 손해 없음(원래 직렬). 정반 점유는 그대로. 인계 롤러·데이터 게이트는 이송·데이터 기능이 남아 <b>존치</b>하므로 게이트 존 1,250 mm 는 줄지 않는다.</td>
+            <td>사이클 손해 없음(원래 직렬). 인계 롤러·데이터 게이트는 이송·데이터 기능이 남아 <b>존치</b>한다. <b>헤드 제거로 라인 길이가 줄지는 않는다</b> — 3D 실측상 VS-301 은 JBR 셀 안쪽(x −2,832…−2,548)에 있었고 게이트 존 1,250 mm 는 별개로 자기 하드웨어가 없는 자리표시였다(아래 주기 참조).</td>
             <td><b>적용</b></td>
           </tr>
           <tr>
@@ -1494,6 +1494,7 @@ html>body{padding:0}</style>
       <div class="card viz-stat"><div class="text-small text-muted">비전 관련 품목</div><div class="viz-stat-value tabular-nums">−4</div><div class="text-small text-muted">헤드 2 · 브래킷 1 · 보호창 1</div></div>
       <div class="card viz-stat"><div class="text-small text-muted">안전 센서</div><div class="viz-stat-value">감축 없음</div><div class="text-small text-muted">라이트커튼·뮤팅·가드 인터록 유지</div></div>
     </div>
+    <div class="text-small jb-catalog-note">덧붙여 확인된 것 — 게이트 존 1,250 mm 구간에는 자기 하드웨어가 하나도 없었다. 3D 실측으로 JB/AFR-301 인계 롤러(x +641…+731)와 데이터 게이트(+1,220…+1,320)는 둘 다 AFR 베이스(550…11,950) 안쪽에 붙어 있고, JBR 셀 구조는 x −25 에서, AFR 가드는 x +300 에서 끝나 <b>가드-가드 실측 이격은 325 mm</b> 다. 게이트를 앵커·심 여유를 얹은 <b>350 mm</b> 로 잡아 전장이 49,900 → <b>49,000 mm</b> 가 됐다. 이 900 mm 는 비전 감축이 아니라 자리표시 치수를 실측으로 바꾼 데서 나온 것이다.</div>
     <div class="text-small jb-catalog-note">적용 전 확인할 것 — ① 브리지 정지 후 12 MP 촬영 정정시간 실측(진동 감쇠), ② 브리지 좌표와 카메라 광축의 동기 오차가 검출 반복 ±0.25 mm 안에 드는지, ③ 시드 ROI 만 보는 방식이 정션박스 위치 이탈·개수 오검출을 놓치지 않는지 MSA, ④ 헤드 1대 고장 시 라인 정지 영향(이중화가 사라졌다). ④ 는 가용도 문제이므로 예비 카메라 1대를 <b>보관 예비품</b>으로 두는 편이 2대 상시 설치보다 싸다.</div>
   </details>
 
@@ -2414,6 +2415,10 @@ html>body{padding:0}</style>
   // 전장의 49 %(18.8 m)에서 통로가 사라졌다. 통로를 장비 밴드 뒤로 빼서 겹칠 수 없게 한다.
   var MACHINE_BAND_Y = 7100;
   var AISLE_WIDTH = 1200;
+  // JBR–AFR 인계 게이트 길이. REV.21 의 1,250 mm 는 그 구간에 자기 하드웨어가 하나도 없는
+  // 자리표시였다 — 인계 롤러·데이터 게이트는 AFR 베이스에, 제거한 VS-301 검증헤드는 JBR 셀
+  // 안쪽에 붙어 있다. 3D 실측 가드-가드 이격 325 mm 에 앵커·심 여유를 얹었다.
+  var HANDOFF_CLEARANCE = 350;
   var PLANT_Y = MACHINE_BAND_Y + AISLE_WIDTH;
 
   // 존 시드: [키, 표기, Y 시작, 주기, (장비 없는 존만) X 폭, Y 폭, 높이]
@@ -2424,7 +2429,7 @@ html>body{padding:0}</style>
     ['afu', 'LFT-A/B · BFC', 0, '2 Bay·비전·반전'],
     ['robot', 'RB-101 · PT', 1600, '직접픽업·정렬'],
     ['jbr', 'JBR-201', 2025, '케이블·JBOX'],
-    ['gate', 'JB/AFR', 2450, 'MAP', 1250, 2200, 2800],
+    ['gate', 'JB/AFR', 2450, 'MAP', HANDOFF_CLEARANCE, 2200, 2800],
     ['afr', 'AFR-101', 1200, '단축→장축'],
     ['post', 'CV/GI · SG · GI', 1100, '검사·연마·판정'],
     ['buffer', 'GBR · BUFFER', 0, 'R-A/R-B/HOLD']
