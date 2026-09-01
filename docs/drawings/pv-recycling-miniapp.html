@@ -1692,6 +1692,9 @@ html>body{padding:0}</style>
         <tr><td>P-101/102/301 슬러리 펌프</td><td>1.5–2.2 kW · 1,750 rpm</td><td class="text-end">78–85</td><td>29 Hz 축 + BPF</td><td>캐비테이션 시 급증</td><td>NPSH 확보</td></tr>
         <tr><td>FP-301 멤브레인 필터프레스</td><td>HPU 7.5 kW</td><td class="text-end">75–82<br><span class="text-small text-muted">개판·케이크 낙하 88–92</span></td><td>유압 맥동 + 충격음</td><td>프레임 충격 전달</td><td>개판 속도 제어 · 드립트레이 방진</td></tr>
         <tr><td>HPW-301 고압 포세척</td><td>5.5 kW</td><td class="text-end">88–95</td><td>노즐 고주파 분사음</td><td>낮음</td><td class="dd-warning">세척 시 출입통제 · 보호구</td></tr>
+        <tr><td class="dd-warning"><strong>CH-601</strong> 공랭식 칠러 (옥외)</td><td>22 kW · 응축기팬 900 rpm ×2</td><td class="text-end">75–85</td><td>축류팬 BPF + 압축기 저주파</td><td>스키드 전달 · 방진마운트</td><td class="dd-warning">유일한 옥외·연속 음원 → 부지경계 기준을 지배</td></tr>
+        <tr><td>P-601A/B 냉각수 순환펌프</td><td>2.2 kW · 1,750 rpm</td><td class="text-end">72–78</td><td>29 Hz 축 + BPF</td><td>낮음</td><td>배관 유속 ≤2 m/s 로 유동음 억제</td></tr>
+        <tr><td>PC-xx 패널 냉각유닛 (6면)</td><td>0.12–0.75 kW</td><td class="text-end">58–68</td><td>소형 팬 고주파</td><td>없음</td><td>제어실 인접 시 저소음형 선정</td></tr>
         <tr><td>CF-204 원심탈수기</td><td>8.0 kW · 1,800 rpm</td><td class="text-end">85–92</td><td>30 Hz 축 + 불평형 성분</td><td class="dd-warning">불평형 민감 · ISO 10816-3 감시</td><td>방진마운트 · 진동 트립 설정</td></tr>
       </tbody>
     </table></div>
@@ -1705,6 +1708,7 @@ html>body{padding:0}</style>
         <tr><td>탈수·세척 (FP-301 · CF-204 · HPW)</td><td class="text-end">85–92</td><td class="text-end">8 h 이상</td><td>세척 작업 시 보호구 · 출입통제</td></tr>
         <tr><td>습식 슬러리·부선 (AS-101 · FC-201/202/203)</td><td class="text-end">80–86</td><td class="text-end">제한 없음</td><td>블로어·진공펌프 근접 시 보호구</td></tr>
         <tr><td>제어실 (차음 구획)</td><td class="text-end">≤60</td><td class="text-end">제한 없음</td><td>차음벽·이중창으로 확보</td></tr>
+        <tr><td class="dd-warning">유틸리티 옥외 스키드 (CH-601)</td><td class="text-end">75–85</td><td class="text-end">상주 없음</td><td class="dd-warning">부지경계 소음의 지배 음원 · 방음 스크린·저소음팬·야간 감속운전 검토</td></tr>
       </tbody>
     </table></div>
     <p class="text-small">합성값은 개별 음원의 로그합에 작업위치까지의 거리감쇠(−3 ~ −6 dB)를 반영한 개념값입니다. 허용 노출시간은 90 dB(A) 8시간·5 dB 교환율 기준입니다.</p>
@@ -1712,7 +1716,7 @@ html>body{padding:0}</style>
     <strong>적용 기준</strong>
     <ul class="text-small">
       <li>산업안전보건기준에 관한 규칙 소음작업 — 8시간 85 dB(A) 이상 청력보존프로그램, 90 dB(A) 8시간 노출기준(95 dB 4시간 · 100 dB 2시간)</li>
-      <li>소음·진동관리법 사업장 소음 배출허용기준 — 부지경계 기준은 지역 구분별로 확인 (일반공업지역 예: 주간 70 · 야간 60 dB(A))</li>
+      <li>소음·진동관리법 사업장 소음 배출허용기준 — 부지경계 기준은 지역 구분별로 확인 (일반공업지역 예: 주간 70 · 야간 60 dB(A)). 실내 공정설비는 건물 차음으로 감쇠되므로, 실제 부지경계 판정은 <strong>옥외 CH-601 칠러</strong>가 지배한다. 이격거리·방음스크린·야간 팬 감속으로 확보한다</li>
       <li>KS I ISO 3744 음향파워 측정 · ISO 11201 작업위치 방출음압 — 제작사 보증치 제출 근거</li>
       <li>ISO 10816-3 기계 진동 평가 — 15–300 kW Group 2 기준 zone A/B 2.8 · B/C 4.5 · C/D 7.1 mm/s rms</li>
       <li>ISO 2631-1 인체 전신진동 · ISO 10137 구조물 사용성 — 제어실·통로 바닥 진동 검토</li>
@@ -1729,6 +1733,67 @@ html>body{padding:0}</style>
       </tbody>
     </table></div>
     <p class="text-small dd-warning">소음·진동은 배치·차음·기초 설계에 직접 영향을 주므로, E0/E1 단계에서 제작사 보증치를 받아 구역별 합성과 부지경계 예측을 다시 수행해야 합니다. 본 표는 그 전 단계의 설계 가정입니다.</p>
+  </details>
+
+  <details class="card hsg3d-validation" id="plant-panel-cooling" data-panel-id="cooling" data-panel-category="장비·공정">
+    <summary>냉각수 계통 · 발열 수지</summary>
+    <p class="text-small dd-warning">종전 모델에는 냉각 설비가 하나도 없었습니다. 플랜트 축동력 약 98 kW 는 파쇄 신생표면 에너지(1% 미만)를 빼면 사실상 전량이 열이 되므로, 특히 HSG-101 폐회로는 냉각 없이는 온도가 계속 상승합니다.</p>
+
+    <strong>왜 필요한가 — HSG-101 폐회로 열수지</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="HSG-101 폐회로 열수지">
+      <thead><tr><th>항목</th><th class="text-end">값</th><th>근거 · 의미</th></tr></thead>
+      <tbody>
+        <tr><td>M-101 축동력</td><td class="text-end">34.0 kW</td><td>37 kW × 부하율 0.92 · 분쇄 신생표면 에너지는 1% 미만</td></tr>
+        <tr><td>폐회로 공기 열용량</td><td class="text-end">0.301 kW/K</td><td>900 m³/h × 1.2 kg/m³ × 1.005 kJ/kg·K</td></tr>
+        <tr><td class="dd-warning">1회 통과 공기 온도상승</td><td class="text-end dd-warning">113 K</td><td class="dd-warning">폐회로라 냉각원이 없으면 루프 온도가 누적 상승</td></tr>
+        <tr><td>제품이 전량 흡수할 경우</td><td class="text-end">306 K</td><td>400 kg/h × 1.0 kJ/kg·K — 물리적으로 불가, 즉 열은 갈 곳이 있어야 한다</td></tr>
+        <tr><td>루프 45 °C 유지에 필요한 풍량</td><td class="text-end">5,081 m³/h</td><td>현재 900 m³/h 의 5.6배 — 송풍만으로는 비현실적</td></tr>
+        <tr><td class="dd-warning">EVA 봉지재 연화</td><td class="text-end dd-warning">60–80 °C</td><td class="dd-warning">초과 시 점착 → 스크린 블라인딩·라이너 코팅·분급 성능 붕괴</td></tr>
+        <tr><td>PET 백시트 연화</td><td class="text-end">80 °C 부근</td><td>미분 응집과 정전기 증가</td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small">결론: 폐회로에 <strong>수냉 열교환기(HX-101)</strong>를 넣고 <strong>분쇄 챔버를 자켓 냉각</strong>해 루프를 45 °C 이하로 유지합니다. 풍량 증대만으로 해결하려면 IDF-101 과 집진기를 5배 이상 키워야 합니다.</p>
+
+    <strong>냉각수 계통 부하 (CWS 32 °C / CWR 40 °C · ΔT 8 K)</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="냉각수 부하">
+      <thead><tr><th>Tag</th><th>냉각 대상</th><th class="text-end">부하 kW</th><th class="text-end">수량 m³/h</th><th>형식 · 비고</th></tr></thead>
+      <tbody>
+        <tr><td>HX-101</td><td>HSG 폐회로 공기</td><td class="text-end">17.02</td><td class="text-end">1.83</td><td>공기-수 핀튜브 · BF-101 후단, IDF-101 전단 삽입</td></tr>
+        <tr><td>JK-101</td><td>HSG-101 분쇄 챔버 자켓</td><td class="text-end">13.62</td><td class="text-end">1.46</td><td>이중자켓 · 라이너 배면 · 결로 방지 최소유량 유지</td></tr>
+        <tr><td>AC-401</td><td>VP-401A/B 진공펌프 후냉각</td><td class="text-end">6.38</td><td class="text-end">0.69</td><td>무급유 펌프 토출 120–180 °C · 셸튜브</td></tr>
+        <tr><td>PC-601</td><td>LCP 6면 반내 냉각</td><td class="text-end">4.95</td><td class="text-end">—</td><td>IP54 2면 필터팬 · IP65/66 4면 공랭 열교환기·패널 에어컨</td></tr>
+        <tr><td>AS-CL</td><td>AS-101 슬러리 회로</td><td class="text-end">2.48</td><td class="text-end">0.27</td><td>TK-101 코일 또는 판형 · 비드 마모 고려 개방형 금지</td></tr>
+        <tr><td>OC-301</td><td>HPU-301 유압유</td><td class="text-end">2.25</td><td class="text-end">0.24</td><td>유-수 판형 · 유온 ≤60 °C 서모스탯</td></tr>
+        <tr><td>AC-201</td><td>AB-201A/B 블로어 후냉각</td><td class="text-end">1.87</td><td class="text-end">0.20</td><td>토출 60–90 °C · 부선 셀 급기온도 관리</td></tr>
+        <tr><td>GB-301</td><td>ICSH-301 감속기 오일</td><td class="text-end">1.70</td><td class="text-end">0.18</td><td>저속 대토크 · 오일 스플래시 + 외장 냉각핀 우선 검토</td></tr>
+        <tr><td>CF-BR</td><td>CF-204 베어링·케이싱</td><td class="text-end">0.84</td><td class="text-end">0.09</td><td>1,800 rpm · 베어링 온도 트립과 연동</td></tr>
+        <tr><td colspan="2"><strong>합계</strong></td><td class="text-end"><strong>51.10</strong></td><td class="text-end"><strong>—</strong></td><td>설계여유 15% 적용 <strong>58.8 kW</strong></td></tr>
+      </tbody>
+    </table></div>
+
+    <strong>냉각 설비 사양</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="냉각 설비 사양">
+      <thead><tr><th>Tag</th><th>설비</th><th>사양</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td>CH-601</td><td>공랭식 인버터 칠러</td><td>16.7 RT (58.8 kW) · CWS 32 °C · 압축기 입력 19.6 kW (COP 3.0 가정)</td><td class="dd-warning">외기 35 °C 기준 · 제작사 선정 HOLD · 프리쿨링 드라이쿨러 병용 검토</td></tr>
+        <tr><td>P-601A/B</td><td>냉각수 순환펌프</td><td>6.3 m³/h · 양정 32 m · 축동력 0.79 kW → 정격 2.2 kW · 1운전 1예비</td><td>듀티 교대 · 최소유량 바이패스</td></tr>
+        <tr><td>TK-601</td><td>완충·팽창 탱크</td><td>0.5 m³ · 자동 보충수 · 에어벤트</td><td>루프 체적 안정화로 압축기 단속운전 방지</td></tr>
+        <tr><td>F-601</td><td>Y형 스트레이너</td><td>DN50 · 800 µm</td><td>펌프 흡입측 · 차압 감시</td></tr>
+        <tr><td>헤더·배관</td><td>공급·환수 헤더</td><td>DN50 (유속 2.0 m/s 기준 내경 33 mm) · 지관 DN20–32</td><td>보온·결로방지 · 동파 대비 부동액 30% 검토</td></tr>
+        <tr><td>계장</td><td>온도·유량·차압</td><td>TT/FT 각 지관 · 공급 TT-601 · 환수 TT-602 · 유량 FT-601</td><td>HSG 루프 TT 60 °C 경보 · 70 °C 인터록</td></tr>
+      </tbody>
+    </table></div>
+
+    <strong>제어 · 인터록</strong>
+    <ul class="text-small">
+      <li>기동 순서 — 냉각수 계통이 <strong>공정보다 먼저</strong> RUN 이어야 한다. P-601 유량 확립(FT-601) → CH-601 기동 → 공급온도 정상 후 PLC-101 순차기동 허가</li>
+      <li>HSG-101 루프 온도 TT 60 °C 경보 · 70 °C 에서 원료투입 차단(EVA 연화 전 정지) · 80 °C 에서 M-101 트립</li>
+      <li>냉각수 유량 상실 또는 공급온도 40 °C 초과 지속 시 HSG-101·VP-401·HPU-301 순차 정지</li>
+      <li>패널 냉각 고장(도어 온도 스위치) 시 해당 LCP 의 VFD 경보 · 지속 시 정지</li>
+      <li>동절기 — 옥외 스키드 동파방지 히팅케이블, 부동액 농도 관리, 최소유량 순환</li>
+    </ul>
+
+    <p class="text-small dd-warning">부하율(M-101 0.92 · 슈레더 0.28 · HPU 0.30 등)은 설계 가정입니다. 실측 소비전력과 제작사 발열 보증치로 대체해야 하며, 특히 HSG 폐회로의 자켓/공기냉각 분담(40 : 50 : 10)은 제작사 열해석으로 확정해야 합니다.</p>
   </details>
 
   <div hidden data-category-storage></div>
@@ -1761,7 +1826,7 @@ html>body{padding:0}</style>
   const categories = {
     operation: { label: "운전·제어", title: "통합운전·PLC", panels: ["master-plc", "dry-plc", "wet-plc"] },
     equipment: { label: "장비·공정", title: "영상·장비", panels: ["video-controls", "equipment"] },
-    process: { label: "장비·공정", title: "공정값·해석", panels: ["process-live", "analysis", "noise"] },
+    process: { label: "장비·공정", title: "공정값·해석", panels: ["process-live", "analysis", "noise", "cooling"] },
     layout: { label: "상세설계", title: "6개 장비 DD-R4 2D·3D 설치·전력·배치설계", panels: ["layout"] },
     maintenance: { label: "제작·설치", title: "BOM·체결구·설치 인터페이스", panels: ["maintenance"] },
     validation: { label: "검증·근거", title: "검수·데이터", panels: ["validation", "data-source"] }
@@ -15975,7 +16040,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       vacuumBlower: 2900,         // 가정 · 2극 60 Hz
       rotaryFeeder: 30,           // 가정 · SF-401
       reagentPump: 45,            // 가정 · 정량펌프
-      centrifuge: 1800            // 가정 · CF-204 바스켓
+      centrifuge: 1800,           // 가정 · CF-204 바스켓
+      chillerFan: 900,            // 가정 · CH-601 축류 응축기팬
+      coolingPump: 1750           // 가정 · P-601A/B 4극 60 Hz
     });
     // At 60 fps a shaft turning faster than roughly a fifth of a revolution per frame reads
     // as slow or backwards motion — the wagon-wheel effect — so a 1,500 rpm rotor drawn
@@ -17107,6 +17174,98 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetControlPanel("RIO-402", 16.82, 2.82, 0.56, 1.12, "부선·탈수 현장 I/O");
 
     wetLabel("완전 통합공정 · 건식 환류 → 정량 습식인계 → 어트리션 → 부선 → 탈수 → 공정수 회수", [13.70, 5.36, 0.12], [3.05, 0.29, 1]);
+
+
+    // ── 냉각수 계통 CW-601 ────────────────────────────────────────────────
+    // 축동력 98 kW 가 사실상 전량 열이 되는데 냉각 설비가 하나도 없었다. 특히
+    // HSG-101 폐회로는 900 m³/h 로 1회 통과당 113 K 가 올라 EVA 연화점(60–80 °C)을
+    // 넘긴다. 옥외 유틸리티 스키드에 칠러·순환펌프·완충탱크를 두고, 헤더를 따라
+    // 각 발열원에 지관 냉각기를 배치한다. 부하 산정은 냉각 패널 참조.
+    const coolingPlant = new THREE.Group();
+    coolingPlant.name = "CW-601 냉각수 계통";
+    circuit.add(coolingPlant);
+    const coolingRotors = [];
+    const cwsMaterial = material.pipeWater;
+    const cwrMaterial = material.pipeWater.clone();
+    cwrMaterial.color.set(0xa8563c);
+    const YARD_Z = 5.60, HEADER_Z = 4.60, HEADER_Y = 0.62;
+
+    // 스키드와 CH-601 공랭식 인버터 칠러
+    wetBox(coolingPlant, [4.60, 0.16, 2.60], [2.00, 0.08, YARD_Z], material.frame, "CW-601 옥외 스키드");
+    wetBox(coolingPlant, [2.80, 1.25, 1.50], [1.00, 0.80, YARD_Z], material.equipmentControl, "CH-601 공랭식 인버터 칠러 16.7 RT");
+    for (const dz of [-0.78, 0.78]) {
+      wetBox(coolingPlant, [2.70, 1.05, 0.06], [1.00, 0.78, YARD_Z + dz], material.screen, "CH-601 응축기 핀코일");
+    }
+    for (const dx of [-0.65, 0.65]) {
+      wetMesh(coolingPlant, new THREE.TorusGeometry(0.34, 0.035, 8, 26), material.frame,
+        [1.00 + dx, 1.46, YARD_Z], "CH-601 팬 가드", [Math.PI / 2, 0, 0]);
+      const fan = new THREE.Group();
+      fan.position.set(1.00 + dx, 1.44, YARD_Z);
+      coolingPlant.add(fan);
+      for (let blade = 0; blade < 6; blade += 1) {
+        const angle = blade * Math.PI / 3;
+        const vane = wetBox(fan, [0.30, 0.020, 0.10], [Math.cos(angle) * 0.17, 0, Math.sin(angle) * 0.17],
+          material.dark, "CH-601 응축기팬");
+        vane.rotation.set(0.34, -angle, 0);
+      }
+      coolingRotors.push({ parts: [fan], rpm: DRIVE_RPM.chillerFan, axis: "y" });
+    }
+    wetBox(coolingPlant, [0.42, 0.62, 0.30], [2.62, 0.55, YARD_Z - 0.62], material.equipmentControl, "LCP-CW-601 냉각 제어반");
+
+    // TK-601 완충·팽창 탱크와 P-601A/B 순환펌프
+    wetCylinder(coolingPlant, 0.42, 1.25, [3.60, 0.78, YARD_Z + 0.55], material.equipmentWater, "TK-601 완충·팽창 탱크 0.5 m³", 30);
+    wetCylinder(coolingPlant, 0.44, 0.05, [3.60, 1.43, YARD_Z + 0.55], material.silverClamp, "TK-601 상부 플랜지", 30);
+    wetCylinder(coolingPlant, 0.030, 0.34, [3.60, 1.60, YARD_Z + 0.55], material.pipeAir, "TK-601 자동 에어벤트", 14);
+    ["A", "B"].forEach((suffix, index) => {
+      const px = 3.20 + index * 0.72;
+      wetCylinder(coolingPlant, 0.135, 0.30, [px, 0.40, YARD_Z - 0.68], material.equipmentPump, `P-601${suffix} 냉각수 순환펌프`, 26, [0, 0, Math.PI / 2]);
+      const motor = wetCylinder(coolingPlant, 0.115, 0.34, [px + 0.32, 0.40, YARD_Z - 0.68], material.motor, `P-601${suffix} 모터 2.2 kW`, 26, [0, 0, Math.PI / 2]);
+      const fan = new THREE.Group();
+      fan.position.set(px + 0.52, 0.40, YARD_Z - 0.68);
+      coolingPlant.add(fan);
+      for (let blade = 0; blade < 5; blade += 1) {
+        const angle = blade * Math.PI * 2 / 5;
+        wetBox(fan, [0.018, 0.13, 0.030], [0, Math.cos(angle) * 0.07, Math.sin(angle) * 0.07], material.dark, `P-601${suffix} 모터 냉각팬`)
+          .rotation.set(angle, 0, 0);
+      }
+      coolingRotors.push({ parts: [fan, motor], rpm: DRIVE_RPM.coolingPump, axis: "x" });
+      wetBox(coolingPlant, [0.62, 0.10, 0.34], [px + 0.16, 0.22, YARD_Z - 0.68], material.frame, `P-601${suffix} 베이스`);
+    });
+    wetCylinder(coolingPlant, 0.075, 0.34, [2.55, 0.40, YARD_Z - 0.68], material.silverClamp, "F-601 Y형 스트레이너 800 µm", 20, [0, 0, Math.PI / 2]);
+
+    // 공급·환수 헤더 DN50 과 발열원별 지관 냉각기
+    const headerFrom = -5.60, headerTo = 18.60;
+    wetTube(coolingPlant, [[headerFrom, HEADER_Y, HEADER_Z], [2.00, HEADER_Y, HEADER_Z], [headerTo, HEADER_Y, HEADER_Z]],
+      0.032, cwsMaterial, "CWS-601 공급 헤더 DN50 · 32 °C");
+    wetTube(coolingPlant, [[headerFrom, HEADER_Y - 0.20, HEADER_Z], [2.00, HEADER_Y - 0.20, HEADER_Z], [headerTo, HEADER_Y - 0.20, HEADER_Z]],
+      0.032, cwrMaterial, "CWR-601 환수 헤더 DN50 · 40 °C");
+    wetTube(coolingPlant, [[2.20, 0.40, YARD_Z - 0.68], [2.20, HEADER_Y, HEADER_Z + 0.30], [2.20, HEADER_Y, HEADER_Z]], 0.032, cwsMaterial, "P-601 토출 → CWS 헤더");
+    wetTube(coolingPlant, [[3.60, 0.30, YARD_Z + 0.55], [3.20, HEADER_Y - 0.20, HEADER_Z + 0.40], [3.20, HEADER_Y - 0.20, HEADER_Z]], 0.032, cwrMaterial, "CWR 헤더 → TK-601");
+
+    // 지관 냉각기: [x, tag, 부하 kW, 대상 z]
+    [
+      [-4.40, "GB-301", "ICSH-301 감속기 오일 1.70 kW", -1.10],
+      [-0.30, "HX-101", "HSG 폐회로 공기냉각기 17.02 kW", 0.20],
+      [0.60, "JK-101", "HSG-101 챔버 자켓 13.62 kW", 0.20],
+      [4.20, "AC-401", "VP-401A/B 후냉각 6.38 kW", 1.20],
+      [10.90, "AS-CL", "AS-101 슬러리 회로 2.48 kW", 1.60],
+      [16.20, "OC-301", "HPU-301 유압유 2.25 kW", 1.20],
+      [17.40, "CF-BR", "CF-204 베어링 0.84 kW", 1.20]
+    ].forEach(([x, tag, note, targetZ]) => {
+      wetBox(coolingPlant, [0.44, 0.52, 0.34], [x, 0.44, HEADER_Z - 0.62], material.equipmentWater, `${tag} ${note}`);
+      for (let fin = 0; fin < 5; fin += 1) {
+        wetBox(coolingPlant, [0.40, 0.020, 0.30], [x, 0.24 + fin * 0.10, HEADER_Z - 0.62], material.screen, `${tag} 핀코일`);
+      }
+      wetTube(coolingPlant, [[x, HEADER_Y, HEADER_Z], [x, 0.62, HEADER_Z - 0.34], [x, 0.58, HEADER_Z - 0.62]], 0.018, cwsMaterial, `${tag} 공급 지관`);
+      wetTube(coolingPlant, [[x + 0.14, 0.58, HEADER_Z - 0.62], [x + 0.14, 0.50, HEADER_Z - 0.30], [x + 0.14, HEADER_Y - 0.20, HEADER_Z]], 0.018, cwrMaterial, `${tag} 환수 지관`);
+      wetTube(coolingPlant, [[x, 0.34, HEADER_Z - 0.78], [x, 0.30, (HEADER_Z - 0.78 + targetZ) / 2], [x, 0.30, targetZ]], 0.022, material.pipeAir, `${tag} → 대상기기 연결`);
+      wetCylinder(coolingPlant, 0.038, 0.10, [x - 0.12, 0.72, HEADER_Z - 0.62], material.silverClamp, `${tag} 밸런싱 밸브`, 14);
+      wetCylinder(coolingPlant, 0.026, 0.12, [x + 0.26, 0.66, HEADER_Z - 0.62], material.product280, `${tag} TT 온도전송기`, 12);
+    });
+    wetCylinder(coolingPlant, 0.034, 0.16, [2.00, HEADER_Y + 0.14, HEADER_Z], material.product500, "FT-601 냉각수 유량전송기", 14);
+    wetCylinder(coolingPlant, 0.030, 0.14, [1.40, HEADER_Y + 0.12, HEADER_Z], material.product106, "TT-601 공급온도", 12);
+    wetCylinder(coolingPlant, 0.030, 0.14, [2.60, HEADER_Y - 0.06, HEADER_Z], material.product280, "TT-602 환수온도", 12);
+    wetLabel("CW-601 냉각수 계통 · 58.8 kW · CWS 32 / CWR 40 °C · 6.3 m³/h", [2.00, 2.10, YARD_Z], [2.60, 0.24, 1]);
 
     const state = {
       mode: "simulation",
@@ -18264,6 +18423,12 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
 
     function updateBladeBodies(dt) {
+      // 냉각수 계통은 공정보다 먼저 기동한다(유량 확립 → 칠러 → 공정 순차기동 허가).
+      const coolingOn = dryDriveOn(-1);
+      coolingRotors.forEach((rotor) => {
+        const step = shaftRadians(rotor.rpm, coolingOn ? dt : 0);
+        rotor.parts.forEach((part) => { part.rotation[rotor.axis] += step; });
+      });
       const dustOn = dryDriveOn(0);
       const conveyOn = dryDriveOn(1);
       const millOn = dryDriveOn(2);
@@ -20167,6 +20332,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {tag:"M-SCR-1/2",qty:2,duty:2,kw:1.1,drive:"동기 VFD",status:"원본 2.2 kW 합계와 정합"},
         {tag:"M-SCV-R1",qty:1,duty:1,kw:4.0,drive:"VFD",status:"원본 Rev.G 정합"},
         {tag:"M-SCV-P1",qty:1,duty:1,kw:2.2,drive:"VFD",status:"원본 Rev.G 정합"},
+        {tag:"PC-SH-301",qty:1,duty:1,kw:0.12,drive:"380/220 V TR · 패널 냉각유닛",status:"IP54 필터팬 2조 · 반내 발열 0.93 kW"},
         {tag:"CP/RIO-301",qty:1,duty:1,kw:0.5,drive:"380/220 V TR+24 VDC SMPS",status:"예비 보조부하"}
       ]
     },
@@ -20179,6 +20345,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {tag:"M-RV-101",qty:1,duty:1,kw:0.37,drive:"VFD",status:"확정 설계값"},
         {tag:"M-SC-500",qty:1,duty:1,kw:1.5,drive:"VFD",status:"보조 9.4 kW 내 예비 배분"},
         {tag:"IDF-101",qty:1,duty:1,kw:5.5,drive:"VFD",status:"확정 설계값"},
+        {tag:"PC-HG-101",qty:1,duty:1,kw:0.18,drive:"380/220 V TR · 패널 냉각유닛",status:"IP54 필터팬 2조 · 반내 발열 1.61 kW"},
         {tag:"CP-HG-101",qty:1,duty:1,kw:0.18,drive:"380/220 V TR+24 VDC SMPS",status:"보조 9.4 kW 내 예비 배분"}
       ]
     },
@@ -20191,6 +20358,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         // 최대수요는 7.5 kW 로 계상한다. 종전 PC-202/PC-401 은 전력 스케줄에
         // 계상돼 있지 않았고 예비기도 없었다.
         {tag:"VP-401A/B",qty:2,duty:1,kw:7.5,drive:"VFD · A/B 듀티교대",status:"용량 vendor HOLD · 인입강하 2.31%로 분기 여유 0.69% · 실측 15 m 에서 2.5→4 mm² 증경"},
+        {tag:"PC-SV-201",qty:1,duty:1,kw:0.15,drive:"380/220 V TR · 패널 냉각유닛",status:"IP65 공랭 열교환기 · 반내 발열 0.50 kW · 필터팬 불가"},
         {tag:"CP-SV-201",qty:1,duty:1,kw:0.18,drive:"380/220 V TR+24 VDC SMPS",status:"예비 보조부하"}
       ]
     },
@@ -20202,6 +20370,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {tag:"M-AG-101",qty:1,duty:1,kw:3.0,drive:"VFD",status:"확정 설계값"},
         {tag:"P-101A/B",qty:2,duty:1,kw:2.2,drive:"VFD A/B",status:"Duty 1 + Standby 1"},
         {tag:"P-102A/B",qty:2,duty:1,kw:1.5,drive:"VFD A/B",status:"Duty 1 + Standby 1"},
+        {tag:"PC-AS-101",qty:1,duty:1,kw:0.75,drive:"380/220 V TR · 패널 냉각유닛",status:"IP66 패널 에어컨 · 반내 발열 0.71 kW · 필터팬 불가"},
         {tag:"CP-AS-101",qty:1,duty:1,kw:0.5,drive:"380/220 V TR+24 VDC SMPS",status:"예비 보조부하"}
       ]
     },
@@ -20214,7 +20383,18 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {tag:"AB-201A/B",qty:2,duty:1,kw:2.2,drive:"VFD A/B",status:"0.8 m³/min·0.6 bar 예비선정"},
         {tag:"DP-RS-201/203",qty:3,duty:3,kw:0.18,drive:"Stroke/VFD",status:"제작사 확인"},
         {tag:"RP-202/203",qty:2,duty:2,kw:0.75,drive:"VFD",status:"확정 설계값"},
+        {tag:"PC-FC-201",qty:1,duty:1,kw:0.55,drive:"380/220 V TR · 패널 냉각유닛",status:"IP66 패널 에어컨 · 반내 발열 0.47 kW · 필터팬 불가"},
         {tag:"CP-FC-201",qty:1,duty:1,kw:0.5,drive:"380/220 V TR+24 VDC SMPS",status:"예비 보조부하"}
+      ]
+    },
+    // 유틸리티 냉각수 계통. 플랜트 축동력 98 kW 가 사실상 전량 열이 되는데 모델에
+    // 냉각 설비가 하나도 없었다. 부하 산정은 냉각 패널 참조.
+    cooling:{
+      panel:"LCP-CW-601",source:"MCC-401",area:"유틸리티·옥외 스키드",ip:"IP55 옥외형",declaredDemandKw:24.38,
+      branches:[
+        {tag:"CH-601",qty:1,duty:1,kw:22.0,drive:"VFD · 인버터 스크롤",status:"16.7 RT · COP 3.0 가정 · 제작사 선정 HOLD"},
+        {tag:"P-601A/B",qty:2,duty:1,kw:2.2,drive:"VFD A/B 듀티교대",status:"6.3 m³/h · 양정 32 m · 1운전 1예비"},
+        {tag:"CP-CW-601",qty:1,duty:1,kw:0.18,drive:"380/220 V TR+24 VDC SMPS",status:"예비 보조부하"}
       ]
     },
     filterpress:{
@@ -20226,6 +20406,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {tag:"HPW-301",qty:1,duty:1,kw:5.5,drive:"DOL/VFD",status:"확정 설계값"},
         {tag:"M-CV-301",qty:1,duty:1,kw:1.5,drive:"VFD",status:"확정 설계값"},
         {tag:"M-CF-204",qty:1,duty:1,kw:8.0,drive:"VFD",status:"확정 설계값"},
+        {tag:"PC-FP-301",qty:1,duty:1,kw:0.75,drive:"380/220 V TR · 패널 냉각유닛",status:"IP66 패널 에어컨 · 반내 발열 0.73 kW · 필터팬 불가"},
         {tag:"CP-FP-301",qty:1,duty:1,kw:0.5,drive:"380/220 V TR+24 VDC SMPS",status:"예비 보조부하"}
       ]
     }
@@ -20941,7 +21122,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       <div><dl><dt>제어전원</dt><dd>380/220 V 절연변압기 → 24 VDC PELV 이중 SMPS</dd><dt>접지·본딩</dt><dd>${esc(electricalBasis.earthing)} · 스키드/모터/탱크/가드/덕트 본딩</dd><dt>VFD·EMC</dt><dd>입력리액터/DC choke · 차폐 모터케이블 · 360° 글랜드 · 장거리 dv/dt 검토</dd></dl></div>
       <div><dl><dt>전체 플랜트 예비 부하</dt><dd>${plantPower.connectedKw.toFixed(2)} kW 연결 · ${plantPower.demandKw.toFixed(2)} kW 최대수요</dd><dt>MDB-001 예비 인입</dt><dd>${plantPower.mainBreakerA} A · ${plantPower.mainBreakerA} A bus · ${plantPower.transformerKva} kVA 공급원 권장 (부하 ${plantPower.demandKva.toFixed(1)} kVA · 부하율 ${plantPower.transformerLoadingPct.toFixed(1)}%)</dd><dt>주간선 예비안</dt><dd>2회로 병렬 3×120 mm² Cu + PE 70 mm² 또는 400 A busduct</dd></dl></div>`
       + (overRange.length ? `<div class="dd-warning"><strong>정격표 범위 초과 · HOLD</strong><ul>${overRange.map((item) => `<li>${esc(item)}</li>`).join("")}</ul></div>` : "");
-    plantPowerBody.innerHTML=Object.entries(powerPackages).map(([key,item])=>`<tr><td>${esc(equipments[key].label)}<br><span class="text-small text-muted">${esc(item.panel)}</span></td><td class="text-end">${item.connectedKw.toFixed(2)} kW</td><td class="text-end">${item.maxDemandKw.toFixed(2)} kW</td><td class="text-end">${item.runningCurrentA.toFixed(1)} A</td><td class="text-end">${item.designCurrentA.toFixed(1)} A</td><td>${item.breakerA} A 3P</td><td>${cableLabel(item)}</td><td class="text-end">${item.voltageDropPct.toFixed(2)}%</td></tr>`).join("");
+    plantPowerBody.innerHTML=Object.entries(powerPackages).map(([key,item])=>`<tr><td>${esc(equipments[key]?.label ?? item.area)}<br><span class="text-small text-muted">${esc(item.panel)}</span></td><td class="text-end">${item.connectedKw.toFixed(2)} kW</td><td class="text-end">${item.maxDemandKw.toFixed(2)} kW</td><td class="text-end">${item.runningCurrentA.toFixed(1)} A</td><td class="text-end">${item.designCurrentA.toFixed(1)} A</td><td>${item.breakerA} A 3P</td><td>${cableLabel(item)}</td><td class="text-end">${item.voltageDropPct.toFixed(2)}%</td></tr>`).join("");
     powerBranchBody.innerHTML=power.branches.map(branch=>{const selected=branchSelection(branch,power.voltageDropPct);const protection=/VFD/.test(branch.drive)?`${selected.breaker} A 3P MCCB/fuse · VFD 협조`:`${selected.breaker} A 3P MPCB/MCB`;return `<tr><td>${esc(branch.tag)}</td><td>${branch.qty} / ${branch.duty}</td><td class="text-end">${branch.kw.toFixed(2)} kW${branch.duty>1?`<br><span class="text-small text-muted">회로 ${circuitKw(branch).toFixed(2)} kW</span>`:""}</td><td>${esc(branch.drive)}</td><td class="text-end">${selected.current.toFixed(1)} A</td><td>${esc(protection)}</td><td>3×${selected.cable.size} mm² + PE ${selected.pe} mm²</td><td class="text-end ${selected.dropOk?"dd-power-ok":"dd-warning"}">${selected.dropPct.toFixed(2)}%<br><span class="text-small text-muted">누적 ${(power.voltageDropPct+selected.dropPct).toFixed(2)}%</span></td><td>${esc(branch.status)}</td></tr>`;}).join("");
     powerHoldBody.innerHTML=powerHoldPoints.map(point=>`<tr><td>${esc(point.id)}</td><td>${esc(point.stage)}</td><td>${esc(point.check)}</td><td>${esc(point.record)}</td><td><span class="viz-badge">${esc(point.gate)}</span></td></tr>`).join("");
   }
