@@ -15844,11 +15844,55 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       "product-75-106",
       "product-under-75"
     ]);
+    // ---- 구동 명판 회전수 ---------------------------------------------------
+    // Every driven shaft in the model reads its speed from here. (명판) values are the
+    // ones stated in this document's own equipment specs; (가정) values have no datasheet
+    // in the model and use a standard 60 Hz induction-motor speed, so they are easy to
+    // correct in one place once real nameplates are available.
+    const DRIVE_RPM = Object.freeze({
+      shredderUpperShaft: 12,     // 명판 · ICSH-301 상부 X축
+      shredderLowerShaft: 20,     // 명판 · ICSH-301 하부 Y축
+      shredderFeedRoller: 25,     // 가정 · 압입롤
+      shredderAntiBridge: 18,     // 가정 · 브리징축
+      shredderMotorFan: 1750,     // 가정 · 4극 60 Hz
+      returnRotaryValve: 32,      // 명판 · SCV-R1 계열 로터리
+      productRotaryValve: 38,     // 명판 · 제품측 로터리
+      inducedFan: 1750,           // 가정 · 4극 60 Hz ID 팬
+      attritionRotor: 600,        // 명판 · AS-101 600 rpm
+      flotationRougher: 420,      // 명판 · FC-201 러퍼 420 rpm
+      flotationCleanerScav: 360,  // 명판 · FC-202 클리너 / FC-203 스캐빈저 360 rpm
+      airBlower: 2900,            // 가정 · AB-201A/B 무급유 블로어 2극 60 Hz
+      tankAgitator: 60,           // 가정 · 희석·컨디셔닝 교반기
+      slurryPump: 1750,           // 가정 · 4극 60 Hz
+      vacuumBlower: 2900,         // 가정 · 2극 60 Hz
+      rotaryFeeder: 30,           // 가정 · SF-401
+      reagentPump: 45,            // 가정 · 정량펌프
+      centrifuge: 1800            // 가정 · CF-204 바스켓
+    });
+    // At 60 fps a shaft turning faster than roughly a fifth of a revolution per frame reads
+    // as slow or backwards motion — the wagon-wheel effect — so a 1,500 rpm rotor drawn
+    // literally would look wrong. Geometry is driven from the nameplate speed and only the
+    // rendered rate is folded down past that limit; the spec panels still report the
+    // nameplate value.
+    const DISPLAY_REV_PER_FRAME = 0.18;
+    function shaftRadians(rpm, dt) {
+      if (!(dt > 0)) return 0;
+      const revPerSecond = rpm / 60;
+      return Math.min(revPerSecond, DISPLAY_REV_PER_FRAME / dt) * Math.PI * 2 * dt;
+    }
     const SIEVE_INCLINE_DEG = 12;
     const SIEVE_INCLINE_RAD = THREE.MathUtils.degToRad(SIEVE_INCLINE_DEG);
     const SIEVE_OPERATING_FREQUENCY_HZ = 25;
     const SIEVE_PEAK_TO_PEAK_M = 0.003;
-    const SIEVE_VISUAL_FREQUENCY_HZ = 4;
+    // Both screens are drawn as a strobe of their true excitation: 25 Hz and 16 Hz are far
+    // past what a 60 fps display can resolve, so step down by a whole-number divisor, which
+    // keeps the deck and its exciter shaft in phase with each other. Amplitude stays
+    // exaggerated because 3.0 mm peak-to-peak is invisible at plant scale.
+    const SIEVE_STROBE_DIVISOR = 6;
+    const SIEVE_VISUAL_FREQUENCY_HZ = SIEVE_OPERATING_FREQUENCY_HZ / SIEVE_STROBE_DIVISOR;
+    const SECONDARY_SIEVE_RPM = 960;                                     // 명판 · SV-201 2.2 kW 진동모터
+    const SECONDARY_SIEVE_FREQUENCY_HZ = SECONDARY_SIEVE_RPM / 60;       // 16 Hz
+    const SECONDARY_VISUAL_FREQUENCY_HZ = SECONDARY_SIEVE_FREQUENCY_HZ / 4;
     const SIEVE_VISUAL_DISPLACEMENT_SCALE = 4;
     const SIEVE_VISUAL_PEAK_M = SIEVE_PEAK_TO_PEAK_M * 0.5 * SIEVE_VISUAL_DISPLACEMENT_SCALE;
     const SIEVE_THROW_ANGLE_RAD = THREE.MathUtils.degToRad(45);
@@ -16560,14 +16604,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       unifiedWet.add(sprite);
       return sprite;
     }
-    function wetDrive(parent, tag, shaftX, motorX, y, z, activation, ratio = 3) {
+    function wetDrive(parent, tag, shaftX, motorX, y, z, activation, rpm = DRIVE_RPM.tankAgitator) {
       const motor = wetCylinder(parent, 0.15, 0.40, [motorX, y + 0.22, z], wetMotorMaterial, `${tag} VFD 모터`, 28);
       const motorFan = wetCylinder(parent, 0.11, 0.045, [motorX, y + 0.43, z], wetMotorMaterial, `${tag} 모터 냉각팬`, 24);
       const drivenPulley = wetCylinder(parent, 0.19, 0.075, [shaftX, y, z], wetPulleyMaterial, `${tag} 종동 풀리`, 30);
       const motorPulley = wetCylinder(parent, 0.085, 0.075, [motorX, y, z], wetPulleyMaterial, `${tag} 모터 풀리`, 30);
       wetBox(parent, [Math.abs(motorX - shaftX), 0.025, 0.030], [(motorX + shaftX) / 2, y + 0.13, z - 0.05], wetBeltMaterial, `${tag} V벨트 상부`);
       wetBox(parent, [Math.abs(motorX - shaftX), 0.025, 0.030], [(motorX + shaftX) / 2, y - 0.13, z + 0.05], wetBeltMaterial, `${tag} V벨트 하부`);
-      wetRotors.push({ activation, speed: ratio, parts: [motor, motorFan, drivenPulley, motorPulley], axis: "y" });
+      wetRotors.push({ activation, rpm, parts: [motor, motorFan, drivenPulley, motorPulley], axis: "y" });
     }
     function wetTank(tag, x, z, radius, height, activation, options = {}) {
       const group = new THREE.Group();
@@ -16588,14 +16632,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
           wetBox(rotor, [radius * 0.78, 0.042, 0.085], [Math.cos(angle) * radius * 0.12, level, Math.sin(angle) * radius * 0.12], material.fixed, `${tag} ${levelIndex + 1}단 역피치 패들`, [0, -angle, levelIndex % 2 ? -0.18 : 0.18]);
         }
       });
-      wetRotors.push({ activation, speed: options.attrition ? 7.5 : 2.0, parts: [rotor], axis: "y" });
+      wetRotors.push({ activation, rpm: options.impellerRpm ?? (options.attrition ? DRIVE_RPM.attritionRotor : DRIVE_RPM.tankAgitator), parts: [rotor], axis: "y" });
       wetBox(group, [radius * 1.45, 0.09, radius * 0.90], [x, 0.56 + height, z], material.frame, `${tag} 구동 브리지`);
       wetDrive(group, tag, x, x + radius * 0.86, 0.70 + height, z, activation, options.attrition ? 5.2 : 2.2);
       const label = wetLabel(`${tag} · ${options.label || "교반조"}`, [x, 1.12 + height, z]);
       return { group, label, x, z, radius, height };
     }
-    function flotationCell(tag, x, z, radius, height, activation, airRate) {
-      const cell = wetTank(tag, x, z, radius, height, activation, { liquid: wetWaterMaterial, label: `${airRate.toFixed(3)} Nm³/min` });
+    function flotationCell(tag, x, z, radius, height, activation, airRate, impellerRpm) {
+      const cell = wetTank(tag, x, z, radius, height, activation, { liquid: wetWaterMaterial, impellerRpm, label: `${airRate.toFixed(3)} Nm³/min` });
       wetCylinder(cell.group, radius * 0.90, 0.12, [x, 0.54 + height * 0.91, z], wetFrothMaterial, `${tag} 포말층`, 36);
       for (let index = 0; index < 20; index += 1) {
         const bubble = wetMesh(cell.group, new THREE.SphereGeometry(0.026 + (index % 4) * 0.004, 9, 7), wetFrothMaterial.clone(), [x, 0.62, z], `${tag} 부선기포 ${index + 1}`);
@@ -16634,7 +16678,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         wetMesh(group, new THREE.TorusGeometry(0.11, 0.025, 8, 24), material.equipmentPump, [x - 0.15, 0.24, pumpZ], `${tag}${suffix} 볼류트`, [0, Math.PI / 2, 0]);
         const motor = wetCylinder(group, 0.12, 0.30, [x + 0.20, 0.24, pumpZ], wetMotorMaterial, `${tag}${suffix} VFD 모터`, 28, [0, 0, Math.PI / 2]);
         wetCylinder(group, 0.045, 0.12, [x + 0.01, 0.24, pumpZ], material.fixed, `${tag}${suffix} 커플링`, 18, [0, 0, Math.PI / 2]);
-        wetRotors.push({ activation, speed: 6.4, parts: [impeller, motor], axis: "x", train: suffix });
+        wetRotors.push({ activation, rpm: DRIVE_RPM.slurryPump, parts: [impeller, motor], axis: "x", train: suffix });
       });
       const suctionTee = [x - 0.30, 0.24, z];
       const dischargeTee = [x + 0.12, 0.42, z];
@@ -16710,7 +16754,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const pc202Wheel = wetCylinder(unifiedWet, 0.19, 0.24, [5.80, 0.34, -2.46], material.equipmentAir, "PC-202 조대물 반송 진공블로어", 30, [0, 0, Math.PI / 2]);
     wetCylinder(unifiedWet, 0.14, 0.34, [6.16, 0.34, -2.46], wetMotorMaterial, "PC-202 IE4 VFD 모터", 28, [0, 0, Math.PI / 2]);
     wetTube(unifiedWet, [[-0.72, 2.92, -0.66], [1.40, 2.98, -2.72], [5.58, 0.46, -2.46]], 0.042, material.pipeAir, "VR-201 필터 → PC-202 진공라인");
-    wetRotors.push({ activation: 1260, speed: 9.0, parts: [pc202Wheel], axis: "x" });
+    wetRotors.push({ activation: 1260, rpm: DRIVE_RPM.vacuumBlower, parts: [pc202Wheel], axis: "x" });
     wetLabel("SS-201 ≥75 µm → RV-402/RC-201 → VR-201 → HSG-101", [3.18, 2.42, -2.68], [2.35, 0.23, 1]);
 
     // Motivated <75 µm transfer: VR-401 vacuum receiver discharges through the
@@ -16724,14 +16768,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const pc401Wheel = wetCylinder(unifiedWet, 0.18, 0.22, [6.72, 0.34, 1.62], material.equipmentAir, "PC-401 미분 진공블로어", 30, [0, 0, Math.PI / 2]);
     wetCylinder(unifiedWet, 0.13, 0.32, [7.05, 0.34, 1.62], wetMotorMaterial, "PC-401 VFD 모터", 28, [0, 0, Math.PI / 2]);
     wetTube(unifiedWet, [[7.56, 2.18, 0.72], [7.18, 2.34, 1.56], [6.72, 0.48, 1.62]], 0.040, material.pipeAir, "VR-401 필터 → PC-401 진공라인");
-    wetRotors.push({ activation: 1680, speed: 9.5, parts: [pc401Wheel], axis: "x" });
+    wetRotors.push({ activation: 1680, rpm: DRIVE_RPM.vacuumBlower, parts: [pc401Wheel], axis: "x" });
     wetTube(unifiedWet, [[7.56, 1.38, 0.72], [bufferX, 1.42, 0.72]], 0.070, material.pipeDryTransfer, "VR-401 → BH-101 중력인계", 1680, 4);
     wetCone(unifiedWet, 0.36, 0.12, 0.72, [bufferX, 1.06, 0.72], material.solidsReceiver, "BH-101 로드셀 완충빈", 8);
     wetBox(unifiedWet, [0.64, 0.07, 0.64], [bufferX, 0.68, 0.72], material.frame, "BH-101 계량프레임");
     for (const dx of [-0.24, 0.24]) for (const dz of [-0.24, 0.24]) wetCylinder(unifiedWet, 0.025, 0.12, [bufferX + dx, 0.61, 0.72 + dz], material.silverClamp, "BH-101 로드셀", 14);
     wetCylinder(unifiedWet, 0.12, 0.28, [bufferX, 0.52, 0.72], material.solidsReceiver, "RV-401 습식 인계 로터리 에어록", 28, [Math.PI / 2, 0, 0]);
     const sf401Rotor = addClosedScrewBetween(unifiedWet, new THREE.Vector3(7.96, 0.46, 0.72), new THREE.Vector3(8.62, 0.46, 0.72), 0.105, 0.034, 0.16, "SF-401", material.equipmentConveyor);
-    wetRotors.push({ activation: 1680, speed: 3.6, parts: [sf401Rotor], axis: "y" });
+    wetRotors.push({ activation: 1680, rpm: DRIVE_RPM.rotaryFeeder, parts: [sf401Rotor], axis: "y" });
     wetCone(unifiedWet, 0.24, 0.10, 0.42, [8.88, 0.55, 0.72], material.equipmentWetBody, "WC-401 밀폐 습윤콘", 24);
     wetTube(unifiedWet, [[8.88, 0.34, 0.72], [9.02, 0.34, 0.72], [9.02, 1.18, 0.72], [8.94, 1.18, 0.72]], 0.065, wetFeedMaterial, "WC-401 → TK-001 습윤분말관", 1740, 5);
     wetSampler("SAM-101", [8.95, 0.92, 0.72], wetFeedMaterial);
@@ -16774,7 +16818,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       wetCylinder(unifiedWet, 0.18, 0.38, [skid.x, 0.30, -1.55], skid.mat, `${skid.tag} 운전액위`, 28);
       const agitator = wetCylinder(unifiedWet, 0.025, 0.55, [skid.x, 0.58, -1.55], material.fixed, `${skid.tag} 교반축`, 16);
       wetCylinder(unifiedWet, 0.09, 0.18, [skid.x, 0.82, -1.55], wetMotorMaterial, `${skid.tag} 교반모터`, 22);
-      wetRotors.push({ activation: 420, speed: 2.1, parts: [agitator], axis: "y" });
+      wetRotors.push({ activation: 420, rpm: DRIVE_RPM.tankAgitator, parts: [agitator], axis: "y" });
       wetBox(unifiedWet, [0.20, 0.14, 0.18], [skid.x + 0.27, 0.18, -1.55], material.equipmentPump, `${skid.tag} 정량펌프`);
       wetCylinder(unifiedWet, 0.055, 0.28, [skid.x - 0.25, 0.34, -1.55], material.silverClamp, `${skid.tag} 교정컬럼`, 18);
       skid.injectionPoint = [12.82, 3.36 + index * 0.06, -0.84 + index * 0.08];
@@ -16786,13 +16830,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetBox(unifiedWet, [5.10, 0.14, 3.45], [14.46, 2.44, 0.18], material.frame, "ST-201 2층 부유선별 그레이팅");
     for (const x of [12.18, 16.72]) for (const z of [-1.20, 1.50]) wetBox(unifiedWet, [0.10, 2.48, 0.10], [x, 1.20, z], material.frame, "ST-201 2층 지지기둥");
     for (let step = 0; step < 8; step += 1) wetBox(unifiedWet, [0.62, 0.06, 0.26], [16.98 + step * 0.12, 0.18 + step * 0.28, 1.08], material.frame, "ST-201 접근계단");
-    const fc201 = flotationCell("FC-201", 13.38, 0.08, 0.58, 1.34, 420, 0.060);
+    const fc201 = flotationCell("FC-201", 13.38, 0.08, 0.58, 1.34, 420, 0.060, DRIVE_RPM.flotationRougher);
     fc201.group.position.y = 2.44;
     fc201.label.position.y += 2.44;
-    const fc202 = flotationCell("FC-202", 14.24, 1.14, 0.40, 1.00, 360, 0.020);
+    const fc202 = flotationCell("FC-202", 14.24, 1.14, 0.40, 1.00, 360, 0.020, DRIVE_RPM.flotationCleanerScav);
     fc202.group.position.y = 2.44;
     fc202.label.position.y += 2.44;
-    const fc203 = flotationCell("FC-203", 15.10, 0.08, 0.58, 1.34, 360, 0.075);
+    const fc203 = flotationCell("FC-203", 15.10, 0.08, 0.58, 1.34, 360, 0.075, DRIVE_RPM.flotationCleanerScav);
     fc203.group.position.y = 2.44;
     fc203.label.position.y += 2.44;
     wetTube(unifiedWet, [pp201.discharge, [12.96, 0.68, -0.28], [12.96, 3.58, 0.08]], 0.070, wetFeedMaterial, "PP-201A/B → FC-201 러퍼 급광", 1920, 8);
@@ -16800,7 +16844,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetTube(unifiedWet, [[13.96, 3.54, 0.08], [14.42, 3.54, 0.08], [14.52, 3.54, 0.08]], 0.065, wetTailingsMaterial, "FC-201 러퍼 광미 → FC-203 스캐빈저", 2040, 5);
     const rp202 = wetCylinder(unifiedWet, 0.11, 0.25, [14.74, 3.02, 1.48], material.equipmentPump, "RP-202 클리너 미광 환류펌프", 26, [0, 0, Math.PI / 2]);
     const rp203 = wetCylinder(unifiedWet, 0.11, 0.25, [15.48, 3.02, 1.30], material.equipmentPump, "RP-203 스캐빈저 정광 환류펌프", 26, [0, 0, Math.PI / 2]);
-    wetRotors.push({ activation: 360, speed: 7.0, parts: [rp202, rp203], axis: "x" });
+    wetRotors.push({ activation: 360, rpm: DRIVE_RPM.reagentPump, parts: [rp202, rp203], axis: "x" });
     wetTube(unifiedWet, [[14.64, 3.46, 1.14], [14.74, 3.02, 1.48], [13.02, 3.30, 0.48]], 0.046, material.pipeReturn, "FC-202 클리너 미광 → FC-201 환류", 2160, 5);
     wetTube(unifiedWet, [[15.10, 4.46, 0.08], [15.48, 3.02, 1.30], [13.02, 3.30, 0.48]], 0.046, material.pipeReturn, "FC-203 스캐빈저 정광 → FC-201 환류", 2160, 5);
     reagentSkids.forEach((skid, index) => {
@@ -16815,8 +16859,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetCylinder(unifiedWet, 0.13, 0.30, [17.86, 0.34, 1.50], wetMotorMaterial, "AB-201A VFD 모터", 26, [0, 0, Math.PI / 2]);
     wetCylinder(unifiedWet, 0.13, 0.30, [17.86, 0.34, 1.94], wetMotorMaterial, "AB-201B VFD 모터", 26, [0, 0, Math.PI / 2]);
     wetCylinder(unifiedWet, 0.24, 1.05, [18.42, 0.59, 1.72], material.equipmentAir, "AR-201 공기 리시버", 30);
-    wetRotors.push({ activation: 420, speed: 10.0, parts: [ab201a], axis: "x", train: "A" });
-    wetRotors.push({ activation: 420, speed: 10.0, parts: [ab201b], axis: "x", train: "B" });
+    wetRotors.push({ activation: 420, rpm: DRIVE_RPM.airBlower, parts: [ab201a], axis: "x", train: "A" });
+    wetRotors.push({ activation: 420, rpm: DRIVE_RPM.airBlower, parts: [ab201b], axis: "x", train: "B" });
     wetTube(unifiedWet, [[17.65, 0.34, 1.50], [17.74, 0.84, 1.50], [18.42, 1.06, 1.72]], 0.042, material.pipeAir, "AB-201A → AR-201", 420, 2);
     wetTube(unifiedWet, [[17.65, 0.34, 1.94], [17.74, 0.84, 1.94], [18.42, 1.06, 1.72]], 0.042, material.pipeAir, "AB-201B → AR-201", 420, 2);
     wetTube(unifiedWet, [[18.42, 1.06, 1.72], [17.40, 2.14, 1.72], [16.52, 3.18, 1.70]], 0.042, material.pipeAir, "AR-201 → 부선 공기 매니폴드", 420, 6);
@@ -16850,8 +16894,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     unifiedWet.add(cf204);
     wetCylinder(cf204, 0.46, 1.10, [13.28, 0.66, -1.34], material.equipmentDewater, "CF-204 밀폐 원심탈수 케이싱", 40, [Math.PI / 2, 0, 0], true);
     const cfBasket = wetCylinder(cf204, 0.34, 0.86, [13.28, 0.66, -1.34], material.screen, "CF-204 Ø360 여과바스켓", 40, [Math.PI / 2, 0, 0], true);
-    wetDrive(cf204, "CF-204", 13.28, 13.90, 1.02, -1.34, 120, 8.0);
-    wetRotors.push({ activation: 120, speed: 8.0, parts: [cfBasket], axis: "x" });
+    wetDrive(cf204, "CF-204", 13.28, 13.90, 1.02, -1.34, 120, DRIVE_RPM.centrifuge);
+    wetRotors.push({ activation: 120, rpm: DRIVE_RPM.centrifuge, parts: [cfBasket], axis: "x" });
     wetCone(unifiedWet, 0.25, 0.07, 0.38, [12.48, 0.34, -1.30], material.solidsReceiver, "BIN-204 Ag 정광 케이크빈", 24);
     wetTube(unifiedWet, [[13.28, 0.66, -0.78], [12.48, 0.54, -1.30]], 0.065, wetConcentrateMaterial, "CF-204 케이크 → BIN-204", 2280, 3);
     wetLabel("CF-204 · Ag 정광 원심탈수", [13.28, 1.62, -1.34]);
@@ -17386,7 +17430,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         if (!wetAnimationAllowed(rotor.activation)) return;
         if (state.playbackPaused) return;
         if (rotor.train && rotor.train !== wetPlcState.lead) return;
-        rotor.parts.forEach((part) => { part.rotation[rotor.axis] += realDt * rotor.speed; });
+        const step = shaftRadians(rotor.rpm, realDt * state.speed);
+        rotor.parts.forEach((part) => { part.rotation[rotor.axis] += step; });
       });
       wetBubbles.forEach((bubble) => {
         const enabled = wetPlcState.line === "run" || (wetPlcState.line === "starting" && wetPlcState.step >= 2) || (wetPlcState.line === "draining" && wetPlcState.step >= 2);
@@ -18085,15 +18130,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       motorPulley.rotation.z = motorAngle;
       motorFan.rotation.z = motorAngle;
       motorShaftRotor.rotation.z = motorAngle;
-      shredderShaftA.rotation.x += dt * Math.PI * 2 * 12 / 60;
-      shredderShaftB.rotation.z -= dt * Math.PI * 2 * 20 / 60;
-      shredMotorFanA.rotation.x += dt * 9.2;
-      shredMotorFanB.rotation.z -= dt * 9.2;
-      shredFeedRollerFront.rotation.x += dt * 2.6;
-      shredFeedRollerRear.rotation.x -= dt * 2.6;
-      shredAntiBridgeShaft.rotation.x += dt * 1.8;
-      shredReturnRotor.rotation.y += Math.PI * 2 * 32 / 60 * dt;
-      shredProductRotor.rotation.y += Math.PI * 2 * 38 / 60 * dt;
+      shredderShaftA.rotation.x += shaftRadians(DRIVE_RPM.shredderUpperShaft, dt);
+      shredderShaftB.rotation.z -= shaftRadians(DRIVE_RPM.shredderLowerShaft, dt);
+      shredMotorFanA.rotation.x += shaftRadians(DRIVE_RPM.shredderMotorFan, dt);
+      shredMotorFanB.rotation.z -= shaftRadians(DRIVE_RPM.shredderMotorFan, dt);
+      shredFeedRollerFront.rotation.x += shaftRadians(DRIVE_RPM.shredderFeedRoller, dt);
+      shredFeedRollerRear.rotation.x -= shaftRadians(DRIVE_RPM.shredderFeedRoller, dt);
+      shredAntiBridgeShaft.rotation.x += shaftRadians(DRIVE_RPM.shredderAntiBridge, dt);
+      shredReturnRotor.rotation.y += shaftRadians(DRIVE_RPM.returnRotaryValve, dt);
+      shredProductRotor.rotation.y += shaftRadians(DRIVE_RPM.productRotaryValve, dt);
       const showShredFlow = state.mode === "simulation" || state.mode === "flow";
       const reducedMotion = prefersReducedMotion;
       // Superseded by the CV-001 infeed conveyor, which shows the same panels arriving
@@ -18143,11 +18188,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
           marker.rotation.y += dt * 2.4;
         });
       }
-      transferScrewRotor.rotation.y += Math.PI * 2 * TRANSFER_SCREW_RPM / 60 * dt;
-      returnScrewRotor.rotation.y += Math.PI * 2 * RETURN_SCREW_RPM / 60 * dt;
+      transferScrewRotor.rotation.y += shaftRadians(TRANSFER_SCREW_RPM, dt);
+      returnScrewRotor.rotation.y += shaftRadians(RETURN_SCREW_RPM, dt);
       airlockRotor.rotation.z -= Math.PI * 2 * 18 / 60 * dt;
       rv102Rotor.rotation.z -= Math.PI * 2 * 10 / 60 * dt;
-      inducedFanRotor.rotation.z += Math.PI * 2 * 14 * dt;
+      inducedFanRotor.rotation.z += shaftRadians(DRIVE_RPM.inducedFan, dt);
       updateAirflowMarkers(dt);
       updateBeltSegments();
     }
@@ -18593,14 +18638,18 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         // 60 panels/h at the model's 60x process acceleration is one panel per real
         // second; with PANEL_COUNT on the loop that is a PANEL_COUNT-second cycle.
         panelFeedSeconds += realDt * state.speed / PANEL_COUNT;
-        // addCylinder orients an "z" roller with rotation.x = PI/2, so adding the spin to
+        // Rollers turn at the speed the belt actually runs: omega = v / r, with v taken
+        // from the panel pitch itself (one cycle carries a sheet CYCLE_LEN in PANEL_COUNT
+        // seconds), so the rollers and the sheets can never drift out of step.
+        // addCylinder orients a "z" roller with rotation.x = PI/2, so adding the spin to
         // rotation.x tumbles it end-over-end instead of turning it. With Euler order XYZ
         // the Y term is applied first, i.e. about the cylinder's own axis — that is the
         // channel the spin belongs in.
-        const spin = realDt * state.speed * 2.4;
-        headPulley.rotation.y += spin;
-        tailPulley.rotation.y += spin;
-        beltIdlers.forEach((idler) => { idler.rotation.y += spin; });
+        const beltSpeed = CYCLE_LEN / PANEL_COUNT;                     // m/s on screen
+        const step = realDt * state.speed;
+        headPulley.rotation.y += (beltSpeed / 0.17) * step;
+        tailPulley.rotation.y += (beltSpeed / 0.17) * step;
+        beltIdlers.forEach((idler) => { idler.rotation.y += (beltSpeed / 0.075) * step; });
       }
       feedPanels.forEach((carrier) => {
         const cycle = (carrier.userData.phase + panelFeedSeconds) % 1;
@@ -19550,7 +19599,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         );
         sieveExciterRotor.rotation.z = phase;
         sievePulley.rotation.z = -phase;
-        const secondaryPhase = Math.PI * 2 * 3.5 * timeSeconds;
+        const secondaryPhase = Math.PI * 2 * SECONDARY_VISUAL_FREQUENCY_HZ * timeSeconds;
         secondaryMotionOffset.set(
           Math.sin(secondaryPhase) * 0.0045,
           Math.cos(secondaryPhase * 1.03) * 0.0055,
