@@ -33,6 +33,7 @@ Dynamic industry Development
 | [docs/design-calculation.md](docs/design-calculation.md) | 설계 계산서 (코드에서 자동 생성) |
 | [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 7매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
+| [docs/drawings/pv-preprocess-plant.html](docs/drawings/pv-preprocess-plant.html) | **전처리 플랜트 통합 설계도** — 상류 공정(투입·반전·정션박스 제거·프레임 분리·유리 검사·레시피 버퍼)의 3D 작동 시뮬레이션과 셀별 2D 제작도·3D 분해도·전체 배치도 (브라우저로 열 것) |
 
 ### 사용법
 
@@ -42,7 +43,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (286건)
+python -m unittest discover -s tests -t .                               # 테스트 (305건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
@@ -79,6 +80,8 @@ src/flotation_design/
   conditioning.py   조건조 사이징
   plant.py          두 안 조립 + 농축조
   report.py         Markdown 계산서 생성
+src/pv_preprocess/
+  layout.py         전처리 플랜트 배치 — 셀 외형에서 존·전체 포락선 파생
 ```
 
 ### 모델에서 알아둘 두 가지
@@ -91,3 +94,20 @@ Si 코어를 달고 온다. 부상 Ag 1 kg 당 맥석 1.1 kg 이면 상한은 1/
 **연속 부선조에는 반응속도 모델을 쓰지 않는다.** 완전혼합조가 아니므로 기액 체류시간
 1분을 CSTR 식에 넣으면 Ag 회수율이 63 % 로 나와 실측(~100 %)과 맞지 않는다.
 flux 상사로 스케일업하면 수력학적 조건이 보존되므로 실증 측정값을 이월한다.
+
+## 태양광 패널 전처리 플랜트 (상류 공정)
+
+부유선별 앞단에서 폐 모듈을 받아 정션박스·케이블·알루미늄 프레임을 떼어내고 유리를
+분리·검사해 레시피별로 적재하는 통합 라인. 설계도는
+[docs/drawings/pv-preprocess-plant.html](docs/drawings/pv-preprocess-plant.html) 한 장에
+3D 작동 시뮬레이션과 도면 프로그램(2D 제작도·3D 분해도·전체 배치도·도면 목록·부품표)이
+모두 들어 있다.
+
+- 영구설비 **49,900 × 8,300 × 5,050 mm** — 셀별 GA 외형에서 파생
+- 장비 밴드 Y 0–7,100, 보행·정비 통로 Y 7,100–8,300 (장비 포락선 **밖**)
+- 설비 셀 7개 + JB/AFR 인계 게이트 1개, 부품 150품목
+
+배치 수치는 `src/pv_preprocess/layout.py` 가 단일 출처이고, 존 X·Y·높이를 셀 외형에서
+파생한다. `tests/test_pv_preprocess.py` 가 도면 안의 리터럴과 이 모델을 대조하므로
+한쪽만 고치면 테스트가 실패한다. 존이 자기 장비보다 짧아지는 것, 통로가 장비에 덮이는 것,
+부품이 자기 외형을 넘는 것은 불변식 테스트로 막는다.
