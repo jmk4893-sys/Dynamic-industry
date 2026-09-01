@@ -16751,10 +16751,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetCone(unifiedWet, 0.26, 0.08, 0.30, [-0.72, 2.24, -0.66], material.solidsReceiver, "VR-201 배출콘", 32);
     wetBox(unifiedWet, [0.40, 0.12, 0.40], [-0.72, 2.92, -0.66], material.screen, "VR-201 펄스필터");
     wetTube(unifiedWet, [[-0.72, 2.10, -0.66], [-0.72, 2.17, 0]], 0.070, material.pipeReturn, "VR-201 → FD-101 중력배출", 1860, 4);
-    const pc202Wheel = wetCylinder(unifiedWet, 0.19, 0.24, [5.80, 0.34, -2.46], material.equipmentAir, "PC-202 조대물 반송 진공블로어", 30, [0, 0, Math.PI / 2]);
-    wetCylinder(unifiedWet, 0.14, 0.34, [6.16, 0.34, -2.46], wetMotorMaterial, "PC-202 IE4 VFD 모터", 28, [0, 0, Math.PI / 2]);
-    wetTube(unifiedWet, [[-0.72, 2.92, -0.66], [1.40, 2.98, -2.72], [5.58, 0.46, -2.46]], 0.042, material.pipeAir, "VR-201 필터 → PC-202 진공라인");
-    wetRotors.push({ activation: 1260, rpm: DRIVE_RPM.vacuumBlower, parts: [pc202Wheel], axis: "x" });
+    // VR-201 filter to the common vacuum header (was a dedicated PC-202 blower).
+    wetTube(unifiedWet, [[-0.72, 2.92, -0.66], [1.40, 2.98, -2.72], [3.60, 2.10, -2.60], [5.30, 1.34, -2.46]], 0.042, material.pipeAir, "VR-201 필터 → VP-401 공통 진공헤더");
+    wetBox(unifiedWet, [0.13, 0.13, 0.13], [5.10, 1.34, -2.46], material.silverClamp, "VR-201 지관 차단밸브");
+    wetBox(unifiedWet, [0.11, 0.11, 0.11], [4.86, 1.44, -2.50], material.fixed, "VR-201 지관 역류방지밸브");
     wetLabel("SS-201 ≥75 µm → RV-402/RC-201 → VR-201 → HSG-101", [3.18, 2.42, -2.68], [2.35, 0.23, 1]);
 
     // Motivated <75 µm transfer: VR-401 vacuum receiver discharges through the
@@ -16765,10 +16765,33 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetCylinder(unifiedWet, 0.25, 0.46, [7.56, 1.89, 0.72], material.solidsReceiver, "VR-401 <75 µm 진공수신기", 32, null, true);
     wetCone(unifiedWet, 0.25, 0.09, 0.28, [7.56, 1.52, 0.72], material.solidsReceiver, "VR-401 배출콘", 32);
     wetBox(unifiedWet, [0.40, 0.12, 0.40], [7.56, 2.18, 0.72], material.screen, "VR-401 상부 펄스필터");
-    const pc401Wheel = wetCylinder(unifiedWet, 0.18, 0.22, [6.72, 0.34, 1.62], material.equipmentAir, "PC-401 미분 진공블로어", 30, [0, 0, Math.PI / 2]);
-    wetCylinder(unifiedWet, 0.13, 0.32, [7.05, 0.34, 1.62], wetMotorMaterial, "PC-401 VFD 모터", 28, [0, 0, Math.PI / 2]);
-    wetTube(unifiedWet, [[7.56, 2.18, 0.72], [7.18, 2.34, 1.56], [6.72, 0.48, 1.62]], 0.040, material.pipeAir, "VR-401 필터 → PC-401 진공라인");
-    wetRotors.push({ activation: 1680, rpm: DRIVE_RPM.vacuumBlower, parts: [pc401Wheel], axis: "x" });
+    // VR-401 filter to the same common header (was a dedicated PC-401 blower).
+    wetTube(unifiedWet, [[7.56, 2.18, 0.72], [7.34, 2.30, -0.30], [6.60, 1.80, -1.60], [5.86, 1.34, -2.46]], 0.040, material.pipeAir, "VR-401 필터 → VP-401 공통 진공헤더");
+    wetBox(unifiedWet, [0.13, 0.13, 0.13], [6.06, 1.34, -2.46], material.silverClamp, "VR-401 지관 차단밸브");
+    wetBox(unifiedWet, [0.11, 0.11, 0.11], [6.30, 1.44, -2.42], material.fixed, "VR-401 지관 역류방지밸브");
+
+    // ---- VP-401A/B 공통 진공펌프 유닛 -------------------------------------
+    // VR-201 (>=75 um rework) and VR-401 (<75 um product) each had their own blower with
+    // no standby. Both are dry conveying duties on the same handoff, so they now share one
+    // header and one A/B pump set: the duty unit carries the combined flow and the second
+    // is a full standby, which the two separate blowers never had. Each branch keeps its
+    // own isolation and non-return valve so a receiver can be isolated without stopping the
+    // other line.
+    const vacuumHeader = [[5.30, 1.34, -2.46], [5.86, 1.34, -2.46]];
+    wetTube(unifiedWet, vacuumHeader, 0.055, material.pipeAir, "VP-401 공통 진공헤더 DN80");
+    wetTube(unifiedWet, [[5.58, 1.34, -2.46], [5.58, 0.62, -2.46]], 0.055, material.pipeAir, "공통 진공헤더 → VP-401 흡입");
+    wetBox(unifiedWet, [1.28, 0.10, 0.96], [5.86, 0.05, -2.46], material.frame, "VP-401 공통 스키드 베이스");
+    const vp401Wheels = [];
+    [["A", -2.72], ["B", -2.20]].forEach(([suffix, z]) => {
+      vp401Wheels.push(wetCylinder(unifiedWet, 0.19, 0.24, [5.56, 0.34, z], material.equipmentAir, `VP-401${suffix} 진공펌프`, 30, [0, 0, Math.PI / 2]));
+      wetCylinder(unifiedWet, 0.14, 0.34, [5.94, 0.34, z], wetMotorMaterial, `VP-401${suffix} IE4 VFD 모터`, 28, [0, 0, Math.PI / 2]);
+      wetCylinder(unifiedWet, 0.05, 0.10, [5.75, 0.34, z], material.fixed, `VP-401${suffix} 커플링`, 18, [0, 0, Math.PI / 2]);
+      wetTube(unifiedWet, [[5.58, 0.62, -2.46], [5.58, 0.52, z], [5.40, 0.34, z]], 0.040, material.pipeAir, `VP-401${suffix} 흡입지관`);
+      wetTube(unifiedWet, [[5.56, 0.34, z + (z < -2.4 ? -0.16 : 0.16)], [5.20, 0.90, z], [4.70, 1.80, -2.46]], 0.038, material.pipeAir, `VP-401${suffix} 배기 → 소음기·배기스택`);
+      wetBox(unifiedWet, [0.12, 0.12, 0.12], [5.32, 0.48, z], material.silverClamp, `VP-401${suffix} 토출 차단밸브`);
+    });
+    wetCylinder(unifiedWet, 0.13, 0.42, [4.70, 2.02, -2.46], material.equipmentAir, "VP-401 공통 소음기", 24);
+    wetRotors.push({ activation: 1260, rpm: DRIVE_RPM.vacuumBlower, parts: vp401Wheels, axis: "x", train: "A" });
     wetTube(unifiedWet, [[7.56, 1.38, 0.72], [bufferX, 1.42, 0.72]], 0.070, material.pipeDryTransfer, "VR-401 → BH-101 중력인계", 1680, 4);
     wetCone(unifiedWet, 0.36, 0.12, 0.72, [bufferX, 1.06, 0.72], material.solidsReceiver, "BH-101 로드셀 완충빈", 8);
     wetBox(unifiedWet, [0.64, 0.07, 0.64], [bufferX, 0.68, 0.72], material.frame, "BH-101 계량프레임");
@@ -20017,10 +20040,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       ]
     },
     sieve:{
-      panel:"LCP-SV-201",source:"MCC-101",area:"건식·미분진동구역",ip:"IP65 패널 / IP66 진동기기",maxDemandKw:3.55,
+      panel:"LCP-SV-201",source:"MCC-101",area:"건식·미분진동구역",ip:"IP65 패널 / IP66 진동기기",maxDemandKw:11.05,
       branches:[
         {tag:"M-SV-1/2",qty:2,duty:2,kw:1.5,drive:"동기 VFD",status:"확정 설계값"},
         {tag:"M-RV-201",qty:1,duty:1,kw:0.37,drive:"VFD",status:"확정 설계값"},
+        // VR-201/VR-401 공통 진공펌프. 2대 설치 1대 운전이므로 연결부하는 15.0 kW,
+        // 최대수요는 7.5 kW 로 계상한다. 종전 PC-202/PC-401 은 전력 스케줄에
+        // 계상돼 있지 않았고 예비기도 없었다.
+        {tag:"VP-401A/B",qty:2,duty:1,kw:7.5,drive:"VFD · A/B 듀티교대",status:"용량 vendor HOLD · 인입강하 2.31%로 분기 여유 0.69% · 분기 15 m 초과 시 4 mm²"},
         {tag:"CP-SV-201",qty:1,duty:1,kw:0.18,drive:"380/220 V TR+24 VDC SMPS",status:"예비 보조부하"}
       ]
     },
@@ -20061,6 +20088,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
   };
   const feederCurrent = (kw) => kw * 1000 / (Math.sqrt(3) * electricalBasis.voltage * electricalBasis.efficiency * electricalBasis.powerFactor);
+  // NOTE: branch cables are selected on ampacity only (Iz >= In). Voltage drop is checked
+  // for the incoming feeder but not per branch, because branch run lengths are not modelled.
+  // The feeder figure is what the design limit is measured against, so the remaining budget
+  // has to be checked against the real branch length before release — see VP-401A/B, whose
+  // 2.31% feeder drop leaves 0.69% and holds only to about 13 m on 2.5 mm².
   const branchSelection = (branch) => {
     const current = feederCurrent(branch.kw);
     const breaker = nextRating(current * 1.25);
