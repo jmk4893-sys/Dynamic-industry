@@ -1023,6 +1023,9 @@ html>body{padding:0}</style>
   #hsgTrueThreeDeckScreenRevO .hsg3d-stage-sliders input[type="range"] { width: 96px; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-stage-sliders output { min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-stage-controls-sep { width: 1px; align-self: stretch; background: var(--muted); margin: 0 2px; }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-tour-bar { position: absolute; left: 10px; right: 10px; bottom: 26px; z-index: 3; display: flex; gap: 10px; align-items: baseline; padding: 7px 11px; border-radius: 8px; background: color-mix(in srgb, var(--card) 92%, transparent); border: 1px solid var(--muted); }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-tour-step { flex: none; font-size: 11px; font-weight: 600; color: var(--primary); }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-tour-caption { font-size: 12.5px; color: var(--card-foreground); line-height: 1.45; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
   #hsgTrueThreeDeckScreenRevO canvas:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-clock { position: absolute; left: 10px; top: 8px; color: var(--card-foreground); pointer-events: none; }
@@ -1394,6 +1397,10 @@ html>body{padding:0}</style>
         <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-run]">일시정지</button>
         <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-restart]">처음부터</button>
         <span class="hsg3d-stage-controls-sep" aria-hidden="true"></span>
+        <button class="btn btn-sm" type="button" data-tour-prev aria-label="이전 공정 단계">‹</button>
+        <button class="btn btn-sm" type="button" data-tour-play aria-pressed="false">공정 투어</button>
+        <button class="btn btn-sm" type="button" data-tour-next aria-label="다음 공정 단계">›</button>
+        <span class="hsg3d-stage-controls-sep" aria-hidden="true"></span>
         <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-mode=&quot;simulation&quot;]">분쇄운전</button>
         <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-mode=&quot;flow&quot;]">유동</button>
         <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-mode=&quot;cutaway&quot;]">컷어웨이</button>
@@ -1402,6 +1409,10 @@ html>body{padding:0}</style>
           <label>분해 <input type="range" min="0" max="100" step="1" value="0" data-stage-range="[data-hsg-explode]" aria-label="분해 거리"><output data-stage-range-out="[data-hsg-explode]">0%</output></label>
           <label>컷어웨이 <input type="range" min="0" max="100" step="1" value="66" data-stage-range="[data-hsg-cutaway]" aria-label="컷어웨이 깊이"><output data-stage-range-out="[data-hsg-cutaway]">66%</output></label>
         </div>
+      </div>
+      <div class="hsg3d-tour-bar" data-tour-bar hidden>
+        <span class="hsg3d-tour-step tabular-nums" data-tour-step>1/12</span>
+        <span class="hsg3d-tour-caption" data-tour-caption aria-live="polite"></span>
       </div>
       <div class="hsg3d-visually-hidden" role="status" aria-live="polite" data-plant-live-status></div>
       <div class="hsg3d-hint text-small text-muted">수동 카메라 · 드래그: 회전 · 휠/핀치: 확대 · 부품 클릭: 선택 · 키보드: Tab으로 포커스 후 방향키 회전 · +/− 확대 · Home 전체보기</div>
@@ -19038,6 +19049,132 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       updateCamera();
     }
 
+    // ---- 공정 투어 -------------------------------------------------------------
+    // The plant already carried camera targets, but only on the 60-minute PLC timeline,
+    // so the full chain was unreachable without running a complete simulated start-up.
+    // This walks the material path on demand. Each stage names the dry part groups and/or
+    // wet equipment tags it covers and the frame is computed from their real geometry,
+    // so it stays correct if anything is repositioned.
+    const processTour = [
+      { title: "PV 라미네이트 패널 투입", note: "장변 수직 하향 투입 · 평균 60장/h · 300 kg/h · 브리징축＋펜듈럼 플랩으로 역비산 억제",
+        parts: ["P23"], wet: [] },
+      { title: "ICSH-301 직교 2축 파쇄", note: "상부 X축 Ø420 12 rpm 조대파쇄 → 420 mm 아래 하부 Y축 Ø350 20 rpm 미세파쇄",
+        parts: ["P23", "P24"], wet: [] },
+      { title: "SCR-001 10 mm 선별 · 밀폐이송", note: ">10 mm는 SCV-R1로 호퍼 재투입 · ≤10 mm는 SCV-P1으로 FD-101 정량공급",
+        parts: ["P25", "P26", "P27"], wet: [] },
+      { title: "HSG-101 고속분쇄 폐회로", note: "1,500 rpm 회전날·고정날 · 하부 팽창 플리넘 배출 · HSG 총부하 ≤400 kg/h",
+        parts: ["P01", "P02", "P03", "P04", "P05", "P06", "P07", "P08", "P09", "P10", "P11"], wet: [] },
+      { title: "SC-500 분급 · 500 µm 환류", note: "≥500 µm는 CV-102로 FD-101 환류 · 통과분은 음압이송으로 후단 인계 · CY-101/BF-101 집진",
+        parts: ["P12", "P13", "P14", "P15", "P16", "P17"], wet: [] },
+      { title: "SV-201 3단 Sheeve 선별", note: "밀폐 CH-501→RV-201→PC-201 음압리프트 → VS-501 → 280–500 / 106–280 / 75–106 µm 분리",
+        parts: ["P18", "P19"], wet: [] },
+      { title: "CC-201 공기분급 · SS-201 75 µm", note: "0.70–1.00 m/s 중량물/경량물 분리 → CY-201·BF-201 회수 → SS-201에서 ≥75 재처리 / <75 최종",
+        parts: ["P20", "P21", "P22"], wet: [] },
+      { title: "AS-101 어트리션 스크러버", note: "<75 µm 습식 인계 후 TK-101 → BS-101A/B → AS-101 600 rpm 고전단 스크러빙 · 비드 보충",
+        parts: [], wet: ["AS-101", "TK-001", "TK-101", "BS-101", "SAM-102"] , pitch: 0.20},
+      { title: "FC-201/202/203 부유선별", note: "러퍼 FC-201 → 클리너 FC-202 → 스캐빈저 FC-203 · AB-201A/B 부선공기 · RS-201/202/203 약품",
+        parts: [], wet: ["FC-201", "FC-202", "FC-203", "AB-201", "AR-201", "RS-20"] , pitch: 0.34},
+      { title: "FP-301 멤브레인 필터프레스", note: "TK-301 광미 급액 → 압착·코어블로·포세척 → 케이크 배출 · 여액은 TK-401 회수수 계통",
+        parts: [], wet: ["FP-301", "TK-301", "HPW-301", "P-301"] , pitch: 0.14, yaw: 0.92},
+      { title: "CF-204 원심탈수", note: "TK-204 정광 급액 → Ø360 여과바스켓 원심탈수 → Ag 정광 케이크 BIN-204 · 여액 TK-401 회수",
+        parts: [], wet: ["CF-204", "TK-204", "P-204", "BIN-204"] , pitch: 0.14, yaw: 0.62},
+      { title: "전체 공정 조망", note: "ICSH-301 파쇄 → HSG 폐회로 → Sheeve 선별 → 어트리션 → 부유선별 → 필터프레스·원심탈수까지 한 좌표계",
+        parts: [], wet: [], whole: true }
+    ];
+    let tourIndex = -1;
+    let tourPlaying = false;
+    let tourNextAtMs = 0;
+    const TOUR_DWELL_MS = 5200;
+    const tourCaption = root.querySelector("[data-tour-caption]");
+    const tourStep = root.querySelector("[data-tour-step]");
+
+    function tourBox(stage) {
+      const box = new THREE.Box3();
+      const scratch = new THREE.Box3();
+      stage.parts.forEach((id) => {
+        const group = parts[id];
+        if (group) box.union(scratch.setFromObject(group));
+      });
+      if (stage.wet.length) {
+        unifiedWet.traverse((object) => {
+          if (!object.isMesh) return;
+          const name = object.userData.unifiedName;
+          if (typeof name !== "string") return;
+          // Frame the equipment itself, not what connects to it. Wet meshes are named
+          // "TAG description", so match on the leading tag: a pipe named "P-101A/B →
+          // AS-101 급액" runs the length of the plant and would blow the frame out. Tube
+          // and parcel geometry is excluded for the same reason.
+          if (object.geometry?.type === "TubeGeometry") return;
+          if (name.includes("유동 parcel")) return;
+          if (stage.wet.some((tag) => name.startsWith(tag))) box.union(scratch.setFromObject(object));
+        });
+      }
+      return box;
+    }
+
+    function showTourStage(index) {
+      if (!processTour.length) return;
+      tourIndex = (index + processTour.length) % processTour.length;
+      const stage = processTour[tourIndex];
+      // The tour is about the plant, so leave inspection mode if we are in it.
+      if (state.mode === "particles") setMode("simulation");
+      if (tourCaption) tourCaption.textContent = stage.title + " · " + stage.note;
+      if (tourStep) tourStep.textContent = (tourIndex + 1) + "/" + processTour.length;
+      fitCountdown = 0;
+      if (stage.whole) {
+        yaw = 0.72;
+        pitch = 0.34;
+        fitWholeMachine(1.10);
+        return;
+      }
+      const box = tourBox(stage);
+      if (box.isEmpty()) { fitWholeMachine(1.10); return; }
+      const sphere = box.getBoundingSphere(new THREE.Sphere());
+      const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+      const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * Math.max(0.1, camera.aspect));
+      const limitingFov = Math.min(verticalFov, horizontalFov);
+      cameraTarget.copy(sphere.center);
+      distance = THREE.MathUtils.clamp(sphere.radius / Math.sin(limitingFov / 2) * 1.5, 4.0, 42);
+      yaw = stage.yaw ?? 0.72;
+      pitch = stage.pitch ?? 0.30;
+      updateCamera();
+    }
+
+    function setTourPlaying(playing) {
+      tourPlaying = playing;
+      tourNextAtMs = performance.now() + TOUR_DWELL_MS;
+      const button = root.querySelector("[data-tour-play]");
+      if (button) {
+        button.textContent = playing ? "투어 정지" : "공정 투어";
+        button.setAttribute("aria-pressed", String(playing));
+        button.classList.toggle("btn-primary", playing);
+      }
+      const bar = root.querySelector("[data-tour-bar]");
+      if (bar) bar.hidden = !playing && tourIndex < 0;
+      if (playing && tourIndex < 0) showTourStage(0);
+    }
+
+    function tickTour(now) {
+      if (!tourPlaying) return;
+      if (now < tourNextAtMs) return;
+      tourNextAtMs = now + TOUR_DWELL_MS;
+      showTourStage(tourIndex + 1);
+    }
+
+    root.querySelector("[data-tour-play]")?.addEventListener("click", () => setTourPlaying(!tourPlaying));
+    root.querySelector("[data-tour-prev]")?.addEventListener("click", () => {
+      setTourPlaying(false);
+      showTourStage(tourIndex - 1);
+      const bar = root.querySelector("[data-tour-bar]");
+      if (bar) bar.hidden = false;
+    });
+    root.querySelector("[data-tour-next]")?.addEventListener("click", () => {
+      setTourPlaying(false);
+      showTourStage(tourIndex + 1);
+      const bar = root.querySelector("[data-tour-bar]");
+      if (bar) bar.hidden = false;
+    });
+
     function fitInspection(padding = 1.12) {
       const box = new THREE.Box3().setFromObject(inspectionGroup);
       if (box.isEmpty()) return;
@@ -19470,6 +19607,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       shredderFlowGroup.visible = showParticles;
       updateInspectionFlex(now);
       updateUnifiedWet(realDt, now);
+      tickTour(now);
       updateClock();
       if (now - lastReadoutMs >= READOUT_INTERVAL_MS && readoutVisible()) {
         lastReadoutMs = now;
