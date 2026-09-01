@@ -38,6 +38,17 @@ def station_blocks(html: str) -> dict[str, str]:
     return {key: "\n".join(lines) for key, lines in blocks.items()}
 
 
+def part_span(block: str, tag: str, axis: int = 0) -> tuple[float, float]:
+    """한 부품의 축 방향 구간 (lo, hi)."""
+    found = re.search(
+        r"part\('%s', '[^']*', \[([-\d, ]+)\], \[([-\d, ]+)\]" % re.escape(tag), block)
+    if found is None:
+        raise AssertionError(f"{tag} 를 부품표에서 못 찾았다")
+    size = [int(v) for v in found.group(1).split(",")]
+    at = [int(v) for v in found.group(2).split(",")]
+    return at[axis] - size[axis] / 2, at[axis] + size[axis] / 2
+
+
 def part_rows(block: str) -> list[tuple[list[int], list[int]]]:
     """한 셀 블록에서 (size, at) 목록을 뽑는다. 회전포락선은 형상이 아니라 제외한다."""
     rows = []
@@ -571,6 +582,69 @@ class TestForkliftWheels(unittest.TestCase):
     def test_roll_axis_is_the_cylinder_axis(self):
         """실린더는 로컬 Y 가 축이고 pre-rotation 이 X 라, 구름은 rotation.y 여야 한다."""
         self.assertNotRegex(self.html, r"Tp\.forEach\(W=>\{W\.rotation\.[xz]=")
+
+
+class TestLineLengthReduction(unittest.TestCase):
+    """REV.22-P01 장비 단축과, 그 과정에서 나온 버퍼 결함 수정이 유지되는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+        cls.stations = station_blocks(cls.html)
+
+    def test_two_transport_conveyors_share_one_length(self):
+        """같은 2,500 mm 패널을 옮기는 순수 이송인데 규격이 둘이면 안 된다."""
+        cv101 = part_span(self.stations["afr"], "CV-101")
+        cv102 = part_span(self.stations["post"], "CV-102")
+        self.assertEqual(cv101[1] - cv101[0], 2800)
+        self.assertEqual(cv102[1] - cv102[0], 2800)
+
+    def test_afr_guard_clearance_is_equal_on_both_sides(self):
+        """가드가 ±5,750 대칭인데 장비가 비대칭이라 하류에만 1,450 이 비어 있었다."""
+        block = self.stations["afr"]
+        guard = part_span(block, "GUARD")
+        rows = [(size, at) for size, at in part_rows(block)]
+        hardware_lo = min(at[0] - size[0] / 2 for size, at in rows
+                          if size[0] != guard[1] - guard[0])
+        hardware_hi = max(at[0] + size[0] / 2 for size, at in rows
+                          if size[0] != guard[1] - guard[0])
+        upstream = hardware_lo - guard[0]
+        downstream = guard[1] - hardware_hi
+        self.assertEqual(upstream, downstream, "가드 여유가 상·하류에서 다르다")
+        self.assertEqual(upstream, 475, "가드 여유가 플랜트 기준(475)과 다르다")
+
+    def test_identical_modules_in_a_row_do_not_collide(self):
+        """같은 (높이, 깊이) 자리에 놓인 같은 크기 모듈끼리 X 로 겹치면 물리적으로 불가능하다.
+
+        REV.22 의 GBR 버퍼가 그랬다 — 2,750 모듈을 피치 2,500 으로 놓아 250 mm 겹쳤다.
+        """
+        for key, block in self.stations.items():
+            groups: dict[tuple, list[tuple[float, float]]] = {}
+            for size, at in part_rows(block):
+                groups.setdefault((tuple(size), at[1], at[2]), []).append(
+                    (at[0] - size[0] / 2, at[0] + size[0] / 2))
+            for signature, spans in groups.items():
+                spans.sort()
+                for left, right in zip(spans, spans[1:]):
+                    with self.subTest(station=key, size=signature[0]):
+                        self.assertLessEqual(
+                            left[1], right[0],
+                            f"{key} 의 같은 열 모듈이 X 로 {left[1] - right[0]:.0f} mm 겹친다")
+
+    def test_buffer_guard_encloses_the_carriage_bank(self):
+        """가드가 캐리지 뒤끝보다 앞에서 끝나면 위험원을 감싸지 못한다."""
+        block = self.stations["buffer"]
+        guard = part_span(block, "GUARD")
+        for tag in ("A-501A", "A-501B", "B-501A", "B-501B", "HOLD"):
+            lo, hi = part_span(block, tag)
+            with self.subTest(part=tag):
+                self.assertLessEqual(guard[0], lo, "가드가 캐리지 앞끝을 못 덮는다")
+                self.assertGreaterEqual(guard[1], hi, "가드가 캐리지 뒤끝을 못 덮는다")
+
+    def test_plant_length_label_is_derived_not_typed(self):
+        """전체 치수 라벨을 손으로 적어두면 낡는다 — REV.22 에 49,000 이 남아 있었다."""
+        self.assertIn("layoutFocusAll.textContent = '전체 ' + n(PLANT_X)", self.html)
+        self.assertNotIn("전체 49,000", self.html)
 
 
 if __name__ == "__main__":  # pragma: no cover
