@@ -15285,9 +15285,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const shredFeedRollerFront = new THREE.Group();
     const shredFeedRollerRear = new THREE.Group();
     const shredAntiBridgeShaft = new THREE.Group();
-    const shredInputPanelGroup = new THREE.Group();
     const shredderFlowGroup = new THREE.Group();
-    circuit.add(shredInputPanelGroup);
     circuit.add(shredderFlowGroup);
 
     function addClosedScrewBetween(parent, start, end, outerRadius, shaftRadius, pitch, partId, flightMaterial) {
@@ -15344,26 +15342,6 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addCylinder(shredAntiBridgeShaft, 0.080, 1.36, { x: 0, y: 0, z: 0 }, material.dark, "P23", "x", 32, false);
     for (let i = -4; i <= 4; i += 1) addBox(shredAntiBridgeShaft, { x: 0.055, y: 0.17, z: 0.045 }, { x: i * 0.15, y: 0.09, z: 0 }, material.equipmentConveyor, "P23", { x: i * 0.24 }, false);
 
-    function createInputPanel(phaseOffset) {
-      const panel = new THREE.Group();
-      panel.userData.phaseOffset = phaseOffset;
-      shredInputPanelGroup.add(panel);
-      addBox(panel, { x: 0.96, y: 1.92, z: 0.040 }, { x: 0, y: 0, z: 0 }, material.panelBack, "P23", null, true);
-      const columns = 4;
-      const rows = 8;
-      for (let row = 0; row < rows; row += 1) {
-        for (let column = 0; column < columns; column += 1) {
-          addBox(panel, { x: 0.195, y: 0.205, z: 0.012 }, {
-            x: -0.345 + column * 0.23,
-            y: -0.805 + row * 0.23,
-            z: 0.027
-          }, material.panelCell, "P23", null, false);
-        }
-      }
-      return panel;
-    }
-
-    const shredInputPanels = [createInputPanel(0), createInputPanel(0.5)];
 
     // Exactly two independent Rev.G rotors: upper X coarse and lower Y fine.
     shredderShaftA.position.set(shredderCenter.x, 1.58, 0);
@@ -18164,39 +18142,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       shredProductRotor.rotation.y += shaftRadians(DRIVE_RPM.productRotaryValve, dt);
       const showShredFlow = state.mode === "simulation" || state.mode === "flow";
       const reducedMotion = prefersReducedMotion;
-      // Superseded by the CV-001 infeed conveyor, which shows the same panels arriving
-      // from a visible origin instead of materialising above the hopper. The group stays
-      // in the scene (its geometry is shared with the conveyor's panels) but is never
-      // shown, so skip its per-frame pose maths entirely.
-      shredInputPanelGroup.visible = false;
-      if (shredInputPanelGroup.visible) shredInputPanels.forEach((panel) => {
-        const phase = reducedMotion
-          ? panel.userData.phaseOffset
-          : ((state.processSeconds / 120) + panel.userData.phaseOffset) % 1;
-        let y;
-        let scaleX = 1;
-        let scaleY = 1;
-        if (phase < 0.55) {
-          const travel = phase / 0.55;
-          y = THREE.MathUtils.lerp(4.30, 3.36, travel);
-        } else if (phase < 0.78) {
-          const feed = (phase - 0.55) / 0.23;
-          y = THREE.MathUtils.lerp(3.36, 2.40, feed);
-        } else if (phase < 0.90) {
-          const bite = (phase - 0.78) / 0.12;
-          y = THREE.MathUtils.lerp(2.40, 1.65, bite);
-          scaleY = THREE.MathUtils.lerp(1, 0.46, bite);
-        } else {
-          const fracture = (phase - 0.90) / 0.10;
-          y = THREE.MathUtils.lerp(1.65, 1.12, fracture);
-          scaleX = THREE.MathUtils.lerp(1, 0.58, fracture);
-          scaleY = THREE.MathUtils.lerp(0.46, 0.08, fracture);
-        }
-        panel.visible = phase < 0.985;
-        panel.position.set(shredderCenter.x, y, 0);
-        panel.scale.set(scaleX, scaleY, 1);
-        panel.rotation.z = Math.sin(phase * Math.PI * 2) * 0.012;
-      });
+      // The panels that used to be posed here are now delivered by the CV-001 conveyor,
+      // which shows them arriving from a visible origin instead of materialising above
+      // the hopper. The old geometry and its pose maths are gone.
       shredderFlowGroup.visible = showShredFlow;
       if (showShredFlow && state.running && !reducedMotion) {
         shredFeedMarkers.forEach((marker) => {
@@ -20088,16 +20036,34 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
   };
   const feederCurrent = (kw) => kw * 1000 / (Math.sqrt(3) * electricalBasis.voltage * electricalBasis.efficiency * electricalBasis.powerFactor);
-  // NOTE: branch cables are selected on ampacity only (Iz >= In). Voltage drop is checked
-  // for the incoming feeder but not per branch, because branch run lengths are not modelled.
-  // The feeder figure is what the design limit is measured against, so the remaining budget
-  // has to be checked against the real branch length before release — see VP-401A/B, whose
-  // 2.31% feeder drop leaves 0.69% and holds only to about 13 m on 2.5 mm².
-  const branchSelection = (branch) => {
+  // Branch runs are not dimensioned in this model, so a nominal length is used for the
+  // drop check and stated with the result. Sizing on ampacity alone (Iz >= In) let a
+  // 7.5 kW branch land on 2.5 mm², which clears the breaker but not the 3% limit once the
+  // feeder has already spent most of the budget.
+  const BRANCH_ROUTE_LENGTH_M = 25;
+  const cableDropPct = (current, size, lengthM) => {
+    const resistance = 22.31 / size;
+    const reactance = 0.08;
+    const sinPhi = Math.sqrt(1 - electricalBasis.powerFactor ** 2);
+    return Math.sqrt(3) * current * (resistance * electricalBasis.powerFactor + reactance * sinPhi)
+      * lengthM / 1000 / electricalBasis.voltage * 100;
+  };
+  const branchSelection = (branch, feederDropPct = 0) => {
     const current = feederCurrent(branch.kw);
     const breaker = nextRating(current * 1.25);
-    const cable = selectCable(breaker);
-    return {current,breaker,cable,pe:peSize(cable.size)};
+    let cable = selectCable(breaker);
+    // Whatever the feeder has already used comes out of the same 3% budget, so the branch
+    // is upsized until feeder + branch fits, or until the table runs out.
+    const budget = electricalBasis.voltageDropLimit - feederDropPct;
+    let dropPct = cableDropPct(current, cable.size, BRANCH_ROUTE_LENGTH_M);
+    if (dropPct > budget) {
+      const larger = cableRatings.find((candidate) => candidate.size > cable.size
+        && cableDropPct(current, candidate.size, BRANCH_ROUTE_LENGTH_M) <= budget);
+      if (larger) { cable = larger; dropPct = cableDropPct(current, cable.size, BRANCH_ROUTE_LENGTH_M); }
+      else flagOverRange(`${branch.tag} 분기 전압강하`, current);
+    }
+    return {current, breaker, cable, pe: peSize(cable.size), dropPct,
+            dropOk: dropPct <= budget, routeLengthM: BRANCH_ROUTE_LENGTH_M};
   };
   Object.entries(powerPackages).forEach(([key,power]) => {
     power.key = key;
@@ -20639,7 +20605,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         </div>
       </div>
       <hr>
-      <div class="dd-view-nav" aria-label="2D 투상도 선택"><button class="btn btn-primary" type="button" data-dd-view="front" aria-pressed="true">정면도</button><button class="btn" type="button" data-dd-view="top" aria-pressed="false">평면도</button><button class="btn" type="button" data-dd-view="side" aria-pressed="false">측면도</button><button class="btn" type="button" data-dd-view="section" aria-pressed="false">단면·체결 상세</button><button class="btn" type="button" data-dd-view="foundation" aria-pressed="false">기초·앵커 평면</button><button class="btn" type="button" data-dd-view="power" aria-pressed="false">전력 인입 단선도</button></div>
+      <div class="dd-view-nav" aria-label="2D 투상도 선택"><button class="btn btn-primary" type="button" data-dd-view="front" aria-pressed="true">정면도</button><button class="btn" type="button" data-dd-view="top" aria-pressed="false">평면도</button><button class="btn" type="button" data-dd-view="side" aria-pressed="false">측면도</button><button class="btn" type="button" data-dd-view="section" aria-pressed="false">단면·체결 상세</button><button class="btn" type="button" data-dd-view="foundation" aria-pressed="false">기초·앵커 평면</button><button class="btn" type="button" data-dd-view="power" aria-pressed="false">전력 인입 단선도</button><button class="btn" type="button" data-dd-view="motor" aria-pressed="false">주회로도</button><button class="btn" type="button" data-dd-view="plc" aria-pressed="false">PLC 제어회로도</button><button class="btn" type="button" data-dd-view="interconnect" aria-pressed="false">결선·연결도</button></div>
       <div class="dd-drawing-wrap"><svg class="dd-drawing" data-dd-drawing viewBox="0 0 1200 760" role="img" aria-label="선택 장비 2D 상세도"></svg></div>
       <details><summary>전체 상세배치도 · 건식/습식 2구역 · 장비별 배치</summary>
         <div class="dd-view-nav" aria-label="상세 배치도 선택">${Object.entries(layoutLabels).map(([key,label],i)=>`<button class="btn${i===0?" btn-primary":""}" type="button" data-dd-layout="${key}" aria-pressed="${i===0}">${label}</button>`).join("")}</div>
@@ -20657,7 +20623,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         <strong>6개 장비 전력 부하·인입 요약</strong>
         <div class="table-responsive"><table class="table table-sm"><thead><tr><th>장비 / 패널</th><th class="text-end">연결부하</th><th class="text-end">최대수요</th><th class="text-end">운전전류</th><th class="text-end">설계전류</th><th>인입 MCCB</th><th>주전원 케이블 / PE</th><th class="text-end">50 m 전압강하</th></tr></thead><tbody data-dd-plant-power-body></tbody></table></div>
         <strong>선택 장비 분기회로</strong>
-        <div class="table-responsive"><table class="table table-sm"><thead><tr><th>부하 Tag</th><th>수량 / 운전</th><th class="text-end">개별 정격</th><th>기동방식</th><th class="text-end">계산전류</th><th>예비 보호기기</th><th>분기 케이블 / PE</th><th>설계상태</th></tr></thead><tbody data-dd-power-branch-body></tbody></table></div>
+        <div class="table-responsive"><table class="table table-sm"><thead><tr><th>부하 Tag</th><th>수량 / 운전</th><th class="text-end">개별 정격</th><th>기동방식</th><th class="text-end">계산전류</th><th>예비 보호기기</th><th>분기 케이블 / PE</th><th class="text-end">분기 ΔU / 누적</th><th>설계상태</th></tr></thead><tbody data-dd-power-branch-body></tbody></table></div>
         <strong>전력 설치·검사 HOLD</strong>
         <div class="table-responsive"><table class="table table-sm"><thead><tr><th>ID</th><th>단계</th><th>검사항목</th><th>필수 기록</th><th>Gate</th></tr></thead><tbody data-dd-power-hold-body></tbody></table></div>
         <p class="text-small dd-warning">표시 케이블은 Cu/XLPE 90°C·트레이 1회로·주위 40°C·거리 50 m의 예비선정입니다. 현장 단락전류, 실제 길이, 집합·주위온도, 토양/트레이 조건, VFD 제조사 보호기기와 관할 KEC 검토 후 확정합니다.</p>
@@ -20748,7 +20714,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       <div><dl><dt>전체 플랜트 예비 부하</dt><dd>${plantPower.connectedKw.toFixed(2)} kW 연결 · ${plantPower.demandKw.toFixed(2)} kW 최대수요</dd><dt>MDB-001 예비 인입</dt><dd>${plantPower.mainBreakerA} A · ${plantPower.mainBreakerA} A bus · ${plantPower.transformerKva} kVA 공급원 권장 (부하 ${plantPower.demandKva.toFixed(1)} kVA · 부하율 ${plantPower.transformerLoadingPct.toFixed(1)}%)</dd><dt>주간선 예비안</dt><dd>2회로 병렬 3×120 mm² Cu + PE 70 mm² 또는 400 A busduct</dd></dl></div>`
       + (overRange.length ? `<div class="dd-warning"><strong>정격표 범위 초과 · HOLD</strong><ul>${overRange.map((item) => `<li>${esc(item)}</li>`).join("")}</ul></div>` : "");
     plantPowerBody.innerHTML=Object.entries(powerPackages).map(([key,item])=>`<tr><td>${esc(equipments[key].label)}<br><span class="text-small text-muted">${esc(item.panel)}</span></td><td class="text-end">${item.connectedKw.toFixed(2)} kW</td><td class="text-end">${item.maxDemandKw.toFixed(2)} kW</td><td class="text-end">${item.runningCurrentA.toFixed(1)} A</td><td class="text-end">${item.designCurrentA.toFixed(1)} A</td><td>${item.breakerA} A 3P</td><td>${cableLabel(item)}</td><td class="text-end">${item.voltageDropPct.toFixed(2)}%</td></tr>`).join("");
-    powerBranchBody.innerHTML=power.branches.map(branch=>{const selected=branchSelection(branch);const protection=/VFD/.test(branch.drive)?`${selected.breaker} A 3P MCCB/fuse · VFD 협조`:`${selected.breaker} A 3P MPCB/MCB`;return `<tr><td>${esc(branch.tag)}</td><td>${branch.qty} / ${branch.duty}</td><td class="text-end">${branch.kw.toFixed(2)} kW</td><td>${esc(branch.drive)}</td><td class="text-end">${selected.current.toFixed(1)} A</td><td>${esc(protection)}</td><td>3×${selected.cable.size} mm² + PE ${selected.pe} mm²</td><td>${esc(branch.status)}</td></tr>`;}).join("");
+    powerBranchBody.innerHTML=power.branches.map(branch=>{const selected=branchSelection(branch,power.voltageDropPct);const protection=/VFD/.test(branch.drive)?`${selected.breaker} A 3P MCCB/fuse · VFD 협조`:`${selected.breaker} A 3P MPCB/MCB`;return `<tr><td>${esc(branch.tag)}</td><td>${branch.qty} / ${branch.duty}</td><td class="text-end">${branch.kw.toFixed(2)} kW</td><td>${esc(branch.drive)}</td><td class="text-end">${selected.current.toFixed(1)} A</td><td>${esc(protection)}</td><td>3×${selected.cable.size} mm² + PE ${selected.pe} mm²</td><td class="text-end ${selected.dropOk?"dd-power-ok":"dd-warning"}">${selected.dropPct.toFixed(2)}%<br><span class="text-small text-muted">누적 ${(power.voltageDropPct+selected.dropPct).toFixed(2)}%</span></td><td>${esc(branch.status)}</td></tr>`;}).join("");
     powerHoldBody.innerHTML=powerHoldPoints.map(point=>`<tr><td>${esc(point.id)}</td><td>${esc(point.stage)}</td><td>${esc(point.check)}</td><td>${esc(point.record)}</td><td><span class="viz-badge">${esc(point.gate)}</span></td></tr>`).join("");
   }
   function renderInstallation(){
@@ -20818,7 +20784,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     torqueBody.innerHTML=fasteners.map(row=>{const t=torqueGuidance(row);return`<tr><td>${esc(row.code)}</td><td>${esc(row.spec)} / ${esc(row.material)}</td><td class="text-end">${row.qty}</td><td>${esc(t.preload)}</td><td>${esc(t.torque)}</td><td>${esc(t.method)}</td></tr>`;}).join("");
   }
 
-  const viewLabels={front:"정면도",top:"평면도",side:"측면도",section:"A-A 단면·체결상세",foundation:"기초·앵커 평면",power:"380 V 전력 인입 단선도"};
+  const viewLabels={front:"정면도",top:"평면도",side:"측면도",section:"A-A 단면·체결상세",foundation:"기초·앵커 평면",power:"380 V 전력 인입 단선도",motor:"주회로도",plc:"PLC 제어회로도",interconnect:"결선·연결도"};
   function dim(x1,y1,x2,y2,label,offset=0) {
     const vertical=Math.abs(y2-y1)>Math.abs(x2-x1);
     if(vertical){const x=x1+offset;return `<path class="dd-ext" d="M${x1} ${y1}H${x+8}M${x2} ${y2}H${x+8}"/><path class="dd-dim" d="M${x} ${y1}V${y2}"/><text x="${x+8}" y="${(y1+y2)/2}" transform="rotate(-90 ${x+8} ${(y1+y2)/2})" text-anchor="middle">${esc(label)}</text>`;}
@@ -20832,9 +20798,119 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const anchors=f.anchors.map((a,i)=>{const x=cx+a.x*scale,y=cy-a.y*scale;return `<g><circle class="dd-fastener" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6"/>${f.anchors.length<=20?`<text class="dd-small" x="${(x+8).toFixed(1)}" y="${(y-7).toFixed(1)}">${esc(a.id)}</text>`:""}</g>`;}).join("");
     return `<g><text class="dd-title" x="80" y="62">FOUNDATION / ANCHOR SETTING PLAN · EQUIPMENT CL ORIGIN</text><rect class="dd-hidden" x="${(cx-ew/2).toFixed(1)}" y="${(cy-eh/2).toFixed(1)}" width="${ew.toFixed(1)}" height="${eh.toFixed(1)}"/><rect class="dd-object" x="${(cx-bw/2).toFixed(1)}" y="${(cy-bh/2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}"/><path class="dd-center" d="M${(cx-ew/2-35).toFixed(1)} ${cy}H${(cx+ew/2+35).toFixed(1)}M${cx} ${(cy-eh/2-35).toFixed(1)}V${(cy+eh/2+35).toFixed(1)}"/>${anchors}<circle class="dd-line" cx="${cx}" cy="${cy}" r="9"/><text class="dd-small" x="${cx+12}" y="${cy-10}">0,0</text>${dim(cx-ew/2,cy+eh/2,cx+ew/2,cy+eh/2,f.envelope[0].toLocaleString()+" mm",58)}${dim(cx-ew/2,cy-eh/2,cx-ew/2,cy+eh/2,f.envelope[1].toLocaleString()+" mm",-58)}<g transform="translate(875 95)"><rect class="dd-title-block" width="270" height="390"/><text class="dd-title" x="15" y="30">SETTING DATA</text><text class="dd-small" x="15" y="62">ORIGIN</text><text x="15" y="84">${esc(f.origin)}</text><text class="dd-small" x="15" y="118">BASE / ENVELOPE</text><text x="15" y="140">${f.base[0].toLocaleString()}×${f.base[1].toLocaleString()}</text><text x="15" y="162">${f.envelope[0].toLocaleString()}×${f.envelope[1].toLocaleString()}</text><text class="dd-small" x="15" y="196">ANCHOR</text><text x="15" y="218">${esc(f.anchorSpec)}</text><text class="dd-small" x="15" y="252">HOLE / GROUT</text><text x="15" y="274">${esc(f.hole)}</text><text x="15" y="296">${esc(f.grout)}</text><text class="dd-small" x="15" y="330">COORDINATES</text><text x="15" y="352">X+: 장축 우측 · Y+: 평면 상부</text><text x="15" y="374">${f.anchors.length} POINT · 좌표표 참조</text></g></g>`;
   }
+  // ---- 주회로도 · PLC 제어회로도 · 결선도 -----------------------------------
+  // All three are generated from the same branch data as the single-line, so a load added
+  // to powerPackages appears in every drawing without touching them.
+  const isVfd = (branch) => /VFD/.test(branch.drive);
+
+  function motorCircuitSketch(eqKey) {
+    const power = powerPackages[eqKey];
+    const shown = power.branches.slice(0, 6);
+    // Columns must clear the sheet's own title block (x >= 720, y >= 610).
+    const step = Math.min(150, Math.floor(600 / Math.max(1, shown.length)));
+    const x0 = 90;
+    const phases = [86, 104, 122];
+    const bus = phases.map((y, i) =>
+      `<path class="dd-power-line" d="M60 ${y}H700"/><text class="dd-small" x="62" y="${y - 5}">L${i + 1}</text>`).join("");
+    const columns = shown.map((branch, index) => {
+      const x = x0 + index * step;
+      const sel = branchSelection(branch, power.voltageDropPct);
+      const starter = isVfd(branch)
+        ? `<rect class="dd-power-device" x="${x - 46}" y="300" width="92" height="66"/><text class="dd-small" x="${x}" y="330" text-anchor="middle">VFD</text><text class="dd-small" x="${x}" y="350" text-anchor="middle">STO</text>`
+        : `<rect class="dd-power-device" x="${x - 46}" y="300" width="92" height="66"/><text class="dd-small" x="${x}" y="330" text-anchor="middle">MC</text><text class="dd-small" x="${x}" y="350" text-anchor="middle">OL</text>`;
+      return `<path class="dd-power-line" d="M${x} 86V210"/><path class="dd-power-line" d="M${x - 14} 104V210M${x + 14} 122V210"/>
+        <rect class="dd-power-device" x="${x - 46}" y="210" width="92" height="58"/><text class="dd-small" x="${x}" y="234" text-anchor="middle">${sel.breaker} A</text><text class="dd-small" x="${x}" y="254" text-anchor="middle">${isVfd(branch) ? "MCCB" : "MPCB"}</text>
+        <path class="dd-power-line" d="M${x} 268V300"/>${starter}
+        <path class="dd-power-line" d="M${x} 366V420"/>
+        <text class="dd-small" x="${x + 6}" y="400">3×${sel.cable.size}+PE ${sel.pe}</text>
+        <circle class="dd-drive" cx="${x}" cy="450" r="28"/><text x="${x}" y="458" text-anchor="middle">M</text>
+        <path class="dd-pe-line" d="M${x} 478V524"/>
+        
+        <text x="${x}" y="552" text-anchor="middle">${esc(branch.tag)}</text>
+        <text class="dd-small" x="${x}" y="570" text-anchor="middle">${branch.kw.toFixed(2)} kW × ${branch.qty}</text>
+        <text class="dd-small" x="${x}" y="588" text-anchor="middle">ΔU ${(power.voltageDropPct + sel.dropPct).toFixed(2)}%</text>`;
+    }).join("");
+    const more = power.branches.length > shown.length
+      ? `<text class="dd-small" x="60" y="628">외 ${power.branches.length - shown.length}개 분기는 전력 인입 단선도·부하 스케줄 참조</text>` : "";
+    return `<g><text class="dd-title" x="60" y="52">MOTOR POWER CIRCUIT · ${esc(power.panel)} · 380 V 3Φ 60 Hz</text>
+      ${bus}<path class="dd-pe-line" d="M60 524H700"/><text class="dd-small" x="62" y="518">PE</text>
+      ${columns}${more}
+      <text class="dd-small" x="60" y="656">각 분기: 3P 차단 → ${"VFD(STO) 또는 전자접촉기+열동계전기"} → 모터 · PE 는 패널 PE 바에서 개별 포설</text>
+      <text class="dd-small" x="60" y="676">STO 는 전기적 격리를 대체하지 않는다 · 정비 시 현장 잠금형 개폐기로 LOTO</text></g>`;
+  }
+
+  function plcControlSketch(eqKey) {
+    const power = powerPackages[eqKey];
+    const shown = power.branches.filter((branch) => !/SMPS|TR\+/.test(branch.drive)).slice(0, 5);
+    const rungTop = 120, rungBottom = 470;
+    const step = Math.min(150, Math.floor(560 / Math.max(1, shown.length)));
+    const x0 = 140;
+    const rungs = shown.map((branch, index) => {
+      const x = x0 + index * step;
+      const cmd = isVfd(branch) ? "RUN CMD" : "MC COIL";
+      // Draw the rung as segments between elements, not one line through them, so the
+      // device labels stay readable.
+      return `<path class="dd-power-line" d="M${x} ${rungTop}V162M${x} 208V240M${x} 286V306M${x} 354V386M${x} 432V${rungBottom}"/>
+        <rect class="dd-power-device" x="${x - 62}" y="162" width="124" height="46"/><text class="dd-small" x="${x}" y="182" text-anchor="middle">DO ${index + 1}.${index}</text><text class="dd-small" x="${x}" y="200" text-anchor="middle">${cmd}</text>
+        <rect class="dd-power-device" x="${x - 62}" y="240" width="124" height="46"/><text class="dd-small" x="${x}" y="260" text-anchor="middle">E-STOP</text><text class="dd-small" x="${x}" y="278" text-anchor="middle">현장 접점</text>
+        <circle class="dd-drive" cx="${x}" cy="330" r="24"/><text class="dd-small" x="${x}" y="335" text-anchor="middle">${isVfd(branch) ? "STO" : "K"}</text>
+        <rect class="dd-power-device" x="${x - 62}" y="386" width="124" height="46"/><text class="dd-small" x="${x}" y="406" text-anchor="middle">DI ${index + 1}.${index}</text><text class="dd-small" x="${x}" y="424" text-anchor="middle">${isVfd(branch) ? "READY/FLT" : "AUX/OL"}</text>
+        <text x="${x}" y="514" text-anchor="middle">${esc(branch.tag)}</text>
+        <text class="dd-small" x="${x}" y="534" text-anchor="middle">${isVfd(branch) ? "VFD 제어" : "직입 기동"}</text>`;
+    }).join("");
+    return `<g><text class="dd-title" x="60" y="52">PLC CONTROL CIRCUIT · ${esc(power.panel)} · 24 VDC PELV</text>
+      <path class="dd-power-line" d="M60 ${rungTop}H700"/><text class="dd-small" x="62" y="${rungTop - 8}">+24 VDC (절연변압기 380/220 V → SMPS)</text>
+      <path class="dd-power-line" d="M60 ${rungBottom}H700"/><text class="dd-small" x="62" y="${rungBottom + 20}">0 V</text>
+      ${rungs}
+      <rect class="dd-title-block" x="60" y="560" width="640" height="150"/>
+      <text class="dd-title" x="78" y="596">PLC I/O · ${esc(power.source)} → ${esc(power.panel)}</text>
+      <text class="dd-small" x="78" y="624">DO: 기동지령 · VFD 는 RUN CMD, 직입은 전자접촉기 코일 · 각 회로에 현장 비상정지 직렬</text>
+      <text class="dd-small" x="78" y="648">DI: 운전피드백 · VFD 는 READY/FAULT, 직입은 보조접점과 열동계전기 트립</text>
+      <text class="dd-small" x="78" y="672">AI/AO: 속도지령·전류·온도는 계장 루프별 별도 · 본 도면은 개폐·연동 회로만 표시</text>
+      <text class="dd-small" x="78" y="696">안전: STO 는 기능안전 정지이며 LOTO 를 대체하지 않는다 · 안전 PLC/SIS 는 본 패키지 범위 밖</text></g>`;
+  }
+
+  function interconnectSketch(eqKey) {
+    const power = powerPackages[eqKey];
+    const shown = power.branches.slice(0, 7);
+    const rowH = Math.min(58, Math.floor(400 / Math.max(1, shown.length)));
+    const y0 = 150;
+    const rows = shown.map((branch, index) => {
+      const y = y0 + index * rowH;
+      const sel = branchSelection(branch, power.voltageDropPct);
+      const cable = `W-${eqKey.slice(0, 2).toUpperCase()}-${String(index + 1).padStart(2, "0")}`;
+      return `<path class="dd-power-line" d="M330 ${y}H470"/><path class="dd-power-line" d="M700 ${y}H840"/>
+        <text class="dd-small" x="352" y="${y - 8}">${cable}</text>
+        <text class="dd-small" x="722" y="${y - 8}">${cable}-M</text>
+        <rect class="dd-power-device" x="470" y="${y - 20}" width="230" height="40"/>
+        <text class="dd-small" x="482" y="${y - 3}">${esc(branch.tag)}</text>
+        <text class="dd-small" x="482" y="${y + 14}">TB ${index * 4 + 1}–${index * 4 + 4} · 3×${sel.cable.size}+PE ${sel.pe}</text>
+        <rect class="dd-power-device" x="840" y="${y - 20}" width="250" height="40"/>
+        <text class="dd-small" x="852" y="${y - 3}">${esc(branch.tag)} 현장기기</text>
+        <text class="dd-small" x="852" y="${y + 14}">${esc(branch.drive)}</text>`;
+    }).join("");
+    const busBottom = y0 + (shown.length - 1) * rowH;
+    return `<g><text class="dd-title" x="60" y="52">INTERCONNECTION · ${esc(power.source)} → ${esc(power.panel)} → FIELD</text>
+      <rect class="dd-power-device" x="90" y="120" width="240" height="${Math.max(80, busBottom - 90)}"/>
+      <text x="110" y="152">${esc(power.panel)}</text>
+      <text class="dd-small" x="110" y="176">${esc(power.source)} 인입 ${power.breakerA} A</text>
+      <text class="dd-small" x="110" y="198">${cableLabel(power)}</text>
+      <text class="dd-small" x="110" y="220">인입 ΔU ${power.voltageDropPct.toFixed(2)}%</text>
+      <text class="dd-small" x="110" y="242">${esc(power.ip)}</text>
+      <text class="dd-small" x="482" y="112">패널 단자대 TB</text>
+      <text class="dd-small" x="852" y="112">현장 기기</text>
+      ${rows}
+      <path class="dd-pe-line" d="M90 ${busBottom + 56}H1090"/>
+      <text class="dd-small" x="92" y="${busBottom + 48}">PE 등전위 본딩 · ${power.pe} mm² Cu · 스키드·모터·배관·덕트·가드 연속성 시험</text>
+      <rect class="dd-title-block" x="60" y="608" width="640" height="96"/>
+      <text class="dd-small" x="78" y="638">케이블 번호 W-xx-nn 은 본 도면 자동부여 · 실제 포설 길이·트레이 경로·이격은 현장 확정 후 케이블 스케줄로 대체</text>
+      <text class="dd-small" x="78" y="666">동력·제어·계장은 트레이 분리 포설 · 차폐선 접지는 패널측 1점</text>
+      <text class="dd-small" x="78" y="690">본 연결도는 개념 결선이며 제작사 승인도면이 우선한다</text></g>`;
+  }
+
   function powerSketch(eqKey){
     const power=powerPackages[eqKey];
-    const branchRows=power.branches.map((branch,index)=>{const selected=branchSelection(branch);const y=115+index*58;return `<path class="dd-power-line" d="M720 ${y}H790"/><rect class="dd-power-device" x="790" y="${y-20}" width="285" height="40"/><text x="802" y="${y-3}">${esc(branch.tag)} · ${branch.kw.toFixed(2)} kW × ${branch.qty}</text><text class="dd-small" x="802" y="${y+14}">${selected.breaker} A · 3×${selected.cable.size}+PE ${selected.pe} mm² · ${esc(branch.drive)}</text>`;}).join("");
+    const branchRows=power.branches.map((branch,index)=>{const selected=branchSelection(branch,power.voltageDropPct);const y=115+index*58;return `<path class="dd-power-line" d="M720 ${y}H790"/><rect class="dd-power-device" x="790" y="${y-20}" width="285" height="40"/><text x="802" y="${y-3}">${esc(branch.tag)} · ${branch.kw.toFixed(2)} kW × ${branch.qty}</text><text class="dd-small" x="802" y="${y+14}">${selected.breaker} A · 3×${selected.cable.size}+PE ${selected.pe} mm² · ΔU ${(power.voltageDropPct+selected.dropPct).toFixed(2)}%</text>`;}).join("");
     const busTop=95,busBottom=115+(power.branches.length-1)*58+25;
     return `<g><text class="dd-title" x="60" y="58">POWER INCOMING SINGLE-LINE · 380 V · 3Φ · 60 Hz · 3P+PE</text>
       <rect class="dd-power-device" x="55" y="220" width="130" height="80"/><text x="75" y="250">${esc(power.source)}</text><text class="dd-small" x="75" y="273">MDB-001 400 A</text>
@@ -20848,6 +20924,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const eq=equipments[eqKey], l=eq.dimensions.l,w=eq.dimensions.w,h=eq.dimensions.h;
     if(view==="foundation")return foundationSketch(eqKey);
     if(view==="power")return powerSketch(eqKey);
+    if(view==="motor")return motorCircuitSketch(eqKey);
+    if(view==="plc")return plcControlSketch(eqKey);
+    if(view==="interconnect")return interconnectSketch(eqKey);
     if(view==="section"){
       const detail={shredder:["M24 앵커 + 2N + PW","M20 하우징 10.9","M16 라이너 12.9"],grinder:["M24 앵커 8.8","M16 날 12.9 + 웨지락","M20 하우징 10.9"],sieve:["M12 데크 A4-80","실리콘 가스켓 18t","진동모터 M16 10.9"],attrition:["M20 브리지 A4-80","DN50 PN10 가스켓","M12 스크린 A4-80"],flotation:["F10T M20 구조접합","M16 셀 A4-80","M12 라우더 A4-80"],filterpress:["M30 사이드바 10.9","M24 헤드 10.9","M16 보조스키드 A4-80"]}[eqKey];
       return `<g transform="translate(75 90)"><rect class="dd-object" x="0" y="120" width="460" height="210"/><path class="dd-hidden" d="M40 160H420M40 205H420M40 250H420"/>${bolts(55,145,8,52)}<circle class="dd-wet" cx="230" cy="225" r="72"/><path class="dd-center" d="M120 225H340M230 115V335"/><text class="dd-title" x="0" y="35">A-A 주요 조립 단면</text><text x="20" y="375">접액/내마모부와 구동·지지부 분리</text></g><g transform="translate(650 90)"><rect class="dd-title-block" x="0" y="0" width="430" height="340"/><text class="dd-title" x="20" y="32">체결 상세 FST-01</text><rect class="dd-object" x="55" y="125" width="300" height="34"/><rect class="dd-object" x="55" y="190" width="300" height="34"/><path class="dd-line" d="M205 90V260"/><polygon class="dd-fastener" points="180,90 190,74 220,74 230,90 220,106 190,106"/><rect class="dd-fastener" x="186" y="159" width="38" height="12"/><rect class="dd-fastener" x="186" y="178" width="38" height="12"/><polygon class="dd-fastener" points="180,260 190,244 220,244 230,260 220,276 190,276"/>${detail.map((t,i)=>`<text x="20" y="${300+i*20}" class="dd-small">${i+1}. ${esc(t)}</text>`).join("")}</g>`;
@@ -20880,7 +20959,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
   function renderDrawing(){
     const eq=current();
-    const drawingUnit=state.view==="power"?"V / A / kW":"mm";
+    const drawingUnit=["power","motor","plc","interconnect"].includes(state.view)?"V / A / kW":"mm";
     drawingSvg.innerHTML=`<defs><marker id="dd-arrow-start" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto"><path d="M8 0L0 4L8 8" fill="none" stroke="currentColor"/></marker><marker id="dd-arrow-end" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="currentColor"/></marker></defs><rect class="dd-title-block" x="20" y="20" width="1160" height="720"/>${sketch(state.equipment,state.view)}<g transform="translate(720 610)"><rect class="dd-title-block" width="460" height="130"/><path class="dd-line" d="M0 42H460M0 82H460M310 42V130"/><text class="dd-title" x="12" y="28">${esc(eq.label)} · ${viewLabels[state.view]}</text><text x="12" y="68">DWG ${esc(eq.drawing)}</text><text x="12" y="108">DESIGN VALUES GOVERN · DO NOT SCALE</text><text x="325" y="68">REV ${eq.revision}</text><text x="325" y="108">UNIT ${drawingUnit}</text></g><text class="dd-small" x="40" y="720">설치도 상태: DD-R4 / IFC-HOLD · 현장 실측, 제작사 GA, 건축·구조·전기·안전 검토 후 IFC 승인</text>`;
     root.querySelectorAll("[data-dd-view]").forEach(n=>{const a=n.dataset.ddView===state.view;n.classList.toggle("btn-primary",a);n.setAttribute("aria-pressed",String(a));});
   }
