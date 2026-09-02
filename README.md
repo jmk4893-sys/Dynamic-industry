@@ -43,7 +43,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (420건)
+python -m unittest discover -s tests -t .                               # 테스트 (422건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
@@ -88,7 +88,7 @@ src/pv_preprocess/
   acoustics.py      소음·진동 예측 모델과 저감 설계 근거
   thermal.py        열수지·냉각 계통 — 오일쿨러·반내 냉각·환기 사이징
   materials.py      내구 재질 기준 — 환경별 규칙과 부품 단위 적용
-  campaign.py       60장 연속 투입 캠페인 — 로스터·지게차 동선·처리량
+  campaign.py       60장 연속 캠페인 — 3분류 판정·파이프라인 스케줄·버퍼 분류
   vision.py         비전 센서 최소화 검토 결과 (안전 채널은 보호 대상)
 ```
 
@@ -129,7 +129,8 @@ flux 상사로 스케일업하면 수력학적 조건이 보존되므로 실증 
 - 내구 재질 유리분 Mohs 6–7 대응 AR400 라이너·S355 분체도장 사양 (MT-1011)
 - 3D 장면 색·조명은 테마와 무관한 고정 팔레트 — 배경·안개·바닥만 라이트/다크를 따른다
 - 3D 시점 이동은 전장 44.75 m 양 끝까지 — 이동 모드·Shift 드래그·오른쪽 버튼·두 손가락·방향키
-- 60장 연속 캠페인 (번들 30장×2, 파손 3+2, 방향 혼재) — 42.5분·77.6장/h, 3D 연동 재생
+- 60장 연속 캠페인 (번들 30장×2) — 투입 비전 3분류(정상 53·유리 깨짐 5·전손 2), 버퍼 R-A/R-B 분류
+- 연속 운전 파이프라인 — 로봇팔은 JBR 인계 즉시 다음 장 투입, 택트 45 s·동시 재공 3장·45.2분·77.1장/h
 - 비전 최소화 검토 반영 — 영상 헤드 7 → 4 (안전 센서는 감축 없음)
 - 컷어웨이(단면)·분해를 메인 3D 영상과 도면 3D 분해도 양쪽에서 조작 — 절단축 5종(X 상/하류, Y 앞/뒤, Z 위), 절단 위치와 분해 거리는 슬라이더로 조정
 
