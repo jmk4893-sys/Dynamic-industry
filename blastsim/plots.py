@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import font_manager as fm
+from matplotlib import ticker
 from matplotlib.tri import Triangulation
 
 from .empirical import REGULATION, ScaledDistanceLaw
@@ -319,4 +320,79 @@ def plot_muckpile(result, path: str) -> None:
     ax[0].set_ylabel("Z [m]")
     fig.suptitle(L("파쇄암 이동 및 적재 (측면도, 자유면 방향 →)",
                    "Muckpile (side view)"), fontsize=10)
+    fig.tight_layout(); fig.savefig(path); plt.close(fig)
+
+
+def plot_tet_mesh(mesh, path: str) -> None:
+    """사면체 메쉬 진단도 — 단면 / 공벽 확대 / 크기장 / 품질."""
+    from matplotlib.collections import PolyCollection
+
+    polys, reg = mesh.cut_polygons(axis=1, value=float(mesh.hole.collar[1]))
+    rock = [p for p, r in zip(polys, reg) if r == 0]
+    hole = [p for p, r in zip(polys, reg) if r == 1]
+    lo, hi = mesh.domain.lo, mesh.domain.hi
+
+    fig, ax = plt.subplots(2, 2, figsize=(11.5, 9.2))
+
+    # (a) 전체 단면 ---------------------------------------------------------
+    for a, zoom in ((ax[0, 0], False), (ax[0, 1], True)):
+        a.add_collection(PolyCollection(rock, facecolors="#eef2f7",
+                                        edgecolors="#5a6b80", linewidths=0.25))
+        a.add_collection(PolyCollection(hole, facecolors="#d94a3d",
+                                        edgecolors="#7a2018", linewidths=0.25))
+        a.set_aspect("equal")
+        a.set_xlabel("X [m]")
+        a.set_ylabel("Z [m]")
+    ax[0, 0].set_xlim(lo[0], hi[0]); ax[0, 0].set_ylim(lo[2], hi[2])
+    ax[0, 0].set_title(L(f"Y=0 단면 — 요소 {mesh.n_tets:,}개, 절점 {mesh.n_points:,}개",
+                         f"Y=0 section — {mesh.n_tets:,} tets"))
+
+    # (b) 공벽 확대 ---------------------------------------------------------
+    cx, cz = mesh.hole.collar[0], mesh.hole.collar[2] - 0.5 * mesh.hole.length
+    w = 2.5 * mesh.hole.diameter
+    ax[0, 1].set_xlim(cx - w, cx + w); ax[0, 1].set_ylim(cz - w, cz + w)
+    ax[0, 1].set_title(L(f"공벽 확대 (Ø{mesh.hole.diameter * 1000:g} mm, ±{w:.2f} m)",
+                         f"Borehole wall zoom (±{w:.2f} m)"))
+
+    # (c) 크기장 검증 -------------------------------------------------------
+    c = mesh.centroids()
+    d = np.maximum(mesh.hole.distance(c), 1e-4)
+    size = mesh.edge_lengths().mean(axis=1)
+    cfg, h0 = mesh.config, mesh.edge_lengths().min()
+    ax[1, 0].plot(d[::7], size[::7], ".", ms=1.2, color="#4a7ab5", alpha=0.35,
+                  label=L("요소 평균 모서리", "mean edge"))
+    dd = np.logspace(np.log10(d.min()), np.log10(d.max()), 100)
+    h_near = cfg.h_near or (np.pi * mesh.hole.diameter / max(4, cfg.n_theta))
+    ax[1, 0].plot(dd, np.minimum(cfg.h_far, h_near + cfg.growth * dd), "-",
+                  color="crimson", lw=1.8,
+                  label=L("설계 크기장 h(d)", "design sizing field"))
+    ax[1, 0].set_xscale("log"); ax[1, 0].set_yscale("log")
+    # 로그축 지수 라벨의 유니코드 마이너스(U+2212)를 못 그리는 폰트가 있어 평문 포맷 사용
+    plain = ticker.FuncFormatter(lambda v, _: f"{v:g}")
+    ax[1, 0].xaxis.set_major_formatter(plain)
+    ax[1, 0].yaxis.set_major_formatter(plain)
+    ax[1, 0].set_xlabel(L("공벽까지 거리 d [m]", "distance to wall d [m]"))
+    ax[1, 0].set_ylabel(L("요소 크기 [m]", "element size [m]"))
+    ax[1, 0].set_title(L("크기장 추종성", "Sizing-field compliance"))
+    ax[1, 0].legend(fontsize=8)
+
+    # (d) 품질 --------------------------------------------------------------
+    q = mesh.quality()
+    ang = mesh.dihedral_angles()
+    ax[1, 1].hist(q, bins=60, range=(0, 1), color="#4a7ab5", alpha=0.85)
+    ax[1, 1].axvline(np.median(q), color="crimson", lw=1.6,
+                     label=L(f"중앙값 {np.median(q):.3f}", f"median {np.median(q):.3f}"))
+    ax[1, 1].axvline(0.1, color="0.35", ls="--", lw=1.1,
+                     label=L(f"q>0.1 : {(q > 0.1).mean() * 100:.2f} %",
+                             f"q>0.1 : {(q > 0.1).mean() * 100:.2f} %"))
+    ax[1, 1].set_xlabel(L("요소 품질 q  (정사면체 = 1)", "quality q (regular = 1)"))
+    ax[1, 1].set_ylabel(L("요소 수", "count"))
+    ax[1, 1].set_title(L(f"품질 분포 — 이면각 {ang.min():.1f}°~{ang.max():.1f}°",
+                         f"Quality — dihedral {ang.min():.1f}-{ang.max():.1f} deg"))
+    ax[1, 1].legend(fontsize=8)
+
+    fig.suptitle(L(f"사면체 메쉬 — {mesh.domain.size[0]:g}×{mesh.domain.size[1]:g}"
+                   f"×{mesh.domain.size[2]:g} m + 천공홀 "
+                   f"Ø{mesh.hole.diameter * 1000:g} mm × {mesh.hole.length:g} m",
+                   "Tetrahedral mesh with borehole"), fontsize=11)
     fig.tight_layout(); fig.savefig(path); plt.close(fig)

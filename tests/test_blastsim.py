@@ -826,6 +826,185 @@ def test_fragment_analysis_connectivity():
 
 
 # ---------------------------------------------------------------------------
+# 8. 사면체 메쉬 (mesh.py)
+#
+# 메쉬 생성기는 눈으로 보면 그럴듯한데 틀린 경우가 많아서, 해석적으로 값을 아는
+# 불변량만 골라 검증한다: (1) 볼록 영역을 빈틈없이 채웠는가(체적·표면적),
+# (2) 원통 구멍이 이론 체적/면적을 재현하는가, (3) 크기장을 따라가는가.
+# ---------------------------------------------------------------------------
+_MESH_CACHE: dict = {}
+
+
+def _mesh(preset="빠름"):
+    """생성 비용이 있으므로 테스트 간 재사용 (기본 = 사용자 요구 사양)."""
+    from blastsim.mesh import build_tet_mesh
+    if preset not in _MESH_CACHE:
+        _MESH_CACHE[preset] = build_tet_mesh(config=preset)
+    return _MESH_CACHE[preset]
+
+
+def test_borehole_distance_field():
+    """원통 부호거리 — 축/공벽/측면/공저 방향의 해석해와 일치."""
+    from blastsim.mesh import Borehole
+    h = Borehole(collar=(0, 0, 0), axis=(0, 0, -1), length=12.0, diameter=0.075)
+    r = h.radius
+    p = np.array([
+        [0.0, 0.0, -6.0],      # 축 위 중앙        -> -r
+        [r, 0.0, -6.0],        # 공벽              ->  0
+        [1.0, 0.0, -6.0],      # 측면 1 m          ->  1 - r
+        [0.0, 0.0, -14.0],     # 공저에서 2 m 아래 ->  2
+        [0.0, 0.0, 3.0],       # 공구에서 3 m 위   ->  3
+    ])
+    expect = np.array([-r, 0.0, 1.0 - r, 2.0, 3.0])
+    assert np.allclose(h.distance(p), expect, atol=1e-12), h.distance(p)
+    assert abs(h.volume - math.pi * r ** 2 * 12.0) < 1e-15
+    assert np.allclose(h.toe, [0, 0, -12.0])
+
+
+def test_mesh_fills_box():
+    """사면체 체적 합 = 직육면체 체적, 외부 경계면적 = 6면 합, 경계는 닫힌 곡면."""
+    m = _mesh()
+    assert m.domain.volume == 20.0 ** 3
+    v = m.volumes().sum()
+    assert abs(v / m.domain.volume - 1) < 1e-9, f"체적 {v}"
+    assert m.volumes().min() > 0.0, "영부피 사면체가 남아 있다"
+
+    facets = m.boundary_facets()
+    area = m.facet_areas(facets).sum()
+    assert abs(area / (6 * 400.0) - 1) < 1e-9, f"표면적 {area}"
+
+    # 닫힘: 경계 삼각형의 모든 모서리가 정확히 2번 쓰인다
+    e = np.sort(np.concatenate([facets[:, [0, 1]], facets[:, [1, 2]],
+                                facets[:, [0, 2]]]), axis=1)
+    _, cnt = np.unique(e, axis=0, return_counts=True)
+    assert set(cnt.tolist()) == {2}, f"경계가 닫히지 않음: {set(cnt.tolist())}"
+
+
+def test_mesh_hole_geometry():
+    """천공홀 체적/공벽 면적이 내접다각형 이론값을 재현."""
+    from blastsim.mesh import REGION_HOLE
+    m = _mesh()
+    n = m.config.n_theta
+    # 원에 내접한 정n각형 면적비 = (n/2pi) sin(2pi/n)
+    inscribed = n / (2 * math.pi) * math.sin(2 * math.pi / n)
+    ratio = m.volumes()[m.region == REGION_HOLE].sum() / m.hole.volume
+    assert inscribed - 0.03 < ratio < 1.02, f"홀 체적비 {ratio:.3f} (내접 {inscribed:.3f})"
+
+    wall = m.hole_wall_facets()
+    assert len(wall) > 4 * n, f"공벽 삼각형 {len(wall)}개"
+    a = m.facet_areas(wall).sum() / m.hole.wall_area
+    assert 0.93 < a < 1.07, f"공벽 면적비 {a:.3f}"
+
+
+def test_mesh_sizing_field():
+    """요소 크기가 설계 크기장 h(d)=min(h_far, h_near+growth*d) 를 따른다."""
+    m = _mesh()
+    cfg = m.config
+    h_near = cfg.h_near or math.pi * m.hole.diameter / cfg.n_theta
+    c = m.centroids()
+    d = np.maximum(m.hole.distance(c), 0.0)
+    size = m.edge_lengths().mean(axis=1)
+
+    # d_sat 밖에서는 h 가 h_far 로 포화한다. 점 간격 h 인 Delaunay 의 평균
+    # 모서리는 h 보다 3할쯤 길어지므로 상·하한을 넉넉히 둔다.
+    d_sat = (cfg.h_far - h_near) / cfg.growth
+    near = size[d < 2 * h_near]
+    far = size[d > 2 * d_sat]
+    assert len(near) > 100 and len(far) > 100, (len(near), len(far))
+    assert 0.5 * h_near < np.median(near) < 3 * h_near, np.median(near)
+    assert 0.5 * cfg.h_far < np.median(far) < 2 * cfg.h_far, np.median(far)
+
+    # 단조 성장 — 거리 구간별 중앙 크기가 감소하지 않아야 한다
+    edges = np.logspace(-2, 1, 8)
+    med = [np.median(size[(d >= a) & (d < b)])
+           for a, b in zip(edges[:-1], edges[1:]) if ((d >= a) & (d < b)).sum() > 30]
+    assert all(y >= x * 0.9 for x, y in zip(med, med[1:])), med
+
+
+def test_mesh_quality():
+    """퇴화 요소 제거 후 품질 — 99% 이상이 q>0.1, 중앙값 0.5 이상."""
+    m = _mesh()
+    q = m.quality()
+    assert q.min() > 0.0
+    assert (q > 0.1).mean() > 0.99, f"q>0.1 비율 {(q > 0.1).mean():.4f}"
+    assert np.median(q) > 0.5, f"중앙 품질 {np.median(q):.3f}"
+    assert m.n_dropped > 0, "면 위 공면점의 퇴화 사면체가 하나도 안 걸러졌다"
+
+    ang = m.dihedral_angles()
+    assert ang.shape == (m.n_tets, 6)
+    assert 0.0 < ang.min() and ang.max() < 180.0
+    # 정사면체 이면각 70.53도 주변에 최빈값이 있어야 한다
+    assert 55.0 < np.median(ang) < 90.0, np.median(ang)
+
+
+def test_mesh_cut_section():
+    """평면 절단 단면적 = 직육면체 단면적."""
+    m = _mesh()
+    polys, reg = m.cut_polygons(axis=1, value=0.0)
+    assert len(polys) > 1000 and len(polys) == len(reg)
+
+    def shoelace(p):
+        x, y = p[:, 0], p[:, 1]
+        return 0.5 * abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
+
+    total = sum(shoelace(p) for p in polys)
+    assert abs(total / (20.0 * 20.0) - 1) < 1e-9, f"단면적 {total}"
+    assert all(len(p) in (3, 4) for p in polys)
+
+
+def test_mesh_inclined_hole():
+    """경사공(15도)에서도 체적·홀 체적이 유지된다."""
+    from blastsim.mesh import REGION_HOLE, Borehole, BoxDomain, MeshConfig, build_tet_mesh
+    th = math.radians(15.0)
+    hole = Borehole(collar=(0, 0, 0), axis=(math.sin(th), 0, -math.cos(th)),
+                    length=8.0, diameter=0.09)
+    m = build_tet_mesh(BoxDomain.from_size(12, 12, 12), hole,
+                       MeshConfig(h_far=2.0, growth=1.0, n_theta=8))
+    assert abs(m.volumes().sum() / m.domain.volume - 1) < 1e-9
+    ratio = m.volumes()[m.region == REGION_HOLE].sum() / hole.volume
+    assert 0.85 < ratio < 1.05, f"경사공 체적비 {ratio:.3f}"
+
+
+def test_mesh_subset_and_export(tmpdir=None):
+    """영역 분리와 VTK 왕복 — 파일에서 되읽은 체적이 원본과 같다."""
+    import tempfile
+
+    from blastsim.mesh import REGION_HOLE, REGION_ROCK
+    m = _mesh()
+    rock, hole = m.subset(REGION_ROCK), m.subset(REGION_HOLE)
+    assert rock.n_tets + hole.n_tets == m.n_tets
+    assert abs(rock.volumes().sum() + hole.volumes().sum()
+               - m.volumes().sum()) < 1e-6
+    assert rock.tets.max() < rock.n_points, "절점 재번호 실패"
+
+    with tempfile.TemporaryDirectory() as d:
+        path = hole.write_vtk(os.path.join(d, "hole.vtk"))
+        lines = open(path).read().split("\n")
+        i = next(k for k, l in enumerate(lines) if l.startswith("POINTS"))
+        pts = np.array([l.split() for l in lines[i + 1:i + 1 + hole.n_points]], float)
+        j = next(k for k, l in enumerate(lines) if l.startswith("CELLS"))
+        tets = np.array([l.split()[1:] for l in lines[j + 1:j + 1 + hole.n_tets]], int)
+        c = pts[tets]
+        v = np.abs(np.linalg.det(c[:, 1:] - c[:, :1])).sum() / 6
+        assert abs(v - hole.volumes().sum()) < 1e-9 * max(v, 1e-9)
+        assert hole.write_msh(os.path.join(d, "hole.msh"))
+
+
+def test_mesh_reproducible():
+    """같은 시드는 같은 메쉬, 다른 시드는 다른 점군 (그러나 같은 체적)."""
+    from blastsim.mesh import BoxDomain, MeshConfig, build_tet_mesh
+    dom = BoxDomain.from_size(8, 8, 8)
+    cfg = MeshConfig(h_far=2.0, growth=1.0, n_theta=8)
+    a = build_tet_mesh(dom, config=cfg)
+    b = build_tet_mesh(dom, config=cfg)
+    assert a.n_points == b.n_points and np.array_equal(a.points, b.points)
+
+    c = build_tet_mesh(dom, config=MeshConfig(h_far=2.0, growth=1.0, n_theta=8, seed=7))
+    assert not (c.n_points == a.n_points and np.array_equal(c.points, a.points))
+    assert abs(c.volumes().sum() / dom.volume - 1) < 1e-9
+
+
+# ---------------------------------------------------------------------------
 # unittest 연동
 #
 # 위 검증은 전부 평범한 함수로 썼다 — 물리식 옆에 assert 를 두는 편이 읽기 쉽고,

@@ -14,6 +14,7 @@ import sys
 
 from . import empirical
 from .explosives import EXPLOSIVE_DB
+from .mesh import MESH_PRESETS, Borehole, BoxDomain, build_tet_mesh
 from .project import QUALITY_PRESETS, BlastProject, ProjectConfig
 from .rock import ROCK_DB
 
@@ -26,6 +27,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--list", action="store_true", help="암종/폭약/경험식 목록 출력")
     p.add_argument("--gui", action="store_true", help="윈도우 GUI 실행")
+
+    g = p.add_argument_group("사면체 메쉬 (--mesh)")
+    g.add_argument("--mesh", action="store_true",
+                   help="천공홀 포함 3D 사면체 메쉬만 생성 (VTK/MSH/PNG 출력)")
+    g.add_argument("--mesh-size", type=float, nargs=3, default=[20.0, 20.0, 20.0],
+                   metavar=("W", "L", "D"), help="영역 폭·세로·깊이 [m]")
+    g.add_argument("--mesh-hole-dia", type=float, default=75.0, help="천공경 [mm]")
+    g.add_argument("--mesh-hole-len", type=float, default=12.0, help="천공장 [m]")
+    g.add_argument("--mesh-quality", default="보통", choices=list(MESH_PRESETS))
 
     g = p.add_argument_group("암반")
     g.add_argument("--rock", default="granite", choices=list(ROCK_DB))
@@ -96,6 +106,28 @@ def print_catalog() -> None:
         print(f"  {name:<24s} {lim:6.1f} mm/s")
 
 
+def run_mesh(args) -> int:
+    """--mesh: 사면체 메쉬 생성 → VTK/MSH/PNG 저장."""
+    import os
+
+    from .plots import plot_tet_mesh
+
+    w, l, d = args.mesh_size
+    mesh = build_tet_mesh(
+        BoxDomain.from_size(w, l, d),
+        Borehole(diameter=args.mesh_hole_dia / 1000.0, length=args.mesh_hole_len),
+        args.mesh_quality,
+    )
+    os.makedirs(args.out, exist_ok=True)
+    print(mesh.summary())
+    for name, fn in (("mesh.vtk", mesh.write_vtk), ("mesh.msh", mesh.write_msh)):
+        print(f"  저장: {fn(os.path.join(args.out, name))}")
+    png = os.path.join(args.out, "mesh.png")
+    plot_tet_mesh(mesh, png)
+    print(f"  저장: {png}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.list:
@@ -104,6 +136,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.gui:
         from .gui import main as gui_main
         return gui_main()
+    if args.mesh:
+        return run_mesh(args)
 
     cfg = ProjectConfig(
         rock_key=args.rock, vp=args.vp, poisson=args.poisson,
