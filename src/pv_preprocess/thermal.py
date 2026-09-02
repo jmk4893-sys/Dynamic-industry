@@ -1,0 +1,117 @@
+"""전처리 플랜트 열수지와 냉각 계통 설계.
+
+냉각이 없던 두 곳 — HPU-101/601 유압유와 셀 분전반 내 드라이브 — 에
+냉각기를 사이징해 붙이고, 공정 전체의 발열이 어디로 빠지는지(열수지)를
+한 표로 만든다. 규칙 출처는 업계 관례다.
+
+* 유압 발열 = 설치 입력의 30 % (시스템 효율 70 % 전제) — 실측 전 표준 관례.
+* 드라이브 반내 발열 = 전동기 정격의 5 % (서보·VFD 효율 95 %).
+* 냉각기 용량 = 발열 × 1.25 (필터 오염·주위온도 여유 25 %).
+* 반내 온도 목표 40 °C 이하 — 발열 0.4 kW 이상이면 필터팬 대신 열교환기.
+* 실내 잔여 발열은 전체 환기로 처리: V[m³/h] = Q[kW]·3600 / (1.2·1.005·ΔT).
+
+`docs/drawings/pv-preprocess-plant.html` 의 THERMAL_* 리터럴과 냉각기
+부품(AFU-OC-101, AFR-OC-601)이 이 계산과 어긋나면 테스트가 잡는다.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from . import electrical, servos
+
+#: 유압 입력 대비 발열 비율 — 시스템 효율 70 % 관례
+HPU_LOSS_RATIO = 0.30
+
+#: 드라이브(서보·VFD) 반내 발열 비율 — 효율 95 %
+DRIVE_LOSS_RATIO = 0.05
+
+#: 냉각기 용량 여유율
+COOLER_MARGIN = 1.25
+
+#: 반내 발열이 이 값을 넘으면 필터팬으로는 부족 — 열교환기·판넬쿨러
+CABINET_FAN_LIMIT_KW = 0.4
+
+#: 전체 환기 설계 온도 상승 (실내 − 외기)
+ROOM_DELTA_T_C = 5.0
+
+
+@dataclass(frozen=True)
+class HeatSource:
+    tag: str
+    equipment: str
+    loss_kw: float      # 연속 환산 발열
+    sink: str           # '유압유' | '반내' | '배기' | '실내'
+    cooling: str        # 냉각 수단
+    cooler_tag: str     # 냉각기 부품번호 ('—' 는 전용 냉각기 없음)
+    cooler_kw: float    # 냉각기 정격 방열 (0 은 전용 냉각기 없음)
+
+
+def hpu_loss_kw(input_kw: float) -> float:
+    return round(input_kw * HPU_LOSS_RATIO, 2)
+
+
+def cooler_required_kw(loss_kw: float) -> float:
+    return round(loss_kw * COOLER_MARGIN, 2)
+
+
+def cabinet_loss_kw(panel: str) -> float:
+    """분전반 내 드라이브 발열 — 그 반이 급전하는 전동기 정격의 5 %."""
+    motion = servos.motion_kw_by_panel().get(panel, 0.0)
+    return round(motion * DRIVE_LOSS_RATIO, 2)
+
+
+def heat_sources() -> tuple[HeatSource, ...]:
+    """주요 발열원과 냉각 수단. 표에 없는 잔여 발열은 실내로 가 환기가 받는다.
+
+    JBR 의 7축 드라이브는 셀 옆 자체 제어반(EtherCAT 7축 서보 반)에 살므로
+    TH-CAB-JBR 로 따로 세고, TH-CAB-LP 합계에서는 LP-JBR 을 뺀다 — 중복 금지.
+    """
+    lp_sum = round(sum(kw for panel, kw in cabinet_loads().items()
+                       if panel != "LP-JBR"), 2)
+    jbr_cab = round(cabinet_loss_kw("LP-JBR") + 0.35, 2)  # 드라이브 + PLC·비전 0.35
+    return (
+        HeatSource("TH-HPU1", "HPU-101 유압 (3.7 kW 입력)", hpu_loss_kw(3.7),
+                   "유압유", "공랭 오일쿨러 + 60 L 증량 탱크", "AFU-OC-101", 1.5),
+        HeatSource("TH-HPU6", "HPU-601 유압 (7.5 kW 입력)", hpu_loss_kw(7.5),
+                   "유압유", "공랭 오일쿨러 (릴리프 체류 대응)", "AFR-OC-601", 3.0),
+        HeatSource("TH-CAB-JBR", "JBR 7축 드라이브·PLC 반", jbr_cab,
+                   "반내", "필터팬·열교환기 (기존 JB-EL-006, 0.8 kW)", "JB-EL-006", 0.8),
+        HeatSource("TH-CAB-LP", "셀 분전반 7면 드라이브 합 (JBR 반 별도)", lp_sum,
+                   "반내", "발열 ≥0.4 kW 반은 열교환기, 그 외 필터팬", "—", 0.0),
+        HeatSource("TH-SG", "SG-301 연마 절삭열·스핀들", 3.2,
+                   "배기", "국소집진 기류로 반출 (1,000 m³/h)", "—", 0.0),
+        HeatSource("TH-DX", "DX-601 블로워 축동력", 9.7,
+                   "배기", "배기 기류로 옥외 반출", "—", 0.0),
+    )
+
+
+def exhausted_kw() -> float:
+    """배기로 빠지는 발열 — 실내 부하에서 뺀다."""
+    return round(sum(s.loss_kw for s in heat_sources() if s.sink == "배기"), 2)
+
+
+def room_load_kw() -> float:
+    """실내에 남는 열 — 수요 전력에서 배기 반출분을 뺀 보수적 상한."""
+    return round(electrical.demand_kw() - exhausted_kw(), 2)
+
+
+def required_airflow_m3h(delta_t_c: float = ROOM_DELTA_T_C) -> int:
+    """실내 온도 상승 ΔT 이하를 지키는 전체 환기량 (m³/h), 500 단위 올림."""
+    airflow = room_load_kw() * 3600.0 / (1.2 * 1.005 * delta_t_c)
+    return int(-(-airflow // 500) * 500)
+
+
+def cabinet_loads() -> dict[str, float]:
+    """분전반별 반내 발열 (kW)."""
+    return {feeder.panel: cabinet_loss_kw(feeder.panel) for feeder in electrical.FEEDERS}
+
+
+def cabinet_needs_exchanger(panel: str) -> bool:
+    return cabinet_loss_kw(panel) >= CABINET_FAN_LIMIT_KW
+
+
+def coolers_are_sized() -> bool:
+    """전용 냉각기는 발열 × 1.25 이상이어야 한다."""
+    return all(s.cooler_kw >= cooler_required_kw(s.loss_kw)
+               for s in heat_sources() if s.cooler_kw > 0)

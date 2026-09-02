@@ -14,7 +14,7 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import acoustics, electrical, layout, servos, vision, wiring
+from pv_preprocess import acoustics, electrical, layout, materials, servos, thermal, vision, wiring
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
 
@@ -1148,6 +1148,129 @@ class TestAcoustics(unittest.TestCase):
         self.assertIn("part('HPM-6', 'HPU-601 방진 마운트'", self.stations["afr"])
         self.assertIn("part('HPM-1', 'HPU-101 방진 마운트'", self.stations["afu"])
         self.assertIn("'PV-PLANT-NV-1009'", self.html, "검토서가 도면 목록에 없다")
+
+
+
+class TestThermal(unittest.TestCase):
+    """열수지·냉각 계통이 thermal.py·부품·도면에 일관되게 반영됐는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+        cls.stations = station_blocks(cls.html)
+
+    def test_sources_literal_matches_the_model(self):
+        found = re.search(r"var THERMAL_SOURCES = \[(.*?)\n  \];", self.html, re.S)
+        self.assertIsNotNone(found, "THERMAL_SOURCES 리터럴이 도면에 없다")
+        rows = re.findall(r"\['(TH-[\w-]+)', '[^']*', ([\d.]+), '([^']*)', '[^']*', '([^']*)', ([\d.]+)\]",
+                          found.group(1))
+        model = thermal.heat_sources()
+        self.assertEqual(len(rows), len(model))
+        for row, source in zip(rows, model):
+            with self.subTest(source=source.tag):
+                self.assertEqual(row[0], source.tag)
+                self.assertAlmostEqual(float(row[1]), source.loss_kw, places=2)
+                self.assertEqual(row[2], source.sink)
+                self.assertEqual(row[3], source.cooler_tag)
+                self.assertAlmostEqual(float(row[4]), source.cooler_kw, places=2)
+
+    def test_cabinet_literal_matches_the_model(self):
+        found = re.search(r"var THERMAL_CABINETS = \[(.*?)\n  \];", self.html, re.S)
+        self.assertIsNotNone(found)
+        rows = re.findall(r"\['(LP-\w+)', ([\d.]+), '([^']*)'\]", found.group(1))
+        loads = thermal.cabinet_loads()
+        self.assertEqual(len(rows), len(loads))
+        for panel, kw, method in rows:
+            with self.subTest(panel=panel):
+                self.assertAlmostEqual(float(kw), loads[panel], places=2,
+                                       msg="반내 발열이 서보 일람 파생값과 다르다")
+                self.assertEqual(method.startswith("열교환기"),
+                                 thermal.cabinet_needs_exchanger(panel),
+                                 "0.4 kW 규칙과 냉각 방식이 어긋난다")
+
+    def test_summary_matches_the_model(self):
+        expected = ("var THERMAL_SUMMARY = { "
+                    f"room: {thermal.room_load_kw()}, airflow: {thermal.required_airflow_m3h()}, "
+                    f"exhausted: {thermal.exhausted_kw()}, deltaT: {thermal.ROOM_DELTA_T_C:.0f}, "
+                    f"hpuLossRatio: {thermal.HPU_LOSS_RATIO}, driveLossRatio: {thermal.DRIVE_LOSS_RATIO}, "
+                    f"coolerMargin: {thermal.COOLER_MARGIN} }};")
+        self.assertIn(expected, self.html, "THERMAL_SUMMARY 가 thermal.py 계산값과 다르다")
+
+    def test_every_oil_sink_has_a_sized_cooler(self):
+        """유압유 발열엔 전용 냉각기가 있어야 하고, 용량은 발열 × 1.25 이상."""
+        self.assertTrue(thermal.coolers_are_sized())
+        for source in thermal.heat_sources():
+            if source.sink == "유압유":
+                with self.subTest(source=source.tag):
+                    self.assertGreater(source.cooler_kw, 0, "유압유 발열에 냉각기가 없다")
+                    self.assertGreaterEqual(source.cooler_kw,
+                                            thermal.cooler_required_kw(source.loss_kw))
+
+    def test_hpu_rule_is_thirty_percent(self):
+        self.assertAlmostEqual(thermal.hpu_loss_kw(7.5), 2.25)
+        self.assertAlmostEqual(thermal.hpu_loss_kw(3.7), 1.11)
+
+    def test_cooling_hardware_exists_everywhere(self):
+        for tag in ("AFU-OC-101", "AFR-OC-601"):
+            with self.subTest(catalog=tag):
+                self.assertIn(f'["{tag}"', self.html)
+        self.assertIn('M.steel,"HPU-101 오일쿨러"', self.html, "오일쿨러 3D 메시가 없다")
+        self.assertIn('M.steel,"HPU-601 오일쿨러"', self.html, "오일쿨러 3D 메시가 없다")
+        self.assertIn("part('OC', 'HPU-101 오일쿨러'", self.stations["afu"])
+        self.assertIn("part('OC-6', 'HPU-601 오일쿨러'", self.stations["afr"])
+        self.assertIn("'PV-PLANT-TH-1010'", self.html)
+
+    def test_room_load_is_covered_by_ventilation(self):
+        """환기량 공식 역산 — 22,500 m³/h 로 ΔT 5 °C 가 실제로 지켜지는지."""
+        airflow = thermal.required_airflow_m3h()
+        delta_t = thermal.room_load_kw() * 3600.0 / (1.2 * 1.005 * airflow)
+        self.assertLessEqual(delta_t, thermal.ROOM_DELTA_T_C)
+
+
+class TestMaterials(unittest.TestCase):
+    """내구 재질 규칙과 적용이 materials.py·카탈로그·도면에 일치하는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_rules_literal_matches_the_model(self):
+        found = re.search(r"var MATERIAL_RULES = \[(.*?)\n  \];", self.html, re.S)
+        self.assertIsNotNone(found, "MATERIAL_RULES 리터럴이 도면에 없다")
+        rows = re.findall(r"\['([^']*)', '([^']*)', '([^']*)', '([^']*)'\]", found.group(1))
+        self.assertEqual(len(rows), len(materials.RULES))
+        for row, rule in zip(rows, materials.RULES):
+            with self.subTest(env=rule.env):
+                self.assertEqual(row[0], rule.env)
+                self.assertEqual(row[2], rule.material)
+
+    def test_applications_literal_matches_the_model(self):
+        found = re.search(r"var MATERIAL_APPLICATIONS = \[(.*?)\n  \];", self.html, re.S)
+        self.assertIsNotNone(found)
+        rows = re.findall(r"\['([^']*)', '([^']*)', '([^']*)', '([^']*)'\]", found.group(1))
+        self.assertEqual(len(rows), len(materials.APPLICATIONS))
+        for row, app in zip(rows, materials.APPLICATIONS):
+            with self.subTest(part=app.part_no):
+                self.assertEqual(row[0], app.part_no)
+                self.assertEqual(row[2], app.before)
+                self.assertEqual(row[3], app.after)
+
+    def test_applied_materials_reached_the_catalog(self):
+        """적용 표가 장식이 되면 안 된다 — 카탈로그 재질 문자열이 실제로 바뀌어야 한다."""
+        for part_no, after in materials.applied_materials().items():
+            with self.subTest(part=part_no):
+                self.assertIn(f'"{after}"', self.html,
+                              f"{part_no} 카탈로그 재질이 적용 표와 다르다")
+        self.assertNotIn('"슬롯후드/프리세퍼레이터/필터"', self.html,
+                         "AFR-DX-601 의 옛 재질이 카탈로그에 남아 있다")
+
+    def test_abrasion_rule_is_grounded(self):
+        """유리분 마모 규칙의 근거(Mohs 6–7, STS304 경도 한계)가 지워지면 잡는다."""
+        rule = next(r for r in materials.RULES if "고속 접촉면" in r.env)
+        self.assertIn("AR400", rule.material)
+        self.assertIn("Mohs 6–7", rule.reason)
+        self.assertIn("STS304(15–25 HRC)", rule.reason)
+        self.assertIn("'PV-PLANT-MT-1011'", self.html)
 
 
 if __name__ == "__main__":  # pragma: no cover
