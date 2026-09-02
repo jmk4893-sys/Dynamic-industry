@@ -18378,6 +18378,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return randomSeed / 4294967296;
     }
 
+    // 순수 시각 효과용 난수. random() 은 시드 고정 DEM 스트림이라 여기서 한 번이라도 뽑으면
+    // 이후 모든 물리 난수가 밀려 궤적이 바뀐다. 표시용은 별도 스트림에서 뽑는다.
+    let visualSeed = 0x9e3779b9;
+    function visualRandom() {
+      visualSeed = (visualSeed * 1664525 + 1013904223) >>> 0;
+      return visualSeed / 4294967296;
+    }
+
     function addStaticBox(position, halfExtents, angle = 0) {
       const body = new CANNON.Body({ mass: 0, type: CANNON.Body.STATIC });
       body.addShape(new CANNON.Box(new CANNON.Vec3(halfExtents.x, halfExtents.y, halfExtents.z)));
@@ -18668,6 +18676,57 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       physicalParticles.splice(index, 1);
     }
 
+    // HSG-101 은 날 접촉 DEM 을 이미 계산하고 있었지만(bladeSpecificContact → fractureParticle),
+    // 화면에서는 최종 타격에서 메시가 한 번 줄어들 뿐이라 「분쇄되고 있다」가 읽히지 않았다.
+    // 타격 순간에 튀는 미세 파편을 얹는다. 질량수지에 들어가지 않는 순수 시각 요소이므로
+    // physicalParticles/travelParticles 어디에도 넣지 않고 자체 수명으로만 산다.
+    const impactShards = [];
+    for (let i = 0; i < 72; i += 1) {
+      const mesh = new THREE.Mesh(new THREE.TetrahedronGeometry(0.010 + (i % 3) * 0.003, 0),
+        (i % 2 ? material.particleA : material.particleC).clone());
+      mesh.material.transparent = true;
+      mesh.material.userData.baseOpacity = 1;
+      mesh.userData.processParticle = true;
+      mesh.visible = false;
+      mesh.frustumCulled = false;
+      circuit.add(mesh);
+      impactShards.push({ mesh, life: 0, vx: 0, vy: 0, vz: 0 });
+    }
+    let impactShardCursor = 0;
+    function emitImpactShards(position, energy) {
+      // 타격 에너지가 클수록 많이·멀리 튄다. 챔버 안에서 30~40개가 동시에 살아 있는 정도가
+      // 「갈리고 있다」로 읽히면서 입자 자체를 가리지 않는 선이다.
+      const count = 2 + Math.min(2, Math.floor(energy * 900));
+      for (let i = 0; i < count; i += 1) {
+        const shard = impactShards[impactShardCursor];
+        impactShardCursor = (impactShardCursor + 1) % impactShards.length;
+        shard.mesh.position.copy(position);
+        // 로터 접선 방향으로 흩어진다.
+        const angle = visualRandom() * Math.PI * 2;
+        const speed = 0.9 + visualRandom() * 1.5;
+        shard.vx = Math.cos(angle) * speed;
+        shard.vy = 0.5 + visualRandom() * 1.4;
+        shard.vz = Math.sin(angle) * speed * 0.5;
+        shard.life = 0.18 + visualRandom() * 0.14;
+        shard.mesh.rotation.set(visualRandom() * 3, visualRandom() * 3, visualRandom() * 3);
+        shard.mesh.visible = true;
+      }
+    }
+    function updateImpactShards(dt) {
+      impactShards.forEach((shard) => {
+        if (shard.life <= 0) { if (shard.mesh.visible) shard.mesh.visible = false; return; }
+        shard.life -= dt;
+        if (shard.life <= 0) { shard.mesh.visible = false; return; }
+        shard.vy -= 9.81 * dt * 0.35;
+        shard.mesh.position.x += shard.vx * dt;
+        shard.mesh.position.y += shard.vy * dt;
+        shard.mesh.position.z += shard.vz * dt;
+        shard.mesh.rotation.x += dt * 9;
+        shard.mesh.rotation.z += dt * 7;
+        shard.mesh.material.opacity = Math.min(1, shard.life * 4);
+      });
+    }
+
     function fractureParticle(particle, forceTarget = false) {
       if (!forceTarget && particle.impacts >= particle.requiredImpacts) return;
       particle.impacts = forceTarget ? particle.requiredImpacts : particle.impacts + 1;
@@ -18706,6 +18765,12 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       }
       particle.mesh.rotation.x += (random() - 0.5) * 0.8;
       particle.mesh.rotation.y += (random() - 0.5) * 0.8;
+      // 중간 타격에서는 시각 크기만 최종값 쪽으로 당긴다 — 충돌체는 건드리지 않으므로
+      // DEM 궤적은 그대로다. 마지막 타격에서 위 PBM 결과가 정확한 값으로 덮어쓴다.
+      if (progress < 1 && !forceTarget) {
+        particle.mesh.scale.setScalar(THREE.MathUtils.lerp(1, 0.66, progress));
+      }
+      emitImpactShards(particle.mesh.position, eventEnergy);
     }
 
     function beginTravel(particle) {
@@ -18991,6 +19056,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       // 파편은 CV-001 이 패널을 호퍼에 떨어뜨릴 때만 생긴다 — 종전처럼 상시 흐르지 않는다.
       shredderFlowGroup.visible = showShredFlow;
       if (showShredFlow && shredFlowRunning && !reducedMotion) updateShredFragments(dt);
+      // 분쇄 타격 파편은 수명이 짧으므로 게이트와 무관하게 항상 감쇠시킨다(정지하면 자연히 사라진다).
+      if (!reducedMotion) updateImpactShards(dt);
       transferScrewRotor.rotation.y += shaftRadians(TRANSFER_SCREW_RPM, conveyDt);
       returnScrewRotor.rotation.y += shaftRadians(RETURN_SCREW_RPM, conveyDt);
       // CV-102 환류 레그는 리턴스크루와 같은 게이트로 흐른다.
