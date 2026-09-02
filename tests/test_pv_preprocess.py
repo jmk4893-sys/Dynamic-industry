@@ -14,7 +14,8 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import acoustics, electrical, layout, materials, servos, thermal, vision, wiring
+from pv_preprocess import (acoustics, campaign, electrical, layout, materials, servos,
+                           thermal, vision, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
 
@@ -1402,6 +1403,103 @@ class TestViewNavigation(unittest.TestCase):
         self.assertIn("pv-v22-move-hint", self.html)
         self.assertIn("Shift+드래그", self.html)
         self.assertIn("두 손가락", self.html)
+
+
+
+class TestCampaign(unittest.TestCase):
+    """60장 연속 투입 캠페인 — 번들 2개, 파손 3+2, 방향 혼재."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_bundle_patterns_match_the_request(self):
+        """1번 번들 파손 3장, 2번 번들 2장, 각 30장."""
+        self.assertEqual(campaign.bundle_broken_counts(), (3, 2))
+        for name, lift, pattern in campaign.BUNDLE_PATTERNS:
+            with self.subTest(bundle=name):
+                self.assertEqual(len(pattern), campaign.PALLET_PANELS)
+                self.assertEqual(set(pattern) - set("UDud"), set(), "패턴에 모르는 기호가 있다")
+                self.assertIn("U", pattern, "유리면 위가 없으면 방향이 혼재하지 않는다")
+                self.assertIn("D", pattern, "유리면 아래가 없으면 방향이 혼재하지 않는다")
+                self.assertTrue(lift.startswith("LFT-101"))
+
+    def test_drawing_literal_matches_the_model(self):
+        found = re.search(r"var pvCamB=\[(.*?)\],\s*pvCamTakt", self.html, re.S)
+        self.assertIsNotNone(found, "캠페인 리터럴이 도면에 없다")
+        drawn = re.findall(r'\["([^"]+)","([^"]+)","([UDud]+)"\]', found.group(1))
+        self.assertEqual(len(drawn), len(campaign.BUNDLE_PATTERNS))
+        for row, spec in zip(drawn, campaign.BUNDLE_PATTERNS):
+            with self.subTest(bundle=spec[0]):
+                self.assertEqual(row[0], spec[0])
+                self.assertEqual(row[1], spec[1])
+                self.assertEqual(row[2], spec[2], "번들 패턴이 campaign.py 와 다르다")
+        self.assertIn(f"pvCamTakt={campaign.TAKT_S:.0f},", self.html)
+        self.assertIn(f"pvCamRejectS={campaign.INFEED_REJECT_S:.0f},", self.html)
+        self.assertIn(f"pvCamPallet={campaign.PALLET_PANELS},", self.html)
+        self.assertIn(f"pvCamCall={campaign.FORKLIFT_CALL_REMAINING};", self.html)
+
+    def test_roster_totals(self):
+        rows = campaign.panels()
+        summary = campaign.summary()
+        self.assertEqual(len(rows), 2 * campaign.PALLET_PANELS)
+        self.assertEqual(summary["broken"], 5)
+        self.assertEqual(summary["flipped"] + summary["bypassed"] + summary["broken"], 60)
+        self.assertEqual([p.index for p in rows], list(range(1, 61)))
+
+    def test_first_pallet_is_drained_before_the_second(self):
+        """지게차가 두 곳에 넣고, 한 곳이 다 비면 그때 대기 리프트가 받는다."""
+        rows = campaign.panels()
+        lifts = [p.lift for p in rows]
+        first, second = campaign.BUNDLE_PATTERNS[0][1], campaign.BUNDLE_PATTERNS[1][1]
+        self.assertEqual(lifts[:campaign.PALLET_PANELS], [first] * campaign.PALLET_PANELS)
+        self.assertEqual(lifts[campaign.PALLET_PANELS:], [second] * campaign.PALLET_PANELS)
+        self.assertEqual(campaign.remaining_after(campaign.PALLET_PANELS),
+                         {first: 0, second: campaign.PALLET_PANELS})
+
+    def test_drawing_switches_lift_only_when_empty(self):
+        """도면의 급전 선택도 같은 규칙이어야 3D 와 로스터가 어긋나지 않는다."""
+        self.assertIn("Rt[0].count>0?0:Rt[1].count>0?1:0", self.html)
+        self.assertNotIn("Rt[0].count>Hl?0", self.html, "잔량 임계에서 전환하면 2장 남은 팔레트를 교환할 수 없다")
+        self.assertIn("forkliftCallRemaining:Hl,", self.html)
+
+    def test_broken_panels_skip_the_bottleneck(self):
+        """파손품은 투입 비전에서 걸러져 JBR 택트를 점유하지 않는다."""
+        for panel in campaign.panels():
+            with self.subTest(index=panel.index):
+                span = round(panel.end_s - panel.start_s, 1)
+                self.assertEqual(span, campaign.INFEED_REJECT_S if panel.broken else campaign.TAKT_S)
+                self.assertEqual(panel.broken, panel.action == "투입 리젝트")
+
+    def test_forklift_loads_both_then_refills_the_empty_one(self):
+        events = campaign.forklift_events()
+        initial = [e for e in events if e.kind == "초기 적재"]
+        self.assertEqual(len(initial), 2, "처음에 두 곳을 채워야 한다")
+        self.assertTrue(all(e.at_s == 0.0 for e in initial))
+        for bundle_no, (_, lift, _) in enumerate(campaign.BUNDLE_PATTERNS, start=1):
+            mine = [p for p in campaign.panels() if p.bundle == bundle_no]
+            swap = next(e for e in events if e.kind == "팔레트 교환" and e.lift == lift)
+            call = next(e for e in events if e.kind == "호출" and e.lift == lift)
+            with self.subTest(lift=lift):
+                self.assertEqual(swap.at_s, mine[-1].end_s, "비는 즉시 교환해야 한다")
+                self.assertEqual(call.at_s, mine[-1 - campaign.FORKLIFT_CALL_REMAINING].end_s)
+
+    def test_throughput_is_consistent_with_the_documented_bottleneck(self):
+        """병목 45 s 기준 이론 80장/h 아래여야 한다 — 리젝트가 시간을 먹는다."""
+        summary = campaign.summary()
+        self.assertLess(summary["throughput_per_h"], 3600 / campaign.TAKT_S)
+        self.assertGreater(summary["throughput_per_h"], 70)
+        self.assertIn("45 s", self.html, "병목 택트 근거가 도면에서 사라졌다")
+
+    def test_campaign_ui_and_reject_rack_exist(self):
+        for hook in ('id="jb-campaign"', 'id="jb-cam-strip"', 'id="jb-cam-timeline"',
+                     'id="jb-cam-rows"', 'id="jb-cam-play"', "setCampaignIndex(i)"):
+            with self.subTest(hook=hook):
+                self.assertIn(hook, self.html)
+        # 파손품이 나갈 곳이 실제로 있어야 한다 — 표에만 있으면 갈 데가 없다
+        self.assertIn('["AFU-RJ-101"', self.html)
+        self.assertIn("part('RJ-A', '파손 리젝트 랙 A'", self.html)
+        self.assertIn('M.frame,e===0?"AFU-RJ-101 파손 리젝트 랙"', self.html)
 
 
 if __name__ == "__main__":  # pragma: no cover
