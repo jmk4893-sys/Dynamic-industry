@@ -18334,6 +18334,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         bubble.position.y = bubble.userData.bottom + q * bubble.userData.height;
       });
       updateAttritionParticles(seconds);
+      updateFlotationParticles(seconds);
       wetFlowMarkers.forEach((marker) => {
         const enabled = wetAnimationAllowed(marker.userData.activation);
         marker.visible = enabled;
@@ -18958,6 +18959,114 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         item.mesh.material.color.copy(
           (debond > 0.92 ? material.particleA : material.particleC).color
         );
+      });
+    }
+
+    // ---- FC-201/202/203 부유선별 입자 거동 ----------------------------------
+    // 셀 안에서는 기포만 올라가고 광물은 없었다 — 러퍼·클리너·스캐빈저가 형상만
+    // 다르고 하는 일이 같아 보였다. 부유선별은 입자군에 따라 갈리는 공정이다:
+    // AS-101 에서 떨어져 나온 유기물(B)은 소수성이라 기포에 붙어 거품으로 뜨고,
+    // 맨유리(A)는 친수성이라 붙지 못하고 가라앉는다. 아직 붙어 있는 결합체(C)가
+    // 중간산물이고, 회로에 환류가 있는 이유가 바로 이 중간산물이다.
+    const FLOTATION_SLURRY_LPM = 8;        // AS-101 40 L / 5 min — 플랜트 자체 수치
+    const FLOTATION_BUBBLE_D32_M = 0.001;  // 기포 Sauter 평균경 1.0 mm
+    const FLOTATION_ROUGHER_TARGET = 0.90; // 러퍼의 유리된 유기물 회수율 설계 목표
+    // 입자군별 부유도 비(B 기준). 유리는 기포에 붙지 않고 미세분이 거품에 실려 나가는
+    // 연행만 남는다. 이 비와 위의 러퍼 목표는 벤치 락사이클 시험으로 대체해야 하는
+    // 설계 가정이다 — 값 자체가 HOLD 다.
+    const FLOTATION_FLOATABILITY = { B: 1, C: 0.35, A: 0.03 };
+    // 기포 표면적 유속 Sb = 6·Jg/d32. 셀 단면은 명판 유효용적에서 H/D = 1 로 잡는다.
+    function flotationSb(volumeL, airNm3Min) {
+      const volume = volumeL / 1000;
+      const diameter = Math.cbrt(4 * volume / Math.PI);
+      const area = Math.PI * diameter * diameter / 4;
+      return 6 * (airNm3Min / area / 60) / FLOTATION_BUBBLE_D32_M;
+    }
+    const flotationCells = [
+      { cell: fc201, tag: "FC-201", volumeL: 180, air: 0.060 },
+      { cell: fc202, tag: "FC-202", volumeL: 30, air: 0.020 },
+      { cell: fc203, tag: "FC-203", volumeL: 190, air: 0.075 }
+    ].map((entry) => {
+      const sb = flotationSb(entry.volumeL, entry.air);
+      const tau = entry.volumeL / FLOTATION_SLURRY_LPM;
+      return { ...entry, sb, tau };
+    });
+    // 러퍼에서 목표 회수율이 나오도록 속도상수를 역산하고, 나머지 두 셀은 각자의
+    // Sb 와 체류시간이 정한다 — 셀마다 값을 따로 지어내지 않는다.
+    const FLOTATION_K0 =
+      FLOTATION_ROUGHER_TARGET / (1 - FLOTATION_ROUGHER_TARGET) / flotationCells[0].tau;
+    // 완전혼합 셀 1차 모델: R = kτ/(1+kτ)
+    function flotationRecovery(entry, type) {
+      const k = FLOTATION_K0 * (entry.sb / flotationCells[0].sb) * FLOTATION_FLOATABILITY[type];
+      const kt = k * entry.tau;
+      return kt / (1 + kt);
+    }
+    const flotationParticles = [];
+    flotationCells.forEach((entry) => {
+      const { cell } = entry;
+      entry.recovery = { A: flotationRecovery(entry, "A"), B: flotationRecovery(entry, "B"), C: flotationRecovery(entry, "C") };
+      for (let i = 0; i < 18; i += 1) {
+        const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.030 + (i % 3) * 0.007, 0), material.particleA.clone());
+        mesh.userData.processParticle = true;
+        mesh.visible = false;
+        cell.group.add(mesh);
+        flotationParticles.push({
+          mesh, entry,
+          phase: i / 18,
+          swirl: (i * 2.399) % (Math.PI * 2),
+          band: 0.30 + (i % 5) * 0.16,
+          bottom: 0.60,
+          frothY: 0.54 + cell.height * 0.91,
+          type: null, floats: false
+        });
+      }
+    });
+    // AS-101 을 지난 급광 조성. 계면박리 0.95 이므로 결합체로 남는 몫은 얼마 안 된다.
+    const FLOTATION_FEED = { B: 0.42, A: 0.50, C: 0.08 };
+    function seedFlotationParticle(item) {
+      const u = visualRandom();
+      const type = u < FLOTATION_FEED.B ? "B" : u < FLOTATION_FEED.B + FLOTATION_FEED.A ? "A" : "C";
+      item.type = type;
+      item.floats = visualRandom() < item.entry.recovery[type];
+      item.swirl = visualRandom() * Math.PI * 2;
+      item.mesh.material.color.copy(
+        (type === "B" ? material.particleB : type === "A" ? material.particleA : material.particleC).color
+      );
+      item.mesh.material.opacity = 1;
+    }
+    function updateFlotationParticles(seconds) {
+      flotationParticles.forEach((item) => {
+        const enabled = wetAnimationAllowed(item.entry.cell === fc201 ? 420 : 360);
+        item.mesh.visible = enabled;
+        if (!enabled) return;
+        const previous = item.q ?? 0;
+        const q = (item.phase + seconds * 0.09) % 1;
+        item.q = q;
+        if (q < previous || item.type === null) seedFlotationParticle(item);
+        const { cell } = item.entry;
+        const radius = cell.radius * item.band;
+        const angle = item.swirl + q * Math.PI * 6;
+        if (item.floats) {
+          // 기포에 붙어 곧장 거품층으로 올라간 뒤 라우더로 월류한다.
+          const rise = Math.min(1, q / 0.66);
+          const r = radius * (1 - 0.25 * rise) + (q > 0.66 ? cell.radius * 0.92 * (q - 0.66) / 0.34 : 0);
+          item.mesh.position.set(
+            cell.x + Math.cos(angle) * r,
+            THREE.MathUtils.lerp(item.bottom, item.frothY, rise),
+            cell.z + Math.sin(angle) * r
+          );
+          item.mesh.material.opacity = q > 0.90 ? Math.max(0, (1 - q) / 0.10) : 1;
+        } else {
+          // 붙지 못한 입자는 임펠러 순환류에 실려 돌다 바닥 광미구로 빠진다.
+          const loop = Math.min(1, q / 0.80);
+          const y = item.bottom + (item.frothY - item.bottom) * 0.46 * Math.sin(loop * Math.PI);
+          const r = radius * (0.55 + 0.45 * Math.sin(loop * Math.PI));
+          item.mesh.position.set(cell.x + Math.cos(angle) * r, y, cell.z + Math.sin(angle) * r);
+          item.mesh.material.opacity = q > 0.86 ? Math.max(0, (1 - q) / 0.14) : 1;
+        }
+        item.mesh.material.transparent = item.mesh.material.opacity < 1;
+        item.mesh.rotation.x += 0.07;
+        item.mesh.rotation.y += 0.05;
       });
     }
 
@@ -20522,8 +20631,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       { title: "AS-101 어트리션 스크러버 — 계면박리", note: "건식 계통은 계면박리 0.2255 에서 멈춘다. AS-101 40 L·600 rpm·5 min 고전단 순환류에서 1차 반응속도(k=0.548/min)로 0.95 까지 밀어 올린다 — 백시트가 들리다가 떨어지고 맨유리만 남는다",
         parts: [], wet: ["AS-101", "TK-001", "TK-101", "BS-101", "SAM-102"],
         center: [10.82, 1.02, 0.72], distance: 2.9, yaw: 0.62, pitch: 0.20 },
-      { title: "FC-201/202/203 부유선별", note: "러퍼 FC-201 → 클리너 FC-202 → 스캐빈저 FC-203 · AB-201A/B 부선공기 · RS-201/202/203 약품",
-        parts: [], wet: ["FC-201", "FC-202", "FC-203", "AB-201", "AR-201", "RS-20"] , pitch: 0.34},
+      { title: "FC-201/202/203 부유선별 — 입자군별 분리", note: "떨어진 유기물(B)은 소수성이라 기포에 붙어 거품으로 뜨고, 맨유리(A)는 친수성이라 가라앉는다. 명판 용적·공기량에서 Sb 와 체류시간을 잡아 R=kτ/(1+kτ) 로 본 회수율 — 러퍼 B 0.90 / A 0.21(연행), 클리너는 체류가 짧아 A 0.05 까지 떨궈 내고, 스캐빈저는 공기량이 가장 커 B 0.92. 부유도 비와 러퍼 목표는 벤치 락사이클 시험 대상(HOLD)",
+        parts: [], wet: ["FC-201", "FC-202", "FC-203", "AB-201", "AR-201", "RS-20"],
+        center: [14.24, 3.45, 0.45], distance: 4.9, yaw: 0.68, pitch: 0.22 },
       { title: "FP-301 멤브레인 필터프레스", note: "TK-301 광미 급액 → 압착·코어블로·포세척 → 케이크 배출 · 여액은 TK-401 회수수 계통",
         parts: [], wet: ["FP-301", "TK-301", "HPW-301", "P-301"] , pitch: 0.14, yaw: 0.92},
       { title: "CF-204 원심탈수", note: "TK-204 정광 급액 → Ø360 여과바스켓 원심탈수 → Ag 정광 케이크 BIN-204 · 여액 TK-401 회수",
