@@ -112,6 +112,7 @@
   --plant-equip-dewater: light-dark(rgb(70 90 110), rgb(111 132 155));
   --plant-equip-water: light-dark(rgb(49 95 122), rgb(99 149 179));
   --plant-equip-control: light-dark(rgb(47 57 65), rgb(92 104 114));
+  --plant-ceramic: light-dark(rgb(204 184 150), rgb(226 210 182));
 
   /* Internal implementation variables; not part of the agent contract. */
   --font-sans: -apple-system, system-ui, "Segoe UI", sans-serif;
@@ -1082,6 +1083,7 @@ html>body{padding:0}</style>
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.water { background: var(--plant-water); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.slurry { background: var(--plant-slurry); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.air { background: var(--plant-air); }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.ceramic { background: var(--plant-ceramic); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.reagent { background: var(--plant-reagent); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.concentrate { background: var(--plant-concentrate); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.tailings { background: var(--plant-tailings); }
@@ -1298,6 +1300,7 @@ html>body{padding:0}</style>
           <span><i class="hsg3d-family-swatch slurry"></i>습식 슬러리</span>
           <span><i class="hsg3d-family-swatch water"></i>공정수·여액</span>
           <span><i class="hsg3d-family-swatch air"></i>흡인·공기</span>
+          <span><i class="hsg3d-family-swatch ceramic"></i>세라믹 내마모 스풀</span>
           <span><i class="hsg3d-family-swatch reagent"></i>약품</span>
           <span><i class="hsg3d-family-swatch concentrate"></i>Ag 정광</span>
           <span><i class="hsg3d-family-swatch tailings"></i>Si 광미</span>
@@ -15341,7 +15344,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       equipmentReagent: themeNumber("--plant-equip-reagent"),
       equipmentDewater: themeNumber("--plant-equip-dewater"),
       equipmentWater: themeNumber("--plant-equip-water"),
-      equipmentControl: themeNumber("--plant-equip-control")
+      equipmentControl: themeNumber("--plant-equip-control"),
+      ceramic: themeNumber("--plant-ceramic")
     };
     color.blue = color.series1;
     color.returnFlow = color.processReturn;
@@ -15397,6 +15401,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       pipeWater: makeMaterial(color.processWater, 0.38, 0.22, 0.94),
       pipeSlurry: makeMaterial(color.processSlurry, 0.40, 0.22, 0.96),
       pipeAir: makeMaterial(color.processAir, 0.42, 0.20, 0.92),
+      pipeCeramic: makeMaterial(color.ceramic, 0.58, 0.04, 0.97),
       pipeReagent: makeMaterial(color.processReagent, 0.40, 0.22, 0.96),
       pipeConcentrate: makeMaterial(color.processConcentrate, 0.38, 0.26, 0.96),
       pipeTailings: makeMaterial(color.processTailings, 0.40, 0.22, 0.96),
@@ -15516,6 +15521,52 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
           ? { x: 0, y: 0, z: Math.PI / 2 }
           : { x: 0, y: 0, z: 0 };
       return addMesh(parent, new THREE.CylinderGeometry(radius, radius, length, segments), sourceMaterial, position, rotation, partId, edged);
+    }
+
+    // 엘보 후류 세라믹 스풀. 현장 관찰 — 구멍은 엘보와 그 뒤 직관 1 m 안쪽에만 나고 직관 중간에는
+    // 나지 않는다. 엘보를 빠져나온 입자 다발(rope)이 외측 벽을 따라 뭉쳐 흐르다가 후류 몇 D 구간에서
+    // 다시 벽을 때리기 때문이라, 라이닝은 엘보 하나가 아니라 「엘보＋후류 스풀」을 한 단위로 잡는다.
+    // 곡률로 엘보를 찾고 상류 1 D · 하류 WEAR_SPOOL_DOWNSTREAM_D 만큼 늘린 뒤 겹치면 합친다.
+    const WEAR_SPOOL_DOWNSTREAM_D = 10;
+    const WEAR_SPOOL_UPSTREAM_D = 1;
+    const WEAR_BEND_CURVATURE_RAD_M = 1.2;   // R < 0.83 m 인 굽힘을 엘보로 본다
+    const wearSpoolZones = {};
+    function addWearSpools(parent, curve, radius, partId, samples = 240) {
+      const points = curve.getSpacedPoints(samples);
+      const ds = curve.getLength() / samples;
+      const D = radius * 2;
+      const bendAt = [];
+      for (let i = 1; i < points.length - 1; i += 1) {
+        const a = points[i].clone().sub(points[i - 1]).normalize();
+        const b = points[i + 1].clone().sub(points[i]).normalize();
+        bendAt.push(a.angleTo(b) / ds > WEAR_BEND_CURVATURE_RAD_M);
+      }
+      const raw = [];
+      let start = -1;
+      for (let i = 0; i <= bendAt.length; i += 1) {
+        const on = i < bendAt.length && bendAt[i];
+        if (on && start < 0) start = i + 1;
+        if (!on && start >= 0) { raw.push([start, i]); start = -1; }
+      }
+      const up = Math.round(WEAR_SPOOL_UPSTREAM_D * D / ds);
+      const down = Math.round(WEAR_SPOOL_DOWNSTREAM_D * D / ds);
+      const zones = [];
+      raw.forEach(([s, e]) => {
+        const z = [Math.max(0, s - up), Math.min(points.length - 1, e + down)];
+        const last = zones[zones.length - 1];
+        if (last && z[0] <= last[1]) last[1] = Math.max(last[1], z[1]); else zones.push(z);
+      });
+      zones.forEach(([s, e]) => {
+        const sub = new THREE.CatmullRomCurve3(points.slice(s, e + 1));
+        addMesh(parent, new THREE.TubeGeometry(sub, Math.max(8, e - s), radius + 0.008, 18, false), material.pipeCeramic, { x: 0, y: 0, z: 0 }, null, partId, false);
+        [s, e].forEach((idx) => {
+          const tangent = points[Math.min(idx + 1, points.length - 1)].clone().sub(points[Math.max(idx - 1, 0)]).normalize();
+          const flange = addMesh(parent, new THREE.TorusGeometry(radius + 0.014, 0.011, 10, 28), material.silverClamp, points[idx], null, partId, false);
+          flange.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tangent);
+        });
+      });
+      wearSpoolZones[partId] = zones.map(([s, e]) => ({ fromM: +(s * ds).toFixed(3), toM: +(e * ds).toFixed(3), lengthM: +((e - s) * ds).toFixed(3), bends: raw.filter(([bs, be]) => bs >= s && be <= e).length }));
+      return wearSpoolZones[partId];
     }
 
     function frustumGeometry(bottomX, bottomZ, topX, topZ, height) {
@@ -16109,6 +16160,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       cycloneInlet.clone()
     ]);
     addMesh(parts.P15, new THREE.TubeGeometry(pneumaticCurve, 48, 0.0625, 18, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P15", false);
+    addWearSpools(parts.P15, pneumaticCurve, 0.0625, "P15");
     addCylinder(parts.P15, cycloneRadius, cycloneCylinderHeight, { x: cycloneX, y: cycloneY, z: cycloneZ }, material.equipmentAir, "P15", "y", 48, true);
     addMesh(parts.P15, new THREE.CylinderGeometry(0.085, cycloneRadius, cycloneConeHeight, 48, 1, true), material.equipmentAir, { x: cycloneX, y: cycloneY - 0.54, z: cycloneZ }, null, "P15", true);
     addCylinder(parts.P15, 0.082, 0.42, { x: cycloneX, y: cycloneY + 0.32, z: cycloneZ }, material.equipmentAir, "P15", "y", 30, false);
@@ -16408,6 +16460,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       new THREE.Vector3(2.36, 1.76, -0.22)
     ]);
     addMesh(parts.P18, new THREE.TubeGeometry(pc201LiftCurve, 52, 0.055, 16, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P18", false);
+    addWearSpools(parts.P18, pc201LiftCurve, 0.055, "P18");
     addCylinder(parts.P18, 0.18, 0.28, pc201ReceiverCenter, material.solidsReceiver, "P18", "y", 40, true);
     addMesh(parts.P18, new THREE.CylinderGeometry(0.18, 0.06, 0.32, 40, 1, true), material.solidsReceiver, { x: pc201ReceiverCenter.x, y: 1.46, z: pc201ReceiverCenter.z }, null, "P18", true);
     addCylinder(parts.P18, 0.070, 0.20, { x: pc201ReceiverCenter.x, y: 1.98, z: pc201ReceiverCenter.z }, material.solidsReceiver, "P18", "y", 24, false);
