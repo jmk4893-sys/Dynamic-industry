@@ -18335,6 +18335,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       });
       updateAttritionParticles(seconds);
       updateFlotationParticles(seconds);
+      updateFilterPress(seconds);
       wetFlowMarkers.forEach((marker) => {
         const enabled = wetAnimationAllowed(marker.userData.activation);
         marker.visible = enabled;
@@ -19068,6 +19069,81 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         item.mesh.rotation.x += 0.07;
         item.mesh.rotation.y += 0.05;
       });
+    }
+
+    // ---- FP-301 멤브레인 필터프레스 입자 거동 --------------------------------
+    // 판 18장은 형상뿐이고, 챔버 안에서는 아무 일도 일어나지 않았다. 필터프레스에서
+    // 일어나는 일은 케이크 여과다 — 고형분은 여과포에 걸려 쌓이고 여액만 지난다.
+    // 정압 여과에서 케이크 두께는 √t 로 자라고 여액 유속은 1/√t 로 떨어진다.
+    const FP301_PLATES = 18;
+    const FP301_AREA_M2 = 18.5;        // 명판 · 800×800 판의 개스킷 유효면적(공칭의 85%)
+    const FP301_CHAMBER_MM = 32;       // 챔버 두께 — 양면에 각각 절반씩 쌓인다
+    const FP301_CAKE_DENSITY = 1400;   // 유리질 케이크 건조 겉보기밀도 kg/m³
+    // 습식 계통 고형분 부하: AS-101 40 L/5 min = 8 L/min · 슬러리 20 wt% · 1.15 kg/L
+    const FP301_SOLIDS_KGH = 8 * 1.15 * 0.20 * 60;
+    const FP301_CAKE_KG = FP301_AREA_M2 * (FP301_CHAMBER_MM / 2 / 1000) * FP301_CAKE_DENSITY;
+    const FP301_FILL_MIN = FP301_CAKE_KG / FP301_SOLIDS_KGH * 60;
+    // 실제 사이클 배분(분). 급액이 사이클의 90% 를 차지하는 것이 프레스의 실제 모습이지만,
+    // 화면에서는 압착·코어블로·포세척·개판이 순간으로 지나가 읽히지 않는다. 그래서
+    // 표시 배분만 아래처럼 늘려 잡고, 케이크 성장 법칙 자체는 급액 구간 안에서
+    // s = s_max·√(t/t_fill) 그대로 둔다.
+    const FP301_STEPS = [
+      { key: "feed", label: "급액·케이크 형성", minutes: FP301_FILL_MIN, show: 0.55 },
+      { key: "squeeze", label: "멤브레인 압착", minutes: 10, show: 0.12 },
+      { key: "blow", label: "코어블로", minutes: 3, show: 0.06 },
+      { key: "wash", label: "포세척", minutes: 5, show: 0.09 },
+      { key: "discharge", label: "개판·케이크 배출", minutes: 8, show: 0.18 }
+    ];
+    const FP301_CYCLE_MIN = FP301_STEPS.reduce((sum, step) => sum + step.minutes, 0);
+    function fp301Step(q) {
+      let acc = 0;
+      for (const step of FP301_STEPS) {
+        if (q < acc + step.show) return { step, u: (q - acc) / step.show };
+        acc += step.show;
+      }
+      const last = FP301_STEPS[FP301_STEPS.length - 1];
+      return { step: last, u: 1 };
+    }
+    const fp301Cakes = [];
+    {
+      const FP301_GAP = 0.050;   // 판 피치 0.095 − 판 두께 0.045
+      for (let i = 0; i < FP301_PLATES - 1; i += 1) {
+        const mesh = wetBox(fp301, [FP301_GAP * 0.88, 0.86, 0.62],
+          [14.74 + (i + 0.5) * 0.095, 0.84, -1.32], wetTailingsMaterial.clone(), `FP-301 ${i + 1}번 챔버 케이크`);
+        mesh.userData.processParticle = true;
+        mesh.material.transparent = true;
+        mesh.visible = false;
+        fp301Cakes.push({ mesh, baseX: 14.74 + (i + 0.5) * 0.095, index: i });
+      }
+    }
+    function updateFilterPress(seconds) {
+      const enabled = wetAnimationAllowed(2160);
+      const q = (seconds * 0.021) % 1;              // 한 바퀴 ≈ 48 s
+      const { step, u } = fp301Step(q);
+      // 케이크 두께: 급액 구간에서만 √t 로 자라고, 압착에서 8% 압밀된다.
+      let fill = 0;
+      if (step.key === "feed") fill = Math.sqrt(Math.max(0, u));
+      else if (step.key === "squeeze") fill = 1 - 0.08 * u;
+      else fill = 0.92;
+      fp301Cakes.forEach((cake, index) => {
+        // 개판은 고정헤드 쪽부터 한 장씩 열린다 — 케이크가 순서대로 컨베이어로 떨어진다.
+        const openAt = index / fp301Cakes.length;
+        const dropping = step.key === "discharge" && u > openAt;
+        const drop = dropping ? Math.min(1, (u - openAt) / 0.18) : 0;
+        cake.mesh.visible = enabled && fill > 0.02 && drop < 1;
+        if (!cake.mesh.visible) return;
+        cake.mesh.scale.set(fill, 1, 1);
+        cake.mesh.position.x = cake.baseX + (dropping ? index * 0.010 * drop : 0);
+        cake.mesh.position.y = 0.84 - drop * 0.82;   // CV-301 배출컨베이어로
+        cake.mesh.material.opacity = drop > 0.7 ? Math.max(0, (1 - drop) / 0.3) : 1;
+      });
+      // 여액: 정압 여과에서 유속은 1/√t 로 떨어진다. 급액 초기에 가장 빠르고,
+      // 압착에서 한 번 되살아난 뒤 코어블로·세척이 이어진다.
+      state.fp301Step = step.label;
+      state.fp301FiltrateRate = step.key === "feed" ? 1 / Math.sqrt(Math.max(0.02, u))
+        : step.key === "squeeze" ? 1.6
+          : step.key === "wash" ? 0.9 : 0;
+      state.fp301CakeFill = fill;
     }
 
     function classifyTrackAtSieve(track, trackIndex) {
@@ -20634,8 +20710,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       { title: "FC-201/202/203 부유선별 — 입자군별 분리", note: "떨어진 유기물(B)은 소수성이라 기포에 붙어 거품으로 뜨고, 맨유리(A)는 친수성이라 가라앉는다. 명판 용적·공기량에서 Sb 와 체류시간을 잡아 R=kτ/(1+kτ) 로 본 회수율 — 러퍼 B 0.90 / A 0.21(연행), 클리너는 체류가 짧아 A 0.05 까지 떨궈 내고, 스캐빈저는 공기량이 가장 커 B 0.92. 부유도 비와 러퍼 목표는 벤치 락사이클 시험 대상(HOLD)",
         parts: [], wet: ["FC-201", "FC-202", "FC-203", "AB-201", "AR-201", "RS-20"],
         center: [14.24, 3.45, 0.45], distance: 4.9, yaw: 0.68, pitch: 0.22 },
-      { title: "FP-301 멤브레인 필터프레스", note: "TK-301 광미 급액 → 압착·코어블로·포세척 → 케이크 배출 · 여액은 TK-401 회수수 계통",
-        parts: [], wet: ["FP-301", "TK-301", "HPW-301", "P-301"] , pitch: 0.14, yaw: 0.92},
+      { title: "FP-301 멤브레인 필터프레스 — 케이크 여과", note: "정압 여과라 케이크는 √t 로 자란다 — 여액 유속은 1/√t 로 떨어진다. 명판 18.5 m²·챔버 32 mm 에서 케이크 414 kg/사이클, 습식 고형분 110 kg/h 이므로 급액 225 min · 사이클 251 min. 압착에서 8% 압밀되고, 개판은 고정헤드 쪽부터 한 장씩 열려 케이크가 순서대로 CV-301 로 떨어진다",
+        parts: [], wet: ["FP-301", "TK-301", "HPW-301", "P-301"],
+        center: [15.55, 0.78, -1.32], distance: 3.6, yaw: 0.95, pitch: 0.20 },
       { title: "CF-204 원심탈수", note: "TK-204 정광 급액 → Ø360 여과바스켓 원심탈수 → Ag 정광 케이크 BIN-204 · 여액 TK-401 회수",
         parts: [], wet: ["CF-204", "TK-204", "P-204", "BIN-204"] , pitch: 0.14, yaw: 0.62},
       { title: "전체 공정 조망", note: "ICSH-301 파쇄 → HSG 폐회로 → Sheeve 선별 → 어트리션 → 부유선별 → 필터프레스·원심탈수까지 한 좌표계",
