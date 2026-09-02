@@ -1029,8 +1029,12 @@ html>body{padding:0}</style>
   #hsgTrueThreeDeckScreenRevO .hsg3d-tour-caption { font-size: 12.5px; color: var(--card-foreground); line-height: 1.45; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
   #hsgTrueThreeDeckScreenRevO canvas:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
-  #hsgTrueThreeDeckScreenRevO .hsg3d-clock { position: absolute; left: 10px; top: 8px; color: var(--card-foreground); pointer-events: none; }
-  #hsgTrueThreeDeckScreenRevO .hsg3d-hint { position: absolute; left: 8px; bottom: 6px; pointer-events: none; }
+  /* 캔버스 안쪽은 두 테마 모두 어두운 스튜디오 배경으로 고정(스크립트의 VIEWPORT_SCHEME)이므로,
+     그 위에 얹히는 오버레이 글자도 테마를 따라가면 안 된다 — light 테마에서 검은 글씨가
+     검은 배경에 묻혔다. 밝은 글자로 고정하고 약한 그림자로 대비를 준다. */
+  #hsgTrueThreeDeckScreenRevO .hsg3d-clock { position: absolute; left: 10px; top: 8px; color: rgb(228 232 235); text-shadow: 0 1px 2px rgb(0 0 0 / 55%); pointer-events: none; }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-hint { position: absolute; left: 8px; bottom: 6px; color: rgb(178 186 192); text-shadow: 0 1px 2px rgb(0 0 0 / 55%); pointer-events: none; }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-hint.text-muted { color: rgb(178 186 192); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-kpi-compact { display: none; color: var(--foreground); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-detail { min-height: 1.5em; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-video-panel,
@@ -15369,10 +15373,19 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       window.__HSG_CANNON__ ?? import("https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js")
     ]);
 
+    // 3D 뷰포트는 문서가 아니라 「조명이 켜진 장면」이다. 조명 리그는 이미 테마 독립인데
+    // 재질 색만 테마를 따라가서, 같은 플랜트가 두 가지로 전혀 다르게 보였다(밝기 3.6배 차이).
+    // light 변형 토큰은 흰 종이 위 검은 잉크용으로 잡힌 값이라 이 리그 아래에서는 장비가
+    // 새까맣게 눌리고 바닥만 하얗게 날아가 — 조명 받은 기계가 아니라 실루엣으로 읽혔다.
+    // 그래서 3D 색은 두 테마 모두 dark 변형에서 뽑는다: 어두운 스튜디오 배경 위의 밝은 장비.
+    // light-dark() 는 그 요소의 color-scheme 사용값을 따르므로 프로브에만 걸면 된다.
+    // 주변 UI 는 그대로 테마를 따라가고, 캔버스 안쪽만 고정된다.
+    const VIEWPORT_SCHEME = "dark";
     function resolveThemeCss(variable) {
       const probe = document.createElement("span");
       probe.style.position = "absolute";
       probe.style.opacity = "0";
+      probe.style.colorScheme = VIEWPORT_SCHEME;
       probe.style.color = "var(" + variable + ")";
       root.appendChild(probe);
       const resolved = getComputedStyle(probe).color;
@@ -15527,7 +15540,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       powerPreference: "high-performance",
       preserveDrawingBuffer: false
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    // 휴대폰(DPR 2–3)에서는 다운샘플링 덕에 가는 배관 윤곽이 깨끗하게 나오는데 DPR 1 짜리
+    // 데스크톱에서는 같은 배관이 계단처럼 보인다. 저밀도 화면에서만 1.5배로 슈퍼샘플링해
+    // 두 화면의 선명도를 맞춘다(고밀도 화면은 종전대로 2배에서 잘린다).
+    renderer.setPixelRatio(Math.min(Math.max(window.devicePixelRatio || 1, 1.5), 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
