@@ -16740,13 +16740,98 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       new THREE.Vector3(2.78, 1.02, 0.20),
       new THREE.Vector3(3.16, 0.78, 0.20)
     ];
+    // 네 제품 밴드는 SV-201 상부까지 같은 길로 온다 — 갈라지는 곳은 배관이 아니라
+    // 데크 위다. 그래서 급입점까지만 공통 루트로 두고, 그 뒤는 아래 데크 통과 거동이 맡는다.
+    const sieveFeedTop = new THREE.Vector3(secondaryCenter.x, 0.86, secondaryCenter.z);
+    const sieveApproach = new THREE.CatmullRomCurve3([...primaryCommon, ...downstreamCommon, sieveFeedTop]);
     const sieveRoutes = {
       "return-500": new THREE.CatmullRomCurve3([...primaryCommon, returnOutlet]),
-      "product-280-500": new THREE.CatmullRomCurve3([...primaryCommon, ...downstreamCommon, new THREE.Vector3(3.30, 0.51, 0.20), secondaryOutlets["product-280-500"]]),
-      "product-106-280": new THREE.CatmullRomCurve3([...primaryCommon, ...downstreamCommon, new THREE.Vector3(3.28, 0.34, 0.20), secondaryOutlets["product-106-280"]]),
-      "product-75-106": new THREE.CatmullRomCurve3([...primaryCommon, ...downstreamCommon, new THREE.Vector3(3.26, 0.17, 0.20), secondaryOutlets["product-75-106"]]),
-      "product-under-75": new THREE.CatmullRomCurve3([...primaryCommon, ...downstreamCommon, new THREE.Vector3(3.20, 0.04, 0.20), secondaryOutlets["product-under-75"]])
+      "product-280-500": sieveApproach,
+      "product-106-280": sieveApproach,
+      "product-75-106": sieveApproach,
+      "product-under-75": sieveApproach
     };
+
+    // ---- SV-201 원형 3단 데크 통과 거동 ------------------------------------
+    // 밴드 분리는 급입 순간에 수치로 끝나고 다섯 갈래가 똑같은 속도로 배관을 타고
+    // 나갔다 — 스크린 세 장은 형상뿐이고 체가름 자체는 화면에 없었다. 이제 입자가
+    // 데크 위를 바깥으로 돌아 나가면서, 자기 입도와 그 데크 눈금의 비에 해당하는
+    // 반경에서 스크린을 빠져 아래 데크로 떨어진다.
+    const SIEVE_DECK_SCREEN_Y = secondaryDeckYs.map((y) => y + 0.045);
+    const SIEVE_DECK_RADIUS = 0.55;      // 스크린 Ø1200 의 유효 반경
+    const SIEVE_FEED_RADIUS = 0.07;      // 중앙 급입점
+    const SIEVE_PAN_Y = -0.03;
+    const SIEVE_TURNS_PER_DECK = 1.35;   // 원형 진동체의 나선 배출 — 데크당 회전수
+    // 밴드별 잔류 데크. 280 µm 위는 1단에, 106–280 은 2단에, 75–106 은 3단에 남고
+    // 75 µm 미만만 세 장을 모두 지나 PAN 으로 간다 — 밴드 경계가 곧 스크린 눈금이다.
+    const SIEVE_RETAIN_DECK = {
+      "product-280-500": 0,
+      "product-106-280": 1,
+      "product-75-106": 2,
+      "product-under-75": 3
+    };
+    // 데크를 몇 장 지나야 하는지가 곧 체류시간이다 — 미분일수록 오래 걸린다.
+    const SIEVE_RESIDENCE_RATE = {
+      "return-500": 1,
+      "product-280-500": 0.86,
+      "product-106-280": 0.74,
+      "product-75-106": 0.64,
+      "product-under-75": 0.58
+    };
+    // 눈금에 가까운 입자(near-size)일수록 통과 확률이 급격히 떨어져 바깥까지 실려
+    // 나간 뒤에야 빠진다. 훨씬 작은 미분은 층분리 직후 안쪽에서 곧바로 통과한다.
+    // 통과 반경 자체가 그 입자의 입도/눈금 비를 눈으로 읽게 해 준다.
+    function sievePassRadius(sizeMm, cutUm) {
+      const ratio = Math.min(1, sizeMm / (cutUm / 1000));
+      return THREE.MathUtils.clamp(Math.pow(ratio, 1.5), 0.14, 0.90);
+    }
+    const SIEVE_CASCADE_FROM = 0.52;     // 이 지점부터 공통 루트를 떠나 데크에 올라선다
+    function sieveDeckPosition(track, s) {
+      const retain = SIEVE_RETAIN_DECK[track.streamKey];
+      const decks = Math.min(retain, 2) + 1;                 // 지나는 데크 장수 1·2·3·3
+      const pan = retain > 2;
+      const legs = pan ? decks + 1 : decks;                  // PAN 행은 마지막에 팬 구간이 붙는다
+      // 각 데크에서 빠지는 반경. 잔류 데크에서는 주변부까지 나가 토출구로 떨어진다.
+      const radii = [];
+      for (let i = 0; i < decks; i += 1) {
+        radii.push(i === retain ? 1 : sievePassRadius(track.sizeMm, SECONDARY_SIEVE_CUTS_UM[i]));
+      }
+      const span = 1 / legs;
+      const leg = Math.min(legs - 1, Math.floor(s / span));
+      const u = THREE.MathUtils.clamp((s - leg * span) / span, 0, 1);
+      // 방위각은 데크를 넘어가도 끊기지 않고 이어서 돈다. 마지막 구간에서만 토출구
+      // 방위(측면 토출은 +x, PAN 은 +z)에 정확히 닿도록 보정을 나눠 얹는다.
+      const target = pan ? Math.PI / 2 : 0;
+      const raw = track.transferPhase + legs * SIEVE_TURNS_PER_DECK * Math.PI * 2;
+      const delta = ((target - raw) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+      const angle = track.transferPhase + (leg + u) * SIEVE_TURNS_PER_DECK * Math.PI * 2
+        + (leg === legs - 1 ? delta * u : 0);
+      let radius;
+      let y;
+      if (pan && leg === legs - 1) {
+        // PAN: 세 장을 다 지나 팬 바닥으로 떨어진 뒤 미분 토출구로 흘러 나간다.
+        radius = THREE.MathUtils.lerp(radii[decks - 1], 0.58, u);
+        y = THREE.MathUtils.lerp(SIEVE_DECK_SCREEN_Y[2] - 0.06, SIEVE_PAN_Y, Math.min(1, u * 2.2));
+      } else {
+        const from = leg === 0 ? SIEVE_FEED_RADIUS / SIEVE_DECK_RADIUS : radii[leg - 1];
+        radius = THREE.MathUtils.lerp(from, radii[leg], u);
+        // 데크에 올라설 때의 낙하와, 스크린을 빠져나갈 때의 낙하를 짧게 표현한다.
+        const drop = leg === 0 ? THREE.MathUtils.lerp(0.30, 0, Math.min(1, u * 3.2)) : 0;
+        y = SIEVE_DECK_SCREEN_Y[leg] + drop
+          - (leg < decks - 1 || (leg === decks - 1 && pan) ? Math.max(0, (u - 0.86) / 0.14) * 0.055 : 0);
+      }
+      const r = radius * SIEVE_DECK_RADIUS;
+      const point = new THREE.Vector3(
+        secondaryCenter.x + Math.cos(angle) * r,
+        y + Math.max(0, Math.sin(u * Math.PI * 9)) * 0.012,   // 진동 throw 로 튀는 층
+        secondaryCenter.z + Math.sin(angle) * r
+      );
+      if (leg === legs - 1) {
+        // 마지막 구간 끝에서 밴드 토출구로 건네준다 — product 단계가 여기서 이어진다.
+        point.lerp(secondaryOutlets[track.streamKey], Math.max(0, (u - 0.80) / 0.20));
+      }
+      return point.add(secondaryMotionOffset);
+    }
 
     // Complete downstream Sheeve line from the latest Sheeve workspace:
     // SV-201 -> CC-201 -> CY-201/BF-201 -> SS-201.
@@ -18477,6 +18562,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       const mesh = new THREE.Mesh(particleGeometry(type, radius), classMaterial(type, source));
       mesh.material.userData.baseOpacity = 1;
       mesh.castShadow = !inspector;
+      // 컷어웨이·유동에서 껍데기와 같이 흐려지면 정작 보러 들어간 입자가 안 보인다.
+      // 공정 투어는 유동 모드로 전환하므로, 이 표시가 없으면 SV-201 데크 위 거동이
+      // 셸과 함께 흐려져 아무것도 읽히지 않는다.
+      if (!inspector) mesh.userData.processParticle = true;
       if (type === "C") {
         const layer = new THREE.Mesh(
           new THREE.PlaneGeometry(radius * 1.42, radius * 1.06, 3, 3),
@@ -19324,8 +19413,12 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       }
       if (track.phase === "sieve") {
         const t = Math.min(1, track.progress);
+        // SV-201 에 올라선 뒤로는 배관이 아니라 데크가 경로를 정한다.
+        if (track.streamKey !== "return-500" && t >= SIEVE_CASCADE_FROM) {
+          return sieveDeckPosition(track, (t - SIEVE_CASCADE_FROM) / (1 - SIEVE_CASCADE_FROM));
+        }
         const route = sieveRoutes[track.streamKey];
-        const point = route.getPoint(t);
+        const point = route.getPoint(track.streamKey === "return-500" ? t : t / SIEVE_CASCADE_FROM);
         const bounceCount = track.streamKey === "return-500" ? 8
           : track.streamKey === "product-280-500" ? 11
             : track.streamKey === "product-106-280" ? 14
@@ -19335,7 +19428,6 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         point.z += Math.sin(t * Math.PI * bounceCount * 0.5 + track.transferPhase) * 0.010;
         if (track.streamKey === "return-500") return point.add(sieveMotionOffset);
         if (t < 0.24) point.addScaledVector(sieveMotionOffset, 1 - t / 0.24);
-        else if (t > 0.64) point.addScaledVector(secondaryMotionOffset, Math.min(1, (t - 0.64) / 0.18));
         return point;
       }
       if (track.phase === "product") {
@@ -19362,8 +19454,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     function updateTravel(dt) {
       for (let i = travelParticles.length - 1; i >= 0; i -= 1) {
         const track = travelParticles[i];
+        // 체 위 체류시간은 지나야 하는 데크 장수에서 나온다 — 미분일수록 오래 걸린다.
         const progressRate = track.phase === "transfer" ? 0.95
-          : track.phase === "sieve" ? 0.48
+          : track.phase === "sieve" ? 0.48 * (SIEVE_RESIDENCE_RATE[track.streamKey] || 1)
             : track.phase === "product" ? 0.38 : 0.42;
         track.progress += dt * progressRate;
         track.mesh.position.copy(travelPosition(track));
@@ -20337,8 +20430,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       // 직접 카메라를 맞춘다 (center · distance 로 프레임 계산을 대신한다).
       { title: "PC-101 세라믹 스풀 — 엘보 후류 15 D", note: "구멍은 엘보와 그 뒤 직관 1 m(8 D) 안쪽에만 난다 → 상류 1 D＋엘보＋하류 15 D 를 한 라이닝 단위로 · 보어 137 (DN150 셸＋8 mm 알루미나) · 17 m/s · 두 엘보 사이가 5 D 뿐이라 전 구간 라이닝",
         parts: ["P15"], wet: [], center: [0.70, 1.15, 0.30], distance: 2.6, yaw: 2.30, pitch: 0.28 },
-      { title: "SV-201 3단 Sheeve 선별", note: "밀폐 CH-501→RV-201→PC-201 음압리프트 → VS-501 → 280–500 / 106–280 / 75–106 µm 분리",
-        parts: ["P18", "P19"], wet: [] },
+      // 데크 위 거동을 보여 주려고 원형 체에 바짝 붙인다 — 기본 프레임은 P18 까지 잡느라
+      // 스크린 세 장이 화면에서 손톱만 해진다.
+      { title: "SV-201 3단 Sheeve 선별 — 데크 통과", note: "280 / 106 / 75 µm 스크린 3단. 입자는 데크 위를 바깥으로 돌아 나가며 자기 입도와 그 눈금의 비에 해당하는 반경에서 빠진다 — 눈금에 가까울수록 바깥까지 실려 나간 뒤에야 통과하고, 미분은 중심 근처에서 곧바로 떨어진다. 지나는 데크 장수가 곧 체류시간",
+        parts: ["P18", "P19"], wet: [], center: [3.18, 0.34, 0.20], distance: 2.5, yaw: 3.95, pitch: 0.17 },
       { title: "PC-201 세라믹 스풀 — 라이저 한 스풀", note: "DN100 은 1 m 가 곧 10 D · RV-201 뒤 엘보＋라이저 전체(15 D)를 한 스풀로 · 보어 103 (DN125 셸＋12 mm 알루미나) · 11.7 m/s 유지 · 픽업 티만 맨 강관",
         parts: ["P18"], wet: [], center: [2.36, 0.45, -0.10], distance: 3.2, yaw: 2.35, pitch: 0.18 },
       { title: "CC-201 공기분급 · SS-201 75 µm", note: "0.70–1.00 m/s 중량물/경량물 분리 → CY-201·BF-201 회수 → SS-201에서 ≥75 재처리 / <75 최종",
