@@ -43,7 +43,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (373건)
+python -m unittest discover -s tests -t .                               # 테스트 (387건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
@@ -84,6 +84,8 @@ src/pv_preprocess/
   layout.py         전처리 플랜트 배치 — 셀 외형에서 존·전체 포락선 파생
   electrical.py     전기 인입 부하 집계 · 차단기·계약전력 산정
   wiring.py         분전반 위치·트레이 경로·실제 케이블 길이 산정
+  servos.py         전동기·서보 축 일람 — 피더 예산·브레이크 불변식
+  acoustics.py      소음·진동 예측 모델과 저감 설계 근거
   vision.py         비전 센서 최소화 검토 결과 (안전 채널은 보호 대상)
 ```
 
@@ -115,9 +117,11 @@ flux 상사로 스케일업하면 수력학적 조건이 보존되므로 실증 
 - 정션박스 제거(7단계)·프레임 분리(6단계)·슬롯 적재(6단계) 시퀀스를 각 시트 뷰와 표제란에 표시, 3D 적재 애니메이션도 분기→승강→삽입으로 단계화
 - AFR 베드-CV-102 사이 2,950 mm 무지지 공백(패널 2,500 초과)을 반출롤러 2,000 으로 폐쇄
 - 장비 밴드 Y 0–7,100, 보행·정비 통로 Y 7,100–8,300 (장비 포락선 **밖**)
-- 설비 셀 7개 + JB/AFR 인계 게이트 1개, 부품 154품목
+- 설비 셀 7개 + JB/AFR 인계 게이트 1개, 부품 158품목
 - 전기 인입 3Φ 4W 380 V · 설치 68.0 kW · 수요 50.2 kW · 주 차단기 125 AF/100 AT · 계약 75.4 kVA
 - 배선 MDB-101 벽부 x=20,000(부하중심) · 전력 케이블 133.1 m + 인입 26.5 m · EtherCAT 체인/FSoE 링 (EL-1005~1008)
+- 전동기 서보 29축 21.1 kW + 인버터·기어드 — 축 일람·라이브 동작 확인 (설계·PLC·검증 탭)
+- 소음·진동 근접 88 → 70 dBA·통로 최악 59.9 dBA — 저감 장치 4종 반영 (NV-1009)
 - 비전 최소화 검토 반영 — 영상 헤드 7 → 4 (안전 센서는 감축 없음)
 - 컷어웨이(단면)·분해를 메인 3D 영상과 도면 3D 분해도 양쪽에서 조작 — 절단축 5종(X 상/하류, Y 앞/뒤, Z 위), 절단 위치와 분해 거리는 슬라이더로 조정
 

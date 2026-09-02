@@ -14,7 +14,7 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import electrical, layout, vision, wiring
+from pv_preprocess import acoustics, electrical, layout, servos, vision, wiring
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
 
@@ -989,6 +989,165 @@ class TestWiring(unittest.TestCase):
         self.assertIn("<th>길이 m</th>", self.html)
         self.assertIn("CABLE_LENGTH_M[feeder[0]].toFixed(1)", self.html)
         self.assertIn("TOTAL_POWER_CABLE_M.toFixed(1)", self.html)
+
+
+
+class TestServoAxes(unittest.TestCase):
+    """서보 축 일람이 servos.py·피더 예산·도면 문구와 어긋나지 않는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def _literal(self, name: str) -> list[tuple]:
+        found = re.search(rf"var {name} = \[(.*?)\n  \];", self.html, re.S)
+        self.assertIsNotNone(found, f"{name} 리터럴이 도면에 없다")
+        rows = re.findall(
+            r"\['([\w-]+)', '([\w-]+)', '[^']*', '[^']*', (\d+), ([\d.]+), '[^']*', '[^']*', (true|false)",
+            found.group(1))
+        return [(tag, panel, int(qty), float(kw), flag == "true")
+                for tag, panel, qty, kw, flag in rows]
+
+    def test_literals_match_the_model(self):
+        for name, model in (("SERVO_AXES", servos.SERVO_AXES), ("PLANT_MOTORS", servos.MOTORS)):
+            drawn = self._literal(name)
+            self.assertEqual(len(drawn), len(model), f"{name} 행 수가 다르다")
+            for row, axis in zip(drawn, model):
+                with self.subTest(axis=axis.tag):
+                    self.assertEqual(row[0], axis.tag)
+                    self.assertEqual(row[1], axis.panel)
+                    self.assertEqual(row[2], axis.qty)
+                    self.assertAlmostEqual(row[3], axis.rated_kw, places=3)
+                    self.assertEqual(row[4], axis.brake)
+
+    def test_panel_motion_budget_fits_the_feeder(self):
+        """분전반별 전동기 정격 합계는 그 피더의 설치 kW 를 넘을 수 없다."""
+        installed = {feeder.panel: feeder.installed_kw for feeder in electrical.FEEDERS}
+        for panel, kw in servos.motion_kw_by_panel().items():
+            with self.subTest(panel=panel):
+                self.assertLessEqual(kw, installed[panel],
+                                     "전동기 예산이 피더 설치 용량을 넘는다 — 피더부터 다시 세워라")
+
+    def test_axis_counts_match_established_wording(self):
+        """총 29축, JBR 7축 — 제어반 문구('EtherCAT 7축 서보')와 배지가 근거."""
+        self.assertEqual(servos.servo_axis_count(), 29)
+        self.assertEqual(servos.servo_axis_count_for("LP-JBR"), 7)
+        self.assertIn("EtherCAT 7축 서보", self.html)
+        self.assertIn(f"EtherCAT {servos.servo_axis_count()}축", self.html)
+
+    def test_gravity_axes_carry_brakes(self):
+        """승강·반전·박리 축은 브레이크 없이 존재할 수 없다."""
+        for axis in servos.SERVO_AXES:
+            if any(word in axis.motion for word in ("승강", "반전", "박리")):
+                with self.subTest(axis=axis.tag):
+                    self.assertTrue(axis.brake, "중력·자세 유지 축에 브레이크가 없다")
+
+    def test_stage_map_only_names_real_axes(self):
+        """STAGE_AXES 가 가리키는 축 태그는 전부 일람에 있어야 한다 — 오타는 즉사."""
+        found = re.search(r"var STAGE_AXES = \[(.*?)\n  \];", self.html, re.S)
+        self.assertIsNotNone(found, "STAGE_AXES 리터럴이 도면에 없다")
+        named = set(re.findall(r"'((?:AXIS|MTR)-[\w-]+)'", found.group(1)))
+        known = {axis.tag for axis in servos.SERVO_AXES + servos.MOTORS}
+        self.assertEqual(named - known, set(), "일람에 없는 축을 강조하려 한다")
+        self.assertGreaterEqual(len(named), 10, "매핑이 비어 있으면 라이브 확인이 무의미하다")
+
+    def test_live_monitor_hooks_exist(self):
+        for hook in ('id="jb-sv-time"', 'id="jb-sv-active"', 'id="jb-sv-lift"',
+                     'id="jb-sv-afr"', 'id="jb-servo-axes-body"', "servoTick: servoTick"):
+            with self.subTest(hook=hook):
+                self.assertIn(hook, self.html)
+
+
+
+class TestAcoustics(unittest.TestCase):
+    """소음·진동 예측과 저감 설계가 acoustics.py·부품·도면에 일관되게 반영됐는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+        cls.stations = station_blocks(cls.html)
+
+    def test_noise_literal_matches_the_model(self):
+        found = re.search(r"var NOISE_SOURCES = \[(.*?)\n  \];", self.html, re.S)
+        self.assertIsNotNone(found, "NOISE_SOURCES 리터럴이 도면에 없다")
+        rows = re.findall(r"\['(NS-\w+)', '[^']*', (\d+), ([\d.]+), ([\d.]+),", found.group(1))
+        model = acoustics.noise_sources()
+        self.assertEqual(len(rows), len(model))
+        for row, source in zip(rows, model):
+            with self.subTest(source=source.tag):
+                self.assertEqual(row[0], source.tag)
+                self.assertEqual(int(row[1]), source.x_mm, "음원 위치가 배치 모델과 어긋났다")
+                self.assertAlmostEqual(float(row[2]), source.lw_dba, places=1)
+                self.assertAlmostEqual(float(row[3]), source.reduction_db, places=1)
+
+    def test_vibration_literal_matches_the_model(self):
+        found = re.search(r"var VIBRATION_SOURCES = \[(.*?)\n  \];", self.html, re.S)
+        self.assertIsNotNone(found, "VIBRATION_SOURCES 리터럴이 도면에 없다")
+        rows = re.findall(r"\['(VS-\w+)', '[^']*', ([\d.]+), ([\d.]+),", found.group(1))
+        model = acoustics.vibration_sources()
+        self.assertEqual(len(rows), len(model))
+        for row, source in zip(rows, model):
+            with self.subTest(source=source.tag):
+                self.assertEqual(row[0], source.tag)
+                self.assertAlmostEqual(float(row[1]), source.freq_hz, places=2)
+                self.assertAlmostEqual(float(row[2]), source.fn_hz, places=2)
+
+    def test_summary_constants_match_the_model(self):
+        raw_x, raw = acoustics.worst_aisle_dba(mitigated=False)
+        mit_x, mit = acoustics.worst_aisle_dba(mitigated=True)
+        expected = ("var NOISE_SUMMARY = { "
+                    f"nearRaw: {acoustics.worst_near_field_dba(False)}, "
+                    f"nearMit: {acoustics.worst_near_field_dba(True)}, "
+                    f"aisleRawX: {raw_x}, aisleRaw: {raw}, aisleMitX: {mit_x}, aisleMit: {mit}, "
+                    f"nearLimit: {acoustics.NEAR_FIELD_LIMIT_DBA:.0f}, "
+                    f"aisleLimit: {acoustics.AISLE_LIMIT_DBA:.0f}, "
+                    f"standoffM: {acoustics.AISLE_STANDOFF_M:.0f} }};")
+        self.assertIn(expected, self.html, "NOISE_SUMMARY 가 acoustics.py 계산값과 다르다")
+
+    def test_mitigation_is_needed_and_sufficient(self):
+        """저감 전은 근접 목표를 넘고(설계의 존재 이유), 저감 후는 두 목표를 다 지킨다."""
+        self.assertGreater(acoustics.worst_near_field_dba(False), acoustics.NEAR_FIELD_LIMIT_DBA)
+        self.assertLessEqual(acoustics.worst_near_field_dba(True), acoustics.NEAR_FIELD_LIMIT_DBA)
+        self.assertLessEqual(acoustics.worst_aisle_dba(True)[1], acoustics.AISLE_LIMIT_DBA)
+
+    def test_isolators_follow_the_third_rule(self):
+        """절연 가진원은 fn ≤ f/3 — 전달률 12.5 % 상한."""
+        for source in acoustics.vibration_sources():
+            with self.subTest(source=source.tag):
+                self.assertTrue(acoustics.isolation_ok(source))
+                if source.isolated:
+                    self.assertLessEqual(
+                        acoustics.transmissibility(source.freq_hz, source.fn_hz), 0.125)
+
+    def test_jbr_is_rigid_not_isolated(self):
+        """JBR 은 비전 정밀도 때문에 절연하지 않는다 — 실수로 마운트를 달면 잡는다."""
+        jbr = next(v for v in acoustics.vibration_sources() if v.tag == "VS-JBR")
+        self.assertFalse(jbr.isolated)
+        self.assertIn("강성", jbr.note)
+
+    def test_transmissibility_rejects_amplification(self):
+        with self.assertRaises(ValueError):
+            acoustics.transmissibility(10.0, 8.0)
+
+    def test_mitigation_hardware_exists_everywhere(self):
+        """저감 장치는 카탈로그·3D·시트에 실물로 있어야 한다 — 표에만 있으면 장식이다."""
+        for tag in ("AFR-ENC-601", "AFR-SIL-601", "AFR-AVM-601", "AFU-AVM-101"):
+            with self.subTest(catalog=tag):
+                self.assertIn(f'["{tag}"', self.html)
+        for label in ("AFR DX-601 흡음 인클로저", "AFR DX-601 배기 소음기",
+                      "HPU-601 방진 마운트", "HPU-101 방진 마운트"):
+            with self.subTest(scene=label):
+                self.assertGreaterEqual(self.html.count(label), 2, f"{label} 3D 메시가 없다")
+        # 시트 부품이 라벨 문자열을 공유하므로, 3D 쪽은 실제 메시 호출로 못박는다.
+        self.assertIn('M.rubber,"HPU-101 방진 마운트"', self.html)
+        self.assertIn('M.rubber,"HPU-601 방진 마운트"', self.html)
+        self.assertIn('M.guard,"AFR DX-601 흡음 인클로저"', self.html)
+        self.assertIn("part('ENC', 'DX 흡음 인클로저'", self.stations["post"])
+        self.assertIn("part('SIL', 'DX 배기 소음기'", self.stations["post"])
+        self.assertIn("part('ACL', '연마구간 가드 흡음 라이닝'", self.stations["post"])
+        self.assertIn("part('HPM-6', 'HPU-601 방진 마운트'", self.stations["afr"])
+        self.assertIn("part('HPM-1', 'HPU-101 방진 마운트'", self.stations["afu"])
+        self.assertIn("'PV-PLANT-NV-1009'", self.html, "검토서가 도면 목록에 없다")
 
 
 if __name__ == "__main__":  # pragma: no cover
