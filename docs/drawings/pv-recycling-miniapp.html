@@ -1426,7 +1426,7 @@ html>body{padding:0}</style>
         <span class="hsg3d-tour-caption" data-tour-caption aria-live="polite"></span>
       </div>
       <div class="hsg3d-visually-hidden" role="status" aria-live="polite" data-plant-live-status></div>
-      <div class="hsg3d-hint text-small text-muted">수동 카메라 · 드래그: 회전 · 휠/핀치: 확대 · 부품 클릭: 선택 · 키보드: Tab으로 포커스 후 방향키 회전 · +/− 확대 · Home 전체보기</div>
+      <div class="hsg3d-hint text-small text-muted">수동 카메라 · 드래그: 회전 · 오른쪽·Shift 드래그: 이동 · 두 손가락: 이동＋확대 · 휠/핀치: 확대 · 부품 클릭: 선택 · 키보드: Tab 포커스 후 WASD 이동 · Q/E 승강 · 방향키 회전 · +/− 확대 · Home 전체보기</div>
     </div>
   </div>
       <details class="card hsg3d-info-panel" id="plant-panel-process-live" data-panel-id="process-live" data-panel-category="공정·장비">
@@ -15530,7 +15530,32 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       equipmentControl: makeMaterial(color.equipmentControl, 0.30, 0.62, 0.96)
     };
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(color.background);
+    // 배경이 --background 한 색(dark 에서 rgb 24,24,24)이라 플랜트가 캄캄한 허공에 떠
+    // 있었다. 화면의 3/4 이 휘도 24 짜리 검정이면 장치를 아무리 밝게 비춰도 전체가
+    // 어둡게 읽힌다 — 모바일과 색감이 다르다는 지적의 실체가 이것이다.
+    // 위가 밝고 아래로 내려갈수록 어두워지는 스튜디오 배경을 깔아 준다. 장치 색이
+    // 틀어지지 않게 중성 회색 계열로만 잡았다.
+    function studioBackdrop() {
+      const gradientCanvas = document.createElement("canvas");
+      gradientCanvas.width = 4;
+      gradientCanvas.height = 256;
+      const paint = gradientCanvas.getContext("2d");
+      const gradient = paint.createLinearGradient(0, 0, 0, 256);
+      gradient.addColorStop(0.00, "#4e5a66");   // 상부 — 천장 반사
+      gradient.addColorStop(0.42, "#3a434d");
+      gradient.addColorStop(0.74, "#2a3138");
+      gradient.addColorStop(1.00, "#1d2126");   // 하부 — 바닥 쪽 그늘
+      paint.fillStyle = gradient;
+      paint.fillRect(0, 0, 4, 256);
+      const texture = new THREE.CanvasTexture(gradientCanvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.magFilter = THREE.LinearFilter;
+      texture.minFilter = THREE.LinearFilter;
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      return texture;
+    }
+    scene.background = studioBackdrop();
     const camera = new THREE.PerspectiveCamera(36, 1, 0.05, 90);
     const renderer = new THREE.WebGLRenderer({
       canvas,
@@ -15546,7 +15571,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     renderer.setPixelRatio(Math.min(Math.max(window.devicePixelRatio || 1, 1.5), 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    // 모바일에서 훨씬 밝고 조명이 잘 붙어 보인다는 지적에 맞춰 노출을 올렸다.
+    // ACES 필믹은 하이라이트를 말아 주므로 노출을 올려도 흰색이 뭉개지지 않는다.
+    renderer.toneMappingExposure = 1.32;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.autoClear = true;
@@ -16778,12 +16805,30 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       "product-75-106": 0.64,
       "product-under-75": 0.58
     };
-    // 눈금에 가까운 입자(near-size)일수록 통과 확률이 급격히 떨어져 바깥까지 실려
-    // 나간 뒤에야 빠진다. 훨씬 작은 미분은 층분리 직후 안쪽에서 곧바로 통과한다.
-    // 통과 반경 자체가 그 입자의 입도/눈금 비를 눈으로 읽게 해 준다.
+    // 체눈은 개구만으로 정해지지 않는다 — 선경이 피치를 정하고, 피치가 개구율과
+    // 통과 확률을 정한다. 체눈 실험실에서 쓰는 실제 직조망 선경을 그대로 가져왔다.
+    const SIEVE_WIRE_UM = { 280: 180, 106: 71, 75: 50 };   // 개구별 선경 µm
+    const sievePitchUm = (cutUm) => cutUm + SIEVE_WIRE_UM[cutUm];
+    const sieveOpenArea = (cutUm) => (cutUm / sievePitchUm(cutUm)) ** 2;   // 37.1 / 35.9 / 36.0 %
+    // GAUDIN 통과확률 — 입자는 체눈 정중앙 부근에 떨어져야만 지나간다:
+    //   P = ((a − d)/(a + w))²
+    // 개구의 80% 크기는 40% 크기의 1/9 확률로만 통과한다(세 개구 모두 정확히 9.00배).
+    // 실제 컷이 개구보다 작다는 말이 바로 이것이다.
+    function sievePassProbability(sizeMm, cutUm) {
+      const d = sizeMm * 1000;
+      if (d >= cutUm) return 0;
+      return ((cutUm - d) / sievePitchUm(cutUm)) ** 2;
+    }
+    // 한 번에 지나가는 것이 아니라 데크를 가로지르며 몇 번이고 체눈에 들이댄다.
+    // 평균 시도 횟수는 1/P 이므로 통과 반경은 1/P 에 비례한다. 개구의 80%(=실제 컷)가
+    // 주변부에서 겨우 빠지도록 기준을 잡으면 통과 반경비 = P(0.8a)/P(d) 다.
+    // 0.9a 는 비가 1을 넘어 이 데크에서 못 빠진다 — 공칭 개구보다 컷이 낮다는 뜻이다.
+    const SIEVE_EFFECTIVE_CUT = 0.80;
     function sievePassRadius(sizeMm, cutUm) {
-      const ratio = Math.min(1, sizeMm / (cutUm / 1000));
-      return THREE.MathUtils.clamp(Math.pow(ratio, 1.5), 0.14, 0.90);
+      const reference = sievePassProbability(cutUm * SIEVE_EFFECTIVE_CUT / 1000, cutUm);
+      const here = sievePassProbability(sizeMm, cutUm);
+      if (here <= 0) return 1;
+      return THREE.MathUtils.clamp(reference / here, 0.06, 1);
     }
     const SIEVE_CASCADE_FROM = 0.52;     // 이 지점부터 공통 루트를 떠나 데크에 올라선다
     function sieveDeckPosition(track, s) {
@@ -17197,7 +17242,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(1, 1),
-      new THREE.MeshStandardMaterial({ color: color.card, roughness: 0.94, metalness: 0, transparent: true, opacity: 0.52 })
+      // --card 는 dark 테마에서 거의 검정이라 스튜디오 배경을 깔고 나니 바닥만 구멍처럼
+      // 남았다. 콘크리트 슬래브다운 중성 회색으로 고정한다.
+      new THREE.MeshStandardMaterial({ color: 0x565d67, roughness: 0.94, metalness: 0, transparent: true, opacity: 0.74 })
     );
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.07;
@@ -17254,16 +17301,18 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // Illumination is theme-independent. Tinting these with color.foreground meant the
     // key light was rgb(26,28,31) in light mode — a black light — which rendered the whole
     // plant as a silhouette. Intensities are re-tuned for genuinely white light.
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x5b666e, 1.45));
+    // 반구광과 필을 같이 올려 그늘을 들어 준다 — "조명이 잘 받는" 느낌은 키라이트
+    // 세기가 아니라 그늘이 얼마나 살아 있느냐에서 온다.
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x5b666e, 1.85));
     const keyLight = new THREE.DirectionalLight(0xffffff, 2.35);
     keyLight.position.set(3.5, 5.6, 4.4);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(1024, 1024);
     scene.add(keyLight);
-    const rimLight = new THREE.DirectionalLight(0xbccbd6, 0.85);
+    const rimLight = new THREE.DirectionalLight(0xbccbd6, 1.05);
     rimLight.position.set(-3, 2.8, -3.6);
     scene.add(rimLight);
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.55);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.82);
     fillLight.position.set(-2.4, 3.2, 5.2);
     scene.add(fillLight);
 
@@ -20619,6 +20668,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     let lastY = 0;
     const pointers = new Map();
     let pinchDistance = 0;
+    let pinchMidX = null;
+    let pinchMidY = null;
+    let panning = false;
     const cameraTarget = new THREE.Vector3(0, 1.05, 0);
     const raycaster = new THREE.Raycaster();
     const pointerNdc = new THREE.Vector2();
@@ -20696,7 +20748,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         parts: ["P15"], wet: [], center: [0.70, 1.15, 0.30], distance: 2.6, yaw: 2.30, pitch: 0.28 },
       // 데크 위 거동을 보여 주려고 원형 체에 바짝 붙인다 — 기본 프레임은 P18 까지 잡느라
       // 스크린 세 장이 화면에서 손톱만 해진다.
-      { title: "SV-201 3단 Sheeve 선별 — 데크 통과", note: "280 / 106 / 75 µm 스크린 3단. 입자는 데크 위를 바깥으로 돌아 나가며 자기 입도와 그 눈금의 비에 해당하는 반경에서 빠진다 — 눈금에 가까울수록 바깥까지 실려 나간 뒤에야 통과하고, 미분은 중심 근처에서 곧바로 떨어진다. 지나는 데크 장수가 곧 체류시간",
+      { title: "SV-201 3단 Sheeve 선별 — GAUDIN 통과", note: "개구 280/106/75 µm · 선경 180/71/50 µm · 피치 460/177/125 µm · 개구율 37.1/35.9/36.0%. 통과확률 P=((a−d)/(a+w))² 이라 개구의 80% 크기는 40% 크기의 1/9 로만 빠진다 — 입자는 그 확률의 역수에 해당하는 반경까지 실려 나간 뒤에야 통과하고, 미분은 중심 근처에서 곧바로 떨어진다. 실제 컷은 공칭 개구가 아니라 그 0.8배(224/85/60 µm)이므로 물질수지의 밴드 경계는 낙관적이다 (HOLD)",
         parts: ["P18", "P19"], wet: [], center: [3.18, 0.34, 0.20], distance: 2.5, yaw: 3.95, pitch: 0.17 },
       { title: "PC-201 세라믹 스풀 — 라이저 한 스풀", note: "DN100 은 1 m 가 곧 10 D · RV-201 뒤 엘보＋라이저 전체(15 D)를 한 스풀로 · 보어 103 (DN125 셸＋12 mm 알루미나) · 11.7 m/s 유지 · 픽업 티만 맨 강관",
         parts: ["P18"], wet: [], center: [2.36, 0.45, -0.10], distance: 3.2, yaw: 2.35, pitch: 0.18 },
@@ -20846,6 +20898,48 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       camera.updateMatrixWorld();
     }
 
+    // ---- 자유 이동 -----------------------------------------------------------
+    // 지금까지 카메라는 고정된 주시점을 도는 궤도뿐이었다 — 플랜트를 바깥에서
+    // 돌려 볼 수는 있어도 사이로 들어가거나 옆으로 옮겨 갈 수가 없었다.
+    // 주시점 자체를 움직일 수 있게 해서 어디든 갈 수 있게 한다.
+    const CAM_MIN_DISTANCE = 0.55;   // 장치 안까지 들어갈 수 있는 거리
+    const CAM_MAX_DISTANCE = 60;
+    // 플랜트를 놓치지 않을 만큼만 제한한다. 아래쪽은 슬래브 밑으로 내려가 봐야
+    // 볼 것이 없으므로 바닥 가까이에서 끊는다.
+    const CAM_BOUNDS = { x: 26, yMin: -1.5, yMax: 14, z: 16 };
+    const panRight = new THREE.Vector3();
+    const panUp = new THREE.Vector3();
+    function clampCameraTarget() {
+      cameraTarget.x = THREE.MathUtils.clamp(cameraTarget.x, -CAM_BOUNDS.x, CAM_BOUNDS.x);
+      cameraTarget.y = THREE.MathUtils.clamp(cameraTarget.y, CAM_BOUNDS.yMin, CAM_BOUNDS.yMax);
+      cameraTarget.z = THREE.MathUtils.clamp(cameraTarget.z, -CAM_BOUNDS.z, CAM_BOUNDS.z);
+      // 손으로 옮긴 화면을 자동 맞춤이 되돌리지 않게 한다.
+      fitCountdown = 0;
+    }
+    // 화면에서 끈 만큼 장면이 따라오도록 거리·화각으로 환산한다.
+    function panCamera(dxPixels, dyPixels) {
+      const height = canvas.clientHeight || 1;
+      const scale = 2 * distance * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / height;
+      panRight.setFromMatrixColumn(camera.matrix, 0);
+      panUp.setFromMatrixColumn(camera.matrix, 1);
+      cameraTarget.addScaledVector(panRight, -dxPixels * scale).addScaledVector(panUp, dyPixels * scale);
+      clampCameraTarget();
+      updateCamera();
+    }
+    // 시선 방향으로 걸어 들어가고, 좌우로 옆걸음하고, 위아래로 오르내린다.
+    function walkCamera(forward, strafe, lift) {
+      // 거리에 비례하되 상·하한을 둔다 — 멀리서 보는 중에 한 번 눌러 5 m 씩 튀면
+      // 이동이 아니라 순간이동처럼 느껴진다.
+      const step = THREE.MathUtils.clamp(distance * 0.12, 0.15, 1.5);
+      const heading = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+      const side = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+      cameraTarget.addScaledVector(heading, forward * step)
+        .addScaledVector(side, strafe * step);
+      cameraTarget.y += lift * step;
+      clampCameraTarget();
+      updateCamera();
+    }
+
     function pickPart(clientX, clientY) {
       const bounds = canvas.getBoundingClientRect();
       pointerNdc.set((clientX - bounds.left) / bounds.width * 2 - 1, -((clientY - bounds.top) / bounds.height) * 2 + 1);
@@ -20858,6 +20952,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       canvas.setPointerCapture(event.pointerId);
       dragging = true;
+      // 오른쪽·가운데 버튼과 shift 드래그는 회전이 아니라 이동이다.
+      panning = event.button === 1 || event.button === 2 || event.shiftKey;
       pointerMoved = false;
       downX = event.clientX;
       downY = event.clientY;
@@ -20875,11 +20971,21 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       if (pointers.size === 2) {
         const values = Array.from(pointers.values());
         const nextDistance = Math.hypot(values[0].x - values[1].x, values[0].y - values[1].y);
-        if (pinchDistance > 0) distance = THREE.MathUtils.clamp(distance * pinchDistance / nextDistance, 3.2, 42);
+        if (pinchDistance > 0) distance = THREE.MathUtils.clamp(distance * pinchDistance / nextDistance, CAM_MIN_DISTANCE, CAM_MAX_DISTANCE);
         pinchDistance = nextDistance;
+        // 두 손가락 중점이 움직이면 그만큼 장면을 끌고 간다 — 모바일의 이동 수단이다.
+        const midX = (values[0].x + values[1].x) / 2;
+        const midY = (values[0].y + values[1].y) / 2;
+        if (pinchMidX !== null) panCamera(midX - pinchMidX, midY - pinchMidY);
+        pinchMidX = midX;
+        pinchMidY = midY;
       } else if (dragging) {
-        yaw -= (event.clientX - lastX) * 0.008;
-        pitch = THREE.MathUtils.clamp(pitch + (event.clientY - lastY) * 0.006, -0.10, 1.0);
+        if (panning) {
+          panCamera(event.clientX - lastX, event.clientY - lastY);
+        } else {
+          yaw -= (event.clientX - lastX) * 0.008;
+          pitch = THREE.MathUtils.clamp(pitch + (event.clientY - lastY) * 0.006, -0.10, 1.0);
+        }
         lastX = event.clientX;
         lastY = event.clientY;
       }
@@ -20889,12 +20995,17 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       pointers.delete(event.pointerId);
       dragging = pointers.size > 0;
       pinchDistance = 0;
+      pinchMidX = null;
+      pinchMidY = null;
+      if (!dragging) panning = false;
     }
     canvas.addEventListener("pointerup", releasePointer);
     canvas.addEventListener("pointercancel", releasePointer);
+    // 오른쪽 버튼 드래그로 이동하려면 컨텍스트 메뉴가 뜨지 않아야 한다.
+    canvas.addEventListener("contextmenu", (event) => event.preventDefault());
     canvas.addEventListener("wheel", (event) => {
       event.preventDefault();
-      distance = THREE.MathUtils.clamp(distance * (event.deltaY > 0 ? 1.08 : 0.92), 3.2, 42);
+      distance = THREE.MathUtils.clamp(distance * (event.deltaY > 0 ? 1.08 : 0.92), CAM_MIN_DISTANCE, CAM_MAX_DISTANCE);
     }, { passive: false });
 
     // Keyboard equivalents for the pointer-only camera. Arrow keys orbit, +/- zoom,
@@ -20908,8 +21019,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         case "ArrowRight": yaw += step; break;
         case "ArrowUp": pitch = THREE.MathUtils.clamp(pitch + step, -0.10, 1.0); break;
         case "ArrowDown": pitch = THREE.MathUtils.clamp(pitch - step, -0.10, 1.0); break;
-        case "+": case "=": distance = THREE.MathUtils.clamp(distance * 0.90, 3.2, 42); break;
-        case "-": case "_": distance = THREE.MathUtils.clamp(distance * 1.10, 3.2, 42); break;
+        case "+": case "=": distance = THREE.MathUtils.clamp(distance * 0.90, CAM_MIN_DISTANCE, CAM_MAX_DISTANCE); break;
+        case "-": case "_": distance = THREE.MathUtils.clamp(distance * 1.10, CAM_MIN_DISTANCE, CAM_MAX_DISTANCE); break;
+        case "w": case "W": walkCamera(1, 0, 0); break;
+        case "s": case "S": walkCamera(-1, 0, 0); break;
+        case "a": case "A": walkCamera(0, -1, 0); break;
+        case "d": case "D": walkCamera(0, 1, 0); break;
+        case "q": case "Q": walkCamera(0, 0, -1); break;
+        case "e": case "E": walkCamera(0, 0, 1); break;
         case "Home": fitWholeMachine(1.08); break;
         default: handled = false;
       }
