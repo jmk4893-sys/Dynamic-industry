@@ -16010,17 +16010,59 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       new THREE.Vector3(shredderCenter.x, 2.52, 0.32),
       new THREE.Vector3(shredderCenter.x, 1.58, 0)
     ]);
-    const shredFeedMarkers = [];
-    const shredReturnMarkers = [];
-    for (let i = 0; i < 18; i += 1) {
-      const marker = addMesh(shredderFlowGroup, new THREE.TetrahedronGeometry(0.035 + (i % 3) * 0.006, 1), i % 2 ? material.mint : material.particleC, { x: 0, y: 0, z: 0 }, null, "P27", false);
-      marker.userData.phase = i / 18;
-      shredFeedMarkers.push(marker);
+    // ICSH-301 파쇄 입자 거동.
+    // 종전에는 마커 18개가 곡선의 y = 3.55(호퍼 위)에서 시작해 패널과 무관하게 계속 돌았다.
+    // 패널이 없어도 호퍼로 뭔가가 떨어지고 있었고, 파쇄가 일어나는 모습도 없었다.
+    // 이제 패널이 호퍼 입으로 삼켜지는 순간에만 파편 묶음을 던지고, 각 파편은 설계 데이터의
+    // 2단 절단을 그대로 거친다 — 상부 X축(Ø420 · 피치 50 mm · 12 rpm)에서 스트립으로,
+    // 하부 Y축(Ø350 · 피치 20 mm · 20 rpm)에서 칩으로 줄고, SCR-001 10 mm 스크린에서
+    // 자기 크기로 갈린다. 오버사이즈 비율은 모델의 TARGET_COARSE_FRACTION 을 따른다.
+    const SHRED_FEED_SIZE_MM = 110;       // 1차 절단 전 판재 조각
+    const SHRED_UPPER_PITCH_MM = 50;      // 상부 X축 커터 피치 — 1차 절단 스트립 폭
+    const SHRED_LOWER_PITCH_MM = 20;      // 하부 Y축 커터 피치 — 2차 절단 칩 크기
+    const SHRED_T_UPPER = 0.286;          // shredFeedCurve 상의 상부축 통과 지점
+    const SHRED_T_LOWER = 0.429;          // 하부축
+    const SHRED_T_SCREEN = 0.571;         // SCR-001 10 mm 스크린
+    // 파편 지름을 실제 비율로 그리면 10 mm 조각이 화면에서 사라진다. 소음 패널의 표시 과장과
+    // 같은 취지로 크기 순서만 유지하는 압축 축척을 쓴다: 110 mm → 0.038, 10 mm → 0.017.
+    const shredFragmentRadius = (mm) => 0.008 + 0.030 * Math.pow(Math.max(1, mm) / SHRED_FEED_SIZE_MM, 0.45);
+    const shredFragments = [];
+    for (let i = 0; i < 44; i += 1) {
+      const mesh = addMesh(shredderFlowGroup, new THREE.TetrahedronGeometry(1, 1),
+        i % 3 === 2 ? material.particleB : i % 2 ? material.mint : material.particleC,
+        { x: 0, y: 0, z: 0 }, null, "P27", false);
+      // 컷어웨이·유동에서 껍데기와 같이 흐려지면 정작 보러 들어간 입자가 안 보인다.
+      mesh.userData.processParticle = true;
+      mesh.visible = false;
+      shredFragments.push({ mesh, alive: false, phase: "feed", t: 0, sizeMm: 0, spin: 0, oversize: false });
     }
-    for (let i = 0; i < 7; i += 1) {
-      const marker = addMesh(shredderFlowGroup, new THREE.TetrahedronGeometry(0.045 + (i % 2) * 0.008, 1), material.coral, { x: 0, y: 0, z: 0 }, null, "P26", false);
-      marker.userData.phase = i / 7;
-      shredReturnMarkers.push(marker);
+    // 파편의 현재 크기 — 지나온 절단 단계가 정한다.
+    function shredFragmentSizeMm(fragment) {
+      if (fragment.phase === "return") return SHRED_LOWER_PITCH_MM * 1.6;
+      if (fragment.t < SHRED_T_UPPER) return fragment.sizeMm;
+      if (fragment.t < SHRED_T_LOWER) return SHRED_UPPER_PITCH_MM * (fragment.sizeMm / SHRED_FEED_SIZE_MM);
+      if (fragment.t < SHRED_T_SCREEN) return SHRED_LOWER_PITCH_MM * (fragment.sizeMm / SHRED_FEED_SIZE_MM);
+      return SHRED_LOWER_PITCH_MM * 0.5 * (fragment.sizeMm / SHRED_FEED_SIZE_MM);
+    }
+    // 패널이 호퍼 입으로 사라지는 순간 호출된다.
+    function spawnShredCharge(originY) {
+      let placed = 0;
+      for (const fragment of shredFragments) {
+        if (fragment.alive || placed >= 11) continue;
+        fragment.alive = true;
+        fragment.phase = "feed";
+        // 시작점은 패널이 실제로 사라진 높이에 맞춘다. 낱장이 한꺼번에 갈리지 않도록 조금씩 흩는다.
+        fragment.t = THREE.MathUtils.clamp(0.10 + (3.30 - originY) * 0.06, 0.06, 0.20) - placed * 0.009;
+        fragment.sizeMm = SHRED_FEED_SIZE_MM * (0.72 + random() * 0.56);
+        fragment.oversize = random() < TARGET_COARSE_FRACTION;
+        fragment.spin = random() * Math.PI * 2;
+        // 위치·크기를 이 자리에서 한 번 잡아 준다. 다음 프레임의 update 를 기다리면 한 프레임
+        // 동안 scale 1(= 반경 1 m) 짜리 사면체가 원점에 번쩍인다.
+        fragment.mesh.position.copy(shredFeedCurve.getPoint(Math.max(0, fragment.t)));
+        fragment.mesh.scale.setScalar(shredFragmentRadius(shredFragmentSizeMm(fragment)));
+        fragment.mesh.visible = true;
+        placed += 1;
+      }
     }
 
     addBox(parts.P01, { x: 5.00, y: 0.12, z: 0.14 }, { x: 0.25, y: 0.06, z: -0.73 }, material.frame, "P01");
@@ -17031,6 +17073,36 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     ]);
     addMesh(parts.P13, new THREE.TubeGeometry(inletCurve, 20, 0.085, 14, false), material.pipeReturn, { x: 0, y: 0, z: 0 }, null, "P13", false);
     addMesh(parts.P13, new THREE.TubeGeometry(dischargeCurve, 28, 0.085, 14, false), material.pipeReturn, { x: 0, y: 0, z: 0 }, null, "P13", false);
+
+    // CV-102 환류 레그의 입자. 스크루는 돌지만 그 안과 토출단에 아무것도 움직이지 않아서
+    // ≥500 µm 조대물이 호퍼로 되돌아가는 것이 화면에서 사라져 있었다(수치상으로는
+    // state.returnFeed 로 계속 돌고 있었다). 인입 슈트 → 스크루 나선 → 토출 슈트를 한
+    // 경로로 묶어 마커를 태운다. 스크루 구간에서는 나선을 그리며 밀려간다.
+    const returnLegMarkers = [];
+    const RETURN_LEG_SCREW_FROM = 0.16;
+    const RETURN_LEG_SCREW_TO = 0.76;
+    const returnLegTangent = screwVector.clone().normalize();
+    const returnLegRadialA = new THREE.Vector3(0, 0, 1).cross(returnLegTangent).normalize();
+    const returnLegRadialB = returnLegTangent.clone().cross(returnLegRadialA).normalize();
+    function returnLegPosition(phase, spin) {
+      if (phase < RETURN_LEG_SCREW_FROM) return inletCurve.getPoint(phase / RETURN_LEG_SCREW_FROM);
+      if (phase < RETURN_LEG_SCREW_TO) {
+        const t = (phase - RETURN_LEG_SCREW_FROM) / (RETURN_LEG_SCREW_TO - RETURN_LEG_SCREW_FROM);
+        const orbit = spin + t * Math.PI * 6;
+        return screwStart.clone().lerp(screwEnd, t)
+          .addScaledVector(returnLegRadialA, Math.cos(orbit) * 0.040)
+          .addScaledVector(returnLegRadialB, Math.sin(orbit) * 0.040);
+      }
+      return dischargeCurve.getPoint((phase - RETURN_LEG_SCREW_TO) / (1 - RETURN_LEG_SCREW_TO));
+    }
+    for (let i = 0; i < 9; i += 1) {
+      const marker = addMesh(parts.P13, new THREE.TetrahedronGeometry(0.024 + (i % 3) * 0.005, 1),
+        material.returnFlow, { x: 0, y: 0, z: 0 }, null, "P13", false);
+      marker.userData.phase = i / 9;
+      marker.userData.spin = i * 0.7;
+      marker.userData.processParticle = true;
+      returnLegMarkers.push(marker);
+    }
 
     [0.30, 0.66].forEach((ratio) => {
       const point = screwStart.clone().lerp(screwEnd, ratio);
@@ -18825,8 +18897,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       shredAntiBridgeShaft.rotation.x = 0;
       shredReturnRotor.rotation.y = 0;
       shredProductRotor.rotation.y = 0;
-      shredFeedMarkers.forEach((marker, index) => { marker.userData.phase = index / shredFeedMarkers.length; });
-      shredReturnMarkers.forEach((marker, index) => { marker.userData.phase = index / shredReturnMarkers.length; });
+      shredFragments.forEach((fragment) => { fragment.alive = false; fragment.mesh.visible = false; });
+      returnLegMarkers.forEach((marker, index) => { marker.userData.phase = index / returnLegMarkers.length; });
       transferScrewRotor.rotation.y = 0;
       returnScrewRotor.rotation.y = 0;
       airlockRotor.rotation.z = 0;
@@ -18916,31 +18988,61 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       const showShredFlow = state.mode === "simulation" || state.mode === "flow";
       const reducedMotion = prefersReducedMotion;
       const shredFlowRunning = shredOn && dt > 0;
-      // The panels that used to be posed here are now delivered by the CV-001 conveyor,
-      // which shows them arriving from a visible origin instead of materialising above
-      // the hopper. The old geometry and its pose maths are gone.
+      // 파편은 CV-001 이 패널을 호퍼에 떨어뜨릴 때만 생긴다 — 종전처럼 상시 흐르지 않는다.
       shredderFlowGroup.visible = showShredFlow;
-      if (showShredFlow && shredFlowRunning && !reducedMotion) {
-        shredFeedMarkers.forEach((marker) => {
-          marker.userData.phase = (marker.userData.phase + dt * 0.16) % 1;
-          marker.position.copy(shredFeedCurve.getPoint(marker.userData.phase));
-          marker.rotation.x += dt * 2.1;
-          marker.rotation.z += dt * 1.7;
-        });
-        shredReturnMarkers.forEach((marker) => {
-          marker.userData.phase = (marker.userData.phase + dt * 0.12) % 1;
-          marker.position.copy(shredReturnCurve.getPoint(marker.userData.phase));
-          marker.rotation.y += dt * 2.4;
-        });
-      }
+      if (showShredFlow && shredFlowRunning && !reducedMotion) updateShredFragments(dt);
       transferScrewRotor.rotation.y += shaftRadians(TRANSFER_SCREW_RPM, conveyDt);
       returnScrewRotor.rotation.y += shaftRadians(RETURN_SCREW_RPM, conveyDt);
+      // CV-102 환류 레그는 리턴스크루와 같은 게이트로 흐른다.
+      if (conveyOn && dt > 0 && !reducedMotion) updateReturnLegMarkers(dt);
       const dustDt = dustOn ? dt : 0;
       airlockRotor.rotation.z -= Math.PI * 2 * 18 / 60 * dustDt;
       rv102Rotor.rotation.z -= Math.PI * 2 * 10 / 60 * dustDt;
       inducedFanRotor.rotation.z += shaftRadians(DRIVE_RPM.inducedFan, dustDt);
       updateAirflowMarkers(dustDt);
       updateBeltSegments();
+    }
+
+    function updateShredFragments(dt) {
+      shredFragments.forEach((fragment) => {
+        if (!fragment.alive) { fragment.mesh.visible = false; return; }
+        fragment.t += dt * (fragment.phase === "return" ? 0.14 : 0.17);
+        if (fragment.phase === "feed" && fragment.oversize && fragment.t >= SHRED_T_SCREEN) {
+          // SCR-001 에서 10 mm 를 넘긴 조각은 SCV-R1 로 빠져 호퍼로 되돌아간다.
+          fragment.phase = "return";
+          fragment.t = 0;
+        }
+        if (fragment.t >= 1) {
+          if (fragment.phase === "return") {
+            // 되돌아와 다시 절단을 받는다 — 두 번째 통과는 이미 작아져 있으므로 오버사이즈 확률도 낮다.
+            fragment.phase = "feed";
+            fragment.t = SHRED_T_UPPER - 0.06;
+            fragment.oversize = random() < TARGET_COARSE_FRACTION * 0.5;
+            fragment.sizeMm = SHRED_FEED_SIZE_MM * (0.36 + random() * 0.22);
+          } else {
+            fragment.alive = false;
+            fragment.mesh.visible = false;
+            return;
+          }
+        }
+        const curve = fragment.phase === "return" ? shredReturnCurve : shredFeedCurve;
+        fragment.mesh.position.copy(curve.getPoint(Math.min(1, Math.max(0, fragment.t))));
+        fragment.mesh.scale.setScalar(shredFragmentRadius(shredFragmentSizeMm(fragment)));
+        // 절단축을 지나는 순간에만 크게 튄다 — 나머지 구간은 이송에 실려 흐른다.
+        const atCut = Math.min(Math.abs(fragment.t - SHRED_T_UPPER), Math.abs(fragment.t - SHRED_T_LOWER)) < 0.035;
+        fragment.mesh.rotation.x += dt * (atCut ? 11 : 2.4);
+        fragment.mesh.rotation.z += dt * (atCut ? 8 : 1.7) + (atCut ? Math.sin(fragment.spin) * dt * 3 : 0);
+        fragment.mesh.visible = true;
+      });
+    }
+
+    function updateReturnLegMarkers(dt) {
+      returnLegMarkers.forEach((marker) => {
+        marker.userData.phase = (marker.userData.phase + dt * 0.13) % 1;
+        marker.position.copy(returnLegPosition(marker.userData.phase, marker.userData.spin));
+        marker.rotation.x += dt * 2.6;
+        marker.rotation.y += dt * 1.9;
+      });
     }
 
     function updateAirflowMarkers(dt) {
@@ -19397,6 +19499,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         parent = link;
       }
       carrier.userData.phase = i / PANEL_COUNT;
+      // true 로 시작해야 로드 직후 호퍼 아래에 놓인 낱장이 「방금 삼켜졌다」로 오인돼
+      // 파쇄 장입을 던지지 않는다. 실제 하강을 한 번 거친 뒤에만 전이가 잡힌다.
+      carrier.userData.swallowed = true;
       carrier.userData.links = links;
       feedPanels.push(carrier);
     }
@@ -19463,7 +19568,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         });
         // Gone once the trailing edge is below the rim: by then the vertical sheet hangs
         // 1.4 m further down, well into the throat, and the hopper wall hides it anyway.
-        carrier.visible = carrier.position.y > HOPPER_RIM_Y - 0.30;
+        const swallowed = carrier.position.y <= HOPPER_RIM_Y - 0.30;
+        // 사라지는 그 프레임에 파쇄 장입을 던진다. 파편이 패널과 무관하게 상시 흐르던 것을
+        // 실제 투입 사건에 묶는 지점이다.
+        // 슈레더가 실제로 돌 때만 장입한다 — 정지 중에 삼켜진 낱장으로 파편이 쌓이면
+        // 기동하지도 않은 기계 안에서 파쇄가 진행되는 것처럼 보인다.
+        if (swallowed && !carrier.userData.swallowed && dryDriveOn(3)) spawnShredCharge(carrier.position.y);
+        carrier.userData.swallowed = swallowed;
+        carrier.visible = !swallowed;
       });
     }
 
@@ -19598,7 +19710,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         const shellOpacity = THREE.MathUtils.lerp(1.0, 0.08, depth);
         const internalOpacity = THREE.MathUtils.lerp(1.0, 0.34, depth);
         forEachCutawayMesh((object) => {
-          if (object.userData.wearSpool) return;   // 세라믹 스풀·플랜지는 고스팅 제외
+          // 세라믹 스풀·플랜지와 공정 입자는 고스팅에서 제외한다 — 둘 다 보러 들어가는 대상이다.
+          if (object.userData.wearSpool || object.userData.processParticle) return;
           const isInternal = (object.material.userData.baseOpacity ?? 1) < 0.8;
           setMeshOpacity(object, isInternal ? internalOpacity : shellOpacity);
         });
