@@ -1418,7 +1418,7 @@ html>body{padding:0}</style>
         </div>
       </div>
       <div class="hsg3d-tour-bar" data-tour-bar hidden>
-        <span class="hsg3d-tour-step tabular-nums" data-tour-step>1/12</span>
+        <span class="hsg3d-tour-step tabular-nums" data-tour-step>1/14</span>
         <span class="hsg3d-tour-caption" data-tour-caption aria-live="polite"></span>
       </div>
       <div class="hsg3d-visually-hidden" role="status" aria-live="polite" data-plant-live-status></div>
@@ -15647,11 +15647,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       });
       zones.forEach(([s, e]) => {
         const sub = new THREE.CatmullRomCurve3(points.slice(s, e + 1));
-        addMesh(parent, new THREE.TubeGeometry(sub, Math.max(8, e - s), radius + 0.008, 18, false), material.pipeCeramic, { x: 0, y: 0, z: 0 }, null, partId, false);
+        // 유동·컷어웨이 모드가 플랜트를 고스팅해도 스풀은 그대로 둔다 — 마모 설계의 대상이라
+        // 투어에서 보여야 하고, 얇은 배관이라 뒤를 가리지도 않는다.
+        const sleeve = addMesh(parent, new THREE.TubeGeometry(sub, Math.max(8, e - s), radius + 0.008, 18, false), material.pipeCeramic, { x: 0, y: 0, z: 0 }, null, partId, false);
+        sleeve.userData.wearSpool = true;
         [s, e].forEach((idx) => {
           const tangent = points[Math.min(idx + 1, points.length - 1)].clone().sub(points[Math.max(idx - 1, 0)]).normalize();
           const flange = addMesh(parent, new THREE.TorusGeometry(radius + 0.014, 0.011, 10, 28), material.silverClamp, points[idx], null, partId, false);
           flange.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tangent);
+          flange.userData.wearSpool = true;
         });
       });
       wearSpoolZones[partId] = zones.map(([s, e]) => ({ fromM: +(s * ds).toFixed(3), toM: +(e * ds).toFixed(3), lengthM: +((e - s) * ds).toFixed(3), bends: raw.filter(([bs, be]) => bs >= s && be <= e).length }));
@@ -19492,6 +19496,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         const shellOpacity = THREE.MathUtils.lerp(1.0, 0.08, depth);
         const internalOpacity = THREE.MathUtils.lerp(1.0, 0.34, depth);
         forEachCutawayMesh((object) => {
+          if (object.userData.wearSpool) return;   // 세라믹 스풀·플랜지는 고스팅 제외
           const isInternal = (object.material.userData.baseOpacity ?? 1) < 0.8;
           setMeshOpacity(object, isInternal ? internalOpacity : shellOpacity);
         });
@@ -19963,8 +19968,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         parts: ["P01", "P02", "P03", "P04", "P05", "P06", "P07", "P08", "P09", "P10", "P11"], wet: [] },
       { title: "SC-500 분급 · 500 µm 환류", note: "≥500 µm는 CV-102로 FD-101 환류 · 통과분은 음압이송으로 후단 인계 · CY-101/BF-101 집진",
         parts: ["P12", "P13", "P14", "P15", "P16", "P17"], wet: [] },
+      // 엘보 후류 세라믹 스풀 — 기본 프레임에서는 사이클론·리시버에 가려 보이지 않으므로 배관에
+      // 직접 카메라를 맞춘다 (center · distance 로 프레임 계산을 대신한다).
+      { title: "PC-101 세라믹 스풀 — 엘보 후류 15 D", note: "구멍은 엘보와 그 뒤 직관 1 m(8 D) 안쪽에만 난다 → 상류 1 D＋엘보＋하류 15 D 를 한 라이닝 단위로 · 보어 137 (DN150 셸＋8 mm 알루미나) · 17 m/s · 두 엘보 사이가 5 D 뿐이라 전 구간 라이닝",
+        parts: ["P15"], wet: [], center: [0.70, 1.15, 0.30], distance: 2.6, yaw: 2.30, pitch: 0.28 },
       { title: "SV-201 3단 Sheeve 선별", note: "밀폐 CH-501→RV-201→PC-201 음압리프트 → VS-501 → 280–500 / 106–280 / 75–106 µm 분리",
         parts: ["P18", "P19"], wet: [] },
+      { title: "PC-201 세라믹 스풀 — 라이저 한 스풀", note: "DN100 은 1 m 가 곧 10 D · RV-201 뒤 엘보＋라이저 전체(15 D)를 한 스풀로 · 보어 103 (DN125 셸＋12 mm 알루미나) · 11.7 m/s 유지 · 픽업 티만 맨 강관",
+        parts: ["P18"], wet: [], center: [2.36, 0.45, -0.10], distance: 3.2, yaw: 2.35, pitch: 0.18 },
       { title: "CC-201 공기분급 · SS-201 75 µm", note: "0.70–1.00 m/s 중량물/경량물 분리 → CY-201·BF-201 회수 → SS-201에서 ≥75 재처리 / <75 최종",
         parts: ["P20", "P21", "P22"], wet: [] },
       { title: "AS-101 어트리션 스크러버", note: "<75 µm 습식 인계 후 TK-101 → BS-101A/B → AS-101 600 rpm 고전단 스크러빙 · 비드 보충",
@@ -20025,6 +20036,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         yaw = 0.72;
         pitch = 0.34;
         fitWholeMachine(1.10);
+        return;
+      }
+      if (stage.center) {
+        cameraTarget.set(stage.center[0], stage.center[1], stage.center[2]);
+        distance = stage.distance ?? 3.0;
+        yaw = stage.yaw ?? 0.72;
+        pitch = stage.pitch ?? 0.30;
+        updateCamera();
         return;
       }
       const box = tourBox(stage);
