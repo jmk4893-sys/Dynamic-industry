@@ -1084,6 +1084,7 @@ html>body{padding:0}</style>
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.slurry { background: var(--plant-slurry); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.air { background: var(--plant-air); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.ceramic { background: var(--plant-ceramic); }
+  .hsg3d-elbow-figure { max-width: 760px; margin: 0.5rem 0 1rem; padding: 0.75rem 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 6px; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.reagent { background: var(--plant-reagent); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.concentrate { background: var(--plant-concentrate); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.tailings { background: var(--plant-tailings); }
@@ -1430,7 +1431,7 @@ html>body{padding:0}</style>
         <span><i class="hsg3d-flow-dot fresh"></i>L00 · PV 라미네이트 패널 장변 수직 하향 투입(평균 60장/h) → ICSH-301 상부 X축·하부 Y축 파쇄 → SCR-001 · 300 kg/h</span>
         <span><i class="hsg3d-flow-dot recycle"></i>L00-R · &gt;10 mm → SCV-R1 밀폐 반송 → 슈레더 호퍼 재투입</span>
         <span><i class="hsg3d-flow-dot band500"></i>L00-P · ≤10 mm → SCV-P1 밀폐 정량이송 → FD-101/HSG-101</span>
-        <span><i class="hsg3d-flow-dot fresh"></i>L01 · HSG 하부 플리넘 → CV-101 → PC-101 DN125 → CY-101 → RV-101 → SC-500 · 400 kg/h</span>
+        <span><i class="hsg3d-flow-dot fresh"></i>L01 · HSG 하부 플리넘 → CV-101 → PC-101 보어137 세라믹 스풀 → CY-101 → RV-101 → SC-500 · 400 kg/h</span>
         <span><i class="hsg3d-flow-dot recycle"></i>L02 · SC-500 잔류 ≥500 µm → CV-102 → FD-101 환류 · 약 100 kg/h</span>
         <span><i class="hsg3d-flow-dot band500"></i>L03 · SC-500 통과 → 밀폐 CH-501 → RV-201 → PC-201 음압리프트 → 리시버 에어록 → VS-501 → 밀폐 하향슈트 → SV-201</span>
         <span><i class="hsg3d-flow-dot band280"></i>SV-201 원형 3단: 280–500 / 106–280 / 75–106 µm</span>
@@ -1454,7 +1455,7 @@ html>body{padding:0}</style>
         <span>형상 <b data-hsg-shape>Feret — · AR — · 편평도 — · 구형도 —</b></span>
         <span>재료 <b data-hsg-material-state>부착 — · 탈락 — · Si — · EVA — · 계면 — · BS —</b></span>
         <span>보존 <b data-hsg-closure>질량 Δ — kg · 에너지 잔차 —%</b></span>
-        <span>음압이송 <b>PT-101 −220 Pa · DN125 20.4 m/s · 900 m³/h</b></span>
+        <span>음압이송 <b>PT-101 −220 Pa · 보어 137 mm 17.0 m/s · 900 m³/h</b></span>
         <span>스크린 <b data-hsg-screen-state>12° · 25 Hz · 3.0 mm p-p · 화면 감속·확대</b></span>
         <span>구간별 누적 <b data-hsg-screen-streams>280–500 0.0 · 106–280 0.0 · SS ≥75 재처리 0.0 · SS &lt;75 최종 0.0 kg</b></span>
         <span>SS-201 최종제품 <b data-hsg-ss-final-psd>D95 — · Dmax &lt;0.075 mm</b></span>
@@ -1618,7 +1619,7 @@ html>body{padding:0}</style>
           <tr><th>Rev.P 파쇄커널</th><td>B계 백시트 박편의 4번째 파쇄비 0.480→0.455 재보정 · 시드 고정 동적 시험으로 strict 500 µm 컷과 질량폐합을 동시 검증</td></tr>
           <tr><th>분쇄기 통과량</th><td>신규 최대 300 kg/h · SC-500＋SS-201 합산환류 포함 HSG 총부하 400 kg/h 이하</td></tr>
           <tr><th>CV-101 이송용량</th><td>약 <span data-hsg-transfer-capacity>—</span> kg/h · 요구량 대비 <span data-hsg-transfer-margin>—</span>% 여유 · 벌크밀도 350 kg/m³·충전율 18%·경사보정 0.85 가정</td></tr>
-          <tr><th>음압이송 설계점</th><td>DN125 · 900 m³/h · 관내속도 <span data-hsg-duct-velocity>—</span> m/s · 정상 하우징압 −150~−300 Pa</td></tr>
+          <tr><th>음압이송 설계점</th><td>보어 137 mm (DN150 t6.0 셸＋8 mm 알루미나) · 900 m³/h · 관내속도 <span data-hsg-duct-velocity>—</span> m/s · 정상 하우징압 −150~−300 Pa</td></tr>
           <tr><th>배관 연결순서</th><td>L01 분쇄물 음압이송 → L02 500 µm 환류 → L03 &lt;500 µm 후단선별 → L04 공기분급 투입 → L05 청정가스·배기 → L06 75 µm 마감 → L07 국소집진·필터회분 회수</td></tr>
           <tr><th>ID 팬·압력여유</th><td>BF-101 후단 5.5 kW VFD · 최대 −6.0 kPa · 정상 추정손실 <span data-hsg-pressure-drop>—</span> kPa · 실측 차압으로 보정</td></tr>
           <tr><th>리턴스크류 예비용량</th><td>약 <span data-hsg-return-capacity>—</span> kg/h · 요구량 대비 <span data-hsg-return-margin>—</span>% 여유 · 벌크밀도 350 kg/m³·충전율 15%·경사보정 0.60 가정</td></tr>
@@ -1870,10 +1871,11 @@ html>body{padding:0}</style>
       <tbody>
         <tr><td class="text-end">24 m/s</td><td class="text-end">1.50</td><td class="text-end">1.63</td><td>—</td></tr>
         <tr><td class="text-end">22 m/s</td><td class="text-end">1.21</td><td class="text-end">1.25</td><td>—</td></tr>
-        <tr><td class="text-end"><strong>20.4 m/s</strong></td><td class="text-end"><strong>1.00</strong></td><td class="text-end"><strong>1.00</strong></td><td class="dd-warning">현재 설계 (PC-101 DN125 · 900 m³/h)</td></tr>
+        <tr><td class="text-end"><strong>20.4 m/s</strong></td><td class="text-end"><strong>1.00</strong></td><td class="text-end"><strong>1.00</strong></td><td class="dd-warning">종전 DN125 · 900 m³/h — 현장 현행</td></tr>
         <tr><td class="text-end">18 m/s</td><td class="text-end">0.73</td><td class="text-end">0.69</td><td>—</td></tr>
-        <tr><td class="text-end">17 m/s</td><td class="text-end">0.63</td><td class="text-end">0.58</td><td>권장 — 마모 약 42% 감소 · <strong>DN150 으로 증경</strong> (필요 내경 137 mm)</td></tr>
-        <tr><td class="text-end">15 m/s</td><td class="text-end">0.46</td><td class="text-end">0.40</td><td class="dd-warning">희박상 하한 근처 · 퇴적·폐색 위험</td></tr>
+        <tr><td class="text-end"><strong>17 m/s</strong></td><td class="text-end">0.63</td><td class="text-end">0.58</td><td><strong>DD-R4 설계</strong> — 마모 약 38–42% 감소 · <strong>보어 137 mm = DN150 t6.0 셸＋8 mm 알루미나</strong>, 전 피스 동일 보어</td></tr>
+        <tr><td class="text-end">15 m/s</td><td class="text-end">0.46</td><td class="text-end">0.40</td><td class="dd-warning">희박상 하한 — 1 mm 유리 살테이션 7.7 m/s 의 1.9배 · 퇴적·폐색 위험</td></tr>
+        <tr><td class="text-end">13.6 m/s</td><td class="text-end">0.36</td><td class="text-end">0.30</td><td class="dd-warning">맨 DN150 t6.0 (내경 153) — 하한 아래 · <strong>라이닝 없는 DN150 은 한 스풀도 섞지 말 것</strong> (8 mm 단차＋속도 급락)</td></tr>
       </tbody>
     </table></div>
 
@@ -1894,7 +1896,8 @@ html>body{padding:0}</style>
     <div class="table-responsive"><table class="table table-sm" aria-label="계통별 배관 재질">
       <thead><tr><th>계통</th><th>유체·입자</th><th>운전온도</th><th>직관</th><th>엘보·티</th><th>근거</th></tr></thead>
       <tbody>
-        <tr><td>PC-101 / PC-201 음압 이송</td><td class="dd-warning">건식 유리·실리콘 ≤500 µm · 17–20 m/s</td><td>≤45 °C (냉각 후)</td><td>SS400 / SM400 강관 t6.0</td><td class="dd-warning"><strong>알루미나 세라믹 라이닝 장반경</strong> R/D≥5</td><td>고속·예리한 유리 · 우레탄으로는 수명 부족</td></tr>
+        <tr><td>PC-101 음압 이송 (HSG → CY-101)</td><td class="dd-warning">건식 유리·실리콘 ≤1.0 mm (25 % 가 0.5–1 mm) · 17 m/s</td><td>≤45 °C (냉각 후)</td><td class="dd-warning"><strong>DN150 t6.0 강관 셸＋8 mm 95 % 알루미나</strong> · 보어 137 · <strong>전 구간</strong></td><td class="dd-warning">동일 라이닝 <strong>R/D 5</strong> 세그먼트 링 · 엘보＋하류 스풀 한 단위</td><td>엘보 간격 0.7–5 D 라 전 구간이 후류 마모대 · 우레탄 금지</td></tr>
+        <tr><td>PC-201 음압 리프트 (RV-201 → SV-010)</td><td>건식 ≤500 µm · 11.7 m/s · 적재비 0.7</td><td>≤45 °C</td><td>라이저: <strong>DN125 t6.0 셸＋12 mm 알루미나</strong> 보어 103 (1차 UT 후 확정) · 픽업 티만 맨 SS400 t6.0</td><td>동일 라이닝 R/D 5 · 리시버 입구 접선 180° 타일 밴드</td><td>DN100 셸에 라이닝하면 보어 90 → 15.3 m/s 로 마모 2배</td></tr>
         <tr><td>SCV-R1/P1 밀폐 스크루 슈트</td><td>건식 ≤10 mm 파쇄물 · 저속</td><td>≤60 °C</td><td>SS400 + <strong>Hardox 450 라이너</strong></td><td>세라믹 타일 국부 부착</td><td>덩어리 충격 — 세라믹 전면 라이닝은 파손</td></tr>
         <tr><td>CC-201 공기분급 덕트</td><td>건식 미분 · 중속</td><td>≤45 °C</td><td>SS400 강관</td><td>장반경 + 세라믹 힐 패치</td><td>미분이라 마모 완화</td></tr>
         <tr><td>BF/IDF 청정가스 덕트</td><td>청정공기 · 잔류 미분</td><td>≤45 °C</td><td>SS400 강관</td><td>장반경 강관</td><td>고형분 거의 없음 · 라이닝 불필요</td></tr>
@@ -1928,6 +1931,89 @@ html>body{padding:0}</style>
       <li>교체 시 <strong>스풀 단위 예비품</strong>을 보유해 정지시간을 최소화 (엘보 현장 절단·용접 금지 — 내경 단차 재발)</li>
     </ul>
 
+    <strong>⑥ 현장 진단 — 구멍이 「엘보＋뒤 1 m」에만 나는 이유</strong>
+    <p class="text-small">현장 회신: 구멍은 엘보 힐과 그 뒤 직관 <strong>1 m 안쪽</strong>에만 나고 직관 중간은 멀쩡하다. 1 m 는 DN125 의 <strong>8 D</strong>, DN100 의 <strong>10 D</strong> —
+      문헌의 「엘보 하류 10 D 마모대」와 「입자 다발 해체 10 D」에 정확히 들어온다. 재질 불량이 아니라 희박상 이송의 교과서적 엘보 마모 서명이다.</p>
+    <div class="hsg3d-elbow-figure"><svg viewBox="0 0 720 380" role="img" aria-label="엘보 후류 재충돌 구간과 세라믹 스풀 범위" style="width:100%;height:auto;display:block">
+<path d="M40 320 H320 A40 40 0 0 0 360 280 V15" fill="none" stroke="var(--plant-neutral-metal)" stroke-width="22" stroke-linecap="butt"/>
+<path d="M40 320 H320 A40 40 0 0 0 360 280 V15" fill="none" stroke="#fff" stroke-opacity="0.55" stroke-width="16" />
+<path d="M304 320 H320 A40 40 0 0 0 360 280 V40" fill="none" stroke="var(--plant-ceramic)" stroke-width="16" />
+<rect x="301" y="304.0" width="6" height="32" fill="var(--foreground)" opacity="0.8"/>
+<rect x="344.0" y="37" width="32" height="6" fill="var(--foreground)" opacity="0.8"/>
+<path d="M240 325.0 H320 A45.0 45.0 0 0 0 365.0 280 V240.0" fill="none" stroke="var(--plant-return)" stroke-width="5" stroke-dasharray="7 4" stroke-linecap="round"/>
+<line x1="364" y1="266.0" x2="354.0" y2="240.0" stroke="var(--plant-return)" stroke-width="2.2" marker-end="url(#arr)"/>
+<line x1="356" y1="242" x2="366.0" y2="216" stroke="var(--plant-return)" stroke-width="2.2" marker-end="url(#arr)"/>
+<line x1="364" y1="218.0" x2="354.0" y2="192.0" stroke="var(--plant-return)" stroke-width="2.2" marker-end="url(#arr)"/>
+<line x1="356" y1="194" x2="366.0" y2="168" stroke="var(--plant-return)" stroke-width="2.2" marker-end="url(#arr)"/>
+<defs><marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L8 4L0 8z" fill="var(--plant-return)"/></marker></defs>
+<circle cx="372.0" cy="294" r="6" fill="none" stroke="var(--plant-return)" stroke-width="2.5"/><circle cx="372.0" cy="294" r="2" fill="var(--plant-return)"/>
+<circle cx="372.0" cy="244.8" r="6" fill="none" stroke="var(--plant-return)" stroke-width="2.5"/><circle cx="372.0" cy="244.8" r="2" fill="var(--plant-return)"/>
+<circle cx="348.0" cy="216.0" r="6" fill="none" stroke="var(--plant-return)" stroke-width="2.5"/><circle cx="348.0" cy="216.0" r="2" fill="var(--plant-return)"/>
+<circle cx="372.0" cy="184.0" r="6" fill="none" stroke="var(--plant-return)" stroke-width="2.5"/><circle cx="372.0" cy="184.0" r="2" fill="var(--plant-return)"/>
+<line x1="390.0" y1="280" x2="402.0" y2="280" stroke="var(--muted-foreground)" stroke-width="1.2"/>
+<text x="408.0" y="284" fill="var(--muted-foreground)" font-size="11" font-family="ui-monospace,monospace">0 D</text>
+<line x1="390.0" y1="200" x2="402.0" y2="200" stroke="var(--muted-foreground)" stroke-width="1.2"/>
+<text x="408.0" y="204" fill="var(--muted-foreground)" font-size="11" font-family="ui-monospace,monospace">5 D</text>
+<line x1="390.0" y1="120" x2="402.0" y2="120" stroke="var(--muted-foreground)" stroke-width="1.2"/>
+<text x="408.0" y="124" fill="var(--muted-foreground)" font-size="11" font-family="ui-monospace,monospace">10 D</text>
+<line x1="390.0" y1="40" x2="402.0" y2="40" stroke="var(--muted-foreground)" stroke-width="1.2"/>
+<text x="408.0" y="44" fill="var(--muted-foreground)" font-size="11" font-family="ui-monospace,monospace">15 D</text>
+<line x1="396.0" y1="280" x2="396.0" y2="40" stroke="var(--muted-foreground)" stroke-width="1.2"/>
+<text x="40" y="298" fill="var(--foreground)" font-size="12.5" font-weight="600">흐름 →</text>
+<text x="40" y="356" fill="var(--muted-foreground)" font-size="11.5">맨 강관 직관 — 중간 구간엔 구멍이 안 난다 (현장 관찰과 일치)</text>
+<text x="450" y="68.80000000000001" fill="var(--foreground)" font-size="12.5" font-weight="600">세라믹 스풀 범위</text>
+<text x="450" y="85.80000000000001" fill="var(--muted-foreground)" font-size="11.5">엘보 상류 1 D → 엘보 → 하류 15 D 를 한 단위로</text>
+<text x="450" y="101.80000000000001" fill="var(--muted-foreground)" font-size="11.5">플랜지 접속 · 보어 정합 ±1 mm · 스풀 단위 교체</text>
+<text x="450" y="161.6" fill="var(--plant-return)" font-size="12.5" font-weight="600">재충돌 구간 2–8 D</text>
+<text x="450" y="178.6" fill="var(--muted-foreground)" font-size="11.5">외측 벽에 뭉친 입자 다발이 흩어지며 양쪽 벽을</text>
+<text x="450" y="194.6" fill="var(--muted-foreground)" font-size="11.5">다시 때린다 — 「엘보 뒤 1 m」 구멍의 원인</text>
+<text x="450" y="251.2" fill="var(--plant-return)" font-size="12.5" font-weight="600">엘보 외측 힐 — 1차 충돌</text>
+<text x="450" y="268.2" fill="var(--muted-foreground)" font-size="11.5">연성 강관은 충돌각 20–30° 에서 최대 침식</text>
+<text x="450" y="284.2" fill="var(--muted-foreground)" font-size="11.5">○ = 현장 구멍 위치 (엘보＋뒤 1 m 안쪽)</text>
+</svg></div>
+    <div class="table-responsive"><table class="table table-sm" aria-label="엘보 후류 마모 기전">
+      <thead><tr><th>기전</th><th>위치</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td>① 힐 1차 충돌</td><td>엘보 45–60° 익스트라도스</td><td>R/D 1.5 충돌각 30° = 연성강 최대 침식각 · 엘보 마모 ≈ 직관의 50배</td></tr>
+        <tr><td>② 자국이 램프가 됨</td><td>엘보 출구 → 하류</td><td>파인 자국이 흐름을 하류 벽으로 편향 — 두꺼운 엘보·웨어백 엘보는 구멍을 <strong>하류로 옮길 뿐</strong> (Mills · Fuller 특허)</td></tr>
+        <tr><td>③ 2차 충돌 · 딘 와류</td><td>출구 0–1 D 익스트라도스 · <strong>측벽 1–6 D</strong></td><td>튕긴 입자의 V 자국 + 두 역회전 와류가 다발을 측벽으로 밀어냄</td></tr>
+        <tr><td>④ 다발(rope) 재가속·해체</td><td>익스트라도스 0–10 D · 굵은 입자는 <strong>반대편 벽 6–11 D</strong> · V→H 뒤 바닥 5–15 D</td><td>출구 속도 0.8× · 재가속 20 D · 성층 잔류 25 D · 500 µm 유리는 St ≫ 1 로 탄도 궤적</td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small"><strong>처방 — 라이닝 단위를 「상류 1 D ＋ 엘보 ＋ 하류 ≥10 D(설계 15 D)」로 잡고, 구간이 짧으면 다음 피팅까지 전부.</strong>
+      PC-101 은 두 엘보 사이가 0.7–5 D 뿐이라 <strong>전 구간</strong>, PC-201 은 <strong>라이저 전체</strong>가 한 스풀이다. ③·④ 때문에 부분 라이닝(익스트라도스만)은 인트라도스·측벽 관통 경로를 남기므로 <strong>360°</strong> 만 허용한다.
+      강관은 압력 몸체로 그대로 남고, 우레탄은 60 °C 한계와 예리한 유리 때문에 건식 라인에 쓰지 않는다. 속도 20.4→17 m/s 는 ×0.62 의 보조 수단이지 해법이 아니다.</p>
+    <div class="table-responsive"><table class="table table-sm" aria-label="라이닝 스풀 사양">
+      <thead><tr><th>항목</th><th>PC-101</th><th>PC-201</th></tr></thead>
+      <tbody>
+        <tr><td>보어 · 셸 · 라이너</td><td><strong>137 ±1 mm</strong> · DN150 t6.0 · 8 mm 95 % 알루미나 (HRA ≥85) — 엘보도 8 mm 로 통일해 보어 단차 0</td><td><strong>103 ±1 mm</strong> · DN125 t6.0 · 12 mm 알루미나 — DN100 t6 픽업 티(102.3)와 정합</td></tr>
+        <tr><td>엘보</td><td>R/D 5 (R 685) · 30–60 mm 세그먼트 링, 육각 타일 금지 · B1→B2 동일 평면 U 루트 (다발이 B2 익스트라도스로 들어오게)</td><td>R/D 5 (R 515) 또는 공간 부족 시 R/D 3 (R 309) · B3 = B4 동일 품번</td></tr>
+        <tr><td>세라믹의 각도 법칙</td><td colspan="2">취성 라이너 마모 ∝ (v·sin α)<sup>2.5–3</sup> — R/D 3 은 R/D 5 의 약 <strong>2배</strong>, 다발이 인트라도스로 들어오면 약 5배. <strong>세라믹으로 바꾸면 반경과 루트 방향이 덜 중요해지는 게 아니라 더 중요해진다.</strong></td></tr>
+        <tr><td>라이닝 길이</td><td>10 D = 1.37 m · 15 D = 2.06 m → 라이저 0.65 m·수평 &lt;0.5 m 이므로 <strong>100 %</strong> (5 플랜지 쌍)</td><td>10 D = 1.03 m · 15 D = 1.54 m → 라이저 1.24–1.65 m <strong>한 스풀</strong> + B4 + 스텁 0.2–0.3 m</td></tr>
+        <tr><td>접속</td><td colspan="2">JIS 10K 플랜지 (DN100/125/150 모두 8홀 → <strong>45° 회전 인덱싱</strong>) · 보어 공차 +1/−0 mm, 흐름 방향 확장만 · 개스킷 내경 = 보어＋2–3 mm · 엘보 20 D 이내 그루브 커플링·현장 절단 금지 · 접착제 2액 에폭시 ≥120 °C · 모든 플랜지에 본딩 점퍼</td></tr>
+        <tr><td>연장 구간</td><td>CY-101 입구 스크롤·배럴 첫 270° 타일 10–12 mm · <strong>콘·에이펙스</strong>는 다발이 재집중되는 곳 — 라이닝 또는 교체형 마모부품</td><td>SV-010 리시버 입구 접선점에서 <strong>180° 타일 밴드</strong> (반대편 플레이트가 아님 — 접선 유입)</td></tr>
+        <tr><td>수명 추정</td><td colspan="2">맨 강관 핫스팟 (DNV RP-O501, 입자속도 보정) 기존 PC-101 20.4 m/s: 200 µm 0.36 · 500 µm 0.15 · 1 mm 0.06 mm/day → <strong>t6 관통 17–100 일</strong>(24 h) = 8 h/d 기준 50–300 일. 알루미나 8 mm 10–40×: <strong>0.9–4.4 년</strong> (24/7), 현장 하한 3–4 개월(HammerTek 실리카) → 첫 점검 3개월</td></tr>
+      </tbody>
+    </table></div>
+    <strong>지금 당장 — 기존 강관 라인에서 이번 달에 할 일</strong>
+    <ul class="text-small">
+      <li><strong>구멍 위치를 기록</strong>하고 나서 폐기 — 시계 방향(익스트라도스 12시 / 측벽 3·9시 / 인트라도스·바닥 6시), 출구 플랜지에서 거리, 관통까지 운전시간, 관통 시 두께. 세 기전(플랜지 단차 · 다발 · 탄도 반동) 중 어느 것인지 가리는 <strong>유일한 데이터</strong>이며 수명 추정 전부를 교정한다.</li>
+      <li><strong>UT 격자를 첫 달 주 1회</strong> — 엘보 익스트라도스 15/30/45/60/75/90°, 측벽 45·90°, 출구 플랜지＋50 mm 4방향, 하류 1·2·4·6·8·10·15 D × 4방향. 벽 &lt;3 mm(스파이럴 덕트 포함) → 즉시 교체, ≥4.5 mm → 더블러＋주간 UT. 잔여 &lt;2 mm 또는 50 % 에서 퇴역.</li>
+      <li><strong>임시 카트리지</strong> — 향후 라이닝 파트와 같은 위치에 플랜지를 내고, Sch80 엘보＋익스트라도스 AR400 플레이트 10–12 mm, 하류 1.5 m Sch80 스풀에 6–8 mm <strong>360° 외부 더블러</strong>(270° 는 인트라도스 관통 경로를 남긴다), 월 1회 90° 회전. 블라인드 티는 픽업 가스 &lt;50 °C 확인 후 B1/B3 에만, 청소 플랜지 필수.</li>
+      <li>살아있는 구멍은 <strong>볼트 새들 클램프</strong>만 — 용접은 정지·내부 청소·퍼지·화기허가 후. 흡입 라인의 핀홀은 유입 제트가 입자를 끌어들여 스스로 커지고, 진공 손실이 반송속도와 후드 포집을 동시에 떨어뜨린다.</li>
+      <li><strong>VFD 풍량 트림은 하지 말 것</strong> — IDF-101 은 슈레더 DN150 2본·FD-101·SC-500/CH-501 벤트를 함께 끄는 공용 헤더라 17 % 트림이 후드 정압을 31 % 떨어뜨려 PT-101 하한(−150 Pa)을 이탈시키고, HSG 폐회로 1회 통과 ΔT 를 113→136 K 로 올린다. PC-101 속도는 보어 137 로만 정한다.</li>
+      <li><strong>CY-101 입구·SV-010 진공을 매일 기록</strong> — 팬 속도 고정에서 계단형 손실 = 구멍. 흡입 라인에서 가장 싼 구멍 검출기.</li>
+    </ul>
+    <strong>발주 전 게이트 (HOLD)</strong>
+    <ul class="text-small">
+      <li><strong>Kst/MIE 폭발성 시험</strong> — 8–12 mm 절연 알루미나는 접지 강관 위 전파 브러시 방전(IEC TS 60079-32-1) 구성이라, 폭발성이면 정전기 소산형 <strong>SiSiC</strong>(체적저항 인증) 로 바꾼다. 셸 본딩만으로는 라이너 표면 전하를 못 잡는다.</li>
+      <li><strong>참 반경으로 3D 루트를 다시 그린 뒤</strong> 발주 — 다리마다 R＋50 탄젠트＋22 플랜지＋2 개스킷. R/D 5 는 CY-101 을 ≥0.74 m 올려야 하고 R/D 3 은 거의 그대로 들어간다(라이저 관 0.45 m). 이 모델의 곡선은 개략도다.</li>
+      <li><strong>분해 가능 구조</strong> — 스피곳 레지스터 대신 도웰 핀 2개 또는 S1 텔레스코핑 슬리브. 아니면 6개월 90° 회전·B1↔B2 교환·보어스코프가 불가능하다. 45–65 kg 피스마다 리프팅 포인트.</li>
+      <li>텔테일 포트는 회전할 스풀마다 1 D·5 D 에 <strong>4방향</strong>, 시운전 시 유입 기준값 기록 · 스풀마다 1.5× 라인 진공 감쇠 시험.</li>
+      <li>PC-201 라이저 라이닝은 <strong>1차 UT 결과 후 확정</strong> — 11.7 m/s 에서 DN100 Sch80/160 맨 스풀을 분기 90° 회전하는 대안(≈1/5 비용)이 1차 UT 마모율 ≤ 엘보의 1/3 이면 성립.</li>
+    </ul>
+    <p class="text-small dd-warning"><strong>전제 정정.</strong> PC-101 입자 상한은 ≤500 µm 가 아니라 <strong>≤1.0 mm</strong> 다 — HSG-101 의 1.0 mm 슬롯 스크린이 SC-500 상류라 400 kg/h 중 25 % 가 0.5–1 mm. 1 mm 유리의 살테이션(Rizk)은 7.7 m/s 로 17 m/s 는 2.2배(15 m/s 하한은 1.9배)이니 하한 아래로 내리지 말 것.
+      마모율·수명은 DNV 석영 보정값에 입자속도 보정을 넣은 <strong>추정치</strong>이며, 위 현장 데이터(관통 시간·두께)로 교정되기 전까지 조건부다.</p>
     <p class="text-small dd-warning">상대 수명 배수는 업계 경험범위이며 입자 형상·경도·속도·온도에 따라 크게 달라집니다. 실제 적용 전 동일 서비스 실적과 제작사 보증, 그리고 현 라인의 마모 이력(구멍 위치·관통까지의 운전시간)을 대조해 확정하십시오.</p>
   </details>
 
@@ -15223,7 +15309,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     grinder: { title: "02 · HSG-101 고속분쇄기", spec: "400 kg/h · 로터 Ø450 × 350 · 1,500 rpm", primaryPart: "P02", focus: [-0.42, 1.05, 0, 3.8] },
     drive: { title: "03 · M-101 구동장치", spec: "37 kW IE4 · VFD · 풀리 Ø200/196 · 4-SPC", primaryPart: "P08", focus: [0.52, 0.78, -0.28, 3.8] },
     transfer: { title: "04 · CV-101 정량 배출스크류", spec: "400 kg/h · Ø160/P140 · 55 rpm · 1.1 kW · 흡인배관 정량공급", primaryPart: "P14", focus: [0.20, 0.38, 0.12, 3.8] },
-    pneumatic: { title: "05 · PC-101 음압 이송계통", spec: "DN125 · 900 m³/h · CY-101＋RV-101＋BF-101＋5.5 kW ID 팬", primaryPart: "P15", focus: [1.10, 1.52, 0.20, 5.4] },
+    pneumatic: { title: "05 · PC-101 음압 이송계통", spec: "보어 137 알루미나 라이닝 · 900 m³/h · 17 m/s · CY-101＋RV-101＋BF-101＋5.5 kW ID 팬", primaryPart: "P15", focus: [1.10, 1.52, 0.20, 5.4] },
     classifier: { title: "06 · SC-500 500 µm 경사스크린", spec: "W700 × L1400 · 경사 12° · 25 Hz · 3.0 mm p-p · 단일 컷", primaryPart: "P12", focus: [1.48, 0.92, 0, 3.60] },
     return: { title: "07 · CV-102 밀폐형 리턴스크류", spec: "100 kg/h · Ø140/P120 · 45 rpm · 0.75 kW 감속모터", primaryPart: "P13", focus: [0.42, 1.35, -0.20, 5.0] },
     product: { title: "08 · CH-501＋밀폐 Sheeve 후단선별", spec: "CH-501 → RV-201 → PC-201 음압리프트 → VS-501 → 밀폐 중력슈트 → SV-201", primaryPart: "P19", focus: [2.85, 0.65, 0.10, 5.2] },
@@ -15247,10 +15333,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     P12: { name: "SC-500 1단 진동경사스크린", role: "CY-101 회수물 400 kg/h를 500 µm에서 1차 분리하고 조대물만 CV-102로 환류", spec: "W700 × L1400 · 12° · 25 Hz · 3.0 mm p-p · 500 µm", shape: "single-deck" },
     P13: { name: "CV-102 밀폐형 리턴스크류", role: "분급 조대물을 비산 없이 호퍼로 정량 환류", spec: "케이싱 Ø180 · 스크류 Ø140/P120 · L2,400 · 45 rpm · 0.75 kW", shape: "conveyor" },
     P14: { name: "CV-101 정량 배출스크류", role: "하부 플리넘의 혼합입도 400 kg/h를 음압 픽업티에 일정하게 공급", spec: "케이싱 Ø200 · 스크류 Ø160/P140 · L900 · 55 rpm · 1.1 kW VFD", shape: "transfer-conveyor" },
-    P15: { name: "PC-101 DN125 음압 이송배관·CY-101", role: "분쇄물을 접선 흡인해 사이클론 외측 하강와류로 고체를 회수", spec: "DN125 · 900 m³/h · 20.4 m/s · CY-101 Ø500 · 내마모 엘보", shape: "pneumatic-line" },
+    P15: { name: "PC-101 알루미나 라이닝 음압 이송배관·CY-101", role: "분쇄물을 접선 흡인해 사이클론 외측 하강와류로 고체를 회수", spec: "보어 137 (DN150 t6 셸＋8 mm 95% 알루미나) · 900 m³/h · 17 m/s · R/D 5 세라믹 엘보＋후류 스풀 전 구간 · CY-101 Ø500", shape: "pneumatic-line" },
     P16: { name: "RV-101 로터리 에어록", role: "CY-101 하부 고체를 음압 손실 없이 SC-500에 정량 배출", spec: "Ø180 · 6포켓 · 18 rpm · 0.37 kW · 팁 간극 0.15–0.25", shape: "airlock" },
     P17: { name: "BF-101＋RV-102＋B-101＋배기스택", role: "필터 뒤에서 공정을 흡인하고 FD-101 국소집진·필터회분 CH-501 회수를 포함한 밀폐 배관을 구성", spec: "카트리지필터 6본 · 900 m³/h · −6.0 kPa max · 5.5 kW VFD · DN80/65", shape: "blower" },
-    P18: { name: "CH-501＋RV-201＋PC-201 밀폐 이송", role: "SC-500 통과분을 밀폐 집하하고 RV-201 정량공급 후 음압리프트·리시버 에어록으로 VS-501에 비산 없이 이송", spec: "CH 상부 800 × 1500 · RV-201 · PC-201 DN100 · 약 350 m³/h · 정전기방지 유연연결", shape: "collector-round" },
+    P18: { name: "CH-501＋RV-201＋PC-201 밀폐 이송", role: "SC-500 통과분을 밀폐 집하하고 RV-201 정량공급 후 음압리프트·리시버 에어록으로 VS-501에 비산 없이 이송", spec: "CH 상부 800 × 1500 · RV-201 · PC-201 보어 103 (DN125 셸＋12 mm 알루미나 라이저) · 약 350 m³/h · 11.7 m/s · 정전기방지 유연연결", shape: "collector-round" },
     P19: { name: "VS-501＋SV-201 밀폐 Sheeve 후단", role: "상부 배치 VS-501에서 분산 후 밀폐 하향슈트로 SV-201에 공급하고 모든 토출을 밀폐 배관으로 연결", spec: "VS-501 0.9 mm · SV-201 Ø1200 · 280/106/75 µm · 2.2 kW · 960 rpm", shape: "circular-three-deck" },
     P20: { name: "CC-201＋Y헤더＋RV-204 공기분급기", role: "SV-201 두 입도라인을 개별 배관·Y헤더로 투입하고 상승류에서 중량물과 EVA·백시트 경량물을 분리", spec: "컬럼 Ø860 × H1,900 · 0.70–1.00 m/s · Y헤더 · 중량물 RV-204", shape: "air-classifier" },
     P21: { name: "CY-201＋RV-202＋BF-201＋RV-203＋ID 팬", role: "CC-201 경량물을 회수하고 CY·BF 포집물을 각각 에어록으로 SS-201에 합류시키며 청정가스를 배기스택으로 배출", spec: "CY Ø680 · BF 카트리지 5본 · RV-202/203 · VFD 후단흡인 · 배기스택", shape: "cyclone-filter" },
@@ -15527,7 +15613,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 나지 않는다. 엘보를 빠져나온 입자 다발(rope)이 외측 벽을 따라 뭉쳐 흐르다가 후류 몇 D 구간에서
     // 다시 벽을 때리기 때문이라, 라이닝은 엘보 하나가 아니라 「엘보＋후류 스풀」을 한 단위로 잡는다.
     // 곡률로 엘보를 찾고 상류 1 D · 하류 WEAR_SPOOL_DOWNSTREAM_D 만큼 늘린 뒤 겹치면 합친다.
-    const WEAR_SPOOL_DOWNSTREAM_D = 10;
+    // 하류 길이 — 문헌 하한 10 D (Kalenborn 10×ID 또는 1–2 m · Dhodapkar 2009 · Akilli 2001 다발 해체 10 D)
+    // 에 1.5 배: 세라믹 장반경 엘보는 종전 R/D 1.5 보다 더 조밀한 다발을 더 빠르게 내보내고(Mills),
+    // 재가속에 20 D · 성층 잔류 25 D 가 걸린다. 구간이 이보다 짧으면 다음 피팅까지 전부 라이닝한다.
+    const WEAR_SPOOL_DOWNSTREAM_D = 15;
     const WEAR_SPOOL_UPSTREAM_D = 1;
     const WEAR_BEND_CURVATURE_RAD_M = 1.2;   // R < 0.83 m 인 굽힘을 엘보로 본다
     const wearSpoolZones = {};
@@ -16159,8 +16248,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       new THREE.Vector3(0.72, 1.76, 0.42),
       cycloneInlet.clone()
     ]);
-    addMesh(parts.P15, new THREE.TubeGeometry(pneumaticCurve, 48, 0.0625, 18, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P15", false);
-    addWearSpools(parts.P15, pneumaticCurve, 0.0625, "P15");
+    // PC-101 은 보어 137 mm — DN150 t6.0 셸(OD 165.2)에 8 mm 알루미나 — 로 전 구간을 잡는다.
+    addMesh(parts.P15, new THREE.TubeGeometry(pneumaticCurve, 48, 0.0826, 18, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P15", false);
+    addWearSpools(parts.P15, pneumaticCurve, 0.0826, "P15");
     addCylinder(parts.P15, cycloneRadius, cycloneCylinderHeight, { x: cycloneX, y: cycloneY, z: cycloneZ }, material.equipmentAir, "P15", "y", 48, true);
     addMesh(parts.P15, new THREE.CylinderGeometry(0.085, cycloneRadius, cycloneConeHeight, 48, 1, true), material.equipmentAir, { x: cycloneX, y: cycloneY - 0.54, z: cycloneZ }, null, "P15", true);
     addCylinder(parts.P15, 0.082, 0.42, { x: cycloneX, y: cycloneY + 0.32, z: cycloneZ }, material.equipmentAir, "P15", "y", 30, false);
@@ -16459,8 +16549,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       new THREE.Vector3(2.40, 1.50, -0.34),
       new THREE.Vector3(2.36, 1.76, -0.22)
     ]);
-    addMesh(parts.P18, new THREE.TubeGeometry(pc201LiftCurve, 52, 0.055, 16, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P18", false);
-    addWearSpools(parts.P18, pc201LiftCurve, 0.055, "P18");
+    // PC-201 라이저는 보어 103 mm — DN125 t6.0 셸(OD 139.8)에 12 mm 알루미나. DN100 셸에 라이닝하면
+    // 보어 90 → 15.3 m/s 로 마모가 2 배가 되므로 셸을 한 치수 키운다.
+    addMesh(parts.P18, new THREE.TubeGeometry(pc201LiftCurve, 52, 0.0699, 16, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P18", false);
+    addWearSpools(parts.P18, pc201LiftCurve, 0.0699, "P18");
     addCylinder(parts.P18, 0.18, 0.28, pc201ReceiverCenter, material.solidsReceiver, "P18", "y", 40, true);
     addMesh(parts.P18, new THREE.CylinderGeometry(0.18, 0.06, 0.32, 40, 1, true), material.solidsReceiver, { x: pc201ReceiverCenter.x, y: 1.46, z: pc201ReceiverCenter.z }, null, "P18", true);
     addCylinder(parts.P18, 0.070, 0.20, { x: pc201ReceiverCenter.x, y: 1.98, z: pc201ReceiverCenter.z }, material.solidsReceiver, "P18", "y", 24, false);
@@ -18079,7 +18171,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const RETURN_INCLINE_FACTOR = 0.60;
     const RETURN_BULK_DENSITY_KGM3 = 350;
     const PNEUMATIC_AIRFLOW_M3H = 900;
-    const PNEUMATIC_DUCT_DIAMETER_M = 0.125;
+    // 보어 137 mm = DN150 t6.0 셸 + 8 mm 알루미나. 900 m³/h 에서 17 m/s 를 주는 유일한 보어이며
+    // 맨 DN150 t6(내경 153)은 13.6 m/s 로 희박상 하한(15 m/s) 아래라 섞어 쓸 수 없다.
+    const PNEUMATIC_DUCT_DIAMETER_M = 0.137;
     const AIR_DENSITY_KGM3 = 1.20;
     const PNEUMATIC_K_TOTAL = 11.0;
     const FILTER_PRESSURE_DROP_PA = 1200;
@@ -20838,7 +20932,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       capacity:"신규 ≤300 kg/h · 환류 포함 총부하 ≤400 kg/h", overall:"5,000 L × 1,600 W × 2,500 H mm", mass:"예상 4.6 t · 스키드 포함",
       foundation:"스키드 5,000×1,600 mm · M24 앵커 12SET · 방진패드 12EA · 그라우트 30 mm",
       basis:"Dmax 10 mm · 로터 Ø450×350 · 1,500 rpm(최대 1,800) · SC-500 500 µm 폐회로 · D95 0.438 mm",
-      services:[powerService("grinder"), "흡인: DN125 · 900 m³/h · BF-101/IDF-101", "투입: FD-101, 밀폐 유연슈트", "제품/환류: SC-500 <500 µm / ≥500 µm"],
+      services:[powerService("grinder"), "흡인: 보어 137 라이닝 · 900 m³/h · BF-101/IDF-101", "투입: FD-101, 밀폐 유연슈트", "제품/환류: SC-500 <500 µm / ≥500 µm"],
       installation:["로터 인출측 1,800 mm", "스크린 교체 하부공간 900 mm", "필터백 상부 인출공간 1,200 mm", "회전체 레이저 정렬·벨트장력 기록"],
       acceptance:["무부하 1,500 rpm 2 h", "베어링 진동 ISO 20816 Zone B 이하", "400 kg/h 8 h 폐회로 성능", "분진누설·음압·집진 ΔP 확인"],
       dimensions:{l:5000,w:1600,h:2500}, assemblies:["전체","스키드·하우징","로터·날","스크린·라이너","M-101 구동","FD/CV 이송","SC-500 환류","집진·음압","전력 인입·LCP","체결구"],
@@ -20861,7 +20955,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {code:"HG-031",assembly:"FD/CV 이송",name:"CV-101 배출스크루",qty:1,material:"SUS304",spec:"Ø160 P140 L900, 55 rpm",note:"1.1 kW VFD"},
         {code:"HG-032",assembly:"SC-500 환류",name:"SC-500 경사스크린",qty:1,material:"SUS304",spec:"500 µm, 12°, 25 Hz",note:"3.0 mm p-p"},
         {code:"HG-033",assembly:"SC-500 환류",name:"CV-102 환류스크루",qty:1,material:"SUS304",spec:"Ø140 P120 L2400, 45 rpm",note:"0.75 kW"},
-        {code:"HG-040",assembly:"집진·음압",name:"CY-101 사이클론",qty:1,material:"SUS304",spec:"Ø500, DN125",note:"RV-101 에어록 포함"},
+        {code:"HG-040",assembly:"집진·음압",name:"CY-101 사이클론",qty:1,material:"SUS304",spec:"Ø500, 입구 보어 137",note:"RV-101 에어록 포함"},
         {code:"HG-041",assembly:"집진·음압",name:"BF-101 백필터",qty:1,material:"SS400",spec:"900 m³/h, 12 bags",note:"펄스젯·ΔP"},
         {code:"HG-042",assembly:"집진·음압",name:"IDF-101 유인팬",qty:1,material:"Vendor",spec:"5.5 kW VFD",note:"소음기·스택"},
         ...powerBom("grinder","HG"),
