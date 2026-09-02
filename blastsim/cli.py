@@ -110,7 +110,7 @@ def run_mesh(args) -> int:
     """--mesh: 사면체 메쉬 생성 → VTK/MSH/PNG 저장."""
     import os
 
-    from .plots import plot_tet_mesh
+    from .plots import plot_tet_mesh, plot_tet_mesh_3d
 
     w, l, d = args.mesh_size
     mesh = build_tet_mesh(
@@ -122,9 +122,10 @@ def run_mesh(args) -> int:
     print(mesh.summary())
     for name, fn in (("mesh.vtk", mesh.write_vtk), ("mesh.msh", mesh.write_msh)):
         print(f"  저장: {fn(os.path.join(args.out, name))}")
-    png = os.path.join(args.out, "mesh.png")
-    plot_tet_mesh(mesh, png)
-    print(f"  저장: {png}")
+    for name, fn in (("mesh.png", plot_tet_mesh), ("mesh3d.png", plot_tet_mesh_3d)):
+        png = os.path.join(args.out, name)
+        fn(mesh, png)
+        print(f"  저장: {png}")
     return 0
 
 

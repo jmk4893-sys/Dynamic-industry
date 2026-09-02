@@ -278,11 +278,13 @@ class TetMesh:
         uniq, inv, cnt, owner = self._facet_table()
         reg = self.region[owner]
         # 내부면(2회 등장) 중 양쪽 영역이 다른 것
+        # bincount 로 집계한다 — np.logical_or.at 은 버퍼링을 안 해서 수십 배 느리다
         n_uniq = len(uniq)
-        has_rock = np.zeros(n_uniq, dtype=bool)
-        has_hole = np.zeros(n_uniq, dtype=bool)
-        np.logical_or.at(has_rock, inv, reg == REGION_ROCK)
-        np.logical_or.at(has_hole, inv, reg == REGION_HOLE)
+        inv = inv.ravel()
+        has_rock = np.bincount(inv, (reg == REGION_ROCK).astype(np.float64),
+                               minlength=n_uniq) > 0
+        has_hole = np.bincount(inv, (reg == REGION_HOLE).astype(np.float64),
+                               minlength=n_uniq) > 0
         return uniq[(cnt == 2) & has_rock & has_hole]
 
     def cut_polygons(self, axis: int = 1, value: float = 0.0

@@ -141,8 +141,8 @@ python -m blastsim --mesh --mesh-size 20 20 20 \
 
 python examples/04_hybrid_full.py  # 진동 + 파쇄 + 영상 한 번에
 python examples/05_tet_mesh.py     # 사면체 메쉬 + VTK/MSH/진단도
-python tests/test_blastsim.py      # 검증 테스트 (45건, 테스트 프레임워크 없이)
-python -m unittest discover -s tests -t .   # 저장소 전체 테스트 331건
+python tests/test_blastsim.py      # 검증 테스트 (47건, 테스트 프레임워크 없이)
+python -m unittest discover -s tests -t .   # 저장소 전체 테스트 333건
 ```
 
 Python API:
@@ -411,6 +411,12 @@ h(x) = min( h_far,  h_near + growth · max(d(x), 0) )
 크기장 추종성은 `output/05_mesh/mesh.png` 의 좌하 패널에서 직접 볼 수 있다 —
 요소 평균 모서리가 설계 곡선 `h(d)` 를 4 자릿수 거리 범위에 걸쳐 따라간다.
 
+`mesh3d.png` 는 같은 메쉬의 3D 절개도다. `x>0 & y>0` 옥탄트와 천공홀 영역을
+들어내면 남은 사면체의 경계면이 곧 **(바깥 상자면) + (절개 단면) + (공벽)** 이
+되므로, 한 장에 표면·내부격자·구멍이 같이 잡힌다. 배율마다 절개면을 다시 뽑는데,
+전역 절개면을 잘라 쓰면 확대 화면에 잘린 단면만 남고 내부가 안 보이기 때문이다.
+근접 패널은 사분이 아니라 **반절개**로 원통을 정확히 반 갈라 공벽(빨강)을 드러낸다.
+
 | 프리셋 | 절점 | 요소 | 생성시간 |
 |---|---|---|---|
 | 빠름 (`h_far` 2.0, `growth` 1.0, n=8) | 12,139 | 77,246 | 1.0 s |
@@ -433,7 +439,7 @@ h(x) = min( h_far,  h_near + growth · max(d(x), 0) )
 
 ---
 
-## 6. 검증 (`python tests/test_blastsim.py` — 45/45 통과)
+## 6. 검증 (`python tests/test_blastsim.py` — 47/47 통과)
 
 **FDM** — 탄성계수(ν 자유), 자유면·2자유면 형상, 점성 포함 임계 dt, Rayleigh 파 속도,
 **계측점이 흡수층 밖에 있는지**(세 품질 프리셋 × 세 계측거리 조합)
@@ -540,6 +546,7 @@ Rayleigh 감쇠 계수, 환산거리식 왕복, 보정 선형성, 퇴화 입력 
 | `vibration_video.mp4` | 지표 진동파 전파 애니메이션 |
 | `mesh.vtk` / `mesh.msh` | 사면체 메쉬 (`--mesh`) — ParaView / Gmsh |
 | `mesh.png` | 메쉬 진단도 — 단면 · 공벽 확대 · 크기장 · 품질분포 |
+| `mesh3d.png` | 3D 절개도 — 사분절개 · 공구 주변 · 공벽 반절개 · 재하면 |
 
 ---
 

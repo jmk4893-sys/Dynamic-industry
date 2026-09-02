@@ -396,3 +396,141 @@ def plot_tet_mesh(mesh, path: str) -> None:
                    f"Ø{mesh.hole.diameter * 1000:g} mm × {mesh.hole.length:g} m",
                    "Tetrahedral mesh with borehole"), fontsize=11)
     fig.tight_layout(); fig.savefig(path); plt.close(fig)
+
+
+def _tri_key(tris: np.ndarray, n: int) -> np.ndarray:
+    """정렬된 삼각형 (i,j,k) 를 int64 키로 — 집합 연산용."""
+    t = np.sort(tris, axis=1).astype(np.int64)
+    return (t[:, 0] * n + t[:, 1]) * n + t[:, 2]
+
+
+def _cutaway(mesh, lo, hi, cut=(0.0, 0.0), wall_keys=None, edge_len=None):
+    """[lo,hi] 상자 안에서 지정 사분/반 영역과 천공홀을 들어낸 절개 표면.
+
+    cut 은 (cx, cy) 로 x>cx & y>cy 옥탄트를 제거한다. 한 성분이 None 이면 그 축은
+    조건에서 빠지므로 (None, cy) 는 y>cy 절반을 잘라내는 '반절개'가 된다.
+    wall_keys / edge_len 은 여러 배율을 그릴 때 재계산을 피하려고 넘기는 캐시다.
+    남은 사면체의 경계 삼각형 = (바깥/절단 상자면) + (절개 단면) + (공벽) 이므로
+    한 번의 추출로 표면·내부격자·구멍이 동시에 드러난다.
+    """
+    from blastsim.mesh import REGION_ROCK, _FACES
+    c = mesh.centroids()
+    drop = np.ones(len(c), dtype=bool)
+    if all(v is None for v in cut):
+        drop[:] = False                    # 절개 없음 = 암반 영역 전체
+    for ax, v in enumerate(cut):
+        if v is not None:
+            drop &= c[:, ax] > v
+    keep = ((mesh.region == REGION_ROCK)
+            & np.all(c > np.asarray(lo), axis=1) & np.all(c < np.asarray(hi), axis=1)
+            & ~drop)
+    tets = mesh.tets[keep]
+    if len(tets) == 0:
+        return np.zeros((0, 3), int), np.zeros(0), np.zeros(0, bool)
+    faces = np.sort(tets[:, _FACES].reshape(-1, 3), axis=1)
+    uniq, idx, cnt = np.unique(faces, axis=0, return_index=True, return_counts=True)
+    surf, first = uniq[cnt == 1], idx[cnt == 1]
+    owner = np.repeat(np.arange(len(tets)), 4)[first]
+    el = mesh.edge_lengths() if edge_len is None else edge_len
+    size = el[keep][owner].mean(axis=1)
+
+    if wall_keys is None:
+        wall_keys = _tri_key(mesh.hole_wall_facets(), mesh.n_points)
+    is_wall = np.isin(_tri_key(surf, mesh.n_points), wall_keys)
+    return surf, size, is_wall
+
+
+def plot_tet_mesh_3d(mesh, path: str, elev: float = 20.0, azim: float = 42.0) -> None:
+    """사면체 메쉬 3D 사분절개 렌더 — 세 배율 + 공벽 재하면.
+
+    배율마다 절개면을 다시 뽑는다. 전역 절개면을 잘라 쓰면 확대 화면에
+    잘린 단면만 남고 내부가 보이지 않기 때문이다.
+    """
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
+    lo, hi = mesh.domain.lo, mesh.domain.hi
+    cx, cy, cz = mesh.hole.collar
+    d = mesh.hole.diameter
+    views = [
+        (L("전체 사분절개", "Quarter cut-away"),
+         lo, hi, (cx, cy), 0.05),
+        (L("공구 주변 ±1.0 m × 깊이 3 m", "Collar region ±1.0 m x 3 m"),
+         (cx - 1.0, cy - 1.0, cz - 3.0), (cx + 1.0, cy + 1.0, cz), (cx, cy), 0.2),
+        # 근접은 반절개 — 원통을 정확히 반으로 갈라 공벽이 그대로 드러난다
+        (L(f"공벽 반절개 (Ø{d * 1000:g} mm)", "Wall half-section"),
+         (cx - 0.09, cy - 0.09, cz - 6.12), (cx + 0.09, cy + 0.09, cz - 5.82),
+         (None, cy), 0.5),
+    ]
+
+    fig = plt.figure(figsize=(13.5, 10.5))
+    plain = ticker.FuncFormatter(lambda v, _: f"{v:g}")
+    wall_keys = _tri_key(mesh.hole_wall_facets(), mesh.n_points)
+    edge_len = mesh.edge_lengths()
+    all_sz = _cutaway(mesh, lo, hi, wall_keys=wall_keys, edge_len=edge_len)[1]
+    norm = matplotlib.colors.LogNorm(vmin=max(all_sz.min(), 1e-4), vmax=all_sz.max())
+    cmap = plt.get_cmap("YlGnBu_r")
+    sm = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
+
+    for k, (title, blo, bhi, cut, lw) in enumerate(views):
+        ax = fig.add_subplot(2, 2, k + 1, projection="3d")
+        ax.set_proj_type("ortho")
+        surf, size, is_wall = _cutaway(mesh, blo, bhi, cut=cut,
+                                       wall_keys=wall_keys, edge_len=edge_len)
+        if len(surf):
+            # 암반면과 공벽을 한 컬렉션에 담는다. mplot3d 는 컬렉션 '사이'의 깊이를
+            # 정렬하지 않으므로 따로 그리면 뒤 컬렉션이 통째로 가려지거나 덮인다.
+            fc = cmap(norm(size))
+            ec = np.tile(matplotlib.colors.to_rgba("#33404f"), (len(surf), 1))
+            fc[is_wall] = matplotlib.colors.to_rgba("#d94a3d")
+            ec[is_wall] = matplotlib.colors.to_rgba("#6d1c15")
+            pc = Poly3DCollection(mesh.points[surf], facecolors=fc, edgecolors=ec,
+                                  linewidths=lw)
+            pc.set_zsort("average")
+            ax.add_collection3d(pc)
+        ax.set_xlim(blo[0], bhi[0]); ax.set_ylim(blo[1], bhi[1])
+        ax.set_zlim(blo[2], bhi[2])
+        ax.set_box_aspect([bhi[i] - blo[i] for i in range(3)])
+        ax.view_init(elev=elev, azim=azim)
+        for a, lab in ((ax.xaxis, "X [m]"), (ax.yaxis, "Y [m]"), (ax.zaxis, "Z [m]")):
+            a.set_major_formatter(plain)
+            a.set_label_text(lab)
+        ax.locator_params(nbins=4)
+        ax.tick_params(labelsize=7, pad=-2)
+        ax.set_title(f"{title}   ({len(surf):,} tri)", fontsize=10)
+
+    # (d) 공벽 재하면만 — 폭굉 가스압이 걸리는 표면
+    ax = fig.add_subplot(2, 2, 4, projection="3d")
+    ax.set_proj_type("ortho")
+    wall = mesh.hole_wall_facets()
+    wc = mesh.points[wall].mean(axis=1)
+    seg = wc[:, 2] > cz - 1.0
+    depth = wc[seg, 2]
+    pc = Poly3DCollection(
+        mesh.points[wall[seg]],
+        facecolors=plt.get_cmap("autumn")(
+            (depth - depth.min()) / max(float(np.ptp(depth)), 1e-9)),
+        edgecolors="#6d1c15", linewidths=0.3)
+    pc.set_zsort("average")
+    ax.add_collection3d(pc)
+    r = mesh.hole.radius * 1.4
+    ax.set_xlim(cx - r, cx + r); ax.set_ylim(cy - r, cy + r); ax.set_zlim(cz - 1.0, cz)
+    ax.set_box_aspect((2 * r, 2 * r, 0.45))
+    ax.view_init(elev=12, azim=azim)
+    for a, lab in ((ax.xaxis, "X [m]"), (ax.yaxis, "Y [m]"), (ax.zaxis, "Z [m]")):
+        a.set_major_formatter(plain)
+        a.set_label_text(lab)
+    ax.locator_params(nbins=3)
+    ax.tick_params(labelsize=7, pad=-2)
+    ax.set_title(L(f"공벽 재하면 상부 1 m ({int(seg.sum()):,} tri)",
+                   f"Wall load surface, top 1 m ({int(seg.sum()):,} tri)"), fontsize=10)
+
+    fig.subplots_adjust(left=0.02, right=0.88, top=0.93, bottom=0.03,
+                        wspace=0.06, hspace=0.22)
+    cb = fig.colorbar(sm, ax=fig.axes[:3], shrink=0.45, pad=0.02, location="right")
+    cb.set_label(L("요소 크기 [m]", "element size [m]"), fontsize=9)
+    cb.ax.yaxis.set_major_formatter(plain)
+    fig.suptitle(L(f"사면체 메쉬 3D 절개 — {mesh.domain.size[0]:g}×"
+                   f"{mesh.domain.size[1]:g}×{mesh.domain.size[2]:g} m + 천공홀 "
+                   f"Ø{d * 1000:g} mm × {mesh.hole.length:g} m (요소 {mesh.n_tets:,})",
+                   "Tetrahedral mesh — 3D cut-away"), fontsize=11)
+    fig.savefig(path); plt.close(fig)

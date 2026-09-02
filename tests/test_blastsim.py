@@ -990,6 +990,49 @@ def test_mesh_subset_and_export(tmpdir=None):
         assert hole.write_msh(os.path.join(d, "hole.msh"))
 
 
+def test_mesh_cutaway_surface():
+    """절개 표면 면적 항등식 — 절개를 끄면 암반 영역의 경계가 그대로 나온다.
+
+        (암반 경계) = (직육면체 6면) - (공구 개구부) + (공벽)
+
+    공구에서 천공홀이 상면을 뚫고 나가므로 상면에서 개구부 넓이만큼 빠진다.
+    이 한 줄이 절개 추출 · 공벽 판별 · 관통 여부를 한꺼번에 검증한다.
+    """
+    from blastsim.plots import _cutaway
+    m = _mesh()
+    surf, _, is_wall = _cutaway(m, m.domain.lo - 1, m.domain.hi + 1, cut=(None, None))
+    assert is_wall.sum() > 0
+
+    total = m.facet_areas(surf).sum()
+    wall = m.facet_areas(surf[is_wall]).sum()
+    opening = 6 * 400.0 + wall - total          # = 공구 개구부 면적
+    disc = math.pi * m.hole.radius ** 2
+    inscribed = m.config.n_theta / (2 * math.pi) * math.sin(2 * math.pi / m.config.n_theta)
+    assert inscribed * disc * 0.9 < opening < disc * 1.05, \
+        f"공구 개구부 {opening:.3e} m² (원 {disc:.3e}, 내접 {inscribed * disc:.3e})"
+
+    # 사분절개는 절단면이 더해지므로 삼각형이 늘고, 제거된 옥탄트만큼 부피가 준다
+    cx, cy = m.hole.collar[0], m.hole.collar[1]
+    quarter, _, _ = _cutaway(m, m.domain.lo - 1, m.domain.hi + 1, cut=(cx, cy))
+    assert len(quarter) > len(surf)
+
+
+def test_mesh_figures():
+    """2D·3D 진단도가 실제로 그려진다 (작은 메쉬로 빠르게)."""
+    import tempfile
+
+    from blastsim.mesh import Borehole, BoxDomain, MeshConfig, build_tet_mesh
+    from blastsim.plots import plot_tet_mesh, plot_tet_mesh_3d
+    small = build_tet_mesh(BoxDomain.from_size(6, 6, 6),
+                           Borehole(length=3.0, diameter=0.09),
+                           MeshConfig(h_far=1.5, growth=1.0, n_theta=8))
+    with tempfile.TemporaryDirectory() as d:
+        for fn in (plot_tet_mesh, plot_tet_mesh_3d):
+            path = os.path.join(d, f"{fn.__name__}.png")
+            fn(small, path)
+            assert os.path.getsize(path) > 20_000, f"{fn.__name__} 그림이 비었다"
+
+
 def test_mesh_reproducible():
     """같은 시드는 같은 메쉬, 다른 시드는 다른 점군 (그러나 같은 체적)."""
     from blastsim.mesh import BoxDomain, MeshConfig, build_tet_mesh

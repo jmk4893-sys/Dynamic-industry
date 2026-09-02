@@ -9,6 +9,7 @@
     output/05_mesh/mesh.msh   Gmsh 2.2 (물리그룹 rock / borehole)
     output/05_mesh/wall.vtk   공벽 재하면(삼각형)만 추출한 표면
     output/05_mesh/mesh.png   단면 · 확대 · 크기장 · 품질 진단도
+    output/05_mesh/mesh3d.png 3D 사분절개 · 공벽 반절개 · 재하면
 """
 import os
 import sys
@@ -18,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 
 from blastsim.mesh import Borehole, BoxDomain, MeshConfig, build_tet_mesh
-from blastsim.plots import plot_tet_mesh
+from blastsim.plots import plot_tet_mesh, plot_tet_mesh_3d
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "output", "05_mesh")
 os.makedirs(OUT, exist_ok=True)
@@ -35,6 +36,7 @@ print(mesh.summary())
 mesh.write_vtk(os.path.join(OUT, "mesh.vtk"))
 mesh.write_msh(os.path.join(OUT, "mesh.msh"))
 plot_tet_mesh(mesh, os.path.join(OUT, "mesh.png"))
+plot_tet_mesh_3d(mesh, os.path.join(OUT, "mesh3d.png"))
 
 # 공벽(재하면)만 따로 저장 — 폭굉 가스압을 걸 표면이다.
 wall = mesh.hole_wall_facets()
