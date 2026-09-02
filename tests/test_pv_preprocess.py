@@ -1273,5 +1273,73 @@ class TestMaterials(unittest.TestCase):
         self.assertIn("'PV-PLANT-MT-1011'", self.html)
 
 
+
+class TestSceneLighting(unittest.TestCase):
+    """3D 장면 색이 테마에 끌려다니지 않는지.
+
+    라이트 테마에서 키라이트 색이 `--foreground`(거의 검정)라 조명이 죽고, 금속·고무가
+    `--foreground`/`--border` 파생이라 테마마다 색이 뒤집혔다 — 같은 설비가 폰에서는
+    크롬, PC 에서는 검정으로 보였다. 장비 색·조명은 고정, 배경·안개·바닥만 테마를 따른다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_lights_do_not_borrow_theme_text_colors(self):
+        """조명 색을 테마 토큰에서 뽑으면 라이트 테마에서 키라이트가 검정이 된다."""
+        self.assertNotIn("new Er(F.foreground", self.html, "키라이트가 다시 테마 글자색을 쓴다")
+        self.assertNotIn("new vo(F.background,F.muted", self.html, "환경광이 다시 테마색을 쓴다")
+        self.assertIn("new Er(SC.key,3.4)", self.html)
+        self.assertIn("new vo(SC.sky,SC.ground,1.95)", self.html)
+        self.assertIn("new Er(SC.rim,1.05)", self.html, "림라이트가 없으면 금속 윤곽이 죽는다")
+        self.assertEqual(self.html.count("new Er(SC.key,"), 2,
+                         "메인·부품 미리보기 두 장면 모두 고정 키라이트를 써야 한다")
+
+    def test_scene_palette_is_fixed(self):
+        """장면 팔레트는 CSS 토큰이 아니라 고정 리터럴이어야 한다."""
+        found = re.search(r"var SC=\{([^}]+)\};", self.html)
+        self.assertIsNotNone(found, "장면 팔레트 SC 가 없다")
+        body = found.group(1)
+        for key in ("key", "fill", "rim", "sky", "ground", "metal",
+                    "aluminum", "dark", "rubber", "panel", "jbox", "lampOff"):
+            with self.subTest(key=key):
+                self.assertRegex(body, rf"{key}:Sc\(\d+,\d+,\d+\)",
+                                 f"SC.{key} 가 고정 RGB 가 아니다")
+
+    def test_inverting_materials_now_use_the_fixed_palette(self):
+        """테마에 따라 뒤집히던 재질이 전부 고정색으로 바뀌었는지."""
+        for pair in ("steel:new Tt({color:SC.metal", "aluminum:new Tt({color:SC.aluminum",
+                     "dark:new Tt({color:SC.dark", "rubber:new Tt({color:SC.rubber",
+                     "panel:new Tt({color:SC.panel", "jbox:new Tt({color:SC.jbox"):
+                with self.subTest(material=pair.split(":")[0]):
+                    self.assertIn(pair, self.html)
+        for banned in ("rubber:new Tt({color:F.foreground", "jbox:new Tt({color:F.foreground",
+                       "steel:new Tt({color:F.metal", "panel:new Tt({color:F.card"):
+            with self.subTest(banned=banned.split(":")[0]):
+                self.assertNotIn(banned, self.html, "재질이 다시 테마색으로 돌아갔다")
+        self.assertNotIn("F.muted)", self.html.split("var M={")[1].split("},wo=[")[0],
+                         "소등 램프색이 테마 글자색이면 다크에서 흰색으로 빛난다")
+
+    def test_accent_colors_are_theme_independent(self):
+        """강조색도 라이트·다크에서 같은 값이어야 설비 색이 기기마다 안 바뀐다."""
+        for token in ("F.teal=Sc(", "F.orange=Sc(", "F.green=Sc(", "F.red=Sc(", "F.yellow=Sc("):
+            with self.subTest(token=token):
+                self.assertIn(token, self.html)
+
+    def test_background_still_follows_the_theme(self):
+        """배경·안개·바닥까지 고정하면 다크 모드에서 흰 배경이 남는다 — 여기는 테마를 따른다."""
+        self.assertIn("Dt.setClearColor(F.background,1)", self.html)
+        self.assertIn("pt.fog=new qa(F.background,32,72)", self.html)
+        self.assertIn('color:F.background,roughness:1', self.html)
+
+    def test_theme_change_resyncs_the_scene_background(self):
+        """테마를 바꾸면 3D 배경도 따라와야 한다 — 로드 시점 값에 고정돼 있었다."""
+        self.assertIn('function Bth()', self.html)
+        self.assertIn('let i=qn("--background");Dt.setClearColor(i,1)', self.html)
+        self.assertIn('new MutationObserver(Bth).observe(document.documentElement', self.html)
+        self.assertIn('matchMedia("(prefers-color-scheme: dark)").addEventListener("change",Bth)', self.html)
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
