@@ -2014,6 +2014,19 @@ html>body{padding:0}</style>
     </ul>
     <p class="text-small dd-warning"><strong>전제 정정.</strong> PC-101 입자 상한은 ≤500 µm 가 아니라 <strong>≤1.0 mm</strong> 다 — HSG-101 의 1.0 mm 슬롯 스크린이 SC-500 상류라 400 kg/h 중 25 % 가 0.5–1 mm. 1 mm 유리의 살테이션(Rizk)은 7.7 m/s 로 17 m/s 는 2.2배(15 m/s 하한은 1.9배)이니 하한 아래로 내리지 말 것.
       마모율·수명은 DNV 석영 보정값에 입자속도 보정을 넣은 <strong>추정치</strong>이며, 위 현장 데이터(관통 시간·두께)로 교정되기 전까지 조건부다.</p>
+    <strong>⑦ 배관 루트 정리 — 공통 헤더와 파이프 랙</strong>
+    <p class="text-small">마모 대책과 별개로 <strong>루트 자체</strong>가 정리되어 있어야 지지·점검·풍량 분배가 성립합니다. 사선으로 흩어져 있던 지관을 두 계통으로 묶었습니다.</p>
+    <div class="table-responsive"><table class="table table-sm" aria-label="배관 루트 정리">
+      <thead><tr><th>계통</th><th>종전</th><th>정리 후</th></tr></thead>
+      <tbody>
+        <tr><td><strong>VH-201 공통 분진 벤트 헤더</strong></td><td class="dd-warning">PC-201 리시버·VS-501 분배기·SV-201 스크린·제품빈 4기·SS-201 등 <strong>벤트 8본</strong>이 제각기 사선으로 올라가 BF-201 앞 한 점에 모임 — 지지 불가, 지관별 풍량 분배 불가</td><td>랙 하단 티어(EL +2,460)에 DN80 헤더 1본. 각 벤트는 노즐에서 <strong>수직 상승 → 헤더 높이에서 z 한 번</strong>만 꺾어 티 접속. 헤더 끝에서 BF-201 상부로 인입</td></tr>
+        <tr><td><strong>RC-201 건식 진공반송</strong></td><td class="dd-warning">픽업(z −0.44)과 도착 VR-201(z −0.66)이 사실상 같은 z 인데도 z −2.48 까지 헛돌아 나갔다 돌아오는 3축 사선 (최장 레그 3.52 m)</td><td>랙 상단 티어(EL +3,420)로 올려 한 직선. 벤드 수는 같지만 전부 <strong>한 축만 꺾는 장반경</strong>이라 ⑥ 절의 라이닝 단위와 그대로 맞는다</td></tr>
+        <tr><td><strong>VR-201 / VR-401 진공 지관</strong></td><td class="dd-warning">필터 상부에서 VP-401 헤더까지 x·y·z 를 동시에 가로지르는 사선 2본 (2.12 m / 0.86 m 레그)</td><td>VP-401 스키드 라인(z −2.46) 전용 랙 티어(EL +3,160)로 상승 → 직교 주행 → 지관 차단밸브 위로 수직 강하</td></tr>
+        <tr><td>파이프 랙 강재</td><td class="dd-warning">없음 — 배관이 공중에 뜬 상태</td><td>z −0.94 에 기둥 3본(x 0.90 / 3.70 / 6.40)＋2단 캔틸레버 암, VP-401 라인에 기둥 2본</td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small">코너는 <strong>장반경으로 그립니다</strong> — 코너점만으로 스플라인을 그리면 7 m 레그에서 반경 3 m 짜리 활이 되므로, 코너 앞뒤 고정 거리(0.16–0.30 m)에 점을 끼워 실제 엘보 반경으로 죕니다.
+      정리 결과 <strong>3축 사선 장거리 배관 3본이 사라지고</strong>, 남은 사선은 인접 노즐 사이 0.4–1.4 m 짜리 짧은 연결(부선 런더·약품·계장)뿐입니다 — 이런 것까지 직교로 꺾으면 오히려 벤드만 늘어납니다.</p>
     <p class="text-small dd-warning">상대 수명 배수는 업계 경험범위이며 입자 형상·경도·속도·온도에 따라 크게 달라집니다. 실제 적용 전 동일 서비스 실적과 제작사 보증, 그리고 현 라인의 마모 이력(구멍 위치·관통까지의 운전시간)을 대조해 확정하십시오.</p>
   </details>
 
@@ -15609,6 +15622,26 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return addMesh(parent, new THREE.CylinderGeometry(radius, radius, length, segments), sourceMaterial, position, rotation, partId, edged);
     }
 
+    // Catmull-Rom 은 코너를 "다음 제어점까지의 거리"만큼 둥글린다. 직교 루트를 맨 코너점만으로
+    // 그리면 7 m 짜리 레그에서 반경 3 m 짜리 활처럼 휘어 버린다. 코너 앞뒤로 고정 거리에 점을
+    // 하나씩 끼워 넣으면 둥글림이 그 거리로 줄어 — 즉 실제 장반경 엘보처럼 보인다.
+    function orthoRoute(points, bend = 0.26) {
+      const out = [];
+      points.forEach((point, index) => {
+        [points[index - 1], null, points[index + 1]].forEach((other, slot) => {
+          if (slot === 1) { out.push(point.slice()); return; }
+          if (!other) return;
+          const span = Math.hypot(other[0] - point[0], other[1] - point[1], other[2] - point[2]);
+          if (span < 1e-6) return;
+          const t = Math.min(0.45, bend / span);
+          out.push([0, 1, 2].map((axis) => point[axis] + (other[axis] - point[axis]) * t));
+        });
+      });
+      return out;
+    }
+    const orthoCurve = (points, bend) => new THREE.CatmullRomCurve3(
+      orthoRoute(points, bend).map(([x, y, z]) => new THREE.Vector3(x, y, z)), false, "centripetal", 0.16);
+
     // 엘보 후류 세라믹 스풀. 현장 관찰 — 구멍은 엘보와 그 뒤 직관 1 m 안쪽에만 나고 직관 중간에는
     // 나지 않는다. 엘보를 빠져나온 입자 다발(rope)이 외측 벽을 따라 뭉쳐 흐르다가 후류 몇 D 구간에서
     // 다시 벽을 때리기 때문이라, 라이닝은 엘보 하나가 아니라 「엘보＋후류 스풀」을 한 단위로 잡는다.
@@ -16768,27 +16801,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     ]);
     addMesh(parts.P21, new THREE.TubeGeometry(classifierToCyclone, 38, 0.060, 16, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
     addMesh(parts.P21, new THREE.TubeGeometry(cycloneToFilter, 30, 0.055, 16, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
-    const pc201ReceiverVent = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(pc201ReceiverCenter.x, 2.08, pc201ReceiverCenter.z),
-      new THREE.Vector3(3.10, 2.44, -0.30),
-      new THREE.Vector3(4.60, 2.44, -0.18),
-      new THREE.Vector3(5.92, 2.26, 0.02),
-      new THREE.Vector3(6.42, 1.78, 0.20)
-    ]);
-    addMesh(parts.P21, new THREE.TubeGeometry(pc201ReceiverVent, 58, 0.040, 14, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
-    const downstreamScreenVent = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(secondaryCenter.x, 0.88, secondaryCenter.z + 0.58),
-      new THREE.Vector3(secondaryCenter.x, 2.18, 0.66),
-      new THREE.Vector3(3.72, 2.42, 0.24),
-      new THREE.Vector3(4.60, 2.44, -0.18)
-    ]);
-    const distributorVent = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(2.78, 1.18, 0.44),
-      new THREE.Vector3(2.96, 1.82, 0.58),
-      new THREE.Vector3(secondaryCenter.x, 2.18, 0.66)
-    ]);
-    addMesh(parts.P21, new THREE.TubeGeometry(downstreamScreenVent, 42, 0.030, 12, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
-    addMesh(parts.P21, new THREE.TubeGeometry(distributorVent, 24, 0.025, 12, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
+    // PC-201 리시버·VS-501 분배기·SV-201 스크린의 벤트는 각자 BF-201 까지 사선으로 올라가던
+    // 것을 VH-201 공통 벤트 헤더에 물렸다. 헤더는 아래 productBins 블록에서 한 번에 세운다.
     for (let i = 0; i < 18; i += 1) {
       const marker = new THREE.Mesh(new THREE.SphereGeometry(0.018, 10, 8), material.pipeAir.clone());
       marker.material.opacity = 0.78;
@@ -16913,33 +16927,40 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const ssFinalLabel = labelSprite("SS <75 µm · 최종제품");
     ssFinalLabel.position.set(productBins.ssFinal.x, 0.24, productBins.ssFinal.z);
     parts.P22.add(ssFinalLabel);
-    const ss201Vent = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(polisherCenter.x, 0.18, polisherCenter.z + 0.55),
-      new THREE.Vector3(6.10, 1.66, 0.78),
-      new THREE.Vector3(5.92, 2.26, 0.02)
-    ]);
-    const productReceiverVentLeft = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(productBins.coarse.x, 0.10, productBins.coarse.z + 0.12),
-      new THREE.Vector3(4.76, 0.84, -0.62),
-      new THREE.Vector3(5.26, 1.72, -0.34),
-      new THREE.Vector3(5.92, 2.26, 0.02)
-    ]);
-    const heavyReceiverVentBranch = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(productBins.heavy.x, 0.10, productBins.heavy.z + 0.12),
-      new THREE.Vector3(5.26, 1.72, -0.34)
-    ]);
-    const productReceiverVentRight = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(productBins.ssRework.x, 0.10, productBins.ssRework.z + 0.12),
-      new THREE.Vector3(6.56, 1.14, -0.24),
-      new THREE.Vector3(6.10, 1.66, 0.78)
-    ]);
-    const finalReceiverVentBranch = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(productBins.ssFinal.x, 0.10, productBins.ssFinal.z - 0.12),
-      new THREE.Vector3(6.56, 1.14, -0.24)
-    ]);
-    [ss201Vent, productReceiverVentLeft, heavyReceiverVentBranch, productReceiverVentRight, finalReceiverVentBranch].forEach((curve) => {
-      addMesh(parts.P22, new THREE.TubeGeometry(curve, 30, 0.024, 12, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P22", false);
-    });
+    // ---- VH-201 공통 분진 벤트 헤더 -----------------------------------------
+    // 종전에는 리시버·빈·스크린 벤트 8본이 제각기 사선으로 올라가 BF-201 앞에서 한 점에
+    // 모였다. 실제 플랜트에서 그렇게 놓으면 지지도 안 되고 지관마다 풍량 분배도 못 잡는다.
+    // 파이프 랙 z = RACK_Z 위에 헤더를 한 줄 놓고, 각 벤트는 노즐에서 수직으로 올라와
+    // 헤더 높이에서 z 방향으로 한 번만 꺾어 티로 붙인다 — 모든 레그가 한 축만 움직인다.
+    const RACK_Z = -0.52;
+    const VENT_HEADER_Y = 2.46;                       // 하단 티어: 공통 벤트 헤더
+    const DRY_RETURN_Y = 3.42;                        // 상단 티어: RC-201 건식 진공반송
+    const ventRiser = (x, y, z, radius, name) => {
+      // 노즐 → 수직 상승 → 헤더 라인까지 z 한 번 → 티. 대각선 레그 없음.
+      addMesh(parts.P21, new THREE.TubeGeometry(orthoCurve([[x, y, z], [x, VENT_HEADER_Y, z],
+        [x, VENT_HEADER_Y, RACK_Z]], 0.16), 40, radius, 12, false),
+        material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
+      addBox(parts.P21, { x: radius * 3.2, y: radius * 3.2, z: radius * 3.2 },
+        { x, y: VENT_HEADER_Y, z: RACK_Z }, material.silverClamp, "P21", null, false);
+      return name;
+    };
+    const ventHeaderX = [2.52, 6.95];
+    addMesh(parts.P21, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+      new THREE.Vector3(ventHeaderX[0], VENT_HEADER_Y, RACK_Z),
+      new THREE.Vector3(ventHeaderX[1], VENT_HEADER_Y, RACK_Z)
+    ]), 8, 0.050, 14, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
+    ventRiser(pc201ReceiverCenter.x, 2.08, pc201ReceiverCenter.z, 0.040, "PC-201 리시버 벤트");
+    ventRiser(2.78, 1.18, 0.44, 0.025, "VS-501 분배기 벤트");
+    ventRiser(secondaryCenter.x, 0.88, secondaryCenter.z + 0.58, 0.030, "SV-201 스크린 벤트");
+    ventRiser(productBins.coarse.x, 0.10, productBins.coarse.z + 0.12, 0.024, "조대 제품빈 벤트");
+    ventRiser(productBins.heavy.x, 0.10, productBins.heavy.z + 0.12, 0.024, "중량 제품빈 벤트");
+    ventRiser(polisherCenter.x, 0.18, polisherCenter.z + 0.55, 0.024, "SS-201 벤트");
+    ventRiser(productBins.ssFinal.x, 0.10, productBins.ssFinal.z - 0.12, 0.024, "최종제품빈 벤트");
+    ventRiser(productBins.ssRework.x, 0.10, productBins.ssRework.z + 0.12, 0.024, "환류빈 벤트");
+    // 헤더 → BF-201 상부 인입. 아래로 한 번 꺾어 사이클론 인입과 같은 노즐로 합류한다.
+    addMesh(parts.P21, new THREE.TubeGeometry(orthoCurve([[6.42, VENT_HEADER_Y, RACK_Z],
+      [6.42, VENT_HEADER_Y, 0.20], [6.42, 1.90, 0.20]], 0.18), 36, 0.050, 14, false),
+      material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
 
     const productOutletCurves = {
       "product-280-500": new THREE.CatmullRomCurve3([
@@ -17291,17 +17312,47 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // reagent/air utilities, flotation, dewatering and process-water recovery.
     wetBox(unifiedWet, [16.15, 0.08, 6.45], [13.88, -0.04, -0.18], material.frame, "통합 습식·유틸리티 공정 기초");
 
+    // 두 진공 지관은 VP-401 스키드(z = -2.46) 위 전용 랙 티어로 올려 직교로 내린다.
+    const VAC_RACK_Y = 3.16;
+    const VAC_RACK_Z = -2.46;
+
+    // ---- 파이프 랙 강재 ----------------------------------------------------
+    // 위의 헤더·건식반송은 지지가 없으면 공중에 뜬 것으로 보인다. z = RACK_Z 뒤쪽에 기둥을
+    // 세우고 두 티어(VENT_HEADER_Y, DRY_RETURN_Y)에 캔틸레버 암을 내밀어 받친다.
+    const RACK_COLUMN_Z = -0.94;
+    [0.90, 3.70, 6.40].forEach((x) => {
+      wetBox(unifiedWet, [0.11, DRY_RETURN_Y + 0.18, 0.11], [x, (DRY_RETURN_Y + 0.18) / 2, RACK_COLUMN_Z], material.frame, "파이프 랙 기둥");
+      [VENT_HEADER_Y, DRY_RETURN_Y].forEach((y) => {
+        wetBox(unifiedWet, [0.09, 0.07, Math.abs(RACK_COLUMN_Z - RACK_Z) + 0.22],
+          [x, y - 0.08, (RACK_COLUMN_Z + RACK_Z) / 2 + 0.05], material.frame, "파이프 랙 암");
+      });
+
+    });
+    // VP-401 지관 랙 — 두 진공 지관이 함께 내려오는 z = -2.46 라인.
+    [1.60, 4.20].forEach((x) => {
+      wetBox(unifiedWet, [0.10, 3.30, 0.10], [x, 1.65, -2.62], material.frame, "VP-401 지관 랙 기둥");
+      wetBox(unifiedWet, [0.08, 0.06, 0.36], [x, 3.08, -2.52], material.frame, "VP-401 지관 랙 암");
+    });
+
     // SS-201 ≥75 µm is no longer a dead-end receiver.  A sealed vacuum return
     // takes the dry rework fraction back to the existing FD-101/HSG-101 hopper.
     const ssReworkPickup = [6.92, 0.04, -0.44];
     wetCylinder(unifiedWet, 0.12, 0.28, [6.92, 0.24, -0.44], material.solidsReceiver, "RV-402 SS-201 조대물 반송 에어록", 28, [Math.PI / 2, 0, 0]);
-    wetTube(unifiedWet, [ssReworkPickup, [6.92, 0.52, -0.44], [6.70, 1.28, -1.72], [2.80, 1.48, -2.48], [-0.72, 2.82, -0.66]], 0.065, material.pipeReturn, "RC-201 SS-201 ≥75 µm 건식 진공반송", 1860, 9);
+    // RC-201 은 픽업(z -0.44)과 도착지 VR-201(z -0.66)이 사실상 같은 z 인데도 z = -2.48 까지
+    // 헛돌아 나갔다 돌아오는 3축 사선이었다. 파이프 랙 상단 티어로 올려 한 직선으로 편다 —
+    // 벤드는 3개로 종전과 같지만 전부 한 축만 꺾는 장반경이라 마모 설계(⑥ 절)와도 맞는다.
+    wetTube(unifiedWet, orthoRoute([ssReworkPickup, [6.92, 0.72, -0.44], [6.92, DRY_RETURN_Y, -0.44],
+      [6.92, DRY_RETURN_Y, RACK_Z], [-0.72, DRY_RETURN_Y, RACK_Z], [-0.72, DRY_RETURN_Y, -0.66],
+      [-0.72, 2.78, -0.66]], 0.30), 0.065, material.pipeReturn,
+      "RC-201 SS-201 ≥75 µm 건식 진공반송", 1860, 9);
     wetCylinder(unifiedWet, 0.26, 0.48, [-0.72, 2.62, -0.66], material.solidsReceiver, "VR-201 HSG 반송 진공수신기", 32, null, true);
     wetCone(unifiedWet, 0.26, 0.08, 0.30, [-0.72, 2.24, -0.66], material.solidsReceiver, "VR-201 배출콘", 32);
     wetBox(unifiedWet, [0.40, 0.12, 0.40], [-0.72, 2.92, -0.66], material.screen, "VR-201 펄스필터");
     wetTube(unifiedWet, [[-0.72, 2.10, -0.66], [-0.72, 2.17, 0]], 0.070, material.pipeReturn, "VR-201 → FD-101 중력배출", 1860, 4);
     // VR-201 filter to the common vacuum header (was a dedicated PC-202 blower).
-    wetTube(unifiedWet, [[-0.72, 2.92, -0.66], [1.40, 2.98, -2.72], [3.60, 2.10, -2.60], [5.30, 1.34, -2.46]], 0.042, material.pipeAir, "VR-201 필터 → VP-401 공통 진공헤더");
+    wetTube(unifiedWet, orthoRoute([[-0.72, 2.98, -0.66], [-0.72, VAC_RACK_Y, -0.66],
+      [-0.72, VAC_RACK_Y, VAC_RACK_Z], [5.10, VAC_RACK_Y, VAC_RACK_Z], [5.10, 1.34, VAC_RACK_Z],
+      [5.30, 1.34, VAC_RACK_Z]], 0.24), 0.042, material.pipeAir, "VR-201 필터 → VP-401 공통 진공헤더");
     wetBox(unifiedWet, [0.13, 0.13, 0.13], [5.10, 1.34, -2.46], material.silverClamp, "VR-201 지관 차단밸브");
     wetBox(unifiedWet, [0.11, 0.11, 0.11], [4.86, 1.44, -2.50], material.fixed, "VR-201 지관 역류방지밸브");
     wetLabel("SS-201 ≥75 µm → RV-402/RC-201 → VR-201 → HSG-101", [3.18, 2.42, -2.68], [2.35, 0.23, 1]);
@@ -17315,7 +17366,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetCone(unifiedWet, 0.25, 0.09, 0.28, [7.56, 1.52, 0.72], material.solidsReceiver, "VR-401 배출콘", 32);
     wetBox(unifiedWet, [0.40, 0.12, 0.40], [7.56, 2.18, 0.72], material.screen, "VR-401 상부 펄스필터");
     // VR-401 filter to the same common header (was a dedicated PC-401 blower).
-    wetTube(unifiedWet, [[7.56, 2.18, 0.72], [7.34, 2.30, -0.30], [6.60, 1.80, -1.60], [5.86, 1.34, -2.46]], 0.040, material.pipeAir, "VR-401 필터 → VP-401 공통 진공헤더");
+    wetTube(unifiedWet, orthoRoute([[7.56, 2.24, 0.72], [7.56, VAC_RACK_Y, 0.72],
+      [7.56, VAC_RACK_Y, VAC_RACK_Z], [6.06, VAC_RACK_Y, VAC_RACK_Z], [6.06, 1.34, VAC_RACK_Z],
+      [5.86, 1.34, VAC_RACK_Z]], 0.24), 0.040, material.pipeAir, "VR-401 필터 → VP-401 공통 진공헤더");
     wetBox(unifiedWet, [0.13, 0.13, 0.13], [6.06, 1.34, -2.46], material.silverClamp, "VR-401 지관 차단밸브");
     wetBox(unifiedWet, [0.11, 0.11, 0.11], [6.30, 1.44, -2.42], material.fixed, "VR-401 지관 역류방지밸브");
 
@@ -19223,14 +19276,20 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
 
     // ---- CV-001 패널 투입 컨베이어 -------------------------------------------
-    // Panels arrive on an inclined belt and tip into the ICSH-301 hopper. The hopper is
-    // an open frustum (top 2.80 x 1.80, throat 1.60 x 0.85, H1.20) centred at y = 2.00,
-    // so its rim sits at y = 2.60; the belt discharges just above and inboard of that.
+    // Panels arrive on an inclined belt and are fed into the ICSH-301 hopper. The hopper is
+    // an open frustum (top 2.80 x 1.80, throat 1.60 x 0.85, H1.20) centred at y = 2.00, so
+    // its rim sits at y = 2.60 and the top opening spans x = centre +/- 1.40.
+    // The belt used to stop 0.12 m SHORT of the leading rim, so a sheet had to be thrown
+    // clear across the rim to get in. It is now cantilevered a third of the way across the
+    // opening: the sheet is released over the mouth and drops straight down it.
+    const HOPPER_TOP_X = 2.80;                                   // hopper top opening, X
+    const HOPPER_RIM_Y = 2.60;
+    const hopperNearX = shredderCenter.x - HOPPER_TOP_X / 2;     // -5.80, the leading rim
     const panelInfeed = new THREE.Group();
     panelInfeed.name = "CV-001-PANEL-INFEED";
     circuit.add(panelInfeed);
     const beltTail = new THREE.Vector3(shredderCenter.x - 7.10, 0.46, 0);
-    const beltHead = new THREE.Vector3(shredderCenter.x - 1.52, 3.30, 0);
+    const beltHead = new THREE.Vector3(hopperNearX + HOPPER_TOP_X / 3, HOPPER_RIM_Y + 0.70, 0);
     const beltRun = new THREE.Vector3().subVectors(beltHead, beltTail);
     const beltLength = beltRun.length();
     const beltAngle = Math.atan2(beltRun.y, beltRun.x);          // ~25.4° incline
@@ -19255,18 +19314,40 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       const at = new THREE.Vector3().lerpVectors(beltTail, beltHead, t);
       beltIdlers.push(addCylinder(panelInfeed, 0.075, 1.24, at, material.pulley, "P23", "z", 18, false));
     }
-    // Support legs down to the floor.
-    [0.16, 0.42, 0.68, 0.94].forEach((t) => {
+    // Support legs down to the floor. The last bent has to stand clear of the hopper, so
+    // the run stops at t = 0.80 (x = -6.19, 0.39 m short of the rim) instead of t = 0.94,
+    // which would have put a column inside the mouth.
+    const LAST_BENT_T = 0.80;
+    [0.14, 0.36, 0.58, LAST_BENT_T].forEach((t) => {
       const at = new THREE.Vector3().lerpVectors(beltTail, beltHead, t);
       [-0.62, 0.62].forEach((z) => {
         addBox(panelInfeed, { x: 0.08, y: at.y - 0.18, z: 0.08 },
           { x: at.x, y: (at.y - 0.18) / 2, z }, material.frame, "P23");
       });
     });
-    // Drive at the head end.
+    // The discharge end overhangs the hopper mouth, so it is a cantilever off that last
+    // bent. A king post over the bent with a fore-stay to the head and a back-stay down the
+    // run carries it — the brace has to go OVER the belt, since anything under it at this
+    // station would run into the hopper wall.
+    const lastBent = new THREE.Vector3().lerpVectors(beltTail, beltHead, LAST_BENT_T);
+    const backStayFoot = new THREE.Vector3().lerpVectors(beltTail, beltHead, 0.62);
+    const postTop = new THREE.Vector3(lastBent.x, lastBent.y + 0.95, 0);
+    const headTie = new THREE.Vector3(beltHead.x, beltHead.y + 0.14, 0);
+    [-0.62, 0.62].forEach((z) => {
+      addBox(panelInfeed, { x: 0.08, y: 0.95, z: 0.08 },
+        { x: lastBent.x, y: lastBent.y + 0.475, z }, material.frame, "P23");
+      [[postTop, headTie], [postTop, backStayFoot]].forEach(([a, c]) => {
+        const run = new THREE.Vector3().subVectors(c, a);
+        const mid = new THREE.Vector3().addVectors(a, c).multiplyScalar(0.5);
+        addBox(panelInfeed, { x: run.length(), y: 0.07, z: 0.06 },
+          { x: mid.x, y: mid.y, z }, material.frame, "P23", { z: Math.atan2(run.y, run.x) });
+      });
+    });
+    // Drive at the head end, moved outboard of the hopper (its top opening is 1.80 wide in
+    // Z, so z = 1.06 keeps the gearmotor beside the mouth rather than over it).
     addBox(panelInfeed, { x: 0.46, y: 0.34, z: 0.34 },
-      { x: beltHead.x + 0.40, y: beltHead.y - 0.34, z: 0.82 }, material.motor, "P23");
-    addCylinder(panelInfeed, 0.10, 0.16, { x: beltHead.x + 0.18, y: beltHead.y - 0.34, z: 0.82 },
+      { x: beltHead.x - 0.26, y: beltHead.y - 0.34, z: 1.06 }, material.motor, "P23");
+    addCylinder(panelInfeed, 0.10, 0.16, { x: beltHead.x - 0.04, y: beltHead.y - 0.34, z: 0.86 },
       material.pulley, "P23", "z", 20, false);
 
     // With the glass and the aluminium frame already removed, what reaches the shredder is
@@ -19304,7 +19385,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       feedPanels.push(carrier);
     }
     const beltDir = beltRun.clone().normalize();
-    const MAX_JOINT = 0.14;   // 7 joints x 0.14 rad = a ~56 deg drape, not a roll-up
+    // Coming off the head pulley a limp laminate does not sag along its whole length: it
+    // wraps the pulley through one short arc and everything past that arc hangs plumb.
+    // Model it as a bend zone of fixed arclength that travels back along the sheet — the
+    // part upstream of the zone is still flat on the belt, the part downstream of it is
+    // already vertical. Spreading the turn over the whole sheet instead (the old constant
+    // per-joint droop) gave a lazy 0.8 m-radius banana that never went in plumb.
+    const TOTAL_TURN = beltAngle + Math.PI / 2;   // belt incline -> straight down, ~1.98 rad
+    const WRAP_LEN = 0.62;                        // sheet length carrying the bend, ~3 links
+    // Cumulative turn of the material at arclength `arc` measured from the sheet's tail.
+    const turnAt = (arc) => TOTAL_TURN * Math.min(1, Math.max(0, (arc - beltLength) / WRAP_LEN));
     const FALL_RUN = 0.95;                              // travel budget for the drop
     const CYCLE_LEN = beltLength + FALL_RUN;
     let panelFeedSeconds = 0;
@@ -19337,7 +19427,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         const onBelt = Math.min(s, beltLength);
         carrier.position.copy(beltTail).addScaledVector(beltDir, onBelt);
         carrier.position.y += 0.08;
-        carrier.rotation.set(0, 0, beltAngle);
+        // The first link turns as it rounds the head, so the carrier carries that rotation.
+        carrier.rotation.set(0, 0, beltAngle - turnAt(s));
         let drop = 0;
         if (s > beltLength) {
           // The whole sheet has left the belt: carry a little forward and fall.
@@ -19346,22 +19437,17 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
           drop = 1.55 * fall * fall;
           carrier.position.y -= drop;
         }
-        // Each joint droops once it is past the head pulley and unsupported. The further
-        // beyond the head, the deeper the fold — the sheet curls as it drops.
-        const freeFall = s > beltLength;
+        // Each joint holds the slice of the total turn that falls between its two links,
+        // so the crease sits wherever the bend zone currently is and nothing else bends.
+        const flutter = s > beltLength ? s - beltLength : 0;
         carrier.userData.links.forEach((link, index) => {
           if (index === 0) { link.rotation.z = 0; return; }
-          if (freeFall) {
-            // Airborne: hold the drape it left the pulley with, plus a little flutter.
-            const fall = s - beltLength;
-            link.rotation.z = -MAX_JOINT + Math.sin(fall * 3.4 + index * 0.7) * 0.022;
-            return;
-          }
-          const beyond = Math.max(0, (s + index * SEG_LEN) - beltLength);
-          link.rotation.z = -Math.min(MAX_JOINT, beyond * 0.42);
+          const slice = turnAt(s + index * SEG_LEN) - turnAt(s + (index - 1) * SEG_LEN);
+          link.rotation.z = -slice + (flutter ? Math.sin(flutter * 3.4 + index * 0.7) * 0.018 : 0);
         });
-        // Gone once it is down inside the hopper throat.
-        carrier.visible = carrier.position.y > 1.95;
+        // Gone once the trailing edge is below the rim: by then the vertical sheet hangs
+        // 1.4 m further down, well into the throat, and the hopper wall hides it anyway.
+        carrier.visible = carrier.position.y > HOPPER_RIM_Y - 0.30;
       });
     }
 
