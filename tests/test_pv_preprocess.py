@@ -14,7 +14,7 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import electrical, layout, vision
+from pv_preprocess import electrical, layout, vision, wiring
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
 
@@ -919,6 +919,76 @@ class TestFlipPortalAndLift(unittest.TestCase):
     def test_portal_labels_replace_the_old_posts_in_3d(self):
         self.assertIn("포탈 기둥·LM가이드", self.html)
         self.assertNotIn("벽체형 승강·반전카세트`", self.html.replace("벽체형 수평셔틀", ""))
+
+
+
+class TestWiring(unittest.TestCase):
+    """배선 길이·분전반 배치(EL-1006~1008)가 wiring.py 와 어긋나지 않는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_cable_length_literal_matches_the_model(self):
+        """도면의 CABLE_LENGTH_M 리터럴은 wiring.power_cables() 를 그대로 옮긴 값이어야 한다."""
+        found = re.search(r"var CABLE_LENGTH_M = \{([^}]+)\};", self.html)
+        self.assertIsNotNone(found, "케이블 길이 리터럴이 도면에 없다")
+        drawn = dict(re.findall(r"(F\d): ([\d.]+)", found.group(1)))
+        cables = wiring.power_cables()
+        self.assertEqual(len(drawn), len(cables))
+        for cable in cables:
+            with self.subTest(feeder=cable.feeder):
+                self.assertAlmostEqual(float(drawn[cable.feeder]), cable.length_m, places=3)
+
+    def test_totals_and_mdb_position_match(self):
+        self.assertIn(f"var MDB_X_MM = {wiring.MDB_POSITION_MM[0]},", self.html)
+        self.assertIn(f"INCOMING_CABLE_M = {wiring.incoming_cable_m()},", self.html)
+        self.assertIn(f"TOTAL_POWER_CABLE_M = {wiring.total_power_cable_m()},", self.html)
+        self.assertIn(f"AISLE_CLEAR_MM = {wiring.aisle_clear_width_mm()};", self.html)
+
+    def test_mdb_sits_on_the_demand_center(self):
+        """MDB 는 피더 수요 가중 부하중심에서 500 mm 안에 서야 한다 — 케이블 총량의 근거."""
+        self.assertLessEqual(abs(wiring.MDB_POSITION_MM[0] - wiring.demand_center_x_mm()), 500)
+
+    def test_aisle_survives_the_wall_mounted_panel(self):
+        self.assertGreaterEqual(wiring.aisle_clear_width_mm(), 900)
+
+    def test_every_feeder_panel_has_a_position(self):
+        positions = wiring.lp_positions_mm()
+        for feeder in electrical.FEEDERS:
+            with self.subTest(feeder=feeder.tag):
+                self.assertIn(feeder.panel, positions)
+
+    def test_lengths_are_positive_and_plausible(self):
+        """맨해튼 경로 하한(수평 |Δx|)보다 짧은 케이블은 물리적으로 불가능하다."""
+        for cable in wiring.power_cables():
+            lower = abs(wiring.MDB_POSITION_MM[0] - cable.x_mm) / 1000
+            with self.subTest(feeder=cable.feeder):
+                self.assertGreater(cable.length_m, lower)
+                self.assertLess(cable.length_m, lower + 12)
+
+    def test_control_chain_matches_the_drawing(self):
+        """EtherCAT 데이지체인 순서가 도면 리터럴과 wiring.control_segments() 에서 같아야 한다."""
+        found = re.search(r"var EL_CHAIN = \[([^\]]+)\];", self.html)
+        self.assertIsNotNone(found, "EL_CHAIN 리터럴이 도면에 없다")
+        drawn = re.findall(r"'([\w-]+)'", found.group(1))
+        segments = wiring.control_segments()
+        chain = [segments[0].feeder.split("\u2192")[0]] + [row.panel for row in segments]
+        self.assertEqual(drawn, chain)
+
+    def test_new_sheets_are_registered_and_selectable(self):
+        for sheet in ("PV-PLANT-EL-1006", "PV-PLANT-EL-1007", "PV-PLANT-EL-1008"):
+            with self.subTest(sheet=sheet):
+                self.assertIn(f"'{sheet}'", self.html, "도면 목록에 등재되지 않았다")
+                self.assertIn(f"{sheet} · ", self.html, "표제란이 렌더러에 없다")
+        for option in ('value="single"', 'value="mdb"', 'value="system"', 'value="circuit"'):
+            with self.subTest(option=option):
+                self.assertIn(option, self.html, "전기 도면 셀렉트에 뷰가 빠졌다")
+
+    def test_feeder_table_carries_the_length_column(self):
+        self.assertIn("<th>길이 m</th>", self.html)
+        self.assertIn("CABLE_LENGTH_M[feeder[0]].toFixed(1)", self.html)
+        self.assertIn("TOTAL_POWER_CABLE_M.toFixed(1)", self.html)
 
 
 if __name__ == "__main__":  # pragma: no cover
