@@ -52,8 +52,9 @@ AFR_S = 39.03
 #: 전손 배출이 투입부만 쓰는 시간 (s) — 픽업·판정·리젝트 랙 배출·복귀
 INFEED_REJECT_S = 15.0
 
-#: 투입부와 JBR 사이 축적 대수 — 이 한 장 덕에 로봇이 먼저 다음 장을 잡는다
-ACCUMULATOR_PANELS = 1
+#: JBR 진입 후 스토퍼·측면 정렬이 작동하기까지 (s).
+#: 영상 스테이지 "JBR-201 · 스토퍼·측면 정렬" 이 48.0 s 에 시작하고 JBR 진입이 40.0 s 이므로 8.0 s.
+JBR_STOPPER_OFFSET_S = 8.0
 
 #: 팔레트 한 장당 매수
 PALLET_PANELS = 30
@@ -130,21 +131,20 @@ def _decode(mark: str) -> tuple[str, str]:
 def panels() -> tuple[Panel, ...]:
     """60장 로스터 — 셀별 점유를 이산사건으로 잡는다.
 
-    투입부는 자기 일이 끝나면 바로 다음 장을 시작한다. 다만 축적구간이
-    `ACCUMULATOR_PANELS` 장뿐이라, 앞 장이 JBR 로 들어가야 다음 장을 내려놓을
-    수 있다 — 그 제약까지 반영한다.
+    **다음 장 투입 시점은 앞 장의 JBR 스토퍼·자세교정이 작동하는 순간이다.**
+    그때 축적구간이 비고 정렬이 확정되므로 로봇이 바로 다음 장을 내려놓을 수
+    있다. 이 규칙이 라인 택트를 정한다 — 영상의 반복 주기와 같은 값이다.
     """
     rows: list[Panel] = []
     infeed_free = jbr_free = afr_free = 0.0
-    jbr_starts: list[float] = []
+    release_gate = 0.0
     index = 0
     for bundle_no, (_, lift, pattern) in enumerate(BUNDLE_PATTERNS, start=1):
         for slot, mark in enumerate(pattern, start=1):
             face, condition = _decode(mark)
             index += 1
-            # 축적구간이 비어야 투입부가 다음 장을 내려놓는다
-            gate = jbr_starts[-ACCUMULATOR_PANELS] if len(jbr_starts) >= ACCUMULATOR_PANELS else 0.0
-            start = max(infeed_free, gate)
+            # 앞 장의 스토퍼·자세교정이 작동해야 다음 장을 내려놓는다
+            start = max(infeed_free, release_gate)
             if condition == "전손":
                 end = start + INFEED_REJECT_S
                 infeed_free = end
@@ -158,7 +158,7 @@ def panels() -> tuple[Panel, ...]:
             jbr_start = max(end, jbr_free)
             jbr_end = jbr_start + JBR_S
             jbr_free = jbr_end
-            jbr_starts.append(jbr_start)
+            release_gate = jbr_start + JBR_STOPPER_OFFSET_S
             afr_start = max(jbr_end, afr_free)
             afr_end = afr_start + AFR_S
             afr_free = afr_end
@@ -231,6 +231,14 @@ def bottleneck() -> str:
     """가장 오래 점유하는 셀 — 택트를 정하는 자리."""
     return max((("투입부", INFEED_S), ("JBR-201", JBR_S), ("AFR-101 후단", AFR_S)),
                key=lambda row: row[1])[0]
+
+
+def release_takt_s() -> float:
+    """다음 장 투입 주기 — 앞 장이 JBR 에 들어가 스토퍼가 작동하기까지.
+
+    영상의 반복 주기와 같은 값이라 화면과 계산이 어긋나지 않는다.
+    """
+    return INFEED_S + JBR_STOPPER_OFFSET_S
 
 
 def summary() -> dict[str, float]:

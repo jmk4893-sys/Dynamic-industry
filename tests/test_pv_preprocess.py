@@ -14,8 +14,8 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import (acoustics, campaign, electrical, layout, materials, servos,
-                           thermal, vision, wiring)
+from pv_preprocess import (acoustics, campaign, electrical, frames, layout, materials,
+                           servos, thermal, vision, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
 
@@ -472,8 +472,10 @@ class TestInfeedHandoff(unittest.TestCase):
     AFU_CHAIN = {
         "SEP-A": ([2180, 80, 120], [-1250, 2060, -1900]),
         "SEP-B": ([2180, 80, 120], [-1250, 2060, 1900]),
-        "CAR-A": ([2720, 100, 1220], [-1250, 1760, -1900]),
-        "CAR-B": ([2720, 100, 1220], [-1250, 1760, 1900]),
+        "CAR-A1": ([2720, 100, 140], [-1250, 1760, -2572]),
+        "CAR-A2": ([2720, 100, 140], [-1250, 1760, -1228]),
+        "CAR-B1": ([2720, 100, 140], [-1250, 1760, 1228]),
+        "CAR-B2": ([2720, 100, 140], [-1250, 1760, 2572]),
         "SHT-A": ([2280, 80, 1410], [-325, 1640, -1750]),
         "SHT-B": ([2280, 80, 1410], [-325, 1640, 1750]),
         "CD-A": ([4460, 60, 1540], [-325, 2020, -1600]),
@@ -499,7 +501,7 @@ class TestInfeedHandoff(unittest.TestCase):
         """반전카세트가 일반 매싱 상자가 아니라 실물 부품으로 전개돼 있는지."""
         block = self.stations["bfc"]
         tags = set(re.findall(r"part\('([^']+)'", block))
-        for tag in ("SEP", "CAR", "SHT", "RNG-L", "RNG-R", "BGD", "CLP-U", "CLP-L", "CDR"):
+        for tag in ("SEP", "CAR-1", "CAR-2", "SHT", "RNG-L", "RNG-R", "BGD", "CLP-U", "CLP-L", "CDR"):
             self.assertIn(tag, tags, f"{tag} 가 BFC 조립도에 없다")
         for tag in ("VC-1", "VC-2", "VC-3", "VC-4"):
             self.assertIn(tag, tags, "진공 4구역 컵이 없다 — 겹장검출 구역이 도면에 안 보인다")
@@ -527,7 +529,7 @@ class TestInfeedHandoff(unittest.TestCase):
             self.assertRegex(block, r"\[3300, '(FLIP )?AXIS 3,300'\]")
         bfc = self.stations["bfc"]
         # 셔틀 1,640 · 캐리지 1,760 · 분리헤드 2,060 · 포획빔 2,020 은 3D 의 Gt 오프셋에서 온다.
-        for tag, height in (("SHT", 1640), ("CAR", 1760), ("SEP", 2060), ("CD-1", 2020)):
+        for tag, height in (("SHT", 1640), ("CAR-1", 1760), ("CAR-2", 1760), ("SEP", 2060), ("CD-1", 2020)):
             found = re.search(r"part\('%s', '[^']*', \[[-\d, ]+\], \[-?\d+, (-?\d+)," % re.escape(tag), bfc)
             self.assertIsNotNone(found, f"{tag} 를 못 찾았다")
             self.assertEqual(int(found.group(1)), height, f"{tag} 높이가 3D 실측과 다르다")
@@ -1474,7 +1476,9 @@ class TestCampaign(unittest.TestCase):
         """택트는 병목 JBR 45 s 이고, 1장차 종단 체류는 도면의 124.03 s 와 맞아야 한다."""
         self.assertEqual(campaign.bottleneck(), "JBR-201")
         summary = campaign.summary()
-        self.assertAlmostEqual(summary["takt_s"], campaign.JBR_S, delta=1.0)
+        # 셀 병목은 JBR 이지만, 실제 택트는 "앞 장 스토퍼에 다음 장 투입" 규칙이 정한다.
+        self.assertAlmostEqual(summary["takt_s"], campaign.release_takt_s(), delta=1.0)
+        self.assertGreater(campaign.release_takt_s(), campaign.JBR_S)
         first = campaign.panels()[0]
         self.assertAlmostEqual(first.afr_end, 124.03, places=2)
         self.assertAlmostEqual(campaign.INFEED_S + campaign.JBR_S + campaign.AFR_S, 124.03, places=2)
@@ -1499,7 +1503,7 @@ class TestCampaign(unittest.TestCase):
                 self.assertEqual(row[0], spec[0])
                 self.assertEqual(row[1], spec[1])
                 self.assertEqual(row[2], spec[2], "번들 패턴이 campaign.py 와 다르다")
-        for token, value in (("pvCamTakt", campaign.JBR_S), ("pvCamRejectS", campaign.INFEED_REJECT_S),
+        for token, value in (("pvCamTakt", campaign.release_takt_s()), ("pvCamRejectS", campaign.INFEED_REJECT_S),
                              ("pvCamInfeed", campaign.INFEED_S), ("pvCamPallet", campaign.PALLET_PANELS),
                              ("pvCamCall", campaign.FORKLIFT_CALL_REMAINING)):
             with self.subTest(token=token):
@@ -1546,7 +1550,7 @@ class TestCampaign(unittest.TestCase):
     def test_campaign_ui_and_scrap_rack_exist(self):
         for hook in ('id="jb-campaign"', 'id="jb-cam-strip"', 'id="jb-cam-pipeline"',
                      'id="jb-cam-timeline"', 'id="jb-cam-buffer"', 'id="jb-cam-takt"',
-                     'id="jb-cam-play"', "setCampaignIndex(i)"):
+                     'id="jb-cam-play"', "setCampaignIndex(i,e2)"):
             with self.subTest(hook=hook):
                 self.assertIn(hook, self.html)
         self.assertIn("' data-cond=\"' + p.condition + '\"'", self.html,
@@ -1559,6 +1563,125 @@ class TestCampaign(unittest.TestCase):
         self.assertIn("part('RJ-A', '전손 리젝트 랙 A'", self.html)
         self.assertIn('M.frame,e===0?"AFU-RJ-101 전손 리젝트 랙"', self.html)
         self.assertNotIn("파손 리젝트 랙", self.html, "유리 깨짐도 리젝트하는 것처럼 읽힌다")
+
+
+
+class TestFrameElasticity(unittest.TestCase):
+    """알루미늄 프레임은 탄성체다 — 인발 자유 길이가 길면 항복한다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_design_free_length_stays_elastic(self):
+        check = frames.check()
+        self.assertFalse(check.yields, "설계 자유 길이에서 프레임이 항복한다")
+        self.assertTrue(frames.springs_back())
+        self.assertLess(check.stress_mpa, frames.YIELD_MPA)
+
+    def test_yield_limit_bounds_the_roller(self):
+        """롤러는 접착 전선에서 이 거리 안쪽에 있어야 한다."""
+        limit = frames.max_free_length_mm()
+        self.assertGreater(limit, frames.DESIGN_FREE_LENGTH_MM, "설계값이 이미 한계를 넘었다")
+        self.assertAlmostEqual(frames.stress_mpa(limit), frames.YIELD_MPA, delta=0.5)
+        self.assertGreaterEqual(frames.design_margin(), 1.2, "항복까지 여유가 부족하다")
+
+    def test_deflection_grows_with_the_cube(self):
+        """자유 길이 2배면 처짐 8배 — 이 비선형이 설계의 핵심이다."""
+        base = frames.deflection_mm(200.0)
+        self.assertAlmostEqual(frames.deflection_mm(400.0) / base, 8.0, places=2)
+        self.assertGreater(frames.stress_mpa(frames.max_free_length_mm() + 50), frames.YIELD_MPA)
+
+    def test_drawing_literal_matches_the_model(self):
+        check = frames.check()
+        for token, value in (("inertia", frames.second_moment_mm4()), ("force", frames.PEEL_FORCE_N),
+                             ("free", frames.DESIGN_FREE_LENGTH_MM), ("deflection", check.deflection_mm),
+                             ("stress", check.stress_mpa), ("yieldMpa", frames.YIELD_MPA),
+                             ("maxFree", frames.max_free_length_mm()), ("margin", frames.design_margin()),
+                             ("exaggeration", frames.DISPLAY_EXAGGERATION),
+                             ("displayBow", frames.display_bow_mm())):
+            with self.subTest(token=token):
+                self.assertIn(f"{token}: {value:g}", self.html)
+
+    def test_frames_bend_in_the_3d_scene(self):
+        """세그먼트로 나뉘고 휨이 애니메이션에 실제로 들어가야 한다."""
+        self.assertIn("e.userData.bowT=1-Math.pow(z/.6167,2)", self.html, "단축 프레임이 분할되지 않았다")
+        self.assertIn("pvBow*V.userData.bowT*4*_*(1-_)", self.html, "단축 휨이 애니메이션에 없다")
+        self.assertIn("bw=pvBow*4*ae*(1-ae)", self.html, "장축 휨이 애니메이션에 없다")
+        self.assertIn("var pvBow=%s;" % (("%g" % (frames.display_bow_mm() / 1000)).lstrip("0")), self.html)
+        self.assertIn("40배 과장", self.html, "과장 배율을 화면에 밝히지 않았다")
+
+
+class TestContinuousPlayback(unittest.TestCase):
+    """60장이 실제로 연속 투입되는지 — 한 장 돌고 멈추면 안 된다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_release_is_triggered_by_the_jbr_stopper(self):
+        """다음 장은 앞 장의 스토퍼·자세교정이 작동할 때 들어간다."""
+        self.assertEqual(campaign.release_takt_s(),
+                         campaign.INFEED_S + campaign.JBR_STOPPER_OFFSET_S)
+        rows = [p for p in campaign.panels() if p.condition != "전손"]
+        for previous, panel in zip(rows, rows[1:]):
+            stopper = previous.jbr_start + campaign.JBR_STOPPER_OFFSET_S
+            with self.subTest(index=panel.index):
+                self.assertGreaterEqual(panel.infeed_start + 1e-9, min(stopper, previous.infeed_end),
+                                        "앞 장 스토퍼보다 먼저 투입됐다")
+
+    def test_playback_wrap_matches_the_model_takt(self):
+        """영상 반복 주기와 계산 택트가 같아야 화면과 숫자가 어긋나지 않는다."""
+        self.assertIn(f"pvCamWrap={campaign.release_takt_s():g},", self.html)
+        self.assertIn(f"pvCamTakt={campaign.release_takt_s():g},", self.html)
+        self.assertAlmostEqual(campaign.summary()["takt_s"], campaign.release_takt_s(), delta=1.0)
+
+    def test_playback_api_exists_and_advances(self):
+        for hook in ("startCampaign(i)", "stopCampaign()", "campaignPlayback()",
+                     "function pvCamTick()", "function pvCamHalt()"):
+            with self.subTest(hook=hook):
+                self.assertIn(hook, self.html)
+        # 전손은 배출 시간에, 정상품은 스토퍼 시점에 넘어간다
+        self.assertIn('e.condition==="전손"?pvCamRejectS:pvCamWrap', self.html)
+        # 마지막 장에서 멈춘다
+        self.assertIn("pvCamIdx>=i.length?pvCamHalt()", self.html)
+
+    def test_speed_options_allow_watching_sixty_panels(self):
+        """60장 × 48 s 라 배속이 없으면 48분을 봐야 한다."""
+        for option in ('<option value="4">4×</option>',
+                       '<option value="8">8× · 60장 연속용</option>'):
+            with self.subTest(option=option):
+                self.assertIn(option, self.html)
+
+
+class TestCarriageClearance(unittest.TestCase):
+    """유리면이 위인 패널은 정션박스가 아래로 향한다 — 승강캐리지가 눌러선 안 된다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+        cls.stations = station_blocks(cls.html)
+
+    def test_carriage_rails_sit_under_the_long_frame(self):
+        """레일은 유리 밑이 아니라 장변 프레임(패널 반폭 700 − 프레임 27.5) 아래여야 한다."""
+        self.assertIn("P(d,[2.72,.1,.14],[0,0,-.672]", self.html)
+        self.assertIn("P(d,[2.72,.1,.14],[0,0,.672]", self.html)
+        self.assertNotIn("P(d,[2.72,.1,.14],[0,0,-.54]", self.html,
+                         "레일이 다시 유리 밑으로 들어가 정션박스를 누른다")
+
+    def test_sheet_shows_twin_rails_not_a_slab(self):
+        """시트가 통판이면 정션박스가 지나갈 개구부가 도면에서 보이지 않는다."""
+        for tag in ("CAR-A1", "CAR-A2", "CAR-B1", "CAR-B2"):
+            with self.subTest(tag=tag):
+                self.assertIn(f"part('{tag}'", self.stations["afu"])
+        self.assertIn("part('JBOX-C', '정션박스 통과 개구부", self.stations["bfc"])
+        self.assertNotIn("part('CAR-A', 'BLR-101A 단장 승강캐리지', [2720, 100, 1220]", self.html)
+
+    def test_opening_clears_the_junction_box(self):
+        """레일 사이 개구부가 정션박스 폭(210)보다 넉넉해야 한다."""
+        rails = 2 * 672          # 레일 중심 간격
+        opening = rails - 140    # 레일 폭 140 을 뺀 순개구
+        self.assertGreaterEqual(opening, 210 * 2, "정션박스 통과 여유가 부족하다")
 
 
 if __name__ == "__main__":  # pragma: no cover
