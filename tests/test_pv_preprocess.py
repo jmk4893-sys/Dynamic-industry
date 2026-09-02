@@ -1341,5 +1341,68 @@ class TestSceneLighting(unittest.TestCase):
         self.assertIn('matchMedia("(prefers-color-scheme: dark)").addEventListener("change",Bth)', self.html)
 
 
+
+class TestViewNavigation(unittest.TestCase):
+    """3D 화면을 마우스·터치로 자유롭게 옮길 수 있는지.
+
+    팬 클램프가 cursor(-7,1.1,0) 중심 반경 28 이라 플랜트 우측 끝(월드 x≈+25.7,
+    GBR 버퍼)에 아예 닿지 못했다 — 최대 도달이 +21 이었다. 전장 44.75 m 를
+    양 끝까지 훑을 수 있어야 한다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_pan_clamp_covers_the_whole_plant(self):
+        """팬 반경은 클램프 중심에서 플랜트 양 끝까지 닿아야 한다."""
+        found = re.search(r'ht\.cursor\?\.set\(([-\d.]+),([-\d.]+),([-\d.]+)\);'
+                          r'"maxTargetRadius"in ht&&\(ht\.maxTargetRadius=(\d+)\)', self.html)
+        self.assertIsNotNone(found, "팬 클램프 설정을 찾지 못했다")
+        cursor_x, radius = float(found.group(1)), float(found.group(4))
+        # 월드 좌표 = 플랜트 좌표/1000 − 19.075
+        half = layout.plant_envelope_mm()[0] / 1000.0
+        left, right = -19.075, half - 19.075
+        self.assertLessEqual(abs(left - cursor_x), radius, "좌측 끝에 팬이 닿지 않는다")
+        self.assertLessEqual(abs(right - cursor_x), radius, "우측 끝(GBR)에 팬이 닿지 않는다")
+        self.assertGreaterEqual(radius, half, "팬 반경이 전장보다 짧다")
+
+    def test_zoom_out_can_frame_the_whole_line(self):
+        """전장을 한 화면에 담으려면 최대 거리가 전장보다 넉넉해야 한다."""
+        found = re.search(r"ht\.maxDistance=(\d+);", self.html)
+        self.assertIsNotNone(found)
+        self.assertGreaterEqual(float(found.group(1)), layout.plant_envelope_mm()[0] / 1000.0 * 2,
+                                "최대 줌아웃이 전장의 2배에 못 미친다")
+
+    def test_pan_mode_switches_drag_and_one_finger(self):
+        """이동 모드는 드래그와 한 손가락을 이동으로 바꿔야 한다."""
+        self.assertIn('id="jb-pan-toggle"', self.html)
+        self.assertIn("ht.mouseButtons.LEFT=pvPanOn?Yn.PAN:Yn.ROTATE", self.html)
+        self.assertIn("ht.touches.ONE=pvPanOn?ri.PAN:ri.ROTATE", self.html)
+        self.assertIn("'afrbuffer', '#jb-pan-toggle', 'reset'", self.html,
+                      "이동 모드 버튼이 화면 콘솔 행(cameraShortcuts)에 배치되지 않았다")
+
+    def test_keyboard_panning_is_available(self):
+        self.assertIn("ht.keyPanSpeed=", self.html)
+        self.assertIn("ht.listenToKeyEvents&&ht.listenToKeyEvents(Dt.domElement)", self.html)
+        self.assertIn("Dt.domElement.tabIndex=0", self.html)
+
+    def test_drag_does_not_select_a_part(self):
+        """화면을 끌고 손을 떼면 클릭이 따라 나와 엉뚱한 부품이 선택됐다."""
+        self.assertIn("function pvPickOk(i)", self.html)
+        self.assertIn('Dt.domElement.addEventListener("click",i=>{pvPickOk(i)&&L0(i,!1)})', self.html)
+        self.assertNotIn('addEventListener("click",i=>L0(i,!1))', self.html)
+
+    def test_modifier_panning_is_left_to_orbitcontrols(self):
+        """OrbitControls 가 Shift·Ctrl 을 반대 동작으로 이미 처리한다 — 직접 바꾸면 뒤집힌다."""
+        self.assertNotIn("i.shiftKey?Yn.PAN:Yn.ROTATE", self.html,
+                         "Shift 처리를 직접 하면 OrbitControls 규칙과 싸워 회전이 된다")
+
+    def test_controls_are_documented_on_screen(self):
+        self.assertIn("pv-v22-move-hint", self.html)
+        self.assertIn("Shift+드래그", self.html)
+        self.assertIn("두 손가락", self.html)
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

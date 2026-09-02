@@ -43,7 +43,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (404건)
+python -m unittest discover -s tests -t .                               # 테스트 (411건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
@@ -127,6 +127,7 @@ flux 상사로 스케일업하면 수력학적 조건이 보존되므로 실증 
 - 열수지 실내 37.4 kW·환기 22,500 m³/h — HPU 오일쿨러 2기·반 열교환기 3면 (TH-1010)
 - 내구 재질 유리분 Mohs 6–7 대응 AR400 라이너·S355 분체도장 사양 (MT-1011)
 - 3D 장면 색·조명은 테마와 무관한 고정 팔레트 — 배경·안개·바닥만 라이트/다크를 따른다
+- 3D 시점 이동은 전장 44.75 m 양 끝까지 — 이동 모드·Shift 드래그·오른쪽 버튼·두 손가락·방향키
 - 비전 최소화 검토 반영 — 영상 헤드 7 → 4 (안전 센서는 감축 없음)
 - 컷어웨이(단면)·분해를 메인 3D 영상과 도면 3D 분해도 양쪽에서 조작 — 절단축 5종(X 상/하류, Y 앞/뒤, Z 위), 절단 위치와 분해 거리는 슬라이더로 조정
 
