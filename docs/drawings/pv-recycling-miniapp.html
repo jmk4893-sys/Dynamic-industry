@@ -2189,6 +2189,13 @@ html>body{padding:0}</style>
       <li><strong>배관 지지</strong> — 방진 행거로 25 Hz·100 Hz 전달 차단 · 지지 간격을 배관 고유진동수가 100 Hz 를 피하도록 설정</li>
     </ul>
 
+    <p class="text-small">이 표의 <strong>8점</strong>은 3D 형상에도 그대로 들어가 있습니다. 종전 형상은 횡부재마다
+      2점씩 <strong>14점</strong>이 스키드 안쪽에 묻혀 있어 계산서와 개수가 다르고 밖에서 보이지도 않았습니다.
+      지금은 레일 바깥(z ±0.88)으로 아웃리거 브래킷을 내어 8점으로 맞췄고,
+      <strong>스키드 → 브래킷 → 스프링 → 그라우트 패드 → 기초 앵커</strong> 순으로 하중경로가 형상에 드러납니다.
+      스키드 밑의 원기둥 8개는 바닥에 닿아 있어 방진을 무력화하고 있었는데, 위 항목이 요구하는
+      <strong>스너버</strong>로 정리하고 바닥과 30 mm 간극을 뒀습니다 — 평상시엔 뜨고 공진 통과 때만 받습니다.</p>
+
     <strong>감시 기준 (ISO 10816-3 · Group 2 · 유연지지)</strong>
     <div class="table-responsive"><table class="table table-sm" aria-label="진동 감시 기준">
       <thead><tr><th>구역</th><th class="text-end">진동속도 rms</th><th>조치</th></tr></thead>
@@ -15770,6 +15777,79 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return addMesh(parent, new THREE.BoxGeometry(size.x, size.y, size.z), sourceMaterial, position, rotation, partId, edged);
     }
 
+    // ---- 지지·장착 (건식) ---------------------------------------------------
+    // 습식부는 앞 단계에서 거싯·모터베드·방진마운트·피로우블록을 갖췄는데, 건식은
+    // 구조재가 전부 솔리드 각기둥이고 체결구 형상이 파쇄기 도어 볼트 12개뿐이었다.
+    // 사양은 이미 BOM 에 있다 — HG-001 통합 스키드 H200×200 · F-HG-01 스키드 앵커
+    // M24×400 12SET · F-HG-02 하우징 분할 볼트 M20×65 32SET · F-HG-05 베어링 하우징
+    // 볼트 M24×85 8SET. 도면에만 있고 형상에 없던 것을 형상으로 옮긴다.
+    // 규약은 건식 addBox 계열(size·position 이 객체)을 따른다.
+
+    // H 단면 — 웨브 1판 + 플랜지 2판. axis 는 부재가 뻗는 방향.
+    function addHSection(parent, partId, position, length, axis, h = 0.20, b = 0.10, mat = material.frame) {
+      const web = Math.max(0.009, h * 0.06), flange = Math.max(0.013, h * 0.09);
+      const { x, y, z } = position;
+      if (axis === "y") {
+        addBox(parent, { x: web, y: length, z: b }, { x, y, z }, mat, partId);
+        for (const d of [-1, 1]) addBox(parent, { x: h, y: length, z: flange }, { x, y, z: z + d * (b / 2 - flange / 2) }, mat, partId);
+      } else if (axis === "x") {
+        addBox(parent, { x: length, y: h - flange * 2, z: web }, { x, y, z }, mat, partId);
+        for (const d of [-1, 1]) addBox(parent, { x: length, y: flange, z: b }, { x, y: y + d * (h / 2 - flange / 2), z }, mat, partId);
+      } else {
+        addBox(parent, { x: web, y: h - flange * 2, z: length }, { x, y, z }, mat, partId);
+        for (const d of [-1, 1]) addBox(parent, { x: b, y: flange, z: length }, { x, y: y + d * (h / 2 - flange / 2), z }, mat, partId);
+      }
+    }
+
+    // 볼트 열 — 분할면·플랜지처럼 직선으로 늘어선 체결구. 머리만 보이면 되므로
+    // 6각 근사(세그먼트 6)로 그려 메시 비용을 억제한다.
+    function addBoltRow(parent, partId, from, to, count, axis, dia = 0.018, head = 0.030) {
+      for (let i = 0; i < count; i += 1) {
+        const t = count === 1 ? 0.5 : i / (count - 1);
+        const pos = { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t, z: from.z + (to.z - from.z) * t };
+        addCylinder(parent, dia * 0.5, head, pos, material.silverClamp, partId, axis, 6, false);
+      }
+    }
+
+    // 볼트 원 — 원형 플랜지 둘레. axis 는 볼트가 박히는 방향.
+    function addBoltRing(parent, partId, center, radius, count, axis, dia = 0.018, head = 0.030) {
+      for (let i = 0; i < count; i += 1) {
+        const a = Math.PI * 2 * i / count;
+        const off = { x: 0, y: 0, z: 0 };
+        if (axis === "z") { off.x = Math.cos(a) * radius; off.y = Math.sin(a) * radius; }
+        else if (axis === "y") { off.x = Math.cos(a) * radius; off.z = Math.sin(a) * radius; }
+        else { off.z = Math.cos(a) * radius; off.y = Math.sin(a) * radius; }
+        addCylinder(parent, dia * 0.5, head,
+          { x: center.x + off.x, y: center.y + off.y, z: center.z + off.z },
+          material.silverClamp, partId, axis, 6, false);
+      }
+    }
+
+    // 기초 앵커 — 비수축 그라우트 패드 위로 앵커볼트가 올라오고 너트로 조인다.
+    // BOM 은 「비수축 그라우트 40 mm」를 명시하는데 형상이 없었다.
+    // 앵커는 좌면 한가운데가 아니라 패드 양 끝에 박힌다 — 가운데에 두면 스프링이나
+    // 기계 발에 가려 보이지 않고, 실제로도 좌면 밑에는 앵커를 넣지 못한다.
+    function addGroutedAnchor(parent, partId, x, z, floorTop, pad = 0.26, dia = 0.024, stick = 0.09) {
+      addBox(parent, { x: pad, y: 0.030, z: pad }, { x, y: floorTop + 0.015, z }, material.fixed, partId, null, false);
+      for (const d of [-1, 1]) {
+        const ax = x + d * pad * 0.40;
+        addCylinder(parent, dia * 0.5, stick, { x: ax, y: floorTop + 0.030 + stick / 2, z }, material.silverClamp, partId, "y", 8, false);
+        addCylinder(parent, dia * 0.9, 0.020, { x: ax, y: floorTop + 0.030 + stick, z }, material.silverClamp, partId, "y", 6, false);
+      }
+    }
+
+    // 스프링 아이솔레이터 — 건식 P01 과 SC-500 이 공유한다. baseY 에서 topY 까지
+    // 코일이 채워지고, 위·아래에 스프링 시트가 붙는다.
+    function addSpringIsolator(parent, partId, x, z, baseY, topY, coilR = 0.058) {
+      addBox(parent, { x: coilR * 3.8, y: 0.016, z: coilR * 3.8 }, { x, y: baseY + 0.008, z }, material.silverClamp, partId);
+      const span = topY - baseY - 0.040, coils = Math.max(3, Math.round(span / 0.019));
+      for (let c = 0; c < coils; c += 1) {
+        addMesh(parent, new THREE.TorusGeometry(coilR, 0.011, 6, 18), material.safety,
+          { x, y: baseY + 0.026 + span * (c / Math.max(1, coils - 1)), z }, { x: Math.PI / 2 }, partId, false);
+      }
+      addBox(parent, { x: coilR * 4.1, y: 0.018, z: coilR * 4.1 }, { x, y: topY - 0.009, z }, material.silverClamp, partId);
+    }
+
     // ---- 분진 폭발 방호 (ATEX / KOSHA) --------------------------------------
     // PV 라미네이트를 분쇄하면 Al 미분·폴리머·미세 유리가 나온다. 설계문서는
     // 「Kst/MIE 폭발성 시험」과 「집진/폭발방호」를 제작 전 필수 검증으로 규정하는데
@@ -16233,24 +16313,46 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       }
     }
 
-    addBox(parts.P01, { x: 5.00, y: 0.12, z: 0.14 }, { x: 0.25, y: 0.06, z: -0.73 }, material.frame, "P01");
-    addBox(parts.P01, { x: 5.00, y: 0.12, z: 0.14 }, { x: 0.25, y: 0.06, z: 0.73 }, material.frame, "P01");
+    // P01 공통 베이스 스키드 — BOM HG-001 은 H200×200×8×12 인데 형상은 솔리드 각재였다.
+    // 스키드 깊이 120 mm 는 주변 배치(플리넘·SC-500 베이스·리턴스크류)에 묶여 있어
+    // 200 mm 로 키울 수 없으므로, 치수는 그대로 두고 단면 형상만 H 로 맞춘다.
+    // 치수 차이는 여기 남긴다 — 발주 시에는 BOM 사양(H200×200)이 기준이다.
+    for (const z of [-0.73, 0.73]) addHSection(parts.P01, "P01", { x: 0.25, y: 0.06, z }, 5.00, "x", 0.12, 0.14);
     [-2.10, -1.25, -0.40, 0.45, 1.30, 2.15, 2.60].forEach((x) => {
-      addBox(parts.P01, { x: 0.14, y: 0.12, z: 1.46 }, { x, y: 0.06, z: 0 }, material.frame, "P01");
-      // 25 Hz 가진에 대해 fn 4 Hz(정적처짐 15 mm) 스프링 8점 — 전달률 2.6%.
-      // 종전 「방진마운트 8점」은 형식이 없었고 고무패드(처짐 2.5 mm)면 81% 밖에 못 막는다.
-      [-0.62, 0.62].forEach((dz) => {
-        addBox(parts.P01, { x: 0.20, y: 0.020, z: 0.20 }, { x, y: -0.02, z: dz }, material.silverClamp, "P01");
-        for (let coil = 0; coil < 5; coil += 1) {
-          addMesh(parts.P01, new THREE.TorusGeometry(0.055, 0.010, 6, 20), material.safety,
-            { x, y: -0.005 + coil * 0.018, z: dz }, { x: Math.PI / 2 }, "P01", false);
-        }
-        addBox(parts.P01, { x: 0.22, y: 0.022, z: 0.22 }, { x, y: 0.088, z: dz }, material.silverClamp, "P01");
+      addHSection(parts.P01, "P01", { x, y: 0.06, z: 0 }, 1.46, "z", 0.12, 0.14);
+    });
+
+    // 방진 아이솔레이터 — 종전에는 횡부재 7개마다 2점씩 14점이 스키드 「안쪽」에
+    // 묻혀 있어 밖에서 보이지도 않고 설계 계산서(스프링 8점)와도 맞지 않았다.
+    // 25 Hz 가진에 fn 4 Hz(정적처짐 15 mm) 스프링 8점 — 전달률 2.6%.
+    // 레일 바깥(z ±0.88)으로 아웃리거 브래킷을 내어 8점으로 정리하면 하중경로가
+    // 「스키드 → 브래킷 → 스프링 → 그라우트 패드 → 기초」로 한눈에 읽힌다.
+    const SKID_SPRING_X = [-1.95, -0.45, 1.05, 2.55];
+    const FLOOR_TOP = -0.07;
+    SKID_SPRING_X.forEach((x) => {
+      [-0.88, 0.88].forEach((z) => {
+        const rail = Math.sign(z) * 0.73;
+        // 아웃리거 브래킷 — 레일 웨브에서 스프링 좌면까지
+        addBox(parts.P01, { x: 0.24, y: 0.020, z: 0.34 }, { x, y: 0.128, z: (rail + z) / 2 }, material.frame, "P01");
+        addBox(parts.P01, { x: 0.020, y: 0.11, z: 0.30 }, { x, y: 0.072, z: (rail + z) / 2 }, material.frame, "P01", null, false);
+        // 그라우트 패드 + M24 앵커 (F-HG-01 12SET 중 8점)
+        addGroutedAnchor(parts.P01, "P01", x, z, FLOOR_TOP, 0.34, 0.024, 0.07);
+        // 스프링 — 그라우트 패드 상단(-0.04)에서 브래킷 하면(0.118)까지 158 mm
+        addSpringIsolator(parts.P01, "P01", x, z, FLOOR_TOP + 0.030, 0.118, 0.058);
       });
     });
+    // 나머지 앵커 4점 — 스키드 네 모서리
+    [[-2.15, -0.73], [-2.15, 0.73], [2.65, -0.73], [2.65, 0.73]]
+      .forEach(([x, z]) => addGroutedAnchor(parts.P01, "P01", x, z, FLOOR_TOP, 0.22, 0.024, 0.09));
+
+    // 스너버 — 설계문서가 「수평 스토퍼 내장 · 기동/정지 시 공진 통과용 스너버」를
+    // 요구하는데 형상에는 정체불명의 원기둥 8개가 바닥에 닿아 있었다. 스프링으로
+    // 띄운 스키드에 강체 발이 같이 닿으면 방진이 성립하지 않는다. 이름을 주고
+    // 바닥과 30 mm 간극을 둬, 평상시엔 뜨고 공진 통과 때만 받도록 한다.
     [-2.08, -0.55, 1.00, 2.58].forEach((x) => {
       [-0.71, 0.71].forEach((z) => {
-        addCylinder(parts.P01, 0.055, 0.08, { x, y: -0.02, z }, material.frame, "P01", "y", 20);
+        addCylinder(parts.P01, 0.055, 0.08, { x, y: 0.005, z }, material.frame, "P01", "y", 20);
+        addBox(parts.P01, { x: 0.16, y: 0.022, z: 0.16 }, { x, y: FLOOR_TOP + 0.011, z }, material.fixed, "P01", null, false);
       });
     });
 
@@ -16268,6 +16370,17 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
     [0.82, 1.18].forEach((y) => {
       addCylinder(parts.P02, 0.032, 0.11, { x: grinderX - 0.50, y, z: 0.41 }, material.frame, "P02", "y", 18);
+    });
+    // 하우징 분할면 — HG-002 는 「분할 원형 하우징 2EA · 분할면 평면도 0.10 mm」다.
+    // 즉 챔버는 수평으로 반갈라져 볼트로 물려 있는데, 형상에는 통짜 원통만 있어
+    // 라이너·회전날 정비를 위해 어떻게 열리는지가 보이지 않았다. 축을 지나는
+    // 수평면에 분할 플랜지를 세우고 볼트를 박는다.
+    // 분할면 볼트는 가독성을 위해 측면당 8개(피치 85 mm)로 그린다 — F-HG-02 는 32SET.
+    [-1, 1].forEach((side) => {
+      addBox(parts.P02, { x: 0.13, y: 0.028, z: 0.72 }, { x: grinderX + side * 0.515, y: grinderY, z: 0 }, material.frame, "P02");
+      addBoltRow(parts.P02, "P02",
+        { x: grinderX + side * 0.515, y: grinderY + 0.020, z: -0.30 },
+        { x: grinderX + side * 0.515, y: grinderY + 0.020, z: 0.30 }, 8, "y", 0.020, 0.026);
     });
     // SE-101 speed pickup: bracket off the cover, barrel sensor aimed at the target wheel rim.
     addBox(parts.P02, { x: 0.045, y: 0.30, z: 0.030 }, { x: grinderX, y: grinderY + 0.30, z: 0.47 }, material.frame, "P02", null, false);
@@ -16348,8 +16461,19 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     addCylinder(parts.P07, 0.15, 0.09, { x: grinderX, y: grinderY, z: 0.42 }, material.frame, "P07", "z", 40);
     addCylinder(parts.P07, 0.15, 0.09, { x: grinderX, y: grinderY, z: -0.42 }, material.frame, "P07", "z", 40);
-    addBox(parts.P07, { x: 0.26, y: 0.20, z: 0.16 }, { x: grinderX, y: grinderY - 0.22, z: 0.42 }, material.frame, "P07");
-    addBox(parts.P07, { x: 0.26, y: 0.20, z: 0.16 }, { x: grinderX, y: grinderY - 0.22, z: -0.42 }, material.frame, "P07");
+    // 베어링 페데스탈 — 종전에는 하우징 블록이 y 0.70~0.90 에 떠 있고 스키드(상면
+    // 0.12)까지 사이가 비어 있었다. 22216 베어링 2개가 Ø80 로터축을 받는 자리인데
+    // 하중이 내려갈 길이 형상에 없었던 셈이다. H 기둥으로 스키드까지 잇는다.
+    [0.42, -0.42].forEach((z) => {
+      addBox(parts.P07, { x: 0.26, y: 0.20, z: 0.16 }, { x: grinderX, y: grinderY - 0.22, z }, material.frame, "P07");
+      addHSection(parts.P07, "P07", { x: grinderX, y: 0.455, z }, 0.59, "y", 0.20, 0.14);
+      addBox(parts.P07, { x: 0.30, y: 0.024, z: 0.24 }, { x: grinderX, y: 0.132, z }, material.frame, "P07");
+      // F-HG-05 베어링 하우징 볼트 M24×85 8SET — 페데스탈 상면 4 + 베이스 4
+      addBoltRow(parts.P07, "P07", { x: grinderX - 0.10, y: 0.905, z: z - 0.05 }, { x: grinderX + 0.10, y: 0.905, z: z - 0.05 }, 2, "y", 0.024, 0.030);
+      addBoltRow(parts.P07, "P07", { x: grinderX - 0.10, y: 0.905, z: z + 0.05 }, { x: grinderX + 0.10, y: 0.905, z: z + 0.05 }, 2, "y", 0.024, 0.030);
+      addBoltRow(parts.P07, "P07", { x: grinderX - 0.12, y: 0.172, z: z - 0.09 }, { x: grinderX + 0.12, y: 0.172, z: z - 0.09 }, 2, "y", 0.024, 0.028);
+      addBoltRow(parts.P07, "P07", { x: grinderX - 0.12, y: 0.172, z: z + 0.09 }, { x: grinderX + 0.12, y: 0.172, z: z + 0.09 }, 2, "y", 0.024, 0.028);
+    });
 
     const motorCenter = { x: 0.48, y: 0.70, z: 0 };
     addCylinder(parts.P08, 0.25, 0.52, motorCenter, material.motor, "P08", "z", 48);
@@ -16365,6 +16489,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
     addBox(parts.P08, { x: 0.26, y: 0.17, z: 0.22 }, { x: motorCenter.x, y: 1.00, z: 0 }, material.frame, "P08");
     [-0.15, 0.15].forEach((x) => addBox(parts.P08, { x: 0.18, y: 0.12, z: 0.28 }, { x: motorCenter.x + x, y: 0.37, z: 0 }, material.frame, "P08"));
+    // 모터 베드 — 37 kW 모터의 발이 y 0.31 에 있고 스키드 상면은 0.12 라, 그 사이
+    // 190 mm 가 비어 모터가 공중에 얹혀 있었다. V 벨트 구동이라 장력 조정용
+    // 슬라이드 레일과 텐션 볼트가 반드시 붙는 자리이기도 하다.
+    addBox(parts.P08, { x: 0.74, y: 0.16, z: 0.46 }, { x: motorCenter.x, y: 0.20, z: 0 }, material.frame, "P08");
+    [-0.15, 0.15].forEach((z) => addBox(parts.P08, { x: 0.70, y: 0.030, z: 0.10 }, { x: motorCenter.x, y: 0.295, z: z * 1.0 }, material.silverClamp, "P08"));
+    addCylinder(parts.P08, 0.014, 0.20, { x: motorCenter.x - 0.38, y: 0.295, z: 0 }, material.silverClamp, "P08", "x", 8, false);
+    addBoltRow(parts.P08, "P08", { x: motorCenter.x - 0.30, y: 0.288, z: -0.20 }, { x: motorCenter.x + 0.30, y: 0.288, z: -0.20 }, 2, "y", 0.020, 0.028);
+    addBoltRow(parts.P08, "P08", { x: motorCenter.x - 0.30, y: 0.288, z: 0.20 }, { x: motorCenter.x + 0.30, y: 0.288, z: 0.20 }, 2, "y", 0.020, 0.028);
+    addBoltRow(parts.P08, "P08", { x: motorCenter.x - 0.32, y: 0.132, z: -0.20 }, { x: motorCenter.x + 0.32, y: 0.132, z: -0.20 }, 2, "y", 0.024, 0.028);
+    addBoltRow(parts.P08, "P08", { x: motorCenter.x - 0.32, y: 0.132, z: 0.20 }, { x: motorCenter.x + 0.32, y: 0.132, z: 0.20 }, 2, "y", 0.024, 0.028);
     addCylinder(parts.P08, 0.040, 0.22, { x: motorCenter.x, y: motorCenter.y, z: -0.40 }, material.frame, "P08", "z", 22);
     const motorFan = new THREE.Group();
     motorFan.position.set(motorCenter.x, motorCenter.y, 0.38);
@@ -16709,9 +16843,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     };
     parts.P12.add(sieveVibratingGroup);
     addBox(parts.P12, { x: 1.48, y: 0.09, z: 0.94 }, { x: sieveX, y: 0.08, z: 0 }, material.frame, "P12");
+    // SC-500 진동 스크린의 지지 — 종전에는 매끈한 원기둥 4개가 서 있을 뿐이었다.
+    // 25 Hz 진동체를 강체 기둥으로 받으면 기초로 그대로 전달된다. 소음·진동표가
+    // 이 기기에 「방진 스프링 · 덕트 유연연결」을 요구하므로 P01 과 같은 코일
+    // 스프링 형식으로 바꾸고, 좌면 아래에 스프링 시트를 깐다.
     [[1.02, -0.33], [1.02, 0.33], [1.94, -0.33], [1.94, 0.33]].forEach(([x, z]) => {
-      addCylinder(parts.P12, 0.055, 0.32, { x, y: 0.29, z }, material.fixed, "P12", "y", 18, false);
       addBox(parts.P12, { x: 0.18, y: 0.045, z: 0.18 }, { x, y: 0.14, z }, material.frame, "P12");
+      addSpringIsolator(parts.P12, "P12", x, z, 0.163, 0.445, 0.052);
     });
     const sieveSideWalls = [
       addBox(sieveVibratingGroup, { x: 1.38, y: 0.80, z: 0.055 }, { x: sieveX, y: 0.68, z: -0.43 }, material.screenHousing, "P12", { z: -SIEVE_INCLINE_RAD }),
@@ -17665,10 +17803,12 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         wetBox(parent, [web, length, b], [px, py, pz], material.frame, `${name} 웨브`);
         for (const d of [-1, 1]) wetBox(parent, [h, length, flange], [px, py, pz + d * (b / 2 - flange / 2)], material.frame, `${name} 플랜지`);
       } else if (axis === "x") {
-        wetBox(parent, [length, web, b], [px, py, pz], material.frame, `${name} 웨브`);
+        // 보의 웨브는 플랜지 사이를 잇는 「세로판」이다. 종전에는 플랜지와 같은 폭의
+        // 가로판을 가운데 끼워 넣어, 단면이 H 가 아니라 널판 3장을 쌓은 꼴이었다.
+        wetBox(parent, [length, h - flange * 2, web], [px, py, pz], material.frame, `${name} 웨브`);
         for (const d of [-1, 1]) wetBox(parent, [length, flange, b], [px, py + d * (h / 2 - flange / 2), pz], material.frame, `${name} 플랜지`);
       } else {
-        wetBox(parent, [b, web, length], [px, py, pz], material.frame, `${name} 웨브`);
+        wetBox(parent, [web, h - flange * 2, length], [px, py, pz], material.frame, `${name} 웨브`);
         for (const d of [-1, 1]) wetBox(parent, [b, flange, length], [px, py + d * (h / 2 - flange / 2), pz], material.frame, `${name} 플랜지`);
       }
     }
@@ -18067,6 +18207,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetTube(unifiedWet, vacuumHeader, 0.055, material.pipeAir, "VP-401 공통 진공헤더 DN80");
     wetTube(unifiedWet, [[5.58, 1.34, -2.46], [5.58, 0.62, -2.46]], 0.055, material.pipeAir, "공통 진공헤더 → VP-401 흡입");
     wetBox(unifiedWet, [1.28, 0.10, 0.96], [5.86, 0.05, -2.46], material.frame, "VP-401 공통 스키드 베이스");
+    // 진공펌프 본체는 y 0.151, 모터는 0.20 에서 시작하는데 스키드 상면은 0.10 이라
+    // 둘 다 스키드 위에 떠 있었다. 커플링 직결이라 축심을 맞추는 공통 베드가
+    // 반드시 들어가는 자리다 — 베드 플레이트 + 심 플레이트 + 기초 볼트.
+    [-2.72, -2.20].forEach((z) => {
+      wetBox(unifiedWet, [1.06, 0.055, 0.42], [5.78, 0.128, z], material.frame, "VP-401 공통 베드 플레이트");
+      for (const dx of [-0.34, 0.30]) {
+        wetBox(unifiedWet, [0.20, 0.038, 0.30], [5.78 + dx, 0.174, z], material.silverClamp, "VP-401 심 플레이트");
+        for (const dz of [-0.13, 0.13]) wetCylinder(unifiedWet, 0.009, 0.032, [5.78 + dx, 0.196, z + dz], material.silverClamp, "VP-401 베드 기초볼트", 6);
+      }
+    });
     for (const dx of [-0.52, 0.52]) for (const dz of [-0.36, 0.36]) wetAvMount(unifiedWet, "VP-401", 5.86 + dx, -0.08, -2.46 + dz);
     const vp401Wheels = [];
     [["A", -2.72], ["B", -2.20]].forEach(([suffix, z]) => {
