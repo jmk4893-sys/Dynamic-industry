@@ -17334,6 +17334,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const wetRotors = [];
     const wetBubbles = [];
     const wetFlowMarkers = [];
+    const wetPipeRuns = [];          // 지지물을 한 번에 놓으려고 배관 curve 를 모은다
+    const wetVesselFootprints = [];  // 동체 안에 지지물이 생기지 않게 피할 발자국
     const wetBodyMaterial = material.equipmentWetBody.clone();
     wetBodyMaterial.transparent = true;
     wetBodyMaterial.opacity = 0.82;
@@ -17470,6 +17472,44 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return { risers, rise, run, slopeDeg: slope * 180 / Math.PI };
     }
 
+    // ---- 배관 지지 ---------------------------------------------------------
+    // 설계문서는 「방진 행거로 25 Hz·100 Hz 전달 차단 · 지지 간격을 배관 고유진동수로」
+    // 라고 규정하는데 3D 에는 지지물이 하나도 없어 배관이 공중을 지나갔다.
+    // 통행 높이 위는 상부 구조에 매달고, 아래는 바닥에서 받친다.
+    const PIPE_SUPPORT_SPAN = 1.2;     // 지지 간격 — DN50~100 슬러리 라인 기준.
+                                       // 수직 구간은 걸러내므로 촘촘히 훑어야 수평부가 잡힌다.
+    const PIPE_SUPPORT_MIN_RUN = 1.0;  // 이보다 짧은 지관은 양단 노즐이 곧 지지다
+    const PIPE_HANGER_MIN_Y = 0.80;    // 이 위는 행거, 아래는 스탠션
+    function wetPipeHanger(tag, x, y, z, topY, radius) {
+      const rod = Math.max(0.12, topY - y - radius);
+      wetCylinder(unifiedWet, 0.010, rod, [x, y + radius + rod / 2, z], material.silverClamp, `${tag} 행거 로드`, 8);
+      wetBox(unifiedWet, [radius * 2.6, 0.05, radius * 2.6], [x, y, z], material.fixed, `${tag} 방진 행거 클램프`);
+    }
+    // ---- H형강 단면 --------------------------------------------------------
+    // BOM FC-001 은 「H250/H200 조합」인데 기둥·랙·보가 전부 정사각 각기둥이라
+    // 구조물이 「막대기」로 읽혔다. 웨브 1판 + 플랜지 2판으로 H 단면을 만든다.
+    // axis 는 부재가 뻗는 방향("y" 기둥 / "x"·"z" 보), h 는 성(춤), b 는 플랜지 폭.
+    function wetHBeam(parent, name, position, length, axis, h = 0.25, b = 0.125) {
+      const web = 0.012, flange = 0.018;
+      const [px, py, pz] = position;
+      if (axis === "y") {
+        wetBox(parent, [web, length, b], [px, py, pz], material.frame, `${name} 웨브`);
+        for (const d of [-1, 1]) wetBox(parent, [h, length, flange], [px, py, pz + d * (b / 2 - flange / 2)], material.frame, `${name} 플랜지`);
+      } else if (axis === "x") {
+        wetBox(parent, [length, web, b], [px, py, pz], material.frame, `${name} 웨브`);
+        for (const d of [-1, 1]) wetBox(parent, [length, flange, b], [px, py + d * (h / 2 - flange / 2), pz], material.frame, `${name} 플랜지`);
+      } else {
+        wetBox(parent, [b, web, length], [px, py, pz], material.frame, `${name} 웨브`);
+        for (const d of [-1, 1]) wetBox(parent, [b, flange, length], [px, py + d * (h / 2 - flange / 2), pz], material.frame, `${name} 플랜지`);
+      }
+    }
+
+    function wetPipeStanchion(tag, x, y, z, radius) {
+      const post = Math.max(0.10, y - radius);
+      wetBox(unifiedWet, [0.06, post, 0.06], [x, post / 2, z], hdgMaterial, `${tag} 배관 스탠션`);
+      wetBox(unifiedWet, [0.18, 0.035, 0.18], [x, post + 0.017, z], hdgMaterial, `${tag} 스탠션 새들`);
+    }
+
     function wetMesh(parent, geometry, sourceMaterial, position, name, rotation = null) {
       const mesh = new THREE.Mesh(geometry, sourceMaterial);
       mesh.position.set(position[0], position[1], position[2]);
@@ -17492,6 +17532,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     function wetTube(parent, points, radius, sourceMaterial, name, activation = 0, markerCount = 0) {
       const curve = new THREE.CatmullRomCurve3(points.map((point) => new THREE.Vector3(point[0], point[1], point[2])), false, "centripetal", 0.18);
       wetMesh(parent, new THREE.TubeGeometry(curve, Math.max(28, points.length * 16), radius, 12, false), sourceMaterial, [0, 0, 0], name);
+      wetPipeRuns.push({ curve, radius, name });
       for (let index = 0; index < markerCount; index += 1) {
         const marker = wetMesh(parent, new THREE.SphereGeometry(radius * 0.44, 9, 7), sourceMaterial.clone(), [0, 0, 0], `${name} 유동 parcel ${index + 1}`);
         marker.material.transparent = false;
@@ -17521,6 +17562,42 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       wetBox(parent, [Math.abs(motorX - shaftX) + 0.42, 0.42, 0.20], [(motorX + shaftX) / 2, y, z], wetGuardMaterial, `${tag} V벨트 메쉬 안전커버`);
       wetRotors.push({ activation, rpm, parts: [motor, motorFan, drivenPulley, motorPulley], axis: "y" });
     }
+
+    // ---- 용기 부속(맨홀·노즐·레벨게이지·명판) ------------------------------
+    // 탱크가 민무늬 원통이라 배관이 동체에 그냥 꽂혔다. 실제 용기는 노즐 플랜지로
+    // 받고, 사람이 들어갈 맨홀과 액위를 눈으로 보는 게이지가 붙는다.
+    // 반경 방향으로 눕히는 회전은 난간과 같은 유도다 — Z로 −90° 눕혀 +X 로 만든 뒤
+    // Y로 −a 만큼 돌린다(three 의 XYZ 오일러는 RX·RY·RZ 순서).
+    function wetRadial(group, tag, x, z, r, a, y, radius, len, sourceMaterial, name) {
+      return wetCylinder(group, radius, len, [x + Math.cos(a) * r, y, z + Math.sin(a) * r],
+        sourceMaterial, `${tag} ${name}`, 20, [0, -a, -Math.PI / 2]);
+    }
+    function wetVesselFittings(group, tag, x, z, radius, height, base = 0.50) {
+      // 맨홀 — 상부 동체, 통로 쪽(+x)
+      wetRadial(group, tag, x, z, radius + 0.03, 0, base + height * 0.76, 0.20, 0.05, material.cover, "맨홀 커버");
+      wetRadial(group, tag, x, z, radius + 0.01, 0, base + height * 0.76, 0.24, 0.02, material.silverClamp, "맨홀 볼트링");
+      // 노즐 4방위 — 스텁 + 플랜지 디스크
+      const nozzles = [
+        [Math.PI, height * 0.72, "급액 노즐"],
+        [0, height * 0.12, "토출 노즐"],
+        [Math.PI / 2, height * 0.90, "오버플로 노즐"],
+        [-Math.PI / 2, 0.04, "드레인 노즐"]
+      ];
+      for (const [a, dy, name] of nozzles) {
+        wetRadial(group, tag, x, z, radius + 0.05, a, base + dy, 0.045, 0.10, material.cover, name);
+        wetRadial(group, tag, x, z, radius + 0.10, a, base + dy, 0.075, 0.02, material.silverClamp, `${name} 플랜지`);
+      }
+      // 레벨 게이지 — 동체 옆 수직 사이트글라스와 상하 차단밸브
+      const g = Math.PI * 0.75, gx = x + Math.cos(g) * (radius + 0.09), gz = z + Math.sin(g) * (radius + 0.09);
+      wetCylinder(group, 0.022, height * 0.66, [gx, base + height * 0.42, gz], wetWaterMaterial, `${tag} 레벨게이지 사이트글라스`, 12);
+      for (const dy of [height * 0.09, height * 0.75]) {
+        wetCylinder(group, 0.032, 0.05, [gx, base + dy, gz], material.silverClamp, `${tag} 레벨게이지 차단밸브`, 12);
+      }
+      // 명판
+      wetBox(group, [0.02, 0.10, 0.16], [x + Math.cos(Math.PI * 1.25) * (radius + 0.02), base + height * 0.55, z + Math.sin(Math.PI * 1.25) * (radius + 0.02)],
+        material.silverClamp, `${tag} 명판`, [0, -Math.PI * 1.25, 0]);
+    }
+
     function wetTank(tag, x, z, radius, height, activation, options = {}) {
       const group = new THREE.Group();
       group.name = tag;
@@ -17550,7 +17627,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       wetRotors.push({ activation, rpm: options.impellerRpm ?? (options.attrition ? DRIVE_RPM.attritionRotor : DRIVE_RPM.tankAgitator), parts: [rotor], axis: "y" });
       wetBox(group, [radius * 1.45, 0.09, radius * 0.90], [x, 0.56 + height, z], material.frame, `${tag} 구동 브리지`);
       wetDrive(group, tag, x, x + radius * 0.86, 0.70 + height, z, activation, options.attrition ? 5.2 : 2.2);
+      wetVesselFittings(group, tag, x, z, radius, height, 0.50);
       const label = wetLabel(`${tag} · ${options.label || "교반조"}`, [x, 1.12 + height, z]);
+      wetVesselFootprints.push({ x, z, radius: radius + 0.12 });
       return { group, label, x, z, radius, height };
     }
     function flotationCell(tag, x, z, radius, height, activation, airRate, impellerRpm, launder) {
@@ -17570,6 +17649,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
           material.cover, [x, rim + 0.02, z], `${tag} 라우더 외벽`);
         wetCylinder(cell.group, 0.05, 0.18, [x + Math.sin(outlet) * (outer + 0.06), rim - 0.17, z + Math.cos(outlet) * (outer + 0.06)],
           material.pipeConcentrate, `${tag} 정광 토출노즐`, 18, [Math.PI / 2, 0, 0]);
+        // 입자 궤적이 위어를 넘어 트로프를 타고 토출노즐까지 가려면 이 값들이 필요하다.
+        cell.launder = { arc, from, outlet, mid: (inner + outer) / 2, floorY: rim - 0.09 };
       }
       for (let index = 0; index < 20; index += 1) {
         const bubble = wetMesh(cell.group, new THREE.SphereGeometry(0.026 + (index % 4) * 0.004, 9, 7), wetFrothMaterial.clone(), [x, 0.62, z], `${tag} 부선기포 ${index + 1}`);
@@ -17620,6 +17701,18 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       wetTube(group, [dischargeTee, [x + 0.55, 0.42, z]], 0.035, streamMaterial, `${tag} 공통 토출헤더`);
       wetValve(`${tag}-XV-A`, [x - 0.40, 0.24, z - 0.22], streamMaterial, 0.72);
       wetValve(`${tag}-XV-B`, [x - 0.40, 0.24, z + 0.22], streamMaterial, 0.72);
+      // 표준 슬러리 펌프 스키드에서 빠져 있던 부속. 병렬 A/B 라 토출 역류방지가 필수고,
+      // 흡입에는 스트레이너와 진동 절연용 플렉시블이 들어간다.
+      wetCylinder(group, 0.055, 0.16, [x - 0.46, 0.24, z], material.silverClamp, `${tag} Y형 스트레이너`, 18, [0, 0, Math.PI / 2]);
+      wetCylinder(group, 0.038, 0.13, [x - 0.44, 0.15, z], material.silverClamp, `${tag} 스트레이너 드레인포켓`, 14, [0, 0, Math.PI / 4]);
+      for (const [suffix, dz] of [["A", -0.22], ["B", 0.22]]) {
+        wetCylinder(group, 0.050, 0.11, [x - 0.19, 0.24, z + dz], material.fixed, `${tag}${suffix} 플렉시블 조인트`, 14, [0, 0, Math.PI / 2]);
+        wetCylinder(group, 0.048, 0.10, [x - 0.03, 0.34, z + dz], material.silverClamp, `${tag}${suffix} 체크밸브`, 16);
+      }
+      for (const [name, px, py] of [["흡입 압력계", x - 0.52, 0.36], ["토출 압력계", x + 0.30, 0.54]]) {
+        wetCylinder(group, 0.010, 0.08, [px, py - 0.05, z], material.silverClamp, `${tag} ${name} 스템`, 8);
+        wetCylinder(group, 0.036, 0.016, [px, py, z], material.screen, `${tag} ${name}`, 18, [Math.PI / 2, 0, 0]);
+      }
       wetLabel(`${tag} · ${label}`, [x, 0.72, z], [1.35, 0.20, 1]);
       return { group, suction: [x - 0.55, 0.24, z], discharge: [x + 0.55, 0.42, z] };
     }
@@ -17634,7 +17727,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       for (const angle of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
         wetBox(group, [0.06, 0.38, 0.06], [x + Math.cos(angle) * radius * 0.72, 0.18, z + Math.sin(angle) * radius * 0.72], material.frame, `${tag} 지지다리`);
       }
+      wetVesselFittings(group, tag, x, z, radius, height, 0.18);
       wetLabel(`${tag} · ${label}`, [x, 0.72 + height, z], [1.35, 0.20, 1]);
+      wetVesselFootprints.push({ x, z, radius: radius + 0.12 });
       return { group, x, z, radius, height };
     }
 
@@ -17681,17 +17776,17 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 세우고 두 티어(VENT_HEADER_Y, DRY_RETURN_Y)에 캔틸레버 암을 내밀어 받친다.
     const RACK_COLUMN_Z = -0.94;
     [0.90, 3.70, 6.40].forEach((x) => {
-      wetBox(unifiedWet, [0.11, DRY_RETURN_Y + 0.18, 0.11], [x, (DRY_RETURN_Y + 0.18) / 2, RACK_COLUMN_Z], material.frame, "파이프 랙 기둥");
+      wetHBeam(unifiedWet, "파이프 랙 기둥 H200", [x, (DRY_RETURN_Y + 0.18) / 2, RACK_COLUMN_Z], DRY_RETURN_Y + 0.18, "y", 0.20, 0.10);
       [VENT_HEADER_Y, DRY_RETURN_Y].forEach((y) => {
-        wetBox(unifiedWet, [0.09, 0.07, Math.abs(RACK_COLUMN_Z - RACK_Z) + 0.22],
-          [x, y - 0.08, (RACK_COLUMN_Z + RACK_Z) / 2 + 0.05], material.frame, "파이프 랙 암");
+        wetHBeam(unifiedWet, "파이프 랙 암 H200", [x, y - 0.08, (RACK_COLUMN_Z + RACK_Z) / 2 + 0.05],
+          Math.abs(RACK_COLUMN_Z - RACK_Z) + 0.22, "z", 0.16, 0.09);
       });
 
     });
     // VP-401 지관 랙 — 두 진공 지관이 함께 내려오는 z = -2.46 라인.
     [1.60, 4.20].forEach((x) => {
-      wetBox(unifiedWet, [0.10, 3.30, 0.10], [x, 1.65, -2.62], material.frame, "VP-401 지관 랙 기둥");
-      wetBox(unifiedWet, [0.08, 0.06, 0.36], [x, 3.08, -2.52], material.frame, "VP-401 지관 랙 암");
+      wetHBeam(unifiedWet, "VP-401 지관 랙 기둥 H200", [x, 1.65, -2.62], 3.30, "y", 0.20, 0.10);
+      wetHBeam(unifiedWet, "VP-401 지관 랙 암 H200", [x, 3.08, -2.52], 0.36, "z", 0.14, 0.08);
     });
 
     // SS-201 ≥75 µm is no longer a dead-end receiver.  A sealed vacuum return
@@ -17813,7 +17908,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // Two-level flotation deck: FC-202 is cleaner and FC-203 is scavenger.
     wetBox(unifiedWet, [5.10, 0.14, 3.45], [14.46, 2.44, 0.18], gratingMaterial(5.10, 3.45), "ST-201 2층 부유선별 그레이팅");
-    for (const x of [12.18, 16.72]) for (const z of [-1.20, 1.50]) wetBox(unifiedWet, [0.10, 2.48, 0.10], [x, 1.20, z], material.frame, "ST-201 2층 지지기둥");
+    for (const x of [12.18, 16.72]) for (const z of [-1.20, 1.50]) wetHBeam(unifiedWet, "ST-201 2층 지지기둥 H250", [x, 1.20, z], 2.48, "y", 0.25, 0.125);
     // ---- ST-201 2층 접근계단·난간 (FC-003) --------------------------------
     // 종전 계단은 발판이 x로 0.12씩만 전진하면서 길이가 0.62라 서로 겹쳤고, 경사 66.8°로
     // 사양(≤45°)을 넘었으며, 최상단 y=2.14 가 데크 상면 2.51 에 0.37 m 못 미친 데다
@@ -17830,7 +17925,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const LAND_X0 = STAIR_X0 + stair.run, LAND_X1 = DECK_X1, LAND_Z1 = 3.00;
     wetBox(unifiedWet, [LAND_X1 - LAND_X0, 0.14, LAND_Z1 - 1.85], [(LAND_X0 + LAND_X1) / 2, 2.44, (1.85 + LAND_Z1) / 2],
       gratingMaterial(LAND_X1 - LAND_X0, LAND_Z1 - 1.85), "ST-201 계단 랜딩");
-    for (const lz of [2.10, 2.88]) wetBox(unifiedWet, [0.10, 2.44, 0.10], [16.30, 1.22, lz], material.frame, "ST-201 랜딩 지지기둥");
+    for (const lz of [2.10, 2.88]) wetHBeam(unifiedWet, "ST-201 랜딩 지지기둥 H250", [16.30, 1.22, lz], 2.44, "y", 0.25, 0.125);
     // 데크 둘레 난간 — 랜딩이 붙는 북동쪽(x 16.12…17.01)만 비운다.
     wetRailing(unifiedWet, "ST-201 남측", DECK_X0, DECK_Z0, DECK_X1, DECK_Z0, DECK_TOP_Y);
     wetRailing(unifiedWet, "ST-201 동측", DECK_X1, DECK_Z0, DECK_X1, DECK_Z1, DECK_TOP_Y);
@@ -17971,8 +18066,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // Maintenance monorail above TK-001/AS-101/TK-101 and physical integrated
     // process-control cabinets.  No DHA/Ex/LOTO/H2 safety package is modeled.
-    for (const x of [8.92, 12.84]) wetBox(unifiedWet, [0.10, 3.35, 0.10], [x, 1.64, 2.38], material.frame, "MH-401 정비호이스트 지주");
-    wetBox(unifiedWet, [4.04, 0.14, 0.16], [10.88, 3.28, 2.38], material.frame, "MH-401 모노레일");
+    for (const x of [8.92, 12.84]) wetHBeam(unifiedWet, "MH-401 정비호이스트 지주 H200", [x, 1.64, 2.38], 3.35, "y", 0.20, 0.10);
+    wetHBeam(unifiedWet, "MH-401 모노레일 I형", [10.88, 3.28, 2.38], 4.04, "x", 0.16, 0.11);
     wetBox(unifiedWet, [0.34, 0.20, 0.30], [10.82, 3.12, 2.38], wetMotorMaterial, "MH-401 전동 트롤리");
     wetCylinder(unifiedWet, 0.018, 1.10, [10.82, 2.50, 2.38], material.silverClamp, "MH-401 체인블록", 12);
     wetMesh(unifiedWet, new THREE.TorusGeometry(0.10, 0.025, 8, 18, Math.PI * 1.5), material.silverClamp, [10.82, 1.94, 2.38], "MH-401 훅", [0, 0, Math.PI / 2]);
@@ -17982,6 +18077,38 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetControlPanel("RIO-402", 16.82, 2.82, 0.56, 1.12, "부선·탈수 현장 I/O");
 
     wetLabel("완전 통합공정 · 건식 환류 → 정량 습식인계 → 어트리션 → 부선 → 탈수 → 공정수 회수", [13.70, 5.36, 0.12], [3.05, 0.29, 1]);
+
+    // 습식 배관을 다 놓은 뒤 지지물을 한 번에 배치한다. 배관마다 손으로 다는 대신
+    // 모아 둔 curve 를 2.4 m 간격으로 샘플해, 위에 걸 티어가 있으면 행거를,
+    // 없거나 통행 높이 아래면 바닥 스탠션을 놓는다. 탱크 동체 안은 건너뛴다.
+    const wetSupportTiers = [VENT_HEADER_Y, DECK_TOP_Y, VAC_RACK_Y, DRY_RETURN_Y].sort((a, b) => a - b);
+    let wetSupportCount = 0;
+    {
+      const point = new THREE.Vector3(), tangent = new THREE.Vector3();
+      for (const run of wetPipeRuns) {
+        const length = run.curve.getLength();
+        if (length < PIPE_SUPPORT_MIN_RUN) continue;
+        // 지지점을 런 안쪽에 고르게 나눈다 — 짧은 지관도 최소 한 점은 받는다.
+        const spans = Math.max(1, Math.round(length / PIPE_SUPPORT_SPAN));
+        for (let i = 1; i <= spans; i += 1) {
+          const t = i / (spans + 1);
+          run.curve.getPointAt(t, point);
+          // 수직 구간은 행거로 매다는 곳이 아니다 — 실제로는 가이드·앵커로 잡는다.
+          // 수평에 가까운 구간에만 지지물을 놓는다.
+          run.curve.getTangentAt(t, tangent);
+          if (Math.abs(tangent.y) > 0.72) continue;   // 약 46° 보다 가파르면 수직 취급
+          if (wetVesselFootprints.some((v) => Math.hypot(point.x - v.x, point.z - v.z) < v.radius)) continue;
+          if (point.y >= PIPE_HANGER_MIN_Y) {
+            const tier = wetSupportTiers.find((t) => t > point.y + 0.26);
+            if (tier === undefined) continue;      // 위에 매달 구조가 없으면 놓지 않는다
+            wetPipeHanger(run.name, point.x, point.y, point.z, tier, run.radius);
+          } else {
+            wetPipeStanchion(run.name, point.x, point.y, point.z, run.radius);
+          }
+          wetSupportCount += 1;
+        }
+      }
+    }
 
 
     // ── 냉각수 계통 CW-601 ────────────────────────────────────────────────
@@ -19258,8 +19385,45 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         const { cell } = item.entry;
         const radius = cell.radius * item.band;
         const angle = item.swirl + q * Math.PI * 6;
-        if (item.floats) {
-          // 기포에 붙어 곧장 거품층으로 올라간 뒤 라우더로 월류한다.
+        if (item.floats && cell.launder) {
+          // 기포에 붙어 거품층으로 올라간 뒤 위어를 넘어 라우더로 월류하고,
+          // 트로프를 타고 정광 토출노즐까지 흘러간다. 종전에는 반경 0.92R 에서
+          // 그냥 사라져 위어를 넘지 못했다 — 주석만 월류였고 경로가 없었다.
+          const lau = cell.launder;
+          const RISE_END = 0.62, WEIR_END = 0.74;
+          // 입자 각도는 (cos,sin), 라우더는 실린더 θ 규약 (sin,cos) 이라 θ = π/2 − angle.
+          let theta = Math.PI / 2 - angle;
+          if (lau.arc < Math.PI * 2 - 1e-3) {
+            // 부분 라우더는 거품이 라우더가 있는 호로만 넘는다 — 호 안으로 사상한다.
+            const span = ((theta - lau.from) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+            theta = lau.from + (span / (Math.PI * 2)) * lau.arc;
+          }
+          const weirX = cell.x + Math.sin(theta) * lau.mid, weirZ = cell.z + Math.cos(theta) * lau.mid;
+          if (q < RISE_END) {
+            const rise = q / RISE_END;
+            const r = radius * (1 - 0.25 * rise);
+            item.mesh.position.set(cell.x + Math.cos(angle) * r, THREE.MathUtils.lerp(item.bottom, item.frothY, rise), cell.z + Math.sin(angle) * r);
+            item.mesh.material.opacity = 1;
+          } else if (q < WEIR_END) {
+            const u = (q - RISE_END) / (WEIR_END - RISE_END);
+            const r0 = radius * 0.75;
+            item.mesh.position.set(
+              THREE.MathUtils.lerp(cell.x + Math.cos(angle) * r0, weirX, u),
+              THREE.MathUtils.lerp(item.frothY, lau.floorY, u),
+              THREE.MathUtils.lerp(cell.z + Math.sin(angle) * r0, weirZ, u)
+            );
+            item.mesh.material.opacity = 1;
+          } else {
+            const v = (q - WEIR_END) / (1 - WEIR_END);
+            let delta = lau.outlet - theta;
+            if (lau.arc >= Math.PI * 2 - 1e-3) {           // 360° 는 가까운 쪽으로 돈다
+              delta = ((delta + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+            }
+            const t = theta + delta * v;
+            item.mesh.position.set(cell.x + Math.sin(t) * lau.mid, lau.floorY, cell.z + Math.cos(t) * lau.mid);
+            item.mesh.material.opacity = v > 0.82 ? Math.max(0, (1 - v) / 0.18) : 1;
+          }
+        } else if (item.floats) {
           const rise = Math.min(1, q / 0.66);
           const r = radius * (1 - 0.25 * rise) + (q > 0.66 ? cell.radius * 0.92 * (q - 0.66) / 0.34 : 0);
           item.mesh.position.set(
