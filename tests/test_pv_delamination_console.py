@@ -11,10 +11,13 @@ import unittest
 
 from . import _path  # noqa: F401
 
+from .test_drawings import standalone_document_checks
+
 CONSOLE = (
     pathlib.Path(__file__).resolve().parents[1]
     / "docs" / "drawings" / "pv-delamination-3d.html"
 )
+TITLE = "DG-HK60 · 단일 5단 IR 고정 탠덤 PV 분리설비 · 3D 운전 콘솔 Rev.20"
 
 # `$('foo')` 와 `document.getElementById('foo')` 로 참조하는 정적 id
 ID_REF = re.compile(r"""(?:\$|document\.getElementById)\(\s*['"]([A-Za-z][\w-]*)['"]\s*\)""")
@@ -30,13 +33,9 @@ class TestConsoleDocument(unittest.TestCase):
         cls.html = CONSOLE.read_text(encoding="utf-8")
 
     def test_is_standalone_document(self):
+        """다른 도면 두 건과 같은 규약 — 구조·외부자원·테마 대응까지 공통."""
         self.assertTrue(CONSOLE.exists())
-        self.assertTrue(self.html.lstrip().lower().startswith("<!doctype html>"))
-        for tag in ('<html lang="ko">', "<head>", "</head>", "<body>", "</body>", "</html>"):
-            self.assertIn(tag, self.html, tag)
-        self.assertIn('<meta charset="utf-8">', self.html)  # 한글 콘솔 — 빠지면 깨진다
-        self.assertIn('name="viewport"', self.html)
-        self.assertIn("<title>", self.html)
+        standalone_document_checks(self, self.html, TITLE)
 
     def test_is_fully_self_contained(self):
         """오프라인·CSP 환경에서도 열려야 하므로 외부 리소스를 두지 않는다."""
@@ -54,6 +53,41 @@ class TestConsoleDocument(unittest.TestCase):
 
     def test_respects_reduced_motion(self):
         self.assertIn("@media(prefers-reduced-motion:reduce)", self.html)
+
+    def test_light_is_the_base_palette(self):
+        """규약대로 :root 가 라이트, 다크는 덮어쓰기여야 한다.
+
+        순서가 뒤집히면 시스템 테마가 라이트일 때 다크 토큰이 남는다.
+        """
+        root = re.search(r"\n\s*:root\{(.*?)\n\s*\}", self.html, re.S)
+        self.assertIsNotNone(root, ":root 토큰 블록 없음")
+        self.assertIn("--bg:#e3e8e6", root.group(1), ":root 는 라이트 팔레트여야 한다")
+        for block in (
+            r'@media \(prefers-color-scheme: dark\)\{\s*:root:not\(\[data-theme="light"\]\)\{(.*?)\n\s*\}',
+            r':root\[data-theme="dark"\]\{(.*?)\n\s*\}',
+        ):
+            m = re.search(block, self.html, re.S)
+            self.assertIsNotNone(m, block)
+            self.assertIn("--bg:#141c20", m.group(1), "다크 블록이 라이트 값을 덮지 않는다")
+
+    def test_dark_and_light_override_the_same_tokens(self):
+        """두 다크 블록이 서로 다른 토큰 집합을 정의하면 한쪽에서만 깨진다."""
+        media = re.search(
+            r'@media \(prefers-color-scheme: dark\)\{\s*:root:not\(\[data-theme="light"\]\)\{(.*?)\n\s*\}',
+            self.html, re.S)
+        attr = re.search(r':root\[data-theme="dark"\]\{(.*?)\n\s*\}', self.html, re.S)
+        names = lambda block: sorted(set(re.findall(r"(--[\w-]+):", block)))
+        self.assertEqual(names(media.group(1)), names(attr.group(1)))
+
+    def test_scene_palette_covers_both_themes(self):
+        """캔버스는 CSS 변수를 못 읽으므로 JS 쪽 환경 팔레트도 두 벌이어야 한다."""
+        env = re.search(r"const ENV=\{(.*?)\n    \};", self.html, re.S)
+        self.assertIsNotNone(env, "ENV 팔레트 없음")
+        body = env.group(1)
+        keys = lambda name: sorted(set(re.findall(
+            r"(\w+):", re.search(rf"{name}:\{{(.*?)\n      \}}", body, re.S).group(1))))
+        self.assertEqual(keys("light"), keys("dark"), "라이트/다크 환경 키가 다르다")
+        self.assertIn("themeButton", self.html, "테마 전환 버튼 없음")
 
     def test_canvas_and_controls_are_labelled(self):
         canvas = re.search(r"<canvas[^>]*>", self.html)
