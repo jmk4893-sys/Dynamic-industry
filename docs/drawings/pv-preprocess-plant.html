@@ -1338,6 +1338,7 @@ html>body{padding:0}</style>
       <button class="nav-link" id="pv-tab-register" role="tab" aria-controls="pv-panel-register" aria-selected="false" type="button">도면 목록</button>
       <button class="nav-link" id="pv-tab-electrical" role="tab" aria-controls="pv-panel-electrical" aria-selected="false" type="button">전기 인입도</button>
       <button class="nav-link" id="pv-tab-smart" role="tab" aria-controls="pv-panel-smart" aria-selected="false" type="button">스마트·AI</button>
+      <button class="nav-link" id="pv-tab-mount" role="tab" aria-controls="pv-panel-mount" aria-selected="false" type="button">지지·장착</button>
     </div>
 
     <div class="viz-controls pv-drawing-controls" aria-label="도면 선택">
@@ -1469,6 +1470,25 @@ html>body{padding:0}</style>
           <thead><tr><th>과제</th><th>등급</th><th>이름</th><th>입력</th><th>라벨</th><th>필요 계측기</th></tr></thead>
           <tbody id="pv-smart-table"></tbody>
           <tfoot id="pv-smart-total"></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div id="pv-panel-mount" role="tabpanel" aria-labelledby="pv-tab-mount" hidden>
+      <div class="viz-controls" aria-label="장착 상세 셀 선택">
+        <label class="form-label" for="pv-mt-station">셀
+          <select class="form-select" id="pv-mt-station"></select>
+        </label>
+      </div>
+      <div class="card pv-sheet-surface">
+        <svg id="pv-mount-svg" class="pv-sheet" viewBox="0 0 1400 820" role="img" aria-label="선택 셀의 베이스플레이트·앵커 장착 상세와 지지 부재"></svg>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <caption class="text-small text-muted">지지 부재 — 3D 장면에 실제로 서 있는 부재다. 라벨이 3D 에서 사라지면 테스트가 실패한다. <code>src/pv_preprocess/mounting.py</code> 파생.</caption>
+          <thead><tr><th>부재</th><th>셀</th><th>지지 등급</th><th>무엇을 받치는가</th></tr></thead>
+          <tbody id="pv-mount-table"></tbody>
+          <tfoot id="pv-mount-total"></tfoot>
         </table>
       </div>
     </div>
@@ -2447,6 +2467,10 @@ html>body{padding:0}</style>
   var smartTable = el('#pv-smart-table');
   var smartTotal = el('#pv-smart-total');
   var smViewSel = el('#pv-sm-view');
+  var mountSvg = el('#pv-mount-svg');
+  var mountTable = el('#pv-mount-table');
+  var mountTotal = el('#pv-mount-total');
+  var mtStationSel = el('#pv-mt-station');
   var elFeederLabel = el('#pv-el-feeder-label');
   var tabs = Array.prototype.slice.call(host.querySelectorAll('[role="tab"][id^="pv-tab-"]'));
   var panels = Array.prototype.slice.call(host.querySelectorAll('[role="tabpanel"][id^="pv-panel-"]'));
@@ -2468,7 +2492,7 @@ html>body{padding:0}</style>
       envelope: [6800, 7100, 5050],
       transfer: 1880,
       datum: 'A=FFL · B=라인 중심 · C=중앙 백투백 벽체',
-      anchors: '12×M20 예비 · 300×300×20 베이스플레이트 · grout 30',
+      anchors: '예비 12×M20 · 300×300×20 · grout 30 · 심 ±10',
       tolerance: '리프트 상면 ±0.5 · 비전 datum ±0.20 · 설치 yaw ±0.2°',
       service: '지게차 진입 3,000 MIN · 후면 900 MIN · 전장 1,000 MIN',
       utility: '3Φ 380 V · 0.55 MPa · 진공 A/B · EtherCAT/비전 LAN',
@@ -2522,7 +2546,7 @@ html>body{padding:0}</style>
       envelope: [5100, 2900, 4350],
       transfer: 2100,
       datum: 'A=회전축 중심(X0·Z0) · B=FFL · C=LFT-101 고정 픽업면 H=1,880',
-      anchors: '포탈기둥별 4×M20 · 레벨링 풋 500×400 · X 조정 장공만 허용',
+      anchors: '포탈기둥 4×M20/기 · 레벨링 풋 500×400 · grout 30 · X 조정 장공만',
       tolerance: '양단 위상차 ≤0.3° · 승강 반복 ±0.5 · 셔틀 반복 ±0.5 · 링 런아웃 0.25',
       service: '감속기 인출 1,000 MIN · 엔드링 교환 1,200 MIN · 포획빔 카세트 전면 600 MIN',
       utility: '서보·이중브레이크 · 진공 A/B 4구역 · 24 V 안전 I/O · 0.55 MPa',
@@ -2590,7 +2614,7 @@ html>body{padding:0}</style>
       envelope: [5200, 3900, 4150],
       transfer: 900,
       datum: 'A=로봇 베이스 · B=PT 장변센터 · C=3-2-1 스토퍼',
-      anchors: '로봇 8×M24 · PT-101 8×M16 · 독립 grout',
+      anchors: '로봇 8×M24 · PT-101 8×M16 · 로봇 400×400×25 · PT 250×250×16 · grout 40 · 독립 grout',
       tolerance: '페데스털 0.2/1000 · PT 평면도 1.0 · 정렬 ±1.0/yaw ±0.15°',
       service: '로봇 후면 1,000 MIN · EOAT 교환 1,200×1,500',
       utility: '로봇 제어반 · 4구역 진공 A/B · 툴 I/O · 안전PLC',
@@ -2614,7 +2638,7 @@ html>body{padding:0}</style>
       envelope: [7050, 3050, 2800],
       transfer: 900,
       datum: 'A=롤러 상면 · B=컨베이어 중심 · C=투입 스토퍼',
-      anchors: '10×M16 베이스 · 4×M16 독립가드 · 풋 ±25',
+      anchors: '베이스 10×M16 · 독립가드 4×M16 · 250×250×16 · grout 30 · 풋 ±25',
       tolerance: '롤러 ±0.30 · X/Y 레일 평행 0.05 · 헤드 datum ±0.10',
       service: '전면 1,200 MIN · 헤드 인출 750 · 수거함 900',
       utility: '약 6.5 kW · 0.5–0.6 MPa · 420 NL/min peak · 집진 350 m³/h',
@@ -2654,7 +2678,7 @@ html>body{padding:0}</style>
       envelope: [6900, 5600, 2800],
       transfer: 950,
       datum: 'A=CV-101 롤러 상면 · B=패널 중심 · C=JB/AFR 맵 원점',
-      anchors: '16×M20 메인셀 · HPU/FH 독립 M16 · rail shim',
+      anchors: '메인셀 16×M20 · HPU·FH 독립 8×M16 · 300×300×20 · grout 30 · rail shim',
       tolerance: '12/12 지지 ±0.10 · clamp ±5% · 장축 레일 평행 0.10',
       service: '장축캐리지 1,500 · HPU 1,000 · 프레임함 횡인출 1,200 MIN · 가드-장비 X 475 균등',
       utility: 'HPU 7.5 kW/55 L·min⁻¹/70 bar · AE 4ch · 0.55 MPa',
@@ -2696,7 +2720,7 @@ html>body{padding:0}</style>
       envelope: [8900, 4900, 2800],
       transfer: 950,
       datum: 'A=CV-102 롤러 상면 · B=유리 중심 · C=GI-301/302 출구',
-      anchors: '12×M16 라인 · DX-601 4×M16 · 덕트 독립지지',
+      anchors: '라인 12×M16 · DX-601 4×M16 · 250×250×16 · grout 30 · 심 ±10',
       tolerance: 'ROI 2,500×1,400 · 연마 높이 ±0.10 · 중심선 ±1.0',
       service: '연마툴 1,000 · 필터 1,200 · 광학교정 800 MIN',
       utility: '집진 1,000 m³/h · ΔP/온도 · 3Φ 380 V · 산업 LAN',
@@ -2729,7 +2753,7 @@ html>body{padding:0}</style>
       envelope: [9550, 7100, 2800],
       transfer: 1050,
       datum: 'A=셔틀레일 · B=HOLD 중심 · C=도킹핀 · D=픽업 중심 X −1,500',
-      anchors: '셔틀 12×M20 · 도크 20×M16 · 마스트 4×M16/기 · 바닥 proof-load',
+      anchors: '셔틀 12×M20 · 도크 20×M16 · 마스트 4×M16/기 · 300×300×20 · grout 30 · 바닥 proof-load',
       tolerance: '분기 ±1.0 · 도킹 동심 ±0.5 · 슬롯 pitch ±0.5 · 승강 반복 ±0.5 · 포크 신장 ±1.0',
       service: '캐리지 교환폭 3,200 MIN · 잠금게이트 1,200 · 마스트 정비 틈 전면 600',
       utility: '서보셔틀 · 승강 2축×3행(크로스샤프트 동기) · RFID · 슬롯/돌출/만재 I/O · 집진도크',
@@ -2796,7 +2820,7 @@ html>body{padding:0}</style>
       envelope: [14050, 6100, 3600],
       transfer: 1050,
       datum: 'A=진공테이블 상면 · B=패널 중심 · C=칼끝 300 리드 · D=적재대 상면',
-      anchors: '랙 8×M20 · 마스트 4×M20/기 · 탠덤 빔 12×M16 · 후드 독립지지',
+      anchors: '랙 8×M20 · 마스트 4×M20/기 · 탠덤 빔 12×M16 · 후드 독립지지 8×M16 · 300×300×20 · 랙 240□ · grout 30 · 심 ±10',
       tolerance: '데크 pitch ±0.5 · 칼끝 리드 300±2 · 권취 장력 ±5 % · 적재 중심 ±1.5',
       service: '랙 전면 1,200 · 칼날 교환 900 · 컨테이너 인출 2,000 · 후드 점검 800 MIN',
       utility: 'IR 60등 175 kW(2계통) · 서보 7축 · 6존 진공 · IR 배기 · 냉각 후드',
@@ -2867,7 +2891,8 @@ html>body{padding:0}</style>
     ['PV-VIS-901', '비전 센서 최소화 검토', '검토서', '앱 반영', '촬영 정정시간·ROI MSA'],
     ['PV-PLANT-SM-1012', '스마트 팩토리 네트워크·데이터 아키텍처', '전장/IT', '앱 반영', '스위치 기종·PTP 정확도 실측'],
     ['PV-PLANT-SM-1013', '계측·식별 기기 배치·신호 목록', '전장/계장', '앱 반영', '센서 기종·설치 위치 현장 확정'],
-    ['PV-PLANT-AI-1014', 'AI 적용 검토·라벨 공급 계획', '검토서', '앱 반영', '반입물 구성비·라벨 정합 실측']
+    ['PV-PLANT-AI-1014', 'AI 적용 검토·라벨 공급 계획', '검토서', '앱 반영', '반입물 구성비·라벨 정합 실측'],
+    ['PV-PLANT-MT-1015', '지지·장착 상세·앵커 집계', '2D 기초/설치', '앱 반영', '하중도 반력·전도모멘트·바닥 내력']
   ];
 
   // 장비가 점유할 수 있는 Y 밴드. 보행·정비 통로는 이 밴드 **밖**에 확보한다.
@@ -2938,7 +2963,7 @@ html>body{padding:0}</style>
     return [left, top, width, height].map(Math.round).join(' ');
   }
 
-  var DRAWING_REVISION = 'REV.25';
+  var DRAWING_REVISION = 'REV.26';
   // 뷰별 축 선택. PART_AXIS 는 part.at/part.size 의 [X, 상하, 깊이] 기준,
   // ENVELOPE_AXIS 는 station.envelope 의 [L, W, H] 기준 — 두 배열의 축 순서가 다르다.
   var PART_AXIS = { plan: [0, 2], front: [0, 1], side: [2, 1] };
@@ -2951,7 +2976,7 @@ html>body{padding:0}</style>
     'z-': { axis: 2, keep: 1, label: 'Y 뒤쪽 제거' },
     'y+': { axis: 1, keep: -1, label: 'Z 위쪽 제거' }
   };
-  var state = { tab: 'fab', station: 'afu', explode: 65, labels: true, focus: 'all', clearance: true, yaw: -0.62, pitch: 0.48, zoom: 1, cutAxis: 'none', cutAt: 50, elView: 'single', elFeeder: 'F1', smView: 'network' };
+  var state = { tab: 'fab', station: 'afu', explode: 65, labels: true, focus: 'all', clearance: true, yaw: -0.62, pitch: 0.48, zoom: 1, cutAxis: 'none', cutAt: 50, elView: 'single', elFeeder: 'F1', smView: 'network', mtStation: 'grm' };
   var colorCache = {};
   var canvas = document.createElement('canvas');
   canvas.setAttribute('role', 'img');
@@ -3632,6 +3657,47 @@ html>body{padding:0}</style>
     ['VS-401', 'grm', 12000000, 66.0]
   ];
   var AI_SUMMARY = { cases: 12, gradeA: 3, gradeB: 5, gradeC: 2, gradeD: 2, annualPanels: 149400, labelNormal: 131970, labelCracked: 12450, labelScrap: 4980, scarcest: '전손', coldStartMonths: 2.4, transferMin: 1000, scrapMissS: 45.0, crackedMissS: 47.04 };
+  // 지지·장착 — src/pv_preprocess/mounting.py 파생 (테스트 대조).
+  // [셀, [[대상,개수,볼트,개소,개소당]], 플레이트, grout, 레벨링, 비고, 합계]
+  var MOUNTINGS = [
+    ['afu', [['예비',12,'M20',1,false]], '300×300×20', 30, '심 ±10', '지게차 진입측이라 앵커를 여유 있게 잡는다', 12],
+    ['bfc', [['포탈기둥',4,'M20',4,true]], '레벨링 풋 500×400', 30, 'X 조정 장공만', '반전축 직각도가 걸려 X 조정 장공만 허용한다', 16],
+    ['robot', [['로봇',8,'M24',1,false], ['PT-101',8,'M16',1,false]], '로봇 400×400×25 · PT 250×250×16', 40, '독립 grout', '로봇 반력이 정렬정반에 넘어가면 3-2-1 좌표가 흔들린다 — 기초를 나눈다', 16],
+    ['jbr', [['베이스',10,'M16',1,false], ['독립가드',4,'M16',1,false]], '250×250×16', 30, '풋 ±25', '15 kN 칼날 반력을 베이스가 받고 가드는 따로 선다', 14],
+    ['afr', [['메인셀',16,'M20',1,false], ['HPU·FH 독립',8,'M16',1,false]], '300×300×20', 30, 'rail shim', '장축 LM 레일은 심으로 직진도를 잡는다', 24],
+    ['post', [['라인',12,'M16',1,false], ['DX-601',4,'M16',1,false]], '250×250×16', 30, '심 ±10', '덕트는 셀에 얹지 않고 독립지지한다 — 진동이 광학으로 간다', 16],
+    ['buffer', [['셔틀',12,'M20',1,false], ['도크',20,'M16',1,false], ['마스트',4,'M16',2,true]], '300×300×20', 30, '바닥 proof-load', '캐리지 만재 하중이라 바닥 내력을 실증해야 한다', 40],
+    ['grm', [['랙',8,'M20',1,false], ['마스트',4,'M20',2,true], ['탠덤 빔',12,'M16',1,false], ['후드 독립지지',8,'M16',1,false]], '300×300×20 · 랙 240□', 30, '심 ±10', '후드는 탠덤 빔에 얹지 않는다 — 빔은 칼날 반력을 받는 부재다', 36]
+  ];
+  // [라벨, 셀, 등급, 무엇을 받치는가]
+  var MOUNT_MEMBERS = [
+    ['M1-101 랙 지지다리 4본 (베이스 8×M20)', 'grm', 'floor', '5단 단열랙 · IR 뱅크 · 적재 패널 5장'],
+    ['M1-101 랙 베이스 프레임', 'grm', 'floor', '랙 다리 4본을 묶는다'],
+    ['TDM-201 갠트리 기둥 4본 (12×M16)', 'grm', 'floor', '탠덤 공통 X축 빔 · 핫나이프 2'],
+    ['TDM-201 갠트리 크로스헤드', 'grm', 'floor', '기둥 4본과 X축 빔을 잇는다'],
+    ['HKB-101 Z축 슬라이드', 'grm', 'gantry', '백시트 개방 핫나이프'],
+    ['HKS-201 Z축 슬라이드', 'grm', 'gantry', '셀/EVA 분리 핫나이프'],
+    ['GRM-EX-401 덕트 스탠션 4', 'grm', 'frame', 'IR 배기 덕트'],
+    ['GRM-CD-401 후드 독립지지 기둥 4본', 'grm', 'floor', '냉각 후드'],
+    ['AFR CV-101 컨베이어 사이드 프레임 2본', 'afr', 'floor', '투입 롤러 12본'],
+    ['AFR CV-101 가대 다리 8본 (베이스플레이트 240□)', 'afr', 'floor', '컨베이어 사이드 프레임'],
+    ['VG-101 천장보 독립 기둥 2본', 'afu', 'floor', '천장 비전보 · VS-101A/B 통합 헤드'],
+    ['BFC 셔틀 레일 지지 포스트 2본', 'afu', 'floor', '단장 수평셔틀 레일'],
+    ['MCR-901 콘솔 다리 12본', 'smart', 'floor', '운전 콘솔 3대']
+  ];
+  var SUPPORT_CLASSES = [
+    ['floor', '바닥 앵커 — 기초에 베이스플레이트와 앵커볼트로 고정'],
+    ['frame', '셀 프레임 볼트 — 셀 구조 프레임에 브래킷으로 체결'],
+    ['gantry', '갠트리 현수 — 상부 빔에서 매단다'],
+    ['wall', '통로 외곽벽 벽부 — 깊이 300, 보행 유효폭 900 유지'],
+    ['carried', '공정 중 물체 — 받칠 대상이 아니다']
+  ];
+  var MOUNT_EXEMPT = [
+    ['이송 중 태양광 패널', '로봇·셔틀이 들고 있는 공정 중 물체다'],
+    ['VS-101 검출 정션박스 형상', '위 패널에 붙어 같이 옮겨진다'],
+    ['VS-101A/B-FUSED 고정면 스캔선', '레이저 투영선이라 물체가 아니다']
+  ];
+  var MOUNT_SUMMARY = { stations: 8, anchors: 174, m16: 94, m20: 72, m24: 8, members: 13, brackets: 51, series: 53, withdrawn: 2, floor: 10, frame: 1, gantry: 2, exempt: 3 };
   var SL_CHAIN_ROWS = INCOMER.tapsSite ? (INCOMER.tapLowVoltage ? 4 : 5) : (INCOMER.highVoltage ? 6 : 4);
   // 분기 주회로 길이는 부지 실측 대기다. 모를 때 0.0 m 로 찍으면 도면이 거짓말을 한다.
   function incomingText() {
@@ -4523,6 +4589,139 @@ html>body{padding:0}</style>
     renderSmart();
   }
 
+
+  // ── 지지·장착 상세 (MT-1015) ────────────────────────────────────────────
+  // 앵커 계획이 표제란 문장 한 줄뿐이던 것을 도면으로 세운다. 베이스플레이트
+  // 볼트 배치는 개수에서 파생한다 — 4개면 네 귀, 그 위는 둘레에 균등 배분이다.
+  function plateBolts(count) {
+    // 네 귀를 먼저 채우고 남는 것을 변에 나눈다. 실제 배치 관례와 같다.
+    var pts = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+    var rest = Math.max(0, count - 4);
+    var perSide = Math.floor(rest / 4), extra = rest % 4;
+    var sides = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+    sides.forEach(function (dir, i) {
+      var n = perSide + (i < extra ? 1 : 0);
+      for (var k = 1; k <= n; k++) {
+        var t = -1 + 2 * k / (n + 1);
+        pts.push(dir[0] ? [dir[0], t] : [t, dir[1]]);
+      }
+    });
+    return pts.slice(0, Math.max(4, count));
+  }
+
+  function mountingOf(key) {
+    return MOUNTINGS.filter(function (m) { return m[0] === key; })[0] || MOUNTINGS[0];
+  }
+  function classLabel(key) {
+    var row = SUPPORT_CLASSES.filter(function (c) { return c[0] === key; })[0];
+    return row ? row[1] : key;
+  }
+
+  function renderMount() {
+    var out = [], key = state.mtStation, m = mountingOf(key);
+    var st = stations[key] || stations.afu;
+    var total = m[6];
+    out.push('<title>PV-PLANT-MT-1015 ' + escapeText(key) + ' 지지·장착 상세</title>');
+    out.push('<rect id="pv-sheet-frame" class="pv-fab-frame" x="14" y="14" width="1372" height="792"/>');
+    out.push(text(40, 48, 'PV-PLANT-MT-1015 · 지지·장착 상세 · ' + escapeText(st.sheet) + ' · ' + DRAWING_REVISION, 'pv-fab-title'));
+    out.push(text(40, 72, escapeText(st.name) + ' · 앵커 ' + total + '개 · 베이스플레이트 ' + escapeText(m[2])
+      + ' · 무수축 그라우트 ' + m[3] + ' · ' + escapeText(m[4]), 'pv-layout-small'));
+
+    // ① 베이스플레이트 평면 — 앵커군마다 한 장
+    out.push(text(60, 118, '① 베이스플레이트 평면 (앵커군별)', 'pv-fab-text'));
+    var px = 80;                       // 상단 폭 전체를 쓴다 — 앵커군이 4개면 오른쪽 열까지 밀린다
+    m[1].forEach(function (a, i) {
+      var per = a[4] ? a[1] : a[1];          // 개소당 개수 = 한 장에 들어가는 볼트 수
+      var side = 150, cx = px + side / 2, cy = 230;
+      out.push('<rect class="pv-fab-object" x="' + px + '" y="' + (cy - side / 2) + '" width="' + side + '" height="' + side + '" rx="3"/>');
+      var bolts = plateBolts(Math.min(per, 12));
+      bolts.forEach(function (b) {
+        out.push('<circle class="pv-fab-accent" cx="' + (cx + b[0] * side * 0.36) + '" cy="' + (cy + b[1] * side * 0.36) + '" r="7"/>');
+      });
+      out.push(text(cx, cy - side / 2 - 10, escapeText(a[0]), 'pv-fab-small', 'middle'));
+      out.push(text(cx, cy + side / 2 + 20, per + '×' + a[2] + (a[4] ? ' /기 × ' + a[3] + '기' : ''), 'pv-fab-small', 'middle'));
+      out.push(text(cx, cy + side / 2 + 38, '계 ' + (a[4] ? a[1] * a[3] : a[1]) + '개', 'pv-fab-small', 'middle'));
+      px += side + 40;
+    });
+
+    // ② 앵커 단면 — 기초·그라우트·플레이트·볼트
+    var sx = 80, sy = 430, sw = 440;
+    out.push(text(60, sy - 26, '② 앵커 단면 (기초 → 그라우트 → 베이스플레이트)', 'pv-fab-text'));
+    out.push('<rect class="pv-fab-hidden" x="' + sx + '" y="' + (sy + 60) + '" width="' + sw + '" height="120"/>');
+    out.push(text(sx + 12, sy + 174, '콘크리트 기초 (FD-1002)', 'pv-fab-small'));
+    out.push('<rect class="pv-fab-object" x="' + (sx + 60) + '" y="' + (sy + 36) + '" width="' + (sw - 120) + '" height="24"/>');
+
+    out.push('<rect class="pv-fab-accent" x="' + (sx + 40) + '" y="' + (sy + 18) + '" width="' + (sw - 80) + '" height="18"/>');
+
+    out.push('<rect class="pv-fab-secondary" x="' + (sx + 20) + '" y="' + sy + '" width="' + (sw - 40) + '" height="18"/>');
+
+    [0.22, 0.5, 0.78].forEach(function (t) {
+      var bx = sx + 40 + (sw - 80) * t;
+      out.push(line(bx, sy + 18, bx, sy + 168, 'pv-fab-frame'));
+      out.push('<rect class="pv-fab-object" x="' + (bx - 14) + '" y="' + (sy + 150) + '" width="28" height="18"/>');
+    });
+    // 층 이름은 시트 하단 전폭에 적는다 — 단면 옆(폭 430)에 두면 문장이 잘린다.
+
+    // ③ 이 셀의 지지 부재
+    var mx = 640, my = 404;
+    out.push(text(mx, my, '③ 이 셀의 지지 부재', 'pv-fab-text'));
+    var mine = MOUNT_MEMBERS.filter(function (x) { return x[1] === key; });
+    if (!mine.length) {
+      out.push(text(mx, my + 30, '이 셀은 REV.26 에서 새로 세운 부재가 없다 — 기존 베이스가 하중을 받고 있었다.', 'pv-fab-small'));
+    }
+    mine.forEach(function (x, i) {
+      var y = my + 30 + i * 44;
+      out.push('<rect class="pv-fab-secondary" x="' + mx + '" y="' + (y - 16) + '" width="700" height="38" rx="3"/>');
+      out.push('<text class="pv-fab-small" data-fit="380" x="' + (mx + 14) + '" y="' + y + '">' + escapeText(x[0]) + '</text>');
+      out.push('<text class="pv-fab-small" data-fit="280" x="' + (mx + 410) + '" y="' + y + '">' + escapeText(x[3]) + '</text>');
+      out.push(text(mx + 14, y + 16, classLabel(x[2]), 'pv-fab-small'));
+    });
+
+    // ④ 플랜트 전체 집계
+    var by = my + 30 + Math.max(mine.length, 1) * 44 + 30;
+    out.push(text(mx, by, '④ 플랜트 전체 집계 (FD-1002 로 넘긴다)', 'pv-fab-text'));
+    [['앵커 합계', MOUNT_SUMMARY.anchors + '개'],
+     ['M16 / M20 / M24', MOUNT_SUMMARY.m16 + ' / ' + MOUNT_SUMMARY.m20 + ' / ' + MOUNT_SUMMARY.m24],
+     ['지지 부재', MOUNT_SUMMARY.members + '종 (바닥 ' + MOUNT_SUMMARY.floor + ' · 프레임 ' + MOUNT_SUMMARY.frame + ' · 갠트리 ' + MOUNT_SUMMARY.gantry + ')'],
+     ['지지 브래킷', 'MB-001…' + ('00' + MOUNT_SUMMARY.series).slice(-3) + ' 중 ' + MOUNT_SUMMARY.brackets + '개 (폐번 ' + MOUNT_SUMMARY.withdrawn + ')'],
+     ['받칠 대상 아님', MOUNT_SUMMARY.exempt + '건 (공정 중 물체·투영선)']
+    ].forEach(function (r, i) {
+      var y = by + 30 + i * 24;
+      out.push(text(mx + 14, y, r[0], 'pv-fab-small'));
+      out.push(text(mx + 700, y, r[1], 'pv-fab-small', 'end'));
+    });
+    // 캡션 y 를 오른쪽 열만 보고 잡으면 왼쪽 단면과 겹친다 — 둘 다 본다.
+    var cap = Math.max(by + 30 + 5 * 24, sy + 190) + 30;
+    [['위에서부터', '기계 베이스 (' + m[4] + ') / 베이스플레이트 ' + m[2] + ' / 무수축 그라우트 ' + m[3] + ' / 콘크리트 기초'],
+     ['앵커볼트', '후시공 케미컬 또는 선매입 — 정착길이는 하중도 확정 후 산정한다'],
+     ['이 셀의 요점', m[5]]].forEach(function (r, i) {
+      var y = cap + i * 22;
+      out.push(text(60, y, r[0], 'pv-fab-small'));
+      out.push('<text class="pv-fab-small" data-fit="1180" x="180" y="' + y + '">'
+        + escapeText(r[1]) + '</text>');
+    });
+    cap += 3 * 22 + 12;
+    out.push(text(60, cap, 'REV.25 까지 앵커 계획은 표제란 문장 한 줄뿐이었고, 3D 에는 그 앵커가 받칠 형상이 없었다 — 메시를 인접 30 mm 로 묶어 바닥까지 따라가 보니 덩어리 72개가 떠 있었다.', 'pv-layout-small'));
+    out.push(text(60, cap + 22, '지지 부재는 실측 간격에서 세웠다(중앙값 119 mm). 임의로 기둥을 세우면 통과 폭이나 기존 장비를 침범하는데, 잰 간격을 잇는 부재는 그럴 수가 없다.', 'pv-layout-small'));
+    out.push(text(60, cap + 44, '볼트 규격·개수는 계획값이다. 하중도(반력·전도모멘트)와 바닥 내력이 확정되면 이 셀 사양부터 고치면 도면·집계가 따라온다.', 'pv-layout-small'));
+
+    mountSvg.innerHTML = out.join('');
+    fitSheet(mountSvg);
+    mountTable.innerHTML = MOUNT_MEMBERS.map(function (x) {
+      return '<tr><td>' + x[0] + '</td><td>' + x[1] + '</td><td>' + classLabel(x[2]) + '</td><td>' + x[3] + '</td></tr>';
+    }).join('');
+    mountTotal.innerHTML = '<tr><th colspan="4">지지 부재 ' + MOUNT_SUMMARY.members + '종 · 브래킷 '
+      + MOUNT_SUMMARY.brackets + '개 · 앵커 ' + MOUNT_SUMMARY.anchors + '개 · 받칠 대상 아닌 것 '
+      + MOUNT_SUMMARY.exempt + '건</th></tr>';
+  }
+
+  function setMtStation(key) {
+    if (!MOUNTINGS.some(function (m) { return m[0] === key; })) throw new RangeError('Unknown mounting station');
+    state.mtStation = key;
+    if (mtStationSel) mtStationSel.value = key;
+    renderMount();
+  }
+
   function renderElectrical() {
     var total = electricalTotals();
     var out = [];
@@ -4919,7 +5118,7 @@ html>body{padding:0}</style>
   }
 
   function selectTab(tabName) {
-    var valid = ['fab', 'explode', 'layout', 'register', 'electrical', 'smart'];
+    var valid = ['fab', 'explode', 'layout', 'register', 'electrical', 'smart', 'mount'];
     if (valid.indexOf(tabName) < 0) throw new RangeError('Unknown drawing tab');
     state.tab = tabName;
     tabs.forEach(function (tab) {
@@ -4999,6 +5198,13 @@ html>body{padding:0}</style>
   bind(layoutClearance, 'change', function () { state.clearance = layoutClearance.checked; renderLayout(); dispatchChange(); });
   bind(elViewSel, 'change', function () { setElView(elViewSel.value); dispatchChange(); });
   bind(smViewSel, 'change', function () { setSmView(smViewSel.value); dispatchChange(); });
+  if (mtStationSel && !mtStationSel.options.length) {
+    mtStationSel.innerHTML = MOUNTINGS.map(function (m) {
+      return '<option value="' + m[0] + '">' + m[0] + ' · ' + (stations[m[0]] ? stations[m[0]].sheet : m[0]) + '</option>';
+    }).join('');
+    mtStationSel.value = state.mtStation;
+  }
+  bind(mtStationSel, 'change', function () { setMtStation(mtStationSel.value); dispatchChange(); });
   bind(elFeederSel, 'change', function () { setElFeeder(elFeederSel.value); dispatchChange(); });
   bind(canvas, 'pointerdown', function (event) {
     dragging = true;
@@ -5055,6 +5261,7 @@ html>body{padding:0}</style>
   renderRegister();
   renderElectrical();
   renderSmart();
+  renderMount();
   renderServoAxes();
   renderAcoustics();
   renderThermal();
@@ -5091,6 +5298,15 @@ html>body{padding:0}</style>
     listElViews: function () { return Object.keys(EL_VIEWS); },
     listSmViews: function () { return Object.keys(SM_VIEWS); },
     setSmView: setSmView,
+    setMtStation: setMtStation,
+    getMounting: function () {
+      return {
+        summary: JSON.parse(JSON.stringify(MOUNT_SUMMARY)),
+        mountings: MOUNTINGS.map(function (r) { return r.slice(); }),
+        members: MOUNT_MEMBERS.map(function (r) { return r.slice(); }),
+        exempt: MOUNT_EXEMPT.map(function (r) { return r.slice(); })
+      };
+    },
     getSmart: function () {
       return {
         smart: JSON.parse(JSON.stringify(SMART)),
@@ -5109,7 +5325,7 @@ html>body{padding:0}</style>
       drawAssembly();
     },
     resetView: resetView,
-    flush: function () { renderFabrication(); renderAssemblyKey(); renderLayout(); renderElectrical(); renderSmart(); drawAssembly(); },
+    flush: function () { renderFabrication(); renderAssemblyKey(); renderLayout(); renderElectrical(); renderSmart(); renderMount(); drawAssembly(); },
     getState: function () { return JSON.parse(JSON.stringify(state)); },
     getStation: function (key) {
       var chosen = stations[key || state.station];
@@ -9091,6 +9307,109 @@ void main() {
     +"<b>대가</b>는 패널이 길어져 탠덤 사이클이 51.0 → "+d.tandemCycle+" s 로 늘고 여유가 4.6 → "+(-H.gap)+" 장/h 로 줄어든 것이다."
 }());
 
+/* REV.26 지지·장착 — 부품이 무엇에 얹혀 있는지를 형상으로 세운다.
+
+   REV.25 까지 3D 는 "무엇이 있는가"만 보여 주고 "무엇이 받치는가"는 안 보여 줬다.
+   메시 1,829개를 인접(30 mm)으로 묶어 바닥까지 하중 경로를 따라가 보니 덩어리 72개가
+   공중에 떠 있었다 — 5단 랙 24메시가 바닥에서 600 mm 뜬 채 서 있는 식이었다.
+   앵커 계획은 표제란에 글로 다 적혀 있었는데 그 앵커가 받칠 형상이 없었던 것이다.
+
+   여기 부재는 전부 **실측 간격**에서 나왔다. 각 부유 덩어리마다 가장 가까운 접지
+   부재를 찾아(중앙값 119 mm) 그 틈만 잇는다. 임의로 기둥을 세우면 통과 폭이나
+   기존 장비를 침범하는데, 실측 간격을 잇는 브래킷은 그럴 수가 없다.
+   MB-xxx 는 그렇게 생성한 뒤 좌표를 고정한 것이고, 가대·기둥·다리는 직접 잡았다. */
+var pvMount=new ce;pt.add(pvMount);pvMount.position.set(0,0,0);
+(function(){
+var g=pvMount,L=function(a,b,c,d,e,f){return P(g,a,b,c,d,e,f)};
+
+// ── AFR CV-101 투입컨베이어 가대 ─────────────────────────────────────────
+// 롤러 12본이 y=1.005 에 떠 있었다. 롤러는 사이드 프레임에 물리는 것이라
+// 브래킷이 아니라 가대를 세운다. 프레임 안쪽 면이 롤러 끝(z ±0.74)에 닿는다.
+[-0.795,0.795].forEach(function(z,i){
+  L([8.10,.16,.11],[5.35,.98,z],M.frame,i===0?'AFR CV-101 컨베이어 사이드 프레임 2본':null,
+    '롤러 12본을 양단에서 받는다 — 상면 1.06 = 롤러 축심');
+});
+[2.0,4.5,7.0,9.1].forEach(function(x){
+  [-0.795,0.795].forEach(function(z){
+    L([.10,.90,.10],[x,.45,z],M.dark,null);
+    L([.24,.03,.24],[x,.015,z],M.steel,null);       // 베이스플레이트
+  });
+});
+L([.10,.90,.10],[2.0,.45,-0.795],M.dark,'AFR CV-101 가대 다리 8본 (베이스플레이트 240□)');
+
+// ── VG-101 독립 방진 천장 비전보 기둥 ────────────────────────────────────
+// 라벨이 "독립 방진"이다 — 옆 구조물에 브래킷으로 붙이면 그 진동을 그대로 받아
+// 독립이 아니게 된다. 바닥에서 자기 기둥으로 받치고 밑에 방진 풋을 깐다.
+[-3.21,3.21].forEach(function(z,i){
+  L([.18,4.95,.18],[-18.51,2.475,z],M.frame,i===0?'VG-101 천장보 독립 기둥 2본':null,
+    '비전보를 옆 구조와 절연해 받친다 — 밑단 방진 풋');
+  L([.34,.06,.34],[-18.51,.03,z],M.rubber,null);    // 방진 풋
+  L([.30,.03,.30],[-18.51,.075,z],M.steel,null);    // 베이스플레이트
+});
+
+// ── BFC 셔틀 레일 지지 포스트 ────────────────────────────────────────────
+// 자동 생성이 이 레일을 가장 가까운 부재(x −15.73)에 물리려 했는데, 그 자리는
+// 팔레트 리프트의 승강 경로 한가운데였다 — 간섭 스윕이 MB-021/022 ∩ 팔레트로
+// 잡아냈다. 레일은 팔레트 발자국(x −17.93…−15.37) **밖**에서 받아야 한다.
+[-2.22,2.22].forEach(function(z,i){
+  L([.28,1.60,.40],[-14.85,.80,z],M.frame,i===0?'BFC 셔틀 레일 지지 포스트 2본':null,
+    '팔레트 승강 경로 밖(x −14.85)에서 레일을 받는다');
+  L([.40,.03,.52],[-14.85,.015,z],M.steel,null);
+});
+// ── 생성 브래킷 MB-001…053 (실측 간격에서 파생) ──────────────────────────
+L([0.060,0.060,0.063],[14.075,0.340,-0.774],M.steel,'MB-001 지지 브래킷','무명 부재 → (무명)');
+L([0.090,0.073,0.060],[-8.726,0.861,-0.860],M.steel,'MB-002 지지 브래킷','무명 부재 → JB-201 가드형 축적·인계 컨베이어');
+L([0.075,0.090,0.120],[-6.308,2.200,-1.000],M.steel,'MB-003 지지 브래킷','비전 위치보정 서보 → X축 동기축');
+L([0.200,0.060,0.080],[-14.650,2.020,0.215],M.steel,'MB-004 지지 브래킷','CD-101B 벽면수납 4열 프레임 포획빔 → (무명)');
+L([0.090,0.083,0.060],[-8.567,0.867,-0.860],M.steel,'MB-005 지지 브래킷','무명 부재 → JB-201 가드형 축적·인계 컨베이어');
+L([0.450,0.085,0.450],[3.400,0.028,-2.000],M.steel,'MB-006 지지 브래킷','AFR FH-501 프레임 회수 → (무명)');
+L([0.090,0.060,0.085],[-0.911,1.032,-0.887],M.steel,'MB-007 지지 브래킷','무명 부재 → (무명)');
+L([0.100,0.090,0.100],[1.270,2.200,-0.680],M.steel,'MB-008 지지 브래킷','AFR DATA_ACK 표시 → (무명)');
+L([0.090,0.080,0.160],[5.290,1.580,-0.580],M.steel,'MB-009 지지 브래킷','무명 부재 → AFR CL-221 상부 클램프');
+L([0.090,0.080,0.160],[5.290,1.580,0.580],M.steel,'MB-010 지지 브래킷','무명 부재 → (무명)');
+L([0.090,0.080,0.160],[7.130,1.580,-0.580],M.steel,'MB-011 지지 브래킷','무명 부재 → (무명)');
+L([0.090,0.080,0.160],[7.130,1.580,0.580],M.steel,'MB-012 지지 브래킷','무명 부재 → (무명)');
+L([0.091,0.120,0.080],[-0.209,2.280,0.000],M.steel,'MB-013 지지 브래킷','무명 부재 → (무명)');
+L([0.090,0.093,0.060],[-8.407,0.871,-0.860],M.steel,'MB-014 지지 브래킷','무명 부재 → JB-201 가드형 축적·인계 컨베이어');
+L([0.095,0.060,0.340],[7.828,1.098,0.000],M.steel,'MB-015 지지 브래킷','무명 부재 → (무명)');
+L([0.120,0.085,0.100],[-2.470,1.183,0.805],M.steel,'MB-016 지지 브래킷','인터록 리젝트 게이트 → 에지 클램프');
+L([0.099,0.081,0.450],[-8.168,0.962,0.000],M.steel,'MB-017 지지 브래킷','무명 부재 → (무명)');
+L([0.099,0.090,0.450],[-7.210,0.980,0.000],M.steel,'MB-018 지지 브래킷','무명 부재 → (무명)');
+L([0.060,0.060,0.095],[-18.175,0.213,-2.792],M.steel,'MB-019 지지 브래킷','무명 부재 → LFT-101A 30장 팔레트 리프트');
+L([0.450,0.060,0.100],[-15.725,2.020,-0.375],M.steel,'MB-020 지지 브래킷','무명 부재 → (무명)');
+L([0.090,0.119,0.060],[-7.928,0.885,-0.860],M.steel,'MB-023 지지 브래킷','무명 부재 → JB-201 가드형 축적·인계 컨베이어');
+L([0.110,0.450,0.060],[10.750,1.810,-0.970],M.steel,'MB-024 지지 브래킷','AFR SG-301 잔사 제거 → AFR CV-102 투입 이송');
+L([0.110,0.450,0.060],[10.750,1.810,0.970],M.steel,'MB-025 지지 브래킷','무명 부재 → (무명)');
+L([0.090,0.123,0.060],[-7.768,0.887,-0.860],M.steel,'MB-026 지지 브래킷','무명 부재 → JB-201 가드형 축적·인계 컨베이어');
+L([0.090,0.125,0.060],[-7.609,0.887,-0.860],M.steel,'MB-027 지지 브래킷','무명 부재 → JB-201 가드형 축적·인계 컨베이어');
+L([0.090,0.125,0.060],[-7.449,0.887,-0.860],M.steel,'MB-028 지지 브래킷','무명 부재 → JB-201 가드형 축적·인계 컨베이어');
+L([0.450,0.109,0.063],[10.650,1.217,-0.702],M.steel,'MB-029 지지 브래킷','무명 부재 → (무명)');
+L([0.110,0.105,0.075],[7.000,2.518,-2.312],M.steel,'MB-030 지지 브래킷','무명 부재 → (무명)');
+L([0.120,0.060,0.060],[4.735,1.325,-0.760],M.steel,'MB-031 지지 브래킷','AFR LA-401 장축 LM 인발 → AFR 양방향 포지티브 스토퍼');
+L([0.120,0.060,0.060],[7.465,1.325,-0.760],M.steel,'MB-032 지지 브래킷','무명 부재 → (무명)');
+L([0.120,0.060,0.060],[4.735,1.325,0.760],M.steel,'MB-033 지지 브래킷','무명 부재 → (무명)');
+L([0.120,0.060,0.060],[7.465,1.325,0.760],M.steel,'MB-034 지지 브래킷','무명 부재 → (무명)');
+L([0.180,0.100,0.158],[-16.400,1.760,-2.706],M.steel,'MB-035 지지 브래킷','BFC-101A 단장 승강캐리지 → BFC-101A 포탈 기둥·LM가이드');
+L([0.180,0.100,0.158],[-16.400,1.760,2.706],M.steel,'MB-036 지지 브래킷','무명 부재 → BFC-101B 포탈 기둥·LM가이드');
+L([0.060,0.195,0.090],[-16.483,3.533,-2.460],M.steel,'MB-037 지지 브래킷','BFC-101A 반전완료 센서 → BFC-101A 포탈 크로스빔');
+L([0.060,0.195,0.090],[-16.483,3.533,0.740],M.steel,'MB-038 지지 브래킷','BFC-101B 반전완료 센서 → BFC-101B 포탈 크로스빔');
+L([0.230,0.280,0.100],[-8.430,1.380,-1.080],M.steel,'MB-039 지지 브래킷','JB-201 ID·CRC 게이트웨이 → JB-201 데이터·안전 인계 게이트');
+L([0.150,0.060,0.275],[-17.470,2.018,-2.083],M.steel,'MB-040 지지 브래킷','무명 부재 → BFC-101A 이중진공 단장 분리헤드');
+L([0.150,0.060,0.275],[-17.470,2.018,-1.718],M.steel,'MB-041 지지 브래킷','무명 부재 → BFC-101A 이중진공 단장 분리헤드');
+L([0.150,0.060,0.275],[-15.830,2.018,-2.083],M.steel,'MB-042 지지 브래킷','무명 부재 → BFC-101A 이중진공 단장 분리헤드');
+L([0.150,0.060,0.275],[-15.830,2.018,-1.718],M.steel,'MB-043 지지 브래킷','무명 부재 → BFC-101A 이중진공 단장 분리헤드');
+L([0.150,0.060,0.275],[-17.470,2.018,1.718],M.steel,'MB-044 지지 브래킷','무명 부재 → BFC-101B 이중진공 단장 분리헤드');
+L([0.150,0.060,0.275],[-17.470,2.018,2.083],M.steel,'MB-045 지지 브래킷','무명 부재 → BFC-101B 이중진공 단장 분리헤드');
+L([0.150,0.060,0.275],[-15.830,2.018,1.718],M.steel,'MB-046 지지 브래킷','무명 부재 → BFC-101B 이중진공 단장 분리헤드');
+L([0.150,0.060,0.275],[-15.830,2.018,2.083],M.steel,'MB-047 지지 브래킷','무명 부재 → BFC-101B 이중진공 단장 분리헤드');
+L([0.180,0.080,0.307],[-16.400,1.640,-0.908],M.steel,'MB-048 지지 브래킷','무명 부재 → (무명)');
+L([0.180,0.080,0.307],[-16.400,1.640,0.908],M.steel,'MB-049 지지 브래킷','BFC-101B 단장 수평셔틀 레일 → (무명)');
+L([0.450,0.180,0.338],[-16.622,1.900,-1.004],M.steel,'MB-050 지지 브래킷','무명 부재 → CD-101A 벽면수납 4열 프레임 포획빔');
+L([0.450,0.180,0.338],[-16.622,1.900,1.004],M.steel,'MB-051 지지 브래킷','BFC-101B 단장 승강캐리지 → (무명)');
+L([0.230,0.382,0.060],[-16.385,4.466,-1.900],M.steel,'MB-052 지지 브래킷','VS-101A-FUSED 3D 라인발광부 → BFC-101A 오픈센터 엔드링');
+L([0.230,0.382,0.060],[-16.385,4.466,1.900],M.steel,'MB-053 지지 브래킷','VS-101B-FUSED 3D 라인발광부 → BFC-101B 오픈센터 엔드링');
+})();
+
 /* REV.25 스마트 팩토리 시설 — 랙실 SVR-902·관제실 MCR-901·엣지 캐비닛.
    두 방은 공정 존이 아니라 구획실이라 통로 외곽벽(Y 8,300) **밖**에 선다 —
    전기실을 다뤘던 것과 같은 취급이다. 좌표는 배치 모델을 따른다:
@@ -9125,6 +9444,19 @@ L([.9,.06,.7],[0.9,.74,0.2],M.aluminum,null);
 L([.55,.34,.02],[0.9,.97,-0.08],M.screen,null);
 L([.9,.06,.7],[2.05,.74,0.2],M.aluminum,null);
 L([.55,.34,.02],[2.05,.97,-0.08],M.screen,null);
+// 콘솔 상판이 다리 없이 떠 있었다 — 4본씩 3대.
+L([.06,.71,.06],[-0.560,.355,-0.010],M.steel,'MCR-901 콘솔 다리 12본');
+L([.06,.71,.06],[-0.560,.355,0.410],M.steel,null);
+L([.06,.71,.06],[0.060,.355,-0.010],M.steel,null);
+L([.06,.71,.06],[0.060,.355,0.410],M.steel,null);
+L([.06,.71,.06],[0.590,.355,-0.010],M.steel,null);
+L([.06,.71,.06],[0.590,.355,0.410],M.steel,null);
+L([.06,.71,.06],[1.210,.355,-0.010],M.steel,null);
+L([.06,.71,.06],[1.210,.355,0.410],M.steel,null);
+L([.06,.71,.06],[1.740,.355,-0.010],M.steel,null);
+L([.06,.71,.06],[1.740,.355,0.410],M.steel,null);
+L([.06,.71,.06],[2.360,.355,-0.010],M.steel,null);
+L([.06,.71,.06],[2.360,.355,0.410],M.steel,null);
 // 존별 엣지 캐비닛 7면. MDB-101 과 같이 **통로 외곽벽**(Y 8,000…8,300)에 붙인다 —
 // 장비 밴드 가장자리(Y 7,000 중심)에 세우면 깊이 300 중 200 이 통로를 먹어
 // 보행 유효폭 900 이 700 으로 줄어든다. 반깊이 300 규약은 MDB 와 같다.
@@ -9194,6 +9526,48 @@ L([.9,.4,1.7],[3.35,1.05,0],M.aluminum,"GR-201 단거리 저충격 회전롤러"
 L([2.75,1.6,1.8],[5.175,.8,0],M.frame,"DS-301 하강식 유리 직접적재대","박리된 유리를 곧바로 적층한다 — 한 장 쌓일 때마다 내려간다");
 [0,1,2,3].forEach(function(k){L([2.5,.02,1.4],[5.175,1.62+k*.04,0],M.panel,k===0?"박리 완료 유리":null,k===0?"전처리 → 유리제거까지 끝난 결과물 · 53장/캠페인":null)});
 L([.15,.3,.12],[-3.8,.15,2.5],M.red,"GRM 적재부 안전 스캐너","포크·방출셔틀 동시진입 방지 — 안전 PLC");
+
+// ── 지지·장착 (REV.26) ────────────────────────────────────────────────
+// 앵커 계획은 표제란에 "랙 8×M20 · 마스트 4×M20/기 · 탠덤 빔 12×M16 · 후드 독립지지"
+// 라고 적혀 있었는데, 정작 3D 에는 그 앵커가 받칠 것이 하나도 없었다 —
+// 5단 랙 24메시가 바닥에서 600 mm 뜬 채 서 있었다. 사양은 글로 있고 형상이 없었다.
+// 여기서 세우는 부재 수량은 그 앵커 계획과 맞춘다.
+// 기둥은 전부 패널 통과 폭(로컬 z −0.85…0.85) 밖에 세운다.
+var MP=function(w,d,y0,y1,x,z,label){          // 기둥 + 베이스플레이트 + 앵커
+  L([w,y1-y0,d],[x,(y0+y1)/2,z],M.frame,label);
+  L([w+.14,.03,d+.14],[x,y0+.015,z],M.steel,null);
+};
+var AB=function(x,z,n,dx){                      // 앵커볼트 머리 n개
+  for(var i=0;i<n;i++)L([.05,.05,.05],[x+(i-(n-1)/2)*dx,.045,z],M.dark,null);
+};
+// ① M1-101 5단 랙 — 다리 4본 · 베이스 8×M20 (2/플레이트)
+[[-3.30,-0.75],[-3.30,0.75],[-1.00,-0.75],[-1.00,0.75]].forEach(function(p,i){
+  MP(.16,.16,0,.60,p[0],p[1],i===0?'M1-101 랙 지지다리 4본 (베이스 8×M20)':null);
+  AB(p[0],p[1],2,.18);
+});
+// 다리를 묶는 둘레 베이스 프레임 — 다리 하나가 빠져도 랙이 비틀리지 않게
+[-0.75,0.75].forEach(function(z){L([2.46,.12,.14],[-2.15,.54,z],M.dark,z<0?'M1-101 랙 베이스 프레임':null);});
+[-3.30,-1.00].forEach(function(x){L([.14,.12,1.64],[x,.54,0],M.dark,null);});
+// ② TDM-201 탠덤 갠트리 — 기둥 4본 · 12×M16 (3/플레이트) · 크로스헤드 2
+[[-0.35,-1.05],[-0.35,1.05],[2.75,-1.05],[2.75,1.05]].forEach(function(p,i){
+  MP(.18,.18,0,2.87,p[0],p[1],i===0?'TDM-201 갠트리 기둥 4본 (12×M16)':null);
+  AB(p[0],p[1],3,.16);
+});
+[-0.35,2.75].forEach(function(x){L([.16,.18,2.28],[x,2.96,0],M.dark,x<0?'TDM-201 갠트리 크로스헤드':null);});
+// ③ 칼날 Z축 슬라이드 — 빔에서 칼날까지. 축은 AXIS-GRM-TZ 로 이미 모델에 있다.
+[[-0.15,'HKB-101 Z축 슬라이드'],[0.15,'HKS-201 Z축 슬라이드']].forEach(function(p){
+  L([.14,1.12,.14],[p[0],2.31,0],M.steel,p[1]);
+});
+// ④ GRM-EX-401 배기 덕트 — IR 인클로저 상면에서 받는 스탠션 4
+[[-3.20,-.10],[-3.20,.10],[-1.10,-.10],[-1.10,.10]].forEach(function(p,i){
+  L([.09,.13,.09],[p[0],3.145,p[1]],M.steel,i===0?'GRM-EX-401 덕트 스탠션 4':null);
+});
+// ⑤ GRM-CD-401 냉각 후드 — 독립지지 기둥 4본. 후드 하중을 탠덤 빔에 얹지 않는다.
+[[2.20,-0.95],[2.20,0.95],[5.40,-0.95],[5.40,0.95]].forEach(function(p,i){
+  MP(.16,.16,0,3.00,p[0],p[1],i===0?'GRM-CD-401 후드 독립지지 기둥 4본':null);
+  AB(p[0],p[1],2,.16);
+});
+
 })();
 
 Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)},stop(){pvFlyK.clear()},state(){return{hot:pvFlyHot,keys:[...pvFlyK],minPolar:ht.minPolarAngle,maxPolar:ht.maxPolarAngle,pos:hi.position.toArray(),target:ht.target.toArray()}}};var pvPickAt=null;Dt.domElement.addEventListener("pointerdown",i=>{pvPickAt=[i.clientX,i.clientY]},!0);function pvPickOk(i){return!pvPickAt||Math.hypot(i.clientX-pvPickAt[0],i.clientY-pvPickAt[1])<=6}Dt.domElement.addEventListener("click",i=>{pvPickOk(i)&&L0(i,!1)});Dt.domElement.addEventListener("dblclick",i=>{pvPickOk(i)&&L0(i,!0)});function Br(){let{width:i,height:e}=cu.getBoundingClientRect();!i||!e||(Sp(),Dt.setSize(i,e,!1),hi.aspect=i/e,hi.updateProjectionMatrix())}var I0=new ResizeObserver(Br);I0.observe(cu);window.addEventListener("resize",Br,{passive:!0});hu.addEventListener("change",Br);Br();var Sl=0,lu=!1;function D0(i){i.persisted||Gl()}function Gl(){if(lu)return;lu=!0,Sl&&cancelAnimationFrame(Sl),I0.disconnect(),window.removeEventListener("resize",Br),window.removeEventListener("pagehide",D0),Ae.removeEventListener("jb:dispose",Gl),hu.removeEventListener("change",Br),ht.dispose(),bl(),Zt&&(pt.remove(Zt),Zt.geometry.dispose(),Array.isArray(Zt.material)?Zt.material.forEach(n=>n.dispose()):Zt.material.dispose(),Zt=null);let i=new Set,e=new Set,t=new Set;pt.traverse(n=>{n.geometry&&!i.has(n.geometry)&&(i.add(n.geometry),n.geometry.dispose?.()),(Array.isArray(n.material)?n.material:n.material?[n.material]:[]).forEach(r=>{e.has(r)||(e.add(r),Object.values(r).forEach(a=>{a?.isTexture&&!t.has(a)&&(t.add(a),a.dispose?.())}),r.dispose?.())})}),Dt.renderLists?.dispose?.(),Dt.dispose?.(),Dt.forceContextLoss?.()}Ae.addEventListener("jb:dispose",Gl,{once:!0});window.addEventListener("pagehide",D0);function F0(i){if(lu||!Ae.isConnected){Gl();return}let e=Math.min(.05,(i-up)/1e3);if(up=i,wn&&(Ve+=e*b0,Ve>=ci))if(yv.checked){let t={committed:!0,target:Qi()};if(Le==="normal"&&(t=T0()),!t.committed)Ve=ci,fn(!1),Rn.textContent=`${t.target.code} 버퍼가 ${t.target.capacity}/${t.target.capacity}로 만재되어 적재를 승인하지 않았습니다. 캐리지 교환과 빈 슬롯 확인 후 버퍼 수량 초기화를 수행하십시오.`,wt(Ve,0);else{let n=ui();Rt[n].count>0&&(Rt[n].count-=1,Rt[n].deckOffset+=Lo),ai+=1;let s=Le==="normal"&&Qi().full;Rt.every(r=>r.count<=0)||s?(Ve=s?ci:0,fn(!1),s&&(Rn.textContent=`${Qi().code} 캐리지가 만재되었습니다. 다음 패널 투입은 JB/AFR-301부터 상류 HOLD되며 캐리지 교환 승인 전 자동복귀하지 않습니다.`)):Ve%=ci}}else Ve=ci,fn(!1);if(Zn){let t=$t((i-Zn.started)/Zn.duration),n=me(t);hi.position.lerpVectors(Zn.fromPosition,Zn.toPosition,n),ht.target.lerpVectors(Zn.fromTarget,Zn.toTarget,n),t>=1&&(Zn=null)}wt(Ve,wn?e:0),Zt&&Zt.update(),ht.update(),Dt.render(pt,hi),Sl=requestAnimationFrame(F0)}Ae.__pvInfeedTest={setTime(i){return Ve=Math.max(0,Math.min(ci,Number(i)||0)),fn(!1),wt(Ve,0),this.getStage()},setSourceLift(i){let e=String(i).toUpperCase();return Ls.value=e.endsWith("B")?"b":"a",wt(Ve,0),this.getLiftState()},setFace(i){return Tn.value=String(i).toLowerCase().includes("up")?"glass-up":"glass-down",wt(Ve,0),{faceIn:Tn.value,orientationOut:"GLASS_DOWN_JBOX_UP"}},setAfrRoute(i){let e=String(i).toLowerCase();return Kt=["auto","r-a","r-b1","r-b2","hold","buffer-full"].includes(e)?e:"auto",Ir.value=Kt,wt(Ve,0),this.getAfrState()},setValidationMode(i){let e=String(i).toLowerCase();return Le=[...ws.options].map(n=>n.value).includes(e)?e:"normal",ws.value=Le,kl(),wt(Ve,0),{validationMode:Le}},setAfrBufferCounts(i={}){return Rs={A:Math.max(0,Math.min(50,Math.floor(Number(i.A)||0))),B:Math.max(0,Math.min(50,Math.floor(Number(i.B)||0))),H:Math.max(0,Math.min(5,Math.floor(Number(i.H)||0)))},wt(Ve,0),{...Rs}},resetAfrBuffers(){return R0(),wt(Ve,0),{...Rs}},commitAfrCycle(){let i=T0();return wt(Ve,0),{committed:i.committed,target:{...i.target},counts:{...Rs}}},campaign(){return{roster:pvCamRoster(),bundles:pvCamB.map(i=>({name:i[0],lift:i[1],pattern:i[2]})),taktSeconds:pvCamTakt,rejectSeconds:pvCamRejectS,infeedSeconds:pvCamInfeed,afrSeconds:pvCamAfr,palletPanels:pvCamPallet,forkliftCallRemaining:pvCamCall,buffers:pvCamBuf}},setCampaignIndex(i,e2){return pvCamApply(i,e2)},startCampaign(i){return pvCamIdx=Math.max(1,Math.min(pvCamRoster().length,Math.floor(Number(i)||1))),pvCamApply(pvCamIdx,!0),fn(!0),pvCamTimer&&clearInterval(pvCamTimer),pvCamTimer=setInterval(pvCamTick,80),{running:!0,index:pvCamIdx}},stopCampaign(){return pvCamHalt(),{running:!1,index:pvCamIdx}},campaignPlayback(){let i=pvCamRoster()[pvCamIdx-1];return{running:!!pvCamTimer,index:pvCamIdx,total:pvCamRoster().length,clockS:Number((i.infeedStart+Ve).toFixed(2)),runS:pvCamRoster()[pvCamRoster().length-1].endS,traceS:Number(Ve.toFixed(2)),wrapS:i.condition==="전손"?pvCamRejectS:pvCamWrap,panel:i}},getLiftState(){return JSON.parse(JSON.stringify(E0))},getStage(){let i=Vl(Ve);return{index:i,name:Fs[i].name,time:Number(Ve.toFixed(3)),sourceLift:ui()===0?"LFT-101A":"LFT-101B"}},getAfrState(){let i=Rt[ui()].count>0,e=C0(Ve,Pr.permitted);return{offsetSeconds:nt,cycleSeconds:Number(Lr.toFixed(3)),active:e.active,completed:e.completed,frameRemoved:e.frameRemoved,phaseIndex:e.index,phase:e.phase.name,shortForceKn:Number(e.shortForceKn.toFixed(2)),shortProgress:Number(e.shortMove.toFixed(4)),endGapMm:Number((e.endOpen*55).toFixed(1)),longForceKn:Number(e.longForceKn.toFixed(2)),longTravelMm:Number((e.longMove*1300).toFixed(1)),glassStressMpa:Number(e.glassStressMpa.toFixed(2)),jboxGeometryPresent:!1,orientation:"GLASS_DOWN_BACKSHEET_UP",recipe:e.bufferRecipe.code,routeLabel:e.bufferRecipe.label,targetModule:e.bufferTarget.module+1,targetSlot:e.bufferTarget.slotInModule+1,targetCountBefore:e.bufferTarget.slot,bufferFull:e.bufferFull,cv102Gi301Integrated:!0,finalSafetyScan:Number(e.finalSafetyScan.toFixed(4)),siliconeClean:Number(e.siliconeClean.toFixed(4)),recipeScan:Number(e.recipeScan.toFixed(4)),bufferTransfer:Number(e.bufferTransfer.toFixed(4)),bufferCounts:{...e.bufferCounts},resultAck:e.resultAck,destination:`CV-102+GI-301_COMBINED/SG-301/GI-302/GBR-301/${e.bufferRecipe.code}`}},getPermitState(){return JSON.parse(JSON.stringify(Pr))},getSensorInventory(){return{processVisionPhysicalHeads:7,infeed:{physicalHeads:vl.length,headsPerBay:[1,1],modalitiesPerHead:["2D_FACE","3D_PROFILE"]},jbrCoordinate:{physicalHeads:1,ids:["JBR-VS-201A"],mount:"X_BRIDGE",legacyAlias:"VS-102"},jbAfrIntegrated:{physicalHeads:0,id:"JBR-VS-201A",modalities:["2D_POST_VERIFY","3D_GEOMETRY_MAP"],sharedWithJbrHead:!0},cv102:{physicalInspectionPoints:0,id:"CV-102",note:"V-4: 이송 전용"},gi301Gi302:{physicalInspectionPoints:1,id:"GI-301/302",merged:!0},independentHeightSensors:4,afrAcousticEmissionSensors:Uu.length,personnelSafetyChannelsReduced:!1}},getPostProcessState(){let i=this.getAfrState();return{sequence:["CV-102","SG-301","GI-301/302","GBR-301"],gi301Pass:i.finalSafetyScan>=1,sg301Active:i.siliconeClean>0&&i.siliconeClean<1,sg301Complete:i.siliconeClean>=1,gi302Active:i.recipeScan>0&&i.recipeScan<1,gi302Valid:i.recipeScan>=1,gbrTransfer:i.bufferTransfer,strictInterlocks:{sgRequiresGi301:i.siliconeClean<=0||i.finalSafetyScan>=1,gi302RequiresSg:i.recipeScan<=0||i.siliconeClean>=1,gbrRequiresGi302:i.bufferTransfer<=0||i.recipeScan>=1}}},getFactoryState(){return{totalTraceSeconds:Number(ci.toFixed(3)),flow:["FL/LFT/BFC/RB-101","JBR-201","JB/AFR-301","AFR-101","CV-102/SG-301/GI-301-302","GBR-301/R-A/R-B/HOLD"],flowStepCount:mp.length,validationMode:Le,afrRouteMode:Kt,stage:this.getStage(),afr:this.getAfrState()}},getLayoutState(){let i=new C(It,vn+.92,0),e=o=>Math.round(i.distanceTo(o)*1e3),t=new C(xn[0].x,li+.18,xn[0].z),n=new C(xn[1].x,li+.18,xn[1].z),s=new C(Ti,1.18,0),r=new C(Tr,1.65+.18,xn[0].z),a=new C(Tr,1.65+.18,xn[1].z);return{infeedConveyorPresent:!1,robotBayConveyorPresent:!1,commonFlipConveyorPresent:!1,infeedRollerCount:0,localFlipCount:Cl.length,bayWallBoundaryCount:Xv.length,visionTopBeamCount:$v?1:0,visionCameraArmCount:Pp.length,visionCameraCount:vl.length,visionCamerasPerBay:[1,1],visionModalitiesPerBay:[["2D_FACE","3D_PROFILE"],["2D_FACE","3D_PROFILE"]],jbrVisionPhysicalIds:["JBR-VS-201A"],vs102LegacyAlias:!0,jbAfr301IntegratedVision:!1,cv102Gi301Integrated:!0,downstreamPtJbConveyorPresent:!0,afrMaximumPanelMm:[2500,1400,50],afrSupportZoneCount:Pu.length,afrClampCount:Lu.length,afrShortAxisCount:Iu.length,afrLongCarriageCount:Du.length,gi301Present:!0,sg301Present:!0,gi302Present:!0,gbr301Present:!0,recipeBufferCapacity:{A:50,B:50,H:5},recipeCarrierModules:{A:2,B:2,H:1},afrGbrEnvelopeMm:[22e3,7100,2800],visionCompactShiftMm:2500,afrCompactCoordinatesM:{centerWorldX:qt,cv102Gi301LocalX:Wr,sg301LocalX:ln,gi302LocalX:Do,gbrLocalX:Ri,bufferModuleLocalX:[...zl],bufferTransverseZ:{...Kn},rightGuardWorldX:qt+13.65},robotPedestalHeightMm:Math.round(vn*1e3),robotShoulderYmm:Math.round(i.y*1e3),fixedStackTopMm:Math.round(Gt*1e3),flipAxisMm:Math.round(At*1e3),flipRadiusMm:900,stackToRotorClearanceMm:Math.round((At-.9-Gt)*1e3),cameraLensHeightMm:4820,cameraToRotorClearanceMm:Math.round((4.82-.16-.05-(At+.9+.09))*1e3),robotHandoffYmm:Math.round(li*1e3),reachAmm:e(t),reachBmm:e(n),reachPtMm:e(s),reachWaypointAmm:e(r),reachWaypointBmm:e(a),specifiedRobotReachMm:2800,wallExitPanelClearanceMm:Math.round((Tr-1.28-(jn.x+Nr+.25))*1e3),panelToRobotColumnClearanceMm:Math.round((Tr-1.28-(It+.46))*1e3),pedestalToWallGapMm:Math.round((It-Ro-(jn.x+Nr+.25))*1e3),pedestalToPtGapMm:Math.round((s.x-2.62/2-(It+Ro))*1e3),pedestalToFirstRollerGapMm:Math.round((To+gt-(It+Ro))*1e3),axisPickupProhibited:!0,designClearanceRequirementMm:300}}};Ae.__pvPlantRev20Test=Ae.__pvInfeedTest;Ae.__pvPlantRev21Test=Ae.__pvInfeedTest;Ae.__pvPlantRev22Test=Ae.__pvInfeedTest;wt(0,0);Sl=requestAnimationFrame(F0);})();
@@ -9305,7 +9679,8 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
     layout: '전체 장비 상세 배치도',
     register: '도면 목록',
     electrical: '전기 인입 단선결선도',
-    smart: '스마트 팩토리 · 네트워크·계측·AI 검토'
+    smart: '스마트 팩토리 · 네트워크·계측·AI 검토',
+    mount: '지지·장착 상세 — 베이스플레이트·앵커·지지 부재'
   };
 
   function activatePanel(name) {

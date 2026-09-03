@@ -43,7 +43,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (500건)
+python -m unittest discover -s tests -t .                               # 테스트 (506건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
@@ -85,6 +85,7 @@ src/pv_preprocess/
   electrical.py     전기 인입 부하 집계 · 차단기·계약전력 산정
   smart.py          스마트 팩토리 — 계측·네트워크·데이터량·시설 산정
   ai.py             AI 적용 검토 — 등급·라벨 공급·오분류 대가
+  mounting.py       지지·장착 — 앵커 계획·지지 부재·하중 경로 예외
   wiring.py         분전반 위치·트레이 경로·실제 케이블 길이 산정
   servos.py         전동기·서보 축 일람 — 피더 예산·브레이크 불변식
   acoustics.py      소음·진동 예측 모델과 저감 설계 근거
@@ -125,6 +126,10 @@ flux 상사로 스케일업하면 수력학적 조건이 보존되므로 실증 
 - AFR 베드-CV-102 사이 2,950 mm 무지지 공백(패널 2,500 초과)을 반출롤러 2,000 으로 폐쇄
 - 장비 밴드 Y 0–7,100, 보행·정비 통로 Y 7,100–8,300 (장비 포락선 **밖**)
 - 설비 셀 8개 + JB/AFR 인계 게이트 1개, 부품 173품목 (유리제거셀 GRM-401 26품목 포함)
+- **지지·장착** — 3D 메시 1,921개를 인접 30 mm 로 묶어 바닥까지 하중 경로를 따라가면 접지 성분 1개, 예외 2덩어리(로봇이 든 패널·레이저 투영선)뿐이다. REV.25 까지는 덩어리 **72개(115메시)** 가 떠 있었다 — 5단 랙 24메시가 바닥에서 600 mm 뜬 채였다
+- 앵커 계획을 문장에서 값으로 승격 — 셀 8개 · 앵커 **174개**(M16 94 / M20 72 / M24 8) · 베이스플레이트·그라우트·레벨링. 표제란 문장은 `mounting.anchor_text()` 가 만들어 모델과 어긋날 수 없다
+- 지지 부재 13종 + 지지 브래킷 51개(채번 MB-001…053, 폐번 2). 브래킷은 각 부유 부재와 최근접 접지 부재의 **실측 간격**(중앙값 119 mm)에서 나왔다 — 임의로 세운 기둥은 통과 폭이나 기존 장비를 침범한다
+- 하중 경로는 `node tools/check_load_path.mjs docs/drawings/pv-preprocess-plant.html` 로 검사한다. 예외를 늘리려면 `mounting.UNSUPPORTED_BY_DESIGN` 과 검사 도구 양쪽에 근거와 함께 넣어야 한다
 - 스마트 팩토리 계층 — ISA-95 L0~L3. 구획실 2개(엣지·서버 랙실 SVR-902 1,800 × 3,200 · 통합 관제실 MCR-901 4,000 × 3,400), 존별 엣지 캐비닛 7면, 신규 계측 46점, 무선 AP 5대
 - 데이터량은 설비에서 파생한다 — 서보 36축 × 6신호 × 100 Hz + 인버터·직입 + 공정 태그 592점 = **91.7 kB/s**, 영상 원본 **6.90 MB/s**(라인스캔 GI-302 장당 350 MB 가 지배항). 요구 대역 111.9 Mbps → 백본 **1 GbE** 광 이중화 링
 - 영상은 **불량 전량 + 정상 2 % 표본**만 보존한다(13.7 %) — 전량 보존하면 3년이 224 TB, 이 정책이면 **31.0 TB**

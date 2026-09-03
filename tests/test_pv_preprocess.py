@@ -16,7 +16,7 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import (acoustics, ai, campaign, electrical, frames, handoff, layout, materials, smart,
+from pv_preprocess import (acoustics, ai, campaign, electrical, frames, handoff, layout, materials, mounting, smart,
                            servos, thermal, vision, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
@@ -2391,6 +2391,117 @@ class TestAiFeasibility(unittest.TestCase):
         # 시트가 마크다운 별표를 그대로 그리면 안 된다
         self.assertIn("function plain(value)", self.html)
         self.assertIn("replace(/\\*\\*/g, '')", self.html)
+
+
+class TestMounting(unittest.TestCase):
+    """REV.26 지지·장착 — 부품이 무엇에 얹혀 있는지가 형상과 값으로 있는가."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_every_cell_has_a_mounting_spec(self):
+        self.assertTrue(mounting.stations_are_covered())
+        # 셀이 하나 늘면 장착 사양도 따라와야 한다 — 검사가 살아 있는지 확인한다
+        self.assertFalse(mounting.stations_are_covered(set(layout.STATIONS) | {"newcell"}))
+        self.assertFalse(mounting.stations_are_covered(set()))
+        for key, m in mounting.MOUNTING_OF.items():
+            with self.subTest(station=key):
+                self.assertTrue(m.anchors, "앵커 없는 셀은 서 있을 수 없다")
+                self.assertGreaterEqual(m.total_anchors, 4, "베이스플레이트 하나에 최소 4본")
+                self.assertGreater(m.grout_mm, 0)
+                self.assertTrue(m.plate.strip())
+                self.assertTrue(m.note.strip(), "왜 이렇게 잡았는지가 있어야 한다")
+
+    def test_anchor_text_is_generated_not_typed(self):
+        """표제란 문장을 손으로 적으면 모델과 어긋난다 — 데이터에서 만든다."""
+        block = self.html[self.html.index("  var stations = {"):
+                          self.html.index("  var register = [")]
+        for key in mounting.MOUNTING_OF:
+            with self.subTest(station=key):
+                self.assertIn("anchors: '" + mounting.anchor_text(key) + "'", block)
+        # 합계는 기초도면으로 넘기는 값이라 못 박는다
+        self.assertEqual(mounting.total_anchors(), 174)
+        self.assertEqual(mounting.anchors_by_bolt(), {"M16": 94, "M20": 72, "M24": 8})
+        # '/기' 는 개소마다라는 뜻이다 — 곱해지지 않으면 수량이 반이 된다
+        grm = mounting.MOUNTING_OF["grm"]
+        mast = next(a for a in grm.anchors if a.target == "마스트")
+        self.assertTrue(mast.per_unit)
+        self.assertEqual(mast.total, mast.count * mast.units)
+        self.assertEqual(grm.total_anchors, 36)
+
+    def test_the_anchor_plan_has_something_to_hold_down(self):
+        """'랙 8×M20' 이라고 적었으면 받칠 랙 다리가 3D 에 있어야 한다.
+
+        REV.25 까지 grm 의 앵커 계획은 랙·마스트·탠덤 빔·후드를 정확히 적고
+        있었는데 3D 에는 랙 다리도 갠트리 기둥도 없었다 — 5단 랙 24메시가
+        바닥에서 600 mm 뜬 채 서 있었다. 사양은 글로 있고 형상이 없었다.
+        """
+        for member in mounting.MEMBERS:
+            with self.subTest(member=member.label):
+                # 파일 어딘가에 있는지가 아니라 **두 번** 있는지를 본다 —
+                # MOUNT_MEMBERS 리터럴에 한 번, 3D 부재 라벨로 한 번.
+                # 하나만 있으면 표에는 있는데 형상이 없다는 뜻이고, 그것이
+                # REV.25 까지의 상태였다.
+                self.assertGreaterEqual(
+                    self.html.count("'" + member.label + "'"), 2,
+                    "표에만 있고 3D 에 형상이 없다")
+                self.assertIn(member.support, mounting.SUPPORT_CLASSES)
+                self.assertTrue(member.carries.strip())
+        # 앵커 계획이 대상을 이름으로 부른 셀은 그 대상을 받치는 부재가 있어야 한다
+        for key in ("grm", "afr", "afu"):
+            with self.subTest(station=key):
+                self.assertTrue(mounting.members_of(key), f"{key} 에 지지 부재가 없다")
+        self.assertEqual(mounting.members_by_class()["floor"], 10)
+
+    def test_brackets_came_from_measured_gaps(self):
+        """브래킷은 임의로 세운 것이 아니라 잰 것이다 — 전부 도면에 있어야 한다."""
+        self.assertEqual(mounting.BRACKET_SERIES, 53)
+        self.assertEqual(mounting.BRACKET_COUNT, 51)
+        for tag in mounting.bracket_tags():
+            with self.subTest(bracket=tag):
+                self.assertIn(tag + " 지지 브래킷", self.html)
+        # 폐번은 도면에 없어야 하고, 왜 물렸는지가 남아야 한다
+        for tag, why in mounting.BRACKET_WITHDRAWN:
+            with self.subTest(withdrawn=tag):
+                # 부품으로는 없어야 한다. 폐번 사유를 적은 주석에는 이름이 남는다 —
+                # 그게 이 번호를 다시 쓰지 않는 근거다.
+                self.assertNotIn(tag + " 지지 브래킷", self.html)
+                self.assertGreater(len(why), 20, "폐번 사유가 한 줄은 있어야 한다")
+        # 번호는 재사용하지 않는다 — 채번 범위 밖은 비어 있어야 한다
+        self.assertNotIn(f"{mounting.BRACKET_PREFIX}{mounting.BRACKET_SERIES + 1:03d}", self.html)
+
+    def test_exemptions_are_named_and_justified(self):
+        """받칠 대상이 아닌 것은 근거와 함께 적는다 — 늘리기 쉬우면 안 된다."""
+        self.assertEqual(len(mounting.UNSUPPORTED_BY_DESIGN), 3)
+        for label, why in mounting.UNSUPPORTED_BY_DESIGN:
+            with self.subTest(label=label):
+                self.assertIn("'" + label + "'", self.html)
+                self.assertTrue(why.strip())
+        # 검사 도구의 예외 목록과 같아야 한다 — 둘이 갈라지면 검사가 헐거워진다
+        tool = pathlib.Path("tools/check_load_path.mjs").read_text(encoding="utf-8")
+        for label, _ in mounting.UNSUPPORTED_BY_DESIGN:
+            with self.subTest(label=label):
+                self.assertIn("'" + label + "'", tool)
+        self.assertIn("ADJACENCY_M = 0.03", tool)
+        self.assertIn("FLOOR_M = 0.05", tool)
+
+    def test_drawing_carries_the_mounting_sheet(self):
+        sm = mounting.summary()
+        for token in (f"anchors: {sm['anchors']}",
+                      f"m16: {sm['by_bolt']['M16']}",
+                      f"m20: {sm['by_bolt']['M20']}",
+                      f"m24: {sm['by_bolt']['M24']}",
+                      f"members: {sm['members']}",
+                      f"brackets: {sm['brackets']}",
+                      f"exempt: {sm['exempt']}"):
+            with self.subTest(token=token):
+                self.assertIn(token, self.html)
+        self.assertIn("PV-PLANT-MT-1015", self.html, "도면 목록에 장착 상세가 없다")
+        self.assertIn("'mount'", self.html, "탭이 selectTab 유효 목록에 있어야 한다")
+        self.assertIn("fitSheet(mountSvg);", self.html, "장착 시트도 같은 맞춤을 받아야 한다")
+        # 볼트 배치는 개수에서 파생한다 — 상수로 박으면 개수가 바뀔 때 안 따라온다
+        self.assertIn("function plateBolts(count)", self.html)
 
 
 class TestGlassRemovalIntegration(unittest.TestCase):
