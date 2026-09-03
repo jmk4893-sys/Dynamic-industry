@@ -48,12 +48,21 @@ DOWNSTREAM_POSE = "유리면 ↓ · 백시트 ↑"
 #: 가열 시작 전에 5단을 다 채운다 (FULL_LOAD_ACK).
 DOWNSTREAM_LOAD_PANELS = 5
 
-#: 앱 기본값 — IR 램프 60개, 1개 정격 kW, 실효 열효율 %, 칼날 mm/s, 인계 s/장.
+#: 앱 기본값 — IR 램프 60개, 1개 정격 kW, 실효 열효율 %.
 LAMP_COUNT = 60
 LAMP_KW = 2.5
 HEAT_EFFICIENCY_PCT = 65.0
-KNIFE_SPEED_MM_S = 40.0
-HANDLING_S = 10.0
+
+#: 업로드된 그대로의 칼날 속도·인계시간 (mm/s, s/장). 이 상태로는 46.5 장/h 라
+#: 유입 66.0 을 못 받는다 — B안이 나온 이유이자, 개선 전 기준으로 남겨 둔다.
+AS_UPLOADED_KNIFE_MM_S = 40.0
+AS_UPLOADED_HANDLING_S = 10.0
+
+#: **채택 구성 (B안)** — 듀얼 진공테이블로 인계를 겹치고 칼날을 상한까지 올린다.
+#: 버퍼에 실제로 연결되는 것은 이 구성이다.
+ADOPTED_PLAN = "B"
+KNIFE_SPEED_MM_S = 60.0
+HANDLING_S = 6.0
 #: 칼날 속도 상한 (mm/s) — 앱의 knifeSpeed max.
 KNIFE_SPEED_MAX_MM_S = 60.0
 
@@ -99,6 +108,12 @@ def downstream_rate(length_mm: float = DOWNSTREAM_MAX_MM[0],
         "IR 열공정" if thermal < tandem else "2단 탠덤 박리")
 
 
+def as_uploaded_rate() -> DownstreamRate:
+    """개선 전(업로드된 그대로) 후단 능력 — B안의 출발점이자 C안의 기준."""
+    return downstream_rate(knife_speed_mm_s=AS_UPLOADED_KNIFE_MM_S,
+                           handling_s=AS_UPLOADED_HANDLING_S)
+
+
 def sheet_glass_per_h() -> float:
     """버퍼에서 후단으로 나가는 정상 유리(R-A) 유입률 (장/h).
 
@@ -114,20 +129,34 @@ def rate_gap_per_h() -> float:
 
 
 def buffer_autonomy_h() -> float:
-    """R-A 버퍼가 가득 차기까지 (h). 이 시간마다 후단이 따라잡을 틈이 있어야 한다."""
+    """R-A 버퍼가 가득 차기까지 (h).
+
+    채택 구성에서는 후단이 유입보다 빠르므로 버퍼가 차지 않는다 — 무한대다.
+    그때 버퍼는 '밀린 것을 쌓는 곳'이 아니라 후단 정지를 버티는 완충으로 쓰인다.
+    """
     gap = rate_gap_per_h()
     return round(BUFFER_RA_SLOTS / gap, 2) if gap > 0 else float("inf")
 
 
-def knife_speed_for_balance() -> float:
-    """유입을 그대로 받으려면 필요한 칼날 속도 (mm/s)."""
+def buffer_ride_through_h() -> float:
+    """후단이 멈춰도 전처리가 계속 돌 수 있는 시간 (h) — 버퍼가 다 찰 때까지."""
+    return round(BUFFER_RA_SLOTS / sheet_glass_per_h(), 2)
+
+
+def knife_speed_for_balance(handling_s: float = HANDLING_S) -> float:
+    """그 인계 시간에서 유입을 그대로 받으려면 필요한 칼날 속도 (mm/s).
+
+    기본값은 채택된 인계 6 s. 업로드 당시의 10 s 를 넣으면 상한 60 을 넘는 값이
+    나온다 — 칼날만 올려서는 균형이 잡히지 않고 인계 단축이 전제였다는 근거다.
+    """
     target_cycle = 3600.0 / sheet_glass_per_h()
-    return round((TANDEM_LEAD_MM + DOWNSTREAM_MAX_MM[0]) / (target_cycle - HANDLING_S), 1)
+    return round((TANDEM_LEAD_MM + DOWNSTREAM_MAX_MM[0]) / (target_cycle - handling_s), 1)
 
 
-def balances_at_max_knife_speed() -> bool:
+def balances_at_max_knife_speed(handling_s: float = HANDLING_S) -> bool:
     """칼날을 상한까지 올리면 유입을 받아낼 수 있는가."""
-    return downstream_rate(knife_speed_mm_s=KNIFE_SPEED_MAX_MM_S).line_per_h >= sheet_glass_per_h()
+    return downstream_rate(knife_speed_mm_s=KNIFE_SPEED_MAX_MM_S,
+                           handling_s=handling_s).line_per_h >= sheet_glass_per_h()
 
 
 def pose_matches() -> bool:
@@ -160,6 +189,7 @@ def summary() -> dict[str, object]:
         "gap_per_h": rate_gap_per_h(),
         "buffer_autonomy_h": buffer_autonomy_h(),
         "knife_speed_needed": knife_speed_for_balance(),
+        "knife_speed_needed_as_uploaded": knife_speed_for_balance(AS_UPLOADED_HANDLING_S),
         "balances_at_max_knife": balances_at_max_knife_speed(),
     }
 
@@ -168,10 +198,9 @@ def summary() -> dict[str, object]:
 # 유입 66.0 대 처리 46.5 장/h 의 격차 19.5 를 어느 쪽에서 흡수할 것인가.
 # B안은 후단을 올리고, C안은 전처리를 내린다. 둘 다 성립하지만 잃는 것이 다르다.
 
-#: B안 — 듀얼 진공테이블로 인계를 겹쳐 클램프·인계시간을 줄인다 (s/장).
-PLAN_B_HANDLING_S = 6.0
-#: B안 — 칼날은 상한까지 올린다 (mm/s).
-PLAN_B_KNIFE_MM_S = KNIFE_SPEED_MAX_MM_S
+#: B안이 곧 채택 구성이다 — 값을 두 벌로 적지 않는다.
+PLAN_B_HANDLING_S = HANDLING_S
+PLAN_B_KNIFE_MM_S = KNIFE_SPEED_MM_S
 
 
 @dataclass(frozen=True)
@@ -195,7 +224,8 @@ def plan_b() -> Plan:
     feed = sheet_glass_per_h()
     return Plan(
         "B", "후단 개선",
-        f"칼날 {KNIFE_SPEED_MM_S:g} → {PLAN_B_KNIFE_MM_S:g} mm/s · 인계 {HANDLING_S:g} → {PLAN_B_HANDLING_S:g} s/장",
+        f"칼날 {AS_UPLOADED_KNIFE_MM_S:g} → {PLAN_B_KNIFE_MM_S:g} mm/s · "
+        f"인계 {AS_UPLOADED_HANDLING_S:g} → {PLAN_B_HANDLING_S:g} s/장",
         feed, d.line_per_h, round(d.line_per_h - feed, 1),
         "듀얼 진공테이블 증설과 칼날 증속 — HKS 추력·장력·유리응력 DOE 가 선행돼야 한다")
 
@@ -205,7 +235,7 @@ def plan_c_hold_s() -> float:
 
     셀 점유시간은 건드리지 않는다. 로봇이 손을 늦게 떼는 것만으로 택트를 늘린다.
     """
-    capacity = downstream_rate().line_per_h
+    capacity = as_uploaded_rate().line_per_h
     lo, hi = 0.0, 120.0
     for _ in range(60):                      # 이분법 — 보류가 늘면 유입은 단조 감소
         mid = (lo + hi) / 2.0
@@ -222,7 +252,7 @@ def plan_c() -> Plan:
     hold = plan_c_hold_s()
     s = campaign.summary(hold)
     feed = round(s["normal"] / s["run_s"] * 3600.0, 1)
-    capacity = downstream_rate().line_per_h
+    capacity = as_uploaded_rate().line_per_h
     return Plan(
         "C", "전처리 감속",
         f"방출 보류 +{hold:g} s · 택트 {campaign.summary()['takt_s']:g} → {s['takt_s']:g} s",

@@ -1779,27 +1779,55 @@ class TestHandoff(unittest.TestCase):
 
     def test_downstream_rate_mirrors_the_uploaded_model(self):
         """DG-HK 2400 Rev.10 앱의 계산을 그대로 옮긴 값 — 재유도하지 않았다."""
-        d = handoff.downstream_rate()
-        self.assertAlmostEqual(d.heat_per_panel_mj, 4.40, places=2)
-        self.assertAlmostEqual(d.dwell_s, 225.79, places=2)
-        self.assertAlmostEqual(d.release_pitch_s, 45.16, places=2)
-        self.assertAlmostEqual(d.tandem_cycle_s, 77.5, places=1)
+        u = handoff.as_uploaded_rate()
+        self.assertAlmostEqual(u.heat_per_panel_mj, 4.40, places=2)
+        self.assertAlmostEqual(u.dwell_s, 225.79, places=2)
+        self.assertAlmostEqual(u.release_pitch_s, 45.16, places=2)
+        self.assertAlmostEqual(u.tandem_cycle_s, 77.5, places=1)
+        self.assertAlmostEqual(u.line_per_h, 46.5, places=1)
+
+    def test_adopted_configuration_is_plan_b(self):
+        """버퍼에 실제로 연결된 것은 B안 구성이다 — 열은 그대로, 탠덤만 빨라진다."""
+        self.assertEqual(handoff.ADOPTED_PLAN, "B")
+        d, u = handoff.downstream_rate(), handoff.as_uploaded_rate()
+        self.assertAlmostEqual(d.tandem_cycle_s, 51.0, places=1)
+        self.assertAlmostEqual(d.line_per_h, 70.6, places=1)
         self.assertEqual(d.bottleneck, "2단 탠덤 박리")
-        self.assertAlmostEqual(d.line_per_h, 46.5, places=1)
+        self.assertAlmostEqual(d.dwell_s, u.dwell_s, places=2,
+                               msg="칼날·인계는 열공정을 건드리지 않는다")
         self.assertGreater(d.thermal_per_h, d.tandem_per_h,
                            "IR 이 병목이라면 증설 대상이 바뀐다")
 
-    def test_feed_outruns_the_downstream_line(self):
-        """정상 유리 유입이 후단 능력보다 빠르다 — 버퍼가 유한 시간만 완충한다."""
-        self.assertAlmostEqual(handoff.sheet_glass_per_h(), 66.0, places=1)
-        self.assertGreater(handoff.rate_gap_per_h(), 0)
-        self.assertAlmostEqual(handoff.buffer_autonomy_h(), 2.56, places=2)
+    def test_feed_no_longer_outruns_the_adopted_line(self):
+        """개선 전에는 유입이 빨라 버퍼가 2.56 h 만에 찼다 — 채택 후에는 차지 않는다."""
+        feed = handoff.sheet_glass_per_h()
+        self.assertAlmostEqual(feed, 66.0, places=1)
+        self.assertGreater(feed, handoff.as_uploaded_rate().line_per_h,
+                           "개선 전에는 밀렸다는 사실이 기록으로 남아야 한다")
+        self.assertLess(handoff.rate_gap_per_h(), 0, "채택 후에는 여유가 있어야 한다")
+        self.assertEqual(handoff.buffer_autonomy_h(), float("inf"))
+        # 버퍼의 역할이 '밀린 것 쌓기' 에서 '후단 정지 버티기' 로 바뀐다
+        self.assertAlmostEqual(handoff.buffer_ride_through_h(), 0.76, places=2)
 
-    def test_max_knife_speed_still_falls_short(self):
-        """칼날을 상한까지 올려도 0.5 장/h 모자란다 — 상한을 넘는 속도가 필요하다."""
-        self.assertFalse(handoff.balances_at_max_knife_speed())
-        self.assertGreater(handoff.knife_speed_for_balance(), handoff.KNIFE_SPEED_MAX_MM_S)
-        self.assertAlmostEqual(handoff.knife_speed_for_balance(), 60.6, places=1)
+    def test_knife_speed_alone_cannot_close_the_gap(self):
+        """인계 10 s 를 그대로 두면 필요 칼날이 상한을 넘는다 — 인계 단축이 전제다."""
+        need = handoff.knife_speed_for_balance(handoff.AS_UPLOADED_HANDLING_S)
+        self.assertAlmostEqual(need, 60.6, places=1)
+        self.assertGreater(need, handoff.KNIFE_SPEED_MAX_MM_S,
+                           "인계를 그대로 두면 칼날 상한으로도 못 따라간다")
+        self.assertFalse(handoff.balances_at_max_knife_speed(handoff.AS_UPLOADED_HANDLING_S))
+        at_max = handoff.downstream_rate(knife_speed_mm_s=handoff.KNIFE_SPEED_MAX_MM_S,
+                                         handling_s=handoff.AS_UPLOADED_HANDLING_S)
+        self.assertLess(at_max.line_per_h, handoff.sheet_glass_per_h())
+
+    def test_adopted_handling_brings_the_required_knife_under_the_limit(self):
+        """인계를 6 s 로 줄이면 필요 칼날이 상한 아래로 내려온다 — 그래서 성립한다."""
+        need = handoff.knife_speed_for_balance()
+        self.assertAlmostEqual(need, 55.6, places=1)
+        self.assertLess(need, handoff.KNIFE_SPEED_MAX_MM_S)
+        self.assertLessEqual(need, handoff.KNIFE_SPEED_MM_S,
+                             "채택한 칼날 속도가 필요치를 이미 넘어서야 한다")
+        self.assertTrue(handoff.balances_at_max_knife_speed())
 
     def test_drawing_literal_matches_the_model(self):
         """도면 리터럴과 모듈이 어긋나면 화면이 거짓말을 한다."""
@@ -1811,7 +1839,12 @@ class TestHandoff(unittest.TestCase):
                       f"feed:{handoff.sheet_glass_per_h():g}",
                       f"gap:{handoff.rate_gap_per_h():g}",
                       f"raSlots:{handoff.BUFFER_RA_SLOTS}",
-                      f"autonomy:{handoff.buffer_autonomy_h():g}",
+                      "autonomy:Infinity" if handoff.buffer_autonomy_h() == float("inf")
+                      else f"autonomy:{handoff.buffer_autonomy_h():g}",
+                      f"rideThrough:{handoff.buffer_ride_through_h():g}",
+                      f'adopted:"{handoff.ADOPTED_PLAN}"',
+                      f"knife:{handoff.KNIFE_SPEED_MM_S:g}",
+                      f"handling:{handoff.HANDLING_S:g}",
                       f"loadPanels:{handoff.DOWNSTREAM_LOAD_PANELS}",
                       f"atMax:{at_max:g}",
                       f"knifeNeed:{handoff.knife_speed_for_balance():g}",
@@ -1821,6 +1854,12 @@ class TestHandoff(unittest.TestCase):
                       f'bottleneck:"{d.bottleneck}"'):
             with self.subTest(token=token):
                 self.assertIn(token, self.html)
+
+    def test_panel_never_prints_infinity_to_the_reader(self):
+        """자립시간이 무한이 된 뒤로 화면에 'Infinity시간' 이 뜨면 안 된다."""
+        self.assertNotIn('#jb-ho-autonomy").textContent=H.autonomy', self.html)
+        self.assertIn('#jb-ho-autonomy").textContent=H.rideThrough+"시간"', self.html)
+        self.assertIn("후단이 멈춰도 전처리를 <span id=\"jb-ho-autonomy\"></span> 더 돌리는", self.html)
 
     def test_broken_glass_is_kept_out_of_the_handoff(self):
         """파손 유리는 시트로 못 벗긴다 — 후단에 넣으면 안 된다."""
@@ -1855,7 +1894,8 @@ class TestBalancePlans(unittest.TestCase):
         self.assertEqual(b.key, "B")
         self.assertLessEqual(handoff.PLAN_B_KNIFE_MM_S, handoff.KNIFE_SPEED_MAX_MM_S,
                              "칼날이 상한을 넘으면 그 안이 아니다")
-        self.assertLess(handoff.PLAN_B_HANDLING_S, handoff.HANDLING_S)
+        self.assertLess(handoff.PLAN_B_HANDLING_S, handoff.AS_UPLOADED_HANDLING_S)
+        self.assertGreater(handoff.PLAN_B_KNIFE_MM_S, handoff.AS_UPLOADED_KNIFE_MM_S)
         self.assertGreaterEqual(b.margin_per_h, 0, "B안인데 여전히 밀린다")
         self.assertAlmostEqual(b.capacity_per_h, 70.6, places=1)
 
@@ -1869,7 +1909,7 @@ class TestBalancePlans(unittest.TestCase):
         self.assertGreater(hold, 0)
         loose = campaign.summary(hold - 1.0)
         self.assertGreater(loose["normal"] / loose["run_s"] * 3600.0,
-                           handoff.downstream_rate().line_per_h,
+                           handoff.as_uploaded_rate().line_per_h,
                            "보류를 1초 줄이면 다시 밀려야 최소값이다")
 
     def test_plan_c_costs_bottleneck_utilisation(self):
@@ -1897,3 +1937,12 @@ class TestBalancePlans(unittest.TestCase):
                       f'value="{handoff.KNIFE_SPEED_MM_S:g}"', delam)
         self.assertIn(f'id="handlingTime" type="number" min="5" max="25" step="1" '
                       f'value="{handoff.HANDLING_S:g}"', delam)
+
+    def test_blank_field_falls_back_to_the_connected_configuration(self):
+        """칸을 비우면 계산기가 업로드 당시 값으로 조용히 되돌아가면 안 된다."""
+        delam = (pathlib.Path(__file__).resolve().parents[1]
+                 / "docs" / "drawings" / "pv-delam-tandem.html").read_text(encoding="utf-8")
+        self.assertIn(f"calcNumber('knifeSpeed',{handoff.KNIFE_SPEED_MM_S:g})", delam)
+        self.assertIn(f"calcNumber('handlingTime',{handoff.HANDLING_S:g})", delam)
+        self.assertNotIn(f"calcNumber('knifeSpeed',{handoff.AS_UPLOADED_KNIFE_MM_S:g})", delam)
+        self.assertNotIn(f"calcNumber('handlingTime',{handoff.AS_UPLOADED_HANDLING_S:g})", delam)
