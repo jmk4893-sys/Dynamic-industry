@@ -1,0 +1,138 @@
+<svg viewBox="0 0 1440 800" role="img" aria-label="SV-01 정비도 — 정비 포인트와 주기">
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6"
+  markerHeight="6" orient="auto"><path d="M0,2 L6,5 L0,8 z" fill="currentColor"/></marker>
+<pattern id="hatch" width="7" height="7" patternTransform="rotate(45)"
+  patternUnits="userSpaceOnUse">
+  <line x1="0" y1="0" x2="0" y2="7" style="stroke:currentColor;stroke-width:1;opacity:.35"/>
+</pattern>
+</defs>
+<style>
+.ln{fill:none;stroke:currentColor;stroke-width:1.6}
+.ln2{fill:none;stroke:currentColor;stroke-width:1.1}
+.thin{fill:none;stroke:currentColor;stroke-width:.8;opacity:.55}
+.hid{fill:none;stroke:currentColor;stroke-width:.9;stroke-dasharray:6 4;opacity:.5}
+.ctr{fill:none;stroke:currentColor;stroke-width:.8;stroke-dasharray:14 3 3 3;opacity:.55}
+.dim{fill:none;stroke:currentColor;stroke-width:.9;opacity:.75}
+.lead{fill:none;stroke:currentColor;stroke-width:.8;opacity:.6}
+.fillA{fill:var(--c1-wash,rgba(180,101,42,.12));stroke:currentColor;stroke-width:1.4}
+.fillB{fill:var(--c2-wash,rgba(176,53,122,.12));stroke:currentColor;stroke-width:1.4}
+.fillC{fill:var(--c3-wash,rgba(0,113,176,.12));stroke:currentColor;stroke-width:1.4}
+.fillG{fill:currentColor;fill-opacity:.07;stroke:currentColor;stroke-width:1.4}
+.hatchf{fill:url(#hatch);stroke:currentColor;stroke-width:1.4}
+.bal{fill:var(--surface,#fff);stroke:currentColor;stroke-width:1.2}
+.t{font-family:var(--ff-body,system-ui);font-size:12px;fill:currentColor}
+.ts{font-family:var(--ff-body,system-ui);font-size:10.5px;fill:currentColor;opacity:.8}
+.td{font-family:var(--ff-mono,monospace);font-size:10.5px;fill:currentColor;opacity:.85}
+.tb{font-family:var(--ff-mono,monospace);font-size:11px;font-weight:700;fill:currentColor}
+.th{font-family:var(--ff-body,system-ui);font-size:13px;font-weight:700;fill:currentColor}
+</style>
+<text x="40.0" y="36.0" class="th" text-anchor="start">SHEET 5 — 정비도 (MAINTENANCE)</text>
+<text x="40.0" y="56.0" class="ts" text-anchor="start">은 회수율은 두 체(75 µm 데크 · SS-01)의 상태에 직결된다 — A·C·D 를 최우선으로 관리한다.</text>
+<rect x="207.0" y="571.6" width="40.0" height="88.4" class="fillG" />
+<rect x="473.0" y="571.6" width="40.0" height="88.4" class="fillG" />
+<rect x="219.2" y="483.2" width="281.5" height="34.0" class="fillG" />
+<rect x="315.8" y="517.2" width="88.4" height="112.2" class="hatchf" />
+<path d="M230.7,571.6 L250.7,567.1 L230.7,562.5 L250.7,558.0 L230.7,553.5 L250.7,548.9 L230.7,544.4 L250.7,539.9 L230.7,535.3 L250.7,530.8 L230.7,526.3 L250.7,521.7 L230.7,517.2" class="ln2"/>
+<path d="M469.3,571.6 L489.3,567.1 L469.3,562.5 L489.3,558.0 L469.3,553.5 L489.3,548.9 L469.3,544.4 L489.3,539.9 L469.3,535.3 L489.3,530.8 L469.3,526.3 L489.3,521.7 L469.3,517.2" class="ln2"/>
+<rect x="156.0" y="442.4" width="12.0" height="40.8" class="hatchf" />
+<rect x="552.0" y="442.4" width="12.0" height="40.8" class="hatchf" />
+<line x1="156.0" y1="442.4" x2="564.0" y2="442.4" class="thin"/>
+<rect x="156.0" y="401.6" width="12.0" height="40.8" class="hatchf" />
+<rect x="552.0" y="401.6" width="12.0" height="40.8" class="hatchf" />
+<line x1="168.0" y1="436.3" x2="552.0" y2="436.3" class="ln"/>
+<line x1="156.0" y1="401.6" x2="564.0" y2="401.6" class="thin"/>
+<rect x="156.0" y="360.8" width="12.0" height="40.8" class="hatchf" />
+<rect x="552.0" y="360.8" width="12.0" height="40.8" class="hatchf" />
+<line x1="168.0" y1="395.5" x2="552.0" y2="395.5" class="ln"/>
+<line x1="156.0" y1="360.8" x2="564.0" y2="360.8" class="thin"/>
+<rect x="156.0" y="320.0" width="12.0" height="40.8" class="hatchf" />
+<rect x="552.0" y="320.0" width="12.0" height="40.8" class="hatchf" />
+<line x1="168.0" y1="354.7" x2="552.0" y2="354.7" class="ln"/>
+<line x1="156.0" y1="320.0" x2="564.0" y2="320.0" class="thin"/>
+<path d="M156.0,320.0 L334.5,269.0 L385.5,269.0 L564.0,320.0 Z" class="fillG"/>
+<line x1="360.0" y1="436.3" x2="390.0" y2="229.9" class="lead"/>
+<circle cx="390.0" cy="229.9" r="11.0" class="bal"/>
+<text x="390.0" y="233.9" class="tb" text-anchor="middle">A</text>
+<line x1="148.0" y1="381.2" x2="76.0" y2="340.4" class="lead"/>
+<circle cx="76.0" cy="340.4" r="11.0" class="bal"/>
+<text x="76.0" y="344.4" class="tb" text-anchor="middle">B</text>
+<line x1="160.0" y1="360.8" x2="76.0" y2="377.8" class="lead"/>
+<circle cx="76.0" cy="377.8" r="11.0" class="bal"/>
+<text x="76.0" y="381.8" class="tb" text-anchor="middle">C</text>
+<line x1="512.0" y1="354.7" x2="634.0" y2="316.6" class="lead"/>
+<circle cx="634.0" cy="316.6" r="11.0" class="bal"/>
+<text x="634.0" y="320.6" class="tb" text-anchor="middle">D</text>
+<line x1="564.0" y1="360.8" x2="634.0" y2="360.8" class="lead"/>
+<circle cx="634.0" cy="360.8" r="11.0" class="bal"/>
+<text x="634.0" y="364.8" class="tb" text-anchor="middle">E</text>
+<line x1="479.3" y1="544.4" x2="634.0" y2="469.6" class="lead"/>
+<circle cx="634.0" cy="469.6" r="11.0" class="bal"/>
+<text x="634.0" y="473.6" class="tb" text-anchor="middle">F</text>
+<line x1="404.2" y1="571.6" x2="634.0" y2="558.0" class="lead"/>
+<circle cx="634.0" cy="558.0" r="11.0" class="bal"/>
+<text x="634.0" y="562.0" class="tb" text-anchor="middle">G</text>
+<line x1="324.6" y1="619.2" x2="76.0" y2="605.6" class="lead"/>
+<circle cx="76.0" cy="605.6" r="11.0" class="bal"/>
+<text x="76.0" y="609.6" class="tb" text-anchor="middle">H</text>
+<line x1="207.0" y1="639.6" x2="76.0" y2="649.8" class="lead"/>
+<circle cx="76.0" cy="649.8" r="11.0" class="bal"/>
+<text x="76.0" y="653.8" class="tb" text-anchor="middle">I</text>
+<text x="690.0" y="114.0" class="th" text-anchor="start">정비 항목 · 주기</text>
+<rect x="690.0" y="130.0" width="736.0" height="332.0" class="ln2" />
+<line x1="690.0" y1="156.0" x2="1426.0" y2="156.0" class="ln2"/>
+<line x1="728.0" y1="130.0" x2="728.0" y2="462.0" class="thin"/>
+<line x1="900.0" y1="130.0" x2="900.0" y2="462.0" class="thin"/>
+<line x1="1004.0" y1="130.0" x2="1004.0" y2="462.0" class="thin"/>
+<text x="698.0" y="148.0" class="td" text-anchor="start">표기</text>
+<text x="740.0" y="148.0" class="td" text-anchor="start">항목</text>
+<text x="910.0" y="148.0" class="td" text-anchor="start">주기</text>
+<text x="1014.0" y="148.0" class="td" text-anchor="start">판정 기준 · 조치</text>
+<circle cx="710.0" cy="173.0" r="11.0" class="bal"/>
+<text x="710.0" y="177.0" class="tb" text-anchor="middle">A</text>
+<text x="740.0" y="178.0" class="ts" text-anchor="start">메쉬 눈막힘 점검</text>
+<text x="910.0" y="178.0" class="td" text-anchor="start">매 교대 (8 h)</text>
+<text x="1014.0" y="178.0" class="ts" text-anchor="start">육안 + 광투과. 개방면적 90 % 미만이면 초음파 출력·주파수 정합 점검</text>
+<circle cx="710.0" cy="207.0" r="11.0" class="bal"/>
+<text x="710.0" y="211.0" class="tb" text-anchor="middle">B</text>
+<text x="740.0" y="212.0" class="ts" text-anchor="start">초음파 트랜스듀서</text>
+<text x="910.0" y="212.0" class="td" text-anchor="start">주 1 회</text>
+<text x="1014.0" y="212.0" class="ts" text-anchor="start">채널별 소비전력 편차 ±10 % 이내. 벗어나면 정합 재실행 또는 소자 교체</text>
+<circle cx="710.0" cy="241.0" r="11.0" class="bal"/>
+<text x="710.0" y="245.0" class="tb" text-anchor="middle">C</text>
+<text x="740.0" y="246.0" class="ts" text-anchor="start">실리콘 개스킷</text>
+<text x="910.0" y="246.0" class="td" text-anchor="start">분해 시마다</text>
+<text x="1014.0" y="246.0" class="ts" text-anchor="start">신품 교체. 재사용 시 데크 간 누설로 분획이 섞인다</text>
+<circle cx="710.0" cy="275.0" r="11.0" class="bal"/>
+<text x="710.0" y="279.0" class="tb" text-anchor="middle">D</text>
+<text x="740.0" y="280.0" class="ts" text-anchor="start">메쉬 장력·손상</text>
+<text x="910.0" y="280.0" class="td" text-anchor="start">월 1 회</text>
+<text x="1014.0" y="280.0" class="ts" text-anchor="start">처짐 ≤ 2 mm. 핀홀 1 개도 은 손실로 직결되므로 발견 즉시 프레임 교체</text>
+<circle cx="710.0" cy="309.0" r="11.0" class="bal"/>
+<text x="710.0" y="313.0" class="tb" text-anchor="middle">E</text>
+<text x="740.0" y="314.0" class="ts" text-anchor="start">토글 클램프</text>
+<text x="910.0" y="314.0" class="td" text-anchor="start">월 1 회</text>
+<text x="1014.0" y="314.0" class="ts" text-anchor="start">이완 여부 확인, 데크 간 단차 ≤ 0.5 mm</text>
+<circle cx="710.0" cy="343.0" r="11.0" class="bal"/>
+<text x="710.0" y="347.0" class="tb" text-anchor="middle">F</text>
+<text x="740.0" y="348.0" class="ts" text-anchor="start">코일스프링</text>
+<text x="910.0" y="348.0" class="td" text-anchor="start">6 개월</text>
+<text x="1014.0" y="348.0" class="ts" text-anchor="start">자유장 편차 ≤ 1 mm, 균열·영구변형 시 6 EA 일괄 교체</text>
+<circle cx="710.0" cy="377.0" r="11.0" class="bal"/>
+<text x="710.0" y="381.0" class="tb" text-anchor="middle">G</text>
+<text x="740.0" y="382.0" class="ts" text-anchor="start">진동모터 베어링</text>
+<text x="910.0" y="382.0" class="td" text-anchor="start">3,000 h</text>
+<text x="1014.0" y="382.0" class="ts" text-anchor="start">그리스 보충. 진동 실효치 급증 시 즉시 정지</text>
+<circle cx="710.0" cy="411.0" r="11.0" class="bal"/>
+<text x="710.0" y="415.0" class="tb" text-anchor="middle">H</text>
+<text x="740.0" y="416.0" class="ts" text-anchor="start">불평형추 위상각</text>
+<text x="910.0" y="416.0" class="td" text-anchor="start">진폭 이상 시</text>
+<text x="1014.0" y="416.0" class="ts" text-anchor="start">수직 진폭 3~5 mm 로 재조정. Γ 4~6 g 유지</text>
+<circle cx="710.0" cy="445.0" r="11.0" class="bal"/>
+<text x="710.0" y="449.0" class="tb" text-anchor="middle">I</text>
+<text x="740.0" y="450.0" class="ts" text-anchor="start">접지 본딩</text>
+<text x="910.0" y="450.0" class="td" text-anchor="start">월 1 회</text>
+<text x="1014.0" y="450.0" class="ts" text-anchor="start">저항 ≤ 1 Ω. 분진 폭발 방지 — 방폭 요구사항</text>
+<text x="690.0" y="488.0" class="ts" text-anchor="start">※ A·C·D 는 은 회수율에 직결된다. 이 셋을 놓치면 다른 정비를 아무리 잘해도 P1 회수율이 무너진다.</text>
+<text x="690.0" y="508.0" class="ts" text-anchor="start">※ 모든 정비는 전원 차단 · LOTO · 잔류 분진 퍼지 후 시행한다. 분진 폭발 위험 구역이다.</text>
+</svg>
