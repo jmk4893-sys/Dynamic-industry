@@ -5,6 +5,7 @@
 문서 구조와 DOM 참조 무결성을 여기서 잡는다.
 """
 
+import math
 import pathlib
 import re
 import unittest
@@ -371,11 +372,17 @@ class TestDeliverableEquipment(unittest.TestCase):
             body, r"'[^']*\b\d{3}A\b", "명판에 전류값이 문자열로 박혀 있다"
         )
 
-    def test_full_load_current_is_the_sum_of_branch_currents(self):
-        """총 kW 를 하나의 혼합역률로 나누면 부하마다 역률이 다를 때 틀린다.
+    def test_full_load_current_combines_branches_as_phasors(self):
+        """전류를 크기만 더하면 역률이 다른 무효분을 같은 방향으로 취급한다.
 
-        여기서 부하표를 직접 읽어 분기전류를 다시 계산하고, 소스의 FLA 정의가
-        그 산술합인지 확인한다. 값이 아니라 계산 방식을 잡는 시험이다.
+        세 가지 계산이 서로 다른 값을 낸다.
+
+          총 kW ÷ 가정 혼합역률   과소평가 — 역률을 하나로 뭉갠다
+          분기전류 크기의 산술합   과대평가 — 무효분 각도를 무시한다 (+2.9%)
+          유효·무효 각각 합 → 합성  물리적으로 맞는 값
+
+        여기서 부하표를 직접 읽어 세 값을 모두 계산하고, 소스가 셋 중
+        마지막 것을 쓰는지 확인한다. 값이 아니라 방법을 잡는 시험이다.
         """
         rows = re.findall(
             r"\{\s*id:'([^']+)'\s*,\s*load:'[^']*'\s*,"
@@ -384,28 +391,66 @@ class TestDeliverableEquipment(unittest.TestCase):
         )
         self.assertGreaterEqual(len(rows), 5, "전기부하표를 찾지 못했다")
         volts = int(re.search(r"const LINE_V=(\d+)", self.html).group(1))
-        amps = [kw * 1000 / (3 ** 0.5 * volts * float(pf)) for _, kw, pf, _ in
-                ((i, int(k), p, m) for i, k, p, m in rows)]
-        total_kw = sum(int(k) for _, k, _, _ in rows)
-        fla = sum(amps)
+        root3 = 3 ** 0.5
 
-        # 소스가 산술합으로 정의하는지
+        active = sum(int(kw) for _, kw, _, _ in rows)
+        reactive = sum(
+            int(kw) * math.tan(math.acos(float(pf))) for _, kw, pf, _ in rows
+        )
+        apparent = math.hypot(active, reactive)
+        phasor = apparent * 1000 / (root3 * volts)
+        arithmetic = sum(
+            int(kw) * 1000 / (root3 * volts * float(pf)) for _, kw, pf, _ in rows
+        )
+
+        # 세 방법이 실제로 갈리는 부하표여야 이 시험이 의미를 갖는다
+        self.assertGreater(
+            arithmetic - phasor, 5,
+            "부하표 역률이 고르게 같아 산술합과 위상합이 구분되지 않는다",
+        )
+
         self.assertRegex(
             self.html,
-            r"const FLA=LOAD_SCHEDULE\.reduce\(\(a,k\)=>a\+branchAmp\(k\),0\)",
-            "FLA 가 분기전류의 합으로 정의되어 있지 않다",
+            r"const CONNECTED_KVAR=LOAD_SCHEDULE\.reduce\("
+            r"\(a,k\)=>a\+k\.kW\*Math\.tan\(Math\.acos\(k\.pf\)\),0\)",
+            "무효전력을 분기별로 합산하지 않는다",
         )
+        self.assertRegex(
+            self.html,
+            r"const CONNECTED_KVA=Math\.hypot\(CONNECTED_KW,CONNECTED_KVAR\)",
+            "유효·무효를 합성해 피상전력을 내지 않는다",
+        )
+        self.assertRegex(
+            self.html,
+            r"const FLA=CONNECTED_KVA\*1000/\(Math\.sqrt\(3\)\*LINE_V\)",
+            "전부하전류가 피상전력에서 나오지 않는다",
+        )
+        self.assertNotRegex(
+            self.html,
+            r"const FLA=LOAD_SCHEDULE\.reduce\(\(a,k\)=>a\+branchAmp\(k\),0\)",
+            "전부하전류를 분기전류의 산술합으로 되돌렸다",
+        )
+        # 분기전류 자체는 각 분기 차단기 선정에 그대로 쓰인다
         self.assertRegex(
             self.html,
             r"const branchAmp=k=>k\.kW\*1000/\(Math\.sqrt\(3\)\*LINE_V\*k\.pf\)",
             "분기전류 식이 3상 전류식이 아니다",
         )
-        # 혼합역률 한 번으로 나누면 나오는 값과는 달라야 한다 — 그게 이 시험의 요점
-        naive = total_kw * 1000 / (3 ** 0.5 * volts * 0.85)
-        self.assertGreater(
-            abs(fla - naive), 20,
-            "부하표 역률이 모두 같아 이 시험이 아무것도 구분하지 못한다",
+
+    def test_redundant_fans_may_both_be_healthy(self):
+        """2×100% 이중화에서 '둘 다 건전' 은 정상이지 기동 금지 조건이 아니다.
+
+        XOR 로 적어두면 정상 상태에서 배기 기동허가가 성립하지 않아, 한 대를
+        일부러 못 쓰게 만들어야 기동되는 논리가 된다.
+        """
+        permit = re.search(r"EXHAUST_RUN = ([^']*)", self.html)
+        self.assertIsNotNone(permit, "배기 기동허가 조건을 찾지 못했다")
+        self.assertNotIn(
+            "XOR", permit.group(1), "배기 기동허가가 팬 이중화 정상상태를 거부한다"
         )
+        self.assertIn("∨", permit.group(1), "적어도 한 대 건전 조건이 아니다")
+        # 한 대만 돌린다는 의도는 기동조건이 아니라 상용·예비 선택으로 남아야 한다
+        self.assertIn("FAN_DUTY_SELECT", self.html, "상용·예비 절체 조건이 없다")
 
     def test_short_circuit_rating_has_a_stated_basis(self):
         """SCCR 은 현장에서 재는 값이 아니라 근거를 밝혀 고르는 값이다."""

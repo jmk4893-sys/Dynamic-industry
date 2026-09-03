@@ -216,6 +216,29 @@ class TestStatedFiguresMatchTheModel(unittest.TestCase):
         )
 
 
+class TestPowerMeterReadout(unittest.TestCase):
+    """PM-101 은 순간전력과 누적 전력량을 함께 표시한다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.body = re.search(
+            r"function powerMeterActivity\(.*?\n    \}",
+            CONSOLE.read_text(encoding="utf-8"), re.S,
+        ).group(0)
+
+    def test_cumulative_energy_survives_the_stage_change(self):
+        """가열이 끝났다고 계기가 0 으로 돌아가면 '누적' 이 아니다.
+
+        고치기 전에는 kwh 가 i===2 분기에서만 대입돼, S3 이후 모든 단계에서
+        전력은 126.4 kW 를 가리키는데 전력량은 0.00 kWh 로 떨어졌다.
+        """
+        self.assertRegex(
+            self.body, r"else if\(i>2\)\{[^}]*kwh=",
+            "가열 단계 이후에 누적 전력량을 잃는다",
+        )
+        self.assertIn("batchKwh", self.body, "배치 전력량을 이름 붙여 두지 않았다")
+
+
 class TestModelBehaviour(unittest.TestCase):
     """모델 자체가 물리적으로 말이 되는지. 상수를 잘못 넣으면 여기서 걸린다."""
 
