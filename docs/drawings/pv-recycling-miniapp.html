@@ -1601,6 +1601,64 @@ html>body{padding:0}</style>
     <div class="text-small text-muted">정상정지는 BH-101 인계 차단 후 어트리션·부선·탈수 재고를 순차 배출하고 공정수·블로어를 마지막에 정지합니다.</div>
   </details>
 
+  <details class="card hsg3d-validation" id="plant-panel-ai" data-panel-id="ai" data-panel-category="통합 운전">
+    <summary>AI 감시제어 — 거품 영상 소프트센서 (권고 운전)</summary>
+
+    <p class="text-small dd-warning"><strong>경계 조항 — 안전기능은 모델에 맡기지 않습니다.</strong>
+      E-stop, 가드 인터록, 폭발 방호(벤팅·화염차단·스파크 소화), 과압·과부하 트립은 전부
+      하드와이어 / SIL 회로로 남습니다. AI 계층은 <strong>그 위에서 운전점을 권고</strong>할 뿐이며,
+      권고를 무시해도 플랜트는 안전하게 서야 합니다.</p>
+
+    <p class="text-small">현재 규제제어(PID) 계층이 없으므로 이 계층은 <strong>개루프 권고(advisory)</strong>로
+      동작합니다. 상업 플랜트도 APC 도입 시 개루프 권고로 먼저 운용해 모델을 신뢰할 수 있는지 확인한 뒤
+      폐루프로 승격합니다. <code>FIC-201/202/203</code>·<code>LIT</code> 루프가 생기면 같은 출력이 그대로
+      설정값으로 내려갑니다.</p>
+
+    <strong>붙인 모델 — 무엇을 보고 무엇을 내놓는가</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="AI 모델 목록">
+      <thead><tr><th>태그</th><th>모델</th><th>입력(관측량)</th><th>출력</th><th class="text-end">주기</th></tr></thead>
+      <tbody>
+        <tr><td>VC-201/202/203</td><td>거품 영상 소프트센서</td><td>Sauter 기포경 d<sub>32</sub>, 포말 표면속도, 하중(색·질감)</td><td>추정 회수율 · 권고 조작</td><td class="text-end">1 s</td></tr>
+        <tr><td>VC-001</td><td>투입 패널 분류</td><td>패널 상면 영상</td><td>종류(유리/유리·유리/백시트) · 치수 · 파손 · JB 유무</td><td class="text-end">장당</td></tr>
+        <tr><td>VC-101</td><td>온라인 입도(PSD)</td><td>이송 슈트 낙하 영상</td><td>d<sub>50</sub>·d<sub>95</sub> 추정</td><td class="text-end">5 s</td></tr>
+        <tr><td>VIT-101/204/301</td><td>예지보전 분류</td><td>진동 스펙트럼 + 모터 전류</td><td>베어링·임펠러 마모 등급</td><td class="text-end">1 min</td></tr>
+      </tbody>
+    </table></div>
+
+    <strong>소프트센서가 실제로 푸는 식</strong>
+    <p class="text-small">카메라는 회수율을 재지 못합니다. 재는 것은 거품의 겉모습이고, 회수율은 거기서
+      <em>추정</em>하는 값입니다. 기포 표면적 유속 <code>S<sub>b</sub> = 6·J<sub>g</sub>/d<sub>32</sub></code>
+      를 뒤집어 영상의 기포경에서 S<sub>b</sub> 를 얻고, 완전혼합 1차 모델
+      <code>R = kτ/(1+kτ)</code> 로 회수율을 추정합니다. 추정값은 <strong>LAB-601 분석값으로 교정</strong>하며,
+      교정 잔차가 곧 이 소프트센서의 정확도입니다.</p>
+
+    <div class="table-responsive"><table class="table table-sm" aria-label="FC-201 러퍼 실시간 추정">
+      <thead><tr><th>FC-201 러퍼 (실시간)</th><th class="text-end">값</th><th>의미</th></tr></thead>
+      <tbody>
+        <tr><td>추정 회수율</td><td class="text-end" data-ai-grade>—</td><td>영상 기반 소프트센서 출력</td></tr>
+        <tr><td>교정 잔차 (LAB 대비)</td><td class="text-end" data-ai-residual>—</td><td>이 값이 커지면 재교정 대상</td></tr>
+        <tr><td>Sauter 기포경 d<sub>32</sub></td><td class="text-end" data-ai-d32>—</td><td>정상 0.9–2.6 mm</td></tr>
+        <tr><td>포말 표면속도</td><td class="text-end" data-ai-velocity>—</td><td>과폭기·포말 붕괴 판단</td></tr>
+        <tr><td>추정 신뢰도</td><td class="text-end" data-ai-confidence>—</td><td>50 % 미만이면 권고를 내지 않음</td></tr>
+      </tbody>
+    </table></div>
+
+    <p class="text-small"><strong>권고</strong> · <span data-ai-advice>—</span></p>
+
+    <p class="text-small">권고 논리는 조작변수의 물리적 한계를 지킵니다 — 회수율이 목표에 못 미치면
+      <strong>먼저 공기량</strong>을 올리지만(S<sub>b</sub>↑ → k↑ → R↑), 겉보기 가스유속이 상한
+      <code>J<sub>g</sub> = 0.013 m/s</code> 에 닿으면 더 올리지 않고 <strong>포수제 증량</strong>으로
+      조작변수를 바꿉니다. 공기를 무한정 올리면 포말이 무너져 오히려 회수율이 떨어지기 때문입니다.</p>
+
+    <strong>전제 — 분석 데이터가 없으면 AI 도 없습니다</strong>
+    <p class="text-small">소프트센서는 교정 없이는 숫자를 지어낼 뿐입니다. 이번에 세운
+      <strong>SP-601 시료 축소탑과 LAB-601 분석실</strong>이 그 ground truth 를 만듭니다.
+      자동 샘플러 → 리플 분할 → 분석 → 소프트센서 재교정이 한 고리로 돌아야 합니다.</p>
+
+    <p class="text-small text-muted">한계: 야금수지(스트림별 Ag·유리·Si 조성)가 아직 없어 추정 회수율은
+      부유성 B 군 기준의 상대값입니다. 절대 품위(g/t)와 정산은 야금수지가 들어와야 성립합니다.</p>
+  </details>
+
   <details class="card hsg3d-layout-panel" id="plant-panel-layout" data-panel-id="layout" data-panel-category="상세설계"><summary>6개 장비군 · 2D/3D 상세 제작·설치 설계</summary></details>
 
   <details class="card hsg3d-parts-panel" id="plant-panel-maintenance" data-panel-id="maintenance" data-panel-category="제작·설치"><summary>6개 장비군 · BOM·체결구·설치 인터페이스</summary></details>
@@ -15529,6 +15587,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       equipmentWater: makeMaterial(color.equipmentWater, 0.36, 0.48, 0.92),
       equipmentControl: makeMaterial(color.equipmentControl, 0.30, 0.62, 0.96)
     };
+    // 폭발방호 부속은 한눈에 구분돼야 한다 — 안전색으로 따로 뺀다.
+    const explosionMaterial = makeMaterial(0xb8452f, 0.46, 0.24);      // 벤트 패널·차단밸브
+    const bondingMaterial = makeMaterial(0x3f8f4a, 0.52, 0.30);        // 접지·본딩 (녹색)
     const scene = new THREE.Scene();
     // 배경이 --background 한 색(dark 에서 rgb 24,24,24)이라 플랜트가 캄캄한 허공에 떠
     // 있었다. 화면의 3/4 이 휘도 24 짜리 검정이면 장치를 아무리 밝게 비춰도 전체가
@@ -15654,6 +15715,33 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     function addBox(parent, size, position, sourceMaterial, partId, rotation, edged = true) {
       return addMesh(parent, new THREE.BoxGeometry(size.x, size.y, size.z), sourceMaterial, position, rotation, partId, edged);
+    }
+
+    // ---- 분진 폭발 방호 (ATEX / KOSHA) --------------------------------------
+    // PV 라미네이트를 분쇄하면 Al 미분·폴리머·미세 유리가 나온다. 설계문서는
+    // 「Kst/MIE 폭발성 시험」과 「집진/폭발방호」를 제작 전 필수 검증으로 규정하는데
+    // 정작 형상이 하나도 없었다. 방호는 세 겹이다 — 방출(벤팅) · 차단(전파 방지) ·
+    // 착화원 제거(스파크 검출·접지).
+    // 벤트는 사람이 다니지 않는 쪽으로 열려야 하므로 방향을 인자로 받는다.
+    function addVentPanel(parent, partId, position, size, dir = "y") {
+      const rot = dir === "y" ? null : dir === "x" ? { z: Math.PI / 2 } : { x: Math.PI / 2 };
+      addBox(parent, { x: size.x, y: 0.035, z: size.z }, position, explosionMaterial, partId, rot, true);
+      // 힌지와 구속 밴드 — 패널이 완전히 날아가지 않게 잡아 둔다
+      addBox(parent, { x: size.x * 0.92, y: 0.030, z: 0.030 },
+        { x: position.x, y: position.y + 0.03, z: position.z - size.z / 2 }, material.silverClamp, partId, rot, false);
+      // 방출 덕트 — 안전구역으로 뽑는다
+      addCylinder(parent, Math.min(size.x, size.z) * 0.42, 0.44,
+        { x: position.x, y: position.y + 0.24, z: position.z }, explosionMaterial, partId, "y", 20, false);
+    }
+    // 접지·본딩 — 문서 L2006 이 「접지 강관 위 전파 브러시 방전(IEC TS 60079-32-1)」을
+    // 지적하므로 배관·장비를 접지 모선에 묶는다.
+    function addBonding(parent, partId, from, to) {
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(from.x, from.y, from.z),
+        new THREE.Vector3((from.x + to.x) / 2, Math.min(from.y, to.y) - 0.10, (from.z + to.z) / 2),
+        new THREE.Vector3(to.x, to.y, to.z)
+      ]);
+      addMesh(parent, new THREE.TubeGeometry(curve, 18, 0.008, 6, false), bondingMaterial, { x: 0, y: 0, z: 0 }, null, partId, false);
     }
 
     function addCylinder(parent, radius, length, position, sourceMaterial, partId, axis = "z", segments = 48, edged = false) {
@@ -17328,6 +17416,34 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // Wet-process objects are added to the same scene/camera as the preserved
     // ICSH-301 -> HSG-101 -> SV/SS-201 source model. Only the plant-to-plant
     // coordinate transform and the sealed <75 um handoff are new.
+    // ── 분진 폭발 방호 배치 ────────────────────────────────────────────────
+    // 방출: 압력이 설계값을 넘으면 사람이 없는 쪽으로 터뜨려 용기를 살린다.
+    // 차단: 화염이 덕트를 타고 상·하류로 전파하는 것을 막는다.
+    // 착화원: 스파크를 덕트에서 잡고, 정전기가 쌓이지 않게 접지로 흘린다.
+    // 이 세 겹이 있어야 Kst/MIE 시험 결과를 설계에 반영했다고 말할 수 있다.
+    addVentPanel(parts.P02, "P02", { x: grinderX, y: 1.53, z: 0 }, { x: 0.34, z: 0.34 });
+    addVentPanel(parts.P15, "P15", { x: cycloneX + 0.28, y: 1.90, z: cycloneZ }, { x: 0.26, z: 0.26 }, "x");
+    addVentPanel(parts.P17, "P17", { x: filterCenter.x, y: 2.12, z: filterCenter.z }, { x: 0.40, z: 0.36 });
+    addVentPanel(parts.P21, "P21", { x: cyclone2Center.x + 0.42, y: 1.60, z: cyclone2Center.z }, { x: 0.30, z: 0.30 }, "x");
+    addVentPanel(parts.P21, "P21", { x: bfCenter.x, y: 1.98, z: bfCenter.z }, { x: 0.48, z: 0.40 });
+
+    // 화염 차단밸브 — 집진기 앞 덕트. 로터리 에어록도 차단장치로 함께 계정한다.
+    [["P17", 1.62, 2.40, 0.55], ["P21", 5.30, 1.86, 0.20]].forEach(([id, x, y, z]) => {
+      addCylinder(parts[id], 0.085, 0.16, { x, y, z }, explosionMaterial, id, "x", 20, false);
+      addBox(parts[id], { x: 0.05, y: 0.20, z: 0.05 }, { x, y: y + 0.16, z }, explosionMaterial, id, null, false);
+      // 스파크 검출헤드와 소화 노즐 — 검출에서 분사까지 수십 ms 안에 끝나야 한다
+      addCylinder(parts[id], 0.032, 0.10, { x: x - 0.30, y: y + 0.10, z }, material.safety, id, "y", 14, false);
+      addCylinder(parts[id], 0.026, 0.12, { x: x - 0.16, y: y + 0.12, z }, material.pipeWater, id, "y", 12, false);
+    });
+
+    // 접지 모선과 본딩 — 장비·배관을 한 점 접지로 묶는다.
+    addBox(parts.P01, { x: 8.20, y: 0.035, z: 0.05 }, { x: 2.60, y: 0.06, z: -0.92 }, bondingMaterial, "P01", null, false);
+    addBonding(parts.P02, "P02", { x: grinderX, y: 0.58, z: -0.30 }, { x: grinderX, y: 0.06, z: -0.92 });
+    addBonding(parts.P15, "P15", { x: cycloneX, y: 1.40, z: cycloneZ - 0.20 }, { x: cycloneX, y: 0.06, z: -0.92 });
+    addBonding(parts.P17, "P17", { x: filterCenter.x, y: 1.20, z: filterCenter.z - 0.26 }, { x: filterCenter.x, y: 0.06, z: -0.92 });
+    addBonding(parts.P21, "P21", { x: cyclone2Center.x, y: 1.10, z: cyclone2Center.z - 0.30 }, { x: cyclone2Center.x, y: 0.06, z: -0.92 });
+    addBonding(parts.P21, "P21", { x: bfCenter.x, y: 1.00, z: bfCenter.z - 0.32 }, { x: bfCenter.x, y: 0.06, z: -0.92 });
+
     const unifiedWet = new THREE.Group();
     unifiedWet.name = "UNIFIED-WET-PROCESS";
     circuit.add(unifiedWet);
@@ -18076,6 +18192,82 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetControlPanel("RIO-401", 11.60, 2.82, 0.56, 1.12, "어트리션·약품 현장 I/O");
     wetControlPanel("RIO-402", 16.82, 2.82, 0.56, 1.12, "부선·탈수 현장 I/O");
 
+    // ── AI 감시제어 현장 장치 ─────────────────────────────────────────────
+    // 카메라가 재는 것은 회수율이 아니라 거품의 겉모습이다. 셀 위에서 포말 표면을
+    // 내려다보게 걸고, 조명은 그림자가 지지 않게 링으로 준다.
+    function wetVisionCamera(tag, x, y, z, note) {
+      wetBox(unifiedWet, [0.10, 0.10, 0.16], [x, y, z], material.equipmentControl, `${tag} 카메라 본체`);
+      wetCylinder(unifiedWet, 0.035, 0.06, [x, y - 0.10, z], material.screen, `${tag} 렌즈`, 16);
+      wetMesh(unifiedWet, new THREE.TorusGeometry(0.10, 0.014, 6, 20), material.safety, [x, y - 0.09, z], `${tag} LED 링조명`, [Math.PI / 2, 0, 0]);
+      wetBox(unifiedWet, [0.05, 0.34, 0.05], [x, y + 0.20, z], hdgMaterial, `${tag} 브래킷`);
+      wetLabel(`${tag} · ${note}`, [x, y + 0.52, z], [1.50, 0.19, 1]);
+    }
+    // 부선 셀 3기 — 라우더 위에서 포말면을 본다
+    wetVisionCamera("VC-201", 13.38, 4.92, 0.86, "FC-201 거품 영상");
+    wetVisionCamera("VC-202", 14.24, 4.30, 1.86, "FC-202 거품 영상");
+    wetVisionCamera("VC-203", 15.10, 4.92, 0.86, "FC-203 거품 영상");
+    // 투입 패널 분류 · 온라인 입도
+    wetVisionCamera("VC-001", -6.40, 1.62, 1.30, "패널 종류·치수·파손 분류");
+    wetVisionCamera("VC-101", 2.36, 1.42, -0.10, "온라인 입도(PSD)");
+    // AI-601 엣지 추론 유닛 — 제어반 열 옆
+    wetBox(unifiedWet, [0.72, 0.06, 0.62], [9.12, 0.03, -2.82], material.frame, "AI-601 플린스");
+    wetBox(unifiedWet, [0.62, 1.34, 0.52], [9.12, 0.73, -2.82], material.equipmentControl, "AI-601 엣지 추론 유닛");
+    wetBox(unifiedWet, [0.44, 0.30, 0.03], [9.12, 1.06, -2.55], material.screen, "AI-601 상태 표시");
+    for (const dy of [0.38, 0.50, 0.62]) {
+      wetBox(unifiedWet, [0.40, 0.035, 0.03], [9.12, dy, -2.55], material.silverClamp, "AI-601 GPU 모듈");
+    }
+    wetTube(unifiedWet, [[9.12, 1.42, -2.82], [9.12, 1.86, -2.60], [10.60, 1.86, 3.50]], 0.016, material.pipeAir, "AI-601 광케이블 트렁크");
+    wetLabel("AI-601 엣지 추론 · 거품 소프트센서 · 권고(advisory)", [9.12, 1.72, -2.82], [2.15, 0.21, 1]);
+
+    // ── 계량 · 시료 · 출하 (상업 플랜트 거래 경계) ─────────────────────────
+    // 지금까지는 공정만 있고 「거래 경계」가 없었다. 상업 플랜트는 들어온 양과 나간 양을
+    // 법정 계량으로 확정하고, 그 값을 시료·분석으로 뒷받침해야 정산이 성립한다.
+    // 야드 열(z ≈ 4.6)은 비어 있어 계량·출하 동선을 여기에 잡는다.
+    const YARD_ROW_Z = 4.60;
+
+    // WB-001 트럭 계량대 — 입·출하 custody transfer 경계
+    wetBox(unifiedWet, [6.40, 0.28, 3.10], [-10.90, 0.14, YARD_ROW_Z], gratingMaterial(6.40, 3.10), "WB-001 계량 데크");
+    for (const dx of [-2.85, 2.85]) for (const dz of [-1.30, 1.30]) {
+      wetCylinder(unifiedWet, 0.075, 0.24, [-10.90 + dx, 0.12, YARD_ROW_Z + dz], material.silverClamp, "WB-001 로드셀", 16);
+    }
+    wetBox(unifiedWet, [0.90, 2.20, 0.90], [-7.20, 1.10, YARD_ROW_Z - 2.10], material.equipmentControl, "WB-001 계량 키오스크");
+    wetBox(unifiedWet, [0.62, 0.40, 0.03], [-7.20, 1.50, YARD_ROW_Z - 2.56], material.screen, "WB-001 계량 표시기");
+    wetLabel("WB-001 트럭 계량대 · 60 t · 입출하 custody transfer", [-10.90, 1.40, YARD_ROW_Z], [2.55, 0.24, 1]);
+
+    // SP-601 시료 축소탑 + LAB-601 분석실 — AI 소프트센서 교정의 데이터 원천
+    wetBox(unifiedWet, [0.70, 0.10, 0.70], [8.40, 0.05, YARD_ROW_Z], material.frame, "SP-601 기초");
+    wetCone(unifiedWet, 0.30, 0.10, 0.46, [8.40, 0.86, YARD_ROW_Z], material.solidsReceiver, "SP-601 리플 분할기", 20);
+    wetCylinder(unifiedWet, 0.30, 0.52, [8.40, 1.35, YARD_ROW_Z], material.solidsReceiver, "SP-601 시료 축소탑", 24, null, true);
+    for (const dz of [-0.34, 0.34]) wetCylinder(unifiedWet, 0.085, 0.22, [8.40, 0.42, YARD_ROW_Z + dz], material.equipmentReceiver, "SP-601 축소시료통", 18);
+    for (const dx of [-0.28, 0.28]) wetBox(unifiedWet, [0.06, 1.70, 0.06], [8.40 + dx, 0.85, YARD_ROW_Z + 0.40], hdgMaterial, "SP-601 지지대");
+    wetBox(unifiedWet, [2.80, 2.50, 2.20], [10.60, 1.25, YARD_ROW_Z], material.equipmentControl, "LAB-601 분석실");
+    wetBox(unifiedWet, [1.20, 0.90, 0.04], [10.60, 1.60, YARD_ROW_Z - 1.12], material.screen, "LAB-601 창");
+    wetBox(unifiedWet, [0.80, 1.90, 0.05], [9.55, 0.95, YARD_ROW_Z - 1.10], material.cover, "LAB-601 출입문");
+    wetCylinder(unifiedWet, 0.11, 0.90, [11.70, 2.95, YARD_ROW_Z], material.equipmentAir, "LAB-601 흄후드 배기", 18);
+    wetLabel("SP-601 시료 축소 · LAB-601 분석실 — 정광 품위 확정", [9.50, 3.05, YARD_ROW_Z], [2.60, 0.24, 1]);
+
+    // BB-501/502 빅백 충진 스테이션 — 로드셀 계량 후 출하
+    [["BB-501", 13.60, "Si 케이크 제품"], ["BB-502", 16.10, "Ag 정광"]].forEach(([tag, bx, what]) => {
+      for (const dx of [-0.62, 0.62]) for (const dz of [-0.62, 0.62]) {
+        wetHBeam(unifiedWet, `${tag} 충진 프레임 H200`, [bx + dx, 1.35, YARD_ROW_Z + dz], 2.70, "y", 0.20, 0.10);
+      }
+      wetBox(unifiedWet, [1.50, 0.14, 1.50], [bx, 2.76, YARD_ROW_Z], material.frame, `${tag} 상부 보`);
+      wetCone(unifiedWet, 0.34, 0.12, 0.52, [bx, 2.36, YARD_ROW_Z], material.solidsReceiver, `${tag} 충진 호퍼`, 22);
+      for (const dx of [-0.50, 0.50]) wetCylinder(unifiedWet, 0.055, 0.18, [bx + dx, 2.70, YARD_ROW_Z], material.silverClamp, `${tag} 계량 로드셀`, 14);
+      wetBox(unifiedWet, [0.95, 0.95, 0.95], [bx, 0.62, YARD_ROW_Z], material.equipmentReceiver, `${tag} 빅백 1 t`);
+      wetBox(unifiedWet, [1.15, 0.14, 1.05], [bx, 0.08, YARD_ROW_Z], material.frame, `${tag} 파렛트`);
+      wetCylinder(unifiedWet, 0.13, 0.40, [bx + 0.80, 2.30, YARD_ROW_Z], material.equipmentAir, `${tag} 집진 후드`, 18);
+      wetLabel(`${tag} · ${what} 빅백 충진`, [bx, 3.20, YARD_ROW_Z], [1.70, 0.21, 1]);
+    });
+
+    // 약품 방액범과 비상샤워 — RS-201/202/203 은 정량 약품이라 누출 대비가 필수다
+    for (const [dx, dz, sx, sz] of [[0, -0.52, 2.30, 0.06], [0, 0.52, 2.30, 0.06], [-1.12, 0, 0.06, 1.10], [1.12, 0, 0.06, 1.10]]) {
+      wetBox(unifiedWet, [sx, 0.16, sz], [9.82 + dx, 0.08, -1.55 + dz], material.frame, "RS-201/202/203 방액범");
+    }
+    wetCylinder(unifiedWet, 0.045, 2.20, [11.30, 1.10, -1.55], material.safety, "SS-601 비상샤워 지주", 14);
+    wetCylinder(unifiedWet, 0.22, 0.06, [11.30, 2.16, -1.55], material.safety, "SS-601 샤워 헤드", 20);
+    wetBox(unifiedWet, [0.30, 0.10, 0.24], [11.30, 1.05, -1.40], material.safety, "SS-601 세안기");
+
     wetLabel("완전 통합공정 · 건식 환류 → 정량 습식인계 → 어트리션 → 부선 → 탈수 → 공정수 회수", [13.70, 5.36, 0.12], [3.05, 0.29, 1]);
 
     // 습식 배관을 다 놓은 뒤 지지물을 한 번에 배치한다. 배관마다 손으로 다는 대신
@@ -18272,6 +18464,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       dryStopIssued: false,
       wetStopIssued: false,
       lastUiMs: 0
+    };
+    const aiUi = {
+      grade: root.querySelector("[data-ai-grade]"),
+      residual: root.querySelector("[data-ai-residual]"),
+      d32: root.querySelector("[data-ai-d32]"),
+      velocity: root.querySelector("[data-ai-velocity]"),
+      confidence: root.querySelector("[data-ai-confidence]"),
+      advice: root.querySelector("[data-ai-advice]")
     };
     const unifiedUi = {
       mode: root.querySelector("[data-plc001-mode]"),
@@ -18673,6 +18873,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       });
       updateAttritionParticles(seconds);
       updateFlotationParticles(seconds);
+      updateFrothVision(seconds);
       updateFilterPress(seconds);
       wetFlowMarkers.forEach((marker) => {
         const enabled = wetAnimationAllowed(marker.userData.activation);
@@ -19322,9 +19523,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return 6 * (airNm3Min / area / 60) / FLOTATION_BUBBLE_D32_M;
     }
     const flotationCells = [
-      { cell: fc201, tag: "FC-201", volumeL: 180, air: 0.060 },
-      { cell: fc202, tag: "FC-202", volumeL: 30, air: 0.020 },
-      { cell: fc203, tag: "FC-203", volumeL: 190, air: 0.075 }
+      { cell: fc201, tag: "FC-201", volumeL: 180, air: 0.060, rpm: DRIVE_RPM.flotationRougher },
+      { cell: fc202, tag: "FC-202", volumeL: 30, air: 0.020, rpm: DRIVE_RPM.flotationCleanerScav },
+      { cell: fc203, tag: "FC-203", volumeL: 190, air: 0.075, rpm: DRIVE_RPM.flotationCleanerScav }
     ].map((entry) => {
       const sb = flotationSb(entry.volumeL, entry.air);
       const tau = entry.volumeL / FLOTATION_SLURRY_LPM;
@@ -19373,6 +19574,76 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       );
       item.mesh.material.opacity = 1;
     }
+    // ---- AI-601 거품 영상 소프트센서 (advisory) ------------------------------
+    // 실제 거품 카메라가 재는 것은 회수율이 아니라 겉모습이다 — Sauter 평균 기포경
+    // d32, 포말 표면속도, 하중(색·질감). 회수율은 거기서 추정하고 LAB-601 분석값으로
+    // 교정한다. 여기서는 물리모델 회수율이 ground truth 이고, 소프트센서는 관측량에서
+    // 그 값을 되짚되 교정 잔차만큼 어긋나게 둔다 — 실제 소프트센서가 그렇게 동작한다.
+    // 잔차는 난수가 아니라 느린 주기함수로 둔다: 시드 DEM 난수열을 건드리지 않고,
+    // 재현 가능하며, 실제로도 소프트센서 오차는 백색잡음이 아니라 드리프트로 나타난다.
+    // 물리모델은 기포경을 상수 1.0 mm 로 가정한다(FLOTATION_BUBBLE_D32_M). 카메라의 값어치는
+    // 바로 그 가정을 실측으로 대체하는 데 있다 — 기포경은 운전점에 따라 움직인다.
+    // 공기를 많이 넣을수록 굵어지고(합체), 임펠러를 빨리 돌릴수록 잘게 쪼개진다.
+    //   d32 ∝ Jg^0.33 · N^−0.25
+    // 이 값으로 Sb 를 다시 계산해 회수율을 추정하므로, 추정값과 설계모델의 차이가
+    // 곧 카메라가 더해 주는 정보다. 상수를 되짚는 순환 계산이 아니다.
+    const FROTH_JG_REF = 0.0034;           // 기준 운전점 겉보기 가스유속 m/s (FC-201)
+    const FROTH_RPM_REF = 420;             // 기준 임펠러 회전수
+    const FROTH_VISION_DRIFT = 0.012;      // LAB 교정 잔차 진폭 — 영상 교정의 잔여 오차
+    const FROTH_D32_OK = [0.9, 2.6];       // 정상 운전 기포경 범위 mm
+    const FROTH_JG_MAX = 0.013;            // 공기 겉보기 유속 상한 m/s — 넘으면 포말이 무너진다
+    const frothVision = flotationCells.map((entry, index) => ({
+      entry, tag: entry.tag, phase: index * 2.1,
+      d32: 0, frothVelocity: 0, load: 0, jg: 0,
+      estimated: 0, model: 0, residual: 0, confidence: 0, advice: "—"
+    }));
+    function updateFrothVision(seconds) {
+      for (const v of frothVision) {
+        const { entry } = v;
+        const volume = entry.volumeL / 1000;
+        const diameter = Math.cbrt(4 * volume / Math.PI);
+        const area = Math.PI * diameter * diameter / 4;
+        v.jg = entry.air / area / 60;                       // 겉보기 가스유속 m/s
+        // 영상에서 읽은 기포경 — 운전점을 따라 움직인다
+        v.d32 = FLOTATION_BUBBLE_D32_M * 1000
+          * Math.pow(v.jg / FROTH_JG_REF, 0.33)
+          * Math.pow(FROTH_RPM_REF / entry.rpm, 0.25);
+        v.frothVelocity = v.jg * 100 * 1.8;                 // 포말 표면속도 cm/s (경험 비례)
+        v.model = entry.recovery.B;                         // 설계모델 회수율(기포경 상수 가정)
+        v.load = THREE.MathUtils.clamp(v.model * 0.92, 0, 1);
+        // 실측 기포경으로 Sb 를 다시 잡고 같은 1차 모델로 회수율을 추정한다
+        const sbVision = 6 * v.jg / (v.d32 / 1000);
+        const kVision = FLOTATION_K0 * (sbVision / flotationCells[0].sb) * FLOTATION_FLOATABILITY.B;
+        const ktVision = kVision * entry.tau;
+        const drift = FROTH_VISION_DRIFT * Math.sin(seconds * 0.09 + v.phase);   // LAB 교정 잔여
+        v.estimated = THREE.MathUtils.clamp(ktVision / (1 + ktVision) + drift, 0, 1);
+        v.residual = v.estimated - v.model;
+        // 신뢰도 — 기포경이 교정 범위를 벗어나면 추정이 못 미덥다
+        const span = FROTH_D32_OK[1] - FROTH_D32_OK[0];
+        const out = Math.max(FROTH_D32_OK[0] - v.d32, v.d32 - FROTH_D32_OK[1], 0) / span;
+        v.confidence = THREE.MathUtils.clamp(1 - out * 1.6, 0.2, 0.99);
+        // 권고 — 회수율이 목표에 못 미치면 먼저 공기, 공기가 상한이면 약품.
+        // 공기를 무한정 올릴 수 없는 이유가 포말 붕괴라, 상한에서 조작변수를 바꾼다.
+        const target = entry.tag === "FC-201" ? FLOTATION_ROUGHER_TARGET : v.model + 0.02;
+        if (v.confidence < 0.5) v.advice = "영상 신뢰도 낮음 — LAB-601 재교정";
+        else if (v.estimated < target - 0.02) {
+          v.advice = v.jg < FROTH_JG_MAX
+            ? `${entry.tag} 공기량 +8 % (FIC 상향)`
+            : `${entry.tag} 포수제 +5 g/t — 공기 상한 도달`;
+        } else if (v.estimated > target + 0.04 && v.jg > FROTH_JG_MAX * 0.6) {
+          v.advice = `${entry.tag} 공기량 −5 % — 과폭기 여유`;
+        } else v.advice = "정상 — 조작 불필요";
+      }
+      if (!aiUi.grade) return;
+      const rougher = frothVision[0];
+      aiUi.grade.textContent = (rougher.estimated * 100).toFixed(1) + " %";
+      aiUi.residual.textContent = (rougher.residual * 100 >= 0 ? "+" : "") + (rougher.residual * 100).toFixed(2) + " %p";
+      aiUi.d32.textContent = rougher.d32.toFixed(2) + " mm";
+      aiUi.velocity.textContent = rougher.frothVelocity.toFixed(1) + " cm/s";
+      aiUi.confidence.textContent = (rougher.confidence * 100).toFixed(0) + " %";
+      aiUi.advice.textContent = frothVision.map((v) => v.advice).join(" · ");
+    }
+
     function updateFlotationParticles(seconds) {
       flotationParticles.forEach((item) => {
         const enabled = wetAnimationAllowed(item.entry.cell === fc201 ? 420 : 360);
