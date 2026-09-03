@@ -17884,6 +17884,26 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       }
     }
 
+    // 플랜지 볼트원 — axis 에 수직한 평면 위 pcd 반경에 count 개를 돌린다.
+    // 적용 판정은 목록이 아니라 규칙으로 둔다 — **플랜지 외경 Ø0.14 m 이상에만 그린다.**
+    // 지금 그 기준에 드는 것은 용기 노즐 Ø0.150(44) · 맨홀 Ø0.480(11) · TK-601 상부
+    // Ø0.880(1) 뿐이고, 앞으로 작은 부속이 늘어도 기준이 어긋나지 않는다.
+    // 배관 스풀 이음은 넣지 않는다 — 이음 위치는 스풀 아이소메트릭에서 나오는 값인데
+    // 이 모델의 배관 곡선은 개략 경로라, 임의로 끊어 박으면 없는 정보를 그리는 것이 된다.
+    // dia 는 **머리 지름**(대각 across-corners)이지 나사 호칭이 아니다 — M16 → 0.026,
+    // M20 → 0.032. head 는 머리 높이. 볼트원 반경(pcd)은 커버 OD 와 플랜지 OD 사이에 둔다.
+    function wetBoltCircle(parent, name, center, axis, pcd, count, dia = 0.026, head = 0.013) {
+      const [cx, cy, cz] = center;
+      const rot = axis === "y" ? null : axis === "x" ? [0, 0, Math.PI / 2] : [Math.PI / 2, 0, 0];
+      for (let i = 0; i < count; i += 1) {
+        const t = Math.PI * 2 * i / count, c = Math.cos(t) * pcd, sn = Math.sin(t) * pcd;
+        const pos = axis === "x" ? [cx, cy + c, cz + sn]
+                  : axis === "z" ? [cx + sn, cy + c, cz]
+                  : [cx + c, cy, cz + sn];
+        wetCylinder(parent, dia * 0.5, head, pos, material.silverClamp, name, 6, rot);
+      }
+    }
+
     // 기초 앵커 — 샹크와 너트. 그라우트 패드는 부르는 쪽에서 깐다.
     function wetAnchor(parent, name, x, y, z, dia = 0.024, stick = 0.07) {
       wetCylinder(parent, dia * 0.5, stick, [x, y + stick / 2, z], material.silverClamp, name, 8);
@@ -17965,6 +17985,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       // 맨홀 — 상부 동체, 통로 쪽(+x)
       wetRadial(group, tag, x, z, radius + 0.03, 0, base + height * 0.76, 0.20, 0.05, material.cover, "맨홀 커버");
       wetRadial(group, tag, x, z, radius + 0.01, 0, base + height * 0.76, 0.24, 0.02, material.silverClamp, "맨홀 볼트링");
+      // 볼트링은 디스크만 있고 볼트가 없었다. Ø480 맨홀 = M16 16본.
+      wetBoltCircle(group, `${tag} 맨홀 볼트`, [x + radius + 0.026, base + height * 0.76, z], "x", 0.220, 16, 0.026, 0.013);
       // 노즐 4방위 — 스텁 + 플랜지 디스크
       const nozzles = [
         [Math.PI, height * 0.72, "급액 노즐"],
@@ -17975,6 +17997,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       for (const [a, dy, name] of nozzles) {
         wetRadial(group, tag, x, z, radius + 0.05, a, base + dy, 0.045, 0.10, material.cover, name);
         wetRadial(group, tag, x, z, radius + 0.10, a, base + dy, 0.075, 0.02, material.silverClamp, `${name} 플랜지`);
+        // Ø150 플랜지 = DN25–50 PN10 → M16 4본. 4방위가 전부 축정렬(a ∈ {0, π, ±π/2})이라
+        // 반경 방향을 그대로 볼트 축으로 쓴다.
+        const axis = Math.abs(Math.cos(a)) > 0.5 ? "x" : "z", rOut = radius + 0.1165;
+        wetBoltCircle(group, `${tag} ${name} 플랜지 볼트`,
+          [x + Math.cos(a) * rOut, base + dy, z + Math.sin(a) * rOut], axis, 0.057, 4, 0.026, 0.013);
       }
       // 레벨 게이지 — 동체 옆 수직 사이트글라스와 상하 차단밸브
       const g = Math.PI * 0.75, gx = x + Math.cos(g) * (radius + 0.09), gz = z + Math.sin(g) * (radius + 0.09);
@@ -18727,6 +18754,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // TK-601 완충·팽창 탱크와 P-601A/B 순환펌프
     wetCylinder(coolingPlant, 0.42, 1.25, [3.60, 0.78, YARD_Z + 0.55], material.equipmentWater, "TK-601 완충·팽창 탱크 0.5 m³", 30);
     wetCylinder(coolingPlant, 0.44, 0.05, [3.60, 1.43, YARD_Z + 0.55], material.silverClamp, "TK-601 상부 플랜지", 30);
+    // Ø880 맨홀형 상부 플랜지 = M20 20본
+    wetBoltCircle(coolingPlant, "TK-601 상부 플랜지 볼트", [3.60, 1.462, YARD_Z + 0.55], "y", 0.387, 20, 0.032, 0.014);
     wetCylinder(coolingPlant, 0.030, 0.34, [3.60, 1.60, YARD_Z + 0.55], material.pipeAir, "TK-601 자동 에어벤트", 14);
     ["A", "B"].forEach((suffix, index) => {
       const px = 3.20 + index * 0.72;
