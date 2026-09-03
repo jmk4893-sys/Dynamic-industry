@@ -456,7 +456,11 @@ class FragResult:
     wall_time: float = 0.0
     face_x: float = 0.0
     toe_z: float = 0.0
-    pressure_log: list = field(default_factory=list)   # (t, shock, gas, r)
+    # 압력·파괴 이력은 영상 프레임과 무관한 **촘촘한** 시간격자로 남긴다.
+    # 충격파는 수백 us 안에 끝나므로 프레임(25~60 fps) 간격으로 찍으면 통째로
+    # 사라진다. 압력은 공별 포락선(전 공 최대)이라 시차 기폭이 펄스열로 보인다.
+    pressure_log: list = field(default_factory=list)   # (t, shock_max, gas_max, r_mean)
+    broken_log: list = field(default_factory=list)     # (t, 누적 파괴본드 수)
 
 
 class FragSolver:
@@ -618,6 +622,7 @@ class FragSolver:
         peak = np.zeros(n)
         frames: list = []
         plog: list = []
+        blog: list = []
         skin = 0.35 * m.d
         pairs = np.empty((0, 2), dtype=np.int32)
         t = 0.0
@@ -637,6 +642,7 @@ class FragSolver:
             if t_end <= prev_end:
                 continue
             n_steps = max(1, int(round((t_end - prev_end) / dt)))
+            log_every = max(1, n_steps // 400)     # 단계당 <=400 점
             for step in range(n_steps):
                 if step % cfg.rebuild_every == 0:
                     tree = cKDTree(pos)
@@ -659,8 +665,13 @@ class FragSolver:
                 if t >= next_frame:
                     frames.append((t, pos.copy(), sp.copy()))
                     next_frame += frame_dt
+                if step % log_every == 0 or step == n_steps - 1:
+                    blog.append((t, broken))
                     if info:
-                        plog.append((t, info[0]["shock"], info[0]["gas"], info[0]["r"]))
+                        plog.append((t,
+                                     max(d_["shock"] for d_ in info),
+                                     max(d_["gas"] for d_ in info),
+                                     float(np.mean([d_["r"] for d_ in info]))))
 
                 if not np.isfinite(sp).all() or sp.max() > 5e3:
                     raise RuntimeError(
@@ -683,7 +694,7 @@ class FragSolver:
                           fragment_size=fsize, fragment_mass=fmass, peak_speed=peak,
                           broken=broken, total_bonds=int(m.bi.size), radius=m.radius,
                           wall_time=time.time() - t0, face_x=m.face_x, toe_z=m.toe_z,
-                          pressure_log=plog)
+                          pressure_log=plog, broken_log=blog)
 
     # ---- 탄도·적재 단계 -----------------------------------------------------
     def _ballistic(self, pos, vel, t, frames, next_frame, frame_dt):

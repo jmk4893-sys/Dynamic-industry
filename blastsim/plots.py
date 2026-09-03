@@ -265,10 +265,11 @@ def plot_fragmentation(result, stats: dict, path: str) -> None:
         rr = 1.0 - np.exp(-((xs / kr["Xc"]) ** kr["n"]))
         ax[0].semilogx(xs, rr * 100, "-", lw=2.0, color="tab:red",
                        label=f"Kuz-Ram  X50={kr['X50']:.2f} m, n={kr['n']:.2f}")
-        for frac, key in ((50, "X50"), (80, "X80")):
+        for (frac, key), ty in zip(((50, "X50"), (80, "X80")), (3.0, 10.0)):
             ax[0].axhline(frac, color="0.6", lw=0.7, ls=":")
             ax[0].axvline(kr[key], color="0.6", lw=0.7, ls=":")
-            ax[0].text(kr[key], 3, f" {key}={kr[key]:.2f}m", fontsize=7, color="0.3")
+            # X50 과 X80 은 가까이 붙는다. 높이를 어긋나게 두어야 겹치지 않는다.
+            ax[0].text(kr[key], ty, f" {key}={kr[key]:.2f}m", fontsize=7, color="0.3")
 
     if size.size >= 2:
         ok = stats.get("size_reliable", False)
@@ -282,6 +283,11 @@ def plot_fragmentation(result, stats: dict, path: str) -> None:
     ax[0].set_ylim(0, 100)
     ax[0].set_xlim(0.02, 12)
     ax[0].legend(fontsize=7, loc="upper left")
+    # 로그축 기본 표기는 mathtext($10^{-2}$)라 마이너스가 U+2212 로 찍히는데,
+    # 수식 폰트에는 그 글리프가 없어 네모로 깨진다. 평문 표기로 바꾼다.
+    plain = ticker.FuncFormatter(lambda v, _: f"{v:g}")
+    ax[0].xaxis.set_major_formatter(plain)
+    ax[0].xaxis.set_minor_formatter(ticker.NullFormatter())
 
     v = result.peak_speed
     v = v[v > 0.1]
@@ -291,6 +297,7 @@ def plot_fragmentation(result, stats: dict, path: str) -> None:
         ax[1].text(20.0, ax[1].get_ylim()[1] * 0.9,
                    L(" 비산 기준 20 m/s", " flyrock 20 m/s"), fontsize=7, color="crimson")
     ax[1].set_yscale("log")
+    ax[1].yaxis.set_major_formatter(plain)
     ax[1].set_xlabel(L("입자 최대속도 [m/s]", "Peak particle speed [m/s]"))
     ax[1].set_ylabel(L("입자 수", "count"))
     ax[1].set_title(L(f"속도 분포 (최대 {stats['v_max']:.0f} m/s, "
@@ -534,3 +541,135 @@ def plot_tet_mesh_3d(mesh, path: str, elev: float = 20.0, azim: float = 42.0) ->
                    f"Ø{d * 1000:g} mm × {mesh.hole.length:g} m (요소 {mesh.n_tets:,})",
                    "Tetrahedral mesh — 3D cut-away"), fontsize=11)
     fig.savefig(path); plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+def plot_blast_behavior(result, model, load, path: str) -> None:
+    """암발파 거동 이력 — 물리엔진이 무엇을 언제 했는지 한 장으로 보여준다.
+
+    발파는 세 개의 물리가 시간축 위에서 이어 달리는 현상이다.
+
+        충격파 (us~1 ms)   : 공벽을 때려 균열을 만든다      -> 파쇄
+        가스압 (1~20 ms)   : 균열에 파고들어 암반을 민다    -> 이동
+        중력   (0.1~2 s)   : 던져진 암반을 받아 쌓는다      -> 적재
+
+    네 패널은 각각 '무엇이 밀었나 / 얼마나 깨졌나 / 얼마나 빨랐나 / 얼마나
+    나갔나' 다. 위 두 패널의 시간축은 ms(DEM 구간), 아래 두 패널은 s(탄도
+    구간까지)로, 같은 그림 안에서 축척이 다르다는 점에 주의.
+    """
+    fig, ax = plt.subplots(2, 2, figsize=(11.5, 7.4))
+    plain = ticker.FuncFormatter(lambda v, _: f"{v:g}")
+
+    # --- (a) 공내압 이력 ---------------------------------------------------
+    a = ax[0, 0]
+    plog = np.asarray(result.pressure_log, dtype=float) if result.pressure_log \
+        else np.empty((0, 4))
+    if plog.size:
+        # 시차 기폭이라 공별 최대(포락선)는 펄스열로 나타난다. 로그축 바닥은
+        # 0.01 MPa 로 잘라 펄스 사이 0 구간이 축을 무한정 늘리지 않게 한다.
+        floor = 1e4
+        tm = plog[:, 0] * 1e3
+        a.semilogy(tm, np.maximum(plog[:, 1], floor) / 1e6, "-", lw=1.3,
+                   color="tab:red", label=L("충격파압 (공별 최대)", "shock (max)"))
+        a.semilogy(tm, np.maximum(plog[:, 2], floor) / 1e6, "-", lw=1.6,
+                   color="tab:blue", label=L("가스압 (공별 최대)", "gas (max)"))
+    rock = model.rock
+    a.axhline(rock.ucs / 1e6, color="0.45", lw=0.9, ls="--")
+    a.text(0.35, rock.ucs / 1e6, L(f" UCS {rock.ucs / 1e6:.0f} MPa",
+                                   f" UCS {rock.ucs / 1e6:.0f} MPa"),
+           fontsize=7, color="0.35", ha="left", va="bottom",
+           transform=a.get_yaxis_transform())
+    a.axhline(rock.tensile / 1e6, color="0.45", lw=0.9, ls=":")
+    a.text(0.35, rock.tensile / 1e6, L(f" 인장강도 {rock.tensile / 1e6:.0f} MPa",
+                                       f" tensile {rock.tensile / 1e6:.0f} MPa"),
+           fontsize=7, color="0.35", ha="left", va="bottom",
+           transform=a.get_yaxis_transform())
+    # 축 범위는 마지막에 못박는다. bottom 만 지정하면 자동 확대가 꺼져 UCS 선이
+    # 축 밖으로 나가 라벨이 그림 위로 삐져나온다.
+    p_top = float(np.max(plog[:, 1:3])) if plog.size else rock.ucs
+    a.set_ylim(0.005, max(p_top, rock.ucs) / 1e6 * 3.0)
+    a.set_xlabel(L("시간 [ms]", "time [ms]"))
+    a.set_ylabel(L("공내압 [MPa]", "borehole pressure [MPa]"))
+    a.set_title(L("(a) 공내압 — 무엇이 암반을 밀었나",
+                  "(a) Borehole pressure"), fontsize=9.5)
+    a.yaxis.set_major_formatter(plain)
+    a.yaxis.set_minor_formatter(ticker.NullFormatter())
+    a.legend(fontsize=7.5, loc="upper right")
+
+    # --- (b) 본드 파괴 진행 ------------------------------------------------
+    b = ax[0, 1]
+    blog = np.asarray(result.broken_log, dtype=float) if result.broken_log \
+        else np.empty((0, 2))
+    total = max(result.total_bonds, 1)
+    if blog.size:
+        b.plot(blog[:, 0] * 1e3, 100.0 * blog[:, 1] / total, "-", lw=1.8,
+               color="tab:purple")
+        b.fill_between(blog[:, 0] * 1e3, 0, 100.0 * blog[:, 1] / total,
+                       color="tab:purple", alpha=0.15)
+    cfg = model.cfg
+    b.axvline(cfg.bond_phase * 1e3, color="0.5", lw=0.9, ls="--")
+    b.text(cfg.bond_phase * 1e3, 2, L("  본드단계 끝", "  bond phase"),
+           fontsize=7, color="0.35")
+    b.set_xlabel(L("시간 [ms]", "time [ms]"))
+    b.set_ylabel(L("파괴 본드 비율 [%]", "broken bonds [%]"))
+    b.set_ylim(0, 100)
+    b.set_title(L(f"(b) 파쇄 진행 — 최종 {100.0 * result.broken / total:.0f}% "
+                  f"({result.broken:,}/{total:,})",
+                  "(b) Bond breakage"), fontsize=9.5)
+
+    # --- 프레임에서 유도되는 이력 ------------------------------------------
+    frames = result.frames
+    ts = np.array([f[0] for f in frames])
+    free = ~model.fixed
+    mass = model.mass
+    ke = np.array([0.5 * mass * float(np.sum(f[2][free] ** 2)) for f in frames]) / 1e6
+    vmx = np.array([float(f[2][free].max()) for f in frames])
+
+    # 저항선 영역 = 자유면 ~ 첫 열, 굴착선 위. 여기가 실제로 뜯겨 나가는 암반이다.
+    x_first = min(h.x for h in model.pattern.holes)
+    zone = free & (model.pos0[:, 0] < x_first) & (model.pos0[:, 2] > model.toe_z)
+    dx = np.array([float(np.mean(f[1][zone, 0] - model.pos0[zone, 0]))
+                   for f in frames]) if zone.any() else np.zeros(ts.size)
+
+    # --- (c) 운동에너지와 최대속도 -----------------------------------------
+    c = ax[1, 0]
+    c.plot(ts, ke, "-", lw=1.7, color="tab:orange",
+           label=L("운동에너지", "kinetic energy"))
+    c.set_xlabel(L("시간 [s]", "time [s]"))
+    c.set_ylabel(L("운동에너지 [MJ]", "KE [MJ]"), color="tab:orange")
+    c.tick_params(axis="y", labelcolor="tab:orange")
+    c2 = c.twinx()
+    c2.plot(ts, vmx, "-", lw=1.3, color="tab:green",
+            label=L("최대속도", "peak speed"))
+    c2.axhline(20.0, color="crimson", lw=1.0, ls="--")
+    c2.text(ts[-1] if ts.size else 1.0, 20.0, L(" 비산 20 m/s", " flyrock 20 m/s"),
+            fontsize=7, color="crimson", ha="right", va="bottom")
+    c2.set_ylabel(L("최대속도 [m/s]", "peak speed [m/s]"), color="tab:green")
+    c2.tick_params(axis="y", labelcolor="tab:green")
+    c2.grid(False)
+    c.set_title(L("(c) 에너지와 속도 — 얼마나 세게 던졌나",
+                  "(c) Energy and speed"), fontsize=9.5)
+
+    # --- (d) 저항선 이동 ---------------------------------------------------
+    d = ax[1, 1]
+    d.plot(ts, dx, "-", lw=1.8, color="tab:cyan")
+    d.axhline(0.0, color="0.6", lw=0.8)
+    burden = model.pattern.burden
+    d.axhline(-burden, color="crimson", lw=1.0, ls="--")
+    d.text(ts[-1] if ts.size else 1.0, -burden,
+           L(f" 자유면 통과 (B={burden:.1f} m)", f" past face (B={burden:.1f} m)"),
+           fontsize=7, color="crimson", ha="right", va="bottom")
+    d.set_xlabel(L("시간 [s]", "time [s]"))
+    d.set_ylabel(L("저항선 평균 x 이동 [m]", "mean burden x-displacement [m]"))
+    d.set_title(L(f"(d) 저항선 이동 — 최종 {dx[-1] if dx.size else 0:.2f} m "
+                  f"(자유면 쪽이 음수)", "(d) Burden movement"), fontsize=9.5)
+
+    e = load.energy_budget()
+    fig.suptitle(
+        L(f"암발파 거동 — {rock.name},  장약 {e['장약량_kg']:,.0f} kg,  "
+          f"화학에너지 {e['화학에너지_MJ']:,.0f} MJ "
+          f"(충격파 {e['충격파일_MJ']:,.0f} + 가스 {e['가스일_MJ']:,.0f} MJ)",
+          f"Blast behavior — {rock.name}"), fontsize=10.5)
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    fig.savefig(path)
+    plt.close(fig)

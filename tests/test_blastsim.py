@@ -1048,6 +1048,109 @@ def test_mesh_reproducible():
 
 
 # ---------------------------------------------------------------------------
+# 9. 암발파 거동 이력 (frag.broken_log / pressure_log, plots.plot_blast_behavior)
+#
+# 거동 이력은 '물리엔진이 언제 무엇을 했나'를 보여주는 유일한 시계열이다.
+# 영상 프레임(25~60 fps)에 얹어 찍으면 수백 us 짜리 충격파가 통째로 사라지므로,
+# 프레임과 **독립된 촘촘한 격자**로 남는지, 그리고 값이 물리적으로 말이 되는지
+# (단조 증가하는 파괴 수, 공별 포락선 압력) 를 확인한다.
+# ---------------------------------------------------------------------------
+def _behavior_run():
+    """시차 기폭이 이력에 펄스열로 남도록 만든 짧은 해석."""
+    from blastsim.frag import BlastLoad, FragConfig, FragModel, FragSolver
+    e = get_explosive("emulsion")
+    # 지연 40 ms 짜리 공 2개 -> 이력에 펄스가 두 번 나와야 한다
+    pat = BlastPattern(e, burden=3.0, spacing=3.5, bench_height=6.0,
+                       n_rows=1, n_cols=2, delay_hole=0.040)
+    cfg = FragConfig(particle_size=1.0, progress=False, bond_phase=0.020,
+                     throw_phase=0.060, total_duration=0.12, snapshot_fps=25.0)
+    m = FragModel(get_rock("granite"), pat, cfg)
+    load = BlastLoad(m, e, cfg, SourceConfig())
+    return m, load, FragSolver(m, load, cfg).run()
+
+
+def test_behavior_log_is_finer_than_frames():
+    """압력·파괴 이력이 영상 프레임보다 훨씬 촘촘해야 한다.
+
+    25 fps 로 0.06 s 를 찍으면 프레임은 한두 개뿐이다. 그 간격으로 압력을 찍으면
+    상승시간 수십 us 짜리 충격파는 한 점도 남지 않는다.
+    """
+    _, _, res = _behavior_run()
+    n_dem_frames = max(sum(1 for f in res.frames if f[0] <= 0.060 + 1e-9), 1)
+    assert len(res.pressure_log) > 20 * n_dem_frames, (
+        f"압력 이력이 너무 성기다: {len(res.pressure_log)} 점 "
+        f"(DEM 프레임 {n_dem_frames})")
+    assert len(res.broken_log) == len(res.pressure_log), "두 이력의 길이가 다르다"
+    t = np.array([e[0] for e in res.pressure_log])
+    assert np.all(np.diff(t) > 0), "이력 시간이 단조 증가하지 않는다"
+
+
+def test_broken_log_matches_result():
+    """파괴 본드 이력은 단조 증가하고 마지막 값이 총 파괴수와 같아야 한다."""
+    _, _, res = _behavior_run()
+    b = np.array([e[1] for e in res.broken_log])
+    assert b.size >= 2, "파괴 이력이 비었다"
+    assert np.all(np.diff(b) >= 0), "파괴 본드 수가 감소했다"
+    assert b[0] == 0, f"t=0 부터 본드가 깨져 있다 ({b[0]}개)"
+    assert b[-1] == res.broken, f"이력 끝값 {b[-1]} != 총 파괴 {res.broken}"
+    assert 0 < res.broken < res.total_bonds, "전부 살아있거나 전부 끊겼다"
+
+
+def test_pressure_log_is_hole_envelope():
+    """압력은 공별 최대(포락선)라, 시차 기폭이 펄스열로 보여야 한다.
+
+    공 0 만 기록하면 40 ms 뒤 터지는 공 1 의 충격파가 그림에 나오지 않는다.
+    """
+    _, load, res = _behavior_run()
+    plog = np.array(res.pressure_log, dtype=float)
+    t, shock = plog[:, 0], plog[:, 1]
+
+    # 두 발파공의 지연시간 근처에서 각각 충격파 최대가 서 있어야 한다
+    for n, delay in enumerate((0.0, 0.040)):
+        near = (t >= delay) & (t < delay + 0.004)
+        assert near.any(), f"{delay * 1e3:.0f} ms 부근 기록이 없다"
+        assert shock[near].max() > 0.2 * load.p_shock[n], (
+            f"{delay * 1e3:.0f} ms 기폭의 충격파가 이력에 없다 "
+            f"(최대 {shock[near].max() / 1e6:.1f} MPa)")
+
+    # 압력은 임의로 커지면 안 된다 — 폭원 등가압력이 상한이다
+    assert shock.max() <= 1.01 * max(load.p_shock), "충격파 이력이 폭원압을 넘었다"
+    assert plog[:, 2].max() <= 1.01 * max(load.p_gas0), "가스 이력이 초기압을 넘었다"
+
+
+def test_plot_blast_behavior():
+    """거동 이력 4분할 그림이 실제로 그려진다."""
+    import tempfile
+
+    from blastsim.plots import plot_blast_behavior
+    m, load, res = _behavior_run()
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "behavior.png")
+        plot_blast_behavior(res, m, load, path)
+        assert os.path.getsize(path) > 30_000, "거동 그림이 비었다"
+
+
+def test_granite_bench_round_is_standard():
+    """예제 6 의 화강암 발파 제원이 실무 표준 범위 안에 있어야 한다.
+
+    메쉬(예제 5)의 Ø75 mm x 12 m 천공홀과 천공장이 정확히 같아야 하고,
+    비장약량·이격비는 화강암 벤치발파의 통상 범위여야 한다.
+    """
+    e = get_explosive("emulsion")
+    pat = BlastPattern(e, burden=2.5, spacing=3.0, bench_height=11.25,
+                       hole_dia=0.075, n_rows=2, n_cols=5, subdrill=0.75)
+    h = pat.holes[0]
+    assert abs(h.depth - 12.0) < 1e-9, f"천공장이 12 m 가 아니다 ({h.depth})"
+    assert abs(pat.hole_dia - 0.075) < 1e-12, "천공경이 75 mm 가 아니다"
+
+    pf = h.charge_weight / (pat.burden * pat.spacing * pat.bench_height)
+    assert 0.45 < pf < 0.85, f"비장약량이 화강암 범위 밖 ({pf:.2f} kg/m^3)"
+    assert 1.0 <= pat.spacing / pat.burden <= 1.5, "공간격비 S/B 가 범위 밖"
+    assert pat.bench_height / pat.burden >= 3.0, "이격비 H/B 가 3 미만 (근저부 잔류)"
+    assert 15.0 <= pat.stemming / pat.hole_dia <= 40.0, "전색장이 통상 범위 밖"
+    assert 6.0 <= pat.subdrill / pat.hole_dia <= 14.0, "하부천공장이 통상 범위 밖"
+
+# ---------------------------------------------------------------------------
 # unittest 연동
 #
 # 위 검증은 전부 평범한 함수로 썼다 — 물리식 옆에 assert 를 두는 편이 읽기 쉽고,

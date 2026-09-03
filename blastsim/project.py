@@ -431,10 +431,13 @@ class BlastProject:
             files += [csv]
 
         if self.frag:
-            from .plots import plot_fragmentation, plot_muckpile
+            from .plots import plot_blast_behavior, plot_fragmentation, plot_muckpile
             plot_fragmentation(self.frag["result"], self.frag["stats"],
                                os.path.join(out, "frag_size.png"))
             plot_muckpile(self.frag["result"], os.path.join(out, "frag_muckpile.png"))
+            plot_blast_behavior(self.frag["result"], self.frag["model"],
+                                self.frag["load"],
+                                os.path.join(out, "frag_behavior.png"))
 
         for n in sorted(os.listdir(out)):
             if n.endswith((".png", ".mp4", ".gif")):
