@@ -10,16 +10,56 @@
 * **계획값** — 그 외 셀은 구성 기기에서 잡은 계획 부하다. OEM 하중도·전동기 명판이
   확정되면 바꿔야 하며, 그때 이 파일만 고치면 도면과 테스트가 같이 따라온다.
 
-전압은 3Φ 4W 380/220 V. 역률 0.90 은 서보·인버터에 라인리액터를 다는 전제이며,
-고조파 실측 전에는 확정값이 아니다.
+**수전 방식은 계약전력에서 파생한다.** REV.22 까지는 계약전력 67.9 kW 라 저압
+3Φ 4W 380/220 V 직결이 맞았지만, REV.23 에서 유리제거셀 IR 뱅크 175 kW 가
+들어오며 계약전력이 268.2 kW 가 됐다 — 한전 저압 공급 상한 100 kW 를 넘어
+**22.9 kV 고압 수전 + 수전변압기**로 바뀐다. 전압·변압기·차단기·케이블·수전실
+면적이 전부 이 판정에서 따라 나오므로, 부하가 다시 바뀌면 여기만 고치면 된다.
+
+역률 0.90 은 서보·인버터에 라인리액터를 다는 전제이며, 고조파 실측 전에는
+확정값이 아니다.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-#: 인입 전압 (V, 선간)
+#: 저압 배전 전압 (V, 선간). 변압기 2차이자 플랜트 내부 배전 전압이다.
 SUPPLY_VOLTAGE_V = 380
+
+# ── 수전 방식 ────────────────────────────────────────────────────────────
+# REV.23 유리제거셀이 들어오며 계약전력이 268.2 kW 가 됐다. 한전 저압 공급은
+# 계약전력 100 kW 미만이므로 **저압 직결 인입이 성립하지 않는다** — 22.9 kV
+# 고압 수전 + 수전변압기로 바꿔야 한다. 전처리만일 때(계약전력 67.9 kW)는
+# 저압이 맞았고, 그래서 REV.22 까지의 도면은 틀린 것이 아니라 전제가 바뀐 것이다.
+
+#: 한전 저압 공급 상한 (kW, 계약전력). 이 값 이상이면 고압 수전이다.
+LOW_VOLTAGE_LIMIT_KW = 100.0
+
+#: 고압 수전 전압 (V, 선간) — 22.9 kV 배전 계통.
+HV_SUPPLY_VOLTAGE_V = 22_900
+
+#: 표준 변압기 용량 (kVA).
+TRANSFORMER_RATINGS_KVA = (100, 150, 200, 300, 500, 750, 1000)
+
+#: 변압기 목표 부하율 — 수요 피상전력이 이 비율 안에 들도록 용량을 고른다.
+TRANSFORMER_LOAD_FACTOR = 0.80
+
+#: 한전 기준역률과 개선 목표역률. 기준 미달은 할증, 초과는 감액이다.
+BASE_POWER_FACTOR = 0.90
+TARGET_POWER_FACTOR = 0.95
+
+#: 표준 콘덴서 뱅크 용량 (kVar).
+CAPACITOR_STEPS_KVAR = (10, 15, 20, 25, 30, 35, 40, 50, 60, 75, 100)
+
+#: 저압 케이블 허용전류 (mm² → A). 3심 XLPE 동도체·트레이 포설 기준.
+LV_CABLE_AMPACITY_A: dict[int, int] = {
+    35: 133, 50: 160, 70: 204, 95: 248, 120: 287,
+    150: 331, 185: 380, 240: 450, 300: 514,
+}
+
+#: 고압 인입 케이블 최소 규격 (mm²) — 전류가 아니라 기계적 강도로 정해진다.
+HV_CABLE_MIN_MM2 = 60
 
 #: 계획 역률. 라인리액터 적용 전제 — 고조파 실측으로 확정한다.
 POWER_FACTOR = 0.90
@@ -128,3 +168,167 @@ def main_breaker_frame_a() -> int:
 
 #: 하위 호환 이름. 프레임은 이제 수요에서 파생한다.
 MAIN_BREAKER_FRAME_A = main_breaker_frame_a()
+
+
+# ── 인입 확정 (REV.23) ────────────────────────────────────────────────────
+# 여기부터가 "인입을 확정한다"는 것의 실체다. 계약전력이 저압 한계를 넘으면
+# 전압·변압기·차단기·케이블·설치 면적이 전부 따라 바뀐다.
+
+
+def contract_kw() -> float:
+    """계약 전력 (kW) — 한전 저압/고압 판정의 기준이 되는 값."""
+    return round(demand_kw() * CONTRACT_MARGIN, 1)
+
+
+def needs_high_voltage() -> bool:
+    """저압 직결로 받을 수 있는가. False 면 22.9 kV 수전이다."""
+    return contract_kw() >= LOW_VOLTAGE_LIMIT_KW
+
+
+def supply_method() -> str:
+    return "고압 22.9 kV 수전 + 수전변압기" if needs_high_voltage() else "저압 380 V 직결 인입"
+
+
+def apparent_demand_kva() -> float:
+    """수요 피상전력 (kVA) — 변압기 부하율의 분자."""
+    return round(demand_kw() / POWER_FACTOR, 1)
+
+
+def transformer_required_kva(apparent_kva: float | None = None,
+                             contract: float | None = None) -> float:
+    """변압기가 담아야 하는 용량 (kVA) — 두 기준 중 큰 쪽.
+
+    ① 목표 부하율 안에 수요 피상전력이 들어올 것
+    ② 계약 피상전력을 흘릴 수 있을 것
+    """
+    a = apparent_demand_kva() if apparent_kva is None else apparent_kva
+    c = contract_kva() if contract is None else contract
+    return max(a / TRANSFORMER_LOAD_FACTOR, c)
+
+
+def transformer_sizing_basis(apparent_kva: float | None = None,
+                             contract: float | None = None) -> str:
+    """둘 중 어느 기준이 용량을 정했는가 — 바뀌면 설계 근거가 바뀐 것이다."""
+    a = apparent_demand_kva() if apparent_kva is None else apparent_kva
+    c = contract_kva() if contract is None else contract
+    return "계약 피상전력" if c >= a / TRANSFORMER_LOAD_FACTOR else "목표 부하율"
+
+
+def transformer_kva(apparent_kva: float | None = None,
+                    contract: float | None = None) -> int:
+    """수전변압기 표준 용량 (kVA) — 필요 용량 위의 가장 작은 표준 용량."""
+    need = transformer_required_kva(apparent_kva, contract)
+    for rating in TRANSFORMER_RATINGS_KVA:
+        if rating >= need:
+            return rating
+    raise ValueError("수요가 표준 변압기 용량을 넘는다 — 뱅크 분할 검토 필요")
+
+
+def transformer_load_pct() -> float:
+    """수요 피상전력 기준 변압기 부하율 (%)."""
+    return round(apparent_demand_kva() / transformer_kva() * 100.0, 1)
+
+
+def capacitor_kvar() -> int:
+    """역률을 기준 0.90 → 목표 0.95 로 올리는 콘덴서 뱅크 (kVar, 표준 단계)."""
+    import math
+
+    def tan_phi(pf: float) -> float:
+        return math.tan(math.acos(pf))
+
+    need = demand_kw() * (tan_phi(BASE_POWER_FACTOR) - tan_phi(TARGET_POWER_FACTOR))
+    for step in CAPACITOR_STEPS_KVAR:
+        if step >= need:
+            return step
+    raise ValueError("필요 콘덴서가 표준 단계를 넘는다 — 뱅크 분할 검토 필요")
+
+
+def hv_incoming_current_a() -> float:
+    """고압 인입 선전류 (A) — 계약 피상전력을 22.9 kV 로 나눈 값."""
+    return round(contract_kva() * 1000 / (3 ** 0.5 * HV_SUPPLY_VOLTAGE_V), 2)
+
+
+def lv_cable_mm2(current_a: float) -> int:
+    """그 전류를 받는 가장 작은 저압 표준 케이블 단면적 (mm²)."""
+    for size, ampacity in sorted(LV_CABLE_AMPACITY_A.items()):
+        if ampacity >= current_a:
+            return size
+    raise ValueError("전류가 표준 케이블 허용전류를 넘는다 — 병렬 포설 검토 필요")
+
+
+def lv_main_cable_mm2() -> int:
+    """변압기 2차 → MDB-101 주회로 단면적 (mm²).
+
+    수요 전류가 아니라 **주 차단기 정격**을 받아야 한다 — 차단기가 떨어지기
+    전에 케이블이 먼저 타면 보호가 성립하지 않는다.
+    """
+    return lv_cable_mm2(main_breaker_at())
+
+
+#: 22.9 kV 급 VCB 표준 정격 (A). 전류가 7.5 A 라도 이보다 작은 기기는 없다 —
+#: 고압 차단기는 전류가 아니라 차단용량·절연계급으로 정해진다.
+VCB_RATING_A = 630
+
+
+def incoming_cable_spec() -> str:
+    """인입 케이블 사양 문자열 — 도면 인입도와 같은 값이어야 한다."""
+    if needs_high_voltage():
+        return f"CNCV-W 22.9 kV 1C×{HV_CABLE_MIN_MM2} mm² × 3"
+    return f"4C×{lv_cable_mm2(main_breaker_at())} mm² Cu"
+
+
+#: 수전설비 큐비클 열 — 폭(mm)·용도. 고압 수전일 때만 선다.
+SUBSTATION_CUBICLES: tuple[tuple[int, str], ...] = (
+    (1000, "인입 LBS·전력퓨즈·피뢰기"),
+    (1000, "계기용 변성기·VCB 주차단"),
+    (1600, "몰드 변압기 (2차 380/220 V)"),
+    (1000, "저압 ACB·역률개선 콘덴서"),
+)
+
+#: 큐비클 깊이와 높이 (mm).
+SUBSTATION_CUBICLE_DEPTH_MM = 1500
+SUBSTATION_CUBICLE_HEIGHT_MM = 2300
+
+#: 전면 조작·인출 이격과 후면 점검 이격 (mm). 전기설비 유지보수 기준.
+SUBSTATION_FRONT_CLEARANCE_MM = 1500
+SUBSTATION_REAR_CLEARANCE_MM = 600
+
+
+def substation_room_mm() -> tuple[int, int, int]:
+    """수전실 소요 면적 (폭, 깊이, 높이 mm) — 큐비클 열 + 전후 이격.
+
+    이 방은 공정 존이 아니라 구획된 전기실이다. 장비 밴드 안에 넣으면 안 된다.
+    """
+    if not needs_high_voltage():
+        return (0, 0, 0)
+    width = sum(w for w, _ in SUBSTATION_CUBICLES)
+    depth = (SUBSTATION_CUBICLE_DEPTH_MM
+             + SUBSTATION_FRONT_CLEARANCE_MM + SUBSTATION_REAR_CLEARANCE_MM)
+    return (width, depth, SUBSTATION_CUBICLE_HEIGHT_MM + 700)
+
+
+def incomer_summary() -> dict[str, object]:
+    """인입 확정 요약 — 도면 인입도(EL-1005)가 이 값을 그대로 써야 한다."""
+    room = substation_room_mm()
+    return {
+        "method": supply_method(),
+        "high_voltage": needs_high_voltage(),
+        "hv_voltage_v": HV_SUPPLY_VOLTAGE_V if needs_high_voltage() else SUPPLY_VOLTAGE_V,
+        "lv_voltage_v": SUPPLY_VOLTAGE_V,
+        "installed_kw": round(installed_kw(), 1),
+        "demand_kw": round(demand_kw(), 2),
+        "contract_kw": contract_kw(),
+        "contract_kva": round(contract_kva(), 1),
+        "apparent_kva": apparent_demand_kva(),
+        "transformer_kva": transformer_kva(),
+        "transformer_basis": transformer_sizing_basis(),
+        "transformer_load_pct": transformer_load_pct(),
+        "capacitor_kvar": capacitor_kvar(),
+        "hv_current_a": hv_incoming_current_a(),
+        "lv_current_a": round(demand_current_a(), 1),
+        "vcb_a": VCB_RATING_A,
+        "main_breaker": f"{main_breaker_frame_a()}AF/{main_breaker_at()}AT",
+        "lv_main_cable_mm2": lv_main_cable_mm2(),
+        "incoming_cable": incoming_cable_spec(),
+        "substation_room_mm": list(room),
+    }

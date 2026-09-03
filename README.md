@@ -43,7 +43,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (469건)
+python -m unittest discover -s tests -t .                               # 테스트 (478건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
@@ -123,7 +123,8 @@ flux 상사로 스케일업하면 수력학적 조건이 보존되므로 실증 
 - AFR 베드-CV-102 사이 2,950 mm 무지지 공백(패널 2,500 초과)을 반출롤러 2,000 으로 폐쇄
 - 장비 밴드 Y 0–7,100, 보행·정비 통로 Y 7,100–8,300 (장비 포락선 **밖**)
 - 설비 셀 7개 + JB/AFR 인계 게이트 1개, 부품 161품목
-- 전기 인입 3Φ 4W 380 V · 설치 **266.0 kW** · 수요 **198.7 kW** · 주 차단기 **400 AF/400 AT** · 계약 **298.1 kVA** — 유리제거셀 IR 뱅크 175 kW 가 들어오며 전처리만일 때(68.0/50.2/100 AT/75.4)의 4 배가 됐다
+- 전기 인입 **고압 22.9 kV 수전** — 계약전력 **268.2 kW** 가 한전 저압 공급 상한 100 kW 를 넘어 저압 직결이 성립하지 않는다. 수전변압기 **300 kVA**(부하율 73.6 %) Δ–Y → 2차 3Φ 4W 380/220 V. 고압 인입 7.51 A · CNCV-W 1C×60 mm², 저압 주회로 335.4 A · 4C×**240 mm²**, VCB 630 A / ACB 400 AF·400 AT, 역률개선 35 kVar, 수전실 4,600 × 3,600 mm(구획 전기실)
+- 부하 집계 설치 **266.0 kW** · 수요 **198.7 kW** · 계약 **298.1 kVA** — 유리제거셀 IR 뱅크 175 kW 가 들어오며 전처리만일 때(68.0/50.2/100 AT/75.4 kVA·저압)의 4 배가 됐다
 - 배선 MDB-101 벽부 x=20,000(부하중심) · 전력 케이블 133.1 m + 인입 26.5 m · EtherCAT 체인/FSoE 링 (EL-1005~1008)
 - 전동기 서보 **36축** 27.9 kW + 인버터·기어드 — 축 일람·라이브 동작 확인 (설계·PLC·검증 탭)
 - 소음·진동 근접 88 → 70 dBA·통로 최악 59.9 dBA — 저감 장치 4종 반영 (NV-1009)

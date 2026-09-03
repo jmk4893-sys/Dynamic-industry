@@ -83,8 +83,9 @@ def lp_positions_mm() -> dict[str, int]:
     # (존 로컬 X −3,800…−500) 앞, 기구반은 탠덤 앞, 배기반은 슈레더 쪽이다.
     grm = next(z for z in build_zones() if z.key == "grm")
     grm_center = (grm.x0_mm + grm.x1_mm) // 2
-    centers["LP-GRM-IRA"] = grm_center - 2_150
-    centers["LP-GRM-IRB"] = grm_center - 2_150
+    # 두 IR 반은 랙 앞에 나란히 선다 — 같은 X 에 겹쳐 세울 수는 없다.
+    centers["LP-GRM-IRA"] = grm_center - 2_750
+    centers["LP-GRM-IRB"] = grm_center - 1_550
     centers["LP-GRM-MEC"] = grm_center + 1_200
     centers["LP-GRM-EXH"] = grm_center + 4_200
     return centers
@@ -139,9 +140,25 @@ def demand_center_x_mm() -> int:
     return round(center)
 
 
+#: 수전실 저압반 중심 → MDB-101 중심 거리 (mm).
+#: REV.23 인입 확정으로 수전실이 생기면서, 수전실을 **MDB 옆 통로 외곽벽**에
+#: 붙인다. 저압 주회로는 400 A 라 240 mm² 인데, 이걸 부지 경계에서 42.5 m
+#: 끌고 오면 구리값이 터진다 — 고압은 7.5 A 라 60 mm² 로 같은 거리를 훨씬 싸게
+#: 간다. 그것이 고압 수전으로 바꾸는 두 번째 이유다(첫째는 100 kW 한계).
+SUBSTATION_TO_MDB_MM = 2_000
+
+
 def incoming_cable_m() -> float:
-    """공장 인입점(플랜트 x=0, 통로 외곽 코너 가정) → MDB 인입 케이블 길이 (m)."""
-    run = MDB_POSITION_MM[0] + (TRAY_HEIGHT_MM - MDB_TOP_MM) * 2
+    """인입 주회로 길이 (m).
+
+    고압 수전이면 **수전실 변압기 2차 → MDB-101** 저압 주회로 길이다.
+    부지 경계 → 수전실 고압 구간은 부지 조건이라 여기서 산정하지 않는다.
+    저압 직결이면 종전대로 공장 인입점(x=0) → MDB 거리다.
+    """
+    if electrical.needs_high_voltage():
+        run = SUBSTATION_TO_MDB_MM + (TRAY_HEIGHT_MM - MDB_TOP_MM) * 2
+    else:
+        run = MDB_POSITION_MM[0] + (TRAY_HEIGHT_MM - MDB_TOP_MM) * 2
     return round((run * SLACK + TERMINATION_MM) / 100) / 10
 
 

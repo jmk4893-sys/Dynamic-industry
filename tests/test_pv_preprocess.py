@@ -1896,6 +1896,129 @@ class TestHandoff(unittest.TestCase):
                          "인계 유입은 정상 유리(R-A)만 세어야 한다")
 
 
+class TestIncomingService(unittest.TestCase):
+    """REV.23 인입 확정 — 계약전력에서 수전 방식이 따라 나오는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_contract_power_crosses_the_low_voltage_limit(self):
+        """저압 직결은 계약전력 100 kW 미만에서만 성립한다 — 넘으면 전제가 깨진다."""
+        self.assertAlmostEqual(electrical.contract_kw(), 268.2, places=1)
+        self.assertGreater(electrical.contract_kw(), electrical.LOW_VOLTAGE_LIMIT_KW)
+        self.assertTrue(electrical.needs_high_voltage())
+        self.assertIn("고압", electrical.supply_method())
+        self.assertEqual(electrical.HV_SUPPLY_VOLTAGE_V, 22_900)
+        # 전처리만일 때는 저압이 맞았다 — 그 사실이 기록으로 남아야 한다
+        preprocess_only = sum(f.demand_kw for f in electrical.FEEDERS
+                              if not f.panel.startswith("LP-GRM"))
+        self.assertLess(preprocess_only * electrical.CONTRACT_MARGIN,
+                        electrical.LOW_VOLTAGE_LIMIT_KW,
+                        "REV.22 까지의 저압 인입은 틀린 게 아니라 전제가 바뀐 것이다")
+
+    def test_transformer_is_sized_from_demand_not_guessed(self):
+        """변압기는 목표 부하율과 계약 피상전력 중 큰 쪽이 지배한다."""
+        self.assertAlmostEqual(electrical.apparent_demand_kva(), 220.8, places=1)
+        self.assertEqual(electrical.transformer_kva(), 300)
+        self.assertIn(electrical.transformer_kva(), electrical.TRANSFORMER_RATINGS_KVA)
+        self.assertGreaterEqual(electrical.transformer_kva(), electrical.contract_kva())
+        self.assertAlmostEqual(electrical.transformer_load_pct(), 73.6, places=1)
+        self.assertLessEqual(electrical.transformer_load_pct(),
+                             electrical.TRANSFORMER_LOAD_FACTOR * 100,
+                             "부하율이 목표를 넘으면 한 단계 큰 용량을 골랐어야 한다")
+        # 여기서는 계약 피상전력이 지배한다 — 부하율 기준은 298.1 > 276.0 에 가려진다.
+        # 어느 쪽이 정했는지가 바뀌면 설계 근거가 바뀐 것이므로 못 박아 둔다.
+        self.assertEqual(electrical.transformer_sizing_basis(), "계약 피상전력")
+        self.assertAlmostEqual(electrical.transformer_required_kva(), 298.05, places=1)
+        # 계약이 지배하지 않는 지점에서 부하율 기준이 실제로 작동하는지 — 0.80 이
+        # 아니면 170 kVA 는 300 이 아니라 200 으로 떨어진다.
+        self.assertEqual(electrical.transformer_sizing_basis(apparent_kva=170, contract=0),
+                         "목표 부하율")
+        self.assertEqual(electrical.transformer_kva(apparent_kva=170, contract=0), 300)
+        self.assertEqual(electrical.transformer_kva(apparent_kva=160, contract=0), 200)
+
+    def test_the_main_cable_carries_the_breaker_not_the_demand(self):
+        """차단기가 떨어지기 전에 케이블이 타면 보호가 성립하지 않는다."""
+        size = electrical.lv_main_cable_mm2()
+        self.assertEqual(size, 240)
+        self.assertGreaterEqual(electrical.LV_CABLE_AMPACITY_A[size],
+                                electrical.main_breaker_at())
+        # 종전 인입 규격 35 mm² 는 이 전류를 못 받는다 — 그것이 확정의 이유 중 하나다
+        self.assertLess(electrical.LV_CABLE_AMPACITY_A[35], electrical.main_breaker_at())
+        self.assertLess(electrical.lv_cable_mm2(100), size, "전류가 작으면 더 얇아야 한다")
+
+    def test_high_voltage_moves_the_copper_off_the_long_run(self):
+        """고압으로 바꾸는 두 번째 이유 — 240 mm² 를 부지 경계에서 끌지 않는다."""
+        self.assertAlmostEqual(electrical.hv_incoming_current_a(), 7.51, places=2)
+        self.assertLess(electrical.hv_incoming_current_a(),
+                        electrical.demand_current_a() / 40)
+        self.assertIn("CNCV-W", electrical.incoming_cable_spec())
+        self.assertAlmostEqual(wiring.incoming_cable_m(), 6.7, places=1)
+        self.assertLess(wiring.incoming_cable_m(), 10.0,
+                        "수전실을 MDB 옆에 두는 이유가 사라지면 이 값이 커진다")
+
+    def test_power_factor_correction_is_sized(self):
+        """0.90 은 한전 기준선이라 감액이 없다 — 0.95 로 올리는 뱅크를 잡아 둔다."""
+        kvar = electrical.capacitor_kvar()
+        self.assertEqual(kvar, 35)
+        self.assertIn(kvar, electrical.CAPACITOR_STEPS_KVAR)
+        import math
+        need = electrical.demand_kw() * (
+            math.tan(math.acos(electrical.BASE_POWER_FACTOR))
+            - math.tan(math.acos(electrical.TARGET_POWER_FACTOR)))
+        self.assertGreaterEqual(kvar, need)
+        self.assertAlmostEqual(need, 30.9, places=1)
+
+    def test_the_substation_is_a_room_not_a_process_zone(self):
+        """수전실은 구획된 전기실이다 — 장비 밴드에 넣으면 안 된다."""
+        width, depth, height = electrical.substation_room_mm()
+        self.assertEqual((width, depth, height), (4600, 3600, 3000))
+        self.assertEqual(width, sum(w for w, _ in electrical.SUBSTATION_CUBICLES))
+        self.assertEqual(depth, electrical.SUBSTATION_CUBICLE_DEPTH_MM
+                         + electrical.SUBSTATION_FRONT_CLEARANCE_MM
+                         + electrical.SUBSTATION_REAR_CLEARANCE_MM)
+        self.assertNotIn("substation", [z.key for z in layout.build_zones()])
+        self.assertNotIn("grm-sub", layout.STATIONS)
+
+    def test_drawing_carries_the_confirmed_incomer(self):
+        """도면 인입도가 확정값과 어긋나면 화면이 거짓말을 한다."""
+        c = electrical.incomer_summary()
+        for token in (f"highVoltage: {'true' if c['high_voltage'] else 'false'}",
+                      f"hvV: {c['hv_voltage_v']}",
+                      f"contractKw: {c['contract_kw']}",
+                      f"transformerKva: {c['transformer_kva']}",
+                      f"transformerLoadPct: {c['transformer_load_pct']}",
+                      f"capacitorKvar: {c['capacitor_kvar']}",
+                      f"hvCurrentA: {c['hv_current_a']}",
+                      f"vcbA: {c['vcb_a']}",
+                      f"lvMainMm2: {c['lv_main_cable_mm2']}",
+                      f"hvCable: '{c['incoming_cable']}'",
+                      f"lowVoltageLimitKw: {electrical.LOW_VOLTAGE_LIMIT_KW}"):
+            with self.subTest(token=token):
+                self.assertIn(token, self.html)
+        # 종전 저압 인입 문구가 남아 있으면 두 말을 하는 도면이 된다
+        self.assertNotIn("인입 4C×35 mm² Cu", self.html)
+
+    def test_single_line_geometry_is_derived_not_pinned(self):
+        """계통 6단·피더 12행이 프레임을 넘지 않으려면 간격이 파생값이어야 한다."""
+        self.assertNotIn("chainPitch = 40, busTop = 268, feederTop = 312, feederPitch = 52",
+                         self.html, "상수로 박으면 행이 늘 때 조용히 넘친다")
+        self.assertIn("var busTop = chainTop + (SL_CHAIN_ROWS - 1) * chainPitch + 44;", self.html)
+        self.assertIn("Math.min(52, Math.floor((frameBottom - 76 - feederTop)", self.html)
+
+    def test_every_feeder_panel_has_a_position_in_the_drawing(self):
+        """도면의 위치 표에 빠진 반이 있으면 계통 연결도에 NaN 이 그려진다."""
+        block = self.html[self.html.index("  function lpPositions() {"):
+                          self.html.index("  var EL_CHAIN = [")]
+        for feeder in electrical.FEEDERS:
+            with self.subTest(panel=feeder.panel):
+                self.assertIn(f"'{feeder.panel}'", block)
+        # 같은 X 에 두 반을 세우면 라벨이 포개지고 구간 길이가 0 이 된다
+        positions = wiring.lp_positions_mm()
+        self.assertNotEqual(positions["LP-GRM-IRA"], positions["LP-GRM-IRB"])
+
+
 class TestGlassRemovalIntegration(unittest.TestCase):
     """REV.23 — 유리제거(박리) 라인이 링크가 아니라 플랜트의 한 존인지."""
 
