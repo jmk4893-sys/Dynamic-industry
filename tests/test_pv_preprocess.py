@@ -1385,10 +1385,58 @@ class TestViewNavigation(unittest.TestCase):
         self.assertIn("'afrbuffer', '#jb-pan-toggle', 'reset'", self.html,
                       "이동 모드 버튼이 화면 콘솔 행(cameraShortcuts)에 배치되지 않았다")
 
-    def test_keyboard_panning_is_available(self):
-        self.assertIn("ht.keyPanSpeed=", self.html)
-        self.assertIn("ht.listenToKeyEvents&&ht.listenToKeyEvents(Dt.domElement)", self.html)
+    def test_keyboard_walk_replaces_discrete_key_pan(self):
+        """OrbitControls 의 키 팬은 한 번 누를 때마다 한 칸씩 튄다 — 누르고 있는 동안
+        매 프레임 움직이는 보행으로 갈아탔으므로 원래 핸들러는 떼어내야 한다."""
         self.assertIn("Dt.domElement.tabIndex=0", self.html)
+        self.assertNotIn("ht.listenToKeyEvents", self.html,
+                         "OrbitControls 키 팬을 붙여 두면 방향키가 보행과 이중으로 먹는다")
+        self.assertNotIn("ht.keyPanSpeed", self.html, "쓰지 않는 키 팬 속도 설정이 남아 있다")
+        for code, action in (("KeyW", "f"), ("KeyS", "b"), ("KeyA", "l"), ("KeyD", "r"),
+                             ("KeyQ", "d"), ("KeyE", "u"),
+                             ("ArrowUp", "f"), ("ArrowDown", "b"),
+                             ("ArrowLeft", "l"), ("ArrowRight", "r")):
+            with self.subTest(code=code):
+                self.assertIn(f'{code}:"{action}"', self.html)
+
+    def test_view_angle_reaches_overhead_and_underside(self):
+        """0.49π 로 묶여 있어 바로 위에서 내려다보지도, 설비 밑을 올려다보지도 못했다."""
+        low = re.search(r"ht\.minPolarAngle=([\d.]+);", self.html)
+        high = re.search(r"ht\.maxPolarAngle=Math\.PI\*([\d.]+);", self.html)
+        self.assertIsNotNone(low, "최소 극각 설정을 찾지 못했다")
+        self.assertIsNotNone(high, "최대 극각 설정을 찾지 못했다")
+        self.assertLessEqual(float(low.group(1)), 0.05, "바로 위에서 내려다볼 수 없다")
+        self.assertGreaterEqual(float(high.group(1)), 0.9, "설비 밑을 올려다볼 수 없다")
+
+    def test_walk_moves_camera_and_pivot_together(self):
+        """회전축만 옮기면 시점이 끌려간다 — 카메라와 축이 같은 변위를 받아야 걷는 느낌이 난다."""
+        self.assertIn("hi.position.add(pvFlyD),ht.target.add(pvFlyD)", self.html)
+
+    def test_walk_speed_scales_with_view_distance(self):
+        """멀리서는 성큼, 붙어서는 조심스럽게 — 한 속도로 고정하면 둘 중 하나가 못 쓰게 된다."""
+        self.assertIn("return Math.min(16,Math.max(.55,e*.42))*i", self.html)
+        self.assertIn('pvFlyK.has("fast")?3:1', self.html, "Shift 질주가 없다")
+        self.assertIn('pvFlyK.has("slow")?.28:1', self.html, "Alt 미세 이동이 없다")
+
+    def test_walk_and_orbit_share_a_floor(self):
+        """바닥 밑으로 꺼지면 지면을 뚫고 나가 아무것도 안 보인다."""
+        self.assertIn("let n=hi.position.y+pvFlyD.y;n<-1.6&&(pvFlyD.y+=-1.6-n)", self.html,
+                      "보행에 바닥 하한이 없다")
+        self.assertIn('ht.addEventListener("change",()=>{hi.position.y<-1.6&&(hi.position.y=-1.6)})',
+                      self.html, "회전으로 밑을 파고들 때 하한이 없다")
+
+    def test_walk_keys_stay_out_of_text_entry(self):
+        """부품 검색창에 'wasd' 를 치는 동안 화면이 걸어다니면 안 된다."""
+        self.assertIn("function pvFlyTyping(i)", self.html)
+        self.assertIn('t==="INPUT"||t==="TEXTAREA"||t==="SELECT"||!!(e&&e.isContentEditable)',
+                      self.html)
+        self.assertIn("if(!pvFlyHot||i.metaKey||i.ctrlKey||pvFlyTyping(i))return", self.html)
+
+    def test_walk_keys_activate_only_over_the_view(self):
+        """화면 밖에서는 키가 죽어야 페이지 스크롤·버튼 조작과 싸우지 않는다."""
+        self.assertIn('Dt.domElement.addEventListener("pointerenter",()=>pvFlySet(!0))', self.html)
+        self.assertIn('Dt.domElement.addEventListener("pointerleave",()=>pvFlySet(!1))', self.html)
+        self.assertIn('addEventListener("blur",()=>pvFlyK.clear())', self.html)
 
     def test_drag_does_not_select_a_part(self):
         """화면을 끌고 손을 떼면 클릭이 따라 나와 엉뚱한 부품이 선택됐다."""
@@ -1405,6 +1453,8 @@ class TestViewNavigation(unittest.TestCase):
         self.assertIn("pv-v22-move-hint", self.html)
         self.assertIn("Shift+드래그", self.html)
         self.assertIn("두 손가락", self.html)
+        self.assertIn("<b>W A S D</b>", self.html, "보행 키가 화면에 안내되지 않는다")
+        self.assertIn("<b>Q E</b>", self.html, "승강 키가 화면에 안내되지 않는다")
 
 
 
