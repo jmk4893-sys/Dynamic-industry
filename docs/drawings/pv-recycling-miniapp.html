@@ -17352,6 +17352,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetWaterMaterial.opacity = 0.58;
     wetWaterMaterial.depthWrite = false;
     wetWaterMaterial.userData.baseOpacity = 0.58;
+    const wetGuardMaterial = material.safety.clone();
+    wetGuardMaterial.transparent = true;
+    wetGuardMaterial.opacity = 0.28;
+    wetGuardMaterial.depthWrite = false;
+    wetGuardMaterial.userData.baseOpacity = 0.28;
     const wetFrothMaterial = material.particleB.clone();
     wetFrothMaterial.transparent = true;
     wetFrothMaterial.opacity = 0.42;
@@ -17413,6 +17418,58 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return deck;
     }
 
+    // ---- 난간·계단 (FC-003 계단·난간 세트 · SS400 HDG) ---------------------
+    // BOM(FC-003)과 설치사양에 「2층 작업대 난간 H1,100·토보드 100 / 계단 유효폭 800·
+    // 경사 ≤45°」가 있는데 3D 에는 형상이 없어 GL+2.51 m 데크가 사방 열려 있었다.
+    const hdgMaterial = makeMaterial(gratingColor, 0.58, 0.30);   // 용융아연도금 강재
+    const RAIL_TOP_H = 1.10;      // 상부 손잡이 — 설치사양 H1,100
+    const RAIL_MID_H = 0.55;      // 중간대
+    const RAIL_TOE_H = 0.10;      // 토보드 — 설치사양 100
+    const RAIL_BAY_MAX = 1.50;    // 기둥 최대 간격
+
+    // 한 변씩 세운다. 계단 진입구는 그 변을 두 토막으로 불러 비운다.
+    // 실린더 지오메트리는 +Y 축이라 Z로 −90° 눕혀 +X 로 만든 뒤 Y로 −yaw 돌린다.
+    // three 의 XYZ 오일러는 RX·RY·RZ 순서라 [0, −yaw, −π/2] 가 곧 RY(−yaw)·RZ(−π/2) 다.
+    function wetRailing(parent, tag, x0, z0, x1, z1, y) {
+      const dx = x1 - x0, dz = z1 - z0;
+      const span = Math.hypot(dx, dz);
+      if (span < 0.08) return;
+      const yaw = Math.atan2(dz, dx);
+      const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+      const bays = Math.max(1, Math.ceil(span / RAIL_BAY_MAX));
+      for (let i = 0; i <= bays; i += 1) {
+        const t = i / bays;
+        wetBox(parent, [0.05, RAIL_TOP_H, 0.05], [x0 + dx * t, y + RAIL_TOP_H / 2, z0 + dz * t], hdgMaterial, `${tag} 난간기둥`, [0, -yaw, 0]);
+      }
+      wetCylinder(parent, 0.021, span, [mx, y + RAIL_TOP_H, mz], hdgMaterial, `${tag} 상부 손잡이 H1,100`, 14, [0, -yaw, -Math.PI / 2]);
+      wetCylinder(parent, 0.017, span, [mx, y + RAIL_MID_H, mz], hdgMaterial, `${tag} 중간대`, 12, [0, -yaw, -Math.PI / 2]);
+      wetBox(parent, [span, RAIL_TOE_H, 0.03], [mx, y + 0.01 + RAIL_TOE_H / 2, mz], hdgMaterial, `${tag} 토보드 100`, [0, -yaw, 0]);
+    }
+
+    // 직선 계단 한 짝. 단높이를 단수에서 나눠 얻으므로 단이 반드시 일정하고,
+    // 주로 길이를 going × 단수로 잡아 경사가 정확히 atan(rise/going) 이 된다.
+    function wetAccessStair(parent, tag, x0, z, topY, width = 0.80, going = 0.24) {
+      const risers = Math.max(2, Math.round(topY / 0.20));
+      const rise = topY / risers;
+      const run = going * risers;
+      const slope = Math.atan2(rise, going);
+      const tread = gratingMaterial(going + 0.04, width);
+      for (let step = 1; step < risers; step += 1) {
+        wetBox(parent, [going + 0.04, 0.04, width], [x0 + (step - 0.5) * going, step * rise - 0.02, z], tread, `${tag} 발판 ${step}/${risers - 1}`);
+      }
+      const diag = Math.hypot(run, topY);
+      for (const side of [-1, 1]) {
+        const sz = z + side * (width / 2 - 0.02);
+        wetBox(parent, [diag, 0.26, 0.03], [x0 + run / 2, topY / 2 - 0.05, sz], hdgMaterial, `${tag} 스트링거`, [0, 0, slope]);
+        wetBox(parent, [diag, 0.04, 0.04], [x0 + run / 2, topY / 2 + 0.90, sz], hdgMaterial, `${tag} 계단 손잡이 H900`, [0, 0, slope]);
+        wetBox(parent, [diag, 0.03, 0.03], [x0 + run / 2, topY / 2 + 0.45, sz], hdgMaterial, `${tag} 계단 중간대`, [0, 0, slope]);
+        for (const t of [0.14, 0.40, 0.66, 0.92]) {
+          wetBox(parent, [0.04, 0.90, 0.04], [x0 + run * t, topY * t + 0.45, sz], hdgMaterial, `${tag} 계단 난간기둥`);
+        }
+      }
+      return { risers, rise, run, slopeDeg: slope * 180 / Math.PI };
+    }
+
     function wetMesh(parent, geometry, sourceMaterial, position, name, rotation = null) {
       const mesh = new THREE.Mesh(geometry, sourceMaterial);
       mesh.position.set(position[0], position[1], position[2]);
@@ -17459,6 +17516,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       const motorPulley = wetCylinder(parent, 0.085, 0.075, [motorX, y, z], wetPulleyMaterial, `${tag} 모터 풀리`, 30);
       wetBox(parent, [Math.abs(motorX - shaftX), 0.025, 0.030], [(motorX + shaftX) / 2, y + 0.13, z - 0.05], wetBeltMaterial, `${tag} V벨트 상부`);
       wetBox(parent, [Math.abs(motorX - shaftX), 0.025, 0.030], [(motorX + shaftX) / 2, y - 0.13, z + 0.05], wetBeltMaterial, `${tag} V벨트 하부`);
+      // 회전 구동부가 노출돼 있었다. 건식 P10「벨트 메쉬 안전커버」와 같은 성격의
+      // 커버를 씌우되, 점검이 되도록 반투명 메쉬로 둔다.
+      wetBox(parent, [Math.abs(motorX - shaftX) + 0.42, 0.42, 0.20], [(motorX + shaftX) / 2, y, z], wetGuardMaterial, `${tag} V벨트 메쉬 안전커버`);
       wetRotors.push({ activation, rpm, parts: [motor, motorFan, drivenPulley, motorPulley], axis: "y" });
     }
     function wetTank(tag, x, z, radius, height, activation, options = {}) {
@@ -17466,7 +17526,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       group.name = tag;
       unifiedWet.add(group);
       const segments = options.octagonal ? 8 : 36;
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) wetBox(group, [0.075, 0.46, 0.075], [x + sx * radius * 0.68, 0.25, z + sz * radius * 0.68], material.frame, `${tag} 지지다리`);
+      // 지지다리가 각기둥만 서 있어 바닥에 얹힌 것처럼 보였다. 기초 베이스플레이트와
+      // 앵커볼트까지 붙여야 하중이 어디로 가는지 읽힌다(건식 SH-002 와 같은 처리).
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        const lx = x + sx * radius * 0.68, lz = z + sz * radius * 0.68;
+        wetBox(group, [0.075, 0.46, 0.075], [lx, 0.25, lz], material.frame, `${tag} 지지다리`);
+        wetBox(group, [0.17, 0.022, 0.17], [lx, 0.031, lz], material.frame, `${tag} 기초 베이스플레이트`);
+        for (const ax of [-1, 1]) wetCylinder(group, 0.007, 0.06, [lx + ax * 0.058, 0.062, lz + ax * 0.058], material.silverClamp, `${tag} 기초 앵커볼트`, 10);
+      }
       wetCylinder(group, radius, height, [x, 0.50 + height / 2, z], wetBodyMaterial, `${tag} 습식 공정조 동체`, segments, null, true);
       wetCylinder(group, radius * 0.88, height * 0.70, [x, 0.52 + height * 0.35, z], options.liquid || wetWaterMaterial, `${tag} 운전 액위`, segments);
       const rotor = new THREE.Group();
@@ -17486,9 +17553,24 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       const label = wetLabel(`${tag} · ${options.label || "교반조"}`, [x, 1.12 + height, z]);
       return { group, label, x, z, radius, height };
     }
-    function flotationCell(tag, x, z, radius, height, activation, airRate, impellerRpm) {
+    function flotationCell(tag, x, z, radius, height, activation, airRate, impellerRpm, launder) {
       const cell = wetTank(tag, x, z, radius, height, activation, { liquid: wetWaterMaterial, impellerRpm, label: `${airRate.toFixed(3)} Nm³/min` });
       wetCylinder(cell.group, radius * 0.90, 0.12, [x, 0.54 + height * 0.91, z], wetFrothMaterial, `${tag} 포말층`, 36);
+      // 거품이 위어를 넘어 라우더로 흘러 정광으로 빠지는 것이 부선 셀을 교반조와
+      // 구분짓는 부분인데, BOM(FC-011/021/031)에만 있고 형상이 없었다.
+      // 실린더는 θ=0 이 +Z, 링은 [π/2,0,0] 회전 뒤 φ=0 이 +X 라 φ = π/2 − θ 로 맞춘다.
+      if (launder) {
+        const rim = 0.50 + height, inner = radius + 0.01, outer = radius + 0.15;
+        const { arc, from, outlet, code, spec } = launder;
+        wetMesh(cell.group, new THREE.CylinderGeometry(inner, inner, 0.14, 40, 1, true, from, arc),
+          material.cover, [x, rim - 0.03, z], `${tag} 레벨조정 위어 립`);
+        wetMesh(cell.group, new THREE.RingGeometry(inner, outer, 40, 1, Math.PI / 2 - from - arc, arc),
+          material.cover, [x, rim - 0.13, z], `${tag} ${code} 라우더 바닥 · ${spec}`, [Math.PI / 2, 0, 0]);
+        wetMesh(cell.group, new THREE.CylinderGeometry(outer, outer, 0.30, 40, 1, true, from, arc),
+          material.cover, [x, rim + 0.02, z], `${tag} 라우더 외벽`);
+        wetCylinder(cell.group, 0.05, 0.18, [x + Math.sin(outlet) * (outer + 0.06), rim - 0.17, z + Math.cos(outlet) * (outer + 0.06)],
+          material.pipeConcentrate, `${tag} 정광 토출노즐`, 18, [Math.PI / 2, 0, 0]);
+      }
       for (let index = 0; index < 20; index += 1) {
         const bubble = wetMesh(cell.group, new THREE.SphereGeometry(0.026 + (index % 4) * 0.004, 9, 7), wetFrothMaterial.clone(), [x, 0.62, z], `${tag} 부선기포 ${index + 1}`);
         bubble.userData.cellX = x;
@@ -17732,14 +17814,38 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // Two-level flotation deck: FC-202 is cleaner and FC-203 is scavenger.
     wetBox(unifiedWet, [5.10, 0.14, 3.45], [14.46, 2.44, 0.18], gratingMaterial(5.10, 3.45), "ST-201 2층 부유선별 그레이팅");
     for (const x of [12.18, 16.72]) for (const z of [-1.20, 1.50]) wetBox(unifiedWet, [0.10, 2.48, 0.10], [x, 1.20, z], material.frame, "ST-201 2층 지지기둥");
-    for (let step = 0; step < 8; step += 1) wetBox(unifiedWet, [0.62, 0.06, 0.26], [16.98 + step * 0.12, 0.18 + step * 0.28, 1.08], material.frame, "ST-201 접근계단");
-    const fc201 = flotationCell("FC-201", 13.38, 0.08, 0.58, 1.34, 420, 0.060, DRIVE_RPM.flotationRougher);
+    // ---- ST-201 2층 접근계단·난간 (FC-003) --------------------------------
+    // 종전 계단은 발판이 x로 0.12씩만 전진하면서 길이가 0.62라 서로 겹쳤고, 경사 66.8°로
+    // 사양(≤45°)을 넘었으며, 최상단 y=2.14 가 데크 상면 2.51 에 0.37 m 못 미친 데다
+    // 데크(x≤17.01) 바깥으로 올라가 도착점이 허공이었다. 전부 다시 세운다.
+    // 지상 점유를 재보면 데크 북쪽 z≈2.6 통로가 3 m 직선주로가 서는 유일한 빈 자리다.
+    // MH-401 호이스트 지주(x 12.84)를 피해 x 13.00 에서 시작하고, +x 로 올라가 상단이
+    // 모노레일(x≤12.90, y 3.28) 밑으로 들어가지 않게 한다.
+    const DECK_TOP_Y = 2.51;                     // 데크 상면 = 2.44 + 0.14/2
+    const DECK_X0 = 11.91, DECK_X1 = 17.01;      // 5.10 폭
+    const DECK_Z0 = -1.545, DECK_Z1 = 1.905;     // 3.45 깊이
+    const STAIR_X0 = 13.00, STAIR_Z = 2.60;
+    const stair = wetAccessStair(unifiedWet, "ST-201 접근계단", STAIR_X0, STAIR_Z, DECK_TOP_Y);
+    // 계단 상단 → 데크를 잇는 랜딩. 동쪽 끝을 데크 모서리(x 17.01)에 맞춰 난간이 이어진다.
+    const LAND_X0 = STAIR_X0 + stair.run, LAND_X1 = DECK_X1, LAND_Z1 = 3.00;
+    wetBox(unifiedWet, [LAND_X1 - LAND_X0, 0.14, LAND_Z1 - 1.85], [(LAND_X0 + LAND_X1) / 2, 2.44, (1.85 + LAND_Z1) / 2],
+      gratingMaterial(LAND_X1 - LAND_X0, LAND_Z1 - 1.85), "ST-201 계단 랜딩");
+    for (const lz of [2.10, 2.88]) wetBox(unifiedWet, [0.10, 2.44, 0.10], [16.30, 1.22, lz], material.frame, "ST-201 랜딩 지지기둥");
+    // 데크 둘레 난간 — 랜딩이 붙는 북동쪽(x 16.12…17.01)만 비운다.
+    wetRailing(unifiedWet, "ST-201 남측", DECK_X0, DECK_Z0, DECK_X1, DECK_Z0, DECK_TOP_Y);
+    wetRailing(unifiedWet, "ST-201 동측", DECK_X1, DECK_Z0, DECK_X1, DECK_Z1, DECK_TOP_Y);
+    wetRailing(unifiedWet, "ST-201 북측", DECK_X0, DECK_Z1, LAND_X0, DECK_Z1, DECK_TOP_Y);
+    wetRailing(unifiedWet, "ST-201 서측", DECK_X0, DECK_Z1, DECK_X0, DECK_Z0, DECK_TOP_Y);
+    // 랜딩 난간 — 계단이 들어오는 서쪽과 데크로 나가는 남쪽은 열어 둔다.
+    wetRailing(unifiedWet, "ST-201 랜딩 동측", LAND_X1, DECK_Z1, LAND_X1, LAND_Z1, DECK_TOP_Y);
+    wetRailing(unifiedWet, "ST-201 랜딩 북측", LAND_X0, LAND_Z1, LAND_X1, LAND_Z1, DECK_TOP_Y);
+    const fc201 = flotationCell("FC-201", 13.38, 0.08, 0.58, 1.34, 420, 0.060, DRIVE_RPM.flotationRougher, { arc: Math.PI * 2, from: 0, outlet: 0.681, code: "FC-011", spec: "360° peripheral" });
     fc201.group.position.y = 2.44;
     fc201.label.position.y += 2.44;
-    const fc202 = flotationCell("FC-202", 14.24, 1.14, 0.40, 1.00, 360, 0.020, DRIVE_RPM.flotationCleanerScav);
+    const fc202 = flotationCell("FC-202", 14.24, 1.14, 0.40, 1.00, 360, 0.020, DRIVE_RPM.flotationCleanerScav, { arc: Math.PI / 2, from: Math.PI / 4, outlet: Math.PI / 2, code: "FC-021", spec: "single lip" });
     fc202.group.position.y = 2.44;
     fc202.label.position.y += 2.44;
-    const fc203 = flotationCell("FC-203", 15.10, 0.08, 0.58, 1.34, 360, 0.075, DRIVE_RPM.flotationCleanerScav);
+    const fc203 = flotationCell("FC-203", 15.10, 0.08, 0.58, 1.34, 360, 0.075, DRIVE_RPM.flotationCleanerScav, { arc: Math.PI, from: -Math.PI, outlet: -Math.PI / 2, code: "FC-031", spec: "180° launder" });
     fc203.group.position.y = 2.44;
     fc203.label.position.y += 2.44;
     wetTube(unifiedWet, [pp201.discharge, [12.96, 0.68, -0.28], [12.96, 3.58, 0.08]], 0.070, wetFeedMaterial, "PP-201A/B → FC-201 러퍼 급광", 1920, 8);
