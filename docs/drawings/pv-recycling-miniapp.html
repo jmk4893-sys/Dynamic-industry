@@ -17357,6 +17357,62 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetFrothMaterial.opacity = 0.42;
     wetFrothMaterial.depthWrite = false;
 
+    // ---- 밝은 회색 강재 그레이팅 데크 ------------------------------------
+    // 데크가 material.frame(= --muted, dark 테마에서 rgb 47,47,47 · metalness 0.76)
+    // 이라 환경맵이 없는 이 씬에서는 거의 검은 판으로 렌더된다. 위에서
+    // 내려다본 평면에서 16 m 짜리 검정 사각형이 그 위 장비를 눌러 배치가
+    // 읽히지 않았다. 아연도 그레이팅 톤(밝은 회색)으로 올리고 metalness 를
+    // 낮춰 반사 대신 확산광이 지배하게 한다. 베어바 30 mm · 크로스바 100 mm
+    // 격자는 캔버스 맵으로 그려, 가까이서는 그레이팅으로 멀리서는 밉맵
+    // 평균인 균일한 밝은 회색으로 읽혀 평면 가독성을 둘 다 만족시킨다.
+    const GRATING_TILE_M = 0.30;        // 캔버스 한 장이 덮는 실제 치수
+    const GRATING_BEARING_MM = 30;      // 베어바 피치
+    const GRATING_CROSS_MM = 100;       // 크로스바 피치
+    const GRATING_BAR_MM = 5;           // 바 두께
+    const GRATING_OPEN_LEVEL = 0.62;    // 개구부 밝기(바 대비) — 아래로 그늘진다
+    // 3D 뷰포트는 VIEWPORT_SCHEME 으로 두 테마 모두 dark 토큰에 고정돼 있으므로,
+    // 색은 스튜디오 배경(L≈114) 하나만 상대로 잡으면 된다. --plant-neutral-metal
+    // 단독은 L≈190 까지 올라가 프레임에서 제일 밝은 면이 돼 버리고, --muted-foreground
+    // 단독(L≈139)은 배경과 덜 떨어진다. 둘을 섞어 L≈160 — 배경보다 확실히 밝고
+    // 중간톤 장비가 그 위에서 읽히는 아연도 회색에 앉힌다.
+    const gratingColor = mixColor(color.neutralMetal, color.steel, 0.45);
+    const gratingSource = (() => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 256;
+      canvas.height = 256;
+      const paint = canvas.getContext("2d");
+      const tileMm = GRATING_TILE_M * 1000;
+      const bar = Math.max(2, Math.round(GRATING_BAR_MM * canvas.width / tileMm));
+      const open = Math.round(255 * GRATING_OPEN_LEVEL);
+      paint.fillStyle = `rgb(${open}, ${open}, ${open})`;
+      paint.fillRect(0, 0, canvas.width, canvas.height);
+      paint.fillStyle = "#ffffff";      // 바 상면 — material.color 가 착색한다
+      const bearing = tileMm / GRATING_BEARING_MM;
+      const cross = tileMm / GRATING_CROSS_MM;
+      for (let i = 0; i < bearing; i += 1) paint.fillRect(Math.round(i * canvas.width / bearing), 0, bar, canvas.height);
+      for (let i = 0; i < cross; i += 1) paint.fillRect(0, Math.round(i * canvas.height / cross), canvas.width, bar);
+      return canvas;
+    })();
+
+    // 데크마다 실제 치수가 다르므로 반복 횟수를 따로 잡아야 바 피치가 일정하다.
+    function gratingMaterial(widthM, depthM) {
+      const texture = new THREE.CanvasTexture(gratingSource);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(widthM / GRATING_TILE_M, depthM / GRATING_TILE_M);
+      texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      const deck = new THREE.MeshStandardMaterial({
+        color: gratingColor,
+        map: texture,
+        roughness: 0.62,
+        metalness: 0.22,
+        side: THREE.DoubleSide
+      });
+      deck.userData.baseOpacity = 1;
+      return deck;
+    }
+
     function wetMesh(parent, geometry, sourceMaterial, position, name, rotation = null) {
       const mesh = new THREE.Mesh(geometry, sourceMaterial);
       mesh.position.set(position[0], position[1], position[2]);
@@ -17532,7 +17588,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // Expanded non-safety process foundation: dry return, wet transfer,
     // reagent/air utilities, flotation, dewatering and process-water recovery.
-    wetBox(unifiedWet, [16.15, 0.08, 6.45], [13.88, -0.04, -0.18], material.frame, "통합 습식·유틸리티 공정 기초");
+    wetBox(unifiedWet, [16.15, 0.08, 6.45], [13.88, -0.04, -0.18], gratingMaterial(16.15, 6.45), "통합 습식·유틸리티 공정 그레이팅 데크");
 
     // 두 진공 지관은 VP-401 스키드(z = -2.46) 위 전용 랙 티어로 올려 직교로 내린다.
     const VAC_RACK_Y = 3.16;
@@ -17674,7 +17730,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     });
 
     // Two-level flotation deck: FC-202 is cleaner and FC-203 is scavenger.
-    wetBox(unifiedWet, [5.10, 0.14, 3.45], [14.46, 2.44, 0.18], material.frame, "ST-201 2층 부유선별 그레이팅");
+    wetBox(unifiedWet, [5.10, 0.14, 3.45], [14.46, 2.44, 0.18], gratingMaterial(5.10, 3.45), "ST-201 2층 부유선별 그레이팅");
     for (const x of [12.18, 16.72]) for (const z of [-1.20, 1.50]) wetBox(unifiedWet, [0.10, 2.48, 0.10], [x, 1.20, z], material.frame, "ST-201 2층 지지기둥");
     for (let step = 0; step < 8; step += 1) wetBox(unifiedWet, [0.62, 0.06, 0.26], [16.98 + step * 0.12, 0.18 + step * 0.28, 1.08], material.frame, "ST-201 접근계단");
     const fc201 = flotationCell("FC-201", 13.38, 0.08, 0.58, 1.34, 420, 0.060, DRIVE_RPM.flotationRougher);
