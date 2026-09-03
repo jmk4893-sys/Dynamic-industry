@@ -1207,7 +1207,10 @@
     );
     details.interlock.verify.push(
       '500kVA·800AF/630~800AT·케이블 2회선 예비값은 단락전류·전압강하·포설보정 후 확정',
-      '전기 도면 E-001/E-101과 PLC 도면 C-001/C-101의 단자번호·케이블번호를 제작 BOM과 교차검증'
+      '전기 도면 E-001/E-101과 PLC 도면 C-001/C-101의 단자번호·케이블번호를 제작 BOM과 교차검증',
+      '명판 전부하전류는 E-001 부하표 분기전류의 산술합이며, 각 분기의 역률 가정과 동시운전 조건을 실부하 측정으로 확인',
+      '명판 SCCR는 변압기 임피던스 실측값과 상위 계통 임피던스를 반영한 단락계산으로 확정하고, 선정 차단기 Icu가 그 값 이상인지 대조',
+      '질량은 제작 후 계량하여 명판·운송서류·인양계획에 같은 값을 기재'
     );
     details.equipment.hardware.push(
       'TDM-201 HKB/HKS 독립 Z축 서보슬라이드·프리로드 LM가이드·기계식 하드스톱',
@@ -1282,6 +1285,31 @@
       {id:'M-012',name:'유틸리티·화재안전',size:'9000×2500×4600',material:'SS400/SUS304',parts:['진공펌프 A/B','진공어큐뮬레이터','계장공기 FRL','냉각수 매니폴드','연기센서','CO센서','불꽃센서','독립 과온릴레이','소화배관','노즐×6','E-STOP×4','안전 PLC']},
       {id:'M-013',name:'가드·발판·정비설비',size:'25000×7000×3000',material:'SS400/메시패널',parts:['안전펜스','인터록 도어×4','상부 정비발판','고정사다리','가드레일','칼날 카세트랙','세척대','LOTO 스테이션','용융물 트레이','조명','케이블트레이','바닥 앵커']}
     ];
+
+    /* 전기부하표. 명판의 전부하전류와 E-001 도면의 분기함이 모두 이 표에서
+       나온다. 명판은 법정 표시라 손으로 적은 값이 도면과 갈라지면 안 된다.
+       역률은 부하 성격에 따른 가정값이다: IR 램프와 카트리지히터는 SSR 저항부하,
+       서보/VFD 는 DC 링크, 진공·배기·슈레더는 유도전동기. */
+    const LINE_V=380;
+    const LOAD_SCHEDULE=[
+      {id:'IR-DB1',load:'IR 램프 60×2.5kW',   kW:150,pf:1.00,mccb:'4P 250A'},
+      {id:'HK-DB2',load:'HKB/HKS 카트리지히터',kW:30, pf:1.00,mccb:'4P 100A'},
+      {id:'MCC-1', load:'서보·VFD',           kW:45, pf:0.95,mccb:'4P 125A'},
+      {id:'AUX-DB',load:'VOC·진공·냉각',      kW:18, pf:0.85,mccb:'4P 63A'},
+      {id:'SH-101',load:'슈레더 계통',        kW:75, pf:0.87,mccb:'4P 160A'}
+    ];
+    const branchAmp=k=>k.kW*1000/(Math.sqrt(3)*LINE_V*k.pf);
+    const CONNECTED_KW=LOAD_SCHEDULE.reduce((a,k)=>a+k.kW,0);
+    /* 전부하전류는 분기전류의 산술합이다. 총 kW 를 혼합역률로 나누는 방식은
+       부하마다 역률이 다르면 틀린다. */
+    const FLA=LOAD_SCHEDULE.reduce((a,k)=>a+branchAmp(k),0);
+    const DEMAND_KW=270;                 // 수용률 반영 예상 최대수요
+    const TR_KVA=500,TR_Z=[0.05,0.06];   // 변압기 용량과 임피던스 범위
+    /* 예상 단락전류: 무한모선 가정의 2차측 대칭 단락전류. 상위 임피던스를
+       무시하므로 보수적으로 크게 나온다. */
+    const ISC_KA=TR_Z.map(z=>TR_KVA*1000/(Math.sqrt(3)*LINE_V)/z/1000).reverse();
+    const SCCR_KA=25;                    // ISC 상한에 여유를 둔 기기 정격
+    const DWG_NO='E-001';
 
     let laneShift=0,laneCode='S',partOffset={x:0,y:0,z:0};
     const V=(x=0,y=0,z=0)=>({x,y,z});
@@ -1853,9 +1881,11 @@
         decalText('DYNAMIC INDUSTRY',Q(w*.26,h*.730),u,v,h*.082,C.white,.30);
         decalText('DG-HK60',Q(w*.055,h*.450),u,v,h*.104,C.white,.20);
         decalText('SN 2026-001',Q(w*.50,h*.472),u,v,h*.060,C.rail,.22);
-        decalText('380V 3PH4W 60HZ',Q(w*.055,h*.275),u,v,h*.058,C.rail,.26);
-        decalText('482A 50KA IP54',Q(w*.055,h*.165),u,v,h*.058,C.rail,.26);
-        decalText('42T MFG 2026-03',Q(w*.055,h*.055),u,v,h*.058,C.rail,.26);
+        /* 값은 전부 부하표·변압기 제원에서 계산한다. 질량은 근거가 없어 빼고,
+           그 자리에 IEC 60204-1 16.4 가 함께 요구하는 도면번호를 넣었다. */
+        decalText(`${LINE_V}V 3PH4W 60HZ`,Q(w*.055,h*.275),u,v,h*.058,C.rail,.26);
+        decalText(`FLA ${Math.round(FLA)}A SCCR ${SCCR_KA}KA`,Q(w*.055,h*.165),u,v,h*.058,C.rail,.26);
+        decalText(`IP54 DWG ${DWG_NO}`,Q(w*.055,h*.055),u,v,h*.058,C.rail,.26);
         decalText('KC CE',Q(w*.700,h*.150),u,v,h*.090,C.white,.30);
         decalText('KOREA',Q(w*.700,h*.055),u,v,h*.050,C.rail,.26);
       });
@@ -2819,16 +2849,19 @@
     const svgDefs=`<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#0b6268"/></marker><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="#dce1df" stroke-width="1"/></pattern></defs>`;
     const titleBlock=(code,title,subtitle)=>`<g font-family="Arial,'Noto Sans KR',sans-serif"><rect x="20" y="20" width="1160" height="610" rx="8" fill="#fafaf8" stroke="#7c898b" stroke-width="2"/><rect x="20" y="20" width="1160" height="610" rx="8" fill="url(#grid)"/><text x="45" y="58" font-size="24" font-weight="700" fill="#25353a">${esc(title)}</text><text x="45" y="82" font-size="13" fill="#647278">${esc(subtitle)}</text><rect x="870" y="548" width="310" height="82" fill="#f2f4f1" stroke="#7c898b"/><g transform="translate(880,554) scale(0.22)"><polygon points='34.2,0 69.9,0 76.7,5.5 99,44.2 98.4,53.6 70.5,53.6' fill='#fdca4a'/><polygon points='19.5,83.1 33.1,59.5 95,59.5 80.4,84.9 74.1,88.9 25.9,88.9' fill='#268cca'/><polygon points='0,47.2 1.4,43.5 8.8,30.8 25.6,59.8 15.8,77.7 14.3,75.9 0.9,52.4' fill='#268cca'/><polygon points='12.5,24.3 18.8,13.5 35.4,41.3 35.9,42.8 29.3,54.3 12.8,25.9' fill='#268cca'/><polygon points='25.3,11.8 38.6,11.8 45.7,23.9 45.9,25.6 39.8,36.1 26.6,14.3' fill='#268cca'/></g><text x="908" y="572" font-size="13" font-weight="700" fill="#25353a">DYNAMIC INDUSTRY · ${esc(code)}</text><text x="910" y="594" font-size="11" fill="#647278">DG-HK60 · REV.20 · CONCEPT / FAT BASIS</text><text x="910" y="614" font-size="11" fill="#647278">SCALE NTS · 2026-09-03</text></g>`;
     function powerDrawing(){
-      const branch=(x,label,amp,load)=>`<path d="M${x} 224V330" stroke="#c84c28" stroke-width="5"/><rect x="${x-63}" y="330" width="126" height="76" rx="7" fill="#fff7eb" stroke="#c47a17" stroke-width="2"/><text x="${x}" y="356" text-anchor="middle" font-size="13" font-weight="700" fill="#69420a">${label}</text><text x="${x}" y="378" text-anchor="middle" font-size="12" fill="#69420a">${amp}</text><text x="${x}" y="397" text-anchor="middle" font-size="11" fill="#745a35">${load}</text>`;
-      return `<div class="drawing-kpi"><div><span>연결부하</span><strong>약 318 kW</strong></div><div><span>예상 최대수요</span><strong>약 270 kW</strong></div><div><span>수전·변압기</span><strong>500 kVA</strong></div><div><span>주차단기</span><strong>4P 800AF</strong></div></div><div class="wire-legend"><span style="--wire:#c84c28">3Φ4W 380/220V</span><span style="--wire:#278555">PE 접지</span><span style="--wire:#19788a">계측·통신</span></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="DG-HK60 전력 인입 및 단선 결선도">${svgDefs}${titleBlock('E-001','전력 인입·단선 결선도','3Φ4W AC 380/220V 60Hz · TR-1 500kVA · 주모선 1000A')}
+      /* 분기함은 부하표에서 그린다. 도면의 차단기와 명판의 전류가 같은 근거를 쓴다. */
+      const branch=(x,k)=>`<path d="M${x} 224V330" stroke="#c84c28" stroke-width="5"/><rect x="${x-63}" y="330" width="126" height="76" rx="7" fill="#fff7eb" stroke="#c47a17" stroke-width="2"/><text x="${x}" y="354" text-anchor="middle" font-size="13" font-weight="700" fill="#69420a">${esc(k.id)}</text><text x="${x}" y="375" text-anchor="middle" font-size="12" fill="#69420a">MCCB ${esc(k.mccb)}</text><text x="${x}" y="394" text-anchor="middle" font-size="11" fill="#745a35">${k.kW}kW · ${branchAmp(k).toFixed(0)}A</text>`;
+      const schedRows=LOAD_SCHEDULE.map(k=>`<tr><td>${esc(k.id)}</td><td>${esc(k.load)}</td><td>${k.kW}</td><td>${k.pf.toFixed(2)}</td><td>${branchAmp(k).toFixed(1)}</td><td>${esc(k.mccb)}</td></tr>`).join('')
+        +`<tr><th>합계</th><th>연결부하</th><th>${CONNECTED_KW}</th><th>${(CONNECTED_KW*1000/(Math.sqrt(3)*LINE_V*FLA)).toFixed(3)}</th><th>${FLA.toFixed(1)}</th><th>명판 FLA ${Math.round(FLA)}A</th></tr>`;
+      return `<div class="drawing-kpi"><div><span>연결부하</span><strong>${CONNECTED_KW} kW</strong></div><div><span>전부하전류 · 명판</span><strong>${Math.round(FLA)} A</strong></div><div><span>수전·변압기</span><strong>${TR_KVA} kVA</strong></div><div><span>주차단기</span><strong>4P 800AF</strong></div></div><div class="wire-legend"><span style="--wire:#c84c28">3Φ4W 380/220V</span><span style="--wire:#278555">PE 접지</span><span style="--wire:#19788a">계측·통신</span></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="DG-HK60 전력 인입 및 단선 결선도">${svgDefs}${titleBlock('E-001','전력 인입·단선 결선도','3Φ4W AC 380/220V 60Hz · TR-1 500kVA · 주모선 1000A')}
       <g font-family="Arial,'Noto Sans KR',sans-serif"><rect x="45" y="125" width="130" height="86" rx="7" fill="#edf7fa" stroke="#19788a" stroke-width="2"/><text x="110" y="151" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">공장 MSB</text><text x="110" y="174" text-anchor="middle" font-size="12" fill="#476871">22.9kV 또는</text><text x="110" y="193" text-anchor="middle" font-size="12" fill="#476871">기존 380V BUS</text>
       <path d="M175 168H225" stroke="#c84c28" stroke-width="6" marker-end="url(#arr)"/><rect x="225" y="120" width="145" height="96" rx="7" fill="#edf7fa" stroke="#19788a" stroke-width="2"/><text x="298" y="148" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">TR-1</text><text x="298" y="171" text-anchor="middle" font-size="12" fill="#476871">500kVA</text><text x="298" y="193" text-anchor="middle" font-size="12" fill="#476871">22.9/0.38kV</text>
       <path d="M370 168H420" stroke="#c84c28" stroke-width="6" marker-end="url(#arr)"/><rect x="420" y="112" width="150" height="112" rx="7" fill="#fff3e5" stroke="#c84c28" stroke-width="2"/><text x="495" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="#733317">Q0 · ACB</text><text x="495" y="163" text-anchor="middle" font-size="12" fill="#733317">4P 800AF</text><text x="495" y="184" text-anchor="middle" font-size="11" fill="#733317">LSIG + UVT + SHUNT</text><text x="495" y="204" text-anchor="middle" font-size="11" fill="#733317">CT · PQM · SPD T1+T2</text>
       <path d="M570 168H1125" stroke="#c84c28" stroke-width="9"/><text x="820" y="147" text-anchor="middle" font-size="12" font-weight="700" fill="#733317">MDP-1 · 1000A Cu BUS · Icw는 단락계산 후 확정</text>
-      ${branch(635,'IR-DB1','MCCB 4P 250A','60×2.5kW')}${branch(745,'HK-DB2','MCCB 4P 100A','HKB/HKS 30kW')}${branch(855,'MCC-1','MCCB 4P 125A','Servo/VFD 45kW')}${branch(965,'AUX-DB','MCCB 4P 63A','VOC/VAC/COOL')}${branch(1075,'SH-101','MCCB 4P 160A','Downstream 75kW')}
+      ${LOAD_SCHEDULE.map((k,i)=>branch(635+i*110,k)).join('')}
       <path d="M590 224V454H1125" fill="none" stroke="#278555" stroke-width="4"/><text x="600" y="478" font-size="12" fill="#206b46">PE BAR 50×6t Cu → 각 반·프레임·덕트·캐리지 등전위 본딩</text>
       <rect x="60" y="455" width="490" height="70" rx="6" fill="#eef8f1" stroke="#278555"/><text x="78" y="480" font-size="12" font-weight="700" fill="#206b46">예비 인입 케이블</text><text x="78" y="502" font-size="12" fill="#315d48">2회선 × Cu 4C 240mm² + 각 회선 PE 120mm²</text><text x="78" y="520" font-size="11" fill="#52717a">허용전류·포설·주위온도·전압강하·단락내량으로 재산정</text>
-      <rect x="585" y="455" width="535" height="70" rx="6" fill="#edf7fa" stroke="#19788a"/><text x="603" y="480" font-size="12" font-weight="700" fill="#153e49">필수 계전·계측</text><text x="603" y="502" font-size="11" fill="#476871">OCR/GFR · 결상/역상 · SPD 상태 · ACB TRIP · PQM Modbus TCP</text><text x="603" y="520" font-size="11" fill="#476871">IR 독립 과온 → 주접촉기 강제차단 / PLC 명령과 독립</text></g></svg></div><p class="drawing-note">예비 설계 기준입니다. 실제 인입은 현장 수전전압, 예상 단락전류, 변압기 임피던스, 고조파와 케이블 포설조건을 반영한 전기기술자 검토 후 확정해야 합니다.</p>`;
+      <rect x="585" y="455" width="535" height="70" rx="6" fill="#edf7fa" stroke="#19788a"/><text x="603" y="480" font-size="12" font-weight="700" fill="#153e49">필수 계전·계측</text><text x="603" y="502" font-size="11" fill="#476871">OCR/GFR · 결상/역상 · SPD 상태 · ACB TRIP · PQM Modbus TCP</text><text x="603" y="520" font-size="11" fill="#476871">IR 독립 과온 → 주접촉기 강제차단 / PLC 명령과 독립</text></g></svg></div><table class="bom-table"><thead><tr><th>분기</th><th>부하</th><th>kW</th><th>역률</th><th>전류 A</th><th>차단기</th></tr></thead><tbody>${schedRows}</tbody></table><p class="drawing-note">명판 전부하전류 ${Math.round(FLA)}A 는 위 표 분기전류의 산술합입니다. 총 kW 를 하나의 혼합역률로 나누는 방식은 부하마다 역률이 다르면 틀리므로 쓰지 않았습니다. 예상 최대수요 ${DEMAND_KW}kW 는 수용률을 반영한 별도 값이며 명판에 쓰지 않습니다. 명판 SCCR ${SCCR_KA}kA 는 ${TR_KVA}kVA·임피던스 ${(TR_Z[0]*100).toFixed(0)}~${(TR_Z[1]*100).toFixed(0)}% 기준 예상 단락전류 ${ISC_KA[0].toFixed(1)}~${ISC_KA[1].toFixed(1)}kA 에 여유를 둔 기기 정격 선정값입니다. 역률은 부하 성격에 따른 가정값이며, 실제 인입은 현장 수전전압, 실측 변압기 임피던스, 상위 계통 임피던스, 고조파와 케이블 포설조건을 반영한 전기기술자 검토 후 확정해야 합니다.</p>`;
     }
     function plcDrawing(){
       return `<div class="drawing-kpi"><div><span>표준 I/O</span><strong>DI 96 · DO 64</strong></div><div><span>아날로그</span><strong>AI 32 · AO 8</strong></div><div><span>온도 입력</span><strong>TC 16</strong></div><div><span>안전 I/O</span><strong>F-DI 32 · F-DO 16</strong></div></div><div class="wire-legend"><span style="--wire:#d05532">230VAC/24VDC</span><span style="--wire:#19788a">PROFINET Ring</span><span style="--wire:#875bb0">4–20mA/TC</span><span style="--wire:#278555">Safety 2CH</span></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="DG-HK60 PLC 인입과 현장 배선 연결도">${svgDefs}${titleBlock('C-001 / C-101','PLC 전원 인입·I/O·현장 배선도','UPS 230VAC → 24VDC 이중전원 → PLC/Safety PLC → RIO-1~3')}

@@ -355,9 +355,84 @@ class TestDeliverableEquipment(unittest.TestCase):
     def test_nameplate_carries_the_legal_ratings(self):
         """명판은 상표 배지가 아니라 IEC 60204-1 16.4 의 표시 의무다."""
         body = self._fn("dataPlate")
-        for token in ("380V", "60HZ", "482A", "50KA", "IP54", "MFG", "KC CE"):
+        for token in ("3PH4W", "60HZ", "FLA", "SCCR", "IP54", "DWG", "KC CE"):
             self.assertIn(token, body, f"명판에 {token} 표시가 없다")
         self.assertIn("IEC 60204-1", self.html)
+
+    def test_nameplate_values_are_derived_not_typed(self):
+        """명판에 손으로 적은 숫자가 있으면 도면과 갈라진다.
+
+        전압·전류·SCCR·도면번호는 모두 부하표와 변압기 제원에서 계산돼야 한다.
+        """
+        body = self._fn("dataPlate")
+        for expr in ("${LINE_V}", "Math.round(FLA)", "${SCCR_KA}", "${DWG_NO}"):
+            self.assertIn(expr, body, f"명판이 {expr} 를 계산하지 않고 값을 박아 넣었다")
+        self.assertNotRegex(
+            body, r"'[^']*\b\d{3}A\b", "명판에 전류값이 문자열로 박혀 있다"
+        )
+
+    def test_full_load_current_is_the_sum_of_branch_currents(self):
+        """총 kW 를 하나의 혼합역률로 나누면 부하마다 역률이 다를 때 틀린다.
+
+        여기서 부하표를 직접 읽어 분기전류를 다시 계산하고, 소스의 FLA 정의가
+        그 산술합인지 확인한다. 값이 아니라 계산 방식을 잡는 시험이다.
+        """
+        rows = re.findall(
+            r"\{\s*id:'([^']+)'\s*,\s*load:'[^']*'\s*,"
+            r"\s*kW:(\d+)\s*,\s*pf:([\d.]+)\s*,\s*mccb:'([^']+)'\s*\}",
+            self.html,
+        )
+        self.assertGreaterEqual(len(rows), 5, "전기부하표를 찾지 못했다")
+        volts = int(re.search(r"const LINE_V=(\d+)", self.html).group(1))
+        amps = [kw * 1000 / (3 ** 0.5 * volts * float(pf)) for _, kw, pf, _ in
+                ((i, int(k), p, m) for i, k, p, m in rows)]
+        total_kw = sum(int(k) for _, k, _, _ in rows)
+        fla = sum(amps)
+
+        # 소스가 산술합으로 정의하는지
+        self.assertRegex(
+            self.html,
+            r"const FLA=LOAD_SCHEDULE\.reduce\(\(a,k\)=>a\+branchAmp\(k\),0\)",
+            "FLA 가 분기전류의 합으로 정의되어 있지 않다",
+        )
+        self.assertRegex(
+            self.html,
+            r"const branchAmp=k=>k\.kW\*1000/\(Math\.sqrt\(3\)\*LINE_V\*k\.pf\)",
+            "분기전류 식이 3상 전류식이 아니다",
+        )
+        # 혼합역률 한 번으로 나누면 나오는 값과는 달라야 한다 — 그게 이 시험의 요점
+        naive = total_kw * 1000 / (3 ** 0.5 * volts * 0.85)
+        self.assertGreater(
+            abs(fla - naive), 20,
+            "부하표 역률이 모두 같아 이 시험이 아무것도 구분하지 못한다",
+        )
+
+    def test_short_circuit_rating_has_a_stated_basis(self):
+        """SCCR 은 현장에서 재는 값이 아니라 근거를 밝혀 고르는 값이다."""
+        self.assertIn("const SCCR_KA=", self.html, "SCCR 이 상수로 정의되어 있지 않다")
+        self.assertIn("const ISC_KA=", self.html, "예상 단락전류 계산이 없다")
+        sccr = int(re.search(r"const SCCR_KA=(\d+)", self.html).group(1))
+        kva = int(re.search(r"const TR_KVA=(\d+)", self.html).group(1))
+        volts = int(re.search(r"const LINE_V=(\d+)", self.html).group(1))
+        z = [float(v) for v in
+             re.search(r"TR_Z=\[([\d.,]+)\]", self.html).group(1).split(",")]
+        worst = kva * 1000 / (3 ** 0.5 * volts) / min(z) / 1000
+        self.assertGreater(
+            sccr, worst,
+            f"기기 정격 {sccr}kA 가 예상 단락전류 {worst:.1f}kA 보다 작다",
+        )
+        self.assertLess(
+            sccr, worst * 4,
+            f"기기 정격 {sccr}kA 가 예상 단락전류 {worst:.1f}kA 대비 근거 없이 크다",
+        )
+
+    def test_no_mass_is_claimed_without_a_basis(self):
+        """계량하지 않은 질량을 명판에 각인하면 운송·인양 계획이 그 값을 믿는다."""
+        body = self._fn("dataPlate")
+        self.assertNotRegex(
+            body, r"\d+\s*T\b", "근거 없는 질량이 명판에 남아 있다"
+        )
+        self.assertIn("계량", self.html, "질량을 계량으로 확정한다는 절차가 없다")
 
     def test_hazard_labels_sit_at_the_hazards(self):
         body = self._fn("hazardDecal")
