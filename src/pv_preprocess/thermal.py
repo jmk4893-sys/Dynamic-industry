@@ -117,9 +117,25 @@ def exhausted_kw() -> float:
     return round(sum(s.loss_kw for s in heat_sources() if s.sink == "배기"), 2)
 
 
+#: 공정실 **밖**에서 소비되는 피더 — 구획된 랙실·관제실이라 그 발열은
+#: 자기 항온항습기로 나가고 공정실 환기에 들어오지 않는다.
+#:
+#: REV.25 에서 스마트 팩토리 부하가 붙으며 필요해졌다. 그냥 두면 랙 발열
+#: 8.8 kW 를 공정실이 받는 것으로 계산돼 환기량이 과대해진다 — "보수적"이
+#: 아니라 **다른 방의 열을 이 방에 더하는 것**이라 틀린 값이다.
+#: 엣지 캐비닛(LP-INST)은 실제로 공정실 안에 서므로 여기 없다.
+OFF_ROOM_PANELS: tuple[str, ...] = ("LP-IT",)
+
+
+def off_room_kw() -> float:
+    """공정실 밖에서 소비되는 수요 (kW)."""
+    return round(sum(feeder.demand_kw for feeder in electrical.FEEDERS
+                     if feeder.panel in OFF_ROOM_PANELS), 2)
+
+
 def room_load_kw() -> float:
-    """실내에 남는 열 — 수요 전력에서 배기 반출분을 뺀 보수적 상한."""
-    return round(electrical.demand_kw() - exhausted_kw(), 2)
+    """공정실에 남는 열 — 수요에서 배기 반출분과 구획실 소비를 뺀 상한."""
+    return round(electrical.demand_kw() - exhausted_kw() - off_room_kw(), 2)
 
 
 def required_airflow_m3h(delta_t_c: float = ROOM_DELTA_T_C) -> int:

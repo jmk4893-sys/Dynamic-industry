@@ -8,6 +8,7 @@ REV.21 에서 실제로 깨져 있던 두 가지 — 존이 자기 장비보다 
 덮이는 것 — 은 아래 불변식 테스트로 다시 들어올 수 없게 막는다.
 """
 
+import dataclasses
 import io
 import pathlib
 import re
@@ -15,7 +16,7 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import (acoustics, campaign, electrical, frames, handoff, layout, materials,
+from pv_preprocess import (acoustics, ai, campaign, electrical, frames, handoff, layout, materials, smart,
                            servos, thermal, vision, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
@@ -1914,13 +1915,14 @@ class TestIncomingService(unittest.TestCase):
 
     def test_contract_power_crosses_the_low_voltage_limit(self):
         """자체 수전을 세운다면 고압이어야 한다 — 부지 인입이 없어졌을 때의 근거."""
-        self.assertAlmostEqual(electrical.contract_kw(), 268.2, places=1)
+        self.assertAlmostEqual(electrical.contract_kw(), 285.5, places=1)
         self.assertGreater(electrical.contract_kw(), electrical.LOW_VOLTAGE_LIMIT_KW)
         self.assertTrue(electrical.needs_high_voltage())
         self.assertEqual(electrical.HV_SUPPLY_VOLTAGE_V, 22_900)
         # 전처리만일 때는 저압이 맞았다 — 그 사실이 기록으로 남아야 한다
         preprocess_only = sum(f.demand_kw for f in electrical.FEEDERS
-                              if not f.panel.startswith("LP-GRM"))
+                              if not f.panel.startswith("LP-GRM")
+                              and f.panel not in ("LP-IT", "LP-INST"))
         self.assertLess(preprocess_only * electrical.CONTRACT_MARGIN,
                         electrical.LOW_VOLTAGE_LIMIT_KW,
                         "REV.22 까지의 저압 인입은 틀린 게 아니라 전제가 바뀐 것이다")
@@ -1930,19 +1932,19 @@ class TestIncomingService(unittest.TestCase):
         self.assertEqual(electrical.SITE_SERVICE_KW, 1200.0)
         self.assertTrue(electrical.taps_existing_service())
         self.assertIn("기존 부지 인입", electrical.supply_method())
-        self.assertAlmostEqual(electrical.site_utilisation_pct(), 22.4, places=1)
-        self.assertAlmostEqual(electrical.site_headroom_kw(), 931.8, places=1)
+        self.assertAlmostEqual(electrical.site_utilisation_pct(), 23.8, places=1)
+        self.assertAlmostEqual(electrical.site_headroom_kw(), 914.5, places=1)
         # 수용률이 전부 1.0 이 되는 최악에도 들어가야 '여유가 있다'고 말할 수 있다
-        self.assertAlmostEqual(electrical.worst_case_kw(), 266.0, places=1)
+        self.assertAlmostEqual(electrical.worst_case_kw(), 280.8, places=1)
         self.assertTrue(electrical.fits_site_service())
         self.assertLess(electrical.worst_case_kw() / electrical.SITE_SERVICE_KW, 0.25)
         # 재는 자가 설치(266.0)인지 계약(268.2)인지 — 둘 사이 값에서 갈린다.
         # 부지 계통에 실제로 흐르는 최악은 여유율을 곱한 행정값이 아니다.
         self.assertGreater(electrical.contract_kw(), electrical.worst_case_kw())
-        self.assertTrue(electrical.fits_site_service(267.0))
-        self.assertFalse(electrical.fits_site_service(265.0))
+        self.assertTrue(electrical.fits_site_service(281.0))
+        self.assertFalse(electrical.fits_site_service(280.0))
         # 인입이 있어도 최악이 안 들어가면 자체 수전을 세워야 한다
-        self.assertFalse(electrical.taps_existing_service(200.0))
+        self.assertFalse(electrical.taps_existing_service(250.0))
         self.assertFalse(electrical.taps_existing_service(0.0))
         # 세울 큐비클이 없다 — 부지 설비를 쓴다
         self.assertEqual(electrical.substation_cubicles(), ())
@@ -1952,13 +1954,13 @@ class TestIncomingService(unittest.TestCase):
     def test_low_voltage_tap_is_bounded_by_voltage_drop_not_ampacity(self):
         """저압으로 끌면 거리를 묶는 것은 허용전류가 아니라 전압강하다."""
         self.assertTrue(electrical.TAP_AT_LOW_VOLTAGE)
-        self.assertAlmostEqual(electrical.lv_tap_max_length_m(), 162.3, places=1)
+        self.assertAlmostEqual(electrical.lv_tap_max_length_m(), 152.4, places=1)
         # 굵게 할수록 멀리 가지만 비례하지는 않는다 (리액턴스는 거의 안 줄어든다)
         self.assertLess(electrical.lv_tap_max_length_m(150),
                         electrical.lv_tap_max_length_m(240))
         self.assertLess(electrical.lv_tap_max_length_m(240),
                         electrical.lv_tap_max_length_m(300))
-        self.assertAlmostEqual(electrical.lv_tap_max_length_m(300), 188.8, places=1)
+        self.assertAlmostEqual(electrical.lv_tap_max_length_m(300), 177.4, places=1)
         # 허용전류만 보면 240 은 450 A 라 여유가 큰데, 거리는 162 m 에서 끊긴다
         self.assertGreater(electrical.LV_CABLE_AMPACITY_A[240],
                            electrical.main_breaker_at())
@@ -1975,18 +1977,18 @@ class TestIncomingService(unittest.TestCase):
 
     def test_transformer_is_sized_from_demand_not_guessed(self):
         """변압기는 목표 부하율과 계약 피상전력 중 큰 쪽이 지배한다."""
-        self.assertAlmostEqual(electrical.apparent_demand_kva(), 220.8, places=1)
-        self.assertEqual(electrical.transformer_kva(), 300)
+        self.assertAlmostEqual(electrical.apparent_demand_kva(), 235.0, places=1)
+        self.assertEqual(electrical.transformer_kva(), 500)
         self.assertIn(electrical.transformer_kva(), electrical.TRANSFORMER_RATINGS_KVA)
         self.assertGreaterEqual(electrical.transformer_kva(), electrical.contract_kva())
-        self.assertAlmostEqual(electrical.transformer_load_pct(), 73.6, places=1)
+        self.assertAlmostEqual(electrical.transformer_load_pct(), 47.0, places=1)
         self.assertLessEqual(electrical.transformer_load_pct(),
                              electrical.TRANSFORMER_LOAD_FACTOR * 100,
                              "부하율이 목표를 넘으면 한 단계 큰 용량을 골랐어야 한다")
         # 여기서는 계약 피상전력이 지배한다 — 부하율 기준은 298.1 > 276.0 에 가려진다.
         # 어느 쪽이 정했는지가 바뀌면 설계 근거가 바뀐 것이므로 못 박아 둔다.
         self.assertEqual(electrical.transformer_sizing_basis(), "계약 피상전력")
-        self.assertAlmostEqual(electrical.transformer_required_kva(), 298.05, places=1)
+        self.assertAlmostEqual(electrical.transformer_required_kva(), 317.26, places=1)
         # 계약이 지배하지 않는 지점에서 부하율 기준이 실제로 작동하는지 — 0.80 이
         # 아니면 170 kVA 는 300 이 아니라 200 으로 떨어진다.
         self.assertEqual(electrical.transformer_sizing_basis(apparent_kva=170, contract=0),
@@ -2006,12 +2008,13 @@ class TestIncomingService(unittest.TestCase):
 
     def test_high_voltage_would_move_the_copper_off_the_long_run(self):
         """저압 분기 한계를 넘으면 고압 분기로 간다 — 그때의 근거를 남긴다."""
-        self.assertAlmostEqual(electrical.hv_incoming_current_a(), 7.51, places=2)
+        self.assertAlmostEqual(electrical.hv_incoming_current_a(), 8.00, places=2)
         self.assertLess(electrical.hv_incoming_current_a(),
                         electrical.demand_current_a() / 40,
                         "같은 전력을 고압으로 나르면 전류가 40배 이상 작아진다")
-        self.assertEqual(electrical.transformer_kva(), 300,
-                         "고압 분기로 가면 국소 변압기가 이 용량이다")
+        self.assertEqual(electrical.transformer_kva(), 500,
+                         "고압 분기로 가면 국소 변압기가 이 용량이다 — REV.25 에서 "
+                         "스마트 팩토리 부하가 붙으며 300 → 500 으로 한 단 올라갔다")
 
     def test_power_factor_correction_is_sized(self):
         """0.90 은 한전 기준선이라 감액이 없다 — 0.95 로 올리는 뱅크를 잡아 둔다."""
@@ -2023,7 +2026,7 @@ class TestIncomingService(unittest.TestCase):
             math.tan(math.acos(electrical.BASE_POWER_FACTOR))
             - math.tan(math.acos(electrical.TARGET_POWER_FACTOR)))
         self.assertGreaterEqual(kvar, need)
-        self.assertAlmostEqual(need, 30.9, places=1)
+        self.assertAlmostEqual(need, 32.9, places=1)
 
     def test_no_electrical_room_is_needed_now(self):
         """부지 저압 배전반에서 따면 세울 반도 방도 없다."""
@@ -2079,8 +2082,9 @@ class TestIncomingService(unittest.TestCase):
         삐져나갔다. 글자폭을 코드에서 어림해도, 프레임을 상수로 박아도 같은 일이
         반복되므로 **그린 뒤 실측해서 맞추는** 패스를 둔다.
         """
-        self.assertIn("function fitElectricalSheet()", self.html)
-        self.assertIn("fitElectricalSheet();", self.html, "렌더 후에 호출되지 않으면 없는 것과 같다")
+        self.assertIn("function fitSheet(svg)", self.html)
+        self.assertIn("fitSheet(electricalSvg);", self.html, "렌더 후에 호출되지 않으면 없는 것과 같다")
+        self.assertIn("fitSheet(smartSvg);", self.html, "스마트 시트도 같은 맞춤을 받아야 한다")
         self.assertIn("id=\"pv-sheet-frame\"", self.html, "프레임을 못 찾으면 키울 수도 없다")
         # 잘라내기 전에 실제 길이를 잰다 — 어림한 글자폭이면 폰트가 바뀔 때 틀린다
         self.assertIn("t.getComputedTextLength() <= max", self.html)
@@ -2108,6 +2112,285 @@ class TestIncomingService(unittest.TestCase):
         # 같은 X 에 두 반을 세우면 라벨이 포개지고 구간 길이가 0 이 된다
         positions = wiring.lp_positions_mm()
         self.assertNotEqual(positions["LP-GRM-IRA"], positions["LP-GRM-IRB"])
+
+
+class TestSmartFactory(unittest.TestCase):
+    """REV.25 스마트 팩토리 — 계측·네트워크·데이터가 설비에서 파생되는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_data_volume_is_derived_from_the_equipment_not_guessed(self):
+        """축을 늘리면 회선이 따라와야 한다 — 데이터량은 설비의 함수다."""
+        counts = smart.drive_counts()
+        self.assertEqual(counts["서보"], servos.servo_axis_count())
+        self.assertEqual(sum(counts.values()),
+                         sum(a.qty for a in servos.SERVO_AXES + servos.MOTORS))
+        # 서보 36축 × 6신호 × 100 Hz × 4 B 가 드라이브 대역의 지배항이다
+        self.assertAlmostEqual(smart.drive_stream_bytes_per_s(), 88_056.0, places=1)
+        self.assertAlmostEqual(smart.timeseries_bytes_per_s() / 1000, 91.7, places=1)
+        # 공정 태그도 축·존에서 나온다
+        self.assertEqual(smart.plc_tag_count(),
+                         sum(a.qty for a in servos.SERVO_AXES + servos.MOTORS)
+                         * smart.PLC_TAGS_PER_AXIS
+                         + len(smart.edge_zones()) * smart.PLC_TAGS_PER_ZONE)
+
+    def test_vision_dominates_and_each_head_sees_a_different_flow(self):
+        """세 물량을 구분하지 않으면 대역이 틀린다."""
+        streams = {st.head: st for st in smart.image_streams()}
+        # 투입은 전손까지 찍는다 — 찍어야 판정을 한다
+        self.assertAlmostEqual(streams["VS-101A"].per_hour, smart.panels_per_h(), places=1)
+        self.assertGreater(smart.panels_per_h(), campaign.summary()["throughput_per_h"])
+        # JBR 은 라인에 들어온 것만
+        self.assertAlmostEqual(streams["VS-201A"].per_hour, 72.2, places=1)
+        # 유리 검사는 R-A 정상만 — handoff 의 정본을 쓴다
+        self.assertAlmostEqual(streams["GI-302"].per_hour, handoff.sheet_glass_per_h(), places=1)
+        self.assertAlmostEqual(streams["VS-401"].per_hour, handoff.sheet_glass_per_h(), places=1)
+        # 라인스캔 한 대가 드라이브 전체를 압도한다 — 이것이 설계의 지배항이다
+        self.assertGreater(streams["GI-302"].bytes_per_s, smart.timeseries_bytes_per_s() * 60)
+        self.assertAlmostEqual(smart.vision_raw_bytes_per_s() / 1e6, 6.90, places=2)
+
+    def test_retention_policy_is_what_makes_storage_affordable(self):
+        """장당 350 MB 를 전량 보존하면 성립하지 않는다."""
+        self.assertAlmostEqual(smart.flagged_ratio(), 0.1167, places=4)
+        self.assertAlmostEqual(smart.vision_retention(), 0.1367, places=4)
+        self.assertAlmostEqual(smart.annual_storage_tb(), 6.88, places=2)
+        self.assertAlmostEqual(smart.storage_capacity_tb(), 31.0, places=1)
+        # 전량 보존하면 같은 3년이 200 TB 를 넘는다
+        seconds = smart.OPERATING_HOURS_PER_YEAR * 3600.0
+        whole = smart.vision_raw_bytes_per_s() * seconds * smart.RETENTION_YEARS / 1e12
+        self.assertGreater(whole, 140.0)
+        # 같은 이중화를 적용해 사과 대 사과로 비교한다 — 보존 정책이 7배를 줄인다
+        self.assertGreater(whole * smart.STORAGE_REDUNDANCY / smart.storage_capacity_tb(), 7.0)
+
+    def test_backbone_grade_is_chosen_above_the_requirement(self):
+        self.assertAlmostEqual(smart.required_mbps(), 111.9, places=1)
+        self.assertEqual(smart.backbone_grade_mbps(), 1_000)
+        self.assertIn(smart.backbone_grade_mbps(), smart.ETHERNET_GRADES_MBPS)
+        self.assertGreater(smart.backbone_grade_mbps(), smart.required_mbps())
+        # 여유율을 뺀 순수 요구도 100 Mbps 등급을 넘는다 — 등급 선택의 근거
+        self.assertGreater(smart.peak_bytes_per_s() * 8 / 1e6, 55.0)
+
+    def test_redundant_pairs_do_not_share_a_rack(self):
+        """공간이 남아도 이중화 쌍은 랙을 나눈다."""
+        self.assertEqual(smart.rack_units_used(), 28)
+        self.assertLessEqual(smart.rack_units_used(),
+                             smart.RACK_HEIGHT_U * smart.RACK_FILL_LIMIT,
+                             "28U 는 42U 한 면에 들어간다 — 공간 때문이 아니다")
+        self.assertEqual(smart.rack_count(), 2)
+        # 어느 품목이 쌍인지까지 못 박는다. "이중화 품목이 하나라도 있다"로
+        # 재면 코어 스위치의 표시를 지워도 통과한다 — 실제로 그렇게 새어 나갔다.
+        self.assertEqual({item.name for item in smart.redundant_pairs()},
+                         {"코어 스위치 (백본 링 종단)", "OT/IT 경계 방화벽",
+                          "MES·SCADA 서버", "UPS"})
+        for item in smart.redundant_pairs():
+            with self.subTest(item=item.name):
+                self.assertGreaterEqual(item.qty, 2, "쌍이 아니면 이중화가 아니다")
+        # 쌍이 하나도 없으면 랙은 한 면으로 줄어야 한다 — 2 가 상수가 아님을 확인
+        self.assertEqual(smart.rack_units_used() // (smart.RACK_HEIGHT_U + 1) + 1, 1)
+
+    def test_the_two_rooms_are_separate_and_outside_the_machine_band(self):
+        """랙 팬 소음과 상주 근무는 같은 방에 못 있는다."""
+        self.assertEqual(smart.server_room_mm(), (1800, 3200, 2700))
+        self.assertEqual(smart.control_room_mm(), (4000, 3400, 2700))
+        # 공정 존이 아니다 — 전기실과 같은 취급
+        self.assertNotIn("smart", [z.key for z in layout.build_zones()])
+        self.assertNotIn("server", [z.key for z in layout.build_zones()])
+        # 두 방을 나란히 놓아도 MDB 하류에 들어간다
+        span = wiring.facility_span_mm()
+        self.assertEqual(span[1] - span[0],
+                         smart.server_room_mm()[0] + wiring.FACILITY_PARTITION_MM
+                         + smart.control_room_mm()[0])
+        self.assertGreater(span[0], wiring.MDB_POSITION_MM[0])
+        self.assertLessEqual(span[1], layout.plant_envelope_mm()[0])
+        # 엣지 반 위치는 상수가 아니라 캐비닛 부하중심이다 — 여기서 독립으로 다시 센다
+        centres = {z.key: (z.x0_mm + z.x1_mm) // 2 for z in layout.build_zones()}
+        keys = smart.edge_zones()
+        expected = round(sum(centres[k] for k in keys) / len(keys) / 500) * 500
+        self.assertEqual(wiring.edge_cabinet_center_x_mm(), expected)
+        self.assertEqual(wiring.lp_positions_mm()["LP-INST"], expected)
+        # 배치가 바뀌면 반도 따라와야 한다 — 상수로 박아 두면 여기서 걸린다
+        shifted = {key: value + 10_000 for key, value in centres.items()}
+        self.assertEqual(wiring.edge_cabinet_center_x_mm(shifted), expected + 10_000)
+
+    def test_smart_load_is_a_feeder_not_a_footnote(self):
+        """계측·서버도 전력을 먹는다 — 피더로 잡아야 계약전력에 들어간다."""
+        panels = {f.panel: f for f in electrical.FEEDERS}
+        self.assertIn("LP-IT", panels)
+        self.assertIn("LP-INST", panels)
+        self.assertAlmostEqual(panels["LP-IT"].installed_kw, smart.it_installed_kw(), places=1)
+        self.assertAlmostEqual(panels["LP-INST"].installed_kw,
+                               smart.instrument_installed_kw(), places=1)
+        self.assertAlmostEqual(smart.smart_installed_kw(), 14.8, places=1)
+        # 케이블·차단기가 다른 피더와 같은 규칙을 받는다
+        for tag in ("F13", "F14"):
+            feeder = next(f for f in electrical.FEEDERS if f.tag == tag)
+            with self.subTest(feeder=tag):
+                self.assertIn(feeder.breaker_at, electrical.BREAKER_TRIPS_A + (20, 32, 40, 16))
+                self.assertIn(tag, {c.feeder for c in wiring.power_cables()})
+
+    def test_the_smart_layer_shortens_the_allowable_tap_distance(self):
+        """전류가 늘면 전압강하 한계가 줄어든다 — 공짜가 아니다."""
+        self.assertAlmostEqual(electrical.lv_tap_max_length_m(), 152.4, places=1)
+        # 스마트 부하가 없었다면 얼마였는지를 같은 식으로 되짚는다
+        without = electrical.demand_kw() - sum(
+            f.demand_kw for f in electrical.FEEDERS if f.panel in ("LP-IT", "LP-INST"))
+        ratio = without / electrical.demand_kw()
+        self.assertAlmostEqual(electrical.lv_tap_max_length_m() / ratio, 162.3, delta=0.6)
+
+    def test_the_smart_layer_stays_off_the_motion_bus(self):
+        """수집 트래픽을 EtherCAT 에 얹으면 계측이 축을 흔든다.
+
+        AI-04 가 재려는 것이 바로 추종오차인데, 그 신호를 수집하는 트래픽이
+        같은 실시간 버스에 있으면 사이클 지터가 그대로 추종오차로 나타난다 —
+        재려는 대상을 재는 행위가 망가뜨리는 구성이다.
+        """
+        chain = {c.panel for c in wiring.control_segments()}
+        chain |= {c.feeder.split("→")[0] for c in wiring.control_segments()}
+        self.assertNotIn("LP-IT", chain)
+        self.assertNotIn("LP-INST", chain)
+        # 그래도 급전은 받는다 — 전력 계통에는 있고 모션 버스에만 없다
+        power = {c.panel for c in wiring.power_cables()}
+        self.assertIn("LP-IT", power)
+        self.assertIn("LP-INST", power)
+        # 두 망이 만나는 곳은 OT/IT 경계 하나뿐이다
+        firewall = [r for r in smart.RACK_ITEMS if "방화벽" in r.name]
+        self.assertEqual(len(firewall), 1)
+        self.assertTrue(firewall[0].redundant)
+
+    def test_every_instrument_earns_its_place(self):
+        """그 신호로 무엇을 결정하는지가 없으면 데이터만 늘린다."""
+        case_tags = {case.tag for case in ai.CASES}
+        for item in smart.INSTRUMENTS:
+            with self.subTest(instrument=item.tag):
+                self.assertIn(item.unlocks, case_tags, "여는 과제가 실재해야 한다")
+                self.assertTrue(item.purpose.strip())
+                self.assertGreater(item.qty, 0)
+        self.assertEqual(sum(i.qty for i in smart.INSTRUMENTS), 46)
+
+    def test_drawing_carries_the_smart_layer(self):
+        sm = smart.summary()
+        for token in (f"racks: {sm['racks']}",
+                      f"rackU: {sm['rack_u']}",
+                      f"edgeCabinets: {sm['edge_cabinets']}",
+                      f"instruments: {sm['instruments']}",
+                      f"plcTags: {sm['plc_tags']}",
+                      f"timeseriesKbS: {sm['timeseries_kb_s']}",
+                      f"visionRawMbS: {sm['vision_raw_mb_s']}",
+                      f"visionKeptMbS: {sm['vision_kept_mb_s']}",
+                      f"retentionPct: {sm['vision_retention_pct']}",
+                      f"requiredMbps: {sm['required_mbps']}",
+                      f"backboneMbps: {sm['backbone_mbps']}",
+                      f"annualTb: {sm['annual_tb']}",
+                      f"storageTb: {sm['storage_tb']}",
+                      f"smartKw: {sm['smart_kw']}",
+                      f"serverRoomX: {wiring.server_room_center_x_mm()}",
+                      f"edgeCenterX: {wiring.edge_cabinet_center_x_mm()}"):
+            with self.subTest(token=token):
+                self.assertIn(token, self.html)
+        # 시트 3장이 도면 목록에 있어야 한다
+        for sheet in ("PV-PLANT-SM-1012", "PV-PLANT-SM-1013", "PV-PLANT-AI-1014"):
+            with self.subTest(sheet=sheet):
+                self.assertIn(sheet, self.html)
+        self.assertIn("'smart'", self.html, "탭이 selectTab 유효 목록에 있어야 한다")
+
+
+class TestAiFeasibility(unittest.TestCase):
+    """AI 적용 검토 — 등급이 스스로를 반박하지 않는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_grading_cannot_contradict_itself(self):
+        """A 는 '지금 되는 것'이므로 신규 계측기를 요구할 수 없다."""
+        self.assertTrue(ai.grading_is_consistent())
+        # 지금 표가 일관되므로, 검사 코드가 죽어도 위 한 줄로는 안 잡힌다.
+        # 어긋난 표를 일부러 넣어 실제로 걸러지는지까지 본다.
+        good = ai.CASES[0]
+        self.assertEqual(good.grade, "A")
+        broken_a = dataclasses.replace(good, needs=("PM-901",))
+        self.assertFalse(ai.grading_is_consistent((broken_a,)),
+                         "A 인데 계측기를 요구하면 걸러야 한다")
+        broken_b = dataclasses.replace(good, grade="B", needs=())
+        self.assertFalse(ai.grading_is_consistent((broken_b,)),
+                         "B 인데 무엇이 필요한지 없으면 걸러야 한다")
+        broken_c = dataclasses.replace(good, grade="C", needs=("PM-901",))
+        self.assertFalse(ai.grading_is_consistent((broken_c,)),
+                         "안 하기로 한 것에 계측기를 적으면 걸러야 한다")
+        for case in ai.CASES:
+            with self.subTest(case=case.tag):
+                self.assertIn(case.grade, ("A", "B", "C", "D"))
+                if case.grade == "A":
+                    self.assertEqual(case.needs, (), "A 인데 계측기가 필요하면 A 가 아니다")
+                if case.grade == "B":
+                    self.assertTrue(case.needs, "B 는 무엇이 붙어야 되는지 적어야 한다")
+                if case.grade in ("C", "D"):
+                    self.assertEqual(case.needs, ())
+                    self.assertTrue(case.caveat.strip(), "안 하는 이유를 적어야 한다")
+
+    def test_label_supply_sets_the_start_date(self):
+        """가장 희소한 클래스가 착수 시점을 지배한다."""
+        labels = ai.annual_labels()
+        self.assertEqual(ai.annual_panels(), 149_400)
+        self.assertEqual(labels["정상"], 131_970)
+        self.assertEqual(labels["유리 깨짐"], 12_450)
+        self.assertEqual(labels["전손"], 4_980)
+        self.assertEqual(ai.scarcest_label(), "전손")
+        self.assertAlmostEqual(ai.cold_start_months(), 2.4, places=1)
+        # 처음부터 학습은 현실적이지 않다 — 전이학습 전제의 근거
+        self.assertGreater(
+            ai.months_to_threshold("전손", ai.SCRATCH_MIN_SAMPLES), 20.0)
+        # 가동시간이 두 배면 착수도 절반이 된다 (파생값이라는 확인)
+        self.assertAlmostEqual(
+            ai.TRANSFER_MIN_SAMPLES / labels["전손"] * 12.0, ai.cold_start_months(), places=1)
+
+    def test_misclassification_is_priced_in_seconds_not_percent(self):
+        """정확도 % 는 공정에서 뜻이 없다."""
+        self.assertAlmostEqual(ai.scrap_miss_cost_s(), 45.0, places=1)
+        self.assertAlmostEqual(ai.cracked_miss_cost_s(), 47.04, places=2)
+        self.assertEqual(ai.scrap_miss_cost_s(), campaign.JBR_S)
+        self.assertGreater(ai.scrap_miss_cost_s(), campaign.INFEED_REJECT_S,
+                           "전손은 투입부 15 s 로 끝나야 하는데 통과하면 병목을 먹는다")
+
+    def test_we_say_no_where_ai_is_not_the_answer(self):
+        """기구가 이미 푸는 문제에 학습을 얹지 않는다."""
+        declined = {case.tag for case in ai.by_grade("C")}
+        self.assertEqual(declined, {"AI-09", "AI-10"})
+        pose = next(c for c in ai.CASES if c.tag == "AI-10")
+        self.assertIn("3-2-1", pose.caveat, "vision.py 의 최소화 근거와 같은 이유여야 한다")
+        sched = next(c for c in ai.CASES if c.tag == "AI-09")
+        self.assertIn(campaign.bottleneck(), sched.caveat)
+        # 불가한 것도 무엇이 없어서인지 적는다
+        for case in ai.by_grade("D"):
+            with self.subTest(case=case.tag):
+                self.assertIn("없", case.data + case.label)
+
+    def test_required_instruments_are_all_actually_ordered(self):
+        """B 과제가 요구하는 계측기가 계측 목록에 없으면 착수 못 한다."""
+        ordered = {item.tag for item in smart.INSTRUMENTS}
+        for tag in ai.required_instruments():
+            with self.subTest(instrument=tag):
+                self.assertIn(tag, ordered)
+        self.assertEqual(len(ai.startable_now()), 8)
+        self.assertEqual(ai.grade_counts(), {"A": 3, "B": 5, "C": 2, "D": 2})
+
+    def test_drawing_carries_the_ai_review(self):
+        a = ai.summary()
+        for token in (f"cases: {a['cases']}",
+                      f"gradeA: {a['grades']['A']}",
+                      f"gradeB: {a['grades']['B']}",
+                      f"annualPanels: {a['annual_panels']}",
+                      f"labelScrap: {a['labels']['전손']}",
+                      f"coldStartMonths: {a['cold_start_months']}",
+                      f"scrapMissS: {a['scrap_miss_s']}",
+                      f"crackedMissS: {a['cracked_miss_s']}"):
+            with self.subTest(token=token):
+                self.assertIn(token, self.html)
+        # 시트가 마크다운 별표를 그대로 그리면 안 된다
+        self.assertIn("function plain(value)", self.html)
+        self.assertIn("replace(/\\*\\*/g, '')", self.html)
 
 
 class TestGlassRemovalIntegration(unittest.TestCase):
@@ -2178,11 +2461,16 @@ class TestGlassRemovalIntegration(unittest.TestCase):
 
     def test_the_ir_bank_forces_a_bigger_service(self):
         """IR 175 kW 는 이 플랜트 최대 부하다 — 100 AT 로는 못 받는다."""
-        self.assertAlmostEqual(electrical.installed_kw(), 266.0, places=1)
-        self.assertAlmostEqual(electrical.demand_kw(), 198.70, places=1)
+        self.assertAlmostEqual(electrical.installed_kw(), 280.8, places=1)
+        self.assertAlmostEqual(electrical.demand_kw(), 211.50, places=1)
         self.assertEqual(electrical.main_breaker_at(), 400)
         self.assertEqual(electrical.main_breaker_frame_a(), 400)
-        self.assertAlmostEqual(electrical.contract_kva(), 298.05, places=0)
+        self.assertAlmostEqual(electrical.contract_kva(), 317.26, places=0)
+        # IR 뱅크만으로도 400 AT 였는데 스마트 부하가 여유를 거의 다 먹었다.
+        # "아직 400 AT 안에 든다"와 "여유가 얼마 남았다"는 다른 말이다.
+        self.assertAlmostEqual(electrical.breaker_headroom_kw(), 3.9, places=1)
+        self.assertLess(electrical.breaker_headroom_kw(), electrical.FEEDERS[-1].demand_kw,
+                        "다음에 F14 만한 부하를 하나 더 붙이면 차단기가 한 단 올라간다")
         ir = [f for f in electrical.FEEDERS if f.panel.startswith("LP-GRM-IR")]
         self.assertEqual(len(ir), 2, "175 kW 를 한 피더에 몰면 차단기가 주차단기와 맞먹는다")
         for feeder in ir:
@@ -2192,8 +2480,13 @@ class TestGlassRemovalIntegration(unittest.TestCase):
     def test_the_load_centre_moved_and_the_board_followed(self):
         """최대 부하가 하류 끝에 생겼는데 반을 그대로 두면 규칙과 어긋난다."""
         centre = wiring.demand_center_x_mm()
-        self.assertAlmostEqual(centre, 42572, delta=200)
+        # 값이 아니라 **규칙**을 못 박는다. 500 단위 반올림이면 중심과 반 위치는
+        # 최대 250 까지 벌어지는 것이 정상이라, delta 200 으로 재면 규칙을 지킨
+        # 배치에서도 실패한다 — REV.25 에서 실제로 그렇게 실패했다.
         self.assertEqual(wiring.MDB_POSITION_MM[0], round(centre / 500) * 500)
+        self.assertLessEqual(abs(wiring.MDB_POSITION_MM[0] - centre), 250)
+        # 하류 IR 뱅크가 중심을 끌고 내려간 상태는 그대로여야 한다
+        self.assertGreater(centre, 40_000, "IR 뱅크가 부하중심을 하류로 끌었다")
         self.assertGreaterEqual(wiring.aisle_clear_width_mm(), 900,
                                 "반을 옮겨도 보행 최소폭은 지켜야 한다")
 
@@ -2207,18 +2500,21 @@ class TestGlassRemovalIntegration(unittest.TestCase):
         for source in grm:
             with self.subTest(source=source.tag):
                 self.assertEqual(source.sink, "배기", "실내로 가면 환기가 감당 못 한다")
-        self.assertEqual(thermal.required_airflow_m3h(), 33000)
+        self.assertEqual(thermal.required_airflow_m3h(), 35000)
+        # 랙실은 구획실이라 그 발열은 공정실 환기에 들어오지 않는다
+        self.assertAlmostEqual(thermal.off_room_kw(), 8.76, places=2)
+        self.assertEqual(thermal.OFF_ROOM_PANELS, ("LP-IT",))
         # 배기가 실패하면 어떻게 되는지를 값으로 남긴다 — 후드가 전제라는 근거
         def airflow(room_kw):
             return room_kw * 3600.0 / (1.2 * 1.005 * thermal.ROOM_DELTA_T_C)
 
         room = thermal.room_load_kw()
-        self.assertAlmostEqual(airflow(room), 32_570, delta=200)
-        self.assertAlmostEqual(airflow(room + thermal.ir_useful_kw()), 83_499, delta=300,
+        self.assertAlmostEqual(airflow(room), 34_988, delta=200)
+        self.assertAlmostEqual(airflow(room + thermal.ir_useful_kw()), 85_917, delta=300,
                                msg="냉각 후드가 현열을 못 잡으면 환기가 2.5 배가 된다")
         self.assertAlmostEqual(
             airflow(room + thermal.ir_useful_kw() + thermal.ir_enclosure_loss_kw()),
-            110_913, delta=400, msg="둘 다 실내로 오면 환기가 3.4 배가 된다")
+            113_331, delta=400, msg="둘 다 실내로 오면 환기가 3.2 배가 된다")
 
     def test_noise_stays_inside_the_limits_with_the_new_cell(self):
         """배기 블로워 두 대와 슈레더가 들어와도 목표를 지켜야 한다."""

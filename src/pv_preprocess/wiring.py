@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import electrical
+from . import electrical, smart
 from .layout import build_zones
 
 #: 주 분전반 MDB-101 의 벽부 위치 (플랜트 좌표 mm). X 는 피더 수요(kW) 가중
@@ -88,7 +88,54 @@ def lp_positions_mm() -> dict[str, int]:
     centers["LP-GRM-IRB"] = grm_center - 1_550
     centers["LP-GRM-MEC"] = grm_center + 1_200
     centers["LP-GRM-EXH"] = grm_center + 4_200
+    # REV.25 스마트 팩토리. LP-IT 는 자기가 먹이는 랙실 안에 서고, LP-INST 는
+    # 존마다 흩어진 엣지 캐비닛의 부하중심에 선다 — MDB 를 부하중심에 두는
+    # 규칙과 같은 규칙을 한 단 아래에 적용한 것이다.
+    centers["LP-IT"] = server_room_center_x_mm()
+    centers["LP-INST"] = edge_cabinet_center_x_mm()
     return centers
+
+
+#: 시설(랙실·관제실)을 MDB-101 옆에 붙일 때의 이격 (mm).
+#: MDB 반폭 500 + 반과 반 사이 이격 200.
+FACILITY_GAP_FROM_MDB_MM = 700
+
+#: 랙실과 관제실 사이 칸막이벽 두께 (mm).
+FACILITY_PARTITION_MM = 200
+
+
+def facility_x0_mm() -> int:
+    """시설 구획의 시작 X (mm) — MDB 하류쪽 옆."""
+    return MDB_POSITION_MM[0] + FACILITY_GAP_FROM_MDB_MM
+
+
+def server_room_center_x_mm() -> int:
+    return facility_x0_mm() + smart.server_room_mm()[0] // 2
+
+
+def control_room_center_x_mm() -> int:
+    return (facility_x0_mm() + smart.server_room_mm()[0]
+            + FACILITY_PARTITION_MM + smart.control_room_mm()[0] // 2)
+
+
+def facility_span_mm() -> tuple[int, int]:
+    """시설 구획이 차지하는 X 구간 (시작, 끝 mm)."""
+    width = (smart.server_room_mm()[0] + FACILITY_PARTITION_MM
+             + smart.control_room_mm()[0])
+    return (facility_x0_mm(), facility_x0_mm() + width)
+
+
+def edge_cabinet_center_x_mm(centers: dict[str, int] | None = None) -> int:
+    """엣지 캐비닛의 부하중심 X (mm) — 캐비닛은 존마다 한 면씩 같은 용량이다.
+
+    `centers` 를 받는 것은 시험을 위해서다. 지금 배치에서 이 값은 마침
+    25,000 이라, 함수를 `return 25_000` 으로 바꿔도 현재 데이터로는 아무
+    테스트가 실패하지 않는다 — 다른 배치를 넣어 실제로 따라오는지 본다.
+    """
+    zones = centers if centers is not None else {
+        zone.key: (zone.x0_mm + zone.x1_mm) // 2 for zone in build_zones()}
+    keys = [key for key in smart.edge_zones() if key in zones]
+    return round(sum(zones[key] for key in keys) / len(keys) / 500) * 500
 
 
 def cable_length_mm(load_x_mm: int) -> int:
@@ -124,6 +171,15 @@ def control_segments() -> list[Cable]:
     chain = ["LP-AFU", "LP-RB", "LP-JBR", "LP-CTRL", "LP-AFR", "LP-GLASS", "LP-DX", "LP-GBR",
              # REV.23: 유리제거셀 4면을 X 순서대로 체인 끝에 잇는다.
              "LP-GRM-IRA", "LP-GRM-IRB", "LP-GRM-MEC", "LP-GRM-EXH"]
+    # REV.25 정정 — LP-INST·LP-IT 는 **여기 없다.**
+    #
+    # 처음엔 스마트 팩토리 반 2면을 이 체인 끝에 붙였다. 틀렸다. 이 체인은
+    # EtherCAT 모션·안전 버스이고, 거기에 붙는다는 것은 히스토리안 수집
+    # 트래픽을 실시간 버스에 얹는다는 뜻이다. 사이클 지터가 그대로 축 추종
+    # 오차가 된다 — AI-04 가 재려는 바로 그 신호를 계측 자신이 흔든다.
+    #
+    # 엣지 캐비닛과 랙실은 별도 이더넷 백본 링(SM-1012)에 물린다. 두 망이
+    # 만나는 곳은 OT/IT 경계 방화벽 한 곳뿐이다.
     rows = []
     for a, b in zip(chain, chain[1:]):
         run = abs(positions[a] - positions[b]) + 2 * (TRAY_HEIGHT_MM - LP_TOP_MM)

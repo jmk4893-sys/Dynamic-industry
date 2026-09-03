@@ -162,6 +162,16 @@ FEEDERS: tuple[Feeder, ...] = (
            14.0, 0.65, 40, "4C×10 mm² Cu", "계획"),
     Feeder("F12", "LP-GRM-EXH", "IR 배기 · CV-301 슈레더 투입부 집진",
            9.0, 0.90, 32, "4C×6 mm² Cu", "계획"),
+    # ── REV.25 스마트 팩토리 계층 ────────────────────────────────────────
+    # 설치 kW 는 `smart.py` 가 랙 탑재물·계측기 목록에서 산정한 값이다.
+    # 여기에는 리터럴로 적고 테스트가 둘을 대조한다 — electrical 은 어떤
+    # 내부 모듈도 import 하지 않는다는 규약을 지키기 위해서다(순환 방지).
+    Feeder("F13", "LP-IT", "SVR-902 랙 2면(코어망·히스토리안·MES·엣지추론 GPU·UPS) "
+           "· 랙실 항온항습 · MCR-901 관제실",
+           10.3, 0.85, 32, "4C×6 mm² Cu", "계획(smart.it_installed_kw)"),
+    Feeder("F14", "LP-INST", "존별 엣지 캐비닛 7면 · 무선 AP 5대 · 신규 계측기 46점 "
+           "· 라인스캔 조명",
+           4.5, 0.90, 20, "4C×4 mm² Cu", "계획(smart.instrument_installed_kw)"),
 )
 
 
@@ -200,6 +210,19 @@ def main_breaker_frame_a() -> int:
         if frame >= trip:
             return frame
     raise ValueError("트립이 표준 프레임을 넘는다 — 인입 재검토 필요")
+
+
+def breaker_headroom_kw() -> float:
+    """지금 차단기를 그대로 두고 더 실을 수 있는 수요 (kW).
+
+    REV.25 에서 스마트 팩토리 부하 12.8 kW 가 붙으며 이 여유가 크게 줄었다.
+    "아직 400 AT 안에 든다"는 말과 "여유가 얼마 남았다"는 말은 다르다 —
+    다음에 부하를 붙일 때 차단기·주회로·케이블이 통째로 한 단 올라가는지를
+    미리 알 수 있어야 한다.
+    """
+    limit_a = main_breaker_at() / 1.1
+    limit_kw = limit_a * 3 ** 0.5 * SUPPLY_VOLTAGE_V * POWER_FACTOR / 1000
+    return round(limit_kw - demand_kw(), 1)
 
 
 #: 하위 호환 이름. 프레임은 이제 수요에서 파생한다.
@@ -454,6 +477,7 @@ def incomer_summary() -> dict[str, object]:
         "transformer_basis": "—" if tap_lv else transformer_sizing_basis(),
         "transformer_load_pct": 0.0 if tap_lv else transformer_load_pct(),
         "capacitor_kvar": capacitor_kvar(),
+        "breaker_headroom_kw": breaker_headroom_kw(),
         "hv_current_a": 0.0 if tap_lv else hv_incoming_current_a(),
         "lv_current_a": round(demand_current_a(), 1),
         "vcb_a": 0 if tap_lv else VCB_RATING_A,

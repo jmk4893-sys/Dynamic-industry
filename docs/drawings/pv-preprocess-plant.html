@@ -1337,6 +1337,7 @@ html>body{padding:0}</style>
       <button class="nav-link" id="pv-tab-layout" role="tab" aria-controls="pv-panel-layout" aria-selected="false" type="button">전체 장비배치도</button>
       <button class="nav-link" id="pv-tab-register" role="tab" aria-controls="pv-panel-register" aria-selected="false" type="button">도면 목록</button>
       <button class="nav-link" id="pv-tab-electrical" role="tab" aria-controls="pv-panel-electrical" aria-selected="false" type="button">전기 인입도</button>
+      <button class="nav-link" id="pv-tab-smart" role="tab" aria-controls="pv-panel-smart" aria-selected="false" type="button">스마트·AI</button>
     </div>
 
     <div class="viz-controls pv-drawing-controls" aria-label="도면 선택">
@@ -1445,6 +1446,29 @@ html>body{padding:0}</style>
           <thead><tr><th>피더</th><th>분전반</th><th>부하</th><th>설치 kW</th><th>수용률</th><th>수요 kW</th><th>MCCB</th><th>케이블</th><th>길이 m</th></tr></thead>
           <tbody id="pv-electrical-table"></tbody>
           <tfoot id="pv-electrical-total"></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div id="pv-panel-smart" role="tabpanel" aria-labelledby="pv-tab-smart" hidden>
+      <div class="viz-controls" aria-label="스마트 팩토리 도면 선택">
+        <label class="form-label" for="pv-sm-view">시트
+          <select class="form-select" id="pv-sm-view">
+            <option value="network" selected>네트워크·데이터 아키텍처 · SM-1012</option>
+            <option value="instrument">계측·식별 배치 · SM-1013</option>
+            <option value="ai">AI 적용 검토 · AI-1014</option>
+          </select>
+        </label>
+      </div>
+      <div class="card pv-sheet-surface">
+        <svg id="pv-smart-svg" class="pv-sheet" viewBox="0 0 1400 820" role="img" aria-label="스마트 팩토리 네트워크와 데이터 아키텍처"></svg>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <caption class="text-small text-muted">AI 적용 검토 — 등급은 성능이 아니라 <strong>착수 가능성</strong>이다. A는 지금 데이터로, B는 신규 계측기가 붙으면, C는 되지만 이득이 작아 권고하지 않음, D는 지금은 불가. <code>src/pv_preprocess/ai.py</code> 파생.</caption>
+          <thead><tr><th>과제</th><th>등급</th><th>이름</th><th>입력</th><th>라벨</th><th>필요 계측기</th></tr></thead>
+          <tbody id="pv-smart-table"></tbody>
+          <tfoot id="pv-smart-total"></tfoot>
         </table>
       </div>
     </div>
@@ -2419,6 +2443,10 @@ html>body{padding:0}</style>
   var electricalTotal = el('#pv-electrical-total');
   var elViewSel = el('#pv-el-view');
   var elFeederSel = el('#pv-el-feeder');
+  var smartSvg = el('#pv-smart-svg');
+  var smartTable = el('#pv-smart-table');
+  var smartTotal = el('#pv-smart-total');
+  var smViewSel = el('#pv-sm-view');
   var elFeederLabel = el('#pv-el-feeder-label');
   var tabs = Array.prototype.slice.call(host.querySelectorAll('[role="tab"][id^="pv-tab-"]'));
   var panels = Array.prototype.slice.call(host.querySelectorAll('[role="tabpanel"][id^="pv-panel-"]'));
@@ -2836,7 +2864,10 @@ html>body{padding:0}</style>
     ['PV-PLANT-NV-1009', '소음·진동 예측·저감 계획', '검토서', '앱 반영', '시운전 소음도·진동 실측'],
     ['PV-PLANT-TH-1010', '열수지·냉각 계통 계획', '검토서', '앱 반영', '유온·반내온도 실측, 환기 TAB'],
     ['PV-PLANT-MT-1011', '내구 재질 기준·적용표', '검토서', '앱 반영', '라이너 마모율 실측·교체주기'],
-    ['PV-VIS-901', '비전 센서 최소화 검토', '검토서', '앱 반영', '촬영 정정시간·ROI MSA']
+    ['PV-VIS-901', '비전 센서 최소화 검토', '검토서', '앱 반영', '촬영 정정시간·ROI MSA'],
+    ['PV-PLANT-SM-1012', '스마트 팩토리 네트워크·데이터 아키텍처', '전장/IT', '앱 반영', '스위치 기종·PTP 정확도 실측'],
+    ['PV-PLANT-SM-1013', '계측·식별 기기 배치·신호 목록', '전장/계장', '앱 반영', '센서 기종·설치 위치 현장 확정'],
+    ['PV-PLANT-AI-1014', 'AI 적용 검토·라벨 공급 계획', '검토서', '앱 반영', '반입물 구성비·라벨 정합 실측']
   ];
 
   // 장비가 점유할 수 있는 Y 밴드. 보행·정비 통로는 이 밴드 **밖**에 확보한다.
@@ -2907,7 +2938,7 @@ html>body{padding:0}</style>
     return [left, top, width, height].map(Math.round).join(' ');
   }
 
-  var DRAWING_REVISION = 'REV.24';
+  var DRAWING_REVISION = 'REV.25';
   // 뷰별 축 선택. PART_AXIS 는 part.at/part.size 의 [X, 상하, 깊이] 기준,
   // ENVELOPE_AXIS 는 station.envelope 의 [L, W, H] 기준 — 두 배열의 축 순서가 다르다.
   var PART_AXIS = { plan: [0, 2], front: [0, 1], side: [2, 1] };
@@ -2920,7 +2951,7 @@ html>body{padding:0}</style>
     'z-': { axis: 2, keep: 1, label: 'Y 뒤쪽 제거' },
     'y+': { axis: 1, keep: -1, label: 'Z 위쪽 제거' }
   };
-  var state = { tab: 'fab', station: 'afu', explode: 65, labels: true, focus: 'all', clearance: true, yaw: -0.62, pitch: 0.48, zoom: 1, cutAxis: 'none', cutAt: 50, elView: 'single', elFeeder: 'F1' };
+  var state = { tab: 'fab', station: 'afu', explode: 65, labels: true, focus: 'all', clearance: true, yaw: -0.62, pitch: 0.48, zoom: 1, cutAxis: 'none', cutAt: 50, elView: 'single', elFeeder: 'F1', smView: 'network' };
   var colorCache = {};
   var canvas = document.createElement('canvas');
   canvas.setAttribute('role', 'img');
@@ -3542,7 +3573,65 @@ html>body{padding:0}</style>
   var CONTRACT_MARGIN = 1.35;
   // REV.23 인입 확정 — 계약전력이 저압 공급 상한을 넘어 고압 수전으로 바뀐다.
   // 값은 전부 src/pv_preprocess/electrical.py 의 incomer_summary() 파생이다.
-  var INCOMER = { method: '기존 부지 인입 1,200 kW 에서 분기 (이 플랜트 22.4 %)', tapsSite: true, tapLowVoltage: true, siteServiceKw: 1200.0, siteUtilPct: 22.4, siteHeadroomKw: 931.8, worstCaseKw: 266.0, lvTapMaxM: 162.3, highVoltage: true, hvV: 380, contractKw: 268.2, contractKva: 298.1, apparentKva: 220.8, transformerKva: 0, transformerKvaIfHv: 300, transformerLoadPct: 0.0, capacitorKvar: 35, hvCurrentA: 0.0, hvCable: '4C×240 mm² Cu (부지 저압 배전반 분기)', vcbA: 0, lvMainMm2: 240, substationMm: [0, 0, 0], lowVoltageLimitKw: 100.0, incomingKnown: false, dropPct: 3.0 };
+  var INCOMER = { method: '기존 부지 인입 1,200 kW 에서 분기 (이 플랜트 23.8 %)', tapsSite: true, tapLowVoltage: true, siteServiceKw: 1200.0, siteUtilPct: 23.8, siteHeadroomKw: 914.5, worstCaseKw: 280.8, lvTapMaxM: 152.4, highVoltage: true, hvV: 380, contractKw: 285.5, contractKva: 317.3, apparentKva: 235.0, transformerKva: 0, transformerKvaIfHv: 500, transformerLoadPct: 0.0, capacitorKvar: 35, hvCurrentA: 0.0, hvCable: '4C×240 mm² Cu (부지 저압 배전반 분기)', vcbA: 0, lvMainMm2: 240, substationMm: [0, 0, 0], lowVoltageLimitKw: 100.0, incomingKnown: false, dropPct: 3.0, breakerHeadroomKw: 3.9 };
+  // 스마트 팩토리 계층 — src/pv_preprocess/smart.py 파생 (테스트 대조).
+  var SMART = { serverRoomX: 44100, controlRoomX: 47200, edgeCenterX: 25000, facilityX0: 43200, facilityX1: 49200, serverRoomMm: [1800, 3200, 2700], controlRoomMm: [4000, 3400, 2700], racks: 2, rackU: 28, rackHeatKw: 6.03, edgeCabinets: 7, wifiAps: 5, instruments: 46, plcTags: 592, servos: 36, inverters: 9, dol: 8, timeseriesKbS: 91.7, visionRawMbS: 6.9, visionKeptMbS: 0.94, retentionPct: 13.7, requiredMbps: 111.9, backboneMbps: 1000, annualTb: 6.88, storageTb: 31.0, itKw: 10.3, instKw: 4.5, smartKw: 14.8, hoursPerYear: 2000 };
+  // [태그, 존, 이름, 수량, 신호수, Hz, 분전반, W, 용도, 여는 과제]
+  var INSTRUMENTS = [
+    ['VIB-901', 'afu', 'HPU-101 유압펌프 3축 진동', 1, 16, 1.0, 'LP-INST', 6.0, '펌프·전동기 베어링 열화 추세', 'AI-05'],
+    ['VIB-902', 'afr', 'HPU-601 유압펌프 3축 진동', 1, 16, 1.0, 'LP-INST', 6.0, '7.5 kW 펌프 — 라인 최대 유압원', 'AI-05'],
+    ['VIB-903', 'post', 'SG-301 연마 스핀들 3축 진동', 2, 16, 1.0, 'LP-INST', 6.0, '휠 마모·불평형 — 유리 흠집의 선행지표', 'AI-05'],
+    ['VIB-904', 'post', 'DX-601 집진 블로워 3축 진동', 2, 16, 1.0, 'LP-INST', 6.0, '임펠러 분진 부착 불평형', 'AI-05'],
+    ['VIB-905', 'grm', 'GRM 배기·냉각 블로워 3축 진동', 2, 16, 1.0, 'LP-INST', 6.0, '배기가 서면 실내 열부하가 1.5배가 된다', 'AI-05'],
+    ['VIB-906', 'grm', 'CV-301 슈레더 3축 진동', 1, 16, 1.0, 'LP-INST', 6.0, '이물 유입·칼날 결손', 'AI-05'],
+    ['PM-901', 'plant', '피더별 스마트 전력량계 (V·I·P·Q·PF·THD)', 12, 8, 1.0, 'LP-INST', 10.0, '역률 0.90·고조파 가정을 실측으로 대체', 'AI-03'],
+    ['PY-901', 'grm', '5단 랙 데크별 계면 방사온도계', 5, 2, 5.0, 'LP-INST', 8.0, '박리 계면 200 °C 도달 판정', 'AI-06'],
+    ['RTD-901', 'plant', '존별 실내 온습도', 7, 2, 0.2, 'LP-INST', 2.0, '열수지 33,000 m³/h 검증', 'AI-03'],
+    ['VOC-901', 'grm', 'IR 배기덕트 VOC (초산·알데하이드)', 1, 3, 1.0, 'LP-INST', 15.0, '가열 종점 판정 + 배출 관리', 'AI-08'],
+    ['DP-901', 'plant', '집진 필터 차압', 2, 1, 1.0, 'LP-INST', 3.0, '필터 막힘 — 탈진 주기 최적화', 'AI-05'],
+    ['PM25-901', 'plant', '실내 분진 PM2.5/PM10', 3, 2, 0.2, 'LP-INST', 5.0, '유리분 비산 — 연마·슈레더 구간', 'AI-03'],
+    ['FL-901', 'plant', '압축공기 주관 유량·압력', 1, 3, 1.0, 'LP-INST', 6.0, '무부하 시간대 누설량 산출', 'AI-03'],
+    ['VS-401', 'grm', '박리 완전도 검사 카메라 (12 MP · 확산조명)', 1, 0, 0.0, 'LP-INST', 120.0, '백시트/EVA 잔막 판정 — 데이터량은 비전 항목에서 센다', 'AI-07'],
+    ['RF-901', 'buffer', '버퍼 캐리지 RFID 리더', 2, 1, 0.2, 'LP-INST', 8.0, '패널 ID ↔ 캐리지 슬롯 결속', 'AI-01'],
+    ['RF-902', 'grm', 'GRM 5단 랙 캐리지 RFID 리더', 1, 1, 0.2, 'LP-INST', 8.0, '가열 이력을 장 단위로 잇는다', 'AI-06'],
+    ['WI-901', 'afu', '투입 리프트 중량계', 2, 1, 5.0, 'LP-INST', 12.0, '장당 질량 — 유리 두께·구성 추정', 'AI-01']
+  ];
+  // [태그, 등급, 이름, 추론 위치, 입력, 라벨, 방법, 이득, 전제·한계, 필요 계측기]
+  var AI_CASES = [
+    ['AI-01', 'A', '투입 3분류 (정상·유리 깨짐·전손)', '엣지 추론 서버', 'VS-101A/B 5 MP 2장 (이미 있다)', '작업자 정정 — 판정 화면에서 틀린 것을 고치면 그것이 라벨이다. 별도 라벨링 공수가 들지 않고 지금 당장 시작할 수 있다.', '사전학습 CNN 전이학습 · 3클래스', '전손 오통과 1장 = 병목 45 s, 파손유리 오통과 1장 = 후단 데크 피치 47.04 s. 지금은 규칙기반이라 애매한 장을 사람이 본다.', '**라벨의 질이 두 단계다.** 작업자 정정만으로도 착수는 되지만, \'후단에서 시트가 실제로 벗겨졌는가\' 라는 더 정확한 라벨을 그 장에 되돌려 붙이려면 패널 ID 가 버퍼·GRM 까지 이어져야 한다 — RF-901/902 결속이 그 조건이다. WI-901 중량은 부가 특징이지 필수는 아니다. 전손 표본이 가장 희소해 착수 시점을 지배하며, 그때까지는 규칙기반과 **병행 운전**한다.', []],
+    ['AI-02', 'A', '유리 잔사·결함 세그멘테이션', '엣지 추론 서버', 'GI-302 라인스캔 0.1 mm/px (장당 350 MB)', '연마 재작업 여부와 레시피 등급 판정 결과가 그대로 라벨이 된다.', 'U-Net 계열 세그멘테이션 + 면적·위치 후처리', '잔사 판정이 사람 눈에서 화소 면적으로 바뀐다. 레시피 등급 경계가 재현 가능해진다.', '장당 350 MB 라 전량 보존은 못 한다 — 불량 전량 + 정상 2 % 표본만 남기는 보존 정책이 이 과제의 전제다.', []],
+    ['AI-03', 'B', '전력·유틸리티 이상감지', '히스토리안', 'PM-901 피더별 12점 · FL-901 공압 · DP-901 차압 · RTD-901', '라벨 불요 — 비지도. 정상 운전 구간을 기준분포로 쓴다.', '자기부호화기 재구성오차 + 변화점 검출', '역률 0.90·고조파 가정이 실측으로 바뀐다. 무부하 시간대 공압 누설은 스마트 팩토리에서 회수가 가장 빠른 항목이다.', '피더 12개는 지금도 모델에 있지만 **계측기가 없어 값이 안 나온다** — PM-901 이 붙어야 시작한다.', ['PM-901', 'FL-901', 'DP-901', 'RTD-901']],
+    ['AI-04', 'A', '서보 추종오차 추세 이상', '엣지 캐비닛', '36축 × 6신호 × 100 Hz (드라이브가 이미 내보내는 PDO)', '라벨 불요 — 비지도. 정비 이력이 쌓이면 지도로 전환한다.', '축별 잔차 모델 + 누적합(CUSUM) 변화점', '**새 센서가 필요 없다.** 드라이브가 지금도 내보내는 신호를 아무도 저장하지 않고 있을 뿐이다. 히스토리안만 붙이면 그날부터 쌓인다.', '추종오차는 마찰·백래시 증가를 먼저 보여 주지만 베어링 결함 주파수는 못 본다 — 그것은 AI-05 의 진동 영역이다.', []],
+    ['AI-05', 'B', '회전기 베어링 예지보전', '센서 내장 + 엣지', 'VIB-901…906 3축 진동 (센서 내장 FFT · 특징 16개 1 Hz)', '교체·정비 이력. 초기에는 비지도로 시작해 이력이 쌓이면 지도로 옮긴다.', '포락선 스펙트럼 특징 + 이상탐지. 이력 축적 후 잔여수명 회귀.', 'HPU-601(7.5 kW)·SG-301 스핀들·배기 블로워가 서면 라인이 선다. 배기가 서면 실내 열부하가 54.6 → 139.9 kW 로 뛴다.', '원파형을 그대로 올리면 센서 1대가 240 kB/s 다 — 회선이 감당 못 한다. **센서 안에서 FFT 를 돌려 특징만 올리는 것이 전제**(64 B/s).', ['VIB-901', 'VIB-902', 'VIB-903', 'VIB-904', 'VIB-905', 'VIB-906']],
+    ['AI-06', 'B', 'IR 가열 종점 최적화', '엣지 추론 서버', 'PY-901 데크별 계면 방사온도 5점 · RF-902 캐리지 이력 · IR 뱅크 전력', '박리 결과(AI-07 의 완전도 판정)가 그대로 라벨이 된다 — 닫힌 고리다.', '데크별 열이력 → 박리 성공 확률 모델. 장당 소성시간을 개별 최적화.', '지금은 체류 235.2 s 를 **전 장에 똑같이** 준다. 유리 두께·오염도가 다른데도 같은 시간을 주는 것이라, 짧게 끝낼 수 있는 장에서 시간을 버리고 있다. 병목은 탠덤이지만 IR 여유(76.5 장/h)가 줄면 병목이 넘어온다 — 여유를 지키는 쪽으로도 값어치가 있다.', '계면 온도를 **아무도 재고 있지 않다.** PY-901 없이는 이 과제가 성립하지 않는다. 방사율 보정과 IR 뱅크 자체 복사의 분리가 난점이다.', ['PY-901', 'RF-902']],
+    ['AI-07', 'B', '박리 완전도 판정', '엣지 추론 서버', 'VS-401 12 MP 확산조명 (GRM 출구)', '후단 시트 유리 회수 성공/실패. 공정이 만든다.', '잔막 영역 세그멘테이션 + 합격/재투입 2분류', '지금 GRM 출구에는 **아무 검사도 없다**. 벗겨졌는지 아닌지를 사람이 보고 있고, 그 판정이 AI-06 의 라벨이기도 하다 — 이것이 없으면 가열 최적화도 못 한다.', '잔막이 투명 EVA 라 조명 설계가 판정 성패를 가른다. 편광·저각 조명 비교가 출도 전 확인 항목이다.', ['VS-401']],
+    ['AI-08', 'B', 'EVA 오프가스 기반 가열 종점 보조', '엣지 캐비닛', 'VOC-901 배기 초산·알데하이드 농도', 'AI-07 완전도 판정과 대조.', '농도 곡선 특징 + 종점 분류. AI-06 의 보조 입력.', 'EVA 는 200 °C 부근에서 초산을 낸다 — 농도 상승이 계면 연화의 **직접 지표**라 표면 온도보다 앞선다. 배출 관리도 같이 된다.', '덕트 희석·응답 지연이 커서 단독 판정에는 못 쓴다. AI-06 의 보조 신호로만 쓴다.', ['VOC-901']],
+    ['AI-09', 'C', '라인 스케줄 강화학습', '해당없음', '캠페인 이산사건 모델 (이미 있다)', '시뮬레이터 자체 보상', '—', '—', '**권고하지 않는다.** 이 라인은 직렬이고 병목이 JBR-201 45 s 로 고정이라 최적해가 자명하다. 실제로 택트 48.47 s 는 병목에 8 s 를 더한 값이고, 그보다 빨라질 여지는 기구에 있지 스케줄에 없다. 학습 정책을 넣으면 검증·설명 부담만 는다.', []],
+    ['AI-10', 'C', '로봇 파지 자세 비전 추정', '해당없음', 'VS-101/VS-201 영상', '—', '—', '—', '**권고하지 않는다.** PT-101 이 3-2-1 정렬로 좌표를 기계적으로 확정한 뒤에는 패널 위치가 이미 정해져 있다 — `vision.py` 가 영상 헤드를 7 → 4 로 줄인 근거와 같은 이유다. 줄인 카메라를 AI 로 되살리는 셈이 된다.', []],
+    ['AI-11', 'D', '셀 조성·등급 분류 (Ag·Si 회수 최적화)', '해당없음', '없음 — 성분을 보는 계측기가 이 플랜트에 없다', '없음', '—', '—', '**지금은 불가.** XRF 나 분광 계측기가 있어야 성립한다. 비전으로 셀 표면을 봐도 은 전극 폭까지지 조성은 못 본다. 계측기를 넣는 것은 이 PR 의 범위 밖이라 넣지 않았다 — 필요하면 별건이다.', []],
+    ['AI-12', 'D', '최종 회수율 예측', '해당없음', '이 플랜트 안에서는 없음', '후공정(부유선별·정제) 결과가 있어야 하는데 그 라인이 이 플랜트 밖이다', '—', '—', '**지금은 불가.** 전처리는 유리·프레임·셀을 분리해 내보내는 데서 끝나고, 최종 회수율은 후공정에서 결정된다. 두 라인의 데이터가 패널 ID 로 이어지면(JB-VS-005 ↔ 후공정 배치 ID) 그때 성립한다 — **연결 자체가 선결 과제**이고 모델 문제가 아니다.', []]
+  ];
+  // [이름, U, 수량, W, 이중화]
+  var RACK_ITEMS = [
+    ['코어 스위치 (백본 링 종단)', 1, 2, 250.0, true],
+    ['OT/IT 경계 방화벽', 1, 2, 120.0, true],
+    ['PTP(IEEE 1588) 그랜드마스터', 1, 1, 40.0, false],
+    ['히스토리안 서버', 2, 1, 600.0, false],
+    ['MES·SCADA 서버', 2, 2, 600.0, true],
+    ['엣지 추론 서버 (GPU 1장)', 4, 1, 2500.0, false],
+    ['스토리지 (NVMe RAID)', 2, 1, 500.0, false],
+    ['UPS', 3, 2, 200.0, true],
+    ['패치패널·KVM', 1, 5, 10.0, false]
+  ];
+  // [헤드, 존, 장당 byte, 장/h]
+  var IMAGE_STREAMS = [
+    ['VS-101A', 'afu', 5000000, 74.7],
+    ['VS-101B', 'afu', 5000000, 74.7],
+    ['VS-201A', 'jbr', 3000000, 72.2],
+    ['GI-302', 'post', 350000000, 66.0],
+    ['VS-401', 'grm', 12000000, 66.0]
+  ];
+  var AI_SUMMARY = { cases: 12, gradeA: 3, gradeB: 5, gradeC: 2, gradeD: 2, annualPanels: 149400, labelNormal: 131970, labelCracked: 12450, labelScrap: 4980, scarcest: '전손', coldStartMonths: 2.4, transferMin: 1000, scrapMissS: 45.0, crackedMissS: 47.04 };
   var SL_CHAIN_ROWS = INCOMER.tapsSite ? (INCOMER.tapLowVoltage ? 4 : 5) : (INCOMER.highVoltage ? 6 : 4);
   // 분기 주회로 길이는 부지 실측 대기다. 모를 때 0.0 m 로 찍으면 도면이 거짓말을 한다.
   function incomingText() {
@@ -3562,13 +3651,15 @@ html>body{padding:0}</style>
     ['F9', 'LP-GRM-IRA', 'GRM-401 IR 뱅크 A (라인 1–3 · 30등 × 2.92 kW)', 87.5, 0.75, 200, '4C×70 mm² Cu', '계획(순차가열 수용률)'],
     ['F10', 'LP-GRM-IRB', 'GRM-401 IR 뱅크 B (라인 4–6 · 30등 × 2.92 kW)', 87.5, 0.75, 200, '4C×70 mm² Cu', '계획(순차가열 수용률)'],
     ['F11', 'LP-GRM-MEC', 'LI-101 승강 2축 · TS-101 포크 · EX-101/RT-101 · TDM-201 X/Z · WR-101 · GR-201/DS-301', 14.0, 0.65, 40, '4C×10 mm² Cu', '계획'],
-    ['F12', 'LP-GRM-EXH', 'IR 배기 · CV-301 슈레더 투입부 집진', 9.0, 0.90, 32, '4C×6 mm² Cu', '계획']
+    ['F12', 'LP-GRM-EXH', 'IR 배기 · CV-301 슈레더 투입부 집진', 9.0, 0.90, 32, '4C×6 mm² Cu', '계획'],
+    ['F13', 'LP-IT', 'SVR-902 랙 2면(코어망·히스토리안·MES·엣지추론 GPU·UPS) · 랙실 항온항습 · MCR-901 관제실', 10.3, 0.85, 32, '4C×6 mm² Cu', '계획(smart.it_installed_kw)'],
+    ['F14', 'LP-INST', '존별 엣지 캐비닛 7면 · 무선 AP 5대 · 신규 계측기 46점 · 라인스캔 조명', 4.5, 0.90, 20, '4C×4 mm² Cu', '계획(smart.instrument_installed_kw)']
   ];
   // 케이블 길이(m) — src/pv_preprocess/wiring.py 와 같은 값이어야 한다 (테스트 대조).
   // 경로: MDB(x 42,500 · y 8,150 벽부) 상단 인출 → 통로 상부 트레이 H=2,600(y 7,700)
   //       → 각 셀 분전반(y 7,000 · 상단 1,900) 드롭. 여유 10 % + 성단 3 m.
-  var CABLE_LENGTH_M = { F1: 48.8, F2: 42.2, F3: 35.5, F4: 27.4, F5: 18.7, F6: 8.6, F7: 18.6, F8: 33.4, F9: 13.0, F10: 14.3, F11: 17.3, F12: 20.6 };
-  var MDB_X_MM = 42500, INCOMING_CABLE_M = 0, TOTAL_POWER_CABLE_M = 298.4, AISLE_CLEAR_MM = 900;
+  var CABLE_LENGTH_M = { F1: 48.8, F2: 42.2, F3: 35.5, F4: 27.4, F5: 18.7, F6: 8.6, F7: 18.6, F8: 33.4, F9: 13.0, F10: 14.3, F11: 17.3, F12: 20.6, F13: 7.6, F14: 25.1 };
+  var MDB_X_MM = 42500, INCOMING_CABLE_M = 0, TOTAL_POWER_CABLE_M = 331.1, AISLE_CLEAR_MM = 900;
   // 셀 분전반 위치는 존에서 파생한다 — wiring.py lp_positions_mm() 와 같은 규칙.
   function lpPositions() {
     function center(key) { var z = zoneByKey(key); return (z[2] + z[3]) / 2; }
@@ -3580,7 +3671,10 @@ html>body{padding:0}</style>
       // REV.23 유리제거셀 4면. 두 IR 반은 랙 앞에 1,200 간격으로 나란히 선다 —
       // 같은 X 에 겹쳐 두면 계통 연결도에서 라벨이 포개지고 길이가 0 이 된다.
       'LP-GRM-IRA': center('grm') - 2750, 'LP-GRM-IRB': center('grm') - 1550,
-      'LP-GRM-MEC': center('grm') + 1200, 'LP-GRM-EXH': center('grm') + 4200
+      'LP-GRM-MEC': center('grm') + 1200, 'LP-GRM-EXH': center('grm') + 4200,
+      // REV.25 스마트 팩토리. LP-IT 는 랙실 안, LP-INST 는 존마다 선 엣지
+      // 캐비닛의 부하중심이다 — MDB 를 부하중심에 두는 규칙과 같은 규칙이다.
+      'LP-IT': SMART.serverRoomX, 'LP-INST': SMART.edgeCenterX
     };
   }
   var EL_CHAIN = ['LP-AFU', 'LP-RB', 'LP-JBR', 'LP-CTRL', 'LP-AFR', 'LP-GLASS', 'LP-DX', 'LP-GBR', 'LP-GRM-IRA', 'LP-GRM-IRB', 'LP-GRM-MEC', 'LP-GRM-EXH'];
@@ -3692,9 +3786,11 @@ html>body{padding:0}</style>
     ['LP-GRM-IRA', 0.0, '— (전동기 없음)'],
     ['LP-GRM-IRB', 0.0, '— (전동기 없음)'],
     ['LP-GRM-MEC', 0.45, '열교환기'],
-    ['LP-GRM-EXH', 0.44, '열교환기']
+    ['LP-GRM-EXH', 0.44, '열교환기'],
+    ['LP-IT', 0.0, '— (전동기 없음)'],
+    ['LP-INST', 0.0, '— (전동기 없음)']
   ];
-  var THERMAL_SUMMARY = { room: 54.55, airflow: 33000, exhausted: 144.15, deltaT: 5, hpuLossRatio: 0.3, driveLossRatio: 0.05, coolerMargin: 1.25 };
+  var THERMAL_SUMMARY = { room: 58.59, airflow: 35000, exhausted: 144.15, deltaT: 5, hpuLossRatio: 0.3, driveLossRatio: 0.05, coolerMargin: 1.25 };
   // 내구 재질 — src/pv_preprocess/materials.py 와 같은 값. [환경, 요구, 재질, 근거]
   var FRAME_FLEX = { section: "40×35×t1.5 알루미늄 각관", inertia: 41882, force: 1200, free: 220, deflection: 1.474, stress: 110.3, yieldMpa: 160, maxFree: 319.1, margin: 1.45, exaggeration: 40, displayBow: 59 };
   var MATERIAL_RULES = [
@@ -4108,6 +4204,7 @@ html>body{padding:0}</style>
       }).join('');
     }
     elViewSel.value = state.elView;
+    if (smViewSel) smViewSel.value = state.smView;
     elFeederSel.value = state.elFeeder;
     elFeederLabel.hidden = state.elView !== 'circuit';
   }
@@ -4123,14 +4220,14 @@ html>body{padding:0}</style>
     syncElControls();
     renderElectrical();
   }
-  // 시트 맞춤 — 그린 뒤 실제 크기를 재서 맞춘다.
+  // 시트 맞춤 — 그린 뒤 실제 크기를 재서 맞춘다. 전기 4뷰와 스마트 3뷰가 같이 쓴다.
   //
   // 글자폭을 코드에서 어림하면 폰트가 바뀔 때 조용히 틀리고, 프레임 크기를
   // 상수로 박으면 행이 늘 때 조용히 넘친다. 둘 다 REV.23→24 에서 실제로 났다.
   // 그래서 ① 자리보다 긴 라벨은 실측해서 줄이고 ② 그러고도 남는 내용이 있으면
   // 프레임과 viewBox 를 같이 키운다. 화면에 없을 때(getBBox 불가)는 건너뛴다.
-  function fitElectricalSheet() {
-    var svg = electricalSvg, frame = svg.querySelector('#pv-sheet-frame');
+  function fitSheet(svg) {
+    var frame = svg.querySelector('#pv-sheet-frame');
     if (!frame || !svg.getBBox) return;
     var labels = svg.querySelectorAll('text[data-fit]'), i;
     for (i = 0; i < labels.length; i++) {
@@ -4162,6 +4259,270 @@ html>body{padding:0}</style>
     frame.setAttribute('height', h - 28);
   }
 
+
+  // ── 스마트 팩토리 시트 (SM-1012 / SM-1013 / AI-1014) ────────────────────
+  // 세 시트 다 숫자를 박지 않는다. SMART·AI_SUMMARY·INSTRUMENTS·AI_CASES 는
+  // 파이썬 모델에서 찍어 온 리터럴이고, 축이나 센서가 늘면 여기가 따라온다.
+  var SM_VIEWS = {
+    network: '스마트 팩토리 네트워크와 데이터 아키텍처',
+    instrument: '계측·식별 기기 배치와 신호 목록',
+    ai: 'AI 적용 검토 — 등급·라벨 공급·오분류 대가'
+  };
+  var GRADE_TONE = { A: 'pv-fab-accent', B: 'pv-fab-secondary', C: 'pv-fab-object', D: 'pv-fab-hidden' };
+  var GRADE_WORD = {
+    A: '지금 데이터로 착수 가능',
+    B: '신규 계측기가 붙으면 가능',
+    C: '되지만 이득이 작다 — 권고하지 않음',
+    D: '지금은 불가'
+  };
+
+  // 모델 산문에는 마크다운 강조(**)가 들어 있다. 파이썬 docstring 과 PR 본문에서
+  // 읽히라고 쓴 것인데, SVG 는 그대로 별표를 그린다 — 시트에 옮길 때 벗긴다.
+  function plain(value) { return String(value).replace(/\*\*/g, ''); }
+
+  function smartFrame(out, no, title, subtitle) {
+    out.push('<title>' + no + ' ' + title + '</title>');
+    out.push('<rect id="pv-sheet-frame" class="pv-fab-frame" x="14" y="14" width="1372" height="792"/>');
+    out.push(text(40, 48, no + ' · ' + title + ' · ' + DRAWING_REVISION, 'pv-fab-title'));
+    out.push(text(40, 72, subtitle, 'pv-layout-small'));
+  }
+
+  // SM-1012 — ISA-95 5계층. 왼쪽에 계층, 가운데에 그 계층이 실제로 무엇인지,
+  // 오른쪽에 그 계층이 만드는 데이터량을 적는다.
+  function renderSmartNetwork(out) {
+    smartFrame(out, 'PV-PLANT-SM-1012', '네트워크·데이터 아키텍처',
+      'ISA-95 5계층 · L1↔L3 단방향 원칙 · 백본 ' + (SMART.backboneMbps / 1000) + ' GbE 광 이중화 링 · 요구 '
+      + SMART.requiredMbps + ' Mbps (여유율 2.0 포함)');
+    var rows = [
+      ['L4', '기업 · ERP', '이 플랜트 밖이다 — 생산실적만 올라간다', '', true],
+      ['L3', '운영 · MES · 히스토리안 · OEE',
+       'SVR-902 랙 ' + SMART.racks + '면 (' + SMART.rackU + 'U · 발열 ' + SMART.rackHeatKw + ' kW) · MCR-901 관제실',
+       '저장 연 ' + SMART.annualTb + ' TB · 3년 ' + SMART.storageTb + ' TB', false],
+      ['L2', '감시 · SCADA · 엣지 수집·추론',
+       '존별 엣지 캐비닛 ' + SMART.edgeCabinets + '면 (벽부 D300) · 무선 AP ' + SMART.wifiAps + '대',
+       '공정 태그 ' + n(SMART.plcTags) + '점 · ' + SMART.timeseriesKbS + ' kB/s', false],
+      ['L1', '제어 · 안전/모션 PLC — 이미 있다',
+       'EtherCAT CoE(CSP) · FSoE STO · 안전 I/O 링',
+       '신설 없음', false],
+      ['L0', '현장 · 구동기와 계측기',
+       '서보 ' + SMART.servos + '축 · 인버터 ' + SMART.inverters + '대 · 직입 ' + SMART.dol
+         + '대 · 신규 계측 ' + SMART.instruments + '점 · 비전 ' + IMAGE_STREAMS.length + '스트림',
+       '영상 원본 ' + SMART.visionRawMbS + ' MB/s', false]
+    ];
+    var top = 112, pitch = 96, boxX = 60, boxW = 150, midX = 230, midW = 700;
+    rows.forEach(function (row, i) {
+      var y = top + i * pitch;
+      var tone = row[4] ? 'pv-fab-hidden' : 'pv-fab-object';
+      out.push('<rect class="' + tone + '" x="' + boxX + '" y="' + y + '" width="' + boxW + '" height="66" rx="4"/>');
+      out.push(text(boxX + boxW / 2, y + 28, row[0], 'pv-fab-text', 'middle'));
+      out.push(text(boxX + boxW / 2, y + 50, row[4] ? '범위 밖' : '적용', 'pv-fab-small', 'middle'));
+      out.push('<rect class="' + (row[4] ? 'pv-fab-hidden' : 'pv-fab-secondary') + '" x="' + midX + '" y="' + y + '" width="' + midW + '" height="66" rx="4"/>');
+      out.push(text(midX + 18, y + 28, row[1], 'pv-fab-small'));
+      out.push(text(midX + 18, y + 50, row[2], 'pv-fab-small'));
+      if (row[3]) out.push(text(midX + midW - 18, y + 40, row[3], 'pv-fab-small', 'end'));
+      if (i < rows.length - 1) {
+        out.push(line(boxX + boxW / 2, y + 66, boxX + boxW / 2, y + pitch, 'pv-fab-frame'));
+      }
+    });
+    // 단방향 화살표 — L1 에서 위로만 흐른다.
+    var upX = 195, upTop = top + 66, upBottom = top + 4 * pitch;
+    out.push(line(upX, upBottom, upX, upTop, 'pv-el-net'));
+    // 주기는 스택 아래 빈 자리에 적는다 — 화살표 옆에 두면 L2·L3 상자 글자를 덮는다.
+    var noteY = top + 5 * pitch + 24;
+    out.push(text(60, noteY, '수집 경로는 위로만 열려 있다 (L1 → L3, 계층 사이 세로선).', 'pv-fab-small'));
+    out.push(text(60, noteY + 22, 'AI 판정은 PLC 에 직접 쓰지 않고 판정 보조신호로만 내려간다.', 'pv-fab-small'));
+    out.push(text(60, noteY + 44, '안전 채널(PLr·PFHd)은 계산이 다시 서기 전에는 건드리지 않는다.', 'pv-fab-small'));
+
+    // 데이터량 상자 — 이 시트의 결론.
+    var box = { x: 980, y: 470, w: 380, h: 250 };
+    out.push('<rect class="pv-fab-frame" x="' + box.x + '" y="' + box.y + '" width="' + box.w + '" height="' + box.h + '"/>');
+    out.push(text(box.x + 16, box.y + 30, '데이터량 — 회선·저장의 근거', 'pv-fab-text'));
+    [['시계열 (드라이브·계측·태그)', SMART.timeseriesKbS + ' kB/s'],
+     ['영상 원본', SMART.visionRawMbS + ' MB/s'],
+     ['영상 보존율', SMART.retentionPct + ' %'],
+     ['영상 보존 후', SMART.visionKeptMbS + ' MB/s'],
+     ['요구 대역 (여유 2.0)', SMART.requiredMbps + ' Mbps'],
+     ['백본 등급', (SMART.backboneMbps / 1000) + ' GbE'],
+     ['연간 저장', SMART.annualTb + ' TB'],
+     ['3년 실용량 (이중화 1.5)', SMART.storageTb + ' TB']].forEach(function (r, i) {
+      var y = box.y + 62 + i * 24;
+      out.push(text(box.x + 16, y, r[0], 'pv-fab-small'));
+      out.push(text(box.x + box.w - 16, y, r[1], 'pv-fab-small', 'end'));
+    });
+
+    // 랙 구성 — 이중화는 랙을 나눈다.
+    var rk = { x: 980, y: 112, w: 380, h: 330 };
+    out.push('<rect class="pv-fab-frame" x="' + rk.x + '" y="' + rk.y + '" width="' + rk.w + '" height="' + rk.h + '"/>');
+    out.push(text(rk.x + 16, rk.y + 30, 'SVR-902 랙 탑재물 (' + SMART.rackU + 'U / ' + SMART.racks + '면)', 'pv-fab-text'));
+    RACK_ITEMS.forEach(function (item, i) {
+      var y = rk.y + 60 + i * 28;
+      out.push(text(rk.x + 16, y, item[0], 'pv-fab-small'));
+      out.push(text(rk.x + rk.w - 16, y, item[1] * item[2] + 'U' + (item[4] ? ' ×2 별랙' : ''), 'pv-fab-small', 'end'));
+    });
+    out.push(text(40, 762, '랙 2면은 공간이 모자라서가 아니다 — ' + SMART.rackU + 'U 는 42U 한 면에 들어간다. '
+      + '이중화 쌍(코어 스위치·방화벽·MES·UPS)을 같은 랙에 넣으면 그 랙의 배전이나 냉각이 죽는 순간 둘이 같이 죽어 이중화가 아니게 된다.', 'pv-layout-small'));
+    out.push(text(40, 784, '랙실 ' + n(SMART.serverRoomMm[0]) + ' × ' + n(SMART.serverRoomMm[1]) + ' mm 와 관제실 '
+      + n(SMART.controlRoomMm[0]) + ' × ' + n(SMART.controlRoomMm[1]) + ' mm 는 구획실이라 장비 밴드 밖에 선다. '
+      + '랙 팬 소음 때문에 두 방을 나눴다 — 관제실은 상주 근무라 사무 환경(45 dBA)이어야 한다.', 'pv-layout-small'));
+  }
+
+  // SM-1013 — 계측기를 실제 존 위치에 놓는다. EL-1007 과 같은 X 축이다.
+  function renderSmartInstruments(out) {
+    smartFrame(out, 'PV-PLANT-SM-1013', '계측·식별 기기 배치·신호 목록',
+      '신규 ' + SMART.instruments + '점 · 엣지 캐비닛 ' + SMART.edgeCabinets + '면 · 급전 LP-INST(F14) '
+      + SMART.instKw + ' kW · 넣는 기준은 "그 신호로 무엇을 결정하는가" 하나다');
+    var lp = lpPositions();
+    function mx(v) { return 70 + v / PLANT_X * 1260; }
+    // 존 띠
+    var zoneTop = 108;
+    layoutZones.forEach(function (z) {
+      if (z[0] === 'gate') return;
+      out.push('<rect class="pv-fab-hidden" x="' + mx(z[2]) + '" y="' + zoneTop + '" width="' + (mx(z[3]) - mx(z[2])) + '" height="34"/>');
+      out.push(text((mx(z[2]) + mx(z[3])) / 2, zoneTop + 22, z[1].split(' · ')[0], 'pv-fab-small', 'middle'));
+    });
+    // 엣지 캐비닛 — 존마다 한 면
+    var edgeY = zoneTop + 58;
+    layoutZones.forEach(function (z) {
+      if (z[0] === 'gate') return;
+      var x = (mx(z[2]) + mx(z[3])) / 2;
+      out.push(line(x, zoneTop + 34, x, edgeY, 'pv-fab-frame'));
+      out.push('<rect class="pv-fab-secondary" x="' + (x - 46) + '" y="' + edgeY + '" width="92" height="30" rx="3"/>');
+      out.push(text(x, edgeY + 20, 'EC-' + z[0].toUpperCase().slice(0, 3), 'pv-fab-small', 'middle'));
+    });
+    out.push(text(22, edgeY + 20, '엣지', 'pv-fab-small'));
+    // 계측기 — 존별로 쌓는다
+    var stackTop = edgeY + 56, rowH = 26;
+    var perZone = {};
+    INSTRUMENTS.forEach(function (item) {
+      var key = item[1];
+      (perZone[key] = perZone[key] || []).push(item);
+    });
+    // 존에 매인 것과 전역(plant)인 것을 같은 축에 쌓으면 겹친다 — 전역은
+    // 플랜트 어디에나 있는 것이라 애초에 X 좌표가 없다. 띠를 따로 준다.
+    var deepest = stackTop, zoneKeys = Object.keys(perZone).filter(function (k) { return k !== 'plant'; });
+    zoneKeys.forEach(function (key) {
+      var z = zoneByKey(key), x = (mx(z[2]) + mx(z[3])) / 2;
+      perZone[key].forEach(function (item, i) {
+        var y = stackTop + i * rowH;
+        deepest = Math.max(deepest, y);
+        out.push('<text class="pv-fab-small" text-anchor="middle" data-fit="190" x="' + x + '" y="' + y
+          + '">' + escapeText(item[0] + ' ×' + item[3]) + '</text>');
+      });
+    });
+    out.push(text(22, stackTop, '존 계측', 'pv-fab-small'));
+    var globalY = deepest + 34;
+    out.push(line(mx(0), globalY - 18, mx(PLANT_X), globalY - 18, 'pv-fab-hidden'));
+    out.push(text(22, globalY + 4, '전역', 'pv-fab-small'));
+    (perZone['plant'] || []).forEach(function (item, i) {
+      var x = mx(0) + 60 + i * 230;
+      out.push('<text class="pv-fab-small" data-fit="215" x="' + x + '" y="' + (globalY + 4) + '">'
+        + escapeText(item[0] + ' ×' + item[3]) + '</text>');
+    });
+    deepest = globalY + 4;
+    // 신호 목록 표
+    var tb = { x: 60, y: deepest + 50, w: 1280 };
+    out.push(text(tb.x, tb.y, '신호 목록 — 태그 · 수량 · 신호수 × 표본율 · 대역 · 용도 · 여는 과제', 'pv-fab-text'));
+    var cols = [0, 110, 190, 350, 480, 1010];
+    out.push(line(tb.x, tb.y + 10, tb.x + tb.w, tb.y + 10, 'pv-fab-frame'));
+    INSTRUMENTS.forEach(function (item, i) {
+      var y = tb.y + 32 + i * 22;
+      var bw = Math.round(item[3] * item[4] * item[5] * 4 * 10) / 10;
+      out.push(text(tb.x + cols[0], y, item[0], 'pv-fab-small'));
+      out.push(text(tb.x + cols[1], y, '×' + item[3], 'pv-fab-small'));
+      // 카메라는 시계열 신호가 아니라 영상이다 — 0신호 · 0 B/s 로 적으면
+      // "아무것도 안 낸다"로 읽힌다. 실제로는 이 시트 최대 데이터원이다.
+      var isImage = item[4] === 0;
+      out.push(text(tb.x + cols[2], y, isImage ? '영상 스트림' : item[4] + '신호 × ' + item[5] + ' Hz', 'pv-fab-small'));
+      out.push(text(tb.x + cols[3], y, isImage ? 'SM-1012 참조'
+        : (bw >= 1000 ? (bw / 1000).toFixed(1) + ' kB/s' : bw + ' B/s'), 'pv-fab-small'));
+      out.push('<text class="pv-fab-small" data-fit="510" x="' + (tb.x + cols[4]) + '" y="' + y + '">'
+        + escapeText(plain(item[2] + ' — ' + item[8])) + '</text>');
+      out.push(text(tb.x + cols[5], y, item[9], 'pv-fab-small'));
+    });
+    var last = tb.y + 32 + INSTRUMENTS.length * 22;
+    out.push(text(tb.x, last + 26, '진동은 센서 안에서 FFT 를 돌려 특징 16개만 올린다 — 원파형 10 kHz × 3축을 그대로 올리면 센서 1대가 240 kB/s 라 회선이 감당하지 못한다 (3,750배 차이).', 'pv-layout-small'));
+    out.push(text(tb.x, last + 48, '패널 ID 스캐너는 JB-VS-005 로 이미 있다 — 반전 뒤에야 백시트가 위를 보므로 JBR 이 유일하게 읽을 수 있는 자리다. 여기 신규는 캐리지 결속(RF-901/902)뿐이다.', 'pv-layout-small'));
+  }
+
+  // AI-1014 — 등급별로 나눠 적고, 라벨이 언제 모이는지를 같이 적는다.
+  function renderSmartAi(out) {
+    smartFrame(out, 'PV-PLANT-AI-1014', 'AI 적용 검토·라벨 공급 계획',
+      AI_SUMMARY.cases + '건 검토 · A ' + AI_SUMMARY.gradeA + ' · B ' + AI_SUMMARY.gradeB
+        + ' · C ' + AI_SUMMARY.gradeC + ' · D ' + AI_SUMMARY.gradeD
+        + ' · 등급은 성능이 아니라 착수 가능성이다');
+    var y = 108;
+    ['A', 'B', 'C', 'D'].forEach(function (grade) {
+      var rows = AI_CASES.filter(function (c) { return c[1] === grade; });
+      out.push('<rect class="' + GRADE_TONE[grade] + '" x="40" y="' + y + '" width="46" height="' + (rows.length * 46 + 8) + '" rx="3"/>');
+      out.push(text(63, y + 24, grade, 'pv-fab-title', 'middle'));
+      out.push(text(100, y + 18, GRADE_WORD[grade], 'pv-fab-text'));
+      rows.forEach(function (c, i) {
+        var ry = y + 36 + i * 46;
+        out.push('<text class="pv-fab-small" data-fit="300" x="100" y="' + ry + '">'
+          + escapeText(c[0] + ' · ' + c[2]) + '</text>');
+        out.push('<text class="pv-fab-small" data-fit="880" x="420" y="' + ry + '">'
+          + escapeText(plain(grade === 'C' || grade === 'D' ? c[8] : c[7])) + '</text>');
+        out.push('<text class="pv-fab-small" data-fit="880" x="420" y="' + (ry + 18) + '">'
+          + escapeText(plain('입력 ' + c[4] + ' / 라벨 ' + c[5]
+            + (c[9].length ? ' / 필요 ' + c[9].join('·') : ''))) + '</text>');
+      });
+      y += rows.length * 46 + 26;
+    });
+    // 라벨 공급 — 착수 시점의 근거
+    var box = { x: 40, y: y + 10, w: 640, h: 180 };
+    out.push('<rect class="pv-fab-frame" x="' + box.x + '" y="' + box.y + '" width="' + box.w + '" height="' + box.h + '"/>');
+    out.push(text(box.x + 16, box.y + 30, '라벨 공급 — 연 ' + n(AI_SUMMARY.annualPanels) + ' 장 (가동 '
+      + n(SMART.hoursPerYear) + ' h/년 기준)', 'pv-fab-text'));
+    var labels = [['정상', AI_SUMMARY.labelNormal], ['유리 깨짐', AI_SUMMARY.labelCracked], ['전손', AI_SUMMARY.labelScrap]];
+    labels.forEach(function (r, i) {
+      var ry = box.y + 62 + i * 26;
+      var months = (AI_SUMMARY.transferMin / r[1] * 12).toFixed(1);
+      out.push(text(box.x + 16, ry, r[0], 'pv-fab-small'));
+      out.push(text(box.x + 240, ry, n(r[1]) + ' 장/년', 'pv-fab-small', 'end'));
+      out.push(text(box.x + box.w - 16, ry, '전이학습 ' + n(AI_SUMMARY.transferMin) + '장까지 ' + months + ' 개월', 'pv-fab-small', 'end'));
+    });
+    out.push(text(box.x + 16, box.y + 152, '가장 희소한 "' + AI_SUMMARY.scarcest + '" 이 착수 시점을 지배한다 — '
+      + AI_SUMMARY.coldStartMonths + ' 개월.', 'pv-fab-small'));
+    // 오분류의 대가
+    var cost = { x: 700, y: y + 10, w: 660, h: 180 };
+    out.push('<rect class="pv-fab-frame" x="' + cost.x + '" y="' + cost.y + '" width="' + cost.w + '" height="' + cost.h + '"/>');
+    out.push(text(cost.x + 16, cost.y + 30, '오분류 1장의 대가 — 정확도 % 가 아니라 초로 적는다', 'pv-fab-text'));
+    [['전손을 통과시키면', AI_SUMMARY.scrapMissS + ' s', '투입부 15 s 로 끝날 것이 병목 JBR 을 점유한다'],
+     ['파손 유리를 통과시키면', AI_SUMMARY.crackedMissS + ' s', '유리제거 데크를 먹고 시트 유리는 안 나온다']
+    ].forEach(function (r, i) {
+      var ry = cost.y + 62 + i * 44;
+      out.push(text(cost.x + 16, ry, r[0], 'pv-fab-small'));
+      out.push(text(cost.x + 250, ry, r[1], 'pv-fab-text'));
+      out.push('<text class="pv-fab-small" data-fit="380" x="' + (cost.x + 340) + '" y="' + ry + '">' + escapeText(r[2]) + '</text>');
+    });
+    out.push(text(cost.x + 16, cost.y + 152, 'C·D 는 하지 않기로 한 것이다 — 기구가 이미 결정론적으로 푸는 문제에 학습을 얹지 않는다.', 'pv-fab-small'));
+  }
+
+  function renderSmart() {
+    var out = [];
+    if (state.smView === 'instrument') renderSmartInstruments(out);
+    else if (state.smView === 'ai') renderSmartAi(out);
+    else renderSmartNetwork(out);
+    smartSvg.innerHTML = out.join('');
+    smartSvg.setAttribute('aria-label', SM_VIEWS[state.smView] || SM_VIEWS.network);
+    fitSheet(smartSvg);
+    smartTable.innerHTML = AI_CASES.map(function (c) {
+      return '<tr><td>' + c[0] + '</td><td><strong>' + c[1] + '</strong></td><td>' + c[2]
+        + '</td><td>' + c[4] + '</td><td>' + c[5] + '</td><td>'
+        + (c[9].length ? c[9].join(' · ') : '—') + '</td></tr>';
+    }).join('');
+    smartTotal.innerHTML = '<tr><th colspan="6">착수 가능 ' + (AI_SUMMARY.gradeA + AI_SUMMARY.gradeB)
+      + '건 · 신규 계측 ' + SMART.instruments + '점 · 라벨 연 ' + n(AI_SUMMARY.annualPanels)
+      + '장 · 가장 희소한 "' + AI_SUMMARY.scarcest + '" 기준 착수 ' + AI_SUMMARY.coldStartMonths + '개월</th></tr>';
+  }
+
+  function setSmView(view) {
+    if (!Object.prototype.hasOwnProperty.call(SM_VIEWS, view)) throw new RangeError('Unknown smart view');
+    state.smView = view;
+    if (smViewSel) smViewSel.value = view;
+    renderSmart();
+  }
+
   function renderElectrical() {
     var total = electricalTotals();
     var out = [];
@@ -4172,7 +4533,7 @@ html>body{padding:0}</style>
     else renderSingleLine(out, total);
     electricalSvg.innerHTML = out.join('');
     electricalSvg.setAttribute('aria-label', EL_VIEWS[state.elView] || EL_VIEWS.single);
-    fitElectricalSheet();
+    fitSheet(electricalSvg);
 
     electricalTable.innerHTML = feeders.map(function (feeder) {
       var strong = feeder[7].indexOf('GA 명시') === 0;
@@ -4558,7 +4919,7 @@ html>body{padding:0}</style>
   }
 
   function selectTab(tabName) {
-    var valid = ['fab', 'explode', 'layout', 'register', 'electrical'];
+    var valid = ['fab', 'explode', 'layout', 'register', 'electrical', 'smart'];
     if (valid.indexOf(tabName) < 0) throw new RangeError('Unknown drawing tab');
     state.tab = tabName;
     tabs.forEach(function (tab) {
@@ -4637,6 +4998,7 @@ html>body{padding:0}</style>
   bind(layoutFocus, 'change', function () { state.focus = layoutFocus.value; renderLayout(); dispatchChange(); });
   bind(layoutClearance, 'change', function () { state.clearance = layoutClearance.checked; renderLayout(); dispatchChange(); });
   bind(elViewSel, 'change', function () { setElView(elViewSel.value); dispatchChange(); });
+  bind(smViewSel, 'change', function () { setSmView(smViewSel.value); dispatchChange(); });
   bind(elFeederSel, 'change', function () { setElFeeder(elFeederSel.value); dispatchChange(); });
   bind(canvas, 'pointerdown', function (event) {
     dragging = true;
@@ -4692,6 +5054,7 @@ html>body{padding:0}</style>
   renderLayout();
   renderRegister();
   renderElectrical();
+  renderSmart();
   renderServoAxes();
   renderAcoustics();
   renderThermal();
@@ -4726,6 +5089,18 @@ html>body{padding:0}</style>
     plantMotors: function () { return JSON.parse(JSON.stringify(PLANT_MOTORS)); },
     servoTick: servoTick,
     listElViews: function () { return Object.keys(EL_VIEWS); },
+    listSmViews: function () { return Object.keys(SM_VIEWS); },
+    setSmView: setSmView,
+    getSmart: function () {
+      return {
+        smart: JSON.parse(JSON.stringify(SMART)),
+        ai: JSON.parse(JSON.stringify(AI_SUMMARY)),
+        instruments: INSTRUMENTS.map(function (row) { return row.slice(); }),
+        cases: AI_CASES.map(function (row) { return row.slice(); }),
+        racks: RACK_ITEMS.map(function (row) { return row.slice(); }),
+        streams: IMAGE_STREAMS.map(function (row) { return row.slice(); })
+      };
+    },
     setView: function (view) {
       if (!view || !Number.isFinite(Number(view.yaw)) || !Number.isFinite(Number(view.pitch)) || !Number.isFinite(Number(view.zoom))) throw new TypeError('Invalid view');
       state.yaw = Number(view.yaw);
@@ -4734,7 +5109,7 @@ html>body{padding:0}</style>
       drawAssembly();
     },
     resetView: resetView,
-    flush: function () { renderFabrication(); renderAssemblyKey(); renderLayout(); renderElectrical(); drawAssembly(); },
+    flush: function () { renderFabrication(); renderAssemblyKey(); renderLayout(); renderElectrical(); renderSmart(); drawAssembly(); },
     getState: function () { return JSON.parse(JSON.stringify(state)); },
     getStation: function (key) {
       var chosen = stations[key || state.station];
@@ -8716,6 +9091,59 @@ void main() {
     +"<b>대가</b>는 패널이 길어져 탠덤 사이클이 51.0 → "+d.tandemCycle+" s 로 늘고 여유가 4.6 → "+(-H.gap)+" 장/h 로 줄어든 것이다."
 }());
 
+/* REV.25 스마트 팩토리 시설 — 랙실 SVR-902·관제실 MCR-901·엣지 캐비닛.
+   두 방은 공정 존이 아니라 구획실이라 통로 외곽벽(Y 8,300) **밖**에 선다 —
+   전기실을 다뤘던 것과 같은 취급이다. 좌표는 배치 모델을 따른다:
+   X 43,200…49,200 → 월드 x 18.45…24.45, Y 8,300…11,700 → 월드 z 4.75…8.15.
+   벽은 통판이 아니라 둘레 4면 + 관측창 개구다 — 안이 보여야 세운 뜻이 있다. */
+var pvSmart=new ce;pt.add(pvSmart);pvSmart.position.set(21.45,0,6.45);
+(function(){
+var g=pvSmart,L=function(a,b,c,d,e,f){return P(g,a,b,c,d,e,f)};
+var WALL=.12,H=2.7;
+// SVR-902 엣지·서버 랙실 — 1,800 × 3,200 mm
+L([1.8,.06,3.2],[-2.1,.03,-0.1],M.dark,'SVR-902 엣지·서버 랙실 바닥');
+L([1.8,H,WALL],[-2.1,H/2,1.44],M.frame,'SVR-902 엣지·서버 랙실 후벽');
+[-2.94,-1.26].forEach(function(x){L([WALL,H,3.2],[x,H/2,-0.1],M.frame,null);});
+L([1.8,.55,WALL],[-2.1,2.42,-1.64],M.frame,null);
+L([1.8,.85,WALL],[-2.1,.42,-1.64],M.frame,null);
+L([1.5,1.02,.02],[-2.1,1.36,-1.64],M.screen,'SVR-902 엣지·서버 랙실 관측창');
+// MCR-901 통합 관제실 — 4,000 × 3,400 mm
+L([4.0,.06,3.4],[1.0,.03,0.0],M.dark,'MCR-901 통합 관제실 바닥');
+L([4.0,H,WALL],[1.0,H/2,1.64],M.frame,'MCR-901 통합 관제실 후벽');
+[-0.94,2.94].forEach(function(x){L([WALL,H,3.4],[x,H/2,0.0],M.frame,null);});
+L([4.0,.55,WALL],[1.0,2.42,-1.64],M.frame,null);
+L([4.0,.85,WALL],[1.0,.42,-1.64],M.frame,null);
+L([3.7,1.02,.02],[1.0,1.36,-1.64],M.screen,'MCR-901 통합 관제실 관측창');
+L([.6,2.0,1.1],[-2.55,1.0,0.55],M.steel,'SVR-902 랙 1 (42U · 이중화 분리)');
+L([.5,.06,.02],[-2.55,1.86,-0.01],M.orange,null);
+L([.6,2.0,1.1],[-1.83,1.0,0.55],M.steel,'SVR-902 랙 2 (42U · 이중화 분리)');
+L([.5,.06,.02],[-1.83,1.86,-0.01],M.orange,null);
+L([3.2,1.1,.09],[1.0,1.75,1.54],M.screen,'MCR-901 비디오월');
+L([.9,.06,.7],[-0.25,.74,0.2],M.aluminum,'MCR-901 운전 콘솔 ×3');
+L([.55,.34,.02],[-0.25,.97,-0.08],M.screen,null);
+L([.9,.06,.7],[0.9,.74,0.2],M.aluminum,null);
+L([.55,.34,.02],[0.9,.97,-0.08],M.screen,null);
+L([.9,.06,.7],[2.05,.74,0.2],M.aluminum,null);
+L([.55,.34,.02],[2.05,.97,-0.08],M.screen,null);
+// 존별 엣지 캐비닛 7면. MDB-101 과 같이 **통로 외곽벽**(Y 8,000…8,300)에 붙인다 —
+// 장비 밴드 가장자리(Y 7,000 중심)에 세우면 깊이 300 중 200 이 통로를 먹어
+// 보행 유효폭 900 이 700 으로 줄어든다. 반깊이 300 규약은 MDB 와 같다.
+L([.6,1.4,.3],[-42.8,.7,-1.85],M.frame,'EC-AFU 엣지 캐비닛');
+L([.42,.1,.02],[-42.8,1.18,-2.01],M.orange,null);
+L([.6,1.4,.3],[-36.8,.7,-1.85],M.frame,'EC-ROB 엣지 캐비닛');
+L([.42,.1,.02],[-36.8,1.18,-2.01],M.orange,null);
+L([.6,1.4,.3],[-30.675,.7,-1.85],M.frame,'EC-JBR 엣지 캐비닛');
+L([.42,.1,.02],[-30.675,1.18,-2.01],M.orange,null);
+L([.6,1.4,.3],[-23.35,.7,-1.85],M.frame,'EC-AFR 엣지 캐비닛');
+L([.42,.1,.02],[-23.35,1.18,-2.01],M.orange,null);
+L([.6,1.4,.3],[-15.45,.7,-1.85],M.frame,'EC-POS 엣지 캐비닛');
+L([.42,.1,.02],[-15.45,1.18,-2.01],M.orange,null);
+L([.6,1.4,.3],[-6.225,.7,-1.85],M.frame,'EC-BUF 엣지 캐비닛');
+L([.42,.1,.02],[-6.225,1.18,-2.01],M.orange,null);
+L([.6,1.4,.3],[5.575,.7,-1.85],M.frame,'EC-GRM 엣지 캐비닛');
+L([.42,.1,.02],[5.575,1.18,-2.01],M.orange,null);
+}());
+
 /* REV.23 GRM-401 유리제거셀 — 링크만 걸려 있던 후단 라인을 3D 장면에 세운다.
    좌표는 배치 모델을 따른다: 존 X 44,750…58,800 → 월드 x 20.0…34.05,
    존 Y 1,000…7,100 → 월드 z −2.55…+3.55 (그룹 원점 x 27.025 · z +0.5). */
@@ -8876,7 +9304,8 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
     explode: '3D 분해·조립도',
     layout: '전체 장비 상세 배치도',
     register: '도면 목록',
-    electrical: '전기 인입 단선결선도'
+    electrical: '전기 인입 단선결선도',
+    smart: '스마트 팩토리 · 네트워크·계측·AI 검토'
   };
 
   function activatePanel(name) {
@@ -9346,6 +9775,7 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
     stageCanvas.setAttribute('aria-label', '통합 플랜트 3D 시뮬레이션 화면. 시점은 아래 카메라 버튼으로 바꿉니다.');
   }
 }());
+
 </script>
 </body>
 </html>
