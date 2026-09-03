@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#eceff1">
+<title>DG-HK60 상세설계 기술사양서 · RFQ</title>
+<style>
+  /* ===========================================================================
+     DG-HK60 상세설계 발주 기술사양서.
+
+     입찰자가 조항번호로 인용하는 문서다("귀사 제안서 4.3항"). 그래서 번호가
+     장식이 아니라 주소이고, 왼쪽 여백에 고정폭으로 세워 어느 화면에서도
+     같은 자리에 온다. 부호·논리식·수치는 모두 모노로 두어 본문과 구분한다.
+
+     인쇄를 먼저 고려했다. 입찰자는 이 문서를 출력해 회람한다.
+     =========================================================================== */
+  :root{
+    color-scheme:light dark;
+    --paper:#ffffff;--ground:#eceff1;--band:#f4f6f7;--sunk:#e3e8ea;
+    --ink:#14202a;--ink2:#425663;--ink3:#6b7f8b;--ink4:#8b9ba4;
+    --brand:#17679b;--brand2:#268cca;--brand-sunk:#e7f0f7;
+    --accent:#a06a08;--accent-sunk:#fbf3e0;--accent-line:#e0c68a;
+    --flag:#9a2b30;--flag-sunk:#fbeeee;--flag-line:#e3bcbc;
+    --ok:#1f6b47;
+    --rule:#cbd5da;--rule2:#aebcc4;--rule3:#8b9ba4;
+    --sans:Pretendard,"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --paper:#171f25;--ground:#10171c;--band:#1c262c;--sunk:#232f36;
+      --ink:#e6edf0;--ink2:#adbdc6;--ink3:#8598a2;--ink4:#687c87;
+      --brand:#5cb0e4;--brand2:#268cca;--brand-sunk:#12303f;
+      --accent:#e0aa4a;--accent-sunk:#33280f;--accent-line:#6b5620;
+      --flag:#e8767a;--flag-sunk:#331b1c;--flag-line:#6b3436;
+      --ok:#54b487;
+      --rule:#2f3d45;--rule2:#41535d;--rule3:#5b7180;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --paper:#171f25;--ground:#10171c;--band:#1c262c;--sunk:#232f36;
+    --ink:#e6edf0;--ink2:#adbdc6;--ink3:#8598a2;--ink4:#687c87;
+    --brand:#5cb0e4;--brand2:#268cca;--brand-sunk:#12303f;
+    --accent:#e0aa4a;--accent-sunk:#33280f;--accent-line:#6b5620;
+    --flag:#e8767a;--flag-sunk:#331b1c;--flag-line:#6b3436;
+    --ok:#54b487;
+    --rule:#2f3d45;--rule2:#41535d;--rule3:#5b7180;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--sans);font-size:15px;line-height:1.72;
+    -webkit-font-smoothing:antialiased}
+  .sheet{width:min(1080px,100%);margin:0 auto;background:var(--paper);
+    padding:0 clamp(16px,4vw,64px) 72px}
+
+  /* ── 표제부 ─────────────────────────────────────────────────────── */
+  .masthead{padding:clamp(28px,5vw,52px) 0 22px;border-bottom:2px solid var(--ink)}
+  .issuer{display:flex;align-items:center;gap:13px;margin-bottom:clamp(20px,4vw,32px)}
+  .issuer svg{width:38px;height:38px;flex:none;display:block}
+  .issuer-name{display:grid;gap:2px}
+  .issuer-name i{font:600 8.5px/1 var(--mono);font-style:normal;letter-spacing:.17em;color:var(--ink4)}
+  .issuer-name b{font:700 14px/1 var(--sans);letter-spacing:.06em;color:var(--brand)}
+  .doc-kind{font:700 11px/1 var(--mono);letter-spacing:.2em;color:var(--accent);margin-bottom:14px}
+  h1{margin:0;font-size:clamp(25px,4.4vw,38px);line-height:1.24;letter-spacing:-.02em;
+    font-weight:800;text-wrap:balance}
+  .subtitle{margin:12px 0 0;font-size:clamp(14px,1.7vw,16px);color:var(--ink2);max-width:62ch}
+  .docref{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:1px;margin-top:clamp(22px,4vw,30px);background:var(--rule);
+    border:1px solid var(--rule)}
+  .docref div{background:var(--paper);padding:10px 13px}
+  .docref dt{font:600 9.5px/1 var(--mono);letter-spacing:.11em;color:var(--ink4);
+    text-transform:uppercase;margin:0}
+  .docref dd{margin:5px 0 0;font:600 13px/1.35 var(--mono);color:var(--ink);
+    font-variant-numeric:tabular-nums}
+
+  /* ── 조항 ───────────────────────────────────────────────────────── */
+  .toc{margin:34px 0 0;padding:18px 20px;background:var(--band);border-left:3px solid var(--brand)}
+  .toc h2{margin:0 0 11px;font:700 10.5px/1 var(--mono);letter-spacing:.15em;color:var(--brand);text-transform:uppercase}
+  .toc ol{margin:0;padding:0;list-style:none;columns:2;column-gap:34px}
+  .toc li{margin:0 0 5px;font-size:13.5px;break-inside:avoid}
+  .toc a{color:var(--ink2);text-decoration:none;display:flex;gap:10px}
+  .toc a:hover{color:var(--brand)}
+  .toc b{font:600 12px/1.5 var(--mono);color:var(--ink4);min-width:22px;font-variant-numeric:tabular-nums}
+
+  section{margin-top:clamp(38px,6vw,58px);scroll-margin-top:16px}
+  section > h2{display:grid;grid-template-columns:var(--gutter,58px) 1fr;align-items:baseline;
+    gap:0;margin:0 0 20px;padding-bottom:11px;border-bottom:1.5px solid var(--rule2);
+    font-size:clamp(18px,2.5vw,23px);font-weight:800;letter-spacing:-.01em}
+  section > h2 span{font:700 14px/1 var(--mono);color:var(--brand);font-variant-numeric:tabular-nums}
+
+  .clause{display:grid;grid-template-columns:var(--gutter,58px) 1fr;margin:0 0 20px;
+    break-inside:avoid}
+  .clause > .n{font:600 12.5px/1.72 var(--mono);color:var(--ink4);
+    font-variant-numeric:tabular-nums;padding-right:12px}
+  .clause > .c{min-width:0}
+  .clause h3{margin:0 0 7px;font-size:15.5px;font-weight:700;color:var(--ink)}
+  .clause p{margin:0 0 10px;color:var(--ink2);max-width:70ch}
+  .clause p:last-child,.clause ul:last-child,.clause table:last-child{margin-bottom:0}
+  .clause ul,.clause ol{margin:0 0 10px;padding-left:19px;color:var(--ink2)}
+  .clause li{margin-bottom:4px}
+  .clause li::marker{color:var(--ink4)}
+  code,.m{font-family:var(--mono);font-size:.9em;font-variant-numeric:tabular-nums}
+  code{background:var(--sunk);padding:1.5px 5px;border-radius:2px;color:var(--ink)}
+  strong{font-weight:700;color:var(--ink)}
+
+  /* ── 표 ─────────────────────────────────────────────────────────── */
+  .tw{overflow-x:auto;margin:0 0 12px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:480px}
+  caption{caption-side:top;text-align:left;font:600 10px/1.5 var(--mono);
+    letter-spacing:.1em;color:var(--ink4);text-transform:uppercase;padding-bottom:7px}
+  th,td{padding:8px 11px;text-align:left;vertical-align:top;
+    border-bottom:1px solid var(--rule)}
+  thead th{font:700 10.5px/1.4 var(--mono);letter-spacing:.06em;color:var(--brand);
+    text-transform:uppercase;background:var(--band);border-bottom:1.5px solid var(--rule2)}
+  tbody th{font-weight:600;color:var(--ink)}
+  td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  td.k{font-family:var(--mono);font-size:12.5px;color:var(--ink);white-space:nowrap}
+  tfoot td,tfoot th{border-top:1.5px solid var(--rule2);border-bottom:0;
+    font-weight:700;background:var(--band)}
+
+  /* ── 강조 블록 ──────────────────────────────────────────────────── */
+  .note{margin:0 0 12px;padding:12px 15px;background:var(--brand-sunk);
+    border-left:3px solid var(--brand2);font-size:13.5px;color:var(--ink2)}
+  .warn{margin:0 0 12px;padding:12px 15px;background:var(--accent-sunk);
+    border-left:3px solid var(--accent);font-size:13.5px;color:var(--ink2)}
+  .note strong,.warn strong{color:var(--ink)}
+  .logic{margin:0 0 12px;padding:13px 15px;background:var(--sunk);
+    font:500 12.5px/1.9 var(--mono);color:var(--ink);overflow-x:auto;white-space:pre}
+
+  /* ── 확인사항 등록부 ────────────────────────────────────────────── */
+  .oi{border:1px solid var(--flag-line);border-left:3px solid var(--flag);
+    margin:0 0 11px;break-inside:avoid}
+  .oi-h{display:flex;align-items:baseline;gap:11px;padding:9px 14px;
+    background:var(--flag-sunk);border-bottom:1px solid var(--flag-line)}
+  .oi-h b{font:700 12px/1 var(--mono);color:var(--flag);letter-spacing:.05em}
+  .oi-h span{font-size:14px;font-weight:700;color:var(--ink)}
+  .oi-b{padding:11px 14px}
+  .oi-b p{margin:0 0 7px;font-size:13.5px;color:var(--ink2)}
+  .oi-b p:last-child{margin:0}
+  .oi-b em{font-style:normal;font:600 10px/1 var(--mono);letter-spacing:.1em;
+    color:var(--ink4);text-transform:uppercase;display:block;margin-bottom:3px}
+
+  footer{margin-top:clamp(44px,7vw,68px);padding-top:20px;border-top:2px solid var(--ink);
+    font-size:12.5px;color:var(--ink3)}
+  footer p{margin:0 0 7px;max-width:74ch}
+
+  @media(max-width:640px){
+    :root{--gutter:42px}
+    .toc ol{columns:1}
+    .clause > .n{font-size:11.5px;padding-right:8px}
+    body{font-size:14.5px}
+  }
+  @media print{
+    body{background:#fff;font-size:10.5pt;line-height:1.6}
+    .sheet{width:auto;padding:0;background:#fff}
+    .toc{break-inside:avoid}
+    section{break-before:auto;margin-top:22pt}
+    section > h2{break-after:avoid}
+    .clause,.oi,table,.logic,.note,.warn{break-inside:avoid}
+    thead{display:table-header-group}
+    a{color:inherit;text-decoration:none}
+    @page{margin:18mm 16mm}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<header class="masthead">
+  <div class="issuer">
+    <svg viewBox="-3 -3 105 95" aria-label="DYNAMIC INDUSTRY" role="img">
+      <polygon points="34.2,0 69.9,0 76.7,5.5 99,44.2 98.4,53.6 70.5,53.6" fill="#fdca4a"/>
+      <polygon points="19.5,83.1 33.1,59.5 95,59.5 80.4,84.9 74.1,88.9 25.9,88.9" fill="#268cca"/>
+      <polygon points="0,47.2 1.4,43.5 8.8,30.8 25.6,59.8 15.8,77.7 14.3,75.9 0.9,52.4" fill="#268cca"/>
+      <polygon points="12.5,24.3 18.8,13.5 35.4,41.3 35.9,42.8 29.3,54.3 12.8,25.9" fill="#268cca"/>
+      <polygon points="25.3,11.8 38.6,11.8 45.7,23.9 45.9,25.6 39.8,36.1 26.6,14.3" fill="#268cca"/>
+    </svg>
+    <div class="issuer-name"><i>FOR NET ZERO PROJECTION</i><b>DYNAMIC INDUSTRY</b></div>
+  </div>
+
+  <div class="doc-kind">기술사양서 · 상세설계 발주</div>
+  <h1>DG-HK60 태양광 패널 분리설비<br>상세설계 용역 기술사양서</h1>
+  <p class="subtitle">5단 밀폐 IR 가열 캐리지 순환과 고정 HKB/HKS 탠덤 핫나이프로 폐태양광 패널을
+    백시트·셀/EVA·판유리 세 계통으로 분리하는 설비의 상세설계를 발주한다.
+    본 문서는 개념설계 결과를 인계하고 상세설계 범위·요구성능·납품물을 정한다.</p>
+
+  <dl class="docref">
+    <div><dt>문서번호</dt><dd>DG-HK60-RFQ-001</dd></div>
+    <div><dt>개정</dt><dd>Rev.0</dd></div>
+    <div><dt>발행일</dt><dd>2026-09-03</dd></div>
+    <div><dt>선행자료</dt><dd>REV.20</dd></div>
+    <div><dt>용역구분</dt><dd>상세설계</dd></div>
+  </dl>
+</header>
+
+<nav class="toc" aria-label="목차">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#c1"><b>1</b>총칙</a></li>
+    <li><a href="#c2"><b>2</b>적용 규격</a></li>
+    <li><a href="#c3"><b>3</b>설비 개요 및 구성</a></li>
+    <li><a href="#c4"><b>4</b>요구 성능</a></li>
+    <li><a href="#c5"><b>5</b>설계 기준</a></li>
+    <li><a href="#c6"><b>6</b>기계 요구사항</a></li>
+    <li><a href="#c7"><b>7</b>전기·제어 요구사항</a></li>
+    <li><a href="#c8"><b>8</b>안전 요구사항</a></li>
+    <li><a href="#c9"><b>9</b>상세설계 납품물</a></li>
+    <li><a href="#c10"><b>10</b>검수 — FAT / SAT</a></li>
+    <li><a href="#c11"><b>11</b>입찰자 확인사항</a></li>
+    <li><a href="#c12"><b>12</b>제출 요구사항</a></li>
+  </ol>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c1">
+  <h2><span>1</span>총칙</h2>
+
+  <div class="clause"><div class="n">1.1</div><div class="c">
+    <h3>목적</h3>
+    <p>본 사양서는 DG-HK60 태양광 패널 분리설비의 <strong>상세설계 용역</strong> 발주를 위한
+      기술 요구사항을 정한다. 발주자가 수행한 개념설계 결과를 입찰자에게 인계하고,
+      제작에 착수할 수 있는 수준의 설계도서와 계산서를 확보하는 것을 목적으로 한다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">1.2</div><div class="c">
+    <h3>선행자료의 성격</h3>
+    <p>발주자는 3D 운전 콘솔(REV.20) 형태로 개념설계 결과를 제공한다. 여기에는
+      공정 시퀀스, 인터록 논리, 배치 개념, 열수지·사이클 계산 모델, 전기부하표,
+      안전 요구사항이 포함된다.</p>
+    <div class="warn"><strong>선행자료에는 제작도면이 없다.</strong> 콘솔의 "제작도" 탭은 외형 치수를
+      글자로 표기한 개념 배치이며 판두께·공차·용접기호·끼워맞춤·가공기준면을 포함하지
+      않는다. 부품도와 조립도의 작성은 본 용역의 범위에 속한다.</div>
+    <p>선행자료의 수치는 설계 가설이다. 입찰자는 이를 검증 대상으로 다루어야 하며,
+      그대로 인용해서는 안 된다. 검증이 필요한 항목은 <a href="#c11">11항</a>에 등록되어 있다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">1.3</div><div class="c">
+    <h3>용역 범위</h3>
+    <ul>
+      <li>구조·열·전기·안전 해석 및 그 결과에 따른 형상·용량 확정</li>
+      <li>제작 가능 수준의 도면 일체 (<a href="#c9">9항</a>)</li>
+      <li>부품 선정 및 구매사양 확정</li>
+      <li>ISO 12100 위험성평가 수행 및 ISO 13849-1 안전기능별 PLr 결정·검증</li>
+      <li>FAT/SAT 절차서 작성</li>
+      <li>운전·정비·전기·PLC 매뉴얼 (국문, 수출 시 영문 병행)</li>
+    </ul>
+    <p>제작·설치·시운전은 본 용역에 포함하지 않는다. 다만 입찰자는 제작성
+      (design for manufacture)을 고려하고, 제작 단계의 기술지원 범위를 제안서에 명시한다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">1.4</div><div class="c">
+    <h3>문서 우선순위</h3>
+    <p>본 사양서와 선행자료가 상충할 경우 본 사양서가 우선한다. 본 사양서와 적용 규격이
+      상충할 경우 규격이 우선하며, 입찰자는 상충 사실을 발주자에게 서면 통지한다.</p>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c2">
+  <h2><span>2</span>적용 규격</h2>
+
+  <div class="clause"><div class="n">2.1</div><div class="c">
+    <p>아래 규격의 최신판을 적용한다. 국내 설치분은 산업안전보건법 및 안전인증(KCs)
+      요건을 우선 충족하고, 수출분은 해당 지역 요건을 추가 적용한다.</p>
+    <div class="tw"><table>
+      <caption>적용 규격</caption>
+      <thead><tr><th>규격</th><th>적용 범위</th></tr></thead>
+      <tbody>
+        <tr><td class="k">ISO 12100</td><td>위험성평가 및 위험 감소 — 잔류위험 문서화</td></tr>
+        <tr><td class="k">ISO 13849-1</td><td>안전관련 제어시스템 — 안전기능별 PLr 결정·검증</td></tr>
+        <tr><td class="k">ISO 13855</td><td>인체 접근속도 기준 방호장치 배치 — 광커튼 이격거리</td></tr>
+        <tr><td class="k">ISO 14119:2024</td><td>가드 연동장치 — 코딩 인터록, 무효화 방지</td></tr>
+        <tr><td class="k">ISO 14120</td><td>고정식·가동식 방호물 설계</td></tr>
+        <tr><td class="k">ISO 7010</td><td>안전 표지 그래픽 심벌</td></tr>
+        <tr><td class="k">IEC 60204-1</td><td>기계류 전기장비 — 주전원 차단, 보호본딩, 비상정지,
+          예기치 않은 재기동 방지, 명판 표시(16.4)</td></tr>
+        <tr><td class="k">산업안전보건법</td><td>방호조치, 안전인증, 작업환경 (국내 설치분)</td></tr>
+      </tbody>
+    </table></div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c3">
+  <h2><span>3</span>설비 개요 및 구성</h2>
+
+  <div class="clause"><div class="n">3.1</div><div class="c">
+    <h3>공정 개요</h3>
+    <p>패널을 유리면 아래·백시트 위 자세로 투입해 6존 진공 캐리어에 고정한다.
+      5단 밀폐 IR 가열실에서 EVA/유리 내부 계면을 200 °C까지 가열한 뒤,
+      고정된 HKB(선행)와 HKS(후행) 두 핫나이프 사이로 캐리어가 통과하며
+      한 번의 연속 패스로 세 계통을 분리한다.</p>
+    <div class="logic">투입 → 진공고정 → 5단 밀폐가열(계면 200 °C) → 방출
+   → HKB 백시트 선단 300 mm 개방 → 권취 클램프·장력 형성
+   → HKS 셀/EVA 계면 진입 → 55 mm/s 탠덤 통과박리
+   → 3계통 분기 : 백시트 권취 · 셀/EVA 컨베이어 · 판유리 롤러</div>
+    <p>가열은 캐리지 5대가 순환하는 방식이다. 5대가 모두 적재·잠금·밀폐된
+      <code>FULL_LOAD_ACK</code> 이후에만 생산출력을 허가하고, 방출된 캐리지는 에어록을 거쳐
+      새 패널을 재장전한 뒤 같은 슬롯으로 복귀한다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">3.2</div><div class="c">
+    <h3>설비 구성</h3>
+    <p>라인은 아래 13개 모듈로 구성한다. 외형 치수는 개념 배치 기준이며 상세설계에서 확정한다.</p>
+    <div class="tw"><table>
+      <caption>모듈 구성 — 외형 치수는 개념치</caption>
+      <thead><tr><th>부호</th><th>모듈</th><th class="num">외형 L×W×H (mm)</th><th>주재질</th></tr></thead>
+      <tbody>
+        <tr><td class="k">M-001</td><td>투입·정렬·식별</td><td class="num">6000×3000×4200</td><td>SS400 / AL6061</td></tr>
+        <tr><td class="k">M-002</td><td>5단 밀폐 IR 가열실</td><td class="num">5600×3780×4860</td><td>SS400 + 세라믹단열</td></tr>
+        <tr><td class="k">M-003</td><td>5단 적재·승강장치</td><td class="num">4950×2700×4150</td><td>SS400 / LM 가이드</td></tr>
+        <tr><td class="k">M-004</td><td>진공 캐리어·이송축</td><td class="num">11200×3000×1500</td><td>SS400 / AL6061</td></tr>
+        <tr><td class="k">M-005</td><td>고정 HKB/HKS 탠덤</td><td class="num">10200×4200×4300</td><td>SS400 / SKD11</td></tr>
+        <tr><td class="k">M-006</td><td>백시트 터릿 권취</td><td class="num">2550×1800×3500</td><td>SS400 / SUS304</td></tr>
+        <tr><td class="k">M-007</td><td>유리 수평 컨베이어·냉각 캐리지</td><td class="num">9000×5500×3000</td><td>SS400 / 우레탄</td></tr>
+        <tr><td class="k">M-008</td><td>셀/EVA 직접 컨베이어</td><td class="num">16000×2100×2500</td><td>SS400 / SUS304</td></tr>
+        <tr><td class="k">M-009</td><td>품질검사·리젝트</td><td class="num">5450×5000×3900</td><td>SS400 / AL6061</td></tr>
+        <tr><td class="k">M-010</td><td>VOC 배기·응축·흡착</td><td class="num">6500×3000×5600</td><td>SUS304 / FRP</td></tr>
+        <tr><td class="k">M-011</td><td>전력·MCC·제어반</td><td class="num">7600×1600×3600</td><td>도장강판 IP54</td></tr>
+        <tr><td class="k">M-012</td><td>유틸리티·화재안전</td><td class="num">9000×2500×4600</td><td>SS400 / SUS304</td></tr>
+        <tr><td class="k">M-013</td><td>가드·발판·정비설비</td><td class="num">25000×7000×3000</td><td>SS400 / 메시패널</td></tr>
+      </tbody>
+    </table></div>
+    <p>라인 전체 점유 면적은 M-013 방호 범위 기준 <strong class="m">25,000 × 7,000 mm</strong>,
+      최고 높이 <strong class="m">5,600 mm</strong>(M-010 굴뚝 제외)이다.</p>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c4">
+  <h2><span>4</span>요구 성능</h2>
+
+  <div class="clause"><div class="n">4.1</div><div class="c">
+    <h3>처리량</h3>
+    <div class="tw"><table>
+      <caption>처리 성능 요구</caption>
+      <thead><tr><th>항목</th><th class="num">요구값</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><th>보증 처리량</th><td class="num">60 장/h</td><td>가동률 90 % 환산, 연속 8 h 기준</td></tr>
+        <tr><th>명목 처리량</th><td class="num">67.2 장/h</td><td>박리속도 55 mm/s</td></tr>
+        <tr><th>라인 사이클</th><td class="num">53.6 s/장</td><td>탠덤 병목</td></tr>
+        <tr><th>열공정 한계</th><td class="num">79.7 장/h</td><td>여유 15.7 %</td></tr>
+        <tr><th>8 h 생산량</th><td class="num">약 484 장</td><td>가동률 90 %</td></tr>
+        <tr><th>16 h 생산량</th><td class="num">약 967 장</td><td>가동률 90 %</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note"><strong>합격 판정은 평균값이 아니라 P95 사이클과 60장 연속 데이터로 한다.</strong>
+      개별 동작이 규정 시간 안에 들어도 최악 위상이 겹치면 사이클을 넘길 수 있다.
+      WR 터릿 전환, 유리 냉각 캐리지 교대, 셀/EVA 이송, 캐리지 재장전이 모두
+      53.6 s 안에 끝나는지 각각 확인한다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">4.2</div><div class="c">
+    <h3>처리 대상</h3>
+    <div class="tw"><table>
+      <thead><tr><th>항목</th><th class="num">범위</th></tr></thead>
+      <tbody>
+        <tr><th>패널 길이</th><td class="num">1,600 – 2,400 mm</td></tr>
+        <tr><th>패널 폭</th><td class="num">800 – 1,200 mm</td></tr>
+        <tr><th>투입 자세</th><td class="num">유리면 아래 · 백시트 위</td></tr>
+        <tr><th>백시트 폭 기준</th><td class="num">1,200 mm (권취 유효폭 1,400 – 1,500 mm)</td></tr>
+      </tbody>
+    </table></div>
+    <p>프레임 제거 여부, EVA 조성, 경년열화 정도는 입찰자가 발주자와 협의해 시험 패널
+      사양을 확정한다. 성능 보증은 합의된 시험 패널 기준으로 한다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">4.3</div><div class="c">
+    <h3>분리 품질</h3>
+    <ul>
+      <li><strong>백시트</strong> — 전장 연속 권취. 찢김·편권·클램프 미끄럼 없이 롤 형성</li>
+      <li><strong>셀/EVA</strong> — 중간 낙하·보관 없이 컨베이어로 직접 이송</li>
+      <li><strong>판유리</strong> — 잔류 EVA·미분리 셀·균열을 비전·열화상으로 판정,
+        불합격품은 밀폐 리젝트 캐리지로 분기</li>
+    </ul>
+    <p>유리 파손률과 잔류물 허용 한계는 입찰자가 DOE로 도출해 제안하고 발주자 승인을 받는다.</p>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c5">
+  <h2><span>5</span>설계 기준</h2>
+
+  <div class="clause"><div class="n">5.1</div><div class="c">
+    <h3>열수지</h3>
+    <p>선행자료의 열모델은 아래와 같다. 상수는 해석·문헌 기반 가정이며 검증 대상이다
+      (<a href="#c11">OI-05</a>).</p>
+    <div class="logic">Q      = 면적 × 8.7359 kJ/(m²·K) × ΔT 175 K      최대면적 2.88 m² → 4.403 MJ/장
+t_열   = max( 5Q / (60 × 2.5 kW × η 0.65),  113.15 s )  = 225.8 s
+피치   = t_열 / 5 = 45.2 s/장                  → 열공정 한계 79.7 장/h</div>
+    <p><code>113.15 s</code>는 1D-FDM으로 구한 계면 도달시간이다. 열수지상 더 빨리 넣을 수
+      있어도 열이 계면까지 전도되는 시간은 줄지 않으므로 체류시간의 하한이 된다.
+      입찰자는 이 하한의 타당성을 자체 해석으로 확인한다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">5.2</div><div class="c">
+    <h3>사이클</h3>
+    <div class="logic">t_탠덤 = (칼끝간격 300 + 패널길이 2400) / 55 mm/s
+       + 급속 300 mm / 200 mm/s + 고정동작 3.0 s
+       = 49.09 + 1.50 + 3.00 = 53.6 s/장
+라인   = 3600 / max(피치 45.2, 탠덤 53.6) = 67.2 장/h   병목: 탠덤</div>
+    <p>속도 프로파일은 급속접근 200 mm/s → HKB 진입 전 S-curve 감속 →
+      생산보증 55 mm/s → HKS 이탈 후 200 mm/s 급속복귀로 한다.
+      60 mm/s는 FAT 상한이며 승인 전 사용을 금한다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">5.3</div><div class="c">
+    <h3>전기 부하</h3>
+    <p>전부하전류는 분기별 유효·무효전력을 각각 합해 얻은 피상전력에서 산출한다.
+      분기전류의 크기를 그대로 더하면 역률이 서로 다른 무효분을 같은 방향으로
+      취급해 과대평가되므로 쓰지 않는다.</p>
+    <div class="tw"><table>
+      <caption>전기부하표 — 3Φ4W AC 380/220 V 60 Hz</caption>
+      <thead><tr><th>분기</th><th>부하</th><th class="num">kW</th><th class="num">역률</th>
+        <th class="num">전류 A</th><th>차단기</th></tr></thead>
+      <tbody>
+        <tr><td class="k">IR-DB1</td><td>IR 램프 60 × 2.5 kW</td><td class="num">150</td><td class="num">1.00</td><td class="num">227.9</td><td class="k">4P 250A</td></tr>
+        <tr><td class="k">HK-DB2</td><td>HKB/HKS 카트리지히터</td><td class="num">30</td><td class="num">1.00</td><td class="num">45.6</td><td class="k">4P 100A</td></tr>
+        <tr><td class="k">MCC-1</td><td>서보·VFD</td><td class="num">45</td><td class="num">0.95</td><td class="num">72.0</td><td class="k">4P 125A</td></tr>
+        <tr><td class="k">AUX-DB</td><td>VOC·진공·냉각</td><td class="num">18</td><td class="num">0.85</td><td class="num">32.2</td><td class="k">4P 63A</td></tr>
+        <tr><td class="k">SH-101</td><td>슈레더 계통</td><td class="num">75</td><td class="num">0.87</td><td class="num">131.0</td><td class="k">4P 160A</td></tr>
+      </tbody>
+      <tfoot><tr><th>합계</th><td>68.5 kvar · 325.3 kVA</td><td class="num">318</td>
+        <td class="num">0.978</td><td class="num">494.2</td><td class="k">FLA 494 A</td></tr></tfoot>
+    </table></div>
+    <p>표의 분기전류는 각 분기 차단기 선정용이다. 수전은 <strong class="m">500 kVA</strong> 변압기
+      (부하율 65 %), 주차단기 <strong class="m">4P 800AF / 630–800AT</strong>(630AT 기준 1.27배 여유),
+      예상 최대수요 <strong class="m">270 kW</strong>로 계획한다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">5.4</div><div class="c">
+    <h3>유틸리티 및 작업환경</h3>
+    <div class="tw"><table>
+      <thead><tr><th>항목</th><th class="num">조건</th><th>확인 방법</th></tr></thead>
+      <tbody>
+        <tr><th>가열실 차압</th><td class="num">−30 ± 10 Pa</td><td>차압 이중센서, 회복시간 실측</td></tr>
+        <tr><th>가열실 외벽 표면온도</th><td class="num">≤ 45 °C (주위 25 °C)</td><td>FAT 열화상</td></tr>
+        <tr><th>작업위치 소음</th><td class="num">≤ 80 dBA</td><td>SAT 실측</td></tr>
+        <tr><th>작업위치 조도</th><td class="num">≥ 300 lx</td><td>SAT 실측</td></tr>
+        <tr><th>국소배기 포집풍속</th><td class="num">≥ 0.5 m/s</td><td>SAT 실측</td></tr>
+        <tr><th>진공</th><td class="num">−65 kPa, 6존 독립</td><td>존별 누설률 시험</td></tr>
+        <tr><th>배기 계통</th><td class="num">2 × 100 % 이중화</td><td>1대 고장 시 연속운전 확인</td></tr>
+      </tbody>
+    </table></div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c6">
+  <h2><span>6</span>기계 요구사항</h2>
+
+  <div class="clause"><div class="n">6.1</div><div class="c">
+    <h3>구조 및 하중경로</h3>
+    <p>모든 부재는 하중경로가 바닥까지 연속으로 이어져야 한다. 기둥은 그라우트
+      베이스 플레이트 위에 앵커로 고정하고, 기둥–보 접합부에는 무릎보강을 둔다.
+      회전축은 베어링 하우징과 받침으로 지지하며, 배관·덕트는 상부 구조에서
+      행거로 내려 잡는다.</p>
+    <div class="warn"><strong>고정 칼날 구조에서 캐리어가 두 칼날의 합성반력을 받는다.</strong>
+      따라서 좌우 이송축은 단순 컨베이어가 아니라 안전등급 전자갠트리 서보축으로
+      설계하고, 프레임 처짐·랙 치면·가이드 수명을 최악 동시부하 조건에서 검증한다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">6.2</div><div class="c">
+    <h3>탠덤부</h3>
+    <ul>
+      <li>칼끝 간격 <span class="m">300 ± 2 mm</span>, 리니어스케일 이중 감시</li>
+      <li>HKB/HKS 독립 Z축 서보슬라이드, 프리로드 LM 가이드, 기계식 하드스톱</li>
+      <li>칼날별 로드셀, 스프링 컴플라이언스, AE 센서, 이중 온도센서</li>
+      <li>헤드몸체 최소 기구간극 <span class="m">60 mm</span>, 권취 웹–가드 간극 <span class="m">120 mm</span> 이상</li>
+      <li>퀵체인지 칼날 카세트 — 잠금·존재센서, 내열 커넥터, 냉각 대기포켓</li>
+      <li>용융 EVA·파편 회수 드립트레이, 교체식 내열 라이너, 국소배기 슬롯</li>
+    </ul>
+  </div></div>
+
+  <div class="clause"><div class="n">6.3</div><div class="c">
+    <h3>가열실</h3>
+    <ul>
+      <li>IR 램프 6 라인 × 10 개 = <span class="m">60 개</span>, 개별 단선·SSR 고착·과온 감시</li>
+      <li>벽체 단열 — 내피 SUS304 + 미네랄울 + 반사 공기층 + 외피, 열교 차단 스페이서</li>
+      <li>투입·배출 이중셔터 에어록, 세라믹 파이버 라비린스 씰, 각 문 2채널 위치센서</li>
+      <li>캐리지별 K열전대 3점 + 표면 IR 1점으로 계면온도 소프트센서 구성</li>
+    </ul>
+  </div></div>
+
+  <div class="clause"><div class="n">6.4</div><div class="c">
+    <h3>반입 및 인양</h3>
+    <p>라인 전장이 25 m이므로 모듈 분할 반입을 전제로 설계한다.</p>
+    <ul>
+      <li>모듈별 인양점을 하중 중심 기준으로 배치하고 인양러그를 도면에 명기</li>
+      <li>분할면 위치를 현품에 표시(<span class="m">TP-1 … TP-4</span>), 볼트 접합부 재조립 정밀도 규정</li>
+      <li>모듈별 질량을 계산·계량하여 운송한계·크레인 용량·반입구 치수와 대조 (<a href="#c11">OI-04</a>)</li>
+    </ul>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c7">
+  <h2><span>7</span>전기·제어 요구사항</h2>
+
+  <div class="clause"><div class="n">7.1</div><div class="c">
+    <h3>제어 구성</h3>
+    <ul>
+      <li>안전 PLC와 표준 PLC 분리, 원격 I/O 3반</li>
+      <li>표준 I/O — DI 96 · DO 64 · AI 32 · AO 8 · TC 16 (예비 20 % 이상 확보)</li>
+      <li>안전 I/O — F-DI 32 · F-DO 16</li>
+      <li>24 VDC 이중전원, 산업용 UPS, 관리형 네트워크 링</li>
+    </ul>
+  </div></div>
+
+  <div class="clause"><div class="n">7.2</div><div class="c">
+    <h3>인터록</h3>
+    <p>선행자료는 65종의 명명된 허가·트립 조건을 포함한다. 입찰자는 이를 인계받아
+      안전기능과 공정기능으로 분류하고, 안전기능에 대해 PLr을 결정·검증한다.
+      주요 조건은 아래와 같다.</p>
+    <div class="logic">START_PERMIT   = C1~C5_PRESENT ∧ ALL_LOCKED ∧ ALL_TEMP_OK ∧ ALL_DOORS_CLOSED ∧ EXHAUST_OK
+IR_ENABLE      = SEALED_FULL_LOAD_ACK ∧ EXHAUST_OK ∧ FIRE_OK ∧ PM_METER_OK
+DOOR_MUTEX     = ¬(INNER_DOOR_OPEN ∧ OUTER_DOOR_OPEN)
+PEEL_PERMIT    = EVA_200_ACK ∧ HKB_TEMP_OK ∧ HKS_TEMP_OK ∧ VAC_6ZONE_OK
+MOTION_SYNC    = |X_LEFT − X_RIGHT| ≤ 0.3 mm ∧ FOLLOWING_ERROR_OK
+MOTION_TRIP    = SYNC_ERROR ∨ VAC_LOW ∨ KNIFE_OVERLOAD ∨ WEB_TENSION_HIGH ∨ GLASS_CRACK
+OPENING_SAFE   = LC_OSSD_CLEAR ∨ MUTE_VALID
+MUTE_VALID     = M1→M2 순차차폐 ∧ Δt ≤ 2 s ∧ 자재존재 ∧ 뮤팅시간 ≤ 120 s
+EXHAUST_RUN    = (FAN_A_OK ∨ FAN_B_OK) ∧ DP_OK ∧ CARBON_DP_OK ∧ FIRE_DAMPER_OPEN
+IR_HARD_TRIP   = INDEPENDENT_OVERTEMP ∨ SMOKE ∨ CO_HIGH ∨ EXHAUST_LOSS ∨ SSR_STUCK
+NEXT_PANEL     = BACKSHEET_BIN_ACK ∧ SHREDDER_FEED_ACK ∧ GLASS_CARRIAGE_ACK ∧ EMPTY_CARRIER_RELOADED</div>
+    <div class="note">과온 차단은 <strong>표준 PLC 명령과 독립된 하드와이어 회로</strong>로 구성하고
+      IR 주접촉기를 직접 차단해야 한다. 소프트웨어 경로만으로 구성해서는 안 된다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">7.3</div><div class="c">
+    <h3>명판 표시</h3>
+    <p>IEC 60204-1 16.4에 따라 제조자, 형식·호기, 정격전압·상·주파수, 전부하전류,
+      단락내량, 보호등급, 질량, 제조연월, 도면번호, 적합성 마크를 표시한다.</p>
+    <div class="warn">전부하전류는 <strong>수용률을 적용한 수요전류가 아니라 전부하 조건의 전류</strong>이며,
+      단락내량은 실측 변압기 임피던스와 상위 계통 임피던스를 반영한 단락계산으로
+      확정한다. 질량은 제작 후 계량값을 기재한다. 선행자료의 값은 가정 기반이다
+      (<a href="#c11">OI-02 · OI-03 · OI-04</a>).</div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c8">
+  <h2><span>8</span>안전 요구사항</h2>
+
+  <div class="clause"><div class="n">8.1</div><div class="c">
+    <h3>방호 개념</h3>
+    <ul>
+      <li><strong>주위 방호</strong> — 안전펜스, 잠금식 인터록 도어 4개소(ISO 14119 코딩)</li>
+      <li><strong>개구부 방호</strong> — 자재 반입·반출구는 도어를 달 수 없으므로
+        Type 4 광커튼으로 방호하고, 자재 통과 시에만 뮤팅 4점으로 일시 무효화한다.
+        이격거리는 ISO 13855 접근속도 1.6 m/s 기준으로 산정하고 정지시간을 실측한다.</li>
+      <li><strong>상태 표시</strong> — 적층등(적·황·녹)과 경보부저를 안전 PLC F-DO에서
+        직접 구동하고, 축 기동 전 3초 예고음을 발한다.</li>
+      <li><strong>표지</strong> — ISO 7010 형식의 고온·끼임·감전·자동기동 표지를
+        해당 위험점에 부착</li>
+      <li><strong>에너지 격리</strong> — 전기·공압·진공·열원별 LOTO 지점 설치</li>
+    </ul>
+  </div></div>
+
+  <div class="clause"><div class="n">8.2</div><div class="c">
+    <h3>위험성평가</h3>
+    <p>입찰자는 ISO 12100에 따라 위험성평가를 수행하고 잔류위험을 문서화한다.
+      최소한 아래 위험원을 다룬다.</p>
+    <ul>
+      <li>320 °C 칼날 및 고온 캐리지 — 접촉 화상, 정비 중 접근</li>
+      <li>권취롤 측면 배출구, 슈레더 투입부 — 끼임</li>
+      <li>고온 유리 파손 — 비산, 열응력 파단</li>
+      <li>EVA 열분해 VOC — 흡입, 화재</li>
+      <li>정전·진공 상실 — 캐리어 이탈, 권취롤 역회전</li>
+      <li>이송축 합성반력 — 구조 파단</li>
+    </ul>
+  </div></div>
+
+  <div class="clause"><div class="n">8.3</div><div class="c">
+    <h3>정전 시 거동</h3>
+    <p>정전 시 IR 차단, 모든 셔터 닫힘 유지, 배기 안전모드, 승강축·캐리어·권취축
+      기계브레이크 체결을 보장한다. 진공은 어큐뮬레이터로 유리 지지를 유지하되,
+      유리가 롤러에 완전 지지되기 전에는 해제하지 않는다.</p>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c9">
+  <h2><span>9</span>상세설계 납품물</h2>
+
+  <div class="clause"><div class="n">9.1</div><div class="c">
+    <h3>도면</h3>
+    <div class="tw"><table>
+      <thead><tr><th>구분</th><th>내용</th></tr></thead>
+      <tbody>
+        <tr><th>배치도</th><td>전체 배치, 기초·앵커 배치, 유틸리티 인입점, 작업자 동선, 방호 범위</td></tr>
+        <tr><th>조립도</th><td>모듈별 조립, 끼워맞춤, 체결토크, 조립 순서</td></tr>
+        <tr><th>부품도</th><td>판두께, 공차, 표면조도, 용접기호, 가공기준면, 열처리·표면처리</td></tr>
+        <tr><th>전기도면</th><td>단선결선도, 부하표, 반내부 배치, 배선도, 단자·케이블 번호</td></tr>
+        <tr><th>제어도면</th><td>PLC I/O 할당, 안전회로, 현장 배선, 네트워크 구성</td></tr>
+        <tr><th>배관·덕트</th><td>진공·공압·냉각수 계통도, 배기 덕트 경로 및 지지</td></tr>
+      </tbody>
+    </table></div>
+    <p>도면번호 체계와 개정 관리 방식은 착수 시 발주자와 합의한다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">9.2</div><div class="c">
+    <h3>계산서</h3>
+    <ul>
+      <li><strong>구조</strong> — 프레임 강도·처짐, 이송축 추력·랙 치면, 가이드·베어링 수명,
+        인양점, 앵커, 지진하중(해당 시)</li>
+      <li><strong>열</strong> — 열수지, 계면 도달시간, 단열 성능, 유리 열응력</li>
+      <li><strong>전기</strong> — 부하표, 단락전류, 전압강하, 고조파, 접지, 반 열부하</li>
+      <li><strong>안전</strong> — 안전기능별 PLr 및 달성 PL, 정지시간·정지거리, 광커튼 이격거리</li>
+    </ul>
+  </div></div>
+
+  <div class="clause"><div class="n">9.3</div><div class="c">
+    <h3>문서</h3>
+    <ul>
+      <li>위험성평가서 (ISO 12100) 및 잔류위험 목록</li>
+      <li>적합성 평가 자료 및 적합성선언서 초안</li>
+      <li>부품 구매사양서 및 승인원</li>
+      <li>운전·정비·전기·PLC 매뉴얼</li>
+      <li>예비품 목록 — 1년 소모품 / 2년 중요예비품 구분</li>
+      <li>FAT/SAT 절차서 및 성적서 양식</li>
+    </ul>
+  </div></div>
+
+  <div class="clause"><div class="n">9.4</div><div class="c">
+    <h3>제출 단계</h3>
+    <div class="tw"><table>
+      <thead><tr><th class="num">단계</th><th>제출물</th><th>발주자 조치</th></tr></thead>
+      <tbody>
+        <tr><td class="num">30 %</td><td>설계 방침, 주요 부품 선정안, 구조·열 예비계산,
+          <a href="#c11">11항</a> 확인사항 해소 계획</td><td>방침 승인</td></tr>
+        <tr><td class="num">60 %</td><td>배치·조립도, 전기·제어 도면, 위험성평가 초안,
+          계산서 초안</td><td>중간 검토</td></tr>
+        <tr><td class="num">100 %</td><td>부품도 포함 전 도면, 계산서 확정, 매뉴얼,
+          FAT/SAT 절차서</td><td>최종 승인</td></tr>
+        <tr><td class="num">제작승인도</td><td>제작사 검토 반영본</td><td>제작 착수 승인</td></tr>
+      </tbody>
+    </table></div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c10">
+  <h2><span>10</span>검수 — FAT / SAT</h2>
+
+  <div class="clause"><div class="n">10.1</div><div class="c">
+    <h3>구분</h3>
+    <p><strong>FAT</strong>는 제작사에서 무부하 시퀀스·안전기능·계측 교정을 확인한다.
+      <strong>SAT</strong>는 설치 현장에서 실패널로 성능과 작업환경을 실측한다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">10.2</div><div class="c">
+    <h3>시험 항목</h3>
+    <div class="tw"><table>
+      <thead><tr><th>구분</th><th>항목</th><th>합격 기준</th></tr></thead>
+      <tbody>
+        <tr><td class="k">FAT</td><td>시퀀스 무부하 확인</td><td>전 단계 정상 천이, 인터록 성립</td></tr>
+        <tr><td class="k">FAT</td><td>안전기능 검증</td><td>결정된 PL 달성, 2채널 교차단락 진단</td></tr>
+        <tr><td class="k">FAT</td><td>광커튼 뮤팅 우회시험</td><td>사람 통과 시 뮤팅 불성립</td></tr>
+        <tr><td class="k">FAT</td><td>정지시간·정지거리</td><td>ISO 13855 이격거리 근거 충족</td></tr>
+        <tr><td class="k">FAT</td><td>도어 누설·차압 회복</td><td>−30 ± 10 Pa 유지, 회복시간 규정 이내</td></tr>
+        <tr><td class="k">FAT</td><td>외벽 열화상</td><td>≤ 45 °C @ 주위 25 °C</td></tr>
+        <tr><td class="k">FAT</td><td>축 반복정밀도·평행도</td><td>좌우 편차 ≤ 0.3 mm</td></tr>
+        <tr><td class="k">SAT</td><td>60장 연속 처리</td><td>P95 사이클 ≤ 53.6 s, 60 장/h (90 %)</td></tr>
+        <tr><td class="k">SAT</td><td>분리 품질</td><td>합의된 잔류물·파손률 기준</td></tr>
+        <tr><td class="k">SAT</td><td>소음·조도·포집풍속</td><td>≤ 80 dBA · ≥ 300 lx · ≥ 0.5 m/s</td></tr>
+        <tr><td class="k">SAT</td><td>배기 농도·활성탄 파과</td><td>관할 배출 기준</td></tr>
+        <tr><td class="k">SAT</td><td>전력품질·접지연속성</td><td>계산서 대비 실측 일치</td></tr>
+        <tr><td class="k">SAT</td><td>통합 연동시험</td><td>배기·화재·정전·진공상실·유리파손·슈레더 트립</td></tr>
+      </tbody>
+    </table></div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c11">
+  <h2><span>11</span>입찰자 확인사항</h2>
+
+  <div class="clause"><div class="n">11.1</div><div class="c">
+    <p>아래 항목은 개념설계 단계에서 확정하지 못한 것이다. <strong>입찰자는 각 항목의
+      해소 방법과 소요를 제안서에 명시</strong>하고, 상세설계에서 확정한다.
+      선행자료의 값은 검토 출발점일 뿐 설계 근거가 아니다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">11.2</div><div class="c">
+    <div class="oi">
+      <div class="oi-h"><b>OI-01</b><span>로드셀 용량</span></div>
+      <div class="oi-b">
+        <p><em>현황</em>선행자료가 <span class="m">5 kN × 2</span>로 계획하면서, 계산상 최대 추력조건
+          (<span class="m">1.49 – 13.37 kN</span>)에서 여유가 부족할 수 있다고 스스로 밝히고 있다.</p>
+        <p><em>해소</em>실제 박리력 측정 또는 해석으로 최대 추력을 확정하고 용량을 상향 선정하거나
+          공정 조건을 제한한다.</p>
+      </div>
+    </div>
+    <div class="oi">
+      <div class="oi-h"><b>OI-02</b><span>부하 역률</span></div>
+      <div class="oi-b">
+        <p><em>현황</em><a href="#c5">5.3항</a> 표의 역률은 부하 성격에 따른 가정값이다.
+          계통 역률 0.978과 FLA 494 A가 여기서 나온다.</p>
+        <p><em>해소</em>선정 부품의 실제 역률과 동시운전 조건으로 부하표를 재작성한다.
+          명판 전부하전류는 그 결과로 확정한다.</p>
+      </div>
+    </div>
+    <div class="oi">
+      <div class="oi-h"><b>OI-03</b><span>단락내량 (SCCR)</span></div>
+      <div class="oi-b">
+        <p><em>현황</em><span class="m">25 kA</span>는 500 kVA·임피던스 5–6 % 가정에서 얻은 예상
+          단락전류 <span class="m">12.7 – 15.2 kA</span>에 여유를 둔 선정값이다. 실측 근거가 없다.</p>
+        <p><em>해소</em>실측 변압기 임피던스와 상위 계통 임피던스를 반영한 단락계산으로 확정하고,
+          선정 차단기 Icu가 그 값 이상인지 대조한다.</p>
+      </div>
+    </div>
+    <div class="oi">
+      <div class="oi-h"><b>OI-04</b><span>설비 질량</span></div>
+      <div class="oi-b">
+        <p><em>현황</em>선행자료에 질량 값이 없다. 명판·운송서류·인양계획이 모두 이 값을 필요로 한다.</p>
+        <p><em>해소</em>상세설계에서 모듈별 계산 질량을 산출하고, 제작 후 계량값으로 확정한다.
+          세 문서에 같은 값을 기재한다.</p>
+      </div>
+    </div>
+    <div class="oi">
+      <div class="oi-h"><b>OI-05</b><span>열모델 상수</span></div>
+      <div class="oi-b">
+        <p><em>현황</em>면적열용량 <span class="m">8.7359 kJ/(m²·K)</span>와 FDM 도달시간
+          <span class="m">113.15 s</span>는 해석·문헌 기반 가정이다. 전 처리량 계산이 여기에 걸려 있다.</p>
+        <p><em>해소</em>계측 캐리지(초박형 K열전대 3점 + 표면 IR)로 실측해 모델을 보정하고,
+          보정 결과를 처리량 계산에 반영한다.</p>
+      </div>
+    </div>
+    <div class="oi">
+      <div class="oi-h"><b>OI-06</b><span>박리속도 55 mm/s</span></div>
+      <div class="oi-b">
+        <p><em>현황</em>생산보증 속도로 설정했으나 승인 근거가 없다. 60 mm/s는 FAT 상한이다.</p>
+        <p><em>해소</em>백시트 장력·찢김, HKS 피크하중, 유리 열응력·파손률, 박리 잔류물을
+          속도 DOE로 확인해 확정한다.</p>
+      </div>
+    </div>
+    <div class="oi">
+      <div class="oi-h"><b>OI-07</b><span>이송축 구동 선정</span></div>
+      <div class="oi-b">
+        <p><em>현황</em><span class="m">3 kW × 2</span> 서보와 <span class="m">30 kN</span> 추력은
+          개념설계 예비값이다.</p>
+        <p><em>해소</em>HKB/HKS 동시 박리력 실측, 이동질량, 안전율 2.0 이상을 반영해
+          모터·감속기·랙·가이드를 확정한다.</p>
+      </div>
+    </div>
+    <div class="oi">
+      <div class="oi-h"><b>OI-08</b><span>후단 슈레더 용량</span></div>
+      <div class="oi-b">
+        <p><em>현황</em>패널당 셀/EVA 4 kg 기준 약 <span class="m">269 kg/h</span> 발생하며
+          권장 정격 350 kg/h로 계획했다. 실제 조성과 처리량에 따라 달라진다.</p>
+        <p><em>해소</em>실 패널의 셀/EVA 중량을 측정해 부하를 확정하고, 버퍼 용량과
+          역화·분진 격리를 함께 검토한다.</p>
+      </div>
+    </div>
+    <div class="oi">
+      <div class="oi-h"><b>OI-09</b><span>안전기능 PLr</span></div>
+      <div class="oi-b">
+        <p><em>현황</em>선행자료는 인터록 조건만 정의했고 PLr은 결정되지 않았다.</p>
+        <p><em>해소</em>ISO 12100 위험성평가 결과로 안전기능을 도출하고 ISO 13849-1로
+          PLr을 결정한 뒤, 선정 부품으로 달성 PL을 검증한다.</p>
+      </div>
+    </div>
+    <div class="oi">
+      <div class="oi-h"><b>OI-10</b><span>배출가스 성상 및 관할 규정</span></div>
+      <div class="oi-b">
+        <p><em>현황</em>계면 200 °C 운전은 EVA 열이력과 VOC를 증가시킨다. 배출 성상이 미확인이다.</p>
+        <p><em>해소</em>배출가스 성상시험을 수행하고 관할 배출 기준과 대조해
+          응축·흡착 용량과 굴뚝 조건을 확정한다.</p>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c12">
+  <h2><span>12</span>제출 요구사항</h2>
+
+  <div class="clause"><div class="n">12.1</div><div class="c">
+    <h3>제안서 구성</h3>
+    <ol>
+      <li>설계 접근 방법 및 주요 기술적 판단</li>
+      <li><a href="#c11">11항</a> 확인사항별 해소 방법·소요·책임 범위</li>
+      <li>수행 조직 — 담당 기술자의 자격 및 유사 실적</li>
+      <li>일정 — <a href="#c9">9.4항</a> 단계별 제출 일정</li>
+      <li>견적 — 단계별 기성 구분</li>
+      <li>제작 단계 기술지원 범위 (해당 시)</li>
+    </ol>
+  </div></div>
+
+  <div class="clause"><div class="n">12.2</div><div class="c">
+    <h3>실적 요구</h3>
+    <p>고온 공정설비 또는 자동 반송·박리 설비의 상세설계 실적을 제시한다.
+      안전관련 제어시스템(ISO 13849-1) 적용 실적을 별도로 명시한다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">12.3</div><div class="c">
+    <h3>질의</h3>
+    <p>본 사양서에 대한 질의는 서면으로 접수하며, 질의와 답변은 전체 입찰자에게
+      동일하게 배포한다. 조항번호로 인용한다.</p>
+  </div></div>
+</section>
+
+<footer>
+  <p><strong>DG-HK60-RFQ-001 Rev.0</strong> · DYNAMIC INDUSTRY · 2026-09-03</p>
+  <p>본 사양서에 인용된 수치는 개념설계(REV.20) 결과이며 설계 가설이다.
+    입찰자는 이를 검증 대상으로 다루어야 하며, 상세설계 결과가 본 사양서의 수치와
+    다를 경우 근거와 함께 발주자에게 제시한다.</p>
+  <p>선행자료 3D 운전 콘솔 — <code>docs/drawings/pv-delamination-3d.html</code></p>
+</footer>
+
+</div>
+</body>
+</html>
