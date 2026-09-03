@@ -1,0 +1,2166 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#141c20">
+  <title>DG-HK60 · 단일 5단 IR 고정 탠덤 PV 분리설비 · 3D 운전 콘솔 Rev.20</title>
+  <meta name="description" content="폐 태양광 모듈 백시트·셀/EVA·판유리 3계통 분리설비 DG-HK60의 3D 운전 콘솔 — 5단 밀폐 IR 가열 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 전기·PLC·제작도면 및 열수지 계산.">
+  <style>
+    /* ===========================================================================
+       DG-HK60 operator console.
+       Dark instrument chrome around a light viewport — the arrangement a real
+       machine HMI uses, so the render reads as the screen and the frame reads as
+       the equipment. Every colour, radius and weight comes from the tokens below.
+       =========================================================================== */
+    :root{
+      color-scheme:dark;
+      --bg:#141c20;--bg2:#1a2428;--surface:#212d32;--surface2:#28353b;--surface3:#314248;
+      --line:#36474e;--line2:#46595f;--line3:#5b7178;
+      --ink:#e8eeef;--ink2:#a9bdc2;--ink3:#7c9299;--ink4:#5d747c;
+      --brand:#1aa4ae;--brand2:#0e808a;--brand3:#0b626a;--brand-dim:#123c42;--brand-ink:#8fe3e9;
+      --amber:#e2a72c;--amber-dim:#3a2f12;--red:#e2585f;--red-dim:#3a1a1d;--ok:#4fb27c;--ok-dim:#16301f;
+      --vp:#dfe4e2;
+      --r1:6px;--r2:9px;--r3:13px;
+      --sh1:0 1px 2px rgba(0,0,0,.34);
+      --sh2:0 6px 18px rgba(0,0,0,.34);
+      --sh3:0 20px 48px rgba(0,0,0,.46);
+      --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink)}
+    body{font-family:Pretendard,"Noto Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
+      padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+    .app{width:min(1560px,100%);margin:0 auto;min-height:100vh;background:var(--bg)}
+
+    /* ---------------------------------------------------------- machine nameplate */
+    header{border-bottom:1px solid var(--line)}
+    .nameplate{display:flex;align-items:center;gap:clamp(12px,2vw,20px);
+      padding:13px clamp(14px,2.4vw,26px);
+      background:linear-gradient(180deg,#1e2a2f,#151e22);border-bottom:1px solid var(--line)}
+    .np-mark{flex:none;display:grid;place-items:center;width:46px;height:46px;border-radius:var(--r2);
+      background:linear-gradient(160deg,var(--brand2),var(--brand3));border:1px solid #1c8b95;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 2px 8px rgba(0,0,0,.4);
+      font:800 15px/1 var(--mono);letter-spacing:.04em;color:#e6feff}
+    .np-id{min-width:0;flex:1 1 auto}
+    .np-model{display:flex;align-items:center;gap:9px;font:700 11px/1 var(--mono);letter-spacing:.13em;color:var(--brand-ink)}
+    .np-model span{padding:2px 6px;border:1px solid var(--line2);border-radius:4px;color:var(--ink3);letter-spacing:.1em;font-weight:600}
+    h1{margin:6px 0 0;font-size:clamp(17px,2.3vw,24px);line-height:1.2;letter-spacing:-.01em;font-weight:700}
+    .nameplate p{margin:4px 0 0;font-size:12px;color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .np-status{flex:none;display:flex;align-items:center;gap:9px;padding:8px 13px;
+      border:1px solid var(--line2);border-radius:var(--r2);background:var(--bg2)}
+    .np-status b{display:block;font:700 11px/1.3 var(--mono);letter-spacing:.1em;color:var(--ok)}
+    .np-status i{display:block;margin-top:3px;font:600 9px/1.3 var(--mono);font-style:normal;letter-spacing:.09em;color:var(--ink4)}
+    .led{flex:none;width:9px;height:9px;border-radius:50%;background:var(--ok);
+      box-shadow:0 0 0 3px rgba(79,178,124,.15),0 0 10px rgba(79,178,124,.75)}
+
+    /* -------------------------------------------------------------- control groups */
+    .toolbar{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap;
+      padding:10px clamp(14px,2.4vw,26px);background:var(--bg2)}
+    .ctl-group{display:flex;align-items:center;gap:6px;padding:5px 10px 5px 8px;
+      border:1px solid var(--line);border-radius:var(--r2);background:var(--surface)}
+    .ctl-label{flex:none;padding-right:4px;font:700 9px/1 var(--mono);letter-spacing:.14em;color:var(--ink4);text-transform:uppercase}
+    .head-actions,.controls,.detail-actions{display:flex;gap:7px;flex-wrap:wrap}
+
+    button{font:inherit;color:var(--ink);border:1px solid var(--line2);border-radius:var(--r1);
+      background:linear-gradient(180deg,#2c393f,#232f34);
+      min-height:38px;padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.05),var(--sh1);
+      transition:border-color .16s,background .16s,color .16s,transform .1s}
+    button:hover{border-color:var(--line3);background:linear-gradient(180deg,#35444a,#28353b)}
+    button:active{transform:translateY(1px)}
+    button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+    button[aria-pressed="true"]{border-color:var(--brand2);color:var(--brand-ink);
+      background:linear-gradient(180deg,#14606a,#0e4a52);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 0 0 1px rgba(26,164,174,.22)}
+    button.primary{border-color:#17939d;color:#f2ffff;
+      background:linear-gradient(180deg,#128f99,#0a6b74);font-weight:700}
+    button.primary:hover{background:linear-gradient(180deg,#16a3ae,#0c7a84)}
+
+    .explode-control{display:grid;grid-template-columns:auto auto;align-items:center;gap:2px 10px;
+      min-width:170px;padding:5px 11px;border:1px solid var(--line2);border-radius:var(--r1);
+      background:var(--bg2);color:var(--ink3);font-size:10px;letter-spacing:.04em}
+    .explode-control output{justify-self:end;font:700 11px/1 var(--mono);color:var(--brand-ink)}
+    .explode-control input{grid-column:1/-1;width:100%;height:16px;accent-color:var(--brand);cursor:pointer}
+
+    main{padding:clamp(10px,1.8vw,20px) clamp(14px,2.4vw,26px) clamp(16px,2.4vw,26px)}
+
+    /* ------------------------------------------------------------------- viewport */
+    .video-shell{position:relative;overflow:hidden;border:1px solid var(--line2);border-radius:var(--r3);
+      background:#0d1417;box-shadow:var(--sh3),inset 0 0 0 1px rgba(255,255,255,.04)}
+    canvas{display:block;width:100%;height:auto;aspect-ratio:16/8.6;min-height:360px;
+      touch-action:none;cursor:grab;background:var(--vp)}
+    canvas.dragging{cursor:grabbing}
+
+    /* Overlays float on the light viewport, so they stay light and glassy. */
+    .video-top{position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:flex-start;
+      justify-content:space-between;gap:12px;pointer-events:none}
+    .stage-readout{max-width:min(560px,72%);padding:10px 13px;border-radius:var(--r2);
+      background:rgba(252,253,252,.92);border:1px solid rgba(11,98,104,.26);
+      backdrop-filter:blur(9px);box-shadow:0 6px 20px rgba(16,32,38,.16)}
+    .stage-readout b{display:block;font:700 12px/1.35 var(--mono);letter-spacing:.05em;color:#075056}
+    .stage-readout span{display:block;margin-top:4px;color:#33474d;font-size:12px;line-height:1.45}
+    .sim-badge{padding:7px 11px;border-radius:var(--r1);background:rgba(252,253,252,.9);
+      border:1px solid rgba(70,90,96,.24);font:600 10px/1 var(--mono);letter-spacing:.03em;
+      color:#42555a;white-space:nowrap;backdrop-filter:blur(9px)}
+
+    .focus-hud{position:absolute;top:78px;right:12px;width:min(322px,calc(100% - 24px));padding:12px;
+      border-radius:var(--r2);background:rgba(252,253,252,.95);border:1px solid rgba(11,98,104,.3);
+      box-shadow:0 10px 28px rgba(16,32,38,.2);backdrop-filter:blur(9px);pointer-events:none}
+    .focus-hud[hidden]{display:none}
+    .focus-hud h3{margin:0 0 9px;font-size:12px;font-weight:700;color:#075056}
+    .focus-sequence{display:grid;gap:5px}
+    .focus-sequence div{display:grid;grid-template-columns:20px 1fr auto;align-items:center;gap:8px;
+      padding:5px 7px;border-radius:var(--r1);background:#eaefee;color:#5a6c71;font-size:10px}
+    .focus-sequence div::before{content:attr(data-step);display:grid;place-items:center;width:19px;height:19px;
+      border-radius:50%;background:#d3dbd9;color:#36494e;font:700 10px/1 var(--mono)}
+    .focus-sequence div.active{background:#d6e9e8;color:#064a50}
+    .focus-sequence div.active::before{background:#07686e;color:#fff}
+    .focus-sequence strong{font-size:10px;color:inherit;text-align:right;font-variant-numeric:tabular-nums}
+    .focus-live{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-top:8px}
+    .focus-live div{padding:6px;border-top:1px solid #c7cfcd}
+    .focus-live span{display:block;font-size:9px;letter-spacing:.03em;color:#65757a}
+    .focus-live b{display:block;margin-top:2px;font-size:10px;color:#26383e;font-variant-numeric:tabular-nums}
+    .carriage-hud{left:12px;right:auto;width:min(338px,calc(100% - 24px))}
+    .carriage-hud .focus-sequence{grid-template-columns:1fr 1fr}
+    .carriage-hud .focus-sequence div{grid-template-columns:20px 1fr}
+    .carriage-hud .focus-sequence strong{grid-column:2;font-size:9px;text-align:left;margin-top:-3px}
+
+    .material-flow{position:absolute;left:12px;right:12px;bottom:80px;display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;pointer-events:none;opacity:.6;transition:opacity .2s}
+    .material-flow.active{opacity:1}
+    .flow-item{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:var(--r1);
+      background:rgba(252,253,252,.92);border:1px solid rgba(70,90,96,.22);
+      backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(16,32,38,.12)}
+    .flow-item::before{content:"";flex:none;width:9px;height:9px;border-radius:50%;background:var(--flow);
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--flow) 22%,transparent)}
+    .flow-item div{min-width:0}
+    .flow-item span{display:block;font-size:10px;letter-spacing:.03em;color:#637378}
+    .flow-item strong{display:block;margin-top:2px;font-size:12px;color:#22343a;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .flow-item.moving{border-color:var(--flow);box-shadow:0 4px 16px color-mix(in srgb,var(--flow) 26%,transparent)}
+    .flow-item.backsheet{--flow:#a99f8c}.flow-item.cellmodule{--flow:#3a6188}.flow-item.glass{--flow:#4e93a3}
+
+    .video-bottom{position:absolute;left:12px;right:12px;bottom:12px;display:grid;
+      grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;pointer-events:none}
+    .mini-stat{padding:8px 11px;border-radius:var(--r1);background:rgba(252,253,252,.92);
+      border:1px solid rgba(70,90,96,.22);backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(16,32,38,.11)}
+    .mini-stat span{display:block;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#69787d}
+    .mini-stat strong{display:block;margin-top:3px;font:700 12px/1.3 var(--mono);color:#1d2f35;
+      font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    /* --------------------------------------------------------------- process rail */
+    .progress{height:4px;margin-top:2px;background:var(--surface);border-radius:2px;overflow:hidden}
+    .progress>div{height:100%;width:0;border-radius:2px;
+      background:linear-gradient(90deg,var(--brand),var(--amber));transition:width .1s linear}
+
+    .control-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px 0 11px}
+    .speed-profile{margin-left:auto;max-width:640px;color:var(--ink3);font-size:12px}
+    .speed-profile summary{min-height:38px;display:flex;align-items:center;justify-content:flex-end;gap:7px;
+      cursor:pointer;color:var(--brand-ink);font-weight:600;font-size:12px;list-style:none}
+    .speed-profile summary::-webkit-details-marker{display:none}
+    .speed-profile summary::after{content:'＋';font-size:15px}
+    .speed-profile[open] summary::after{content:'−'}
+    .speed-profile p{margin:0 0 6px;padding:10px 13px;border:1px solid var(--line);border-radius:var(--r1);
+      background:var(--surface);line-height:1.6;color:var(--ink2)}
+
+    .timeline{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px;margin-top:2px}
+    .step{min-width:0;min-height:56px;padding:8px 9px;text-align:left;align-items:flex-start;
+      background:var(--surface);border-color:var(--line);font-weight:500}
+    .step b{display:block;font:700 9px/1 var(--mono);letter-spacing:.1em;color:var(--ink4)}
+    .step span{display:block;margin-top:5px;font-size:11.5px;color:var(--ink2);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .step:hover{border-color:var(--line3)}
+    .step:hover span{color:var(--ink)}
+    .step.active{border-color:var(--brand2);background:linear-gradient(180deg,#14606a,#0f4a52)}
+    .step.active b{color:var(--brand-ink)}
+    .step.active span{color:#e9fbfc}
+
+    /* --------------------------------------------------------------- detail drawer */
+    .detail-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+      margin-top:16px;padding-top:15px;border-top:1px solid var(--line)}
+    .detail-bar h2{font-size:15px;margin:0;font-weight:700}
+    .detail-bar p{font-size:12px;color:var(--ink3);margin:4px 0 0}
+
+    /* --------------------------------------------------------------------- dialogs */
+    dialog{width:min(800px,calc(100% - 24px));max-height:min(86vh,840px);overflow:auto;padding:0;
+      border:1px solid var(--line2);border-radius:var(--r3);background:var(--surface);color:var(--ink);
+      box-shadow:var(--sh3)}
+    dialog::backdrop{background:rgba(8,14,16,.62);backdrop-filter:blur(5px)}
+    .dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:19px 21px;
+      border-bottom:1px solid var(--line);background:linear-gradient(180deg,#26333a,#212d32);
+      position:sticky;top:0;z-index:2}
+    .dialog-code{font:700 10px/1 var(--mono);letter-spacing:.13em;color:var(--brand-ink)}
+    .dialog-head h2{font-size:20px;margin:7px 0 0;font-weight:700}
+    .close{min-width:46px}
+    .dialog-body{padding:21px}
+    .dialog-body>p{margin:0 0 16px;color:var(--ink2);line-height:1.68}
+    .spec-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .spec-section{padding-top:12px;border-top:1px solid var(--line)}
+    .spec-section.full{grid-column:1/-1}
+    .spec-section h3{font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--brand-ink);margin:0 0 8px}
+    .spec-section ul{margin:0;padding-left:18px;color:var(--ink2);font-size:13px;line-height:1.68}
+    .spec-section li{margin-bottom:3px}
+    .spec-section li::marker{color:var(--ink4)}
+    .notice{margin-top:16px;padding:11px 14px;border:1px solid #6a5418;border-left:3px solid var(--amber);
+      border-radius:var(--r1);background:var(--amber-dim);color:#f0d59a;font-size:12px;line-height:1.6}
+
+    .calc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .calc-field{display:grid;gap:6px}
+    .calc-field label{font-size:11px;letter-spacing:.02em;color:var(--ink3)}
+    .calc-field input{width:100%;min-height:40px;border:1px solid var(--line2);border-radius:var(--r1);
+      background:var(--bg2);color:var(--ink);padding:8px 11px;font:600 13px/1 var(--mono);
+      font-variant-numeric:tabular-nums}
+    .calc-field input:focus{outline:2px solid var(--brand);outline-offset:1px;border-color:var(--brand2)}
+    .calc-results{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:17px}
+    .calc-result{padding:11px 13px;border:1px solid var(--line);border-radius:var(--r1);background:var(--bg2)}
+    .calc-result span{display:block;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink4)}
+    .calc-result strong{display:block;margin-top:5px;font:700 16px/1.25 var(--mono);color:var(--brand-ink);
+      font-variant-numeric:tabular-nums}
+    .calc-result.wide{grid-column:1/-1}
+    .calc-result.wide strong{font-size:14px}
+    .formula{font:400 11px/1.65 var(--mono);color:var(--ink3);margin-top:14px;padding-top:13px;border-top:1px solid var(--line)}
+
+    /* -------------------------------------------------------------------- drawings */
+    .drawing-dialog{width:min(1240px,calc(100% - 24px));max-height:92vh}
+    .drawing-toolbar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+    .drawing-toolbar button.active{border-color:var(--brand2);color:var(--brand-ink);
+      background:linear-gradient(180deg,#14606a,#0e4a52)}
+    .drawing-stage{border:1px solid var(--line2);border-radius:var(--r2);background:#f4f6f5;padding:13px;overflow:auto}
+    .drawing-stage svg{display:block;width:100%;min-width:780px;height:auto}
+    .drawing-note{font-size:12px;color:var(--ink3);margin:11px 0 0;line-height:1.6}
+    .drawing-controls{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .drawing-controls label{display:grid;gap:5px;color:var(--ink3);font-size:11px}
+    .drawing-controls select{min-height:40px;min-width:268px;border:1px solid var(--line2);border-radius:var(--r1);
+      background:var(--bg2);color:var(--ink);padding:8px 10px;font:inherit;font-size:13px}
+    .bom-table{width:100%;border-collapse:collapse;margin-top:13px;font-size:12px}
+    .bom-table th,.bom-table td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+    .bom-table th{font:700 10px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;
+      color:var(--brand-ink);background:var(--bg2)}
+    .bom-table td{color:var(--ink2)}
+    .drawing-kpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:13px}
+    .drawing-kpi div{padding:10px 12px;border:1px solid var(--line);background:var(--bg2);border-radius:var(--r1)}
+    .drawing-kpi span{display:block;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink4)}
+    .drawing-kpi strong{display:block;margin-top:4px;font:700 13px/1.3 var(--mono);color:var(--ink);
+      font-variant-numeric:tabular-nums}
+    .wire-legend{display:flex;gap:15px;flex-wrap:wrap;margin-bottom:10px;font-size:12px;color:var(--ink2)}
+    .wire-legend span::before{content:'';display:inline-block;width:18px;height:3px;margin-right:6px;
+      vertical-align:middle;background:var(--wire)}
+
+    /* ------------------------------------------------------------------ responsive */
+    @media(max-width:1180px){.timeline{grid-template-columns:repeat(5,minmax(0,1fr))}}
+    @media(max-width:930px){
+      .timeline{grid-template-columns:repeat(4,minmax(0,1fr))}
+      canvas{aspect-ratio:16/10}
+      .np-status{display:none}
+    }
+    @media(max-width:650px){
+      .nameplate{align-items:stretch;flex-direction:column;gap:10px}
+      .np-id{width:100%}
+      .nameplate p{white-space:normal}
+      .toolbar{flex-direction:column}
+      .ctl-group{width:100%;flex-wrap:wrap}
+      .ctl-group button{flex:1 1 104px}
+      .explode-control{flex:1 1 100%;width:100%}
+      .control-row{align-items:flex-start;flex-direction:column}
+      .controls{width:100%}.controls button{flex:1 1 92px}
+      .speed-profile{width:100%;margin-left:0}.speed-profile summary{justify-content:flex-start}
+      .timeline{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .spec-grid,.calc-grid,.calc-results,.drawing-kpi{grid-template-columns:1fr}
+      .spec-section.full,.calc-result.wide{grid-column:auto}
+      .detail-actions{width:100%}.detail-actions button{flex:1 1 120px}
+      .sim-badge{display:none}.stage-readout{max-width:100%}
+      .focus-hud{top:96px;left:8px;right:8px;width:auto}
+      .focus-sequence{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .focus-sequence div{grid-template-columns:19px 1fr}
+      .focus-sequence strong{display:none}.focus-live{display:none}
+      .carriage-hud .focus-sequence{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .material-flow{grid-template-columns:1fr;bottom:122px;gap:5px}
+      .flow-item{padding:5px 9px}.flow-item span{font-size:9px}.flow-item strong{font-size:11px}
+      .video-bottom{grid-template-columns:1fr 1fr}
+      .video-bottom .mini-stat:nth-child(2),.video-bottom .mini-stat:nth-child(3){display:none}
+      canvas{min-height:560px;aspect-ratio:3/4}
+      .drawing-controls select{min-width:210px;width:100%}
+    }
+    @media(max-width:390px){
+      main{padding:8px}
+      .video-top{top:8px;left:8px;right:8px}
+      .material-flow{left:8px;right:8px;bottom:112px}
+      .video-bottom{left:8px;right:8px;bottom:8px}
+      .stage-readout span{display:none}
+      .mini-stat{padding:6px 9px}
+      .controls button{flex:1 1 78px;padding:8px 9px}
+      .timeline{gap:5px}
+    }
+    @media(prefers-reduced-motion:reduce){*{transition-duration:.01ms!important}.sim-badge{display:none}}
+    @media print{
+      body>*{display:none!important}
+      #engineeringDialog[open]{display:block!important;position:static;width:100%;max-height:none;
+        border:0;box-shadow:none;background:#fff;color:#000}
+      .dialog-head{background:#fff;color:#000;position:static}
+      .dialog-code{color:#0b6268}
+      .drawing-toolbar,.close{display:none!important}
+      .drawing-stage{overflow:visible;border:0;background:#fff}
+      .drawing-stage svg{min-width:0}
+      .dialog-body{padding:0}
+      .bom-table th{color:#0b6268;background:#eef2f1}
+      .bom-table td,.drawing-note{color:#222}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="nameplate">
+        <div class="np-mark" aria-hidden="true">DG</div>
+        <div class="np-id">
+          <div class="np-model">DG-HK60 <span>REV.20</span></div>
+          <h1>단일 5단 IR · 고정 탠덤 · 수평 분리반출</h1>
+          <p>60 IR · EVA 계면 200°C · 7＋1 캐리지 · 유리/셀 무낙하 컨베이어 · 전기·제어 통합</p>
+        </div>
+        <div class="np-status">
+          <span class="led" aria-hidden="true"></span>
+          <div><b>SYSTEM READY</b><i>SEALED CARRIAGE CYCLE · PRO TANDEM</i></div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <div class="ctl-group head-actions" role="group" aria-label="표시 모드">
+          <span class="ctl-label" aria-hidden="true">표시</span>
+          <button type="button" id="sectionButton" aria-pressed="false">컷어웨이</button>
+          <button type="button" id="explodeButton" aria-pressed="false">분해 보기</button>
+          <label class="explode-control" for="explodeDistance"><span>분해 거리</span><output id="explodeDistanceValue" for="explodeDistance">100%</output><input id="explodeDistance" type="range" min="0" max="200" step="10" value="100" aria-label="분해 보기 거리"></label>
+          <button type="button" id="labelButton" aria-pressed="false">부품 라벨</button>
+        </div>
+        <div class="ctl-group head-actions" role="group" aria-label="카메라">
+          <span class="ctl-label" aria-hidden="true">카메라</span>
+          <button type="button" id="cameraButton" aria-pressed="true">자동 카메라</button>
+          <button type="button" id="panButton" aria-pressed="false">화면 이동</button>
+          <button type="button" id="fitButton">화면 맞춤</button>
+          <button type="button" id="fullscreenButton">전체화면</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="video-shell" aria-label="전체장비 3D 동작 영상">
+        <canvas id="scene" role="img" aria-label="5단 가열 캐리지의 투입·밀폐가열·방출·재투입 사이클과 HKB/HKS 고정 탠덤 박리를 근접 반복재생하는 단일 5단 60개 IR 전문형 3D 장비 영상"></canvas>
+        <div class="video-top">
+          <div class="stage-readout" aria-live="polite"><b id="stageTitle">S0 · 패널 투입·자세 확인</b><span id="stageDesc">유리면을 아래로, 백시트를 위로 정렬해 캐리어 중심에 투입합니다.</span></div>
+          <div class="sim-badge">캐리지 사이클 확대 · 탠덤 확대 · 컷어웨이 · 분해 0~200%</div>
+        </div>
+        <aside class="focus-hud" id="tandemHud" hidden aria-live="polite">
+          <h3>고정 탠덤 작동 · 칼날 X축 고정 / Z축 접근·가압</h3>
+          <div class="focus-sequence">
+            <div id="tandemStep1" data-step="1"><span>HKB 선단 진입</span><strong>백시트 300mm</strong></div>
+            <div id="tandemStep2" data-step="2"><span>클램프·장력</span><strong>WR-101 동기</strong></div>
+            <div id="tandemStep3" data-step="3"><span>HKS 계면 진입</span><strong>셀/EVA 박리</strong></div>
+            <div id="tandemStep4" data-step="4"><span>3방향 반출</span><strong>무낙하 이송</strong></div>
+          </div>
+          <div class="focus-live">
+            <div><span>HKB Z축</span><b id="hkbLive">대기 · 230°C</b></div>
+            <div><span>HKS Z축</span><b id="hksLive">대기 · 260°C</b></div>
+            <div><span>캐리어</span><b id="carrierLive">접근 200mm/s</b></div>
+            <div><span>분리 상태</span><b id="peelLive">진입 대기</b></div>
+          </div>
+        </aside>
+        <aside class="focus-hud carriage-hud" id="carriageHud" hidden aria-live="polite">
+          <h3>5단 캐리지 순환 · 외문/내문 동시개방 금지</h3>
+          <div class="focus-sequence">
+            <div id="carriageStep1" data-step="1"><span>5/5 밀폐가열</span><strong>FULL_LOAD_ACK</strong></div>
+            <div id="carriageStep2" data-step="2"><span>C1 방출 준비</span><strong>200°C + TDM READY</strong></div>
+            <div id="carriageStep3" data-step="3"><span>배출 에어록</span><strong>내문→격리→외문</strong></div>
+            <div id="carriageStep4" data-step="4"><span>새 패널 투입</span><strong>외문→격리→내문</strong></div>
+            <div id="carriageStep5" data-step="5"><span>LI-101 층 선택</span><strong>C1 높이 정렬</strong></div>
+            <div id="carriageStep6" data-step="6"><span>TS-101 재적재</span><strong>잠금→5/5 ACK</strong></div>
+          </div>
+          <div class="focus-live">
+            <div><span>선택 캐리지</span><b id="carriageDeckLive">C1 · 200°C</b></div>
+            <div><span>점유/잠금</span><b id="carriageLoadLive">5/5 · LOCKED</b></div>
+            <div><span>AL-101 투입</span><b id="carriageInLive">외문·내문 닫힘</b></div>
+            <div><span>AL-102 배출</span><b id="carriageOutLive">외문·내문 닫힘</b></div>
+          </div>
+        </aside>
+        <div class="material-flow" id="materialFlow" aria-live="polite">
+          <div class="flow-item backsheet" id="flowBacksheet"><div><span>백시트</span><strong id="flowBacksheetText">권취 대기 → 전용 보관함</strong></div></div>
+          <div class="flow-item cellmodule" id="flowCell"><div><span>셀모듈</span><strong id="flowCellText">분리 대기 → Shredder</strong></div></div>
+          <div class="flow-item glass" id="flowGlass"><div><span>유리</span><strong id="flowGlassText">분리 대기 → 저장 캐리지</strong></div></div>
+        </div>
+        <div class="video-bottom">
+          <div class="mini-stat"><span>진공 캐리어</span><strong id="vacuumValue">대기 · 0 kPa</strong></div>
+          <div class="mini-stat"><span>열공정 상태</span><strong id="tempValue">HKB 대기 · HKS 대기</strong></div>
+          <div class="mini-stat"><span>IR 전력계 PM-101</span><strong id="powerValue">0.0 kW · 0.00 kWh</strong></div>
+          <div class="mini-stat"><span>분리 상태</span><strong id="outputValue">패널 투입</strong></div>
+          <div class="mini-stat"><span>PLC·안전전원</span><strong id="plcValue">PLC RUN · DC24 A/B</strong></div>
+        </div>
+      </section>
+      <div class="progress" role="progressbar" aria-label="공정 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="progressBar"></div></div>
+
+      <div class="control-row">
+        <div class="controls">
+          <div class="ctl-group" role="group" aria-label="운전">
+            <span class="ctl-label" aria-hidden="true">운전</span>
+            <button class="primary" type="button" id="playButton">재생</button>
+            <button type="button" id="pauseButton">일시정지</button>
+            <button type="button" id="nextButton">다음 단계</button>
+            <button type="button" id="resetButton">초기화</button>
+            <button type="button" id="viewButton">시점 변경</button>
+          </div>
+          <div class="ctl-group" role="group" aria-label="상세 관찰">
+            <span class="ctl-label" aria-hidden="true">확대</span>
+            <button type="button" id="carriageFocusButton" aria-pressed="false">캐리지 사이클</button>
+            <button type="button" id="tandemFocusButton" aria-pressed="false">탠덤 작동</button>
+          </div>
+        </div>
+        <details class="speed-profile"><summary>속도 프로파일 펼치기</summary><p>급속접근 200mm/s → HKB 진입 전 S-curve 감속 → 생산보증 55mm/s → HKS 이탈 후 200mm/s 급속복귀. 60mm/s는 FAT 승인 레시피에서만 사용합니다.</p></details>
+      </div>
+
+      <nav class="timeline" id="timeline" aria-label="3D 공정 단계"></nav>
+
+      <section class="detail-bar">
+        <div><h2>설계 상세</h2><p>전체 형상은 개념·제작 검토용이며 확정 치수는 실물 DOE와 구조해석 후 동결합니다.</p></div>
+        <div class="detail-actions">
+          <button type="button" data-detail="equipment">장비 구성</button>
+          <button type="button" data-detail="spec">설계값</button>
+          <button type="button" data-detail="interlock">인터록</button>
+          <button type="button" data-detail="support">필수 보조장치</button>
+          <button type="button" id="powerDrawingButton">전력 인입도</button>
+          <button type="button" id="plcDrawingButton">PLC 배선도</button>
+          <button type="button" id="fabricationDrawingButton">2D·3D 제작도</button>
+          <button type="button" id="calcButton">열수지·장/h 계산</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="detailDialog" aria-labelledby="dialogTitle">
+    <div class="dialog-head"><div><div class="dialog-code" id="dialogCode"></div><h2 id="dialogTitle"></h2></div><button class="close" type="button" id="dialogClose">닫기</button></div>
+    <div class="dialog-body">
+      <p id="dialogIntro"></p>
+      <div class="spec-grid">
+        <section class="spec-section"><h3>장비·기구</h3><ul id="dialogHardware"></ul></section>
+        <section class="spec-section"><h3>센서·제어</h3><ul id="dialogControl"></ul></section>
+        <section class="spec-section full"><h3>검증·운전 조건</h3><ul id="dialogVerify"></ul></section>
+      </div>
+      <div class="notice" id="dialogNotice"></div>
+    </div>
+  </dialog>
+
+  <dialog id="calcDialog" aria-labelledby="calcTitle">
+    <div class="dialog-head"><div><div class="dialog-code">PLC / POWER / FABRICATION PACKAGE · REV.20</div><h2 id="calcTitle">60장/h 열수지·사이클 검증</h2></div><button class="close" type="button" id="calcClose">닫기</button></div>
+    <div class="dialog-body">
+      <p>단일 5단 캐리지의 5장 적재·잠금·밀폐 완료(FULL_LOAD_ACK)를 0초로 계산합니다. 55mm/s는 90% 가동률에서 60장/h를 넘기는 생산보증점이며, 60mm/s는 FAT 상한입니다.</p>
+      <div class="calc-grid">
+        <div class="calc-field"><label for="panelLength">패널 길이 (mm)</label><input id="panelLength" type="number" min="1600" max="2400" step="50" value="2400"></div>
+        <div class="calc-field"><label for="panelWidth">패널 폭 (mm)</label><input id="panelWidth" type="number" min="800" max="1200" step="50" value="1200"></div>
+        <div class="calc-field"><label for="lampPower">IR 램프 1개 정격 (kW)</label><input id="lampPower" type="number" min="1" max="3" step="0.1" value="2.5"></div>
+        <div class="calc-field"><label for="heatEfficiency">실효 열효율 (%)</label><input id="heatEfficiency" type="number" min="35" max="80" step="1" value="65"></div>
+        <div class="calc-field"><label for="knifeSpeed">캐리어 박리속도 (mm/s)</label><input id="knifeSpeed" type="number" min="35" max="60" step="1" value="55"></div>
+        <div class="calc-field"><label for="rapidSpeed">캐리어 급속속도 (mm/s)</label><input id="rapidSpeed" type="number" min="100" max="250" step="10" value="200"></div>
+        <div class="calc-field"><label for="handlingTime">클램프·인계 고정시간 (s/장)</label><input id="handlingTime" type="number" min="2" max="12" step="0.5" value="3"></div>
+      </div>
+      <div class="calc-results" aria-live="polite">
+        <div class="calc-result"><span>패널 1장 열량</span><strong id="heatPerPanel">—</strong></div>
+        <div class="calc-result"><span>IR 설치 정격</span><strong id="ratedPower">—</strong></div>
+        <div class="calc-result"><span>적재 중 대기전력</span><strong id="standbyPower">—</strong></div>
+        <div class="calc-result"><span>예상 IR 평균전력</span><strong id="avgLinePower">—</strong></div>
+        <div class="calc-result"><span>패널당 IR 전력량</span><strong id="energyPerPanel">—</strong></div>
+        <div class="calc-result"><span>5단 가열 체류시간</span><strong id="heatDwell">—</strong></div>
+        <div class="calc-result"><span>IR 방출간격</span><strong id="releasePitch">—</strong></div>
+        <div class="calc-result"><span>열공정 한계</span><strong id="thermalRate">—</strong></div>
+        <div class="calc-result"><span>탠덤 사이클</span><strong id="tandemCycle">—</strong></div>
+        <div class="calc-result"><span>탠덤 한계</span><strong id="tandemRate">—</strong></div>
+        <div class="calc-result"><span>캐리어 운전 프로파일</span><strong id="motionProfile">—</strong></div>
+        <div class="calc-result wide"><span>예상 전체 처리량 · 병목</span><strong id="lineRate">—</strong></div>
+        <div class="calc-result"><span>60장 시험 · 냉간 시작</span><strong id="test60Cold">—</strong></div>
+        <div class="calc-result"><span>60장 시험 · 정상상태</span><strong id="test60Steady">—</strong></div>
+        <div class="calc-result"><span>시간당 처리량</span><strong id="hourlyPanels">—</strong></div>
+        <div class="calc-result"><span>8시간 · 가동률 90%</span><strong id="shift8Panels">—</strong></div>
+        <div class="calc-result"><span>16시간 · 가동률 90%</span><strong id="shift16Panels">—</strong></div>
+        <div class="calc-result wide"><span>병목 해소 권고</span><strong id="bottleneckAction">—</strong></div>
+      </div>
+      <div class="formula" id="calcBasis"></div>
+      <div class="formula" id="testSchedule"></div>
+      <div class="formula" id="comparisonBasis"></div>
+      <div class="notice">55mm/s 계산치는 67.2장/h, 90% 가동률 환산 60.5장/h입니다. 실제 양산 승인은 패널별 EVA 조성, HKS 하중, 백시트 장력, 유리 열응력 및 VOC 시험으로 확정합니다.</div>
+    </div>
+  </dialog>
+
+  <dialog id="engineeringDialog" class="drawing-dialog" aria-labelledby="engineeringTitle">
+    <div class="dialog-head">
+      <div><div class="dialog-code">DG-HK60 · E-001 / E-101 / M-001~M-013</div><h2 id="engineeringTitle">전기·제어·제작도면</h2></div>
+      <button class="close" type="button" id="engineeringClose">닫기</button>
+    </div>
+    <div class="dialog-body">
+      <div class="drawing-toolbar" aria-label="도면 선택">
+        <button type="button" data-drawing="power">전력 인입·단선결선</button>
+        <button type="button" data-drawing="plc">PLC I/O·배선</button>
+        <button type="button" data-drawing="assemblies">구성품 2D·3D</button>
+        <button type="button" id="printDrawingButton">현재 도면 인쇄</button>
+      </div>
+      <div id="drawingContent" aria-live="polite"></div>
+    </div>
+  </dialog>
+
+  <script>
+  (()=>{
+    'use strict';
+    const canvas=document.getElementById('scene');
+    const ctx=canvas.getContext('2d',{alpha:false});
+    const $=id=>document.getElementById(id);
+    /* Industrial livery. Body panels RAL 7035, frames RAL 7016, guarding RAL 5009,
+       safety marking RAL 1023/3020 — the palette a real machine builder would spray. */
+    const C={
+      floor:'#b9bdbb',grid:'#9aa3a1',steel:'#8e979a',steel2:'#4a565b',dark:'#232c30',
+      rail:'#b6bec0',guard:'#2f5f6d',teal:'#07686e',glass:'#a7cdd4',cell:'#183c62',
+      cell2:'#3a6188',sheet:'#e8e4da',knife:'#b84a23',heat:'#d1841c',yellow:'#e8ab14',
+      red:'#b32a2f',cab:'#ced2cf',belt:'#272e32',black:'#161c1f',white:'#f2f3ef',ok:'#2f7a53',
+      web:'#d8d2c4'
+    };
+    /* Surface finish per material: sp = specular strength, gl = highlight tightness,
+       ao = how strongly ambient occlusion bites. Keyed by livery colour so no call
+       site has to declare a material. */
+    const MAT_DEFAULT={sp:.18,gl:17,ao:1};
+    const MATS={
+      [C.cab]   :{sp:.15,gl:13,ao:1},    [C.floor] :{sp:.09,gl:12,ao:.55},
+      [C.steel] :{sp:.30,gl:24,ao:1},    [C.steel2]:{sp:.26,gl:20,ao:1},
+      [C.dark]  :{sp:.20,gl:18,ao:1},    [C.rail]  :{sp:.52,gl:52,ao:.85},
+      [C.glass] :{sp:.74,gl:88,ao:.45},  [C.sheet] :{sp:.11,gl:10,ao:1},
+      [C.cell]  :{sp:.36,gl:42,ao:1},    [C.cell2] :{sp:.32,gl:36,ao:1},
+      [C.knife] :{sp:.44,gl:46,ao:1},    [C.belt]  :{sp:.07,gl:8, ao:1},
+      [C.black] :{sp:.24,gl:28,ao:1},    [C.white] :{sp:.12,gl:11,ao:1},
+      [C.teal]  :{sp:.22,gl:20,ao:1},    [C.yellow]:{sp:.21,gl:19,ao:1},
+      [C.red]   :{sp:.23,gl:21,ao:1},    [C.guard] :{sp:.17,gl:16,ao:1},
+      [C.heat]  :{sp:.17,gl:14,ao:1},    [C.ok]    :{sp:.19,gl:18,ao:1},
+      [C.web]   :{sp:.13,gl:12,ao:1}
+    };
+    const HKB_X=17.65,HKS_X=17.95,TANDEM_GAP=HKS_X-HKB_X;
+    const steps=[
+      {id:'S0',name:'투입·자세 확인',duration:3300,desc:'유리면 아래·백시트 위 자세로 투입하고 패널 중심과 크기를 확인합니다.',vac:'대기 · 0 kPa',temp:'식별 · 상온',out:'ORIENT_OK'},
+      {id:'S1',name:'6존 진공 고정',duration:2200,desc:'VC-101이 유리면을 6개 구역으로 흡착해 권취·박리 반력을 지지합니다.',vac:'VC-101 · -65 kPa',temp:'예열 준비',out:'VAC_OK'},
+      {id:'S2',name:'5단 투입·방출·재투입',duration:16000,desc:'C1~C5 5/5 잠금과 모든 문 닫힘을 확인해 밀폐 가열한 뒤, 200°C C1을 AL-102 내문→격리→외문 순으로 방출합니다. 이어 새 패널을 AL-101 외문→격리→내문, LI-101 층선택, TS-101 삽입 순으로 같은 빈 C1에 재투입합니다.',vac:'C1~C5 5/5 → C1 방출 → C1 재적재',temp:'EVA 계면 200°C · 60 IR',out:'FULL_LOAD→RELEASE→REFILL_ACK'},
+      {id:'S3',name:'200°C 방출·HKB 진입',duration:4800,desc:'EVA/유리 내부 계면 200°C와 탠덤 READY를 확인한 패널을 방출합니다. HKB는 X축 위치를 유지한 채 독립 Z축으로 내려가고, 캐리어는 200mm/s 접근 후 S-curve로 55mm/s까지 감속합니다.',vac:'이동 VC-101 · -65 kPa',temp:'HKB 230°C · HKS 250~270°C',out:'EVA_200_ACK ∧ CARRIER_AT_HKB'},
+      {id:'S4',name:'300mm 선행·클램프',duration:2500,desc:'HKB가 백시트 선단 300mm를 개방하면 WR-101이 선단을 잡아 장력을 형성합니다. CLAMP_TENSION_ACK 뒤 HKS가 독립 Z축으로 EVA/유리 계면까지 접근해 2차 박리를 준비합니다.',vac:'VC-101 · -65 kPa 유지',temp:'HKB 가압 · HKS Z축 진입',out:'LEAD_300_ACK ∧ CLAMP_TENSION_ACK'},
+      {id:'S5',name:'55mm/s 탠덤 통과박리',duration:7600,desc:'두 칼날의 X축은 300±2mm 간격으로 고정되고 Z축은 로드셀 하중을 추종합니다. 캐리어가 55mm/s로 통과하면 HKB는 백시트를 권취롤로 보내고 HKS는 셀/EVA를 유리에서 연속 분리합니다.',vac:'이동 캐리어 6존 · -65 kPa',temp:'HKB 230°C · HKS 250~270°C',out:'CARRIER_PEEL_COMPLETE'},
+      {id:'S6',name:'3계통 무낙하 분기',duration:4200,desc:'HKB/HKS Z축 안전복귀 후 유리의 롤러 완전지지를 먼저 확인합니다. GLASS_SUPPORT_ACK 뒤 진공을 해제하고 빈 캐리어를 복귀시키며, 셀/EVA와 백시트 반출축은 독립 ACK로 병렬 운전합니다.',vac:'GLASS_SUPPORT_ACK → VAC_OFF_ACK',temp:'KNIFE_Z_SAFE 후 캐리어 복귀',out:'LEVEL_CONVEYOR_OUTFEED'},
+      {id:'S7',name:'백시트 보관함 이동',duration:3200,desc:'권취 완료 롤을 터릿이 분리 위치로 전환하고 격리셔터를 닫은 뒤 BS-301 전용 보관함으로 측면 이동합니다.',vac:'복귀 준비',temp:'권취부 안전',out:'BACKSHEET_BIN_ACK'},
+      {id:'S8',name:'셀모듈 직접 컨베이어',duration:3500,desc:'분리된 셀/EVA 적층체가 CVC-301 밀폐 인계·수평 컨베이어를 타고 중간 낙하나 보관 없이 SH-101 전단까지 이동합니다.',vac:'진공 해제',temp:'HKS 복귀',out:'CELL_ON_CONVEYOR_ACK'},
+      {id:'S9',name:'Shredder 연속 투입',duration:4200,desc:'SH-101 READY와 격리게이트 개방을 확인한 뒤 CVC-301이 셀/EVA를 투입롤러까지 연속 이송합니다. Shredder 트립 시 컨베이어를 즉시 정지하고 HKS 신규 분리를 차단합니다.',vac:'빈 캐리어 복귀',temp:'SH-101 READY',out:'SHREDDER_FEED_ACK'},
+      {id:'S10',name:'유리 수평인계·교대',duration:4300,desc:'유리를 받은 GC-301A가 컨베이어와 동일한 높이의 내열 지지롤 위에서 양면 균일냉각을 시작하며 격리 도크로 수평 이동합니다. 빈 GC-301B가 다음 유리를 받을 위치로 자동 인덱싱됩니다.',vac:'진공 해제 완료',temp:'GLASS COOLING · 출입잠금',out:'LEVEL_GLASS_DOCK_ACK'},
+      {id:'S11',name:'품질검사·리젝트 분기',duration:4300,desc:'QI-301 상·하부 비전·열화상이 잔류 EVA, 미분리 셀, 균열과 표면온도를 검사합니다. 불합격품은 RJ-301 횡셔틀과 밀폐 파손품 캐리지로 분기합니다.',vac:'검사 위치 고정',temp:'온도·잔류물·균열 판정',out:'QUALITY_PASS_OR_REJECT_ACK'},
+      {id:'S12',name:'7＋1 캐리지 순환',duration:4200,desc:'5대는 가열실, 1대는 탠덤, 1대는 복귀·재장전 위치에서 순환하고, 1대는 MC-401 정비 대기 위치에 보관됩니다.',vac:'주캐리지 복귀·재장전',temp:'5 HEAT + 1 PROCESS + 1 RETURN + 1 SPARE',out:'EMPTY_CARRIER_RELOADED'},
+      {id:'S13',name:'안전·환경 자가점검',duration:4200,desc:'VOC 응축·미스트·활성탄 처리, 독립 과온차단, 연기·CO·화재댐퍼, MCC 냉각, 진공 이중화와 LOTO 상태를 확인합니다.',vac:'VP-A/B 이중화 READY',temp:'FIRE_OK ∧ EXHAUST_OK ∧ MCC_OK',out:'SAFETY_UTILITY_ACK'},
+      {id:'S14',name:'단일라인 60장 시험',duration:8000,desc:'55mm/s 생산보증 레시피의 정상상태 60장 약 53분35초를 8초로 압축합니다. FULL_LOAD_ACK 이후 냉간 완료는 약 57분21초이며 90% 가동률 환산은 60.5장/h입니다.',vac:'이동 캐리어 −65 kPa',temp:'실공정 53m35s → 영상 8s',out:'SINGLE_60_TEST_COMPLETE'},
+    ];
+    const details={
+      equipment:{code:'HK-RP300 · REV.05',title:'전체장비 구성',intro:'패널을 진공 고정한 상태에서 백시트·셀모듈·판유리를 서로 다른 세 경로로 분리합니다.',hardware:['M0 투입·자세검사·6존 진공 캐리어','M1 선택형 계면 예열터널','M2 HKB-101 300mm 선단개방','WR-101 Ø300 횡롤러·분할 클램프·토크서보','ISO-101 권취롤 격리셔터·측면 슬라이드·밀폐 회수함','M3 HKS-201 셀모듈 전장분리·30° 리프트','CB-201 셀모듈 밀폐 컨테이너·바닥 정량피더','CV-301 밀폐 컨베이어·SH-101 슈레더','GR-201 저충격 유리 롤러 배출라인'],control:['6존 진공 압력·누설률 독립감시','권취 토크·직경·회전수·클램프 닫힘 확인','백시트 끝단 비전·FULL_PEEL 센서','셀 컨테이너 레벨·게이트·브리징 감시','슈레더 READY·컨베이어 CLEAR 핸드셰이크'],verify:['백시트 폭 1,200mm 기준 롤러 유효폭 1,400~1,500mm','권취롤러 캐리지는 장비 측면으로 완전 이탈 후에만 이젝터 작동','셀 컨테이너는 시트 엉킴 방지 경사벽·저속 피더 적용','판유리 롤러 간격·충격·처짐 실물시험'],notice:'권취롤의 클램프 수량·롤 직경·토크와 셀 컨테이너 용량은 백시트 종류 및 패널 처리량 DOE 후 확정합니다.'},
+      spec:{code:'PROCESS BASIS',title:'핵심 설계값',intro:'첨부 설계패키지의 핫나이프·권취드럼 형상과 이번 요청의 3계통 배출방식을 통합했습니다.',hardware:['패널 자세: 백시트 위 / 유리 아래','1차 개방 길이 300±10mm · HKB 230°C','권취드럼 기준 Ø300 · 유효폭 1,500mm','롤러 길이방향 분할 클램프 3~4구역','2차 HKS 320°C · 35~50mm/s','셀 리프트각 30°','유리 배출은 우레탄 코팅 회전롤러'],control:['권취는 토크상한·박리장력·직경 추정 동시제어','클램프 닫힘 후에만 롤러 회전','BACKSHEET_FULL_ACK 후에만 HKS 절입','CELL_BUFFERED 후 바닥게이트 개방','SHREDDER_READY와 CV_CLEAR 동시확인'],verify:['권취 중 백시트 찢김·편권·클램프 미끄럼 DOE','롤 최대직경과 격리함 내부 여유 검토','셀모듈 시트의 컨테이너 브리징·끼임시험','유리 파손률·롤러 피치·배출속도 시험','2단 추력 1.49~13.37kN 범위 재검토'],notice:'5kN×2 로드셀은 계산상 최대 추력조건에서 여유가 부족할 수 있으므로 상세설계에서 상향 선정 또는 공정 제한이 필요합니다.'},
+      interlock:{code:'3-WAY MATERIAL LOGIC',title:'핵심 인터록',intro:'백시트, 셀모듈, 판유리의 배출 확인이 서로 독립적으로 완료되어야 다음 패널 투입이 허용됩니다.',hardware:['권취부 격리셔터·외측 도어 이중 인터록','롤러 양단 베어링 잠금·캐리지 위치센서','셀 컨테이너 상·하 레벨 및 막힘감지','밀폐 컨베이어 커버·슈레더 역회전 보호','유리 출구 광센서·파손 감지·저압 롤러 구동'],control:['WR_PERMIT = OPEN_300_ACK ∧ CLAMP_CLOSED ∧ VAC_OK ∧ DOOR_LOCKED','HKS_PERMIT = BACKSHEET_FULL_ACK ∧ ROLL_ISOLATED ∧ VAC_OK ∧ T2_READY ∧ AE_OK','EJECT_PERMIT = SHUTTER_CLOSED ∧ CARRIAGE_OUT ∧ BIN_READY','SHREDDER_FEED = CELL_BUFFERED ∧ CV_CLEAR ∧ SHREDDER_READY','NEXT_PANEL = ROLL_EJECT_ACK ∧ CELL_OUT_ACK ∧ GLASS_OUT_ACK'],verify:['정전 시 권취롤 역회전 방지 브레이크','클램프 해제·롤 이젝터 끼임 위험성 평가','컨테이너 만재 시 HKS 시작 차단','슈레더 트립 시 상류 컨베이어·게이트 순차정지','유리 롤러 정지 시 진공 해제 금지'],notice:'권취롤 측면 배출구와 슈레더 투입부는 작업자 접근이 가능한 위험구역이므로 안전 PLC, 잠금식 가드와 LOTO 절차가 필요합니다.'}
+    };
+    details.equipment.code='HK-RP300 · REV.06';
+    details.equipment.intro='5단 IR 축열 캐리지에서 180°C 도달 패널을 순차 방출한 뒤 백시트·셀모듈·판유리를 서로 다른 세 경로로 분리합니다.';
+    details.equipment.hardware[1]='M1 5단 캐리지·IR 6라인×8개(총 48개)·각 단 온도센서';
+    details.equipment.control.unshift('각 캐리지 상·하부 온도센서와 보정 열모델로 EVA 내부 계면온도 추정','48개 IR 램프 단선·SSR·과온 감시');
+    details.spec.hardware.unshift('IR 램프 6개 수평라인×8개 = 총 48개','방출 기준은 표면이 아닌 EVA 내부 계면온도 180°C');
+    details.spec.control.unshift('RELEASE_PERMIT = EVA_INTERFACE_TEMP≥180°C ∧ NEXT_CLEAR ∧ CARRIER_LOCKED','초기 DOE에서 삽입형 열전대로 표면온도–계면온도 모델 보정','방출된 빈 캐리지는 투입측으로 순환해 새 패널 재장전');
+    details.interlock.intro='5단 IR 축열 캐리지의 180°C 도달과 백시트·셀모듈·판유리 배출 확인이 모두 완료되어야 다음 단계가 허용됩니다.';
+    details.interlock.hardware.unshift('5단 캐리지 위치·패널유무·온도센서 이중확인','48개 IR 램프 단선·과온·SSR 고착 감시');
+    details.interlock.control.unshift('IR_RELEASE = EVA_INTERFACE_180_ACK ∧ CARRIER_AT_EXIT ∧ HKB_CLEAR ∧ GUARD_LOCKED');
+    details.equipment.code='HK-RP300 · REV.07';
+    details.equipment.hardware.splice(2,0,'LI-101 서보 적재승강기·TS-101 텔레스코픽 푸시풀 셔틀','EX-101 하단 방출셔틀·RT-101 빈 캐리지 하부 복귀라인');
+    details.equipment.hardware[details.equipment.hardware.length-1]='GR-201 단거리 저충격 롤러·DS-301 하강식 유리 직접적재대';
+    details.equipment.control.unshift('빈 단 확인 → 승강기 높이동기 → 셔틀 삽입 → 캐리지 잠금 순차제어');
+    details.spec.control.unshift('유리는 장거리 이송 없이 HKS 출구에서 짧은 롤러를 거쳐 하강식 팔레트에 직접 적층');
+    details.interlock.control.unshift('CARRIER_LOAD = EMPTY_SLOT ∧ LIFT_IN_POSITION ∧ SHUTTLE_HOME ∧ PANEL_PRESENT','GLASS_STACK = HKS_CLEAR ∧ ROLLER_READY ∧ STACK_HEIGHT_OK ∧ PALLET_PRESENT');
+    details.interlock.control=details.interlock.control.map(v=>v.replace('GLASS_OUT_ACK','GLASS_STACK_ACK'));
+    details.interlock.verify.unshift('유리 적재대 만재·팔레트 부재·승강축 오류 시 HKS 배출 차단','승강기와 적재셔틀 사이 캐리지 이중점유 방지');
+    details.equipment.code='HK-TDM300 · REV.08';
+    details.equipment.intro='HKB가 300mm 선행하고 HKS가 같은 서보축에서 추종하는 2단 탠덤 구조로 백시트·셀/EVA·유리를 한 번의 연속 패스로 분리합니다.';
+    details.equipment.hardware=details.equipment.hardware.filter(v=>!v.startsWith('M2 HKB')&&!v.startsWith('M3 HKS'));
+    details.equipment.hardware.splice(4,0,'TDM-201 공통 X축 빔·HKB/HKS 독립 Z축·300mm 전자기어 추종','WR-101 백시트 권취롤과 LO-201 셀/EVA 리프트롤러 동시 인계');
+    details.equipment.control.unshift('HKB/HKS 리니어스케일 이중감시·간격 300±2mm','TANDEM_RUN = LEAD_300_ACK ∧ BS_CLAMP ∧ CELL_LIFT_READY ∧ VAC_OK');
+    details.equipment.control.unshift('시운전 계측캐리지: EVA/유리 계면 초박형 K열전대 3점·표면 IR 3점·시간동기 로거','양산 운전: 표면 IR·램프출력·체류시간 기반 계면온도 소프트센서, 주기적 계측캐리지로 재보정');
+    details.spec.hardware.unshift('탠덤 간격 300mm · HKB 230°C · HKS 시작값 260~280°C','적층 면적열용량 8.736 kJ/(m²·K) · EVA 계면 목표 180°C');
+    details.spec.hardware=details.spec.hardware.filter(v=>!v.startsWith('2차 HKS 320°C'));
+    details.spec.control.unshift('연속 생산능력 = min(5단 IR 순차방출능력, 탠덤 박리능력)','탠덤 사이클 = 300/v + 패널길이/v + 클램프·인계시간');
+    details.spec.control=details.spec.control.filter(v=>!v.startsWith('BACKSHEET_FULL_ACK'));
+    details.spec.verify.unshift('첨부 1D FDM 적층모델 재계산: h=60 W/m²K·등가환경 200°C에서 EVA/유리 계면 180°C 도달 약 177.1초','5단 연속운전의 정상상태 방출피치 = 가열체류시간÷5','최대 2,400×1,200mm·48×2.5kW·열효율 65% 기준 열수지 체류 약 250초·방출 약 50초/장');
+    details.interlock.control.unshift('TANDEM_GEAR = |X_HKS−X_HKB−300mm|≤2mm ∧ LOAD_OK ∧ TEMP_OK');
+    details.interlock.control=details.interlock.control.filter(v=>!v.startsWith('HKS_PERMIT = BACKSHEET_FULL_ACK'));
+    details.interlock.verify.unshift('HKB 선행거리가 300mm 미만이면 HKS 절입 금지','탠덤 속도 40mm/s 초과는 추력·백시트 찢김·유리 열응력 DOE 후 허용');
+
+    /* Rev.09 final engineering normalization: 60 IR lamps, 200°C EVA interface and detailed five-deck circulation. */
+    details.equipment.code='HK-TDM300 · REV.09';
+    details.equipment.intro='60개 IR 램프가 장착된 5단 축열 캐리지와 자동 적재·방출·하부복귀 장치가 EVA 내부 계면 200°C를 확인한 뒤, 2단 탠덤 핫나이프로 백시트·셀/EVA·유리를 연속 분리합니다.';
+    details.equipment.hardware=[
+      'M0 투입 정렬·패널 자세검사·6존 진공 캐리어',
+      'M1 5단 단열랙·상부/하부/단간 6라인×10개 = 총 60개 IR 램프',
+      'LI-101 양주형 서보승강기·볼스크루/타이밍벨트 동기축·카운터밸런스·무여자 브레이크',
+      'TS-101 이단 텔레스코픽 포크·4점 LM가이드·푸시풀 핀·낙하방지 폴',
+      'IDX-101 5단 절대치 엔코더·테이퍼 위치결정핀·좌우 기계잠금·캐리지 유무센서',
+      'EX-101 하단 방출셔틀·RT-101 빈 캐리지 하부 복귀컨베이어·투입측 재장전 루프',
+      'TDM-201 공통 X축 빔·HKB/HKS 독립 Z축·칼끝 300±2mm 전자기어 추종',
+      'WR-101 횡방향 분할클램프 롤러·백시트 전장 권취·측면 밀폐 격리배출',
+      'LO-201 셀/EVA 리프트롤러·CB-201 보관 컨테이너·CV-301 정량 슈레더 투입',
+      'GR-201 단거리 저충격 회전롤러·DS-301 하강식 유리 직접적재대',
+      ...details.equipment.hardware.filter(v=>!/^M0 |^M1 |^LI-101|^TS-101|^IDX-101|^EX-101|^RT-101|^TDM-201|^WR-101|^LO-201|^GR-201/.test(v))
+    ];
+    details.equipment.control=details.equipment.control.filter(v=>!v.includes('48개 IR')&&!v.startsWith('빈 단 확인'));
+    details.equipment.control.unshift(
+      'AUTO_LOAD = INFEED_CENTERED ∧ EMPTY_SLOT_SELECTED ∧ LIFT_AT_LEVEL ∧ FORK_EXTENDED ∧ CARRIER_LOCKED',
+      '5단 적재순서: 입구 정렬 → 빈 단 검색 → LI-101 높이동기 → TS-101 삽입 → IDX-101 잠금 → 포크복귀',
+      '각 캐리지 K열전대 3점과 표면 IR의 보정 열모델로 EVA/유리 내부 계면온도 200°C 확인',
+      '60개 램프 개별 단선·SSR 고착·과온 감시, 단별 출력보정 및 교차온도 편차 감시',
+      '방출 캐리지는 EX-101 하단 인출 후 RT-101로 투입측에 복귀하여 새 패널을 재장전'
+    );
+    details.equipment.notice='계면 200°C 운전은 EVA 열이력과 VOC를 증가시킵니다. 계측캐리지 K열전대 검증, 배기·VOC 처리, 유리 열응력 DOE를 완료한 뒤 양산 설정값으로 승인해야 합니다.';
+
+    details.spec.hardware=details.spec.hardware.filter(v=>!v.includes('48개')&&!v.includes('180°C')&&!v.includes('260~280°C')&&!v.startsWith('IR 램프 6개'));
+    details.spec.hardware.unshift(
+      'IR 램프 6라인×10개 = 총 60개 · 기본 계산 2.5kW/개·전기입력 150kW',
+      '적층 면적열용량 8.736 kJ/(m²·K) · EVA/유리 내부 계면 목표 200°C',
+      '탠덤 칼끝 간격 300±2mm · HKB 230°C · HKS 시작값 250~270°C',
+      'HKB/HKS 헤드몸체 Z방향 엇갈림·최소 기구간극 60mm · 백시트 권취 웹과 HKS 가드 간극 120mm 이상',
+      'WR-101은 300mm 선단을 인계받아 패널 폭 전장을 횡방향 분할클램프로 고정하고 완전 박리까지 권취'
+    );
+    details.spec.control=details.spec.control.filter(v=>!v.includes('≥180°C'));
+    details.spec.control.unshift(
+      'RELEASE_PERMIT = EVA_INTERFACE_TEMP≥200°C ∧ NEXT_CLEAR ∧ CARRIER_LOCKED ∧ EXTRACTOR_READY',
+      '5단 정상상태 방출피치 = max(5장 열수지 체류시간, 1D-FDM 도달시간)÷5',
+      '유리는 장거리 컨베이어 없이 HKS 출구의 짧은 저충격 롤러에서 하강식 팔레트에 직접 적층'
+    );
+    details.spec.verify=details.spec.verify.filter(v=>!v.includes('180°C')&&!v.includes('48×2.5kW')&&!v.includes('약 250초'));
+    details.spec.verify.unshift(
+      '첨부 1D 적층 FDM 보수조건: h=75 W/(m²·K)·등가환경 240°C에서 계면 200°C 도달 약 113.2초',
+      '최대 2,400×1,200mm·60×2.5kW·열효율 65%: 5장 열수지 체류 225.8초·방출피치 45.2초·열한계 79.7장/h',
+      '40mm/s·인계 10초·칼끝 300mm: 탠덤 77.5초/장·46.5장/h, 10장 냉간 16.7분·정상상태 12.9분',
+      '90% 가동률 예상: 8시간 약 334장 · 16시간 약 669장'
+    );
+    details.interlock.intro='각 캐리지의 EVA 내부 계면 200°C 확인, 5단 승강·잠금·방출축의 안전위치, 백시트·셀/EVA·유리의 독립 배출확인이 모두 완료되어야 다음 패널 투입이 허용됩니다.';
+    details.interlock.hardware=details.interlock.hardware.filter(v=>!v.includes('48개 IR')&&!v.startsWith('5단 캐리지 위치'));
+    details.interlock.hardware.unshift(
+      '5단별 캐리지 유무·기계잠금·온도센서·절대높이 이중확인',
+      '승강축 무여자 브레이크·상하 리미트·낙하방지 폴·과속 세이프티',
+      '60개 IR 램프 단선·SSR 고착·상/하부 과온·배기유량 감시',
+      '텔레스코픽 포크와 방출셔틀의 동시진입 방지 레이저 스캐너·안전 PLC'
+    );
+    details.interlock.control=details.interlock.control.filter(v=>!v.startsWith('IR_RELEASE =')&&!v.startsWith('CARRIER_LOAD ='));
+    details.interlock.control.unshift(
+      'IR_RELEASE = EVA_INTERFACE_200_ACK ∧ CARRIER_AT_EXIT ∧ HKB_CLEAR ∧ GUARD_LOCKED',
+      'CARRIER_LOAD = EMPTY_SLOT ∧ LIFT_IN_POSITION ∧ FORK_HOME ∧ PANEL_PRESENT ∧ LOWER_RETURN_CLEAR',
+      'LIFT_MOVE = ALL_DECK_LOCKED ∧ FORK_RETRACTED ∧ EXTRACTOR_HOME ∧ DOOR_LOCKED',
+      'TANDEM_CLEARANCE = TIP_PITCH_300_OK ∧ HEAD_GAP≥60mm ∧ WEB_GUARD_GAP≥120mm'
+    );
+    details.interlock.verify.unshift(
+      '5단 전부 점유·이중점유·포크 미복귀·잠금핀 미체결 시 승강 또는 IR 기동 금지',
+      '직접 유리 적재대 만재·팔레트 부재·적재높이 초과 시 HKS 출구 차단',
+      '60장/h 증속안은 HKS 추력, 백시트 장력, 유리 열응력 및 분진/VOC 배기시험 후 승인'
+    );
+
+    /* Rev.10: cold start only after all five decks are occupied; JIT thermal profile prevents 200°C waiting. */
+    details.equipment.code='HK-TDM300 · REV.10';
+    details.equipment.intro='냉간기동은 C1~C5에 패널 5장이 모두 적재·잠금된 FULL_LOAD_ACK에서 시작합니다. 6개 IR 라인은 5단 계면온도와 탠덤 ETA를 함께 사용해 다음 패널만 200°C에 정시 도달시키고 나머지는 160~190°C에서 대기시킵니다.';
+    details.equipment.hardware.unshift(
+      '각 단 독립 PANEL_PRESENT 2채널·잠금핀 2채널·K열전대 3점·표면 IR 1점',
+      'IR B0~B5 독립 SSR 출력과 5단 열결합 보정행렬을 적용한 다변수 온도제어기'
+    );
+    details.equipment.control.unshift(
+      '냉간 적재: C1 → C2 → C3 → C4 → C5, 적재 중 IR은 10% 이하 대기출력',
+      'COLD_START_IR_ENABLE = FULL_LOAD_ACK ∧ ALL_LOCKED ∧ ALL_TEMP_OK ∧ EXHAUST_OK',
+      'FULL_LOAD_ACK = C1_PRESENT ∧ C2_PRESENT ∧ C3_PRESENT ∧ C4_PRESENT ∧ C5_PRESENT',
+      '초기 JIT 목표: C1=200°C · C2=190°C · C3=180°C · C4=170°C · C5=160°C',
+      'C1 방출 후 C2를 200°C로 승온하고 C3~C5 우선순위를 한 단계씩 이동; 복귀 캐리지는 신규 160°C 대기슬롯으로 편입',
+      '6개 IR 라인은 단순 단별 PID가 아니라 6×5 열결합행렬과 T_TO_200 예측값으로 출력배분'
+    );
+    details.spec.control.unshift(
+      'JIT_RELEASE = EVA_INTERFACE≥200°C ∧ TANDEM_ETA≤TRANSFER_TIME ∧ EXTRACTOR_READY',
+      'PROFILE_SHIFT = RELEASE_ACK ∧ EMPTY_CARRIER_RETURNED ∧ NEW_PANEL_LOCKED',
+      '대기패널 200°C 체류목표 ≤15초 · 205°C 이상 해당 인접 IR 라인 즉시 0% 출력'
+    );
+    details.spec.verify.unshift(
+      '10장 냉간시험 시간 16.7분은 최초 5장 적재가 완료된 FULL_LOAD_ACK를 0초로 정의',
+      '초기 적재시간은 LI-101·TS-101 실측 5회 평균값으로 별도 기동손실에 합산',
+      'JIT 프로파일은 보수 열수지 처리량을 변경하지 않고 2~5번째 패널의 200°C 과열대기만 제거',
+      'FAT에서 C1~C5 200°C 초과 체류시간·단간 편차·온도예측오차·재장전 완료시간을 기록'
+    );
+    details.interlock.control.unshift(
+      'START_PERMIT = C1~C5_PRESENT ∧ ALL_CARRIERS_LOCKED ∧ ALL_TEMP_SENSORS_OK ∧ IR_EXHAUST_OK ∧ TANDEM_READY',
+      'IR_STANDBY = ¬FULL_LOAD_ACK → EACH_BANK_OUTPUT≤10%',
+      'OVERHEAT_TRIP = ANY_INTERFACE_TEMP≥205°C ∨ SENSOR_DEVIATION_HIGH ∨ EXHAUST_LOW'
+    );
+    details.interlock.verify.unshift(
+      'FULL_LOAD_ACK 이전 가열명령은 안전 PLC에서 차단하고 HMI에 미점유 단 번호 표시',
+      '연속운전 중 방출된 빈 단은 다음 프로파일 승격 전에 신규패널 잠금·센서 확인을 완료'
+    );
+
+    /* Rev.11: sealed and insulated 72-IR chamber, wall power meter and 60-panel validation. */
+    details.equipment.code='HK-TDM300 · REV.11';
+    details.equipment.intro='5단 캐리지는 투입·배출용 이중셔터 에어록을 제외하고 완전 밀폐·단열됩니다. FULL_LOAD_ACK 후 6라인×12개, 총 72개 IR을 JIT 제어하고, 외벽 PM-101 계기판에서 순간전력·누적전력량·라인별 전류를 표시합니다.';
+    details.equipment.hardware=details.equipment.hardware.filter(v=>!v.includes('6라인×10')&&!v.includes('60개 IR')&&!v.startsWith('IR B0~B5'));
+    details.equipment.hardware.unshift(
+      'M1 밀폐 5단 가열실·상부/하부/단간 6라인×12개 = 총 72개 IR 램프',
+      'INS-101 벽체: 내피 SUS304 t1.5 + 고밀도 미네랄울 100mm + 반사 공기층 25mm + 외피 GI t1.2, 공칭 130mm',
+      'INS-102 지붕 150mm 미네랄울 이중피복·바닥 100mm 칼슘실리케이트 단열·세라믹 열교차단 스페이서',
+      'AL-101 투입 에어록·AL-102 배출 에어록: 외측/내측 수직셔터·세라믹 파이버 라비린스 씰·독립 위치센서',
+      'RT-101 빈 캐리지 하부복귀도 이중셔터 밀폐터널로 구성하고 메인가열실과 직접 개방 금지',
+      'PM-101 외벽 전력계기판: 3상 380V Class 0.5S 전력량계·B0~B5 CT·순간 kW/kWh/역률/전류 표시·Modbus PLC',
+      'DP-101 차압센서·EXH-101 VOC 배기댐퍼로 가열실 −30±10Pa 유지'
+    );
+    details.equipment.control=details.equipment.control.filter(v=>!v.includes('60개 램프'));
+    details.equipment.control.unshift(
+      '밀폐투입: OUTER_IN_OPEN → 캐리지 진입 → OUTER_IN_CLOSED → SEAL_VERIFY → INNER_IN_OPEN → 적재 → INNER_IN_CLOSED',
+      '밀폐방출: INNER_OUT_OPEN → 200°C 캐리지 에어록 진입 → INNER_OUT_CLOSED → SEAL_VERIFY → OUTER_OUT_OPEN',
+      '투입·배출·하부복귀 에어록의 내측문과 외측문은 기계키와 안전 PLC로 동시개방 금지',
+      'PM-101은 IR 6라인의 kW·kWh·전류불평형·SSR 듀티를 1초 주기로 기록하고 HMI/이력서버에 저장',
+      '배속 영상: 약 188초 가열구간을 약 9초로 압축하되 온도·전력·인터록 상태값은 실공정 기준 표시'
+    );
+    details.equipment.notice='밀폐·단열 성능은 도어 반복개폐 누설시험, −30Pa 차압 회복시험, 외벽 열화상과 60장 연속 소비전력 측정으로 확정합니다. PM-101 표시값은 현재 열수지 기준이며 실제 전력품질계 데이터로 보정해야 합니다.';
+    details.spec.hardware=details.spec.hardware.filter(v=>!v.includes('총 60개')&&!v.includes('60×2.5kW'));
+    details.spec.hardware.unshift(
+      'IR 램프 6라인×12개 = 총 72개 · 기본 2.5kW/개 · 설치정격 180kW · 65% 기준 유효열 117kW',
+      '램프라인 배치: B0 하부 12개 · B1~B4 캐리지 사이 48개 · B5 상부 12개',
+      '외벽 PM-101 정격 250kW·3상 380V·CT 400/5A 예비설계, 상세 전기부하표 후 확정',
+      '가열실 정상 차압 −30±10Pa · 외벽 표면온도 목표 ≤45°C(@주위 25°C), FAT 열화상으로 확인'
+    );
+    details.spec.control.unshift(
+      'SEALED_FULL_LOAD_ACK = FULL_LOAD_ACK ∧ ALL_INNER_DOORS_CLOSED ∧ ALL_OUTER_DOORS_CLOSED ∧ DP_OK',
+      'IR_POWER_ENABLE = SEALED_FULL_LOAD_ACK ∧ EXHAUST_OK ∧ FIRE_OK ∧ PM_METER_OK',
+      '방출허가는 EVA_INTERFACE≥200°C와 탠덤 READY를 모두 만족하고 AL-102가 비어 있을 때만 생성'
+    );
+    details.spec.verify=details.spec.verify.filter(v=>!v.includes('225.8초')&&!v.includes('10장 냉간')&&!v.includes('10장 =')&&!v.includes('60×2.5kW'));
+    details.spec.verify.unshift(
+      '최대 2,400×1,200mm·72×2.5kW·열효율 65%: 5장 열수지 체류 188.2초·방출피치 37.6초·열한계 95.7장/h',
+      'IR 열수지 전력량 1.88kWh/장 · 46.5장/h 운전 시 이상적 평균 IR 전력 약 87.4kW · 설치피크 180kW',
+      '적재 중 대기출력 상한 10% = 18kW; PM-101은 피크·평균·누적 kWh를 60장 시험성적서에 기록',
+      '60장 연속시험: FULL_LOAD_ACK 후 냉간 약 80분38초 · 정상상태 약 77분30초 · 병목은 탠덤 77.5초/장',
+      '90% 가동률 예상은 8시간 약 334장·16시간 약 669장으로 탠덤 증속 전에는 72-IR 증설만으로 증가하지 않음',
+      '단열 FAT: 열화상 외벽온도·도어 씰 누설·차압회복시간·열교부·60장 누적 소비전력을 실측'
+    );
+    details.interlock.intro='5단 완전적재·잠금, 모든 이중셔터의 밀폐, 가열실 차압·배기·화재감시, EVA 계면 200°C와 탠덤 준비가 확인되어야 패널 방출이 허용됩니다.';
+    details.interlock.hardware=details.interlock.hardware.filter(v=>!v.includes('60개 IR'));
+    details.interlock.hardware.unshift(
+      '72개 IR 램프 6라인별 전류 CT·SSR 피드백·과온 리미터·절연감시장치',
+      'AL-101/102와 하부복귀 에어록 각 문 2채널 위치센서·씰압력센서·에어록 캐리지 감지',
+      '가열실 차압 이중센서·VOC/연기/온도 감지·자동소화 인터페이스'
+    );
+    details.interlock.control.unshift(
+      'DOOR_MUTEX = ¬(INNER_DOOR_OPEN ∧ OUTER_DOOR_OPEN)',
+      'IR_TRIP = DOOR_OPEN ∨ DP_HIGH ∨ EXHAUST_LOW ∨ FIRE_ALARM ∨ ANY_INTERFACE_TEMP≥205°C',
+      'POWER_ALARM = LINE_CURRENT_UNBALANCE>10% ∨ PM_COMM_LOSS ∨ TOTAL_POWER>180kW',
+      'RELEASE_200 = EVA_INTERFACE_200_ACK ∧ TANDEM_READY ∧ AL102_EMPTY ∧ OUTER_OUT_CLOSED'
+    );
+    details.interlock.verify.unshift(
+      '도어 개방 중 해당 인접 IR 라인을 0%로 차단하고 메인가열실 차압 회복 후에만 재가동',
+      '밀폐상실·정전 시 모든 셔터 닫힘유지, IR 차단, 배기 안전모드, 캐리지 기계브레이크 체결'
+    );
+
+    /* Rev.12 final normalization: two complete parallel cells, three decks and 40 IR lamps per cell. */
+    details.equipment={
+      code:'DG-HK-DUAL · REV.12',title:'병렬 2셀 장비 구성',
+      intro:'중앙 교번분배기 DV-101이 패널을 A/B 셀에 번갈아 공급합니다. 각 셀은 밀폐 3단 가열실, 독립 2단 탠덤 핫나이프, 백시트 권취부와 유리 직접적재대를 갖는 완전한 병렬 유리 제거기입니다.',
+      hardware:[
+        'DV-101 중앙 투입 정렬기·교번 디버터·A/B 2위치 소형 버퍼',
+        'M1-A/B 밀폐 3단 가열실: 하부 B0·단간 B1/B2·상부 B3, 4라인×10개 = 셀당 40개 IR',
+        'LI-A/B 양주형 서보승강기·TS-A/B 이단 텔레스코픽 포크·IDX-A/B 3단 기계잠금',
+        'AL-IN/OUT-A/B 이중셔터 에어록·RT-A/B 밀폐 빈 캐리지 복귀라인',
+        'INS-A/B 내피 SUS304·100mm 미네랄울·반사 공기층·열교차단 스페이서의 완전 단열 외벽',
+        'PM-A/B 100kW급 IR 계기판: 순간 kW·누적 kWh·4라인 전류·SSR 듀티·역률 표시',
+        'TDM-201A/B 공통 X축·HKB/HKS 독립 Z축·칼끝 300±2mm 전자기어 추종',
+        'WR-A/B 횡방향 분할클램프 롤러·백시트 전장 권취·측면 격리배출',
+        'CB-A/B 셀/EVA 보관 컨테이너·정량피더·후단 합류 또는 독립 슈레더 인터페이스',
+        'GR-A/B 단거리 저충격 회전롤러·DS-A/B 하강식 유리 직접적재대'
+      ],
+      control:[
+        'DISPATCH = READY_A ∧ READY_B이면 A/B 교번, 한 셀 정지 시 건전 셀로 자동 우회',
+        '셀별 냉간기동: C1→C2→C3 적재·잠금·센서 확인 후 SEALED_FULL_LOAD_ACK',
+        '적재 중 IR은 셀별 정격의 10% 이하, FULL_LOAD_ACK 후에만 200/180/160°C JIT 프로파일 가동',
+        '각 캐리지 K열전대 3점·표면 IR·램프출력 기반 소프트센서로 EVA/유리 계면 200°C 확인',
+        'A/B의 가열·방출·탠덤·권취·유리 적재는 독립 시퀀스이며 중앙 PLC가 투입순서만 조정',
+        '60장 시험은 A/B 각 30장을 병렬 처리하고 셀별 전력·온도·고장우회 이력을 기록'
+      ],
+      verify:[
+        '중앙 투입기는 기본 운전 38.75초/장 이하의 A/B 교번공급 능력 필요',
+        '두 유리 적재대 또는 자동 팔레트 교환으로 92.9장/h의 동시 배출을 수용',
+        '후단 셀/EVA가 공용이면 버퍼 2계통과 92.9장/h 이상의 컨베이어·슈레더 용량 확보',
+        '한 셀 정지 시험에서 건전 셀이 46.5장/h로 독립 지속하는지 검증',
+        '도어 누설·−30Pa 차압회복·외벽 열화상·VOC·유리 열응력·백시트 장력 DOE 실시'
+      ],
+      notice:'병렬 성능 92.9장/h는 A/B에 각각 탠덤과 배출계통이 있을 때의 값입니다. 가열실만 2개이고 탠덤을 1개 공유하면 처리량은 기존과 같은 약 46.5장/h로 제한됩니다.'
+    };
+    details.spec={
+      code:'DUAL LINE PROCESS BASIS',title:'Rev.11 대비 설계값',
+      intro:'동일한 2,400×1,200mm 패널, 램프 2.5kW/개, 실효 열효율 65%, 탠덤 40mm/s와 인계 10초를 사용해 단일 5단 72-IR과 병렬 3단 40-IR×2를 비교했습니다.',
+      hardware:[
+        'Rev.12: 셀당 3단·4라인×10개 = 40개 IR, A+B 총 80개·설치정격 200kW',
+        'Rev.11: 5단·6라인×12개 = 72개 IR, 단일 셀·설치정격 180kW',
+        '패널 면적열용량 8.736 kJ/(m²·K)·25→200°C 필요열량 4.403MJ/장',
+        '셀당 계면가열 체류 203.2초·방출피치 67.7초·열한계 53.1장/h',
+        '탠덤 칼끝간격 300±2mm·헤드몸체 간극 ≥60mm·권취 웹가드 간극 ≥120mm',
+        '기본 탠덤 사이클 77.5초/장·셀당 46.5장/h·A+B 92.9장/h'
+      ],
+      control:[
+        '셀당 열체류 t = max[3Q/(40×램프정격×η), 1D-FDM 113.2s]',
+        '셀당 탠덤 t = 300/v + 패널길이/v + 클램프·인계시간',
+        '전체 생산능력 = 2×min(셀당 IR 능력, 셀당 탠덤 능력)',
+        '방출허가 = EVA_INTERFACE≥200°C ∧ TANDEM_READY ∧ OUT_AIRLOCK_EMPTY',
+        '유리는 장거리 컨베이어 없이 짧은 롤러에서 각 셀의 하강식 팔레트로 직접 적층'
+      ],
+      verify:[
+        'Rev.12 예상 92.9장/h: Rev.11 46.5장/h 대비 +100%',
+        '설치 IR 정격 200kW: Rev.11 180kW 대비 +11.1%',
+        '60장 냉간 약 42분08초·정상상태 38분45초: Rev.11 냉간 80분38초·정상 77분30초',
+        '이상적 평균 IR 전력 약 174.8kW·패널당 1.88kWh; 패널당 에너지는 Rev.11과 동일',
+        '90% 가동률 예상: 8시간 약 669장·16시간 약 1,338장',
+        '100장/h 목표는 셀당 탠덤 주기 72초 이하, 인계 10초 기준 v≥43.5mm/s; 45mm/s DOE 권장'
+      ],
+      notice:'Rev.12는 설치전력이 20kW 증가하지만 처리량이 두 배이고 한 셀 정지 시에도 생산을 유지합니다. 다만 공용 슈레더가 350kg/h급이라면 패널당 셀/EVA 4kg 조건에서 과부하되므로 400kg/h 이상 또는 독립 버퍼·이중 슈레더가 필요합니다.'
+    };
+    details.interlock={
+      code:'DUAL CELL SAFETY LOGIC',title:'병렬 운전 인터록',
+      intro:'A/B 셀은 열·도어·탠덤·배출 인터록을 서로 독립 유지하며 중앙 디버터는 수용 가능한 셀에만 패널을 보냅니다. 한 셀의 트립이 다른 셀의 안전정지를 강제하지 않도록 위험원과 안전구역을 분리합니다.',
+      hardware:[
+        'A/B 각 단 캐리지 유무·기계잠금·절대높이·K열전대 이중확인',
+        '셀당 40개 IR의 4라인 CT·SSR 피드백·과온 리미터·절연감시',
+        'A/B 에어록 각 문 2채널 위치센서·씰압력·차압·VOC/연기·자동소화 인터페이스',
+        'DV-101 패널유무·중심·분기위치·A/B 버퍼 만재·충돌방지 센서',
+        'A/B 탠덤 리니어스케일·하중셀·칼날온도·진공 6존·권취 클램프/토크 감시'
+      ],
+      control:[
+        'LANE_X_START = C1~C3_PRESENT ∧ ALL_LOCKED ∧ SEALED ∧ TEMP_SENSORS_OK ∧ EXHAUST_OK',
+        'IR_STANDBY_X = ¬FULL_LOAD_ACK_X → EACH_BANK_OUTPUT≤10%',
+        'DOOR_MUTEX_X = ¬(INNER_DOOR_OPEN ∧ OUTER_DOOR_OPEN)',
+        'RELEASE_X = EVA_INTERFACE_200_ACK ∧ TANDEM_X_READY ∧ OUT_AIRLOCK_X_EMPTY',
+        'DISPATCH_A/B = NEXT_LANE_READY ∧ DIVERTER_AT_POSITION ∧ TARGET_BUFFER_CLEAR',
+        'NEXT_PANEL = ACK_SELECTED_LANE ∧ CENTRAL_INFEED_CLEAR',
+        'LANE_FAILOVER = TRIP_A XOR TRIP_B → DISPATCH_TO_HEALTHY_LANE ∧ RATE_LIMIT_46.5/h'
+      ],
+      verify:[
+        '중앙 투입기 38.75초/장 연속 교번과 분기오류·이중투입·버퍼 만재 시험',
+        '한 셀 트립·정비모드에서 반대 셀 안전구역과 배기·전원을 독립 유지하는지 확인',
+        '후단 합류부는 두 셀 동시배출 최악위상에서 막힘 없이 92.9장/h 수용',
+        '패널당 셀/EVA 3.2~4.0kg 기준 슈레더 부하 297~372kg/h 검증',
+        '정전 시 IR 차단·셔터 닫힘유지·배기 안전모드·승강축/권취축 기계브레이크 체결'
+      ],
+      notice:'안전 PLC·비상정지·가드락·화재/VOC 처리는 셀별 독립 존으로 구성하되 중앙 투입기와 공용 후단의 비상정지는 두 셀에 공통 전달해야 합니다.'
+    };
+
+    /* Rev.13 final normalization: fixed tandem knife bridge and servo moving vacuum carrier. */
+    details.equipment={
+      code:'DG-FXT-MC · REV.13',title:'고정 탠덤·이동 캐리어 구성',
+      intro:'A/B 각 셀의 HKB와 HKS를 고강성 프레임에 300mm 간격으로 고정하고, 가열된 패널을 올린 6존 진공 캐리어가 두 칼날을 통과합니다. 정상 박리는 41mm/s, 성능시험은 최대 45mm/s, 비가공 급속이송은 150mm/s입니다.',
+      hardware:[
+        'FGT-A/B 고강성 고정브리지·HKB 230°C·HKS 250~270°C·칼끝간격 300±2mm',
+        'HKB/HKS 독립 Z 미세조정·탄성컴플라이언스·양단 하중셀·칼날 교환 카세트',
+        'CA-201A/B 이동 진공 캐리어: 최대 2,400×1,200mm·6존 흡착·평탄도 조정패드',
+        'AX-201A/B 좌우 동기 헬리컬 랙피니언·LM45급 가이드 4열·절대치 리니어스케일',
+        '예비 구동: 좌우 3kW 서보×2·감속기·무여자 브레이크·STO, 설계추력 30kN 이상',
+        '유효 공정이동 2,700mm + 접근/오버런 각 250mm, 서보 유효스트로크 최소 3,200mm',
+        'EC-201 에너지체인·내열 진공호스·6존 압력센서·캐리어 탑재 진공 어큐뮬레이터',
+        'WR-A/B 고정 횡방향 분할클램프 롤러·토크서보·백시트 전장 권취·측면 격리함',
+        'M1-A/B 밀폐 3단·4라인×10개 = 셀당 40개 IR, A+B 총 80개·200kW',
+        'CB-A/B 셀/EVA 버퍼·GR-A/B 단거리 유리롤러·DS-A/B 직접적재대'
+      ],
+      control:[
+        '속도프로파일: 급속접근 150mm/s → HKB 전 100mm에서 S-curve 감속 → 정상박리 41mm/s → 칼날 이탈 후 150mm/s',
+        '성능모드 45mm/s는 계면온도·양칼날 하중·진공·권취장력·유리진동이 승인범위일 때만 허용',
+        '가감속 250mm/s²·저크 1,000mm/s³ 예비값, 좌우 위치편차 ≤0.3mm를 전자갠트리로 유지',
+        '41mm/s에서 HKB→HKS 도달시간 7.32초; CLAMP_TENSION_ACK는 3초 이내 완료',
+        '권취롤 회전수는 n=60v/(2πr)로 반경 증가에 따라 감속하고 장력피드백으로 보정',
+        '캐리어 방출은 EVA 계면 200°C·고정칼날 READY·이송축 HOME·후단 CLEAR 동시확인'
+      ],
+      verify:[
+        '두 칼날 동시부하 최악조건에서 캐리어 구동추력·랙치면·가이드·프레임 처짐 검증',
+        '좌우 서보 추종오차·캐리어 요잉·유리면 평탄도·진공누설을 41/45/150mm/s에서 측정',
+        '칼날 진입 충격·백시트 파단·셀/EVA 잔류·유리 미세균열을 속도 DOE로 확인',
+        '에너지체인·진공호스의 3,200mm 반복수명과 고온부 복사열 차폐 검증',
+        '한 셀 정지 시 반대 셀의 독립 운전과 중앙 디버터 자동우회 확인'
+      ],
+      notice:'3kW×2 서보와 30kN 추력은 개념설계 기준입니다. 실제 모터·감속기·랙·가이드는 HKB/HKS 동시 박리력 실측, 이동질량과 안전율 2.0 이상을 반영해 확정해야 합니다.'
+    };
+    details.spec={
+      code:'OPTIMUM MOTION BASIS',title:'최적 속도·생산성',
+      intro:'정상 레시피는 최대속도보다 열공정과 박리공정의 여유를 균형시키는 41mm/s로 설정했습니다. 45mm/s는 기계 성능 상한이며 연속 처리량은 IR 열한계에서 포화됩니다.',
+      hardware:[
+        '정상 박리속도 41mm/s·성능시험 최대 45mm/s·급속접근/복귀 150mm/s',
+        'S-curve 가감속 250mm/s²·저크 1,000mm/s³·칼날간격 300±2mm',
+        '41mm/s HKB-HKS 선행시간 7.32초·45mm/s 선행시간 6.67초',
+        '급속이동 등가거리 300mm/장·150mm/s = 2.0초, 클램프·확인 4.0초',
+        '41mm/s 기계사이클 71.85초/장·셀당 50.10장/h·A+B 100.20장/h',
+        '45mm/s 기계사이클 66.0초/장·열한계 적용 A+B 최대 106.3장/h'
+      ],
+      control:[
+        't사이클 = (패널길이+칼날간격)/박리속도 + 급속거리/급속속도 + 고정동작시간',
+        '정상 생산능력 = 2×min(3단 IR 53.15장/h, 캐리어 탠덤 50.10장/h)',
+        '정상 41mm/s에서 열공정 여유 약 5.7%, 예상 평균 IR 입력 약 188.5kW',
+        '45mm/s에서는 기계능력 109.1장/h이나 열한계 106.3장/h에서 자동 대기',
+        '좌우축 편차 >0.3mm·진공 <−60kPa·칼날 하중상한·장력상한이면 감속 후 정지'
+      ],
+      verify:[
+        '41mm/s 60장 냉간시험 약 39분19초·정상상태 약 35분56초',
+        '41mm/s·90% 가동률: 8시간 약 721장·16시간 약 1,443장',
+        '45mm/s 최대모드·90% 가동률: 8시간 약 765장·16시간 약 1,531장',
+        'Rev.12 40mm/s·취급 10초의 92.9장/h 대비 정상모드 +7.9%, 최대모드 +14.4%',
+        '정상 중앙투입 ≤35.93초/장, 최대모드 ≤33.87초/장',
+        '셀/EVA 3.2~4.0kg/장 기준 정상 321~401kg/h; 공용 슈레더 권장 정격 ≥450kg/h'
+      ],
+      notice:'41mm/s를 기본 운전점으로 고정하고 45mm/s는 FAT 성능시험과 가열여유가 충분한 패널 레시피에만 사용합니다. 이 구성이 생산량·유리 안정성·열여유의 균형이 가장 좋습니다.'
+    };
+    details.interlock={
+      code:'FIXED KNIFE / MOVING CARRIER LOGIC',title:'고정칼날·캐리어 인터록',
+      intro:'칼날은 움직이지 않고 캐리어가 고온 패널을 운반하므로, 좌우축 동기·진공유지·칼날부하·권취장력을 하나의 모션 허가체인으로 묶습니다.',
+      hardware:[
+        '좌우 절대치 엔코더·독립 리니어스케일·랙 원점센서·종단 하드리미트',
+        '6존 진공압력·어큐뮬레이터 압력·캐리어 패널유무·평탄도 센서',
+        'HKB/HKS 양단 하중셀·칼날온도·Z 위치·가드락·파손음향센서',
+        '권취 클램프 2채널·토크·직경·장력·백시트 끝단 검출',
+        'A/B 독립 안전 PLC·STO·기계브레이크·고온구간 잠금식 가드'
+      ],
+      control:[
+        'RAPID_PERMIT = KNIVES_CLEAR ∧ PANEL_VAC_OK ∧ CARRIER_SQUARE ∧ TRACK_CLEAR',
+        'PEEL_PERMIT = EVA_INTERFACE_200_ACK ∧ HKB_TEMP_OK ∧ HKS_TEMP_OK ∧ VAC_6ZONE_OK',
+        'HKS_ENTRY = LEAD_300_ACK ∧ CLAMP_CLOSED ∧ TENSION_OK ∧ CELL_LIFT_READY',
+        'MOTION_SYNC = |X_LEFT−X_RIGHT|≤0.3mm ∧ FOLLOWING_ERROR_OK',
+        'HIGH_SPEED_45 = DOE_RECIPE_OK ∧ LOAD_MARGIN_OK ∧ VAC_MARGIN_OK ∧ THERMAL_MARGIN_OK',
+        'MOTION_TRIP = SYNC_ERROR ∨ VAC_LOW ∨ KNIFE_OVERLOAD ∨ WEB_TENSION_HIGH ∨ GLASS_CRACK',
+        'LANE_FAILOVER = TRIP_A XOR TRIP_B → 건전 셀 자동우회·독립 감속운전'
+      ],
+      verify:[
+        '41→0mm/s 제어정지와 STO 비상정지의 정지거리·유리 관성·칼날 끼임을 각각 검증',
+        '진공 1개 존 누설 시 감속정지, 2개 이상 또는 전체저압 시 즉시 정지·기계브레이크',
+        '백시트 클램프가 3초 안에 체결되지 않으면 HKS 진입 전 캐리어 정지',
+        '45mm/s는 60장 연속시험에서 유리파손·박리잔류·축편차·피크하중 승인 후 해제',
+        '정전 시 캐리어 브레이크·진공 어큐뮬레이터·IR 차단·배기 안전모드 유지'
+      ],
+      notice:'고정 칼날은 정비성과 강성이 좋아지지만 캐리어가 두 칼날의 합성반력을 받습니다. 따라서 좌우 이송축을 단순 컨베이어가 아니라 안전등급 전자갠트리 서보축으로 설계해야 합니다.'
+    };
+
+    /* Rev.15: single five-deck production cell with explicit three-way outfeed. */
+    details.equipment={
+      code:'DG-HK60 · REV.15',title:'단일 5단·3계통 반출장비',
+      intro:'5장의 패널을 먼저 적재·잠금·밀폐한 뒤 60개 IR로 EVA 계면을 200°C까지 JIT 가열합니다. 고정된 HKB/HKS 사이로 이동 진공 캐리어가 통과하며 백시트·셀/EVA·유리를 한 패스에서 분리합니다.',
+      hardware:[
+        'M0 백시트 상향 투입·치수/자세검사·6존 진공 캐리어',
+        'M1 5단 밀폐 가열실: 하부 B0·단간 B1~B4·상부 B5, 6라인×10개 = 60 IR',
+        'LI-101 양주형 서보승강기·카운터밸런스·무여자 브레이크·낙하방지 폴',
+        'TS-101 이단 텔레스코픽 포크·IDX-101 테이퍼 위치결정핀·좌우 기계잠금',
+        'AL-IN/OUT 이중셔터 에어록·RT-101 밀폐 빈 캐리지 하부복귀·신규패널 재장전',
+        'INS-101 SUS304 내피·100mm 미네랄울·25mm 반사 공기층·열교차단 스페이서',
+        'PM-101 외벽 전력계: 순간 kW·누적 kWh·B0~B5 전류·SSR 듀티·역률',
+        'FGT-201 고정 브리지·HKB/HKS 독립 Z축·칼끝 300±2mm·헤드간극 60mm 이상',
+        'WR-101 횡방향 분할클램프·터릿형 교대 권취롤·BS-301 전용 밀폐 보관함',
+        'CB-201 셀/EVA 임시보관·정량피더·CV-301·SH-101 슈레더',
+        'GR-201 단거리 저충격 롤러·GC-301 교대식 유리 저장 캐리지·측면 도킹레일'
+      ],
+      control:[
+        'START_PERMIT = C1~C5_PRESENT ∧ ALL_LOCKED ∧ ALL_TEMP_OK ∧ ALL_DOORS_CLOSED ∧ EXHAUST_OK',
+        '적재 중 각 IR 라인은 10% 이하 대기출력, FULL_LOAD_ACK 이후에만 생산출력 허가',
+        'JIT 목표는 C1 200°C·C2 190°C·C3 180°C·C4 170°C·C5 160°C, 방출순서에 맞춰 승온',
+        '각 캐리지 K열전대 3점·표면 IR 1점·램프출력/체류시간 소프트센서로 EVA 계면온도 확인',
+        '방출·신규투입 때만 해당 에어록을 열고 메인가열실은 −30±10Pa 밀폐 유지',
+        '55mm/s 생산보증, 60mm/s FAT 상한, 접근·복귀 200mm/s S-curve'
+      ],
+      verify:[
+        '최대 패널 2,400×1,200mm·5장 열체류 225.8초·정상 방출피치 45.2초',
+        '55mm/s 탠덤 사이클 53.6초·명목 67.2장/h·90% 환산 60.5장/h',
+        '60장 정상상태 약 53분35초·FULL_LOAD_ACK 이후 냉간 약 57분21초',
+        '셀/EVA 4kg/장 기준 약 269kg/h, SH-101 권장 정격 350kg/h 이상',
+        '3계통 반출 FAT: 유리 GC-301 도킹·백시트 BS-301 격리·셀모듈 SH-101 투입 ACK를 개별 기록',
+        'STS304 2.9m 레일은 20→210°C에서 약 8~9mm 팽창 예상: 1점 고정+장공 지지로 흡수'
+      ],
+      notice:'계면 200°C는 공정 설계 목표입니다. 양산 설정은 패널별 EVA 조성·유리 열응력·VOC·HKS 피크하중·박리잔류 DOE와 계측캐리지 실측으로 승인해야 합니다.'
+    };
+    details.spec={
+      code:'60 PPH DESIGN BASIS',title:'열수지·사이클 설계값',
+      intro:'열공정과 탠덤을 같은 단위로 계산해 60장/h 달성 여부를 확인합니다. 유리·백시트·셀모듈 반출은 서로 독립된 ACK로 다음 패널 투입을 허가합니다.',
+      hardware:[
+        '패널 면적열용량 8.736 kJ/(m²·K)·25→200°C·최대 면적 2.88m²',
+        '패널당 필요열량 4.403MJ·60×2.5kW 설치정격 150kW·실효효율 기본 65%',
+        '5장 열체류 225.8초·방출피치 45.16초·열공정 한계 79.7장/h',
+        '탠덤 유효이동 2,700mm·칼끝간격 300mm·급속분 300mm·고정동작 3초',
+        '55mm/s 탠덤 53.6초·67.2장/h, 60mm/s 탠덤 49.5초·72.7장/h'
+      ],
+      control:[
+        'Q = 면적×8.7359×(200−25), t열 = max(5Q/(60Pη), FDM 113.2초)',
+        't탠덤 = (패널길이+300)/박리속도 + 300/급속속도 + 고정동작',
+        '라인능력 = 3600/max(t열/5, t탠덤), 순생산 = 라인능력×가동률',
+        'RELEASE = EVA_INTERFACE≥200°C ∧ TANDEM_READY ∧ OUT_AIRLOCK_EMPTY',
+        'HKS_ENTRY = LEAD_300_ACK ∧ CLAMP_CLOSED ∧ TENSION_OK ∧ CELL_LIFT_READY'
+      ],
+      verify:[
+        '55mm/s에서 열공정 여유 약 15.7%, 90% 가동률 순생산 60.5장/h',
+        '8시간 90% 약 484장·16시간 90% 약 967장',
+        '클램프 체결 목표 2.5초는 300/55=5.45초의 HKS 진입 여유 안에 완료',
+        '터릿형 2축 권취 또는 자동 코어교환으로 권취롤 교환 정지를 탠덤 사이클 밖으로 분리',
+        '병목 우선순위: 탠덤 53.6초 → 권취롤 교환/유리팔레트 교환 → 신규 캐리지 재장전'
+      ],
+      notice:'계산값은 설계 가설입니다. 평균값이 아니라 P95 사이클과 60장 연속 데이터로 60장/h를 합격 판정하십시오.'
+    };
+    details.interlock={
+      code:'SINGLE CELL SAFETY CHAIN',title:'생산·안전 인터록',
+      intro:'고온 패널을 싣는 캐리어가 두 고정 칼날의 합성반력을 받으므로 승강·밀폐·진공·양축 동기·칼날하중·권취장력을 하나의 허가체인으로 묶습니다.',
+      hardware:[
+        '5단별 PANEL_PRESENT/LOCK 2채널·절대높이·K열전대 3점·표면 IR 1점',
+        '60개 IR 라인별 CT·SSR 피드백·독립 과온리미터·절연감시',
+        '좌우 절대엔코더·리니어스케일·6존 진공·어큐뮬레이터·평탄도 센서',
+        'HKB/HKS 양단 하중셀·칼날온도·Z위치·가드락·파손음향센서',
+        '권취 클램프 2채널·토크·장력·직경·끝단검출과 터릿 위치잠금'
+      ],
+      control:[
+        'IR_ENABLE = SEALED_FULL_LOAD_ACK ∧ EXHAUST_OK ∧ FIRE_OK ∧ PM_METER_OK',
+        'DOOR_MUTEX = ¬(INNER_DOOR_OPEN ∧ OUTER_DOOR_OPEN)',
+        'MOTION_SYNC = |X_LEFT−X_RIGHT|≤0.3mm ∧ FOLLOWING_ERROR_OK',
+        'PEEL_PERMIT = EVA_200_ACK ∧ HKB_TEMP_OK ∧ HKS_TEMP_OK ∧ VAC_6ZONE_OK',
+        'MOTION_TRIP = SYNC_ERROR ∨ VAC_LOW ∨ KNIFE_OVERLOAD ∨ WEB_TENSION_HIGH ∨ GLASS_CRACK',
+        'NEXT_PANEL = BACKSHEET_BIN_ACK ∧ SHREDDER_FEED_ACK ∧ GLASS_CARRIAGE_ACK ∧ EMPTY_CARRIER_RELOADED'
+      ],
+      verify:[
+        '정전 시 IR 차단·셔터 닫힘유지·배기 안전모드·승강/캐리어 기계브레이크 체결',
+        '진공 1존 누설은 감속정지, 2존 이상 또는 전체저압은 즉시정지',
+        '유리 적재대 만재·팔레트 부재·컨테이너 만재·슈레더 트립 시 신규방출 차단',
+        '60mm/s는 60장 시험의 유리파손·잔류EVA·축편차·피크하중 승인 후 해제',
+        '모든 수치와 형상은 위험성평가·구조해석·전기부하표·FAT 결과로 동결'
+      ],
+      notice:'이 미니앱은 제작 검토용 개념설계입니다. 안전 PLC의 PL/SIL, 방폭·소방·VOC 처리와 고온 유리 파손 격리는 관할 규정 및 전문 엔지니어 검토가 필요합니다.'
+    };
+
+    details.equipment.code='DG-HK60 · REV.16';
+    details.equipment.title='단일 5단·완전 보조설비 통합장비';
+    details.equipment.hardware.push(
+      'QI-301 상·하부 비전·열화상·투과조명 박리품질 검사',
+      'RJ-301 횡이송 리젝트 셔틀·파손유리 받침트레이·밀폐 리젝트 캐리지',
+      'GC-301A/B 교대식 내열 유리 저장·균일냉각 캐리지·2위치 도킹',
+      'EXH-401 응축기·미스트제거기·활성탄·배기팬 2×100%·배출 샘플링 포트',
+      'FA-401 독립 과온리미터·연기/CO 감지·방화댐퍼·소화설비 인터페이스',
+      'UT-401 진공펌프 이중화·어큐뮬레이터·계장공기·냉각수·MCC/SSR반 냉각',
+      'MC-401 HKB/HKS 퀵체인지 카세트·세척대·7＋1 가열캐리지 정비 도크'
+    );
+    details.equipment.control.push(
+      'CARRIER_FLEET = 5_HEATING + 1_TANDEM + 1_RETURN_LOAD + 1_MAINT_SPARE',
+      'QUALITY_ROUTE = QI_PASS → GC301 / QI_FAIL → RJ301_LOCKED_BIN',
+      'GLASS_ACCESS = SURFACE_TEMP_SAFE ∧ COOLING_COMPLETE ∧ DOCK_LOCKED',
+      'EXHAUST_RUN = FAN_A_OK XOR FAN_B_OK ∧ DP_OK ∧ CARBON_DP_OK ∧ FIRE_DAMPER_OPEN'
+    );
+    details.interlock.hardware.push(
+      'QI-301 잔류면적·균열·표면온도 검사와 RJ-301 위치·도어·캐리지 존재감지',
+      'GC-301A/B 로드셀·적재높이·온도·도킹핀·캐리지 존재·방호문 2채널 센서',
+      'EXH-401 풍량·차압·VOC·응축액 레벨·활성탄 차압·팬 진동감시',
+      'FA-401 독립 과온회로·연기/CO·소화압력·방화댐퍼·IR 메인접촉기 피드백',
+      'CVC-301 셀/EVA 직접이송 컨베이어·SH-101 역화방지 격리게이트·분진 차압감시'
+    );
+    details.interlock.control.push(
+      'IR_HARD_TRIP = INDEPENDENT_OVERTEMP ∨ SMOKE ∨ CO_HIGH ∨ EXHAUST_LOSS ∨ SSR_STUCK',
+      'REJECT_PERMIT = QI_FAIL ∧ RJ_CARRIAGE_PRESENT ∧ RJ_DOOR_LOCKED ∧ GLASS_PATH_CLEAR',
+      'GLASS_SWAP = GC_A_COOLING ∧ GC_B_EMPTY_LOCKED ∧ CROSS_TRANSFER_CLEAR',
+      'SHREDDER_ISOLATION = FIRE_BACKFLOW ∨ SHREDDER_TRIP → GATE_CLOSE ∧ FEED_STOP',
+      'MAINT_PERMIT = ZERO_ENERGY_ACK ∧ LOTO_APPLIED ∧ TEMP_SAFE ∧ VAC_DUMPED'
+    );
+    details.interlock.verify.push(
+      'ISO 12100 위험성평가 후 ISO 13849-1 방식으로 안전기능별 PLr 결정·검증',
+      '과온센서 단선·SSR 고착·배기팬 1대 고장·방화댐퍼 고착·정전 시나리오 FAT',
+      'GC 교대시간·냉각온도분포·유리 파손률·RJ 오분기·QI 검출한계 실물 DOE',
+      '배기 농도·활성탄 파과·응축액 성상·소음·전력품질·접지연속성 SAT'
+    );
+    details.support={
+      code:'MANDATORY AUXILIARY PACKAGE',title:'Rev.20 필수 보조장치',
+      intro:'60장/h를 안전하게 지속하려면 본체 외에 반출·냉각·리젝트·환경·유틸리티·정비 장치가 독립적으로 준비되어야 합니다.',
+      hardware:[
+        'GC-301A/B: 내열 지지핀·양면 저속 균일냉각·로드셀·온도·2위치 교대도크',
+        'RJ-301: 횡셔틀·파손유리 받침·밀폐 리젝트 캐리지·재처리 식별',
+        'WR-101T: 2축 터릿·자동 절단·선단이관·빈 코어공급·BS-301 만권롤 격리',
+        'QI-301: 상/하 비전·열화상·투과조명·잔류 EVA/셀 면적·균열 판정',
+        'EXH-401: 응축기·미스트제거·활성탄·2×100% 팬·차압/풍량/VOC 감시',
+        'FA-401: 독립 과온·연기/CO·방화댐퍼·IR 주접촉기·소화설비 연계',
+        'UT-401: 진공 2×100%·어큐뮬레이터·계장공기·냉각수·MCC/SSR 강제냉각',
+        'MC-401: 퀵체인지 칼날카세트·세척대·LOTO·용융물/파편 회수트레이'
+      ],
+      control:[
+        '가열 캐리지 총 8대: 가열 5·탠덤 1·복귀/재장전 1·정비예비 1',
+        'CVC-301은 셀/EVA를 중간 낙하·저장 없이 직접 이송하고 Shredder 전단에는 역화·분진 격리게이트 설치',
+        'GC 적재품은 냉각완료·안전온도·도킹잠금 전까지 작업자/지게차 접근 금지',
+        '패널ID와 백시트·셀/EVA·유리 중량, 온도곡선, QI 결과, 에너지 사용량을 로트이력으로 저장',
+        '상부 정비발판·고정사다리·가드레일과 전기/공압/진공/열원별 LOTO 지점 설치'
+      ],
+      verify:[
+        'P95 탠덤·GC 교대·WR 터릿·CVC 이송·재장전 시간이 모두 53.6초 사이클 이내인지 확인',
+        '고온 유리는 한쪽 집중냉풍을 금지하고 양면 온도편차·열응력·파손률 시험',
+        'QI 정상/잔류/균열/오염 샘플로 검출률·오검률·재검 분기 검증',
+        '배기·화재·정전·진공상실·유리파손·Shredder 트립 통합 연동시험',
+        '전기부하표·단선결선도·접지·고조파·단락전류·MCC 열부하를 상세설계에서 확정'
+      ],
+      notice:'표시된 용량과 형상은 개념설계 기준입니다. 실제 제작 전 위험성평가, 구조·열·전기해석, 배출가스 성상시험과 관할 규정 검토가 필요합니다.'
+    };
+
+    details.equipment.code='DG-HK60 · REV.20';
+    details.equipment.control.push(
+      'CARRIAGE_SEQUENCE = FULL_LOAD_HEAT → ACTIVE_UNLOCK → OUT_INNER → OUT_SEAL → OUT_OUTER → IN_OUTER → IN_SEAL → LIFT_SELECT → IN_INNER → REFILL_LOCK',
+      'AL101_MUTEX = ¬(IN_OUTER_OPEN ∧ IN_INNER_OPEN) · AL102_MUTEX = ¬(OUT_INNER_OPEN ∧ OUT_OUTER_OPEN)',
+      'REFILL_ACK = ACTIVE_DECK_PRESENT ∧ ACTIVE_DECK_LOCKED ∧ FORK_HOME ∧ ALL_DOORS_CLOSED ∧ DP_OK'
+    );
+    details.interlock.verify.push(
+      'C1→C5 순환마다 캐리지 ID·패널 ID를 유지하고 방출·재투입 후 동일 슬롯 잠금 신호를 추적',
+      '셔터는 캐리지·포크 완전통과 센서와 씰 확인 후에만 반대편 문 개방을 허가'
+    );
+    details.equipment.hardware=details.equipment.hardware.map(v=>v.startsWith('CB-201')?'CVC-301/302 내열 밀폐 컨베이어·무낙하 직접이송·SH-101 연속투입':v.startsWith('GR-201')?'GR-201 동일높이 저충격 롤러·GC-301A/B 수평 인계·냉각 저장 캐리지':v.replace(/GC-301 교대식/g,'GC-301A/B 동일높이 교대식'));
+    details.spec.control=details.spec.control.map(v=>v.replace('CELL_LIFT_READY','CELL_CONVEYOR_READY'));
+    details.spec.verify=details.spec.verify.map(v=>v.replace('권취롤 교환/유리팔레트 교환','WR 터릿 전환/GC 캐리지 교대'));
+    details.interlock.verify=details.interlock.verify.map(v=>v.replace('유리 적재대 만재·팔레트 부재·컨테이너 만재','GC 캐리지 만재·도킹 미완료·CVC 경로 점유'));
+    details.equipment.hardware.push(
+      'E-001 3상4선 380/220V 60Hz 전력인입·500kVA 변압기·800AF 주차단기·1000A 동버스',
+      'E-101 IR/HK/MCC/VOC/VAC/SHREDDER 분기반·SPD·전력계·고조파 대응',
+      'PLC-101 안전 PLC·표준 PLC·원격 I/O 3반·24VDC 이중전원·산업용 UPS·관리형 네트워크'
+    );
+    details.equipment.control.push(
+      'POWER_ENABLE = MAIN_ACB_ON ∧ PHASE_OK ∧ PE_OK ∧ SPD_OK ∧ FIRE_OK',
+      'PLC_RUN = UPS_OK ∧ DC24_A_OK ∧ DC24_B_OK ∧ SAFETY_CPU_OK ∧ NETWORK_RING_OK',
+      'GLASS_TRANSFER = LEVEL_ROLLER_READY ∧ GC_PRESENT_LOCKED ∧ ZERO_DROP_PATH_CLEAR',
+      'CELL_TRANSFER = CVC_CLEAR ∧ SHREDDER_READY ∧ ISOLATION_GATE_OPEN'
+    );
+    details.interlock.hardware.push(
+      '전력인입 CT·전력계·상감시·SPD 접점·주차단기 트립·PE 접지연속성 감시',
+      'PLC-101 F-DI 32점·F-DO 16점·DI 96점·DO 64점·AI 32점·AO 8점·TC 16점'
+    );
+    details.interlock.verify.push(
+      '500kVA·800AF/630~800AT·케이블 2회선 예비값은 단락전류·전압강하·포설보정 후 확정',
+      '전기 도면 E-001/E-101과 PLC 도면 C-001/C-101의 단자번호·케이블번호를 제작 BOM과 교차검증'
+    );
+    details.equipment.hardware.push(
+      'TDM-201 HKB/HKS 독립 Z축 서보슬라이드·프리로드 LM가이드·기계식 하드스톱',
+      'LC-201A/B 칼날별 로드셀·스프링 컴플라이언스·AE 센서·이중 온도센서',
+      'BC-201 퀵체인지 칼날카세트·잠금/존재센서·내열 커넥터·냉각 대기포켓',
+      'TG-201 엣지가이드·댄서롤·장력센서·역회전 브레이크를 포함한 백시트 웹 제어',
+      'DT-201 용융 EVA·파편 회수 드립트레이·교체식 내열 라이너·국소배기 슬롯'
+    );
+    details.equipment.control.push(
+      'HKB_Z_PERMIT = EVA_200_ACK ∧ VAC_6ZONE_OK ∧ CASSETTE_LOCKED ∧ HKB_TEMP_OK',
+      'HKS_Z_PERMIT = LEAD_300_ACK ∧ WEB_TENSION_OK ∧ HKB_LOAD_OK ∧ CELL_PATH_CLEAR',
+      'TANDEM_SAFE_STOP = LOAD_HIGH ∨ AE_CRACK ∨ VAC_LOW ∨ WEB_BREAK → X_DECEL ∧ Z_RETRACT ∧ HEAT_STANDBY'
+    );
+    details.interlock.verify.push(
+      'ISO 12100 위험성평가 결과로 칼날·권취·고온부 위험원을 구분하고 잔류위험을 문서화',
+      'ISO 14120 고정/가동식 방호와 ISO 14119:2024 코딩 인터록을 적용해 정비도어 무효화를 방지',
+      'IEC 60204-1 기준으로 주전원 차단·보호본딩·제어전원·비상정지·예기치 않은 재기동 방지를 검증',
+      '칼날 Z축 반복정밀도·평행도·로드셀 영점·온도 균일도·300mm 선행길이를 교대 전 자동점검'
+    );
+    details.support.title='Rev.20 필수 보조장치';
+
+    const assemblies=[
+      {id:'M-001',name:'투입·정렬·식별',size:'6000×3000×4200',material:'SS400/AL6061',parts:['베드 프레임','우레탄 구동롤러','IE4 기어모터','폭조절 가이드','패널 스토퍼','2D 비전카메라','레이저 높이센서','바코드 리더','광전센서','안전커버','케이블베어','앵커 세트']},
+      {id:'M-002',name:'5단 밀폐 IR 가열실',size:'5600×3780×4860',material:'SS400+세라믹단열',parts:['외부 용접프레임','130mm 이중 단열패널','B0~B5 IR 뱅크','2.5kW IR 램프×60','반사판×60','SSR 분기모듈×60','독립 과온센서','EVA 계면센서×5','투입 에어록','배출 에어록','차압센서','점검도어']},
+      {id:'M-003',name:'5단 적재·승강장치',size:'4950×2700×4150',material:'SS400/LM GUIDE',parts:['LI-101 승강프레임','서보모터·감속기','볼스크류/체인 동기축','TS-101 2단 포크','텔레스코픽 레일','캐리지 위치결정핀','층별 잠금실린더×5','캐리지 존재센서×5','상하한 리미트','절대치 엔코더','낙하방지 브레이크','정비 고정핀']},
+      {id:'M-004',name:'진공 캐리어·이송축',size:'11200×3000×1500',material:'SS400/AL6061',parts:['캐리어 베이스','6존 진공매니폴드','흡착패드×18','진공압센서×6','진공필터×6','체크밸브×6','서보 랙피니언','LM가이드×2','절대치 엔코더','에너지체인','범퍼스토퍼','비상 진공어큐뮬레이터']},
+      {id:'M-005',name:'고정 HKB/HKS 탠덤',size:'10200×4200×4300',material:'SS400/SKD11',parts:['탠덤 포털프레임','HKB Z축 서보슬라이드','HKS Z축 서보슬라이드','프리로드 LM가이드×4','볼스크류·서보브레이크×2','HKB 퀵체인지 카세트','HKS 퀵체인지 카세트','카세트 잠금·존재센서×4','HKB/HKS 카트리지히터','칼날 열전대×8','로드셀×4','스프링 컴플라이언스×4','AE 센서×4','300mm 레이저 간격센서','기계식 하드스톱×4','케이블베어·내열배선','용융 EVA 드립트레이','파편 회수트레이','국소배기 슬롯후드×2','코딩 정비도어 인터록']},
+      {id:'M-006',name:'백시트 터릿 권취',size:'2550×1800×3500',material:'SS400/SUS304',parts:['2축 터릿프레임','권취드럼 A/B','분할클램프×4','토크서보','공압척','자동 절단칼','선단 이관암','직경센서','장력 로드셀','역회전 브레이크','격리셔터','BS-301 밀폐함']},
+      {id:'M-007',name:'유리 수평 컨베이어·GC',size:'9000×5500×3000',material:'SS400/우레탄',parts:['동일높이 인계롤러','우레탄 롤러×24','VFD 기어모터','측면 가이드','파손 감지센서','QI-301 비전아치','GC-301A 캐리지','GC-301B 캐리지','내열 지지롤','로드셀×8','냉각팬×8','도킹핀×4']},
+      {id:'M-008',name:'셀/EVA 직접 컨베이어',size:'16000×2100×2500',material:'SS400/SUS304',parts:['CVC-301 사선 인계벨트','CVC-302 수평 밀폐벨트','내열 벨트','VFD 기어모터×2','셀 존재센서×4','벨트 편심센서×2','금속검출기','점검커버','국소배기노즐','역화격리게이트','SH-101 투입롤러','토크리미터']},
+      {id:'M-009',name:'품질검사·리젝트',size:'5450×5000×3900',material:'SS400/AL6061',parts:['QI 상부 RGB 카메라','QI 하부 RGB 카메라','열화상카메라','투과조명','라인레이저','검사 엔코더','RJ 횡셔틀','리젝트 받침트레이','밀폐 리젝트 캐리지','도어인터록','캐리지 존재센서','재처리 라벨러']},
+      {id:'M-010',name:'VOC 배기·응축·흡착',size:'6500×3000×5600',material:'SUS304/FRP',parts:['국소배기 덕트','응축기','응축액 탱크','미스트 제거기','활성탄 흡착탑','배기팬 A','배기팬 B','방화댐퍼','풍량센서','차압센서×3','VOC 샘플포트','굴뚝']},
+      {id:'M-011',name:'전력·MCC·제어반',size:'7600×1600×3600',material:'도장강판/IP54',parts:['TR-1 500kVA','Q0 ACB 4P 800AF','1000A 동버스','SPD Type1+2','전력품질계','IR 분전반','HK 히터반','MCC/VFD반','PLC-101반','24VDC PSU A/B','UPS-101','접지바']},
+      {id:'M-012',name:'유틸리티·화재안전',size:'9000×2500×4600',material:'SS400/SUS304',parts:['진공펌프 A/B','진공어큐뮬레이터','계장공기 FRL','냉각수 매니폴드','연기센서','CO센서','불꽃센서','독립 과온릴레이','소화배관','노즐×6','E-STOP×4','안전 PLC']},
+      {id:'M-013',name:'가드·발판·정비설비',size:'25000×7000×3000',material:'SS400/메시패널',parts:['안전펜스','인터록 도어×4','상부 정비발판','고정사다리','가드레일','칼날 카세트랙','세척대','LOTO 스테이션','용융물 트레이','조명','케이블트레이','바닥 앵커']}
+    ];
+
+    let laneShift=0,laneCode='S',partOffset={x:0,y:0,z:0};
+    const V=(x=0,y=0,z=0)=>({x,y,z});
+    const add=(a,b)=>({x:a.x+b.x,y:a.y+b.y,z:a.z+b.z}),sub=(a,b)=>({x:a.x-b.x,y:a.y-b.y,z:a.z-b.z}),mul=(a,s)=>({x:a.x*s,y:a.y*s,z:a.z*s});
+    const dot=(a,b)=>a.x*b.x+a.y*b.y+a.z*b.z;
+    const cross=(a,b)=>({x:a.y*b.z-a.z*b.y,y:a.z*b.x-a.x*b.z,z:a.x*b.y-a.y*b.x});
+    const len=a=>Math.hypot(a.x,a.y,a.z)||1,norm=a=>mul(a,1/len(a));
+    const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v)),lerp=(a,b,t)=>a+(b-a)*t;
+    const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+    const rgba=(hex,a=1)=>{const h=hex.replace('#','');const v=parseInt(h.length===3?h.split('').map(c=>c+c).join(''):h,16);return `rgba(${v>>16},${v>>8&255},${v&255},${a})`};
+    const shade=(hex,f)=>{const h=hex.replace('#','');const v=parseInt(h,16);const r=clamp(Math.round((v>>16)*f),0,255),g=clamp(Math.round((v>>8&255)*f),0,255),b=clamp(Math.round((v&255)*f),0,255);return `rgb(${r},${g},${b})`};
+    const rgbCache=new Map();
+    function toRGB(hex){let v=rgbCache.get(hex);if(!v){const n=parseInt(hex.replace('#',''),16);v=[n>>16,n>>8&255,n&255];rgbCache.set(hex,v)}return v}
+
+    /* Three-point studio rig: warm key over the operator shoulder, cool sky fill from
+       the opposite side, hemispheric ambient (sky above, concrete bounce below).
+       This is what separates a product render from a flat isometric diagram. */
+    const L_KEY=norm(V(-.44,-.78,.72)),L_FILL=norm(V(.86,.34,.30));
+    const KEY_RGB=[1,.972,.925],FILL_RGB=[.769,.839,.910];
+    const AMB_SKY=[.729,.808,.855],AMB_GND=[.408,.416,.400];
+    const I_AMB=.54,I_KEY=.96,I_FILL=.42;
+    const FOG_RGB=[223,229,227],FOG_MAX=.20;
+    const SHOULDER=196,SHOULDER_K=62;
+    let fogNear=30,fogFar=130,viewHalf=V(0,0,1),horizonY=0,vCenter=.52;
+
+    /* Called once per frame from makeBasis(): the half-vector and fog band both
+       depend on the camera, not on the individual face. */
+    function updateLighting(){
+      vCenter=width<650?.40:.52;
+      viewHalf=norm(add(L_KEY,mul(basis.forward,-1)));
+      fogNear=camera.radius*.70;fogFar=camera.radius*2.9;
+      /* Screen height of the ground-plane horizon. The camera never rolls, so the
+         horizon stays horizontal and one scalar places both wall and floor haze. */
+      const f=basis.forward,h=Math.hypot(f.x,f.y);
+      horizonY=h>1e-4?height*vCenter-(dot(V(f.x/h,f.y/h,0),basis.up)/dot(V(f.x/h,f.y/h,0),f))*basis.focal:-1e5;
+    }
+    /* Shade one face: irradiance from the rig, ambient occlusion from how low and how
+       downward-facing it sits, a Blinn-Phong highlight, then aerial perspective. */
+    function litFill(hex,n,zc,depth){
+      const m=MATS[hex]||MAT_DEFAULT,base=toRGB(hex);
+      const nn=dot(n,basis.forward)>0?mul(n,-1):n;
+      const kd=Math.max(0,dot(nn,L_KEY)),fd=Math.max(0,dot(nn,L_FILL)),hemi=.5+.5*nn.z;
+      const aoH=clamp(.44+.56*(zc/2.6),0,1),ao=1-(1-aoH*(nn.z<-.3?.76:1))*m.ao;
+      const hv=dot(nn,viewHalf);
+      const spec=hv>.02?m.sp*Math.pow(hv,m.gl)*(kd>0?1:.25):0;
+      const fog=clamp((depth-fogNear)/(fogFar-fogNear),0,1)*FOG_MAX;
+      const out=[0,0,0];
+      for(let i=0;i<3;i++){
+        const amb=lerp(AMB_GND[i],AMB_SKY[i],hemi);
+        const irr=amb*I_AMB+KEY_RGB[i]*I_KEY*kd+FILL_RGB[i]*I_FILL*fd;
+        let v=base[i]*irr*ao+255*spec*KEY_RGB[i];
+        /* Filmic shoulder. Without it every lit panel clipped to flat white and the
+           machine lost its material identity in the highlights. */
+        if(v>SHOULDER){const x=(v-SHOULDER)/SHOULDER_K;v=SHOULDER+(255-SHOULDER)*x/(1+x)}
+        out[i]=Math.round(clamp(lerp(v,FOG_RGB[i],fog),0,255));
+      }
+      return `rgb(${out[0]},${out[1]},${out[2]})`;
+    }
+
+    let width=1,height=1,dpr=1,primitives=[],labels=[],shadowCasters=[];
+    const camera={target:{x:19,y:0,z:1.45},az:-2.18,el:.38,radius:44,auto:true,preset:0};
+    const presets=[{az:-2.18,el:.38,r:44},{az:-1.56,el:.32,r:46},{az:-2.72,el:.55,r:44},{az:-2.12,el:1.06,r:49}];
+    let basis=null;
+    function makeBasis(){
+      const ce=Math.cos(camera.el),pos=add(camera.target,V(camera.radius*ce*Math.cos(camera.az),camera.radius*ce*Math.sin(camera.az),camera.radius*Math.sin(camera.el)));
+      const forward=norm(sub(camera.target,pos)),right=norm(cross(forward,V(0,0,1))),up=norm(cross(right,forward));
+      basis={pos,forward,right,up,focal:Math.min(width,height)*1.26};
+      updateLighting();
+    }
+    const NEAR=.22;
+    const world=p=>({x:p.x+partOffset.x,y:p.y+laneShift+partOffset.y,z:p.z+partOffset.z});
+    function project(p){
+      const rel=sub(world(p),basis.pos),z=dot(rel,basis.forward);if(z<NEAR)return null;
+      const s=basis.focal/z;return{x:width*.5+dot(rel,basis.right)*s,y:height*vCenter-dot(rel,basis.up)*s,z};
+    }
+    function camPoint(p){
+      const rel=sub(world(p),basis.pos);
+      return{cx:dot(rel,basis.right),cy:dot(rel,basis.up),cz:dot(rel,basis.forward)};
+    }
+    function toScreen(c){const s=basis.focal/c.cz;return{x:width*.5+c.cx*s,y:height*vCenter-c.cy*s,z:c.cz}}
+    /* Sutherland-Hodgman against the near plane. The old renderer dropped any face with
+       a single vertex behind the eye, which punched holes through every close-up. */
+    function clipNear(cp){
+      const out=[];
+      for(let i=0;i<cp.length;i++){
+        const a=cp[i],b=cp[(i+1)%cp.length],ain=a.cz>NEAR,bin=b.cz>NEAR;
+        if(ain)out.push(a);
+        if(ain!==bin){const t=(NEAR-a.cz)/(b.cz-a.cz);out.push({cx:lerp(a.cx,b.cx,t),cy:lerp(a.cy,b.cy,t),cz:NEAR})}
+      }
+      return out;
+    }
+    function screenPoly(pts){const c=clipNear(pts.map(camPoint));return c.length>2?c.map(toScreen):null}
+    function withPartOffset(offset,draw){
+      const previous=partOffset;partOffset=add(previous,offset);
+      try{draw()}finally{partOffset=previous}
+    }
+    function explodeOffsets(){
+      const e=explodeView?explodeDistance:0;
+      return{
+        input:V(-3*e,0,.18*e),heat:V(-.8*e,2.6*e,.42*e),tandem:V(0,0,2.35*e),
+        backsheet:V(-.8*e,-3*e,1.05*e),cell:V(1.3*e,-3.4*e,.38*e),glass:V(1.2*e,3.35*e,.38*e),
+        exhaust:V(3.2*e,.3*e,.9*e),utility:V(-1.2*e,-3.6*e,.25*e),power:V(-3.4*e,-4.2*e,.28*e),maintenance:V(.2*e,4.1*e,.3*e)
+      }
+    }
+    function explodeGuide(anchor,offset,color,name){
+      if(!explodeView||explodeDistance<=0)return;
+      const tip=add(anchor,offset);line([anchor,tip],color,1.4,[5,4],.82);box(tip,V(.16,.16,.16),color,{alpha:.9});label3(name,add(tip,V(0,0,.3)),color)
+    }
+    function rotatePoint(p,rx=0,ry=0,rz=0){
+      let x=p.x,y=p.y,z=p.z,c=Math.cos(rx),s=Math.sin(rx);[y,z]=[y*c-z*s,y*s+z*c];c=Math.cos(ry);s=Math.sin(ry);[x,z]=[x*c+z*s,-x*s+z*c];c=Math.cos(rz);s=Math.sin(rz);[x,y]=[x*c-y*s,x*s+y*c];return V(x,y,z);
+    }
+    function poly(points,color,alpha=1,stroke=null,lineWidth=1,opt){
+      const cp=points.map(camPoint),op=alpha??1;
+      const n=norm(cross(sub(points[1],points[0]),sub(points[2],points[0])));
+      if(opt&&opt.cull&&op>=.995){
+        /* Closed solids are wound outward, so a face pointing away from the eye is
+           hidden by its own body: cull it. Halves the sort load and the z-fighting. */
+        let cx=0,cy=0,cz=0;for(const c of cp){cx+=c.cx;cy+=c.cy;cz+=c.cz}
+        const k=cp.length,nc=camPoint(add(points[0],n));
+        if((nc.cx-cp[0].cx)*(cx/k)+(nc.cy-cp[0].cy)*(cy/k)+(nc.cz-cp[0].cz)*(cz/k)>0)return;
+      }
+      const cl=clipNear(cp);if(cl.length<3)return;
+      const pp=cl.map(toScreen);
+      const depth=pp.reduce((a,p)=>a+p.z,0)/pp.length;
+      const zc=points.reduce((a,p)=>a+p.z,0)/points.length+partOffset.z;
+      const fog=clamp((depth-fogNear)/(fogFar-fogNear),0,1)*FOG_MAX;
+      primitives.push({type:'poly',points:pp,depth,
+        fill:color.startsWith('#')?litFill(color,n,zc,depth):color,
+        alpha:op,stroke,lineWidth,edgeFade:1-fog*.72});
+    }
+    function line(points,color,widthPx=1,dash=null,alpha=1){
+      const cp=points.map(camPoint),segs=[];let cur=[];
+      for(let i=0;i<cp.length-1;i++){
+        const A=cp[i],B=cp[i+1],ain=A.cz>NEAR,bin=B.cz>NEAR;
+        if(!ain&&!bin){if(cur.length>1)segs.push(cur);cur=[];continue}
+        let a=A,b=B;
+        if(!ain){const t=(NEAR-A.cz)/(B.cz-A.cz);a={cx:lerp(A.cx,B.cx,t),cy:lerp(A.cy,B.cy,t),cz:NEAR}}
+        if(!bin){const t=(NEAR-A.cz)/(B.cz-A.cz);b={cx:lerp(A.cx,B.cx,t),cy:lerp(A.cy,B.cy,t),cz:NEAR}}
+        if(!cur.length)cur.push(a);
+        cur.push(b);
+        if(!bin){segs.push(cur);cur=[]}
+      }
+      if(cur.length>1)segs.push(cur);
+      for(const seg of segs){
+        const pp=seg.map(toScreen),depth=pp.reduce((a,p)=>a+p.z,0)/pp.length;
+        const fog=clamp((depth-fogNear)/(fogFar-fogNear),0,1)*FOG_MAX;
+        primitives.push({type:'line',points:pp,depth,color,
+          width:widthPx*clamp(camera.radius/(depth||1)*.92,.62,1.8),
+          dash,alpha:alpha*(1-fog*.6)});
+      }
+    }
+    function addCaster(center,sx,sy,base,alpha){
+      if(!collectShadows||alpha<.45||sx*sy<.02||shadowCasters.length>900)return;
+      const w=world(center);if(w.z+base>5.6)return;
+      shadowCasters.push({x:w.x,y:w.y,z:Math.max(0,w.z+base),sx,sy});
+    }
+    function box(center,size,color,opt={}){
+      const hx=size.x/2,hy=size.y/2,hz=size.z/2,local=[V(-hx,-hy,-hz),V(hx,-hy,-hz),V(hx,hy,-hz),V(-hx,hy,-hz),V(-hx,-hy,hz),V(hx,-hy,hz),V(hx,hy,hz),V(-hx,hy,hz)];
+      const pts=local.map(p=>add(center,rotatePoint(p,opt.rx||0,opt.ry||0,opt.rz||0)));
+      const faces=[[0,3,2,1],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]];
+      const cull={cull:!opt.rx&&!opt.ry};
+      faces.forEach(f=>poly(f.map(i=>pts[i]),color,opt.alpha??1,opt.stroke??rgba(C.black,.34),opt.lineWidth||.65,cull));
+      addCaster(center,size.x,size.y,-hz,opt.alpha??1);
+    }
+    function cylinder(center,radius,length,axis,color,segments=10,opt={}){
+      let a,u,v;if(axis==='x'){a=V(1,0,0);u=V(0,1,0);v=V(0,0,1)}else if(axis==='y'){a=V(0,1,0);u=V(1,0,0);v=V(0,0,1)}else{a=V(0,0,1);u=V(1,0,0);v=V(0,1,0)}
+      const c0=add(center,mul(a,-length/2)),c1=add(center,mul(a,length/2)),ring0=[],ring1=[];
+      for(let i=0;i<segments;i++){const q=add(mul(u,Math.cos(i*2*Math.PI/segments)*radius),mul(v,Math.sin(i*2*Math.PI/segments)*radius));ring0.push(add(c0,q));ring1.push(add(c1,q))}
+      const cull={cull:true};
+      for(let i=0;i<segments;i++){const j=(i+1)%segments;poly([ring0[i],ring0[j],ring1[j],ring1[i]],color,opt.alpha??1,null,.5,cull)}
+      poly([...ring0].reverse(),color,opt.alpha??1,null,1,cull);poly(ring1,color,opt.alpha??1,null,1,cull);
+      if(axis==='z')addCaster(center,radius*2,radius*2,-length/2,opt.alpha??1);
+      else addCaster(center,axis==='x'?length:radius*2,axis==='y'?length:radius*2,-radius,opt.alpha??1);
+    }
+    function plateQuad(x0,x1,y0,y1,z,color,alpha=1){poly([V(x0,y0,z),V(x1,y0,z),V(x1,y1,z),V(x0,y1,z)],color,alpha,rgba(C.black,.4),.7)}
+    function label3(text,p,color=C.white){if(!showLabels)return;const q=project(p);if(q)labels.push({text,x:q.x,y:q.y,z:q.z,color})}
+    function drawPrimitive(p){
+      ctx.save();ctx.globalAlpha=p.alpha??1;
+      if(p.type==='poly'){ctx.beginPath();ctx.moveTo(p.points[0].x,p.points[0].y);for(let i=1;i<p.points.length;i++)ctx.lineTo(p.points[i].x,p.points[i].y);ctx.closePath();ctx.fillStyle=p.fill;ctx.fill();if(p.stroke){ctx.globalAlpha=(p.alpha??1)*(p.edgeFade??1);ctx.strokeStyle=p.stroke;ctx.lineWidth=p.lineWidth;ctx.lineJoin='round';ctx.stroke()}}
+      else{ctx.beginPath();ctx.moveTo(p.points[0].x,p.points[0].y);for(let i=1;i<p.points.length;i++)ctx.lineTo(p.points[i].x,p.points[i].y);ctx.strokeStyle=p.color;ctx.lineWidth=p.width;ctx.setLineDash(p.dash||[]);ctx.stroke()}
+      ctx.restore();
+    }
+    /* Component callouts: an anchor dot on the part, a leader, and a tag plate that
+       is nudged clear of every plate already placed. Nearest parts claim their slot
+       first, so the callouts you most need stay put while the rest give way. */
+    const LABEL_INK='#22323f';
+    function drawLabels(){
+      if(!labels.length)return;
+      labels.sort((a,b)=>a.z-b.z);
+      ctx.save();
+      ctx.font='600 11px system-ui,-apple-system,"Noto Sans KR",sans-serif';
+      ctx.textAlign='left';ctx.textBaseline='middle';
+      const placed=[],H=20,MAX=width<900?9:20;
+      for(const l of labels){
+        if(placed.length>=MAX)break;
+        if(l.x<-60||l.x>width+60||l.y<-40||l.y>height+40)continue;
+        const W=Math.round(ctx.measureText(l.text).width)+22;
+        const base=Math.round(l.y-28);
+        let tx=Math.round(l.x-W/2),ty=base,n=0;
+        const hit=()=>placed.some(p=>tx<p.x+p.w+5&&tx+W>p.x-5&&ty<p.y+p.h+4&&ty+H>p.y-4);
+        while(n<14&&hit()){n++;ty=base+(n%2?-1:1)*Math.ceil(n/2)*(H+5)}
+        if(n>=14||ty<4||ty>height-H-4)continue;
+        tx=clamp(tx,6,Math.max(6,width-W-6));
+        placed.push({x:tx,y:ty,w:W,h:H});
+        ctx.globalAlpha=.72;ctx.strokeStyle=rgba(C.dark,.62);ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(tx+W/2,ty+H);ctx.stroke();
+        ctx.beginPath();ctx.arc(l.x,l.y,2.6,0,6.2832);ctx.fillStyle=rgba(C.dark,.72);ctx.fill();
+        ctx.globalAlpha=1;
+        ctx.beginPath();ctx.roundRect(tx,ty,W,H,5);
+        ctx.fillStyle='rgba(250,250,248,.95)';ctx.fill();
+        ctx.strokeStyle=rgba(C.dark,.28);ctx.lineWidth=1;ctx.stroke();
+        ctx.save();ctx.clip();ctx.fillStyle=l.color;ctx.fillRect(tx,ty,3.5,H);ctx.restore();
+        ctx.fillStyle=LABEL_INK;ctx.fillText(l.text,tx+11,ty+H/2+.5);
+      }
+      ctx.restore();
+    }
+
+    /* ---- Environment ------------------------------------------------------------
+       Backdrop, factory floor and contact shadows are painted straight to the canvas
+       before the sorted geometry pass, so nothing in the machine can be overdrawn by
+       a floor marking that merely happens to sit nearer the camera. */
+    let collectShadows=true,shadowBuf=null,shadowCtx=null,blurBuf=null,blurCtx=null;
+    const SHADOW_SCALE=.3;
+    const GROUND={
+      base    :{x0:-34,x1:74,y0:-30,y1:30,jx0:-4,jx1:43,jy0:-9,jy1:9,joint:3,mark:[4.5,-4.35,31.7,4.35],walk:[-6.1,-4.75],aisle:[4.9,6.3]},
+      tandem  :{x0:-12,x1:48,y0:-26,y1:26,jx0:10,jx1:26,jy0:-6,jy1:6,joint:1.5},
+      carriage:{x0:-30,x1:56,y0:-28,y1:28,jx0:-7,jx1:25,jy0:-6,jy1:6,joint:2}
+    };
+    function pathWorld(pts){const sp=screenPoly(pts);if(!sp)return null;ctx.beginPath();ctx.moveTo(sp[0].x,sp[0].y);for(let i=1;i<sp.length;i++)ctx.lineTo(sp[i].x,sp[i].y);ctx.closePath();return sp}
+    function fillBand(pts,style,alpha=1){ctx.save();ctx.globalAlpha=alpha;if(pathWorld(pts)){ctx.fillStyle=style;ctx.fill()}ctx.restore()}
+    function floorStrip(x0,y0,x1,y1,w,style,alpha){
+      const dx=x1-x0,dy=y1-y0,L=Math.hypot(dx,dy)||1,nx=-dy/L*w/2,ny=dx/L*w/2,z=.012;
+      fillBand([V(x0+nx,y0+ny,z),V(x1+nx,y1+ny,z),V(x1-nx,y1-ny,z),V(x0-nx,y0-ny,z)],style,alpha);
+    }
+    function drawEnvironment(){
+      const g=carriageFocus?GROUND.carriage:tandemFocus?GROUND.tandem:GROUND.base;
+      /* Hall backdrop: lit ceiling wash, horizon band, cool floor-level falloff. */
+      const sky=ctx.createLinearGradient(0,0,0,height);
+      sky.addColorStop(0,'#eef1ef');sky.addColorStop(.22,'#e6eae8');sky.addColorStop(.42,'#dbe1df');
+      sky.addColorStop(.62,'#c8d0cf');sky.addColorStop(1,'#a9b2b1');
+      ctx.fillStyle=sky;ctx.fillRect(0,0,width,height);
+      /* Far hall wall, keyed to the true horizon so a low camera actually sees it. */
+      const hy=clamp(horizonY,-height,height*2),wallTop=Math.max(0,hy-height*1.15);
+      if(hy>0){
+        const wall=ctx.createLinearGradient(0,wallTop,0,hy);
+        wall.addColorStop(0,'rgba(140,155,160,.58)');wall.addColorStop(.72,'rgba(184,195,197,.40)');
+        wall.addColorStop(1,'rgba(214,222,221,0)');
+        ctx.fillStyle=wall;ctx.fillRect(0,wallTop,width,hy-wallTop);
+      }
+
+      /* Sealed epoxy slab, shaded across the screen so the far end reads hazier. */
+      const slab=[V(g.x0,g.y0,0),V(g.x1,g.y0,0),V(g.x1,g.y1,0),V(g.x0,g.y1,0)];
+      const sp=pathWorld(slab);
+      if(sp){
+        let top=1e9,bot=-1e9;for(const p of sp){if(p.y<top)top=p.y;if(p.y>bot)bot=p.y}
+        const fg=ctx.createLinearGradient(0,top,0,bot);
+        fg.addColorStop(0,'#b2bab8');fg.addColorStop(.46,'#9fa8a6');fg.addColorStop(1,'#8d9694');
+        ctx.save();ctx.fillStyle=fg;ctx.fill();ctx.restore();
+      }
+      /* Saw-cut expansion joints, kept to the working bay rather than the whole slab. */
+      for(let x=Math.ceil(g.jx0/g.joint)*g.joint;x<=g.jx1;x+=g.joint)floorStrip(x,g.jy0,x,g.jy1,.04,'#69726f',.5);
+      for(let y=Math.ceil(g.jy0/g.joint)*g.joint;y<=g.jy1;y+=g.joint)floorStrip(g.jx0,y,g.jx1,y,.04,'#69726f',.5);
+      if(g.aisle)floorStrip(g.jx0,(g.aisle[0]+g.aisle[1])/2,g.jx1,(g.aisle[0]+g.aisle[1])/2,g.aisle[1]-g.aisle[0],'#8d9694',.55);
+      /* Traffic-yellow equipment footprint — every commissioned machine gets one. */
+      if(g.mark){
+        const[a,b,c,d]=g.mark;
+        floorStrip(a,b,c,b,.11,'#e8ab14',.92);floorStrip(a,d,c,d,.11,'#e8ab14',.92);
+        floorStrip(a,b,a,d,.11,'#e8ab14',.92);floorStrip(c,b,c,d,.11,'#e8ab14',.92);
+      }
+      /* Hatched pedestrian walkway along the operator side. */
+      if(g.walk){
+        const[wy0,wy1]=g.walk;
+        floorStrip(g.x0+.5,wy0,g.x1-.5,wy0,.09,'#e8ab14',.85);
+        floorStrip(g.x0+.5,wy1,g.x1-.5,wy1,.09,'#e8ab14',.85);
+        for(let x=g.jx0+1;x<g.jx1-1;x+=1.5)floorStrip(x,wy0,x+.9,wy1,.07,'#e8ab14',.5);
+      }
+      /* Aerial perspective on the slab so the far edge dissolves instead of ending
+         in a hard rectangle. */
+      if(horizonY>-height){
+        const top=Math.max(0,horizonY-height*.10),bot=Math.min(height,horizonY+height*.40);
+        if(bot>top){
+          const haze=ctx.createLinearGradient(0,top,0,bot);
+          haze.addColorStop(0,'rgba(214,222,220,.88)');haze.addColorStop(1,'rgba(214,222,220,0)');
+          ctx.fillStyle=haze;ctx.fillRect(0,top,width,bot-top);
+        }
+      }
+      drawShadows();
+    }
+    /* Soft ground shadows: every solid registers a footprint, the pile is rasterised
+       at half resolution into an offscreen buffer and composited through one blur. */
+    function drawShadows(){
+      if(!shadowCasters.length)return;
+      if(!shadowBuf){
+        shadowBuf=document.createElement('canvas');shadowCtx=shadowBuf.getContext('2d');
+        blurBuf=document.createElement('canvas');blurCtx=blurBuf.getContext('2d');
+      }
+      const k=SHADOW_SCALE,W=Math.max(1,Math.round(width*k)),H=Math.max(1,Math.round(height*k));
+      if(shadowBuf.width!==W||shadowBuf.height!==H){shadowBuf.width=blurBuf.width=W;shadowBuf.height=blurBuf.height=H}
+      const sc=shadowCtx;sc.setTransform(1,0,0,1,0,0);sc.clearRect(0,0,W,H);
+      sc.setTransform(k,0,0,k,0,0);sc.fillStyle='#1b2427';
+      const LX=.24,LY=.40;   // overhead hall lighting: short, well-anchored shadows
+      for(const c of shadowCasters){
+        const ox=c.x+LX*c.z,oy=c.y+LY*c.z,gx=c.sx*.5+c.z*.13+.05,gy=c.sy*.5+c.z*.13+.05;
+        const q=screenPoly([V(ox-gx,oy-gy,.008),V(ox+gx,oy-gy,.008),V(ox+gx,oy+gy,.008),V(ox-gx,oy+gy,.008)]);
+        if(!q)continue;
+        sc.globalAlpha=clamp(.34-c.z*.055,.028,.34);
+        sc.beginPath();sc.moveTo(q[0].x,q[0].y);for(let i=1;i<q.length;i++)sc.lineTo(q[i].x,q[i].y);sc.closePath();sc.fill();
+      }
+      const bc=blurCtx;bc.setTransform(1,0,0,1,0,0);bc.clearRect(0,0,W,H);
+      bc.filter='blur(1.7px)';bc.drawImage(shadowBuf,0,0);bc.filter='none';
+      ctx.save();ctx.globalAlpha=.95;ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='low';
+      ctx.drawImage(blurBuf,0,0,width,height);ctx.restore();
+    }
+    function drawVignette(){
+      const v=ctx.createRadialGradient(width*.5,height*.46,Math.min(width,height)*.36,width*.5,height*.5,Math.max(width,height)*.78);
+      v.addColorStop(0,'rgba(28,40,44,0)');v.addColorStop(1,'rgba(28,40,44,.24)');
+      ctx.save();ctx.fillStyle=v;ctx.fillRect(0,0,width,height);ctx.restore();
+    }
+
+    function conveyor(cx,length,z,widthY=3,cy=0){
+      box(V(cx,cy,z-.12),V(length,widthY,.22),C.dark);
+      for(let x=cx-length/2+.2;x<cx+length/2;x+=.43)cylinder(V(x,cy,z+.03),.105,widthY-.16,'y',C.rail,9);
+      for(const y of [cy-widthY/2+.13,cy+widthY/2-.13]){box(V(cx,y,z-.55),V(length,.12,.12),C.steel2);for(let x=cx-length/2+.25;x<cx+length/2;x+=1.2)box(V(x,y,z-.34),V(.1,.1,.7),C.steel)}
+    }
+    function fenceSegment(x0,y0,x1,y1,z0=0,z1=2.4){
+      const dx=x1-x0,dy=y1-y0,L=Math.hypot(dx,dy),rz=Math.atan2(dy,dx);
+      box(V((x0+x1)/2,(y0+y1)/2,z0+.1),V(L,.07,.12),C.guard,{rz});box(V((x0+x1)/2,(y0+y1)/2,z1),V(L,.07,.1),C.guard,{rz});
+      const count=Math.max(1,Math.ceil(L/1.7));for(let i=0;i<=count;i++){const t=i/count;box(V(lerp(x0,x1,t),lerp(y0,y1,t),(z0+z1)/2),V(.07,.07,z1-z0),C.guard)}
+      const normal=norm(V(-dy,dx,0)),a=add(V(x0,y0,.65),mul(normal,.01)),b=add(V(x1,y1,.65),mul(normal,.01));poly([a,b,V(b.x,b.y,z1-.1),V(a.x,a.y,z1-.1)],C.guard,.08,null,0);
+    }
+    function serviceDoor(cx,lengthX,code){
+      const y=-2.04,z0=.6,z1=3.95,x0=cx-lengthX/2+.2,x1=cx+lengthX/2-.2;
+      poly([V(x0,y,z0),V(x1,y,z0),V(x1,y,z1),V(x0,y,z1)],C.guard,.12,C.guard,.65);
+      box(V(cx,y,3.92),V(lengthX-.4,.11,.12),C.steel);box(V(cx,y,.64),V(lengthX-.4,.11,.13),C.steel);
+      for(let x=x0;x<=x1+.01;x+=Math.max(1.35,(lengthX-.4)/3))box(V(x,y,2.28),V(.1,.12,3.25),C.steel);
+      for(const x of [cx-lengthX*.22,cx+lengthX*.22]){box(V(x,y,1.15),V(.42,.15,.12),C.yellow);box(V(x,y,2.85),V(.92,.12,.72),C.black,{alpha:.78})}
+      label3(`${code} 정비도어`,V(cx,-2.34,3.12),C.yellow);
+    }
+    function gantry(cx,lengthX,label,code){
+      for(const x of [cx-lengthX/2,cx+lengthX/2])for(const y of [-1.95,1.95])box(V(x,y,2.35),V(.18,.18,3.9),C.steel);
+      box(V(cx,0,4.22),V(lengthX+.35,4.2,.34),C.steel2);box(V(cx,0,3.85),V(lengthX+.1,3.75,.42),C.cab);
+      box(V(cx,0,3.42),V(lengthX-.45,.6,.62),C.dark);for(let x=cx-lengthX/2+.48;x<cx+lengthX/2-.25;x+=.68)box(V(x,0,3.08),V(.38,2.75,.22),C.steel2);
+      poly([V(cx-lengthX/2,1.9,.55),V(cx+lengthX/2,1.9,.55),V(cx+lengthX/2,1.9,4.05),V(cx-lengthX/2,1.9,4.05)],C.guard,.07,C.guard,.6);
+      if(sectionView){
+        line([V(cx-lengthX/2,-1.98,.62),V(cx+lengthX/2,-1.98,.62),V(cx+lengthX/2,-1.98,3.95)],C.yellow,1.3,[5,4]);
+        label3(`${code} 내부 단면`,V(cx,-2.22,3.18),C.yellow);
+      }else serviceDoor(cx,lengthX,code);
+      label3(label,V(cx,-2.15,4.55),C.teal);
+    }
+    function exhaust(cx,r=.25){
+      cylinder(V(cx,1.2,4.9),r,1.7,'z',C.steel2,12);cylinder(V(cx,2.05,5.56),r,1.7,'y',C.steel2,12);
+    }
+    function preheatTunnel(){
+      const cx=9.2,L=5.6,x0=cx-L/2,x1=cx+L/2,z0=.82,dz=.62,liftX=carriageFocus?3.4:5.55,exitX=carriageFocus?15:12.35;
+      for(const x of [x0,x1])for(const y of [-1.65,1.65])box(V(x,y,2.65),V(.18,.18,4.2),C.steel);
+      box(V(cx,0,4.86),V(L+.42,3.78,.18),C.steel2);box(V(cx,0,4.69),V(L+.18,3.48,.15),C.cab,{alpha:.92});box(V(cx,0,.47),V(L+.18,3.48,.18),C.dark,{alpha:.82});
+      box(V(cx,1.82,2.68),V(L+.15,.12,4.18),C.steel2,{alpha:.94});box(V(cx,1.66,2.68),V(L,.12,3.98),C.cab,{alpha:.78});
+      if(!sectionView){
+        poly([V(x0,-1.84,.52),V(x1,-1.84,.52),V(x1,-1.84,4.72),V(x0,-1.84,4.72)],C.cab,.12,C.steel,.52);
+        poly([V(x0,-1.66,.65),V(x1,-1.66,.65),V(x1,-1.66,4.55),V(x0,-1.66,4.55)],C.yellow,.07,C.yellow,.16)
+      }else{
+        line([V(x0,-1.84,.52),V(x1,-1.84,.52),V(x1,-1.84,4.72)],C.yellow,2,[6,3]);label3('INS-101 · 130mm 이중피복 단열단면',V(cx,-2.15,4.6),C.yellow)
+      }
+      for(let deck=0;deck<5;deck++){const z=z0+dz*(deck+.5);box(V(cx,0,z),V(5.05,2.72,.11),C.steel2);for(const y of [-1.28,1.28]){box(V(cx,y,z-.18),V(5.1,.1,.35),C.rail);box(V(x0+.18,y,z+.03),V(.22,.18,.14),C.yellow);box(V(x1-.18,y,z+.03),V(.22,.18,.14),C.yellow)}cylinder(V(x1+.18,-1.48,z+.12),.07,.16,'z',C.teal,9);label3(`C${deck+1}`,V(x0-.18,-1.7,z+.12),C.white)}
+      for(let bank=0;bank<6;bank++){const z=z0+dz*bank;for(let lamp=0;lamp<10;lamp++){const x=x0+.38+lamp*(L-.76)/9;cylinder(V(x,0,z),.045,2.48,'y',C.heat,8)}}
+      box(V(x1+.55,0,2.65),V(.48,3.2,3.7),C.cab);for(let deck=0;deck<5;deck++)box(V(x1+.57,-1.62,z0+dz*(deck+.5)),V(.22,.12,.18),C.teal);
+      for(const y of [-1.55,1.55])box(V(liftX,y,2.55),V(.16,.16,4.15),C.steel);box(V(liftX,0,4.68),V(.28,3.3,.2),C.steel2);
+      box(V(liftX,0,1.22),V(4.95,2.7,.16),C.cab);for(const y of [-1.28,1.28])cylinder(V(liftX,y,2.65),.09,3.1,'z',C.rail,10);
+      box(V(liftX+.6,0,3.67),V(1.35,2.5,.12),C.steel2);for(const y of [-1.05,1.05]){box(V(liftX+.65,y,3.78),V(1.45,.09,.18),C.rail);box(V(liftX+1.1,y,3.84),V(1.2,.07,.12),C.steel)}box(V(liftX-.35,1.78,3.95),V(.42,.38,.5),C.cab);cylinder(V(liftX-.35,1.78,4.3),.12,.35,'z',C.teal,10);
+      box(V(9.2,0,.48),V(7.25,2.65,.17),C.dark);for(let x=5.8;x<12.5;x+=.5)cylinder(V(x,0,.6),.09,2.45,'y',C.rail,9);
+      box(V(exitX,0,1.38),V(1.15,2.75,.14),C.steel2);for(const y of [-1.18,1.18])box(V(exitX+.2,y,1.51),V(1.55,.09,.18),C.rail);
+      const meterY=carriageFocus?2.03:-2.03,meterFaceY=carriageFocus?2.22:-2.22,meterButtonY=carriageFocus?2.27:-2.27;
+      box(V(cx,meterY,3.08),V(1.35,.32,1.08),C.cab);box(V(cx,meterFaceY,3.18),V(1.02,.08,.5),C.black);for(let k=0;k<4;k++)box(V(cx-.32+k*.21,meterButtonY,2.75),V(.14,.06,.12),k<2?C.teal:C.yellow);
+      exhaust(cx,.23);label3('M1 · 완전단열 5단 밀폐가열실',V(cx,-2.12,5.08),C.heat);label3('6 라인 × 10 = 60 IR',V(cx,-2.12,4.72),C.yellow);label3('AL-101/102 · 이중셔터 에어록',V(cx,-2.12,4.38),C.teal);label3('PM-101 · IR 전력 계기판',V(cx,-2.45,3.72),C.yellow);label3('LI-101 · 5단 서보승강',V(liftX,-1.95,4.42),C.teal);label3('TS-101 · 이단 텔레스코픽 포크',V(liftX+.65,-1.82,3.95),C.yellow);label3('IDX-101 · 5단 위치결정·잠금',V(9.2,-1.92,4.25),C.teal);label3('RT-101 · 밀폐 빈 캐리지 복귀',V(9.2,-1.75,.52),C.teal);label3('EX-101 · 밀폐 방출 셔틀',V(exitX,-1.82,1.72),C.yellow);
+    }
+    function liftConveyor(){
+      const a=V(20.8,0,1.62),b=V(25,-2.35,1.16),dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z,plan=Math.hypot(dx,dy),L=Math.hypot(plan,dz),rz=Math.atan2(dy,dx),ry=-Math.atan2(dz,plan),cx=(a.x+b.x)/2,cy=(a.y+b.y)/2,cz=(a.z+b.z)/2;
+      box(V(cx,cy,cz),V(L,2.05,.16),C.belt,{rz,ry});
+      for(let t=.06;t<.98;t+=.1){const x=lerp(a.x,b.x,t),y=lerp(a.y,b.y,t),z=lerp(a.z,b.z,t);box(V(x,y,z+.08),V(.12,1.9,.12),C.rail,{rz})}
+      for(const t of [.08,.92]){const x=lerp(a.x,b.x,t),y=lerp(a.y,b.y,t),z=lerp(a.z,b.z,t);for(const s of [-.9,.9])box(V(x-s*Math.sin(rz),y+s*Math.cos(rz),z/2),V(.12,.12,Math.max(.3,z)),C.steel2)}
+      label3('CVC-301 · 셀/EVA 무낙하 인계',V(23,-2.15,2.25),C.cell2);
+    }
+    function cellHandlingStation(){
+      conveyor(30.55,11.4,1.12,1.72,-2.35);
+      for(const x of [25.1,27.8,30.5,33.2]){box(V(x,-3.27,1.65),V(.1,.1,1.25),C.guard);box(V(x,-1.43,1.65),V(.1,.1,1.25),C.guard)}
+      poly([V(24.9,-3.22,1.05),V(35.1,-3.22,1.05),V(35.1,-3.22,2.15),V(24.9,-3.22,2.15)],C.guard,.08,C.guard,.55);
+      box(V(35.25,-2.35,1.25),V(.16,1.72,1.65),C.red);box(V(35.25,-1.42,1.72),V(.42,.28,.52),C.yellow);cylinder(V(35.25,-1.42,2.22),.07,.65,'z',C.steel,10);
+      box(V(36.5,-2.35,1.05),V(2,2.1,2.05),C.cab);poly([V(35.45,-3.3,2.35),V(37.55,-3.3,2.35),V(37.05,-3.3,1.2),V(35.95,-3.3,1.2)],C.steel2,.95,C.steel,.8);
+      for(const x of [36.15,36.85])cylinder(V(x,-2.35,.92),.25,1.55,'y',C.red,12);
+      label3('CVC-301/302 · 셀/EVA 직접 이송',V(30,-3.48,2.35),C.cell2);label3('SH-101 · 슈레더',V(36.5,-3.58,2.75),C.red);
+    }
+    function glassOutfeedStation(){
+      conveyor(24.9,8.8,1.365,3);
+      for(const y of [-1.62,1.62])box(V(24.9,y,2.1),V(8.8,.1,1.55),C.guard,{alpha:.3});
+      for(const x of [25.2,29.6]){box(V(x,1.3,1.12),V(.16,5,.18),C.rail);for(let y=-1;y<3.55;y+=.38)box(V(x,y,1.36),V(.12,.22,.08),C.yellow)}
+      line([V(20.5,0,.08),V(27.4,0,.08),V(27.4,2.7,.08)],C.glass,3,[8,4],.8);
+    }
+    function scrubberUnit(){
+      box(V(38.8,0,2.2),V(2.4,2.4,4.4),C.cab);cylinder(V(38.8,0,4.65),.52,.55,'z',C.steel2,14);box(V(38.8,0,5.06),V(1,1,.42),C.dark);cylinder(V(39.5,0,5.48),.28,1.4,'x',C.steel2,12);
+      cylinder(V(35.8,0,2.15),.62,3.9,'z',C.steel2,14);cylinder(V(37.2,0,2.15),.5,3.6,'z',C.guard,14);box(V(40.8,0,2.05),V(1.45,2.25,3.8),C.dark);
+      for(const x of [40.45,41.15])cylinder(V(x,0,3.15),.38,.48,'y',C.teal,12);box(V(40.8,-1.2,.9),V(1.25,.7,1.45),C.cab);
+      cylinder(V(24,2.9,5.56),.3,29.6,'x',C.steel2,12);box(V(24,2.9,5.23),V(30,.42,.15),C.steel2);for(let x=9.2;x<38.2;x+=2)box(V(x,2.9,4.92),V(.1,.1,.72),C.steel);
+      label3('M6 · VOC 스크러버',V(38.8,-1.55,5.35),C.guard);
+    }
+    function qualityRejectStation(){
+      for(const y of [-1.58,1.58])box(V(22.35,y,2.25),V(.16,.18,3.05),C.steel2);box(V(22.35,0,3.78),V(.24,3.3,.26),C.cab);
+      box(V(22.35,-1.7,2.42),V(.5,.28,.42),C.cell2);box(V(22.35,1.7,2.42),V(.5,.28,.42),C.heat);
+      line([V(21.7,0,.12),V(22.8,0,.12),V(23.8,4.45,.12)],C.red,2.8,[7,4],.78);
+      box(V(23.8,4.45,.75),V(5.45,2.45,1.45),C.cab);box(V(23.8,4.45,1.52),V(5.15,2.2,.12),C.red);
+      for(const x of [21.5,26.1])for(const y of [3.45,5.45])box(V(x,y,.35),V(.15,.15,.7),C.steel2);
+    }
+    function glassCoolingStation(){
+      for(const y of [2.55,5.05])for(const x of [25.2,29.6])box(V(x,y,.34),V(.16,.22,.18),C.rail);
+      for(const y of [2.55,5.05]){for(const x of [25.2,29.6])for(const z of [1.35,2.25])cylinder(V(x,y,z),.23,.24,'y',C.teal,12);box(V(27.4,y,2.95),V(5.3,2.75,.18),C.guard,{alpha:.18})}
+      for(const x of [25.3,27.4,29.5]){box(V(x,3.82,3.55),V(.12,5.2,.12),C.steel);for(const z of [2.15,3.1])cylinder(V(x,3.82,z),.18,.18,'y',C.glass,10)}
+      box(V(27.4,5.05,1.1),V(5.25,2.72,.24),C.steel2);box(V(27.4,5.05,1.32),V(4.95,2.52,.16),C.yellow);for(let x=25.3;x<29.7;x+=.48)cylinder(V(x,5.05,1.42),.1,2.38,'y',C.rail,9);
+      for(const x of [25.25,29.55])for(const yy of [-1.12,1.12])cylinder(V(x,5.05+yy,.92),.16,.18,'y',C.black,10);
+    }
+    function utilityAndSafetyStation(){
+      box(V(9.2,-4.75,1.8),V(4.6,1.55,3.6),C.cab);for(const x of [7.65,8.65,9.65,10.65]){box(V(x,-3.96,2.05),V(.8,.08,2.65),C.black);box(V(x,-3.9,3.15),V(.42,.06,.18),C.teal)}
+      for(const x of [12.2,13.25]){cylinder(V(x,-4.7,.68),.46,1.05,'z',C.steel2,12);box(V(x,-4.7,1.42),V(.86,.86,.46),C.teal)}
+      cylinder(V(14.45,-4.7,1.0),.5,1.7,'z',C.cab,14);cylinder(V(14.45,-4.7,1.92),.16,.2,'z',C.yellow,10);
+      box(V(16,-4.75,1.42),V(1.25,1.35,2.75),C.cab);for(let z=.6;z<2.55;z+=.38)box(V(16,-4.05,z),V(.75,.06,.16),z>1.8?C.teal:C.cell2);
+      line([V(6.4,-1.85,4.5),V(12,-1.85,4.5)],C.red,2.2);for(let x=6.8;x<12;x+=1.15){cylinder(V(x,-1.85,4.28),.07,.25,'z',C.red,9);line([V(x-.15,-1.85,4.05),V(x+.15,-1.85,4.05)],C.red,1.2)}
+      for(const x of [6.6,11.8,18.3,30.2]){box(V(x,-3.55,1.25),V(.2,.2,2.35),C.red);box(V(x,-3.55,2.47),V(.42,.42,.18),C.yellow)}
+    }
+    function powerInfeedStation(){
+      box(V(-1.35,-4.7,1.65),V(2.5,2.05,3.3),C.cab);for(const x of [-2.15,-1.35,-.55])cylinder(V(x,-4.7,3.5),.16,1.7,'y',C.steel2,12);
+      box(V(1.25,-4.7,1.85),V(2.15,1.5,3.7),C.steel2);for(const x of [.55,1.25,1.95])box(V(x,-3.92,2.05),V(.55,.08,2.75),C.cab);box(V(1.25,-3.85,3.25),V(1.15,.06,.28),C.teal);
+      box(V(18,-4.05,4.55),V(33.5,.35,.26),C.steel2);for(const x of [3.1,9.2,18.1,26.5,36])line([V(x,-4.05,4.45),V(x,-2.5,4.1),V(x,-1.8,3.35)],C.orange,2.1,[6,3],.9);
+      line([V(-2.5,-4.7,.08),V(38,-4.7,.08)],C.ok,2.5,[8,4],.92);for(const x of [-1.35,1.25,9.2,19,36])line([V(x,-4.7,.08),V(x,-3.5,.08)],C.ok,1.8);
+      label3('TR-1 · 500kVA',V(-1.35,-5.9,3.65),C.teal);label3('MDP-1 · ACB 800AF',V(1.25,-5.65,3.95),C.yellow);
+    }
+    function maintenanceStation(){
+      box(V(18.4,4.75,.88),V(4.3,1.5,1.65),C.cab);for(const x of [17.05,17.7,18.4,19.1,19.75])box(V(x,4.75,1.85),V(.13,1.15,1.25),C.knife);
+      box(V(20.9,4.75,.65),V(1.4,1.3,1.15),C.dark);box(V(20.9,4.75,1.3),V(1.15,1.05,.12),C.steel2);
+      for(const y of [4.2,5.3])box(V(17.5,y,.25),V(8.4,.12,.18),C.rail);
+      box(V(18.4,5.55,2.8),V(5,.12,.16),C.guard);for(let x=16;x<=20.8;x+=.8)box(V(x,5.55,1.85),V(.08,.08,1.9),C.guard);for(let k=0;k<5;k++)box(V(15.7-k*.28,4.75,.25+k*.22),V(.55,1.1,.12),C.steel2);
+    }
+    function emptyCarrierAt(x,y,z=.7,color=C.steel2){
+      box(V(x,y,z),V(5.15,2.72,.2),color);box(V(x,y,z+.15),V(4.85,2.48,.1),C.cab);for(const xx of [-2.05,2.05])for(const yy of [-1.12,1.12])cylinder(V(x+xx,y+yy,z-.14),.15,.17,'y',C.black,9);
+    }
+    function dualDispatcher(){
+      box(V(-.15,0,.18),V(2.4,8.2,.32),C.floor);box(V(.1,0,.48),V(1.6,1.8,.34),C.cab);
+      cylinder(V(.1,0,.73),.72,.24,'z',C.steel2,18);box(V(.1,0,.9),V(1.2,1.2,.12),C.yellow,{rz:Math.PI/4});
+      line([V(.65,0,.82),V(1.4,-2.2,.98),V(2.05,-4.25,1.12)],C.teal,2.3,[7,4]);
+      line([V(.65,0,.82),V(1.4,2.2,.98),V(2.05,4.25,1.12)],C.yellow,2.3,[7,4]);
+      for(const y of [-4.25,4.25]){for(let x=.9;x<2.2;x+=.42)cylinder(V(x,y,1.17),.09,2.65,'y',C.rail,10)}
+      box(V(-1.05,0,2.1),V(.12,2.2,2.9),C.steel2);box(V(-1.05,0,3.58),V(.65,.65,.32),C.cell2);
+      label3('DV-101 · 중앙 교번분배 A/B',V(.2,-1.2,2.55),C.teal);label3('정상 ≤35.93초/장',V(.2,-1.2,2.18),C.yellow);
+    }
+    function carrierMotionAxis(){
+      for(const y of [-1.5,1.5]){
+        box(V(17.7,y,.54),V(11.2,.16,.2),C.rail);
+        for(let x=12.35;x<=23.05;x+=.32)box(V(x,y,.66),V(.2,.12,.08),C.steel);
+        box(V(12.1,y,.78),V(.62,.52,.72),C.cab);cylinder(V(11.72,y,.78),.24,.42,'x',C.teal,12)
+      }
+      for(const x of [HKB_X,HKS_X]){for(const y of [-1.78,1.78])box(V(x,y,2.05),V(.22,.28,2.85),C.steel2);box(V(x,0,3.5),V(.26,4.05,.3),C.steel2)}
+      line([V(15.1,-1.68,1.05),V(20.5,-1.68,1.05)],C.teal,2.1,[8,4]);
+      label3(`AX-${laneCode} · 전자갠트리 서보 캐리어축`,V(17.6,1.82,.82),C.teal);
+      label3('유효 공정이동 2,700mm · 스트로크 ≥3,200mm',V(17.8,-1.92,.62),C.yellow);
+    }
+    function tandemProfessionalDetail(){
+      box(V(17.8,0,.72),V(1.45,3.08,.16),C.dark);box(V(17.8,0,.84),V(1.25,2.86,.08),C.cab,{alpha:.92});
+      for(const x of [HKB_X,HKS_X]){
+        const headColor=x===HKB_X?C.knife:C.red;
+        for(const y of [-1.32,1.32]){
+          if(tandemFocus&&y<0)continue;
+          box(V(x,y,2.78),V(.14,.2,2.05),C.rail);box(V(x,y,3.76),V(.46,.42,.34),C.dark);
+          cylinder(V(x,y,4.02),.15,.25,'z',headColor,12);line([V(x+.1,y,3.72),V(x+.1,y,1.86)],C.teal,1.15,[3,2],.72)
+        }
+        box(V(x,0,3.25),V(.52,3.02,.16),C.steel2);for(const y of [-.92,.92])box(V(x,y,3.08),V(.34,.28,.2),C.yellow);
+        for(const y of [-1.05,1.05])line([V(x,y,3.94),V(x+.42,y,3.5),V(x+.38,y,2.9)],headColor,1.6,[4,3],.82)
+      }
+      line([V(HKB_X,-1.58,2.48),V(HKB_X,-1.58,2.72),V(HKS_X,-1.58,2.72),V(HKS_X,-1.58,2.48)],C.yellow,2);
+      for(const x of [HKB_X-.18,HKS_X+.18]){box(V(x,-1.62,2.12),V(.16,.18,.26),C.teal);line([V(x,-1.52,2.12),V(17.8,-1.52,1.62)],C.teal,1,[3,3],.72)}
+      box(V(17.8,1.72,2.12),V(1.4,.3,.22),C.cab);for(let x=17.2;x<=18.4;x+=.2)box(V(x,1.72,2.14),V(.12,.26,.12),C.black);
+      for(const x of [16.75,18.85]){box(V(x,-1.78,1.72),V(.16,.16,2.2),C.guard);for(let z=.82;z<2.72;z+=.32)line([V(x,-1.76,z),V(x,-1.76,z+.18)],C.red,1.2)}
+      if(!sectionView&&!tandemFocus)poly([V(16.65,-1.92,.62),V(18.95,-1.92,.62),V(18.95,-1.92,3.62),V(16.65,-1.92,3.62)],C.guard,.08,C.guard,.55)
+    }
+    function baseMachine(){
+      const o=explodeOffsets();
+      withPartOffset(o.input,()=>{
+        conveyor(3,6,1.12,3);label3('M0 · 투입·정렬·식별',V(3,-1.95,2.95));
+        for(const y of [-1.6,1.6])box(V(5.1,y,2.65),V(.16,.16,3.1),C.steel);box(V(5.1,0,4.18),V(.16,3.35,.16),C.steel);box(V(5.1,0,3.88),V(.5,.5,.38),C.cell2);box(V(5.1,1.55,2.6),V(.24,.24,.24),C.yellow)
+      });
+      withPartOffset(o.heat,preheatTunnel);
+      for(const y of [-1.38,1.38])box(V(13.9,y,.68),V(21.8,.16,.18),C.rail);for(let x=3.1;x<24.8;x+=1.15){box(V(x,-1.38,.33),V(.13,.17,.65),C.steel2);box(V(x,1.38,.33),V(.13,.17,.65),C.steel2)}
+      withPartOffset(o.tandem,()=>{carrierMotionAxis();gantry(17.8,10.2,'FGT-201 · 고정 HKB/HKS 탠덤 브리지','FIXED-TDM');tandemProfessionalDetail();exhaust(15.5);exhaust(21.2);box(V(17.8,0,.28),V(2.4,3.05,.16),C.steel2);box(V(17.8,0,.39),V(2.1,2.72,.08),C.dark)});
+      withPartOffset(o.backsheet,()=>{
+        cylinder(V(14.7,0,3.04),.3,3,'y',C.rail,14);for(const y of [-.9,-.3,.3,.9])box(V(14.4,y,3.04),V(.18,.34,.12),C.yellow);box(V(14.7,1.9,3.04),V(.52,.45,.45),C.cab);
+        box(V(14.8,-2.75,1.02),V(2.55,1.5,1.95),C.cab);box(V(14.8,-2.02,1.12),V(2.2,.08,1.55),C.sheet,{alpha:.18});box(V(14.8,-2.75,2.02),V(2.35,1.35,.12),C.steel2);
+        for(const x of [14.2,14.8,15.4])cylinder(V(x,-2.75,.92),.28,1.1,'y',C.sheet,14);
+        label3('WR-101 · 횡방향 클램프 권취롤',V(14.7,-1.8,3.48),C.yellow);label3('BS-301 · 백시트 전용 보관함',V(14.8,-3.55,2.35),C.sheet)
+      });
+      withPartOffset(o.cell,()=>{liftConveyor();cellHandlingStation()});
+      withPartOffset(o.utility,()=>{box(V(19,-3.3,1.8),V(1.6,1.2,3.6),C.cab);box(V(19,-2.67,2.75),V(.8,.05,.6),C.black);label3('PLC + HMI',V(19,-3.35,3.85));utilityAndSafetyStation()});
+      withPartOffset(o.glass,()=>{glassOutfeedStation();qualityRejectStation();glassCoolingStation()});
+      withPartOffset(o.exhaust,scrubberUnit);withPartOffset(o.power,powerInfeedStation);withPartOffset(o.maintenance,maintenanceStation);
+      line([V(14.7,0,.1),V(14.7,-2.75,.1)],C.sheet,3,[8,4],.75);
+      line([V(22.2,0,.1),V(24.4,0,.1),V(27,-2.35,.1),V(36.5,-2.35,.1)],C.cell2,3,[8,4],.78);
+      fenceSegment(5.7,-3.62,30.5,-3.62);fenceSegment(5.7,3.62,30.5,3.62);fenceSegment(5.7,-3.62,5.7,-1.9);fenceSegment(5.7,1.9,5.7,3.62);fenceSegment(30.5,-3.62,30.5,-1.9);fenceSegment(30.5,1.9,30.5,3.62);
+      box(V(5.55,-1.82,1.08),V(.28,.28,2.15),C.red);box(V(30.65,1.82,1.08),V(.28,.28,2.15),C.red);
+      explodeGuide(V(3,0,1.1),o.input,C.teal,'투입 모듈');explodeGuide(V(9.2,0,2.6),o.heat,C.heat,'5단 IR');explodeGuide(V(17.8,0,2.2),o.tandem,C.yellow,'탠덤');explodeGuide(V(14.7,-1.6,2.2),o.backsheet,C.sheet,'백시트');explodeGuide(V(28,-2.35,1.3),o.cell,C.cell2,'셀/EVA');explodeGuide(V(27.4,1.6,1.4),o.glass,C.glass,'유리');explodeGuide(V(38.8,0,2.4),o.exhaust,C.teal,'배기');explodeGuide(V(9.2,-4.2,1.8),o.utility,C.yellow,'유틸리티')
+    }
+    function tandemFocusBase(){
+      for(const y of [-1.5,1.5]){box(V(17.7,y,.54),V(11.2,.16,.2),C.rail);for(let x=12.35;x<=23.05;x+=.32)box(V(x,y,.66),V(.2,.12,.08),C.steel)}tandemProfessionalDetail();
+      for(const x of [13.1,22.5])for(const y of [-1.9,1.9])box(V(x,y,2.3),V(.18,.18,3.75),C.steel2);
+      box(V(17.8,1.82,4.08),V(9.6,.26,.3),C.steel2);poly([V(13.1,1.94,.58),V(22.5,1.94,.58),V(22.5,1.94,3.9),V(13.1,1.94,3.9)],C.guard,.07,C.guard,.55);
+      for(let x=20.65;x<=23.65;x+=.32)cylinder(V(x,0,1.37),.09,2.65,'y',C.rail,10);for(const y of [-1.42,1.42])box(V(22.1,y,.72),V(3.4,.14,1.25),C.steel2);
+      liftConveyor();if(index===3)windingRoll(0,0);
+      for(const x of [16.25,19.35]){box(V(x,-1.72,.56),V(.42,.34,.18),C.yellow);cylinder(V(x,-1.72,.35),.16,.2,'z',C.dark,10)}
+    }
+    function carriageFocusBase(){
+      const g=carriageGeometry();
+      conveyor(-2.2,5.1,1.35,2.9);conveyor(20.75,5.05,1.35,2.9);preheatTunnel();
+      const airlockShell=(a,b,code)=>{
+        const cx=(a+b)/2,L=b-a;for(const x of [a,b])for(const y of [-1.62,1.62])box(V(x,y,2.62),V(.18,.18,4.12),C.steel2);
+        box(V(cx,0,4.72),V(L+.18,3.52,.18),C.steel2);box(V(cx,1.68,2.66),V(L,.1,3.92),C.cab,{alpha:.88});
+        if(!sectionView)poly([V(a,-1.68,.62),V(b,-1.68,.62),V(b,-1.68,4.58),V(a,-1.68,4.58)],C.cab,.14,C.steel2,.7);
+        for(let x=a+.24;x<b-.1;x+=.44)cylinder(V(x,0,.62),.09,2.5,'y',C.rail,9);
+        box(V(cx,1.83,3.75),V(1.16,.22,.48),C.black);box(V(cx,1.71,3.76),V(.76,.05,.22),C.teal);label3(code,V(cx,-1.92,4.43),C.teal)
+      };
+      airlockShell(g.inOuter,g.inInner,'AL-101 · INPUT ISOLATION');airlockShell(g.outInner,g.outOuter,'AL-102 · OUTPUT ISOLATION');
+      for(const x of [g.inOuter,g.inInner,g.outInner,g.outOuter]){box(V(x,-1.78,.52),V(.62,.28,.18),C.yellow);cylinder(V(x,-1.78,.31),.13,.16,'z',C.dark,10)}
+      box(V(9.2,2.48,2.42),V(2.25,.72,3.05),C.cab);box(V(9.2,2.1,3.02),V(1.55,.08,.72),C.black);for(let k=0;k<5;k++)box(V(8.65+k*.28,2.05,2.42),V(.18,.05,.14),k<3?C.teal:C.yellow);
+      line([V(g.inOutside-1.5,2.22,.08),V(g.outDone+1.4,2.22,.08)],C.teal,2,[8,4],.62);for(const x of [g.inOuter,g.inInner,g.outInner,g.outOuter])box(V(x,2.22,.22),V(.16,.16,.45),C.steel2);
+    }
+
+    function carrier(x,vacOn){
+      box(V(x,0,.98),V(5.25,2.82,.25),C.steel2);box(V(x,0,1.15),V(4.9,2.56,.14),C.cab);
+      box(V(x,0,.75),V(4.16,.34,.24),C.dark);box(V(x,0,.62),V(3.86,.22,.11),vacOn?C.teal:C.steel);
+      for(const xx of [-1.5,-.9,-.3,.3,.9,1.5]){cylinder(V(x+xx,0,.86),.07,.38,'z',vacOn?C.teal:C.steel,8);line([V(x+xx,0,.93),V(x+xx,0,1.27)],vacOn?C.teal:C.steel,1)}
+      for(const yy of [-.82,0,.82])for(const xx of [-1.65,0,1.65]){cylinder(V(x+xx,yy,1.31),.16,.2,'z',vacOn?C.teal:C.steel,10);cylinder(V(x+xx,yy,1.43),.09,.08,'z',vacOn?C.teal:C.steel,10)}
+      for(const y of [-1.35,1.35])cylinder(V(x,y,.72),.18,.16,'y',C.black,10);
+      label3('VC-101 · 6존 진공',V(x,-1.75,.9),vacOn?C.teal:C.white);
+    }
+    function flatLayer(cx,length,z,color,alpha=1,xOffset=0,yOffset=0){if(length<=.005)return;box(V(cx+xOffset,yOffset,z),V(length,2.4,.055),color,{alpha})}
+    function flexSurface(xa,xb,za,zb,color,alpha=1,yHalf=1.2){
+      const N=9,bow=Math.abs(zb-za)*.075;
+      const at=t=>({x:lerp(xa,xb,t),z:lerp(za,zb,t)-bow*Math.sin(Math.PI*t)});
+      for(let i=0;i<N;i++){
+        const a=at(i/N),b=at((i+1)/N);
+        poly([V(a.x,-yHalf,a.z),V(b.x,-yHalf,b.z),V(b.x,yHalf,b.z),V(a.x,yHalf,a.z)],color,alpha,null,0);
+      }
+      for(const y of [-yHalf,yHalf]){
+        const pts=[];for(let i=0;i<=N;i++){const p=at(i/N);pts.push(V(p.x,y,p.z))}
+        line(pts,rgba(C.black,.42),.8,null,alpha);
+      }
+    }
+    function panelLayers(cx,state){
+      const rear=cx-2.4,front=cx+2.4,zGlass=state.glassZ||1.48,zCell=1.555,zSheet=1.62;
+      if(state.phase==='preheat-queue')return;
+      flatLayer(cx,4.8,zGlass,C.glass,.78,0,state.glassY||0);
+      if(state.phase==='output-glass')return;
+      const opened=state.backsheetOpen||0,peel=state.backsheetPeel||0,removed=state.backsheetRemoved;
+      const sep=state.separation||0;
+      if(sep<=.001){
+        flatLayer(cx,4.8,zCell,C.cell,.98);
+        if(!removed){const peeled=Math.min(4.8,.6*opened+4.2*peel),cut=front-peeled;flatLayer((rear+cut)/2,Math.max(0,cut-rear),zSheet,C.sheet,.98);if(peeled>.01)flexSurface(cut,14.7,zSheet,3.04,C.sheet,.98)}
+      }else if(sep<.999){
+        const cut=front-4.8*sep;
+        flatLayer((rear+cut)/2,Math.max(0,cut-rear),zCell,C.cell,.98);
+        const tipX=front+.72*ease(sep),tipZ=zCell+.22+1.72*ease(sep);
+        flexSurface(cut,tipX,zCell,tipZ,C.cell,.98);
+      }else{
+        const tipX=front+.72,tipZ=zCell+1.94;flexSurface(rear,tipX,zCell,tipZ,C.cell,.98);
+      }
+      line([V(rear,(state.glassY||0)-1.21,zGlass+.045),V(front,(state.glassY||0)-1.21,zGlass+.045)],C.glass,1.2);
+    }
+    function panelCellPattern(cx,z,length=4.8,alpha=1,yOffset=0){for(let x=cx-length/2+.3;x<cx+length/2;x+=.48)line([V(x,yOffset-1.18,z),V(x,yOffset+1.18,z)],C.cell2,.6,null,alpha);for(let y=-.9;y<1.2;y+=.48)line([V(cx-length/2,y+yOffset,z),V(cx+length/2,y+yOffset,z)],C.cell2,.6,null,alpha)}
+    function tandemEngagement(i,p){
+      let hkb=0,hks=0;
+      if(i===3)hkb=ease(clamp((p-.08)/.42));
+      else if(i===4){hkb=1;hks=ease(clamp((p-.3)/.5))}
+      else if(i===5){hkb=1;hks=1}
+      else if(i===6){hkb=1-ease(clamp(p/.28));hks=1-ease(clamp(p/.34))}
+      return{hkb,hks}
+    }
+    function knifeBar(x,z,hot,label,engage=0,kind='HKB'){
+      const q=clamp(engage),lift=.62*(1-ease(q)),zz=z+lift,headColor=kind==='HKB'?C.knife:C.red;
+      for(const y of [-1.24,1.24]){
+        if(tandemFocus&&y<0)continue;
+        box(V(x+.12,y,2.7),V(.12,.16,1.85),C.rail);cylinder(V(x+.12,y,3.64),.11,.24,'z',headColor,12);
+        box(V(x+.12,y,zz+.47),V(.34,.28,.24),q>.04?headColor:C.steel2);
+        line([V(x+.12,y,3.5),V(x+.12,y,zz+.58)],C.dark,1.3)
+      }
+      box(V(x,0,zz),V(.17,2.72,.06),hot?headColor:C.steel,{ry:kind==='HKB'?-.13:.13});
+      box(V(x+.2,0,zz+.14),V(.25,2.8,.15),q>.04?C.teal:C.steel2);box(V(x+.02,0,zz+.31),V(.2,2.66,.18),C.steel2);
+      box(V(x,-1.38,zz+.24),V(.3,.12,.38),q>.04?headColor:C.steel2);
+      for(let y=-1.12;y<=1.12;y+=.32)cylinder(V(x+.31,y,zz+.14),.028,.28,'x',hot?C.heat:C.steel,8);
+      for(const y of [-.84,-.28,.28,.84])cylinder(V(x+.22,y,zz+.27),.02,.18,'x',C.yellow,8);
+      for(const y of [-.92,.92]){const pts=[];for(let k=0;k<=8;k++)pts.push(V(x+(k%2?.07:-.07),y,zz+.37+k*.045));line(pts,C.yellow,1.25)}
+      line([V(x-.1,-1.35,zz-.015),V(x-.1,1.35,zz-.015)],hot?C.heat:C.steel,2.4,null,hot?.95:.7);
+      if(hot)for(let y=-1.15;y<=1.15;y+=.45)line([V(x-.08,y,zz-.02),V(x-.34,y,zz+.14)],C.heat,1.6,[3,3],.9);
+      if(tandemFocus){line([V(x-.38,-1.48,zz+.82),V(x-.38,-1.48,zz+.14)],headColor,2,[5,3],.9);line([V(x-.48,-1.48,zz+.24),V(x-.38,-1.48,zz+.14),V(x-.28,-1.48,zz+.24)],headColor,2)}
+      label3(label,V(x,-1.62,zz+.38),hot?headColor:C.white)
+    }
+    function windingRoll(peel,eject=0){
+      const q=ease(eject),y=lerp(0,-2.55,q),z=lerp(3.04,1.15,q),r=.3+.34*clamp(peel);
+      cylinder(V(14.7,y,z),r,3,'y',C.web,22);
+      for(const yy of [-1.46,1.46])cylinder(V(14.7,y+yy,z),r*.985,.05,'y',shade(C.web,.82),22);
+      cylinder(V(14.7,y,z),r*.62,3.02,'y',shade(C.web,.9),18);
+      cylinder(V(14.7,y,z),.16,3.12,'y',C.rail,12);for(const yy of [-.9,-.3,.3,.9])box(V(14.42,y+yy,z),V(.18,.28,.11),C.yellow,{rx:peel*Math.PI*10});
+      cylinder(V(14.7,1.72,3.04),.31,3,'y',C.dark,16);cylinder(V(14.7,1.72,3.04),.16,3.12,'y',C.rail,12);cylinder(V(14.7,.86,3.04),.22,.28,'y',C.yellow,12);
+      box(V(15.06,.72,3.02),V(.08,.65,.46),C.knife,{rz:-.22});
+      if(eject>0)label3('권취 백시트 → 측면 격리함',V(14.7,y-.9,z+.65),C.sheet);
+    }
+    function cellPathPoint(u){
+      const q=clamp(u);if(q<.34){const t=ease(q/.34);return{x:lerp(20.8,25,t),y:lerp(0,-2.35,t),z:lerp(1.68,1.28,t),rz:lerp(0,-.51,t),ry:.09*(1-t)}}
+      const t=ease((q-.34)/.66);return{x:lerp(25,36.2,t),y:-2.35,z:1.28,rz:0,ry:0};
+    }
+    function cellModuleAt(u,alpha=.98){const q=cellPathPoint(u);box(V(q.x,q.y,q.z),V(4.6,2.18,.08),C.cell,{rz:q.rz,ry:q.ry,alpha});if(u>=.34)panelCellPattern(q.x,q.z+.05,4.48,.8,q.y)}
+    function outputLaminate(t){cellModuleAt(.34*ease(t));}
+    function cycleWindow(p,start,end,edge=.018){
+      const opening=ease(clamp((p-start)/edge)),closing=1-ease(clamp((p-(end-edge))/edge));return clamp(opening*closing)
+    }
+    function carriageGeometry(){
+      return carriageFocus?{inOutside:-2.35,inVest:3.4,rack:9.2,outVest:15,outDone:20.75,inOuter:.4,inInner:6.4,outInner:12,outOuter:18}:{inOutside:3,inVest:5.55,rack:9.2,outVest:12.35,outDone:15.1,inOuter:6.16,inInner:6.58,outInner:11.82,outOuter:12.24}
+    }
+    function carriageCycleState(p,cycleNo=carriageCycleNo){
+      const q=clamp(p),active=((cycleNo%5)+5)%5,next=(active+1)%5,g=carriageGeometry(),z0=.82,dz=.62,deckZ=z0+dz*(active+.5);
+      let step=1,phase='5/5 밀폐가열',detail='FULL_LOAD_ACK · 모든 문 닫힘 · IR 생산출력',releaseX=g.rack,releaseZ=deckZ,refillX=g.inOutside,refillZ=1.42;
+      if(q>=.18){step=2;phase=`C${active+1} 방출 준비`;detail='EVA 200°C · 탠덤 READY · IDX 잠금 해제'}
+      if(q>=.26){step=3;phase='배출 내문 이송';detail='AL-102 내문 개방 · EX-101 격리실 진입';releaseX=lerp(g.rack,g.outVest,ease(clamp((q-.26)/.12)))}
+      if(q>=.38){step=3;phase='배출 격리·높이 정렬';detail='내문 닫힘 · 씰 확인 · 공정 기준면 정렬';releaseX=g.outVest;releaseZ=lerp(deckZ,1.42,ease(clamp((q-.38)/.06)))}
+      if(q>=.44){step=3;phase='배출 외문 통과';detail='AL-102 외문만 개방 · 탠덤 버퍼로 반출';releaseX=lerp(g.outVest,g.outDone,ease(clamp((q-.44)/.10)));releaseZ=1.42}
+      if(q>=.54){step=3;phase='배출 완료·재밀폐';detail='외문 닫힘 · 4/5 점유 · 입력 허가 대기'}
+      if(q>=.60){step=4;phase='새 패널·캐리지 투입';detail='AL-101 외문만 개방 · 입력 격리실 진입';refillX=lerp(g.inOutside,g.inVest,ease(clamp((q-.60)/.10)))}
+      if(q>=.70){step=4;phase='입력 격리·씰 확인';detail='외문 닫힘 · 차압/문잠금 확인';refillX=g.inVest}
+      if(q>=.76){step=5;phase=`LI-101 · C${active+1} 높이 선택`;detail='격리 상태에서 승강 · 위치핀 정합';refillX=g.inVest;refillZ=lerp(1.42,deckZ,ease(clamp((q-.76)/.08)))}
+      if(q>=.84){step=6;phase=`TS-101 · C${active+1} 재적재`;detail='내문 개방 · 캐리지 삽입 · 포크만 복귀';refillX=lerp(g.inVest,g.rack,ease(clamp((q-.84)/.10)));refillZ=deckZ}
+      if(q>=.94){step=6;phase=`C${active+1} 잠금·5/5 복귀`;detail=`내문 닫힘 · FULL_LOAD_ACK · 다음 C${next+1} 승온`;refillX=g.rack;refillZ=deckZ}
+      const doors={
+        inOuter:cycleWindow(q,.59,.705),inInner:cycleWindow(q,.825,.945),
+        outInner:cycleWindow(q,.205,.385),outOuter:cycleWindow(q,.425,.545)
+      };
+      const doorsOpen=Math.max(doors.inOuter,doors.inInner,doors.outInner,doors.outOuter)>.02;
+      const activeInRack=q<.26||q>=.94,releaseVisible=q>=.18&&q<.54,refillVisible=q>=.58&&q<.94;
+      const occupied=activeInRack?5:4,fullLoadAck=occupied===5&&!doorsOpen&&(q<.18||q>=.94);
+      return{q,active,next,g,z0,dz,deckZ,step,phase,detail,releaseX,releaseZ,refillX,refillZ,doors,doorsOpen,activeInRack,releaseVisible,refillVisible,occupied,fullLoadAck}
+    }
+    function heatCarriageAt(x,z,opt={}){
+      const hot=!!opt.hot,alpha=opt.alpha??1,id=opt.id||'C';
+      box(V(x,0,z-.08),V(5.02,2.68,.12),C.steel2,{alpha});box(V(x,0,z+.005),V(4.82,2.5,.07),C.cab,{alpha});
+      for(const y of [-1.23,1.23]){box(V(x,y,z-.17),V(4.92,.1,.18),C.dark,{alpha});for(const xx of [-2.12,2.12])cylinder(V(x+xx,y,z-.18),.09,.13,'y',C.rail,9,{alpha})}
+      box(V(x,0,z+.085),V(4.72,2.34,.055),C.glass,{alpha:alpha*.78});box(V(x,0,z+.145),V(4.72,2.34,.04),C.sheet,{alpha});
+      for(let xx=x-2.02;xx<x+2.1;xx+=.47)line([V(xx,-1.12,z+.151),V(xx,1.12,z+.151)],C.cell2,.55,null,alpha*.78);
+      for(const y of [-1.16,1.16])box(V(x+2.32,y,z-.02),V(.16,.16,.18),hot?C.teal:C.yellow,{alpha});
+      if(carriageFocus){const c=hot?C.teal:C.steel;line([V(x-1.1,-1.38,z-.25),V(x+1.1,-1.38,z-.25)],c,2.2,[7,3],alpha);line([V(x+.92,-1.38,z-.33),V(x+1.1,-1.38,z-.25),V(x+.92,-1.38,z-.17)],c,2.2,null,alpha)}
+    }
+    function stageState(i,p){
+      let cx=3,panelX=3,vac=i>=1&&i<=5,backsheetOpen=0,backsheetPeel=0,backsheetRemoved=i>=5,separation=0,phase='panel',cellOut=-1,rollEject=0,glassOut=-1,glassZ=1.48,glassY=0;
+      if(i===0){panelX=lerp(-1.2,3,ease(p));cx=panelX;vac=false}else if(i===1){cx=panelX=3}else if(i===2){cx=panelX=9.2;phase='preheat-queue'}else if(i===3){cx=panelX=lerp(15.1,15.7,ease(p));backsheetOpen=p;backsheetRemoved=false}else if(i===4){cx=panelX=15.7;backsheetOpen=1;backsheetRemoved=false}else if(i===5){cx=panelX=lerp(15.7,20.5,ease(p));backsheetOpen=1;backsheetPeel=clamp(p/.875);backsheetRemoved=p>=.875;separation=p}else if(i===6){const support=clamp((p-.12)/.3),glassMove=clamp((p-.12)/.68),returnMove=clamp((p-.48)/.52);cx=lerp(20.5,15.1,ease(returnMove));panelX=lerp(20.5,27.4,ease(glassMove));backsheetRemoved=true;phase='output-glass';vac=support<1;cellOut=clamp((p-.18)/.72);glassZ=1.52;glassOut=glassMove}else if(i===7||i===8||i===9){cx=15.1;panelX=27.4;backsheetRemoved=true;phase='output-glass';vac=false;glassZ=1.52;rollEject=i===7?p:1;cellOut=i>=8?p:1;glassOut=1}else if(i===10){cx=15.1;panelX=27.4;glassZ=1.52;glassY=lerp(0,2.55,ease(p));phase='output-glass';vac=false;glassOut=1}else{cx=15.1;panelX=27.4;glassZ=1.52;glassY=2.55;phase='output-glass';vac=false;glassOut=1}
+      return{cx,panelX,vac,backsheetOpen,backsheetPeel,backsheetRemoved,separation,phase,cellOut,rollEject,glassOut,glassZ,glassY};
+    }
+    function preheatActivity(p,panelX){
+      const st=carriageCycleState(p),cx=st.g.rack,{z0,dz}=st;
+      for(let deck=0;deck<5;deck++){
+        const z=z0+dz*(deck+.5),order=(deck-st.active+5)%5,baseTarget=200-order*10,nextRamp=deck===st.next&&p>.54?lerp(190,200,ease(clamp((p-.54)/.4))):baseTarget;
+        if(deck!==st.active||st.activeInRack){const fresh=deck===st.active&&p>=.94,temp=fresh?Math.round(25+8*clamp((p-.94)/.06)):Math.round(nextRamp);heatCarriageAt(cx,z,{hot:temp>=198,id:`C${deck+1}`});label3(`C${deck+1} · ${temp}°C`,V(cx,-1.72,z+.28),temp>=198?C.teal:C.heat)}
+        else label3(`C${deck+1} · 방출/재투입 중`,V(cx,-1.72,z+.28),C.yellow)
+      }
+      if(st.releaseVisible)heatCarriageAt(st.releaseX,st.releaseZ,{hot:true,id:`C${st.active+1}`});
+      for(let bank=0;bank<6;bank++){
+        const z=z0+dz*bank,standby=.08,priority=st.doorsOpen?standby:.68+.18*Math.sin(Math.PI*clamp((p-.02)/.96));
+        for(let lamp=0;lamp<10;lamp++){const x=cx-2.42+lamp*4.84/9;line([V(x,-1.22,z),V(x,1.22,z)],C.heat,1.35,[3,3],Math.max(standby,priority))}
+      }
+      label3(`${st.phase} · ${st.occupied}/5`,V(cx,-2.05,4.35),st.doorsOpen?C.yellow:C.teal)
+    }
+    function carriageLoaderActivity(p){
+      const st=carriageCycleState(p),liftX=st.g.inVest,insertP=clamp((p-.84)/.10),returnP=clamp((p-.94)/.06),forkReach=(st.g.rack-liftX)*ease(insertP)*(1-ease(returnP));
+      box(V(liftX,0,st.refillZ-.2),V(5.04,2.68,.14),C.steel2);for(const y of [-1.22,1.22])line([V(liftX,y,st.refillZ-.08),V(liftX+forkReach,y,st.refillZ-.08)],C.rail,2,[5,3]);
+      if(st.refillVisible)heatCarriageAt(st.refillX,st.refillZ,{hot:false,id:`C${st.active+1}`});
+      if(p>=.38&&p<.54){box(V(st.g.outVest,0,st.releaseZ-.22),V(5.08,2.7,.14),C.steel2);for(const y of [-1.23,1.23])box(V(st.g.outVest,y,st.releaseZ-.36),V(5.18,.1,.3),C.dark)}
+      if(carriageFocus){
+        line([V(st.g.inOutside-1.1,-1.62,1.02),V(st.g.inVest-1,-1.62,1.02)],C.teal,3,[8,4],.9);line([V(st.g.inVest-.78,-1.62,.94),V(st.g.inVest-1,-1.62,1.02),V(st.g.inVest-.78,-1.62,1.1)],C.teal,2.5);
+        line([V(st.g.outVest+1,-1.62,1.02),V(st.g.outDone+1.1,-1.62,1.02)],C.yellow,3,[8,4],.9);line([V(st.g.outDone+.88,-1.62,.94),V(st.g.outDone+1.1,-1.62,1.02),V(st.g.outDone+.88,-1.62,1.1)],C.yellow,2.5);
+      }
+    }
+    function airlockActivity(i,p){
+      const st=i===2?carriageCycleState(p):null,g=st?st.g:carriageGeometry(),door=(x,open,color)=>{const q=typeof open==='number'?open:Number(open);box(V(x,0,lerp(2.58,6.25,q)),V(.13,3.12,3.68),color,{alpha:.94})};
+      const d=st?st.doors:{inOuter:0,inInner:0,outInner:0,outOuter:0};door(g.inOuter,d.inOuter,C.steel2);door(g.inInner,d.inInner,C.cab);door(g.outInner,d.outInner,C.cab);door(g.outOuter,d.outOuter,C.steel2);
+      const safe=Math.min(1-Math.min(d.inOuter,d.inInner),1-Math.min(d.outOuter,d.outInner)),sealed=st?!st.doorsOpen:true;
+      for(const x of [g.inOuter,g.inInner,g.outInner,g.outOuter])for(const y of [-1.42,1.42])box(V(x,y,2.58),V(.16,.12,3.72),C.steel2);
+      box(V(g.inInner-.22,-1.58,4.35),V(.26,.16,.18),safe>.99?C.teal:C.red);box(V(g.outInner+.22,-1.58,4.35),V(.26,.16,.18),safe>.99?C.teal:C.red);
+      label3(sealed?'가열실 SEALED · −30 Pa':d.inOuter||d.inInner?'AL-101 투입 에어록':'AL-102 배출 에어록',V(9.2,1.95,4.38),sealed?C.teal:C.yellow)
+    }
+    function powerMeterActivity(i,p){
+      const lamp=Math.max(1,Number($('lampPower')?.value)||2.5),eta=clamp((Number($('heatEfficiency')?.value)||65)/100,.35,.8),L=Math.max(1600,Number($('panelLength')?.value)||2400),W=Math.max(800,Number($('panelWidth')?.value)||1200),speed=Number($('knifeSpeed')?.value)||55,rapid=Number($('rapidSpeed')?.value)||200,fixed=Number($('handlingTime')?.value)||3,rated=60*lamp,q=L*W/1e6*8.7358962*175,dwell=Math.max(5*q/(rated*eta),113.15),cycle=(300+L)/speed+300/rapid+fixed,lineRate=3600/Math.max(dwell/5,cycle),average=q/(eta*3600)*lineRate;
+      let duty=0,kwh=0;
+      if(i===2){
+        const st=carriageCycleState(p);duty=st.doorsOpen?.10:(st.occupied===5?.82:.52);kwh=rated*dwell/3600*clamp(p)
+      }else if(i>2)duty=average/rated;
+      const kw=rated*clamp(duty,0,1),readout=`${kw.toFixed(1)} kW · ${kwh.toFixed(2)} kWh`;
+      $('powerValue').textContent=readout;label3(`PM-101 · ${readout}`,V(9.2,-2.48,3.2),kw>rated*.8?C.yellow:C.teal)
+    }
+    function cellBufferActivity(p){const u=lerp(.34,.82,ease(p));cellModuleAt(u);const q=cellPathPoint(u);label3('셀/EVA → CVC-301',V(q.x,q.y-.95,q.z+.45),C.cell2)}
+    function shredderActivity(p){
+      const u=lerp(.82,1,ease(p));cellModuleAt(u);const q=cellPathPoint(u);for(const xx of [36.15,36.85])for(let k=0;k<6;k++){const a=p*Math.PI*14+k*Math.PI/3;line([V(xx,-2.35,.92),V(xx+.22*Math.cos(a),-2.35,.92+.22*Math.sin(a))],C.red,1.4)}label3('CVC-301 → SH-101',V(q.x,-3.25,1.75),C.yellow)
+    }
+    function glassStorageCarriageActivity(p){
+      const y=lerp(0,2.55,ease(p));
+      box(V(27.4,y,1.1),V(5.25,2.72,.24),C.steel2);box(V(27.4,y,1.32),V(4.95,2.52,.16),C.cab);for(let x=25.3;x<29.7;x+=.48)cylinder(V(x,y,1.42),.1,2.38,'y',C.rail,9);
+      for(const x of [25.25,29.55])for(const yy of [-1.12,1.12])cylinder(V(x,y+yy,.92),.16,.18,'y',C.black,10);
+    }
+    function qualityRejectActivity(p){
+      const scan=lerp(20.7,24,ease(clamp(p/.45)));line([V(scan,-1.35,1.82),V(scan,1.35,1.82)],C.teal,2.3,null,.9);
+      const q=ease(clamp((p-.45)/.55)),x=lerp(22.35,23.8,q),y=lerp(0,4.45,q),z=lerp(1.48,.92,q);
+      box(V(x,y,z),V(4.8,2.4,.045),C.glass,{alpha:.62});
+      for(let k=-2;k<=2;k++)line([V(x-2.1+k*.8,y-1.05,z+.04),V(x+1.8-k*.45,y+1.05,z+.04)],C.red,1.15,[3,2],.92);
+      if(q>.72)box(V(23.8,4.45,1.58),V(5.05,2.2,.08),C.red,{alpha:.28});
+    }
+    function carrierFleetActivity(p){
+      const q=ease(p),x=lerp(12.2,3.1,q),y=-4.75+4.75*Math.sin(q*Math.PI);emptyCarrierAt(x,y,.65,C.steel2);
+      emptyCarrierAt(18.4,4.75,.62,C.dark);
+      for(let n=0;n<5;n++){const z=1.1+n*.62;box(V(9.2,0,z),V(4.95,2.55,.08),n===0?C.teal:C.steel2,{alpha:.34})}
+    }
+    function safetyUtilityActivity(p){
+      const pulse=.25+.75*Math.abs(Math.sin(p*Math.PI*8));
+      for(const x of [7.65,8.65,9.65,10.65])box(V(x,-3.88,3.15),V(.42,.06,.18),p>.68?C.teal:C.yellow,{alpha:pulse});
+      for(const x of [40.45,41.15])for(let k=0;k<6;k++){const a=p*Math.PI*14+k*Math.PI/3;line([V(x,0,3.15),V(x+.3*Math.cos(a),-.05,3.15+.3*Math.sin(a))],C.teal,1.5)}
+      if(p>.62)for(let x=6.8;x<12;x+=1.15)for(const y of [-.12,.12])line([V(x,-1.85,4.02),V(x+y,-1.85,3.62)],C.glass,1.4,[2,2],.85);
+    }
+    function sixtyPanelTestActivity(p){
+      const panelNo=Math.min(60,Math.floor(p*60)+1),local=(p*60)%1,x=lerp(12.5,21.8,ease(local));
+      box(V(x,0,1.52),V(4.8,2.4,.055),C.glass,{alpha:.72});box(V(x,0,1.59),V(4.8,2.4,.04),C.sheet);panelCellPattern(x,1.595,4.7,.55);
+      label3(`P${panelNo}/60 · ${(p*100).toFixed(0)}%`,V(18.1,-2.05,4.65),C.teal);label3('55mm/s 생산보증 · 정상상태 53분35초 → 영상 8초',V(18.1,-2.05,4.28),C.yellow)
+    }
+    function dynamicMachine(i,p){
+      const s=stageState(i,p),o=explodeOffsets(),carrierOffset=i<=1?o.input:i===2?o.heat:o.tandem,panelOffset=i<=1?o.input:i===2?o.heat:i>=6?o.glass:o.tandem;
+      if(i!==2&&i!==12)withPartOffset(carrierOffset,()=>carrier(s.cx,s.vac));
+      if(i!==2)withPartOffset(panelOffset,()=>{panelLayers(s.panelX,s);if(s.phase!=='output-glass'&&s.separation<=.001)panelCellPattern(s.panelX,1.586,4.8,.7)});
+      if(i===2)withPartOffset(o.heat,()=>{preheatActivity(p,s.panelX);carriageLoaderActivity(p)});
+      if(!carriageFocus){
+        const hkbHot=i>=3&&i<=5,hksHot=i>=4&&i<=5,eng=tandemEngagement(i,p);
+        withPartOffset(o.tandem,()=>{knifeBar(HKB_X,1.69,hkbHot,'고정 HKB · 230°C',eng.hkb,'HKB');knifeBar(HKS_X,1.63,hksHot,'고정 HKS · 250~270°C',eng.hks,'HKS');if(tandemFocus&&i>=3&&i<=6){const d=i===6?-1:1,x0=s.cx-d*1.2,x1=s.cx+d*1.2;line([V(x0,-1.66,.9),V(x1,-1.66,.9)],C.teal,3,[7,3],.95);line([V(x1-d*.2,-1.66,.82),V(x1,-1.66,.9),V(x1-d*.2,-1.66,.98)],C.teal,2.3)}if(i===3)label3('캐리어 200 → 55mm/s · 선행 300mm',V(s.cx,-1.72,2.28),C.yellow);if(i===5){flexSurface(HKB_X,14.7,1.64,3.04,C.sheet,.96);label3(`캐리어 → 55mm/s · 칼날 X축 고정 · 간격 ${(TANDEM_GAP*1000).toFixed(0)}±2mm`,V(s.cx,-1.78,2.28),C.teal)}});
+        if(i===5)withPartOffset(o.backsheet,()=>windingRoll(clamp(p/.875),0));
+        if(i===4)withPartOffset(o.backsheet,()=>windingRoll(.08,0));else if(i===6){withPartOffset(o.backsheet,()=>windingRoll(1,0));withPartOffset(o.cell,()=>outputLaminate(p))}else if(i===7){withPartOffset(o.backsheet,()=>windingRoll(1,p));withPartOffset(o.cell,()=>outputLaminate(1))}
+        if(i===8)withPartOffset(o.cell,()=>cellBufferActivity(p));if(i===9)withPartOffset(o.cell,()=>shredderActivity(p));
+        if(i>=6&&i<=10)withPartOffset(o.glass,()=>glassStorageCarriageActivity(i===10?p:0));
+        if(i===11)withPartOffset(o.glass,()=>qualityRejectActivity(p));
+        if(i===12)withPartOffset(o.maintenance,()=>carrierFleetActivity(p));
+        if(i===13)withPartOffset(o.utility,()=>safetyUtilityActivity(p));
+        if(i===14)withPartOffset(o.tandem,()=>sixtyPanelTestActivity(p));
+      }
+      withPartOffset(o.heat,()=>airlockActivity(i,p));
+      withPartOffset(o.heat,()=>powerMeterActivity(i,p))
+    }
+
+    function render(){
+      if(!ctx)return;
+      primitives=[];labels=[];shadowCasters=[];makeBasis();
+      /* Build the scene first: the shadow pass needs every footprint before it draws,
+         and the floor has to be laid down before the geometry that stands on it. */
+      laneShift=0;laneCode='S';
+      if(carriageFocus)carriageFocusBase();else if(tandemFocus)tandemFocusBase();else baseMachine();
+      dynamicMachine(index,local);
+      drawEnvironment();
+      primitives.sort((a,b)=>b.depth-a.depth);primitives.forEach(drawPrimitive);
+      drawLabels();drawVignette();drawTitleBlock();
+      updateTandemHud();updateCarriageHud();$('materialFlow').hidden=carriageFocus;
+    }
+    /* Drawing title block, bottom-left, clear of the HUD stack. */
+    function drawTitleBlock(){
+      if(width<900||height<420)return;
+      const x=16,y=height-214,w=246,h=64;
+      ctx.save();
+      ctx.fillStyle='rgba(250,250,248,.86)';ctx.strokeStyle='rgba(11,98,104,.28)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.roundRect(x,y,w,h,8);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#07686e';ctx.fillRect(x,y,4,h);
+      ctx.textAlign='left';ctx.textBaseline='alphabetic';
+      ctx.fillStyle='#07686e';ctx.font='700 10px ui-monospace,SFMono-Regular,Consolas,monospace';
+      ctx.fillText('DG-HK60 / M-000',x+14,y+20);
+      ctx.fillStyle='#26353a';ctx.font='600 12px system-ui,sans-serif';
+      ctx.fillText('전체장비 배치 · 개념 제작도',x+14,y+38);
+      ctx.fillStyle='#647278';ctx.font='10px system-ui,sans-serif';
+      ctx.fillText('REV.20 · 축척 없음 · 치수 미확정',x+14,y+54);
+      ctx.restore();
+      drawScaleBar(x+w+16,y+h-14);
+    }
+    /* One-metre reference measured through the live projection at the machine centre. */
+    function drawScaleBar(x,y){
+      const a=project(V(camera.target.x,0,0)),b=project(V(camera.target.x+5,0,0));
+      if(!a||!b)return;
+      const px=Math.abs(b.x-a.x);if(!(px>26)||px>460)return;
+      ctx.save();ctx.strokeStyle='rgba(38,53,58,.72)';ctx.lineWidth=1.4;ctx.setLineDash([]);
+      ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+px,y);
+      ctx.moveTo(x,y-5);ctx.lineTo(x,y+5);ctx.moveTo(x+px,y-5);ctx.lineTo(x+px,y+5);
+      ctx.moveTo(x+px/2,y-3);ctx.lineTo(x+px/2,y+3);ctx.stroke();
+      ctx.fillStyle='rgba(38,53,58,.82)';ctx.font='600 10px system-ui,sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText('5 m',x+px/2,y-7);
+      ctx.restore();
+    }
+    function resize(){const r=canvas.getBoundingClientRect();dpr=Math.min(window.devicePixelRatio||1,1.5);width=Math.max(320,r.width);height=Math.max(360,r.height);canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);render()}
+
+    let index=0,local=0,playing=false,last=0,raf=0,showLabels=false,sectionView=false,explodeView=false,explodeDistance=1,panMode=false,tandemFocus=false,carriageFocus=false,carriageCycleNo=0;
+    const total=steps.reduce((s,v)=>s+v.duration,0);
+    function updateTandemHud(){
+      const hud=$('tandemHud');hud.hidden=!tandemFocus;if(!tandemFocus)return;
+      const eng=tandemEngagement(index,local),phase=index<=3?0:index===4?(local<.42?1:2):index===5?2:3;
+      for(let n=1;n<=4;n++)$(`tandemStep${n}`).classList.toggle('active',n===phase+1);
+      $('hkbLive').textContent=eng.hkb>.97?'가압 유지 · 230°C':eng.hkb>.02?`Z축 진입 ${Math.round(eng.hkb*100)}%`:'안전 복귀 · 230°C';
+      $('hksLive').textContent=eng.hks>.97?'가압 유지 · 260°C':eng.hks>.02?`Z축 진입 ${Math.round(eng.hks*100)}%`:'안전 복귀 · 260°C';
+      $('carrierLive').textContent=index===3?'200→55mm/s S-curve':index===4?'55mm/s · 클램프 대기':index===5?'55mm/s 정속 통과':'200mm/s 안전 이탈';
+      $('peelLive').textContent=index===3?`백시트 선단 ${Math.round(300*local)}mm`:index===4?(local<.42?'WR-101 장력 형성':`HKS 계면 진입 ${Math.round(local*100)}%`):index===5?`전장 동시박리 ${Math.round(local*100)}%`:'유리·셀·백시트 분기';
+    }
+    function updateCarriageHud(){
+      const hud=$('carriageHud');hud.hidden=!carriageFocus;if(!carriageFocus)return;
+      const st=carriageCycleState(local);for(let n=1;n<=6;n++)$(`carriageStep${n}`).classList.toggle('active',n===st.step);
+      $('carriageDeckLive').textContent=local>=.94?`다음 C${st.next+1} · 승온 중`:`C${st.active+1} · ${local<.54?'200°C':'교대 중'}`;
+      $('carriageLoadLive').textContent=`${st.occupied}/5 · ${st.fullLoadAck?'FULL_LOAD_ACK':st.occupied===5?'LOCKED':'CYCLE ACTIVE'}`;
+      const doorText=(a,b)=>a>.02?`외문 ${Math.round(a*100)}% · 내문 닫힘`:b>.02?`외문 닫힘 · 내문 ${Math.round(b*100)}%`:'외문·내문 닫힘';
+      $('carriageInLive').textContent=doorText(st.doors.inOuter,st.doors.inInner);$('carriageOutLive').textContent=doorText(st.doors.outOuter,st.doors.outInner);
+      $('stageTitle').textContent=`S2 · ${st.phase}`;$('stageDesc').textContent=st.detail;
+      $('vacuumValue').textContent=`C${st.active+1} · ${st.occupied===5?'-65 kPa / 잠금':'이송 지지 유지'}`;$('tempValue').textContent=st.doorsOpen?'문 개방 · IR 대기출력 ≤10%':local>=.94?`다음 C${st.next+1} · 200°C 승온`:'EVA 계면 200°C · 밀폐가열';$('outputValue').textContent=st.fullLoadAck?'REFILL_ACK · 다음 방출 준비':st.phase;
+    }
+    function updateUI(){
+      const s=steps[index];$('stageTitle').textContent=`${s.id} · ${s.name}`;$('stageDesc').textContent=s.desc;$('vacuumValue').textContent=s.vac;$('tempValue').textContent=s.temp;$('outputValue').textContent=s.out;$('plcValue').textContent=index===13?'F-PLC SELF TEST · SAFE':'PLC RUN · DC24 A/B · RING OK';
+      const flowStates=[
+        ['권취 대기 → 전용 보관함','분리 대기 → Shredder','분리 대기 → 저장 캐리지'],
+        ['권취 대기 → 전용 보관함','분리 대기 → Shredder','진공 캐리어 지지 중'],
+        ['권취 대기 → 전용 보관함','가열 중 → Shredder','가열 중 → 저장 캐리지'],
+        ['선단 개방 중','HKS 분리 대기','진공 캐리어 지지 중'],
+        ['클램프·장력 형성','HKS 진입 대기','진공 캐리어 지지 중'],
+        ['전장 권취 중','유리에서 분리 중','진공 캐리어 이동 중'],
+        ['권취 완료·보관함 대기','CVC-301 인계 컨베이어','동일높이 GC-301 즉시 인계'],
+        ['BS-301 전용 보관함 이동','CVC-301 직접 이송 대기','GC-301 수평 적재 완료'],
+        ['BS-301 격리 완료','CVC-301에서 이동 중','GC-301 수평 적재 완료'],
+        ['BS-301 보관 완료','CVC-301 → SH-101 연속 투입','GC-301 수평 적재 완료'],
+        ['BS-301 보관 완료','SH-101 후속공정','GC-301 동일높이 저장 도크'],
+        ['BS-301 보관 완료','SH-101 후속공정','QI-301 검사·RJ-301 분기'],
+        ['WR 예비축 준비','CVC-301 CLEAR','7＋1 가열캐리지 순환'],
+        ['배기·화재안전 확인','Shredder 격리게이트 확인','GC 냉각·도킹 안전확인'],
+        ['다음 권취롤 준비','Shredder 연속운전','빈 저장 캐리지 인덱싱']
+      ][index];
+      $('flowBacksheetText').textContent=flowStates[0];$('flowCellText').textContent=flowStates[1];$('flowGlassText').textContent=flowStates[2];
+      $('materialFlow').classList.toggle('active',index>=5&&index<=13);
+      $('flowBacksheet').classList.toggle('moving',index===5||index===7);
+      $('flowCell').classList.toggle('moving',index===5||index===6||index===8||index===9);
+      $('flowGlass').classList.toggle('moving',index===6||index===10||index===11);
+      const done=steps.slice(0,index).reduce((sum,v)=>sum+v.duration,0)+s.duration*local,pct=100*done/total;$('progressBar').style.width=`${pct}%`;$('progressBar').parentElement.setAttribute('aria-valuenow',String(Math.round(pct)));
+      document.querySelectorAll('.step').forEach((b,n)=>b.classList.toggle('active',n===index));
+    }
+    function updateAutoCamera(dt){if(!camera.auto)return;const targets=[presets[0],presets[0],presets[1],presets[1],presets[2],presets[2],presets[0],presets[2],presets[2],presets[1],presets[1],presets[2],presets[1],presets[0],presets[0]],focusX=[3,3,9.2,16.5,17.8,18.5,22,22,29,33,27.4,23.5,13,20,19],t=targets[index],k=1-Math.exp(-dt*.0022);camera.az=lerp(camera.az,t.az,k);camera.el=lerp(camera.el,t.el,k);camera.radius=lerp(camera.radius,t.r,k);camera.target.x=lerp(camera.target.x,focusX[index],k);camera.target.y=lerp(camera.target.y,0,k);camera.target.z=lerp(camera.target.z,1.45,k)}
+    function canAdvanceStage(i,p){return i!==2||carriageCycleState(Math.min(1,p)).fullLoadAck}
+    function tick(now){
+      if(!playing)return;if(!last)last=now;const dt=Math.min(60,now-last);last=now;local+=dt/steps[index].duration;
+      if(local>=1){
+        if(carriageFocus&&index===2){if(canAdvanceStage(2,1)){carriageCycleNo=(carriageCycleNo+1)%5;local=0;updateUI()}else{local=.999;$('stageDesc').textContent='HOLD · FULL_LOAD_ACK 또는 모든 문 닫힘 신호를 기다립니다.'}}
+        else if(tandemFocus&&index>=6){index=3;local=0;updateUI()}
+        else if(!canAdvanceStage(index,1)){local=.999;$('stageDesc').textContent='PLC HOLD · 필수 ACK가 성립하지 않아 다음 단계로 진행하지 않습니다.'}
+        else if(index===steps.length-1){local=1;playing=false;$('playButton').textContent='다시 재생';updateUI();render();return}
+        else{index++;local=0;updateUI()}
+      }
+      updateAutoCamera(dt);render();raf=requestAnimationFrame(tick)
+    }
+    function play(){
+      if(carriageFocus&&index!==2){index=2;local=0;updateUI()}else if(tandemFocus&&(index<3||index>6)){index=3;local=0;updateUI()}else if(index===steps.length-1&&local>=1){index=0;local=0}
+      if(playing)return;playing=true;last=0;$('playButton').textContent=carriageFocus?'캐리지 5단 순환 재생 중':tandemFocus?'탠덤 반복 재생 중':'재생 중';raf=requestAnimationFrame(tick)
+    }
+    function pause(){playing=false;cancelAnimationFrame(raf);$('playButton').textContent='재생'}
+    function deactivateTandemFocus(){tandemFocus=false;$('tandemHud').hidden=true;$('tandemFocusButton').setAttribute('aria-pressed','false');$('tandemFocusButton').textContent='탠덤 작동'}
+    function deactivateCarriageFocus(){carriageFocus=false;$('carriageHud').hidden=true;$('carriageFocusButton').setAttribute('aria-pressed','false');$('carriageFocusButton').textContent='캐리지 사이클'}
+    function deactivateFocusModes(){deactivateTandemFocus();deactivateCarriageFocus()}
+    function enterTandemFocus(){pause();deactivateCarriageFocus();tandemFocus=true;sectionView=true;explodeView=false;index=3;local=0;panMode=false;$('sectionButton').setAttribute('aria-pressed','true');$('sectionButton').textContent='컷어웨이 표시 중';$('explodeButton').setAttribute('aria-pressed','false');$('explodeButton').textContent='분해 보기';$('panButton').setAttribute('aria-pressed','false');$('tandemFocusButton').setAttribute('aria-pressed','true');$('tandemFocusButton').textContent='확대 종료';Object.assign(camera,{target:{x:17.8,y:0,z:1.9},az:-1.82,el:.22,radius:8.4,auto:false});$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라';updateUI();render();play()}
+    function exitTandemFocus(){pause();deactivateTandemFocus();sectionView=false;$('sectionButton').setAttribute('aria-pressed','false');$('sectionButton').textContent='컷어웨이';Object.assign(camera,{target:{x:19,y:0,z:1.45},az:presets[0].az,el:presets[0].el,radius:presets[0].r,auto:false});updateUI();render()}
+    function enterCarriageFocus(){pause();deactivateTandemFocus();carriageFocus=true;carriageCycleNo=0;sectionView=true;explodeView=false;index=2;local=0;panMode=false;$('sectionButton').setAttribute('aria-pressed','true');$('sectionButton').textContent='컷어웨이 표시 중';$('explodeButton').setAttribute('aria-pressed','false');$('explodeButton').textContent='분해 보기';$('panButton').setAttribute('aria-pressed','false');$('carriageFocusButton').setAttribute('aria-pressed','true');$('carriageFocusButton').textContent='확대 종료';Object.assign(camera,{target:{x:9.2,y:0,z:2.25},az:-1.83,el:.3,radius:25.5,auto:false,preset:0});$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라';updateUI();render();play()}
+    function exitCarriageFocus(){pause();deactivateCarriageFocus();sectionView=false;$('sectionButton').setAttribute('aria-pressed','false');$('sectionButton').textContent='컷어웨이';Object.assign(camera,{target:{x:19,y:0,z:1.45},az:presets[0].az,el:presets[0].el,radius:presets[0].r,auto:false});updateUI();render()}
+    function reset(){pause();deactivateFocusModes();carriageCycleNo=0;index=0;local=0;Object.assign(camera,{target:{x:19,y:0,z:1.45},az:presets[0].az,el:presets[0].el,radius:presets[0].r,auto:true});panMode=false;sectionView=false;explodeView=false;explodeDistance=1;$('explodeDistance').value='100';$('explodeDistanceValue').textContent='100%';$('explodeDistance').setAttribute('aria-valuetext','100퍼센트');$('sectionButton').setAttribute('aria-pressed','false');$('sectionButton').textContent='컷어웨이';$('explodeButton').setAttribute('aria-pressed','false');$('explodeButton').textContent='분해 보기';$('panButton').setAttribute('aria-pressed','false');$('cameraButton').setAttribute('aria-pressed','true');$('cameraButton').textContent='자동 카메라';showLabels=false;$('labelButton').setAttribute('aria-pressed','false');$('labelButton').textContent='부품 라벨';updateUI();render()}
+    function next(){
+      pause();if(carriageFocus){const marks=[.09,.22,.31,.41,.49,.57,.65,.73,.80,.89,.97,.999],mark=marks.find(v=>v>local+.005);if(mark==null){carriageCycleNo=(carriageCycleNo+1)%5;local=0}else local=mark;updateUI();render();return}
+      index=tandemFocus?(index>=6?3:index+1):Math.min(steps.length-1,index+1);local=0;updateUI();render()
+    }
+    const timeline=$('timeline');steps.forEach((s,i)=>{const b=document.createElement('button');b.type='button';b.className='step';b.innerHTML=`<b>${s.id}</b><span>${s.name}</span>`;b.addEventListener('click',()=>{pause();deactivateFocusModes();index=i;local=0;updateUI();render()});timeline.appendChild(b)});
+    $('playButton').addEventListener('click',play);$('pauseButton').addEventListener('click',pause);$('nextButton').addEventListener('click',next);$('resetButton').addEventListener('click',reset);
+    $('carriageFocusButton').addEventListener('click',()=>{if(carriageFocus)exitCarriageFocus();else enterCarriageFocus()});
+    $('tandemFocusButton').addEventListener('click',()=>{if(tandemFocus)exitTandemFocus();else enterTandemFocus()});
+    $('sectionButton').addEventListener('click',e=>{sectionView=!sectionView;e.currentTarget.setAttribute('aria-pressed',String(sectionView));e.currentTarget.textContent=sectionView?'컷어웨이 표시 중':'컷어웨이';render()});
+    $('explodeButton').addEventListener('click',e=>{deactivateFocusModes();explodeView=!explodeView;if(explodeView&&explodeDistance<=0){explodeDistance=1;$('explodeDistance').value='100';$('explodeDistanceValue').textContent='100%'}camera.auto=false;e.currentTarget.setAttribute('aria-pressed',String(explodeView));e.currentTarget.textContent=explodeView?'분해 표시 중':'분해 보기';$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라';if(explodeView)camera.radius=Math.max(camera.radius,58+explodeDistance*7);render()});
+    $('explodeDistance').addEventListener('input',e=>{deactivateFocusModes();const percent=clamp(Number(e.target.value)||0,0,200);explodeDistance=percent/100;explodeView=percent>0;e.target.setAttribute('aria-valuetext',`${percent}퍼센트`);$('explodeDistanceValue').textContent=`${percent}%`;$('explodeButton').setAttribute('aria-pressed',String(explodeView));$('explodeButton').textContent=explodeView?'분해 표시 중':'분해 보기';camera.auto=false;$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라';if(explodeView)camera.radius=Math.max(camera.radius,58+explodeDistance*7);render()});
+    $('labelButton').addEventListener('click',e=>{showLabels=!showLabels;e.currentTarget.setAttribute('aria-pressed',String(showLabels));e.currentTarget.textContent=showLabels?'라벨 표시 중':'부품 라벨';render()});
+    $('cameraButton').addEventListener('click',e=>{if(tandemFocus||carriageFocus)deactivateFocusModes();camera.auto=!camera.auto;e.currentTarget.setAttribute('aria-pressed',String(camera.auto));e.currentTarget.textContent=camera.auto?'자동 카메라':'수동 카메라';render()});
+    $('panButton').addEventListener('click',e=>{panMode=!panMode;camera.auto=false;e.currentTarget.setAttribute('aria-pressed',String(panMode));e.currentTarget.textContent=panMode?'이동 모드 중':'화면 이동';$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라'});
+    $('fitButton').addEventListener('click',()=>{camera.auto=false;if(carriageFocus)Object.assign(camera,{target:{x:9.2,y:0,z:2.25},az:-1.83,el:.3,radius:25.5});else if(tandemFocus)Object.assign(camera,{target:{x:17.8,y:0,z:1.9},az:-1.82,el:.22,radius:8.4});else Object.assign(camera,{target:{x:19,y:0,z:1.45},az:presets[0].az,el:presets[0].el,radius:presets[0].r});$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라';render()});
+    $('viewButton').addEventListener('click',()=>{camera.auto=false;$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라';camera.preset=(camera.preset+1)%presets.length;if(carriageFocus){const v=[{az:-1.83,el:.3,r:25.5},{az:-2.35,el:.42,r:24},{az:-1.55,el:.58,r:25},{az:-2.05,el:.82,r:26}][camera.preset];Object.assign(camera,{target:{x:9.2,y:0,z:2.25},az:v.az,el:v.el,radius:v.r})}else if(tandemFocus){const v=[{az:-1.82,el:.22,r:8.4},{az:-2.28,el:.34,r:9.2},{az:-1.5,el:.5,r:9.6},{az:-2.05,el:.75,r:10.2}][camera.preset];Object.assign(camera,{target:{x:17.8,y:0,z:1.9},az:v.az,el:v.el,radius:v.r})}else{const p=presets[camera.preset];Object.assign(camera,{target:{x:19,y:0,z:1.45},az:p.az,el:p.el,radius:p.r})}render()});
+    $('fullscreenButton').addEventListener('click',async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen()}catch(_){$('stageDesc').textContent='현재 브라우저에서는 전체화면 전환을 지원하지 않습니다.'}});
+    document.addEventListener('fullscreenchange',()=>{$('fullscreenButton').textContent=document.fullscreenElement?'전체화면 종료':'전체화면';setTimeout(resize,80)});
+
+    let drag=false,lastX=0,lastY=0,dragPan=false;
+    function panCamera(dx,dy){makeBasis();const scale=camera.radius/760;camera.target=add(camera.target,add(mul(basis.right,-dx*scale),mul(basis.up,dy*scale)));camera.target.z=clamp(camera.target.z,-1,8)}
+    canvas.addEventListener('pointerdown',e=>{drag=true;dragPan=panMode||e.shiftKey||e.button===1||e.button===2;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId);canvas.classList.add('dragging');camera.auto=false;$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라'});
+    canvas.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-lastX,dy=e.clientY-lastY;if(dragPan)panCamera(dx,dy);else{camera.az-=dx*.008;camera.el=clamp(camera.el+dy*.006,.08,1.48)}lastX=e.clientX;lastY=e.clientY;render()});
+    const endDrag=()=>{drag=false;canvas.classList.remove('dragging')};canvas.addEventListener('pointerup',endDrag);canvas.addEventListener('pointercancel',endDrag);
+    canvas.addEventListener('contextmenu',e=>e.preventDefault());
+    canvas.addEventListener('wheel',e=>{e.preventDefault();camera.auto=false;camera.radius=clamp(camera.radius+e.deltaY*.018,12,90);render()},{passive:false});
+    canvas.addEventListener('dblclick',()=>{const p=presets[0];camera.target={x:19,y:0,z:1.45};camera.az=p.az;camera.el=p.el;camera.radius=p.r;render()});
+
+    const calcDialog=$('calcDialog'),calcIds=['panelLength','panelWidth','lampPower','heatEfficiency','knifeSpeed','rapidSpeed','handlingTime'];
+    function calcNumber(id,fallback){const v=Number($(id).value);return Number.isFinite(v)&&v>0?v:fallback}
+    function updateCalculator(){
+      const L=clamp(calcNumber('panelLength',2400),1600,2400),W=clamp(calcNumber('panelWidth',1200),800,1200),lamp=clamp(calcNumber('lampPower',2.5),1,3),eta=clamp(calcNumber('heatEfficiency',65),35,80)/100,speed=clamp(calcNumber('knifeSpeed',55),35,60),rapid=clamp(calcNumber('rapidSpeed',200),100,250),fixedHandling=clamp(calcNumber('handlingTime',3),2,12),rapidDistance=300,handling=rapidDistance/rapid+fixedHandling;
+      const area=L*W/1e6,arealCp=8.7358962,dT=175,q=area*arealCp*dT;
+      const totalPower=60*lamp,usefulPower=totalPower*eta,fdmDwell=113.15;
+      const dwell=Math.max(5*q/usefulPower,fdmDwell),pitch=dwell/5,thermalRate=3600/pitch;
+      const leadTime=300/speed,tandemCycle=leadTime+L/speed+handling,tandemRate=3600/tandemCycle;
+      const lineCycle=Math.max(pitch,tandemCycle),lineRate=3600/lineCycle,bottleneck=thermalRate<tandemRate?'5단 IR 열공정':'고정 탠덤·캐리어 이송';
+      const energyPerPanelKWh=q/(eta*3600),averageIRPower=energyPerPanelKWh*lineRate;
+      const starts=[],ends=[];
+      for(let n=0;n<60;n++){
+        const ready=n<5?dwell:starts[n-5]+dwell;
+        const start=Math.max(ready,n?ends[n-1]:0);
+        starts.push(start);ends.push(start+tandemCycle);
+      }
+      const cold60=ends[59],steady60=60*lineCycle;
+      const formatTime=s=>{const t=Math.round(s),h=Math.floor(t/3600),m=Math.floor((t%3600)/60),sec=t%60;return h?`${h}시간 ${m}분 ${sec}초`:`${m}분 ${sec}초`};
+      const shift8=Math.round(lineRate*8*.9),shift16=Math.round(lineRate*16*.9),targetCycle=3600/(60/.9),requiredSpeed=handling<targetCycle?(L+300)/(targetCycle-handling):Infinity,rateAt60=3600/Math.max(pitch,(L+300)/60+handling),balancedSpeed=pitch>handling?(L+300)/(pitch-handling):60,thermalMargin=Math.max(0,(thermalRate-lineRate)/thermalRate*100);
+      let action;
+      if(bottleneck==='고정 탠덤·캐리어 이송'){
+        action=`${speed.toFixed(0)}mm/s에서 명목 ${lineRate.toFixed(1)}장/h, 90% 환산 ${(lineRate*.9).toFixed(1)}장/h입니다. 60장/h 순생산 최소속도는 약 ${requiredSpeed.toFixed(1)}mm/s이며 60mm/s FAT 상한은 ${rateAt60.toFixed(1)}장/h입니다. WR 터릿 전환과 GC 저장 캐리지 교대를 사이클 밖으로 분리하십시오.`;
+      }else{
+        action=`IR 병목 · 현재 속도에서는 캐리어를 더 가속해도 ${thermalRate.toFixed(1)}장/h를 넘지 못합니다. 기계·열 균형속도는 약 ${balancedSpeed.toFixed(1)}mm/s입니다. 반사판·단열·도어 개방손실과 6라인 출력배분을 먼저 개선하십시오.`;
+      }
+      $('heatPerPanel').textContent=`${(q/1000).toFixed(2)} MJ`;$('ratedPower').textContent=`${totalPower.toFixed(1)} kW`;$('standbyPower').textContent=`≤ ${(totalPower*.1).toFixed(1)} kW`;$('avgLinePower').textContent=`약 ${averageIRPower.toFixed(1)} kW`;$('energyPerPanel').textContent=`${energyPerPanelKWh.toFixed(2)} kWh/장`;$('heatDwell').textContent=`${dwell.toFixed(1)} s`;$('releasePitch').textContent=`${pitch.toFixed(1)} s/장`;$('thermalRate').textContent=`${thermalRate.toFixed(1)} 장/h`;$('tandemCycle').textContent=`${tandemCycle.toFixed(1)} s/장`;$('tandemRate').textContent=`${tandemRate.toFixed(1)} 장/h`;$('lineRate').textContent=`${lineRate.toFixed(1)} 장/h · 90% ${(lineRate*.9).toFixed(1)} · 병목: ${bottleneck}`;
+      $('motionProfile').textContent=`박리 ${speed.toFixed(0)} · 급속 ${rapid.toFixed(0)} mm/s`;$('test60Cold').textContent=formatTime(cold60);$('test60Steady').textContent=formatTime(steady60);$('hourlyPanels').textContent=`명목 ${lineRate.toFixed(1)} · 90% ${(lineRate*.9).toFixed(1)} 장/h`;$('shift8Panels').textContent=`약 ${shift8}장`;$('shift16Panels').textContent=`약 ${shift16}장`;$('bottleneckAction').textContent=action;
+      $('calcBasis').textContent=`t=0 = C1~C5 점유·잠금·밀폐 | Q=${(q/1000).toFixed(2)}MJ/장 | IR ${totalPower.toFixed(0)}kW×η ${(eta*100).toFixed(0)}%=${usefulPower.toFixed(1)}kW 유효 | t열=max[5Q/P유효, FDM 113.2s]=${dwell.toFixed(1)}s | t탠덤=(${L.toFixed(0)}+300)/${speed.toFixed(0)} + 300/${rapid.toFixed(0)} + ${fixedHandling.toFixed(1)} = ${tandemCycle.toFixed(1)}s | 선행시간=300/${speed.toFixed(0)}=${leadTime.toFixed(2)}s`;
+      const marks=[0,4,9,19,29,39,49,59];$('testSchedule').textContent=`초기 5장 적재시간 제외 · 냉간 완료시각: ${marks.map(i=>`P${i+1} ${(ends[i]/60).toFixed(1)}분`).join(' · ')} | 정상상태 = 60×${lineCycle.toFixed(1)}s = ${(steady60/60).toFixed(1)}분 | 실공정을 영상 8초로 압축합니다.`;
+      $('comparisonBasis').textContent=`Rev.20은 EVA 계면 200°C·60×2.5kW·최대 2,400×1,200mm·고정 탠덤·이동 캐리어 계산을 유지하고, 5/5 밀폐가열부터 C1~C5 순차 방출·에어록 격리·동일 슬롯 재투입까지의 반복 상태머신과 전문형 색상체계를 통합합니다.`;
+    }
+    calcIds.forEach(id=>$(id).addEventListener('input',updateCalculator));$('calcButton').addEventListener('click',()=>{updateCalculator();if(typeof calcDialog.showModal==='function')calcDialog.showModal();else calcDialog.setAttribute('open','')});$('calcClose').addEventListener('click',()=>calcDialog.close());calcDialog.addEventListener('click',e=>{if(e.target===calcDialog)calcDialog.close()});
+
+    const dialog=$('detailDialog');
+    function fill(id,items){const ul=$(id);ul.replaceChildren(...items.map(t=>{const li=document.createElement('li');li.textContent=t;return li}))}
+    function openDetail(key){const d=details[key];$('dialogCode').textContent=d.code;$('dialogTitle').textContent=d.title;$('dialogIntro').textContent=d.intro;fill('dialogHardware',d.hardware);fill('dialogControl',d.control);fill('dialogVerify',d.verify);$('dialogNotice').textContent=d.notice;if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','')}
+    document.querySelectorAll('[data-detail]').forEach(b=>b.addEventListener('click',()=>openDetail(b.dataset.detail)));$('dialogClose').addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});
+
+    const engineeringDialog=$('engineeringDialog'),drawingContent=$('drawingContent');
+    let drawingTab='power',drawingMode='2d',assemblyIndex=0;
+    const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const svgDefs=`<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#0b6268"/></marker><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="#dce1df" stroke-width="1"/></pattern></defs>`;
+    const titleBlock=(code,title,subtitle)=>`<g font-family="Arial,'Noto Sans KR',sans-serif"><rect x="20" y="20" width="1160" height="610" rx="8" fill="#fafaf8" stroke="#7c898b" stroke-width="2"/><rect x="20" y="20" width="1160" height="610" rx="8" fill="url(#grid)"/><text x="45" y="58" font-size="24" font-weight="700" fill="#25353a">${esc(title)}</text><text x="45" y="82" font-size="13" fill="#647278">${esc(subtitle)}</text><rect x="870" y="548" width="310" height="82" fill="#f2f4f1" stroke="#7c898b"/><text x="886" y="572" font-size="13" font-weight="700" fill="#25353a">DYNAMIC INDUSTRY · ${esc(code)}</text><text x="886" y="594" font-size="11" fill="#647278">DG-HK60 · REV.20 · CONCEPT / FAT BASIS</text><text x="886" y="614" font-size="11" fill="#647278">SCALE NTS · 2026-09-03</text></g>`;
+    function powerDrawing(){
+      const branch=(x,label,amp,load)=>`<path d="M${x} 224V330" stroke="#c84c28" stroke-width="5"/><rect x="${x-63}" y="330" width="126" height="76" rx="7" fill="#fff7eb" stroke="#c47a17" stroke-width="2"/><text x="${x}" y="356" text-anchor="middle" font-size="13" font-weight="700" fill="#69420a">${label}</text><text x="${x}" y="378" text-anchor="middle" font-size="12" fill="#69420a">${amp}</text><text x="${x}" y="397" text-anchor="middle" font-size="11" fill="#745a35">${load}</text>`;
+      return `<div class="drawing-kpi"><div><span>연결부하</span><strong>약 318 kW</strong></div><div><span>예상 최대수요</span><strong>약 270 kW</strong></div><div><span>수전·변압기</span><strong>500 kVA</strong></div><div><span>주차단기</span><strong>4P 800AF</strong></div></div><div class="wire-legend"><span style="--wire:#c84c28">3Φ4W 380/220V</span><span style="--wire:#278555">PE 접지</span><span style="--wire:#19788a">계측·통신</span></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="DG-HK60 전력 인입 및 단선 결선도">${svgDefs}${titleBlock('E-001','전력 인입·단선 결선도','3Φ4W AC 380/220V 60Hz · TR-1 500kVA · 주모선 1000A')}
+      <g font-family="Arial,'Noto Sans KR',sans-serif"><rect x="45" y="125" width="130" height="86" rx="7" fill="#edf7fa" stroke="#19788a" stroke-width="2"/><text x="110" y="151" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">공장 MSB</text><text x="110" y="174" text-anchor="middle" font-size="12" fill="#476871">22.9kV 또는</text><text x="110" y="193" text-anchor="middle" font-size="12" fill="#476871">기존 380V BUS</text>
+      <path d="M175 168H225" stroke="#c84c28" stroke-width="6" marker-end="url(#arr)"/><rect x="225" y="120" width="145" height="96" rx="7" fill="#edf7fa" stroke="#19788a" stroke-width="2"/><text x="298" y="148" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">TR-1</text><text x="298" y="171" text-anchor="middle" font-size="12" fill="#476871">500kVA</text><text x="298" y="193" text-anchor="middle" font-size="12" fill="#476871">22.9/0.38kV</text>
+      <path d="M370 168H420" stroke="#c84c28" stroke-width="6" marker-end="url(#arr)"/><rect x="420" y="112" width="150" height="112" rx="7" fill="#fff3e5" stroke="#c84c28" stroke-width="2"/><text x="495" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="#733317">Q0 · ACB</text><text x="495" y="163" text-anchor="middle" font-size="12" fill="#733317">4P 800AF</text><text x="495" y="184" text-anchor="middle" font-size="11" fill="#733317">LSIG + UVT + SHUNT</text><text x="495" y="204" text-anchor="middle" font-size="11" fill="#733317">CT · PQM · SPD T1+T2</text>
+      <path d="M570 168H1125" stroke="#c84c28" stroke-width="9"/><text x="820" y="147" text-anchor="middle" font-size="12" font-weight="700" fill="#733317">MDP-1 · 1000A Cu BUS · Icw는 단락계산 후 확정</text>
+      ${branch(635,'IR-DB1','MCCB 4P 250A','60×2.5kW')}${branch(745,'HK-DB2','MCCB 4P 100A','HKB/HKS 30kW')}${branch(855,'MCC-1','MCCB 4P 125A','Servo/VFD 45kW')}${branch(965,'AUX-DB','MCCB 4P 63A','VOC/VAC/COOL')}${branch(1075,'SH-101','MCCB 4P 160A','Downstream 75kW')}
+      <path d="M590 224V454H1125" fill="none" stroke="#278555" stroke-width="4"/><text x="600" y="478" font-size="12" fill="#206b46">PE BAR 50×6t Cu → 각 반·프레임·덕트·캐리지 등전위 본딩</text>
+      <rect x="60" y="455" width="490" height="70" rx="6" fill="#eef8f1" stroke="#278555"/><text x="78" y="480" font-size="12" font-weight="700" fill="#206b46">예비 인입 케이블</text><text x="78" y="502" font-size="12" fill="#315d48">2회선 × Cu 4C 240mm² + 각 회선 PE 120mm²</text><text x="78" y="520" font-size="11" fill="#52717a">허용전류·포설·주위온도·전압강하·단락내량으로 재산정</text>
+      <rect x="585" y="455" width="535" height="70" rx="6" fill="#edf7fa" stroke="#19788a"/><text x="603" y="480" font-size="12" font-weight="700" fill="#153e49">필수 계전·계측</text><text x="603" y="502" font-size="11" fill="#476871">OCR/GFR · 결상/역상 · SPD 상태 · ACB TRIP · PQM Modbus TCP</text><text x="603" y="520" font-size="11" fill="#476871">IR 독립 과온 → 주접촉기 강제차단 / PLC 명령과 독립</text></g></svg></div><p class="drawing-note">예비 설계 기준입니다. 실제 인입은 현장 수전전압, 예상 단락전류, 변압기 임피던스, 고조파와 케이블 포설조건을 반영한 전기기술자 검토 후 확정해야 합니다.</p>`;
+    }
+    function plcDrawing(){
+      return `<div class="drawing-kpi"><div><span>표준 I/O</span><strong>DI 96 · DO 64</strong></div><div><span>아날로그</span><strong>AI 32 · AO 8</strong></div><div><span>온도 입력</span><strong>TC 16</strong></div><div><span>안전 I/O</span><strong>F-DI 32 · F-DO 16</strong></div></div><div class="wire-legend"><span style="--wire:#d05532">230VAC/24VDC</span><span style="--wire:#19788a">PROFINET Ring</span><span style="--wire:#875bb0">4–20mA/TC</span><span style="--wire:#278555">Safety 2CH</span></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="DG-HK60 PLC 인입과 현장 배선 연결도">${svgDefs}${titleBlock('C-001 / C-101','PLC 전원 인입·I/O·현장 배선도','UPS 230VAC → 24VDC 이중전원 → PLC/Safety PLC → RIO-1~3')}
+      <g font-family="Arial,'Noto Sans KR',sans-serif"><rect x="55" y="110" width="140" height="70" rx="7" fill="#fff3e5" stroke="#d05532" stroke-width="2"/><text x="125" y="139" text-anchor="middle" font-size="13" font-weight="700" fill="#733317">AUX-DB 230VAC</text><text x="125" y="160" text-anchor="middle" font-size="11" fill="#733317">MCB 2P 32A</text><path d="M195 145H250" stroke="#d05532" stroke-width="5" marker-end="url(#arr)"/>
+      <rect x="250" y="102" width="140" height="86" rx="7" fill="#fff3e5" stroke="#d05532" stroke-width="2"/><text x="320" y="130" text-anchor="middle" font-size="13" font-weight="700" fill="#733317">UPS-101</text><text x="320" y="152" text-anchor="middle" font-size="11" fill="#733317">3kVA · 10min</text><text x="320" y="170" text-anchor="middle" font-size="11" fill="#733317">Bypass 포함</text>
+      <path d="M390 125H440M390 165H440" stroke="#d05532" stroke-width="4"/><rect x="440" y="92" width="145" height="58" rx="7" fill="#fff3e5" stroke="#d05532"/><rect x="440" y="158" width="145" height="58" rx="7" fill="#fff3e5" stroke="#d05532"/><text x="512" y="116" text-anchor="middle" font-size="12" font-weight="700" fill="#733317">PSU-A 24V 40A</text><text x="512" y="182" text-anchor="middle" font-size="12" font-weight="700" fill="#733317">PSU-B 24V 40A</text><path d="M585 121H635M585 187H635" stroke="#d05532" stroke-width="4"/><rect x="635" y="112" width="145" height="86" rx="7" fill="#eef8f1" stroke="#278555" stroke-width="2"/><text x="708" y="139" text-anchor="middle" font-size="12" font-weight="700" fill="#206b46">REDUNDANCY</text><text x="708" y="161" text-anchor="middle" font-size="11" fill="#206b46">DC-OK A/B</text><text x="708" y="180" text-anchor="middle" font-size="11" fill="#206b46">24VDC BUS</text>
+      <path d="M780 155H830" stroke="#d05532" stroke-width="5" marker-end="url(#arr)"/><rect x="830" y="92" width="145" height="126" rx="7" fill="#edf7fa" stroke="#19788a" stroke-width="2"/><text x="902" y="121" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">PLC-101 CPU</text><text x="902" y="143" text-anchor="middle" font-size="11" fill="#476871">DI96 / DO64</text><text x="902" y="162" text-anchor="middle" font-size="11" fill="#476871">AI32 / AO8 / TC16</text><text x="902" y="184" text-anchor="middle" font-size="11" fill="#476871">HMI · Historian</text><text x="902" y="203" text-anchor="middle" font-size="11" fill="#476871">Managed Switch</text>
+      <rect x="1010" y="92" width="145" height="126" rx="7" fill="#eef8f1" stroke="#278555" stroke-width="2"/><text x="1082" y="121" text-anchor="middle" font-size="13" font-weight="700" fill="#206b46">F-PLC-101</text><text x="1082" y="143" text-anchor="middle" font-size="11" fill="#206b46">F-DI32 / F-DO16</text><text x="1082" y="165" text-anchor="middle" font-size="11" fill="#206b46">E-STOP · Door</text><text x="1082" y="184" text-anchor="middle" font-size="11" fill="#206b46">STO · Fire Trip</text><path d="M975 155H1010" stroke="#278555" stroke-width="4"/>
+      <path d="M902 218V270H250V330M902 270H575V330M902 270H900V330" fill="none" stroke="#19788a" stroke-width="4"/><rect x="170" y="330" width="165" height="82" rx="7" fill="#edf7fa" stroke="#19788a"/><rect x="492" y="330" width="165" height="82" rx="7" fill="#edf7fa" stroke="#19788a"/><rect x="817" y="330" width="165" height="82" rx="7" fill="#edf7fa" stroke="#19788a"/><text x="252" y="358" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">RIO-1 · 가열실</text><text x="252" y="381" text-anchor="middle" font-size="11" fill="#476871">램프·TC·셔터·승강</text><text x="575" y="358" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">RIO-2 · 탠덤</text><text x="575" y="381" text-anchor="middle" font-size="11" fill="#476871">진공·칼날·권취</text><text x="900" y="358" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">RIO-3 · 반출</text><text x="900" y="381" text-anchor="middle" font-size="11" fill="#476871">유리·CVC·QI·GC</text>
+      <path d="M252 412V462M575 412V462M900 412V462" stroke="#875bb0" stroke-width="4"/><rect x="85" y="462" width="305" height="72" rx="7" fill="#f7f0fb" stroke="#875bb0"/><rect x="445" y="462" width="305" height="72" rx="7" fill="#f7f0fb" stroke="#875bb0"/><rect x="805" y="462" width="305" height="72" rx="7" fill="#f7f0fb" stroke="#875bb0"/><text x="237" y="487" text-anchor="middle" font-size="12" font-weight="700" fill="#563873">TB1: DI/TC/4–20mA</text><text x="237" y="510" text-anchor="middle" font-size="11" fill="#563873">EVA TC · 차압 · 위치 · 램프</text><text x="597" y="487" text-anchor="middle" font-size="12" font-weight="700" fill="#563873">TB2: Vacuum/Load/AE</text><text x="597" y="510" text-anchor="middle" font-size="11" fill="#563873">PNP 3선 · 차폐 TP · PE 한쪽</text><text x="957" y="487" text-anchor="middle" font-size="12" font-weight="700" fill="#563873">TB3: Drive/QI/GC/SH</text><text x="957" y="510" text-anchor="middle" font-size="11" fill="#563873">VFD STO 2CH · Encoder · Gate</text>
+      <path d="M1082 218V550H1125" fill="none" stroke="#278555" stroke-width="4"/><text x="780" y="566" font-size="11" fill="#206b46">Safety: OSSD 2CH → F-DI / F-DO → K1·K2·STO / 수동 RESET은 위험구역 밖</text></g></svg></div><p class="drawing-note">배선 원칙: 24VDC PNP 3선식, 4–20mA 차폐 연선, 열전대 전용 보상도선, 동력/신호 트레이 분리, VFD 모터케이블 양단 360° 차폐, 안전신호 2채널 교차단락 진단.</p>`;
+    }
+    function assemblyDrawing(a,mode){
+      const parts=a.parts.map((p,i)=>`<tr><td>${String(i+1).padStart(2,'0')}</td><td>${esc(p)}</td><td>1 SET</td><td>제작·구매품</td></tr>`).join('');
+      const dims=a.size.split('×');
+      let graphic='';
+      if(mode==='2d'){
+        const tw=t=>[...t].reduce((w,ch)=>w+(/[\uAC00-\uD7A3]/.test(ch)?11.2:/[A-Z0-9]/.test(ch)?6.9:5.3),0);
+        const callouts=a.parts.slice(0,10).map((p,i)=>{
+          const right=i>=5,row=i%5,y=152+row*46,w=tw(p);
+          const bx=right?1146:56,tx=right?1126:76;
+          const lead=right?tx-w-13:tx+w+13,px=right?712:498,py=150+row*46;
+          return `<g><path d="M${lead.toFixed(0)} ${y}L${px} ${py}" stroke="#19788a" stroke-width="1.2" fill="none"/>`
+            +`<circle cx="${px}" cy="${py}" r="2.8" fill="#19788a"/>`
+            +`<circle cx="${bx}" cy="${y}" r="13" fill="#19788a"/>`
+            +`<text x="${bx}" y="${y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">${i+1}</text>`
+            +`<text x="${tx}" y="${y+4}" text-anchor="${right?'end':'start'}" font-size="11.5" fill="#153e49">${esc(p)}</text></g>`;
+        }).join('');
+        graphic=`<rect x="500" y="135" width="210" height="210" fill="#e7f1f4" stroke="#315d68" stroke-width="2"/><rect x="525" y="160" width="160" height="160" fill="#fff" stroke="#19788a"/><text x="605" y="365" text-anchor="middle" font-size="12" fill="#52717a">평면도 · ${esc(dims[0]||'—')} × ${esc(dims[1]||'—')} mm</text><rect x="500" y="405" width="210" height="120" fill="#e7f1f4" stroke="#315d68" stroke-width="2"/><rect x="525" y="430" width="160" height="70" fill="#fff" stroke="#19788a"/><text x="605" y="545" text-anchor="middle" font-size="12" fill="#52717a">정면도 · L ${esc(dims[0]||'—')} / H ${esc(dims[2]||'—')} mm</text><rect x="785" y="405" width="150" height="120" fill="#e7f1f4" stroke="#315d68" stroke-width="2"/><rect x="810" y="430" width="100" height="70" fill="#fff" stroke="#19788a"/><text x="860" y="545" text-anchor="middle" font-size="12" fill="#52717a">측면도 · W ${esc(dims[1]||'—')} mm</text><path d="M480 135V345M470 135H490M470 345H490" stroke="#c84c28"/><text x="462" y="240" text-anchor="middle" transform="rotate(-90 462 240)" font-size="11" fill="#733317">${esc(dims[1]||'—')} mm</text>${callouts}`;
+      }else{
+        graphic=a.parts.slice(0,20).map((p,i)=>{const c=i%5,r=Math.floor(i/5),x=72+c*218,y=125+r*125,w=100,h=48,d=22,color=i%2?'#9fbfc1':'#bbc3c3';return `<g><polygon points="${x},${y} ${x+w},${y} ${x+w+d},${y-d} ${x+d},${y-d}" fill="${color}" stroke="#48575b"/><polygon points="${x+w},${y} ${x+w+d},${y-d} ${x+w+d},${y+h-d} ${x+w},${y+h}" fill="#71878b" stroke="#48575b"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" stroke="#48575b"/><circle cx="${x+14}" cy="${y+14}" r="11" fill="#0b6268"/><text x="${x+14}" y="${y+18}" text-anchor="middle" font-size="10" fill="#fff">${i+1}</text><text x="${x+w/2}" y="${y+h+18}" text-anchor="middle" font-size="9.5" fill="#25353a">${esc(p)}</text></g>`}).join('');
+      }
+      return `<div class="drawing-controls"><label>어셈블리<select id="assemblySelect">${assemblies.map((v,i)=>`<option value="${i}"${i===assemblyIndex?' selected':''}>${esc(v.id)} · ${esc(v.name)}</option>`).join('')}</select></label><button type="button" data-mode="2d" class="${mode==='2d'?'active':''}">2D 삼면도</button><button type="button" data-mode="3d" class="${mode==='3d'?'active':''}">3D 분해도</button></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="${esc(a.name)} ${mode==='2d'?'2D 제작도':'3D 분해 조립도'}">${svgDefs}${titleBlock(a.id,`${a.id} · ${a.name} · ${mode==='2d'?'2D 삼면도':'3D 분해 조립도'}`,`외형 ${a.size} mm · 주재질 ${a.material}`)}<g font-family="Arial,'Noto Sans KR',sans-serif">${graphic}</g></svg></div><table class="bom-table"><thead><tr><th>품번</th><th>구성품</th><th>수량</th><th>구분</th></tr></thead><tbody>${parts}</tbody></table><p class="drawing-note">표시 치수는 외형·인터페이스 개념치입니다. 판두께, 용접기호, 공차, 베어링 끼워맞춤, 체결토크와 가공기준면은 구조해석·부품선정 후 제작도에서 동결합니다.</p>`;
+    }
+    function renderEngineering(){
+      document.querySelectorAll('[data-drawing]').forEach(b=>b.classList.toggle('active',b.dataset.drawing===drawingTab));
+      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
+      const sel=$('assemblySelect');if(sel)sel.addEventListener('change',e=>{assemblyIndex=Number(e.target.value)||0;renderEngineering()});
+      drawingContent.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{drawingMode=b.dataset.mode;renderEngineering()}));
+    }
+    function openEngineering(tab){drawingTab=tab;renderEngineering();if(typeof engineeringDialog.showModal==='function')engineeringDialog.showModal();else engineeringDialog.setAttribute('open','')}
+    document.querySelectorAll('[data-drawing]').forEach(b=>b.addEventListener('click',()=>{drawingTab=b.dataset.drawing;renderEngineering()}));
+    $('powerDrawingButton').addEventListener('click',()=>openEngineering('power'));
+    $('plcDrawingButton').addEventListener('click',()=>openEngineering('plc'));
+    $('fabricationDrawingButton').addEventListener('click',()=>openEngineering('assemblies'));
+    $('engineeringClose').addEventListener('click',()=>engineeringDialog.close());engineeringDialog.addEventListener('click',e=>{if(e.target===engineeringDialog)engineeringDialog.close()});
+    $('printDrawingButton').addEventListener('click',()=>window.print());
+    if('ResizeObserver' in window){const ro=new ResizeObserver(resize);ro.observe(canvas)}else window.addEventListener('resize',resize);
+    window.addEventListener('orientationchange',()=>setTimeout(resize,120));
+    updateUI();resize();
+  })();
+  </script>
+</body>
+</html>
