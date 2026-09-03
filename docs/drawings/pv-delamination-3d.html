@@ -1311,6 +1311,54 @@
     const SCCR_KA=25;                    // ISC 상한에 여유를 둔 기기 정격
     const DWG_NO='E-001';
 
+    /* 열수지·사이클 모델. 계산 대화상자와 HUD 전력표시가 같은 식을 각각
+       구현하고 있었고, 입력 허용구간까지 서로 달라(대화상자는 패널길이를
+       2400 에 클램프, HUD 는 상한 없음) 범위 밖 값을 넣으면 두 곳이 다른
+       처리량을 보고했다. 모델·상수·입력구간을 여기 한 곳에 둔다. */
+    const MODEL={
+      arealCp:8.7358962,   // kJ/(m²·K) 적층 면적열용량
+      dT:175,              // 25 → 200 °C
+      fdmDwell:113.15,     // 1D-FDM 계면 도달시간 하한. 열수지가 이보다 빨라도 못 줄인다
+      lamps:60,decks:5,
+      knifePitch:300,      // 칼끝 간격 mm · HKB 선행분
+      rapidDistance:300    // 장당 급속 등가거리 mm
+    };
+    const MODEL_RANGE={
+      panelLength:[1600,2400],panelWidth:[800,1200],lampPower:[1,3],
+      heatEfficiency:[35,80],knifeSpeed:[35,60],rapidSpeed:[100,250],handlingTime:[2,12]
+    };
+    const MODEL_DEFAULT={
+      panelLength:2400,panelWidth:1200,lampPower:2.5,
+      heatEfficiency:65,knifeSpeed:55,rapidSpeed:200,handlingTime:3
+    };
+    /* 입력 한 벌에서 열수지·탠덤·라인 능력을 모두 낸다. */
+    function thermalModel(v){
+      const m=MODEL;
+      const q=v.panelLength*v.panelWidth/1e6*m.arealCp*m.dT;        // kJ/장
+      const rated=m.lamps*v.lampPower,eta=v.heatEfficiency/100,useful=rated*eta;
+      const dwell=Math.max(m.decks*q/useful,m.fdmDwell);
+      const pitch=dwell/m.decks,thermalRate=3600/pitch;
+      const handling=m.rapidDistance/v.rapidSpeed+v.handlingTime;
+      const leadTime=m.knifePitch/v.knifeSpeed;
+      const tandemCycle=leadTime+v.panelLength/v.knifeSpeed+handling;
+      const tandemRate=3600/tandemCycle;
+      const lineCycle=Math.max(pitch,tandemCycle),lineRate=3600/lineCycle;
+      const energyPerPanel=q/(eta*3600);                            // kWh/장
+      return{q,rated,eta,useful,dwell,pitch,thermalRate,handling,leadTime,
+        tandemCycle,tandemRate,lineCycle,lineRate,energyPerPanel,
+        averagePower:energyPerPanel*lineRate,
+        bottleneck:thermalRate<tandemRate?'5단 IR 열공정':'고정 탠덤·캐리어 이송'};
+    }
+    /* 화면 입력을 읽어 허용구간으로 자른다. 두 표시가 같은 값을 본다. */
+    function readModelInputs(){
+      const o={};
+      for(const id of Object.keys(MODEL_RANGE)){
+        const[lo,hi]=MODEL_RANGE[id],raw=Number($(id)?.value);
+        o[id]=clamp(Number.isFinite(raw)&&raw>0?raw:MODEL_DEFAULT[id],lo,hi);
+      }
+      return o;
+    }
+
     let laneShift=0,laneCode='S',partOffset={x:0,y:0,z:0};
     const V=(x=0,y=0,z=0)=>({x,y,z});
     const add=(a,b)=>({x:a.x+b.x,y:a.y+b.y,z:a.z+b.z}),sub=(a,b)=>({x:a.x-b.x,y:a.y-b.y,z:a.z-b.z}),mul=(a,s)=>({x:a.x*s,y:a.y*s,z:a.z*s});
@@ -2551,7 +2599,7 @@
       label3(sealed?'가열실 SEALED · −30 Pa':d.inOuter||d.inInner?'AL-101 투입 에어록':'AL-102 배출 에어록',V(9.2,1.95,4.38),sealed?C.teal:C.yellow)
     }
     function powerMeterActivity(i,p){
-      const lamp=Math.max(1,Number($('lampPower')?.value)||2.5),eta=clamp((Number($('heatEfficiency')?.value)||65)/100,.35,.8),L=Math.max(1600,Number($('panelLength')?.value)||2400),W=Math.max(800,Number($('panelWidth')?.value)||1200),speed=Number($('knifeSpeed')?.value)||55,rapid=Number($('rapidSpeed')?.value)||200,fixed=Number($('handlingTime')?.value)||3,rated=60*lamp,q=L*W/1e6*8.7358962*175,dwell=Math.max(5*q/(rated*eta),113.15),cycle=(300+L)/speed+300/rapid+fixed,lineRate=3600/Math.max(dwell/5,cycle),average=q/(eta*3600)*lineRate;
+      const M=thermalModel(readModelInputs()),rated=M.rated,dwell=M.dwell,average=M.averagePower;
       let duty=0,kwh=0;
       if(i===2){
         const st=carriageCycleState(p);duty=st.doorsOpen?.10:(st.occupied===5?.82:.52);kwh=rated*dwell/3600*clamp(p)
@@ -2808,13 +2856,15 @@
     const calcDialog=$('calcDialog'),calcIds=['panelLength','panelWidth','lampPower','heatEfficiency','knifeSpeed','rapidSpeed','handlingTime'];
     function calcNumber(id,fallback){const v=Number($(id).value);return Number.isFinite(v)&&v>0?v:fallback}
     function updateCalculator(){
-      const L=clamp(calcNumber('panelLength',2400),1600,2400),W=clamp(calcNumber('panelWidth',1200),800,1200),lamp=clamp(calcNumber('lampPower',2.5),1,3),eta=clamp(calcNumber('heatEfficiency',65),35,80)/100,speed=clamp(calcNumber('knifeSpeed',55),35,60),rapid=clamp(calcNumber('rapidSpeed',200),100,250),fixedHandling=clamp(calcNumber('handlingTime',3),2,12),rapidDistance=300,handling=rapidDistance/rapid+fixedHandling;
-      const area=L*W/1e6,arealCp=8.7358962,dT=175,q=area*arealCp*dT;
-      const totalPower=60*lamp,usefulPower=totalPower*eta,fdmDwell=113.15;
-      const dwell=Math.max(5*q/usefulPower,fdmDwell),pitch=dwell/5,thermalRate=3600/pitch;
-      const leadTime=300/speed,tandemCycle=leadTime+L/speed+handling,tandemRate=3600/tandemCycle;
-      const lineCycle=Math.max(pitch,tandemCycle),lineRate=3600/lineCycle,bottleneck=thermalRate<tandemRate?'5단 IR 열공정':'고정 탠덤·캐리어 이송';
-      const energyPerPanelKWh=q/(eta*3600),averageIRPower=energyPerPanelKWh*lineRate;
+      const v=readModelInputs(),M=thermalModel(v);
+      const L=v.panelLength,W=v.panelWidth,lamp=v.lampPower,eta=M.eta,
+            speed=v.knifeSpeed,rapid=v.rapidSpeed,fixedHandling=v.handlingTime,
+            rapidDistance=MODEL.rapidDistance,handling=M.handling;
+      const q=M.q,totalPower=M.rated,usefulPower=M.useful;
+      const dwell=M.dwell,pitch=M.pitch,thermalRate=M.thermalRate;
+      const leadTime=M.leadTime,tandemCycle=M.tandemCycle,tandemRate=M.tandemRate;
+      const lineCycle=M.lineCycle,lineRate=M.lineRate,bottleneck=M.bottleneck;
+      const energyPerPanelKWh=M.energyPerPanel,averageIRPower=M.averagePower;
       const starts=[],ends=[];
       for(let n=0;n<60;n++){
         const ready=n<5?dwell:starts[n-5]+dwell;
