@@ -70,6 +70,7 @@ def noise_sources() -> tuple[NoiseSource, ...]:
     afr = _zone_center("afr")
     post = _zone_center("post")
     buffer_ = _zone_center("buffer")
+    grm = _zone_center("grm")
     return (
         NoiseSource("NS-SG", "SG-301 양측 연마 스핀들", post, 96.0, 18.0,
                     "가드 흡음 라이닝 + 국소집진 후드 밀착", "정상"),
@@ -89,6 +90,18 @@ def noise_sources() -> tuple[NoiseSource, ...]:
                     "— (가감속 저크 제한만)", "정상"),
         NoiseSource("NS-FL", "FL-101 전동 지게차", afu - 2_500, 78.0, 0.0,
                     "전동식 채택 (엔진식 88 대비 −10)", "간헐"),
+        # ── REV.23 유리제거셀 ────────────────────────────────────────────
+        # IR 램프와 탠덤 칼날 자체는 조용하다. 새 음원은 배기 블로워 두 대와
+        # 슈레더 정량 투입이다. 블로워는 DX-601 과 같은 대책(인클로저+소음기)을
+        # 그대로 적용한다.
+        NoiseSource("NS-GRM-IRX", "GRM-EX-401 IR 배기 블로워", grm - 2_150, 89.0, 20.0,
+                    "흡음 인클로저 + 배기 소음기 (DX-601 과 동일 사양)", "정상"),
+        NoiseSource("NS-GRM-CD", "GRM-CD-401 냉각 후드 블로워", grm + 4_200, 90.0, 20.0,
+                    "흡음 인클로저 + 배기 소음기", "정상"),
+        NoiseSource("NS-GRM-SH", "CV-301 슈레더 정량 투입", grm + 4_200, 87.0, 14.0,
+                    "투입 슈트 고무 라이닝 + 밀폐 커버", "충격성"),
+        NoiseSource("NS-GRM-TDM", "TDM-201 탠덤 칼날·권취", grm + 1_200, 76.0, 6.0,
+                    "가드 흡음 라이닝", "정상"),
     )
 
 

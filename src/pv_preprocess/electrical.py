@@ -24,8 +24,11 @@ SUPPLY_VOLTAGE_V = 380
 #: 계획 역률. 라인리액터 적용 전제 — 고조파 실측으로 확정한다.
 POWER_FACTOR = 0.90
 
-#: 주 차단기 프레임/트립 (A)
-MAIN_BREAKER_FRAME_A = 125
+#: 주 차단기 표준 트립 정격 (A) 과 표준 프레임 (A).
+#: REV.23 에서 유리제거셀 IR 뱅크 175 kW 가 들어오며 100 AT 로는 못 받는다 —
+#: 사다리를 실제 배전 표준까지 늘리고, 프레임도 트립에서 파생시킨다.
+BREAKER_TRIPS_A = (63, 80, 100, 125, 160, 200, 250, 320, 400, 500, 630)
+BREAKER_FRAMES_A = (100, 125, 225, 400, 630, 800)
 
 #: 계약 전력 여유율. 증설·동시 기동 여유를 본다.
 CONTRACT_MARGIN = 1.35
@@ -67,6 +70,22 @@ FEEDERS: tuple[Feeder, ...] = (
            11.0, 0.90, 32, "4C×6 mm² Cu", "GA 명시(풍량)"),
     Feeder("F8", "LP-CTRL", "안전 PLC · 비전 LAN · 제어반 UPS · 조명",
            5.0, 1.00, 20, "4C×4 mm² Cu", "계획"),
+    # ── REV.23 유리제거셀(GRM-401) 통합 ──────────────────────────────────
+    # IR 뱅크가 이 플랜트에서 가장 큰 부하다. 60등 × 2.92 kW = 175 kW 로 종전
+    # 플랜트 설치 전력 68 kW 의 2.6 배다. 한 피더에 몰면 차단기가 주차단기와
+    # 맞먹으므로 앱의 램프라인 구성대로 3 라인씩 두 뱅크로 나눈다.
+    # 수용률 0.75 는 JIT 순차가열 전제다 — C1 200 °C … C5 160 °C 로 단마다
+    # 온도가 다르므로 60등이 동시에 만출력으로 물리지 않는다. **계획값**이라
+    # 시운전 전류 실측으로 확정해야 하고, 1.0 이면 수요가 43.75 kW 늘어난다.
+    Feeder("F9", "LP-GRM-IRA", "GRM-401 IR 뱅크 A (라인 1–3 · 30등 × 2.92 kW)",
+           87.5, 0.75, 200, "4C×70 mm² Cu", "계획(순차가열 수용률)"),
+    Feeder("F10", "LP-GRM-IRB", "GRM-401 IR 뱅크 B (라인 4–6 · 30등 × 2.92 kW)",
+           87.5, 0.75, 200, "4C×70 mm² Cu", "계획(순차가열 수용률)"),
+    Feeder("F11", "LP-GRM-MEC",
+           "LI-101 승강 2축 · TS-101 포크 · EX-101/RT-101 · TDM-201 X/Z · WR-101 · GR-201/DS-301",
+           14.0, 0.65, 40, "4C×10 mm² Cu", "계획"),
+    Feeder("F12", "LP-GRM-EXH", "IR 배기 · CV-301 슈레더 투입부 집진",
+           9.0, 0.90, 32, "4C×6 mm² Cu", "계획"),
 )
 
 
@@ -92,7 +111,20 @@ def contract_kva() -> float:
 
 def main_breaker_at() -> int:
     """주 차단기 트립 (A) — 수요 전류 위의 표준 정격."""
-    for rating in (63, 80, 100, 125):
+    for rating in BREAKER_TRIPS_A:
         if rating >= demand_current_a() * 1.1:
             return rating
-    raise ValueError("수요 전류가 주 차단기 프레임을 넘는다 — 인입 재검토 필요")
+    raise ValueError("수요 전류가 표준 정격을 넘는다 — 인입 재검토 필요")
+
+
+def main_breaker_frame_a() -> int:
+    """주 차단기 프레임 (A) — 트립을 담는 가장 작은 표준 프레임."""
+    trip = main_breaker_at()
+    for frame in BREAKER_FRAMES_A:
+        if frame >= trip:
+            return frame
+    raise ValueError("트립이 표준 프레임을 넘는다 — 인입 재검토 필요")
+
+
+#: 하위 호환 이름. 프레임은 이제 수요에서 파생한다.
+MAIN_BREAKER_FRAME_A = main_breaker_frame_a()

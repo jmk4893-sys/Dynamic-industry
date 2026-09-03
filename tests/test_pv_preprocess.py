@@ -132,9 +132,11 @@ class TestLayoutInvariants(unittest.TestCase):
         self.assertEqual(width, layout.MACHINE_BAND_Y_MM + layout.AISLE_WIDTH_MM)
         self.assertEqual(height, max(zone.height_mm for zone in self.zones))
 
-    def test_seven_zones_and_one_gate(self):
-        self.assertEqual(len(self.zones), 7)
+    def test_eight_zones_and_one_gate(self):
+        """REV.23 에서 유리제거셀이 존이 되며 7 → 8. gate 만 설비 없는 존이다."""
+        self.assertEqual(len(self.zones), 8)
         self.assertEqual([z.key for z in self.zones if z.key not in layout.STATIONS], ["gate"])
+        self.assertEqual(self.zones[-1].key, "grm", "유리제거셀이 라인 끝이어야 한다")
 
 
 class TestDrawingMatchesModel(unittest.TestCase):
@@ -306,7 +308,7 @@ class TestElectricalIncomer(unittest.TestCase):
         """도면 안의 피더 리터럴이 electrical.py 와 같은 값인지."""
         block = self.html[self.html.index("  var feeders = ["):self.html.index("  function electricalTotals()")]
         rows = re.findall(
-            r"\['(F\d)', '([\w-]+)', '([^']*)', ([\d.]+), ([\d.]+), (\d+), '([^']*)', '([^']*)'\]", block)
+            r"\['(F\d+)', '([\w-]+)', '([^']*)', ([\d.]+), ([\d.]+), (\d+), '([^']*)', '([^']*)'\]", block)
         self.assertEqual(len(rows), len(electrical.FEEDERS), "도면과 모델의 피더 수가 다르다")
         for drawn, feeder in zip(rows, electrical.FEEDERS):
             with self.subTest(feeder=feeder.tag):
@@ -936,7 +938,7 @@ class TestWiring(unittest.TestCase):
         """도면의 CABLE_LENGTH_M 리터럴은 wiring.power_cables() 를 그대로 옮긴 값이어야 한다."""
         found = re.search(r"var CABLE_LENGTH_M = \{([^}]+)\};", self.html)
         self.assertIsNotNone(found, "케이블 길이 리터럴이 도면에 없다")
-        drawn = dict(re.findall(r"(F\d): ([\d.]+)", found.group(1)))
+        drawn = dict(re.findall(r"(F\d+): ([\d.]+)", found.group(1)))
         cables = wiring.power_cables()
         self.assertEqual(len(drawn), len(cables))
         for cable in cables:
@@ -1032,8 +1034,9 @@ class TestServoAxes(unittest.TestCase):
                                      "전동기 예산이 피더 설치 용량을 넘는다 — 피더부터 다시 세워라")
 
     def test_axis_counts_match_established_wording(self):
-        """총 29축, JBR 7축 — 제어반 문구('EtherCAT 7축 서보')와 배지가 근거."""
-        self.assertEqual(servos.servo_axis_count(), 29)
+        """유리제거셀 7축이 더해져 29 → 36축. JBR 7축은 제어반 문구가 근거다."""
+        self.assertEqual(servos.servo_axis_count(), 36)
+        self.assertEqual(servos.servo_axis_count_for("LP-GRM-MEC"), 7)
         self.assertEqual(servos.servo_axis_count_for("LP-JBR"), 7)
         self.assertIn("EtherCAT 7축 서보", self.html)
         self.assertIn(f"EtherCAT {servos.servo_axis_count()}축", self.html)
@@ -1073,7 +1076,7 @@ class TestAcoustics(unittest.TestCase):
     def test_noise_literal_matches_the_model(self):
         found = re.search(r"var NOISE_SOURCES = \[(.*?)\n  \];", self.html, re.S)
         self.assertIsNotNone(found, "NOISE_SOURCES 리터럴이 도면에 없다")
-        rows = re.findall(r"\['(NS-\w+)', '[^']*', (\d+), ([\d.]+), ([\d.]+),", found.group(1))
+        rows = re.findall(r"\['(NS-[\w-]+)', '[^']*', (\d+), ([\d.]+), ([\d.]+),", found.group(1))
         model = acoustics.noise_sources()
         self.assertEqual(len(rows), len(model))
         for row, source in zip(rows, model):
@@ -1180,7 +1183,7 @@ class TestThermal(unittest.TestCase):
     def test_cabinet_literal_matches_the_model(self):
         found = re.search(r"var THERMAL_CABINETS = \[(.*?)\n  \];", self.html, re.S)
         self.assertIsNotNone(found)
-        rows = re.findall(r"\['(LP-\w+)', ([\d.]+), '([^']*)'\]", found.group(1))
+        rows = re.findall(r"\['(LP-[\w-]+)', ([\d.]+), '([^']*)'\]", found.group(1))
         loads = thermal.cabinet_loads()
         self.assertEqual(len(rows), len(loads))
         for panel, kw, method in rows:
@@ -1769,13 +1772,34 @@ class TestHandoff(unittest.TestCase):
         self.assertEqual(handoff.BUFFER_POSE, handoff.DOWNSTREAM_POSE)
         self.assertIn(f'bufferPose:"{handoff.BUFFER_POSE}"', self.html)
 
-    def test_top_end_module_does_not_fit_downstream(self):
-        """전처리는 2,500 × 1,400 까지 다루는데 후단 투입 상한은 2,400 × 1,200 이다."""
-        self.assertFalse(handoff.fits_downstream(*handoff.UPSTREAM_MAX_MM),
-                         "상한 모듈이 후단에 들어간다면 이 경고는 지워야 한다")
-        self.assertEqual(handoff.oversize_mm(), (100.0, 200.0))
-        self.assertTrue(handoff.fits_downstream(2400, 1200))
-        self.assertFalse(handoff.fits_downstream(1500, 1000), "하한 미만도 걸러야 한다")
+    def test_widened_deck_takes_the_top_end_module(self):
+        """데크를 넓혀 전처리 상한 모듈이 그대로 들어간다 — 마지막 불일치가 해소됐다."""
+        self.assertEqual(handoff.AS_UPLOADED_MAX_MM, (2400, 1200),
+                         "넓히기 전 값이 기록에서 사라지면 안 된다")
+        self.assertEqual(handoff.DOWNSTREAM_MAX_MM, handoff.UPSTREAM_MAX_MM,
+                         "데크가 전처리 상한과 같아야 상한 모듈이 들어간다")
+        self.assertTrue(handoff.fits_downstream(*handoff.UPSTREAM_MAX_MM))
+        self.assertEqual(handoff.oversize_mm(), (0.0, 0.0))
+        self.assertTrue(handoff.fits_downstream(2400, 1200), "종전 상한도 계속 받는다")
+        self.assertFalse(handoff.fits_downstream(1500, 1000), "하한 미만은 여전히 걸러야 한다")
+        self.assertFalse(handoff.fits_downstream(2600, 1400), "새 상한을 넘으면 걸러야 한다")
+
+    def test_widening_the_deck_pulls_the_lamp_rating_with_it(self):
+        """램프 관이 데크 폭을 가로지르므로 폭을 넓히면 관 정격도 같이 올라간다."""
+        # 라인 수는 5단 랙의 수평면 개수라 폭과 무관하다 — 개수는 60 그대로다
+        self.assertEqual(handoff.IR_LINES, 6, "상부 1 + 단간 4 + 하부 1")
+        self.assertEqual(handoff.LAMP_COUNT, 60, "폭을 넓혀도 램프 '개수'는 안 늘어난다")
+        self.assertAlmostEqual(handoff.lamp_kw(1200), handoff.AS_UPLOADED_LAMP_KW, places=4)
+        self.assertAlmostEqual(handoff.lamp_kw(1400), 2.9167, places=4)
+        self.assertAlmostEqual(handoff.IR_INSTALLED_KW, 175.0, places=1)
+        self.assertAlmostEqual(handoff.AS_UPLOADED_IR_KW, 150.0, places=1)
+        self.assertAlmostEqual(handoff.LAMP_PITCH_MM, 250.0, places=1,
+                               msg="라인당 10등을 2,500 에 펴면 피치가 240 → 250 이 된다")
+        # 관 정격을 안 올리면 어떻게 되는지를 값으로 남긴다
+        starved = handoff.downstream_rate(lamp_kw_override=handoff.AS_UPLOADED_LAMP_KW)
+        self.assertEqual(starved.bottleneck, "IR 열공정")
+        self.assertLess(starved.line_per_h, handoff.sheet_glass_per_h(),
+                        "관 정격을 안 올리면 유입을 못 받는다")
 
     def test_downstream_rate_mirrors_the_uploaded_model(self):
         """DG-HK 2400 Rev.10 앱의 계산을 그대로 옮긴 값 — 재유도하지 않았다."""
@@ -1790,11 +1814,13 @@ class TestHandoff(unittest.TestCase):
         """버퍼에 실제로 연결된 것은 B안 구성이다 — 열은 그대로, 탠덤만 빨라진다."""
         self.assertEqual(handoff.ADOPTED_PLAN, "B")
         d, u = handoff.downstream_rate(), handoff.as_uploaded_rate()
-        self.assertAlmostEqual(d.tandem_cycle_s, 51.0, places=1)
-        self.assertAlmostEqual(d.line_per_h, 70.6, places=1)
+        self.assertAlmostEqual(d.tandem_cycle_s, 52.7, places=1)
+        self.assertAlmostEqual(d.line_per_h, 68.4, places=1)
         self.assertEqual(d.bottleneck, "2단 탠덤 박리")
-        self.assertAlmostEqual(d.dwell_s, u.dwell_s, places=2,
-                               msg="칼날·인계는 열공정을 건드리지 않는다")
+        # 데크가 넓어진 만큼 장당 열량이 늘었지만 램프도 같이 늘려 체류는 거의 그대로다
+        self.assertGreater(d.heat_per_panel_mj, u.heat_per_panel_mj)
+        self.assertAlmostEqual(d.dwell_s, u.dwell_s, delta=12.0,
+                               msg="램프를 폭에 맞춰 늘렸으므로 체류가 크게 늘면 안 된다")
         self.assertGreater(d.thermal_per_h, d.tandem_per_h,
                            "IR 이 병목이라면 증설 대상이 바뀐다")
 
@@ -1812,7 +1838,7 @@ class TestHandoff(unittest.TestCase):
     def test_knife_speed_alone_cannot_close_the_gap(self):
         """인계 10 s 를 그대로 두면 필요 칼날이 상한을 넘는다 — 인계 단축이 전제다."""
         need = handoff.knife_speed_for_balance(handoff.AS_UPLOADED_HANDLING_S)
-        self.assertAlmostEqual(need, 60.6, places=1)
+        self.assertAlmostEqual(need, 62.9, places=1)
         self.assertGreater(need, handoff.KNIFE_SPEED_MAX_MM_S,
                            "인계를 그대로 두면 칼날 상한으로도 못 따라간다")
         self.assertFalse(handoff.balances_at_max_knife_speed(handoff.AS_UPLOADED_HANDLING_S))
@@ -1823,7 +1849,7 @@ class TestHandoff(unittest.TestCase):
     def test_adopted_handling_brings_the_required_knife_under_the_limit(self):
         """인계를 6 s 로 줄이면 필요 칼날이 상한 아래로 내려온다 — 그래서 성립한다."""
         need = handoff.knife_speed_for_balance()
-        self.assertAlmostEqual(need, 55.6, places=1)
+        self.assertAlmostEqual(need, 57.7, places=1)
         self.assertLess(need, handoff.KNIFE_SPEED_MAX_MM_S)
         self.assertLessEqual(need, handoff.KNIFE_SPEED_MM_S,
                              "채택한 칼날 속도가 필요치를 이미 넘어서야 한다")
@@ -1870,6 +1896,124 @@ class TestHandoff(unittest.TestCase):
                          "인계 유입은 정상 유리(R-A)만 세어야 한다")
 
 
+class TestGlassRemovalIntegration(unittest.TestCase):
+    """REV.23 — 유리제거(박리) 라인이 링크가 아니라 플랜트의 한 존인지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_glass_removal_is_a_plant_zone_not_a_link(self):
+        """버퍼가 마지막이면 전처리 플랜트가 유리를 못 벗긴 채 끝난다."""
+        zones = layout.build_zones()
+        self.assertEqual(zones[-1].key, "grm")
+        grm = layout.STATIONS["grm"]
+        self.assertEqual(grm.envelope, (14050, 6100, 3600))
+        self.assertEqual(grm.sheet, "PV-GRM-401-GA-6101")
+        self.assertIn(grm.sheet, self.html, "도면 목록에 GA 시트가 없다")
+        # 존은 장비 밴드 안에 들어와야 하고 통로를 잠식하면 안 된다
+        self.assertLessEqual(zones[-1].y1_mm, layout.MACHINE_BAND_Y_MM)
+        self.assertEqual(layout.plant_envelope_mm()[0], 58800,
+                         "44,750(전처리) + 14,050(유리제거) = 58,800")
+
+    def test_the_3d_scene_actually_carries_the_cell(self):
+        """도면에만 있고 영상에 없으면 '연결'이 아니다."""
+        self.assertIn("var pvGrm=new ce;pt.add(pvGrm);", self.html)
+        for tag in ("M0-101", "M1-101", "IR-701", "LI-101", "TS-101", "EX-101",
+                    "TDM-201", "HKB-101", "HKS-201", "WR-101", "CB-201", "DS-301"):
+            with self.subTest(part=tag):
+                self.assertIn(tag, self.html)
+        # 바닥이 셀을 못 받치면 장비가 허공에 선다 (월드 x 34.1 까지)
+        self.assertIn("new xr(64,18)", self.html, "바닥을 하류로 늘리지 않았다")
+
+    def test_knife_heads_fit_the_300mm_lead(self):
+        """칼끝 리드가 300 이면 두 헤드 몸체는 그보다 좁아야 나란히 선다."""
+        self.assertIn("'HKB-101 백시트 개방 핫나이프', [260,", self.html)
+        self.assertIn("'HKS-201 셀/EVA 분리 핫나이프 (300 리드)', [260,", self.html)
+
+    def test_campaign_now_ends_at_glass_not_at_the_buffer(self):
+        """캠페인이 버퍼에서 끝나면 유리가 벗겨졌는지 알 수 없다."""
+        rows = handoff.glass_removal_timeline()
+        summary = handoff.glass_removal_summary()
+        self.assertEqual(len(rows), 53, "R-A 정상 유리만 후단으로 간다")
+        self.assertEqual({r.panel_index for r in rows},
+                         {p.index for p in campaign.panels() if p.buffer == "R-A"})
+        self.assertAlmostEqual(summary["buffer_run_s"], 2890.03, places=1)
+        self.assertAlmostEqual(summary["glass_finish_s"], 3344.33, places=1)
+        self.assertAlmostEqual(summary["glass_finish_min"], 55.7, places=1)
+        self.assertGreater(summary["glass_finish_s"], summary["buffer_run_s"],
+                           "유리제거는 버퍼 이후에도 이어진다")
+        self.assertAlmostEqual(summary["tail_s"], 454.3, places=1)
+
+    def test_the_cell_never_starves_once_it_starts(self):
+        """첫 배치 가열 대기(FULL_LOAD_ACK) 동안 쌓인 재고로 끝까지 물린다."""
+        summary = handoff.glass_removal_summary()
+        self.assertAlmostEqual(summary["grm_utilisation"], 1.0, places=3)
+        rows = handoff.glass_removal_timeline()
+        # 데크는 롤링이다 — n 번째는 n−5 번째가 박리로 빠져야 들어간다
+        for n in range(handoff.DOWNSTREAM_LOAD_PANELS, len(rows)):
+            with self.subTest(sheet=rows[n].order):
+                self.assertGreaterEqual(
+                    rows[n].load_s, rows[n - handoff.DOWNSTREAM_LOAD_PANELS].peel_start_s,
+                    "데크가 비기 전에 다음 장을 실었다")
+        # 데크가 빌 때까지 기다리는 것이지 후단이 놀아서 밀리는 것이 아니다
+        self.assertAlmostEqual(summary["max_buffer_wait_s"], 187.2, places=1)
+        self.assertEqual(summary["peak_buffer_sheets"], 4.0)
+        self.assertLess(summary["peak_buffer_sheets"], handoff.BUFFER_RA_SLOTS,
+                        "동시 체류가 R-A 50 슬롯을 넘으면 버퍼 설계부터 다시 세워야 한다")
+
+    def test_the_ir_bank_forces_a_bigger_service(self):
+        """IR 175 kW 는 이 플랜트 최대 부하다 — 100 AT 로는 못 받는다."""
+        self.assertAlmostEqual(electrical.installed_kw(), 266.0, places=1)
+        self.assertAlmostEqual(electrical.demand_kw(), 198.70, places=1)
+        self.assertEqual(electrical.main_breaker_at(), 400)
+        self.assertEqual(electrical.main_breaker_frame_a(), 400)
+        self.assertAlmostEqual(electrical.contract_kva(), 298.05, places=0)
+        ir = [f for f in electrical.FEEDERS if f.panel.startswith("LP-GRM-IR")]
+        self.assertEqual(len(ir), 2, "175 kW 를 한 피더에 몰면 차단기가 주차단기와 맞먹는다")
+        for feeder in ir:
+            with self.subTest(feeder=feeder.tag):
+                self.assertLess(feeder.breaker_at, electrical.main_breaker_at())
+
+    def test_the_load_centre_moved_and_the_board_followed(self):
+        """최대 부하가 하류 끝에 생겼는데 반을 그대로 두면 규칙과 어긋난다."""
+        centre = wiring.demand_center_x_mm()
+        self.assertAlmostEqual(centre, 42572, delta=200)
+        self.assertEqual(wiring.MDB_POSITION_MM[0], round(centre / 500) * 500)
+        self.assertGreaterEqual(wiring.aisle_clear_width_mm(), 900,
+                                "반을 옮겨도 보행 최소폭은 지켜야 한다")
+
+    def test_ir_heat_must_leave_the_room(self):
+        """IR 발열을 실내로 들이면 환기가 세 배가 된다 — 배기로 빼야 한다."""
+        self.assertAlmostEqual(thermal.ir_demand_kw(), 131.25, places=2)
+        self.assertAlmostEqual(thermal.ir_useful_kw() + thermal.ir_enclosure_loss_kw(),
+                               thermal.ir_demand_kw(), places=2)
+        grm = [h for h in thermal.heat_sources() if h.tag.startswith("TH-GRM")]
+        self.assertEqual(len(grm), 2)
+        for source in grm:
+            with self.subTest(source=source.tag):
+                self.assertEqual(source.sink, "배기", "실내로 가면 환기가 감당 못 한다")
+        self.assertEqual(thermal.required_airflow_m3h(), 33000)
+        # 배기가 실패하면 어떻게 되는지를 값으로 남긴다 — 후드가 전제라는 근거
+        def airflow(room_kw):
+            return room_kw * 3600.0 / (1.2 * 1.005 * thermal.ROOM_DELTA_T_C)
+
+        room = thermal.room_load_kw()
+        self.assertAlmostEqual(airflow(room), 32_570, delta=200)
+        self.assertAlmostEqual(airflow(room + thermal.ir_useful_kw()), 83_499, delta=300,
+                               msg="냉각 후드가 현열을 못 잡으면 환기가 2.5 배가 된다")
+        self.assertAlmostEqual(
+            airflow(room + thermal.ir_useful_kw() + thermal.ir_enclosure_loss_kw()),
+            110_913, delta=400, msg="둘 다 실내로 오면 환기가 3.4 배가 된다")
+
+    def test_noise_stays_inside_the_limits_with_the_new_cell(self):
+        """배기 블로워 두 대와 슈레더가 들어와도 목표를 지켜야 한다."""
+        self.assertLessEqual(acoustics.worst_near_field_dba(), acoustics.NEAR_FIELD_LIMIT_DBA)
+        self.assertLessEqual(acoustics.worst_aisle_dba()[1], acoustics.AISLE_LIMIT_DBA)
+        tags = {n.tag for n in acoustics.noise_sources()}
+        self.assertIn("NS-GRM-SH", tags, "슈레더를 안 세면 소음 검토가 거짓말이 된다")
+
+
 class TestBalancePlans(unittest.TestCase):
     """격차 19.5 장/h 를 어디서 흡수하는가 — 두 안 다 성립하지만 잃는 것이 다르다."""
 
@@ -1897,7 +2041,9 @@ class TestBalancePlans(unittest.TestCase):
         self.assertLess(handoff.PLAN_B_HANDLING_S, handoff.AS_UPLOADED_HANDLING_S)
         self.assertGreater(handoff.PLAN_B_KNIFE_MM_S, handoff.AS_UPLOADED_KNIFE_MM_S)
         self.assertGreaterEqual(b.margin_per_h, 0, "B안인데 여전히 밀린다")
-        self.assertAlmostEqual(b.capacity_per_h, 70.6, places=1)
+        self.assertAlmostEqual(b.capacity_per_h, 68.4, places=1)
+        self.assertIn("데크", b.lever, "데크 확장이 이 안의 일부라는 것이 표에 보여야 한다")
+        self.assertIn(f"IR 관 {handoff.AS_UPLOADED_LAMP_KW:g} → {handoff.LAMP_KW:.2f} kW", b.lever)
 
     def test_plan_c_throttles_the_upstream_to_match(self):
         """C안은 후단 능력까지 정확히 내려온다 — 더 내리면 낭비다."""

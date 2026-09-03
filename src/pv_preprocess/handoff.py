@@ -9,8 +9,11 @@
 
 * **자세** — 후단은 유리면 ↓·백시트 ↑ 로 받는다. 버퍼도 같은 자세로 세워 두므로
   경계에 반전기가 필요 없다. (이것만 맞는다.)
-* **치수** — 전처리는 최대 2,500 × 1,400 을 다루는데 후단 투입 상한은
-  2,400 × 1,200 이다. 상한 패널은 후단에 **들어가지 않는다**.
+* **치수** — 전처리는 최대 2,500 × 1,400 을 다루는데 후단 투입 상한이
+  2,400 × 1,200 이라 상한 패널이 들어가지 않았다. **데크를 2,500 × 1,400 으로
+  넓혀 해소했다** — 램프는 데크 폭을 가로지르는 관이라 관 정격도 선출력을 유지해
+  2.5 → 2.92 kW(뱅크 150 → 175 kW)로 같이 올렸다. 올리지 않으면 면적이 21.5 %
+  커진 만큼 열이 모자라 IR 이 병목이 되고 유입을 못 받는다.
 * **처리율** — 정상 유리(R-A) 유입이 후단 능력보다 빠르다. 버퍼가 완충하지만
   유한하므로 몇 시간 만에 찬다.
 
@@ -38,20 +41,50 @@ BUFFER_HOLD_SLOTS = 5
 #: 전처리가 다루는 최대 모듈 (mm).
 UPSTREAM_MAX_MM = (2500, 1400)
 
-# ── 후단 DG-HK 2400 Rev.10 (앱에서 옮긴 값) ──────────────────────────────
-#: 투입 상한 (mm) — 앱의 panelLength/panelWidth max.
-DOWNSTREAM_MAX_MM = (2400, 1200)
-#: 투입 하한 (mm) — 앱의 min.
+# ── 후단 DG-HK 2500 (DG-HK 2400 Rev.10 을 데크 확장한 것) ────────────────
+#: 업로드된 그대로의 투입 상한 (mm) — 전처리 상한 2,500×1,400 을 못 받았다.
+AS_UPLOADED_MAX_MM = (2400, 1200)
+
+#: **데크 확장 후 투입 상한 (mm)** — 전처리 상한을 그대로 받는다.
+#: 이 값이 UPSTREAM_MAX_MM 과 같아야 상한 모듈이 후단으로 들어간다.
+DOWNSTREAM_MAX_MM = (2500, 1400)
+#: 투입 하한 (mm) — 앱의 min. 데크를 넓혀도 하한은 그대로다.
 DOWNSTREAM_MIN_MM = (1600, 800)
 #: 후단 투입 자세.
 DOWNSTREAM_POSE = "유리면 ↓ · 백시트 ↑"
 #: 가열 시작 전에 5단을 다 채운다 (FULL_LOAD_ACK).
 DOWNSTREAM_LOAD_PANELS = 5
 
-#: 앱 기본값 — IR 램프 60개, 1개 정격 kW, 실효 열효율 %.
-LAMP_COUNT = 60
-LAMP_KW = 2.5
+#: IR 뱅크는 **6 라인 × 라인당 10등**이다 (앱의 3D 라벨 '6 라인 × 10 = 60 IR').
+#: 라인은 5단 랙의 수평면이다 — 상부 1 + 단간 4 + 하부 1 = 6. 즉 라인 수는
+#: **단수에서 나오지 폭에서 나오지 않는다**. 데크를 넓혀도 램프 '개수'는 60 그대로다.
+#:
+#: 대신 램프는 데크 폭을 가로지르는 **관**이라, 폭을 넓히면 관이 길어지고 정격도
+#: 같이 올라간다. 선출력(폭 1 m 당 kW)을 유지하는 것이 확장의 조건이다.
+#: 유지하지 않으면 면적이 21.5 % 커진 만큼 열이 모자라 IR 이 병목으로 넘어온다.
+IR_LINES = 6
+LAMPS_PER_LINE = 10
+LAMP_COUNT = IR_LINES * LAMPS_PER_LINE
+#: 램프 선출력 (kW/m) — 업로드된 1,200 mm 데크 · 관당 2.5 kW 에서 역산했다.
+LAMP_KW_PER_M = 2.5 / 1.2
+#: 업로드 당시 관당 정격 (kW) 과 뱅크 설치 용량 (kW).
+AS_UPLOADED_LAMP_KW = 2.5
+AS_UPLOADED_IR_KW = LAMP_COUNT * AS_UPLOADED_LAMP_KW
 HEAT_EFFICIENCY_PCT = 65.0
+
+
+def lamp_kw(width_mm: float = DOWNSTREAM_MAX_MM[1]) -> float:
+    """데크 폭에서 파생한 램프 1관 정격 (kW) — 선출력을 유지한다."""
+    return LAMP_KW_PER_M * width_mm / 1000.0
+
+
+#: 데크 확장 후 관당 정격 (1,400 mm → 2.92 kW) 과 뱅크 설치 용량 (150 → 175 kW).
+LAMP_KW = lamp_kw()
+IR_INSTALLED_KW = LAMP_COUNT * LAMP_KW
+#: 램프 피치 (mm) — 라인당 10등을 데크 길이에 고르게 편다.
+#: 2,400 ÷ 10 = 240 이었고 확장 후 2,500 ÷ 10 = 250 이다. 4 % 늘어난 이 피치가
+#: 길이방향 조도 균일도 안에 드는지는 계측캐리지 열전대로 확인해야 한다.
+LAMP_PITCH_MM = DOWNSTREAM_MAX_MM[0] / LAMPS_PER_LINE
 
 #: 업로드된 그대로의 칼날 속도·인계시간 (mm/s, s/장). 이 상태로는 46.5 장/h 라
 #: 유입 66.0 을 못 받는다 — B안이 나온 이유이자, 개선 전 기준으로 남겨 둔다.
@@ -91,11 +124,13 @@ def downstream_rate(length_mm: float = DOWNSTREAM_MAX_MM[0],
                     width_mm: float = DOWNSTREAM_MAX_MM[1],
                     knife_speed_mm_s: float = KNIFE_SPEED_MM_S,
                     handling_s: float = HANDLING_S,
-                    lamp_kw: float = LAMP_KW,
+                    lamp_kw_override: float | None = None,
                     efficiency_pct: float = HEAT_EFFICIENCY_PCT) -> DownstreamRate:
     """DG-HK 2400 의 장/h — 앱의 updateCalculator 를 그대로 옮긴 것."""
     heat_kj = (length_mm * width_mm / 1e6) * AREAL_CP_KJ_M2K * DELTA_T_K
-    useful_kw = LAMP_COUNT * lamp_kw * (efficiency_pct / 100.0)
+    # 관당 정격은 데크 폭에서 파생한다 — 폭만 넓히고 램프를 그대로 두면 열이 모자란다.
+    kw = lamp_kw(width_mm) if lamp_kw_override is None else lamp_kw_override
+    useful_kw = LAMP_COUNT * kw * (efficiency_pct / 100.0)
     dwell = max(DOWNSTREAM_LOAD_PANELS * heat_kj / useful_kw, FDM_DWELL_S)
     pitch = dwell / DOWNSTREAM_LOAD_PANELS
     tandem_cycle = TANDEM_LEAD_MM / knife_speed_mm_s + length_mm / knife_speed_mm_s + handling_s
@@ -109,8 +144,14 @@ def downstream_rate(length_mm: float = DOWNSTREAM_MAX_MM[0],
 
 
 def as_uploaded_rate() -> DownstreamRate:
-    """개선 전(업로드된 그대로) 후단 능력 — B안의 출발점이자 C안의 기준."""
-    return downstream_rate(knife_speed_mm_s=AS_UPLOADED_KNIFE_MM_S,
+    """개선 전(업로드된 그대로) 후단 능력 — B안의 출발점이자 C안의 기준.
+
+    데크·램프까지 업로드 당시 값으로 고정한다. 확장한 데크로 재면 '개선 전'이
+    아니게 되고, 46.5 장/h 라는 출발점이 기록에서 사라진다.
+    """
+    return downstream_rate(length_mm=AS_UPLOADED_MAX_MM[0],
+                           width_mm=AS_UPLOADED_MAX_MM[1],
+                           knife_speed_mm_s=AS_UPLOADED_KNIFE_MM_S,
                            handling_s=AS_UPLOADED_HANDLING_S)
 
 
@@ -176,6 +217,88 @@ def fits_downstream(length_mm: float, width_mm: float) -> bool:
             and DOWNSTREAM_MIN_MM[1] <= width_mm <= DOWNSTREAM_MAX_MM[1])
 
 
+# ── 유리제거셀을 캠페인에 이어 붙이기 ──────────────────────────────────────
+# REV.23 에서 유리제거(박리) 라인이 플랜트의 한 존(GRM-401)이 되면서, 60장
+# 캠페인도 버퍼에서 끝나지 않고 **유리가 벗겨져 나오는 시각**까지 이어진다.
+# 여기 모델은 후단 앱의 10장 모델(rolling 5-deck)을 그대로 옮긴 것이다.
+
+
+@dataclass(frozen=True)
+class GlassOut:
+    """유리제거셀을 빠져나온 유리 한 장."""
+
+    order: int          # R-A 스트림 안 순번 1…53
+    panel_index: int    # 캠페인 전체 순번 1…60
+    arrive_s: float     # 버퍼(R-A) 도착 = 캠페인의 afr_end
+    load_s: float       # 데크 적재 시각
+    peel_start_s: float
+    peel_end_s: float
+
+    @property
+    def wait_s(self) -> float:
+        """버퍼에 머문 시간 — 0 이면 유리제거셀이 곧바로 받았다."""
+        return round(self.load_s - self.arrive_s, 2)
+
+
+def glass_removal_timeline(hold_s: float = campaign.RELEASE_HOLD_S) -> tuple[GlassOut, ...]:
+    """R-A 정상 유리가 유리제거셀을 통과하는 시각표.
+
+    5단 랙은 롤링이다 — n 번째 장은 n−5 번째 장이 **박리로 빠져나가야** 그
+    데크에 들어간다. 첫 배치만 FULL_LOAD_ACK 이라 5장이 다 실린 뒤에 가열이
+    시작되고, 그 뒤로는 실린 순간부터 가열된다.
+    """
+    d = downstream_rate()
+    dwell, cycle = d.dwell_s, d.tandem_cycle_s
+    stream = [p for p in campaign.panels(hold_s) if p.buffer == "R-A"]
+    if not stream:
+        return ()
+    # 첫 배치 5장은 데크가 전부 비어 있으므로 도착 즉시 실린다. 그 5장이 다
+    # 실린 순간이 FULL_LOAD_ACK 이고, 거기서부터 가열이 시작된다.
+    first_ack = max(p.afr_end for p in stream[:DOWNSTREAM_LOAD_PANELS])
+    starts: list[float] = []
+    ends: list[float] = []
+    rows: list[GlassOut] = []
+    for n, panel in enumerate(stream):
+        # n−5 번째가 박리로 빠져나가야 그 데크가 빈다
+        deck_free = 0.0 if n < DOWNSTREAM_LOAD_PANELS else starts[n - DOWNSTREAM_LOAD_PANELS]
+        load = max(panel.afr_end, deck_free)
+        heat_from = first_ack if n < DOWNSTREAM_LOAD_PANELS else load
+        start = max(heat_from + dwell, ends[-1] if ends else 0.0)
+        starts.append(start)
+        ends.append(start + cycle)
+        rows.append(GlassOut(n + 1, panel.index, round(panel.afr_end, 2),
+                             round(load, 2), round(start, 2), round(start + cycle, 2)))
+    return tuple(rows)
+
+
+def glass_removal_summary(hold_s: float = campaign.RELEASE_HOLD_S) -> dict[str, float]:
+    """유리제거까지 포함한 캠페인 요약 — 플랜트가 유리를 다 벗기는 시각."""
+    rows = glass_removal_timeline(hold_s)
+    d = downstream_rate()
+    buffer_end = campaign.summary(hold_s)["run_s"]
+    finish = rows[-1].peel_end_s
+    busy = len(rows) * d.tandem_cycle_s
+    span = finish - rows[0].peel_start_s
+    # 동시에 버퍼에 머무는 최대 매수 — R-A 50 슬롯이 실제로 충분한가.
+    events = [(r.arrive_s, 1) for r in rows] + [(r.load_s, -1) for r in rows]
+    events.sort(key=lambda e: (e[0], e[1]))
+    held = peak = 0
+    for _, delta in events:
+        held += delta
+        peak = max(peak, held)
+    return {
+        "sheets": float(len(rows)),
+        "buffer_run_s": round(buffer_end, 2),
+        "glass_finish_s": round(finish, 2),
+        "glass_finish_min": round(finish / 60.0, 1),
+        "tail_s": round(finish - buffer_end, 2),
+        "max_buffer_wait_s": round(max(r.wait_s for r in rows), 2),
+        "peak_buffer_sheets": float(peak),
+        "grm_utilisation": round(busy / span, 3) if span > 0 else 0.0,
+        "glass_per_h": round(len(rows) / finish * 3600.0, 1),
+    }
+
+
 def summary() -> dict[str, object]:
     d = downstream_rate()
     over_l, over_w = oversize_mm()
@@ -188,6 +311,10 @@ def summary() -> dict[str, object]:
         "bottleneck": d.bottleneck,
         "gap_per_h": rate_gap_per_h(),
         "buffer_autonomy_h": buffer_autonomy_h(),
+        "deck_widened_to_mm": list(DOWNSTREAM_MAX_MM),
+        "lamp_count": LAMP_COUNT,
+        "lamp_kw": round(LAMP_KW, 2),
+        "ir_installed_kw": IR_INSTALLED_KW,
         "knife_speed_needed": knife_speed_for_balance(),
         "knife_speed_needed_as_uploaded": knife_speed_for_balance(AS_UPLOADED_HANDLING_S),
         "balances_at_max_knife": balances_at_max_knife_speed(),
@@ -218,16 +345,23 @@ def plan_b() -> Plan:
     """후단을 유입에 맞춘다 — 전처리는 그대로 두고 탠덤 사이클을 줄인다.
 
     병목이 2단 탠덤 박리이므로 손댈 곳은 칼날 속도와 인계시간 둘뿐이다.
-    IR 열공정은 79.7 장/h 로 여유가 있어 증설 대상이 아니다.
+    데크 확장은 처리율을 올리려는 것이 아니라 상한 모듈을 받으려는 것이고,
+    오히려 사이클을 51.0 → 52.7 s 로 늘려 여유를 +4.6 에서 +2.4 로 줄인다.
+    IR 은 관 정격을 폭에 맞춰 올려(2.5 → 2.92 kW) 병목으로 넘어오지 않게 했다.
     """
     d = downstream_rate(knife_speed_mm_s=PLAN_B_KNIFE_MM_S, handling_s=PLAN_B_HANDLING_S)
     feed = sheet_glass_per_h()
     return Plan(
         "B", "후단 개선",
+        f"데크 {AS_UPLOADED_MAX_MM[0]:,} × {AS_UPLOADED_MAX_MM[1]:,} → "
+        f"{DOWNSTREAM_MAX_MM[0]:,} × {DOWNSTREAM_MAX_MM[1]:,} · "
         f"칼날 {AS_UPLOADED_KNIFE_MM_S:g} → {PLAN_B_KNIFE_MM_S:g} mm/s · "
-        f"인계 {AS_UPLOADED_HANDLING_S:g} → {PLAN_B_HANDLING_S:g} s/장",
+        f"인계 {AS_UPLOADED_HANDLING_S:g} → {PLAN_B_HANDLING_S:g} s/장 · "
+        f"IR 관 {AS_UPLOADED_LAMP_KW:g} → {LAMP_KW:.2f} kW ({LAMP_COUNT}등 · 뱅크 "
+        f"{AS_UPLOADED_IR_KW:g} → {IR_INSTALLED_KW:g} kW)",
         feed, d.line_per_h, round(d.line_per_h - feed, 1),
-        "듀얼 진공테이블 증설과 칼날 증속 — HKS 추력·장력·유리응력 DOE 가 선행돼야 한다")
+        "듀얼 진공테이블 증설·칼날 증속·데크 확장·IR 뱅크 +25 kW — "
+        "HKS 추력·장력·유리응력 DOE 가 선행돼야 한다")
 
 
 def plan_c_hold_s() -> float:

@@ -23,8 +23,12 @@ from . import electrical
 from .layout import build_zones
 
 #: 주 분전반 MDB-101 의 벽부 위치 (플랜트 좌표 mm). X 는 피더 수요(kW) 가중
-#: 부하중심(demand_center_x_mm() ≈ 20,100)을 500 단위로 반올림한 값이다.
-MDB_POSITION_MM = (20_000, 8_150)
+#: 부하중심(demand_center_x_mm())을 500 단위로 반올림한 값이다.
+#:
+#: REV.23 에서 유리제거셀(IR 뱅크 175 kW)이 하류 끝에 들어오며 부하중심이
+#: 20,106 → 42,572 로 22.5 m 내려갔다. 반을 그대로 두면 전체 구리량이 늘고
+#: 최대 부하가 가장 먼 자리에 놓인다 — 규칙대로 반을 부하중심으로 옮긴다.
+MDB_POSITION_MM = (42_500, 8_150)
 
 #: 주 트레이 높이와 Y 위치 (mm)
 TRAY_HEIGHT_MM = 2_600
@@ -75,6 +79,14 @@ def lp_positions_mm() -> dict[str, int]:
     post = next(z for z in build_zones() if z.key == "post")
     centers["LP-DX"] = post.x0_mm + 4_575
     centers["LP-CTRL"] = 17_400
+    # GRM-401 의 반 4면은 자기 존 안에서 부하 옆에 선다. IR 두 뱅크는 5단 랙
+    # (존 로컬 X −3,800…−500) 앞, 기구반은 탠덤 앞, 배기반은 슈레더 쪽이다.
+    grm = next(z for z in build_zones() if z.key == "grm")
+    grm_center = (grm.x0_mm + grm.x1_mm) // 2
+    centers["LP-GRM-IRA"] = grm_center - 2_150
+    centers["LP-GRM-IRB"] = grm_center - 2_150
+    centers["LP-GRM-MEC"] = grm_center + 1_200
+    centers["LP-GRM-EXH"] = grm_center + 4_200
     return centers
 
 
@@ -108,7 +120,9 @@ def control_segments() -> list[Cable]:
     구간 길이는 인접 분전반 사이 트레이 경로로 잡는다 (수평 |Δx| + 드롭 2×700).
     """
     positions = lp_positions_mm()
-    chain = ["LP-AFU", "LP-RB", "LP-JBR", "LP-CTRL", "LP-AFR", "LP-GLASS", "LP-DX", "LP-GBR"]
+    chain = ["LP-AFU", "LP-RB", "LP-JBR", "LP-CTRL", "LP-AFR", "LP-GLASS", "LP-DX", "LP-GBR",
+             # REV.23: 유리제거셀 4면을 X 순서대로 체인 끝에 잇는다.
+             "LP-GRM-IRA", "LP-GRM-IRB", "LP-GRM-MEC", "LP-GRM-EXH"]
     rows = []
     for a, b in zip(chain, chain[1:]):
         run = abs(positions[a] - positions[b]) + 2 * (TRAY_HEIGHT_MM - LP_TOP_MM)

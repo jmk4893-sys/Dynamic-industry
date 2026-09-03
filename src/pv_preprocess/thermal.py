@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import electrical, servos
+from . import electrical, handoff, servos
 
 #: 유압 입력 대비 발열 비율 — 시스템 효율 70 % 관례
 HPU_LOSS_RATIO = 0.30
@@ -61,6 +61,22 @@ def cabinet_loss_kw(panel: str) -> float:
     return round(motion * DRIVE_LOSS_RATIO, 2)
 
 
+def ir_demand_kw() -> float:
+    """유리제거셀 IR 뱅크의 수요 전력 (kW) — 발열 배분의 분모."""
+    return round(sum(f.demand_kw for f in electrical.FEEDERS
+                     if f.panel.startswith("LP-GRM-IR")), 2)
+
+
+def ir_useful_kw() -> float:
+    """패널로 들어가는 몫 — 박리 후 유리·셀의 현열로 나온다."""
+    return round(ir_demand_kw() * handoff.HEAT_EFFICIENCY_PCT / 100.0, 2)
+
+
+def ir_enclosure_loss_kw() -> float:
+    """인클로저로 빠지는 몫 — IR 배기가 받는다."""
+    return round(ir_demand_kw() - ir_useful_kw(), 2)
+
+
 def heat_sources() -> tuple[HeatSource, ...]:
     """주요 발열원과 냉각 수단. 표에 없는 잔여 발열은 실내로 가 환기가 받는다.
 
@@ -83,6 +99,16 @@ def heat_sources() -> tuple[HeatSource, ...]:
                    "배기", "국소집진 기류로 반출 (1,000 m³/h)", "—", 0.0),
         HeatSource("TH-DX", "DX-601 블로워 축동력", 9.7,
                    "배기", "배기 기류로 옥외 반출", "—", 0.0),
+        # REV.23 유리제거셀 — 이 플랜트 최대 발열원이다. 둘 다 반드시 배기로
+        # 빼야 한다. 실내로 들어오면 환기량이 33,000 → 110,000 m³/h 가 된다.
+        HeatSource("TH-GRM-IR", "GRM-401 IR 인클로저 손실 (수요의 35 %)",
+                   ir_enclosure_loss_kw(), "배기",
+                   "IR 배기 덕트 · 블로워 3.7 kW (배기유량 감시 인터록)",
+                   "GRM-EX-401", 0.0),
+        HeatSource("TH-GRM-GL", "GRM-401 박리 유리·셀 현열 (수요의 65 %)",
+                   ir_useful_kw(), "배기",
+                   "냉각 후드 · 블로워 4.0 kW — 포집 못 하면 그대로 실내 부하",
+                   "GRM-CD-401", 0.0),
     )
 
 

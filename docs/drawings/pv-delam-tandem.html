@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#071217">
-  <title>PV 5장 완전적재·60-IR JIT 가열·2단 탠덤 3D Rev.10</title>
+  <title>PV 5장 완전적재·60-IR JIT 가열·2단 탠덤 3D Rev.11</title>
   <style>
     :root{
       color-scheme:dark;
@@ -133,13 +133,13 @@
   </dialog>
 
   <dialog id="calcDialog" aria-labelledby="calcTitle">
-    <div class="dialog-head"><div><div class="dialog-code">FULL-LOAD / 60-IR JIT / 10-PANEL MODEL · REV.10</div><h2 id="calcTitle">열수지·10장 연속·교대 생산성</h2></div><button class="close" type="button" id="calcClose">닫기</button></div>
+    <div class="dialog-head"><div><div class="dialog-code">FULL-LOAD / 60-IR JIT / 10-PANEL MODEL · REV.11</div><h2 id="calcTitle">열수지·10장 연속·교대 생산성</h2></div><button class="close" type="button" id="calcClose">닫기</button></div>
     <div class="dialog-body">
       <p>계산시간 0초는 5단에 패널 5장이 모두 적재·잠금된 FULL_LOAD_ACK 시점입니다. 초기에는 C1 200°C, C2 190°C, C3 180°C, C4 170°C, C5 160°C 도달 프로파일을 적용하고 탠덤 가용시점에 맞춰 한 장씩 200°C로 승온·방출합니다.</p>
       <div class="calc-grid">
-        <div class="calc-field"><label for="panelLength">패널 길이 (mm)</label><input id="panelLength" type="number" min="1600" max="2400" step="50" value="2400"></div>
-        <div class="calc-field"><label for="panelWidth">패널 폭 (mm)</label><input id="panelWidth" type="number" min="800" max="1200" step="50" value="1200"></div>
-        <div class="calc-field"><label for="lampPower">IR 램프 1개 정격 (kW)</label><input id="lampPower" type="number" min="1" max="3" step="0.1" value="2.5"></div>
+        <div class="calc-field"><label for="panelLength">패널 길이 (mm)</label><input id="panelLength" type="number" min="1600" max="2500" step="50" value="2500"></div>
+        <div class="calc-field"><label for="panelWidth">패널 폭 (mm)</label><input id="panelWidth" type="number" min="800" max="1400" step="50" value="1400"></div>
+        <div class="calc-field"><label for="lampPower">IR 램프 1관 정격 (kW · 데크 1,200 기준)</label><input id="lampPower" type="number" min="1" max="3" step="0.1" value="2.5"></div>
         <div class="calc-field"><label for="heatEfficiency">실효 열효율 (%)</label><input id="heatEfficiency" type="number" min="35" max="80" step="1" value="65"></div>
         <div class="calc-field"><label for="knifeSpeed">탠덤 이송속도 (mm/s)</label><input id="knifeSpeed" type="number" min="20" max="60" step="1" value="60"></div>
         <div class="calc-field"><label for="handlingTime">클램프·인계시간 (s/장)</label><input id="handlingTime" type="number" min="5" max="25" step="1" value="6"></div>
@@ -192,7 +192,7 @@
       {id:'S11',name:'사이클·생산성 확인',duration:2200,desc:'3계통 배출과 캐리지 복귀를 확인합니다. 열수지와 탠덤 박리시간 중 느린 값으로 시간당 처리량을 판정합니다.',vac:'원점 · 0 kPa',temp:'연속공정 대기',out:'CYCLE_COMPLETE'}
     ];
     const details={
-      equipment:{code:'HK-RP300 · REV.05',title:'전체장비 구성',intro:'패널을 진공 고정한 상태에서 백시트·셀모듈·판유리를 서로 다른 세 경로로 분리합니다.',hardware:['M0 투입·자세검사·6존 진공 캐리어','M1 선택형 계면 예열터널','M2 HKB-101 300mm 선단개방','WR-101 Ø300 횡롤러·분할 클램프·토크서보','ISO-101 권취롤 격리셔터·측면 슬라이드·밀폐 회수함','M3 HKS-201 셀모듈 전장분리·30° 리프트','CB-201 셀모듈 밀폐 컨테이너·바닥 정량피더','CV-301 밀폐 컨베이어·SH-101 슈레더','GR-201 저충격 유리 롤러 배출라인'],control:['6존 진공 압력·누설률 독립감시','권취 토크·직경·회전수·클램프 닫힘 확인','백시트 끝단 비전·FULL_PEEL 센서','셀 컨테이너 레벨·게이트·브리징 감시','슈레더 READY·컨베이어 CLEAR 핸드셰이크'],verify:['백시트 폭 1,200mm 기준 롤러 유효폭 1,400~1,500mm','권취롤러 캐리지는 장비 측면으로 완전 이탈 후에만 이젝터 작동','셀 컨테이너는 시트 엉킴 방지 경사벽·저속 피더 적용','판유리 롤러 간격·충격·처짐 실물시험'],notice:'권취롤의 클램프 수량·롤 직경·토크와 셀 컨테이너 용량은 백시트 종류 및 패널 처리량 DOE 후 확정합니다.'},
+      equipment:{code:'HK-RP300 · REV.05',title:'전체장비 구성',intro:'패널을 진공 고정한 상태에서 백시트·셀모듈·판유리를 서로 다른 세 경로로 분리합니다.',hardware:['M0 투입·자세검사·6존 진공 캐리어','M1 선택형 계면 예열터널','M2 HKB-101 300mm 선단개방','WR-101 Ø300 횡롤러·분할 클램프·토크서보','ISO-101 권취롤 격리셔터·측면 슬라이드·밀폐 회수함','M3 HKS-201 셀모듈 전장분리·30° 리프트','CB-201 셀모듈 밀폐 컨테이너·바닥 정량피더','CV-301 밀폐 컨베이어·SH-101 슈레더','GR-201 저충격 유리 롤러 배출라인'],control:['6존 진공 압력·누설률 독립감시','권취 토크·직경·회전수·클램프 닫힘 확인','백시트 끝단 비전·FULL_PEEL 센서','셀 컨테이너 레벨·게이트·브리징 감시','슈레더 READY·컨베이어 CLEAR 핸드셰이크'],verify:['백시트 폭 1,400mm 기준 롤러 유효폭 1,600~1,700mm','권취롤러 캐리지는 장비 측면으로 완전 이탈 후에만 이젝터 작동','셀 컨테이너는 시트 엉킴 방지 경사벽·저속 피더 적용','판유리 롤러 간격·충격·처짐 실물시험'],notice:'권취롤의 클램프 수량·롤 직경·토크와 셀 컨테이너 용량은 백시트 종류 및 패널 처리량 DOE 후 확정합니다.'},
       spec:{code:'PROCESS BASIS',title:'핵심 설계값',intro:'첨부 설계패키지의 핫나이프·권취드럼 형상과 이번 요청의 3계통 배출방식을 통합했습니다.',hardware:['패널 자세: 백시트 위 / 유리 아래','1차 개방 길이 300±10mm · HKB 230°C','권취드럼 기준 Ø300 · 유효폭 1,500mm','롤러 길이방향 분할 클램프 3~4구역','2차 HKS 320°C · 35~50mm/s','셀 리프트각 30°','유리 배출은 우레탄 코팅 회전롤러'],control:['권취는 토크상한·박리장력·직경 추정 동시제어','클램프 닫힘 후에만 롤러 회전','BACKSHEET_FULL_ACK 후에만 HKS 절입','CELL_BUFFERED 후 바닥게이트 개방','SHREDDER_READY와 CV_CLEAR 동시확인'],verify:['권취 중 백시트 찢김·편권·클램프 미끄럼 DOE','롤 최대직경과 격리함 내부 여유 검토','셀모듈 시트의 컨테이너 브리징·끼임시험','유리 파손률·롤러 피치·배출속도 시험','2단 추력 1.49~13.37kN 범위 재검토'],notice:'5kN×2 로드셀은 계산상 최대 추력조건에서 여유가 부족할 수 있으므로 상세설계에서 상향 선정 또는 공정 제한이 필요합니다.'},
       interlock:{code:'3-WAY MATERIAL LOGIC',title:'핵심 인터록',intro:'백시트, 셀모듈, 판유리의 배출 확인이 서로 독립적으로 완료되어야 다음 패널 투입이 허용됩니다.',hardware:['권취부 격리셔터·외측 도어 이중 인터록','롤러 양단 베어링 잠금·캐리지 위치센서','셀 컨테이너 상·하 레벨 및 막힘감지','밀폐 컨베이어 커버·슈레더 역회전 보호','유리 출구 광센서·파손 감지·저압 롤러 구동'],control:['WR_PERMIT = OPEN_300_ACK ∧ CLAMP_CLOSED ∧ VAC_OK ∧ DOOR_LOCKED','HKS_PERMIT = BACKSHEET_FULL_ACK ∧ ROLL_ISOLATED ∧ VAC_OK ∧ T2_READY ∧ AE_OK','EJECT_PERMIT = SHUTTER_CLOSED ∧ CARRIAGE_OUT ∧ BIN_READY','SHREDDER_FEED = CELL_BUFFERED ∧ CV_CLEAR ∧ SHREDDER_READY','NEXT_PANEL = ROLL_EJECT_ACK ∧ CELL_OUT_ACK ∧ GLASS_OUT_ACK'],verify:['정전 시 권취롤 역회전 방지 브레이크','클램프 해제·롤 이젝터 끼임 위험성 평가','컨테이너 만재 시 HKS 시작 차단','슈레더 트립 시 상류 컨베이어·게이트 순차정지','유리 롤러 정지 시 진공 해제 금지'],notice:'권취롤 측면 배출구와 슈레더 투입부는 작업자 접근이 가능한 위험구역이므로 안전 PLC, 잠금식 가드와 LOTO 절차가 필요합니다.'}
     };
@@ -223,17 +223,17 @@
     details.spec.hardware=details.spec.hardware.filter(v=>!v.startsWith('2차 HKS 320°C'));
     details.spec.control.unshift('연속 생산능력 = min(5단 IR 순차방출능력, 탠덤 박리능력)','탠덤 사이클 = 300/v + 패널길이/v + 클램프·인계시간');
     details.spec.control=details.spec.control.filter(v=>!v.startsWith('BACKSHEET_FULL_ACK'));
-    details.spec.verify.unshift('첨부 1D FDM 적층모델 재계산: h=60 W/m²K·등가환경 200°C에서 EVA/유리 계면 180°C 도달 약 177.1초','5단 연속운전의 정상상태 방출피치 = 가열체류시간÷5','최대 2,400×1,200mm·48×2.5kW·열효율 65% 기준 열수지 체류 약 250초·방출 약 50초/장');
+    details.spec.verify.unshift('첨부 1D FDM 적층모델 재계산: h=60 W/m²K·등가환경 200°C에서 EVA/유리 계면 180°C 도달 약 177.1초','5단 연속운전의 정상상태 방출피치 = 가열체류시간÷5','최대 2,500×1,400mm·60×2.92kW·열효율 65% 기준 열수지 체류 약 250초·방출 약 50초/장');
     details.interlock.control.unshift('TANDEM_GEAR = |X_HKS−X_HKB−300mm|≤2mm ∧ LOAD_OK ∧ TEMP_OK');
     details.interlock.control=details.interlock.control.filter(v=>!v.startsWith('HKS_PERMIT = BACKSHEET_FULL_ACK'));
     details.interlock.verify.unshift('HKB 선행거리가 300mm 미만이면 HKS 절입 금지','탠덤 속도 40mm/s 초과는 추력·백시트 찢김·유리 열응력 DOE 후 허용');
 
-    /* Rev.09 final engineering normalization: 60 IR lamps, 200°C EVA interface and detailed five-deck circulation. */
-    details.equipment.code='HK-TDM300 · REV.09';
+    /* Rev.11 deck widened to 2500x1400: 60 IR lamps (6 lines x 10), tube rating scales with deck width, 200°C EVA interface and detailed five-deck circulation. */
+    details.equipment.code='HK-TDM300 · REV.11';
     details.equipment.intro='60개 IR 램프가 장착된 5단 축열 캐리지와 자동 적재·방출·하부복귀 장치가 EVA 내부 계면 200°C를 확인한 뒤, 2단 탠덤 핫나이프로 백시트·셀/EVA·유리를 연속 분리합니다.';
     details.equipment.hardware=[
-      'M0 투입 정렬·패널 자세검사·6존 진공 캐리어',
-      'M1 5단 단열랙·상부/하부/단간 6라인×10개 = 총 60개 IR 램프',
+      'M0 투입 정렬·패널 자세검사·6존 진공 캐리어 (최대 2,500 × 1,400 mm)',
+      'M1 5단 단열랙·상부/하부/단간 6라인×10개 = 총 60개 IR 램프 (관이 데크 폭 1,400 mm 를 가로지르므로 관당 2.5 → 2.92 kW · 뱅크 150 → 175 kW)',
       'LI-101 양주형 서보승강기·볼스크루/타이밍벨트 동기축·카운터밸런스·무여자 브레이크',
       'TS-101 이단 텔레스코픽 포크·4점 LM가이드·푸시풀 핀·낙하방지 폴',
       'IDX-101 5단 절대치 엔코더·테이퍼 위치결정핀·좌우 기계잠금·캐리지 유무센서',
@@ -618,8 +618,8 @@
     const calcDialog=$('calcDialog'),calcIds=['panelLength','panelWidth','lampPower','heatEfficiency','knifeSpeed','handlingTime'];
     function calcNumber(id,fallback){const v=Number($(id).value);return Number.isFinite(v)&&v>0?v:fallback}
     function updateCalculator(){
-      const L=clamp(calcNumber('panelLength',2400),1600,2400),W=clamp(calcNumber('panelWidth',1200),800,1200),lamp=clamp(calcNumber('lampPower',2.5),1,3),eta=clamp(calcNumber('heatEfficiency',65),35,80)/100,speed=clamp(calcNumber('knifeSpeed',60),20,60),handling=clamp(calcNumber('handlingTime',6),5,25);
-      const area=L*W/1e6,arealCp=8.7358962,dT=175,q=area*arealCp*dT,totalPower=60*lamp,usefulPower=totalPower*eta,energyDwell=5*q/usefulPower,fdmDwell=113.15,dwell=Math.max(energyDwell,fdmDwell),pitch=dwell/5,thermalRate=3600/pitch,leadTime=300/speed,tandemCycle=leadTime+L/speed+handling,tandemRate=3600/tandemCycle,lineCycle=Math.max(pitch,tandemCycle),lineRate=3600/lineCycle,bottleneck=thermalRate<tandemRate?'5단 IR 열공정':'2단 탠덤 박리';
+      const L=clamp(calcNumber('panelLength',2500),1600,2500),W=clamp(calcNumber('panelWidth',1400),800,1400),lamp=clamp(calcNumber('lampPower',2.5),1,3),eta=clamp(calcNumber('heatEfficiency',65),35,80)/100,speed=clamp(calcNumber('knifeSpeed',60),20,60),handling=clamp(calcNumber('handlingTime',6),5,25);
+      const area=L*W/1e6,arealCp=8.7358962,dT=175,q=area*arealCp*dT,lampKw=lamp*W/1200,totalPower=60*lampKw,usefulPower=totalPower*eta,energyDwell=5*q/usefulPower,fdmDwell=113.15,dwell=Math.max(energyDwell,fdmDwell),pitch=dwell/5,thermalRate=3600/pitch,leadTime=300/speed,tandemCycle=leadTime+L/speed+handling,tandemRate=3600/tandemCycle,lineCycle=Math.max(pitch,tandemCycle),lineRate=3600/lineCycle,bottleneck=thermalRate<tandemRate?'5단 IR 열공정':'2단 탠덤 박리';
       const starts=[],ends=[];
       for(let n=0;n<10;n++){
         const ready=n<5?dwell:starts[n-5]+dwell;
