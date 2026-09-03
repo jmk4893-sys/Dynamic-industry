@@ -2556,6 +2556,13 @@
     const darkQuery=window.matchMedia('(prefers-color-scheme: dark)');
     let themePref='auto';
     try{const v=localStorage.getItem(THEME_KEY);if(THEME_ORDER.includes(v))themePref=v}catch(_){}
+    /* Embedded in a host that already stamped a theme (an artifact frame, a docs
+       shell), adopt it — otherwise 자동 would strip the stamp and fall back to the
+       OS setting, showing light to someone who asked the host for dark. */
+    if(themePref==='auto'){
+      const host=document.documentElement.getAttribute('data-theme');
+      if(host==='light'||host==='dark')themePref=host;
+    }
     function applyTheme(){
       if(themePref==='auto')document.documentElement.removeAttribute('data-theme');
       else document.documentElement.setAttribute('data-theme',themePref);
