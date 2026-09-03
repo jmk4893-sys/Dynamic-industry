@@ -183,46 +183,56 @@ class TestComponentMounting(unittest.TestCase):
 class TestBrandIdentity(unittest.TestCase):
     """회사 마크가 한 벌의 도형에서 나오고, 실제로 부착돼 있는지.
 
-    마크는 장비 외장(3D 폴리곤)과 콘솔 크롬(SVG)에 각각 그려진다. 두 곳이 따로
-    놀면 같은 회사 마크가 아니게 되므로, SVG 좌표를 JS 의 바 기하에서 유도해
-    일치를 강제한다.
+    마크는 지급된 로고 아트워크에서 추출한 폴리곤이며, 장비 외장(3D)과 콘솔
+    크롬(SVG)에 같은 좌표로 그려진다. 두 곳이 따로 놀면 같은 회사 마크가 아니게
+    되므로, SVG 좌표를 JS 도형에서 유도해 일치를 강제한다.
     """
+
+    BRAND, ACCENT = "#268cca", "#fdca4a"
 
     @classmethod
     def setUpClass(cls):
         cls.html = CONSOLE.read_text(encoding="utf-8")
-        m = re.search(r"const MARK_BARS=\[(.*?)\];", cls.html)
-        assert m, "MARK_BARS 없음"
-        cls.bars = [[float(v) for v in b.split(",")]
-                    for b in re.findall(r"\[([-\d.,]+)\]", m.group(1))]
-        cls.mark_h = float(re.search(r"const MARK_H=([\d.]+);", cls.html).group(1))
+        m = re.search(r"const MARK_SHAPES=\[(.*?)\n    \];", cls.html, re.S)
+        assert m, "MARK_SHAPES 없음"
+        cls.shapes = []
+        for role, pts in re.findall(r"\{c:'(\w)',p:\[(.*?)\]\}", m.group(1)):
+            cls.shapes.append((role, [[float(v) for v in p.split(",")]
+                                      for p in re.findall(r"\[([-\d.,]+)\]", pts)]))
 
     @staticmethod
     def _fmt(v):
+        v = round(v, 1)
         return str(int(v)) if float(v).is_integer() else str(v)
 
-    def test_mark_is_three_bars(self):
-        self.assertEqual(len(self.bars), 3, "마크는 3개 바로 구성된다")
-        for bar in self.bars:
-            self.assertEqual(len(bar), 5, "바는 [x0,y0,x1,y1,shear]")
+    def test_mark_matches_the_supplied_artwork(self):
+        """로고는 파란 도형 4개와 노란 면 1개로 이뤄진다."""
+        self.assertEqual(len(self.shapes), 5, "마크 도형 수가 아트워크와 다르다")
+        roles = [r for r, _ in self.shapes]
+        self.assertEqual(roles.count("a"), 1, "노란 면은 하나")
+        self.assertEqual(roles.count("b"), 4, "파란 면은 넷")
+        for _role, poly in self.shapes:
+            self.assertGreaterEqual(len(poly), 6, "각 면은 다각형이어야 한다")
+
+    def test_brand_colours_are_sampled_from_the_artwork(self):
+        for name, value in (("brand", self.BRAND), ("accent", self.ACCENT)):
+            self.assertIn(f"{name}:'{value}'", self.html, f"{name} 색이 아트워크와 다르다")
 
     def test_svg_mark_matches_the_three_dimensional_mark(self):
-        """SVG 폴리곤은 JS 바 기하에서 y축만 뒤집어 유도된 좌표여야 한다."""
-        for x0, y0, x1, _y1, sh in self.bars:
-            top = 100 - y0 - self.mark_h
-            pts = " ".join([
-                f"{self._fmt(x0)},{self._fmt(100 - y0)}",
-                f"{self._fmt(x1)},{self._fmt(100 - y0)}",
-                f"{self._fmt(x1 + sh)},{self._fmt(top)}",
-                f"{self._fmt(x0 + sh)},{self._fmt(top)}",
-            ])
+        """SVG 폴리곤은 JS 도형에서 y축만 뒤집어 유도된 좌표여야 한다."""
+        for _role, poly in self.shapes:
+            pts = " ".join(f"{self._fmt(x)},{self._fmt(100 - y)}" for x, y in poly)
             self.assertIn(f"points='{pts}'", self.html,
                           f"SVG 마크가 3D 마크와 어긋난다: {pts}")
 
     def test_favicon_is_inline_and_carries_the_mark(self):
         link = re.search(r'<link rel="icon" href="(data:image/svg\+xml,[^"]+)"', self.html)
         self.assertIsNotNone(link, "인라인 파비콘 없음")
-        self.assertEqual(link.group(1).count("polygon"), 3, "파비콘에 마크 3개 바가 없다")
+        self.assertEqual(link.group(1).count("polygon"), len(self.shapes),
+                         "파비콘 마크의 도형 수가 다르다")
+
+    def test_tagline_is_present(self):
+        self.assertIn("FOR NET ZERO PROJECTION", self.html, "태그라인 누락")
 
     def test_brand_is_applied_to_the_machine(self):
         for fn in ("brandMark3D", "brandLockup", "decalText", "liveryStripe", "dataPlate"):
