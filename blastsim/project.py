@@ -231,9 +231,19 @@ class BlastProject:
     # ---- DEM 파쇄·비산 -----------------------------------------------------
     def run_fragmentation(self, log=print) -> dict:
         c, q = self.cfg, self.q
+        # DEM 하중창(throw_phase)이 기폭열보다 짧으면 뒤쪽 공은 아예 터지지 않는다.
+        # 프리셋은 패턴을 모르므로 여기서 늘려 준다 — 조용히 공을 잃느니 느린 편이
+        # 낫다. 마지막 기폭 뒤 20 ms 는 그 공의 파쇄가 진행되도록 남겨 둔다.
+        last = max((h.delay for h in self.pattern.holes), default=0.0)
+        throw = q["throw"]
+        if last + 0.020 > throw:
+            throw = last + 0.020
+            log(f"  [조정] 기폭열이 {last * 1e3:.0f} ms 까지 이어져 DEM 하중창을 "
+                f"{q['throw'] * 1e3:.0f} -> {throw * 1e3:.0f} ms 로 늘렸습니다 "
+                f"(늘리지 않으면 뒤쪽 공이 터지지 않습니다).")
         fcfg = FragConfig(
             particle_size=q["particle"], bond_phase=q["bond_phase"],
-            throw_phase=q["throw"], total_duration=q["frag_total"],
+            throw_phase=throw, total_duration=max(q["frag_total"], throw + 0.20),
             snapshot_fps=q["fps"],
             stemming_full=c.full_stemming, gas_efficiency=c.gas_efficiency,
             progress=True,

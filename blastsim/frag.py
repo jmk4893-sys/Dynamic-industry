@@ -288,6 +288,18 @@ class BlastLoad:
         return c.efficiency * p
 
     # ---- 전색 판정 ----------------------------------------------------------
+    def initiation_window(self) -> tuple[float, float, bool]:
+        """(마지막 기폭시각, DEM 해석창, 창이 기폭열을 덮는가).
+
+        DEM 은 throw_phase 까지만 하중을 가하고 그 뒤는 파쇄체 강체 탄도로 넘긴다.
+        기폭열이 그 창보다 길면 **뒤쪽 공은 아예 터지지 않는다.** 결과는 조용히
+        틀리기만 하고 어디에도 표시가 나지 않으므로 여기서 잡는다.
+        (2열 5공, 공간 25 ms / 열간 65 ms 면 마지막 공이 165 ms 라 창 150 ms 를 넘는다.)
+        """
+        last = max(self.delay) if self.delay else 0.0
+        window = self.cfg.throw_phase
+        return last, window, last < window
+
     def stemming_check(self) -> tuple[str, dict]:
         """전색 적정성 판정.
 
@@ -420,6 +432,7 @@ class BlastLoad:
     def summary(self) -> str:
         grade, d = self.stemming_check()
         e = self.energy_budget()
+        last, window, ok = self.initiation_window()
         mode = "완전 전색" if self.cfg.stemming_full else "부분 전색"
         warn = "  [!] 화학에너지 초과 — 모델 과대" if e["총효율"] > 1.0 else ""
         return (
@@ -434,7 +447,11 @@ class BlastLoad:
             f"{e['총효율']:.0%}{warn}\n"
             f"  참고: 가스추력 {d['thrust_MN']:,.0f} MN, 전색재 {d['stem_mass_kg']:.0f} kg, "
             f"전압력 유지 시 분출까지 {d['t_eject_ms']:.1f} ms\n"
-            f"  하중 입자 {sum(i.size for i in self.cells):,}개 / {len(self.cells)}공"
+            f"  하중 입자 {sum(i.size for i in self.cells):,}개 / {len(self.cells)}공\n"
+            f"  기폭열 0~{last * 1e3:.0f} ms / DEM 하중창 {window * 1e3:.0f} ms  ->  "
+            + ("전 공 기폭" if ok else
+               f"[!] {sum(1 for d_ in self.delay if d_ >= window)}공이 창 밖 — "
+               f"터지지 않는다")
         )
 
 

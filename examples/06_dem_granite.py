@@ -19,6 +19,7 @@
     천공경 Ø75 mm,  천공장 12.0 m  ( 벤치고 11.25 + 하부천공 0.75 )
     저항선 B = 2.5 m,  공간격 S = 3.0 m   ( S/B = 1.2,  H/B = 4.5 )
     전색장 2.5 m (33 D),  2열 x 5공 = 10공,  에멀젼
+    시차 공간 15 ms (5 ms/m) · 열간 40 ms (16 ms/m)  ->  기폭열 0~100 ms
     비장약량 0.60 kg/m^3  — 화강암 벤치발파 표준 범위(0.5~0.8)
 
 출력
@@ -55,7 +56,10 @@ def build(quality: str = "보통", video: bool = True) -> ProjectConfig:
         # --- 패턴: 벤치고 11.25 + 하부천공 0.75 = 천공장 12.0 m ---
         burden=2.5, spacing=3.0, bench_height=11.25, subdrill=0.75,
         n_rows=2, n_cols=5,
-        delay_hole_ms=25.0, delay_row_ms=65.0,
+        # 시차는 패턴 치수에 맞춘다. 공간 5 ms/m x S 3.0, 열간 16 ms/m x B 2.5 —
+        # 둘 다 실무 범위(3~10, 10~30 ms/m) 한가운데다. 기본값 25/65 ms 는 B 3.0
+        # 급 패턴용이라 여기 쓰면 마지막 공이 165 ms 로 DEM 하중창(150 ms)을 넘는다.
+        delay_hole_ms=15.0, delay_row_ms=40.0,
         # --- 조건 ---
         full_stemming=True,             # 완전 전색 (가스 구속 -> 이동 지배)
         two_free_face=True,             # 상부면 + 벤치면

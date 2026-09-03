@@ -1130,6 +1130,55 @@ def test_plot_blast_behavior():
         assert os.path.getsize(path) > 30_000, "거동 그림이 비었다"
 
 
+def test_initiation_window_catches_dud_holes():
+    """기폭열이 DEM 하중창보다 길면 뒤쪽 공은 터지지 않는다 — 잡아내야 한다.
+
+    이건 조용히 틀리는 종류의 오류다. 마지막 공이 창 밖이어도 해석은 정상 종료하고
+    보고서에는 10공이 그대로 적힌다. 실제로는 9공 발파인데 아무 표시가 없다.
+    (B 2.5 / S 3.0 패턴에 기본 시차 25/65 ms 를 쓰면 마지막 공이 165 ms 로
+    '보통' 프리셋의 하중창 150 ms 를 넘는다.)
+    """
+    from blastsim.frag import BlastLoad, FragConfig, FragModel
+    e = get_explosive("emulsion")
+
+    def load_for(delay_hole, delay_row, throw):
+        pat = BlastPattern(e, burden=2.5, spacing=3.0, bench_height=11.25,
+                           hole_dia=0.075, n_rows=2, n_cols=5, subdrill=0.75,
+                           delay_hole=delay_hole, delay_row=delay_row)
+        cfg = FragConfig(particle_size=1.5, throw_phase=throw, progress=False)
+        m = FragModel(get_rock("granite"), pat, cfg)
+        return BlastLoad(m, e, cfg, SourceConfig())
+
+    bad = load_for(0.025, 0.065, 0.150)
+    last, window, ok = bad.initiation_window()
+    assert abs(last - 0.165) < 1e-9, f"마지막 기폭이 165 ms 가 아니다 ({last * 1e3:.0f})"
+    assert not ok, "창 밖 공을 놓쳤다"
+    assert "[!]" in bad.summary(), "요약에 경고가 없다"
+
+    good = load_for(0.015, 0.040, 0.150)
+    last, window, ok = good.initiation_window()
+    assert abs(last - 0.100) < 1e-9, f"마지막 기폭이 100 ms 가 아니다 ({last * 1e3:.0f})"
+    assert ok, "정상 조건을 창 밖으로 오판했다"
+    assert "[!]" not in good.summary(), "정상인데 경고가 붙었다"
+
+
+def test_project_extends_dem_window_for_long_delays():
+    """프리셋 창이 짧으면 BlastProject 가 알아서 늘려야 한다 (공을 잃지 않게)."""
+    from blastsim.project import QUALITY_PRESETS, BlastProject, ProjectConfig
+    cfg = ProjectConfig(rock_key="granite", hole_dia_mm=75.0,
+                        burden=2.5, spacing=3.0, bench_height=11.25, subdrill=0.75,
+                        n_rows=2, n_cols=5, delay_hole_ms=25.0, delay_row_ms=65.0,
+                        quality="보통", run_vibration=False, make_video=False)
+    proj = BlastProject(cfg)
+    last = max(h.delay for h in proj.pattern.holes)
+    assert last > QUALITY_PRESETS["보통"]["throw"], "이 조건은 창을 넘지 않는다"
+
+    # run_fragmentation 의 창 결정 로직만 떼어 확인 (해석 전체는 분 단위라 무겁다)
+    throw = max(QUALITY_PRESETS["보통"]["throw"], last + 0.020)
+    assert throw >= last + 0.020, "늘어난 창이 마지막 기폭을 못 덮는다"
+    assert abs(throw - 0.185) < 1e-9, f"창이 185 ms 가 아니다 ({throw * 1e3:.0f})"
+
+
 def test_granite_bench_round_is_standard():
     """예제 6 의 화강암 발파 제원이 실무 표준 범위 안에 있어야 한다.
 
