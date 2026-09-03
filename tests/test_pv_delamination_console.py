@@ -288,5 +288,107 @@ class TestConsoleContent(unittest.TestCase):
         self.assertIn("개념", self.html)
 
 
+class TestDeliverableEquipment(unittest.TestCase):
+    """도면이 아니라 팔리는 물건으로서 갖춰야 하는 것들.
+
+    아래 항목은 모두 준공검사·인수인계에서 실제로 확인되는 것이고, 빠져 있어도
+    화면은 멀쩡해 보이기 때문에 눈으로는 회귀를 잡을 수 없다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = CONSOLE.read_text(encoding="utf-8")
+
+    def _fn(self, name):
+        m = re.search(rf"\n    function {name}\(.*?\n    \}}", self.html, re.S)
+        self.assertIsNotNone(m, f"{name} 함수를 찾지 못했다")
+        return m.group(0)
+
+    def test_every_fence_opening_is_guarded(self):
+        """펜스가 끊긴 자리마다 광커튼이 서 있어야 한다.
+
+        반입·반출구는 자재가 지나야 해서 도어를 달 수 없다. 방호 없이 열어두면
+        3.8m 개구부가 그대로 남는다.
+        """
+        fence = re.findall(r"fenceSegment\(([-\d.,\s]+)\)", self.html)
+        self.assertTrue(fence, "안전펜스가 없다")
+        ends = {}
+        for call in fence:
+            x0, y0, x1, y1 = (float(v) for v in call.split(",")[:4])
+            if x0 == x1:                       # 라인 끝을 막는 세로 구간
+                ends.setdefault(x0, []).append((min(y0, y1), max(y0, y1)))
+        self.assertTrue(ends, "라인 양 끝 펜스가 없다")
+        guarded = [float(m) for m in re.findall(r"lightCurtain\(([-\d.]+),", self.html)]
+        for x, spans in ends.items():
+            covered = sum(hi - lo for lo, hi in spans)
+            outer = max(hi for _, hi in spans) - min(lo for lo, _ in spans)
+            if outer - covered < 0.2:          # 틈이 없으면 방호할 것도 없다
+                continue
+            self.assertTrue(
+                any(abs(g - x) < 0.6 for g in guarded),
+                f"x={x} 의 개구부가 방호되지 않았다",
+            )
+
+    def test_light_curtain_has_muting_and_a_beam_plane(self):
+        body = self._fn("lightCurtain")
+        self.assertIn("column(", body, "뮤팅 센서 지주가 없다")
+        self.assertIn("basePlate(", body, "광커튼 기둥이 바닥판 없이 떠 있다")
+        self.assertIn("line([V(x,yA,z),V(x,yB,z)]", body, "방호 광축면을 그리지 않는다")
+        self.assertRegex(
+            self.html, r"MUTE_VALID\s*=\s*\S", "뮤팅 성립조건이 정의되어 있지 않다"
+        )
+        self.assertIn("ISO 13855", self.html, "광커튼 이격거리 근거가 없다")
+
+    def test_signal_tower_follows_the_running_state(self):
+        """적층등이 상태와 무관하게 켜져 있으면 표시장치가 아니라 장식이다."""
+        body = self._fn("signalTower")
+        self.assertIn("playing", body, "적층등이 운전상태를 읽지 않는다")
+        for colour in ("C.red", "C.yellow", "C.ok"):
+            self.assertIn(colour, body, f"{colour} 렌즈가 없다")
+        lens = re.search(r"const lens=\[(.*?)\];", body).group(1)
+        self.assertLess(
+            lens.index("C.ok"), lens.index("C.red"),
+            "적층등은 아래에서 위로 녹·황·적 순이어야 한다",
+        )
+        self.assertIn("START_WARN", self.html, "기동 예고 조건이 없다")
+
+    def test_nameplate_carries_the_legal_ratings(self):
+        """명판은 상표 배지가 아니라 IEC 60204-1 16.4 의 표시 의무다."""
+        body = self._fn("dataPlate")
+        for token in ("380V", "60HZ", "482A", "50KA", "IP54", "MFG", "KC CE"):
+            self.assertIn(token, body, f"명판에 {token} 표시가 없다")
+        self.assertIn("IEC 60204-1", self.html)
+
+    def test_hazard_labels_sit_at_the_hazards(self):
+        body = self._fn("hazardDecal")
+        self.assertIn("C.yellow", body, "경고 표지가 노란 삼각형이 아니다")
+        kinds = set(re.findall(r"hazardDecal\([^;]*?'(\w+)'\)", self.html))
+        self.assertLessEqual(
+            {"hot", "crush", "shock"}, kinds,
+            f"고온·끼임·감전 표지 가운데 빠진 것이 있다: {kinds}",
+        )
+        door = self._fn("serviceDoor")
+        self.assertIn("hazardDecal(", door, "가열실 정비도어에 표지가 없다")
+        self.assertIn("ISO 7010", self.html)
+
+    def test_heavy_modules_have_lifting_points(self):
+        """25m 라인은 나뉘어 실려 온다. 걸 자리와 푸는 자리가 현품에 있어야 한다."""
+        self.assertIn("liftingLug(", self._fn("gantry"), "모듈 상부에 인양러그가 없다")
+        self.assertIn("transportSplit(", self.html, "반입 분할면 표시가 없다")
+        self.assertGreaterEqual(
+            len(re.findall(r"transportSplit\(", self.html)), 3,
+            "분할면 호출이 정의 하나뿐이다",
+        )
+
+    def test_transport_split_text_faces_outward(self):
+        """면의 법선이 안쪽을 보면 부호가 거울상으로 찍힌다."""
+        body = self._fn("transportSplit")
+        self.assertIn("V(-s,0,0)", body, "분할면 부호가 뒤집혀 찍힌다")
+
+    def test_delivery_scope_is_written_down(self):
+        for token in ("예비품", "보증", "FAT", "SAT", "매뉴얼", "교육"):
+            self.assertIn(token, self.html, f"인도 범위에 {token} 항목이 없다")
+
+
 if __name__ == "__main__":
     unittest.main()

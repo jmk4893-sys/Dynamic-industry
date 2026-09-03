@@ -1229,6 +1229,44 @@
     );
     details.support.title='Rev.20 필수 보조장치';
 
+    /* ── 인도 사양 보완 ───────────────────────────────────────────────────
+       여기까지가 공정 설계다. 아래는 이 라인을 상품으로 넘길 때 현품과
+       서류에 함께 따라가야 하는 것들이며, 빠지면 준공검사에서 걸린다. */
+    details.equipment.hardware.push(
+      'LC-001/002 반입·반출 개구부 안전 광커튼 Type4 PLe·뮤팅 4점·이격거리 ISO 13855',
+      'ST-101/102 적층 신호등(적/황/녹)·경보부저 95dBA·기동 예고 3초',
+      'NP-001 명판 IEC 60204-1 16.4 정격표시·KC/CE 적합성 마크·위험표지 ISO 7010',
+      'LG-001 모듈별 인양러그 4점·반입 분할면 TP-1~TP-4·질량중심 표시'
+    );
+    details.equipment.control.push(
+      'OPENING_SAFE = LC_OSSD_CLEAR ∨ MUTE_VALID',
+      'MUTE_VALID = M1→M2 순차차폐 ∧ Δt≤2s ∧ 자재존재 ∧ 뮤팅시간≤120s',
+      'START_WARN = HORN_3S ∧ BEACON_AMBER → 그 후에만 축 기동 허가',
+      'BEACON = 운전 녹 · 대기/뮤팅 황 · 정지/트립 적'
+    );
+    details.interlock.hardware.push(
+      '개구부 광커튼 OSSD 2채널·교차감시·뮤팅램프 상시표시',
+      '적층등·부저는 안전 PLC의 F-DO에서 직접 구동해 표준 PLC 정지와 무관하게 유지'
+    );
+    details.interlock.verify.push(
+      'ISO 13855 접근속도 1.6m/s로 광커튼 이격거리와 정지시간을 실측 검증',
+      '뮤팅은 사람이 통과할 때 성립하지 않아야 하며 순서·시간창 우회시험으로 확인',
+      'IEC 60204-1 16.4 명판 기재값을 전기부하표·계량 질량과 대조'
+    );
+    details.support.hardware.push(
+      'DOC-401: 취급·정비·전기·PLC 매뉴얼(국문/영문), 부품도, 위험성평가서, 적합성선언서'
+    );
+    details.support.control.push(
+      '예비품은 1년 소모품(칼날카세트 2조·내열라이너·활성탄·필터·씰)과 2년 중요예비품(SSR·서보·IR램프 10%·로드셀)으로 나누어 납품',
+      '교육은 운전 16h·정비 24h·안전 8h로 하고 인수 후 3개월 내 재교육 1회 포함',
+      '보증은 인수확인 후 12개월 또는 12,000시간 중 먼저 도달하는 시점까지, 소모품·오사용은 제외'
+    );
+    details.support.verify.push(
+      'FAT는 무부하 시퀀스·안전기능·계측 교정, SAT는 실패널 60장/h 연속 8h와 배기·소음 실측으로 구분',
+      '반입 분할 4모듈(최대 12.7m·18t)의 운송한계·크레인 용량·반입구 치수를 사전확인',
+      '작업위치 소음 ≤80dBA, 조도 ≥300lx, 배기 포집풍속 ≥0.5m/s 실측'
+    );
+
     const assemblies=[
       {id:'M-001',name:'투입·정렬·식별',size:'6000×3000×4200',material:'SS400/AL6061',parts:['베드 프레임','우레탄 구동롤러','IE4 기어모터','폭조절 가이드','패널 스토퍼','2D 비전카메라','레이저 높이센서','바코드 리더','광전센서','안전커버','케이블베어','앵커 세트']},
       {id:'M-002',name:'5단 밀폐 IR 가열실',size:'5600×3780×4860',material:'SS400+세라믹단열',parts:['외부 용접프레임','130mm 이중 단열패널','B0~B5 IR 뱅크','2.5kW IR 램프×60','반사판×60','SSR 분기모듈×60','독립 과온센서','EVA 계면센서×5','투입 에어록','배출 에어록','차압센서','점검도어']},
@@ -1794,24 +1832,150 @@
        a real one is — mark and builder over a rule, model and serial beneath.
        Ground, rule and lettering each sit on their own depth slice; coplanar art on
        a painter's-algorithm renderer interleaves with its own backing plate. */
+    /* 명판. 상표만 붙은 배지가 아니라 IEC 60204-1 16.4가 요구하는 정격
+       표시란을 아래쪽에 따로 둔다: 전압·상·주파수, 정격전류, 단락내량,
+       보호등급, 질량, 제조연월, 제조국과 적합성 마크. */
     function dataPlate(o,u,v,w,ink){
-      const n=norm(cross(u,v)),h=w*.46,p=add(o,mul(n,.014));
+      const n=norm(cross(u,v)),h=w*.72,p=add(o,mul(n,.014));
       const Q=(a,b)=>add(p,add(mul(u,a),mul(v,b)));
       withBias(.24,()=>{
         poly([Q(-.014,-.014),Q(w+.014,-.014),Q(w+.014,h+.014),Q(-.014,h+.014)],C.rail,1,null,0);
       });
       withBias(.26,()=>{
         poly([Q(0,0),Q(w,0),Q(w,h),Q(0,h)],C.steel2,1,null,0);
+        poly([Q(0,0),Q(w,0),Q(w,h*.40),Q(0,h*.40)],C.dark,1,null,0);
       });
       withBias(.28,()=>{
-        brandMark3D(Q(w*.055,h*.50),u,v,w*.20,null);
-        liveryStripe(Q(w*.055,h*.335),u,v,w*.89,h*.024,ink,.9);
+        brandMark3D(Q(w*.055,h*.685),u,v,w*.20,null);
+        liveryStripe(Q(w*.055,h*.582),u,v,w*.89,h*.016,ink,.9);
         if(!nearView())return;
-        decalText('FOR NET ZERO PROJECTION',Q(w*.26,h*.80),u,v,h*.075,C.rail,.32);
-        decalText('DYNAMIC INDUSTRY',Q(w*.26,h*.575),u,v,h*.125,C.white,.30);
-        decalText('DG-HK60',Q(w*.055,h*.115),u,v,h*.185,C.white,.20);
-        decalText('SN 2026-001',Q(w*.54,h*.145),u,v,h*.105,C.rail,.22);
+        decalText('FOR NET ZERO PROJECTION',Q(w*.26,h*.875),u,v,h*.048,C.rail,.32);
+        decalText('DYNAMIC INDUSTRY',Q(w*.26,h*.730),u,v,h*.082,C.white,.30);
+        decalText('DG-HK60',Q(w*.055,h*.450),u,v,h*.104,C.white,.20);
+        decalText('SN 2026-001',Q(w*.50,h*.472),u,v,h*.060,C.rail,.22);
+        decalText('380V 3PH4W 60HZ',Q(w*.055,h*.275),u,v,h*.058,C.rail,.26);
+        decalText('482A 50KA IP54',Q(w*.055,h*.165),u,v,h*.058,C.rail,.26);
+        decalText('42T MFG 2026-03',Q(w*.055,h*.055),u,v,h*.058,C.rail,.26);
+        decalText('KC CE',Q(w*.700,h*.150),u,v,h*.090,C.white,.30);
+        decalText('KOREA',Q(w*.700,h*.055),u,v,h*.050,C.rail,.26);
       });
+    }
+
+    /* ── 인도 사양 안전·표시 장치 ────────────────────────────────────────
+       설계도면에 글로만 적혀 있던 항목 가운데, 실제로 팔려 나가는 기계라면
+       현품에 붙어 있어야 하는 것들이다. 개구부 방호, 상태 표시, 위험 표지,
+       인양점 순으로 정의한다. */
+
+    /* 자재 반입·반출 개구부의 안전 광커튼.
+       펜스 양 끝은 패널이 들어오고 유리·권취롤이 나가는 3.8m 개구부라
+       잠금식 도어를 달 수 없다. 대신 광커튼으로 평면을 방호하고, 자재가
+       지날 때만 뮤팅 센서 4개가 정해진 순서·시간창 안에서 차폐될 때에 한해
+       일시 무효화한다. 사람이 지나가면 순서가 어긋나 뮤팅이 성립하지 않는다. */
+    function lightCurtain(x,yA,yB,code){
+      const h=1.86,z0=.05,mid=(yA+yB)/2;
+      for(const y of [yA,yB]){
+        basePlate(x,y,.30,C.steel2);
+        box(V(x,y,z0+h/2),V(.11,.14,h),C.yellow);                     // 기둥
+        box(V(x,y,z0+h+.055),V(.13,.16,.11),C.steel2);                // 상부 캡
+        const s=y===yA?1:-1;
+        withBias(.20,()=>poly([V(x-.042,y+s*.072,z0+.15),V(x+.042,y+s*.072,z0+.15),
+                               V(x+.042,y+s*.072,z0+h-.11),V(x-.042,y+s*.072,z0+h-.11)],C.black,1,null,0));
+        if(nearView())for(const z of [z0+.30,z0+h-.26])                // 상태 LED
+          withBias(.24,()=>poly([V(x-.02,y+s*.076,z-.03),V(x+.02,y+s*.076,z-.03),
+                                 V(x+.02,y+s*.076,z+.03),V(x-.02,y+s*.076,z+.03)],C.ok,1,null,0));
+      }
+      if(midView())for(let z=z0+.24;z<z0+h-.1;z+=.34)                 // 방호 광축면
+        line([V(x,yA,z),V(x,yB,z)],C.yellow,1.1,[.16,.30],.55);
+      for(const dx of [-.62,-.30,.30,.62])for(const y of [yA+.34,yB-.34]){  // 뮤팅 센서
+        column(x+dx,y,.98,{s:.08,color:C.steel2,plate:.2});
+        box(V(x+dx,y,1.06),V(.13,.13,.14),C.teal);
+      }
+      label3(`${code} 안전 광커튼 · 뮤팅 4점`,V(x,mid,z0+h+.42),C.yellow);
+    }
+
+    /* 소등된 렌즈 색: 본래 색을 어두운 케이스 색 쪽으로 눌러 불투명하게 남긴다. */
+    const dimCache=new Map();
+    function dimLens(hex){
+      let v=dimCache.get(hex);
+      if(!v){
+        const [r,g,b]=toRGB(hex),[dr,dg,db]=toRGB(C.dark),k=.34;
+        const h=n=>Math.round(n).toString(16).padStart(2,'0');
+        v='#'+h(r*k+dr*(1-k))+h(g*k+dg*(1-k))+h(b*k+db*(1-k));
+        dimCache.set(hex,v);
+      }
+      return v;
+    }
+
+    /* 적층 신호등과 경보 부저. 운전 상태를 라인 밖에서 읽을 수 있어야 하고,
+       기동 전 예고음이 나가야 한다. 켜진 등만 밝게, 나머지는 소등 렌즈로
+       그린다. */
+    function signalTower(x,y,zBase,code){
+      const lamp=playing?'run':index===0?'idle':'hold';
+      const lens=[[C.ok,lamp==='run'],[C.yellow,lamp==='hold'],[C.red,lamp==='idle']];  // 아래→위 녹·황·적
+      column(x,y,zBase,{s:.1,color:C.steel2,plate:.26});
+      cylinder(V(x,y,zBase+.06),.055,.12,'z',C.dark,10);
+      lens.forEach(([col,on],i)=>{
+        /* 꺼진 렌즈는 투명해지는 게 아니라 어두워질 뿐이다. 알파를 낮추면
+           유령처럼 비치고 위쪽 부품의 지지선도 끊긴다. */
+        cylinder(V(x,y,zBase+.20+i*.17),.085,.155,'z',on?col:dimLens(col),12);
+        cylinder(V(x,y,zBase+.285+i*.17),.086,.018,'z',C.dark,12);     // 렌즈 사이 링
+      });
+      cylinder(V(x,y,zBase+.78),.075,.14,'z',C.black,12);              // 경보 부저
+      cylinder(V(x,y,zBase+.87),.05,.05,'z',C.steel2,10);
+      label3(`${code} 적층등·경보부저`,V(x,y,zBase+1.06),C.yellow);
+    }
+
+    /* ISO 7010 계열 위험 표지. 노란 삼각형에 검은 테두리와 픽토그램을 얹는다.
+       kind: hot 고온면 · crush 끼임 · shock 감전 · auto 자동기동 */
+    function hazardDecal(o,u,v,size,kind){
+      const n=norm(cross(u,v)),p=add(o,mul(n,.012)),k=size;
+      const Q=(a,b)=>add(p,add(mul(u,a*k),mul(v,b*k)));
+      withBias(.30,()=>poly([Q(.5,.96),Q(.97,.10),Q(.03,.10)],C.yellow,1,null,0));
+      withBias(.32,()=>{
+        const w=clamp(k*13,1,3.4);
+        line([Q(.5,.90),Q(.91,.16),Q(.09,.16),Q(.5,.90)],C.black,w,null,1);
+        if(!nearView())return;
+        if(kind==='hot')for(const dx of [-.13,0,.13]){                 // 복사열 화살
+          line([Q(.5+dx,.34),Q(.5+dx,.60)],C.black,w,null,1);
+          line([Q(.5+dx-.05,.52),Q(.5+dx,.60),Q(.5+dx+.05,.52)],C.black,w,null,1);
+        }
+        else if(kind==='crush'){                                        // 위아래로 눌리는 손
+          line([Q(.30,.60),Q(.70,.60)],C.black,w*1.5,null,1);
+          line([Q(.30,.30),Q(.70,.30)],C.black,w*1.5,null,1);
+          line([Q(.42,.38),Q(.42,.52),Q(.58,.52),Q(.58,.38)],C.black,w,null,1);
+        }
+        else if(kind==='shock')                                         // 번개
+          line([Q(.60,.66),Q(.42,.44),Q(.55,.44),Q(.38,.22)],C.black,w*1.3,null,1);
+        else{                                                           // 자동기동
+          line([Q(.34,.30),Q(.34,.62),Q(.62,.46),Q(.34,.30)],C.black,w,null,1);
+          line([Q(.68,.28),Q(.68,.64)],C.black,w,null,1);
+        }
+      });
+    }
+
+    /* 인양 러그. 25m 라인은 모듈로 분할해 실려 오므로 각 중량물 상부에
+       구멍뚫린 러그판을 용접해 둔다. 러그판은 보강 패드 위에 세운다. */
+    function liftingLug(x,y,z,rz=0){
+      box(V(x,y,z+.012),V(.30,.20,.024),C.steel2,{rz});                // 보강 패드
+      box(V(x,y,z+.13),V(.20,.032,.21),C.steel,{rz});                  // 러그판
+      withBias(.16,()=>{                                                // 인양 구멍
+        const c=Math.cos(rz),sn=Math.sin(rz),ring=[];
+        for(let i=0;i<10;i++){const a=i*Math.PI/5,dx=Math.cos(a)*.045,dz=Math.sin(a)*.045;
+          ring.push(V(x+dx*c,y+dx*sn,z+.16+dz))}
+        poly(ring,C.dark,1,null,0);
+      });
+    }
+
+    /* 반입 분할선. 어느 면에서 볼트로 나뉘어 실려 오는지 현품에 표시해 두면
+       설치·재배치 때 어디를 풀어야 하는지 도면 없이 알 수 있다. */
+    function transportSplit(x,code){
+      for(const s of [-1,1])withBias(.18,()=>{
+        /* cross(u,v)가 바깥(±y)을 향해야 글자가 뒤집히지 않는다. */
+        const y=s*2.104,u=V(-s,0,0),v=V(0,0,1);
+        liveryStripe(V(x+s*.055,y,.62),u,v,.11,3.30,C.accent,.94);
+        if(midView())decalText(code,V(x-s*.10,y,4.02),u,v,.13,C.accent,.26);
+      });
+      label3(`${code} 반입 분할면`,V(x,-2.42,4.62),C.accent);
     }
 
     function conveyor(cx,length,z,widthY=3,cy=0){
@@ -1846,6 +2010,9 @@
       box(V(cx,y,2.85),V(lengthX-.4,.1,.14),C.steel);      // vision-panel rail
       box(V(cx,y,1.15),V(lengthX-.4,.1,.12),C.steel);      // lock rail
       for(const x of [cx-lengthX*.22,cx+lengthX*.22]){box(V(x,y,1.15),V(.42,.15,.12),C.yellow);box(V(x,y,2.85),V(.92,.12,.72),C.black,{alpha:.78})}
+      /* 문 뒤가 320°C 칼날과 가동 캐리지이므로 손잡이 옆에 표지를 붙인다. */
+      hazardDecal(V(cx-lengthX*.40,y,1.78),AISLE_U,AISLE_V,.30,'hot');
+      hazardDecal(V(cx-lengthX*.40+.34,y,1.78),AISLE_U,AISLE_V,.30,'crush');
       label3(`${code} 정비도어`,V(cx,-2.34,3.12),C.yellow);
     }
     function gantry(cx,lengthX,label,code){
@@ -1855,6 +2022,9 @@
         gusset(x,y,4.02,x<cx?1:-1,'x',.18,C.steel2);
       }
       box(V(cx,0,4.22),V(lengthX+.35,4.2,.34),C.steel2);box(V(cx,0,3.85),V(lengthX+.1,3.75,.42),C.cab);
+      /* 인양점. 25m 라인은 통째로 실을 수 없어 모듈 단위로 나뉘어 오므로,
+         하역·설치 때 크레인을 걸 자리를 기둥 바로 위 보 위에 둔다. */
+      for(const x of [cx-lengthX*.42,cx+lengthX*.42])for(const y of [-1.72,1.72])liftingLug(x,y,4.39);
       /* Builder's name on the portal beam — where a machine wears it. */
       const beamY=-2.1-(lengthX+.35)*0,fx=cx-(lengthX+.35)/2;
       withBias(.22,()=>{
@@ -2106,7 +2276,7 @@
       });
       withPartOffset(o.heat,preheatTunnel);
       for(const y of [-1.38,1.38])box(V(13.9,y,.68),V(21.8,.16,.18),C.rail);for(let x=3.1;x<24.8;x+=1.15){box(V(x,-1.38,.33),V(.13,.17,.65),C.steel2);box(V(x,1.38,.33),V(.13,.17,.65),C.steel2)}
-      withPartOffset(o.tandem,()=>{carrierMotionAxis();gantry(17.8,10.2,'FGT-201 · 고정 HKB/HKS 탠덤 브리지','FIXED-TDM');tandemProfessionalDetail();exhaust(15.5);exhaust(21.2);box(V(17.8,0,.28),V(2.4,3.05,.16),C.steel2);box(V(17.8,0,.39),V(2.1,2.72,.08),C.dark)});
+      withPartOffset(o.tandem,()=>{carrierMotionAxis();gantry(17.8,10.2,'FGT-201 · 고정 HKB/HKS 탠덤 브리지','FIXED-TDM');transportSplit(12.7,'TP-2');transportSplit(22.9,'TP-3');tandemProfessionalDetail();exhaust(15.5);exhaust(21.2);box(V(17.8,0,.28),V(2.4,3.05,.16),C.steel2);box(V(17.8,0,.39),V(2.1,2.72,.08),C.dark)});
       withPartOffset(o.backsheet,()=>{
         winderFrame();
         cylinder(V(14.7,0,3.04),.3,3,'y',C.rail,14);
@@ -2122,13 +2292,19 @@
       withPartOffset(o.cell,()=>{liftConveyor();cellHandlingStation()});
       withPartOffset(o.utility,()=>{plinth(19,-3.3,1.6,1.2);box(V(19,-3.3,1.8),V(1.6,1.2,3.6),C.cab);
         withBias(.22,()=>liveryStripe(V(18.2,-3.912,3.28),AISLE_U,AISLE_V,1.6,.06,C.brand,.95));
-        dataPlate(V(18.36,-3.9,1.32),AISLE_U,AISLE_V,.88,C.accent);box(V(19,-2.67,2.75),V(.8,.05,.6),C.black);label3('PLC + HMI',V(19,-3.35,3.85));utilityAndSafetyStation()});
+        dataPlate(V(18.36,-3.9,1.32),AISLE_U,AISLE_V,.88,C.accent);box(V(19,-2.67,2.75),V(.8,.05,.6),C.black);label3('PLC + HMI',V(19,-3.35,3.85));
+        hazardDecal(V(19.42,-3.9,2.28),AISLE_U,AISLE_V,.34,'shock');
+        hazardDecal(V(19.42,-3.9,1.82),AISLE_U,AISLE_V,.34,'auto');
+        utilityAndSafetyStation()});
       withPartOffset(o.glass,()=>{glassOutfeedStation();qualityRejectStation();glassCoolingStation()});
       withPartOffset(o.exhaust,scrubberUnit);withPartOffset(o.power,powerInfeedStation);withPartOffset(o.maintenance,maintenanceStation);
       line([V(14.7,0,.1),V(14.7,-2.75,.1)],C.sheet,3,[8,4],.75);
       line([V(22.2,0,.1),V(24.4,0,.1),V(27,-2.35,.1),V(36.5,-2.35,.1)],C.cell2,3,[8,4],.78);
       fenceSegment(5.7,-3.62,30.5,-3.62);fenceSegment(5.7,3.62,30.5,3.62);fenceSegment(5.7,-3.62,5.7,-1.9);fenceSegment(5.7,1.9,5.7,3.62);fenceSegment(30.5,-3.62,30.5,-1.9);fenceSegment(30.5,1.9,30.5,3.62);
       box(V(5.55,-1.82,1.08),V(.28,.28,2.15),C.red);box(V(30.65,1.82,1.08),V(.28,.28,2.15),C.red);
+      /* 펜스 양 끝은 자재가 드나드는 3.8m 개구부라 도어를 달 수 없다. */
+      lightCurtain(5.72,-1.78,1.78,'LC-001');lightCurtain(30.48,-1.78,1.78,'LC-002');
+      signalTower(20.35,-3.34,2.62,'ST-101');signalTower(30.2,3.34,2.62,'ST-102');
       explodeGuide(V(3,0,1.1),o.input,C.teal,'투입 모듈');explodeGuide(V(9.2,0,2.6),o.heat,C.heat,'5단 IR');explodeGuide(V(17.8,0,2.2),o.tandem,C.yellow,'탠덤');explodeGuide(V(14.7,-1.6,2.2),o.backsheet,C.sheet,'백시트');explodeGuide(V(28,-2.35,1.3),o.cell,C.cell2,'셀/EVA');explodeGuide(V(27.4,1.6,1.4),o.glass,C.glass,'유리');explodeGuide(V(38.8,0,2.4),o.exhaust,C.teal,'배기');explodeGuide(V(9.2,-4.2,1.8),o.utility,C.yellow,'유틸리티')
     }
     function tandemFocusBase(){
