@@ -162,3 +162,78 @@ def summary() -> dict[str, object]:
         "knife_speed_needed": knife_speed_for_balance(),
         "balances_at_max_knife": balances_at_max_knife_speed(),
     }
+
+
+# ── 균형 안 두 가지 ────────────────────────────────────────────────────────
+# 유입 66.0 대 처리 46.5 장/h 의 격차 19.5 를 어느 쪽에서 흡수할 것인가.
+# B안은 후단을 올리고, C안은 전처리를 내린다. 둘 다 성립하지만 잃는 것이 다르다.
+
+#: B안 — 듀얼 진공테이블로 인계를 겹쳐 클램프·인계시간을 줄인다 (s/장).
+PLAN_B_HANDLING_S = 6.0
+#: B안 — 칼날은 상한까지 올린다 (mm/s).
+PLAN_B_KNIFE_MM_S = KNIFE_SPEED_MAX_MM_S
+
+
+@dataclass(frozen=True)
+class Plan:
+    key: str
+    name: str
+    lever: str            # 무엇을 움직이는가
+    feed_per_h: float     # 전처리에서 나오는 정상 유리
+    capacity_per_h: float  # 후단이 받는 양
+    margin_per_h: float   # 여유 (음수면 여전히 밀린다)
+    cost: str             # 무엇을 잃는가
+
+
+def plan_b() -> Plan:
+    """후단을 유입에 맞춘다 — 전처리는 그대로 두고 탠덤 사이클을 줄인다.
+
+    병목이 2단 탠덤 박리이므로 손댈 곳은 칼날 속도와 인계시간 둘뿐이다.
+    IR 열공정은 79.7 장/h 로 여유가 있어 증설 대상이 아니다.
+    """
+    d = downstream_rate(knife_speed_mm_s=PLAN_B_KNIFE_MM_S, handling_s=PLAN_B_HANDLING_S)
+    feed = sheet_glass_per_h()
+    return Plan(
+        "B", "후단 개선",
+        f"칼날 {KNIFE_SPEED_MM_S:g} → {PLAN_B_KNIFE_MM_S:g} mm/s · 인계 {HANDLING_S:g} → {PLAN_B_HANDLING_S:g} s/장",
+        feed, d.line_per_h, round(d.line_per_h - feed, 1),
+        "듀얼 진공테이블 증설과 칼날 증속 — HKS 추력·장력·유리응력 DOE 가 선행돼야 한다")
+
+
+def plan_c_hold_s() -> float:
+    """C안에서 필요한 방출 보류 (s) — 정상 유리 유입을 후단 능력까지 낮춘다.
+
+    셀 점유시간은 건드리지 않는다. 로봇이 손을 늦게 떼는 것만으로 택트를 늘린다.
+    """
+    capacity = downstream_rate().line_per_h
+    lo, hi = 0.0, 120.0
+    for _ in range(60):                      # 이분법 — 보류가 늘면 유입은 단조 감소
+        mid = (lo + hi) / 2.0
+        s = campaign.summary(mid)
+        if s["normal"] / s["run_s"] * 3600.0 > capacity:
+            lo = mid
+        else:
+            hi = mid
+    return round(hi, 1)
+
+
+def plan_c() -> Plan:
+    """전처리를 후단에 맞춘다 — 방출 보류로 택트를 늘린다."""
+    hold = plan_c_hold_s()
+    s = campaign.summary(hold)
+    feed = round(s["normal"] / s["run_s"] * 3600.0, 1)
+    capacity = downstream_rate().line_per_h
+    return Plan(
+        "C", "전처리 감속",
+        f"방출 보류 +{hold:g} s · 택트 {campaign.summary()['takt_s']:g} → {s['takt_s']:g} s",
+        feed, capacity, round(capacity - feed, 1),
+        f"전체 처리량 {campaign.summary()['throughput_per_h']:g} → {s['throughput_per_h']:g} 장/h, "
+        f"병목 JBR 가동률 {JBR_UTILISATION_BASE:.0%} → {campaign.JBR_S / s['takt_s']:.0%} 로 놀게 된다")
+
+
+#: 기준 상태에서 병목(JBR)이 실제로 물려 있는 비율 — C안의 손실을 재는 기준.
+JBR_UTILISATION_BASE = campaign.JBR_S / campaign.summary()["takt_s"]
+
+
+def plans() -> tuple[Plan, Plan]:
+    return (plan_b(), plan_c())

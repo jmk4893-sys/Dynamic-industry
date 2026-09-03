@@ -56,6 +56,10 @@ INFEED_REJECT_S = 15.0
 #: 영상 스테이지 "JBR-201 · 스토퍼·측면 정렬" 이 48.0 s 에 시작하고 JBR 진입이 40.0 s 이므로 8.0 s.
 JBR_STOPPER_OFFSET_S = 8.0
 
+#: 방출 보류 (s). 0 이면 라인이 제 속도로 돈다. 후단이 못 따라올 때 이 값만
+#: 키워 택트를 늘린다 — 셀 점유시간은 그대로 두고 로봇이 손을 늦게 떼는 것이다.
+RELEASE_HOLD_S = 0.0
+
 #: 팔레트 한 장당 매수
 PALLET_PANELS = 30
 
@@ -128,7 +132,7 @@ def _decode(mark: str) -> tuple[str, str]:
     return face, "유리 깨짐" if mark.islower() else "정상"
 
 
-def panels() -> tuple[Panel, ...]:
+def panels(hold_s: float = RELEASE_HOLD_S) -> tuple[Panel, ...]:
     """60장 로스터 — 셀별 점유를 이산사건으로 잡는다.
 
     **다음 장 투입 시점은 앞 장의 JBR 스토퍼·자세교정이 작동하는 순간이다.**
@@ -158,7 +162,7 @@ def panels() -> tuple[Panel, ...]:
             jbr_start = max(end, jbr_free)
             jbr_end = jbr_start + JBR_S
             jbr_free = jbr_end
-            release_gate = jbr_start + JBR_STOPPER_OFFSET_S
+            release_gate = jbr_start + JBR_STOPPER_OFFSET_S + hold_s
             afr_start = max(jbr_end, afr_free)
             afr_end = afr_start + AFR_S
             afr_free = afr_end
@@ -233,16 +237,16 @@ def bottleneck() -> str:
                key=lambda row: row[1])[0]
 
 
-def release_takt_s() -> float:
+def release_takt_s(hold_s: float = RELEASE_HOLD_S) -> float:
     """다음 장 투입 주기 — 앞 장이 JBR 에 들어가 스토퍼가 작동하기까지.
 
     영상의 반복 주기와 같은 값이라 화면과 계산이 어긋나지 않는다.
     """
-    return INFEED_S + JBR_STOPPER_OFFSET_S
+    return INFEED_S + JBR_STOPPER_OFFSET_S + hold_s
 
 
-def summary() -> dict[str, float]:
-    rows = panels()
+def summary(hold_s: float = RELEASE_HOLD_S) -> dict[str, float]:
+    rows = panels(hold_s)
     processed = [p for p in rows if not p.rejected]
     run_s = max(p.done_s for p in rows)
     conditions = condition_counts()

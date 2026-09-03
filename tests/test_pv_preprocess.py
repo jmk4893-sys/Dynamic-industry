@@ -1829,3 +1829,71 @@ class TestHandoff(unittest.TestCase):
                          round(campaign.summary()["normal"]
                                / campaign.summary()["run_s"] * 3600, 1),
                          "인계 유입은 정상 유리(R-A)만 세어야 한다")
+
+
+class TestBalancePlans(unittest.TestCase):
+    """격차 19.5 장/h 를 어디서 흡수하는가 — 두 안 다 성립하지만 잃는 것이 다르다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_release_hold_is_the_only_throttle(self):
+        """감속은 셀 점유시간을 건드리지 않는다 — 로봇이 손을 늦게 뗄 뿐이다."""
+        self.assertEqual(campaign.RELEASE_HOLD_S, 0.0, "기본은 제 속도로 돈다")
+        base, held = campaign.summary(), campaign.summary(20.0)
+        self.assertGreater(held["takt_s"], base["takt_s"])
+        self.assertLess(held["throughput_per_h"], base["throughput_per_h"])
+        self.assertEqual(held["panels"], base["panels"], "보류가 장수를 바꾸면 안 된다")
+        self.assertEqual(held["normal"], base["normal"], "보류가 판정을 바꾸면 안 된다")
+        self.assertAlmostEqual(campaign.release_takt_s(20.0),
+                               campaign.release_takt_s() + 20.0, places=6)
+
+    def test_plan_b_lifts_the_downstream_within_its_limits(self):
+        """B안은 칼날 상한과 인계 단축만으로 유입을 받아낸다 — 증설이 아니다."""
+        b = handoff.plan_b()
+        self.assertEqual(b.key, "B")
+        self.assertLessEqual(handoff.PLAN_B_KNIFE_MM_S, handoff.KNIFE_SPEED_MAX_MM_S,
+                             "칼날이 상한을 넘으면 그 안이 아니다")
+        self.assertLess(handoff.PLAN_B_HANDLING_S, handoff.HANDLING_S)
+        self.assertGreaterEqual(b.margin_per_h, 0, "B안인데 여전히 밀린다")
+        self.assertAlmostEqual(b.capacity_per_h, 70.6, places=1)
+
+    def test_plan_c_throttles_the_upstream_to_match(self):
+        """C안은 후단 능력까지 정확히 내려온다 — 더 내리면 낭비다."""
+        c = handoff.plan_c()
+        self.assertEqual(c.key, "C")
+        self.assertGreaterEqual(c.margin_per_h, 0, "C안인데 여전히 밀린다")
+        self.assertLess(c.margin_per_h, 1.0, "필요 이상으로 내렸다")
+        hold = handoff.plan_c_hold_s()
+        self.assertGreater(hold, 0)
+        loose = campaign.summary(hold - 1.0)
+        self.assertGreater(loose["normal"] / loose["run_s"] * 3600.0,
+                           handoff.downstream_rate().line_per_h,
+                           "보류를 1초 줄이면 다시 밀려야 최소값이다")
+
+    def test_plan_c_costs_bottleneck_utilisation(self):
+        """감속의 대가는 병목이 노는 것이다 — 그 사실이 표에 적혀야 한다."""
+        self.assertGreater(handoff.JBR_UTILISATION_BASE, 0.9)
+        held = campaign.summary(handoff.plan_c_hold_s())
+        self.assertLess(campaign.JBR_S / held["takt_s"], handoff.JBR_UTILISATION_BASE)
+        self.assertIn("놀게 된다", handoff.plan_c().cost)
+
+    def test_both_plans_are_shown_in_the_drawing(self):
+        self.assertIn('id="jb-ho-plans"', self.html)
+        for plan in handoff.plans():
+            with self.subTest(plan=plan.key):
+                self.assertIn(f'"key":"{plan.key}"', self.html)
+                self.assertIn(f'"cap":{plan.capacity_per_h:g}', self.html)
+                self.assertIn(f'"margin":{plan.margin_per_h:g}', self.html)
+
+    def test_variant_builder_anchors_still_exist(self):
+        """두 벌을 찍어내는 앵커가 사라지면 빌드가 조용히 어긋난다."""
+        self.assertIn(f"pvCamTakt={campaign.release_takt_s():g}", self.html)
+        self.assertIn(f"pvCamWrap={campaign.release_takt_s():g}", self.html)
+        delam = (pathlib.Path(__file__).resolve().parents[1]
+                 / "docs" / "drawings" / "pv-delam-tandem.html").read_text(encoding="utf-8")
+        self.assertIn(f'id="knifeSpeed" type="number" min="20" max="60" step="1" '
+                      f'value="{handoff.KNIFE_SPEED_MM_S:g}"', delam)
+        self.assertIn(f'id="handlingTime" type="number" min="5" max="25" step="1" '
+                      f'value="{handoff.HANDLING_S:g}"', delam)
