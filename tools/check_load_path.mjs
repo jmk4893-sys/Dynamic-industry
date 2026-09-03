@@ -12,7 +12,9 @@
  * 예외는 `mounting.UNSUPPORTED_BY_DESIGN` 과 같아야 한다 — 공정 중 물체와
  * 레이저 투영선은 받칠 대상이 아니다. 그 밖의 것이 뜨면 실패한다.
  *
- *   node tools/check_load_path.mjs docs/drawings/pv-preprocess-plant.html
+ * 실행 (저장소 루트에서):
+ *     npm i playwright && npx playwright install chromium
+ *     node tools/check_load_path.mjs docs/drawings/pv-preprocess-plant.html
  */
 import { chromium } from 'playwright';
 import { resolve } from 'node:path';
