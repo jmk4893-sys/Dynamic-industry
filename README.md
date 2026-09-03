@@ -147,8 +147,8 @@ python -m blastsim --mesh --mesh-size 20 20 20 \
 python examples/04_hybrid_full.py  # 진동 + 파쇄 + 영상 한 번에
 python examples/05_tet_mesh.py     # 사면체 메쉬 + VTK/MSH/진단도
 python examples/06_dem_granite.py  # 화강암 DEM 파쇄·암발파 거동 (물리엔진)
-python tests/test_blastsim.py      # 검증 테스트 (52건, 테스트 프레임워크 없이)
-python -m unittest discover -s tests -t .   # 저장소 전체 테스트 338건
+python tests/test_blastsim.py      # 검증 테스트 (54건, 테스트 프레임워크 없이)
+python -m unittest discover -s tests -t .   # 저장소 전체 테스트 340건
 ```
 
 Python API:
@@ -333,7 +333,23 @@ P₀    = E_gas · (γ − 1) / V₀
 (`FragResult.pressure_log` / `broken_log`).
 
 **압력은 공 0 이 아니라 전 공 최대를 기록한다.** 공 0 만 보면 2열 5공 패턴에서
-25~165 ms 에 터지는 나머지 아홉 공의 충격파가 그림에 나오지 않는다.
+뒤이어 터지는 나머지 아홉 공의 충격파가 그림에 나오지 않는다.
+
+### 기폭열이 DEM 하중창보다 길면 뒤쪽 공이 불발이 된다
+
+DEM 은 `throw_phase` 까지만 하중을 가하고 그 뒤는 파쇄체를 강체로 보는 탄도
+단계로 넘긴다. 기폭열이 그 창보다 길면 **뒤쪽 공은 아예 터지지 않는데**, 해석은
+정상 종료하고 보고서에는 10공이 그대로 적힌다 — 실제로는 9공 발파인 결과가
+아무 표시 없이 나온다.
+
+B 2.5 / S 3.0 패턴에 기본 시차 25/65 ms 를 쓰면 마지막 공이 165 ms 라
+`보통` 프리셋의 창 150 ms 를 넘어 실제로 한 공이 불발이었다. 세 겹으로 막는다.
+
+| 장치 | 하는 일 |
+|---|---|
+| `BlastLoad.initiation_window()` | 기폭열 끝 vs 창을 비교. `summary()` 에 `기폭열 0~100 ms / DEM 하중창 150 ms → 전 공 기폭` 한 줄, 넘으면 `[!]` 와 창 밖 공 수 |
+| `BlastProject.run_fragmentation()` | 프리셋은 패턴을 모르므로 창이 짧으면 마지막 기폭 + 20 ms 까지 자동 연장하고 로그에 남김 |
+| 시차 설계 | 공간 3~10 ms/m × S, 열간 10~30 ms/m × B 로 잡으면 대개 창 안에 들어온다 |
 
 ---
 
@@ -467,7 +483,7 @@ h(x) = min( h_far,  h_near + growth · max(d(x), 0) )
 
 ---
 
-## 6. 검증 (`python tests/test_blastsim.py` — 52/52 통과)
+## 6. 검증 (`python tests/test_blastsim.py` — 54/54 통과)
 
 **FDM** — 탄성계수(ν 자유), 자유면·2자유면 형상, 점성 포함 임계 dt, Rayleigh 파 속도,
 **계측점이 흡수층 밖에 있는지**(세 품질 프리셋 × 세 계측거리 조합)
@@ -484,7 +500,8 @@ h(x) = min( h_far,  h_near + growth · max(d(x), 0) )
 
 **암발파 거동 이력** — 압력·파괴 이력이 영상 프레임보다 20배 이상 촘촘한지,
 파괴 본드 수의 단조 증가와 최종값 일치, 공별 포락선 압력이 시차 기폭을 펄스열로
-잡는지(폭원압 상한 포함), 화강암 발파 제원이 실무 표준 범위 안인지
+잡는지(폭원압 상한 포함), 화강암 발파 제원이 실무 표준 범위 안인지,
+**기폭열이 DEM 하중창을 넘을 때 불발공을 잡아내는지**
 
 **공통** — 폭굉압, 압력이력, 지발당 최대장약량, 폭원 격자무관성 및 합력 0,
 Rayleigh 감쇠 계수, 환산거리식 왕복, 보정 선형성, 퇴화 입력 무크래시
