@@ -17672,6 +17672,55 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       }
     }
 
+    // ---- 장착 하드웨어 ------------------------------------------------------
+    // 구조물은 서로 닿아 있었지만 「무엇이 무엇을 어떻게 잡고 있는가」가 형상에 없었다.
+    // 거싯 0건, 모터 베드 0건, 습식 방진마운트 0건이었고, 교반 모터는 구동 브리지 위
+    // 0.115 m 공중에 얹혀 있었다. 건식 P01 스키드는 스프링 마운트 8점까지 제대로
+    // 그려져 있으므로 같은 수준을 습식에도 맞춘다.
+
+    // 거싯(보강판) — 기둥 밑동과 캔틸레버 목에 대는 삼각 리브. 압축·전단이 어디로
+    // 흐르는지 눈에 보이게 하는 부재다.
+    function wetGusset(parent, name, x, y, z, leg = 0.22, yaw = 0) {
+      const shape = new THREE.Shape();
+      shape.moveTo(0, 0); shape.lineTo(leg, 0); shape.lineTo(0, leg); shape.closePath();
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.012, bevelEnabled: false });
+      geo.translate(0, 0, -0.006);
+      wetMesh(parent, geo, material.frame, [x, y, z], `${name} 거싯`, [0, yaw, 0]);
+    }
+    // 기둥 네 면에 거싯을 돌려 붙인다.
+    function wetColumnGussets(parent, name, x, y, z, leg = 0.22, off = 0.05) {
+      for (let i = 0; i < 4; i += 1) {
+        const yaw = i * Math.PI / 2;
+        wetGusset(parent, name, x + Math.cos(yaw) * off, y, z - Math.sin(yaw) * off, leg, yaw);
+      }
+    }
+    // 모터 베드 + 슬라이드레일 — 벨트 구동 모터는 장력을 잡으려면 레일 위에서
+    // 밀고 당길 수 있어야 한다. 조정볼트까지 있어야 「어떻게 장착됐나」가 읽힌다.
+    function wetMotorBed(parent, tag, x, y, z, lx = 0.44, lz = 0.40) {
+      wetBox(parent, [lx, 0.035, lz], [x, y - 0.018, z], material.frame, `${tag} 모터 베드플레이트`);
+      for (const dz of [-lz * 0.32, lz * 0.32]) {
+        wetBox(parent, [lx * 0.92, 0.045, 0.055], [x, y + 0.022, z + dz], material.silverClamp, `${tag} 슬라이드레일`);
+      }
+      wetCylinder(parent, 0.012, 0.13, [x - lx * 0.52, y + 0.02, z], material.silverClamp, `${tag} 벨트장력 조정볼트`, 10, [0, 0, Math.PI / 2]);
+    }
+    // 방진 마운트 — 건식 P01 과 같은 스프링 형식(정적처짐 15 mm 급).
+    function wetAvMount(parent, tag, x, y, z) {
+      wetBox(parent, [0.15, 0.016, 0.15], [x, y, z], material.silverClamp, `${tag} 방진마운트 하판`);
+      for (let coil = 0; coil < 4; coil += 1) {
+        wetMesh(parent, new THREE.TorusGeometry(0.042, 0.008, 6, 16), material.safety,
+          [x, y + 0.016 + coil * 0.016, z], `${tag} 방진 스프링`, [Math.PI / 2, 0, 0]);
+      }
+      wetBox(parent, [0.16, 0.018, 0.16], [x, y + 0.088, z], material.silverClamp, `${tag} 방진마운트 상판`);
+    }
+    // 피로우블록 — 축이 구조물을 지나는 곳에는 베어링대가 있어야 한다.
+    function wetPillowBlock(parent, tag, x, y, z, bore = 0.030) {
+      wetBox(parent, [bore * 5.2, bore * 3.4, bore * 3.0], [x, y, z], material.cover, `${tag} 피로우블록`);
+      wetCylinder(parent, bore * 1.5, bore * 3.2, [x, y + bore * 0.5, z], material.cover, `${tag} 베어링 하우징`, 20);
+      for (const dx of [-bore * 2.0, bore * 2.0]) {
+        wetCylinder(parent, 0.008, bore * 3.8, [x + dx, y, z], material.silverClamp, `${tag} 베어링 고정볼트`, 8);
+      }
+    }
+
     function wetPipeStanchion(tag, x, y, z, radius) {
       const post = Math.max(0.10, y - radius);
       wetBox(unifiedWet, [0.06, post, 0.06], [x, post / 2, z], hdgMaterial, `${tag} 배관 스탠션`);
@@ -17719,6 +17768,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return sprite;
     }
     function wetDrive(parent, tag, shaftX, motorX, y, z, activation, rpm = DRIVE_RPM.tankAgitator) {
+      // 모터가 브리지 위 0.115 m 를 공중에 떠 있었다. 베드와 슬라이드레일로 받친다.
+      wetMotorBed(parent, tag, motorX, y + 0.02, z, 0.46, 0.42);
+      wetPillowBlock(parent, tag, shaftX, y - 0.10, z, 0.030);
       const motor = wetCylinder(parent, 0.15, 0.40, [motorX, y + 0.22, z], wetMotorMaterial, `${tag} VFD 모터`, 28);
       const motorFan = wetCylinder(parent, 0.11, 0.045, [motorX, y + 0.43, z], wetMotorMaterial, `${tag} 모터 냉각팬`, 24);
       const drivenPulley = wetCylinder(parent, 0.19, 0.075, [shaftX, y, z], wetPulleyMaterial, `${tag} 종동 풀리`, 30);
@@ -17850,11 +17902,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       group.name = tag;
       unifiedWet.add(group);
       wetBox(group, [1.02, 0.08, 0.72], [x, 0.04, z], material.frame, `${tag} 공통 베이스`);
+      for (const bx of [-0.42, 0.42]) for (const bz of [-0.28, 0.28]) {
+        wetAvMount(group, tag, x + bx, 0.008, z + bz);
+      }
       [-0.22, 0.22].forEach((offset, index) => {
         const suffix = index ? "B" : "A";
         const pumpZ = z + offset;
         const impeller = wetCylinder(group, 0.115, 0.24, [x - 0.15, 0.24, pumpZ], material.equipmentPump, `${tag}${suffix} 내마모 펌프`, 28, [0, 0, Math.PI / 2]);
         wetMesh(group, new THREE.TorusGeometry(0.11, 0.025, 8, 24), material.equipmentPump, [x - 0.15, 0.24, pumpZ], `${tag}${suffix} 볼류트`, [0, Math.PI / 2, 0]);
+        wetMotorBed(group, `${tag}${suffix}`, x + 0.20, 0.10, pumpZ, 0.34, 0.30);
         const motor = wetCylinder(group, 0.12, 0.30, [x + 0.20, 0.24, pumpZ], wetMotorMaterial, `${tag}${suffix} VFD 모터`, 28, [0, 0, Math.PI / 2]);
         wetCylinder(group, 0.045, 0.12, [x + 0.01, 0.24, pumpZ], material.fixed, `${tag}${suffix} 커플링`, 18, [0, 0, Math.PI / 2]);
         wetRotors.push({ activation, rpm: DRIVE_RPM.slurryPump, parts: [impeller, motor], axis: "x", train: suffix });
@@ -17945,6 +18001,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const RACK_COLUMN_Z = -0.94;
     [0.90, 3.70, 6.40].forEach((x) => {
       wetHBeam(unifiedWet, "파이프 랙 기둥 H200", [x, (DRY_RETURN_Y + 0.18) / 2, RACK_COLUMN_Z], DRY_RETURN_Y + 0.18, "y", 0.20, 0.10);
+      wetBox(unifiedWet, [0.34, 0.03, 0.34], [x, -0.02, RACK_COLUMN_Z], material.frame, "파이프 랙 베이스플레이트");
+      wetColumnGussets(unifiedWet, "파이프 랙 주각", x, 0.00, RACK_COLUMN_Z, 0.22, 0.06);
       [VENT_HEADER_Y, DRY_RETURN_Y].forEach((y) => {
         wetHBeam(unifiedWet, "파이프 랙 암 H200", [x, y - 0.08, (RACK_COLUMN_Z + RACK_Z) / 2 + 0.05],
           Math.abs(RACK_COLUMN_Z - RACK_Z) + 0.22, "z", 0.16, 0.09);
@@ -17954,6 +18012,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // VP-401 지관 랙 — 두 진공 지관이 함께 내려오는 z = -2.46 라인.
     [1.60, 4.20].forEach((x) => {
       wetHBeam(unifiedWet, "VP-401 지관 랙 기둥 H200", [x, 1.65, -2.62], 3.30, "y", 0.20, 0.10);
+      wetBox(unifiedWet, [0.32, 0.03, 0.32], [x, -0.02, -2.62], material.frame, "VP-401 랙 베이스플레이트");
+      wetColumnGussets(unifiedWet, "VP-401 랙 주각", x, 0.00, -2.62, 0.20, 0.06);
       wetHBeam(unifiedWet, "VP-401 지관 랙 암 H200", [x, 3.08, -2.52], 0.36, "z", 0.14, 0.08);
     });
 
@@ -18006,6 +18066,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetTube(unifiedWet, vacuumHeader, 0.055, material.pipeAir, "VP-401 공통 진공헤더 DN80");
     wetTube(unifiedWet, [[5.58, 1.34, -2.46], [5.58, 0.62, -2.46]], 0.055, material.pipeAir, "공통 진공헤더 → VP-401 흡입");
     wetBox(unifiedWet, [1.28, 0.10, 0.96], [5.86, 0.05, -2.46], material.frame, "VP-401 공통 스키드 베이스");
+    for (const dx of [-0.52, 0.52]) for (const dz of [-0.36, 0.36]) wetAvMount(unifiedWet, "VP-401", 5.86 + dx, -0.08, -2.46 + dz);
     const vp401Wheels = [];
     [["A", -2.72], ["B", -2.20]].forEach(([suffix, z]) => {
       vp401Wheels.push(wetCylinder(unifiedWet, 0.19, 0.24, [5.56, 0.34, z], material.equipmentAir, `VP-401${suffix} 진공펌프`, 30, [0, 0, Math.PI / 2]));
@@ -18020,6 +18081,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetTube(unifiedWet, [[7.56, 1.38, 0.72], [bufferX, 1.42, 0.72]], 0.070, material.pipeDryTransfer, "VR-401 → BH-101 중력인계", 1680, 4);
     wetCone(unifiedWet, 0.36, 0.12, 0.72, [bufferX, 1.06, 0.72], material.solidsReceiver, "BH-101 로드셀 완충빈", 8);
     wetBox(unifiedWet, [0.64, 0.07, 0.64], [bufferX, 0.68, 0.72], material.frame, "BH-101 계량프레임");
+    for (const dx of [-0.24, 0.24]) for (const dz of [-0.24, 0.24]) {
+      // 로드셀 아래가 비어 있었다. 계량 하중이 어디로 내려가는지 보이게 받침기둥을 세운다.
+      wetBox(unifiedWet, [0.07, 0.55, 0.07], [bufferX + dx, 0.275, 0.72 + dz], hdgMaterial, "BH-101 로드셀 받침기둥");
+      wetBox(unifiedWet, [0.16, 0.025, 0.16], [bufferX + dx, 0.565, 0.72 + dz], material.silverClamp, "BH-101 로드셀 받침판");
+    }
     for (const dx of [-0.24, 0.24]) for (const dz of [-0.24, 0.24]) wetCylinder(unifiedWet, 0.025, 0.12, [bufferX + dx, 0.61, 0.72 + dz], material.silverClamp, "BH-101 로드셀", 14);
     wetCylinder(unifiedWet, 0.12, 0.28, [bufferX, 0.52, 0.72], material.solidsReceiver, "RV-401 습식 인계 로터리 에어록", 28, [Math.PI / 2, 0, 0]);
     const sf401Rotor = addClosedScrewBetween(unifiedWet, new THREE.Vector3(7.96, 0.46, 0.72), new THREE.Vector3(8.62, 0.46, 0.72), 0.105, 0.034, 0.16, "SF-401", material.equipmentConveyor);
@@ -18076,7 +18142,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // Two-level flotation deck: FC-202 is cleaner and FC-203 is scavenger.
     wetBox(unifiedWet, [5.10, 0.14, 3.45], [14.46, 2.44, 0.18], gratingMaterial(5.10, 3.45), "ST-201 2층 부유선별 그레이팅");
-    for (const x of [12.18, 16.72]) for (const z of [-1.20, 1.50]) wetHBeam(unifiedWet, "ST-201 2층 지지기둥 H250", [x, 1.20, z], 2.48, "y", 0.25, 0.125);
+    for (const x of [12.18, 16.72]) for (const z of [-1.20, 1.50]) {
+      wetHBeam(unifiedWet, "ST-201 2층 지지기둥 H250", [x, 1.20, z], 2.48, "y", 0.25, 0.125);
+      wetBox(unifiedWet, [0.42, 0.03, 0.42], [x, -0.02, z], material.frame, "ST-201 기둥 베이스플레이트");
+      wetColumnGussets(unifiedWet, "ST-201 주각", x, 0.00, z, 0.26, 0.07);
+      for (const ax of [-0.15, 0.15]) for (const az of [-0.15, 0.15]) {
+        wetCylinder(unifiedWet, 0.010, 0.09, [x + ax, 0.03, z + az], material.silverClamp, "ST-201 기초 앵커볼트", 10);
+      }
+    }
     // ---- ST-201 2층 접근계단·난간 (FC-003) --------------------------------
     // 종전 계단은 발판이 x로 0.12씩만 전진하면서 길이가 0.62라 서로 겹쳤고, 경사 66.8°로
     // 사양(≤45°)을 넘었으며, 최상단 y=2.14 가 데크 상면 2.51 에 0.37 m 못 미친 데다
@@ -18093,7 +18166,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const LAND_X0 = STAIR_X0 + stair.run, LAND_X1 = DECK_X1, LAND_Z1 = 3.00;
     wetBox(unifiedWet, [LAND_X1 - LAND_X0, 0.14, LAND_Z1 - 1.85], [(LAND_X0 + LAND_X1) / 2, 2.44, (1.85 + LAND_Z1) / 2],
       gratingMaterial(LAND_X1 - LAND_X0, LAND_Z1 - 1.85), "ST-201 계단 랜딩");
-    for (const lz of [2.10, 2.88]) wetHBeam(unifiedWet, "ST-201 랜딩 지지기둥 H250", [16.30, 1.22, lz], 2.44, "y", 0.25, 0.125);
+    for (const lz of [2.10, 2.88]) {
+      wetHBeam(unifiedWet, "ST-201 랜딩 지지기둥 H250", [16.30, 1.22, lz], 2.44, "y", 0.25, 0.125);
+      wetBox(unifiedWet, [0.40, 0.03, 0.40], [16.30, -0.02, lz], material.frame, "ST-201 랜딩 베이스플레이트");
+      wetColumnGussets(unifiedWet, "ST-201 랜딩 주각", 16.30, 0.00, lz, 0.24, 0.07);
+    }
     // 데크 둘레 난간 — 랜딩이 붙는 북동쪽(x 16.12…17.01)만 비운다.
     wetRailing(unifiedWet, "ST-201 남측", DECK_X0, DECK_Z0, DECK_X1, DECK_Z0, DECK_TOP_Y);
     wetRailing(unifiedWet, "ST-201 동측", DECK_X1, DECK_Z0, DECK_X1, DECK_Z1, DECK_TOP_Y);
@@ -18126,6 +18203,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // Oil-free duty/standby blower, receiver and independent cell air controls.
     wetBox(unifiedWet, [1.34, 0.08, 1.12], [17.72, 0.04, 1.72], material.frame, "AB-201 공기공급 스키드 베이스");
+    for (const dx of [-0.54, 0.54]) for (const dz of [-0.42, 0.42]) wetAvMount(unifiedWet, "AB-201", 17.72 + dx, -0.09, 1.72 + dz);
     const ab201a = wetCylinder(unifiedWet, 0.18, 0.34, [17.48, 0.34, 1.50], material.equipmentAir, "AB-201A 오일프리 블로어", 28, [0, 0, Math.PI / 2]);
     const ab201b = wetCylinder(unifiedWet, 0.18, 0.34, [17.48, 0.34, 1.94], material.equipmentAir, "AB-201B 오일프리 블로어", 28, [0, 0, Math.PI / 2]);
     wetCylinder(unifiedWet, 0.13, 0.30, [17.86, 0.34, 1.50], wetMotorMaterial, "AB-201A VFD 모터", 26, [0, 0, Math.PI / 2]);
@@ -18175,6 +18253,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const fp301 = new THREE.Group();
     unifiedWet.add(fp301);
     wetBox(fp301, [2.30, 0.12, 0.90], [15.55, 0.12, -1.32], material.frame, "FP-301 베이스 프레임");
+    for (const dx of [-0.95, 0, 0.95]) for (const dz of [-0.33, 0.33]) wetAvMount(fp301, "FP-301", 15.55 + dx, -0.02, -1.32 + dz);
     for (const z of [-0.38, 0.38]) wetBox(fp301, [2.24, 0.10, 0.10], [15.55, 0.82, -1.32 + z], material.frame, "FP-301 사이드바");
     wetBox(fp301, [0.18, 1.45, 0.94], [14.48, 0.84, -1.32], material.equipmentDewater, "FP-301 고정헤드");
     wetBox(fp301, [0.18, 1.45, 0.94], [16.62, 0.84, -1.32], material.equipmentDewater, "FP-301 유압헤드");
@@ -18234,7 +18313,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // Maintenance monorail above TK-001/AS-101/TK-101 and physical integrated
     // process-control cabinets.  No DHA/Ex/LOTO/H2 safety package is modeled.
-    for (const x of [8.92, 12.84]) wetHBeam(unifiedWet, "MH-401 정비호이스트 지주 H200", [x, 1.64, 2.38], 3.35, "y", 0.20, 0.10);
+    for (const x of [8.92, 12.84]) {
+      wetHBeam(unifiedWet, "MH-401 정비호이스트 지주 H200", [x, 1.64, 2.38], 3.35, "y", 0.20, 0.10);
+      wetBox(unifiedWet, [0.36, 0.03, 0.36], [x, -0.02, 2.38], material.frame, "MH-401 지주 베이스플레이트");
+      wetColumnGussets(unifiedWet, "MH-401 주각", x, 0.00, 2.38, 0.24, 0.06);
+      // 모노레일이 걸리는 목에도 거싯 — 여기가 캔틸레버 모멘트를 받는다
+      wetColumnGussets(unifiedWet, "MH-401 보 접합", x, 3.10, 2.38, 0.18, 0.06);
+    }
     wetHBeam(unifiedWet, "MH-401 모노레일 I형", [10.88, 3.28, 2.38], 4.04, "x", 0.16, 0.11);
     wetBox(unifiedWet, [0.34, 0.20, 0.30], [10.82, 3.12, 2.38], wetMotorMaterial, "MH-401 전동 트롤리");
     wetCylinder(unifiedWet, 0.018, 1.10, [10.82, 2.50, 2.38], material.silverClamp, "MH-401 체인블록", 12);
@@ -18302,6 +18387,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     [["BB-501", 13.60, "Si 케이크 제품"], ["BB-502", 16.10, "Ag 정광"]].forEach(([tag, bx, what]) => {
       for (const dx of [-0.62, 0.62]) for (const dz of [-0.62, 0.62]) {
         wetHBeam(unifiedWet, `${tag} 충진 프레임 H200`, [bx + dx, 1.35, YARD_ROW_Z + dz], 2.70, "y", 0.20, 0.10);
+        wetBox(unifiedWet, [0.30, 0.03, 0.30], [bx + dx, -0.02, YARD_ROW_Z + dz], material.frame, `${tag} 프레임 베이스플레이트`);
+        wetColumnGussets(unifiedWet, `${tag} 프레임 주각`, bx + dx, 0.00, YARD_ROW_Z + dz, 0.20, 0.06);
       }
       wetBox(unifiedWet, [1.50, 0.14, 1.50], [bx, 2.76, YARD_ROW_Z], material.frame, `${tag} 상부 보`);
       wetCone(unifiedWet, 0.34, 0.12, 0.52, [bx, 2.36, YARD_ROW_Z], material.solidsReceiver, `${tag} 충진 호퍼`, 22);
@@ -18309,6 +18396,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       wetBox(unifiedWet, [0.95, 0.95, 0.95], [bx, 0.62, YARD_ROW_Z], material.equipmentReceiver, `${tag} 빅백 1 t`);
       wetBox(unifiedWet, [1.15, 0.14, 1.05], [bx, 0.08, YARD_ROW_Z], material.frame, `${tag} 파렛트`);
       wetCylinder(unifiedWet, 0.13, 0.40, [bx + 0.80, 2.30, YARD_ROW_Z], material.equipmentAir, `${tag} 집진 후드`, 18);
+      // 후드가 공중에 떠 있었다 — 상부 보에서 암을 내어 받친다
+      wetBox(unifiedWet, [0.20, 0.05, 0.05], [bx + 0.70, 2.52, YARD_ROW_Z], hdgMaterial, `${tag} 후드 지지암`);
+      wetBox(unifiedWet, [0.05, 0.28, 0.05], [bx + 0.80, 2.62, YARD_ROW_Z], hdgMaterial, `${tag} 후드 행거`);
       wetLabel(`${tag} · ${what} 빅백 충진`, [bx, 3.20, YARD_ROW_Z], [1.70, 0.21, 1]);
     });
 
