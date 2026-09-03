@@ -135,6 +135,11 @@ python -m blastsim --rock granite --explosive emulsion \
     --burden 3.0 --spacing 3.5 --bench 10 --rows 2 --cols 5 \
     --distances 30 50 80 120 --quality 보통 --out output
 
+# DEM 만 — 화강암 파쇄·암발파 거동 (메쉬와 같은 Ø75 mm x 12 m 천공홀)
+python -m blastsim --rock granite --explosive emulsion --hole-dia 75 \
+    --burden 2.5 --spacing 3.0 --bench 11.25 --subdrill 0.75 --rows 2 --cols 5 \
+    --no-vibration --quality 보통 --out output/06_dem
+
 # 천공홀 포함 3D 사면체 메쉬 (20x20x20 m + Ø75 mm x 12 m)
 python -m blastsim --mesh --mesh-size 20 20 20 \
     --mesh-hole-dia 75 --mesh-hole-len 12 --mesh-quality 보통 --out output
@@ -143,7 +148,7 @@ python examples/04_hybrid_full.py  # 진동 + 파쇄 + 영상 한 번에
 python examples/05_tet_mesh.py     # 사면체 메쉬 + VTK/MSH/진단도
 python examples/06_dem_granite.py  # 화강암 DEM 파쇄·암발파 거동 (물리엔진)
 python tests/test_blastsim.py      # 검증 테스트 (52건, 테스트 프레임워크 없이)
-python -m unittest discover -s tests -t .   # 저장소 전체 테스트 333건
+python -m unittest discover -s tests -t .   # 저장소 전체 테스트 338건
 ```
 
 Python API:
