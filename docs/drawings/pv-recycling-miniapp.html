@@ -1601,6 +1601,51 @@ html>body{padding:0}</style>
     <div class="text-small text-muted">정상정지는 BH-101 인계 차단 후 어트리션·부선·탈수 재고를 순차 배출하고 공정수·블로어를 마지막에 정지합니다.</div>
   </details>
 
+  <details class="card hsg3d-validation" id="plant-panel-metallurgy" data-panel-id="metallurgy" data-panel-category="해석·검증">
+    <summary>야금수지 — 급광 품위 → 산물 품위 → 회수율</summary>
+
+    <p class="text-small">종전 상태량은 입도 밴드별 <strong>질량뿐</strong>이라 「몇 kg 이 어느 입도로 나갔나」까지만
+      답할 수 있었습니다. 이 플랜트의 존재 이유는 Ag·Si 회수이므로 스트림마다 조성을 실어
+      <strong>급광 품위 → 산물 품위 → 회수율</strong>이 닫히게 했습니다.</p>
+
+    <strong>입자군별 조성 — 지어낸 값이 아니라 입자군 정의에서 옵니다</strong>
+    <p class="text-small">유리는 상류 박리공정에서 이미 빠졌으므로 성분에 없습니다. 셀 금속화(Ag)는 A 군에 있습니다.</p>
+    <div class="table-responsive"><table class="table table-sm" aria-label="입자군 조성">
+      <thead><tr><th>입자군</th><th class="text-end">Si</th><th class="text-end">폴리머</th><th class="text-end">Cu</th><th class="text-end">Al</th><th class="text-end">Ag</th></tr></thead>
+      <tbody>
+        <tr><td>A · c-Si+EVA (백시트 없음)</td><td class="text-end">47.0 %</td><td class="text-end">45.0 %</td><td class="text-end">1.55 %</td><td class="text-end">2.50 %</td><td class="text-end">4,500 g/t</td></tr>
+        <tr><td>B · 탈락 백시트</td><td class="text-end">0.8 %</td><td class="text-end">98.0 %</td><td class="text-end">0.06 %</td><td class="text-end">0.40 %</td><td class="text-end">100 g/t</td></tr>
+        <tr><td>C · c-Si+EVA+백시트 결합</td><td class="text-end">32.0 %</td><td class="text-end">62.0 %</td><td class="text-end">1.05 %</td><td class="text-end">1.80 %</td><td class="text-end">3,000 g/t</td></tr>
+      </tbody>
+    </table></div>
+
+    <strong>부선 회로 수지 (실시간 · 급광 100 기준)</strong>
+    <p class="text-small">클리너 광미와 스캐빈저 정광이 러퍼로 돌아오는 환류가 있으므로 고정점 반복 24 회로 풉니다.</p>
+    <div class="table-responsive"><table class="table table-sm" aria-label="부선 회로 물질수지">
+      <thead><tr><th>스트림</th><th class="text-end">질량</th><th class="text-end">Ag 품위</th><th class="text-end">주성분</th><th class="text-end">Ag 분배</th></tr></thead>
+      <tbody>
+        <tr><td>급광 (AS-101 통과)</td><td class="text-end">100.0 %</td><td class="text-end" data-met-head>—</td><td class="text-end">—</td><td class="text-end">100 %</td></tr>
+        <tr><td>부선 정광 (FC-202 클리너 → CF-204)</td><td class="text-end" data-met-froth-mass>—</td><td class="text-end" data-met-froth-grade>—</td><td class="text-end">폴리머 <span data-met-froth-poly>—</span></td><td class="text-end" data-met-froth-ag>—</td></tr>
+        <tr><td>부선 광미 (FC-203 스캐빈저 → FP-301)</td><td class="text-end" data-met-si-mass>—</td><td class="text-end" data-met-si-grade>—</td><td class="text-end">Si <span data-met-si-si>—</span></td><td class="text-end" data-met-si-ag>—</td></tr>
+        <tr><td>수지 폐합 (Ag 분배 합)</td><td class="text-end">—</td><td class="text-end">—</td><td class="text-end">—</td><td class="text-end" data-met-closure>—</td></tr>
+      </tbody>
+    </table></div>
+
+    <p class="text-small dd-warning"><strong>이 수지가 드러낸 것 — 「Ag 정광」이라는 이름이 맞지 않습니다.</strong>
+      부선 모델의 부유도는 <code>B(백시트) 1 · C(결합체) 0.35 · A(c-Si+EVA) 0.03</code> 이라,
+      뜨는 것은 <strong>폴리머</strong>이고 Ag 를 지닌 A 군은 거의 뜨지 않습니다. 따라서 거품으로 나가는
+      스트림은 <strong>유기물 리젝트</strong>이고, Ag 는 대부분 <strong>광미(FP-301 Si 케이크)</strong>로 갑니다.
+      위 표의 두 품위를 비교하면 광미 쪽이 더 높습니다 — 정광이라 부르는 스트림이 버리는 스트림보다
+      품위가 낮습니다.</p>
+    <p class="text-small">즉 이 회로는 <strong>역부선(reverse flotation)</strong>입니다. 설계 의도가 그렇다면
+      <code>BIN-204 Ag 정광</code>·<code>CF-204 Ag 정광 원심탈수</code>·<code>TK-204 Ag 정광 급액조</code>의
+      이름을 <strong>유기물 리젝트</strong>로 바꾸고, Ag 회수 산물은 FP-301 라인으로 잡는 것이 맞습니다.
+      이름을 바꾸면 BOM·투어·전장 문서까지 따라 움직이므로 <strong>판단을 받고 진행</strong>하겠습니다.</p>
+
+    <p class="text-small text-muted">조성 자체는 결정질 실리콘 모듈의 통상 조성에서 잡은 <strong>설계 가정</strong>입니다.
+      LAB-601 분석값이 들어오면 그 값으로 대체해야 하며, 그때 비로소 정산에 쓸 수 있습니다.</p>
+  </details>
+
   <details class="card hsg3d-validation" id="plant-panel-ai" data-panel-id="ai" data-panel-category="통합 운전">
     <summary>AI 감시제어 — 거품 영상 소프트센서 (권고 운전)</summary>
 
@@ -1644,6 +1689,13 @@ html>body{padding:0}</style>
     </table></div>
 
     <p class="text-small"><strong>권고</strong> · <span data-ai-advice>—</span></p>
+
+    <strong>규제제어 루프 (실시간)</strong>
+    <p class="text-small" data-ai-loops>—</p>
+    <p class="text-small"><label><input type="checkbox" data-ai-autoaccept> <strong>권고 자동 수락 — 폐루프 승격</strong></label><br>
+      켜면 권고가 FIC 설정값으로 내려갑니다. 매 프레임 밀어붙이면 상한까지 램프하므로
+      실제 APC 처럼 <strong>20 초 이동 간격</strong>과 <strong>설계값 0.5×–계기 스팬 0.92×</strong> 한계를 둡니다.
+      꺼 두면 개루프 권고로만 동작합니다.</p>
 
     <p class="text-small">권고 논리는 조작변수의 물리적 한계를 지킵니다 — 회수율이 목표에 못 미치면
       <strong>먼저 공기량</strong>을 올리지만(S<sub>b</sub>↑ → k↑ → R↑), 겉보기 가스유속이 상한
@@ -18465,8 +18517,22 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       wetStopIssued: false,
       lastUiMs: 0
     };
+    const metUi = {
+      headGrade: root.querySelector("[data-met-head]"),
+      frothMass: root.querySelector("[data-met-froth-mass]"),
+      frothGrade: root.querySelector("[data-met-froth-grade]"),
+      frothPoly: root.querySelector("[data-met-froth-poly]"),
+      frothAg: root.querySelector("[data-met-froth-ag]"),
+      siMass: root.querySelector("[data-met-si-mass]"),
+      siGrade: root.querySelector("[data-met-si-grade]"),
+      siSi: root.querySelector("[data-met-si-si]"),
+      siAg: root.querySelector("[data-met-si-ag]"),
+      closure: root.querySelector("[data-met-closure]")
+    };
     const aiUi = {
       grade: root.querySelector("[data-ai-grade]"),
+      autoAccept: root.querySelector("[data-ai-autoaccept]"),
+      loops: root.querySelector("[data-ai-loops]"),
       residual: root.querySelector("[data-ai-residual]"),
       d32: root.querySelector("[data-ai-d32]"),
       velocity: root.querySelector("[data-ai-velocity]"),
@@ -18872,6 +18938,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         bubble.position.y = bubble.userData.bottom + q * bubble.userData.height;
       });
       updateAttritionParticles(seconds);
+      updateControlLoops(seconds);
       updateFlotationParticles(seconds);
       updateFrothVision(seconds);
       updateFilterPress(seconds);
@@ -19523,23 +19590,61 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return 6 * (airNm3Min / area / 60) / FLOTATION_BUBBLE_D32_M;
     }
     const flotationCells = [
-      { cell: fc201, tag: "FC-201", volumeL: 180, air: 0.060, rpm: DRIVE_RPM.flotationRougher },
-      { cell: fc202, tag: "FC-202", volumeL: 30, air: 0.020, rpm: DRIVE_RPM.flotationCleanerScav },
-      { cell: fc203, tag: "FC-203", volumeL: 190, air: 0.075, rpm: DRIVE_RPM.flotationCleanerScav }
+      { cell: fc201, tag: "FC-201", volumeL: 180, airDesign: 0.060, rpm: DRIVE_RPM.flotationRougher },
+      { cell: fc202, tag: "FC-202", volumeL: 30, airDesign: 0.020, rpm: DRIVE_RPM.flotationCleanerScav },
+      { cell: fc203, tag: "FC-203", volumeL: 190, airDesign: 0.075, rpm: DRIVE_RPM.flotationCleanerScav }
     ].map((entry) => {
-      const sb = flotationSb(entry.volumeL, entry.air);
       const tau = entry.volumeL / FLOTATION_SLURRY_LPM;
-      return { ...entry, sb, tau };
+      return { ...entry, air: entry.airDesign, sb: flotationSb(entry.volumeL, entry.airDesign), tau };
     });
     // 러퍼에서 목표 회수율이 나오도록 속도상수를 역산하고, 나머지 두 셀은 각자의
     // Sb 와 체류시간이 정한다 — 셀마다 값을 따로 지어내지 않는다.
     const FLOTATION_K0 =
       FLOTATION_ROUGHER_TARGET / (1 - FLOTATION_ROUGHER_TARGET) / flotationCells[0].tau;
+    // 기준 Sb 는 설계 공기량에서 한 번만 잡는다. 공기량이 제어루프로 움직이므로
+    // 여기를 현재값으로 두면 자기 자신으로 나누게 돼 회수율이 공기에 반응하지 않는다.
+    const FLOTATION_SB_REF = flotationCells[0].sb;
     // 완전혼합 셀 1차 모델: R = kτ/(1+kτ)
     function flotationRecovery(entry, type) {
-      const k = FLOTATION_K0 * (entry.sb / flotationCells[0].sb) * FLOTATION_FLOATABILITY[type];
+      const k = FLOTATION_K0 * (entry.sb / FLOTATION_SB_REF) * FLOTATION_FLOATABILITY[type];
       const kt = k * entry.tau;
       return kt / (1 + kt);
+    }
+
+    // ---- 규제제어 계층 (FIC-201/202/203 셀 공기량) --------------------------
+    // PLC 는 기동·정지 시퀀스만 있고 정량 루프가 하나도 없었다 — FIC 태그가 표시만
+    // 되고 아무것도 제어하지 않았다. 셀 공기량은 Sb 를 통해 회수율을 직접 정하는
+    // 조작변수이므로 여기부터 닫는다. SP ← 운전원 또는 AI 권고, PV ← 유량계,
+    // MV → 제어밸브. 밸브 개도에서 실제 유량까지는 1차 지연으로 따라간다.
+    const FIC_LAG_S = 6;               // 밸브 → 유량 1차 지연
+    const FIC_RANGE = 2.2;             // 계기 스팬 = 설계 공기량의 2.2 배
+    function makeFic(tag, design) {
+      const max = design * FIC_RANGE;
+      return { tag, sp: design, pv: design, max, kp: 2.4, ki: 0.35,
+               integral: design / max * 100, mv: design / max * 100, mode: "auto" };
+    }
+    function stepFic(loop, dt) {
+      if (loop.mode === "auto") {
+        const error = (loop.sp - loop.pv) / loop.max * 100;      // % of span
+        loop.integral = THREE.MathUtils.clamp(loop.integral + loop.ki * error * dt, 0, 100);
+        loop.mv = THREE.MathUtils.clamp(loop.kp * error + loop.integral, 0, 100);
+      }
+      const demand = loop.mv / 100 * loop.max;
+      loop.pv += (demand - loop.pv) * THREE.MathUtils.clamp(dt / FIC_LAG_S, 0, 1);
+    }
+    flotationCells.forEach((entry) => { entry.fic = makeFic("FIC-" + entry.tag.slice(3), entry.airDesign); });
+    let controlLastSeconds = 0;
+    function updateControlLoops(seconds) {
+      const dt = THREE.MathUtils.clamp(seconds - controlLastSeconds, 0, 2);
+      controlLastSeconds = seconds;
+      if (dt <= 0) return;
+      for (const entry of flotationCells) {
+        stepFic(entry.fic, dt);
+        entry.air = entry.fic.pv;
+        entry.sb = flotationSb(entry.volumeL, entry.air);
+        entry.recovery = { A: flotationRecovery(entry, "A"), B: flotationRecovery(entry, "B"), C: flotationRecovery(entry, "C") };
+      }
+      updateMetallurgy();
     }
     const flotationParticles = [];
     flotationCells.forEach((entry) => {
@@ -19563,6 +19668,72 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     });
     // AS-101 을 지난 급광 조성. 계면박리 0.95 이므로 결합체로 남는 몫은 얼마 안 된다.
     const FLOTATION_FEED = { B: 0.42, A: 0.50, C: 0.08 };
+
+    // ---- 야금수지 (스트림별 조성) ------------------------------------------
+    // 지금까지 상태량은 입도 밴드별 질량뿐이라 「몇 kg 이 어느 입도로 나갔나」까지만
+    // 답할 수 있었다. 이 플랜트의 존재 이유는 Ag·Si 회수이므로 스트림마다 조성을
+    // 실어 급광 품위 → 산물 품위 → 회수율이 닫히게 한다.
+    // 조성은 지어낸 값이 아니라 입자군 정의(particleClasses)에서 온다 —
+    // A 는 c-Si+EVA(셀 금속화가 여기 있다), B 는 탈락 백시트(거의 폴리머),
+    // C 는 결합체다. 유리는 상류 박리공정에서 이미 빠졌으므로 성분에 없다.
+    const ASSAY = {                        // wt%, Ag 만 g/t
+      A: { Si: 47.00, polymer: 45.00, Cu: 1.55, Al: 2.50, agGpt: 4500 },
+      B: { Si: 0.80, polymer: 98.00, Cu: 0.06, Al: 0.40, agGpt: 100 },
+      C: { Si: 32.00, polymer: 62.00, Cu: 1.05, Al: 1.80, agGpt: 3000 }
+    };
+    const ASSAY_TYPES = ["A", "B", "C"];
+    function blendAssay(mass) {
+      const total = ASSAY_TYPES.reduce((sum, t) => sum + mass[t], 0);
+      const out = { mass: total, Si: 0, polymer: 0, Cu: 0, Al: 0, agGpt: 0, agUnits: 0 };
+      if (total <= 1e-9) return out;
+      for (const t of ASSAY_TYPES) {
+        const a = ASSAY[t], m = mass[t];
+        out.Si += a.Si * m; out.polymer += a.polymer * m;
+        out.Cu += a.Cu * m; out.Al += a.Al * m; out.agUnits += a.agGpt * m;
+      }
+      out.Si /= total; out.polymer /= total; out.Cu /= total; out.Al /= total;
+      out.agGpt = out.agUnits / total;
+      return out;
+    }
+    // 회로에 환류가 있으므로(클리너 광미·스캐빈저 정광 → 러퍼) 고정점 반복으로 푼다.
+    // 24 회면 닫힌다 — 수렴 잔차는 패널에 그대로 띄운다.
+    const metallurgy = { feed: null, frothProduct: null, siProduct: null, agToFroth: 0, agToSi: 0, closure: 0 };
+    function updateMetallurgy() {
+      let recycle = { A: 0, B: 0, C: 0 };
+      let frothProduct = { A: 0, B: 0, C: 0 }, siProduct = { A: 0, B: 0, C: 0 };
+      for (let pass = 0; pass < 24; pass += 1) {
+        const cleanerTail = { A: 0, B: 0, C: 0 }, scavFroth = { A: 0, B: 0, C: 0 };
+        for (const t of ASSAY_TYPES) {
+          const toRougher = FLOTATION_FEED[t] + recycle[t];
+          const rf = toRougher * flotationCells[0].recovery[t];   // 러퍼 정광 → 클리너
+          const rt = toRougher - rf;                              // 러퍼 광미 → 스캐빈저
+          frothProduct[t] = rf * flotationCells[1].recovery[t];   // 클리너 정광 = 최종 부선산물
+          cleanerTail[t] = rf - frothProduct[t];
+          scavFroth[t] = rt * flotationCells[2].recovery[t];
+          siProduct[t] = rt - scavFroth[t];                       // 스캐빈저 광미 = FP-301 행
+        }
+        recycle = { A: cleanerTail.A + scavFroth.A, B: cleanerTail.B + scavFroth.B, C: cleanerTail.C + scavFroth.C };
+      }
+      metallurgy.feed = blendAssay(FLOTATION_FEED);
+      metallurgy.frothProduct = blendAssay(frothProduct);
+      metallurgy.siProduct = blendAssay(siProduct);
+      const agIn = metallurgy.feed.agUnits;
+      metallurgy.agToFroth = agIn > 0 ? metallurgy.frothProduct.agUnits / agIn : 0;
+      metallurgy.agToSi = agIn > 0 ? metallurgy.siProduct.agUnits / agIn : 0;
+      metallurgy.closure = metallurgy.agToFroth + metallurgy.agToSi;    // 1.0 이어야 닫힌다
+      if (!metUi.headGrade) return;
+      const f = metallurgy.feed, fr = metallurgy.frothProduct, si = metallurgy.siProduct;
+      metUi.headGrade.textContent = f.agGpt.toFixed(0) + " g/t";
+      metUi.frothMass.textContent = (fr.mass * 100).toFixed(1) + " %";
+      metUi.frothGrade.textContent = fr.agGpt.toFixed(0) + " g/t";
+      metUi.frothPoly.textContent = fr.polymer.toFixed(1) + " %";
+      metUi.frothAg.textContent = (metallurgy.agToFroth * 100).toFixed(1) + " %";
+      metUi.siMass.textContent = (si.mass * 100).toFixed(1) + " %";
+      metUi.siGrade.textContent = si.agGpt.toFixed(0) + " g/t";
+      metUi.siSi.textContent = si.Si.toFixed(1) + " %";
+      metUi.siAg.textContent = (metallurgy.agToSi * 100).toFixed(1) + " %";
+      metUi.closure.textContent = (metallurgy.closure * 100).toFixed(2) + " %";
+    }
     function seedFlotationParticle(item) {
       const u = visualRandom();
       const type = u < FLOTATION_FEED.B ? "B" : u < FLOTATION_FEED.B + FLOTATION_FEED.A ? "A" : "C";
@@ -19632,7 +19803,21 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
             : `${entry.tag} 포수제 +5 g/t — 공기 상한 도달`;
         } else if (v.estimated > target + 0.04 && v.jg > FROTH_JG_MAX * 0.6) {
           v.advice = `${entry.tag} 공기량 −5 % — 과폭기 여유`;
-        } else v.advice = "정상 — 조작 불필요";
+          v.spMove = -0.05;
+        } else { v.advice = "정상 — 조작 불필요"; v.spMove = 0; }
+        if (v.advice.includes("공기량 +")) v.spMove = 0.08;
+        else if (!v.advice.includes("공기량 −")) v.spMove = 0;
+        // 폐루프 승격 — 운전원이 수락하면 권고가 FIC 설정값으로 내려간다.
+        // 매 프레임 밀어붙이면 상한까지 램프하므로, 실제 APC 처럼 이동 간격을 둔다.
+        if (aiUi.autoAccept && aiUi.autoAccept.checked && v.spMove !== 0 && seconds >= (v.nextMoveS || 0)) {
+          entry.fic.sp = THREE.MathUtils.clamp(entry.fic.sp * (1 + v.spMove), entry.airDesign * 0.5, entry.fic.max * 0.92);
+          v.nextMoveS = seconds + 20;
+        }
+      }
+      if (aiUi.loops) {
+        aiUi.loops.textContent = flotationCells.map((e) =>
+          `${e.fic.tag} SP ${e.fic.sp.toFixed(4)} / PV ${e.fic.pv.toFixed(4)} Nm³/min · MV ${e.fic.mv.toFixed(0)} %`
+        ).join(" | ");
       }
       if (!aiUi.grade) return;
       const rougher = frothVision[0];
