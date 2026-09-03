@@ -16,8 +16,8 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import (acoustics, ai, campaign, electrical, frames, handoff, layout, materials, mounting, smart,
-                           servos, thermal, vision, wiring)
+from pv_preprocess import (acoustics, ai, campaign, electrical, frames, handoff, kinematics, layout, materials,
+                           mounting, smart, servos, thermal, vision, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
 
@@ -195,7 +195,7 @@ class TestDrawingMatchesModel(unittest.TestCase):
         # README·코드 주석이 적는 품목 수가 실제와 어긋나면 문서가 거짓말을 한다.
         # REV.23 까지 README 161 · 주석 150 · 실제 149 로 셋이 다 달랐다.
         total = sum(len(rows) for rows in parts.values())
-        self.assertEqual(total, 173, "sweep(동작 포락선)은 부품이 아니라 빠진다")
+        self.assertEqual(total, 175, "sweep(동작 포락선)은 부품이 아니라 빠진다")
         with io.open("README.md", encoding="utf-8") as handle:
             self.assertIn(f"부품 {total}품목", handle.read())
         self.assertIn(f"현재 {total}품목", self.html)
@@ -537,7 +537,7 @@ class TestInfeedHandoff(unittest.TestCase):
             for level in ("PICK 1,880", "HANDOFF 2,100", "SHUTTLE 1,640"):
                 with self.subTest(station=key, level=level):
                     self.assertIn(level, block)
-            self.assertRegex(block, r"\[3300, '(FLIP )?AXIS 3,300'\]")
+            self.assertRegex(block, r"\[3430, '(FLIP )?AXIS 3,430'\]")
         bfc = self.stations["bfc"]
         # 셔틀 1,640 · 캐리지 1,760 · 분리헤드 2,060 · 포획빔 2,020 은 3D 의 Gt 오프셋에서 온다.
         for tag, height in (("SHT", 1640), ("CAR-1", 1760), ("CAR-2", 1760), ("SEP", 2060), ("CD-1", 2020)):
@@ -582,7 +582,7 @@ class TestInfeedHandoff(unittest.TestCase):
         for index, (left, right) in enumerate(zip(afu, bfc), start=1):
             with self.subTest(step=index):
                 # 표현은 시트마다 달라도 되지만 같은 동작이어야 한다 — 핵심어로 대조한다.
-                key = ("370", "전개", "1,874", "1,420", "180°", "1,200")[index - 1]
+                key = ("370", "전개", "1,874", "2,290", "180°", "1,330")[index - 1]
                 self.assertIn(key, left)
                 self.assertIn(key, right)
 
@@ -2421,8 +2421,8 @@ class TestMounting(unittest.TestCase):
             with self.subTest(station=key):
                 self.assertIn("anchors: '" + mounting.anchor_text(key) + "'", block)
         # 합계는 기초도면으로 넘기는 값이라 못 박는다
-        self.assertEqual(mounting.total_anchors(), 174)
-        self.assertEqual(mounting.anchors_by_bolt(), {"M16": 94, "M20": 72, "M24": 8})
+        self.assertEqual(mounting.total_anchors(), 190)
+        self.assertEqual(mounting.anchors_by_bolt(), {"M16": 94, "M20": 88, "M24": 8})
         # '/기' 는 개소마다라는 뜻이다 — 곱해지지 않으면 수량이 반이 된다
         grm = mounting.MOUNTING_OF["grm"]
         mast = next(a for a in grm.anchors if a.target == "마스트")
@@ -2452,7 +2452,7 @@ class TestMounting(unittest.TestCase):
         for key in ("grm", "afr", "afu"):
             with self.subTest(station=key):
                 self.assertTrue(mounting.members_of(key), f"{key} 에 지지 부재가 없다")
-        self.assertEqual(mounting.members_by_class()["floor"], 10)
+        self.assertEqual(mounting.members_by_class()["floor"], 14)
 
     def test_brackets_came_from_measured_gaps(self):
         """브래킷은 임의로 세운 것이 아니라 잰 것이다 — 전부 도면에 있어야 한다."""
@@ -2713,3 +2713,154 @@ class TestBalancePlans(unittest.TestCase):
         self.assertIn(f"calcNumber('handlingTime',{handoff.HANDLING_S:g})", delam)
         self.assertNotIn(f"calcNumber('knifeSpeed',{handoff.AS_UPLOADED_KNIFE_MM_S:g})", delam)
         self.assertNotIn(f"calcNumber('handlingTime',{handoff.AS_UPLOADED_HANDLING_S:g})", delam)
+
+
+class TestKinematics(unittest.TestCase):
+    """반전기 투입 기구학 — 패널이 지나가는 자리.
+
+    발주처 지적 "패널이 반전기에 투입될 때 간섭이 생겨" 를 재현하고, 같은
+    결함이 다시 들어오면 실패하는 불변식으로 못 박는다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        with io.open(DRAWING, encoding="utf-8") as handle:
+            cls.html = handle.read()
+
+    def test_the_panel_fits_between_the_end_rings(self):
+        """REV.26 은 패널이 케이지보다 **길어서** 애초에 들어가지 않았다.
+
+        3D 의 알루미늄 프레임이 2,500 × 1,400 유리 바깥에 붙어 조립체가
+        2,615 × 1,515 였다 — 케이지 안지름 2,580 보다 35 mm 길다.
+        """
+        self.assertGreater(kinematics.cage_axial_clearance_mm(), 0,
+                           "패널이 두 엔드링 사이에 들어가지 않는다")
+        self.assertGreaterEqual(kinematics.cage_axial_clearance_mm(), 20)
+        # 규격을 벗어난 패널을 넣으면 반드시 걸려야 한다.
+        span = kinematics.cage_clear_span_mm()
+        self.assertLess((span - 2615) / 2, 0, "2,615 짜리 패널은 들어가면 안 된다")
+
+    def test_the_panel_passes_under_the_ring_and_over_the_carriage(self):
+        """수평 이송은 캐리지 상단과 링 하단 사이 창을 지나간다.
+
+        REV.26 은 그 창이 130 mm 였고 이송면이 링에 **22 mm** 까지 붙어
+        있었다 — 설계값이 아니라 우연이다. 반전축을 130 올려 창을 260 으로
+        벌리고 위아래를 100 mm 넘게 뒀다.
+        """
+        self.assertGreaterEqual(kinematics.under_ring_clearance_mm(), 100)
+        self.assertGreaterEqual(kinematics.over_carriage_clearance_mm(), 100)
+        # 옛 반전축(3,300)으로 되돌리면 링 여유가 100 밑으로 떨어진다.
+        old = kinematics.FLIP_AXIS_MM - 130
+        old_gap = (old - kinematics.ring_outer_r_mm()) - (
+            kinematics.TRANSFER_MM + kinematics.PANEL_TOP_OFFSET_MM)
+        self.assertLess(old_gap, 0, "옛 축 높이에서는 이송면이 링에 걸린다")
+
+    def test_the_panel_fits_the_ring_bore(self):
+        """반전축에 앉았을 때 패널 단면이 통과 구멍 안이어야 한다."""
+        self.assertGreater(kinematics.bore_clearance_mm(), 0)
+        self.assertEqual(round(kinematics.ring_bore_r_mm() * 2), 1620)
+
+    def test_the_path_never_climbs_while_crossing_a_ring(self):
+        """REV.26 의 결함 그 자체 — 링 평면을 가로지르면서 올라갔다.
+
+        지금 경로가 이미 맞아서 검사 코드가 죽어도 모르는 일을 막으려고
+        어긋난 경로를 주입해 실제로 걸리는지까지 본다.
+        """
+        self.assertTrue(kinematics.crossing_is_level())
+        bad = tuple((t0, t1, name, True) if name == kinematics.CROSSING_PHASE else (t0, t1, name, climbs)
+                    for t0, t1, name, climbs in kinematics.PATH)
+        self.assertFalse(kinematics.crossing_is_level(bad),
+                         "가로지르며 올라가는 경로를 걸러내지 못한다")
+
+    def test_the_clamp_jaw_reaches_the_panel_and_opens_clear_of_it(self):
+        """조가 물어야 할 패널에서 660 mm 떨어져 있었고, 하강 경로를 막았다."""
+        # 무는 자리는 패널 장변 프레임의 중심이다.
+        self.assertAlmostEqual(kinematics.JAW_CLOSED_Z_MM, kinematics.PANEL_MM[1] / 2 - 27.5, places=1)
+        # 여는 자리는 패널 반폭 밖이라 두 링 사이 하강 경로를 비운다.
+        self.assertGreater(kinematics.jaw_open_clearance_mm(), 0,
+                           "조를 열어도 패널이 내려갈 길이 없다")
+        self.assertGreater(kinematics.jaw_stroke_mm(), 100)
+
+    def test_the_afr_clamp_portal_stands_where_nothing_else_does(self):
+        """상부에서 내려오는 것에는 그것을 매달 것이 있어야 한다.
+
+        CL-221 4기(합 12 kN)가 y 1,030…1,950 에 서 있는데 1,950 위가 비어
+        있었다. 기둥 자리는 통과 폭·셔틀·LM 레일 밖, 가드 안쪽에서만 난다.
+        """
+        self.assertEqual(kinematics.afr_clamp_reaction_kn(), 12.0)
+        self.assertTrue(kinematics.afr_portal_is_clear())
+        self.assertEqual(kinematics.AFR_CROSSHEAD_SOFFIT_MM, kinematics.AFR_CLAMP_TOP_MM,
+                         "크로스헤드 하면이 클램프 상단과 같아야 매달린다")
+        for _name, limit in kinematics.AFR_PORTAL_OBSTACLES_MM:
+            with self.subTest(limit=limit):
+                self.assertFalse(kinematics.afr_portal_is_clear(limit - 1),
+                                 "장애물 안쪽에 세운 기둥을 걸러내지 못한다")
+        self.assertFalse(kinematics.afr_portal_is_clear(kinematics.AFR_GUARD_Z_MM + 1),
+                         "가드 밖에 세운 기둥을 걸러내지 못한다")
+        self.assertEqual(kinematics.afr_portal_anchor_total(), 16)
+
+    def test_the_portal_and_the_jaw_exist_in_the_drawing(self):
+        """모델에만 있고 3D 에 형상이 없으면 §25 와 같은 병이다.
+
+        표에 한 번·3D 에 한 번, 두 번 나와야 한다.
+        """
+        for label in ("AFR CL-221 클램프 포탈 기둥 4본",
+                      "AFR CL-221 포탈 크로스헤드 2본",
+                      "AFR 클램프 포탈 종방향 타이빔 2본",
+                      "VAC-101 진공 스키드 베이스"):
+            with self.subTest(label=label):
+                self.assertGreaterEqual(self.html.count("'" + label + "'"), 2,
+                                        "표에만 있고 3D 에 형상이 없다")
+        self.assertIn("4점 단장 클램프 ${sg<0?", self.html)
+        self.assertIn("클램프 z축 가이드 포스트 4본", self.html)
+
+    def test_the_drawing_carries_the_same_numbers(self):
+        for key, value in kinematics.summary().items():
+            if isinstance(value, list):
+                continue
+            with self.subTest(key=key):
+                self.assertIn(f"{key}: {value:g}" if isinstance(value, float)
+                              else f"{key}: {value}", self.html)
+
+    def test_the_3d_uses_the_model_numbers(self):
+        """3D 상수가 모델에서 떨어져 나가면 **영상만** 옛 설계로 돌아간다.
+
+        파이썬은 통과하는데 기구는 틀린 상태가 된다 — 변이 시험에서 실제로
+        두 건이 그렇게 살아남았다(이송면 2.29 → 2.25, 조 여닫이 삭제).
+        기하 검사(`tools/check_clearance.mjs`)는 잡지만 CI 의 파이썬은 못 봤다.
+        그래서 리터럴을 모델에서 직접 못 박는다.
+        """
+        def js(mm: float) -> str:
+            """미니파이 소스가 쓰는 표기 — 0.86 은 .86 으로 적힌다."""
+            text = f"{mm / 1000:g}"
+            return text[1:] if text.startswith("0.") else text
+
+        self.assertIn(f"var At={js(kinematics.FLIP_AXIS_MM)},"
+                      f"pvTv={js(kinematics.TRANSFER_MM)},", self.html,
+                      "반전축·이송면 3D 상수가 모델과 다르다")
+        # 조는 반전 구간에만 물고, 진입·하강 구간에는 열려 있어야 한다.
+        self.assertIn(f"jg.position.set(0,0,sg*{js(kinematics.JAW_OPEN_Z_MM)})", self.html)
+        self.assertIn(f"le({js(kinematics.JAW_OPEN_Z_MM)},"
+                      f"{js(kinematics.JAW_CLOSED_Z_MM)},cj)", self.html,
+                      "조가 여닫이 없이 한 자리에 고정돼 있다")
+
+    def test_the_checker_and_the_model_share_one_list(self):
+        """검사 도구의 예외 목록이 모델과 어긋나면 검사가 뜻을 잃는다.
+
+        **양방향으로** 본다. 한쪽만 훑으면 모델에서 낱말을 빼도 통과한다 —
+        루프가 도는 횟수만 줄 뿐이라 아무도 모른다. §24·§25 에서 세 번 겪은
+        그 병이라 여기서는 집합으로 맞춘다.
+        """
+        tool = (pathlib.Path(__file__).resolve().parents[1]
+                / "tools" / "check_clearance.mjs").read_text(encoding="utf-8")
+
+        def words(const: str) -> set[str]:
+            body = tool[tool.index(f"const {const} = ["):]
+            return set(re.findall(r"'([^']+)'", body[:body.index("];")]))
+
+        for const, model in (("WORKPIECES", kinematics.WORKPIECES),
+                             ("DESIGN_CONTACTS", kinematics.DESIGN_CONTACTS),
+                             ("PASS_THROUGH", kinematics.PASS_THROUGH)):
+            with self.subTest(const=const):
+                self.assertEqual(words(const), set(model),
+                                 f"{const} 가 모델과 검사 도구에서 다르다")
