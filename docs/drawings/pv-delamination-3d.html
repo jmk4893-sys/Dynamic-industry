@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#141c20">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230d7f89'/%3E%3Cg fill='%23ffffff'%3E%3Cpolygon points='26,34 78,34 87,14 35,14'/%3E%3Cpolygon points='16,60 68,60 77,40 25,40'/%3E%3Cpolygon points='6,86 58,86 67,66 15,66'/%3E%3C/g%3E%3C/svg%3E">
   <title>DG-HK60 · 단일 5단 IR 고정 탠덤 PV 분리설비 · 3D 운전 콘솔 Rev.20</title>
   <meta name="description" content="폐 태양광 모듈 백시트·셀/EVA·판유리 3계통 분리설비 DG-HK60의 3D 운전 콘솔 — 5단 밀폐 IR 가열 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 전기·PLC·제작도면 및 열수지 계산.">
   <style>
@@ -111,8 +112,8 @@
       padding:13px clamp(14px,2.4vw,26px);background:var(--plate);border-bottom:1px solid var(--line)}
     .np-mark{flex:none;display:grid;place-items:center;width:46px;height:46px;border-radius:var(--r2);
       background:var(--mark);border:1px solid var(--brand2);
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 2px 8px rgba(0,0,0,.22);
-      font:800 15px/1 var(--mono);letter-spacing:.04em;color:#e6feff}
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 2px 8px rgba(0,0,0,.22)}
+    .np-mark svg{width:26px;height:26px;fill:#ffffff;display:block}
     .np-id{min-width:0;flex:1 1 auto}
     .np-model{display:flex;align-items:center;gap:9px;font:700 11px/1 var(--mono);letter-spacing:.13em;color:var(--brand-ink)}
     .np-model span{padding:2px 6px;border:1px solid var(--line2);border-radius:4px;color:var(--ink3);letter-spacing:.1em;font-weight:600}
@@ -378,7 +379,9 @@
   <div class="app">
     <header>
       <div class="nameplate">
-        <div class="np-mark" aria-hidden="true">DG</div>
+        <div class="np-mark" aria-hidden="true">
+          <svg viewBox="0 0 100 100" focusable="false"><polygon points='26,34 78,34 87,14 35,14'/><polygon points='16,60 68,60 77,40 25,40'/><polygon points='6,86 58,86 67,66 15,66'/></svg>
+        </div>
         <div class="np-id">
           <div class="np-model">DG-HK60 <span>REV.20</span></div>
           <h1>단일 5단 IR · 고정 탠덤 · 수평 분리반출</h1>
@@ -1315,6 +1318,13 @@
     }
 
     let width=1,height=1,dpr=1,primitives=[],labels=[],shadowCasters=[];
+    /* Sort bias, the painter's-algorithm equivalent of a polygon offset. Faces are
+       ordered by mean depth, so a small decal lying on a large panel can sort behind
+       it whenever the panel's centroid happens to sit nearer the view axis. Nudging
+       the sort key — not the geometry — keeps applied graphics on their surface from
+       every angle. */
+    let drawBias=0;
+    function withBias(b,fn){const p=drawBias;drawBias=b;try{fn()}finally{drawBias=p}}
     const camera={target:{x:19,y:0,z:1.45},az:-2.18,el:.38,radius:44,auto:true,preset:0};
     const presets=[{az:-2.18,el:.38,r:44},{az:-1.56,el:.32,r:46},{az:-2.72,el:.55,r:44},{az:-2.12,el:1.06,r:49}];
     let basis=null;
@@ -1381,7 +1391,7 @@
       const depth=pp.reduce((a,p)=>a+p.z,0)/pp.length;
       const zc=points.reduce((a,p)=>a+p.z,0)/points.length+partOffset.z;
       const fog=clamp((depth-fogNear)/(fogFar-fogNear),0,1)*FOG_MAX;
-      primitives.push({type:'poly',points:pp,depth,
+      primitives.push({type:'poly',points:pp,depth:depth-drawBias,
         fill:color.startsWith('#')?litFill(color,n,zc,depth):color,
         alpha:op,stroke,lineWidth,edgeFade:1-fog*.72});
     }
@@ -1401,7 +1411,7 @@
       for(const seg of segs){
         const pp=seg.map(toScreen),depth=pp.reduce((a,p)=>a+p.z,0)/pp.length;
         const fog=clamp((depth-fogNear)/(fogFar-fogNear),0,1)*FOG_MAX;
-        primitives.push({type:'line',points:pp,depth,color,
+        primitives.push({type:'line',points:pp,depth:depth-drawBias,color,
           width:widthPx*clamp(camera.radius/(depth||1)*.92,.62,1.8),
           dash,alpha:alpha*(1-fog*.6)});
       }
@@ -1434,7 +1444,7 @@
     function drawPrimitive(p){
       ctx.save();ctx.globalAlpha=p.alpha??1;
       if(p.type==='poly'){ctx.beginPath();ctx.moveTo(p.points[0].x,p.points[0].y);for(let i=1;i<p.points.length;i++)ctx.lineTo(p.points[i].x,p.points[i].y);ctx.closePath();ctx.fillStyle=p.fill;ctx.fill();if(p.stroke){ctx.globalAlpha=(p.alpha??1)*(p.edgeFade??1);ctx.strokeStyle=p.stroke;ctx.lineWidth=p.lineWidth;ctx.lineJoin='round';ctx.stroke()}}
-      else{ctx.beginPath();ctx.moveTo(p.points[0].x,p.points[0].y);for(let i=1;i<p.points.length;i++)ctx.lineTo(p.points[i].x,p.points[i].y);ctx.strokeStyle=p.color;ctx.lineWidth=p.width;ctx.setLineDash(p.dash||[]);ctx.stroke()}
+      else{ctx.beginPath();ctx.moveTo(p.points[0].x,p.points[0].y);for(let i=1;i<p.points.length;i++)ctx.lineTo(p.points[i].x,p.points[i].y);ctx.strokeStyle=p.color;ctx.lineWidth=p.width;ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash(p.dash||[]);ctx.stroke()}
       ctx.restore();
     }
     /* Component callouts: an anchor dot on the part, a leader, and a tag plate that
@@ -1664,6 +1674,119 @@
       }
     }
 
+    /* ---- Dynamic Industry identity ------------------------------------------
+       The mark is three sheared bars stepping up and to the right: the machine's
+       three output streams — backsheet, cell/EVA, glass — and the direction the
+       panel travels while they separate. One geometry serves both the CSS mark in
+       the console chrome and the applied livery on the machine, so the badge on
+       the cabinet and the badge in the header are literally the same shape.
+       Drawn in a 100 x 100 box, y up: [x0, y0, x1, y1, shear]. */
+    const MARK_BARS=[[26,66,78,66,9],[16,40,68,40,9],[6,14,58,14,9]];
+    const MARK_H=20;
+    /* Places the mark on any plane. `u` runs along the mark's width, `v` its
+       height; both should be unit vectors lying in the face being decorated. */
+    function brandMark3D(origin,u,v,size,color,alpha=1){
+      const k=size/100;
+      for(const[x0,y0,x1,,sh] of MARK_BARS){
+        const P=(x,y)=>add(origin,add(mul(u,x*k),mul(v,y*k)));
+        poly([P(x0,y0),P(x1,y0),P(x1+sh,y0+MARK_H),P(x0+sh,y0+MARK_H)],color,alpha,null,0);
+      }
+    }
+    /* Single-stroke capitals for lettering applied to a machine face. Drawn as 3D
+       line work so it keeps perspective instead of floating as a screen overlay.
+       Each glyph is a list of [x0,y0,x1,y1] strokes on a 6 x 10 grid. */
+    const GLYPHS={
+      'A':[[0,0,3,10],[3,10,6,0],[1,3.4,5,3.4]],
+      'C':[[6,8.4,3.4,10],[3.4,10,0,7.6],[0,7.6,0,2.4],[0,2.4,3.4,0],[3.4,0,6,1.6]],
+      'D':[[0,0,0,10],[0,10,3.6,10],[3.6,10,6,7],[6,7,6,3],[6,3,3.6,0],[3.6,0,0,0]],
+      'E':[[6,10,0,10],[0,10,0,0],[0,0,6,0],[0,5,4.6,5]],
+      'G':[[6,8.4,3.4,10],[3.4,10,0,7.6],[0,7.6,0,2.4],[0,2.4,3.4,0],[3.4,0,6,1.6],[6,1.6,6,4.2],[6,4.2,3.6,4.2]],
+      'H':[[0,0,0,10],[6,0,6,10],[0,5,6,5]],
+      'I':[[3,0,3,10]],
+      'K':[[0,0,0,10],[6,10,0.4,4.6],[2.2,6.4,6,0]],
+      'M':[[0,0,0,10],[0,10,3,3.6],[3,3.6,6,10],[6,10,6,0]],
+      'N':[[0,0,0,10],[0,10,6,0],[6,0,6,10]],
+      'O':[[0,2.4,0,7.6],[0,7.6,3,10],[3,10,6,7.6],[6,7.6,6,2.4],[6,2.4,3,0],[3,0,0,2.4]],
+      'R':[[0,0,0,10],[0,10,3.8,10],[3.8,10,6,8],[6,8,6,6.6],[6,6.6,3.8,4.8],[3.8,4.8,0,4.8],[3.2,4.8,6,0]],
+      'S':[[6,8.8,3.2,10],[3.2,10,0,8.4],[0,8.4,0,6.8],[0,6.8,6,3.4],[6,3.4,6,1.6],[6,1.6,3.2,0],[3.2,0,0,1.2]],
+      'T':[[0,10,6,10],[3,10,3,0]],
+      'U':[[0,10,0,2.4],[0,2.4,3,0],[3,0,6,2.4],[6,2.4,6,10]],
+      'Y':[[0,10,3,4.8],[6,10,3,4.8],[3,4.8,3,0]],
+      '0':[[0,2.4,0,7.6],[0,7.6,3,10],[3,10,6,7.6],[6,7.6,6,2.4],[6,2.4,3,0],[3,0,0,2.4],[0.6,2.2,5.4,7.8]],
+      '6':[[6,8.8,3.2,10],[3.2,10,0,7],[0,7,0,2.2],[0,2.2,3,0],[3,0,6,2],[6,2,6,4],[6,4,3,5.6],[3,5.6,0,4.2]],
+      'B':[[0,0,0,10],[0,10,4,10],[4,10,6,8.4],[6,8.4,6,6.6],[6,6.6,4,5.2],[4,5.2,0,5.2],[4,5.2,6,3.8],[6,3.8,6,1.6],[6,1.6,4,0],[4,0,0,0]],
+      'F':[[0,0,0,10],[0,10,6,10],[0,5.2,4.6,5.2]],
+      'L':[[0,10,0,0],[0,0,5.6,0]],
+      'P':[[0,0,0,10],[0,10,4,10],[4,10,6,8.2],[6,8.2,6,6.4],[6,6.4,4,4.8],[4,4.8,0,4.8]],
+      'V':[[0,10,3,0],[3,0,6,10]],
+      'W':[[0,10,1.5,0],[1.5,0,3,6],[3,6,4.5,0],[4.5,0,6,10]],
+      '1':[[1.4,8.2,3,10],[3,10,3,0],[1,0,5,0]],
+      '2':[[0,8.4,3,10],[3,10,6,8.4],[6,8.4,6,6.4],[6,6.4,0,0],[0,0,6,0]],
+      '3':[[0,9,3,10],[3,10,6,8.4],[6,8.4,6,6.6],[6,6.6,3.4,5.2],[3.4,5.2,6,3.8],[6,3.8,6,1.6],[6,1.6,3,0],[3,0,0,1]],
+      '4':[[4.6,0,4.6,10],[4.6,10,0,3.4],[0,3.4,6,3.4]],
+      '5':[[6,10,0,10],[0,10,0,5.6],[0,5.6,3.4,5.6],[3.4,5.6,6,4],[6,4,6,1.6],[6,1.6,3,0],[3,0,0,1]],
+      '7':[[0,10,6,10],[6,10,2.2,0]],
+      '8':[[3,10,.6,8.6],[.6,8.6,.6,7],[.6,7,3,5.4],[3,5.4,5.4,7],[5.4,7,5.4,8.6],[5.4,8.6,3,10],[3,5.4,0,3.6],[0,3.6,0,1.6],[0,1.6,3,0],[3,0,6,1.6],[6,1.6,6,3.6],[6,3.6,3,5.4]],
+      '9':[[0,1,3,0],[3,0,6,3],[6,3,6,7.6],[6,7.6,3,10],[3,10,0,8],[0,8,0,6.2],[0,6.2,3,4.6],[3,4.6,6,6]],
+      '-':[[1,5,5,5]],'.':[[2.6,0,3.4,0]],'/':[[1,0,5,10]],' ':[]
+    };
+    const GLYPH_ADV=(h,tracking)=>h*.6*(1+tracking);
+    function decalWidth(text,h,tracking=.34){return text.length*GLYPH_ADV(h,tracking)-h*.6*tracking}
+    function decalText(text,origin,u,v,h,color,tracking=.34,alpha=1){
+      const k=h/10,adv=GLYPH_ADV(h,tracking),w=clamp(h*17,1.3,5);
+      let cx=0;
+      for(const ch of text.toUpperCase()){
+        const g=GLYPHS[ch];
+        if(g)for(const[x0,y0,x1,y1] of g){
+          line([add(origin,add(mul(u,cx+x0*k),mul(v,y0*k))),
+                add(origin,add(mul(u,cx+x1*k),mul(v,y1*k)))],color,w,null,alpha);
+        }
+        cx+=adv;
+      }
+    }
+    /* Mark + wordmark locked up the way a brand manual would specify: the wordmark
+       sits one mark-width to the right, optically centred on the mark. */
+    function brandLockup(origin,u,v,size,color,word='DYNAMIC INDUSTRY',alpha=1){
+      brandMark3D(origin,u,v,size,color,alpha);
+      if(!word||!midView())return;
+      const h=size*.30,gap=size*.34;
+      decalText(word,add(origin,add(mul(u,size*.87+gap),mul(v,size*.30))),u,v,h,color,.30,alpha);
+    }
+    function liveryStripe(o,u,v,w,h,color,alpha=1){
+      poly([o,add(o,mul(u,w)),add(o,add(mul(u,w),mul(v,h))),add(o,mul(v,h))],color,alpha,null,0);
+    }
+    /* Standard application on a cabinet face looking down the -y aisle. */
+    const AISLE_U=V(1,0,0),AISLE_V=V(0,0,1);
+    function cabinetBadge(x,y,z,size,word){
+      withBias(.22,()=>brandLockup(V(x,y-.015,z),AISLE_U,AISLE_V,size,C.teal,word||''));
+    }
+    /* Photo-etched data plate — every commissioned machine carries one. */
+    /* Photo-etched stainless data plate: brushed ground, dark etched artwork,
+       laid out the way a real plate is — mark and builder over the model line,
+       build data beneath a rule. */
+    /* Photo-etched plate: dark anodised ground with light artwork, laid out the way
+       a real one is — mark and builder over a rule, model and serial beneath.
+       Ground, rule and lettering each sit on their own depth slice; coplanar art on
+       a painter's-algorithm renderer interleaves with its own backing plate. */
+    function dataPlate(o,u,v,w,ink){
+      const n=norm(cross(u,v)),h=w*.46,p=add(o,mul(n,.014));
+      const Q=(a,b)=>add(p,add(mul(u,a),mul(v,b)));
+      withBias(.24,()=>{
+        poly([Q(-.014,-.014),Q(w+.014,-.014),Q(w+.014,h+.014),Q(-.014,h+.014)],C.rail,1,null,0);
+      });
+      withBias(.26,()=>{
+        poly([Q(0,0),Q(w,0),Q(w,h),Q(0,h)],C.steel2,1,null,0);
+      });
+      withBias(.28,()=>{
+        brandMark3D(Q(w*.055,h*.50),u,v,w*.20,ink);
+        liveryStripe(Q(w*.055,h*.335),u,v,w*.89,h*.024,ink,.9);
+        if(!nearView())return;
+        decalText('DYNAMIC INDUSTRY',Q(w*.26,h*.575),u,v,h*.125,C.white,.30);
+        decalText('DG-HK60',Q(w*.055,h*.115),u,v,h*.185,C.white,.20);
+        decalText('SN 2026-001',Q(w*.54,h*.145),u,v,h*.105,C.rail,.22);
+      });
+    }
+
     function conveyor(cx,length,z,widthY=3,cy=0){
       box(V(cx,cy,z-.12),V(length,widthY,.22),C.dark);
       for(let x=cx-length/2+.2;x<cx+length/2;x+=.43)cylinder(V(x,cy,z+.03),.105,widthY-.16,'y',C.rail,9);
@@ -1705,6 +1828,13 @@
         gusset(x,y,4.02,x<cx?1:-1,'x',.18,C.steel2);
       }
       box(V(cx,0,4.22),V(lengthX+.35,4.2,.34),C.steel2);box(V(cx,0,3.85),V(lengthX+.1,3.75,.42),C.cab);
+      /* Builder's name on the portal beam — where a machine wears it. */
+      const beamY=-2.1-(lengthX+.35)*0,fx=cx-(lengthX+.35)/2;
+      withBias(.22,()=>{
+        liveryStripe(V(fx,-2.106,4.345),AISLE_U,AISLE_V,lengthX+.35,.042,C.teal,.98);
+        brandLockup(V(fx+.9,-2.112,4.105),AISLE_U,AISLE_V,.315,C.white,'DYNAMIC INDUSTRY');
+        if(midView())decalText('DG-HK60',V(cx+(lengthX+.35)/2-1.5,-2.112,4.14),AISLE_U,AISLE_V,.15,C.white,.24);
+      });
       box(V(cx,0,3.42),V(lengthX-.45,.6,.62),C.dark);
       for(let x=cx-lengthX/2+.48;x<cx+lengthX/2-.25;x+=.68){
         box(V(x,0,3.08),V(.38,2.75,.22),C.steel2);
@@ -1786,7 +1916,9 @@
       box(V(35.25,-2.35,2.5),V(.18,2.05,.16),C.steel2);                    // gate head frame
       box(V(35.25,-2.35,1.25),V(.16,1.72,1.65),C.red);
       box(V(35.25,-1.42,1.72),V(.42,.28,.52),C.yellow);cylinder(V(35.25,-1.42,2.22),.07,.65,'z',C.steel,10);
-      plinth(36.5,-2.35,2,2.1);box(V(36.5,-2.35,1.05),V(2,2.1,2.05),C.cab);poly([V(35.45,-3.3,2.35),V(37.55,-3.3,2.35),V(37.05,-3.3,1.2),V(35.95,-3.3,1.2)],C.steel2,.95,C.steel,.8);
+      plinth(36.5,-2.35,2,2.1);box(V(36.5,-2.35,1.05),V(2,2.1,2.05),C.cab);
+      withBias(.22,()=>liveryStripe(V(35.5,-3.412,1.86),AISLE_U,AISLE_V,2,.055,C.teal,.95));
+      cabinetBadge(35.85,-3.4,1.28,.44);poly([V(35.45,-3.3,2.35),V(37.55,-3.3,2.35),V(37.05,-3.3,1.2),V(35.95,-3.3,1.2)],C.steel2,.95,C.steel,.8);
       for(const x of [36.15,36.85])cylinder(V(x,-2.35,.92),.25,1.55,'y',C.red,12);
       label3('CVC-301/302 · 셀/EVA 직접 이송',V(30,-3.48,2.35),C.cell2);label3('SH-101 · 슈레더',V(36.5,-3.58,2.75),C.red);
     }
@@ -1802,7 +1934,9 @@
       line([V(20.5,0,.08),V(27.4,0,.08),V(27.4,2.7,.08)],C.glass,3,[8,4],.8);
     }
     function scrubberUnit(){
-      plinth(38.8,0,2.4,2.4);box(V(38.8,0,2.2),V(2.4,2.4,4.4),C.cab);cylinder(V(38.8,0,4.65),.52,.55,'z',C.steel2,14);box(V(38.8,0,5.06),V(1,1,.42),C.dark);cylinder(V(39.5,0,5.48),.28,1.4,'x',C.steel2,12);
+      plinth(38.8,0,2.4,2.4);box(V(38.8,0,2.2),V(2.4,2.4,4.4),C.cab);
+      withBias(.22,()=>liveryStripe(V(37.6,-1.212,3.9),AISLE_U,AISLE_V,2.4,.07,C.teal,.95));
+      cabinetBadge(38.0,-1.2,3.05,.52);cylinder(V(38.8,0,4.65),.52,.55,'z',C.steel2,14);box(V(38.8,0,5.06),V(1,1,.42),C.dark);cylinder(V(39.5,0,5.48),.28,1.4,'x',C.steel2,12);
       vesselSkirt(35.8,0,.62,.2);cylinder(V(35.8,0,2.15),.62,3.9,'z',C.steel2,14);
       vesselSkirt(37.2,0,.5,.35);cylinder(V(37.2,0,2.15),.5,3.6,'z',C.guard,14);
       plinth(40.8,0,1.45,2.25,.16);box(V(40.8,0,2.05),V(1.45,2.25,3.8),C.dark);
@@ -1848,7 +1982,9 @@
       for(const x of [25.25,29.55])for(const yy of [-1.12,1.12])cylinder(V(x,5.05+yy,.92),.16,.18,'y',C.black,10);
     }
     function utilityAndSafetyStation(){
-      plinth(9.2,-4.75,4.6,1.55);box(V(9.2,-4.75,1.8),V(4.6,1.55,3.6),C.cab);for(const x of [7.65,8.65,9.65,10.65]){box(V(x,-3.96,2.05),V(.8,.08,2.65),C.black);box(V(x,-3.9,3.15),V(.42,.06,.18),C.teal)}
+      plinth(9.2,-4.75,4.6,1.55);box(V(9.2,-4.75,1.8),V(4.6,1.55,3.6),C.cab);
+      withBias(.22,()=>liveryStripe(V(6.9,-5.532,3.28),AISLE_U,AISLE_V,4.6,.07,C.teal,.95));
+      cabinetBadge(7.35,-5.525,2.42,.62,'DYNAMIC INDUSTRY');for(const x of [7.65,8.65,9.65,10.65]){box(V(x,-3.96,2.05),V(.8,.08,2.65),C.black);box(V(x,-3.9,3.15),V(.42,.06,.18),C.teal)}
       for(const x of [12.2,13.25]){plinth(x,-4.7,1.05,1.05,.16);cylinder(V(x,-4.7,.68),.46,1.05,'z',C.steel2,12);box(V(x,-4.7,1.42),V(.86,.86,.46),C.teal)}
       vesselSkirt(14.45,-4.7,.5,.15);cylinder(V(14.45,-4.7,1.0),.5,1.7,'z',C.cab,14);cylinder(V(14.45,-4.7,1.92),.16,.2,'z',C.yellow,10);
       plinth(16,-4.75,1.25,1.35);box(V(16,-4.75,1.42),V(1.25,1.35,2.75),C.cab);for(let z=.6;z<2.55;z+=.38)box(V(16,-4.05,z),V(.75,.06,.16),z>1.8?C.teal:C.cell2);
@@ -1861,7 +1997,9 @@
       for(const x of [6.6,11.8,18.3,30.2]){box(V(x,-3.55,1.25),V(.2,.2,2.35),C.red);box(V(x,-3.55,2.47),V(.42,.42,.18),C.yellow)}
     }
     function powerInfeedStation(){
-      plinth(-1.35,-4.7,2.5,2.05);box(V(-1.35,-4.7,1.65),V(2.5,2.05,3.3),C.cab);for(const x of [-2.15,-1.35,-.55])cylinder(V(x,-4.7,3.5),.16,1.7,'y',C.steel2,12);
+      plinth(-1.35,-4.7,2.5,2.05);box(V(-1.35,-4.7,1.65),V(2.5,2.05,3.3),C.cab);
+      withBias(.22,()=>liveryStripe(V(-2.6,-5.732,3.0),AISLE_U,AISLE_V,2.5,.06,C.teal,.95));
+      cabinetBadge(-2.25,-5.725,2.25,.5);for(const x of [-2.15,-1.35,-.55])cylinder(V(x,-4.7,3.5),.16,1.7,'y',C.steel2,12);
       plinth(1.25,-4.7,2.15,1.5);box(V(1.25,-4.7,1.85),V(2.15,1.5,3.7),C.steel2);for(const x of [.55,1.25,1.95])box(V(x,-3.92,2.05),V(.55,.08,2.75),C.cab);box(V(1.25,-3.85,3.25),V(1.15,.06,.28),C.teal);
       box(V(18,-4.05,4.55),V(33.5,.35,.26),C.steel2);                     // main cable tray
       for(let x=2.4;x<34.5;x+=4.6){
@@ -1948,12 +2086,16 @@
         for(const yy of [-1.5,1.5])pillowBlock(14.7,yy,3.04,'y',.17,C.steel2);
         for(const y of [-.9,-.3,.3,.9])box(V(14.4,y,3.04),V(.18,.34,.12),C.yellow);
         box(V(14.7,1.9,3.04),V(.52,.45,.45),C.cab);
-        plinth(14.8,-2.75,2.55,1.5);box(V(14.8,-2.75,1.02),V(2.55,1.5,1.95),C.cab);box(V(14.8,-2.02,1.12),V(2.2,.08,1.55),C.sheet,{alpha:.18});box(V(14.8,-2.75,2.02),V(2.35,1.35,.12),C.steel2);
+        plinth(14.8,-2.75,2.55,1.5);box(V(14.8,-2.75,1.02),V(2.55,1.5,1.95),C.cab);
+        withBias(.22,()=>liveryStripe(V(13.53,-3.512,1.82),AISLE_U,AISLE_V,2.55,.055,C.teal,.95));
+        cabinetBadge(13.9,-3.5,1.18,.46);box(V(14.8,-2.02,1.12),V(2.2,.08,1.55),C.sheet,{alpha:.18});box(V(14.8,-2.75,2.02),V(2.35,1.35,.12),C.steel2);
         for(const x of [14.2,14.8,15.4])cylinder(V(x,-2.75,.92),.28,1.1,'y',C.sheet,14);
         label3('WR-101 · 횡방향 클램프 권취롤',V(14.7,-1.8,3.48),C.yellow);label3('BS-301 · 백시트 전용 보관함',V(14.8,-3.55,2.35),C.sheet)
       });
       withPartOffset(o.cell,()=>{liftConveyor();cellHandlingStation()});
-      withPartOffset(o.utility,()=>{plinth(19,-3.3,1.6,1.2);box(V(19,-3.3,1.8),V(1.6,1.2,3.6),C.cab);box(V(19,-2.67,2.75),V(.8,.05,.6),C.black);label3('PLC + HMI',V(19,-3.35,3.85));utilityAndSafetyStation()});
+      withPartOffset(o.utility,()=>{plinth(19,-3.3,1.6,1.2);box(V(19,-3.3,1.8),V(1.6,1.2,3.6),C.cab);
+        withBias(.22,()=>liveryStripe(V(18.2,-3.912,3.28),AISLE_U,AISLE_V,1.6,.06,C.teal,.95));
+        dataPlate(V(18.36,-3.9,1.32),AISLE_U,AISLE_V,.88,C.teal);box(V(19,-2.67,2.75),V(.8,.05,.6),C.black);label3('PLC + HMI',V(19,-3.35,3.85));utilityAndSafetyStation()});
       withPartOffset(o.glass,()=>{glassOutfeedStation();qualityRejectStation();glassCoolingStation()});
       withPartOffset(o.exhaust,scrubberUnit);withPartOffset(o.power,powerInfeedStation);withPartOffset(o.maintenance,maintenanceStation);
       line([V(14.7,0,.1),V(14.7,-2.75,.1)],C.sheet,3,[8,4],.75);
@@ -2260,13 +2402,20 @@
       ctx.fillStyle=TH.plateSoft;ctx.strokeStyle=TH.brandLine;ctx.lineWidth=1;
       ctx.beginPath();ctx.roundRect(x,y,w,h,8);ctx.fill();ctx.stroke();
       ctx.fillStyle=TH.accent;ctx.fillRect(x,y,4,h);
+      /* the mark, drawn from the same bar geometry the machine wears */
+      ctx.save();ctx.translate(x+15,y+13);ctx.scale(.20,.20);ctx.fillStyle=TH.accent;
+      for(const[x0,y0,x1,,sh] of MARK_BARS){
+        ctx.beginPath();ctx.moveTo(x0,100-y0);ctx.lineTo(x1,100-y0);
+        ctx.lineTo(x1+sh,80-y0);ctx.lineTo(x0+sh,80-y0);ctx.closePath();ctx.fill();
+      }
+      ctx.restore();
       ctx.textAlign='left';ctx.textBaseline='alphabetic';
       ctx.fillStyle=TH.accent;ctx.font='700 10px ui-monospace,SFMono-Regular,Consolas,monospace';
-      ctx.fillText('DG-HK60 / M-000',x+14,y+20);
+      ctx.fillText('DG-HK60 / M-000',x+40,y+21);
       ctx.fillStyle=TH.inkSoft;ctx.font='600 12px system-ui,sans-serif';
-      ctx.fillText('전체장비 배치 · 개념 제작도',x+14,y+38);
+      ctx.fillText('전체장비 배치 · 개념 제작도',x+14,y+40);
       ctx.fillStyle=TH.inkDim;ctx.font='10px system-ui,sans-serif';
-      ctx.fillText('REV.20 · 축척 없음 · 치수 미확정',x+14,y+54);
+      ctx.fillText('REV.20 · 축척 없음 · 치수 미확정',x+14,y+55);
       ctx.restore();
       drawScaleBar(x+w+16,y+h-14);
     }
@@ -2456,7 +2605,7 @@
     let drawingTab='power',drawingMode='2d',assemblyIndex=0;
     const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const svgDefs=`<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#0b6268"/></marker><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="#dce1df" stroke-width="1"/></pattern></defs>`;
-    const titleBlock=(code,title,subtitle)=>`<g font-family="Arial,'Noto Sans KR',sans-serif"><rect x="20" y="20" width="1160" height="610" rx="8" fill="#fafaf8" stroke="#7c898b" stroke-width="2"/><rect x="20" y="20" width="1160" height="610" rx="8" fill="url(#grid)"/><text x="45" y="58" font-size="24" font-weight="700" fill="#25353a">${esc(title)}</text><text x="45" y="82" font-size="13" fill="#647278">${esc(subtitle)}</text><rect x="870" y="548" width="310" height="82" fill="#f2f4f1" stroke="#7c898b"/><text x="886" y="572" font-size="13" font-weight="700" fill="#25353a">DYNAMIC INDUSTRY · ${esc(code)}</text><text x="886" y="594" font-size="11" fill="#647278">DG-HK60 · REV.20 · CONCEPT / FAT BASIS</text><text x="886" y="614" font-size="11" fill="#647278">SCALE NTS · 2026-09-03</text></g>`;
+    const titleBlock=(code,title,subtitle)=>`<g font-family="Arial,'Noto Sans KR',sans-serif"><rect x="20" y="20" width="1160" height="610" rx="8" fill="#fafaf8" stroke="#7c898b" stroke-width="2"/><rect x="20" y="20" width="1160" height="610" rx="8" fill="url(#grid)"/><text x="45" y="58" font-size="24" font-weight="700" fill="#25353a">${esc(title)}</text><text x="45" y="82" font-size="13" fill="#647278">${esc(subtitle)}</text><rect x="870" y="548" width="310" height="82" fill="#f2f4f1" stroke="#7c898b"/><g transform="translate(882,556) scale(0.20)" fill="#0d7f89"><polygon points='26,34 78,34 87,14 35,14'/><polygon points='16,60 68,60 77,40 25,40'/><polygon points='6,86 58,86 67,66 15,66'/></g><text x="910" y="572" font-size="13" font-weight="700" fill="#25353a">DYNAMIC INDUSTRY · ${esc(code)}</text><text x="910" y="594" font-size="11" fill="#647278">DG-HK60 · REV.20 · CONCEPT / FAT BASIS</text><text x="910" y="614" font-size="11" fill="#647278">SCALE NTS · 2026-09-03</text></g>`;
     function powerDrawing(){
       const branch=(x,label,amp,load)=>`<path d="M${x} 224V330" stroke="#c84c28" stroke-width="5"/><rect x="${x-63}" y="330" width="126" height="76" rx="7" fill="#fff7eb" stroke="#c47a17" stroke-width="2"/><text x="${x}" y="356" text-anchor="middle" font-size="13" font-weight="700" fill="#69420a">${label}</text><text x="${x}" y="378" text-anchor="middle" font-size="12" fill="#69420a">${amp}</text><text x="${x}" y="397" text-anchor="middle" font-size="11" fill="#745a35">${load}</text>`;
       return `<div class="drawing-kpi"><div><span>연결부하</span><strong>약 318 kW</strong></div><div><span>예상 최대수요</span><strong>약 270 kW</strong></div><div><span>수전·변압기</span><strong>500 kVA</strong></div><div><span>주차단기</span><strong>4P 800AF</strong></div></div><div class="wire-legend"><span style="--wire:#c84c28">3Φ4W 380/220V</span><span style="--wire:#278555">PE 접지</span><span style="--wire:#19788a">계측·통신</span></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="DG-HK60 전력 인입 및 단선 결선도">${svgDefs}${titleBlock('E-001','전력 인입·단선 결선도','3Φ4W AC 380/220V 60Hz · TR-1 500kVA · 주모선 1000A')}

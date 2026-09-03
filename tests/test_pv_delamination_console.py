@@ -38,11 +38,18 @@ class TestConsoleDocument(unittest.TestCase):
         standalone_document_checks(self, self.html, TITLE)
 
     def test_is_fully_self_contained(self):
-        """오프라인·CSP 환경에서도 열려야 하므로 외부 리소스를 두지 않는다."""
+        """오프라인·CSP 환경에서도 열려야 하므로 외부 리소스를 두지 않는다.
+
+        인라인 data: URI 는 외부 자원이 아니므로 파비콘에 한해 허용한다.
+        XML 네임스페이스 URI 도 식별자일 뿐 내려받지 않는다.
+        """
         for url in re.findall(r'https?://[^"\')\s]+', self.html):
+            if url.startswith("http://www.w3.org/"):
+                continue
             self.fail(f"외부 리소스 참조: {url}")
-        for attr in ("src=", "<link "):
-            self.assertNotIn(attr, self.html, f"외부 자원 로드({attr})는 두지 않는다")
+        self.assertNotIn("src=", self.html, "외부 자원 로드는 두지 않는다")
+        for href in re.findall(r'<link[^>]*href="([^"]*)"', self.html):
+            self.assertTrue(href.startswith("data:"), f"외부 링크 자원: {href}")
 
     def test_container_tags_balance(self):
         for tag in ("html", "head", "body", "header", "main", "section", "nav",
@@ -171,6 +178,83 @@ class TestComponentMounting(unittest.TestCase):
             body = re.search(rf"function {fn}\(.*?\n    \}}", self.html, re.S).group(0)
             self.assertTrue("nearView()" in body or "midView()" in body,
                             f"{fn} 에 거리 기준 LOD가 없다")
+
+
+class TestBrandIdentity(unittest.TestCase):
+    """회사 마크가 한 벌의 도형에서 나오고, 실제로 부착돼 있는지.
+
+    마크는 장비 외장(3D 폴리곤)과 콘솔 크롬(SVG)에 각각 그려진다. 두 곳이 따로
+    놀면 같은 회사 마크가 아니게 되므로, SVG 좌표를 JS 의 바 기하에서 유도해
+    일치를 강제한다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = CONSOLE.read_text(encoding="utf-8")
+        m = re.search(r"const MARK_BARS=\[(.*?)\];", cls.html)
+        assert m, "MARK_BARS 없음"
+        cls.bars = [[float(v) for v in b.split(",")]
+                    for b in re.findall(r"\[([-\d.,]+)\]", m.group(1))]
+        cls.mark_h = float(re.search(r"const MARK_H=([\d.]+);", cls.html).group(1))
+
+    @staticmethod
+    def _fmt(v):
+        return str(int(v)) if float(v).is_integer() else str(v)
+
+    def test_mark_is_three_bars(self):
+        self.assertEqual(len(self.bars), 3, "마크는 3개 바로 구성된다")
+        for bar in self.bars:
+            self.assertEqual(len(bar), 5, "바는 [x0,y0,x1,y1,shear]")
+
+    def test_svg_mark_matches_the_three_dimensional_mark(self):
+        """SVG 폴리곤은 JS 바 기하에서 y축만 뒤집어 유도된 좌표여야 한다."""
+        for x0, y0, x1, _y1, sh in self.bars:
+            top = 100 - y0 - self.mark_h
+            pts = " ".join([
+                f"{self._fmt(x0)},{self._fmt(100 - y0)}",
+                f"{self._fmt(x1)},{self._fmt(100 - y0)}",
+                f"{self._fmt(x1 + sh)},{self._fmt(top)}",
+                f"{self._fmt(x0 + sh)},{self._fmt(top)}",
+            ])
+            self.assertIn(f"points='{pts}'", self.html,
+                          f"SVG 마크가 3D 마크와 어긋난다: {pts}")
+
+    def test_favicon_is_inline_and_carries_the_mark(self):
+        link = re.search(r'<link rel="icon" href="(data:image/svg\+xml,[^"]+)"', self.html)
+        self.assertIsNotNone(link, "인라인 파비콘 없음")
+        self.assertEqual(link.group(1).count("polygon"), 3, "파비콘에 마크 3개 바가 없다")
+
+    def test_brand_is_applied_to_the_machine(self):
+        for fn in ("brandMark3D", "brandLockup", "decalText", "liveryStripe", "dataPlate"):
+            self.assertIn(f"function {fn}(", self.html, f"{fn} 없음")
+        badges = len(re.findall(r"cabinetBadge\(", self.html)) - 1
+        self.assertGreaterEqual(badges, 5, f"외장 마크 부착 {badges}곳 — 너무 적다")
+        self.assertGreaterEqual(len(re.findall(r"liveryStripe\(", self.html)) - 1, 6)
+        self.assertIn("dataPlate(V(", self.html, "명판이 장비에 부착되지 않았다")
+
+    def test_every_applied_letter_has_a_glyph(self):
+        """서체에 없는 글자는 조용히 빈칸으로 그려진다 — 실제로 겪은 버그다."""
+        block = re.search(r"const GLYPHS=\{(.*?)\n    \};", self.html, re.S)
+        self.assertIsNotNone(block, "GLYPHS 없음")
+        glyphs = set(re.findall(r"'(.)':\[", block.group(1)))
+        used = set()
+        for pattern in (r"decalText\('([^']*)'",
+                        r"brandLockup\([^)]*?,\s*'([^']*)'\)",
+                        r"cabinetBadge\([^)]*?,\s*'([^']*)'\)",
+                        r"word='([^']*)'"):
+            for text in re.findall(pattern, self.html):
+                used |= set(text.upper())
+        self.assertTrue(used, "각인 문자열을 찾지 못했다")
+        missing = sorted(used - glyphs)
+        self.assertEqual(missing, [], f"서체에 없는 글자가 각인에 쓰였다: {missing}")
+
+    def test_applied_graphics_use_a_sort_bias(self):
+        """페인터 알고리즘에서 데칼은 바탕판보다 앞서야 한다."""
+        self.assertIn("function withBias(", self.html)
+        self.assertIn("depth:depth-drawBias", self.html, "poly 가 정렬 바이어스를 반영하지 않는다")
+        for fn in ("dataPlate", "cabinetBadge"):
+            body = re.search(rf"function {fn}\(.*?\n    \}}", self.html, re.S).group(0)
+            self.assertIn("withBias(", body, f"{fn} 가 바이어스를 쓰지 않는다")
 
 
 class TestConsoleContent(unittest.TestCase):
