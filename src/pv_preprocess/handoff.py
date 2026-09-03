@@ -1,0 +1,164 @@
+"""전처리 라인 → 후단 박리 라인 인계 — 버퍼에서 무엇이 맞고 무엇이 안 맞는가.
+
+전처리 플랜트의 마지막 공정은 알루미늄 프레임 제거(AFR) 뒤의 유리 버퍼다.
+그 버퍼가 후단 장치 **DG-HK 2400**(5장 완전적재·60-IR 순차가열·2단 탠덤 박리,
+`docs/drawings/pv-delam-tandem.html`)의 투입부로 이어진다.
+
+두 라인을 잇는다는 것은 링크를 거는 일이 아니라 **경계 조건 세 가지가 맞는지
+따지는 일**이다. 여기서는 그 셋을 계산해 어긋나는 것을 드러낸다.
+
+* **자세** — 후단은 유리면 ↓·백시트 ↑ 로 받는다. 버퍼도 같은 자세로 세워 두므로
+  경계에 반전기가 필요 없다. (이것만 맞는다.)
+* **치수** — 전처리는 최대 2,500 × 1,400 을 다루는데 후단 투입 상한은
+  2,400 × 1,200 이다. 상한 패널은 후단에 **들어가지 않는다**.
+* **처리율** — 정상 유리(R-A) 유입이 후단 능력보다 빠르다. 버퍼가 완충하지만
+  유한하므로 몇 시간 만에 찬다.
+
+후단 수치는 DG-HK 2400 Rev.10 앱의 계산 모델을 **그대로 옮긴 것**이다.
+다시 유도하지 않았다 — 그 앱이 바뀌면 여기도 같이 고쳐야 한다.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from . import campaign
+
+# ── 전처리 쪽 경계 (버퍼 출구) ────────────────────────────────────────────
+#: 버퍼가 세워 두는 자세. 후단 투입 자세와 같아야 반전기가 안 붙는다.
+BUFFER_POSE = "유리면 ↓ · 백시트 ↑"
+
+#: R-A(정상 유리) 카세트 25장 × 2기. 후단으로 나가는 것은 이 계통뿐이다.
+BUFFER_RA_SLOTS = 50
+#: R-B(파손 유리) 카세트 25장 × 2기 — 시트 박리가 불가능해 파편 계통으로 빠진다.
+BUFFER_RB_SLOTS = 50
+#: 판정 보류 5장.
+BUFFER_HOLD_SLOTS = 5
+
+#: 전처리가 다루는 최대 모듈 (mm).
+UPSTREAM_MAX_MM = (2500, 1400)
+
+# ── 후단 DG-HK 2400 Rev.10 (앱에서 옮긴 값) ──────────────────────────────
+#: 투입 상한 (mm) — 앱의 panelLength/panelWidth max.
+DOWNSTREAM_MAX_MM = (2400, 1200)
+#: 투입 하한 (mm) — 앱의 min.
+DOWNSTREAM_MIN_MM = (1600, 800)
+#: 후단 투입 자세.
+DOWNSTREAM_POSE = "유리면 ↓ · 백시트 ↑"
+#: 가열 시작 전에 5단을 다 채운다 (FULL_LOAD_ACK).
+DOWNSTREAM_LOAD_PANELS = 5
+
+#: 앱 기본값 — IR 램프 60개, 1개 정격 kW, 실효 열효율 %, 칼날 mm/s, 인계 s/장.
+LAMP_COUNT = 60
+LAMP_KW = 2.5
+HEAT_EFFICIENCY_PCT = 65.0
+KNIFE_SPEED_MM_S = 40.0
+HANDLING_S = 10.0
+#: 칼날 속도 상한 (mm/s) — 앱의 knifeSpeed max.
+KNIFE_SPEED_MAX_MM_S = 60.0
+
+#: 면적당 열용량 (kJ/m²·K) 과 승온폭 (K), 그리고 열전달 하한 체류시간 (s).
+#: 셋 다 DG-HK 앱의 상수다.
+AREAL_CP_KJ_M2K = 8.7358962
+DELTA_T_K = 175.0
+FDM_DWELL_S = 113.15
+#: 탠덤 진입 리드 (mm) — 앱의 300/speed 항.
+TANDEM_LEAD_MM = 300.0
+
+
+@dataclass(frozen=True)
+class DownstreamRate:
+    heat_per_panel_mj: float
+    dwell_s: float          # 5단 가열 체류시간
+    release_pitch_s: float  # IR 순차 방출간격 = dwell/5
+    thermal_per_h: float
+    tandem_cycle_s: float
+    tandem_per_h: float
+    line_per_h: float
+    bottleneck: str
+
+
+def downstream_rate(length_mm: float = DOWNSTREAM_MAX_MM[0],
+                    width_mm: float = DOWNSTREAM_MAX_MM[1],
+                    knife_speed_mm_s: float = KNIFE_SPEED_MM_S,
+                    handling_s: float = HANDLING_S,
+                    lamp_kw: float = LAMP_KW,
+                    efficiency_pct: float = HEAT_EFFICIENCY_PCT) -> DownstreamRate:
+    """DG-HK 2400 의 장/h — 앱의 updateCalculator 를 그대로 옮긴 것."""
+    heat_kj = (length_mm * width_mm / 1e6) * AREAL_CP_KJ_M2K * DELTA_T_K
+    useful_kw = LAMP_COUNT * lamp_kw * (efficiency_pct / 100.0)
+    dwell = max(DOWNSTREAM_LOAD_PANELS * heat_kj / useful_kw, FDM_DWELL_S)
+    pitch = dwell / DOWNSTREAM_LOAD_PANELS
+    tandem_cycle = TANDEM_LEAD_MM / knife_speed_mm_s + length_mm / knife_speed_mm_s + handling_s
+    thermal = 3600.0 / pitch
+    tandem = 3600.0 / tandem_cycle
+    return DownstreamRate(
+        round(heat_kj / 1000.0, 2), round(dwell, 2), round(pitch, 2),
+        round(thermal, 1), round(tandem_cycle, 1), round(tandem, 1),
+        round(3600.0 / max(pitch, tandem_cycle), 1),
+        "IR 열공정" if thermal < tandem else "2단 탠덤 박리")
+
+
+def sheet_glass_per_h() -> float:
+    """버퍼에서 후단으로 나가는 정상 유리(R-A) 유입률 (장/h).
+
+    파손 유리(R-B)는 시트로 못 벗기므로 후단에 넣지 않는다 — 여기서 빠진다.
+    """
+    s = campaign.summary()
+    return round(s["normal"] / s["run_s"] * 3600.0, 1)
+
+
+def rate_gap_per_h() -> float:
+    """유입 − 처리. 양수면 버퍼가 찬다."""
+    return round(sheet_glass_per_h() - downstream_rate().line_per_h, 1)
+
+
+def buffer_autonomy_h() -> float:
+    """R-A 버퍼가 가득 차기까지 (h). 이 시간마다 후단이 따라잡을 틈이 있어야 한다."""
+    gap = rate_gap_per_h()
+    return round(BUFFER_RA_SLOTS / gap, 2) if gap > 0 else float("inf")
+
+
+def knife_speed_for_balance() -> float:
+    """유입을 그대로 받으려면 필요한 칼날 속도 (mm/s)."""
+    target_cycle = 3600.0 / sheet_glass_per_h()
+    return round((TANDEM_LEAD_MM + DOWNSTREAM_MAX_MM[0]) / (target_cycle - HANDLING_S), 1)
+
+
+def balances_at_max_knife_speed() -> bool:
+    """칼날을 상한까지 올리면 유입을 받아낼 수 있는가."""
+    return downstream_rate(knife_speed_mm_s=KNIFE_SPEED_MAX_MM_S).line_per_h >= sheet_glass_per_h()
+
+
+def pose_matches() -> bool:
+    """경계에 반전기가 필요 없는가."""
+    return BUFFER_POSE == DOWNSTREAM_POSE
+
+
+def oversize_mm() -> tuple[float, float]:
+    """전처리 상한 모듈이 후단 투입 상한을 넘는 양 (길이, 폭). 0 이면 들어간다."""
+    return (max(0.0, UPSTREAM_MAX_MM[0] - DOWNSTREAM_MAX_MM[0]),
+            max(0.0, UPSTREAM_MAX_MM[1] - DOWNSTREAM_MAX_MM[1]))
+
+
+def fits_downstream(length_mm: float, width_mm: float) -> bool:
+    """그 모듈이 후단에 들어가는가."""
+    return (DOWNSTREAM_MIN_MM[0] <= length_mm <= DOWNSTREAM_MAX_MM[0]
+            and DOWNSTREAM_MIN_MM[1] <= width_mm <= DOWNSTREAM_MAX_MM[1])
+
+
+def summary() -> dict[str, object]:
+    d = downstream_rate()
+    over_l, over_w = oversize_mm()
+    return {
+        "pose_ok": pose_matches(),
+        "oversize_length_mm": over_l,
+        "oversize_width_mm": over_w,
+        "feed_per_h": sheet_glass_per_h(),
+        "downstream_per_h": d.line_per_h,
+        "bottleneck": d.bottleneck,
+        "gap_per_h": rate_gap_per_h(),
+        "buffer_autonomy_h": buffer_autonomy_h(),
+        "knife_speed_needed": knife_speed_for_balance(),
+        "balances_at_max_knife": balances_at_max_knife_speed(),
+    }

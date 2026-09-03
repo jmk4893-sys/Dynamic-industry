@@ -14,7 +14,7 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import (acoustics, campaign, electrical, frames, layout, materials,
+from pv_preprocess import (acoustics, campaign, electrical, frames, handoff, layout, materials,
                            servos, thermal, vision, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
@@ -1736,3 +1736,96 @@ class TestCarriageClearance(unittest.TestCase):
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
+
+
+class TestHandoff(unittest.TestCase):
+    """전처리 버퍼 → DG-HK 2400 박리 라인 인계.
+
+    잇는다는 것은 링크를 거는 일이 아니라 경계 조건이 맞는지 따지는 일이다.
+    자세는 맞고 치수와 처리율은 안 맞는다 — 그 사실이 도면에 그대로 적혀야 한다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+        cls.downstream = (pathlib.Path(__file__).resolve().parents[1]
+                          / "docs" / "drawings" / "pv-delam-tandem.html")
+
+    def test_downstream_drawing_is_present_and_self_contained(self):
+        """후단 도면이 없으면 인계 링크가 죽는다. 외부 CDN 은 이 저장소 규약상 0건이다."""
+        self.assertTrue(self.downstream.is_file(), "후단 박리 도면이 없다")
+        text = self.downstream.read_text(encoding="utf-8")
+        self.assertNotIn("http://", text)
+        self.assertNotIn("https://", text)
+
+    def test_plant_links_the_buffer_to_the_downstream_line(self):
+        self.assertIn('id="jb-handoff"', self.html)
+        self.assertIn('href="pv-delam-tandem.html"', self.html,
+                      "버퍼에서 후단 라인으로 가는 링크가 없다")
+
+    def test_pose_carries_through_without_a_flipper(self):
+        """양쪽 다 유리면 ↓·백시트 ↑ 라 경계에 반전기가 붙지 않는다."""
+        self.assertTrue(handoff.pose_matches())
+        self.assertEqual(handoff.BUFFER_POSE, handoff.DOWNSTREAM_POSE)
+        self.assertIn(f'bufferPose:"{handoff.BUFFER_POSE}"', self.html)
+
+    def test_top_end_module_does_not_fit_downstream(self):
+        """전처리는 2,500 × 1,400 까지 다루는데 후단 투입 상한은 2,400 × 1,200 이다."""
+        self.assertFalse(handoff.fits_downstream(*handoff.UPSTREAM_MAX_MM),
+                         "상한 모듈이 후단에 들어간다면 이 경고는 지워야 한다")
+        self.assertEqual(handoff.oversize_mm(), (100.0, 200.0))
+        self.assertTrue(handoff.fits_downstream(2400, 1200))
+        self.assertFalse(handoff.fits_downstream(1500, 1000), "하한 미만도 걸러야 한다")
+
+    def test_downstream_rate_mirrors_the_uploaded_model(self):
+        """DG-HK 2400 Rev.10 앱의 계산을 그대로 옮긴 값 — 재유도하지 않았다."""
+        d = handoff.downstream_rate()
+        self.assertAlmostEqual(d.heat_per_panel_mj, 4.40, places=2)
+        self.assertAlmostEqual(d.dwell_s, 225.79, places=2)
+        self.assertAlmostEqual(d.release_pitch_s, 45.16, places=2)
+        self.assertAlmostEqual(d.tandem_cycle_s, 77.5, places=1)
+        self.assertEqual(d.bottleneck, "2단 탠덤 박리")
+        self.assertAlmostEqual(d.line_per_h, 46.5, places=1)
+        self.assertGreater(d.thermal_per_h, d.tandem_per_h,
+                           "IR 이 병목이라면 증설 대상이 바뀐다")
+
+    def test_feed_outruns_the_downstream_line(self):
+        """정상 유리 유입이 후단 능력보다 빠르다 — 버퍼가 유한 시간만 완충한다."""
+        self.assertAlmostEqual(handoff.sheet_glass_per_h(), 66.0, places=1)
+        self.assertGreater(handoff.rate_gap_per_h(), 0)
+        self.assertAlmostEqual(handoff.buffer_autonomy_h(), 2.56, places=2)
+
+    def test_max_knife_speed_still_falls_short(self):
+        """칼날을 상한까지 올려도 0.5 장/h 모자란다 — 상한을 넘는 속도가 필요하다."""
+        self.assertFalse(handoff.balances_at_max_knife_speed())
+        self.assertGreater(handoff.knife_speed_for_balance(), handoff.KNIFE_SPEED_MAX_MM_S)
+        self.assertAlmostEqual(handoff.knife_speed_for_balance(), 60.6, places=1)
+
+    def test_drawing_literal_matches_the_model(self):
+        """도면 리터럴과 모듈이 어긋나면 화면이 거짓말을 한다."""
+        d = handoff.downstream_rate()
+        at_max = handoff.downstream_rate(
+            knife_speed_mm_s=handoff.KNIFE_SPEED_MAX_MM_S).line_per_h
+        for token in (f"overL:{handoff.oversize_mm()[0]:g}",
+                      f"overW:{handoff.oversize_mm()[1]:g}",
+                      f"feed:{handoff.sheet_glass_per_h():g}",
+                      f"gap:{handoff.rate_gap_per_h():g}",
+                      f"raSlots:{handoff.BUFFER_RA_SLOTS}",
+                      f"autonomy:{handoff.buffer_autonomy_h():g}",
+                      f"loadPanels:{handoff.DOWNSTREAM_LOAD_PANELS}",
+                      f"atMax:{at_max:g}",
+                      f"knifeNeed:{handoff.knife_speed_for_balance():g}",
+                      f"line:{d.line_per_h:g}",
+                      f"thermal:{d.thermal_per_h:g}",
+                      f"tandemCycle:{d.tandem_cycle_s:g}",
+                      f'bottleneck:"{d.bottleneck}"'):
+            with self.subTest(token=token):
+                self.assertIn(token, self.html)
+
+    def test_broken_glass_is_kept_out_of_the_handoff(self):
+        """파손 유리는 시트로 못 벗긴다 — 후단에 넣으면 안 된다."""
+        self.assertIn("파손 유리(R-B)는 이 인계에 넣지 않는다", self.html)
+        self.assertEqual(handoff.sheet_glass_per_h(),
+                         round(campaign.summary()["normal"]
+                               / campaign.summary()["run_s"] * 3600, 1),
+                         "인계 유입은 정상 유리(R-A)만 세어야 한다")

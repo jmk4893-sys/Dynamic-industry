@@ -43,7 +43,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (440건)
+python -m unittest discover -s tests -t .                               # 테스트 (449건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
@@ -90,6 +90,7 @@ src/pv_preprocess/
   materials.py      내구 재질 기준 — 환경별 규칙과 부품 단위 적용
   campaign.py       60장 연속 캠페인 — 3분류 판정·파이프라인 스케줄·버퍼 분류
   frames.py         알루미늄 프레임 탄성 휨 — 외팔보 처짐·항복 한계 자유길이
+  handoff.py        후단 박리 라인 인계 — 자세·치수·처리율 경계 조건 대조
   vision.py         비전 센서 최소화 검토 결과 (안전 채널은 보호 대상)
 ```
 
@@ -131,6 +132,7 @@ flux 상사로 스케일업하면 수력학적 조건이 보존되므로 실증 
 - 3D 장면 색·조명은 테마와 무관한 고정 팔레트 — 배경·안개·바닥만 라이트/다크를 따른다
 - 3D 시점 이동은 전장 44.75 m 양 끝까지 — 이동 모드·Shift 드래그·오른쪽 버튼·두 손가락
 - 3D 자유 보행 — 화면 위에서 W A S D 보행·Q E 승강(Shift 질주·Alt 미세), 시점은 바로 위부터 설비 밑까지, 바닥 하한 −1.6 m
+- 후단 인계 — 유리 버퍼가 [DG-HK 2400 박리 라인](docs/drawings/pv-delam-tandem.html)으로 이어진다. 자세는 맞고(유리면 ↓), 치수(상한 2,500×1,400 vs 2,400×1,200)와 처리율(66.0 vs 46.5 장/h)은 안 맞는다 — `handoff.py`
 - 60장 연속 캠페인 (번들 30장×2) — 투입 비전 3분류(정상 53·유리 깨짐 5·전손 2), 버퍼 R-A/R-B 분류
 - 연속 운전 파이프라인 — JBR 스토퍼·자세교정이 물리면 다음 장 투입(투입 40 s + 8 s), 택트 48.5 s·동시 재공 3장·48.2분·72.2장/h
 - 60장 전량 연속 재생 — 3D가 한 장에서 멈추지 않고 정상 48 s·전손 15 s 간격으로 60장을 이어 돌리며 공정시계를 표시 (배속 8× 포함)
