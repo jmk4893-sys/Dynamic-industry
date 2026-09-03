@@ -10,11 +10,22 @@
 * **계획값** — 그 외 셀은 구성 기기에서 잡은 계획 부하다. OEM 하중도·전동기 명판이
   확정되면 바꿔야 하며, 그때 이 파일만 고치면 도면과 테스트가 같이 따라온다.
 
-**수전 방식은 계약전력에서 파생한다.** REV.22 까지는 계약전력 67.9 kW 라 저압
-3Φ 4W 380/220 V 직결이 맞았지만, REV.23 에서 유리제거셀 IR 뱅크 175 kW 가
-들어오며 계약전력이 268.2 kW 가 됐다 — 한전 저압 공급 상한 100 kW 를 넘어
-**22.9 kV 고압 수전 + 수전변압기**로 바뀐다. 전압·변압기·차단기·케이블·수전실
-면적이 전부 이 판정에서 따라 나오므로, 부하가 다시 바뀌면 여기만 고치면 된다.
+**수전 방식은 부하와 부지 여건에서 파생한다.** 세 번 바뀌었고, 세 번 다
+숫자가 먼저 바뀐 결과다.
+
+* REV.22 — 계약전력 67.9 kW. 저압 3Φ 4W 380/220 V 직결이 맞았다.
+* REV.23 — 유리제거셀 IR 뱅크 175 kW 가 들어와 계약전력 268.2 kW.
+  한전 저압 공급 상한 100 kW 를 넘어 22.9 kV 자체 수전 + 수전변압기.
+* REV.24 — **부지에 1,200 kW 인입이 이미 있다**(발주처 확인). 그러면 이
+  플랜트는 수전설비를 세우는 주체가 아니라 그 계통에 물리는 **부하 하나**다
+  (계약전력 기준 22.4 %). 세울 큐비클도 수전실도 없어진다.
+
+REV.23 의 판정 자체는 틀리지 않았다 — 그 설비를 **우리가 새로 세울 필요가
+없어졌을 뿐**이라, 부지 인입이 없어지거나 모자라면 그대로 되돌아간다.
+그래서 고압 수전 계산과 큐비클 표는 지우지 않고 남겨 둔다.
+
+전압·변압기·차단기·케이블·전기실 면적이 전부 이 판정에서 따라 나오므로,
+부하나 부지 여건이 다시 바뀌면 여기만 고치면 도면과 테스트가 같이 따라온다.
 
 역률 0.90 은 서보·인버터에 라인리액터를 다는 전제이며, 고조파 실측 전에는
 확정값이 아니다.
@@ -28,12 +39,18 @@ from dataclasses import dataclass
 SUPPLY_VOLTAGE_V = 380
 
 # ── 수전 방식 ────────────────────────────────────────────────────────────
-# REV.23 유리제거셀이 들어오며 계약전력이 268.2 kW 가 됐다. 한전 저압 공급은
-# 계약전력 100 kW 미만이므로 **저압 직결 인입이 성립하지 않는다** — 22.9 kV
-# 고압 수전 + 수전변압기로 바꿔야 한다. 전처리만일 때(계약전력 67.9 kW)는
-# 저압이 맞았고, 그래서 REV.22 까지의 도면은 틀린 것이 아니라 전제가 바뀐 것이다.
+# REV.24: **부지에 1,200 kW 인입이 이미 있다**(발주처 확인). 그러면 이 플랜트는
+# 자기 수전설비를 세우는 것이 아니라 **기존 계통에서 분기하는 부하 하나**다.
+# 한전 협의·MOF·VCB·고압 인입 케이블·수전실이 전부 부지 쪽에 이미 있다.
+#
+# REV.23 에서 자체 수전을 설계했던 근거(계약전력 268.2 kW ≥ 저압 상한 100 kW)는
+# 그대로 유효하다 — 다만 그 수전설비를 **우리가 새로 세울 필요가 없을 뿐**이다.
+# 부지 인입이 없어지거나 용량이 모자라면 그 설계로 되돌아가야 하므로 남겨 둔다.
 
-#: 한전 저압 공급 상한 (kW, 계약전력). 이 값 이상이면 고압 수전이다.
+#: 부지에 이미 들어와 있는 인입 용량 (kW). 발주처 확인값.
+SITE_SERVICE_KW = 1200.0
+
+#: 한전 저압 공급 상한 (kW, 계약전력). 자체 수전을 세울 때만 쓰인다.
 LOW_VOLTAGE_LIMIT_KW = 100.0
 
 #: 고압 수전 전압 (V, 선간) — 22.9 kV 배전 계통.
@@ -60,6 +77,25 @@ LV_CABLE_AMPACITY_A: dict[int, int] = {
 
 #: 고압 인입 케이블 최소 규격 (mm²) — 전류가 아니라 기계적 강도로 정해진다.
 HV_CABLE_MIN_MM2 = 60
+
+#: 저압 케이블 임피던스 (mm² → (R, X) Ω/km). R 은 90 °C 도체 기준, X 는 3심 XLPE.
+#: 분기 거리를 정하는 것은 허용전류가 아니라 **전압강하**라서 필요하다.
+LV_CABLE_IMPEDANCE: dict[int, tuple[float, float]] = {
+    35: (0.6680, 0.0850), 50: (0.4930, 0.0830), 70: (0.3420, 0.0820),
+    95: (0.2470, 0.0810), 120: (0.1960, 0.0800), 150: (0.1590, 0.0800),
+    185: (0.1280, 0.0790), 240: (0.0961, 0.0790), 300: (0.0777, 0.0780),
+}
+
+#: 분기 회로 허용 전압강하 (%). 간선 3 % 는 내선규정 관례다.
+FEEDER_VOLTAGE_DROP_PCT = 3.0
+
+#: **분기 전압** — 기존 부지 계통의 어느 지점에서 따느냐.
+#: True 면 부지 저압 배전반(380 V)에서 바로 딴다: 변압기도 수전실도 없다.
+#: 다만 저압은 거리가 전압강하로 묶이므로 `lv_tap_max_length_m()` (240 mm² 기준
+#: 162 m) 안이어야 성립한다. 그보다 멀면 False 로 두어 22.9 kV 로 따고
+#: 플랜트 옆에 국소 변압기(unit substation)를 세운다.
+#: **부지 배전반까지의 실거리가 확정되면 이 한 줄만 고치면 된다.**
+TAP_AT_LOW_VOLTAGE = True
 
 #: 계획 역률. 라인리액터 적용 전제 — 고조파 실측으로 확정한다.
 POWER_FACTOR = 0.90
@@ -181,12 +217,75 @@ def contract_kw() -> float:
 
 
 def needs_high_voltage() -> bool:
-    """저압 직결로 받을 수 있는가. False 면 22.9 kV 수전이다."""
+    """**자체 수전을 세운다면** 고압이어야 하는가.
+
+    부지 인입이 이미 있으면 이 판정은 실행되지 않는다 — 다만 부지 인입이
+    없어졌을 때 무엇으로 돌아가야 하는지를 남겨 두는 값이다.
+    """
     return contract_kw() >= LOW_VOLTAGE_LIMIT_KW
 
 
+# ── 기존 부지 인입에서 분기 (REV.24) ──────────────────────────────────────
+
+
+def site_headroom_kw() -> float:
+    """부지 인입에서 이 플랜트를 빼고 남는 여유 (kW)."""
+    return round(SITE_SERVICE_KW - contract_kw(), 1)
+
+
+def site_utilisation_pct() -> float:
+    """이 플랜트가 부지 인입에서 차지하는 비율 (%, 계약전력 기준)."""
+    return round(contract_kw() / SITE_SERVICE_KW * 100.0, 1)
+
+
+def worst_case_kw() -> float:
+    """설치 전력이 전부 동시에 물리는 최악 (kW) — 수용률이 전부 1.0 일 때."""
+    return round(installed_kw(), 1)
+
+
+def fits_site_service(service_kw: float | None = None) -> bool:
+    """최악의 경우에도 부지 인입 안에 드는가.
+
+    재는 자는 계약전력이 아니라 **설치 전력**이다. 계약은 여유율을 곱한
+    행정값이고, 부지 계통을 실제로 흐르는 최악은 수용률이 전부 1.0 이 될
+    때의 설치 전력이다. `service_kw` 로 다른 인입 용량을 넣어 보면 이
+    기준이 실제로 작동하는지 확인할 수 있다.
+    """
+    service = SITE_SERVICE_KW if service_kw is None else service_kw
+    return worst_case_kw() <= service
+
+
+def taps_existing_service(service_kw: float | None = None) -> bool:
+    """자체 수전을 세우지 않고 기존 계통에서 분기하는가.
+
+    인입이 있다고 무조건 분기하는 것이 아니다 — 최악에도 그 안에 들어야
+    한다. 모자라면 이 플랜트는 자기 수전설비를 세워야 한다.
+    """
+    service = SITE_SERVICE_KW if service_kw is None else service_kw
+    return service > 0.0 and fits_site_service(service)
+
+
 def supply_method() -> str:
+    if taps_existing_service():
+        return (f"기존 부지 인입 {SITE_SERVICE_KW:,.0f} kW 에서 분기 "
+                f"(이 플랜트 {site_utilisation_pct():g} %)")
     return "고압 22.9 kV 수전 + 수전변압기" if needs_high_voltage() else "저압 380 V 직결 인입"
+
+
+def lv_tap_max_length_m(size_mm2: int | None = None,
+                        drop_pct: float = FEEDER_VOLTAGE_DROP_PCT) -> float:
+    """저압 분기로 갈 수 있는 최대 거리 (m).
+
+    저압으로 끌면 거리를 정하는 것은 허용전류가 아니라 전압강하다.
+    ΔV = √3·I·L·(R·cosφ + X·sinφ) 를 허용 강하로 되푼 값이다.
+    이 거리를 넘으면 케이블을 키우거나 고압으로 분기해 국소 변압기를 둔다.
+    """
+    size = lv_main_cable_mm2() if size_mm2 is None else size_mm2
+    r, x = LV_CABLE_IMPEDANCE[size]
+    sin_phi = (1.0 - POWER_FACTOR ** 2) ** 0.5
+    drop_per_km = 3 ** 0.5 * demand_current_a() * (r * POWER_FACTOR + x * sin_phi)
+    allowed_v = SUPPLY_VOLTAGE_V * drop_pct / 100.0
+    return round(allowed_v / drop_per_km * 1000.0, 1)
 
 
 def apparent_demand_kva() -> float:
@@ -271,16 +370,22 @@ VCB_RATING_A = 630
 
 
 def incoming_cable_spec() -> str:
-    """인입 케이블 사양 문자열 — 도면 인입도와 같은 값이어야 한다."""
-    if needs_high_voltage():
-        return f"CNCV-W 22.9 kV 1C×{HV_CABLE_MIN_MM2} mm² × 3"
-    return f"4C×{lv_cable_mm2(main_breaker_at())} mm² Cu"
+    """분기 케이블 사양 문자열 — 도면 인입도와 같은 값이어야 한다."""
+    if taps_existing_service() and TAP_AT_LOW_VOLTAGE:
+        return f"4C×{lv_main_cable_mm2()} mm² Cu (부지 저압 배전반 분기)"
+    return f"CNCV-W 22.9 kV 1C×{HV_CABLE_MIN_MM2} mm² × 3"
 
 
-#: 수전설비 큐비클 열 — 폭(mm)·용도. 고압 수전일 때만 선다.
+#: 자체 수전설비 큐비클 열 — 폭(mm)·용도. 부지 인입이 없을 때만 선다.
 SUBSTATION_CUBICLES: tuple[tuple[int, str], ...] = (
     (1000, "인입 LBS·전력퓨즈·피뢰기"),
     (1000, "계기용 변성기·VCB 주차단"),
+    (1600, "몰드 변압기 (2차 380/220 V)"),
+    (1000, "저압 ACB·역률개선 콘덴서"),
+)
+
+#: 고압 분기용 국소 변압기반 — 계량·주차단은 부지 쪽에 이미 있으므로 2면뿐이다.
+UNIT_SUBSTATION_CUBICLES: tuple[tuple[int, str], ...] = (
     (1600, "몰드 변압기 (2차 380/220 V)"),
     (1000, "저압 ACB·역률개선 콘덴서"),
 )
@@ -294,14 +399,27 @@ SUBSTATION_FRONT_CLEARANCE_MM = 1500
 SUBSTATION_REAR_CLEARANCE_MM = 600
 
 
+def substation_cubicles() -> tuple[tuple[int, str], ...]:
+    """이 플랜트가 실제로 세워야 하는 큐비클 열.
+
+    저압 분기면 아무것도 안 세운다(부지 배전반에서 차단기 하나 딴다).
+    고압 분기면 변압기반 2면. 부지 인입이 없어야 자체 수전 4면이 된다.
+    """
+    if taps_existing_service():
+        return () if TAP_AT_LOW_VOLTAGE else UNIT_SUBSTATION_CUBICLES
+    return SUBSTATION_CUBICLES if needs_high_voltage() else ()
+
+
 def substation_room_mm() -> tuple[int, int, int]:
-    """수전실 소요 면적 (폭, 깊이, 높이 mm) — 큐비클 열 + 전후 이격.
+    """전기실 소요 면적 (폭, 깊이, 높이 mm) — 큐비클 열 + 전후 이격.
 
     이 방은 공정 존이 아니라 구획된 전기실이다. 장비 밴드 안에 넣으면 안 된다.
+    큐비클이 없으면 (0, 0, 0) — 세울 방이 없다는 뜻이다.
     """
-    if not needs_high_voltage():
+    cubicles = substation_cubicles()
+    if not cubicles:
         return (0, 0, 0)
-    width = sum(w for w, _ in SUBSTATION_CUBICLES)
+    width = sum(w for w, _ in cubicles)
     depth = (SUBSTATION_CUBICLE_DEPTH_MM
              + SUBSTATION_FRONT_CLEARANCE_MM + SUBSTATION_REAR_CLEARANCE_MM)
     return (width, depth, SUBSTATION_CUBICLE_HEIGHT_MM + 700)
@@ -310,23 +428,35 @@ def substation_room_mm() -> tuple[int, int, int]:
 def incomer_summary() -> dict[str, object]:
     """인입 확정 요약 — 도면 인입도(EL-1005)가 이 값을 그대로 써야 한다."""
     room = substation_room_mm()
+    tap_lv = taps_existing_service() and TAP_AT_LOW_VOLTAGE
     return {
         "method": supply_method(),
+        "taps_site": taps_existing_service(),
+        "tap_low_voltage": tap_lv,
+        "site_service_kw": SITE_SERVICE_KW,
+        "site_utilisation_pct": site_utilisation_pct(),
+        "site_headroom_kw": site_headroom_kw(),
+        "worst_case_kw": worst_case_kw(),
+        "lv_tap_max_m": lv_tap_max_length_m(),
         "high_voltage": needs_high_voltage(),
-        "hv_voltage_v": HV_SUPPLY_VOLTAGE_V if needs_high_voltage() else SUPPLY_VOLTAGE_V,
+        "hv_voltage_v": HV_SUPPLY_VOLTAGE_V if not tap_lv else SUPPLY_VOLTAGE_V,
         "lv_voltage_v": SUPPLY_VOLTAGE_V,
         "installed_kw": round(installed_kw(), 1),
         "demand_kw": round(demand_kw(), 2),
         "contract_kw": contract_kw(),
         "contract_kva": round(contract_kva(), 1),
         "apparent_kva": apparent_demand_kva(),
-        "transformer_kva": transformer_kva(),
-        "transformer_basis": transformer_sizing_basis(),
-        "transformer_load_pct": transformer_load_pct(),
+        "transformer_kva": 0 if tap_lv else transformer_kva(),
+        # 저압 분기라 지금은 변압기가 없지만, 한계 거리를 넘어 고압 분기로 갈
+        # 때의 용량은 도면 주기에 적혀 있어야 한다 — 그때 얼마짜리를 세우는지가
+        # 실측 거리 판단의 대가이기 때문이다.
+        "unit_transformer_kva": transformer_kva(),
+        "transformer_basis": "—" if tap_lv else transformer_sizing_basis(),
+        "transformer_load_pct": 0.0 if tap_lv else transformer_load_pct(),
         "capacitor_kvar": capacitor_kvar(),
-        "hv_current_a": hv_incoming_current_a(),
+        "hv_current_a": 0.0 if tap_lv else hv_incoming_current_a(),
         "lv_current_a": round(demand_current_a(), 1),
-        "vcb_a": VCB_RATING_A,
+        "vcb_a": 0 if tap_lv else VCB_RATING_A,
         "main_breaker": f"{main_breaker_frame_a()}AF/{main_breaker_at()}AT",
         "lv_main_cable_mm2": lv_main_cable_mm2(),
         "incoming_cable": incoming_cable_spec(),

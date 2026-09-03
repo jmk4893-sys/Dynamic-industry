@@ -2907,7 +2907,7 @@ html>body{padding:0}</style>
     return [left, top, width, height].map(Math.round).join(' ');
   }
 
-  var DRAWING_REVISION = 'REV.23';
+  var DRAWING_REVISION = 'REV.24';
   // 뷰별 축 선택. PART_AXIS 는 part.at/part.size 의 [X, 상하, 깊이] 기준,
   // ENVELOPE_AXIS 는 station.envelope 의 [L, W, H] 기준 — 두 배열의 축 순서가 다르다.
   var PART_AXIS = { plan: [0, 2], front: [0, 1], side: [2, 1] };
@@ -3542,8 +3542,13 @@ html>body{padding:0}</style>
   var CONTRACT_MARGIN = 1.35;
   // REV.23 인입 확정 — 계약전력이 저압 공급 상한을 넘어 고압 수전으로 바뀐다.
   // 값은 전부 src/pv_preprocess/electrical.py 의 incomer_summary() 파생이다.
-  var INCOMER = { method: '고압 22.9 kV 수전 + 수전변압기', highVoltage: true, hvV: 22900, contractKw: 268.2, contractKva: 298.1, apparentKva: 220.8, transformerKva: 300, transformerLoadPct: 73.6, capacitorKvar: 35, hvCurrentA: 7.51, hvCable: 'CNCV-W 22.9 kV 1C×60 mm² × 3', vcbA: 630, lvMainMm2: 240, substationMm: [4600, 3600, 3000], lowVoltageLimitKw: 100.0 };
-  var SL_CHAIN_ROWS = INCOMER.highVoltage ? 6 : 4;
+  var INCOMER = { method: '기존 부지 인입 1,200 kW 에서 분기 (이 플랜트 22.4 %)', tapsSite: true, tapLowVoltage: true, siteServiceKw: 1200.0, siteUtilPct: 22.4, siteHeadroomKw: 931.8, worstCaseKw: 266.0, lvTapMaxM: 162.3, highVoltage: true, hvV: 380, contractKw: 268.2, contractKva: 298.1, apparentKva: 220.8, transformerKva: 0, transformerKvaIfHv: 300, transformerLoadPct: 0.0, capacitorKvar: 35, hvCurrentA: 0.0, hvCable: '4C×240 mm² Cu (부지 저압 배전반 분기)', vcbA: 0, lvMainMm2: 240, substationMm: [0, 0, 0], lowVoltageLimitKw: 100.0, incomingKnown: false, dropPct: 3.0 };
+  var SL_CHAIN_ROWS = INCOMER.tapsSite ? (INCOMER.tapLowVoltage ? 4 : 5) : (INCOMER.highVoltage ? 6 : 4);
+  // 분기 주회로 길이는 부지 실측 대기다. 모를 때 0.0 m 로 찍으면 도면이 거짓말을 한다.
+  function incomingText() {
+    return INCOMER.incomingKnown ? INCOMING_CABLE_M.toFixed(1) + ' m'
+      : '미확정 (한계 ' + INCOMER.lvTapMaxM.toFixed(0) + ' m)';
+  }
   // [피더, 분전반, 부하, 설치 kW, 수용률, MCCB AT, 케이블, 출처]
   var feeders = [
     ['F1', 'LP-AFU', 'LFT-101A/B 유압 승강(HPU-101) · BFC-101A/B 반전 · CD-101 포획빔 · 투입 비전', 12.0, 0.70, 40, '4C×10 mm² Cu', '계획'],
@@ -3563,7 +3568,7 @@ html>body{padding:0}</style>
   // 경로: MDB(x 42,500 · y 8,150 벽부) 상단 인출 → 통로 상부 트레이 H=2,600(y 7,700)
   //       → 각 셀 분전반(y 7,000 · 상단 1,900) 드롭. 여유 10 % + 성단 3 m.
   var CABLE_LENGTH_M = { F1: 48.8, F2: 42.2, F3: 35.5, F4: 27.4, F5: 18.7, F6: 8.6, F7: 18.6, F8: 33.4, F9: 13.0, F10: 14.3, F11: 17.3, F12: 20.6 };
-  var MDB_X_MM = 42500, INCOMING_CABLE_M = 6.7, TOTAL_POWER_CABLE_M = 298.4, AISLE_CLEAR_MM = 900;
+  var MDB_X_MM = 42500, INCOMING_CABLE_M = 0, TOTAL_POWER_CABLE_M = 298.4, AISLE_CLEAR_MM = 900;
   // 셀 분전반 위치는 존에서 파생한다 — wiring.py lp_positions_mm() 와 같은 규칙.
   function lpPositions() {
     function center(key) { var z = zoneByKey(key); return (z[2] + z[3]) / 2; }
@@ -3727,9 +3732,9 @@ html>body{padding:0}</style>
     var feederPitch = Math.min(52, Math.floor((frameBottom - 76 - feederTop)
       / Math.max(1, feeders.length - 1)));
     out.push('<title>PV-PLANT-EL-1005 전기 인입 단선결선도</title><desc>'
-      + (INCOMER.highVoltage ? '22.9 킬로볼트 고압 인입에서 개폐기와 계량기, 차단기, 수전변압기를 거쳐' : '3상 4선 380 볼트 인입에서 주 차단기를 거쳐')
+      + (INCOMER.tapsSite ? '부지에 이미 있는 1200 킬로와트 인입에서 분기해' : '22.9 킬로볼트 고압 인입에서 개폐기와 계량기, 차단기, 수전변압기를 거쳐')
       + ' 주 분전반과 ' + feeders.length + '개 피더로 나뉘는 전기 인입 계통과 접지 계획</desc>');
-    out.push('<rect class="pv-fab-frame" x="14" y="14" width="1372" height="792"/>');
+    out.push('<rect id="pv-sheet-frame" class="pv-fab-frame" x="14" y="14" width="1372" height="792"/>');
     out.push(text(40, 48, 'PV-PLANT-EL-1005 · 전기 인입 단선결선도 · ' + DRAWING_REVISION, 'pv-fab-title'));
     out.push(text(40, 72, INCOMER.method + ' · 2차 3Φ 4W ' + n(SUPPLY_VOLTAGE_V) + '/220 V 50/60 Hz · TN-S 접지 · 역률 '
       + POWER_FACTOR.toFixed(2) + ' 가정 · 단선결선 · NTS', 'pv-layout-small'));
@@ -3737,19 +3742,36 @@ html>body{padding:0}</style>
     // 인입 계통 — 부지 인입점에서 주 분전반 모선까지.
     // REV.23: 계약전력 268.2 kW 가 한전 저압 공급 상한 100 kW 를 넘어 저압 직결이
     // 성립하지 않는다. 22.9 kV 고압 수전 + 수전변압기로 확정했다.
-    var chain = INCOMER.highVoltage ? [
-      ['부지 인입점 3Φ ' + (INCOMER.hvV / 1000).toFixed(1) + ' kV', '계약 ' + INCOMER.contractKw.toFixed(1) + ' kW · ' + INCOMER.contractKva.toFixed(1) + ' kVA'],
-      ['인입 LBS · 전력퓨즈 PF · 피뢰기 LA', INCOMER.hvCable + ' · ' + INCOMER.hvCurrentA.toFixed(2) + ' A'],
-      ['계기용 변성기 MOF (kWh 계량)', '고압 계량 · CT/PT'],
-      ['주 차단기 VCB ' + INCOMER.vcbA + ' A', '고압측 차단 · Icu 25 kA'],
-      ['수전변압기 ' + INCOMER.transformerKva + ' kVA Δ–Y', INCOMER.hvV / 1000 + ' kV → ' + n(SUPPLY_VOLTAGE_V) + '/220 V · 부하율 ' + INCOMER.transformerLoadPct.toFixed(1) + ' %'],
-      ['저압 ACB ' + MAIN_BREAKER_FRAME_A + ' AF / ' + total.trip + ' AT', '주회로 4C×' + INCOMER.lvMainMm2 + ' mm² Cu · ' + INCOMING_CABLE_M.toFixed(1) + ' m · 역률개선 ' + INCOMER.capacitorKvar + ' kVar']
-    ] : [
-      ['공장 인입점 3Φ 4W ' + n(SUPPLY_VOLTAGE_V) + ' V', ''],
-      ['계량기 kWh · CT', ''],
-      ['SPD Type 2 서지보호', ''],
-      ['주 차단기 MCCB ' + MAIN_BREAKER_FRAME_A + ' AF / ' + total.trip + ' AT', 'Icu 25 kA · 인입 4C×' + INCOMER.lvMainMm2 + ' mm² Cu']
-    ];
+    // 분기 주회로 길이는 부지 배전반 실거리라 확정 전에는 적지 않는다 —
+    // 대신 전압강하 3 % 로 되푼 한계 거리를 적어 실측 판단 기준을 남긴다.
+    var runText = INCOMER.incomingKnown
+      ? INCOMING_CABLE_M.toFixed(1) + ' m'
+      : '실거리 미확정 · 강하 ' + INCOMER.dropPct.toFixed(0) + ' % 한계 ' + INCOMER.lvTapMaxM.toFixed(0) + ' m 이내';
+    var siteRow = ['기존 부지 인입 ' + n(INCOMER.siteServiceKw) + ' kW',
+      '이 플랜트 ' + INCOMER.siteUtilPct.toFixed(1) + ' % · 여유 ' + n(INCOMER.siteHeadroomKw) + ' kW'];
+    var acbRow = ['주 차단기 ACB ' + MAIN_BREAKER_FRAME_A + ' AF / ' + total.trip + ' AT',
+      '주회로 4C×' + INCOMER.lvMainMm2 + ' mm² Cu · ' + runText + ' · 역률개선 ' + INCOMER.capacitorKvar + ' kVar'];
+    var chain = INCOMER.tapsSite
+      ? (INCOMER.tapLowVoltage ? [
+          siteRow,
+          ['부지 저압 배전반 3Φ 4W ' + n(SUPPLY_VOLTAGE_V) + '/220 V', '분기 차단기 ' + total.trip + ' AT · 계량 자회로'],
+          ['SPD Type 2 서지보호', ''],
+          acbRow
+        ] : [
+          siteRow,
+          ['부지 고압 모선 3Φ 22.9 kV', '분기 LBS · 전력퓨즈 PF'],
+          ['국소 변압기 ' + INCOMER.transformerKva + ' kVA Δ–Y', '22.9 kV → ' + n(SUPPLY_VOLTAGE_V) + '/220 V · 부하율 ' + INCOMER.transformerLoadPct.toFixed(1) + ' %'],
+          ['SPD Type 2 서지보호', ''],
+          acbRow
+        ])
+      : [
+          ['부지 인입점 3Φ ' + (INCOMER.hvV / 1000).toFixed(1) + ' kV', '계약 ' + INCOMER.contractKw.toFixed(1) + ' kW · ' + INCOMER.contractKva.toFixed(1) + ' kVA'],
+          ['인입 LBS · 전력퓨즈 PF · 피뢰기 LA', INCOMER.hvCable + ' · ' + INCOMER.hvCurrentA.toFixed(2) + ' A'],
+          ['계기용 변성기 MOF (kWh 계량)', '고압 계량 · CT/PT'],
+          ['주 차단기 VCB ' + INCOMER.vcbA + ' A', '고압측 차단 · Icu 25 kA'],
+          ['수전변압기 ' + INCOMER.transformerKva + ' kVA Δ–Y', '22.9 kV → ' + n(SUPPLY_VOLTAGE_V) + '/220 V · 부하율 ' + INCOMER.transformerLoadPct.toFixed(1) + ' %'],
+          acbRow
+        ];
     chain.forEach(function (item, index) {
       var cy = chainTop + index * chainPitch;
       out.push('<rect class="' + (index === chain.length - 1 ? 'pv-fab-accent' : 'pv-fab-object') + '" x="' + (busX - 150) + '" y="' + (cy - 13) + '" width="300" height="26" rx="3"/>');
@@ -3778,7 +3800,7 @@ html>body{padding:0}</style>
         + ' · 수요 ' + (feeder[3] * feeder[4]).toFixed(2) + ' kW · ' + feeder[6] + ' · ' + feeder[7], 'pv-fab-small'));
     });
 
-    // 접지 — 주 접지단자
+    // 접지 — 주 접지단자. 캡션은 이 아래로 내려간다 (아래 capTop).
     var earthY = busBottom + 30;
     out.push(line(busX, busBottom, busX, earthY, 'pv-fab-frame'));
     out.push(line(busX - 34, earthY, busX + 34, earthY, 'pv-fab-frame'));
@@ -3786,44 +3808,58 @@ html>body{padding:0}</style>
     out.push(line(busX - 10, earthY + 16, busX + 10, earthY + 16, 'pv-fab-frame'));
     out.push(text(busX + 46, earthY + 10, 'MET 주 접지단자 · TN-S · 보호도체는 각 분전반까지 동행 · 접지저항 ≤10 Ω 확인 후 동결', 'pv-fab-small'));
 
-    // 인입 집계 — 모선 왼쪽 아래 빈 자리
-    var box = { x: 40, y: 386, w: 300, h: 320 };
-    out.push('<rect class="pv-fab-frame" x="' + box.x + '" y="' + box.y + '" width="' + box.w + '" height="' + box.h + '"/>');
-    out.push(text(box.x + 16, box.y + 30, '인입 집계', 'pv-fab-text'));
-    [['설치(접속) 전력', total.installed.toFixed(1) + ' kW'],
+    // 인입 집계 — 모선 왼쪽 아래 빈 자리. 폭 330 은 모선(x=380) 앞에서 멈춘다.
+    // REV.24 에서 행이 9 → 14 로 늘며 고정 높이 320 을 넘어 캡션을 덮었다.
+    // 높이를 행 수에서 파생시켜 다시는 조용히 넘치지 않게 한다.
+    var sumRows = [['설치(접속) 전력', total.installed.toFixed(1) + ' kW'],
      ['수요 전력', total.demand.toFixed(1) + ' kW'],
      ['수요 피상전력', INCOMER.apparentKva.toFixed(1) + ' kVA'],
      ['계약 전력', INCOMER.contractKw.toFixed(1) + ' kW · ' + total.contract.toFixed(1) + ' kVA'],
-     ['수전 방식', INCOMER.highVoltage ? '고압 ' + (INCOMER.hvV / 1000).toFixed(1) + ' kV' : '저압 직결'],
-     ['저압 한계', INCOMER.lowVoltageLimitKw.toFixed(0) + ' kW 미만'],
-     ['수전변압기', INCOMER.transformerKva + ' kVA · 부하율 ' + INCOMER.transformerLoadPct.toFixed(1) + ' %'],
-     ['고압 인입', INCOMER.hvCurrentA.toFixed(2) + ' A · ' + INCOMER.hvCable],
-     ['저압 주회로', total.current.toFixed(1) + ' A · 4C×' + INCOMER.lvMainMm2 + ' mm² Cu'],
-     ['주 차단기', 'VCB ' + INCOMER.vcbA + ' A / ACB ' + MAIN_BREAKER_FRAME_A + ' AF·' + total.trip + ' AT'],
+     ['부지 인입', n(INCOMER.siteServiceKw) + ' kW (기존)'],
+     ['이 플랜트 점유', INCOMER.siteUtilPct.toFixed(1) + ' % · 여유 ' + n(Math.round(INCOMER.siteHeadroomKw)) + ' kW'],
+     ['최악(수용률 1.0)', INCOMER.worstCaseKw.toFixed(1) + ' kW · ' + (INCOMER.worstCaseKw / INCOMER.siteServiceKw * 100).toFixed(1) + ' %'],
+     ['분기 방식', INCOMER.tapLowVoltage ? '부지 저압 배전반 ' + n(SUPPLY_VOLTAGE_V) + ' V' : '부지 고압 모선 22.9 kV'],
+     ['저압 분기 한계', INCOMER.lvTapMaxM.toFixed(0) + ' m (' + INCOMER.dropPct.toFixed(0) + ' % · ' + INCOMER.lvMainMm2 + ' mm²)'],
+     ['변압기', INCOMER.transformerKva ? INCOMER.transformerKva + ' kVA · 부하율 ' + INCOMER.transformerLoadPct.toFixed(1) + ' %' : '불요 (저압 분기)'],
+     ['주회로', total.current.toFixed(1) + ' A · 4C×' + INCOMER.lvMainMm2 + ' mm² Cu'],
+     ['주 차단기', 'ACB ' + MAIN_BREAKER_FRAME_A + ' AF · ' + total.trip + ' AT'],
      ['역률 개선', INCOMER.capacitorKvar + ' kVar (0.90 → 0.95)'],
-     ['수전실', n(INCOMER.substationMm[0]) + ' × ' + n(INCOMER.substationMm[1]) + ' mm (구획 전기실)']].forEach(function (row, index) {
+     ['전기실', INCOMER.substationMm[0] ? n(INCOMER.substationMm[0]) + ' × ' + n(INCOMER.substationMm[1]) + ' mm' : '불요 (부지 설비 사용)']];
+    var box = { x: 40, y: 300, w: 330, h: 62 + sumRows.length * 26 - 6 };
+    out.push('<rect class="pv-fab-frame" x="' + box.x + '" y="' + box.y + '" width="' + box.w + '" height="' + box.h + '"/>');
+    out.push(text(box.x + 16, box.y + 30, '인입 집계', 'pv-fab-text'));
+    sumRows.forEach(function (row, index) {
       var ry = box.y + 62 + index * 26;
       out.push(text(box.x + 16, ry, row[0], 'pv-fab-small'));
       out.push(text(box.x + box.w - 16, ry, row[1], 'pv-fab-small', 'end'));
     });
 
-    out.push(text(40, 740, '수전 방식은 계약전력에서 파생한다 — ' + INCOMER.contractKw.toFixed(1) + ' kW 가 저압 공급 상한 '
-      + INCOMER.lowVoltageLimitKw.toFixed(0) + ' kW 를 넘어 고압 수전으로 확정했다. 수전실은 공정 존이 아니라', 'pv-layout-small'));
-    out.push(text(40, 762, '구획된 전기실이며 MDB-101 옆 통로 외곽벽에 붙인다 — 저압 주회로 240 mm² 를 부지 경계에서 끌지 않기 위해서다.', 'pv-layout-small'));
-    out.push(text(40, 784, '부하는 계획값이며 OEM 명판으로 확정한다. 역률 0.90·IR 수용률 0.75 는 고조파·시운전 전류 실측 전 값이다.', 'pv-layout-small'));
+    // 캡션은 접지 주기(earthY + 10) 아래에서 시작한다 — 겹치면 도면이 못 읽힌다.
+    // 한 줄이 프레임보다 길지 않도록 문장을 짧게 끊고, 남는 높이는 시트가 늘어난다.
+    var capTop = Math.max(earthY + 44, box.y + box.h + 30);
+    [ '부지에 ' + n(INCOMER.siteServiceKw) + ' kW 인입이 이미 있어 자체 수전설비를 세우지 않는다 — 이 플랜트는 그 계통의 부하 하나('
+        + INCOMER.siteUtilPct.toFixed(1) + ' %)다.',
+      '계약전력 ' + INCOMER.contractKw.toFixed(1) + ' kW 가 저압 공급 상한 ' + INCOMER.lowVoltageLimitKw.toFixed(0)
+        + ' kW 를 넘는다는 판정은 그대로 유효하지만, 그 수전설비가 부지 쪽에 이미 있을 뿐이다.',
+      '저압 분기는 전압강하가 거리를 묶는다 — 부지 배전반까지 ' + INCOMER.lvTapMaxM.toFixed(0)
+        + ' m 이내여야 하고, 넘으면 고압 분기 + 국소 변압기 ' + INCOMER.transformerKvaIfHv + ' kVA 로 간다.',
+      '부하는 계획값이며 OEM 명판으로 확정한다. 역률 0.90·IR 수용률 0.75 는 고조파·시운전 전류 실측 전 값이다.'
+    ].forEach(function (row, index) {
+      out.push(text(40, capTop + index * 22, row, 'pv-layout-small'));
+    });
   }
 
   // 분전반 배선도 (EL-1006) — 문을 연 상태의 盤내 배선. "무엇이 어디로 가는지"가
   // 상 색상(L1 갈·L2 흑·L3 회·N 청·PE 녹황)과 덕트 경로로 읽혀야 한다.
   function renderMdbWiring(out) {
     out.push('<title>PV-PLANT-EL-1006 MDB-101 분전반 배선도</title>');
-    out.push('<rect class="pv-fab-frame" x="14" y="14" width="1372" height="792"/>');
+    out.push('<rect id="pv-sheet-frame" class="pv-fab-frame" x="14" y="14" width="1372" height="792"/>');
     out.push(text(40, 48, 'PV-PLANT-EL-1006 · MDB-101 분전반 배선도 (문 열림·전면) · ' + DRAWING_REVISION, 'pv-fab-title'));
     out.push(text(40, 72, '벽부형 W1,000×H1,900×D300 · 통로 외곽벽 x=' + n(MDB_X_MM) + ' · 통로 유효폭 ' + n(AISLE_CLEAR_MM) + ' 유지', 'pv-layout-small'));
     if (INCOMER.highVoltage) {
       out.push(text(40, 94, '급전은 수전실 ' + n(INCOMER.substationMm[0]) + ' × ' + n(INCOMER.substationMm[1])
         + ' mm (구획 전기실, 이 반 옆 통로 외곽벽) 의 변압기 2차에서 온다 — 4C×'
-        + INCOMER.lvMainMm2 + ' mm² Cu · ' + INCOMING_CABLE_M.toFixed(1) + ' m.', 'pv-layout-small'));
+        + INCOMER.lvMainMm2 + ' mm² Cu · ' + incomingText() + '.', 'pv-layout-small'));
     }
     var e = { x: 360, y: 100, w: 700, h: 650 };
     out.push('<rect class="pv-fab-object" x="' + e.x + '" y="' + e.y + '" width="' + e.w + '" height="' + e.h + '" rx="6"/>');
@@ -3833,8 +3869,8 @@ html>body{padding:0}</style>
     phases.forEach(function (cls, k) {
       out.push(line(e.x + 480 + k * 14, e.y - 34, e.x + 480 + k * 14, e.y + 44, 'pv-el-wire ' + cls));
     });
-    out.push(text(e.x + 480, e.y - 42, '주회로 4C×' + INCOMER.lvMainMm2 + ' mm² Cu · ' + INCOMING_CABLE_M.toFixed(1)
-      + ' m (' + (INCOMER.highVoltage ? '수전실 변압기 2차 → MDB' : '인입점 x=0 → MDB') + ')', 'pv-fab-small', 'middle'));
+    out.push(text(e.x + 480, e.y - 42, '주회로 4C×' + INCOMER.lvMainMm2 + ' mm² Cu · ' + incomingText()
+      + ' (' + (INCOMER.tapLowVoltage ? '부지 저압 배전반 → MDB' : '국소 변압기 2차 → MDB') + ')', 'pv-fab-small', 'middle'));
     out.push('<rect class="pv-fab-object" x="' + (e.x + 430) + '" y="' + (e.y + 44) + '" width="150" height="34" rx="3"/>');
     out.push(text(e.x + 505, e.y + 65, '계량 kWh·CT · SPD', 'pv-fab-small', 'middle'));
     out.push('<rect class="pv-fab-accent" x="' + (e.x + 430) + '" y="' + (e.y + 94) + '" width="150" height="38" rx="3"/>');
@@ -3885,41 +3921,73 @@ html>body{padding:0}</style>
     out.push(text(40, 784, '케이블 길이는 트레이 실경로 기준(여유 10 %·성단 3 m 포함) — src/pv_preprocess/wiring.py 파생.', 'pv-layout-small'));
   }
 
+  // 같은 단에서 이웃 반까지 남는 폭 — 부하 약칭이 쓸 수 있는 자리다.
+  function lpSlot(index, rowOf, lp) {
+    var here = lp[feeders[index][1]], room = Infinity;
+    feeders.forEach(function (other, j) {
+      if (j === index || rowOf[j] !== rowOf[index]) return;
+      room = Math.min(room, Math.abs(lp[other[1]] - here) / PLANT_X * 1260);
+    });
+    return room === Infinity ? 260 : room - 12;
+  }
+
   // 계통 연결도 (EL-1007) — 분전반을 실제 플랜트 X 좌표에 놓고 전력·제어 배선을 함께 그린다.
   function renderSystemDiagram(out) {
     var lp = lpPositions();
     function mx(v) { return 70 + v / PLANT_X * 1260; }
     out.push('<title>PV-PLANT-EL-1007 계통 연결도</title>');
-    out.push('<rect class="pv-fab-frame" x="14" y="14" width="1372" height="792"/>');
+    out.push('<rect id="pv-sheet-frame" class="pv-fab-frame" x="14" y="14" width="1372" height="792"/>');
     out.push(text(40, 48, 'PV-PLANT-EL-1007 · 계통 연결도 · 배선 길이 · ' + DRAWING_REVISION, 'pv-fab-title'));
     out.push(text(40, 72, '분전반은 실제 X 좌표 위치 · 전력(실선)·EtherCAT(주황 파선)·안전 링(적 파선) · 길이는 트레이 실경로', 'pv-layout-small'));
     // 트레이
     out.push(line(mx(0), 150, mx(PLANT_X), 150, 'pv-fab-frame'));
     out.push(text(mx(PLANT_X) - 4, 140, '주 트레이 H=2,600 · y=7,700', 'pv-fab-small', 'end'));
-    // MDB
+    // MDB — 상자는 인출선을 다 그은 뒤에 얹는다 (아래 mdbBox).
     var mdbX = mx(MDB_X_MM);
-    out.push('<rect class="pv-fab-accent" x="' + (mdbX - 80) + '" y="96" width="160" height="40" rx="4"/>');
-    out.push(text(mdbX, 114, 'MDB-101 주 분전반', 'pv-fab-small', 'middle'));
-    out.push(text(mdbX, 130, 'x=' + n(MDB_X_MM) + ' · 벽부 D300', 'pv-fab-small', 'middle'));
     out.push(line(mdbX, 136, mdbX, 150, 'pv-fab-frame'));
-    out.push(text(mx(0) + 4, 174, '← 인입 ' + INCOMING_CABLE_M.toFixed(1) + ' m', 'pv-fab-small'));
-    // LP 들 — X 순위 기준 2단 배치: post 존처럼 X 가 거의 같은 반끼리 다른 단으로 갈라진다.
-    var rowOf = {};
+    out.push(text(mx(0) + 4, 174, '← 분기 ' + incomingText(), 'pv-fab-small'));
+    var mdbBox = ['<rect class="pv-fab-accent" x="' + (mdbX - 80) + '" y="96" width="160" height="40" rx="4"/>',
+      text(mdbX, 114, 'MDB-101 주 분전반', 'pv-fab-small', 'middle'),
+      text(mdbX, 130, 'x=' + n(MDB_X_MM) + ' · 벽부 D300', 'pv-fab-small', 'middle')];
+    // LP 들 — 실제 X 위치에 세우되, 겹치지 않는 첫 단에 넣는다.
+    //
+    // REV.23 까지는 X 순위 홀짝으로 2단을 갈랐다. GRM 4면이 5 m 안에 몰리면서
+    // 같은 단에 떨어진 두 반(IRA·MEC)이 85 px 간격으로 겹쳤다 — 홀짝은 "몇 개가
+    // 얼마나 가까이 있는지"를 안 본다. 단 수를 배치에서 파생시킨다.
+    // 폭 150 은 반 안에 들어가는 가장 긴 줄('F10 · 4C×70 · 14.3 m')이 상자를
+    // 넘지 않는 크기다. 상자보다 글자가 길면 상자를 안 겹치게 놔도 글자가 겹친다.
+    var LP_BOX_W = 150, LP_BOX_H = 44, LP_ROW_PITCH = 76, lpTop = 230;
+    var rowOf = {}, lastX = [];
     feeders.map(function (f, i) { return [lp[f[1]], i]; })
       .sort(function (a, b) { return a[0] - b[0]; })
-      .forEach(function (pair, rank) { rowOf[pair[1]] = rank % 2; });
+      .forEach(function (pair) {
+        var px = mx(pair[0]), r = 0;
+        while (lastX[r] !== undefined && px - lastX[r] < LP_BOX_W + 6) r++;
+        lastX[r] = px;
+        rowOf[pair[1]] = r;
+      });
+    var lpRows = lastX.length;
+    var dropY = lpTop + (lpRows - 1) * LP_ROW_PITCH + LP_BOX_H + 18;
+    // 인출선을 먼저 다 긋고 상자를 나중에 얹는다 — SVG 는 나중에 그린 것이 위로
+    // 올라오므로, 섞어 그리면 아랫단 반의 인출선이 윗단 반의 라벨을 가로지른다.
+    feeders.forEach(function (feeder, i) {
+      var x = mx(lp[feeder[1]]), top = lpTop + rowOf[i] * LP_ROW_PITCH;
+      out.push(line(x, 150, x, top, 'pv-fab-frame'));
+      out.push(line(x, top + LP_BOX_H, x, dropY, 'pv-fab-hidden'));
+    });
     feeders.forEach(function (feeder, i) {
       var x = mx(lp[feeder[1]]);
-      var top = rowOf[i] === 0 ? 230 : 330;
-      out.push(line(x, 150, x, top, 'pv-fab-frame'));
-      out.push('<rect class="pv-fab-secondary" x="' + (x - 62) + '" y="' + top + '" width="124" height="44" rx="4"/>');
+      var top = lpTop + rowOf[i] * LP_ROW_PITCH;
+      out.push('<rect class="pv-fab-secondary" x="' + (x - LP_BOX_W / 2) + '" y="' + top + '" width="' + LP_BOX_W + '" height="' + LP_BOX_H + '" rx="4"/>');
       out.push(text(x, top + 18, feeder[1], 'pv-fab-small', 'middle'));
       out.push(text(x, top + 36, feeder[0] + ' · ' + feeder[6].replace(' mm² Cu', '') + ' · ' + CABLE_LENGTH_M[feeder[0]].toFixed(1) + ' m', 'pv-fab-small', 'middle'));
-      out.push(line(x, top + 44, x, 470, 'pv-fab-hidden'));
-      out.push(text(x, 490 + rowOf[i] * 20, feeder[2].split(' · ')[0], 'pv-fab-small', 'middle'));
+      // 부하 약칭은 같은 단의 이웃까지가 자리다 — 넘치면 렌더 후 실측해서 줄인다.
+      out.push('<text class="pv-fab-small" text-anchor="middle" data-fit="' + Math.max(90, lpSlot(i, rowOf, lp)) + '" x="' + x
+        + '" y="' + (dropY + 14 + rowOf[i] * 20) + '">' + escapeText(feeder[2].split(' · ')[0]) + '</text>');
     });
+    mdbBox.forEach(function (piece) { out.push(piece); });
     // EtherCAT 데이지체인
-    var netY = 560;
+    var netY = dropY + 14 + (lpRows - 1) * 20 + 30;
     out.push(text(mx(0) + 4, netY + 24, 'EtherCAT 데이지체인 (LP-CTRL 기점 양팔)', 'pv-fab-small'));
     EL_CHAIN.forEach(function (tag, i) {
       if (i === 0) return;
@@ -3931,7 +3999,7 @@ html>body{padding:0}</style>
       out.push('<circle class="pv-fab-anchor" cx="' + mx(lp[tag]) + '" cy="' + netY + '" r="5"/>');
     });
     // 안전 링
-    var safeY = 620;
+    var safeY = netY + 60;
     out.push(text(mx(0) + 4, safeY - 10, '안전 I/O 링 (FSoE) — LP-CTRL 안전 PLC 기점, 링 단선 시 전 구간 안전정지', 'pv-fab-small'));
     out.push(line(mx(lp['LP-AFU']), safeY, mx(lp['LP-GBR']), safeY, 'pv-el-safety'));
     out.push(line(mx(lp['LP-AFU']), safeY, mx(lp['LP-AFU']), safeY + 26, 'pv-el-safety'));
@@ -3939,13 +4007,16 @@ html>body{padding:0}</style>
     out.push(line(mx(lp['LP-AFU']), safeY + 26, mx(lp['LP-GBR']), safeY + 26, 'pv-el-safety'));
     // PLC 강조
     var ctrlX = mx(lp['LP-CTRL']);
-    out.push('<rect class="pv-fab-accent" x="' + (ctrlX - 70) + '" y="660" width="140" height="40" rx="4"/>');
-    out.push(text(ctrlX, 678, '안전 PLC · 모션 PLC', 'pv-fab-small', 'middle'));
-    out.push(text(ctrlX, 694, 'LP-CTRL · UPS 급전', 'pv-fab-small', 'middle'));
-    out.push(line(ctrlX, 620, ctrlX, 660, 'pv-el-safety'));
-    out.push(line(ctrlX, 560, ctrlX, 660, 'pv-el-net'));
-    out.push(text(40, 762, '전력 케이블 합계 ' + TOTAL_POWER_CABLE_M.toFixed(1) + ' m + 인입 ' + INCOMING_CABLE_M.toFixed(1) + ' m. 제어 구간 길이는 인접 반 사이 트레이 경로(여유 10 %·성단 포함).', 'pv-layout-small'));
-    out.push(text(40, 784, '분전반 벽부(D300)로 통로 유효폭 ' + n(AISLE_CLEAR_MM) + ' mm 를 유지한다 — 보행 최소폭 900 그대로.', 'pv-layout-small'));
+    var plcY = safeY + 40;
+    out.push('<rect class="pv-fab-accent" x="' + (ctrlX - 70) + '" y="' + plcY + '" width="140" height="40" rx="4"/>');
+    out.push(text(ctrlX, plcY + 18, '안전 PLC · 모션 PLC', 'pv-fab-small', 'middle'));
+    out.push(text(ctrlX, plcY + 34, 'LP-CTRL · UPS 급전', 'pv-fab-small', 'middle'));
+    out.push(line(ctrlX, safeY, ctrlX, plcY, 'pv-el-safety'));
+    out.push(line(ctrlX, netY, ctrlX, plcY, 'pv-el-net'));
+    var capTop = plcY + 62;
+    out.push(text(40, capTop, '플랜트 내부 전력 케이블 합계 ' + TOTAL_POWER_CABLE_M.toFixed(1) + ' m · 부지 배전반 분기 ' + incomingText()
+      + '. 제어 구간 길이는 인접 반 사이 트레이 경로(여유 10 %·성단 포함).', 'pv-layout-small'));
+    out.push(text(40, capTop + 22, '분전반 벽부(D300)로 통로 유효폭 ' + n(AISLE_CLEAR_MM) + ' mm 를 유지한다 — 보행 최소폭 900 그대로.', 'pv-layout-small'));
   }
 
   // 장비 PLC 회로도 (EL-1008) — 선택한 피더의 반내 분기·드라이브·PLC 연결.
@@ -3962,7 +4033,7 @@ html>body{padding:0}</style>
     var prev = chainIdx > 0 ? EL_CHAIN[chainIdx - 1] : null;
     var next = chainIdx >= 0 && chainIdx < EL_CHAIN.length - 1 ? EL_CHAIN[chainIdx + 1] : null;
     out.push('<title>PV-PLANT-EL-1008 장비 PLC 회로도</title>');
-    out.push('<rect class="pv-fab-frame" x="14" y="14" width="1372" height="792"/>');
+    out.push('<rect id="pv-sheet-frame" class="pv-fab-frame" x="14" y="14" width="1372" height="792"/>');
     out.push(text(40, 48, 'PV-PLANT-EL-1008 · ' + feeder[1] + ' 장비 회로도 (' + feeder[0] + ') · ' + DRAWING_REVISION, 'pv-fab-title'));
     out.push(text(40, 72, escapeText(feeder[2]), 'pv-layout-small'));
     // MDB 출발 케이블
@@ -4052,6 +4123,45 @@ html>body{padding:0}</style>
     syncElControls();
     renderElectrical();
   }
+  // 시트 맞춤 — 그린 뒤 실제 크기를 재서 맞춘다.
+  //
+  // 글자폭을 코드에서 어림하면 폰트가 바뀔 때 조용히 틀리고, 프레임 크기를
+  // 상수로 박으면 행이 늘 때 조용히 넘친다. 둘 다 REV.23→24 에서 실제로 났다.
+  // 그래서 ① 자리보다 긴 라벨은 실측해서 줄이고 ② 그러고도 남는 내용이 있으면
+  // 프레임과 viewBox 를 같이 키운다. 화면에 없을 때(getBBox 불가)는 건너뛴다.
+  function fitElectricalSheet() {
+    var svg = electricalSvg, frame = svg.querySelector('#pv-sheet-frame');
+    if (!frame || !svg.getBBox) return;
+    var labels = svg.querySelectorAll('text[data-fit]'), i;
+    for (i = 0; i < labels.length; i++) {
+      var t = labels[i], max = parseFloat(t.getAttribute('data-fit'));
+      if (!(max > 0) || !t.getComputedTextLength) continue;
+      var whole = t.textContent;
+      try { if (t.getComputedTextLength() <= max) continue; } catch (e) { continue; }
+      var cut = whole;
+      while (cut.length > 1) {
+        cut = cut.slice(0, -1);
+        t.textContent = cut + '…';
+        if (t.getComputedTextLength() <= max) break;
+      }
+      t.setAttribute('aria-label', whole);
+    }
+    var right = 0, bottom = 0, nodes = svg.querySelectorAll('text, rect, line, polyline, circle, path');
+    for (i = 0; i < nodes.length; i++) {
+      if (nodes[i] === frame) continue;
+      var b;
+      try { b = nodes[i].getBBox(); } catch (e) { continue; }
+      if (!b.width && !b.height) continue;
+      right = Math.max(right, b.x + b.width);
+      bottom = Math.max(bottom, b.y + b.height);
+    }
+    if (!right && !bottom) return;
+    var w = Math.max(1400, Math.ceil(right + 26)), h = Math.max(820, Math.ceil(bottom + 26));
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    frame.setAttribute('width', w - 28);
+    frame.setAttribute('height', h - 28);
+  }
+
   function renderElectrical() {
     var total = electricalTotals();
     var out = [];
@@ -4062,6 +4172,7 @@ html>body{padding:0}</style>
     else renderSingleLine(out, total);
     electricalSvg.innerHTML = out.join('');
     electricalSvg.setAttribute('aria-label', EL_VIEWS[state.elView] || EL_VIEWS.single);
+    fitElectricalSheet();
 
     electricalTable.innerHTML = feeders.map(function (feeder) {
       var strong = feeder[7].indexOf('GA 명시') === 0;
@@ -4077,7 +4188,7 @@ html>body{padding:0}</style>
       + ' A · 주 차단기 ' + MAIN_BREAKER_FRAME_A + ' AF/' + total.trip + ' AT · 계약 ' + total.contract.toFixed(1) + ' kVA</th>'
       + '<td class="tabular-nums">' + total.installed.toFixed(1) + '</td><td></td>'
       + '<td class="tabular-nums">' + total.demand.toFixed(1) + '</td><td colspan="2">전력 \u2211 ' + TOTAL_POWER_CABLE_M.toFixed(1)
-      + ' m · 인입 ' + INCOMING_CABLE_M.toFixed(1) + ' m</td>'
+      + ' m · 분기 ' + incomingText() + '</td>'
       + '<td class="tabular-nums">' + (TOTAL_POWER_CABLE_M + INCOMING_CABLE_M).toFixed(1) + '</td></tr>';
   }
 
@@ -8864,7 +8975,7 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
     if (event.key === 'Escape' && dialog.open && dialog.hasAttribute('data-pv-inline')) closeProgram();
   });
 
-  // 부품 150품목 검색 — 목록이 길어 스크롤만으로는 품번을 찾기 어렵다.
+  // 부품 검색 — 목록이 길어(현재 173품목) 스크롤만으로는 품번을 찾기 어렵다.
   var partsFilter = root.querySelector('#pv-parts-filter');
   var partsCount = root.querySelector('#pv-parts-count');
   function applyPartsFilter() {

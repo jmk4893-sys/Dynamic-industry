@@ -140,26 +140,36 @@ def demand_center_x_mm() -> int:
     return round(center)
 
 
-#: 수전실 저압반 중심 → MDB-101 중심 거리 (mm).
-#: REV.23 인입 확정으로 수전실이 생기면서, 수전실을 **MDB 옆 통로 외곽벽**에
-#: 붙인다. 저압 주회로는 400 A 라 240 mm² 인데, 이걸 부지 경계에서 42.5 m
-#: 끌고 오면 구리값이 터진다 — 고압은 7.5 A 라 60 mm² 로 같은 거리를 훨씬 싸게
-#: 간다. 그것이 고압 수전으로 바꾸는 두 번째 이유다(첫째는 100 kW 한계).
+#: 전기실(국소 변압기반) 저압반 중심 → MDB-101 중심 거리 (mm).
+#: 전기실을 세울 때는 MDB 옆 통로 외곽벽에 붙인다.
 SUBSTATION_TO_MDB_MM = 2_000
 
+#: **부지 저압 배전반 → MDB-101 실거리 (mm).**
+#: REV.24 에서 부지 1,200 kW 인입에 물리기로 하면서 생긴 유일한 미지수다.
+#: 부지 배전반이 어디 있는지는 발주처 실측 사항이라 **여기서 지어내지 않는다**.
+#: None 이면 도면도 길이를 적지 않고 한계 거리(240 mm² 기준 162 m)만 적는다.
+#: 실측이 오면 이 한 줄만 채우면 케이블 스케줄과 도면이 같이 따라온다.
+SITE_BOARD_TO_MDB_MM: int | None = None
 
-def incoming_cable_m() -> float:
-    """인입 주회로 길이 (m).
 
-    고압 수전이면 **수전실 변압기 2차 → MDB-101** 저압 주회로 길이다.
-    부지 경계 → 수전실 고압 구간은 부지 조건이라 여기서 산정하지 않는다.
-    저압 직결이면 종전대로 공장 인입점(x=0) → MDB 거리다.
+def incoming_cable_m() -> float | None:
+    """분기 주회로 길이 (m). 모르면 None — 지어내지 않는다.
+
+    * 저압 분기: 부지 배전반 → MDB. 실거리를 받아야 산정된다.
+    * 고압 분기·자체 수전: 전기실 변압기 2차 → MDB (파생값).
     """
-    if electrical.needs_high_voltage():
-        run = SUBSTATION_TO_MDB_MM + (TRAY_HEIGHT_MM - MDB_TOP_MM) * 2
+    if electrical.taps_existing_service() and electrical.TAP_AT_LOW_VOLTAGE:
+        if SITE_BOARD_TO_MDB_MM is None:
+            return None
+        run = SITE_BOARD_TO_MDB_MM + (TRAY_HEIGHT_MM - MDB_TOP_MM) * 2
     else:
-        run = MDB_POSITION_MM[0] + (TRAY_HEIGHT_MM - MDB_TOP_MM) * 2
+        run = SUBSTATION_TO_MDB_MM + (TRAY_HEIGHT_MM - MDB_TOP_MM) * 2
     return round((run * SLACK + TERMINATION_MM) / 100) / 10
+
+
+def incoming_length_is_known() -> bool:
+    """분기 주회로 길이가 확정됐는가 — 아니면 도면에 한계 거리만 적는다."""
+    return incoming_cable_m() is not None
 
 
 def total_power_cable_m() -> float:
