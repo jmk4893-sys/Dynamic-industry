@@ -17862,6 +17862,34 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       }
     }
 
+    // ---- 습식 체결구 ---------------------------------------------------------
+    // 건식에는 addBoltRow·addGroutedAnchor 가 있지만 인자 규약이 다르다(건식은 size·
+    // position 이 객체, 습식은 배열). 습식판을 따로 둔다. 볼트 머리는 6각 근사로
+    // 그려 메시 비용을 억제한다 — 수십·수백 본이 붙는 자리라 세그먼트가 곧 비용이다.
+
+    // axis 는 볼트가 박히는 방향. 그 축에 수직한 평면 위로 nA × nB 격자를 놓는다.
+    // axis "x" → 평면은 y(=A) · z(=B), axis "z" → 평면은 y(=A) · x(=B), axis "y" → x(=A) · z(=B).
+    function wetBoltPatch(parent, name, center, axis, nA, nB, pitchA, pitchB, dia = 0.020, head = 0.032) {
+      const [cx, cy, cz] = center;
+      const rot = axis === "y" ? null : axis === "x" ? [0, 0, Math.PI / 2] : [Math.PI / 2, 0, 0];
+      for (let a = 0; a < nA; a += 1) {
+        const oa = (a - (nA - 1) / 2) * pitchA;
+        for (let b = 0; b < nB; b += 1) {
+          const ob = (b - (nB - 1) / 2) * pitchB;
+          const pos = axis === "x" ? [cx, cy + oa, cz + ob]
+                    : axis === "z" ? [cx + ob, cy + oa, cz]
+                    : [cx + oa, cy, cz + ob];
+          wetCylinder(parent, dia * 0.5, head, pos, material.silverClamp, name, 6, rot);
+        }
+      }
+    }
+
+    // 기초 앵커 — 샹크와 너트. 그라우트 패드는 부르는 쪽에서 깐다.
+    function wetAnchor(parent, name, x, y, z, dia = 0.024, stick = 0.07) {
+      wetCylinder(parent, dia * 0.5, stick, [x, y + stick / 2, z], material.silverClamp, name, 8);
+      wetCylinder(parent, dia * 0.9, 0.020, [x, y + stick, z], material.silverClamp, `${name} 너트`, 6);
+    }
+
     function wetPipeStanchion(tag, x, y, z, radius) {
       const post = Math.max(0.10, y - radius);
       wetBox(unifiedWet, [0.06, post, 0.06], [x, post / 2, z], hdgMaterial, `${tag} 배관 스탠션`);
@@ -18297,9 +18325,53 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       wetHBeam(unifiedWet, "ST-201 2층 지지기둥 H250", [x, 1.20, z], 2.48, "y", 0.25, 0.125);
       wetBox(unifiedWet, [0.42, 0.03, 0.42], [x, -0.02, z], material.frame, "ST-201 기둥 베이스플레이트");
       wetColumnGussets(unifiedWet, "ST-201 주각", x, 0.00, z, 0.26, 0.07);
+      // F-FC-01 은 M24×500 인데 형상은 Ø20 이었다. 개수(4×6=24)는 맞으므로 지름만 맞춘다.
       for (const ax of [-0.15, 0.15]) for (const az of [-0.15, 0.15]) {
-        wetCylinder(unifiedWet, 0.010, 0.09, [x + ax, 0.03, z + az], material.silverClamp, "ST-201 기초 앵커볼트", 10);
+        wetCylinder(unifiedWet, 0.012, 0.09, [x + ax, 0.03, z + az], material.silverClamp, "ST-201 기초 앵커볼트 M24", 10);
       }
+    }
+
+    // ---- ST-201 2층 보 그리드와 현장접합 (FC-001 · F-FC-02) --------------------
+    // BOM 은 「2층 강구조 프레임 · H250/H200 조합」인데 형상에는 H250 기둥만 있고
+    // H200 보가 한 개도 없었다. 기둥 간격 4.54 m 를 두께 140 mm 그레이팅 한 장이
+    // 밑에 아무것도 없이 건너가고 있었다. 현장접합 볼트 96본(F-FC-02 M20×65 마찰접합)은
+    // 바로 그 보–기둥 접합부에 박히는 것이라, 보가 없으면 놓을 자리 자체가 없다.
+    //
+    // 보는 그레이팅 하면(2.37)과 기둥 상단(2.44) 사이 200 mm 대에 들어가 기둥 플랜지에
+    // 엔드플레이트로 물린다. 기둥은 데크까지 그대로 올라가므로 길이를 건드리지 않는다.
+    const BEAM_Y = 2.27;                          // H200 중심 → 2.17 ~ 2.37
+    const COL_X = [12.18, 16.72], COL_Z = [-1.20, 1.50];
+    const GIRDER_LEN = COL_X[1] - COL_X[0] - 0.25;   // 기둥 x 면 사이 4.29
+    const ENDBEAM_LEN = COL_Z[1] - COL_Z[0] - 0.125; // 기둥 z 면 사이 2.575
+    const SEC_LEN = COL_Z[1] - COL_Z[0] - 0.10;      // 거더 웨브 사이 2.60
+    const BEAM_MID_X = (COL_X[0] + COL_X[1]) / 2, BEAM_MID_Z = (COL_Z[0] + COL_Z[1]) / 2;
+
+    // 주거더 2본(x 방향) · 끝단보 2본(z 방향)
+    for (const z of COL_Z) wetHBeam(unifiedWet, "ST-201 2층 주거더 H200", [BEAM_MID_X, BEAM_Y, z], GIRDER_LEN, "x", 0.20, 0.10);
+    for (const x of COL_X) wetHBeam(unifiedWet, "ST-201 2층 끝단보 H200", [x, BEAM_Y, BEAM_MID_Z], ENDBEAM_LEN, "z", 0.20, 0.10);
+
+    // 작은보 6본 — 배관·기기가 데크를 관통하는 자리를 피해 잡았다. TK-101 VFD 모터
+    // (x 12.52–12.82), PP-201A/B 급광관(12.82–13.22), 재이용수 행거(13.99–14.10 ·
+    // 16.17–16.28) 를 비켜 간다. 최대 경간 1.22 m 로 30×5 그레이팅 5.0 kN/m² 에 든다.
+    const SEC_BEAM_X = [12.38, 13.60, 14.40, 15.10, 15.80, 16.45];
+    for (const x of SEC_BEAM_X) wetHBeam(unifiedWet, "ST-201 2층 작은보 H200", [x, BEAM_Y, BEAM_MID_Z], SEC_LEN, "z", 0.20, 0.10);
+
+    // 현장접합 볼트 96본 = 기둥 접합 8개소 × 6 + 작은보 접합 12개소 × 4.
+    // 기둥 접합은 엔드플레이트 모멘트접합(3단 × 2열), 작은보는 웨브 전단접합(2 × 2).
+    for (const z of COL_Z) for (const [x, dir] of [[COL_X[0], 1], [COL_X[1], -1]]) {
+      const px = x + dir * 0.125;
+      wetBox(unifiedWet, [0.016, 0.24, 0.15], [px + dir * 0.008, BEAM_Y, z], material.frame, "ST-201 보 엔드플레이트");
+      wetBoltPatch(unifiedWet, "ST-201 현장접합 볼트 M20", [px, BEAM_Y, z], "x", 3, 2, 0.075, 0.090, 0.020, 0.030);
+    }
+    for (const x of COL_X) for (const [z, dir] of [[COL_Z[0], 1], [COL_Z[1], -1]]) {
+      const pz = z + dir * 0.0625;
+      wetBox(unifiedWet, [0.15, 0.24, 0.016], [x, BEAM_Y, pz + dir * 0.008], material.frame, "ST-201 보 엔드플레이트");
+      wetBoltPatch(unifiedWet, "ST-201 현장접합 볼트 M20", [x, BEAM_Y, pz], "z", 3, 2, 0.075, 0.090, 0.020, 0.030);
+    }
+    for (const x of SEC_BEAM_X) for (const [z, dir] of [[COL_Z[0], 1], [COL_Z[1], -1]]) {
+      const pz = z + dir * 0.05;
+      wetBox(unifiedWet, [0.13, 0.16, 0.012], [x, BEAM_Y, pz + dir * 0.010], material.frame, "ST-201 웨브 클리트");
+      wetBoltPatch(unifiedWet, "ST-201 현장접합 볼트 M20", [x, BEAM_Y, pz], "z", 2, 2, 0.070, 0.070, 0.020, 0.028);
     }
     // ---- ST-201 2층 접근계단·난간 (FC-003) --------------------------------
     // 종전 계단은 발판이 x로 0.12씩만 전진하면서 길이가 0.62라 서로 겹쳤고, 경사 66.8°로
@@ -18321,6 +18393,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       wetHBeam(unifiedWet, "ST-201 랜딩 지지기둥 H250", [16.30, 1.22, lz], 2.44, "y", 0.25, 0.125);
       wetBox(unifiedWet, [0.40, 0.03, 0.40], [16.30, -0.02, lz], material.frame, "ST-201 랜딩 베이스플레이트");
       wetColumnGussets(unifiedWet, "ST-201 랜딩 주각", 16.30, 0.00, lz, 0.24, 0.07);
+      // 랜딩 기둥 2본에는 앵커가 없었다. F-FC-01 은 24SET 이고 주기둥 4본 × 4 = 16 이므로
+      // 나머지 8본이 여기 자리다.
+      for (const ax of [-0.14, 0.14]) for (const az of [-0.14, 0.14]) {
+        wetCylinder(unifiedWet, 0.012, 0.09, [16.30 + ax, 0.03, lz + az], material.silverClamp, "ST-201 기초 앵커볼트 M24", 10);
+      }
     }
     // 데크 둘레 난간 — 랜딩이 붙는 북동쪽(x 16.12…17.01)만 비운다.
     wetRailing(unifiedWet, "ST-201 남측", DECK_X0, DECK_Z0, DECK_X1, DECK_Z0, DECK_TOP_Y);
@@ -18404,7 +18481,22 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const fp301 = new THREE.Group();
     unifiedWet.add(fp301);
     wetBox(fp301, [2.30, 0.12, 0.90], [15.55, 0.12, -1.32], material.frame, "FP-301 베이스 프레임");
-    for (const dx of [-0.95, 0, 0.95]) for (const dz of [-0.33, 0.33]) wetAvMount(fp301, "FP-301", 15.55 + dx, -0.02, -1.32 + dz);
+    // FP-301 기초 — 앞 트랜치에서 여기에 방진마운트 6점을 깔았는데 그것이 틀렸다.
+    // 소음·진동표의 FP-301 대책은 「개판 속도 제어 · **드립트레이** 방진」이지 프레임
+    // 방진이 아니고, BOM 은 `F-FP-01 프레스 프레임 앵커세트 M24×500 20SET` 을 규정한다.
+    // 500 mm 매입 앵커와 스프링 아이솔레이터는 같이 쓸 수 없다 — 강접 기초로 되돌린다.
+    // 필터프레스는 닫힘력을 프레임 안에서 자기폐합으로 받으므로 기초는 자중·전도만 받는다.
+    // 패드 2줄은 CV-301 케이크 배출컨베이어(z −1.58…−1.06)를 사이로 통과시킨다.
+    for (const pz of [-1.65, -0.99]) {
+      wetBox(fp301, [2.34, 0.045, 0.34], [15.55, 0.0225, pz], material.fixed, "FP-301 비수축 그라우트 패드");
+      wetBox(fp301, [2.34, 0.015, 0.34], [15.55, 0.0525, pz], material.frame, "FP-301 기초 베이스플레이트");
+    }
+    // 앵커 20본 — 줄당 10본. 프레임 밖(z −1.80 / −0.84)에 세워 밑에 숨지 않게 한다.
+    for (const pz of [-1.80, -0.84]) {
+      for (let i = 0; i < 10; i += 1) {
+        wetAnchor(fp301, "FP-301 기초 앵커볼트 M24", 14.50 + i * (2.10 / 9), 0.060, pz, 0.024, 0.07);
+      }
+    }
     for (const z of [-0.38, 0.38]) wetBox(fp301, [2.24, 0.10, 0.10], [15.55, 0.82, -1.32 + z], material.frame, "FP-301 사이드바");
     wetBox(fp301, [0.18, 1.45, 0.94], [14.48, 0.84, -1.32], material.equipmentDewater, "FP-301 고정헤드");
     wetBox(fp301, [0.18, 1.45, 0.94], [16.62, 0.84, -1.32], material.equipmentDewater, "FP-301 유압헤드");
