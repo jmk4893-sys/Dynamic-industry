@@ -128,6 +128,51 @@ class TestConsoleDomReferences(unittest.TestCase):
         self.assertEqual(dupes, [], f"id 중복: {dupes}")
 
 
+class TestComponentMounting(unittest.TestCase):
+    """부품이 공중에 떠 있지 않고 하중경로를 갖는지.
+
+    형상은 브라우저에서만 평가되므로 여기서는 지지 부재 자체가 존재하고 실제로
+    쓰이는지를 지킨다. 기둥이 바닥까지 내려오지 않으면 기계가 떠 보이고, 그것이
+    개념 스케치와 제작 검토도를 가르는 지점이다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = CONSOLE.read_text(encoding="utf-8")
+
+    def test_mounting_primitives_exist(self):
+        for fn in ("anchorBolts", "basePlate", "column", "gusset",
+                   "pillowBlock", "pipeHanger", "plinth", "vesselSkirt"):
+            self.assertIn(f"function {fn}(", self.html, f"{fn} 지지 부재 누락")
+
+    def test_column_reaches_the_floor_on_a_base_plate(self):
+        """기둥은 바닥에서 시작하고 베이스 플레이트를 깔아야 한다."""
+        body = re.search(r"function column\(x,y,zTop,opt=\{\}\)\{(.*?)\n    \}", self.html, re.S)
+        self.assertIsNotNone(body, "column() 정의를 찾지 못함")
+        src = body.group(1)
+        self.assertIn("opt.z0??.11", src, "기둥 하단이 바닥 기준이 아니다")
+        self.assertIn("basePlate(", src, "기둥에 베이스 플레이트가 없다")
+
+    def test_base_plate_is_anchored(self):
+        body = re.search(r"function basePlate\(.*?\n    \}", self.html, re.S)
+        self.assertIn("anchorBolts(", body.group(0), "베이스 플레이트에 앵커볼트가 없다")
+
+    def test_support_members_are_actually_used(self):
+        """정의만 해두고 쓰지 않으면 의미가 없다 — 호출 수로 확인한다."""
+        for fn, least in (("column(", 20), ("plinth(", 10), ("gusset(", 8), ("pillowBlock(", 4)):
+            calls = len(re.findall(re.escape(fn), self.html)) - 1   # 정의 자신은 제외
+            self.assertGreaterEqual(calls, least, f"{fn} 호출 {calls}건 — 지지 적용이 빠졌다")
+
+    def test_fastener_detail_is_level_of_detail_gated(self):
+        """볼트·패드는 멀리서 서브픽셀이므로 거리 기준으로 걸러야 한다."""
+        self.assertIn("const nearView=()=>", self.html)
+        self.assertIn("const midView=()=>", self.html)
+        for fn in ("anchorBolts", "plinth"):
+            body = re.search(rf"function {fn}\(.*?\n    \}}", self.html, re.S).group(0)
+            self.assertTrue("nearView()" in body or "midView()" in body,
+                            f"{fn} 에 거리 기준 LOD가 없다")
+
+
 class TestConsoleContent(unittest.TestCase):
     """콘솔이 설명하는 설비 구성이 빠지지 않았는지."""
 

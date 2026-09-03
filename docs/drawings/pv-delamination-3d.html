@@ -1572,15 +1572,120 @@
       ctx.save();ctx.fillStyle=v;ctx.fillRect(0,0,width,height);ctx.restore();
     }
 
+    /* ---- Mounting and support ------------------------------------------------
+       Nothing on a real machine hangs in the air. Every column lands on a grouted
+       base plate and is bolted down, every shaft turns in a housing carried by a
+       pedestal, every duct and tray is held by a post or a hanger. These helpers
+       make that structure explicit instead of leaving parts floating at height.
+       Fastener-level detail is drawn only when the camera is close enough to see
+       it, so the wide layout shot stays cheap. */
+    const nearView=()=>camera.radius<26;
+    const midView=()=>camera.radius<40;
+    function anchorBolts(x,y,zTop,spread){
+      if(!nearView())return;
+      for(const dx of [-spread,spread])for(const dy of [-spread,spread]){
+        box(V(x+dx,y+dy,zTop+.035),V(.05,.05,.07),C.rail);
+        box(V(x+dx,y+dy,zTop+.082),V(.075,.075,.028),C.dark);
+      }
+    }
+    function basePlate(x,y,side=.4,color=C.steel2){
+      box(V(x,y,.055),V(side,side,.11),color);            // grouted plate
+      if(!midView())return;
+      box(V(x,y,.012),V(side+.06,side+.06,.024),C.dark,{alpha:.85});   // grout bed
+      anchorBolts(x,y,.11,side*.31);
+    }
+    /* A column that actually reaches the floor, with a plate and knee braces. */
+    function column(x,y,zTop,opt={}){
+      const s=opt.s??.18,z0=opt.z0??.11,color=opt.color??C.steel;
+      if(zTop<=z0)return;
+      box(V(x,y,(z0+zTop)/2),V(s,s,zTop-z0),color);
+      if(opt.plate!==false)basePlate(x,y,opt.plate||s*2.4,opt.plateColor||C.steel2);
+      if(opt.brace)for(const d of [-1,1])gusset(x,y,zTop,d*(opt.braceDir==='x'?1:1),opt.braceDir||'y',s,color);
+    }
+    /* Triangular knee brace where a column meets the beam it carries. */
+    function gusset(x,y,zTop,dir,axis,s=.18,color=C.steel2){
+      const a=.42,b=.34,e=s/2+.005;
+      if(axis==='y'){
+        for(const sx of [-e,e])poly([V(x+sx,y,zTop),V(x+sx,y+dir*a,zTop),V(x+sx,y,zTop-b)],color,.98,rgba(C.black,.34),.6);
+      }else{
+        for(const sy of [-e,e])poly([V(x,y+sy,zTop),V(x+dir*a,y+sy,zTop),V(x,y+sy,zTop-b)],color,.98,rgba(C.black,.34),.6);
+      }
+    }
+    /* Bearing housing on a pedestal — how a roller or drum shaft is really held. */
+    function pillowBlock(x,y,z,axis,r=.13,color=C.steel2){
+      const w=r*2.5;
+      if(axis==='y'){
+        box(V(x,y,z),V(w,r*1.5,w),color);
+        cylinder(V(x,y,z),r*.62,r*1.7,'y',C.dark,10);
+        if(midView())box(V(x,y,z-w*.5-.045),V(w*1.25,r*1.7,.09),C.steel2);
+        if(nearView())for(const dx of [-w*.42,w*.42])box(V(x+dx,y,z-w*.5-.04),V(.045,.045,.05),C.rail);
+      }else{
+        box(V(x,y,z),V(r*1.5,w,w),color);
+        cylinder(V(x,y,z),r*.62,r*1.7,'x',C.dark,10);
+        box(V(x,y,z-w*.5-.045),V(r*1.7,w*1.25,.09),C.steel2);
+      }
+    }
+    /* Threaded-rod hanger dropping a pipe or duct from the structure above. */
+    function pipeHanger(x,y,zItem,zBeam,r=.14){
+      if(zBeam<=zItem)return;
+      for(const dy of [-r-.05,r+.05])box(V(x,y+dy,(zItem+zBeam)/2),V(.035,.035,zBeam-zItem),C.rail);
+      box(V(x,y,zItem-r*.55),V(.09,r*2.4,.05),C.steel2);   // saddle strap
+    }
+    /* Levelling feet under a floor-standing enclosure or skid. */
+    function machineFeet(cx,cy,sx,sy,h=.13,color=C.dark){
+      const ox=Math.max(.12,sx/2-.16),oy=Math.max(.1,sy/2-.14);
+      for(const dx of [-ox,ox])for(const dy of [-oy,oy]){
+        box(V(cx+dx,cy+dy,h*.62),V(.1,.1,h*.76),color);
+        box(V(cx+dx,cy+dy,.035),V(.19,.19,.07),C.steel2);
+        if(nearView())box(V(cx+dx,cy+dy,h*.24),V(.14,.14,.05),C.rail);
+      }
+      box(V(cx,cy,h+.03),V(sx-.06,sy-.06,.06),C.steel2);   // base channel frame
+    }
+
+    /* Recessed base frame with levelling pads — what a floor-standing enclosure
+       actually stands on, and what gives it a toe kick instead of a cut-off edge. */
+    function plinth(cx,cy,sx,sy,h=.15){
+      box(V(cx,cy,h*.5),V(Math.max(.1,sx-.16),Math.max(.1,sy-.16),h),C.dark);
+      if(!midView())return;
+      const ox=Math.max(.1,sx/2-.18),oy=Math.max(.09,sy/2-.16);
+      for(const dx of [-ox,ox])for(const dy of [-oy,oy]){
+        box(V(cx+dx,cy+dy,.035),V(.18,.18,.07),C.steel2);
+        if(nearView())box(V(cx+dx,cy+dy,.095),V(.08,.08,.06),C.rail);
+      }
+    }
+    /* Support skirt and anchored base ring under a vertical vessel or tower. */
+    function vesselSkirt(x,y,r,zTop){
+      if(zTop<=.02)return;
+      cylinder(V(x,y,zTop*.5),r*.9,zTop,'z',C.steel2,12);
+      cylinder(V(x,y,.06),r*1.3,.12,'z',C.steel2,10);
+      if(nearView())for(let k=0;k<4;k++){
+        const a=k*Math.PI/2+.45;
+        box(V(x+Math.cos(a)*r*1.14,y+Math.sin(a)*r*1.14,.155),V(.1,.1,.07),C.rail);
+      }
+    }
+
     function conveyor(cx,length,z,widthY=3,cy=0){
       box(V(cx,cy,z-.12),V(length,widthY,.22),C.dark);
       for(let x=cx-length/2+.2;x<cx+length/2;x+=.43)cylinder(V(x,cy,z+.03),.105,widthY-.16,'y',C.rail,9);
-      for(const y of [cy-widthY/2+.13,cy+widthY/2-.13]){box(V(cx,y,z-.55),V(length,.12,.12),C.steel2);for(let x=cx-length/2+.25;x<cx+length/2;x+=1.2)box(V(x,y,z-.34),V(.1,.1,.7),C.steel)}
+      for(const y of [cy-widthY/2+.13,cy+widthY/2-.13]){
+        box(V(cx,y,z-.055),V(length,.14,.34),C.steel2);              // side channel carrying the rollers
+        box(V(cx,y,z-.62),V(length,.11,.13),C.steel2);               // lower stringer
+        for(let x=cx-length/2+.3;x<cx+length/2;x+=1.8)column(x,y,z-.19,{s:.11,color:C.steel,plate:.3});
+        for(let x=cx-length/2+.85;x<cx+length/2-.4;x+=2.4)           // diagonal sway brace
+          line([V(x,y,z-.62),V(x+1.1,y,.16)],C.steel2,2.1,null,.9);
+      }
+      if(nearView())for(let x=cx-length/2+.2;x<cx+length/2;x+=.43)
+        for(const y of [cy-widthY/2+.115,cy+widthY/2-.115])box(V(x,y,z+.03),V(.14,.07,.14),C.steel2);
     }
     function fenceSegment(x0,y0,x1,y1,z0=0,z1=2.4){
       const dx=x1-x0,dy=y1-y0,L=Math.hypot(dx,dy),rz=Math.atan2(dy,dx);
       box(V((x0+x1)/2,(y0+y1)/2,z0+.1),V(L,.07,.12),C.guard,{rz});box(V((x0+x1)/2,(y0+y1)/2,z1),V(L,.07,.1),C.guard,{rz});
-      const count=Math.max(1,Math.ceil(L/1.7));for(let i=0;i<=count;i++){const t=i/count;box(V(lerp(x0,x1,t),lerp(y0,y1,t),(z0+z1)/2),V(.07,.07,z1-z0),C.guard)}
+      const count=Math.max(1,Math.ceil(L/1.7));
+      for(let i=0;i<=count;i++){
+        const t=i/count,px=lerp(x0,x1,t),py=lerp(y0,y1,t);
+        box(V(px,py,(z0+z1)/2),V(.07,.07,z1-z0),C.guard);
+        if(midView()&&z0<.05)box(V(px,py,.028),V(.2,.2,.056),C.steel2);   // post base plate
+      }
       const normal=norm(V(-dy,dx,0)),a=add(V(x0,y0,.65),mul(normal,.01)),b=add(V(x1,y1,.65),mul(normal,.01));poly([a,b,V(b.x,b.y,z1-.1),V(a.x,a.y,z1-.1)],C.guard,.08,null,0);
     }
     function serviceDoor(cx,lengthX,code){
@@ -1588,13 +1693,23 @@
       poly([V(x0,y,z0),V(x1,y,z0),V(x1,y,z1),V(x0,y,z1)],C.guard,.12,C.guard,.65);
       box(V(cx,y,3.92),V(lengthX-.4,.11,.12),C.steel);box(V(cx,y,.64),V(lengthX-.4,.11,.13),C.steel);
       for(let x=x0;x<=x1+.01;x+=Math.max(1.35,(lengthX-.4)/3))box(V(x,y,2.28),V(.1,.12,3.25),C.steel);
+      box(V(cx,y,2.85),V(lengthX-.4,.1,.14),C.steel);      // vision-panel rail
+      box(V(cx,y,1.15),V(lengthX-.4,.1,.12),C.steel);      // lock rail
       for(const x of [cx-lengthX*.22,cx+lengthX*.22]){box(V(x,y,1.15),V(.42,.15,.12),C.yellow);box(V(x,y,2.85),V(.92,.12,.72),C.black,{alpha:.78})}
       label3(`${code} 정비도어`,V(cx,-2.34,3.12),C.yellow);
     }
     function gantry(cx,lengthX,label,code){
-      for(const x of [cx-lengthX/2,cx+lengthX/2])for(const y of [-1.95,1.95])box(V(x,y,2.35),V(.18,.18,3.9),C.steel);
+      for(const x of [cx-lengthX/2,cx+lengthX/2])for(const y of [-1.95,1.95]){
+        column(x,y,4.05,{s:.18,color:C.steel,plate:.46});
+        gusset(x,y,4.02,y>0?-1:1,'y',.18,C.steel2);
+        gusset(x,y,4.02,x<cx?1:-1,'x',.18,C.steel2);
+      }
       box(V(cx,0,4.22),V(lengthX+.35,4.2,.34),C.steel2);box(V(cx,0,3.85),V(lengthX+.1,3.75,.42),C.cab);
-      box(V(cx,0,3.42),V(lengthX-.45,.6,.62),C.dark);for(let x=cx-lengthX/2+.48;x<cx+lengthX/2-.25;x+=.68)box(V(x,0,3.08),V(.38,2.75,.22),C.steel2);
+      box(V(cx,0,3.42),V(lengthX-.45,.6,.62),C.dark);
+      for(let x=cx-lengthX/2+.48;x<cx+lengthX/2-.25;x+=.68){
+        box(V(x,0,3.08),V(.38,2.75,.22),C.steel2);
+        for(const y of [-1.16,1.16])box(V(x,y,3.42),V(.11,.11,.5),C.steel2);       // rib hanger
+      }
       poly([V(cx-lengthX/2,1.9,.55),V(cx+lengthX/2,1.9,.55),V(cx+lengthX/2,1.9,4.05),V(cx-lengthX/2,1.9,4.05)],C.guard,.07,C.guard,.6);
       if(sectionView){
         line([V(cx-lengthX/2,-1.98,.62),V(cx+lengthX/2,-1.98,.62),V(cx+lengthX/2,-1.98,3.95)],C.yellow,1.3,[5,4]);
@@ -1607,7 +1722,10 @@
     }
     function preheatTunnel(){
       const cx=9.2,L=5.6,x0=cx-L/2,x1=cx+L/2,z0=.82,dz=.62,liftX=carriageFocus?3.4:5.55,exitX=carriageFocus?15:12.35;
-      for(const x of [x0,x1])for(const y of [-1.65,1.65])box(V(x,y,2.65),V(.18,.18,4.2),C.steel);
+      for(const x of [x0,x1])for(const y of [-1.65,1.65]){
+        column(x,y,4.78,{s:.18,color:C.steel,plate:.46});
+        gusset(x,y,4.74,y>0?-1:1,'y',.18,C.steel2);
+      }
       box(V(cx,0,4.86),V(L+.42,3.78,.18),C.steel2);box(V(cx,0,4.69),V(L+.18,3.48,.15),C.cab,{alpha:.92});box(V(cx,0,.47),V(L+.18,3.48,.18),C.dark,{alpha:.82});
       box(V(cx,1.82,2.68),V(L+.15,.12,4.18),C.steel2,{alpha:.94});box(V(cx,1.66,2.68),V(L,.12,3.98),C.cab,{alpha:.78});
       if(!sectionView){
@@ -1616,15 +1734,39 @@
       }else{
         line([V(x0,-1.84,.52),V(x1,-1.84,.52),V(x1,-1.84,4.72)],C.yellow,2,[6,3]);label3('INS-101 · 130mm 이중피복 단열단면',V(cx,-2.15,4.6),C.yellow)
       }
+      for(const x of [x0+.42,cx,x1-.42])for(const y of [-1.36,1.36])
+        column(x,y,z0+dz*4.9,{s:.11,color:C.steel2,plate:.28});
       for(let deck=0;deck<5;deck++){const z=z0+dz*(deck+.5);box(V(cx,0,z),V(5.05,2.72,.11),C.steel2);for(const y of [-1.28,1.28]){box(V(cx,y,z-.18),V(5.1,.1,.35),C.rail);box(V(x0+.18,y,z+.03),V(.22,.18,.14),C.yellow);box(V(x1-.18,y,z+.03),V(.22,.18,.14),C.yellow)}cylinder(V(x1+.18,-1.48,z+.12),.07,.16,'z',C.teal,9);label3(`C${deck+1}`,V(x0-.18,-1.7,z+.12),C.white)}
-      for(let bank=0;bank<6;bank++){const z=z0+dz*bank;for(let lamp=0;lamp<10;lamp++){const x=x0+.38+lamp*(L-.76)/9;cylinder(V(x,0,z),.045,2.48,'y',C.heat,8)}}
+      for(let bank=0;bank<6;bank++){
+        const z=z0+dz*bank;
+        for(const y of [-1.3,1.3])box(V(cx,y,z),V(L-.46,.12,.15),C.steel2);       // lamp carrier channel
+        for(let lamp=0;lamp<10;lamp++){
+          const x=x0+.38+lamp*(L-.76)/9;
+          cylinder(V(x,0,z),.045,2.48,'y',C.heat,8);
+          if(nearView())for(const y of [-1.29,1.29])box(V(x,y,z),V(.1,.14,.11),C.cab);  // ceramic end socket
+        }
+      }
+      for(const y of [-1.42,1.42])column(x1+.55,y,.84,{s:.16,color:C.steel2,plate:.38});
+      box(V(x1+.55,0,.86),V(.52,3.24,.16),C.steel2);
       box(V(x1+.55,0,2.65),V(.48,3.2,3.7),C.cab);for(let deck=0;deck<5;deck++)box(V(x1+.57,-1.62,z0+dz*(deck+.5)),V(.22,.12,.18),C.teal);
-      for(const y of [-1.55,1.55])box(V(liftX,y,2.55),V(.16,.16,4.15),C.steel);box(V(liftX,0,4.68),V(.28,3.3,.2),C.steel2);
-      box(V(liftX,0,1.22),V(4.95,2.7,.16),C.cab);for(const y of [-1.28,1.28])cylinder(V(liftX,y,2.65),.09,3.1,'z',C.rail,10);
+      for(const y of [-1.55,1.55]){
+        column(liftX,y,4.62,{s:.16,color:C.steel,plate:.42});
+        gusset(liftX,y,4.6,y>0?-1:1,'y',.16,C.steel2);
+      }
+      box(V(liftX,0,4.68),V(.28,3.3,.2),C.steel2);
+      box(V(liftX,0,1.0),V(.34,3.34,.2),C.steel2);                       // mast base beam
+      box(V(liftX,0,4.5),V(.34,3.34,.16),C.steel2);                      // mast crosshead
+      box(V(liftX,0,1.22),V(4.95,2.7,.16),C.cab);
+      for(const y of [-1.28,1.28])cylinder(V(liftX,y,2.65),.09,3.1,'z',C.rail,10);
+      box(V(liftX+.16,0,3.7),V(.32,2.84,.62),C.steel2);                  // fork carriage back plate
       box(V(liftX+.6,0,3.67),V(1.35,2.5,.12),C.steel2);for(const y of [-1.05,1.05]){box(V(liftX+.65,y,3.78),V(1.45,.09,.18),C.rail);box(V(liftX+1.1,y,3.84),V(1.2,.07,.12),C.steel)}box(V(liftX-.35,1.78,3.95),V(.42,.38,.5),C.cab);cylinder(V(liftX-.35,1.78,4.3),.12,.35,'z',C.teal,10);
       box(V(9.2,0,.48),V(7.25,2.65,.17),C.dark);for(let x=5.8;x<12.5;x+=.5)cylinder(V(x,0,.6),.09,2.45,'y',C.rail,9);
+      for(const y of [-1.16,1.16])column(exitX,y,1.32,{s:.12,color:C.steel2,plate:.3});
       box(V(exitX,0,1.38),V(1.15,2.75,.14),C.steel2);for(const y of [-1.18,1.18])box(V(exitX+.2,y,1.51),V(1.55,.09,.18),C.rail);
       const meterY=carriageFocus?2.03:-2.03,meterFaceY=carriageFocus?2.22:-2.22,meterButtonY=carriageFocus?2.27:-2.27;
+      const railY=carriageFocus?1.79:-1.79;
+      box(V(cx,railY,3.08),V(L-.2,.1,.13),C.steel2);                                    // wall mounting rail
+      for(const dx of [-.52,.52])box(V(cx+dx,meterY+(carriageFocus?-.19:.19),3.08),V(.11,.1,.94),C.steel2);  // standoff brackets
       box(V(cx,meterY,3.08),V(1.35,.32,1.08),C.cab);box(V(cx,meterFaceY,3.18),V(1.02,.08,.5),C.black);for(let k=0;k<4;k++)box(V(cx-.32+k*.21,meterButtonY,2.75),V(.14,.06,.12),k<2?C.teal:C.yellow);
       exhaust(cx,.23);label3('M1 · 완전단열 5단 밀폐가열실',V(cx,-2.12,5.08),C.heat);label3('6 라인 × 10 = 60 IR',V(cx,-2.12,4.72),C.yellow);label3('AL-101/102 · 이중셔터 에어록',V(cx,-2.12,4.38),C.teal);label3('PM-101 · IR 전력 계기판',V(cx,-2.45,3.72),C.yellow);label3('LI-101 · 5단 서보승강',V(liftX,-1.95,4.42),C.teal);label3('TS-101 · 이단 텔레스코픽 포크',V(liftX+.65,-1.82,3.95),C.yellow);label3('IDX-101 · 5단 위치결정·잠금',V(9.2,-1.92,4.25),C.teal);label3('RT-101 · 밀폐 빈 캐리지 복귀',V(9.2,-1.75,.52),C.teal);label3('EX-101 · 밀폐 방출 셔틀',V(exitX,-1.82,1.72),C.yellow);
     }
@@ -1637,60 +1779,105 @@
     }
     function cellHandlingStation(){
       conveyor(30.55,11.4,1.12,1.72,-2.35);
-      for(const x of [25.1,27.8,30.5,33.2]){box(V(x,-3.27,1.65),V(.1,.1,1.25),C.guard);box(V(x,-1.43,1.65),V(.1,.1,1.25),C.guard)}
+      for(const x of [25.1,27.8,30.5,33.2])for(const y of [-3.27,-1.43])
+        column(x,y,2.28,{s:.1,color:C.guard,plate:.26,plateColor:C.guard});
       poly([V(24.9,-3.22,1.05),V(35.1,-3.22,1.05),V(35.1,-3.22,2.15),V(24.9,-3.22,2.15)],C.guard,.08,C.guard,.55);
-      box(V(35.25,-2.35,1.25),V(.16,1.72,1.65),C.red);box(V(35.25,-1.42,1.72),V(.42,.28,.52),C.yellow);cylinder(V(35.25,-1.42,2.22),.07,.65,'z',C.steel,10);
-      box(V(36.5,-2.35,1.05),V(2,2.1,2.05),C.cab);poly([V(35.45,-3.3,2.35),V(37.55,-3.3,2.35),V(37.05,-3.3,1.2),V(35.95,-3.3,1.2)],C.steel2,.95,C.steel,.8);
+      for(const y of [-3.28,-1.42])column(35.25,y,2.42,{s:.14,color:C.steel2,plate:.34});
+      box(V(35.25,-2.35,2.5),V(.18,2.05,.16),C.steel2);                    // gate head frame
+      box(V(35.25,-2.35,1.25),V(.16,1.72,1.65),C.red);
+      box(V(35.25,-1.42,1.72),V(.42,.28,.52),C.yellow);cylinder(V(35.25,-1.42,2.22),.07,.65,'z',C.steel,10);
+      plinth(36.5,-2.35,2,2.1);box(V(36.5,-2.35,1.05),V(2,2.1,2.05),C.cab);poly([V(35.45,-3.3,2.35),V(37.55,-3.3,2.35),V(37.05,-3.3,1.2),V(35.95,-3.3,1.2)],C.steel2,.95,C.steel,.8);
       for(const x of [36.15,36.85])cylinder(V(x,-2.35,.92),.25,1.55,'y',C.red,12);
       label3('CVC-301/302 · 셀/EVA 직접 이송',V(30,-3.48,2.35),C.cell2);label3('SH-101 · 슈레더',V(36.5,-3.58,2.75),C.red);
     }
     function glassOutfeedStation(){
       conveyor(24.9,8.8,1.365,3);
       for(const y of [-1.62,1.62])box(V(24.9,y,2.1),V(8.8,.1,1.55),C.guard,{alpha:.3});
-      for(const x of [25.2,29.6]){box(V(x,1.3,1.12),V(.16,5,.18),C.rail);for(let y=-1;y<3.55;y+=.38)box(V(x,y,1.36),V(.12,.22,.08),C.yellow)}
+      for(const x of [25.2,29.6]){
+        for(const y of [-.95,1.3,3.55])column(x,y,1.03,{s:.13,color:C.steel2,plate:.32});
+        box(V(x,1.3,.92),V(.16,5,.22),C.steel2);                    // rail support beam
+        box(V(x,1.3,1.12),V(.16,5,.18),C.rail);
+        for(let y=-1;y<3.55;y+=.38)box(V(x,y,1.36),V(.12,.22,.08),C.yellow);
+      }
       line([V(20.5,0,.08),V(27.4,0,.08),V(27.4,2.7,.08)],C.glass,3,[8,4],.8);
     }
     function scrubberUnit(){
-      box(V(38.8,0,2.2),V(2.4,2.4,4.4),C.cab);cylinder(V(38.8,0,4.65),.52,.55,'z',C.steel2,14);box(V(38.8,0,5.06),V(1,1,.42),C.dark);cylinder(V(39.5,0,5.48),.28,1.4,'x',C.steel2,12);
-      cylinder(V(35.8,0,2.15),.62,3.9,'z',C.steel2,14);cylinder(V(37.2,0,2.15),.5,3.6,'z',C.guard,14);box(V(40.8,0,2.05),V(1.45,2.25,3.8),C.dark);
-      for(const x of [40.45,41.15])cylinder(V(x,0,3.15),.38,.48,'y',C.teal,12);box(V(40.8,-1.2,.9),V(1.25,.7,1.45),C.cab);
-      cylinder(V(24,2.9,5.56),.3,29.6,'x',C.steel2,12);box(V(24,2.9,5.23),V(30,.42,.15),C.steel2);for(let x=9.2;x<38.2;x+=2)box(V(x,2.9,4.92),V(.1,.1,.72),C.steel);
+      plinth(38.8,0,2.4,2.4);box(V(38.8,0,2.2),V(2.4,2.4,4.4),C.cab);cylinder(V(38.8,0,4.65),.52,.55,'z',C.steel2,14);box(V(38.8,0,5.06),V(1,1,.42),C.dark);cylinder(V(39.5,0,5.48),.28,1.4,'x',C.steel2,12);
+      vesselSkirt(35.8,0,.62,.2);cylinder(V(35.8,0,2.15),.62,3.9,'z',C.steel2,14);
+      vesselSkirt(37.2,0,.5,.35);cylinder(V(37.2,0,2.15),.5,3.6,'z',C.guard,14);
+      plinth(40.8,0,1.45,2.25,.16);box(V(40.8,0,2.05),V(1.45,2.25,3.8),C.dark);
+      for(const x of [40.45,41.15])cylinder(V(x,0,3.15),.38,.48,'y',C.teal,12);plinth(40.8,-1.2,1.25,.7);box(V(40.8,-1.2,.9),V(1.25,.7,1.45),C.cab);
+      cylinder(V(24,2.9,5.56),.3,29.6,'x',C.steel2,12);
+      box(V(24,2.9,5.23),V(30,.42,.15),C.steel2);                        // duct support beam
+      for(let x=9.4;x<38.4;x+=4.2){
+        column(x,2.9,5.15,{s:.16,color:C.steel,plate:.42});               // beam is carried to the floor
+        gusset(x,2.9,5.12,-1,'y',.16,C.steel2);
+        box(V(x,2.9,5.34),V(.13,.72,.08),C.steel2);                       // duct saddle
+      }
+      for(let x=11.5;x<38;x+=4.2)box(V(x,2.9,5.31),V(.07,.68,.06),C.rail);  // intermediate straps
       label3('M6 · VOC 스크러버',V(38.8,-1.55,5.35),C.guard);
     }
     function qualityRejectStation(){
-      for(const y of [-1.58,1.58])box(V(22.35,y,2.25),V(.16,.18,3.05),C.steel2);box(V(22.35,0,3.78),V(.24,3.3,.26),C.cab);
+      for(const y of [-1.58,1.58]){
+        column(22.35,y,3.78,{s:.16,color:C.steel2,plate:.4});
+        gusset(22.35,y,3.75,y>0?-1:1,'y',.16,C.steel2);
+      }
+      box(V(22.35,0,3.78),V(.24,3.3,.26),C.cab);
       box(V(22.35,-1.7,2.42),V(.5,.28,.42),C.cell2);box(V(22.35,1.7,2.42),V(.5,.28,.42),C.heat);
       line([V(21.7,0,.12),V(22.8,0,.12),V(23.8,4.45,.12)],C.red,2.8,[7,4],.78);
-      box(V(23.8,4.45,.75),V(5.45,2.45,1.45),C.cab);box(V(23.8,4.45,1.52),V(5.15,2.2,.12),C.red);
-      for(const x of [21.5,26.1])for(const y of [3.45,5.45])box(V(x,y,.35),V(.15,.15,.7),C.steel2);
+      plinth(23.8,4.45,5.45,2.45);box(V(23.8,4.45,.75),V(5.45,2.45,1.45),C.cab);box(V(23.8,4.45,1.52),V(5.15,2.2,.12),C.red);
+      for(const x of [21.5,26.1])for(const y of [3.45,5.45])column(x,y,.7,{s:.15,color:C.steel2,plate:.34});
     }
     function glassCoolingStation(){
       for(const y of [2.55,5.05])for(const x of [25.2,29.6])box(V(x,y,.34),V(.16,.22,.18),C.rail);
-      for(const y of [2.55,5.05]){for(const x of [25.2,29.6])for(const z of [1.35,2.25])cylinder(V(x,y,z),.23,.24,'y',C.teal,12);box(V(27.4,y,2.95),V(5.3,2.75,.18),C.guard,{alpha:.18})}
-      for(const x of [25.3,27.4,29.5]){box(V(x,3.82,3.55),V(.12,5.2,.12),C.steel);for(const z of [2.15,3.1])cylinder(V(x,3.82,z),.18,.18,'y',C.glass,10)}
+      for(const y of [2.55,5.05]){
+        for(const x of [25.2,29.6]){
+          column(x,y,2.86,{s:.15,color:C.steel2,plate:.38});               // carriage end frame
+          for(const z of [1.35,2.25]){cylinder(V(x,y,z),.23,.24,'y',C.teal,12);pillowBlock(x,y,z,'y',.15,C.steel2)}
+        }
+        box(V(27.4,y,2.9),V(4.6,.16,.16),C.steel2);                        // top tie between end frames
+        box(V(27.4,y,2.95),V(5.3,2.75,.18),C.guard,{alpha:.18});
+      }
+      for(const x of [25.3,27.4,29.5]){
+        box(V(x,3.82,3.55),V(.12,5.2,.12),C.steel);
+        for(const y of [1.35,6.3])column(x,y,3.49,{s:.12,color:C.steel,plate:.32});   // dock gantry legs
+        box(V(x,3.82,2.72),V(.13,.13,1.62),C.steel2);                                 // roller post
+        for(const z of [2.15,3.1]){cylinder(V(x,3.82,z),.18,.18,'y',C.glass,10);box(V(x,3.82,z),V(.2,.26,.2),C.steel2)}
+      }
       box(V(27.4,5.05,1.1),V(5.25,2.72,.24),C.steel2);box(V(27.4,5.05,1.32),V(4.95,2.52,.16),C.yellow);for(let x=25.3;x<29.7;x+=.48)cylinder(V(x,5.05,1.42),.1,2.38,'y',C.rail,9);
       for(const x of [25.25,29.55])for(const yy of [-1.12,1.12])cylinder(V(x,5.05+yy,.92),.16,.18,'y',C.black,10);
     }
     function utilityAndSafetyStation(){
-      box(V(9.2,-4.75,1.8),V(4.6,1.55,3.6),C.cab);for(const x of [7.65,8.65,9.65,10.65]){box(V(x,-3.96,2.05),V(.8,.08,2.65),C.black);box(V(x,-3.9,3.15),V(.42,.06,.18),C.teal)}
-      for(const x of [12.2,13.25]){cylinder(V(x,-4.7,.68),.46,1.05,'z',C.steel2,12);box(V(x,-4.7,1.42),V(.86,.86,.46),C.teal)}
-      cylinder(V(14.45,-4.7,1.0),.5,1.7,'z',C.cab,14);cylinder(V(14.45,-4.7,1.92),.16,.2,'z',C.yellow,10);
-      box(V(16,-4.75,1.42),V(1.25,1.35,2.75),C.cab);for(let z=.6;z<2.55;z+=.38)box(V(16,-4.05,z),V(.75,.06,.16),z>1.8?C.teal:C.cell2);
-      line([V(6.4,-1.85,4.5),V(12,-1.85,4.5)],C.red,2.2);for(let x=6.8;x<12;x+=1.15){cylinder(V(x,-1.85,4.28),.07,.25,'z',C.red,9);line([V(x-.15,-1.85,4.05),V(x+.15,-1.85,4.05)],C.red,1.2)}
+      plinth(9.2,-4.75,4.6,1.55);box(V(9.2,-4.75,1.8),V(4.6,1.55,3.6),C.cab);for(const x of [7.65,8.65,9.65,10.65]){box(V(x,-3.96,2.05),V(.8,.08,2.65),C.black);box(V(x,-3.9,3.15),V(.42,.06,.18),C.teal)}
+      for(const x of [12.2,13.25]){plinth(x,-4.7,1.05,1.05,.16);cylinder(V(x,-4.7,.68),.46,1.05,'z',C.steel2,12);box(V(x,-4.7,1.42),V(.86,.86,.46),C.teal)}
+      vesselSkirt(14.45,-4.7,.5,.15);cylinder(V(14.45,-4.7,1.0),.5,1.7,'z',C.cab,14);cylinder(V(14.45,-4.7,1.92),.16,.2,'z',C.yellow,10);
+      plinth(16,-4.75,1.25,1.35);box(V(16,-4.75,1.42),V(1.25,1.35,2.75),C.cab);for(let z=.6;z<2.55;z+=.38)box(V(16,-4.05,z),V(.75,.06,.16),z>1.8?C.teal:C.cell2);
+      cylinder(V(9.2,-1.85,4.5),.075,5.6,'x',C.red,8);                    // 소화배관 main
+      for(let x=6.8;x<12;x+=1.15){
+        cylinder(V(x,-1.85,4.32),.07,.28,'z',C.red,9);
+        line([V(x-.15,-1.85,4.05),V(x+.15,-1.85,4.05)],C.red,1.2);
+      }
+      for(const x of [6.9,9.2,11.5])pipeHanger(x,-1.85,4.58,4.86,.08);     // hung off the chamber roof
       for(const x of [6.6,11.8,18.3,30.2]){box(V(x,-3.55,1.25),V(.2,.2,2.35),C.red);box(V(x,-3.55,2.47),V(.42,.42,.18),C.yellow)}
     }
     function powerInfeedStation(){
-      box(V(-1.35,-4.7,1.65),V(2.5,2.05,3.3),C.cab);for(const x of [-2.15,-1.35,-.55])cylinder(V(x,-4.7,3.5),.16,1.7,'y',C.steel2,12);
-      box(V(1.25,-4.7,1.85),V(2.15,1.5,3.7),C.steel2);for(const x of [.55,1.25,1.95])box(V(x,-3.92,2.05),V(.55,.08,2.75),C.cab);box(V(1.25,-3.85,3.25),V(1.15,.06,.28),C.teal);
-      box(V(18,-4.05,4.55),V(33.5,.35,.26),C.steel2);for(const x of [3.1,9.2,18.1,26.5,36])line([V(x,-4.05,4.45),V(x,-2.5,4.1),V(x,-1.8,3.35)],C.orange,2.1,[6,3],.9);
+      plinth(-1.35,-4.7,2.5,2.05);box(V(-1.35,-4.7,1.65),V(2.5,2.05,3.3),C.cab);for(const x of [-2.15,-1.35,-.55])cylinder(V(x,-4.7,3.5),.16,1.7,'y',C.steel2,12);
+      plinth(1.25,-4.7,2.15,1.5);box(V(1.25,-4.7,1.85),V(2.15,1.5,3.7),C.steel2);for(const x of [.55,1.25,1.95])box(V(x,-3.92,2.05),V(.55,.08,2.75),C.cab);box(V(1.25,-3.85,3.25),V(1.15,.06,.28),C.teal);
+      box(V(18,-4.05,4.55),V(33.5,.35,.26),C.steel2);                     // main cable tray
+      for(let x=2.4;x<34.5;x+=4.6){
+        column(x,-4.05,4.4,{s:.14,color:C.steel,plate:.38});
+        gusset(x,-4.05,4.38,1,'y',.14,C.steel2);
+        box(V(x,-4.05,4.72),V(.11,.52,.06),C.steel2);                     // tray cross-arm
+      }for(const x of [3.1,9.2,18.1,26.5,36])line([V(x,-4.05,4.45),V(x,-2.5,4.1),V(x,-1.8,3.35)],C.orange,2.1,[6,3],.9);
       line([V(-2.5,-4.7,.08),V(38,-4.7,.08)],C.ok,2.5,[8,4],.92);for(const x of [-1.35,1.25,9.2,19,36])line([V(x,-4.7,.08),V(x,-3.5,.08)],C.ok,1.8);
       label3('TR-1 · 500kVA',V(-1.35,-5.9,3.65),C.teal);label3('MDP-1 · ACB 800AF',V(1.25,-5.65,3.95),C.yellow);
     }
     function maintenanceStation(){
-      box(V(18.4,4.75,.88),V(4.3,1.5,1.65),C.cab);for(const x of [17.05,17.7,18.4,19.1,19.75])box(V(x,4.75,1.85),V(.13,1.15,1.25),C.knife);
-      box(V(20.9,4.75,.65),V(1.4,1.3,1.15),C.dark);box(V(20.9,4.75,1.3),V(1.15,1.05,.12),C.steel2);
+      plinth(18.4,4.75,4.3,1.5);box(V(18.4,4.75,.88),V(4.3,1.5,1.65),C.cab);for(const x of [17.05,17.7,18.4,19.1,19.75])box(V(x,4.75,1.85),V(.13,1.15,1.25),C.knife);
+      plinth(20.9,4.75,1.4,1.3);box(V(20.9,4.75,.65),V(1.4,1.3,1.15),C.dark);box(V(20.9,4.75,1.3),V(1.15,1.05,.12),C.steel2);
       for(const y of [4.2,5.3])box(V(17.5,y,.25),V(8.4,.12,.18),C.rail);
-      box(V(18.4,5.55,2.8),V(5,.12,.16),C.guard);for(let x=16;x<=20.8;x+=.8)box(V(x,5.55,1.85),V(.08,.08,1.9),C.guard);for(let k=0;k<5;k++)box(V(15.7-k*.28,4.75,.25+k*.22),V(.55,1.1,.12),C.steel2);
+      box(V(18.4,5.55,2.8),V(5,.12,.16),C.guard);
+      for(let x=16;x<=20.8;x+=1.6)column(x,5.55,2.8,{s:.09,color:C.guard,plate:.24,plateColor:C.guard});for(let k=0;k<5;k++)box(V(15.7-k*.28,4.75,.25+k*.22),V(.55,1.1,.12),C.steel2);
     }
     function emptyCarrierAt(x,y,z=.7,color=C.steel2){
       box(V(x,y,z),V(5.15,2.72,.2),color);box(V(x,y,z+.15),V(4.85,2.48,.1),C.cab);for(const xx of [-2.05,2.05])for(const yy of [-1.12,1.12])cylinder(V(x+xx,y+yy,z-.14),.15,.17,'y',C.black,9);
@@ -1706,11 +1893,20 @@
     }
     function carrierMotionAxis(){
       for(const y of [-1.5,1.5]){
-        box(V(17.7,y,.54),V(11.2,.16,.2),C.rail);
+        box(V(17.7,y,.36),V(11.2,.24,.18),C.steel2);                 // rail bed beam
+        box(V(17.7,y,.54),V(11.2,.16,.2),C.rail);                    // guide rail
         for(let x=12.35;x<=23.05;x+=.32)box(V(x,y,.66),V(.2,.12,.08),C.steel);
-        box(V(12.1,y,.78),V(.62,.52,.72),C.cab);cylinder(V(11.72,y,.78),.24,.42,'x',C.teal,12)
+        for(let x=12.4;x<=23.1;x+=1.34)column(x,y,.28,{s:.13,color:C.steel2,plate:.32});
+        box(V(12.1,y,.78),V(.62,.52,.72),C.cab);cylinder(V(11.72,y,.78),.24,.42,'x',C.teal,12);
+        column(12.1,y,.42,{s:.16,color:C.steel2,plate:.38});         // drive-end pedestal
       }
-      for(const x of [HKB_X,HKS_X]){for(const y of [-1.78,1.78])box(V(x,y,2.05),V(.22,.28,2.85),C.steel2);box(V(x,0,3.5),V(.26,4.05,.3),C.steel2)}
+      for(const x of [HKB_X,HKS_X]){
+        for(const y of [-1.78,1.78]){
+          column(x,y,3.36,{s:.22,color:C.steel2,plate:.5});
+          gusset(x,y,3.34,y>0?-1:1,'y',.22,C.steel2);
+        }
+        box(V(x,0,3.5),V(.26,4.05,.3),C.steel2);
+      }
       line([V(15.1,-1.68,1.05),V(20.5,-1.68,1.05)],C.teal,2.1,[8,4]);
       label3(`AX-${laneCode} · 전자갠트리 서보 캐리어축`,V(17.6,1.82,.82),C.teal);
       label3('유효 공정이동 2,700mm · 스트로크 ≥3,200mm',V(17.8,-1.92,.62),C.yellow);
@@ -1730,26 +1926,34 @@
       line([V(HKB_X,-1.58,2.48),V(HKB_X,-1.58,2.72),V(HKS_X,-1.58,2.72),V(HKS_X,-1.58,2.48)],C.yellow,2);
       for(const x of [HKB_X-.18,HKS_X+.18]){box(V(x,-1.62,2.12),V(.16,.18,.26),C.teal);line([V(x,-1.52,2.12),V(17.8,-1.52,1.62)],C.teal,1,[3,3],.72)}
       box(V(17.8,1.72,2.12),V(1.4,.3,.22),C.cab);for(let x=17.2;x<=18.4;x+=.2)box(V(x,1.72,2.14),V(.12,.26,.12),C.black);
-      for(const x of [16.75,18.85]){box(V(x,-1.78,1.72),V(.16,.16,2.2),C.guard);for(let z=.82;z<2.72;z+=.32)line([V(x,-1.76,z),V(x,-1.76,z+.18)],C.red,1.2)}
+      for(const x of [16.75,18.85]){
+        column(x,-1.78,2.82,{s:.16,color:C.guard,plate:.34,plateColor:C.guard});
+        for(let z=.82;z<2.72;z+=.32)line([V(x,-1.76,z),V(x,-1.76,z+.18)],C.red,1.2);
+      }
       if(!sectionView&&!tandemFocus)poly([V(16.65,-1.92,.62),V(18.95,-1.92,.62),V(18.95,-1.92,3.62),V(16.65,-1.92,3.62)],C.guard,.08,C.guard,.55)
     }
     function baseMachine(){
       const o=explodeOffsets();
       withPartOffset(o.input,()=>{
         conveyor(3,6,1.12,3);label3('M0 · 투입·정렬·식별',V(3,-1.95,2.95));
-        for(const y of [-1.6,1.6])box(V(5.1,y,2.65),V(.16,.16,3.1),C.steel);box(V(5.1,0,4.18),V(.16,3.35,.16),C.steel);box(V(5.1,0,3.88),V(.5,.5,.38),C.cell2);box(V(5.1,1.55,2.6),V(.24,.24,.24),C.yellow)
+        for(const y of [-1.6,1.6]){column(5.1,y,4.12,{s:.16,color:C.steel,plate:.4});gusset(5.1,y,4.1,y>0?-1:1,'y',.16,C.steel2)}
+        box(V(5.1,0,4.18),V(.16,3.35,.16),C.steel);box(V(5.1,0,4.08),V(.24,.24,.14),C.steel2);box(V(5.1,0,3.88),V(.5,.5,.38),C.cell2);box(V(5.1,1.55,2.6),V(.24,.24,.24),C.yellow)
       });
       withPartOffset(o.heat,preheatTunnel);
       for(const y of [-1.38,1.38])box(V(13.9,y,.68),V(21.8,.16,.18),C.rail);for(let x=3.1;x<24.8;x+=1.15){box(V(x,-1.38,.33),V(.13,.17,.65),C.steel2);box(V(x,1.38,.33),V(.13,.17,.65),C.steel2)}
       withPartOffset(o.tandem,()=>{carrierMotionAxis();gantry(17.8,10.2,'FGT-201 · 고정 HKB/HKS 탠덤 브리지','FIXED-TDM');tandemProfessionalDetail();exhaust(15.5);exhaust(21.2);box(V(17.8,0,.28),V(2.4,3.05,.16),C.steel2);box(V(17.8,0,.39),V(2.1,2.72,.08),C.dark)});
       withPartOffset(o.backsheet,()=>{
-        cylinder(V(14.7,0,3.04),.3,3,'y',C.rail,14);for(const y of [-.9,-.3,.3,.9])box(V(14.4,y,3.04),V(.18,.34,.12),C.yellow);box(V(14.7,1.9,3.04),V(.52,.45,.45),C.cab);
-        box(V(14.8,-2.75,1.02),V(2.55,1.5,1.95),C.cab);box(V(14.8,-2.02,1.12),V(2.2,.08,1.55),C.sheet,{alpha:.18});box(V(14.8,-2.75,2.02),V(2.35,1.35,.12),C.steel2);
+        winderFrame();
+        cylinder(V(14.7,0,3.04),.3,3,'y',C.rail,14);
+        for(const yy of [-1.5,1.5])pillowBlock(14.7,yy,3.04,'y',.17,C.steel2);
+        for(const y of [-.9,-.3,.3,.9])box(V(14.4,y,3.04),V(.18,.34,.12),C.yellow);
+        box(V(14.7,1.9,3.04),V(.52,.45,.45),C.cab);
+        plinth(14.8,-2.75,2.55,1.5);box(V(14.8,-2.75,1.02),V(2.55,1.5,1.95),C.cab);box(V(14.8,-2.02,1.12),V(2.2,.08,1.55),C.sheet,{alpha:.18});box(V(14.8,-2.75,2.02),V(2.35,1.35,.12),C.steel2);
         for(const x of [14.2,14.8,15.4])cylinder(V(x,-2.75,.92),.28,1.1,'y',C.sheet,14);
         label3('WR-101 · 횡방향 클램프 권취롤',V(14.7,-1.8,3.48),C.yellow);label3('BS-301 · 백시트 전용 보관함',V(14.8,-3.55,2.35),C.sheet)
       });
       withPartOffset(o.cell,()=>{liftConveyor();cellHandlingStation()});
-      withPartOffset(o.utility,()=>{box(V(19,-3.3,1.8),V(1.6,1.2,3.6),C.cab);box(V(19,-2.67,2.75),V(.8,.05,.6),C.black);label3('PLC + HMI',V(19,-3.35,3.85));utilityAndSafetyStation()});
+      withPartOffset(o.utility,()=>{plinth(19,-3.3,1.6,1.2);box(V(19,-3.3,1.8),V(1.6,1.2,3.6),C.cab);box(V(19,-2.67,2.75),V(.8,.05,.6),C.black);label3('PLC + HMI',V(19,-3.35,3.85));utilityAndSafetyStation()});
       withPartOffset(o.glass,()=>{glassOutfeedStation();qualityRejectStation();glassCoolingStation()});
       withPartOffset(o.exhaust,scrubberUnit);withPartOffset(o.power,powerInfeedStation);withPartOffset(o.maintenance,maintenanceStation);
       line([V(14.7,0,.1),V(14.7,-2.75,.1)],C.sheet,3,[8,4],.75);
@@ -1759,20 +1963,36 @@
       explodeGuide(V(3,0,1.1),o.input,C.teal,'투입 모듈');explodeGuide(V(9.2,0,2.6),o.heat,C.heat,'5단 IR');explodeGuide(V(17.8,0,2.2),o.tandem,C.yellow,'탠덤');explodeGuide(V(14.7,-1.6,2.2),o.backsheet,C.sheet,'백시트');explodeGuide(V(28,-2.35,1.3),o.cell,C.cell2,'셀/EVA');explodeGuide(V(27.4,1.6,1.4),o.glass,C.glass,'유리');explodeGuide(V(38.8,0,2.4),o.exhaust,C.teal,'배기');explodeGuide(V(9.2,-4.2,1.8),o.utility,C.yellow,'유틸리티')
     }
     function tandemFocusBase(){
-      for(const y of [-1.5,1.5]){box(V(17.7,y,.54),V(11.2,.16,.2),C.rail);for(let x=12.35;x<=23.05;x+=.32)box(V(x,y,.66),V(.2,.12,.08),C.steel)}tandemProfessionalDetail();
-      for(const x of [13.1,22.5])for(const y of [-1.9,1.9])box(V(x,y,2.3),V(.18,.18,3.75),C.steel2);
+      for(const y of [-1.5,1.5]){box(V(17.7,y,.36),V(11.2,.24,.18),C.steel2);box(V(17.7,y,.54),V(11.2,.16,.2),C.rail);for(let x=12.35;x<=23.05;x+=.32)box(V(x,y,.66),V(.2,.12,.08),C.steel);for(let x=12.4;x<=23.1;x+=1.34)column(x,y,.28,{s:.13,color:C.steel2,plate:.32})}
+      for(const x of [HKB_X,HKS_X]){                       // Z-axis portal, same as the layout view
+        for(const y of [-1.78,1.78]){
+          column(x,y,3.36,{s:.22,color:C.steel2,plate:.5});
+          gusset(x,y,3.34,y>0?-1:1,'y',.22,C.steel2);
+        }
+        box(V(x,0,3.5),V(.26,4.05,.3),C.steel2);
+      }
+      tandemProfessionalDetail();
+      for(const x of [13.1,22.5])for(const y of [-1.9,1.9]){
+        column(x,y,4.18,{s:.18,color:C.steel2,plate:.46});
+        gusset(x,y,4.14,y>0?-1:1,'y',.18,C.steel2);
+      }
       box(V(17.8,1.82,4.08),V(9.6,.26,.3),C.steel2);poly([V(13.1,1.94,.58),V(22.5,1.94,.58),V(22.5,1.94,3.9),V(13.1,1.94,3.9)],C.guard,.07,C.guard,.55);
       for(let x=20.65;x<=23.65;x+=.32)cylinder(V(x,0,1.37),.09,2.65,'y',C.rail,10);for(const y of [-1.42,1.42])box(V(22.1,y,.72),V(3.4,.14,1.25),C.steel2);
-      liftConveyor();if(index===3)windingRoll(0,0);
+      liftConveyor();winderFrame();if(index===3)windingRoll(0,0);
       for(const x of [16.25,19.35]){box(V(x,-1.72,.56),V(.42,.34,.18),C.yellow);cylinder(V(x,-1.72,.35),.16,.2,'z',C.dark,10)}
     }
     function carriageFocusBase(){
       const g=carriageGeometry();
       conveyor(-2.2,5.1,1.35,2.9);conveyor(20.75,5.05,1.35,2.9);preheatTunnel();
       const airlockShell=(a,b,code)=>{
-        const cx=(a+b)/2,L=b-a;for(const x of [a,b])for(const y of [-1.62,1.62])box(V(x,y,2.62),V(.18,.18,4.12),C.steel2);
+        const cx=(a+b)/2,L=b-a;
+        for(const x of [a,b])for(const y of [-1.62,1.62]){
+          column(x,y,4.68,{s:.18,color:C.steel2,plate:.44});
+          gusset(x,y,4.64,y>0?-1:1,'y',.18,C.steel2);
+        }
         box(V(cx,0,4.72),V(L+.18,3.52,.18),C.steel2);box(V(cx,1.68,2.66),V(L,.1,3.92),C.cab,{alpha:.88});
         if(!sectionView)poly([V(a,-1.68,.62),V(b,-1.68,.62),V(b,-1.68,4.58),V(a,-1.68,4.58)],C.cab,.14,C.steel2,.7);
+        box(V(cx,0,.44),V(L,3.28,.14),C.steel2);                  // roller bed tying into the frame
         for(let x=a+.24;x<b-.1;x+=.44)cylinder(V(x,0,.62),.09,2.5,'y',C.rail,9);
         box(V(cx,1.83,3.75),V(1.16,.22,.48),C.black);box(V(cx,1.71,3.76),V(.76,.05,.22),C.teal);label3(code,V(cx,-1.92,4.43),C.teal)
       };
@@ -1851,13 +2071,27 @@
       if(tandemFocus){line([V(x-.38,-1.48,zz+.82),V(x-.38,-1.48,zz+.14)],headColor,2,[5,3],.9);line([V(x-.48,-1.48,zz+.24),V(x-.38,-1.48,zz+.14),V(x-.28,-1.48,zz+.24)],headColor,2)}
       label3(label,V(x,-1.62,zz+.38),hot?headColor:C.white)
     }
+    /* WR-101 turret: a floor-standing portal whose rails carry the drum bearing
+       cross beams and the torque servo. The housings travel with the cassette when
+       it indexes out, the portal stays put. */
+    function winderFrame(){
+      for(const yy of [-1.72,1.9]){
+        column(14.24,yy,2.86,{s:.15,color:C.steel2,plate:.4});
+        column(15.16,yy,2.86,{s:.15,color:C.steel2,plate:.4});
+      }
+      for(const x of [14.24,15.16])box(V(x,.09,3.02),V(.15,3.85,.17),C.steel2);
+      for(const yy of [-1.5,1.5])box(V(14.7,yy,2.72),V(1.15,.2,.17),C.steel2);   // bearing cross beam
+      box(V(14.7,1.9,2.79),V(1.18,.32,.15),C.steel2);                            // torque-servo mounting plate
+    }
     function windingRoll(peel,eject=0){
       const q=ease(eject),y=lerp(0,-2.55,q),z=lerp(3.04,1.15,q),r=.3+.34*clamp(peel);
+      for(const yy of [-1.5,1.5])pillowBlock(14.7,y+yy,z,'y',.17,C.steel2);
       cylinder(V(14.7,y,z),r,3,'y',C.web,22);
       for(const yy of [-1.46,1.46])cylinder(V(14.7,y+yy,z),r*.985,.05,'y',shade(C.web,.82),22);
       cylinder(V(14.7,y,z),r*.62,3.02,'y',shade(C.web,.9),18);
       cylinder(V(14.7,y,z),.16,3.12,'y',C.rail,12);for(const yy of [-.9,-.3,.3,.9])box(V(14.42,y+yy,z),V(.18,.28,.11),C.yellow,{rx:peel*Math.PI*10});
-      cylinder(V(14.7,1.72,3.04),.31,3,'y',C.dark,16);cylinder(V(14.7,1.72,3.04),.16,3.12,'y',C.rail,12);cylinder(V(14.7,.86,3.04),.22,.28,'y',C.yellow,12);
+      cylinder(V(14.7,1.72,3.04),.31,3,'y',C.dark,16);cylinder(V(14.7,1.72,3.04),.16,3.12,'y',C.rail,12);
+      for(const yy of [-1.5,1.5])pillowBlock(14.7,1.72+yy,3.04,'y',.17,C.steel2);cylinder(V(14.7,.86,3.04),.22,.28,'y',C.yellow,12);
       box(V(15.06,.72,3.02),V(.08,.65,.46),C.knife,{rz:-.22});
       if(eject>0)label3('권취 백시트 → 측면 격리함',V(14.7,y-.9,z+.65),C.sheet);
     }
@@ -1999,8 +2233,10 @@
         if(i===13)withPartOffset(o.utility,()=>safetyUtilityActivity(p));
         if(i===14)withPartOffset(o.tandem,()=>sixtyPanelTestActivity(p));
       }
-      withPartOffset(o.heat,()=>airlockActivity(i,p));
-      withPartOffset(o.heat,()=>powerMeterActivity(i,p))
+      if(!tandemFocus){
+        withPartOffset(o.heat,()=>airlockActivity(i,p));
+        withPartOffset(o.heat,()=>powerMeterActivity(i,p));
+      }
     }
 
     function render(){
