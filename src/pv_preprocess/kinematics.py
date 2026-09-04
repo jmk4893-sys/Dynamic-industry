@@ -41,6 +41,8 @@
 
 from __future__ import annotations
 
+from . import layout
+
 # ── 패널 — 공정물의 실치수 ───────────────────────────────────────────────
 #: 최대 모듈 외곽 (mm). 프레임이 곧 외곽이다 — 유리 바깥에 프레임을 덧붙이면
 #: 안 된다. REV.26 까지 3D 가 그렇게 그려 조립체가 2,615 × 1,515 였다.
@@ -124,8 +126,20 @@ AFR_PORTAL_OBSTACLES_MM: tuple[tuple[str, int], ...] = (
 AFR_GUARD_Z_MM = 2330
 
 #: 크로스헤드 하면 (mm) — 상부 클램프 실린더 상단과 같아야 매달린다.
-AFR_CROSSHEAD_SOFFIT_MM = 1950
-AFR_CLAMP_TOP_MM = 1950
+#:
+#: 이 높이는 **이송면 위에 쌓인 것들의 합**이지 임의의 값이 아니다. 이송면
+#: 위로 프레임 하면 부상 2.5, 알루미늄 프레임 75, 정반 100, 클램프 몸통
+#: 상단까지 727.5 — 합 855 mm 다. REV.44 까지 1,950 이라는 리터럴이었고,
+#: 이송면을 1,095 → 950 으로 내리자 클램프가 크로스헤드에서 145 mm 떨어져
+#: 공중에 매달렸다 (하중경로 검사가 잡았다). 쌓임의 단일 출처는
+#: tools/build_afr.py 이며, 시험이 그 결과와 이 값을 견준다.
+AFR_CLAMP_STACK_MM = 855
+AFR_CROSSHEAD_SOFFIT_MM = layout.LINE_TRANSFER_MM + AFR_CLAMP_STACK_MM
+AFR_CLAMP_TOP_MM = AFR_CROSSHEAD_SOFFIT_MM
+
+#: 크로스헤드 단면 높이 — 포탈 기둥 전장은 하면 + 이것이다.
+AFR_CROSSHEAD_DEPTH_MM = 180
+AFR_PORTAL_HEIGHT_MM = AFR_CROSSHEAD_SOFFIT_MM + AFR_CROSSHEAD_DEPTH_MM
 
 #: 포탈 기둥 1본당 앵커.
 AFR_PORTAL_COLUMNS = 4

@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import air, crane, wiring
+from . import air, crane, kinematics, wiring
 
 # ── 기준값 ───────────────────────────────────────────────────────────────
 #: 추락 방호가 요구되는 높이 (mm). 산업안전보건기준 규칙과 EN ISO 14122 가
@@ -100,9 +100,12 @@ POINTS: tuple[Point, ...] = (
     Point("AC-03", "GRM-401 5단 랙 상단 IR 뱅크", "grm", 3_000,
           "IR 램프 교체, 반사판 청소", 6, True,
           "램프는 수명품이다. 고온부라 냉각 지연 인터록(SF-09)과 같이 묶인다"),
-    Point("AC-04", "AFR CL-221 클램프 포탈 크로스헤드", "afr", 2_130,
+    Point("AC-04", "AFR CL-221 클램프 포탈 크로스헤드", "afr",
+          kinematics.AFR_PORTAL_HEIGHT_MM,
           "실린더 점검, 힘 센서 교정", 4, True,
-          "포탈 기둥 z ±1,450 사이라 이동식 작업대가 들어갈 폭이 있다"),
+          f"이송면을 950 으로 통일하며 포탈이 {kinematics.AFR_PORTAL_HEIGHT_MM:,} 로 "
+          f"내려앉아 여덟 중 **유일하게** {FALL_PROTECTION_MM:,} 아래다 — 발판으로 닿는다. "
+          "포탈 기둥 z ±1,450 사이라 이동식 작업대도 들어갈 폭은 그대로다"),
     Point("AC-05", "CMP-701 압축공기 주관·행거", "post", 2_590,
           "누설 점검, 드레인 트랩", 12, True,
           f"**통로 위를 {air.HEADER_RUN_MM / 1000:.0f} m 지난다** — 한 자리가 아니라 "

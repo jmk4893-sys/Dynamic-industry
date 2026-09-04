@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from . import kinematics
 from .layout import STATIONS
 
 # ── 지지 등급 ────────────────────────────────────────────────────────────
@@ -141,7 +142,8 @@ MEMBERS: tuple[Member, ...] = (
     Member("AFR CL-221 클램프 포탈 기둥 4본", "afr", "floor",
            "상부 클램프 4기 × 3 kN · 단축 인출 25 kN/축 반작용"),
     Member("AFR CL-221 포탈 크로스헤드 2본", "afr", "floor",
-           "상부 클램프 실린더 4기 — 하면 1,950 이 실린더 상단을 직접 받는다"),
+           f"상부 클램프 실린더 4기 — 하면 {kinematics.AFR_CROSSHEAD_SOFFIT_MM:,} 이 "
+           f"실린더 상단을 직접 받는다"),
     Member("AFR 클램프 포탈 종방향 타이빔 2본", "afr", "floor",
            "두 포탈을 한 틀로 묶어 인출 반력의 X 성분을 받는다"),
     Member("AFR TG-813 도크 선단받이 가이드레일 2본", "buffer", "frame",

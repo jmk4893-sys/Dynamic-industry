@@ -21,6 +21,35 @@ MACHINE_BAND_Y_MM = 7100
 #: 보행·정비 통로 폭 (mm). 장비 밴드 바깥에 별도로 확보한다.
 AISLE_WIDTH_MM = 1200
 
+# ── 이송 높이 ────────────────────────────────────────────────────────────
+#: 라인 이송 높이 (mm) — **이송면(롤러 윗면)** 기준이다.
+#:
+#: REV.44 까지 이 값이 셀마다 달랐다: robot·jbr 900 / afr·post 950 / buffer·grm 1,050.
+#: 그런데 도면은 JBR 저마킹 롤러와 AFR 베드를 잇는 1,800 mm 를 "공용 인계롤러"라고
+#: 적고 있었다 — **롤러 하나가 두 높이를 동시에 가질 수 없으므로 성립하지 않는다.**
+#: 3D 는 그 단차를 더 크게(1,025 → 1,100, 75 mm) 그리면서 완충 램프도 두지 않았다.
+#: 같은 문제를 상류에서는 `JB-201 높이보정 인계 롤러` 13본으로 풀어 놓았는데,
+#: 그 램프는 애초에 이 단차가 없었으면 필요 없는 물건이다.
+#:
+#: 발주처 확정: **robot·jbr·afr·post 네 셀을 950 으로 통일**한다. PT-101 정렬정반
+#: 출구부터 GI-302 까지 약 22 m 가 한 높이가 되어 인계롤러 공용이 실제로 성립하고,
+#: 높이보정 램프가 필요 없어진다. 남는 단차는 post→buffer 100 mm 하나인데 버퍼는
+#: 슬롯 승강(340…2,236)으로 그것을 흡수한다.
+LINE_TRANSFER_MM = 950
+
+#: 한 이송면을 나눠 쓰는 셀 — 이 셀들은 전부 LINE_TRANSFER_MM 여야 한다.
+SHARED_LINE: tuple[str, ...] = ("robot", "jbr", "afr", "post")
+
+#: 이송 롤러 지름 (mm). 이송면(윗면)에서 롤러 중심을 얻는 데 쓴다 — 3D 는 중심으로
+#: 그리고 GA 는 윗면으로 적으므로, 둘을 잇는 값이 하나 있어야 어긋나지 않는다.
+ROLLER_D_MM = 90
+
+
+def roller_axis_mm(transfer_mm: int | None = None) -> float:
+    """이송면 높이에서 롤러 중심 높이 (mm)."""
+    return (LINE_TRANSFER_MM if transfer_mm is None else transfer_mm) - ROLLER_D_MM / 2
+
+
 #: JBR–AFR 인계 게이트 길이 (mm).
 #:
 #: REV.21 은 1,250 mm 로 잡혀 있었는데 그 구간에 자기 하드웨어가 하나도 없었다.
@@ -34,7 +63,68 @@ AISLE_WIDTH_MM = 1200
 #:   즉 비전 감축으로 라인 길이가 줄어든 것은 아니다.
 #:
 #: 그래서 게이트는 실측 이격 325 mm 에 앵커·심 여유를 얹은 값으로 잡는다.
+#: **REV.45 에서 이 게이트는 없어졌다** — 아래 INTEGRATED_CELL 참조. 값은 통합 전
+#: 이격의 근거로 남긴다.
 HANDOFF_CLEARANCE_MM = 350
+
+
+# ── 통합 제거셀 — JBR 과 AFR 을 한 기계로 ────────────────────────────────
+#: 베이스·가드·안전존·이송면을 공유하는 스테이션. **택트는 잃지 않는다** — 두
+#: 스테이션이 한 베드 위에 5 m 넘게 떨어져 있어 지금처럼 파이프라인으로 돈다
+#: (JBR 이 다음 장을 무는 동안 AFR 이 앞 장을 벗긴다).
+#:
+#: 공유하는 것은 넷이다. ① 한 베이스 프레임 ② 한 가드 인클로저·한 안전존
+#: ③ 한 이송면(LINE_TRANSFER_MM) ④ JB/AFR-301 인계 인터페이스가 셀 간 핸드셰이크가
+#: 아니라 기계 내부 스텝이 된다 — 데이터 게이트 하드웨어·ACK·CRC 재검증이 없어진다.
+#:
+#: **공유할 수 없는 것**: 지지 정반과 클램프 포탈. 두 스테이션이 5,375 mm 떨어져
+#: 각자 자기 패널을 물고 있으므로 판을 하나로 만들 수 없다. (검토 단계에서 이것을
+#: 공유 항목으로 적었던 것은 두 공정이 같은 자리에서 일어난다고 잘못 본 것이다 —
+#: 같은 자리에서 하면 직렬 84 s 가 되어 처리량이 41 % 떨어진다.)
+INTEGRATED_CELL: tuple[str, ...] = ("jbr", "afr")
+
+#: 가드-장비 X 여유 (mm) — 플랜트 표준. AFR 이 REV.22-P01 에서 이 값으로 균등화
+#: 했고, JBR 은 125 mm 뿐이었다. 통합하면서 양 끝에 같은 기준을 적용한다.
+GUARD_CLEARANCE_X_MM = 475
+
+#: 통합셀 안에서 두 스테이션 구조가 마주보는 최소 이격 (mm). 사이에 가드 벽이
+#: 없으므로 앵커 베이스플레이트와 배선 트레이만 지나가면 된다. 250 은 그 둘이
+#: 지나는 최소치이면서, 반씩 나눠 가져도 두 스테이션 외형이 정수로 떨어진다 —
+#: 200 으로 잡으면 외형이 홀수(7,375·6,125)가 되어 2D 부재 중심이 0.5 mm 로 나온다.
+STATION_JUNCTION_MM = 250
+
+#: 각 스테이션의 장비 X 실측 스팬 (mm) — 도면 부품표 실측(가드 제외).
+#: jbr −3,400…3,400 · afr −2,325…3,225 (REV.44 에서 단축 실린더가 정반 안으로
+#: 들어가며 상류 −2,725 → −2,325 로 400 mm 물러났다).
+STATION_HARDWARE_X_MM: dict[str, int] = {"jbr": 6800, "afr": 5550}
+
+
+def integrated_cell_length_mm() -> int:
+    """통합 제거셀 전장 (mm) — 바깥 가드 여유 + 두 스테이션 장비 + 접합부."""
+    hardware = sum(STATION_HARDWARE_X_MM[k] for k in INTEGRATED_CELL)
+    return (2 * GUARD_CLEARANCE_X_MM + hardware
+            + STATION_JUNCTION_MM * (len(INTEGRATED_CELL) - 1))
+
+
+def integrated_saving_mm() -> int:
+    """통합으로 줄어든 길이 (mm) — 통합 전 jbr + gate + afr 대비."""
+    before = 7050 + HANDOFF_CLEARANCE_MM + 6900
+    return before - integrated_cell_length_mm()
+
+
+def station_span_mm(key: str) -> int:
+    """통합셀 안에서 한 스테이션이 갖는 X (mm). 접합부를 반씩 나눠 갖는다."""
+    if key not in INTEGRATED_CELL:
+        raise KeyError(key)
+    half_junction = STATION_JUNCTION_MM // 2
+    edge = GUARD_CLEARANCE_X_MM
+    return STATION_HARDWARE_X_MM[key] + edge + half_junction
+
+
+def stations_are_one_machine() -> bool:
+    """두 스테이션 외형의 합이 통합셀 전장과 같은가."""
+    return (sum(station_span_mm(k) for k in INTEGRATED_CELL)
+            == integrated_cell_length_mm())
 
 
 @dataclass(frozen=True)
@@ -104,9 +194,13 @@ STATIONS: dict[str, Station] = {
         Station("bfc", "PV-BFC-101-ASM-2201", "BFC-101A/B · 단장 분리·셔틀·승강·180° 반전카세트",
                 (5100, 2900, 4500), 2100),
         Station("robot", "PV-RBPT-101-GA-2301", "RB-101 · EOAT · PT-101 정렬정반",
-                (5200, 3900, 4150), 900),
-        Station("jbr", "PV-JBR-201-GA-3101", "JBR-201 · 케이블·정션박스 3헤드 제거셀",
-                (7050, 3050, 2800), 900),
+                (5200, 3900, 4150), LINE_TRANSFER_MM),
+        # REV.45 통합 제거셀 — AFR 과 한 베이스·한 가드다. 외형이 7,050 → 7,375 로
+        # **늘어난다**: 종전 가드 여유가 상·하류 125 mm 뿐이라 플랜트 표준 475 에
+        # 한참 못 미쳤고, 통합하면서 상류에 그 기준을 적용했기 때문이다. 하류는
+        # 가드 벽이 없어져 접합부 125 만 갖는다 (475 + 6,800 + 125).
+        Station("jbr", "PV-JBR-201-GA-3101", "JBR-201 · 케이블·정션박스 제거 스테이션",
+                (7400, 3050, 2800), LINE_TRANSFER_MM),
         # REV.22-P01 장비 단축 3건. 근거는 전부 도면 부품표 실측이다.
         #
         # 1. 가드 여유 균등화. 가드는 ±5,750 대칭인데 장비는 −5,550…+4,300 이라 상류 200 ·
@@ -121,12 +215,17 @@ STATIONS: dict[str, Station] = {
         #    프레임함 횡인출 1,200 MIN). 장비 밴드 7,100 안이라 존은 y 1,200…6,800 이다.
         #
         # 장비 −2,725…+3,225 (5,950) + 475×2 = 6,900.
-        Station("afr", "PV-AFR-101-GA-4101", "AFR-101 · 알루미늄 프레임 분리셀",
-                (6900, 5600, 2800), 950),
+        #
+        # REV.44: 단축 유압을 정반 **안**에 넣으면서 상류면이 −2,725 → −2,325 로
+        # 400 mm 물러났다 (장비 5,550).
+        # REV.45 통합 제거셀 — JBR 과 한 베이스·한 가드다. 상류는 가드 벽이
+        # 없어져 접합부 125 만 갖고, 하류만 표준 475 를 쓴다 (125 + 5,550 + 475).
+        Station("afr", "PV-AFR-101-GA-4101", "AFR-101 · 알루미늄 프레임 분리 스테이션",
+                (6150, 5600, 2800), LINE_TRANSFER_MM),
         # V-4 적용: 잔사 검사와 레시피 판정을 연마 후 한 광학 스테이션으로 통합.
         # CV-102 는 광학을 떼고 이송만 3,700→2,800, 통합 검사대는 2,000→2,400. 순 −500 mm.
         Station("post", "PV-GLASS-301-GA-5101", "CV-102 · SG-301 · GI-301/302 통합 유리 후단",
-                (8900, 4900, 2800), 950),
+                (8900, 4900, 2800), LINE_TRANSFER_MM),
         # X 7,000 → 8,700: R-A/R-B 캐리지 2열의 부품 실측 span 이 8,675 라 외형을 넘었다.
         # REV.22-P01 에서 두 가지가 더 나왔다. 이건 단축이 아니라 결함 수정이라 +850 이다.
         #  * 2열 캐리지가 같은 Z(−2,350 / +2,350)에서 X 로 250 mm 겹쳐 있었다. 피치 2,500 이
@@ -169,14 +268,37 @@ STATIONS: dict[str, Station] = {
 ZONE_SEED: tuple[tuple[str, str, int, str, tuple[int, int, int] | None], ...] = (
     ("afu", "LFT-A/B · BFC", 0, "2 Bay·비전·반전", None),
     ("robot", "RB-101 · PT", 1600, "직접픽업·정렬", None),
-    ("jbr", "JBR-201", 2025, "케이블·JBOX", None),
-    ("gate", "JB/AFR", 2450, "MAP", (HANDOFF_CLEARANCE_MM, 2200, 2800)),
-    ("afr", "AFR-101", 1200, "단축→장축", None),
+    # REV.45 — jbr·afr 은 한 기계의 두 스테이션이다 (INTEGRATED_CELL). 사이에 있던
+    # 'gate' 존 350 은 두 가드 벽 사이의 이격이었는데, 벽이 하나로 합쳐지며 없어졌다.
+    ("jbr", "JBR-201", 2025, "케이블·JBOX (통합셀 상류 스테이션)", None),
+    ("afr", "AFR-101", 1200, "단축→장축 (통합셀 하류 스테이션)", None),
     ("post", "CV · SG · GI", 1100, "이송·연마·통합검사", None),
     ("buffer", "GBR · BUFFER", 0, "R-A/R-B/HOLD", None),
     # 통로측(Y 7,100)에 붙여 셀 컨테이너·백시트 회수를 통로에서 빼낸다.
     ("grm", "GRM-401 유리제거", 1000, "적재·가열·박리·3계통", None),
 )
+
+
+def transfer_steps_mm() -> tuple[tuple[str, str, int], ...]:
+    """이웃한 존 사이의 이송면 단차 (상류, 하류, mm). 0 이면 롤러를 공용할 수 있다."""
+    zones = [z for z in build_zones() if z.key in STATIONS]
+    out = []
+    for up, down in zip(zones, zones[1:]):
+        step = (STATIONS[down.key].transfer_height_mm
+                - STATIONS[up.key].transfer_height_mm)
+        out.append((up.key, down.key, step))
+    return tuple(out)
+
+
+def shared_conveyor_pairs() -> tuple[tuple[str, str], ...]:
+    """롤러를 공용할 수 있는 이웃 쌍 — 이송면이 같은 곳만."""
+    return tuple((a, b) for a, b, step in transfer_steps_mm() if step == 0)
+
+
+def the_shared_line_is_one_height() -> bool:
+    """한 이송면을 쓰기로 한 셀들이 실제로 같은 높이인가."""
+    return all(STATIONS[k].transfer_height_mm == LINE_TRANSFER_MM
+               for k in SHARED_LINE)
 
 
 def build_zones() -> list[Zone]:
@@ -204,12 +326,12 @@ def build_zones() -> list[Zone]:
 #:
 #:   셀       존 표              3D 실측                      판정
 #:   jbr      -12.75 … -5.70    PT-101   -11.91 … -9.29      맞음
-#:   afr       -5.35 …  1.55    베이스 프레임 0.55 … 11.95   상류면 +5.9 어긋남
-#:   post       1.55 … 10.45    SG-301   10.79 … 11.15       존 밖으로 나감
-#:   buffer    10.45 … 20.00    GBR 셔틀 12.12 … 15.32       안쪽
+#:   afr       -5.38 …  0.75    베이스 프레임 0.55 … 11.95   하류면이 존을 넘음
+#:   post       0.75 …  9.65    SG-301   10.79 … 11.15       존 밖으로 나감
+#:   buffer     9.65 … 19.20    GBR 셔틀 12.12 … 15.32       안쪽
 #:   grm       20.00 … 34.05    셀 베이스 20.00 … 34.05      맞음
 #:
-#: 존 표는 AFR→버퍼에 25,350 mm 를 주는데 3D 는 같은 구간을 20,000 mm 로 그린다.
+#: 존 표는 AFR→버퍼에 24,600 mm 를 주는데 3D 는 같은 구간을 20,000 mm 로 그린다.
 #: 어느 쪽이 맞는지는 **발주처 확인 사항**이다 — 3D 가 맞으면 전장을 그만큼 줄일 수
 #: 있고, 존 표가 맞으면 3D 가 설비를 빠뜨리고 있다. 고치는 길은 셋뿐이고 전부
 #: 한 개정의 범위를 넘는다: ① 3D 셀 그룹을 존 격자로 옮긴다(하류 좌표가 전부 따라
@@ -218,7 +340,9 @@ def build_zones() -> list[Zone]:
 SCENE_GRID_OPEN = "AFR→버퍼 구간에서 3D 셀 원점과 존 표가 어긋난다 (발주처 확인)"
 
 #: 존 표가 AFR→버퍼에 주는 길이와 3D 가 실제로 그리는 길이의 차 (mm).
-SCENE_GRID_GAP_MM = 5350
+#: REV.45 통합으로 존이 750 짧아지며 5,350 → 4,600 으로 줄었다
+#: (gate 350 이 빠지고 jbr +350 · afr −750 이라 순 −750 이다).
+SCENE_GRID_GAP_MM = 4600
 
 #: 3D 가 그 구간을 실제로 그리는 길이 (mm) — 실측.
 SCENE_AFR_TO_BUFFER_MM = 20_000

@@ -18,18 +18,34 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
 
-from pv_preprocess import afr, frames, kinematics  # noqa: E402
+from pv_preprocess import afr, frames, kinematics, layout  # noqa: E402
 
 DRAWING = pathlib.Path(__file__).resolve().parent.parent / "docs/drawings/pv-preprocess-plant.html"
 
 # ── 3D 좌표계 (AFR 셀 로컬, m) ───────────────────────────────────────────
-# 패널 상면·하면은 기존 씬에 이미 있는 값이다. 여기에 기구를 맞춘다.
-PANEL_Y = 1.145
+# 패널 높이는 **이송면 하나**에서 나온다. REV.44 까지는 1.145 라는 리터럴이었고,
+# 그 탓에 3D 의 AFR 이송면은 1,095 mm, JBR 은 1,025 mm, 모델은 950 mm 로 셋이 다
+# 달랐다. 이제 값은 layout.LINE_TRANSFER_MM 한 곳에만 있다.
+#
+# 틀 프레임은 유리 아래로 20 mm 더 내려오므로 롤러에 닿는 것은 **프레임 하면**이다.
+# 거기에 렌더 간섭을 피할 만큼만 띄운다 (JBR 셀도 같은 2.5 mm 를 쓴다).
+RIDE_CLEAR = 0.0025
 PANEL_T = 0.055
-PANEL_TOP = PANEL_Y + PANEL_T / 2          # 1.1725
-PANEL_BOT = PANEL_Y - PANEL_T / 2          # 1.1175
 FRAME_T = afr.FRAME_H_MM / 1000.0          # 0.075
-FRAME_Y = PANEL_TOP - FRAME_T / 2          # 윗면이 유리면과 같은 높이다
+PANEL_BOTTOM_Y = layout.LINE_TRANSFER_MM / 1000.0 + RIDE_CLEAR   # .9525 프레임 하면
+PANEL_TOP = PANEL_BOTTOM_Y + FRAME_T       # 1.0275
+PANEL_Y = PANEL_TOP - PANEL_T / 2          # 1.0    유리 적층체 중심
+PANEL_BOT = PANEL_Y - PANEL_T / 2          # .9725
+FRAME_Y = PANEL_TOP - FRAME_T / 2          # .99    윗면이 유리면과 같은 높이다
+
+# 이송면을 따라 움직여야 하는 것들의 **상대** 위치. 절대값으로 두면 이송면을
+# 바꿀 때마다 조용히 어긋난다 — REV.44 까지 여섯 곳이 그랬다.
+CLAMP_BODY_DY = 0.4775                     # 정반 중심 → 클램프 몸통
+CLAMP_ARM_DY = (0.6275, 0.2975)            # 정반 중심 → 클램프 팔 (올림, 내림)
+CLAMP_PAD_DY = (0.3575, 0.0475)            # 정반 중심 → 클램프 패드 (올림, 내림)
+LM_RAIL_DY, LM_CARR_DY = -0.135, 0.145     # 장변 프레임 중심 → LM 레일·캐리지
+STOPPER_DY = -0.005                        # 장변 프레임 중심 → 정렬 스토퍼 중심
+BASE_TOP_Y = 0.45                          # AFR 베이스 프레임 상면 (씬에 손으로 그린 값)
 
 HALF_X = kinematics.PANEL_MM[0] / 2000.0   # 1.25
 HALF_Z = kinematics.PANEL_MM[1] / 2000.0   # 0.70
@@ -161,7 +177,7 @@ def build_block() -> str:
 
     # ── 정렬 스토퍼 (기존) ────────────────────────────────────────────────
     A(f'var p0=[];[[-1,-{q(0.66)}],[-1,{q(0.66)}],[1,-{q(0.66)}],[1,{q(0.66)}]]'
-      f'.forEach(([sx,cz],t)=>p0.push(P(ot,[.12,.34,.14],[sx*{q(stop_face + 0.08)},1.13,cz],M.orange,'
+      f'.forEach(([sx,cz],t)=>p0.push(P(ot,[.12,.34,.14],[sx*{q(stop_face + 0.08)},{q(FRAME_Y + STOPPER_DY)},cz],M.orange,'
       f't===0?"AFR 양방향 포지티브 스토퍼":null,'
       f'"패널 모서리를 물어 위치·직각도를 확정하고, 단변을 밀기 전에 밀려날 프레임 자리 밖으로 물러납니다.")));')
 
@@ -170,7 +186,7 @@ def build_block() -> str:
       f'P(ot,[{q(2 * bar_w / 3)},{q(bed_t * 2)},2.42],[sx*{q(beam_x)},{q(bed_y + 0.03)},0],M.frame,'
       f'sx<0?"AFR ST-241 스토퍼 지지빔":null,"프레임 스토퍼와 정렬 스토퍼를 함께 받는 빔 — '
       f'베이스 프레임 위에 기둥 둘로 섭니다.");'
-      f'[-1.18,1.18].forEach(function(cz){{P(ot,[.09,.52,.16],[sx*{q(beam_x)},.71,cz],M.frame,null)}});'
+      f'[-1.18,1.18].forEach(function(cz){{P(ot,[.09,{q(bed_y - 0.03 - BASE_TOP_Y)},.16],[sx*{q(beam_x)},{q((BASE_TOP_Y + bed_y - 0.03) / 2)},cz],M.frame,null)}});'
       f'[-{q(stop_z)},{q(stop_z)}].forEach(function(cz,k){{'
       f'P(ot,[{q(stop_t)},{q(FRAME_T + 0.02)},.18],[sx*{q(stop_face + stop_t / 2)},{q(FRAME_Y)},cz],M.orange,'
       f'k===0&&sx<0?"AFR ST-241 프레임 스토퍼":null,'
@@ -186,12 +202,12 @@ def build_block() -> str:
     A(f'var Lu=[],pvAfrPlaten=[],pvAfrBar=[],pvAfrRod=[];')
     A(f'[[-.92,-.58],[-.92,.58],[.92,-.58],[.92,.58]]'
       f'.forEach(([cx,cz],t)=>{{let n=new ce;n.position.set(cx,0,cz),ot.add(n);'
-      f'P(n,[.18,.5,.18],[0,1.7,0],Qt,t===0?"AFR CL-221 상부 클램프":null,'
+      f'P(n,[.18,.5,.18],[0,{q(platen_dy + CLAMP_BODY_DY)},0],Qt,t===0?"AFR CL-221 상부 클램프":null,'
       f'"로드셀 폐루프로 각 {kinematics.AFR_CLAMP_KN:.0f} kN 을 인가합니다. 정반 1매 {a.platen_mass_kg():.0f} kg '
       f'({a.platen_weight_kn():.2f} kN) 를 클램프 둘이 매달므로 패널에 남는 순 압착력은 '
       f'{a.clamp_net_kn():.2f} kN 입니다 — 통짜 정반이면 {a.platen_solid_mass_kg():.0f} kg 이라 '
       f'클램프가 자기 무게도 못 듭니다. 리브 웰드먼트로 강재 점유율 {a.platen_steel_fraction() * 100:.0f} % 입니다.");'
-      f'let s=P(n,[.42,.12,.18],[.13,1.85,0],M.orange),r=P(n,[.28,.08,.22],[.28,1.58,0],M.rubber);'
+      f'let s=P(n,[.42,.12,.18],[.13,{q(platen_dy + CLAMP_ARM_DY[0])},0],M.orange),r=P(n,[.28,.08,.22],[.28,{q(platen_dy + CLAMP_PAD_DY[0])},0],M.rubber);'
       f'Lu.push({{group:n,arm:s,pad:r}})}});')
 
     # ── 정반 · 실린더 · 쇠막대 ───────────────────────────────────────────
@@ -263,15 +279,15 @@ def build_block() -> str:
 
     # ── LM 인발 캐리지 — 롤러가 홈에 들어가 바깥으로 당긴다 ──────────────
     A(f'var Du=[],pvAfrHead=[];[-1,1].forEach(i=>{{'
-      f'P(ot,[2.9,.08,.12],[0,1,i*{q(rail_z)}],M.steel,i<0?"AFR LA-401 35급 듀얼 LM레일":null,'
+      f'P(ot,[2.9,.08,.12],[0,{q(FRAME_Y + LM_RAIL_DY)},i*{q(rail_z)}],M.steel,i<0?"AFR LA-401 35급 듀얼 LM레일":null,'
       f'"장변 한 변에 캐리지 {a.CARRIAGE_PER_SIDE} 대가 양끝에서 중앙으로 {a.LM_STROKE_MM:,} mm 를 '
       f'{a.LM_SPEED_MM_S:.0f} mm/s 로 주행하며 계속 당깁니다.");'
-      f'[-1,1].forEach(e=>{{let t=new ce;t.position.set(e*{q(lm_start)},1.28,i*{q(rail_z)});ot.add(t);'
+      f'[-1,1].forEach(e=>{{let t=new ce;t.position.set(e*{q(lm_start)},{q(FRAME_Y + LM_CARR_DY)},i*{q(rail_z)});ot.add(t);'
       f'P(t,[.32,.18,.26],[0,0,0],M.orange,i<0&&e<0?"AFR LA-401 장축 인발 캐리지":null,'
       f'"롤러가 장변 압출재 홈으로 들어가 걸친 뒤 {a.pull_travel_mm()} mm 바깥으로 당기고, 그 상태로 '
       f'LM 가이드를 타고 이동하며 계속 당깁니다. 양쪽에서 같이 당기므로 프레임이 휘지 않습니다.");'
       f'P(t,[.34,.06,.3],[0,-.1,0],M.dark,null);'
-      f'let hd=new ce;hd.position.set(0,{q(FRAME_Y - 1.28)},{q(park_z - rail_z)}*i),t.add(hd);'
+      f'let hd=new ce;hd.position.set(0,{q(-LM_CARR_DY)},{q(park_z - rail_z)}*i),t.add(hd);'
       f'P(hd,[.09,.09,.3],[0,0,i*.16],M.steel,null);'
       f'P(hd,[{q(2 * roll_r * n_roll + 0.06)},{q(roll_h - 0.004)},.05],[0,0,i*.03],M.dark,null);'
       f'for(let r=0;r<{n_roll};r+=1)Ee(hd,{q(roll_r)},{q(roll_h)},'
@@ -322,7 +338,8 @@ def build_anim() -> str:
       f'PB=me(Se(l,{q(t_drop, 3)},{q(t_up, 3)}));')
     A('let K=g*(1-N);')
     A('Lu.forEach(({arm:V,pad:ae},ie)=>{let De=K>.95?Math.sin(l*8+ie)*.003:0;'
-      'V.position.y=le(1.85,1.52,K)+De,ae.position.y=le(1.58,1.27,K)+De}),')
+      f'V.position.y=le({q(platen_dy + CLAMP_ARM_DY[0])},{q(platen_dy + CLAMP_ARM_DY[1])},K)+De,'
+      f'ae.position.y=le({q(platen_dy + CLAMP_PAD_DY[0])},{q(platen_dy + CLAMP_PAD_DY[1])},K)+De}}),')
     A(f'pvAfrPlaten.forEach(V=>{{V.position.y=le({q(platen_dy + lift)},{q(platen_dy)},PD)+{q(lift)}*PU}}),')
     A(f'p0.forEach((V,ae)=>{{let ie=me(Se(l,4.8,7.2))*(1-me(Se(l,9.4,9.9)));'
       f'V.position.x=(ae<2?-1:1)*le({q(stop_open)},{q(stop_shut)},ie)}}),')
