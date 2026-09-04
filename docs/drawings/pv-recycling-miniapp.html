@@ -1650,14 +1650,36 @@ html>body{padding:0}</style>
       실제로 Cu 를 농축하는 것은 리본이 잘리지 않고 굵게 남는 성질(＋CC-201 비중차)인데, 그것을 재려면
       <strong>Cu 상(相)을 별도 입자군으로 분리</strong>해야 합니다. 지금 표의 구리제품 품위는
       <strong>하한</strong>으로 읽고, LAB-601 밴드별 분석이 들어오면 그 값으로 대체합니다.</p>
-    <p class="text-small text-muted"><strong>또 하나 — &lt;75 µm 는 이 모델에서 거의 나오지 않습니다.</strong>
-      제품 입도가 D10 0.181 mm 라 75 µm 미만이 사실상 없고, 그래서 AS-101 로 넘어가는 건식 급광이
-      표에서 0.0 % 로 잡힙니다. 아래 부선 회로 수지는 그 흐름이 아니라 자체 급광조성
-      (<code>FLOTATION_FEED</code>) 기준으로 푼 것입니다 — 건식 PSD 와 습식 급광을 잇는 것은
-      별도 과제로 남겨 둡니다.</p>
+    <p class="text-small text-muted">위 표의 &lt;75 µm 행은 이제 <strong>습식으로 실제로 넘어가는 양</strong>입니다.
+      종전에는 파괴커널에 미분 갈래가 없어 이 스트림이 0 에 가까웠고(제품의 0.06 %), 아래 부선 수지는
+      건식과 무관한 하드코딩 조성으로 풀리고 있었습니다. 커널을 고치고(<strong>표면 미분 갈래</strong>)
+      급광 조성을 건식 미분 산물에서 계산하도록 이었습니다 — 자세한 것은 아래 두 절입니다.</p>
+
+    <strong>습식부 소요 duty — 급광 <span data-wet-feed>—</span> kg/h</strong>
+    <p class="text-small">습식으로 넘어가는 것은 <strong>&lt;75 µm 뿐</strong>이고, 그 몫은 손으로 정하는 값이 아니라
+      산물 PSD 에서 읽는 값입니다 — <code>MODEL_PRODUCT_UNDER75_FRACTION</code>
+      <span data-wet-fines-pct>—</span> % × 건식 산물 <span data-wet-sieve-feed>—</span> kg/h.
+      종전 정격 <strong>176 kg/h</strong> 는 문서에 유도가 없지만, 용기 용적이 그 값에서 표준 체류시간의
+      1.35–1.80 배로 잡혀 있어 <strong>설계 기준 자체는 176 이었음</strong>이 확인됩니다 —
+      건식이 그 양을 만들지 못할 뿐입니다.</p>
+    <div class="table-responsive"><table class="table table-sm" aria-label="습식부 소요 duty">
+      <thead><tr><th>단위</th><th class="text-end">설치 용적</th><th class="text-end">소요 용적<br>(표준 체류)</th><th class="text-end">실제 체류</th><th class="text-end">용량 여유</th></tr></thead>
+      <tbody data-wet-duty></tbody>
+    </table></div>
+    <p class="text-small dd-warning"><strong>결론 — 습식 트레인이 4–8 배 과대합니다.</strong>
+      성능 문제는 아닙니다. 체류가 길수록 계면박리는 오히려 좋아져 AS-101 박리도가
+      명판 5 min 의 0.950 에서 <span data-wet-debond>—</span> 로 올라갑니다. 손해는 자본비·교반동력과
+      과체류로 인한 슬라임화입니다. <strong>용기를 줄일지, 캠페인 운전으로 갈지, 여유로 둘지는
+      설계 판단</strong>이라 형상은 손대지 않고 소요값만 제시합니다.</p>
+    <p class="text-small dd-warning"><strong>같이 봐야 할 것 — Ag 의 대부분이 습식으로 오지 않습니다.</strong>
+      이 회로에서 습식은 &lt;75 µm 만 받으므로 건식 산물의 <span data-wet-copper-share>—</span> % 가
+      <code>BIN-Cu</code> 로 나갑니다. Ag 는 A·C 군에 있으므로 <strong>Ag 회수 회로가 보는 것은
+      전체의 일부</strong>입니다. 아래 표의 분배는 그 일부 안에서 닫히는 값입니다 —
+      플랜트 전체 Ag 회수율이 아닙니다.</p>
 
     <strong>부선 회로 수지 (실시간 · 급광 100 기준)</strong>
-    <p class="text-small">클리너 광미와 스캐빈저 정광이 러퍼로 돌아오는 환류가 있으므로 고정점 반복 24 회로 풉니다.</p>
+    <p class="text-small">클리너 광미와 스캐빈저 정광이 러퍼로 돌아오는 환류가 있으므로 고정점 반복 24 회로 풉니다.
+      급광 조성은 <b data-met-feed-source>—</b> 입니다.</p>
     <div class="table-responsive"><table class="table table-sm" aria-label="부선 회로 물질수지">
       <thead><tr><th>스트림</th><th class="text-end">질량</th><th class="text-end">Ag 품위</th><th class="text-end">주성분</th><th class="text-end">Ag 분배</th></tr></thead>
       <tbody>
@@ -1674,6 +1696,14 @@ html>body{padding:0}</style>
       스트림은 사실상 <strong>유기물 리젝트</strong>이고, Ag 는 대부분 <strong>광미(FP-301 Si 케이크)</strong>로 갑니다.
       위 표의 두 품위를 비교하면 광미 쪽이 더 높습니다 — 즉 이 회로는
       <strong>역부선(reverse flotation)</strong> 으로 거동합니다.</p>
+    <p class="text-small dd-warning"><strong>급광을 건식에 잇고 나니 이 경향이 훨씬 뚜렷해집니다.</strong>
+      하드코딩 조성은 B 를 42 % 로 잡고 있었는데, 건식이 실제로 보내는 &lt;75 µm 는
+      <strong>B 가 11 % 뿐</strong>입니다 — 표면미분은 인성에 반비례해 생기므로 질긴 백시트는 거의
+      갈리지 않고, 남은 C 도 어트리션에서 거의 다 벗겨져(박리도 1.000) 맨셀 쪽으로 갑니다.
+      그 결과 두수 Ag 품위가 <strong>2,532 → 4,007 g/t</strong> 로 오르고, 거품 산물은
+      질량 <strong>12.5 %·625 g/t</strong> 에 그쳐 <strong>Ag 의 98 % 가 광미(FP-301 Si 케이크)</strong> 로
+      갑니다. <code>BIN-204·CF-204·TK-204</code> 의 「Ag 정광」 태그와 실제 산물의 괴리가
+      종전보다 더 커졌다는 뜻입니다.</p>
     <p class="text-small"><strong>명명 결정 — 「Ag 정광」 태그는 현행 유지합니다.</strong>
       <code>BIN-204</code>·<code>CF-204</code>·<code>TK-204</code> 의 명칭은 그대로 두고, BOM·투어·전장 문서도
       손대지 않습니다. 다만 <strong>태그 이름과 실제 산물이 다르다는 것은 기록으로 남깁니다</strong> —
@@ -1767,27 +1797,28 @@ html>body{padding:0}</style>
           <tr><th>상류 연동제어</th><td>FD-101 LSHH-101 90%에서 SCV-P1과 ICSH-301을 순차 정지 · HSG 운전허가·BF-101 음압정상·SCV-P1 회전확인 후 Shredder 투입 허가</td></tr>
           <tr><th>PLC-101 제어구성</th><td>주제어반＋HMI＋RIO-301 · 하류 우선 5단 기동·상류 우선 정상정지 · 공정 트립 래치 · 음압·속도·스크린·스크루 피드백 인터록</td></tr>
           <tr><th>Shredder 국소집진</th><td>ICSH-301 호퍼·SCR-001 밀폐커버의 DN150 분진분기 2개 → BF-101 오염공기 헤더 · 외기 유입형 미세음압 · 양압 분사 없음</td></tr>
-          <tr><th>폐회로 분급 보정</th><td>SC-500 단독 기준 환류 q = 0.25 → 100/400 kg/h · SS-201 ≥75 µm 환류가 발생하면 합산환류 계측값으로 신규 투입을 감량 · 신규 코호트 1차 통과 78.9347%</td></tr>
-          <tr><th>Rev.P 파쇄커널</th><td>B계 백시트 박편의 4번째 파쇄비 0.480→0.455 재보정 · 시드 고정 동적 시험으로 strict 500 µm 컷과 질량폐합을 동시 검증</td></tr>
+          <tr><th>폐회로 분급 보정</th><td>2단 오버 환류 q = 0.2391 → 80.11/335.11 kg/h (밀 부하 380.11) · 1단 2 mm 오버 45.0 kg/h 는 회로를 떠난다 · SS-201 ≥75 µm 는 환류가 아니라 구리 산물이므로 합산환류에 들어가지 않는다 · 환류량은 상수가 아니라 firstReturn·RETURN_PASS_RECYCLE_FRACTION 에서 등비급수로 계산</td></tr>
+          <tr><th>파괴함수</th><td>큰 파편 5빈(Rev.P · B계 4번째 파쇄비 0.455) ＋ <strong>표면 미분 4빈</strong>(Gaudin–Schuhmann m 0.85) · 미분율 φ = 0.20/인성 → A 0.278 · C 0.169 · B 0.141 · 종전에는 미분 갈래가 없어 pattern[0]×0.58×0.92 = A 69.4 · C 74.7 · B 85.4 µm 라는 구조적 하한이 있었다</td></tr>
           <tr><th>분쇄기 통과량</th><td>신규 최대 300 kg/h · SC-500＋SS-201 합산환류 포함 HSG 총부하 400 kg/h 이하</td></tr>
           <tr><th>CV-101 이송용량</th><td>약 <span data-hsg-transfer-capacity>—</span> kg/h · 요구량 대비 <span data-hsg-transfer-margin>—</span>% 여유 · 벌크밀도 350 kg/m³·충전율 18%·경사보정 0.85 가정</td></tr>
           <tr><th>음압이송 설계점</th><td>보어 137 mm (DN150 t6.0 셸＋8 mm 알루미나) · 900 m³/h · 관내속도 <span data-hsg-duct-velocity>—</span> m/s · 정상 하우징압 −150~−300 Pa</td></tr>
           <tr><th>배관 연결순서</th><td>L01 분쇄물 음압이송 → L02 500 µm 환류 → L03 &lt;500 µm 후단선별 → L04 공기분급 투입 → L05 청정가스·배기 → L06 75 µm 마감 → L07 국소집진·필터회분 회수</td></tr>
           <tr><th>ID 팬·압력여유</th><td>BF-101 후단 5.5 kW VFD · 최대 −6.0 kPa · 정상 추정손실 <span data-hsg-pressure-drop>—</span> kPa · 실측 차압으로 보정</td></tr>
           <tr><th>리턴스크류 예비용량</th><td>약 <span data-hsg-return-capacity>—</span> kg/h · 요구량 대비 <span data-hsg-return-margin>—</span>% 여유 · 벌크밀도 350 kg/m³·충전율 15%·경사보정 0.60 가정</td></tr>
-          <tr><th>SC-500 운전점</th><td>밀폐형 1단 경사스크린 · 500 µm · 경사 12° · 가진 25 Hz · 변위 3.0 mm p-p · 화면만 4 Hz/변위 4배</td></tr>
+          <tr><th>SC-500 운전점</th><td>밀폐형 <strong>2단</strong> 경사스크린 W800 × L1400 · 1단 2 mm(백시트 폐기) ＋ 2단 500 µm(폐회로 환류) · 경사 12° · 가진 25 Hz · 변위 3.0 mm p-p · 화면만 4 Hz/변위 4배</td></tr>
           <tr><th>CH-501 집하부</th><td>상부 800 × 1500 mm급 사각뿔 집하호퍼 · 벽각 ≥60° · Ø200 × 280 원통 토출 · 고정 프레임 · 난연 정전기방지 유연스커트</td></tr>
           <tr><th>Sheeve 후단</th><td>RV-201 압력격리 → PC-201 DN100 음압리프트·리시버 에어록 → 상부 VS-501 0.9 mm 분산 → 밀폐 하향슈트 → SV-201 Ø1200 · 280/106/75 µm · 960 rpm</td></tr>
           <tr><th>비산방지 배관</th><td>노출 컨베이어 없음 · 모든 고형물관 밀폐 · SC/CH/VS/SV/SS와 밀폐 제품통 벤트는 BF-101 또는 BF-201 오염공기 헤더로 연결 · 두 팬 후단 소음기·배기스택 적용</td></tr>
           <tr><th>CC-201 공기분급</th><td>75–280 µm 선별물을 0.70–1.00 m/s 상승류에서 중량물과 EVA·백시트 경량물로 분리 · 실제 절단점은 원료별 파일럿 보정</td></tr>
           <tr><th>CY/BF-201 흡인계통</th><td>CC-201 상부 경량·미분 → 접선식 CY-201 → RV-202 → SS-201 · CY 청정가스 → BF-201 → 후단 ID 팬 → 배기스택 · BF-201 포집분은 RV-203을 거쳐 SS-201 합류</td></tr>
           <tr><th>SS-201 분리토출</th><td>CY-201 회수물과 SV-201 PAN 미분을 75 µm 원형 스크린에서 재검증 · ≥75 µm는 RV-402/RC-201/VR-201로 BIN-Cu 구리 제품빈 이송 · &lt;75 µm는 VR-401 진공수신 후 습식 정량공급</td></tr>
+          <tr><th>습식 급광 연결</th><td>부선 급광 조성은 하드코딩이 아니라 건식 &lt;75 µm 산물의 A/B/C 질량에 AS-101 계면박리를 걸어 계산 · 급광량 42.1 kg/h 는 산물 PSD 의 &lt;75 µm 비에서 유도 · 설치 용기는 176 kg/h 기준이라 2.5–7.5 배 과대</td></tr>
           <tr><th>SS-201 분리 가정</th><td>현재 영상은 기존 75 µm 입도밴드를 이용한 이상적 라우팅으로 질량을 보존함 · 실제 분리효율·블라인딩·Tromp 곡선은 원료 파일럿 시험으로 보정 필요</td></tr>
           <tr><th>75 µm 데크 조건</th><td>EVA·실리콘·백시트 복합입자의 망눈폐색 위험이 커 메시 세정 또는 초음파 보조가 필요하며, 파일럿 체분석 전 성능보증값이 아님</td></tr>
           <tr><th>입자군 가정</th><td>A Si+EVA/백시트 없음 35% · B 탈락 백시트 20% · C Si+EVA+백시트 결합 45% · 실측 조성으로 교체 필요</td></tr>
           <tr><th>하이브리드 모델</th><td>Si 취성 Weibull · EVA SLS 점탄성 · 계면 mixed-mode CZM · 백시트 탄소성/인열 · 분리 후 비구형 DEM/PBM</td></tr>
           <tr><th>TET4 대표해석</th><td>10 mm 층상 입자 · 국부 최소 0.05–0.08 mm 권장 · 브라우저는 질량보존 응답커널과 저차 형상으로 실시간 재현</td></tr>
-          <tr><th>제품 입도 예측</th><td>0.50 mm strict oversize guard + 형상별 Tromp · D95 ≈ <span data-hsg-model-d95>—</span> mm · Dmax &lt;0.500 mm</td></tr>
+          <tr><th>제품 입도 예측</th><td>0.50 mm strict oversize guard + 형상별 Tromp · D95 ≈ <span data-hsg-model-d95>—</span> mm · Dmax &lt;0.500 mm · &lt;75 µm 16.5 %(＝습식 급광) · 커널에 미분 갈래를 넣기 전에는 0.06 % 였다</td></tr>
           <tr><th>산출물 형태 전이</th><td>bare Si+EVA 43.1591% · 탈락 백시트 21.9946% · 결합복합체 34.8463% · C군 박리질량은 층 두께·밀도 기준 0.803043/0.196957로 보존 분할</td></tr>
           <tr><th>분급곡선 가정</th><td>d50 = 0.50 mm · 전이척도 0.055 mm · 파일럿 Tromp 곡선 필요</td></tr>
           <tr><th>로터·동력 점검</th><td>Ø450 · 1,500 rpm → 팁속도 <span data-hsg-tip-speed>—</span> m/s · 정격 <span data-hsg-specific-energy>—</span> kWh/t</td></tr>
@@ -1874,6 +1905,31 @@ html>body{padding:0}</style>
       등비급수로 <code>R = P₁/(1−r)</code> = <strong>80.11 kg/h</strong>, 밀 부하
       <strong>380.11 kg/h</strong> 입니다. 종전 식 <code>신규 × q/(1−q)</code>(q 0.25 → 100 kg/h)는
       스캘핑이 없던 회로의 값이었습니다.</p>
+    <strong>파괴함수에 미분 갈래를 넣었습니다 — 하한 69 µm 가 사라집니다</strong>
+    <p class="text-small">종전 커널은 큰 파편 5빈뿐이라 최소 입도가
+      <code>pattern[0] × passScale 하한(0.58) × U 하한(0.92)</code> 로 묶여 있었습니다 —
+      <strong>A 69.4 · C 74.7 · B 85.4 µm</strong>. B 는 아무리 갈아도 75 µm 아래로 갈 수 없었고,
+      정상상태 &lt;75 µm 산출이 <strong>0.22 kg/h (산물의 0.06 %)</strong> 뿐이었습니다.
+      충격파괴 산물은 원래 두 갈래입니다 — 날에 맞아 쪼개진 <strong>큰 파편</strong>과 접촉면에서 갈려 나온
+      <strong>표면 미분</strong>. 미분 갈래를 Gaudin–Schuhmann
+      <code>P(d) = (d/d<sub>top</sub>)<sup>m</sup></code> (m 0.85) 등질량 4빈으로 붙이고,
+      대표 입도를 분위수 <strong>중앙값</strong>에서 잡아 하한을 없앴습니다.
+      미분율은 <strong>인성에 반비례</strong>하게 두어 입자군 정의에서 유도합니다 —
+      φ = 0.20 / toughness → <strong>A 0.278 · C 0.169 · B 0.141</strong>.
+      무른 c-Si 는 갈리고 질긴 폴리머 필름은 갈리지 않고 접힙니다.</p>
+    <div class="table-responsive"><table class="table table-sm" aria-label="산물 PSD 재보정">
+      <thead><tr><th>산물 PSD (모델 실측)</th><th class="text-end">D10</th><th class="text-end">D50</th><th class="text-end">D80</th><th class="text-end">D95</th><th class="text-end">&lt;75 µm</th></tr></thead>
+      <tbody>
+        <tr><td>종전 (미분 갈래 없음)</td><td class="text-end">0.181</td><td class="text-end">0.306</td><td class="text-end">0.384</td><td class="text-end">0.438</td><td class="text-end">0.06 %</td></tr>
+        <tr><td><strong>현행</strong></td><td class="text-end"><strong>0.042</strong></td><td class="text-end"><strong>0.223</strong></td><td class="text-end"><strong>0.332</strong></td><td class="text-end"><strong>0.428</strong></td><td class="text-end"><strong>16.5 %</strong></td></tr>
+        <tr><td class="text-muted">참고 · GGS m = 1, k = 500 µm</td><td class="text-end text-muted">0.050</td><td class="text-end text-muted">0.250</td><td class="text-end text-muted">0.400</td><td class="text-end text-muted">0.475</td><td class="text-end text-muted">15 %</td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small text-muted">K = 0.20 은 폐회로 산물이 500 µm 컷에서 GGS m ≈ 1 에 앉도록 잡은 값입니다.
+      D 값들은 손으로 정한 상수가 아니라 모델을 돌려 <code>productSamples</code>(질량가중)에서 읽은
+      <strong>실측값</strong>이므로, 커널이 바뀌면 함께 바뀝니다. 실제 체분석(LAB-601)이 들어오면
+      m 과 K 를 그 곡선에 맞춰 다시 잡아야 합니다.</p>
+
     <p class="text-small text-muted">따라 움직이는 값 — 비에너지의 분모가 신규가 아니라 밀 부하이므로
       <strong>37 kW ÷ 0.3801 t/h = 97.3 kWh/t</strong> (종전 92.5). 부하가 줄어 비에너지가 오르는 것이
       맞습니다: 같은 모터로 더 적은 양을 갈면 t 당 투입에너지는 커집니다.
@@ -19139,6 +19195,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       siSi: root.querySelector("[data-met-si-si]"),
       siAg: root.querySelector("[data-met-si-ag]"),
       closure: root.querySelector("[data-met-closure]"),
+      feedSource: root.querySelector("[data-met-feed-source]"),
       cuHead: root.querySelector("[data-cu-head]"),
       cuHeadAg: root.querySelector("[data-cu-head-ag]"),
       cuMassClosure: root.querySelector("[data-cu-mass-closure]"),
@@ -19617,11 +19674,17 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const CLASSIFIER_D50_MM = 0.50;
     const CLASSIFIER_SIGMA_MM = 0.055;
     const FEED_DMAX_MM = 10;
-    const MODEL_PRODUCT_D10_MM = 0.1813;
-    const MODEL_PRODUCT_D50_MM = 0.3063;
-    const MODEL_PRODUCT_D80_MM = 0.3835;
-    const MODEL_PRODUCT_D95_MM = 0.4375;
-    const MODEL_PRODUCT_DMAX_MM = 0.5000;
+    // 폐회로 산물 PSD — 모델을 60분 지평까지 돌려 productSamples(질량가중)에서 읽은
+    // **실측값**이다. 손으로 정한 값이 아니므로 커널이 바뀌면 함께 바뀐다.
+    // 표면 미분 갈래를 넣기 전에는 D10 0.1813 · D50 0.3063 · D80 0.3835 · D95 0.4375 였다 —
+    // 미분이 없어 분포가 굵은 쪽으로 몰려 있었다.
+    const MODEL_PRODUCT_D10_MM = 0.0415;
+    const MODEL_PRODUCT_D50_MM = 0.2233;
+    const MODEL_PRODUCT_D80_MM = 0.3315;
+    const MODEL_PRODUCT_D95_MM = 0.4282;
+    const MODEL_PRODUCT_DMAX_MM = 0.4998;
+    // 산물 중 75 µm 미만의 질량비 — 습식 급광(AS-101)을 정하는 값이다.
+    const MODEL_PRODUCT_UNDER75_FRACTION = 0.165;
     const RETURN_PASS_RECYCLE_FRACTION = 0.368037;
     const ROTOR_DIAMETER_M = 0.45;
     const ROTOR_RPM = DRIVE_RPM.grinderRotor;
@@ -19700,6 +19763,40 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const SIEVE_FEED_KGH = FRESH_FEED_KGH - BACKSHEET_REJECT_KGH;
     // 비에너지의 분모는 밀이 실제로 받는 양이다 — 신규가 아니라 밀 부하.
     const RATED_SPECIFIC_ENERGY_KWHT = MOTOR_POWER_KW / (MILL_FEED_KGH / 1000);
+
+    // ---- 건식 → 습식 인계 --------------------------------------------------
+    // 습식으로 넘어가는 것은 <75 µm 뿐이다(사용자 확정 회로). 그 몫은 손으로
+    // 정하는 값이 아니라 **산물 PSD 에서 읽는 값**이다.
+    // 종전 습식부 정격 176 kg/h 는 문서에 유도가 없지만 용기 용적이 그 값에서
+    // 표준 체류시간 × 1.35–1.80 배로 잡혀 있어, 설계 기준 자체는 176 이었음이
+    // 확인된다 — 건식이 그 양을 만들지 못할 뿐이다.
+    const WET_FEED_KGH = SIEVE_FEED_KGH * MODEL_PRODUCT_UNDER75_FRACTION;
+    const COPPER_PRODUCT_KGH = SIEVE_FEED_KGH - WET_FEED_KGH;
+    const WET_FEED_LEGACY_BASIS_KGH = 176;
+    // 슬러리 환산 — 고형분 비중 2.4(유리 없는 c-Si·폴리머 혼합)
+    const WET_SOLIDS_SG = 2.4;
+    const slurryDensityTM3 = (solidsWt) => 1 / (solidsWt / WET_SOLIDS_SG + (1 - solidsWt));
+    const slurryFlowM3H = (kgh, solidsWt) => kgh / (slurryDensityTM3(solidsWt) * 1000 * solidsWt);
+    const AS101_FEED_SOLIDS_WT = 0.65;      // TK-001 55–70 wt% 의 중앙값
+    const FLOTATION_SOLIDS_WT = 0.25;       // TK-101 10–30 wt% 의 중앙값
+    const AS101_CELL_L = 40;
+    const FC_CELL_L = Object.freeze({ rougher: 180, cleaner: 30, scavenger: 190 });
+    const AS101_FEED_M3H = slurryFlowM3H(WET_FEED_KGH, AS101_FEED_SOLIDS_WT);
+    const FLOTATION_FEED_M3H = slurryFlowM3H(WET_FEED_KGH, FLOTATION_SOLIDS_WT);
+    const residenceMin = (cellL, m3h) => cellL / 1000 / m3h * 60;
+    // 명판 5 min 이 아니라 **실제 체류시간**이다. 급광이 설계의 1/4 이므로 4 배 길다.
+    const AS101_ACTUAL_RESIDENCE_MIN = residenceMin(AS101_CELL_L, AS101_FEED_M3H);
+    // 표준 체류시간 — 어트리션 5–15 · 러퍼 5–15 · 클리너 3–8 · 스캐빈저 8–20 min 의 중앙값
+    const WET_STANDARD_RESIDENCE_MIN = Object.freeze({ attrition: 10, rougher: 10, cleaner: 5, scavenger: 14 });
+    const WET_DUTY = Object.freeze([
+      { key: "attrition", label: "AS-101 어트리션", installedL: AS101_CELL_L, m3h: AS101_FEED_M3H, std: WET_STANDARD_RESIDENCE_MIN.attrition, note: "" },
+      { key: "rougher", label: "FC-201 러퍼", installedL: FC_CELL_L.rougher, m3h: FLOTATION_FEED_M3H, std: WET_STANDARD_RESIDENCE_MIN.rougher, note: "" },
+      { key: "cleaner", label: "FC-202 클리너", installedL: FC_CELL_L.cleaner, m3h: FLOTATION_FEED_M3H, std: WET_STANDARD_RESIDENCE_MIN.cleaner, note: "러퍼 정광만 받으므로 실제는 더 길다" },
+      { key: "scavenger", label: "FC-203 스캐빈저", installedL: FC_CELL_L.scavenger, m3h: FLOTATION_FEED_M3H, std: WET_STANDARD_RESIDENCE_MIN.scavenger, note: "" }
+    ].map((row) => {
+      const requiredL = row.m3h * row.std / 60 * 1000;
+      return { ...row, requiredL, residenceMin: residenceMin(row.installedL, row.m3h), margin: row.installedL / requiredL };
+    }));
     root.querySelector("[data-hsg-model-d95]").textContent = MODEL_PRODUCT_D95_MM.toFixed(3);
     root.querySelector("[data-hsg-tip-speed]").textContent = ROTOR_TIP_SPEED_MS.toFixed(1);
     root.querySelector("[data-hsg-specific-energy]").textContent = RATED_SPECIFIC_ENERGY_KWHT.toFixed(1);
@@ -19908,6 +20005,26 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return mass > 0 ? cohorts.reduce((sum, item) => sum + item[key] * item.mass, 0) / mass : 0;
     }
 
+    // ---- 파괴함수 — 큰 파편 ＋ 표면 미분 ------------------------------------
+    // 충격파괴 산물은 두 갈래다. 날에 맞아 쪼개진 **큰 파편**과, 접촉면에서 갈려
+    // 나온 **표면 미분**이다. 종전 커널은 큰 파편 5빈만 담고 있었고, 그 결과
+    //   최소 입도 = pattern[0] × passScale 하한(0.58) × U 하한(0.92)
+    // 즉 A 69.4 · C 74.7 · B 85.4 µm 라는 **구조적 하한**이 생겼다. B 는 아무리
+    // 갈아도 75 µm 아래로 갈 수 없었고, 정상상태 <75 µm 산출이 0.22 kg/h
+    // (산물의 0.06 %) 뿐이라 AS-101 습식 급광이 사실상 0 이었다.
+    //
+    // 미분 갈래를 Gaudin–Schuhmann 으로 붙인다 — 누적통과 P(d) = (d/d_top)^m.
+    // 등질량 NF 빈의 분위수 **중앙값**에서 대표 입도를 잡으므로 하한이 없다.
+    // d_top 은 큰 파편의 최소 크기로 둔다: 미분은 그 아래를 채우는 갈래다.
+    const BREAKAGE_FINES_BINS = 4;
+    const BREAKAGE_FINES_MODULUS = 0.85;   // 건식 충격분쇄 미분의 GGS 계수 (0.7–1.0)
+    // 표면 미분율은 **인성에 반비례**한다 — 무른 c-Si 는 갈리고, 질긴 폴리머
+    // 필름은 갈리지 않고 접힌다. φ_t = K / toughness_t 로 두어 입자군 정의에서
+    // 유도한다(A 0.278 · C 0.169 · B 0.141). K 는 폐회로 산물이 500 µm 컷에서
+    // GGS m ≈ 1 (= <75 µm 15 %)에 앉도록 잡은 값이다.
+    const BREAKAGE_FINES_K = 0.20;
+    const breakageFinesFraction = (type) => Math.min(0.45, BREAKAGE_FINES_K / particleClasses[type].toughness);
+
     function makeBreakageKernel(type, mass, pass, inputDmax) {
       const patterns = {
         A: [0.13, 0.21, 0.29, 0.38, 0.58],
@@ -19917,9 +20034,25 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       const weights = type === "B" ? [0.10, 0.20, 0.28, 0.25, 0.17] : [0.12, 0.22, 0.30, 0.23, 0.13];
       const passScale = pass > 1 ? Math.max(0.58, 0.82 ** (pass - 1)) : 1;
       const cap = Math.max(0.12, inputDmax * 0.92);
-      return weights.map((weight, index) => ({
-        sizeMm: Math.max(0.03, Math.min(cap, patterns[type][index] * passScale * (0.92 + random() * 0.16))),
-        mass: mass * weight
+      const finesFraction = breakageFinesFraction(type);
+      // 대표 입도와 질량을 먼저 정하고 난수는 **한 자리에서** 한 번씩만 뽑는다 —
+      // 호출부가 늘면 시드열 무결성 점검(호출부 수)이 깨진다.
+      const spec = weights.map((weight, index) => ({
+        base: patterns[type][index] * passScale,
+        mass: mass * weight * (1 - finesFraction)
+      }));
+      const fineTop = patterns[type][0] * passScale;
+      for (let i = 0; i < BREAKAGE_FINES_BINS; i += 1) {
+        const quantile = (i + 0.5) / BREAKAGE_FINES_BINS;
+        spec.push({
+          base: fineTop * quantile ** (1 / BREAKAGE_FINES_MODULUS),
+          mass: mass * finesFraction / BREAKAGE_FINES_BINS
+        });
+      }
+      return spec.map((item) => ({
+        // 하한 2 µm — 종전 30 µm 는 미분 갈래의 최저 빈(약 11 µm)을 잘라 버린다.
+        sizeMm: Math.max(0.002, Math.min(cap, item.base * (0.92 + random() * 0.16))),
+        mass: item.mass
       }));
     }
 
@@ -20352,8 +20485,47 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         });
       }
     });
-    // AS-101 을 지난 급광 조성. 계면박리 0.95 이므로 결합체로 남는 몫은 얼마 안 된다.
-    const FLOTATION_FEED = { B: 0.42, A: 0.50, C: 0.08 };
+    // ---- AS-101 을 지난 부선 급광 조성 --------------------------------------
+    // 종전에는 { B 0.42 · A 0.50 · C 0.08 } 하드코딩이었고, 건식이 실제로 무엇을
+    // 보내는지와 무관했다. 신규 급광 조성(A 0.35 · B 0.20 · C 0.45)이 통째로 습식에
+    // 온다는 전제에서 나온 값으로 보이는데, 이 회로에서 습식으로 가는 것은
+    // **<75 µm 표면미분뿐**이고 그 조성은 전혀 다르다 — 미분율이 인성에 반비례하므로
+    // 무른 A 가 지배한다. 이제 건식 미분 산물의 A/B/C 질량에 어트리션 계면박리를
+    // 걸어 계산한다: C 가 벗겨지면 맨셀(A)과 떨어진 백시트(B)로 갈라진다.
+    const FLOTATION_FEED_DESIGN = Object.freeze({ B: 0.42, A: 0.50, C: 0.08 });
+    const C_BACKSHEET_MASS_FRACTION = 0.1969570654;   // C 입자 질량 중 백시트 몫
+    const FLOTATION_FEED_MIN_KG = 0.5;                // 이 아래면 아직 표본이 못 된다
+    function flotationFeedComposition() {
+      const fines = state.outletClassMass.fines;
+      const total = fines.A + fines.B + fines.C;
+      if (!(total >= FLOTATION_FEED_MIN_KG)) return FLOTATION_FEED_DESIGN;
+      const freed = fines.C * as101Debond(AS101_ACTUAL_RESIDENCE_MIN);
+      const blend = {
+        A: fines.A + freed * (1 - C_BACKSHEET_MASS_FRACTION),
+        B: fines.B + freed * C_BACKSHEET_MASS_FRACTION,
+        C: fines.C - freed
+      };
+      const sum = blend.A + blend.B + blend.C;
+      return { A: blend.A / sum, B: blend.B / sum, C: blend.C / sum };
+    }
+
+    // 습식부 소요 duty — 전부 위 상수에서 나오므로 초기화 때 한 번 그린다.
+    {
+      const set = (sel, text) => { const node = root.querySelector(sel); if (node) node.textContent = text; };
+      set("[data-wet-feed]", WET_FEED_KGH.toFixed(1));
+      set("[data-wet-sieve-feed]", SIEVE_FEED_KGH.toFixed(0));
+      set("[data-wet-fines-pct]", (MODEL_PRODUCT_UNDER75_FRACTION * 100).toFixed(1));
+      set("[data-wet-debond]", as101Debond(AS101_ACTUAL_RESIDENCE_MIN).toFixed(3));
+      set("[data-wet-copper-share]", (COPPER_PRODUCT_KGH / SIEVE_FEED_KGH * 100).toFixed(1));
+      const body = root.querySelector("[data-wet-duty]");
+      if (body) {
+        body.innerHTML = WET_DUTY.map((row) => "<tr><td>" + row.label + (row.note ? " <span class=\"text-muted\">· " + row.note + "</span>" : "")
+          + "</td><td class=\"text-end\">" + row.installedL.toFixed(0) + " L</td><td class=\"text-end\">"
+          + row.requiredL.toFixed(1) + " L (" + row.std + " min)</td><td class=\"text-end\">"
+          + row.residenceMin.toFixed(1) + " min</td><td class=\"text-end\"><strong>"
+          + row.margin.toFixed(1) + " 배</strong></td></tr>").join("");
+      }
+    }
 
     // ---- 야금수지 (스트림별 조성) ------------------------------------------
     // 지금까지 상태량은 입도 밴드별 질량뿐이라 「몇 kg 이 어느 입도로 나갔나」까지만
@@ -20383,14 +20555,17 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
     // 회로에 환류가 있으므로(클리너 광미·스캐빈저 정광 → 러퍼) 고정점 반복으로 푼다.
     // 24 회면 닫힌다 — 수렴 잔차는 패널에 그대로 띄운다.
-    const metallurgy = { feed: null, frothProduct: null, siProduct: null, agToFroth: 0, agToSi: 0, closure: 0 };
+    const metallurgy = { feed: null, feedComposition: FLOTATION_FEED_DESIGN, frothProduct: null, siProduct: null, agToFroth: 0, agToSi: 0, closure: 0, feedIsLive: false };
     function updateMetallurgy() {
+      // 급광 조성은 이제 건식 미분 산물에서 계산된다(운전 초기에는 설계 조성).
+      const feedComposition = flotationFeedComposition();
+      metallurgy.feedIsLive = feedComposition !== FLOTATION_FEED_DESIGN;
       let recycle = { A: 0, B: 0, C: 0 };
       let frothProduct = { A: 0, B: 0, C: 0 }, siProduct = { A: 0, B: 0, C: 0 };
       for (let pass = 0; pass < 24; pass += 1) {
         const cleanerTail = { A: 0, B: 0, C: 0 }, scavFroth = { A: 0, B: 0, C: 0 };
         for (const t of ASSAY_TYPES) {
-          const toRougher = FLOTATION_FEED[t] + recycle[t];
+          const toRougher = feedComposition[t] + recycle[t];
           const rf = toRougher * flotationCells[0].recovery[t];   // 러퍼 정광 → 클리너
           const rt = toRougher - rf;                              // 러퍼 광미 → 스캐빈저
           frothProduct[t] = rf * flotationCells[1].recovery[t];   // 클리너 정광 = 최종 부선산물
@@ -20400,7 +20575,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         }
         recycle = { A: cleanerTail.A + scavFroth.A, B: cleanerTail.B + scavFroth.B, C: cleanerTail.C + scavFroth.C };
       }
-      metallurgy.feed = blendAssay(FLOTATION_FEED);
+      metallurgy.feedComposition = feedComposition;
+      metallurgy.feed = blendAssay(feedComposition);
       metallurgy.frothProduct = blendAssay(frothProduct);
       metallurgy.siProduct = blendAssay(siProduct);
       const agIn = metallurgy.feed.agUnits;
@@ -20419,6 +20595,12 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       metUi.siSi.textContent = si.Si.toFixed(1) + " %";
       metUi.siAg.textContent = (metallurgy.agToSi * 100).toFixed(1) + " %";
       metUi.closure.textContent = (metallurgy.closure * 100).toFixed(2) + " %";
+      if (metUi.feedSource) {
+        const c = metallurgy.feedComposition;
+        metUi.feedSource.textContent = (metallurgy.feedIsLive ? "건식 <75 µm 실측" : "설계 조성(미분 누적 "
+          + FLOTATION_FEED_MIN_KG.toFixed(1) + " kg 미만)")
+          + " · A " + (c.A * 100).toFixed(1) + " · B " + (c.B * 100).toFixed(1) + " · C " + (c.C * 100).toFixed(1) + " %";
+      }
     }
     // ---- 건식 3 산물의 Cu 분배 ---------------------------------------------
     // 산물마다 A/B/C 질량을 누적해 두었으므로 ASSAY 한 장이면 품위가 그대로 나온다.
@@ -20452,7 +20634,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     function seedFlotationParticle(item) {
       const u = visualRandom();
-      const type = u < FLOTATION_FEED.B ? "B" : u < FLOTATION_FEED.B + FLOTATION_FEED.A ? "A" : "C";
+      const feed = flotationFeedComposition();
+      const type = u < feed.B ? "B" : u < feed.B + feed.A ? "A" : "C";
       item.type = type;
       item.floats = visualRandom() < item.entry.recovery[type];
       item.swirl = visualRandom() * Math.PI * 2;
@@ -20805,8 +20988,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addInspectionParticle("B", 10.0, new THREE.Vector3(0, 0.88, 0), "B · 탈락 백시트 · 10 mm", { x: 0.34, y: 0.12, z: -0.18 });
     addInspectionParticle("C", 10.0, new THREE.Vector3(1.05, 0.88, 0), "C · 결합입자 · 10 mm", { x: 0.50, y: -0.22, z: 0.22 });
     [
-      ["A", 0.1813, -1.25, "D10 0.181"], ["A", 0.3063, -0.75, "D50 0.306"],
-      ["C", 0.3835, -0.25, "D80 0.384"], ["C", 0.4375, 0.25, "D95 0.438"],
+      // 리터럴을 박아 두었더니 커널이 바뀌어도 트레이만 옛 값을 들고 있었다 — 상수에서 유도한다.
+      ["A", MODEL_PRODUCT_D10_MM, -1.25, "D10 " + MODEL_PRODUCT_D10_MM.toFixed(3)],
+      ["A", MODEL_PRODUCT_D50_MM, -0.75, "D50 " + MODEL_PRODUCT_D50_MM.toFixed(3)],
+      ["C", MODEL_PRODUCT_D80_MM, -0.25, "D80 " + MODEL_PRODUCT_D80_MM.toFixed(3)],
+      ["C", MODEL_PRODUCT_D95_MM, 0.25, "D95 " + MODEL_PRODUCT_D95_MM.toFixed(3)],
       ["B", 0.4999, 0.75, "Dmax 0.500 미만"], ["B", 0.5000, 1.25, "Sieve 0.500"]
     ].forEach(([type, sizeMm, x, label], index) => addInspectionParticle(type, sizeMm, new THREE.Vector3(x, 0.08, 0.12), label, { x: 0.36, y: index * 0.24, z: 0.12 }));
     const inspectionTitle = labelSprite("TET4 표면 프록시 · 위: 투입 3종 / 아래: 질량가중 산출물 형상");
@@ -21860,7 +22046,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
             : mode === "exploded"
               ? "P01–P28 정비 분해 위치 · ICSH-301·PLC-101·SCR-001·SCV-R1/P1·HSG·SC-500·Sheeve·공기분급·SS-201을 독립 부품으로 표시"
               : mode === "particles"
-                ? "질량가중 산출물 검사 · D10 0.181 · D50 0.306 · D80 0.384 · D95 0.438 mm · strict guard로 Dmax <0.500 mm"
+                ? "질량가중 산출물 검사 · D10 " + MODEL_PRODUCT_D10_MM.toFixed(3) + " · D50 " + MODEL_PRODUCT_D50_MM.toFixed(3) + " · D80 " + MODEL_PRODUCT_D80_MM.toFixed(3) + " · D95 " + MODEL_PRODUCT_D95_MM.toFixed(3) + " mm · strict guard로 Dmax <0.500 mm"
                 : "정면·평면·분쇄실 단면·축계 배치와 주요 제작 치수";
     }
 
@@ -22844,6 +23030,29 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         installedCapacityKgh: { millTotal: HSG_CAPACITY_KGH, transferScrew: TRANSFER_REQUIRED_KGH, returnScrew: RETURN_REQUIRED_KGH },
         closureKgh: +(BACKSHEET_REJECT_KGH + RECYCLE_RATE_KGH + SIEVE_FEED_KGH - MILL_FEED_KGH).toFixed(9)
       },
+      wetCircuit: {
+        feedKgh: +WET_FEED_KGH.toFixed(2),
+        finesFractionOfProduct: MODEL_PRODUCT_UNDER75_FRACTION,
+        copperProductKgh: +COPPER_PRODUCT_KGH.toFixed(2),
+        legacyBasisKgh: WET_FEED_LEGACY_BASIS_KGH,
+        as101ResidenceMin: +AS101_ACTUAL_RESIDENCE_MIN.toFixed(1),
+        as101Debond: +as101Debond(AS101_ACTUAL_RESIDENCE_MIN).toFixed(4),
+        duty: WET_DUTY.map((row) => ({
+          unit: row.label, installedL: row.installedL,
+          requiredL: +row.requiredL.toFixed(1), standardResidenceMin: row.std,
+          actualResidenceMin: +row.residenceMin.toFixed(1), margin: +row.margin.toFixed(2)
+        })),
+        flotationFeed: metallurgy.feedComposition,
+        flotationFeedIsLive: metallurgy.feedIsLive,
+        note: "wet train sized on a 176 kg/h basis the dry circuit cannot supply; geometry unchanged, required duty reported"
+      },
+      productPsdMm: {
+        d10: MODEL_PRODUCT_D10_MM, d50: MODEL_PRODUCT_D50_MM, d80: MODEL_PRODUCT_D80_MM,
+        d95: MODEL_PRODUCT_D95_MM, dmax: MODEL_PRODUCT_DMAX_MM,
+        under75Fraction: MODEL_PRODUCT_UNDER75_FRACTION,
+        breakage: { finesBins: BREAKAGE_FINES_BINS, ggsModulus: BREAKAGE_FINES_MODULUS, finesK: BREAKAGE_FINES_K,
+          finesFraction: Object.fromEntries(ASSAY_TYPES.map((t) => [t, +breakageFinesFraction(t).toFixed(3)])) }
+      },
       copperProduct: {
         bin: "BIN-Cu",
         streams: [...COPPER_STREAM_KEYS],
@@ -23356,7 +23565,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       label:"분쇄기", tag:"HSG-101 Closed Circuit", drawing:"DI-PVR-HSG101-DD-001", revision:"DD-R4",
       capacity:"신규 ≤300 kg/h · 정격 총부하 ≤400 kg/h(설계 실부하 380.1)", overall:"5,000 L × 1,600 W × 2,500 H mm", mass:"예상 4.6 t · 스키드 포함",
       foundation:"스키드 5,000×1,600 mm · M24 앵커 12SET · 방진패드 12EA · 그라우트 30 mm",
-      basis:"Dmax 10 mm · 로터 Ø450×350 · 1,500 rpm(최대 1,800) · SC-500 2단(2 mm 스캘핑＋500 µm 폐회로) · D95 0.438 mm",
+      basis:"Dmax 10 mm · 로터 Ø450×350 · 1,500 rpm(최대 1,800) · SC-500 2단(2 mm 스캘핑＋500 µm 폐회로) · D95 0.428 mm",
       services:[powerService("grinder"), "흡인: 보어 137 라이닝 · 900 m³/h · BF-101/IDF-101", "국소배기: SC-500 상부 DN50 ＋ 2단 데크 DN50 ＋ BIN-102 DN50 → VH-201 → BF-201", "투입: FD-101, 밀폐 유연슈트", "폐기/환류/제품: SC-500 >2 mm BIN-102 45 / 500 µm–2 mm CV-102 80.1 / <500 µm CH-501 255 kg/h"],
       installation:["로터 인출측 1,800 mm", "스크린 교체 하부공간 900 mm", "SC-500 데크 인출 측면공간 1,600 mm(2단 각각)", "필터백 상부 인출공간 1,200 mm", "회전체 레이저 정렬·벨트장력 기록"],
       acceptance:["무부하 1,500 rpm 2 h", "베어링 진동 ISO 20816 Zone B 이하", "400 kg/h 8 h 폐회로 성능", "SC-500 2단 메시 장력 편차 ≤10% · 데크별 체분석", "1단 오버 45 kg/h·2단 오버 80 kg/h 실측 확인", "분진누설·음압·집진 ΔP 확인(2단 국소배기·BIN-102 벤트 포함)"],
@@ -23443,12 +23652,12 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     },
     attrition: {
       label:"Attrition Scrubber", tag:"TK-001 / AS-101 / TK-101", drawing:"DI-PVR-AS101-DD-001", revision:"DD-R4",
-      capacity:"평균 176 kg/h · 최대 250 kg/h · AS 체류 5 min", overall:"5,200 L × 2,200 W × 2,600 H mm", mass:"운전중량 예상 3.9 t",
+      capacity:"습식 급광 42.1 kg/h(건식 산물 255 × <75 µm 16.5 %) · AS-101 체류 59.7 min · 용량 여유 6.0 배", overall:"5,200 L × 2,200 W × 2,600 H mm", mass:"운전중량 예상 3.9 t",
       foundation:"공용 스키드 5,000×2,000 mm · M20 앵커 16SET · 케미컬 커브 100 mm",
-      basis:"TK-001 55–70 wt% → AS-101 40 L·600 rpm·5 min → BS-101A/B → TK-101 10–30 wt%",
+      basis:"TK-001 55–70 wt% → AS-101 40 L·600 rpm → BS-101A/B → TK-101 10–30 wt% · 표준 체류 10 min 소요 6.7 L 대비 40 L 설치(상용 최소셀 지배) · 종전 정격 176 kg/h 는 건식이 만들지 못하는 값",
       services:[powerService("attrition"), "공정수: DN25, 최대 1.5 m³/h", "슬러리: DN50/65, P-101/102 A/B", "비드: 99.5% Al₂O₃, BM-101/BR-101"],
       installation:["탱크 상부 교반축 인출 H1,800 mm", "펌프 전면 1,000 mm 정비공간", "방유턱·내약품 바닥코팅", "모든 습식 플랜지 등전위 본딩"],
-      acceptance:["AS-101 물부하 600 rpm 2 h", "5 min RTD tracer 확인", "비드 보유율·BS-101 ΔP", "농도·유량·질량수지 교정"],
+      acceptance:["AS-101 물부하 600 rpm 2 h", "RTD tracer 로 실체류 확인(설계 59.7 min · 명판 5 min 아님)", "비드 보유율·BS-101 ΔP", "42.1 kg/h 정상급광에서 농도·유량·질량수지 교정", "계면박리도 ≥0.95 확인 — 과체류 슬라임화 동시 감시"],
       dimensions:{l:5200,w:2200,h:2600}, assemblies:["전체","스키드·배관","TK-001 조정조","AS-101 본체","교반·중공축","비드 보유·회수","TK-101 컨디셔닝","P-101/102 A/B","전력 인입·LCP","체결구"],
       bom:bom([
         {code:"AS-001",assembly:"스키드·배관",name:"습식 공용 스키드",qty:1,material:"SS400 epoxy",spec:"C200×80×7.5×11",note:"SS316L drip pan"},
@@ -23481,7 +23690,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     },
     flotation: {
       label:"Floatation", tag:"FC-201 / FC-202 / FC-203", drawing:"DI-PVR-FC201-DD-001", revision:"DD-R4",
-      capacity:"러퍼 180 L · 클리너 30 L · 스캐빈저 190 L", overall:"6,200 L × 3,600 W × 5,200 H mm", mass:"운전중량 예상 8.6 t · 2층 구조 포함",
+      capacity:"러퍼 180 L · 클리너 30 L · 스캐빈저 190 L · 급광 42.1 kg/h(25 wt% 0.144 m³/h) · 체류 75.1 / 12.5 / 79.3 min · 여유 7.5 / 2.5 / 5.7 배", overall:"6,200 L × 3,600 W × 5,200 H mm", mass:"운전중량 예상 8.6 t · 2층 구조 포함",
       foundation:"ST-201 4주각 베이스 · M24 앵커 24SET · 2층 활하중 5.0 kN/m²",
       basis:"FC-201 420 rpm/0.060 Nm³/min · FC-202 360 rpm/0.020 · FC-203 360 rpm/0.075 · 환류 완결",
       services:[powerService("flotation"), "공기: AR-201, 0.4–0.6 MPa, 셀별 FIC", "약품: RS-201/202/203, DN15 정량주입", "슬러리: DN40/50/65, 러퍼·클리너·스캐빈저"],
@@ -23520,7 +23729,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     },
     filterpress: {
       label:"Filter Press", tag:"FP-301 / CF-204 Dewatering", drawing:"DI-PVR-FP301-DD-001", revision:"DD-R4",
-      capacity:"Si 광미 18판 멤브레인 프레스 · Ag 정광 CF-204 병렬", overall:"7,200 L × 3,200 W × 2,300 H mm", mass:"운전중량 예상 9.4 t",
+      capacity:"Si 광미 36.8 kg/h → 18판 멤브레인 프레스 · 부선 정광 5.3 kg/h → CF-204 병렬 (부선 급광 42.1 kg/h 의 87.5 / 12.5 % 분배)", overall:"7,200 L × 3,200 W × 2,300 H mm", mass:"운전중량 예상 9.4 t",
       foundation:"FP-301 4,200×1,500 mm + 보조스키드 · M24 앵커 20SET · 배수구 2점",
       basis:"800×800 mm 판 18EA · 여과면적 약 18.5 m² · 고압급액·멤브레인압착·코어블로·포세척",
       services:[powerService("filterpress"), "슬러리: DN50, 설계 1.0 MPa", "압착공기/수: 0.8 MPa / DN32", "여액: DN40 → TK-401"],
@@ -23652,7 +23861,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {item:"M-101",mass:"제작사 확정",points:"모터 아이",swl:"실중량×1.5",route:"구동측"}
       ],
       erection:["스키드·방진패드 레벨 검측","HSG 하우징과 로터 설치","모터·풀리 레이저 정렬 및 벨트장력","FD/CV/SC-500 무응력 연결","집진 덕트 플렉시블 연결","회전방향·가드·인터록 시험","무부하 2 h 후 400 kg/h 폐회로 SAT"],
-      holds:[{id:"HG-H1",stage:"로터 출하",check:"G2.5 밸런스·축 런아웃·날 간극",record:"Balance report",gate:"HOLD"},{id:"HG-H2",stage:"성능 SAT",check:"총부하 ≤400 kg/h·D95 0.438 mm 기준·Dmax <0.500 mm",record:"PSD/SAT report",gate:"HOLD"}]
+      holds:[{id:"HG-H1",stage:"로터 출하",check:"G2.5 밸런스·축 런아웃·날 간극",record:"Balance report",gate:"HOLD"},{id:"HG-H2",stage:"성능 SAT",check:"총부하 ≤400 kg/h·D95 0.428 mm 기준·Dmax <0.500 mm",record:"PSD/SAT report",gate:"HOLD"}]
     },
     sieve:{
       foundation:{base:[2400,1600],envelope:[2600,1800],origin:"SV-201 진동중심 CL",anchorSpec:"M20×350 · 8.8 HDG · 12SET",hole:"스키드 PL Ø26",embed:"유효 매입 ≥240 mm",grout:"비수축 25 mm · 스프링 베이스 비고정",tolerance:"앵커 ±3 mm · 스프링 좌면 고저차 ≤1 mm",slab:"운전 진동력·인접 구조 공진 검토",anchors:gridAnchors([-1050,-350,350,1050],[-650,0,650])},
