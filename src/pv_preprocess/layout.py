@@ -196,6 +196,49 @@ def build_zones() -> list[Zone]:
     return zones
 
 
+# ── 미해결 — 3D 씬 격자와 존 표가 어긋난다 ──────────────────────────────
+#: 존 표는 셀 GA 포락선을 상류부터 이어 붙여 만든다. 3D 씬은 그와 **별도로** 각 셀
+#: 그룹의 x 를 직접 박아 두었고, 나중에 붙인 것들(GRM-401 셀·외장 케이싱·EC 명판)
+#: 만 이 표를 따랐다. 헤드리스 실측으로 두 격자가 AFR 아래에서 갈라지는 것을 확인
+#: 했다 (world m 기준):
+#:
+#:   셀       존 표              3D 실측                      판정
+#:   jbr      -12.75 … -5.70    PT-101   -11.91 … -9.29      맞음
+#:   afr       -5.35 …  1.55    베이스 프레임 0.55 … 11.95   상류면 +5.9 어긋남
+#:   post       1.55 … 10.45    SG-301   10.79 … 11.15       존 밖으로 나감
+#:   buffer    10.45 … 20.00    GBR 셔틀 12.12 … 15.32       안쪽
+#:   grm       20.00 … 34.05    셀 베이스 20.00 … 34.05      맞음
+#:
+#: 존 표는 AFR→버퍼에 25,350 mm 를 주는데 3D 는 같은 구간을 20,000 mm 로 그린다.
+#: 어느 쪽이 맞는지는 **발주처 확인 사항**이다 — 3D 가 맞으면 전장을 그만큼 줄일 수
+#: 있고, 존 표가 맞으면 3D 가 설비를 빠뜨리고 있다. 고치는 길은 셋뿐이고 전부
+#: 한 개정의 범위를 넘는다: ① 3D 셀 그룹을 존 격자로 옮긴다(하류 좌표가 전부 따라
+#: 움직인다), ② 존 표를 실측으로 줄인다(전장·케이싱·배선이 따라온다), ③ 빠진
+#: 설비를 3D 에 채운다. 그때까지 이 값을 여기 남겨 둔다 — 지워지면 검사가 잡는다.
+SCENE_GRID_OPEN = "AFR→버퍼 구간에서 3D 셀 원점과 존 표가 어긋난다 (발주처 확인)"
+
+#: 존 표가 AFR→버퍼에 주는 길이와 3D 가 실제로 그리는 길이의 차 (mm).
+SCENE_GRID_GAP_MM = 5350
+
+#: 3D 가 그 구간을 실제로 그리는 길이 (mm) — 실측.
+SCENE_AFR_TO_BUFFER_MM = 20_000
+
+
+def afr_to_buffer_zone_mm() -> int:
+    """존 표가 AFR 상류면부터 버퍼 하류면까지 주는 길이 (mm)."""
+    zones = {z.key: z for z in build_zones()}
+    return zones["buffer"].x1_mm - zones["afr"].x0_mm
+
+
+def scene_grid_gap_mm() -> int:
+    """존 표와 3D 실측의 차 — 이 값이 0 이 되면 격자가 맞은 것이다."""
+    return afr_to_buffer_zone_mm() - SCENE_AFR_TO_BUFFER_MM
+
+
+def scene_grid_is_registered() -> bool:
+    return scene_grid_gap_mm() == 0
+
+
 def plant_envelope_mm() -> tuple[int, int, int]:
     """영구설비 전체 포락선 (X, Y, Z). Y 는 장비 밴드 + 통로."""
     zones = build_zones()

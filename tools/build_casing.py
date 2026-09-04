@@ -119,14 +119,23 @@ for key, at_x, label in (("afu", C.zone_span_mm("afu")[0] - C.END_OFFSET_MM, "�
     # 끝단 판도 제 판틀이 있어야 바닥까지 하중 경로가 선다 — 가드 바깥면으로
     # 69 mm 물러나며 셀 끝 골조에서 떨어졌고, 하중경로 검사가 그것을 잡았다.
     inb = -1 if label == "상류" else 1
-    w(f"CN(L([{num(assy)},{num(m(C.SHOULDER_MM))},{num(m(120))}],"
-      f"[{num(round(wx(at_x) - inb * assy, 4))},{num(m(C.SHOULDER_MM/2))},"
+    p0, p1 = C.endpost_span_mm(key)
+    w(f"CN(L([{num(assy)},{num(m(p1 - p0))},{num(m(120))}],"
+      f"[{num(round(wx(at_x) - inb * assy, 4))},{num(m((p0 + p1) / 2))},"
       f"{num(round((zu + zd) / 2, 4))}],M.dark,null),'case:{key}:endpost');")
 
 w("}());")
 block = "\n".join(out)
 
+import json as _json
+import re as _re
+
 s = io.open(P, encoding="utf-8").read()
+# 도면이 읽는 CASING 리터럴도 모델에서 나온다 — 손으로 맞추면 반드시 갈라진다
+_lit = "  var CASING = " + _json.dumps(C.summary(), ensure_ascii=False) + ";"
+_pat = _re.compile(r"  var CASING = \{.*?\};")
+assert len(_pat.findall(s)) == 1, "CASING 리터럴 앵커"
+s = _pat.sub(lambda _m: _lit, s, count=1)
 # 재질에 glazing 추가 (멱등)
 if "glazing:new xo(" not in s:
     anchor = "guard:new xo({color:SC.brand,transparent:!0,opacity:.055,roughness:.06,metalness:.02,depthWrite:!1,side:bn})}"

@@ -215,6 +215,26 @@ MEASURED_END_FRAME_MM = 90
 #: 그래서 끝단 케이싱이 존 경계 밖으로 나가는 양 (mm).
 END_OFFSET_MM = MEASURED_END_FRAME_MM // 2 + PANEL_ASSY_MM
 
+#: 끝단 판틀(endpost)이 딛는 셀 베이스 부재의 윗면 (mm). 판틀을 바닥까지 내리면
+#: 셀 골조를 관통한다 — 하류 끝(GRM)에는 x +7,025 자리에 140 mm 높이의 횡베이스
+#: 빔이 이미 서 있고, 판틀이 그 안에 24 mm 박혀 있었다. 판틀은 바닥이 아니라
+#: **그 부재 위에** 서야 하중 경로가 서고 관통이 없어진다. 상류 끝(AFU)에는
+#: 그 자리에 부재가 없어 바닥에서 시작한다.
+ENDPOST_BASE_MM: dict[str, int] = {"afu": 0, "grm": 140}
+
+
+def endpost_span_mm(key: str) -> tuple[int, int]:
+    """끝단 판틀의 아래·위 (mm) — 딛는 부재 윗면에서 어깨까지."""
+    base = ENDPOST_BASE_MM[key]
+    if not 0 <= base < SHOULDER_MM:
+        raise ValueError(f"{key} 판틀 밑면이 어깨 밖이다")
+    return base, SHOULDER_MM
+
+
+def endposts_stand_on_something() -> bool:
+    """모든 끝단 판틀이 어깨까지 서고, 그 밑이 바닥이거나 실재 부재인가."""
+    return all(endpost_span_mm(k)[1] == SHOULDER_MM for k in ENDPOST_BASE_MM)
+
 
 def clad_length_mm() -> int:
     """껍질을 두른 뒤의 실제 전장 (mm).
@@ -450,6 +470,7 @@ def summary() -> dict[str, object]:
         "shoulderMm": SHOULDER_MM,
         "datumMm": DATUM_MM,
         "toeMm": TOE_H_MM,
+        "endpostBaseMm": dict(ENDPOST_BASE_MM),
         "radiusMm": RADIUS_MM,
         "seamMm": SEAM_MM,
         "bayNominalMm": BAY_NOMINAL_MM,

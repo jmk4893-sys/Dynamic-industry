@@ -18,11 +18,18 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import (acceptance, access, acoustics, ai, air, brand, campaign, casing, crane, dust, electrical,
+from pv_preprocess import (acceptance, access, acoustics, afr, ai, air, brand, campaign, casing, crane, dust,
+                           electrical,
                            frames, grade, handoff, kinematics, layout, maintain, materials, mounting,
                            reliability, safety, seismic, smart, servos, thermal, vision, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
+
+
+def _js(value: float) -> str:
+    """파이썬 값을 도면이 쓰는 JS 리터럴 표기로 — tools/build_afr.py 의 _f 와 같다."""
+    text = f"{round(value, 4):.4f}".rstrip("0").rstrip(".") or "0"
+    return text.replace("0.", ".", 1) if text.startswith(("0.", "-0.")) else text
 
 
 def read_drawing() -> str:
@@ -224,7 +231,7 @@ class TestDrawingMatchesModel(unittest.TestCase):
         # README·코드 주석이 적는 품목 수가 실제와 어긋나면 문서가 거짓말을 한다.
         # REV.23 까지 README 161 · 주석 150 · 실제 149 로 셋이 다 달랐다.
         total = sum(len(rows) for rows in parts.values())
-        self.assertEqual(total, 175, "sweep(동작 포락선)은 부품이 아니라 빠진다")
+        self.assertEqual(total, 180, "sweep(동작 포락선)은 부품이 아니라 빠진다")
         with io.open("README.md", encoding="utf-8") as handle:
             self.assertIn(f"부품 {total}품목", handle.read())
         self.assertIn(f"현재 {total}품목", self.html)
@@ -693,7 +700,15 @@ class TestLineLengthReduction(unittest.TestCase):
         self.assertGreaterEqual(guard_hi - depth_hi, 1200)
 
     def test_afr_guard_clearance_is_equal_on_both_sides(self):
-        """가드가 ±5,750 대칭인데 장비가 비대칭이라 하류에만 1,450 이 비어 있었다."""
+        """가드 여유는 어느 쪽도 플랜트 기준 475 밑으로 내려가지 않는다.
+
+        REV.22-P01 에서 가드가 ±5,750 대칭인데 장비가 비대칭이라 하류에만 1,450 이
+        비어 있던 것을 475 로 균등화했다. 그때 상류면을 정하던 것은 패널 **바깥**에
+        세운 단축 유압 실린더였다. 실린더가 정반 **안**으로 들어가면서 그 자리가
+        비었고, 이제 상류를 정하는 것은 HPU 방진 마운트다 — 상류에 400 mm 가 남는다.
+        셀을 그만큼 줄이면 존·케이싱·배선 길이까지 하류 전체가 당겨지므로 이번
+        개정에서는 줄이지 않고, "기준 아래로는 안 내려간다"만 지킨다.
+        """
         block = self.stations["afr"]
         guard = part_span(block, "GUARD")
         rows = solid_part_rows(block)
@@ -701,8 +716,11 @@ class TestLineLengthReduction(unittest.TestCase):
         hardware_hi = max(at[0] + size[0] / 2 for _, size, at in rows)
         upstream = hardware_lo - guard[0]
         downstream = guard[1] - hardware_hi
-        self.assertEqual(upstream, downstream, "가드 여유가 상·하류에서 다르다")
-        self.assertEqual(upstream, 475, "가드 여유가 플랜트 기준(475)과 다르다")
+        self.assertEqual(downstream, 475, "하류 여유가 플랜트 기준(475)과 다르다")
+        self.assertGreaterEqual(upstream, 475, "상류 여유가 기준 밑으로 내려갔다")
+        self.assertEqual(upstream - downstream, 400,
+                         "정반 내장화로 상류에 생긴 여유가 400 이 아니다 — "
+                         "기구가 바뀌었거나 상류에 뭔가 새로 들어왔다")
 
     def test_identical_modules_in_a_row_do_not_collide(self):
         """같은 (높이, 깊이) 자리에 놓인 같은 크기 모듈끼리 X 로 겹치면 물리적으로 불가능하다.
@@ -1728,12 +1746,28 @@ class TestFrameElasticity(unittest.TestCase):
                 self.assertIn(f"{token}: {value:g}", self.html)
 
     def test_frames_bend_in_the_3d_scene(self):
-        """세그먼트로 나뉘고 휨이 애니메이션에 실제로 들어가야 한다."""
-        self.assertIn("e.userData.bowT=1-Math.pow(z/.6167,2)", self.html, "단축 프레임이 분할되지 않았다")
-        self.assertIn("pvBow*V.userData.bowT*4*_*(1-_)", self.html, "단축 휨이 애니메이션에 없다")
-        self.assertIn("bw=pvBow*4*ae*(1-ae)", self.html, "장축 휨이 애니메이션에 없다")
-        self.assertIn("var pvBow=%s;" % (("%g" % (frames.display_bow_mm() / 1000)).lstrip("0")), self.html)
-        self.assertIn("40배 과장", self.html, "과장 배율을 화면에 밝히지 않았다")
+        """휨이 애니메이션에 들어가되, **이제는 기구가 정한 크기**로 들어간다.
+
+        REV.43 까지 3D 는 단축·장축 모두 frames.display_bow_mm()(59 mm) 한 값으로
+        휘었다. 그 값은 "롤러가 접착 전선보다 220 mm 앞서 달린다"는 그림에서 나온
+        것이라, 발주처가 설명한 기구 — 롤러가 홈에 걸려 전선과 **같이** 간다 — 와
+        맞지 않았다. 이제 두 변의 휨은 서로 다른 출처에서 나온다.
+
+        * 단축: 쇠막대가 실린더 두 지점 사이에서 처지는 만큼 가운데가 뒤처진다.
+        * 장축: 롤러가 전선과 같이 가므로 이미 떨어진 부분의 자중 처짐만 남는다.
+        """
+        seg_z = kinematics.PANEL_MM[1] / 2000 - (kinematics.PANEL_MM[1] / 1000) / 12
+        self.assertIn("e.userData.bowT=1-Math.pow(z/%s,2)" % _js(seg_z), self.html,
+                      "단축 프레임이 분할되지 않았다")
+        self.assertIn("%s*V.userData.bowT*4*PS*(1-PS)" % _js(afr.short_edge_display_bow_mm() / 1000),
+                      self.html, "단축 휨이 쇠막대 처짐에서 안 나온다")
+        self.assertIn("bw=%s*4*ae*(1-ae)" % _js(afr.display_bow_mm() / 1000),
+                      self.html, "장축 휨이 자중 처짐에서 안 나온다")
+        self.assertNotIn("pvBow", self.html, "옛 단일 휨 상수가 남아 있다")
+        self.assertIn("%d배 과장" % frames.DISPLAY_EXAGGERATION, self.html,
+                      "과장 배율을 화면에 밝히지 않았다")
+        # 그리고 그 두 값은 서로 달라야 한다 — 같으면 기구가 반영 안 된 것이다
+        self.assertNotEqual(afr.display_bow_mm(), afr.short_edge_display_bow_mm())
 
 
 class TestContinuousPlayback(unittest.TestCase):
@@ -2117,12 +2151,62 @@ class TestBrandMark(unittest.TestCase):
                 # 장비 밴드 안이어야 보행 유효폭을 안 먹는다 (통로는 z 3.55…4.75)
                 self.assertLessEqual(z + 0.012 / 2, 3.55,
                                      f"{tag} 데칼이 통로로 넘어왔다")
-                # 자기 셀 안에 있어야 한다
-                zone = zones[key]
-                lo = (zone.x0_mm - 24750) / 1000
-                hi = (zone.x1_mm - 24750) / 1000
-                self.assertGreaterEqual(x, lo - 0.5, f"{tag} 데칼이 셀 밖이다")
-                self.assertLessEqual(x, hi + 0.5, f"{tag} 데칼이 셀 밖이다")
+                # 자기 **기계** 위에 있어야 한다. 이름표는 존이 아니라 기계를
+                # 가리킨다 — AFR 아래로는 두 격자가 갈라져 있어서(아래 시험과
+                # layout.SCENE_GRID_OPEN) 존으로 재면 AFR 기구 위에 'SG-301'
+                # 판이 떠 있는 상태가 통과해 버린다. 실제로 그랬다.
+                anchor = self.scene_anchor(tag)
+                if anchor is None:                       # 격자가 맞는 셀은 존으로
+                    zone = zones[key]
+                    lo = (zone.x0_mm - 24750) / 1000
+                    hi = (zone.x1_mm - 24750) / 1000
+                    self.assertGreaterEqual(x, lo - 0.5, f"{tag} 데칼이 셀 밖이다")
+                    self.assertLessEqual(x, hi + 0.5, f"{tag} 데칼이 셀 밖이다")
+                else:
+                    self.assertLessEqual(abs(x - anchor), 1.5,
+                                         f"{tag} 데칼이 자기 기계 위에 없다 "
+                                         f"(씬 원점 {anchor:.2f}, 데칼 {x:.2f})")
+
+    def scene_anchor(self, tag: str) -> float | None:
+        """씬이 그 기계를 실제로 세워 둔 x (world m).
+
+        데칼 좌표와 **다른** 리터럴에서 읽는다 — 씬은 AFR 셀 그룹을 `qt` 로, 그
+        안의 후단 설비를 지역 오프셋 `ln`·`Ri` 로 세우고, GRM 셀은 자기
+        position.set 으로 세운다. 데칼을 데칼로 재면 아무것도 검증되지 않는다.
+        """
+        qt = float(re.search(r"qt=([\d.]+),ot=new ce", self.html).group(1))
+        local = {"AFR-101": 0.0}
+        for name, key in (("ln", "SG-301"), ("Ri", "GBR-301")):
+            found = re.search(r"[,;]" + name + r"=([\d.]+)[,;]", self.html)
+            if found:
+                local[key] = float(found.group(1))
+        if tag in local:
+            return qt + local[tag]
+        if tag == "GRM-401":
+            return float(re.search(r"pvGrm\.position\.set\(([\d.]+),", self.html).group(1))
+        return None                                       # 상류 셀은 존 격자와 맞는다
+
+    def test_the_scene_grid_and_the_zone_table_disagree(self):
+        """**미해결** — 3D 셀 원점과 존 표가 AFR 아래에서 갈라져 있다.
+
+        존 표는 셀 GA 포락선을 이어 붙여 만들고, 3D 씬은 셀 x 를 직접 박아 뒀다.
+        나중에 붙인 GRM·케이싱·EC 명판만 존 표를 따랐다. 실측하면 존 표가
+        AFR→버퍼에 25,350 을 주는데 3D 는 20,000 으로 그린다.
+
+        이 시험은 그 차이를 **기록**한다. 격자를 맞추면 이 시험이 깨지고, 그때
+        layout.SCENE_GRID_OPEN 과 함께 지우면 된다. 조용히 넘어가지 않게 남긴다.
+        """
+        self.assertFalse(layout.scene_grid_is_registered(),
+                         "격자가 맞았다면 layout.SCENE_GRID_OPEN 과 이 시험을 지울 것")
+        self.assertEqual(layout.scene_grid_gap_mm(), layout.SCENE_GRID_GAP_MM)
+        self.assertEqual(layout.afr_to_buffer_zone_mm(),
+                         layout.SCENE_AFR_TO_BUFFER_MM + layout.SCENE_GRID_GAP_MM)
+        # 3D 가 실제로 그 길이인지 — 씬 리터럴에서 재확인한다
+        qt = float(re.search(r"qt=([\d.]+),ot=new ce", self.html).group(1))
+        zones = {z.key: z for z in layout.build_zones()}
+        afr_lo = (zones["afr"].x0_mm - 24750) / 1000
+        self.assertGreater(qt, afr_lo + 5,
+                           "AFR 셀 원점이 자기 존 안으로 들어왔다면 격자가 맞은 것이다")
 
     def test_the_plate_texture_paints_the_mark_not_a_copy(self):
         """명판 텍스처가 마크를 **직접 그리지 않고** 전역을 부른다.
@@ -4857,8 +4941,9 @@ class TestCasing(unittest.TestCase):
 
     # ── 도면 ──────────────────────────────────────────────────────────
     def test_the_drawing_carries_the_casing(self):
+        import json as _json
         for key, value in casing.summary().items():
-            token = f'"{key}": ' + (f'"{value}"' if isinstance(value, str) else f"{value}")
+            token = f'"{key}": ' + _json.dumps(value, ensure_ascii=False)
             with self.subTest(token=token):
                 self.assertIn(token, self.plant)
         self.assertIn("var pvCase=new ce;pt.add(pvCase);", self.plant,
@@ -5223,3 +5308,281 @@ class TestClosedLoop(unittest.TestCase):
         checks = [i for i in acceptance.items() if i.source == "ai.envelope_bounds"]
         self.assertEqual(len(checks), 1)
         self.assertEqual(checks[0].value(), ai.envelope_bounds())
+
+
+class TestAfrMechanism(unittest.TestCase):
+    """AFR-101 프레임 제거 기구 — 발주처가 준 치수에서 나머지가 따라 나오는가."""
+
+    # ── 발주처가 준 것 ────────────────────────────────────────────────
+    def test_the_given_dimensions_are_what_the_client_said(self):
+        """정반 600 × 1,400 × t100, 실린더는 양끝에서 50 안쪽 둘."""
+        self.assertEqual((afr.PLATEN_X_MM, afr.PLATEN_Z_MM, afr.PLATEN_T_MM),
+                         (600, 1400, 100))
+        self.assertEqual(afr.CYL_INSET_MM, 50)
+        self.assertEqual(afr.CYL_PER_PLATEN, 2)
+        self.assertEqual(afr.cylinder_span_mm(), 1300, "양끝 50 을 뺀 거리가 아니다")
+        self.assertEqual(afr.cylinder_z_mm(), (-650.0, 650.0))
+        # 정반 세로는 단변 길이와 같아야 막대가 변 전체를 민다
+        self.assertEqual(afr.PLATEN_Z_MM, kinematics.PANEL_MM[1],
+                         "정반 세로가 단변 길이와 다르면 막대가 변을 다 못 민다")
+
+    # ── 정반 두께가 보어를 정한다 ─────────────────────────────────────
+    def test_the_platen_thickness_picks_the_bore(self):
+        """실린더가 판 **안**에 들어가야 하므로 보어는 두께가 정한다."""
+        self.assertTrue(afr.cylinder_fits_in_platen())
+        self.assertGreaterEqual(afr.platen_wall_mm(), afr.MIN_PLATEN_WALL_MM)
+        self.assertIn(afr.bore_mm(), afr.ISO_BORES_MM, "표준 계열 밖의 보어다")
+        self.assertLessEqual(afr.bore_mm(), afr.max_bore_mm())
+        # 도면이 오래 적어 온 Ø125 는 배럴만 141 이라 100 두께에 안 들어간다
+        self.assertLess(afr.max_bore_mm(), 125,
+                        "100 mm 정반에 Ø125 가 들어간다는 결론이면 계산이 틀렸다")
+
+    def test_a_thicker_platen_would_take_a_bigger_bore(self):
+        """두께가 보어를 정한다는 말이 참이면, 두껍게 하면 보어가 커져야 한다."""
+        keep = afr.PLATEN_T_MM
+        try:
+            afr.PLATEN_T_MM = 160
+            self.assertGreater(afr.bore_mm(), 63, "두께를 키웠는데 보어가 그대로다")
+        finally:
+            afr.PLATEN_T_MM = keep
+        self.assertEqual(afr.bore_mm(), 63, "되돌리기가 안 됐다")
+
+    def test_the_working_pressure_stays_under_the_relief(self):
+        """정반당 두 본이 25 kN 을 릴리프 아래에서 낸다."""
+        self.assertTrue(afr.pressure_is_within_relief())
+        self.assertLess(afr.working_pressure_bar() * afr.PRESSURE_MARGIN,
+                        afr.HPU_RELIEF_BAR + 1e-9)
+        self.assertGreaterEqual(afr.relief_capacity_kn(), afr.required_push_kn())
+        self.assertEqual(afr.required_push_kn(), kinematics.AFR_PULL_KN,
+                         "인출력이 두 군데에서 따로 산다")
+
+    # ── 쇠막대 ────────────────────────────────────────────────────────
+    def test_one_bar_pushes_the_whole_short_edge(self):
+        """실린더 둘을 지점으로 본 등분포 보 — 응력도 처짐도 한도 안이다."""
+        self.assertTrue(afr.bar_pushes_the_whole_edge())
+        self.assertLessEqual(afr.bar_stress_mpa(), afr.STEEL_ALLOW_MPA)
+        self.assertLessEqual(afr.bar_sag_mm(), afr.bar_sag_limit_mm())
+        self.assertEqual(afr.bar_length_mm(), afr.PLATEN_Z_MM)
+        # 막대 처짐이 곧 단변 가운데가 뒤처지는 양이다 — 화면 휨의 출처
+        self.assertEqual(afr.short_edge_lag_mm(), afr.bar_sag_mm())
+        self.assertAlmostEqual(afr.short_edge_display_bow_mm(),
+                               afr.bar_sag_mm() * frames.DISPLAY_EXAGGERATION, places=1)
+
+    def test_a_thinner_bar_would_sag_too_much(self):
+        """처짐 검사가 살아 있는가 — 막대를 얇게 하면 떨어져야 한다."""
+        keep = afr.BAR_W_MM
+        try:
+            afr.BAR_W_MM = 6
+            self.assertFalse(afr.bar_pushes_the_whole_edge(),
+                             "6 mm 막대로도 통과하면 검사가 죽어 있다")
+        finally:
+            afr.BAR_W_MM = keep
+        self.assertTrue(afr.bar_pushes_the_whole_edge())
+
+    def test_the_bar_reaches_the_frame_from_the_rod(self):
+        """막대 높이는 로드 축에서 프레임 밑면까지 — 임의 치수가 아니다."""
+        self.assertEqual(afr.bar_h_mm(), afr.FRAME_H_MM + afr.PLATEN_T_MM // 2)
+        self.assertEqual(afr.FRAME_H_MM, kinematics.PANEL_FRAME_H_MM,
+                         "3D 프레임 높이가 모듈 단면 높이와 다르다")
+
+    # ── 스토퍼 ────────────────────────────────────────────────────────
+    def test_the_stopper_catches_what_the_cylinder_pushed(self):
+        self.assertTrue(afr.stopper_catches_the_frame())
+        self.assertEqual(afr.push_travel_mm(),
+                         afr.FRAME_W_MM + afr.FRAME_RELEASE_CLEAR_MM)
+        self.assertGreater(afr.push_travel_mm(), afr.FRAME_W_MM,
+                           "프레임 폭만큼도 못 밀면 라미네이트에서 안 빠진다")
+        self.assertEqual(afr.stopper_face_mm(),
+                         kinematics.PANEL_MM[0] / 2 + afr.push_travel_mm())
+        self.assertGreater(afr.stroke_spare_mm(), 0,
+                           "행정을 다 쓰면 스토퍼가 하드스톱이 된다")
+        self.assertLess(afr.STOPPER_LIP_MM, afr.FRAME_H_MM)
+
+    def test_the_stroke_is_not_used_up(self):
+        """행정 여유 검사가 살아 있는가."""
+        keep = afr.CYL_STROKE_MM
+        try:
+            afr.CYL_STROKE_MM = 100
+            self.assertFalse(afr.stopper_catches_the_frame())
+        finally:
+            afr.CYL_STROKE_MM = keep
+        self.assertTrue(afr.stopper_catches_the_frame())
+
+    # ── 정반의 긴 홈과 톱니 컨베이어 ──────────────────────────────────
+    def test_the_slots_split_the_pads_without_losing_a_zone(self):
+        """홈이 패드를 앞뒤로 가르지만 지지 구역 수는 그대로 12 다."""
+        self.assertEqual(afr.support_zones(), 12)
+        self.assertEqual(afr.chain_runs(), len(afr.support_rows_z_mm()))
+        self.assertTrue(afr.slot_clears_the_pads())
+        self.assertTrue(afr.slot_spans_the_panel())
+        self.assertGreater(afr.split_pad_depth_mm(), 0)
+        # 홈 반쪽 패드는 홈 바로 옆에 붙는다
+        self.assertAlmostEqual(afr.split_pad_z_mm() - afr.split_pad_depth_mm() / 2,
+                               afr.SLOT_W_MM / 2, places=3)
+
+    def test_the_outer_pads_stay_off_the_long_frames(self):
+        """바깥 지지열이 장변 프레임 밑으로 들어가면 프레임이 안 빠진다."""
+        self.assertTrue(afr.pads_clear_the_frames())
+        outer = max(afr.support_rows_z_mm()) + afr.SUPPORT_PAD_Z_MM / 2
+        self.assertLessEqual(outer,
+                             kinematics.PANEL_MM[1] / 2 - afr.FRAME_W_MM
+                             - afr.PAD_EDGE_CLEAR_MM)
+
+    def test_a_wider_frame_would_push_the_pads_inboard(self):
+        """지지열이 프레임 폭에서 나오는가 — 파생이면 프레임을 넓히면 움직인다."""
+        keep = afr.FRAME_W_MM
+        try:
+            afr.FRAME_W_MM = 150
+            self.assertLess(max(afr.support_rows_z_mm()), 440,
+                            "프레임을 두 배로 넓혔는데 지지열이 그대로다")
+        finally:
+            afr.FRAME_W_MM = keep
+        self.assertEqual(max(afr.support_rows_z_mm()), 440)
+
+    def test_the_chain_carries_the_bare_laminate(self):
+        """프레임이 빠진 유리를 체인 세 줄이 안전하게 든다."""
+        self.assertTrue(afr.chain_carries_the_laminate())
+        self.assertLessEqual(afr.laminate_stress_mpa(), afr.GLASS_ALLOW_MPA)
+        self.assertGreater(afr.sprocket_pitch_d_mm(), afr.CHAIN_PITCH_MM)
+        self.assertEqual(afr.chain_rise_mm(), afr.CHAIN_PARK_MM + afr.CHAIN_LIFT_MM)
+
+    def test_the_platen_lifts_clear_of_the_lifted_panel(self):
+        """정반 행정은 판 두께가 아니라 **쇠막대 밑면**이 정한다."""
+        self.assertEqual(afr.platen_assembly_drop_mm(), afr.FRAME_H_MM)
+        self.assertEqual(afr.platen_lift_mm(),
+                         afr.CHAIN_LIFT_MM + afr.FRAME_H_MM + afr.PLATEN_CLEAR_MM)
+        self.assertGreater(afr.platen_lift_mm(),
+                           afr.CHAIN_LIFT_MM + afr.platen_assembly_drop_mm(),
+                           "여유 없이 딱 맞으면 들다가 긁는다")
+
+    def test_a_higher_lift_is_needed_if_the_chain_lifts_more(self):
+        keep = afr.CHAIN_LIFT_MM
+        try:
+            afr.CHAIN_LIFT_MM = 120
+            self.assertEqual(afr.platen_lift_mm(), 120 + afr.FRAME_H_MM + afr.PLATEN_CLEAR_MM)
+        finally:
+            afr.CHAIN_LIFT_MM = keep
+        self.assertEqual(afr.platen_lift_mm(), 175)
+
+    # ── 클램프가 정반을 든다 ──────────────────────────────────────────
+    def test_the_clamp_can_hold_the_platen_and_still_press(self):
+        """통짜 정반이면 클램프가 자기 무게도 못 든다 — 그래서 리브다."""
+        self.assertTrue(afr.clamp_holds_the_platen())
+        self.assertGreater(afr.clamp_net_kn(), 0)
+        self.assertLess(afr.platen_mass_kg(), afr.platen_solid_mass_kg(),
+                        "리브를 넣었는데 무게가 그대로다")
+        solid_kn = afr.platen_solid_mass_kg() * 9.81 / 1000.0
+        self.assertGreater(solid_kn, afr.clamp_capacity_kn(),
+                           "통짜여도 들린다면 리브를 넣을 이유가 없다 — 계산을 다시 보라")
+        self.assertTrue(afr.reaction_is_self_balanced())
+        self.assertEqual(afr.portal_unbalanced_kn(), 0.0)
+
+    def test_a_solid_platen_would_fail_the_clamp(self):
+        """검사가 살아 있는가 — 강재 점유율을 1 로 두면 떨어져야 한다."""
+        keep = (afr.PLATEN_SKIN_T_MM, afr.PLATEN_RIB_PITCH_MM)
+        try:
+            afr.PLATEN_SKIN_T_MM, afr.PLATEN_RIB_PITCH_MM = 50, 12
+            self.assertFalse(afr.clamp_holds_the_platen())
+        finally:
+            afr.PLATEN_SKIN_T_MM, afr.PLATEN_RIB_PITCH_MM = keep
+        self.assertTrue(afr.clamp_holds_the_platen())
+
+    # ── 장변 인발 롤러 ────────────────────────────────────────────────
+    def test_the_roller_fits_the_groove_and_reaches_the_floor(self):
+        self.assertTrue(afr.roller_fits_the_groove())
+        self.assertIn(afr.selected_roller(), afr.TRACK_ROLLERS_MM,
+                      "규격 계열 밖의 롤러를 만들었다")
+        self.assertLessEqual(afr.roller_h_mm() + 2 * afr.ROLLER_CLEAR_MM,
+                             afr.GROOVE_H_MM, "폭이 홈 열림을 안 지난다")
+        self.assertGreater(afr.roller_d_mm(), afr.GROOVE_D_MM,
+                           "홈 바닥에 못 닿으면 프레임을 못 민다")
+        self.assertAlmostEqual(afr.roller_axis_z_mm(),
+                               kinematics.PANEL_MM[1] / 2 - afr.GROOVE_D_MM
+                               + afr.roller_d_mm() / 2, places=3)
+
+    def test_one_roller_would_brinell_the_groove(self):
+        """롤러 수가 접촉압에서 나온다 — 하나로는 압흔이 남는다."""
+        self.assertGreater(afr.rollers_per_carriage(), 1,
+                           "한 개로 1,200 N 을 받는다면 접촉 계산을 안 한 것이다")
+        self.assertTrue(afr.roller_leaves_no_brinell())
+        self.assertLessEqual(afr.roller_contact_mpa(), afr.roller_allow_mpa())
+        self.assertLess(afr.roller_allow_mpa(), afr.rolling_yield_mpa(),
+                        "설계계수가 안 걸렸다")
+        # 항복 기준은 선접촉 τ_max = 0.300·p_max 에서 나온다
+        self.assertAlmostEqual(afr.rolling_yield_mpa(),
+                               frames.YIELD_MPA / (2 * afr.HERTZ_SHEAR_COEFF), places=1)
+
+    def test_a_narrower_groove_needs_more_rollers(self):
+        """롤러 수가 홈 치수에서 나오는가 — 홈을 좁히면 늘어야 한다."""
+        keep = afr.GROOVE_H_MM
+        try:
+            afr.GROOVE_H_MM = 15
+            self.assertGreater(afr.rollers_per_carriage(), 4,
+                               "홈을 좁혔는데 롤러 수가 그대로다")
+        finally:
+            afr.GROOVE_H_MM = keep
+        self.assertEqual(afr.rollers_per_carriage(), 4)
+
+    # ── "휘지 않고 직선으로" ──────────────────────────────────────────
+    def test_the_frame_drops_straight_because_the_roller_rides_the_bond_front(self):
+        """롤러가 홈에 걸려 접착 전선과 같이 가면 자유 길이가 롤러 반경뿐이다.
+
+        기존 3D 는 롤러가 전선보다 220 mm 앞서 달리는 그림이라 프레임이 휘었다.
+        발주처 말대로 홈에 걸려 같이 가면 남는 것은 이미 떨어진 부분의 자중뿐이고,
+        그 처짐은 프레임 높이의 1/20 도 안 된다.
+        """
+        self.assertTrue(afr.drops_straight())
+        self.assertEqual(afr.roller_free_length_mm(), afr.roller_d_mm() / 2)
+        self.assertLess(afr.roller_free_length_mm(), frames.DESIGN_FREE_LENGTH_MM,
+                        "홈에 걸린 롤러가 앞서 달리는 롤러보다 멀면 뭔가 뒤집혔다")
+        self.assertLess(afr.self_weight_sag_mm(), frames.check().deflection_mm,
+                        "자중만 남았는데 인발 하중 때보다 더 휜다")
+        self.assertLess(afr.display_bow_mm(), afr.short_edge_display_bow_mm(),
+                        "장변이 단변보다 더 휘면 홈 인발의 요점이 사라진다")
+
+    def test_a_long_released_span_would_still_be_checked(self):
+        """직선 판정이 살아 있는가 — 캐리지를 줄여 늘어뜨리면 떨어져야 한다."""
+        keep = afr.CARRIAGE_PER_SIDE
+        try:
+            afr.CARRIAGE_PER_SIDE = 1
+            self.assertGreater(afr.self_weight_sag_mm(), 0.3,
+                               "벗기는 길이를 두 배로 늘렸는데 처짐이 그대로다")
+        finally:
+            afr.CARRIAGE_PER_SIDE = keep
+
+    # ── 도면과의 대조 ─────────────────────────────────────────────────
+    def test_the_drawing_carries_the_model_values(self):
+        """도면 3D 와 본문이 모델에서 나온 값을 그대로 쓰는가."""
+        text = read_drawing()
+        a = afr
+        for probe in (
+            f"afrShortCylinderBoreMm:{a.bore_mm()}",
+            f"afrCylinderInsetMm:{a.CYL_INSET_MM}",
+            f"afrPushTravelMm:{a.push_travel_mm()}",
+            f"afrPullTravelMm:{a.pull_travel_mm()}",
+            f"afrChainRunCount:{a.chain_runs()}",
+            f"afrRollersPerCarriage:{a.rollers_per_carriage()}",
+            f"afrPlatenMm:[{a.PLATEN_X_MM},{a.PLATEN_Z_MM},{a.PLATEN_T_MM}]",
+            f"afrGrooveMm:[{a.GROOVE_H_MM},{a.GROOVE_D_MM}]",
+            a.cylinder_spec(),
+            "AFR PL-251 패널 고정 정반",
+            "AFR PB-261 쇠막대",
+            "AFR ST-241 프레임 스토퍼",
+            "AFR TC-231 톱니 컨베이어 스프로킷",
+            "AFR 장축 압출재 인발 홈",
+        ):
+            self.assertIn(probe, text, f"도면에 {probe} 가 없다")
+        # 100 mm 정반에 안 들어가는 옛 보어는 사라져야 한다
+        self.assertNotIn("Ø125/70×250", text, "정반에 안 들어가는 실린더가 남아 있다")
+
+    def test_the_drawing_is_what_the_builder_makes(self):
+        """도면의 AFR 블록이 tools/build_afr.py 출력과 같은가 — 손으로 고치면 잡힌다."""
+        spec = importlib.util.spec_from_file_location(
+            "build_afr", pathlib.Path(__file__).resolve().parents[1] / "tools" / "build_afr.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        text = read_drawing()
+        self.assertIn(mod.build_block(), text, "3D 형상이 생성기 출력과 다르다")
+        self.assertIn(mod.build_anim(), text, "동작이 생성기 출력과 다르다")
+        self.assertIn(mod.build_hook(), text, "시험 훅이 생성기 출력과 다르다")
+        self.assertIn(mod.spec_sentence(), text, "사양 문장이 생성기 출력과 다르다")
