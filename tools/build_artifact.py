@@ -25,6 +25,8 @@ import sys
 TARGETS: dict[str, tuple[pathlib.Path, pathlib.Path]] = {
     "console": (pathlib.Path("docs/consoles/pv-preprocess-console.html"),
                 pathlib.Path("out/pv-preprocess-console-artifact.html")),
+    "plant": (pathlib.Path("docs/drawings/pv-preprocess-plant.html"),
+              pathlib.Path("out/pv-preprocess-plant-artifact.html")),
 }
 
 STRIP_HEAD_TAGS = (

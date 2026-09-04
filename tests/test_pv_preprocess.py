@@ -37,6 +37,11 @@ def read_console() -> str:
     return CONSOLE.read_text(encoding="utf-8")
 
 
+#: 셀 마크 데칼 — 태그 ↔ 존. 셀마다 하나이고, 3D 실측 가드 면에 붙는다.
+DECAL_TAGS = {"AFU-101": "afu", "RB-101": "robot", "JBR-201": "jbr", "AFR-101": "afr",
+              "SG-301": "post", "GBR-301": "buffer", "GRM-401": "grm"}
+
+
 def brand_paths_in(html: str) -> list[str]:
     """HTML 안의 `PV_BRAND` 블록에서 경로 문자열만 뽑는다.
 
@@ -284,7 +289,7 @@ class TestDrawingDocument(unittest.TestCase):
             self.assertIn(tag, self.html, tag)
         self.assertIn('<meta charset="utf-8">', self.html)   # 한글 도면 — 빠지면 깨진다
         self.assertIn('name="viewport"', self.html)
-        self.assertIn("<title>태양광 패널 전처리 통합 플랜트 설계도</title>", self.html)
+        self.assertIn("<title>태양광 전처리 통합 플랜트</title>", self.html)
 
     def test_fetches_nothing_from_the_network(self):
         """오프라인·차단 환경에서도 그대로 열려야 한다.
@@ -1893,7 +1898,8 @@ class TestBrandMark(unittest.TestCase):
         labels = {z.key: z.label for z in layout.build_zones()}
         calls = re.findall(r"pvNamePlate\(g,([\d.]+),\[([-\d.]+),([\d.]+),([-\d.]+)\],"
                            r"0,'([\w-]+)','([^']*)'\)", self.html)
-        self.assertEqual(len(calls), len(want) + 1, "명판은 캐비닛 7면 + 관제실 1면이다")
+        # 캐비닛 7면 + 관제실 1면 + 셀 마크 데칼 7장
+        self.assertEqual(len(calls), len(want) + 1 + len(DECAL_TAGS))
         seen = {}
         for w, x, y, z, tag, sub in calls:
             seen[tag] = (float(w), float(z), sub)
@@ -1977,6 +1983,39 @@ class TestBrandMark(unittest.TestCase):
 
         # 콘솔 원본이 자기가 원본임을 밝혀야 나중에 발행본을 고치지 않는다
         self.assertIn("tools/build_artifact.py", base)
+
+    def test_the_mark_is_actually_visible_on_the_plant(self):
+        """붙였는데 안 보이면 안 붙인 것과 같다.
+
+        처음엔 명판(420 mm)을 통로 바깥벽 캐비닛에만 달았고, 그 결과 플랜트
+        전경에서 마크가 **하나도 읽히지 않았다.** 이 플랜트는 열린 프레임 +
+        투명 가드라 로고가 붙을 기계 외장이 아예 없기 때문이다.
+
+        그래서 셀마다 통로쪽 가드 면에 데칼을 붙였다. 여기서 지키는 것은 셋이다 —
+        셀마다 하나일 것, 멀리서 읽힐 만큼 클 것, 통로를 먹지 않을 것.
+        """
+        calls = re.findall(r"pvNamePlate\(g,([\d.]+),\[([-\d.]+),([\d.]+),([-\d.]+)\],"
+                           r"0,'([\w-]+)','([^']*)'\)", self.html)
+        decals = {tag: (float(w), float(x), float(z))
+                  for w, x, y, z, tag, _ in calls if tag in DECAL_TAGS}
+        self.assertEqual(set(decals), set(DECAL_TAGS), "셀마다 데칼이 하나씩 있어야 한다")
+
+        zones = {z.key: z for z in layout.build_zones() if z.key != "gate"}
+        self.assertEqual(len(DECAL_TAGS), len(zones), "데칼 수는 셀 수와 같다")
+        for tag, key in DECAL_TAGS.items():
+            with self.subTest(tag=tag):
+                w, x, z = decals[tag]
+                # 캐비닛 명판(420)보다 세 배 이상 커야 전경에서 읽힌다
+                self.assertGreaterEqual(w, 1.2, f"{tag} 데칼이 작아 안 읽힌다")
+                # 장비 밴드 안이어야 보행 유효폭을 안 먹는다 (통로는 z 3.55…4.75)
+                self.assertLessEqual(z + 0.012 / 2, 3.55,
+                                     f"{tag} 데칼이 통로로 넘어왔다")
+                # 자기 셀 안에 있어야 한다
+                zone = zones[key]
+                lo = (zone.x0_mm - 24750) / 1000
+                hi = (zone.x1_mm - 24750) / 1000
+                self.assertGreaterEqual(x, lo - 0.5, f"{tag} 데칼이 셀 밖이다")
+                self.assertLessEqual(x, hi + 0.5, f"{tag} 데칼이 셀 밖이다")
 
     def test_the_plate_texture_paints_the_mark_not_a_copy(self):
         """명판 텍스처가 마크를 **직접 그리지 않고** 전역을 부른다.

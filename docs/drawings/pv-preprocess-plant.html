@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'unsafe-inline'; img-src blob: data:; font-src data:; media-src blob: data:; worker-src blob:; connect-src blob: data:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-<title>태양광 패널 전처리 통합 플랜트 설계도</title>
+<title>태양광 전처리 통합 플랜트</title>
 <style>/* 명시적 테마 전환 지원. 색은 전부 light-dark() 로 정의돼 있으므로 color-scheme 만
    고정해 주면 두 방향 모두 토글이 이긴다 (docs/drawings/ 의 다른 도면과 같은 동작). */
 :root[data-theme="light"] { color-scheme: light; }
@@ -10615,6 +10615,30 @@ pvNamePlate(g,.42,[27.025,1.18,4.456],0,'EC-GRM','GRM-401 유리제거');
 /* REV.23 GRM-401 유리제거셀 — 링크만 걸려 있던 후단 라인을 3D 장면에 세운다.
    좌표는 배치 모델을 따른다: 존 X 44,750…58,800 → 월드 x 20.0…34.05,
    존 Y 1,000…7,100 → 월드 z −2.55…+3.55 (그룹 원점 x 27.025 · z +0.5). */
+
+/* == 셀 마크 데칼 =====================================================
+   이 플랜트는 열린 프레임 + 투명 가드라 **로고가 붙을 기계 외장이 없다.**
+   명판(420)만으로는 전경에서 마크가 하나도 안 읽힌다 - 실제로 안 읽혔다.
+
+   새 기둥을 세우면 통로를 먹으므로(36 절 고정 플랫폼과 같은 벽), 실제 공장이
+   하는 대로 이미 서 있는 안전가드 면에 데칼을 붙인다. 자리는 고른 것이 아니라
+   3D 실측이다 - 각 셀의 통로쪽 가드 면 z 를 재고 그 면에 붙였다. 전부 장비
+   밴드(z <= 3.55) 안이라 보행 유효폭 900 을 건드리지 않는다.
+
+   도형은 여기서 그리지 않는다 - pvNamePlate 가 pvMarkPaint 를 부르고, 그것이
+   PV_BRAND 의 경로 문자열을 Path2D 로 먹는다. 콘솔 SVG 와 같은 문자열이다. */
+var pvDecal=new ce;pt.add(pvDecal);
+(function(){
+var g=pvDecal;
+pvNamePlate(g,1.2,[-18.34,1.75,1.96],0,'AFU-101','LFT-A/B · BFC 투입');
+pvNamePlate(g,1.6,[-16.5,2.3,3.294],0,'RB-101','PT 정렬 · 반전 투입');
+pvNamePlate(g,1.4,[-6.2,2.1,1.519],0,'JBR-201','정션박스 제거');
+pvNamePlate(g,1.4,[-1,2.1,1.519],0,'AFR-101','알루미늄 프레임 분리');
+pvNamePlate(g,1.6,[6.1,1.95,2.406],0,'SG-301','CV · SG · GI 유리 검사');
+pvNamePlate(g,1.6,[14.75,2.1,3.524],0,'GBR-301','레시피 버퍼');
+pvNamePlate(g,1.6,[27.025,2.05,3.544],0,'GRM-401','유리 제거');
+}());
+
 var pvGrm=new ce;pt.add(pvGrm);pvGrm.position.set(27.025,0,.5);
 (function(){
 var g=pvGrm,L=function(a,b,c,d,e,f){return P(g,a,b,c,d,e,f)};
