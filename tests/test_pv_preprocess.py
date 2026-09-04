@@ -19,8 +19,8 @@ import unittest
 from . import _path  # noqa: F401
 
 from pv_preprocess import (acceptance, access, acoustics, ai, air, brand, campaign, crane, dust, electrical,
-                           frames, handoff, kinematics, layout, materials, mounting, reliability, safety,
-                           seismic, smart, servos, thermal, vision, wiring)
+                           frames, grade, handoff, kinematics, layout, materials, mounting, reliability,
+                           safety, seismic, smart, servos, thermal, vision, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
 
@@ -4417,3 +4417,98 @@ class TestAcceptance(unittest.TestCase):
         for item in acceptance.items():
             with self.subTest(item=item.tag):
                 self.assertIn(f'"{item.tag}"', self.html)
+
+
+class TestWorldClassGrade(unittest.TestCase):
+    """세계 최상급 기준으로 채점한 결과가 값에서 나오는지.
+
+    "최상급으로 올려 달라" 는 검사할 수 없는 문장이다. 그래서 기준을 출처 있는
+    수치로 바꾸고 현재 값을 모델에서 계산한다. 여기서 지키는 것은 둘이다 —
+    **점수가 리터럴이 아니라 파생일 것**, 그리고 **못 잰 것을 통과로 세지 않을 것**.
+    """
+
+    def test_every_criterion_carries_a_source_and_a_way_to_close_it(self):
+        """목표를 지어내면 채점이 의견이 된다. 출처와 닫는 방법을 같이 적는다."""
+        self.assertGreaterEqual(len(grade.CRITERIA), 12)
+        seen = set()
+        for c in grade.CRITERIA:
+            with self.subTest(tag=c.tag):
+                self.assertNotIn(c.tag, seen, "태그가 겹친다")
+                seen.add(c.tag)
+                self.assertIn(c.axis, grade.AXES)
+                self.assertIn(c.direction, (">=", "<="))
+                self.assertGreaterEqual(len(c.source), 12, "목표의 출처가 없다")
+                self.assertGreaterEqual(len(c.closes), 12, "격차를 닫는 방법이 없다")
+        for axis in grade.AXES:
+            with self.subTest(axis=axis):
+                self.assertTrue(grade.by_axis(axis), f"{axis} 축에 기준이 없다")
+
+    def test_what_cannot_be_measured_is_not_counted_as_passing(self):
+        """못 잰 것을 통과로 세면 점수가 올라가고 그 점수로 설계를 멈추게 된다."""
+        self.assertEqual(grade.QUALITY_RATE, None, "품질률은 run-at-rate 항목이다")
+        self.assertIsNone(grade.oee(), "품질률이 없으면 OEE 도 없다")
+        blocked = {c.tag for c in grade.blocked()}
+        self.assertIn("T-01", blocked, "OEE 가 못잼이 아니라면 어딘가에서 1.0 을 덮었다")
+        # 통과·격차·못잼이 서로 겹치지 않고 전부를 덮는다
+        p, g, b = grade.passed(), grade.gaps(), grade.blocked()
+        self.assertEqual(len(p) + len(g) + len(b), len(grade.CRITERIA))
+        self.assertEqual(set(), {c.tag for c in p} & {c.tag for c in g})
+        # 축별 집계가 전체와 맞는다
+        tot = [sum(x) for x in zip(*(grade.axis_score(a) for a in grade.AXES))]
+        self.assertEqual(tot, [len(p), len(g), len(b)])
+
+    def test_the_score_moves_when_the_design_moves(self):
+        """점수가 리터럴이면 설계를 고쳐도 그대로다 — 파생인지 흔들어 본다."""
+        base = grade.performance_rate()
+        self.assertAlmostEqual(base, grade.BOTTLENECK_OCCUPANCY_S
+                               / campaign.summary()["takt_s"], places=6)
+        # 병목 점유를 바꾸면 성능률이 따라와야 한다
+        keep = grade.BOTTLENECK_OCCUPANCY_S
+        try:
+            grade.BOTTLENECK_OCCUPANCY_S = keep + 2.0
+            self.assertGreater(grade.performance_rate(), base)
+        finally:
+            grade.BOTTLENECK_OCCUPANCY_S = keep
+        self.assertAlmostEqual(grade.performance_rate(), base, places=9)
+        # MTTR 도 파생이어야 한다. 값을 만든 식으로 값을 검사하면 리터럴을
+        # 못 가른다 — 지금 최댓값과 같은 숫자를 박아 넣어도 통과한다. 흔든다.
+        self.assertEqual(grade.worst_mttr_h(),
+                         max(b.mttr_h for b in reliability.BLOCKS))
+        keep_blocks = reliability.BLOCKS
+        try:
+            worst = max(reliability.BLOCKS, key=lambda b: b.mttr_h)
+            reliability.BLOCKS = tuple(
+                dataclasses.replace(b, mttr_h=b.mttr_h + 4.0) if b is worst else b
+                for b in keep_blocks)
+            self.assertAlmostEqual(grade.worst_mttr_h(), worst.mttr_h + 4.0,
+                                   msg="MTTR 이 리터럴이다")
+        finally:
+            reliability.BLOCKS = keep_blocks
+        self.assertEqual(grade.worst_mttr_h(),
+                         max(b.mttr_h for b in reliability.BLOCKS))
+        self.assertEqual(set(grade.single_point_blocks()),
+                         {b.tag for b in reliability.BLOCKS
+                          if not b.redundant and not b.buffered})
+        self.assertEqual(grade.spares_unknown(), len(reliability.spares_pending()))
+
+    def test_the_gaps_are_the_ones_we_actually_have(self):
+        """지금 벌어져 있는 격차를 값으로 못 박는다 — 조용히 닫히면 시험이 잡는다."""
+        gaps = {c.tag for c in grade.gaps()}
+        for tag in ("T-03", "D-01", "D-03", "A-02"):
+            with self.subTest(tag=tag):
+                self.assertIn(tag, gaps)
+        # 폐루프는 0 이다. 감지 과제를 폐루프라고 세면 안 된다
+        self.assertEqual(grade.closed_loop_count(), 0)
+        self.assertEqual(grade.CLOSED_LOOP_TAGS, ())
+        # 최악 MTTR 3.0 h 는 목표 0.5 h 의 여섯 배다
+        self.assertGreaterEqual(grade.worst_mttr_h() / 0.5, 6.0)
+        # 단일고장 블록이 절반을 넘는다
+        self.assertGreater(grade.single_point_ratio(), 0.5)
+
+    def test_oee_rides_on_an_assumption_and_says_so(self):
+        """품질률 1.0 을 덮으면 0.85 를 갓 넘는다 — 그 사실을 값으로 남긴다."""
+        optimistic = grade.oee_if_quality(1.0)
+        self.assertAlmostEqual(optimistic, 0.8541, places=3)
+        self.assertGreater(optimistic, 0.85, "가정 아래서만 기준을 넘는다")
+        # 품질률이 조금만 떨어져도 기준 밑으로 간다 — 그래서 재야 한다
+        self.assertLess(grade.oee_if_quality(0.99), 0.85)
