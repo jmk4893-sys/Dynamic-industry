@@ -308,9 +308,9 @@
 
   <div class="clause"><div class="n">3.2</div><div class="c">
     <h3>설비 구성</h3>
-    <p>라인은 아래 13개 모듈로 구성한다. 외형 치수는 개념 배치 기준이며 상세설계에서 확정한다.</p>
+    <p>라인은 아래 16개 모듈로 구성한다. 외형 치수는 개념 배치 기준이며 상세설계에서 확정한다.</p>
     <div class="tw"><table>
-      <caption>모듈 구성 — 외형 치수는 개념치</caption>
+      <caption>모듈 구성 16종 — 외형 치수는 개념치</caption>
       <thead><tr><th>부호</th><th>모듈</th><th class="num">외형 L×W×H (mm)</th><th>주재질</th></tr></thead>
       <tbody>
         <tr><td class="k">M-001</td><td>투입·정렬·식별</td><td class="num">6000×1800×4200</td><td>SS400 / AL6061</td></tr>
@@ -326,14 +326,40 @@
         <tr><td class="k">M-011</td><td>전력·MCC·제어반</td><td class="num">7600×1600×3600</td><td>도장강판 IP54</td></tr>
         <tr><td class="k">M-012</td><td>유틸리티·화재안전</td><td class="num">9000×2500×4600</td><td>SS400 / SUS304</td></tr>
         <tr><td class="k">M-013</td><td>가드·발판·정비설비</td><td class="num">25000×7000×3000</td><td>SS400 / 메시패널</td></tr>
+        <tr><td class="k">M-014</td><td>데이터·이력·원격감시</td><td class="num">1400×1200×3500</td><td>도장강판 IP54</td></tr>
+        <tr><td class="k">M-015</td><td>자동 팔레타이징·무인 감시</td><td class="num">3800×4600×3700</td><td>SS400 / AL6061</td></tr>
+        <tr><td class="k">M-016</td><td>축열식 열산화·열회수</td><td class="num">8300×3400×8100</td><td>SUS310S / 내화캐스터블</td></tr>
       </tbody>
     </table></div>
-    <p>라인 전체 점유 면적은 M-013 방호 범위 기준 <strong class="m">25,000 × 7,000 mm</strong>,
-      최고 높이 <strong class="m">5,600 mm</strong>(M-010 굴뚝 제외)이다. 표의 폭 치수는
+    <p>주 방호구획(M-013)은 <strong class="m">25,000 × 7,000 mm</strong>이고, 자동
+      팔레타이징(M-015)이 상·하류에 각각 독립 방호구획으로 붙어 라인 전체 길이는
+      <strong class="m">약 38,000 mm</strong>가 된다. 최고 높이는 M-016 굴뚝
+      <strong class="m">8,100 mm</strong>이며 본체 최고 높이는 <strong class="m">5,600 mm</strong>이다. 표의 폭 치수는
       패널 폭 <strong class="m">1,200 mm</strong>에서 나온 개념치이며, 방호 범위와
       라인 전장은 통로·정비공간이 정하므로 패널 치수를 따르지 않는다. 상세설계에서
       흡착패드 배치(<a href="#c11">OI-13</a>)와 에어록 격리실 길이를 확정하면 폭·길이
       모두 재산정 대상이다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">3.3</div><div class="c">
+    <h3>고도화 범위 — 이 설비가 최상급이어야 하는 네 가지</h3>
+    <p>본 설비는 단순 분리기가 아니라 <strong>회수 실적을 증명하고, 스스로 조건을 맞추며,
+      사람 없이 돌고, 배출을 처리·계측하는</strong> 라인으로 설계한다. 네 축이 각각
+      기계·제어·문서에 걸쳐 있으므로 상세설계에서 통합해 다룬다.</p>
+    <div class="tw"><table>
+      <caption>고도화 네 축</caption>
+      <thead><tr><th>축</th><th>없으면 생기는 일</th><th>추가 설비</th><th>조항</th></tr></thead>
+      <tbody>
+        <tr><th>회수율·물질수지</th><td>무게를 재지 않으면 회수율을 주장할 근거가 없다</td>
+          <td class="k">WI-101 · WO-301/302/303 · RE-101</td><td><a href="#c4">4.4</a> · <a href="#c5">5.5</a></td></tr>
+        <tr><th>공정 지능</th><td>고정 레시피는 쉬운 패널에서 시간을 버리고 어려운 패널에서 유리를 깬다</td>
+          <td class="k">적응 속도제어 · HS-101 · OPC UA</td><td><a href="#c7">7.4</a></td></tr>
+        <tr><th>무인 연속운전</th><td>팔레트·칼날·롤이 사람 손을 요구하면 무인 시간이 그 주기로 끊긴다</td>
+          <td class="k">PL-101/201 · KC-101 · AD-101</td><td><a href="#c6">6.6</a></td></tr>
+        <tr><th>환경·인증</th><td>배출 성상을 상시 기록하지 않으면 <a href="#c11">OI-10</a>이 닫히지 않는다</td>
+          <td class="k">RTO-101 · HX-101 · CEMS-101</td><td><a href="#c6">6.7</a></td></tr>
+      </tbody>
+    </table></div>
   </div></div>
 </section>
 
@@ -385,6 +411,34 @@
         불합격품은 밀폐 리젝트 캐리지로 분기</li>
     </ul>
     <p>유리 파손률과 잔류물 허용 한계는 입찰자가 DOE로 도출해 제안하고 발주자 승인을 받는다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">4.4</div><div class="c">
+    <h3>회수율과 물질수지</h3>
+    <p>재활용사가 정산받는 지표는 처리 장수가 아니라 <strong>회수한 질량과 그 순도</strong>다.
+      선행 개념설계는 어디서도 무게를 재지 않았으므로 회수율을 주장할 근거가 없었다.
+      투입 1점과 반출 3계통을 모두 계량해 로트 단위로 물질수지를 닫는다.</p>
+    <div class="tw"><table>
+      <caption>계량 계통과 요구 성능</caption>
+      <thead><tr><th>부호</th><th>대상</th><th>방식</th><th class="num">요구 정확도</th></tr></thead>
+      <tbody>
+        <tr><td class="k">WI-101</td><td>투입 패널 (기준점)</td><td>계량 컨베이어 · 로드셀 4점 합산</td><td class="num">± 0.2 % F.S.</td></tr>
+        <tr><td class="k">WO-301</td><td>백시트 만권 롤</td><td>BS-301 계량 새들</td><td class="num">± 0.5 % F.S.</td></tr>
+        <tr><td class="k">WO-302</td><td>셀/EVA</td><td>벨트 계량기 적산 (하중 × 벨트속도)</td><td class="num">± 1.0 % 적산</td></tr>
+        <tr><td class="k">WO-303</td><td>판유리</td><td>GC 캐리지 계량대 · 캐리지 자중 영점</td><td class="num">± 0.3 % F.S.</td></tr>
+        <tr><td class="k">RE-101</td><td>유리 잔류 EVA</td><td>NIR 분광 · 3점 스캔</td><td class="num">± 5 g/m²</td></tr>
+      </tbody>
+    </table></div>
+    <div class="logic">LOT_OPEN        = LOT_ID_VALID ∧ WI_TARE_OK ∧ SCALES_HEALTHY
+MASS_BALANCE_OK = |PANEL_MASS_IN − (ROLL_MASS + CELL_MASS_RATE + GLASS_MASS)| ≤ 2 % · PANEL_MASS_IN
+LOT_CLOSE       = LOT_COUNT_REACHED ∧ STREAMS_DRAINED ∧ MASS_BALANCE_OK
+RECOVERY_CERT   = LOT_CLOSE ∧ RESIDUAL_EVA_OK ∧ TRACE_WRITE_OK</div>
+    <p>로트가 닫히면 설비가 스스로 <strong>로트별 회수율·순도 성적서</strong>를 발행한다.
+      계량은 사이클 밖에서 병렬로 돌아가므로 <a href="#c5">5.2항</a> 사이클
+      <span class="m">53.6 s</span>에 계량 시간이 더해지지 않는다.</p>
+    <div class="note">물질수지의 잔차는 버리는 값이 아니라 <strong>VOC 로 날아간 질량과 잔류물</strong>이다.
+      이 잔차와 <a href="#c6">6.7항</a> CEMS 의 적산 배출량이 같은 크기인지 대조하면
+      두 계측계가 서로를 검증한다.</div>
   </div></div>
 </section>
 
@@ -453,6 +507,33 @@ t_열   = max( 5Q / (60 × 2.5 kW × η 0.65),  113.15 s )  = 225.8 s
         <tr><th>배기 계통</th><td class="num">2 × 100 % 이중화</td><td>1대 고장 시 연속운전 확인</td></tr>
       </tbody>
     </table></div>
+  </div></div>
+
+  <div class="clause"><div class="n">5.5</div><div class="c">
+    <h3>물질수지 기준 질량</h3>
+    <p>회수율은 질량 비율이므로 적층 구성에서 면적당 질량을 세우고 패널 면적을 곱해 얻는다.</p>
+    <div class="tw"><table>
+      <caption>적층 면적질량과 회수 비율 — 최대 면적 2.88 m² 기준</caption>
+      <thead><tr><th>층</th><th class="num">두께</th><th class="num">면적질량 kg/m²</th>
+        <th class="num">비열 kJ/(kg·K)</th><th class="num">반출 계통 비율</th></tr></thead>
+      <tbody>
+        <tr><th>판유리</th><td class="num">3.2 mm</td><td class="num">8.000</td><td class="num">0.75</td><td class="num">81.7 %</td></tr>
+        <tr><th>EVA 2층</th><td class="num">0.90 mm</td><td class="num">0.855</td><td class="num">2.05</td><td class="num" rowspan="2">14.0 %</td></tr>
+        <tr><th>셀·리본</th><td class="num">0.20 mm</td><td class="num">0.520</td><td class="num">0.70</td></tr>
+        <tr><th>백시트</th><td class="num">0.30 mm</td><td class="num">0.420</td><td class="num">1.30</td><td class="num">4.3 %</td></tr>
+      </tbody>
+      <tfoot><tr><th>합계</th><td class="num">—</td><td class="num">9.795</td>
+        <td class="num">8.663</td><td class="num">28.2 kg/장</td></tr></tfoot>
+    </table></div>
+    <div class="note"><strong>질량 가정과 열 가정이 같은 적층을 말하는지 확인했다.</strong>
+      위 면적질량에 비열을 곱하면 면적열용량 <span class="m">8.663 kJ/(m²·K)</span>가 나오는데,
+      <a href="#c5">5.1항</a> 열수지가 쓰는 <span class="m">8.7359</span>와
+      <span class="m">0.84 %</span> 차이다. 두 계산이 서로 다른 패널을 말하고 있었다면
+      회수율과 체류시간 중 하나는 틀린 값이 된다.</div>
+    <p>셀/EVA 는 패널당 <span class="m">3.96 kg</span>으로
+      <a href="#c11">OI-08</a>의 슈레더 부하 가정(4 kg)과 일치한다. 실 패널의
+      백시트 두께(<a href="#c11">OI-11</a>)와 셀 구성이 확정되면 이 표를 갱신하고
+      회수 비율을 다시 잡는다.</p>
   </div></div>
 </section>
 
@@ -577,6 +658,68 @@ t_열   = max( 5Q / (60 × 2.5 kW × η 0.65),  113.15 s )  = 225.8 s
       <li>모듈별 질량을 계산·계량하여 운송한계·크레인 용량·반입구 치수와 대조 (<a href="#c11">OI-04</a>)</li>
     </ul>
   </div></div>
+
+  <div class="clause"><div class="n">6.6</div><div class="c">
+    <h3>자동 팔레타이징과 무인 연속운전</h3>
+    <p>무인 시간은 <strong>가장 짧은 사람 개입 주기</strong>로 끊긴다. 선행 설계에서는
+      팔레트 투입, 유리 적재, 칼날 교환, 만권 롤 반출이 모두 사람 손을 요구했다.
+      이 넷을 자동화해 <strong class="m">8시간 무인</strong>을 목표로 한다.</p>
+    <div class="tw"><table>
+      <caption>사람 개입 주기와 자동화 수단</caption>
+      <thead><tr><th>개입</th><th class="num">종전 주기</th><th>자동화 수단</th><th>확인 신호</th></tr></thead>
+      <tbody>
+        <tr><th>패널 투입</th><td class="num">팔레트당 약 20 장 · 20 분</td>
+          <td class="k">PL-101 자동 디스태커</td><td class="k">AUTO_FEED</td></tr>
+        <tr><th>유리 적재</th><td class="num">캐리지당 약 30 분</td>
+          <td class="k">PL-201 자동 스태커</td><td class="k">AUTO_STACK</td></tr>
+        <tr><th>칼날 교환</th><td class="num">수명 도달 시 (<a href="#c11">OI-12</a>)</td>
+          <td class="k">KC-101 카세트 매거진 2조</td><td class="k">KNIFE_AUTOCHANGE</td></tr>
+        <tr><th>만권 롤 반출</th><td class="num">4.9 h</td>
+          <td class="k">AD-101 AGV 도킹</td><td class="k">ROLL_HANDOFF</td></tr>
+      </tbody>
+    </table></div>
+    <div class="logic">UNMANNED_PERMIT  = AUTO_FEED ∧ AUTO_STACK ∧ KC_MAGAZINE_READY ∧ BIN_LEVEL_OK ∧ THERMAL_CAM_OK ∧ FIRE_OK ∧ REMOTE_ACK ∧ OEE_VALID
+KNIFE_AUTOCHANGE = KNIFE_CHANGE_DUE ∧ KC_MAGAZINE_READY ∧ KC_ARM_HOME ∧ KNIVES_CLEAR ∧ CARRIER_PARKED</div>
+    <div class="warn"><strong>칼날 자동교환은 정비허가(LOTO)가 아니라 캐리어 파킹 상태에서 돈다.</strong>
+      무인 운전 중에 LOTO 를 요구하면 그 허가는 영원히 성립하지 않고, 결국 사람이
+      들어가야 한다. 대신 파킹 위치·칼날 Z 상한·매거진 위치를 모두 읽어 등가의
+      안전상태를 만든다. 이 상태의 PLr 은 <a href="#c11">OI-09</a>에서 결정한다.</div>
+    <ul>
+      <li>PL-101/201 은 각각 <strong>독립 방호구획</strong>으로 하고 팔레트 반출입구만 광커튼으로 연다</li>
+      <li>무인 감시 열화상 <span class="m">3점</span>으로 라인 전체를 덮어 이상 승온을 화재 이전에 잡는다</li>
+      <li>반출 3계통 함의 레벨을 모두 읽는다 — 무인 운전은 함이 차면 끝난다</li>
+      <li>무인 중 이상은 RC-101 원격 콘솔로 통보하고, <strong>원격승인 없이는 재기동하지 않는다</strong></li>
+      <li>AGV 는 발주자 기존 대차와의 인터페이스를 확인해 통신 규약을 확정한다</li>
+    </ul>
+  </div></div>
+
+  <div class="clause"><div class="n">6.7</div><div class="c">
+    <h3>축열식 열산화와 배기 열회수</h3>
+    <p>선행 설계의 배기는 응축 + 활성탄이었고, <span class="m">200 kW</span> IR 이 만든
+      배기열은 그대로 버렸다. 축열식 열산화로(RTO)로 바꾸면 VOC 파괴효율이 오르고,
+      그 배열로 급기를 예열하면 <strong>같은 배기 처리가 에너지 회수가 된다</strong>.</p>
+    <div class="tw"><table>
+      <caption>M-016 요구 성능</caption>
+      <thead><tr><th>항목</th><th class="num">요구</th><th>확인</th></tr></thead>
+      <tbody>
+        <tr><th>RTO 연소온도</th><td class="num">850 °C 이상</td><td>연소실 열전대 3점</td></tr>
+        <tr><th>VOC 파괴효율</th><td class="num">≥ 98 %</td><td>입·출구 TOC 동시 측정</td></tr>
+        <tr><th>축열 열회수율</th><td class="num">≥ 95 %</td><td>절환 주기별 출구온도 실측</td></tr>
+        <tr><th>HX-101 급기 예열</th><td class="num">입찰자 제시</td><td>예열온도와 IR 평균전력 절감분 대조</td></tr>
+        <tr><th>연속 배출 감시</th><td class="num">TOC · CO · O₂ · 유량 · 온도</td><td>CEMS-101 상시 기록</td></tr>
+      </tbody>
+    </table></div>
+    <div class="logic">RTO_READY     = RTO_TEMP_OK ∧ RTO_VALVE_OK ∧ EXHAUST_RUN
+EMISSION_OK   = CEMS_OK ∧ TOC_HIGH ∧ RTO_READY
+HEAT_RECOVERY = RTO_READY ∧ HX_OUTLET_TEMP ∧ DP_OK</div>
+    <div class="note"><strong>배출을 처리하고 계측할 수 있을 때만 IR 을 켠다.</strong>
+      <span class="m">EMISSION_OK</span>를 <span class="m">IR_ENABLE</span>의 항으로 넣었다
+      (<a href="#c7">7.2항</a>). CEMS 통신이 끊기거나 RTO 가 승온되지 않은 상태에서
+      가열이 시작되면, 그 사이의 배출은 기록도 처리도 되지 않는다.</div>
+    <p>가열실 화재는 연기·CO 보다 화염이 먼저 나타나므로 불꽃감지기
+      <span class="m">2점</span>을 F-DI 로 직결하고, 감지 시 IR 차단·셔터 유지에 더해
+      NP-101 질소 퍼지로 챔버를 불활성화한다. 감지에서 퍼지까지의 시간은 FAT 에서 실측한다.</p>
+  </div></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -587,9 +730,10 @@ t_열   = max( 5Q / (60 × 2.5 kW × η 0.65),  113.15 s )  = 225.8 s
     <h3>제어 구성</h3>
     <ul>
       <li>안전 PLC와 표준 PLC 분리, 원격 I/O 3반</li>
-      <li>표준 I/O — <span class="m">DI 144 · DO 80 · AI 24 · AO 8 · TC 40</span>. 실사용 <span class="m">DI 105 · DO 52 · AI 19 · AO 6 · TC 32</span> 에서 예비 20 % 이상을 남기고 카드 배수로 올린 값이다</li>
-      <li>안전 I/O — <span class="m">F-DI 32 · F-DO 8</span> (실사용 F-DI 23 · F-DO 4)</li>
+      <li>표준 I/O — <span class="m">DI 160 · DO 80 · AI 40 · AO 16 · TC 48</span>. 실사용 <span class="m">DI 122 · DO 62 · AI 28 · AO 7 · TC 37</span> 에서 예비 20 % 이상을 남기고 카드 배수로 올린 값이다</li>
+      <li>안전 I/O — <span class="m">F-DI 32 · F-DO 8</span> (실사용 F-DI 25 · F-DO 6)</li>
       <li>24 VDC 이중전원, 산업용 UPS, 관리형 네트워크 링</li>
+      <li>HS-101 이력 서버와 OPC UA 서버 — 공정값은 읽기 전용으로 공개하고 레시피 쓰기는 인증서로 제한한다</li>
     </ul>
   </div></div>
 
@@ -599,7 +743,7 @@ t_열   = max( 5Q / (60 × 2.5 kW × η 0.65),  113.15 s )  = 225.8 s
       안전기능과 공정기능으로 분류하고, 안전기능에 대해 PLr을 결정·검증한다.
       주요 조건은 아래와 같다.</p>
     <div class="logic">START_PERMIT   = FULL_LOAD_ACK ∧ ALL_LOCKED ∧ ALL_TEMP_OK ∧ ALL_DOORS_CLOSED ∧ EXHAUST_OK
-IR_ENABLE      = SEALED_FULL_LOAD_ACK ∧ EXHAUST_OK ∧ FIRE_OK ∧ PM_METER_OK
+IR_ENABLE      = SEALED_FULL_LOAD_ACK ∧ EXHAUST_OK ∧ FIRE_OK ∧ PM_METER_OK ∧ EMISSION_OK
 DOOR_MUTEX     = ¬(INNER_DOOR_OPEN ∧ OUTER_DOOR_OPEN)
 PEEL_PERMIT    = EVA_200_ACK ∧ HKB_TEMP_OK ∧ HKS_TEMP_OK ∧ VAC_6ZONE_OK
 MOTION_SYNC    = |X_LEFT − X_RIGHT| ≤ 0.3 mm ∧ FOLLOWING_ERROR_OK
@@ -669,8 +813,10 @@ NEXT_PANEL     = BACKSHEET_BIN_ACK ∧ SHREDDER_FEED_ACK ∧ GLASS_CARRIAGE_ACK 
     <div class="warn"><strong>보완 전 I/O 선언은 실제 점수를 담지 못했다.</strong>
       대조로 확정한 실사용은 <span class="m">DI 105 · TC 32</span>인데 종전 선언은
       <span class="m">DI 96 · TC 16</span>이었다. 위 표의 장치를 더하기 전부터 이미
-      초과 상태였다. <a href="#c7">7.1항</a>의 I/O 수량은 이 실사용에서 예비 20 %를
-      남기고 카드 배수로 올려 다시 잡은 값이다.</div>
+      초과 상태였다. <a href="#c3">3.3항</a> 고도화 네 축의 장치까지 더한 실사용은
+      <span class="m">DI 122 · DO 62 · AI 28 · AO 7 · TC 37 · F-DI 25 · F-DO 6</span>이며,
+      <a href="#c7">7.1항</a>의 I/O 수량은 여기서 예비 20 %를 남기고 카드 배수로 올려
+      다시 잡은 값이다.</div>
     <p><span class="m">HORN_3S</span>와 <span class="m">BEACON_AMBER</span>는
       <span class="m">START_WARN</span>의 입력처럼 적혀 있었으나 실제로는 적층 신호등·부저를
       구동하는 <strong>F-DO 출력</strong>이다. 입력으로 잡으면 배선 수량과 안전 I/O 배분이
@@ -685,6 +831,40 @@ NEXT_PANEL     = BACKSHEET_BIN_ACK ∧ SHREDDER_FEED_ACK ∧ GLASS_CARRIAGE_ACK 
       단락내량은 실측 변압기 임피던스와 상위 계통 임피던스를 반영한 단락계산으로
       확정한다. 질량은 제작 후 계량값을 기재한다. 선행자료의 값은 가정 기반이다
       (<a href="#c11">OI-02 · OI-03 · OI-04</a>).</div>
+  </div></div>
+
+  <div class="clause"><div class="n">7.4</div><div class="c">
+    <h3>공정 지능 — 적응제어·이력·OEE</h3>
+    <p>선행 설계는 고정 레시피 한 벌로 모든 패널을 처리한다. 그런데 폐모듈은
+      제조사·연식·열화 정도가 제각각이라 EVA 가 녹는 정도가 장마다 다르다.
+      <strong>쉬운 패널에서는 시간을 버리고 어려운 패널에서는 유리를 깬다.</strong>
+      이미 달려 있는 로드셀·AE·IR 센서를 닫힌 루프로 묶어 장마다 조건을 맞춘다.</p>
+    <div class="logic">ADAPT_ENABLE   = PEEL_PERMIT ∧ LOAD_CELL_HEALTH_OK ∧ AE_OK ∧ RECIPE_VALIDATED
+SPEED_SETPOINT = ADAPT_ENABLE ∧ PEEL_FORCE ∧ HKB_LOAD_OK → 40~60 mm/s 구간에서 박리력 목표대 추종
+KNIFE_WEAR_WARN  = PEEL_FORCE ∧ CUT_LENGTH_TOTAL ∧ HKS_TEMP_OK
+PANEL_RELEASE  = QI_DONE ∧ TRACE_WRITE_OK
+OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LINK_OK</div>
+    <div class="tw"><table>
+      <caption>공정 지능 요구</caption>
+      <thead><tr><th>항목</th><th>요구</th></tr></thead>
+      <tbody>
+        <tr><th>적응 속도제어</th><td>박리력을 목표대에 유지하도록 캐리어 속도를
+          <span class="m">40 – 60 mm/s</span> 안에서 조정한다. 상한은 FAT 승인 레시피,
+          하한은 열공정 한계이며 <span class="m">55 mm/s</span>는 이 구간의 기본값일 뿐이다</td></tr>
+        <tr><th>칼날 마모 추세</th><td>같은 온도·같은 레시피에서의 평균 박리력과 누적 절단 연장으로
+          마모를 추정한다. 신품 대비 <span class="m">1.20 배</span>를 교체 판정으로 하며
+          이 값은 <a href="#c11">OI-12</a>의 시험으로 확정한다</td></tr>
+        <tr><th>패널 단위 이력</th><td>바코드 ↔ 캐리지·단·열이력·박리력 트레이스·QI 결과·반출 로트를
+          묶어 보존한다. <strong>기록이 남지 않은 패널은 내보내지 않는다</strong></td></tr>
+        <tr><th>OEE</th><td>ISO 22400 으로 가용률·성능률·품질률을 자동 산출하고
+          정지 사유를 계획정지 / 설비고장 / 자재대기 / 품질 / 외부로 분류한다</td></tr>
+        <tr><th>연동</th><td>OPC UA 서버로 공정값을 읽기 전용 공개, 레시피 쓰기는 인증서 제한.
+          MES 연동 규약은 발주자와 합의한다</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note"><strong>이력은 사후에 만들 수 없다.</strong> 그래서 기록 성공을
+      반출 허가의 항으로 넣었다(<span class="m">PANEL_RELEASE</span>). 서버가 죽으면
+      라인이 서는 대신 조용히 기록 없는 패널이 나가는 쪽이 더 나쁘다.</div>
   </div></div>
 </section>
 

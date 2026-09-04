@@ -495,7 +495,12 @@ class TestVacuumPadLayout(unittest.TestCase):
         need = 2 * self.F_HI / (self.MU * self.DP)
         self.assertAlmostEqual(self._num(r"패드 면적 <span class=\"m\">([\d.]+) m²"), area, delta=0.002)
         self.assertAlmostEqual(self._num(r"상한 요구\s*<span class=\"m\">([\d.]+) m²"), need, delta=0.002)
-        self.assertAlmostEqual(self._num(r"<span class=\"m\">([\d.]+) 배</span>"), area / need, delta=0.01)
+        # '배' 는 문서 곳곳에 나온다. 패드 여유 배수는 OI-13 안에서만 찾는다.
+        oi13 = re.search(r"OI-13</b>.*?</div>\s*</div>", self.html, re.S)
+        self.assertIsNotNone(oi13, "OI-13 블록을 찾지 못했다")
+        self.assertAlmostEqual(
+            float(re.search(r"<span class=\"m\">([\d.]+) 배</span>", oi13.group(0)).group(1)),
+            area / need, delta=0.01)
 
     def test_pitch_and_clearances_come_from_the_panel(self):
         cols, rows, r = int(self._c("PAD_COLS")), int(self._c("PAD_ROWS")), self._c("PAD_R")
