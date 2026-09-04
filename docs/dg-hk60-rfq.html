@@ -587,8 +587,8 @@ t_열   = max( 5Q / (60 × 2.5 kW × η 0.65),  113.15 s )  = 225.8 s
     <h3>제어 구성</h3>
     <ul>
       <li>안전 PLC와 표준 PLC 분리, 원격 I/O 3반</li>
-      <li>표준 I/O — DI 96 · DO 64 · AI 32 · AO 8 · TC 16 (예비 20 % 이상 확보)</li>
-      <li>안전 I/O — F-DI 32 · F-DO 16</li>
+      <li>표준 I/O — <span class="m">DI 144 · DO 80 · AI 24 · AO 8 · TC 40</span>. 실사용 <span class="m">DI 105 · DO 52 · AI 19 · AO 6 · TC 32</span> 에서 예비 20 % 이상을 남기고 카드 배수로 올린 값이다</li>
+      <li>안전 I/O — <span class="m">F-DI 32 · F-DO 8</span> (실사용 F-DI 23 · F-DO 4)</li>
       <li>24 VDC 이중전원, 산업용 UPS, 관리형 네트워크 링</li>
     </ul>
   </div></div>
@@ -611,6 +611,47 @@ IR_HARD_TRIP   = INDEPENDENT_OVERTEMP ∨ SMOKE ∨ CO_HIGH ∨ EXHAUST_LOSS ∨
 NEXT_PANEL     = BACKSHEET_BIN_ACK ∧ SHREDDER_FEED_ACK ∧ GLASS_CARRIAGE_ACK ∧ EMPTY_CARRIER_RELOADED</div>
     <div class="note">과온 차단은 <strong>표준 PLC 명령과 독립된 하드와이어 회로</strong>로 구성하고
       IR 주접촉기를 직접 차단해야 한다. 소프트웨어 경로만으로 구성해서는 안 된다.</div>
+
+    <h4>신호–장치 대조</h4>
+    <p>인터록 논리식은 <strong>읽을 장치가 있어야 성립한다</strong>. 없는 신호는 영원히
+      참이 되지 않으므로 그 허가는 걸리지 않거나 그 트립은 절대 동작하지 않는데,
+      화면에도 도면에도 아무 표시가 나지 않는다. 개념설계에서 논리식의 말단 신호
+      <span class="m">88</span>개를 하나씩 '이 신호를 만드는 현장 장치'와 I/O 종류에
+      묶어 대조한 결과, <strong class="m">22</strong>개가 만들 장치 없이 불리고 있었다.
+      해당 장치를 제작도 목록과 도면에 세웠다.</p>
+    <div class="tw"><table>
+      <caption>장치가 없던 신호와 보완 내역</caption>
+      <thead><tr><th>신호</th><th>속한 논리식</th><th>보완한 장치</th><th class="num">I/O</th></tr></thead>
+      <tbody>
+        <tr><td class="k">SSR_STUCK</td><td>IR_HARD_TRIP</td><td>IR 뱅크 CT·SSR 피드백 × 6</td><td class="num">DI 6</td></tr>
+        <tr><td class="k">INNER/OUTER_DOOR_OPEN</td><td>DOOR_MUTEX · SEALED_FULL_LOAD_ACK</td><td>에어록 도어 위치센서 × 8</td><td class="num">F-DI 8</td></tr>
+        <tr><td class="k">AL102_EMPTY</td><td>RELEASE_200</td><td>격리실 존재센서 × 2</td><td class="num">DI 2</td></tr>
+        <tr><td class="k">CARRIER_SQUARE</td><td>RAPID_PERMIT</td><td>패널 착좌·스퀘어 센서 × 4</td><td class="num">DI 4</td></tr>
+        <tr><td class="k">TRACK_CLEAR</td><td>RAPID_PERMIT</td><td>주행로 광전센서 × 2</td><td class="num">DI 2</td></tr>
+        <tr><td class="k">KNIVES_CLEAR</td><td>RAPID_PERMIT · TANDEM_READY</td><td>칼날 Z축 상하한센서 × 4</td><td class="num">DI 4</td></tr>
+        <tr><td class="k">CELL_PATH_CLEAR</td><td>HKS_Z_PERMIT</td><td>셀 경로 광전센서 × 2</td><td class="num">DI 2</td></tr>
+        <tr><td class="k">WEB_TENSION_OK / _HIGH</td><td>HKS_Z_PERMIT · MOTION_TRIP</td><td>장력 로드셀 · 공압척</td><td class="num">AI 1</td></tr>
+        <tr><td class="k">WEB_BREAK</td><td>TANDEM_SAFE_STOP</td><td>웹 파단 검출센서</td><td class="num">DI 1</td></tr>
+        <tr><td class="k">ROLL_ISOLATED · SHUTTER_CLOSED</td><td>HKS_PERMIT · EJECT_PERMIT</td><td>격리셔터 위치센서 × 2</td><td class="num">DI 2</td></tr>
+        <tr><td class="k">CARRIAGE_OUT</td><td>EJECT_PERMIT</td><td>롤 반출 위치센서 × 2</td><td class="num">DI 2</td></tr>
+        <tr><td class="k">BIN_READY</td><td>EJECT_PERMIT</td><td>BS-301 새들 존재센서 × 2</td><td class="num">DI 2</td></tr>
+        <tr><td class="k">ZERO_DROP_PATH_CLEAR · GLASS_PATH_CLEAR</td><td>GLASS_TRANSFER · REJECT_PERMIT</td><td>유리 경로 광전센서 × 3</td><td class="num">DI 3</td></tr>
+        <tr><td class="k">CROSS_TRANSFER_CLEAR</td><td>GLASS_SWAP</td><td>GC 교대 광전센서 × 2</td><td class="num">DI 2</td></tr>
+        <tr><td class="k">FIRE_DAMPER_OPEN</td><td>EXHAUST_RUN</td><td>방화댐퍼 위치센서 × 2</td><td class="num">F-DI 2</td></tr>
+        <tr><td class="k">LC_OSSD_CLEAR · MUTE_VALID</td><td>OPENING_SAFE</td><td>안전 광커튼 LC-001/002 · 뮤팅 센서 M1~M4 × 2조</td><td class="num">F-DI 4 · DI 8</td></tr>
+        <tr><td class="k">ALL_TEMP_OK</td><td>START_PERMIT</td><td>표면 IR 센서 × 5</td><td class="num">TC 5</td></tr>
+        <tr><td class="k">GC_A_COOLING</td><td>GLASS_SWAP · GLASS_ACCESS</td><td>GC 캐리지 온도센서 × 4</td><td class="num">TC 4</td></tr>
+      </tbody>
+    </table></div>
+    <div class="warn"><strong>보완 전 I/O 선언은 실제 점수를 담지 못했다.</strong>
+      대조로 확정한 실사용은 <span class="m">DI 105 · TC 32</span>인데 종전 선언은
+      <span class="m">DI 96 · TC 16</span>이었다. 위 표의 장치를 더하기 전부터 이미
+      초과 상태였다. <a href="#c7">7.1항</a>의 I/O 수량은 이 실사용에서 예비 20 %를
+      남기고 카드 배수로 올려 다시 잡은 값이다.</div>
+    <p><span class="m">HORN_3S</span>와 <span class="m">BEACON_AMBER</span>는
+      <span class="m">START_WARN</span>의 입력처럼 적혀 있었으나 실제로는 적층 신호등·부저를
+      구동하는 <strong>F-DO 출력</strong>이다. 입력으로 잡으면 배선 수량과 안전 I/O 배분이
+      어긋나므로 출력으로 정정했다.</p>
   </div></div>
 
   <div class="clause"><div class="n">7.3</div><div class="c">
