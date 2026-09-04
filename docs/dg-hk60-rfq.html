@@ -316,7 +316,7 @@
         <tr><td class="k">M-003</td><td>5단 적재·승강장치</td><td class="num">2900×1700×4150</td><td>SS400 / LM 가이드</td></tr>
         <tr><td class="k">M-004</td><td>진공 캐리어·이송축</td><td class="num">11200×1800×1500</td><td>SS400 / AL6061</td></tr>
         <tr><td class="k">M-005</td><td>고정 HKB/HKS 탠덤</td><td class="num">10200×4200×4300</td><td>SS400 / SKD11</td></tr>
-        <tr><td class="k">M-006</td><td>백시트 권취부 (탠덤 하류)</td><td class="num">1400×2300×2900</td><td>SS400 / SUS304</td></tr>
+        <tr><td class="k">M-006</td><td>백시트 권취·반출부 (탠덤 하류)</td><td class="num">1900×6500×2900</td><td>SS400 / SUS304</td></tr>
         <tr><td class="k">M-007</td><td>유리 수평 컨베이어·냉각 캐리지</td><td class="num">9000×5500×3000</td><td>SS400 / 우레탄</td></tr>
         <tr><td class="k">M-008</td><td>셀/EVA 직접 컨베이어</td><td class="num">16000×1500×2500</td><td>SS400 / SUS304</td></tr>
         <tr><td class="k">M-009</td><td>품질검사·리젝트</td><td class="num">3100×5000×3900</td><td>SS400 / AL6061</td></tr>
@@ -529,7 +529,40 @@ t_열   = max( 5Q / (60 × 2.5 kW × η 0.65),  113.15 s )  = 225.8 s
       <li>정전 시 역회전 방지 브레이크. 롤 반출 중 권취축 회전 금지 인터록</li>
       <li>만권 롤은 인터록 해치를 통해 <strong>안전펜스 밖</strong> BS-301 보관대로 반출한다.
         교체가 4.9 h마다이므로 작업자가 방책 안으로 들어가지 않아야 한다</li>
-      <li>롤 질량·반출 방법(수동/전동 카트)을 산정해 인력 취급 한계와 대조 (<a href="#c11">OI-11</a>)</li>
+      <li>롤 질량·구동 방식(수동 푸시/전동)을 산정해 인력 취급 한계와 대조 (<a href="#c11">OI-11</a>)</li>
+    </ul>
+
+    <h4>만권 롤 반출 경로</h4>
+    <p>반출 경로는 선택지가 아니라 <strong>배치가 정한 결과</strong>다. 권취 드럼에서
+      BS-301 까지 롤(<span class="m">Ø600 × 1,460 mm</span>)이 지날 수 있는 통로를
+      실측하면 다음 세 방향 중 둘이 막혀 있다.</p>
+    <div class="tw"><table>
+      <caption>반출 통로 검토</caption>
+      <thead><tr><th>방향</th><th>간섭</th><th class="num">점유 높이</th><th>판정</th></tr></thead>
+      <tbody>
+        <tr><th>상부 인양</th><td>예비 권취축, FGT-201 갠트리 브리지</td><td class="num">2,930 – 4,390 mm</td><td>불가</td></tr>
+        <tr><th>바닥 대차</th><td>캐리어 주행레일·지주, 승강 컨베이어</td><td class="num">0 – 770 mm</td><td>불가</td></tr>
+        <tr><th>+X 굴림</th><td>유리 수평 컨베이어 롤러</td><td class="num">1,290 – 1,500 mm</td><td>불가</td></tr>
+        <tr><th class="m">−Y 스키드</th><td>외함 정비도어 1개소</td><td class="num">600 – 3,950 mm</td><td><strong>롤 포트로 해소</strong></td></tr>
+      </tbody>
+    </table></div>
+    <p>따라서 롤은 캐리어 주행레일 바로 위 <span class="m">상면 940 mm</span> 스키드 레일에
+      얹혀 <span class="m">−Y</span> 로 반출된다. 롤 축 높이는
+      <span class="m">940 + 300 = 1,240 mm</span> 이고, 이때 롤 하단
+      <span class="m">940 mm</span> 는 주행레일 상단 <span class="m">770 mm</span> 위다.</p>
+    <ul>
+      <li><strong>외함 롤 포트</strong> — 권취 베이 정비도어에 유효
+        <span class="m">1,900(W) × 1,350(H) mm</span> 개구를 낸다. 셔터는 인터록 해치와
+        같은 신호(<span class="m">SHUTTER_CLOSED ∧ 권취축 정지 ∧ CARRIAGE_OUT</span>)로만 열린다</li>
+      <li><strong>코너 승강대</strong> — 펜스 밖에서 스키드 높이 <span class="m">1,240 mm</span>
+        와 보관 축높이 <span class="m">920 mm</span> 의 차 <span class="m">320 mm</span> 를 받는다</li>
+      <li><strong>굴림 레일</strong> — 롤 축이 라인 횡방향이므로 마지막 구간은 축 직각으로
+        굴려 빈 새들에 앉힌다. 레일 상면 <span class="m">620 mm</span> + 롤 반경
+        <span class="m">300 mm</span> = 보관 축높이 <span class="m">920 mm</span></li>
+      <li>보관대 타이레일은 지나가는 롤 상단(<span class="m">1,540 mm</span>) 위인
+        <span class="m">1,750 mm</span> 에 둔다</li>
+      <li>스키드 지주는 캐리어 주행레일(<span class="m">Y −1,380</span>)과 승강
+        컨베이어(<span class="m">Y −1,500</span>)를 피해 세운다</li>
     </ul>
   </div></div>
 

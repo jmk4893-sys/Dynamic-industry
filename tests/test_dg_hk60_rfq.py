@@ -363,5 +363,99 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
         self.assertAlmostEqual(shift, got * 8, delta=1)
 
 
+class TestRollDischargeRoute(unittest.TestCase):
+    """만권 롤 반출 경로 — 사양서의 높이들은 모두 콘솔 상수에서 나온 값이다.
+
+    이 절은 '이렇게 하면 좋겠다' 가 아니라 '이 길밖에 없다' 를 적은 것이다.
+    콘솔에서 스키드 높이 하나만 바꿔도 여기 적힌 940/1,240/320/620 이 전부
+    틀어지는데, 사양서는 손으로 적은 문서라 화면상으로는 아무 표시가 없다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = RFQ.read_text(encoding="utf-8")
+        cls.console = CONSOLE.read_text(encoding="utf-8")
+
+    def _num(self, pattern):
+        m = re.search(pattern, self.html)
+        self.assertIsNotNone(m, f"사양서에서 수치를 찾지 못했다: {pattern}")
+        return float(m.group(1).replace(",", ""))
+
+    def _const(self, name):
+        m = re.search(rf"(?:const|,)\s*{name}\s*=\s*(-?[\d.]+(?:e-?\d+)?)[,;]", self.console)
+        self.assertIsNotNone(m, f"콘솔 상수 {name} 을 찾지 못했다")
+        return float(m.group(1))
+
+    def test_skid_height_matches_the_console(self):
+        """스키드 상면과 롤 축높이는 콘솔이 그리는 그 높이여야 한다."""
+        rail = self._const("RH_RAIL_Z")
+        r = self._const("WR_FULL_R")
+        self.assertAlmostEqual(self._num(r"상면 (\d+) mm</span> 스키드 레일"),
+                               rail * 1000, delta=1)
+        self.assertAlmostEqual(self._num(r"<span class=\"m\">940 \+ 300 = ([\d,]+) mm</span>"),
+                               (rail + r) * 1000, delta=1)
+
+    def test_the_roll_clears_the_carrier_rail(self):
+        """캐리어 주행레일 상단 770mm — 이 한 줄이 바닥 대차를 배제한 근거다."""
+        top = self._num(r"주행레일 상단 <span class=\"m\">(\d+) mm</span>")
+        self.assertLess(top, self._const("RH_RAIL_Z") * 1000,
+                        "스키드 상면이 주행레일보다 낮다 — 롤이 레일을 뚫는다")
+        self.assertAlmostEqual(self._num(r"롤 하단\s*<span class=\"m\">(\d+) mm</span>"),
+                               self._const("RH_RAIL_Z") * 1000, delta=1)
+
+    def test_roll_port_opening_matches_the_console(self):
+        """포트가 롤보다 작으면 그림에서만 지나간다."""
+        w = self._num(r"<span class=\"m\">([\d,]+)\(W\) × 1,350\(H\) mm</span>")
+        h = self._num(r"<span class=\"m\">1,900\(W\) × ([\d,]+)\(H\) mm</span>")
+        self.assertAlmostEqual(w, self._const("ROLL_PORT_W") * 1000, delta=1)
+        self.assertAlmostEqual(
+            h, (self._const("ROLL_PORT_Z1") - self._const("ROLL_PORT_Z0")) * 1000, delta=1)
+        self.assertGreater(w, self._const("WR_FULL_R") * 2000 + 100,
+                           "포트 폭이 롤 직경에 여유를 주지 못한다")
+
+    def test_corner_lift_travel_is_the_height_difference(self):
+        """승강 행정은 스키드 높이와 보관 축높이의 차 그 자체다."""
+        rail, r = self._const("RH_RAIL_Z"), self._const("WR_FULL_R")
+        store = self._const("BS_ROLL_Z")
+        self.assertAlmostEqual(self._num(r"차 <span class=\"m\">(\d+) mm</span> 를 받는다"),
+                               (rail + r - store) * 1000, delta=1)
+
+    def test_rolling_rail_sets_the_stored_axis_height(self):
+        """굴림 레일 상면 + 롤 반경 = 보관 축높이. 셋 중 하나만 틀려도 롤이 뜬다."""
+        store, r = self._const("BS_ROLL_Z"), self._const("WR_FULL_R")
+        self.assertAlmostEqual(self._num(r"레일 상면 <span class=\"m\">(\d+) mm</span>"),
+                               (store - r) * 1000, delta=1)
+        self.assertAlmostEqual(self._num(r"= 보관 축높이 <span class=\"m\">(\d+) mm</span>"),
+                               store * 1000, delta=1)
+
+    def test_tie_rail_clears_the_passing_roll(self):
+        """타이레일이 지나가는 롤보다 낮으면 롤이 레일을 관통한다."""
+        rail, r = self._const("RH_RAIL_Z"), self._const("WR_FULL_R")
+        tie = self._const("BS_TIE_Z")
+        self.assertAlmostEqual(self._num(r"롤 상단\(<span class=\"m\">([\d,]+) mm</span>\)"),
+                               (rail + r + r) * 1000, delta=1)
+        self.assertAlmostEqual(self._num(r"<span class=\"m\">([\d,]+) mm</span> 에 둔다"),
+                               tie * 1000, delta=1)
+        self.assertGreater(tie, rail + 2 * r, "타이레일이 지나가는 롤과 겹친다")
+
+    def test_the_blocked_routes_are_recorded_with_their_interference(self):
+        """'이 길밖에 없다' 는 주장은 막힌 길을 같이 적어야 성립한다."""
+        m = re.search(r"<caption>반출 통로 검토</caption>(.*?)</table>", self.html, re.S)
+        self.assertIsNotNone(m, "반출 통로 검토표가 없다")
+        table = m.group(1)
+        for route in ("상부 인양", "바닥 대차", "+X 굴림"):
+            self.assertIn(route, table, f"{route} 검토 결과가 빠졌다")
+        self.assertEqual(table.count("불가"), 3, "막힌 통로 판정이 세 개가 아니다")
+        self.assertIn("롤 포트로 해소", table, "채택한 통로의 조건이 적혀 있지 않다")
+
+    def test_the_port_shutter_shares_the_hatch_interlock(self):
+        """포트만 열리고 해치가 잠겨 있으면 롤이 갈 곳이 없다 — 같은 신호여야 한다."""
+        self.assertIn("SHUTTER_CLOSED ∧ 권취축 정지 ∧ CARRIAGE_OUT", self.html)
+        self.assertRegex(
+            self.console, r"ROLL_PORT_Z1-ROLL_PORT_Z0\)\*\.94\*w\.pose\.inHatch",
+            "콘솔의 롤 포트 셔터가 해치와 같은 신호를 쓰지 않는다",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
