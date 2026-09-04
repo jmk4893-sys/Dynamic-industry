@@ -1276,7 +1276,7 @@ html>body{padding:0}</style>
           <button class="btn btn-ghost hsg3d-tree-node" type="button" data-hsg-equip="drive">03 · M-101 구동장치</button>
           <button class="btn btn-ghost hsg3d-tree-node" type="button" data-hsg-equip="transfer">04 · CV-101 정량 배출스크류</button>
           <button class="btn btn-ghost hsg3d-tree-node" type="button" data-hsg-equip="pneumatic">05 · PC-101 음압 이송계통</button>
-          <button class="btn btn-ghost hsg3d-tree-node" type="button" data-hsg-equip="classifier">06 · SC-500 500 µm 경사스크린</button>
+          <button class="btn btn-ghost hsg3d-tree-node" type="button" data-hsg-equip="classifier">06 · SC-500 2단 경사스크린</button>
           <button class="btn btn-ghost hsg3d-tree-node" type="button" data-hsg-equip="return">07 · CV-102 리턴스크류</button>
           <button class="btn btn-ghost hsg3d-tree-node" type="button" data-hsg-equip="product">08 · CH-501＋Sheeve 후단선별</button>
           <button class="btn btn-ghost hsg3d-tree-node" type="button" data-hsg-equip="airclass">09 · CC-201 공기분급</button>
@@ -1461,7 +1461,7 @@ html>body{padding:0}</style>
         <span>보존 <b data-hsg-closure>질량 Δ — kg · 에너지 잔차 —%</b></span>
         <span>음압이송 <b>PT-101 −220 Pa · 보어 137 mm 17.0 m/s · 900 m³/h</b></span>
         <span>스크린 <b data-hsg-screen-state>12° · 25 Hz · 3.0 mm p-p · 화면 감속·확대</b></span>
-        <span>구간별 누적 <b data-hsg-screen-streams>280–500 0.0 · 106–280 0.0 · SS ≥75 재처리 0.0 · SS &lt;75 최종 0.0 kg</b></span>
+        <span>구간별 누적 <b data-hsg-screen-streams>1단오버 BIN-102 0.0 · 280–500 0.0 · 106–280 0.0 · SS ≥75 재처리 0.0 · SS &lt;75 최종 0.0 kg</b></span>
         <span>SS-201 최종제품 <b data-hsg-ss-final-psd>D95 — · Dmax &lt;0.075 mm</b></span>
       </div>
       </details>
@@ -1796,22 +1796,34 @@ html>body{padding:0}</style>
       <thead><tr><th>스트림</th><th class="text-end">kg/h</th><th>행선지</th></tr></thead>
       <tbody>
         <tr><td>신규 급광</td><td class="text-end">300.0</td><td>ICSH-301 → HSG-101</td></tr>
-        <tr><td>환류 (500 µm–2 mm)</td><td class="text-end">100.0</td><td>CV-102 → HSG-101 <strong>폐회로</strong></td></tr>
-        <tr><td><strong>스크린 급광 = 밀 토출</strong></td><td class="text-end"><strong>400.0</strong></td><td>CY-101 → RV-101 → SC-500</td></tr>
+        <tr><td>환류 (500 µm–2 mm)</td><td class="text-end">80.1</td><td>CV-102 → HSG-101 <strong>폐회로</strong></td></tr>
+        <tr><td><strong>스크린 급광 = 밀 토출</strong></td><td class="text-end"><strong>380.1</strong></td><td>CY-101 → RV-101 → SC-500</td></tr>
         <tr><td>1단 오버 &gt;2 mm</td><td class="text-end">45.0</td><td class="dd-warning">BIN-102 백시트 폐기 — 회로를 떠나는 유일한 조대 산물</td></tr>
+        <tr><td>1단 언더 = 2단 급광</td><td class="text-end">335.1</td><td>2단 500 µm 데크로</td></tr>
         <tr><td>2단 언더 &lt;500 µm</td><td class="text-end">255.0</td><td>CH-501 → PC-201 → VS-501 → SV-201</td></tr>
-        <tr><td>폐합</td><td class="text-end">400.0</td><td>45.0 ＋ 100.0 ＋ 255.0 = 400.0 ✓</td></tr>
+        <tr><td>폐합</td><td class="text-end">380.1</td><td>45.0 ＋ 80.1 ＋ 255.0 = 380.1 ✓ · 플랜트 폐합 300.0 = 45.0 ＋ 255.0 ✓</td></tr>
       </tbody>
     </table></div>
     <p class="text-small text-muted">백시트 폐기량은 <strong>설계 가정</strong>이다 — 급광의 B군(탈락 백시트) 20 % 중
-      75 % 가 &gt;2 mm 박편으로 남는다고 보아 300 × 0.20 × 0.75 = 45 kg/h. 환류 100 kg/h 와 밀 부하 400 kg/h 는
-      기존 폐회로 설계값을 그대로 지켰으므로 CV-102 리턴스크류·모터·비에너지 산정이 바뀌지 않는다.</p>
+      75 % 가 &gt;2 mm 박편으로 남는다고 보아 300 × 0.20 × 0.75 = 45 kg/h.
+      2단 언더는 환류량과 무관하게 항상 <strong>신규 − 폐기 = 255 kg/h</strong> 다.</p>
+    <p class="text-small"><strong>환류가 100 → 80.1 kg/h 로 줄어드는 이유.</strong> 1단이 걷어내는 것은
+      B군에서 가장 굵은 부분이고, 종전 회로에서는 <strong>바로 그 조대분이 500 µm 오버로 환류하던 것</strong>이다.
+      회로에서 빼내면 환류가 줄어드는 것이 당연하며, 모델의 분급 보정상수
+      (<code>particleClasses[*].firstReturn</code>, <code>RETURN_PASS_RECYCLE_FRACTION</code> 0.368037)를
+      건드리지 않고 그대로 두었을 때 나오는 값이 80.11 kg/h 다. 답을 맞추려고 상수를 다시 맞추지 않았다 —
+      1패스 환류 50.63 kg/h ÷ (1 − 0.368037) = 80.11.</p>
+    <p class="text-small text-muted"><strong>장비 정격은 종전대로 둔다.</strong> CV-102 리턴스크류 100 kg/h ·
+      HSG-101 총부하 400 kg/h · CV-101/PC-101 이송 400 kg/h 는 그대로이며, 실부하가 80.1 / 380.1 로 내려가
+      여유가 <strong>커진</strong> 것이므로 재산정이 필요하지 않다. 비에너지·환류비 상수
+      (<code>TARGET_COARSE_FRACTION</code> 등)는 &gt;2 mm 폐기와 500 µm 환류를 아직 한 값으로 묶고 있어
+      <strong>다음 트랜치에서 분리</strong>한다.</p>
 
     <strong>소요면적 — VSMA <code>A = U / (B · C<sub>o</sub> · C<sub>h</sub> · C<sub>d</sub> · C<sub>s</sub> · C<sub>sh</sub> · C<sub>ρ</sub>)</code></strong>
     <div class="table-responsive"><table class="table table-sm" aria-label="스크린 소요면적">
       <thead><tr><th>데크</th><th class="text-end">언더 U</th><th class="text-end">기본용량 B</th><th class="text-end">개구율 → C<sub>s</sub></th><th class="text-end">C<sub>o</sub>·C<sub>h</sub>·C<sub>d</sub></th><th class="text-end">소요 A</th></tr></thead>
       <tbody>
-        <tr><td>1단 2,000 µm (선경 800)</td><td class="text-end">355 kg/h</td><td class="text-end">5.5 t/h·m²</td><td class="text-end">51.0 % → 1.020</td><td class="text-end">1.18 · 1.55 · 1.00</td><td class="text-end">0.188 m²</td></tr>
+        <tr><td>1단 2,000 µm (선경 800)</td><td class="text-end">335 kg/h</td><td class="text-end">5.5 t/h·m²</td><td class="text-end">51.0 % → 1.020</td><td class="text-end">1.18 · 1.55 · 1.00</td><td class="text-end">0.177 m²</td></tr>
         <tr><td><strong>2단 500 µm (선경 315)</strong></td><td class="text-end">255 kg/h</td><td class="text-end">1.9 t/h·m²</td><td class="text-end">37.6 % → 0.753</td><td class="text-end">1.00 · 1.25 · 0.90</td><td class="text-end"><strong>0.861 m²</strong></td></tr>
       </tbody>
     </table></div>
@@ -1827,7 +1839,7 @@ html>body{padding:0}</style>
       유효 1.26 × 0.89 = <strong>1.121 m²/데크</strong>(여유 +30 %)를 확보했다. 2단 합계 2.242 m².
       종전은 0.98 m² 단단이었다.</p>
 
-    <p class="text-small text-muted">배출단 베드깊이는 1단 0.15 mm · 2단 0.33 mm 로 한계(4 × 개구 = 8.0 / 2.0 mm) 안이다 —
+    <p class="text-small text-muted">배출단 베드깊이는 1단 0.15 mm · 2단 0.26 mm 로 한계(4 × 개구 = 8.0 / 2.0 mm) 안이다 —
       이 회로에서 폭을 정하는 것은 베드깊이가 아니라 위의 용량 계산이다.
       기본용량 B 는 건식 미세체가름 실무값이며, Kst/체분석 실측이 나오면 교체해야 한다.</p>
   </details>
@@ -15493,7 +15505,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     drive: { title: "03 · M-101 구동장치", spec: "37 kW IE4 · VFD · 풀리 Ø200/196 · 4-SPC", primaryPart: "P08", focus: [0.52, 0.78, -0.28, 3.8] },
     transfer: { title: "04 · CV-101 정량 배출스크류", spec: "400 kg/h · Ø160/P140 · 55 rpm · 1.1 kW · 흡인배관 정량공급", primaryPart: "P14", focus: [0.20, 0.38, 0.12, 3.8] },
     pneumatic: { title: "05 · PC-101 음압 이송계통", spec: "보어 137 알루미나 라이닝 · 900 m³/h · 17 m/s · CY-101＋RV-101＋BF-101＋5.5 kW ID 팬", primaryPart: "P15", focus: [1.10, 1.52, 0.20, 5.4] },
-    classifier: { title: "06 · SC-500 500 µm 경사스크린", spec: "W700 × L1400 · 경사 12° · 25 Hz · 3.0 mm p-p · 단일 컷", primaryPart: "P12", focus: [1.48, 0.92, 0, 3.60] },
+    classifier: { title: "06 · SC-500 2단 경사스크린", spec: "W800 × L1400 · 경사 12° · 25 Hz · 3.0 mm p-p · 1단 2 mm → BIN-102 폐기 · 2단 500 µm → CV-102 환류", primaryPart: "P12", focus: [1.48, 0.92, 0, 3.60] },
     return: { title: "07 · CV-102 밀폐형 리턴스크류", spec: "100 kg/h · Ø140/P120 · 45 rpm · 0.75 kW 감속모터", primaryPart: "P13", focus: [0.42, 1.35, -0.20, 5.0] },
     product: { title: "08 · CH-501＋밀폐 Sheeve 후단선별", spec: "CH-501 → RV-201 → PC-201 음압리프트 → VS-501 → 밀폐 중력슈트 → SV-201", primaryPart: "P19", focus: [2.85, 0.65, 0.10, 5.2] },
     airclass: { title: "09 · CC-201 공기분급기", spec: "SV-201 106–280＋75–106 µm Y헤더 투입 · 중량물 RV-204 배출", primaryPart: "P20", focus: [4.70, 0.85, 0.10, 4.2] },
@@ -15513,7 +15525,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     P09: { name: "풀리·4-SPC V벨트", role: "모터 회전을 로터축으로 전달", spec: "모터 Ø200 · 종동 Ø196 · 4-SPC", shape: "drive" },
     P10: { name: "벨트 메쉬 안전커버", role: "회전 구동부 접촉 방지와 육안 점검", spec: "SS400 1.6t · 탈착식 · 인터록", shape: "guard" },
     P11: { name: "접선형 하부 팽창 플리넘", role: "스크린 통과입자를 로터 직접 충격영역에서 분리하고 CV-101로 안정적으로 낙하", spec: "SS400 4.5t · 접선형 목부 · 점검도어 · PT-101 −150~−300 Pa", shape: "chute" },
-    P12: { name: "SC-500 1단 진동경사스크린", role: "CY-101 회수물 400 kg/h를 500 µm에서 1차 분리하고 조대물만 CV-102로 환류", spec: "W700 × L1400 · 12° · 25 Hz · 3.0 mm p-p · 500 µm", shape: "single-deck" },
+    P12: { name: "SC-500 2단 진동경사스크린", role: "CY-101 회수물을 1단 2 mm로 스캘핑해 백시트 박편을 BIN-102로 폐기하고, 2단 500 µm 오버만 CV-102로 환류하며 언더는 CH-501로", spec: "W800 × L1400 · 12° · 25 Hz · 3.0 mm p-p · 2 mm ＋ 500 µm · 유효 1.121 m²/데크", shape: "double-deck" },
     P13: { name: "CV-102 밀폐형 리턴스크류", role: "분급 조대물을 비산 없이 호퍼로 정량 환류", spec: "케이싱 Ø180 · 스크류 Ø140/P120 · L2,400 · 45 rpm · 0.75 kW", shape: "conveyor" },
     P14: { name: "CV-101 정량 배출스크류", role: "하부 플리넘의 혼합입도 400 kg/h를 음압 픽업티에 일정하게 공급", spec: "케이싱 Ø200 · 스크류 Ø160/P140 · L900 · 55 rpm · 1.1 kW VFD", shape: "transfer-conveyor" },
     P15: { name: "PC-101 알루미나 라이닝 음압 이송배관·CY-101", role: "분쇄물을 접선 흡인해 사이클론 외측 하강와류로 고체를 회수", spec: "보어 137 (DN150 t6 셸＋8 mm 95% 알루미나) · 900 m³/h · 17 m/s · R/D 5 세라믹 엘보＋후류 스풀 전 구간 · CY-101 Ø500", shape: "pneumatic-line" },
@@ -16815,6 +16827,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const FIRST_SCREEN_CUT_UM = SC500_CUTS_UM[1];
     const SECONDARY_SIEVE_CUTS_UM = Object.freeze([280, 106, 75]);
     const SIEVE_ROUTE_KEYS = Object.freeze([
+      "reject-backsheet",
       "return-500",
       "product-280-500",
       "product-106-280",
@@ -17108,10 +17121,38 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     });
 
     const sieveFeedPoint = cycloneToSieveCurve.getPoint(1);
-    const primaryCommon = [
+    // ---- SC-500 2단 데크 위 경로 -------------------------------------------
+    // 데크가 두 장이면 경로도 두 장이어야 한다. 급광은 전량 1단(2 mm) 위에 떨어지고,
+    // 2 mm 를 지나지 못한 백시트 박편만 1단 배출단까지 실려 BIN-102 로 나간다.
+    // 나머지는 1단 체눈을 빠져 180 mm 아래 2단(500 µm)에 올라서고, 거기서 다시
+    // 오버(HSG-101 환류)와 언더(CH-501 강하)로 갈린다.
+    const DECK_RIDE_M = 0.025;         // 체면 위를 구르는 높이
+    const DECK0_DROP_X = 1.30;         // 2 mm 를 빠지는 지점
+    const DECK1_ENTRY_X = 1.42;        // 낙차 0.18 m 를 x 0.12 m 안에서 받는다
+    const DECK1_DROP_X = 1.62;         // 500 µm 를 빠지는 지점
+    const deckPoint = (deckIndex, x, z) =>
+      new THREE.Vector3(x, deckHeightAt(SIEVE_DECK_BASE_Y[deckIndex], x) + DECK_RIDE_M, z);
+    const topDeckRun = [
       sieveFeedPoint,
-      new THREE.Vector3(1.12, deckHeightAt(SIEVE_DECK_BASE_Y[0], 1.12), 0),
-      new THREE.Vector3(1.58, deckHeightAt(SIEVE_DECK_BASE_Y[0], 1.58), 0.04)
+      deckPoint(0, 1.02, 0),
+      deckPoint(0, DECK0_DROP_X, 0.04)
+    ];
+    // 1단 오버 — 데크 전장을 끝까지 타고 나가 백시트 슈트로.
+    const backsheetRun = [
+      ...topDeckRun,
+      deckPoint(0, 1.62, 0.14),
+      deckPoint(0, 2.00, 0.26),
+      backsheetOutlet
+    ];
+    // 1단을 빠져 2단으로 — 두 스트림 모두 이 낙차를 거친다.
+    const lowerDeckEntry = [
+      new THREE.Vector3(1.36, deckHeightAt(SIEVE_DECK_BASE_Y[0], 1.36) - 0.06, 0.05),
+      deckPoint(1, DECK1_ENTRY_X, 0.06)
+    ];
+    const primaryCommon = [
+      ...topDeckRun,
+      ...lowerDeckEntry,
+      deckPoint(1, DECK1_DROP_X, 0.16)
     ];
     const downstreamCommon = [
       primaryPassOutlet,
@@ -17129,7 +17170,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const sieveFeedTop = new THREE.Vector3(secondaryCenter.x, 0.86, secondaryCenter.z);
     const sieveApproach = new THREE.CatmullRomCurve3([...primaryCommon, ...downstreamCommon, sieveFeedTop]);
     const sieveRoutes = {
-      "return-500": new THREE.CatmullRomCurve3([...primaryCommon, returnOutlet]),
+      // 1단 오버는 2단을 보지 않는다 — 데크 한 장만 타고 회로를 떠난다.
+      "reject-backsheet": new THREE.CatmullRomCurve3(backsheetRun),
+      // 2단 오버는 1단을 빠진 뒤 2단 배출단까지 실려 CV-102 로.
+      "return-500": new THREE.CatmullRomCurve3([
+        ...topDeckRun, ...lowerDeckEntry,
+        deckPoint(1, 1.74, -0.06), deckPoint(1, 2.00, -0.18), returnOutlet
+      ]),
       "product-280-500": sieveApproach,
       "product-106-280": sieveApproach,
       "product-75-106": sieveApproach,
@@ -17156,6 +17203,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     };
     // 데크를 몇 장 지나야 하는지가 곧 체류시간이다 — 미분일수록 오래 걸린다.
     const SIEVE_RESIDENCE_RATE = {
+      "reject-backsheet": 1.18,   // 데크 한 장만 타고 나가므로 가장 빠르다
       "return-500": 1,
       "product-280-500": 0.86,
       "product-106-280": 0.74,
@@ -17515,6 +17563,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
 
     const productOutletCurves = {
+      // 1단 오버는 SV-201 을 거치지 않는다 — 슈트를 타고 곧장 BIN-102 로 떨어져
+      // 회로를 떠난다. 제품이 아니라 폐기물이므로 제품빈 어디에도 합류하지 않는다.
+      "reject-backsheet": new THREE.CatmullRomCurve3([
+        backsheetOutlet, new THREE.Vector3(2.46, 0.74, 0.52), new THREE.Vector3(2.58, 0.50, 0.66), new THREE.Vector3(2.58, 0.06, 0.66)
+      ]),
       "product-280-500": new THREE.CatmullRomCurve3([
         secondaryOutlets["product-280-500"], new THREE.Vector3(4.08, 0.30, -0.28), productBins.coarse
       ]),
@@ -18911,6 +18964,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       returnFeed: 0,
       fineTransferMass: 0,
       coarseTransferMass: 0,
+      rejectTransferMass: 0,
+      backsheetRejectOut: 0,
       coarseClassified: 0,
       classifiedMass: 0,
       oversizeProductMass: 0,
@@ -19605,6 +19660,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     function classMaterial(type, source) {
       if (source === "product") return material.product.clone();
       if (source === "return-path") return material.returnFlow.clone();
+      if (source === "reject-backsheet") return material.particleB.clone();
       if (source === "product-280-500") return material.product500.clone();
       if (source === "product-106-280") return material.product280.clone();
       if (source === "product-75-106") return material.product106.clone();
@@ -19747,8 +19803,32 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return { product, recycle };
     }
 
+    // ---- SC-500 1단 2 mm 스캘핑 -------------------------------------------
+    // 해머밀은 폴리머 필름을 자르지 못하고 접기만 한다. B군(탈락 백시트)으로 들어온
+    // 질량의 75 % 는 밀을 지나고도 2 mm 위에 남는 박편이며, 1단 데크가 이것을 걷어
+    // BIN-102 로 버린다 — 회로를 떠나는 유일한 조대 산물이다.
+    //   300 kg/h × B 0.20 × 0.75 = 45.0 kg/h
+    // 환류물(pass ≥ 2)은 이미 이 데크를 통과해 온 500 µm–2 mm 이므로 대상이 아니다.
+    const BACKSHEET_SCALP_FRACTION = 0.75;
+    const BACKSHEET_FLAKE_MM = 3.2;      // 2 mm 컷 위 박편의 대표 입도
+    function scalpBacksheet(track) {
+      if (track.type !== "B" || track.pass > 1) return { feed: track.cohorts, reject: [] };
+      const feed = [];
+      let rejectMass = 0;
+      track.cohorts.forEach((item) => {
+        const cut = item.mass * BACKSHEET_SCALP_FRACTION;
+        rejectMass += cut;
+        if (item.mass - cut > 0) feed.push({ sizeMm: item.sizeMm, mass: item.mass - cut });
+      });
+      return {
+        feed,
+        reject: rejectMass > 1e-12 ? [{ sizeMm: BACKSHEET_FLAKE_MM, mass: rejectMass }] : []
+      };
+    }
+
     function partitionProductBands(cohorts) {
       const bands = {
+        "reject-backsheet": [],
         "product-280-500": [],
         "product-106-280": [],
         "product-75-106": [],
@@ -19756,7 +19836,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       };
       cohorts.forEach((item) => {
         const copy = { sizeMm: item.sizeMm, mass: item.mass };
-        if (item.sizeMm >= 0.280) bands["product-280-500"].push(copy);
+        if (item.sizeMm >= BACKSHEET_CUT_UM / 1000) bands["reject-backsheet"].push(copy);
+        else if (item.sizeMm >= 0.280) bands["product-280-500"].push(copy);
         else if (item.sizeMm >= 0.106) bands["product-106-280"].push(copy);
         else if (item.sizeMm >= 0.075) bands["product-75-106"].push(copy);
         else bands["product-under-75"].push(copy);
@@ -19764,18 +19845,26 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return bands;
     }
 
-    function buildSieveStreams(productCohorts, recycleCohorts) {
+    function buildSieveStreams(productCohorts, recycleCohorts, scalpCohorts = []) {
       const bands = partitionProductBands(productCohorts);
+      // 1단이 먼저다 — 2 mm 위는 어느 쪽에서 왔든 2단 데크를 볼 수 없다.
+      const reject = [...scalpCohorts, ...bands["reject-backsheet"]];
+      const recycle = [];
+      recycleCohorts.forEach((item) => {
+        (item.sizeMm >= BACKSHEET_CUT_UM / 1000 ? reject : recycle).push({ sizeMm: item.sizeMm, mass: item.mass });
+      });
       return [
-        { streamKey: "return-500", cohorts: recycleCohorts, targetReturn: true },
+        { streamKey: "return-500", cohorts: recycle, targetReturn: true },
         { streamKey: "product-280-500", cohorts: bands["product-280-500"], targetReturn: false },
         { streamKey: "product-106-280", cohorts: bands["product-106-280"], targetReturn: false },
         { streamKey: "product-75-106", cohorts: bands["product-75-106"], targetReturn: false },
-        { streamKey: "product-under-75", cohorts: bands["product-under-75"], targetReturn: false }
+        { streamKey: "product-under-75", cohorts: bands["product-under-75"], targetReturn: false },
+        { streamKey: "reject-backsheet", cohorts: reject, targetReturn: false }
       ].filter((stream) => stream.cohorts.length && stream.cohorts.reduce((sum, item) => sum + item.mass, 0) > 1e-12);
     }
 
     function streamMaterial(streamKey) {
+      if (streamKey === "reject-backsheet") return material.particleB;
       if (streamKey === "return-500") return material.returnFlow;
       if (streamKey === "product-280-500") return material.product500;
       if (streamKey === "product-106-280") return material.product280;
@@ -20425,8 +20514,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
 
     function classifyTrackAtSieve(track, trackIndex) {
-      const split = calibratedClassifierSplit(track.cohorts, track.type, track.shape, track.pass);
-      const streams = buildSieveStreams(split.product, split.recycle);
+      // 1단(2 mm)이 먼저 걷어내고, 남은 것만 2단(500 µm) 분급에 걸린다.
+      const scalp = scalpBacksheet(track);
+      const split = calibratedClassifierSplit(scalp.feed, track.type, track.shape, track.pass);
+      const streams = buildSieveStreams(split.product, split.recycle, scalp.reject);
       const rawChildMass = streams.reduce(
         (sum, stream) => sum + stream.cohorts.reduce((cohortSum, item) => cohortSum + item.mass, 0),
         0
@@ -20446,7 +20537,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         disposeParticleMesh(track.mesh);
         return;
       }
-      state.classifiedMass += track.mass;
+      // q(환류비)는 2단이 본 양에 대한 비다 — 1단이 걷어낸 박편은 500 µm 데크에
+      // 올라선 적이 없으므로 분모에서 뺀다.
+      const scalpedMass = streams.reduce((sum, stream) => stream.streamKey === "reject-backsheet"
+        ? sum + stream.cohorts.reduce((cohortSum, item) => cohortSum + item.mass, 0) : sum, 0);
+      state.classifiedMass += track.mass - scalpedMass;
       streams.forEach((stream, branchIndex) => {
         const streamMass = stream.cohorts.reduce((sum, item) => sum + item.mass, 0);
         const sizeMm = weightedMean(stream.cohorts);
@@ -20474,6 +20569,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         if (stream.targetReturn) {
           state.coarseTransferMass += streamMass;
           state.coarseClassified += streamMass;
+        } else if (stream.streamKey === "reject-backsheet") {
+          // 환류가 아니라 폐기다 — q(환류비) 분모·분자 어느 쪽도 아니다.
+          state.rejectTransferMass += streamMass;
         } else {
           state.fineTransferMass += streamMass;
         }
@@ -20561,6 +20659,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       state.returnFeed = 0;
       state.fineTransferMass = 0;
       state.coarseTransferMass = 0;
+      state.rejectTransferMass = 0;
+      state.backsheetRejectOut = 0;
       state.coarseClassified = 0;
       state.classifiedMass = 0;
       state.oversizeProductMass = 0;
@@ -20956,19 +21056,23 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       if (track.phase === "sieve") {
         const t = Math.min(1, track.progress);
         // SV-201 에 올라선 뒤로는 배관이 아니라 데크가 경로를 정한다.
-        if (track.streamKey !== "return-500" && t >= SIEVE_CASCADE_FROM) {
+        // SC-500 데크 위에서 끝나는 두 스트림 — 1단 오버(BIN-102)와 2단 오버(CV-102).
+        // 나머지는 2단을 빠져 SV-201 로 내려가므로 캐스케이드로 넘긴다.
+        const scEndsOnDeck = track.streamKey === "return-500" || track.streamKey === "reject-backsheet";
+        if (!scEndsOnDeck && t >= SIEVE_CASCADE_FROM) {
           return sieveDeckPosition(track, (t - SIEVE_CASCADE_FROM) / (1 - SIEVE_CASCADE_FROM));
         }
         const route = sieveRoutes[track.streamKey];
-        const point = route.getPoint(track.streamKey === "return-500" ? t : t / SIEVE_CASCADE_FROM);
-        const bounceCount = track.streamKey === "return-500" ? 8
-          : track.streamKey === "product-280-500" ? 11
-            : track.streamKey === "product-106-280" ? 14
-              : track.streamKey === "product-75-106" ? 16 : 18;
+        const point = route.getPoint(scEndsOnDeck ? t : t / SIEVE_CASCADE_FROM);
+        const bounceCount = track.streamKey === "reject-backsheet" ? 6
+          : track.streamKey === "return-500" ? 8
+            : track.streamKey === "product-280-500" ? 11
+              : track.streamKey === "product-106-280" ? 14
+                : track.streamKey === "product-75-106" ? 16 : 18;
         const hop = Math.max(0, Math.sin(t * Math.PI * bounceCount)) * (0.014 + 0.004 * (1 - t));
         point.y += hop;
         point.z += Math.sin(t * Math.PI * bounceCount * 0.5 + track.transferPhase) * 0.010;
-        if (track.streamKey === "return-500") return point.add(sieveMotionOffset);
+        if (scEndsOnDeck) return point.add(sieveMotionOffset);
         if (t < 0.24) point.addScaledVector(sieveMotionOffset, 1 - t / 0.24);
         return point;
       }
@@ -21045,6 +21149,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
               pbm: track.cohorts,
               damage: track.damage
             });
+            continue;
+          }
+          if (track.streamKey === "reject-backsheet") {
+            // BIN-102 로 나간다 — 플랜트를 떠나므로 폐합에는 잡히지만 제품 PSD 표본은
+            // 아니다. 이 박편은 2 mm 위라 제품 입도분포에 섞이면 D95·Dmax 가 망가진다.
+            state.productOut += track.mass;
+            state.backsheetRejectOut += track.mass;
+            scene.remove(track.mesh);
+            disposeParticleMesh(track.mesh);
+            travelParticles.splice(i, 1);
             continue;
           }
           state.productOut += track.mass;
@@ -22341,10 +22455,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       readout.shape.textContent = "Feret50 " + d50.toFixed(3) + " mm · AR " + aspect.toFixed(2) + " · 편평도 " + flatness.toFixed(3) + " · 구형도 " + sphericity.toFixed(3);
       readout.material.textContent = "bare " + (bareForm * 100).toFixed(1) + "% · 탈락BS " + (detachedForm * 100).toFixed(1) + "% · 결합 " + (bondedForm * 100).toFixed(1) + "% · C박리 " + (interfaceDebond * 100).toFixed(1) + "% · Si/EVA/BS " + (siDamage * 100).toFixed(0) + "/" + (evaViscous * 100).toFixed(0) + "/" + (backsheetPlastic * 100).toFixed(0) + "%";
       readout.closure.textContent = "질량 Δ " + closureError.toFixed(3) + " kg · 에너지 잔차 " + energyResidual.toFixed(2) + "%";
-      readout.streams.textContent = "280–500 " + state.product280To500Out.toFixed(1) + " · 106–280 " + state.product106To280Out.toFixed(1) + " · SS ≥75 재처리 " + state.ssReworkOut.toFixed(1) + " · SS <75 최종 " + state.ssFinalOut.toFixed(1) + " kg";
+      readout.streams.textContent = "1단오버 BIN-102 " + state.backsheetRejectOut.toFixed(1) + " · 280–500 " + state.product280To500Out.toFixed(1) + " · 106–280 " + state.product106To280Out.toFixed(1) + " · SS ≥75 재처리 " + state.ssReworkOut.toFixed(1) + " · SS <75 최종 " + state.ssFinalOut.toFixed(1) + " kg";
       readout.ssFinal.textContent = "D95 " + ssFinalD95.toFixed(3) + " · Dmax " + ssFinalDmax.toFixed(3) + " mm (<0.075)";
       if (state.mode !== "simulation" && state.mode !== "flow") return;
-      detail.textContent = "가중 PBM · 신규 " + state.freshIn.toFixed(1) + " kg (현재 " + state.currentFreshRateKgh.toFixed(0) + " kg/h) · HSG 추정부하 " + state.millLoadKgh.toFixed(0) + "/" + HSG_CAPACITY_KGH + " kg/h · 총 외부배출 " + state.productOut.toFixed(1) + " kg · SS 재처리/최종 " + state.ssReworkOut.toFixed(1) + "/" + state.ssFinalOut.toFixed(1) + " kg · 합산환류완료 " + state.returnFeed.toFixed(1) + " kg · q " + (liveCoarseFraction === null ? "—" : (liveCoarseFraction * 100).toFixed(1) + "%") + " · +0.5 mm " + (oversizeProductFraction === null ? "—" : (oversizeProductFraction * 100).toFixed(2) + "%") + " · 최근 4분기 잔차 " + state.sieveSplitResidualKg.toExponential(1) + " kg · Δm " + closureError.toFixed(3) + " kg · active " + activeParcels + (state.numericalResets ? " · 경계복귀 " + state.numericalResets : "");
+      detail.textContent = "가중 PBM · 신규 " + state.freshIn.toFixed(1) + " kg (현재 " + state.currentFreshRateKgh.toFixed(0) + " kg/h) · HSG 추정부하 " + state.millLoadKgh.toFixed(0) + "/" + HSG_CAPACITY_KGH + " kg/h · 총 외부배출 " + state.productOut.toFixed(1) + " kg (백시트폐기 " + state.backsheetRejectOut.toFixed(1) + ") · SS 재처리/최종 " + state.ssReworkOut.toFixed(1) + "/" + state.ssFinalOut.toFixed(1) + " kg · 합산환류완료 " + state.returnFeed.toFixed(1) + " kg · q " + (liveCoarseFraction === null ? "—" : (liveCoarseFraction * 100).toFixed(1) + "%") + " · +0.5 mm " + (oversizeProductFraction === null ? "—" : (oversizeProductFraction * 100).toFixed(2) + "%") + " · 최근 4분기 잔차 " + state.sieveSplitResidualKg.toExponential(1) + " kg · Δm " + closureError.toFixed(3) + " kg · active " + activeParcels + (state.numericalResets ? " · 경계복귀 " + state.numericalResets : "");
     }
 
     function updateInspectionFlex(now) {
@@ -22460,7 +22574,12 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       firstScreen: {
         tag: "SC-500",
         deckCount: sieveDeckMeshes.length,
+        cutsUm: [...SC500_CUTS_UM],
         cutUm: FIRST_SCREEN_CUT_UM,
+        deckOutlets: { 2000: "BIN-102 backsheet reject", 500: "CV-102 recycle to HSG-101" },
+        undersize: "CH-501",
+        widthMm: Math.round(SIEVE_DECK_WIDTH_M * 1000),
+        effectiveAreaM2PerDeck: +SIEVE_DECK_AREA_M2.toFixed(3),
         inclineDeg: SIEVE_INCLINE_DEG,
         frequencyHz: SIEVE_OPERATING_FREQUENCY_HZ,
         peakToPeakMm: SIEVE_PEAK_TO_PEAK_M * 1000
@@ -22526,7 +22645,18 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         displacementScale: SIEVE_VISUAL_DISPLACEMENT_SCALE,
         offset: sieveMotionOffset.toArray()
       },
+      backsheetScalp: {
+        cutUm: BACKSHEET_CUT_UM,
+        appliesToClass: "B",
+        appliesToPass: 1,
+        massFractionOfClass: BACKSHEET_SCALP_FRACTION,
+        designRateKgh: +(FRESH_FEED_KGH * particleClasses.B.fraction * BACKSHEET_SCALP_FRACTION).toFixed(1),
+        destination: "BIN-102",
+        rejectMassKg: state.backsheetRejectOut,
+        onDeckMassKg: state.rejectTransferMass
+      },
       productBandMassKg: {
+        rejectBacksheet: state.backsheetRejectOut,
         product280To500: state.product280To500Out,
         product106To280: state.product106To280Out,
         product75To106: state.product75To106Out,
@@ -23026,8 +23156,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       label:"분쇄기", tag:"HSG-101 Closed Circuit", drawing:"DI-PVR-HSG101-DD-001", revision:"DD-R4",
       capacity:"신규 ≤300 kg/h · 환류 포함 총부하 ≤400 kg/h", overall:"5,000 L × 1,600 W × 2,500 H mm", mass:"예상 4.6 t · 스키드 포함",
       foundation:"스키드 5,000×1,600 mm · M24 앵커 12SET · 방진패드 12EA · 그라우트 30 mm",
-      basis:"Dmax 10 mm · 로터 Ø450×350 · 1,500 rpm(최대 1,800) · SC-500 500 µm 폐회로 · D95 0.438 mm",
-      services:[powerService("grinder"), "흡인: 보어 137 라이닝 · 900 m³/h · BF-101/IDF-101", "투입: FD-101, 밀폐 유연슈트", "제품/환류: SC-500 <500 µm / ≥500 µm"],
+      basis:"Dmax 10 mm · 로터 Ø450×350 · 1,500 rpm(최대 1,800) · SC-500 2단(2 mm 스캘핑＋500 µm 폐회로) · D95 0.438 mm",
+      services:[powerService("grinder"), "흡인: 보어 137 라이닝 · 900 m³/h · BF-101/IDF-101", "투입: FD-101, 밀폐 유연슈트", "폐기/환류/제품: SC-500 >2 mm BIN-102 / 500 µm–2 mm CV-102 / <500 µm CH-501"],
       installation:["로터 인출측 1,800 mm", "스크린 교체 하부공간 900 mm", "필터백 상부 인출공간 1,200 mm", "회전체 레이저 정렬·벨트장력 기록"],
       acceptance:["무부하 1,500 rpm 2 h", "베어링 진동 ISO 20816 Zone B 이하", "400 kg/h 8 h 폐회로 성능", "분진누설·음압·집진 ΔP 확인"],
       dimensions:{l:5000,w:1600,h:2500}, assemblies:["전체","스키드·하우징","로터·날","스크린·라이너","M-101 구동","FD/CV 이송","SC-500 환류","집진·음압","전력 인입·LCP","체결구"],
