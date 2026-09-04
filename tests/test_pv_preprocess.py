@@ -1914,6 +1914,14 @@ class TestBrandMark(unittest.TestCase):
         self.assertEqual(got["dustFlowM3h"], dust.counted_flow_m3h())
         self.assertEqual(got["airFadNlMin"], air.compressor_fad_nl_min())
         self.assertEqual(got["acceptanceItems"], len(acceptance.items()))
+        self.assertEqual(got["bottleneck"], campaign.bottleneck())
+        self.assertEqual(got["rideThroughH"], handoff.buffer_ride_through_h())
+        self.assertEqual(got["drainRideThroughH"], handoff.buffer_drain_ride_through_h())
+        self.assertEqual(got["singlePointBlocks"], len(grade.single_point_blocks()))
+        # 설명 문구도 값에서 나와야 한다. 종전에는 카드 값만 찍고 밑의 설명은
+        # 손으로 써서, 병목이 바뀌어도 "병목 JBR-201" 이 화면에 남아 있었다.
+        self.assertNotIn("병목 JBR-201", self.console, "설명이 손으로 쓰여 있다")
+        self.assertIn("CONSOLE.bottleneck", self.console, "설명이 값을 안 받는다")
 
     def test_the_plates_ride_on_enclosures_that_already_stood(self):
         """마크는 **붙인 것**이지 세운 것이 아니다.

@@ -176,6 +176,13 @@ footer code { font-family: var(--mono); font-size: 11.5px; }
     "campaignMin": 48.2,
     "downstreamPerH": 68.4,
     "rideThroughH": 0.56,
+    "drainRideThroughH": 0.56,
+    "bufferStockSlots": 38,
+    "bufferHeadroomSlots": 37,
+    "bottleneck": "GRM-401 유리제거",
+    "idealTaktS": 46.49,
+    "singlePointBlocks": 0,
+    "achievableAvailability": 0.9984,
     "installedKw": 300.5,
     "demandKw": 217.8,
     "contractKw": 294.0,
@@ -258,7 +265,8 @@ footer code { font-family: var(--mono); font-size: 11.5px; }
     }).join('');
 
     $('process').innerHTML = [
-      card('택트', CONSOLE.taktS.toFixed(2), 's', '병목 JBR-201 + 인계 8 s'),
+      card('택트', CONSOLE.taktS.toFixed(2), 's',
+        '병목 ' + CONSOLE.bottleneck + ' ' + CONSOLE.idealTaktS.toFixed(2) + ' s + 인계'),
       card('처리량', CONSOLE.throughputPerH.toFixed(1), '장/h',
         '후단 능력 ' + CONSOLE.downstreamPerH.toFixed(1) + ' 장/h',
         CONSOLE.throughputPerH / CONSOLE.downstreamPerH),
@@ -266,7 +274,13 @@ footer code { font-family: var(--mono); font-size: 11.5px; }
       card('캠페인', CONSOLE.campaignMin.toFixed(1), '분',
         n(CONSOLE.campaignPanels) + '장 연속 · 번들 30 × 2'),
       card('버퍼 완충', CONSOLE.rideThroughH.toFixed(2), 'h',
-        '후단 정지를 이만큼 버틴다')
+        '후단 정지 ' + CONSOLE.rideThroughH.toFixed(2) + ' h (여유 '
+        + CONSOLE.bufferHeadroomSlots + '슬롯) · 상류 정지 '
+        + CONSOLE.drainRideThroughH.toFixed(2) + ' h (재고 '
+        + CONSOLE.bufferStockSlots + '슬롯)'),
+      card('단일고장 블록', CONSOLE.singlePointBlocks, '개',
+        '이중화도 버퍼도 없는 계통 · 달성 가용률 '
+        + CONSOLE.achievableAvailability.toFixed(4))
     ].join('');
 
     $('utility').innerHTML = [

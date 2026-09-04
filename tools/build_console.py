@@ -18,8 +18,8 @@ import sys
 sys.path.insert(0, "src")
 
 from pv_preprocess import (acceptance, acoustics, air, brand, campaign, dust,  # noqa: E402
-                           electrical, handoff, reliability, safety, seismic,
-                           smart, thermal)
+                           electrical, grade, handoff, reliability, safety,
+                           seismic, smart, thermal)
 
 CONSOLE = pathlib.Path("docs/consoles/pv-preprocess-console.html")
 
@@ -37,6 +37,13 @@ def values() -> dict[str, object]:
         "campaignMin": camp["run_min"],
         "downstreamPerH": hand["downstream_per_h"],
         "rideThroughH": handoff.buffer_ride_through_h(),
+        "drainRideThroughH": handoff.buffer_drain_ride_through_h(),
+        "bufferStockSlots": handoff.buffer_stock_target_slots(),
+        "bufferHeadroomSlots": handoff.buffer_headroom_slots(),
+        "bottleneck": campaign.bottleneck(),
+        "idealTaktS": campaign.ideal_takt_s(),
+        "singlePointBlocks": len(grade.single_point_blocks()),
+        "achievableAvailability": reliability.achievable_availability(),
         # 전기
         "installedKw": electrical.installed_kw(),
         "demandKw": electrical.demand_kw(),
