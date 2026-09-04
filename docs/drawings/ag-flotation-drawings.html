@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="폐 태양광 셀 은 회수 부유선별 설비의 공정 흐름도·부선조 상세 단면도·장치 대안 비교도.">
+<meta name="description" content="폐 태양광 셀 은 회수 부유선별 설비의 공정 흐름도·부선조 상세 단면도·장치 대안 비교도·어트리션 전처리 계통도.">
 <title>태양광 셀 Ag 회수 설계도</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -413,7 +413,8 @@
     <p class="lede">
       박리·분쇄된 c-Si 셀 분획에서 은을 부유선별로 농축해 후단 침출·제련 물량을 약 1/79 로
       줄이는 설비의 기본설계 도면이다. 공정 흐름도, 부선조 상세 단면도, 장치 형식 대안
-      비교도, 중공축 급기 상세, 그리고 러퍼·스캐빈저·클리너 셀별 상세 7매로 구성한다.
+      비교도, 중공축 급기 상세, 러퍼·스캐빈저·클리너 셀별 상세, 그리고 두 안이 공용하는
+      어트리션 전처리 계통도와 셀 상세 9매로 구성한다.
     </p>
     <dl class="keyfacts">
       <div><dt>처리량 (평균 / 최대)</dt><dd>0.30 / 0.50 t/h</dd></div>
@@ -422,6 +423,7 @@
       <div><dt>부선조</dt><dd>Ø350 × 2.4 m</dd></div>
       <div><dt>기액 체류시간</dt><dd>1 min</dd></div>
       <div><dt>설치 전력</dt><dd>6.5 kW</dd></div>
+      <div><dt>전처리 (공통)</dt><dd>4.8 kW</dd></div>
     </dl>
   </header>
 
@@ -605,7 +607,7 @@
       <div><span>축척</span><b>NTS</b></div>
       <div><span>단위</span><b>mm / kg·h⁻¹</b></div>
       <div><span>REV</span><b>A</b></div>
-      <div><span>근거</span><b>계산서 §5</b></div>
+      <div><span>근거</span><b>계산서 §3</b></div>
     </div>
   </section>
 
@@ -804,7 +806,7 @@
       <div><span>축척</span><b>NTS</b></div>
       <div><span>단위</span><b>mm / cm·s⁻¹</b></div>
       <div><span>REV</span><b>A</b></div>
-      <div><span>근거</span><b>계산서 §5.2</b></div>
+      <div><span>근거</span><b>계산서 §3</b></div>
     </div>
   </section>
 
@@ -925,7 +927,7 @@
       <div><span>축척</span><b>NTS</b></div>
       <div><span>기준</span><b>최대 0.50 t/h</b></div>
       <div><span>REV</span><b>A</b></div>
-      <div><span>근거</span><b>계산서 §7</b></div>
+      <div><span>근거</span><b>계산서 §5</b></div>
     </div>
   </section>
 
@@ -1118,7 +1120,7 @@
       <div><span>축척</span><b>NTS</b></div>
       <div><span>단위</span><b>mm / kPa</b></div>
       <div><span>REV</span><b>A</b></div>
-      <div><span>근거</span><b>계산서 §3</b></div>
+      <div><span>근거</span><b>계산서 §4</b></div>
     </div>
   </section>
 
@@ -1257,7 +1259,7 @@
       <div><span>축척</span><b>NTS</b></div>
       <div><span>단위</span><b>mm</b></div>
       <div><span>REV</span><b>A</b></div>
-      <div><span>근거</span><b>계산서 §3</b></div>
+      <div><span>근거</span><b>계산서 §4</b></div>
     </div>
   </section>
 
@@ -1397,7 +1399,7 @@
       <div><span>축척</span><b>NTS</b></div>
       <div><span>단위</span><b>mm</b></div>
       <div><span>REV</span><b>A</b></div>
-      <div><span>근거</span><b>계산서 §3</b></div>
+      <div><span>근거</span><b>계산서 §4</b></div>
     </div>
   </section>
 
@@ -1540,7 +1542,320 @@
       <div><span>축척</span><b>NTS</b></div>
       <div><span>단위</span><b>mm</b></div>
       <div><span>REV</span><b>A</b></div>
-      <div><span>근거</span><b>계산서 §3</b></div>
+      <div><span>근거</span><b>계산서 §4</b></div>
+    </div>
+  </section>
+
+  <!-- ================= SHEET 8 : PRETREATMENT ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-008</span>
+      <span class="sheet-title">전처리 계통도 — 어트리션 스크러버</span>
+      <span class="sheet-sub">두 안 공통 · 최대 처리량 0.50 t/h 기준 · 성능 크레딧 없음</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1040 450" role="img"
+             aria-label="로드밀 배출 슬러리가 70 중량퍼센트 그대로 어트리션 스크러버 AS-1 의 두 셀을 차례로 지나며 표면이 벗겨지고, 희석박스 DB-1 에서 공정수 6.43 세제곱미터 매시로 7 중량퍼센트까지 묽혀져 조건조 CT-1 로 가는 전처리 계통도. 로드밀 배출에서 희석박스로 곧장 가는 전량 바이패스 배관과 정지 전 플러싱수 배관이 함께 표시되어 있다.">
+          <defs>
+            <marker id="a8" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="currentColor"></polygon>
+            </marker>
+            <marker id="a8wt" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--water)"></polygon>
+            </marker>
+          </defs>
+
+          <!-- process water header -->
+          <line class="wt-l" x1="180" y1="52" x2="700" y2="52"></line>
+          <text class="t-mono t-wt" x="180" y="42" text-anchor="start">공정수 헤더 — 농축조 월류 회수수</text>
+          <line class="wt-t" x1="232" y1="52" x2="232" y2="190" stroke-dasharray="6 4" marker-end="url(#a8wt)"></line>
+          <text class="t-mono t-wt" x="240" y="98" text-anchor="start">플러싱수 (정지 전)</text>
+          <line class="wt-l" x1="545" y1="52" x2="545" y2="186" marker-end="url(#a8wt)"></line>
+          <text class="t-mono t-wt" x="553" y="118" text-anchor="start">희석수 6.43 m³/h</text>
+
+          <!-- upstream (outside battery limit) -->
+          <rect class="box-d" x="16" y="170" width="136" height="72" rx="2"></rect>
+          <text class="t-sm" x="84" y="196" text-anchor="middle">상류 공정 (범위 외)</text>
+          <text class="t-sm" x="84" y="214" text-anchor="middle">박리 → 습식 로드밀</text>
+          <text class="t-mono" x="84" y="232" text-anchor="middle">P80 66 µm</text>
+
+          <!-- feed to AS-1 -->
+          <line class="ln-h" x1="152" y1="206" x2="220" y2="206" marker-end="url(#a8)"></line>
+          <circle class="stream-n" cx="172" cy="234" r="11"></circle>
+          <text class="stream-t" x="172" y="238" text-anchor="middle">1</text>
+          <circle class="instr" cx="178" cy="100" r="15"></circle>
+          <text class="instr-t" x="178" y="98" text-anchor="middle">WI</text>
+          <text class="instr-t" x="178" y="109" text-anchor="middle">001</text>
+          <circle class="instr" cx="178" cy="150" r="15"></circle>
+          <text class="instr-t" x="178" y="148" text-anchor="middle">DI</text>
+          <text class="instr-t" x="178" y="159" text-anchor="middle">002</text>
+          <line class="ln-t" x1="178" y1="165" x2="178" y2="206"></line>
+          <line class="ln-t" x1="178" y1="115" x2="178" y2="135"></line>
+
+          <!-- AS-1 skid -->
+          <rect class="box-d" x="205" y="126" width="250" height="200" rx="2"></rect>
+          <text class="t-sm" x="330" y="118" text-anchor="middle">AS-1 어트리션 스크러버 (2셀 직렬)</text>
+
+          <rect class="box" x="220" y="196" width="90" height="104"></rect>
+          <rect class="zone" x="222" y="210" width="86" height="88"></rect>
+          <rect class="box" x="262" y="150" width="6" height="140"></rect>
+          <rect class="box" x="242" y="128" width="46" height="20"></rect>
+          <line class="ln-h" x1="240" y1="228" x2="262" y2="236"></line>
+          <line class="ln-h" x1="268" y1="236" x2="290" y2="228"></line>
+          <line class="ln-h" x1="240" y1="272" x2="262" y2="264"></line>
+          <line class="ln-h" x1="268" y1="264" x2="290" y2="272"></line>
+          <rect class="ag-b" x="232" y="243" width="66" height="14"></rect>
+          <text class="t-mono t-ag" x="265" y="254" text-anchor="middle">전단면</text>
+
+          <rect class="box" x="350" y="196" width="90" height="104"></rect>
+          <rect class="zone" x="352" y="210" width="86" height="88"></rect>
+          <rect class="box" x="392" y="150" width="6" height="140"></rect>
+          <rect class="box" x="372" y="128" width="46" height="20"></rect>
+          <line class="ln-h" x1="370" y1="228" x2="392" y2="236"></line>
+          <line class="ln-h" x1="398" y1="236" x2="420" y2="228"></line>
+          <line class="ln-h" x1="370" y1="272" x2="392" y2="264"></line>
+          <line class="ln-h" x1="398" y1="264" x2="420" y2="272"></line>
+          <rect class="ag-b" x="362" y="243" width="66" height="14"></rect>
+          <text class="t-mono t-ag" x="395" y="254" text-anchor="middle">전단면</text>
+
+          <line class="ln-h" x1="310" y1="222" x2="350" y2="222" marker-end="url(#a8)"></line>
+          <circle class="instr" cx="330" cy="172" r="16"></circle>
+          <text class="instr-t" x="330" y="170" text-anchor="middle">SIC</text>
+          <text class="instr-t" x="330" y="181" text-anchor="middle">005</text>
+          <line class="ln-t" x1="318" y1="162" x2="288" y2="146"></line>
+          <line class="ln-t" x1="342" y1="162" x2="372" y2="146"></line>
+          <text class="t-mono" x="330" y="410" text-anchor="middle">모터 2.2 kW × 2 · VFD 6.0~7.7 m/s</text>
+          <text class="t-mono" x="330" y="430" text-anchor="middle">총 118.4 L · 체류 16.7 min · 4.79 kWh/t</text>
+
+          <!-- AS-1 to DB-1 -->
+          <line class="ln-h" x1="440" y1="222" x2="518" y2="222" marker-end="url(#a8)"></line>
+          <circle class="stream-n" cx="480" cy="196" r="11"></circle>
+          <text class="stream-t" x="480" y="200" text-anchor="middle">2</text>
+          <circle class="stream-n" cx="514" cy="112" r="11"></circle>
+          <text class="stream-t" x="514" y="116" text-anchor="middle">3</text>
+
+          <!-- DB-1 -->
+          <rect class="box" x="520" y="190" width="110" height="120"></rect>
+          <rect class="wt-f" x="522" y="206" width="106" height="102"></rect>
+          <rect class="box" x="572" y="160" width="6" height="130"></rect>
+          <rect class="box" x="554" y="140" width="42" height="20"></rect>
+          <line class="ln-h" x1="556" y1="284" x2="572" y2="292"></line>
+          <line class="ln-h" x1="578" y1="292" x2="594" y2="284"></line>
+          <text class="t-mono" x="575" y="332" text-anchor="middle">DB-1 희석박스</text>
+          <text class="t-sm" x="575" y="350" text-anchor="middle">70 → 7 wt% · 0.30 m³</text>
+
+          <!-- DB-1 to CT-1 -->
+          <line class="ln-h" x1="630" y1="252" x2="716" y2="252" marker-end="url(#a8)"></line>
+          <circle class="stream-n" cx="673" cy="226" r="11"></circle>
+          <text class="stream-t" x="673" y="230" text-anchor="middle">4</text>
+          <circle class="instr" cx="673" cy="300" r="15"></circle>
+          <text class="instr-t" x="673" y="298" text-anchor="middle">DIC</text>
+          <text class="instr-t" x="673" y="309" text-anchor="middle">006</text>
+          <line class="ln-t" x1="673" y1="285" x2="673" y2="252"></line>
+
+          <rect class="box-d" x="716" y="216" width="164" height="72" rx="2"></rect>
+          <text class="t-sm" x="798" y="242" text-anchor="middle">CT-1 조건조 → 부선</text>
+          <text class="t-mono" x="798" y="264" text-anchor="middle">6.85 m³/h · 7 wt%</text>
+          <text class="t-sm" x="798" y="300" text-anchor="middle">이후 계통은 DWG-001</text>
+
+          <!-- bypass -->
+          <path class="dash" d="M196,206 L196,376 L500,376 L500,292 L516,292" marker-end="url(#a8)"></path>
+          <text class="t-mono" x="340" y="368" text-anchor="middle">AS-1 전량 바이패스 — A/B 시험·비상 운전</text>
+        </svg>
+      </div>
+      <figcaption>
+        스크러빙은 <strong>묽히기 전에만</strong> 성립한다. 70 wt% 는 고체 체적분율 49.6 vol% 로 입자끼리 닿지만, 부선 농도 7 wt% 는 3.1 vol% 라 어떤 장치로도 갈리지 않는다. 그래서 희석은 어트리션 뒤(DB-1)에서 한다. 바이패스는 어트리션 없이 운전하기 위한 것이 아니라, <strong>있고 없고를 실기에서 비교하기 위한 것</strong>이다.
+      </figcaption>
+    </figure>
+
+    <div class="tablewrap">
+      <table>
+        <caption>스트림 — 최대 0.50 t/h</caption>
+        <thead>
+          <tr><th class="num">No</th><th>스트림</th><th class="num">고체</th><th class="num">농도</th><th class="num">유량</th><th>비고</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">1</td><td>로드밀 배출 → AS-1</td><td class="num">500.0 kg/h</td><td class="num">70 wt%</td><td class="num">0.42 m³/h</td><td>49.6 vol% — 중력 급광</td></tr>
+          <tr><td class="num">2</td><td>AS-1 배출 → DB-1</td><td class="num">500.0 kg/h</td><td class="num">70 wt%</td><td class="num">0.42 m³/h</td><td>고체 조성 불변</td></tr>
+          <tr><td class="num">3</td><td>희석수 (공정수)</td><td class="num">—</td><td class="num">—</td><td class="num">6.43 m³/h</td><td>계통 최대 단일 소비처</td></tr>
+          <tr><td class="num">4</td><td>DB-1 → CT-1 조건조</td><td class="num">500.0 kg/h</td><td class="num">7 wt%</td><td class="num">6.85 m³/h</td><td>DIC-006 밀도 제어</td></tr>
+          <tr class="total"><td class="num">—</td><td>설치 전력 (전처리 계)</td><td class="num">—</td><td class="num">—</td><td class="num">4.77 kW</td><td>어트리션 4.40 + 교반 0.37</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>DWG-008</b></div>
+      <div><span>도면명</span><b>전처리 계통도</b></div>
+      <div><span>축척</span><b>NTS</b></div>
+      <div><span>단위</span><b>mm / kg·h⁻¹</b></div>
+      <div><span>REV</span><b>A</b></div>
+      <div><span>근거</span><b>계산서 §2</b></div>
+    </div>
+  </section>
+
+  <!-- ================= SHEET 9 : ATTRITION CELL DETAIL ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-009</span>
+      <span class="sheet-title">AS-1 어트리션 셀 상세</span>
+      <span class="sheet-sub">수직 단면 · 평면 · 대향 피치 임펠러 2단</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1000 620" role="img"
+             aria-label="어트리션 셀 1기의 수직 단면과 평면 상세도. 마주보는 변 사이 390 밀리미터 팔각조에 깊이 470 밀리미터, 여유고 100 밀리미터. 중실축 지름 50 밀리미터에 지름 200 밀리미터 임펠러가 200 밀리미터 간격으로 두 단 달려 있고, 위 임펠러는 아래로 아래 임펠러는 위로 밀어 중간 높이에 전단면을 만든다.">
+          <defs>
+            <marker id="a9" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="currentColor"></polygon>
+            </marker>
+            <marker id="a9ag" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--ag)"></polygon>
+            </marker>
+          </defs>
+
+          <!-- drive -->
+          <rect class="box" x="214" y="34" width="72" height="34"></rect>
+          <text class="t-mono" x="250" y="56" text-anchor="middle">M 2.2 kW</text>
+          <rect class="box" x="230" y="68" width="40" height="16"></rect>
+          <text class="t-sm" x="296" y="80" text-anchor="start">VFD 감속기</text>
+          <rect class="box" x="150" y="88" width="200" height="10"></rect>
+          <text class="t-sm" x="140" y="96" text-anchor="end">구동 데크</text>
+          <rect class="box" x="232" y="84" width="36" height="22"></rect>
+
+          <!-- tank -->
+          <rect class="box" x="150" y="160" width="200" height="292"></rect>
+          <rect class="dash" x="158" y="168" width="184" height="276"></rect>
+          <rect class="zone" x="158" y="211" width="184" height="233"></rect>
+          <line class="wt-t" x1="158" y1="211" x2="342" y2="211" stroke-dasharray="6 4"></line>
+          <text class="t-mono t-wt" x="166" y="204" text-anchor="start">운전 액면</text>
+
+          <!-- shaft and impellers -->
+          <rect class="box" x="244" y="70" width="12" height="338"></rect>
+          <line class="ln-h" x1="199" y1="291" x2="244" y2="301"></line>
+          <line class="ln-h" x1="256" y1="301" x2="301" y2="291"></line>
+          <line class="ln-h" x1="199" y1="406" x2="244" y2="396"></line>
+          <line class="ln-h" x1="256" y1="396" x2="301" y2="406"></line>
+
+          <line class="ln" x1="212" y1="312" x2="212" y2="336" marker-end="url(#a9)"></line>
+          <line class="ln" x1="288" y1="312" x2="288" y2="336" marker-end="url(#a9)"></line>
+          <line class="ln" x1="212" y1="388" x2="212" y2="366" marker-end="url(#a9)"></line>
+          <line class="ln" x1="288" y1="388" x2="288" y2="366" marker-end="url(#a9)"></line>
+          <rect class="ag-b" x="168" y="340" width="164" height="24"></rect>
+          <text class="t-mono t-ag" x="250" y="356" text-anchor="middle">전단면 — 입자끼리 갈린다</text>
+
+          <!-- feed / overflow / drain -->
+          <line class="ln-h" x1="196" y1="106" x2="196" y2="160" marker-end="url(#a9)"></line>
+          <text class="t-mono" x="188" y="118" text-anchor="end">급광 70 wt%</text>
+          <rect class="box" x="350" y="205" width="8" height="14"></rect>
+          <line class="ln-h" x1="358" y1="218" x2="420" y2="218" marker-end="url(#a9)"></line>
+          <text class="t-mono" x="424" y="208" text-anchor="start">→ 2단 셀</text>
+          <text class="t-sm" x="424" y="226" text-anchor="start">월류 위어가 액면 결정</text>
+          <rect class="box" x="238" y="452" width="24" height="22"></rect>
+          <line class="ln" x1="250" y1="474" x2="250" y2="506" marker-end="url(#a9)"></line>
+          <text class="t-mono" x="250" y="526" text-anchor="middle">드레인 · 플러싱</text>
+          <text class="t-sm" x="250" y="544" text-anchor="middle">정지 전 희석·배출 (고착 방지)</text>
+
+          <!-- dimensions -->
+          <line class="ln-t" x1="150" y1="140" x2="186" y2="140"></line>
+          <line class="ln-t" x1="206" y1="140" x2="350" y2="140"></line>
+          <line class="ln-t" x1="150" y1="134" x2="150" y2="146"></line>
+          <line class="ln-t" x1="350" y1="134" x2="350" y2="146"></line>
+          <text class="t-dim" x="278" y="132" text-anchor="middle">AF 390</text>
+          <line class="ln-t" x1="104" y1="160" x2="104" y2="452"></line>
+          <line class="ln-t" x1="98" y1="160" x2="110" y2="160"></line>
+          <line class="ln-t" x1="98" y1="452" x2="110" y2="452"></line>
+          <text class="t-dim" x="94" y="310" text-anchor="end">전고 570</text>
+          <line class="ln-t" x1="132" y1="211" x2="132" y2="452"></line>
+          <line class="ln-t" x1="126" y1="211" x2="138" y2="211"></line>
+          <line class="ln-t" x1="126" y1="452" x2="138" y2="452"></line>
+          <text class="t-dim" x="122" y="360" text-anchor="end">깊이 470</text>
+          <line class="ln-t" x1="350" y1="160" x2="374" y2="160"></line>
+          <line class="ln-t" x1="368" y1="160" x2="368" y2="211"></line>
+          <text class="t-dim" x="378" y="188" text-anchor="start">여유고 100</text>
+          <line class="ln-t" x1="290" y1="297" x2="404" y2="278"></line>
+          <text class="t-dim" x="408" y="282" text-anchor="start">임펠러 Ø200 (하향)</text>
+          <line class="ln-t" x1="290" y1="401" x2="404" y2="420"></line>
+          <text class="t-dim" x="408" y="424" text-anchor="start">임펠러 Ø200 (상향)</text>
+          <line class="ln-t" x1="256" y1="301" x2="256" y2="396"></line>
+          <text class="t-dim" x="264" y="386" text-anchor="start">간격 200</text>
+          <line class="ln-t" x1="160" y1="444" x2="120" y2="472"></line>
+          <text class="t-dim" x="116" y="476" text-anchor="end">고무 라이닝 12</text>
+
+          <!-- plan view -->
+          <polygon class="box" points="755,281.4 696.4,340 613.6,340 555,281.4 555,198.6 613.6,140 696.4,140 755,198.6"></polygon>
+          <circle class="dash" cx="655" cy="240" r="51"></circle>
+          <circle class="box" cx="655" cy="240" r="7"></circle>
+          <line class="ln-h" x1="655" y1="240" x2="706" y2="240"></line>
+          <line class="ln-h" x1="655" y1="240" x2="630" y2="284"></line>
+          <line class="ln-h" x1="655" y1="240" x2="630" y2="196"></line>
+          <line class="ln-t" x1="555" y1="124" x2="755" y2="124"></line>
+          <line class="ln-t" x1="555" y1="118" x2="555" y2="130"></line>
+          <line class="ln-t" x1="755" y1="118" x2="755" y2="130"></line>
+          <text class="t-dim" x="655" y="114" text-anchor="middle">AF 390</text>
+          <text class="t-dim" x="655" y="368" text-anchor="middle">대각 422</text>
+          <text class="t-eq" x="655" y="398" text-anchor="middle">평면 — 팔각조</text>
+          <text class="t-sm" x="655" y="420" text-anchor="middle">배플 없이 vortex 를 깬다</text>
+          <text class="t-sm" x="655" y="438" text-anchor="middle">배플은 고농도 슬러리에서 사구를 만든다</text>
+
+          <!-- spec column -->
+          <text class="t-eq" x="780" y="120" text-anchor="start">AS-1 어트리션 셀</text>
+          <line class="ln-t" x1="780" y1="132" x2="990" y2="132"></line>
+          <text class="t-mono" x="780" y="156" text-anchor="start">형식</text>
+          <text class="t-mono" x="990" y="156" text-anchor="end">팔각조 · 대향 2단</text>
+          <text class="t-mono" x="780" y="178" text-anchor="start">조 치수 (AF × 깊이)</text>
+          <text class="t-mono t-ag" x="990" y="178" text-anchor="end">390 × 470 mm</text>
+          <text class="t-mono" x="780" y="200" text-anchor="start">여유고 / 전고</text>
+          <text class="t-mono" x="990" y="200" text-anchor="end">100 / 570 mm</text>
+          <text class="t-mono" x="780" y="222" text-anchor="start">유효 체적 (셀당)</text>
+          <text class="t-mono" x="990" y="222" text-anchor="end">59.2 L</text>
+          <text class="t-mono" x="780" y="244" text-anchor="start">총 유효 체적 (2셀)</text>
+          <text class="t-mono t-ag" x="990" y="244" text-anchor="end">118.4 L</text>
+          <text class="t-mono" x="780" y="266" text-anchor="start">임펠러 Ø · 간격</text>
+          <text class="t-mono" x="990" y="266" text-anchor="end">Ø200 · 200 mm</text>
+          <text class="t-mono" x="780" y="288" text-anchor="start">회전수 · 주속</text>
+          <text class="t-mono t-ag" x="990" y="288" text-anchor="end">670 rpm · 7.02 m/s</text>
+          <text class="t-mono" x="780" y="310" text-anchor="start">VFD 조정 범위</text>
+          <text class="t-mono" x="990" y="310" text-anchor="end">6.0 ~ 7.68 m/s</text>
+          <text class="t-mono" x="780" y="332" text-anchor="start">흡수동력 / 모터</text>
+          <text class="t-mono" x="990" y="332" text-anchor="end">1.20 / 2.2 kW</text>
+          <text class="t-mono" x="780" y="354" text-anchor="start">체적당 동력</text>
+          <text class="t-mono" x="990" y="354" text-anchor="end">20.2 kW/m³</text>
+          <text class="t-mono" x="780" y="376" text-anchor="start">교반축 (중실)</text>
+          <text class="t-mono t-ag" x="990" y="376" text-anchor="end">Ø50 × 1.07 m</text>
+          <text class="t-mono" x="780" y="398" text-anchor="start">임계회전수</text>
+          <text class="t-mono" x="990" y="398" text-anchor="end">1,073 rpm / 1.60배</text>
+          <text class="t-mono" x="780" y="420" text-anchor="start">스크러빙 농도</text>
+          <text class="t-mono" x="990" y="420" text-anchor="end">70 wt% (49.6 vol%)</text>
+          <text class="t-mono" x="780" y="442" text-anchor="start">체류시간 (0.50 t/h)</text>
+          <text class="t-mono" x="990" y="442" text-anchor="end">16.7 min</text>
+          <text class="t-mono" x="780" y="464" text-anchor="start">비에너지</text>
+          <text class="t-mono t-ag" x="990" y="464" text-anchor="end">4.79 kWh/t</text>
+          <text class="t-mono" x="780" y="486" text-anchor="start">라이닝</text>
+          <text class="t-mono" x="990" y="486" text-anchor="end">천연고무 12 mm</text>
+          <line class="ln-t" x1="780" y1="502" x2="990" y2="502"></line>
+          <text class="t-eq" x="780" y="530" text-anchor="start">대향 피치가 만드는 전단면</text>
+          <text class="t-sm" x="780" y="552" text-anchor="start">위 임펠러는 아래로, 아래 임펠러는 위로</text>
+          <text class="t-sm" x="780" y="570" text-anchor="start">민다. 두 흐름이 만나는 중간 높이에서</text>
+          <text class="t-sm" x="780" y="588" text-anchor="start">입자끼리 갈린다. 조를 젓는 것이 아니라</text>
+          <text class="t-sm" x="780" y="606" text-anchor="start">입자를 맞부딪히게 하는 형상이다.</text>
+        </svg>
+      </div>
+      <figcaption>
+        어트리션 셀은 교반조가 아니라 <strong>전단면을 만드는 장치</strong>다. 대향 피치 임펠러 두 단이 만드는 중간 높이의 충돌면에서 입자끼리 갈리며 표면 잔막과 슬라임이 벗겨진다. 축 외경 Ø50 mm 는 토크(전단응력 1.4 / 허용 40 MPa)가 아니라 <strong>1.07 m 외팔보의 1차 임계회전수</strong>가 정한 값이다.
+      </figcaption>
+    </figure>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>DWG-009</b></div>
+      <div><span>도면명</span><b>AS-1 어트리션 셀 상세</b></div>
+      <div><span>축척</span><b>NTS</b></div>
+      <div><span>단위</span><b>mm</b></div>
+      <div><span>REV</span><b>A</b></div>
+      <div><span>근거</span><b>계산서 §2</b></div>
     </div>
   </section>
 
@@ -1557,6 +1872,8 @@
       <li>1안은 공정수 <strong>9.4 m³/h</strong>, 2안은 6.31 m³/h를 회수한다. 농축조 월류의 10%만 블리드하고, <strong>필터프레스 여액 0.47 m³/h는 부선 회로 첫 단 급광으로 직접 순환</strong>한다(1안 CT-1, 2안 FC-201 러퍼). 여액을 월류수와 중복 계상하지 않는다.</li>
       <li>정광·미광 필터프레스는 <strong>서로 다른 기준으로 규격이 정해진다.</strong> 미광기(FL-102/FL-202)는 사이클당 케이크 부피가 챔버 총용적 702 L 를 결정하고, 정광기(FL-101/FL-201)는 필요 면적이 0.1 m² 에 못 미쳐 <strong>상용 최소 기종</strong>이 하한이 된다. 그래도 교차오염 손실이 회수한 은보다 클 수 있어 미광기와 합치지 않는다.</li>
       <li>2안의 급기는 스파저가 아니라 <strong>중공축</strong>으로 넣는다(DWG-004). 축 외경은 서비스계수 2.0 비틀림과 <strong>예비 로터동역학</strong> 중 큰 값으로 선정했으며, 보어·조인트·허브 토출구 손실을 송풍기 토출압에 반영했다. 별도 스파저 손실은 적용하지 않았다.</li>
+      <li><strong>전처리 어트리션(DWG-008/009)에는 성능 크레딧을 주지 않았다.</strong> 참고 문헌 두 편 어디에도 어트리션 시험이 없으므로, 이 도면집의 회수율·품위·약제 수치는 전부 <strong>어트리션이 없는 것과 같은 값</strong>이다. 전량 바이패스 배관과 시험 계획(T-1~T-4)으로 이득을 확인한 뒤에야 설계 기준을 갱신한다.</li>
+      <li>스크러빙은 <strong>고체 체적분율</strong>이 정한다. 70 wt% = 49.6 vol% 라야 입자끼리 닿고, 61 wt%(40 vol%) 아래는 어트리션이 아니라 교반이다. 로드밀 배출이 70 wt% 에 못 미치면 앞단 사이클론 탈수가 필요하다 — <strong>상류 설비 계약의 인터페이스 조건</strong>이다. 정지 시에는 반드시 플러싱수로 희석·배출한다(고착 방지).</li>
       <li>1안의 장치 형식은 <strong>특허 가출원 대상</strong>(AU 2025902821)이다. 상업화 시 실시권 검토가 필요하며, 불발 시 2안이 현실적 차선이다.</li>
       <li>도면의 모든 수치는 <code>design_basis.py</code> 로부터 코드로 산출된 값이다. 시운전 시험 결과로 설계 기준을 갱신하면 수치가 달라질 수 있다.</li>
     </ol>

@@ -57,16 +57,16 @@ class TestDrawingDocument(unittest.TestCase):
             closed = len(re.findall(rf"</{tag}>", self.html))
             self.assertEqual(opened, closed, f"<{tag}> 태그 불균형")
 
-    def test_seven_sheets_present(self):
-        for no in ("DWG-001", "DWG-002", "DWG-003", "DWG-004",
-                   "DWG-005", "DWG-006", "DWG-007"):
+    def test_nine_sheets_present(self):
+        for no in ("DWG-001", "DWG-002", "DWG-003", "DWG-004", "DWG-005",
+                   "DWG-006", "DWG-007", "DWG-008", "DWG-009"):
             self.assertIn(no, self.html, no)
-        self.assertEqual(len(re.findall(r"<svg", self.html)), 7)
+        self.assertEqual(len(re.findall(r"<svg", self.html)), 9)
 
     def test_every_figure_is_labelled_for_screen_readers(self):
-        self.assertEqual(len(re.findall(r'role="img"', self.html)), 7)
-        self.assertEqual(len(re.findall(r"aria-label=", self.html)), 7)
-        self.assertEqual(len(re.findall(r"<figcaption>", self.html)), 7)
+        self.assertEqual(len(re.findall(r'role="img"', self.html)), 9)
+        self.assertEqual(len(re.findall(r"aria-label=", self.html)), 9)
+        self.assertEqual(len(re.findall(r"<figcaption>", self.html)), 9)
 
 
 class TestDrawingMatchesDesign(unittest.TestCase):
@@ -292,6 +292,107 @@ class TestModel3dDocument(unittest.TestCase):
             opened = len(re.findall(rf"<{tag}[ >]", self.html))
             closed = len(re.findall(rf"</{tag}>", self.html))
             self.assertEqual(opened, closed, f"<{tag}> 태그 불균형")
+
+
+class TestAttritionSheetsMatchDesign(unittest.TestCase):
+    """DWG-008/009 — 전처리 도면의 수치가 코드 산출값과 같은지."""
+
+    @classmethod
+    def setUpClass(cls):
+        from flotation_design.plant import build_pretreatment
+
+        cls.html = DRAWING.read_text(encoding="utf-8")
+        cls.pre = build_pretreatment()
+        cls.sc = cls.pre.scrubber
+
+    def assertFigure(self, text: str, label: str):
+        self.assertTrue(
+            text in self.html,
+            f"{label} 이(가) 도면과 불일치 — 도면에 '{text}' 가 없음. "
+            f"design_basis.py 를 고쳤다면 도면도 갱신할 것.",
+        )
+
+    def test_cell_dimensions(self):
+        g = self.sc.geometry
+        self.assertFigure(f"AF {g.across_flats_m * 1000:.0f}", "조 폭 (across flats)")
+        self.assertFigure(
+            f"{g.across_flats_m * 1000:.0f} × {g.depth_m * 1000:.0f} mm", "조 치수"
+        )
+        self.assertFigure(
+            f"{g.freeboard_m * 1000:.0f} / {g.shell_height_m * 1000:.0f} mm",
+            "여유고 / 전고",
+        )
+        self.assertFigure(f"대각 {g.circumscribed_diameter_m * 1000:.0f}", "대각 치수")
+
+    def test_working_volumes(self):
+        g = self.sc.geometry
+        self.assertFigure(f"{g.working_volume_m3 * 1000:.1f} L", "셀당 유효 체적")
+        self.assertFigure(
+            f"{self.sc.total_working_volume_m3 * 1000:.1f} L", "총 유효 체적"
+        )
+
+    def test_drive_specs(self):
+        d = self.sc.drive
+        self.assertFigure(
+            f"Ø{d.diameter_m * 1000:.0f} · {d.spacing_m * 1000:.0f} mm",
+            "임펠러 지름·간격",
+        )
+        self.assertFigure(
+            f"{d.speed_rpm:.0f} rpm · {d.tip_speed_m_s:.2f} m/s", "회전수·주속"
+        )
+        self.assertFigure(
+            f"{d.tip_speed_min_m_s:.1f} ~ {d.tip_speed_ceiling_m_s:.2f} m/s",
+            "VFD 조정 범위",
+        )
+        self.assertFigure(
+            f"{d.absorbed_power_w / 1000.0:.2f} / {d.motor_rating_kw:.1f} kW",
+            "흡수동력 / 모터",
+        )
+        self.assertFigure(f"{self.sc.specific_power_kw_m3:.1f} kW/m³", "체적당 동력")
+
+    def test_shaft_specs(self):
+        sh = self.sc.shaft
+        self.assertEqual(sh.governed_by, "로터동역학")
+        self.assertFigure(
+            f"Ø{sh.outer_diameter_mm:.0f} × {sh.length_m:.2f} m", "교반축"
+        )
+        self.assertFigure(
+            f"{sh.critical_speed_rpm:,.0f} rpm / {sh.critical_speed_ratio:.2f}배",
+            "임계회전수 / 여유비",
+        )
+
+    def test_operating_point(self):
+        self.assertEqual(self.sc.governed_by, "상용 최소 기종")
+        self.assertFigure(
+            f"{self.sc.solids_mass_fraction * 100:.0f} wt% "
+            f"({self.sc.solids_volume_fraction * 100:.1f} vol%)",
+            "스크러빙 농도",
+        )
+        self.assertFigure(
+            f"{self.sc.residence_min(db.FEED.peak_tph):.1f} min", "체류시간"
+        )
+        self.assertFigure(
+            f"{self.sc.specific_energy_kwh_t(db.FEED.peak_tph):.2f} kWh/t", "비에너지"
+        )
+
+    def test_flow_sheet_figures(self):
+        dil = self.pre.dilution
+        self.assertFigure(f"{dil.dilution_water_m3h:.2f} m³/h", "희석수")
+        self.assertFigure(f"{dil.outlet_m3h:.2f} m³/h", "조건조 급광 유량")
+        self.assertFigure(
+            f"{dil.inlet_solids_wt * 100:.0f} → {dil.outlet_solids_wt * 100:.0f} wt%",
+            "희석박스 농도",
+        )
+        self.assertFigure(f"{self.pre.installed_kw:.2f} kW", "전처리 설치 전력")
+        self.assertFigure(f"{db.FEED.peak_tph * 1000:.1f} kg/h", "전처리 고체 유량")
+
+    def test_tags_and_bypass_are_drawn(self):
+        for probe in (db.ATTRITION_TAG, db.DILUTION_BOX_TAG, "바이패스",
+                      "전단면", "플러싱"):
+            self.assertFigure(probe, probe)
+
+    def test_no_performance_credit_is_stated_on_the_drawings(self):
+        self.assertIn("성능 크레딧을 주지 않았다", self.html)
 
 
 class TestModel3dMatchesDesign(unittest.TestCase):

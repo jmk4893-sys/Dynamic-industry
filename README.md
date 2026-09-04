@@ -10,8 +10,9 @@ Dynamic industry Development
 
 - 평균 **0.30 t/h**, 최대 **0.50 t/h** (건조 고체 기준)
 - **세척수 bias 연속 부선조 1단, Ø350 mm × 라이저 2.4 m** (대안: 기계식 러퍼·스캐빈저·클리너 3단)
+- 전처리로 **어트리션 스크러버 팔각조 AF 390 mm × 2단** — 두 안 공통, **성능 크레딧 없음**
 - Ag 회수율 **99.7 %**, 정광 **6.36 kg/h @ 46.3 wt% Ag** (농축비 78배)
-- 기액 체류시간 **1 분**, 설치 전력 **6.52 kW** (탈수 보조설비 포함)
+- 기액 체류시간 **1 분**, 설치 전력 **6.52 kW** (탈수 보조설비 포함) + 전처리 **4.77 kW**
 - 황화제·pH 조정제·억제제 없음 — 약제는 포수제·촉진제·기포제 3종뿐
 
 ### 설계 근거
@@ -32,7 +33,7 @@ Dynamic industry Development
 |---|---|
 | [docs/flotation-separator-design.md](docs/flotation-separator-design.md) | 설계 사양서 — 근거, 두 안, 계장·안전, 시운전 계획 |
 | [docs/design-calculation.md](docs/design-calculation.md) | 설계 계산서 (코드에서 자동 생성) |
-| [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 7매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매 (브라우저로 열 것) |
+| [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 9매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매, 전처리 계통도, 어트리션 셀 상세 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
 | [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 13종, 열수지 계산기 (브라우저로 열 것) |
 
@@ -44,7 +45,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (286건)
+python -m unittest discover -s tests -t .                               # 테스트 (366건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
@@ -73,6 +74,7 @@ src/flotation_design/
   references.py     문헌 실증값 — 설계의 1차 근거 (여기 수치는 논문에서 온 것)
   design_basis.py   설계 전제 — 급광 조성, 속도상수, 셀 사양, 약제 (여기만 고치면 됨)
   feed.py           급광 조성 · 슬러리 물성
+  attrition.py      어트리션 스크러버 · 희석박스 (부선 전 표면 정정, 공통 전처리)
   kinetics.py       2속도(Kelsall) 반응속도 — 속부선/지연부선/비부선, 회분식·연속
   circuit.py        흐름 추적 · 복합입자 동반 · 순환부하 수렴 (2안)
   rfc.py            flux 상사 스케일업 · bias · 연속 부선조 성능 (1안)
@@ -89,6 +91,12 @@ src/flotation_design/
 Si 코어를 달고 온다. 부상 Ag 1 kg 당 맥석 1.1 kg 이면 상한은 1/(1+1.1) = 47.6 wt%
 이고, 문헌의 두 최고 품위(48.8 / 46.7 wt%)가 모두 여기서 멈췄다. 세척수로 제거되지
 않으므로 **클리너를 더 붙여도 넘을 수 없다.**
+
+**어트리션 전처리에는 성능 크레딧이 없다.** 표면 잔막·슬라임 코팅을 벗기면 회수율과
+품위가 오를 여지가 있지만, 참고 문헌 두 편 어디에도 어트리션 시험이 없다. 근거 없는
+이득을 계산에 넣지 않고, 대신 **전량 바이패스 배관과 시험 계획(T-1~T-4)** 을 설계에
+넣었다. 시험에서 이득이 확인되지 않으면 바이패스로 두거나 철거하는 편이 낫다 —
+이 설비는 계통 전력의 42 % 를 쓴다.
 
 **연속 부선조에는 반응속도 모델을 쓰지 않는다.** 완전혼합조가 아니므로 기액 체류시간
 1분을 CSTR 식에 넣으면 Ag 회수율이 63 % 로 나와 실측(~100 %)과 맞지 않는다.

@@ -10,6 +10,7 @@ import math
 from dataclasses import dataclass
 
 from . import design_basis as db
+from .attrition import AttritionScrubber, DilutionBox, dilution_box, size_attrition
 from .circuit import CircuitResult, FlotationUnit, solve_circuit
 from .conditioning import ConditionerDesign, conditioner_train
 from .feed import FeedSpec
@@ -259,12 +260,55 @@ class MechanicalOption:
 
 
 @dataclass(frozen=True)
+class Pretreatment:
+    """전처리 계통 — 두 안이 공용하는 공통 설비.
+
+    로드밀 배출을 고농도 그대로 어트리션 스크러버에 넣어 표면을 벗기고,
+    희석박스에서 부선 농도로 묽혀 조건조로 보낸다.
+
+    희석수는 어차피 부선 농도를 맞추려고 들어가던 물이라 **설비 전체 물수지는
+    달라지지 않는다** — 투입 지점이 정해질 뿐이다. 다만 그 물을 공정수 회수로
+    감당할 수 있는지는 확인해야 한다 (``dilution_covered_by_recycle``).
+    """
+
+    scrubber: AttritionScrubber
+    dilution: DilutionBox
+    bypass: str
+
+    @property
+    def installed_kw(self) -> float:
+        return self.scrubber.installed_kw + self.dilution.agitator_kw
+
+    @property
+    def dilution_water_m3h(self) -> float:
+        return self.dilution.dilution_water_m3h
+
+    def water_supply_ok(self, option: RfcOption | MechanicalOption) -> bool:
+        """희석수를 그 안의 회수 공정수와 신수 보충으로 받칠 수 있는지.
+
+        희석수는 계 안을 도는 내부 순환수라, 어트리션이 있든 없든 부선 농도를
+        맞추려면 어차피 같은 양이 들어간다. 계 밖으로 나가는 물(케이크 잔류수
+        + 블리드)이 달라지지 않으므로 **신수 보충량도 달라지지 않는다**.
+        여기서 보는 것은 공정수 계통이 이 유량을 감당하는지뿐이다.
+        """
+        return (
+            option.water_recycle_m3h - option.bleed_m3h + option.fresh_makeup_m3h
+            >= self.dilution_water_m3h
+        )
+
+
+@dataclass(frozen=True)
 class PlantDesign:
-    """두 안을 함께 담은 설비 설계."""
+    """두 안과 공용 전처리를 함께 담은 설비 설계."""
 
     feed: FeedSpec
+    pretreatment: Pretreatment
     rfc: RfcOption
     mechanical: MechanicalOption
+
+    def total_installed_kw(self, option: RfcOption | MechanicalOption) -> float:
+        """전처리를 포함한 계통 전체 설치 전력."""
+        return option.installed_kw + self.pretreatment.installed_kw
 
 
 # --------------------------------------------------------------------------
@@ -493,10 +537,55 @@ def build_mechanical_option(feed: FeedSpec = db.FEED) -> MechanicalOption:
     )
 
 
+# --------------------------------------------------------------------------
+# 공용 전처리
+# --------------------------------------------------------------------------
+def build_pretreatment(feed: FeedSpec = db.FEED) -> Pretreatment:
+    """어트리션 스크러버 + 희석박스 — 두 안이 공용한다."""
+    sg = feed.solids_specific_gravity
+    scrubber = size_attrition(
+        db.ATTRITION_TAG,
+        db.ATTRITION_DUTY,
+        feed.peak_tph,
+        sg,
+        solids_mass_fraction=db.ATTRITION_SOLIDS_WT,
+        cells=db.ATTRITION_CELLS,
+        residence_min=db.ATTRITION_RESIDENCE_MIN,
+        depth_to_width=db.ATTRITION_DEPTH_TO_WIDTH,
+        freeboard_m=db.ATTRITION_FREEBOARD_M,
+        impeller_ratio=db.ATTRITION_IMPELLER_RATIO,
+        impellers_per_shaft=db.ATTRITION_IMPELLERS_PER_SHAFT,
+        power_number=db.ATTRITION_POWER_NUMBER,
+        design_tip_speed_m_s=db.ATTRITION_DESIGN_TIP_SPEED_M_S,
+        tip_speed_range_m_s=db.ATTRITION_TIP_SPEED_RANGE_M_S,
+        specific_energy_range_kwh_t=db.ATTRITION_SPECIFIC_ENERGY_RANGE_KWH_T,
+        specific_power_range_kw_m3=db.ATTRITION_SPECIFIC_POWER_RANGE_KW_M3,
+        minimum_solids_volume_fraction=db.ATTRITION_MIN_SOLIDS_VOLUME_FRACTION,
+        impeller_mass_coeff_kg_m3=db.ATTRITION_IMPELLER_MASS_COEFF_KG_M3,
+        shaft_length_margin_m=db.ATTRITION_SHAFT_LENGTH_MARGIN_M,
+        liner=db.ATTRITION_LINER,
+        feed_pump_kw=db.ATTRITION_FEED_PUMP_KW,
+    )
+    return Pretreatment(
+        scrubber=scrubber,
+        dilution=dilution_box(
+            db.DILUTION_BOX_TAG,
+            db.DILUTION_BOX_DUTY,
+            feed.peak_tph,
+            sg,
+            inlet_solids_wt=db.ATTRITION_SOLIDS_WT,
+            outlet_solids_wt=feed.solids_mass_fraction,
+            residence_min=db.DILUTION_BOX_RESIDENCE_MIN,
+        ),
+        bypass=f"{db.ATTRITION_TAG} 전량 바이패스 → {db.DILUTION_BOX_TAG}",
+    )
+
+
 def build_plant(feed: FeedSpec = db.FEED) -> PlantDesign:
-    """두 안을 모두 계산한다."""
+    """공용 전처리와 두 안을 모두 계산한다."""
     return PlantDesign(
         feed=feed,
+        pretreatment=build_pretreatment(feed),
         rfc=build_rfc_option(feed),
         mechanical=build_mechanical_option(feed),
     )

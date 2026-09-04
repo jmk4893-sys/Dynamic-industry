@@ -4,8 +4,10 @@
 설계한다. 설계 전제는 실증 논문 두 편(:mod:`flotation_design.references`)
 에서 가져왔고, 모델은 그 실험값을 재현하도록 보정되어 있다.
 
-두 가지 안을 함께 계산한다.
+두 안이 공용하는 전처리(:mod:`flotation_design.attrition`)를 앞에 두고,
+부선 본체는 두 가지 안을 함께 계산한다.
 
+* **전처리** — 어트리션 스크러버 + 희석박스 (:mod:`flotation_design.attrition`)
 * **1안** — 세척수 bias 를 쓰는 연속 부선조 1단 (:mod:`flotation_design.rfc`)
 * **2안** — 기계식 러퍼 뱅크 + 클리너 (:mod:`flotation_design.circuit`)
 
@@ -14,6 +16,19 @@
 """
 
 from . import references
+from .attrition import (
+    AttritionCellGeometry,
+    AttritionDrive,
+    AttritionScrubber,
+    AttritionShaft,
+    DilutionBox,
+    concentrate_grade_ceiling,
+    dilution_box,
+    octagon_area_m2,
+    short_circuit_fraction,
+    size_attrition,
+    solids_mass_fraction_for_volume_fraction,
+)
 from .circuit import (
     CircuitResult,
     FlotationUnit,
@@ -37,9 +52,11 @@ from .plant import (
     MechanicalCell,
     MechanicalOption,
     PlantDesign,
+    Pretreatment,
     RfcOption,
     Thickener,
     build_plant,
+    build_pretreatment,
     solve_mechanical,
 )
 from .reagents import Reagent, ReagentDose, reagent_schedule
@@ -57,12 +74,15 @@ from .sizing import (
     FrothLoading,
     ImpellerDesign,
     ResidenceTime,
+    RotorDynamics,
     aeration_design,
+    cantilever_rotor_dynamics,
     cell_geometry,
     froth_loading,
     impeller_design,
     required_slurry_volume,
     residence_time,
+    torsional_section_modulus_m3,
 )
 
 __all__ = [
@@ -93,26 +113,42 @@ __all__ = [
     "MechanicalCell",
     "MechanicalOption",
     "PlantDesign",
+    "Pretreatment",
     "RfcOption",
     "Thickener",
     "build_plant",
+    "build_pretreatment",
     "solve_mechanical",
     "AerationDesign",
     "CellGeometry",
     "FrothLoading",
     "ImpellerDesign",
     "ResidenceTime",
+    "RotorDynamics",
     "aeration_design",
+    "cantilever_rotor_dynamics",
     "cell_geometry",
     "froth_loading",
     "impeller_design",
     "required_slurry_volume",
     "residence_time",
+    "torsional_section_modulus_m3",
     "Reagent",
     "ReagentDose",
     "reagent_schedule",
     "ConditionerDesign",
     "conditioner_train",
+    "AttritionCellGeometry",
+    "AttritionDrive",
+    "AttritionScrubber",
+    "AttritionShaft",
+    "DilutionBox",
+    "concentrate_grade_ceiling",
+    "dilution_box",
+    "octagon_area_m2",
+    "short_circuit_fraction",
+    "size_attrition",
+    "solids_mass_fraction_for_volume_fraction",
 ]
 
 __version__ = "0.2.0"
