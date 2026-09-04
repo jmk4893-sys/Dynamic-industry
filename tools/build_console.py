@@ -17,8 +17,8 @@ import sys
 
 sys.path.insert(0, "src")
 
-from pv_preprocess import (acceptance, acoustics, air, brand, campaign, dust,  # noqa: E402
-                           electrical, grade, handoff, reliability, safety,
+from pv_preprocess import (acceptance, acoustics, air, brand, campaign, casing,  # noqa: E402
+                           dust, electrical, grade, handoff, reliability, safety,
                            seismic, smart, thermal)
 
 CONSOLE = pathlib.Path("docs/consoles/pv-preprocess-console.html")
@@ -44,6 +44,11 @@ def values() -> dict[str, object]:
         "idealTaktS": campaign.ideal_takt_s(),
         "singlePointBlocks": len(grade.single_point_blocks()),
         "achievableAvailability": reliability.achievable_availability(),
+        "casingBays": len(casing.all_bays()),
+        "casingDoors": casing.bays_by_kind()["door"],
+        "casingWindows": casing.bays_by_kind()["window"],
+        "casingMassKg": casing.mass_kg(),
+        "casingShoulderMm": casing.SHOULDER_MM,
         # 전기
         "installedKw": electrical.installed_kw(),
         "demandKw": electrical.demand_kw(),

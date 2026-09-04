@@ -183,6 +183,11 @@ footer code { font-family: var(--mono); font-size: 11.5px; }
     "idealTaktS": 46.49,
     "singlePointBlocks": 0,
     "achievableAvailability": 0.9984,
+    "casingBays": 59,
+    "casingDoors": 11,
+    "casingWindows": 7,
+    "casingMassKg": 1103.9,
+    "casingShoulderMm": 2800,
     "installedKw": 300.5,
     "demandKw": 217.8,
     "contractKw": 294.0,
@@ -280,7 +285,10 @@ footer code { font-family: var(--mono); font-size: 11.5px; }
         + CONSOLE.bufferStockSlots + '슬롯)'),
       card('단일고장 블록', CONSOLE.singlePointBlocks, '개',
         '이중화도 버퍼도 없는 계통 · 달성 가용률 '
-        + CONSOLE.achievableAvailability.toFixed(4))
+        + CONSOLE.achievableAvailability.toFixed(4)),
+      card('외장 정비문', CONSOLE.casingDoors, '개',
+        '교환 모듈마다 하나 · 판 ' + CONSOLE.casingBays + '칸 중 · 관찰창 '
+        + CONSOLE.casingWindows)
     ].join('');
 
     $('utility').innerHTML = [

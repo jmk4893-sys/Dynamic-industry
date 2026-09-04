@@ -18,7 +18,7 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import (acceptance, access, acoustics, ai, air, brand, campaign, crane, dust, electrical,
+from pv_preprocess import (acceptance, access, acoustics, ai, air, brand, campaign, casing, crane, dust, electrical,
                            frames, grade, handoff, kinematics, layout, maintain, materials, mounting,
                            reliability, safety, seismic, smart, servos, thermal, vision, wiring)
 
@@ -4617,6 +4617,202 @@ class TestWorldClassGrade(unittest.TestCase):
         # 그리고 이 모든 값이 가용률 **목표** 0.92 위에 서 있다는 것도 남긴다
         self.assertEqual(reliability.TARGET_AVAILABILITY, 0.92)
         self.assertIsNone(grade.oee(), "품질률이 없으면 OEE 는 여전히 없다")
+
+
+class TestCasing(unittest.TestCase):
+    """외장 케이싱이 **설비를 나쁘게 만들지 않는가**, 그리고 언어가 하나인가.
+
+    껍질은 덮기만 하면 되는 일이 아니다. 정비 모듈을 봉하면 39 절의 MTTR 이
+    무너지고, 상자로 만들면 41 절의 열수지가 틀리고, 통로로 나오면 보행이
+    막힌다. 여기서 지키는 것은 그 셋과, **입면의 선이 하나라는 것**이다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.plant = read_drawing()
+
+    # ── 껍질이 건드리면 안 되는 것 ──────────────────────────────────────
+    def test_every_swap_module_keeps_its_door(self):
+        """모듈 하나가 문 없이 갇히면 그 셀의 MTTR 이 교환에서 수리로 돌아간다."""
+        self.assertTrue(casing.every_module_has_a_door())
+        by_tag = {d.tag: d for d in casing.doors()}
+        for profile in maintain.PROFILES:
+            if profile.tag not in casing.MODULE_ZONE:
+                continue
+            with self.subTest(tag=profile.tag):
+                door = by_tag[profile.tag]
+                self.assertEqual(door.module, profile.module,
+                                 "문이 가리키는 모듈이 정비 모델과 다르다")
+                # 중량 교환은 도킹 레일로 굴려 낸다 — 문이 바닥까지 열려야 한다
+                if profile.swap == "heavy":
+                    self.assertTrue(door.to_floor, "레일이 토우 리세스에 걸린다")
+                    self.assertEqual(door.bays, 2)
+                    self.assertEqual(door.clear_h_mm,
+                                     casing.DOOR_H_MM + casing.TOE_H_MM)
+        self.assertTrue(casing.docked_doors_reach_the_floor())
+        # 문 수는 여기서 세는 것이 아니라 **정비 모델**에서 나온다. 종전 검사는
+        # MODULE_ZONE 끼리 견주고 있어서, 그 표에서 빠진 모듈을 영영 못 잡았다 —
+        # 자기가 만든 값으로 자기를 검사하는 꼴이다. 정비 모델을 흔들어 본다.
+        keep = maintain.PROFILES
+        try:
+            maintain.PROFILES = keep + (dataclasses.replace(keep[0], tag="RB-NEW"),)
+            self.assertFalse(casing.every_module_has_a_door(),
+                             "정비에 모듈이 늘었는데 문 검사가 통과한다 — 그 모듈은 갇힌다")
+        finally:
+            maintain.PROFILES = keep
+        self.assertTrue(casing.every_module_has_a_door())
+        # 껍질 밖으로 뺀 모듈은 사유가 있어야 한다
+        for tag, why in casing.NOT_CASED.items():
+            with self.subTest(tag=tag):
+                self.assertIn(tag, {p.tag for p in maintain.PROFILES})
+                self.assertGreaterEqual(len(why), 20)
+
+    def test_the_shell_is_a_face_not_a_box(self):
+        """벽쪽을 비워 뒀기 때문에 열수지가 안 바뀐다 — 작아서가 아니다."""
+        self.assertTrue(casing.thermal_is_unchanged())
+        reasons = dict(casing.OPEN_BY_DESIGN)
+        self.assertIn("벽쪽 면", reasons)
+        self.assertIn("thermal", reasons["벽쪽 면"], "왜 비웠는지가 안 적혀 있다")
+        for where, why in casing.OPEN_BY_DESIGN:
+            with self.subTest(where=where):
+                self.assertGreaterEqual(len(why), 20, "비워 둔 사유가 없다")
+        # gate 는 패널이 지나는 개구라 껍질에서 빠진다
+        self.assertNotIn("gate", casing.CASED_ZONES)
+        self.assertEqual(set(casing.CASED_ZONES) | {"gate"},
+                         {z.key for z in layout.build_zones()},
+                         "존이 늘거나 줄었는데 껍질이 안 따라왔다")
+
+    def test_the_casing_does_not_touch_the_aisle(self):
+        """껍질은 존 포락선 **안쪽으로** 먹는다 — 통로 1,200 은 그대로다."""
+        band_y0, band_y1 = layout.aisle_band_mm()
+        for key in casing.CASED_ZONES:
+            with self.subTest(zone=key):
+                self.assertLessEqual(casing.zone_face_mm(key), band_y0,
+                                     "껍질 바깥면이 통로를 침범한다")
+        self.assertEqual(band_y1 - band_y0, layout.AISLE_WIDTH_MM)
+
+    # ── 하나의 언어 ────────────────────────────────────────────────────
+    def test_the_shoulder_is_the_plants_own_height(self):
+        """어깨선이 고른 값이면 언어가 아니라 취향이다."""
+        self.assertTrue(casing.shoulder_is_the_plant_mode())
+        heights = [z.height_mm for z in layout.build_zones()]
+        self.assertEqual(heights.count(casing.SHOULDER_MM), 5,
+                         "최빈값이 아니면 어깨선의 근거가 사라진다")
+        # 그리고 그보다 높은 셀은 껍질을 뚫고 올라온다 — 숨기지 않는다
+        taller = [z.key for z in layout.build_zones()
+                  if z.height_mm > casing.SHOULDER_MM]
+        self.assertEqual(set(taller), {"afu", "robot", "grm"})
+
+    def test_the_three_lines_never_step(self):
+        """면은 물러섰다 나왔다 해도 선은 하나다 — 이 껍질이 한 덩어리로 읽히는 이유."""
+        self.assertTrue(casing.lines_are_continuous())
+        # 리빌은 장식이 아니라 문 상인방이다
+        self.assertEqual(casing.DATUM_MM, casing.DOOR_H_MM)
+        # 존마다 값이 따로 있으면 선이 끊긴다 — 상수 하나뿐인지 형태로 확인한다
+        source = pathlib.Path("src/pv_preprocess/casing.py").read_text(encoding="utf-8")
+        for name in ("SHOULDER_MM", "DATUM_MM", "TOE_H_MM", "SEAM_MM", "RADIUS_MM"):
+            with self.subTest(name=name):
+                self.assertEqual(len(re.findall(rf"^{name} = ", source, re.M)), 1,
+                                 "선을 정하는 값이 두 곳에 있다")
+
+    def test_the_bay_is_derived_not_drawn_by_eye(self):
+        """칸 폭은 존 길이에서 나온다 — 기준 폭에 가장 가까운 정수 개."""
+        for key in casing.CASED_ZONES:
+            with self.subTest(zone=key):
+                count = casing.bay_count(key)
+                self.assertEqual(count, round(casing.zone_length_mm(key)
+                                              / casing.BAY_NOMINAL_MM))
+                self.assertAlmostEqual(count * casing.bay_width_mm(key),
+                                       casing.zone_length_mm(key), delta=0.5,
+                                       msg="칸이 존 길이를 안 채운다")
+                # 기준에서 ±10 % 를 넘으면 눈이 다른 규칙으로 읽는다
+                self.assertLess(abs(casing.bay_width_mm(key)
+                                    - casing.BAY_NOMINAL_MM) / casing.BAY_NOMINAL_MM,
+                                0.10)
+        # 존 길이를 바꾸면 칸이 따라와야 한다 — 리터럴이면 안 따라온다
+        keep = casing.zone_length_mm
+        try:
+            casing.zone_length_mm = lambda key: 4000 if key == "jbr" else keep(key)
+            self.assertEqual(casing.bay_count("jbr"), 4, "칸 수가 리터럴이다")
+        finally:
+            casing.zone_length_mm = keep
+        self.assertEqual(casing.bay_count("jbr"), 7)
+
+    def test_the_shell_has_no_hole_where_the_face_steps(self):
+        """면이 물러서는 자리를 안 닫으면 껍질이 아니라 칸막이다."""
+        self.assertTrue(casing.the_shell_is_closed())
+        self.assertEqual(len(casing.returns_mm()), 5)
+        for up, down, at_x, step in casing.returns_mm():
+            with self.subTest(joint=f"{up}-{down}"):
+                self.assertNotEqual(step, 0)
+                self.assertEqual(step, casing.zone_face_mm(up)
+                                 - casing.zone_face_mm(down))
+                self.assertEqual(at_x, casing.zone_span_mm(up)[1])
+        self.assertGreater(casing.return_area_m2(), 0)
+
+    def test_every_bay_is_one_of_three_things(self):
+        """막힌 판·문·창 — 그 외의 것이 생기면 언어가 흐려진다."""
+        counts = casing.bays_by_kind()
+        self.assertEqual(sum(counts.values()), len(casing.all_bays()))
+        self.assertEqual(counts["door"], sum(d.bays for d in casing.doors()))
+        self.assertEqual(counts["window"], len(casing.CASED_ZONES),
+                         "존마다 관찰창 하나 — 안 보이는 기계는 운전자가 못 믿는다")
+        for bay in casing.all_bays():
+            with self.subTest(zone=bay.zone, index=bay.index):
+                self.assertIn(bay.kind, ("solid", "door", "window"))
+                self.assertEqual(bay.tag is not None, bay.kind == "door")
+        # 문이 관찰창을 덮으면 안 된다
+        for key in casing.CASED_ZONES:
+            with self.subTest(zone=key):
+                self.assertEqual(casing.bays(key)[casing.window_bay(key)].kind,
+                                 "window")
+
+    # ── 껍질이 끌고 온 것 ──────────────────────────────────────────────
+    def test_the_skin_adds_mass_but_no_anchors(self):
+        """멀리언이 존 베이스 빔에 앉는다 — 이미 앵커된 자리다."""
+        self.assertGreater(casing.mass_kg(), 0)
+        self.assertEqual(mounting.total_anchors(), 190, "껍질이 앵커를 늘렸다")
+        # 질량이 면적에서 나오는지 — 면적을 흔들면 따라와야 한다
+        base = casing.mass_kg()
+        keep = casing.face_area_m2
+        try:
+            casing.face_area_m2 = lambda kind=None: keep(kind) * 2
+            self.assertGreater(casing.mass_kg(), base, "질량이 리터럴이다")
+        finally:
+            casing.face_area_m2 = keep
+        self.assertEqual(casing.mass_kg(), base)
+
+    def test_the_material_is_chosen_for_the_finish_not_the_strength(self):
+        """구조가 아니라 껍질이라 마감 수명이 지배한다."""
+        skin = next(r for r in materials.RULES if "케이싱" in r.env)
+        self.assertIn("알루미늄", skin.material)
+        self.assertIn("아노다이징", skin.material)
+        self.assertIn("앵커", skin.reason, "가벼워야 하는 이유가 안 적혀 있다")
+        glazing = next(r for r in materials.RULES if "관찰창" in r.env)
+        self.assertIn("폴리카보네이트", glazing.material)
+
+    def test_we_do_not_claim_a_quieter_plant(self):
+        """환기로 한 면을 열어 둔 껍질은 방음 인클로저가 아니다."""
+        self.assertAlmostEqual(acoustics.worst_aisle_dba()[1], 59.9, places=1)
+        self.assertAlmostEqual(thermal.room_load_kw(), 59.3, places=1)
+        doc = casing.__doc__ or ""
+        self.assertIn("acoustics.py", doc, "왜 소음값을 안 건드렸는지가 없다")
+
+    # ── 도면 ──────────────────────────────────────────────────────────
+    def test_the_drawing_carries_the_casing(self):
+        for key, value in casing.summary().items():
+            token = f'"{key}": ' + (f'"{value}"' if isinstance(value, str) else f"{value}")
+            with self.subTest(token=token):
+                self.assertIn(token, self.plant)
+        self.assertIn("var pvCase=new ce;pt.add(pvCase);", self.plant,
+                      "케이싱 그룹이 3D 에 없다")
+        # 껐다 켤 수 있어야 한다 — 이 도면의 쓸모는 기구를 보는 데 있다
+        self.assertIn('id="pv-case"', self.plant)
+        self.assertIn("pvCase.visible", self.plant)
+        # 판 수가 모델과 같은지 — 3D 가 따로 놀면 도면이 거짓말한다
+        drawn = self.plant.count("M.aluminum,null);") + self.plant.count("M.glazing,null);")
+        self.assertGreaterEqual(drawn, len(casing.all_bays()),
+                                "3D 판 수가 모델보다 적다")
 
 
 class TestBufferHasTwoDirections(unittest.TestCase):
