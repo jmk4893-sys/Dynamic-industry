@@ -150,9 +150,30 @@ class BrandMarkConsumerTest(unittest.TestCase):
                                 "콘솔에 마크 자리가 없다")
         self.assertIn("brandMarkSvg(Number(node.dataset.brandMark)", self.html,
                       "콘솔 마크 자리를 채우는 코드가 없다")
-        calls = re.findall(r"addBrandMark\(([^,]+), \"(P\d+)\"", self.html)
-        self.assertGreaterEqual(len(calls), 3, "3D 장비에 붙은 마크가 3개 미만이다")
+        calls = re.findall(r'addBrandMark\(([^,]+), "([^"]+)"', self.html)
+        dry = [c for c in calls if re.fullmatch(r"P\d+", c[1])]
+        wet = [c for c in calls if not re.fullmatch(r"P\d+", c[1])]
+        self.assertGreaterEqual(len(dry), 3, "건식 장비에 붙은 마크가 3개 미만이다")
+        self.assertGreaterEqual(len(wet), 3, "습식·야드 장비에 붙은 마크가 3개 미만이다")
         self.assertEqual(len(calls), len(set(calls)), "같은 자리에 두 번 붙었다")
+
+    def test_wet_marks_carry_the_wet_identity(self):
+        """습식 메시는 partId 가 아니라 unifiedName 으로 식별되고 클릭 대상이 아니다.
+
+        없는 부품 ID 를 달아 두면 명판을 클릭했을 때 존재하지 않는 부품을 고르려 든다.
+        """
+        body = self.function_body("addBrandMark")
+        self.assertIn("mesh.userData.unifiedName = tag", body)
+        self.assertIn("delete mesh.userData.partId", body)
+        self.assertIn("selectables.splice", body, "습식 마크가 클릭 대상에서 빠지지 않는다")
+
+    def test_wet_marks_explode_with_their_host(self):
+        """분해 화면에서 명판만 장비에서 떨어져 나가면 안 된다."""
+        self.assertIn("child.userData.brandMarkHost", self.html)
+        self.assertIn("host.userData.explodeDirection", self.html)
+        hosts = re.findall(r"addBrandMark\(unifiedWet, \"[^\"]+\"[^;]*?, (\w+)\);", self.html)
+        self.assertGreaterEqual(len(hosts), 2,
+                                "unifiedWet 직속 명판은 host 를 넘겨 장비를 따라가야 한다")
 
 
 if __name__ == "__main__":

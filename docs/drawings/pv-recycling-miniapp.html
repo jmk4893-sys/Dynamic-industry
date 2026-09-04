@@ -16143,18 +16143,30 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // 장비 외장에 붙이는 명판. height 는 마크 높이(m), face 는 바라보는 방향.
     // 두께 3 mm 로 살짝 도드라지게 둔다 — 도장이 아니라 부착 명판이다.
+    // tag 는 건식 부품 ID(P02 …) 또는 습식 장비 이름이다. 습식 메시는 partId 가
+    // 아니라 unifiedName 으로 식별되고 클릭 대상도 아니므로 그렇게 맞춰 준다 —
+    // 없는 부품 ID 를 달아 두면 클릭했을 때 존재하지 않는 부품을 고르려 든다.
+    // host 는 분해 화면에서 함께 흩어질 습식 장비다(같은 그룹에 붙는 경우엔 불필요).
     const BRAND_MARK_PLATE_M = 0.003;
-    function addBrandMark(parent, partId, position, height, face = "z", spin = 0) {
+    const DRY_PART_ID = /^P\d+$/;
+    function addBrandMark(parent, tag, position, height, face = "z", spin = 0, host = null) {
+      const dry = DRY_PART_ID.test(tag);
       const group = new THREE.Group();
       group.position.set(position.x, position.y, position.z);
       group.rotation.y = face === "x" ? Math.PI / 2 : face === "-x" ? -Math.PI / 2 : face === "-z" ? Math.PI : 0;
       group.rotation.z = spin;
       group.scale.setScalar(height);
-      group.userData.brandMark = partId;
+      group.userData.brandMark = tag;
+      if (host) group.userData.brandMarkHost = host;
       parent.add(group);
       brandMarkShapes().forEach(({ shape, fill }) => {
-        addMesh(group, new THREE.ExtrudeGeometry(shape, { depth: BRAND_MARK_PLATE_M / height, bevelEnabled: false }),
-          brandMarkMaterial(fill), { x: 0, y: 0, z: 0 }, null, partId, false);
+        const mesh = addMesh(group, new THREE.ExtrudeGeometry(shape, { depth: BRAND_MARK_PLATE_M / height, bevelEnabled: false }),
+          brandMarkMaterial(fill), { x: 0, y: 0, z: 0 }, null, tag, false);
+        if (dry) return;
+        delete mesh.userData.partId;
+        mesh.userData.unifiedName = tag;
+        const picked = selectables.indexOf(mesh);
+        if (picked >= 0) selectables.splice(picked, 1);
       });
       return group;
     }
@@ -19041,7 +19053,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     for (const dx of [-2.85, 2.85]) for (const dz of [-1.30, 1.30]) {
       wetCylinder(unifiedWet, 0.075, 0.24, [-10.90 + dx, 0.12, YARD_ROW_Z + dz], material.silverClamp, "WB-001 로드셀", 16);
     }
-    wetBox(unifiedWet, [0.90, 2.20, 0.90], [-7.20, 1.10, YARD_ROW_Z - 2.10], material.equipmentControl, "WB-001 계량 키오스크");
+    const wb001Kiosk = wetBox(unifiedWet, [0.90, 2.20, 0.90], [-7.20, 1.10, YARD_ROW_Z - 2.10], material.equipmentControl, "WB-001 계량 키오스크");
     wetBox(unifiedWet, [0.62, 0.40, 0.03], [-7.20, 1.50, YARD_ROW_Z - 2.56], material.screen, "WB-001 계량 표시기");
     wetLabel("WB-001 트럭 계량대 · 60 t · 입출하 custody transfer", [-10.90, 1.40, YARD_ROW_Z], [2.55, 0.24, 1]);
 
@@ -19051,7 +19063,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetCylinder(unifiedWet, 0.30, 0.52, [8.40, 1.35, YARD_ROW_Z], material.solidsReceiver, "SP-601 시료 축소탑", 24, null, true);
     for (const dz of [-0.34, 0.34]) wetCylinder(unifiedWet, 0.085, 0.22, [8.40, 0.42, YARD_ROW_Z + dz], material.equipmentReceiver, "SP-601 축소시료통", 18);
     for (const dx of [-0.28, 0.28]) wetBox(unifiedWet, [0.06, 1.70, 0.06], [8.40 + dx, 0.85, YARD_ROW_Z + 0.40], hdgMaterial, "SP-601 지지대");
-    wetBox(unifiedWet, [2.80, 2.50, 2.20], [10.60, 1.25, YARD_ROW_Z], material.equipmentControl, "LAB-601 분석실");
+    const lab601Shell = wetBox(unifiedWet, [2.80, 2.50, 2.20], [10.60, 1.25, YARD_ROW_Z], material.equipmentControl, "LAB-601 분석실");
     wetBox(unifiedWet, [1.20, 0.90, 0.04], [10.60, 1.60, YARD_ROW_Z - 1.12], material.screen, "LAB-601 창");
     wetBox(unifiedWet, [0.80, 1.90, 0.05], [9.55, 0.95, YARD_ROW_Z - 1.10], material.cover, "LAB-601 출입문");
     wetCylinder(unifiedWet, 0.11, 0.90, [11.70, 2.95, YARD_ROW_Z], material.equipmentAir, "LAB-601 흄후드 배기", 18);
@@ -19154,6 +19166,18 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       coolingRotors.push({ parts: [fan], rpm: DRIVE_RPM.chillerFan, axis: "y" });
     }
     wetBox(coolingPlant, [0.42, 0.62, 0.30], [2.62, 0.55, YARD_Z - 0.62], material.equipmentControl, "LCP-CW-601 냉각 제어반");
+
+    // ---- 회사 심볼 명판 (습식·야드) ----------------------------------------
+    // 건식 세 곳과 같은 BRAND_MARK 에서 나온 같은 도형이다. 자리는 셋 다 가려지지
+    // 않는 평면으로 골랐다 — 곡면 동체에 붙이면 모서리가 들뜬다.
+    //   CH-601  옥외 패키지 유닛의 +x 단면. ±z 는 응축기 핀코일이라 쓸 수 없고,
+    //           LCP-CW-601 은 z 4.83–5.13 에 있어 z 5.36–5.84 와 겹치지 않는다.
+    //   LAB-601 분석실 정면 — 창(x 10.0–11.2)과 출입문(x 9.15–9.95) 오른쪽 벽면.
+    //   WB-001  계량 키오스크 정면 — 입출하 custody transfer 지점이다.
+    // 습식 직속 자식은 분해 시 제 방향으로 흩어지므로 host 를 넘겨 장비를 따라가게 한다.
+    addBrandMark(coolingPlant, "CH-601 심볼 명판", { x: 2.402, y: 0.95, z: YARD_Z }, 0.42, "x");
+    addBrandMark(unifiedWet, "LAB-601 심볼 명판", { x: 11.60, y: 1.60, z: YARD_ROW_Z - 1.105 }, 0.48, "-z", 0, lab601Shell);
+    addBrandMark(unifiedWet, "WB-001 심볼 명판", { x: -7.20, y: 0.80, z: YARD_ROW_Z - 2.552 }, 0.30, "-z", 0, wb001Kiosk);
 
     // TK-601 완충·팽창 탱크와 P-601A/B 순환펌프
     wetCylinder(coolingPlant, 0.42, 1.25, [3.60, 0.78, YARD_Z + 0.55], material.equipmentWater, "TK-601 완충·팽창 탱크 0.5 m³", 30);
@@ -21969,6 +21993,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         const direction = wetChildCentres.get(child).clone().sub(wetCentre);
         if (direction.lengthSq() < 1e-6) direction.set(0, 1, 0);
         child.userData.explodeDirection = direction.normalize();
+      });
+      // 심볼 명판은 제 위치에서 유도한 방향이 아니라 **붙어 있는 장비의 방향**으로
+      // 흩어져야 한다 — 안 그러면 분해 화면에서 명판만 장비에서 떨어져 나간다.
+      wetMovers.forEach((child) => {
+        const host = child.userData.brandMarkHost;
+        if (host && host.userData.explodeDirection) {
+          child.userData.explodeDirection = host.userData.explodeDirection.clone();
+        }
       });
     }
     origins.set(panelInfeed, panelInfeed.position.clone());
