@@ -26,7 +26,7 @@ SISTEMA 로 계산되는 값이다. 없는 값을 지어내면 그 순간 이 �
 입력이 무엇인지**까지를 값으로 고정하고 거기서 멈춘다.
 
 크레인 관련 항목 하나는 다른 모듈의 전제를 떠받친다. `electrical.py` 는
-CRN-901 을 비동시 부하로 빼는데(수용률 0.20 · 계약 292.3 kW), 그 근거는
+CRN-901 을 비동시 부하로 빼는데(수용률 0.20), 그 근거는
 "운전 중 설비 위 인양 금지" 라는 **규칙**이었다. 규칙은 지켜지지 않을 수
 있고 그러면 계약전력 근거가 무너진다. SF-08 이 그 규칙을 인터록으로 바꾼다.
 """
@@ -35,7 +35,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import campaign, servos, smart
+from . import campaign, electrical, servos, smart
 
 # ── ISO 13849-1 부속서 A 위험그래프 ──────────────────────────────────────
 #: S 상해 정도 — 1: 가역(경상) / 2: 비가역(중상·사망)
@@ -281,7 +281,7 @@ SAFETY_FUNCTIONS: tuple[SafetyFunction, ...] = (
         "인양 중 라인 기동 금지 / 라인 운전 중 크레인 급전 차단",
         "**REV.28 부터 글로만 있던 규칙을 회로로 옮긴다.** 이 인터록이 없으면 "
         "electrical.NON_COINCIDENT_PANELS 의 비동시 전제가 관리 규칙에 불과해 "
-        "계약전력 292.3 kW 의 근거가 무너진다"),
+        f"동시 최악 {electrical.coincident_worst_case_kw()} kW 의 근거가 무너진다"),
     SafetyFunction(
         "SF-09", "고온부 접근 인터록",
         ("HZ-11",),

@@ -15,9 +15,21 @@ MTBF 를 지어낼 수는 없다. 벤더 실적이 있어야 나오는 값이고
 요구 MTBF 는 발주 사양에 적을 수 있는 값이다. 실적을 못 재는 자리에서
 설계가 할 수 있는 일은 그것을 **요구로 바꾸는 것**이다.
 
-버퍼가 여기 끼어든다. GBR 이 후단 정지를 0.76 h 버티므로, 그보다 짧은 후단
-정지는 전단을 세우지 않는다 — 직렬 사슬에 난 구멍이다. 이 구멍이 실제로
-얼마나 값어치가 있는지도 값으로 낸다.
+버퍼가 여기 끼어든다. 직렬 사슬에 난 구멍이고, 그 구멍이 얼마나 값어치가
+있는지도 값으로 낸다.
+
+## 버퍼가 흡수하는지는 선언할 값이 아니다
+
+종전에는 계통마다 `buffered=True/False` 를 적어 두었는데, 그것이 틀렸다.
+CV·SG·GI 후단 계통을 "버퍼가 흡수한다" 고 적었지만 그 계통은 버퍼 **상류**에
+있다 — 상류 정지를 버퍼가 막으려면 버퍼에 **재고**가 있어야 하는데, 모델의
+완충시간은 `슬롯 ÷ 유입` 이라 빈 버퍼를 전제하고 있었다. 빈 버퍼는 상류
+정지를 하나도 못 막는다. 적어 둔 흡수가 모델에 없었던 것이다.
+
+그래서 `buffered` 를 파생으로 바꿨다. 계통이 버퍼의 **어느 쪽**에 있는지만
+적고(`buffer_side`), 그쪽 방향의 완충시간이 그 계통의 MTTR 보다 긴지를
+계산해서 판정한다. 이러면 완충시간이 줄거나 MTTR 이 늘면 흡수가 저절로
+풀린다 — 적어 둔 값은 그렇게 안 풀린다.
 """
 
 from __future__ import annotations
@@ -60,8 +72,21 @@ class Block:
     share: float            # 정지시간 예산 배분율
     mttr_h: float           # 라인 복귀시간 — maintain.py 가 설계 기능에서 낸다
     redundant: bool
-    buffered: bool          # 버퍼가 이 계통의 정지를 흡수하는가
+    #: 버퍼의 어느 쪽에 있는가. 'stock' 은 상류 — 버퍼 재고가 후단을 계속
+    #: 돌린다. 'headroom' 은 후단 — 버퍼 여유공간이 전단을 계속 돌린다.
+    #: ``None`` 은 버퍼가 못 막는 자리다 (버퍼 자신, 그리고 유틸리티).
+    buffer_side: str | None
     basis: str
+
+    @property
+    def buffered(self) -> bool:
+        """버퍼가 이 계통의 정지를 흡수하는가. **선언이 아니라 계산이다.**
+
+        완충시간이 MTTR 보다 짧으면 흡수가 안 된다 — 버퍼가 바닥나거나 꽉 찬
+        뒤에는 라인이 선다. 그래서 두 값을 여기서 비교한다.
+        """
+        ride = ride_through_of(self.buffer_side)
+        return ride is not None and ride >= self.mttr_h
 
     def downtime_h(self, availability: float | None = None) -> float:
         return round(downtime_budget_h(availability) * self.share, 2)
@@ -90,33 +115,42 @@ class Block:
 #: `maintain.py` 가 설계 기능(온보드 진단·정비 접근·교환 모듈·자동 복귀·
 #: 도킹 레일)에서 낸다. 숫자를 여기 적으면 "MTTR 을 줄이겠다" 가 숫자를 고쳐
 #: 적는 일이 되어 버린다.
-_SHARES: tuple[tuple[str, str, float, bool, bool, str], ...] = (
-    ("RB-AFU", "AFU-101 투입·듀얼 리프트·비전", 0.10, True, False,
+_SHARES: tuple[tuple[str, str, float, bool, str | None, str], ...] = (
+    ("RB-AFU", "AFU-101 투입·듀얼 리프트·비전", 0.10, True, "stock",
      "지게차 인터페이스라 외란이 많다. 다만 **이미 2식이다** — LFT-101A/B 리프트, "
      "VS-101A/B 비전, EOAT 진공 A/B. 한쪽이 서도 절반 속도로 돈다. "
      "종전 모델이 이 이중화를 세지 않아 단일고장으로 잡혀 있었다"),
-    ("RB-BFC", "BFC-101A/B 반전·셔틀·승강", 0.12, True, False,
+    ("RB-BFC", "BFC-101A/B 반전·셔틀·승강", 0.12, True, "stock",
      "Bay 2식이라 한쪽이 서도 절반 속도로 돈다 — 완전정지는 공통부(포탈·유압)뿐"),
-    ("RB-ROBOT", "RB-101 로봇·EOAT", 0.08, False, False,
-     "OEM 로봇 본체는 견고하다. 마모는 EOAT 진공 패드와 그리퍼 쪽"),
-    ("RB-JBR", "JBR-201 3헤드 제거", 0.20, False, False,
-     "**마모부가 가장 많다** — 칼날·가위·에어나이프·프로브. 헤드 3개가 직렬"),
-    ("RB-AFR", "AFR-101 프레임 분리·클램프", 0.15, False, False,
-     "25 kN 인발은 부하가 크다. 유압·LM 캐리지·힘센서가 정지 원인"),
-    ("RB-POST", "CV-102·SG-301·GI-301/302 유리 후단", 0.12, False, True,
-     "연마휠 교체가 잦지만 **버퍼가 흡수한다** — 0.76 h 안이면 전단이 안 선다"),
-    ("RB-GBR", "GBR-301 버퍼·적재", 0.06, False, False,
-     "셔틀·슬롯 로더. 여기가 서면 버퍼 자체가 못 도므로 흡수가 안 된다"),
-    ("RB-GRM", "GRM-401 IR·탠덤 박리", 0.12, False, True,
-     "IR 램프 60개와 핫나이프. 램프 1개 고장은 감속 운전이라 완전정지가 아니다"),
-    ("RB-UTIL", "유틸리티 — 공압·진공·집진·유압", 0.05, True, False,
+    ("RB-ROBOT", "RB-101 로봇·EOAT", 0.08, False, "stock",
+     "OEM 로봇 본체는 견고하다. 마모는 EOAT 진공 패드와 그리퍼 쪽. "
+     "버퍼 상류라 재고가 도는 동안 후단이 안 선다"),
+    ("RB-JBR", "JBR-201 3헤드 제거", 0.20, False, "stock",
+     "**마모부가 가장 많다** — 칼날·가위·에어나이프·프로브. 헤드 3개가 직렬. "
+     "이중화는 셀을 한 벌 더 사는 일이라 재고 완충으로 받는다"),
+    ("RB-AFR", "AFR-101 프레임 분리·클램프", 0.15, False, "stock",
+     "25 kN 인발은 부하가 크다. 유압·LM 캐리지·힘센서가 정지 원인. "
+     "버퍼 상류이고 MTTR 0.49 h 가 배출 완충 안에 든다"),
+    ("RB-POST", "CV-102·SG-301·GI-301/302 유리 후단", 0.12, False, "stock",
+     "연마휠 교체가 잦다. **버퍼 상류**라 재고가 흡수한다 — 종전에는 흡수한다고 "
+     "적어 두고도 모델에 재고가 없었다"),
+    ("RB-GBR", "GBR-301 버퍼·적재", 0.06, True, None,
+     "셔틀·슬롯 로더. **버퍼 자신이라 버퍼가 못 막는다.** 대신 적재 컬럼이 "
+     "R-A·HOLD·R-B 3열이고 캐리지 배분이 레시피라, 한 열의 포크·승강이 서면 "
+     "다른 열이 그 유리를 받는다 — 절반 속도로 돈다. 3열을 다 막는 것은 수평주행 "
+     "하나뿐이라 같은 레일에 구동을 둘 걸었다. 공통으로 남는 것은 레일과 데크 "
+     "구조다(BFC 의 포탈·유압과 같은 성격)"),
+    ("RB-GRM", "GRM-401 IR·탠덤 박리", 0.12, False, "headroom",
+     "IR 램프 60개와 핫나이프. 램프 1개 고장은 감속 운전이라 완전정지가 아니다. "
+     "버퍼 하류라 여유공간이 흡수한다 — 전단이 그 동안 계속 돈다"),
+    ("RB-UTIL", "유틸리티 — 공압·진공·집진·유압", 0.05, True, None,
      "컴프레서 1운전 1예비·진공 2기라 단일고장이 라인을 안 세운다. "
      "다만 집진이 서면 SG-301 이 못 돈다"),
 )
 
 BLOCKS: tuple[Block, ...] = tuple(
-    Block(tag, name, share, maintain.mttr_h(tag), redundant, buffered, basis)
-    for tag, name, share, redundant, buffered, basis in _SHARES
+    Block(tag, name, share, maintain.mttr_h(tag), redundant, side, basis)
+    for tag, name, share, redundant, side, basis in _SHARES
 )
 
 
@@ -143,8 +177,22 @@ def tightest_mtbf_block(availability: float | None = None) -> Block:
 
 
 # ── 버퍼가 내는 구멍 ─────────────────────────────────────────────────────
+#: 버퍼 방향별 완충시간을 내는 자리. `Block.buffered` 가 이것을 쓴다.
+#: **두 방향은 같은 슬롯을 나눠 쓴다** — 한쪽을 키우면 한쪽이 준다.
+RIDE_THROUGH_H = {
+    "stock": handoff.buffer_drain_ride_through_h,      # 상류 정지 → 재고가 후단을 돌린다
+    "headroom": handoff.buffer_ride_through_h,         # 후단 정지 → 여유공간이 전단을 돌린다
+}
+
+
+def ride_through_of(side: str | None) -> float | None:
+    """그 방향의 완충시간 (h). 버퍼가 못 막는 자리면 ``None``."""
+    getter = RIDE_THROUGH_H.get(side) if side is not None else None
+    return None if getter is None else getter()
+
+
 def buffer_ride_through_h() -> float:
-    """버퍼가 후단 정지를 얼마나 버티는가 — handoff 가 단일 출처다."""
+    """버퍼가 **후단** 정지를 얼마나 버티는가 — handoff 가 단일 출처다."""
     return handoff.buffer_ride_through_h()
 
 
@@ -156,7 +204,8 @@ def buffered_downtime_h(availability: float | None = None) -> float:
     """
     total = 0.0
     for block in buffered_blocks():
-        absorbed = min(block.mttr_h, buffer_ride_through_h())
+        ride = ride_through_of(block.buffer_side)
+        absorbed = min(block.mttr_h, ride if ride is not None else 0.0)
         total += absorbed * block.failures_per_year(availability)
     return round(total, 2)
 
@@ -190,16 +239,16 @@ def achievable_availability(availability: float | None = None) -> float:
     읽힌다 — 그것은 개선이 아니다. 고장 횟수를 그대로 두고 복구시간만 짧아진
     것으로 계산해야 개선분이 보인다.
 
-    버퍼도 여기서 다시 계산된다. MTTR 이 버퍼 자립시간(0.76 h)보다 짧아지면
-    **버퍼가 흡수하는 비율이 100 % 가 된다** — 짧은 정지는 전단을 아예 못 세운다.
+    버퍼도 여기서 다시 계산된다. MTTR 이 그 방향의 완충시간보다 짧아지면
+    **버퍼가 흡수하는 비율이 100 % 가 된다** — 짧은 정지는 라인을 아예 못 세운다.
     """
-    ride = buffer_ride_through_h()
     stopped = 0.0
     for b in BLOCKS:
         n = failures_per_year_at_base(b.tag, availability)
         per_stop = b.mttr_h
         if b.buffered:
-            per_stop = max(0.0, per_stop - ride)
+            ride = ride_through_of(b.buffer_side)
+            per_stop = max(0.0, per_stop - (ride if ride is not None else 0.0))
         stopped += n * per_stop
     return round(1 - stopped / operating_hours(), 4)
 

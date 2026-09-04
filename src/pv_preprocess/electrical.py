@@ -140,8 +140,8 @@ FEEDERS: tuple[Feeder, ...] = (
            11.5, 0.70, 32, "4C×10 mm² Cu", "GA 명시(HPU)"),
     Feeder("F5", "LP-GLASS", "SG-301 양측 연마 · CV-102 이송 · GI-301/302 통합 광학검사",
            9.0, 0.70, 32, "4C×6 mm² Cu", "계획"),
-    Feeder("F6", "LP-GBR", "GBR-301 수평셔틀 서보 · 도킹 도크",
-           4.0, 0.50, 16, "4C×4 mm² Cu", "계획"),
+    Feeder("F6", "LP-GBR", "GBR-301 수평셔틀 2구동 서보 · 도킹 도크",
+           5.5, 0.50, 20, "4C×4 mm² Cu", "계획"),
     Feeder("F7", "LP-DX", "DX-601 집진 1,000 m³/h · JBR 국소집진 350 m³/h",
            11.0, 0.90, 32, "4C×6 mm² Cu", "GA 명시(풍량)"),
     Feeder("F8", "LP-CTRL", "안전 PLC · 비전 LAN · 제어반 UPS · 조명",
@@ -193,8 +193,13 @@ def installed_kw() -> float:
 
 
 def demand_kw() -> float:
-    """수용률을 반영한 수요 전력."""
-    return sum(feeder.demand_kw for feeder in FEEDERS)
+    """수용률을 반영한 수요 전력.
+
+    반올림하는 이유는 발표값이기 때문이다 — 피더 수용률의 곱을 그대로 더하면
+    217.475 같은 값이 나오는데, 0.1 kW 아래는 이 단계 설계가 아는 정밀도가
+    아니다. 계약전력·변압기 용량이 전부 이 값에서 나가므로 여기서 자른다.
+    """
+    return round(sum(feeder.demand_kw for feeder in FEEDERS), 1)
 
 
 def demand_current_a() -> float:

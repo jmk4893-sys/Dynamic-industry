@@ -31,10 +31,21 @@ from . import campaign
 #: 버퍼가 세워 두는 자세. 후단 투입 자세와 같아야 반전기가 안 붙는다.
 BUFFER_POSE = "유리면 ↓ · 백시트 ↑"
 
-#: R-A(정상 유리) 카세트 25장 × 2기. 후단으로 나가는 것은 이 계통뿐이다.
-BUFFER_RA_SLOTS = 50
-#: R-B(파손 유리) 카세트 25장 × 2기 — 시트 박리가 불가능해 파편 계통으로 빠진다.
-BUFFER_RB_SLOTS = 50
+#: 캐리지 한 기의 슬롯 수. R-A·R-B 캐리지는 같은 물건이고 **레시피로 갈린다** —
+#: 그래서 몇 기를 어느 쪽에 줄지가 설계 결정이다.
+SLOTS_PER_CARRIAGE = 25
+
+#: 캐리지 배분 (R-A, R-B). 총 4기는 그대로다 — 하드웨어도 전장도 안 늘어난다.
+#:
+#: 종전 2:2 는 유입량을 안 보고 나눈 값이었다. R-B(파손 유리)는 유입이 6.2 장/h
+#: 라 50 슬롯이면 8 h 어치인데, R-A 는 66 장/h 라 50 슬롯이 0.76 h 밖에 안 된다.
+#: 정지 완충이 필요한 쪽은 R-A 인데 여유는 R-B 에 쌓여 있었다. 3:1 로 옮기면
+#: R-A 75 슬롯, R-B 25 슬롯(4.0 h)이 되고 둘 다 제 몫을 한다 — 파편 계통은
+#: 지게차가 비우므로 4 h 면 충분하다.
+BUFFER_CARRIAGES: tuple[int, int] = (3, 1)
+
+BUFFER_RA_SLOTS = BUFFER_CARRIAGES[0] * SLOTS_PER_CARRIAGE
+BUFFER_RB_SLOTS = BUFFER_CARRIAGES[1] * SLOTS_PER_CARRIAGE
 #: 판정 보류 5장.
 BUFFER_HOLD_SLOTS = 5
 
@@ -179,9 +190,83 @@ def buffer_autonomy_h() -> float:
     return round(BUFFER_RA_SLOTS / gap, 2) if gap > 0 else float("inf")
 
 
+# ── 버퍼는 방향이 둘이다 ────────────────────────────────────────────────
+#
+# 종전 모델은 완충시간을 `R-A 슬롯 ÷ 유입` 하나로만 냈다. 그것은 **버퍼가 비어
+# 있다**는 전제이고, 그 전제에서 버퍼가 막는 것은 후단(GRM) 정지 하나뿐이다 —
+# 빈 버퍼는 상류가 서면 곧바로 후단을 굶긴다. 그런데 §44 는 CV·SG·GI 후단
+# 계통을 "버퍼가 흡수한다" 고 적어 두었다. 그 계통은 버퍼 **상류**에 있으므로
+# 재고가 있어야 흡수되는데, 모델에 재고가 없었다. OEE 가 품질률 1.0 위에
+# 서 있던 것과 같은 종류의 공백이다.
+#
+# 그래서 버퍼를 **설정점 운전**으로 바꾼다. 슬롯을 재고와 여유공간으로 나누면
+#   · 재고  → 상류가 서도 후단이 계속 돈다 (배출 방향)
+#   · 여유  → 후단이 서도 전단이 계속 돈다 (충전 방향)
+# 두 방향은 같은 슬롯을 나눠 쓰므로 한쪽을 키우면 한쪽이 준다. 나누는 지점은
+# 두 방향의 완충시간이 같아지는 곳이다 — 어느 쪽도 먼저 무너지지 않는다.
+
+
+#: 적재 컬럼은 셋이다 — R-A 열·HOLD 열·R-B 열이 각자 마스트·승강캐리지·
+#: 콤포크를 갖는다. **버퍼가 자기 자신은 못 막으므로** 그 셋이 서로를 받는다:
+#: 캐리지는 같은 물건이고 배분이 레시피라, 한 열의 포크가 서면 그 열이 맡던
+#: 유리를 다른 열이 받는다. 처음에는 POST→GRM 직결 통과 레인을 넣으려 했는데,
+#: 3D 를 재 보니 그 레인이 지날 Z 통로가 없다 — 마스트·타이빔·안전 스캐너가
+#: 열 사이를 다 쓰고 있다. 없는 통로를 도면에 그리는 대신 이미 있는 3열을 쓴다.
+LOADER_COLUMNS = ("R-A", "HOLD", "R-B")
+
+#: 3열로도 못 막는 자리. 주행이 서면 어느 열에도 못 간다. 그래서 같은 레일에
+#: 구동을 둘 걸었다(AXIS-GBR-X ×2) — 한쪽이 죽으면 감속 주행한다.
+#: **그래도 공통으로 남는 것**은 레일과 셔틀 데크 구조다. 숨기지 않고 적는다 —
+#: BFC 의 "완전정지는 공통부(포탈·유압)뿐" 과 같은 취급이다.
+COMMON_MODE = "주행 레일과 셔틀 데크 구조 — 구동 이중화로도 안 덮인다"
+
+
+def buffer_stock_target_slots() -> int:
+    """정상 운전에서 유지하는 재고 (슬롯).
+
+    배출률과 유입률의 비로 나눈다. 재고는 배출률로, 여유공간은 유입률로
+    소비되므로 이 비율에서 두 방향 완충시간이 같아진다 — 임의 상수가 없다.
+    """
+    draw = downstream_rate().line_per_h
+    return round(BUFFER_RA_SLOTS * draw / (draw + sheet_glass_per_h()))
+
+
+def buffer_headroom_slots() -> int:
+    """설정점 위로 남는 빈 슬롯 — 충전 방향이 쓰는 몫."""
+    return BUFFER_RA_SLOTS - buffer_stock_target_slots()
+
+
 def buffer_ride_through_h() -> float:
-    """후단이 멈춰도 전처리가 계속 돌 수 있는 시간 (h) — 버퍼가 다 찰 때까지."""
-    return round(BUFFER_RA_SLOTS / sheet_glass_per_h(), 2)
+    """**후단**이 멈춰도 전처리가 계속 돌 수 있는 시간 (h).
+
+    설정점 위의 여유공간이 다 찰 때까지다. 재고를 들고 있으므로 종전의
+    "빈 버퍼" 값보다 짧다 — 배출 방향을 얻는 대가다.
+    """
+    return round(buffer_headroom_slots() / sheet_glass_per_h(), 2)
+
+
+def buffer_drain_ride_through_h() -> float:
+    """**상류**가 멈춰도 후단이 계속 돌 수 있는 시간 (h) — 재고가 바닥날 때까지."""
+    return round(buffer_stock_target_slots() / downstream_rate().line_per_h, 2)
+
+
+def buffer_rebuild_h() -> float:
+    """재고를 다시 채우는 데 걸리는 시간 (h).
+
+    정상 운전에서는 후단 능력이 유입보다 빠르므로 버퍼가 안 쌓인다. 재고는
+    후단을 유입보다 느리게 돌려야 쌓이고, 그 여유가 `−rate_gap_per_h()` 다.
+    출력을 잃는 것이 아니라 미루는 것이다 — 쌓아 둔 장은 나중에 처리된다.
+    계획 정지에 후단만 세우면 유입 속도로 채워지므로 훨씬 빠르다.
+    """
+    surplus = -rate_gap_per_h()
+    if surplus <= 0:
+        return float("inf")
+    return round(buffer_stock_target_slots() / surplus, 1)
+
+
+def buffer_startup_fill_h() -> float:
+    """가동 시작에서 후단을 잡고 전단만 돌려 재고를 만드는 시간 (h)."""
+    return round(buffer_stock_target_slots() / sheet_glass_per_h(), 2)
 
 
 def knife_speed_for_balance(handling_s: float = HANDLING_S) -> float:
@@ -311,6 +396,13 @@ def summary() -> dict[str, object]:
         "bottleneck": d.bottleneck,
         "gap_per_h": rate_gap_per_h(),
         "buffer_autonomy_h": buffer_autonomy_h(),
+        "buffer_ra_slots": BUFFER_RA_SLOTS,
+        "buffer_rb_slots": BUFFER_RB_SLOTS,
+        "buffer_stock_slots": buffer_stock_target_slots(),
+        "buffer_headroom_slots": buffer_headroom_slots(),
+        "ride_through_h": buffer_ride_through_h(),
+        "drain_ride_through_h": buffer_drain_ride_through_h(),
+        "buffer_rebuild_h": buffer_rebuild_h(),
         "deck_widened_to_mm": list(DOWNSTREAM_MAX_MM),
         "lamp_count": LAMP_COUNT,
         "lamp_kw": round(LAMP_KW, 2),
