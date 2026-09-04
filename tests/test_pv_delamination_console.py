@@ -245,7 +245,8 @@ class TestBrandIdentity(unittest.TestCase):
         body = self._fn3d = re.search(r"function brandMark3D\(.*?\n    \}", self.html, re.S).group(0)
         self.assertIn("MARK_POLYS", body, "3D 외장이 MARK 를 쓰지 않는다")
         self.assertIn("$('npMark').innerHTML=markSVG(", self.html, "명판이 MARK 를 쓰지 않는다")
-        self.assertIn("$('favicon').href=", self.html, "파비콘이 MARK 를 쓰지 않는다")
+        self.assertRegex(self.html, r"favicon\.href='data:image/svg\+xml,'\+encodeURIComponent\(markSVG\(",
+                         "파비콘이 MARK 를 쓰지 않는다")
         tb = re.search(r"function drawTitleBlock\(.*?\n    \}", self.html, re.S).group(0)
         self.assertIn("MARK_POLYS", tb, "도면 표제란이 MARK 를 쓰지 않는다")
         self.assertIn("${markSVG(", self.html, "제작도 표제란이 MARK 를 쓰지 않는다")
