@@ -26,6 +26,7 @@ const EXEMPT = [
   '이송 중 태양광 패널',
   'VS-101 검출 정션박스 형상',
   'VS-101A/B-FUSED 고정면 스캔선',
+  'CRN-901',              // 천장크레인 — 건물 철골이 받는다 (공급 범위 밖)
 ];
 
 const ADJACENCY_M = 0.03;   // 인접 판정 허용치
@@ -124,4 +125,5 @@ if (offenders.length) {
     + '근거를 적어 mounting.UNSUPPORTED_BY_DESIGN 과 이 파일의 EXEMPT 에 같이 넣을 것');
   process.exit(1);
 }
-console.log('\n✓ 모든 부재가 바닥까지 하중 경로를 갖는다 (예외는 공정 중 물체·투영선뿐)');
+console.log('\n✓ 모든 부재가 바닥까지 하중 경로를 갖는다 '
+  + `(예외 ${EXEMPT.length}종 — 공정 중 물체·투영선·건물 철골이 받는 크레인)`);

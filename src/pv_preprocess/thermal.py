@@ -126,6 +126,17 @@ def exhausted_kw() -> float:
 #: 엣지 캐비닛(LP-INST)은 실제로 공정실 안에 서므로 여기 없다.
 OFF_ROOM_PANELS: tuple[str, ...] = ("LP-IT",)
 
+#: 공정과 **동시에 걸리지 않는** 피더. 공정실 안에 있지만 환기 피크에는
+#: 들어오지 않는다. 명단은 electrical.py 가 갖는다 — 같은 사실을 두 군데
+#: 적어 두면 한쪽만 고치는 날이 온다.
+#:
+#: REV.28 의 천장크레인이 그렇다. 운전 중 설비 위에서 인양하는 것은 안전상
+#: 금지라, 크레인이 도는 때는 공정이 서 있는 때다. 환기는 **동시에 걸리는
+#: 최대**로 잡는 것이므로 여기에 더하면 §25 에서 랙 발열을 공정실에 더했던
+#: 것과 같은 종류의 틀린 값이 된다 — 그때는 다른 **방**의 열이었고 이번에는
+#: 다른 **시간**의 열이다.
+NON_COINCIDENT_PANELS = electrical.NON_COINCIDENT_PANELS
+
 
 def off_room_kw() -> float:
     """공정실 밖에서 소비되는 수요 (kW)."""
@@ -133,9 +144,16 @@ def off_room_kw() -> float:
                      if feeder.panel in OFF_ROOM_PANELS), 2)
 
 
+def non_coincident_kw() -> float:
+    """공정 피크와 동시에 걸리지 않는 수요 (kW)."""
+    return round(sum(feeder.demand_kw for feeder in electrical.FEEDERS
+                     if feeder.panel in NON_COINCIDENT_PANELS), 2)
+
+
 def room_load_kw() -> float:
-    """공정실에 남는 열 — 수요에서 배기 반출분과 구획실 소비를 뺀 상한."""
-    return round(electrical.demand_kw() - exhausted_kw() - off_room_kw(), 2)
+    """공정실에 남는 열 — 수요에서 배기 반출분·구획실 소비·비동시 부하를 뺀 상한."""
+    return round(electrical.demand_kw() - exhausted_kw() - off_room_kw()
+                 - non_coincident_kw(), 2)
 
 
 def required_airflow_m3h(delta_t_c: float = ROOM_DELTA_T_C) -> int:

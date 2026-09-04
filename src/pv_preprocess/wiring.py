@@ -19,8 +19,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import electrical, smart
-from .layout import build_zones
+from . import crane, electrical, smart
+from .layout import build_zones, plant_envelope_mm
 
 #: 주 분전반 MDB-101 의 벽부 위치 (플랜트 좌표 mm). X 는 피더 수요(kW) 가중
 #: 부하중심(demand_center_x_mm())을 500 단위로 반올림한 값이다.
@@ -28,7 +28,13 @@ from .layout import build_zones
 #: REV.23 에서 유리제거셀(IR 뱅크 175 kW)이 하류 끝에 들어오며 부하중심이
 #: 20,106 → 42,572 로 22.5 m 내려갔다. 반을 그대로 두면 전체 구리량이 늘고
 #: 최대 부하가 가장 먼 자리에 놓인다 — 규칙대로 반을 부하중심으로 옮긴다.
-MDB_POSITION_MM = (42_500, 8_150)
+#:
+#: REV.28 에서 500 옮겼다. 크레인 피더(F15)는 수요가 1.34 kW 뿐이지만 급전점이
+#: 주행 중앙 29,400 이라 부하중심을 42,299 → 42,197 로 끌어올렸고, 그 81 mm 가
+#: 하필 500 단위 반올림 경계(42,250)를 넘었다. 규칙이 값을 정하지 값이 규칙을
+#: 정하는 게 아니라서, 작은 부하가 경계를 넘기면 반도 따라 움직인다.
+#: 42,000 은 이 되먹임(반 위치 → 랙실 위치 → LP-IT → 부하중심)의 고정점이다.
+MDB_POSITION_MM = (42_000, 8_150)
 
 #: 주 트레이 높이와 Y 위치 (mm)
 TRAY_HEIGHT_MM = 2_600
@@ -93,7 +99,30 @@ def lp_positions_mm() -> dict[str, int]:
     # 규칙과 같은 규칙을 한 단 아래에 적용한 것이다.
     centers["LP-IT"] = server_room_center_x_mm()
     centers["LP-INST"] = edge_cabinet_center_x_mm()
+    # REV.28 천장크레인. 페스툰 급전점은 주행거더 **중앙**이다 — 이유는
+    # crane_feed_x_mm() 에 적었다.
+    centers["LP-CRANE"] = crane_feed_x_mm()
     return centers
+
+
+def crane_runway_overhang_mm() -> int:
+    """주행거더가 플랜트 전장 밖으로 나가는 길이 (편측 mm).
+
+    끝단 설비 위까지 후크가 가려면 엔드트럭이 설비보다 밖에 서야 한다.
+    주행 접근여유(BRIDGE_APPROACH_MM)를 실제로 덮는지는 시험이 본다.
+    """
+    return (crane.RUNWAY_MM - plant_envelope_mm()[0]) // 2
+
+
+def crane_feed_x_mm() -> int:
+    """CRN-901 페스툰 급전점의 플랜트 X (mm) — 주행거더 중앙.
+
+    한쪽 끝에서 먹이면 트레일링 케이블이 주행 전장 60.8 m 를 끝까지
+    따라가야 하고, 주행 도체의 전압강하도 그 길이를 그대로 받는다.
+    중앙 급전이면 둘 다 절반이 된다. 주행거더는 플랜트 전장에 양끝 같은
+    오버행을 두고 걸리므로 그 중앙은 플랜트 중앙과 같다.
+    """
+    return plant_envelope_mm()[0] // 2
 
 
 #: 시설(랙실·관제실)을 MDB-101 옆에 붙일 때의 이격 (mm).

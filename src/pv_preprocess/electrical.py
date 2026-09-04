@@ -172,6 +172,12 @@ FEEDERS: tuple[Feeder, ...] = (
     Feeder("F14", "LP-INST", "존별 엣지 캐비닛 7면 · 무선 AP 5대 · 신규 계측기 46점 "
            "· 라인스캔 조명",
            4.5, 0.90, 20, "4C×4 mm² Cu", "계획(smart.instrument_installed_kw)"),
+    # REV.28: 천장크레인. 수용률 0.20 은 **설치·정비 전용**이기 때문이다 —
+    # 운전 중 설비 위에서 인양하는 것은 안전상 금지라 공정 부하와 동시에
+    # 걸리지 않는다. 값은 crane.py 가 출처이고 테스트가 둘을 대조한다.
+    Feeder("F15", "LP-CRANE", "CRN-901 5 t 천장크레인 (호이스트 5.5 · 횡행 0.4 · 주행 0.4 × 2) "
+           "· 페스툰 급전",
+           6.7, 0.20, 20, "4C×4 mm² Cu", "계획(crane.installed_kw)"),
 )
 
 
@@ -261,9 +267,34 @@ def site_utilisation_pct() -> float:
     return round(contract_kw() / SITE_SERVICE_KW * 100.0, 1)
 
 
+#: 공정과 **동시에 걸리지 않는** 피더.
+#:
+#: REV.28 의 천장크레인(F15)이 그렇다. 운전 중 설비 위에서 인양하는 것은
+#: 안전상 금지라, 크레인이 도는 때는 공정이 서 있는 때다. 수용률 0.20 이
+#: 그 사실을 이미 반영하지만, "수용률을 전부 1.0 으로 올린 최악"을 잴 때는
+#: 수용률 자체가 사라지므로 비동시라는 사실도 같이 사라진다 — 그래서 명단을
+#: 따로 둔다. thermal.py 의 환기 피크도 이 명단을 읽는다.
+NON_COINCIDENT_PANELS: tuple[str, ...] = ("LP-CRANE",)
+
+
 def worst_case_kw() -> float:
-    """설치 전력이 전부 동시에 물리는 최악 (kW) — 수용률이 전부 1.0 일 때."""
+    """설치 전력이 전부 동시에 물리는 최악 (kW) — 수용률이 전부 1.0 일 때.
+
+    비동시 부하까지 포함한 **상한**이다. 부지 인입이 덮는지 보는 데는 이
+    보수적인 값이 맞다 — 계통 용량을 재는 자리에서 덜 잡을 이유가 없다.
+    """
     return round(installed_kw(), 1)
+
+
+def coincident_worst_case_kw() -> float:
+    """실제로 동시에 걸릴 수 있는 최악 (kW).
+
+    `worst_case_kw()` 에서 비동시 피더를 뺀 값이다. 계약전력이 덮어야 하는
+    것은 이쪽이다 — 크레인이 도는 때는 공정이 서 있으므로 287.5 라는 합은
+    어느 15분에도 실제로 나타나지 않는다.
+    """
+    return round(sum(feeder.installed_kw for feeder in FEEDERS
+                     if feeder.panel not in NON_COINCIDENT_PANELS), 1)
 
 
 def fits_site_service(service_kw: float | None = None) -> bool:
@@ -460,6 +491,7 @@ def incomer_summary() -> dict[str, object]:
         "site_utilisation_pct": site_utilisation_pct(),
         "site_headroom_kw": site_headroom_kw(),
         "worst_case_kw": worst_case_kw(),
+        "coincident_worst_case_kw": coincident_worst_case_kw(),
         "lv_tap_max_m": lv_tap_max_length_m(),
         "high_voltage": needs_high_voltage(),
         "hv_voltage_v": HV_SUPPLY_VOLTAGE_V if not tap_lv else SUPPLY_VOLTAGE_V,
