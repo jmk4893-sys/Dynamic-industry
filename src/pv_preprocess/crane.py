@@ -21,9 +21,20 @@
 
 **들어 올린 채로 설치된 설비 위를 넘지 않는다**는 것이 이 크레인의 전제다.
 넘으려면 최고 고정점(5,150) + 통과여유 + 물건 + 슬링 + 후크블록이 필요해
-12,450 이 되어 12 m 천장에 안 들어간다. 반입은 통로(Y 7,100–8,300)를 따라
-제자리 옆까지 가서 내리고, **하류(GRM)부터 세워 상류로 온다** — 그러면 넘을
-일이 생기지 않는다. 크레인 사양이 아니라 시공 순서로 푸는 문제다.
+12,970 이 되어 12 m 천장에 안 들어간다.
+
+그래서 **하류(GRM)부터 세워 상류(AFU)로 온다** — 공정 흐름의 반대다.
+이유는 반입 동선이 곧 **아직 안 세운 장비 밴드**이기 때문이다.
+
+REV.28 에서 여기에 "반입은 통로(Y 7,100–8,300)를 따라" 라고 적었는데
+**틀렸다.** 통로는 공칭 1,200 이고 MDB·엣지 캐비닛이 깊이 300 을 먹어 유효
+900 이다. 최중량 인양인 BFC 반전 카세트는 폭 **2,900** 이라 900 짜리 통로를
+지날 수 없다. 통로는 사람이 다니는 길이지 반입 동선이 아니다.
+
+실제 반입 동선은 폭 7,100 의 **장비 밴드 그 자체**이고, 그것이 순서를 정하는
+이유다 — 세우는 순간 동선이 사라지는 길이라 **먼 쪽부터 소비해야** 한다.
+문(지게차 진입측 = AFU 상류)에서 가까운 것을 먼저 세우면 그 뒤로 아무것도
+못 들어간다. 크레인 사양이 아니라 시공 순서로 푸는 문제다.
 
 주행거더를 받치는 것은 **건물 철골**이다. 이 플랜트의 공급 범위가 아니라
 `mounting.UNSUPPORTED_BY_DESIGN` 에 근거와 함께 넣었다. 대신 건물 쪽에
@@ -38,6 +49,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from . import layout
 
 # ── 발주처 확인값 ────────────────────────────────────────────────────────
 #: 설치 현장 천장고 (mm) — 건물 보 하면까지. 발주처 확인.
@@ -109,6 +122,48 @@ SPAN_MM = 8_800
 
 #: 주행거더 길이 (mm). 플랜트 전장을 덮는다.
 RUNWAY_MM = 60_800
+
+
+# ── 반입 동선 ────────────────────────────────────────────────────────────
+#: 반입 진입측 존. 지게차 진입측과 같은 곳이다 —
+#: `mounting.MOUNTING_OF["afu"]` 가 앵커를 여유 있게 잡는 근거와 같은 사실.
+ENTRY_ZONE = "afu"
+
+
+def install_order(entry_zone: str | None = None) -> tuple[str, ...]:
+    """설치 순서 — 공정 흐름의 **반대**.
+
+    반입 동선이 아직 안 세운 장비 밴드라서, 세우는 순간 그만큼 길이 사라진다.
+    문에서 먼 쪽부터 세워 문 쪽으로 물러나야 매 단계 동선이 남는다.
+    """
+    keys = [zone.key for zone in layout.build_zones()]
+    entry = ENTRY_ZONE if entry_zone is None else entry_zone
+    if keys.index(entry) * 2 < len(keys):
+        return tuple(reversed(keys))
+    return tuple(keys)
+
+
+def haul_width_mm() -> int:
+    """반입 동선의 폭 (mm) — 아직 비어 있는 장비 밴드."""
+    return layout.MACHINE_BAND_Y_MM
+
+
+def widest_module_mm() -> int:
+    """반입 동선이 통과시켜야 하는 최대 폭 (mm).
+
+    최중량 인양이 속한 셀의 폭이다. 이 값이 순서 규칙의 근거이므로
+    셀 외형에서 파생시킨다 — 손으로 적으면 셀이 넓어져도 안 따라온다.
+    """
+    return layout.STATIONS[governing_lift().station].envelope[1]
+
+
+def aisle_can_haul(aisle_clear_mm: int) -> bool:
+    """통로가 반입 동선이 될 수 있는가.
+
+    유효폭을 인자로 받는 것은 순환 참조를 피하기 위해서다 —
+    `wiring.aisle_clear_width_mm()` 가 그 값을 만들고 wiring 이 이 모듈을 읽는다.
+    """
+    return aisle_clear_mm >= widest_module_mm()
 
 
 # ── 인양 대상 ────────────────────────────────────────────────────────────
@@ -293,6 +348,10 @@ def summary() -> dict[str, object]:
         "tallest": tall.name,
         "requiredHookMm": required_hook_mm(tall),
         "hookMarginMm": hook_margin_mm(),
+        "installOrder": list(install_order()),
+        "entryZone": ENTRY_ZONE,
+        "haulWidthMm": haul_width_mm(),
+        "widestModuleMm": widest_module_mm(),
         "installedKw": installed_kw(),
         "demandKw": demand_kw(),
     }

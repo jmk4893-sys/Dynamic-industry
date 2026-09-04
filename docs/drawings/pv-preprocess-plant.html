@@ -2965,7 +2965,7 @@ html>body{padding:0}</style>
     return [left, top, width, height].map(Math.round).join(' ');
   }
 
-  var DRAWING_REVISION = 'REV.29';
+  var DRAWING_REVISION = 'REV.30';
   // 뷰별 축 선택. PART_AXIS 는 part.at/part.size 의 [X, 상하, 깊이] 기준,
   // ENVELOPE_AXIS 는 station.envelope 의 [L, W, H] 기준 — 두 배열의 축 순서가 다르다.
   var PART_AXIS = { plan: [0, 2], front: [0, 1], side: [2, 1] };
@@ -3705,7 +3705,7 @@ html>body{padding:0}</style>
     ['VS-101A/B-FUSED 고정면 스캔선', '레이저 투영선이라 물체가 아니다']
   ];
   var KINEMATICS = {panelMm: [2500, 1400], flipAxisMm: 3430, transferMm: 2290, ringBoreMm: 1620, ringBottomMm: 2440, underRingMm: 112, overCarriageMm: 116, boreClearMm: 109, cageAxialMm: 40, jawStrokeMm: 187.5, jawOpenClearMm: 70, afrClampKn: 12.0, afrPortalZMm: 1450, afrPortalAnchors: 16};
-  var CRANE = {capacityT: 5.0, ceilingMm: 12000, railTopMm: 10750, hookHeightMm: 9700, spanMm: 8800, runwayMm: 60800, hookReachMm: 3800, governing: "BFC 반전 카세트 (Bay 1식)", governingKg: 2500, hookLoadKg: 2650, maxLiftKg: 4850, capacityMargin: 1.89, tallest: "VG-101 독립 방진 비전보 조립체", requiredHookMm: 8370, hookMarginMm: 1330, installedKw: 6.7, demandKw: 1.34};
+  var CRANE = {capacityT: 5.0, ceilingMm: 12000, railTopMm: 10750, hookHeightMm: 9700, spanMm: 8800, runwayMm: 60800, hookReachMm: 3800, governing: "BFC 반전 카세트 (Bay 1식)", governingKg: 2500, hookLoadKg: 2650, maxLiftKg: 4850, capacityMargin: 1.89, tallest: "VG-101 독립 방진 비전보 조립체", requiredHookMm: 8370, hookMarginMm: 1330, installOrder: ["grm", "buffer", "post", "afr", "gate", "jbr", "robot", "afu"], entryZone: "afu", haulWidthMm: 7100, widestModuleMm: 2900, installedKw: 6.7, demandKw: 1.34};
   var MOUNT_SUMMARY = { stations: 8, anchors: 190, m16: 94, m20: 88, m24: 8, members: 18, brackets: 51, series: 53, withdrawn: 2, floor: 14, frame: 2, gantry: 2, exempt: 4 };
   var SL_CHAIN_ROWS = INCOMER.tapsSite ? (INCOMER.tapLowVoltage ? 4 : 5) : (INCOMER.highVoltage ? 6 : 4);
   // 분기 주회로 길이는 부지 실측 대기다. 모를 때 0.0 m 로 찍으면 도면이 거짓말을 한다.
@@ -4715,12 +4715,12 @@ html>body{padding:0}</style>
     // ④ 플랜트 전체 집계
     var by = my + 30 + Math.max(mine.length, 1) * 44 + 30;
     out.push(text(mx, by, '④ 플랜트 전체 집계 (FD-1002 로 넘긴다)', 'pv-fab-text'));
-    [['앵커 합계', MOUNT_SUMMARY.anchors + '개'],
+    var sumRows4 = [['앵커 합계', MOUNT_SUMMARY.anchors + '개'],
      ['M16 / M20 / M24', MOUNT_SUMMARY.m16 + ' / ' + MOUNT_SUMMARY.m20 + ' / ' + MOUNT_SUMMARY.m24],
      ['지지 부재', MOUNT_SUMMARY.members + '종 (바닥 ' + MOUNT_SUMMARY.floor + ' · 프레임 ' + MOUNT_SUMMARY.frame + ' · 갠트리 ' + MOUNT_SUMMARY.gantry + ')'],
      ['지지 브래킷', 'MB-001…' + ('00' + MOUNT_SUMMARY.series).slice(-3) + ' 중 ' + MOUNT_SUMMARY.brackets + '개 (폐번 ' + MOUNT_SUMMARY.withdrawn + ')'],
-     ['받칠 대상 아님', MOUNT_SUMMARY.exempt + '건 (공정 중 물체·투영선·천장크레인)']
-    ].forEach(function (r, i) {
+     ['받칠 대상 아님', MOUNT_SUMMARY.exempt + '건 (공정 중 물체·투영선·천장크레인)']];
+    sumRows4.forEach(function (r, i) {
       var y = by + 30 + i * 24;
       out.push(text(mx + 14, y, r[0], 'pv-fab-small'));
       out.push(text(mx + 700, y, r[1], 'pv-fab-small', 'end'));
@@ -4730,16 +4730,22 @@ html>body{padding:0}</style>
     //    공정 중 물체나 투영선은 "받칠 것이 없어서" 예외지만, 천장크레인은
     //    **다른 사람이 받는다.** 그러면 넘겨야 할 값이 생긴다 — 인터페이스는
     //    말이 아니라 숫자로 넘긴다.
-    var cy = by + 30 + 5 * 24 + 28;
+    var cy = by + 30 + sumRows4.length * 24 + 28;
     out.push(text(mx, cy, '⑤ 건물 측 인터페이스 — CRN-901 ' + CRANE.capacityT + ' t 천장크레인', 'pv-fab-text'));
-    [['주행레일 상면 TOR', n(CRANE.railTopMm) + ' mm = 천장 ' + n(CRANE.ceilingMm) + ' − 보 여유 300 − 거더·트롤리 950'],
+    var sumRows5 = [['주행레일 상면 TOR', n(CRANE.railTopMm) + ' mm = 천장 ' + n(CRANE.ceilingMm) + ' − 보 여유 300 − 거더·트롤리 950'],
      ['후크 최고 높이', n(CRANE.hookHeightMm) + ' mm = TOR − C 치수 1,050 — **천장고가 아니다**'],
      ['스팬 · 주행 전장', n(CRANE.spanMm) + ' · ' + n(CRANE.runwayMm) + ' mm (후크 도달 라인중심 ±' + n(CRANE.hookReachMm) + ')'],
      ['용량을 정한 인양', CRANE.governing + ' ' + n(CRANE.governingKg) + ' kg 이상 (발주처 확인)'],
      ['후크 하중 · 상한', n(CRANE.hookLoadKg) + ' kg (물건 + 인양 부속 150) → 여유 ' + CRANE.capacityMargin
        + '배 · 물건 상한 ' + n(CRANE.maxLiftKg) + ' kg'],
-     ['후크를 정한 인양', CRANE.tallest + ' 필요 ' + n(CRANE.requiredHookMm) + ' → 여유 ' + n(CRANE.hookMarginMm) + ' mm']
-    ].forEach(function (r, i) {
+     ['후크를 정한 인양', CRANE.tallest + ' 필요 ' + n(CRANE.requiredHookMm) + ' → 여유 ' + n(CRANE.hookMarginMm) + ' mm'],
+     // 반입 동선은 통로가 아니라 **아직 안 세운 장비 밴드**다 — 세우는 순간
+     // 그만큼 길이 사라지므로 문에서 먼 쪽부터 소비한다.
+     ['반입 동선', '장비 밴드 ' + n(CRANE.haulWidthMm) + ' (최대 모듈 ' + n(CRANE.widestModuleMm)
+       + ') — 통로 유효 ' + n(AISLE_CLEAR_MM) + ' 로는 못 지난다'],
+     ['설치 순서', CRANE.installOrder.join(' → ') + '  (공정 흐름의 반대 · 문은 '
+       + CRANE.entryZone + ' 측)']];
+    sumRows5.forEach(function (r, i) {
       var y = cy + 30 + i * 24;
       out.push(text(mx + 14, y, r[0], 'pv-fab-small'));
       out.push('<text class="pv-fab-small" data-fit="500" x="' + (mx + 200) + '" y="' + y + '">'
@@ -4747,7 +4753,7 @@ html>body{padding:0}</style>
     });
 
     // 캡션 y 를 오른쪽 열만 보고 잡으면 왼쪽 단면과 겹친다 — 둘 다 본다.
-    var cap = Math.max(cy + 30 + 5 * 24, sy + 190) + 30;
+    var cap = Math.max(cy + 30 + sumRows5.length * 24, sy + 190) + 30;
     [['위에서부터', '기계 베이스 (' + m[4] + ') / 베이스플레이트 ' + m[2] + ' / 무수축 그라우트 ' + m[3] + ' / 콘크리트 기초'],
      ['앵커볼트', '후시공 케미컬 또는 선매입 — 정착길이는 하중도 확정 후 산정한다'],
      ['이 셀의 요점', m[5]]].forEach(function (r, i) {

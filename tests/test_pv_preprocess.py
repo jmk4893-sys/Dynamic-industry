@@ -3015,6 +3015,36 @@ class TestCrane(unittest.TestCase):
         # 거더 하면은 설비 최고점 위로 넉넉히 뜬다 — 넘기는 것과는 다른 이야기다
         self.assertEqual(crane.clears_plant(tallest_fixed), 5_600)
 
+    def test_the_install_order_runs_against_the_process_flow(self):
+        """반입 동선이 곧 안 세운 장비 밴드라, 먼 쪽부터 소비해야 한다.
+
+        REV.28 의 주석은 "반입은 통로를 따라" 라고 적었는데 틀렸다 — 통로
+        유효폭 900 으로는 폭 2,900 짜리 반전 카세트가 못 지난다. 통로는
+        사람이 다니는 길이고, 반입 동선은 폭 7,100 의 장비 밴드다.
+        """
+        flow = [zone.key for zone in layout.build_zones()]
+        self.assertEqual(flow[0], crane.ENTRY_ZONE, "문은 공정 상류에 있다")
+        self.assertEqual(crane.install_order(), tuple(reversed(flow)))
+        self.assertEqual(crane.install_order()[0], "grm", "가장 먼 쪽을 먼저")
+        self.assertEqual(crane.install_order()[-1], crane.ENTRY_ZONE, "문 쪽이 마지막")
+        # 문이 반대쪽에 있으면 순서도 뒤집혀야 한다 — 규칙이지 값이 아니다
+        self.assertEqual(crane.install_order(entry_zone="grm"), tuple(flow))
+
+    def test_the_aisle_is_not_the_haul_route(self):
+        """통로를 반입 동선으로 적으면 폭이 세 배 모자란 계획이 된다."""
+        self.assertEqual(crane.widest_module_mm(), 2_900)
+        self.assertEqual(crane.widest_module_mm(),
+                         layout.STATIONS[crane.governing_lift().station].envelope[1])
+        self.assertEqual(crane.haul_width_mm(), layout.MACHINE_BAND_Y_MM)
+        self.assertGreater(crane.haul_width_mm(), crane.widest_module_mm())
+        self.assertFalse(crane.aisle_can_haul(wiring.aisle_clear_width_mm()),
+                         "유효 900 통로로 2,900 모듈이 지나갈 수 없다")
+        self.assertTrue(crane.aisle_can_haul(3_000), "경계가 실제로 작동하는지")
+        # 종전의 틀린 문장이 되살아나면 실패한다
+        source = (pathlib.Path(__file__).resolve().parents[1]
+                  / "src" / "pv_preprocess" / "crane.py").read_text(encoding="utf-8")
+        self.assertNotIn("반입은 통로(Y 7,100–8,300)를 따라\n제자리 옆까지", source)
+
     # ── 평면 계통 ────────────────────────────────────────────────────────
     def test_the_span_is_set_by_the_machine_band(self):
         """스팬은 고른 값이 아니라 밴드를 덮어야 나오는 값이다."""
@@ -3120,6 +3150,13 @@ class TestCrane(unittest.TestCase):
                       "data-fit=\"610\" x=\"' + (busX + 368)"):   # 계통도 피더 설명 2줄
             with self.subTest(token=token):
                 self.assertIn(token, self.html)
+        # 집계 블록의 캡션 y 는 **행 수에서** 나와야 한다. 리터럴 5 로 박아
+        # 두면 행을 늘리는 순간 캡션이 그 위에 찍힌다 — REV.30 에서 ⑤ 에
+        # 두 행을 더하다 실제로 겹쳤다.
+        self.assertIn("var cy = by + 30 + sumRows4.length * 24 + 28;", self.html)
+        self.assertIn("Math.max(cy + 30 + sumRows5.length * 24, sy + 190) + 30;", self.html)
+        self.assertNotIn("by + 30 + 5 * 24", self.html)
+        self.assertNotIn("cy + 30 + 5 * 24", self.html)
         # 종전의 data-fit 없는 형태가 되살아나면 다시 흔들린다
         self.assertNotIn("out.push(text(40, 762, '랙 2면은 공간이", self.html)
         self.assertNotIn("out.push(text(60, cap, 'REV.25 까지 앵커 계획은", self.html)
