@@ -144,9 +144,20 @@ class TestIoBudget(unittest.TestCase):
                       self.rfq, "사양서 표준 I/O 가 콘솔·모델과 다르다")
         self.assertIn(f"F-DI {b['F-DI']} · F-DO {b['F-DO']}", self.rfq)
         u = self.use
-        self.assertIn(f"DI {u['DI']} · DO {u['DO']} · AI {u['AI']} · AO {u['AO']} · TC {u['TC']}",
-                      self.rfq, "사양서에 적은 실사용 점수가 모델과 다르다")
+        want = f"DI {u['DI']} · DO {u['DO']} · AI {u['AI']} · AO {u['AO']} · TC {u['TC']}"
+        self.assertIn(want, self.rfq, "사양서에 적은 실사용 점수가 모델과 다르다")
         self.assertIn(f"F-DI {u['F-DI']} · F-DO {u['F-DO']}", self.rfq)
+        # 한 군데만 맞으면 안 된다 — 같은 점수를 적은 자리가 여럿이라 하나가 남으면 갈라진다.
+        # 사양서에 이 모양으로 적히는 것은 선언(예산)과 실사용 둘뿐이다.
+        allowed = {want, f"DI {b['DI']} · DO {b['DO']} · AI {b['AI']} · AO {b['AO']} · TC {b['TC']}"}
+        for found in re.findall(r"DI \d+ · DO \d+ · AI \d+ · AO \d+ · TC \d+", self.rfq):
+            self.assertIn(found, allowed,
+                          f"사양서에 선언·실사용 어느 쪽도 아닌 I/O 점수 '{found}' 가 남아 있다")
+        allowed_f = {f"F-DI {u['F-DI']} · F-DO {u['F-DO']}",
+                     f"F-DI {b['F-DI']} · F-DO {b['F-DO']}"}
+        for found in re.findall(r"F-DI \d+ · F-DO \d+", self.rfq):
+            self.assertIn(found, allowed_f,
+                          f"사양서에 선언·실사용 어느 쪽도 아닌 안전 I/O 점수 '{found}' 가 남아 있다")
 
 
 class TestSignalsFoundByRunningIt(unittest.TestCase):
