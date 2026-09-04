@@ -36,7 +36,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import campaign, handoff, smart
+from . import campaign, handoff, reliability, smart
 
 # ── 표본 공급 ────────────────────────────────────────────────────────────
 #: 사전학습 모델을 미세조정(전이학습)할 때 클래스당 필요한 최소 표본.
@@ -49,8 +49,15 @@ SCRATCH_MIN_SAMPLES = 10_000
 
 
 def annual_panels() -> float:
-    """연간 촬영 장수 — 전손까지 포함한 전량."""
-    return round(smart.panels_per_h() * smart.OPERATING_HOURS_PER_YEAR)
+    """연간 촬영 장수 — 전손까지 포함한 전량.
+
+    **가용률을 얹은 값이다.** 라벨은 실제로 처리한 장에서만 나온다 — 라인이
+    서 있는 동안에는 카메라가 찍을 것이 없다. REV.45 까지 여기서 공칭 장수
+    (가용률 1.0)를 쓰는 바람에 표본 공급을 308,138 로 적었고, 그만큼 착수
+    시점(`cold_start_months`)을 짧게 잡고 있었다. `reliability` 가 단일
+    출처이므로 목표 가용률이 바뀌면 라벨 공급과 착수 시점이 같이 따라온다.
+    """
+    return reliability.annual_panels()
 
 
 def annual_labels() -> dict[str, float]:

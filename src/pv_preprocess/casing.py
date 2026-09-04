@@ -163,6 +163,7 @@ MODULE_ZONE: dict[str, str] = {
     "RB-POST": "post",
     "RB-GBR": "buffer",
     "RB-GRM": "grm",
+    "RB-DUST": "post",     # DX-601 은 SG-301 옆(post 존)에 선다
 }
 
 #: 이 껍질이 아닌 교환 모듈과 그 사유. **여기 적지 않고 빠지면 시험이 잡는다** —

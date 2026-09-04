@@ -20,8 +20,8 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
 
-from pv_preprocess import (access, acoustics, crane, kinematics, layout,  # noqa: E402
-                           mounting, safety, smart, wiring)
+from pv_preprocess import (access, acoustics, ai, crane, kinematics,  # noqa: E402
+                           layout, mounting, reliability, safety, smart, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parent.parent / "docs/drawings/pv-preprocess-plant.html"
 
@@ -213,6 +213,30 @@ def main() -> int:
           lambda m: "['AFR CL-221 포탈 크로스헤드 2본', 'afr', 'floor', '"
           + [mm for mm in mounting.MEMBERS
              if mm.label == "AFR CL-221 포탈 크로스헤드 2본"][0].carries + "']")
+
+    # ── 신뢰도·AI ────────────────────────────────────────────────────────
+    # 블록을 하나 가르거나 가용률 식을 고치면 도면의 두 표가 같이 움직여야 한다.
+    p.one(r"var RELIABILITY = \{.*?\};",
+          lambda m: "var RELIABILITY = "
+          + json.dumps(reliability.summary(), ensure_ascii=False) + ";")
+    p.one(r"var RELIABILITY_BLOCKS = \[.*?\];",
+          lambda m: "var RELIABILITY_BLOCKS = " + json.dumps(
+              [[b.tag, b.name, b.share, b.mttr_h, b.redundant, b.buffered,
+                b.downtime_h(), b.failures_per_year(), b.required_mtbf_h(), b.basis]
+               for b in reliability.BLOCKS], ensure_ascii=False) + ";")
+
+    a = ai.summary()
+    labels = a["labels"]
+    grades = a["grades"]
+    p.one(r"var AI_SUMMARY = \{[^}]*\};",
+          lambda m: ("var AI_SUMMARY = { cases: %d, gradeA: %d, gradeB: %d, gradeC: %d, "
+                     "gradeD: %d, annualPanels: %d, labelNormal: %d, labelCracked: %d, "
+                     "labelScrap: %d, scarcest: '%s', coldStartMonths: %s, transferMin: %d, "
+                     "scrapMissS: %s, crackedMissS: %s };")
+          % (a["cases"], grades["A"], grades["B"], grades["C"], grades["D"],
+             a["annual_panels"], labels["정상"], labels["유리 깨짐"], labels["전손"],
+             a["scarcest"], q(a["cold_start_months"]), a["transfer_min"],
+             q(a["scrap_miss_s"]), q(a["cracked_miss_s"])))
 
     # ── 안전 ─────────────────────────────────────────────────────────────
     p.one(r"var SAFETY = \{.*?\};",

@@ -143,9 +143,20 @@ _SHARES: tuple[tuple[str, str, float, bool, str | None, str], ...] = (
     ("RB-GRM", "GRM-401 IR·탠덤 박리", 0.12, False, "headroom",
      "IR 램프 60개와 핫나이프. 램프 1개 고장은 감속 운전이라 완전정지가 아니다. "
      "버퍼 하류라 여유공간이 흡수한다 — 전단이 그 동안 계속 돈다"),
-    ("RB-UTIL", "유틸리티 — 공압·진공·집진·유압", 0.05, True, None,
-     "컴프레서 1운전 1예비·진공 2기라 단일고장이 라인을 안 세운다. "
-     "다만 집진이 서면 SG-301 이 못 돈다"),
+    ("RB-UTIL", "유틸리티 — 공압·진공·유압", 0.03, True, None,
+     "컴프레서 1운전 1예비·진공 리시버 2기·HPU 2기라 단일고장이 라인을 안 세운다. "
+     "**집진은 여기서 뺐다** — 아래 RB-DUST 참고"),
+    ("RB-DUST", "DX-601 집진 (예비기 없음)", 0.02, False, "stock",
+     "종전에는 유틸리티 한 덩어리에 묶여 `redundant=True` 였는데, 그 근거란에 "
+     "이미 **\"집진이 서면 SG-301 이 못 돈다\"** 고 적혀 있었다. 블록은 가장 약한 "
+     "원소만큼만 이중화다 — 컴프레서가 1운전 1예비여도 집진이 한 대뿐이면 그 "
+     "블록은 이중화가 아니다. 그래서 갈랐다.\n\n"
+     "가른 뒤에도 단일고장이 아닌 이유는 이중화가 아니라 **버퍼**다. DX-601 은 "
+     "SG-301·JBR 국소를 맡아 버퍼 상류이므로, 서면 재고가 후단을 돌린다 — "
+     "MTTR 이 완충시간 안에 들면 흡수되고, 넘으면 `Block.buffered` 가 저절로 "
+     "거짓이 되어 단일고장으로 잡힌다. 선언이 아니라 계산이다.\n\n"
+     "예산 배분 0.05 를 0.03/0.02 로 나눈 것은 판단이다 — 집진 쪽이 대수는 적어도 "
+     "예비기가 없고 마모부(필터·펄스밸브·블로워 베어링)가 몰려 있다"),
 )
 
 BLOCKS: tuple[Block, ...] = tuple(
@@ -210,26 +221,42 @@ def buffered_downtime_h(availability: float | None = None) -> float:
     return round(total, 2)
 
 
+def stopped_h(with_buffer: bool, availability: float | None = None) -> float:
+    """같은 고장률에서 라인이 실제로 서 있는 시간 (h/년).
+
+    `with_buffer=False` 면 버퍼가 없는 셈으로 센다 — 두 값을 **같은 식**으로
+    내야 비교가 성립한다.
+    """
+    total = 0.0
+    for block in BLOCKS:
+        per_stop = block.mttr_h
+        if with_buffer and block.buffered:
+            ride = ride_through_of(block.buffer_side)
+            per_stop = max(0.0, per_stop - (ride if ride is not None else 0.0))
+        total += block.failures_per_year(availability) * per_stop
+    return total
+
+
 def availability_without_buffer(availability: float | None = None) -> float:
-    """버퍼가 없었다면 같은 고장률에서 가용률이 얼마였을까."""
-    lost = downtime_budget_h(availability) + buffered_downtime_h(availability)
-    return round(1 - lost / operating_hours(), 4)
+    """버퍼가 없었다면 같은 고장률·같은 MTTR 에서 가용률이 얼마였을까.
+
+    **REV.46 정정.** 종전 식은 `정지예산 + 버퍼가 흡수한 시간` 이었는데, 이
+    모델에서 정지예산은 이미 **버퍼를 안 본 원시 정지시간**이다 — 각 블록의
+    고장 횟수를 `예산 배분 ÷ 개선 전 MTTR` 로 거꾸로 냈기 때문에, 개선 전
+    MTTR 로 다시 곱하면 합이 정확히 예산(330 h)으로 돌아온다. 거기에 흡수분을
+    더한 것은 같은 고장을 두 번 센 것이고, 그렇게 나온 0.9082 는 어느 쪽
+    구성의 가용률도 아니었다.
+
+    이제 `achievable_availability()` 와 **같은 식에서 버퍼만 끈다.** 두 값이
+    같은 MTTR 위에 서므로 차이가 곧 버퍼의 값어치다 (0.9866 → 0.9984).
+    """
+    return round(1 - stopped_h(False, availability) / operating_hours(), 4)
 
 
 # ── 연간 숫자가 무엇 위에 서 있는가 ──────────────────────────────────────
 #: 정비성 개선 전의 계획 MTTR (h). 요구 MTBF 는 이 값 위에서 정해졌다.
 #: 개선분을 어디로 돌릴지 계산하려면 출발점이 남아 있어야 한다.
 BASE_MTTR_H: dict[str, float] = {p.tag: p.base_h for p in maintain.PROFILES}
-
-
-def failures_per_year_at_base(tag: str, availability: float | None = None) -> float:
-    """정비성 개선 **전** 기준의 연간 고장 횟수.
-
-    고장률은 설비의 성질이지 정비 방식이 바꾸는 값이 아니다. 그래서 개선 뒤에도
-    이 횟수를 그대로 두고, 짧아진 복구시간을 **가용률로** 돌린다.
-    """
-    block = next(b for b in BLOCKS if b.tag == tag)
-    return block.failures_per_year(availability)
 
 
 def achievable_availability(availability: float | None = None) -> float:
@@ -242,15 +269,7 @@ def achievable_availability(availability: float | None = None) -> float:
     버퍼도 여기서 다시 계산된다. MTTR 이 그 방향의 완충시간보다 짧아지면
     **버퍼가 흡수하는 비율이 100 % 가 된다** — 짧은 정지는 라인을 아예 못 세운다.
     """
-    stopped = 0.0
-    for b in BLOCKS:
-        n = failures_per_year_at_base(b.tag, availability)
-        per_stop = b.mttr_h
-        if b.buffered:
-            ride = ride_through_of(b.buffer_side)
-            per_stop = max(0.0, per_stop - (ride if ride is not None else 0.0))
-        stopped += n * per_stop
-    return round(1 - stopped / operating_hours(), 4)
+    return round(1 - stopped_h(True, availability) / operating_hours(), 4)
 
 
 def maintainability_gain(availability: float | None = None) -> dict[str, float]:

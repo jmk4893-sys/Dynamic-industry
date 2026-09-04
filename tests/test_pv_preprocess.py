@@ -3005,12 +3005,17 @@ class TestAiFeasibility(unittest.TestCase):
     def test_label_supply_sets_the_start_date(self):
         """가장 희소한 클래스가 착수 시점을 지배한다."""
         labels = ai.annual_labels()
-        self.assertEqual(ai.annual_panels(), 308_138)
-        self.assertEqual(labels["정상"], 272_189)
-        self.assertEqual(labels["유리 깨짐"], 25_678)
-        self.assertEqual(labels["전손"], 10_271)
+        # **REV.46 정정.** 종전에는 공칭 장수(가용률 1.0)로 셌다 — 라인이 서
+        # 있는 동안에는 찍을 것이 없는데도 그 시간까지 표본으로 세고 있었다.
+        # 이제 신뢰도 모델의 장수(가용률 반영)를 쓴다.
+        self.assertEqual(ai.annual_panels(), reliability.annual_panels())
+        self.assertLess(ai.annual_panels(), reliability.nominal_annual_panels())
+        self.assertEqual(ai.annual_panels(), 283_487)
+        self.assertEqual(labels["정상"], 250_414)
+        self.assertEqual(labels["유리 깨짐"], 23_624)
+        self.assertEqual(labels["전손"], 9_450)
         self.assertEqual(ai.scarcest_label(), "전손")
-        self.assertAlmostEqual(ai.cold_start_months(), 1.2, places=1)
+        self.assertAlmostEqual(ai.cold_start_months(), 1.3, places=1)
         # 처음부터 학습을 물리치는 근거가 **바뀌었다.** 1교대 가정에서는
         # 전손 기준 24개월이라 "비현실적" 이었는데, 2교대 확정으로 11.7개월이
         # 됐다 — 절대 개월수로는 더 이상 그 말을 못 한다.
@@ -3019,8 +3024,8 @@ class TestAiFeasibility(unittest.TestCase):
         # 처음부터 학습은 표본이 10배 필요하므로 언제나 착수가 10배 늦다.
         # 가동시간이 어떻게 바뀌어도 이 비는 변하지 않는다.
         scratch = ai.months_to_threshold("전손", ai.SCRATCH_MIN_SAMPLES)
-        self.assertAlmostEqual(scratch, 11.7, places=1)
-        # 개월수는 0.1 로 반올림돼 나오므로(11.7 / 1.2 = 9.75) 비는 반올림
+        self.assertAlmostEqual(scratch, 12.7, places=1)
+        # 개월수는 0.1 로 반올림돼 나오므로 비는 반올림
         # 전의 값으로 잰다 — 재는 자가 반올림에 흔들리면 안 된다.
         self.assertAlmostEqual(
             ai.SCRATCH_MIN_SAMPLES / labels["전손"]
@@ -4489,10 +4494,17 @@ class TestReliability(unittest.TestCase):
         cls.html = read_drawing()
 
     def test_the_annual_figures_assumed_perfect_uptime(self):
-        """§25 의 308,138 장은 가용률 1.0 위에 서 있었다."""
-        self.assertEqual(reliability.nominal_annual_panels(), ai.annual_panels())
+        """§25 의 308,138 장은 가용률 1.0 위에 서 있었다 — 그리고 §26 이 그 위에 섰다.
+
+        REV.45 까지 `ai.annual_panels()` 가 이 공칭값을 그대로 썼다. 라벨은
+        실제로 처리한 장에서만 나오므로 그것은 가동률 손실을 표본으로 세는
+        일이었다. 공칭값 자체는 남긴다 — 무엇을 잃고 있는지 재는 자다.
+        """
         self.assertEqual(reliability.nominal_annual_panels(),
                          round(smart.panels_per_h() * smart.OPERATING_HOURS_PER_YEAR))
+        # AI 라벨 공급은 이제 **가용률을 얹은 쪽**을 본다
+        self.assertEqual(ai.annual_panels(), reliability.annual_panels())
+        self.assertNotEqual(ai.annual_panels(), reliability.nominal_annual_panels())
         # 가용률을 얹으면 줄어들고, 그 차이가 라벨·저장·매출로 간다
         self.assertLess(reliability.annual_panels(), reliability.nominal_annual_panels())
         self.assertEqual(reliability.annual_shortfall(),
@@ -4545,13 +4557,71 @@ class TestReliability(unittest.TestCase):
                             reliability.tightest_mtbf_block().tag)
         self.assertEqual(reliability.governing_block().tag, "RB-JBR")
 
+    def test_a_block_is_only_as_redundant_as_its_weakest_element(self):
+        """집진은 예비기가 없다 — 유틸리티 이중화 뒤에 숨기지 않는다.
+
+        REV.45 까지 공압·진공·집진·유압이 한 블록(`RB-UTIL`)이었고 그 블록에
+        `redundant=True` 가 붙어 있었다. 그런데 같은 블록의 근거란은 이미
+        **"집진이 서면 SG-301 이 못 돈다"** 고 적고 있었다 — 플래그가 자기
+        근거를 부정하고 있었던 셈이고, 그 탓에 `single_point_blocks()` 가 이
+        블록을 건너뛰며 "단일고장 0" 을 보고했다.
+
+        블록은 가장 약한 원소만큼만 이중화다. 그래서 갈랐다.
+        """
+        util = next(b for b in reliability.BLOCKS if b.tag == "RB-UTIL")
+        dust = next(b for b in reliability.BLOCKS if b.tag == "RB-DUST")
+        self.assertTrue(util.redundant, "컴프레서 1운전 1예비·진공 2기는 실제 이중화다")
+        self.assertNotIn("집진", util.name, "이중화 블록이 집진을 다시 품으면 안 된다")
+        self.assertFalse(dust.redundant, "DX-601 은 한 대뿐이다")
+
+        # 그러고도 단일고장이 아닌 이유는 **이중화가 아니라 버퍼**다.
+        # 선언이 아니라 계산이라는 것을 흔들어 확인한다 — 완충시간을 넘는
+        # MTTR 을 주면 저절로 단일고장으로 잡혀야 한다.
+        self.assertEqual(dust.buffer_side, "stock")
+        ride = reliability.ride_through_of("stock")
+        self.assertTrue(dust.buffered)
+        self.assertLess(dust.mttr_h, ride)
+        self.assertNotIn("RB-DUST", grade.single_point_blocks())
+        keep = reliability.BLOCKS
+        try:
+            reliability.BLOCKS = tuple(
+                dataclasses.replace(b, mttr_h=ride + 0.1) if b.tag == "RB-DUST" else b
+                for b in keep)
+            self.assertIn("RB-DUST", grade.single_point_blocks(),
+                          "완충을 넘겨도 안 잡히면 판정이 박혀 있다")
+        finally:
+            reliability.BLOCKS = keep
+        self.assertEqual(grade.single_point_blocks(), ())
+
     def test_the_buffer_makes_a_hole_in_the_series_chain(self):
-        """버퍼가 없었다면 같은 고장률에서 가용률이 더 낮다."""
+        """버퍼가 없었다면 같은 고장률·같은 MTTR 에서 가용률이 더 낮다.
+
+        **REV.46 정정.** 종전 단언은 "무버퍼 가용률이 목표(0.92)보다 낮다"
+        였는데, 그것이 참이었던 이유는 식이 `정지예산 + 흡수분` 으로 같은
+        고장을 두 번 세고 있었기 때문이다. 이 모델에서 정지예산은 이미 버퍼를
+        안 본 원시 정지시간이라(고장 횟수를 예산 ÷ 개선 전 MTTR 로 거꾸로
+        냈다), 개선 전 MTTR 기준의 무버퍼 가용률은 **정확히 목표와 같다.**
+
+        버퍼의 값어치는 두 구성을 **같은 MTTR 위에서** 견줘야 나온다.
+        """
         self.assertEqual(reliability.buffer_ride_through_h(),
                          handoff.buffer_ride_through_h())
         self.assertGreater(reliability.buffered_downtime_h(), 0)
+        # 개선 전 MTTR 로 다시 곱하면 합이 예산으로 정확히 돌아온다 —
+        # 그래서 거기에 흡수분을 더하면 이중계상이다
+        self.assertAlmostEqual(
+            sum(b.failures_per_year() * b.base_mttr_h for b in reliability.BLOCKS),
+            reliability.downtime_budget_h(), places=1)
+        # 같은 식에서 버퍼만 끈 것이 무버퍼 가용률이다
+        self.assertAlmostEqual(
+            reliability.availability_without_buffer(),
+            round(1 - reliability.stopped_h(False) / reliability.operating_hours(), 4),
+            places=6)
         self.assertLess(reliability.availability_without_buffer(),
-                        reliability.TARGET_AVAILABILITY)
+                        reliability.achievable_availability())
+        self.assertGreater(reliability.availability_without_buffer(),
+                           reliability.TARGET_AVAILABILITY,
+                           "정비성 개선만으로도 목표는 넘는다 — 버퍼는 그 위에 얹힌다")
         # 흡수는 완충시간을 넘지 못한다 — MTTR 이 길면 부분만 벌어 준다
         for block in reliability.buffered_blocks():
             with self.subTest(block=block.tag):

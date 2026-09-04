@@ -143,6 +143,11 @@ PROFILES: tuple[Profile, ...] = (
     Profile("RB-UTIL", 1.5, "light", ("diag", "access", "auto"),
             "컴프레서 스키드 · 진공 펌프 유닛",
             "이미 1운전 1예비라 교환 자체가 예비기로의 전환이다"),
+    Profile("RB-DUST", 2.0, "light", ("diag", "access", "auto"),
+            "DX-601 필터 카트리지 · 펄스밸브 · 블로워",
+            "**예비기가 없어 교환이 아니라 수리다** — 그래서 컴프레서(1.5)보다 "
+            "길게 잡는다. 필터 카트리지와 펄스밸브는 무공구 교환이지만 블로워 "
+            "베어링은 분해가 든다. 계획값이라 run-at-rate 로 확인한다"),
 )
 
 PROFILE_BY_TAG: dict[str, Profile] = {p.tag: p for p in PROFILES}
