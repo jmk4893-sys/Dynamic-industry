@@ -2965,7 +2965,7 @@ html>body{padding:0}</style>
     return [left, top, width, height].map(Math.round).join(' ');
   }
 
-  var DRAWING_REVISION = 'REV.31';
+  var DRAWING_REVISION = 'REV.32';
   // 뷰별 축 선택. PART_AXIS 는 part.at/part.size 의 [X, 상하, 깊이] 기준,
   // ENVELOPE_AXIS 는 station.envelope 의 [L, W, H] 기준 — 두 배열의 축 순서가 다르다.
   var PART_AXIS = { plan: [0, 2], front: [0, 1], side: [2, 1] };
@@ -3705,7 +3705,7 @@ html>body{padding:0}</style>
     ['VS-101A/B-FUSED 고정면 스캔선', '레이저 투영선이라 물체가 아니다']
   ];
   var KINEMATICS = {panelMm: [2500, 1400], flipAxisMm: 3430, transferMm: 2290, ringBoreMm: 1620, ringBottomMm: 2440, underRingMm: 112, overCarriageMm: 116, boreClearMm: 109, cageAxialMm: 40, jawStrokeMm: 187.5, jawOpenClearMm: 70, afrClampKn: 12.0, afrPortalZMm: 1450, afrPortalAnchors: 16};
-  var CRANE = {capacityT: 5.0, ceilingMm: 12000, railTopMm: 10750, hookHeightMm: 9700, spanMm: 8800, runwayMm: 60800, hookReachMm: 3800, governing: "BFC 반전 카세트 (Bay 1식)", governingKg: 2500, hookLoadKg: 2650, maxLiftKg: 4850, capacityMargin: 1.89, tallest: "VG-101 독립 방진 비전보 조립체", requiredHookMm: 8370, hookMarginMm: 1330, installOrder: ["grm", "buffer", "post", "afr", "gate", "jbr", "robot", "afu"], entryZone: "afu", haulWidthMm: 7100, widestModuleMm: 2900, entryOpeningMinMm: [2900, 5150], installedKw: 6.7, demandKw: 1.34};
+  var CRANE = {capacityT: 5.0, ceilingMm: 12000, railTopMm: 10750, hookHeightMm: 9700, spanMm: 8800, runwayMm: 60800, hookReachMm: 3800, governing: "BFC 반전 카세트 (Bay 1식)", governingKg: 2500, hookLoadKg: 2650, maxLiftKg: 4850, capacityMargin: 1.89, tallest: "VG-101 독립 방진 비전보 조립체", requiredHookMm: 8370, hookMarginMm: 1330, installOrder: ["grm", "buffer", "post", "afr", "gate", "jbr", "robot", "afu"], entryZone: "afu", haulWidthMm: 7100, widestModuleMm: 2900, entryOpeningMinMm: [2900, 5150], entryOpeningMm: [6000, 5000], entryWidthMarginMm: 3100, uprightHeadroomMm: 500, installedKw: 6.7, demandKw: 1.34};
   var MOUNT_SUMMARY = { stations: 8, anchors: 190, m16: 94, m20: 88, m24: 8, members: 18, brackets: 51, series: 53, withdrawn: 2, floor: 14, frame: 2, gantry: 2, exempt: 4 };
   var SL_CHAIN_ROWS = INCOMER.tapsSite ? (INCOMER.tapLowVoltage ? 4 : 5) : (INCOMER.highVoltage ? 6 : 4);
   // 분기 주회로 길이는 부지 실측 대기다. 모를 때 0.0 m 로 찍으면 도면이 거짓말을 한다.
@@ -4745,10 +4745,14 @@ html>body{padding:0}</style>
        + ') — 통로 유효 ' + n(AISLE_CLEAR_MM) + ' 로는 못 지난다'],
      ['설치 순서', CRANE.installOrder.join(' → ') + '  (공정 흐름의 반대 · 출입구는 투입방향 '
        + CRANE.entryZone + ' 측 — 발주처 확인)'],
-     // 개구 치수를 정하는 값이 아니라 하한이다. 무엇이 통짜로 오는지는
-     // 분할 반입 계획에 달렸고 그것은 벤더 몫이라 여기서 정하지 않는다.
-     ['반입 개구 (하한)', '통짜 반입 가정 시 폭 ' + n(CRANE.entryOpeningMinMm[0]) + ' × 높이 '
-       + n(CRANE.entryOpeningMinMm[1]) + ' — 분할 반입 계획에 따라 줄어든다']];
+     // 개구는 발주처 확인값이다. 폭은 넉넉하고, 높이가 **분할 반입 계획**을
+     // 정한다 — 세운 채 넣을 때 운반대에 남는 높이가 반입 방식을 가른다.
+     ['반입 개구 (확인)', n(CRANE.entryOpeningMm[0]) + ' × ' + n(CRANE.entryOpeningMm[1])
+       + ' — 폭 여유 ' + n(CRANE.entryWidthMarginMm) + ' (최대 모듈 ' + n(CRANE.widestModuleMm) + ')'],
+     ['세운 채 반입', CRANE.governing + ' 4,500 → 운반대에 ' + n(CRANE.uprightHeadroomMm)
+       + ' 만 남는다 (저상 대차 전용)'],
+     ['안에서 조립', CRANE.tallest + ' ' + n(CRANE.entryOpeningMinMm[1])
+       + ' 는 개구보다 높다 — 보·기둥으로 나뉘어 들어와 안에서 선다']];
     sumRows5.forEach(function (r, i) {
       var y = cy + 30 + i * 24;
       out.push(text(mx + 14, y, r[0], 'pv-fab-small'));

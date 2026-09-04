@@ -162,6 +162,10 @@ def widest_module_mm() -> int:
     return layout.STATIONS[governing_lift().station].envelope[1]
 
 
+#: 반입 개구 (폭, 높이 mm). **발주처 확인 — 건축이 이렇게 설계돼 있다.**
+ENTRY_OPENING_MM = (6_000, 5_000)
+
+
 def entry_opening_min_mm() -> tuple[int, int]:
     """반입 개구가 최소한 통과시켜야 하는 (폭, 높이) mm.
 
@@ -171,6 +175,41 @@ def entry_opening_min_mm() -> tuple[int, int]:
     내보내고, 운반대 높이·리깅 여유는 시공사가 얹는다.
     """
     return widest_module_mm(), max(lift.height_mm for lift in LIFTS)
+
+
+def upright_bed_headroom_mm(lift: Lift | None = None,
+                            opening_h_mm: int | None = None) -> int:
+    """이 품목을 **세운 채** 넣을 때 운반대·받침에 남는 높이 (mm).
+
+    개구 높이에서 품목 높이를 뺀 값이다. 대차든 받침목이든 이 안에
+    들어가야 하므로, 이 값이 반입 방식을 정한다 — 500 이면 저상 대차이고
+    일반 트레일러 베드(1,000 이상)는 못 쓴다는 뜻이다.
+
+    음수면 세운 채로는 못 들어간다 — 눕히거나 분할해야 한다.
+    """
+    item = governing_lift() if lift is None else lift
+    height = ENTRY_OPENING_MM[1] if opening_h_mm is None else opening_h_mm
+    return height - item.height_mm
+
+
+def upright_lifts(bed_height_mm: int) -> tuple[Lift, ...]:
+    """주어진 운반대 높이로 **세운 채** 개구를 지날 수 있는 품목."""
+    return tuple(lift for lift in LIFTS
+                 if upright_bed_headroom_mm(lift) >= bed_height_mm)
+
+
+def entry_width_margin_mm() -> int:
+    """개구 폭에서 최대 모듈을 뺀 여유 (mm). 좌우로 나누면 절반씩이다."""
+    return ENTRY_OPENING_MM[0] - widest_module_mm()
+
+
+def entry_opening_covers_plan() -> bool:
+    """개구가 **폭**으로는 모든 품목을 받는가.
+
+    높이는 분할 반입 계획에 달렸지만(눕히면 되는 것이 많다), 폭은 눕혀도
+    안 줄어드는 치수가 있어 개구가 직접 받아야 한다.
+    """
+    return entry_width_margin_mm() >= 0
 
 
 def aisle_can_haul(aisle_clear_mm: int) -> bool:
@@ -369,6 +408,9 @@ def summary() -> dict[str, object]:
         "haulWidthMm": haul_width_mm(),
         "widestModuleMm": widest_module_mm(),
         "entryOpeningMinMm": list(entry_opening_min_mm()),
+        "entryOpeningMm": list(ENTRY_OPENING_MM),
+        "entryWidthMarginMm": entry_width_margin_mm(),
+        "uprightHeadroomMm": upright_bed_headroom_mm(),
         "installedKw": installed_kw(),
         "demandKw": demand_kw(),
     }

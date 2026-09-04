@@ -3050,8 +3050,23 @@ class TestCrane(unittest.TestCase):
         self.assertEqual(crane.entry_opening_min_mm()[0], crane.widest_module_mm())
         self.assertEqual(crane.entry_opening_min_mm()[1],
                          max(lift.height_mm for lift in crane.LIFTS))
-        self.assertIn("통짜 반입 가정 시 폭", self.html)
-        self.assertIn("분할 반입 계획에 따라 줄어든다", self.html)
+        # 개구 실치수는 발주처 확인값이다. 폭은 넉넉하고 높이가 반입 방식을
+        # 가른다 — 그 판정을 값으로 못 박는다.
+        self.assertEqual(crane.ENTRY_OPENING_MM, (6_000, 5_000))
+        self.assertEqual(crane.entry_width_margin_mm(), 3_100)
+        self.assertTrue(crane.entry_opening_covers_plan(),
+                        "폭은 눕혀도 안 줄어드는 치수가 있어 개구가 직접 받아야 한다")
+        # 최중량은 세운 채 들어오지만 운반대에 500 밖에 안 남는다 —
+        # 저상 대차 전용이고 일반 트레일러 베드(1,000+)로는 못 들어온다
+        self.assertEqual(crane.upright_bed_headroom_mm(), 500)
+        self.assertIn(crane.governing_lift(), crane.upright_lifts(400))
+        self.assertNotIn(crane.governing_lift(), crane.upright_lifts(600))
+        # 가장 높은 VG-101 은 개구보다 높다 — 조립체 높이지 반입 단위가 아니다
+        tall = crane.tallest_lift()
+        self.assertLess(crane.upright_bed_headroom_mm(tall), 0)
+        self.assertEqual(len(crane.upright_lifts(0)), len(crane.LIFTS) - 1)
+        self.assertIn("세운 채 반입", self.html)
+        self.assertIn("안에서 조립", self.html)
         # 종전의 틀린 문장이 되살아나면 실패한다
         source = (pathlib.Path(__file__).resolve().parents[1]
                   / "src" / "pv_preprocess" / "crane.py").read_text(encoding="utf-8")
