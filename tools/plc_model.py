@@ -33,7 +33,7 @@ FDI, FDO, COMM = "F-DI", "F-DO", "COMM"
 # 선언된 I/O 예산 (콘솔 PLC 도면 · 사양서 7.1)
 # 선언된 I/O 예산. 사양서 7.1 이 "예비 20% 이상"을 요구하므로 실사용에서
 # 역산해 카드 배수로 올린 값이다 — 이 모델을 돌려 정한 수량이다.
-BUDGET = {DI: 144, DO: 80, AI: 24, AO: 8, TC: 40, FDI: 32, FDO: 8}
+BUDGET = {DI: 160, DO: 80, AI: 40, AO: 16, TC: 48, FDI: 32, FDO: 8}
 SPARE_MIN = 0.20                       # 사양서 7.1 이 요구하는 최소 예비율
 
 
@@ -159,6 +159,49 @@ LEAVES = [
     Leaf("VAC_DUMPED",         AI, 1, "진공압센서×6"),
     Leaf("ST_TOWER_CMD",       FDO, 0, "적층 신호등·부저 ST-101/102",
          "HORN_3S·BEACON_AMBER 는 입력이 아니라 F-DO 출력이다"),
+    # ── 계량·물질수지 ───────────────────────────────────────────────────
+    # 회수율은 재활용사가 정산받는 지표인데, 무게를 재지 않으면 주장할 근거가
+    # 없다. 투입 1점과 반출 3계통을 모두 재야 물질수지가 닫힌다.
+    Leaf("LOT_ID_VALID",       COMM, 0, "바코드 리더"),
+    Leaf("PANEL_MASS_IN",      AI, 1, "WI-101 투입 계량 컨베이어", "로드셀 4점 합산"),
+    Leaf("WI_TARE_OK",         DI, 1, "WI-101 투입 계량 컨베이어"),
+    Leaf("ROLL_MASS",          AI, 1, "WO-301 권취롤 계량 새들"),
+    Leaf("CELL_MASS_RATE",     AI, 1, "WO-302 셀 벨트 계량기"),
+    Leaf("BELT_SPEED_OK",      COMM, 0, "WO-302 셀 벨트 계량기"),
+    Leaf("GLASS_MASS",         AI, 2, "WO-303 유리 캐리지 계량대"),
+    Leaf("RESIDUAL_EVA",       COMM, 0, "RE-101 잔류 EVA 분광계"),
+    Leaf("LOT_COUNT_REACHED",  COMM, 0, "이력 서버 HS-101"),
+    # ── 공정 지능 ───────────────────────────────────────────────────────
+    # 고정 레시피 한 벌로 모든 패널을 처리하면 쉬운 패널에서 시간을 버리고
+    # 어려운 패널에서 유리를 깬다. 이미 달려 있는 로드셀을 닫힌 루프로 묶는다.
+    Leaf("PEEL_FORCE",         AI, 0, "로드셀×4", "KNIFE_OVERLOAD 와 같은 점을 읽는다"),
+    Leaf("LOAD_CELL_HEALTH_OK", COMM, 0, "로드셀×4"),
+    Leaf("RECIPE_VALIDATED",   COMM, 0, "PLC-101반"),
+    Leaf("CUT_LENGTH_TOTAL",   COMM, 0, "PLC-101반", "칼날별 누적 절단 연장"),
+    Leaf("QI_DONE",            COMM, 0, "QI 상부 RGB 카메라"),
+    Leaf("TRACE_DB_OK",        COMM, 0, "이력 서버 HS-101"),
+    Leaf("OPC_UA_LINK_OK",     COMM, 0, "이력 서버 HS-101"),
+    Leaf("STOP_REASON_CODED",  COMM, 0, "PLC-101반", "ISO 22400 정지 사유 분류"),
+    # ── 무인 연속운전 ───────────────────────────────────────────────────
+    Leaf("PL_IN_STACK_PRESENT", DI, 2, "PL-101 자동 디스태커"),
+    Leaf("PL_OUT_SPACE_OK",    DI, 2, "PL-201 자동 스태커"),
+    Leaf("KC_MAGAZINE_READY",  DI, 4, "KC-101 칼날 카세트 매거진×2"),
+    Leaf("KC_ARM_HOME",        DI, 2, "KC-101 칼날 카세트 매거진×2"),
+    Leaf("CARRIER_PARKED",     DI, 1, "캐리어 파킹 위치센서"),
+    Leaf("AGV_DOCKED",         COMM, 0, "AD-101 AGV 도킹 스테이션"),
+    Leaf("THERMAL_CAM_OK",     COMM, 0, "무인 감시 열화상 카메라×3"),
+    Leaf("REMOTE_ACK",         COMM, 0, "RC-101 원격 감시 콘솔"),
+    Leaf("BIN_LEVEL_OK",       AI, 3, "반출함 레벨센서×3"),
+    # ── 환경·인증 ───────────────────────────────────────────────────────
+    # 200 kW 배기열을 그대로 버리고 있었다. RTO 로 태우고 그 열로 급기를
+    # 예열하면 같은 배기 처리가 에너지 회수가 된다.
+    Leaf("RTO_TEMP_OK",        TC, 3, "RTO-101 축열식 열산화로"),
+    Leaf("RTO_VALVE_OK",       DI, 4, "RTO-101 축열식 열산화로"),
+    Leaf("HX_OUTLET_TEMP",     TC, 2, "HX-101 배기–급기 열교환기"),
+    Leaf("CEMS_OK",            COMM, 0, "CEMS-101 연속배출감시"),
+    Leaf("TOC_HIGH",           AI, 1, "CEMS-101 연속배출감시"),
+    Leaf("FLAME_DETECT",       FDI, 2, "가열실 불꽃감지기×2"),
+    Leaf("N2_PRESSURE_OK",     DI, 1, "NP-101 질소 퍼지 유닛"),
 ]
 
 # ── 계산 신호 ───────────────────────────────────────────────────────────
@@ -174,7 +217,8 @@ DERIVED = [
             ["FULL_LOAD_ACK", "ALL_INNER_DOORS_CLOSED", "ALL_OUTER_DOORS_CLOSED", "DP_OK"]),
     Derived("EXHAUST_OK", ["EXHAUST_RUN"]),
     Derived("EXHAUST_RUN", ["FAN_A_OK", "FAN_B_OK", "DP_OK", "CARBON_DP_OK", "FIRE_DAMPER_OPEN"]),
-    Derived("IR_ENABLE", ["SEALED_FULL_LOAD_ACK", "EXHAUST_OK", "FIRE_OK", "PM_METER_OK"]),
+    Derived("IR_ENABLE", ["SEALED_FULL_LOAD_ACK", "EXHAUST_OK", "FIRE_OK",
+                          "PM_METER_OK", "EMISSION_OK"]),
     Derived("IR_HARD_TRIP", ["INDEPENDENT_OVERTEMP", "SMOKE", "CO_HIGH", "EXHAUST_LOSS", "SSR_STUCK"]),
     # 에어록은 입측 AL-101 · 출측 AL-102 두 곳이고 각각 내문·외문을 동시에
     # 열 수 없다. 문 위치센서 8점은 2 에어록 × 2 문 × 2 채널이다.
@@ -228,6 +272,46 @@ DERIVED = [
     Derived("MAINT_PERMIT", ["ZERO_ENERGY_ACK", "LOTO_APPLIED", "TEMP_SAFE", "VAC_DUMPED"]),
     Derived("START_PERMIT", ["FULL_LOAD_ACK", "ALL_LOCKED", "ALL_TEMP_OK",
                              "ALL_DOORS_CLOSED", "EXHAUST_OK"]),
+    # ── 계량·물질수지 ───────────────────────────────────────────────────
+    Derived("SCALES_HEALTHY", ["PANEL_MASS_IN", "ROLL_MASS",
+                               "CELL_MASS_RATE", "GLASS_MASS", "BELT_SPEED_OK"]),
+    Derived("LOT_OPEN", ["LOT_ID_VALID", "WI_TARE_OK", "SCALES_HEALTHY"]),
+    Derived("STREAMS_DRAINED", ["BACKSHEET_BIN_ACK", "SHREDDER_FEED_ACK",
+                                "GLASS_CARRIAGE_ACK"]),
+    # 투입 질량과 3계통 반출 질량의 차가 허용 오차 안에 들어야 로트가 닫힌다.
+    Derived("MASS_BALANCE_OK", ["PANEL_MASS_IN", "ROLL_MASS",
+                                "CELL_MASS_RATE", "GLASS_MASS"]),
+    Derived("RESIDUAL_EVA_OK", ["RESIDUAL_EVA"]),
+    Derived("LOT_CLOSE", ["LOT_COUNT_REACHED", "STREAMS_DRAINED", "MASS_BALANCE_OK"]),
+    Derived("RECOVERY_CERT", ["LOT_CLOSE", "RESIDUAL_EVA_OK", "TRACE_WRITE_OK"]),
+    # ── 공정 지능 ───────────────────────────────────────────────────────
+    Derived("ADAPT_ENABLE", ["PEEL_PERMIT", "LOAD_CELL_HEALTH_OK",
+                             "AE_OK", "RECIPE_VALIDATED"]),
+    Derived("SPEED_SETPOINT", ["ADAPT_ENABLE", "PEEL_FORCE", "HKB_LOAD_OK"]),
+    Derived("KNIFE_WEAR_WARN", ["PEEL_FORCE", "CUT_LENGTH_TOTAL", "HKS_TEMP_OK"]),
+    Derived("KNIFE_CHANGE_DUE", ["KNIFE_WEAR_WARN", "KNIVES_CLEAR"]),
+    Derived("TRACE_WRITE_OK", ["TRACE_DB_OK", "LOT_ID_VALID"]),
+    # 기록이 남지 않은 패널은 내보내지 않는다 — 이력은 사후에 못 만든다.
+    Derived("PANEL_RELEASE", ["QI_DONE", "TRACE_WRITE_OK"]),
+    Derived("OEE_VALID", ["STOP_REASON_CODED", "TRACE_DB_OK",
+                          "PM_METER_OK", "OPC_UA_LINK_OK"]),
+    # ── 무인 연속운전 ───────────────────────────────────────────────────
+    Derived("AUTO_FEED", ["PL_IN_STACK_PRESENT", "TRACK_CLEAR", "LOT_OPEN"]),
+    Derived("AUTO_STACK", ["PL_OUT_SPACE_OK", "GLASS_CARRIAGE_ACK", "DOCK_LOCKED"]),
+    # 칼날 자동교환은 정비허가가 아니라 파킹 상태에서 돈다. LOTO 를 요구하면
+    # 무인 운전 중에는 영원히 성립하지 않는다.
+    Derived("KNIFE_AUTOCHANGE", ["KNIFE_CHANGE_DUE", "KC_MAGAZINE_READY",
+                                 "KC_ARM_HOME", "KNIVES_CLEAR", "CARRIER_PARKED"]),
+    Derived("ROLL_HANDOFF", ["BACKSHEET_BIN_ACK", "AGV_DOCKED", "SHUTTER_CLOSED"]),
+    Derived("UNMANNED_PERMIT", ["AUTO_FEED", "AUTO_STACK", "KC_MAGAZINE_READY",
+                                "BIN_LEVEL_OK", "THERMAL_CAM_OK", "FIRE_OK",
+                                "REMOTE_ACK", "OEE_VALID"]),
+    # ── 환경·인증 ───────────────────────────────────────────────────────
+    Derived("RTO_READY", ["RTO_TEMP_OK", "RTO_VALVE_OK", "EXHAUST_RUN"]),
+    Derived("HEAT_RECOVERY", ["RTO_READY", "HX_OUTLET_TEMP", "DP_OK"]),
+    Derived("EMISSION_OK", ["CEMS_OK", "TOC_HIGH", "RTO_READY"]),
+    Derived("CHAMBER_FIRE_TRIP", ["FLAME_DETECT", "SMOKE", "CO_HIGH"]),
+    Derived("N2_PURGE", ["CHAMBER_FIRE_TRIP", "N2_PRESSURE_OK"]),
 ]
 
 # ── 구동부 ──────────────────────────────────────────────────────────────
@@ -262,6 +346,18 @@ DRIVES = [
     Drive("VV-101", "6존 진공밸브",         DO, 6, "덤프밸브", "체크밸브×6"),
     Drive("SSR-B",  "IR 뱅크 SSR",          AO, 6, "주접촉기", "SSR 분기모듈×60"),
     Drive("ST-101", "적층 신호등·부저",     FDO, 4, "F-DO 직결", "적층 신호등·부저 ST-101/102"),
+    # 무인 연속운전
+    Drive("SV-701", "PL-101 디스태커 승강",  COMM, 0, "STO 2CH", "PL-101 자동 디스태커"),
+    Drive("SV-702", "PL-201 스태커 승강",    COMM, 0, "STO 2CH", "PL-201 자동 스태커"),
+    Drive("SV-801", "KC-101 카세트 교환암",  COMM, 0, "STO 2CH", "KC-101 칼날 카세트 매거진×2"),
+    Drive("MT-1001", "AGV 도킹 로크",        DO, 2, "접촉기",  "AD-101 AGV 도킹 스테이션"),
+    # 환경·인증
+    Drive("MT-905", "RTO 급기팬",            DO, 2, "접촉기",  "RTO-101 축열식 열산화로"),
+    Drive("CY-701", "RTO 절환밸브",          DO, 4, "덤프밸브", "RTO-101 축열식 열산화로"),
+    Drive("BR-101", "RTO 보조버너",          AO, 1, "주차단밸브", "RTO-101 축열식 열산화로"),
+    Drive("CY-702", "질소 퍼지 밸브",        FDO, 2, "F-DO 직결", "NP-101 질소 퍼지 유닛"),
+    # 계량
+    Drive("MT-1101", "WI-101 계량 컨베이어", DO, 2, "접촉기",  "WI-101 투입 계량 컨베이어"),
 ]
 
 # ── 실행 ────────────────────────────────────────────────────────────────
