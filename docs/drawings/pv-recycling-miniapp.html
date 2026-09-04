@@ -1100,6 +1100,17 @@ html>body{padding:0}</style>
   #hsgTrueThreeDeckScreenRevO .hsg3d-flow-dot.fines75 { background: var(--viz-series-1); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-legend { display: flex; flex-wrap: wrap; gap: 7px 13px; padding-top: 9px; border-top: 1px solid var(--border); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-legend-note { display: block; margin-top: 6px; color: var(--muted-foreground); text-wrap: pretty; }
+  /* 예지보전 패널 — 등급은 행 단위 색으로, 소모율은 짧은 막대로 */
+  #hsgTrueThreeDeckScreenRevO .hsg3d-maint-summary { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 6px 0 8px; }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-maint-summary b { font-weight: 600; }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-maint-bar { display: inline-block; width: 64px; height: 7px; vertical-align: middle; border-radius: 4px; background: color-mix(in srgb, var(--foreground) 12%, transparent); overflow: hidden; margin-right: 4px; }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-maint-bar i { display: block; height: 100%; background: var(--muted-foreground); }
+  #hsgTrueThreeDeckScreenRevO tr.hsg3d-maint-B td b { color: var(--yellow); }
+  #hsgTrueThreeDeckScreenRevO tr.hsg3d-maint-C td b { color: var(--orange); }
+  #hsgTrueThreeDeckScreenRevO tr.hsg3d-maint-C .hsg3d-maint-bar i { background: var(--orange); }
+  #hsgTrueThreeDeckScreenRevO tr.hsg3d-maint-D td b { color: var(--red); }
+  #hsgTrueThreeDeckScreenRevO tr.hsg3d-maint-D .hsg3d-maint-bar i { background: var(--red); }
+  #hsgTrueThreeDeckScreenRevO [data-maint-sim-hours] { width: 6.5em; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-legend span { display: inline-flex; align-items: center; gap: 5px; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch { width: 0.72rem; height: 0.72rem; border-radius: 50%; flex: 0 0 auto; background: var(--muted-foreground); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.dry { background: var(--plant-dry-transfer); }
@@ -1246,6 +1257,7 @@ html>body{padding:0}</style>
     <button class="btn btn-primary" type="button" data-hsg-mode="simulation" aria-pressed="true">3D 분쇄운전</button>
     <button class="btn" type="button" data-hsg-mode="flow" aria-pressed="false">유동 관찰</button>
     <button class="btn" type="button" data-hsg-mode="cutaway" aria-pressed="false">컷어웨이</button>
+    <button class="btn" type="button" data-hsg-mode="maintenance" aria-pressed="false">정비 접근</button>
     <button class="btn" type="button" data-hsg-mode="exploded" aria-pressed="false">전체 플랜트 3D 분해</button>
     <button class="btn" type="button" data-hsg-mode="particles" aria-pressed="false">산출물 검사</button>
   </div>
@@ -1434,6 +1446,7 @@ html>body{padding:0}</style>
         <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-mode=&quot;simulation&quot;]">분쇄운전</button>
         <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-mode=&quot;flow&quot;]">유동</button>
         <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-mode=&quot;cutaway&quot;]">컷어웨이</button>
+        <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-mode=&quot;maintenance&quot;]">정비</button>
         <button class="btn btn-sm" type="button" data-stage-proxy="[data-hsg-mode=&quot;exploded&quot;]">분해</button>
         <div class="hsg3d-stage-sliders">
           <label>분해 <input type="range" min="0" max="100" step="1" value="0" data-stage-range="[data-hsg-explode]" aria-label="분해 거리"><output data-stage-range-out="[data-hsg-explode]">0%</output></label>
@@ -1796,6 +1809,53 @@ html>body{padding:0}</style>
 
     <p class="text-small text-muted">한계: 야금수지(스트림별 Ag·유리·Si 조성)가 아직 없어 추정 회수율은
       부유성 B 군 기준의 상대값입니다. 절대 품위(g/t)와 정산은 야금수지가 들어와야 성립합니다.</p>
+  </details>
+
+  <details class="card hsg3d-validation" id="plant-panel-predictive" data-panel-id="predictive" data-panel-category="통합 운전">
+    <summary>예지보전 — 교체식 마모부품 · 상태감시 · 잔여수명</summary>
+
+    <p class="text-small">마모부품은 볼트를 푸는 것이 아니라 <strong>카세트를 뽑는 것</strong>이다. 이 표의 부품은
+      전부 3D 에서 교체 모듈로 표식돼 있고(「정비 접근」 보기에서 황색으로 빛난다), 교체 절차·공구·목표
+      MTTR 이 한 줄로 적혀 있다. 설계수명은 시뮬레이션 누적량(투입 kg · 로터 통과 kg · 운전시간)에서
+      그대로 읽히고, 센서값은 부하와 마모율에서 유도된다 — 난수는 없다.</p>
+
+    <div class="hsg3d-maint-summary text-small">
+      <span>자산 건강 <b data-maint-health>—</b></span>
+      <span>조치 대기 <b data-maint-due>—</b></span>
+      <span>대기 항목 MTTR 합계 <b data-maint-mttr>—</b></span>
+      <span>기록 운전 <b data-maint-hours>—</b></span>
+    </div>
+    <div class="viz-controls" aria-label="예지보전 계획 도구">
+      <label class="text-small">모의 누적운전
+        <input type="number" min="0" max="60000" step="100" value="0" data-maint-sim-hours aria-label="모의 누적운전 시간"> h</label>
+      <button class="btn btn-sm" type="button" data-maint-view>3D 정비 접근 보기</button>
+      <span class="text-small text-muted">60분 시뮬레이션만으로는 수천 시간짜리 수명이 움직여 보이지 않는다.
+        설계 부하로 환산한 운전시간을 더해 「N 시간 시점에 무엇을 갈아야 하나」를 본다.</span>
+    </div>
+
+    <strong>교체식 마모부품 · 잔여수명</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="교체식 마모부품 잔여수명">
+      <thead><tr><th>장비</th><th>부품 · 교체 모듈</th><th class="text-end">MTTR 분</th><th>누적 / 설계수명</th><th>소모</th><th class="text-end">RUL</th><th>다음 조치</th><th>등급</th></tr></thead>
+      <tbody data-maint-rows><tr><td colspan="8">—</td></tr></tbody>
+    </table></div>
+
+    <strong>상태감시 센서 (실시간)</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="상태감시 센서">
+      <thead><tr><th>태그</th><th>대상</th><th class="text-end">값</th><th class="text-end">경보 / 트립</th><th>존</th></tr></thead>
+      <tbody data-maint-sensors><tr><td colspan="5">—</td></tr></tbody>
+    </table></div>
+    <p class="text-small text-muted">진동 존은 ISO 10816-3 그룹 2(A ≤2.8 · B ≤4.5 · C ≤7.1 mm/s). 잔여수명은 사용량 기반(설계수명까지)과
+      상태 기반(센서값이 경보에 닿을 때까지) 중 짧은 쪽이다. 신뢰도는 기록된 운전시간과 센서 유무에서 온다.</p>
+
+    <strong>현장 예비품 키트</strong>
+    <p class="text-small" data-maint-spares>—</p>
+
+    <strong>잠금·표지(LOTO)</strong>
+    <p class="text-small" data-maint-loto>—</p>
+
+    <p class="text-small dd-warning"><strong>경계 조항 — 예지보전은 권고다.</strong> 등급·잔여수명은 정비 계획의 입력이지
+      운전 허가가 아니다. 트립(존 D)은 하드와이어 진동·온도 트립이 따로 처리하고, 교체 작업은 LOTO 격리·검증
+      뒤에만 시작한다. VFD STO 는 기능안전 정지이지 전기적 격리가 아니다.</p>
   </details>
 
   <details class="card hsg3d-layout-panel" id="plant-panel-layout" data-panel-id="layout" data-panel-category="상세설계"><summary>6개 장비군 · 2D/3D 상세 제작·설치 설계</summary></details>
@@ -2446,9 +2506,11 @@ html>body{padding:0}</style>
   const buttons = [...root.querySelectorAll("[data-category-open]")];
   const panelMap = new Map([...root.querySelectorAll("details[data-panel-id]")].map((panel) => [panel.dataset.panelId, panel]));
   const categories = {
-    operation: { label: "운전·제어", title: "통합운전·PLC", panels: ["master-plc", "dry-plc", "wet-plc"] },
+    // ai · metallurgy · screen-sizing 은 뒤에 추가된 패널인데 어느 목록에도 없어 storage 에
+    // 갇힌 채 열 방법이 없었다. 예지보전 패널을 넣으면서 같이 등록한다.
+    operation: { label: "운전·제어", title: "통합운전·PLC", panels: ["master-plc", "dry-plc", "wet-plc", "ai", "predictive"] },
     equipment: { label: "장비·공정", title: "영상·장비", panels: ["video-controls", "equipment"] },
-    process: { label: "장비·공정", title: "공정값·해석", panels: ["process-live", "analysis", "noise", "cooling", "piping", "vibration"] },
+    process: { label: "장비·공정", title: "공정값·해석", panels: ["process-live", "analysis", "metallurgy", "screen-sizing", "noise", "cooling", "piping", "vibration"] },
     layout: { label: "상세설계", title: "6개 장비 DD-R4 2D·3D 설치·전력·배치설계", panels: ["layout"] },
     maintenance: { label: "제작·설치", title: "BOM·체결구·설치 인터페이스", panels: ["maintenance"] },
     validation: { label: "검증·근거", title: "검수·데이터", panels: ["validation", "data-source"] }
@@ -15647,7 +15709,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     plc: { title: "00D · PLC-101 중앙제어반＋RIO-301", spec: "800W×400D×1,800H · PLC/HMI/VFD 통신 · 공정 순차제어 · 슈레더 현장 RIO", primaryPart: "P28", focus: [-6.30, 1.05, -1.36, 3.8] },
     feeder: { title: "01 · FD-101 역비산 정량공급기", spec: "300 kg/h · Dmax 10 mm · 2중 고무플랩 · DN80 음압흡입", primaryPart: "P03", focus: [-0.42, 1.72, 0, 3.7] },
     grinder: { title: "02 · HSG-101 고속분쇄기", spec: "400 kg/h · 로터 Ø450 × 350 · 1,500 rpm", primaryPart: "P02", focus: [-0.42, 1.05, 0, 3.8] },
-    drive: { title: "03 · M-101 구동장치", spec: "37 kW IE4 · VFD · 풀리 Ø200/196 · 4-SPC", primaryPart: "P08", focus: [0.52, 0.78, -0.28, 3.8] },
+    drive: { title: "03 · M-101 구동장치", spec: "37 kW IE5 PM · IP66 · VFD · 풀리 Ø200/196 · 4-SPC", primaryPart: "P08", focus: [0.52, 0.78, -0.28, 3.8] },
     transfer: { title: "04 · CV-101 정량 배출스크류", spec: "400 kg/h · Ø160/P140 · 55 rpm · 1.1 kW · 흡인배관 정량공급", primaryPart: "P14", focus: [0.20, 0.38, 0.12, 3.8] },
     pneumatic: { title: "05 · PC-101 음압 이송계통", spec: "보어 137 알루미나 라이닝 · 900 m³/h · 17 m/s · CY-101＋RV-101＋BF-101＋5.5 kW ID 팬", primaryPart: "P15", focus: [1.10, 1.52, 0.20, 5.4] },
     classifier: { title: "06 · SC-500 2단 경사스크린", spec: "W800 × L1400 · 경사 12° · 25 Hz · 3.0 mm p-p · 1단 2 mm → BIN-102 폐기 · 2단 500 µm → CV-102 환류", primaryPart: "P12", focus: [1.48, 0.92, 0, 3.60] },
@@ -15660,34 +15722,229 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
   const partData = {
     P01: { name: "공통 베이스 스키드", role: "분쇄기·모터·분급기·음압계통 하중 지지와 방진마운트 체결", spec: "SS400 · 5,000 × 1,600 mm · 방진마운트 8점", shape: "frame" },
-    P02: { name: "분쇄챔버·전면도어", role: "고속 충격 분쇄실과 정비용 볼트 체결 도어", spec: "SS400 12t · 내마모 라이너 · 챔버 Ø960", shape: "housing" },
+    P02: { name: "분쇄챔버·전면도어", role: "고속 충격 분쇄실과 스윙볼트 래치 도어 — 토크렌치 하나로 3분 개방", spec: "SS400 12t · Hardox 500 교체형 라이너 8(외부 볼트·WL-101 마모 도전루프) · 챔버 Ø960 · 스윙볼트 래치 8점 · 가스 스트럿 2본", shape: "housing" },
     P03: { name: "밀폐 호퍼·역비산 피더", role: "Dmax 10 mm PV 복합입자를 공급하고 2중 고무플랩과 국소 음압으로 역비산을 억제", spec: "0.15 m³ · 상부 700 × 520 · 2중 플랩 · DN80 집진구", shape: "hopper" },
-    P04: { name: "로터·주축", role: "회전날 지지와 모터 토크 전달", spec: "Ø450 × 350 · SCM440 축 Ø80 · 1,500 rpm", shape: "rotor" },
-    P05: { name: "회전날 세트", role: "불규칙 파쇄물의 충격·전단 파쇄", spec: "SKD11 · HRC 58–60 · 12개", shape: "knife" },
-    P06: { name: "고정날·내부 스크린", role: "파쇄 간극 형성과 1차 체류시간 제어", spec: "고정날 4개 · 간극 0.8–1.2 · 내부망 1.0 mm", shape: "screen" },
-    P07: { name: "베어링·시트", role: "고속 로터축의 양단 지지와 진동 전달 억제", spec: "22216 E/C3 ×2 · 축경 Ø80 · 온도센서 PT100", shape: "bearing" },
-    P08: { name: "주구동 모터", role: "로터와 동기화된 V-벨트 구동", spec: "37 kW IE4 · 4P · 45 kW HD VFD", shape: "motor" },
-    P09: { name: "풀리·4-SPC V벨트", role: "모터 회전을 로터축으로 전달", spec: "모터 Ø200 · 종동 Ø196 · 4-SPC", shape: "drive" },
-    P10: { name: "벨트 메쉬 안전커버", role: "회전 구동부 접촉 방지와 육안 점검", spec: "SS400 1.6t · 탈착식 · 인터록", shape: "guard" },
+    P04: { name: "로터·주축", role: "회전날 지지와 모터 토크 전달 — 도어 개방 후 레일아웃 카트로 앞(+z) 인출, 예비 로터와 스왑", spec: "Ø450 × 350 · SCM440 축 Ø80 · 1,500 rpm · 레일아웃 카트 · 예비 로터 1기", shape: "rotor" },
+    P05: { name: "회전날 카세트 세트", role: "불규칙 파쇄물의 충격·전단 파쇄 — 날 3매가 캐리어 바 하나에 조립된 4분할 카세트", spec: "초경(WC-Co) 팁 양날 반전 · 12매 · 4분할 카세트 중량 매칭 · 설계수명 200 t/날", shape: "knife" },
+    P06: { name: "고정날·내부 스크린 카트리지", role: "파쇄 간극 형성과 1차 체류시간 제어 — 스크린은 가이드레일 위 슬라이드 카트리지", spec: "고정날 4개(외부 볼트·양날) · 간극 0.8–1.2 · 내부 스크린 세그먼트 4 · 1.0 mm 슬롯 · 손잡이 인출", shape: "screen" },
+    P07: { name: "베어링·시트", role: "고속 로터축의 양단 지지와 진동 전달 억제 — 상태감시 노드가 여기 앉는다", spec: "22216 E/C3 ×2 · 축경 Ø80 · PT100 TE-102 · 무선 진동 노드 VIT-102/103 · ALS-101 자동 그리스 · 라비린스 씰 카트리지", shape: "bearing" },
+    P08: { name: "주구동 모터", role: "로터와 동기화된 V-벨트 구동 — 전류 시그니처로 날·벨트 상태를 본다", spec: "37 kW IE5 PM 동기 · IP66 · 4P · 45 kW HD VFD · MCSA-101", shape: "motor" },
+    P09: { name: "풀리·4-SPC V벨트", role: "모터 회전을 로터축으로 전달", spec: "모터 Ø200 · 종동 Ø196 · 4-SPC 매칭 세트 · 설계수명 8,000 h", shape: "drive" },
+    P10: { name: "벨트 메쉬 안전커버", role: "회전 구동부 접촉 방지와 육안 점검", spec: "SS400 1.6t · 토글클램프 탈착식 · 도어 인터록", shape: "guard" },
     P11: { name: "접선형 하부 팽창 플리넘", role: "스크린 통과입자를 로터 직접 충격영역에서 분리하고 CV-101로 안정적으로 낙하", spec: "SS400 4.5t · 접선형 목부 · 점검도어 · PT-101 −150~−300 Pa", shape: "chute" },
-    P12: { name: "SC-500 2단 진동경사스크린", role: "CY-101 회수물을 1단 2 mm로 스캘핑해 백시트 박편을 BIN-102로 폐기하고, 2단 500 µm 오버만 CV-102로 환류하며 언더는 CH-501로", spec: "W800 × L1400 · 12° · 25 Hz · 3.0 mm p-p · 2 mm ＋ 500 µm · 유효 1.121 m²/데크", shape: "double-deck" },
+    P12: { name: "SC-500 2단 진동경사스크린", role: "CY-101 회수물을 1단 2 mm로 스캘핑해 백시트 박편을 BIN-102로 폐기하고, 2단 500 µm 오버만 CV-102로 환류하며 언더는 CH-501로", spec: "W800 × L1400 · 12° · 25 Hz · 3.0 mm p-p · 2 mm ＋ 500 µm · 유효 1.121 m²/데크 · 핀인 PU 모듈 패널 8/데크(텐셔닝 불요)", shape: "double-deck" },
     P13: { name: "CV-102 밀폐형 리턴스크류", role: "분급 조대물을 비산 없이 호퍼로 정량 환류", spec: "케이싱 Ø180 · 스크류 Ø140/P120 · L2,400 · 45 rpm · 0.75 kW", shape: "conveyor" },
     P14: { name: "CV-101 정량 배출스크류", role: "하부 플리넘의 혼합입도 400 kg/h를 음압 픽업티에 일정하게 공급", spec: "케이싱 Ø200 · 스크류 Ø160/P140 · L900 · 55 rpm · 1.1 kW VFD", shape: "transfer-conveyor" },
     P15: { name: "PC-101 알루미나 라이닝 음압 이송배관·CY-101", role: "분쇄물을 접선 흡인해 사이클론 외측 하강와류로 고체를 회수", spec: "보어 137 (DN150 t6 셸＋8 mm 95% 알루미나) · 900 m³/h · 17 m/s · R/D 5 세라믹 엘보＋후류 스풀 전 구간 · CY-101 Ø500", shape: "pneumatic-line" },
     P16: { name: "RV-101 로터리 에어록", role: "CY-101 하부 고체를 음압 손실 없이 SC-500에 정량 배출", spec: "Ø180 · 6포켓 · 18 rpm · 0.37 kW · 팁 간극 0.15–0.25", shape: "airlock" },
-    P17: { name: "BF-101＋RV-102＋B-101＋배기스택", role: "필터 뒤에서 공정을 흡인하고 FD-101 국소집진·필터회분 CH-501 회수를 포함한 밀폐 배관을 구성", spec: "카트리지필터 6본 · 900 m³/h · −6.0 kPa max · 5.5 kW VFD · DN80/65", shape: "blower" },
+    P17: { name: "BF-101＋RV-102＋B-101＋배기스택", role: "필터 뒤에서 공정을 흡인하고 FD-101 국소집진·필터회분 CH-501 회수를 포함한 밀폐 배관을 구성", spec: "카트리지필터 6본(청정측 상부 교체 · 토글클램프 리드) · PDT-101 차압 · 900 m³/h · −6.0 kPa max · 5.5 kW VFD · DN80/65", shape: "blower" },
     P18: { name: "CH-501＋RV-201＋PC-201 밀폐 이송", role: "SC-500 통과분을 밀폐 집하하고 RV-201 정량공급 후 음압리프트·리시버 에어록으로 VS-501에 비산 없이 이송", spec: "CH 상부 800 × 1500 · RV-201 · PC-201 보어 103 (DN125 셸＋12 mm 알루미나 라이저) · 약 350 m³/h · 11.7 m/s · 정전기방지 유연연결", shape: "collector-round" },
-    P19: { name: "VS-501＋SV-201 밀폐 Sheeve 후단", role: "상부 배치 VS-501에서 분산 후 밀폐 하향슈트로 SV-201에 공급하고 모든 토출을 밀폐 배관으로 연결", spec: "VS-501 0.9 mm · SV-201 Ø1200 · 280/106/75 µm · 2.2 kW · 960 rpm", shape: "circular-three-deck" },
+    P19: { name: "VS-501＋SV-201 밀폐 Sheeve 후단", role: "상부 배치 VS-501에서 분산 후 밀폐 하향슈트로 SV-201에 공급하고 모든 토출을 밀폐 배관으로 연결", spec: "VS-501 0.9 mm · SV-201 Ø1200 · 280/106/75 µm · 60° 섹터 패널 6/데크 · 2.2 kW · 960 rpm", shape: "circular-three-deck" },
     P20: { name: "CC-201＋Y헤더＋RV-204 공기분급기", role: "SV-201 두 입도라인을 개별 배관·Y헤더로 투입하고 상승류에서 중량물과 EVA·백시트 경량물을 분리", spec: "컬럼 Ø860 × H1,900 · 0.70–1.00 m/s · Y헤더 · 중량물 RV-204", shape: "air-classifier" },
-    P21: { name: "CY-201＋RV-202＋BF-201＋RV-203＋ID 팬", role: "CC-201 경량물을 회수하고 CY·BF 포집물을 각각 에어록으로 SS-201에 합류시키며 청정가스를 배기스택으로 배출", spec: "CY Ø680 · BF 카트리지 5본 · RV-202/203 · VFD 후단흡인 · 배기스택", shape: "cyclone-filter" },
-    P22: { name: "SS-201 75 µm 분리토출 스크린", role: "CY-201 회수물과 SV-201 PAN 미분을 재검증해 ≥75 µm 구리산물과 <75 µm 최종 미분제품을 물리적으로 분리", spec: "Ø1100 원형 · 75 µm · 측면 구리산물구＋하부 제품구 · 초음파 35–40 kHz", shape: "polishing-screen" },
+    P21: { name: "CY-201＋RV-202＋BF-201＋RV-203＋ID 팬", role: "CC-201 경량물을 회수하고 CY·BF 포집물을 각각 에어록으로 SS-201에 합류시키며 청정가스를 배기스택으로 배출", spec: "CY Ø680 · BF 카트리지 5본(청정측 상부 교체 · PDT-201) · RV-202/203 · VFD 후단흡인 · 배기스택", shape: "cyclone-filter" },
+    P22: { name: "SS-201 75 µm 분리토출 스크린", role: "CY-201 회수물과 SV-201 PAN 미분을 재검증해 ≥75 µm 구리산물과 <75 µm 최종 미분제품을 물리적으로 분리", spec: "Ø1100 원형 · 75 µm 섹터 패널 · 측면 구리산물구＋하부 제품구 · 초음파 35–40 kHz", shape: "polishing-screen" },
     P23: { name: "ICSH-301 Rev.G 공통외함·안전호퍼·베이스", role: "유리·알루미늄 제거 라미네이트를 장변 하향으로 공급하고 처짐·브리징·역비산을 억제", spec: "호퍼 2,800×1,800 → 목부 1,600×850 × H1,200 · 압입롤 Ø260×2 · 브리징축 Ø160 · 펜듈럼 플랩 11개＋체인커튼", shape: "shredder-housing" },
-    P24: { name: "ICSH-301 Rev.G 직교 적층형 2축 커터·독립구동", role: "상부 X축 조대 파쇄 후 420 mm 아래의 하부 Y축에서 직교 미세파쇄", spec: "X축 Ø420·26개/P50·22 kW·12 rpm · Y축 Ø350·55개/P20·18.5 kW·20 rpm · 35 mm 포락간극", shape: "shredder-rotor" },
-    P25: { name: "SCR-001 10 mm 격리형 진동스크린", role: "직교 2단 파쇄물을 10 mm에서 분리해 조대물과 HSG 공급물을 물리적으로 분기", spec: "유효 1,000×1,500 · 10×10/13 pitch · PL8 Hardox 450 · 12° · 25 Hz · 3.0 mm p-p · 2.2 kW", shape: "shredder-screen" },
+    P24: { name: "ICSH-301 Rev.G 직교 적층형 2축 커터·독립구동", role: "상부 X축 조대 파쇄 후 420 mm 아래의 하부 Y축에서 직교 미세파쇄", spec: "X축 Ø420·26매/P50·22 kW IE5·12 rpm · Y축 Ø350·55매/P20·18.5 kW IE5·20 rpm · 35 mm 포락간극 · 초경 팁 4날 인덱서블 커터 카세트(유압 잠금캡, 상부 +x · 하부 +z 인출) · AE-301 · VIT-301~304", shape: "shredder-rotor" },
+    P25: { name: "SCR-001 10 mm 격리형 진동스크린", role: "직교 2단 파쇄물을 10 mm에서 분리해 조대물과 HSG 공급물을 물리적으로 분기 — 데크는 +z 점검도어로 빠지는 드로어", spec: "유효 1,000×1,500 · 10×10/13 pitch · PL8 Hardox 450 · 12° · 25 Hz · 3.0 mm p-p · 2.2 kW · 드로어 데크 · 토글클램프 2", shape: "shredder-screen" },
     P26: { name: "SCV-R1 조대물 환류스크류", role: ">10 mm 불규칙 파쇄물을 외부 노출 없이 동일 호퍼로 재투입", spec: "Ø220/P180 · L1,900 · 55° · 4.0 kW 감속모터", shape: "shredder-return" },
     P27: { name: "SCV-P1 HSG 공급스크류·집진연결", role: "≤10 mm 통과물을 FD-101에 밀폐 정량공급하고 슈레더 DN150 국소배기를 BF-101에 연결", spec: "Ø220/P180 · L2,200 · 2.2 kW · 300 kg/h · 유연조인트 · LSHH-101 90% 상류정지", shape: "shredder-transfer" },
-    P28: { name: "PLC-101 중앙제어반·RIO-301·공정제어", role: "ICSH-301, HSG-101, SCR-001, SCV-R1/P1과 집진계통을 하류 우선 순차기동하고 상류 우선 정지", spec: "800W×400D×1,800H · 24 VDC · PROFINET · 공정 I/O · IP54", shape: "plc-panel" }
+    P28: { name: "PLC-101 중앙제어반·RIO-301·공정제어", role: "ICSH-301, HSG-101, SCR-001, SCV-R1/P1과 집진계통을 하류 우선 순차기동하고 상류 우선 정지", spec: "800W×400D×1,800H · 24 VDC · PROFINET · 공정 I/O · IP54 · 측면 LOTO 스테이션 6점", shape: "plc-panel" }
   };
+
+  // ---- 교체식 마모부품 등록부 -------------------------------------------------
+  // 이 플랜트에서 닳아 없어지는 것은 전부 여기 한 곳에 있다. 3D 의 교체 모듈 표식
+  // (userData.swapModule), 콘솔의 예지보전 표, BOM 의 정비 행, 시험이 모두 이 표를 읽는다.
+  //
+  // 설계 원칙 — 「마모부품은 볼트를 푸는 것이 아니라 카세트를 뽑는 것」.
+  //   module   카세트 · 카트리지 · 모듈 패널 · 스윙아웃 — 부품이 어떤 단위로 빠지는가
+  //   method   현장 절차 한 줄. 여기 적힌 순서대로 하면 mttrMin 안에 끝나야 한다
+  //   life     설계수명의 근거량. basis 는 시뮬레이션 state 에서 그대로 읽히는 누적량이다
+  //            freshMass  ICSH·HSG 를 지난 신규 투입 kg (state.freshIn)
+  //            millMass   환류를 포함해 HSG 로터를 지난 kg (freshIn + returnFeed)
+  //            screenMass SC-500 2단 데크를 지난 kg (classifiedMass)
+  //            sieveMass  SV-201 에 실린 제품 kg (productOut)
+  //            fineMass   습식으로 넘어간 <75 µm kg (productUnder75Out)
+  //            hours      건식 운전시간 h (processSeconds/3600)
+  //            wetHours   습식 운전시간 h (wetAnimationSeconds/3600)
+  //   edges    날을 돌려 다시 쓰는 횟수 — 수명은 「날 하나」 기준이고 총수명은 edges 배
+  //   sensors  이 부품의 상태를 실제로 보는 계측 태그 (CONDITION_SENSORS)
+  //   geometry false 면 3D 에 별도 교체 표식이 없다(등록부·BOM 에만 있는 소모품)
+  const WEAR_PARTS = Object.freeze([
+    { id: "ICSH-UPPER-CASSETTE", machine: "ICSH-301", tag: "P24", part: "상부 X축 커터 카세트 26매",
+      module: "카세트", method: "유압 잠금캡 해제 → 커터·스페이서 스택을 카세트째 +x 로 인출 → 예비 카세트 삽입 → 캡 가압",
+      tools: "유압 너트 펌프 · 인출 지그", mttrMin: 90, bom: ["SH-021", "SH-070"], edges: 4,
+      life: { basis: "freshMass", limit: 1600000, unit: "kg" }, sensors: ["AE-301", "VIT-301", "VIT-302"],
+      spare: "카세트 1조 현장 보유 · 인덱스 3회 후 팁 교체", upgrade: "SKD11 → 초경(WC-Co) 팁 4날 인덱서블 · 팁 HRA 89" },
+    { id: "ICSH-LOWER-CASSETTE", machine: "ICSH-301", tag: "P24", part: "하부 Y축 커터 카세트 55매",
+      module: "카세트", method: "유압 잠금캡 해제 → 스택을 +z 로 인출 → 예비 카세트 삽입 → 캡 가압",
+      tools: "유압 너트 펌프 · 인출 지그", mttrMin: 90, bom: ["SH-031", "SH-070"], edges: 4,
+      life: { basis: "freshMass", limit: 1200000, unit: "kg" }, sensors: ["AE-301", "VIT-303", "VIT-304"],
+      spare: "카세트 1조 현장 보유", upgrade: "SKD11 → 초경 팁 4날 인덱서블" },
+    { id: "ICSH-BEARINGS", machine: "ICSH-301", tag: "P24", part: "구면롤러베어링 22232/22228 ×4",
+      module: "SNL 하우징 상반 분할", method: "상반 캡 분리 → 베어링 유압 인출 → 신품 압입 → 자동 그리스 재접속",
+      tools: "유압 풀러 · 유도 가열기", mttrMin: 240, bom: ["SH-023", "SH-033"],
+      life: { basis: "hours", limit: 40000, unit: "h" }, sensors: ["VIT-301", "VIT-302", "VIT-303", "VIT-304"],
+      spare: "베어링 2조 · 상태기반 교체", geometry: false },
+    { id: "SCR-DECK", machine: "SCR-001", tag: "P25", part: "10 mm 타공 데크 Hardox 450",
+      module: "스윙아웃 데크", method: "토글클램프 2점 해제 → 가스스트럿으로 데크 개방 → 패널 핀 4점 뽑아 교체",
+      tools: "공구 불요", mttrMin: 25, bom: ["SH-050", "SH-071"],
+      life: { basis: "freshMass", limit: 2400000, unit: "kg" }, sensors: [],
+      spare: "패널 2매" },
+    { id: "HSG-BLADE", machine: "HSG-101", tag: "P05", part: "회전날 12매 · 4분할 카세트",
+      module: "카세트", method: "스윙볼트 8점 해제 → 도어 개방 → 로터를 레일아웃 카트로 인출 → 카세트 4개 교체 → 카트 복귀",
+      tools: "토크렌치 · 카트", mttrMin: 45, bom: ["HG-012", "HG-050", "HG-051", "F-HG-03"], edges: 2,
+      life: { basis: "millMass", limit: 200000, unit: "kg" }, sensors: ["VIT-102", "VIT-103", "MCSA-101"],
+      spare: "카세트 4개 1조(중량 매칭) · 예비 로터 1기", upgrade: "SKD11 → 초경 팁 양날 반전 · 중량 매칭 세트" },
+    { id: "HSG-FIXED", machine: "HSG-101", tag: "P06", part: "고정날 4매",
+      module: "외부 볼트", method: "하우징 밖에서 M16 4점 → 날 반전 또는 교체 · 간극 게이지로 0.5–1.0 재설정",
+      tools: "토크렌치 · 간극 게이지", mttrMin: 30, bom: ["HG-013", "F-HG-04"], edges: 2,
+      life: { basis: "millMass", limit: 300000, unit: "kg" }, sensors: ["MCSA-101"], spare: "예비 1조", geometry: false },
+    { id: "HSG-SCREEN", machine: "HSG-101", tag: "P06", part: "내부 스크린 세그먼트 4 (1.0 mm 슬롯)",
+      module: "슬라이드 카트리지", method: "도어 개방 → 가이드레일 손잡이로 세그먼트 4개를 앞으로 당겨 교체",
+      tools: "공구 불요", mttrMin: 20, bom: ["HG-004", "HG-053"],
+      life: { basis: "millMass", limit: 600000, unit: "kg" }, sensors: ["MCSA-101"], spare: "세그먼트 4개" },
+    { id: "HSG-LINER", machine: "HSG-101", tag: "P02", part: "내마모 라이너 8 (키드니)",
+      module: "외부 볼트 라이너", method: "하우징 밖 카운터싱크 볼트 → 라이너 세그먼트 교체 (로터 인출 불요)",
+      tools: "토크렌치", mttrMin: 60, bom: ["HG-003", "F-SH-04"],
+      life: { basis: "millMass", limit: 1200000, unit: "kg" }, sensors: ["WL-101"], spare: "2매",
+      upgrade: "Hardox 450 → Hardox 500 + 마모 감지 도전 루프", geometry: false },
+    { id: "HSG-BEARINGS", machine: "HSG-101", tag: "P07", part: "구면롤러베어링 22216 ×2",
+      module: "페데스탈 상반 분할", method: "상반 캡 → 유압 인출 → 유도 가열 압입 → 자동 그리스 재접속",
+      tools: "유압 풀러 · 유도 가열기", mttrMin: 180, bom: ["HG-014", "F-HG-05"],
+      life: { basis: "hours", limit: 30000, unit: "h" }, sensors: ["VIT-102", "VIT-103"], spare: "예비 1조", geometry: false },
+    { id: "HSG-BELT", machine: "HSG-101", tag: "P09", part: "4-SPC V벨트 세트",
+      module: "매칭 세트", method: "가드 인터록 해제 → 슬라이드레일 텐션 볼트 이완 → 4본 동시 교체 → 장력계",
+      tools: "장력계", mttrMin: 30, bom: ["HG-022"],
+      life: { basis: "hours", limit: 8000, unit: "h" }, sensors: ["MCSA-101"], spare: "매칭 세트 1", geometry: false },
+    { id: "HSG-SEAL", machine: "HSG-101", tag: "P07", part: "라비린스 씰 카트리지 ×2",
+      module: "카트리지", method: "베어링 캡 분리 없이 카트리지만 축방향 인출",
+      tools: "공구 불요", mttrMin: 40, bom: ["HG-015"],
+      life: { basis: "hours", limit: 12000, unit: "h" }, sensors: [], spare: "예비 1조", geometry: false },
+    { id: "RV-101-TIPS", machine: "RV-101", tag: "P16", part: "에어록 로터 팁 6",
+      module: "교체형 팁", method: "엔드플레이트 → 팁 6개 교체 → 간극 0.15–0.25 재설정",
+      tools: "간극 게이지", mttrMin: 40, bom: [],
+      life: { basis: "hours", limit: 6000, unit: "h" }, sensors: [], spare: "예비 1조", geometry: false },
+    { id: "SC500-PANEL", machine: "SC-500", tag: "P12", part: "2단 데크 PU 모듈 패널 (2 mm · 500 µm)",
+      module: "핀인 모듈 패널", method: "상부커버 토글클램프 → 마모 모듈만 핀 2점 뽑아 교체 (텐셔닝 불요)",
+      tools: "핀 뽑기", mttrMin: 15, bom: ["HG-034", "HG-035", "HG-036"],
+      life: { basis: "screenMass", limit: 250000, unit: "kg" }, sensors: [],
+      spare: "모듈 4매", upgrade: "장력식 메시 → 300×400 PU 핀인 모듈 · 데크당 8모듈" },
+    { id: "SV201-PANEL", machine: "SV-201", tag: "P19", part: "3단 원형 데크 섹터 패널 (280/106/75 µm)",
+      module: "핀인 섹터 패널", method: "데크링 클램프 → 마모 섹터만 교체 · 개스킷 재사용",
+      tools: "공구 불요", mttrMin: 20, bom: ["SV-021", "SV-031", "SV-041", "SV-070"],
+      life: { basis: "sieveMass", limit: 300000, unit: "kg" }, sensors: [], spare: "섹터 6매" },
+    { id: "SS201-PANEL", machine: "SS-201", tag: "P22", part: "75 µm 초음파 데크 섹터 패널",
+      module: "핀인 섹터 패널", method: "커버 → 초음파 트랜스듀서 링 분리 없이 섹터만 교체",
+      tools: "공구 불요", mttrMin: 20, bom: [],
+      life: { basis: "fineMass", limit: 60000, unit: "kg" }, sensors: [], spare: "섹터 6매" },
+    { id: "BF101-CARTRIDGE", machine: "BF-101", tag: "P17", part: "카트리지 필터 6본",
+      module: "상부 청정측 카트리지", method: "토글클램프 4점 → 상부 리드 개방 → 청정측에서 카트리지 인출 (분진측 진입 불요)",
+      tools: "공구 불요", mttrMin: 30, bom: ["HG-041"],
+      life: { basis: "hours", limit: 4000, unit: "h" }, sensors: ["PDT-101"], spare: "6본" },
+    { id: "BF201-CARTRIDGE", machine: "BF-201", tag: "P21", part: "카트리지 필터 5본",
+      module: "상부 청정측 카트리지", method: "토글클램프 4점 → 리드 개방 → 청정측 인출",
+      tools: "공구 불요", mttrMin: 30, bom: [],
+      life: { basis: "hours", limit: 4000, unit: "h" }, sensors: ["PDT-201"], spare: "5본" },
+    { id: "CV001-SCRAPER", machine: "CV-001", tag: "P23", part: "헤드풀리 스크레이퍼 블레이드",
+      module: "카트리지 블레이드", method: "노브 2점 → 블레이드 카트리지 교체",
+      tools: "공구 불요", mttrMin: 10, bom: [],
+      life: { basis: "hours", limit: 2000, unit: "h" }, sensors: [], spare: "2매" },
+    { id: "CV001-BELT", machine: "CV-001", tag: "P23", part: "경사 벨트",
+      module: "벨트", method: "테일 텐션 이완 → 기계식 패스너 → 교체", tools: "패스너 공구", mttrMin: 120, bom: [],
+      life: { basis: "hours", limit: 12000, unit: "h" }, sensors: [], spare: "1본", geometry: false },
+    { id: "SCREW-FLIGHTS", machine: "CV-101/102 · SCV-R1/P1", tag: "P13", part: "하드페이싱 스크류 플라이트",
+      module: "분할 케이싱", method: "케이싱 상반 분리 → 플라이트 세그먼트 교체", tools: "토크렌치", mttrMin: 90, bom: ["HG-031", "HG-033"],
+      life: { basis: "millMass", limit: 2000000, unit: "kg" }, sensors: [], spare: "세그먼트 2", geometry: false },
+    { id: "WEAR-SPOOLS", machine: "PC-101 / PC-201", tag: "P15", part: "세라믹 엘보·후류 스풀",
+      module: "플랜지 스풀", method: "플랜지 → 스풀 단위 교체 (현장 절단·용접 금지)", tools: "토크렌치", mttrMin: 60, bom: [],
+      life: { basis: "hours", limit: 4000, unit: "h" }, sensors: ["WL-201"], spare: "고위험 엘보 2", geometry: false },
+    { id: "P101-WETEND", machine: "P-101 A/B", tag: "wet", part: "슬러리펌프 습식단 카트리지",
+      module: "백풀아웃 카트리지", method: "스페이서 커플링 분리 → 분할링 → 임펠러·라이너·씰을 카트리지째 위로 인양 (배관 무접촉)",
+      tools: "인양 러그 · 체인블록", mttrMin: 50, bom: ["AS-050", "AS-060"],
+      life: { basis: "wetHours", limit: 3000, unit: "h" }, sensors: ["VIT-P101"], spare: "카트리지 1 (A/B 공용)",
+      upgrade: "Hi-chrome/rubber → Hi-chrome A05 + 외부 임펠러 간극 조정" },
+    { id: "P102-WETEND", machine: "P-102 A/B", tag: "wet", part: "슬러리펌프 습식단 카트리지", module: "백풀아웃 카트리지",
+      method: "P-101 과 동일", tools: "인양 러그", mttrMin: 50, bom: ["AS-051", "AS-060"],
+      life: { basis: "wetHours", limit: 3000, unit: "h" }, sensors: ["VIT-P102"], spare: "카트리지 1" },
+    { id: "PP201-WETEND", machine: "PP-201 A/B", tag: "wet", part: "러퍼 급광펌프 습식단", module: "백풀아웃 카트리지",
+      method: "P-101 과 동일", tools: "인양 러그", mttrMin: 50, bom: ["AS-060"],
+      life: { basis: "wetHours", limit: 3000, unit: "h" }, sensors: ["VIT-PP201"], spare: "카트리지 1" },
+    { id: "P204-WETEND", machine: "P-204 A/B", tag: "wet", part: "정광 급액펌프 습식단", module: "백풀아웃 카트리지",
+      method: "P-101 과 동일", tools: "인양 러그", mttrMin: 50, bom: ["AS-060"],
+      life: { basis: "wetHours", limit: 3000, unit: "h" }, sensors: ["VIT-P204"], spare: "카트리지 1" },
+    { id: "P301-WETEND", machine: "P-301 A/B", tag: "wet", part: "고압 급액펌프 다이어프램·체크", module: "카트리지",
+      method: "헤드 볼트 → 다이어프램·체크밸브 카트리지 교체", tools: "토크렌치", mttrMin: 60, bom: ["FP-031"],
+      life: { basis: "wetHours", limit: 3000, unit: "h" }, sensors: ["VIT-P301"], spare: "예비 1조" },
+    { id: "P401-WETEND", machine: "P-401 A/B", tag: "wet", part: "재이용수 펌프 습식단", module: "백풀아웃 카트리지",
+      method: "P-101 과 동일", tools: "인양 러그", mttrMin: 40, bom: ["AS-061"],
+      life: { basis: "wetHours", limit: 8000, unit: "h" }, sensors: [], spare: "청수 카트리지 1 (P-401/501 공용)" },
+    { id: "P501-WETEND", machine: "P-501 A/B", tag: "wet", part: "신수 펌프 습식단", module: "백풀아웃 카트리지",
+      method: "P-101 과 동일", tools: "인양 러그", mttrMin: 40, bom: ["AS-061"],
+      life: { basis: "wetHours", limit: 8000, unit: "h" }, sensors: [], spare: "청수 카트리지 1 (P-401/501 공용)" },
+    { id: "FC-ROTOR", machine: "FC-201/202/203", tag: "wet", part: "로터·스테이터 (PU)",
+      module: "인양 카트리지", method: "구동 브리지 인양아이 → 지브크레인 훅 → 축·로터·스테이터 일체 수직 인양 → 교체",
+      tools: "지브크레인 SWL 0.5 t", mttrMin: 120, bom: ["FC-012", "FC-022", "FC-032", "FC-080"],
+      life: { basis: "wetHours", limit: 8000, unit: "h" }, sensors: ["VIT-211", "VIT-212", "VIT-213"], spare: "로터·스테이터 1조" },
+    { id: "AS101-ROTOR", machine: "AS-101", tag: "wet", part: "중공축·임펠러 (PU)",
+      module: "인양 카트리지", method: "브리지 인양아이 → 축·임펠러 일체 인양 → 교체 · 런아웃 재확인",
+      tools: "브리지 인양빔 SWL 0.75 t", mttrMin: 120, bom: ["AS-020", "AS-021"],
+      life: { basis: "wetHours", limit: 4000, unit: "h" }, sensors: ["VIT-101"], spare: "임펠러 1조" },
+    { id: "AS101-LINER", machine: "AS-101", tag: "wet", part: "알루미나 라이너 8",
+      module: "타일", method: "로터 인양 후 타일 교체 (기계고정)", tools: "토크렌치", mttrMin: 180, bom: ["AS-011"],
+      life: { basis: "wetHours", limit: 12000, unit: "h" }, sensors: [], spare: "타일 4", geometry: false },
+    { id: "AS101-SEAL", machine: "AS-101", tag: "wet", part: "기계식 씰 카트리지", module: "카트리지",
+      method: "커플링 → 카트리지 씰 교체 (플러시 플랜 유지)", tools: "공구 불요", mttrMin: 60, bom: ["AS-022"],
+      life: { basis: "wetHours", limit: 8000, unit: "h" }, sensors: [], spare: "카트리지 씰 1", geometry: false },
+    { id: "FP301-CLOTH", machine: "FP-301", tag: "wet", part: "여과포 18매 (무볼트 탄성 헴)",
+      module: "탄성 헴 여과포", method: "플레이트 시프터로 판 분리 → 여과포 탄성 헴 교체 (볼트 없음)",
+      tools: "플레이트 시프터", mttrMin: 150, bom: ["FP-012"],
+      life: { basis: "wetHours", limit: 2000, unit: "h" }, sensors: [], spare: "여과포 4매", geometry: false },
+    { id: "CF204-BASKET", machine: "CF-204", tag: "wet", part: "원심 바스켓·스크린",
+      module: "바스켓", method: "커버 → 바스켓 인양 → 스크린 교체", tools: "인양 러그", mttrMin: 120, bom: ["FP-070"],
+      life: { basis: "wetHours", limit: 10000, unit: "h" }, sensors: ["VIT-204"], spare: "스크린 1", geometry: false },
+    { id: "BS101-SCREEN", machine: "BS-101 A/B", tag: "wet", part: "웨지와이어 비드 보유스크린",
+      module: "카트리지", method: "플랜지 → 카트리지 교체", tools: "토크렌치", mttrMin: 40, bom: ["AS-031", "AS-032"],
+      life: { basis: "wetHours", limit: 8000, unit: "h" }, sensors: [], spare: "예비 1조", geometry: false }
+  ]);
+
+  // ---- 상태감시 센서 등록부 ----------------------------------------------------
+  // kind 별 물리량과 한계 — vib ISO 10816-3 그룹 2 (A ≤2.8 · B ≤4.5 · C ≤7.1 mm/s),
+  // temp 베어링 PT100, mcsa 모터 전류 시그니처 측대역, ae 음향방출, dp 필터 차압, loop 마모 도전루프.
+  // 값은 시뮬레이션 부하와 등록부의 마모율에서 결정론적으로 유도된다 — 난수를 쓰지 않는다.
+  const CONDITION_SENSORS = Object.freeze([
+    { tag: "VIT-301", asset: "ICSH-301 상부축 구동측 베어링", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "ICSH-BEARINGS" },
+    { tag: "VIT-302", asset: "ICSH-301 상부축 비구동측 베어링", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "ICSH-BEARINGS" },
+    { tag: "VIT-303", asset: "ICSH-301 하부축 구동측 베어링", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "ICSH-BEARINGS" },
+    { tag: "VIT-304", asset: "ICSH-301 하부축 비구동측 베어링", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "ICSH-BEARINGS" },
+    { tag: "AE-301", asset: "ICSH-301 커터 날끝 음향방출", kind: "ae", unit: "dB", alarm: 62, trip: 70, wearOf: "ICSH-UPPER-CASSETTE" },
+    { tag: "VIT-102", asset: "HSG-101 로터 구동측 22216", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "HSG-BLADE" },
+    { tag: "VIT-103", asset: "HSG-101 로터 비구동측 22216", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "HSG-BEARINGS" },
+    { tag: "TE-102", asset: "HSG-101 베어링 온도 PT100", kind: "temp", unit: "°C", alarm: 85, trip: 95, wearOf: "HSG-BEARINGS" },
+    { tag: "MCSA-101", asset: "M-101 전류 시그니처 측대역", kind: "mcsa", unit: "%", alarm: 3.0, trip: 6.0, wearOf: "HSG-BLADE" },
+    { tag: "WL-101", asset: "HSG-101 라이너 마모 도전루프", kind: "loop", unit: "", alarm: 1, trip: 1, wearOf: "HSG-LINER" },
+    { tag: "WL-201", asset: "PC-201 세라믹 엘보 마모 도전루프", kind: "loop", unit: "", alarm: 1, trip: 1, wearOf: "WEAR-SPOOLS" },
+    { tag: "PDT-101", asset: "BF-101 필터 차압", kind: "dp", unit: "Pa", alarm: 1500, trip: 2000, wearOf: "BF101-CARTRIDGE" },
+    { tag: "PDT-201", asset: "BF-201 필터 차압", kind: "dp", unit: "Pa", alarm: 1500, trip: 2000, wearOf: "BF201-CARTRIDGE" },
+    { tag: "VIT-101", asset: "AS-101 교반축 베어링", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "AS101-ROTOR" },
+    { tag: "VIT-P101", asset: "P-101 베어링 프레임", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "P101-WETEND" },
+    { tag: "VIT-P102", asset: "P-102 베어링 프레임", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "P102-WETEND" },
+    { tag: "VIT-PP201", asset: "PP-201 베어링 프레임", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "PP201-WETEND" },
+    { tag: "VIT-P204", asset: "P-204 베어링 프레임", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "P204-WETEND" },
+    { tag: "VIT-P301", asset: "P-301 헤드", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "P301-WETEND" },
+    { tag: "VIT-211", asset: "FC-201 로터 베어링", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "FC-ROTOR" },
+    { tag: "VIT-212", asset: "FC-202 로터 베어링", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "FC-ROTOR" },
+    { tag: "VIT-213", asset: "FC-203 로터 베어링", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "FC-ROTOR" },
+    { tag: "VIT-204", asset: "CF-204 바스켓 베어링", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "CF204-BASKET" }
+  ]);
+
+  // ---- 잠금·표지 (LOTO) 지점 ----------------------------------------------------
+  // 정비 절차의 첫 줄은 언제나 「격리·잠금·검증」이다. VFD STO 는 기능안전 정지이지
+  // 전기적 격리가 아니므로, 모든 구동에 잠금형 개폐기와 자물쇠 걸이가 있다.
+  const LOTO_POINTS = Object.freeze([
+    { id: "LOTO-101", where: "PLC-101 측면 LOTO 스테이션", covers: "M-301/302 · M-101 · SCR/SCV · BF-101 팬 · CV-001", locks: 6 },
+    { id: "LOTO-201", where: "LCP-SV-201 · LCP-CW-601 잠금형 개폐기", covers: "SV-201 · SS-201 · CC-201 · CH-601", locks: 4 },
+    { id: "LOTO-401", where: "PLC-001 습식 MCC 잠금형 개폐기", covers: "P-xxx 펌프 · FC 구동 · AS-101 · FP-301 유압", locks: 8 }
+  ]);
 
   try {
     // Embedded copies first; the CDN import is only a fallback for a stripped file.
@@ -16250,6 +16507,35 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return group;
     }
 
+    // 정비 접근 공간 — 로터 인출·카세트 인출·카트리지 인양이 실제로 지나가는 부피를
+    // 반투명 상자로 예약해 둔다. 정비 모드에서만 보이고, 컷어웨이·분해의 대상이 아니므로
+    // circuit 밖(scene 직속)에 둔다. 색은 브랜드 심볼의 황색 — 패스 5개 중 한 번만 쓰인 채움이다.
+    const brandFills = BRAND_MARK.paths.map((p) => p.fill);
+    const MAINT_ACCENT_HEX = parseInt(brandFills.find((fill) => brandFills.indexOf(fill) === brandFills.lastIndexOf(fill)).slice(1), 16);
+    const maintenanceEnvelopes = new THREE.Group();
+    maintenanceEnvelopes.name = "MAINTENANCE-ENVELOPES";
+    maintenanceEnvelopes.visible = false;
+    scene.add(maintenanceEnvelopes);
+    const envelopeMaterial = new THREE.MeshStandardMaterial({
+      color: MAINT_ACCENT_HEX, emissive: MAINT_ACCENT_HEX, emissiveIntensity: 0.28,
+      transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide, roughness: 1, metalness: 0
+    });
+    const envelopeEdgeMaterial = new THREE.LineBasicMaterial({ color: MAINT_ACCENT_HEX, transparent: true, opacity: 0.55 });
+    const accessEnvelopes = [];
+    function addEnvelope(id, label, min, max) {
+      const size = { x: max.x - min.x, y: max.y - min.y, z: max.z - min.z };
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(size.x, size.y, size.z), envelopeMaterial);
+      mesh.position.set((min.x + max.x) / 2, (min.y + max.y) / 2, (min.z + max.z) / 2);
+      mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), envelopeEdgeMaterial));
+      mesh.userData.envelopeOf = id;
+      const sprite = labelSprite(label);
+      sprite.position.set(0, size.y / 2 + 0.16, 0);
+      mesh.add(sprite);
+      maintenanceEnvelopes.add(mesh);
+      accessEnvelopes.push({ id, label, min: { ...min }, max: { ...max } });
+      return mesh;
+    }
+
     function addCylinder(parent, radius, length, position, sourceMaterial, partId, axis = "z", segments = 48, edged = false) {
       const rotation = axis === "z"
         ? { x: Math.PI / 2, y: 0, z: 0 }
@@ -16257,6 +16543,39 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
           ? { x: 0, y: 0, z: Math.PI / 2 }
           : { x: 0, y: 0, z: 0 };
       return addMesh(parent, new THREE.CylinderGeometry(radius, radius, length, segments), sourceMaterial, position, rotation, partId, edged);
+    }
+
+    // ---- 정비성 형상 보조 ------------------------------------------------------------
+    // 두 점을 잇는 봉 — 가스 스트럿·타이로드·체인. 축이 임의 방향이라 오일러 대신 쿼터니언.
+    function addRod(parent, partId, from, to, radius, sourceMaterial, segments = 10) {
+      const a = new THREE.Vector3(from.x, from.y, from.z), b = new THREE.Vector3(to.x, to.y, to.z);
+      const length = a.distanceTo(b);
+      const mesh = addMesh(parent, new THREE.CylinderGeometry(radius, radius, length, segments), sourceMaterial,
+        { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 }, null, partId, false);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.sub(a).normalize());
+      return mesh;
+    }
+    // 교체 모듈 표식. 정비 모드가 이 표식을 보고 발광 강조한다. 습식 메시는 재질을
+    // 공유하므로(wetMesh 는 clone 하지 않는다) 여기서 사본을 준다 — 안 그러면 펌프 하나의
+    // 카트리지를 켰을 때 같은 재질을 쓰는 모든 면이 같이 빛난다.
+    function markSwap(target, id) {
+      (Array.isArray(target) ? target : [target]).forEach((object) => object.traverse((o) => {
+        if (!o.isMesh || !o.material || o.isSprite) return;
+        if (!o.userData.partId && !o.material.userData.ownedBySwap) {
+          o.material = o.material.clone();
+          o.material.userData.ownedBySwap = true;
+        }
+        o.userData.swapModule = id;
+      }));
+      return target;
+    }
+    // 무선 진동·온도 노드 — 베어링 하우징 위에 앉는 원통 + 안테나. sensorTag 로 등록부와 잇는다.
+    function addSensorNode(parent, partId, tag, position, axis = "y") {
+      const body = addCylinder(parent, 0.022, 0.05, position, material.equipmentControl, partId, axis, 14, false);
+      const antenna = addCylinder(parent, 0.004, 0.06, { x: position.x, y: position.y + 0.055, z: position.z }, material.silverClamp, partId, "y", 6, false);
+      body.userData.sensorTag = tag;
+      antenna.userData.sensorTag = tag;
+      return body;
     }
 
     // Catmull-Rom 은 코너를 "다음 제어점까지의 거리"만큼 둥글린다. 직교 루트를 맨 코너점만으로
@@ -16533,6 +16852,33 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
     addBox(shredderShaftB, { x: 0.054, y: 0.012, z: 0.034 }, { x: 0.052, y: 0, z: 1.298 }, material.safety, "P24", null, false);
 
+    // ---- 커터 카세트 잠금캡 ------------------------------------------------------------
+    // 커터·스페이서 스택은 축에 한 장씩 끼우는 것이 아니라 카세트째 갈아 끼운다. 스택 끝의
+    // 유압 잠금캡(핸들 3개)을 풀면 스택 전체가 축을 따라 빠져나온다 — 상부는 +x, 하부는 +z.
+    // 캡은 하우징 안(상부 x −3.68 · 하부 z 1.20)에 있어 컷어웨이·정비 모드에서 보인다.
+    addCylinder(shredderShaftA, 0.165, 0.06, { x: 0.72, y: 0, z: 0 }, material.cover, "P24", "x", 30, false);
+    [0, 1, 2].forEach((k) => {
+      const a = k * Math.PI * 2 / 3;
+      addBox(shredderShaftA, { x: 0.03, y: 0.14, z: 0.04 }, { x: 0.72, y: Math.cos(a) * 0.19, z: Math.sin(a) * 0.19 }, material.dark, "P24", { x: a }, false);
+    });
+    addCylinder(shredderShaftB, 0.135, 0.05, { x: 0, y: 0, z: 0.60 }, material.cover, "P24", "z", 30, false);
+    [0, 1, 2].forEach((k) => {
+      const a = k * Math.PI * 2 / 3;
+      addBox(shredderShaftB, { x: 0.12, y: 0.03, z: 0.035 }, { x: Math.cos(a) * 0.16, y: Math.sin(a) * 0.16, z: 0.60 }, material.dark, "P24", { z: a }, false);
+    });
+    // 카세트 = 스택 + 잠금캡. 저널·타깃휠(스택 바깥)은 카세트가 아니다.
+    markSwap(shredderShaftA.children.filter((child) => Math.abs(child.position.x) <= 0.80), "ICSH-UPPER-CASSETTE");
+    markSwap(shredderShaftB.children.filter((child) => Math.abs(child.position.z) <= 0.70), "ICSH-LOWER-CASSETTE");
+
+    // 상태감시 — 축당 구동측·비구동측 베어링 하우징 위 무선 진동 노드 4점과, 비구동측
+    // 하우징 옆의 날끝 음향방출 센서. 날이 무뎌지면 절단음의 고주파 성분이 먼저 자란다.
+    addSensorNode(parts.P24, "P24", "VIT-301", { x: -5.68, y: 1.885, z: 0 });
+    addSensorNode(parts.P24, "P24", "VIT-302", { x: -3.10, y: 1.745, z: 0 });
+    addSensorNode(parts.P24, "P24", "VIT-303", { x: -4.40, y: 1.425, z: -1.14 });
+    addSensorNode(parts.P24, "P24", "VIT-304", { x: -4.40, y: 1.262, z: 1.20 });
+    const ae301 = addCylinder(parts.P24, 0.018, 0.04, { x: -3.10, y: 1.60, z: -0.165 }, material.silverClamp, "P24", "z", 10, false);
+    ae301.userData.sensorTag = "AE-301";
+
     // Fixed bearing housings and speed pickups for the two indexed shaft ends.
     addBox(parts.P24, { x: 0.22, y: 0.28, z: 0.28 }, { x: shredderCenter.x + 1.30, y: 1.58, z: 0 }, material.shredPanel, "P24");
     addCylinder(parts.P24, 0.020, 0.10, { x: shredderCenter.x + 1.468, y: 1.75, z: 0 }, material.motor, "P24", "y", 18, false);
@@ -16561,9 +16907,24 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // SCR-001 is independently supported; >10 mm and ≤10 mm leave by separate sealed screws.
     const shredScreenAngle = THREE.MathUtils.degToRad(12);
-    addBox(parts.P25, { x: 1.50, y: 0.035, z: 1.00 }, { x: shredderCenter.x, y: 0.38, z: 0 }, material.screen, "P25", { z: -shredScreenAngle }, false);
+    const scrDeck = addBox(parts.P25, { x: 1.50, y: 0.035, z: 1.00 }, { x: shredderCenter.x, y: 0.38, z: 0 }, material.screen, "P25", { z: -shredScreenAngle }, false);
     addBox(parts.P25, { x: 1.65, y: 0.22, z: 0.050 }, { x: shredderCenter.x, y: 0.44, z: -0.53 }, material.screenHousing, "P25", { z: -shredScreenAngle });
     addBox(parts.P25, { x: 1.65, y: 0.22, z: 0.050 }, { x: shredderCenter.x, y: 0.44, z: 0.53 }, material.screenHousing, "P25", { z: -shredScreenAngle });
+    // SCR-001 데크는 드로어다. 슈레더 외함 +z 벽의 점검도어(하단 힌지·토글클램프 2점)를
+    // 내리면 데크가 가이드레일을 타고 +z 로 빠져나온다. 데크 바로 위가 하부 커터축이라 위로
+    // 여는 스윙아웃은 성립하지 않는다 — 그래서 드로어다. 인출 경로(z 1.15…2.3)는 실측으로
+    // 비어 있고, 가로지르던 GB-301 냉각 연결관은 y 0.62 로 올렸다.
+    const scrDrawer = [scrDeck];
+    const scrCos = Math.cos(shredScreenAngle), scrSin = Math.sin(shredScreenAngle);
+    [-0.73, 0.73].forEach((dx) => scrDrawer.push(addBox(parts.P25, { x: 0.04, y: 0.025, z: 1.04 },
+      { x: shredderCenter.x + dx * scrCos, y: 0.38 - dx * scrSin - 0.035, z: 0 }, material.silverClamp, "P25", null, false)));
+    scrDrawer.push(addBox(parts.P25, { x: 1.56, y: 0.44, z: 0.03 }, { x: shredderCenter.x, y: 0.41, z: 1.15 }, material.cover, "P25"));
+    [-0.60, 0, 0.60].forEach((dx) => scrDrawer.push(addCylinder(parts.P25, 0.02, 0.08, { x: shredderCenter.x + dx, y: 0.19, z: 1.17 }, material.dark, "P25", "x", 10, false)));
+    [-0.55, 0.55].forEach((dx) => {
+      scrDrawer.push(addBox(parts.P25, { x: 0.05, y: 0.03, z: 0.05 }, { x: shredderCenter.x + dx, y: 0.65, z: 1.15 }, material.dark, "P25", null, false));
+      scrDrawer.push(addBox(parts.P25, { x: 0.02, y: 0.09, z: 0.02 }, { x: shredderCenter.x + dx, y: 0.70, z: 1.19 }, material.cover, "P25", { x: -0.6 }, false));
+    });
+    markSwap(scrDrawer, "SCR-DECK");
     [shredderCenter.x - 0.62, shredderCenter.x + 0.62].forEach((x) => [-0.48, 0.48].forEach((z) => {
       addCylinder(parts.P25, 0.040, 0.25, { x, y: 0.13, z }, material.fixed, "P25", "y", 16, false);
       addBox(parts.P25, { x: 0.14, y: 0.035, z: 0.14 }, { x, y: -0.01, z }, material.shredPanel, "P25");
@@ -16734,16 +17095,32 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addBox(parts.P02, { x: 0.48, y: 0.34, z: 0.58 }, { x: grinderX, y: 0.42, z: 0 }, material.shell, "P02");
     addCylinder(parts.P02, 0.445, 0.065, { x: grinderX, y: grinderY, z: 0.38 }, material.shell, "P02", "z", 64);
     addMesh(parts.P02, new THREE.TorusGeometry(0.45, 0.026, 12, 64), material.frame, { x: grinderX, y: grinderY, z: 0.42 }, null, "P02", false);
-    for (let i = 0; i < 12; i += 1) {
-      const angle = Math.PI * 2 * i / 12;
-      addCylinder(parts.P02, 0.018, 0.035, {
-        x: grinderX + Math.cos(angle) * 0.39,
-        y: grinderY + Math.sin(angle) * 0.39,
-        z: 0.445
-      }, material.dark, "P02", "z", 14);
+    // 도어 체결 — 종전 12본 스터드·너트를 스윙볼트 래치 8점으로 바꿨다. 볼트를 완전히 빼서
+    // 바닥에 굴리는 대신 러그에서 젖혀 여는 방식이라 토크렌치 하나로 3분이면 도어가 열린다.
+    // 러그는 하우징 플랜지 쪽, 아이볼트는 도어 림을 반경 방향으로 지나고, T 핸들 너트로 조인다.
+    const doorLatches = [];
+    for (let i = 0; i < 8; i += 1) {
+      const angle = Math.PI * 2 * i / 8 + Math.PI / 8;
+      const ux = Math.cos(angle), uy = Math.sin(angle);
+      doorLatches.push(
+        addBox(parts.P02, { x: 0.06, y: 0.026, z: 0.075 }, { x: grinderX + ux * 0.478, y: grinderY + uy * 0.478, z: 0.395 }, material.dark, "P02", { z: angle }, false),
+        addMesh(parts.P02, new THREE.CylinderGeometry(0.008, 0.008, 0.13, 10), material.silverClamp,
+          { x: grinderX + ux * 0.425, y: grinderY + uy * 0.425, z: 0.452 }, { z: angle - Math.PI / 2 }, "P02", false),
+        addBox(parts.P02, { x: 0.024, y: 0.07, z: 0.024 }, { x: grinderX + ux * 0.372, y: grinderY + uy * 0.372, z: 0.452 }, material.cover, "P02", { z: angle }, false)
+      );
     }
+    markSwap(doorLatches, "HSG-BLADE");
     [0.82, 1.18].forEach((y) => {
       addCylinder(parts.P02, 0.032, 0.11, { x: grinderX - 0.50, y, z: 0.41 }, material.frame, "P02", "y", 18);
+    });
+    // 가스 스트럿 2본 — 12 t 강판 도어는 사람이 받치며 여는 물건이 아니다. 힌지 쪽 하우징에서
+    // 도어 림까지, 실린더(굵은 쪽)는 하우징에 로드(가는 쪽)는 도어에 붙는다.
+    [-0.26, 0.26].forEach((dy) => {
+      const a = { x: grinderX - 0.44, y: grinderY + dy * 0.9, z: 0.27 };
+      const b = { x: grinderX - 0.29, y: grinderY + dy * 1.55, z: 0.455 };
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 };
+      addRod(parts.P02, "P02", a, mid, 0.014, material.dark);
+      addRod(parts.P02, "P02", mid, b, 0.007, material.silverClamp);
     });
     // 하우징 분할면 — HG-002 는 「분할 원형 하우징 2EA · 분할면 평면도 0.10 mm」다.
     // 즉 챔버는 수평으로 반갈라져 볼트로 물려 있는데, 형상에는 통짜 원통만 있어
@@ -16824,6 +17201,17 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       }
     }
 
+    // 회전날은 4분할 카세트다 — 날 3매(z −0.13/0/+0.13)가 캐리어 바 하나에 미리 조립돼 있어
+    // 로터 위에서는 카세트 볼트 2본만 푼다. 중량 매칭도 카세트 단위로 한다.
+    for (let row = 0; row < 4; row += 1) {
+      const angle = row * Math.PI / 2;
+      const ux = Math.cos(angle), uy = Math.sin(angle);
+      addBox(knifePivot, { x: 0.05, y: 0.15, z: 0.42 }, { x: ux * 0.245, y: uy * 0.245, z: 0 }, material.cover, "P05", { z: angle }, false);
+      [-0.17, 0.17].forEach((z) => addMesh(knifePivot, new THREE.CylinderGeometry(0.012, 0.012, 0.03, 8), material.dark,
+        { x: ux * 0.28, y: uy * 0.28, z }, { z: angle - Math.PI / 2 }, "P05", false));
+    }
+    markSwap(knifePivot, "HSG-BLADE");
+
     [0, Math.PI / 2, Math.PI, Math.PI * 1.5].forEach((angle) => {
       addBox(parts.P06, { x: 0.23, y: 0.055, z: 0.42 }, {
         x: grinderX + Math.cos(angle) * 0.405,
@@ -16831,7 +17219,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         z: 0
       }, material.fixed, "P06", { z: angle + 0.20 });
     });
-    addCylinder(parts.P06, 0.405, 0.42, { x: grinderX, y: grinderY, z: 0 }, material.screen, "P06", "z", 64);
+    const screenBasket = addCylinder(parts.P06, 0.405, 0.42, { x: grinderX, y: grinderY, z: 0 }, material.screen, "P06", "z", 64);
+    // 내부 스크린은 슬라이드 카트리지다 — 가이드레일 2본 위에서 손잡이로 앞(+z)으로 당겨 나온다.
+    // 도어를 연 뒤 로터를 빼지 않고도 스크린만 바꿀 수 있어야 한다(스크린 수명이 날의 3배).
+    const screenCartridge = [screenBasket];
+    [-1, 1].forEach((side) => screenCartridge.push(
+      addBox(parts.P06, { x: 0.03, y: 0.02, z: 0.48 }, { x: grinderX + side * 0.30, y: grinderY - 0.285, z: 0 }, material.silverClamp, "P06", null, false)));
+    screenCartridge.push(addMesh(parts.P06, new THREE.TorusGeometry(0.05, 0.008, 8, 20), material.cover, { x: grinderX, y: grinderY - 0.33, z: 0.235 }, null, "P06", false));
+    markSwap(screenCartridge, "HSG-SCREEN");
 
     addCylinder(parts.P07, 0.15, 0.09, { x: grinderX, y: grinderY, z: 0.42 }, material.frame, "P07", "z", 40);
     addCylinder(parts.P07, 0.15, 0.09, { x: grinderX, y: grinderY, z: -0.42 }, material.frame, "P07", "z", 40);
@@ -16848,6 +17243,57 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       addBoltRow(parts.P07, "P07", { x: grinderX - 0.12, y: 0.172, z: z - 0.09 }, { x: grinderX + 0.12, y: 0.172, z: z - 0.09 }, 2, "y", 0.024, 0.028);
       addBoltRow(parts.P07, "P07", { x: grinderX - 0.12, y: 0.172, z: z + 0.09 }, { x: grinderX + 0.12, y: 0.172, z: z + 0.09 }, 2, "y", 0.024, 0.028);
     });
+
+    // ---- 로터 레일아웃 — 정비성의 핵심 ---------------------------------------------
+    // 회전날 교체는 「도어 열고 로터를 앞(+z)으로 빼내 카트 위에서 하는 일」이다. 하우징 안에
+    // 팔을 넣어 날을 갈던 방식은 45분이 아니라 반나절짜리였다. 레일은 스키드 위에서 시작해
+    // 스키드 바깥 지지대까지 이어지고, 카트에는 예비 로터가 미리 얹혀 있어 스왑이 된다 —
+    // 새 로터를 넣고 헌 로터는 밖에서 손본다. 경로(x −1.15…−0.30 · z 0.5…1.9)는 실측으로 비어 있다.
+    const rotorRailZ0 = 0.50, rotorRailZ1 = 1.58, rotorCartZ = 1.30;
+    const rotorCart = [];
+    [-0.20, 0.20].forEach((dx) => {
+      rotorCart.push(addBox(parts.P01, { x: 0.05, y: 0.030, z: rotorRailZ1 - rotorRailZ0 }, { x: grinderX + dx, y: 0.145, z: (rotorRailZ0 + rotorRailZ1) / 2 }, material.silverClamp, "P01", null, false));
+      [1.06, 1.50].forEach((z) => addBox(parts.P01, { x: 0.05, y: 0.20, z: 0.05 }, { x: grinderX + dx, y: 0.03, z }, material.frame, "P01", null, false));
+      addBox(parts.P01, { x: 0.05, y: 0.06, z: 0.02 }, { x: grinderX + dx, y: 0.19, z: rotorRailZ1 + 0.01 }, material.dark, "P01", null, false);
+    });
+    rotorCart.push(addBox(parts.P01, { x: 0.76, y: 0.05, z: 0.44 }, { x: grinderX, y: 0.215, z: rotorCartZ }, material.frame, "P01"));
+    [-0.20, 0.20].forEach((dx) => [-0.16, 0.16].forEach((dz) => {
+      rotorCart.push(addCylinder(parts.P01, 0.042, 0.03, { x: grinderX + dx, y: 0.19, z: rotorCartZ + dz }, material.dark, "P01", "x", 16, false));
+    }));
+    [-0.34, 0.34].forEach((dx) => rotorCart.push(addBox(parts.P01, { x: 0.06, y: 0.66, z: 0.06 }, { x: grinderX + dx, y: 0.57, z: rotorCartZ }, material.frame, "P01")));
+    rotorCart.push(addBox(parts.P01, { x: 0.74, y: 0.04, z: 0.26 }, { x: grinderX, y: 0.92, z: rotorCartZ }, material.frame, "P01"));
+    [-0.12, 0.12].forEach((dz) => rotorCart.push(addBox(parts.P01, { x: 0.16, y: 0.06, z: 0.05 }, { x: grinderX, y: 0.97, z: rotorCartZ + dz }, material.dark, "P01", null, false)));
+    const spareRotor = new THREE.Group();
+    spareRotor.position.set(grinderX, 1.03, rotorCartZ);
+    parts.P01.add(spareRotor);
+    addCylinder(spareRotor, 0.060, 1.12, { x: 0, y: 0, z: 0 }, material.frame, "P01", "z", 24, false);
+    addCylinder(spareRotor, 0.15, 0.40, { x: 0, y: 0, z: 0 }, material.frame, "P01", "z", 32, false);
+    [-0.16, 0, 0.16].forEach((z) => addCylinder(spareRotor, 0.30, 0.030, { x: 0, y: 0, z }, material.frame, "P01", "z", 40, false));
+    for (let row = 0; row < 4; row += 1) for (let layer = -1; layer <= 1; layer += 1) {
+      const angle = row * Math.PI / 2;
+      addBox(spareRotor, { x: 0.18, y: 0.055, z: 0.12 }, { x: Math.cos(angle) * 0.31, y: Math.sin(angle) * 0.31, z: layer * 0.13 }, material.knife, "P01", { z: angle }, false);
+    }
+    addMesh(spareRotor, new THREE.TorusGeometry(0.04, 0.008, 8, 20), material.silverClamp, { x: 0, y: 0.36, z: 0 }, null, "P01", false);
+    rotorCart.push(spareRotor);
+    markSwap(rotorCart, "HSG-BLADE");
+
+    // ALS-101 자동 윤활 유닛 — HSG 베어링 2점에 정량 그리스(ICSH 4점은 SH-023 배관으로 같은
+    // 유닛). 니플을 찾아다니며 손으로 주유하는 일이 없어야 정비성이다. 스키드 −z 레일 위,
+    // SC-500 측벽(z −0.51) 바깥에 앉힌다.
+    addBox(parts.P01, { x: 0.22, y: 0.30, z: 0.14 }, { x: 1.90, y: 0.29, z: -0.66 }, material.equipmentControl, "P01");
+    addCylinder(parts.P01, 0.055, 0.16, { x: 1.90, y: 0.52, z: -0.66 }, material.cover, "P01", "y", 20, false);
+    addBox(parts.P01, { x: 0.16, y: 0.04, z: 0.05 }, { x: 1.90, y: 0.40, z: -0.565 }, material.dark, "P01", null, false);
+
+    // 상태감시 — 베어링 하우징 위 무선 진동·온도 노드(VIT-102/103), PT100(TE-102),
+    // 라이너 마모 도전루프(WL-101). 예지보전 표의 값은 이 태그로 잇는다.
+    addSensorNode(parts.P07, "P07", "VIT-102", { x: grinderX, y: grinderY + 0.175, z: 0.42 });
+    addSensorNode(parts.P07, "P07", "VIT-103", { x: grinderX, y: grinderY + 0.175, z: -0.42 });
+    const te102 = addCylinder(parts.P07, 0.014, 0.05, { x: grinderX + 0.14, y: grinderY + 0.09, z: 0.42 }, material.silverClamp, "P07", "x", 8, false);
+    te102.userData.sensorTag = "TE-102";
+    const wl101Angle = -2.2;
+    const wl101 = addMesh(parts.P02, new THREE.CylinderGeometry(0.025, 0.025, 0.02, 12), material.silverClamp,
+      { x: grinderX + Math.cos(wl101Angle) * 0.49, y: grinderY + Math.sin(wl101Angle) * 0.49, z: -0.20 }, { z: wl101Angle - Math.PI / 2 }, "P02", false);
+    wl101.userData.sensorTag = "WL-101";
 
     const motorCenter = { x: 0.48, y: 0.70, z: 0 };
     addCylinder(parts.P08, 0.25, 0.52, motorCenter, material.motor, "P08", "z", 48);
@@ -17084,7 +17530,18 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       airflowMarkers.push(marker);
     }
     addBox(parts.P17, { x: 0.62, y: 0.86, z: 0.58 }, filterCenter, material.equipmentAir, "P17", null, true);
-    for (let i = -2; i <= 2; i += 1) addCylinder(parts.P17, 0.038, 0.62, { x: filterCenter.x + i * 0.095, y: filterCenter.y, z: filterCenter.z }, material.screen, "P17", "y", 18, false);
+    const bf101Cartridges = [];
+    for (let i = -2; i <= 2; i += 1) bf101Cartridges.push(addCylinder(parts.P17, 0.038, 0.62, { x: filterCenter.x + i * 0.095, y: filterCenter.y, z: filterCenter.z }, material.screen, "P17", "y", 18, false));
+    // 카트리지는 청정측(상부 리드)에서 뽑는다 — 분진측에 들어가지 않는다. 리드는 토글클램프
+    // 4점, 힌지는 −z 상단 모서리. 리드 위를 지나는 청정공기 덕트는 플렉시블 스풀 1개소로 분리한다.
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
+      bf101Cartridges.push(addBox(parts.P17, { x: 0.03, y: 0.06, z: 0.05 }, { x: filterCenter.x + sx * 0.325, y: filterCenter.y + 0.36, z: filterCenter.z + sz * 0.20 }, material.dark, "P17", null, false));
+      bf101Cartridges.push(addBox(parts.P17, { x: 0.02, y: 0.02, z: 0.09 }, { x: filterCenter.x + sx * 0.345, y: filterCenter.y + 0.41, z: filterCenter.z + sz * 0.20 }, material.cover, "P17", { z: sx * 0.5 }, false));
+    });
+    [-0.22, 0.22].forEach((dx) => bf101Cartridges.push(addCylinder(parts.P17, 0.018, 0.08, { x: filterCenter.x + dx, y: filterCenter.y + 0.44, z: filterCenter.z - 0.30 }, material.dark, "P17", "x", 10, false)));
+    markSwap(bf101Cartridges, "BF101-CARTRIDGE");
+    const pdt101 = addCylinder(parts.P17, 0.024, 0.03, { x: filterCenter.x + 0.325, y: filterCenter.y + 0.15, z: filterCenter.z + 0.12 }, material.silverClamp, "P17", "x", 12, false);
+    pdt101.userData.sensorTag = "PDT-101";
     addMesh(parts.P17, frustumGeometry(0.54, 0.50, 0.18, 0.16, 0.34), material.equipmentAir, { x: filterCenter.x, y: 1.06, z: filterCenter.z }, null, "P17", true);
     const rv102Center = new THREE.Vector3(filterCenter.x, 0.92, filterCenter.z);
     addCylinder(parts.P17, 0.125, 0.26, rv102Center, material.solidsReceiver, "P17", "z", 32, false);
@@ -17275,6 +17732,17 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       );
       return deck;
     });
+    // 데크는 장력식 메시가 아니라 핀인 PU 모듈 패널이다 — 마모된 모듈만 핀 2점 뽑아 갈아
+    // 끼우고 텐셔닝은 없다. 격자 바가 모듈 경계(길이 4 × 폭 2 = 데크당 8모듈)다.
+    const sc500Panels = [...sieveDeckMeshes];
+    SIEVE_DECK_BASE_Y.forEach((baseY) => {
+      const c = Math.cos(SIEVE_INCLINE_RAD), s = Math.sin(SIEVE_INCLINE_RAD);
+      const at = (dx, dy, dz) => ({ x: sieveX + dx * c + dy * s, y: baseY - dx * s + dy * c, z: dz });
+      sc500Panels.push(addBox(sieveVibratingGroup, { x: SIEVE_DECK_LENGTH_M, y: 0.012, z: 0.016 }, at(0, 0.018, 0), material.cover, "P12", { z: -SIEVE_INCLINE_RAD }, false));
+      [-0.315, 0, 0.315].forEach((dx) => sc500Panels.push(
+        addBox(sieveVibratingGroup, { x: 0.016, y: 0.012, z: SIEVE_DECK_WIDTH_M }, at(dx, 0.018, 0), material.cover, "P12", { z: -SIEVE_INCLINE_RAD }, false)));
+    });
+    markSwap(sc500Panels, "SC500-PANEL");
     const sieveTopCover = addBox(sieveVibratingGroup, { x: 1.42, y: 0.08, z: 0.97 }, { x: sieveX, y: 1.08, z: 0 }, material.screenHousing, "P12", { z: -SIEVE_INCLINE_RAD });
     addBox(sieveVibratingGroup, { x: 0.30, y: 0.28, z: 0.34 }, { x: 0.89, y: 1.04, z: 0 }, material.cover, "P12", { z: -SIEVE_INCLINE_RAD });
     addCylinder(sieveVibratingGroup, 0.115, 0.42, { x: sieveX, y: 1.22, z: 0 }, material.motor, "P12", "z", 32);
@@ -17421,6 +17889,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       addCylinder(secondaryGroup, 0.64, 0.030, { x: secondaryCenter.x, y: y + 0.08, z: secondaryCenter.z }, material.silverClamp, "P19", "y", 64, false);
       return mesh;
     });
+    // 원형 데크는 60° 섹터 패널 6매 — 마모된 섹터만 데크링 클램프를 풀고 바꾼다.
+    const sv201Panels = [...secondaryDeckMeshes];
+    secondaryDeckYs.forEach((y) => [0, Math.PI / 3, Math.PI * 2 / 3].forEach((angle) => sv201Panels.push(
+      addBox(secondaryGroup, { x: 1.14, y: 0.010, z: 0.014 }, { x: secondaryCenter.x, y: y + 0.045, z: secondaryCenter.z }, material.cover, "P19", { y: angle }, false))));
+    markSwap(sv201Panels, "SV201-PANEL");
     addMesh(secondaryGroup, openFrustumGeometry(0.34, 0.34, 0.82, 0.82, 0.28), material.screenHousing, { x: secondaryCenter.x, y: 0.58, z: secondaryCenter.z }, null, "P19", true);
     addCylinder(secondaryGroup, 0.64, 0.035, { x: secondaryCenter.x, y: 0.585, z: secondaryCenter.z }, material.silverClamp, "P19", "y", 64, false);
     addCylinder(secondaryGroup, 0.62, 0.10, { x: secondaryCenter.x, y: -0.03, z: secondaryCenter.z }, material.screenHousing, "P19", "y", 64, true);
@@ -17709,7 +18182,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
     const bfCenter = new THREE.Vector3(6.72, 1.48, 0.20);
     addBox(parts.P21, { x: 0.72, y: 0.92, z: 0.62 }, bfCenter, material.equipmentAir, "P21", null, true);
-    for (let i = -2; i <= 2; i += 1) addCylinder(parts.P21, 0.050, 0.70, { x: bfCenter.x + i * 0.12, y: bfCenter.y, z: bfCenter.z }, material.screen, "P21", "y", 14, false);
+    const bf201Cartridges = [];
+    for (let i = -2; i <= 2; i += 1) bf201Cartridges.push(addCylinder(parts.P21, 0.050, 0.70, { x: bfCenter.x + i * 0.12, y: bfCenter.y, z: bfCenter.z }, material.screen, "P21", "y", 14, false));
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
+      bf201Cartridges.push(addBox(parts.P21, { x: 0.03, y: 0.06, z: 0.05 }, { x: bfCenter.x + sx * 0.375, y: bfCenter.y + 0.39, z: bfCenter.z + sz * 0.22 }, material.dark, "P21", null, false));
+      bf201Cartridges.push(addBox(parts.P21, { x: 0.02, y: 0.02, z: 0.09 }, { x: bfCenter.x + sx * 0.395, y: bfCenter.y + 0.44, z: bfCenter.z + sz * 0.22 }, material.cover, "P21", { z: sx * 0.5 }, false));
+    });
+    [-0.24, 0.24].forEach((dx) => bf201Cartridges.push(addCylinder(parts.P21, 0.018, 0.08, { x: bfCenter.x + dx, y: bfCenter.y + 0.47, z: bfCenter.z - 0.32 }, material.dark, "P21", "x", 10, false)));
+    markSwap(bf201Cartridges, "BF201-CARTRIDGE");
+    const pdt201 = addCylinder(parts.P21, 0.024, 0.03, { x: bfCenter.x + 0.375, y: bfCenter.y + 0.14, z: bfCenter.z + 0.12 }, material.silverClamp, "P21", "x", 12, false);
+    pdt201.userData.sensorTag = "PDT-201";
     addMesh(parts.P21, openFrustumGeometry(0.18, 0.16, 0.66, 0.56, 0.34), material.equipmentAir, { x: bfCenter.x, y: 0.86, z: bfCenter.z }, null, "P21", true);
     const rv203Center = new THREE.Vector3(bfCenter.x, 0.73, bfCenter.z);
     addCylinder(parts.P21, 0.13, 0.28, rv203Center, material.solidsReceiver, "P21", "z", 32, false);
@@ -17769,6 +18251,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const polisherCenter = new THREE.Vector3(6.08, -0.03, 0.20);
     addCylinder(polisherGroup, 0.55, 0.32, polisherCenter, material.screenHousing, "P22", "y", 48, true);
     const polisherDeck = addCylinder(polisherGroup, 0.50, 0.022, { x: polisherCenter.x, y: 0.08, z: polisherCenter.z }, material.screen, "P22", "y", 48, false);
+    const ss201Panels = [polisherDeck];
+    [0, Math.PI / 3, Math.PI * 2 / 3].forEach((angle) => ss201Panels.push(
+      addBox(polisherGroup, { x: 0.98, y: 0.010, z: 0.014 }, { x: polisherCenter.x, y: 0.097, z: polisherCenter.z }, material.cover, "P22", { y: angle }, false)));
+    markSwap(ss201Panels, "SS201-PANEL");
     polisherDeck.userData.cutUm = 75;
     addCylinder(polisherGroup, 0.12, 0.28, { x: polisherCenter.x, y: -0.36, z: polisherCenter.z }, material.motor, "P22", "y", 28, false);
     [[-0.35, -0.28], [-0.35, 0.28], [0.35, -0.28], [0.35, 0.28]].forEach(([dx, dz]) => {
@@ -18151,6 +18637,12 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 중앙 스트립에는 하부 Y축 속도검출 타깃휠이 나와 있으므로 점검커버 위에 붙인다.
     addBrandMark(parts.P23, "P23", { x: shredderCenter.x + 0.68, y: 1.24, z: 1.147 }, 0.28);    // ICSH-301 점검커버
     addBrandMark(parts.P28, "P28", { x: plcCenter.x, y: 0.58, z: plcCenter.z + 0.224 }, 0.22);  // PLC-101 반 도어
+    // LOTO 스테이션 — 정비 절차의 첫 줄은 언제나 「격리·잠금·검증」이다. 반 측면에 자물쇠
+    // 걸이 6점(구동 6계통)과 표지판. VFD STO 는 기능안전 정지이지 전기적 격리가 아니다.
+    addBox(parts.P28, { x: 0.10, y: 0.42, z: 0.30 }, { x: -5.84, y: 1.25, z: -1.36 }, material.equipmentControl, "P28");
+    [-0.07, 0.07].forEach((dz) => [1.34, 1.25, 1.16].forEach((y) =>
+      addMesh(parts.P28, new THREE.TorusGeometry(0.016, 0.004, 6, 14), material.silverClamp, { x: -5.785, y, z: -1.36 + dz }, { y: Math.PI / 2 }, "P28", false)));
+    addBox(parts.P28, { x: 0.004, y: 0.06, z: 0.24 }, { x: -5.786, y: 1.42, z: -1.36 }, material.coral, "P28", null, false);
     // 벨트가드에는 워드마크 데칼이 이미 있고 그 안에 같은 심볼이 들어 있으므로 겹치지 않는다.
     // 세 번째는 HSG-101 전면도어. 도어 중앙에는 속도검출 타깃휠과 지지대가 지나가므로
     // 볼트원(반경 0.39) 안쪽 좌측의 빈 자리에 앉힌다.
@@ -18640,6 +19132,19 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         const motor = wetCylinder(group, 0.12, 0.30, [x + 0.20, 0.24, pumpZ], wetMotorMaterial, `${tag}${suffix} VFD 모터`, 28, [0, 0, Math.PI / 2]);
         wetCylinder(group, 0.045, 0.12, [x + 0.01, 0.24, pumpZ], material.fixed, `${tag}${suffix} 커플링`, 18, [0, 0, Math.PI / 2]);
         wetRotors.push({ activation, rpm: DRIVE_RPM.slurryPump, parts: [impeller, motor], axis: "x", train: suffix });
+        // 백풀아웃 카트리지 — 분할링을 풀면 베어링 프레임·임펠러·라이너·씰이 한 덩어리로 위로
+        // 인양된다. 볼류트는 배관에 그대로 남는다(배관 무접촉). 뒤판의 조정나사 3본으로 임펠러
+        // 간극을 밖에서 맞추므로 케이싱을 열지 않고 성능을 되돌린다.
+        const wetEnd = [impeller,
+          wetMesh(group, new THREE.TorusGeometry(0.128, 0.012, 8, 28), material.cover, [x - 0.025, 0.24, pumpZ], `${tag}${suffix} 백풀아웃 분할링`, [0, Math.PI / 2, 0]),
+          wetMesh(group, new THREE.TorusGeometry(0.03, 0.007, 8, 18), material.silverClamp, [x - 0.15, 0.385, pumpZ], `${tag}${suffix} 카트리지 인양 아이`),
+          ...[0, 1, 2].map((k) => {
+            const a = k * Math.PI * 2 / 3 + Math.PI / 6;
+            return wetCylinder(group, 0.006, 0.05, [x - 0.045, 0.24 + Math.cos(a) * 0.085, pumpZ + Math.sin(a) * 0.085], material.silverClamp, `${tag}${suffix} 임펠러 간극 조정나사`, 8, [0, 0, Math.PI / 2]);
+          })
+        ];
+        markSwap(wetEnd, `${tag.replace("-", "")}-WETEND`);
+        if (index === 0 && /^(P-1|P-2|P-3|PP-)/.test(tag)) wetSensorNode(group, `VIT-${tag.replace("-", "")}`, [x - 0.06, 0.40, pumpZ]);
       });
       const suctionTee = [x - 0.30, 0.24, z];
       const dischargeTee = [x + 0.12, 0.42, z];
@@ -18694,6 +19199,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return group;
     }
 
+    // 무선 진동 노드(습식) — 재질을 복제해 정비 모드 발광이 다른 면으로 번지지 않게 한다.
+    function wetSensorNode(parent, tag, position) {
+      const body = wetCylinder(parent, 0.022, 0.05, position, material.equipmentControl.clone(), `${tag} 무선 진동·온도 노드`, 14);
+      const antenna = wetCylinder(parent, 0.004, 0.06, [position[0], position[1] + 0.055, position[2]], material.silverClamp.clone(), `${tag} 안테나`, 6);
+      body.material.userData.ownedBySwap = true;
+      antenna.material.userData.ownedBySwap = true;
+      body.userData.sensorTag = tag;
+      antenna.userData.sensorTag = tag;
+      return body;
+    }
     function wetSensor(tag, position, sourceMaterial = material.silverClamp) {
       const sensor = wetCylinder(unifiedWet, 0.045, 0.11, position, sourceMaterial, `${tag} 온라인 계측기`, 20);
       wetBox(unifiedWet, [0.12, 0.11, 0.08], [position[0], position[1] + 0.10, position[2]], material.frame, `${tag} 트랜스미터`);
@@ -18810,7 +19325,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const vp401Wheels = [];
     [["A", -2.72], ["B", -2.20]].forEach(([suffix, z]) => {
       vp401Wheels.push(wetCylinder(unifiedWet, 0.19, 0.24, [5.56, 0.34, z], material.equipmentAir, `VP-401${suffix} 진공펌프`, 30, [0, 0, Math.PI / 2]));
-      wetCylinder(unifiedWet, 0.14, 0.34, [5.94, 0.34, z], wetMotorMaterial, `VP-401${suffix} IE4 VFD 모터`, 28, [0, 0, Math.PI / 2]);
+      wetCylinder(unifiedWet, 0.14, 0.34, [5.94, 0.34, z], wetMotorMaterial, `VP-401${suffix} IE5 PM VFD 모터`, 28, [0, 0, Math.PI / 2]);
       wetCylinder(unifiedWet, 0.05, 0.10, [5.75, 0.34, z], material.fixed, `VP-401${suffix} 커플링`, 18, [0, 0, Math.PI / 2]);
       wetTube(unifiedWet, [[5.58, 0.62, -2.46], [5.58, 0.52, z], [5.40, 0.34, z]], 0.040, material.pipeAir, `VP-401${suffix} 흡입지관`);
       wetTube(unifiedWet, [[5.56, 0.34, z + (z < -2.4 ? -0.16 : 0.16)], [5.20, 0.90, z], [4.70, 1.80, -2.46]], 0.038, material.pipeAir, `VP-401${suffix} 배기 → 소음기·배기스택`);
@@ -19018,6 +19533,43 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // flotation from the batch dewatering equipment.
     const tk204 = wetTank("TK-204", 11.92, -2.30, 0.38, 0.88, 180, { liquid: wetConcentrateMaterial, label: "Ag 정광 급액조" });
     const tk301 = wetTank("TK-301", 14.06, -2.58, 0.44, 1.02, 180, { liquid: wetTailingsMaterial, label: "Si 광미 급액조" });
+    // ---- 로터 인양 — 부선 셀·어트리션 -------------------------------------------------
+    // 로터·스테이터는 축과 함께 수직으로 뽑는 카트리지다. 셀마다 구동 브리지에 인양아이
+    // 2점, 그 위로 2F 데크에 선 지브크레인(JC-201, SWL 0.5 t)이 세 셀을 선회 반경 안에 둔다.
+    [fc201, fc202, fc203].forEach((cell, index) => {
+      const rotor = cell.group.children.find((child) => child.isGroup);
+      if (rotor) markSwap(rotor, "FC-ROTOR");
+      [-1, 1].forEach((side) => wetMesh(cell.group, new THREE.TorusGeometry(0.035, 0.007, 8, 18), material.silverClamp.clone(),
+        [cell.x, 0.66 + cell.height, cell.z + side * cell.radius * 0.30], `${cell.group.name} 로터 인양 아이`));
+      wetSensorNode(cell.group, `VIT-21${index + 1}`, [cell.x + 0.12, 0.70 + cell.height - 0.02, cell.z + 0.10]);
+    });
+    {
+      const as101Rotor = as101.group.children.find((child) => child.isGroup);
+      if (as101Rotor) markSwap(as101Rotor, "AS101-ROTOR");
+      [-1, 1].forEach((side) => wetMesh(as101.group, new THREE.TorusGeometry(0.035, 0.007, 8, 18), material.silverClamp.clone(),
+        [as101.x + side * 0.20, 0.66 + as101.height, as101.z], "AS-101 로터 인양 아이"));
+    }
+    const jibCrane = new THREE.Group();
+    jibCrane.name = "JC-201";
+    unifiedWet.add(jibCrane);
+    {
+      const jx = 14.24, jz = -1.05, deckTop = 2.51;
+      wetBox(jibCrane, [0.36, 0.03, 0.36], [jx, deckTop + 0.015, jz], material.frame, "JC-201 기둥 베이스플레이트");
+      for (const ax of [-1, 1]) for (const az of [-1, 1]) wetCylinder(jibCrane, 0.010, 0.06, [jx + ax * 0.14, deckTop + 0.05, jz + az * 0.14], material.silverClamp, "JC-201 앵커볼트", 8);
+      wetCylinder(jibCrane, 0.07, 3.75, [jx, deckTop + 0.03 + 1.875, jz], material.frame, "JC-201 기둥", 24);
+      wetMesh(jibCrane, new THREE.TorusGeometry(0.10, 0.02, 8, 28), material.silverClamp, [jx, 6.10, jz], "JC-201 선회 베어링", [Math.PI / 2, 0, 0]);
+      wetCylinder(jibCrane, 0.05, 0.40, [jx, 6.46, jz], material.frame, "JC-201 기둥 연장", 16);
+      wetBox(jibCrane, [0.08, 0.16, 2.30], [jx, 6.16, jz + 1.15], material.frame, "JC-201 지브 암 L2,300");
+      wetTube(jibCrane, [[jx, 6.64, jz], [jx, 6.26, jz + 2.15]], 0.012, material.silverClamp, "JC-201 타이로드");
+      const hoist = [
+        wetBox(jibCrane, [0.12, 0.10, 0.14], [jx, 6.03, 0.08], material.equipmentControl, "JC-201 트롤리"),
+        wetCylinder(jibCrane, 0.055, 0.16, [jx, 5.88, 0.08], material.equipmentControl, "JC-201 체인호이스트 0.5 t", 16),
+        wetCylinder(jibCrane, 0.006, 0.46, [jx, 5.57, 0.08], material.silverClamp, "JC-201 체인", 6),
+        wetMesh(jibCrane, new THREE.TorusGeometry(0.035, 0.008, 8, 18), material.silverClamp, [jx, 5.30, 0.08], "JC-201 훅")
+      ];
+      markSwap(hoist, "FC-ROTOR");
+      wetLabel("JC-201 · 로터 인양 지브크레인 SWL 0.5 t · 반경 2.3 m", [jx, 6.90, jz], [2.20, 0.22, 1]);
+    }
     const p204 = wetPumpPair("P-204", 12.82, -2.52, 180, wetConcentrateMaterial, "CF-204 급액 A/B");
     const p301 = wetPumpPair("P-301", 16.72, -2.62, 180, wetTailingsMaterial, "FP-301 고압급액 A/B");
     wetTube(unifiedWet, [[14.24, 4.42, 1.14], [13.78, 4.72, -2.30], [11.92, 1.34, -2.30]], 0.052, wetConcentrateMaterial, "FC-202 클리너 정광 → TK-204", 2160, 7);
@@ -19333,23 +19885,25 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetTube(coolingPlant, [[2.20, 0.40, YARD_Z - 0.68], [2.20, HEADER_Y, HEADER_Z + 0.30], [2.20, HEADER_Y, HEADER_Z]], 0.032, cwsMaterial, "P-601 토출 → CWS 헤더");
     wetTube(coolingPlant, [[3.60, 0.30, YARD_Z + 0.55], [3.20, HEADER_Y - 0.20, HEADER_Z + 0.40], [3.20, HEADER_Y - 0.20, HEADER_Z]], 0.032, cwrMaterial, "CWR 헤더 → TK-601");
 
-    // 지관 냉각기: [x, tag, 부하 kW, 대상 z]
+    // 지관 냉각기: [x, tag, 부하 kW, 대상 z, 연결관 높이]
+    // GB-301 연결관만 y 0.62 로 올린다 — y 0.30 이면 SCR-001 데크 드로어(y 0.21–0.55)의
+    // +z 인출 경로를 정확히 가로지른다. 인출 때마다 냉각관을 떼는 설계는 정비성이 아니다.
     [
-      [-4.40, "GB-301", "ICSH-301 감속기 오일 1.70 kW", -1.10],
+      [-4.40, "GB-301", "ICSH-301 감속기 오일 1.70 kW", -1.10, 0.62],
       [-0.30, "HX-101", "HSG 폐회로 공기냉각기 17.02 kW", 0.20],
       [0.60, "JK-101", "HSG-101 챔버 자켓 13.62 kW", 0.20],
       [4.20, "AC-401", "VP-401A/B 후냉각 6.38 kW", 1.20],
       [10.90, "AS-CL", "AS-101 슬러리 회로 2.48 kW", 1.60],
       [16.20, "OC-301", "HPU-301 유압유 2.25 kW", 1.20],
       [17.40, "CF-BR", "CF-204 베어링 0.84 kW", 1.20]
-    ].forEach(([x, tag, note, targetZ]) => {
+    ].forEach(([x, tag, note, targetZ, runY = 0.30]) => {
       wetBox(coolingPlant, [0.44, 0.52, 0.34], [x, 0.44, HEADER_Z - 0.62], material.equipmentWater, `${tag} ${note}`);
       for (let fin = 0; fin < 5; fin += 1) {
         wetBox(coolingPlant, [0.40, 0.020, 0.30], [x, 0.24 + fin * 0.10, HEADER_Z - 0.62], material.screen, `${tag} 핀코일`);
       }
       wetTube(coolingPlant, [[x, HEADER_Y, HEADER_Z], [x, 0.62, HEADER_Z - 0.34], [x, 0.58, HEADER_Z - 0.62]], 0.018, cwsMaterial, `${tag} 공급 지관`);
       wetTube(coolingPlant, [[x + 0.14, 0.58, HEADER_Z - 0.62], [x + 0.14, 0.50, HEADER_Z - 0.30], [x + 0.14, HEADER_Y - 0.20, HEADER_Z]], 0.018, cwrMaterial, `${tag} 환수 지관`);
-      wetTube(coolingPlant, [[x, 0.34, HEADER_Z - 0.78], [x, 0.30, (HEADER_Z - 0.78 + targetZ) / 2], [x, 0.30, targetZ]], 0.022, material.pipeAir, `${tag} → 대상기기 연결`);
+      wetTube(coolingPlant, [[x, 0.34, HEADER_Z - 0.78], [x, runY, (HEADER_Z - 0.78 + targetZ) / 2], [x, runY, targetZ]], 0.022, material.pipeAir, `${tag} → 대상기기 연결`);
       wetCylinder(coolingPlant, 0.038, 0.10, [x - 0.12, 0.72, HEADER_Z - 0.62], material.silverClamp, `${tag} 밸런싱 밸브`, 14);
       wetCylinder(coolingPlant, 0.026, 0.12, [x + 0.26, 0.66, HEADER_Z - 0.62], material.product280, `${tag} TT 온도전송기`, 12);
     });
@@ -19408,6 +19962,122 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       numericalResets: 0,
       drainComplete: false
     };
+
+    // ---- 마모·잔여수명 모델 -------------------------------------------------------
+    // WEAR_PARTS 의 life.basis 를 시뮬레이션 누적량에서 읽고, 콘솔의 「모의 누적운전」
+    // 시간을 설계 부하로 환산해 더한다. 60분 시뮬레이션만으로는 수천 시간짜리 수명이
+    // 움직여 보이지 않으므로, 계획 도구로서 "3,000 h 시점에 무엇을 갈아야 하나" 를
+    // 볼 수 있어야 한다. 센서값은 부하와 마모율에서 결정론적으로 유도한다 — 난수 없음.
+    const maintenanceState = { simulatedHours: 0 };
+    function maintBasisAccumulated(basis) {
+      switch (basis) {
+        case "freshMass": return state.freshIn;
+        case "millMass": return state.freshIn + state.returnFeed;
+        case "screenMass": return state.classifiedMass;
+        case "sieveMass": return state.productOut;
+        case "fineMass": return state.productUnder75Out;
+        case "wetHours": return state.wetAnimationSeconds / 3600;
+        default: return state.processSeconds / 3600;
+      }
+    }
+    // 설계 부하에서의 시간당 소모량. 질량 기반은 폐회로 대수식의 유량을, 시간 기반은 1 h/h.
+    function maintDesignRate(basis) {
+      switch (basis) {
+        case "freshMass": return FRESH_FEED_KGH;
+        case "millMass": return MILL_FEED_KGH;
+        case "screenMass": return SCREEN_DECK2_FEED_KGH;
+        case "sieveMass": return SIEVE_FEED_KGH;
+        case "fineMass": return WET_FEED_KGH;
+        default: return 1;
+      }
+    }
+    function wearOf(part) {
+      const basis = part.life.basis;
+      const rate = maintDesignRate(basis);
+      const accumulated = maintBasisAccumulated(basis) + maintenanceState.simulatedHours * rate;
+      const edges = part.edges || 1;
+      const perEdge = part.life.limit;
+      const total = perEdge * edges;
+      const fraction = total > 0 ? accumulated / total : 0;
+      // 다음 조치 — 날이 여러 개면 다음 인덱스 회전, 마지막 날이면 교체
+      const edgeIndex = Math.min(edges, Math.floor(accumulated / perEdge) + 1);
+      const nextBoundary = perEdge * edgeIndex;
+      const nextActionHours = rate > 0 ? Math.max(0, nextBoundary - accumulated) / rate : Infinity;
+      const rulHours = rate > 0 ? Math.max(0, total - accumulated) / rate : Infinity;
+      const nextAction = edges > 1 && edgeIndex < edges ? `날 인덱스 ${edgeIndex}→${edgeIndex + 1}` : "교체";
+      return { accumulated, total, fraction, rate, rulHours, nextActionHours, nextAction, edgeIndex, edges };
+    }
+    function dryLoad() {
+      if (plcState.line !== "run") return 0;
+      return Math.min(1.25, (state.millLoadKgh || MILL_FEED_KGH) / MILL_FEED_KGH);
+    }
+    function wetLoad() {
+      return wetPlcState.line === "run" ? 1 : 0;
+    }
+    const SENSOR_MODEL = {
+      // 값 = 정지값 | 기저 + 부하항 + 마모항.  slope 는 dValue/dw — 상태기반 잔여수명 외삽에 쓴다.
+      vib:  { idle: 0.2,  read: (load, w) => 1.6 + 0.9 * load + 4.8 * w * w,  slope: (w) => 9.6 * w },
+      temp: { idle: 24,   read: (load, w) => 38 + 24 * load + 28 * w * w,     slope: (w) => 56 * w },
+      mcsa: { idle: 0,    read: (load, w) => 0.8 + 5.5 * w,                   slope: () => 5.5 },
+      ae:   { idle: 30,   read: (load, w) => 48 + 4 * load + 20 * w,          slope: () => 20 },
+      dp:   { idle: 120,  read: (load, w) => 600 + 1300 * w,                  slope: () => 1300 },
+      loop: { idle: 0,    read: (load, w) => (w > 0.92 ? 1 : 0),              slope: () => 0 }
+    };
+    function sensorZone(sensor, value) {
+      if (sensor.kind === "loop") return value ? "D" : "A";
+      if (value >= sensor.trip) return "D";
+      if (value >= sensor.alarm) return "C";
+      if (value >= sensor.alarm * 0.62) return "B";   // vib 4.5 × 0.62 = 2.8 — ISO 10816 A/B 경계
+      return "A";
+    }
+    function sensorReading(sensor, wear) {
+      const model = SENSOR_MODEL[sensor.kind];
+      const w = Math.min(1.35, wear ? wear.fraction : 0);
+      const wet = /^VIT-(P|PP|2[01][0-9])/.test(sensor.tag) || sensor.tag === "VIT-101";
+      const load = wet ? wetLoad() : dryLoad();
+      const value = load > 0 ? model.read(load, w) : model.idle;
+      const zone = sensorZone(sensor, value);
+      // 상태기반 잔여수명 — 경보값까지 마모항이 자라는 데 걸리는 시간
+      let hoursToAlarm = Infinity;
+      if (wear && wear.rate > 0 && wear.total > 0 && sensor.kind !== "loop") {
+        const dValueDh = model.slope(w) * (wear.rate / wear.total);
+        const headroom = sensor.alarm - model.read(1, w);
+        if (headroom <= 0) hoursToAlarm = 0;
+        else if (dValueDh > 0) hoursToAlarm = headroom / dValueDh;
+      }
+      return { tag: sensor.tag, asset: sensor.asset, kind: sensor.kind, unit: sensor.unit, value, zone, alarm: sensor.alarm, trip: sensor.trip, hoursToAlarm, running: load > 0 };
+    }
+    function partHealth(wear, readings) {
+      const worst = readings.reduce((z, r) => ("ABCD".indexOf(r.zone) > "ABCD".indexOf(z) ? r.zone : z), "A");
+      if (wear.fraction >= 1 || worst === "D") return { grade: "D", label: "교체", action: "다음 기동 전 교체" };
+      if (wear.fraction >= 0.85 || worst === "C") return { grade: "C", label: "임박", action: "다음 정지창에 교체 · 예비품 인출" };
+      if (wear.fraction >= 0.60 || worst === "B") return { grade: "B", label: "계획", action: "정비 계획 수립 · 예비품 재고 확인" };
+      return { grade: "A", label: "정상", action: "감시 지속" };
+    }
+    // 등록부 전체를 한 번에 평가한다. 콘솔 표와 runtime.inspect 가 같은 것을 본다.
+    function wearSnapshot() {
+      const loggedHours = maintenanceState.simulatedHours + state.processSeconds / 3600;
+      const rows = WEAR_PARTS.map((part) => {
+        const wear = wearOf(part);
+        const readings = part.sensors
+          .map((tag) => CONDITION_SENSORS.find((sensor) => sensor.tag === tag))
+          .filter(Boolean)
+          .map((sensor) => sensorReading(sensor, wear));
+        const conditionRul = readings.reduce((h, r) => Math.min(h, r.hoursToAlarm), Infinity);
+        const rulHours = Math.min(wear.rulHours, conditionRul);
+        const health = partHealth(wear, readings);
+        const confidence = Math.min(0.95, 0.35 + loggedHours / 600 + (readings.length ? 0.10 : 0));
+        return { id: part.id, machine: part.machine, part: part.part, module: part.module, mttrMin: part.mttrMin,
+          basis: part.life.basis, unit: part.life.unit, wear, readings, rulHours, conditionRul, health, confidence };
+      });
+      const sensors = CONDITION_SENSORS.map((sensor) => {
+        const owner = rows.find((row) => row.id === sensor.wearOf);
+        return sensorReading(sensor, owner ? owner.wear : null);
+      });
+      const due = rows.filter((row) => row.health.grade !== "A").sort((a, b) => a.rulHours - b.rulHours);
+      const mttrDue = due.reduce((sum, row) => sum + row.mttrMin, 0);
+      return { loggedHours, rows, sensors, due, mttrDue };
+    }
     const plcState = {
       mode: "auto",
       line: "ready",
@@ -19472,6 +20142,18 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       velocity: root.querySelector("[data-ai-velocity]"),
       confidence: root.querySelector("[data-ai-confidence]"),
       advice: root.querySelector("[data-ai-advice]")
+    };
+    const maintenanceUi = {
+      health: root.querySelector("[data-maint-health]"),
+      due: root.querySelector("[data-maint-due]"),
+      mttr: root.querySelector("[data-maint-mttr]"),
+      hours: root.querySelector("[data-maint-hours]"),
+      simHours: root.querySelector("[data-maint-sim-hours]"),
+      view: root.querySelector("[data-maint-view]"),
+      rows: root.querySelector("[data-maint-rows]"),
+      sensors: root.querySelector("[data-maint-sensors]"),
+      spares: root.querySelector("[data-maint-spares]"),
+      loto: root.querySelector("[data-maint-loto]")
     };
     const unifiedUi = {
       mode: root.querySelector("[data-plc001-mode]"),
@@ -21937,6 +22619,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     });
     // Head and tail pulleys, plus idlers along the run.
     const headPulley = addCylinder(panelInfeed, 0.17, 1.32, beltHead, material.pulley, "P23", "z", 28, false);
+    // 헤드풀리 스크레이퍼 — 블레이드는 노브 2개로 물리는 카트리지다. 벨트 위 유리 미분이
+    // 가장 먼저 닳게 하는 부품이라, 갈아 끼우는 데 공구가 필요하면 안 된다.
+    markSwap([
+      addBox(panelInfeed, { x: 0.05, y: 0.05, z: 1.28 }, { x: beltHead.x + 0.19, y: beltHead.y - 0.22, z: 0 }, material.frame, "P23", { z: 0.5 }),
+      addBox(panelInfeed, { x: 0.06, y: 0.035, z: 1.20 }, { x: beltHead.x + 0.14, y: beltHead.y - 0.16, z: 0 }, material.cover, "P23", { z: 0.5 }, false),
+      ...[-0.60, 0.60].map((dz) => addCylinder(panelInfeed, 0.022, 0.03, { x: beltHead.x + 0.19, y: beltHead.y - 0.22, z: dz }, material.dark, "P23", "z", 12, false))
+    ], "CV001-SCRAPER");
     const tailPulley = addCylinder(panelInfeed, 0.17, 1.32, beltTail, material.pulley, "P23", "z", 28, false);
     const beltIdlers = [];
     for (let i = 1; i <= 7; i += 1) {
@@ -22098,6 +22787,25 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // and cutaway both stopped at the dry side. Give each of its direct children an
     // outward vector (from the wet section's own bounding centre, which is robust even
     // where a child's local position is the origin) so the whole plant separates.
+    // ---- 정비 접근 공간 예약 ------------------------------------------------------------
+    // 각 상자는 「이 부피가 비어 있어야 그 절차가 성립한다」는 선언이다. 전부 실측 영역
+    // 조회로 비어 있음을 확인한 좌표다(HSG 전면 · ICSH 양단 · SCR 드로어 · 펌프 상부 · 셀 상부).
+    addEnvelope("HSG-BLADE", "HSG-101 로터 레일아웃 · 카트", { x: grinderX - 0.45, y: 0.14, z: 0.48 }, { x: grinderX + 0.45, y: 1.62, z: 1.92 });
+    addEnvelope("ICSH-UPPER-CASSETTE", "ICSH-301 상부 카세트 인출 +x", { x: -2.90, y: 1.36, z: -0.22 }, { x: -1.50, y: 1.80, z: 0.22 });
+    addEnvelope("ICSH-LOWER-CASSETTE", "ICSH-301 하부 카세트 인출 +z", { x: -4.60, y: 0.96, z: 1.36 }, { x: -4.20, y: 1.36, z: 2.75 });
+    addEnvelope("SCR-DECK", "SCR-001 데크 드로어 인출 +z", { x: -5.18, y: 0.18, z: 1.18 }, { x: -3.62, y: 0.62, z: 2.30 });
+    addEnvelope("BF101-CARTRIDGE", "BF-101 카트리지 상부 인출", { x: filterCenter.x - 0.30, y: filterCenter.y + 0.45, z: filterCenter.z - 0.28 }, { x: filterCenter.x + 0.30, y: filterCenter.y + 1.15, z: filterCenter.z + 0.28 });
+    addEnvelope("BF201-CARTRIDGE", "BF-201 카트리지 상부 인출", { x: bfCenter.x - 0.35, y: bfCenter.y + 0.48, z: bfCenter.z - 0.30 }, { x: bfCenter.x + 0.35, y: bfCenter.y + 1.25, z: bfCenter.z + 0.30 });
+    [["P101-WETEND", p101], ["P102-WETEND", p102], ["PP201-WETEND", pp201], ["P204-WETEND", p204], ["P301-WETEND", p301], ["P401-WETEND", p401], ["P501-WETEND", p501]]
+      .forEach(([id, pair]) => {
+        const px = pair.suction[0] + 0.55, pz = pair.suction[2];
+        addEnvelope(id, `${id.replace("-WETEND", "")} 습식단 카트리지 인양`, { x: px - 0.31, y: 0.37, z: pz - 0.36 }, { x: px - 0.01, y: 0.90, z: pz + 0.36 });
+      });
+    [fc201, fc202, fc203].forEach((cell) => {
+      addEnvelope("FC-ROTOR", `${cell.group.name} 로터·스테이터 인양`, { x: cell.x - 0.33, y: 4.40, z: cell.z - 0.33 }, { x: cell.x + 0.33, y: 6.00, z: cell.z + 0.33 });
+    });
+    addEnvelope("AS101-ROTOR", "AS-101 축·임펠러 인양", { x: 10.60, y: 1.95, z: 0.50 }, { x: 11.04, y: 3.25, z: 0.94 });
+
     const wetMovers = unifiedWet.children.slice();
     const wetCentre = new THREE.Vector3();
     const wetChildCentres = new Map();
@@ -22169,6 +22877,29 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       mesh.material.needsUpdate = true;
     }
 
+    // 교체 모듈·센서 노드 발광. 재질은 메시마다 소유(건식 addMesh · 습식 markSwap 복제)이므로
+    // 켜고 끄는 것이 다른 면으로 번지지 않는다. 원래 emissive 를 기억했다가 되돌린다.
+    const swapHighlighted = [];
+    function applySwapHighlight() {
+      circuit.traverse((object) => {
+        if (!object.isMesh || !object.material || !object.material.emissive) return;
+        if (!(object.userData.swapModule || object.userData.sensorTag)) return;
+        const m = object.material;
+        swapHighlighted.push({ m, emissive: m.emissive.getHex(), intensity: m.emissiveIntensity });
+        m.emissive.setHex(MAINT_ACCENT_HEX);
+        m.emissiveIntensity = object.userData.sensorTag ? 0.9 : 0.5;
+        m.needsUpdate = true;
+      });
+    }
+    function clearSwapHighlight() {
+      swapHighlighted.forEach(({ m, emissive, intensity }) => {
+        m.emissive.setHex(emissive);
+        m.emissiveIntensity = intensity;
+        m.needsUpdate = true;
+      });
+      swapHighlighted.length = 0;
+    }
+
     function setTarget(id, x, y, z) {
       targets.get(parts[id]).copy(origins.get(parts[id])).add(new THREE.Vector3(x, y, z));
     }
@@ -22235,6 +22966,18 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
           const isInternal = (object.material.userData.baseOpacity ?? 1) < 0.8;
           setMeshOpacity(object, isInternal ? internalOpacity : shellOpacity);
         });
+      }
+      // 정비 접근 보기 — 외장을 옅게 열고, 교체 모듈·센서 노드를 브랜드 황색으로 발광 강조하고,
+      // 인출·인양 공간을 켠다. 교체 모듈 자체는 고스팅에서 빼 실물감을 남긴다.
+      clearSwapHighlight();
+      maintenanceEnvelopes.visible = mode === "maintenance";
+      if (mode === "maintenance") {
+        forEachCutawayMesh((object) => {
+          if (object.userData.wearSpool || object.userData.processParticle || object.userData.swapModule || object.userData.sensorTag) return;
+          const isInternal = (object.material.userData.baseOpacity ?? 1) < 0.8;
+          setMeshOpacity(object, isInternal ? 0.55 : 0.30);
+        });
+        applySwapHighlight();
       }
       parts.P04.visible = mode !== "assembled";
       parts.P05.visible = mode !== "assembled";
@@ -23031,7 +23774,63 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const READOUT_INTERVAL_MS = 250;
     let lastReadoutMs = -Infinity;
     function readoutVisible() {
-      return !readout.psd.closest("[hidden]") || !detail.closest("[hidden]");
+      return !readout.psd.closest("[hidden]") || !detail.closest("[hidden]")
+        || (maintenanceUi.rows && !maintenanceUi.rows.closest("[hidden]"));
+    }
+
+    // ---- 예지보전 패널 ----------------------------------------------------------------
+    const maintEsc = (value) => String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+    const fmtHours = (h) => (!isFinite(h) ? "—" : h >= 1000 ? (h / 1000).toFixed(1) + " kh" : Math.round(h) + " h");
+    const fmtLife = (row) => (row.unit === "kg"
+      ? `${(row.wear.accumulated / 1000).toFixed(1)} / ${(row.wear.total / 1000).toFixed(0)} t${row.wear.edges > 1 ? ` · ${row.wear.edges}날` : ""}`
+      : `${Math.round(row.wear.accumulated)} / ${row.wear.total} h`);
+    const fmtSensor = (s) => {
+      switch (s.kind) {
+        case "vib": return s.value.toFixed(1) + " mm/s";
+        case "temp": return Math.round(s.value) + " °C";
+        case "mcsa": return s.value.toFixed(1) + " %";
+        case "ae": return Math.round(s.value) + " dB";
+        case "dp": return Math.round(s.value) + " Pa";
+        default: return s.value ? "관통 — 교체" : "정상";
+      }
+    };
+    function updateMaintenance() {
+      if (!maintenanceUi.rows) return;
+      const snap = wearSnapshot();
+      const worst = snap.rows.reduce((g, r) => ("ABCD".indexOf(r.health.grade) > "ABCD".indexOf(g) ? r.health.grade : g), "A");
+      const worstLabel = { A: "A 정상", B: "B 계획정비", C: "C 교체 임박", D: "D 교체 필요" }[worst];
+      maintenanceUi.health.textContent = worstLabel + ` · 부품 ${snap.rows.length}종 · 센서 ${snap.sensors.length}점`;
+      maintenanceUi.due.textContent = snap.due.length
+        ? `${snap.due.length} 건 — ${snap.due.slice(0, 3).map((r) => `${r.machine} ${r.part.split(" ")[0]}`).join(" · ")}${snap.due.length > 3 ? " …" : ""}`
+        : "없음";
+      maintenanceUi.mttr.textContent = snap.mttrDue ? `${snap.mttrDue} 분 (${(snap.mttrDue / 60).toFixed(1)} h)` : "0 분";
+      maintenanceUi.hours.textContent = fmtHours(snap.loggedHours) + (maintenanceState.simulatedHours ? ` (모의 ${fmtHours(maintenanceState.simulatedHours)} 포함)` : "");
+      maintenanceUi.rows.innerHTML = snap.rows.map((row) => `<tr class="hsg3d-maint-${row.health.grade}">`
+        + `<td>${maintEsc(row.machine)}</td>`
+        + `<td>${maintEsc(row.part)}<div class="text-small text-muted">${maintEsc(row.module)}</div></td>`
+        + `<td class="text-end">${row.mttrMin}</td>`
+        + `<td>${maintEsc(fmtLife(row))}</td>`
+        + `<td><span class="hsg3d-maint-bar"><i style="width:${Math.min(100, row.wear.fraction * 100).toFixed(0)}%"></i></span>${(row.wear.fraction * 100).toFixed(1)} %</td>`
+        + `<td class="text-end">${fmtHours(row.rulHours)}</td>`
+        + `<td>${maintEsc(row.wear.nextAction)} · ${fmtHours(row.wear.nextActionHours)}</td>`
+        + `<td><b>${row.health.grade}</b> ${maintEsc(row.health.label)}<div class="text-small">${maintEsc(row.health.action)} · 신뢰 ${(row.confidence * 100).toFixed(0)} %</div></td>`
+        + "</tr>").join("");
+      maintenanceUi.sensors.innerHTML = snap.sensors.map((s) => `<tr class="hsg3d-maint-${s.zone}">`
+        + `<td>${maintEsc(s.tag)}</td><td>${maintEsc(s.asset)}</td>`
+        + `<td class="text-end">${maintEsc(fmtSensor(s))}</td>`
+        + `<td class="text-end">${s.kind === "loop" ? "—" : `${s.alarm} / ${s.trip} ${maintEsc(s.unit)}`}</td>`
+        + `<td><b>${s.zone}</b>${s.running ? "" : " <span class=\"text-muted\">정지</span>"}</td></tr>`).join("");
+    }
+    if (maintenanceUi.rows) {
+      maintenanceUi.spares.textContent = WEAR_PARTS.filter((part) => part.spare)
+        .map((part) => `${part.machine} ${part.spare}`).join(" · ");
+      maintenanceUi.loto.textContent = LOTO_POINTS.map((point) => `${point.id} ${point.where} — ${point.covers} (자물쇠 ${point.locks})`).join(" · ");
+      maintenanceUi.simHours.addEventListener("input", () => {
+        maintenanceState.simulatedHours = Math.max(0, Number(maintenanceUi.simHours.value) || 0);
+        updateMaintenance();
+      });
+      maintenanceUi.view.addEventListener("click", () => setMode("maintenance"));
+      updateMaintenance();
     }
 
     // The clock is on the always-visible stage, so it keeps updating every frame.
@@ -23162,6 +23961,22 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     runtime.inspect = () => ({
       revision: "Rev.Z1-family-color-rechecked",
+      maintainability: (() => {
+        const snap = wearSnapshot();
+        const marked = new Set();
+        let sensorNodes = 0;
+        circuit.traverse((o) => { if (o.userData.swapModule) marked.add(o.userData.swapModule); if (o.userData.sensorTag) sensorNodes += 1; });
+        return {
+          wearParts: WEAR_PARTS.length,
+          sensors: CONDITION_SENSORS.length,
+          swapModulesIn3D: [...marked].sort(),
+          sensorNodesIn3D: sensorNodes,
+          envelopes: accessEnvelopes.map((e) => e.id),
+          loggedHours: +snap.loggedHours.toFixed(3),
+          worstGrade: snap.rows.reduce((g, r) => ("ABCD".indexOf(r.health.grade) > "ABCD".indexOf(g) ? r.health.grade : g), "A"),
+          rows: snap.rows.map((r) => ({ id: r.id, fraction: +r.wear.fraction.toFixed(5), rulHours: isFinite(r.rulHours) ? +r.rulHours.toFixed(1) : null, grade: r.health.grade }))
+        };
+      })(),
       cameraControl: "manual-only",
       layoutDrawing: { defaultOpen: false, views: ["plan", "elevation"], maintenanceAisleMinMm: 1200, status: "concept-layout-not-for-fabrication" },
       informationDialogs: { defaultOpen: false, closeAction: true, groups: ["operation", "equipment", "process", "layout", "maintenance", "validation"] },
@@ -23419,6 +24234,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       if (now - lastReadoutMs >= READOUT_INTERVAL_MS && readoutVisible()) {
         lastReadoutMs = now;
         updateReadout();
+        updateMaintenance();
       }
       if (fitCountdown > 0) {
         fitCountdown -= 1;
@@ -23787,7 +24603,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       installation: ["상부 패널 투입·크레인 여유 H≥2,500 mm", "구동측 정비공간 1,200 mm, 반대측 900 mm", "로터 인출축 방향 3,000 mm 확보", "콘크리트 설계하중은 동하중계수 1.5 포함 구조검토"],
       acceptance: ["무부하 2 h 진동·베어링온도", "정격부하 8 h 처리량·10 mm 분리", "E-stop/도어/역회전 인터록", "축 정렬·기어박스 백래시 기록"],
       dimensions: { l: 4200, w: 2300, h: 3500 },
-      assemblies: ["전체", "베이스·하우징", "호퍼·압입", "상부 파쇄축", "하부 파쇄축", "구동부", "SCR-001", "SCV-R1/P1", "전력 인입·LCP", "체결구"],
+      assemblies: ["전체", "베이스·하우징", "호퍼·압입", "상부 파쇄축", "하부 파쇄축", "구동부", "SCR-001", "SCV-R1/P1", "정비·교체", "전력 인입·LCP", "체결구"],
       bom: bom([
         { code:"SH-001", assembly:"베이스·하우징", name:"용접 베이스 프레임", qty:1, material:"SS400", spec:"H250×250×9×14 + PL-16", note:"AWS D1.1 연속용접·응력제거" },
         { code:"SH-002", assembly:"베이스·하우징", name:"기초 베이스플레이트", qty:8, material:"SS400", spec:"PL-25, 320×320, Ø30 HOLE", note:"레벨링 잭 M24 포함" },
@@ -23800,19 +24616,24 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         { code:"SH-013", assembly:"호퍼·압입", name:"대향 압입롤", qty:2, material:"SCM440", spec:"Ø260×1,650, 경도 HRC42–46", note:"독립 토크리미터" },
         { code:"SH-014", assembly:"호퍼·압입", name:"브리징 방지축", qty:1, material:"SCM440", spec:"Ø160×1,650", note:"교체형 패들 12EA" },
         { code:"SH-020", assembly:"상부 파쇄축", name:"상부 X축", qty:2, material:"SCM440 QT", spec:"Ø160, 유효폭 1,300", note:"UT Level 2·런아웃 ≤0.05 mm" },
-        { code:"SH-021", assembly:"상부 파쇄축", name:"상부 3-hook 커터", qty:52, material:"SKD11", spec:"OD420×t24, HRC56–58", note:"축당 26EA" },
+        { code:"SH-021", assembly:"상부 파쇄축", name:"상부 3-hook 커터 (초경 팁 4날 인덱서블)", qty:52, material:"SKD11 본체 + WC-Co 팁", spec:"OD420×t24, 팁 HRA 89", note:"축당 26EA · 카세트 교체 · 인덱스 4회" },
         { code:"SH-022", assembly:"상부 파쇄축", name:"상부 스페이서", qty:50, material:"SCM440", spec:"t26, 정밀연삭", note:"축당 25EA" },
-        { code:"SH-023", assembly:"상부 파쇄축", name:"상부 구면롤러베어링", qty:4, material:"Bearing steel", spec:"22232 E/C3 + SNL 하우징", note:"자동그리스 배관" },
+        { code:"SH-023", assembly:"상부 파쇄축", name:"상부 구면롤러베어링", qty:4, material:"Bearing steel", spec:"22232 E/C3 + SNL 하우징", note:"자동그리스 배관 · VIT-301/302 상태감시" },
         { code:"SH-030", assembly:"하부 파쇄축", name:"하부 Y축", qty:2, material:"SCM440 QT", spec:"Ø140, 유효폭 1,100", note:"UT Level 2·런아웃 ≤0.05 mm" },
-        { code:"SH-031", assembly:"하부 파쇄축", name:"하부 6-tooth 커터", qty:110, material:"SKD11", spec:"OD350×t9.6, HRC56–58", note:"축당 55EA" },
+        { code:"SH-031", assembly:"하부 파쇄축", name:"하부 6-tooth 커터 (초경 팁 4날 인덱서블)", qty:110, material:"SKD11 본체 + WC-Co 팁", spec:"OD350×t9.6, 팁 HRA 89", note:"축당 55EA · 카세트 교체 · 인덱스 4회" },
         { code:"SH-032", assembly:"하부 파쇄축", name:"하부 스페이서", qty:108, material:"SCM440", spec:"t10.4, 정밀연삭", note:"축당 54EA" },
-        { code:"SH-033", assembly:"하부 파쇄축", name:"하부 구면롤러베어링", qty:4, material:"Bearing steel", spec:"22228 E/C3 + SNL 하우징", note:"자동그리스 배관" },
-        { code:"SH-040", assembly:"구동부", name:"상부 IE4 모터·감속기", qty:1, material:"Vendor", spec:"22 kW, VFD, 12 rpm 출력", note:"서비스계수 ≥1.8" },
-        { code:"SH-041", assembly:"구동부", name:"하부 IE4 모터·감속기", qty:1, material:"Vendor", spec:"18.5 kW, VFD, 20 rpm 출력", note:"서비스계수 ≥1.8" },
-        { code:"SH-050", assembly:"SCR-001", name:"10 mm 경사스크린 데크", qty:1, material:"SUS304", spec:"타공 Ø10, PL-4", note:"12°·교체형 패널" },
+        { code:"SH-033", assembly:"하부 파쇄축", name:"하부 구면롤러베어링", qty:4, material:"Bearing steel", spec:"22228 E/C3 + SNL 하우징", note:"자동그리스 배관 · VIT-303/304 상태감시" },
+        { code:"SH-040", assembly:"구동부", name:"상부 IE5 PM 모터·감속기", qty:1, material:"Vendor", spec:"22 kW, IP66, VFD, 12 rpm 출력", note:"서비스계수 ≥1.8 · 자동 역전" },
+        { code:"SH-041", assembly:"구동부", name:"하부 IE5 PM 모터·감속기", qty:1, material:"Vendor", spec:"18.5 kW, IP66, VFD, 20 rpm 출력", note:"서비스계수 ≥1.8 · 자동 역전" },
+        { code:"SH-050", assembly:"SCR-001", name:"10 mm 경사스크린 데크", qty:1, material:"Hardox 450", spec:"타공 Ø10, PL-8", note:"12°·드로어 인출·핀인 패널" },
         { code:"SH-051", assembly:"SCR-001", name:"진동모터", qty:2, material:"Vendor", spec:"1.1 kW each, IP66", note:"합계 2.2 kW · 대향 동기설정" },
         { code:"SH-060", assembly:"SCV-R1/P1", name:"오버사이즈 반송스크루", qty:1, material:"SS400/SUS304", spec:"Ø220, 55°, 4.0 kW", note:"호퍼 재투입" },
         { code:"SH-061", assembly:"SCV-R1/P1", name:"제품 정량스크루", qty:1, material:"SS400/SUS304", spec:"Ø220, 300 kg/h, 2.2 kW", note:"FD-101 유연슈트" },
+        { code:"SH-070", assembly:"정비·교체", name:"커터 카세트 유압 잠금캡", qty:2, material:"SCM440 QT", spec:"Ø330/Ø270 · 유압 너트 · 핸들 3", note:"상·하부 축 각 1 · 인출 지그 포함 · MTTR 90분" },
+        { code:"SH-071", assembly:"정비·교체", name:"SCR-001 드로어 점검도어", qty:1, material:"SS400", spec:"1,560×440 · 하단 힌지 · 토글클램프 2", note:"+z 인출 · 가이드레일 2본 · GB-301 연결관 y 0.62 상향" },
+        { code:"SH-072", assembly:"정비·교체", name:"AE-301 음향방출 센서", qty:1, material:"Vendor", spec:"150 kHz · IP67", note:"커터 날끝 상태 — 절단음 고주파 성분" },
+        { code:"SH-073", assembly:"정비·교체", name:"VIT-301~304 무선 진동·온도 노드", qty:4, material:"Vendor", spec:"±50 g · 10 Hz–10 kHz · IP66", note:"베어링 하우징 상면 · ISO 10816-3" },
+        { code:"SH-074", assembly:"정비·교체", name:"예비 커터 카세트", qty:2, material:"SCM440/초경", spec:"상부 26매 · 하부 55매 조립품", note:"현장 보유 · 스왑 후 정비장에서 인덱스" },
         ...powerBom("shredder","SH"),
         { code:"F-SH-01", assembly:"체결구", type:"fastener", name:"기초 앵커 세트", qty:16, material:"SCM435 8.8 HDG", spec:"M24×450 + 2N + PW", note:commonFastenerNote },
         { code:"F-SH-02", assembly:"체결구", type:"fastener", name:"하우징 분할플랜지 볼트세트", qty:48, material:"10.9 Zn-Ni", spec:"M20×70 + N + 2PW", note:commonFastenerNote },
@@ -23831,19 +24652,19 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       services:[powerService("grinder"), "흡인: 보어 137 라이닝 · 900 m³/h · BF-101/IDF-101", "국소배기: SC-500 상부 DN50 ＋ 2단 데크 DN50 ＋ BIN-102 DN50 → VH-201 → BF-201", "투입: FD-101, 밀폐 유연슈트", "폐기/환류/제품: SC-500 >2 mm BIN-102 45 / 500 µm–2 mm CV-102 80.1 / <500 µm CH-501 255 kg/h"],
       installation:["로터 인출측 1,800 mm", "스크린 교체 하부공간 900 mm", "SC-500 데크 인출 측면공간 1,600 mm(2단 각각)", "필터백 상부 인출공간 1,200 mm", "회전체 레이저 정렬·벨트장력 기록"],
       acceptance:["무부하 1,500 rpm 2 h", "베어링 진동 ISO 20816 Zone B 이하", "400 kg/h 8 h 폐회로 성능", "SC-500 2단 메시 장력 편차 ≤10% · 데크별 체분석", "1단 오버 45 kg/h·2단 오버 80 kg/h 실측 확인", "분진누설·음압·집진 ΔP 확인(2단 국소배기·BIN-102 벤트 포함)"],
-      dimensions:{l:5000,w:1600,h:2500}, assemblies:["전체","스키드·하우징","로터·날","스크린·라이너","M-101 구동","FD/CV 이송","SC-500 2단 스크린","집진·음압","전력 인입·LCP","체결구"],
+      dimensions:{l:5000,w:1600,h:2500}, assemblies:["전체","스키드·하우징","로터·날","스크린·라이너","M-101 구동","FD/CV 이송","SC-500 2단 스크린","집진·음압","정비·교체","전력 인입·LCP","체결구"],
       bom:bom([
         {code:"HG-001",assembly:"스키드·하우징",name:"통합 스키드 프레임",qty:1,material:"SS400",spec:"H200×200×8×12 + PL-16",note:"기계가공 패드 6점"},
         {code:"HG-002",assembly:"스키드·하우징",name:"분할 원형 하우징",qty:2,material:"SS400",spec:"OD960×W680, PL-16/20",note:"분할면 평면도 0.10 mm"},
-        {code:"HG-003",assembly:"스크린·라이너",name:"교체형 내마모 라이너",qty:8,material:"Hardox 450",spec:"PL-10",note:"키드니 형상"},
-        {code:"HG-004",assembly:"스크린·라이너",name:"내부 스크린 세그먼트",qty:4,material:"SUS420",spec:"1.0 mm 슬롯, t6",note:"외부 SC-500과 폐회로"},
+        {code:"HG-003",assembly:"스크린·라이너",name:"교체형 내마모 라이너",qty:8,material:"Hardox 500",spec:"PL-10",note:"키드니 · 외부 볼트 교체 · WL-101 마모 도전루프"},
+        {code:"HG-004",assembly:"스크린·라이너",name:"내부 스크린 세그먼트",qty:4,material:"SUS420",spec:"1.0 mm 슬롯, t6",note:"슬라이드 카트리지 · 외부 SC-500과 폐회로"},
         {code:"HG-010",assembly:"로터·날",name:"주축",qty:1,material:"SCM440 QT",spec:"Ø80, L1,120",note:"동적밸런스 G2.5"},
         {code:"HG-011",assembly:"로터·날",name:"로터 디스크",qty:6,material:"SCM440",spec:"Ø450×t32",note:"키 결합"},
-        {code:"HG-012",assembly:"로터·날",name:"회전날",qty:12,material:"SKD11",spec:"180×72×20, HRC58–60",note:"양면사용"},
+        {code:"HG-012",assembly:"로터·날",name:"회전날 (초경 팁 · 4분할 카세트)",qty:12,material:"SKD11 본체 + WC-Co 팁",spec:"180×72×20, 팁 HRA 89",note:"양날 반전 · 카세트 3매 조립 · 중량 매칭"},
         {code:"HG-013",assembly:"로터·날",name:"고정날",qty:4,material:"SKD11",spec:"210×65×25, HRC58–60",note:"간극 0.5–1.0 mm"},
-        {code:"HG-014",assembly:"로터·날",name:"구면롤러베어링",qty:2,material:"Bearing steel",spec:"22216 E/C3",note:"Ø80 주축"},
+        {code:"HG-014",assembly:"로터·날",name:"구면롤러베어링",qty:2,material:"Bearing steel",spec:"22216 E/C3",note:"Ø80 주축 · VIT-102/103 · TE-102 · ALS-101 자동 그리스"},
         {code:"HG-015",assembly:"로터·날",name:"라비린스 씰 카트리지",qty:2,material:"S45C/NBR",spec:"비접촉 3단",note:"그리스 퍼지"},
-        {code:"HG-020",assembly:"M-101 구동",name:"IE4 모터",qty:1,material:"Vendor",spec:"37 kW, 4P, IP55, VFD",note:"절연 F, 온도상승 B"},
+        {code:"HG-020",assembly:"M-101 구동",name:"IE5 PM 동기 모터",qty:1,material:"Vendor",spec:"37 kW, 4P, IP66, VFD",note:"절연 F, 온도상승 B · MCSA-101 전류 시그니처"},
         {code:"HG-021",assembly:"M-101 구동",name:"모터/종동 풀리",qty:2,material:"FC250",spec:"Ø200/Ø196 · 4-SPC",note:"테이퍼부시"},
         {code:"HG-022",assembly:"M-101 구동",name:"V-벨트",qty:4,material:"EPDM cord",spec:"SPC matched set",note:"동일 로트"},
         {code:"HG-023",assembly:"M-101 구동",name:"탈착식 벨트가드",qty:1,material:"SS400",spec:"PL-2, mesh window",note:"도어 인터록"},
@@ -23853,18 +24674,28 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {code:"HG-033",assembly:"SC-500 2단 스크린",name:"CV-102 환류스크루",qty:1,material:"SUS304",spec:"Ø140 P120 L2400, 45 rpm",note:"0.75 kW"},
         {code:"HG-034",assembly:"SC-500 2단 스크린",name:"1단 2 mm 스캘핑 메시",qty:1,material:"SUS316L",spec:"W800×L1400, 선경 0.80",note:"개구율 51.0% · 성적서"},
         {code:"HG-035",assembly:"SC-500 2단 스크린",name:"2단 500 µm 메시",qty:1,material:"SUS316L",spec:"W800×L1400, 선경 0.315",note:"개구율 37.6% · 지배 데크"},
-        {code:"HG-036",assembly:"SC-500 2단 스크린",name:"메시 텐셔닝 세트",qty:2,material:"SUS304",spec:"크라운바 3본 + 텐션레일",note:"데크당 1세트"},
+        {code:"HG-036",assembly:"SC-500 2단 스크린",name:"PU 모듈 패널 핀 레일",qty:2,material:"SUS304/PU",spec:"300×400 핀인 · 8모듈/데크",note:"텐셔닝 불요 · 모듈 단위 교체 · MTTR 15분"},
         {code:"HG-037",assembly:"SC-500 2단 스크린",name:"데크 클램프 레일",qty:4,material:"SUS304",spec:"L1400, 편심캠형",note:"데크당 좌우 2본"},
         {code:"HG-038",assembly:"SC-500 2단 스크린",name:"1단 오버 배출슈트",qty:1,material:"SUS304",spec:"t3, DN150 → BIN-102",note:"샘플포트 포함"},
         {code:"HG-039",assembly:"SC-500 2단 스크린",name:"BIN-102 백시트 폐기빈",qty:1,material:"SUS304",spec:"0.06 m³, Ø460, 벤트 DN50",note:"45 kg/h · 회로 이탈"},
         {code:"HG-043",assembly:"집진·음압",name:"2단 데크 국소배기 노즐",qty:1,material:"SUS304",spec:"DN50, 하우징 −z 측벽",note:"VH-201 헤더 연장 합류"},
         {code:"HG-040",assembly:"집진·음압",name:"CY-101 사이클론",qty:1,material:"SUS304",spec:"Ø500, 입구 보어 137",note:"RV-101 에어록 포함"},
-        {code:"HG-041",assembly:"집진·음압",name:"BF-101 백필터",qty:1,material:"SS400",spec:"900 m³/h, 12 bags",note:"펄스젯·ΔP"},
+        {code:"HG-041",assembly:"집진·음압",name:"BF-101 카트리지 필터",qty:1,material:"SS400",spec:"900 m³/h, 카트리지 6본",note:"펄스젯 · PDT-101 · 청정측 상부 교체(토글클램프 리드)"},
         {code:"HG-042",assembly:"집진·음압",name:"IDF-101 유인팬",qty:1,material:"Vendor",spec:"5.5 kW VFD",note:"소음기·스택"},
+        {code:"HG-050",assembly:"정비·교체",name:"로터 레일아웃 레일·카트",qty:1,material:"SS400/SUS304",spec:"레일 2본 L1,080 · 카트 760×440 · 플랜지휠 4",note:"도어 앞 +z 인출 · 예비 로터 스왑 · MTTR 45분"},
+        {code:"HG-051",assembly:"정비·교체",name:"회전날 카세트 캐리어",qty:4,material:"SCM440 QT",spec:"50×150×420 · 날 3매 조립",note:"카세트 단위 중량 매칭"},
+        {code:"HG-052",assembly:"정비·교체",name:"도어 스윙볼트 래치",qty:8,material:"SUS304/A4-80",spec:"M16 아이볼트 · T 핸들 · 러그",note:"도어 스터드 12본 대체 · 3분 개방"},
+        {code:"HG-053",assembly:"정비·교체",name:"스크린 카트리지 가이드레일·손잡이",qty:1,material:"SUS304",spec:"레일 2본 L480 · 링 손잡이",note:"로터 인출 없이 스크린만 교체 · MTTR 20분"},
+        {code:"HG-054",assembly:"정비·교체",name:"ALS-101 자동 윤활 유닛",qty:1,material:"Vendor",spec:"프로그레시브 분배 · 6점 · 2 L",note:"HSG 2 + ICSH 4 베어링"},
+        {code:"HG-055",assembly:"정비·교체",name:"VIT-102/103 무선 진동·온도 노드",qty:2,material:"Vendor",spec:"±50 g · 10 Hz–10 kHz · IP66",note:"22216 하우징 상면"},
+        {code:"HG-056",assembly:"정비·교체",name:"예비 로터 조립품",qty:1,material:"SCM440/초경",spec:"Ø450×350 · 날 카세트 4 조립 · G2.5",note:"카트 위 대기 · 스왑"},
+        {code:"HG-057",assembly:"정비·교체",name:"BF-101 리드 토글클램프·플렉시블 스풀",qty:1,material:"SUS304/EPDM",spec:"클램프 4 · DN80 플렉시블 1",note:"리드 위 청정공기 덕트 분리용"},
+        {code:"HG-058",assembly:"정비·교체",name:"도어 가스 스트럿",qty:2,material:"Vendor",spec:"400 N · 스트로크 150",note:"12 t 도어 개방 보조"},
         ...powerBom("grinder","HG"),
         {code:"F-HG-01",assembly:"체결구",type:"fastener",name:"스키드 앵커 세트",qty:12,material:"SCM435 8.8 HDG",spec:"M24×400 + 2N + PW",note:commonFastenerNote},
-        {code:"F-HG-02",assembly:"체결구",type:"fastener",name:"하우징 분할 볼트세트",qty:32,material:"10.9 Zn-Ni",spec:"M20×65 + N + 2PW",note:commonFastenerNote},
-        {code:"F-HG-03",assembly:"체결구",type:"fastener",name:"회전날 볼트세트",qty:24,material:"12.9",spec:"M16×55 + Nord-Lock",note:commonFastenerNote},
+        {code:"F-HG-02",assembly:"체결구",type:"fastener",name:"하우징 분할 볼트세트",qty:32,material:"10.9 Zn-Ni",spec:"M20×65 + N + 2PW",note:"분할면만 · 도어는 스윙볼트 래치(HG-052)로 대체"},
+        {code:"F-HG-03",assembly:"체결구",type:"fastener",name:"회전날 카세트 볼트세트",qty:8,material:"12.9",spec:"M16×55 + Nord-Lock",note:"카세트당 2본 · 날 개별 볼트 24본 대체"},
+        {code:"F-HG-10",assembly:"체결구",type:"fastener",name:"라이너 카운터싱크 볼트",qty:32,material:"12.9",spec:"M16×45 + Prevailing N",note:"하우징 밖에서 체결 · 라이너당 4본"},
         {code:"F-HG-04",assembly:"체결구",type:"fastener",name:"고정날 볼트세트",qty:16,material:"12.9",spec:"M16×65 + Nord-Lock",note:commonFastenerNote},
         {code:"F-HG-05",assembly:"체결구",type:"fastener",name:"베어링 하우징 볼트세트",qty:8,material:"10.9",spec:"M24×85 + N + 2PW",note:commonFastenerNote},
         {code:"F-HG-06",assembly:"체결구",type:"fastener",name:"스크린 클램프 볼트",qty:24,material:"A4-80",spec:"M12×40 + N + 2PW",note:commonFastenerNote},
@@ -23881,7 +24712,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       services:[powerService("sieve"), "이송: PC-201 DN100 음압리프트", "집진: DN80 branch → BF-201", "배출: 280–500 / 106–280 / 75–106 / <75 µm"],
       installation:["진동체 주변 100 mm 비접촉 간극", "메시 교환 상부 H1,000 mm", "유연커넥터 축방향 여유 ±25 mm", "기초와 진동스키드 사이 케이블 루프 적용"],
       acceptance:["960 rpm 공진통과 기록", "메시 장력 편차 ≤10%", "4개 토출 누설·교차오염 검사", "진폭·베어링온도 8 h"],
-      dimensions:{l:2600,w:1800,h:2700}, assemblies:["전체","스키드·스프링","상부 수신·분배","1단 280 µm","2단 106 µm","3단 75 µm","진동구동","제품슈트·집진","전력 인입·LCP","체결구"],
+      dimensions:{l:2600,w:1800,h:2700}, assemblies:["전체","스키드·스프링","상부 수신·분배","1단 280 µm","2단 106 µm","3단 75 µm","진동구동","제품슈트·집진","정비·교체","전력 인입·LCP","체결구"],
       bom:bom([
         {code:"SV-001",assembly:"스키드·스프링",name:"독립 지지 스키드",qty:1,material:"SS400",spec:"C150×75×6.5×10",note:"진동체 비접촉"},
         {code:"SV-002",assembly:"스키드·스프링",name:"코일스프링",qty:8,material:"SUP9",spec:"OD120×H220",note:"색상별 매칭 세트"},
@@ -23890,19 +24721,20 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {code:"SV-011",assembly:"상부 수신·분배",name:"RV-201 로터리밸브",qty:1,material:"SUS304",spec:"6-pocket, 18 rpm",note:"0.37 kW"},
         {code:"SV-012",assembly:"상부 수신·분배",name:"VS-501 진동분배기",qty:1,material:"SUS304",spec:"Ø600, 밀폐커버",note:"정중앙 급광"},
         {code:"SV-020",assembly:"1단 280 µm",name:"1단 데크링",qty:1,material:"SUS304",spec:"Ø1,200×H160, t3",note:"클램프형"},
-        {code:"SV-021",assembly:"1단 280 µm",name:"280 µm 메시",qty:1,material:"SUS316L",spec:"Ø1,165, support grid",note:"메시 성적서"},
+        {code:"SV-021",assembly:"1단 280 µm",name:"280 µm 메시",qty:1,material:"SUS316L",spec:"Ø1,165, 60° 섹터 6매",note:"메시 성적서 · 섹터 단위 교체"},
         {code:"SV-022",assembly:"1단 280 µm",name:"실리콘 데크 가스켓",qty:1,material:"VMQ",spec:"Ø1,180×18",note:"식별색 적용"},
         {code:"SV-030",assembly:"2단 106 µm",name:"2단 데크링",qty:1,material:"SUS304",spec:"Ø1,200×H160, t3",note:"클램프형"},
-        {code:"SV-031",assembly:"2단 106 µm",name:"106 µm 메시",qty:1,material:"SUS316L",spec:"Ø1,165, support grid",note:"메시 성적서"},
+        {code:"SV-031",assembly:"2단 106 µm",name:"106 µm 메시",qty:1,material:"SUS316L",spec:"Ø1,165, 60° 섹터 6매",note:"메시 성적서 · 섹터 단위 교체"},
         {code:"SV-032",assembly:"2단 106 µm",name:"실리콘 데크 가스켓",qty:1,material:"VMQ",spec:"Ø1,180×18",note:"식별색 적용"},
         {code:"SV-040",assembly:"3단 75 µm",name:"3단 데크링",qty:1,material:"SUS304",spec:"Ø1,200×H160, t3",note:"클램프형"},
-        {code:"SV-041",assembly:"3단 75 µm",name:"75 µm 메시",qty:1,material:"SUS316L",spec:"Ø1,165, support grid",note:"메시 성적서"},
+        {code:"SV-041",assembly:"3단 75 µm",name:"75 µm 메시",qty:1,material:"SUS316L",spec:"Ø1,165, 60° 섹터 6매",note:"메시 성적서 · 섹터 단위 교체"},
         {code:"SV-042",assembly:"3단 75 µm",name:"실리콘 데크 가스켓",qty:1,material:"VMQ",spec:"Ø1,180×18",note:"식별색 적용"},
         {code:"SV-050",assembly:"진동구동",name:"대향 진동모터",qty:2,material:"Vendor",spec:"1.5 kW, 960 rpm, IP66",note:"위상 동기"},
         {code:"SV-051",assembly:"진동구동",name:"모터 브래킷",qty:2,material:"SS400",spec:"PL-16 machined",note:"각도 조정 ±15°"},
         {code:"SV-060",assembly:"제품슈트·집진",name:"제품 배출슈트",qty:4,material:"SUS304",spec:"t3, 4분획",note:"샘플포트 포함"},
         {code:"SV-061",assembly:"제품슈트·집진",name:"유연커넥터",qty:5,material:"정전기방지 EPDM",spec:"L200, double cuff",note:"접지편 포함"},
         {code:"SV-062",assembly:"제품슈트·집진",name:"집진 매니폴드",qty:1,material:"SUS304",spec:"DN80→4×DN40",note:"밸런싱 댐퍼"},
+        {code:"SV-070",assembly:"정비·교체",name:"예비 섹터 패널 세트",qty:6,material:"SUS316L",spec:"60° 섹터 · 280/106/75 µm 각 2",note:"개스킷 재사용 · MTTR 20분"},
         ...powerBom("sieve","SV"),
         {code:"F-SV-01",assembly:"체결구",type:"fastener",name:"스키드 앵커세트",qty:12,material:"8.8 HDG",spec:"M20×350 + 2N + PW",note:commonFastenerNote},
         {code:"F-SV-02",assembly:"체결구",type:"fastener",name:"데크 클램프 볼트세트",qty:72,material:"A4-80",spec:"M12×45 + N + 2PW",note:"데크당 24EA"},
@@ -23920,7 +24752,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       services:[powerService("attrition"), "공정수: DN25, 최대 1.5 m³/h", "슬러리: DN50/65, P-101/102 A/B", "비드: 99.5% Al₂O₃, BM-101/BR-101"],
       installation:["탱크 상부 교반축 인출 H1,800 mm", "펌프 전면 1,000 mm 정비공간", "방유턱·내약품 바닥코팅", "모든 습식 플랜지 등전위 본딩"],
       acceptance:["AS-101 물부하 600 rpm 2 h", "RTD tracer 로 실체류 확인(설계 59.7 min · 명판 5 min 아님)", "비드 보유율·BS-101 ΔP", "42.1 kg/h 정상급광에서 농도·유량·질량수지 교정", "계면박리도 ≥0.95 확인 — 과체류 슬라임화 동시 감시"],
-      dimensions:{l:5200,w:2200,h:2600}, assemblies:["전체","스키드·배관","TK-001 조정조","AS-101 본체","교반·중공축","비드 보유·회수","TK-101 컨디셔닝","P-101/102 A/B","전력 인입·LCP","체결구"],
+      dimensions:{l:5200,w:2200,h:2600}, assemblies:["전체","스키드·배관","TK-001 조정조","AS-101 본체","교반·중공축","비드 보유·회수","TK-101 컨디셔닝","P-101/102 A/B","정비·교체","전력 인입·LCP","체결구"],
       bom:bom([
         {code:"AS-001",assembly:"스키드·배관",name:"습식 공용 스키드",qty:1,material:"SS400 epoxy",spec:"C200×80×7.5×11",note:"SS316L drip pan"},
         {code:"AS-002",assembly:"TK-001 조정조",name:"TK-001 조정조",qty:1,material:"SUS316L",spec:"0.30 m³ working, t5",note:"55–70 wt%"},
@@ -23931,16 +24763,19 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {code:"AS-020",assembly:"교반·중공축",name:"중공 교반축",qty:1,material:"SUS630 H1150",spec:"Ø60/ID25, L1,050",note:"6-port air"},
         {code:"AS-021",assembly:"교반·중공축",name:"상·하 임펠러",qty:2,material:"SUS630+PU",spec:"Ø320, 4-blade",note:"동적밸런스 G6.3"},
         {code:"AS-022",assembly:"교반·중공축",name:"기계식 씰",qty:1,material:"SiC/SiC/EPDM",spec:"Cartridge, slurry duty",note:"flush plan"},
-        {code:"AS-023",assembly:"교반·중공축",name:"IE4 모터·벨트구동",qty:1,material:"Vendor",spec:"11 kW, 600 rpm shaft",note:"VFD·토크모니터"},
+        {code:"AS-023",assembly:"교반·중공축",name:"IE5 PM 모터·벨트구동",qty:1,material:"Vendor",spec:"11 kW, IP66, 600 rpm shaft",note:"VFD·토크모니터 · VIT-101"},
         {code:"AS-030",assembly:"비드 보유·회수",name:"BM-101 비드호퍼",qty:1,material:"SUS316L",spec:"60 L, slide gate",note:"로드셀 3점"},
         {code:"AS-031",assembly:"비드 보유·회수",name:"BS-101A 보유스크린",qty:1,material:"SUS316L wedge wire",spec:"slot 1.0 mm, DN125",note:"차압계"},
         {code:"AS-032",assembly:"비드 보유·회수",name:"BS-101B 가드스크린",qty:1,material:"SUS316L wedge wire",spec:"slot 0.8 mm, DN100",note:"이중보유"},
         {code:"AS-033",assembly:"비드 보유·회수",name:"BR-101 세척·회수빈",qty:1,material:"SUS316L",spec:"40 L",note:"회수드레인"},
         {code:"AS-040",assembly:"TK-101 컨디셔닝",name:"TK-101 조정조",qty:1,material:"SUS316L",spec:"0.50 m³ working, t5",note:"10–30 wt%"},
         {code:"AS-041",assembly:"TK-101 컨디셔닝",name:"TK-101 교반기",qty:1,material:"SUS316L",spec:"3.0 kW, 150 rpm",note:"2단 hydrofoil"},
-        {code:"AS-050",assembly:"P-101/102 A/B",name:"P-101 슬러리펌프",qty:2,material:"Hi-chrome/rubber",spec:"DN50, 2.2 kW",note:"A/B duty-standby"},
-        {code:"AS-051",assembly:"P-101/102 A/B",name:"P-102 슬러리펌프",qty:2,material:"Hi-chrome/rubber",spec:"DN50, 1.5 kW",note:"A/B duty-standby"},
+        {code:"AS-050",assembly:"P-101/102 A/B",name:"P-101 슬러리펌프",qty:2,material:"Hi-chrome A05/rubber",spec:"DN50, 2.2 kW",note:"A/B duty-standby · 백풀아웃 카트리지 · 외부 간극 조정"},
+        {code:"AS-051",assembly:"P-101/102 A/B",name:"P-102 슬러리펌프",qty:2,material:"Hi-chrome A05/rubber",spec:"DN50, 1.5 kW",note:"A/B duty-standby · 백풀아웃 카트리지 · 외부 간극 조정"},
         {code:"AS-052",assembly:"스키드·배관",name:"슬러리 배관·밸브",qty:1,material:"SUS316L/NR",spec:"DN50/65, PN10",note:"샘플포트 2EA"},
+        {code:"AS-060",assembly:"정비·교체",name:"백풀아웃 습식단 카트리지 (예비)",qty:2,material:"Hi-chrome A05/SiC 씰",spec:"DN50 · 임펠러+라이너+씰+베어링프레임 조립",note:"P-101/102/PP-201/P-204 공용 · MTTR 50분"},
+        {code:"AS-061",assembly:"정비·교체",name:"펌프 분할링·인양아이",qty:14,material:"SUS304",spec:"Ø256 분할링 · M12 아이",note:"펌프당 1조 · 배관 무접촉 인양"},
+        {code:"AS-062",assembly:"정비·교체",name:"VIT-P101/P102/PP201 무선 진동 노드",qty:3,material:"Vendor",spec:"±50 g · IP66",note:"A 펌프 베어링 프레임"},
         ...powerBom("attrition","AS"),
         {code:"F-AS-01",assembly:"체결구",type:"fastener",name:"스키드 앵커세트",qty:16,material:"A4-80",spec:"M20×350 + 2N + PW",note:commonFastenerNote},
         {code:"F-AS-02",assembly:"체결구",type:"fastener",name:"탱크·브리지 체결세트",qty:32,material:"A4-80",spec:"M20×65 + N + 2PW",note:commonFastenerNote},
@@ -23958,7 +24793,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       services:[powerService("flotation"), "공기: AR-201, 0.4–0.6 MPa, 셀별 FIC", "약품: RS-201/202/203, DN15 정량주입", "슬러리: DN40/50/65, 러퍼·클리너·스캐빈저"],
       installation:["2층 작업대 난간 H1,100·토보드 100", "셀 모터 인출 H1,200", "계단 유효폭 800·경사 ≤45°", "미끄럼방지 그레이팅·드레인팬"],
       acceptance:["셀별 물부하 공기분산 균일성", "러퍼/클리너/스캐빈저 환류 추적", "FIC·약품펌프 교정", "거품 월류·라우더 수평도 1/1000"],
-      dimensions:{l:6200,w:3600,h:5200}, assemblies:["전체","ST-201 구조물","FC-201 러퍼","FC-202 클리너","FC-203 스캐빈저","셀 구동·임펠러","공기 A/B","약품 RS-201/203","환류·배관","전력 인입·LCP","체결구"],
+      dimensions:{l:6200,w:3600,h:5200}, assemblies:["전체","ST-201 구조물","FC-201 러퍼","FC-202 클리너","FC-203 스캐빈저","셀 구동·임펠러","공기 A/B","약품 RS-201/203","환류·배관","정비·교체","전력 인입·LCP","체결구"],
       bom:bom([
         {code:"FC-001",assembly:"ST-201 구조물",name:"2층 강구조 프레임",qty:1,material:"SS400 HDG",spec:"H250/H200 조합",note:"KDS 구조검토"},
         {code:"FC-002",assembly:"ST-201 구조물",name:"그레이팅 작업대",qty:18,material:"SS400 HDG",spec:"30×5 bearing bar",note:"활하중 5.0 kN/m²"},
@@ -23972,14 +24807,18 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {code:"FC-030",assembly:"FC-203 스캐빈저",name:"FC-203 셀 탱크",qty:1,material:"SUS316L",spec:"190 L working, t5",note:"광미 TK-301"},
         {code:"FC-031",assembly:"FC-203 스캐빈저",name:"스캐빈저 라우더",qty:1,material:"SUS316L",spec:"180° launder",note:"정광 러퍼환류"},
         {code:"FC-032",assembly:"FC-203 스캐빈저",name:"스캐빈저 로터·스테이터",qty:1,material:"SUS316L/PU",spec:"Ø290, 360 rpm",note:"0.075 Nm³/min"},
-        {code:"FC-040",assembly:"셀 구동·임펠러",name:"FC-201 IE4 구동모터",qty:1,material:"Vendor",spec:"3.0 kW VFD",note:"벨트감속"},
-        {code:"FC-041",assembly:"셀 구동·임펠러",name:"FC-202 IE4 구동모터",qty:1,material:"Vendor",spec:"1.5 kW VFD",note:"벨트감속"},
-        {code:"FC-042",assembly:"셀 구동·임펠러",name:"FC-203 IE4 구동모터",qty:1,material:"Vendor",spec:"3.0 kW VFD",note:"벨트감속"},
+        {code:"FC-040",assembly:"셀 구동·임펠러",name:"FC-201 IE5 PM 구동모터",qty:1,material:"Vendor",spec:"3.0 kW IP66 VFD",note:"벨트감속 · VIT-211"},
+        {code:"FC-041",assembly:"셀 구동·임펠러",name:"FC-202 IE5 PM 구동모터",qty:1,material:"Vendor",spec:"1.5 kW IP66 VFD",note:"벨트감속 · VIT-212"},
+        {code:"FC-042",assembly:"셀 구동·임펠러",name:"FC-203 IE5 PM 구동모터",qty:1,material:"Vendor",spec:"3.0 kW IP66 VFD",note:"벨트감속 · VIT-213"},
         {code:"FC-050",assembly:"공기 A/B",name:"AB-201A/B 무급유 블로어",qty:2,material:"Vendor",spec:"0.8 m³/min, 0.6 bar",note:"A/B duty-standby"},
         {code:"FC-051",assembly:"공기 A/B",name:"AR-201 공기리시버",qty:1,material:"SA-516 Gr70",spec:"0.30 m³, 1.0 MPa",note:"법정검사 대상 검토"},
         {code:"FC-060",assembly:"약품 RS-201/203",name:"약품 조제·주입 스키드",qty:3,material:"HDPE/SUS316L",spec:"100 L + metering pump",note:"포수·기포·pH"},
         {code:"FC-070",assembly:"환류·배관",name:"RP-202/203 환류펌프",qty:2,material:"SUS316L",spec:"DN25, 0.75 kW",note:"VFD"},
         {code:"FC-071",assembly:"환류·배관",name:"셀간 슬러리 배관",qty:1,material:"SUS316L/NR",spec:"DN40/50/65 PN10",note:"샘플포트"},
+        {code:"FC-080",assembly:"정비·교체",name:"JC-201 로터 인양 지브크레인",qty:1,material:"SS400 HDG",spec:"SWL 0.5 t · R 2.3 m · 기둥 H3,750 · 체인호이스트",note:"2F 데크 (14.24, −1.05) · 세 셀 선회 반경 안"},
+        {code:"FC-081",assembly:"정비·교체",name:"로터 인양아이",qty:6,material:"SUS304",spec:"M12 아이 · 브리지 2점/셀",note:"축·로터·스테이터 일체 수직 인양"},
+        {code:"FC-082",assembly:"정비·교체",name:"VIT-211/212/213 무선 진동 노드",qty:3,material:"Vendor",spec:"±50 g · IP66",note:"셀 구동 베어링"},
+        {code:"FC-083",assembly:"정비·교체",name:"예비 로터·스테이터 조립품",qty:1,material:"SUS316L/PU",spec:"Ø280 러퍼 규격",note:"현장 보유 · MTTR 120분"},
         ...powerBom("flotation","FC"),
         {code:"F-FC-01",assembly:"체결구",type:"fastener",name:"구조물 기초 앵커세트",qty:24,material:"10.9 HDG",spec:"M24×500 + 2N + PW",note:commonFastenerNote},
         {code:"F-FC-02",assembly:"체결구",type:"fastener",name:"강구조 현장접합 볼트",qty:96,material:"F10T HDG",spec:"M20×65 + N + 2PW",note:"마찰접합"},
@@ -23997,7 +24836,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       services:[powerService("filterpress"), "슬러리: DN50, 설계 1.0 MPa", "압착공기/수: 0.8 MPa / DN32", "여액: DN40 → TK-401"],
       installation:["판 인출측 1,500 mm", "유압실린더 후방 1,200 mm", "케이크 컨베이어 하부 H800 mm", "여과포 세척 방수구획·바닥 1:100 구배"],
       acceptance:["수압 1.25× 설계압력", "판 평행도·폐쇄압력 기록", "18판 누설·여액탁도", "코어블로·세척·안전광커튼"],
-      dimensions:{l:7200,w:3200,h:2300}, assemblies:["전체","FP-301 프레임","필터판·여과포","유압 폐쇄부","P-301 A/B 급액","압착·코어블로","포세척·드립트레이","케이크 이송","CF-204 정광탈수","전력 인입·LCP","체결구"],
+      dimensions:{l:7200,w:3200,h:2300}, assemblies:["전체","FP-301 프레임","필터판·여과포","유압 폐쇄부","P-301 A/B 급액","압착·코어블로","포세척·드립트레이","케이크 이송","CF-204 정광탈수","정비·교체","전력 인입·LCP","체결구"],
       bom:bom([
         {code:"FP-001",assembly:"FP-301 프레임",name:"용접 베이스 프레임",qty:1,material:"SS400 epoxy",spec:"H250×250×9×14",note:"가공 기준면 4점"},
         {code:"FP-002",assembly:"FP-301 프레임",name:"사이드바",qty:2,material:"SM490",spec:"230×100, L2,300",note:"UT·응력검토"},
@@ -24005,13 +24844,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {code:"FP-004",assembly:"FP-301 프레임",name:"이동 헤드",qty:1,material:"FC250/SS400",spec:"1,200×1,450×180",note:"가이드슈 4EA"},
         {code:"FP-010",assembly:"필터판·여과포",name:"800 mm 챔버판",qty:9,material:"PP",spec:"800×800×45",note:"중앙급액"},
         {code:"FP-011",assembly:"필터판·여과포",name:"800 mm 멤브레인판",qty:9,material:"PP/EPDM",spec:"800×800×45",note:"0.8 MPa squeeze"},
-        {code:"FP-012",assembly:"필터판·여과포",name:"여과포 세트",qty:18,material:"PP multifilament",spec:"5–10 µm",note:"판번호 자수"},
+        {code:"FP-012",assembly:"필터판·여과포",name:"여과포 세트",qty:18,material:"PP multifilament",spec:"5–10 µm · 무볼트 탄성 헴",note:"판번호 자수 · 플레이트 시프터로 교체"},
         {code:"FP-013",assembly:"필터판·여과포",name:"드립노즐·여액호스",qty:36,material:"PP/EPDM",spec:"DN20",note:"판당 2EA"},
         {code:"FP-020",assembly:"유압 폐쇄부",name:"유압실린더",qty:1,material:"STKM13C",spec:"Ø200/rod Ø120, stroke 880",note:"25 MPa"},
         {code:"FP-021",assembly:"유압 폐쇄부",name:"유압 파워유닛",qty:1,material:"Vendor",spec:"7.5 kW, 80 L",note:"이중 릴리프"},
         {code:"FP-022",assembly:"유압 폐쇄부",name:"안전광커튼·가드",qty:1,material:"Vendor/SS400",spec:"PL d, Cat.3",note:"폐쇄영역"},
         {code:"FP-030",assembly:"P-301 A/B 급액",name:"TK-301 광미 급액조",qty:1,material:"SUS316L",spec:"0.60 m³ working",note:"교반기 2.2 kW"},
-        {code:"FP-031",assembly:"P-301 A/B 급액",name:"고압 다이어프램펌프",qty:2,material:"SUS316L/NR",spec:"DN50, 1.0 MPa",note:"A/B duty-standby"},
+        {code:"FP-031",assembly:"P-301 A/B 급액",name:"고압 다이어프램펌프",qty:2,material:"SUS316L/NR",spec:"DN50, 1.0 MPa",note:"A/B duty-standby · 다이어프램·체크 카트리지 · VIT-P301"},
         {code:"FP-040",assembly:"압착·코어블로",name:"AR-301 압착 리시버",qty:1,material:"SA-516 Gr70",spec:"0.25 m³, 1.0 MPa",note:"안전밸브"},
         {code:"FP-041",assembly:"압착·코어블로",name:"코어블로 매니폴드",qty:1,material:"SUS316L",spec:"DN25, 0.8 MPa",note:"NRV+자동밸브"},
         {code:"FP-050",assembly:"포세척·드립트레이",name:"WT-301 세척수조",qty:1,material:"SUS316L",spec:"0.30 m³",note:"스트레이너"},
@@ -24019,8 +24858,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {code:"FP-052",assembly:"포세척·드립트레이",name:"자동 드립트레이",qty:2,material:"SUS304",spec:"pneumatic slide",note:"폐쇄 인터록"},
         {code:"FP-060",assembly:"케이크 이송",name:"CV-301 케이크 컨베이어",qty:1,material:"SUS304/PU",spec:"W500×L2,050",note:"1.5 kW"},
         {code:"FP-061",assembly:"케이크 이송",name:"BIN-301 제품빈",qty:1,material:"SUS304",spec:"0.50 m³",note:"로드셀 3점"},
-        {code:"FP-070",assembly:"CF-204 정광탈수",name:"CF-204 원심탈수기",qty:1,material:"SUS316L",spec:"Ø360 basket, 8 kW",note:"Ag 정광"},
+        {code:"FP-070",assembly:"CF-204 정광탈수",name:"CF-204 원심탈수기",qty:1,material:"SUS316L",spec:"Ø360 basket, 8 kW IE5 PM",note:"Ag 정광 · 바스켓 인양 교체 · VIT-204"},
         {code:"FP-071",assembly:"CF-204 정광탈수",name:"BIN-204 정광빈",qty:1,material:"SUS316L",spec:"0.20 m³",note:"밀폐"},
+        {code:"FP-080",assembly:"정비·교체",name:"VIT-204 · VIT-P301 무선 진동 노드",qty:2,material:"Vendor",spec:"±50 g · IP66",note:"CF-204 바스켓 베어링 · P-301 헤드"},
+        {code:"FP-081",assembly:"정비·교체",name:"플레이트 시프터",qty:1,material:"Vendor",spec:"전동 · 판 18매",note:"여과포 무볼트 교체 · MTTR 150분"},
         ...powerBom("filterpress","FP"),
         {code:"F-FP-01",assembly:"체결구",type:"fastener",name:"프레스 프레임 앵커세트",qty:20,material:"10.9 HDG",spec:"M24×500 + 2N + PW",note:commonFastenerNote},
         {code:"F-FP-02",assembly:"체결구",type:"fastener",name:"프레임·헤드 접합볼트",qty:32,material:"10.9",spec:"M24×110 + N + 2PW",note:commonFastenerNote},
