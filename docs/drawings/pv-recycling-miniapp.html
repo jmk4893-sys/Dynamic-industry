@@ -90,29 +90,48 @@
   --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
   --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
 
-  /* Integrated plant family-color standard. */
-  --plant-dry-transfer: light-dark(rgb(167 102 42), rgb(239 154 86));
-  --plant-return: light-dark(rgb(169 79 66), rgb(238 131 116));
-  --plant-water: light-dark(rgb(33 108 160), rgb(131 195 255));
-  --plant-slurry: light-dark(rgb(31 116 119), rgb(90 203 194));
-  --plant-air: light-dark(rgb(93 98 135), rgb(173 176 220));
-  --plant-reagent: light-dark(rgb(119 80 139), rgb(194 146 209));
-  --plant-concentrate: light-dark(rgb(155 102 23), rgb(228 166 64));
-  --plant-tailings: light-dark(rgb(54 115 77), rgb(116 213 139));
-  --plant-bead: light-dark(rgb(104 111 118), rgb(197 202 207));
-  --plant-neutral-metal: light-dark(rgb(118 126 132), rgb(182 192 199));
-  --plant-equip-dry: light-dark(rgb(49 86 94), rgb(80 121 130));
-  --plant-equip-wet: light-dark(rgb(52 75 94), rgb(82 108 130));
-  --plant-equip-conveyor: light-dark(rgb(72 94 104), rgb(102 127 137));
-  --plant-equip-receiver: light-dark(rgb(73 83 99), rgb(119 132 151));
-  --plant-equip-motor: light-dark(rgb(40 77 96), rgb(78 132 163));
-  --plant-equip-pump: light-dark(rgb(49 102 107), rgb(90 159 163));
-  --plant-equip-air: light-dark(rgb(80 87 120), rgb(133 140 189));
-  --plant-equip-reagent: light-dark(rgb(90 61 105), rgb(143 107 158));
-  --plant-equip-dewater: light-dark(rgb(70 90 110), rgb(111 132 155));
-  --plant-equip-water: light-dark(rgb(49 95 122), rgb(99 149 179));
-  --plant-equip-control: light-dark(rgb(47 57 65), rgb(92 104 114));
-  --plant-ceramic: light-dark(rgb(204 184 150), rgb(226 210 182));
+  /* Integrated plant family-color standard.
+     서비스 색은 *배관*이 진다. 장비는 지지 않는다 — ASME A13.1 / KS A 0503 도 배관을
+     유체별로 표식하고 장비는 밀 피니시나 하우스 컬러 한 가지로 둔다. 종전에는 장비도
+     계열마다 색을 달리 줘서 화면에 색상이 12개 떠 있었고, 눈이 고정될 주재질이 없었다.
+     게다가 그 10계열은 이미 범례로 성립하지 않았다 — 측정하면 receiver↔dewater 색차가
+     8.9, dry↔wet 이 13.2 로, 같은 면의 음영 변화보다 작아 화면에서 구분이 불가능했다.
+     그래서 '구분되는 척하는 회색 10개' 를 실제로 구분되는 4단 재질로 접었다. */
+  /* 배관 — 화면에서 유일한 채색. 은색 장비 위에서 읽히도록 종전 파스텔보다 깊게 잡았다. */
+  --plant-dry-transfer: light-dark(rgb(174 100 41), rgb(209 127 61));
+  --plant-return: light-dark(rgb(173 62 46), rgb(207 90 74));
+  --plant-water: light-dark(rgb(43 104 161), rgb(62 135 204));
+  --plant-slurry: light-dark(rgb(43 130 123), rgb(56 168 159));
+  /* 흡인·집진 덕트는 이 플랜트에서 가장 개수가 많은 배관이다. 채색하면 화면을 그것이
+     지배한다 — 실제로도 대구경 집진 덕트는 도장하지 않고 아연도 그대로 쓴다. 계열 색상만
+     남기고 아연도 톤으로 내린다. */
+  --plant-air: light-dark(rgb(96 98 128), rgb(145 146 172));
+  --plant-reagent: light-dark(rgb(137 65 159), rgb(171 103 193));
+  --plant-concentrate: light-dark(rgb(178 124 36), rgb(213 152 52));
+  --plant-tailings: light-dark(rgb(49 125 67), rgb(63 162 86));
+  --plant-bead: light-dark(rgb(110 122 135), rgb(148 158 168));
+  /* 장비 4단 — T1 트림 / T2 본체 / T3 구동 / T4 제어.
+     티어 사이는 확실히 벌리고(T1↔T2 35 · T2↔T3 109 · T3↔T4 55), 티어 안은 20 이하로
+     좁혀 한 재질로 읽히게 했다. 계열 색상(H)만 옅게 남아 스테인리스와 도장 탄소강의
+     미묘한 차이 정도로 보인다. */
+  --plant-neutral-metal: light-dark(rgb(143 149 153), rgb(207 210 211));   /* T1 트림 */
+  --plant-equip-dry: light-dark(rgb(109 127 131), rgb(177 188 190));       /* T2 본체 */
+  --plant-equip-wet: light-dark(rgb(113 123 132), rgb(181 187 192));
+  --plant-equip-receiver: light-dark(rgb(109 116 126), rgb(176 180 186));
+  --plant-equip-air: light-dark(rgb(112 116 137), rgb(185 186 198));
+  --plant-equip-dewater: light-dark(rgb(107 114 123), rgb(173 178 184));
+  --plant-equip-reagent: light-dark(rgb(124 109 131), rgb(186 177 190));
+  --plant-equip-conveyor: light-dark(rgb(74 85 89), rgb(100 114 120));     /* T3 구동 */
+  --plant-equip-water: light-dark(rgb(75 86 93), rgb(102 118 127));
+  --plant-equip-pump: light-dark(rgb(70 87 88), rgb(95 118 119));
+  --plant-equip-motor: light-dark(rgb(65 76 83), rgb(90 105 114));
+  --plant-equip-control: light-dark(rgb(53 56 59), rgb(67 72 76));         /* T4 제어 */
+  /* 구조강·벨트. 종전에는 순흑(0x050505)과 --muted 파생이라 화면 아래 1/3 이 구멍처럼
+     뚫려 기둥·랙·벨트가 부품이 아니라 배경의 결손으로 읽혔다. 값을 들어 형태를 남긴다. */
+  --plant-structure: light-dark(rgb(62 67 71), rgb(74 79 85));
+  --plant-belt: light-dark(rgb(46 49 51), rgb(48 51 54));
+  /* 세라믹은 마모부 표시색 — 유일한 난색 정보라 따뜻함을 남긴다. */
+  --plant-ceramic: light-dark(rgb(191 174 146), rgb(225 217 204));
 
   /* Internal implementation variables; not part of the agent contract. */
   --font-sans: -apple-system, system-ui, "Segoe UI", sans-serif;
@@ -1080,6 +1099,7 @@ html>body{padding:0}</style>
   #hsgTrueThreeDeckScreenRevO .hsg3d-flow-dot.band280 { background: var(--viz-series-3); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-flow-dot.fines75 { background: var(--viz-series-1); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-legend { display: flex; flex-wrap: wrap; gap: 7px 13px; padding-top: 9px; border-top: 1px solid var(--border); }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-legend-note { display: block; margin-top: 6px; color: var(--muted-foreground); text-wrap: pretty; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-legend span { display: inline-flex; align-items: center; gap: 5px; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch { width: 0.72rem; height: 0.72rem; border-radius: 50%; flex: 0 0 auto; background: var(--muted-foreground); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.dry { background: var(--plant-dry-transfer); }
@@ -1093,17 +1113,11 @@ html>body{padding:0}</style>
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.concentrate { background: var(--plant-concentrate); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.tailings { background: var(--plant-tailings); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.bead { background: var(--plant-bead); }
-  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.dry-unit { background: var(--plant-equip-dry); }
-  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.conveyor { background: var(--plant-equip-conveyor); }
-  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.receiver-unit { background: var(--plant-equip-receiver); }
-  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.vessel { background: var(--plant-equip-wet); }
-  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.motor-unit { background: var(--plant-equip-motor); }
-  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.pump { background: var(--plant-equip-pump); }
-  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.air-unit { background: var(--plant-equip-air); }
-  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.reagent-unit { background: var(--plant-equip-reagent); }
-  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.dewater { background: var(--plant-equip-dewater); }
-  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.water-unit { background: var(--plant-equip-water); }
-  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.control { background: var(--plant-equip-control); }
+  /* 장비 4단 재질. 계열별 색이 아니라 티어를 가리키므로 스와치도 4개다. */
+  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.tier-trim { background: var(--plant-neutral-metal); }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.tier-body { background: var(--plant-equip-dry); }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.tier-drive { background: var(--plant-equip-motor); }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-family-swatch.tier-control { background: var(--plant-equip-control); }
   #hsgTrueThreeDeckScreenRevO .hsg3d-selected { justify-content: space-between; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-plc-panel { padding: 10px 12px; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-plc-panel > summary { cursor: pointer; font-weight: 500; }
@@ -1321,20 +1335,15 @@ html>body{padding:0}</style>
           <span><i class="hsg3d-family-swatch tailings"></i>Si 광미</span>
           <span><i class="hsg3d-family-swatch bead"></i>비드 보충·회수</span>
         </div>
-        <div class="hsg3d-family-legend text-small" aria-label="장비 계열 색상">
-          <span><i class="hsg3d-family-swatch dry-unit"></i>파쇄기·스크린</span>
-          <span><i class="hsg3d-family-swatch conveyor"></i>스크루·이송기</span>
-          <span><i class="hsg3d-family-swatch receiver-unit"></i>수신기·에어록</span>
-          <span><i class="hsg3d-family-swatch vessel"></i>조정조·부선조</span>
-          <span><i class="hsg3d-family-swatch motor-unit"></i>모터·구동기</span>
-          <span><i class="hsg3d-family-swatch pump"></i>A/B 펌프</span>
-          <span><i class="hsg3d-family-swatch air-unit"></i>집진·공기계통</span>
-          <span><i class="hsg3d-family-swatch reagent-unit"></i>약품 스키드</span>
-          <span><i class="hsg3d-family-swatch dewater"></i>탈수기</span>
-          <span><i class="hsg3d-family-swatch water-unit"></i>수처리 장치</span>
-          <span><i class="hsg3d-family-swatch control"></i>PLC·RIO</span>
+        <div class="hsg3d-family-legend text-small" aria-label="장비 재질 4단">
+          <span><i class="hsg3d-family-swatch tier-trim"></i>트림 — 커버·클램프·플랫폼</span>
+          <span><i class="hsg3d-family-swatch tier-body"></i>본체 — 공정 용기·하우징</span>
+          <span><i class="hsg3d-family-swatch tier-drive"></i>구동 — 모터·펌프·이송기</span>
+          <span><i class="hsg3d-family-swatch tier-control"></i>제어 — 제어반·구조강</span>
         </div>
-        <span class="text-small" data-family-audit-status>전수점검 완료 · 배관 151개 / 9계열 · 장비 11계열</span>
+        <span class="text-small" data-family-audit-status>전수점검 완료 · 배관 151개 / 9계열 · 장비 재질 4단</span>
+        <span class="text-small hsg3d-legend-note">장비는 서비스 색을 지지 않는다 — 배관이 진다(ASME A13.1 · KS A 0503).
+          장비 식별은 태그 라벨과 선택 패널이 맡고, 외장은 4단 재질로만 구분한다.</span>
       </div>
       </div>
     </details>
@@ -15771,6 +15780,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       equipmentDewater: themeNumber("--plant-equip-dewater"),
       equipmentWater: themeNumber("--plant-equip-water"),
       equipmentControl: themeNumber("--plant-equip-control"),
+      structure: themeNumber("--plant-structure"),
+      belt: themeNumber("--plant-belt"),
       ceramic: themeNumber("--plant-ceramic")
     };
     color.blue = color.series1;
@@ -15790,14 +15801,32 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return material;
     }
 
+    // 마감은 4단 재질에 맞춰 통일한다. 환경맵이 생겼으므로 거칠기·금속성이 실제로
+    // 의미를 갖는다 — 종전 값들은 반사할 것이 없는 상태에서 눈대중으로 맞춘 것이라
+    // 계열마다 제각각이었다(같은 본체인데 0.25 부터 0.36 까지).
+    //   T1 트림   거칠기 0.24 · 금속성 0.86   기계가공 마감
+    //   T2 본체   거칠기 0.38 · 금속성 0.62   비드 블라스트 — 알베도를 남겨 티어 값을 지킨다
+    //   T3 구동   거칠기 0.34 · 금속성 0.72
+    //   T4 제어   거칠기 0.46 · 금속성 0.58   도장 강판
+    // 금속성을 0.9 근처로 올리면 확산 알베도가 사라져 표면색이 환경맵 색으로 수렴한다.
+    // 본체를 0.62 로 둔 것은 티어 명도를 유지하면서 반사만 얻기 위한 것이다.
+    const FINISH = {
+      trim: [0.24, 0.86], body: [0.38, 0.62], drive: [0.34, 0.72], control: [0.46, 0.58]
+    };
+    const finish = (hex, tier, opacity = 1) => makeMaterial(hex, FINISH[tier][0], FINISH[tier][1], opacity);
     const material = {
-      frame: makeMaterial(color.muted, 0.28, 0.76),
-      shell: makeMaterial(color.equipmentDry, 0.32, 0.52, 0.82),
-      cover: makeMaterial(color.neutralMetal, 0.31, 0.72, 0.92),
-      motor: makeMaterial(color.equipmentMotor, 0.24, 0.86),
-      dark: makeMaterial(color.neutralMetal, 0.28, 0.82),
-      knife: makeMaterial(color.muted, 0.28, 0.76),
-      fixed: makeMaterial(color.border, 0.25, 0.84),
+      frame: finish(color.structure, "control"),
+      shell: finish(color.equipmentDry, "body"),
+      cover: finish(color.neutralMetal, "trim"),
+      motor: finish(color.equipmentMotor, "drive"),
+      dark: finish(color.neutralMetal, "trim"),
+      knife: finish(color.structure, "control"),
+      fixed: finish(color.structure, "drive"),
+      // 방진 스프링은 종전에 안전황색이었다. 그런 제품이 실제로 있긴 하지만, 이 플랜트는
+      // 방진마운트가 272개라 화면에서 가장 밝은 요소가 전부 장착 하드웨어가 됐다 —
+      // 시선이 기계가 아니라 받침으로 갔다. 황색은 실제 위험점(인터록 표식·비상샤워·
+      // 카메라 LED 링)에만 남기고, 스프링은 도장 강재로 되돌린다.
+      spring: finish(color.structure, "drive"),
       screen: makeMaterial(color.series1, 0.36, 0.32, 0.68),
       returnFlow: makeMaterial(color.processReturn, 0.38, 0.28),
       safety: makeMaterial(themeNumber("--yellow"), 0.48, 0.38, 0.82),
@@ -15806,22 +15835,24 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       product280: makeMaterial(color.series3, 0.38, 0.24),
       product106: makeMaterial(color.series5, 0.38, 0.24),
       product75: makeMaterial(color.series1, 0.36, 0.32),
-      panelBack: makeMaterial(color.muted, 0.54, 0.12, 0.92),
+      panelBack: makeMaterial(color.structure, 0.54, 0.12, 0.92),
       panelCell: makeMaterial(color.series1, 0.30, 0.36, 0.90),
       particleA: makeMaterial(mixColor(color.steel, color.card, 0.28), 0.56, 0.08),
       particleB: makeMaterial(color.series4, 0.74, 0.02),
       particleC: makeMaterial(color.series2, 0.58, 0.06),
       curtain: makeMaterial(mixColor(color.border, color.foreground, 0.34), 0.88, 0.01),
-      pulley: makeMaterial(color.series3, 0.30, 0.62),
-      belt: makeMaterial(0x050505, 0.82, 0.02),
+      // 풀리는 종전에 viz-series-3(녹색)이었다 — 벨트 헤드·테일처럼 큰 면이 초록으로
+      // 튀는데 담고 있는 정보는 없었다. 가공 강재로 되돌린다.
+      pulley: finish(color.neutralMetal, "drive"),
+      belt: makeMaterial(color.belt, 0.88, 0.03),
       // Shredder surfaces mirror the common HSG/Sheeve equipment palette.
       // Separate instances keep cutaway opacity changes local to ICSH-301.
-      shredShell: makeMaterial(color.equipmentDry, 0.32, 0.52, 0.82),
-      shredPanel: makeMaterial(color.equipmentDry, 0.28, 0.76, 0.94),
-      shredMetal: makeMaterial(color.equipmentDry, 0.25, 0.84),
+      shredShell: finish(color.equipmentDry, "body"),
+      shredPanel: finish(color.equipmentDry, "body"),
+      shredMetal: finish(color.equipmentDry, "drive"),
       coral: makeMaterial(0xce6b5e, 0.42, 0.22),
       mint: makeMaterial(0x4fae91, 0.38, 0.30),
-      silverClamp: makeMaterial(color.neutralMetal, 0.20, 0.92),
+      silverClamp: finish(color.neutralMetal, "trim"),
       pipeDryTransfer: makeMaterial(color.dryTransfer, 0.40, 0.24, 0.96),
       pipeReturn: makeMaterial(color.processReturn, 0.40, 0.24, 0.96),
       pipeWater: makeMaterial(color.processWater, 0.38, 0.22, 0.94),
@@ -15832,16 +15863,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       pipeConcentrate: makeMaterial(color.processConcentrate, 0.38, 0.26, 0.96),
       pipeTailings: makeMaterial(color.processTailings, 0.40, 0.22, 0.96),
       pipeBead: makeMaterial(color.processBead, 0.34, 0.46, 0.96),
-      equipmentConveyor: makeMaterial(color.equipmentConveyor, 0.34, 0.62, 0.94),
-      equipmentWetBody: makeMaterial(color.equipmentWet, 0.34, 0.54, 0.82),
-      screenHousing: makeMaterial(color.equipmentDry, 0.34, 0.58, 0.86),
-      solidsReceiver: makeMaterial(color.equipmentReceiver, 0.36, 0.54, 0.90),
-      equipmentPump: makeMaterial(color.equipmentPump, 0.34, 0.56, 0.96),
-      equipmentAir: makeMaterial(color.equipmentAir, 0.34, 0.54, 0.94),
-      equipmentReagent: makeMaterial(color.equipmentReagent, 0.36, 0.46, 0.90),
-      equipmentDewater: makeMaterial(color.equipmentDewater, 0.34, 0.56, 0.94),
-      equipmentWater: makeMaterial(color.equipmentWater, 0.36, 0.48, 0.92),
-      equipmentControl: makeMaterial(color.equipmentControl, 0.30, 0.62, 0.96)
+      equipmentConveyor: finish(color.equipmentConveyor, "drive"),
+      equipmentWetBody: finish(color.equipmentWet, "body"),
+      screenHousing: finish(color.equipmentDry, "body"),
+      solidsReceiver: finish(color.equipmentReceiver, "body"),
+      equipmentPump: finish(color.equipmentPump, "drive"),
+      equipmentAir: finish(color.equipmentAir, "body"),
+      equipmentReagent: finish(color.equipmentReagent, "body"),
+      equipmentDewater: finish(color.equipmentDewater, "body"),
+      equipmentWater: finish(color.equipmentWater, "drive"),
+      equipmentControl: finish(color.equipmentControl, "control")
     };
     // 폭발방호 부속은 한눈에 구분돼야 한다 — 안전색으로 따로 뺀다.
     const explosionMaterial = makeMaterial(0xb8452f, 0.46, 0.24);      // 벤트 패널·차단밸브
@@ -15895,6 +15926,54 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.autoClear = true;
     renderer.setClearColor(color.background, 1);
+
+    // PBR 에서 금속의 색은 대부분 "무엇을 비추고 있는가" 에서 온다. 이 씬에는 환경맵이
+    // 없었고, 그래서 metalness 0.5–0.9 짜리 외장 전부가 반사할 것이 없었다. three 는
+    // 그런 표면을 죽은 회색 확산광으로 그린다 — 장비가 금속이 아니라 도장한 판지처럼
+    // 보이던 실체가 이것이다. 조명을 넷이나 켜서 밝기로 메우고 있었지만, 밝기로는
+    // 곡면을 타고 흐르는 하이라이트도 모서리의 반짝임도 만들어지지 않는다.
+    //
+    // 외부 파일을 쓰면 오프라인 동작이 깨지므로(three·cannon 을 내장한 이유와 같다)
+    // 스튜디오 조명을 캔버스에 직접 그려 PMREM 으로 굽는다. 소프트박스 두 장과 허리
+    // 높이 스트립 하나 — 제품 사진에서 쓰는 그대로다.
+    function studioEnvironment() {
+      const envCanvas = document.createElement("canvas");
+      envCanvas.width = 1024;
+      envCanvas.height = 512;
+      const paint = envCanvas.getContext("2d");
+      const sky = paint.createLinearGradient(0, 0, 0, envCanvas.height);
+      sky.addColorStop(0.00, "#eef1f4");   // 천정 — 확산 천창
+      sky.addColorStop(0.40, "#a6aeb5");
+      sky.addColorStop(0.52, "#6c747b");   // 수평선
+      sky.addColorStop(1.00, "#2b2f32");   // 바닥 반사는 눌러 둔다
+      paint.fillStyle = sky;
+      paint.fillRect(0, 0, envCanvas.width, envCanvas.height);
+      const softbox = (cx, cy, halfWidth, halfHeight, peak) => {
+        paint.save();
+        paint.translate(cx, cy);
+        paint.scale(1, halfHeight / halfWidth);
+        const glow = paint.createRadialGradient(0, 0, 0, 0, 0, halfWidth);
+        glow.addColorStop(0, "rgba(255,255,255," + peak + ")");
+        glow.addColorStop(0.55, "rgba(255,255,255," + (peak * 0.40).toFixed(3) + ")");
+        glow.addColorStop(1, "rgba(255,255,255,0)");
+        paint.fillStyle = glow;
+        paint.fillRect(-halfWidth, -halfWidth, halfWidth * 2, halfWidth * 2);
+        paint.restore();
+      };
+      softbox(300, 116, 250, 124, 0.96);   // 키 — 원통 외장에 세로 하이라이트를 만든다
+      softbox(772, 152, 186, 100, 0.52);   // 필 — 반대편, 약하게
+      softbox(540, 252, 320, 42, 0.28);    // 허리 높이 스트립 — 수평 반사선
+      const texture = new THREE.CanvasTexture(envCanvas);
+      texture.mapping = THREE.EquirectangularReflectionMapping;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const baked = pmrem.fromEquirectangular(texture);
+      texture.dispose();
+      pmrem.dispose();
+      return baked.texture;
+    }
+    scene.environment = studioEnvironment();
+    scene.environmentIntensity = 0.95;
 
     const companyLogoSourceTexture = await new THREE.TextureLoader().loadAsync(companyLogoDataUrl);
     const logoCanvas = document.createElement("canvas");
@@ -16040,7 +16119,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       addBox(parent, { x: coilR * 3.8, y: 0.016, z: coilR * 3.8 }, { x, y: baseY + 0.008, z }, material.silverClamp, partId);
       const span = topY - baseY - 0.040, coils = Math.max(3, Math.round(span / 0.019));
       for (let c = 0; c < coils; c += 1) {
-        addMesh(parent, new THREE.TorusGeometry(coilR, 0.011, 6, 18), material.safety,
+        addMesh(parent, new THREE.TorusGeometry(coilR, 0.011, 6, 18), material.spring,
           { x, y: baseY + 0.026 + span * (c / Math.max(1, coils - 1)), z }, { x: Math.PI / 2 }, partId, false);
       }
       addBox(parent, { x: coilR * 4.1, y: 0.018, z: coilR * 4.1 }, { x, y: topY - 0.009, z }, material.silverClamp, partId);
@@ -16864,7 +16943,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     selectables.push(beltSegments);
     const beltTransform = new THREE.Object3D();
 
-    addMesh(parts.P10, roundedGuardGeometry(1.72, 1.14, 0.13, 0.15), material.safety, { x: -0.12, y: 0.80, z: -0.65 }, null, "P10", true);
+    // 벨트 가드 1,720 × 1,140 을 통째로 안전황색으로 칠하면 건식부에서 가장 큰 채색면이
+    // 된다 — 회사 워드마크 데칼이 바로 이 면에 붙는데 그 배경이 형광 노랑이었다.
+    // 가드 본체는 기계색으로 두고, 황색은 아래 인터록 표식(위험점)에만 남긴다.
+    addMesh(parts.P10, roundedGuardGeometry(1.72, 1.14, 0.13, 0.15), material.cover, { x: -0.12, y: 0.80, z: -0.65 }, null, "P10", true);
     [0.46, 0.68, 0.90, 1.12].forEach((y) => addBox(parts.P10, { x: 1.10, y: 0.020, z: 0.030 }, { x: -0.12, y, z: -0.48 }, material.dark, "P10", null, false));
     addBox(parts.P10, { x: 0.055, y: 0.18, z: 0.060 }, { x: 0.70, y: 0.84, z: -0.47 }, material.safety, "P10");
     const companyLogoPlate = new THREE.Mesh(new THREE.PlaneGeometry(0.82, 0.244), companyLogoMaterial);
@@ -17915,11 +17997,35 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       addBox(parts.P13, { x: 0.34, y: 0.06, z: 0.38 }, { x: point.x, y: 0.03, z: point.z }, material.frame, "P13");
     });
 
+    // --card 는 dark 테마에서 거의 검정이라 스튜디오 배경을 깔고 나니 바닥만 구멍처럼
+    // 남았다. 콘크리트 슬래브다운 중성 회색으로 고정한다.
+    //
+    // 균일한 회색 판은 지평선까지 같은 밝기로 뻗어 설비와 시선을 나눠 갖는다. 제품
+    // 사진에서 쓰는 무한대 코브처럼 가운데를 들고 가장자리로 떨어뜨리면, 바닥이
+    // 설비를 받쳐 주기만 하고 스스로 주장하지 않는다. 바닥면은 fitGroundToPlant()
+    // 가 설비 실범위에 맞춘 긴 직사각형이므로, UV 원형 그라디언트가 월드에서는
+    // 플랜트를 따라 늘어난 타원이 된다 — 길고 좁은 배치에 그대로 맞는다.
+    const floorTexture = (() => {
+      const slab = document.createElement("canvas");
+      slab.width = 512;
+      slab.height = 512;
+      const paint = slab.getContext("2d");
+      const cove = paint.createRadialGradient(256, 256, 0, 256, 256, 268);
+      cove.addColorStop(0.00, "#79828b");
+      cove.addColorStop(0.42, "#5f676f");
+      cove.addColorStop(0.78, "#3d434a");
+      cove.addColorStop(1.00, "#2b3036");
+      paint.fillStyle = cove;
+      paint.fillRect(0, 0, slab.width, slab.height);
+      const texture = new THREE.CanvasTexture(slab);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      return texture;
+    })();
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(1, 1),
-      // --card 는 dark 테마에서 거의 검정이라 스튜디오 배경을 깔고 나니 바닥만 구멍처럼
-      // 남았다. 콘크리트 슬래브다운 중성 회색으로 고정한다.
-      new THREE.MeshStandardMaterial({ color: 0x565d67, roughness: 0.94, metalness: 0, transparent: true, opacity: 0.74 })
+      new THREE.MeshStandardMaterial({ color: 0xffffff, map: floorTexture, roughness: 0.94, metalness: 0 })
     );
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.07;
@@ -17976,18 +18082,21 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // Illumination is theme-independent. Tinting these with color.foreground meant the
     // key light was rgb(26,28,31) in light mode — a black light — which rendered the whole
     // plant as a silhouette. Intensities are re-tuned for genuinely white light.
-    // 반구광과 필을 같이 올려 그늘을 들어 준다 — "조명이 잘 받는" 느낌은 키라이트
-    // 세기가 아니라 그늘이 얼마나 살아 있느냐에서 온다.
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x5b666e, 1.85));
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.35);
+    // 종전에는 환경맵이 없어 조명 넷(반구 1.85 + 키 2.35 + 림 1.05 + 필 0.82)이 그
+    // 부재를 밝기로 메우고 있었다. 이제 scene.environment 가 확산광을 지므로 같은 세기를
+    // 유지하면 전부 날아간다. 물리적으로 맞는 구성으로 되돌린다 — 확산은 IBL 이,
+    // 방향과 그림자는 키 하나가. 나머지 둘은 형태를 잡아 주는 정도만 남긴다.
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x5b666e, 0.22));
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.62);
     keyLight.position.set(3.5, 5.6, 4.4);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(1024, 1024);
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.bias = -0.0006;
     scene.add(keyLight);
-    const rimLight = new THREE.DirectionalLight(0xbccbd6, 1.05);
+    const rimLight = new THREE.DirectionalLight(0xbccbd6, 0.46);
     rimLight.position.set(-3, 2.8, -3.6);
     scene.add(rimLight);
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.82);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.24);
     fillLight.position.set(-2.4, 3.2, 5.2);
     scene.add(fillLight);
 
@@ -18068,19 +18177,25 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const wetConcentrateMaterial = material.pipeConcentrate;
     const wetTailingsMaterial = material.pipeTailings;
     const wetWaterPipeMaterial = material.pipeWater;
+    // 액면은 공정수 계열색을 그대로 쓰되(어느 용기가 물을 담는지가 정보다), 배관용
+    // 도장색을 깊게 잡은 만큼 액면은 옅게 내린다 — 액면은 도장면이 아니라 투과면이다.
     const wetWaterMaterial = material.pipeWater.clone();
+    wetWaterMaterial.color.lerp(new THREE.Color(0xdfe6ec), 0.42);
     wetWaterMaterial.transparent = true;
-    wetWaterMaterial.opacity = 0.58;
+    wetWaterMaterial.opacity = 0.5;
     wetWaterMaterial.depthWrite = false;
-    wetWaterMaterial.userData.baseOpacity = 0.58;
-    const wetGuardMaterial = material.safety.clone();
+    wetWaterMaterial.userData.baseOpacity = 0.5;
+    // 메쉬 안전커버는 반투명 황색이었는데, 은색 본체 위에 겹치면 카키색 얼룩으로 읽힌다
+    // (노랑 28 % + 은색 = 올리브). 익스팬디드 메탈 가드는 원래 들여다보이는 어두운 망이다.
+    const wetGuardMaterial = material.frame.clone();
     wetGuardMaterial.transparent = true;
     wetGuardMaterial.opacity = 0.28;
     wetGuardMaterial.depthWrite = false;
     wetGuardMaterial.userData.baseOpacity = 0.28;
-    const wetFrothMaterial = material.particleB.clone();
-    wetFrothMaterial.transparent = true;
-    wetFrothMaterial.opacity = 0.42;
+    // 포말은 흰 거품이다. 종전에는 viz-series-4(차트 분홍)를 빌려 써서, 위에서 내려다보면
+    // 부선 셀마다 지름 1 m 짜리 분홍 원반이 얹혀 있었다 — 평면에서 가장 눈에 띄는 것이
+    // 거품 색이 될 이유가 없다. 실제 부선 포말의 회백색으로 되돌린다.
+    const wetFrothMaterial = makeMaterial(0xdadedf, 0.88, 0.02, 0.46);
     wetFrothMaterial.depthWrite = false;
 
     // ---- 밝은 회색 강재 그레이팅 데크 ------------------------------------
@@ -18097,11 +18212,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const GRATING_BAR_MM = 5;           // 바 두께
     const GRATING_OPEN_LEVEL = 0.62;    // 개구부 밝기(바 대비) — 아래로 그늘진다
     // 3D 뷰포트는 VIEWPORT_SCHEME 으로 두 테마 모두 dark 토큰에 고정돼 있으므로,
-    // 색은 스튜디오 배경(L≈114) 하나만 상대로 잡으면 된다. --plant-neutral-metal
-    // 단독은 L≈190 까지 올라가 프레임에서 제일 밝은 면이 돼 버리고, --muted-foreground
-    // 단독(L≈139)은 배경과 덜 떨어진다. 둘을 섞어 L≈160 — 배경보다 확실히 밝고
-    // 중간톤 장비가 그 위에서 읽히는 아연도 회색에 앉힌다.
-    const gratingColor = mixColor(color.neutralMetal, color.steel, 0.45);
+    // 색은 스튜디오 배경(L≈114) 하나만 상대로 잡으면 된다.
+    //
+    // 종전 L≈160 은 "중간톤 장비가 그 위에서 읽힌다" 를 근거로 잡은 값인데, 장비가
+    // 4단 재질로 바뀌며 본체가 L≈188 이 됐으므로 그 전제가 깨졌다 — 212 m² 짜리
+    // 최대 면적이 장비와 28 밖에 차이나지 않으면 기계가 바닥에서 떨어져 나오지 않는다.
+    // 구조강(L≈79)과 트림(L≈209) 사이 L≈134 로 내려 아연도 그레이팅의 실제 톤에
+    // 앉힌다. 배경보다는 확실히 밝고, 그 위 은색 장비와는 확실히 벌어진다.
+    const gratingColor = mixColor(color.structure, color.neutralMetal, 0.42);
     const gratingSource = (() => {
       const canvas = document.createElement("canvas");
       canvas.width = 256;
@@ -19053,7 +19171,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     for (const dx of [-2.85, 2.85]) for (const dz of [-1.30, 1.30]) {
       wetCylinder(unifiedWet, 0.075, 0.24, [-10.90 + dx, 0.12, YARD_ROW_Z + dz], material.silverClamp, "WB-001 로드셀", 16);
     }
-    const wb001Kiosk = wetBox(unifiedWet, [0.90, 2.20, 0.90], [-7.20, 1.10, YARD_ROW_Z - 2.10], material.equipmentControl, "WB-001 계량 키오스크");
+    const wb001Kiosk = wetBox(unifiedWet, [0.90, 2.20, 0.90], [-7.20, 1.10, YARD_ROW_Z - 2.10], material.cover, "WB-001 계량 키오스크");
     wetBox(unifiedWet, [0.62, 0.40, 0.03], [-7.20, 1.50, YARD_ROW_Z - 2.56], material.screen, "WB-001 계량 표시기");
     wetLabel("WB-001 트럭 계량대 · 60 t · 입출하 custody transfer", [-10.90, 1.40, YARD_ROW_Z], [2.55, 0.24, 1]);
 
@@ -19063,7 +19181,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetCylinder(unifiedWet, 0.30, 0.52, [8.40, 1.35, YARD_ROW_Z], material.solidsReceiver, "SP-601 시료 축소탑", 24, null, true);
     for (const dz of [-0.34, 0.34]) wetCylinder(unifiedWet, 0.085, 0.22, [8.40, 0.42, YARD_ROW_Z + dz], material.equipmentReceiver, "SP-601 축소시료통", 18);
     for (const dx of [-0.28, 0.28]) wetBox(unifiedWet, [0.06, 1.70, 0.06], [8.40 + dx, 0.85, YARD_ROW_Z + 0.40], hdgMaterial, "SP-601 지지대");
-    const lab601Shell = wetBox(unifiedWet, [2.80, 2.50, 2.20], [10.60, 1.25, YARD_ROW_Z], material.equipmentControl, "LAB-601 분석실");
+    // 야드 건축물(분석실·계량 키오스크)은 공정 장비가 아니라 건물이다. 제어반 티어에
+    // 두면 3 m 에 가까운 상자가 화면에서 가장 어두운 덩어리가 돼 그 위 심볼 마크까지
+    // 묻힌다. 트림 티어로 올려 한 가족으로 읽히게 한다.
+    const lab601Shell = wetBox(unifiedWet, [2.80, 2.50, 2.20], [10.60, 1.25, YARD_ROW_Z], material.cover, "LAB-601 분석실");
     wetBox(unifiedWet, [1.20, 0.90, 0.04], [10.60, 1.60, YARD_ROW_Z - 1.12], material.screen, "LAB-601 창");
     wetBox(unifiedWet, [0.80, 1.90, 0.05], [9.55, 0.95, YARD_ROW_Z - 1.10], material.cover, "LAB-601 출입문");
     wetCylinder(unifiedWet, 0.11, 0.90, [11.70, 2.95, YARD_ROW_Z], material.equipmentAir, "LAB-601 흄후드 배기", 18);
@@ -19147,7 +19268,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // 스키드와 CH-601 공랭식 인버터 칠러
     wetBox(coolingPlant, [4.60, 0.16, 2.60], [2.00, 0.08, YARD_Z], material.frame, "CW-601 옥외 스키드");
-    wetBox(coolingPlant, [2.80, 1.25, 1.50], [1.00, 0.80, YARD_Z], material.equipmentControl, "CH-601 공랭식 인버터 칠러 16.7 RT");
+    // 칠러는 공정 장비지 제어반이 아니다 — 공랭식이므로 공기계통 본체색을 쓴다.
+    wetBox(coolingPlant, [2.80, 1.25, 1.50], [1.00, 0.80, YARD_Z], material.equipmentAir, "CH-601 공랭식 인버터 칠러 16.7 RT");
     for (const dz of [-0.78, 0.78]) {
       wetBox(coolingPlant, [2.70, 1.05, 0.06], [1.00, 0.78, YARD_Z + dz], material.screen, "CH-601 응축기 핀코일");
     }
