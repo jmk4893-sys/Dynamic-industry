@@ -193,53 +193,73 @@ class TestComponentMounting(unittest.TestCase):
 class TestBrandIdentity(unittest.TestCase):
     """회사 마크가 한 벌의 도형에서 나오고, 실제로 부착돼 있는지.
 
-    마크는 지급된 로고 아트워크에서 추출한 폴리곤이며, 장비 외장(3D)과 콘솔
-    크롬(SVG)에 같은 좌표로 그려진다. 두 곳이 따로 놀면 같은 회사 마크가 아니게
-    되므로, SVG 좌표를 JS 도형에서 유도해 일치를 강제한다.
+    마크는 지급된 아트워크 symbol_100x100mm.ai 의 PDF 경로 연산자를 파싱해 뽑은
+    것이고, 원본 정의는 docs/brand/dg-mark.json 하나뿐이다. 콘솔은 그 사본을
+    embed 하되 3D 외장·명판 SVG·파비콘·도면 표제란이 모두 같은 MARK 를 쓴다.
+    한 곳만 고치면 같은 회사 마크가 아니게 되므로 시험이 그 일치를 강제한다.
+    (원본과의 대조는 tests/test_brand_mark.py 가 맡는다.)
     """
 
-    BRAND, ACCENT = "#268cca", "#fdca4a"
+    BRAND, ACCENT = "#228CC9", "#FECA4A"
 
     @classmethod
     def setUpClass(cls):
         cls.html = CONSOLE.read_text(encoding="utf-8")
-        m = re.search(r"const MARK_SHAPES=\[(.*?)\n    \];", cls.html, re.S)
-        assert m, "MARK_SHAPES 없음"
-        cls.shapes = []
-        for role, pts in re.findall(r"\{c:'(\w)',p:\[(.*?)\]\}", m.group(1)):
-            cls.shapes.append((role, [[float(v) for v in p.split(",")]
-                                      for p in re.findall(r"\[([-\d.,]+)\]", pts)]))
-
-    @staticmethod
-    def _fmt(v):
-        v = round(v, 1)
-        return str(int(v)) if float(v).is_integer() else str(v)
+        m = re.search(r"const MARK=\{\s*vb:\[([\d.,]+)\],\s*paths:\[(.*?)\n      \]\s*\n    \};",
+                      cls.html, re.S)
+        assert m, "MARK 정의 없음"
+        cls.vb = [float(v) for v in m.group(1).split(",")]
+        cls.paths = re.findall(r"\{f:'(#[0-9A-Fa-f]{6})',d:'([^']+)'\}", m.group(2))
 
     def test_mark_matches_the_supplied_artwork(self):
-        """로고는 파란 도형 4개와 노란 면 1개로 이뤄진다."""
-        self.assertEqual(len(self.shapes), 5, "마크 도형 수가 아트워크와 다르다")
-        roles = [r for r, _ in self.shapes]
-        self.assertEqual(roles.count("a"), 1, "노란 면은 하나")
-        self.assertEqual(roles.count("b"), 4, "파란 면은 넷")
-        for _role, poly in self.shapes:
-            self.assertGreaterEqual(len(poly), 6, "각 면은 다각형이어야 한다")
+        """아트워크는 파란 도형 4개와 노란 면 1개다."""
+        self.assertEqual(len(self.paths), 5, "마크 도형 수가 아트워크와 다르다")
+        fills = [f for f, _ in self.paths]
+        self.assertEqual(fills.count(self.ACCENT), 1, "노란 면은 하나")
+        self.assertEqual(fills.count(self.BRAND), 4, "파란 면은 넷")
+        self.assertAlmostEqual(self.vb[0], 100.0, delta=1e-6)
+        self.assertAlmostEqual(self.vb[1], 88.9723, delta=1e-4,
+                               msg="마크 세로비가 아트워크와 다르다")
+
+    def test_the_mark_keeps_the_artwork_curves(self):
+        """모서리 라운드는 베지어다. 직선 다각형으로 되돌리면 다른 도형이 된다."""
+        curved = [d for _f, d in self.paths if "C" in d]
+        self.assertEqual(len(curved), 3, "아트워크의 곡선 경로 수가 다르다")
+        self.assertNotIn("polygon points=", self.html.split("<script>")[0],
+                         "손으로 적은 polygon 마크가 마크업에 남아 있다")
 
     def test_brand_colours_are_sampled_from_the_artwork(self):
         for name, value in (("brand", self.BRAND), ("accent", self.ACCENT)):
             self.assertIn(f"{name}:'{value}'", self.html, f"{name} 색이 아트워크와 다르다")
+        for old in ("#268cca", "#fdca4a"):
+            self.assertNotIn(old, self.html, f"눈으로 고른 옛 색 {old} 이 남아 있다")
 
-    def test_svg_mark_matches_the_three_dimensional_mark(self):
-        """SVG 폴리곤은 JS 도형에서 y축만 뒤집어 유도된 좌표여야 한다."""
-        for _role, poly in self.shapes:
-            pts = " ".join(f"{self._fmt(x)},{self._fmt(100 - y)}" for x, y in poly)
-            self.assertIn(f"points='{pts}'", self.html,
-                          f"SVG 마크가 3D 마크와 어긋난다: {pts}")
+    def test_one_definition_feeds_every_surface(self):
+        """3D 외장·명판·파비콘·표제란이 모두 같은 MARK 에서 나와야 한다."""
+        for d in (d for _f, d in self.paths):
+            self.assertEqual(self.html.count(d), 1,
+                             "마크 경로가 두 번 이상 적혀 있다 — 사본이 갈라질 자리다")
+        self.assertIn("const MARK_POLYS=markPolys();", self.html)
+        for fn, why in (("markPolys(", "베지어 평탄화"), ("markSVG(", "화면용 SVG")):
+            self.assertIn(f"function {fn}", self.html, f"{why} 함수 없음")
+        body = self._fn3d = re.search(r"function brandMark3D\(.*?\n    \}", self.html, re.S).group(0)
+        self.assertIn("MARK_POLYS", body, "3D 외장이 MARK 를 쓰지 않는다")
+        self.assertIn("$('npMark').innerHTML=markSVG(", self.html, "명판이 MARK 를 쓰지 않는다")
+        self.assertIn("$('favicon').href=", self.html, "파비콘이 MARK 를 쓰지 않는다")
+        tb = re.search(r"function drawTitleBlock\(.*?\n    \}", self.html, re.S).group(0)
+        self.assertIn("MARK_POLYS", tb, "도면 표제란이 MARK 를 쓰지 않는다")
+        self.assertIn("${markSVG(", self.html, "제작도 표제란이 MARK 를 쓰지 않는다")
+
+    def test_the_three_dimensional_mark_flips_the_svg_axis(self):
+        """SVG 는 y 아래, 장비 면은 v 가 위다. 뒤집지 않으면 마크가 거꾸로 붙는다."""
+        body = re.search(r"function brandMark3D\(.*?\n    \}", self.html, re.S).group(0)
+        self.assertRegex(body, r"mul\(v,\(H-y\)\*k\)", "3D 마크가 y축을 뒤집지 않는다")
 
     def test_favicon_is_inline_and_carries_the_mark(self):
-        link = re.search(r'<link rel="icon" href="(data:image/svg\+xml,[^"]+)"', self.html)
-        self.assertIsNotNone(link, "인라인 파비콘 없음")
-        self.assertEqual(link.group(1).count("polygon"), len(self.shapes),
-                         "파비콘 마크의 도형 수가 다르다")
+        self.assertRegex(self.html, r'<link rel="icon" id="favicon"',
+                         "인라인 파비콘 자리 없음")
+        self.assertIn("encodeURIComponent(markSVG(", self.html,
+                      "파비콘이 MARK 에서 만들어지지 않는다")
 
     def test_tagline_is_present(self):
         self.assertIn("FOR NET ZERO PROJECTION", self.html, "태그라인 누락")
@@ -1220,6 +1240,140 @@ class TestWinderDischarge(unittest.TestCase):
                          "코너 승강 테이블이 롤 밑면을 따라가지 않는다")
         self.assertRegex(body, r"w\.eject>=\.74&&w\.eject<\.92",
                          "승강 테이블이 하강 구간에 떠 있지 않다")
+
+
+class TestVacuumHoldingForce(unittest.TestCase):
+    """흡착패드 면적은 장식이 아니라 유지력 그 자체다.
+
+    패널은 흡착만으로 잡혀 있고 두 칼날의 추력은 전부 패드 마찰로 받는다.
+    필요 면적은 A ≥ 2F/(μ·Δp) (사양서 OI-13) 이고, 여기서 부족하면 통과박리
+    중에 패널이 미끄러진다 — 그림에서는 아무 표시도 나지 않는 종류의 오류다.
+
+    종전 그림은 3×3 = 9패드 Ø280 이라 추력 상한에서 필요 면적의 0.81배였고,
+    제작도 목록은 같은 캐리어의 패드를 18개로 적고 있었다. 표와 그림이 서로
+    달랐고 둘 중 하나는 반드시 틀린 상태였다.
+    """
+
+    MU, DP = 0.6, 65_000        # 패드 마찰계수 / 진공 차압
+    F_HI = 13_370               # OI-01 추력 상한 (N)
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = CONSOLE.read_text(encoding="utf-8")
+
+    def _const(self, name):
+        m = re.search(rf"(?:const|,)\s*{name}\s*=\s*(-?[\d.]+)[,;]", self.html)
+        self.assertIsNotNone(m, f"상수 {name} 을 찾지 못했다")
+        return float(m.group(1))
+
+    def _pads(self):
+        return int(self._const("PAD_COLS")), int(self._const("PAD_ROWS")), self._const("PAD_R")
+
+    def test_pad_area_covers_the_upper_thrust_bound(self):
+        cols, rows, r = self._pads()
+        area = cols * rows * math.pi * r ** 2
+        need = 2 * self.F_HI / (self.MU * self.DP)
+        self.assertGreater(area, need,
+                           f"패드 면적 {area:.3f}m² 가 필요 면적 {need:.3f}m² 에 못 미친다 "
+                           "— 추력 상한에서 패널이 미끄러진다")
+        self.assertGreater(area / need, 1.2, "여유가 20% 미만이다")
+
+    def test_pad_count_matches_the_fabrication_list(self):
+        """표와 그림이 다르면 둘 중 하나는 틀린 것이다."""
+        cols, rows, _r = self._pads()
+        m = re.search(r"흡착패드×(\d+)", self.html)
+        self.assertIsNotNone(m, "제작도 목록에 흡착패드 수량이 없다")
+        self.assertEqual(cols * rows, int(m.group(1)),
+                         "그림의 패드 수가 제작도 목록과 다르다")
+
+    def test_zones_match_the_zone_instrumentation(self):
+        """존마다 압력센서·필터·체크밸브가 하나씩 — 열 하나가 한 존이다."""
+        cols, _rows, _r = self._pads()
+        self.assertEqual(cols, 6, "6존 진공이라고 적어 두고 존 수가 다르다")
+        for part in ("진공압센서×6", "진공필터×6", "체크밸브×6"):
+            self.assertIn(part, self.html, f"제작도 목록에 {part} 가 없다")
+        body = self._fn("carrier")
+        self.assertIn("padXs()", body, "존별 매니폴드가 패드 열에서 유도되지 않는다")
+
+    def test_pads_fit_inside_the_glass_face(self):
+        """패드가 유리 밖으로 나가면 흡착이 안 된다."""
+        cols, rows, r = self._pads()
+        length = self._const("PANEL_L")
+        width = self._const("PANEL_W")
+        px, py = length / cols, width / rows
+        self.assertGreater(px - 2 * r, 0.05, "열 간격이 패드 지름보다 좁다")
+        self.assertGreater(py - 2 * r, 0.05, "행 간격이 패드 지름보다 좁다")
+        self.assertLess((cols - 1) / 2 * px + r, length / 2, "패드가 패널 길이 밖으로 나간다")
+        self.assertLess((rows - 1) / 2 * py + r, width / 2, "패드가 패널 폭 밖으로 나간다")
+
+    def _fn(self, name):
+        m = re.search(rf"\n    function {name}\(.*?\n    \}}", self.html, re.S)
+        self.assertIsNotNone(m, f"{name} 함수를 찾지 못했다")
+        return m.group(0)
+
+
+class TestNamedDevicesAreDrawn(unittest.TestCase):
+    """제작도 목록이 부르는 장치는 그림에도 서 있어야 한다.
+
+    목록에만 있고 그림에 없으면, 입찰자는 표를 보고 견적을 내는데 도면에는
+    그 자리가 비어 있다. 이 셋은 실제로 그랬던 구간이다 — 투입부는 롤러 베드와
+    비전 기둥만, 셀 컨베이어는 벨트만, 검사부는 스캔선만 있었다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = CONSOLE.read_text(encoding="utf-8")
+
+    def _fn(self, name):
+        m = re.search(rf"\n    function {name}\(.*?\n    \}}", self.html, re.S)
+        self.assertIsNotNone(m, f"{name} 함수를 찾지 못했다")
+        return m.group(0)
+
+    def _drawn(self, name):
+        """설명 주석과 라벨을 걷어낸 본문 — 장치를 실제로 그리는 줄만 남는다.
+
+        이름이 설명문에만 있어도 통과하면 '그림에 있다'를 못 지킨다. 실제로
+        주석만 지워도 시험이 통과한 적이 있어, 그리는 줄에 붙어 있어야만
+        인정하도록 좁혔다.
+        """
+        body = re.sub(r"/\*.*?\*/", "", self._fn(name), flags=re.S)
+        body = re.sub(r"label3\([^\n]*", "", body)
+        draws = [ln for ln in body.split("\n")
+                 if re.search(r"\b(?:box|cylinder|column|plinth|poly|line)\(", ln)]
+        return "\n".join(draws)
+
+    def test_infeed_carries_its_listed_devices(self):
+        body = self._drawn("infeedStation")
+        for token, why in (("폭조절 가이드", "폭조절 가이드"), ("스토퍼", "패널 스토퍼"),
+                           ("비전카메라", "2D 비전카메라"), ("높이센서", "레이저 높이센서"),
+                           ("바코드 리더", "바코드 리더"), ("광전센서", "광전센서"),
+                           ("케이블베어", "케이블베어"), ("기어모터", "IE4 기어모터")):
+            self.assertIn(token, body, f"투입부에 {why} 가 없다")
+        self.assertIn("infeedStation();", self.html, "투입부가 배치에 놓이지 않았다")
+
+    def test_cell_conveyor_carries_its_listed_devices(self):
+        body = self._drawn("cellConveyorDevices")
+        for token in ("셀 존재센서", "벨트 편심센서", "금속검출기", "국소배기 노즐",
+                      "역화 격리게이트", "토크리미터", "점검커버"):
+            self.assertIn(token, body, f"셀 컨베이어에 {token} 가 없다")
+        self.assertIn("cellConveyorDevices();", self.html)
+
+    def test_inspection_and_reject_carry_their_listed_devices(self):
+        body = self._drawn("inspectionRejectStation")
+        for token in ("상부 RGB 카메라", "하부 RGB 카메라", "열화상 카메라", "라인레이저",
+                      "투과조명", "검사 엔코더", "RJ 횡셔틀", "받침트레이",
+                      "밀폐 리젝트 캐리지", "도어 인터록", "캐리지 존재센서", "재처리 라벨러"):
+            self.assertIn(token, body, f"검사·리젝트에 {token} 가 없다")
+        self.assertIn("inspectionRejectStation();", self.html)
+
+    def test_the_upgraded_sections_are_no_longer_the_thin_ones(self):
+        """장치를 세웠다면 그 구간의 부재 수가 실제로 늘어야 한다."""
+        for fn, least in (("infeedStation", 18), ("cellConveyorDevices", 14),
+                          ("inspectionRejectStation", 24)):
+            body = self._fn(fn)
+            drawn = len(re.findall(r"\b(?:box|cylinder|column|plinth|poly)\(", body))
+            self.assertGreaterEqual(drawn, least,
+                                    f"{fn} 이 그리는 부재가 {drawn}개뿐이다")
 
 
 if __name__ == "__main__":

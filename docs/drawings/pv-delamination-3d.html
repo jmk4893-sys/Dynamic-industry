@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#141c20">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-3 -3 105 95'%3E%3Cpolygon points='34.2,0 69.9,0 76.7,5.5 99,44.2 98.4,53.6 70.5,53.6' fill='%23fdca4a'/%3E%3Cpolygon points='19.5,83.1 33.1,59.5 95,59.5 80.4,84.9 74.1,88.9 25.9,88.9' fill='%23268cca'/%3E%3Cpolygon points='0,47.2 1.4,43.5 8.8,30.8 25.6,59.8 15.8,77.7 14.3,75.9 0.9,52.4' fill='%23268cca'/%3E%3Cpolygon points='12.5,24.3 18.8,13.5 35.4,41.3 35.9,42.8 29.3,54.3 12.8,25.9' fill='%23268cca'/%3E%3Cpolygon points='25.3,11.8 38.6,11.8 45.7,23.9 45.9,25.6 39.8,36.1 26.6,14.3' fill='%23268cca'/%3E%3C/svg%3E">
+  <link rel="icon" id="favicon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E">
   <title>DG-HK60 · 단일 5단 IR 고정 탠덤 PV 분리설비 · 3D 운전 콘솔 Rev.20</title>
   <meta name="description" content="폐 태양광 모듈 백시트·셀/EVA·판유리 3계통 분리설비 DG-HK60의 3D 운전 콘솔 — 5단 밀폐 IR 가열 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 전기·PLC·제작도면 및 열수지 계산.">
   <style>
@@ -20,8 +20,8 @@
       --bg:#e3e8e6;--bg2:#edf1ef;--surface:#ffffff;--surface2:#f4f7f6;--surface3:#e9efed;
       --line:#ccd4d2;--line2:#b4bfbc;--line3:#93a2a0;
       --ink:#152229;--ink2:#48595f;--ink3:#66787e;--ink4:#84959b;
-      --brand:#1b7cb8;--brand2:#268cca;--brand3:#17679b;--brand-dim:#dcecf9;--brand-ink:#125d8c;
-      --brand-accent:#fdca4a;
+      --brand:#1b7cb8;--brand2:#228CC9;--brand3:#17679b;--brand-dim:#dcecf9;--brand-ink:#125d8c;
+      --brand-accent:#FECA4A;
       --amber:#9a6b0e;--amber-bg:#fdf4de;--amber-line:#dcc188;--amber-ink:#6f4703;
       --red:#a52a30;--ok:#26714a;--ok-glow:38,113,74;
       --btn:linear-gradient(180deg,#ffffff,#edf1ef);
@@ -51,8 +51,8 @@
         --bg:#141c20;--bg2:#1a2428;--surface:#212d32;--surface2:#28353b;--surface3:#314248;
         --line:#36474e;--line2:#46595f;--line3:#5b7178;
         --ink:#e8eeef;--ink2:#a9bdc2;--ink3:#7c9299;--ink4:#5d747c;
-        --brand:#4aa8e0;--brand2:#268cca;--brand3:#1a6fa3;--brand-dim:#103349;--brand-ink:#8ed2f5;
-        --brand-accent:#fdca4a;
+        --brand:#4aa8e0;--brand2:#228CC9;--brand3:#1a6fa3;--brand-dim:#103349;--brand-ink:#8ed2f5;
+        --brand-accent:#FECA4A;
         --amber:#e2a72c;--amber-bg:#3a2f12;--amber-line:#6a5418;--amber-ink:#f0d59a;
         --red:#e2585f;--ok:#4fb27c;--ok-glow:79,178,124;
         --btn:linear-gradient(180deg,#2c393f,#232f34);
@@ -79,8 +79,8 @@
       --bg:#141c20;--bg2:#1a2428;--surface:#212d32;--surface2:#28353b;--surface3:#314248;
       --line:#36474e;--line2:#46595f;--line3:#5b7178;
       --ink:#e8eeef;--ink2:#a9bdc2;--ink3:#7c9299;--ink4:#5d747c;
-      --brand:#4aa8e0;--brand2:#268cca;--brand3:#1a6fa3;--brand-dim:#103349;--brand-ink:#8ed2f5;
-        --brand-accent:#fdca4a;
+      --brand:#4aa8e0;--brand2:#228CC9;--brand3:#1a6fa3;--brand-dim:#103349;--brand-ink:#8ed2f5;
+        --brand-accent:#FECA4A;
       --amber:#e2a72c;--amber-bg:#3a2f12;--amber-line:#6a5418;--amber-ink:#f0d59a;
       --red:#e2585f;--ok:#4fb27c;--ok-glow:79,178,124;
       --btn:linear-gradient(180deg,#2c393f,#232f34);
@@ -388,9 +388,7 @@
     <header>
       <div class="nameplate">
         <div class="np-brand">
-          <div class="np-mark" aria-hidden="true">
-            <svg viewBox="-3 -3 105 95" focusable="false"><polygon points='34.2,0 69.9,0 76.7,5.5 99,44.2 98.4,53.6 70.5,53.6' fill='var(--brand-accent)'/><polygon points='19.5,83.1 33.1,59.5 95,59.5 80.4,84.9 74.1,88.9 25.9,88.9' fill='var(--brand2)'/><polygon points='0,47.2 1.4,43.5 8.8,30.8 25.6,59.8 15.8,77.7 14.3,75.9 0.9,52.4' fill='var(--brand2)'/><polygon points='12.5,24.3 18.8,13.5 35.4,41.3 35.9,42.8 29.3,54.3 12.8,25.9' fill='var(--brand2)'/><polygon points='25.3,11.8 38.6,11.8 45.7,23.9 45.9,25.6 39.8,36.1 26.6,14.3' fill='var(--brand2)'/></svg>
-          </div>
+          <div class="np-mark" id="npMark" aria-hidden="true"></div>
           <div class="np-word">
             <i>FOR NET ZERO PROJECTION</i>
             <b>DYNAMIC INDUSTRY</b>
@@ -600,7 +598,7 @@
       red:'#b32a2f',cab:'#ced2cf',belt:'#272e32',black:'#161c1f',white:'#f2f3ef',ok:'#2f7a53',
       web:'#d8d2c4',
       /* Corporate livery, sampled from the supplied logo artwork. */
-      brand:'#268cca',accent:'#fdca4a'
+      brand:'#228CC9',accent:'#FECA4A'
     };
     /* Surface finish per material: sp = specular strength, gl = highlight tightness,
        ao = how strongly ambient occlusion bites. Keyed by livery colour so no call
@@ -1928,27 +1926,65 @@
     }
 
     /* ---- Dynamic Industry identity ------------------------------------------
-       The corporate mark, traced from the supplied artwork: an isometric stack of
-       plates — three blue chevrons opening to the left, a blue face below and the
-       amber face above. One geometry serves the applied livery on the machine and
-       the SVG mark in the console chrome, so the badge on the cabinet and the badge
-       in the header are literally the same shape.
-       Drawn in a 100 x 100 box with y up; `c` selects the brand colour role. */
-    const MARK_SHAPES=[
-      {c:'a',p:[[34.2,100],[69.9,100],[76.7,94.5],[99,55.8],[98.4,46.4],[70.5,46.4]]},
-      {c:'b',p:[[19.5,16.9],[33.1,40.5],[95,40.5],[80.4,15.1],[74.1,11.1],[25.9,11.1]]},
-      {c:'b',p:[[0,52.8],[1.4,56.5],[8.8,69.2],[25.6,40.2],[15.8,22.3],[14.3,24.1],[0.9,47.6]]},
-      {c:'b',p:[[12.5,75.7],[18.8,86.5],[35.4,58.7],[35.9,57.2],[29.3,45.7],[12.8,74.1]]},
-      {c:'b',p:[[25.3,88.2],[38.6,88.2],[45.7,76.1],[45.9,74.4],[39.8,63.9],[26.6,85.7]]}
-    ];
+       회사 마크. 눈으로 따라 그린 도형이 아니라 지급받은 아트워크
+       symbol_100x100mm.ai 의 페이지 콘텐츠 스트림에서 PDF 경로 연산자를 파싱해
+       좌표를 그대로 가져온 것이다. 색은 ICCBased CMYK 를 ICC 변환해 확정했다:
+       CMYK(0.776,0.342,0.016,0) → #228CC9, CMYK(0,0.212,0.815,0) → #FECA4A.
+
+       원본은 docs/brand/dg-mark.json 하나뿐이고 아래는 그 사본이다. 두 벌을
+       손으로 관리하면 반드시 갈라지므로 시험이 글자 단위로 일치를 강제한다.
+       이 한 정의로 3D 외장 도장·콘솔 명판 SVG·파비콘·도면 표제란이 모두
+       같은 도형을 쓴다 — 캐비닛의 마크와 화면의 마크가 말 그대로 같은 도형이다.
+       --------------------------------------------------------------------- */
+    const MARK={
+      vb:[100.0,88.9723],
+      paths:[
+      {f:'#228CC9',d:'M8.8423 30.8126L1.1845 44.0763C-0.3949 46.8121 -0.3949 50.1826 1.1849 52.9184L15.6495 77.9723L25.8596 60.2876Z'},
+      {f:'#228CC9',d:'M36.0703 42.6025L19.0529 13.1275L12.2461 24.9173L29.2634 54.3923Z'},
+      {f:'#228CC9',d:'M46.2805 24.9174L38.7015 11.7899L25.0877 11.7899L39.4737 36.7073Z'},
+      {f:'#228CC9',d:'M19.0528 83.8669L19.4479 84.5512C21.0276 87.287 23.9465 88.9723 27.1053 88.9723L72.8952 88.9723C76.054 88.9723 78.9733 87.287 80.5527 84.5512L95.0173 59.4973L33.1202 59.4973Z'},
+      {f:'#FECA4A',d:'M98.8155 44.0761L75.9205 4.421C74.3411 1.6852 71.4219 0.0 68.2631 0.0L50.0008 0.0004L50.0008 0.0L33.8944 0.0L42.0531 4.7103L70.282 53.6047L98.4203 53.6026L98.8155 52.9182C100.3948 50.1824 100.3948 46.8119 98.8155 44.0761Z'}
+      ]
+    };
+    /* 경로 문자열 → 폴리곤. 3D 는 poly() 로만 그리므로 베지어를 평탄화한다.
+       평탄화 결과도 같은 MARK 에서 나오므로 도형이 갈라질 여지가 없다. */
+    function markPolys(seg=14){
+      return MARK.paths.map(p=>{
+        const pts=[];let cur=[0,0],start=[0,0];
+        const num=/-?\d*\.?\d+/g;
+        for(const m of p.d.matchAll(/([MLCZ])([^MLCZ]*)/g)){
+          const v=(m[2].match(num)||[]).map(Number);
+          if(m[1]==='M'){cur=[v[0],v[1]];start=cur;pts.push(cur)}
+          else if(m[1]==='L'){cur=[v[0],v[1]];pts.push(cur)}
+          else if(m[1]==='C'){
+            const [x1,y1,x2,y2,x3,y3]=v,[x0,y0]=cur;
+            for(let i=1;i<=seg;i++){
+              const t=i/seg,q=1-t;
+              pts.push([q*q*q*x0+3*q*q*t*x1+3*q*t*t*x2+t*t*t*x3,
+                        q*q*q*y0+3*q*q*t*y1+3*q*t*t*y2+t*t*t*y3]);
+            }
+            cur=[x3,y3];
+          } else if(m[1]==='Z') cur=start;
+        }
+        return {fill:p.f,pts};
+      });
+    }
+    const MARK_POLYS=markPolys();
+    /* 화면용 SVG 마크업. 명판·파비콘·도면 표제란이 같은 함수를 쓴다. */
+    function markSVG(attrs='',mono=null){
+      const body=MARK.paths.map(p=>`<path d="${p.d}" fill="${mono||p.f}"/>`).join('');
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${MARK.vb[0]} ${MARK.vb[1]}" `
+           + `${attrs} focusable="false" aria-hidden="true">${body}</svg>`;
+    }
     /* Places the mark on any plane. `u` runs along the mark's width, `v` its
        height; both should be unit vectors lying in the face being decorated.
        Pass `mono` to reproduce it in a single colour, as on a dark data plate. */
     function brandMark3D(origin,u,v,size,mono,alpha=1){
-      const k=size/100;
-      for(const sh of MARK_SHAPES){
-        const col=mono||(sh.c==='a'?C.accent:C.brand);
-        poly(sh.p.map(([x,y])=>add(origin,add(mul(u,x*k),mul(v,y*k)))),col,alpha,null,0);
+      const k=size/MARK.vb[0],H=MARK.vb[1];
+      for(const sh of MARK_POLYS){
+        /* SVG 는 y 아래, 장비 면은 v 가 위 — 뒤집어 올린다. */
+        poly(sh.pts.map(([x,y])=>add(origin,add(mul(u,x*k),mul(v,(H-y)*k)))),
+             mono||sh.fill,alpha,null,0);
       }
     }
     /* Single-stroke capitals for lettering applied to a machine face. Drawn as 3D
@@ -2337,7 +2373,51 @@
       withBias(.22,()=>liveryStripe(V(35.5,-3.412,1.86),AISLE_U,AISLE_V,2,.055,C.brand,.95));
       cabinetBadge(35.85,-3.4,1.28,.44);poly([V(35.45,-3.3,2.35),V(37.55,-3.3,2.35),V(37.05,-3.3,1.2),V(35.95,-3.3,1.2)],C.steel2,.95,C.steel,.8);
       for(const x of [36.15,36.85])cylinder(V(x,-2.35,.92),.25,1.55,'y',C.red,12);
+      cellConveyorDevices();
       label3('CVC-301/302 · 셀/EVA 직접 이송',V(30,-3.48,2.35),C.cell2);label3('SH-101 · 슈레더',V(36.5,-3.58,2.75),C.red);
+    }
+    /* M-008 셀/EVA 컨베이어의 부속기기.
+
+       제작도 목록이 부르는 장치들이 그림에 없었다. 이 계통은 200°C 를 막
+       벗어난 EVA 적층체를 슈레더까지 끊김 없이 보내는 자리라, 감시 수단이
+       없으면 인터록(CELL_ON_CONVEYOR_ACK · SHREDDER_FEED_ACK)이 성립할 근거가
+       그림에 없다. */
+    function cellConveyorDevices(){
+      const y0=-2.35,bz=1.12;
+      /* 셀 존재센서 4조 — 벨트 위 통과 확인 */
+      for(const x of [26.4,29.2,32.0,34.4]){
+        for(const yy of [y0-.82,y0+.82]){
+          box(V(x,yy,bz+.22),V(.08,.08,.15),yy<y0?C.yellow:C.dark);   // 셀 존재센서
+          column(x,yy,bz+.12,{s:.06,color:C.steel2,plate:.18});
+        }
+        line([V(x,y0-.80,bz+.22),V(x,y0+.80,bz+.22)],C.red,1,[4,4],.55);
+      }
+      /* 벨트 편심센서 2조 — 측면에서 벨트 가장자리를 본다 */
+      for(const x of [27.6,33.4]){
+        box(V(x,y0-.88,bz-.06),V(.12,.10,.12),C.teal);                // 벨트 편심센서
+        column(x,y0-.88,bz-.14,{s:.07,color:C.steel2,plate:.2});
+      }
+      /* 금속검출기 — 벨트를 감싸는 게이트형 코일 */
+      const mx=31.0;
+      for(const yy of [y0-.78,y0+.78])box(V(mx,yy,bz+.34),V(.16,.11,.72),C.cell2);
+      box(V(mx,y0,bz+.68),V(.16,1.67,.13),C.cell2);                   // 금속검출기 코일
+      box(V(mx,y0-.78,bz+.78),V(.22,.18,.16),C.dark);
+      /* 국소배기 노즐 — 상부 후드에서 갈라져 내려온다 */
+      for(const x of [28.2,31.9]){
+        cylinder(V(x,y0+.72,bz+1.05),.11,.62,'z',C.steel2,10);
+        box(V(x,y0+.72,bz+.68),V(.34,.18,.12),C.steel2);              // 국소배기 노즐
+      }
+      cylinder(V(30.05,y0+.72,bz+1.36),.13,4.2,'x',C.steel2,10);
+      /* 역화 격리게이트 — 슈레더 직전, 닫히면 상류를 끊는다 */
+      box(V(34.9,y0,bz+.52),V(.09,1.55,.55),C.knife);                 // 역화 격리게이트
+      for(const yy of [y0-.80,y0+.80])cylinder(V(34.9,yy,bz+.86),.05,.42,'z',C.rail,8);
+      /* 토크리미터 — 투입롤러 구동단 */
+      cylinder(V(35.95,y0+.95,.92),.17,.26,'y',C.yellow,12);          // 토크리미터
+      box(V(35.95,y0+1.22,.92),V(.30,.28,.30),C.dark);
+      /* 점검커버 — 밀폐 벨트의 힌지식 해치 */
+      if(midView())for(const x of [27.0,29.4,31.8,34.2])
+        box(V(x,y0+.80,bz+.42),V(1.05,.06,.42),C.cab,{alpha:.55});    // 점검커버
+      label3('금속검출기 · 편심 · 역화게이트',V(31,y0-1.15,bz+1.05),C.yellow);
     }
     function glassOutfeedStation(){
       conveyor(24.9,8.8,1.365,1.8);
@@ -2349,6 +2429,58 @@
         for(let y=-1;y<3.55;y+=.38)box(V(x,y,1.36),V(.12,.22,.08),C.yellow);
       }
       line([V(20.5,0,.08),V(27.4,0,.08),V(27.4,2.7,.08)],C.glass,3,[8,4],.8);
+      inspectionRejectStation();
+    }
+    /* M-009 품질검사·리젝트.
+
+       종전 그림에는 검사 스캔선과 리젝트 이동만 있고 검사 장치 자체가 없었다.
+       판정 근거가 되는 장치(상·하부 RGB, 열화상, 투과조명, 라인레이저, 검사
+       엔코더)와 분기 설비(횡셔틀, 받침트레이, 밀폐 캐리지, 도어 인터록)를
+       세운다. 유리는 여기서 합·부가 갈리므로, 무엇으로 판정하는지가 그림에
+       없으면 QUALITY_PASS_OR_REJECT_ACK 에 근거가 없다. */
+    function inspectionRejectStation(){
+      const qx=22.35,bz=1.365;
+      /* 비전 아치 — 상부 RGB·열화상·라인레이저 */
+      for(const y of [-1.35,1.35]){
+        column(qx,y,2.62,{s:.15,color:C.steel,plate:.38});
+        gusset(qx,y,2.58,y>0?-1:1,'y',.15,C.steel2);
+      }
+      box(V(qx,0,2.70),V(.17,2.85,.16),C.steel);                      // 비전 아치 가로보
+      box(V(qx,-.42,2.44),V(.34,.30,.30),C.cell2);                    // 상부 RGB 카메라
+      cylinder(V(qx,-.42,2.24),.09,.12,'z',C.black,10);
+      box(V(qx,.42,2.44),V(.30,.26,.26),C.teal);                      // 열화상 카메라
+      cylinder(V(qx,.42,2.26),.07,.10,'z',C.black,10);
+      box(V(qx,0,2.50),V(.10,1.90,.09),C.red,{alpha:.9});             // 라인레이저
+      line([V(qx,-.95,2.45),V(qx,.95,2.45)],C.red,1.6,null,.85);
+      box(V(qx-.55,0,2.52),V(.09,2.20,.10),C.white,{alpha:.85});     // 확산 조명바
+      for(const y of [-.85,.85])box(V(qx-.275,y,2.62),V(.62,.08,.07),C.steel2);  // 조명바 브래킷
+      /* 하부 RGB + 투과조명 — 롤러 사이 틈으로 본다 */
+      box(V(qx,0,bz-.34),V(.30,.26,.26),C.cell2);                     // 하부 RGB 카메라
+      box(V(qx+.40,0,bz-.20),V(.10,1.80,.08),C.white,{alpha:.8});     // 투과조명
+      column(qx,0,bz-.48,{s:.11,color:C.steel2,plate:.28});
+      /* 검사 엔코더 — 롤러축에 물린다 */
+      cylinder(V(qx-.86,-.94,bz-.02),.09,.16,'y',C.yellow,10);        // 검사 엔코더
+      box(V(qx-.86,-1.10,bz-.02),V(.16,.16,.16),C.dark);
+      /* RJ-301 횡셔틀 — 불합격품을 +y 로 빼낸다 */
+      for(const x of [21.75,22.95])box(V(x,3.0,bz-.30),V(.13,3.6,.13),C.rail);
+      for(const x of [21.75,22.95])for(const y of [1.6,3.0,4.4])
+        column(x,y,bz-.38,{s:.10,color:C.steel2,plate:.26});
+      box(V(qx,4.45,bz-.14),V(1.5,1.1,.18),C.steel2);                 // RJ 횡셔틀 대차
+      for(const x of [21.85,22.85])for(const y of [4.1,4.8])cylinder(V(x,y,bz-.28),.07,.10,'y',C.black,8);
+      /* 파손유리 받침트레이 + 밀폐 리젝트 캐리지 */
+      plinth(23.8,4.45,2.9,1.9,.16);
+      box(V(23.8,4.45,.52),V(2.7,1.75,.68),C.cab);                    // 밀폐 리젝트 캐리지
+      box(V(23.8,4.45,.90),V(2.5,1.55,.09),C.steel2);                 // 파손유리 받침트레이
+      for(const x of [22.6,25.0])box(V(x,4.45,1.24),V(.09,1.75,.60),C.guard,{alpha:.35});
+      box(V(23.8,5.36,1.24),V(2.7,.08,.60),C.guard,{alpha:.3});
+      box(V(23.8,3.56,1.30),V(1.2,.09,.52),C.yellow);                 // 도어 인터록
+      cylinder(V(24.5,3.52,1.30),.06,.14,'y',C.red,8);
+      box(V(22.55,3.56,1.30),V(.14,.12,.16),C.dark);                  // 캐리지 존재센서
+      /* 재처리 라벨러 */
+      box(V(21.3,4.45,1.42),V(.34,.30,.44),C.cab);                    // 재처리 라벨러
+      cylinder(V(21.3,4.20,1.30),.09,.14,'y',C.yellow,8);
+      label3('QI-301 · 상하 비전·열화상·투과조명',V(qx,-1.72,2.98),C.teal);
+      label3('RJ-301 · 횡셔틀·밀폐 리젝트 캐리지',V(23.8,5.75,1.72),C.red);
     }
     function scrubberUnit(){
       plinth(38.8,0,2.4,2.4);box(V(38.8,0,2.2),V(2.4,2.4,4.4),C.cab);
@@ -2491,8 +2623,7 @@
       const o=explodeOffsets();
       withPartOffset(o.input,()=>{
         conveyor(3,6,1.12,1.8);label3('M0 · 투입·정렬·식별',V(3,-1.4,2.95));
-        for(const y of [-1.6,1.6]){column(5.1,y,4.12,{s:.16,color:C.steel,plate:.4});gusset(5.1,y,4.1,y>0?-1:1,'y',.16,C.steel2)}
-        box(V(5.1,0,4.18),V(.16,3.35,.16),C.steel);box(V(5.1,0,4.08),V(.24,.24,.14),C.steel2);box(V(5.1,0,3.88),V(.5,.5,.38),C.cell2);box(V(5.1,1.55,2.6),V(.24,.24,.24),C.yellow)
+        infeedStation();
       });
       withPartOffset(o.heat,preheatTunnel);
       for(const y of [-1.38,1.38])box(V(13.9,y,.68),V(21.8,.16,.18),C.rail);for(let x=3.1;x<24.8;x+=1.15){box(V(x,-1.38,.33),V(.13,.17,.65),C.steel2);box(V(x,1.38,.33),V(.13,.17,.65),C.steel2)}
@@ -2593,15 +2724,96 @@
       line([V(g.inOutside-1.5,1.64,.08),V(g.outDone+1.4,1.64,.08)],C.teal,2,[8,4],.62);for(const x of [g.inOuter,g.inInner,g.outInner,g.outOuter])box(V(x,1.64,.22),V(.16,.16,.45),C.steel2);
     }
 
+    /* VC-101 진공 캐리어.
+
+       패널은 흡착만으로 잡혀 있고 두 칼날의 추력은 전부 패드 마찰로 받는다.
+       필요 패드면적은 A ≥ 2F/(μ·Δp) (RFQ OI-13) 이고, 추력 상한 13.37kN·
+       μ0.6·Δp65kPa 에서 0.686m² 다. 종전 그림의 3×3 = 9패드 Ø280 은 0.554m²
+       라 상한의 0.81배 — 그림대로면 패널이 미끄러진다. 제작도 목록도 패드를
+       18개로 적고 있어 그림과 표가 서로 달랐다.
+
+       6열 × 3행 = 18패드 Ø250 → 0.884m², 상한 대비 1.29배. 열 하나가 진공
+       1존이라 존별 압력센서·필터·체크밸브 6조와 그대로 맞는다. */
+    const PAD_COLS=6,PAD_ROWS=3,PAD_R=.125;
+    const PAD_PITCH_X=PANEL_L/PAD_COLS,PAD_PITCH_Y=PANEL_W/PAD_ROWS;
+    const PAD_AREA=PAD_COLS*PAD_ROWS*Math.PI*PAD_R*PAD_R;
+    function padXs(){return Array.from({length:PAD_COLS},(_,i)=>(i-(PAD_COLS-1)/2)*PAD_PITCH_X)}
+    function padYs(){return Array.from({length:PAD_ROWS},(_,i)=>(i-(PAD_ROWS-1)/2)*PAD_PITCH_Y)}
+    /* M-001 투입·정렬·식별.
+
+       제작도 목록이 부르는 장치를 실제로 세운다. 종전 그림에는 롤러 베드와
+       비전 아치 기둥만 있어, 폭조절 가이드·스토퍼·높이센서·바코드 리더·
+       광전센서·케이블베어가 표에만 있고 그림에는 없었다. 투입부는 패널
+       자세(유리 아래·백시트 위)와 크기를 여기서 확정해 뒤 공정 전체의
+       전제를 만드는 자리라, 그 확인 수단이 그림에 없으면 공정이 성립하지
+       않는다. */
+    function infeedStation(){
+      const cx=3,bedZ=1.12;
+      /* 폭조절 가이드 — 패널 폭 800~1200 에 맞춰 좌우가 같이 움직인다 */
+      for(const y of [-PANEL_HW-.08,PANEL_HW+.08]){
+        box(V(cx,y,bedZ+.16),V(5.2,.07,.20),C.steel2);                // 폭조절 가이드 레일
+        for(const x of [cx-2.0,cx,cx+2.0]){
+          box(V(x,y,bedZ+.02),V(.10,.16,.22),C.steel2);
+          if(nearView())cylinder(V(x,y,bedZ+.28),.035,.34,'z',C.rail,8);   // 조절 스크류
+        }
+        if(nearView())for(let x=cx-2.2;x<=cx+2.2;x+=.55)
+          cylinder(V(x,y-Math.sign(y)*.05,bedZ+.15),.045,.13,'z',C.cab,8); // 가이드 롤러
+      }
+      /* 패널 스토퍼 — 정렬 위치에서 올라온다 */
+      box(V(cx+2.55,0,bedZ+.14),V(.09,.9,.24),C.yellow);              // 패널 스토퍼
+      for(const y of [-.35,.35])cylinder(V(cx+2.55,y,bedZ-.12),.055,.30,'z',C.rail,8);
+      /* 비전 아치 — 2D 카메라·라인조명·레이저 높이센서·바코드 리더 */
+      for(const y of [-1.6,1.6]){column(5.1,y,4.12,{s:.16,color:C.steel,plate:.4});gusset(5.1,y,4.1,y>0?-1:1,'y',.16,C.steel2)}
+      box(V(5.1,0,4.18),V(.16,3.35,.16),C.steel);box(V(5.1,0,4.08),V(.24,.24,.14),C.steel2);
+      box(V(5.1,0,3.88),V(.5,.5,.38),C.cell2);                              // 2D 비전카메라
+      cylinder(V(5.1,0,3.63),.12,.14,'z',C.black,10);                       // 렌즈
+      box(V(5.1,0,3.44),V(1.30,.10,.09),C.white,{alpha:.85});               // 라인조명
+      /* 센서는 가로보에 브래킷으로 매단다 — 허공에 뜨면 안 된다 */
+      for(const y of [-.95,.95])box(V(5.1,y,4.02),V(.10,.10,.20),C.steel2);
+      box(V(5.1,-.95,3.86),V(.20,.16,.20),C.teal);                          // 레이저 높이센서
+      line([V(5.1,-.95,3.76),V(5.1,-.95,1.30)],C.red,1.2,[5,4],.75);
+      box(V(5.1,.95,3.86),V(.22,.18,.18),C.cell2);                          // 바코드 리더
+      line([V(5.1,.95,3.77),V(4.75,.62,1.30)],C.red,1.2,[5,4],.7);
+      box(V(5.1,1.55,2.6),V(.24,.24,.24),C.yellow);
+      /* 투입·정렬 광전센서 2조 — 송수광이 마주본다 */
+      for(const x of [cx-1.5,cx+1.9])for(const y of [-1.02,1.02]){
+        box(V(x,y,bedZ+.20),V(.09,.09,.16),y<0?C.yellow:C.dark);      // 광전센서
+        column(x,y,bedZ+.10,{s:.07,color:C.steel2,plate:.2});
+      }
+      for(const x of [cx-1.5,cx+1.9])line([V(x,-1.0,bedZ+.20),V(x,1.0,bedZ+.20)],C.red,1,[4,4],.6);
+      /* 케이블베어 — 구동부에서 제어반으로 */
+      if(nearView())for(let x=cx-2.3;x<=cx+2.3;x+=.34)box(V(x,-1.34,.52),V(.24,.16,.13),C.black);
+      box(V(cx-2.62,-1.34,.52),V(.30,.22,.22),C.steel2);                    // 케이블베어 고정단
+      column(cx-2.62,-1.34,.41,{s:.09,color:C.steel2,plate:.22});
+      /* IE4 기어모터 — 구동단 */
+      box(V(cx+2.75,-1.15,bedZ-.32),V(.42,.34,.34),C.dark);              // IE4 기어모터
+      cylinder(V(cx+2.75,-.92,bedZ-.32),.13,.24,'y',C.steel2,10);
+      label3('QI-101 비전·높이·바코드',V(5.1,-1.9,4.42),C.teal);
+      label3('폭조절 가이드 800~1200',V(cx,-1.62,bedZ+.42),C.steel);
+    }
     function carrier(x,vacOn){
+      const live=vacOn?C.teal:C.steel;
       box(V(x,0,.98),V(CARRIER_L,CARRIER_W,.25),C.steel2);box(V(x,0,1.15),V(CARRIER_L-.3,CARRIER_W-.24,.14),C.cab);
-      box(V(x,0,.75),V(CARRIER_L-.62,.3,.24),C.dark);box(V(x,0,.62),V(CARRIER_L-.9,.2,.11),vacOn?C.teal:C.steel);
-      for(const xx of [-.75,-.45,-.15,.15,.45,.75]){cylinder(V(x+xx,0,.86),.06,.38,'z',vacOn?C.teal:C.steel,8);line([V(x+xx,0,.93),V(x+xx,0,1.27)],vacOn?C.teal:C.steel,1)}
-      /* 6존 흡착패드 3×3. 두 칼날 동시추력을 마찰로만 받으므로 패드 면적이
-         곧 유지력이다 — RFQ OI-13 의 A ≥ 2F/(μ·Δp) 가 이 배치를 정한다. */
-      for(const yy of [-.42,0,.42])for(const xx of [-.86,0,.86]){cylinder(V(x+xx,yy,1.31),.14,.2,'z',vacOn?C.teal:C.steel,10);cylinder(V(x+xx,yy,1.43),.08,.08,'z',vacOn?C.teal:C.steel,10)}
+      box(V(x,0,.75),V(CARRIER_L-.62,.3,.24),C.dark);box(V(x,0,.62),V(CARRIER_L-.9,.2,.11),live);
+      /* 존별 매니폴드 가지 — 열 하나가 한 존이다 */
+      for(const xx of padXs()){
+        cylinder(V(x+xx,0,.86),.05,.38,'z',live,8);
+        line([V(x+xx,0,.93),V(x+xx,0,1.27)],live,1);
+        if(nearView()){
+          cylinder(V(x+xx,.20,.80),.045,.14,'z',C.steel2,8);          // 진공필터
+          box(V(x+xx,-.20,.80),V(.07,.07,.10),vacOn?C.ok:C.steel2);   // 압력센서
+          box(V(x+xx,0,1.04),V(.06,.10,.05),C.black);                 // 체크밸브
+        }
+      }
+      /* 흡착패드 18개 — 벨로우즈 컵과 스템 */
+      for(const yy of padYs())for(const xx of padXs()){
+        cylinder(V(x+xx,yy,1.31),PAD_R,.16,'z',live,12);
+        cylinder(V(x+xx,yy,1.40),PAD_R*.62,.06,'z',shade(live,.88),12);
+        cylinder(V(x+xx,yy,1.45),.035,.06,'z',C.steel2,8);
+      }
       for(const y of [-CARRIER_W/2-.06,CARRIER_W/2+.06])cylinder(V(x,y,.72),.16,.14,'y',C.black,10);
-      label3('VC-101 · 6존 진공',V(x,-1.05,.9),vacOn?C.teal:C.white);
+      label3(`VC-101 · ${PAD_COLS}존 ${PAD_COLS*PAD_ROWS}패드 Ø${(PAD_R*2000).toFixed(0)} · ${PAD_AREA.toFixed(2)}m²`,
+             V(x,-1.05,.9),vacOn?C.teal:C.white);
     }
     function flatLayer(cx,length,z,color,alpha=1,xOffset=0,yOffset=0){if(length<=.005)return;box(V(cx+xOffset,yOffset,z),V(length,PANEL_W,.04),color,{alpha})}
     function flexSurface(xa,xb,za,zb,color,alpha=1,yHalf=PANEL_HW){
@@ -3000,12 +3212,12 @@
       ctx.fillStyle=TH.plateSoft;ctx.strokeStyle=TH.brandLine;ctx.lineWidth=1;
       ctx.beginPath();ctx.roundRect(x,y,w,h,8);ctx.fill();ctx.stroke();
       ctx.fillStyle=TH.accent;ctx.fillRect(x,y,4,h);
-      /* the mark, drawn from the same bar geometry the machine wears */
+      /* 표제란 마크도 장비 외장과 같은 MARK 에서 나온다 */
       ctx.save();ctx.translate(x+13,y+11);ctx.scale(.24,.24);
-      for(const sh of MARK_SHAPES){
-        ctx.fillStyle=sh.c==='a'?C.accent:TH.accent;
+      for(const sh of MARK_POLYS){
+        ctx.fillStyle=sh.fill===C.accent?C.accent:TH.accent;
         ctx.beginPath();
-        sh.p.forEach(([px,py],i)=>i?ctx.lineTo(px,100-py):ctx.moveTo(px,100-py));
+        sh.pts.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));
         ctx.closePath();ctx.fill();
       }
       ctx.restore();
@@ -3230,7 +3442,7 @@
     let drawingTab='power',drawingMode='2d',assemblyIndex=0;
     const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const svgDefs=`<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#0b6268"/></marker><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="#dce1df" stroke-width="1"/></pattern></defs>`;
-    const titleBlock=(code,title,subtitle)=>`<g font-family="Arial,'Noto Sans KR',sans-serif"><rect x="20" y="20" width="1160" height="610" rx="8" fill="#fafaf8" stroke="#7c898b" stroke-width="2"/><rect x="20" y="20" width="1160" height="610" rx="8" fill="url(#grid)"/><text x="45" y="58" font-size="24" font-weight="700" fill="#25353a">${esc(title)}</text><text x="45" y="82" font-size="13" fill="#647278">${esc(subtitle)}</text><rect x="870" y="548" width="310" height="82" fill="#f2f4f1" stroke="#7c898b"/><g transform="translate(880,554) scale(0.22)"><polygon points='34.2,0 69.9,0 76.7,5.5 99,44.2 98.4,53.6 70.5,53.6' fill='#fdca4a'/><polygon points='19.5,83.1 33.1,59.5 95,59.5 80.4,84.9 74.1,88.9 25.9,88.9' fill='#268cca'/><polygon points='0,47.2 1.4,43.5 8.8,30.8 25.6,59.8 15.8,77.7 14.3,75.9 0.9,52.4' fill='#268cca'/><polygon points='12.5,24.3 18.8,13.5 35.4,41.3 35.9,42.8 29.3,54.3 12.8,25.9' fill='#268cca'/><polygon points='25.3,11.8 38.6,11.8 45.7,23.9 45.9,25.6 39.8,36.1 26.6,14.3' fill='#268cca'/></g><text x="908" y="572" font-size="13" font-weight="700" fill="#25353a">DYNAMIC INDUSTRY · ${esc(code)}</text><text x="910" y="594" font-size="11" fill="#647278">DG-HK60 · REV.20 · CONCEPT / FAT BASIS</text><text x="910" y="614" font-size="11" fill="#647278">SCALE NTS · 2026-09-03</text></g>`;
+    const titleBlock=(code,title,subtitle)=>`<g font-family="Arial,'Noto Sans KR',sans-serif"><rect x="20" y="20" width="1160" height="610" rx="8" fill="#fafaf8" stroke="#7c898b" stroke-width="2"/><rect x="20" y="20" width="1160" height="610" rx="8" fill="url(#grid)"/><text x="45" y="58" font-size="24" font-weight="700" fill="#25353a">${esc(title)}</text><text x="45" y="82" font-size="13" fill="#647278">${esc(subtitle)}</text><rect x="870" y="548" width="310" height="82" fill="#f2f4f1" stroke="#7c898b"/><g transform="translate(880,552)">${markSVG('width="44" height="39"')}</g><text x="908" y="572" font-size="13" font-weight="700" fill="#25353a">DYNAMIC INDUSTRY · ${esc(code)}</text><text x="910" y="594" font-size="11" fill="#647278">DG-HK60 · REV.20 · CONCEPT / FAT BASIS</text><text x="910" y="614" font-size="11" fill="#647278">SCALE NTS · 2026-09-03</text></g>`;
     function powerDrawing(){
       /* 분기함은 부하표에서 그린다. 도면의 차단기와 명판의 전류가 같은 근거를 쓴다. */
       const branch=(x,k)=>`<path d="M${x} 224V330" stroke="#c84c28" stroke-width="5"/><rect x="${x-63}" y="330" width="126" height="76" rx="7" fill="#fff7eb" stroke="#c47a17" stroke-width="2"/><text x="${x}" y="354" text-anchor="middle" font-size="13" font-weight="700" fill="#69420a">${esc(k.id)}</text><text x="${x}" y="375" text-anchor="middle" font-size="12" fill="#69420a">MCCB ${esc(k.mccb)}</text><text x="${x}" y="394" text-anchor="middle" font-size="11" fill="#745a35">${k.kW}kW · ${branchAmp(k).toFixed(0)}A</text>`;
@@ -3294,6 +3506,10 @@
     $('printDrawingButton').addEventListener('click',()=>window.print());
     if('ResizeObserver' in window){const ro=new ResizeObserver(resize);ro.observe(canvas)}else window.addEventListener('resize',resize);
     window.addEventListener('orientationchange',()=>setTimeout(resize,120));
+    /* 명판과 파비콘도 같은 MARK 에서 만든다. 마크업에 도형을 적어 두면
+       3D 외장과 갈라질 수 있으므로 정적 마크업에는 자리만 둔다. */
+    $('npMark').innerHTML=markSVG('width="30" height="27"');
+    $('favicon').href='data:image/svg+xml,'+encodeURIComponent(markSVG('width="64" height="57"'));
     updateUI();applyTheme();resize();
   })();
   </script>
