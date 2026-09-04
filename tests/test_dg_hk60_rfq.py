@@ -457,5 +457,62 @@ class TestRollDischargeRoute(unittest.TestCase):
         )
 
 
+class TestVacuumPadLayout(unittest.TestCase):
+    """OI-13 에 적은 패드 배치가 콘솔이 그리는 배치와 같은지.
+
+    이 수치는 '이렇게 하면 된다'는 제안이 아니라 도면이 실제로 그렇게 그려져
+    있다는 진술이다. 콘솔에서 패드 하나만 빼도 사양서의 1.29 배가 거짓이 된다.
+    """
+
+    MU, DP, F_HI = 0.6, 65_000, 13_370
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = RFQ.read_text(encoding="utf-8")
+        cls.console = CONSOLE.read_text(encoding="utf-8")
+
+    def _num(self, pattern):
+        m = re.search(pattern, self.html)
+        self.assertIsNotNone(m, f"사양서에서 수치를 찾지 못했다: {pattern}")
+        return float(m.group(1).replace(",", ""))
+
+    def _c(self, name):
+        m = re.search(rf"(?:const|,)\s*{name}\s*=\s*(-?[\d.]+)[,;]", self.console)
+        self.assertIsNotNone(m, f"콘솔 상수 {name} 없음")
+        return float(m.group(1))
+
+    def test_pad_grid_matches_the_console(self):
+        cols, rows = int(self._c("PAD_COLS")), int(self._c("PAD_ROWS"))
+        r = self._c("PAD_R")
+        self.assertAlmostEqual(self._num(r"<span class=\"m\">(\d+)열 × 3행"), cols, delta=0)
+        self.assertAlmostEqual(self._num(r"열 × (\d+)행 = 18패드"), rows, delta=0)
+        self.assertAlmostEqual(self._num(r"= (\d+)패드 Ø250"), cols * rows, delta=0)
+        self.assertAlmostEqual(self._num(r"패드 Ø(\d+)"), r * 2000, delta=0.5)
+
+    def test_pad_area_and_margin_are_the_computed_ones(self):
+        cols, rows, r = int(self._c("PAD_COLS")), int(self._c("PAD_ROWS")), self._c("PAD_R")
+        area = cols * rows * math.pi * r ** 2
+        need = 2 * self.F_HI / (self.MU * self.DP)
+        self.assertAlmostEqual(self._num(r"패드 면적 <span class=\"m\">([\d.]+) m²"), area, delta=0.002)
+        self.assertAlmostEqual(self._num(r"상한 요구\s*<span class=\"m\">([\d.]+) m²"), need, delta=0.002)
+        self.assertAlmostEqual(self._num(r"<span class=\"m\">([\d.]+) 배</span>"), area / need, delta=0.01)
+
+    def test_pitch_and_clearances_come_from_the_panel(self):
+        cols, rows, r = int(self._c("PAD_COLS")), int(self._c("PAD_ROWS")), self._c("PAD_R")
+        length, width = self._c("PANEL_L"), self._c("PANEL_W")
+        px, py = length / cols, width / rows
+        self.assertAlmostEqual(self._num(r"피치 <span class=\"m\">(\d+) × 400 mm"), px * 1000, delta=1)
+        self.assertAlmostEqual(self._num(r"피치 <span class=\"m\">400 × (\d+) mm"), py * 1000, delta=1)
+        self.assertAlmostEqual(self._num(r"패드 간 여유\s*<span class=\"m\">(\d+) mm"),
+                               (px - 2 * r) * 1000, delta=1)
+        self.assertAlmostEqual(self._num(r"가장자리 여유\s*\n?\s*<span class=\"m\">(\d+) mm"),
+                               (width / 2 - (rows - 1) / 2 * py - r) * 1000, delta=1)
+
+    def test_the_assumption_behind_the_layout_is_stated(self):
+        """μ 0.6 가정이 빠지면 이 배치가 무조건 성립하는 것처럼 읽힌다."""
+        self.assertIn("μ = 0.6 가정에 걸려 있으므로", self.html,
+                      "패드 배치가 어떤 가정 위에 서 있는지 적혀 있지 않다")
+
+
 if __name__ == "__main__":
     unittest.main()

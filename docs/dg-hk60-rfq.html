@@ -19,7 +19,7 @@
     color-scheme:light dark;
     --paper:#ffffff;--ground:#eceff1;--band:#f4f6f7;--sunk:#e3e8ea;
     --ink:#14202a;--ink2:#425663;--ink3:#6b7f8b;--ink4:#8b9ba4;
-    --brand:#17679b;--brand2:#268cca;--brand-sunk:#e7f0f7;
+    --brand:#17679b;--brand2:#228CC9;--brand-sunk:#e7f0f7;
     --accent:#a06a08;--accent-sunk:#fbf3e0;--accent-line:#e0c68a;
     --flag:#9a2b30;--flag-sunk:#fbeeee;--flag-line:#e3bcbc;
     --ok:#1f6b47;
@@ -32,7 +32,7 @@
       color-scheme:dark;
       --paper:#171f25;--ground:#10171c;--band:#1c262c;--sunk:#232f36;
       --ink:#e6edf0;--ink2:#adbdc6;--ink3:#8598a2;--ink4:#687c87;
-      --brand:#5cb0e4;--brand2:#268cca;--brand-sunk:#12303f;
+      --brand:#5cb0e4;--brand2:#228CC9;--brand-sunk:#12303f;
       --accent:#e0aa4a;--accent-sunk:#33280f;--accent-line:#6b5620;
       --flag:#e8767a;--flag-sunk:#331b1c;--flag-line:#6b3436;
       --ok:#54b487;
@@ -43,7 +43,7 @@
     color-scheme:dark;
     --paper:#171f25;--ground:#10171c;--band:#1c262c;--sunk:#232f36;
     --ink:#e6edf0;--ink2:#adbdc6;--ink3:#8598a2;--ink4:#687c87;
-    --brand:#5cb0e4;--brand2:#268cca;--brand-sunk:#12303f;
+    --brand:#5cb0e4;--brand2:#228CC9;--brand-sunk:#12303f;
     --accent:#e0aa4a;--accent-sunk:#33280f;--accent-line:#6b5620;
     --flag:#e8767a;--flag-sunk:#331b1c;--flag-line:#6b3436;
     --ok:#54b487;
@@ -173,12 +173,14 @@
 
 <header class="masthead">
   <div class="issuer">
-    <svg viewBox="-3 -3 105 95" aria-label="DYNAMIC INDUSTRY" role="img">
-      <polygon points="34.2,0 69.9,0 76.7,5.5 99,44.2 98.4,53.6 70.5,53.6" fill="#fdca4a"/>
-      <polygon points="19.5,83.1 33.1,59.5 95,59.5 80.4,84.9 74.1,88.9 25.9,88.9" fill="#268cca"/>
-      <polygon points="0,47.2 1.4,43.5 8.8,30.8 25.6,59.8 15.8,77.7 14.3,75.9 0.9,52.4" fill="#268cca"/>
-      <polygon points="12.5,24.3 18.8,13.5 35.4,41.3 35.9,42.8 29.3,54.3 12.8,25.9" fill="#268cca"/>
-      <polygon points="25.3,11.8 38.6,11.8 45.7,23.9 45.9,25.6 39.8,36.1 26.6,14.3" fill="#268cca"/>
+    <svg viewBox="0 0 100.0 88.9723" aria-label="DYNAMIC INDUSTRY" role="img">
+      <!--mark-->
+      <path d="M8.8423 30.8126L1.1845 44.0763C-0.3949 46.8121 -0.3949 50.1826 1.1849 52.9184L15.6495 77.9723L25.8596 60.2876Z" fill="#228CC9"/>
+      <path d="M36.0703 42.6025L19.0529 13.1275L12.2461 24.9173L29.2634 54.3923Z" fill="#228CC9"/>
+      <path d="M46.2805 24.9174L38.7015 11.7899L25.0877 11.7899L39.4737 36.7073Z" fill="#228CC9"/>
+      <path d="M19.0528 83.8669L19.4479 84.5512C21.0276 87.287 23.9465 88.9723 27.1053 88.9723L72.8952 88.9723C76.054 88.9723 78.9733 87.287 80.5527 84.5512L95.0173 59.4973L33.1202 59.4973Z" fill="#228CC9"/>
+      <path d="M98.8155 44.0761L75.9205 4.421C74.3411 1.6852 71.4219 0.0 68.2631 0.0L50.0008 0.0004L50.0008 0.0L33.8944 0.0L42.0531 4.7103L70.282 53.6047L98.4203 53.6026L98.8155 52.9182C100.3948 50.1824 100.3948 46.8119 98.8155 44.0761Z" fill="#FECA4A"/>
+      <!--/mark-->
     </svg>
     <div class="issuer-name"><i>FOR NET ZERO PROJECTION</i><b>DYNAMIC INDUSTRY</b></div>
   </div>
@@ -878,9 +880,18 @@ NEXT_PANEL     = BACKSHEET_BIN_ACK ∧ SHREDDER_FEED_ACK ∧ GLASS_CARRIAGE_ACK 
           상한(<span class="m">13.37 kN</span>)에서는 <span class="m">0.686 m²</span>,
           즉 유리면의 <span class="m">23.8 %</span>가 패드로 덮여야 한다. 9 배 차이라
           추력 범위가 좁혀지기 전에는 패드 배치를 확정할 수 없다.</p>
+        <p><em>현재 배치</em>개념설계는 이 상한을 견디도록 잡았다 —
+          <span class="m">6열 × 3행 = 18패드 Ø250</span>(열 하나가 진공 1존),
+          패드 면적 <span class="m">0.884 m²</span>로 상한 요구
+          <span class="m">0.686 m²</span>의 <span class="m">1.29 배</span>다.
+          패널 2,400 × 1,200 위에서 피치 <span class="m">400 × 400 mm</span>,
+          패드 간 여유 <span class="m">150 mm</span>, 가장자리 여유
+          <span class="m">75 mm</span>로 배치된다.</p>
         <p><em>해소</em><a href="#c11">OI-01</a>의 박리력 실측으로 추력 범위를 좁힌 뒤,
           패드 재질의 200 °C에서의 마찰계수를 실측해 필요 면적·구역 수를 확정한다.
-          진공 상실 시 감속거리도 같은 조건에서 검증한다.</p>
+          위 배치는 μ = 0.6 가정에 걸려 있으므로, 실측 마찰계수가 이보다 낮으면
+          패드 수 또는 직경을 다시 잡는다. 진공 상실 시 감속거리도 같은 조건에서
+          검증한다.</p>
       </div>
     </div>
     <div class="oi">
