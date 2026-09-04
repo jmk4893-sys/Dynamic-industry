@@ -316,7 +316,7 @@
         <tr><td class="k">M-003</td><td>5단 적재·승강장치</td><td class="num">4950×2700×4150</td><td>SS400 / LM 가이드</td></tr>
         <tr><td class="k">M-004</td><td>진공 캐리어·이송축</td><td class="num">11200×3000×1500</td><td>SS400 / AL6061</td></tr>
         <tr><td class="k">M-005</td><td>고정 HKB/HKS 탠덤</td><td class="num">10200×4200×4300</td><td>SS400 / SKD11</td></tr>
-        <tr><td class="k">M-006</td><td>백시트 터릿 권취</td><td class="num">2550×1800×3500</td><td>SS400 / SUS304</td></tr>
+        <tr><td class="k">M-006</td><td>백시트 권취부 (탠덤 하류)</td><td class="num">1400×3800×2900</td><td>SS400 / SUS304</td></tr>
         <tr><td class="k">M-007</td><td>유리 수평 컨베이어·냉각 캐리지</td><td class="num">9000×5500×3000</td><td>SS400 / 우레탄</td></tr>
         <tr><td class="k">M-008</td><td>셀/EVA 직접 컨베이어</td><td class="num">16000×2100×2500</td><td>SS400 / SUS304</td></tr>
         <tr><td class="k">M-009</td><td>품질검사·리젝트</td><td class="num">5450×5000×3900</td><td>SS400 / AL6061</td></tr>
@@ -488,6 +488,43 @@ t_열   = max( 5Q / (60 × 2.5 kW × η 0.65),  113.15 s )  = 225.8 s
   </div></div>
 
   <div class="clause"><div class="n">6.4</div><div class="c">
+    <h3>백시트 권취부</h3>
+    <p>권취부는 <strong>탠덤 하류</strong>에 둔다. 필름은 고정 칼날에서 분리되는 순간부터
+      패널 진행방향 쪽에 있으므로, 권취부가 상류에 있으면 웹이 캐리어 통로를 거꾸로
+      가로지른다. 박리각은 롤 직경에 따라 변하면 안 되므로 HKB 날 바로 위의 가이드롤이
+      고정한다.</p>
+    <p>롤 직경은 면적보존으로 정해진다. 감긴 필름 단면적 <span class="m">n·L·t</span> 가
+      원환 <span class="m">π(r² − r0²)</span> 와 같으므로
+      <span class="m">r(n) = √(r0² + n·L·t/π)</span> 이다.</p>
+    <div class="tw"><table>
+      <caption>권취 롤 설계값</caption>
+      <thead><tr><th>항목</th><th class="num">값</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><th>코어 직경</th><td class="num">Ø300 mm</td><td>선행 설계패키지 권취드럼</td></tr>
+        <tr><th>만권 직경</th><td class="num">Ø600 mm</td><td>격리함 내부 여유 (<a href="#c11">OI-11</a>)</td></tr>
+        <tr><th>백시트 두께</th><td class="num">0.30 mm</td><td>표준 3층 백시트 가정 (<a href="#c11">OI-11</a>)</td></tr>
+        <tr><th>롤 유효폭</th><td class="num">1,400 – 1,500 mm</td><td>백시트 폭 1,200 mm + 클램프 여유</td></tr>
+        <tr><th>1장당 직경 증가</th><td class="num">+1.5 mm</td><td>패널 길이 2,400 mm 기준</td></tr>
+        <tr><th>롤당 처리 장수</th><td class="num">295 장</td><td>Ø300 → Ø600</td></tr>
+        <tr><th>롤 교체 주기</th><td class="num">약 4.9 h</td><td>보증 60.5 장/h 기준 · 교대당 2 회</td></tr>
+      </tbody>
+    </table></div>
+    <ul>
+      <li>박리 가이드롤을 HKB 날 직상부에 두어 박리각을 <span class="m">100 – 110°</span>로 고정.
+        롤 직경이 Ø300에서 Ø600으로 커지는 동안 박리각이 변하지 않아야 한다</li>
+      <li>웹 가장자리와 나이프 Z축 기둥·가드의 간극 <span class="m">120 mm</span> 이상
+        (<a href="#c6">6.2항</a>). 기둥 위치를 웹 폭 밖으로 배치한다</li>
+      <li>권취축 <span class="m">2축</span> — 만권 롤을 내리는 동안 라인을 세우지 않는다.
+        전환 시 자동 절단·선단 이관·클램프 순서를 정의</li>
+      <li>토크상한·박리장력·직경 추정 동시제어, 직경 계측롤로 추정값 보정</li>
+      <li>정전 시 역회전 방지 브레이크. 롤 반출 중 권취축 회전 금지 인터록</li>
+      <li>만권 롤은 인터록 해치를 통해 <strong>안전펜스 밖</strong> BS-301 보관대로 반출한다.
+        교체가 4.9 h마다이므로 작업자가 방책 안으로 들어가지 않아야 한다</li>
+      <li>롤 질량·반출 방법(수동/전동 카트)을 산정해 인력 취급 한계와 대조 (<a href="#c11">OI-11</a>)</li>
+    </ul>
+  </div></div>
+
+  <div class="clause"><div class="n">6.5</div><div class="c">
     <h3>반입 및 인양</h3>
     <p>라인 전장이 25 m이므로 모듈 분할 반입을 전제로 설계한다.</p>
     <ul>
@@ -772,6 +809,17 @@ NEXT_PANEL     = BACKSHEET_BIN_ACK ∧ SHREDDER_FEED_ACK ∧ GLASS_CARRIAGE_ACK 
         <p><em>현황</em>계면 200 °C 운전은 EVA 열이력과 VOC를 증가시킨다. 배출 성상이 미확인이다.</p>
         <p><em>해소</em>배출가스 성상시험을 수행하고 관할 배출 기준과 대조해
           응축·흡착 용량과 굴뚝 조건을 확정한다.</p>
+      </div>
+    </div>
+    <div class="oi">
+      <div class="oi-h"><b>OI-11</b><span>백시트 두께 및 롤 교체 주기</span></div>
+      <div class="oi-b">
+        <p><em>현황</em><a href="#c6">6.4항</a>의 롤당 295 장·교체 주기 4.9 h는 백시트 두께
+          0.30 mm 가정에서 나온 값이다. 실제 폐모듈의 백시트는 제조사·연식에 따라
+          0.25 – 0.40 mm로 갈리며, 0.40 mm이면 롤당 221 장·3.7 h로 줄어 교대당 3회가 된다.</p>
+        <p><em>해소</em>시험 패널의 백시트 두께를 실측하고, 만권 직경 상한과 권취축 전환
+          시간을 반영해 롤 교체 주기와 보관대 용량을 확정한다. 롤 질량과 반출 방법도
+          함께 정한다.</p>
       </div>
     </div>
   </div></div>

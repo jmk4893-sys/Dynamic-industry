@@ -214,6 +214,101 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
         self.assertAlmostEqual(claimed, 630 / fla, delta=0.01)
         self.assertGreater(claimed, 1.0, "차단기 정격이 전부하전류보다 작다")
 
+    # ── 모듈 구성 ────────────────────────────────────────────────
+    def test_module_table_matches_the_console_assemblies(self):
+        """사양서의 M-0xx 표는 콘솔의 제작도 목록을 옮겨 적은 것이다.
+
+        한쪽만 고치면 입찰자가 실물과 다른 외형치수로 반입계획·크레인을 잡는다.
+        치수는 표에 적힌 숫자일 뿐이라 화면상으로는 어긋난 표시가 나지 않는다.
+        """
+        console_rows = dict(
+            (m.group(1), (m.group(2), m.group(3), m.group(4)))
+            for m in re.finditer(
+                r"\{id:'(M-\d+)',name:'([^']+)',size:'([^']+)',material:'([^']+)'",
+                self.console,
+            )
+        )
+        self.assertGreaterEqual(len(console_rows), 13, "콘솔 제작도 목록을 찾지 못했다")
+        rfq_rows = re.findall(
+            r'<td class="k">(M-\d+)</td><td>([^<]+)</td>'
+            r'<td class="num">([^<]+)</td><td>([^<]+)</td>',
+            self.html,
+        )
+        self.assertEqual(
+            len(rfq_rows), len(console_rows),
+            "사양서 모듈 표의 행 수가 콘솔 제작도 수와 다르다",
+        )
+        squash = lambda v: re.sub(r"\s+", "", v)
+        for ident, name, size, material in rfq_rows:
+            self.assertIn(ident, console_rows, f"{ident} 이 콘솔에 없다")
+            c_name, c_size, c_material = console_rows[ident]
+            self.assertEqual(squash(name), squash(c_name),
+                             f"{ident} 의 모듈명이 콘솔과 다르다")
+            self.assertEqual(squash(size), squash(c_size),
+                             f"{ident} 의 외형치수가 콘솔과 다르다")
+            self.assertEqual(squash(material), squash(c_material),
+                             f"{ident} 의 재질이 콘솔과 다르다")
+
+    # ── 권취 롤 ──────────────────────────────────────────────────
+    def test_roll_change_interval_follows_the_console_model(self):
+        """롤당 장수·교체 주기는 검산 가능한 수치다."""
+        thick = float(re.search(r"BACKSHEET_T=([\d.e-]+)", self.console).group(1))
+        core = float(re.search(r"WR_CORE_R=([\d.]+)", self.console).group(1))
+        full = float(re.search(r"WR_FULL_R=([\d.]+)", self.console).group(1))
+        length = float(re.search(r"PANEL_L=([\d.]+)", self.console).group(1))
+        panels = round((full ** 2 - core ** 2) / (length * thick / math.pi))
+
+        self.assertAlmostEqual(self._num(r"코어 직경</th><td class=\"num\">Ø(\d+) mm"),
+                               core * 2000, delta=0.5)
+        self.assertAlmostEqual(self._num(r"만권 직경</th><td class=\"num\">Ø(\d+) mm"),
+                               full * 2000, delta=0.5)
+        self.assertAlmostEqual(self._num(r"백시트 두께</th><td class=\"num\">([\d.]+) mm"),
+                               thick * 1000, places=3)
+        self.assertAlmostEqual(self._num(r"롤당 처리 장수</th><td class=\"num\">(\d+) 장"),
+                               panels, delta=0.5)
+        self.assertAlmostEqual(
+            self._num(r"롤 교체 주기</th><td class=\"num\">약 ([\d.]+) h"),
+            panels / (self.m["line_rate"] * 0.9), delta=0.1,
+            msg="롤 교체 주기가 보증 처리량(90% 가동률)과 맞지 않는다",
+        )
+        self.assertAlmostEqual(
+            self._num(r"1장당 직경 증가</th><td class=\"num\">\+([\d.]+) mm"),
+            (math.sqrt(core ** 2 + length * thick / math.pi) - core) * 2000, delta=0.1,
+        )
+
+    def test_winder_is_specified_downstream_with_a_guide_roll(self):
+        """권취부 위치와 박리각 고정은 입찰자가 임의로 정할 사항이 아니다.
+
+        모듈 표의 이름에만 '탠덤 하류' 가 남아 있어도 요구사항이 되지는 않으므로
+        6.4항 본문에서 확인한다.
+        """
+        clause = re.search(
+            r'<h3>백시트 권취부</h3>(.*?)</div></div>', self.html, re.S
+        )
+        self.assertIsNotNone(clause, "백시트 권취부 조항이 없다")
+        body = clause.group(1)
+        self.assertIn("탠덤 하류", body, "권취부 위치가 규정되지 않았다")
+        self.assertIn("가이드롤", body, "박리 가이드롤이 규정되지 않았다")
+        self.assertIn("안전펜스 밖", body, "롤 보관대 위치가 규정되지 않았다")
+        self.assertRegex(body, r"박리각을 <span class=\"m\">\d+ – \d+°",
+                         "박리각 범위가 규정되지 않았다")
+        self.assertIn("2축", body, "권취축 이중화가 규정되지 않았다")
+        # 콘솔의 실제 배치와 방향이 같은지
+        hks = float(re.search(r"HKS_X=([\d.]+)", self.console).group(1))
+        drum = float(re.search(r"WR_DRUM_X=([\d.]+)", self.console).group(1))
+        self.assertGreater(drum, hks,
+                           "사양서는 하류라고 적었는데 콘솔의 권취부는 상류에 있다")
+
+    def test_backsheet_thickness_assumption_is_an_open_item(self):
+        """0.30mm 가정이 틀리면 교체 주기가 바뀐다. 가정으로 남겨야 한다."""
+        block = re.search(r"<b>OI-11</b>(.*?)</div>\s*</div>", self.html, re.S)
+        self.assertIsNotNone(block, "백시트 두께 확인사항이 없다")
+        self.assertIn("0.40", block.group(1), "두께 상한에서의 영향이 없다")
+        thick = 0.40e-3
+        panels = round((0.30 ** 2 - 0.15 ** 2) / (2.4 * thick / math.pi))
+        self.assertEqual(panels, 221)
+        self.assertIn("221", block.group(1), "두께 0.40mm 일 때의 롤당 장수가 틀렸다")
+
 
 if __name__ == "__main__":
     unittest.main()
