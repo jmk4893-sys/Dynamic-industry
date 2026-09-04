@@ -652,9 +652,83 @@
        그 뒤 수평으로 WR-101 드럼까지 보낸다. */
     const WR_GUIDE_X=17.42,WR_WEB_Z=2.46,WR_DRUM_X=19.6;
     const BS_BIN_X=22.8,BS_BIN_Y=-5.4,BS_RACK_X=22.1,BS_ROLL_Z=.92;
+    /* 만권 롤이 드럼에서 보관대까지 가는 길. 종전에는 두 점 사이를 직선 보간해
+       롤이 펜스를 대각선으로 통과하고 새들이 아닌 허공에 놓였다. 실제로 지날 수
+       있는 자리를 재어 보면 통로는 하나뿐이다:
+
+         · 바닥 대차는 못 쓴다 — y=-1.38 캐리어 레일(z0.59~0.77)과
+           y=-1.50 승강 컨베이어(z0.27~0.64)를 마스트가 가로지를 수 없다.
+         · +x 로 굴려 나가는 길도 막혀 있다 — x20.5 부터 유리 컨베이어 롤러가
+           z1.29~1.50 을 채운다.
+         · 남은 길은 롤을 캐리어 레일 위(z1.15)로 들어 -y 로 빼는 것이다.
+           이 높이의 회랑은 외함 정비도어(y=-2.04) 하나만 걸린다.
+
+       그래서 외함에 롤 포트를 내고, RH-301 반출 빔이 롤을 매달아 포트와
+       인터록 해치를 지나 BS-301 빈 새들 위로 옮긴다. */
+    const HATCH_Y=-3.62,HATCH_W=1.6,HATCH_Z=1.10,HATCH_H=1.9;
+    const HATCH_X=WR_DRUM_X;                         // 롤은 드럼 축 바로 아래로 내려온다
+    const ROLL_PORT_Y=-2.04,ROLL_PORT_W=1.9,ROLL_PORT_Z0=.60,ROLL_PORT_Z1=1.95;
+    const RH_RAIL_Z=.94;                             // -y 스키드 레일 상면 — 캐리어 레일(z0.77) 위
+    const RH_CARRY_Z=RH_RAIL_Z+WR_FULL_R;            // 그 위에 얹힌 롤의 축 높이
+    const BS_TIE_Z=1.75;                             // 보관대 타이레일 — 지나가는 롤 위
+    const BS_SADDLE_X=BS_RACK_X+.55;                 // 뒤쪽 빈 새들 — 앞 새들엔 교대 롤이 있다
+    const ROLL_SEAM_MARKS=4;
     /* 콘솔이 보여주는 것은 정상운전 중인 라인이므로 롤은 교대 중반 상태이고,
        10장 시운전(S15)만 새 롤로 시작한다. 롤 교체(S7)는 만권에서만 일어난다. */
     const ROLL_SHIFT_BASE=Math.round(ROLL_FULL_PANELS*.6);
+    /* 권취와 배출은 서로 다른 정보를 요구한다. 감기는 동안 알고 싶은 것은 '얼마나
+       감겼나' 이고, 내보내는 동안 알고 싶은 것은 '지금 어느 문을 지나고 있나' 다.
+       한 줄짜리 문구로는 둘 다 안 읽히므로, 감김량과 배출 서브페이즈를 여기서 한 번
+       만들어 3D 지오메트리·라벨·HUD 가 모두 같은 값을 쓰게 한다. */
+    const EJECT_PHASES=[
+      {at:0,  name:'격리셔터 닫힘·예비축 전환',detail:'ISO-101 셔터를 닫고 WR-101B 예비축이 권취를 이어받아 라인은 멈추지 않습니다.'},
+      {at:.16,name:'웹 절단·선단 이관',       detail:'자동 절단칼이 웹을 끊고 선단을 예비축 빈 코어로 넘깁니다.'},
+      {at:.30,name:'RH-301 요크 결합',        detail:'반출 빔의 요크가 권취축 양단을 물고 하중을 인수합니다.'},
+      {at:.44,name:'권취축 승강레일 하강',    detail:'역회전 브레이크를 유지한 채 공압척을 풀고 승강레일로 스키드 레일까지 내립니다.'},
+      {at:.58,name:'롤 포트·인터록 해치 통과',detail:'외함 롤 포트와 펜스 해치는 SHUTTER_CLOSED ∧ 권취축 정지 ∧ CARRIAGE_OUT 에서만 열립니다.'},
+      {at:.80,name:'코너 승강대 하강',        detail:'펜스 밖 승강대가 롤을 보관 높이로 내려 굴림 레일에 옮깁니다.'},
+      {at:.86,name:'빈 새들까지 굴림',        detail:'롤을 축 직각으로 굴려 빈 새들에 앉히고 포트와 해치를 다시 잠급니다.'},
+      {at:.96,name:'BACKSHEET_BIN_ACK',      detail:'롤 반출을 확인해 NEXT_PANEL 허가 3조건 중 백시트 축이 성립합니다.'}
+    ];
+    /* 배출 경로. 구간 경계는 EJECT_PHASES 의 at 과 같아서, 화면의 롤 위치와 HUD 의
+       문구가 어긋날 수 없다. */
+    const EJECT_PATH=[
+      {at:.44,x:WR_DRUM_X,   y:0,        z:WR_WEB_Z},    // 드럼 위
+      {at:.58,x:WR_DRUM_X,   y:0,        z:RH_CARRY_Z},  // 승강레일로 스키드 레일까지
+      {at:.80,x:WR_DRUM_X,   y:BS_BIN_Y, z:RH_CARRY_Z},  // 롤 포트·해치를 지나 펜스 밖
+      {at:.86,x:WR_DRUM_X,   y:BS_BIN_Y, z:BS_ROLL_Z},   // 코너 승강대에서 하강
+      {at:.96,x:BS_SADDLE_X, y:BS_BIN_Y, z:BS_ROLL_Z}    // 굴려서 빈 새들까지
+    ];
+    function ejectPose(eject){
+      const e=clamp(eject),P=EJECT_PATH;
+      if(e<=P[0].at)return{x:P[0].x,y:P[0].y,z:P[0].z,moving:false,inHatch:0};
+      let a=P[0];
+      for(let k=1;k<P.length;k++){
+        const b=P[k];
+        if(e<=b.at||k===P.length-1){
+          const t=ease(clamp((e-a.at)/(b.at-a.at)));
+          return{x:lerp(a.x,b.x,t),y:lerp(a.y,b.y,t),z:lerp(a.z,b.z,t),
+                 moving:e<P[P.length-1].at,inHatch:clamp((e-.50)/.08)*(1-clamp((e-.86)/.08))};
+        }
+        a=b;
+      }
+    }
+    function winderState(i,p){
+      const q=clamp(p),n=woundCount(i,q),r=rollRadius(n),eject=i===7?q:(i>7&&i<15?1:0);
+      /* 배출이 끝난 뒤(S8 이후)에도 롤은 보관대에 있다. 그때 서브페이즈를 비워 두면
+         '반출 완료' 라는 상태 자체가 사라진다 — 마지막 페이즈로 고정한다. */
+      let phase=EJECT_PHASES[0];
+      if(i===7){for(const e of EJECT_PHASES)if(q>=e.at)phase=e}
+      else if(eject>0)phase=EJECT_PHASES[EJECT_PHASES.length-1];
+      const dia=Math.round(r*2000),full=Math.round(WR_FULL_R*2000);
+      return{n,r,dia,full,eject,phase,pose:ejectPose(eject),
+        winding:(i>=3&&i<=6)||i===15,
+        /* 감은 길이 ÷ 반지름 = 드럼이 돈 각도. 한 장(2.4m)이면 10rad 남짓이라
+           회전이 눈에 보인다. panels*.37 같은 임의값으로는 안 돈 것처럼 보였다. */
+        theta:n*PANEL_L/Math.max(WR_CORE_R,r),
+        text:i===7?`${phase.name} · Ø${full} 만권 롤 → BS-301`
+                  :`WR-101 권취 ${Math.floor(n)}장 · Ø${dia} / Ø${full}`};
+    }
     function woundCount(i,p){
       if(i===15)return Math.min(10,p*10);
       if(i===7)return ROLL_FULL_PANELS;
@@ -1319,7 +1393,7 @@
       {id:'M-003',name:'5단 적재·승강장치',size:'2900×1700×4150',material:'SS400/LM 가이드',parts:['LI-101 승강프레임','서보모터·감속기','볼스크류/체인 동기축','TS-101 2단 포크','텔레스코픽 레일','캐리지 위치결정핀','층별 잠금실린더×5','캐리지 존재센서×5','상하한 리미트','절대치 엔코더','낙하방지 브레이크','정비 고정핀']},
       {id:'M-004',name:'진공 캐리어·이송축',size:'11200×1800×1500',material:'SS400/AL6061',parts:['캐리어 베이스','6존 진공매니폴드','흡착패드×18','진공압센서×6','진공필터×6','체크밸브×6','서보 랙피니언','LM가이드×2','절대치 엔코더','에너지체인','범퍼스토퍼','비상 진공어큐뮬레이터']},
       {id:'M-005',name:'고정 HKB/HKS 탠덤',size:'10200×4200×4300',material:'SS400/SKD11',parts:['탠덤 포털프레임','HKB Z축 서보슬라이드','HKS Z축 서보슬라이드','프리로드 LM가이드×4','볼스크류·서보브레이크×2','HKB 퀵체인지 카세트','HKS 퀵체인지 카세트','카세트 잠금·존재센서×4','HKB/HKS 카트리지히터','칼날 열전대×8','로드셀×4','스프링 컴플라이언스×4','AE 센서×4','300mm 레이저 간격센서','기계식 하드스톱×4','케이블베어·내열배선','용융 EVA 드립트레이','파편 회수트레이','국소배기 슬롯후드×2','코딩 정비도어 인터록']},
-      {id:'M-006',name:'백시트 권취부 (탠덤 하류)',size:'1400×2300×2900',material:'SS400/SUS304',parts:['문형 권취프레임','GR-W1 박리 가이드롤','권취드럼 A/B (2축)','분할클램프×4','토크서보','공압척','자동 절단칼','선단 이관암','직경센서','장력 로드셀','역회전 브레이크','격리셔터','펜스 인터록 해치','BS-301 롤 보관대']},
+      {id:'M-006',name:'백시트 권취·반출부 (탠덤 하류)',size:'1900×6500×2900',material:'SS400/SUS304',parts:['문형 권취프레임','GR-W1 박리 가이드롤','권취드럼 A/B (2축)','분할클램프×4','토크서보·직경센서','자동 절단·선단 이관암','역회전 브레이크','격리셔터','외함 롤 포트','펜스 인터록 해치','RH-301 반출 스키드','코너 승강대','굴림 레일·스토퍼','BS-301 롤 보관대']},
       {id:'M-007',name:'유리 수평 컨베이어·냉각 캐리지',size:'9000×5500×3000',material:'SS400/우레탄',parts:['동일높이 인계롤러','우레탄 롤러×24','VFD 기어모터','측면 가이드','파손 감지센서','QI-301 비전아치','GC-301A 캐리지','GC-301B 캐리지','내열 지지롤','로드셀×8','냉각팬×8','도킹핀×4']},
       {id:'M-008',name:'셀/EVA 직접 컨베이어',size:'16000×1500×2500',material:'SS400/SUS304',parts:['CVC-301 사선 인계벨트','CVC-302 수평 밀폐벨트','내열 벨트','VFD 기어모터×2','셀 존재센서×4','벨트 편심센서×2','금속검출기','점검커버','국소배기노즐','역화격리게이트','SH-101 투입롤러','토크리미터']},
       {id:'M-009',name:'품질검사·리젝트',size:'3100×5000×3900',material:'SS400/AL6061',parts:['QI 상부 RGB 카메라','QI 하부 RGB 카메라','열화상카메라','투과조명','라인레이저','검사 엔코더','RJ 횡셔틀','리젝트 받침트레이','밀폐 리젝트 캐리지','도어인터록','캐리지 존재센서','재처리 라벨러']},
@@ -2129,12 +2203,31 @@
       const normal=norm(V(-dy,dx,0)),a=add(V(x0,y0,.65),mul(normal,.01)),b=add(V(x1,y1,.65),mul(normal,.01));poly([a,b,V(b.x,b.y,z1-.1),V(a.x,a.y,z1-.1)],C.guard,.08,null,0);
     }
     function serviceDoor(cx,lengthX,code){
-      const y=-2.04,z0=.6,z1=3.95,x0=cx-lengthX/2+.2,x1=cx+lengthX/2-.2;
-      poly([V(x0,y,z0),V(x1,y,z0),V(x1,y,z1),V(x0,y,z1)],C.guard,.12,C.guard,.65);
+      const y=ROLL_PORT_Y,z0=.6,z1=3.95,x0=cx-lengthX/2+.2,x1=cx+lengthX/2-.2;
+      /* 만권 롤은 이 벽을 지나야 BS-301 로 갈 수 있다. 통로 실측상 롤이 지날 수
+         있는 높이는 캐리어 레일 위 z0.85~1.45 뿐이고, 그 띠를 막고 있는 것이
+         이 정비도어 하나다. 그래서 권취 베이에 롤 포트를 낸다 — 이 베이는
+         이미 리브도 비워 둔 자리다. */
+      const pl=WR_DRUM_X-ROLL_PORT_W/2,pr=WR_DRUM_X+ROLL_PORT_W/2,port=x0<pl&&pr<x1;
+      const panel=(a,b,c,d)=>poly([V(a,y,c),V(b,y,c),V(b,y,d),V(a,y,d)],C.guard,.12,C.guard,.65);
+      if(port){panel(x0,pl,z0,z1);panel(pr,x1,z0,z1);panel(pl,pr,ROLL_PORT_Z1,z1)}
+      else panel(x0,x1,z0,z1);
       box(V(cx,y,3.92),V(lengthX-.4,.11,.12),C.steel);box(V(cx,y,.64),V(lengthX-.4,.11,.13),C.steel);
-      for(let x=x0;x<=x1+.01;x+=Math.max(1.35,(lengthX-.4)/3))box(V(x,y,2.28),V(.1,.12,3.25),C.steel);
+      for(let x=x0;x<=x1+.01;x+=Math.max(1.35,(lengthX-.4)/3)){
+        if(port&&x>pl-.09&&x<pr+.09)continue;              // 롤 포트 안에는 멀리언이 없다
+        box(V(x,y,2.28),V(.1,.12,3.25),C.steel);
+      }
       box(V(cx,y,2.85),V(lengthX-.4,.1,.14),C.steel);      // vision-panel rail
-      box(V(cx,y,1.15),V(lengthX-.4,.1,.12),C.steel);      // lock rail
+      if(port){
+        const w=winderState(index,local);
+        box(V((x0+pl)/2,y,1.15),V(pl-x0,.1,.12),C.steel);box(V((pr+x1)/2,y,1.15),V(x1-pr,.1,.12),C.steel);
+        for(const px of [pl,pr])box(V(px,y,(ROLL_PORT_Z0+ROLL_PORT_Z1)/2),V(.12,.14,ROLL_PORT_Z1-ROLL_PORT_Z0),C.yellow);
+        box(V(WR_DRUM_X,y,ROLL_PORT_Z1+.06),V(ROLL_PORT_W+.12,.14,.12),C.yellow);
+        /* 포트 셔터는 롤이 지날 때만 올라간다 — 인터록 해치와 같은 신호다. */
+        box(V(WR_DRUM_X,y-.09,(ROLL_PORT_Z0+ROLL_PORT_Z1)/2+(ROLL_PORT_Z1-ROLL_PORT_Z0)*.94*w.pose.inHatch),
+            V(ROLL_PORT_W-.06,.06,ROLL_PORT_Z1-ROLL_PORT_Z0),C.sheet,{alpha:.3});
+        label3(`${code} 롤 포트 · Ø600 만권롤 반출`,V(WR_DRUM_X,y-.34,ROLL_PORT_Z1+.28),C.yellow);
+      }else box(V(cx,y,1.15),V(lengthX-.4,.1,.12),C.steel);   // lock rail
       for(const x of [cx-lengthX*.22,cx+lengthX*.22]){box(V(x,y,1.15),V(.42,.15,.12),C.yellow);box(V(x,y,2.85),V(.92,.12,.72),C.black,{alpha:.78})}
       /* 문 뒤가 320°C 칼날과 가동 캐리지이므로 손잡이 옆에 표지를 붙인다. */
       hazardDecal(V(cx-lengthX*.40,y,1.78),AISLE_U,AISLE_V,.30,'hot');
@@ -2413,9 +2506,11 @@
         /* BS-301 은 펜스 바깥이다. 롤 교체는 4.9시간마다이므로 작업자가 방책 안으로
            들어가지 않고 롤을 가져갈 수 있어야 한다. 롤은 인터록 해치로만 나간다. */
         plinth(BS_RACK_X,BS_BIN_Y,2.2,2.1,.16);
+        /* 랙 기둥과 타이레일은 반출 빔 높이까지 올린다. 종전 z1.46 타이레일은
+           반출 높이의 롤 상단(z1.45)과 겹쳐, 롤이 레일을 뚫고 지나갔다. */
         for(const x of [BS_RACK_X-.98,BS_RACK_X+.98])for(const y of [BS_BIN_Y-.9,BS_BIN_Y+.9])
-          column(x,y,1.5,{s:.12,color:C.steel2,plate:.3});
-        for(const x of [BS_RACK_X-.98,BS_RACK_X+.98])box(V(x,BS_BIN_Y,1.46),V(.12,1.95,.14),C.steel2);
+          column(x,y,BS_TIE_Z-.075,{s:.12,color:C.steel2,plate:.3});
+        for(const x of [BS_RACK_X-.98,BS_RACK_X+.98])box(V(x,BS_BIN_Y,BS_TIE_Z),V(.12,1.95,.14),C.steel2);
         for(const x of [BS_RACK_X-.55,BS_RACK_X+.55]){                          // V 새들 크래들
           for(const yy of [-ROLL_FACE/2+.14,ROLL_FACE/2-.14])
             box(V(x,BS_BIN_Y+yy,(.16+BS_ROLL_Z-WR_FULL_R)/2+.08),V(.2,.16,BS_ROLL_Z-WR_FULL_R-.16+.16),C.steel2);
@@ -2427,10 +2522,15 @@
         cylinder(V(BS_RACK_X-.55,BS_BIN_Y,BS_ROLL_Z),.09,ROLL_FACE+.3,'y',C.rail,10);
         withBias(.22,()=>liveryStripe(V(BS_RACK_X-1.1,BS_BIN_Y-1.062,1.3),AISLE_U,AISLE_V,2.2,.05,C.brand,.95));
         cabinetBadge(BS_RACK_X-.78,BS_BIN_Y-1.05,1.0,.36);
-        /* 인터록 해치. 롤이 나가는 동안 권취축이 돌면 안 된다. */
-        box(V(19.35,-3.62,1.1),V(1.5,.08,1.9),C.sheet,{alpha:.2});
-        for(const z of [.2,2.06])box(V(19.35,-3.62,z),V(1.6,.1,.12),C.yellow);
-        line([V(WR_DRUM_X,0,.1),V(WR_DRUM_X,BS_BIN_Y+1.6,.1),V(BS_BIN_X,BS_BIN_Y+1.6,.1)],C.sheet,3,[8,4],.75);
+        /* 인터록 해치. 롤이 나가는 동안 권취축이 돌면 안 된다. 롤이 실제로 이 개구를
+           지나므로 문짝도 그때만 열린다 — 닫힌 문을 통과하는 그림이 되면 안 된다. */
+        rollSkid();
+        const wq=winderState(index,local);
+        box(V(HATCH_X,HATCH_Y,HATCH_Z+(HATCH_H*.92)*wq.pose.inHatch),V(HATCH_W,.08,HATCH_H),C.sheet,{alpha:.2});
+        for(const z of [HATCH_Z-HATCH_H/2-.05,HATCH_Z+HATCH_H/2+.01])box(V(HATCH_X,HATCH_Y,z),V(HATCH_W+.1,.1,.12),C.yellow);
+        for(const x of [HATCH_X-HATCH_W/2-.05,HATCH_X+HATCH_W/2+.05])box(V(x,HATCH_Y,HATCH_Z),V(.1,.1,HATCH_H+.12),C.yellow);
+        /* 바닥 반출 경로는 롤이 지나는 경로 그 자체다. */
+        line(EJECT_PATH.map(q=>V(q.x,q.y,.1)).concat([V(BS_SADDLE_X,BS_BIN_Y,.1)]),C.sheet,3,[8,4],.75);
         label3('WR-101 · 탠덤 하류 권취롤',V(WR_DRUM_X,-1.98,WR_WEB_Z+1.05),C.yellow);
         label3(`BS-301 · 백시트 롤 보관대 (펜스 외부 · ${ROLL_FULL_PANELS}장/롤)`,V(BS_RACK_X,BS_BIN_Y-1.15,1.8),C.sheet)
       });
@@ -2523,27 +2623,59 @@
       const r=rollRadius(panels);
       flexSurface(cut,WR_GUIDE_X,z0,WR_WEB_Z+.12,C.sheet,alpha,WEB_HALF);
       flexSurface(WR_GUIDE_X,WR_DRUM_X,WR_WEB_Z+.12,WR_WEB_Z+r,C.sheet,alpha,WEB_HALF);
+      /* 웹이 어느 쪽으로 달리는지가 안 보이면 '권취' 가 아니라 그냥 걸쳐진 판으로
+         읽힌다. 진행방향 화살표 하나(정지 화면용)와, 감은 길이를 따라 흐르는
+         가로 눈금(재생 화면용)을 같이 얹는다. */
+      const seg=[[cut,z0,WR_GUIDE_X,WR_WEB_Z+.12],[WR_GUIDE_X,WR_WEB_Z+.12,WR_DRUM_X,WR_WEB_Z+r]];
+      const TICK=.4,ph=((panels*PANEL_L)/TICK)%1;
+      for(const [xa,za,xb,zb] of seg){
+        const len=Math.hypot(xb-xa,zb-za);if(len<.05)continue;
+        for(let d=(1-ph)*TICK;d<len;d+=TICK){
+          const t=d/len,x=lerp(xa,xb,t),z=lerp(za,zb,t)+.012;
+          line([V(x,-WEB_HALF+.04,z),V(x,WEB_HALF-.04,z)],C.cell2,1.1,null,alpha*.7);
+        }
+      }
+      const ax=lerp(WR_GUIDE_X,WR_DRUM_X,.45),az=lerp(WR_WEB_Z+.12,WR_WEB_Z+r,.45)+.03,ay=WEB_HALF-.22;
+      line([V(ax-.22,ay,az),V(ax+.2,ay,az)],C.yellow,2.4,null,.95);
+      line([V(ax+.02,ay-.16,az),V(ax+.2,ay,az),V(ax+.02,ay+.16,az)],C.yellow,2.4,null,.95);
+    }
+    /* 두 분리는 서로 배타적인 단계가 아니다. 칼날이 고정이고 패널이 지나가므로,
+       패널의 어떤 지점이 HKB 를 지나면 그 지점의 백시트가 떨어지고, 칼끝 간격
+       300mm 뒤에 같은 지점이 HKS 를 지나면 셀/EVA 가 떨어진다. 곧 두 박리는
+       300mm — 55mm/s 에서 5.45초 — 만큼 어긋난 채 동시에 진행되고, 그 사이
+       구간에는 백시트만 벗겨진 셀 표면이 띠로 드러난다.
+
+       종전 코드는 `if(분리진행<=0) {백시트} else {셀}` 로 갈라 놓아, 셀 분리가
+       시작되는 순간 백시트 가지를 통째로 건너뛰었다. 정작 권취가 일어나는
+       구간에서 웹도 롤도 화면에 없었던 원인이다. */
+    function tandemCuts(cx,state){
+      const rear=cx-PANEL_HL,front=cx+PANEL_HL;
+      if(!state.tandem)return{rear,front,bs:front,cell:front,bsDone:false,cellDone:false};
+      return{rear,front,
+        bs:clamp(HKB_X,rear,front),cell:clamp(HKS_X,rear,front),
+        bsDone:rear>=HKB_X-1e-6,cellDone:rear>=HKS_X-1e-6};
     }
     function panelLayers(cx,state){
-      const rear=cx-PANEL_HL,front=cx+PANEL_HL,zGlass=state.glassZ||1.48,zCell=1.545,zSheet=1.59;
+      const zGlass=state.glassZ||1.48,zCell=zGlass+.062,zSheet=zCell+.042;
       if(state.phase==='preheat-queue')return;
       flatLayer(cx,PANEL_L,zGlass,C.glass,.78,0,state.glassY||0);
       if(state.phase==='output-glass')return;
-      const opened=state.backsheetOpen||0,peel=state.backsheetPeel||0,removed=state.backsheetRemoved;
-      const sep=state.separation||0;
-      if(sep<=.001){
-        flatLayer(cx,PANEL_L,zCell,C.cell,.98);
-        /* HKB 가 선단 300mm 를 먼저 열고, 나머지 길이를 통과박리로 걷어낸다. */
-        if(!removed){const peeled=Math.min(PANEL_L,LEAD_OPEN*opened+(PANEL_L-LEAD_OPEN)*peel),cut=front-peeled;flatLayer((rear+cut)/2,Math.max(0,cut-rear),zSheet,C.sheet,.98);if(peeled>.01)backsheetWeb(cut,zSheet,state.wound||0)}
-      }else if(sep<.999){
-        const cut=front-PANEL_L*sep;
-        flatLayer((rear+cut)/2,Math.max(0,cut-rear),zCell,C.cell,.98);
-        const tipX=front+.36*ease(sep),tipZ=zCell+.14+.92*ease(sep);
-        flexSurface(cut,tipX,zCell,tipZ,C.cell,.98);
-      }else{
-        const tipX=front+.36,tipZ=zCell+1.06;flexSurface(rear,tipX,zCell,tipZ,C.cell,.98);
+      const q=tandemCuts(cx,state);
+      const cellLeft=Math.max(0,q.cell-q.rear),bsLeft=Math.max(0,q.bs-q.rear);
+      /* 아직 유리 위에 남아 있는 층 */
+      flatLayer((q.rear+q.cell)/2,cellLeft,zCell,C.cell,.98);
+      if(cellLeft>.02)panelCellPattern((q.rear+q.cell)/2,zCell+.026,cellLeft,.72);
+      flatLayer((q.rear+q.bs)/2,bsLeft,zSheet,C.sheet,.98);
+      /* 셀/EVA 는 30° 로 들려 CVC-301 로, 백시트는 GR-W1 을 지나 WR-101 로 */
+      const cellPeeled=q.front-q.cell;
+      if(cellPeeled>.02){
+        const a=Math.PI/6,tx=q.cell+cellPeeled*Math.cos(a),tz=zCell+cellPeeled*Math.sin(a);
+        flexSurface(q.cell,tx,zCell,tz,C.cell,.98);
+        for(let t=.16;t<1;t+=.16){const x=lerp(q.cell,tx,t),z=lerp(zCell,tz,t)+.02;
+          line([V(x,-PANEL_HW+.03,z),V(x,PANEL_HW-.03,z)],C.cell2,.55,null,.7)}
       }
-      line([V(rear,(state.glassY||0)-PANEL_HW-.01,zGlass+.032),V(front,(state.glassY||0)-PANEL_HW-.01,zGlass+.032)],C.glass,1.2);
+      if(state.tandem&&!q.bsDone&&q.front>HKB_X)backsheetWeb(q.bs,zSheet,state.wound||0);
+      line([V(q.rear,(state.glassY||0)-PANEL_HW-.01,zGlass+.032),V(q.front,(state.glassY||0)-PANEL_HW-.01,zGlass+.032)],C.glass,1.2);
     }
     function panelCellPattern(cx,z,length=PANEL_L,alpha=1,yOffset=0){const h=PANEL_HW-.02;for(let x=cx-length/2+.15;x<cx+length/2;x+=.24)line([V(x,yOffset-h,z),V(x,yOffset+h,z)],C.cell2,.55,null,alpha);for(let y=-h+.06;y<h;y+=.24)line([V(cx-length/2,y+yOffset,z),V(cx+length/2,y+yOffset,z)],C.cell2,.55,null,alpha)}
     function tandemEngagement(i,p){
@@ -2593,26 +2725,81 @@
       for(const yy of [-ROLL_FACE/2-.08,ROLL_FACE/2+.08])pillowBlock(WR_GUIDE_X,yy,WR_WEB_Z,'y',.12,C.steel2);
       for(const yy of [-py,py])column(WR_GUIDE_X,yy,WR_WEB_Z+.14,{s:.11,color:C.steel2,plate:.3});
       box(V(WR_DRUM_X+.36,ROLL_FACE/2+.16,WR_WEB_Z),V(.07,.5,.36),C.knife,{rz:-.22});   // 절단·격리 셔터
+      /* 만권 롤 승강레일. 드럼은 z2.46 이고 반출 높이는 z1.15 이므로, 롤은 어딘가에
+         매달려 내려와야 한다. 기둥에 붙은 이 레일과 슬라이드 블록이 그 하중을
+         받는다 — 없으면 롤이 허공에서 내려오는 그림이 된다. */
+      for(const x of [WR_DRUM_X-.5,WR_DRUM_X+.5])for(const yy of [-py,py]){
+        box(V(x,yy+(yy<0?.1:-.1),(RH_CARRY_Z+WR_WEB_Z+.24)/2),V(.09,.09,WR_WEB_Z+.24-RH_CARRY_Z),C.rail);
+      }
       label3('GR-W1 · 박리 가이드롤 107°',V(WR_GUIDE_X,-py-.2,WR_WEB_Z+.46),C.sheet);
+    }
+    /* RH-301 만권롤 반출 스키드. 통로 실측이 기구를 결정했다:
+
+         · 위로 매달 수 없다 — 드럼 위 z2.9~3.2 는 예비 권취축이, 3.1~4.4 는
+           FGT-201 갠트리 빔이 채우고 있다.
+         · 밑을 지나갈 수 없다 — y=-1.38 캐리어 레일과 그 지주가 z0~0.77 을
+           막아 바닥 대차의 마스트가 못 넘는다.
+         · +x 로 굴려 나갈 수도 없다 — x20.5 부터 유리 컨베이어가 z1.29~1.50.
+
+       남는 것은 캐리어 레일 바로 위(레일 상면 z0.94)를 지나는 스키드 레일뿐이다.
+       롤은 이 레일에 얹혀 -y 로 밀려 나가고, 펜스 밖 코너 승강대에서 보관 높이로
+       내려온 뒤, 축 직각 방향이므로 그대로 굴려서 빈 새들에 앉는다. */
+    function rollSkid(){
+      /* 레일은 롤이 내려앉는 코너보다 북쪽에서 끊는다. 승강대까지 밀어 두면
+         내려오는 롤이 레일을 관통한다. */
+      const yN=ROLL_FACE/2+.28,yS=BS_BIN_Y+ROLL_FACE/2+.13,len=yN-yS;
+      for(const x of [WR_DRUM_X-.25,WR_DRUM_X+.25]){
+        box(V(x,(yN+yS)/2,RH_RAIL_Z-.07),V(.10,len,.14),C.rail);
+        /* 지주는 캐리어 레일(y-1.38)·승강 컨베이어(y-1.50)를 피해 세운다. */
+        for(const y of [yN-.12,-.55,-2.55,yS+.12])column(x,y,RH_RAIL_Z-.14,{s:.09,color:C.steel2,plate:.24});
+      }
+      /* 코너 승강대 — 스키드 높이와 보관 높이의 차를 받는다. 승강 테이블 자체는
+         롤을 따라 움직이므로 windingRoll 에서 그린다. */
+      plinth(WR_DRUM_X,BS_BIN_Y,1.3,1.5,.18);
+      for(const x of [WR_DRUM_X-.55,WR_DRUM_X+.55])column(x,BS_BIN_Y,.62,{s:.11,color:C.steel2,plate:.26});
+      /* 굴림 레일 — 롤 축이 y 이므로 +x 는 그냥 굴러간다. 상면 z0.62 에 얹으면
+         축이 정확히 BS_ROLL_Z 에 온다. */
+      for(const y of [BS_BIN_Y-.35,BS_BIN_Y+.35]){
+        box(V((WR_DRUM_X+BS_SADDLE_X+.34)/2,y,BS_ROLL_Z-WR_FULL_R-.07),V(BS_SADDLE_X+.34-WR_DRUM_X,.10,.14),C.rail);
+        for(const x of [20.5,21.6,22.7])column(x,y,BS_ROLL_Z-WR_FULL_R-.14,{s:.08,color:C.steel2,plate:.2});
+      }
+      for(const y of [BS_BIN_Y-.35,BS_BIN_Y+.35])box(V(BS_SADDLE_X+.34,y,BS_ROLL_Z-WR_FULL_R+.08),V(.1,.12,.22),C.yellow);  // 정지 스토퍼
+      label3('RH-301 · 만권롤 반출 스키드',V(WR_DRUM_X-.55,-2.9,RH_RAIL_Z+.5),C.yellow);
+      label3('굴림 레일 · 축 직각 이송',V((WR_DRUM_X+BS_SADDLE_X)/2,BS_BIN_Y-.95,BS_ROLL_Z+.2),C.yellow);
     }
     /* 롤 직경은 감은 장수에서 나온다. peel 진행률이 아니다 — 한 장 감고 롤이
        두 배가 되는 그림은 백시트 0.30mm 를 340mm 로 그린 것과 같다. */
-    function windingRoll(panels,eject=0){
-      const drop=ease(clamp(eject/.45)),run=ease(clamp((eject-.45)/.55));
-      const x=lerp(WR_DRUM_X,BS_BIN_X,run),y=lerp(0,BS_BIN_Y,Math.max(drop*.62,run)),
-            z=lerp(lerp(WR_WEB_Z,1.42,drop),BS_ROLL_Z,run);
-      const r=rollRadius(panels),core=WR_CORE_R;
+    function windingRoll(w){
+      const {x,y,z}=w.pose,r=w.r,core=WR_CORE_R,th=w.theta;
       for(const yy of [-ROLL_FACE/2-.14,ROLL_FACE/2+.14])pillowBlock(x,y+yy,z,'y',.15,C.steel2);
       cylinder(V(x,y,z),r,ROLL_FACE,'y',C.web,22);                               // 감긴 백시트
       for(const yy of [-ROLL_FACE/2+.03,ROLL_FACE/2-.03])cylinder(V(x,y+yy,z),r*.99,.04,'y',shade(C.web,.82),22);
       cylinder(V(x,y,z),core*.94,ROLL_FACE+.06,'y',shade(C.web,.9),18);          // 코어 슬리브
       cylinder(V(x,y,z),.09,ROLL_FACE+.5,'y',C.rail,12);                         // 축
-      for(const yy of [-.5,-.17,.17,.5])box(V(x-core+.03,y+yy,z),V(.12,.2,.08),C.yellow,{rx:panels*.37});
+      /* 회전이 보여야 감기고 있다는 것이 읽힌다. 분할클램프는 코어를 따라 공전하고,
+         양 끝면의 반경선(seam)이 같은 각도로 돈다. 정지 화면에서도 각도가 다르면
+         "이건 도는 축이다" 로 읽힌다. */
+      for(let k=0;k<ROLL_SEAM_MARKS;k++){
+        const a=th+k*2*Math.PI/ROLL_SEAM_MARKS,cx=x+core*Math.cos(a),cz=z+core*Math.sin(a);
+        for(const yy of [-.5,-.17,.17,.5])box(V(cx,y+yy,cz),V(.13,.2,.09),C.yellow,{ry:-a});
+      }
+      for(const yy of [-ROLL_FACE/2-.02,ROLL_FACE/2+.02])
+        line([V(x+core*Math.cos(th),y+yy,z+core*Math.sin(th)),V(x+r*.98*Math.cos(th),y+yy,z+r*.98*Math.sin(th))],C.yellow,1.6,null,.9);
       cylinder(V(x,y+ROLL_FACE/2+.45,z+.06),.24,.62,'y',C.dark,16);              // 토크서보
       cylinder(V(x-.3,y+ROLL_FACE/2+.02,z+.16),.16,.22,'y',C.yellow,12);         // 직경 계측롤
-      const dia=(rollRadius(panels)*2000).toFixed(0),n=Math.floor(panels);
-      if(eject>0)label3(`만권 Ø600 롤 → BS-301 (${ROLL_FULL_PANELS}장 · 약 ${(ROLL_FULL_PANELS/60).toFixed(1)}h)`,V(x,y-.95,z+r+.42),C.sheet);
-      else label3(`WR-101 · ${n}장 누적 · Ø${dia} / Ø600`,V(x,y-1.15,z+r+.42),C.sheet);
+      if(w.eject>=.74&&w.eject<.92){
+        /* 코너 승강 테이블. 롤 밑면을 그대로 따라가야 '내려놓는' 동작이 된다. */
+        for(const xx of [WR_DRUM_X-.30,WR_DRUM_X+.30])
+          box(V(xx,BS_BIN_Y,(.18+z-r)/2),V(.16,1.24,z-r-.18),C.steel2);
+        box(V(WR_DRUM_X,BS_BIN_Y,z-r-.05),V(.86,1.3,.1),C.steel2);
+      }
+      if(w.eject>0){
+        /* 남은 배출 경로를 실제로 지나갈 자리에 그린다. 롤이 어디로 나가는지가
+           한 프레임 안에서 보여야 '배출' 이 읽힌다. */
+        const pts=[V(x,y,z)];for(const q of EJECT_PATH)if(q.at>w.eject)pts.push(V(q.x,q.y,q.z));
+        if(pts.length>1)line(pts,C.sheet,2.4,[7,4],.8);
+        label3(`${w.phase.name} · Ø${w.full} · ${ROLL_FULL_PANELS}장/롤 (약 ${(ROLL_FULL_PANELS/60).toFixed(1)}h)`,V(x,y-.95,z+r+.42),C.sheet);
+      }else label3(`WR-101 · ${Math.floor(w.n)}장 누적 · Ø${w.dia} / Ø${w.full}`,V(x,y-1.15,z+r+.42),C.sheet);
     }
     function cellPathPoint(u){
       const q=clamp(u);if(q<.34){const t=ease(q/.34);return{x:lerp(TDM_OUT+1.2,25,t),y:lerp(0,-2.35,t),z:lerp(1.66,1.28,t),rz:lerp(0,-.51,t),ry:.09*(1-t)}}
@@ -2658,9 +2845,9 @@
       if(carriageFocus){const c=hot?C.teal:C.steel;line([V(x-.6,-DECK_W/2-.2,z-.25),V(x+.6,-DECK_W/2-.2,z-.25)],c,2.2,[7,3],alpha);line([V(x+.46,-DECK_W/2-.2,z-.33),V(x+.6,-DECK_W/2-.2,z-.25),V(x+.46,-DECK_W/2-.2,z-.17)],c,2.2,null,alpha)}
     }
     function stageState(i,p){
-      let cx=3,panelX=3,vac=i>=1&&i<=5,backsheetOpen=0,backsheetPeel=0,backsheetRemoved=i>=5,separation=0,phase='panel',cellOut=-1,rollEject=0,glassOut=-1,glassZ=1.48,glassY=0;
-      if(i===0){panelX=lerp(-1.2,3,ease(p));cx=panelX;vac=false}else if(i===1){cx=panelX=3}else if(i===2){cx=panelX=9.2;phase='preheat-queue'}else if(i===3){cx=panelX=lerp(TDM_IN,TDM_LEAD,ease(p));backsheetOpen=p;backsheetRemoved=false}else if(i===4){cx=panelX=TDM_LEAD;backsheetOpen=1;backsheetRemoved=false}else if(i===5){cx=panelX=lerp(TDM_LEAD,TDM_OUT,ease(p));backsheetOpen=1;backsheetPeel=clamp(p/.875);backsheetRemoved=p>=.875;separation=p}else if(i===6){const support=clamp((p-.12)/.3),glassMove=clamp((p-.12)/.68),returnMove=clamp((p-.48)/.52);cx=lerp(TDM_OUT,TDM_IN,ease(returnMove));panelX=lerp(TDM_OUT,27.4,ease(glassMove));backsheetRemoved=true;phase='output-glass';vac=support<1;cellOut=clamp((p-.18)/.72);glassZ=1.52;glassOut=glassMove}else if(i===7||i===8||i===9){cx=TDM_IN;panelX=27.4;backsheetRemoved=true;phase='output-glass';vac=false;glassZ=1.52;rollEject=i===7?p:1;cellOut=i>=8?p:1;glassOut=1}else if(i===10){cx=TDM_IN;panelX=27.4;glassZ=1.52;glassY=lerp(0,2.55,ease(p));phase='output-glass';vac=false;glassOut=1}else{cx=TDM_IN;panelX=27.4;glassZ=1.52;glassY=2.55;phase='output-glass';vac=false;glassOut=1}
-      return{cx,panelX,vac,backsheetOpen,backsheetPeel,backsheetRemoved,separation,phase,cellOut,rollEject,glassOut,glassZ,glassY,wound:woundCount(i,p)};
+      let cx=3,panelX=3,vac=i>=1&&i<=5,tandem=i>=3&&i<=5,phase='panel',cellOut=-1,rollEject=0,glassOut=-1,glassZ=1.48,glassY=0;
+      if(i===0){panelX=lerp(-1.2,3,ease(p));cx=panelX;vac=false}else if(i===1){cx=panelX=3}else if(i===2){cx=panelX=9.2;phase='preheat-queue'}else if(i===3){cx=panelX=lerp(TDM_IN,TDM_LEAD,ease(p))}else if(i===4){cx=panelX=TDM_LEAD}else if(i===5){cx=panelX=lerp(TDM_LEAD,TDM_OUT,ease(p))}else if(i===6){const support=clamp((p-.12)/.3),glassMove=clamp((p-.12)/.68),returnMove=clamp((p-.48)/.52);cx=lerp(TDM_OUT,TDM_IN,ease(returnMove));panelX=lerp(TDM_OUT,27.4,ease(glassMove));phase='output-glass';vac=support<1;cellOut=clamp((p-.18)/.72);glassZ=1.52;glassOut=glassMove}else if(i===7||i===8||i===9){cx=TDM_IN;panelX=27.4;phase='output-glass';vac=false;glassZ=1.52;rollEject=i===7?p:1;cellOut=i>=8?p:1;glassOut=1}else if(i===10){cx=TDM_IN;panelX=27.4;glassZ=1.52;glassY=lerp(0,2.55,ease(p));phase='output-glass';vac=false;glassOut=1}else{cx=TDM_IN;panelX=27.4;glassZ=1.52;glassY=2.55;phase='output-glass';vac=false;glassOut=1}
+      return{cx,panelX,vac,tandem,phase,cellOut,rollEject,glassOut,glassZ,glassY,wound:woundCount(i,p)};
     }
     function preheatActivity(p,panelX){
       const st=carriageCycleState(p),cx=st.g.rack,{z0,dz}=st;
@@ -2756,9 +2943,7 @@
       const N=10,done=Math.min(N,Math.floor(p*N)),local=(p*N)%1,wound=woundCount(15,p);
       const cx=lerp(TDM_IN,TDM_OUT,ease(local));
       carrier(cx,true);
-      panelLayers(cx,{glassZ:1.48,separation:local,backsheetOpen:1,backsheetPeel:clamp(local/.875),
-                      backsheetRemoved:local>=.875,wound});
-      if(local<=.001)panelCellPattern(cx,1.576,PANEL_L,.7);
+      panelLayers(cx,{glassZ:1.48,tandem:true,wound});
       /* 셀/EVA: 직전 패널 것이 CVC-301 로 투입되고, 앞선 것들은 컨베이어를 타고 간다 */
       if(done>0&&local>.55)cellModuleAt(.34*ease(clamp((local-.55)/.45)),.96);
       for(let k=0;k<Math.min(3,done);k++)cellModuleAt(clamp(.36+(k+local)*.3),.95);
@@ -2770,12 +2955,12 @@
     function dynamicMachine(i,p){
       const s=stageState(i,p),o=explodeOffsets(),carrierOffset=i<=1?o.input:i===2?o.heat:o.tandem,panelOffset=i<=1?o.input:i===2?o.heat:i>=6?o.glass:o.tandem;
       if(i!==2&&i!==12&&i!==15)withPartOffset(carrierOffset,()=>carrier(s.cx,s.vac));
-      if(i!==2&&i!==15)withPartOffset(panelOffset,()=>{panelLayers(s.panelX,s);if(s.phase!=='output-glass'&&s.separation<=.001)panelCellPattern(s.panelX,1.586,4.8,.7)});
+      if(i!==2&&i!==15)withPartOffset(panelOffset,()=>panelLayers(s.panelX,s));
       if(i===2)withPartOffset(o.heat,()=>{preheatActivity(p,s.panelX);carriageLoaderActivity(p)});
       if(!carriageFocus){
         const hkbHot=i>=3&&i<=5,hksHot=i>=4&&i<=5,eng=tandemEngagement(i,p);
         withPartOffset(o.tandem,()=>{knifeBar(HKB_X,1.69,hkbHot,'고정 HKB · 230°C',eng.hkb,'HKB');knifeBar(HKS_X,1.63,hksHot,'고정 HKS · 250~270°C',eng.hks,'HKS');if(tandemFocus&&i>=3&&i<=6){const d=i===6?-1:1,x0=s.cx-d*1.2,x1=s.cx+d*1.2;line([V(x0,-1.66,.9),V(x1,-1.66,.9)],C.teal,3,[7,3],.95);line([V(x1-d*.2,-1.66,.82),V(x1,-1.66,.9),V(x1-d*.2,-1.66,.98)],C.teal,2.3)}if(i===3)label3('캐리어 200 → 55mm/s · 선행 300mm',V(s.cx,-1.72,2.28),C.yellow);if(i===5){label3(`캐리어 → 55mm/s · 칼날 X축 고정 · 간격 ${(TANDEM_GAP*1000).toFixed(0)}±2mm`,V(s.cx,-1.78,2.28),C.teal)}});
-        withPartOffset(o.backsheet,()=>windingRoll(woundCount(i,p),i===7?p:0));
+        withPartOffset(o.backsheet,()=>windingRoll(winderState(i,p)));
         if(i===6)withPartOffset(o.cell,()=>outputLaminate(p));else if(i===7)withPartOffset(o.cell,()=>outputLaminate(1));
         if(i===8)withPartOffset(o.cell,()=>cellBufferActivity(p));if(i===9)withPartOffset(o.cell,()=>shredderActivity(p));
         if(i>=6&&i<=10)withPartOffset(o.glass,()=>glassStorageCarriageActivity(i===10?p:0,i>=10?1:0));
@@ -2892,15 +3077,22 @@
       ][index];
       $('flowBacksheetText').textContent=flowStates[0];$('flowCellText').textContent=flowStates[1];$('flowGlassText').textContent=flowStates[2];
       /* 롤 상태는 고정 문구로 쓸 수 없다. 직경이 감은 장수를 따라가는 것이 이 계통의
-         핵심이고, 3D 라벨은 '부품 라벨' 을 켜야만 보이므로 여기에 항상 띄운다. */
+         핵심이고, 3D 라벨은 '부품 라벨' 을 켜야만 보이므로 여기에 항상 띄운다.
+         S7 은 배출 서브페이즈가 흘러가므로 단계 설명문도 같이 갈아끼운다 — 3.2초
+         동안 문구가 고정돼 있으면 롤이 어디까지 갔는지 화면에서 읽을 길이 없다. */
       if((index>=3&&index<=7)||index===15){
-        const n=woundCount(index,local);
-        $('flowBacksheetText').textContent=index===7
-          ? `만권 Ø600 → BS-301 · ${ROLL_FULL_PANELS}장/롤 · 약 ${(ROLL_FULL_PANELS/60).toFixed(1)}h`
-          : `WR-101 권취 ${Math.floor(n)}장 · Ø${(rollRadius(n)*2000).toFixed(0)} / Ø600`;
+        const w=winderState(index,local);
+        $('flowBacksheetText').textContent=w.text;
+        if(index===7){
+          $('stageTitle').textContent=`S7 · ${w.phase.name}`;
+          $('stageDesc').textContent=`${w.phase.detail} 롤 교체는 패널마다가 아니라 만권(Ø${w.full} · 백시트 ${(BACKSHEET_T*1000).toFixed(2)}mm 기준 ${ROLL_FULL_PANELS}장 · 약 ${(ROLL_FULL_PANELS/60).toFixed(1)}h)에서만 일어납니다.`;
+          $('outputValue').textContent=local>=.94?'BACKSHEET_BIN_ACK':w.phase.name;
+        }
       }
-      $('materialFlow').classList.toggle('active',(index>=5&&index<=13)||index===15);
-      $('flowBacksheet').classList.toggle('moving',index===5||index===7||index===15);
+      /* 권취는 S3 선단 개방부터 시작한다. 그때부터 백시트 계통을 띄워야
+         '언제부터 감기고 있는지' 가 보인다. */
+      $('materialFlow').classList.toggle('active',(index>=3&&index<=13)||index===15);
+      $('flowBacksheet').classList.toggle('moving',(index>=3&&index<=6)||index===7||index===15);
       $('flowCell').classList.toggle('moving',index===5||index===6||index===8||index===9||index===15);
       $('flowGlass').classList.toggle('moving',index===6||index===10||index===11||index===15);
       const done=steps.slice(0,index).reduce((sum,v)=>sum+v.duration,0)+s.duration*local,pct=100*done/total;$('progressBar').style.width=`${pct}%`;$('progressBar').parentElement.setAttribute('aria-valuenow',String(Math.round(pct)));
