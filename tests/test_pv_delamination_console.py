@@ -530,8 +530,11 @@ class TestBacksheetWinder(unittest.TestCase):
         cls.turn = cls.L * cls.T / math.pi
 
     def _const(self, name):
-        m = re.search(rf"\b{name}\s*=\s*(-?[\d.]+(?:e-?\d+)?)", self.html)
-        self.assertIsNotNone(m, f"상수 {name} 을 찾지 못했다")
+        """`const NAME=<숫자>` 선언만 읽는다. 주석에 같은 이름이 나와도 안 걸린다."""
+        m = re.search(
+            rf"(?:const|,)\s*{name}\s*=\s*(-?[\d.]+(?:e-?\d+)?)[,;]", self.html
+        )
+        self.assertIsNotNone(m, f"상수 {name} 선언을 찾지 못했다")
         return float(m.group(1))
 
     def _radius(self, n):
@@ -616,9 +619,9 @@ class TestBacksheetWinder(unittest.TestCase):
         self.assertIn("GR-W1", self.html, "가이드롤에 부호가 없다")
 
     def test_web_clears_the_knife_z_axis_columns(self):
-        """웹 반폭 1.2m 옆으로 기둥이 지나면 필름이 기둥에 쓸린다."""
+        """웹 가장자리 옆으로 기둥이 지나면 필름이 기둥에 쓸린다."""
         post = self._const("KNIFE_POST_Y")
-        half = self._const("WEB_HALF")
+        half = self._const("PANEL_W") / 2          # 백시트 폭 = 패널 폭
         self.assertGreaterEqual(
             post - half, 0.12,
             "웹 가장자리와 나이프 Z축 기둥 간극이 사양의 120mm 미만이다",
@@ -648,11 +651,20 @@ class TestBacksheetWinder(unittest.TestCase):
             "PLC/HMI 캐비닛이 권취부 롤 반출 통로와 겹친다",
         )
 
-    def test_panel_draw_scale_discrepancy_is_declared(self):
-        """도면 패널 4800×2400 과 사양 2400×1200 의 차이를 숨기지 않는다."""
-        self.assertIn("PANEL_DRAW_SCALE", self.html,
-                      "패널 축척 불일치가 코드에 드러나 있지 않다")
-        self.assertIn("2400×1200", self.html, "사양 치수가 주석에 없다")
+    def test_roll_is_drawn_at_true_size(self):
+        """롤을 실치수로 그린다 — 배율 보정이 남아 있으면 실패한다."""
+        self.assertNotIn("PANEL_DRAW_SCALE", self.html,
+                         "권취 롤에 아직 축척 보정이 붙어 있다")
+        body = re.search(r"function windingRoll\(.*?\n    \}", self.html, re.S).group(0)
+        self.assertRegex(
+            body, r"const r=rollRadius\(panels\)\s*,",
+            "롤 그리기 반경이 rollRadius 그대로가 아니다 — 배율이 붙어 있다",
+        )
+        # 롤 면폭은 사양의 권취 유효폭 1,400~1,500mm 안이어야 한다
+        face = self._const("ROLL_FACE")
+        self.assertGreaterEqual(face, 1.4)
+        self.assertLessEqual(face, 1.5)
+        self.assertGreater(face, self._const("PANEL_W"), "롤 면폭이 백시트 폭보다 좁다")
 
     def test_live_roll_diameter_is_readable_without_turning_on_labels(self):
         """3D 라벨은 기본이 꺼져 있다. 직경이 거기에만 있으면 아무도 못 본다."""
@@ -713,6 +725,130 @@ class TestTenPanelTrial(unittest.TestCase):
         r = math.sqrt(0.15 ** 2 + 10 * 2.4 * 0.30e-3 / math.pi)
         self.assertAlmostEqual(r * 2000, 314.9, delta=0.1)
         self.assertIn("Ø314.9", self.html, "10장 시운전 설명의 롤 직경이 없다")
+
+
+class TestPanelScale(unittest.TestCase):
+    """도면이 실제로 1 unit = 1 m 이고, 패널이 사양 치수로 그려지는지.
+
+    종전에는 패널만 4800×2400 으로 — 사양의 2배로 — 그려져 있었다. 축척이
+    틀려도 화면은 멀쩡해 보이고, 옆에 놓인 갠트리·펜스가 전부 맞는 치수라
+    비교 대상이 없으면 눈으로는 잡히지 않는다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = CONSOLE.read_text(encoding="utf-8")
+
+    def _const(self, name):
+        m = re.search(
+            rf"(?:const|,)\s*{name}\s*=\s*(-?[\d.]+(?:e-?\d+)?)[,;]", self.html
+        )
+        self.assertIsNotNone(m, f"상수 {name} 선언을 찾지 못했다")
+        return float(m.group(1))
+
+    def _fn(self, name):
+        m = re.search(rf"\n    function {name}\(.*?\n    \}}", self.html, re.S)
+        self.assertIsNotNone(m, f"{name} 함수를 찾지 못했다")
+        return m.group(0)
+
+    def test_drawing_scale_is_one_unit_per_metre(self):
+        """도면 좌표가 미터라는 것이 이 파일의 다른 모든 치수 주장의 전제다.
+
+        제작도 표에 적힌 치수와 3D 좌표가 다섯 군데에서 맞아야 성립한다.
+        """
+        # 안전펜스 25,000 mm = M-013
+        fence = re.findall(r"fenceSegment\(([-\d.,\s]+)\)", self.html)
+        xs = [float(v) for call in fence for v in call.split(",")[:4:2]]
+        self.assertAlmostEqual(max(xs) - min(xs), 24.8, delta=0.05)
+        self.assertIn("25000×7000", self.html.replace(" ", ""))
+        # 탠덤 브리지 10,200 mm = M-005
+        self.assertIn("gantry(17.8,10.2,", self.html)
+        self.assertIn("10200×4200", self.html)
+        # 가열실 M-002 — 표의 길이·폭이 실제로 그려진 외피와 같아야 한다
+        tunnel = self._fn("preheatTunnel")
+        self.assertRegex(tunnel, r"L\s*=\s*5\.6\b")
+        m = re.search(r"id:'M-002'[^}]*?size:'(\d+)×(\d+)×\d+'", self.html)
+        self.assertIsNotNone(m, "M-002 제작도 치수를 찾지 못했다")
+        self.assertAlmostEqual(float(m.group(1)), 5600, delta=1)
+        roof = re.search(r"box\(V\(cx,0,4\.86\),V\(L\+\.42,([\d.]+),", tunnel)
+        self.assertIsNotNone(roof, "가열실 지붕 폭을 찾지 못했다")
+        self.assertAlmostEqual(
+            float(m.group(2)), float(roof.group(1)) * 1000, delta=1,
+            msg="M-002 표의 폭이 실제로 그려진 가열실 외피와 다르다",
+        )
+        # 칼끝 간격 300 mm
+        hkb = self._const("HKB_X")
+        hks = self._const("HKS_X")
+        self.assertAlmostEqual((hks - hkb) * 1000, 300, delta=0.5)
+
+    def test_panel_matches_the_specification(self):
+        """패널 2400×1200. 열모델의 기본 패널과도 같은 값이어야 한다."""
+        self.assertAlmostEqual(self._const("PANEL_L"), 2.4, places=4)
+        self.assertAlmostEqual(self._const("PANEL_W"), 1.2, places=4)
+        model = re.search(
+            r"panelLength:(\d+),panelWidth:(\d+)", self.html
+        )
+        self.assertIsNotNone(model, "열모델 기본 패널을 찾지 못했다")
+        self.assertAlmostEqual(self._const("PANEL_L") * 1000, float(model.group(1)),
+                               delta=0.5, msg="그려지는 패널 길이가 열모델과 다르다")
+        self.assertAlmostEqual(self._const("PANEL_W") * 1000, float(model.group(2)),
+                               delta=0.5, msg="그려지는 패널 폭이 열모델과 다르다")
+
+    def test_panel_geometry_is_derived_not_typed(self):
+        """치수를 함수마다 손으로 적으면 다음 사양 변경 때 또 한쪽만 고쳐진다."""
+        for fn in ("panelLayers", "flatLayer", "panelCellPattern"):
+            body = self._fn(fn)
+            self.assertRegex(body, r"PANEL_(L|W|HL|HW)",
+                             f"{fn} 이 패널 치수를 상수로 쓰지 않는다")
+            self.assertNotIn("4.8", body, f"{fn} 에 옛 패널 길이가 남아 있다")
+            self.assertNotIn("2.4,", body, f"{fn} 에 옛 패널 폭이 남아 있다")
+
+    def test_everything_that_holds_the_panel_is_bigger_than_it(self):
+        """패널보다 작은 캐리어·데크·칼날은 물리적으로 성립하지 않는다."""
+        length, width = self._const("PANEL_L"), self._const("PANEL_W")
+        for name, want in (("CARRIER_L", length), ("DECK_L", length),
+                           ("CARRIER_W", width), ("DECK_W", width),
+                           ("KNIFE_W", width), ("ROLL_FACE", width)):
+            self.assertGreater(
+                self._const(name), want,
+                f"{name} 이 패널보다 작다 — 패널을 받칠 수 없다",
+            )
+        # 여유가 지나쳐도 안 된다: 캐리어는 패널 + 500mm 이내
+        self.assertLess(self._const("CARRIER_L") - length, 0.6)
+        self.assertLess(self._const("CARRIER_W") - width, 0.6)
+
+    def test_tandem_pass_covers_the_whole_panel(self):
+        """선단이 HKB 에 닿는 자리에서 후단이 HKS 를 벗어날 때까지.
+
+        통과 구간을 손으로 적어 두면 패널 길이를 바꿀 때 같이 안 바뀌므로,
+        HKB/HKS 와 패널 길이에서 유도했는지를 소스에서 확인한다.
+        """
+        hkb, hks = self._const("HKB_X"), self._const("HKS_X")
+        length = self._const("PANEL_L")
+        lead = self._const("LEAD_OPEN")
+        self.assertRegex(
+            self.html, r"TDM_LEAD=HKB_X-PANEL_HL\+LEAD_OPEN",
+            "선단 개방 위치가 HKB·패널 길이에서 유도되지 않았다",
+        )
+        self.assertRegex(
+            self.html, r"TDM_OUT=HKS_X\+PANEL_HL",
+            "통과 종점이 HKS·패널 길이에서 유도되지 않았다",
+        )
+        lead_x, out_x = hkb - length / 2 + lead, hks + length / 2
+        self.assertAlmostEqual(lead_x, 16.75, delta=0.001)
+        self.assertAlmostEqual(out_x, 19.15, delta=0.001)
+        # 통과 거리는 패널 길이 + 칼끝 간격
+        self.assertAlmostEqual(out_x - (hkb - length / 2), length + (hks - hkb),
+                               delta=0.001)
+        # 탠덤 단계가 실제로 그 구간을 쓰는지
+        self.assertIn("lerp(TDM_LEAD,TDM_OUT,ease(p))", self.html,
+                      "S5 통과박리가 유도된 구간을 쓰지 않는다")
+        self.assertNotIn("lerp(15.7,20.5", self.html, "옛 통과 구간이 남아 있다")
+
+    def test_cell_module_leaves_where_the_panel_leaves(self):
+        """셀 경로 시작점이 패널 배출 위치와 어긋나면 모듈이 허공에서 생긴다."""
+        body = self._fn("cellPathPoint")
+        self.assertIn("TDM_OUT", body, "셀 경로가 탠덤 배출 위치를 쓰지 않는다")
 
 
 if __name__ == "__main__":
