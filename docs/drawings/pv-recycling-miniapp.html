@@ -15472,7 +15472,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     P16: { name: "RV-101 로터리 에어록", role: "CY-101 하부 고체를 음압 손실 없이 SC-500에 정량 배출", spec: "Ø180 · 6포켓 · 18 rpm · 0.37 kW · 팁 간극 0.15–0.25", shape: "airlock" },
     P17: { name: "BF-101＋RV-102＋B-101＋배기스택", role: "필터 뒤에서 공정을 흡인하고 FD-101 국소집진·필터회분 CH-501 회수를 포함한 밀폐 배관을 구성", spec: "카트리지필터 6본 · 900 m³/h · −6.0 kPa max · 5.5 kW VFD · DN80/65", shape: "blower" },
     P18: { name: "CH-501＋RV-201＋PC-201 밀폐 이송", role: "SC-500 통과분을 밀폐 집하하고 RV-201 정량공급 후 음압리프트·리시버 에어록으로 VS-501에 비산 없이 이송", spec: "CH 상부 800 × 1500 · RV-201 · PC-201 보어 103 (DN125 셸＋12 mm 알루미나 라이저) · 약 350 m³/h · 11.7 m/s · 정전기방지 유연연결", shape: "collector-round" },
-    P19: { name: "VS-501＋SV-201 밀폐 Sheeve 후단 (2단 복합)", role: "VS-501 분산 후 상단 직사각 진동스크린이 280 µm 로 1차 선별해 오버를 토출하고, 언더만 하단 원형 Ø1200 으로 내려가 106/75 µm 를 친다", spec: "VS-501 0.9 mm · 상단 직사각 880×680 · 12° · 대향 진동모터 2 · 스프링 8점 / 하단 원형 Ø1200 · 2단 · 2.2 kW · 960 rpm", shape: "rect-over-circular" },
+    P19: { name: "VS-501＋SV-201 밀폐 Sheeve 후단", role: "상부 배치 VS-501에서 분산 후 밀폐 하향슈트로 SV-201에 공급하고 모든 토출을 밀폐 배관으로 연결", spec: "VS-501 0.9 mm · SV-201 Ø1200 · 280/106/75 µm · 2.2 kW · 960 rpm", shape: "circular-three-deck" },
     P20: { name: "CC-201＋Y헤더＋RV-204 공기분급기", role: "SV-201 두 입도라인을 개별 배관·Y헤더로 투입하고 상승류에서 중량물과 EVA·백시트 경량물을 분리", spec: "컬럼 Ø860 × H1,900 · 0.70–1.00 m/s · Y헤더 · 중량물 RV-204", shape: "air-classifier" },
     P21: { name: "CY-201＋RV-202＋BF-201＋RV-203＋ID 팬", role: "CC-201 경량물을 회수하고 CY·BF 포집물을 각각 에어록으로 SS-201에 합류시키며 청정가스를 배기스택으로 배출", spec: "CY Ø680 · BF 카트리지 5본 · RV-202/203 · VFD 후단흡인 · 배기스택", shape: "cyclone-filter" },
     P22: { name: "SS-201 75 µm 분리토출 스크린", role: "CY-201 회수물과 SV-201 PAN 미분을 재검증해 ≥75 µm 재처리물과 <75 µm 최종 미분제품을 물리적으로 분리", spec: "Ø1100 원형 · 75 µm · 측면 재처리구＋하부 제품구 · 초음파 35–40 kHz", shape: "polishing-screen" },
@@ -16760,15 +16760,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     ]), 8, 0.085, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P16", false);
 
     const FIRST_SCREEN_CUT_UM = 500;
-    // SV-201 은 2단 복합기다 — 상단 직사각 진동스크린이 280 µm 로 1차 선별해 오버를
-    // 토출하고, 언더만 하단 원형 Ø1200 으로 내려가 106/75 를 친다. BOM 이 한 항목 안에
-    // 두 기종을 기술한 이유가 이것이었다 — overall 2,600×1,800×2,700 · 독립 스키드
-    // 2,400×1,600 · SV-002 코일스프링 8 · SV-051 모터 브래킷 2 · erection 의 「대향
-    // 진동모터 위상·편심량 설정」은 전부 상단 직사각(직선진동)의 사양이고, basis 의
-    // Ø1,200 이 하단 원형(수직축 편심)이다. 종전 형상은 원형 하나에 세 장을 다
-    // 몰아넣어 상단이 통째로 빠져 있었다.
-    const PRIMARY_RECT_CUT_UM = 280;                             // 상단 직사각 1단
-    const SECONDARY_SIEVE_CUTS_UM = Object.freeze([106, 75]);    // 하단 원형 2·3단
+    const SECONDARY_SIEVE_CUTS_UM = Object.freeze([280, 106, 75]);
     const SIEVE_ROUTE_KEYS = Object.freeze([
       "return-500",
       "product-280-500",
@@ -16950,25 +16942,22 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // PC-201 is a fully enclosed negative-pressure lift. It avoids the open,
     // upward chute that could not transport powder by gravity.
-    // SV-201 이 2단 복합기가 되어 VS-501 이 720 mm 올라갔다. 리시버·에어록이 그대로면
-    // 분배 데크보다 낮아져 중력 급입이 성립하지 않으므로 같은 높이만큼 함께 올린다.
-    const PC201_LIFT = 0.72;
-    const pc201ReceiverCenter = new THREE.Vector3(2.52, 1.75 + PC201_LIFT, -0.28);
+    const pc201ReceiverCenter = new THREE.Vector3(2.52, 1.75, -0.28);
     const pc201LiftCurve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(2.30, -0.56, 0.20),
       new THREE.Vector3(2.36, -0.34, 0.06),
       new THREE.Vector3(2.42, 0.46, -0.22),
-      new THREE.Vector3(2.40, 1.50 + PC201_LIFT * 0.6, -0.34),
-      new THREE.Vector3(2.36, 1.76 + PC201_LIFT, -0.22)
+      new THREE.Vector3(2.40, 1.50, -0.34),
+      new THREE.Vector3(2.36, 1.76, -0.22)
     ]);
     // PC-201 라이저는 보어 103 mm — DN125 t6.0 셸(OD 139.8)에 12 mm 알루미나. DN100 셸에 라이닝하면
     // 보어 90 → 15.3 m/s 로 마모가 2 배가 되므로 셸을 한 치수 키운다.
     addMesh(parts.P18, new THREE.TubeGeometry(pc201LiftCurve, 52, 0.0699, 16, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P18", false);
     addWearSpools(parts.P18, pc201LiftCurve, 0.0699, "P18");
     addCylinder(parts.P18, 0.18, 0.28, pc201ReceiverCenter, material.solidsReceiver, "P18", "y", 40, true);
-    addMesh(parts.P18, new THREE.CylinderGeometry(0.18, 0.06, 0.32, 40, 1, true), material.solidsReceiver, { x: pc201ReceiverCenter.x, y: 1.46 + PC201_LIFT, z: pc201ReceiverCenter.z }, null, "P18", true);
-    addCylinder(parts.P18, 0.070, 0.20, { x: pc201ReceiverCenter.x, y: 1.98 + PC201_LIFT, z: pc201ReceiverCenter.z }, material.solidsReceiver, "P18", "y", 24, false);
-    const pc201AirlockCenter = new THREE.Vector3(pc201ReceiverCenter.x, 1.19 + PC201_LIFT, pc201ReceiverCenter.z);
+    addMesh(parts.P18, new THREE.CylinderGeometry(0.18, 0.06, 0.32, 40, 1, true), material.solidsReceiver, { x: pc201ReceiverCenter.x, y: 1.46, z: pc201ReceiverCenter.z }, null, "P18", true);
+    addCylinder(parts.P18, 0.070, 0.20, { x: pc201ReceiverCenter.x, y: 1.98, z: pc201ReceiverCenter.z }, material.solidsReceiver, "P18", "y", 24, false);
+    const pc201AirlockCenter = new THREE.Vector3(pc201ReceiverCenter.x, 1.19, pc201ReceiverCenter.z);
     addCylinder(parts.P18, 0.11, 0.24, pc201AirlockCenter, material.solidsReceiver, "P18", "z", 30, false);
     const pc201AirlockRotor = new THREE.Group();
     pc201AirlockRotor.position.copy(pc201AirlockCenter);
@@ -16980,30 +16969,22 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // VS-501 is raised above SV-201 so the second connection is a sealed,
     // downward gravity chute rather than another powered transfer.
-    // SV-201 이 2단 복합기가 되면서 분배 데크와 원형 사이에 상단 직사각이 들어간다.
-    // 종전에는 VS-501 이 원형 바로 위(y 1.02)에 있어 그 자리를 비워 줘야 했다 —
-    // 720 mm 올리면 PC-201 리시버(y 1.75) 와 같은 높이가 되어 슈트도 짧아진다.
-    const VS501_LIFT = 0.72;
-    const distributionDeck = addBox(secondaryGroup, { x: 0.78, y: 0.025, z: 0.42 }, { x: 2.78, y: 1.02 + VS501_LIFT, z: 0.20 }, material.screen, "P19", { z: -SIEVE_INCLINE_RAD }, false);
+    const distributionDeck = addBox(secondaryGroup, { x: 0.78, y: 0.025, z: 0.42 }, { x: 2.78, y: 1.02, z: 0.20 }, material.screen, "P19", { z: -SIEVE_INCLINE_RAD }, false);
     distributionDeck.userData.role = "deagglomeration-only";
-    addBox(secondaryGroup, { x: 0.86, y: 0.24, z: 0.04 }, { x: 2.78, y: 1.09 + VS501_LIFT, z: -0.02 }, material.screenHousing, "P19", { z: -SIEVE_INCLINE_RAD });
-    addBox(secondaryGroup, { x: 0.86, y: 0.24, z: 0.04 }, { x: 2.78, y: 1.09 + VS501_LIFT, z: 0.42 }, material.screenHousing, "P19", { z: -SIEVE_INCLINE_RAD });
-    addCylinder(secondaryGroup, 0.075, 0.18, { x: 2.62, y: 1.21 + VS501_LIFT, z: -0.06 }, material.motor, "P19", "z", 24, false);
-    addCylinder(secondaryGroup, 0.075, 0.18, { x: 2.94, y: 1.14 + VS501_LIFT, z: -0.06 }, material.motor, "P19", "z", 24, false);
-    // VS-501 지지 기둥 — 올라간 만큼 하중경로를 잇는다
-    for (const dx of [-0.36, 0.36]) for (const dz of [-0.24, 0.24]) {
-      addBox(parts.P19, { x: 0.06, y: 1.62, z: 0.06 }, { x: 2.78 + dx, y: 0.93, z: 0.20 + dz }, material.frame, "P19");
-      addBox(parts.P19, { x: 0.18, y: 0.03, z: 0.18 }, { x: 2.78 + dx, y: 0.105, z: 0.20 + dz }, material.frame, "P19");
-    }
+    addBox(secondaryGroup, { x: 0.86, y: 0.24, z: 0.04 }, { x: 2.78, y: 1.09, z: -0.02 }, material.screenHousing, "P19", { z: -SIEVE_INCLINE_RAD });
+    addBox(secondaryGroup, { x: 0.86, y: 0.24, z: 0.04 }, { x: 2.78, y: 1.09, z: 0.42 }, material.screenHousing, "P19", { z: -SIEVE_INCLINE_RAD });
+    addCylinder(secondaryGroup, 0.075, 0.18, { x: 2.62, y: 1.21, z: -0.06 }, material.motor, "P19", "z", 24, false);
+    addCylinder(secondaryGroup, 0.075, 0.18, { x: 2.94, y: 1.14, z: -0.06 }, material.motor, "P19", "z", 24, false);
     const airlockToDistributor = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(pc201AirlockCenter.x, 1.07 + VS501_LIFT * 0.5, pc201AirlockCenter.z),
-      new THREE.Vector3(2.58, 1.08 + VS501_LIFT * 0.8, -0.08),
-      new THREE.Vector3(2.48, 1.10 + VS501_LIFT, 0.20)
+      new THREE.Vector3(pc201AirlockCenter.x, 1.07, pc201AirlockCenter.z),
+      new THREE.Vector3(2.58, 1.08, -0.08),
+      new THREE.Vector3(2.48, 1.10, 0.20)
     ]);
     addMesh(parts.P18, new THREE.TubeGeometry(airlockToDistributor, 24, 0.070, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P18", false);
 
-    // SV-201 하단 — 원형 Ø1200, 106/75 µm 2단. 280 µm 는 상단 직사각이 맡는다.
-    const secondaryDeckYs = [0.42, 0.20];
+    // SV-201 circular 3-deck sieve, Ø1200, 280/106/75 µm.
+    const secondaryDeckYs = [0.48, 0.31, 0.14];
+    const secondaryDeckMaterials = [material.product500, material.product280, material.product106];
     const secondaryDeckMeshes = secondaryDeckYs.map((y, index) => {
       addCylinder(secondaryGroup, 0.63, 0.15, { x: secondaryCenter.x, y, z: secondaryCenter.z }, material.screenHousing, "P19", "y", 64, true);
       const mesh = addCylinder(secondaryGroup, 0.58, 0.018, { x: secondaryCenter.x, y: y + 0.03, z: secondaryCenter.z }, material.screen, "P19", "y", 64, false);
@@ -17026,134 +17007,25 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       addCylinder(parts.P19, 0.045, 0.30, { x: secondaryCenter.x + dx, y: -0.18, z: secondaryCenter.z + dz }, material.fixed, "P19", "y", 18, false);
       addBox(parts.P19, { x: 0.16, y: 0.04, z: 0.16 }, { x: secondaryCenter.x + dx, y: -0.35, z: secondaryCenter.z + dz }, material.frame, "P19");
     }));
-    // ---- SV-201 상단 직사각 진동스크린 (1단 280 µm) --------------------------
-    // VS-501 분배 데크에서 받아 서→동으로 12° 내리막을 흘려보내며 280 µm 로 1차 선별한다.
-    // 오버는 동쪽 끝에서 토출하고, 언더는 데크 아래 집합 호퍼로 떨어져 서쪽으로 되돌아
-    // 하단 원형의 급입구로 들어간다. 진동은 대향 진동모터 2대의 직선운동이라 하단
-    // 원형(수직축 편심 나선운동)과 형식이 다르고, 그래서 스키드도 따로 선다.
-    const RECT_X0 = 2.86, RECT_X1 = 3.72;          // 급입(높은 쪽) → 토출(낮은 쪽)
-    const RECT_Z = 0.20, RECT_HZ = 0.34;           // 데크 폭 0.68 — 원형과 같은 축선
-    const RECT_Y0 = 1.183, RECT_Y1 = 1.000;        // 0.183 / 0.86 → 12.0°
-    const RECT_INCLINE = Math.atan2(RECT_Y0 - RECT_Y1, RECT_X1 - RECT_X0);
-    const rectMid = { x: (RECT_X0 + RECT_X1) / 2, y: (RECT_Y0 + RECT_Y1) / 2, z: RECT_Z };
-    const rectLen = Math.hypot(RECT_X1 - RECT_X0, RECT_Y0 - RECT_Y1);
-    const rectDeckY = (x) => RECT_Y0 - Math.tan(RECT_INCLINE) * (x - RECT_X0);
-
-    const rectGroup = new THREE.Group();
-    parts.P19.add(rectGroup);
-    const rectMotionOffset = new THREE.Vector3();
-
-    // 진동체 — 양 측판 · 스크린 데크 · 상부 커버 · 급입 유입구 · 오버 토출 슈트
-    for (const dz of [-RECT_HZ, RECT_HZ]) {
-      addBox(rectGroup, { x: rectLen, y: 0.30, z: 0.05 }, { x: rectMid.x, y: rectMid.y + 0.09, z: RECT_Z + dz },
-        material.screenHousing, "P19", { z: -RECT_INCLINE });
-    }
-    const rectScreen = addBox(rectGroup, { x: rectLen - 0.04, y: 0.016, z: RECT_HZ * 2 - 0.04 },
-      { x: rectMid.x, y: rectMid.y, z: RECT_Z }, material.screen, "P19", { z: -RECT_INCLINE }, false);
-    rectScreen.userData.cutUm = PRIMARY_RECT_CUT_UM;
-    addBox(rectGroup, { x: rectLen - 0.02, y: 0.05, z: RECT_HZ * 2 - 0.02 },
-      { x: rectMid.x, y: rectMid.y + 0.235, z: RECT_Z }, material.cover, "P19", { z: -RECT_INCLINE });
-    addBox(rectGroup, { x: 0.05, y: 0.30, z: RECT_HZ * 2 }, { x: RECT_X0 - 0.02, y: RECT_Y0 + 0.09, z: RECT_Z },
-      material.screenHousing, "P19");
-    // 언더 집합 호퍼 — 데크 아래를 받아 서쪽 하단 원형 급입구로 모은다
-    addMesh(rectGroup, openFrustumGeometry(0.30, 0.30, rectLen - 0.02, RECT_HZ * 2 - 0.02, 0.26),
-      material.screenHousing, { x: rectMid.x - 0.06, y: rectMid.y - 0.15, z: RECT_Z }, null, "P19", true);
-
-    // 대향 진동모터 2대 — SV-051 모터 브래킷 2EA 자리. 위상 180° 로 직선운동을 만든다.
-    const rectExciters = [];
-    for (const dz of [-1, 1]) {
-      addBox(rectGroup, { x: 0.22, y: 0.16, z: 0.05 }, { x: rectMid.x, y: rectMid.y + 0.30, z: RECT_Z + dz * (RECT_HZ + 0.05) },
-        material.frame, "P19", { z: -RECT_INCLINE });
-      addCylinder(rectGroup, 0.085, 0.24, { x: rectMid.x, y: rectMid.y + 0.40, z: RECT_Z + dz * (RECT_HZ + 0.10) },
-        material.motor, "P19", "z", 26, false);
-      const rotor = new THREE.Group();
-      rotor.position.set(rectMid.x, rectMid.y + 0.40, RECT_Z + dz * (RECT_HZ + 0.22));
-      rectGroup.add(rotor);
-      addBox(rotor, { x: 0.13, y: 0.05, z: 0.03 }, { x: 0.033, y: 0, z: 0 }, material.fixed, "P19", null, false);
-      rectExciters.push({ rotor, dir: dz });
-    }
-
-    // 독립 스키드 2,400 × 1,600 — 진동체와 비접촉. 그 위에 코일스프링 8점이 선다.
-    // BOM SV-001 C150×75 · SV-002 코일스프링 8 · SV-003 스프링 시트 16 · F-SV-01 M20 앵커 12.
-    const RECT_SKID_Y = 0.86;
-    // 스키드는 기존 SV-201 베이스(x 2.55…3.90) 안에 든다 — 동쪽은 CC-201 이 x 3.77
-    // 부터 차지하므로 그 선을 넘지 않는다. 도면상 2,400×1,600 은 발주 기준이고,
-    // 모델에서는 주변 배치에 맞춰 1,120 × 1,440 으로 줄였다.
-    for (const dz of [-0.72, 0.72]) {
-      addBox(parts.P19, { x: 1.12, y: 0.15, z: 0.075 }, { x: rectMid.x, y: RECT_SKID_Y, z: RECT_Z + dz }, material.frame, "P19");
-    }
-    for (const dx of [-0.52, 0.52]) {
-      addBox(parts.P19, { x: 0.075, y: 0.15, z: 1.44 }, { x: rectMid.x + dx, y: RECT_SKID_Y, z: RECT_Z }, material.frame, "P19");
-    }
-    // 스프링 8점 — 진동체 하부 프레임을 스키드 위에서 띄운다
-    for (const dx of [-0.44, -0.15, 0.15, 0.44]) {
-      for (const dz of [-0.52, 0.52]) {
-        const sx = rectMid.x + dx, sz = RECT_Z + dz;
-        addBox(parts.P19, { x: 0.20, y: 0.020, z: 0.20 }, { x: sx, y: RECT_SKID_Y + 0.085, z: sz }, material.silverClamp, "P19");
-        for (let coil = 0; coil < 5; coil += 1) {
-          addMesh(parts.P19, new THREE.TorusGeometry(0.055, 0.010, 6, 18), material.safety,
-            { x: sx, y: RECT_SKID_Y + 0.108 + coil * 0.018, z: sz }, { x: Math.PI / 2 }, "P19", false);
-        }
-        addBox(parts.P19, { x: 0.22, y: 0.022, z: 0.22 }, { x: sx, y: RECT_SKID_Y + 0.212, z: sz }, material.silverClamp, "P19");
-      }
-    }
-    // 진동체 하부 프레임 — 스프링 상판을 잇고 측판을 받는다
-    for (const dz of [-0.52, 0.52]) {
-      addBox(rectGroup, { x: 1.00, y: 0.06, z: 0.06 }, { x: rectMid.x, y: RECT_SKID_Y + 0.253, z: RECT_Z + dz }, material.frame, "P19");
-    }
-    for (const dx of [-0.42, 0.42]) {
-      addBox(rectGroup, { x: 0.05, y: 0.28, z: 0.05 }, { x: rectMid.x + dx, y: RECT_SKID_Y + 0.42, z: RECT_Z - 0.52 }, material.frame, "P19", null, false);
-      addBox(rectGroup, { x: 0.05, y: 0.28, z: 0.05 }, { x: rectMid.x + dx, y: RECT_SKID_Y + 0.42, z: RECT_Z + 0.52 }, material.frame, "P19", null, false);
-    }
-    // 스키드 지지다리와 기초 — 바닥까지 하중경로를 잇는다
-    for (const dx of [-0.50, 0.50]) for (const dz of [-0.72, 0.72]) {
-      addBox(parts.P19, { x: 0.07, y: RECT_SKID_Y - 0.075, z: 0.07 }, { x: rectMid.x + dx, y: (RECT_SKID_Y - 0.075) / 2, z: RECT_Z + dz }, material.frame, "P19");
-      addBox(parts.P19, { x: 0.20, y: 0.03, z: 0.20 }, { x: rectMid.x + dx, y: -0.02, z: RECT_Z + dz }, material.frame, "P19");
-      for (const ax of [-0.06, 0.06]) {
-        addCylinder(parts.P19, 0.010, 0.08, { x: rectMid.x + dx + ax, y: 0.03, z: RECT_Z + dz }, material.silverClamp, "P19", "y", 8, false);
-      }
-    }
-
-    // VS-501 → 상단 급입. 종전에는 분배 데크에서 곧장 원형으로 내려갔다.
-    const distributorToRect = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(3.13, 0.96 + VS501_LIFT, 0.20),
-      new THREE.Vector3(3.02, 1.52, 0.20),
-      new THREE.Vector3(RECT_X0 + 0.06, RECT_Y0 + 0.20, RECT_Z)
+    const distributorToCircular = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(3.13, 0.96, 0.20),
+      new THREE.Vector3(3.20, 0.90, 0.20),
+      new THREE.Vector3(secondaryCenter.x, 0.84, secondaryCenter.z)
     ]);
-    addMesh(parts.P19, new THREE.TubeGeometry(distributorToRect, 20, 0.075, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
-    // 언더 → 하단 원형 급입구
-    const rectUnderToCircular = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(rectMid.x - 0.06, rectMid.y - 0.29, RECT_Z),
-      new THREE.Vector3(3.14, 0.84, 0.20),
-      new THREE.Vector3(secondaryCenter.x, 0.76, secondaryCenter.z)
-    ]);
-    addMesh(parts.P19, new THREE.TubeGeometry(rectUnderToCircular, 20, 0.085, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
+    addMesh(secondaryGroup, new THREE.TubeGeometry(distributorToCircular, 20, 0.08, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
 
-    // 280–500 은 상단 직사각의 동쪽 끝(오버 토출)에서 나가고, 나머지 셋은 하단 원형에서
-    // 나간다 — 토출구 높이가 곧 어느 기계의 산물인지를 말해 준다.
     const secondaryOutlets = {
-      "product-280-500": new THREE.Vector3(3.70, 0.74, 0.20),
-      "product-106-280": new THREE.Vector3(3.82, 0.44, 0.03),
-      "product-75-106": new THREE.Vector3(3.82, 0.22, 0.22),
+      "product-280-500": new THREE.Vector3(3.82, 0.50, -0.16),
+      "product-106-280": new THREE.Vector3(3.82, 0.33, 0.03),
+      "product-75-106": new THREE.Vector3(3.82, 0.16, 0.22),
       "product-under-75": new THREE.Vector3(3.38, -0.18, 0.50)
     };
-    // 상단 오버 토출 슈트 — 진동체와 함께 움직인다
-    addMesh(rectGroup, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
-      new THREE.Vector3(RECT_X1 + 0.02, RECT_Y1 + 0.04, RECT_Z),
-      secondaryOutlets["product-280-500"]
-    ]), 12, 0.075, 14, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
-    addMesh(parts.P19, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
-      secondaryOutlets["product-280-500"],
-      secondaryOutlets["product-280-500"].clone().add(new THREE.Vector3(0.09, -0.05, -0.06))
-    ]), 8, 0.080, 14, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
-    // 하단 원형의 세 토출 — 데크 2장 측면 + PAN
-    ["product-106-280", "product-75-106", "product-under-75"].forEach((key, index) => {
-      const outlet = secondaryOutlets[key];
-      const start = index < 2
+    Object.entries(secondaryOutlets).forEach(([key, outlet], index) => {
+      const start = index < 3
         ? new THREE.Vector3(3.66, secondaryDeckYs[index] + 0.02, secondaryCenter.z)
         : new THREE.Vector3(secondaryCenter.x, -0.05, secondaryCenter.z + 0.32);
       addMesh(secondaryGroup, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([start, outlet]), 14, 0.075, 14, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
-      const flexEnd = outlet.clone().add(index < 2 ? new THREE.Vector3(0.08, 0, 0) : new THREE.Vector3(0.06, 0, 0.04));
+      const flexEnd = outlet.clone().add(index < 3 ? new THREE.Vector3(0.08, 0, 0) : new THREE.Vector3(0.06, 0, 0.04));
       addMesh(secondaryGroup, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([outlet, flexEnd]), 8, 0.080, 14, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
     });
 
@@ -17168,16 +17040,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       new THREE.Vector3(2.30, 0.38, 0.20),
       new THREE.Vector3(2.30, -0.42, 0.20),
       new THREE.Vector3(2.40, 0.46, -0.22),
-      new THREE.Vector3(2.36, 1.76 + PC201_LIFT, -0.22),
-      new THREE.Vector3(2.52, 1.19 + PC201_LIFT, -0.28),
-      new THREE.Vector3(2.60, 1.08 + VS501_LIFT, -0.04),
-      new THREE.Vector3(2.78, 1.02 + VS501_LIFT, 0.20),
-      new THREE.Vector3(3.02, 1.48, 0.20)
+      new THREE.Vector3(2.36, 1.76, -0.22),
+      new THREE.Vector3(2.52, 1.19, -0.28),
+      new THREE.Vector3(2.60, 1.08, -0.04),
+      new THREE.Vector3(2.78, 1.02, 0.20),
+      new THREE.Vector3(3.16, 0.78, 0.20)
     ];
     // 네 제품 밴드는 SV-201 상부까지 같은 길로 온다 — 갈라지는 곳은 배관이 아니라
     // 데크 위다. 그래서 급입점까지만 공통 루트로 두고, 그 뒤는 아래 데크 통과 거동이 맡는다.
-    // 급입은 이제 하단 원형이 아니라 상단 직사각의 급입단으로 간다.
-    const sieveFeedTop = new THREE.Vector3(RECT_X0 - 0.02, RECT_Y0 + 0.12, RECT_Z);
+    const sieveFeedTop = new THREE.Vector3(secondaryCenter.x, 0.86, secondaryCenter.z);
     const sieveApproach = new THREE.CatmullRomCurve3([...primaryCommon, ...downstreamCommon, sieveFeedTop]);
     const sieveRoutes = {
       "return-500": new THREE.CatmullRomCurve3([...primaryCommon, returnOutlet]),
@@ -17187,20 +17058,18 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       "product-under-75": sieveApproach
     };
 
-    // ---- SV-201 2단 복합기 통과 거동 ---------------------------------------
+    // ---- SV-201 원형 3단 데크 통과 거동 ------------------------------------
     // 밴드 분리는 급입 순간에 수치로 끝나고 다섯 갈래가 똑같은 속도로 배관을 타고
-    // 나갔다 — 스크린은 형상뿐이고 체가름 자체는 화면에 없었다. 이제 입자가
-    // 먼저 **상단 직사각**을 서→동으로 흘러가며 280 µm 에 걸리거나 빠지고, 빠진 것만
-    // 하단 원형 두 장을 바깥으로 돌아 나가면서 106/75 에서 차례로 스크린을 통과한다.
-    // 통과 지점은 두 기계 모두 같은 GAUDIN 확률에서 나온다 — 직사각은 길이 방향
-    // 비율로, 원형은 반경 비율로 읽는 것만 다르다.
+    // 나갔다 — 스크린 세 장은 형상뿐이고 체가름 자체는 화면에 없었다. 이제 입자가
+    // 데크 위를 바깥으로 돌아 나가면서, 자기 입도와 그 데크 눈금의 비에 해당하는
+    // 반경에서 스크린을 빠져 아래 데크로 떨어진다.
     const SIEVE_DECK_SCREEN_Y = secondaryDeckYs.map((y) => y + 0.045);
     const SIEVE_DECK_RADIUS = 0.55;      // 스크린 Ø1200 의 유효 반경
     const SIEVE_FEED_RADIUS = 0.07;      // 중앙 급입점
     const SIEVE_PAN_Y = -0.03;
     const SIEVE_TURNS_PER_DECK = 1.35;   // 원형 진동체의 나선 배출 — 데크당 회전수
-    // 밴드별 잔류 단. 0 = 상단 직사각(280 µm 오버), 1·2 = 하단 원형 106·75,
-    // 3 = 세 장을 다 지나 PAN — 밴드 경계가 곧 스크린 눈금이다.
+    // 밴드별 잔류 데크. 280 µm 위는 1단에, 106–280 은 2단에, 75–106 은 3단에 남고
+    // 75 µm 미만만 세 장을 모두 지나 PAN 으로 간다 — 밴드 경계가 곧 스크린 눈금이다.
     const SIEVE_RETAIN_DECK = {
       "product-280-500": 0,
       "product-106-280": 1,
@@ -17241,52 +17110,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return THREE.MathUtils.clamp(reference / here, 0.06, 1);
     }
     const SIEVE_CASCADE_FROM = 0.52;     // 이 지점부터 공통 루트를 떠나 데크에 올라선다
-    // 상단 직사각 위의 한 점. u 0→1 이 급입단에서 통과(또는 토출)까지다.
-    // reach 는 데크 길이의 몇 할을 흘러가서 빠지는가 — 원형의 통과 반경과 같은 척도다.
-    function rectDeckPoint(track, u, reach) {
-      const t = THREE.MathUtils.clamp(u, 0, 1) * reach;
-      const x = RECT_X0 + (RECT_X1 - RECT_X0) * t;
-      // 직선진동이라 z 는 거의 그대로다 — throw 로 튀는 층만 얹는다.
-      return new THREE.Vector3(
-        x,
-        rectDeckY(x) + 0.026 + Math.max(0, Math.sin(u * Math.PI * 7)) * 0.014,
-        RECT_Z + Math.sin(track.transferPhase + u * 3.1) * RECT_HZ * 0.42
-      ).add(rectMotionOffset);
-    }
     function sieveDeckPosition(track, s) {
       const retain = SIEVE_RETAIN_DECK[track.streamKey];
-      // leg 0 = 상단 직사각. 그 뒤로 하단 원형 데크가 retain 장까지 이어지고,
-      // retain 3 이면 마지막에 PAN 구간이 붙는다 — 결국 legs = retain + 1 이다.
-      const legs = retain + 1;
-      const span = 1 / legs;
-      const rectReach = retain === 0 ? 1 : sievePassRadius(track.sizeMm, PRIMARY_RECT_CUT_UM);
-      if (retain === 0) {
-        // 280 µm 오버 — 직사각을 끝까지 흘러 동쪽 토출단으로 나간다.
-        const point = rectDeckPoint(track, s, 1);
-        point.lerp(secondaryOutlets[track.streamKey], Math.max(0, (s - 0.80) / 0.20));
-        return point;
-      }
-      if (s < span) {
-        // 직사각 구간 — 끝에서 하단 원형 급입구로 건네준다.
-        const u = THREE.MathUtils.clamp(s / span, 0, 1);
-        const point = rectDeckPoint(track, u, rectReach);
-        const handover = new THREE.Vector3(secondaryCenter.x, 0.80, secondaryCenter.z);
-        point.lerp(handover, Math.max(0, (u - 0.78) / 0.22));
-        return point;
-      }
-      // 하단 원형 — 남은 구간을 원형 데크에 다시 매핑한다.
-      const circS = (s - span) / (1 - span);
-      const decks = Math.min(retain, 2);                     // 지나는 원형 데크 장수 1·2·2
+      const decks = Math.min(retain, 2) + 1;                 // 지나는 데크 장수 1·2·3·3
       const pan = retain > 2;
-      const circLegs = pan ? decks + 1 : decks;
+      const legs = pan ? decks + 1 : decks;                  // PAN 행은 마지막에 팬 구간이 붙는다
       // 각 데크에서 빠지는 반경. 잔류 데크에서는 주변부까지 나가 토출구로 떨어진다.
       const radii = [];
       for (let i = 0; i < decks; i += 1) {
-        radii.push(i === retain - 1 ? 1 : sievePassRadius(track.sizeMm, SECONDARY_SIEVE_CUTS_UM[i]));
+        radii.push(i === retain ? 1 : sievePassRadius(track.sizeMm, SECONDARY_SIEVE_CUTS_UM[i]));
       }
-      return circularDeckPoint(track, circS, radii, decks, circLegs, pan);
-    }
-    function circularDeckPoint(track, s, radii, decks, legs, pan) {
       const span = 1 / legs;
       const leg = Math.min(legs - 1, Math.floor(s / span));
       const u = THREE.MathUtils.clamp((s - leg * span) / span, 0, 1);
@@ -17302,7 +17135,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       if (pan && leg === legs - 1) {
         // PAN: 세 장을 다 지나 팬 바닥으로 떨어진 뒤 미분 토출구로 흘러 나간다.
         radius = THREE.MathUtils.lerp(radii[decks - 1], 0.58, u);
-        y = THREE.MathUtils.lerp(SIEVE_DECK_SCREEN_Y[decks - 1] - 0.06, SIEVE_PAN_Y, Math.min(1, u * 2.2));
+        y = THREE.MathUtils.lerp(SIEVE_DECK_SCREEN_Y[2] - 0.06, SIEVE_PAN_Y, Math.min(1, u * 2.2));
       } else {
         const from = leg === 0 ? SIEVE_FEED_RADIUS / SIEVE_DECK_RADIUS : radii[leg - 1];
         radius = THREE.MathUtils.lerp(from, radii[leg], u);
@@ -19105,7 +18938,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       { start: 180, end: 420, title: "1 · 탈수·공정수 선기동", route: "CF-204·FP-301·CL/PF-401·TK-402·A/B 펌프 READY", target: [16.6, 0.9, -1.0], distance: 8.0 },
       { start: 420, end: 720, title: "2 · 부유선별·공기·약품 기동", route: "AB-201A/B·AR-201·RS-201/202/203 → FC-202/203 → FC-201 확인", target: [14.8, 3.7, 0.5], distance: 8.2 },
       { start: 720, end: 960, title: "3 · 습식 전처리 기동", route: "TK-101 → BS-101A/B → AS-101 600 rpm → TK-001·P-101/102A/B", target: [10.8, 1.1, 0.7], distance: 6.5 },
-      { start: 960, end: 1260, title: "4 · Sheeve 2단·집진 기동", route: "IDF/BF → SS-201 → SV-201 상단 직사각 280 → 하단 원형 106/75 µm 하류우선 기동", target: [4.4, 0.8, 0.2], distance: 7.2 },
+      { start: 960, end: 1260, title: "4 · 3단 Sheeve·집진 기동", route: "IDF/BF → SS-201 → SV-201 280/106/75 µm 하류우선 기동", target: [4.4, 0.8, 0.2], distance: 7.2 },
       { start: 1260, end: 1560, title: "5 · HSG-101 폐회로 기동", route: "CV/PC 이송 확인 후 HSG-101 1,500 rpm 속도도달", target: [0.0, 1.05, 0.0], distance: 5.2 },
       { start: 1560, end: 1800, title: "6 · ICSH-301 원료투입 허가", route: "SCR-001·SCV-P1 정상 후 상부 X축→하부 Y축→압입롤 기동", target: [-4.35, 1.8, 0.0], distance: 6.0 },
       { start: 1800, end: 2700, title: "7 · 전 공정 물질 이송", route: "SS ≥75 HSG 환류 / <75 VR-401→BH/RV/SF/WC-401→어트리션→부선→탈수", target: [6.8, 1.7, 0.0], distance: 29 },
@@ -22475,17 +22308,6 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
           Math.cos(secondaryPhase * 1.03) * 0.0055,
           Math.sin(secondaryPhase + Math.PI / 3) * 0.0025
         );
-        // 상단 직사각은 대향 진동모터 2대의 **직선운동**이다 — 하단 원형의 나선운동과
-        // 달리 한 축(경사면 법선에서 45° throw)으로만 왕복한다. 두 진동체가 서로 다른
-        // 궤적으로 움직이는 것이 곧 기종이 다르다는 표시다.
-        const rectPhase = Math.PI * 2 * SECONDARY_VISUAL_FREQUENCY_HZ * 1.6 * timeSeconds;
-        const rectThrow = Math.sin(rectPhase) * 0.0060;
-        rectMotionOffset.set(
-          Math.cos(RECT_INCLINE + Math.PI / 4) * rectThrow,
-          Math.sin(RECT_INCLINE + Math.PI / 4) * rectThrow,
-          0
-        );
-        rectExciters.forEach((ex) => { ex.rotor.rotation.z = ex.dir * rectPhase; });
         secondaryRotor.rotation.y = -timeSeconds * Math.PI * 2 * 16;
         secondaryAirlockRotor.rotation.z = -timeSeconds * Math.PI * 2 * 12 / 60;
         pc201AirlockRotor.rotation.z = -timeSeconds * Math.PI * 2 * 12 / 60;
@@ -22503,16 +22325,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       } else {
         sieveMotionOffset.multiplyScalar(0.68);
         secondaryMotionOffset.multiplyScalar(0.68);
-        rectMotionOffset.multiplyScalar(0.68);
         polisherMotionOffset.multiplyScalar(0.68);
         if (sieveMotionOffset.lengthSq() < 1e-10) sieveMotionOffset.set(0, 0, 0);
         if (secondaryMotionOffset.lengthSq() < 1e-10) secondaryMotionOffset.set(0, 0, 0);
-        if (rectMotionOffset.lengthSq() < 1e-10) rectMotionOffset.set(0, 0, 0);
         if (polisherMotionOffset.lengthSq() < 1e-10) polisherMotionOffset.set(0, 0, 0);
       }
       sieveVibratingGroup.position.copy(sieveMotionOffset);
       secondaryGroup.position.copy(secondaryMotionOffset);
-      rectGroup.position.copy(rectMotionOffset);
       polisherGroup.position.copy(polisherMotionOffset);
       if (!enabled) {
         travelParticles.forEach((track) => {
@@ -22573,8 +22392,6 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       },
       secondarySieve: {
         tags: ["VS-501", "SV-201"],
-        arrangement: "2단 복합 — 상단 직사각(직선진동) → 하단 원형(수직축 편심)",
-        primaryRect: { cutUm: PRIMARY_RECT_CUT_UM, deckMm: [Math.round(rectLen * 1000), Math.round(RECT_HZ * 2000)], inclineDeg: +(RECT_INCLINE * 180 / Math.PI).toFixed(1), exciters: rectExciters.length, springs: 8 },
         deckCount: secondaryDeckMeshes.length,
         deckCutsUm: [...SECONDARY_SIEVE_CUTS_UM],
         diameterMm: 1200,
@@ -23164,7 +22981,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       label:"Sheeve", tag:"SV-201 Three-Deck Sieve", drawing:"DI-PVR-SV201-DD-001", revision:"DD-R4",
       capacity:"건식 미분 최대 300 kg/h · 4분획", overall:"2,600 L × 1,800 W × 2,700 H mm", mass:"예상 2.2 t · PC-201 포함",
       foundation:"독립 스키드 2,400×1,600 mm · M20 앵커 12SET · 스프링 베이스는 비고정 유연연결",
-      basis:"2단 복합 — 상단 직사각(280 µm · 직선진동 · 대향 모터 2) → 하단 원형 Ø1,200(106/75 µm · 수직축 편심) · 960 rpm · 상부 VS-501 → 밀폐 분배 → 4개 제품슈트",
+      basis:"Ø1,200 · 3단 280/106/75 µm · 960 rpm · 상부 VS-501 → 밀폐 분배 → 4개 제품슈트",
       services:[powerService("sieve"), "이송: PC-201 DN100 음압리프트", "집진: DN80 branch → BF-201", "배출: 280–500 / 106–280 / 75–106 / <75 µm"],
       installation:["진동체 주변 100 mm 비접촉 간극", "메시 교환 상부 H1,000 mm", "유연커넥터 축방향 여유 ±25 mm", "기초와 진동스키드 사이 케이블 루프 적용"],
       acceptance:["960 rpm 공진통과 기록", "메시 장력 편차 ≤10%", "4개 토출 누설·교차오염 검사", "진폭·베어링온도 8 h"],
