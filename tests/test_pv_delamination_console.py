@@ -26,6 +26,15 @@ ID_REF = re.compile(r"""(?:\$|document\.getElementById)\(\s*['"]([A-Za-z][\w-]*)
 ID_DEF = re.compile(r"""\bid=["']([A-Za-z][\w-]*)["']""")
 
 
+def js_code(html):
+    """주석을 걷어낸 스크립트 본문.
+
+    같은 이름이 설명 주석에도 나오면 정규식이 코드가 아니라 주석을 짚는다.
+    이 파일에서 이미 두 번 겪은 실수라 헬퍼로 고정한다.
+    """
+    return re.sub(r"//[^\n]*", "", re.sub(r"/\*.*?\*/", "", html, flags=re.S))
+
+
 class TestConsoleDocument(unittest.TestCase):
     """단독 HTML 문서로서 성립하는지."""
 
@@ -537,6 +546,11 @@ class TestBacksheetWinder(unittest.TestCase):
         self.assertIsNotNone(m, f"상수 {name} 선언을 찾지 못했다")
         return float(m.group(1))
 
+    def _fn(self, name):
+        m = re.search(rf"\n    function {name}\(.*?\n    \}}", self.html, re.S)
+        self.assertIsNotNone(m, f"{name} 함수를 찾지 못했다")
+        return m.group(0)
+
     def _radius(self, n):
         return math.sqrt(self.R0 ** 2 + n * self.turn)
 
@@ -583,13 +597,16 @@ class TestBacksheetWinder(unittest.TestCase):
 
     def test_winding_roll_takes_a_panel_count(self):
         """호출부가 박리 진행률(0~1)을 넘기면 롤은 다시 한 장에 만권이 된다."""
-        for call in re.findall(r"windingRoll\(([^)]*)\)", self.html):
-            if call.startswith("panels"):        # 정의부
-                continue
+        for call in re.findall(r"(?<!function )windingRoll\(([^)]*)\)", self.html):
             self.assertTrue(
-                call.startswith("woundCount("),
-                f"windingRoll 에 누적 장수가 아닌 값을 넘긴다: {call}",
+                call.startswith("winderState("),
+                f"windingRoll 에 권취 상태가 아닌 값을 넘긴다: {call}",
             )
+        body = self._fn("winderState")
+        self.assertRegex(
+            body, r"n=woundCount\(i,q\)",
+            "권취 상태의 장수가 woundCount 에서 오지 않는다 — 박리 진행률이 섞였다",
+        )
 
     # ── 권취부 위치 ────────────────────────────────────────────
     def test_winder_is_downstream_of_both_knives(self):
@@ -655,10 +672,13 @@ class TestBacksheetWinder(unittest.TestCase):
         """롤을 실치수로 그린다 — 배율 보정이 남아 있으면 실패한다."""
         self.assertNotIn("PANEL_DRAW_SCALE", self.html,
                          "권취 롤에 아직 축척 보정이 붙어 있다")
-        body = re.search(r"function windingRoll\(.*?\n    \}", self.html, re.S).group(0)
         self.assertRegex(
-            body, r"const r=rollRadius\(panels\)\s*,",
-            "롤 그리기 반경이 rollRadius 그대로가 아니다 — 배율이 붙어 있다",
+            self._fn("winderState"), r"r=rollRadius\(n\)\s*,",
+            "권취 반경이 rollRadius 그대로가 아니다 — 배율이 붙어 있다",
+        )
+        self.assertRegex(
+            self._fn("windingRoll"), r"r=w\.r\s*,",
+            "롤을 권취 상태의 반경이 아닌 다른 값으로 그린다",
         )
         # 롤 면폭은 사양의 권취 유효폭 1,400~1,500mm 안이어야 한다
         face = self._const("ROLL_FACE")
@@ -668,10 +688,20 @@ class TestBacksheetWinder(unittest.TestCase):
 
     def test_live_roll_diameter_is_readable_without_turning_on_labels(self):
         """3D 라벨은 기본이 꺼져 있다. 직경이 거기에만 있으면 아무도 못 본다."""
-        m = re.search(r"flowBacksheetText'\)\.textContent=(.{0,900})", self.html, re.S)
-        self.assertIsNotNone(m)
-        self.assertIn("rollRadius", m.group(1),
-                      "권취 직경이 항상 보이는 HUD에 나오지 않는다")
+        m = re.search(r"if\(\(index>=3&&index<=7\)\|\|index===15\)\{(.{0,1400}?)\n      \}",
+                      self.html, re.S)
+        self.assertIsNotNone(m, "항상 보이는 권취 HUD 갱신 블록을 찾지 못했다")
+        self.assertIn("winderState(index,local)", m.group(1),
+                      "권취 HUD가 3D와 다른 값을 쓴다")
+        self.assertIn("flowBacksheetText", m.group(1))
+        self.assertRegex(
+            self._fn("winderState"), r"Ø\$\{dia\}\s*/\s*Ø\$\{full\}",
+            "권취 문구에 현재 직경/만권 직경이 없다",
+        )
+        self.assertRegex(
+            self._fn("winderState"), r"dia=Math\.round\(r\*2000\)",
+            "표시 직경이 실제 권취 반경에서 나오지 않는다",
+        )
 
 
 class TestTenPanelTrial(unittest.TestCase):
@@ -849,6 +879,347 @@ class TestPanelScale(unittest.TestCase):
         """셀 경로 시작점이 패널 배출 위치와 어긋나면 모듈이 허공에서 생긴다."""
         body = self._fn("cellPathPoint")
         self.assertIn("TDM_OUT", body, "셀 경로가 탠덤 배출 위치를 쓰지 않는다")
+
+
+class TestSimultaneousSeparation(unittest.TestCase):
+    """백시트 박리와 셀/EVA 박리는 서로 배타적인 단계가 아니다.
+
+    칼날이 X축에 고정되어 있고 패널이 그 아래를 지나가므로, 패널의 어떤 지점이
+    HKB 를 지나면 그 지점의 백시트가 떨어지고, 칼끝 간격만큼 뒤에 같은 지점이
+    HKS 를 지나면 셀/EVA 가 떨어진다. 두 박리는 간격 ÷ 이송속도 만큼 어긋난 채
+    **동시에** 진행된다.
+
+    종전 코드는 `if(분리진행<=0){백시트}else{셀}` 로 갈라 놓아, 셀 분리가 시작되는
+    순간 백시트 가지를 통째로 건너뛰었다. 정작 권취가 일어나는 구간에서 웹도 롤도
+    화면에 없었던 원인이 이것이다. 정지화면 한 장만 보면 알 수 없는 종류의 오류라
+    여기서 수치로 잡는다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = CONSOLE.read_text(encoding="utf-8")
+
+    def _const(self, name):
+        m = re.search(
+            rf"(?:const|,)\s*{name}\s*=\s*(-?[\d.]+(?:e-?\d+)?)[,;]", self.html
+        )
+        self.assertIsNotNone(m, f"상수 {name} 선언을 찾지 못했다")
+        return float(m.group(1))
+
+    def _fn(self, name):
+        m = re.search(rf"\n    function {name}\(.*?\n    \}}", self.html, re.S)
+        self.assertIsNotNone(m, f"{name} 함수를 찾지 못했다")
+        return m.group(0)
+
+    def _cuts(self, cx):
+        """tandemCuts 를 파이썬으로 재현한다 (state.tandem === true)."""
+        half = self._const("PANEL_L") / 2
+        rear, front = cx - half, cx + half
+        clamp = lambda v: max(rear, min(front, v))
+        return rear, front, clamp(self._const("HKB_X")), clamp(self._const("HKS_X"))
+
+    # ── 절단선이 칼날에 고정되어 있는가 ─────────────────────────
+    def test_both_cuts_are_anchored_at_the_fixed_knives(self):
+        """절단선이 진행률(0~1)에서 나오면 칼날이 패널을 따라 움직이는 그림이 된다."""
+        body = self._fn("tandemCuts")
+        self.assertRegex(body, r"bs:clamp\(HKB_X,rear,front\)",
+                         "백시트 절단선이 HKB 위치에 고정되어 있지 않다")
+        self.assertRegex(body, r"cell:clamp\(HKS_X,rear,front\)",
+                         "셀 절단선이 HKS 위치에 고정되어 있지 않다")
+        self.assertNotIn("state.separation", self.html,
+                         "박리 진행률 기반의 옛 절단선 계산이 남아 있다")
+
+    def test_the_two_cuts_stay_one_knife_gap_apart(self):
+        """두 절단선 간격은 언제나 칼끝 간격이다 — 이게 시간차의 정체다."""
+        gap = self._const("HKS_X") - self._const("HKB_X")
+        lead, out = 16.75, 19.15                     # TDM_LEAD, TDM_OUT
+        seen = 0
+        for k in range(401):
+            cx = lead + (out - lead) * k / 400
+            rear, front, bs, cell = self._cuts(cx)
+            if rear < bs < front and rear < cell < front:
+                seen += 1
+                self.assertAlmostEqual(cell - bs, gap, delta=1e-9,
+                                       msg=f"cx={cx:.3f} 에서 절단선 간격이 칼끝 간격과 다르다")
+        self.assertGreater(seen, 0, "두 절단선이 동시에 패널 안에 있는 구간이 없다")
+
+    def test_both_separations_run_at_once_for_most_of_the_stroke(self):
+        """87.5% 는 RFQ 가 2단 동시 물림으로 적어 둔 값이다. 그림이 이를 지켜야 한다."""
+        length = self._const("PANEL_L")
+        gap = self._const("HKS_X") - self._const("HKB_X")
+        lead, out = 16.75, 19.15
+        N = 2000
+        both = sum(
+            1 for k in range(N)
+            if (lambda c: (c[0] < c[2] < c[1] and c[0] < c[3] < c[1]))(
+                self._cuts(lead + (out - lead) * (k + 0.5) / N))
+        )
+        self.assertAlmostEqual(both / N, (length - gap) / length, delta=0.005,
+                               msg="두 박리가 동시에 진행되는 구간이 사양과 다르다")
+
+    def test_the_offset_is_the_knife_gap_over_the_feed_rate(self):
+        """시간차 = 칼끝 간격 ÷ 55mm/s. 문서가 말하는 5.45초가 여기서 나온다."""
+        gap_mm = (self._const("HKS_X") - self._const("HKB_X")) * 1000
+        self.assertAlmostEqual(gap_mm, 300, delta=2)
+        self.assertAlmostEqual(gap_mm / 55, 5.45, delta=0.05)
+
+    # ── 두 층을 한 프레임에 같이 그리는가 ───────────────────────
+    def test_both_layers_are_drawn_in_the_same_frame(self):
+        """한쪽이 else 가지에 들어가면 다른 쪽이 화면에서 사라진다."""
+        body = js_code(self._fn("panelLayers"))
+        # 두 층 모두 조건 없는 문장이어야 한다. 어느 한쪽이라도 if 뒤에 붙으면
+        # 그 프레임에서 사라질 수 있고, 그것이 곧 배타적 단계로 되돌아간 것이다.
+        for what, call in (("셀", r"flatLayer\(\(q\.rear\+q\.cell\)/2"),
+                           ("백시트", r"flatLayer\(\(q\.rear\+q\.bs\)/2")):
+            self.assertRegex(body, call, f"남은 {what} 층을 그리지 않는다")
+            self.assertRegex(
+                body, rf"(?m)^\s*{call}",
+                f"{what} 층이 조건부로 그려진다 — 다른 계통과 배타적이 되었다",
+            )
+        cell = body.index("zCell,C.cell")
+        sheet = body.index("zSheet,C.sheet")
+        self.assertNotIn("else", body[min(cell, sheet):max(cell, sheet)],
+                         "백시트와 셀이 서로 배타적인 가지에 들어가 있다")
+
+    def test_the_web_is_drawn_while_the_cell_is_peeling(self):
+        """권취가 실제로 일어나는 구간에서 웹이 없으면 '권취' 가 화면에 없다."""
+        body = self._fn("panelLayers")
+        m = re.search(r"if\(([^)]*)\)backsheetWeb\(", body)
+        self.assertIsNotNone(m, "웹을 그리는 호출을 찾지 못했다")
+        cond = m.group(1)
+        for forbidden in ("cell", "sep", "separation"):
+            self.assertNotIn(forbidden, cond,
+                             f"웹 표시 조건이 셀 분리 상태에 묶여 있다: {cond}")
+        self.assertIn("bsDone", cond, "웹이 백시트 잔량과 무관하게 그려진다")
+
+    def test_the_exposed_cell_band_is_the_knife_gap(self):
+        """백시트만 벗겨진 띠가 곧 칼끝 간격이다 — 시간차의 눈에 보이는 증거."""
+        gap = self._const("HKS_X") - self._const("HKB_X")
+        rear, front, bs, cell = self._cuts(17.8)     # 두 칼날 사이에 패널 중심
+        # 패널은 +x 로 간다. 어떤 지점이 HKB 를 먼저 지나므로 백시트가 먼저 떨어지고,
+        # 그 지점이 HKS 에 닿기 전까지는 셀이 남아 있다 — 그 사이가 노출 띠다.
+        self.assertLess(bs, cell, "백시트 절단선이 셀 절단선보다 앞서야 한다")
+        self.assertAlmostEqual(cell - bs, gap, delta=1e-9)
+        self.assertGreater(bs, rear)
+        self.assertLess(cell, front)
+
+
+class TestWinderDischarge(unittest.TestCase):
+    """만권 롤은 인터록 해치로만 나가고, 나가서는 빈 새들에 앉아야 한다.
+
+    종전 배출은 드럼에서 보관대까지 직선 보간이라 롤이 펜스를 대각선으로 뚫고
+    지나가 새들이 아닌 허공에 놓였다. 배출 경로를 상수로 두고, 그 경로가 실제
+    개구를 지나 실제 크래들에 닿는지를 여기서 확인한다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = CONSOLE.read_text(encoding="utf-8")
+
+    def _expr(self, name, seen=None):
+        """`const NAME=<식>` 을 숫자로 푼다. 식은 이름·숫자·사칙연산만 허용한다."""
+        seen = seen or set()
+        self.assertNotIn(name, seen, f"상수 {name} 이 순환 참조한다")
+        m = re.search(rf"(?:const|,)\s*{name}\s*=\s*([^,;]+?)[,;]", self.html)
+        self.assertIsNotNone(m, f"상수 {name} 선언을 찾지 못했다")
+        return self._value(m.group(1), seen | {name})
+
+    def _value(self, expr, seen=frozenset()):
+        expr = expr.strip()
+        self.assertRegex(expr, r"^[A-Za-z_][\w]*(?:\s*[-+*/]\s*[\w.]+)*$|^-?[\d.]+$",
+                         f"해석할 수 없는 식: {expr}")
+        out = expr
+        for ident in sorted(set(re.findall(r"[A-Za-z_]\w*", expr)), key=len, reverse=True):
+            out = out.replace(ident, repr(self._expr(ident, set(seen))))
+        return float(eval(out, {"__builtins__": {}}, {}))   # noqa: S307 — 화이트리스트 통과분만
+
+    def _fn(self, name):
+        m = re.search(rf"\n    function {name}\(.*?\n    \}}", self.html, re.S)
+        self.assertIsNotNone(m, f"{name} 함수를 찾지 못했다")
+        return m.group(0)
+
+    def _path(self):
+        m = re.search(r"const EJECT_PATH=\[(.*?)\n    \];", self.html, re.S)
+        self.assertIsNotNone(m, "EJECT_PATH 를 찾지 못했다")
+        pts = []
+        for row in re.findall(r"\{(.*?)\}", m.group(1)):
+            row = re.sub(r"//.*", "", row)
+            pts.append({k: self._value(v) for k, v in
+                        re.findall(r"(at|x|y|z):\s*([^,}]+)", row)})
+        self.assertGreaterEqual(len(pts), 4, "배출 경로 구간이 너무 적다")
+        return pts
+
+    def _phases(self):
+        m = re.search(r"const EJECT_PHASES=\[(.*?)\n    \];", self.html, re.S)
+        self.assertIsNotNone(m, "EJECT_PHASES 를 찾지 못했다")
+        return [float(v) for v in re.findall(r"\{at:\s*([\d.]+)", m.group(1))]
+
+    def test_the_roll_leaves_through_the_interlock_hatch(self):
+        """롤이 해치 개구 밖으로 지나가면 펜스를 뚫고 나가는 그림이 된다."""
+        pts = self._path()
+        hx, hw = self._expr("HATCH_X"), self._expr("HATCH_W")
+        hz, hh = self._expr("HATCH_Z"), self._expr("HATCH_H")
+        r = self._expr("WR_FULL_R")
+        hy = self._expr("HATCH_Y")
+        crossings = [
+            1 for a, b in zip(pts, pts[1:])
+            if (a["y"] - hy) * (b["y"] - hy) <= 0 and a["y"] != b["y"]
+        ]
+        self.assertEqual(len(crossings), 1,
+                         "배출 경로가 해치 선을 정확히 한 번 넘지 않는다")
+        # 롤은 점이 아니다. 롤 몸통이 펜스 평면에 걸쳐 있는 동안 — y 가 해치 선에서
+        # 반지름 이내인 구간 내내 — x·z 가 개구 안에 있어야 실제로 통과한다.
+        # 한 점만 보면 개구를 비스듬히 스치고 지나가는 경로도 통과로 읽힌다.
+        for a, b in zip(pts, pts[1:]):
+            for k in range(201):
+                t = k / 200
+                y = a["y"] + (b["y"] - a["y"]) * t
+                if abs(y - hy) > r:
+                    continue
+                x = a["x"] + (b["x"] - a["x"]) * t
+                z = a["z"] + (b["z"] - a["z"]) * t
+                self.assertLessEqual(abs(x - hx), hw / 2 - r,
+                                     f"해치를 지날 때 롤이 개구 폭 밖에 있다: x={x:.3f}")
+                self.assertLessEqual(abs(z - hz), hh / 2 - r,
+                                     f"해치를 지날 때 롤이 개구 높이 밖에 있다: z={z:.3f}")
+
+    def test_the_roll_lands_in_the_empty_saddle(self):
+        """앞 새들에는 교대 롤이 이미 놓여 있다. 같은 자리에 또 놓으면 겹친다."""
+        end = self._path()[-1]
+        rack = self._expr("BS_RACK_X")
+        self.assertAlmostEqual(end["x"], self._expr("BS_SADDLE_X"), delta=1e-9)
+        self.assertAlmostEqual(end["x"], rack + 0.55, delta=1e-9,
+                               msg="배출 종점이 크래들 새들 위치가 아니다")
+        self.assertNotAlmostEqual(end["x"], rack - 0.55, delta=0.2,
+                                  msg="이미 교대 롤이 놓인 앞 새들에 겹쳐 놓는다")
+        self.assertAlmostEqual(end["z"], self._expr("BS_ROLL_Z"), delta=1e-9,
+                               msg="배출 종점 높이가 크래들 안착 높이와 다르다")
+        self.assertAlmostEqual(end["y"], self._expr("BS_BIN_Y"), delta=1e-9)
+
+    def test_the_path_starts_on_the_drum(self):
+        """경로 시작이 드럼이 아니면 롤이 순간이동한다."""
+        start = self._path()[0]
+        self.assertAlmostEqual(start["x"], self._expr("WR_DRUM_X"), delta=1e-9)
+        self.assertAlmostEqual(start["z"], self._expr("WR_WEB_Z"), delta=1e-9)
+
+    def test_path_and_hud_phases_cannot_drift_apart(self):
+        """구간 경계가 문구 경계와 다르면 화면의 롤과 HUD 문구가 어긋난다."""
+        marks = set(self._phases())
+        for p in self._path():
+            self.assertIn(round(p["at"], 6), {round(v, 6) for v in marks},
+                          f"경로 경계 {p['at']} 에 대응하는 배출 문구가 없다")
+
+    def test_the_path_only_moves_forward(self):
+        """되돌아가는 구간이 있으면 배출이 아니라 왕복이다."""
+        ats = [p["at"] for p in self._path()]
+        self.assertEqual(ats, sorted(ats), "배출 경로 구간이 시간순이 아니다")
+
+    def test_the_hatch_leaf_opens_only_while_the_roll_passes(self):
+        """닫힌 문을 통과하는 그림이 되면 인터록 설명이 무의미해진다."""
+        m = re.search(r"box\(V\(HATCH_X,HATCH_Y,HATCH_Z\+\(HATCH_H\*[\d.]+\)\*([\w.]+)\)", self.html)
+        self.assertIsNotNone(m, "해치 문짝이 배출 상태를 따라 열리지 않는다")
+        self.assertEqual(m.group(1), "wq.pose.inHatch",
+                         "해치 개폐가 롤 위치와 다른 값에 묶여 있다")
+
+    def test_the_roll_visibly_turns_while_winding(self):
+        """직경은 한 장에 0.07mm 자란다. 회전이 없으면 감기는 것이 안 보인다."""
+        m = re.search(r"theta:n\*PANEL_L/Math\.max\(WR_CORE_R,r\)", self.html)
+        self.assertIsNotNone(m, "권취 회전각이 감은 길이 ÷ 반지름 에서 나오지 않는다")
+        self.assertNotIn("panels*.37", js_code(self.html), "임의값 회전이 남아 있다")
+        body = re.search(r"\n    function windingRoll\(.*?\n    \}", self.html, re.S).group(0)
+        self.assertIn("ROLL_SEAM_MARKS", body, "회전을 보여줄 표식이 없다")
+        self.assertIn("Math.cos(a)", body, "분할클램프가 코어를 따라 공전하지 않는다")
+
+    def test_the_web_shows_which_way_it_runs(self):
+        """방향 표시가 없으면 웹이 그냥 걸쳐진 판으로 읽힌다."""
+        body = re.search(r"\n    function backsheetWeb\(.*?\n    \}", self.html, re.S).group(0)
+        self.assertIn("C.yellow", body, "웹 진행방향 화살표가 없다")
+        self.assertRegex(body, r"ph=\(\(panels\*PANEL_L\)/TICK\)%1",
+                         "웹 눈금이 감은 길이를 따라 흐르지 않는다")
+        # 눈금은 웹의 두 구간(칼날→가이드롤, 가이드롤→드럼) 위에 얹혀야 한다.
+        # seg 를 비워 두면 문법은 멀쩡한데 화면에서 흐름이 사라진다.
+        self.assertRegex(body, r"const seg=\[\[cut,z0,WR_GUIDE_X[^\]]*\],\[WR_GUIDE_X[^\]]*WR_DRUM_X",
+                         "웹 눈금이 실제 웹 구간 위에 얹히지 않는다")
+        self.assertIn("of seg", body, "웹 눈금 반복이 없다")
+
+    def test_discharge_substeps_are_readable_without_labels(self):
+        """S7 은 3.2초짜리 단계다. 문구가 고정이면 롤이 어디까지 갔는지 알 수 없다."""
+        self.assertIn("$('stageTitle').textContent=`S7 · ${w.phase.name}`", self.html,
+                      "배출 서브페이즈가 단계 제목에 반영되지 않는다")
+        self.assertGreaterEqual(len(self._phases()), 5,
+                                "배출 서브페이즈가 너무 성기다")
+        self.assertIn("BACKSHEET_BIN_ACK", self.html)
+
+    # ── 반출 기구 ──────────────────────────────────────────────
+    def test_the_roll_passes_through_the_enclosure_roll_port(self):
+        """외함 정비도어는 z0.6~3.95 통짜 판이다. 포트를 안 내면 롤이 벽을 뚫는다."""
+        pts, py = self._path(), self._expr("ROLL_PORT_Y")
+        w, x0 = self._expr("ROLL_PORT_W"), self._expr("WR_DRUM_X")
+        z0, z1, r = self._expr("ROLL_PORT_Z0"), self._expr("ROLL_PORT_Z1"), self._expr("WR_FULL_R")
+        cross = [
+            (a["x"] + (b["x"] - a["x"]) * (py - a["y"]) / (b["y"] - a["y"]),
+             a["z"] + (b["z"] - a["z"]) * (py - a["y"]) / (b["y"] - a["y"]))
+            for a, b in zip(pts, pts[1:])
+            if a["y"] != b["y"] and (a["y"] - py) * (b["y"] - py) <= 0
+        ]
+        self.assertEqual(len(cross), 1, "반출 경로가 외함 벽을 정확히 한 번 지나지 않는다")
+        x, z = cross[0]
+        self.assertLessEqual(abs(x - x0), w / 2 - r, f"롤이 포트 폭 밖으로 지난다: x={x:.3f}")
+        self.assertGreaterEqual(z - r, z0, f"롤이 포트 하단보다 낮게 지난다: z={z:.3f}")
+        self.assertLessEqual(z + r, z1, f"롤이 포트 상단보다 높게 지난다: z={z:.3f}")
+        body = self._fn("serviceDoor")
+        self.assertRegex(
+            body, r"port=x0<pl&&pr<x1",
+            "롤 포트가 정비도어 베이 범위에서 결정되지 않는다",
+        )
+        self.assertRegex(body, r"pl=WR_DRUM_X-ROLL_PORT_W/2,pr=WR_DRUM_X\+ROLL_PORT_W/2",
+                         "롤 포트가 권취 드럼 축에 맞춰 뚫리지 않는다")
+        self.assertRegex(body, r"if\(port&&x>pl-[\d.]+&&x<pr\+[\d.]+\)continue",
+                         "롤 포트 안에 멀리언이 그대로 남는다")
+
+    def test_the_transfer_height_clears_the_carrier_rail(self):
+        """캐리어 레일(y=-1.38)이 z0.77 까지 차 있다. 롤은 그 위로만 나갈 수 있다."""
+        rail = self._expr("RH_RAIL_Z")
+        self.assertGreaterEqual(rail, 0.78, "스키드 레일 상면이 캐리어 레일보다 낮다")
+        self.assertRegex(self.html, r"RH_CARRY_Z=RH_RAIL_Z\+WR_FULL_R",
+                         "반출 높이가 레일 상면 + 롤 반경에서 나오지 않는다")
+
+    def test_the_skid_rails_stop_short_of_the_corner_lift(self):
+        """레일을 승강대까지 밀면 내려앉는 롤이 레일을 관통한다."""
+        body = self._fn("rollSkid")
+        self.assertRegex(body, r"yS=BS_BIN_Y\+ROLL_FACE/2\+[\d.]+",
+                         "스키드 레일이 코너 승강대 앞에서 끊기지 않는다")
+        face, r = self._expr("ROLL_FACE"), self._expr("WR_FULL_R")
+        m = re.search(r"yS=BS_BIN_Y\+ROLL_FACE/2\+([\d.]+)", body)
+        self.assertGreater(float(m.group(1)), 0.04,
+                           "레일 끝이 안착한 롤의 폭 안에 들어온다")
+
+    def test_the_rack_tie_rails_clear_the_passing_roll(self):
+        """종전 z1.46 타이레일은 반출 높이 롤(상단 z1.54)과 겹쳐 있었다."""
+        tie = self._expr("BS_TIE_Z")
+        top = self._expr("RH_CARRY_Z") + self._expr("WR_FULL_R")
+        self.assertGreater(tie - 0.07, top, "보관대 타이레일이 지나가는 롤과 겹친다")
+
+    def test_the_last_leg_rolls_the_roll_across_its_own_axis(self):
+        """롤 축은 y 다. 마지막 구간이 y 로 움직이면 축방향으로 밀어야 한다."""
+        pts = self._path()
+        a, b = pts[-2], pts[-1]
+        self.assertAlmostEqual(a["y"], b["y"], delta=1e-9, msg="마지막 구간이 축방향 이동이다")
+        self.assertAlmostEqual(a["z"], b["z"], delta=1e-9, msg="마지막 구간이 아직 승강 중이다")
+        self.assertGreater(abs(b["x"] - a["x"]), 1.0, "마지막 구간에 굴림 거리가 없다")
+        body = self._fn("rollSkid")
+        self.assertRegex(
+            body, r"box\(V\(.*?,y,BS_ROLL_Z-WR_FULL_R-[\d.]+\),V\(BS_SADDLE_X",
+            "굴림 레일 상면이 보관 축높이 − 롤 반경에서 나오지 않는다",
+        )
+
+    def test_the_corner_lift_follows_the_roll_down(self):
+        """승강 테이블이 고정이면 롤이 테이블을 뚫고 내려간다."""
+        body = self._fn("windingRoll")
+        self.assertRegex(body, r"box\(V\(xx,BS_BIN_Y,\(\.18\+z-r\)/2\)",
+                         "코너 승강 테이블이 롤 밑면을 따라가지 않는다")
+        self.assertRegex(body, r"w\.eject>=\.74&&w\.eject<\.92",
+                         "승강 테이블이 하강 구간에 떠 있지 않다")
 
 
 if __name__ == "__main__":
