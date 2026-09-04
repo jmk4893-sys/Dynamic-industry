@@ -1160,6 +1160,12 @@ html>body{padding:0}</style>
   #hsgTrueThreeDeckScreenRevO .hsg3d-panel-dialog-body > details[data-panel-id] > summary { display: none; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-panel-dialog-body > details[data-panel-id] + details[data-panel-id] { margin-top: 20px; }
   #hsgTrueThreeDeckScreenRevO .hsg3d-panel-section-title { margin: 0 0 10px; }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-brand { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-brand-mark { display: inline-flex; line-height: 0; }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-brand-mark svg { display: block; }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-brand-text { display: flex; flex-direction: column; gap: 1px; font-weight: 600; line-height: 1.25; }
+  #hsgTrueThreeDeckScreenRevO .hsg3d-brand-text small { font-weight: 400; color: var(--muted-foreground); }
+  #hsgTrueThreeDeckScreenRevO .uop-master > summary .hsg3d-brand-mark { vertical-align: -3px; margin-right: 7px; }
   @media (max-width: 620px) {
     #hsgTrueThreeDeckScreenRevO .hsg3d-panel-group { grid-template-columns: 1fr; gap: 2px; }
     #hsgTrueThreeDeckScreenRevO .hsg3d-panel-group > strong { padding-top: 0; }
@@ -1167,8 +1173,12 @@ html>body{padding:0}</style>
   }
 </style>
 <div id="hsgTrueThreeDeckScreenRevO">
+  <div class="hsg3d-brand" aria-label="회사 심볼과 도면 표제">
+    <span class="hsg3d-brand-mark" data-brand-mark="34"></span>
+    <span class="hsg3d-brand-text"><span>PV 재활용 통합 플랜트 <b>DD-R4</b></span><small>ICSH-301 · HSG-101 폐회로 · SC-500 2단 · SV-201 Sheeve · 습식 회수</small></span>
+  </div>
   <details class="card uop-master" id="plant-panel-master-plc" data-panel-id="master-plc" data-panel-category="통합 운전" aria-label="통합 플랜트 전체 운전">
-    <summary>PLC-001 · 전체공정 통합 PLC</summary>
+    <summary><span class="hsg3d-brand-mark" data-brand-mark="18"></span>PLC-001 · 전체공정 통합 PLC</summary>
     <div class="viz-controls" aria-label="PLC-001 통합운전 제어">
       <label class="form-label" for="plc001-mode">운전 모드
         <select class="form-select" id="plc001-mode" data-plc001-mode>
@@ -16063,6 +16073,92 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       addMesh(parent, new THREE.TubeGeometry(curve, 18, 0.008, 6, false), bondingMaterial, { x: 0, y: 0, z: 0 }, null, partId, false);
     }
 
+    // ---- 회사 심볼 마크 — 유일 정의(single source of truth) -----------------
+    // symbol_100x100mm.ai(PDF 1.4) 에서 채움 패스와 채움색을 **파일에서 직접** 읽어
+    // 옮긴 값이다. 눈으로 따라 그린 좌표가 아니다. 추출 벡터를 SVG 로 써서 Chromium
+    // 으로 2286×2019 로 다시 래스터화하고 원본 렌더와 화소 대조했다 —
+    //   잉크영역 IoU 0.99987 · 파랑 0.99986 · 황색 0.99990
+    //   채널차 2/255 이하인 화소 99.75 % · 평균절대오차 0.31/255 · RMSE 0.74
+    //   16/255 를 넘는 화소 1,631 개는 **전부 색 경계 1 px 이내**, 경계 밖 불일치 0
+    // 즉 형상은 동일하고 차이는 MuPDF·Skia 안티앨리어싱뿐이다.
+    // 원본 좌표와 검증 수치는 docs/drawings/brand-mark.json 에 그대로 남겼고,
+    // 콘솔 SVG(brandMarkSvg)와 3D 외장 데칼(addBrandMark)이 **여기 하나만** 읽는다.
+    // 그 일치는 tests/test_brand_mark.py 가 강제한다.
+    const BRAND_MARK = Object.freeze({
+      viewBox: Object.freeze([0, 0, 285.7027, 252.2044]),
+      paths: Object.freeze([
+        Object.freeze({ d: "M26.184,87.3426L4.477,124.9406C0,132.6956,0,142.2496,4.478,150.0046L45.48,221.0236L74.422,170.8936L26.184,87.3426Z", fill: "#238CCA" }),
+        Object.freeze({ d: "M103.3656,120.7627L55.1276,37.2117L35.8326,70.6317L84.0706,154.1827L103.3656,120.7627Z", fill: "#238CCA" }),
+        Object.freeze({ d: "M132.3081,70.632L110.8241,33.42L72.2341,33.42L113.0131,104.052L132.3081,70.632Z", fill: "#238CCA" }),
+        Object.freeze({ d: "M55.1272,237.7324L56.2472,239.6724C60.7252,247.4274,68.9992,252.2044,77.9532,252.2044L207.7512,252.2044C216.7052,252.2044,224.9802,247.4274,229.4572,239.6724L270.4592,168.6534L95.0032,168.6534L55.1272,237.7324Z", fill: "#238CCA" }),
+        Object.freeze({ d: "M281.2257,124.94L216.3267,12.532C211.8497,4.777,203.5747,0,194.6207,0L142.8537,0.001L142.8537,0L97.1977,0L120.3247,13.352L200.3437,151.95L280.1057,151.944L281.2257,150.004C285.7027,142.249,285.7027,132.695,281.2257,124.94Z", fill: "#FFCA4A" })
+      ])
+    });
+
+    // 콘솔용 인라인 SVG. 마크 데이터는 위 하나뿐이므로 여기에는 좌표가 없다.
+    function brandMarkSvg(px) {
+      const [vx, vy, vw, vh] = BRAND_MARK.viewBox;
+      const body = BRAND_MARK.paths
+        .map((entry) => '<path d="' + entry.d + '" fill="' + entry.fill + '"/>').join("");
+      return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + [vx, vy, vw, vh].join(" ")
+        + '" width="' + (px * vw / vh).toFixed(2) + '" height="' + px
+        + '" role="img" aria-label="회사 심볼" focusable="false">' + body + "</svg>";
+    }
+
+    // 3D 외장 데칼용 THREE.Shape. 같은 d 문자열을 파싱하므로 콘솔 SVG 와 형상이
+    // 같을 수밖에 없다 — 마크를 고치려면 BRAND_MARK 한 곳만 고치면 된다.
+    // 사용하는 명령은 M·L·C·Z 뿐이다(원본 아트워크가 그 넷만 쓴다).
+    function brandMarkShapes() {
+      const [, , vw, vh] = BRAND_MARK.viewBox;
+      const unit = 1 / vh;                       // 마크 높이 1 로 정규화
+      const px = (v) => (v - vw / 2) * unit;
+      const py = (v) => (vh / 2 - v) * unit;     // SVG 는 y 아래로, three 는 위로
+      return BRAND_MARK.paths.map((entry) => {
+        const shape = new THREE.Shape();
+        (entry.d.match(/[MLCZ][^MLCZ]*/g) || []).forEach((token) => {
+          const n = token.slice(1).split(",").filter((s) => s.length).map(Number);
+          if (token[0] === "M") shape.moveTo(px(n[0]), py(n[1]));
+          else if (token[0] === "L") shape.lineTo(px(n[0]), py(n[1]));
+          else if (token[0] === "C") shape.bezierCurveTo(px(n[0]), py(n[1]), px(n[2]), py(n[3]), px(n[4]), py(n[5]));
+          else shape.closePath();
+        });
+        return { shape, fill: entry.fill };
+      });
+    }
+
+    // 콘솔의 마크 자리를 채운다 — 마크 데이터는 BRAND_MARK 하나뿐이므로
+    // 헤더·PLC 콘솔·3D 데칼이 전부 같은 도형을 쓴다.
+    root.querySelectorAll("[data-brand-mark]").forEach((node) => {
+      node.innerHTML = brandMarkSvg(Number(node.dataset.brandMark) || 28);
+    });
+
+    const brandMarkMaterials = new Map();
+    function brandMarkMaterial(fill) {
+      if (!brandMarkMaterials.has(fill)) {
+        // 도장 마감 — 금속 반사보다 확산광이 지배해야 어느 각도에서도 색이 읽힌다.
+        brandMarkMaterials.set(fill, makeMaterial(parseInt(fill.slice(1), 16), 0.46, 0.08));
+      }
+      return brandMarkMaterials.get(fill);
+    }
+
+    // 장비 외장에 붙이는 명판. height 는 마크 높이(m), face 는 바라보는 방향.
+    // 두께 3 mm 로 살짝 도드라지게 둔다 — 도장이 아니라 부착 명판이다.
+    const BRAND_MARK_PLATE_M = 0.003;
+    function addBrandMark(parent, partId, position, height, face = "z", spin = 0) {
+      const group = new THREE.Group();
+      group.position.set(position.x, position.y, position.z);
+      group.rotation.y = face === "x" ? Math.PI / 2 : face === "-x" ? -Math.PI / 2 : face === "-z" ? Math.PI : 0;
+      group.rotation.z = spin;
+      group.scale.setScalar(height);
+      group.userData.brandMark = partId;
+      parent.add(group);
+      brandMarkShapes().forEach(({ shape, fill }) => {
+        addMesh(group, new THREE.ExtrudeGeometry(shape, { depth: BRAND_MARK_PLATE_M / height, bevelEnabled: false }),
+          brandMarkMaterial(fill), { x: 0, y: 0, z: 0 }, null, partId, false);
+      });
+      return group;
+    }
+
     function addCylinder(parent, radius, length, position, sourceMaterial, partId, axis = "z", segments = 48, edged = false) {
       const rotation = axis === "z"
         ? { x: Math.PI / 2, y: 0, z: 0 }
@@ -17926,6 +18022,18 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addBonding(parts.P17, "P17", { x: filterCenter.x, y: 1.20, z: filterCenter.z - 0.26 }, { x: filterCenter.x, y: 0.06, z: -0.92 });
     addBonding(parts.P21, "P21", { x: cyclone2Center.x, y: 1.10, z: cyclone2Center.z - 0.30 }, { x: cyclone2Center.x, y: 0.06, z: -0.92 });
     addBonding(parts.P21, "P21", { x: bfCenter.x, y: 1.00, z: bfCenter.z - 0.32 }, { x: bfCenter.x, y: 0.06, z: -0.92 });
+
+    // ---- 회사 심볼 명판 -----------------------------------------------------
+    // 워드마크(companyLogoPlate)는 벨트가드에 이미 붙어 있다. 여기 붙는 것은
+    // **심볼 마크**이고, 도형은 콘솔 SVG 와 같은 BRAND_MARK 하나에서 나온다.
+    // 자리는 셋 다 평평하고 가려지지 않는 외장면이다.
+    // 중앙 스트립에는 하부 Y축 속도검출 타깃휠이 나와 있으므로 점검커버 위에 붙인다.
+    addBrandMark(parts.P23, "P23", { x: shredderCenter.x + 0.68, y: 1.24, z: 1.147 }, 0.28);    // ICSH-301 점검커버
+    addBrandMark(parts.P28, "P28", { x: plcCenter.x, y: 0.58, z: plcCenter.z + 0.224 }, 0.22);  // PLC-101 반 도어
+    // 벨트가드에는 워드마크 데칼이 이미 있고 그 안에 같은 심볼이 들어 있으므로 겹치지 않는다.
+    // 세 번째는 HSG-101 전면도어. 도어 중앙에는 속도검출 타깃휠과 지지대가 지나가므로
+    // 볼트원(반경 0.39) 안쪽 좌측의 빈 자리에 앉힌다.
+    addBrandMark(parts.P02, "P02", { x: grinderX - 0.235, y: grinderY, z: 0.418 }, 0.15);
 
     const unifiedWet = new THREE.Group();
     unifiedWet.name = "UNIFIED-WET-PROCESS";
