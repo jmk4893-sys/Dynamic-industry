@@ -1985,6 +1985,23 @@ class TestIncomingService(unittest.TestCase):
         self.assertIn("INCOMING_CABLE_M = 0,", self.html)
         self.assertIn("incomingKnown: false", self.html)
         self.assertIn("미확정", self.html, "길이를 모르면 도면도 모른다고 적어야 한다")
+        # **거리와 판정은 다른 것이다.** 발주처가 준 것은 "151 m 이내" 라는
+        # 판정이지 몇 m 인지가 아니다. 판정은 방식(저압 분기·변압기 불요)을
+        # 정하고, 거리는 케이블 물량을 정한다 — 한계값을 실거리 자리에 적으면
+        # 물량이 상한으로 부푼 채 확정 얼굴을 하고 발주로 간다.
+        self.assertTrue(wiring.SITE_BOARD_WITHIN_LV_LIMIT)
+        self.assertTrue(wiring.lv_tap_is_confirmed(), "방식은 확정됐다")
+        self.assertIsNone(wiring.SITE_BOARD_TO_MDB_MM, "거리는 여전히 모른다")
+        self.assertFalse(wiring.incoming_length_is_known())
+        self.assertFalse(wiring.lv_tap_is_confirmed(within=False),
+                         "한계 밖이면 저압 분기가 아니다 — 분기가 죽지 않았는지 본다")
+        # 한계값이 실거리로 새어 들어가면 안 된다
+        self.assertNotEqual(wiring.SITE_BOARD_TO_MDB_MM,
+                            int(electrical.lv_tap_max_length_m() * 1000))
+        self.assertIn("withinLvLimit: true", self.html)
+        self.assertIn("lvTapConfirmed: true", self.html)
+        self.assertIn("이내 확인 · 실거리 미확정", self.html)
+        self.assertIn("저압 분기가 확정됐다", self.html)
         self.assertNotIn("INCOMING_CABLE_M.toFixed(1) + ' m (인입점 x=0 기준)'", self.html)
 
     def test_transformer_is_sized_from_demand_not_guessed(self):

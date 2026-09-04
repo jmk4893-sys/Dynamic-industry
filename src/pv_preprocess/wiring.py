@@ -240,6 +240,20 @@ SUBSTATION_TO_MDB_MM = 2_000
 #: 실측이 오면 이 한 줄만 채우면 케이블 스케줄과 도면이 같이 따라온다.
 SITE_BOARD_TO_MDB_MM: int | None = None
 
+#: **부지 배전반까지의 거리가 저압 분기 한계 안인가.** 발주처 확인 — 그렇다.
+#:
+#: 거리와 판정은 다른 것이다. 발주처가 준 것은 "151 m 이내" 라는 **판정**이지
+#: 몇 m 인지가 아니다. 판정만으로 정해지는 것과 거리가 있어야 정해지는 것을
+#: 갈라 둔다 —
+#:
+#:   * 판정이 정하는 것 : 저압 분기로 간다 · 변압기 불요 · 전기실 불요.
+#:     이것들이 이제 **확정**이다. REV.32 까지는 계획이었다.
+#:   * 거리가 정하는 것 : 분기 주회로 실길이. 여전히 모른다.
+#:
+#: 한계값(151 m)을 실거리 자리에 적으면 케이블 물량이 상한으로 부풀고, 그
+#: 부풀린 값이 "확정" 얼굴을 하고 발주로 간다. 그래서 안 적는다.
+SITE_BOARD_WITHIN_LV_LIMIT = True
+
 
 def incoming_cable_m() -> float | None:
     """분기 주회로 길이 (m). 모르면 None — 지어내지 않는다.
@@ -259,6 +273,18 @@ def incoming_cable_m() -> float | None:
 def incoming_length_is_known() -> bool:
     """분기 주회로 길이가 확정됐는가 — 아니면 도면에 한계 거리만 적는다."""
     return incoming_cable_m() is not None
+
+
+def lv_tap_is_confirmed(within: bool | None = None) -> bool:
+    """저압 분기가 **확정**인가.
+
+    거리를 몰라도 "한계 안" 이라는 판정만 있으면 방식은 정해진다 —
+    변압기도 전기실도 세우지 않는다는 뜻이다. 인자를 열어 둔 것은,
+    지금 True 라서 이 분기가 죽어도 아무도 모르는 일을 막기 위해서다.
+    """
+    ok = SITE_BOARD_WITHIN_LV_LIMIT if within is None else within
+    return bool(ok) and electrical.taps_existing_service() \
+        and electrical.TAP_AT_LOW_VOLTAGE
 
 
 def total_power_cable_m() -> float:

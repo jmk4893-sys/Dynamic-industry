@@ -2965,7 +2965,7 @@ html>body{padding:0}</style>
     return [left, top, width, height].map(Math.round).join(' ');
   }
 
-  var DRAWING_REVISION = 'REV.32';
+  var DRAWING_REVISION = 'REV.33';
   // 뷰별 축 선택. PART_AXIS 는 part.at/part.size 의 [X, 상하, 깊이] 기준,
   // ENVELOPE_AXIS 는 station.envelope 의 [L, W, H] 기준 — 두 배열의 축 순서가 다르다.
   var PART_AXIS = { plan: [0, 2], front: [0, 1], side: [2, 1] };
@@ -3600,7 +3600,7 @@ html>body{padding:0}</style>
   var CONTRACT_MARGIN = 1.35;
   // REV.23 인입 확정 — 계약전력이 저압 공급 상한을 넘어 고압 수전으로 바뀐다.
   // 값은 전부 src/pv_preprocess/electrical.py 의 incomer_summary() 파생이다.
-  var INCOMER = { method: '기존 부지 인입 1,200 kW 에서 분기 (이 플랜트 23.9 %)', tapsSite: true, tapLowVoltage: true, siteServiceKw: 1200.0, siteUtilPct: 23.9, siteHeadroomKw: 912.7, worstCaseKw: 287.5, coincidentWorstCaseKw: 280.8, lvTapMaxM: 151.5, highVoltage: true, hvV: 380, contractKw: 287.3, contractKva: 319.3, apparentKva: 236.5, transformerKva: 0, transformerKvaIfHv: 500, transformerLoadPct: 0.0, capacitorKvar: 35, hvCurrentA: 0.0, hvCable: '4C×240 mm² Cu (부지 저압 배전반 분기)', vcbA: 0, lvMainMm2: 240, substationMm: [0, 0, 0], lowVoltageLimitKw: 100.0, incomingKnown: false, dropPct: 3.0, breakerHeadroomKw: 2.6 };
+  var INCOMER = { method: '기존 부지 인입 1,200 kW 에서 분기 (이 플랜트 23.9 %)', tapsSite: true, tapLowVoltage: true, siteServiceKw: 1200.0, siteUtilPct: 23.9, siteHeadroomKw: 912.7, worstCaseKw: 287.5, coincidentWorstCaseKw: 280.8, lvTapMaxM: 151.5, highVoltage: true, hvV: 380, contractKw: 287.3, contractKva: 319.3, apparentKva: 236.5, transformerKva: 0, transformerKvaIfHv: 500, transformerLoadPct: 0.0, capacitorKvar: 35, hvCurrentA: 0.0, hvCable: '4C×240 mm² Cu (부지 저압 배전반 분기)', vcbA: 0, lvMainMm2: 240, substationMm: [0, 0, 0], lowVoltageLimitKw: 100.0, incomingKnown: false, withinLvLimit: true, lvTapConfirmed: true, dropPct: 3.0, breakerHeadroomKw: 2.6 };
   // 스마트 팩토리 계층 — src/pv_preprocess/smart.py 파생 (테스트 대조).
   var SMART = { serverRoomX: 43600, controlRoomX: 46700, edgeCenterX: 25000, facilityX0: 42700, facilityX1: 48700, serverRoomMm: [1800, 3200, 2700], controlRoomMm: [4000, 3400, 2700], racks: 2, rackU: 28, rackHeatKw: 6.03, edgeCabinets: 7, wifiAps: 5, instruments: 46, plcTags: 592, servos: 36, inverters: 9, dol: 8, timeseriesKbS: 91.7, visionRawMbS: 6.9, visionKeptMbS: 0.94, retentionPct: 13.7, requiredMbps: 111.9, backboneMbps: 1000, annualTb: 14.19, storageTb: 63.9, itKw: 10.3, instKw: 4.5, smartKw: 14.8, hoursPerYear: 4125 };
   // [태그, 존, 이름, 수량, 신호수, Hz, 분전반, W, 용도, 여는 과제]
@@ -3709,9 +3709,15 @@ html>body{padding:0}</style>
   var MOUNT_SUMMARY = { stations: 8, anchors: 190, m16: 94, m20: 88, m24: 8, members: 18, brackets: 51, series: 53, withdrawn: 2, floor: 14, frame: 2, gantry: 2, exempt: 4 };
   var SL_CHAIN_ROWS = INCOMER.tapsSite ? (INCOMER.tapLowVoltage ? 4 : 5) : (INCOMER.highVoltage ? 6 : 4);
   // 분기 주회로 길이는 부지 실측 대기다. 모를 때 0.0 m 로 찍으면 도면이 거짓말을 한다.
+  // 상태가 셋이다. 거리를 아는 것과 "한계 안" 이라는 판정만 받은 것은 다르다 —
+  // 판정은 방식(저압 분기·변압기 불요)을 정하고, 거리는 케이블 물량을 정한다.
+  // 한계값을 실거리 자리에 적으면 물량이 상한으로 부푼 채 확정 얼굴을 한다.
   function incomingText() {
-    return INCOMER.incomingKnown ? INCOMING_CABLE_M.toFixed(1) + ' m'
-      : '미확정 (한계 ' + INCOMER.lvTapMaxM.toFixed(0) + ' m)';
+    if (INCOMER.incomingKnown) return INCOMING_CABLE_M.toFixed(1) + ' m';
+    if (INCOMER.withinLvLimit) {
+      return '한계 ' + INCOMER.lvTapMaxM.toFixed(0) + ' m 이내 확인 · 실거리 미확정';
+    }
+    return '미확정 (한계 ' + INCOMER.lvTapMaxM.toFixed(0) + ' m)';
   }
   // [피더, 분전반, 부하, 설치 kW, 수용률, MCCB AT, 케이블, 출처]
   var feeders = [
@@ -4030,8 +4036,10 @@ html>body{padding:0}</style>
         + INCOMER.siteUtilPct.toFixed(1) + ' %)다.',
       '계약전력 ' + INCOMER.contractKw.toFixed(1) + ' kW 가 저압 공급 상한 ' + INCOMER.lowVoltageLimitKw.toFixed(0)
         + ' kW 를 넘는다는 판정은 그대로 유효하지만, 그 수전설비가 부지 쪽에 이미 있을 뿐이다.',
-      '저압 분기는 전압강하가 거리를 묶는다 — 부지 배전반까지 ' + INCOMER.lvTapMaxM.toFixed(0)
-        + ' m 이내여야 하고, 넘으면 고압 분기 + 국소 변압기 ' + INCOMER.transformerKvaIfHv + ' kVA 로 간다.',
+      '저압 분기는 전압강하가 거리를 묶는다 — 한계 ' + INCOMER.lvTapMaxM.toFixed(0) + ' m. '
+        + (INCOMER.lvTapConfirmed
+           ? '발주처가 그 안이라고 확인해 저압 분기가 확정됐다 (변압기·전기실 불요). 다만 실거리는 케이블 물량 산정에 여전히 필요하다.'
+           : '넘으면 고압 분기 + 국소 변압기 ' + INCOMER.transformerKvaIfHv + ' kVA 로 간다.'),
       '부하는 계획값이며 OEM 명판으로 확정한다. 역률 0.90·IR 수용률 0.75 는 고조파·시운전 전류 실측 전 값이다.'
     ].forEach(function (row, index) {
       out.push(text(40, capTop + index * 22, row, 'pv-layout-small'));
