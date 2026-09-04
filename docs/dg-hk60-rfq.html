@@ -214,7 +214,7 @@
     <li><a href="#c9"><b>9</b>상세설계 납품물</a></li>
     <li><a href="#c10"><b>10</b>검수 — FAT / SAT</a></li>
     <li><a href="#c11"><b>11</b>입찰자 확인사항</a></li>
-    <li><a href="#c12"><b>12</b>제출 요구사항</a></li>
+    <li><a href="#c12"><b>12</b>발주 조건 및 제출 요구사항</a></li>
   </ol>
 </nav>
 
@@ -974,30 +974,222 @@ NEXT_PANEL     = BACKSHEET_BIN_ACK ∧ SHREDDER_FEED_ACK ∧ GLASS_CARRIAGE_ACK 
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <section id="c12">
-  <h2><span>12</span>제출 요구사항</h2>
+  <h2><span>12</span>발주 조건 및 제출 요구사항</h2>
 
   <div class="clause"><div class="n">12.1</div><div class="c">
-    <h3>제안서 구성</h3>
-    <ol>
-      <li>설계 접근 방법 및 주요 기술적 판단</li>
-      <li><a href="#c11">11항</a> 확인사항별 해소 방법·소요·책임 범위</li>
-      <li>수행 조직 — 담당 기술자의 자격 및 유사 실적</li>
-      <li>일정 — <a href="#c9">9.4항</a> 단계별 제출 일정</li>
-      <li>견적 — 단계별 기성 구분</li>
-      <li>제작 단계 기술지원 범위 (해당 시)</li>
-    </ol>
+    <h3>일반</h3>
+    <p>12.2 – 12.4는 발주자가 정한 조건이다. 12.5 – 12.8은 제안서를 어떻게 내고
+      어떻게 평가하는지를 정한다. 본 항의 조건과 입찰자 제안이 다를 경우
+      <strong>차이와 근거를 제안서에 명시</strong>한다. 명시 없이 다른 조건으로 제출한
+      제안은 본 항의 조건을 수용한 것으로 본다.</p>
   </div></div>
 
   <div class="clause"><div class="n">12.2</div><div class="c">
-    <h3>실적 요구</h3>
-    <p>고온 공정설비 또는 자동 반송·박리 설비의 상세설계 실적을 제시한다.
-      안전관련 제어시스템(ISO 13849-1) 적용 실적을 별도로 명시한다.</p>
+    <h3>용역 기간 및 일정</h3>
+    <p>용역기간은 <strong class="m">착수지시일(NTP)로부터 30주</strong>로 한다.
+      착수지시일은 계약 체결 시 확정하며, 아래 일정은 그 날을 0주로 한다.
+      단계 구분과 제출물은 <a href="#c9">9.4항</a>과 같다.</p>
+    <div class="tw"><table>
+      <caption>단계별 일정 — 착수지시일 기준</caption>
+      <thead><tr><th class="num">단계</th><th>주요 작업</th><th class="num">소요</th>
+        <th class="num">누적</th><th>발주자 검토</th></tr></thead>
+      <tbody>
+        <tr><td class="num">착수</td><td>착수계·수행계획서·품질관리계획·핵심인력 확정</td>
+          <td class="num">1주</td><td class="num">1주</td><td>—</td></tr>
+        <tr><td class="num">30 %</td><td>설계 방침, 주요 부품 선정안, 구조·열 예비계산,
+          <a href="#c11">11항</a> 확인사항 해소 계획</td>
+          <td class="num">5주</td><td class="num">6주</td><td>10 영업일 · 병행</td></tr>
+        <tr><td class="num">60 %</td><td>배치·조립도, 전기·제어 도면, 위험성평가 초안, 계산서 초안</td>
+          <td class="num">8주</td><td class="num">14주</td><td>10 영업일 · 병행</td></tr>
+        <tr><td class="num">100 %</td><td>부품도 포함 전 도면, 계산서 확정, 매뉴얼, FAT/SAT 절차서</td>
+          <td class="num">10주</td><td class="num">24주</td><td>아래 행</td></tr>
+        <tr><td class="num">100 % 검토</td><td>발주자 최종 검토 — 제작승인도 착수 전 완료</td>
+          <td class="num">2주</td><td class="num">26주</td><td>10 영업일</td></tr>
+        <tr><td class="num">제작승인도</td><td>제작사 검토 반영본</td>
+          <td class="num">4주</td><td class="num">30주</td><td>10 영업일</td></tr>
+      </tbody>
+    </table></div>
+    <p>30 %·60 % 검토는 다음 단계 작업과 <strong>병행</strong>하므로 별도 행을 두지 않는다.
+      100 % 검토만 제작승인도 착수 전에 끝나야 하므로 <strong>일정에 행으로 세웠다</strong> —
+      용역기간 30주는 이 2주를 포함한 값이다. 검토의견 반영에 드는 기간은 해당 단계 소요에 포함한다.</p>
+    <div class="note"><strong>100 % 단계에 10주를 둔 것은 부품도 때문이다.</strong>
+      선행자료에는 제작도면이 없으므로(<a href="#c1">1.2항</a>) 13개 모듈의 부품도를
+      판두께·공차·용접기호·가공기준면까지 이 단계에서 처음 그린다. 입찰자가 이보다
+      짧은 일정을 제안하려면 도면 매수 산정 근거를 함께 제시한다.</div>
+    <p>확인사항(<a href="#c11">11항</a>) 중 실측·DOE가 필요한 항목은 시험 일정이
+      전체 일정을 좌우한다. 특히 <a href="#c11">OI-01</a> 박리력 실측은
+      <a href="#c11">OI-07</a> 구동 선정과 <a href="#c11">OI-13</a> 패드 배치의
+      선행조건이므로, 입찰자는 이 시험을 <strong>30 % 단계 안에</strong> 배치한다.</p>
   </div></div>
 
   <div class="clause"><div class="n">12.3</div><div class="c">
+    <h3>대가 지급 — 기성 구분</h3>
+    <p>기성은 <a href="#c9">9.4항</a>의 제출·승인 시점에 맞춘다. 제출만으로는 기성이
+      성립하지 않으며 <strong>발주자 승인 또는 검토 완료</strong>가 지급 요건이다.</p>
+    <div class="tw"><table>
+      <caption>기성 구분 — 계약금액 기준</caption>
+      <thead><tr><th>구분</th><th>지급 요건</th><th class="num">비율</th><th class="num">누계</th></tr></thead>
+      <tbody>
+        <tr><th>선급금</th><td>계약 체결 및 착수계 제출</td><td class="num">10 %</td><td class="num">10 %</td></tr>
+        <tr><th>1차</th><td>30 % 제출물 발주자 승인</td><td class="num">20 %</td><td class="num">30 %</td></tr>
+        <tr><th>2차</th><td>60 % 제출물 검토 완료</td><td class="num">25 %</td><td class="num">55 %</td></tr>
+        <tr><th>3차</th><td>100 % 제출물 최종 승인</td><td class="num">35 %</td><td class="num">90 %</td></tr>
+        <tr><th>준공</th><td>제작승인도 인도 및 검수 완료</td><td class="num">10 %</td><td class="num">100 %</td></tr>
+      </tbody>
+    </table></div>
+    <ul>
+      <li>선급금은 <strong>선급금 보증증권 제출</strong>을 조건으로 지급한다</li>
+      <li>기성 청구서 접수일로부터 <span class="m">30일</span> 이내 지급한다</li>
+      <li>과업 내용이 발주자 요구로 변경되면 서면 변경계약으로 대가를 조정한다.
+        <a href="#c11">11항</a> 확인사항의 해소는 본 용역 범위이므로 변경 사유가 아니다</li>
+      <li>준공 <span class="m">10 %</span>를 제작승인도까지 유보하는 이유는,
+        제작사 검토 의견이 도면에 반영되어야 이 용역의 목적인
+        <strong>'제작에 착수할 수 있는 설계도서'</strong>가 완성되기 때문이다</li>
+    </ul>
+  </div></div>
+
+  <div class="clause"><div class="n">12.4</div><div class="c">
+    <h3>실적 및 인력 요구</h3>
+    <p>아래 실적을 <strong>최근 10년</strong> 이내 준공 기준으로 제시한다.
+      실적 요구는 이 설비가 실제로 요구하는 기술에서 도출했다 —
+      고온 연속 반송, 다축 동기 이송, 기능안전, 과도 열해석의 네 가지다.</p>
+    <div class="tw"><table>
+      <caption>필수 실적</caption>
+      <thead><tr><th>구분</th><th>요구</th><th class="num">건수</th><th>증빙</th></tr></thead>
+      <tbody>
+        <tr><th>고온 공정설비</th><td>공정온도 <span class="m">≥ 200 °C</span>이고 자동 반송을
+          포함하는 설비의 상세설계</td><td class="num">2</td><td>계약서 사본 · 발주처 수행확인서</td></tr>
+        <tr><th>다축 동기 이송</th><td>2축 이상 위치 동기 서보 이송축 설계
+          (동기 편차를 관리 항목으로 규정한 것)</td><td class="num">1</td><td>사양서 · 도면 목록</td></tr>
+        <tr><th>기능안전</th><td>ISO 13849-1로 안전기능 PLr을 결정하고 달성 PL을 검증한 실적
+          (<span class="m">PL d</span> 이상 포함)</td><td class="num">1</td><td>안전 검증보고서 요약 · 발주처 확인</td></tr>
+        <tr><th>과도 열해석</th><td>과도 열전도 해석(FEM 또는 FDM)을 설계 근거로 사용한 실적</td>
+          <td class="num">1</td><td>계산서 목차 · 해석 조건</td></tr>
+      </tbody>
+    </table></div>
+    <div class="tw"><table>
+      <caption>핵심 인력</caption>
+      <thead><tr><th>역할</th><th>자격</th><th>투입 구간</th></tr></thead>
+      <tbody>
+        <tr><th>총괄</th><td>기계 분야 기술사 또는 동등 경력 <span class="m">15년</span> 이상</td><td>전 기간</td></tr>
+        <tr><th>기구 설계</th><td>경력 <span class="m">10년</span> 이상, 반송·이송장치 설계</td><td>전 기간</td></tr>
+        <tr><th>구조·열해석</th><td>해석 전담, 경력 <span class="m">7년</span> 이상</td><td>30 % – 100 %</td></tr>
+        <tr><th>전기·제어</th><td>경력 <span class="m">10년</span> 이상, 안전 PLC 적용 경험</td><td>30 % – 제작승인도</td></tr>
+        <tr><th>기능안전</th><td>ISO 13849-1 검증 담당 (TÜV FS Eng 등 자격 우대)</td><td>60 % – 100 %</td></tr>
+      </tbody>
+    </table></div>
+    <div class="warn"><strong>핵심 인력의 교체는 발주자 사전 서면승인을 받는다.</strong>
+      제안서에 적은 인력으로 평가받고 다른 인력이 수행하면 평가 자체가 무의미해진다.
+      승인 없이 교체된 경우 발주자는 원 인력의 투입을 요구하거나 계약을 해지할 수 있다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">12.5</div><div class="c">
+    <h3>제안서 구성</h3>
+    <p>아래 순서로 작성한다. 순서는 <a href="#c12">12.7항</a> 평가 항목과 같다.</p>
+    <ol>
+      <li>설계 접근 방법 및 주요 기술적 판단</li>
+      <li><a href="#c11">11항</a> 확인사항 <strong>13건 전부</strong>에 대한 해소 방법·소요·책임 범위
+        — 항목별로 시험·해석·문헌 중 무엇으로 해소할지, 그 결과가 어느 설계값을 바꾸는지 적는다</li>
+      <li>수행 조직 — <a href="#c12">12.4항</a> 인력별 이력과 해당 실적</li>
+      <li>일정 — <a href="#c12">12.2항</a> 단계에 맞춘 상세 일정, 실측·DOE 시험 배치 포함</li>
+      <li>품질관리 — 도면·계산서 검토 절차, 형상관리, 개정 이력 관리</li>
+      <li>견적 — <a href="#c12">12.3항</a> 기성 구분에 맞춘 단계별 금액과 투입 인월</li>
+      <li>제작 단계 기술지원 범위 (해당 시)</li>
+    </ol>
+    <p>제안서 본문은 <span class="m">30쪽</span> 이내로 하고 실적 증빙·이력서·도면 예시는
+      부록으로 분리한다. 쪽수 제한은 부록에 적용하지 않는다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">12.6</div><div class="c">
+    <h3>제출 서류 및 접수</h3>
+    <div class="tw"><table>
+      <caption>제출 서류</caption>
+      <thead><tr><th>서류</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><th>기술제안서</th><td><a href="#c12">12.5항</a> 구성, 본문 30쪽 이내</td></tr>
+        <tr><th>견적서</th><td>단계별 기성 금액 · 투입 인월 · 경비 내역</td></tr>
+        <tr><th>수행계획서</th><td>일정 · 조직도 · 품질관리계획</td></tr>
+        <tr><th>실적 증빙</th><td><a href="#c12">12.4항</a> 필수 실적별 계약서 사본 또는 수행확인서</td></tr>
+        <tr><th>인력 이력서</th><td>핵심 인력 5개 역할 전원, 자격증 사본 포함</td></tr>
+        <tr><th>회사 서류</th><td>사업자등록증 · 법인등기부등본 · 최근 3개년 재무제표</td></tr>
+        <tr><th>보안서약서</th><td>선행자료 수령 시 제출</td></tr>
+        <tr><th>하도급 계획서</th><td><a href="#c12">12.8항</a>에 따른 하도급이 있는 경우</td></tr>
+      </tbody>
+    </table></div>
+    <div class="tw"><table>
+      <caption>접수 일정 — 본 사양서 발행일 2026-09-03 기준</caption>
+      <thead><tr><th>구분</th><th class="num">기한</th><th>방법</th></tr></thead>
+      <tbody>
+        <tr><th>질의 접수 마감</th><td class="num">2026-09-15 17:00</td><td>서면 · 조항번호 인용</td></tr>
+        <tr><th>질의 답변 회신</th><td class="num">2026-09-18</td><td>전체 입찰자 동일 배포</td></tr>
+        <tr><th>제안서 접수 마감</th><td class="num">2026-09-24 17:00</td><td>PDF 1부 및 인쇄본 2부</td></tr>
+      </tbody>
+    </table></div>
+    <p>접수처와 담당자는 <code>발행 시 기재</code>한다. 마감 시각 이후 도착한 제안서는
+      접수하지 않는다. 제안서 유효기간은 접수 마감일로부터 <span class="m">90일</span>로 한다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">12.7</div><div class="c">
+    <h3>평가 방법</h3>
+    <p>기술 <span class="m">80</span> · 가격 <span class="m">20</span>으로 평가한다.
+      상세설계 용역의 결과는 도면 매수가 아니라 판단의 질이므로 기술에 비중을 둔다.</p>
+    <div class="tw"><table>
+      <caption>평가 배점</caption>
+      <thead><tr><th>구분</th><th>항목</th><th class="num">배점</th></tr></thead>
+      <tbody>
+        <tr><td class="k" rowspan="4">기술</td><td>과업 이해도 및 설계 접근 방법</td><td class="num">20</td></tr>
+        <tr><td><strong>11항 확인사항 13건의 해소 계획</strong></td><td class="num">25</td></tr>
+        <tr><td>수행 조직 및 실적</td><td class="num">20</td></tr>
+        <tr><td>일정 및 품질관리 계획</td><td class="num">15</td></tr>
+        <tr><td class="k">가격</td><td>최저 제안가 기준 상대평가</td><td class="num">20</td></tr>
+      </tbody>
+      <tfoot><tr><th>합계</th><td>기술 80 · 가격 20</td><td class="num">100</td></tr></tfoot>
+    </table></div>
+    <div class="note"><strong>확인사항 해소 계획에 가장 큰 배점을 둔 이유.</strong>
+      이 용역의 위험은 도면을 그리는 데 있지 않다. 로드셀 용량이 부족할 수 있고
+      (<a href="#c11">OI-01</a>), 열모델 상수가 가정이며(<a href="#c11">OI-05</a>),
+      진공 유지력이 마찰계수 가정 위에 서 있다(<a href="#c11">OI-13</a>).
+      이 13건을 어떻게 닫을지가 설계의 질을 결정한다.</div>
+    <p>기술평가 <span class="m">60점</span> 미만은 협상 대상에서 제외한다.
+      최고점 순으로 기술협상하며, 협상 결렬 시 차순위와 협상한다.
+      발주자는 필요 시 발표평가를 요구할 수 있다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">12.8</div><div class="c">
+    <h3>계약 조건</h3>
+    <div class="tw"><table>
+      <caption>주요 계약 조건</caption>
+      <thead><tr><th>항목</th><th>조건</th></tr></thead>
+      <tbody>
+        <tr><th>성과물 소유권</th><td>본 용역으로 작성된 도면·계산서·문서의 소유권과 저작재산권은
+          발주자에게 귀속한다. 입찰자가 계약 전부터 보유한 기술은 입찰자에게 유보하되,
+          본 설비의 제작·운전·정비·개조 목적에 한해 발주자에게 무상 실시권을 부여한다</td></tr>
+        <tr><th>비밀유지</th><td>선행자료와 성과물은 제3자에게 공개하지 않는다.
+          의무는 계약 종료 후 <span class="m">3년</span>간 존속한다</td></tr>
+        <tr><th>하도급</th><td>구조해석·기능안전 검증 등 전문 분야에 한해 발주자 사전 서면승인을
+          받아 하도급할 수 있다. 주요 설계업무의 일괄 하도급은 금지한다</td></tr>
+        <tr><th>설계 책임</th><td>설계 오류로 제작·설치 단계에서 재작업이 발생하면 입찰자 부담으로
+          도면을 정정한다. 책임기간은 최종 승인 후 <span class="m">24개월</span> 또는
+          SAT 완료 시점 중 늦은 때까지로 한다</td></tr>
+        <tr><th>지체상금</th><td>지체일수 1일당 계약금액의 <span class="m">0.05 %</span>,
+          총액은 계약금액의 <span class="m">10 %</span>를 넘지 않는다.
+          국가계약법령이 적용되는 발주는 해당 법령의 기술용역 기준을 우선한다</td></tr>
+        <tr><th>계약 변경</th><td>발주자 요구로 과업이 변경되면 서면 변경계약으로
+          기간과 대가를 조정한다</td></tr>
+      </tbody>
+    </table></div>
+    <div class="warn"><strong>성과물 소유권과 실시권을 함께 정한 것은 개조를 위해서다.</strong>
+      이 설비는 폐모듈 사양이 바뀌면 칼날·이송·권취 조건을 다시 잡아야 한다.
+      도면만 넘겨받고 그 도면이 기대는 기술의 사용권이 없으면 개조 때마다
+      원 설계자에게 묶인다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">12.9</div><div class="c">
     <h3>질의</h3>
     <p>본 사양서에 대한 질의는 서면으로 접수하며, 질의와 답변은 전체 입찰자에게
       동일하게 배포한다. 조항번호로 인용한다.</p>
+    <p>선행자료(3D 운전 콘솔)의 열람 또는 사본 제공은 보안서약서 제출 후
+      질의 접수 마감 전까지 신청한다.</p>
   </div></div>
 </section>
 

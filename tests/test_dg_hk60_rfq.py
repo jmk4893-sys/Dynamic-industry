@@ -514,5 +514,119 @@ class TestVacuumPadLayout(unittest.TestCase):
                       "패드 배치가 어떤 가정 위에 서 있는지 적혀 있지 않다")
 
 
+class TestProcurementTerms(unittest.TestCase):
+    """12항 발주 조건의 수치가 서로 맞는지 확인한다.
+
+    일정·기성·배점은 표 안에서 스스로 더해지는 값이다. 한 행만 고치고 합계를
+    안 고치면 입찰자가 먼저 발견한다 — 그때는 사양서 전체의 신뢰가 깎인다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = RFQ.read_text(encoding="utf-8")
+        start = cls.html.index('<section id="c12">')
+        cls.c12 = cls.html[start:cls.html.index("</section>", start)]
+
+    def _table(self, caption):
+        m = re.search(
+            rf"<caption>{re.escape(caption)}[^<]*</caption>(.*?)</table>",
+            self.c12, re.S)
+        self.assertIsNotNone(m, f"'{caption}' 표를 찾지 못했다")
+        return m.group(1)
+
+    @staticmethod
+    def _cells(row):
+        return [re.sub(r"<[^>]+>", "", c).strip()
+                for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)]
+
+    def test_schedule_weeks_add_up(self):
+        """소요의 누적합이 누적 열과 같고, 마지막 누적이 선언한 용역기간이다."""
+        rows = re.findall(r"<tr>(.*?)</tr>", self._table("단계별 일정"), re.S)
+        rows = [r for r in rows if "<td" in r]
+        self.assertEqual(len(rows), 6, "일정 표가 6행이 아니다")
+        total = 0
+        for row in rows:
+            c = self._cells(row)
+            spent = int(re.search(r"(\d+)주", c[2]).group(1))
+            cum = int(re.search(r"(\d+)주", c[3]).group(1))
+            total += spent
+            self.assertEqual(
+                cum, total, f"'{c[0]}' 단계의 누적 {cum}주가 소요 합 {total}주와 다르다")
+        declared = int(re.search(
+            r"착수지시일\(NTP\)로부터 (\d+)주", self.c12).group(1))
+        self.assertEqual(
+            total, declared,
+            f"단계 소요 합 {total}주가 선언한 용역기간 {declared}주와 다르다")
+
+    def test_payment_shares_add_to_one_hundred(self):
+        rows = re.findall(r"<tr>(.*?)</tr>", self._table("기성 구분"), re.S)
+        rows = [r for r in rows if "<th>" in r and "<td" in r]
+        self.assertEqual(len(rows), 5, "기성이 5회가 아니다")
+        total = 0
+        for row in rows:
+            c = self._cells(row)
+            share = int(re.search(r"(\d+) %", c[2]).group(1))
+            running = int(re.search(r"(\d+) %", c[3]).group(1))
+            total += share
+            self.assertEqual(
+                running, total, f"'{c[0]}' 의 누계 {running} % 가 합 {total} % 와 다르다")
+        self.assertEqual(total, 100, f"기성 비율 합이 {total} % 다")
+
+    def test_evaluation_points_add_to_one_hundred(self):
+        rows = re.findall(r"<tr>(.*?)</tr>", self._table("평가 배점"), re.S)
+        points = [int(m.group(1)) for r in rows if "<td" in r
+                  for m in [re.search(r'class="num">(\d+)<', r)] if m]
+        # 마지막은 tfoot 의 합계
+        self.assertEqual(points[-1], 100, "배점 합계가 100 이 아니다")
+        self.assertEqual(
+            sum(points[:-1]), points[-1],
+            f"항목 배점 합 {sum(points[:-1])} 이 합계 {points[-1]} 과 다르다")
+        tech = re.search(r"기술 <span class=\"m\">(\d+)</span>", self.c12)
+        price = re.search(r"가격 <span class=\"m\">(\d+)</span>", self.c12)
+        self.assertIsNotNone(tech, "기술 배점 선언이 없다")
+        self.assertEqual(
+            int(tech.group(1)) + int(price.group(1)), 100,
+            "기술·가격 배점 선언이 100 이 아니다")
+        self.assertEqual(
+            sum(points[:-2]), int(tech.group(1)),
+            "기술 항목 배점 합이 선언한 기술 배점과 다르다")
+
+    def test_open_item_count_matches_the_register(self):
+        """'13건' 은 11항을 세어 나온 수다. 항목이 늘면 여기도 틀린다."""
+        registered = len(re.findall(r"<b>(OI-\d+)</b>", self.html))
+        stated = re.findall(r"확인사항\s*(\d+)건", self.c12)
+        self.assertTrue(stated, "12항이 확인사항 건수를 적지 않았다")
+        for n in stated:
+            self.assertEqual(
+                int(n), registered,
+                f"12항이 확인사항을 {n}건이라 하는데 11항에는 {registered}건이 있다")
+
+    def test_required_experience_covers_what_this_machine_needs(self):
+        """실적 요구는 이 설비가 실제로 요구하는 기술에서 나와야 한다."""
+        table = self._table("필수 실적")
+        for token, why in (
+            ("≥ 200 °C", "가열 계면온도 200 °C"),
+            ("2축 이상 위치 동기", "좌우 동기 이송축"),
+            ("ISO 13849-1", "안전기능 PLr 검증"),
+            ("과도 열전도 해석", "체류시간 하한을 정하는 해석"),
+        ):
+            self.assertIn(token, table, f"필수 실적에 {why} 가 없다")
+
+    def test_intake_dates_are_ordered_and_after_issue(self):
+        issue = re.search(r"<dd>(\d{4}-\d{2}-\d{2})</dd>", self.html).group(1)
+        dates = re.findall(r'class="num">(\d{4}-\d{2}-\d{2})', self.c12)
+        self.assertEqual(len(dates), 3, "접수 일정이 3행이 아니다")
+        self.assertEqual(dates, sorted(dates), "질의·답변·접수 마감 순서가 뒤집혔다")
+        self.assertGreater(dates[0], issue, "질의 마감이 발행일보다 앞선다")
+
+    def test_payment_is_tied_to_approval_not_submission(self):
+        """제출만으로 기성이 나가면 승인 단계가 압력을 잃는다."""
+        table = self._table("기성 구분")
+        self.assertIn("승인", table)
+        self.assertIn("검토 완료", table)
+        self.assertIn("발주자 승인 또는 검토 완료", self.c12,
+                      "지급 요건이 승인임을 본문이 밝히지 않았다")
+
+
 if __name__ == "__main__":
     unittest.main()
