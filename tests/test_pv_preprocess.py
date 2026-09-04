@@ -19,8 +19,8 @@ import unittest
 from . import _path  # noqa: F401
 
 from pv_preprocess import (acceptance, access, acoustics, ai, air, brand, campaign, crane, dust, electrical,
-                           frames, grade, handoff, kinematics, layout, materials, mounting, reliability,
-                           safety, seismic, smart, servos, thermal, vision, wiring)
+                           frames, grade, handoff, kinematics, layout, maintain, materials, mounting,
+                           reliability, safety, seismic, smart, servos, thermal, vision, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
 
@@ -4253,8 +4253,15 @@ class TestReliability(unittest.TestCase):
         """MTBF 를 모르니 구할 수 없다 → 그렇다면 요구로 적는다."""
         for block in reliability.BLOCKS:
             with self.subTest(block=block.tag):
+                # 고장 횟수는 **개선 전** MTTR 로 나눈다. 개선된 MTTR 로 나누면
+                # "여섯 배 더 자주 고장 나도 된다" 는 허가가 되어 조달 사양이
+                # 엉뚱하게 느슨해진다 — 고장률은 설비의 성질이지 정비 방식이
+                # 바꾸는 값이 아니다.
                 self.assertAlmostEqual(block.failures_per_year(),
-                                       round(block.downtime_h() / block.mttr_h, 2), places=2)
+                                       round(block.downtime_h() / block.base_mttr_h, 2),
+                                       places=2)
+                self.assertLess(block.mttr_h, block.base_mttr_h,
+                                "정비성 개선이 반영되지 않았다")
                 self.assertEqual(
                     block.required_mtbf_h(),
                     int(smart.OPERATING_HOURS_PER_YEAR / block.failures_per_year()))
@@ -4494,16 +4501,17 @@ class TestWorldClassGrade(unittest.TestCase):
     def test_the_gaps_are_the_ones_we_actually_have(self):
         """지금 벌어져 있는 격차를 값으로 못 박는다 — 조용히 닫히면 시험이 잡는다."""
         gaps = {c.tag for c in grade.gaps()}
-        for tag in ("T-03", "D-01", "D-03", "A-02"):
+        for tag in ("T-03", "D-03", "A-02"):
             with self.subTest(tag=tag):
                 self.assertIn(tag, gaps)
+        # D-01 은 닫혔다 — 정비성 설계(교환 모듈·도킹 레일·온보드 진단·자동
+        # 복귀)가 최악 MTTR 을 3.0 h 에서 0.5 h 안으로 끌어내렸다.
+        self.assertNotIn("D-01", gaps, "정비성 개선이 풀렸다")
         # 폐루프는 0 이다. 감지 과제를 폐루프라고 세면 안 된다
         self.assertEqual(grade.closed_loop_count(), 0)
         self.assertEqual(grade.CLOSED_LOOP_TAGS, ())
-        # 최악 MTTR 3.0 h 는 목표 0.5 h 의 여섯 배다
-        self.assertGreaterEqual(grade.worst_mttr_h() / 0.5, 6.0)
-        # 단일고장 블록이 절반을 넘는다
-        self.assertGreater(grade.single_point_ratio(), 0.5)
+        # 단일고장은 아직 남아 있다 — 로봇·JBR·AFR·GBR 넷
+        self.assertGreater(grade.single_point_ratio(), 0.0)
 
     def test_oee_rides_on_an_assumption_and_says_so(self):
         """품질률 1.0 을 덮으면 0.85 를 갓 넘는다 — 그 사실을 값으로 남긴다."""
@@ -4512,3 +4520,87 @@ class TestWorldClassGrade(unittest.TestCase):
         self.assertGreater(optimistic, 0.85, "가정 아래서만 기준을 넘는다")
         # 품질률이 조금만 떨어져도 기준 밑으로 간다 — 그래서 재야 한다
         self.assertLess(grade.oee_if_quality(0.99), 0.85)
+
+
+class TestMaintainability(unittest.TestCase):
+    """MTTR 이 선언이 아니라 설계 기능에서 나오는지.
+
+    종전에는 블록마다 "3.0 h" 라고 적혀 있을 뿐 **무엇이 그 시간을 만드는지**가
+    없었다. 그러면 "MTTR 을 줄이겠다" 가 숫자를 고쳐 적는 일이 된다. 여기서
+    지키는 것은 시간이 네 단계의 합이고, 각 단계를 줄이는 기능이 실재한다는 것.
+    """
+
+    def test_mttr_is_the_sum_of_four_steps_not_a_number(self):
+        """합이 안 맞으면 어딘가에 숫자를 박은 것이다."""
+        for p in maintain.PROFILES:
+            with self.subTest(tag=p.tag):
+                self.assertAlmostEqual(
+                    p.mttr_h(),
+                    round(p.diagnose_h() + p.access_h() + p.exchange_h() + p.restore_h(), 3),
+                    places=3)
+                self.assertAlmostEqual(sum(maintain.SHARE.values()), 1.0, places=6)
+                self.assertGreaterEqual(len(p.module), 4, "무엇을 갈아 끼우는지 없다")
+                self.assertGreaterEqual(len(p.basis), 12)
+
+    def test_removing_a_feature_makes_it_slower(self):
+        """기능이 시간을 만드는지 — 빼 보면 늘어야 한다.
+
+        값이 같은지만 보면 계수를 1.0 으로 바꿔도 통과한다(§36 에서 배운 것).
+        그래서 기능을 실제로 떼어 내고 MTTR 이 늘어나는지 본다.
+        """
+        for p in maintain.PROFILES:
+            for feature in p.features:
+                with self.subTest(tag=p.tag, feature=feature):
+                    stripped = dataclasses.replace(
+                        p, features=tuple(f for f in p.features if f != feature))
+                    self.assertGreater(stripped.mttr_h(), p.mttr_h(),
+                                       f"{feature} 를 떼도 MTTR 이 그대로다")
+        # 교환 모듈이 없으면 현장 수리로 돌아가 크게 늘어난다
+        p = maintain.PROFILE_BY_TAG["RB-AFR"]
+        no_swap = dataclasses.replace(p, swap=None)
+        self.assertGreater(no_swap.mttr_h(), p.mttr_h() * 2)
+
+    def test_every_block_meets_the_world_class_target(self):
+        """목표는 SMRP 30분. 못 맞춘 블록이 있으면 이름이 나와야 한다."""
+        self.assertEqual(maintain.TARGET_MTTR_H, 0.5)
+        self.assertEqual(maintain.missing_target(), (),
+                         f"목표를 못 맞춘 블록: {[p.tag for p in maintain.missing_target()]}")
+        self.assertLessEqual(maintain.worst().mttr_h(), maintain.TARGET_MTTR_H)
+        # 무거운 셋은 도킹 레일이 없으면 목표를 못 맞춘다 — 그래서 그 기능이 있다
+        for tag in ("RB-BFC", "RB-AFR", "RB-GRM"):
+            with self.subTest(tag=tag):
+                p = maintain.PROFILE_BY_TAG[tag]
+                self.assertIn("dock", p.features)
+                undocked = dataclasses.replace(
+                    p, features=tuple(f for f in p.features if f != "dock"))
+                self.assertGreater(undocked.mttr_h(), maintain.TARGET_MTTR_H,
+                                   "도킹 레일 없이도 목표를 맞춘다면 계수가 헐겁다")
+
+    def test_the_line_restore_time_is_not_the_repair_time(self):
+        """벤치 수리는 라인을 세우지 않는다 — 그것이 30분 MTTR 의 방법이다."""
+        for p in maintain.swap_modules():
+            with self.subTest(tag=p.tag):
+                self.assertGreater(p.bench_repair_h(), p.mttr_h(),
+                                   "교환이 수리보다 오래 걸리면 교환할 이유가 없다")
+        # 대가가 있다 — 교환 모듈은 예비 한 벌을 사 둬야 한다
+        self.assertEqual(len(maintain.swap_modules()), len(maintain.PROFILES))
+        self.assertEqual(len(maintain.docked_modules()), 3)
+
+    def test_reliability_takes_its_mttr_from_here(self):
+        """신뢰성 모델이 제 숫자를 따로 들고 있으면 두 벌이 갈라진다."""
+        for b in reliability.BLOCKS:
+            with self.subTest(tag=b.tag):
+                self.assertAlmostEqual(b.mttr_h, maintain.mttr_h(b.tag), places=6)
+        # 개선 폭이 여섯 배 넘게 나온다
+        self.assertGreaterEqual(maintain.improvement()["ratio"], 6.0)
+
+    def test_the_gain_goes_to_availability_not_to_permission_to_fail(self):
+        """예산을 고정한 채 MTTR 만 낮추면 '더 자주 고장 나도 된다' 가 된다."""
+        gain = reliability.maintainability_gain()
+        self.assertGreater(gain["achievable"], gain["contract"])
+        self.assertGreater(gain["extraPanels"], 10_000)
+        # 요구 MTBF 는 정비성 개선으로 느슨해지면 안 된다 — 조달 사양이다
+        tight = reliability.tightest_mtbf_block()
+        self.assertEqual(tight.required_mtbf_h(),
+                         int(reliability.operating_hours()
+                             / round(tight.downtime_h() / tight.base_mttr_h, 2)))

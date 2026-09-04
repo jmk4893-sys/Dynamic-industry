@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import air, handoff, safety, smart
+from . import air, handoff, maintain, safety, smart
 
 # ── 목표 ─────────────────────────────────────────────────────────────────
 #: 목표 가용률. **계약값이지 물리값이 아니다** — 발주처와 합의할 자리이고,
@@ -58,7 +58,7 @@ class Block:
     tag: str
     name: str
     share: float            # 정지시간 예산 배분율
-    mttr_h: float           # 1회 정비시간 (계획값)
+    mttr_h: float           # 라인 복귀시간 — maintain.py 가 설계 기능에서 낸다
     redundant: bool
     buffered: bool          # 버퍼가 이 계통의 정지를 흡수하는가
     basis: str
@@ -66,34 +66,57 @@ class Block:
     def downtime_h(self, availability: float | None = None) -> float:
         return round(downtime_budget_h(availability) * self.share, 2)
 
+    @property
+    def base_mttr_h(self) -> float:
+        """정비성 개선 **전**의 현장 수리시간. 조달 사양의 기준선이다."""
+        return maintain.PROFILE_BY_TAG[self.tag].base_h
+
     def failures_per_year(self, availability: float | None = None) -> float:
-        return round(self.downtime_h(availability) / self.mttr_h, 2)
+        """연간 고장 횟수. **개선 전 MTTR 로 나눈다.**
+
+        고장률은 설비의 성질이라 정비 방식이 바꾸는 값이 아니다. 개선된 MTTR 로
+        나누면 "여섯 배 더 자주 고장 나도 된다" 는 허가가 되어 요구 MTBF 가
+        엉뚱하게 느슨해진다 — 조달 사양이 그렇게 흔들리면 안 된다.
+        짧아진 복구시간은 `achievable_availability()` 로만 돌린다.
+        """
+        return round(self.downtime_h(availability) / self.base_mttr_h, 2)
 
     def required_mtbf_h(self, availability: float | None = None) -> int:
         """발주 사양에 적을 값 — 이만큼은 버텨야 예산 안에 든다."""
         return int(operating_hours() / max(self.failures_per_year(availability), 1e-9))
 
 
-BLOCKS: tuple[Block, ...] = (
-    Block("RB-AFU", "AFU-101 투입·듀얼 리프트·비전", 0.10, 2.0, False, False,
-          "지게차 인터페이스라 외란이 많다. 리프트 유압과 도킹 게이트가 마모부"),
-    Block("RB-BFC", "BFC-101A/B 반전·셔틀·승강", 0.12, 3.0, True, False,
-          "Bay 2식이라 한쪽이 서도 절반 속도로 돈다 — 완전정지는 공통부(포탈·유압)뿐"),
-    Block("RB-ROBOT", "RB-101 로봇·EOAT", 0.08, 2.0, False, False,
-          "OEM 로봇 본체는 견고하다. 마모는 EOAT 진공 패드와 그리퍼 쪽"),
-    Block("RB-JBR", "JBR-201 3헤드 제거", 0.20, 2.5, False, False,
-          "**마모부가 가장 많다** — 칼날·가위·에어나이프·프로브. 헤드 3개가 직렬"),
-    Block("RB-AFR", "AFR-101 프레임 분리·클램프", 0.15, 3.0, False, False,
-          "25 kN 인발은 부하가 크다. 유압·LM 캐리지·힘센서가 정지 원인"),
-    Block("RB-POST", "CV-102·SG-301·GI-301/302 유리 후단", 0.12, 2.0, False, True,
-          "연마휠 교체가 잦지만 **버퍼가 흡수한다** — 0.76 h 안이면 전단이 안 선다"),
-    Block("RB-GBR", "GBR-301 버퍼·적재", 0.06, 2.0, False, False,
-          "셔틀·슬롯 로더. 여기가 서면 버퍼 자체가 못 도므로 흡수가 안 된다"),
-    Block("RB-GRM", "GRM-401 IR·탠덤 박리", 0.12, 3.0, False, True,
-          "IR 램프 60개와 핫나이프. 램프 1개 고장은 감속 운전이라 완전정지가 아니다"),
-    Block("RB-UTIL", "유틸리티 — 공압·진공·집진·유압", 0.05, 1.5, True, False,
-          "컴프레서 1운전 1예비·진공 2기라 단일고장이 라인을 안 세운다. "
-          "다만 집진이 서면 SG-301 이 못 돈다"),
+#: 정지시간 예산 배분과 흡수 구조. **MTTR 은 여기 적지 않는다** —
+#: `maintain.py` 가 설계 기능(온보드 진단·정비 접근·교환 모듈·자동 복귀·
+#: 도킹 레일)에서 낸다. 숫자를 여기 적으면 "MTTR 을 줄이겠다" 가 숫자를 고쳐
+#: 적는 일이 되어 버린다.
+_SHARES: tuple[tuple[str, str, float, bool, bool, str], ...] = (
+    ("RB-AFU", "AFU-101 투입·듀얼 리프트·비전", 0.10, True, False,
+     "지게차 인터페이스라 외란이 많다. 다만 **이미 2식이다** — LFT-101A/B 리프트, "
+     "VS-101A/B 비전, EOAT 진공 A/B. 한쪽이 서도 절반 속도로 돈다. "
+     "종전 모델이 이 이중화를 세지 않아 단일고장으로 잡혀 있었다"),
+    ("RB-BFC", "BFC-101A/B 반전·셔틀·승강", 0.12, True, False,
+     "Bay 2식이라 한쪽이 서도 절반 속도로 돈다 — 완전정지는 공통부(포탈·유압)뿐"),
+    ("RB-ROBOT", "RB-101 로봇·EOAT", 0.08, False, False,
+     "OEM 로봇 본체는 견고하다. 마모는 EOAT 진공 패드와 그리퍼 쪽"),
+    ("RB-JBR", "JBR-201 3헤드 제거", 0.20, False, False,
+     "**마모부가 가장 많다** — 칼날·가위·에어나이프·프로브. 헤드 3개가 직렬"),
+    ("RB-AFR", "AFR-101 프레임 분리·클램프", 0.15, False, False,
+     "25 kN 인발은 부하가 크다. 유압·LM 캐리지·힘센서가 정지 원인"),
+    ("RB-POST", "CV-102·SG-301·GI-301/302 유리 후단", 0.12, False, True,
+     "연마휠 교체가 잦지만 **버퍼가 흡수한다** — 0.76 h 안이면 전단이 안 선다"),
+    ("RB-GBR", "GBR-301 버퍼·적재", 0.06, False, False,
+     "셔틀·슬롯 로더. 여기가 서면 버퍼 자체가 못 도므로 흡수가 안 된다"),
+    ("RB-GRM", "GRM-401 IR·탠덤 박리", 0.12, False, True,
+     "IR 램프 60개와 핫나이프. 램프 1개 고장은 감속 운전이라 완전정지가 아니다"),
+    ("RB-UTIL", "유틸리티 — 공압·진공·집진·유압", 0.05, True, False,
+     "컴프레서 1운전 1예비·진공 2기라 단일고장이 라인을 안 세운다. "
+     "다만 집진이 서면 SG-301 이 못 돈다"),
+)
+
+BLOCKS: tuple[Block, ...] = tuple(
+    Block(tag, name, share, maintain.mttr_h(tag), redundant, buffered, basis)
+    for tag, name, share, redundant, buffered, basis in _SHARES
 )
 
 
@@ -145,6 +168,54 @@ def availability_without_buffer(availability: float | None = None) -> float:
 
 
 # ── 연간 숫자가 무엇 위에 서 있는가 ──────────────────────────────────────
+#: 정비성 개선 전의 계획 MTTR (h). 요구 MTBF 는 이 값 위에서 정해졌다.
+#: 개선분을 어디로 돌릴지 계산하려면 출발점이 남아 있어야 한다.
+BASE_MTTR_H: dict[str, float] = {p.tag: p.base_h for p in maintain.PROFILES}
+
+
+def failures_per_year_at_base(tag: str, availability: float | None = None) -> float:
+    """정비성 개선 **전** 기준의 연간 고장 횟수.
+
+    고장률은 설비의 성질이지 정비 방식이 바꾸는 값이 아니다. 그래서 개선 뒤에도
+    이 횟수를 그대로 두고, 짧아진 복구시간을 **가용률로** 돌린다.
+    """
+    block = next(b for b in BLOCKS if b.tag == tag)
+    return block.failures_per_year(availability)
+
+
+def achievable_availability(availability: float | None = None) -> float:
+    """정비성 개선이 만드는 가용률.
+
+    예산을 고정한 채 MTTR 만 낮추면 "여섯 배 더 자주 고장 나도 된다" 는 허가로
+    읽힌다 — 그것은 개선이 아니다. 고장 횟수를 그대로 두고 복구시간만 짧아진
+    것으로 계산해야 개선분이 보인다.
+
+    버퍼도 여기서 다시 계산된다. MTTR 이 버퍼 자립시간(0.76 h)보다 짧아지면
+    **버퍼가 흡수하는 비율이 100 % 가 된다** — 짧은 정지는 전단을 아예 못 세운다.
+    """
+    ride = buffer_ride_through_h()
+    stopped = 0.0
+    for b in BLOCKS:
+        n = failures_per_year_at_base(b.tag, availability)
+        per_stop = b.mttr_h
+        if b.buffered:
+            per_stop = max(0.0, per_stop - ride)
+        stopped += n * per_stop
+    return round(1 - stopped / operating_hours(), 4)
+
+
+def maintainability_gain(availability: float | None = None) -> dict[str, float]:
+    """정비성 개선의 값어치 — 가용률과 연간 장수로."""
+    target = TARGET_AVAILABILITY if availability is None else availability
+    got = achievable_availability(availability)
+    return {
+        "contract": target,
+        "achievable": got,
+        "gainPoints": round((got - target) * 100, 2),
+        "extraPanels": annual_panels(got) - annual_panels(target),
+    }
+
+
 def nominal_annual_panels() -> int:
     """가용률을 안 본 장수 — §25·§26 이 쓰는 값."""
     return round(smart.panels_per_h() * operating_hours())
@@ -276,6 +347,11 @@ def summary() -> dict[str, object]:
         "rideThroughH": buffer_ride_through_h(),
         "bufferedDowntimeH": buffered_downtime_h(),
         "availabilityWithoutBuffer": availability_without_buffer(),
+        "worstMttrH": max(b.mttr_h for b in BLOCKS),
+        "worstBaseMttrH": max(b.base_mttr_h for b in BLOCKS),
+        "achievableAvailability": achievable_availability(),
+        "maintainGainPoints": maintainability_gain()["gainPoints"],
+        "maintainExtraPanels": maintainability_gain()["extraPanels"],
         "nominalPanels": nominal_annual_panels(),
         "annualPanels": annual_panels(),
         "shortfall": annual_shortfall(),
