@@ -1852,9 +1852,32 @@ html>body{padding:0}</style>
       1패스 환류 50.63 kg/h ÷ (1 − 0.368037) = 80.11.</p>
     <p class="text-small text-muted"><strong>장비 정격은 종전대로 둔다.</strong> CV-102 리턴스크류 100 kg/h ·
       HSG-101 총부하 400 kg/h · CV-101/PC-101 이송 400 kg/h 는 그대로이며, 실부하가 80.1 / 380.1 로 내려가
-      여유가 <strong>커진</strong> 것이므로 재산정이 필요하지 않다. 비에너지·환류비 상수
-      (<code>TARGET_COARSE_FRACTION</code> 등)는 &gt;2 mm 폐기와 500 µm 환류를 아직 한 값으로 묶고 있어
-      <strong>다음 트랜치에서 분리</strong>한다.</p>
+      여유가 <strong>커진</strong> 것이므로 재산정이 필요하지 않다.</p>
+
+    <strong>폐회로 대수식 — 상수를 쪼개고 환류량을 계산으로 바꿨습니다</strong>
+    <p class="text-small">종전에는 <code>TARGET_COARSE_FRACTION</code> 0.25 하나가 세 가지를 동시에 뜻했습니다 —
+      ICSH-301 자체 10 mm 폐회로의 오버 비율 · SC-500 오버 환류비 · HSG 비에너지의 분모.
+      1단 2 mm 폐기가 생기며 「조대분」이 <strong>폐기</strong>와 <strong>환류</strong> 두 갈래로 갈렸으므로,
+      값이 우연히 같았을 뿐인 세 쓰임을 분리했습니다.</p>
+    <div class="table-responsive"><table class="table table-sm" aria-label="폐회로 상수 분리">
+      <thead><tr><th>상수</th><th>뜻 — 무엇에 대한 비인가</th><th class="text-end">값</th></tr></thead>
+      <tbody>
+        <tr><td><code>SHREDDER_OVERSIZE_FRACTION</code></td><td>ICSH-301 파편이 SCR-001 10 mm 오버로 갈 확률 — SC-500 과 무관</td><td class="text-end">0.250</td></tr>
+        <tr><td><code>BACKSHEET_SCALP_FRACTION</code></td><td>B군 중 밀을 지나고도 2 mm 위에 남는 질량비</td><td class="text-end">0.750</td></tr>
+        <tr><td><code>REJECT_COARSE_FRACTION</code></td><td>1단 오버 ÷ <strong>스크린 급광</strong> (45.0 ÷ 380.1)</td><td class="text-end">0.1184</td></tr>
+        <tr><td><code>RETURN_COARSE_FRACTION</code></td><td>2단 오버 ÷ <strong>2단 급광</strong> (80.1 ÷ 335.1)</td><td class="text-end">0.2391</td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small">환류량도 손으로 정하는 상수에서 <strong>계산값</strong>으로 바꿨습니다.
+      1패스 환류 <code>P₁ = Σ<sub>t</sub> 신규·f<sub>t</sub>·(t=B면 1−스캘핑)·firstReturn<sub>t</sub></code>
+      = 50.63 kg/h, 2패스 이후는 매번 <code>RETURN_PASS_RECYCLE_FRACTION</code> 0.368037 만큼 다시 돌아오므로
+      등비급수로 <code>R = P₁/(1−r)</code> = <strong>80.11 kg/h</strong>, 밀 부하
+      <strong>380.11 kg/h</strong> 입니다. 종전 식 <code>신규 × q/(1−q)</code>(q 0.25 → 100 kg/h)는
+      스캘핑이 없던 회로의 값이었습니다.</p>
+    <p class="text-small text-muted">따라 움직이는 값 — 비에너지의 분모가 신규가 아니라 밀 부하이므로
+      <strong>37 kW ÷ 0.3801 t/h = 97.3 kWh/t</strong> (종전 92.5). 부하가 줄어 비에너지가 오르는 것이
+      맞습니다: 같은 모터로 더 적은 양을 갈면 t 당 투입에너지는 커집니다.
+      2단 언더는 <code>SIEVE_FEED_KGH = 신규 − 폐기 = 255 kg/h</code> 로 환류량과 무관합니다.</p>
 
     <strong>소요면적 — VSMA <code>A = U / (B · C<sub>o</sub> · C<sub>h</sub> · C<sub>d</sub> · C<sub>s</sub> · C<sub>sh</sub> · C<sub>ρ</sub>)</code></strong>
     <div class="table-responsive"><table class="table table-sm" aria-label="스크린 소요면적">
@@ -16361,7 +16384,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 이제 패널이 호퍼 입으로 삼켜지는 순간에만 파편 묶음을 던지고, 각 파편은 설계 데이터의
     // 2단 절단을 그대로 거친다 — 상부 X축(Ø420 · 피치 50 mm · 12 rpm)에서 스트립으로,
     // 하부 Y축(Ø350 · 피치 20 mm · 20 rpm)에서 칩으로 줄고, SCR-001 10 mm 스크린에서
-    // 자기 크기로 갈린다. 오버사이즈 비율은 모델의 TARGET_COARSE_FRACTION 을 따른다.
+    // 자기 크기로 갈린다. 오버사이즈 비율은 SHREDDER_OVERSIZE_FRACTION 이며, SC-500 환류비와는
+    // 무관한 ICSH-301 자체 폐회로의 값이다.
     const SHRED_FEED_SIZE_MM = 110;       // 1차 절단 전 판재 조각
     const SHRED_UPPER_PITCH_MM = 50;      // 상부 X축 커터 피치 — 1차 절단 스트립 폭
     const SHRED_LOWER_PITCH_MM = 20;      // 하부 Y축 커터 피치 — 2차 절단 칩 크기
@@ -16399,7 +16423,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         // 시작점은 패널이 실제로 사라진 높이에 맞춘다. 낱장이 한꺼번에 갈리지 않도록 조금씩 흩는다.
         fragment.t = THREE.MathUtils.clamp(0.10 + (3.30 - originY) * 0.06, 0.06, 0.20) - placed * 0.009;
         fragment.sizeMm = SHRED_FEED_SIZE_MM * (0.72 + random() * 0.56);
-        fragment.oversize = random() < TARGET_COARSE_FRACTION;
+        fragment.oversize = random() < SHREDDER_OVERSIZE_FRACTION;
         fragment.spin = random() * Math.PI * 2;
         // 위치·크기를 이 자리에서 한 번 잡아 준다. 다음 프레임의 update 를 기다리면 한 프레임
         // 동안 scale 1(= 반경 1 m) 짜리 사면체가 원점에 번쩍인다.
@@ -19546,8 +19570,17 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const PROCESS_HORIZON_S = 3600;          // declared simulation horizon (60 min)
     const RETURN_RATE_TAU_S = 120;           // recycle-rate smoothing time constant, process seconds
     const FRESH_FEED_KGH = 300;
-    const HSG_CAPACITY_KGH = 400;
-    const TARGET_COARSE_FRACTION = 0.25;
+    const HSG_CAPACITY_KGH = 400;         // HSG-101 정격 총부하 — 설비 용량이지 운전값이 아니다
+    // 종전에는 TARGET_COARSE_FRACTION 0.25 하나가 세 가지를 동시에 뜻했다 —
+    // (1) ICSH-301 자체 10 mm 폐회로의 오버 비율, (2) SC-500 오버 환류비,
+    // (3) HSG 비에너지 계산의 분모. 1단 2 mm 폐기가 생기면서 「조대분」이 두 갈래
+    // (폐기 / 환류)로 갈렸으므로 값이 우연히 같았을 뿐인 세 쓰임을 분리한다.
+    // 여기 남는 것은 (1) 뿐이다 — SCR-001 10 mm 스크린은 SC-500 과 아무 상관이 없다.
+    const SHREDDER_OVERSIZE_FRACTION = 0.25;
+    // 1단 2 mm 스캘핑 — B군(탈락 백시트) 중 밀을 지나고도 2 mm 위에 남는 비율.
+    // 이 두 상수는 폐회로 대수식의 입력이므로 상수 블록에 함께 둔다.
+    const BACKSHEET_SCALP_FRACTION = 0.75;
+    const BACKSHEET_FLAKE_MM = 3.2;       // 2 mm 컷 위 박편의 대표 입도
     const CLASSIFIER_D50_MM = 0.50;
     const CLASSIFIER_SIGMA_MM = 0.055;
     const FEED_DMAX_MM = 10;
@@ -19584,7 +19617,6 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const FILTER_PRESSURE_DROP_PA = 1200;
     const ROTOR_TIP_SPEED_MS = Math.PI * ROTOR_DIAMETER_M * ROTOR_RPM / 60;
     const TEN_MM_SWEEP_TIME_MS = 0.010 / ROTOR_TIP_SPEED_MS * 1000;
-    const RATED_SPECIFIC_ENERGY_KWHT = MOTOR_POWER_KW / (FRESH_FEED_KGH / 1000 + TARGET_COARSE_FRACTION * FRESH_FEED_KGH / 1000 / (1 - TARGET_COARSE_FRACTION));
     const TRANSFER_SCREW_AREA_M2 = Math.PI / 4 * (TRANSFER_SCREW_OUTER_M ** 2 - TRANSFER_SCREW_SHAFT_M ** 2);
     const TRANSFER_SCREW_CAPACITY_KGH = TRANSFER_SCREW_AREA_M2 * TRANSFER_SCREW_PITCH_M * TRANSFER_SCREW_RPM * 60
       * TRANSFER_FILL_FRACTION * TRANSFER_INCLINE_FACTOR * RETURN_BULK_DENSITY_KGM3;
@@ -19611,9 +19643,30 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return 1 / (1 + Math.exp(-(sizeMm - CLASSIFIER_D50_MM - shapeShift) / CLASSIFIER_SIGMA_MM));
     }
 
-    const MODEL_COARSE_FRACTION = TARGET_COARSE_FRACTION;
-    const RECYCLE_RATE_KGH = FRESH_FEED_KGH * MODEL_COARSE_FRACTION / (1 - MODEL_COARSE_FRACTION);
+    // ---- 폐회로 대수식 -----------------------------------------------------
+    // 환류량은 손으로 정하는 상수가 아니라 위의 분급 보정상수에서 나온다.
+    //   1단(2 mm)이 먼저 B군의 BACKSHEET_SCALP_FRACTION 을 걷어내고,
+    //   남은 것만 2단(500 µm) 분급에 걸린다. 1패스 환류는
+    //     P₁ = Σ_t 신규 · f_t · (t=B 면 1−스캘핑) · firstReturn_t
+    //   이고, 2패스 이후는 매번 RETURN_PASS_RECYCLE_FRACTION 만큼 다시 돌아오므로
+    //     R = P₁ / (1 − r)                     (등비급수)
+    // 종전 식(신규 × q/(1−q), q = 0.25)은 스캘핑이 없던 회로의 값이었다. 상수를
+    // 답에 맞춰 되맞추지 않고 계산 결과를 그대로 쓴다 — R 은 100 → 80.11 kg/h 로
+    // 내려가며, 그만큼 밀 부하가 가벼워지고 설비 여유가 커진다.
+    const BACKSHEET_REJECT_KGH = FRESH_FEED_KGH * particleClasses.B.fraction * BACKSHEET_SCALP_FRACTION;
+    const FIRST_PASS_RETURN_KGH = Object.entries(particleClasses).reduce((sum, [type, spec]) =>
+      sum + FRESH_FEED_KGH * spec.fraction * (type === "B" ? 1 - BACKSHEET_SCALP_FRACTION : 1) * spec.firstReturn, 0);
+    const RECYCLE_RATE_KGH = FIRST_PASS_RETURN_KGH / (1 - RETURN_PASS_RECYCLE_FRACTION);
     const MILL_FEED_KGH = FRESH_FEED_KGH + RECYCLE_RATE_KGH;
+    // 스크린 급광 = 밀 토출. 1단이 폐기분을 걷어낸 나머지가 2단 급광이다.
+    const SCREEN_DECK2_FEED_KGH = MILL_FEED_KGH - BACKSHEET_REJECT_KGH;
+    // 「조대분 비율」을 쓰려면 어느 데크의 무엇에 대한 비인지 밝혀야 한다.
+    const RETURN_COARSE_FRACTION = RECYCLE_RATE_KGH / SCREEN_DECK2_FEED_KGH;   // 2단 오버 / 2단 급광
+    const REJECT_COARSE_FRACTION = BACKSHEET_REJECT_KGH / MILL_FEED_KGH;       // 1단 오버 / 스크린 급광
+    // 2단 언더는 환류량과 무관하게 신규 − 폐기다.
+    const SIEVE_FEED_KGH = FRESH_FEED_KGH - BACKSHEET_REJECT_KGH;
+    // 비에너지의 분모는 밀이 실제로 받는 양이다 — 신규가 아니라 밀 부하.
+    const RATED_SPECIFIC_ENERGY_KWHT = MOTOR_POWER_KW / (MILL_FEED_KGH / 1000);
     root.querySelector("[data-hsg-model-d95]").textContent = MODEL_PRODUCT_D95_MM.toFixed(3);
     root.querySelector("[data-hsg-tip-speed]").textContent = ROTOR_TIP_SPEED_MS.toFixed(1);
     root.querySelector("[data-hsg-specific-energy]").textContent = RATED_SPECIFIC_ENERGY_KWHT.toFixed(1);
@@ -19871,10 +19924,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 해머밀은 폴리머 필름을 자르지 못하고 접기만 한다. B군(탈락 백시트)으로 들어온
     // 질량의 75 % 는 밀을 지나고도 2 mm 위에 남는 박편이며, 1단 데크가 이것을 걷어
     // BIN-102 로 버린다 — 회로를 떠나는 유일한 조대 산물이다.
-    //   300 kg/h × B 0.20 × 0.75 = 45.0 kg/h
+    //   300 kg/h × B 0.20 × 0.75 = 45.0 kg/h (BACKSHEET_REJECT_KGH)
     // 환류물(pass ≥ 2)은 이미 이 데크를 통과해 온 500 µm–2 mm 이므로 대상이 아니다.
-    const BACKSHEET_SCALP_FRACTION = 0.75;
-    const BACKSHEET_FLAKE_MM = 3.2;      // 2 mm 컷 위 박편의 대표 입도
+    // 비율 상수 자체는 폐회로 대수식의 입력이라 위 상수 블록에 있다.
     function scalpBacksheet(track) {
       if (track.type !== "B" || track.pass > 1) return { feed: track.cohorts, reject: [] };
       const feed = [];
@@ -20913,7 +20965,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
             // 되돌아와 다시 절단을 받는다 — 두 번째 통과는 이미 작아져 있으므로 오버사이즈 확률도 낮다.
             fragment.phase = "feed";
             fragment.t = SHRED_T_UPPER - 0.06;
-            fragment.oversize = random() < TARGET_COARSE_FRACTION * 0.5;
+            fragment.oversize = random() < SHREDDER_OVERSIZE_FRACTION * 0.5;
             fragment.sizeMm = SHRED_FEED_SIZE_MM * (0.36 + random() * 0.22);
           } else {
             fragment.alive = false;
@@ -22738,10 +22790,26 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         appliesToClass: "B",
         appliesToPass: 1,
         massFractionOfClass: BACKSHEET_SCALP_FRACTION,
-        designRateKgh: +(FRESH_FEED_KGH * particleClasses.B.fraction * BACKSHEET_SCALP_FRACTION).toFixed(1),
+        designRateKgh: +BACKSHEET_REJECT_KGH.toFixed(1),
         destination: "BIN-102",
         rejectMassKg: state.backsheetRejectOut,
         onDeckMassKg: state.rejectTransferMass
+      },
+      closedCircuit: {
+        freshFeedKgh: FRESH_FEED_KGH,
+        backsheetRejectKgh: +BACKSHEET_REJECT_KGH.toFixed(2),
+        firstPassReturnKgh: +FIRST_PASS_RETURN_KGH.toFixed(2),
+        returnPassRecycleFraction: RETURN_PASS_RECYCLE_FRACTION,
+        recycleRateKgh: +RECYCLE_RATE_KGH.toFixed(2),
+        millFeedKgh: +MILL_FEED_KGH.toFixed(2),
+        deck2FeedKgh: +SCREEN_DECK2_FEED_KGH.toFixed(2),
+        sieveFeedKgh: +SIEVE_FEED_KGH.toFixed(2),
+        rejectCoarseFraction: +REJECT_COARSE_FRACTION.toFixed(4),
+        returnCoarseFraction: +RETURN_COARSE_FRACTION.toFixed(4),
+        shredderOversizeFraction: SHREDDER_OVERSIZE_FRACTION,
+        specificEnergyKwhT: +RATED_SPECIFIC_ENERGY_KWHT.toFixed(2),
+        installedCapacityKgh: { millTotal: HSG_CAPACITY_KGH, transferScrew: TRANSFER_REQUIRED_KGH, returnScrew: RETURN_REQUIRED_KGH },
+        closureKgh: +(BACKSHEET_REJECT_KGH + RECYCLE_RATE_KGH + SIEVE_FEED_KGH - MILL_FEED_KGH).toFixed(9)
       },
       copperProduct: {
         bin: "BIN-Cu",
