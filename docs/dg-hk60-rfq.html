@@ -598,7 +598,7 @@ t_열   = max( 5Q / (60 × 2.5 kW × η 0.65),  113.15 s )  = 225.8 s
     <p>선행자료는 65종의 명명된 허가·트립 조건을 포함한다. 입찰자는 이를 인계받아
       안전기능과 공정기능으로 분류하고, 안전기능에 대해 PLr을 결정·검증한다.
       주요 조건은 아래와 같다.</p>
-    <div class="logic">START_PERMIT   = C1~C5_PRESENT ∧ ALL_LOCKED ∧ ALL_TEMP_OK ∧ ALL_DOORS_CLOSED ∧ EXHAUST_OK
+    <div class="logic">START_PERMIT   = FULL_LOAD_ACK ∧ ALL_LOCKED ∧ ALL_TEMP_OK ∧ ALL_DOORS_CLOSED ∧ EXHAUST_OK
 IR_ENABLE      = SEALED_FULL_LOAD_ACK ∧ EXHAUST_OK ∧ FIRE_OK ∧ PM_METER_OK
 DOOR_MUTEX     = ¬(INNER_DOOR_OPEN ∧ OUTER_DOOR_OPEN)
 PEEL_PERMIT    = EVA_200_ACK ∧ HKB_TEMP_OK ∧ HKS_TEMP_OK ∧ VAC_6ZONE_OK
@@ -612,13 +612,35 @@ NEXT_PANEL     = BACKSHEET_BIN_ACK ∧ SHREDDER_FEED_ACK ∧ GLASS_CARRIAGE_ACK 
     <div class="note">과온 차단은 <strong>표준 PLC 명령과 독립된 하드와이어 회로</strong>로 구성하고
       IR 주접촉기를 직접 차단해야 한다. 소프트웨어 경로만으로 구성해서는 안 된다.</div>
 
+    <h4>논리식 표기 규약</h4>
+    <p>선행자료는 REV.05부터 REV.20까지 개정을 거치며 폐기된 항이 본문에 남아,
+      같은 이름이 서로 다른 항으로 두 번 세 번 정의된 상태였다. 어느 쪽이 유효한지
+      읽는 사람이 알 수 없으면 논리식은 근거가 되지 못한다. 인계 전에 아래 네 가지를
+      정리했고, 입찰자는 상세설계에서도 이를 유지한다.</p>
+    <ol>
+      <li>한 이름은 <strong>전 문서에서 한 번만</strong> 정의한다. 콘솔과 본 사양서에
+        같은 이름이 나오면 항까지 같아야 한다.</li>
+      <li>좌변은 실행 모델(<span class="k">tools/plc_model.py</span>)이 실제로 계산하는
+        신호명을 쓴다. 모델에 없는 이름으로 적은 허가는 <strong>아무것도 걸지 않는다</strong>.</li>
+      <li>불 논리가 아닌 줄 — 대수, 분기, 표시 — 은 <span class="k">=</span> 를 쓰지 않는다.
+        논리식처럼 보이면 검증 대상에서 조용히 빠진다.</li>
+      <li>출력은 항으로 읽지 않는다. <span class="k">HORN_3S</span>·<span class="k">BEACON_AMBER</span>
+        는 적층 신호등을 구동하는 F-DO이므로
+        <span class="k">START_WARN = START_PERMIT → ST_TOWER_CMD</span> 방향으로 적는다.</li>
+    </ol>
+
     <h4>신호–장치 대조</h4>
     <p>인터록 논리식은 <strong>읽을 장치가 있어야 성립한다</strong>. 없는 신호는 영원히
       참이 되지 않으므로 그 허가는 걸리지 않거나 그 트립은 절대 동작하지 않는데,
       화면에도 도면에도 아무 표시가 나지 않는다. 개념설계에서 논리식의 말단 신호
       <span class="m">88</span>개를 하나씩 '이 신호를 만드는 현장 장치'와 I/O 종류에
-      묶어 대조한 결과, <strong class="m">22</strong>개가 만들 장치 없이 불리고 있었다.
-      해당 장치를 제작도 목록과 도면에 세웠다.</p>
+      묶어 대조한 결과, <strong class="m">24</strong>개가 만들 장치 없이 불리고 있었다.
+      해당 장치를 제작도 목록과 도면에 세웠다.
+      대조는 장치 이름이 도면에 있는지를 보는데, <strong>폐기된 개정 본문에만 이름이
+      남아 있어도 통과한다</strong>. 위 규약대로 이력을 접자 <span class="k">백시트 끝단 비전</span>이
+      그 상태였음이 드러났다 — REV.05 문장에만 이름이 있었고 어디에도 서 있지 않았는데,
+      <span class="k">HKS_Z_PERMIT</span>과 <span class="k">HKS_PERMIT</span>이 그것을
+      읽고 있었다. 표 마지막 행이 그 보완이다.</p>
     <div class="tw"><table>
       <caption>장치가 없던 신호와 보완 내역</caption>
       <thead><tr><th>신호</th><th>속한 논리식</th><th>보완한 장치</th><th class="num">I/O</th></tr></thead>
@@ -641,6 +663,7 @@ NEXT_PANEL     = BACKSHEET_BIN_ACK ∧ SHREDDER_FEED_ACK ∧ GLASS_CARRIAGE_ACK 
         <tr><td class="k">LC_OSSD_CLEAR · MUTE_VALID</td><td>OPENING_SAFE</td><td>안전 광커튼 LC-001/002 · 뮤팅 센서 M1~M4 × 2조</td><td class="num">F-DI 4 · DI 8</td></tr>
         <tr><td class="k">ALL_TEMP_OK</td><td>START_PERMIT</td><td>표면 IR 센서 × 5</td><td class="num">TC 5</td></tr>
         <tr><td class="k">GC_A_COOLING</td><td>GLASS_SWAP · GLASS_ACCESS</td><td>GC 캐리지 온도센서 × 4</td><td class="num">TC 4</td></tr>
+        <tr><td class="k">LEAD_300_ACK · BACKSHEET_FULL_ACK</td><td>HKS_Z_PERMIT · HKS_PERMIT</td><td>백시트 끝단 비전 (GR-W1 상부)</td><td class="num">DI 1 · COMM</td></tr>
       </tbody>
     </table></div>
     <div class="warn"><strong>보완 전 I/O 선언은 실제 점수를 담지 못했다.</strong>
