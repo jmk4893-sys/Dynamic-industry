@@ -66,15 +66,29 @@ class WearRegistryTest(unittest.TestCase):
                              f"{pid}: basis 와 unit 이 어긋난다")
 
     def test_mttr_targets_are_quick_swap_targets(self):
-        """카세트·카트리지·모듈 패널은 한 교대 안에 끝나야 한다 — 4 시간을 넘으면 재설계가 아니다."""
+        """교체 시간의 기준은 「손으로 되는가, 크레인이 필요한가」다.
+
+        맨손·소공구로 빼는 모듈은 한 시간 안에 끝나야 한다. 크레인 인양이 필요한 것은
+        걸고·들고·내리고·정렬하는 시간이 따로 들므로 3 시간까지 인정하되, 그 이상이면
+        교체식 설계라고 부를 수 없다. 무엇이든 4 시간을 넘으면 재설계 대상이다.
+        """
         for entry, pid in zip(self.entries, self.ids):
             mttr = int(re.search(r"mttrMin: (\d+)", entry).group(1))
             self.assertLessEqual(mttr, 240, f"{pid}: MTTR {mttr}분 — 교체식 설계 목표를 넘는다")
-        cassette = [e for e in self.entries if re.search(r'module: "(카세트|카트리지|핀인[^"]*|백풀아웃[^"]*|슬라이드[^"]*)"', e)]
+        cassette = [e for e in self.entries if re.search(r'module: "(카세트|카트리지|핀인[^"]*|백풀아웃[^"]*|슬라이드[^"]*|인양[^"]*)"', e)]
         self.assertGreaterEqual(len(cassette), 15, "카세트·카트리지·모듈 단위 교체 부품이 15종 미만이다")
+        lifted = 0
         for entry in cassette:
+            pid = ENTRY_RE.search(entry).group("id")
             mttr = int(re.search(r"mttrMin: (\d+)", entry).group(1))
-            self.assertLessEqual(mttr, 120, ENTRY_RE.search(entry).group("id") + ": 카세트류인데 MTTR 이 2시간을 넘는다")
+            tools = re.search(r'tools: "([^"]*)"', entry).group(1)
+            needs_crane = any(word in tools for word in ("크레인", "모노레일", "인양", "체인블록", "호이스트"))
+            lifted += needs_crane
+            cap = 180 if needs_crane else 60
+            self.assertLessEqual(
+                mttr, cap,
+                f"{pid}: {'크레인 인양' if needs_crane else '맨손'} 교체인데 MTTR {mttr}분 > {cap}분")
+        self.assertGreaterEqual(lifted, 6, "인양 수단이 명시된 중량 모듈이 6종 미만이다 — 무거운 것을 손으로 든다는 뜻이다")
 
     def test_sensor_references_resolve(self):
         for entry, pid in zip(self.entries, self.ids):
@@ -120,7 +134,10 @@ class ThreeDimensionalMarkersTest(unittest.TestCase):
         cls.entries = split_entries(block.group("body"))
         cls.ids = [ENTRY_RE.search(e).group("id") for e in cls.entries]
         # 주석 처리된 줄은 살아 있는 표식이 아니다 — 줄 단위로 `//` 를 걸러 낸 뒤 찾는다.
-        live = "\n".join(line for line in cls.html.splitlines() if not line.lstrip().startswith("//"))
+        # 이 클래스의 단언은 전부 cls.live 를 봐야 한다. cls.html 을 보면 주석 처리한
+        # 코드도 「있다」고 통과해 버린다(실제로 변이시험에서 세 건을 놓쳤다).
+        cls.live = "\n".join(line for line in cls.html.splitlines() if not line.lstrip().startswith("//"))
+        live = cls.live
         cls.marked = set(re.findall(r'markSwap\([^;]*?"([A-Z0-9-]+)"\)', live))
         if 'markSwap(wetEnd, `${tag.replace("-", "")}-WETEND`)' in live:
             cls.marked |= {pid for pid in cls.ids if pid.endswith("-WETEND")}
@@ -139,10 +156,57 @@ class ThreeDimensionalMarkersTest(unittest.TestCase):
             self.assertIn(pid, self.ids, f"3D 표식 {pid} 가 등록부에 없다")
 
     def test_extraction_envelopes_cover_the_heavy_swaps(self):
-        for pid in ("HSG-BLADE", "ICSH-UPPER-CASSETTE", "ICSH-LOWER-CASSETTE", "SCR-DECK",
+        for pid in ("HSG-BLADE", "ICSH-HOPPER", "ICSH-UPPER-CASSETTE", "ICSH-LOWER-CASSETTE", "SCR-DECK",
                     "BF101-CARTRIDGE", "BF201-CARTRIDGE", "FC-ROTOR", "AS101-ROTOR", "P101-WETEND"):
             self.assertIn(pid, self.envelopes, f"{pid}: 인출·인양 공간(addEnvelope)이 예약돼 있지 않다")
         self.assertIn("scene.add(maintenanceEnvelopes)", self.html, "접근 공간이 circuit 이 아니라 scene 직속이어야 한다")
+
+    def test_icsh_cassettes_are_lifted_vertically_and_a_crane_carries_them(self):
+        """축방향 인출은 1,089 kg 짜리를 사람이 뽑는다는 뜻이었다 — 수직 인양으로 바꿨다.
+
+        인양 공간은 커터축 높이에서 시작해 모노레일 빔 아래까지 올라가야 하고,
+        그 하중을 받을 크레인이 형상·BOM 에 실제로 있어야 한다.
+        """
+        for pid, floor in (("ICSH-UPPER-CASSETTE", 1.60), ("ICSH-LOWER-CASSETTE", 1.20), ("ICSH-HOPPER", 3.20)):
+            found = re.search(r'addEnvelope\("' + pid + r'"[^;]*?\{ x: [-\d.]+, y: ([\d.]+), z: [-\d.]+ \}, \{ x: [-\d.]+, y: ([\d.]+), z: [-\d.]+ \}\)', self.html)
+            self.assertIsNotNone(found, pid + ": 인양 공간을 찾지 못했다")
+            low, high = float(found.group(1)), float(found.group(2))
+            self.assertLessEqual(low, floor, f"{pid}: 인양 공간이 부품 높이({floor} m)에서 시작하지 않는다")
+            self.assertGreaterEqual(high, 5.0, f"{pid}: 인양 공간이 빔 아래(5.0 m)까지 올라가지 않는다 — 수직 인양이 아니다")
+        self.assertIn('P29: { name: "MR-301 정비 인양 모노레일"', self.html, "모노레일이 부품으로 없다")
+        self.assertIn("SH-075", self.bom_codes if hasattr(self, "bom_codes") else set(re.findall(r'code:\s*"([A-Z-]+\d+)"', self.html)))
+        self.assertNotIn("카세트째 +x 로 인출", self.html, "축방향 인출 절차가 남아 있다")
+        self.assertNotIn("스택을 +z 로 인출", self.html, "축방향 인출 절차가 남아 있다")
+        # 인양점이 실제로 붙어 있어야 슬링을 걸 자리가 있다
+        lift_points = set(re.findall(r'liftPoint = "([A-Z0-9-]+)"', self.live))
+        for pid in ("ICSH-HOPPER", "ICSH-UPPER-CASSETTE", "ICSH-LOWER-CASSETTE"):
+            self.assertIn(pid, lift_points, pid + ": 인양점(lug)이 없다")
+
+    def test_rotor_lock_pin_and_trapped_key_sequence(self):
+        """관성정지가 7분인 로터에 「빨리 열리는 도어」만 달면 위험만 커진다.
+
+        기계적 구속(ISO 14118)과 순서 강제(ISO 14119 Type 5 트랩키)가 형상·BOM 에 있어야 한다.
+        """
+        self.assertIn('lockPlate.userData.lockPin = "LP-101"', self.live, "로터 잠금판이 없다")
+        self.assertIn('mesh.userData.lockPin = "LP-101"', self.live, "잠금핀 표식이 없다")
+        self.assertIn("barrel.userData.trappedKey = key", self.live, "트랩키 실린더에 키 표식이 없다")
+        keys = set(re.findall(r'key: "(TK-101-[AB])", part: "(?:P\d+)"', self.live))
+        for key in ("TK-101-A", "TK-101-B"):
+            self.assertIn(key, keys, key + " 트랩키 실린더가 없다")
+        self.assertIn('gl101.userData.sensorTag = "GL-101"', self.live, "가드잠금장치가 없다")
+        codes = set(re.findall(r'code:\s*"([A-Z-]+\d+)"', self.html))
+        for code in ("HG-059", "HG-060", "HG-061"):
+            self.assertIn(code, codes, f"안전 BOM 행 {code} 가 없다")
+        self.assertRegex(self.html, r"LOTO_POINTS[^;]*TK-101", "트랩키가 LOTO 목록에 없다")
+
+    def test_door_is_rated_for_the_vented_explosion_pressure(self):
+        """도어는 정비 개구이면서 폭발 벤팅의 압력경계다 — 등급 없이 래치만 빠르게 하면 안 된다."""
+        p02 = re.search(r'^    P02: \{.*$', self.html, re.M).group(0)
+        self.assertIn("EN 14460", p02, "도어에 폭발압력 등급 근거가 없다")
+        self.assertIn("P_red 0.5 bar g", p02, "저감압력 설계값이 없다")
+        self.assertIn("SF 4.75", p02, "판 응력 검증값이 없다")
+        for text in ("EN 14491", "폭발압력 충격저항", "Kst 300–415", "억제(HRD) 또는 봉쇄"):
+            self.assertIn(text, self.html, f"{text} 근거가 콘솔에 없다")
 
     def test_sensor_nodes_exist_in_3d(self):
         nodes = set(re.findall(r'addSensorNode\([^,]+, "[^"]+", "([A-Z0-9-]+)"', self.html))

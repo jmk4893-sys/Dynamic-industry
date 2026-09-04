@@ -1853,6 +1853,36 @@ html>body{padding:0}</style>
     <strong>잠금·표지(LOTO)</strong>
     <p class="text-small" data-maint-loto>—</p>
 
+    <strong>정비 개방의 두 관문 — 잠금핀과 압력경계</strong>
+    <p class="text-small">「쉽게 열리는 도어」는 그 자체로 위험을 키운다. 그래서 도어를 빠르게 만든 만큼
+      두 가지를 규격으로 못 박았다.</p>
+    <div class="table-responsive"><table class="table table-sm" aria-label="정비 개방 안전 설계">
+      <thead><tr><th>항목</th><th>근거 규격</th><th>채택</th><th>검증</th></tr></thead>
+      <tbody>
+        <tr><td>기계적 구속</td><td>ISO 14118:2017 (EN ISO 14118:2018)</td>
+          <td><code>LP-101</code> 로터 잠금핀 Ø26 + 비구동측 잠금판 Ø200 4공</td>
+          <td>로터 J ≈ 14 kg·m² · 1,500 rpm 회전에너지 <b>173 kJ</b></td></tr>
+        <tr><td>순서 강제</td><td>ISO 14119:2024 Type 5 · Annex K (구 ISO/TS 19837)</td>
+          <td><code>TK-101</code> 트랩키 — 개폐기 OFF → 키 A → 핀 결합 → 키 B → 도어</td>
+          <td>핀이 빠져 있으면 도어 키가 나오지 않고, 도어 키가 잠금장치에 있으면 개폐기를 켤 수 없다</td></tr>
+        <tr><td>가드잠금 해정</td><td>ISO 14119:2024 (잠금력·충격 시험 Annex I)</td>
+          <td><code>GL-101</code> 스프링 결합·전원 해제형 · PLe · <b>정지확인 감시</b>(SE-101 재사용)</td>
+          <td>무제동 관성정지 <b>7.2분</b> · VFD Category 1 정지＋DC 제동 <b>47초</b> · 백업 시간지연 8분</td></tr>
+        <tr><td>압력경계</td><td>EN 14491 벤팅 → EN 14460:2018 등급</td>
+          <td>도어·하우징 <b>폭발압력 충격저항 P_red 0.5 bar g</b> · P_stat 0.1 bar</td>
+          <td>도어 Ø890 총추력 <b>31.1 kN</b> · 래치 8점당 3.89 kN(M16 8.8 항복의 1/26) · 12t 판 최대응력 51.6 MPa · <b>SF 4.75</b></td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small dd-warning"><strong>P_red 0.5 bar g 는 조건부다.</strong> 지배하는 분진은 알루미늄이다 —
+      Al 미분은 Kst 300–415(St2–St3)로 폴리머(Kst 130–160 · St1)보다 훨씬 강하다. Kst/MIE 시험이 St2 이상으로
+      나오면 Ø480 배럴에서 0.5 bar 를 맞출 벤트 면적이 나오지 않으므로, 답은 벤팅이 아니라
+      <strong>억제(HRD) 또는 봉쇄(P_max ≈ 10 bar 설계)</strong>로 바뀐다. 이 등급은 이미 HOLD 로 걸어 둔
+      Kst/MIE 시험 결과가 확정한다. 로터 관성도 제작사 실측값으로 대체해야 하는 추정치다.</p>
+    <p class="text-small">인양은 <code>MR-301</code> 모노레일(SWL 2.0 t · 양정 5.0 m)이 맡는다. 최대 인양물은
+      ICSH-301 상부 축조립체 <b>1,089 kg</b>(커터 26매 657 + 축 372 + 여유), 동하중 1.25 를 걸어 1.36 t.
+      호퍼 모듈 643 kg → 상부축 1,089 kg → 하부축 658 kg 순으로 수직 인양하며, ICSH 와 HSG-101 로터를
+      한 빔이 덮는다.</p>
+
     <p class="text-small dd-warning"><strong>경계 조항 — 예지보전은 권고다.</strong> 등급·잔여수명은 정비 계획의 입력이지
       운전 허가가 아니다. 트립(존 D)은 하드와이어 진동·온도 트립이 따로 처리하고, 교체 작업은 LOTO 격리·검증
       뒤에만 시작한다. VFD STO 는 기능안전 정지이지 전기적 격리가 아니다.</p>
@@ -15722,9 +15752,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
   const partData = {
     P01: { name: "공통 베이스 스키드", role: "분쇄기·모터·분급기·음압계통 하중 지지와 방진마운트 체결", spec: "SS400 · 5,000 × 1,600 mm · 방진마운트 8점", shape: "frame" },
-    P02: { name: "분쇄챔버·전면도어", role: "고속 충격 분쇄실과 스윙볼트 래치 도어 — 토크렌치 하나로 3분 개방", spec: "SS400 12t · Hardox 500 교체형 라이너 8(외부 볼트·WL-101 마모 도전루프) · 챔버 Ø960 · 스윙볼트 래치 8점 · 가스 스트럿 2본", shape: "housing" },
+    P02: { name: "분쇄챔버·전면도어", role: "고속 충격 분쇄실과 스윙볼트 래치 도어 — 토크렌치 하나로 3분 개방", spec: "SS400 12t · Hardox 500 교체형 라이너 8(외부 볼트·WL-101 마모 도전루프) · 챔버 Ø960 · 스윙볼트 래치 8점 · 가스 스트럿 2본 · EN 14460 폭발압력 충격저항 P_red 0.5 bar g(도어 Ø890 총추력 31.1 kN · 판응력 51.6 MPa · SF 4.75) · GL-101 가드잠금 · LP-101 잠금핀 트랩키", shape: "housing" },
     P03: { name: "밀폐 호퍼·역비산 피더", role: "Dmax 10 mm PV 복합입자를 공급하고 2중 고무플랩과 국소 음압으로 역비산을 억제", spec: "0.15 m³ · 상부 700 × 520 · 2중 플랩 · DN80 집진구", shape: "hopper" },
-    P04: { name: "로터·주축", role: "회전날 지지와 모터 토크 전달 — 도어 개방 후 레일아웃 카트로 앞(+z) 인출, 예비 로터와 스왑", spec: "Ø450 × 350 · SCM440 축 Ø80 · 1,500 rpm · 레일아웃 카트 · 예비 로터 1기", shape: "rotor" },
+    P04: { name: "로터·주축", role: "회전날 지지와 모터 토크 전달 — 도어 개방 후 레일아웃 카트로 앞(+z) 인출, 예비 로터와 스왑", spec: "Ø450 × 350 · SCM440 축 Ø80 · 1,500 rpm · 조립체 546 kg · J ≈ 14 kg·m²(회전에너지 173 kJ · 무제동 관성정지 7.2분 · VFD DC 제동 47초) · 레일아웃 카트 · 예비 로터 1기 · LP-101 잠금판 Ø200 4공", shape: "rotor" },
     P05: { name: "회전날 카세트 세트", role: "불규칙 파쇄물의 충격·전단 파쇄 — 날 3매가 캐리어 바 하나에 조립된 4분할 카세트", spec: "초경(WC-Co) 팁 양날 반전 · 12매 · 4분할 카세트 중량 매칭 · 설계수명 200 t/날", shape: "knife" },
     P06: { name: "고정날·내부 스크린 카트리지", role: "파쇄 간극 형성과 1차 체류시간 제어 — 스크린은 가이드레일 위 슬라이드 카트리지", spec: "고정날 4개(외부 볼트·양날) · 간극 0.8–1.2 · 내부 스크린 세그먼트 4 · 1.0 mm 슬롯 · 손잡이 인출", shape: "screen" },
     P07: { name: "베어링·시트", role: "고속 로터축의 양단 지지와 진동 전달 억제 — 상태감시 노드가 여기 앉는다", spec: "22216 E/C3 ×2 · 축경 Ø80 · PT100 TE-102 · 무선 진동 노드 VIT-102/103 · ALS-101 자동 그리스 · 라비린스 씰 카트리지", shape: "bearing" },
@@ -15743,12 +15773,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     P20: { name: "CC-201＋Y헤더＋RV-204 공기분급기", role: "SV-201 두 입도라인을 개별 배관·Y헤더로 투입하고 상승류에서 중량물과 EVA·백시트 경량물을 분리", spec: "컬럼 Ø860 × H1,900 · 0.70–1.00 m/s · Y헤더 · 중량물 RV-204", shape: "air-classifier" },
     P21: { name: "CY-201＋RV-202＋BF-201＋RV-203＋ID 팬", role: "CC-201 경량물을 회수하고 CY·BF 포집물을 각각 에어록으로 SS-201에 합류시키며 청정가스를 배기스택으로 배출", spec: "CY Ø680 · BF 카트리지 5본(청정측 상부 교체 · PDT-201) · RV-202/203 · VFD 후단흡인 · 배기스택", shape: "cyclone-filter" },
     P22: { name: "SS-201 75 µm 분리토출 스크린", role: "CY-201 회수물과 SV-201 PAN 미분을 재검증해 ≥75 µm 구리산물과 <75 µm 최종 미분제품을 물리적으로 분리", spec: "Ø1100 원형 · 75 µm 섹터 패널 · 측면 구리산물구＋하부 제품구 · 초음파 35–40 kHz", shape: "polishing-screen" },
-    P23: { name: "ICSH-301 Rev.G 공통외함·안전호퍼·베이스", role: "유리·알루미늄 제거 라미네이트를 장변 하향으로 공급하고 처짐·브리징·역비산을 억제", spec: "호퍼 2,800×1,800 → 목부 1,600×850 × H1,200 · 압입롤 Ø260×2 · 브리징축 Ø160 · 펜듈럼 플랩 11개＋체인커튼", shape: "shredder-housing" },
-    P24: { name: "ICSH-301 Rev.G 직교 적층형 2축 커터·독립구동", role: "상부 X축 조대 파쇄 후 420 mm 아래의 하부 Y축에서 직교 미세파쇄", spec: "X축 Ø420·26매/P50·22 kW IE5·12 rpm · Y축 Ø350·55매/P20·18.5 kW IE5·20 rpm · 35 mm 포락간극 · 초경 팁 4날 인덱서블 커터 카세트(유압 잠금캡, 상부 +x · 하부 +z 인출) · AE-301 · VIT-301~304", shape: "shredder-rotor" },
+    P23: { name: "ICSH-301 Rev.G 공통외함·안전호퍼·베이스", role: "유리·알루미늄 제거 라미네이트를 장변 하향으로 공급하고 처짐·브리징·역비산을 억제", spec: "호퍼 2,800×1,800 → 목부 1,600×850 × H1,200 · 압입롤 Ø260×2 · 브리징축 Ø160 · 펜듈럼 플랩 11개＋체인커튼 · 인양점 4점 모듈(643 kg · MR-301 수직 인양)", shape: "shredder-housing" },
+    P24: { name: "ICSH-301 Rev.G 직교 적층형 2축 커터·독립구동", role: "상부 X축 조대 파쇄 후 420 mm 아래의 하부 Y축에서 직교 미세파쇄", spec: "X축 Ø420·26매/P50·22 kW IE5·12 rpm · Y축 Ø350·55매/P20·18.5 kW IE5·20 rpm · 35 mm 포락간극 · 초경 팁 4날 인덱서블 커터 카세트(유압 잠금캡 · MR-301 수직 인양 — 상부 축조립체 1,089 kg · 하부 658 kg) · AE-301 · VIT-301~304", shape: "shredder-rotor" },
     P25: { name: "SCR-001 10 mm 격리형 진동스크린", role: "직교 2단 파쇄물을 10 mm에서 분리해 조대물과 HSG 공급물을 물리적으로 분기 — 데크는 +z 점검도어로 빠지는 드로어", spec: "유효 1,000×1,500 · 10×10/13 pitch · PL8 Hardox 450 · 12° · 25 Hz · 3.0 mm p-p · 2.2 kW · 드로어 데크 · 토글클램프 2", shape: "shredder-screen" },
     P26: { name: "SCV-R1 조대물 환류스크류", role: ">10 mm 불규칙 파쇄물을 외부 노출 없이 동일 호퍼로 재투입", spec: "Ø220/P180 · L1,900 · 55° · 4.0 kW 감속모터", shape: "shredder-return" },
     P27: { name: "SCV-P1 HSG 공급스크류·집진연결", role: "≤10 mm 통과물을 FD-101에 밀폐 정량공급하고 슈레더 DN150 국소배기를 BF-101에 연결", spec: "Ø220/P180 · L2,200 · 2.2 kW · 300 kg/h · 유연조인트 · LSHH-101 90% 상류정지", shape: "shredder-transfer" },
-    P28: { name: "PLC-101 중앙제어반·RIO-301·공정제어", role: "ICSH-301, HSG-101, SCR-001, SCV-R1/P1과 집진계통을 하류 우선 순차기동하고 상류 우선 정지", spec: "800W×400D×1,800H · 24 VDC · PROFINET · 공정 I/O · IP54 · 측면 LOTO 스테이션 6점", shape: "plc-panel" }
+    P28: { name: "PLC-101 중앙제어반·RIO-301·공정제어", role: "ICSH-301, HSG-101, SCR-001, SCV-R1/P1과 집진계통을 하류 우선 순차기동하고 상류 우선 정지", spec: "800W×400D×1,800H · 24 VDC · PROFINET · 공정 I/O · IP54 · 측면 LOTO 스테이션 6점", shape: "plc-panel" },
+    P29: { name: "MR-301 정비 인양 모노레일", role: "ICSH-301 호퍼·커터 축조립체와 HSG-101 로터를 수직으로 인양해 정비 스탠드로 옮긴다", spec: "H200 빔 L5,700 · y 5.80 · 문형가구 2 · SWL 2.0 t · 전동 체인호이스트 양정 5.0 m · 주행 x −5.30…0.40", shape: "monorail" }
   };
 
   // ---- 교체식 마모부품 등록부 -------------------------------------------------
@@ -15771,13 +15802,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
   //   geometry false 면 3D 에 별도 교체 표식이 없다(등록부·BOM 에만 있는 소모품)
   const WEAR_PARTS = Object.freeze([
     { id: "ICSH-UPPER-CASSETTE", machine: "ICSH-301", tag: "P24", part: "상부 X축 커터 카세트 26매",
-      module: "카세트", method: "유압 잠금캡 해제 → 커터·스페이서 스택을 카세트째 +x 로 인출 → 예비 카세트 삽입 → 캡 가압",
-      tools: "유압 너트 펌프 · 인출 지그", mttrMin: 90, bom: ["SH-021", "SH-070"], edges: 4,
+      module: "카세트", method: "LOTO·트랩키 → 호퍼 모듈 인양 → 상부 커버 분리 → 유압 잠금캡 해제 → 축조립체(1,089 kg)를 MR-301 로 수직 인양 → 예비 카세트 하강·정렬 → 캡 가압",
+      tools: "MR-301 모노레일 SWL 2.0 t · 인양빔 · 유압 너트 펌프", mttrMin: 150, bom: ["SH-021", "SH-070", "SH-075"], edges: 4,
       life: { basis: "freshMass", limit: 1600000, unit: "kg" }, sensors: ["AE-301", "VIT-301", "VIT-302"],
       spare: "카세트 1조 현장 보유 · 인덱스 3회 후 팁 교체", upgrade: "SKD11 → 초경(WC-Co) 팁 4날 인덱서블 · 팁 HRA 89" },
     { id: "ICSH-LOWER-CASSETTE", machine: "ICSH-301", tag: "P24", part: "하부 Y축 커터 카세트 55매",
-      module: "카세트", method: "유압 잠금캡 해제 → 스택을 +z 로 인출 → 예비 카세트 삽입 → 캡 가압",
-      tools: "유압 너트 펌프 · 인출 지그", mttrMin: 90, bom: ["SH-031", "SH-070"], edges: 4,
+      module: "카세트", method: "상부축을 먼저 들어낸 자리로 하부 축조립체(658 kg)를 수직 인양 → 예비 카세트 → 캡 가압",
+      tools: "MR-301 모노레일 SWL 2.0 t · 인양빔 · 유압 너트 펌프", mttrMin: 120, bom: ["SH-031", "SH-070", "SH-075"], edges: 4,
       life: { basis: "freshMass", limit: 1200000, unit: "kg" }, sensors: ["AE-301", "VIT-303", "VIT-304"],
       spare: "카세트 1조 현장 보유", upgrade: "SKD11 → 초경 팁 4날 인덱서블" },
     { id: "ICSH-BEARINGS", machine: "ICSH-301", tag: "P24", part: "구면롤러베어링 22232/22228 ×4",
@@ -15790,9 +15821,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       tools: "공구 불요", mttrMin: 25, bom: ["SH-050", "SH-071"],
       life: { basis: "freshMass", limit: 2400000, unit: "kg" }, sensors: [],
       spare: "패널 2매" },
+    { id: "ICSH-HOPPER", machine: "ICSH-301", tag: "P23", part: "호퍼 모듈 (커터 접근을 막는 상부 구조)",
+      module: "인양 모듈", method: "플랜지 볼트 64본 → 상면 인양점 4 에 슬링 → MR-301 로 수직 인양·하역",
+      tools: "MR-301 모노레일 SWL 2.0 t", mttrMin: 60, bom: ["SH-075", "SH-076", "F-SH-05"],
+      life: { basis: "freshMass", limit: 9600000, unit: "kg" }, sensors: [],
+      spare: "펜듈럼 플랩 2조 · 체인커튼 1조",
+      upgrade: "고정 호퍼 → 인양점 4점 모듈 · 커터 축 수직 인양로 확보" },
     { id: "HSG-BLADE", machine: "HSG-101", tag: "P05", part: "회전날 12매 · 4분할 카세트",
-      module: "카세트", method: "스윙볼트 8점 해제 → 도어 개방 → 로터를 레일아웃 카트로 인출 → 카세트 4개 교체 → 카트 복귀",
-      tools: "토크렌치 · 카트", mttrMin: 45, bom: ["HG-012", "HG-050", "HG-051", "F-HG-03"], edges: 2,
+      module: "카세트", method: "LOTO → 트랩키 A 로 LP-101 잠금핀 결합 → 키 B 로 스윙볼트 8점 해제 → 도어 개방 → 로터(546 kg)를 레일아웃 카트로 인출 → 예비 로터와 교환 → 역순 복귀(핀 해제 없이는 기동 불가)",
+      tools: "토크렌치 · 레일아웃 카트 · 트랩키 세트", mttrMin: 45, bom: ["HG-012", "HG-050", "HG-051", "HG-059", "F-HG-03"], edges: 2,
       life: { basis: "millMass", limit: 200000, unit: "kg" }, sensors: ["VIT-102", "VIT-103", "MCSA-101"],
       spare: "카세트 4개 1조(중량 매칭) · 예비 로터 1기", upgrade: "SKD11 → 초경 팁 양날 반전 · 중량 매칭 세트" },
     { id: "HSG-FIXED", machine: "HSG-101", tag: "P06", part: "고정날 4매",
@@ -15942,6 +15979,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
   // 전기적 격리가 아니므로, 모든 구동에 잠금형 개폐기와 자물쇠 걸이가 있다.
   const LOTO_POINTS = Object.freeze([
     { id: "LOTO-101", where: "PLC-101 측면 LOTO 스테이션", covers: "M-301/302 · M-101 · SCR/SCV · BF-101 팬 · CV-001", locks: 6 },
+    // 트랩키는 순서를 물리적으로 강제한다 — 잠금핀이 빠져 있으면 도어 키가 나오지 않고,
+    // 도어 키가 잠금장치에 꽂혀 있으면 개폐기를 켤 수 없다. ISO 14119:2024 Type 5(Annex K).
+    { id: "TK-101", where: "HSG-101 트랩키 세트 (개폐기 → LP-101 잠금핀 → 도어 래치)", covers: "M-101 · 로터 도어 개방 순서 강제", locks: 2 },
     { id: "LOTO-201", where: "LCP-SV-201 · LCP-CW-601 잠금형 개폐기", covers: "SV-201 · SS-201 · CC-201 · CH-601", locks: 4 },
     { id: "LOTO-401", where: "PLC-001 습식 MCC 잠금형 개폐기", covers: "P-xxx 펌프 · FC 구동 · AS-101 · FP-301 유압", locks: 8 }
   ]);
@@ -16778,12 +16818,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addMesh(parts.P23, openFrustumGeometry(1.60, 0.85, 2.80, 1.80, 1.20), material.shredMetal, { x: shredderCenter.x, y: 2.00, z: 0 }, null, "P23", true);
 
     // Rev.G dual anti-ejection system: 11 pendulum flaps, chain curtain and deflector.
+    // 플랩·커튼은 호퍼 모듈 안의 실제 소모품이다(SH-011 · 자중 복귀 · 개별교체). 호퍼를
+    // 들어내야 커터에 닿으므로, 이 모듈 자체가 정비 경로의 첫 단계이기도 하다.
+    const hopperModule = [];
     for (let i = 0; i < 11; i += 1) {
       const x = shredderCenter.x - 1.20 + i * 0.24;
-      addBox(parts.P23, { x: 0.18, y: 0.34, z: 0.045 }, { x, y: 3.00, z: 0.16 }, material.dark, "P23", { z: (i % 2 ? 1 : -1) * 0.035 }, false);
-      addCylinder(parts.P23, 0.012, 0.36, { x, y: 2.91, z: -0.12 }, material.silverClamp, "P23", "y", 10, false);
+      hopperModule.push(addBox(parts.P23, { x: 0.18, y: 0.34, z: 0.045 }, { x, y: 3.00, z: 0.16 }, material.dark, "P23", { z: (i % 2 ? 1 : -1) * 0.035 }, false));
+      hopperModule.push(addCylinder(parts.P23, 0.012, 0.36, { x, y: 2.91, z: -0.12 }, material.silverClamp, "P23", "y", 10, false));
     }
-    addBox(parts.P23, { x: 1.48, y: 0.045, z: 0.70 }, { x: shredderCenter.x, y: 2.62, z: -0.14 }, material.shredPanel, "P23", { z: -0.17 });
+    hopperModule.push(addBox(parts.P23, { x: 1.48, y: 0.045, z: 0.70 }, { x: shredderCenter.x, y: 2.62, z: -0.14 }, material.shredPanel, "P23", { z: -0.17 }));
+    markSwap(hopperModule, "ICSH-HOPPER");
 
     // Rev.G feed rule: the 2.0–2.4 m long edge travels vertically downward;
     // the 1.0–1.2 m short edge remains horizontal across the upper X axis.
@@ -17290,6 +17334,44 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addSensorNode(parts.P07, "P07", "VIT-103", { x: grinderX, y: grinderY + 0.175, z: -0.42 });
     const te102 = addCylinder(parts.P07, 0.014, 0.05, { x: grinderX + 0.14, y: grinderY + 0.09, z: 0.42 }, material.silverClamp, "P07", "x", 8, false);
     te102.userData.sensorTag = "TE-102";
+    // ---- LP-101 로터 잠금핀 + 트랩키 (ISO 14118 · ISO 14119:2024 Type 5) -----------------
+    // 「쉽게 열리는 도어」는 그 자체로 위험을 키운다. 관성정지가 문제다 — 로터 관성
+    // J ≈ 14 kg·m² 를 1,500 rpm 으로 돌리면 회전에너지가 173 kJ 이고, 무제동으로는
+    // 정지까지 약 7 분이다. 고정 시간지연으로 덮을 값이 아니다. 그래서 두 겹으로 막는다.
+    //   ① 정지확인 — 이미 있는 SE-101 12슬롯 타깃휠·근접센서를 영속도 감시로 재사용한다
+    //      (VFD Category 1 정지 + DC 제동이면 47 초, 백업 시간지연 8 분)
+    //   ② 기계적 구속 — 비구동측 축단 잠금판에 핀을 끼워 물리적으로 돌지 못하게 한다
+    // 순서는 트랩키가 강제한다: 개폐기 OFF → 키 A 해방 → 핀을 밀어 넣어야 키 A 가 돌아가
+    // 키 B 해방 → 키 B 로만 도어 래치 해제. 핀이 빠져 있으면 도어 키가 나오지 않고,
+    // 도어 키가 잠금장치에 있으면 개폐기를 켤 수 없다.
+    const lockPlate = addCylinder(parts.P04, 0.100, 0.014, { x: grinderX, y: grinderY, z: 0.60 }, material.cover, "P04", "z", 32, false);
+    lockPlate.userData.lockPin = "LP-101";
+    for (let hole = 0; hole < 4; hole += 1) {
+      const angle = hole * Math.PI / 2;
+      addCylinder(parts.P04, 0.014, 0.020, { x: grinderX + Math.cos(angle) * 0.075, y: grinderY + Math.sin(angle) * 0.075, z: 0.60 }, material.dark, "P04", "z", 10, false);
+    }
+    const lockPin = [
+      addBox(parts.P07, { x: 0.09, y: 0.20, z: 0.07 }, { x: grinderX, y: grinderY + 0.145, z: 0.685 }, material.frame, "P07"),
+      addCylinder(parts.P07, 0.022, 0.16, { x: grinderX, y: grinderY + 0.075, z: 0.685 }, material.silverClamp, "P07", "z", 16, false),
+      addCylinder(parts.P07, 0.013, 0.10, { x: grinderX, y: grinderY + 0.075, z: 0.615 }, material.cover, "P07", "z", 12, false),
+      addBox(parts.P07, { x: 0.05, y: 0.05, z: 0.05 }, { x: grinderX, y: grinderY + 0.075, z: 0.775 }, material.equipmentControl, "P07", null, false)
+    ];
+    lockPin.forEach((mesh) => { mesh.userData.lockPin = "LP-101"; });
+    markSwap(lockPin, "HSG-BLADE");
+    // 트랩키 실린더 두 자리 — 잠금핀 몸통(키 A: 핀을 밀어 넣어야 돌아가고 키 B 를 내준다)과
+    // 도어 래치 러그(키 B: 이 키가 꽂혀 있는 동안 개폐기를 켤 수 없다).
+    [
+      { key: "TK-101-A", part: "P07", at: { x: grinderX + 0.055, y: grinderY + 0.075, z: 0.775 } },
+      { key: "TK-101-B", part: "P02", at: { x: grinderX - 0.50, y: grinderY - 0.28, z: 0.44 } }
+    ].forEach(({ key, part, at }) => {
+      const barrel = addCylinder(parts[part], 0.017, 0.045, at, material.safety, part, "z", 14, false);
+      barrel.userData.trappedKey = key;
+      addBox(parts[part], { x: 0.008, y: 0.028, z: 0.014 }, { x: at.x, y: at.y + 0.030, z: at.z + 0.014 }, material.dark, part, null, false);
+    });
+    // GL-101 가드잠금 — 스프링 결합·전원 해제형이라 정전 시 잠긴 채로 남는다.
+    const gl101 = addBox(parts.P02, { x: 0.07, y: 0.11, z: 0.06 }, { x: grinderX + 0.455, y: grinderY - 0.155, z: 0.425 }, material.equipmentControl, "P02");
+    gl101.userData.sensorTag = "GL-101";
+
     const wl101Angle = -2.2;
     const wl101 = addMesh(parts.P02, new THREE.CylinderGeometry(0.025, 0.025, 0.02, 12), material.silverClamp,
       { x: grinderX + Math.cos(wl101Angle) * 0.49, y: grinderY + Math.sin(wl101Angle) * 0.49, z: -0.20 }, { z: wl101Angle - Math.PI / 2 }, "P02", false);
@@ -22787,12 +22869,72 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // and cutaway both stopped at the dry side. Give each of its direct children an
     // outward vector (from the wet section's own bounding centre, which is robust even
     // where a child's local position is the origin) so the whole plant separates.
+    // ---- MR-301 정비 인양 모노레일 -------------------------------------------------------
+    // 「수직 인양」은 크레인이 있어야 설계다. 최대 인양물은 ICSH 상부 축조립체 1,089 kg
+    // (커터 26매 657 + 축 372 + 저널 여유), 동하중 1.25 를 걸면 1.36 t → SWL 2.0 t.
+    // 빔은 인양 대상이 전부 놓인 z=0 중심선 위를 달리고, ICSH(x −4.40)와 HSG 로터
+    // (x −0.72)를 한 빔으로 덮는다. y 3.8…6.0 대역과 기둥 4개 자리는 실측 간섭 0.
+    {
+      const beamY = 5.80, frameX = [-5.30, 0.40], legZ = 1.55;
+      frameX.forEach((fx) => {
+        [-legZ, legZ].forEach((lz) => {
+          addHSection(parts.P29, "P29", { x: fx, y: (beamY - 0.06) / 2, z: lz }, beamY - 0.06, "y", 0.20, 0.20);
+          addBox(parts.P29, { x: 0.34, y: 0.030, z: 0.34 }, { x: fx, y: 0.015, z: lz }, material.frame, "P29");
+          for (const ax of [-1, 1]) for (const az of [-1, 1]) {
+            addCylinder(parts.P29, 0.011, 0.07, { x: fx + ax * 0.13, y: 0.05, z: lz + az * 0.13 }, material.silverClamp, "P29", "y", 8, false);
+          }
+        });
+        addHSection(parts.P29, "P29", { x: fx, y: beamY + 0.14, z: 0 }, legZ * 2 + 0.30, "z", 0.20, 0.20);
+        [-1, 1].forEach((side) => addBox(parts.P29, { x: 0.024, y: 0.34, z: 0.34 }, { x: fx, y: beamY + 0.02, z: side * 0.72 }, material.frame, "P29", { x: side * 0.62 }, false));
+      });
+      addHSection(parts.P29, "P29", { x: (frameX[0] + frameX[1]) / 2, y: beamY, z: 0 }, frameX[1] - frameX[0], "x", 0.20, 0.20);
+      // 전동 트롤리 + 체인호이스트 — 정지위치는 ICSH 상부축 바로 위
+      const hoistX = -4.40;
+      const hoist = [
+        addBox(parts.P29, { x: 0.30, y: 0.16, z: 0.24 }, { x: hoistX, y: beamY - 0.20, z: 0 }, material.equipmentControl, "P29"),
+        ...[-0.10, 0.10].map((dz) => addCylinder(parts.P29, 0.048, 0.04, { x: hoistX, y: beamY - 0.11, z: dz }, material.silverClamp, "P29", "z", 14, false)),
+        addCylinder(parts.P29, 0.105, 0.26, { x: hoistX, y: beamY - 0.40, z: 0 }, material.equipmentControl, "P29", "z", 20, false),
+        addCylinder(parts.P29, 0.007, 0.80, { x: hoistX, y: beamY - 0.93, z: 0 }, material.silverClamp, "P29", "y", 6, false),
+        addMesh(parts.P29, new THREE.TorusGeometry(0.055, 0.013, 8, 20), material.cover, { x: hoistX, y: beamY - 1.38, z: 0 }, { x: Math.PI / 2 }, "P29", false),
+        addBox(parts.P29, { x: 0.07, y: 0.20, z: 0.05 }, { x: hoistX + 0.26, y: beamY - 1.10, z: 0 }, material.safety, "P29", null, false)
+      ];
+      markSwap(hoist, "ICSH-UPPER-CASSETTE");
+      // 인양빔 — 축조립체를 두 점에서 받아 수평을 유지한다. 정비 스탠드에 걸려 있다.
+      addBox(parts.P29, { x: 1.90, y: 0.14, z: 0.10 }, { x: -2.35, y: 0.62, z: 0.62 }, material.cover, "P29");
+      [-0.85, 0.85].forEach((dx) => addMesh(parts.P29, new THREE.TorusGeometry(0.040, 0.010, 8, 18), material.silverClamp, { x: -2.35 + dx, y: 0.73, z: 0.62 }, null, "P29", false));
+      [-0.80, 0.80].forEach((dx) => addBox(parts.P29, { x: 0.09, y: 0.52, z: 0.09 }, { x: -2.35 + dx, y: 0.29, z: 0.62 }, material.frame, "P29"));
+      labelSprite && (() => {
+        const tag = labelSprite("MR-301 · 정비 인양 모노레일 SWL 2.0 t · 양정 5.0 m");
+        tag.position.set(-2.45, beamY + 0.42, 0);
+        tag.scale.set(2.60, 0.24, 1);
+        parts.P29.add(tag);
+      })();
+    }
+    // 인양점 — 호퍼 모듈 4점, 커터 축조립체 저널 양단 2점.
+    [[-5.55, 0.80], [-5.55, -0.80], [-3.25, 0.80], [-3.25, -0.80]].forEach(([lx, lz]) => {
+      const lug = addMesh(parts.P23, new THREE.TorusGeometry(0.045, 0.011, 8, 20), material.silverClamp, { x: lx, y: 3.24, z: lz }, null, "P23", false);
+      lug.userData.liftPoint = "ICSH-HOPPER";
+      markSwap(lug, "ICSH-HOPPER");
+    });
+    [[1.34, 0], [-1.34, 0]].forEach(([dx, dz]) => {
+      const lug = addMesh(shredderShaftA, new THREE.TorusGeometry(0.038, 0.010, 8, 18), material.silverClamp, { x: dx, y: 0.20, z: dz }, { y: Math.PI / 2 }, "P24", false);
+      lug.userData.liftPoint = "ICSH-UPPER-CASSETTE";
+    });
+    [[0, 1.16], [0, -1.16]].forEach(([dx, dz]) => {
+      const lug = addMesh(shredderShaftB, new THREE.TorusGeometry(0.034, 0.009, 8, 18), material.silverClamp, { x: dx, y: 0.185, z: dz }, null, "P24", false);
+      lug.userData.liftPoint = "ICSH-LOWER-CASSETTE";
+    });
+
     // ---- 정비 접근 공간 예약 ------------------------------------------------------------
     // 각 상자는 「이 부피가 비어 있어야 그 절차가 성립한다」는 선언이다. 전부 실측 영역
     // 조회로 비어 있음을 확인한 좌표다(HSG 전면 · ICSH 양단 · SCR 드로어 · 펌프 상부 · 셀 상부).
     addEnvelope("HSG-BLADE", "HSG-101 로터 레일아웃 · 카트", { x: grinderX - 0.45, y: 0.14, z: 0.48 }, { x: grinderX + 0.45, y: 1.62, z: 1.92 });
-    addEnvelope("ICSH-UPPER-CASSETTE", "ICSH-301 상부 카세트 인출 +x", { x: -2.90, y: 1.36, z: -0.22 }, { x: -1.50, y: 1.80, z: 0.22 });
-    addEnvelope("ICSH-LOWER-CASSETTE", "ICSH-301 하부 카세트 인출 +z", { x: -4.60, y: 0.96, z: 1.36 }, { x: -4.20, y: 1.36, z: 2.75 });
+    // ICSH 카세트는 축방향이 아니라 **수직 인양**이다. 상부 축조립체가 1,089 kg 이라
+    // 사람이 축을 따라 뽑을 수 있는 물건이 아니다. 호퍼 모듈(643 kg)을 먼저 들어내고
+    // 그 자리로 상부축, 이어서 하부축을 MR-301 로 올린다. 통로 y 1.0…5.2 는 실측 무간섭.
+    addEnvelope("ICSH-HOPPER", "ICSH-301 호퍼 모듈 인양 643 kg", { x: -5.85, y: 1.95, z: -0.95 }, { x: -2.95, y: 5.15, z: 0.95 });
+    addEnvelope("ICSH-UPPER-CASSETTE", "ICSH-301 상부 축조립체 수직 인양 1,089 kg", { x: -5.75, y: 1.30, z: -0.28 }, { x: -3.05, y: 5.15, z: 0.28 });
+    addEnvelope("ICSH-LOWER-CASSETTE", "ICSH-301 하부 축조립체 수직 인양 658 kg", { x: -4.66, y: 0.90, z: -1.10 }, { x: -4.14, y: 5.15, z: 1.10 });
     addEnvelope("SCR-DECK", "SCR-001 데크 드로어 인출 +z", { x: -5.18, y: 0.18, z: 1.18 }, { x: -3.62, y: 0.62, z: 2.30 });
     addEnvelope("BF101-CARTRIDGE", "BF-101 카트리지 상부 인출", { x: filterCenter.x - 0.30, y: filterCenter.y + 0.45, z: filterCenter.z - 0.28 }, { x: filterCenter.x + 0.30, y: filterCenter.y + 1.15, z: filterCenter.z + 0.28 });
     addEnvelope("BF201-CARTRIDGE", "BF-201 카트리지 상부 인출", { x: bfCenter.x - 0.35, y: bfCenter.y + 0.48, z: bfCenter.z - 0.30 }, { x: bfCenter.x + 0.35, y: bfCenter.y + 1.25, z: bfCenter.z + 0.30 });
@@ -23016,6 +23158,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         setTarget("P26", -0.85 * e, 0.82 * e, 0.92 * e);
         setTarget("P27", -0.45 * e, 0.55 * e, -1.05 * e);
         setTarget("P28", -1.05 * e, 0.20 * e, -0.65 * e);
+        setTarget("P29", 0, 1.35 * e, 0);   // 모노레일은 고정 가구다 — 위로만 뗀다
         targets.get(panelInfeed).copy(origins.get(panelInfeed)).add(new THREE.Vector3(-2.10 * e, 0.30 * e, 0));
         // The wet section separates radially from its own centre by the same control.
         wetMovers.forEach((child) => {
@@ -24629,7 +24772,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         { code:"SH-051", assembly:"SCR-001", name:"진동모터", qty:2, material:"Vendor", spec:"1.1 kW each, IP66", note:"합계 2.2 kW · 대향 동기설정" },
         { code:"SH-060", assembly:"SCV-R1/P1", name:"오버사이즈 반송스크루", qty:1, material:"SS400/SUS304", spec:"Ø220, 55°, 4.0 kW", note:"호퍼 재투입" },
         { code:"SH-061", assembly:"SCV-R1/P1", name:"제품 정량스크루", qty:1, material:"SS400/SUS304", spec:"Ø220, 300 kg/h, 2.2 kW", note:"FD-101 유연슈트" },
-        { code:"SH-070", assembly:"정비·교체", name:"커터 카세트 유압 잠금캡", qty:2, material:"SCM440 QT", spec:"Ø330/Ø270 · 유압 너트 · 핸들 3", note:"상·하부 축 각 1 · 인출 지그 포함 · MTTR 90분" },
+        { code:"SH-070", assembly:"정비·교체", name:"커터 카세트 유압 잠금캡", qty:2, material:"SCM440 QT", spec:"Ø330/Ø270 · 유압 너트 · 핸들 3", note:"상·하부 축 각 1 · 스택 구속 해제용" },
+        { code:"SH-075", assembly:"정비·교체", name:"MR-301 정비 인양 모노레일", qty:1, material:"H200 SS400 HDG", spec:"빔 L5,700 · y 5,800 · 문형가구 2 · SWL 2.0 t · 전동 체인호이스트 양정 5.0 m", note:"최대 인양물 상부 축조립체 1,089 kg × 동하중 1.25 = 1.36 t · ICSH＋HSG 공용" },
+        { code:"SH-076", assembly:"정비·교체", name:"호퍼 모듈 인양점", qty:4, material:"SUS304", spec:"M20 아이 · 상면 4점", note:"643 kg · 플랜지 볼트 64본 해제 후 수직 인양" },
+        { code:"SH-077", assembly:"정비·교체", name:"축조립체 인양빔·저널 인양점", qty:1, material:"SS400/SUS304", spec:"인양빔 L1,900 · 저널 아이 4", note:"상부 1,089 kg · 하부 658 kg 수평 유지" },
+        { code:"SH-078", assembly:"정비·교체", name:"정비 스탠드", qty:1, material:"SS400", spec:"1,900 × 620 · H520", note:"인양물 하역 · 정비장 반출 전 대기" },
         { code:"SH-071", assembly:"정비·교체", name:"SCR-001 드로어 점검도어", qty:1, material:"SS400", spec:"1,560×440 · 하단 힌지 · 토글클램프 2", note:"+z 인출 · 가이드레일 2본 · GB-301 연결관 y 0.62 상향" },
         { code:"SH-072", assembly:"정비·교체", name:"AE-301 음향방출 센서", qty:1, material:"Vendor", spec:"150 kHz · IP67", note:"커터 날끝 상태 — 절단음 고주파 성분" },
         { code:"SH-073", assembly:"정비·교체", name:"VIT-301~304 무선 진동·온도 노드", qty:4, material:"Vendor", spec:"±50 g · 10 Hz–10 kHz · IP66", note:"베어링 하우징 상면 · ISO 10816-3" },
@@ -24691,6 +24838,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {code:"HG-056",assembly:"정비·교체",name:"예비 로터 조립품",qty:1,material:"SCM440/초경",spec:"Ø450×350 · 날 카세트 4 조립 · G2.5",note:"카트 위 대기 · 스왑"},
         {code:"HG-057",assembly:"정비·교체",name:"BF-101 리드 토글클램프·플렉시블 스풀",qty:1,material:"SUS304/EPDM",spec:"클램프 4 · DN80 플렉시블 1",note:"리드 위 청정공기 덕트 분리용"},
         {code:"HG-058",assembly:"정비·교체",name:"도어 가스 스트럿",qty:2,material:"Vendor",spec:"400 N · 스트로크 150",note:"12 t 도어 개방 보조"},
+        {code:"HG-059",assembly:"정비·교체",name:"LP-101 로터 잠금핀·잠금판",qty:1,material:"SCM440 QT / SS400",spec:"핀 Ø26 · 잠금판 Ø200 4공 · 비구동측 축단 z 600",note:"ISO 14118 기계적 구속 · 관성정지 7.2분(무제동)에 대한 물리 구속"},
+        {code:"HG-060",assembly:"정비·교체",name:"TK-101 트랩키 세트",qty:1,material:"Vendor",spec:"실린더 2 · 키 A/B · 개폐기 인터록",note:"ISO 14119:2024 Type 5(Annex K) · 개폐기→잠금핀→도어 순서 강제"},
+        {code:"HG-061",assembly:"정비·교체",name:"GL-101 가드잠금장치",qty:1,material:"Vendor",spec:"스프링 결합·전원 해제형 · PLe · 잠금력 시험 Annex I",note:"정전 시 잠긴 채 유지 · SE-101 정지확인으로 해정 · 백업 시간지연 8분"},
         ...powerBom("grinder","HG"),
         {code:"F-HG-01",assembly:"체결구",type:"fastener",name:"스키드 앵커 세트",qty:12,material:"SCM435 8.8 HDG",spec:"M24×400 + 2N + PW",note:commonFastenerNote},
         {code:"F-HG-02",assembly:"체결구",type:"fastener",name:"하우징 분할 볼트세트",qty:32,material:"10.9 Zn-Ni",spec:"M20×65 + N + 2PW",note:"분할면만 · 도어는 스윙볼트 래치(HG-052)로 대체"},
