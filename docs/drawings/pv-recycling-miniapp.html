@@ -1899,6 +1899,16 @@ html>body{padding:0}</style>
       유효 1.26 × 0.89 = <strong>1.121 m²/데크</strong>(여유 +30 %)를 확보했다. 2단 합계 2.242 m².
       종전은 0.98 m² 단단이었다.</p>
 
+    <strong>데크가 늘면 흡인점도 늘어난다 — 국소배기·접지</strong>
+    <p class="text-small">데크를 2단으로 만들면 <strong>배출단이 둘</strong>이 되고, 회로를 떠나는
+      <strong>BIN-102 낙하지점</strong>이 새로 생긴다. 종전 국소배기는 상부 후드 1점뿐이었고
+      신설된 폐기빈에는 벤트가 없어, 다른 제품빈에는 전부 있는 것이 이 빈에만 빠져 있었다.
+      다음 세 가지를 더했다 —
+      ① <strong>2단 데크 국소배기 DN50</strong>(하우징 −z 측벽 → VH-201 헤더, 헤더 시작점을
+      x 2.52 → 1.86 으로 연장) · ② <strong>BIN-102 벤트 DN50</strong>(SC-500 상부 지관 합류 →
+      BF-201) · ③ <strong>접지 본딩</strong> 2본(SC-500 진동체 프레임 · BIN-102).
+      진동체는 정전기방지 유연연결 뒤라 배관을 통한 접지가 끊기므로 프레임을 따로 물려야 한다.</p>
+
     <p class="text-small text-muted">배출단 베드깊이는 1단 0.15 mm · 2단 0.26 mm 로 한계(4 × 개구 = 8.0 / 2.0 mm) 안이다 —
       이 회로에서 폭을 정하는 것은 베드깊이가 아니라 위의 용량 계산이다.
       기본용량 B 는 건식 미세체가름 실무값이며, Kst/체분석 실측이 나오면 교체해야 한다.</p>
@@ -17072,6 +17082,23 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       new THREE.Vector3(1.48, 1.86, 0.56),
       new THREE.Vector3(1.70, 2.20, 0.52)
     ]);
+    // BIN-102 벤트 — 폐기빈은 낙하 지점이라 치환공기와 분진이 그대로 올라온다.
+    // 다른 제품빈은 전부 벤트를 달았는데 신설된 이 빈만 없었다. SC-500 상부 지관에
+    // 합류시켜 BF-201 로 보낸다. 경로는 CY-101(z 0.11–0.69)·CV-102(z −0.31–−0.09)와
+    // P17 지관(y ≤ 1.50)을 피해 z ≈ 1.00 · y ≥ 1.66 을 지나간다.
+    const bin102VentBranch = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(2.70, 0.56, 0.88),
+      new THREE.Vector3(2.76, 1.66, 1.00),
+      new THREE.Vector3(2.30, 1.86, 1.00),
+      new THREE.Vector3(1.62, 1.90, 0.98),
+      new THREE.Vector3(1.50, 1.88, 0.72),
+      new THREE.Vector3(1.48, 1.86, 0.56)
+    ]);
+    addMesh(parts.P12, new THREE.TubeGeometry(bin102VentBranch, 40, 0.024, 12, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P12", false);
+    addCylinder(parts.P12, 0.030, 0.10, { x: 2.70, y: 0.52, z: 0.86 }, material.pipeAir, "P12", "y", 14, false);
+    // 2단 데크 국소배기 노즐 — 하우징 −z 측벽을 뚫고 나와 VH-201 헤더로 올라간다.
+    // 데크가 두 장이 되면서 배출단이 둘이 되었으므로 흡인점도 둘이어야 한다.
+    addCylinder(parts.P12, 0.028, 0.16, { x: 1.86, y: 0.74, z: -0.55 }, material.pipeAir, "P12", "z", 14, false);
     const ch501VentBranch = new THREE.CatmullRomCurve3([
       new THREE.Vector3(2.30, 0.49, 0.48),
       new THREE.Vector3(2.22, 1.62, 0.62),
@@ -17606,11 +17633,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         { x, y: VENT_HEADER_Y, z: RACK_Z }, material.silverClamp, "P21", null, false);
       return name;
     };
-    const ventHeaderX = [2.52, 6.95];
+    // 헤더 시작점을 SC-500 2단 국소배기까지 당긴다 — 데크가 늘면 흡인점도 는다.
+    const ventHeaderX = [1.86, 6.95];
     addMesh(parts.P21, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
       new THREE.Vector3(ventHeaderX[0], VENT_HEADER_Y, RACK_Z),
       new THREE.Vector3(ventHeaderX[1], VENT_HEADER_Y, RACK_Z)
     ]), 8, 0.050, 14, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
+    ventRiser(1.86, 0.74, -0.60, 0.028, "SC-500 2단 데크 국소배기");
     ventRiser(pc201ReceiverCenter.x, 2.08, pc201ReceiverCenter.z, 0.040, "PC-201 리시버 벤트");
     ventRiser(2.78, 1.18, 0.44, 0.025, "VS-501 분배기 벤트");
     ventRiser(secondaryCenter.x, 0.88, secondaryCenter.z + 0.58, 0.030, "SV-201 스크린 벤트");
@@ -17834,6 +17863,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addBox(parts.P01, { x: 8.20, y: 0.035, z: 0.05 }, { x: 2.60, y: 0.06, z: -0.92 }, bondingMaterial, "P01", null, false);
     addBonding(parts.P02, "P02", { x: grinderX, y: 0.58, z: -0.30 }, { x: grinderX, y: 0.06, z: -0.92 });
     addBonding(parts.P15, "P15", { x: cycloneX, y: 1.40, z: cycloneZ - 0.20 }, { x: cycloneX, y: 0.06, z: -0.92 });
+    // SC-500 하우징과 BIN-102 — 2단 스크린과 폐기빈도 착화원 관리 대상이다.
+    // 정전기방지 유연연결 뒤쪽은 접지가 끊기므로 진동체 프레임을 따로 물린다.
+    addBonding(parts.P12, "P12", { x: 1.48, y: 0.24, z: -0.56 }, { x: 1.48, y: 0.06, z: -0.92 });
+    addBonding(parts.P12, "P12", { x: 2.58, y: 0.10, z: 0.42 }, { x: 2.58, y: 0.06, z: -0.92 });
     addBonding(parts.P17, "P17", { x: filterCenter.x, y: 1.20, z: filterCenter.z - 0.26 }, { x: filterCenter.x, y: 0.06, z: -0.92 });
     addBonding(parts.P21, "P21", { x: cyclone2Center.x, y: 1.10, z: cyclone2Center.z - 0.30 }, { x: cyclone2Center.x, y: 0.06, z: -0.92 });
     addBonding(parts.P21, "P21", { x: bfCenter.x, y: 1.00, z: bfCenter.z - 0.32 }, { x: bfCenter.x, y: 0.06, z: -0.92 });
@@ -22767,7 +22800,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         exposedConveyors: 0,
         solidsLines: ["L00 Shredder screen split", "L00-R SCV-R1 recycle", "L00-P SCV-P1 to HSG", "L01 mill transfer", "L02 recycle", "L03 downstream lift", "L04 classifier feed", "L06 polishing feed and discharge"],
         dustHeaders: ["BF-101 upstream header", "BF-201 downstream header"],
-        localExhaustPoints: ["ICSH-301 hopper and screen enclosure", "FD-101", "SC-500", "CH-501", "PC-201 receiver", "VS-501", "SV-201", "SS-201", "sealed product receivers"],
+        localExhaustPoints: ["ICSH-301 hopper and screen enclosure", "FD-101", "SC-500 upper hood", "SC-500 second deck (2 mm/500 um decks vented separately)", "BIN-102 backsheet reject bin", "CH-501", "PC-201 receiver", "VS-501", "SV-201", "SS-201", "sealed product receivers"],
         finalAirPath: ["cyclone", "bag filter", "ID fan", "silencer", "exhaust stack"]
       },
       deckCount: sieveDeckMeshes.length,
@@ -23321,13 +23354,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     },
     grinder: {
       label:"분쇄기", tag:"HSG-101 Closed Circuit", drawing:"DI-PVR-HSG101-DD-001", revision:"DD-R4",
-      capacity:"신규 ≤300 kg/h · 환류 포함 총부하 ≤400 kg/h", overall:"5,000 L × 1,600 W × 2,500 H mm", mass:"예상 4.6 t · 스키드 포함",
+      capacity:"신규 ≤300 kg/h · 정격 총부하 ≤400 kg/h(설계 실부하 380.1)", overall:"5,000 L × 1,600 W × 2,500 H mm", mass:"예상 4.6 t · 스키드 포함",
       foundation:"스키드 5,000×1,600 mm · M24 앵커 12SET · 방진패드 12EA · 그라우트 30 mm",
       basis:"Dmax 10 mm · 로터 Ø450×350 · 1,500 rpm(최대 1,800) · SC-500 2단(2 mm 스캘핑＋500 µm 폐회로) · D95 0.438 mm",
-      services:[powerService("grinder"), "흡인: 보어 137 라이닝 · 900 m³/h · BF-101/IDF-101", "투입: FD-101, 밀폐 유연슈트", "폐기/환류/제품: SC-500 >2 mm BIN-102 / 500 µm–2 mm CV-102 / <500 µm CH-501"],
-      installation:["로터 인출측 1,800 mm", "스크린 교체 하부공간 900 mm", "필터백 상부 인출공간 1,200 mm", "회전체 레이저 정렬·벨트장력 기록"],
-      acceptance:["무부하 1,500 rpm 2 h", "베어링 진동 ISO 20816 Zone B 이하", "400 kg/h 8 h 폐회로 성능", "분진누설·음압·집진 ΔP 확인"],
-      dimensions:{l:5000,w:1600,h:2500}, assemblies:["전체","스키드·하우징","로터·날","스크린·라이너","M-101 구동","FD/CV 이송","SC-500 환류","집진·음압","전력 인입·LCP","체결구"],
+      services:[powerService("grinder"), "흡인: 보어 137 라이닝 · 900 m³/h · BF-101/IDF-101", "국소배기: SC-500 상부 DN50 ＋ 2단 데크 DN50 ＋ BIN-102 DN50 → VH-201 → BF-201", "투입: FD-101, 밀폐 유연슈트", "폐기/환류/제품: SC-500 >2 mm BIN-102 45 / 500 µm–2 mm CV-102 80.1 / <500 µm CH-501 255 kg/h"],
+      installation:["로터 인출측 1,800 mm", "스크린 교체 하부공간 900 mm", "SC-500 데크 인출 측면공간 1,600 mm(2단 각각)", "필터백 상부 인출공간 1,200 mm", "회전체 레이저 정렬·벨트장력 기록"],
+      acceptance:["무부하 1,500 rpm 2 h", "베어링 진동 ISO 20816 Zone B 이하", "400 kg/h 8 h 폐회로 성능", "SC-500 2단 메시 장력 편차 ≤10% · 데크별 체분석", "1단 오버 45 kg/h·2단 오버 80 kg/h 실측 확인", "분진누설·음압·집진 ΔP 확인(2단 국소배기·BIN-102 벤트 포함)"],
+      dimensions:{l:5000,w:1600,h:2500}, assemblies:["전체","스키드·하우징","로터·날","스크린·라이너","M-101 구동","FD/CV 이송","SC-500 2단 스크린","집진·음압","전력 인입·LCP","체결구"],
       bom:bom([
         {code:"HG-001",assembly:"스키드·하우징",name:"통합 스키드 프레임",qty:1,material:"SS400",spec:"H200×200×8×12 + PL-16",note:"기계가공 패드 6점"},
         {code:"HG-002",assembly:"스키드·하우징",name:"분할 원형 하우징",qty:2,material:"SS400",spec:"OD960×W680, PL-16/20",note:"분할면 평면도 0.10 mm"},
@@ -23345,8 +23378,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {code:"HG-023",assembly:"M-101 구동",name:"탈착식 벨트가드",qty:1,material:"SS400",spec:"PL-2, mesh window",note:"도어 인터록"},
         {code:"HG-030",assembly:"FD/CV 이송",name:"FD-101 정량호퍼",qty:1,material:"SUS304",spec:"0.18 m³, 로드셀 3점",note:"2중 플랩"},
         {code:"HG-031",assembly:"FD/CV 이송",name:"CV-101 배출스크루",qty:1,material:"SUS304",spec:"Ø160 P140 L900, 55 rpm",note:"1.1 kW VFD"},
-        {code:"HG-032",assembly:"SC-500 환류",name:"SC-500 경사스크린",qty:1,material:"SUS304",spec:"500 µm, 12°, 25 Hz",note:"3.0 mm p-p"},
-        {code:"HG-033",assembly:"SC-500 환류",name:"CV-102 환류스크루",qty:1,material:"SUS304",spec:"Ø140 P120 L2400, 45 rpm",note:"0.75 kW"},
+        {code:"HG-032",assembly:"SC-500 2단 스크린",name:"SC-500 2단 진동경사스크린",qty:1,material:"SUS304",spec:"W800×L1400, 12°, 25 Hz",note:"3.0 mm p-p · 유효 1.121 m²/데크"},
+        {code:"HG-033",assembly:"SC-500 2단 스크린",name:"CV-102 환류스크루",qty:1,material:"SUS304",spec:"Ø140 P120 L2400, 45 rpm",note:"0.75 kW"},
+        {code:"HG-034",assembly:"SC-500 2단 스크린",name:"1단 2 mm 스캘핑 메시",qty:1,material:"SUS316L",spec:"W800×L1400, 선경 0.80",note:"개구율 51.0% · 성적서"},
+        {code:"HG-035",assembly:"SC-500 2단 스크린",name:"2단 500 µm 메시",qty:1,material:"SUS316L",spec:"W800×L1400, 선경 0.315",note:"개구율 37.6% · 지배 데크"},
+        {code:"HG-036",assembly:"SC-500 2단 스크린",name:"메시 텐셔닝 세트",qty:2,material:"SUS304",spec:"크라운바 3본 + 텐션레일",note:"데크당 1세트"},
+        {code:"HG-037",assembly:"SC-500 2단 스크린",name:"데크 클램프 레일",qty:4,material:"SUS304",spec:"L1400, 편심캠형",note:"데크당 좌우 2본"},
+        {code:"HG-038",assembly:"SC-500 2단 스크린",name:"1단 오버 배출슈트",qty:1,material:"SUS304",spec:"t3, DN150 → BIN-102",note:"샘플포트 포함"},
+        {code:"HG-039",assembly:"SC-500 2단 스크린",name:"BIN-102 백시트 폐기빈",qty:1,material:"SUS304",spec:"0.06 m³, Ø460, 벤트 DN50",note:"45 kg/h · 회로 이탈"},
+        {code:"HG-043",assembly:"집진·음압",name:"2단 데크 국소배기 노즐",qty:1,material:"SUS304",spec:"DN50, 하우징 −z 측벽",note:"VH-201 헤더 연장 합류"},
         {code:"HG-040",assembly:"집진·음압",name:"CY-101 사이클론",qty:1,material:"SUS304",spec:"Ø500, 입구 보어 137",note:"RV-101 에어록 포함"},
         {code:"HG-041",assembly:"집진·음압",name:"BF-101 백필터",qty:1,material:"SS400",spec:"900 m³/h, 12 bags",note:"펄스젯·ΔP"},
         {code:"HG-042",assembly:"집진·음압",name:"IDF-101 유인팬",qty:1,material:"Vendor",spec:"5.5 kW VFD",note:"소음기·스택"},
@@ -23357,7 +23397,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {code:"F-HG-04",assembly:"체결구",type:"fastener",name:"고정날 볼트세트",qty:16,material:"12.9",spec:"M16×65 + Nord-Lock",note:commonFastenerNote},
         {code:"F-HG-05",assembly:"체결구",type:"fastener",name:"베어링 하우징 볼트세트",qty:8,material:"10.9",spec:"M24×85 + N + 2PW",note:commonFastenerNote},
         {code:"F-HG-06",assembly:"체결구",type:"fastener",name:"스크린 클램프 볼트",qty:24,material:"A4-80",spec:"M12×40 + N + 2PW",note:commonFastenerNote},
-        {code:"F-HG-07",assembly:"체결구",type:"fastener",name:"가드·덕트 체결구",qty:64,material:"A2-70",spec:"M10×30 + N + PW",note:"공구포획형"}
+        {code:"F-HG-07",assembly:"체결구",type:"fastener",name:"가드·덕트 체결구",qty:64,material:"A2-70",spec:"M10×30 + N + PW",note:"공구포획형"},
+        {code:"F-HG-08",assembly:"체결구",type:"fastener",name:"SC-500 데크 클램프 볼트세트",qty:32,material:"A4-80",spec:"M12×45 + N + 2PW",note:"데크당 16EA · 2단"},
+        {code:"F-HG-09",assembly:"체결구",type:"fastener",name:"메시 텐션 볼트세트",qty:12,material:"A4-80",spec:"M16×60 + 잠금너트",note:"데크당 6EA · 장력 편차 ≤10%"}
       ])
     },
     sieve: {
