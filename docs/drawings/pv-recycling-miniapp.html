@@ -1784,6 +1784,54 @@ html>body{padding:0}</style>
     </div>
   </details>
 
+  <details class="card hsg3d-validation" id="plant-panel-screen-sizing" data-panel-id="screen-sizing" data-panel-category="해석·검증">
+    <summary>SC-500 경사스크린 2단 — 물질수지와 소요면적</summary>
+
+    <p class="text-small">회로를 다시 잡았다. <strong>SC-500 을 2단</strong>으로 만들어 1단 2 mm 로 분쇄되지 않는
+      백시트 박편을 걷어내 폐기하고, 2단 500 µm 오버만 HSG-101 로 환류시켜 폐회로를 유지한다.
+      2단을 통과한 &lt;500 µm 만 원형 Sheeve(SV-201)로 내려가 280/106/75 를 친다.</p>
+
+    <strong>물질수지 (정상상태)</strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="SC-500 물질수지">
+      <thead><tr><th>스트림</th><th class="text-end">kg/h</th><th>행선지</th></tr></thead>
+      <tbody>
+        <tr><td>신규 급광</td><td class="text-end">300.0</td><td>ICSH-301 → HSG-101</td></tr>
+        <tr><td>환류 (500 µm–2 mm)</td><td class="text-end">100.0</td><td>CV-102 → HSG-101 <strong>폐회로</strong></td></tr>
+        <tr><td><strong>스크린 급광 = 밀 토출</strong></td><td class="text-end"><strong>400.0</strong></td><td>CY-101 → RV-101 → SC-500</td></tr>
+        <tr><td>1단 오버 &gt;2 mm</td><td class="text-end">45.0</td><td class="dd-warning">BIN-102 백시트 폐기 — 회로를 떠나는 유일한 조대 산물</td></tr>
+        <tr><td>2단 언더 &lt;500 µm</td><td class="text-end">255.0</td><td>CH-501 → PC-201 → VS-501 → SV-201</td></tr>
+        <tr><td>폐합</td><td class="text-end">400.0</td><td>45.0 ＋ 100.0 ＋ 255.0 = 400.0 ✓</td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small text-muted">백시트 폐기량은 <strong>설계 가정</strong>이다 — 급광의 B군(탈락 백시트) 20 % 중
+      75 % 가 &gt;2 mm 박편으로 남는다고 보아 300 × 0.20 × 0.75 = 45 kg/h. 환류 100 kg/h 와 밀 부하 400 kg/h 는
+      기존 폐회로 설계값을 그대로 지켰으므로 CV-102 리턴스크류·모터·비에너지 산정이 바뀌지 않는다.</p>
+
+    <strong>소요면적 — VSMA <code>A = U / (B · C<sub>o</sub> · C<sub>h</sub> · C<sub>d</sub> · C<sub>s</sub> · C<sub>sh</sub> · C<sub>ρ</sub>)</code></strong>
+    <div class="table-responsive"><table class="table table-sm" aria-label="스크린 소요면적">
+      <thead><tr><th>데크</th><th class="text-end">언더 U</th><th class="text-end">기본용량 B</th><th class="text-end">개구율 → C<sub>s</sub></th><th class="text-end">C<sub>o</sub>·C<sub>h</sub>·C<sub>d</sub></th><th class="text-end">소요 A</th></tr></thead>
+      <tbody>
+        <tr><td>1단 2,000 µm (선경 800)</td><td class="text-end">355 kg/h</td><td class="text-end">5.5 t/h·m²</td><td class="text-end">51.0 % → 1.020</td><td class="text-end">1.18 · 1.55 · 1.00</td><td class="text-end">0.188 m²</td></tr>
+        <tr><td><strong>2단 500 µm (선경 315)</strong></td><td class="text-end">255 kg/h</td><td class="text-end">1.9 t/h·m²</td><td class="text-end">37.6 % → 0.753</td><td class="text-end">1.00 · 1.25 · 0.90</td><td class="text-end"><strong>0.861 m²</strong></td></tr>
+      </tbody>
+    </table></div>
+
+    <p class="text-small"><strong>공통 보정</strong> — 형상계수 C<sub>sh</sub> <strong>0.841</strong> 은 모델의
+      <code>particleClasses</code> 편평도를 질량가중한 값(0.268)에서 유도했다(A 0.40 · B 0.10 · C 0.24).
+      벌크밀도계수 C<sub>ρ</sub> <strong>0.219</strong> 는 ρ<sub>b</sub> 0.35 t/m³ 를 VSMA 기준 1.6 t/m³ 로 나눈 값이다 —
+      <strong>면적을 지배하는 것이 이 두 계수</strong>다. 폴리머 박편은 가볍고 납작해서 같은 질량을 치는 데
+      광물의 4.5 배 면적이 든다.</p>
+
+    <p class="text-small"><strong>채택</strong> — 지배 데크 0.861 m² × 설계여유 1.25 = <strong>1.077 m²</strong> 필요.
+      길이 1,400 은 배치(동측 CH-501 x 2.30)에 묶여 있으므로 <strong>폭만 700 → 800 mm</strong> 로 넓혀
+      유효 1.26 × 0.89 = <strong>1.121 m²/데크</strong>(여유 +30 %)를 확보했다. 2단 합계 2.242 m².
+      종전은 0.98 m² 단단이었다.</p>
+
+    <p class="text-small text-muted">배출단 베드깊이는 1단 0.15 mm · 2단 0.33 mm 로 한계(4 × 개구 = 8.0 / 2.0 mm) 안이다 —
+      이 회로에서 폭을 정하는 것은 베드깊이가 아니라 위의 용량 계산이다.
+      기본용량 B 는 건식 미세체가름 실무값이며, Kst/체분석 실측이 나오면 교체해야 한다.</p>
+  </details>
+
   <details class="card hsg3d-validation" id="plant-panel-noise" data-panel-id="noise" data-panel-category="장비·공정">
     <summary>공정별 예상 소음·진동 수준</summary>
     <p class="text-small dd-warning">아래 수치는 <strong>설계단계 예측치</strong>입니다. 장비 종류·정격출력·회전수와 동종설비 경험치에서 추정한 값이며 측정값도 제작사 보증치도 아닙니다. 제작사 소음보증치(ISO 3744 음향파워)와 시운전 실측(ISO 11201 작업위치 음압)으로 대체해야 합니다.</p>
@@ -16759,7 +16807,12 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       new THREE.Vector3(0.90, 1.06, 0)
     ]), 8, 0.085, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P16", false);
 
-    const FIRST_SCREEN_CUT_UM = 500;
+    // SC-500 경사스크린은 2단이다 — 1단 2 mm 는 분쇄되지 않고 남는 백시트 박편을
+    // 걷어내 폐기하고, 2단 500 µm 오버만 HSG-101 로 환류시켜 폐회로를 유지한다.
+    // 2단을 통과한 <500 µm 만 원형 Sheeve(SV-201)로 내려가 280/106/75 를 친다.
+    const SC500_CUTS_UM = Object.freeze([2000, 500]);
+    const BACKSHEET_CUT_UM = SC500_CUTS_UM[0];
+    const FIRST_SCREEN_CUT_UM = SC500_CUTS_UM[1];
     const SECONDARY_SIEVE_CUTS_UM = Object.freeze([280, 106, 75]);
     const SIEVE_ROUTE_KEYS = Object.freeze([
       "return-500",
@@ -16826,7 +16879,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const SIEVE_VISUAL_DISPLACEMENT_SCALE = 16;
     const SIEVE_VISUAL_PEAK_M = SIEVE_PEAK_TO_PEAK_M * 0.5 * SIEVE_VISUAL_DISPLACEMENT_SCALE;
     const SIEVE_THROW_ANGLE_RAD = THREE.MathUtils.degToRad(45);
-    const SIEVE_DECK_BASE_Y = Object.freeze([0.92]);
+    // 데크 2장 — 위가 2 mm, 180 mm 아래가 500 µm.
+    const SIEVE_DECK_BASE_Y = Object.freeze([0.92, 0.74]);
+    // 유효 스크린 폭. VSMA 사이징 결과 500 µm 데크가 지배하고 소요 0.861 m²,
+    // 설계여유 1.25 를 얹어 1.077 m² 가 필요하다. 길이 1,400 은 그대로 두고
+    // 폭만 700 → 800 으로 넓혀 1.26 × 0.89 = 1.121 m²/데크를 확보한다.
+    const SIEVE_DECK_WIDTH_M = 0.89;
+    const SIEVE_DECK_LENGTH_M = 1.26;
+    const SIEVE_DECK_AREA_M2 = SIEVE_DECK_WIDTH_M * SIEVE_DECK_LENGTH_M;
     const sieveX = 1.48;
     const sieveMotionOffset = new THREE.Vector3();
 
@@ -16836,42 +16896,44 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     const sieveVibratingGroup = new THREE.Group();
     sieveVibratingGroup.userData.engineering = {
-      deckCutsUm: [FIRST_SCREEN_CUT_UM],
+      deckCutsUm: [...SC500_CUTS_UM],
+      deckAreaM2: +SIEVE_DECK_AREA_M2.toFixed(3),
       inclineDeg: SIEVE_INCLINE_DEG,
       frequencyHz: SIEVE_OPERATING_FREQUENCY_HZ,
       peakToPeakMm: SIEVE_PEAK_TO_PEAK_M * 1000
     };
     parts.P12.add(sieveVibratingGroup);
-    addBox(parts.P12, { x: 1.48, y: 0.09, z: 0.94 }, { x: sieveX, y: 0.08, z: 0 }, material.frame, "P12");
+    addBox(parts.P12, { x: 1.48, y: 0.09, z: 1.05 }, { x: sieveX, y: 0.08, z: 0 }, material.frame, "P12");
     // SC-500 진동 스크린의 지지 — 종전에는 매끈한 원기둥 4개가 서 있을 뿐이었다.
     // 25 Hz 진동체를 강체 기둥으로 받으면 기초로 그대로 전달된다. 소음·진동표가
     // 이 기기에 「방진 스프링 · 덕트 유연연결」을 요구하므로 P01 과 같은 코일
     // 스프링 형식으로 바꾸고, 좌면 아래에 스프링 시트를 깐다.
-    [[1.02, -0.33], [1.02, 0.33], [1.94, -0.33], [1.94, 0.33]].forEach(([x, z]) => {
+    [[1.02, -0.39], [1.02, 0.39], [1.94, -0.39], [1.94, 0.39]].forEach(([x, z]) => {
       addBox(parts.P12, { x: 0.18, y: 0.045, z: 0.18 }, { x, y: 0.14, z }, material.frame, "P12");
       addSpringIsolator(parts.P12, "P12", x, z, 0.163, 0.445, 0.052);
     });
     const sieveSideWalls = [
-      addBox(sieveVibratingGroup, { x: 1.38, y: 0.80, z: 0.055 }, { x: sieveX, y: 0.68, z: -0.43 }, material.screenHousing, "P12", { z: -SIEVE_INCLINE_RAD }),
-      addBox(sieveVibratingGroup, { x: 1.38, y: 0.80, z: 0.055 }, { x: sieveX, y: 0.68, z: 0.43 }, material.screenHousing, "P12", { z: -SIEVE_INCLINE_RAD })
+      addBox(sieveVibratingGroup, { x: 1.38, y: 0.86, z: 0.055 }, { x: sieveX, y: 0.66, z: -0.485 }, material.screenHousing, "P12", { z: -SIEVE_INCLINE_RAD }),
+      addBox(sieveVibratingGroup, { x: 1.38, y: 0.86, z: 0.055 }, { x: sieveX, y: 0.66, z: 0.485 }, material.screenHousing, "P12", { z: -SIEVE_INCLINE_RAD })
     ];
-    addBox(sieveVibratingGroup, { x: 0.055, y: 0.80, z: 0.86 }, { x: 0.79, y: 0.72, z: 0 }, material.screenHousing, "P12");
-    const deckStreamMaterials = [material.returnFlow];
+    addBox(sieveVibratingGroup, { x: 0.055, y: 0.86, z: 0.97 }, { x: 0.79, y: 0.70, z: 0 }, material.screenHousing, "P12");
+    // 1단 오버는 백시트 폐기, 2단 오버는 HSG 환류 — 밴드 색으로 구분한다.
+    const deckStreamMaterials = [material.cover, material.returnFlow];
     const sieveDeckMeshes = SIEVE_DECK_BASE_Y.map((baseY, deckIndex) => {
       const deck = addBox(
         sieveVibratingGroup,
-        { x: 1.26, y: 0.025, z: 0.78 },
+        { x: SIEVE_DECK_LENGTH_M, y: 0.025, z: SIEVE_DECK_WIDTH_M },
         { x: sieveX, y: baseY, z: 0 },
         material.screen,
         "P12",
         { z: -SIEVE_INCLINE_RAD },
         false
       );
-      deck.userData.cutUm = FIRST_SCREEN_CUT_UM;
+      deck.userData.cutUm = SC500_CUTS_UM[deckIndex];
       addBox(
         sieveVibratingGroup,
-        { x: 1.26, y: 0.030, z: 0.030 },
-        { x: sieveX, y: baseY, z: -0.395 },
+        { x: SIEVE_DECK_LENGTH_M, y: 0.030, z: 0.030 },
+        { x: sieveX, y: baseY, z: -0.45 },
         deckStreamMaterials[deckIndex],
         "P12",
         { z: -SIEVE_INCLINE_RAD },
@@ -16879,7 +16941,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       );
       return deck;
     });
-    const sieveTopCover = addBox(sieveVibratingGroup, { x: 1.42, y: 0.08, z: 0.86 }, { x: sieveX, y: 1.08, z: 0 }, material.screenHousing, "P12", { z: -SIEVE_INCLINE_RAD });
+    const sieveTopCover = addBox(sieveVibratingGroup, { x: 1.42, y: 0.08, z: 0.97 }, { x: sieveX, y: 1.08, z: 0 }, material.screenHousing, "P12", { z: -SIEVE_INCLINE_RAD });
     addBox(sieveVibratingGroup, { x: 0.30, y: 0.28, z: 0.34 }, { x: 0.89, y: 1.04, z: 0 }, material.cover, "P12", { z: -SIEVE_INCLINE_RAD });
     addCylinder(sieveVibratingGroup, 0.115, 0.42, { x: sieveX, y: 1.22, z: 0 }, material.motor, "P12", "z", 32);
     const sieveExciterRotor = new THREE.Group();
@@ -16890,10 +16952,26 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const sievePulley = addCylinder(sieveVibratingGroup, 0.075, 0.52, { x: sieveX + 0.28, y: 1.13, z: 0 }, material.pulley, "P12", "z", 28);
     addBox(sieveVibratingGroup, { x: 0.62, y: 0.36, z: 0.12 }, { x: sieveX + 0.18, y: 1.15, z: -0.31 }, material.safety, "P12", null, false);
 
-    const topOutletY = deckHeightAt(SIEVE_DECK_BASE_Y[0], 2.05);
+    // 데크 2장이 각자 자기 높이에서 토출한다 — 토출구 높이가 곧 어느 컷의 산물인지다.
+    // 1단(2 mm) 오버는 백시트 폐기, 2단(500 µm) 오버는 HSG-101 환류.
+    const rejectOutletY = deckHeightAt(SIEVE_DECK_BASE_Y[0], 2.05);
+    const topOutletY = deckHeightAt(SIEVE_DECK_BASE_Y[1], 2.05);
+    const backsheetOutlet = new THREE.Vector3(2.24, rejectOutletY, 0.30);
     const returnOutlet = new THREE.Vector3(2.22, topOutletY, -0.22);
-    const primaryPassOutlet = new THREE.Vector3(1.76, 0.58, 0.20);
+    const primaryPassOutlet = new THREE.Vector3(1.76, 0.44, 0.20);
+    addBox(sieveVibratingGroup, { x: 0.45, y: 0.16, z: 0.30 }, { x: 2.05, y: rejectOutletY, z: 0.30 }, material.cover, "P12", { z: -SIEVE_INCLINE_RAD });
     addBox(sieveVibratingGroup, { x: 0.45, y: 0.16, z: 0.30 }, { x: 2.05, y: topOutletY, z: -0.22 }, material.returnFlow, "P12", { z: -SIEVE_INCLINE_RAD });
+    // BIN-102 백시트 폐기빈 — 회로를 떠나는 유일한 조대 산물이다.
+    addMesh(parts.P12, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+      backsheetOutlet, new THREE.Vector3(2.46, 0.74, 0.52), new THREE.Vector3(2.58, 0.50, 0.66)
+    ]), 18, 0.075, 14, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P12", false);
+    addMesh(parts.P12, openFrustumGeometry(0.20, 0.20, 0.46, 0.46, 0.30),
+      material.solidsReceiver, { x: 2.58, y: 0.28, z: 0.66 }, null, "P12", true);
+    addCylinder(parts.P12, 0.23, 0.34, { x: 2.58, y: 0.00, z: 0.66 }, material.solidsReceiver, "P12", "y", 24, true);
+    for (const dx of [-0.17, 0.17]) for (const dz of [-0.17, 0.17]) {
+      addBox(parts.P12, { x: 0.05, y: 0.24, z: 0.05 }, { x: 2.58 + dx, y: -0.29, z: 0.66 + dz }, material.frame, "P12");
+    }
+    addBox(parts.P12, { x: 0.52, y: 0.03, z: 0.52 }, { x: 2.58, y: -0.42, z: 0.66 }, material.frame, "P12");
     addMesh(sieveVibratingGroup, openFrustumGeometry(0.22, 0.20, 0.66, 0.52, 0.34), material.cover, { x: 1.76, y: 0.30, z: 0.20 }, null, "P12", true);
 
     // CH-501 is fixed to its own frame. Flexible interfaces isolate SC-500 and the downstream sieve.
@@ -17345,6 +17423,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addCylinder(parts.P22, 0.090, 0.16, ssCycloneFeedNozzle, material.cover, "P22", "y", 28, true);
     addCylinder(parts.P22, 0.090, 0.16, ssFineFeedNozzle, material.cover, "P22", "y", 28, true);
 
+    // coarse 는 이제 구리 제품빈이다 — SV-201 280–500 µm · CC-201 중량물 ·
+    // SS-201 ≥75 µm 세 갈래가 여기로 모인다. ssFinal 은 어트리션 이송점,
+    // ssRework 는 SV-201 PAN(<75 µm)의 어트리션 합류점으로 쓴다.
     const productBins = {
       coarse: new THREE.Vector3(4.30, 0.04, -0.48),
       heavy: new THREE.Vector3(5.20, 0.04, -0.48),
@@ -17363,10 +17444,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     });
     const ssReworkOutlet = productBins.ssRework;
     const ssFinalOutlet = productBins.ssFinal;
+    // SS-201 스캘빙 75 µm 오버는 금속 농축물이다 — 종전에는 HSG 로 환류시켰지만
+    // 이제 구리 제품으로 빼며, SV-201 280–500 µm 와 **같은 제품빈**을 쓴다.
+    // CC-201 중량물도 같은 곳으로 모여 구리 산물이 한 빈에서 나온다.
     const ssReworkChute = new THREE.CatmullRomCurve3([
       new THREE.Vector3(polisherCenter.x + 0.50, 0.06, polisherCenter.z),
-      new THREE.Vector3(6.70, 0.00, 0.02),
-      ssReworkOutlet
+      new THREE.Vector3(6.10, -0.06, -0.30),
+      new THREE.Vector3(5.20, -0.14, -0.46),
+      productBins.coarse
     ]);
     const ssFinalChute = new THREE.CatmullRomCurve3([
       new THREE.Vector3(polisherCenter.x + 0.12, -0.18, polisherCenter.z + 0.12),
@@ -17380,18 +17465,18 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     ]);
     const heavyProductChute = new THREE.CatmullRomCurve3([
       new THREE.Vector3(ccHeavyAirlockCenter.x, -0.20, ccHeavyAirlockCenter.z),
-      new THREE.Vector3(4.92, -0.10, -0.10),
-      productBins.heavy
+      new THREE.Vector3(4.92, -0.14, -0.24),
+      productBins.coarse
     ]);
     addCylinder(parts.P22, 0.105, 0.16, { x: polisherCenter.x + 0.55, y: 0.06, z: polisherCenter.z }, material.cover, "P22", "x", 28, true);
     addMesh(parts.P22, new THREE.TubeGeometry(ssReworkChute, 24, 0.080, 16, false), material.pipeReturn, { x: 0, y: 0, z: 0 }, null, "P22", true);
     addMesh(parts.P22, new THREE.TubeGeometry(ssFinalChute, 26, 0.080, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P22", true);
     addMesh(parts.P22, new THREE.TubeGeometry(coarseProductChute, 24, 0.065, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P22", true);
     addMesh(parts.P22, new THREE.TubeGeometry(heavyProductChute, 24, 0.065, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P22", true);
-    const ssReworkLabel = labelSprite("SS ≥75 µm · HSG 환류");
-    ssReworkLabel.position.set(productBins.ssRework.x, 0.24, productBins.ssRework.z);
-    parts.P22.add(ssReworkLabel);
-    const ssFinalLabel = labelSprite("SS <75 µm · 최종제품");
+    const copperLabel = labelSprite("BIN-Cu 구리 제품 · SV 280–500 ＋ CC 중량물 ＋ SS ≥75 µm");
+    copperLabel.position.set(productBins.coarse.x, 0.30, productBins.coarse.z);
+    parts.P22.add(copperLabel);
+    const ssFinalLabel = labelSprite("SS <75 µm → AS-101 어트리션");
     ssFinalLabel.position.set(productBins.ssFinal.x, 0.24, productBins.ssFinal.z);
     parts.P22.add(ssFinalLabel);
     // ---- VH-201 공통 분진 벤트 헤더 -----------------------------------------
@@ -22427,7 +22512,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         finalAirPath: ["cyclone", "bag filter", "ID fan", "silencer", "exhaust stack"]
       },
       deckCount: sieveDeckMeshes.length,
-      deckCutsUm: [FIRST_SCREEN_CUT_UM],
+      deckCutsUm: [...SC500_CUTS_UM],
+      deckAreaM2: +SIEVE_DECK_AREA_M2.toFixed(3),
       deckAnglesDeg: sieveDeckMeshes.map((deck) => THREE.MathUtils.radToDeg(deck.rotation.z)),
       routeKeys: [...SIEVE_ROUTE_KEYS],
       engineeringMotion: {
