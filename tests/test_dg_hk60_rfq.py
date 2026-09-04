@@ -308,6 +308,59 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
         panels = round((0.30 ** 2 - 0.15 ** 2) / (2.4 * thick / math.pi))
         self.assertEqual(panels, 221)
         self.assertIn("221", block.group(1), "두께 0.40mm 일 때의 롤당 장수가 틀렸다")
+    # ── 탠덤 동시부하 ────────────────────────────────────────────
+    def test_dual_engagement_fraction_is_arithmetic(self):
+        """두 칼날이 동시에 물리는 구간은 패널 길이와 칼끝 간격에서 나온다."""
+        length = 2400.0
+        gap = float(re.search(r"칼끝 간격 <span class=\"m\">(\d+) ± 2 mm", self.html).group(1))
+        self.assertAlmostEqual(gap, 300.0, delta=0.5)
+        self.assertAlmostEqual(
+            self._num(r"행정의 <span class=\"m\">([\d.]+) %</span>\s*가?\s*\n?\s*동시부하"),
+            (length - gap) / length * 100, delta=0.1,
+            msg="동시부하 구간 비율이 패널 길이·칼끝 간격과 맞지 않는다",
+        )
+
+    def test_vacuum_hold_requirement_is_computed_from_the_thrust_range(self):
+        """A ≥ 2F/(μ·Δp) — 두 칼날 합으로 잡아야 한다. 한 칼날로 잡으면 절반이 나온다."""
+        block = re.search(r"<b>OI-13</b>(.*?)</div>\s*</div>", self.html, re.S)
+        self.assertIsNotNone(block, "진공 유지력 확인사항이 없다")
+        body = block.group(1)
+        self.assertIn("A ≥ 2F / (μ·Δp)", body,
+                      "필요 패드 면적 식이 두 칼날 합(2F)이 아니다")
+        mu = float(re.search(r"μ = ([\d.]+)", body).group(1))
+        dp = float(re.search(r"Δp = (\d+) kPa", body).group(1)) * 1000
+        glass = 2.4 * 1.2
+        for thrust, area_pat, pct_pat in (
+            (1.49e3, r"<span class=\"m\">([\d.]+) m²</span>\(", r"유리면의 ([\d.]+) %\)"),
+            (13.37e3, r"상한[^<]*<span class=\"m\">[^<]*</span>[^<]*<span class=\"m\">([\d.]+) m²</span>",
+             r"유리면의 <span class=\"m\">([\d.]+) %</span>"),
+        ):
+            want = 2 * thrust / (mu * dp)
+            got = float(re.search(area_pat, body).group(1))
+            self.assertAlmostEqual(got, want, delta=0.005,
+                                   msg=f"{thrust/1000:.2f} kN 에서의 필요 패드 면적이 틀렸다")
+            pct = float(re.search(pct_pat, body).group(1))
+            self.assertAlmostEqual(pct, want / glass * 100, delta=0.15,
+                                   msg=f"{thrust/1000:.2f} kN 에서의 유리면 대비 비율이 틀렸다")
+        # 추력 범위는 OI-01 과 같은 값이어야 한다
+        self.assertIn("1.49", self.html)
+        self.assertIn("13.37", self.html)
+
+    def test_blade_life_is_an_open_item_with_the_cut_length(self):
+        block = re.search(r"<b>OI-12</b>(.*?)</div>\s*</div>", self.html, re.S)
+        self.assertIsNotNone(block, "칼날 수명 확인사항이 없다")
+        body = block.group(1)
+        rate = float(re.search(r"(\d+) 장/h", body).group(1))
+        cut = float(re.search(r"패널당 ([\d,]+) mm", body).group(1).replace(",", "")) / 1000
+        got = float(re.search(r"시간당\s*<span class=\"m\">(\d+) m</span>", body).group(1))
+        self.assertAlmostEqual(got, rate * cut, delta=0.5,
+                               msg="시간당 절단 연장이 본문의 처리량 × 패널 길이와 다르다")
+        # 본문이 근거로 든 처리량이 실제 라인 성능과 동떨어져 있으면 안 된다
+        self.assertAlmostEqual(rate, self.m["line_rate"] * 0.9, delta=1.0,
+                               msg="칼날 수명 근거의 처리량이 보증 처리량과 다르다")
+        shift = float(re.search(r"8 h 교대당 <span class=\"m\">([\d,]+) m</span>", body)
+                      .group(1).replace(",", ""))
+        self.assertAlmostEqual(shift, got * 8, delta=1)
 
 
 if __name__ == "__main__":
