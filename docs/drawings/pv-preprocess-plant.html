@@ -2870,7 +2870,7 @@ html>body{padding:0}</style>
   var register = [
     ['PV-PLANT-GA-1001', '전체 플랜트 평면·종단면·좌표표', '2D GA', '앱 반영', '건축 grid·기둥 (출입구는 투입방향 확정)'],
     ['PV-PLANT-FD-1002', '기초·앵커·바닥하중', '2D 기초', '기본설계', 'slab·pull-out·동하중'],
-    ['PV-PLANT-UT-1003', '전기·공압·진공·집진', '2D Utility', '기본설계', '인입점·압손·차단기'],
+    ['PV-PLANT-UT-1003', '전기·공압·진공·집진', '2D Utility', '앱 반영', '공압 실측 소비·누설률'],
     ['PV-PLANT-SF-1004', '가드·문·정지포락선', '2D Safety', '기본설계', 'PLr·PFHd·정지시간'],
     ['PV-AFU-101-GA-2101', '듀얼 적재·비전셀', '2D/3D GA', '앱 반영', '팔레트·지게차 실기종'],
     ['PV-BFC-101-ASM-2201', '승강·180° 반전카세트', '2D/3D ASM', '앱 반영', '축·베어링·브레이크'],
@@ -2965,7 +2965,7 @@ html>body{padding:0}</style>
     return [left, top, width, height].map(Math.round).join(' ');
   }
 
-  var DRAWING_REVISION = 'REV.33';
+  var DRAWING_REVISION = 'REV.34';
   // 뷰별 축 선택. PART_AXIS 는 part.at/part.size 의 [X, 상하, 깊이] 기준,
   // ENVELOPE_AXIS 는 station.envelope 의 [L, W, H] 기준 — 두 배열의 축 순서가 다르다.
   var PART_AXIS = { plan: [0, 2], front: [0, 1], side: [2, 1] };
@@ -3596,13 +3596,14 @@ html>body{padding:0}</style>
   // tests/test_pv_preprocess.py 가 둘을 대조한다.
   var SUPPLY_VOLTAGE_V = 380;
   var POWER_FACTOR = 0.90;
-  var MAIN_BREAKER_FRAME_A = 400;
+  var MAIN_BREAKER_FRAME_A = 630;
   var CONTRACT_MARGIN = 1.35;
   // REV.23 인입 확정 — 계약전력이 저압 공급 상한을 넘어 고압 수전으로 바뀐다.
   // 값은 전부 src/pv_preprocess/electrical.py 의 incomer_summary() 파생이다.
-  var INCOMER = { method: '기존 부지 인입 1,200 kW 에서 분기 (이 플랜트 23.9 %)', tapsSite: true, tapLowVoltage: true, siteServiceKw: 1200.0, siteUtilPct: 23.9, siteHeadroomKw: 912.7, worstCaseKw: 287.5, coincidentWorstCaseKw: 280.8, lvTapMaxM: 151.5, highVoltage: true, hvV: 380, contractKw: 287.3, contractKva: 319.3, apparentKva: 236.5, transformerKva: 0, transformerKvaIfHv: 500, transformerLoadPct: 0.0, capacitorKvar: 35, hvCurrentA: 0.0, hvCable: '4C×240 mm² Cu (부지 저압 배전반 분기)', vcbA: 0, lvMainMm2: 240, substationMm: [0, 0, 0], lowVoltageLimitKw: 100.0, incomingKnown: false, withinLvLimit: true, lvTapConfirmed: true, dropPct: 3.0, breakerHeadroomKw: 2.6 };
+  var INCOMER = { method: '기존 부지 인입 1,200 kW 에서 분기 (이 플랜트 24.4 %)', tapsSite: true, tapLowVoltage: true, siteServiceKw: 1200.0, siteUtilPct: 24.4, siteHeadroomKw: 906.9, worstCaseKw: 299.0, coincidentWorstCaseKw: 292.3, lvTapMaxM: 172.8, highVoltage: true, hvV: 380, contractKw: 293.1, contractKva: 325.6, apparentKva: 241.2, transformerKva: 0, transformerKvaIfHv: 500, transformerLoadPct: 0.0, capacitorKvar: 35, hvCurrentA: 0.0, hvCable: '4C×300 mm² Cu (부지 저압 배전반 분기)', vcbA: 0, lvMainMm2: 300, substationMm: [0, 0, 0], lowVoltageLimitKw: 100.0, incomingKnown: false, withinLvLimit: true, lvTapConfirmed: true, dropPct: 3.0, breakerHeadroomKw: 52.2 };
   // 스마트 팩토리 계층 — src/pv_preprocess/smart.py 파생 (테스트 대조).
-  var SMART = { serverRoomX: 43600, controlRoomX: 46700, edgeCenterX: 25000, facilityX0: 42700, facilityX1: 48700, serverRoomMm: [1800, 3200, 2700], controlRoomMm: [4000, 3400, 2700], racks: 2, rackU: 28, rackHeatKw: 6.03, edgeCabinets: 7, wifiAps: 5, instruments: 46, plcTags: 592, servos: 36, inverters: 9, dol: 8, timeseriesKbS: 91.7, visionRawMbS: 6.9, visionKeptMbS: 0.94, retentionPct: 13.7, requiredMbps: 111.9, backboneMbps: 1000, annualTb: 14.19, storageTb: 63.9, itKw: 10.3, instKw: 4.5, smartKw: 14.8, hoursPerYear: 4125 };
+  var AIR = { useBar: 6.0, supplyBar: 7.0, averageNlMin: 393.1, peakNlMin: 553.1, unlistedMargin: 0.15, leakageMargin: 0.2, requiredFadNlMin: 542.5, compressorKw: 5.5, compressorUnits: 2, compressorFadNlMin: 800, compressorMargin: 1.47, receiverL: 300, receiverGovernedBy: '기동 횟수', dryerDewPointC: 3.0, headerBoreMm: 20, headerVelocityMs: 3.6, filterAreaM2: 18.8, pulseValves: 7, roomMm: [3100, 1700, 2700], installedKw: 11.5, demandKw: 4.25, headerRunMm: 50950, hangers: 18, hangerPitchMm: 3000, hangerLoadKg: 3.9, noiseDba: 75.0 };
+  var SMART = { serverRoomX: 44100, controlRoomX: 47200, edgeCenterX: 25000, facilityX0: 43200, facilityX1: 49200, serverRoomMm: [1800, 3200, 2700], controlRoomMm: [4000, 3400, 2700], racks: 2, rackU: 28, rackHeatKw: 6.03, edgeCabinets: 7, wifiAps: 5, instruments: 46, plcTags: 592, servos: 36, inverters: 9, dol: 8, timeseriesKbS: 91.7, visionRawMbS: 6.9, visionKeptMbS: 0.94, retentionPct: 13.7, requiredMbps: 111.9, backboneMbps: 1000, annualTb: 14.19, storageTb: 63.9, itKw: 10.3, instKw: 4.5, smartKw: 14.8, hoursPerYear: 4125 };
   // [태그, 존, 이름, 수량, 신호수, Hz, 분전반, W, 용도, 여는 과제]
   var INSTRUMENTS = [
     ['VIB-901', 'afu', 'HPU-101 유압펌프 3축 진동', 1, 16, 1.0, 'LP-INST', 6.0, '펌프·전동기 베어링 열화 추세', 'AI-05'],
@@ -3683,6 +3684,8 @@ html>body{padding:0}</style>
     ['GRM-CD-401 후드 독립지지 기둥 4본', 'grm', 'floor', '냉각 후드'],
     ['AFR CV-101 컨베이어 사이드 프레임 2본', 'afr', 'floor', '투입 롤러 12본'],
     ['AFR CV-101 가대 다리 8본 (베이스플레이트 240□)', 'afr', 'floor', '컨베이어 사이드 프레임'],
+    ['CMP-701 컴프레서 방진 마운트 2조', 'post', 'floor', '스크류 2대 × 5.5 kW — 회전기라 방진 마운트로 받는다'],
+    ['CMP-701 리시버 300 L 새들 2본', 'post', 'floor', '압력용기 수직 거치 — 전도모멘트를 바닥이 받는다'],
     ['AFR CL-221 클램프 포탈 기둥 4본', 'afr', 'floor', '상부 클램프 4기 × 3 kN · 단축 인출 25 kN/축 반작용'],
     ['AFR CL-221 포탈 크로스헤드 2본', 'afr', 'floor', '상부 클램프 실린더 4기 — 하면 1,950 이 실린더 상단을 직접 받는다'],
     ['AFR 클램프 포탈 종방향 타이빔 2본', 'afr', 'floor', '두 포탈을 한 틀로 묶어 인출 반력의 X 성분을 받는다'],
@@ -3706,7 +3709,7 @@ html>body{padding:0}</style>
   ];
   var KINEMATICS = {panelMm: [2500, 1400], flipAxisMm: 3430, transferMm: 2290, ringBoreMm: 1620, ringBottomMm: 2440, underRingMm: 112, overCarriageMm: 116, boreClearMm: 109, cageAxialMm: 40, jawStrokeMm: 187.5, jawOpenClearMm: 70, afrClampKn: 12.0, afrPortalZMm: 1450, afrPortalAnchors: 16};
   var CRANE = {capacityT: 5.0, ceilingMm: 12000, railTopMm: 10750, hookHeightMm: 9700, spanMm: 8800, runwayMm: 60800, hookReachMm: 3800, governing: "BFC 반전 카세트 (Bay 1식)", governingKg: 2500, hookLoadKg: 2650, maxLiftKg: 4850, capacityMargin: 1.89, tallest: "VG-101 독립 방진 비전보 조립체", requiredHookMm: 8370, hookMarginMm: 1330, installOrder: ["grm", "buffer", "post", "afr", "gate", "jbr", "robot", "afu"], entryZone: "afu", haulWidthMm: 7100, widestModuleMm: 2900, entryOpeningMinMm: [2900, 5150], entryOpeningMm: [6000, 5000], entryWidthMarginMm: 3100, uprightHeadroomMm: 500, installedKw: 6.7, demandKw: 1.34};
-  var MOUNT_SUMMARY = { stations: 8, anchors: 190, m16: 94, m20: 88, m24: 8, members: 18, brackets: 51, series: 53, withdrawn: 2, floor: 14, frame: 2, gantry: 2, exempt: 4 };
+  var MOUNT_SUMMARY = { stations: 8, anchors: 190, m16: 94, m20: 88, m24: 8, members: 20, brackets: 51, series: 53, withdrawn: 2, floor: 16, frame: 2, gantry: 2, exempt: 5 };
   var SL_CHAIN_ROWS = INCOMER.tapsSite ? (INCOMER.tapLowVoltage ? 4 : 5) : (INCOMER.highVoltage ? 6 : 4);
   // 분기 주회로 길이는 부지 실측 대기다. 모를 때 0.0 m 로 찍으면 도면이 거짓말을 한다.
   // 상태가 셋이다. 거리를 아는 것과 "한계 안" 이라는 판정만 받은 것은 다르다 —
@@ -3735,13 +3738,14 @@ html>body{padding:0}</style>
     ['F12', 'LP-GRM-EXH', 'IR 배기 · CV-301 슈레더 투입부 집진', 9.0, 0.90, 32, '4C×6 mm² Cu', '계획'],
     ['F13', 'LP-IT', 'SVR-902 랙 2면(코어망·히스토리안·MES·엣지추론 GPU·UPS) · 랙실 항온항습 · MCR-901 관제실', 10.3, 0.85, 32, '4C×6 mm² Cu', '계획(smart.it_installed_kw)'],
     ['F14', 'LP-INST', '존별 엣지 캐비닛 7면 · 무선 AP 5대 · 신규 계측기 46점 · 라인스캔 조명', 4.5, 0.90, 20, '4C×4 mm² Cu', '계획(smart.instrument_installed_kw)'],
-    ['F15', 'LP-CRANE', 'CRN-901 5 t 천장크레인 (호이스트 5.5 · 횡행 0.4 · 주행 0.4 × 2) · 페스툰 급전', 6.7, 0.20, 20, '4C×4 mm² Cu', '계획(crane.installed_kw)']
+    ['F15', 'LP-CRANE', 'CRN-901 5 t 천장크레인 (호이스트 5.5 · 횡행 0.4 · 주행 0.4 × 2) · 페스툰 급전', 6.7, 0.20, 20, '4C×4 mm² Cu', '계획(crane.installed_kw)'],
+    ['F16', 'LP-AIR', 'CMP-701 압축공기 (스크류 5.5 kW × 2 — 1운전 1예비) · 냉동식 드라이어 · 리시버 300 L', 11.5, 0.37, 30, '4C×6 mm² Cu', '계획(air.installed_kw)']
   ];
   // 케이블 길이(m) — src/pv_preprocess/wiring.py 와 같은 값이어야 한다 (테스트 대조).
-  // 경로: MDB(x 42,000 · y 8,150 벽부) 상단 인출 → 통로 상부 트레이 H=2,600(y 7,700)
+  // 경로: MDB(x 42,500 · y 8,150 벽부) 상단 인출 → 통로 상부 트레이 H=2,600(y 7,700)
   //       → 각 셀 분전반(y 7,000 · 상단 1,900) 드롭. 여유 10 % + 성단 3 m.
-  var CABLE_LENGTH_M = { F1: 48.3, F2: 41.7, F3: 34.9, F4: 26.9, F5: 18.2, F6: 8.0, F7: 18.0, F8: 32.9, F9: 13.5, F10: 14.9, F11: 17.9, F12: 21.2, F13: 7.6, F14: 24.5, F15: 19.7 };
-  var MDB_X_MM = 42000, INCOMING_CABLE_M = 0, TOTAL_POWER_CABLE_M = 348.2, AISLE_CLEAR_MM = 900;
+  var CABLE_LENGTH_M = { F1: 48.8, F2: 42.2, F3: 35.5, F4: 27.4, F5: 18.7, F6: 8.6, F7: 18.6, F8: 33.4, F9: 13.0, F10: 14.3, F11: 17.3, F12: 20.6, F13: 7.6, F14: 25.1, F15: 20.2, F16: 15.1 };
+  var MDB_X_MM = 42500, INCOMING_CABLE_M = 0, TOTAL_POWER_CABLE_M = 366.4, AISLE_CLEAR_MM = 900;
   // 셀 분전반 위치는 존에서 파생한다 — wiring.py lp_positions_mm() 와 같은 규칙.
   function lpPositions() {
     function center(key) { var z = zoneByKey(key); return (z[2] + z[3]) / 2; }
@@ -3760,7 +3764,10 @@ html>body{padding:0}</style>
       // REV.28 천장크레인. 페스툰 급전점은 주행거더 **중앙**이다 — 한쪽 끝에서
       // 먹이면 트레일링 케이블이 주행 전장 60.8 m 를 끝까지 따라가고 주행
       // 도체의 전압강하도 그 길이를 그대로 받는다. 중앙 급전이면 둘 다 절반.
-      'LP-CRANE': Math.floor(PLANT_X / 2)
+      'LP-CRANE': Math.floor(PLANT_X / 2),
+      // REV.34 압축공기 기계실. 랙실·관제실과 같은 줄에 이어 붙는다 —
+      // 셋 다 공정 존이 아니라 구획실이고, 한 줄이라야 배선과 벽이 짧다.
+      'LP-AIR': SMART.facilityX1 + 200 + Math.floor(AIR.roomMm[0] / 2)
     };
   }
   var EL_CHAIN = ['LP-AFU', 'LP-RB', 'LP-JBR', 'LP-CTRL', 'LP-AFR', 'LP-GLASS', 'LP-DX', 'LP-GBR', 'LP-GRM-IRA', 'LP-GRM-IRB', 'LP-GRM-MEC', 'LP-GRM-EXH'];
@@ -3875,9 +3882,10 @@ html>body{padding:0}</style>
     ['LP-GRM-EXH', 0.44, '열교환기'],
     ['LP-IT', 0.0, '— (전동기 없음)'],
     ['LP-INST', 0.0, '— (전동기 없음)'],
-    ['LP-CRANE', 0.0, '— (전동기 없음)']
+    ['LP-CRANE', 0.0, '— (전동기 없음)'],
+    ['LP-AIR', 0.0, '— (전동기 없음)']
   ];
-  var THERMAL_SUMMARY = { room: 58.59, airflow: 35000, exhausted: 144.15, deltaT: 5, hpuLossRatio: 0.3, driveLossRatio: 0.05, coolerMargin: 1.25 };
+  var THERMAL_SUMMARY = { room: 58.6, airflow: 35000, exhausted: 144.15, deltaT: 5, hpuLossRatio: 0.3, driveLossRatio: 0.05, coolerMargin: 1.25 };
   // 내구 재질 — src/pv_preprocess/materials.py 와 같은 값. [환경, 요구, 재질, 근거]
   var FRAME_FLEX = { section: "40×35×t1.5 알루미늄 각관", inertia: 41882, force: 1200, free: 220, deflection: 1.474, stress: 110.3, yieldMpa: 160, maxFree: 319.1, margin: 1.45, exaggeration: 40, displayBow: 59 };
   var MATERIAL_RULES = [
@@ -9677,6 +9685,54 @@ L([.06,.71,.06],[2.360,.355,-0.010],M.steel,null);
 L([.06,.71,.06],[2.360,.355,0.410],M.steel,null);
 }());
 
+
+/* REV.34 CMP-701 압축공기 기계실 — 공압을 쓰는데 만드는 것이 없었다.
+
+   JBR 셀 사양에 `에어 0.5–0.6 MPa · 평균 260 / 피크 420 NL/min` 이 적혀 있고
+   FL-901 은 "압축공기 주관 유량·압력" 을 재고 있었다. 주관이 있다고 전제하고
+   재면서, 그 주관에 공기를 넣는 것은 어디에도 없었다 — §8 의 유압 HPU, §26 의
+   진공 VAC-101 과 **같은 병의 세 번째**다.
+
+   **공정실 밖에 세운다.** 이유가 셋인데 하나만으로도 결론이 난다 —
+   유리분이 도는 방에서 공기를 빨면 흡입필터와 오일이 먼저 죽는다. 발열과
+   소음(75 dBA)은 그 다음 이유다. 랙실·관제실과 같은 줄에 이어 붙어
+   thermal.OFF_ROOM_PANELS 에 들어간다.
+
+   용량은 고르지 않고 소비처에서 나온다 — 평균 393 NL/min 에 미계상 15 % 와
+   누설 20 % 를 얹어 필요 FAD 543, 그것을 넘는 첫 표준 기종이 5.5 kW 다.
+   1 운전 · 1 예비는 VAC-101 과 같은 근거다: 공기가 끊기면 클램프가 풀린다.
+
+   리시버 300 L 을 정한 것은 탈진 펄스(101 L)가 아니라 **기동 횟수**(271 L)다.
+   값은 전부 src/pv_preprocess/air.py 에서 나온다. */
+var pvAir=new ce;pt.add(pvAir);pvAir.position.set(26.20,0,5.60);
+(function(){
+var g=pvAir,L=function(a,b,c,d,e,f){return P(g,a,b,c,d,e,f)},WALL=.12,H=2.7;
+L([3.10,.06,1.70],[0,.03,0],M.dark,'CMP-701 압축공기 기계실 바닥',
+  '3,100 × 1,700 — 컴프레서 2대 + 드라이어 + 리시버에 전면 정비공간 1,000 을 더해 나온 값이다.');
+L([3.10,H,WALL],[0,H/2,.85-WALL/2],M.frame,'CMP-701 기계실 후벽');
+[-1.55+WALL/2,1.55-WALL/2].forEach(function(x,i){
+  L([WALL,H,1.70],[x,H/2,0],M.frame,i===0?'CMP-701 기계실 측벽 2면':null)});
+// 통로측은 정비 출입구를 비운다 — 좌우 벽편만 세운다.
+[-1.10,1.10].forEach(function(x,i){
+  L([.90,H,WALL],[x,H/2,-.85+WALL/2],M.frame,i===0?'CMP-701 기계실 전벽 (정비 출입구 1,300)':null)});
+// 스크류 컴프레서 2대 — 1 운전 · 1 예비
+[-1.00,-.10].forEach(function(x,i){
+  L([.80,1.30,.70],[x,.65,-.20],M.dark,
+    i===0?'CMP-701A/B 스크류 컴프레서 5.5 kW × 2 (1운전 1예비)':null,
+    i===0?'FAD 800 NL/min · 필요 543 이라 여유 1.47배. 공기가 끊기면 클램프가 풀리고 패널이 떨어져 VAC-101 과 같은 이유로 예비를 둔다.':null);
+  L([.60,.06,.50],[x,.03,-.20],M.rubber,i===0?'CMP-701 컴프레서 방진 마운트 2조':null,
+    i===0?'회전기라 방진 마운트로 받는다 — 바닥 앵커는 마운트 베이스가 잡는다.':null)});
+L([.50,1.00,.60],[.65,.50,-.25],M.metal,'CMP-701 냉동식 에어드라이어 (노점 3 °C)',
+  '실내 배관이라 동결 우려가 없어 냉동식으로 충분하다 — 흡착식은 노점 −40 이 필요할 때 쓴다.');
+Ee(g,.30,1.10,[1.20,.55,-.20],M.steel,'CMP-701 리시버 300 L',
+  '300 L 을 정한 것은 탈진 펄스(101 L)가 아니라 컴프레서 기동 횟수(271 L · 30회/h 상한)다.');
+[-.20,.20].forEach(function(dz){L([.10,.10,.16],[1.20,.05,-.20+dz],M.steel,
+  dz<0?'CMP-701 리시버 300 L 새들 2본':null,
+  dz<0?'압력용기 수직 거치 — 전도모멘트를 바닥이 받는다.':null)});
+// 주관 DN20 — 기계실에서 상류 끝까지. 통로 상부를 지난다.
+L([50.95,.02,.02],[-25.475,2.60,-1.40],M.steel,'CMP-701 압축공기 주관 DN20',
+  '유속 3.6 m/s (상한 6). FAD 를 그대로 쓰면 관을 과대하게 잡는다 — 7 bar 에서의 실제 유량으로 재야 한다.');
+}());
 
 /* REV.28 존별 엣지 캐비닛 7면 — pvSmart 에서 떼어 냈다.
    캐비닛은 각자 존 중심에 서고 MDB·시설의 이동과 무관하다. 시설 그룹에

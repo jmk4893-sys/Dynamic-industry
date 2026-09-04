@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import crane, electrical, smart
+from . import air, crane, electrical, smart
 from .layout import build_zones, plant_envelope_mm
 
 #: 주 분전반 MDB-101 의 벽부 위치 (플랜트 좌표 mm). X 는 피더 수요(kW) 가중
@@ -34,7 +34,12 @@ from .layout import build_zones, plant_envelope_mm
 #: 하필 500 단위 반올림 경계(42,250)를 넘었다. 규칙이 값을 정하지 값이 규칙을
 #: 정하는 게 아니라서, 작은 부하가 경계를 넘기면 반도 따라 움직인다.
 #: 42,000 은 이 되먹임(반 위치 → 랙실 위치 → LP-IT → 부하중심)의 고정점이다.
-MDB_POSITION_MM = (42_000, 8_150)
+#:
+#: REV.34 에서 **다시 42,500 으로 돌아왔다.** 압축공기 기계실(LP-AIR)이 시설
+#: 블록 끝 50,450 에 서면서 수요 4.25 kW 를 하류에 얹었고, 그것이 크레인이
+#: 상류로 끌어올렸던 102 mm 를 도로 끌어내렸다. 규칙은 한 번도 안 바뀌었고
+#: 값만 왕복했다 — 부하가 양쪽에서 붙으면 원래 이렇게 된다.
+MDB_POSITION_MM = (42_500, 8_150)
 
 #: 주 트레이 높이와 Y 위치 (mm)
 TRAY_HEIGHT_MM = 2_600
@@ -102,7 +107,20 @@ def lp_positions_mm() -> dict[str, int]:
     # REV.28 천장크레인. 페스툰 급전점은 주행거더 **중앙**이다 — 이유는
     # crane_feed_x_mm() 에 적었다.
     centers["LP-CRANE"] = crane_feed_x_mm()
+    # REV.34 압축공기. 기계실은 랙실·관제실과 같은 줄에 이어 붙는다 —
+    # 셋 다 공정 존이 아니라 구획실이고, 한 줄로 모아야 배선과 벽이 짧다.
+    centers["LP-AIR"] = air_room_center_x_mm()
     return centers
+
+
+def air_room_center_x_mm() -> int:
+    """CMP-701 기계실의 부하중심 X (mm).
+
+    시설 블록(랙실·관제실) 끝에 이어 붙인다. 시설이 MDB 를 따라 움직이면
+    기계실도 같이 움직인다 — 한 줄이라는 사실이 값보다 먼저다.
+    """
+    span = facility_span_mm()
+    return span[1] + FACILITY_PARTITION_MM + air.room_mm()[0] // 2
 
 
 def crane_runway_overhang_mm() -> int:

@@ -27,6 +27,7 @@ const EXEMPT = [
   'VS-101 검출 정션박스 형상',
   'VS-101A/B-FUSED 고정면 스캔선',
   'CRN-901',              // 천장크레인 — 건물 철골이 받는다 (공급 범위 밖)
+  'CMP-701 압축공기 주관',  // 통로 상부 DN20 — 건물 벽·기둥이 받는다 (건축 grid 확정 후)
 ];
 
 const ADJACENCY_M = 0.03;   // 인접 판정 허용치
@@ -126,4 +127,4 @@ if (offenders.length) {
   process.exit(1);
 }
 console.log('\n✓ 모든 부재가 바닥까지 하중 경로를 갖는다 '
-  + `(예외 ${EXEMPT.length}종 — 공정 중 물체·투영선·건물 철골이 받는 크레인)`);
+  + `(예외 ${EXEMPT.length}종 — 공정 중 물체·투영선·건물이 받는 크레인과 공압 주관)`);
