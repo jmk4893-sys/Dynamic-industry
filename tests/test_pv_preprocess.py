@@ -1573,15 +1573,39 @@ class TestCampaign(unittest.TestCase):
         self.assertGreaterEqual(campaign.peak_wip(), 3, "동시 재공이 3장 미만이면 파이프라인이 아니다")
 
     def test_takt_is_the_bottleneck_not_the_lead_time(self):
-        """택트는 병목 JBR 45 s 이고, 1장차 종단 체류는 도면의 124.03 s 와 맞아야 한다."""
-        self.assertEqual(campaign.bottleneck(), "JBR-201")
+        """병목은 GRM-401 이고, 1장차 종단 체류는 도면의 124.03 s 와 맞아야 한다.
+
+        §21 에서 유리제거셀이 플랜트 안으로 들어왔는데 병목 후보에는 안 들어가
+        있었다. 그래서 이상 택트가 JBR 45.0 s 로 잡혔고, 라인을 실제로 묶는
+        셀이 가려져 있었다. 병목은 이름이 아니라 셀 점유의 최댓값이다.
+        """
+        cells = dict(campaign.cell_occupancy_s())
+        self.assertIn("GRM-401 유리제거", cells, "유리제거셀이 병목 후보에 없다")
+        self.assertEqual(campaign.bottleneck(), max(cells, key=cells.get))
+        self.assertEqual(campaign.bottleneck(), "GRM-401 유리제거")
+        self.assertGreater(cells["GRM-401 유리제거"], campaign.JBR_S,
+                           "GRM 이 JBR 보다 느리다는 것이 이 정정의 내용이다")
+        self.assertAlmostEqual(campaign.ideal_takt_s(), cells["GRM-401 유리제거"],
+                               places=6)
         summary = campaign.summary()
-        # 셀 병목은 JBR 이지만, 실제 택트는 "앞 장 스토퍼에 다음 장 투입" 규칙이 정한다.
+        # 실제 택트는 "앞 장 스토퍼에 다음 장 투입" 규칙이 정한다.
         self.assertAlmostEqual(summary["takt_s"], campaign.release_takt_s(), delta=1.0)
-        self.assertGreater(campaign.release_takt_s(), campaign.JBR_S)
+        self.assertGreater(campaign.release_takt_s(), campaign.ideal_takt_s(),
+                           "택트가 병목보다 빠르면 셀이 못 따라온다")
         first = campaign.panels()[0]
         self.assertAlmostEqual(first.afr_end, 124.03, places=2)
         self.assertAlmostEqual(campaign.INFEED_S + campaign.JBR_S + campaign.AFR_S, 124.03, places=2)
+
+    def test_glass_cell_occupancy_is_per_line_panel_not_per_glass_panel(self):
+        """GRM 은 정상 유리만 받는다 — 그 비율을 곱하지 않으면 병목을 과대평가한다."""
+        from pv_preprocess import handoff
+        cycle = 3600.0 / handoff.downstream_rate().line_per_h
+        self.assertAlmostEqual(campaign.grm_equivalent_s(),
+                               round(cycle * campaign.normal_ratio(), 2), places=6)
+        self.assertLess(campaign.normal_ratio(), 1.0, "깨진 유리·전손은 이 셀을 안 지난다")
+        counts = campaign.condition_counts()
+        self.assertAlmostEqual(campaign.normal_ratio(),
+                               counts["정상"] / sum(counts.values()), places=6)
 
     def test_scrap_does_not_cost_a_full_takt(self):
         """전손은 투입부만 쓰고 병목을 비켜간다 — 그래서 택트를 잃지 않는다."""
@@ -2798,7 +2822,10 @@ class TestAiFeasibility(unittest.TestCase):
         pose = next(c for c in ai.CASES if c.tag == "AI-10")
         self.assertIn("3-2-1", pose.caveat, "vision.py 의 최소화 근거와 같은 이유여야 한다")
         sched = next(c for c in ai.CASES if c.tag == "AI-09")
-        self.assertIn(campaign.bottleneck(), sched.caveat)
+        self.assertIn(campaign.bottleneck(), sched.caveat,
+                      "거절 근거가 모델의 병목과 다른 설비를 가리킨다")
+        self.assertIn(f"{campaign.ideal_takt_s():g}", sched.caveat,
+                      "근거에 적힌 병목 시간이 모델 값과 다르다")
         # 불가한 것도 무엇이 없어서인지 적는다
         for case in ai.by_grade("D"):
             with self.subTest(case=case.tag):
@@ -4390,7 +4417,7 @@ class TestAcceptance(unittest.TestCase):
         """공장에서 되는 것과 라인이 서야 되는 것은 다르다."""
         self.assertEqual(len(acceptance.by_stage(acceptance.FAT)), 10)
         self.assertEqual(len(acceptance.by_stage(acceptance.SAT)), 10)
-        self.assertEqual(len(acceptance.by_stage(acceptance.RAR)), 5)
+        self.assertEqual(len(acceptance.by_stage(acceptance.RAR)), 7)
         self.assertEqual(sum(len(acceptance.by_stage(s)) for s in acceptance.STAGES),
                          len(acceptance.items()))
         with self.assertRaises(ValueError):
@@ -4467,15 +4494,20 @@ class TestWorldClassGrade(unittest.TestCase):
     def test_the_score_moves_when_the_design_moves(self):
         """점수가 리터럴이면 설계를 고쳐도 그대로다 — 파생인지 흔들어 본다."""
         base = grade.performance_rate()
-        self.assertAlmostEqual(base, grade.BOTTLENECK_OCCUPANCY_S
+        self.assertAlmostEqual(base, campaign.ideal_takt_s()
                                / campaign.summary()["takt_s"], places=6)
-        # 병목 점유를 바꾸면 성능률이 따라와야 한다
-        keep = grade.BOTTLENECK_OCCUPANCY_S
+        # 이상 택트는 셀 점유표에서 나온다. 표를 흔들면 성능률과 병목 **이름**이
+        # 둘 다 따라와야 한다 — 이름이 안 따라오면 어딘가에 박아 둔 것이다.
+        keep = campaign.grm_equivalent_s
         try:
-            grade.BOTTLENECK_OCCUPANCY_S = keep + 2.0
-            self.assertGreater(grade.performance_rate(), base)
+            campaign.grm_equivalent_s = lambda: keep() + 4.0
+            self.assertGreater(grade.performance_rate(), base, "성능률이 리터럴이다")
+            self.assertEqual(campaign.bottleneck(), "GRM-401 유리제거")
+            campaign.grm_equivalent_s = lambda: 1.0
+            self.assertEqual(campaign.bottleneck(), "JBR-201", "병목 이름이 박혀 있다")
+            self.assertLess(grade.performance_rate(), base)
         finally:
-            grade.BOTTLENECK_OCCUPANCY_S = keep
+            campaign.grm_equivalent_s = keep
         self.assertAlmostEqual(grade.performance_rate(), base, places=9)
         # MTTR 도 파생이어야 한다. 값을 만든 식으로 값을 검사하면 리터럴을
         # 못 가른다 — 지금 최댓값과 같은 숫자를 박아 넣어도 통과한다. 흔든다.
@@ -4501,25 +4533,48 @@ class TestWorldClassGrade(unittest.TestCase):
     def test_the_gaps_are_the_ones_we_actually_have(self):
         """지금 벌어져 있는 격차를 값으로 못 박는다 — 조용히 닫히면 시험이 잡는다."""
         gaps = {c.tag for c in grade.gaps()}
-        for tag in ("T-03", "D-03", "A-02"):
-            with self.subTest(tag=tag):
-                self.assertIn(tag, gaps)
+        self.assertIn("D-03", gaps, "단일고장은 아직 남아 있다")
+        # T-03 도 닫혔다 — 성능률을 올린 것이 아니라 **잘못 재고 있던 것**을
+        # 바로잡았다. §21 유리제거셀이 병목 후보에서 빠져 있어 이상 택트가
+        # JBR 45.0 s 로 잡혀 있었다. 택트는 48.47 s 그대로다.
+        self.assertNotIn("T-03", gaps, "병목 정정이 풀렸다")
+        self.assertAlmostEqual(campaign.summary()["takt_s"], 48.47, places=2,
+                               msg="성능률이 택트를 손대서 올라갔다면 정정이 아니다")
+        self.assertGreaterEqual(grade.performance_rate(), 0.95)
         # D-01 은 닫혔다 — 정비성 설계(교환 모듈·도킹 레일·온보드 진단·자동
         # 복귀)가 최악 MTTR 을 3.0 h 에서 0.5 h 안으로 끌어내렸다.
         self.assertNotIn("D-01", gaps, "정비성 개선이 풀렸다")
-        # 폐루프는 0 이다. 감지 과제를 폐루프라고 세면 안 된다
-        self.assertEqual(grade.closed_loop_count(), 0)
-        self.assertEqual(grade.CLOSED_LOOP_TAGS, ())
+        # A-02 도 닫혔다 — CL-01 IR 가열 폐루프
+        self.assertNotIn("A-02", gaps, "폐루프 사양이 없어졌다")
+        # 폐루프 수는 ai 의 사양에서 나온다 — 채점표가 따로 세면 갈라진다
+        self.assertEqual(grade.closed_loop_count(), len(ai.closed_loop_cases()))
         # 단일고장은 아직 남아 있다 — 로봇·JBR·AFR·GBR 넷
         self.assertGreater(grade.single_point_ratio(), 0.0)
 
     def test_oee_rides_on_an_assumption_and_says_so(self):
-        """품질률 1.0 을 덮으면 0.85 를 갓 넘는다 — 그 사실을 값으로 남긴다."""
+        """OEE 는 품질률 가정 위에 있다 — 그 가정의 크기를 값으로 남긴다."""
         optimistic = grade.oee_if_quality(1.0)
-        self.assertAlmostEqual(optimistic, 0.8541, places=3)
-        self.assertGreater(optimistic, 0.85, "가정 아래서만 기준을 넘는다")
-        # 품질률이 조금만 떨어져도 기준 밑으로 간다 — 그래서 재야 한다
-        self.assertLess(grade.oee_if_quality(0.99), 0.85)
+        self.assertAlmostEqual(optimistic, 0.8824, places=3)
+        self.assertGreater(optimistic, grade.WORLD_CLASS_OEE,
+                           "가정 아래서만 기준을 넘는다")
+        # 얼마나 모자라도 되는지를 낸다 — "0.88" 보다 이 값이 협의에 쓰인다
+        breakeven = grade.quality_break_even()
+        self.assertAlmostEqual(breakeven, 0.9633, places=3)
+        self.assertLess(grade.oee_if_quality(breakeven - 0.01),
+                        grade.WORLD_CLASS_OEE)
+        self.assertGreaterEqual(grade.oee_if_quality(breakeven + 0.01),
+                                grade.WORLD_CLASS_OEE)
+        # 손익분기도 파생이어야 한다 — 성능률이 움직이면 같이 움직인다
+        keep = campaign.grm_equivalent_s
+        try:
+            campaign.grm_equivalent_s = lambda: keep() - 4.0
+            self.assertGreater(grade.quality_break_even(), breakeven,
+                               "성능률이 내려가면 요구 품질률은 올라가야 한다")
+        finally:
+            campaign.grm_equivalent_s = keep
+        # 그리고 이 모든 값이 가용률 **목표** 0.92 위에 서 있다는 것도 남긴다
+        self.assertEqual(reliability.TARGET_AVAILABILITY, 0.92)
+        self.assertIsNone(grade.oee(), "품질률이 없으면 OEE 는 여전히 없다")
 
 
 class TestMaintainability(unittest.TestCase):
@@ -4604,3 +4659,116 @@ class TestMaintainability(unittest.TestCase):
         self.assertEqual(tight.required_mtbf_h(),
                          int(reliability.operating_hours()
                              / round(tight.downtime_h() / tight.base_mttr_h, 2)))
+
+
+class TestClosedLoop(unittest.TestCase):
+    """폐루프가 사양인지 희망인지.
+
+    "AI 로 제어한다" 는 말은 그것만으로는 아무것도 정하지 않는다. 무엇을 재고,
+    무엇을 움직이고, 모델이 낼 수 있는 값의 범위가 어디까지이고, 모델이
+    죽으면 어디로 가는지가 있어야 사양이다. **한계를 모델 밖에서 강제하는가**가
+    그중 제일 중요하다 — 학습한 것에 안전을 맡기면 안 된다.
+    """
+
+    def test_a_loop_is_only_a_loop_if_every_part_is_there(self):
+        self.assertGreaterEqual(len(ai.LOOPS), 1)
+        for loop in ai.LOOPS:
+            with self.subTest(tag=loop.tag):
+                for field in ("measured", "actuated", "setpoint", "envelope",
+                              "rate_limit", "fallback", "handover", "acceptance"):
+                    self.assertGreaterEqual(
+                        len(getattr(loop, field)), 10,
+                        f"{loop.tag} 의 {field} 가 비어 있다")
+                self.assertTrue(loop.enforced_outside_model,
+                                "한계를 모델이 지키면 폐루프가 아니라 희망이다")
+                self.assertIn(loop.case, {c.tag for c in ai.CASES},
+                              "없는 과제의 폐루프다")
+
+    def test_the_check_actually_catches_a_loop_without_a_way_out(self):
+        """지금 표가 맞으면 검사 코드가 죽어도 모른다 — 어긋난 것을 넣어 본다."""
+        self.assertTrue(ai.loops_have_a_way_out())
+        for field in ("fallback", "handover", "envelope"):
+            with self.subTest(missing=field):
+                broken = dataclasses.replace(ai.LOOPS[0], **{field: ""})
+                self.assertFalse(ai.loops_have_a_way_out((broken,)))
+        no_guard = dataclasses.replace(ai.LOOPS[0], enforced_outside_model=False)
+        self.assertFalse(ai.loops_have_a_way_out((no_guard,)))
+
+    def test_the_loop_rides_on_a_label_the_process_makes_itself(self):
+        """사람이 붙여야 하는 라벨로 도는 폐루프는 오래 못 간다."""
+        loop = ai.LOOPS[0]
+        case = next(c for c in ai.CASES if c.tag == loop.case)
+        self.assertIn("AI-07", case.label, "라벨이 공정 안에서 나오지 않는다")
+        # 그 라벨을 만드는 과제가 실재해야 한다
+        self.assertIn("AI-07", {c.tag for c in ai.CASES})
+        # 계측기도 실재해야 한다 — 없는 센서로 도는 폐루프는 사양이 아니다
+        for tag in case.needs:
+            with self.subTest(instrument=tag):
+                self.assertIn(tag, {i.tag for i in smart.INSTRUMENTS})
+
+    def test_the_envelope_is_named_in_numbers(self):
+        """포락선이 '적절히' 면 인터록을 못 짠다 — 숫자가 있어야 한다."""
+        env = ai.LOOPS[0].envelope
+        bounds = ai.envelope_bounds()
+        self.assertEqual(set(bounds), {"maxBankKw", "minDwellS", "maxDwellS"})
+        for key, value in bounds.items():
+            with self.subTest(bound=key):
+                self.assertIn(f"{value:g}", env, f"{key} 가 사양 문장에 없다")
+        # 폴백이 정지가 아니라 성능 저하여야 라인이 안 선다
+        self.assertIn(f"{bounds['maxDwellS']:g}", ai.LOOPS[0].fallback)
+
+    def test_no_number_in_the_envelope_is_invented(self):
+        """인터록 설정값에 지어낸 수를 적으면 그 인터록은 검증할 수 없다.
+
+        종전 문장에는 계면 온도 상한 240 °C 와 최소 소성 180 s 가 있었는데,
+        모델에 그 값을 내는 자리가 없었다 — '열응력 한계에서 역산' 이라고
+        적어 두었을 뿐 그 역산이 어디에도 없다. 그럴듯한 숫자는 검증된 것처럼
+        보이기 때문에 더 나쁘다. 그래서 **포락선 문장의 모든 수는 모델이 내는
+        값이어야 한다**고 못 박는다.
+        """
+        bounds = ai.envelope_bounds()
+        allowed = {f"{v:g}" for v in bounds.values()}
+        for loop in ai.LOOPS:
+            numerals = set(re.findall(r"\d+(?:\.\d+)?", loop.envelope))
+            with self.subTest(tag=loop.tag):
+                self.assertTrue(numerals, "포락선에 숫자가 없다")
+                self.assertEqual(numerals - allowed, set(),
+                                 "모델이 못 내는 수가 포락선에 있다")
+        self.assertLess(bounds["minDwellS"], bounds["maxDwellS"],
+                        "모델이 줄일 수 있는 폭이 없으면 폐루프가 할 일이 없다")
+        # 경계가 handoff 모델에서 나오는지. 값을 만든 식으로 값을 검사하면
+        # 리터럴을 못 가른다 — 지금과 같은 숫자를 박아 넣어도 통과한다. 흔든다.
+        keep_floor, keep_count = handoff.FDM_DWELL_S, handoff.LAMP_COUNT
+        try:
+            handoff.FDM_DWELL_S = keep_floor / 2.0
+            self.assertAlmostEqual(ai.envelope_bounds()["minDwellS"],
+                                   keep_floor / 2.0, places=4,
+                                   msg="소성 하한이 리터럴이다")
+            self.assertEqual(ai.envelope_bounds()["maxDwellS"], bounds["maxDwellS"],
+                             "하한을 낮췄는데 상한이 따라 움직였다")
+            handoff.FDM_DWELL_S = keep_floor
+            handoff.LAMP_COUNT = keep_count // 2
+            moved = ai.envelope_bounds()
+            self.assertAlmostEqual(moved["maxBankKw"], bounds["maxBankKw"] / 2.0,
+                                   places=1, msg="뱅크 용량이 리터럴이다")
+            self.assertGreater(moved["maxDwellS"], bounds["maxDwellS"],
+                               "등을 절반으로 줄였는데 소성시간이 그대로다")
+        finally:
+            handoff.FDM_DWELL_S, handoff.LAMP_COUNT = keep_floor, keep_count
+        self.assertEqual(ai.envelope_bounds(), bounds, "되돌리기가 안 됐다")
+
+    def test_the_unknown_trip_point_is_declared_not_guessed(self):
+        """모르는 설정값은 그럴듯하게 적는 대신 열려 있다고 말한다."""
+        self.assertIn("TEMP_TRIP_OPEN", ai.LOOPS[0].envelope,
+                      "온도 스위치가 정해진 것처럼 읽힌다")
+        self.assertNotIn("°C", ai.LOOPS[0].envelope, "없는 설정값을 적었다")
+        # 그리고 그것을 채우는 자리가 검수 항목에 있어야 한다 — 없으면 영영 안 채워진다
+        opens = [i for i in acceptance.items() if i.source == "ai.TEMP_TRIP_OPEN"]
+        self.assertEqual(len(opens), 1, "열어 둔 값을 채울 자리가 없다")
+        self.assertEqual(opens[0].stage, acceptance.RAR)
+        self.assertTrue(opens[0].blocking, "인터록 설정값이 인수를 안 막으면 안 된다")
+        self.assertIs(opens[0].value(), ai.TEMP_TRIP_OPEN)
+        # 포락선 검증 자체도 검수 항목이다
+        checks = [i for i in acceptance.items() if i.source == "ai.envelope_bounds"]
+        self.assertEqual(len(checks), 1)
+        self.assertEqual(checks[0].value(), ai.envelope_bounds())

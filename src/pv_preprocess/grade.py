@@ -17,11 +17,14 @@
 ## 품질률이 없다는 것이 가장 큰 발견이다
 
 OEE 는 가용률 × 성능률 × 품질률이다. 앞의 둘은 모델에 있는데 품질률은 없다.
-없는 값을 1.0 으로 놓으면 OEE 가 0.854 로 나와 세계 최상급 기준 0.85 를 갓
-넘는다 — 그러나 그것은 **공정이 아무것도 망가뜨리지 않는다는 전제**이고, 그
-전제는 어디에도 적혀 있지 않았다. 37 절에서 연간 장수가 가용률 1.0 위에 서
-있던 것과 같은 종류의 공백이다. 그래서 품질률은 ``None`` 이고 OEE 도 ``None``
-이다. run-at-rate 로 재고 나서 채운다.
+없는 값을 1.0 으로 놓으면 OEE 가 0.882 로 나오지만, 그것은 **공정이 아무것도
+망가뜨리지 않는다는 전제**이고 그 전제는 어디에도 적혀 있지 않았다. 37 절에서
+연간 장수가 가용률 1.0 위에 서 있던 것과 같은 종류의 공백이다.
+
+공백의 크기는 `quality_break_even()` 가 말한다 — 품질률이 그 값 밑으로 내려가면
+0.85 를 못 넘는다. 그러니까 "OEE 0.88" 은 결론이 아니라 **품질률에 걸린 조건부
+진술**이고, 조건이 얼마나 빡빡한지는 그 한 값으로 확인된다. 품질률은 ``None``
+이고 OEE 도 ``None`` 이다 — run-at-rate 로 재고 나서 채운다.
 """
 
 from __future__ import annotations
@@ -34,9 +37,13 @@ from . import acceptance, acoustics, ai, campaign, electrical, materials, reliab
 #: 채점 축. 발주처가 말한 네 가지 그대로다.
 AXES: tuple[str, ...] = ("기술", "내구성", "사용성", "AI")
 
-#: 병목 셀 점유시간 (s). 이상 택트 — 인계 대기가 0 일 때의 값이다.
-#: 14 절에서 택트가 병목 + 인계 8 s 로 정해졌으므로 병목 자체가 성능률의 분자다.
-BOTTLENECK_OCCUPANCY_S = 45.0
+#: 이상 택트는 여기 적지 않는다 — `campaign.ideal_takt_s()` 가 셀 점유에서 낸다.
+#: 종전에는 45.0 (JBR) 을 박아 두었는데, §21 에서 플랜트 안으로 들어온
+#: 유리제거셀이 병목 후보에 없어서 나온 값이었다. 라인을 실제로 묶는 셀을
+#: 빼놓고 성능률을 재면 무엇을 고쳐야 하는지가 가려진다.
+
+#: 세계 최상급 OEE 기준. T-01 의 목표이자 손익분기 품질률의 기준선이다.
+WORLD_CLASS_OEE = 0.85
 
 #: 공정 품질률. **모른다.** 폐모듈을 받는 라인이라 "불량" 은 반입물 상태이지
 #: 공정 탓이 아니고, 공정이 깨뜨린 유리와 원래 깨져 온 유리를 가르려면
@@ -80,8 +87,8 @@ class Criterion:
 # ── 축별 현재값 ──────────────────────────────────────────────────────────
 
 def performance_rate() -> float:
-    """성능률 = 이상 택트 / 실제 택트. 인계 대기가 성능률을 깎는다."""
-    return BOTTLENECK_OCCUPANCY_S / campaign.summary()["takt_s"]
+    """성능률 = 이상 택트 / 실제 택트. 인계 대기와 램프가 성능률을 깎는다."""
+    return campaign.ideal_takt_s() / campaign.summary()["takt_s"]
 
 
 def oee() -> float | None:
@@ -94,6 +101,18 @@ def oee() -> float | None:
 def oee_if_quality(quality: float) -> float:
     """품질률을 넣으면 OEE 가 얼마가 되는지. 협의용이지 현재값이 아니다."""
     return reliability.TARGET_AVAILABILITY * performance_rate() * quality
+
+
+def quality_break_even() -> float:
+    """0.85 를 지키려면 품질률이 최소 얼마여야 하는가.
+
+    모르는 값을 1.0 으로 덮는 대신 **얼마나 모자라도 되는지**를 낸다. 이 값이
+    1.0 에 붙어 있으면 OEE 가 사실상 품질률 가정 하나에 매달려 있다는 뜻이고,
+    낮으면 가용률·성능률이 실제 여유를 벌어 놓았다는 뜻이다. run-at-rate 에서
+    잴 품질률과 곧장 비교할 수 있는 형태로 남긴다.
+    """
+    return round(WORLD_CLASS_OEE
+                 / (reliability.TARGET_AVAILABILITY * performance_rate()), 4)
 
 
 def energy_per_panel_kwh() -> float:
@@ -125,14 +144,14 @@ def ready_ai_ratio() -> float:
     return sum(1 for c in ai.CASES if c.grade == "A") / len(ai.CASES)
 
 
-#: 폐루프 — 모델이 **판정만 하는 것이 아니라 설정값을 바꾸는** 과제.
-#: 지금 A 등급 셋은 전부 감지·진단이다. 감지는 사람을 부르고, 폐루프는 공정을
-#: 바꾼다. 세계 최상급 라인을 가르는 선이 여기다.
-CLOSED_LOOP_TAGS: tuple[str, ...] = ()
-
-
 def closed_loop_count() -> int:
-    return len(CLOSED_LOOP_TAGS)
+    """폐루프 — 모델이 **판정만 하는 것이 아니라 설정값을 바꾸는** 과제.
+
+    감지는 사람을 부르고 폐루프는 공정을 바꾼다. 세계 최상급 라인을 가르는
+    선이 여기다. 목록을 여기 적지 않고 `ai.py` 에서 가져오는 이유는 하나 —
+    적어 두면 폐루프 사양이 없어져도 점수가 그대로 남는다.
+    """
+    return len(ai.closed_loop_cases())
 
 
 def console_receives_live_data() -> float:
@@ -163,8 +182,9 @@ CRITERIA: tuple[Criterion, ...] = (
     Criterion("T-03", "기술", "성능률", 0.95, "", ">=",
               "JIPM 세계 최상급 성능률 0.95",
               performance_rate,
-              "택트 48.47 중 인계 대기 3.47 s 를 줄여야 한다 — JB-201 축적구간을 "
-              "2 장으로 늘리거나 로봇 방출을 병목 종료와 겹치게 한다"),
+              "§21 에서 들어온 GRM-401 유리제거셀을 병목 후보에 넣어 이상 택트를 "
+              "바로잡았다 — 46.49/48.47 = 0.959. 종전 0.928 은 라인을 실제로 묶는 "
+              "셀을 빼고 JBR 45.0 s 로 잰 값이었다"),
     Criterion("T-04", "기술", "장당 전력 원단위", None, "kWh/장", "<=",
               "이 공정의 공개 벤치마크가 없다 — 지표만 세우고 목표는 발주처가 정한다",
               energy_per_panel_kwh,

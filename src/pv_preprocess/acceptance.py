@@ -24,8 +24,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from . import (access, acoustics, air, campaign, crane, dust, electrical, handoff,
-               mounting, reliability, safety, seismic, thermal)
+from . import (access, acoustics, ai, air, campaign, crane, dust, electrical,
+               handoff, mounting, reliability, safety, seismic, thermal)
 
 FAT = "FAT"
 SAT = "SAT"
@@ -147,6 +147,14 @@ def items() -> tuple[Item, ...]:
         Item("R-05", RAR, "누설·무부하 소비", "무부하 시간대 공압 소비",
              "air.average_nl_min", lambda: air.average_nl_min(),
              "AI-03 이 이 데이터로 누설을 산출한다", False),
+        Item("R-06", RAR, "폐루프 포락선·폴백", "설정값 주입 · 센서 차폐 · 모델 정지",
+             "ai.envelope_bounds", lambda: ai.envelope_bounds(),
+             "포락선 밖 설정값을 인터록이 막고, 센서를 가리면 고정 "
+             f"{ai.envelope_bounds()['maxDwellS']:g} s 로 떨어진다 — 라인은 안 선다", True),
+        Item("R-07", RAR, "유리 열응력 시료 시험", "반입 유리 승온 시료 → 열응력 한계 측정",
+             "ai.TEMP_TRIP_OPEN", lambda: ai.TEMP_TRIP_OPEN,
+             "온도 스위치 설정값이 여기서 나온다 — 그 전까지 CL-01 은 시간·출력 "
+             "경계로만 강제된다", True),
     )
 
 

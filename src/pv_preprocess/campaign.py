@@ -56,6 +56,84 @@ INFEED_REJECT_S = 15.0
 #: 영상 스테이지 "JBR-201 · 스토퍼·측면 정렬" 이 48.0 s 에 시작하고 JBR 진입이 40.0 s 이므로 8.0 s.
 JBR_STOPPER_OFFSET_S = 8.0
 
+#: 축적구간 JB-201 길이 (mm) 와 그것이 함의하는 이송 속도.
+#: 스토퍼까지 4,900 mm 를 8.0 s 에 가므로 612.5 mm/s 다.
+ACCUMULATOR_MM = 4900.0
+PANEL_LENGTH_MM = 2500.0
+
+
+def transfer_speed_mm_s() -> float:
+    """이송 속도 — 스토퍼 오프셋이 함의하는 값. 새로 정하지 않는다."""
+    return ACCUMULATOR_MM / JBR_STOPPER_OFFSET_S
+
+
+def accumulator_clear_s() -> float:
+    """앞 장의 꼬리가 축적구간 입구를 벗어나는 시각 (s).
+
+    종전에는 **스토퍼가 물릴 때까지(8.0 s)** 기다려 다음 장을 놓았다. 그러나
+    다음 장이 들어와도 되는 조건은 스토퍼가 아니라 **입구가 비었는가**이고,
+    정렬은 축적구간이 물고 있는 동안 끝난다. 인터록을 하류 확인이 아니라
+    입구 비움에 걸면 그 차이만큼 대기가 사라진다.
+    """
+    return round(PANEL_LENGTH_MM / transfer_speed_mm_s(), 2)
+
+
+#: 후단 인계 설계 여유 (장/h). 유리제거셀 능력에서 이만큼을 남긴다.
+#: §21 에서 정한 값 그대로다 — **줄이지 않았다.**
+#:
+#: 이 한 줄이 성능률과 인계 안전여유를 맞바꾸는 자리다. 0.5 로 줄이면 성능률이
+#: 0.925 → 0.951 로 올라 세계 최상급 기준을 넘지만, 후단이 조금만 처져도 버퍼가
+#: 차고 라인이 선다. 점수를 위해 안전여유를 태우는 것은 개선이 아니므로 그대로
+#: 두고, 성능률 격차는 **후단 능력을 올려야 닫힌다**고 적는다(발주처 결정 항목).
+HANDOFF_MARGIN_PER_H = 2.4
+
+
+def downstream_limited_takt_s() -> float:
+    """후단이 받을 수 있는 속도에서 나오는 택트 (s).
+
+    앞단이 아무리 빨라도 유리제거셀이 못 받으면 버퍼가 차고 결국 선다.
+    그래서 페이스의 상한은 후단 능력이지 앞단 기구가 아니다.
+    """
+    # `handoff.summary()` 를 부르면 순환한다 — 그것이 다시 캠페인을 읽기 때문이다.
+    # 필요한 것은 후단 **능력**뿐이고 그 값은 캠페인과 무관하다.
+    from . import handoff
+    allowed_ra = handoff.downstream_rate().line_per_h - HANDOFF_MARGIN_PER_H
+    return round(3600.0 / (allowed_ra / normal_ratio()), 2)
+
+
+def pace_offset_s() -> float:
+    """페이스를 세 제약에서 낸다면 얼마가 되는가 (s) — **분석용이다.**
+
+    ① 축적구간 입구 비움 4.08  ② 병목 셀 점유  ③ 후단 인계 능력
+
+    지금 라인은 ①이 아니라 스토퍼 확인(8.0 s)으로 다음 장을 놓는다. ①로 바꾸면
+    앞단은 44.08 s 로 돌 수 있지만, 그래도 후단이 더 늦으므로 실제 페이스는
+    안 빨라진다 — **묶고 있는 것은 인터록이 아니라 유리제거셀이다.**
+
+    그래서 지금은 택트를 건드리지 않는다. 후단 능력이 올라가는 날 이 함수가
+    얼마까지 당길 수 있는지 말해 준다.
+    """
+    return round(max(accumulator_clear_s(),
+                     JBR_S - INFEED_S,
+                     downstream_limited_takt_s() - INFEED_S), 2)
+
+
+def normal_ratio() -> float:
+    """R-A 로 가는 비율. 캠페인 구성에서 나온다 — 반입물이 바뀌면 페이스도 바뀐다."""
+    rows = panels_by_pattern()
+    return sum(1 for c in rows if c == "정상") / len(rows)
+
+
+def panels_by_pattern() -> tuple[str, ...]:
+    """번들 패턴에서 장별 상태만 뽑는다 (시뮬레이션 없이)."""
+    out = []
+    for _, _, pattern in BUNDLE_PATTERNS:
+        for mark in pattern:
+            out.append("전손" if mark == "X"
+                       else ("유리 깨짐" if mark.islower() else "정상"))
+    return tuple(out)
+
+
 #: 방출 보류 (s). 0 이면 라인이 제 속도로 돈다. 후단이 못 따라올 때 이 값만
 #: 키워 택트를 늘린다 — 셀 점유시간은 그대로 두고 로봇이 손을 늦게 떼는 것이다.
 RELEASE_HOLD_S = 0.0
@@ -147,7 +225,8 @@ def panels(hold_s: float = RELEASE_HOLD_S) -> tuple[Panel, ...]:
         for slot, mark in enumerate(pattern, start=1):
             face, condition = _decode(mark)
             index += 1
-            # 앞 장의 스토퍼·자세교정이 작동해야 다음 장을 내려놓는다
+            # 앞 장이 축적구간 입구를 비우면 다음 장을 내려놓는다. 종전에는
+            # 스토퍼가 물릴 때까지 기다렸고, 그 차이가 인터록 대기였다.
             start = max(infeed_free, release_gate)
             if condition == "전손":
                 end = start + INFEED_REJECT_S
@@ -231,10 +310,36 @@ def peak_wip() -> int:
     return peak
 
 
+def grm_equivalent_s() -> float:
+    """유리제거셀의 **장당 환산** 점유 (s).
+
+    GRM 은 R-A(정상 유리)만 받는다. 그 셀의 한 장 주기는 3600/능력 이지만,
+    라인 한 장당으로 환산하려면 R-A 로 가는 비율을 곱해야 한다 — 깨진 유리와
+    전손은 이 셀을 지나지 않기 때문이다.
+    """
+    from . import handoff
+    return round(3600.0 / handoff.downstream_rate().line_per_h * normal_ratio(), 2)
+
+
+def cell_occupancy_s() -> tuple[tuple[str, float], ...]:
+    """셀별 장당 점유 (s). **유리제거셀이 여기 들어 있어야 한다.**
+
+    §21 에서 GRM-401 을 플랜트 안으로 들여왔는데 병목 후보에는 안 들어가
+    있었다. 그래서 이상 택트가 JBR 45.0 s 로 잡혔고, 실제로 라인을 묶는 것이
+    무엇인지 가려져 있었다.
+    """
+    return (("투입부", INFEED_S), ("JBR-201", JBR_S), ("AFR-101 후단", AFR_S),
+            ("GRM-401 유리제거", grm_equivalent_s()))
+
+
+def ideal_takt_s() -> float:
+    """이상 택트 — 가장 느린 셀의 장당 점유. 성능률의 분자다."""
+    return max(row[1] for row in cell_occupancy_s())
+
+
 def bottleneck() -> str:
     """가장 오래 점유하는 셀 — 택트를 정하는 자리."""
-    return max((("투입부", INFEED_S), ("JBR-201", JBR_S), ("AFR-101 후단", AFR_S)),
-               key=lambda row: row[1])[0]
+    return max(cell_occupancy_s(), key=lambda row: row[1])[0]
 
 
 def release_takt_s(hold_s: float = RELEASE_HOLD_S) -> float:
