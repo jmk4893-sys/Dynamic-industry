@@ -1382,7 +1382,7 @@ html>body{padding:0}</style>
         <path d="M1050 478H1090V520" fill="none" stroke="var(--plant-return)" stroke-width="7"/>
         <path d="M1050 478V530H1010" fill="none" stroke="var(--plant-dry-transfer)" stroke-width="7"/>
         <text x="970" y="500" fill="var(--foreground)">SS-201 · 75 µm</text>
-        <text x="1058" y="542" fill="var(--foreground)">≥75 재처리</text>
+        <text x="1058" y="542" fill="var(--foreground)">≥75 구리제품</text>
         <text x="936" y="552" fill="var(--foreground)">&lt;75 최종제품</text>
       </svg>
       <canvas hidden data-hsg-canvas role="img" aria-label="슈레더·HSG·시브에서 어트리션·부유선별·탈수까지 하나의 좌표계로 연결된 통합 3D 플랜트"></canvas>
@@ -1400,7 +1400,7 @@ html>body{padding:0}</style>
       <div class="hsg3d-tag" data-hsg-tag="product">08 · CH-501 → RV-201 → PC-201 → VS/SV-201</div>
       <div class="hsg3d-tag" data-hsg-tag="airclass">09 · CC-201 · 0.70–1.00 m/s</div>
       <div class="hsg3d-tag" data-hsg-tag="dust2">10 · CY-201＋BF-201</div>
-      <div class="hsg3d-tag" data-hsg-tag="polisher">11 · SS-201 · ≥75 재처리 / &lt;75 최종</div>
+      <div class="hsg3d-tag" data-hsg-tag="polisher">11 · SS-201 · ≥75 구리제품 / &lt;75 최종</div>
       <div class="hsg3d-loading text-small">3D 설비와 피지컬엔진 준비 중…</div>
       <div class="hsg3d-clock text-small">운전 00:00 / 60:00</div>
       <div class="hsg3d-stage-controls" role="group" aria-label="3D 스테이지 상시 제어">
@@ -1442,9 +1442,9 @@ html>body{padding:0}</style>
         <span><i class="hsg3d-flow-dot fines75"></i>SV-201 PAN: &lt;75 µm</span>
         <span>L04 · SV-201 106–280＋75–106 µm 개별 배관 → Y헤더 → CC-201 → 중량물 제품 / 경량물 CY-201</span>
         <span>L05 · CC-201 상부 → CY-201 → BF-201 → ID 팬 → 배기스택</span>
-        <span>L06 · CY-201/RV-202＋BF-201/RV-203＋SV-201 PAN → SS-201 → ≥75 재처리 / &lt;75 최종제품</span>
+        <span>L06 · CY-201/RV-202＋BF-201/RV-203＋SV-201 PAN → SS-201 → ≥75 구리제품 / &lt;75 최종제품</span>
         <span>L07 · FD-101 국소흡인 → BF-101, BF-101/RV-102 포집분 → CH-501 · BF-101 → ID 팬 → 배기스택</span>
-        <span>L06-R · SS-201 ≥75 µm → RV-402/RC-201 → VR-201 → FD-101/HSG-101 완전 환류</span>
+        <span>L06-Cu · SS-201 ≥75 µm → RV-402/RC-201 → VR-201 → BIN-Cu 구리 제품빈 (환류 아님)</span>
         <span><i class="hsg3d-flow-dot fines75"></i>L08 · SS-201 &lt;75 µm → VR-401 → BH-101 → RV-401 → SF-401 → WC-401 → TK-001</span>
         <span>L09 · TK-001 → P-101A/B → AS-101 600 rpm·5분 → BS-101A/B → P-102A/B → TK-101</span>
         <span>L10 · FC-201 러퍼 → FC-202 클리너 / FC-203 스캐빈저 → TK-204·TK-301 → CF-204·FP-301</span>
@@ -1461,7 +1461,7 @@ html>body{padding:0}</style>
         <span>보존 <b data-hsg-closure>질량 Δ — kg · 에너지 잔차 —%</b></span>
         <span>음압이송 <b>PT-101 −220 Pa · 보어 137 mm 17.0 m/s · 900 m³/h</b></span>
         <span>스크린 <b data-hsg-screen-state>12° · 25 Hz · 3.0 mm p-p · 화면 감속·확대</b></span>
-        <span>구간별 누적 <b data-hsg-screen-streams>1단오버 BIN-102 0.0 · 280–500 0.0 · 106–280 0.0 · SS ≥75 재처리 0.0 · SS &lt;75 최종 0.0 kg</b></span>
+        <span>구간별 누적 <b data-hsg-screen-streams>1단오버 BIN-102 0.0 · 280–500 0.0 · 106–280 0.0 · SS ≥75 구리 0.0 · SS &lt;75 최종 0.0 kg</b></span>
         <span>SS-201 최종제품 <b data-hsg-ss-final-psd>D95 — · Dmax &lt;0.075 mm</b></span>
       </div>
       </details>
@@ -1619,6 +1619,43 @@ html>body{padding:0}</style>
       </tbody>
     </table></div>
 
+    <strong>건식 3 산물의 Cu 분배 (실시간 · 누적 배출질량 기준)</strong>
+    <p class="text-small">회로를 재설계하면서 건식단 산물이 셋이 되었습니다 —
+      <code>BIN-102</code> 백시트 폐기(&gt;2 mm) · <code>BIN-Cu</code> 구리 제품(SV-201 280–500 µm ＋
+      CC-201 중량물 ＋ SS-201 스캘빙 ≥75 µm) · <code>AS-101</code> 로 넘어가는 &lt;75 µm 습식 급광.
+      셋의 A/B/C 조성을 누적해 위 표의 품위를 곱한 값입니다.</p>
+    <div class="table-responsive"><table class="table table-sm" aria-label="건식 산물 Cu 분배">
+      <thead><tr><th>산물</th><th class="text-end">질량</th><th class="text-end">Cu 품위</th><th class="text-end">Ag 품위</th><th class="text-end">주성분</th><th class="text-end">Cu 분배</th></tr></thead>
+      <tbody>
+        <tr><td>건식 급광 (＝신규 300 kg/h)</td><td class="text-end">100.0 %</td><td class="text-end" data-cu-head>1.027 %</td><td class="text-end" data-cu-head-ag>2,945 g/t</td><td class="text-end">—</td><td class="text-end">100 %</td></tr>
+        <tr><td class="dd-warning">BIN-102 백시트 폐기 (&gt;2 mm)</td><td class="text-end" data-cu-reject-mass>—</td><td class="text-end" data-cu-reject-grade>—</td><td class="text-end" data-cu-reject-ag>—</td><td class="text-end">폴리머 <span data-cu-reject-poly>—</span></td><td class="text-end" data-cu-reject-dist>—</td></tr>
+        <tr><td><strong>BIN-Cu 구리 제품</strong></td><td class="text-end" data-cu-copper-mass>—</td><td class="text-end" data-cu-copper-grade>—</td><td class="text-end" data-cu-copper-ag>—</td><td class="text-end">Si <span data-cu-copper-si>—</span></td><td class="text-end" data-cu-copper-dist>—</td></tr>
+        <tr><td>AS-101 습식 급광 (&lt;75 µm)</td><td class="text-end" data-cu-fines-mass>—</td><td class="text-end" data-cu-fines-grade>—</td><td class="text-end" data-cu-fines-ag>—</td><td class="text-end">Si <span data-cu-fines-si>—</span></td><td class="text-end" data-cu-fines-dist>—</td></tr>
+        <tr><td>배출 ÷ 투입 (재고 배출 후 100 %)</td><td class="text-end" data-cu-mass-closure>—</td><td class="text-end">—</td><td class="text-end">—</td><td class="text-end">—</td><td class="text-end" data-cu-closure>—</td></tr>
+      </tbody>
+    </table></div>
+    <p class="text-small"><strong>모델 실측 (통합기동 34분 · 신규 171 kg 투입 시점).</strong>
+      BIN-102 폐기 질량 16.4 % · Cu <strong>0.060 %</strong> · 폴리머 98.0 % · <strong>Cu 분배 0.9 %</strong> ／
+      BIN-Cu 질량 83.6 % · Cu <strong>1.230 %</strong> · Ag 3,543 g/t · Si 37.3 % · <strong>Cu 분배 99.0 %</strong>.
+      즉 <strong>1단 2 mm 스캘핑의 Cu 손실은 1 % 미만</strong>이고, 폴리머만 골라 버린 결과
+      구리 제품의 품위가 두수 대비 <strong>Cu 1.027 → 1.230 % (×1.20)</strong> ·
+      <strong>Ag 2,945 → 3,543 g/t (×1.20)</strong> 로 올라갑니다 — 백시트를 회로에서 빼는 것 자체가
+      농축 조작입니다. (질량 폐합은 재고가 다 빠진 뒤에야 100 % 로 닫히므로 운전 중에는 그보다 낮습니다.
+      폐기 질량비 16.4 % 도 정상상태 설계값 15.0 % 로 수렴하는 중입니다 — 폐기는 경로가 가장 짧아
+      초기에 과대평가됩니다.)</p>
+    <p class="text-small dd-warning"><strong>읽는 법 — 이 「구리 제품」은 아직 정광이 아닙니다.</strong>
+      모델의 파괴거동은 입자군(A·B·C)까지만 구분하고 <strong>셀 내부의 Cu 리본·버스바를 따로 추적하지
+      않습니다</strong>. 그래서 위의 농축은 전부 <strong>백시트(B군) 제거</strong>에서 나온 것이고,
+      입도밴드 사이의 Cu 농축은 0 입니다 — SV-201 280–500 µm 와 SS-201 ≥75 µm 의 품위가 같게 나옵니다.
+      실제로 Cu 를 농축하는 것은 리본이 잘리지 않고 굵게 남는 성질(＋CC-201 비중차)인데, 그것을 재려면
+      <strong>Cu 상(相)을 별도 입자군으로 분리</strong>해야 합니다. 지금 표의 구리제품 품위는
+      <strong>하한</strong>으로 읽고, LAB-601 밴드별 분석이 들어오면 그 값으로 대체합니다.</p>
+    <p class="text-small text-muted"><strong>또 하나 — &lt;75 µm 는 이 모델에서 거의 나오지 않습니다.</strong>
+      제품 입도가 D10 0.181 mm 라 75 µm 미만이 사실상 없고, 그래서 AS-101 로 넘어가는 건식 급광이
+      표에서 0.0 % 로 잡힙니다. 아래 부선 회로 수지는 그 흐름이 아니라 자체 급광조성
+      (<code>FLOTATION_FEED</code>) 기준으로 푼 것입니다 — 건식 PSD 와 습식 급광을 잇는 것은
+      별도 과제로 남겨 둡니다.</p>
+
     <strong>부선 회로 수지 (실시간 · 급광 100 기준)</strong>
     <p class="text-small">클리너 광미와 스캐빈저 정광이 러퍼로 돌아오는 환류가 있으므로 고정점 반복 24 회로 풉니다.</p>
     <div class="table-responsive"><table class="table table-sm" aria-label="부선 회로 물질수지">
@@ -1744,7 +1781,7 @@ html>body{padding:0}</style>
           <tr><th>비산방지 배관</th><td>노출 컨베이어 없음 · 모든 고형물관 밀폐 · SC/CH/VS/SV/SS와 밀폐 제품통 벤트는 BF-101 또는 BF-201 오염공기 헤더로 연결 · 두 팬 후단 소음기·배기스택 적용</td></tr>
           <tr><th>CC-201 공기분급</th><td>75–280 µm 선별물을 0.70–1.00 m/s 상승류에서 중량물과 EVA·백시트 경량물로 분리 · 실제 절단점은 원료별 파일럿 보정</td></tr>
           <tr><th>CY/BF-201 흡인계통</th><td>CC-201 상부 경량·미분 → 접선식 CY-201 → RV-202 → SS-201 · CY 청정가스 → BF-201 → 후단 ID 팬 → 배기스택 · BF-201 포집분은 RV-203을 거쳐 SS-201 합류</td></tr>
-          <tr><th>SS-201 분리토출</th><td>CY-201 회수물과 SV-201 PAN 미분을 75 µm 원형 스크린에서 재검증 · ≥75 µm는 RV-402/RC-201/VR-201로 HSG 환류 · &lt;75 µm는 VR-401 진공수신 후 습식 정량공급</td></tr>
+          <tr><th>SS-201 분리토출</th><td>CY-201 회수물과 SV-201 PAN 미분을 75 µm 원형 스크린에서 재검증 · ≥75 µm는 RV-402/RC-201/VR-201로 BIN-Cu 구리 제품빈 이송 · &lt;75 µm는 VR-401 진공수신 후 습식 정량공급</td></tr>
           <tr><th>SS-201 분리 가정</th><td>현재 영상은 기존 75 µm 입도밴드를 이용한 이상적 라우팅으로 질량을 보존함 · 실제 분리효율·블라인딩·Tromp 곡선은 원료 파일럿 시험으로 보정 필요</td></tr>
           <tr><th>75 µm 데크 조건</th><td>EVA·실리콘·백시트 복합입자의 망눈폐색 위험이 커 메시 세정 또는 초음파 보조가 필요하며, 파일럿 체분석 전 성능보증값이 아님</td></tr>
           <tr><th>입자군 가정</th><td>A Si+EVA/백시트 없음 35% · B 탈락 백시트 20% · C Si+EVA+백시트 결합 45% · 실측 조성으로 교체 필요</td></tr>
@@ -15510,7 +15547,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     product: { title: "08 · CH-501＋밀폐 Sheeve 후단선별", spec: "CH-501 → RV-201 → PC-201 음압리프트 → VS-501 → 밀폐 중력슈트 → SV-201", primaryPart: "P19", focus: [2.85, 0.65, 0.10, 5.2] },
     airclass: { title: "09 · CC-201 공기분급기", spec: "SV-201 106–280＋75–106 µm Y헤더 투입 · 중량물 RV-204 배출", primaryPart: "P20", focus: [4.70, 0.85, 0.10, 4.2] },
     dust2: { title: "10 · CY-201＋BF-201", spec: "CY-201/RV-202 고체회수 · BF-201/RV-203 회분회수 · ID 팬＋배기스택", primaryPart: "P21", focus: [6.05, 1.25, 0.10, 5.2] },
-    polisher: { title: "11 · SS-201 75 µm 분리토출", spec: "CY-201 회수물＋SV-201 PAN 미분 · ≥75 µm 재처리 / <75 µm 최종제품", primaryPart: "P22", focus: [6.38, -0.10, 0.18, 4.6] }
+    polisher: { title: "11 · SS-201 75 µm 분리토출", spec: "CY-201 회수물＋SV-201 PAN 미분 · ≥75 µm 구리제품(BIN-Cu) / <75 µm 최종제품", primaryPart: "P22", focus: [6.38, -0.10, 0.18, 4.6] }
   };
 
   const partData = {
@@ -15535,7 +15572,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     P19: { name: "VS-501＋SV-201 밀폐 Sheeve 후단", role: "상부 배치 VS-501에서 분산 후 밀폐 하향슈트로 SV-201에 공급하고 모든 토출을 밀폐 배관으로 연결", spec: "VS-501 0.9 mm · SV-201 Ø1200 · 280/106/75 µm · 2.2 kW · 960 rpm", shape: "circular-three-deck" },
     P20: { name: "CC-201＋Y헤더＋RV-204 공기분급기", role: "SV-201 두 입도라인을 개별 배관·Y헤더로 투입하고 상승류에서 중량물과 EVA·백시트 경량물을 분리", spec: "컬럼 Ø860 × H1,900 · 0.70–1.00 m/s · Y헤더 · 중량물 RV-204", shape: "air-classifier" },
     P21: { name: "CY-201＋RV-202＋BF-201＋RV-203＋ID 팬", role: "CC-201 경량물을 회수하고 CY·BF 포집물을 각각 에어록으로 SS-201에 합류시키며 청정가스를 배기스택으로 배출", spec: "CY Ø680 · BF 카트리지 5본 · RV-202/203 · VFD 후단흡인 · 배기스택", shape: "cyclone-filter" },
-    P22: { name: "SS-201 75 µm 분리토출 스크린", role: "CY-201 회수물과 SV-201 PAN 미분을 재검증해 ≥75 µm 재처리물과 <75 µm 최종 미분제품을 물리적으로 분리", spec: "Ø1100 원형 · 75 µm · 측면 재처리구＋하부 제품구 · 초음파 35–40 kHz", shape: "polishing-screen" },
+    P22: { name: "SS-201 75 µm 분리토출 스크린", role: "CY-201 회수물과 SV-201 PAN 미분을 재검증해 ≥75 µm 구리산물과 <75 µm 최종 미분제품을 물리적으로 분리", spec: "Ø1100 원형 · 75 µm · 측면 구리산물구＋하부 제품구 · 초음파 35–40 kHz", shape: "polishing-screen" },
     P23: { name: "ICSH-301 Rev.G 공통외함·안전호퍼·베이스", role: "유리·알루미늄 제거 라미네이트를 장변 하향으로 공급하고 처짐·브리징·역비산을 억제", spec: "호퍼 2,800×1,800 → 목부 1,600×850 × H1,200 · 압입롤 Ø260×2 · 브리징축 Ø160 · 펜듈럼 플랩 11개＋체인커튼", shape: "shredder-housing" },
     P24: { name: "ICSH-301 Rev.G 직교 적층형 2축 커터·독립구동", role: "상부 X축 조대 파쇄 후 420 mm 아래의 하부 Y축에서 직교 미세파쇄", spec: "X축 Ø420·26개/P50·22 kW·12 rpm · Y축 Ø350·55개/P20·18.5 kW·20 rpm · 35 mm 포락간극", shape: "shredder-rotor" },
     P25: { name: "SCR-001 10 mm 격리형 진동스크린", role: "직교 2단 파쇄물을 10 mm에서 분리해 조대물과 HSG 공급물을 물리적으로 분기", spec: "유효 1,000×1,500 · 10×10/13 pitch · PL8 Hardox 450 · 12° · 25 Hz · 3.0 mm p-p · 2.2 kW", shape: "shredder-screen" },
@@ -16834,6 +16871,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       "product-75-106",
       "product-under-75"
     ]);
+    // BIN-Cu 로 모이는 세 갈래. SV-201 280–500 µm 는 곧장, CC-201 중량물은 RV-204 로,
+    // SS-201 스캘빙 75 µm 오버는 RV-402/RC-201 진공반송으로 같은 빈에 들어간다.
+    // <75 µm 만 회로를 빠져 AS-101 습식으로 간다.
+    const COPPER_STREAM_KEYS = Object.freeze(["product-280-500", "product-106-280", "product-75-106"]);
     // ---- 구동 명판 회전수 ---------------------------------------------------
     // Every driven shaft in the model reads its speed from here. (명판) values are the
     // ones stated in this document's own equipment specs; (가정) values have no datasheet
@@ -17471,18 +17512,18 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addCylinder(parts.P22, 0.090, 0.16, ssCycloneFeedNozzle, material.cover, "P22", "y", 28, true);
     addCylinder(parts.P22, 0.090, 0.16, ssFineFeedNozzle, material.cover, "P22", "y", 28, true);
 
-    // coarse 는 이제 구리 제품빈이다 — SV-201 280–500 µm · CC-201 중량물 ·
-    // SS-201 ≥75 µm 세 갈래가 여기로 모인다. ssFinal 은 어트리션 이송점,
-    // ssRework 는 SV-201 PAN(<75 µm)의 어트리션 합류점으로 쓴다.
+    // coarse 는 구리 제품빈(BIN-Cu)이다 — SV-201 280–500 µm · CC-201 중량물 ·
+    // SS-201 ≥75 µm 세 갈래가 **한 빈**으로 모인다(사용자 확정: 독립 제품슈트 1개).
+    // ssRework 는 그 셋 중 마지막 갈래의 중간 수신빈이다 — SS-201 오버를 RV-402 로
+    // 받아 RC-201 진공반송으로 BIN-Cu 에 넘긴다. 종전의 중량 제품빈(heavy)은
+    // CC-201 중량물이 BIN-Cu 로 합류하면서 받을 것이 없어져 없앴다.
     const productBins = {
       coarse: new THREE.Vector3(4.30, 0.04, -0.48),
-      heavy: new THREE.Vector3(5.20, 0.04, -0.48),
       ssRework: new THREE.Vector3(6.92, 0.04, -0.44),
       ssFinal: new THREE.Vector3(6.78, 0.04, 0.72)
     };
     [
       { inlet: productBins.coarse, sourceMaterial: material.product500 },
-      { inlet: productBins.heavy, sourceMaterial: material.product280 },
       { inlet: productBins.ssRework, sourceMaterial: material.product106 },
       { inlet: productBins.ssFinal, sourceMaterial: material.product75 }
     ].forEach(({ inlet, sourceMaterial }) => {
@@ -17495,12 +17536,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // SS-201 스캘빙 75 µm 오버는 금속 농축물이다 — 종전에는 HSG 로 환류시켰지만
     // 이제 구리 제품으로 빼며, SV-201 280–500 µm 와 **같은 제품빈**을 쓴다.
     // CC-201 중량물도 같은 곳으로 모여 구리 산물이 한 빈에서 나온다.
-    const ssReworkChute = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(polisherCenter.x + 0.50, 0.06, polisherCenter.z),
-      new THREE.Vector3(6.10, -0.06, -0.30),
-      new THREE.Vector3(5.20, -0.14, -0.46),
-      productBins.coarse
-    ]);
+    // 빈까지 가는 수단은 중력슈트가 아니라 RC-201 밀폐 진공반송이다 — SS-201(x 6.9)과
+    // BIN-Cu(x 4.3) 는 2.6 m 떨어져 있고 높이차가 없어 중력으로는 흐르지 않는다.
     const ssFinalChute = new THREE.CatmullRomCurve3([
       new THREE.Vector3(polisherCenter.x + 0.12, -0.18, polisherCenter.z + 0.12),
       new THREE.Vector3(6.48, -0.08, 0.58),
@@ -17517,7 +17554,6 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       productBins.coarse
     ]);
     addCylinder(parts.P22, 0.105, 0.16, { x: polisherCenter.x + 0.55, y: 0.06, z: polisherCenter.z }, material.cover, "P22", "x", 28, true);
-    addMesh(parts.P22, new THREE.TubeGeometry(ssReworkChute, 24, 0.080, 16, false), material.pipeReturn, { x: 0, y: 0, z: 0 }, null, "P22", true);
     addMesh(parts.P22, new THREE.TubeGeometry(ssFinalChute, 26, 0.080, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P22", true);
     addMesh(parts.P22, new THREE.TubeGeometry(coarseProductChute, 24, 0.065, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P22", true);
     addMesh(parts.P22, new THREE.TubeGeometry(heavyProductChute, 24, 0.065, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P22", true);
@@ -17535,6 +17571,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const RACK_Z = -0.52;
     const VENT_HEADER_Y = 2.46;                       // 하단 티어: 공통 벤트 헤더
     const DRY_RETURN_Y = 3.42;                        // 상단 티어: RC-201 건식 진공반송
+    // RC-201 수신기 열은 벤트 헤더(z = RACK_Z, y 2.46)와 같은 z 에 놓을 수 없다 — 한 줄 뒤로 뺀다.
+    const CU_RETURN_Z = -0.90;
     const ventRiser = (x, y, z, radius, name) => {
       // 노즐 → 수직 상승 → 헤더 라인까지 z 한 번 → 티. 대각선 레그 없음.
       addMesh(parts.P21, new THREE.TubeGeometry(orthoCurve([[x, y, z], [x, VENT_HEADER_Y, z],
@@ -17552,11 +17590,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     ventRiser(pc201ReceiverCenter.x, 2.08, pc201ReceiverCenter.z, 0.040, "PC-201 리시버 벤트");
     ventRiser(2.78, 1.18, 0.44, 0.025, "VS-501 분배기 벤트");
     ventRiser(secondaryCenter.x, 0.88, secondaryCenter.z + 0.58, 0.030, "SV-201 스크린 벤트");
-    ventRiser(productBins.coarse.x, 0.10, productBins.coarse.z + 0.12, 0.024, "조대 제품빈 벤트");
-    ventRiser(productBins.heavy.x, 0.10, productBins.heavy.z + 0.12, 0.024, "중량 제품빈 벤트");
+    ventRiser(productBins.coarse.x, 0.10, productBins.coarse.z + 0.12, 0.024, "BIN-Cu 구리 제품빈 벤트");
     ventRiser(polisherCenter.x, 0.18, polisherCenter.z + 0.55, 0.024, "SS-201 벤트");
     ventRiser(productBins.ssFinal.x, 0.10, productBins.ssFinal.z - 0.12, 0.024, "최종제품빈 벤트");
-    ventRiser(productBins.ssRework.x, 0.10, productBins.ssRework.z + 0.12, 0.024, "환류빈 벤트");
+    ventRiser(productBins.ssRework.x, 0.10, productBins.ssRework.z + 0.12, 0.024, "SS-201 오버 수신빈 벤트");
     // 헤더 → BF-201 상부 인입. 아래로 한 번 꺾어 사이클론 인입과 같은 노즐로 합류한다.
     addMesh(parts.P21, new THREE.TubeGeometry(orthoCurve([[6.42, VENT_HEADER_Y, RACK_Z],
       [6.42, VENT_HEADER_Y, 0.20], [6.42, 1.90, 0.20]], 0.18), 36, 0.050, 14, false),
@@ -17571,11 +17608,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       "product-280-500": new THREE.CatmullRomCurve3([
         secondaryOutlets["product-280-500"], new THREE.Vector3(4.08, 0.30, -0.28), productBins.coarse
       ]),
+      // CC-201 중량물 — RV-204 로 빠져 구리 제품빈으로. 배관(heavyProductChute)이
+      // 가리키는 곳과 입자가 가는 곳이 같아야 한다.
       "product-106-280": new THREE.CatmullRomCurve3([
-        secondaryOutlets["product-106-280"], new THREE.Vector3(4.00, 0.18, 0.08), new THREE.Vector3(rv204Center.x, -0.24, rv204Center.z), new THREE.Vector3(4.40, 0.34, 0.18), new THREE.Vector3(ccCenter.x, 0.92, ccCenter.z), new THREE.Vector3(ccHeavyAirlockCenter.x, -0.06, ccHeavyAirlockCenter.z), productBins.heavy
+        secondaryOutlets["product-106-280"], new THREE.Vector3(4.00, 0.18, 0.08), new THREE.Vector3(rv204Center.x, -0.24, rv204Center.z), new THREE.Vector3(4.40, 0.34, 0.18), new THREE.Vector3(ccCenter.x, 0.92, ccCenter.z), new THREE.Vector3(ccHeavyAirlockCenter.x, -0.20, ccHeavyAirlockCenter.z), new THREE.Vector3(4.92, -0.14, -0.24), productBins.coarse
       ]),
+      // SS-201 스캘빙 75 µm 오버 — 환류물이 아니라 구리 산물이다. RV-402 수신빈에서
+      // RC-201 밀폐 진공반송으로 랙 상단을 타고 같은 구리 제품빈에 합류한다.
       "product-75-106": new THREE.CatmullRomCurve3([
-        secondaryOutlets["product-75-106"], new THREE.Vector3(4.14, 0.18, 0.16), new THREE.Vector3(rv204Center.x, -0.24, rv204Center.z), new THREE.Vector3(4.40, 0.34, 0.18), new THREE.Vector3(ccCenter.x, 1.05, ccCenter.z), new THREE.Vector3(5.22, 1.82, 0.22), new THREE.Vector3(cyclone2Center.x, 1.42, cyclone2Center.z), new THREE.Vector3(cyclone2Center.x, 0.22, cyclone2Center.z), ssCycloneFeedNozzle, new THREE.Vector3(polisherCenter.x, 0.12, polisherCenter.z), ssReworkOutlet
+        secondaryOutlets["product-75-106"], new THREE.Vector3(4.14, 0.18, 0.16), new THREE.Vector3(rv204Center.x, -0.24, rv204Center.z), new THREE.Vector3(4.40, 0.34, 0.18), new THREE.Vector3(ccCenter.x, 1.05, ccCenter.z), new THREE.Vector3(5.22, 1.82, 0.22), new THREE.Vector3(cyclone2Center.x, 1.42, cyclone2Center.z), new THREE.Vector3(cyclone2Center.x, 0.22, cyclone2Center.z), ssCycloneFeedNozzle, new THREE.Vector3(polisherCenter.x, 0.12, polisherCenter.z), ssReworkOutlet, new THREE.Vector3(6.92, 0.72, -0.44), new THREE.Vector3(6.92, DRY_RETURN_Y, -0.44), new THREE.Vector3(6.92, DRY_RETURN_Y, RACK_Z), new THREE.Vector3(productBins.coarse.x, DRY_RETURN_Y, RACK_Z), new THREE.Vector3(productBins.coarse.x, DRY_RETURN_Y, CU_RETURN_Z), new THREE.Vector3(productBins.coarse.x, 2.40, CU_RETURN_Z), new THREE.Vector3(productBins.coarse.x, 0.24, CU_RETURN_Z), new THREE.Vector3(productBins.coarse.x, 0.24, -0.58), productBins.coarse
       ]),
       "product-under-75": new THREE.CatmullRomCurve3([
         secondaryOutlets["product-under-75"], new THREE.Vector3(4.55, -0.02, 0.48), new THREE.Vector3(5.55, 0.12, 0.46), ssFineFeedNozzle, new THREE.Vector3(polisherCenter.x, 0.12, polisherCenter.z), new THREE.Vector3(polisherCenter.x + 0.12, -0.17, polisherCenter.z + 0.12), ssFinalOutlet
@@ -18351,28 +18392,32 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       wetHBeam(unifiedWet, "VP-401 지관 랙 암 H200", [x, 3.08, -2.52], 0.36, "z", 0.14, 0.08);
     });
 
-    // SS-201 ≥75 µm is no longer a dead-end receiver.  A sealed vacuum return
-    // takes the dry rework fraction back to the existing FD-101/HSG-101 hopper.
+    // SS-201 ≥75 µm 는 환류물이 아니라 **구리 산물**이다(회로 재설계). 반송 수단은
+    // 그대로 두고 도착지만 FD-101/HSG-101 에서 BIN-Cu 구리 제품빈으로 바꾼다 —
+    // SS-201(x 6.92)과 BIN-Cu(x 4.30)는 높이차가 없어 중력으로 흐르지 않으므로
+    // 밀폐 진공반송이 여전히 필요하다. 경로가 2.6 m 로 짧아져 벤드가 3 → 2 개로 준다.
     const ssReworkPickup = [6.92, 0.04, -0.44];
     wetCylinder(unifiedWet, 0.12, 0.28, [6.92, 0.24, -0.44], material.solidsReceiver, "RV-402 SS-201 조대물 반송 에어록", 28, [Math.PI / 2, 0, 0]);
-    // RC-201 은 픽업(z -0.44)과 도착지 VR-201(z -0.66)이 사실상 같은 z 인데도 z = -2.48 까지
-    // 헛돌아 나갔다 돌아오는 3축 사선이었다. 파이프 랙 상단 티어로 올려 한 직선으로 편다 —
-    // 벤드는 3개로 종전과 같지만 전부 한 축만 꺾는 장반경이라 마모 설계(⑥ 절)와도 맞는다.
+    // 랙 상단 티어는 z = RACK_Z 로 달린다 — 기둥열(z −0.94)을 피해 그 앞을 지나는 자리다.
+    // 수신기 자리로 내려가는 z 이동은 x 4.30 에서, 헤더보다 높은 y 3.42 에서 끝낸다.
     wetTube(unifiedWet, orthoRoute([ssReworkPickup, [6.92, 0.72, -0.44], [6.92, DRY_RETURN_Y, -0.44],
-      [6.92, DRY_RETURN_Y, RACK_Z], [-0.72, DRY_RETURN_Y, RACK_Z], [-0.72, DRY_RETURN_Y, -0.66],
-      [-0.72, 2.78, -0.66]], 0.30), 0.065, material.pipeReturn,
-      "RC-201 SS-201 ≥75 µm 건식 진공반송", 1860, 9);
-    wetCylinder(unifiedWet, 0.26, 0.48, [-0.72, 2.62, -0.66], material.solidsReceiver, "VR-201 HSG 반송 진공수신기", 32, null, true);
-    wetCone(unifiedWet, 0.26, 0.08, 0.30, [-0.72, 2.24, -0.66], material.solidsReceiver, "VR-201 배출콘", 32);
-    wetBox(unifiedWet, [0.40, 0.12, 0.40], [-0.72, 2.92, -0.66], material.screen, "VR-201 펄스필터");
-    wetTube(unifiedWet, [[-0.72, 2.10, -0.66], [-0.72, 2.17, 0]], 0.070, material.pipeReturn, "VR-201 → FD-101 중력배출", 1860, 4);
+      [6.92, DRY_RETURN_Y, RACK_Z], [4.30, DRY_RETURN_Y, RACK_Z], [4.30, DRY_RETURN_Y, CU_RETURN_Z],
+      [4.30, 2.78, CU_RETURN_Z]], 0.30), 0.065, material.pipeDryTransfer,
+      "RC-201 SS-201 ≥75 µm 구리산물 밀폐 진공반송", 1860, 9);
+    wetCylinder(unifiedWet, 0.26, 0.48, [4.30, 2.62, CU_RETURN_Z], material.solidsReceiver, "VR-201 구리산물 진공수신기", 32, null, true);
+    wetCone(unifiedWet, 0.26, 0.08, 0.30, [4.30, 2.24, CU_RETURN_Z], material.solidsReceiver, "VR-201 배출콘", 32);
+    wetBox(unifiedWet, [0.40, 0.12, 0.40], [4.30, 2.92, CU_RETURN_Z], material.screen, "VR-201 펄스필터");
+    // 빈 뚜껑에는 벤트 노즐(z −0.36)이 이미 있다 — 투입은 반대쪽(z −0.58)으로 넣어
+    // 벤트 라이저와 0.22 m 떨어뜨린다.
+    wetTube(unifiedWet, orthoRoute([[4.30, 2.10, CU_RETURN_Z], [4.30, 0.24, CU_RETURN_Z],
+      [4.30, 0.24, -0.58], [4.30, 0.06, -0.58]], 0.10), 0.070, material.pipeDryTransfer, "VR-201 → BIN-Cu 중력배출", 1860, 4);
     // VR-201 filter to the common vacuum header (was a dedicated PC-202 blower).
-    wetTube(unifiedWet, orthoRoute([[-0.72, 2.98, -0.66], [-0.72, VAC_RACK_Y, -0.66],
-      [-0.72, VAC_RACK_Y, VAC_RACK_Z], [5.10, VAC_RACK_Y, VAC_RACK_Z], [5.10, 1.34, VAC_RACK_Z],
+    wetTube(unifiedWet, orthoRoute([[4.30, 2.98, CU_RETURN_Z], [4.30, VAC_RACK_Y, CU_RETURN_Z],
+      [4.30, VAC_RACK_Y, VAC_RACK_Z], [5.10, VAC_RACK_Y, VAC_RACK_Z], [5.10, 1.34, VAC_RACK_Z],
       [5.30, 1.34, VAC_RACK_Z]], 0.24), 0.042, material.pipeAir, "VR-201 필터 → VP-401 공통 진공헤더");
     wetBox(unifiedWet, [0.13, 0.13, 0.13], [5.10, 1.34, -2.46], material.silverClamp, "VR-201 지관 차단밸브");
     wetBox(unifiedWet, [0.11, 0.11, 0.11], [4.86, 1.44, -2.50], material.fixed, "VR-201 지관 역류방지밸브");
-    wetLabel("SS-201 ≥75 µm → RV-402/RC-201 → VR-201 → HSG-101", [3.18, 2.42, -2.68], [2.35, 0.23, 1]);
+    wetLabel("SS-201 ≥75 µm → RV-402/RC-201 → VR-201 → BIN-Cu 구리 제품", [3.18, 2.42, -2.68], [2.35, 0.23, 1]);
 
     // Motivated <75 µm transfer: VR-401 vacuum receiver discharges through the
     // weighed buffer, correctly retagged RV-401, enclosed screw and wetting cone.
@@ -18390,7 +18435,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetBox(unifiedWet, [0.11, 0.11, 0.11], [6.30, 1.44, -2.42], material.fixed, "VR-401 지관 역류방지밸브");
 
     // ---- VP-401A/B 공통 진공펌프 유닛 -------------------------------------
-    // VR-201 (>=75 um rework) and VR-401 (<75 um product) each had their own blower with
+    // VR-201 (>=75 um copper product) and VR-401 (<75 um product) each had their own blower with
     // no standby. Both are dry conveying duties on the same handoff, so they now share one
     // header and one A/B pump set: the duty unit carries the combined flow and the second
     // is a full standby, which the two separate blowers never had. Each branch keeps its
@@ -18966,6 +19011,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       coarseTransferMass: 0,
       rejectTransferMass: 0,
       backsheetRejectOut: 0,
+      // 건식 3 행선지의 A/B/C 질량. ASSAY 가 조성별 품위를 들고 있으므로
+      // 이 표만 있으면 각 산물의 Cu·Ag·Si 품위와 회수율이 그대로 나온다.
+      outletClassMass: {
+        copper: { A: 0, B: 0, C: 0 },
+        fines: { A: 0, B: 0, C: 0 },
+        reject: { A: 0, B: 0, C: 0 }
+      },
       coarseClassified: 0,
       classifiedMass: 0,
       oversizeProductMass: 0,
@@ -19029,7 +19081,19 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       siGrade: root.querySelector("[data-met-si-grade]"),
       siSi: root.querySelector("[data-met-si-si]"),
       siAg: root.querySelector("[data-met-si-ag]"),
-      closure: root.querySelector("[data-met-closure]")
+      closure: root.querySelector("[data-met-closure]"),
+      cuHead: root.querySelector("[data-cu-head]"),
+      cuHeadAg: root.querySelector("[data-cu-head-ag]"),
+      cuMassClosure: root.querySelector("[data-cu-mass-closure]"),
+      cuClosure: root.querySelector("[data-cu-closure]"),
+      cuRows: ["reject", "copper", "fines"].map((key) => ({
+        key,
+        mass: root.querySelector("[data-cu-" + key + "-mass]"),
+        grade: root.querySelector("[data-cu-" + key + "-grade]"),
+        ag: root.querySelector("[data-cu-" + key + "-ag]"),
+        minor: root.querySelector("[data-cu-" + key + (key === "reject" ? "-poly]" : "-si]")),
+        dist: root.querySelector("[data-cu-" + key + "-dist]")
+      }))
     };
     const aiUi = {
       grade: root.querySelector("[data-ai-grade]"),
@@ -19081,7 +19145,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       { start: 960, end: 1260, title: "4 · 3단 Sheeve·집진 기동", route: "IDF/BF → SS-201 → SV-201 280/106/75 µm 하류우선 기동", target: [4.4, 0.8, 0.2], distance: 7.2 },
       { start: 1260, end: 1560, title: "5 · HSG-101 폐회로 기동", route: "CV/PC 이송 확인 후 HSG-101 1,500 rpm 속도도달", target: [0.0, 1.05, 0.0], distance: 5.2 },
       { start: 1560, end: 1800, title: "6 · ICSH-301 원료투입 허가", route: "SCR-001·SCV-P1 정상 후 상부 X축→하부 Y축→압입롤 기동", target: [-4.35, 1.8, 0.0], distance: 6.0 },
-      { start: 1800, end: 2700, title: "7 · 전 공정 물질 이송", route: "SS ≥75 HSG 환류 / <75 VR-401→BH/RV/SF/WC-401→어트리션→부선→탈수", target: [6.8, 1.7, 0.0], distance: 29 },
+      { start: 1800, end: 2700, title: "7 · 전 공정 물질 이송", route: "SS ≥75 → BIN-Cu 구리제품 / <75 VR-401→BH/RV/SF/WC-401→어트리션→부선→탈수", target: [6.8, 1.7, 0.0], distance: 29 },
       { start: 2700, end: 3120, title: "8 · 통합 정상운전", route: "건식 300 kg/h 기준 · <75 µm는 BH-101 완충 후 습식 설비부하에 맞춰 정량공급", target: [6.0, 1.7, 0.1], distance: 25 },
       { start: 3120, end: 3420, title: "9 · 원료차단·잔류물 배출", route: "Shredder 공급 정지 → 건식 폐회로 비움 → 습식 탱크·배관 잔류분 탈수", target: [8.0, 1.6, 0.1], distance: 25 },
       { start: 3420, end: 3601, title: "10 · 정상정지 완료", route: "상류부터 정지하고 집진·회수수·탈수 보조계통은 후행 정지", target: [5.8, 1.6, 0.1], distance: 25 }
@@ -20181,6 +20245,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         entry.recovery = { A: flotationRecovery(entry, "A"), B: flotationRecovery(entry, "B"), C: flotationRecovery(entry, "C") };
       }
       updateMetallurgy();
+      updateDryOutletAssay();
     }
     const flotationParticles = [];
     flotationCells.forEach((entry) => {
@@ -20270,6 +20335,36 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       metUi.siAg.textContent = (metallurgy.agToSi * 100).toFixed(1) + " %";
       metUi.closure.textContent = (metallurgy.closure * 100).toFixed(2) + " %";
     }
+    // ---- 건식 3 산물의 Cu 분배 ---------------------------------------------
+    // 산물마다 A/B/C 질량을 누적해 두었으므로 ASSAY 한 장이면 품위가 그대로 나온다.
+    // 분배(distribution)는 품위의 비가 아니라 **금속량**의 비다 — 질량 × 품위.
+    // 폐합은 자기 자신으로 나눈 항등식이 아니라 투입 Cu(신규급광 × 두수 품위)에
+    // 대한 배출 Cu 의 비로 잡는다 — 재고가 다 빠지면 100 % 로 닫힌다.
+    const FEED_ASSAY = blendAssay({
+      A: particleClasses.A.fraction, B: particleClasses.B.fraction, C: particleClasses.C.fraction
+    });
+    const gpt = (value) => Math.round(value).toLocaleString("en-US") + " g/t";
+    function updateDryOutletAssay() {
+      if (!metUi.cuClosure) return;
+      const rows = metUi.cuRows.map((row) => ({ row, a: blendAssay(state.outletClassMass[row.key]) }));
+      const totalMass = rows.reduce((sum, item) => sum + item.a.mass, 0);
+      const totalCu = rows.reduce((sum, item) => sum + item.a.mass * item.a.Cu, 0);
+      metUi.cuHead.textContent = FEED_ASSAY.Cu.toFixed(3) + " %";
+      metUi.cuHeadAg.textContent = gpt(FEED_ASSAY.agGpt);
+      rows.forEach(({ row, a }) => {
+        const has = a.mass > 1e-9;
+        row.mass.textContent = has ? (a.mass / totalMass * 100).toFixed(1) + " %" : "—";
+        row.grade.textContent = has ? a.Cu.toFixed(3) + " %" : "—";
+        row.ag.textContent = has ? gpt(a.agGpt) : "—";
+        row.minor.textContent = has ? (row.key === "reject" ? a.polymer : a.Si).toFixed(1) + " %" : "—";
+        row.dist.textContent = has && totalCu > 1e-12 ? (a.mass * a.Cu / totalCu * 100).toFixed(1) + " %" : "—";
+      });
+      const feedCu = state.freshIn * FEED_ASSAY.Cu;
+      metUi.cuMassClosure.textContent = state.freshIn > 0
+        ? totalMass.toFixed(1) + " / " + state.freshIn.toFixed(1) + " kg" : "—";
+      metUi.cuClosure.textContent = feedCu > 1e-12 ? (totalCu / feedCu * 100).toFixed(2) + " %" : "—";
+    }
+
     function seedFlotationParticle(item) {
       const u = visualRandom();
       const type = u < FLOTATION_FEED.B ? "B" : u < FLOTATION_FEED.B + FLOTATION_FEED.A ? "A" : "C";
@@ -20661,6 +20756,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       state.coarseTransferMass = 0;
       state.rejectTransferMass = 0;
       state.backsheetRejectOut = 0;
+      for (const outlet of Object.keys(state.outletClassMass)) {
+        for (const t of ASSAY_TYPES) state.outletClassMass[outlet][t] = 0;
+      }
       state.coarseClassified = 0;
       state.classifiedMass = 0;
       state.oversizeProductMass = 0;
@@ -21133,41 +21231,31 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
             damage: track.damage
           });
         } else {
-          if (track.streamKey === "product-75-106") {
-            const mass = track.mass;
-            const sizeMm = Math.max(0.075, Math.max(...track.cohorts.map((item) => item.sizeMm)));
-            state.product75To106Out += mass;
-            state.ssReworkOut += mass;
-            state.returnFeed += mass;
-            scene.remove(track.mesh);
-            disposeParticleMesh(track.mesh);
-            travelParticles.splice(i, 1);
-            spawnPhysicalParticle("return", mass, sizeMm, track.visualOnly, {
-              type: track.type,
-              pass: track.pass + 1,
-              shape: track.shape,
-              pbm: track.cohorts,
-              damage: track.damage
-            });
-            continue;
-          }
           if (track.streamKey === "reject-backsheet") {
             // BIN-102 로 나간다 — 플랜트를 떠나므로 폐합에는 잡히지만 제품 PSD 표본은
             // 아니다. 이 박편은 2 mm 위라 제품 입도분포에 섞이면 D95·Dmax 가 망가진다.
             state.productOut += track.mass;
             state.backsheetRejectOut += track.mass;
+            state.outletClassMass.reject[track.type] += track.mass;
             scene.remove(track.mesh);
             disposeParticleMesh(track.mesh);
             travelParticles.splice(i, 1);
             continue;
           }
           state.productOut += track.mass;
+          // 산물 행선지를 여기서 한 번에 정한다. 세 갈래가 BIN-Cu 한 빈으로 모이고,
+          // <75 µm 만 AS-101 습식으로 넘어간다 — 품위·회수율은 이 분배가 정한다.
           if (track.streamKey === "product-280-500") state.product280To500Out += track.mass;
           else if (track.streamKey === "product-106-280") state.product106To280Out += track.mass;
-          else {
+          else if (track.streamKey === "product-75-106") {
+            // SS-201 스캘빙 오버 — 종전에는 HSG 로 환류했지만 이제 구리 산물이다.
+            state.product75To106Out += track.mass;
+            state.ssReworkOut += track.mass;
+          } else {
             state.productUnder75Out += track.mass;
             state.ssFinalOut += track.mass;
           }
+          state.outletClassMass[COPPER_STREAM_KEYS.includes(track.streamKey) ? "copper" : "fines"][track.type] += track.mass;
           if (!track.visualOnly) {
             track.cohorts.forEach((cohort) => {
               const sample = { sizeMm: cohort.sizeMm, mass: cohort.mass, type: track.type, shape: track.shape, damage: track.damage };
@@ -22095,7 +22183,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         parts: ["P18", "P19"], wet: [], center: [3.18, 0.34, 0.20], distance: 2.5, yaw: 3.95, pitch: 0.17 },
       { title: "PC-201 세라믹 스풀 — 라이저 한 스풀", note: "DN100 은 1 m 가 곧 10 D · RV-201 뒤 엘보＋라이저 전체(15 D)를 한 스풀로 · 보어 103 (DN125 셸＋12 mm 알루미나) · 11.7 m/s 유지 · 픽업 티만 맨 강관",
         parts: ["P18"], wet: [], center: [2.36, 0.45, -0.10], distance: 3.2, yaw: 2.35, pitch: 0.18 },
-      { title: "CC-201 공기분급 · SS-201 75 µm", note: "0.70–1.00 m/s 중량물/경량물 분리 → CY-201·BF-201 회수 → SS-201에서 ≥75 재처리 / <75 최종",
+      { title: "CC-201 공기분급 · SS-201 75 µm", note: "0.70–1.00 m/s 중량물/경량물 분리 → CY-201·BF-201 회수 → SS-201에서 ≥75 구리제품 / <75 최종",
         parts: ["P20", "P21", "P22"], wet: [] },
       // 조 안의 박리 거동을 보여 주려고 AS-101 동체에 바짝 붙인다 — 습식 태그를 다
       // 잡는 기본 프레임에서는 입자가 화면에서 사라진다.
@@ -22455,10 +22543,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       readout.shape.textContent = "Feret50 " + d50.toFixed(3) + " mm · AR " + aspect.toFixed(2) + " · 편평도 " + flatness.toFixed(3) + " · 구형도 " + sphericity.toFixed(3);
       readout.material.textContent = "bare " + (bareForm * 100).toFixed(1) + "% · 탈락BS " + (detachedForm * 100).toFixed(1) + "% · 결합 " + (bondedForm * 100).toFixed(1) + "% · C박리 " + (interfaceDebond * 100).toFixed(1) + "% · Si/EVA/BS " + (siDamage * 100).toFixed(0) + "/" + (evaViscous * 100).toFixed(0) + "/" + (backsheetPlastic * 100).toFixed(0) + "%";
       readout.closure.textContent = "질량 Δ " + closureError.toFixed(3) + " kg · 에너지 잔차 " + energyResidual.toFixed(2) + "%";
-      readout.streams.textContent = "1단오버 BIN-102 " + state.backsheetRejectOut.toFixed(1) + " · 280–500 " + state.product280To500Out.toFixed(1) + " · 106–280 " + state.product106To280Out.toFixed(1) + " · SS ≥75 재처리 " + state.ssReworkOut.toFixed(1) + " · SS <75 최종 " + state.ssFinalOut.toFixed(1) + " kg";
+      readout.streams.textContent = "1단오버 BIN-102 " + state.backsheetRejectOut.toFixed(1) + " · 280–500 " + state.product280To500Out.toFixed(1) + " · 106–280 " + state.product106To280Out.toFixed(1) + " · SS ≥75 구리 " + state.ssReworkOut.toFixed(1) + " · SS <75 최종 " + state.ssFinalOut.toFixed(1) + " kg";
       readout.ssFinal.textContent = "D95 " + ssFinalD95.toFixed(3) + " · Dmax " + ssFinalDmax.toFixed(3) + " mm (<0.075)";
       if (state.mode !== "simulation" && state.mode !== "flow") return;
-      detail.textContent = "가중 PBM · 신규 " + state.freshIn.toFixed(1) + " kg (현재 " + state.currentFreshRateKgh.toFixed(0) + " kg/h) · HSG 추정부하 " + state.millLoadKgh.toFixed(0) + "/" + HSG_CAPACITY_KGH + " kg/h · 총 외부배출 " + state.productOut.toFixed(1) + " kg (백시트폐기 " + state.backsheetRejectOut.toFixed(1) + ") · SS 재처리/최종 " + state.ssReworkOut.toFixed(1) + "/" + state.ssFinalOut.toFixed(1) + " kg · 합산환류완료 " + state.returnFeed.toFixed(1) + " kg · q " + (liveCoarseFraction === null ? "—" : (liveCoarseFraction * 100).toFixed(1) + "%") + " · +0.5 mm " + (oversizeProductFraction === null ? "—" : (oversizeProductFraction * 100).toFixed(2) + "%") + " · 최근 4분기 잔차 " + state.sieveSplitResidualKg.toExponential(1) + " kg · Δm " + closureError.toFixed(3) + " kg · active " + activeParcels + (state.numericalResets ? " · 경계복귀 " + state.numericalResets : "");
+      detail.textContent = "가중 PBM · 신규 " + state.freshIn.toFixed(1) + " kg (현재 " + state.currentFreshRateKgh.toFixed(0) + " kg/h) · HSG 추정부하 " + state.millLoadKgh.toFixed(0) + "/" + HSG_CAPACITY_KGH + " kg/h · 총 외부배출 " + state.productOut.toFixed(1) + " kg (백시트폐기 " + state.backsheetRejectOut.toFixed(1) + ") · SS 구리/최종 " + state.ssReworkOut.toFixed(1) + "/" + state.ssFinalOut.toFixed(1) + " kg · 합산환류완료 " + state.returnFeed.toFixed(1) + " kg · q " + (liveCoarseFraction === null ? "—" : (liveCoarseFraction * 100).toFixed(1) + "%") + " · +0.5 mm " + (oversizeProductFraction === null ? "—" : (oversizeProductFraction * 100).toFixed(2) + "%") + " · 최근 4분기 잔차 " + state.sieveSplitResidualKg.toExponential(1) + " kg · Δm " + closureError.toFixed(3) + " kg · active " + activeParcels + (state.numericalResets ? " · 경계복귀 " + state.numericalResets : "");
     }
 
     function updateInspectionFlex(now) {
@@ -22618,11 +22706,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         diameterMm: 1100,
         feed: ["CY-201/RV-202 solids", "BF-201/RV-203 fines", "SV-201 pan fines"],
         splitBasis: "ideal-size-band-routing",
-        outlets: { oversize: ">=75 um sealed return to HSG-101", undersize: "<75 um final product" },
-        reworkMassKg: state.ssReworkOut,
+        outlets: { oversize: ">=75 um sealed transfer to BIN-Cu copper product", undersize: "<75 um to AS-101 attrition" },
+        copperOversizeMassKg: state.ssReworkOut,
         finalProductMassKg: state.ssFinalOut
       },
-      topology: ["PLC-001", "PLC-101/RIO-301", "ICSH-301 Rev.G", "SCR-001", "SCV-R1 recycle", "SCV-P1 to FD-101", "HSG-101", "CV-101/PC-101", "CY-101/RV-101", "SC-500", "CH-501/RV-201", "PC-201 receiver", "VS-501/SV-201", "RV-204/CC-201", "CY-201/RV-202", "BF-201/RV-203/IDF-201", "SS-201", "VR-201/HSG rework", "VR-401/BH-101/RV-401/SF-401/WC-401", "TK-001/AS-101/TK-101", "FC-201/FC-202/FC-203", "TK-204/CF-204", "TK-301/FP-301", "CL-401/PF-401/TK-402", "PLC-401/RIO-401/RIO-402"],
+      topology: ["PLC-001", "PLC-101/RIO-301", "ICSH-301 Rev.G", "SCR-001", "SCV-R1 recycle", "SCV-P1 to FD-101", "HSG-101", "CV-101/PC-101", "CY-101/RV-101", "SC-500", "CH-501/RV-201", "PC-201 receiver", "VS-501/SV-201", "RV-204/CC-201", "CY-201/RV-202", "BF-201/RV-203/IDF-201", "SS-201", "RV-402/RC-201/VR-201 to BIN-Cu", "VR-401/BH-101/RV-401/SF-401/WC-401", "TK-001/AS-101/TK-101", "FC-201/FC-202/FC-203", "TK-204/CF-204", "TK-301/FP-301", "CL-401/PF-401/TK-402", "PLC-401/RIO-401/RIO-402"],
       enclosedPiping: {
         exposedConveyors: 0,
         solidsLines: ["L00 Shredder screen split", "L00-R SCV-R1 recycle", "L00-P SCV-P1 to HSG", "L01 mill transfer", "L02 recycle", "L03 downstream lift", "L04 classifier feed", "L06 polishing feed and discharge"],
@@ -22655,6 +22743,17 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         rejectMassKg: state.backsheetRejectOut,
         onDeckMassKg: state.rejectTransferMass
       },
+      copperProduct: {
+        bin: "BIN-Cu",
+        streams: [...COPPER_STREAM_KEYS],
+        feedAssay: { CuPct: +FEED_ASSAY.Cu.toFixed(3), agGpt: Math.round(FEED_ASSAY.agGpt) },
+        outletClassMassKg: JSON.parse(JSON.stringify(state.outletClassMass)),
+        grades: Object.fromEntries(Object.entries(state.outletClassMass).map(([key, mass]) => {
+          const a = blendAssay(mass);
+          return [key, { massKg: +a.mass.toFixed(3), CuPct: +a.Cu.toFixed(3), agGpt: Math.round(a.agGpt), SiPct: +a.Si.toFixed(1), polymerPct: +a.polymer.toFixed(1) }];
+        })),
+        note: "band-to-band Cu upgrading is not modelled; Cu ribbon is not a separate particle class"
+      },
       productBandMassKg: {
         rejectBacksheet: state.backsheetRejectOut,
         product280To500: state.product280To500Out,
@@ -22663,7 +22762,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         productUnder75: state.productUnder75Out
       },
       ss201OutletMassKg: {
-        rework75AndAbove: state.ssReworkOut,
+        copper75AndAbove: state.ssReworkOut,
         finalUnder75: state.ssFinalOut,
         splitResidual: state.ssReworkOut + state.ssFinalOut - state.product75To106Out - state.productUnder75Out
       },
