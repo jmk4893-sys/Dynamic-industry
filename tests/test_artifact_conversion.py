@@ -43,6 +43,11 @@ def _convert(src):
 
 class TestConversionKeepsThePageAlive(unittest.TestCase):
 
+    def setUp(self):
+        # 변환 도구는 사양서 브랜치에만 있다. 없으면 검사할 대상 자체가 없다.
+        if not MAKE.exists():
+            self.skipTest("이 브랜치에는 아티팩트 변환 도구가 없다")
+
     def test_every_id_the_script_grabs_survives(self):
         for src in SOURCES:
             if not src.exists():
