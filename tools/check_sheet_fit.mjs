@@ -35,7 +35,7 @@ const file = process.argv[2] || 'docs/drawings/pv-preprocess-plant.html';
 const SHEET_W = 1400;
 
 /** 도면 묶음 탭 — id 는 pv-tab-<key>. */
-const TABS = ['fab', 'explode', 'layout', 'register', 'electrical', 'smart', 'mount', 'safety'];
+const TABS = ['fab', 'explode', 'layout', 'register', 'electrical', 'smart', 'mount', 'safety', 'ops'];
 
 const browser = await chromium.launch({
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],

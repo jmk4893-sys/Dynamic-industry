@@ -17,9 +17,9 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import (access, acoustics, ai, air, campaign, crane, dust, electrical, frames, handoff,
-                           kinematics, layout, materials, mounting, safety, seismic, smart, servos, thermal,
-                           vision, wiring)
+from pv_preprocess import (acceptance, access, acoustics, ai, air, campaign, crane, dust, electrical, frames,
+                           handoff, kinematics, layout, materials, mounting, reliability, safety, seismic,
+                           smart, servos, thermal, vision, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
 
@@ -3841,3 +3841,219 @@ class TestSeismic(unittest.TestCase):
             with self.subTest(tag=tag):
                 self.assertIn(f"['{tag}'", self.html)
                 self.assertIn("'앱 반영'", self.html)
+
+
+class TestReliability(unittest.TestCase):
+    """가동률 — §25·§26 의 연간 숫자가 무엇 위에 서 있었는가.
+
+    MTBF 를 지어내지 않는다는 점에서 §43 의 Kst 와 같은 태도다. 대신 물음을
+    뒤집어 **가용률을 정하고 요구 MTBF 를 낸다** — 실적을 못 재는 자리에서
+    설계가 할 수 있는 일은 그것을 요구로 바꾸는 것이다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_the_annual_figures_assumed_perfect_uptime(self):
+        """§25 의 308,138 장은 가용률 1.0 위에 서 있었다."""
+        self.assertEqual(reliability.nominal_annual_panels(), ai.annual_panels())
+        self.assertEqual(reliability.nominal_annual_panels(),
+                         round(smart.panels_per_h() * smart.OPERATING_HOURS_PER_YEAR))
+        # 가용률을 얹으면 줄어들고, 그 차이가 라벨·저장·매출로 간다
+        self.assertLess(reliability.annual_panels(), reliability.nominal_annual_panels())
+        self.assertEqual(reliability.annual_shortfall(),
+                         reliability.nominal_annual_panels() - reliability.annual_panels())
+        self.assertGreater(reliability.annual_shortfall(), 0)
+
+    def test_the_downtime_budget_comes_from_the_target(self):
+        """목표 가용률 한 줄이 아래 전부를 정한다.
+
+        지금 값이 330 인지만 보면 `return 330.0` 으로 바꿔도 통과한다. 목표를
+        갈아 끼워 예산이 따라 움직이는지를 봐야 관계가 확인된다.
+        """
+        self.assertAlmostEqual(
+            reliability.downtime_budget_h(),
+            round(smart.OPERATING_HOURS_PER_YEAR * (1 - reliability.TARGET_AVAILABILITY), 1),
+            places=1)
+        # 목표를 낮추면 예산이 늘고, 계통 예산과 요구 MTBF 가 따라 움직인다
+        loose = reliability.downtime_budget_h(0.85)
+        self.assertGreater(loose, reliability.downtime_budget_h())
+        self.assertAlmostEqual(loose,
+                               round(smart.OPERATING_HOURS_PER_YEAR * 0.15, 1), places=1)
+        for block in reliability.BLOCKS:
+            with self.subTest(block=block.tag):
+                self.assertGreater(block.downtime_h(0.85), block.downtime_h())
+                self.assertLess(block.required_mtbf_h(0.85), block.required_mtbf_h())
+        self.assertTrue(reliability.blocks_share_sums_to_one())
+        self.assertAlmostEqual(sum(b.downtime_h() for b in reliability.BLOCKS),
+                               reliability.downtime_budget_h(), places=1)
+
+    def test_required_mtbf_is_the_inversion(self):
+        """MTBF 를 모르니 구할 수 없다 → 그렇다면 요구로 적는다."""
+        for block in reliability.BLOCKS:
+            with self.subTest(block=block.tag):
+                self.assertAlmostEqual(block.failures_per_year(),
+                                       round(block.downtime_h() / block.mttr_h, 2), places=2)
+                self.assertEqual(
+                    block.required_mtbf_h(),
+                    int(smart.OPERATING_HOURS_PER_YEAR / block.failures_per_year()))
+                # 요구 MTBF 는 운전시간보다 짧을 수 없을 만큼 느슨하면 안 된다
+                self.assertGreater(block.required_mtbf_h(), 0)
+        # 정지시간을 가장 많이 쓰는 곳과 요구가 가장 빡빡한 곳은 다르다
+        self.assertNotEqual(reliability.governing_block().tag,
+                            reliability.tightest_mtbf_block().tag)
+        self.assertEqual(reliability.governing_block().tag, "RB-JBR")
+
+    def test_the_buffer_makes_a_hole_in_the_series_chain(self):
+        """버퍼가 없었다면 같은 고장률에서 가용률이 더 낮다."""
+        self.assertEqual(reliability.buffer_ride_through_h(),
+                         handoff.buffer_ride_through_h())
+        self.assertGreater(reliability.buffered_downtime_h(), 0)
+        self.assertLess(reliability.availability_without_buffer(),
+                        reliability.TARGET_AVAILABILITY)
+        # 흡수는 완충시간을 넘지 못한다 — MTTR 이 길면 부분만 벌어 준다
+        for block in reliability.buffered_blocks():
+            with self.subTest(block=block.tag):
+                self.assertLessEqual(min(block.mttr_h, reliability.buffer_ride_through_h()),
+                                     reliability.buffer_ride_through_h())
+
+    def test_unknown_lives_are_not_covered_with_zero(self):
+        """수명을 모르는 것을 0 으로 덮으면 그 0 이 곧 근거가 된다."""
+        pending = reliability.spares_pending()
+        self.assertGreater(len(pending), 0)
+        for spare in pending:
+            with self.subTest(spare=spare.tag):
+                self.assertIsNone(spare.per_year)
+                self.assertIsNone(spare.stock())
+        # 소요를 아는 것은 재고가 나온다
+        for spare in reliability.spares_with_rate():
+            with self.subTest(spare=spare.tag):
+                self.assertGreaterEqual(spare.stock(), 1)
+        self.assertEqual(len(reliability.initial_stock()),
+                         len(reliability.spares_with_rate()))
+
+    def test_spare_rates_come_from_usage(self):
+        """소요는 손으로 적는 것이 아니라 사용량에서 나온다."""
+        bags = next(s for s in reliability.SPARES() if s.tag == "SP-04")
+        self.assertEqual(bags.qty_installed, reliability.filter_bags())
+        self.assertEqual(reliability.filter_bags(), 19)
+        self.assertEqual(reliability.filter_bags(),
+                         max(1, round(air.filter_area_m2() / reliability.BAG_AREA_M2)))
+        self.assertAlmostEqual(bags.per_year, 9.5, places=1)
+        self.assertAlmostEqual(bags.per_year,
+                               round(reliability.filter_bags() / reliability.BAG_LIFE_YEARS, 1),
+                               places=1)
+        # 수명은 관례값(3~5년)보다 짧아야 한다 — 유리분이 연마성이라는 것이 근거다
+        self.assertLess(reliability.BAG_LIFE_YEARS, 3.0)
+        self.assertIn("연마성", bags.basis)
+        valves = next(s for s in reliability.SPARES() if s.tag == "SP-05")
+        self.assertEqual(valves.qty_installed, air.pulse_valves())
+
+    def test_the_drawing_carries_the_reliability_numbers(self):
+        for key, value in reliability.summary().items():
+            token = f'"{key}": ' + (f'"{value}"' if isinstance(value, str) else f"{value}")
+            with self.subTest(token=token):
+                self.assertIn(token, self.html)
+        self.assertIn("['PV-PLANT-RA-1019'", self.html)
+        self.assertIn('id="pv-tab-ops"', self.html)
+
+
+class TestAcceptance(unittest.TestCase):
+    """FAT·SAT — 검수 기준이 모델에서 나온다.
+
+    검수서를 따로 쓰면 도면과 어긋난다. 여기서 못 박는 것은 값이 아니라
+    **기대값이 리터럴이 아니라 호출**이라는 사실이다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_every_item_names_the_model_value_it_checks(self):
+        """근거 없는 검수 항목은 현장에서 협상 대상이 된다.
+
+        `return True` 로 바꿔도 통과하면 검사가 아니다 — 근거가 빠진 항목을
+        넣어 보고 False 가 나오는지까지 본다.
+        """
+        self.assertTrue(acceptance.every_item_has_a_source())
+        broken = acceptance.items()[0]
+        self.assertFalse(acceptance.every_item_has_a_source(
+            (dataclasses.replace(broken, source=""),)))
+        self.assertFalse(acceptance.every_item_has_a_source(
+            (dataclasses.replace(broken, source="근거없음"),)))
+        for item in acceptance.items():
+            with self.subTest(item=item.tag):
+                self.assertIn(item.stage, acceptance.STAGES)
+                self.assertTrue(item.method)
+                self.assertTrue(item.tolerance)
+                # 기대값은 호출이라 지금 계산된다
+                self.assertIsNotNone(item.value())
+
+    def test_the_expected_values_track_the_model(self):
+        """모델이 바뀌면 검수 기준이 따라 바뀐다 — 어긋날 수가 없다."""
+        pairs = {
+            "F-01": safety.stop_chain_ms(),
+            "F-04": safety.sto_nodes(),
+            "F-05": air.compressor_fad_nl_min(),
+            "F-07": electrical.demand_kw(),
+            "F-08": mounting.total_anchors(),
+            "F-09": crane.hook_height_mm(),
+            "S-01": campaign.summary()["takt_s"],
+            "S-04": handoff.buffer_ride_through_h(),
+            "S-05": thermal.required_airflow_m3h(),
+            "S-07": dust.counted_flow_m3h(),
+            "S-10": len(seismic.unanchored()),
+            "R-02": reliability.TARGET_AVAILABILITY,
+            "R-03": reliability.annual_panels(),
+        }
+        found = {i.tag: i for i in acceptance.items()}
+        for tag, expected in pairs.items():
+            with self.subTest(tag=tag):
+                self.assertEqual(found[tag].value(), expected)
+        # 값이 같은지만 보면 `lambda: 287` 로 박아도 통과한다 — 적힌 꼴을 본다
+        source = (pathlib.Path(__file__).resolve().parents[1]
+                  / "src" / "pv_preprocess" / "acceptance.py").read_text(encoding="utf-8")
+        literal = re.findall(r"lambda: (?:\d|['\"])", source)
+        self.assertEqual(literal, [],
+                         "기대값은 리터럴이 아니라 모델 호출이어야 한다")
+        self.assertEqual(len(re.findall(r"lambda: ", source)), len(acceptance.items()))
+
+    def test_the_stages_split_by_what_a_factory_can_show(self):
+        """공장에서 되는 것과 라인이 서야 되는 것은 다르다."""
+        self.assertEqual(len(acceptance.by_stage(acceptance.FAT)), 10)
+        self.assertEqual(len(acceptance.by_stage(acceptance.SAT)), 10)
+        self.assertEqual(len(acceptance.by_stage(acceptance.RAR)), 5)
+        self.assertEqual(sum(len(acceptance.by_stage(s)) for s in acceptance.STAGES),
+                         len(acceptance.items()))
+        with self.assertRaises(ValueError):
+            acceptance.by_stage("없는단계")
+
+    def test_three_items_are_still_open_at_handover(self):
+        """인수 후 확정이 아니라 인수 조건에 명시로 다뤄야 한다."""
+        open_tags = {i.tag for i in acceptance.open_at_handover()}
+        self.assertEqual(open_tags, {"S-08", "S-10", "R-04"})
+        # S-10 은 지금 0 이 아니다 — 그것이 열려 있다는 뜻이다
+        s10 = next(i for i in acceptance.items() if i.tag == "S-10")
+        self.assertGreater(s10.value(), 0)
+        self.assertEqual(s10.value(), len(seismic.unanchored()))
+
+    def test_blocking_items_cover_the_contract_numbers(self):
+        """인수를 막는 항목이 계약 숫자를 덮어야 한다."""
+        blocking = {i.tag for i in acceptance.blocking()}
+        for tag in ("F-01", "F-07", "S-01", "S-02", "R-02"):
+            with self.subTest(tag=tag):
+                self.assertIn(tag, blocking)
+        # 누설률과 연간 환산은 차단이 아니다 — 고쳐서 넘길 수 있는 것들이다
+        self.assertNotIn("F-06", blocking)
+        self.assertNotIn("R-03", blocking)
+
+    def test_the_drawing_carries_the_acceptance_numbers(self):
+        for key, value in acceptance.summary().items():
+            token = f'"{key}": ' + (f'"{value}"' if isinstance(value, str) else f"{value}")
+            with self.subTest(token=token):
+                self.assertIn(token, self.html)
+        self.assertIn("['PV-PLANT-QA-1020'", self.html)
+        for item in acceptance.items():
+            with self.subTest(item=item.tag):
+                self.assertIn(f'"{item.tag}"', self.html)

@@ -1340,6 +1340,7 @@ html>body{padding:0}</style>
       <button class="nav-link" id="pv-tab-smart" role="tab" aria-controls="pv-panel-smart" aria-selected="false" type="button">스마트·AI</button>
       <button class="nav-link" id="pv-tab-mount" role="tab" aria-controls="pv-panel-mount" aria-selected="false" type="button">지지·장착</button>
       <button class="nav-link" id="pv-tab-safety" role="tab" aria-controls="pv-panel-safety" aria-selected="false" type="button">안전</button>
+      <button class="nav-link" id="pv-tab-ops" role="tab" aria-controls="pv-panel-ops" aria-selected="false" type="button">가동·검수</button>
     </div>
 
     <div class="viz-controls pv-drawing-controls" aria-label="도면 선택">
@@ -1516,6 +1517,29 @@ html>body{padding:0}</style>
           <thead><tr><th>위험원</th><th>셀</th><th>내용</th><th>S</th><th>F</th><th>P</th><th>PLr</th><th>맡는 안전기능</th></tr></thead>
           <tbody id="pv-safety-table"></tbody>
           <tfoot id="pv-safety-total"></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div id="pv-panel-ops" role="tabpanel" aria-labelledby="pv-tab-ops" hidden>
+      <div class="viz-controls" aria-label="운영 도면 선택">
+        <label class="form-label" for="pv-op-view">운영 도면
+          <select class="form-select" id="pv-op-view">
+            <option value="uptime" selected>가동률·정지시간 예산 · RA-1019</option>
+            <option value="spares">예비품·마모 소요 · RA-1019</option>
+            <option value="accept">FAT·SAT·run-at-rate · QA-1020</option>
+          </select>
+        </label>
+      </div>
+      <div class="card pv-sheet-surface">
+        <svg id="pv-ops-svg" class="pv-sheet" viewBox="0 0 1400 820" role="img" aria-label="가동률 목표와 계통별 정지시간 예산"></svg>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <caption class="text-small text-muted">검수 항목 — 기대값은 리터럴이 아니라 <strong>모델 호출</strong>이다. 도면이 바뀌면 검수 기준이 따라 바뀌므로 어긋날 수가 없다. <code>src/pv_preprocess/acceptance.py</code> 파생.</caption>
+          <thead><tr><th>항목</th><th>단계</th><th>대상</th><th>방법</th><th>출처</th><th>기대값</th><th>허용</th><th>인수차단</th></tr></thead>
+          <tbody id="pv-ops-table"></tbody>
+          <tfoot id="pv-ops-total"></tfoot>
         </table>
       </div>
     </div>
@@ -2495,10 +2519,14 @@ html>body{padding:0}</style>
   var smartTotal = el('#pv-smart-total');
   var smViewSel = el('#pv-sm-view');
   var sfViewSel = el('#pv-sf-view');
+  var opViewSel = el('#pv-op-view');
   var mountSvg = el('#pv-mount-svg');
   var safetySvg = el('#pv-safety-svg');
   var safetyTable = el('#pv-safety-table');
   var safetyTotal = el('#pv-safety-total');
+  var opsSvg = el('#pv-ops-svg');
+  var opsTable = el('#pv-ops-table');
+  var opsTotal = el('#pv-ops-total');
   var mountTable = el('#pv-mount-table');
   var mountTotal = el('#pv-mount-total');
   var mtStationSel = el('#pv-mt-station');
@@ -2906,6 +2934,8 @@ html>body{padding:0}</style>
     ['PV-PLANT-DX-1016', '분진폭발 평가 · DX-601', '2D Safety', '앱 반영', 'Kst·Pmax·MIE — 혼합 분진 시험 후 벤트 설계'],
     ['PV-PLANT-AC-1017', '고소 정비 접근 · 추락방지 고정점', '2D Safety', '앱 반영', '이동식 작업대 기종 · 건물 측 고정점 협의'],
     ['PV-PLANT-SE-1018', '내진 — 설비별 전도·앵커 배정', '2D Safety', '앱 반영', 'S_DS — 부지 지반조사 · 미배정 3대 앵커군'],
+    ['PV-PLANT-RA-1019', '가동률·정지시간 예산·예비품', '2D Ops', '앱 반영', '목표 가용률 합의 · 마모 수명 5종 실측'],
+    ['PV-PLANT-QA-1020', 'FAT·SAT·run-at-rate 검수', '2D Ops', '앱 반영', '입회 일정 · 계측기 교정성적서'],
     ['PV-AFU-101-GA-2101', '듀얼 적재·비전셀', '2D/3D GA', '앱 반영', '팔레트·지게차 실기종'],
     ['PV-BFC-101-ASM-2201', '승강·180° 반전카세트', '2D/3D ASM', '앱 반영', '축·베어링·브레이크'],
     ['PV-RBPT-101-GA-2301', '로봇·EOAT·정렬정반', '2D/3D GA', '앱 반영', 'OEM 하중도·TCP'],
@@ -2999,7 +3029,7 @@ html>body{padding:0}</style>
     return [left, top, width, height].map(Math.round).join(' ');
   }
 
-  var DRAWING_REVISION = 'REV.36';
+  var DRAWING_REVISION = 'REV.37';
   // 뷰별 축 선택. PART_AXIS 는 part.at/part.size 의 [X, 상하, 깊이] 기준,
   // ENVELOPE_AXIS 는 station.envelope 의 [L, W, H] 기준 — 두 배열의 축 순서가 다르다.
   var PART_AXIS = { plan: [0, 2], front: [0, 1], side: [2, 1] };
@@ -3012,7 +3042,7 @@ html>body{padding:0}</style>
     'z-': { axis: 2, keep: 1, label: 'Y 뒤쪽 제거' },
     'y+': { axis: 1, keep: -1, label: 'Z 위쪽 제거' }
   };
-  var state = { tab: 'fab', station: 'afu', explode: 65, labels: true, focus: 'all', clearance: true, yaw: -0.62, pitch: 0.48, zoom: 1, cutAxis: 'none', cutAt: 50, elView: 'single', elFeeder: 'F1', smView: 'network', mtStation: 'grm', sfView: 'risk' };
+  var state = { tab: 'fab', station: 'afu', explode: 65, labels: true, focus: 'all', clearance: true, yaw: -0.62, pitch: 0.48, zoom: 1, cutAxis: 'none', cutAt: 50, elView: 'single', elFeeder: 'F1', smView: 'network', mtStation: 'grm', sfView: 'risk', opView: 'uptime' };
   var colorCache = {};
   var canvas = document.createElement('canvas');
   canvas.setAttribute('role', 'img');
@@ -3742,6 +3772,14 @@ html>body{padding:0}</style>
     ['VS-101A/B-FUSED 고정면 스캔선', '레이저 투영선이라 물체가 아니다']
   ];
   var KINEMATICS = {panelMm: [2500, 1400], flipAxisMm: 3430, transferMm: 2290, ringBoreMm: 1620, ringBottomMm: 2440, underRingMm: 112, overCarriageMm: 116, boreClearMm: 109, cageAxialMm: 40, jawStrokeMm: 187.5, jawOpenClearMm: 70, afrClampKn: 12.0, afrPortalZMm: 1450, afrPortalAnchors: 16};
+  var RELIABILITY = {"targetAvailability": 0.92, "operatingHours": 4125.0, "downtimeBudgetH": 330.0, "blocks": 9, "redundant": 2, "buffered": 2, "governing": "RB-JBR", "governingDowntimeH": 66.0, "governingFailures": 26.4, "tightestMtbf": "RB-GBR", "tightestMtbfH": 416, "rideThroughH": 0.76, "bufferedDowntimeH": 25.08, "availabilityWithoutBuffer": 0.9139, "nominalPanels": 308138, "annualPanels": 283487, "shortfall": 24651, "spares": 10, "sparesPending": 5, "filterBags": 19};
+  // [tag, 이름, 배분율, MTTR, 중복, 버퍼, 정지h, 고장/년, 요구MTBF, 근거]
+  var RELIABILITY_BLOCKS = [["RB-AFU", "AFU-101 투입·듀얼 리프트·비전", 0.1, 2.0, false, false, 33.0, 16.5, 250, "지게차 인터페이스라 외란이 많다. 리프트 유압과 도킹 게이트가 마모부"], ["RB-BFC", "BFC-101A/B 반전·셔틀·승강", 0.12, 3.0, true, false, 39.6, 13.2, 312, "Bay 2식이라 한쪽이 서도 절반 속도로 돈다 — 완전정지는 공통부(포탈·유압)뿐"], ["RB-ROBOT", "RB-101 로봇·EOAT", 0.08, 2.0, false, false, 26.4, 13.2, 312, "OEM 로봇 본체는 견고하다. 마모는 EOAT 진공 패드와 그리퍼 쪽"], ["RB-JBR", "JBR-201 3헤드 제거", 0.2, 2.5, false, false, 66.0, 26.4, 156, "**마모부가 가장 많다** — 칼날·가위·에어나이프·프로브. 헤드 3개가 직렬"], ["RB-AFR", "AFR-101 프레임 분리·클램프", 0.15, 3.0, false, false, 49.5, 16.5, 250, "25 kN 인발은 부하가 크다. 유압·LM 캐리지·힘센서가 정지 원인"], ["RB-POST", "CV-102·SG-301·GI-301/302 유리 후단", 0.12, 2.0, false, true, 39.6, 19.8, 208, "연마휠 교체가 잦지만 **버퍼가 흡수한다** — 0.76 h 안이면 전단이 안 선다"], ["RB-GBR", "GBR-301 버퍼·적재", 0.06, 2.0, false, false, 19.8, 9.9, 416, "셔틀·슬롯 로더. 여기가 서면 버퍼 자체가 못 도므로 흡수가 안 된다"], ["RB-GRM", "GRM-401 IR·탠덤 박리", 0.12, 3.0, false, true, 39.6, 13.2, 312, "IR 램프 60개와 핫나이프. 램프 1개 고장은 감속 운전이라 완전정지가 아니다"], ["RB-UTIL", "유틸리티 — 공압·진공·집진·유압", 0.05, 1.5, true, false, 16.5, 11.0, 375, "컴프레서 1운전 1예비·진공 2기라 단일고장이 라인을 안 세운다. 다만 집진이 서면 SG-301 이 못 돈다"]];
+  // [tag, 이름, 계통, 설치수, 연소요, 조달주, 재고, 근거]
+  var SPARES = [["SP-01", "SKD11 교체형 칼날 카세트 (JBR)", "RB-JBR", 3, null, 6, null, "패널당 절단 길이는 알지만 **칼날 수명(장수)이 없다** — 시운전 run-at-rate 에서 마모량을 재야 나온다"], ["SP-02", "핫나이프 (TDM-201 탠덤)", "RB-GRM", 2, null, 8, null, "60 mm/s 로 EVA 를 가른다. 수명은 GRM 벤더값"], ["SP-03", "연마휠 (SG-301)", "RB-POST", 2, null, 4, null, "유리 엣지 연마. 마모 보상이 컴플라이언스 제어에 있으므로 보상량 한계가 곧 교체 시점이다 — 그 한계도 벤더값"], ["SP-04", "집진 필터백", "RB-UTIL", 19, 9.5, 6, 2, "여과 18.8 m² ÷ 백 1 m² = 19장, 수명 2 년. 유리분이 연마성이라 짧게 잡는다"], ["SP-05", "펄스 다이어프램 밸브", "RB-UTIL", 7, 0.17, 8, 1, "밸브당 연 24,750 회 작동. 다이어프램 수명 100만 회 기준"], ["SP-06", "EOAT 진공 패드", "RB-ROBOT", 8, 11.3, 4, 2, "패널마다 물었다 놓는다. 패드 수명 20만 사이클 기준 — 계획값"], ["SP-07", "안전 뮤팅 센서", "RB-JBR", 8, null, 10, null, "연 612,700 회 작동. B10d 가 있어야 T10d 가 나온다 — 200만 밑이면 사명시간 20 년 안에 정기교체 대상"], ["SP-08", "유압유·리턴 필터 (HPU-101·601)", "RB-AFR", 2, 2.0, 4, 1, "연 1회 교환 × 2기. 오일쿨러가 붙어 있어 열화가 느리지만 인발 부하가 커서 관례보다 짧게 잡는다"], ["SP-09", "컴프레서 흡입필터·오일세퍼레이터", "RB-UTIL", 2, 2.0, 4, 1, "1운전 1예비지만 교대 운전이므로 두 대 다 소모된다"], ["SP-10", "IR 램프 (GRM-401)", "RB-GRM", 60, null, 12, null, "60개 뱅크. 램프 1개 고장은 감속 운전이라 완전정지가 아니지만, 누적되면 처리량이 내려간다. 수명은 벤더값"]];
+  var ACCEPTANCE = {"items": 25, "fat": 10, "sat": 10, "runAtRate": 5, "blocking": 22, "sources": 25, "openAtHandover": 3, "stopTimeMs": 287, "stopBudgetMs": 445, "taktS": 48.47, "throughputPerH": 72.2, "demandKw": 217.1, "airflowM3h": 35000, "annualPanels": 283487};
+  // [tag, 단계, 대상, 방법, 출처, 기대값, 허용, 인수차단]
+  var ACCEPTANCE_ITEMS = [["F-01", "FAT", "안전 정지시간", "JB-SF-008 시험포트 · 분해능 ≤1 ms", "safety.stop_chain_ms", "287", "≤ 445 ms (최소 예산)", true], ["F-02", "FAT", "안전기능 동작", "기능별 강제 고장 주입 · 이중채널 단선", "safety.SAFETY_FUNCTIONS", "11", "전 기능 안전측 정지 · 재기동 금지 확인", true], ["F-03", "FAT", "안전 I/O 점수", "단자대 대조 · FSoE 노드 스캔", "safety.summary['inputs']", "45", "입력 45 · 출력 12 · FSoE 40 노드 인식", true], ["F-04", "FAT", "서보 축 동작·STO", "축별 위치결정 반복정밀도 · STO 차단 확인", "safety.sto_nodes", "36", "36축 전부 · 반복정밀도는 축별 사양", true], ["F-05", "FAT", "압축공기 공급", "무부하 FAD 실측 · 리시버 강하시험", "air.compressor_fad_nl_min", "800", "≥ 542.5 NL/min · 기동 ≤ 30 회/h", true], ["F-06", "FAT", "압축공기 누설률", "야간 무부하 압력강하 · FL-901", "air.LEAKAGE_MARGIN", "0.2", "≤ 20 % — 넘으면 컴프레서 선정이 틀린 것이 아니라 배관이 샌다", false], ["F-07", "FAT", "전력 수요", "분전반별 실측 · 동시 최악 조건", "electrical.demand_kw", "217.1", "≤ 292.3 kW (동시 최악)", true], ["F-08", "FAT", "앵커 시공", "토크 검사 · 인발시험 표본", "mounting.total_anchors", "190", "190본 전수 토크 · 5 % 인발시험", true], ["F-09", "FAT", "크레인 인양", "정격하중 시험 · 후크 최고높이 실측", "crane.hook_height_mm", "9700", "후크 9,700 mm · 정격 5 t", true], ["F-10", "FAT", "반입 개구 통과", "최대 모듈 실물 통과", "crane.entry_opening_mm", "(6000, 5000)", "폭 여유 3,100 mm · 저상 대차 높이 확인", true], ["S-01", "SAT", "택트", "연속 60장 캠페인 · 공정시계", "campaign.summary['takt_s']", "48.47", "≤ 48.5 s", true], ["S-02", "SAT", "처리량", "60장 캠페인 실측", "campaign.summary['throughput_per_h']", "72.2", "≥ 72.2 장/h", true], ["S-03", "SAT", "유리제거 완료시간", "정상 53장 기준", "handoff.summary['downstream_per_h']", "68.4", "≥ 68.4 장/h — 후단이 전단을 못 받으면 버퍼가 찬다", true], ["S-04", "SAT", "버퍼 완충", "후단 강제정지 · 전단 지속시간 측정", "handoff.buffer_ride_through_h", "0.76", "≥ 0.76 h — §44 가용률이 이 값 위에 선다", true], ["S-05", "SAT", "환기·열수지", "정상운전 3 h · 실내온도 상승", "thermal.required_airflow_m3h", "35000", "35,000 m³/h 에서 ΔT 5 K 이내 · 후드 포집률이 전제", true], ["S-06", "SAT", "소음", "근접·통로 실측 (A특성)", "acoustics.worst_aisle_dba", "59.9", "통로 ≤ 70 dBA · 근접은 ≤ 85 dBA (보호구 기준)", true], ["S-07", "SAT", "집진 성능", "풍량·차압·포집률", "dust.counted_flow_m3h", "1350", "1,350 m³/h — 풍량 미확정 1 건이 더해지면 이 값이 바뀐다", true], ["S-08", "SAT", "분진 시료 채취", "혼합 분진 채취 → EN 14034 시험 의뢰", "dust.REQUIRED_TESTS", "5", "시험 결과가 벤트 설계를 정한다 — SAT 에서 시료만 뜬다", true], ["S-09", "SAT", "고소 접근", "이동식 작업대 진입 · 고정점 하중시험", "access.ANCHOR_POINT_KN", "15.0", "고정점 15 kN · 통로 유효 900 mm 유지 확인", true], ["S-10", "SAT", "내진 앵커 배정", "미배정 3대 앵커군 시공 확인", "seismic.unanchored", "3", "0 이어야 한다 — 지금 3", true], ["R-01", "run-at-rate", "반입물 구성비", "발주처 실제 반입 200장 분류", "campaign.condition_counts", "{'정상': 53, '유리 깨짐': 5, '전손': 2}", "정상 53 : 깨짐 5 : 전손 2 (60장 기준) — 다르면 §26·§44 가 바뀐다", true], ["R-02", "run-at-rate", "정격 유지", "8 h 연속 · 가용률 실측", "reliability.TARGET_AVAILABILITY", "0.92", "≥ 0.92 — 계약값이지 물리값이 아니다", true], ["R-03", "run-at-rate", "연간 환산", "실측 가용률 × 운전시간", "reliability.annual_panels", "283487", "283,487 장/년 — §26 의 라벨 공급이 여기 비례한다", false], ["R-04", "run-at-rate", "마모율 실측", "칼날·연마휠·핫나이프 마모량", "reliability.spares_pending", "5", "수명 미확정 5종을 여기서 채운다 — 예비품 발주의 근거", true], ["R-05", "run-at-rate", "누설·무부하 소비", "무부하 시간대 공압 소비", "air.average_nl_min", "393.1", "AI-03 이 이 데이터로 누설을 산출한다", false]];
   var DUST = {"streams": 3, "countedFlowM3h": 1350, "unquantified": 1, "combustibleFraction": 0.259, "framePulledNotCut": true, "ignitionSources": 3, "isolationRequired": true, "tests": 5, "filterAreaM2": 18.8, "pulseValves": 7};
   // [tag, 발생원, 풍량, 물질, 가연, 근거] — src/pv_preprocess/dust.py 파생
   var DUST_STREAMS = [["DS-01", "SG-301 엣지 연마 (스핀들 3,000 rpm)", 1000, "소다석회 유리분 + 연마휠 마모분", false, "SiO₂ 기반이라 그 자체로는 불연이다. 다만 **불활성분이 있다는 것과 혼합물이 불활성화된다는 것은 다른 말이다**"], ["DS-02", "JBR-201 국소집진", 350, "백시트(PVF/PET)·EVA·케이블 피복 절삭분 · 접착제", true, "폴리머 절삭분은 가연성이다. 이 흐름이 혼합물의 가연분을 만든다"], ["DS-03", "CV-301 슈레더 투입부 집진", null, "EVA·백시트 파쇄분", true, "**도면에 이름은 있는데 풍량이 없다.** 파쇄분은 절삭분보다 곱고 가연성이라 폭발 평가에서 가장 무거운 흐름인데, DX-601 집계(1,350 m³/h)에도 안 들어가 있다"]];
@@ -5163,6 +5201,211 @@ html>body{padding:0}</style>
   }
 
 
+
+  // ── 가동·검수 (RA-1019 · QA-1020) ──────────────────────────────────────
+  // §25 의 연 308,138 장은 가용률 1.0 위에 서 있었다. MTBF 를 지어낼 수 없으니
+  // 물음을 뒤집는다 — 가용률을 정하고 정지시간을 나눠 요구 MTBF 를 낸다.
+  var OP_VIEWS = {
+    uptime: '가동률 목표와 계통별 정지시간 예산 · 요구 MTBF',
+    spares: '마모품 소요와 권장 재고 · 수명 미확정 항목',
+    accept: 'FAT·SAT·run-at-rate 검수 항목과 그 출처'
+  };
+  var STAGE_TONE = { FAT: 'pv-fab-secondary', SAT: 'pv-fab-accent', 'run-at-rate': 'pv-fab-object' };
+
+  function renderOpsUptime(out) {
+    smartFrame(out, 'PV-PLANT-RA-1019', '가동률 · 정지시간 예산 · 요구 MTBF',
+      '목표 가용률 ' + RELIABILITY.targetAvailability + ' (계약값) · 운전 '
+        + n(RELIABILITY.operatingHours) + ' h/년 · 정지 예산 '
+        + RELIABILITY.downtimeBudgetH + ' h · 계통 ' + RELIABILITY.blocks
+        + ' (중복 ' + RELIABILITY.redundant + ' · 버퍼 ' + RELIABILITY.buffered + ')');
+    var y = 104;
+    out.push(text(40, y, '계통', 'pv-fab-text'));
+    out.push(text(500, y, '배분', 'pv-fab-text', 'end'));
+    out.push(text(590, y, '정지 h/년', 'pv-fab-text', 'end'));
+    out.push(text(665, y, 'MTTR h', 'pv-fab-text', 'end'));
+    out.push(text(755, y, '고장/년', 'pv-fab-text', 'end'));
+    out.push(text(865, y, '요구 MTBF', 'pv-fab-text', 'end'));
+    out.push(text(895, y, '근거', 'pv-fab-text'));
+    out.push(line(40, y + 8, 1360, y + 8, 'pv-fab-frame'));
+    var maxDown = Math.max.apply(null, RELIABILITY_BLOCKS.map(function (b) { return b[6]; }));
+    RELIABILITY_BLOCKS.forEach(function (b, i) {
+      var ry = y + 34 + i * 46;
+      out.push('<text class="pv-fab-small" data-fit="325" x="40" y="' + ry + '">'
+        + escapeText(b[0] + ' ' + b[1]) + '</text>');
+      // 배분율 막대 — 어디가 무거운지 한눈에
+      out.push('<rect class="pv-fab-hidden" x="380" y="' + (ry - 10) + '" width="76" height="13"/>');
+      out.push('<rect class="pv-fab-accent" x="380" y="' + (ry - 10) + '" width="'
+        + Math.round(76 * b[6] / maxDown) + '" height="13"/>');
+      out.push(text(500, ry, (b[2] * 100).toFixed(0) + ' %', 'pv-fab-small', 'end'));
+      out.push(text(590, ry, b[6].toFixed(1), 'pv-fab-text', 'end'));
+      out.push(text(665, ry, b[3].toFixed(1), 'pv-fab-small', 'end'));
+      out.push(text(755, ry, b[7].toFixed(1), 'pv-fab-small', 'end'));
+      out.push(text(865, ry, n(b[8]) + ' h', 'pv-fab-small', 'end'));
+      wrapLines(plain(b[9]), 36, 2).forEach(function (t, k) {
+        out.push('<text class="pv-fab-small" data-fit="455" x="895" y="' + (ry + k * 16) + '">'
+          + escapeText(t) + '</text>');
+      });
+      out.push(text(40, ry + 17, (b[4] ? '중복 ' : '') + (b[5] ? '버퍼 흡수' : ''), 'pv-fab-small'));
+      out.push(line(40, ry + 26, 1360, ry + 26, 'pv-fab-hidden'));
+    });
+    y += 34 + RELIABILITY_BLOCKS.length * 46 + 10;
+    // 연간 숫자가 무엇 위에 서 있었는가
+    var lb = { x: 40, y: y, w: 650, h: 172 };
+    out.push('<rect class="pv-fab-frame" x="' + lb.x + '" y="' + lb.y + '" width="' + lb.w + '" height="' + lb.h + '"/>');
+    out.push(text(lb.x + 16, lb.y + 28, '§25·§26 의 연간 숫자는 가용률 1.0 위에 서 있었다', 'pv-fab-text'));
+    [['가용률을 안 본 장수', n(RELIABILITY.nominalPanels) + ' 장/년'],
+     ['목표 ' + RELIABILITY.targetAvailability + ' 를 얹으면', n(RELIABILITY.annualPanels) + ' 장/년'],
+     ['차이', n(RELIABILITY.shortfall) + ' 장/년']
+    ].forEach(function (r, i) {
+      var ry = lb.y + 58 + i * 26;
+      out.push(text(lb.x + 16, ry, r[0], 'pv-fab-small'));
+      out.push(text(lb.x + lb.w - 16, ry, r[1], i === 2 ? 'pv-fab-text' : 'pv-fab-small', 'end'));
+    });
+    wrapLines('라벨 공급·AI 착수 시점·저장 용량·매출이 전부 이 장수에 비례한다. '
+      + '그 전제가 어디에도 적혀 있지 않았다는 것이 이 시트의 요점이다.',
+      44, 3).forEach(function (t, k) {
+      out.push('<text class="pv-fab-small" data-fit="610" x="' + (lb.x + 16) + '" y="' + (lb.y + 142 + k * 16) + '">'
+        + escapeText(t) + '</text>');
+    });
+    // 버퍼가 내는 구멍
+    var rb = { x: 710, y: y, w: 650, h: 172 };
+    out.push('<rect class="pv-fab-frame" x="' + rb.x + '" y="' + rb.y + '" width="' + rb.w + '" height="' + rb.h + '"/>');
+    out.push(text(rb.x + 16, rb.y + 28, '버퍼가 직렬 사슬에 내는 구멍', 'pv-fab-text'));
+    [['후단 정지 완충', RELIABILITY.rideThroughH + ' h'],
+     ['버퍼가 흡수하는 정지', RELIABILITY.bufferedDowntimeH + ' h/년'],
+     ['버퍼가 없었다면 가용률', RELIABILITY.availabilityWithoutBuffer]
+    ].forEach(function (r, i) {
+      var ry = rb.y + 58 + i * 26;
+      out.push(text(rb.x + 16, ry, r[0], 'pv-fab-small'));
+      out.push(text(rb.x + rb.w - 16, ry, r[1], i === 2 ? 'pv-fab-text' : 'pv-fab-small', 'end'));
+    });
+    wrapLines('한 번 서는 시간이 ' + RELIABILITY.rideThroughH + ' h 보다 짧아야 흡수된다. '
+      + '요구 MTBF 가 가장 높은 곳은 ' + RELIABILITY.tightestMtbf + ' ('
+      + n(RELIABILITY.tightestMtbfH) + ' h) — 발주가 가장 어려운 자리다.',
+      44, 3).forEach(function (t, k) {
+      out.push('<text class="pv-fab-small" data-fit="610" x="' + (rb.x + 16) + '" y="' + (rb.y + 142 + k * 16) + '">'
+        + escapeText(t) + '</text>');
+    });
+  }
+
+  function renderOpsSpares(out) {
+    smartFrame(out, 'PV-PLANT-RA-1019', '예비품 · 마모 소요 · 권장 재고',
+      '마모품 ' + RELIABILITY.spares + ' 종 · 수명 미확정 ' + RELIABILITY.sparesPending
+        + ' 종 · 필터백 ' + RELIABILITY.filterBags + '장 · 연간 장수 '
+        + n(RELIABILITY.annualPanels) + ' 기준');
+    var y = 104;
+    out.push(text(40, y, '품목', 'pv-fab-text'));
+    out.push(text(500, y, '계통', 'pv-fab-text'));
+    out.push(text(620, y, '설치', 'pv-fab-text', 'end'));
+    out.push(text(710, y, '연 소요', 'pv-fab-text', 'end'));
+    out.push(text(786, y, '조달 주', 'pv-fab-text', 'end'));
+    out.push(text(890, y, '권장 재고', 'pv-fab-text', 'end'));
+    out.push(text(920, y, '수명 근거', 'pv-fab-text'));
+    out.push(line(40, y + 8, 1360, y + 8, 'pv-fab-frame'));
+    SPARES.forEach(function (sp, i) {
+      var ry = y + 34 + i * 48;
+      var known = sp[4] !== null;
+      out.push('<text class="pv-fab-small" data-fit="440" x="40" y="' + ry + '">'
+        + escapeText(sp[0] + ' ' + sp[1]) + '</text>');
+      out.push(text(500, ry, sp[2], 'pv-fab-small'));
+      out.push(text(620, ry, n(sp[3]), 'pv-fab-small', 'end'));
+      out.push('<rect class="' + (known ? 'pv-fab-hidden' : 'pv-fab-accent') + '" x="646" y="'
+        + (ry - 13) + '" width="66" height="18" rx="3"/>');
+      out.push(text(708, ry, known ? sp[4].toFixed(1) : '미확정', 'pv-fab-small', 'end'));
+      out.push(text(786, ry, sp[5], 'pv-fab-small', 'end'));
+      out.push(text(890, ry, known ? sp[6] : '—', 'pv-fab-text', 'end'));
+      wrapLines(plain(sp[7]), 34, 2).forEach(function (t, k) {
+        out.push('<text class="pv-fab-small" data-fit="430" x="920" y="' + (ry + k * 16) + '">'
+          + escapeText(t) + '</text>');
+      });
+      out.push(line(40, ry + 28, 1360, ry + 28, 'pv-fab-hidden'));
+    });
+    y += 34 + SPARES.length * 48 + 10;
+    var box = { x: 40, y: y, w: 1320, h: 96 };
+    out.push('<rect class="pv-fab-frame" x="' + box.x + '" y="' + box.y + '" width="' + box.w + '" height="' + box.h + '"/>');
+    out.push(text(box.x + 16, box.y + 28, '수명을 모르는 것을 0 으로 덮지 않는다', 'pv-fab-text'));
+    wrapLines('소요를 못 내는 ' + RELIABILITY.sparesPending + ' 종은 칼날·핫나이프·연마휠·뮤팅 센서·IR 램프다. '
+      + '앞의 셋은 시운전 run-at-rate 에서 마모량을 재야 나오고, 뮤팅 센서는 벤더 B10d 가 있어야 T10d 가 나오며, '
+      + 'IR 램프는 GRM 벤더값이다. 재고를 임의로 잡으면 그 재고가 곧 근거가 되어 버린다.',
+      100, 2).forEach(function (t, k) {
+      out.push('<text class="pv-fab-small" data-fit="1280" x="' + (box.x + 16) + '" y="' + (box.y + 56 + k * 17) + '">'
+        + escapeText(t) + '</text>');
+    });
+  }
+
+  function renderOpsAccept(out) {
+    smartFrame(out, 'PV-PLANT-QA-1020', 'FAT · SAT · run-at-rate 검수',
+      '항목 ' + ACCEPTANCE.items + ' (FAT ' + ACCEPTANCE.fat + ' · SAT ' + ACCEPTANCE.sat
+        + ' · run-at-rate ' + ACCEPTANCE.runAtRate + ') · 인수 차단 ' + ACCEPTANCE.blocking
+        + ' · 기대값은 리터럴이 아니라 모델 호출이다 (출처 ' + ACCEPTANCE.sources + ' 종)');
+    var y = 104;
+    out.push(text(40, y, '항목', 'pv-fab-text'));
+    out.push(text(150, y, '단계', 'pv-fab-text', 'middle'));
+    out.push(text(210, y, '대상 / 방법', 'pv-fab-text'));
+    out.push(text(640, y, '모델 출처', 'pv-fab-text'));
+    out.push(text(985, y, '기대값', 'pv-fab-text', 'end'));
+    out.push(text(1000, y, '허용', 'pv-fab-text'));
+    out.push(line(40, y + 8, 1360, y + 8, 'pv-fab-frame'));
+    ACCEPTANCE_ITEMS.forEach(function (it, i) {
+      var ry = y + 32 + i * 40;
+      out.push(text(40, ry, it[0] + (it[7] ? ' ●' : ''), 'pv-fab-small'));
+      out.push('<rect class="' + STAGE_TONE[it[1]] + '" x="112" y="' + (ry - 13) + '" width="76" height="18" rx="3"/>');
+      out.push(text(150, ry, it[1], 'pv-fab-small', 'middle'));
+      out.push('<text class="pv-fab-small" data-fit="410" x="210" y="' + ry + '">'
+        + escapeText(it[2]) + '</text>');
+      out.push('<text class="pv-fab-small" data-fit="410" x="210" y="' + (ry + 15) + '">'
+        + escapeText(it[3]) + '</text>');
+      out.push('<text class="pv-fab-small" data-fit="290" x="640" y="' + ry + '">'
+        + escapeText(it[4]) + '</text>');
+      out.push(text(985, ry, it[5].length > 16 ? it[5].slice(0, 15) + '…' : it[5], 'pv-fab-text', 'end'));
+      wrapLines(plain(it[6]), 30, 2).forEach(function (t, k) {
+        out.push('<text class="pv-fab-small" data-fit="350" x="1000" y="' + (ry + k * 15) + '">'
+          + escapeText(t) + '</text>');
+      });
+      out.push(line(40, ry + 22, 1360, ry + 22, 'pv-fab-hidden'));
+    });
+    y += 32 + ACCEPTANCE_ITEMS.length * 40 + 10;
+    var box = { x: 40, y: y, w: 1320, h: 92 };
+    out.push('<rect class="pv-fab-frame" x="' + box.x + '" y="' + box.y + '" width="' + box.w + '" height="' + box.h + '"/>');
+    out.push(text(box.x + 16, box.y + 28, '인수 시점에 아직 답이 없을 항목 ' + ACCEPTANCE.openAtHandover
+      + ' — 미리 알고 시작해야 한다', 'pv-fab-text'));
+    wrapLines('S-08 분진 시료는 SAT 에서 뜨고 시험 결과는 그 뒤에 온다 · S-10 내진 미배정 3대는 지금 0 이 아니다 · '
+      + 'R-04 마모율은 run-at-rate 로만 나온다. 셋 다 "인수 후 확정" 이 아니라 '
+      + '"인수 조건에 명시" 로 다뤄야 나중에 다투지 않는다.',
+      100, 2).forEach(function (t, k) {
+      out.push('<text class="pv-fab-small" data-fit="1280" x="' + (box.x + 16) + '" y="' + (box.y + 54 + k * 17) + '">'
+        + escapeText(t) + '</text>');
+    });
+  }
+
+  function renderOps() {
+    var out = [];
+    if (state.opView === 'spares') renderOpsSpares(out);
+    else if (state.opView === 'accept') renderOpsAccept(out);
+    else renderOpsUptime(out);
+    opsSvg.innerHTML = out.join('');
+    opsSvg.setAttribute('aria-label', OP_VIEWS[state.opView] || OP_VIEWS.uptime);
+    fitSheet(opsSvg);
+    opsTable.innerHTML = ACCEPTANCE_ITEMS.map(function (it) {
+      return '<tr><td>' + it[0] + '</td><td>' + it[1] + '</td><td>' + escapeText(it[2])
+        + '</td><td>' + escapeText(it[3]) + '</td><td><code>' + escapeText(it[4])
+        + '</code></td><td>' + escapeText(it[5]) + '</td><td>' + escapeText(plain(it[6]))
+        + '</td><td>' + (it[7] ? '●' : '—') + '</td></tr>';
+    }).join('');
+    opsTotal.innerHTML = '<tr><th colspan="8">검수 ' + ACCEPTANCE.items + '항 (인수 차단 '
+      + ACCEPTANCE.blocking + ') · 목표 가용률 ' + RELIABILITY.targetAvailability
+      + ' · 정지 예산 ' + RELIABILITY.downtimeBudgetH + ' h/년 · 연간 '
+      + n(RELIABILITY.annualPanels) + ' 장 (가용률 반영) · 예비품 ' + RELIABILITY.spares
+      + '종 중 수명 미확정 ' + RELIABILITY.sparesPending + '</th></tr>';
+  }
+
+  function setOpView(view) {
+    if (!Object.prototype.hasOwnProperty.call(OP_VIEWS, view)) throw new RangeError('Unknown ops view');
+    state.opView = view;
+    if (opViewSel) opViewSel.value = view;
+    renderOps();
+  }
+
   // ── 지지·장착 상세 (MT-1015) ────────────────────────────────────────────
   // 앵커 계획이 표제란 문장 한 줄뿐이던 것을 도면으로 세운다. 베이스플레이트
   // 볼트 배치는 개수에서 파생한다 — 4개면 네 귀, 그 위는 둘레에 균등 배분이다.
@@ -5733,7 +5976,7 @@ html>body{padding:0}</style>
   }
 
   function selectTab(tabName) {
-    var valid = ['fab', 'explode', 'layout', 'register', 'electrical', 'smart', 'mount', 'safety'];
+    var valid = ['fab', 'explode', 'layout', 'register', 'electrical', 'smart', 'mount', 'safety', 'ops'];
     if (valid.indexOf(tabName) < 0) throw new RangeError('Unknown drawing tab');
     state.tab = tabName;
     tabs.forEach(function (tab) {
@@ -5814,6 +6057,7 @@ html>body{padding:0}</style>
   bind(elViewSel, 'change', function () { setElView(elViewSel.value); dispatchChange(); });
   bind(smViewSel, 'change', function () { setSmView(smViewSel.value); dispatchChange(); });
   bind(sfViewSel, 'change', function () { setSfView(sfViewSel.value); dispatchChange(); });
+  bind(opViewSel, 'change', function () { setOpView(opViewSel.value); dispatchChange(); });
   if (mtStationSel && !mtStationSel.options.length) {
     mtStationSel.innerHTML = MOUNTINGS.map(function (m) {
       return '<option value="' + m[0] + '">' + m[0] + ' · ' + (stations[m[0]] ? stations[m[0]].sheet : m[0]) + '</option>';
@@ -5879,6 +6123,7 @@ html>body{padding:0}</style>
   renderSmart();
   renderMount();
   renderSafety();
+  renderOps();
   renderServoAxes();
   renderAcoustics();
   renderThermal();
@@ -5942,7 +6187,7 @@ html>body{padding:0}</style>
       drawAssembly();
     },
     resetView: resetView,
-    flush: function () { renderFabrication(); renderAssemblyKey(); renderLayout(); renderElectrical(); renderSmart(); renderMount(); renderSafety(); drawAssembly(); },
+    flush: function () { renderFabrication(); renderAssemblyKey(); renderLayout(); renderElectrical(); renderSmart(); renderMount(); renderSafety(); renderOps(); drawAssembly(); },
     getState: function () { return JSON.parse(JSON.stringify(state)); },
     getStation: function (key) {
       var chosen = stations[key || state.station];
