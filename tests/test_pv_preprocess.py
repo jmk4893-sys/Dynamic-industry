@@ -1335,8 +1335,8 @@ class TestSceneLighting(unittest.TestCase):
         """조명 색을 테마 토큰에서 뽑으면 라이트 테마에서 키라이트가 검정이 된다."""
         self.assertNotIn("new Er(F.foreground", self.html, "키라이트가 다시 테마 글자색을 쓴다")
         self.assertNotIn("new vo(F.background,F.muted", self.html, "환경광이 다시 테마색을 쓴다")
-        self.assertIn("new Er(SC.key,3.15)", self.html)
-        self.assertIn("new vo(SC.sky,SC.ground,2.05)", self.html)
+        self.assertIn("new Er(SC.key,3.25)", self.html)
+        self.assertIn("new vo(SC.sky,SC.ground,2.25)", self.html)
         self.assertIn("new Er(SC.rim,1.35)", self.html, "림라이트가 없으면 금속 윤곽이 죽는다")
         self.assertEqual(self.html.count("new Er(SC.key,"), 2,
                          "메인·부품 미리보기 두 장면 모두 고정 키라이트를 써야 한다")
