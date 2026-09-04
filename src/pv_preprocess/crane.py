@@ -58,10 +58,40 @@ CRANE_ABOVE_RAIL_MM = 950
 #: C 치수 — 주행레일 상면에서 후크 최상단까지 (mm). 호이스트 사양값.
 HOOK_APPROACH_MM = 1_050
 
-#: 인양 부속이 물건 위로 차지하는 높이 (mm).
-SLING_MM = 2_000          # 2점 슬링 60°, 폭 2.9 m 기준
+#: 슬링 각 (수평에서, °). 60° 보다 눕히면 다리 장력이 급히 커진다 —
+#: 인양 규약의 하한이라 여기가 기하의 기준이다.
+SLING_ANGLE_DEG = 60.0
+
+#: 슬링 폭 (mm) — 목록에서 가장 넓은 것이 높이를 정한다. BFC 반전 카세트의
+#: 폭 2,900 이다(길이 5,100 방향은 스프레더 빔으로 받아 높이를 안 키운다).
+SLING_SPREAD_MM = 2_900
+
+#: 후크 블록 높이 (mm). 5 t 정격 블록이라 인양물 중량과 무관하게 같다.
 HOOK_BLOCK_MM = 500
-GROUND_LIFT_MM = 200      # 바닥에서 띄우는 높이
+
+#: 바닥에서 띄우는 높이 (mm).
+GROUND_LIFT_MM = 200
+
+#: 인양 부속 자중 (kg) — 4점 와이어로프 슬링 · 샤클 · 스프레더 빔.
+#: **후크에 걸리는 것은 물건만이 아니다.** 정격 5 t 은 이 자중까지 받는
+#: 값이라, 실을 수 있는 물건은 그만큼 줄어든다. 개략 계획값.
+LIFTING_GEAR_KG = 150
+
+
+def sling_height_mm(spread_mm: int | None = None,
+                    angle_deg: float | None = None) -> int:
+    """인양 부속 중 **슬링**이 물건 위로 차지하는 높이 (mm).
+
+    상수로 적어 두면 각도와 어긋나도 아무도 모른다 — REV.28 까지 "2점 슬링
+    60° · 폭 2.9 m 기준" 이라 적어 놓고 값은 2,000 이었는데, 그 값이 되려면
+    각이 54° 여야 한다. 눕은 쪽이라 다리 장력을 과소평가하는 방향이었다.
+    이제 폭과 각에서 직접 낸다 (10 mm 단위 올림).
+    """
+    import math
+    spread = SLING_SPREAD_MM if spread_mm is None else spread_mm
+    angle = SLING_ANGLE_DEG if angle_deg is None else angle_deg
+    height = spread / 2 * math.tan(math.radians(angle))
+    return int(-(-height // 10) * 10)
 
 
 # ── 평면 계통 ────────────────────────────────────────────────────────────
@@ -96,9 +126,11 @@ class Lift:
 #: 설치·정비에서 크레인이 드는 것. 중량은 단면·재질에서 개략 산출한
 #: **계획값**이며 벤더 GA 가 오면 바뀐다. 최중량이 용량을 정한다.
 LIFTS: tuple[Lift, ...] = (
-    Lift("BFC 반전 카세트 (Bay 1식)", "bfc", 1_980, 4_500,
-         "엔드링 2 × ⌀180 t10 파이프 237 kg · 포탈기둥 4 × 180×240 t8 · "
-         "크로스빔 2 · 조 2 · 서보·감속기 2 · 베어링블록 2"),
+    Lift("BFC 반전 카세트 (Bay 1식)", "bfc", 2_500, 4_500,
+         "**발주처 확인 — 2,500 kg 이상.** 단면·재질에서 낸 개략값은 1,980 "
+         "이었다(엔드링 2 × ⌀180 t10 파이프 237 kg · 포탈기둥 4 × 180×240 t8 · "
+         "크로스빔 2 · 조 2 · 서보·감속기 2 · 베어링블록 2). 26 % 낮게 잡았던 "
+         "셈이라 확인값을 하한으로 쓴다 — 벤더 GA 가 오면 그 값으로 바꾼다"),
     Lift("GRM-401 5단 단열랙 M1-101", "grm", 1_700, 3_000,
          "프레임 800 · 데크 5 × 80 · IR 램프 60등과 반사판 300 · 단열재 200"),
     Lift("AFR-101 셀 베이스 프레임", "afr", 1_290, 450,
@@ -137,7 +169,22 @@ def required_hook_mm(lift: Lift) -> int:
     물건 높이만 보면 슬링과 후크 블록을 빠뜨린다 — 둘 다 물건 **위**에
     있으므로 후크는 그만큼 더 올라가야 한다.
     """
-    return lift.height_mm + SLING_MM + HOOK_BLOCK_MM + GROUND_LIFT_MM
+    return (lift.height_mm + sling_height_mm() + HOOK_BLOCK_MM
+            + GROUND_LIFT_MM)
+
+
+def hook_load_kg(lift: Lift) -> int:
+    """후크에 실제로 걸리는 하중 (kg) — 물건 + 인양 부속."""
+    return lift.mass_kg + LIFTING_GEAR_KG
+
+
+def max_lift_kg() -> int:
+    """이 크레인으로 들 수 있는 **물건**의 상한 (kg).
+
+    정격에서 인양 부속 자중을 뺀 값이다. "2,500 kg 이상" 처럼 위가 열린
+    확인값을 받았을 때, 어디까지 올라가면 5 t 이 안 되는지가 이 숫자다.
+    """
+    return capacity_kg() - LIFTING_GEAR_KG
 
 
 def governing_lift() -> Lift:
@@ -151,8 +198,19 @@ def tallest_lift() -> Lift:
 
 
 def capacity_margin() -> float:
-    """최중량 단품 대비 용량 배수. 벤더 GA 미확정분을 받는 여유다."""
-    return round(capacity_kg() / governing_lift().mass_kg, 2)
+    """최중량 **후크 하중** 대비 용량 배수.
+
+    재는 자를 물건 중량이 아니라 후크 하중으로 잡는다 — 정격이 받는 것은
+    물건이 아니라 후크에 걸린 전부다. 이 구분이 없으면 부속 자중만큼
+    여유를 실제보다 크게 적게 된다.
+    """
+    return round(capacity_kg() / hook_load_kg(governing_lift()), 2)
+
+
+def fits_capacity(mass_kg: int | None = None) -> bool:
+    """이 중량이 5 t 안에 드는가. 인자를 열어 둔 것은 경계를 시험하기 위해서다."""
+    mass = governing_lift().mass_kg if mass_kg is None else mass_kg
+    return mass + LIFTING_GEAR_KG <= capacity_kg()
 
 
 def hook_margin_mm() -> int:
@@ -167,7 +225,7 @@ def carry_over_hook_mm(tallest_fixed_mm: int, pass_clearance_mm: int = 300) -> i
     통로로 잡고 하류부터 세운다.
     """
     return (tallest_fixed_mm + pass_clearance_mm + governing_lift().height_mm
-            + SLING_MM + HOOK_BLOCK_MM)
+            + sling_height_mm() + HOOK_BLOCK_MM)
 
 
 def hook_reach_z_mm() -> int:
@@ -229,6 +287,8 @@ def summary() -> dict[str, object]:
         "hookReachMm": hook_reach_z_mm(),
         "governing": gov.name,
         "governingKg": gov.mass_kg,
+        "hookLoadKg": hook_load_kg(gov),
+        "maxLiftKg": max_lift_kg(),
         "capacityMargin": capacity_margin(),
         "tallest": tall.name,
         "requiredHookMm": required_hook_mm(tall),

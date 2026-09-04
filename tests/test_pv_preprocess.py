@@ -2170,14 +2170,36 @@ class TestSmartFactory(unittest.TestCase):
         """장당 350 MB 를 전량 보존하면 성립하지 않는다."""
         self.assertAlmostEqual(smart.flagged_ratio(), 0.1167, places=4)
         self.assertAlmostEqual(smart.vision_retention(), 0.1367, places=4)
-        self.assertAlmostEqual(smart.annual_storage_tb(), 6.88, places=2)
-        self.assertAlmostEqual(smart.storage_capacity_tb(), 31.0, places=1)
+        self.assertAlmostEqual(smart.annual_storage_tb(), 14.19, places=2)
+        self.assertAlmostEqual(smart.storage_capacity_tb(), 63.9, places=1)
+        # 저장은 가동시간에 정비례한다 — 2교대 확정으로 2.06배가 됐다
+        self.assertAlmostEqual(
+            smart.annual_storage_tb() / 6.88,
+            smart.OPERATING_HOURS_PER_YEAR / 2_000.0, places=2)
         # 전량 보존하면 같은 3년이 200 TB 를 넘는다
         seconds = smart.OPERATING_HOURS_PER_YEAR * 3600.0
         whole = smart.vision_raw_bytes_per_s() * seconds * smart.RETENTION_YEARS / 1e12
         self.assertGreater(whole, 140.0)
         # 같은 이중화를 적용해 사과 대 사과로 비교한다 — 보존 정책이 7배를 줄인다
         self.assertGreater(whole * smart.STORAGE_REDUNDANCY / smart.storage_capacity_tb(), 7.0)
+
+    def test_operating_hours_come_from_the_confirmed_shift_plan(self):
+        """가동시간은 교대 계획에서 나온다 — 라벨 공급과 저장이 여기 달려 있다."""
+        self.assertEqual(smart.SHIFT_HOURS_PER_DAY, 16.0)
+        self.assertEqual(smart.OPERATING_DAYS_PER_YEAR, 275)
+        self.assertEqual(smart.PLANNED_STOP_HOURS_PER_DAY, 1.0)
+        self.assertAlmostEqual(smart.OPERATING_HOURS_PER_YEAR, 4_125.0, places=1)
+        self.assertAlmostEqual(
+            smart.OPERATING_HOURS_PER_YEAR,
+            (smart.SHIFT_HOURS_PER_DAY - smart.PLANNED_STOP_HOURS_PER_DAY)
+            * smart.OPERATING_DAYS_PER_YEAR, places=1)
+        # 계획정지를 빼는 항이 죽으면 6.7 % 과대해진다 — 지금 값으로는 그
+        # 항을 지워도 아무 시험이 실패하지 않으므로 인자를 넣어 확인한다
+        self.assertEqual(smart.operating_hours_per_year(stop_h=0.0), 4_400.0)
+        self.assertGreater(smart.operating_hours_per_year(stop_h=0.0),
+                           smart.OPERATING_HOURS_PER_YEAR)
+        self.assertEqual(smart.operating_hours_per_year(shift_h=8.0, days=250,
+                                                        stop_h=0.0), 2_000.0)
 
     def test_backbone_grade_is_chosen_above_the_requirement(self):
         self.assertAlmostEqual(smart.required_mbps(), 111.9, places=1)
@@ -2301,7 +2323,11 @@ class TestSmartFactory(unittest.TestCase):
                       f"storageTb: {sm['storage_tb']}",
                       f"smartKw: {sm['smart_kw']}",
                       f"serverRoomX: {wiring.server_room_center_x_mm()}",
-                      f"edgeCenterX: {wiring.edge_cabinet_center_x_mm()}"):
+                      f"edgeCenterX: {wiring.edge_cabinet_center_x_mm()}",
+                      # 가동시간은 라벨 공급과 저장이 전부 매달린 값이다.
+                      # 도면만 계획정지를 안 뺀 값을 적으면 AI 시트가 조용히
+                      # 6.7 % 과대한 표본을 약속한다.
+                      f"hoursPerYear: {int(sm['hours_per_year'])}"):
             with self.subTest(token=token):
                 self.assertIn(token, self.html)
         # 시트 3장이 도면 목록에 있어야 한다
@@ -2348,15 +2374,28 @@ class TestAiFeasibility(unittest.TestCase):
     def test_label_supply_sets_the_start_date(self):
         """가장 희소한 클래스가 착수 시점을 지배한다."""
         labels = ai.annual_labels()
-        self.assertEqual(ai.annual_panels(), 149_400)
-        self.assertEqual(labels["정상"], 131_970)
-        self.assertEqual(labels["유리 깨짐"], 12_450)
-        self.assertEqual(labels["전손"], 4_980)
+        self.assertEqual(ai.annual_panels(), 308_138)
+        self.assertEqual(labels["정상"], 272_189)
+        self.assertEqual(labels["유리 깨짐"], 25_678)
+        self.assertEqual(labels["전손"], 10_271)
         self.assertEqual(ai.scarcest_label(), "전손")
-        self.assertAlmostEqual(ai.cold_start_months(), 2.4, places=1)
-        # 처음부터 학습은 현실적이지 않다 — 전이학습 전제의 근거
-        self.assertGreater(
-            ai.months_to_threshold("전손", ai.SCRATCH_MIN_SAMPLES), 20.0)
+        self.assertAlmostEqual(ai.cold_start_months(), 1.2, places=1)
+        # 처음부터 학습을 물리치는 근거가 **바뀌었다.** 1교대 가정에서는
+        # 전손 기준 24개월이라 "비현실적" 이었는데, 2교대 확정으로 11.7개월이
+        # 됐다 — 절대 개월수로는 더 이상 그 말을 못 한다.
+        #
+        # 그래도 전제는 그대로다. 근거가 절대값이 아니라 **배수**이기 때문이다:
+        # 처음부터 학습은 표본이 10배 필요하므로 언제나 착수가 10배 늦다.
+        # 가동시간이 어떻게 바뀌어도 이 비는 변하지 않는다.
+        scratch = ai.months_to_threshold("전손", ai.SCRATCH_MIN_SAMPLES)
+        self.assertAlmostEqual(scratch, 11.7, places=1)
+        # 개월수는 0.1 로 반올림돼 나오므로(11.7 / 1.2 = 9.75) 비는 반올림
+        # 전의 값으로 잰다 — 재는 자가 반올림에 흔들리면 안 된다.
+        self.assertAlmostEqual(
+            ai.SCRATCH_MIN_SAMPLES / labels["전손"]
+            / (ai.TRANSFER_MIN_SAMPLES / labels["전손"]),
+            ai.SCRATCH_MIN_SAMPLES / ai.TRANSFER_MIN_SAMPLES, places=6)
+        self.assertGreater(scratch, 10.0, "그래도 한 해 가까이 늦다")
         # 가동시간이 두 배면 착수도 절반이 된다 (파생값이라는 확인)
         self.assertAlmostEqual(
             ai.TRANSFER_MIN_SAMPLES / labels["전손"] * 12.0, ai.cold_start_months(), places=1)
@@ -2923,10 +2962,17 @@ class TestCrane(unittest.TestCase):
         tall = crane.tallest_lift()
         self.assertEqual(tall.name, "VG-101 독립 방진 비전보 조립체")
         self.assertEqual(crane.required_hook_mm(tall),
-                         tall.height_mm + crane.SLING_MM
+                         tall.height_mm + crane.sling_height_mm()
                          + crane.HOOK_BLOCK_MM + crane.GROUND_LIFT_MM)
-        self.assertEqual(crane.required_hook_mm(tall), 7_850)
-        self.assertEqual(crane.hook_margin_mm(), 1_850)
+        self.assertEqual(crane.required_hook_mm(tall), 8_370)
+        self.assertEqual(crane.hook_margin_mm(), 1_330)
+        # 슬링 높이는 상수가 아니라 폭과 각에서 나온다. REV.28 은 "60° · 폭
+        # 2.9 m 기준" 이라 적고 값은 2,000 을 썼는데, 그 값이 되려면 각이
+        # 54° 여야 한다 — 눕은 쪽이라 다리 장력을 과소평가하는 방향이었다.
+        self.assertEqual(crane.sling_height_mm(), 2_520)
+        self.assertEqual(crane.sling_height_mm(angle_deg=54), 2_000)
+        self.assertGreater(crane.sling_height_mm(spread_mm=4_000),
+                           crane.sling_height_mm())
         # 목록의 **전부**가 들려야 한다 — 가장 높은 하나만 보면 정렬이 바뀔 때
         # 조용히 못 드는 것이 생긴다.
         for lift in crane.LIFTS:
@@ -2937,21 +2983,30 @@ class TestCrane(unittest.TestCase):
     def test_capacity_is_set_by_the_heaviest_single_piece(self):
         gov = crane.governing_lift()
         self.assertEqual(gov.name, "BFC 반전 카세트 (Bay 1식)")
-        self.assertEqual(gov.mass_kg, 1_980)
+        self.assertEqual(gov.mass_kg, 2_500)
         self.assertEqual(crane.capacity_kg(), 5_000)
-        self.assertEqual(crane.capacity_margin(), 2.53)
-        self.assertGreaterEqual(crane.capacity_margin(), 2.0,
-                                "중량이 개략 산출값이라 벤더 GA 를 받을 여유가 있어야 한다")
+        # **정격이 받는 것은 물건이 아니라 후크에 걸린 전부다.** 부속 자중을
+        # 빼고 재면 여유를 실제보다 크게 적게 된다.
+        self.assertEqual(crane.hook_load_kg(gov), 2_650)
+        self.assertEqual(crane.capacity_margin(), 1.89)
+        self.assertGreaterEqual(crane.capacity_margin(), 1.5,
+                                "확인값이 '2,500 이상' 이라 위가 열려 있다 — 여유가 필요하다")
+        # 확인값의 위가 열려 있으므로 **어디까지 되는지**가 답의 일부다
+        self.assertEqual(crane.max_lift_kg(), 4_850)
+        self.assertTrue(crane.fits_capacity())
+        self.assertTrue(crane.fits_capacity(4_850))
+        self.assertFalse(crane.fits_capacity(4_860),
+                         "부속 자중을 안 빼면 5,000 까지 된다고 적게 된다")
         for lift in crane.LIFTS:
             with self.subTest(lift=lift.name):
-                self.assertLessEqual(lift.mass_kg, crane.capacity_kg())
+                self.assertTrue(crane.fits_capacity(lift.mass_kg))
                 self.assertTrue(lift.basis.strip(), "중량의 근거가 없으면 숫자가 아니다")
 
     def test_it_cannot_carry_over_installed_equipment(self):
         """넘길 수 없다는 사실이 시공 순서를 정한다 — 크레인 사양이 아니다."""
         tallest_fixed = layout.plant_envelope_mm()[2]
         self.assertEqual(tallest_fixed, 5_150)
-        self.assertEqual(crane.carry_over_hook_mm(tallest_fixed), 12_450)
+        self.assertEqual(crane.carry_over_hook_mm(tallest_fixed), 12_970)
         self.assertGreater(crane.carry_over_hook_mm(tallest_fixed),
                            crane.hook_height_mm(),
                            "넘길 수 있으면 시공 순서를 논할 이유가 없다")

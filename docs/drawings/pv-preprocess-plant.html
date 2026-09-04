@@ -2965,7 +2965,7 @@ html>body{padding:0}</style>
     return [left, top, width, height].map(Math.round).join(' ');
   }
 
-  var DRAWING_REVISION = 'REV.28';
+  var DRAWING_REVISION = 'REV.29';
   // 뷰별 축 선택. PART_AXIS 는 part.at/part.size 의 [X, 상하, 깊이] 기준,
   // ENVELOPE_AXIS 는 station.envelope 의 [L, W, H] 기준 — 두 배열의 축 순서가 다르다.
   var PART_AXIS = { plan: [0, 2], front: [0, 1], side: [2, 1] };
@@ -3602,7 +3602,7 @@ html>body{padding:0}</style>
   // 값은 전부 src/pv_preprocess/electrical.py 의 incomer_summary() 파생이다.
   var INCOMER = { method: '기존 부지 인입 1,200 kW 에서 분기 (이 플랜트 23.9 %)', tapsSite: true, tapLowVoltage: true, siteServiceKw: 1200.0, siteUtilPct: 23.9, siteHeadroomKw: 912.7, worstCaseKw: 287.5, coincidentWorstCaseKw: 280.8, lvTapMaxM: 151.5, highVoltage: true, hvV: 380, contractKw: 287.3, contractKva: 319.3, apparentKva: 236.5, transformerKva: 0, transformerKvaIfHv: 500, transformerLoadPct: 0.0, capacitorKvar: 35, hvCurrentA: 0.0, hvCable: '4C×240 mm² Cu (부지 저압 배전반 분기)', vcbA: 0, lvMainMm2: 240, substationMm: [0, 0, 0], lowVoltageLimitKw: 100.0, incomingKnown: false, dropPct: 3.0, breakerHeadroomKw: 2.6 };
   // 스마트 팩토리 계층 — src/pv_preprocess/smart.py 파생 (테스트 대조).
-  var SMART = { serverRoomX: 43600, controlRoomX: 46700, edgeCenterX: 25000, facilityX0: 42700, facilityX1: 48700, serverRoomMm: [1800, 3200, 2700], controlRoomMm: [4000, 3400, 2700], racks: 2, rackU: 28, rackHeatKw: 6.03, edgeCabinets: 7, wifiAps: 5, instruments: 46, plcTags: 592, servos: 36, inverters: 9, dol: 8, timeseriesKbS: 91.7, visionRawMbS: 6.9, visionKeptMbS: 0.94, retentionPct: 13.7, requiredMbps: 111.9, backboneMbps: 1000, annualTb: 6.88, storageTb: 31.0, itKw: 10.3, instKw: 4.5, smartKw: 14.8, hoursPerYear: 2000 };
+  var SMART = { serverRoomX: 43600, controlRoomX: 46700, edgeCenterX: 25000, facilityX0: 42700, facilityX1: 48700, serverRoomMm: [1800, 3200, 2700], controlRoomMm: [4000, 3400, 2700], racks: 2, rackU: 28, rackHeatKw: 6.03, edgeCabinets: 7, wifiAps: 5, instruments: 46, plcTags: 592, servos: 36, inverters: 9, dol: 8, timeseriesKbS: 91.7, visionRawMbS: 6.9, visionKeptMbS: 0.94, retentionPct: 13.7, requiredMbps: 111.9, backboneMbps: 1000, annualTb: 14.19, storageTb: 63.9, itKw: 10.3, instKw: 4.5, smartKw: 14.8, hoursPerYear: 4125 };
   // [태그, 존, 이름, 수량, 신호수, Hz, 분전반, W, 용도, 여는 과제]
   var INSTRUMENTS = [
     ['VIB-901', 'afu', 'HPU-101 유압펌프 3축 진동', 1, 16, 1.0, 'LP-INST', 6.0, '펌프·전동기 베어링 열화 추세', 'AI-05'],
@@ -3658,7 +3658,7 @@ html>body{padding:0}</style>
     ['GI-302', 'post', 350000000, 66.0],
     ['VS-401', 'grm', 12000000, 66.0]
   ];
-  var AI_SUMMARY = { cases: 12, gradeA: 3, gradeB: 5, gradeC: 2, gradeD: 2, annualPanels: 149400, labelNormal: 131970, labelCracked: 12450, labelScrap: 4980, scarcest: '전손', coldStartMonths: 2.4, transferMin: 1000, scrapMissS: 45.0, crackedMissS: 47.04 };
+  var AI_SUMMARY = { cases: 12, gradeA: 3, gradeB: 5, gradeC: 2, gradeD: 2, annualPanels: 308138, labelNormal: 272189, labelCracked: 25678, labelScrap: 10271, scarcest: '전손', coldStartMonths: 1.2, transferMin: 1000, scrapMissS: 45.0, crackedMissS: 47.04 };
   // 지지·장착 — src/pv_preprocess/mounting.py 파생 (테스트 대조).
   // [셀, [[대상,개수,볼트,개소,개소당]], 플레이트, grout, 레벨링, 비고, 합계]
   var MOUNTINGS = [
@@ -3705,7 +3705,7 @@ html>body{padding:0}</style>
     ['VS-101A/B-FUSED 고정면 스캔선', '레이저 투영선이라 물체가 아니다']
   ];
   var KINEMATICS = {panelMm: [2500, 1400], flipAxisMm: 3430, transferMm: 2290, ringBoreMm: 1620, ringBottomMm: 2440, underRingMm: 112, overCarriageMm: 116, boreClearMm: 109, cageAxialMm: 40, jawStrokeMm: 187.5, jawOpenClearMm: 70, afrClampKn: 12.0, afrPortalZMm: 1450, afrPortalAnchors: 16};
-  var CRANE = {capacityT: 5.0, ceilingMm: 12000, railTopMm: 10750, hookHeightMm: 9700, spanMm: 8800, runwayMm: 60800, hookReachMm: 3800, governing: "BFC 반전 카세트 (Bay 1식)", governingKg: 1980, capacityMargin: 2.53, tallest: "VG-101 독립 방진 비전보 조립체", requiredHookMm: 7850, hookMarginMm: 1850, installedKw: 6.7, demandKw: 1.34};
+  var CRANE = {capacityT: 5.0, ceilingMm: 12000, railTopMm: 10750, hookHeightMm: 9700, spanMm: 8800, runwayMm: 60800, hookReachMm: 3800, governing: "BFC 반전 카세트 (Bay 1식)", governingKg: 2500, hookLoadKg: 2650, maxLiftKg: 4850, capacityMargin: 1.89, tallest: "VG-101 독립 방진 비전보 조립체", requiredHookMm: 8370, hookMarginMm: 1330, installedKw: 6.7, demandKw: 1.34};
   var MOUNT_SUMMARY = { stations: 8, anchors: 190, m16: 94, m20: 88, m24: 8, members: 18, brackets: 51, series: 53, withdrawn: 2, floor: 14, frame: 2, gantry: 2, exempt: 4 };
   var SL_CHAIN_ROWS = INCOMER.tapsSite ? (INCOMER.tapLowVoltage ? 4 : 5) : (INCOMER.highVoltage ? 6 : 4);
   // 분기 주회로 길이는 부지 실측 대기다. 모를 때 0.0 m 로 찍으면 도면이 거짓말을 한다.
@@ -4735,7 +4735,9 @@ html>body{padding:0}</style>
     [['주행레일 상면 TOR', n(CRANE.railTopMm) + ' mm = 천장 ' + n(CRANE.ceilingMm) + ' − 보 여유 300 − 거더·트롤리 950'],
      ['후크 최고 높이', n(CRANE.hookHeightMm) + ' mm = TOR − C 치수 1,050 — **천장고가 아니다**'],
      ['스팬 · 주행 전장', n(CRANE.spanMm) + ' · ' + n(CRANE.runwayMm) + ' mm (후크 도달 라인중심 ±' + n(CRANE.hookReachMm) + ')'],
-     ['용량을 정한 인양', CRANE.governing + ' ' + n(CRANE.governingKg) + ' kg → 용량 여유 ' + CRANE.capacityMargin + '배'],
+     ['용량을 정한 인양', CRANE.governing + ' ' + n(CRANE.governingKg) + ' kg 이상 (발주처 확인)'],
+     ['후크 하중 · 상한', n(CRANE.hookLoadKg) + ' kg (물건 + 인양 부속 150) → 여유 ' + CRANE.capacityMargin
+       + '배 · 물건 상한 ' + n(CRANE.maxLiftKg) + ' kg'],
      ['후크를 정한 인양', CRANE.tallest + ' 필요 ' + n(CRANE.requiredHookMm) + ' → 여유 ' + n(CRANE.hookMarginMm) + ' mm']
     ].forEach(function (r, i) {
       var y = cy + 30 + i * 24;
@@ -9550,6 +9552,11 @@ L([.34,.24,.20],[-19.10,1.50,1.55],M.orange,'VAC-101 진공 스위치·잔압배
      천장 12,000 − 보 하면 여유 300 − 거더·트롤리 950 = 주행레일 상면 10,750
      10,750 − C 치수 1,050                            = 후크 최고 9,700
 
+   용량은 최중량 단품이 정한다. 발주처가 **2,500 kg 이상**을 확인해 줬고,
+   후크에는 인양 부속(슬링·샤클·스프레더) 150 이 더 걸려 2,650 kg 이 된다 —
+   정격이 받는 것은 물건이 아니라 후크에 걸린 전부다. 여유 1.89배이고,
+   물건 기준 상한은 5,000 − 150 = **4,850 kg** 이다.
+
    스팬 8,800 은 장비 밴드(7,100)를 후크가 끝까지 덮어야 나오는 값이다 —
    트롤리 끝단 접근 600 을 빼면 후크가 라인 중심에서 ±3,800 까지 가고,
    밴드 반폭 3,550 을 250 여유로 넘는다. 통로(z 3,550…4,750) 위를 지나지만
@@ -9586,10 +9593,10 @@ var g=pvCrn,L=function(a,b,c,d,e,f){return P(g,a,b,c,d,e,f)},RX=4.65,BX=RX;
 L([.30,.70,8.80],[BX,11.10,0],M.frame,'CRN-901 브리지 거더 (스팬 8,800)',
   '단일거더. 하면 10,750 이 플랜트 최고 고정점 5,150 위로 5,600 뜬다 — 크레인이 설비에 닿을 일이 없다.');
 L([.90,.45,.80],[BX,10.525,0],M.dark,'CRN-901 호이스트 트롤리 (5 t · 5.5 kW)',
-  '수하식 호이스트가 거더 하부 플랜지를 탄다. 승강 5.0/0.8 m/min · 횡행 0.4 kW. 최중량 인양은 BFC 반전 카세트 1,980 kg 이라 용량 여유 2.5배다.');
+  '수하식 호이스트가 거더 하부 플랜지를 탄다. 승강 5.0/0.8 m/min · 횡행 0.4 kW. 최중량 인양은 BFC 반전 카세트 **2,500 kg 이상**(발주처 확인)이고, 후크에는 인양 부속 150 이 더 걸려 2,650 kg 이라 용량 여유 1.89배다. 물건 기준 상한은 4,850 kg.');
 [-.12,.12].forEach(function (dz) { Ee(g,.012,.60,[BX,10.00,dz],M.steel,null,null,[0,0,0]); });
 L([.30,.45,.30],[BX,9.475,0],M.metal,'CRN-901 후크 블록 (최고 9,700)',
-  '후크 최상단이 9,700. 인양물 위로 슬링 2,000 과 이 블록 500 이 더 필요하므로, 4,500 짜리 반전 카세트를 들려면 후크가 7,200 까지 올라가야 한다 — 2,500 여유.');
+  '후크 최상단이 9,700. 인양물 위로 슬링 2,520(폭 2,900 · 60°)과 이 블록 500 이 더 필요하므로, 4,500 짜리 반전 카세트를 들려면 후크가 7,720 까지 올라가야 한다 — 1,980 여유. 후크 높이를 정하는 것은 최중량이 아니라 최고 VG-101(5,150)이고, 그쪽은 8,370 이 필요해 1,330 남는다.');
 Ee(g,.045,.30,[BX,9.10,0],M.yellow,'CRN-901 후크','5 t 단일 후크 · 안전 래치');
 L([60.80,.10,.08],[RX,10.30,4.47],M.dark,'CRN-901 페스툰 급전 트랙',
   'F15 LP-CRANE 에서 급전한다. 설치 6.7 kW · 수용률 0.20 — 설치·정비 전용이라 운전 중 공정 부하와 동시에 걸리지 않는다.');

@@ -28,10 +28,36 @@ from . import campaign, handoff, servos, vision
 from .layout import build_zones
 
 # ── 운전 전제 ────────────────────────────────────────────────────────────
-#: 연간 가동시간 (h). 1교대 8 h × 250 일 기준의 **계획값**이다.
-#: 라벨 공급량·저장 용량이 전부 여기서 나오므로 교대 계획이 확정되면
-#: 이 한 줄만 고치면 된다. 2교대면 4,000, 3교대면 6,000 이다.
-OPERATING_HOURS_PER_YEAR = 2_000.0
+#: 하루 조업시간 (h) — 2교대. **발주처 확인.**
+SHIFT_HOURS_PER_DAY = 16.0
+
+#: 연간 조업일 (일). **발주처 확인.**
+OPERATING_DAYS_PER_YEAR = 275
+
+#: 계획 정지시간 (h/일) — 교대 인계·청소·정기점검. **발주처 확인.**
+#: 계획된 정지라 가동시간에서 빼야 한다. 안 빼면 라벨 공급과 저장 증가가
+#: 6.7 % 과대해지고, 그 과대분이 착수 시점과 디스크 용량으로 그대로 간다.
+PLANNED_STOP_HOURS_PER_DAY = 1.0
+
+
+def operating_hours_per_year(shift_h: float | None = None,
+                             days: int | None = None,
+                             stop_h: float | None = None) -> float:
+    """연간 실가동시간 (h) = (조업 − 계획정지) × 조업일.
+
+    인자를 열어 둔 것은, 정지시간을 빼는 항이 죽어도 지금 값으로는 아무
+    시험이 실패하지 않는 일을 막기 위해서다.
+    """
+    hours = SHIFT_HOURS_PER_DAY if shift_h is None else shift_h
+    day_count = OPERATING_DAYS_PER_YEAR if days is None else days
+    stop = PLANNED_STOP_HOURS_PER_DAY if stop_h is None else stop_h
+    return round((hours - stop) * day_count, 1)
+
+
+#: 연간 가동시간 (h). 라벨 공급량·저장 용량이 전부 여기서 나온다.
+#: REV.29 에서 발주처가 2교대 16 h × 275 일 · 계획정지 1 h/일 을 확인해
+#: 주어 1교대 가정 2,000 에서 **4,125** 로 바뀌었다 (2.06배).
+OPERATING_HOURS_PER_YEAR = operating_hours_per_year()
 
 #: 히스토리안 보존 연수 — 저장 용량 산정 기준.
 RETENTION_YEARS = 3.0
