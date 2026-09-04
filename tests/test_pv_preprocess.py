@@ -3023,7 +3023,10 @@ class TestCrane(unittest.TestCase):
         사람이 다니는 길이고, 반입 동선은 폭 7,100 의 장비 밴드다.
         """
         flow = [zone.key for zone in layout.build_zones()]
-        self.assertEqual(flow[0], crane.ENTRY_ZONE, "문은 공정 상류에 있다")
+        # 출입구가 투입방향(상류)이라는 것은 발주처 확인값이다 — 건축이 이미
+        # 그렇게 설계돼 있다. 확인 전에는 지게차 진입측에서 미루어 잡았다.
+        self.assertEqual(crane.ENTRY_ZONE, "afu")
+        self.assertEqual(flow[0], crane.ENTRY_ZONE, "출입구는 공정 상류에 있다")
         self.assertEqual(crane.install_order(), tuple(reversed(flow)))
         self.assertEqual(crane.install_order()[0], "grm", "가장 먼 쪽을 먼저")
         self.assertEqual(crane.install_order()[-1], crane.ENTRY_ZONE, "문 쪽이 마지막")
@@ -3040,6 +3043,15 @@ class TestCrane(unittest.TestCase):
         self.assertFalse(crane.aisle_can_haul(wiring.aisle_clear_width_mm()),
                          "유효 900 통로로 2,900 모듈이 지나갈 수 없다")
         self.assertTrue(crane.aisle_can_haul(3_000), "경계가 실제로 작동하는지")
+        # 개구 하한은 **치수가 아니라 하한**이다. 높이를 정하는 VG-101 은
+        # 보 + 기둥 2본이라 통짜로 올 물건이 아니고, 무엇이 통짜로 오는지는
+        # 분할 반입 계획(벤더 몫)에 달렸다 — 그 조건을 도면이 같이 적는다.
+        self.assertEqual(crane.entry_opening_min_mm(), (2_900, 5_150))
+        self.assertEqual(crane.entry_opening_min_mm()[0], crane.widest_module_mm())
+        self.assertEqual(crane.entry_opening_min_mm()[1],
+                         max(lift.height_mm for lift in crane.LIFTS))
+        self.assertIn("통짜 반입 가정 시 폭", self.html)
+        self.assertIn("분할 반입 계획에 따라 줄어든다", self.html)
         # 종전의 틀린 문장이 되살아나면 실패한다
         source = (pathlib.Path(__file__).resolve().parents[1]
                   / "src" / "pv_preprocess" / "crane.py").read_text(encoding="utf-8")

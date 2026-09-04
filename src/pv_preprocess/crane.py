@@ -125,8 +125,13 @@ RUNWAY_MM = 60_800
 
 
 # ── 반입 동선 ────────────────────────────────────────────────────────────
-#: 반입 진입측 존. 지게차 진입측과 같은 곳이다 —
-#: `mounting.MOUNTING_OF["afu"]` 가 앵커를 여유 있게 잡는 근거와 같은 사실.
+#: 반입 진입측 존. **발주처 확인 — 출입구는 투입방향(상류 AFU)이고 건축이
+#: 이미 그렇게 설계돼 있다.** 지게차 진입측과 같은 곳이라
+#: `mounting.MOUNTING_OF["afu"]` 가 앵커를 여유 있게 잡는 근거와도 맞는다.
+#:
+#: 확인 전에는 그 앵커 근거에서 미루어 잡은 값이었다. 추정이 맞았지만
+#: 추정이었다는 사실이 중요하다 — 설치 순서 전체가 여기서 나오므로,
+#: 문이 반대쪽이면 순서도 통째로 뒤집힌다(`install_order` 가 그렇게 만든다).
 ENTRY_ZONE = "afu"
 
 
@@ -155,6 +160,17 @@ def widest_module_mm() -> int:
     셀 외형에서 파생시킨다 — 손으로 적으면 셀이 넓어져도 안 따라온다.
     """
     return layout.STATIONS[governing_lift().station].envelope[1]
+
+
+def entry_opening_min_mm() -> tuple[int, int]:
+    """반입 개구가 최소한 통과시켜야 하는 (폭, 높이) mm.
+
+    **개구 치수를 정하는 값이 아니라 하한이다.** 실제 치수는 분할 반입
+    계획에 달렸다 — 무엇이 통짜로 오고 무엇이 안에서 조립되는지는 벤더
+    몫이라 여기서 정하지 않는다. "통짜로 온다면 이만큼은 필요하다" 만
+    내보내고, 운반대 높이·리깅 여유는 시공사가 얹는다.
+    """
+    return widest_module_mm(), max(lift.height_mm for lift in LIFTS)
 
 
 def aisle_can_haul(aisle_clear_mm: int) -> bool:
@@ -352,6 +368,7 @@ def summary() -> dict[str, object]:
         "entryZone": ENTRY_ZONE,
         "haulWidthMm": haul_width_mm(),
         "widestModuleMm": widest_module_mm(),
+        "entryOpeningMinMm": list(entry_opening_min_mm()),
         "installedKw": installed_kw(),
         "demandKw": demand_kw(),
     }
