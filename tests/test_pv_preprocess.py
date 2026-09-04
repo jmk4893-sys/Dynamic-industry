@@ -17,15 +17,36 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import (acceptance, access, acoustics, ai, air, campaign, crane, dust, electrical, frames,
-                           handoff, kinematics, layout, materials, mounting, reliability, safety, seismic,
-                           smart, servos, thermal, vision, wiring)
+from pv_preprocess import (acceptance, access, acoustics, ai, air, brand, campaign, crane, dust, electrical,
+                           frames, handoff, kinematics, layout, materials, mounting, reliability, safety,
+                           seismic, smart, servos, thermal, vision, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
 
 
 def read_drawing() -> str:
     return DRAWING.read_text(encoding="utf-8")
+
+
+CONSOLE = pathlib.Path(__file__).resolve().parents[1] / "docs" / "consoles" / "pv-preprocess-console.html"
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+def read_console() -> str:
+    return CONSOLE.read_text(encoding="utf-8")
+
+
+def brand_paths_in(html: str) -> list[str]:
+    """HTML 안의 `PV_BRAND` 블록에서 경로 문자열만 뽑는다.
+
+    파일이 마크를 어떻게 쓰든(SVG 든 Path2D 든) 좌표는 이 한 블록에서만 나와야
+    한다. 정규식이 `shapes:` 배열의 세 번째 항만 집으므로, 다른 곳에 경로를 또
+    적어 두면 여기 안 잡히고 `no_other_path_data` 시험이 잡는다.
+    """
+    block = re.search(r"shapes:\s*Object\.freeze\((\[\[.*?\]\])\.map", html, re.S)
+    if not block:
+        return []
+    return re.findall(r'"(M[^"]*Z)"', block.group(1))
 
 
 def station_blocks(html: str) -> dict[str, str]:
@@ -1747,6 +1768,165 @@ class TestCarriageClearance(unittest.TestCase):
         rails = 2 * 672          # 레일 중심 간격
         opening = rails - 140    # 레일 폭 140 을 뺀 순개구
         self.assertGreaterEqual(opening, 210 * 2, "정션박스 통과 여유가 부족하다")
+
+
+class TestBrandMark(unittest.TestCase):
+    """회사 마크 — 도형이 적힌 곳이 하나인가.
+
+    마크가 3D 외장에도 붙고 콘솔 화면에도 붙는다. 두 벌로 두면 한쪽만 고쳐지는
+    날이 오고, 그날 두 마크는 같은 회사 것이 아니게 된다. 그래서 이 시험이
+    묻는 것은 "예쁜가" 가 아니라 **같은 문자열인가** 다.
+
+    도형이 원본 아트워크와 같은지는 여기서 못 잰다 — 픽셀 대조는 브라우저가
+    필요하므로 `tools/check_brand_fidelity.mjs` 가 따로 잰다. 이 시험은 그
+    아래 단계, 즉 **한 번 뽑은 도형이 두 소비자에게 그대로 갔는가**를 본다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+        cls.console = read_console()
+
+    def test_the_extraction_is_not_hand_written(self):
+        """좌표는 추출기 출력이지 사람이 적은 값이 아니다."""
+        self.assertEqual(brand.SOURCE_FILE, "symbol_100x100mm.ai")
+        self.assertEqual(len(brand.SHAPES), 5)
+        self.assertEqual(len(brand.shapes_of("blue")), 4)
+        self.assertEqual(len(brand.shapes_of("amber")), 1)
+        # 100 mm 짜리 심볼 — 파일 이름과 ArtBox 가 맞는다
+        self.assertAlmostEqual(brand.WIDTH_MM, 100.0, places=2)
+        ax0, ay0, ax1, ay1 = brand.ARTBOX_PT
+        self.assertAlmostEqual((ax1 - ax0) / 72 * 25.4, brand.WIDTH_MM, places=3)
+        self.assertAlmostEqual((ay1 - ay0) / (ax1 - ax0) * brand.VIEW_W,
+                               brand.VIEW_H, places=3)
+        # 추출기와 **원본 아트워크** 가 둘 다 저장소에 있어야 재현할 수 있다.
+        # 추출기만 있고 원본이 없으면 `brand.py` 의 좌표는 확인할 길이 없는 값이
+        # 되고, 그 순간 "눈으로 따라 그린 것" 과 구별되지 않는다.
+        self.assertTrue((ROOT / "tools" / "extract_brand.py").exists())
+        art = ROOT / brand.SOURCE_PATH
+        self.assertTrue(art.exists(), f"원본 아트워크가 없다: {brand.SOURCE_PATH}")
+        self.assertEqual(art.name, brand.SOURCE_FILE)
+        # AI 는 PDF 1.4 컨테이너다 — 추출기가 읽는 것이 그 사실이다
+        self.assertTrue(art.read_bytes().startswith(b"%PDF-"))
+
+    def test_every_path_is_a_closed_fill(self):
+        """열린 경로는 채움이 뷰어마다 달라진다."""
+        for shape in brand.SHAPES:
+            with self.subTest(shape=shape.tag):
+                self.assertTrue(shape.d.startswith("M"))
+                self.assertTrue(shape.d.endswith("Z"))
+                self.assertIn(shape.role, ("blue", "amber"))
+                self.assertEqual(shape.colour, brand.ROLE_COLOUR[shape.role])
+                self.assertEqual(len(shape.cmyk), 4)
+
+    def test_the_drawing_and_the_console_use_the_same_shapes(self):
+        """이 시험이 이 판의 요점이다 — 두 파일이 **글자까지** 같아야 한다."""
+        want = list(brand.path_data())
+        self.assertEqual(brand_paths_in(self.html), want, "3D 도면의 마크가 어긋났다")
+        self.assertEqual(brand_paths_in(self.console), want, "콘솔의 마크가 어긋났다")
+        # 두 소비자끼리도 같다 — 위 둘이 같은 값을 가리키므로 자동이지만,
+        # 어느 쪽이 틀렸는지 읽히게 따로 적는다
+        self.assertEqual(brand_paths_in(self.html), brand_paths_in(self.console))
+
+    def test_the_colours_are_the_same_everywhere(self):
+        """색이 갈리면 도형이 같아도 다른 마크다."""
+        for html, where in ((self.html, "도면"), (self.console, "콘솔")):
+            with self.subTest(where=where):
+                self.assertIn(f'blue: "{brand.BLUE}"', html)
+                self.assertIn(f'amber: "{brand.AMBER}"', html)
+                self.assertEqual(html.count(brand.BLUE) >= 1, True)
+        # CMYK 원값도 같이 남아 있어야 도장·실크 발주가 된다
+        self.assertEqual(len(brand.BLUE_CMYK), 4)
+        self.assertEqual(len(brand.AMBER_CMYK), 4)
+
+    def test_no_other_path_data_hides_in_either_file(self):
+        """PV_BRAND 밖에 경로가 또 적혀 있으면 단일 출처가 아니다.
+
+        마크 경로는 `M…Z` 꼴이고 좌표가 소수점을 갖는다. 그 꼴의 문자열이
+        PV_BRAND 블록 밖에 있으면 누군가 마크를 베껴 둔 것이다.
+        """
+        for html, where in ((self.html, "도면"), (self.console, "콘솔")):
+            with self.subTest(where=where):
+                block = re.search(r"shapes:\s*Object\.freeze\(\[\[.*?\]\]\.map", html, re.S)
+                outside = html[:block.start()] + html[block.end():]
+                for shape in brand.SHAPES:
+                    self.assertNotIn(shape.d, outside,
+                                     f"{where}: {shape.tag} 경로가 PV_BRAND 밖에도 있다")
+
+    def test_the_drawing_draws_the_mark_from_that_one_block(self):
+        """3D 는 캔버스 Path2D 로, 콘솔은 SVG 로 — 둘 다 같은 블록을 읽는다."""
+        self.assertIn("new Path2D(s[2])", self.html)
+        self.assertIn("window.pvMarkPaint", self.html)
+        self.assertIn("pvMarkPaint(x, 26, 44, 92)", self.html,
+                      "명판 텍스처가 전역 마크 함수를 써야 한다")
+        self.assertIn("PV_BRAND", self.console)
+        self.assertIn("markSvg", self.console)
+
+    def test_the_console_values_come_from_the_model(self):
+        """콘솔 숫자를 손으로 적으면 도면과 갈린다."""
+        import json as _json
+        block = re.search(r"var CONSOLE = (\{.*?\n  \});", self.console, re.S)
+        self.assertIsNotNone(block, "CONSOLE 블록이 없다")
+        got = _json.loads(re.sub(r"\n  ", "\n", block.group(1)))
+        self.assertEqual(got["taktS"], campaign.summary()["takt_s"])
+        self.assertEqual(got["demandKw"], electrical.demand_kw())
+        self.assertEqual(got["stopChainMs"], safety.stop_chain_ms())
+        self.assertEqual(got["annualPanels"], reliability.annual_panels())
+        self.assertEqual(got["unanchored"], len(seismic.unanchored()))
+        self.assertEqual(got["dustFlowM3h"], dust.counted_flow_m3h())
+        self.assertEqual(got["airFadNlMin"], air.compressor_fad_nl_min())
+        self.assertEqual(got["acceptanceItems"], len(acceptance.items()))
+
+    def test_the_plates_ride_on_enclosures_that_already_stood(self):
+        """마크는 **붙인 것**이지 세운 것이 아니다.
+
+        명판을 달려고 기둥을 세우면 통로를 먹는다 — §36 에서 고정 플랫폼을 못
+        세운 것과 같은 벽이다. 그래서 판은 이미 서 있던 엣지 캐비닛 도어와
+        관제실 벽면에 **면일치로 박힌다.** 캐비닛 도어에는 원래 라벨 없는
+        주황 띠(420 × 100 × 20)가 20 mm 나와 있었고, 그것을 두께 12 인 명판으로
+        바꿔 넣었으므로 보행 유효폭은 오히려 넓어진다.
+        """
+        # 존마다 하나 — 부제는 배치 모델의 존 라벨이라 존이 바뀌면 여기서 걸린다
+        want = {"EC-AFU": "afu", "EC-ROB": "robot", "EC-JBR": "jbr", "EC-AFR": "afr",
+                "EC-POS": "post", "EC-BUF": "buffer", "EC-GRM": "grm"}
+        labels = {z.key: z.label for z in layout.build_zones()}
+        calls = re.findall(r"pvNamePlate\(g,([\d.]+),\[([-\d.]+),([\d.]+),([-\d.]+)\],"
+                           r"0,'([\w-]+)','([^']*)'\)", self.html)
+        self.assertEqual(len(calls), len(want) + 1, "명판은 캐비닛 7면 + 관제실 1면이다")
+        seen = {}
+        for w, x, y, z, tag, sub in calls:
+            seen[tag] = (float(w), float(z), sub)
+        for tag, key in want.items():
+            with self.subTest(tag=tag):
+                self.assertIn(tag, seen, f"{tag} 명판이 없다")
+                w, z, sub = seen[tag]
+                self.assertEqual(sub, labels[key], "부제는 존 라벨에서 온다")
+                # 캐비닛은 z 4.45…4.75 — 판이 문짝 면보다 통로쪽으로 나오면 안 된다
+                self.assertGreaterEqual(round(z - 0.012 / 2, 6), 4.45,
+                                        f"{tag} 명판이 통로로 나왔다")
+                self.assertLessEqual(w, 0.6, "판이 문짝(600)보다 넓다")
+        # 라벨 없던 주황 띠는 남아 있으면 안 된다 — 명판이 그 자리를 대신했다
+        self.assertNotIn("L([.42,.1,.02],", self.html, "빈 주황 띠가 남아 있다")
+        # 세운 것이 없어야 한다 — 표지주·신호등을 다시 들이지 않았는지 본다
+        for erected in ("pvSign", "pvBeacon", "콘솔 전면 스커트"):
+            self.assertNotIn(erected, self.html,
+                             f"{erected} — 마크를 붙이려고 설비를 세우지 않는다")
+
+    def test_the_plate_texture_paints_the_mark_not_a_copy(self):
+        """명판 텍스처가 마크를 **직접 그리지 않고** 전역을 부른다.
+
+        캔버스에 도형을 다시 적어 두면 그 순간 두 번째 출처가 생긴다. 명판
+        코드에는 경로 문자열이 없어야 하고, `pvMarkPaint` 를 불러야 한다.
+        """
+        i = self.html.index("function pvPlateTexture(")
+        j = self.html.index("function pvNamePlate(")
+        body = self.html[i:j]
+        self.assertIn("window.pvMarkPaint(", body, "명판이 전역 마크 함수를 써야 한다")
+        self.assertNotIn("Path2D", body, "명판 안에서 도형을 다시 그리면 출처가 둘이다")
+        for shape in brand.SHAPES:
+            self.assertNotIn(shape.d, body)
+        # 판 비율은 캔버스 비율에서 나와야 글자가 늘어나지 않는다
+        self.assertIn("var h = w * 168 / 512;", self.html)
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>MCR-901 운전 콘솔</title>
+<!--
+  MCR-901 통합 관제 콘솔 화면.
+
+  화면 구성은 사람이 쓰고, **값과 마크는 사람이 쓰지 않는다** —
+    값  : src/pv_preprocess/*.py  →  tools/build_console.py  →  아래 @data 블록
+    마크: symbol_100x100mm.ai → tools/extract_brand.py → src/pv_preprocess/brand.py
+          → tools/build_console.py → 아래 @brand 블록
+  3D 도면(docs/drawings/pv-preprocess-plant.html)도 같은 brand.py 에서 마크를 받고,
+  두 파일의 경로 문자열이 글자까지 같은지는 tests/test_pv_preprocess.py 가 강제한다.
+-->
+<style>
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; } }
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#eef1f4, #0d1116);
+  --panel: light-dark(#ffffff, #161b22);
+  --panel-2: light-dark(#f6f8fa, #1b222b);
+  --line: light-dark(#d5dbe1, #2a323c);
+  --ink: light-dark(#1a1c1f, #e9edf1);
+  --dim: light-dark(#5d6874, #9aa6b1);
+  --blue: #228CC9;
+  --amber: #FECA4A;
+  --ok: light-dark(#177245, #3fbf7f);
+  --warn: light-dark(#9a6700, #e3b341);
+  --bad: light-dark(#a4342b, #f0736a);
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "Noto Sans KR", sans-serif; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 18px 16px 48px; }
+
+header.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 14px 18px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 12px; }
+header.top .mark { display: block; flex: none; }
+header.top h1 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -.01em; }
+header.top .sub { margin: 2px 0 0; font-size: 12px; color: var(--dim); }
+header.top .spacer { flex: 1 1 auto; min-width: 12px; }
+.clock { font: 600 20px/1 var(--mono); letter-spacing: .02em; }
+.clock small { display: block; font: 400 11px/1.6 system-ui, sans-serif; color: var(--dim); }
+
+.strip { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  font-size: 12.5px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none;
+  background: var(--ok); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ok) 22%, transparent); }
+.dot.warn { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in oklab, var(--warn) 22%, transparent); }
+.dot.bad { background: var(--bad); box-shadow: 0 0 0 3px color-mix(in oklab, var(--bad) 22%, transparent); }
+
+h2 { margin: 22px 0 10px; font-size: 13px; font-weight: 650; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--dim); }
+
+.grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 13px; }
+.card .k { font-size: 11.5px; color: var(--dim); }
+.card .v { margin-top: 3px; font: 650 23px/1.15 var(--mono); letter-spacing: -.02em;
+  overflow-wrap: anywhere; }
+.card .v em { font: inherit; font-style: normal; font-size: 13px; color: var(--dim); }
+.card .n { margin-top: 5px; font-size: 11.5px; color: var(--dim); }
+.card.wide { grid-column: span 2; }
+.bar { margin-top: 8px; height: 6px; border-radius: 3px; background: var(--panel-2);
+  border: 1px solid var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--blue); }
+.bar i.amber { background: var(--amber); }
+
+.cells { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.cell { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 13px; display: flex; gap: 11px; align-items: flex-start; }
+.stack { flex: none; width: 15px; padding-top: 2px; }
+.stack span { display: block; height: 11px; border-radius: 2px; margin-bottom: 3px;
+  background: color-mix(in oklab, var(--ink) 12%, transparent); }
+.stack span.on-r { background: var(--bad); }
+.stack span.on-y { background: var(--warn); }
+.stack span.on-g { background: var(--ok); }
+.cell .tag { font: 650 14px/1.2 var(--mono); }
+.cell .nm { font-size: 12px; color: var(--dim); margin-top: 2px; }
+.cell .len { font-size: 11.5px; color: var(--dim); margin-top: 6px; font-family: var(--mono); }
+
+table { width: 100%; border-collapse: collapse; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 13px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+th { font-size: 11.5px; letter-spacing: .03em; text-transform: uppercase; color: var(--dim);
+  background: var(--panel-2); }
+tr:last-child td { border-bottom: 0; }
+td.num { text-align: right; font-family: var(--mono); }
+
+footer { margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--line);
+  font-size: 12px; color: var(--dim); }
+footer code { font-family: var(--mono); font-size: 11.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <span class="mark" id="mark"></span>
+    <div>
+      <h1>태양광 패널 전처리 통합 플랜트 — 운전 콘솔</h1>
+      <p class="sub">MCR-901 통합 관제 · 값은 <code>src/pv_preprocess</code> 모델에서 나온다</p>
+    </div>
+    <span class="spacer"></span>
+    <div class="clock"><span id="clock">--:--:--</span><small id="today"></small></div>
+  </header>
+
+  <div class="strip" id="strip"></div>
+
+  <h2>셀 상태</h2>
+  <div class="cells" id="cells"></div>
+
+  <h2>공정</h2>
+  <div class="grid" id="process"></div>
+
+  <h2>전기 · 유틸리티</h2>
+  <div class="grid" id="utility"></div>
+
+  <h2>안전</h2>
+  <div class="grid" id="safety"></div>
+
+  <h2>가동 · 검수</h2>
+  <div class="grid" id="ops"></div>
+
+  <h2>인수 전 미해결</h2>
+  <table>
+    <thead><tr><th>항목</th><th>왜 남아 있나</th></tr></thead>
+    <tbody id="open"></tbody>
+  </table>
+
+  <footer>
+    <p><strong>이 화면은 운전 데이터를 받지 않는다.</strong> 설계 모델의 값을 그대로
+    띄우는 콘솔 레이아웃이고, 신호등은 실제 안전 PLC 상태가 아니라 정상 운전 상태를
+    보여 준다. 현장 연동은 <code>SM-1012</code> 백본과 히스토리안이 붙은 뒤다.</p>
+    <p>저장소 원본: <code>docs/consoles/pv-preprocess-console.html</code> ·
+    값 생성 <code>tools/build_console.py</code> ·
+    마크 <code>src/pv_preprocess/brand.py</code> (원본 <code id="src"></code>)</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* @brand-begin */
+  window.PV_BRAND = Object.freeze({
+    source: "symbol_100x100mm.ai",
+    viewW: 100.0, viewH: 88.9718,
+    widthMm: 100.0002,
+    blue: "#228CC9", amber: "#FECA4A",
+    shapes: Object.freeze([["blue-1", "#228CC9", "M8.8425 30.8125L1.1848 44.0762C-0.3946 46.812 -0.3946 50.1824 1.1852 52.9182L15.6497 77.9721L25.8598 60.2874Z"], ["blue-2", "#228CC9", "M36.0704 42.6023L19.0532 13.1274L12.2463 24.9173L29.2636 54.3921Z"], ["blue-3", "#228CC9", "M46.2807 24.9174L38.7016 11.7898L25.088 11.7898L39.4739 36.7072Z"], ["blue-4", "#228CC9", "M19.053 83.8666L19.4482 84.551C21.0279 87.2868 23.9468 88.972 27.1055 88.972L72.8953 88.972C76.0541 88.972 78.9733 87.2868 80.5527 84.551L95.0173 59.4971L33.1204 59.4971Z"], ["amber-1", "#FECA4A", "M98.8154 44.076L75.9206 4.421C74.3412 1.6852 71.4219 0.0 68.2632 0.0L50.001 0.0004L50.001 0.0L33.8946 0.0L42.0532 4.7103L70.2821 53.6045L98.4203 53.6024L98.8154 52.918C100.3948 50.1822 100.3948 46.8118 98.8154 44.076Z"]].map(Object.freeze))
+  });
+  /* @brand-end */
+
+  /* @data-begin */
+  var CONSOLE = {
+    "taktS": 48.47,
+    "throughputPerH": 72.2,
+    "peakWip": 3,
+    "campaignPanels": 60,
+    "campaignMin": 48.2,
+    "downstreamPerH": 68.4,
+    "rideThroughH": 0.76,
+    "installedKw": 299.0,
+    "demandKw": 217.1,
+    "contractKw": 293.1,
+    "breakerAt": 500,
+    "siteSharePct": 24.4,
+    "airFadNlMin": 800,
+    "airNeedNlMin": 542.5,
+    "airDemandKw": 4.25,
+    "receiverL": 300,
+    "dustFlowM3h": 1350,
+    "airflowM3h": 35000,
+    "roomLoadKw": 58.6,
+    "hazards": 14,
+    "safetyFunctions": 11,
+    "plantPlr": "e",
+    "stopChainMs": 287,
+    "stopBudgetMs": 445,
+    "safetyInputs": 45,
+    "fsoeNodes": 40,
+    "aisleDba": 59.9,
+    "nearDba": 70.0,
+    "targetAvailability": 0.92,
+    "downtimeBudgetH": 330.0,
+    "annualPanels": 283487,
+    "nominalPanels": 308138,
+    "operatingHours": 4125.0,
+    "acceptanceItems": 25,
+    "openAtHandover": 3,
+    "unanchored": 3
+  };
+  var CELLS = [["AFU", "LFT-A/B · BFC", 6.8, "2 Bay·비전·반전"], ["ROBOT", "RB-101 · PT", 5.2, "직접픽업·정렬"], ["JBR", "JBR-201", 7.05, "케이블·JBOX"], ["AFR", "AFR-101", 6.9, "단축→장축"], ["POST", "CV · SG · GI", 8.9, "이송·연마·통합검사"], ["BUFFER", "GBR · BUFFER", 9.55, "R-A/R-B/HOLD"], ["GRM", "GRM-401 유리제거", 14.05, "적재·가열·박리·3계통"]];
+  /* @data-end */
+
+  var $ = function (id) { return document.getElementById(id); };
+  var n = function (v) { return Number(v).toLocaleString('ko-KR'); };
+
+  /* 마크 — PV_BRAND 의 경로를 그대로 그린다. 도면 3D 가 Path2D 로 먹는 것과 같은 문자열. */
+  function markSvg(size) {
+    var b = window.PV_BRAND, h = Math.round(size * b.viewH / b.viewW);
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + h
+      + '" viewBox="0 0 ' + b.viewW + ' ' + b.viewH + '" role="img" aria-label="회사 마크">'
+      + b.shapes.map(function (s) {
+          return '<path fill="' + s[1] + '" d="' + s[2] + '"/>'; }).join('')
+      + '</svg>';
+  }
+
+  function card(k, v, unit, note, frac, amber) {
+    return '<div class="card"><div class="k">' + k + '</div>'
+      + '<div class="v">' + v + (unit ? ' <em>' + unit + '</em>' : '') + '</div>'
+      + (note ? '<div class="n">' + note + '</div>' : '')
+      + (frac == null ? '' : '<div class="bar"><i class="' + (amber ? 'amber' : '')
+          + '" style="width:' + Math.max(0, Math.min(100, frac * 100)).toFixed(1) + '%"></i></div>')
+      + '</div>';
+  }
+
+  function pill(text, state) {
+    return '<span class="pill"><i class="dot' + (state ? ' ' + state : '') + '"></i>'
+      + text + '</span>';
+  }
+
+  function render() {
+    $('mark').innerHTML = markSvg(46);
+    $('src').textContent = window.PV_BRAND.source;
+
+    $('strip').innerHTML = [
+      pill('라인 운전 중', ''),
+      pill('안전회로 정상 · PL' + CONSOLE.plantPlr + ' 요구 ' + CONSOLE.safetyFunctions + '기능', ''),
+      pill('정지시간 ' + CONSOLE.stopChainMs + ' / 예산 ' + CONSOLE.stopBudgetMs + ' ms', ''),
+      pill('압축공기 ' + n(CONSOLE.airFadNlMin) + ' NL/min (필요 ' + CONSOLE.airNeedNlMin + ')', ''),
+      pill('내진 앵커 미배정 ' + CONSOLE.unanchored + '대', CONSOLE.unanchored ? 'warn' : ''),
+      pill('인수 전 미해결 ' + CONSOLE.openAtHandover + '항', CONSOLE.openAtHandover ? 'warn' : '')
+    ].join('');
+
+    $('cells').innerHTML = CELLS.map(function (c) {
+      return '<div class="cell"><div class="stack">'
+        + '<span></span><span></span><span class="on-g"></span></div>'
+        + '<div><div class="tag">' + c[0] + '</div>'
+        + '<div class="nm">' + c[1] + '</div>'
+        + '<div class="len">' + c[2].toFixed(2) + ' m · ' + c[3] + '</div></div></div>';
+    }).join('');
+
+    $('process').innerHTML = [
+      card('택트', CONSOLE.taktS.toFixed(2), 's', '병목 JBR-201 + 인계 8 s'),
+      card('처리량', CONSOLE.throughputPerH.toFixed(1), '장/h',
+        '후단 능력 ' + CONSOLE.downstreamPerH.toFixed(1) + ' 장/h',
+        CONSOLE.throughputPerH / CONSOLE.downstreamPerH),
+      card('동시 재공', CONSOLE.peakWip, '장', '투입부 · JBR · 후단'),
+      card('캠페인', CONSOLE.campaignMin.toFixed(1), '분',
+        n(CONSOLE.campaignPanels) + '장 연속 · 번들 30 × 2'),
+      card('버퍼 완충', CONSOLE.rideThroughH.toFixed(2), 'h',
+        '후단 정지를 이만큼 버틴다')
+    ].join('');
+
+    $('utility').innerHTML = [
+      card('수요 전력', CONSOLE.demandKw.toFixed(1), 'kW',
+        '설치 ' + CONSOLE.installedKw.toFixed(1) + ' · 계약 ' + CONSOLE.contractKw.toFixed(1),
+        CONSOLE.demandKw / CONSOLE.contractKw),
+      card('주차단기', CONSOLE.breakerAt, 'AT', '부지 계통 점유 ' + CONSOLE.siteSharePct + ' %'),
+      card('압축공기', n(CONSOLE.airFadNlMin), 'NL/min',
+        '필요 ' + CONSOLE.airNeedNlMin + ' · 리시버 ' + CONSOLE.receiverL + ' L',
+        CONSOLE.airNeedNlMin / CONSOLE.airFadNlMin, true),
+      card('집진', n(CONSOLE.dustFlowM3h), 'm³/h', 'SG-301 + JBR 국소'),
+      card('환기', n(CONSOLE.airflowM3h), 'm³/h', '실내 부하 ' + CONSOLE.roomLoadKw.toFixed(1) + ' kW'),
+      card('통로 소음', CONSOLE.aisleDba.toFixed(1), 'dBA',
+        '근접 ' + CONSOLE.nearDba.toFixed(1) + ' · 보호구 기준')
+    ].join('');
+
+    $('safety').innerHTML = [
+      card('요구 성능수준', 'PL' + CONSOLE.plantPlr, '',
+        '위험원 ' + CONSOLE.hazards + ' · 안전기능 ' + CONSOLE.safetyFunctions),
+      card('정지시간', CONSOLE.stopChainMs, 'ms',
+        '예산 ' + CONSOLE.stopBudgetMs + ' ms · 여유 '
+        + (CONSOLE.stopBudgetMs - CONSOLE.stopChainMs) + ' ms',
+        CONSOLE.stopChainMs / CONSOLE.stopBudgetMs),
+      card('안전 입력', CONSOLE.safetyInputs, '점', 'FSoE 노드 ' + CONSOLE.fsoeNodes),
+      card('내진 미배정', CONSOLE.unanchored, '대', '앵커군이 배정 안 된 설비')
+    ].join('');
+
+    $('ops').innerHTML = [
+      card('목표 가용률', CONSOLE.targetAvailability.toFixed(2), '',
+        '계약값 — 물리값이 아니다', CONSOLE.targetAvailability),
+      card('정지 예산', CONSOLE.downtimeBudgetH.toFixed(0), 'h/년',
+        '운전 ' + n(CONSOLE.operatingHours) + ' h/년'),
+      card('연간 장수', n(CONSOLE.annualPanels), '장',
+        '가용률 반영 전 ' + n(CONSOLE.nominalPanels),
+        CONSOLE.annualPanels / CONSOLE.nominalPanels),
+      card('검수 항목', CONSOLE.acceptanceItems, '항',
+        '인수 전 미해결 ' + CONSOLE.openAtHandover)
+    ].join('');
+
+    $('open').innerHTML = [
+      ['S-08 분진 시료 채취', '혼합 분진 시험 결과가 SAT 뒤에 온다 — 벤트 설계가 그것을 기다린다'],
+      ['S-10 내진 앵커 배정', '지금 미배정 ' + CONSOLE.unanchored + '대. 0 이어야 인수된다'],
+      ['R-04 마모율 실측', '칼날·연마휠·핫나이프 수명은 run-at-rate 로만 나온다']
+    ].map(function (r) {
+      return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>';
+    }).join('');
+  }
+
+  function tick() {
+    var d = new Date();
+    var p = function (v) { return String(v).padStart(2, '0'); };
+    $('clock').textContent = p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+    $('today').textContent = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+
+  render();
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>
