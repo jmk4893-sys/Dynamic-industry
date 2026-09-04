@@ -98,6 +98,18 @@ class TestUnmannedOperation(_Base):
         self.m = _model()
         self.derived = {d.name: d for d in self.m.DERIVED}
 
+    def reaches(self, name):
+        """이름이 결국 읽는 모든 항. 중간 신호로 한 단계 내려가도 요구는 남는다."""
+        seen, stack = set(), list(self.derived[name].terms)
+        while stack:
+            t = stack.pop()
+            if t in seen:
+                continue
+            seen.add(t)
+            if t in self.derived:
+                stack.extend(self.derived[t].terms)
+        return seen
+
     def test_permit_covers_every_manual_intervention(self):
         p = self.derived["UNMANNED_PERMIT"].terms
         for term, why in (("AUTO_FEED", "팔레트 투입"),
@@ -112,9 +124,10 @@ class TestUnmannedOperation(_Base):
 
     def test_knife_autochange_does_not_require_loto(self):
         """무인 운전 중 LOTO 를 요구하면 그 허가는 영원히 성립하지 않는다."""
-        t = self.derived["KNIFE_AUTOCHANGE"].terms
+        t = self.reaches("KNIFE_AUTOCHANGE")
         self.assertNotIn("LOTO_APPLIED", t)
         self.assertNotIn("MAINT_PERMIT", t)
+        self.assertNotIn("ZERO_ENERGY_ACK", t)
         for term in ("KNIVES_CLEAR", "CARRIER_PARKED", "KC_ARM_HOME"):
             self.assertIn(term, t, f"칼날 자동교환이 {term} 없이 돈다")
 

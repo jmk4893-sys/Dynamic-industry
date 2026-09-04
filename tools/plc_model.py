@@ -33,7 +33,7 @@ FDI, FDO, COMM = "F-DI", "F-DO", "COMM"
 # 선언된 I/O 예산 (콘솔 PLC 도면 · 사양서 7.1)
 # 선언된 I/O 예산. 사양서 7.1 이 "예비 20% 이상"을 요구하므로 실사용에서
 # 역산해 카드 배수로 올린 값이다 — 이 모델을 돌려 정한 수량이다.
-BUDGET = {DI: 160, DO: 80, AI: 40, AO: 16, TC: 48, FDI: 32, FDO: 8}
+BUDGET = {DI: 160, DO: 96, AI: 40, AO: 16, TC: 56, FDI: 40, FDO: 8}
 SPARE_MIN = 0.20                       # 사양서 7.1 이 요구하는 최소 예비율
 
 
@@ -105,7 +105,18 @@ LEAVES = [
     Leaf("HKB_LOAD_OK",        AI, 0, "로드셀×4"),
     Leaf("AE_OK",              AI, 2, "AE 센서×4"),
     Leaf("AE_CRACK",           AI, 0, "AE 센서×4"),
+    # ── BC-201 퀵체인지 칼날 카세트 ─────────────────────────────────────
+    # 기계가 뽑는 조건과 사람이 만지는 조건은 다르다. 교환암은 250°C 카세트를
+    # 그대로 집을 수 있고, 손은 60°C 아래로 식은 뒤에만 닿는다. 이 둘을 한
+    # 허가로 묶으면 자동 교환이 냉각 13분을 기다리게 된다.
     Leaf("CASSETTE_LOCKED",    DI, 2, "카세트 잠금·존재센서×4"),
+    Leaf("CASSETTE_PRESENT",   DI, 2, "카세트 잠금·존재센서×4"),
+    Leaf("CASSETTE_TEMP",      TC, 2, "카세트 온도센서×2"),
+    Leaf("CONNECTOR_MATED",    DI, 2, "카세트 블라인드메이트 커넥터×2"),
+    Leaf("HEATER_ISOLATED",    FDI, 2, "히터 차단 확인 접촉기×2",
+         "활선 상태로 커넥터가 뽑히면 안 된다 — 잠금해제보다 앞선다"),
+    Leaf("KNIFE_GAP_OK",       COMM, 0, "300mm 레이저 간격센서",
+         "교환 뒤 칼끝 간격 300±2mm 재확인"),
     Leaf("KNIVES_CLEAR",       DI, 4, "칼날 Z축 상하한센서×4"),
     Leaf("LEAD_300_ACK",       COMM, 0, "백시트 끝단 비전"),
     Leaf("CELL_PATH_CLEAR",    DI, 2, "셀 경로 광전센서×2"),
@@ -236,7 +247,17 @@ DERIVED = [
     Derived("MOTION_SYNC", ["X_LEFT", "X_RIGHT", "FOLLOWING_ERROR_OK"]),
     Derived("SYNC_ERROR", ["MOTION_SYNC"]),
     Derived("PEEL_PERMIT", ["EVA_200_ACK", "HKB_TEMP_OK", "HKS_TEMP_OK", "VAC_6ZONE_OK"]),
-    Derived("HKB_Z_PERMIT", ["EVA_200_ACK", "VAC_6ZONE_OK", "CASSETTE_LOCKED", "HKB_TEMP_OK"]),
+    # 잠긴 것만으로는 모자란다. 서비스가 물리고 칼끝 간격이 다시 확인돼야
+    # 교환한 카세트로 절입할 수 있다.
+    Derived("CASSETTE_READY", ["CASSETTE_LOCKED", "CONNECTOR_MATED", "KNIFE_GAP_OK"]),
+    Derived("CASSETTE_COOL_OK", ["CASSETTE_TEMP"]),
+    # 기계가 뽑는 조건 — 뜨거워도 된다.
+    Derived("CASSETTE_RELEASE", ["KNIVES_CLEAR", "CARRIER_PARKED",
+                                 "HEATER_ISOLATED", "CASSETTE_PRESENT"]),
+    # 사람이 만지는 조건 — 식어야 하고 LOTO 가 걸려야 한다.
+    Derived("CASSETTE_HANDLING_SAFE", ["CASSETTE_RELEASE", "CASSETTE_COOL_OK",
+                                       "MAINT_PERMIT"]),
+    Derived("HKB_Z_PERMIT", ["EVA_200_ACK", "VAC_6ZONE_OK", "CASSETTE_READY", "HKB_TEMP_OK"]),
     Derived("HKS_Z_PERMIT", ["LEAD_300_ACK", "WEB_TENSION_OK", "HKB_LOAD_OK", "CELL_PATH_CLEAR"]),
     Derived("RAPID_PERMIT", ["KNIVES_CLEAR", "PANEL_VAC_OK", "CARRIER_SQUARE", "TRACK_CLEAR"]),
     Derived("WEB_TENSION_HIGH", ["WEB_TENSION_OK"]),
@@ -301,7 +322,7 @@ DERIVED = [
     # 칼날 자동교환은 정비허가가 아니라 파킹 상태에서 돈다. LOTO 를 요구하면
     # 무인 운전 중에는 영원히 성립하지 않는다.
     Derived("KNIFE_AUTOCHANGE", ["KNIFE_CHANGE_DUE", "KC_MAGAZINE_READY",
-                                 "KC_ARM_HOME", "KNIVES_CLEAR", "CARRIER_PARKED"]),
+                                 "KC_ARM_HOME", "CASSETTE_RELEASE"]),
     Derived("ROLL_HANDOFF", ["BACKSHEET_BIN_ACK", "AGV_DOCKED", "SHUTTER_CLOSED"]),
     Derived("UNMANNED_PERMIT", ["AUTO_FEED", "AUTO_STACK", "KC_MAGAZINE_READY",
                                 "BIN_LEVEL_OK", "THERMAL_CAM_OK", "FIRE_OK",
@@ -350,6 +371,9 @@ DRIVES = [
     Drive("SV-701", "PL-101 디스태커 승강",  COMM, 0, "STO 2CH", "PL-101 자동 디스태커"),
     Drive("SV-702", "PL-201 스태커 승강",    COMM, 0, "STO 2CH", "PL-201 자동 스태커"),
     Drive("SV-801", "KC-101 카세트 교환암",  COMM, 0, "STO 2CH", "KC-101 칼날 카세트 매거진×2"),
+    # 스프링으로 잠기고 공압으로 풀린다 — 공압이 빠지면 카세트가 물린 채 남는다.
+    Drive("CY-405", "카세트 쐐기클램프",     DO, 4, "스프링 잠금", "카세트 쐐기 클램프×4"),
+    Drive("CY-406", "카세트 냉각 퍼지밸브",  DO, 2, "덤프밸브", "카세트 냉각 퍼지밸브×2"),
     Drive("MT-1001", "AGV 도킹 로크",        DO, 2, "접촉기",  "AD-101 AGV 도킹 스테이션"),
     # 환경·인증
     Drive("MT-905", "RTO 급기팬",            DO, 2, "접촉기",  "RTO-101 축열식 열산화로"),
