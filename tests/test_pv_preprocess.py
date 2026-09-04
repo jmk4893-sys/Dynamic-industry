@@ -1335,9 +1335,9 @@ class TestSceneLighting(unittest.TestCase):
         """조명 색을 테마 토큰에서 뽑으면 라이트 테마에서 키라이트가 검정이 된다."""
         self.assertNotIn("new Er(F.foreground", self.html, "키라이트가 다시 테마 글자색을 쓴다")
         self.assertNotIn("new vo(F.background,F.muted", self.html, "환경광이 다시 테마색을 쓴다")
-        self.assertIn("new Er(SC.key,3.4)", self.html)
-        self.assertIn("new vo(SC.sky,SC.ground,1.95)", self.html)
-        self.assertIn("new Er(SC.rim,1.05)", self.html, "림라이트가 없으면 금속 윤곽이 죽는다")
+        self.assertIn("new Er(SC.key,3.15)", self.html)
+        self.assertIn("new vo(SC.sky,SC.ground,2.05)", self.html)
+        self.assertIn("new Er(SC.rim,1.35)", self.html, "림라이트가 없으면 금속 윤곽이 죽는다")
         self.assertEqual(self.html.count("new Er(SC.key,"), 2,
                          "메인·부품 미리보기 두 장면 모두 고정 키라이트를 써야 한다")
 
@@ -1365,6 +1365,14 @@ class TestSceneLighting(unittest.TestCase):
                 self.assertNotIn(banned, self.html, "재질이 다시 테마색으로 돌아갔다")
         self.assertNotIn("F.muted)", self.html.split("var M={")[1].split("},wo=[")[0],
                          "소등 램프색이 테마 글자색이면 다크에서 흰색으로 빛난다")
+        # 강조색도 고정이어야 한다. `F.blue` 는 CSS 토큰이라 기기마다 값이 달랐고,
+        # 화면·가드·글로 세 재질에 그것이 남아 있었다 — 브랜드 블루 고정값으로 옮겼다.
+        block = self.html.split("var M={")[1].split("},wo=[")[0]
+        self.assertNotIn("F.blue", block, "장면 재질이 테마 토큰 강조색을 쓴다")
+        self.assertIn("brand:Sc(", self.html, "브랜드 강조색이 팔레트에 없다")
+        for mat in ("screen:new Tt({color:SC.brand", "guard:new xo({color:SC.brand"):
+            with self.subTest(material=mat.split(":")[0]):
+                self.assertIn(mat, self.html)
 
     def test_accent_colors_are_theme_independent(self):
         """강조색도 라이트·다크에서 같은 값이어야 설비 색이 기기마다 안 바뀐다."""
