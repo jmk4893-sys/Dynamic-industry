@@ -29,16 +29,28 @@ TARGETS: dict[str, tuple[pathlib.Path, pathlib.Path]] = {
               pathlib.Path("out/pv-preprocess-plant-artifact.html")),
 }
 
+#: 태그 이름 **뒤에 경계가 와야** 지운다. `[^>]*` 만 쓰면 이름으로 시작하는 다른
+#: 것까지 먹는다 — 실제로 three.js 셰이더의 `#include <metalnessmap_fragment>` 두
+#: 줄이 `<meta…>` 로 잡혀 지워졌고, 표준 재질이 컴파일되지 않아 발행본에서 3D 가
+#: 통째로 안 나왔다. `<header>` 도 `<head…>` 로 잡혀 사라졌다.
+_BOUND = r"(?=[\s/>])"
 STRIP_HEAD_TAGS = (
-    re.compile(r"<!doctype html>\s*", re.I),
-    re.compile(r"</?html[^>]*>\s*", re.I),
-    re.compile(r"</?head[^>]*>\s*", re.I),
-    re.compile(r"</?body[^>]*>\s*", re.I),
+    re.compile(r"<!doctype\s+html\s*>\s*", re.I),
+    re.compile(r"</?html" + _BOUND + r"[^>]*>\s*", re.I),
+    re.compile(r"</?head" + _BOUND + r"[^>]*>\s*", re.I),
+    re.compile(r"</?body" + _BOUND + r"[^>]*>\s*", re.I),
     # charset·viewport·CSP·referrer 는 호스트 head 가 갖는다 — 본문에 두면 무시되거나 충돌한다
-    re.compile(r"<meta[^>]*>\s*", re.I),
+    re.compile(r"<meta" + _BOUND + r"[^>]*>\s*", re.I),
 )
 
-FORBIDDEN = ("<!doctype", "<html", "</html>", "<head", "</head>", "<body", "</body>")
+#: 벗겨졌는지 스스로 확인하는 안전망. 여기서도 같은 경계를 요구해야 `<header>` 를
+#: 골격 태그로 오인하지 않는다.
+FORBIDDEN = (
+    re.compile(r"<!doctype\s+html", re.I),
+    re.compile(r"</?html" + _BOUND, re.I),
+    re.compile(r"</?head" + _BOUND, re.I),
+    re.compile(r"</?body" + _BOUND, re.I),
+)
 
 #: 실제로 무언가를 **받아 오는 자리**만 본다. 주소처럼 생긴 글자를 전부 잡으면
 #: 주석에 적어 둔 근거 링크나 라이브러리의 안내 문장에 걸려 넘어진다 — 그것은
@@ -76,15 +88,26 @@ def convert(text: str, src: pathlib.Path) -> str:
         "     고칠 때는 원본을 고치고 이것을 다시 돌린 뒤 같은 URL 로 재발행한다. -->\n"
     ) + out
 
-    low = out.lower()
     for bad in FORBIDDEN:
-        if bad in low:
-            raise SystemExit(f"✗ {src}: 골격 태그가 남았다 — {bad}")
+        hit = bad.search(out)
+        if hit:
+            raise SystemExit(f"✗ {src}: 골격 태그가 남았다 — {hit.group(0)!r}")
     for pat in FETCHING:
         hit = pat.search(out)
         if hit:
             where = out[max(0, hit.start() - 40):hit.end() + 60].replace("\n", " ")
             raise SystemExit(f"✗ {src}: 외부에서 받아 오는 자리가 있다 — …{where}…")
+
+    # 벗기기는 **골격만** 벗겨야 한다. 태그 이름으로 시작하는 다른 것까지 먹으면
+    # (셰이더 include·`<header>`) 본문이 조용히 망가진 채 발행된다. 그래서 남은
+    # 태그와 셰이더 지시자의 개수가 원본 그대로인지 센다.
+    for name, pat in (("<header>", r"<header[\s/>]"), ("</header>", r"</header\s*>"),
+                      ("#include", r"#include\s*<")):
+        before = len(re.findall(pat, text, re.I))
+        after = len(re.findall(pat, out, re.I))
+        if before != after:
+            raise SystemExit(
+                f"✗ {src}: 골격이 아닌 것을 지웠다 — {name} {before} → {after}")
     return out
 
 

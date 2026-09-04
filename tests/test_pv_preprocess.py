@@ -1944,10 +1944,12 @@ class TestBrandMark(unittest.TestCase):
         self.assertTrue(CONSOLE.exists())
 
         good = mod.convert(read_console(), src)
-        # 골격 태그가 실제로 벗겨졌는가
-        for tag in ("<!doctype", "<html", "<head", "<body", "<meta"):
+        # 골격 태그가 실제로 벗겨졌는가. 이름 **뒤에 경계**를 요구해야 한다 —
+        # 부분문자열로 보면 정상적으로 살아남은 `<header>` 를 골격으로 오인한다.
+        for tag in ("doctype", "html", "head", "body", "meta"):
             with self.subTest(tag=tag):
-                self.assertNotIn(tag, good.lower())
+                self.assertIsNone(re.search(r"</?" + tag + r"(?=[\s/>])", good, re.I),
+                                  f"{tag} 골격 태그가 남았다")
         # 이름은 저장소 파일의 <title> 이 그대로 간다 — 변환기가 짓지 않는다
         self.assertIn("<title>MCR-901 운전 콘솔</title>", good)
         self.assertNotIn("MCR-901", builder.read_text(encoding="utf-8"),
@@ -1983,6 +1985,71 @@ class TestBrandMark(unittest.TestCase):
 
         # 콘솔 원본이 자기가 원본임을 밝혀야 나중에 발행본을 고치지 않는다
         self.assertIn("tools/build_artifact.py", base)
+
+    def test_stripping_the_skeleton_does_not_eat_the_body(self):
+        """골격만 벗겨야 한다 — 이름으로 시작하는 다른 것까지 먹으면 안 된다.
+
+        실제로 당한 자리다. `<meta[^>]*>` 가 three.js 셰이더의
+        `#include <metalnessmap_fragment>` 를 `<meta…>` 로 잡아 두 줄을 지웠고,
+        표준 재질이 컴파일되지 않아 **발행본에서 3D 가 통째로 안 나왔다.**
+        같은 이유로 `</?head[^>]*>` 가 `<header>` 와 `</header>` 를 지웠다.
+
+        원본은 멀쩡했으므로 원본을 아무리 렌더해도 안 잡힌다. 그래서 여기서는
+        변환기에 그 꼴을 직접 먹여 살아남는지 본다.
+        """
+        builder = ROOT / "tools" / "build_artifact.py"
+        spec = importlib.util.spec_from_file_location("_build_artifact2", builder)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        src = pathlib.Path("docs/consoles/pv-preprocess-console.html")
+
+        page = (
+            "<!doctype html>\n<html lang=\"ko\">\n<head>\n"
+            '<meta charset="utf-8">\n'
+            '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'">\n'
+            "<title>T</title>\n</head>\n<body>\n"
+            "<header class=\"top\">머리</header>\n"
+            # 이름으로 시작할 뿐 골격이 아닌 것들 — 경계를 안 보면 이것들도 지워진다
+            "<bodytext>본문</bodytext>\n<htmlwidget>위젯</htmlwidget>\n"
+            "<script>var s=`#include <metalnessmap_pars_fragment>\n"
+            "#include <metalnessmap_fragment>\n"
+            "#include <normal_fragment_maps>`;<\\/script>\n"
+            "</body>\n</html>\n"
+        )
+        out = mod.convert(page, src)
+
+        # 벗겨야 할 것은 벗겨졌는가 — 여기서도 경계를 요구한다. 부분문자열로 보면
+        # 바로 아래에서 살아남기를 요구하는 <htmlwidget> 을 골격으로 오인한다.
+        self.assertNotIn("<!doctype", out.lower())
+        for gone in ("html", "head", "body", "meta"):
+            with self.subTest(gone=gone):
+                self.assertIsNone(re.search(r"</?" + gone + r"(?=[\s/>])", out, re.I),
+                                  f"{gone} 골격 태그가 남았다")
+        # 남아야 할 것은 남았는가 — 여기가 실제로 깨졌던 자리다
+        for kept in ("<header class=", "</header>", "<bodytext>", "</bodytext>",
+                     "<htmlwidget>", "</htmlwidget>",
+                     "#include <metalnessmap_pars_fragment>",
+                     "#include <metalnessmap_fragment>",
+                     "#include <normal_fragment_maps>"):
+            with self.subTest(kept=kept):
+                self.assertIn(kept, out, f"골격이 아닌 것을 지웠다: {kept}")
+
+        # 변환기 스스로도 개수로 확인해야 한다 — 스트리퍼가 다시 넓어지면 멈춘다
+        keep = mod.STRIP_HEAD_TAGS
+        try:
+            mod.STRIP_HEAD_TAGS = keep + (re.compile(r"<meta[^>]*>\s*", re.I),)
+            with self.assertRaises(SystemExit):
+                mod.convert(page, src)
+        finally:
+            mod.STRIP_HEAD_TAGS = keep
+
+        # 발행본을 브라우저로 확인하는 도구가 저장소에 있어야 한다.
+        # 원본만 봐서는 이 결함이 잡히지 않는다는 것이 이번 교훈이다.
+        checker = ROOT / "tools" / "check_artifact_render.mjs"
+        self.assertTrue(checker.exists())
+        text = checker.read_text(encoding="utf-8")
+        self.assertIn("pageerror", text)
+        self.assertIn("shader", text.lower())
 
     def test_the_mark_is_actually_visible_on_the_plant(self):
         """붙였는데 안 보이면 안 붙인 것과 같다.
