@@ -9,6 +9,7 @@ REV.21 에서 실제로 깨져 있던 두 가지 — 존이 자기 장비보다 
 """
 
 import dataclasses
+import importlib.util
 import io
 import math
 import pathlib
@@ -1911,6 +1912,71 @@ class TestBrandMark(unittest.TestCase):
         for erected in ("pvSign", "pvBeacon", "콘솔 전면 스커트"):
             self.assertNotIn(erected, self.html,
                              f"{erected} — 마크를 붙이려고 설비를 세우지 않는다")
+
+    def test_the_artifact_is_built_from_the_repo_not_maintained(self):
+        """아티팩트를 손으로 고치면 저장소와 갈린다 — 변환기가 저장소에 있어야 한다.
+
+        발행본을 사람이 만지기 시작하면 그때부터 두 벌이고, 두 벌은 반드시
+        갈라진다. 그래서 발행은 **저장소 → 기계 변환 → 발행** 한 방향이고,
+        그 변환기가 저장소 안에 있어야 아무나 같은 결과를 다시 얻는다.
+
+        여기서 이름만 확인하면 안 된다 — `FETCHING` 을 `FETCHING_OFF` 로 바꿔
+        검사를 꺼도 부분문자열은 그대로 남는다. 그래서 변환기를 **실제로 돌려**
+        막아야 할 것을 막는지 본다.
+        """
+        builder = ROOT / "tools" / "build_artifact.py"
+        self.assertTrue(builder.exists(), "아티팩트 변환기가 저장소에 없다")
+
+        spec = importlib.util.spec_from_file_location("_build_artifact", builder)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        # 원본을 표에서 가리켜야 하고, 그 파일이 실재해야 한다
+        self.assertIn("console", mod.TARGETS)
+        src, _ = mod.TARGETS["console"]
+        self.assertEqual(src, pathlib.Path("docs/consoles/pv-preprocess-console.html"))
+        self.assertTrue(CONSOLE.exists())
+
+        good = mod.convert(read_console(), src)
+        # 골격 태그가 실제로 벗겨졌는가
+        for tag in ("<!doctype", "<html", "<head", "<body", "<meta"):
+            with self.subTest(tag=tag):
+                self.assertNotIn(tag, good.lower())
+        # 이름은 저장소 파일의 <title> 이 그대로 간다 — 변환기가 짓지 않는다
+        self.assertIn("<title>MCR-901 운전 콘솔</title>", good)
+        self.assertNotIn("MCR-901", builder.read_text(encoding="utf-8"),
+                         "변환기가 이름을 지으면 관리 대상이 하나 늘어난다")
+
+        # 막아야 할 것을 실제로 막는가 — 넣어 보고 거부되는지 본다
+        blocked = {
+            "script src": '<script src="https://cdn.example.com/x.js"></script>',
+            "link href": '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?f=X">',
+            "css url()": "<style>body{background:url(https://img.example.com/a.png)}</style>",
+            "css @import": '<style>@import "https://cdn.example.com/a.css";</style>',
+            "fetch()": '<script>fetch("https://api.example.com/v1")</script>',
+            "프로토콜 상대": '<script src="//cdn.example.com/x.js"></script>',
+        }
+        base = read_console()
+        for name, inject in blocked.items():
+            with self.subTest(inject=name):
+                with self.assertRaises(SystemExit):
+                    mod.convert(base.replace("<style>", inject + "\n<style>", 1), src)
+        # 문장 속 주소는 요청이 아니다 — 오탐하면 도면처럼 큰 파일이 아예 안 나온다
+        mod.convert(base.replace("<style>", "<!-- 근거: https://example.com/spec -->\n<style>", 1), src)
+        # 골격 확인은 스트리퍼가 실패했을 때의 안전망이다 — 실패시켜서 걸리는지 본다
+        keep = mod.STRIP_HEAD_TAGS
+        try:
+            mod.STRIP_HEAD_TAGS = tuple(p for p in keep if "body" not in p.pattern)
+            with self.assertRaises(SystemExit):
+                mod.convert(base, src)
+        finally:
+            mod.STRIP_HEAD_TAGS = keep
+        # 이름이 없으면 아티팩트 이름이 파일명으로 떨어진다
+        with self.assertRaises(SystemExit):
+            mod.convert(base.replace("<title>MCR-901 운전 콘솔</title>", ""), src)
+
+        # 콘솔 원본이 자기가 원본임을 밝혀야 나중에 발행본을 고치지 않는다
+        self.assertIn("tools/build_artifact.py", base)
 
     def test_the_plate_texture_paints_the_mark_not_a_copy(self):
         """명판 텍스처가 마크를 **직접 그리지 않고** 전역을 부른다.
