@@ -32,9 +32,11 @@ TAG = {"afu": "AFU-101", "robot": "RB-101", "jbr": "JBR-201", "afr": "AFR-101",
 
 out = []
 w = out.append
-w("var pvCase=new ce;pt.add(pvCase);")
+w("var pvCase=new ce;pt.add(pvCase);pvCase.name='pvCase';")
 w("(function(){")
 w("var g=pvCase,L=function(a,b,c,d,e,f){return P(g,a,b,c,d,e,f)};")
+w("// 메시마다 이름을 단다 — tools/check_casing_fit.mjs 가 껍질을 식별하는 근거다.")
+w("var CN=function(m,n){m.name=n;return m;};")
 w("// 이 블록은 손으로 쓰지 않는다 — src/pv_preprocess/casing.py 에서 찍는다.")
 w(f"// 어깨 {C.SHOULDER_MM} · 리빌 {C.DATUM_MM} · 토우 {C.TOE_H_MM} · 이음매 {C.SEAM_MM}"
   f" · 반경 {C.RADIUS_MM} — 세 선이 전 구간 같은 높이다.")
@@ -57,56 +59,69 @@ for key in C.CASED_ZONES:
     w(f"// ── {key} — 칸 {C.bay_count(key)} × {bw:g} mm")
     # 토우 리세스 · 리빌 홈 · 캡 밴드는 칸을 건너 **한 줄**이다. 선이 안 끊긴다.
     zc = num(wx((x0 + x1) / 2))
-    w(f"L([{num(zw)},{num(toe_h)},{num(m(C.TOE_RECESS_MM))}],"
-      f"[{zc},{num(toe_h/2)},{num(round(fz - m(C.TOE_RECESS_MM)/2 - m(C.TOE_RECESS_MM), 4))}],M.dark,null);")
-    w(f"L([{num(zw)},{num(rev_h)},{num(m(C.REVEAL_D_MM))}],"
-      f"[{zc},{num(rev_y)},{num(round(fz - m(C.REVEAL_D_MM)*1.5, 4))}],M.dark,null);")
-    w(f"L([{num(zw)},{num(cap_h)},{num(assy)}],"
-      f"[{zc},{num(cap_y)},{num(round(fz - assy/2, 4))}],M.panel,null);")
+    # 토우는 그리지 않는다 — 바닥 100 mm 는 빈 그늘이다 (걸레받이가 기계를 파고들었다).
+    w(f"CN(L([{num(zw)},{num(rev_h)},{num(m(C.REVEAL_D_MM))}],"
+      f"[{zc},{num(rev_y)},{num(round(fz - m(C.REVEAL_D_MM)*1.5, 4))}],M.dark,null),"
+      f"'case:{key}:reveal');")
+    w(f"CN(L([{num(zw)},{num(cap_h)},{num(assy)}],"
+      f"[{zc},{num(cap_y)},{num(round(fz - assy/2, 4))}],M.panel,null),"
+      f"'case:{key}:cap');")
     # 판 한 칸씩
     for bay in C.bays(key):
         cx = num(wx(x0 + (bay.index + 0.5) * bw))
         pw = num(m(bw - C.SEAM_MM))
         if bay.kind == "window":
-            w(f"L([{pw},{num(body_h)},{num(m(C.GLAZING_T_MM))}],"
-              f"[{cx},{num(body_y)},{num(round(fz - m(C.GLAZING_T_MM), 4))}],M.glazing,null);")
+            w(f"CN(L([{pw},{num(body_h)},{num(m(C.GLAZING_T_MM))}],"
+              f"[{cx},{num(body_y)},{num(round(fz - m(C.GLAZING_T_MM), 4))}],M.glazing,null),"
+              f"'case:{key}:bay{bay.index}:window');")
         else:
             mat = "M.aluminum"
-            w(f"L([{pw},{num(body_h)},{num(assy)}],"
-              f"[{cx},{num(body_y)},{num(round(fz - assy/2, 4))}],{mat},null);")
+            w(f"CN(L([{pw},{num(body_h)},{num(assy)}],"
+              f"[{cx},{num(body_y)},{num(round(fz - assy/2, 4))}],{mat},null),"
+              f"'case:{key}:bay{bay.index}:{bay.kind}');")
         if bay.kind == "door":
             # 손잡이는 없다 — 리빌 밑의 손가락 홈이 문을 연다.
-            w(f"L([{num(m(bw*0.34))},{num(m(28))},{num(m(18))}],"
-              f"[{cx},{num(m(C.DATUM_MM - 60))},{num(round(fz - m(18)*1.6, 4))}],M.dark,null);")
+            w(f"CN(L([{num(m(bw*0.34))},{num(m(28))},{num(m(18))}],"
+              f"[{cx},{num(m(C.DATUM_MM - 60))},{num(round(fz - m(18)*1.6, 4))}],M.dark,null),"
+              f"'case:{key}:bay{bay.index}:pull');")
     # 멀리언 — 이음매 뒤에서 판을 잡고 하중을 존 베이스 빔으로 보낸다
     for i in range(C.bay_count(key) + 1):
         mx = num(wx(x0 + i * bw))
-        w(f"L([{num(seam*3)},{num(m(C.SHOULDER_MM))},{num(m(50))}],"
-          f"[{mx},{num(m(C.SHOULDER_MM/2))},{num(round(fz - m(30), 4))}],M.dark,null);")
+        w(f"CN(L([{num(seam*3)},{num(m(C.SHOULDER_MM))},{num(assy)}],"
+          f"[{mx},{num(m(C.SHOULDER_MM/2))},{num(round(fz - assy/2, 4))}],M.dark,null),"
+          f"'case:{key}:mullion{i}');")
     # 마크는 존마다 한 곳, 같은 높이 — 첫 막힌 칸
     first = next(b for b in C.bays(key) if b.kind == "solid")
     mcx = num(wx(x0 + (first.index + 0.5) * bw))
-    w(f"pvNamePlate(g,{num(m(bw*0.62))},[{mcx},{num(m(1750))},{num(round(fz + 0.001, 4))}],0,"
-      f"'{TAG[key]}','{SUB[key]}','{key} 외장 케이싱 — 어깨 {C.SHOULDER_MM} · 리빌 {C.DATUM_MM} mm');")
+    w(f"CN(pvNamePlate(g,{num(m(bw*0.62))},[{mcx},{num(m(1750))},{num(round(fz - 0.006, 4))}],0,"
+      f"'{TAG[key]}','{SUB[key]}','{key} 외장 케이싱 — 어깨 {C.SHOULDER_MM} · 리빌 {C.DATUM_MM} mm'),"
+      f"'case:{key}:mark');")
 
 # 존이 만나며 면이 물러서는 자리 — 리턴으로 닫는다
 w("// 리턴 — 면이 물러서는 자리를 닫는다. 안 닫으면 껍질에 구멍이 난다.")
 for up, down, at_x, step in C.returns_mm():
     zu, zd = wz(C.zone_face_mm(up)), wz(C.zone_face_mm(down))
-    w(f"L([{num(assy)},{num(m(C.SHOULDER_MM - C.TOE_H_MM))},{num(abs(zu - zd))}],"
+    w(f"CN(L([{num(assy)},{num(m(C.SHOULDER_MM - C.TOE_H_MM))},{num(abs(zu - zd))}],"
       f"[{num(wx(at_x))},{num(m((C.SHOULDER_MM + C.TOE_H_MM)/2))},"
-      f"{num(round((zu + zd) / 2, 4))}],M.aluminum,null);")
+      f"{num(round((zu + zd) / 2, 4))}],M.aluminum,null),'case:{up}-{down}:return');")
 
 # 플랜트 양 끝단
 from pv_preprocess import layout as _L
-for key, at_x, label in (("afu", C.zone_span_mm("afu")[0], "상류"),
-                         ("grm", C.zone_span_mm("grm")[1], "하류")):
+for key, at_x, label in (("afu", C.zone_span_mm("afu")[0] - C.END_OFFSET_MM, "상류"),
+                         ("grm", C.zone_span_mm("grm")[1] + C.END_OFFSET_MM, "하류")):
     zone = next(z for z in _L.build_zones() if z.key == key)
     zu, zd = wz(zone.y1_mm), wz(zone.y0_mm)
-    w(f"L([{num(assy)},{num(m(C.SHOULDER_MM - C.TOE_H_MM))},{num(abs(zu - zd))}],"
+    w(f"CN(L([{num(assy)},{num(m(C.SHOULDER_MM - C.TOE_H_MM))},{num(abs(zu - zd))}],"
       f"[{num(wx(at_x))},{num(m((C.SHOULDER_MM + C.TOE_H_MM)/2))},"
       f"{num(round((zu + zd) / 2, 4))}],M.aluminum,"
-      f"'{label} 끝단 케이싱','플랜트 {label} 끝을 닫는 판 — 벽쪽은 발열 때문에 일부러 비워 둔다');")
+      f"'{label} 끝단 케이싱','플랜트 {label} 끝을 닫는 판 — 벽쪽은 발열 때문에 일부러 비워 둔다'),"
+      f"'case:{key}:end');")
+    # 끝단 판도 제 판틀이 있어야 바닥까지 하중 경로가 선다 — 가드 바깥면으로
+    # 69 mm 물러나며 셀 끝 골조에서 떨어졌고, 하중경로 검사가 그것을 잡았다.
+    inb = -1 if label == "상류" else 1
+    w(f"CN(L([{num(assy)},{num(m(C.SHOULDER_MM))},{num(m(120))}],"
+      f"[{num(round(wx(at_x) - inb * assy, 4))},{num(m(C.SHOULDER_MM/2))},"
+      f"{num(round((zu + zd) / 2, 4))}],M.dark,null),'case:{key}:endpost');")
 
 w("}());")
 block = "\n".join(out)
@@ -130,4 +145,17 @@ else:
     s = s.replace(anchor2, block + "\n" + anchor2)
 
 io.open(P, "w", encoding="utf-8").write(s)
+# 검사기가 쓸 마운트 평면 — 판이 어느 부재 위에 앉는지. 단일 출처를 공유한다.
+import json as _json
+planes = {k: {"mount": round((C.MEASURED_FACE_MM[k] - Z0) / 1000.0, 4),
+              "face": round((C.zone_face_mm(k) - Z0) / 1000.0, 4),
+              "x0": round((C.zone_span_mm(k)[0] - X0) / 1000.0, 4),
+              "x1": round((C.zone_span_mm(k)[1] - X0) / 1000.0, 4)}
+          for k in C.CASED_ZONES}
+planes["_limits"] = {"band": round((3550 + 3550 - Z0) / 1000.0, 4),
+                     "maxEncroach": C.MAX_ENCROACH_MM / 1000.0}
+pathlib.Path("out").mkdir(exist_ok=True)
+io.open("out/casing-planes.json", "w", encoding="utf-8").write(
+    _json.dumps(planes, ensure_ascii=False, indent=1))
+
 print(f"케이싱 3D — 존 {len(C.CASED_ZONES)} · 칸 {len(C.all_bays())} · 멀리언 {C.mullion_count()} · {len(block.splitlines())}줄")

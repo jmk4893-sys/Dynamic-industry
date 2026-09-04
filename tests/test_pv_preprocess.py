@@ -4682,14 +4682,65 @@ class TestCasing(unittest.TestCase):
                          {z.key for z in layout.build_zones()},
                          "존이 늘거나 줄었는데 껍질이 안 따라왔다")
 
-    def test_the_casing_does_not_touch_the_aisle(self):
-        """껍질은 존 포락선 **안쪽으로** 먹는다 — 통로 1,200 은 그대로다."""
+    def test_the_casing_takes_aisle_but_keeps_the_escape_width(self):
+        """껍질은 통로로 **조금 나온다** — 0 인 척하지 않고 피난폭으로 잰다.
+
+        처음에는 존 포락선 안쪽에 세웠는데, 각 셀의 베이스 빔(깊이 160)과
+        가드 프레임(90)이 이미 장비 밴드 끝 평면에 서 있어 판이 그것을
+        106 곳에서 파고들었다. 껍질은 붙을 자리 **위에** 얹혀야 하므로 그만큼
+        밖으로 나온다. 나온 양이 피난 유효폭 안에 드는지가 판정 기준이다.
+        """
         band_y0, band_y1 = layout.aisle_band_mm()
+        self.assertEqual(band_y1 - band_y0, layout.AISLE_WIDTH_MM)
+        self.assertTrue(casing.aisle_still_clears())
+        self.assertGreaterEqual(casing.aisle_clear_mm(), access.AISLE_CLEAR_MM)
+        self.assertEqual(casing.aisle_clear_mm(),
+                         layout.AISLE_WIDTH_MM
+                         - max(casing.encroach_mm(k) for k in casing.CASED_ZONES))
+        # 나오는 존과 안 나오는 존이 갈리는 이유는 부재가 어디까지 나왔느냐다
         for key in casing.CASED_ZONES:
             with self.subTest(zone=key):
-                self.assertLessEqual(casing.zone_face_mm(key), band_y0,
-                                     "껍질 바깥면이 통로를 침범한다")
-        self.assertEqual(band_y1 - band_y0, layout.AISLE_WIDTH_MM)
+                self.assertEqual(casing.encroach_mm(key) > 0,
+                                 casing.MEASURED_FACE_MM[key] + casing.PANEL_ASSY_MM
+                                 > layout.MACHINE_BAND_Y_MM)
+        self.assertEqual(set(casing.encroaching_zones()), {"post", "buffer", "grm"})
+        # 허용치는 고른 값이 아니라 접근 모델이 정한다
+        self.assertEqual(casing.MAX_ENCROACH_MM,
+                         layout.AISLE_WIDTH_MM - access.AISLE_CLEAR_MM)
+        # 피난폭을 좁히면 판정이 뒤집혀야 한다 — 안 뒤집히면 재는 자가 없는 것이다
+        keep = access.AISLE_CLEAR_MM
+        try:
+            access.AISLE_CLEAR_MM = layout.AISLE_WIDTH_MM
+            self.assertFalse(casing.aisle_still_clears(),
+                             "피난폭을 통로 전폭으로 올려도 통과한다")
+        finally:
+            access.AISLE_CLEAR_MM = keep
+        self.assertTrue(casing.aisle_still_clears())
+
+    def test_the_face_comes_from_measurement_not_the_zone_table(self):
+        """존 표의 깊이는 공칭이다 — 그 값에 껍질을 세우면 기계를 판다."""
+        for key in casing.CASED_ZONES:
+            with self.subTest(zone=key):
+                self.assertGreaterEqual(casing.zone_face_mm(key),
+                                        casing.MEASURED_FACE_MM[key]
+                                        + casing.PANEL_ASSY_MM,
+                                        "판이 실측 부재를 파고든다")
+        # robot 이 이 정정의 근거다 — BFC 포탈 기둥이 그 존 X 범위에 서 있다
+        self.assertGreater(casing.MEASURED_FACE_MM["robot"],
+                           casing.nominal_face_mm("robot"),
+                           "실측이 공칭보다 얕으면 이 정정의 근거가 사라진다")
+        self.assertEqual(casing.nominal_face_mm("robot"), 5500)
+        # 껍질을 둘러도 **존은 하나도 안 길어졌다** — 늘어난 것은 판 두께뿐
+        self.assertEqual(layout.plant_envelope_mm()[0], 58800)
+        self.assertLess(casing.clad_length_mm() - 58800, 200)
+        # 끝단 판은 셀 끝 가드 **바깥면에** 얹혀야 한다. 식으로 견주면
+        # 오프셋을 0 으로 되돌려도 통과한다 — 조건으로 못 박는다.
+        self.assertGreaterEqual(casing.END_OFFSET_MM,
+                                casing.MEASURED_END_FRAME_MM // 2
+                                + casing.PANEL_ASSY_MM,
+                                "끝단 판이 가드를 파고든다")
+        self.assertGreater(casing.clad_length_mm(), 58800,
+                           "껍질을 둘렀는데 전장이 그대로면 판 두께가 어디로 갔나")
 
     # ── 하나의 언어 ────────────────────────────────────────────────────
     def test_the_shoulder_is_the_plants_own_height(self):
@@ -4741,7 +4792,13 @@ class TestCasing(unittest.TestCase):
     def test_the_shell_has_no_hole_where_the_face_steps(self):
         """면이 물러서는 자리를 안 닫으면 껍질이 아니라 칸막이다."""
         self.assertTrue(casing.the_shell_is_closed())
-        self.assertEqual(len(casing.returns_mm()), 5)
+        # 리턴 수는 **면이 물러서는 이음매 수**다 — 리터럴로 박으면 실측 면이
+        # 바뀌어도 안 따라온다. 실측을 반영하며 5 → 6 이 됐다.
+        order = ("afu", "robot", "jbr", "afr", "post", "buffer", "grm")
+        steps = sum(1 for u, d in zip(order, order[1:])
+                    if casing.zone_face_mm(u) != casing.zone_face_mm(d))
+        self.assertEqual(len(casing.returns_mm()), steps)
+        self.assertEqual(len(casing.returns_mm()), 6)
         for up, down, at_x, step in casing.returns_mm():
             with self.subTest(joint=f"{up}-{down}"):
                 self.assertNotEqual(step, 0)
@@ -4810,9 +4867,17 @@ class TestCasing(unittest.TestCase):
         self.assertIn('id="pv-case"', self.plant)
         self.assertIn("pvCase.visible", self.plant)
         # 판 수가 모델과 같은지 — 3D 가 따로 놀면 도면이 거짓말한다
-        drawn = self.plant.count("M.aluminum,null);") + self.plant.count("M.glazing,null);")
-        self.assertGreaterEqual(drawn, len(casing.all_bays()),
-                                "3D 판 수가 모델보다 적다")
+        # 판 수는 이름으로 센다 — 재질로 세면 리턴·끝단까지 섞인다
+        for kind in ("solid", "door", "window"):
+            with self.subTest(kind=kind):
+                drawn = len(re.findall(rf"'case:\w+:bay\d+:{kind}'", self.plant))
+                self.assertEqual(drawn, casing.bays_by_kind()[kind],
+                                 "3D 판 수가 모델과 다르다")
+        # 멀리언·리턴·끝단도 모델과 같은 수여야 한다
+        self.assertEqual(len(re.findall(r"'case:\w+:mullion\d+'", self.plant)),
+                         casing.mullion_count())
+        self.assertEqual(len(re.findall(r"'case:[\w-]+:return'", self.plant)),
+                         len(casing.returns_mm()))
 
 
 class TestBufferHasTwoDirections(unittest.TestCase):
@@ -4860,7 +4925,7 @@ class TestBufferHasTwoDirections(unittest.TestCase):
                          handoff.BUFFER_CARRIAGES[0] * handoff.SLOTS_PER_CARRIAGE)
         self.assertEqual(handoff.BUFFER_RB_SLOTS,
                          handoff.BUFFER_CARRIAGES[1] * handoff.SLOTS_PER_CARRIAGE)
-        self.assertEqual(layout.plant_envelope_mm()[0], 58800, "전장이 늘었다")
+        self.assertEqual(layout.plant_envelope_mm()[0], 58800, "존이 길어졌다")
         # 3D 의 캐리지 수가 배분과 같아야 한다 — 모듈만 고치면 도면이 거짓말한다
         for prefix, count in (("A-501", handoff.BUFFER_CARRIAGES[0]),
                               ("B-501", handoff.BUFFER_CARRIAGES[1])):

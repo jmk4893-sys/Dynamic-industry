@@ -55,7 +55,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import layout, maintain
+from . import access, layout, maintain
 
 # ── 하나의 언어 ──────────────────────────────────────────────────────────
 #: 어깨선 (mm). 존 높이의 최빈값이라 **고른 값이 아니다** —
@@ -73,10 +73,15 @@ DATUM_MM = DOOR_H_MM
 REVEAL_H_MM = 24
 REVEAL_D_MM = 24
 
-#: 토우 리세스 (mm) — 껍질이 바닥에서 100 뜨고 60 들어간다. 몸통이 떠 보이고,
-#: 발끝 공간과 바닥 청소가 같이 해결된다. 중량 교환문 앞에서는 **끊긴다.**
+#: 토우 (mm) — 껍질이 바닥에서 100 뜬다. 몸통이 떠 보이고, 발끝 공간과 바닥
+#: 청소가 같이 해결된다. 중량 교환문 앞에서는 **끊긴다.**
+#:
+#: 처음에는 그 자리에 60 물러선 걸레받이 판을 세웠는데, 간섭 검사가 그 판이
+#: 리프트·셔틀·롤러를 45…60 mm 파고드는 것을 잡았다. 바닥 높이는 기계가 가장
+#: 붐비는 자리다. 걸레받이를 빼고 **빈 그늘로 두면** 간섭이 사라지고, 그림자가
+#: 판보다 진해 뜬 느낌도 오히려 세진다. 100 mm 는 청소 도구가 들어가는 틈이고
+#: 위험원은 작업 높이에 있어 이 틈으로 닿지 않는다 (바닥 접근은 SCN 스캐너가 본다).
 TOE_H_MM = 100
-TOE_RECESS_MM = 60
 
 #: 모서리 반경 (mm). 수직 모서리 전부 같은 값이다.
 RADIUS_MM = 12
@@ -103,6 +108,29 @@ MULLION_KG_M = 1.02
 #: 케이싱 두께 (mm) — 판 + 멀리언 깊이. 존 포락선 **안쪽으로** 먹는다.
 DEPTH_MM = 60
 
+#: 껍질과 기계 사이 틈 (mm). 판을 떼어 낼 수 있어야 하고, 기계 진동이 판으로
+#: 넘어가면 판이 운다.
+SKIN_GAP_MM = 20
+
+#: **존 표의 통로쪽 깊이는 공칭값이다.** 처음에 껍질을 그 값에 세웠더니
+#: `tools/check_casing_fit.mjs` 가 166 곳 간섭을 잡았다 — 가장 큰 것이
+#: BFC-101B 포탈 기둥으로, AFU 셀의 부재인데 실제로는 **robot 존의 X 범위에
+#: 서 있고** 통로쪽으로 1,060 mm 더 나와 있었다. 존 표는 길이를 배분하는
+#: 표이지 "이 X 구간의 모든 부재가 이 깊이 안에 있다"는 약속이 아니다.
+#:
+#: 그래서 면을 **3D 에서 실측한 값**으로 잡는다 (어깨선 아래, 장비 밴드 안,
+#: 시간을 훑어 움직이는 것까지 포함한 최대 z → 플랜트 Y). §7 의 캐리지 피치
+#: 2,900 과 §26 의 링 관통 88 mm 을 실측으로 잡았던 것과 같은 자리다.
+MEASURED_FACE_MM: dict[str, int] = {
+    "afu": 7060,      # LFT-101B 게이트·구역스캐너
+    "robot": 7060,    # BFC-101B 포탈 기둥·LM가이드 (3,010) 과 바닥 스캐너
+    "jbr": 5170,      # 가드 방진 풋
+    "afr": 6355,      # 리젝트 스퍼 방호터널
+    "post": 7100,     # 장비 밴드 끝까지
+    "buffer": 7145,   # 버퍼 안전가드 — 밴드를 45 mm 넘는다
+    "grm": 7180,      # 셀 베이스 빔 — 밴드를 80 mm 넘는다
+}
+
 #: 도면에 그리는 판 조립 깊이 (mm). 판재는 1.5 t 지만 가장자리를 접고 보강대를
 #: 대면 조립체가 이만큼 된다 — 질량은 판재 두께로, 형상은 조립 깊이로 낸다.
 PANEL_ASSY_MM = 24
@@ -112,6 +140,8 @@ PANEL_ASSY_MM = 24
 OPEN_BY_DESIGN: tuple[tuple[str, str], ...] = (
     ("벽쪽 면", "발열이 지금 경로로 실내에 나와야 한다 — 상자로 만들면 "
               "thermal.py 의 실내 부하가 통째로 틀린다"),
+    ("바닥 100 mm", "걸레받이를 세우면 바닥 높이의 리프트·셔틀·롤러를 파고든다. "
+                 "빈 그늘로 두면 간섭이 없고 청소 도구가 들어간다"),
     ("gate 존 (350 mm)", "JBR→AFR 인계 개구다. 패널이 지나는 자리라 덮을 수 없다"),
     ("어깨선 위", "투입 비전보·로봇 갠트리·유리제거 마스트는 껍질을 뚫고 올라온다 — "
                "몸통은 어깨까지고 키 큰 장비는 드러낸다"),
@@ -172,9 +202,67 @@ def zone_span_mm(key: str) -> tuple[int, int]:
     return zone.x0_mm, zone.x1_mm
 
 
-def zone_face_mm(key: str) -> int:
-    """존의 **통로쪽** Y. 껍질의 바깥면이 여기 선다."""
+def nominal_face_mm(key: str) -> int:
+    """존 표가 적은 통로쪽 Y. **공칭값이라 껍질을 여기 세우면 안 된다.**"""
     return next(z for z in layout.build_zones() if z.key == key).y1_mm
+
+
+#: 셀 끝단 가드 판의 두께 (mm) — 3D 실측. 플랜트 양 끝에는 이미 이 판이 서
+#: 있고, 끝단 케이싱은 그 **바깥면에** 얹힌다. 안쪽에 넣으면 판이 가드를
+#: 파고든다 (검사가 4곳을 잡았다).
+MEASURED_END_FRAME_MM = 90
+
+#: 그래서 끝단 케이싱이 존 경계 밖으로 나가는 양 (mm).
+END_OFFSET_MM = MEASURED_END_FRAME_MM // 2 + PANEL_ASSY_MM
+
+
+def clad_length_mm() -> int:
+    """껍질을 두른 뒤의 실제 전장 (mm).
+
+    존 합계 58,800 은 **공칭**이다. 끝단 가드가 이미 그 밖으로 45 mm 나와
+    있었고, 껍질은 그 위에 얹히므로 양 끝에서 조금씩 는다. 존은 하나도 안
+    길어졌다 — 늘어난 것은 껍질 두께뿐이고, 그 사실을 값으로 남긴다.
+    """
+    return layout.plant_envelope_mm()[0] + 2 * (END_OFFSET_MM + PANEL_ASSY_MM // 2)
+
+
+#: 껍질이 통로로 나갈 수 있는 최대 (mm). 통로 1,200 에서 피난 유효 900 을
+#: 남기고 남는 값이다 — 숫자를 고르는 것이 아니라 **접근 모델이 정한다.**
+MAX_ENCROACH_MM = layout.AISLE_WIDTH_MM - access.AISLE_CLEAR_MM
+
+
+def zone_face_mm(key: str) -> int:
+    """껍질 **바깥면**이 서는 Y.
+
+    껍질은 기계에 붙는 것이라, 붙을 자리(가장 바깥 부재의 바깥면) **위에**
+    얹혀야 한다. 그 안으로 넣으면 판이 부재를 파고들고, 실제로 첫 판이
+    그랬다 — 각 셀의 베이스 빔(깊이 160)과 가드 프레임(90)이 이미 장비 밴드
+    끝 평면에 서 있는데 껍질을 같은 평면에 세워 106 곳이 겹쳤다.
+
+    그래서 실측 바깥면에 판 조립 깊이를 더한다. 그러면 buffer·grm 처럼 부재가
+    밴드 끝까지 나온 존에서는 껍질이 **통로로 조금 나온다.** 나오는 양은
+    `encroach_mm()` 이 값으로 내고, 피난 유효폭 안에 드는지는 시험이 지킨다.
+    """
+    return max(nominal_face_mm(key), MEASURED_FACE_MM[key] + PANEL_ASSY_MM)
+
+
+def encroach_mm(key: str) -> int:
+    """껍질이 장비 밴드를 넘어 통로로 나온 양 (mm)."""
+    return max(0, zone_face_mm(key) - layout.MACHINE_BAND_Y_MM)
+
+
+def aisle_clear_mm() -> int:
+    """껍질을 붙인 뒤 남는 통로 유효폭 (mm)."""
+    return layout.AISLE_WIDTH_MM - max(encroach_mm(k) for k in CASED_ZONES)
+
+
+def aisle_still_clears() -> bool:
+    """피난 유효폭을 지키는가. 못 지키면 껍질이 아니라 통로 설계를 고쳐야 한다."""
+    return aisle_clear_mm() >= access.AISLE_CLEAR_MM
+
+
+def encroaching_zones() -> tuple[str, ...]:
+    return tuple(k for k in CASED_ZONES if encroach_mm(k) > 0)
 
 
 def zone_length_mm(key: str) -> int:
