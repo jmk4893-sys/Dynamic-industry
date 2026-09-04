@@ -17,8 +17,9 @@ import unittest
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import (acoustics, ai, air, campaign, crane, electrical, frames, handoff, kinematics, layout,
-                           materials, mounting, safety, smart, servos, thermal, vision, wiring)
+from pv_preprocess import (access, acoustics, ai, air, campaign, crane, dust, electrical, frames, handoff,
+                           kinematics, layout, materials, mounting, safety, seismic, smart, servos, thermal,
+                           vision, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
 
@@ -3580,3 +3581,263 @@ class TestSafety(unittest.TestCase):
         self.assertNotIn("var ductY = e.y + 430;", self.html)
         self.assertGreater(len(electrical.FEEDERS), 8,
                            "8 이하로 줄면 이 단 분할이 필요 없어진다")
+
+
+class TestDustExplosion(unittest.TestCase):
+    """DX-601 — 집진기는 있었고, 그 안이 터질 수 있는지가 없었다.
+
+    이 시험이 지키는 것은 값이 아니라 **태도**다. 폭발 특성은 시험으로만
+    나오므로 여기서 Kst 를 지어내지 않는다. 대신 지어내지 않았다는 사실과,
+    지금 확실히 말할 수 있는 것(알루미늄 미분 없음·점화원 셋·옥내 벤트 불가)이
+    값으로 서 있는지를 본다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_the_collector_and_the_air_model_see_the_same_flow(self):
+        """여과 면적·밸브·압축공기가 전부 이 풍량에서 나온다."""
+        self.assertTrue(dust.flow_is_consistent())
+        self.assertEqual(dust.counted_flow_m3h(), air.DUST_FLOW_M3H)
+        self.assertEqual(dust.filter_area_m2(), air.filter_area_m2())
+        self.assertEqual(dust.pulse_valves(), air.pulse_valves())
+
+    def test_the_most_combustible_stream_is_outside_the_count(self):
+        """CV-301 은 이름만 있고 풍량이 없다 — 그것이 이 모듈이 찾은 것이다."""
+        missing = dust.unquantified_streams()
+        self.assertEqual(len(missing), 1)
+        self.assertEqual(missing[0].tag, "DS-03")
+        self.assertTrue(missing[0].combustible)
+        self.assertIsNone(missing[0].flow_m3h)
+        # 집계에 없다는 사실이 근거에 적혀 있어야 한다
+        self.assertIn(f"{air.DUST_FLOW_M3H:,}", missing[0].basis)
+
+    def test_glass_dust_does_not_make_the_mixture_safe(self):
+        """불활성분이 있다는 것과 혼합물이 불활성화된다는 것은 다른 말이다."""
+        glass = next(s for s in dust.STREAMS if s.tag == "DS-01")
+        self.assertFalse(glass.combustible)
+        self.assertIn("불활성화", glass.basis)
+        # 가연 흐름이 있는 한 비율은 0 이 아니다
+        self.assertGreater(dust.combustible_flow_fraction(), 0)
+        self.assertLess(dust.combustible_flow_fraction(), 1)
+
+    def test_the_frame_is_pulled_so_there_is_no_aluminium_fines(self):
+        """이 설비가 St-3 를 피하는 이유는 공정이지 집진기가 아니다."""
+        self.assertTrue(dust.FRAME_IS_PULLED_NOT_CUT)
+        st3 = next(c for c in dust.ST_CLASSES if c[0] == "St-3")
+        self.assertIn("인발", st3[3])
+        self.assertEqual(dust.st_class(350), "St-3")
+        self.assertEqual(dust.st_class(200), "St-1")
+        self.assertEqual(dust.st_class(201), "St-2")
+        self.assertEqual(dust.st_class(0), "St-0")
+
+    def test_the_module_refuses_to_invent_kst(self):
+        """Kst 를 상수로 갖고 있으면 그 순간 이 파일이 거짓이 된다."""
+        self.assertFalse(hasattr(dust, "KST"))
+        self.assertFalse(hasattr(dust, "PMAX"))
+        names = [t[0] for t in dust.REQUIRED_TESTS]
+        self.assertTrue(any("14034-1/2" in n for n in names))
+        self.assertTrue(any("14034-3" in n for n in names))
+        # 혼합 시료로 시험해야 한다는 것이 목록에 있어야 한다
+        self.assertTrue(any("혼합" in n for n in names))
+
+    def test_indoor_siting_forces_a_choice(self):
+        """옥내로 벤트를 열 수 없다 — 셋 중 하나이고 셋 다 배치가 바뀐다."""
+        self.assertEqual(len(dust.INDOOR_VENT_OPTIONS), 3)
+        self.assertTrue(dust.ISOLATION_REQUIRED)
+        self.assertEqual(len(dust.IGNITION_SOURCES), 3)
+        # 세 점화원이 모두 실재하는 설비를 가리켜야 한다
+        for tag, _ in dust.IGNITION_SOURCES:
+            with self.subTest(tag=tag):
+                self.assertTrue(tag.startswith(("SG-301", "GRM-401", "정전기")))
+
+    def test_the_missing_flow_has_a_consequence_chain(self):
+        """풍량 하나가 컴프레서까지 간다 — 그 사슬이 글로 있어야 한다."""
+        chain = dust.missing_flow_consequences()
+        self.assertGreaterEqual(len(chain), 4)
+        self.assertTrue(any("F16" in c for c in chain))
+        self.assertTrue(any(f"{air.AIR_TO_CLOTH_M3_H_M2:g}" in c for c in chain))
+
+
+class TestHeightAccess(unittest.TestCase):
+    """고소 정비 — 정비 대상은 높이 있는데 올라가는 방법이 없었다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_height_alone_picks_the_means(self):
+        """수단은 손으로 고르는 것이 아니라 높이가 정한다."""
+        self.assertIn("불요", access.means_for(500))
+        self.assertIn("발판", access.means_for(1_500))
+        self.assertIn("이동식", access.means_for(3_000))
+        self.assertIn("고소작업대", access.means_for(11_000))
+        for point in access.POINTS:
+            with self.subTest(point=point.tag):
+                self.assertEqual(point.means, access.means_for(point.height_mm))
+                self.assertEqual(point.needs_fall_protection,
+                                 point.height_mm >= access.FALL_PROTECTION_MM)
+
+    def test_every_point_needs_fall_protection(self):
+        """2 m 를 넘는 것이 여덟 중 여덟이다 — 하나도 예외가 아니다."""
+        self.assertEqual(len(access.needing_fall_protection()), len(access.POINTS))
+        self.assertEqual(access.FALL_PROTECTION_MM, 2_000)
+
+    def test_heights_come_from_the_model(self):
+        """상수로 적으면 크레인·비전보가 바뀌어도 안 따라온다.
+
+        값이 같은지만 보면 파생인지 리터럴인지 못 가른다 — 지금 5,150 이라
+        `5_150` 을 박아 놔도 통과한다. 그래서 값과 **적힌 꼴** 둘 다 본다.
+        """
+        highest = access.highest()
+        self.assertEqual(highest.height_mm, crane.rail_top_mm())
+        vg = next(p for p in access.POINTS if p.tag == "AC-01")
+        self.assertEqual(vg.height_mm, crane.tallest_lift().height_mm)
+        header = next(p for p in access.POINTS if p.tag == "AC-05")
+        self.assertIn(f"{air.hangers()}", header.basis)
+        # 크레인에서 오는 두 높이는 식으로 적혀 있어야 한다
+        source = (pathlib.Path(__file__).resolve().parents[1]
+                  / "src" / "pv_preprocess" / "access.py").read_text(encoding="utf-8")
+        self.assertIn("crane.tallest_lift().height_mm", source)
+        self.assertIn("crane.rail_top_mm()", source)
+        for literal in (f"{vg.height_mm:_}", f"{highest.height_mm:_}"):
+            with self.subTest(literal=literal):
+                self.assertNotIn(f'"afu", {literal},', source)
+                self.assertNotIn(f'"post", {literal},', source)
+
+    def test_a_fixed_platform_does_not_fit_the_aisle(self):
+        """§34 의 공압 주관이 기둥을 못 세운 것과 같은 벽이다."""
+        self.assertEqual(access.AISLE_CLEAR_MM, wiring.aisle_clear_width_mm())
+        self.assertFalse(access.fixed_platform_fits_aisle())
+        self.assertFalse(access.fixed_platform_fits_aisle(restricted=True))
+        self.assertLess(access.aisle_left_after_platform_mm(), wiring.WALKWAY_MIN_MM)
+        self.assertTrue(access.MOBILE_IS_THE_ANSWER)
+
+    def test_mobile_does_not_erase_the_anchor_points(self):
+        """이동식이어도 안전대는 어딘가에 걸어야 한다."""
+        self.assertEqual(access.ANCHOR_POINT_KN, 15.0)
+        groups = dict(access.anchor_points())
+        self.assertEqual(len(groups), 3)
+        joined = " ".join(groups.values())
+        self.assertIn("우리 일이다", joined)
+        self.assertIn("건물이 받는다", joined)
+
+    def test_the_building_gets_the_crane_rail(self):
+        """크레인 주행거더·공압 주관과 같은 자리다."""
+        building = access.handed_to_building()
+        self.assertEqual([p.tag for p in building], ["AC-08"])
+        self.assertIn(f"{crane.rail_top_mm():,}", building[0].basis)
+
+
+class TestSeismic(unittest.TestCase):
+    """내진 — 앵커 190개는 자중에서 나온 값이고 지진은 안 봤다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_masses_and_heights_come_from_the_lift_list(self):
+        """크레인이 드는 것과 지진이 흔드는 것은 같은 물건이다."""
+        names = [c.name for c in seismic.components()]
+        self.assertEqual(names, [lift.name for lift in crane.LIFTS])
+        for comp, lift in zip(seismic.components(), crane.LIFTS):
+            with self.subTest(name=comp.name):
+                self.assertEqual((comp.mass_kg, comp.height_mm),
+                                 (lift.mass_kg, lift.height_mm))
+
+    def test_the_base_width_is_not_the_cell_envelope(self):
+        """셀 폭으로 재면 복원 모멘트가 부풀어 '문제 없다' 는 거짓이 나온다."""
+        for comp in seismic.components():
+            envelope = layout.STATIONS[comp.station].envelope
+            with self.subTest(name=comp.name):
+                self.assertLess(comp.base_mm, min(envelope[0], envelope[1]))
+                self.assertTrue(comp.basis, "베이스폭은 출처가 있어야 한다")
+
+    def test_the_force_follows_the_code_shape(self):
+        """Fp = 0.4·a_p·S_DS·W/(Rp/Ip), 상·하한이 걸린다."""
+        # 하한이 지배하는 구간 — 강체는 0.4/2.5 = 0.16 < 0.3 이라 늘 하한이다
+        self.assertAlmostEqual(seismic.seismic_ratio(seismic.AP_RIGID, 1.0),
+                               seismic.FP_MIN_FACTOR, places=4)
+        # 유연체는 0.4×2.5/2.5 = 0.4 이므로 하한을 넘는다
+        self.assertAlmostEqual(seismic.seismic_ratio(seismic.AP_FLEXIBLE, 1.0),
+                               0.4, places=4)
+        # 상한 — 아무리 키워도 1.6·S_DS 를 못 넘는다
+        self.assertLessEqual(seismic.seismic_ratio(100.0, 1.0),
+                             seismic.FP_MAX_FACTOR)
+        # 세장비가 임계를 넘으면 유연체로 본다
+        for comp in seismic.components():
+            with self.subTest(name=comp.name):
+                self.assertEqual(comp.is_flexible,
+                                 comp.slenderness > seismic.SLENDER_RATIO)
+
+    def test_three_components_have_no_anchor_group(self):
+        """셀 총수로는 '이 물건이 안 넘어진다' 를 못 보인다."""
+        missing = {c.name for c in seismic.unanchored()}
+        self.assertEqual(len(missing), 3)
+        self.assertIn("MDB-101 주 분전반", missing)
+        self.assertIn("VG-101 독립 방진 비전보 조립체", missing)
+        self.assertEqual(len(seismic.anchored()) + len(seismic.unanchored()),
+                         len(seismic.components()))
+        # 답이 없는 것은 0 이 아니라 NaN 이어야 한다 — 0 은 '괜찮다' 로 읽힌다
+        for comp in seismic.unanchored():
+            with self.subTest(name=comp.name):
+                self.assertTrue(math.isnan(seismic.anchor_tension_kn(comp)))
+                self.assertTrue(math.isnan(seismic.anchor_utilisation(comp)))
+
+    def test_the_wall_panel_is_the_worst_shape(self):
+        """벽부 D300 에 높이 2,100 — 지레비가 깊이뿐이다."""
+        slim = seismic.most_slender()
+        self.assertEqual(slim.name, "MDB-101 주 분전반")
+        self.assertTrue(slim.wall_mounted)
+        self.assertAlmostEqual(slim.slenderness, 7.0, places=2)
+        # 가정한 S_DS 보다 낮은 데서 들린다 — 그것이 이 시험의 요점이다
+        self.assertLess(seismic.uplift_sds(slim), seismic.ASSUMED_SDS)
+        self.assertIn(slim.name, seismic.ANCHOR_GROUP)
+        self.assertIsNone(seismic.ANCHOR_GROUP[slim.name])
+
+    def test_anchor_groups_come_from_the_mounting_plan(self):
+        """앵커 수를 여기서 다시 세면 mounting 과 어긋난다."""
+        for comp in seismic.anchored():
+            station, target = seismic.ANCHOR_GROUP[comp.name]
+            mount = mounting.MOUNTING_OF[station]
+            anchor = next(a for a in mount.anchors if a.target == target)
+            expected = anchor.count * (anchor.units if anchor.per_unit else 1)
+            with self.subTest(name=comp.name):
+                self.assertEqual(seismic.total_anchors(comp), expected)
+                self.assertEqual(seismic.anchor_size(comp), anchor.bolt)
+                self.assertEqual(comp.station, station)
+
+    def test_the_anchored_ones_are_not_the_problem(self):
+        """지진이 지배하지 않는다 — 그리고 그 사실을 상한과 구분해서 적는다."""
+        self.assertTrue(seismic.holds())
+        self.assertTrue(seismic.governing_sds_is_capped())
+        self.assertEqual(seismic.governing_sds(), seismic.SDS_SEARCH_LIMIT)
+        for comp in seismic.anchored():
+            with self.subTest(name=comp.name):
+                self.assertGreater(seismic.uplift_sds(comp), seismic.ASSUMED_SDS)
+
+    def test_the_remedy_puts_bigger_anchors_last(self):
+        """전도는 지레비가 정한다 — 앵커를 키우는 것이 첫 수가 아니다."""
+        order = [r[0] for r in seismic.REMEDY_ORDER]
+        self.assertEqual(order[0], "베이스를 넓힌다")
+        self.assertLess(order.index("무게중심을 낮춘다"), order.index("앵커를 키운다"))
+        self.assertIn("앵커를 키운다", order)
+
+    def test_the_drawing_carries_the_environment_numbers(self):
+        for name, values in (("DUST", dust.summary()),
+                             ("ACCESS", access.summary()),
+                             ("SEISMIC", seismic.summary())):
+            for key, value in values.items():
+                if isinstance(value, bool):
+                    token = f'"{key}": ' + ("true" if value else "false")
+                elif isinstance(value, str):
+                    token = f'"{key}": "{value}"'
+                else:
+                    token = f'"{key}": {value}'
+                with self.subTest(block=name, token=token):
+                    self.assertIn(token, self.html)
+        for tag in ("PV-PLANT-DX-1016", "PV-PLANT-AC-1017", "PV-PLANT-SE-1018"):
+            with self.subTest(tag=tag):
+                self.assertIn(f"['{tag}'", self.html)
+                self.assertIn("'앱 반영'", self.html)

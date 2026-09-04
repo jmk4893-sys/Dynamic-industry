@@ -1501,6 +1501,9 @@ html>body{padding:0}</style>
             <option value="risk" selected>위험원·PLr·안전기능 · SF-1004</option>
             <option value="stop">정지포락선·안전거리 · SF-1004</option>
             <option value="io">안전 I/O·FSoE · PLC-IO-7101</option>
+            <option value="dust">분진폭발 평가 · DX-1016</option>
+            <option value="access">고소 정비 접근 · AC-1017</option>
+            <option value="seismic">내진 앵커 · SE-1018</option>
           </select>
         </label>
       </div>
@@ -2900,6 +2903,9 @@ html>body{padding:0}</style>
     ['PV-PLANT-FD-1002', '기초·앵커·바닥하중', '2D 기초', '기본설계', 'slab·pull-out·동하중'],
     ['PV-PLANT-UT-1003', '전기·공압·진공·집진', '2D Utility', '앱 반영', '공압 실측 소비·누설률'],
     ['PV-PLANT-SF-1004', '위험원·PLr·안전기능·정지포락선', '2D Safety', '앱 반영', 'PFHd — 부품 B10d·MTTFd 확정 후 SISTEMA'],
+    ['PV-PLANT-DX-1016', '분진폭발 평가 · DX-601', '2D Safety', '앱 반영', 'Kst·Pmax·MIE — 혼합 분진 시험 후 벤트 설계'],
+    ['PV-PLANT-AC-1017', '고소 정비 접근 · 추락방지 고정점', '2D Safety', '앱 반영', '이동식 작업대 기종 · 건물 측 고정점 협의'],
+    ['PV-PLANT-SE-1018', '내진 — 설비별 전도·앵커 배정', '2D Safety', '앱 반영', 'S_DS — 부지 지반조사 · 미배정 3대 앵커군'],
     ['PV-AFU-101-GA-2101', '듀얼 적재·비전셀', '2D/3D GA', '앱 반영', '팔레트·지게차 실기종'],
     ['PV-BFC-101-ASM-2201', '승강·180° 반전카세트', '2D/3D ASM', '앱 반영', '축·베어링·브레이크'],
     ['PV-RBPT-101-GA-2301', '로봇·EOAT·정렬정반', '2D/3D GA', '앱 반영', 'OEM 하중도·TCP'],
@@ -2993,7 +2999,7 @@ html>body{padding:0}</style>
     return [left, top, width, height].map(Math.round).join(' ');
   }
 
-  var DRAWING_REVISION = 'REV.35';
+  var DRAWING_REVISION = 'REV.36';
   // 뷰별 축 선택. PART_AXIS 는 part.at/part.size 의 [X, 상하, 깊이] 기준,
   // ENVELOPE_AXIS 는 station.envelope 의 [L, W, H] 기준 — 두 배열의 축 순서가 다르다.
   var PART_AXIS = { plan: [0, 2], front: [0, 1], side: [2, 1] };
@@ -3736,6 +3742,21 @@ html>body{padding:0}</style>
     ['VS-101A/B-FUSED 고정면 스캔선', '레이저 투영선이라 물체가 아니다']
   ];
   var KINEMATICS = {panelMm: [2500, 1400], flipAxisMm: 3430, transferMm: 2290, ringBoreMm: 1620, ringBottomMm: 2440, underRingMm: 112, overCarriageMm: 116, boreClearMm: 109, cageAxialMm: 40, jawStrokeMm: 187.5, jawOpenClearMm: 70, afrClampKn: 12.0, afrPortalZMm: 1450, afrPortalAnchors: 16};
+  var DUST = {"streams": 3, "countedFlowM3h": 1350, "unquantified": 1, "combustibleFraction": 0.259, "framePulledNotCut": true, "ignitionSources": 3, "isolationRequired": true, "tests": 5, "filterAreaM2": 18.8, "pulseValves": 7};
+  // [tag, 발생원, 풍량, 물질, 가연, 근거] — src/pv_preprocess/dust.py 파생
+  var DUST_STREAMS = [["DS-01", "SG-301 엣지 연마 (스핀들 3,000 rpm)", 1000, "소다석회 유리분 + 연마휠 마모분", false, "SiO₂ 기반이라 그 자체로는 불연이다. 다만 **불활성분이 있다는 것과 혼합물이 불활성화된다는 것은 다른 말이다**"], ["DS-02", "JBR-201 국소집진", 350, "백시트(PVF/PET)·EVA·케이블 피복 절삭분 · 접착제", true, "폴리머 절삭분은 가연성이다. 이 흐름이 혼합물의 가연분을 만든다"], ["DS-03", "CV-301 슈레더 투입부 집진", null, "EVA·백시트 파쇄분", true, "**도면에 이름은 있는데 풍량이 없다.** 파쇄분은 절삭분보다 곱고 가연성이라 폭발 평가에서 가장 무거운 흐름인데, DX-601 집계(1,350 m³/h)에도 안 들어가 있다"]];
+  var DUST_IGNITION = [["SG-301 연마 스파크", "스핀들 3,000 rpm 의 유리·휠 마찰 스파크가 덕트로 빨려 든다. 프리세퍼레이터와 스파크 트랩이 그래서 필요하다"], ["GRM-401 IR 뱅크", "표면이 발화온도를 넘는 유일한 상시 열원이다. 다만 IR 배기는 DX-601 이 아니라 GRM-EX-401 로 빠진다 — 두 계통을 합치면 가연 분진과 고온 오프가스가 한 덕트에 든다"], ["정전기", "폴리머 분진은 이송 중에 대전한다. 덕트·집진기·백케이지 전 구간 등전위 본딩과 도전성 백(백 표면저항 10⁹ Ω 이하)이 대책이다"]];
+  var DUST_VENT_OPTIONS = [["벤트 덕트로 옥외", "가장 싸지만 덕트가 벽을 뚫는다 — 건축 인터페이스다. 덕트가 길어질수록 Pred 가 올라가 벤트 면적이 커진다(EN 14491)"], ["무염 벤트 (flameless)", "화염을 실내에서 끈다. 옥외 덕트가 없어 배치가 자유롭지만 장치가 비싸고 정기 교체품이다"], ["집진기를 옥외로", "폭발 보호가 가장 단순해진다. 대신 덕트가 길어져 압손·블로워 동력이 오르고, 겨울철 결로·동파가 새 문제로 온다"]];
+  var DUST_TESTS = [["EN 14034-1/2 — Pmax · (dP/dt)max → Kst", "벤트 면적 계산(EN 14491)의 입력. 없으면 방폭벤트 크기를 못 정한다"], ["EN 14034-3 — 하한폭발농도 LEL", "덕트 내 농도를 LEL 밑으로 유지할 수 있는지 판단"], ["EN 13821 — 최소착화에너지 MIE", "정전기 대책 수준(본딩만인가 도전성 백까지인가)을 정한다"], ["EN ISO/IEC 80079-20-2 — 층·운 발화온도", "IR·베어링 표면온도 한계"], ["혼합 시료 채취", "**시험은 실제 혼합 분진으로 해야 한다.** 유리분과 폴리머분을 따로 시험하면 희석 효과가 안 보인다"]];
+  var DUST_ST = [["St-0", 0, 0, "폭발하지 않음 — 방폭 보호 불요. 다만 시험이 그렇게 나와야 한다"], ["St-1", 1, 200, "벤트 또는 억제. 통상 유기 분진이 여기 든다"], ["St-2", 201, 300, "벤트 면적이 크게 늘어난다. 억제가 현실적인 대안이 된다"], ["St-3", 301, 10000, "알루미늄·마그네슘급. **이 설비는 프레임을 인발로 떼므로 여기 해당하지 않는다** — 절단 공정으로 바꾸면 달라진다"]];
+  var ACCESS = {"points": 8, "ours": 7, "building": 1, "fallProtection": 8, "highestTag": "AC-08", "highestMm": 10750, "mostFrequentTag": "AC-02", "annualExposures": 68, "aisleClearMm": 900, "platformFootprintMm": 720, "platformRestrictedMm": 620, "aisleLeftMm": 180, "fixedFits": false, "anchorKn": 15.0, "guardrailMm": 1100, "fallProtectionMm": 2000};
+  // [tag, 설비, 셀, 높이, 작업, 연횟수, 우리범위, 수단, 방호필요, 근거]
+  var ACCESS_POINTS = [["AC-01", "VG-101 비전보 상단 헤드·조명", "afu", 5150, "카메라·조명 청소, 교정 타깃 확인", 12, true, "고정사다리(등받이) 또는 고소작업대 + 안전대", true, "이 플랜트의 최고 고정점이다. 크레인 후크 여유 1,330 을 정한 바로 그 높이"], ["AC-02", "TDM-201 갠트리 크로스헤드·X축 빔", "grm", 3100, "핫나이프 교체, LM 가이드 급유", 26, true, "이동식 작업대 + 안전대", true, "칼날은 마모품이라 접근이 잦다 — 2주에 한 번꼴"], ["AC-03", "GRM-401 5단 랙 상단 IR 뱅크", "grm", 3000, "IR 램프 교체, 반사판 청소", 6, true, "이동식 작업대 + 안전대", true, "램프는 수명품이다. 고온부라 냉각 지연 인터록(SF-09)과 같이 묶인다"], ["AC-04", "AFR CL-221 클램프 포탈 크로스헤드", "afr", 2130, "실린더 점검, 힘 센서 교정", 4, true, "이동식 작업대 + 안전대", true, "포탈 기둥 z ±1,450 사이라 이동식 작업대가 들어갈 폭이 있다"], ["AC-05", "CMP-701 압축공기 주관·행거", "post", 2590, "누설 점검, 드레인 트랩", 12, true, "이동식 작업대 + 안전대", true, "**통로 위를 51 m 지난다** — 한 자리가 아니라 선이라 이동식이 사실상 유일하다. 행거 18개소가 전부 점검 대상이다"], ["AC-06", "가드 상부 횡빔·카메라 배선 레일", "jbr", 2790, "배선 점검, 상부 카메라 정렬", 4, true, "이동식 작업대 + 안전대", true, "가드 위라 아래에 사람이 없다는 확인이 먼저다"], ["AC-07", "DX-601 집진기 백 교체구", "post", 2400, "필터백 교체 (차압 상승 시)", 2, true, "이동식 작업대 + 안전대", true, "분진 노출 작업이라 국소배기와 보호구가 같이 온다 — §43 분진 항목과 겹친다"], ["AC-08", "CRN-901 주행레일·엔드트럭", "afu", 10750, "레일 마모·볼트 점검, 호이스트 정비", 2, false, "고소작업대 전용 + 안전대 (건물 측 협의)", true, "**건물 측이다.** 우리는 TOR 10,750 과 정비 접근이 필요하다는 것만 넘긴다 — 캣워크를 세울지 고소작업대로 갈지는 건축이 정한다"]];
+  var ACCESS_ANCHORS = [["장비 프레임 (AC-02·03·04·06)", "갠트리 기둥·포탈 기둥·가드 프레임은 이미 바닥에 앵커돼 있다. 고정점 15 kN 을 그 부재에 얹는다 — **우리 일이다**"], ["건물 철골 (AC-01·05·08)", "비전보 상단·통로 상부·크레인 레일은 받칠 우리 부재가 없다. 크레인 주행거더·공압 주관과 같은 자리다 — **건물이 받는다**"], ["DX-601 백 교체구 (AC-07)", "집진기 자체 구조에 붙이되, 분진 노출 작업이라 고정점보다 국소배기·보호구가 먼저다"]];
+  var SEISMIC = {"assumedSds": 0.5, "components": 8, "anchored": 5, "unanchored": 3, "flexible": 2, "rp": 2.5, "ip": 1.0, "ratioRigid": 0.15, "ratioFlexible": 0.2, "governing": "BFC 반전 카세트 (Bay 1식)", "governingStation": "bfc", "governingSlenderness": 1.69, "governingTensionKn": 0.0, "governingSize": "M20", "governingUtilisation": 0.0, "slenderest": "MDB-101 주 분전반", "slenderestRatio": 7.0, "holds": true, "governingSds": 3.0, "governingSdsCapped": true, "slenderestUpliftSds": 0.36, "slenderestNeedsM16": 2};
+  // [이름, 셀, 질량, 높이, 베이스폭, 벽부, 세장비, 유연, 앵커수, 규격, 들림SDS, 사용률, 근거]
+  var SEISMIC_COMPONENTS = [["BFC 반전 카세트 (Bay 1식)", "bfc", 2500, 4500, 2660, false, 1.69, false, 16, "M20", 1.97, 0.0, "3D 실측 — BFC-101A 포탈 기둥·LM가이드 조립체의 Z 폭. 카세트는 그 안에 있으므로 넘어질 때 버티는 것은 포탈이다"], ["GRM-401 5단 단열랙 M1-101", "grm", 1700, 3000, 1900, false, 1.58, false, 8, "M20", 2.11, 0.0, "3D 실측 — M1-101 5단 단열랙의 Z 폭"], ["AFR-101 셀 베이스 프레임", "afr", 1290, 450, 865, false, 0.52, false, 16, "M20", 6.41, 0.0, "3D 실측 — S355 베이스 프레임과 CV-101 가대 다리의 Z 폭. X 로는 11.4 m 라 길이 방향 전도는 문제가 아니다"], ["AFR CL-221 클램프 포탈 1조", "afr", 700, 2130, 2900, false, 0.73, false, 16, "M20", 4.54, 0.0, "기구 도면 — 기둥 자리 z ±1,450 (kinematics 의 포탈 기둥 위치). 통과 폭·정렬 셔틀·LM 레일 밖, 안전가드 안쪽에서 정해진 값이다"], ["VG-101 독립 방진 비전보 조립체", "afu", 620, 5150, 2130, false, 2.42, true, 0, "미배정", 1.03, null, "3D 실측 — 독립 기둥 2본의 X 간격. Z 로는 6.7 m 라 짧은 쪽이 지레비를 정한다"], ["HPU-601 유압 파워유닛", "afr", 450, 1500, 820, false, 1.83, false, 8, "M16", 1.82, 0.0, "3D 실측 — HPU 본체·방진 마운트의 Z 폭"], ["MDB-101 주 분전반", "afr", 400, 2100, 300, true, 7.0, true, 0, "미배정", 0.36, null, "**벽부 D300 이다.** 바닥에 서 있지 않으므로 전도가 아니라 벽 앵커의 인장으로 받는다 — 지레비가 깊이 300 뿐이라 이 플랜트에서 가장 불리한 자리다"], ["VAC-101 진공 스키드", "afu", 320, 1620, 860, false, 1.88, false, 0, "미배정", 1.77, null, "3D 실측 — 스키드 베이스의 Z 폭"]];
+  var SEISMIC_REMEDY = [["베이스를 넓힌다", "복원 모멘트는 베이스 반폭에 **비례**하고 인장은 지레비에 반비례한다 — 폭을 1.5배 하면 두 쪽이 같이 좋아진다"], ["무게중심을 낮춘다", "전도 모멘트가 높이에 비례한다. 상부 중량물을 내리는 것이 앵커를 키우는 것보다 싸다"], ["앵커를 키운다", "마지막이다. 굵히면 연단거리·매입깊이가 따라 커져 바닥 슬래브 두께까지 올라간다"], ["횡지지를 건다", "높고 좁은 것(VG-101 같은)은 상부를 건물 철골에 잡아 주는 편이 바닥에서 버티는 것보다 낫다 — 다만 건축 인터페이스가 된다"]];
   var SAFETY = {"hazards": 14, "functions": 11, "plantPlr": "e", "plrA": 0, "plrB": 1, "plrC": 1, "plrD": 11, "plrE": 1, "resolutionMm": 30, "penetrationMm": 128, "approachFastMmS": 2000, "approachSlowMmS": 1600, "approachSwitchMm": 500, "stopChainMs": 287, "tightestOpening": "OP-OUT", "tightestBudgetMs": 445, "contestedMm": 320, "contestedBudgetMs": 96, "fixedChainMs": 37, "contestedMechanicalMs": 59, "contestedSlowdown": 4.2, "mutingCyclesPerDay": 2228, "cyclesPerYear": 612700, "missionYears": 20, "inputs": 45, "outputs": 12, "inputModules": 7, "outputModules": 2, "ioModulePoints": 8, "ioSparePct": 20, "fsoeDeviceNodes": 4, "stoNodes": 36, "fsoeNodes": 40};
   // [tag, cell, 설명, S, F, P, PLr, 근거] — src/pv_preprocess/safety.py 파생
   var HAZARDS = [["HZ-01", "afu", "AFU-101 듀얼 도킹 Bay — 지게차 진입·리프트 승강 협착", 2, 2, 1, "d", "S2 지게차와 리프트 사이 협착은 비가역이다. F2 반입은 상시 작업이라 사람이 늘 옆에 있다. P1 접근속도가 낮고 BW-101 안전벽체가 Bay 를 나눠 대피 방향이 남는다"], ["HZ-02", "bfc", "BFC-101A/B 반전 카세트 180° 회전 — 회전체·고정물 사이 협착", 2, 1, 2, "d", "S2 2,500 kg 회전체다. F1 가드 안이라 정비 때만 들어간다. P2 링과 프레임 사이에 들어간 뒤에는 피할 방향이 없다"], ["HZ-03", "bfc", "BFC 카세트 승강 Z — 낙하·협착", 2, 1, 2, "d", "S2 4,500 mm 높이의 카세트가 떨어진다. F1 정비 노출. P2 밑에 있으면 피할 수 없다 — 기계식 정비 안전받침이 그래서 있다"], ["HZ-04", "robot", "RB-101 다관절 작업영역 — 충돌·협착", 2, 1, 2, "d", "S2 6축 로봇 충돌. F1 티칭·정비 때만. P2 로봇 도달범위 안에서는 사람이 로봇보다 느리다"], ["HZ-05", "jbr", "JBR-201 3헤드 승강 플레이트·박리 Z 추력 — 협착", 2, 1, 2, "d", "S2 1:10 감속 추력이다. F1 가드 안. P2 헤드 밑에서는 피할 수 없다"], ["HZ-06", "jbr", "JBR-201 A/B 순차 공압 가위 — 절단", 2, 1, 2, "d", "S2 손가락 절단은 비가역이다. F1 가드 안. P2 가위 행정은 사람 반응보다 빠르다"], ["HZ-07", "jbr", "JBR 투입·반출 개구부 — 뮤팅 중 사람 진입", 2, 2, 2, "e", "S2 진입하면 HZ-05·06 을 그대로 만난다. **F2 뮤팅은 패널마다 열린다 — 투입·반출 합쳐 하루 2,228 회다.** P2 열린 개구를 사람이 따라 들어가면 안에서 멈출 방법이 없다"], ["HZ-08", "afr", "AFR-101 25 kN 인발·CL-221 클램프 12 kN — 협착·튕김", 2, 1, 2, "d", "S2 25 kN 은 사람을 잡는다. F1 가드 안. P2 인발은 힘 제어라 물린 뒤에 멈춰도 이미 늦다"], ["HZ-09", "post", "SG-301 연마 회전체 — 말림·비산", 2, 1, 2, "d", "S2 회전체 말림. F1 가드 안. P2 말리면 놓을 수 없다"], ["HZ-10", "buffer", "GBR-301 셔틀 주행·슬롯 로더 승강 — 협착·낙하", 2, 1, 2, "d", "S2 적재 캐리지 낙하. F1 가드 안. P2 주행로 위에서는 피할 방향이 좁다"], ["HZ-11", "grm", "GRM-401 60-IR 뱅크 고온부 — 접촉 화상", 2, 1, 1, "c", "S2 IR 뱅크 표면 화상은 비가역이다. F1 정비 노출. P1 열은 접촉 전에 느껴지고 인터록에 냉각 지연이 걸린다"], ["HZ-12", "post", "유리 파손 비산 — 눈·피부 열상", 1, 2, 1, "b", "S1 보안경·가드로 막히는 경상이다. F2 파손은 60장 중 5장 몫으로 설계에 이미 들어 있다. P1 비산 방향이 가드로 제한된다"], ["HZ-13", "jbr", "정비 중 예기치 않은 기동 — 공압·유압 잔압", 2, 1, 2, "d", "S2 잔압으로 실린더가 한 번 더 나간다. F1 정비 때. P2 손을 넣은 상태에서 나가면 피할 수 없다 — 안전 잔압배출 밸브가 그래서 있다"], ["HZ-14", "afu", "CRN-901 인양물 낙하 — 운전 중 설비 위 통과", 2, 1, 2, "d", "S2 2,500 kg 낙하. F1 설치·정비 인양 때만. P2 밑에 있으면 끝이다. **이 위험원은 electrical 의 비동시 전제를 떠받친다** — 규칙이 아니라 인터록이어야 계약전력 근거가 선다"]];
@@ -4702,7 +4723,10 @@ html>body{padding:0}</style>
   var SF_VIEWS = {
     risk: '위험원 평가와 요구 성능수준 · 안전기능 사슬',
     stop: '정지포락선 — 거리가 정지시간의 예산을 정한다',
-    io: '안전 I/O 점수와 FSoE 노드 · SISTEMA 로 넘길 입력'
+    io: '안전 I/O 점수와 FSoE 노드 · SISTEMA 로 넘길 입력',
+    dust: '분진폭발 평가 — 흐름·점화원·실내 벤트·시험 목록',
+    access: '고소 정비 접근 — 높이가 수단을 정하고 통로가 되돌린다',
+    seismic: '내진 — 설비별 전도와 앵커 배정'
   };
   var PL_TONE = {
     a: 'pv-fab-object', b: 'pv-fab-object', c: 'pv-fab-object',
@@ -4898,10 +4922,222 @@ html>body{padding:0}</style>
     });
   }
 
+
+  // DX-1016 — 분진폭발. 집진기는 있었고, 그 안이 터질 수 있는지가 없었다.
+  function renderSafetyDust(out) {
+    smartFrame(out, 'PV-PLANT-DX-1016', '분진폭발 평가 · DX-601',
+      '집진 흐름 ' + DUST.streams + ' · 집계 ' + n(DUST.countedFlowM3h) + ' m³/h · 풍량 미확정 '
+        + DUST.unquantified + ' · 가연 흐름 비율 ' + (DUST.combustibleFraction * 100).toFixed(1)
+        + ' % (풍량 기준 대용값) · 여과 ' + DUST.filterAreaM2 + ' m² · 밸브 ' + DUST.pulseValves);
+    var y = 104;
+    out.push(text(40, y, '흐름', 'pv-fab-text'));
+    out.push(text(520, y, '풍량 m³/h', 'pv-fab-text', 'end'));
+    out.push(text(600, y, '가연', 'pv-fab-text', 'middle'));
+    out.push(text(640, y, '무엇이 들어오는가 / 근거', 'pv-fab-text'));
+    out.push(line(40, y + 8, 1360, y + 8, 'pv-fab-frame'));
+    DUST_STREAMS.forEach(function (d, i) {
+      var ry = y + 34 + i * 62;
+      out.push('<text class="pv-fab-small" data-fit="450" x="40" y="' + ry + '">'
+        + escapeText(d[0] + ' ' + d[1]) + '</text>');
+      out.push(text(520, ry, d[2] === null ? '— 없음' : n(d[2]), 'pv-fab-small', 'end'));
+      out.push('<rect class="' + (d[4] ? 'pv-fab-accent' : 'pv-fab-hidden') + '" x="' + 578
+        + '" y="' + (ry - 13) + '" width="44" height="18" rx="3"/>');
+      out.push(text(600, ry, d[4] ? '가연' : '불연', 'pv-fab-small', 'middle'));
+      out.push('<text class="pv-fab-small" data-fit="720" x="640" y="' + ry + '">'
+        + escapeText(d[3]) + '</text>');
+      wrapLines(plain(d[5]), 50, 2).forEach(function (t, k) {
+        out.push('<text class="pv-fab-small" data-fit="720" x="640" y="' + (ry + 17 + k * 16) + '">'
+          + escapeText(t) + '</text>');
+      });
+      out.push(line(40, ry + 44, 1360, ry + 44, 'pv-fab-hidden'));
+    });
+    y += 34 + DUST_STREAMS.length * 62;
+    // 지금 확실한 것 / 시험이 정하는 것
+    var lb = { x: 40, y: y, w: 650, h: 40 + DUST_IGNITION.length * 54 + 56 };
+    out.push('<rect class="pv-fab-frame" x="' + lb.x + '" y="' + lb.y + '" width="' + lb.w + '" height="' + lb.h + '"/>');
+    out.push(text(lb.x + 16, lb.y + 28, '점화원 — 앞의 넷(가연분·산소·분산·밀폐)은 집진기 안에 늘 있다', 'pv-fab-text'));
+    DUST_IGNITION.forEach(function (r, i) {
+      var ry = lb.y + 58 + i * 54;
+      out.push(text(lb.x + 16, ry, r[0], 'pv-fab-text'));
+      wrapLines(plain(r[1]), 42, 2).forEach(function (t, k) {
+        out.push('<text class="pv-fab-small" data-fit="610" x="' + (lb.x + 16) + '" y="' + (ry + 19 + k * 16) + '">'
+          + escapeText(t) + '</text>');
+      });
+    });
+    out.push(text(lb.x + 16, lb.y + lb.h - 14, DUST.framePulledNotCut
+      ? '프레임은 인발로 뗀다 — 알루미늄 미분이 없어 St-3 를 피한다. 절단 공정이면 달라진다.'
+      : '**프레임 절단 공정** — 알루미늄 미분이 생긴다. 습식 집진 불가.', 'pv-fab-small'));
+    var rb = { x: 710, y: y, w: 650, h: lb.h };
+    out.push('<rect class="pv-fab-frame" x="' + rb.x + '" y="' + rb.y + '" width="' + rb.w + '" height="' + rb.h + '"/>');
+    out.push(text(rb.x + 16, rb.y + 28, '실내 설치가 정하는 것 — 옥내로 벤트를 못 연다', 'pv-fab-text'));
+    DUST_VENT_OPTIONS.forEach(function (r, i) {
+      var ry = rb.y + 58 + i * 54;
+      out.push(text(rb.x + 16, ry, (i + 1) + ') ' + r[0], 'pv-fab-text'));
+      wrapLines(plain(r[1]), 42, 2).forEach(function (t, k) {
+        out.push('<text class="pv-fab-small" data-fit="610" x="' + (rb.x + 16) + '" y="' + (ry + 19 + k * 16) + '">'
+          + escapeText(t) + '</text>');
+      });
+    });
+    out.push(text(rb.x + 16, rb.y + rb.h - 14, DUST.isolationRequired
+      ? '역화 차단(EN 15089) 필수 — 흡입구가 사람이 있는 셀 안이다.'
+      : '역화 차단 불요.', 'pv-fab-small'));
+    y += lb.h + 20;
+    // 시험 목록
+    var tb = { x: 40, y: y, w: 1320, h: 40 + DUST_TESTS.length * 22 + 40 };
+    out.push('<rect class="pv-fab-frame" x="' + tb.x + '" y="' + tb.y + '" width="' + tb.w + '" height="' + tb.h + '"/>');
+    out.push(text(tb.x + 16, tb.y + 28, '시험이 정하는 것 — Kst·Pmax·MIE 는 시험으로만 나온다. '
+      + '이 도면은 그 값을 지어내지 않는다.', 'pv-fab-text'));
+    DUST_TESTS.forEach(function (r, i) {
+      var ry = tb.y + 54 + i * 22;
+      out.push('<text class="pv-fab-small" data-fit="440" x="' + (tb.x + 16) + '" y="' + ry + '">'
+        + escapeText(r[0]) + '</text>');
+      out.push('<text class="pv-fab-small" data-fit="820" x="' + (tb.x + 480) + '" y="' + ry + '">'
+        + escapeText(plain(r[1])) + '</text>');
+    });
+    out.push(text(tb.x + 16, tb.y + tb.h - 14, 'Kst 가 오면: '
+      + DUST_ST.slice(1).map(function (c) { return c[0] + ' ≤' + c[2]; }).join(' · ')
+      + ' — 등급이 보호 방식을 정한다.', 'pv-fab-small'));
+  }
+
+  // AC-1017 — 고소 접근. 높이가 수단을 정하고, 통로 폭이 그 수단을 되돌린다.
+  function renderSafetyAccess(out) {
+    smartFrame(out, 'PV-PLANT-AC-1017', '고소 정비 접근 · EN ISO 14122',
+      '접근 지점 ' + ACCESS.points + ' (우리 ' + ACCESS.ours + ' · 건물 ' + ACCESS.building
+        + ') · 추락 방호 대상 ' + ACCESS.fallProtection + ' (≥ ' + n(ACCESS.fallProtectionMm)
+        + ' mm) · 연 ' + ACCESS.annualExposures + ' 회 · 최고 ' + n(ACCESS.highestMm) + ' mm');
+    var y = 104;
+    out.push(text(40, y, '지점', 'pv-fab-text'));
+    out.push(text(470, y, '높이', 'pv-fab-text', 'end'));
+    out.push(text(540, y, '연 횟수', 'pv-fab-text', 'end'));
+    out.push(text(560, y, '접근 수단', 'pv-fab-text'));
+    out.push(text(900, y, '범위', 'pv-fab-text', 'middle'));
+    out.push(text(960, y, '근거', 'pv-fab-text'));
+    out.push(line(40, y + 8, 1360, y + 8, 'pv-fab-frame'));
+    // 높이 축 — 지점을 높이순으로 세워 한눈에 보이게
+    var sorted = ACCESS_POINTS.slice().sort(function (a, b) { return b[3] - a[3]; });
+    sorted.forEach(function (p, i) {
+      var ry = y + 34 + i * 50;
+      out.push('<text class="pv-fab-small" data-fit="410" x="40" y="' + ry + '">'
+        + escapeText(p[0] + ' ' + p[1]) + '</text>');
+      out.push(text(470, ry, n(p[3]), 'pv-fab-text', 'end'));
+      out.push(text(540, ry, p[5], 'pv-fab-small', 'end'));
+      out.push('<text class="pv-fab-small" data-fit="330" x="560" y="' + ry + '">'
+        + escapeText(p[7]) + '</text>');
+      out.push('<rect class="' + (p[6] ? 'pv-fab-secondary' : 'pv-fab-object') + '" x="866" y="'
+        + (ry - 13) + '" width="68" height="18" rx="3"/>');
+      out.push(text(900, ry, p[6] ? '공급범위' : '건물', 'pv-fab-small', 'middle'));
+      wrapLines(plain(p[9]), 32, 2).forEach(function (t, k) {
+        out.push('<text class="pv-fab-small" data-fit="400" x="960" y="' + (ry + k * 16) + '">'
+          + escapeText(t) + '</text>');
+      });
+      out.push(text(560, ry + 17, p[4], 'pv-fab-small'));
+      out.push(line(40, ry + 30, 1360, ry + 30, 'pv-fab-hidden'));
+    });
+    y += 34 + sorted.length * 50 + 10;
+    // 통로가 되돌리는 것
+    var ab = { x: 40, y: y, w: 650, h: 224 };
+    out.push('<rect class="pv-fab-frame" x="' + ab.x + '" y="' + ab.y + '" width="' + ab.w + '" height="' + ab.h + '"/>');
+    out.push(text(ab.x + 16, ab.y + 28, '고정 플랫폼을 통로에 세울 수 있는가', 'pv-fab-text'));
+    var bar = { x: ab.x + 16, y: ab.y + 50, w: 600 };
+    var scale = bar.w / ACCESS.aisleClearMm;
+    out.push('<rect class="pv-fab-hidden" x="' + bar.x + '" y="' + bar.y + '" width="' + bar.w + '" height="26"/>');
+    out.push('<rect class="pv-fab-accent" x="' + bar.x + '" y="' + bar.y + '" width="'
+      + Math.round(ACCESS.platformFootprintMm * scale) + '" height="26"/>');
+    out.push(text(bar.x + 6, bar.y + 18, '플랫폼 ' + n(ACCESS.platformFootprintMm), 'pv-fab-small'));
+    out.push(text(bar.x + bar.w - 6, bar.y + 18, '남는 폭 ' + n(ACCESS.aisleLeftMm), 'pv-fab-small', 'end'));
+    out.push(text(ab.x + 16, ab.y + 96, '통로 유효 ' + n(ACCESS.aisleClearMm) + ' − 플랫폼 '
+      + n(ACCESS.platformFootprintMm) + ' = ' + n(ACCESS.aisleLeftMm) + ' mm', 'pv-fab-text'));
+    wrapLines(ACCESS.fixedFits
+      ? '고정 플랫폼을 세워도 사람이 지나간다.'
+      : '사람이 못 지나간다. §34 의 공압 주관이 통로에 기둥을 못 세운 것과 같은 벽이다 — 그래서 이동식으로 간다.',
+      44, 2).forEach(function (t, k) {
+      out.push('<text class="pv-fab-small" data-fit="610" x="' + (ab.x + 16) + '" y="' + (ab.y + 122 + k * 16) + '">'
+        + escapeText(t) + '</text>');
+    });
+    // 이동식이 지우지 못하는 것
+    var nb = { x: 710, y: y, w: 650, h: 224 };
+    out.push('<rect class="pv-fab-frame" x="' + nb.x + '" y="' + nb.y + '" width="' + nb.w + '" height="' + nb.h + '"/>');
+    out.push(text(nb.x + 16, nb.y + 28, '이동식이 지우지 못하는 것 — 안전대 고정점 '
+      + ACCESS.anchorKn + ' kN (EN 795)', 'pv-fab-text'));
+    ACCESS_ANCHORS.forEach(function (r, i) {
+      var ry = nb.y + 58 + i * 54;
+      out.push(text(nb.x + 16, ry, r[0], 'pv-fab-text'));
+      wrapLines(plain(r[1]), 44, 2).forEach(function (t, k) {
+        out.push('<text class="pv-fab-small" data-fit="610" x="' + (nb.x + 16) + '" y="' + (ry + 19 + k * 16) + '">'
+          + escapeText(t) + '</text>');
+      });
+    });
+  }
+
+  // SE-1018 — 내진. 앵커 190개는 자중에서 나온 값이고 지진은 안 봤다.
+  function renderSafetySeismic(out) {
+    smartFrame(out, 'PV-PLANT-SE-1018', '내진 — 앵커가 지진하중을 받는가',
+      'Fp = 0.4·a_p·S_DS·W_p/(R_p/I_p)·(1+2z/h) · S_DS ' + SEISMIC.assumedSds
+        + ' g 는 가정값 (지반조사가 대체한다) · R_p ' + SEISMIC.rp + ' · I_p ' + SEISMIC.ip
+        + ' · 설비 ' + SEISMIC.components + ' 중 앵커 배정 ' + SEISMIC.anchored
+        + ' · 미배정 ' + SEISMIC.unanchored);
+    var y = 104;
+    out.push(text(40, y, '설비', 'pv-fab-text'));
+    out.push(text(430, y, '질량 kg', 'pv-fab-text', 'end'));
+    out.push(text(510, y, '높이', 'pv-fab-text', 'end'));
+    out.push(text(590, y, '베이스', 'pv-fab-text', 'end'));
+    out.push(text(660, y, '세장비', 'pv-fab-text', 'end'));
+    out.push(text(760, y, '앵커', 'pv-fab-text', 'end'));
+    out.push(text(860, y, '들림 S_DS', 'pv-fab-text', 'end'));
+    out.push(text(880, y, '베이스폭 근거', 'pv-fab-text'));
+    out.push(line(40, y + 8, 1360, y + 8, 'pv-fab-frame'));
+    SEISMIC_COMPONENTS.forEach(function (c, i) {
+      var ry = y + 34 + i * 52;
+      out.push('<text class="pv-fab-small" data-fit="370" x="40" y="' + ry + '">'
+        + escapeText(c[0]) + '</text>');
+      out.push(text(430, ry, n(c[2]), 'pv-fab-small', 'end'));
+      out.push(text(510, ry, n(c[3]), 'pv-fab-small', 'end'));
+      out.push(text(590, ry, n(c[4]) + (c[5] ? ' 벽부' : ''), 'pv-fab-small', 'end'));
+      out.push('<rect class="' + (c[7] ? 'pv-fab-accent' : 'pv-fab-hidden') + '" x="612" y="'
+        + (ry - 13) + '" width="50" height="18" rx="3"/>');
+      out.push(text(658, ry, c[6].toFixed(2), 'pv-fab-small', 'end'));
+      out.push(text(760, ry, c[8] ? (c[8] + '×' + c[9]) : '미배정', 'pv-fab-small', 'end'));
+      out.push(text(860, ry, c[10].toFixed(2) + ' g', 'pv-fab-small', 'end'));
+      wrapLines(plain(c[12]), 36, 2).forEach(function (t, k) {
+        out.push('<text class="pv-fab-small" data-fit="470" x="880" y="' + (ry + k * 16) + '">'
+          + escapeText(t) + '</text>');
+      });
+      out.push(line(40, ry + 32, 1360, ry + 32, 'pv-fab-hidden'));
+    });
+    y += 34 + SEISMIC_COMPONENTS.length * 52 + 10;
+    var fb = { x: 40, y: y, w: 650, h: 150 };
+    out.push('<rect class="pv-fab-frame" x="' + fb.x + '" y="' + fb.y + '" width="' + fb.w + '" height="' + fb.h + '"/>');
+    out.push(text(fb.x + 16, fb.y + 28, '무엇이 답이고 무엇이 아닌가', 'pv-fab-text'));
+    wrapLines('앵커가 배정된 ' + SEISMIC.anchored + ' 대는 S_DS ' + SEISMIC.governingSds + ' g'
+      + (SEISMIC.governingSdsCapped ? '(탐색 상한)' : '') + ' 까지 버틴다 — 지진이 지배하지 않는다. '
+      + '문제는 거기가 아니라 **미배정 ' + SEISMIC.unanchored + ' 대**다.',
+      42, 3).forEach(function (t, k) {
+      out.push('<text class="pv-fab-small" data-fit="610" x="' + (fb.x + 16) + '" y="' + (fb.y + 54 + k * 17) + '">'
+        + escapeText(plain(t)) + '</text>');
+    });
+    out.push(text(fb.x + 16, fb.y + 118, '가장 불리한 형상: ' + SEISMIC.slenderest
+      + ' (세장비 ' + SEISMIC.slenderestRatio + ')', 'pv-fab-text'));
+    out.push('<text class="pv-fab-small" data-fit="610" x="' + (fb.x + 16) + '" y="' + (fb.y + 138) + '">'
+      + escapeText('S_DS ' + SEISMIC.slenderestUpliftSds + ' g 에서 들리기 시작한다 — 가정값 '
+        + SEISMIC.assumedSds + ' g 보다 낮다. 앵커군이 없다.') + '</text>');
+    var rb = { x: 710, y: y, w: 650, h: 150 };
+    out.push('<rect class="pv-fab-frame" x="' + rb.x + '" y="' + rb.y + '" width="' + rb.w + '" height="' + rb.h + '"/>');
+    out.push(text(rb.x + 16, rb.y + 28, '전도가 문제일 때 순서 — 앵커를 키우는 것은 세 번째다', 'pv-fab-text'));
+    SEISMIC_REMEDY.forEach(function (r, i) {
+      var ry = rb.y + 52 + i * 26;
+      out.push(text(rb.x + 16, ry, (i + 1) + ') ' + r[0], 'pv-fab-small'));
+      out.push('<text class="pv-fab-small" data-fit="450" x="' + (rb.x + 190) + '" y="' + ry + '">'
+        + escapeText(plain(r[1])) + '</text>');
+    });
+  }
+
   function renderSafety() {
     var out = [];
     if (state.sfView === 'stop') renderSafetyStop(out);
     else if (state.sfView === 'io') renderSafetyIo(out);
+    else if (state.sfView === 'dust') renderSafetyDust(out);
+    else if (state.sfView === 'access') renderSafetyAccess(out);
+    else if (state.sfView === 'seismic') renderSafetySeismic(out);
     else renderSafetyRisk(out);
     safetySvg.innerHTML = out.join('');
     safetySvg.setAttribute('aria-label', SF_VIEWS[state.sfView] || SF_VIEWS.risk);

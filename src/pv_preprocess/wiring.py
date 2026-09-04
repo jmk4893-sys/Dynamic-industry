@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from . import air, crane, electrical, smart
-from .layout import build_zones, plant_envelope_mm
+from .layout import AISLE_WIDTH_MM, build_zones, plant_envelope_mm
 
 #: 주 분전반 MDB-101 의 벽부 위치 (플랜트 좌표 mm). X 는 피더 수요(kW) 가중
 #: 부하중심(demand_center_x_mm())을 500 단위로 반올림한 값이다.
@@ -309,6 +309,17 @@ def total_power_cable_m() -> float:
     return round(sum(c.length_m for c in power_cables()), 1)
 
 
+#: 벽부 분전반 깊이 (mm). MDB-101·LP 모두 D300 이다.
+PANEL_DEPTH_MM = 300
+
+#: 보행 최소 유효폭 (mm). 이 밑으로 내려가면 통로가 아니다.
+WALKWAY_MIN_MM = 900
+
+
 def aisle_clear_width_mm() -> int:
-    """분전반 벽부 후 통로 유효폭 — 보행 최소 900 을 지켜야 한다."""
-    return 1_200 - 300
+    """분전반 벽부 후 통로 유효폭.
+
+    1,200 − 300 을 리터럴로 적어 두었었다. 통로가 넓어지거나 반이 깊어지면
+    따라오지 않는 값이라, 둘 다 출처에서 가져온다.
+    """
+    return AISLE_WIDTH_MM - PANEL_DEPTH_MM
