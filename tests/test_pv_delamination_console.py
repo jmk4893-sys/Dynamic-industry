@@ -510,5 +510,210 @@ class TestDeliverableEquipment(unittest.TestCase):
             self.assertIn(token, self.html, f"인도 범위에 {token} 항목이 없다")
 
 
+class TestBacksheetWinder(unittest.TestCase):
+    """백시트 권취부 — 롤 성장률과 권취부 위치.
+
+    이 두 가지는 그림만 봐서는 틀린 줄 모른다. 롤이 한 장에 두 배가 되는 그림은
+    필름 0.30mm 를 340mm 로 그린 것과 같고, 권취부가 상류에 있으면 웹이 캐리어
+    통로를 거꾸로 가로지르는데 정지화면에서는 둘 다 그럴듯해 보인다.
+    """
+
+    # 면적보존: 감긴 필름 단면적 n·L·t 가 원환 π(r²−r0²) 와 같다
+    T = 0.30e-3          # 백시트 두께
+    L = 2.4              # 패널 길이 (사양 2400×1200)
+    R0 = 0.15            # 코어 Ø300
+    R1 = 0.30            # 만권 Ø600
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = CONSOLE.read_text(encoding="utf-8")
+        cls.turn = cls.L * cls.T / math.pi
+
+    def _const(self, name):
+        m = re.search(rf"\b{name}\s*=\s*(-?[\d.]+(?:e-?\d+)?)", self.html)
+        self.assertIsNotNone(m, f"상수 {name} 을 찾지 못했다")
+        return float(m.group(1))
+
+    def _radius(self, n):
+        return math.sqrt(self.R0 ** 2 + n * self.turn)
+
+    # ── 롤 성장 ────────────────────────────────────────────────
+    def test_roll_radius_is_area_conserving_not_linear(self):
+        """r = r0 + k·peel 형태로 돌아가면 실패한다."""
+        self.assertIn("rollRadius", self.html, "롤 반경 모델이 없다")
+        self.assertRegex(
+            self.html, r"rollRadius\s*=\s*n\s*=>.*Math\.sqrt",
+            "롤 반경이 제곱근(면적보존)으로 계산되지 않는다",
+        )
+        self.assertNotIn(".3+.34*clamp(peel)", self.html,
+                         "롤 직경이 아직 박리 진행률에 선형으로 붙어 있다")
+
+    def test_film_thickness_and_core_match_the_spec(self):
+        self.assertAlmostEqual(self._const("BACKSHEET_T"), self.T, places=6)
+        self.assertAlmostEqual(self._const("WR_CORE_R"), self.R0, places=4)
+        self.assertAlmostEqual(self._const("WR_FULL_R"), self.R1, places=4)
+        self.assertAlmostEqual(self._const("PANEL_L"), self.L, places=4,
+                               msg="롤 계산의 패널 길이가 사양 2400mm 이 아니다")
+
+    def test_one_panel_moves_the_diameter_by_about_1_5_mm(self):
+        """한 장에 Ø301.5 — 눈으로는 거의 안 변하는 것이 정상이다."""
+        self.assertAlmostEqual(self._radius(1) * 2000, 301.5, delta=0.1)
+        self.assertAlmostEqual(self._radius(10) * 2000, 314.9, delta=0.1)
+        self.assertAlmostEqual(self._radius(60) * 2000, 380.8, delta=0.2)
+
+    def test_full_roll_panel_count_is_stated_and_correct(self):
+        n = round((self.R1 ** 2 - self.R0 ** 2) / self.turn)
+        self.assertEqual(n, 295)
+        self.assertIn("ROLL_FULL_PANELS", self.html)
+        # 콘솔이 본문에 적어 둔 값도 같아야 한다
+        self.assertIn("295", self.html, "만권 장수가 본문에 없다")
+        self.assertIn("4.9", self.html, "만권까지 걸리는 시간이 본문에 없다")
+
+    def test_roll_change_happens_at_full_roll_not_every_panel(self):
+        """S7 이 장마다 롤을 빼면 하루 480회 교체하는 설비가 된다."""
+        m = re.search(r"function woundCount\(i,p\)\{(.*?)\n    \}", self.html, re.S)
+        self.assertIsNotNone(m, "woundCount 를 찾지 못했다")
+        self.assertRegex(
+            m.group(1), r"i===7\s*\)\s*return\s+ROLL_FULL_PANELS",
+            "롤 교체 단계가 만권 상태로 그려지지 않는다",
+        )
+
+    def test_winding_roll_takes_a_panel_count(self):
+        """호출부가 박리 진행률(0~1)을 넘기면 롤은 다시 한 장에 만권이 된다."""
+        for call in re.findall(r"windingRoll\(([^)]*)\)", self.html):
+            if call.startswith("panels"):        # 정의부
+                continue
+            self.assertTrue(
+                call.startswith("woundCount("),
+                f"windingRoll 에 누적 장수가 아닌 값을 넘긴다: {call}",
+            )
+
+    # ── 권취부 위치 ────────────────────────────────────────────
+    def test_winder_is_downstream_of_both_knives(self):
+        """필름은 칼날에서 분리되는 순간부터 패널 진행방향(+x) 쪽에 있다."""
+        hkb = self._const("HKB_X")
+        hks = self._const("HKS_X")
+        drum = self._const("WR_DRUM_X")
+        self.assertGreater(drum, hks, "권취 드럼이 아직 탠덤 상류에 있다")
+        self.assertGreater(drum, hkb)
+        self.assertGreater(drum - hks, 1.0, "드럼이 HKS 가드에 너무 붙어 있다")
+
+    def test_web_runs_forward_from_the_knife(self):
+        """종전 코드는 절단점에서 x=14.7 로 되돌아가 캐리어 통로를 가로질렀다."""
+        m = re.search(r"function backsheetWeb\(.*?\n    \}", self.html, re.S)
+        self.assertIsNotNone(m, "웹 경로 함수가 없다")
+        body = m.group(0)
+        self.assertIn("WR_GUIDE_X", body)
+        self.assertIn("WR_DRUM_X", body)
+        self.assertNotRegex(self.html, r"flexSurface\([^)]*,\s*14\.7\s*,",
+                            "웹이 아직 상류 x=14.7 로 되돌아간다")
+
+    def test_peel_guide_roll_sits_at_the_blade(self):
+        """가이드롤이 없으면 박리각이 롤 직경을 따라 계속 변한다."""
+        guide = self._const("WR_GUIDE_X")
+        hkb = self._const("HKB_X")
+        self.assertLess(abs(guide - hkb), 0.4, "가이드롤이 박리선에서 멀다")
+        self.assertIn("GR-W1", self.html, "가이드롤에 부호가 없다")
+
+    def test_web_clears_the_knife_z_axis_columns(self):
+        """웹 반폭 1.2m 옆으로 기둥이 지나면 필름이 기둥에 쓸린다."""
+        post = self._const("KNIFE_POST_Y")
+        half = self._const("WEB_HALF")
+        self.assertGreaterEqual(
+            post - half, 0.12,
+            "웹 가장자리와 나이프 Z축 기둥 간극이 사양의 120mm 미만이다",
+        )
+        body = re.search(r"function knifeBar\(.*?\n    \}", self.html, re.S).group(0)
+        self.assertIn("KNIFE_POST_Y", body, "기둥 좌표가 상수를 쓰지 않는다")
+        self.assertNotIn("[-1.24,1.24]", body, "기둥이 아직 웹 가장자리에 붙어 있다")
+
+    def test_roll_storage_is_outside_the_fence(self):
+        """롤 교체는 4.9시간마다다. 방책 안으로 들어가야 한다면 그때마다 라인이 선다."""
+        bin_y = self._const("BS_BIN_Y")
+        fence = min(
+            float(c.split(",")[1])
+            for c in re.findall(r"fenceSegment\(([-\d.,\s]+)\)", self.html)
+        )
+        self.assertLess(bin_y, fence, "BS-301 보관대가 안전펜스 안에 있다")
+        self.assertIn("BS-301", self.html)
+
+    def test_control_cabinet_does_not_block_the_roll_exit(self):
+        """조작반이 반출 해치 앞을 막으면 롤이 나올 길이 없다."""
+        m = re.search(r"plinth\((\d+(?:\.\d+)?),-3\.3,1\.6,1\.2\)", self.html)
+        self.assertIsNotNone(m, "PLC/HMI 캐비닛을 찾지 못했다")
+        cabinet_x = float(m.group(1))
+        drum = self._const("WR_DRUM_X")
+        self.assertGreater(
+            abs(cabinet_x - drum), 1.4,
+            "PLC/HMI 캐비닛이 권취부 롤 반출 통로와 겹친다",
+        )
+
+    def test_panel_draw_scale_discrepancy_is_declared(self):
+        """도면 패널 4800×2400 과 사양 2400×1200 의 차이를 숨기지 않는다."""
+        self.assertIn("PANEL_DRAW_SCALE", self.html,
+                      "패널 축척 불일치가 코드에 드러나 있지 않다")
+        self.assertIn("2400×1200", self.html, "사양 치수가 주석에 없다")
+
+    def test_live_roll_diameter_is_readable_without_turning_on_labels(self):
+        """3D 라벨은 기본이 꺼져 있다. 직경이 거기에만 있으면 아무도 못 본다."""
+        m = re.search(r"flowBacksheetText'\)\.textContent=(.{0,900})", self.html, re.S)
+        self.assertIsNotNone(m)
+        self.assertIn("rollRadius", m.group(1),
+                      "권취 직경이 항상 보이는 HUD에 나오지 않는다")
+
+
+class TestTenPanelTrial(unittest.TestCase):
+    """10장 연속 시운전 단계 — 세 계통이 동시에 쌓이는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = CONSOLE.read_text(encoding="utf-8")
+
+    def test_stage_exists_and_is_last(self):
+        ids = re.findall(r"\{id:'(S\d+)'", self.html)
+        self.assertIn("S15", ids, "10장 시운전 단계가 없다")
+        self.assertEqual(ids[-1], "S15", "새 단계가 타임라인 끝에 오지 않는다")
+        self.assertEqual(len(ids), len(set(ids)), "단계 번호가 중복된다")
+
+    def test_stage_arrays_cover_every_step(self):
+        """단계를 추가하면서 카메라·자재흐름 배열을 놓치면 마지막 단계가 조용히 깨진다."""
+        steps = len(re.findall(r"\{id:'S\d+'", self.html))
+        cams = re.search(r"focusX=\[([-\d.,\s]+)\]", self.html)
+        self.assertIsNotNone(cams)
+        self.assertEqual(len(cams.group(1).split(",")), steps,
+                         "카메라 focusX 배열이 단계 수와 다르다")
+        targets = re.search(r"targets=\[(.*?)\],focusX", self.html, re.S)
+        self.assertEqual(len(targets.group(1).split(",")), steps,
+                         "카메라 targets 배열이 단계 수와 다르다")
+        flows = re.search(r"\]\[index\];", self.html)
+        block = self.html[:flows.start()]
+        rows = re.findall(r"\n        \['[^\]]*\],?", block[-2600:])
+        self.assertGreaterEqual(len(rows), steps - 1,
+                                "자재흐름 문구가 단계 수를 못 따라간다")
+
+    def test_all_three_material_paths_accumulate(self):
+        body = re.search(r"function tenPanelTestActivity\(.*?\n    \}", self.html, re.S)
+        self.assertIsNotNone(body, "10장 시운전 동작이 없다")
+        body = body.group(0)
+        self.assertIn("panelLayers", body, "패널이 탠덤을 통과하지 않는다")
+        self.assertIn("cellModuleAt", body, "셀/EVA 가 컨베이어로 투입되지 않는다")
+        self.assertIn("woundCount(15", body, "백시트가 롤에 누적되지 않는다")
+        self.assertRegex(self.html, r"glassStorageCarriageActivity\(1,\s*Math\.min\(10",
+                         "유리가 저장 캐리지에 적재되지 않는다")
+
+    def test_glass_carriage_shows_the_stack(self):
+        body = re.search(
+            r"function glassStorageCarriageActivity\(.*?\n    \}", self.html, re.S
+        ).group(0)
+        self.assertIn("stacked", body, "저장 캐리지가 적재 장수를 표현하지 않는다")
+        self.assertIn("C.glass", body)
+
+    def test_ten_panels_barely_grow_the_roll(self):
+        """시운전 결과 문구가 실제 계산과 맞는지 — 10장에 Ø314.9."""
+        r = math.sqrt(0.15 ** 2 + 10 * 2.4 * 0.30e-3 / math.pi)
+        self.assertAlmostEqual(r * 2000, 314.9, delta=0.1)
+        self.assertIn("Ø314.9", self.html, "10장 시운전 설명의 롤 직경이 없다")
+
+
 if __name__ == "__main__":
     unittest.main()
