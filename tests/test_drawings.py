@@ -30,7 +30,9 @@ def standalone_document_checks(case, html, title):
     for url in re.findall(r'https?://[^"\')\s]+', html):
         case.assertTrue(
             url.startswith("https://fonts.googleapis.com")
-            or url.startswith("https://fonts.gstatic.com"),
+            or url.startswith("https://fonts.gstatic.com")
+            # XML 네임스페이스는 식별자일 뿐 내려받지 않는다 (인라인 SVG 파비콘 등)
+            or url.startswith("http://www.w3.org/"),
             f"CSP 상 차단되는 외부 리소스: {url}",
         )
     case.assertIn("@media (prefers-color-scheme: dark)", html)
