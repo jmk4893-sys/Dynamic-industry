@@ -1339,6 +1339,7 @@ html>body{padding:0}</style>
       <button class="nav-link" id="pv-tab-electrical" role="tab" aria-controls="pv-panel-electrical" aria-selected="false" type="button">전기 인입도</button>
       <button class="nav-link" id="pv-tab-smart" role="tab" aria-controls="pv-panel-smart" aria-selected="false" type="button">스마트·AI</button>
       <button class="nav-link" id="pv-tab-mount" role="tab" aria-controls="pv-panel-mount" aria-selected="false" type="button">지지·장착</button>
+      <button class="nav-link" id="pv-tab-safety" role="tab" aria-controls="pv-panel-safety" aria-selected="false" type="button">안전</button>
     </div>
 
     <div class="viz-controls pv-drawing-controls" aria-label="도면 선택">
@@ -1489,6 +1490,29 @@ html>body{padding:0}</style>
           <thead><tr><th>부재</th><th>셀</th><th>지지 등급</th><th>무엇을 받치는가</th></tr></thead>
           <tbody id="pv-mount-table"></tbody>
           <tfoot id="pv-mount-total"></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div id="pv-panel-safety" role="tabpanel" aria-labelledby="pv-tab-safety" hidden>
+      <div class="viz-controls" aria-label="안전 도면 선택">
+        <label class="form-label" for="pv-sf-view">안전 도면
+          <select class="form-select" id="pv-sf-view">
+            <option value="risk" selected>위험원·PLr·안전기능 · SF-1004</option>
+            <option value="stop">정지포락선·안전거리 · SF-1004</option>
+            <option value="io">안전 I/O·FSoE · PLC-IO-7101</option>
+          </select>
+        </label>
+      </div>
+      <div class="card pv-sheet-surface">
+        <svg id="pv-safety-svg" class="pv-sheet" viewBox="0 0 1400 820" role="img" aria-label="위험원 평가와 요구 성능수준"></svg>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <caption class="text-small text-muted">위험원 — PLr 은 손으로 적은 값이 아니라 S·F·P 세 갈래에서 나온다(ISO 13849-1 부속서 A). 노출 빈도 F 는 <strong>사람의 노출</strong>이지 기계의 동작 빈도가 아니다. <code>src/pv_preprocess/safety.py</code> 파생.</caption>
+          <thead><tr><th>위험원</th><th>셀</th><th>내용</th><th>S</th><th>F</th><th>P</th><th>PLr</th><th>맡는 안전기능</th></tr></thead>
+          <tbody id="pv-safety-table"></tbody>
+          <tfoot id="pv-safety-total"></tfoot>
         </table>
       </div>
     </div>
@@ -2467,7 +2491,11 @@ html>body{padding:0}</style>
   var smartTable = el('#pv-smart-table');
   var smartTotal = el('#pv-smart-total');
   var smViewSel = el('#pv-sm-view');
+  var sfViewSel = el('#pv-sf-view');
   var mountSvg = el('#pv-mount-svg');
+  var safetySvg = el('#pv-safety-svg');
+  var safetyTable = el('#pv-safety-table');
+  var safetyTotal = el('#pv-safety-total');
   var mountTable = el('#pv-mount-table');
   var mountTotal = el('#pv-mount-total');
   var mtStationSel = el('#pv-mt-station');
@@ -2871,7 +2899,7 @@ html>body{padding:0}</style>
     ['PV-PLANT-GA-1001', '전체 플랜트 평면·종단면·좌표표', '2D GA', '앱 반영', '건축 grid·기둥 (출입구는 투입방향 확정)'],
     ['PV-PLANT-FD-1002', '기초·앵커·바닥하중', '2D 기초', '기본설계', 'slab·pull-out·동하중'],
     ['PV-PLANT-UT-1003', '전기·공압·진공·집진', '2D Utility', '앱 반영', '공압 실측 소비·누설률'],
-    ['PV-PLANT-SF-1004', '가드·문·정지포락선', '2D Safety', '기본설계', 'PLr·PFHd·정지시간'],
+    ['PV-PLANT-SF-1004', '위험원·PLr·안전기능·정지포락선', '2D Safety', '앱 반영', 'PFHd — 부품 B10d·MTTFd 확정 후 SISTEMA'],
     ['PV-AFU-101-GA-2101', '듀얼 적재·비전셀', '2D/3D GA', '앱 반영', '팔레트·지게차 실기종'],
     ['PV-BFC-101-ASM-2201', '승강·180° 반전카세트', '2D/3D ASM', '앱 반영', '축·베어링·브레이크'],
     ['PV-RBPT-101-GA-2301', '로봇·EOAT·정렬정반', '2D/3D GA', '앱 반영', 'OEM 하중도·TCP'],
@@ -2882,7 +2910,7 @@ html>body{padding:0}</style>
     ['PV-GLASS-301-GA-5101', '검사·연마·레시피 후단', '2D/3D GA', '앱 반영', '광학 MSA·집진'],
     ['PV-GBR-301-GA-5201', '셔틀·레시피 버퍼', '2D/3D GA', '앱 반영', 'proof-load·도킹'],
     ['PV-GRM-401-GA-6101', '5단 적재·IR 가열·2단 탠덤 유리제거셀', '2D/3D GA', '앱 반영', '벤더 GA 풋프린트·IR 조도 균일도'],
-    ['PV-PLC-IO-7101', 'PLC·Safety I/O·handshake', '전장', '기본설계', '회로·SISTEMA'],
+    ['PV-PLC-IO-7101', '안전 I/O 점수·FSoE 노드·handshake', '전장', '앱 반영', '단자대 채번 — 안전 PLC 기종 확정 후'],
     ['PV-PLANT-EL-1005', '전기 인입 단선결선도·부하집계', '전장', '앱 반영', 'OEM 명판·고조파 실측'],
     ['PV-PLANT-EL-1006', 'MDB-101 분전반 내부 배선도', '전장', '앱 반영', '단자대 결선·상 밸런스 실측'],
     ['PV-PLANT-EL-1007', '분전반·PLC 계통 연결도·배선 길이', '전장', '앱 반영', '트레이 시공도·성단 실측'],
@@ -2965,7 +2993,7 @@ html>body{padding:0}</style>
     return [left, top, width, height].map(Math.round).join(' ');
   }
 
-  var DRAWING_REVISION = 'REV.34';
+  var DRAWING_REVISION = 'REV.35';
   // 뷰별 축 선택. PART_AXIS 는 part.at/part.size 의 [X, 상하, 깊이] 기준,
   // ENVELOPE_AXIS 는 station.envelope 의 [L, W, H] 기준 — 두 배열의 축 순서가 다르다.
   var PART_AXIS = { plan: [0, 2], front: [0, 1], side: [2, 1] };
@@ -2978,7 +3006,7 @@ html>body{padding:0}</style>
     'z-': { axis: 2, keep: 1, label: 'Y 뒤쪽 제거' },
     'y+': { axis: 1, keep: -1, label: 'Z 위쪽 제거' }
   };
-  var state = { tab: 'fab', station: 'afu', explode: 65, labels: true, focus: 'all', clearance: true, yaw: -0.62, pitch: 0.48, zoom: 1, cutAxis: 'none', cutAt: 50, elView: 'single', elFeeder: 'F1', smView: 'network', mtStation: 'grm' };
+  var state = { tab: 'fab', station: 'afu', explode: 65, labels: true, focus: 'all', clearance: true, yaw: -0.62, pitch: 0.48, zoom: 1, cutAxis: 'none', cutAt: 50, elView: 'single', elFeeder: 'F1', smView: 'network', mtStation: 'grm', sfView: 'risk' };
   var colorCache = {};
   var canvas = document.createElement('canvas');
   canvas.setAttribute('role', 'img');
@@ -3708,6 +3736,17 @@ html>body{padding:0}</style>
     ['VS-101A/B-FUSED 고정면 스캔선', '레이저 투영선이라 물체가 아니다']
   ];
   var KINEMATICS = {panelMm: [2500, 1400], flipAxisMm: 3430, transferMm: 2290, ringBoreMm: 1620, ringBottomMm: 2440, underRingMm: 112, overCarriageMm: 116, boreClearMm: 109, cageAxialMm: 40, jawStrokeMm: 187.5, jawOpenClearMm: 70, afrClampKn: 12.0, afrPortalZMm: 1450, afrPortalAnchors: 16};
+  var SAFETY = {"hazards": 14, "functions": 11, "plantPlr": "e", "plrA": 0, "plrB": 1, "plrC": 1, "plrD": 11, "plrE": 1, "resolutionMm": 30, "penetrationMm": 128, "approachFastMmS": 2000, "approachSlowMmS": 1600, "approachSwitchMm": 500, "stopChainMs": 287, "tightestOpening": "OP-OUT", "tightestBudgetMs": 445, "contestedMm": 320, "contestedBudgetMs": 96, "fixedChainMs": 37, "contestedMechanicalMs": 59, "contestedSlowdown": 4.2, "mutingCyclesPerDay": 2228, "cyclesPerYear": 612700, "missionYears": 20, "inputs": 45, "outputs": 12, "inputModules": 7, "outputModules": 2, "ioModulePoints": 8, "ioSparePct": 20, "fsoeDeviceNodes": 4, "stoNodes": 36, "fsoeNodes": 40};
+  // [tag, cell, 설명, S, F, P, PLr, 근거] — src/pv_preprocess/safety.py 파생
+  var HAZARDS = [["HZ-01", "afu", "AFU-101 듀얼 도킹 Bay — 지게차 진입·리프트 승강 협착", 2, 2, 1, "d", "S2 지게차와 리프트 사이 협착은 비가역이다. F2 반입은 상시 작업이라 사람이 늘 옆에 있다. P1 접근속도가 낮고 BW-101 안전벽체가 Bay 를 나눠 대피 방향이 남는다"], ["HZ-02", "bfc", "BFC-101A/B 반전 카세트 180° 회전 — 회전체·고정물 사이 협착", 2, 1, 2, "d", "S2 2,500 kg 회전체다. F1 가드 안이라 정비 때만 들어간다. P2 링과 프레임 사이에 들어간 뒤에는 피할 방향이 없다"], ["HZ-03", "bfc", "BFC 카세트 승강 Z — 낙하·협착", 2, 1, 2, "d", "S2 4,500 mm 높이의 카세트가 떨어진다. F1 정비 노출. P2 밑에 있으면 피할 수 없다 — 기계식 정비 안전받침이 그래서 있다"], ["HZ-04", "robot", "RB-101 다관절 작업영역 — 충돌·협착", 2, 1, 2, "d", "S2 6축 로봇 충돌. F1 티칭·정비 때만. P2 로봇 도달범위 안에서는 사람이 로봇보다 느리다"], ["HZ-05", "jbr", "JBR-201 3헤드 승강 플레이트·박리 Z 추력 — 협착", 2, 1, 2, "d", "S2 1:10 감속 추력이다. F1 가드 안. P2 헤드 밑에서는 피할 수 없다"], ["HZ-06", "jbr", "JBR-201 A/B 순차 공압 가위 — 절단", 2, 1, 2, "d", "S2 손가락 절단은 비가역이다. F1 가드 안. P2 가위 행정은 사람 반응보다 빠르다"], ["HZ-07", "jbr", "JBR 투입·반출 개구부 — 뮤팅 중 사람 진입", 2, 2, 2, "e", "S2 진입하면 HZ-05·06 을 그대로 만난다. **F2 뮤팅은 패널마다 열린다 — 투입·반출 합쳐 하루 2,228 회다.** P2 열린 개구를 사람이 따라 들어가면 안에서 멈출 방법이 없다"], ["HZ-08", "afr", "AFR-101 25 kN 인발·CL-221 클램프 12 kN — 협착·튕김", 2, 1, 2, "d", "S2 25 kN 은 사람을 잡는다. F1 가드 안. P2 인발은 힘 제어라 물린 뒤에 멈춰도 이미 늦다"], ["HZ-09", "post", "SG-301 연마 회전체 — 말림·비산", 2, 1, 2, "d", "S2 회전체 말림. F1 가드 안. P2 말리면 놓을 수 없다"], ["HZ-10", "buffer", "GBR-301 셔틀 주행·슬롯 로더 승강 — 협착·낙하", 2, 1, 2, "d", "S2 적재 캐리지 낙하. F1 가드 안. P2 주행로 위에서는 피할 방향이 좁다"], ["HZ-11", "grm", "GRM-401 60-IR 뱅크 고온부 — 접촉 화상", 2, 1, 1, "c", "S2 IR 뱅크 표면 화상은 비가역이다. F1 정비 노출. P1 열은 접촉 전에 느껴지고 인터록에 냉각 지연이 걸린다"], ["HZ-12", "post", "유리 파손 비산 — 눈·피부 열상", 1, 2, 1, "b", "S1 보안경·가드로 막히는 경상이다. F2 파손은 60장 중 5장 몫으로 설계에 이미 들어 있다. P1 비산 방향이 가드로 제한된다"], ["HZ-13", "jbr", "정비 중 예기치 않은 기동 — 공압·유압 잔압", 2, 1, 2, "d", "S2 잔압으로 실린더가 한 번 더 나간다. F1 정비 때. P2 손을 넣은 상태에서 나가면 피할 수 없다 — 안전 잔압배출 밸브가 그래서 있다"], ["HZ-14", "afu", "CRN-901 인양물 낙하 — 운전 중 설비 위 통과", 2, 1, 2, "d", "S2 2,500 kg 낙하. F1 설치·정비 인양 때만. P2 밑에 있으면 끝이다. **이 위험원은 electrical 의 비동시 전제를 떠받친다** — 규칙이 아니라 인터록이어야 계약전력 근거가 선다"]];
+  // [tag, 이름, [위험원], 검출, 논리, 구동, PLr, 카테고리, 비고]
+  var SAFETY_FUNCTIONS = [["SF-01", "비상정지 (전 셀)", ["HZ-02", "HZ-03", "HZ-04", "HZ-05", "HZ-06", "HZ-08", "HZ-09", "HZ-10"], "JB-SF-006 이중채널 버튼 · 가드 비상정지", "안전 PLC — 하드와이어 + FSoE", "전 서보 STO · 공압 덤프 · 주접촉기 개방", "d", "Cat.3", "정지범주 1 — 제어정지 후 동력차단. 정지범주 0 으로 하면 승강축이 자유낙하한다(HZ-03)"], ["SF-02", "가드 인터록 (정비도어)", ["HZ-05", "HZ-06", "HZ-13"], "JB-SF-004 가드락 안전인터록 (이중채널)", "안전 PLC — 잠금해제는 정지확인 후", "STO 유지 · 잔압배출 · 재기동 금지", "d", "Cat.3", "가드락형이라 문이 열리기 전에 정지가 끝난다 — 정지시간 예산을 가드락이 흡수하므로 이 기능에는 ISO 13855 거리가 걸리지 않는다"], ["SF-03", "투입·반출구 침입 감지", ["HZ-05", "HZ-06"], "JB-SF-005 Type 4 라이트커튼 (해상도 30 mm)", "안전 PLC — OSSD 이중채널", "JBR 전 축 STO · 공압 덤프", "d", "Cat.3", "ISO 13855 정지시간 예산이 걸리는 기능. JB-SF-008 시험포트로 정기 검증한다"], ["SF-04", "뮤팅 — 패널만 통과", ["HZ-07"], "JB-SF-009 뮤팅 센서쌍 4식 (방향·순서·timeout)", "JB-SF-010 전용 뮤팅 컨트롤러", "뮤팅 실패 시 즉시 SF-03 복귀", "e", "Cat.4", "이 플랜트의 유일한 PLe 요구다. 부품표가 뮤팅 센서를 4식으로 잡고 전용 컨트롤러를 따로 둔 이유가 그것이다. 순서 위반·timeout 초과·센서 단일고장 어느 하나에도 뮤팅을 걸지 않는다 — 뮤팅은 '보호를 끄는' 기능이라 고장 시 안전측이 곧 '켜진 채로' 다"], ["SF-05", "로봇 작업영역 방호", ["HZ-04"], "AFU-SF-101 안전 스캐너 · BW-101 안전벽체", "안전 PLC — 존별 판정", "RB-101 STO · 경고존 감속", "d", "Cat.3", "경고존·정지존 2단. 감속만으로는 PLd 를 못 만든다 — 정지존이 PLd 사슬이고 감속존은 가용률을 위한 덤이다"], ["SF-06", "AFR·유리후단 방호", ["HZ-08", "HZ-09", "HZ-12"], "AFR-SF-701 가드·라이트커튼", "AFR 안전PLC (FSoE 노드)", "AFR·SG·GI 축 STO · 유압 덤프", "d", "Cat.3", "SG-301 회전체는 관성이 커서 STO 만으로는 즉시 서지 않는다 — SS1(제어감속 후 STO)이 필요하다"], ["SF-07", "버퍼·적재부 방호", ["HZ-10"], "GBR 버퍼 인터록 센서 · GRM 적재부 안전 스캐너", "안전 PLC", "GBR·GRM 축 STO", "d", "Cat.3", "캐리지 교환구역은 뮤팅하지 않는다 — 사람이 캐리지를 직접 다루는 구역이라 뮤팅 조건 자체가 성립하지 않는다"], ["SF-08", "운전 중 인양 금지 인터록", ["HZ-14"], "CRN-901 급전 접촉기 상태 · 라인 운전 상태", "안전 PLC — 상호잠금", "인양 중 라인 기동 금지 / 라인 운전 중 크레인 급전 차단", "d", "Cat.3", "**REV.28 부터 글로만 있던 규칙을 회로로 옮긴다.** 이 인터록이 없으면 electrical.NON_COINCIDENT_PANELS 의 비동시 전제가 관리 규칙에 불과해 계약전력 292.3 kW 의 근거가 무너진다"], ["SF-09", "고온부 접근 인터록", ["HZ-11"], "GRM IR 뱅크 표면온도 · 도어 인터록", "안전 PLC — 냉각 지연 타이머", "IR 전원 차단 · 냉각 완료까지 도어 잠금", "c", "Cat.2", "온도가 내려가기 전에는 문이 안 열린다. 지연 타이머가 안전기능의 일부라 표준 타이머로는 안 된다"], ["SF-10", "에너지 격리 — 잔압배출·LOTO", ["HZ-13"], "안전 잔압배출 밸브 · 잔압 확인 압력스위치", "안전 PLC — 배출 확인 후 정비허가", "공압·유압 이중 잔압배출", "d", "Cat.3", "§34 의 에어 덤프가 여기 걸린다 — 컴프레서를 세우는 것과 라인의 잔압을 빼는 것은 다른 일이다"], ["SF-11", "도킹 Bay 방호 — Bay 독립 정지", ["HZ-01"], "AFU-SF-101 안전 스캐너 (Bay 별 존)", "안전 PLC — Bay 별 존 판정", "진입한 Bay 의 리프트만 정지 · 반대 Bay 는 계속", "d", "Cat.3", "BW-101 안전벽체가 Bay 를 나누기 때문에 이 기능이 성립한다. 벽이 없으면 한쪽 반입이 반대쪽 운전을 세워 처리량이 절반이 된다 — 안전벽체는 안전 부품이면서 동시에 가용률 부품이다"]];
+  // [tag, 이름, 수량, 입력/대, 출력/대, FSoE, 입력합, 출력합, 비고]
+  var SAFETY_DEVICES = [["JB-SF-004", "가드락 안전인터록", 1, 2, 1, false, 2, 1, "이중채널 입력 + 잠금 솔레노이드 출력"], ["JB-SF-005", "Type 4 라이트커튼", 4, 2, 0, false, 8, 0, "OSSD 2채널"], ["JB-SF-006", "비상정지·3색 표시등", 2, 2, 3, false, 4, 6, "이중채널 접점 + 표시등 3색 (표시등은 안전출력 아님, 점수만 잡는다)"], ["JB-SF-009", "안전 뮤팅 센서쌍", 4, 2, 0, false, 8, 0, "쌍당 센서 2개 · 각 1채널"], ["JB-SF-010", "뮤팅 컨트롤러·표시등", 1, 0, 1, true, 0, 1, "뮤팅 램프는 표준이 요구하는 필수 출력이다"], ["AFU-SF-101", "안전 스캐너 (도킹 Bay)", 2, 2, 0, true, 4, 0, "존 전환 포함"], ["AFR-SF-701", "AFR 가드·라이트커튼", 1, 4, 0, true, 4, 0, "가드 인터록 2 + 커튼 OSSD 2"], ["GBR-SF-301", "버퍼 인터록 센서", 1, 2, 0, false, 2, 0, ""], ["GRM-SF-401", "적재부 안전 스캐너", 1, 2, 0, true, 2, 0, ""], ["JBR-SF-011", "리젝트 게이트·버퍼 인터록", 2, 2, 0, false, 4, 0, ""], ["UT-SF-012", "안전 잔압배출 밸브·압력스위치", 2, 1, 1, false, 2, 2, "배출 확인 입력 + 덤프 출력"], ["CRN-SF-013", "크레인 급전 접촉기 상태·차단", 1, 2, 1, false, 2, 1, "SF-08 상호잠금 — 이 두 점이 계약전력 근거를 떠받친다"], ["GRM-SF-014", "IR 고온부 도어 인터록·온도", 1, 3, 1, false, 3, 1, "도어 2채널 + 온도 1점, 냉각 완료 잠금 출력"]];
+  var STOP_CHAIN = [["라이트커튼 응답 (Type 4 · OSSD)", 15], ["안전 PLC 논리 (FSoE 왕복 2사이클)", 12], ["드라이브 STO 반응", 10], ["기계 감속·정지 (SS1)", 250]];
+  // [tag, 이름, 감지면X, 위험원X, 위험부재, 거리, 예산ms, 비고]
+  var SAFETY_OPENINGS = [["OP-IN", "JBR 투입구", 17820, 18740, "3헤드 공통 승강 플레이트 (HZ-05)", 920, 495, "차광 투입 터널 1,180 mm 를 지나 첫 위험동작을 만난다"], ["OP-OUT", "JBR 반출구", 24580, 23740, "X축 LM가이드·타이밍벨트 종단 (HZ-05)", 840, 445, "반출측은 인계 게이트 350 mm 를 사이에 두고 AFR 가드가 이어받는다"]];
+  var SISTEMA_INPUTS = [["B10d", "각 안전부품(인터록·버튼·밸브)의 벤더값. 사이클 수 n_op 는 muting_cycles_per_day() 가 낸다 — 그 값이 T10d 교체주기를 정한다"], ["MTTFd", "채널별 평균 위험고장시간 — 부품 확정 전에는 못 낸다"], ["DC", "진단범위. 이중채널 교차감시·잔압 확인·뮤팅 순서감시가 근거가 된다"], ["CCF", "공통원인고장 점수 — 배선 분리·과전압 보호 등 65점 체크리스트"], ["PFHd", "위 넷에서 SISTEMA 가 낸다. **이 모듈은 PFHd 를 내지 않는다**"]];
   var CRANE = {capacityT: 5.0, ceilingMm: 12000, railTopMm: 10750, hookHeightMm: 9700, spanMm: 8800, runwayMm: 60800, hookReachMm: 3800, governing: "BFC 반전 카세트 (Bay 1식)", governingKg: 2500, hookLoadKg: 2650, maxLiftKg: 4850, capacityMargin: 1.89, tallest: "VG-101 독립 방진 비전보 조립체", requiredHookMm: 8370, hookMarginMm: 1330, installOrder: ["grm", "buffer", "post", "afr", "gate", "jbr", "robot", "afu"], entryZone: "afu", haulWidthMm: 7100, widestModuleMm: 2900, entryOpeningMinMm: [2900, 5150], entryOpeningMm: [6000, 5000], entryWidthMarginMm: 3100, uprightHeadroomMm: 500, installedKw: 6.7, demandKw: 1.34};
   var MOUNT_SUMMARY = { stations: 8, anchors: 190, m16: 94, m20: 88, m24: 8, members: 20, brackets: 51, series: 53, withdrawn: 2, floor: 16, frame: 2, gantry: 2, exempt: 5 };
   var SL_CHAIN_ROWS = INCOMER.tapsSite ? (INCOMER.tapLowVoltage ? 4 : 5) : (INCOMER.highVoltage ? 6 : 4);
@@ -4066,7 +4105,12 @@ html>body{padding:0}</style>
         + ' mm (구획 전기실, 이 반 옆 통로 외곽벽) 의 변압기 2차에서 온다 — 4C×'
         + INCOMER.lvMainMm2 + ' mm² Cu · ' + incomingText() + '.', 'pv-layout-small'));
     }
-    var e = { x: 360, y: 100, w: 700, h: 650 };
+    // 단 수는 피더 수에서 나온다. 반 안폭(700 − 여백 48)에 피치 78 로
+    // 들어가는 것이 8대이고, 그 위는 아래 단으로 내린다 — 실제 분전반이 그렇다.
+    var PER_TIER = 8, TIER_PITCH = 78, TIER_H = 210;
+    var tiers = Math.ceil(feeders.length / PER_TIER);
+    var e = { x: 360, y: 100, w: 700, h: 250 + tiers * TIER_H + 60 };
+    function tierTop(r) { return e.y + 250 + r * TIER_H; }
     out.push('<rect class="pv-fab-object" x="' + e.x + '" y="' + e.y + '" width="' + e.w + '" height="' + e.h + '" rx="6"/>');
     out.push('<rect class="pv-fab-hidden" x="' + (e.x + 10) + '" y="' + (e.y + 10) + '" width="' + (e.w - 20) + '" height="' + (e.h - 20) + '" rx="4"/>');
     // 인입: 상부 글랜드 → 계량 CT → SPD → 주 차단기
@@ -4086,32 +4130,42 @@ html>body{padding:0}</style>
       // 수평 모선 4본
       out.push(line(e.x + 40, e.y + 168 + k * 16, e.x + 640, e.y + 168 + k * 16, 'pv-el-bus ' + cls));
     });
-    out.push(text(e.x + 44, e.y + 156, '모선 L1·L2·L3·N (동부스바 25×5)', 'pv-fab-small'));
-    // 분기 MCCB 8대 — 한 열, 각자 모선 탭 → 차단기 → 덕트 → 하부 단자대
-    var ductY = e.y + 430;
-    out.push('<rect class="pv-el-duct" x="' + (e.x + 24) + '" y="' + (ductY) + '" width="' + (e.w - 48) + '" height="40"/>');
-    out.push(text(e.x + 30, ductY + 26, '배선덕트 60×60', 'pv-fab-small'));
-    feeders.forEach(function (feeder, i) {
-      var bx = e.x + 52 + i * 78;
-      phases.forEach(function (cls, k) {
-        out.push(line(bx + k * 7 - 10, e.y + 168 + k * 16, bx + k * 7 - 10, e.y + 268, 'pv-el-wire ' + cls));
-      });
-      out.push('<rect class="pv-fab-secondary" x="' + (bx - 26) + '" y="' + (e.y + 268) + '" width="62" height="46" rx="3"/>');
-      out.push(text(bx + 5, e.y + 288, feeder[0], 'pv-fab-small', 'middle'));
-      out.push(text(bx + 5, e.y + 306, feeder[5] + ' AT', 'pv-fab-small', 'middle'));
-      phases.forEach(function (cls, k) {
-        out.push(line(bx + k * 7 - 10, e.y + 314, bx + k * 7 - 10, ductY, 'pv-el-wire ' + cls));
-        out.push(line(bx + k * 7 - 10, ductY + 40, bx + k * 7 - 10, ductY + 76, 'pv-el-wire ' + cls));
-      });
-      out.push('<rect class="pv-fab-object" x="' + (bx - 26) + '" y="' + (ductY + 76) + '" width="62" height="26" rx="2"/>');
-      out.push(text(bx + 5, ductY + 93, 'TB-' + feeder[0], 'pv-fab-small', 'middle'));
-      out.push(text(bx + 5, ductY + 122, feeder[6].replace(' mm² Cu', ''), 'pv-fab-small', 'middle'));
-      out.push(text(bx + 5, ductY + 140, CABLE_LENGTH_M[feeder[0]].toFixed(1) + ' m', 'pv-fab-small', 'middle'));
-      out.push(line(bx + 5, ductY + 102, bx + 5, e.y + e.h + 24, 'pv-fab-hidden'));
+    out.push(text(e.x + 44, e.y + 156, '모선 L1·L2·L3·N (동부스바 25×5) · 분기 ' + feeders.length
+      + '회로를 ' + tiers + '단으로 나눈다 (단당 ' + PER_TIER + ')', 'pv-fab-small'));
+    // 수직 라이저 — 주 모선에서 각 단의 단모선으로 내린다.
+    phases.forEach(function (cls, k) {
+      out.push(line(e.x + 30 + k * 7, e.y + 168 + k * 16, e.x + 30 + k * 7, tierTop(tiers - 1), 'pv-el-wire ' + cls));
     });
+    // 단마다: 단모선 → 분기 MCCB → 배선덕트 → 하부 단자대
+    for (var r = 0; r < tiers; r += 1) {
+      var top = tierTop(r), ductY = top + 120;
+      phases.forEach(function (cls, k) {
+        out.push(line(e.x + 30 + k * 7, top + k * 10, e.x + 640, top + k * 10, 'pv-el-bus ' + cls));
+      });
+      out.push('<rect class="pv-el-duct" x="' + (e.x + 24) + '" y="' + ductY + '" width="' + (e.w - 48) + '" height="30"/>');
+      out.push(text(e.x + 30, ductY + 20, (r + 1) + '단 배선덕트 60×60', 'pv-fab-small'));
+      feeders.slice(r * PER_TIER, (r + 1) * PER_TIER).forEach(function (feeder, c) {
+        var bx = e.x + 52 + c * TIER_PITCH;
+        phases.forEach(function (cls, k) {
+          out.push(line(bx + k * 7 - 10, top + k * 10, bx + k * 7 - 10, top + 40, 'pv-el-wire ' + cls));
+        });
+        out.push('<rect class="pv-fab-secondary" x="' + (bx - 26) + '" y="' + (top + 40) + '" width="62" height="46" rx="3"/>');
+        out.push(text(bx + 5, top + 60, feeder[0], 'pv-fab-small', 'middle'));
+        out.push(text(bx + 5, top + 78, feeder[5] + ' AT', 'pv-fab-small', 'middle'));
+        phases.forEach(function (cls, k) {
+          out.push(line(bx + k * 7 - 10, top + 86, bx + k * 7 - 10, ductY, 'pv-el-wire ' + cls));
+          out.push(line(bx + k * 7 - 10, ductY + 30, bx + k * 7 - 10, ductY + 46, 'pv-el-wire ' + cls));
+        });
+        out.push('<rect class="pv-fab-object" x="' + (bx - 26) + '" y="' + (ductY + 46) + '" width="62" height="24" rx="2"/>');
+        out.push(text(bx + 5, ductY + 62, 'TB-' + feeder[0], 'pv-fab-small', 'middle'));
+        out.push(text(bx + 5, ductY + 84, feeder[6].replace(' mm² Cu', ''), 'pv-fab-small', 'middle'));
+        out.push(text(bx + 5, ductY + 100, CABLE_LENGTH_M[feeder[0]].toFixed(1) + ' m', 'pv-fab-small', 'middle'));
+      });
+    }
     // PE 부스바
-    out.push(line(e.x + 40, e.y + 610, e.x + 640, e.y + 610, 'pv-el-bus pv-el-pe'));
-    out.push(text(e.x + 44, e.y + 600, 'PE 접지부스 — 각 피더 보호도체 동행, MET 연결', 'pv-fab-small'));
+    var peY = e.y + e.h - 26;
+    out.push(line(e.x + 40, peY, e.x + 640, peY, 'pv-el-bus pv-el-pe'));
+    out.push(text(e.x + 44, peY - 10, 'PE 접지부스 — 각 피더 보호도체 동행, MET 연결', 'pv-fab-small'));
     // 범례
     var lg = { x: 60, y: 140 };
     out.push(text(lg.x, lg.y - 18, '상 색 범례', 'pv-fab-text'));
@@ -4121,7 +4175,7 @@ html>body{padding:0}</style>
     });
     out.push(text(lg.x, lg.y + 158, '문짝: 조작표시등·비상정지', 'pv-fab-small'));
     out.push(text(lg.x, lg.y + 180, '내부 조명·히터는 F8', 'pv-fab-small'));
-    out.push(text(1080, 140, '단자대 배열은 피더 순서(F1→F8)와', 'pv-fab-small'));
+    out.push(text(1080, 140, '단자대 배열은 피더 순서(F1→F' + feeders.length + ')와', 'pv-fab-small'));
     out.push(text(1080, 162, '같아 오결선을 줄인다. 예비 3회로.', 'pv-fab-small'));
     out.push(text(40, 784, '케이블 길이는 트레이 실경로 기준(여유 10 %·성단 3 m 포함) — src/pv_preprocess/wiring.py 파생.', 'pv-layout-small'));
   }
@@ -4638,6 +4692,238 @@ html>body{padding:0}</style>
     state.smView = view;
     if (smViewSel) smViewSel.value = view;
     renderSmart();
+  }
+
+
+
+  // ── 안전 (SF-1004 · PLC-IO-7101) ───────────────────────────────────────
+  // 부품은 이미 서 있었는데 그 부품을 고른 근거가 없었다. PLr 은 손으로 적지
+  // 않는다 — S·F·P 세 갈래에서 나오고, 그 갈래를 왜 그렇게 골랐는지가 근거란이다.
+  var SF_VIEWS = {
+    risk: '위험원 평가와 요구 성능수준 · 안전기능 사슬',
+    stop: '정지포락선 — 거리가 정지시간의 예산을 정한다',
+    io: '안전 I/O 점수와 FSoE 노드 · SISTEMA 로 넘길 입력'
+  };
+  var PL_TONE = {
+    a: 'pv-fab-object', b: 'pv-fab-object', c: 'pv-fab-object',
+    d: 'pv-fab-secondary', e: 'pv-fab-accent'
+  };
+
+  // 긴 근거를 몇 줄로 나눈다. 공백 우선, 없으면 글자 수로 끊는다.
+  function wrapLines(value, perLine, maxLines) {
+    var rest = String(value), lines = [];
+    while (rest.length && lines.length < maxLines) {
+      if (rest.length <= perLine) { lines.push(rest); rest = ''; break; }
+      var cut = rest.lastIndexOf(' ', perLine);
+      if (cut < perLine * 0.6) cut = perLine;
+      lines.push(rest.slice(0, cut));
+      rest = rest.slice(cut).replace(/^ +/, '');
+    }
+    if (rest.length && lines.length === maxLines) {
+      lines[maxLines - 1] = lines[maxLines - 1].slice(0, perLine - 1) + '…';
+    }
+    return lines;
+  }
+
+  function funcsFor(tag) {
+    return SAFETY_FUNCTIONS.filter(function (f) { return f[2].indexOf(tag) >= 0; });
+  }
+
+  // SF-1004 ① — 위험원과 그것을 맡는 안전기능. 왼쪽이 위험원, 오른쪽이 사슬이다.
+  function renderSafetyRisk(out) {
+    smartFrame(out, 'PV-PLANT-SF-1004', '위험원·요구 성능수준·안전기능',
+      '위험원 ' + SAFETY.hazards + ' · 안전기능 ' + SAFETY.functions
+        + ' · 최고 요구 PL' + SAFETY.plantPlr + ' · PLd ' + SAFETY.plrD + ' / PLe ' + SAFETY.plrE
+        + ' · PLr 은 ISO 13849-1 위험그래프(S·F·P)에서 나온다');
+    var y = 104;
+    out.push(text(40, y, '위험원', 'pv-fab-text'));
+    out.push(text(312, y, 'S / F / P', 'pv-fab-text', 'middle'));
+    out.push(text(390, y, 'PLr', 'pv-fab-text', 'middle'));
+    out.push(text(432, y, '왜 그 갈래인가', 'pv-fab-text'));
+    out.push(text(1130, y, '맡는 안전기능', 'pv-fab-text'));
+    out.push(line(40, y + 8, 1360, y + 8, 'pv-fab-frame'));
+    y += 12;
+    var ROW_H = 74;
+    HAZARDS.forEach(function (h, i) {
+      var ry = y + 24 + i * ROW_H;
+      wrapLines(h[0] + ' ' + h[2], 24, 2).forEach(function (t, k) {
+        out.push('<text class="pv-fab-small" data-fit="225" x="40" y="' + (ry + k * 17) + '">'
+          + escapeText(t) + '</text>');
+      });
+      out.push(text(40, ry + 36, h[1].toUpperCase(), 'pv-fab-small'));
+      out.push(text(312, ry, h[3] + ' / ' + h[4] + ' / ' + h[5], 'pv-fab-small', 'middle'));
+      out.push('<rect class="' + PL_TONE[h[6]] + '" x="372" y="' + (ry - 13) + '" width="36" height="18" rx="3"/>');
+      out.push(text(390, ry, 'PL' + h[6], 'pv-fab-small', 'middle'));
+      wrapLines(plain(h[7]), 46, 3).forEach(function (t, k) {
+        out.push('<text class="pv-fab-small" data-fit="680" x="432" y="' + (ry + k * 17) + '">'
+          + escapeText(t) + '</text>');
+      });
+      out.push('<text class="pv-fab-small" data-fit="230" x="1130" y="' + ry + '">'
+        + escapeText(funcsFor(h[0]).map(function (f) { return f[0]; }).join(' · ')) + '</text>');
+      out.push(line(40, ry + 52, 1360, ry + 52, 'pv-fab-hidden'));
+    });
+    y += 24 + HAZARDS.length * ROW_H + 12;
+    // 안전기능 사슬 — 검출 → 논리 → 구동
+    out.push(line(40, y, 1360, y, 'pv-fab-frame'));
+    out.push(text(40, y + 24, '안전기능 사슬 — 검출 → 논리 → 구동. 카테고리는 PLr 에서 나온다.', 'pv-fab-text'));
+    SAFETY_FUNCTIONS.forEach(function (f, i) {
+      var ry = y + 52 + i * 56;
+      out.push('<rect class="' + PL_TONE[f[6]] + '" x="40" y="' + (ry - 13) + '" width="40" height="18" rx="3"/>');
+      out.push(text(60, ry, f[0], 'pv-fab-small', 'middle'));
+      out.push('<text class="pv-fab-small" data-fit="190" x="92" y="' + ry + '">'
+        + escapeText(f[1]) + '</text>');
+      out.push(text(300, ry, 'PL' + f[6] + ' · ' + f[7], 'pv-fab-small'));
+      out.push('<text class="pv-fab-small" data-fit="900" x="420" y="' + ry + '">'
+        + escapeText(plain(f[3] + '  →  ' + f[4] + '  →  ' + f[5])) + '</text>');
+      wrapLines(plain(f[8]), 72, 2).forEach(function (t, k) {
+        out.push('<text class="pv-fab-small" data-fit="900" x="420" y="' + (ry + 16 + k * 15) + '">'
+          + escapeText(t) + '</text>');
+      });
+    });
+  }
+
+  // SF-1004 ② — 가드는 이미 서 있다. 그러므로 구할 것은 거리가 아니라 정지시간이다.
+  function renderSafetyStop(out) {
+    smartFrame(out, 'PV-PLANT-SF-1004', '정지포락선 — 안전거리와 정지시간 예산',
+      'ISO 13855 · 해상도 ' + SAFETY.resolutionMm + ' mm → 침입거리 C = 8×(d−14) = '
+        + SAFETY.penetrationMm + ' mm · 접근속도 K ' + n(SAFETY.approachFastMmS) + '/'
+        + n(SAFETY.approachSlowMmS) + ' mm/s · 정지 사슬 합 ' + SAFETY.stopChainMs + ' ms');
+    var y = 112;
+    // 개구별 포락선 — 감지면에서 위험원까지를 축척으로 그린다
+    SAFETY_OPENINGS.forEach(function (op, i) {
+      var by = y + i * 182, sx = 60, sw = 900;
+      var scale = sw / Math.max.apply(null, SAFETY_OPENINGS.map(function (o) { return o[5]; }));
+      var w = Math.round(op[5] * scale), cw = Math.round(SAFETY.penetrationMm * scale);
+      out.push('<rect class="pv-fab-frame" x="40" y="' + by + '" width="1320" height="162"/>');
+      out.push(text(56, by + 26, op[0] + ' · ' + op[1] + ' — 감지면 X ' + n(op[2])
+        + ' → 위험원 X ' + n(op[3]) + ' · 거리 ' + n(op[5]) + ' mm', 'pv-fab-text'));
+      var ly = by + 78;
+      out.push('<rect class="pv-fab-accent" x="' + (sx - 2) + '" y="' + (ly - 18) + '" width="4" height="44"/>');
+      out.push(text(sx + 8, ly - 26, '감지면', 'pv-fab-small'));
+      out.push('<rect class="pv-fab-object" x="' + sx + '" y="' + (ly - 6) + '" width="' + cw + '" height="12"/>');
+      out.push(line(sx, ly, sx + w, ly, 'pv-fab-frame'));
+      out.push('<rect class="pv-fab-secondary" x="' + (sx + w - 2) + '" y="' + (ly - 18) + '" width="4" height="44"/>');
+      out.push('<text class="pv-fab-small" data-fit="300" x="' + (sx + w + 10) + '" y="' + (ly + 4) + '">'
+        + escapeText(op[4]) + '</text>');
+      out.push(text(sx + cw / 2, ly + 24, 'C ' + SAFETY.penetrationMm, 'pv-fab-small', 'middle'));
+      out.push(text(sx + w / 2, ly - 8, n(op[5]) + ' mm', 'pv-fab-small', 'middle'));
+      out.push(text(56, by + 120, '정지시간 예산 ' + op[6] + ' ms — 사슬 합 ' + SAFETY.stopChainMs
+        + ' ms 대비 여유 ' + (op[6] - SAFETY.stopChainMs) + ' ms', 'pv-fab-text'));
+      out.push('<text class="pv-fab-small" data-fit="1240" x="56" y="' + (by + 142) + '">'
+        + escapeText(plain(op[7])) + '</text>');
+    });
+    y += SAFETY_OPENINGS.length * 182 + 12;
+    // 정지 사슬 내역
+    // 오른쪽 상자가 네 줄까지 늘어난다 — 두 상자 높이를 그 쪽에 맞춘다.
+    var box = { x: 40, y: y, w: 640, h: Math.max(40 + STOP_CHAIN.length * 26 + 30, 218) };
+    out.push('<rect class="pv-fab-frame" x="' + box.x + '" y="' + box.y + '" width="' + box.w + '" height="' + box.h + '"/>');
+    out.push(text(box.x + 16, box.y + 28, '정지 사슬 — 벤더 확정 전 계획값. JB-SF-008 이 실측으로 대체한다.', 'pv-fab-text'));
+    STOP_CHAIN.forEach(function (r, i) {
+      var ry = box.y + 56 + i * 26;
+      out.push('<text class="pv-fab-small" data-fit="440" x="' + (box.x + 16) + '" y="' + ry + '">'
+        + escapeText(r[0]) + '</text>');
+      out.push(text(box.x + box.w - 16, ry, r[1] + ' ms', 'pv-fab-small', 'end'));
+    });
+    out.push(text(box.x + 16, box.y + box.h - 12, '합계', 'pv-fab-text'));
+    out.push(text(box.x + box.w - 16, box.y + box.h - 12, SAFETY.stopChainMs + ' ms', 'pv-fab-text', 'end'));
+    // 판정이 갈리는 자리
+    var q = { x: 700, y: y, w: 660, h: box.h };
+    out.push('<rect class="pv-fab-frame" x="' + q.x + '" y="' + q.y + '" width="' + q.w + '" height="' + q.h + '"/>');
+    out.push(text(q.x + 16, q.y + 28, '판정이 갈리는 자리 — 승인자가 뒤집을 수 있다', 'pv-fab-text'));
+    wrapLines('투입구 감지면에서 ' + n(SAFETY.contestedMm) + ' mm 앞에 비전 위치보정 서보가 있다. '
+      + '카메라 정렬용 소형 축이라 ISO 12100 의 위험구역이 아니라고 본 것이 이 설계의 판단이다.',
+      42, 3).forEach(function (t, k) {
+      out.push('<text class="pv-fab-small" data-fit="628" x="' + (q.x + 16) + '" y="' + (q.y + 54 + k * 17) + '">'
+        + escapeText(t) + '</text>');
+    });
+    out.push(text(q.x + 16, q.y + 126, '위험구역으로 보면 예산 ' + SAFETY.contestedBudgetMs
+      + ' ms — 사슬 ' + SAFETY.stopChainMs + ' ms 를 못 담는다.', 'pv-fab-text'));
+    wrapLines('사슬을 줄이라는 말은 뜻이 없다 — 검출·논리·STO ' + SAFETY.fixedChainMs
+      + ' ms 는 부품이 정하는 고정비다. 줄일 수 있는 것은 기계 감속뿐인데 250 → '
+      + SAFETY.contestedMechanicalMs + ' ms, ' + SAFETY.contestedSlowdown
+      + '배다. 그것은 축 속도를 낮춘다는 뜻이라 택트가 따라 는다. 가드를 물리는 쪽이 싸다.',
+      42, 4).forEach(function (t, k) {
+      out.push('<text class="pv-fab-small" data-fit="628" x="' + (q.x + 16) + '" y="' + (q.y + 148 + k * 17) + '">'
+        + escapeText(t) + '</text>');
+    });
+  }
+
+  // PLC-IO-7101 — 점수는 대수가 아니라 채널 수다.
+  function renderSafetyIo(out) {
+    smartFrame(out, 'PV-PLANT-PLC-IO-7101', '안전 I/O 점수·FSoE 노드',
+      '안전입력 ' + SAFETY.inputs + '점 · 안전출력 ' + SAFETY.outputs
+        + '점 · 예비 ' + SAFETY.ioSparePct + ' % 포함 모듈 입력 ' + SAFETY.inputModules
+        + '장 / 출력 ' + SAFETY.outputModules + '장 · FSoE 노드 ' + SAFETY.fsoeNodes
+        + ' (장치 ' + SAFETY.fsoeDeviceNodes + ' + STO ' + SAFETY.stoNodes + ')');
+    var y = 104;
+    out.push(text(40, y, '장치', 'pv-fab-text'));
+    out.push(text(560, y, '수량', 'pv-fab-text', 'end'));
+    out.push(text(660, y, '입력/대', 'pv-fab-text', 'end'));
+    out.push(text(760, y, '출력/대', 'pv-fab-text', 'end'));
+    out.push(text(850, y, '입력', 'pv-fab-text', 'end'));
+    out.push(text(930, y, '출력', 'pv-fab-text', 'end'));
+    out.push(text(1000, y, 'FSoE', 'pv-fab-text', 'middle'));
+    out.push(text(1040, y, '비고', 'pv-fab-text'));
+    out.push(line(40, y + 8, 1360, y + 8, 'pv-fab-frame'));
+    SAFETY_DEVICES.forEach(function (d, i) {
+      var ry = y + 32 + i * 26;
+      out.push('<text class="pv-fab-small" data-fit="480" x="40" y="' + ry + '">'
+        + escapeText(d[0] + ' ' + d[1]) + '</text>');
+      out.push(text(560, ry, d[2], 'pv-fab-small', 'end'));
+      out.push(text(660, ry, d[3], 'pv-fab-small', 'end'));
+      out.push(text(760, ry, d[4], 'pv-fab-small', 'end'));
+      out.push(text(850, ry, d[6], 'pv-fab-small', 'end'));
+      out.push(text(930, ry, d[7], 'pv-fab-small', 'end'));
+      out.push(text(1000, ry, d[5] ? '●' : '—', 'pv-fab-small', 'middle'));
+      out.push('<text class="pv-fab-small" data-fit="320" x="1040" y="' + ry + '">'
+        + escapeText(plain(d[8])) + '</text>');
+    });
+    var ty = y + 32 + SAFETY_DEVICES.length * 26 + 6;
+    out.push(line(40, ty - 16, 1360, ty - 16, 'pv-fab-frame'));
+    out.push(text(40, ty, '합계 — 모듈은 ' + SAFETY.ioModulePoints + '점/장에 예비 '
+      + SAFETY.ioSparePct + ' % 를 얹어 올림한다', 'pv-fab-text'));
+    out.push(text(850, ty, SAFETY.inputs, 'pv-fab-text', 'end'));
+    out.push(text(930, ty, SAFETY.outputs, 'pv-fab-text', 'end'));
+    // SISTEMA 로 넘기는 것
+    var box = { x: 40, y: ty + 24, w: 1320, h: 46 + SISTEMA_INPUTS.length * 24 };
+    out.push('<rect class="pv-fab-frame" x="' + box.x + '" y="' + box.y + '" width="' + box.w + '" height="' + box.h + '"/>');
+    out.push(text(box.x + 16, box.y + 28, 'SISTEMA 로 넘기는 입력 — 이 도면이 내지 않는 값과 그 이유. '
+      + '사이클 n_op 는 뮤팅 ' + n(SAFETY.mutingCyclesPerDay) + ' 회/일 · 연 '
+      + n(SAFETY.cyclesPerYear) + ' 회, 사명시간 ' + SAFETY.missionYears + ' 년.', 'pv-fab-text'));
+    SISTEMA_INPUTS.forEach(function (r, i) {
+      var ry = box.y + 56 + i * 24;
+      out.push(text(box.x + 16, ry, r[0], 'pv-fab-small'));
+      out.push('<text class="pv-fab-small" data-fit="1160" x="' + (box.x + 130) + '" y="' + ry + '">'
+        + escapeText(plain(r[1])) + '</text>');
+    });
+  }
+
+  function renderSafety() {
+    var out = [];
+    if (state.sfView === 'stop') renderSafetyStop(out);
+    else if (state.sfView === 'io') renderSafetyIo(out);
+    else renderSafetyRisk(out);
+    safetySvg.innerHTML = out.join('');
+    safetySvg.setAttribute('aria-label', SF_VIEWS[state.sfView] || SF_VIEWS.risk);
+    fitSheet(safetySvg);
+    safetyTable.innerHTML = HAZARDS.map(function (h) {
+      return '<tr><td>' + h[0] + '</td><td>' + h[1] + '</td><td>' + escapeText(h[2])
+        + '</td><td>' + h[3] + '</td><td>' + h[4] + '</td><td>' + h[5]
+        + '</td><td><strong>PL' + h[6] + '</strong></td><td>'
+        + funcsFor(h[0]).map(function (f) { return f[0]; }).join(' · ') + '</td></tr>';
+    }).join('');
+    safetyTotal.innerHTML = '<tr><th colspan="8">위험원 ' + SAFETY.hazards + ' · 안전기능 '
+      + SAFETY.functions + ' · 최고 요구 PL' + SAFETY.plantPlr + ' · 안전 I/O 입력 '
+      + SAFETY.inputs + ' / 출력 ' + SAFETY.outputs + ' · FSoE 노드 ' + SAFETY.fsoeNodes
+      + ' · 정지 예산 최소 ' + SAFETY.tightestBudgetMs + ' ms (' + SAFETY.tightestOpening
+      + ') 대 사슬 ' + SAFETY.stopChainMs + ' ms</th></tr>';
+  }
+
+  function setSfView(view) {
+    if (!Object.prototype.hasOwnProperty.call(SF_VIEWS, view)) throw new RangeError('Unknown safety view');
+    state.sfView = view;
+    if (sfViewSel) sfViewSel.value = view;
+    renderSafety();
   }
 
 
@@ -5211,7 +5497,7 @@ html>body{padding:0}</style>
   }
 
   function selectTab(tabName) {
-    var valid = ['fab', 'explode', 'layout', 'register', 'electrical', 'smart', 'mount'];
+    var valid = ['fab', 'explode', 'layout', 'register', 'electrical', 'smart', 'mount', 'safety'];
     if (valid.indexOf(tabName) < 0) throw new RangeError('Unknown drawing tab');
     state.tab = tabName;
     tabs.forEach(function (tab) {
@@ -5291,6 +5577,7 @@ html>body{padding:0}</style>
   bind(layoutClearance, 'change', function () { state.clearance = layoutClearance.checked; renderLayout(); dispatchChange(); });
   bind(elViewSel, 'change', function () { setElView(elViewSel.value); dispatchChange(); });
   bind(smViewSel, 'change', function () { setSmView(smViewSel.value); dispatchChange(); });
+  bind(sfViewSel, 'change', function () { setSfView(sfViewSel.value); dispatchChange(); });
   if (mtStationSel && !mtStationSel.options.length) {
     mtStationSel.innerHTML = MOUNTINGS.map(function (m) {
       return '<option value="' + m[0] + '">' + m[0] + ' · ' + (stations[m[0]] ? stations[m[0]].sheet : m[0]) + '</option>';
@@ -5355,6 +5642,7 @@ html>body{padding:0}</style>
   renderElectrical();
   renderSmart();
   renderMount();
+  renderSafety();
   renderServoAxes();
   renderAcoustics();
   renderThermal();
@@ -5418,7 +5706,7 @@ html>body{padding:0}</style>
       drawAssembly();
     },
     resetView: resetView,
-    flush: function () { renderFabrication(); renderAssemblyKey(); renderLayout(); renderElectrical(); renderSmart(); renderMount(); drawAssembly(); },
+    flush: function () { renderFabrication(); renderAssemblyKey(); renderLayout(); renderElectrical(); renderSmart(); renderMount(); renderSafety(); drawAssembly(); },
     getState: function () { return JSON.parse(JSON.stringify(state)); },
     getStation: function (key) {
       var chosen = stations[key || state.station];

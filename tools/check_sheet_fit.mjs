@@ -18,6 +18,11 @@
  *      길어지는 것은 설계상 허용이고, 넓어지는 것만 규약 위반이다)
  *   ② 두 번 렌더해도 같은 값이 나오는가
  *
+ * REV.35 정정 — 탭만 돌면 각 탭의 **기본 시트만** 재고 끝났다. 전기 4장 중
+ * 단선결선도 하나, 스마트 3장 중 네트워크 하나만 본 셈이다. 이제 패널 안의
+ * 시트 선택 <select> 옵션을 하나씩 골라 가며 잰다. 셀 선택처럼 옵션이 많은
+ * 것은 mtcheck 이 따로 보므로, 여기서는 시트 종류를 고르는 select 만 돈다.
+ *
  * 실행:  npm i playwright && npx playwright install chromium
  *        node tools/check_sheet_fit.mjs [파일]
  */
@@ -30,7 +35,7 @@ const file = process.argv[2] || 'docs/drawings/pv-preprocess-plant.html';
 const SHEET_W = 1400;
 
 /** 도면 묶음 탭 — id 는 pv-tab-<key>. */
-const TABS = ['fab', 'explode', 'layout', 'register', 'electrical', 'smart', 'mount'];
+const TABS = ['fab', 'explode', 'layout', 'register', 'electrical', 'smart', 'mount', 'safety'];
 
 const browser = await chromium.launch({
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
@@ -84,7 +89,25 @@ const measure = () => page.evaluate(() => {
   return out;
 });
 
+/** 시트 종류를 고르는 select — id 가 -view 로 끝난다. 셀·피더 선택은 아니다. */
+const sheetViews = (tab) => page.evaluate((key) => {
+  const panel = document.getElementById('pv-panel-' + key);
+  if (!panel) return [];
+  const select = panel.querySelector('select[id$="-view"]');
+  if (!select) return [null];
+  return Array.from(select.options).map((o) => o.value);
+}, tab);
+
+const pickView = (tab, value) => page.evaluate(([key, v]) => {
+  if (v === null) return;
+  const panel = document.getElementById('pv-panel-' + key);
+  const select = panel.querySelector('select[id$="-view"]');
+  select.value = v;
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+}, [tab, value]);
+
 const offenders = [];
+let sheets = 0;
 for (const tab of TABS) {
   const found = await page.evaluate((key) => {
     const button = document.getElementById('pv-tab-' + key);
@@ -94,24 +117,31 @@ for (const tab of TABS) {
   }, tab);
   if (!found) { console.log(`  ? ${tab} — 탭이 없다`); continue; }
   await page.waitForTimeout(420);
-  await rerender();
-  await page.waitForTimeout(420);
-  const first = await measure();
-  await rerender();
-  await page.waitForTimeout(420);
-  const second = await measure();
 
-  for (let i = 0; i < first.length; i += 1) {
-    const a = first[i], b = second[i] || first[i];
-    const over = a.right - SHEET_W;
-    const unstable = a.w !== b.w;
-    const mark = (over > 0 || unstable) ? '✗' : '·';
-    if (over > 0 || unstable) offenders.push({ tab, ...a, second: b.w });
-    console.log(`  ${mark} ${tab.padEnd(10)} ${a.id.padEnd(18)} 프레임 ${a.w}×${a.h}`
-      + `  내용 ${a.right}×${a.bottom}`
-      + (over > 0 ? `  폭 초과 ${over}` : '')
-      + (unstable ? `  재렌더 프레임 ${b.w}` : ''));
-    if (over > 0) console.log(`      최우측: ${a.worst}`);
+  for (const view of await sheetViews(tab)) {
+    await pickView(tab, view);
+    await page.waitForTimeout(420);
+    await rerender();
+    await page.waitForTimeout(420);
+    const first = await measure();
+    await rerender();
+    await page.waitForTimeout(420);
+    const second = await measure();
+    const name = view ? `${tab}/${view}` : tab;
+
+    for (let i = 0; i < first.length; i += 1) {
+      sheets += 1;
+      const a = first[i], b = second[i] || first[i];
+      const over = a.right - SHEET_W;
+      const unstable = a.w !== b.w;
+      const mark = (over > 0 || unstable) ? '✗' : '·';
+      if (over > 0 || unstable) offenders.push({ tab: name, ...a, second: b.w });
+      console.log(`  ${mark} ${name.padEnd(20)} ${a.id.padEnd(18)} 프레임 ${a.w}×${a.h}`
+        + `  내용 ${a.right}×${a.bottom}`
+        + (over > 0 ? `  폭 초과 ${over}` : '')
+        + (unstable ? `  재렌더 프레임 ${b.w}` : ''));
+      if (over > 0) console.log(`      최우측: ${a.worst}`);
+    }
   }
 }
 
@@ -126,5 +156,5 @@ if (offenders.length) {
   await browser.close();
   process.exit(1);
 }
-console.log(`\n✓ 시트 ${TABS.length}탭이 폭 ${SHEET_W} 안에 들고 두 번 렌더해도 같은 프레임이다`);
+console.log(`\n✓ 시트 ${sheets}장(탭 ${TABS.length})이 폭 ${SHEET_W} 안에 들고 두 번 렌더해도 같은 프레임이다`);
 await browser.close();

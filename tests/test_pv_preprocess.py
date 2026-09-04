@@ -18,7 +18,7 @@ import unittest
 from . import _path  # noqa: F401
 
 from pv_preprocess import (acoustics, ai, air, campaign, crane, electrical, frames, handoff, kinematics, layout,
-                           materials, mounting, smart, servos, thermal, vision, wiring)
+                           materials, mounting, safety, smart, servos, thermal, vision, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
 
@@ -3355,3 +3355,228 @@ class TestCompressedAir(unittest.TestCase):
         self.assertIn("var pvAir=new ce;", self.html, "3D 형상이 있어야 한다")
         self.assertIn("'PV-PLANT-UT-1003', '전기·공압·진공·집진', '2D Utility', '앱 반영'",
                       self.html, "도면목록에서 '기본설계' 를 벗어나야 한다")
+
+
+class TestSafety(unittest.TestCase):
+    """안전 골격 — 부품은 서 있는데 그 부품을 고른 근거가 없었다.
+
+    §8·§26·§34 는 빠진 것이 **장비**였다. 여기서 빠져 있던 것은 **판단**이다 —
+    Type 4 라이트커튼도 뮤팅 컨트롤러도 부품표에 있었지만, 무슨 위험원을 무슨
+    성능수준으로 막는지가 어디에도 값으로 없었다. 그래서 이 시험이 못 박는
+    것은 장치 목록이 아니라 **PLr 이 손으로 적히지 않는다**는 관계다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_the_risk_graph_matches_the_standard(self):
+        """ISO 13849-1 부속서 A 를 그대로 옮겼는가 — 여덟 갈래 전부.
+
+        표를 그 표 자신으로 검사하면(`required_pl` 이 `RISK_GRAPH` 를 그대로
+        읽으므로) 어느 칸을 고쳐도 시험이 통과한다. 그래서 여기 적는 것은
+        **표준의 독립 전사(轉寫)** 다 — 파생 로직을 베끼는 것과는 다르다.
+        표준이 밖에 있으니 사본이 둘이어야 어긋남을 볼 수 있다.
+        """
+        standard = {
+            (1, 1, 1): "a", (1, 1, 2): "b",
+            (1, 2, 1): "b", (1, 2, 2): "c",
+            (2, 1, 1): "c", (2, 1, 2): "d",
+            (2, 2, 1): "d", (2, 2, 2): "e",
+        }
+        self.assertEqual(safety.RISK_GRAPH, standard)
+        # 표가 그렇게 생긴 이유 — S 는 두 칸, F·P 는 각 한 칸씩 올린다
+        for (s, f, p), pl in standard.items():
+            with self.subTest(sfp=(s, f, p)):
+                self.assertEqual(safety.PL_ORDER.index(pl),
+                                 2 * (s - 1) + (f - 1) + (p - 1))
+                self.assertEqual(safety.required_pl(s, f, p), pl)
+
+    def test_every_hazard_has_a_safety_function(self):
+        """맡는 것이 없는 위험원은 설계 구멍이다."""
+        self.assertEqual(safety.uncovered_hazards(), ())
+        for hazard in safety.HAZARDS:
+            with self.subTest(hazard=hazard.tag):
+                self.assertTrue(safety.functions_for(hazard.tag))
+                # PLr 은 필드가 아니라 S·F·P 에서 나온다
+                self.assertEqual(
+                    hazard.plr,
+                    safety.RISK_GRAPH[(hazard.severity, hazard.frequency, hazard.avoidance)])
+
+    def test_a_function_is_never_weaker_than_what_it_covers(self):
+        """기능의 PL 은 맡은 위험원 중 최고치여야 한다 — 평균이 아니다."""
+        for func in safety.SAFETY_FUNCTIONS:
+            served = [h for h in safety.HAZARDS if h.tag in func.hazards]
+            with self.subTest(func=func.tag):
+                self.assertTrue(served)
+                worst = max(served, key=lambda h: safety.PL_ORDER.index(h.plr))
+                self.assertEqual(func.plr, worst.plr)
+                self.assertEqual(func.category, safety.PL_CATEGORY[func.plr])
+
+    def test_muting_is_the_only_ple_demand(self):
+        """뮤팅은 '보호를 끄는' 기능이라 고장 시 안전측이 '켜진 채로' 다."""
+        self.assertEqual(safety.plant_plr(), "e")
+        ple = [h.tag for h in safety.HAZARDS if h.plr == "e"]
+        self.assertEqual(ple, ["HZ-07"])
+        muting = next(f for f in safety.SAFETY_FUNCTIONS if f.tag == "SF-04")
+        self.assertEqual(muting.hazards, ("HZ-07",))
+        self.assertEqual(muting.plr, "e")
+        self.assertEqual(muting.category, "Cat.4")
+        # F2 인 근거는 사이클 수다 — 상수가 아니라 캠페인·가동시간에서 나온다
+        hazard = next(h for h in safety.HAZARDS if h.tag == "HZ-07")
+        self.assertEqual(hazard.frequency, 2)
+        self.assertIn(f"{safety.muting_cycles_per_day():,}", hazard.basis)
+
+    def test_muting_cycles_come_from_the_campaign(self):
+        """패널 1장에 투입·반출 두 번. 가동시간이 바뀌면 같이 움직여야 한다."""
+        per_hour = 3600.0 / campaign.summary()["takt_s"]
+        hours = smart.OPERATING_HOURS_PER_YEAR / smart.OPERATING_DAYS_PER_YEAR
+        self.assertEqual(safety.muting_cycles_per_day(), round(per_hour * hours * 2))
+        self.assertEqual(safety.cycles_per_year(),
+                         safety.muting_cycles_per_day() * smart.OPERATING_DAYS_PER_YEAR)
+
+    def test_the_penetration_distance_follows_iso_13855(self):
+        """C = 8 × (d − 14). 해상도 30 이면 128 이고, 14 이하면 0 이다."""
+        self.assertEqual(safety.penetration_mm(), 128)
+        self.assertEqual(safety.penetration_mm(30), 8 * (30 - 14))
+        self.assertEqual(safety.penetration_mm(14), 0)
+        self.assertEqual(safety.penetration_mm(10), 0)
+
+    def test_the_inverse_never_buys_budget_that_is_not_there(self):
+        """되짚기는 정확히 되돌아오지 않아도 되지만, 헐거워지면 안 된다.
+
+        표준의 500 mm 하한 때문에 정지시간 448…500 mm 구간이 전부 500 으로
+        눌린다. 그 500 을 다시 시간으로 되짚으면 원래보다 **짧은** 예산이
+        나온다(200 → 500 mm → 186 ms). 짧은 쪽이 안전한 쪽이므로 그대로 둔다 —
+        되짚기가 원래보다 긴 예산을 주는 일만 없으면 된다.
+        """
+        for ms in (50, 100, 200, 300, 400):
+            with self.subTest(ms=ms):
+                distance = safety.safety_distance_mm(ms / 1000)
+                back = safety.max_stop_time_ms(distance)
+                self.assertLessEqual(back, ms)
+                self.assertLessEqual(safety.safety_distance_mm(back / 1000), distance)
+        # K 는 500 mm 를 경계로 바뀐다 — 가까운 쪽이 2,000, 먼 쪽이 1,600
+        self.assertEqual(safety.safety_distance_mm(0.1), 328)       # 2000×0.1 + 128
+        self.assertEqual(safety.safety_distance_mm(0.4), 1600 * 0.4 + 128)
+        # 눌리는 구간은 전부 하한으로 간다
+        self.assertEqual(safety.safety_distance_mm(0.2), safety.APPROACH_SWITCH_MM)
+        # 거리가 침입거리보다 짧으면 예산이 없다
+        self.assertEqual(safety.max_stop_time_ms(100), 0)
+
+    def test_the_openings_can_hold_the_stop_chain(self):
+        """가드는 이미 서 있다 — 그러므로 거리가 정지시간의 예산을 정한다."""
+        self.assertTrue(safety.openings_have_budget())
+        self.assertEqual(safety.stop_chain_ms(), sum(ms for _, ms in safety.STOP_CHAIN))
+        self.assertEqual(safety.tightest_opening().tag, "OP-OUT")
+        for op in safety.OPENINGS:
+            with self.subTest(opening=op.tag):
+                self.assertEqual(op.distance_mm, abs(op.hazard_x_mm - op.plane_x_mm))
+                self.assertEqual(op.budget_ms, safety.max_stop_time_ms(op.distance_mm))
+                self.assertGreater(op.budget_ms, safety.stop_chain_ms())
+
+    def test_the_contested_hazard_would_break_the_budget(self):
+        """320 mm 짜리 판정 하나가 예산을 다섯 배 바꾼다 — 무엇을 해야 하는지까지."""
+        self.assertEqual(safety.contested_budget_ms(), 96)
+        self.assertLess(safety.contested_budget_ms(), safety.stop_chain_ms())
+        # 사슬 전체를 줄이라는 말은 뜻이 없다 — 고정비는 설계가 못 건드린다
+        self.assertEqual(safety.fixed_chain_ms(),
+                         safety.stop_chain_ms()
+                         - dict(safety.STOP_CHAIN)[safety.MECHANICAL_STOP_STEP])
+        self.assertEqual(safety.contested_mechanical_budget_ms(),
+                         safety.contested_budget_ms() - safety.fixed_chain_ms())
+        # 남는 것은 기계 감속뿐이고, 그것을 4.2배 빠르게 하라는 요구가 된다
+        self.assertGreater(safety.contested_mechanical_budget_ms(), 0)
+        self.assertAlmostEqual(safety.contested_slowdown_ratio(), 4.2, places=1)
+        self.assertGreater(safety.contested_slowdown_ratio(), 1.0,
+                           "1 이하면 판정이 뒤집혀도 아무 일이 안 일어난다는 뜻이다")
+
+    def test_safety_io_counts_channels_not_devices(self):
+        """이중채널 인터록 1대는 1점이 아니라 2점이다."""
+        self.assertEqual(safety.safety_inputs(),
+                         sum(d.qty * d.inputs_each for d in safety.SAFETY_DEVICES))
+        self.assertEqual(safety.safety_outputs(),
+                         sum(d.qty * d.outputs_each for d in safety.SAFETY_DEVICES))
+        self.assertGreater(safety.safety_inputs(), len(safety.SAFETY_DEVICES))
+        # 모듈 수는 예비율을 얹고 올림한다
+        self.assertEqual(safety.io_modules(8), 2)      # 8 × 1.2 = 9.6 → 2장
+        self.assertEqual(safety.io_modules(6), 1)      # 6 × 1.2 = 7.2 → 1장
+
+    def test_sto_nodes_track_the_servo_count(self):
+        """STO 는 드라이브마다 하나다 — 축을 늘리면 FSoE 노드가 따라 늘어야 한다.
+
+        지금 값이 36 이라는 것만 확인하면 36 을 상수로 박아도 시험이 통과한다.
+        축을 하나 얹어 답이 따라 오는지를 봐야 파생인지 아닌지가 갈린다.
+        """
+        self.assertEqual(safety.sto_nodes(), sum(a.qty for a in servos.SERVO_AXES))
+        self.assertEqual(safety.sto_nodes(), 36)
+        grown = servos.SERVO_AXES + (
+            dataclasses.replace(servos.SERVO_AXES[0], tag="AXIS-TEST", qty=3),)
+        self.assertEqual(safety.sto_nodes(grown), safety.sto_nodes() + 3)
+        self.assertEqual(safety.fsoe_nodes(grown), safety.fsoe_nodes() + 3)
+        self.assertEqual(safety.fsoe_nodes(),
+                         safety.fsoe_device_nodes() + safety.sto_nodes())
+
+    def test_the_crane_interlock_holds_up_the_contract_power(self):
+        """비동시 전제는 규칙이 아니라 회로여야 한다."""
+        self.assertIn("LP-CRANE", electrical.NON_COINCIDENT_PANELS)
+        self.assertLess(electrical.coincident_worst_case_kw(), electrical.worst_case_kw())
+        interlock = next(f for f in safety.SAFETY_FUNCTIONS if f.tag == "SF-08")
+        self.assertEqual(interlock.hazards, ("HZ-14",))
+        self.assertIn("NON_COINCIDENT_PANELS", interlock.note)
+        # 계약전력이 그 전제 위에 서 있다는 사실을 근거가 숫자로 들고 있어야 한다
+        self.assertIn(f"{electrical.coincident_worst_case_kw()}", interlock.note)
+
+    def test_the_module_refuses_to_invent_pfhd(self):
+        """없는 PFHd 는 거짓 PFHd 보다 낫다."""
+        self.assertFalse(hasattr(safety, "pfhd"))
+        self.assertIn("PFHd", dict(safety.SISTEMA_INPUTS))
+        self.assertIn("이 모듈은 PFHd 를 내지 않는다", dict(safety.SISTEMA_INPUTS)["PFHd"])
+        # 대신 그 계산의 입력을 값으로 낸다
+        self.assertGreater(safety.t10d_years(2_000_000), safety.MISSION_TIME_YEARS)
+        self.assertTrue(safety.needs_scheduled_replacement(1_000_000))
+        self.assertFalse(safety.needs_scheduled_replacement(2_000_000))
+
+    def test_the_drawing_carries_the_safety_numbers(self):
+        # SAFETY 블록은 summary() 를 JSON 으로 찍은 것이다 — 키까지 따옴표가 붙는다
+        for key, value in safety.summary().items():
+            token = f'"{key}": ' + (f'"{value}"' if isinstance(value, str) else f"{value}")
+            with self.subTest(token=token):
+                self.assertIn(token, self.html)
+        for hazard in safety.HAZARDS:
+            with self.subTest(hazard=hazard.tag):
+                self.assertIn(f'"{hazard.tag}"', self.html)
+        for func in safety.SAFETY_FUNCTIONS:
+            with self.subTest(func=func.tag):
+                self.assertIn(f'"{func.tag}"', self.html)
+        self.assertIn("'PV-PLANT-SF-1004', '위험원·PLr·안전기능·정지포락선', '2D Safety', '앱 반영'",
+                      self.html, "도면목록에서 '기본설계' 를 벗어나야 한다")
+        self.assertIn("PLC-IO-7101', '안전 I/O 점수·FSoE 노드·handshake', '전장', '앱 반영'",
+                      self.html)
+        self.assertIn('id="pv-tab-safety"', self.html)
+        self.assertIn("'safety'", self.html, "탭 목록에 안전이 있어야 한다")
+
+    def test_the_sheet_checker_knows_every_tab(self):
+        """탭을 늘리고 검사에 안 넣으면 그 시트는 아무도 안 본다.
+
+        REV.34 까지 시트 검사는 각 탭의 **기본 시트만** 봤다 — 전기 4장 중
+        단선결선도 하나뿐이었다. 그래서 분전반 배선도가 시트 폭을 218 넘긴 채
+        여러 판 지나갔다. 탭 목록이 어긋나면 여기서 잡는다.
+        """
+        checker = (pathlib.Path(__file__).resolve().parents[1]
+                   / "tools" / "check_sheet_fit.mjs").read_text(encoding="utf-8")
+        listed = set(re.findall(r"'([a-z]+)'", re.search(
+            r"const TABS = \[(.*?)\];", checker).group(1)))
+        in_drawing = set(re.findall(r'id="pv-tab-([a-z]+)"', self.html))
+        self.assertEqual(listed, in_drawing)
+        self.assertIn("safety", listed)
+        # 검사는 시트 선택 옵션도 하나씩 돌아야 한다
+        self.assertIn('select[id$="-view"]', checker)
+
+    def test_the_mdb_sheet_splits_branches_into_tiers(self):
+        """분기 16회로를 한 열에 그리면 반 밖으로 나간다 — 단 수는 피더에서 나온다."""
+        self.assertIn("var PER_TIER = 8", self.html)
+        self.assertIn("Math.ceil(feeders.length / PER_TIER)", self.html)
+        self.assertNotIn("var ductY = e.y + 430;", self.html)
+        self.assertGreater(len(electrical.FEEDERS), 8,
+                           "8 이하로 줄면 이 단 분할이 필요 없어진다")
