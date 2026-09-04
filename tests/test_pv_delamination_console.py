@@ -478,8 +478,17 @@ class TestDeliverableEquipment(unittest.TestCase):
             "XOR", permit.group(1), "배기 기동허가가 팬 이중화 정상상태를 거부한다"
         )
         self.assertIn("∨", permit.group(1), "적어도 한 대 건전 조건이 아니다")
-        # 한 대만 돌린다는 의도는 기동조건이 아니라 상용·예비 선택으로 남아야 한다
-        self.assertIn("FAN_DUTY_SELECT", self.html, "상용·예비 절체 조건이 없다")
+        # 한 대만 돌린다는 의도는 기동조건이 아니라 상용·예비 선택으로 남아야 한다.
+        # 그 선택은 불 논리가 아니므로 '=' 을 쓴 논리식으로 적지 않는다
+        # (tests/test_logic_expressions.py 의 표기 규약).
+        duty = re.search(r"배기팬 상용/예비: ([^']*)", self.html)
+        self.assertIsNotNone(duty, "상용·예비 절체 조건이 없다")
+        for word in ("대기", "절체", "교대운전"):
+            self.assertIn(word, duty.group(1), f"상용·예비 운용에 '{word}' 가 없다")
+        self.assertNotIn(
+            "FAN_DUTY_SELECT =", self.html,
+            "상용·예비 선택은 논리식이 아니다 — '=' 로 적으면 허가처럼 읽힌다"
+        )
 
     def test_short_circuit_rating_has_a_stated_basis(self):
         """SCCR 은 현장에서 재는 값이 아니라 근거를 밝혀 고르는 값이다."""

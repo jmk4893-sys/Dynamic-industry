@@ -66,7 +66,10 @@ class TestInterlockModelRuns(unittest.TestCase):
         bom = set()
         for m in re.finditer(r"parts:\[(.*?)\]\}", self.console):
             bom |= set(re.findall(r"'([^']+)'", m.group(1)))
-        soft = {"백시트 끝단 비전", "전력품질계", "PLC-101반", "접지바", "SPD Type1+2",
+        # 백시트 끝단 비전은 여기 있었다. 폐기된 REV.05 문장에만 이름이 남아
+        # 장치 대조를 통과하고 있었고, 그래서 구매 품목 요구도 면제돼 있었다.
+        # 이제 GR-W1 상부에 실제로 세웠으므로 예외가 아니다.
+        soft = {"전력품질계", "PLC-101반", "접지바", "SPD Type1+2",
                 "UPS-101", "24VDC PSU A/B", "Q0 ACB 4P 800AF", "서보 랙피니언",
                 "절대치 엔코더", "HKB Z축 서보슬라이드", "HKS Z축 서보슬라이드",
                 "SH-101 투입롤러", "투입 에어록", "격리셔터", "외함 롤 포트",
@@ -197,8 +200,9 @@ class TestSignalsFoundByRunningIt(unittest.TestCase):
                           if re.search(r"\b(?:box|cylinder|column)\(", ln))
         for token in ("칼날 Z축 상하한센서", "셀 경로 광전센서", "주행로 광전센서",
                       "격리셔터 위치센서", "롤 반출 위치센서", "BS-301 새들 존재센서",
-                      "웹 파단 검출센서", "유리 경로 광전센서", "GC 교대 광전센서",
-                      "에어록 도어 위치센서", "격리실 존재센서", "방화댐퍼 위치센서"):
+                      "웹 파단 검출센서", "백시트 끝단 비전", "유리 경로 광전센서",
+                      "GC 교대 광전센서", "에어록 도어 위치센서", "격리실 존재센서",
+                      "방화댐퍼 위치센서"):
             self.assertIn(token, drawn, f"{token} 가 도면에 그려지지 않았다")
         self.assertIn("interlockSensors();", self.console, "센서가 배치에 놓이지 않았다")
 

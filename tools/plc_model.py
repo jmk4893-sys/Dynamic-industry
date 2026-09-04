@@ -176,7 +176,11 @@ DERIVED = [
     Derived("EXHAUST_RUN", ["FAN_A_OK", "FAN_B_OK", "DP_OK", "CARBON_DP_OK", "FIRE_DAMPER_OPEN"]),
     Derived("IR_ENABLE", ["SEALED_FULL_LOAD_ACK", "EXHAUST_OK", "FIRE_OK", "PM_METER_OK"]),
     Derived("IR_HARD_TRIP", ["INDEPENDENT_OVERTEMP", "SMOKE", "CO_HIGH", "EXHAUST_LOSS", "SSR_STUCK"]),
-    Derived("DOOR_MUTEX", ["INNER_DOOR_OPEN", "OUTER_DOOR_OPEN"]),
+    # 에어록은 입측 AL-101 · 출측 AL-102 두 곳이고 각각 내문·외문을 동시에
+    # 열 수 없다. 문 위치센서 8점은 2 에어록 × 2 문 × 2 채널이다.
+    Derived("AL101_MUTEX", ["INNER_DOOR_OPEN", "OUTER_DOOR_OPEN"]),
+    Derived("AL102_MUTEX", ["INNER_DOOR_OPEN", "OUTER_DOOR_OPEN"]),
+    Derived("DOOR_MUTEX", ["AL101_MUTEX", "AL102_MUTEX"]),
     Derived("REFILL_ACK", ["ACTIVE_DECK_PRESENT", "ACTIVE_DECK_LOCKED", "FORK_HOME",
                            "ALL_DOORS_CLOSED", "DP_OK"]),
     Derived("LIFT_MOVE", ["ALL_DECK_LOCKED", "FORK_RETRACTED", "EXTRACTOR_HOME", "DOOR_LOCKED"]),
@@ -218,7 +222,9 @@ DERIVED = [
                            "GLASS_CARRIAGE_ACK", "EMPTY_CARRIER_RELOADED"]),
     Derived("MUTE_VALID", ["MUTE_SENSORS"]),
     Derived("OPENING_SAFE", ["LC_OSSD_CLEAR", "MUTE_VALID"]),
-    Derived("START_WARN", ["ST_TOWER_CMD"]),
+    # START_WARN 은 읽는 허가가 아니라 내보내는 경보다. 기동 허가가 선 뒤
+    # 적층 신호등·부저를 F-DO 로 울리고, 경보가 끝나야 축이 움직인다.
+    Derived("START_WARN", ["START_PERMIT", "ST_TOWER_CMD"]),
     Derived("MAINT_PERMIT", ["ZERO_ENERGY_ACK", "LOTO_APPLIED", "TEMP_SAFE", "VAC_DUMPED"]),
     Derived("START_PERMIT", ["FULL_LOAD_ACK", "ALL_LOCKED", "ALL_TEMP_OK",
                              "ALL_DOORS_CLOSED", "EXHAUST_OK"]),
