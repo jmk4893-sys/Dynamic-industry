@@ -33,7 +33,7 @@ FDI, FDO, COMM = "F-DI", "F-DO", "COMM"
 # 선언된 I/O 예산 (콘솔 PLC 도면 · 사양서 7.1)
 # 선언된 I/O 예산. 사양서 7.1 이 "예비 20% 이상"을 요구하므로 실사용에서
 # 역산해 카드 배수로 올린 값이다 — 이 모델을 돌려 정한 수량이다.
-BUDGET = {DI: 160, DO: 96, AI: 40, AO: 16, TC: 56, FDI: 40, FDO: 8}
+BUDGET = {DI: 176, DO: 96, AI: 40, AO: 16, TC: 56, FDI: 40, FDO: 8}
 SPARE_MIN = 0.20                       # 사양서 7.1 이 요구하는 최소 예비율
 
 
@@ -135,6 +135,25 @@ LEAVES = [
     Leaf("CV_CLEAR",           DI, 2, "벨트 편심센서×2"),
     Leaf("CVC_CLEAR",          DI, 2, "셀 존재센서×4"),
     Leaf("SHREDDER_READY",     COMM, 0, "SH-101 투입롤러"),
+    # ── 공급범위 경계 (Rev.21C 압축 배치) ───────────────────────────────
+    # 환경설비·후속파쇄·팔레타이징을 라인에서 떼어 발주자 설비로 넘겨도
+    # 인터록은 남는다 — 멈춘 슈레더에 셀을 밀어 넣지 않는 조건은 그 슈레더가
+    # 남의 것이 되었다고 사라지지 않는다. 다만 근거가 바뀐다: 우리 장치의
+    # 센서가 아니라 경계반의 접점이 근거가 되므로, 원격 '준비됨' 접점 하나만
+    # 믿지 않고 경계에서 우리가 직접 재는 값을 하나씩 같이 둔다.
+    Leaf("VOC_ABATE_READY",    COMM, 0, "경계 인터페이스반 BJ-101",
+         "발주자 배기 후처리의 준비 접점 — RTO 를 우리가 갖지 않을 때의 근거"),
+    Leaf("DUCT_DP_OK",         AI, 1, "경계 덕트 차압센서",
+         "원격 접점만 믿지 않는다 — 덕트가 실제로 빨고 있는지는 우리가 잰다"),
+    Leaf("GLASS_TAKEAWAY_READY", DI, 2, "경계 인터페이스반 BJ-101"),
+    Leaf("CELL_BIN_SPACE_OK",  DI, 2, "셀/EVA 배출슈트 레벨센서×2"),
+    Leaf("IF_ESTOP_LOOP_OK",   FDI, 2, "경계 안전회로 인터페이스반 BJ-102",
+         "안전회로는 공급범위 경계에서 끊기면 안 된다 — 양쪽 비상정지를 잇는다"),
+    # ── 이동 나이프 X축 (Rev.21C) ───────────────────────────────────────
+    # 박리는 상대운동이므로 캐리어 대신 나이프를 끌어도 공정은 같다.
+    # 다만 나이프가 스스로 움직이면 그 축의 위치와 원점이 허가 조건이 된다.
+    Leaf("KNIFE_X_HOME",       DI, 2, "나이프 X축 원점·과주행센서×2"),
+    Leaf("KNIFE_X_POS",        COMM, 0, "나이프 X축 절대치 엔코더"),
     Leaf("SHREDDER_TRIP",      DI, 1, "토크리미터"),
     Leaf("FIRE_BACKFLOW",      DI, 1, "역화격리게이트"),
     Leaf("ISOLATION_GATE_OPEN", DI, 2, "역화격리게이트"),
@@ -270,7 +289,8 @@ DERIVED = [
     Derived("EJECT_PERMIT", ["SHUTTER_CLOSED", "CARRIAGE_OUT", "BIN_READY"]),
     Derived("BACKSHEET_BIN_ACK", ["EJECT_PERMIT", "BIN_READY"]),
     Derived("ROLL_EJECT_ACK", ["BACKSHEET_BIN_ACK"]),
-    Derived("CELL_TRANSFER", ["CVC_CLEAR", "SHREDDER_READY", "ISOLATION_GATE_OPEN"]),
+    Derived("CELL_TRANSFER", ["CVC_CLEAR", "SHREDDER_READY", "ISOLATION_GATE_OPEN",
+                              "CELL_BIN_SPACE_OK"]),
     Derived("SHREDDER_FEED", ["CELL_BUFFERED", "CV_CLEAR", "SHREDDER_READY"]),
     Derived("SHREDDER_FEED_ACK", ["SHREDDER_FEED"]),
     Derived("CELL_OUT_ACK", ["CELL_TRANSFER"]),
@@ -329,6 +349,14 @@ DERIVED = [
                                 "REMOTE_ACK", "OEE_VALID"]),
     # ── 환경·인증 ───────────────────────────────────────────────────────
     Derived("RTO_READY", ["RTO_TEMP_OK", "RTO_VALVE_OK", "EXHAUST_RUN"]),
+    # 경계가 성립해야 라인이 돈다. 후처리가 남의 것이 되면 배기 허가의
+    # 근거는 우리 RTO 가 아니라 경계반 접점 + 우리가 재는 덕트 차압이다.
+    Derived("BOUNDARY_READY", ["VOC_ABATE_READY", "DUCT_DP_OK", "IF_ESTOP_LOOP_OK"]),
+    Derived("ABATEMENT_PERMIT", ["RTO_READY", "BOUNDARY_READY"],
+            "우리 RTO 든 발주자 후처리든, 배기가 처리되고 있다는 근거는 하나여야 한다"),
+    Derived("GLASS_DISCHARGE_PERMIT", ["GLASS_TAKEAWAY_READY", "BOUNDARY_READY"]),
+    # 나이프가 원점에 있고 위치가 읽혀야 다음 장의 박리를 시작한다.
+    Derived("KNIFE_TRAVERSE_PERMIT", ["PEEL_PERMIT", "KNIFE_X_HOME", "KNIFE_X_POS"]),
     Derived("HEAT_RECOVERY", ["RTO_READY", "HX_OUTLET_TEMP", "DP_OK"]),
     Derived("EMISSION_OK", ["CEMS_OK", "TOC_HIGH", "RTO_READY"]),
     Derived("CHAMBER_FIRE_TRIP", ["FLAME_DETECT", "SMOKE", "CO_HIGH"]),
@@ -368,6 +396,7 @@ DRIVES = [
     Drive("SSR-B",  "IR 뱅크 SSR",          AO, 6, "주접촉기", "SSR 분기모듈×60"),
     Drive("ST-101", "적층 신호등·부저",     FDO, 4, "F-DO 직결", "적층 신호등·부저 ST-101/102"),
     # 무인 연속운전
+    Drive("SV-405", "나이프 X축 이송",        COMM, 0, "STO 2CH", "나이프 X축 절대치 엔코더"),
     Drive("SV-701", "PL-101 디스태커 승강",  COMM, 0, "STO 2CH", "PL-101 자동 디스태커"),
     Drive("SV-702", "PL-201 스태커 승강",    COMM, 0, "STO 2CH", "PL-201 자동 스태커"),
     Drive("SV-801", "KC-101 카세트 교환암",  COMM, 0, "STO 2CH", "KC-101 칼날 카세트 매거진×2"),
