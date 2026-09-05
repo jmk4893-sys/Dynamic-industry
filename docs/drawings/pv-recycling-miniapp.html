@@ -1398,7 +1398,7 @@ html>body{padding:0}</style>
         <ellipse cx="830" cy="455" rx="48" ry="18" fill="var(--plant-equip-dry)" stroke="var(--foreground)"/>
         <ellipse cx="830" cy="480" rx="48" ry="18" fill="var(--plant-equip-dry)" stroke="var(--foreground)"/>
         <text x="650" y="414" fill="var(--foreground)">CH-501 · Ø200 · RV-201</text>
-        <text x="784" y="414" fill="var(--foreground)">SV-201 280/106/75</text>
+        <text x="784" y="414" fill="var(--foreground)">SV-201 280 ▸ 106/75</text>
         <path d="M878 438H922V220H970" fill="none" stroke="var(--plant-dry-transfer)" stroke-width="8" opacity="0.86"/>
         <rect x="970" y="160" width="82" height="210" rx="34" fill="var(--plant-equip-dry)" stroke="var(--foreground)"/>
         <path d="M1010 338L1010 194" stroke="var(--plant-air)" stroke-width="7" opacity="0.86"/>
@@ -1470,7 +1470,7 @@ html>body{padding:0}</style>
         <span><i class="hsg3d-flow-dot fresh"></i>L01 · HSG 하부 플리넘 → CV-101 → PC-101 보어137 세라믹 스풀 → CY-101 → RV-101 → SC-500 · 400 kg/h</span>
         <span><i class="hsg3d-flow-dot recycle"></i>L02 · SC-500 잔류 ≥500 µm → CV-102 → FD-101 환류 · 약 100 kg/h</span>
         <span><i class="hsg3d-flow-dot band500"></i>L03 · SC-500 통과 → 밀폐 CH-501 → RV-201 → PC-201 음압리프트 → 리시버 에어록 → VS-501 → 밀폐 하향슈트 → SV-201</span>
-        <span><i class="hsg3d-flow-dot band280"></i>SV-201 원형 3단: 280–500 / 106–280 / 75–106 µm</span>
+        <span><i class="hsg3d-flow-dot band280"></i>SV-201 2단 복합: 상단 직사각 280–500 / 하단 원형 106–280 · 75–106 µm</span>
         <span><i class="hsg3d-flow-dot fines75"></i>SV-201 PAN: &lt;75 µm</span>
         <span>L04 · SV-201 106–280＋75–106 µm 개별 배관 → Y헤더 → CC-201 → 중량물 제품 / 경량물 CY-201</span>
         <span>L05 · CC-201 상부 → CY-201 → BF-201 → ID 팬 → 배기스택</span>
@@ -1955,7 +1955,7 @@ html>body{padding:0}</style>
           <tr><th>리턴스크류 예비용량</th><td>약 <span data-hsg-return-capacity>—</span> kg/h · 요구량 대비 <span data-hsg-return-margin>—</span>% 여유 · 벌크밀도 350 kg/m³·충전율 15%·경사보정 0.60 가정</td></tr>
           <tr><th>SC-500 운전점</th><td>밀폐형 <strong>2단</strong> 경사스크린 W800 × L1400 · 1단 2 mm(백시트 폐기) ＋ 2단 500 µm(폐회로 환류) · 경사 12° · 가진 25 Hz · 변위 3.0 mm p-p · 화면만 4 Hz/변위 4배</td></tr>
           <tr><th>CH-501 집하부</th><td>상부 800 × 1500 mm급 사각뿔 집하호퍼 · 벽각 ≥60° · Ø200 × 280 원통 토출 · 고정 프레임 · 난연 정전기방지 유연스커트</td></tr>
-          <tr><th>Sheeve 후단</th><td>RV-201 압력격리 → PC-201 DN100 음압리프트·리시버 에어록 → 상부 VS-501 0.9 mm 분산 → 밀폐 하향슈트 → SV-201 Ø1200 · 280/106/75 µm · 960 rpm</td></tr>
+          <tr><th>Sheeve 후단</th><td>RV-201 압력격리 → PC-201 DN100 음압리프트·리시버 에어록 → 상부 VS-501 0.9 mm 분산 → 밀폐 하향슈트 → SV-201 2단 복합 — 상단 직사각 280 µm(대향 진동모터 1.5 kW×2) → 하단 원형 Ø1200 106/75 µm(수직축 편심 2.2 kW) · 960 rpm</td></tr>
           <tr><th>비산방지 배관</th><td>노출 컨베이어 없음 · 모든 고형물관 밀폐 · SC/CH/VS/SV/SS와 밀폐 제품통 벤트는 BF-101 또는 BF-201 오염공기 헤더로 연결 · 두 팬 후단 소음기·배기스택 적용</td></tr>
           <tr><th>CC-201 공기분급</th><td>75–280 µm 선별물을 0.70–1.00 m/s 상승류에서 중량물과 EVA·백시트 경량물로 분리 · 실제 절단점은 원료별 파일럿 보정</td></tr>
           <tr><th>CY/BF-201 흡인계통</th><td>CC-201 상부 경량·미분 → 접선식 CY-201 → RV-202 → SS-201 · CY 청정가스 → BF-201 → 후단 ID 팬 → 배기스택 · BF-201 포집분은 RV-203을 거쳐 SS-201 합류</td></tr>
@@ -2005,7 +2005,7 @@ html>body{padding:0}</style>
 
     <p class="text-small">회로를 다시 잡았다. <strong>SC-500 을 2단</strong>으로 만들어 1단 2 mm 로 분쇄되지 않는
       백시트 박편을 걷어내 폐기하고, 2단 500 µm 오버만 HSG-101 로 환류시켜 폐회로를 유지한다.
-      2단을 통과한 &lt;500 µm 만 원형 Sheeve(SV-201)로 내려가 280/106/75 를 친다.</p>
+      2단을 통과한 &lt;500 µm 만 2단 복합 Sheeve(SV-201)로 내려가 상단 직사각에서 280, 하단 원형에서 106/75 를 친다.</p>
 
     <strong>물질수지 (정상상태)</strong>
     <div class="table-responsive"><table class="table table-sm" aria-label="SC-500 물질수지">
@@ -15808,7 +15808,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     P16: { name: "RV-101 로터리 에어록", role: "CY-101 하부 고체를 음압 손실 없이 SC-500에 정량 배출", spec: "Ø180 · 6포켓 · 18 rpm · 0.37 kW · 팁 간극 0.15–0.25", shape: "airlock" },
     P17: { name: "BF-101＋RV-102＋B-101＋배기스택", role: "필터 뒤에서 공정을 흡인하고 FD-101 국소집진·필터회분 CH-501 회수를 포함한 밀폐 배관을 구성", spec: "카트리지필터 6본(청정측 상부 교체 · 토글클램프 리드) · PDT-101 차압 · 900 m³/h · −6.0 kPa max · 5.5 kW VFD · DN80/65", shape: "blower" },
     P18: { name: "CH-501＋RV-201＋PC-201 밀폐 이송", role: "SC-500 통과분을 밀폐 집하하고 RV-201 정량공급 후 음압리프트·리시버 에어록으로 VS-501에 비산 없이 이송", spec: "CH 상부 800 × 1500 · RV-201 · PC-201 보어 103 (DN125 셸＋12 mm 알루미나 라이저) · 약 350 m³/h · 11.7 m/s · 정전기방지 유연연결", shape: "collector-round" },
-    P19: { name: "VS-501＋SV-201 밀폐 Sheeve 후단", role: "상부 배치 VS-501에서 분산 후 밀폐 하향슈트로 SV-201에 공급하고 모든 토출을 밀폐 배관으로 연결", spec: "VS-501 0.9 mm · SV-201 Ø1200 · 280/106/75 µm · 60° 섹터 패널 6/데크 · 2.2 kW · 960 rpm", shape: "circular-three-deck" },
+    P19: { name: "VS-501＋SV-201 밀폐 Sheeve 후단 (2단 복합)", role: "VS-501 분산 후 상단 직사각 진동스크린이 280 µm 로 1차 선별해 오버를 토출하고, 언더만 하단 원형 Ø1200 으로 내려가 106/75 µm 를 친다. 모든 토출은 밀폐 배관", spec: "VS-501 0.9 mm · 상단 직사각 860×680 · 5° · 대향 진동모터 2×1.5 kW · 스프링 8점 / 하단 원형 Ø1200 · 106/75 µm · 60° 섹터 패널 6/데크 · 수직축 편심 2.2 kW · 960 rpm", shape: "rect-over-circular" },
     P20: { name: "CC-201＋Y헤더＋RV-204 공기분급기", role: "SV-201 두 입도라인을 개별 배관·Y헤더로 투입하고 상승류에서 중량물과 EVA·백시트 경량물을 분리", spec: "컬럼 Ø860 × H1,900 · 0.70–1.00 m/s · Y헤더 · 중량물 RV-204", shape: "air-classifier" },
     P21: { name: "CY-201＋RV-202＋BF-201＋RV-203＋ID 팬", role: "CC-201 경량물을 회수하고 CY·BF 포집물을 각각 에어록으로 SS-201에 합류시키며 청정가스를 배기스택으로 배출", spec: "CY Ø680 · BF 카트리지 5본(청정측 상부 교체 · PDT-201) · RV-202/203 · VFD 후단흡인 · 배기스택", shape: "cyclone-filter" },
     P22: { name: "SS-201 75 µm 분리토출 스크린", role: "CY-201 회수물과 SV-201 PAN 미분을 재검증해 ≥75 µm 구리산물과 <75 µm 최종 미분제품을 물리적으로 분리", spec: "Ø1100 원형 · 75 µm 섹터 패널 · 측면 구리산물구＋하부 제품구 · 초음파 35–40 kHz", shape: "polishing-screen" },
@@ -15905,9 +15905,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       tools: "핀 뽑기", mttrMin: 15, bom: ["HG-034", "HG-035", "HG-036"],
       life: { basis: "screenMass", limit: 250000, unit: "kg" }, sensors: [],
       spare: "모듈 4매", upgrade: "장력식 메시 → 300×400 PU 핀인 모듈 · 데크당 8모듈" },
-    { id: "SV201-PANEL", machine: "SV-201", tag: "P19", part: "3단 원형 데크 섹터 패널 (280/106/75 µm)",
+    // SV-201 은 2단 복합기라 마모 모듈도 두 종류다 — 상단 직사각은 SC-500 과 같은
+    // 핀인 PU 모듈, 하단 원형은 60° 섹터 패널. 한 행에 뭉치면 교체 절차가 섞인다.
+    { id: "SV201-RECT-PANEL", machine: "SV-201", tag: "P19", part: "상단 직사각 280 µm 핀인 모듈 패널",
+      module: "핀인 모듈 패널", method: "상부커버 토글클램프 → 마모 모듈만 핀 2점 뽑아 교체 (텐셔닝 불요)",
+      tools: "핀 뽑기", mttrMin: 15, bom: ["SV-021", "SV-023", "SV-071"],
+      life: { basis: "sieveMass", limit: 300000, unit: "kg" }, sensors: [], spare: "모듈 4매" },
+    { id: "SV201-PANEL", machine: "SV-201", tag: "P19", part: "하단 원형 2단 데크 섹터 패널 (106/75 µm)",
       module: "핀인 섹터 패널", method: "데크링 클램프 → 마모 섹터만 교체 · 개스킷 재사용",
-      tools: "공구 불요", mttrMin: 20, bom: ["SV-021", "SV-031", "SV-041", "SV-070"],
+      tools: "공구 불요", mttrMin: 20, bom: ["SV-031", "SV-041", "SV-070"],
       life: { basis: "sieveMass", limit: 300000, unit: "kg" }, sensors: [], spare: "섹터 6매" },
     { id: "SS201-PANEL", machine: "SS-201", tag: "P22", part: "75 µm 초음파 데크 섹터 패널",
       module: "핀인 섹터 패널", method: "커버 → 초음파 트랜스듀서 링 분리 없이 섹터만 교체",
@@ -17719,11 +17725,19 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // SC-500 경사스크린은 2단이다 — 1단 2 mm 는 분쇄되지 않고 남는 백시트 박편을
     // 걷어내 폐기하고, 2단 500 µm 오버만 HSG-101 로 환류시켜 폐회로를 유지한다.
-    // 2단을 통과한 <500 µm 만 원형 Sheeve(SV-201)로 내려가 280/106/75 를 친다.
+    // 2단을 통과한 <500 µm 만 SV-201 로 내려간다.
     const SC500_CUTS_UM = Object.freeze([2000, 500]);
     const BACKSHEET_CUT_UM = SC500_CUTS_UM[0];
     const FIRST_SCREEN_CUT_UM = SC500_CUTS_UM[1];
-    const SECONDARY_SIEVE_CUTS_UM = Object.freeze([280, 106, 75]);
+    // SV-201 은 2단 복합기다 — 상단 직사각 진동스크린이 280 µm 로 1차 선별해 오버를
+    // 토출하고, 언더만 하단 원형 Ø1200 으로 내려가 106/75 를 친다. BOM 이 한 항목 안에
+    // 두 기종을 기술한 이유가 이것이었다 — overall 2,600×1,800×2,700 · 독립 스키드
+    // 2,400×1,600 · SV-002 코일스프링 8 · SV-051 모터 브래킷 2 · erection 의 「대향
+    // 진동모터 위상·편심량 설정」은 전부 상단 직사각(직선진동)의 사양이고, basis 의
+    // Ø1,200 이 하단 원형(수직축 편심)이다. 종전 형상은 원형 하나에 세 장을 다
+    // 몰아넣어 상단이 통째로 빠져 있었다.
+    const PRIMARY_RECT_CUT_UM = 280;                             // 상단 직사각 1단
+    const SECONDARY_SIEVE_CUTS_UM = Object.freeze([106, 75]);    // 하단 원형 2·3단
     const SIEVE_ROUTE_KEYS = Object.freeze([
       "reject-backsheet",
       "return-500",
@@ -17804,9 +17818,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // exaggerated because 3.0 mm peak-to-peak is invisible at plant scale.
     const SIEVE_STROBE_DIVISOR = 6;
     const SIEVE_VISUAL_FREQUENCY_HZ = SIEVE_OPERATING_FREQUENCY_HZ / SIEVE_STROBE_DIVISOR;
-    const SECONDARY_SIEVE_RPM = 960;                                     // 명판 · SV-201 2.2 kW 진동모터
+    // SV-201 의 두 진동체는 구동이 다르다. 하단 원형은 수직축 편심 모터(2.2 kW) 하나가
+    // 나선운동을 만들고, 상단 직사각은 대향 진동모터 2대(SV-050 · 1.5 kW × 2)가 위상
+    // 180° 로 돌아 직선운동을 만든다. 둘 다 명판 960 rpm = 16 Hz 이므로 화면 분주도
+    // 같고, 구분은 속도가 아니라 궤적에서 난다.
+    const SECONDARY_SIEVE_RPM = 960;                                     // 명판 · 하단 원형 수직축 편심 2.2 kW
     const SECONDARY_SIEVE_FREQUENCY_HZ = SECONDARY_SIEVE_RPM / 60;       // 16 Hz
     const SECONDARY_VISUAL_FREQUENCY_HZ = SECONDARY_SIEVE_FREQUENCY_HZ / 4;
+    const RECT_EXCITER_RPM = 960;                                        // 명판 · SV-050 대향 진동모터 1.5 kW × 2
+    const RECT_VISUAL_FREQUENCY_HZ = RECT_EXCITER_RPM / 60 / 4;
     // 실제 throw 는 3 mm p-p — 플랜트 전경 카메라에서 1 px 도 안 되므로 정지한 것처럼 보인다.
     // 가진주파수를 정수 분주해 그리는 것과 같은 이유로 진폭도 배율을 명시해 키운다.
     // 모델값(3 mm)은 그대로이고 화면 표시만 배율이 걸린다. 소음·진동 패널에 병기.
@@ -17943,16 +17963,20 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 다른 제품빈은 전부 벤트를 달았는데 신설된 이 빈만 없었다. SC-500 상부 지관에
     // 합류시켜 BF-201 로 보낸다. 경로는 CY-101(z 0.11–0.69)·CV-102(z −0.31–−0.09)와
     // P17 지관(y ≤ 1.50)을 피해 z ≈ 1.00 · y ≥ 1.66 을 지나간다.
+    // 발은 빈 상면 서쪽(x 2.62)에서 뽑는다 — 종전 x 2.70 은 SV-201 복합기 스키드의
+    // 북서 모서리(x 2.68 · z 0.84–0.92)가 지나갈 자리다. B-101 팬 모터(x ≤2.57)와는 4.6 cm.
+    // 중간점으로 수직을 잡아 둔다 — 없으면 CatmullRom 이 레일 높이에서 동쪽으로 8 cm 배부른다.
     const bin102VentBranch = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(2.70, 0.56, 0.88),
-      new THREE.Vector3(2.76, 1.66, 1.00),
+      new THREE.Vector3(2.62, 0.56, 0.88),
+      new THREE.Vector3(2.62, 1.10, 0.92),
+      new THREE.Vector3(2.63, 1.66, 1.00),
       new THREE.Vector3(2.30, 1.86, 1.00),
       new THREE.Vector3(1.62, 1.90, 0.98),
       new THREE.Vector3(1.50, 1.88, 0.72),
       new THREE.Vector3(1.48, 1.86, 0.56)
     ]);
     addMesh(parts.P12, new THREE.TubeGeometry(bin102VentBranch, 40, 0.024, 12, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P12", false);
-    addCylinder(parts.P12, 0.030, 0.10, { x: 2.70, y: 0.52, z: 0.86 }, material.pipeAir, "P12", "y", 14, false);
+    addCylinder(parts.P12, 0.030, 0.10, { x: 2.62, y: 0.52, z: 0.86 }, material.pipeAir, "P12", "y", 14, false);
     // 2단 데크 국소배기 노즐 — 하우징 −z 측벽을 뚫고 나와 VH-201 헤더로 올라간다.
     // 데크가 두 장이 되면서 배출단이 둘이 되었으므로 흡인점도 둘이어야 한다.
     addCylinder(parts.P12, 0.028, 0.16, { x: 1.86, y: 0.74, z: -0.55 }, material.pipeAir, "P12", "z", 14, false);
@@ -17982,22 +18006,33 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // PC-201 is a fully enclosed negative-pressure lift. It avoids the open,
     // upward chute that could not transport powder by gravity.
-    const pc201ReceiverCenter = new THREE.Vector3(2.52, 1.75, -0.28);
+    //
+    // SV-201 이 2단 복합기가 되면서 상단 직사각이 VS-501 과 원형 사이에 들어간다.
+    // VS-501 이 그만큼 올라가야 하고, 그러면 PC-201 리시버·에어록도 같이 올라야
+    // 중력 급입이 성립한다. 올릴 수 있는 한계는 위의 벤트 헤더(y 2.41 하단)다 —
+    // 리시버 상단이 그 아래 머물러야 하므로 0.48 이 상한이고, 아래 한계는 상단
+    // 직사각의 커버(≈1.25)를 VS-501 하우징이 5 cm 이상 비켜야 한다는 것이다.
+    // 실측(__DBG__.region)으로 두 조건을 다 만족하는 값이 0.48 이다.
+    const SV201_STACK_LIFT = 0.48;
+    // VS-501 은 −z 로 8 cm 물러선다 — 올라간 높이에서 +z 쪽 벽이 B-101 ID 팬 하우징
+    // (z 0.44–0.60, y 1.1–1.6)과 BF-101 배기 라이저(z 0.42–0.62)에 1 cm 까지 붙는다.
+    const VS501_Z = 0.12;
+    const pc201ReceiverCenter = new THREE.Vector3(2.52, 1.75 + SV201_STACK_LIFT, -0.28);
     const pc201LiftCurve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(2.30, -0.56, 0.20),
       new THREE.Vector3(2.36, -0.34, 0.06),
       new THREE.Vector3(2.42, 0.46, -0.22),
-      new THREE.Vector3(2.40, 1.50, -0.34),
-      new THREE.Vector3(2.36, 1.76, -0.22)
+      new THREE.Vector3(2.40, 1.50 + SV201_STACK_LIFT * 0.6, -0.34),
+      new THREE.Vector3(2.36, 1.76 + SV201_STACK_LIFT, -0.22)
     ]);
     // PC-201 라이저는 보어 103 mm — DN125 t6.0 셸(OD 139.8)에 12 mm 알루미나. DN100 셸에 라이닝하면
     // 보어 90 → 15.3 m/s 로 마모가 2 배가 되므로 셸을 한 치수 키운다.
     addMesh(parts.P18, new THREE.TubeGeometry(pc201LiftCurve, 52, 0.0699, 16, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P18", false);
     addWearSpools(parts.P18, pc201LiftCurve, 0.0699, "P18");
     addCylinder(parts.P18, 0.18, 0.28, pc201ReceiverCenter, material.solidsReceiver, "P18", "y", 40, true);
-    addMesh(parts.P18, new THREE.CylinderGeometry(0.18, 0.06, 0.32, 40, 1, true), material.solidsReceiver, { x: pc201ReceiverCenter.x, y: 1.46, z: pc201ReceiverCenter.z }, null, "P18", true);
-    addCylinder(parts.P18, 0.070, 0.20, { x: pc201ReceiverCenter.x, y: 1.98, z: pc201ReceiverCenter.z }, material.solidsReceiver, "P18", "y", 24, false);
-    const pc201AirlockCenter = new THREE.Vector3(pc201ReceiverCenter.x, 1.19, pc201ReceiverCenter.z);
+    addMesh(parts.P18, new THREE.CylinderGeometry(0.18, 0.06, 0.32, 40, 1, true), material.solidsReceiver, { x: pc201ReceiverCenter.x, y: 1.46 + SV201_STACK_LIFT, z: pc201ReceiverCenter.z }, null, "P18", true);
+    addCylinder(parts.P18, 0.070, 0.20, { x: pc201ReceiverCenter.x, y: 1.98 + SV201_STACK_LIFT, z: pc201ReceiverCenter.z }, material.solidsReceiver, "P18", "y", 24, false);
+    const pc201AirlockCenter = new THREE.Vector3(pc201ReceiverCenter.x, 1.19 + SV201_STACK_LIFT, pc201ReceiverCenter.z);
     addCylinder(parts.P18, 0.11, 0.24, pc201AirlockCenter, material.solidsReceiver, "P18", "z", 30, false);
     const pc201AirlockRotor = new THREE.Group();
     pc201AirlockRotor.position.copy(pc201AirlockCenter);
@@ -18009,22 +18044,32 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // VS-501 is raised above SV-201 so the second connection is a sealed,
     // downward gravity chute rather than another powered transfer.
-    const distributionDeck = addBox(secondaryGroup, { x: 0.78, y: 0.025, z: 0.42 }, { x: 2.78, y: 1.02, z: 0.20 }, material.screen, "P19", { z: -SIEVE_INCLINE_RAD }, false);
+    //
+    // VS-501 은 자기 스프링 위에서 따로 진동하는 분배기다. 종전에는 원형 진동체
+    // (secondaryGroup) 안에 그려져 원형과 함께 흔들렸다 — 두 기계가 한 몸처럼
+    // 움직이는 것은 형식 오류다. 자기 그룹으로 떼어 낸다.
+    const vs501Group = new THREE.Group();
+    parts.P19.add(vs501Group);
+    const vs501MotionOffset = new THREE.Vector3();
+    const VS501_DECK_Y = 1.02 + SV201_STACK_LIFT;
+    const distributionDeck = addBox(vs501Group, { x: 0.78, y: 0.025, z: 0.42 }, { x: 2.78, y: VS501_DECK_Y, z: VS501_Z }, material.screen, "P19", { z: -SIEVE_INCLINE_RAD }, false);
     distributionDeck.userData.role = "deagglomeration-only";
-    addBox(secondaryGroup, { x: 0.86, y: 0.24, z: 0.04 }, { x: 2.78, y: 1.09, z: -0.02 }, material.screenHousing, "P19", { z: -SIEVE_INCLINE_RAD });
-    addBox(secondaryGroup, { x: 0.86, y: 0.24, z: 0.04 }, { x: 2.78, y: 1.09, z: 0.42 }, material.screenHousing, "P19", { z: -SIEVE_INCLINE_RAD });
-    addCylinder(secondaryGroup, 0.075, 0.18, { x: 2.62, y: 1.21, z: -0.06 }, material.motor, "P19", "z", 24, false);
-    addCylinder(secondaryGroup, 0.075, 0.18, { x: 2.94, y: 1.14, z: -0.06 }, material.motor, "P19", "z", 24, false);
+    addBox(vs501Group, { x: 0.86, y: 0.24, z: 0.04 }, { x: 2.78, y: VS501_DECK_Y + 0.07, z: VS501_Z - 0.22 }, material.screenHousing, "P19", { z: -SIEVE_INCLINE_RAD });
+    addBox(vs501Group, { x: 0.86, y: 0.24, z: 0.04 }, { x: 2.78, y: VS501_DECK_Y + 0.07, z: VS501_Z + 0.22 }, material.screenHousing, "P19", { z: -SIEVE_INCLINE_RAD });
+    // 진동모터 2대는 하우징 위에 얹는다. 종전 자리(−z 측면)는 올라온 PC-201 에어록
+    // (z −0.40…−0.16)과 7 cm 겹친다.
+    addCylinder(vs501Group, 0.075, 0.18, { x: 2.66, y: VS501_DECK_Y + 0.31, z: VS501_Z }, material.motor, "P19", "z", 24, false);
+    addCylinder(vs501Group, 0.075, 0.18, { x: 2.94, y: VS501_DECK_Y + 0.24, z: VS501_Z }, material.motor, "P19", "z", 24, false);
+    // 에어록 → 분배기 낙하 슈트. 5 cm 띄워 VS-501 받침 스프링 상판(y 1.51) 위로 지나간다.
     const airlockToDistributor = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(pc201AirlockCenter.x, 1.07, pc201AirlockCenter.z),
-      new THREE.Vector3(2.58, 1.08, -0.08),
-      new THREE.Vector3(2.48, 1.10, 0.20)
+      new THREE.Vector3(pc201AirlockCenter.x, 1.12 + SV201_STACK_LIFT, pc201AirlockCenter.z),
+      new THREE.Vector3(2.58, 1.14 + SV201_STACK_LIFT, -0.16),
+      new THREE.Vector3(2.48, 1.16 + SV201_STACK_LIFT, VS501_Z)
     ]);
     addMesh(parts.P18, new THREE.TubeGeometry(airlockToDistributor, 24, 0.070, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P18", false);
 
-    // SV-201 circular 3-deck sieve, Ø1200, 280/106/75 µm.
-    const secondaryDeckYs = [0.48, 0.31, 0.14];
-    const secondaryDeckMaterials = [material.product500, material.product280, material.product106];
+    // SV-201 하단 — 원형 Ø1200, 106/75 µm 2단. 280 µm 는 상단 직사각이 맡는다.
+    const secondaryDeckYs = [0.42, 0.20];
     const secondaryDeckMeshes = secondaryDeckYs.map((y, index) => {
       addCylinder(secondaryGroup, 0.63, 0.15, { x: secondaryCenter.x, y, z: secondaryCenter.z }, material.screenHousing, "P19", "y", 64, true);
       const mesh = addCylinder(secondaryGroup, 0.58, 0.018, { x: secondaryCenter.x, y: y + 0.03, z: secondaryCenter.z }, material.screen, "P19", "y", 64, false);
@@ -18037,8 +18082,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     secondaryDeckYs.forEach((y) => [0, Math.PI / 3, Math.PI * 2 / 3].forEach((angle) => sv201Panels.push(
       addBox(secondaryGroup, { x: 1.14, y: 0.010, z: 0.014 }, { x: secondaryCenter.x, y: y + 0.045, z: secondaryCenter.z }, material.cover, "P19", { y: angle }, false))));
     markSwap(sv201Panels, "SV201-PANEL");
-    addMesh(secondaryGroup, openFrustumGeometry(0.34, 0.34, 0.82, 0.82, 0.28), material.screenHousing, { x: secondaryCenter.x, y: 0.58, z: secondaryCenter.z }, null, "P19", true);
-    addCylinder(secondaryGroup, 0.64, 0.035, { x: secondaryCenter.x, y: 0.585, z: secondaryCenter.z }, material.silverClamp, "P19", "y", 64, false);
+    // 상단 커버와 급입 스피곳. 종전의 넓은 급입 호퍼(0.82 각 · 상단 y 0.86)는 상단
+    // 직사각의 언더 호퍼가 그 자리를 대신하므로 없앴다. 스피곳은 원형 축에서 +x 로
+    // 8 cm 비켜 선다 — 언더 호퍼가 직사각 데크 중심(x 3.29) 아래 달리기 때문이고,
+    // 두 진동체 사이는 유연 슬리브(SV-061)가 잇는다.
+    addCylinder(secondaryGroup, 0.64, 0.035, { x: secondaryCenter.x, y: 0.535, z: secondaryCenter.z }, material.silverClamp, "P19", "y", 64, false);
+    addCylinder(secondaryGroup, 0.63, 0.030, { x: secondaryCenter.x, y: 0.565, z: secondaryCenter.z }, material.screenHousing, "P19", "y", 64, false);
+    const SV201_SPIGOT_X = secondaryCenter.x + 0.08;
+    addCylinder(secondaryGroup, 0.17, 0.08, { x: SV201_SPIGOT_X, y: 0.62, z: secondaryCenter.z }, material.screenHousing, "P19", "y", 32, true);
+    addCylinder(parts.P19, 0.175, 0.05, { x: SV201_SPIGOT_X, y: 0.685, z: secondaryCenter.z }, material.belt, "P19", "y", 24, false);
     addCylinder(secondaryGroup, 0.62, 0.10, { x: secondaryCenter.x, y: -0.03, z: secondaryCenter.z }, material.screenHousing, "P19", "y", 64, true);
     addCylinder(secondaryGroup, 0.12, 0.34, { x: secondaryCenter.x, y: -0.24, z: secondaryCenter.z }, material.motor, "P19", "y", 32, false);
     const secondaryRotor = new THREE.Group();
@@ -18052,25 +18104,171 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       addCylinder(parts.P19, 0.045, 0.30, { x: secondaryCenter.x + dx, y: -0.18, z: secondaryCenter.z + dz }, material.fixed, "P19", "y", 18, false);
       addBox(parts.P19, { x: 0.16, y: 0.04, z: 0.16 }, { x: secondaryCenter.x + dx, y: -0.35, z: secondaryCenter.z + dz }, material.frame, "P19");
     }));
-    const distributorToCircular = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(3.13, 0.96, 0.20),
-      new THREE.Vector3(3.20, 0.90, 0.20),
-      new THREE.Vector3(secondaryCenter.x, 0.84, secondaryCenter.z)
-    ]);
-    addMesh(secondaryGroup, new THREE.TubeGeometry(distributorToCircular, 20, 0.08, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
+    // ---- SV-201 상단 직사각 진동스크린 (1단 280 µm) --------------------------
+    // VS-501 에서 받아 서→동으로 흘려보내며 280 µm 로 1차 선별한다. 오버는 동쪽 끝의
+    // 토(toe)로 나가 280–500 제품이 되고, 언더는 데크 아래 언더 호퍼 → 유연 슬리브 →
+    // 하단 원형의 스피곳으로 떨어진다. 진동은 대향 진동모터 2대(SV-050)의 직선운동이라
+    // 하단 원형(수직축 편심 · 나선운동)과 형식이 다르고, 그래서 스키드도 따로 선다.
+    //
+    // 경사는 5° 다. 되돌린 시도(f9ff339)는 SC-500 의 12° 를 그대로 가져왔는데, 그것은
+    // 원운동 경사 스크린의 값이다. 직선진동 스크린은 던짐각(45°)으로 이송하므로 0–5° 에
+    // 설치하고, 여기서는 급입단 높이를 12 cm 낮춰 위의 VS-501 과의 간섭을 푸는 데도 쓴다.
+    const RECT_X0 = 2.86, RECT_X1 = 3.72;            // 급입(서·높은 쪽) → 토출(동·낮은 쪽)
+    const RECT_Z = secondaryCenter.z, RECT_HZ = 0.34; // 데크 폭 0.68 — 원형과 같은 축선
+    const RECT_INCLINE = THREE.MathUtils.degToRad(5);
+    const RECT_Y1 = 1.00;                              // 토출단 데크 높이
+    const RECT_Y0 = RECT_Y1 + (RECT_X1 - RECT_X0) * Math.tan(RECT_INCLINE);
+    const rectLen = Math.hypot(RECT_X1 - RECT_X0, RECT_Y0 - RECT_Y1);
+    const rectMid = { x: (RECT_X0 + RECT_X1) / 2, y: (RECT_Y0 + RECT_Y1) / 2, z: RECT_Z };
+    const rectDeckY = (x) => RECT_Y0 - Math.tan(RECT_INCLINE) * (x - RECT_X0);
+    const rectGroup = new THREE.Group();
+    parts.P19.add(rectGroup);
+    const rectMotionOffset = new THREE.Vector3();
 
+    // 진동체 — 측판 · 스크린 데크(핀인 PU 모듈 4매) · 끝판 · 커버 · 급입 스파우트
+    for (const side of [-1, 1]) {
+      addBox(rectGroup, { x: rectLen, y: 0.22, z: 0.04 }, { x: rectMid.x, y: rectMid.y + 0.05, z: RECT_Z + side * (RECT_HZ + 0.02) },
+        material.screenHousing, "P19", { z: -RECT_INCLINE });
+    }
+    const rectScreen = addBox(rectGroup, { x: rectLen - 0.04, y: 0.016, z: RECT_HZ * 2 - 0.02 },
+      { x: rectMid.x, y: rectMid.y, z: RECT_Z }, material.screen, "P19", { z: -RECT_INCLINE }, false);
+    rectScreen.userData.cutUm = PRIMARY_RECT_CUT_UM;
+    // 모듈 경계 — 2 × 2 = 4 매. SC-500 과 같은 핀인 모듈이라 텐셔닝이 없다.
+    const rectPanels = [rectScreen,
+      addBox(rectGroup, { x: 0.012, y: 0.008, z: RECT_HZ * 2 - 0.02 }, { x: rectMid.x, y: rectMid.y + 0.012, z: RECT_Z }, material.cover, "P19", { z: -RECT_INCLINE }, false),
+      addBox(rectGroup, { x: rectLen - 0.04, y: 0.008, z: 0.012 }, { x: rectMid.x, y: rectMid.y + 0.012, z: RECT_Z }, material.cover, "P19", { z: -RECT_INCLINE }, false)];
+    markSwap(rectPanels, "SV201-RECT-PANEL");
+    addBox(rectGroup, { x: 0.04, y: 0.22, z: RECT_HZ * 2 + 0.08 }, { x: RECT_X0 - 0.02, y: RECT_Y0 + 0.05, z: RECT_Z }, material.screenHousing, "P19");
+    addBox(rectGroup, { x: 0.04, y: 0.12, z: RECT_HZ * 2 + 0.08 }, { x: RECT_X1 + 0.02, y: RECT_Y1 + 0.12, z: RECT_Z }, material.screenHousing, "P19");
+    addBox(rectGroup, { x: rectLen + 0.02, y: 0.03, z: RECT_HZ * 2 + 0.08 }, { x: rectMid.x, y: rectMid.y + 0.16, z: RECT_Z }, material.cover, "P19", { z: -RECT_INCLINE });
+    const RECT_FEED_X = RECT_X0 + 0.06, RECT_FEED_Z = 0.10;
+    addCylinder(rectGroup, 0.075, 0.10, { x: RECT_FEED_X, y: rectDeckY(RECT_FEED_X) + 0.215, z: RECT_FEED_Z }, material.pipeDryTransfer, "P19", "y", 16, false);
+    // 언더 호퍼 — 데크 아래 전장을 받아 0.34 각 출구로 모은다. 진동체의 일부다.
+    addMesh(rectGroup, openFrustumGeometry(0.34, 0.34, rectLen - 0.02, RECT_HZ * 2, 0.27), material.screenHousing,
+      { x: rectMid.x, y: 0.71, z: RECT_Z }, null, "P19", true);
+    // 진동체 하부 프레임 — 스프링 상판을 잇고 측판·호퍼를 받는다
+    const RECT_FRAME_Y = 0.955;
+    for (const z of [RECT_Z - 0.44, RECT_Z + 0.44]) {
+      addBox(rectGroup, { x: rectLen + 0.10, y: 0.05, z: 0.06 }, { x: rectMid.x, y: RECT_FRAME_Y, z }, material.frame, "P19");
+    }
+    // 서쪽 가로재 하나만 둔다 — 동쪽 끝은 토(toe) 호퍼가 두 세로재를 잇는다.
+    addBox(rectGroup, { x: 0.06, y: 0.05, z: 0.94 }, { x: RECT_X0 - 0.03, y: RECT_FRAME_Y, z: RECT_Z }, material.frame, "P19");
+    // 오버 토(toe) — 데크 끝을 지난 것을 받아 아래 토출구로 모은다. 바닥(0.84)이 원형의
+    // 상단 커버 디스크(r 0.64 · y ≤0.58)와 스키드 동단 레일(y ≤0.74) 위에 머문다.
+    const RECT_TOE_X = RECT_X1 + 0.02;
+    addMesh(rectGroup, openFrustumGeometry(0.16, 0.16, 0.22, RECT_HZ * 2, 0.14), material.screenHousing,
+      { x: RECT_TOE_X, y: 0.84, z: RECT_Z }, null, "P19", true);
+    addBox(rectGroup, { x: 0.04, y: 0.10, z: RECT_HZ * 2 - 0.04 }, { x: RECT_X1 + 0.06, y: 0.95, z: RECT_Z }, material.screenHousing, "P19");
+
+    // 대향 진동모터 2대 — SV-051 브래킷(각도 조정 ±15°)으로 측판 바깥면에 붙는다.
+    // 위상 180° 로 돌아 던짐각 45° 의 직선운동을 만든다. 데크 중심에서 동쪽으로 20 cm
+    // 비켜 두어 VS-501 받침 기둥(x 2.76)과 간섭하지 않는다.
+    const rectExciters = [];
+    const RECT_EXCITER_X = rectMid.x + 0.20;
+    for (const side of [-1, 1]) {
+      const ey = rectDeckY(RECT_EXCITER_X) + 0.05;
+      addBox(rectGroup, { x: 0.20, y: 0.16, z: 0.05 }, { x: RECT_EXCITER_X, y: ey, z: RECT_Z + side * (RECT_HZ + 0.065) }, material.frame, "P19", { z: -RECT_INCLINE });
+      addCylinder(rectGroup, 0.085, 0.24, { x: RECT_EXCITER_X, y: ey, z: RECT_Z + side * (RECT_HZ + 0.21) }, material.motor, "P19", "z", 26, false);
+      const rotor = new THREE.Group();
+      rotor.position.set(RECT_EXCITER_X, ey, RECT_Z + side * (RECT_HZ + 0.35));
+      rectGroup.add(rotor);
+      addBox(rotor, { x: 0.13, y: 0.05, z: 0.03 }, { x: 0.033, y: 0, z: 0 }, material.fixed, "P19", null, false);
+      rectExciters.push({ rotor, dir: side });
+    }
+
+    // 독립 스키드 — 진동체와 비접촉. 원형을 타고 넘는 사각 프레임에 스프링 스트링거
+    // 2본, 다리 4개, 다리마다 그라우트 패드와 앵커 2본. BOM SV-001 C150×75 · SV-002
+    // 코일스프링 8 · SV-003 스프링 시트 16 · F-SV-01 M20 앵커 12.
+    //
+    // 크기는 BOM(2,400×1,600)이 아니다. PC-201 라이저(x≈2.47)와 CC-201 급입(x 3.77)
+    // 사이 슬롯이 1.27 m 뿐이라 주변에 맞춰 줄였고, 그 차이는 아래 SV201_ENVELOPE 와
+    // 스펙의 SV-H3 HOLD 로 들고 다닌다. 다리 자리는 전부 실측으로 잡았다 — 서쪽 +z 다리는
+    // BIN-102(x ≤2.81)를, 동쪽 두 다리는 옛 280–500 제품관을 피한다.
+    const SKID_Y = 0.70, SKID_X0 = 2.72, SKID_X1 = 3.92, SKID_Z0 = -0.40, SKID_Z1 = 0.88;
+    const skidMidX = (SKID_X0 + SKID_X1) / 2, skidMidZ = (SKID_Z0 + SKID_Z1) / 2;
+    for (const z of [SKID_Z0, SKID_Z1]) {
+      addBox(parts.P19, { x: SKID_X1 - SKID_X0 + 0.075, y: 0.075, z: 0.075 }, { x: skidMidX, y: SKID_Y, z }, material.frame, "P19");
+    }
+    for (const x of [SKID_X0, SKID_X1]) {
+      addBox(parts.P19, { x: 0.075, y: 0.075, z: SKID_Z1 - SKID_Z0 }, { x, y: SKID_Y, z: skidMidZ }, material.frame, "P19");
+    }
+    for (const z of [RECT_Z - 0.44, RECT_Z + 0.44]) {
+      addBox(parts.P19, { x: SKID_X1 - SKID_X0, y: 0.06, z: 0.06 }, { x: skidMidX, y: SKID_Y, z }, material.frame, "P19");
+    }
+    // 서쪽 두 다리는 원형의 베이스 링(r 0.62)을 바깥으로 비켜야 한다 — −z 다리는 P01
+    // 공통 스키드의 가로재(x ≤2.67) 동쪽에, +z 다리는 BIN-102(x ≤2.81)와 링 사이 좁은
+    // 틈에 서므로 둘 다 패드를 120 각으로 줄인다. 링까지 3.5 / 3.8 cm.
+    [[2.78, SKID_Z0 - 0.02, 0.12], [2.90, SKID_Z1, 0.12], [SKID_X1, SKID_Z0, 0.22], [SKID_X1, SKID_Z1, 0.22]].forEach(([x, z, pad]) => {
+      const legTop = SKID_Y - 0.0375;
+      addBox(parts.P19, { x: 0.07, y: legTop - 0.01, z: 0.07 }, { x, y: (legTop + 0.01) / 2, z }, material.frame, "P19");
+      addGroutedAnchor(parts.P19, "P19", x, z, -0.02, pad, 0.020, 0.07);
+    });
+    // 스프링 8점 — 스트링거 위에서 진동체 하부 프레임을 띄운다 (SV-002 OD120×H220)
+    for (const dx of [-0.44, -0.15, 0.15, 0.44]) {
+      for (const dz of [-0.44, 0.44]) {
+        addSpringIsolator(parts.P19, "P19", rectMid.x + dx, RECT_Z + dz, SKID_Y + 0.03, RECT_FRAME_Y - 0.025, 0.05);
+      }
+    }
+    const SV201_ENVELOPE = Object.freeze({
+      bomOverallMm: [2600, 1800, 2700], bomSkidMm: [2400, 1600],
+      modelSkidMm: [Math.round((SKID_X1 - SKID_X0) * 1000), Math.round((SKID_Z1 - SKID_Z0) * 1000)],
+      slotMm: 1270, slot: "PC-201 라이저(x≈2.47) ~ CC-201 급입(x 3.77)",
+      hold: "SV-H3 — BOM 외형이 슬롯에 들지 않는다. CC-201 이하 동측 ≥1.4 m 이설 또는 외형 축소를 확정할 것"
+    });
+
+    // VS-501 받침 — 스키드 서단의 포털(기둥 2 · 가로보) 에서 서쪽으로 내민 채널 2본 위에
+    // 스프링 아이솔레이터 4점. 서쪽 바닥에는 다리를 세울 자리가 없다(PC-201 라이저 ·
+    // CH-501 · BIN-102 · P01 방진마운트가 다 차지한다). 되돌린 시도의 기둥 4개는 원형
+    // 체와 언더 호퍼를 관통하고 있었다.
+    const VS501_BEAM_X = 2.76, VS501_BEAM_Y = 1.33;
+    for (const z of [SKID_Z0, SKID_Z1]) {
+      addBox(parts.P19, { x: 0.06, y: VS501_BEAM_Y - 0.03 - (SKID_Y + 0.0375), z: 0.06 },
+        { x: VS501_BEAM_X, y: (VS501_BEAM_Y - 0.03 + SKID_Y + 0.0375) / 2, z }, material.frame, "P19");
+    }
+    addBox(parts.P19, { x: 0.06, y: 0.06, z: SKID_Z1 - SKID_Z0 + 0.06 }, { x: VS501_BEAM_X, y: VS501_BEAM_Y, z: skidMidZ }, material.frame, "P19");
+    for (const dz of [-0.22, 0.22]) {
+      addBox(parts.P19, { x: 0.56, y: 0.06, z: 0.06 }, { x: VS501_BEAM_X - 0.06, y: VS501_BEAM_Y, z: VS501_Z + dz }, material.frame, "P19");
+      for (const x of [2.50, 2.92]) {
+        // 하우징 바닥은 12° 로 기울어 있어 스프링 높이가 자리마다 다르다
+        const housingBottom = VS501_DECK_Y + 0.07 - 0.12 + Math.tan(SIEVE_INCLINE_RAD) * (2.78 - x);
+        addSpringIsolator(parts.P19, "P19", x, VS501_Z + dz, VS501_BEAM_Y + 0.03, housingBottom, 0.045);
+      }
+    }
+
+    // VS-501 → 상단 급입. 분배기 동단(낮은 쪽)에서 나와 서쪽 급입 스파우트로 되돌아
+    // 내려간다 — 직사각의 급입단이 서쪽(높은 쪽)이기 때문이다.
+    const distributorToRect = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(3.15, VS501_DECK_Y - 0.08, VS501_Z),
+      new THREE.Vector3(3.06, rectDeckY(RECT_FEED_X) + 0.36, RECT_FEED_Z),
+      new THREE.Vector3(RECT_FEED_X, rectDeckY(RECT_FEED_X) + 0.27, RECT_FEED_Z)
+    ]);
+    addMesh(parts.P19, new THREE.TubeGeometry(distributorToRect, 20, 0.070, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
+
+    // 280–500 은 상단 직사각의 토에서 나가고, 나머지 셋은 하단 원형에서 나간다 —
+    // 토출구 높이가 곧 어느 기계의 산물인지를 말해 준다.
     const secondaryOutlets = {
-      "product-280-500": new THREE.Vector3(3.82, 0.50, -0.16),
-      "product-106-280": new THREE.Vector3(3.82, 0.33, 0.03),
-      "product-75-106": new THREE.Vector3(3.82, 0.16, 0.22),
+      "product-280-500": new THREE.Vector3(RECT_TOE_X, 0.84, RECT_Z),
+      "product-106-280": new THREE.Vector3(3.82, 0.44, 0.03),
+      "product-75-106": new THREE.Vector3(3.82, 0.22, 0.22),
       "product-under-75": new THREE.Vector3(3.38, -0.18, 0.50)
     };
-    Object.entries(secondaryOutlets).forEach(([key, outlet], index) => {
-      const start = index < 3
+    // 상단 토 → 토출구(진동체) → 유연 스텁(고정측). 스텁은 동쪽으로 수평하게 나가
+    // 스키드 동단 레일(y ≤0.74) 위를 넘은 뒤에야 내려간다 — 그 아래는 원형의 커버 디스크다.
+    const RECT_COARSE_HANDOFF = new THREE.Vector3(3.98, 0.84, RECT_Z + 0.04);
+    addMesh(rectGroup, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+      new THREE.Vector3(RECT_TOE_X, 0.90, RECT_Z), secondaryOutlets["product-280-500"]
+    ]), 6, 0.075, 14, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
+    addMesh(parts.P19, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+      secondaryOutlets["product-280-500"], RECT_COARSE_HANDOFF
+    ]), 8, 0.080, 14, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
+    // 하단 원형의 세 토출 — 데크 2장 측면 + PAN
+    ["product-106-280", "product-75-106", "product-under-75"].forEach((key, index) => {
+      const outlet = secondaryOutlets[key];
+      const start = index < 2
         ? new THREE.Vector3(3.66, secondaryDeckYs[index] + 0.02, secondaryCenter.z)
         : new THREE.Vector3(secondaryCenter.x, -0.05, secondaryCenter.z + 0.32);
       addMesh(secondaryGroup, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([start, outlet]), 14, 0.075, 14, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
-      const flexEnd = outlet.clone().add(index < 3 ? new THREE.Vector3(0.08, 0, 0) : new THREE.Vector3(0.06, 0, 0.04));
+      const flexEnd = outlet.clone().add(index < 2 ? new THREE.Vector3(0.08, 0, 0) : new THREE.Vector3(0.06, 0, 0.04));
       addMesh(secondaryGroup, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([outlet, flexEnd]), 8, 0.080, 14, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
     });
 
@@ -18113,15 +18311,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       new THREE.Vector3(2.30, 0.38, 0.20),
       new THREE.Vector3(2.30, -0.42, 0.20),
       new THREE.Vector3(2.40, 0.46, -0.22),
-      new THREE.Vector3(2.36, 1.76, -0.22),
-      new THREE.Vector3(2.52, 1.19, -0.28),
-      new THREE.Vector3(2.60, 1.08, -0.04),
-      new THREE.Vector3(2.78, 1.02, 0.20),
-      new THREE.Vector3(3.16, 0.78, 0.20)
+      new THREE.Vector3(2.36, 1.76 + SV201_STACK_LIFT, -0.22),
+      new THREE.Vector3(2.52, 1.19 + SV201_STACK_LIFT, -0.28),
+      new THREE.Vector3(2.60, 1.13 + SV201_STACK_LIFT, -0.10),
+      new THREE.Vector3(2.78, VS501_DECK_Y, VS501_Z),
+      new THREE.Vector3(3.12, VS501_DECK_Y - 0.10, VS501_Z)
     ];
     // 네 제품 밴드는 SV-201 상부까지 같은 길로 온다 — 갈라지는 곳은 배관이 아니라
     // 데크 위다. 그래서 급입점까지만 공통 루트로 두고, 그 뒤는 아래 데크 통과 거동이 맡는다.
-    const sieveFeedTop = new THREE.Vector3(secondaryCenter.x, 0.86, secondaryCenter.z);
+    // 급입은 이제 하단 원형이 아니라 상단 직사각의 급입 스파우트로 간다.
+    const sieveFeedTop = new THREE.Vector3(RECT_FEED_X, rectDeckY(RECT_FEED_X) + 0.14, RECT_FEED_Z);
     const sieveApproach = new THREE.CatmullRomCurve3([...primaryCommon, ...downstreamCommon, sieveFeedTop]);
     const sieveRoutes = {
       // 1단 오버는 2단을 보지 않는다 — 데크 한 장만 타고 회로를 떠난다.
@@ -18137,18 +18336,20 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       "product-under-75": sieveApproach
     };
 
-    // ---- SV-201 원형 3단 데크 통과 거동 ------------------------------------
+    // ---- SV-201 2단 복합기 통과 거동 ---------------------------------------
     // 밴드 분리는 급입 순간에 수치로 끝나고 다섯 갈래가 똑같은 속도로 배관을 타고
-    // 나갔다 — 스크린 세 장은 형상뿐이고 체가름 자체는 화면에 없었다. 이제 입자가
-    // 데크 위를 바깥으로 돌아 나가면서, 자기 입도와 그 데크 눈금의 비에 해당하는
-    // 반경에서 스크린을 빠져 아래 데크로 떨어진다.
+    // 나갔다 — 스크린은 형상뿐이고 체가름 자체는 화면에 없었다. 이제 입자가 먼저
+    // **상단 직사각**을 서→동으로 흘러가며 280 µm 에 걸리거나 빠지고, 빠진 것만
+    // 하단 원형 두 장을 바깥으로 돌아 나가면서 106/75 에서 차례로 스크린을 통과한다.
+    // 통과 지점은 두 기계 모두 같은 GAUDIN 확률에서 나온다 — 직사각은 길이 방향
+    // 비율로, 원형은 반경 비율로 읽는 것만 다르다.
     const SIEVE_DECK_SCREEN_Y = secondaryDeckYs.map((y) => y + 0.045);
     const SIEVE_DECK_RADIUS = 0.55;      // 스크린 Ø1200 의 유효 반경
     const SIEVE_FEED_RADIUS = 0.07;      // 중앙 급입점
     const SIEVE_PAN_Y = -0.03;
     const SIEVE_TURNS_PER_DECK = 1.35;   // 원형 진동체의 나선 배출 — 데크당 회전수
-    // 밴드별 잔류 데크. 280 µm 위는 1단에, 106–280 은 2단에, 75–106 은 3단에 남고
-    // 75 µm 미만만 세 장을 모두 지나 PAN 으로 간다 — 밴드 경계가 곧 스크린 눈금이다.
+    // 밴드별 잔류 단. 0 = 상단 직사각(280 µm 오버), 1·2 = 하단 원형 106·75,
+    // 3 = 세 장을 다 지나 PAN — 밴드 경계가 곧 스크린 눈금이다.
     const SIEVE_RETAIN_DECK = {
       "product-280-500": 0,
       "product-106-280": 1,
@@ -18190,16 +18391,52 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return THREE.MathUtils.clamp(reference / here, 0.06, 1);
     }
     const SIEVE_CASCADE_FROM = 0.52;     // 이 지점부터 공통 루트를 떠나 데크에 올라선다
+    // 상단 직사각 위의 한 점. u 0→1 이 급입단에서 통과(또는 토출)까지다.
+    // reach 는 데크 길이의 몇 할을 흘러가서 빠지는가 — 원형의 통과 반경과 같은 척도다.
+    function rectDeckPoint(track, u, reach) {
+      const t = THREE.MathUtils.clamp(u, 0, 1) * reach;
+      const x = RECT_FEED_X + (RECT_X1 - RECT_FEED_X) * t;
+      // 직선진동이라 z 는 거의 그대로다 — 던짐으로 튀는 층만 얹는다.
+      return new THREE.Vector3(
+        x,
+        rectDeckY(x) + 0.026 + Math.max(0, Math.sin(u * Math.PI * 7)) * 0.014,
+        RECT_Z + Math.sin(track.transferPhase + u * 3.1) * RECT_HZ * 0.42
+      ).add(rectMotionOffset);
+    }
     function sieveDeckPosition(track, s) {
       const retain = SIEVE_RETAIN_DECK[track.streamKey];
-      const decks = Math.min(retain, 2) + 1;                 // 지나는 데크 장수 1·2·3·3
+      // leg 0 = 상단 직사각. 그 뒤로 하단 원형 데크가 retain 장까지 이어지고,
+      // retain 3 이면 마지막에 PAN 구간이 붙는다 — 결국 legs = retain + 1 이다.
+      const legs = retain + 1;
+      const span = 1 / legs;
+      const rectReach = retain === 0 ? 1 : sievePassRadius(track.sizeMm, PRIMARY_RECT_CUT_UM);
+      if (retain === 0) {
+        // 280 µm 오버 — 직사각을 끝까지 흘러 동쪽 토로 나간다.
+        const point = rectDeckPoint(track, s, 1);
+        point.lerp(secondaryOutlets[track.streamKey], Math.max(0, (s - 0.80) / 0.20));
+        return point;
+      }
+      if (s < span) {
+        // 직사각 구간 — 빠진 자리에서 언더 호퍼 출구(스피곳)로 건네준다.
+        const u = THREE.MathUtils.clamp(s / span, 0, 1);
+        const point = rectDeckPoint(track, u, rectReach);
+        const handover = new THREE.Vector3(SV201_SPIGOT_X, 0.70, secondaryCenter.z);
+        point.lerp(handover, Math.max(0, (u - 0.78) / 0.22));
+        return point;
+      }
+      // 하단 원형 — 남은 구간을 원형 데크에 다시 매핑한다.
+      const circS = (s - span) / (1 - span);
+      const decks = Math.min(retain, 2);                     // 지나는 원형 데크 장수 1·2·2
       const pan = retain > 2;
-      const legs = pan ? decks + 1 : decks;                  // PAN 행은 마지막에 팬 구간이 붙는다
+      const circLegs = pan ? decks + 1 : decks;
       // 각 데크에서 빠지는 반경. 잔류 데크에서는 주변부까지 나가 토출구로 떨어진다.
       const radii = [];
       for (let i = 0; i < decks; i += 1) {
-        radii.push(i === retain ? 1 : sievePassRadius(track.sizeMm, SECONDARY_SIEVE_CUTS_UM[i]));
+        radii.push(i === retain - 1 ? 1 : sievePassRadius(track.sizeMm, SECONDARY_SIEVE_CUTS_UM[i]));
       }
+      return circularDeckPoint(track, circS, radii, decks, circLegs, pan);
+    }
+    function circularDeckPoint(track, s, radii, decks, legs, pan) {
       const span = 1 / legs;
       const leg = Math.min(legs - 1, Math.floor(s / span));
       const u = THREE.MathUtils.clamp((s - leg * span) / span, 0, 1);
@@ -18215,12 +18452,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       if (pan && leg === legs - 1) {
         // PAN: 세 장을 다 지나 팬 바닥으로 떨어진 뒤 미분 토출구로 흘러 나간다.
         radius = THREE.MathUtils.lerp(radii[decks - 1], 0.58, u);
-        y = THREE.MathUtils.lerp(SIEVE_DECK_SCREEN_Y[2] - 0.06, SIEVE_PAN_Y, Math.min(1, u * 2.2));
+        y = THREE.MathUtils.lerp(SIEVE_DECK_SCREEN_Y[decks - 1] - 0.06, SIEVE_PAN_Y, Math.min(1, u * 2.2));
       } else {
         const from = leg === 0 ? SIEVE_FEED_RADIUS / SIEVE_DECK_RADIUS : radii[leg - 1];
         radius = THREE.MathUtils.lerp(from, radii[leg], u);
-        // 데크에 올라설 때의 낙하와, 스크린을 빠져나갈 때의 낙하를 짧게 표현한다.
-        const drop = leg === 0 ? THREE.MathUtils.lerp(0.30, 0, Math.min(1, u * 3.2)) : 0;
+        // 데크에 올라설 때의 낙하(스피곳 0.70 에서 1단 0.465 로)와, 스크린을 빠져나갈
+        // 때의 낙하를 짧게 표현한다.
+        const drop = leg === 0 ? THREE.MathUtils.lerp(0.22, 0, Math.min(1, u * 3.2)) : 0;
         y = SIEVE_DECK_SCREEN_Y[leg] + drop
           - (leg < decks - 1 || (leg === decks - 1 && pan) ? Math.max(0, (u - 0.86) / 0.14) * 0.055 : 0);
       }
@@ -18469,9 +18707,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       new THREE.Vector3(6.48, -0.08, 0.58),
       ssFinalOutlet
     ]);
+    // 280–500 제품관 — 상단 직사각의 토(y 0.84)에서 동쪽으로 나와 스키드 동단 레일을
+    // 넘은 뒤, 106–280 · 75–106 배관과 CC-201 Y헤더(z −0.04…0.14 · y ≤0.39) 위를 지나
+    // BIN-Cu 로 내려간다.
     const coarseProductChute = new THREE.CatmullRomCurve3([
       secondaryOutlets["product-280-500"],
-      new THREE.Vector3(4.08, 0.26, -0.30),
+      RECT_COARSE_HANDOFF,
+      new THREE.Vector3(4.16, 0.40, 0.00),
       productBins.coarse
     ]);
     const heavyProductChute = new THREE.CatmullRomCurve3([
@@ -18515,9 +18757,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       new THREE.Vector3(ventHeaderX[1], VENT_HEADER_Y, RACK_Z)
     ]), 8, 0.050, 14, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
     ventRiser(1.86, 0.74, -0.60, 0.028, "SC-500 2단 데크 국소배기");
-    ventRiser(pc201ReceiverCenter.x, 2.08, pc201ReceiverCenter.z, 0.040, "PC-201 리시버 벤트");
-    ventRiser(2.78, 1.18, 0.44, 0.025, "VS-501 분배기 벤트");
-    ventRiser(secondaryCenter.x, 0.88, secondaryCenter.z + 0.58, 0.030, "SV-201 스크린 벤트");
+    // PC-201 리시버가 올라가 상단(2.37)이 벤트 헤더(2.41) 바로 아래 온다. 벤트는 상부
+    // 노즐이 아니라 뚜껑 −z 쪽에서 뽑아 급입 노즐(z −0.35…−0.21)을 비켜 헤더에 붙인다.
+    ventRiser(pc201ReceiverCenter.x, pc201ReceiverCenter.y + 0.14, pc201ReceiverCenter.z - 0.14, 0.040, "PC-201 리시버 벤트");
+    ventRiser(2.78, VS501_DECK_Y + 0.16, VS501_Z + 0.24, 0.025, "VS-501 분배기 벤트");
+    // 스크린 벤트는 밀폐된 상단 직사각의 커버에서 뽑는다 — 하단 원형은 언더 호퍼로
+    // 상단과 이어져 있어 같은 흡인점을 나눠 쓴다.
+    ventRiser(RECT_EXCITER_X + 0.03, rectDeckY(RECT_EXCITER_X + 0.03) + 0.19, RECT_Z + 0.22, 0.030, "SV-201 스크린 벤트");
     ventRiser(productBins.coarse.x, 0.10, productBins.coarse.z + 0.12, 0.024, "BIN-Cu 구리 제품빈 벤트");
     ventRiser(polisherCenter.x, 0.18, polisherCenter.z + 0.55, 0.024, "SS-201 벤트");
     ventRiser(productBins.ssFinal.x, 0.10, productBins.ssFinal.z - 0.12, 0.024, "최종제품빈 벤트");
@@ -18534,7 +18780,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         backsheetOutlet, new THREE.Vector3(2.46, 0.74, 0.52), new THREE.Vector3(2.58, 0.50, 0.66), new THREE.Vector3(2.58, 0.06, 0.66)
       ]),
       "product-280-500": new THREE.CatmullRomCurve3([
-        secondaryOutlets["product-280-500"], new THREE.Vector3(4.08, 0.30, -0.28), productBins.coarse
+        secondaryOutlets["product-280-500"], RECT_COARSE_HANDOFF, new THREE.Vector3(4.16, 0.40, 0.00), productBins.coarse
       ]),
       // CC-201 중량물 — RV-204 로 빠져 구리 제품빈으로. 배관(heavyProductChute)이
       // 가리키는 곳과 입자가 가는 곳이 같아야 한다.
@@ -19897,7 +20143,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetVisionCamera("VC-203", 15.10, 4.92, 0.86, "FC-203 거품 영상");
     // 투입 패널 분류 · 온라인 입도
     wetVisionCamera("VC-001", -6.40, 1.62, 1.30, "패널 종류·치수·파손 분류");
-    wetVisionCamera("VC-101", 2.36, 1.42, -0.10, "온라인 입도(PSD)");
+    // VC-101 은 PC-201 에어록 → VS-501 낙하 슈트를 본다. 슈트가 0.48 올라가면서 옛 자리
+    // (2.36, 1.42, −0.10)는 올라온 VS-501 −z 벽과 리시버 콘 사이에 끼므로, 슈트를 서쪽에서
+    // 마주 보는 자리로 옮긴다 — CV-102 상부(z ≤ −0.09)와 BF-101 하우징(z ≥ 0.23) 사이다.
+    wetVisionCamera("VC-101", 2.20, 1.92, 0.08, "온라인 입도(PSD)");
     // AI-601 엣지 추론 유닛 — 제어반 열 옆
     wetBox(unifiedWet, [0.72, 0.06, 0.62], [9.12, 0.03, -2.82], material.frame, "AI-601 플린스");
     wetBox(unifiedWet, [0.62, 1.34, 0.52], [9.12, 0.73, -2.82], material.equipmentControl, "AI-601 엣지 추론 유닛");
@@ -20400,7 +20649,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       { start: 180, end: 420, title: "1 · 탈수·공정수 선기동", route: "CF-204·FP-301·CL/PF-401·TK-402·A/B 펌프 READY", target: [16.6, 0.9, -1.0], distance: 8.0 },
       { start: 420, end: 720, title: "2 · 부유선별·공기·약품 기동", route: "AB-201A/B·AR-201·RS-201/202/203 → FC-202/203 → FC-201 확인", target: [14.8, 3.7, 0.5], distance: 8.2 },
       { start: 720, end: 960, title: "3 · 습식 전처리 기동", route: "TK-101 → BS-101A/B → AS-101 600 rpm → TK-001·P-101/102A/B", target: [10.8, 1.1, 0.7], distance: 6.5 },
-      { start: 960, end: 1260, title: "4 · 3단 Sheeve·집진 기동", route: "IDF/BF → SS-201 → SV-201 280/106/75 µm 하류우선 기동", target: [4.4, 0.8, 0.2], distance: 7.2 },
+      { start: 960, end: 1260, title: "4 · Sheeve 2단 복합·집진 기동", route: "IDF/BF → SS-201 → SV-201 하단 원형 106/75 → 상단 직사각 280 µm 하류우선 기동", target: [4.4, 0.8, 0.2], distance: 7.2 },
       { start: 1260, end: 1560, title: "5 · HSG-101 폐회로 기동", route: "CV/PC 이송 확인 후 HSG-101 1,500 rpm 속도도달", target: [0.0, 1.05, 0.0], distance: 5.2 },
       { start: 1560, end: 1800, title: "6 · ICSH-301 원료투입 허가", route: "SCR-001·SCV-P1 정상 후 상부 X축→하부 Y축→압입롤 기동", target: [-4.35, 1.8, 0.0], distance: 6.0 },
       { start: 1800, end: 2700, title: "7 · 전 공정 물질 이송", route: "SS ≥75 → BIN-Cu 구리제품 / <75 VR-401→BH/RV/SF/WC-401→어트리션→부선→탈수", target: [6.8, 1.7, 0.0], distance: 29 },
@@ -24073,10 +24322,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       // 직접 카메라를 맞춘다 (center · distance 로 프레임 계산을 대신한다).
       { title: "PC-101 세라믹 스풀 — 엘보 후류 15 D", note: "구멍은 엘보와 그 뒤 직관 1 m(8 D) 안쪽에만 난다 → 상류 1 D＋엘보＋하류 15 D 를 한 라이닝 단위로 · 보어 137 (DN150 셸＋8 mm 알루미나) · 17 m/s · 두 엘보 사이가 5 D 뿐이라 전 구간 라이닝",
         parts: ["P15"], wet: [], center: [0.70, 1.15, 0.30], distance: 2.6, yaw: 2.30, pitch: 0.28 },
-      // 데크 위 거동을 보여 주려고 원형 체에 바짝 붙인다 — 기본 프레임은 P18 까지 잡느라
-      // 스크린 세 장이 화면에서 손톱만 해진다.
-      { title: "SV-201 3단 Sheeve 선별 — GAUDIN 통과", note: "개구 280/106/75 µm · 선경 180/71/50 µm · 피치 460/177/125 µm · 개구율 37.1/35.9/36.0%. 통과확률 P=((a−d)/(a+w))² 이라 개구의 80% 크기는 40% 크기의 1/9 로만 빠진다 — 입자는 그 확률의 역수에 해당하는 반경까지 실려 나간 뒤에야 통과하고, 미분은 중심 근처에서 곧바로 떨어진다. 실제 컷은 공칭 개구가 아니라 그 0.8배(224/85/60 µm)이므로 물질수지의 밴드 경계는 낙관적이다 (HOLD)",
-        parts: ["P18", "P19"], wet: [], center: [3.18, 0.34, 0.20], distance: 2.5, yaw: 3.95, pitch: 0.17 },
+      // 데크 위 거동을 보여 주려고 복합기에 바짝 붙인다 — 기본 프레임은 P18 까지 잡느라
+      // 스크린이 화면에서 손톱만 해진다. 상단 직사각과 하단 원형이 한 프레임에 들도록
+      // 시점을 두 기계 사이 높이에 둔다.
+      { title: "SV-201 2단 복합기 — 상단 직사각 280 → 하단 원형 106/75", note: "상단 직사각(직선진동 · 대향 모터 2)이 280 µm 로 1차 선별해 오버를 동쪽 토로 토출하고, 언더만 언더 호퍼 → 슬리브로 하단 원형 Ø1200(수직축 편심)에 내려가 106/75 를 친다. 개구 280/106/75 µm · 선경 180/71/50 µm · 개구율 37.1/35.9/36.0%. 통과확률 P=((a−d)/(a+w))² 이라 개구의 80% 크기는 40% 크기의 1/9 로만 빠진다 — 직사각에서는 데크 길이의 그 비율만큼 흘러간 뒤, 원형에서는 그 반경까지 실려 나간 뒤에야 통과한다. 실제 컷은 공칭 개구의 0.8배(224/85/60 µm)이므로 물질수지의 밴드 경계는 낙관적이다 (HOLD)",
+        parts: ["P18", "P19"], wet: [], center: [3.24, 0.80, 0.20], distance: 3.3, yaw: 3.95, pitch: 0.20 },
       { title: "PC-201 세라믹 스풀 — 라이저 한 스풀", note: "DN100 은 1 m 가 곧 10 D · RV-201 뒤 엘보＋라이저 전체(15 D)를 한 스풀로 · 보어 103 (DN125 셸＋12 mm 알루미나) · 11.7 m/s 유지 · 픽업 티만 맨 강관",
         parts: ["P18"], wet: [], center: [2.36, 0.45, -0.10], distance: 3.2, yaw: 2.35, pitch: 0.18 },
       { title: "CC-201 공기분급 · SS-201 75 µm", note: "0.70–1.00 m/s 중량물/경량물 분리 → CY-201·BF-201 회수 → SS-201에서 ≥75 구리제품 / <75 최종",
@@ -24547,6 +24797,23 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
           Math.cos(secondaryPhase * 1.03) * 0.0055,
           Math.sin(secondaryPhase + Math.PI / 3) * 0.0025
         );
+        // 상단 직사각은 대향 진동모터 2대의 **직선운동**이다 — 하단 원형의 나선운동과
+        // 달리 한 축(데크면에서 45° 던짐각)으로만 왕복한다. 같은 16 Hz 지만 별도 스키드
+        // 위의 별개 기계이므로 위상을 달리 두어 두 진동체가 따로 움직이게 한다.
+        const rectPhase = Math.PI * 2 * RECT_VISUAL_FREQUENCY_HZ * timeSeconds + Math.PI / 2;
+        const rectThrow = Math.sin(rectPhase) * 0.0060;
+        rectMotionOffset.set(
+          Math.cos(RECT_INCLINE + Math.PI / 4) * rectThrow,
+          Math.sin(RECT_INCLINE + Math.PI / 4) * rectThrow,
+          0
+        );
+        rectExciters.forEach((ex) => { ex.rotor.rotation.z = ex.dir * rectPhase; });
+        // VS-501 분배기는 자기 스프링 위에서 작게 흔들린다
+        vs501MotionOffset.set(
+          Math.sin(secondaryPhase + 1.2) * 0.0030,
+          Math.cos(secondaryPhase * 1.05 + 1.2) * 0.0024,
+          0
+        );
         secondaryRotor.rotation.y = -timeSeconds * Math.PI * 2 * 16;
         secondaryAirlockRotor.rotation.z = -timeSeconds * Math.PI * 2 * 12 / 60;
         pc201AirlockRotor.rotation.z = -timeSeconds * Math.PI * 2 * 12 / 60;
@@ -24564,13 +24831,19 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       } else {
         sieveMotionOffset.multiplyScalar(0.68);
         secondaryMotionOffset.multiplyScalar(0.68);
+        rectMotionOffset.multiplyScalar(0.68);
+        vs501MotionOffset.multiplyScalar(0.68);
         polisherMotionOffset.multiplyScalar(0.68);
         if (sieveMotionOffset.lengthSq() < 1e-10) sieveMotionOffset.set(0, 0, 0);
         if (secondaryMotionOffset.lengthSq() < 1e-10) secondaryMotionOffset.set(0, 0, 0);
+        if (rectMotionOffset.lengthSq() < 1e-10) rectMotionOffset.set(0, 0, 0);
+        if (vs501MotionOffset.lengthSq() < 1e-10) vs501MotionOffset.set(0, 0, 0);
         if (polisherMotionOffset.lengthSq() < 1e-10) polisherMotionOffset.set(0, 0, 0);
       }
       sieveVibratingGroup.position.copy(sieveMotionOffset);
       secondaryGroup.position.copy(secondaryMotionOffset);
+      rectGroup.position.copy(rectMotionOffset);
+      vs501Group.position.copy(vs501MotionOffset);
       polisherGroup.position.copy(polisherMotionOffset);
       if (!enabled) {
         travelParticles.forEach((track) => {
@@ -24652,10 +24925,19 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       },
       secondarySieve: {
         tags: ["VS-501", "SV-201"],
+        arrangement: "2단 복합 — 상단 직사각(직선진동) → 하단 원형(수직축 편심)",
+        primaryRect: {
+          cutUm: PRIMARY_RECT_CUT_UM,
+          deckMm: [Math.round(rectLen * 1000), Math.round(RECT_HZ * 2000)],
+          inclineDeg: +(RECT_INCLINE * 180 / Math.PI).toFixed(1),
+          exciters: rectExciters.length, exciterKw: 1.5, rpm: RECT_EXCITER_RPM, springs: 8
+        },
         deckCount: secondaryDeckMeshes.length,
         deckCutsUm: [...SECONDARY_SIEVE_CUTS_UM],
         diameterMm: 1200,
-        rpm: 960
+        rpm: SECONDARY_SIEVE_RPM,
+        stackLiftM: SV201_STACK_LIFT,
+        envelope: SV201_ENVELOPE
       },
       airClassifier: {
         tag: "CC-201",
@@ -25060,9 +25342,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       ]
     },
     sieve:{
-      panel:"LCP-SV-201",source:"MCC-101",area:"건식·미분진동구역",ip:"IP65 패널 / IP66 진동기기",declaredDemandKw:11.05,
+      panel:"LCP-SV-201",source:"MCC-101",area:"건식·미분진동구역",ip:"IP65 패널 / IP66 진동기기",declaredDemandKw:13.40,
       branches:[
-        {tag:"M-SV-1/2",qty:2,duty:2,kw:1.5,drive:"동기 VFD",status:"확정 설계값"},
+        // SV-201 은 2단 복합기라 진동 구동이 둘이다. M-SV-1/2 는 상단 직사각의 대향
+        // 진동모터(SV-050)이고, 하단 원형의 수직축 편심 모터는 3D 에도 사양에도 있으면서
+        // 전력 분기에는 없었다 — 여기서 처음 계상한다.
+        {tag:"M-SV-1/2",qty:2,duty:2,kw:1.5,drive:"동기 VFD",status:"상단 직사각 대향 진동모터 · 확정 설계값"},
+        {tag:"M-SV-3",qty:1,duty:1,kw:2.2,drive:"VFD",status:"하단 원형 수직축 편심 · 명판 960 rpm"},
         {tag:"M-RV-201",qty:1,duty:1,kw:0.37,drive:"VFD",status:"확정 설계값"},
         // VR-201/VR-401 공통 진공펌프. 2대 설치 1대 운전이므로 연결부하는 15.0 kW,
         // 최대수요는 7.5 kW 로 계상한다. 종전 PC-202/PC-401 은 전력 스케줄에
@@ -25359,14 +25645,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       ])
     },
     sieve: {
-      label:"Sheeve", tag:"SV-201 Three-Deck Sieve", drawing:"DI-PVR-SV201-DD-001", revision:"DD-R4",
+      label:"Sheeve", tag:"SV-201 Two-Stage Composite Sieve", drawing:"DI-PVR-SV201-DD-001", revision:"DD-R4",
       capacity:"건식 미분 최대 300 kg/h · 4분획", overall:"2,600 L × 1,800 W × 2,700 H mm", mass:"예상 2.2 t · PC-201 포함",
       foundation:"독립 스키드 2,400×1,600 mm · M20 앵커 12SET · 스프링 베이스는 비고정 유연연결",
-      basis:"Ø1,200 · 3단 280/106/75 µm · 960 rpm · 상부 VS-501 → 밀폐 분배 → 4개 제품슈트",
-      services:[powerService("sieve"), "이송: PC-201 DN100 음압리프트", "집진: DN80 branch → BF-201", "배출: 280–500 / 106–280 / 75–106 / <75 µm"],
-      installation:["진동체 주변 100 mm 비접촉 간극", "메시 교환 상부 H1,000 mm", "유연커넥터 축방향 여유 ±25 mm", "기초와 진동스키드 사이 케이블 루프 적용"],
-      acceptance:["960 rpm 공진통과 기록", "메시 장력 편차 ≤10%", "4개 토출 누설·교차오염 검사", "진폭·베어링온도 8 h"],
-      dimensions:{l:2600,w:1800,h:2700}, assemblies:["전체","스키드·스프링","상부 수신·분배","1단 280 µm","2단 106 µm","3단 75 µm","진동구동","제품슈트·집진","정비·교체","전력 인입·LCP","체결구"],
+      basis:"2단 복합 — 상단 직사각(280 µm · 12° · 직선진동 · 대향 모터 1.5 kW×2) → 하단 원형 Ø1,200(106/75 µm · 수직축 편심 2.2 kW) · 960 rpm · 상부 VS-501 → 밀폐 분배 → 4개 제품슈트",
+      services:[powerService("sieve"), "이송: PC-201 DN100 음압리프트", "집진: DN80 branch → BF-201", "배출: 280–500(상단 토출단) / 106–280 / 75–106 / <75 µm(하단)"],
+      installation:["진동체 주변 100 mm 비접촉 간극 · 상·하단 진동체 상호 비접촉", "메시 교환 상부 H1,000 mm", "유연커넥터 축방향 여유 ±25 mm", "기초와 진동스키드 사이 케이블 루프 적용"],
+      acceptance:["960 rpm 공진통과 기록 (상·하단 각각)", "메시 장력 편차 ≤10%", "4개 토출 누설·교차오염 검사", "진폭·베어링온도 8 h"],
+      dimensions:{l:2600,w:1800,h:2700}, assemblies:["전체","스키드·스프링","상부 수신·분배","상단 직사각 280 µm","하단 원형 106 µm","하단 원형 75 µm","진동구동","제품슈트·집진","정비·교체","전력 인입·LCP","체결구"],
       bom:bom([
         {code:"SV-001",assembly:"스키드·스프링",name:"독립 지지 스키드",qty:1,material:"SS400",spec:"C150×75×6.5×10",note:"진동체 비접촉"},
         {code:"SV-002",assembly:"스키드·스프링",name:"코일스프링",qty:8,material:"SUP9",spec:"OD120×H220",note:"색상별 매칭 세트"},
@@ -25374,26 +25660,29 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {code:"SV-010",assembly:"상부 수신·분배",name:"PC-201 진공수신기",qty:1,material:"SUS304",spec:"0.12 m³, DN100",note:"접선유입"},
         {code:"SV-011",assembly:"상부 수신·분배",name:"RV-201 로터리밸브",qty:1,material:"SUS304",spec:"6-pocket, 18 rpm",note:"0.37 kW"},
         {code:"SV-012",assembly:"상부 수신·분배",name:"VS-501 진동분배기",qty:1,material:"SUS304",spec:"Ø600, 밀폐커버",note:"정중앙 급광"},
-        {code:"SV-020",assembly:"1단 280 µm",name:"1단 데크링",qty:1,material:"SUS304",spec:"Ø1,200×H160, t3",note:"클램프형"},
-        {code:"SV-021",assembly:"1단 280 µm",name:"280 µm 메시",qty:1,material:"SUS316L",spec:"Ø1,165, 60° 섹터 6매",note:"메시 성적서 · 섹터 단위 교체"},
-        {code:"SV-022",assembly:"1단 280 µm",name:"실리콘 데크 가스켓",qty:1,material:"VMQ",spec:"Ø1,180×18",note:"식별색 적용"},
-        {code:"SV-030",assembly:"2단 106 µm",name:"2단 데크링",qty:1,material:"SUS304",spec:"Ø1,200×H160, t3",note:"클램프형"},
-        {code:"SV-031",assembly:"2단 106 µm",name:"106 µm 메시",qty:1,material:"SUS316L",spec:"Ø1,165, 60° 섹터 6매",note:"메시 성적서 · 섹터 단위 교체"},
-        {code:"SV-032",assembly:"2단 106 µm",name:"실리콘 데크 가스켓",qty:1,material:"VMQ",spec:"Ø1,180×18",note:"식별색 적용"},
-        {code:"SV-040",assembly:"3단 75 µm",name:"3단 데크링",qty:1,material:"SUS304",spec:"Ø1,200×H160, t3",note:"클램프형"},
-        {code:"SV-041",assembly:"3단 75 µm",name:"75 µm 메시",qty:1,material:"SUS316L",spec:"Ø1,165, 60° 섹터 6매",note:"메시 성적서 · 섹터 단위 교체"},
-        {code:"SV-042",assembly:"3단 75 µm",name:"실리콘 데크 가스켓",qty:1,material:"VMQ",spec:"Ø1,180×18",note:"식별색 적용"},
-        {code:"SV-050",assembly:"진동구동",name:"대향 진동모터",qty:2,material:"Vendor",spec:"1.5 kW, 960 rpm, IP66",note:"위상 동기"},
+        {code:"SV-020",assembly:"상단 직사각 280 µm",name:"직사각 데크 프레임",qty:1,material:"SUS304",spec:"860×680 · 5° · 측판 t5",note:"진동체 일체 · 언더 집합호퍼 포함"},
+        {code:"SV-021",assembly:"상단 직사각 280 µm",name:"280 µm 핀인 PU 모듈",qty:4,material:"PU/SUS316L",spec:"430×340 · 개구 280 µm",note:"모듈 성적서 · 핀 2점 · 텐셔닝 불요"},
+        {code:"SV-022",assembly:"상단 직사각 280 µm",name:"데크 씰 스트립",qty:1,material:"VMQ",spec:"주변 3.1 m · 18 mm",note:"식별색 적용"},
+        {code:"SV-023",assembly:"상단 직사각 280 µm",name:"모듈 고정핀 세트",qty:8,material:"SUS316L",spec:"Ø12 · 스프링 래치",note:"모듈당 2점"},
+        {code:"SV-030",assembly:"하단 원형 106 µm",name:"2단 데크링",qty:1,material:"SUS304",spec:"Ø1,200×H160, t3",note:"클램프형"},
+        {code:"SV-031",assembly:"하단 원형 106 µm",name:"106 µm 메시",qty:1,material:"SUS316L",spec:"Ø1,165, 60° 섹터 6매",note:"메시 성적서 · 섹터 단위 교체"},
+        {code:"SV-032",assembly:"하단 원형 106 µm",name:"실리콘 데크 가스켓",qty:1,material:"VMQ",spec:"Ø1,180×18",note:"식별색 적용"},
+        {code:"SV-040",assembly:"하단 원형 75 µm",name:"3단 데크링",qty:1,material:"SUS304",spec:"Ø1,200×H160, t3",note:"클램프형"},
+        {code:"SV-041",assembly:"하단 원형 75 µm",name:"75 µm 메시",qty:1,material:"SUS316L",spec:"Ø1,165, 60° 섹터 6매",note:"메시 성적서 · 섹터 단위 교체"},
+        {code:"SV-042",assembly:"하단 원형 75 µm",name:"실리콘 데크 가스켓",qty:1,material:"VMQ",spec:"Ø1,180×18",note:"식별색 적용"},
+        {code:"SV-050",assembly:"진동구동",name:"대향 진동모터 (상단 직사각)",qty:2,material:"Vendor",spec:"1.5 kW, 960 rpm, IP66",note:"위상 180° 동기 · 직선진동"},
         {code:"SV-051",assembly:"진동구동",name:"모터 브래킷",qty:2,material:"SS400",spec:"PL-16 machined",note:"각도 조정 ±15°"},
+        {code:"SV-052",assembly:"진동구동",name:"수직축 편심 진동모터 (하단 원형)",qty:1,material:"Vendor",spec:"2.2 kW, 960 rpm, IP66",note:"상·하 편심추 · 나선운동"},
         {code:"SV-060",assembly:"제품슈트·집진",name:"제품 배출슈트",qty:4,material:"SUS304",spec:"t3, 4분획",note:"샘플포트 포함"},
         {code:"SV-061",assembly:"제품슈트·집진",name:"유연커넥터",qty:5,material:"정전기방지 EPDM",spec:"L200, double cuff",note:"접지편 포함"},
         {code:"SV-062",assembly:"제품슈트·집진",name:"집진 매니폴드",qty:1,material:"SUS304",spec:"DN80→4×DN40",note:"밸런싱 댐퍼"},
-        {code:"SV-070",assembly:"정비·교체",name:"예비 섹터 패널 세트",qty:6,material:"SUS316L",spec:"60° 섹터 · 280/106/75 µm 각 2",note:"개스킷 재사용 · MTTR 20분"},
+        {code:"SV-070",assembly:"정비·교체",name:"예비 섹터 패널 세트 (하단 원형)",qty:6,material:"SUS316L",spec:"60° 섹터 · 106/75 µm 각 3",note:"개스킷 재사용 · MTTR 20분"},
+        {code:"SV-071",assembly:"정비·교체",name:"예비 핀인 모듈 (상단 직사각)",qty:4,material:"PU/SUS316L",spec:"430×340 · 280 µm",note:"핀 2점 · MTTR 15분"},
         ...powerBom("sieve","SV"),
         {code:"F-SV-01",assembly:"체결구",type:"fastener",name:"스키드 앵커세트",qty:12,material:"8.8 HDG",spec:"M20×350 + 2N + PW",note:commonFastenerNote},
-        {code:"F-SV-02",assembly:"체결구",type:"fastener",name:"데크 클램프 볼트세트",qty:72,material:"A4-80",spec:"M12×45 + N + 2PW",note:"데크당 24EA"},
-        {code:"F-SV-03",assembly:"체결구",type:"fastener",name:"상부커버 클램프",qty:12,material:"SUS304",spec:"M12 토글클램프",note:"공구 없이 개방"},
-        {code:"F-SV-04",assembly:"체결구",type:"fastener",name:"진동모터 체결세트",qty:8,material:"10.9",spec:"M16×55 + Nord-Lock",note:commonFastenerNote},
+        {code:"F-SV-02",assembly:"체결구",type:"fastener",name:"데크 클램프 볼트세트",qty:48,material:"A4-80",spec:"M12×45 + N + 2PW",note:"하단 원형 데크당 24EA · 상단은 핀인"},
+        {code:"F-SV-03",assembly:"체결구",type:"fastener",name:"상부커버 클램프",qty:16,material:"SUS304",spec:"M12 토글클램프",note:"공구 없이 개방 · 상단 4 / 하단 12"},
+        {code:"F-SV-04",assembly:"체결구",type:"fastener",name:"진동모터 체결세트",qty:12,material:"10.9",spec:"M16×55 + Nord-Lock",note:"모터 3대 × 4 · " + commonFastenerNote},
         {code:"F-SV-05",assembly:"체결구",type:"fastener",name:"스프링 시트 체결세트",qty:16,material:"8.8",spec:"M16×50 + N + 2PW",note:commonFastenerNote},
         {code:"F-SV-06",assembly:"체결구",type:"fastener",name:"슈트·덕트 체결세트",qty:48,material:"A2-70",spec:"M10×30 + N + PW",note:commonFastenerNote}
       ])
@@ -25625,14 +25914,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       nozzles:[
         {tag:"SV-N01",service:"PC-201 수신",size:"DN100",rating:"음압이송",moc:"SUS304",orientation:"TOP",elevation:"EL +2,650",connection:"리시버 에어록+유연슈트"},
         {tag:"SV-N02",service:"국소집진",size:"DN80",rating:"BF-201",moc:"SUS304",orientation:"상부",elevation:"EL +2,450",connection:"진동 플렉시블"},
-        {tag:"SV-O01",service:"280–500 µm",size:"DN200",rating:"중력",moc:"SUS304",orientation:"우측",elevation:"EL +1,750",connection:"밀폐 제품라인"},
+        {tag:"SV-O01",service:"280–500 µm",size:"DN200",rating:"중력",moc:"SUS304",orientation:"우측 (상단 직사각 토출단)",elevation:"EL +1,750",connection:"밀폐 제품라인"},
         {tag:"SV-O02",service:"106–280 µm",size:"DN150",rating:"중력",moc:"SUS304",orientation:"우측",elevation:"EL +1,400",connection:"Y헤더 → CC-201"},
         {tag:"SV-O03",service:"75–106 µm",size:"DN125",rating:"중력",moc:"SUS304",orientation:"우측",elevation:"EL +1,050",connection:"Y헤더 → CC-201"},
         {tag:"SV-O04",service:"<75 µm PAN",size:"DN100",rating:"밀폐",moc:"SUS304",orientation:"BOTTOM",elevation:"EL +520",connection:"SS-201/VR-401 → 습식"},
         {tag:"SV-N03",service:"점검·세척",size:"DN25",rating:"CAP",moc:"SUS304",orientation:"측면",elevation:"EL +900",connection:"분리형 캡"}
       ],
       electrical:[
-        {tag:"M-SV-1/2",load:"1.5 kW×2",supply:"380 V 3Φ 60 Hz",starter:"VFD 동기",signal:"Run/Trip/Current",installation:"진동용 케이블 루프"},
+        {tag:"M-SV-1/2",load:"1.5 kW×2",supply:"380 V 3Φ 60 Hz",starter:"VFD 동기",signal:"Run/Trip/Current",installation:"상단 직사각 · 진동용 케이블 루프"},
+        {tag:"M-SV-3",load:"2.2 kW",supply:"380 V 3Φ 60 Hz",starter:"VFD",signal:"Run/Trip/Current",installation:"하단 원형 수직축 · 진동용 케이블 루프"},
         {tag:"M-RV-201",load:"0.37 kW",supply:"380 V 3Φ 60 Hz",starter:"VFD",signal:"Run/Trip/Zero speed",installation:"로컬 아이솔레이터"},
         {tag:"VS-SV-201",load:"24 VDC",supply:"PLC-101",starter:"—",signal:"진동·데크 파손·도어",installation:"가속도계 케이블 고정"}
       ],
@@ -25641,8 +25931,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {item:"데크 링 각 단",mass:"약 0.22 t",points:"링 러그 4점",swl:"각 ≥0.15 t",route:"수직 분해"},
         {item:"진동모터",mass:"제작사 확정",points:"모터 아이",swl:"실중량×1.5",route:"양측 900 mm"}
       ],
-      erection:["독립 스키드 기준선·레벨 검측","스프링 좌면 높이 맞춤","3개 데크 가스켓·클램프 조립","대향 진동모터 위상·편심량 설정","모든 입출구 유연연결","공진구간 통과시험·볼트 마킹","각 입도별 체분석 SAT"],
-      holds:[{id:"SV-H1",stage:"데크 조립",check:"280/106/75 µm 망 인증·가스켓 연속성",record:"Mesh certificate",gate:"HOLD"},{id:"SV-H2",stage:"진동 SAT",check:"960 rpm·진폭·좌우 위상·구조 공진",record:"Vibration map",gate:"HOLD"}]
+      erection:["독립 스키드 기준선·레벨 검측","스프링 좌면 높이 맞춤","하단 원형 2개 데크 가스켓·클램프 조립","상단 직사각 핀인 모듈 4매 장착·씰 스트립 연속성","대향 진동모터 위상·편심량 설정 (상단) · 편심추 각도 설정 (하단)","상단 언더 호퍼 → 하단 급입구 유연연결 · 모든 입출구 유연연결","공진구간 통과시험·볼트 마킹 (상·하단 각각)","각 입도별 체분석 SAT"],
+      holds:[{id:"SV-H1",stage:"데크 조립",check:"280 µm 모듈 · 106/75 µm 망 인증·가스켓 연속성",record:"Mesh certificate",gate:"HOLD"},{id:"SV-H2",stage:"진동 SAT",check:"960 rpm·진폭·좌우 위상·구조 공진 — 상·하단 두 진동체가 서로 비접촉인지",record:"Vibration map",gate:"HOLD"},{id:"SV-H3",stage:"배치",check:"BOM 외형 2,600×1,800 이 PC-201 라이저(x≈2.47)~CC-201 급입(x 3.77) 슬롯 1,270 mm 에 들지 않는다 — 모델은 스키드 1,200×1,280 으로 줄여 그렸다. CC-201 이하 동측 ≥1.4 m 이설 또는 외형 축소를 확정할 것",record:"Layout decision",gate:"HOLD"}]
     },
     attrition:{
       foundation:{base:[5000,2000],envelope:[5200,2200],origin:"AS-101 축 CL / 스키드 중심",anchorSpec:"M20×350 · A4-80 · 16SET",hole:"스키드 PL Ø26",embed:"유효 매입 ≥240 mm",grout:"내약품 비수축 30 mm · 커브 H100",tolerance:"앵커 ±3 mm · 용기 수직도 1 mm/m",slab:"습식 운전중량·번드 용량 포함 구조검토",anchors:gridAnchors([-2250,-750,750,2250],[-850,-283,283,850])},
