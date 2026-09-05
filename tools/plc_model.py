@@ -258,14 +258,14 @@ DERIVED = [
     Derived("REFILL_ACK", ["ACTIVE_DECK_PRESENT", "ACTIVE_DECK_LOCKED", "FORK_HOME",
                            "ALL_DOORS_CLOSED", "DP_OK"]),
     Derived("LIFT_MOVE", ["ALL_DECK_LOCKED", "FORK_RETRACTED", "EXTRACTOR_HOME", "DOOR_LOCKED"]),
-    Derived("EVA_200_ACK", ["EVA_INTERFACE_200_ACK"]),
+    Derived("EVA_TARGET_ACK", ["EVA_INTERFACE_200_ACK"]),
     Derived("TANDEM_READY", ["HKB_TEMP_OK", "HKS_TEMP_OK", "KNIVES_CLEAR"]),
     Derived("RELEASE_200", ["EVA_INTERFACE_200_ACK", "TANDEM_READY", "AL102_EMPTY", "OUTER_OUT_CLOSED"]),
     Derived("VAC_OK", ["VAC_6ZONE_OK"]),
     Derived("VAC_LOW", ["VAC_6ZONE_OK"]),
     Derived("MOTION_SYNC", ["X_LEFT", "X_RIGHT", "FOLLOWING_ERROR_OK"]),
     Derived("SYNC_ERROR", ["MOTION_SYNC"]),
-    Derived("PEEL_PERMIT", ["EVA_200_ACK", "HKB_TEMP_OK", "HKS_TEMP_OK", "VAC_6ZONE_OK"]),
+    Derived("PEEL_PERMIT", ["EVA_TARGET_ACK", "HKB_TEMP_OK", "HKS_TEMP_OK", "VAC_6ZONE_OK"]),
     # 잠긴 것만으로는 모자란다. 서비스가 물리고 칼끝 간격이 다시 확인돼야
     # 교환한 카세트로 절입할 수 있다.
     Derived("CASSETTE_READY", ["CASSETTE_LOCKED", "CONNECTOR_MATED", "KNIFE_GAP_OK"]),
@@ -276,7 +276,7 @@ DERIVED = [
     # 사람이 만지는 조건 — 식어야 하고 LOTO 가 걸려야 한다.
     Derived("CASSETTE_HANDLING_SAFE", ["CASSETTE_RELEASE", "CASSETTE_COOL_OK",
                                        "MAINT_PERMIT"]),
-    Derived("HKB_Z_PERMIT", ["EVA_200_ACK", "VAC_6ZONE_OK", "CASSETTE_READY", "HKB_TEMP_OK"]),
+    Derived("HKB_Z_PERMIT", ["EVA_TARGET_ACK", "VAC_6ZONE_OK", "CASSETTE_READY", "HKB_TEMP_OK"]),
     Derived("HKS_Z_PERMIT", ["LEAD_300_ACK", "WEB_TENSION_OK", "HKB_LOAD_OK", "CELL_PATH_CLEAR"]),
     Derived("RAPID_PERMIT", ["KNIVES_CLEAR", "PANEL_VAC_OK", "CARRIER_SQUARE", "TRACK_CLEAR"]),
     Derived("WEB_TENSION_HIGH", ["WEB_TENSION_OK"]),

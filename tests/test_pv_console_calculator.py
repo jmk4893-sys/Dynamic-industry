@@ -29,8 +29,17 @@ CONSOLE = (
 # ── 설계 상수 ────────────────────────────────────────────────────────────
 # 적층 면적열용량. 유리·EVA·셀·백시트를 합친 단위면적당 열용량이다.
 AREAL_CP_KJ_M2K = 8.7358962
-# 25 °C 에서 EVA/유리 계면 목표 200 °C 까지.
-DELTA_T_K = 175
+# 25 °C 에서 EVA/유리 계면 목표까지. 목표를 200 → 140 °C 로 내렸다.
+#
+# 가교 EVA 의 결정 융해는 DSC 로 55~95 °C 에서 끝나고, 그 위로는 액체가 되지
+# 않고 물러지기만 한다(열경화 망상). 문헌의 100 vs 140 °C 비교도 "과열은
+# 박리를 크게 개선하지 않는다"로 끝나고, 상용 핫나이프는 벌크 예열 없이
+# 칼날만 180~200 °C 로 쓴다. 200 °C 는 PVDF(165)·PVF(195) 백시트 융점을
+# 넘어 권취 중 파단 위험까지 있었다.
+T_AMBIENT_C = 25
+T_TARGET_C = 140
+DELTA_T_K = T_TARGET_C - T_AMBIENT_C
+T_HKB_C, T_HKS_C = 180, 200      # 칼날 — NPC 상용 밴드 180~200
 # 1D-FDM 으로 구한 계면 도달시간. 열수지상 더 빨리 넣을 수 있어도 열이
 # 계면까지 전도되는 데 걸리는 시간은 줄지 않으므로 체류시간의 하한이 된다.
 FDM_DWELL_S = 113.15
@@ -89,6 +98,11 @@ class TestModelConstantsAreShared(unittest.TestCase):
     def setUpClass(cls):
         cls.html = CONSOLE.read_text(encoding="utf-8")
 
+    def _const(self, name):
+        m = re.search(rf"const {name}=([\d.]+);", self.html)
+        self.assertIsNotNone(m, f"콘솔에 {name} 상수가 없다")
+        return float(m.group(1))
+
     def _model_field(self, name):
         m = re.search(rf"\b{name}:([\d.]+)", self.html)
         self.assertIsNotNone(m, f"MODEL 에 {name} 이 없다")
@@ -96,7 +110,12 @@ class TestModelConstantsAreShared(unittest.TestCase):
 
     def test_console_uses_the_same_design_constants(self):
         self.assertAlmostEqual(self._model_field("arealCp"), AREAL_CP_KJ_M2K, places=7)
-        self.assertAlmostEqual(self._model_field("dT"), DELTA_T_K, places=6)
+        self.assertIn("dT:T_TARGET-T_AMB", self.html,
+                      "ΔT 가 목표온도에서 파생되지 않고 값으로 적혀 있다")
+        self.assertAlmostEqual(self._const("T_TARGET"), T_TARGET_C, places=6)
+        self.assertAlmostEqual(self._const("T_AMB"), T_AMBIENT_C, places=6)
+        self.assertAlmostEqual(self._const("T_HKB"), T_HKB_C, places=6)
+        self.assertAlmostEqual(self._const("T_HKS"), T_HKS_C, places=6)
         self.assertAlmostEqual(self._model_field("fdmDwell"), FDM_DWELL_S, places=6)
         self.assertAlmostEqual(self._model_field("lamps"), LAMPS, places=6)
         self.assertAlmostEqual(self._model_field("decks"), DECKS, places=6)
@@ -286,3 +305,67 @@ class TestModelBehaviour(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestProcessTemperature(unittest.TestCase):
+    """공정 온도가 왜 그 값인지, 그리고 한 곳에만 있는지.
+
+    계면 목표는 200 → 140 °C, 칼날은 230/250–270 → 180/200 °C 로 내렸다.
+    근거는 세 갈래다 — 가교 EVA 는 결정 융해(55~95 °C)가 끝나면 액체가 되지
+    않고 물러지기만 하는 열경화 망상이고, 문헌의 100 vs 140 °C 비교도 과열이
+    박리를 크게 개선하지 않는다로 끝나며, 상용 핫나이프는 벌크 예열 없이
+    칼날만 180~200 °C 로 쓴다.
+
+    이 시험이 지키는 것은 값 자체가 아니라 **값이 흩어지지 않는 것**이다.
+    카세트 온도는 칼날 온도 그 자체이므로 별칭이어야 하고, 계면 목표는
+    ΔT 의 유일한 출처여야 한다.
+    """
+
+    EVA_MELT_TOP = 95        # 가교 EVA 결정 융해 상단 (DSC)
+    PVDF_MELT = 165          # 백시트 최저 융점층
+    NPC_BAND = (180, 200)    # 상용 핫나이프 칼날 밴드
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = CONSOLE.read_text(encoding="utf-8")
+
+    def _c(self, name):
+        m = re.search(rf"const {name}=([\d.]+);", self.html)
+        self.assertIsNotNone(m, f"콘솔에 {name} 상수가 없다")
+        return float(m.group(1))
+
+    def test_the_interface_target_sits_in_the_useful_window(self):
+        """결정 융해는 끝나야 하고, 백시트는 녹으면 안 된다."""
+        t = self._c("T_TARGET")
+        self.assertGreater(t, self.EVA_MELT_TOP,
+                           "목표가 EVA 결정 융해 상단보다 낮다 — 물러지지 않는다")
+        self.assertLess(t, self.PVDF_MELT,
+                        "목표가 PVDF 백시트 융점을 넘는다 — 권취 중 찢어진다")
+
+    def test_the_knives_sit_in_the_commercial_band(self):
+        lo, hi = self.NPC_BAND
+        for name in ("T_HKB", "T_HKS"):
+            v = self._c(name)
+            self.assertGreaterEqual(v, lo, f"{name} 가 상용 밴드 아래다")
+            self.assertLessEqual(v, hi, f"{name} 가 상용 밴드 위다")
+        self.assertLessEqual(self._c("T_HKB"), self._c("T_HKS"),
+                             "백시트 칼날이 유리계면 칼날보다 뜨겁다 — 백시트에 직접 닿는 쪽이다")
+
+    def test_the_knives_are_hotter_than_the_bulk(self):
+        """칼날은 국부 승온을 담당한다 — 벌크보다 낮으면 아무 일도 못 한다."""
+        self.assertGreater(self._c("T_HKB"), self._c("T_TARGET"))
+
+    def test_the_cassette_temperature_is_the_knife_temperature(self):
+        """값을 두 번 적으면 칼날만 내리고 카세트는 그대로인 날이 온다."""
+        self.assertIn("const CASS_T_HOT=T_HKS,", self.html,
+                      "카세트 온도가 칼날 온도의 별칭이 아니다")
+
+    def test_delta_t_has_one_source(self):
+        self.assertIn("dT:T_TARGET-T_AMB", self.html)
+        self.assertNotRegex(self.html, r"dT:\s*\d",
+                            "ΔT 가 값으로도 적혀 있다")
+
+    def test_no_stale_two_hundred_degree_interface_remains(self):
+        """칼날 200°C 는 남아도 되지만 '계면 200°C' 는 남으면 안 된다."""
+        for stale in ("계면 200", "계면을 200", "25→200", "ΔT 175"):
+            self.assertNotIn(stale, self.html, f"낡은 온도 표기가 남아 있다: {stale}")
