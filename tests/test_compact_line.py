@@ -336,8 +336,17 @@ class TestTheDocumentsQuoteOneLength(unittest.TestCase):
         self.assertIn(f"{round(COMPACT_M * 1000):,}", self._spec())
 
     def test_the_specification_no_longer_claims_thirty_eight_metres(self):
-        """3.2 의 38,000 mm 는 슈레더와 배기열차를 빼고 센 값이라 틀렸다."""
-        self.assertNotIn("약 38,000 mm", self._spec())
+        """3.2 의 38,000 mm 는 슈레더와 배기열차를 빼고 센 값이라 틀렸다.
+
+        지운다고 끝이 아니다 — 입찰자는 선행자료에서 그 값을 보고 온다.
+        틀린 값은 정정문 안에서만 나와야 하고, 주장으로는 남으면 안 된다.
+        """
+        spec = self._spec()
+        self.assertNotIn("라인 전체 길이는", spec, "틀린 전장 주장이 남아 있다")
+        for m in re.finditer(r"38,000", spec):
+            block = spec[max(0, m.start() - 700):m.start() + 300]
+            self.assertIn("정정", block,
+                          "38,000 mm 가 정정문 밖에서 값처럼 쓰이고 있다")
 
     def test_the_specification_states_the_real_rev20_extent(self):
         self.assertIn(f"{round(REV20_M * 1000):,}", self._spec())
