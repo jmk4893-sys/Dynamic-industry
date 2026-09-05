@@ -350,3 +350,114 @@ class TestTheDocumentsQuoteOneLength(unittest.TestCase):
 
     def test_the_specification_states_the_real_rev20_extent(self):
         self.assertIn(f"{round(REV20_M * 1000):,}", self._spec())
+
+
+class TestTheCompactHall(unittest.TestCase):
+    """3D 홀이 실제로 18.76 m 배치를 그리는지.
+
+    도면(D-601)만 고치고 홀은 53 m 인 채로 두면, 같은 콘솔 안에서 두 개정이
+    서로 다른 기계를 말하게 된다. 그래서 홀 쪽도 같은 상수에서 나와야 한다.
+    """
+
+    def setUp(self):
+        self.src = console()
+
+    def _num(self, name):
+        m = re.search(rf"\b{name}=(-?[\d.]+)\s*[,;]", self.src)
+        self.assertIsNotNone(m, f"{name} 를 찾지 못했다")
+        return float(m.group(1))
+
+    def test_the_compact_hall_is_what_opens(self):
+        """압축 배치가 발주 범위다 — 콘솔이 그것을 먼저 보여야 한다."""
+        self.assertIn("let compactView=true;", self.src)
+        self.assertIn("setLayout(true);", self.src)
+
+    def test_both_layouts_stay_reachable(self):
+        """Rev.20 을 지우지 않는다 — 무엇을 떼어 무엇이 줄었는지 나란히 봐야 한다."""
+        self.assertIn('id="layoutButton"', self.src)
+        self.assertIn("function setLayout(compact)", self.src)
+        self.assertIn("steps=compact?C21_STEPS:REV20_STEPS", self.src)
+        self.assertIn("buildTimeline()", fn("setLayout"),
+                      "배치를 바꿔도 타임라인이 그대로면 단계가 어긋난다")
+
+    def test_the_five_stations_are_drawn(self):
+        """주석 처리된 호출은 부르는 것이 아니다 — 주석을 걷고 본다."""
+        scene = re.sub(r"//[^\n]*|/\*.*?\*/", "", fn_body("compactMachine"), flags=re.S)
+        for name in ("cInfeed", "cChamber", "cTandem", "cGlassRack", "cOutfeed"):
+            self.assertIn(f"function {name}(", self.src, f"{name} 이 없다")
+            self.assertIn(name, scene, f"{name} 이 장면에 불리지 않는다")
+
+    def test_the_station_origins_come_from_the_same_table(self):
+        """홀 좌표가 도면의 스테이션 표에서 파생돼야 둘이 갈라지지 않는다."""
+        m = re.search(r"const CST=\(\(\)=>\{(.*?)\}\)\(\);", self.src, re.S)
+        self.assertIsNotNone(m, "CST 스테이션 원점 표를 찾지 못했다")
+        self.assertIn("COMPACT_STATIONS", m.group(1))
+        self.assertIn("CL_CLEAR", m.group(1))
+        self.assertIn("CL_END", m.group(1))
+
+    def test_the_hall_fits_the_quoted_length(self):
+        """마지막 스테이션 끝 + 끝벽이 곧 전장이어야 한다."""
+        cur = CL_END
+        for _, w in STATIONS:
+            cur += w + CL_CLEAR
+        self.assertAlmostEqual(cur - CL_CLEAR + CL_END, COMPACT_M, places=6)
+
+    def test_the_panel_stands_still_and_the_knife_moves(self):
+        """이 배치의 전부다 — 패널이 서고 칼날이 간다."""
+        body = fn_body("cState")
+        self.assertRegex(body, r"i>=3&&i<=5\)\{px=CPNL_CX;",
+                         "박리 중 패널 x 가 고정이 아니다")
+        knife = fn_body("cKnifeX")
+        self.assertIn("CHKB0", knife)
+        self.assertIn("CHKB1", knife)
+        self.assertIn("CHKB_PARK", knife)
+
+    def test_the_knife_stroke_is_the_panel_length(self):
+        """행정이 패널 길이가 아니면 상대운동이 같다는 주장이 깨진다."""
+        self.assertIn("const CHKB0=CPNL_CX-PANEL_HL,CHKB1=CPNL_CX+PANEL_HL;", self.src)
+        self.assertIn("const CHKB_PARK=CHKB0-LEAD_OPEN;", self.src)
+
+    def test_the_heavy_roll_stays_off_the_moving_axis(self):
+        """357 kg 만권 롤을 갠트리에 얹으면 700mm/s 복귀가 성립하지 않는다."""
+        gantry = fn_body("cGantry")
+        self.assertIn("CWEB_Z", gantry, "가이드롤 GR-W1 이 갠트리에 없다")
+        self.assertNotIn("CDRUM", gantry, "만권 롤이 이동축에 실려 있다")
+        self.assertIn("CDRUM", fn_body("cTandem"), "만권 롤이 고정부에 없다")
+
+    def test_the_web_self_compensation_is_recorded(self):
+        """박리 중 권취가 0 인 이유가 코드 옆에 남아 있어야 한다 — 다음 사람이 큰 댄서를 다시 넣는다."""
+        head = self.src[self.src.index("Rev.21C 압축 배치 3D"):][:1600]
+        self.assertIn("상쇄", head)
+        self.assertIn("2,700mm", head)
+
+    def test_the_descoped_equipment_is_not_in_the_hall(self):
+        body = fn_body("compactMachine")
+        tree = "".join(fn_body(f) for f in
+                       ("cInfeed", "cChamber", "cTandem", "cGlassRack",
+                        "cOutfeed", "cBoundary", "cUtilities", "cEnclosure"))
+        for gone in ("thermalOxidiser", "scrubberUnit", "autonomyStations",
+                     "cellHandlingStation", "cellConveyorDevices"):
+            self.assertNotIn(gone, body + tree, f"{gone} 이 압축 배치에 남아 있다")
+
+    def test_the_boundary_hardware_is_in_the_hall(self):
+        """이름만 라벨에 적혀 있으면 안 된다 — 실제로 그려진 것에 붙어 있어야 한다."""
+        drawn = [ln for ln in (fn_body("cBoundary") + fn_body("cTandem")).split("\n")
+                 if re.search(r"\b(box|cylinder|poly|plinth|column)\(", ln) and "//" in ln]
+        joined = "\n".join(drawn)
+        for dev in ("경계 인터페이스반 BJ-101", "경계 안전회로 인터페이스반 BJ-102",
+                    "경계 덕트 차압센서", "셀/EVA 배출슈트 레벨센서×2"):
+            self.assertIn(dev, joined, f"경계 납품품 {dev} 이 홀에 서 있지 않다")
+
+    def test_the_cooling_rack_reuses_the_heating_rack(self):
+        """같은 랙이라는 판단이 도면에도 코드에도 같아야 예비품이 한 벌이다."""
+        self.assertIn("cRack(g.cx,g.w", fn_body("cChamber"))
+        self.assertIn("cRack(g.cx,g.w", fn_body("cGlassRack"))
+
+    def test_the_title_block_says_which_revision(self):
+        self.assertIn("compactView?'REV.21C':'REV.20'", self.src)
+        self.assertIn("치수 미확정", self.src)
+
+
+def fn_body(name):
+    """콘솔에서 함수 하나의 본문을 잘라 온다 (모듈 수준 헬퍼의 얇은 껍데기)."""
+    return fn(name)
