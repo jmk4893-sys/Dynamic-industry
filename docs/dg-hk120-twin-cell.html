@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DG-HK120C 검토서 · 1챔버 2탠덤셀</title>
+  <meta name="description" content="단일 탠덤 셀의 82장/h 천장을 넘기 위한 병렬 구성 검토. 병목만 두 벌 놓고 가열실은 한 벌로 두는 근거, 7단 80등 200kW 사이징, 유리 열응력 한계, 배치도와 정면도, DG-HK60C 및 2라인 복제와의 비교.">
+  <style>
+  /* ===========================================================================
+     DG-HK120C 병렬 구성 검토서.
+
+     DG-HK60 사양서(RFQ)의 동반 문서다. 같은 조판 규약을 쓴다 — 조항번호가
+     왼쪽 여백에 고정폭으로 서고, 수치는 모두 모노다. 두 문서를 나란히 놓고
+     읽는 사람이 "다른 회사 것" 이라고 느끼면 안 된다.
+
+     다만 성격은 다르다. 사양서는 발주 문서이고 이것은 검토서다. 그래서
+     표제부에 CONCEPT 를 박고, 모든 수치에 근거를 붙이고, 닫히지 않은 것은
+     닫히지 않았다고 적는다.
+     =========================================================================== */
+  :root{
+    color-scheme:light dark;
+    --paper:#ffffff;--ground:#eceff1;--band:#f4f6f7;--sunk:#e3e8ea;
+    --ink:#14202a;--ink2:#425663;--ink3:#6b7f8b;--ink4:#8b9ba4;
+    --brand:#17679b;--brand2:#228CC9;--brand-sunk:#e7f0f7;
+    --accent:#a06a08;--accent-sunk:#fbf3e0;--accent-line:#e0c68a;
+    --flag:#9a2b30;--flag-sunk:#fbeeee;--flag-line:#e3bcbc;
+    --ok:#1f6b47;--ok-sunk:#e6f2ec;--ok-line:#a9cfbd;
+    --rule:#cbd5da;--rule2:#aebcc4;--rule3:#8b9ba4;
+    --sheet:#ffffff;
+    --sans:Pretendard,"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --paper:#171f25;--ground:#10171c;--band:#1c262c;--sunk:#232f36;
+      --ink:#e6edf0;--ink2:#adbdc6;--ink3:#8598a2;--ink4:#687c87;
+      --brand:#5cb0e4;--brand2:#228CC9;--brand-sunk:#12303f;
+      --accent:#e0aa4a;--accent-sunk:#33280f;--accent-line:#6b5620;
+      --flag:#e8767a;--flag-sunk:#331b1c;--flag-line:#6b3436;
+      --ok:#54b487;--ok-sunk:#12301f;--ok-line:#2c5c44;
+      --rule:#2f3d45;--rule2:#41535d;--rule3:#5b7180;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --paper:#171f25;--ground:#10171c;--band:#1c262c;--sunk:#232f36;
+    --ink:#e6edf0;--ink2:#adbdc6;--ink3:#8598a2;--ink4:#687c87;
+    --brand:#5cb0e4;--brand2:#228CC9;--brand-sunk:#12303f;
+    --accent:#e0aa4a;--accent-sunk:#33280f;--accent-line:#6b5620;
+    --flag:#e8767a;--flag-sunk:#331b1c;--flag-line:#6b3436;
+    --ok:#54b487;--ok-sunk:#12301f;--ok-line:#2c5c44;
+    --rule:#2f3d45;--rule2:#41535d;--rule3:#5b7180;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--sans);font-size:15px;line-height:1.72;
+    -webkit-font-smoothing:antialiased}
+  .sheet{width:min(1080px,100%);margin:0 auto;background:var(--paper);
+    padding:0 clamp(16px,4vw,64px) 72px}
+
+  /* ── 표제부 ─────────────────────────────────────────────────────── */
+  .masthead{padding:clamp(28px,5vw,52px) 0 22px;border-bottom:2px solid var(--ink)}
+  .issuer{display:flex;align-items:center;gap:13px;margin-bottom:clamp(20px,4vw,32px)}
+  .issuer svg{width:38px;height:38px;flex:none;display:block}
+  .issuer-name{display:grid;gap:2px}
+  .issuer-name i{font:600 8.5px/1 var(--mono);font-style:normal;letter-spacing:.17em;color:var(--ink4)}
+  .issuer-name b{font:700 14px/1 var(--sans);letter-spacing:.06em;color:var(--brand)}
+  .doc-kind{display:flex;align-items:center;gap:10px;font:700 11px/1 var(--mono);
+    letter-spacing:.2em;color:var(--accent);margin-bottom:14px}
+  .doc-kind em{font-style:normal;padding:3px 8px;border:1px solid var(--accent-line);
+    background:var(--accent-sunk);border-radius:3px;letter-spacing:.14em}
+  h1{margin:0;font-size:clamp(25px,4.4vw,38px);line-height:1.24;letter-spacing:-.02em;
+    font-weight:800;text-wrap:balance}
+  .subtitle{margin:12px 0 0;font-size:clamp(14px,1.7vw,16px);color:var(--ink2);max-width:64ch}
+  .docref{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:1px;margin-top:clamp(22px,4vw,30px);background:var(--rule);border:1px solid var(--rule)}
+  .docref div{background:var(--paper);padding:10px 13px}
+  .docref dt{font:600 9.5px/1 var(--mono);letter-spacing:.11em;color:var(--ink4);
+    text-transform:uppercase;margin:0}
+  .docref dd{margin:5px 0 0;font:600 13px/1.35 var(--mono);color:var(--ink);
+    font-variant-numeric:tabular-nums}
+
+  /* ── 머리 수치 ──────────────────────────────────────────────────── */
+  .headline{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));
+    gap:1px;margin:26px 0 0;background:var(--rule2);border:1px solid var(--rule2)}
+  .headline div{background:var(--band);padding:14px 16px}
+  .headline span{display:block;font:600 9.5px/1 var(--mono);letter-spacing:.1em;
+    color:var(--ink4);text-transform:uppercase}
+  .headline b{display:block;margin-top:7px;font:600 25px/1.1 var(--mono);
+    color:var(--brand);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .headline i{display:block;margin-top:5px;font-style:normal;font-size:11.5px;color:var(--ink3)}
+
+  /* ── 조항 ───────────────────────────────────────────────────────── */
+  .toc{margin:32px 0 0;padding:18px 20px;background:var(--band);border-left:3px solid var(--brand)}
+  .toc h2{margin:0 0 11px;font:700 10.5px/1 var(--mono);letter-spacing:.15em;color:var(--brand);text-transform:uppercase}
+  .toc ol{margin:0;padding:0;list-style:none;columns:2;column-gap:34px}
+  .toc li{margin:0 0 5px;font-size:13.5px;break-inside:avoid}
+  .toc a{color:var(--ink2);text-decoration:none;display:flex;gap:10px}
+  .toc a:hover{color:var(--brand)}
+  .toc b{font:600 12px/1.5 var(--mono);color:var(--ink4);min-width:22px;font-variant-numeric:tabular-nums}
+
+  section{margin-top:clamp(38px,6vw,58px);scroll-margin-top:16px}
+  section > h2{display:grid;grid-template-columns:var(--gutter,58px) 1fr;align-items:baseline;
+    margin:0 0 20px;padding-bottom:11px;border-bottom:1.5px solid var(--rule2);
+    font-size:clamp(18px,2.5vw,23px);font-weight:800;letter-spacing:-.01em}
+  section > h2 span{font:700 14px/1 var(--mono);color:var(--brand);font-variant-numeric:tabular-nums}
+
+  .clause{display:grid;grid-template-columns:var(--gutter,58px) 1fr;margin:0 0 20px;break-inside:avoid}
+  .clause > .n{font:600 12.5px/1.72 var(--mono);color:var(--ink4);
+    font-variant-numeric:tabular-nums;padding-right:12px}
+  .clause > .c{min-width:0}
+  .clause h3{margin:0 0 7px;font-size:15.5px;font-weight:700;color:var(--ink)}
+  .clause h4{margin:20px 0 8px;font-size:13.5px;font-weight:700;color:var(--brand)}
+  .clause p{margin:0 0 10px;color:var(--ink2);max-width:70ch}
+  .clause p:last-child,.clause ul:last-child,.clause table:last-child{margin-bottom:0}
+  .clause ul,.clause ol{margin:0 0 10px;padding-left:19px;color:var(--ink2)}
+  .clause li{margin-bottom:4px}
+  .clause li::marker{color:var(--ink4)}
+  code,.m{font-family:var(--mono);font-size:.9em;font-variant-numeric:tabular-nums}
+  code{background:var(--sunk);padding:1.5px 5px;border-radius:2px;color:var(--ink)}
+  strong{font-weight:700;color:var(--ink)}
+
+  /* ── 표 ─────────────────────────────────────────────────────────── */
+  .tw{overflow-x:auto;margin:0 0 12px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:480px}
+  caption{caption-side:top;text-align:left;font:600 10px/1.5 var(--mono);
+    letter-spacing:.1em;color:var(--ink4);text-transform:uppercase;padding-bottom:7px}
+  th,td{padding:8px 11px;text-align:left;vertical-align:top;border-bottom:1px solid var(--rule)}
+  thead th{font:700 10.5px/1.4 var(--mono);letter-spacing:.06em;color:var(--brand);
+    text-transform:uppercase;background:var(--band);border-bottom:1.5px solid var(--rule2)}
+  tbody th{font-weight:600;color:var(--ink)}
+  td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  td.k{font-family:var(--mono);font-size:12.5px;color:var(--ink);white-space:nowrap}
+  tr.pick td,tr.pick th{background:var(--ok-sunk)}
+  tr.out td,tr.out th{color:var(--ink4)}
+  tfoot td,tfoot th{border-top:1.5px solid var(--rule2);border-bottom:0;
+    font-weight:700;background:var(--band)}
+
+  /* ── 강조 블록 ──────────────────────────────────────────────────── */
+  .note{margin:0 0 12px;padding:12px 15px;background:var(--brand-sunk);
+    border-left:3px solid var(--brand2);font-size:13.5px;color:var(--ink2)}
+  .warn{margin:0 0 12px;padding:12px 15px;background:var(--accent-sunk);
+    border-left:3px solid var(--accent);font-size:13.5px;color:var(--ink2)}
+  .good{margin:0 0 12px;padding:12px 15px;background:var(--ok-sunk);
+    border-left:3px solid var(--ok);font-size:13.5px;color:var(--ink2)}
+  .note strong,.warn strong,.good strong{color:var(--ink)}
+  .logic{margin:0 0 12px;padding:13px 15px;background:var(--sunk);
+    font:500 12.5px/1.9 var(--mono);color:var(--ink);overflow-x:auto;white-space:pre}
+
+  /* ── 도면 ───────────────────────────────────────────────────────── */
+  figure{margin:0 0 16px}
+  .plate{border:1px solid var(--rule2);border-radius:4px;background:var(--sheet);
+    padding:10px;overflow-x:auto}
+  .plate svg{display:block;width:100%;min-width:660px;height:auto}
+  figcaption{margin-top:8px;font-size:12px;color:var(--ink3)}
+  figcaption b{color:var(--ink2);font-weight:600}
+
+  /* ── 확인사항 ───────────────────────────────────────────────────── */
+  .oi{border:1px solid var(--flag-line);border-left:3px solid var(--flag);margin:0 0 11px;break-inside:avoid}
+  .oi-h{display:flex;align-items:baseline;gap:11px;padding:9px 14px;
+    background:var(--flag-sunk);border-bottom:1px solid var(--flag-line)}
+  .oi-h b{font:700 12px/1 var(--mono);color:var(--flag);letter-spacing:.05em}
+  .oi-h span{font-size:14px;font-weight:700;color:var(--ink)}
+  .oi-b{padding:11px 14px}
+  .oi-b p{margin:0 0 7px;font-size:13.5px;color:var(--ink2)}
+  .oi-b p:last-child{margin:0}
+  .oi-b em{font-style:normal;font:600 10px/1 var(--mono);letter-spacing:.1em;
+    color:var(--ink4);text-transform:uppercase;display:block;margin-bottom:3px}
+
+  footer{margin-top:clamp(44px,7vw,68px);padding-top:20px;border-top:2px solid var(--ink);
+    font-size:12.5px;color:var(--ink3)}
+  footer p{margin:0 0 7px;max-width:74ch}
+
+  @media(max-width:640px){
+    :root{--gutter:42px}
+    .toc ol{columns:1}
+    .clause > .n{font-size:11.5px;padding-right:8px}
+    body{font-size:14.5px}
+    .headline b{font-size:21px}
+  }
+  @media print{
+    /* 입찰·검토 회의에서 출력해 회람한다 — 도면은 A3 가로가 기본이다. */
+    @page{size:A4 portrait;margin:16mm 14mm}
+    body{background:#fff;font-size:10.5pt;line-height:1.6}
+    .sheet{width:auto;padding:0;background:#fff}
+    .toc,.headline{break-inside:avoid}
+    section{break-before:auto;margin-top:22pt}
+    section > h2{break-after:avoid}
+    .clause,.oi,table,.logic,.note,.warn,.good,figure{break-inside:avoid}
+    .plate{border:1px solid #999}
+    .plate svg{min-width:0}
+    thead{display:table-header-group}
+    a{color:inherit;text-decoration:none}
+  }
+  </style>
+</head>
+<body>
+<div class="sheet">
+
+<header class="masthead">
+  <div class="issuer">
+    <svg viewBox="0 0 100.0 88.9723" aria-label="DYNAMIC INDUSTRY" role="img">
+      <!--mark-->
+      <path d="M8.8423 30.8126L1.1845 44.0763C-0.3949 46.8121 -0.3949 50.1826 1.1849 52.9184L15.6495 77.9723L25.8596 60.2876Z" fill="#228CC9"/>
+      <path d="M36.0703 42.6025L19.0529 13.1275L12.2461 24.9173L29.2634 54.3923Z" fill="#228CC9"/>
+      <path d="M46.2805 24.9174L38.7015 11.7899L25.0877 11.7899L39.4737 36.7073Z" fill="#228CC9"/>
+      <path d="M19.0528 83.8669L19.4479 84.5512C21.0276 87.287 23.9465 88.9723 27.1053 88.9723L72.8952 88.9723C76.054 88.9723 78.9733 87.287 80.5527 84.5512L95.0173 59.4973L33.1202 59.4973Z" fill="#228CC9"/>
+      <path d="M98.8155 44.0761L75.9205 4.421C74.3411 1.6852 71.4219 0.0 68.2631 0.0L50.0008 0.0004L50.0008 0.0L33.8944 0.0L42.0531 4.7103L70.282 53.6047L98.4203 53.6026L98.8155 52.9182C100.3948 50.1824 100.3948 46.8119 98.8155 44.0761Z" fill="#FECA4A"/>
+      <!--/mark-->
+    </svg>
+    <div class="issuer-name"><i>FOR NET ZERO PROJECTION</i><b>DYNAMIC INDUSTRY</b></div>
+  </div>
+
+  <div class="doc-kind">설계 검토서 · 처리량 확장<em>CONCEPT · 발주 문서 아님</em></div>
+  <h1>DG-HK120C<br>1 챔버 · 2 탠덤 셀 병렬 구성 검토</h1>
+  <p class="subtitle">단일 탠덤 셀에는 넘을 수 없는 처리량 천장이 있다. 그 천장을 넘으려면
+    박리 스테이션을 하나 더 놓아야 한다 — 그런데 <strong>라인 전체를 두 벌 놓을 필요는 없다</strong>.
+    이 검토서는 무엇을 두 벌 놓고 무엇을 한 벌로 두어야 하는지, 그 근거와 대가를 적는다.</p>
+
+  <dl class="docref">
+    <div><dt>문서번호</dt><dd id="docNo">—</dd></div>
+    <div><dt>개정</dt><dd>Rev.0</dd></div>
+    <div><dt>상위 문서</dt><dd>DG-HK60-RFQ-001</dd></div>
+    <div><dt>기준 배치</dt><dd>DG-HK60C</dd></div>
+    <div><dt>성격</dt><dd>개념 검토</dd></div>
+  </dl>
+
+  <div class="headline" id="headline"></div>
+</header>
+
+<nav class="toc" aria-label="목차">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#c1"><b>1</b>왜 이 검토인가 — 단일 셀의 천장</a></li>
+    <li><a href="#c2"><b>2</b>무엇을 두 벌 놓는가</a></li>
+    <li><a href="#c3"><b>3</b>가열실 사이징</a></li>
+    <li><a href="#c4"><b>4</b>배치 — 평면과 정면</a></li>
+    <li><a href="#c5"><b>5</b>세 안 비교</a></li>
+    <li><a href="#c6"><b>6</b>이중화 — 덤으로 얻는 것</a></li>
+    <li><a href="#c7"><b>7</b>대가</a></li>
+    <li><a href="#c8"><b>8</b>확인사항</a></li>
+  </ol>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c1">
+  <h2><span>1</span>왜 이 검토인가 — 단일 셀의 천장</h2>
+
+  <div class="clause"><div class="n">1.1</div><div class="c">
+    <h3>박리시간은 줄지 않는다</h3>
+    <p>DG-HK60C 의 라인 사이클은 <span class="m">53.6 s</span>이고 그 대부분이
+      박리다. 고정동작과 선행시간을 <strong>전부 0 으로 놓아도</strong> 패널
+      <span class="m">2,400 mm</span> 를 <span class="m">55 mm/s</span> 로 지나는
+      <span class="m">43.6 s</span> 는 남는다.</p>
+    <div class="logic" id="ceilingLogic"></div>
+    <p>곧 <strong>탠덤 셀 하나의 절대 상한은 <span id="ceilRate" class="m">—</span> 장/h</strong> 이다.
+      캐리어를 더 가속해도, 고정동작을 없애도, 복귀를 더 빠르게 해도 넘지 못한다.
+      박리속도를 올리는 것만이 남는데 그것은
+      <a href="dg-hk60-rfq.html#c11">OI-01 · OI-06</a> 이 닫히기 전에는 쓸 수 없다.</p>
+    <div class="note"><strong>이 검토는 발주 범위의 변경이 아니다.</strong>
+      계약 보증은 <span class="m">60 장/h</span> 이고 DG-HK60C 가
+      <span class="m">60.5 장/h</span> 를 낸다. 발주처 요구가 <span class="m">120</span> 대로
+      바뀌는 경우에만 의미가 있는 별건 검토다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">1.2</div><div class="c">
+    <h3>열은 병목이 아니다</h3>
+    <p>가열실은 <span class="m">80.9 장/h</span> 를 내므로 이미 탠덤보다 위다
+      (여유 <span class="m">16.9 %</span>). 그러므로 <strong>천장을 만드는 것은
+      가열이 아니라 박리 하나</strong>이고, 병렬로 놓아야 하는 것도 그 하나다.</p>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c2">
+  <h2><span>2</span>무엇을 두 벌 놓는가</h2>
+
+  <div class="clause"><div class="n">2.1</div><div class="c">
+    <h3>가열실을 두 벌 놓아도 전력은 안 줄어든다</h3>
+    <p>방출피치는 챔버 대수와 무관하다. 단수로도 나뉘지 않는다.</p>
+    <div class="logic">피치 = 체류 ÷ 단수 = (단수 × Q ÷ 유효출력) ÷ 단수 = <strong>Q ÷ 유효출력</strong></div>
+    <p>곧 가열실이 낼 수 있는 장수는 <strong>오직 유효출력이 정한다</strong>.
+      두 벌을 놓든 한 벌을 놓든, <span class="m">134.4 장/h</span> 를 먹이려면
+      같은 유효출력이 필요하다. 두 벌 놓아서 얻는 것은 전력이 아니라
+      <strong>껍데기·승강기·에어록·데크를 한 벌 더 사는 것</strong>뿐이다.</p>
+    <div class="tw"><table>
+      <caption>같은 처리량을 두 방식으로</caption>
+      <thead><tr><th>구성</th><th class="num">IR 설치</th><th class="num">챔버</th><th class="num">승강기</th><th class="num">에어록</th><th class="num">냉각 랙</th></tr></thead>
+      <tbody>
+        <tr><th>2 라인 복제</th><td class="num">200 kW (2기)</td><td class="num">2</td><td class="num">2</td><td class="num">4</td><td class="num">2</td></tr>
+        <tr class="pick"><th>1 챔버 · 2 셀</th><td class="num" id="irInstall">—</td><td class="num">1</td><td class="num">1</td><td class="num">2</td><td class="num">1</td></tr>
+      </tbody>
+    </table></div>
+    <div class="good"><strong>전력은 처리량이 정하고 대수가 정하지 않는다.</strong>
+      이 한 문장이 이 검토서의 전부다. 나머지는 그 결론이 성립하는 조건
+      (유리 열응력·FDM 하한·챔버 높이)을 확인하는 일이다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">2.2</div><div class="c">
+    <h3>두 벌 · 한 벌 배분</h3>
+    <div class="tw"><table>
+      <caption>스테이션별 대수</caption>
+      <thead><tr><th>스테이션</th><th class="num">대수</th><th>근거</th></tr></thead>
+      <tbody id="dupRows"></tbody>
+    </table></div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c3">
+  <h2><span>3</span>가열실 사이징</h2>
+
+  <div class="clause"><div class="n">3.1</div><div class="c">
+    <h3>세 제약이 답을 가둔다</h3>
+    <p>단수와 램프 수는 취향이 아니라 세 부등식의 교집합이다.</p>
+    <div class="logic" id="constraintLogic"></div>
+    <p>세 번째가 이 설계의 실제 하한이다. 단파장 IR 은 유리를 투과해 셀 층에서
+      흡수되므로 <strong>열이 유리 뒤에서 생겨 두께 3.2 mm 를 한 방향으로 지난다</strong> —
+      대칭 가열의 <code>q″t/2k</code> 가 아니라 <code>q″t/k</code> 다. 단수를 줄이면
+      장당 플럭스가 올라 이 응력이 먼저 걸린다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">3.2</div><div class="c">
+    <h3>후보와 판정</h3>
+    <div class="tw"><table>
+      <caption>단수 · 램프 후보 — 2 셀 택트 기준</caption>
+      <thead><tr><th>구성</th><th class="num">설치</th><th class="num">피치</th><th class="num">열한계</th>
+        <th class="num">여유</th><th class="num">체류</th><th class="num">σ 유리</th><th>판정</th></tr></thead>
+      <tbody id="sizingRows"></tbody>
+    </table></div>
+    <div class="good"><strong>채택 — <span id="pickText">—</span>.</strong>
+      뱅크당 램프 수가 DG-HK60C 와 같은 <span class="m">10</span> 이라 램프·반사판·SSR
+      모듈이 그대로 간다. 열공정 여유 <span id="pickMargin" class="m">—</span> 는
+      DG-HK60C 의 <span class="m">16.9 %</span> 와 같은 수준이다 —
+      <strong>같은 열설계를 규모만 키운 것</strong>이지 다른 설계가 아니다.</div>
+    <div class="warn"><strong>대안 — <span id="altText">—</span>.</strong>
+      건물 유효높이가 <span id="pickRoof" class="m">—</span> 를 받지 못하면 6단으로 내린다.
+      대신 유리 열응력이 <span id="altSigma" class="m">—</span> 로 올라 설계허용
+      <span class="m">7 MPa</span> 에 <span id="altGap" class="m">—</span> 밖에 안 남는다.
+      <a href="dg-hk60-rfq.html#c11">OI-05</a> 의 열모델 실측 결과에 따라 다시 잡는다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">3.3</div><div class="c">
+    <h3>유리 냉각</h3>
+    <p>택트가 절반이 되면 냉각 랙 단수는 두 배가 된다 — 냉각시간은 그대로인데
+      들어오는 간격이 절반이기 때문이다.</p>
+    <div class="logic" id="coolLogic"></div>
+    <p>가열실과 같은 단수로 맞추면 랙 구조·포크·예비품이 한 벌로 끝난다.
+      DG-HK60C 가 <span class="m">3단</span> 으로 맞춘 것과 같은 이유다.</p>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c4">
+  <h2><span>4</span>배치 — 평면과 정면</h2>
+
+  <div class="clause"><div class="n">4.1</div><div class="c">
+    <h3>전장은 바뀌지 않는다</h3>
+    <p>스테이션 길이는 데크·캐리어·패널이 정한다. 셀을 하나 더 놓는 것은
+      <strong>x 가 아니라 y 로 늘어나는 일</strong>이므로 전장
+      <span class="m">18,760 mm</span> 는 그대로다. 넓어지는 것은 DL 셀 하나다.</p>
+    <figure>
+      <div class="plate" id="planPlate"></div>
+      <figcaption><b>GA-201 · 평면 배치</b> — 단위 mm · NTS · 검토 제안값.
+        DL 셀만 두 벌이고 나머지 넷은 한 벌이다. 중앙 통로가 두 셀의
+        칼날 인출 포락선과 KC 매거진을 함께 받는다
+        (<a href="dg-hk60-rfq.html#c6">RFQ 6.9</a>).</figcaption>
+    </figure>
+  </div></div>
+
+  <div class="clause"><div class="n">4.2</div><div class="c">
+    <h3>높이로 사는 대가</h3>
+    <p>DG-HK60C 가 바닥을 아끼려고 시간을 높이로 샀다면, 이 구성은 그 높이를
+      한 번 더 쓴다. 단수가 <span class="m">3 → 7</span> 로 늘면서 챔버 지붕이
+      <span id="roofDelta" class="m">—</span> 올라간다.</p>
+    <figure>
+      <div class="plate" id="elevPlate"></div>
+      <figcaption><b>GA-202 · 정면</b> — 가열실 높이 비교. 건물 유효높이가
+        판정 기준이 된다 (<a href="#c8">OI-T3</a>).</figcaption>
+    </figure>
+  </div></div>
+
+  <div class="clause"><div class="n">4.3</div><div class="c">
+    <h3>중앙 통로가 하는 일</h3>
+    <p>두 셀 사이 <span id="aisleW" class="m">—</span> 통로는 빈 자리가 아니다.
+      DG-HK60C 에서 확인한 대로 <strong>칼날 카세트 1,440 mm 는 바닥으로 나갈
+      길이 없고</strong>, 갠트리 스윕 위 빈 층으로만 나간다. 두 셀이 마주 보는
+      이 통로가 그 층을 공유한다.</p>
+    <ul>
+      <li>KC 매거진 2조 — 셀당 1조, x 로 엇갈려 배치해 통로 폭을 카세트 하나로 끝낸다</li>
+      <li>RH 모노레일 1선 — 만권 롤 2벌과 카세트 4벌을 같은 길로 방책 밖까지 낸다</li>
+      <li>정비 접근 — 두 셀의 진공테이블·나이프 슬라이드를 한 통로에서 본다</li>
+    </ul>
+    <div class="warn"><strong>모노레일 1선에 반출이 여섯이다.</strong>
+      만권 롤 2 · 카세트 4 가 한 레일을 쓰므로 동시에 일어날 수 없다.
+      배타 인터록(<span class="k">RH_TASK_EXCLUSIVE</span>)과 대기열을 상세설계에서
+      세우고, 최악 위상에서 무인 운전이 끊기지 않는지 확인한다.</div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c5">
+  <h2><span>5</span>세 안 비교</h2>
+
+  <div class="clause"><div class="n">5.1</div><div class="c">
+    <div class="tw"><table>
+      <caption>DG-HK60C · 2 라인 복제 · DG-HK120C</caption>
+      <thead><tr><th>항목</th><th class="num">DG-HK60C</th><th class="num">2 라인 복제</th><th class="num">DG-HK120C</th></tr></thead>
+      <tbody id="compareRows"></tbody>
+    </table></div>
+    <div class="note"><strong>면적으로 파는 안이 아니다.</strong> 건물을 직사각형으로
+      잡으면 2 라인 복제와 거의 같다 — 넓어진 DL 셀이 다른 스테이션 자리를
+      비워 두기 때문이다. 실제로 줄어드는 것은 <strong>설비 대수</strong>다:
+      가열실 · 승강기 · 에어록 2조 · 냉각 랙 · 데크 한 벌씩.</div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c6">
+  <h2><span>6</span>이중화 — 덤으로 얻는 것</h2>
+
+  <div class="clause"><div class="n">6.1</div><div class="c">
+    <h3>셀 하나가 서도 계약 처리량이 나온다</h3>
+    <p>단일 라인은 탠덤이 서면 라인이 선다. 칼날 교환·클램프 고장·서보 알람 —
+      원인이 무엇이든 그 시간은 생산이 0 이다. 두 셀이면 <strong>남은 한 셀이
+      <span id="degraded" class="m">—</span> 장/h 를 낸다</strong>.</p>
+    <div class="logic" id="redundancyLogic"></div>
+    <div class="good"><strong>이것이 처리량 2배보다 팔기 쉬운 값일 수 있다.</strong>
+      발주처가 <span class="m">120 장/h</span> 를 원하지 않더라도,
+      <span class="m">60 장/h 를 절대 안 멈추고</span> 원한다면 같은 구성이 답이다.
+      그때는 두 셀을 <span class="m">55 mm/s</span> 대신 더 낮은 속도로 돌려
+      칼날 수명을 늘리는 운전도 가능하다.</div>
+    <div class="warn">다만 <strong>가열실은 이중화되지 않는다</strong>. 챔버가 서면
+      두 셀이 같이 선다. 이중화의 범위를 <a href="#c8">OI-T4</a> 에서 발주처와
+      합의해야 한다 — 박리부만 이중화할 것인가, 열까지 이중화할 것인가.</div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c7">
+  <h2><span>7</span>대가</h2>
+
+  <div class="clause"><div class="n">7.1</div><div class="c">
+    <div class="tw"><table>
+      <caption>DG-HK60C 대비 새로 드는 것</caption>
+      <thead><tr><th>항목</th><th>내용</th><th>성격</th></tr></thead>
+      <tbody id="costRows"></tbody>
+    </table></div>
+    <div class="warn"><strong>소모품 관리가 두 배가 된다.</strong>
+      카세트 4벌 · 권취 롤 2벌이고, 롤은 셀당
+      <span class="m">4.9 h</span> 마다 나오므로 라인 전체로는
+      <span class="m">2.5 h</span> 마다 한 벌씩 나온다.
+      <a href="dg-hk60-rfq.html#c6">RFQ 6.6</a> 의 8시간 무인 목표를 지키려면
+      보관 새들 수량과 AGV 주기를 다시 잡아야 한다.</div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="c8">
+  <h2><span>8</span>확인사항</h2>
+
+  <div class="clause"><div class="n">8.1</div><div class="c">
+    <p>이 검토서의 수치는 DG-HK60C 의 검증된 모델에서 파생했다. 그러나 아래
+      다섯은 <strong>이 구성에서 새로 생긴 것</strong>이라 DG-HK60C 의 확인사항이
+      덮지 못한다.</p>
+    <div id="oiList"></div>
+  </div></div>
+</section>
+
+<footer>
+  <p><strong>이 문서는 발주 문서가 아니다.</strong> 개념 검토이며, 치수·용량·배치는
+    검토 제안값이다. 제작·발주에 인용할 수 없다. 발주가 결정되면
+    DG-HK60 사양서와 같은 형식의 기술사양서를 따로 발행한다.</p>
+  <p>처리량·열수지·응력 수치는 DG-HK60 운전 콘솔의 모델에서 같은 식으로 계산했다.
+    셀 하나의 사이클, 면적열용량, FDM 도달시간, 유리 물성은 그 문서의 가정을
+    그대로 쓰므로 <strong>그 가정이 바뀌면 이 문서도 함께 바뀐다</strong>.</p>
+  <p id="footNote">—</p>
+</footer>
+
+</div>
+
+<script>
+(()=>{
+  'use strict';
+  /* ── 모델 ────────────────────────────────────────────────────────────
+     수치를 본문에 적지 않는다. DG-HK60 운전 콘솔이 쓰는 것과 같은 식을
+     여기 한 번 두고, 표·도면·문장이 전부 여기서 파생한다. 값을 두 번
+     적으면 다음에 한쪽만 고쳐지고, 그때 이 문서는 거짓말이 된다. */
+  const M={
+    q:2.893,                       // MJ/장 — 계면 140°C · ΔT 115 K
+    arealCp:8.7358962,             // kJ/(m²·K)
+    panelL:2.400,panelW:1.200,     // m
+    peelSpeed:55,                  // mm/s — 생산보증
+    knifePitch:300,rapid:300,rapidSpeed:200,handling:3,
+    cellCycle:53.5909,             // s — 이동 나이프 1셀 (콘솔 knifeCycle)
+    cells:2,
+    lampKW:2.5,eta:.65,
+    fdm:113.15,                    // s — 1D-FDM 계면 도달 하한
+    availability:.90,
+    glass:{massCp:8.0*0.75,k:1.0,t:3.2e-3,E:73e9,alpha:9e-6,nu:.23,allow:7.0},
+    cool:{tin:140,tout:60,tamb:25,h:25,mass:8.0,cp:0.75},
+    deckZ0:.82,deckDz:.62,roofUp:1.03,          // 챔버 껍데기 — 콘솔 HC_Z0/HC_DZ
+    hk60:{decks:3,lamps:40,margin:16.9,roof:.82+.62*3+1.03,rate:60.5,
+          length:18.76,width:7.60,cells:1}
+  };
+  const takt=M.cellCycle/M.cells;
+  const nominal=3600/takt, net=nominal*M.availability;
+  const peelOnly=M.panelL*1000/M.peelSpeed;                  // s — 박리만
+  const ceilRate=3600/peelOnly;                              // 셀 하나의 절대 상한
+  const glassShare=M.glass.massCp/M.arealCp;
+  const area=M.panelL*M.panelW;
+  const useful=l=>l*M.lampKW*M.eta;
+  const pitch=l=>M.q*1000/useful(l);
+  const sigma=(l,d)=>{const f=useful(l)/d*glassShare/area;
+    const dT=f*1000*M.glass.t/M.glass.k;
+    return {flux:f,dT,s:M.glass.E*M.glass.alpha*dT/(2*(1-M.glass.nu))/1e6}};
+  const coolSec=()=>{const c=M.cool,m=c.mass*area,A=2*area;
+    const lm=(c.tin-c.tout)/Math.log((c.tin-c.tamb)/(c.tout-c.tamb));
+    return m*c.cp*1e3*(c.tin-c.tout)/(c.h*A*lm)};
+  const roofOf=d=>M.deckZ0+M.deckDz*d+M.roofUp;
+  const CAND=[[6,7,10],[6,7,11],[6,7,12],[7,8,10],[7,8,11]].map(([d,b,per])=>{
+    const lamps=b*per,p=pitch(lamps),g=sigma(lamps,d);
+    return {decks:d,banks:b,per,lamps,kW:lamps*M.lampKW,pitch:p,rate:3600/p,
+      margin:(3600/p-nominal)/(3600/p)*100,dwell:d*p,sigma:g.s,flux:g.flux,dT:g.dT,
+      ok:g.s<=M.glass.allow && p<=takt && d*p>=M.fdm, roof:roofOf(d)};
+  });
+  /* 채택은 취향이 아니라 규칙이다.
+       ① 세 제약을 통과할 것
+       ② 뱅크당 10등 — DG-HK60C 와 램프·반사판·SSR 모듈이 그대로 간다
+       ③ 열공정 여유가 DG-HK60C(16.9 %)에 가장 가까울 것
+     ③ 이 핵심이다. 여유를 더 주면 전력을 더 사는 것이고, 덜 주면 다른
+     열설계가 된다. 같은 설계를 규모만 키운다는 것이 이 구성의 전제다. */
+  const REF_MARGIN=M.hk60.margin;
+  const pass=CAND.filter(c=>c.ok);
+  const pick=(pass.filter(c=>c.per===10).length?pass.filter(c=>c.per===10):pass)
+    .sort((a,b)=>Math.abs(a.margin-REF_MARGIN)-Math.abs(b.margin-REF_MARGIN))[0];
+  const alt=pass.filter(c=>c!==pick && c.decks<pick.decks).sort((a,b)=>b.margin-a.margin)[0];
+  const coolDecks=Math.ceil(coolSec()/takt);
+  const degraded=3600/M.cellCycle*M.availability;
+  /* 배치 — 셀 중심간격은 중앙 통로가 카세트 하나(1,440)를 받는 데서 나온다. */
+  const GEO={len:M.hk60.length,gantryY:1.42,aisle:1.80,celly:0,
+    trough:[.90,2.90],cartY:3.20,skin:2.35,fenceD:4.20,dlLen:3.80};
+  GEO.celly=GEO.gantryY+GEO.aisle/2;                       // 셀 중심 — 통로가 카세트 하나를 받는다
+  GEO.cartOut=GEO.celly+GEO.cartY+.65;                     // CS 카트 바깥 끝
+  GEO.halfW=GEO.cartOut+.80;                               // 방책 — 카트 밖 정비 여유
+  const occupied=(GEO.len-GEO.dlLen)*M.hk60.width + GEO.dlLen*(2*GEO.halfW);
+  const bounding=GEO.len*(2*GEO.halfW);
+
+  const $=id=>document.getElementById(id);
+  const n1=v=>v.toFixed(1), n2=v=>v.toFixed(2), mm=v=>Math.round(v*1000).toLocaleString('ko-KR');
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const setHTML=(id,h)=>{const e=$(id);if(e)e.innerHTML=h};
+  const setText=(id,t)=>{const e=$(id);if(e)e.textContent=t};
+
+  // ── 표제부
+  setText('docNo','DG-HK120C-STU-001');
+  setHTML('headline',[
+    ['명목 처리량',n1(nominal)+' 장/h','2 셀 택트 '+n1(takt)+' s'],
+    ['90% 순생산',n1(net)+' 장/h','8시간 '+Math.round(net*8).toLocaleString('ko-KR')+' 장'],
+    ['IR 설치',n1(pick.kW)+' kW',pick.decks+'단 · '+pick.lamps+'등'],
+    ['1 셀 정지 시',n1(degraded)+' 장/h','계약 60 장/h 유지'],
+  ].map(([s,b,i])=>`<div><span>${esc(s)}</span><b>${esc(b)}</b><i>${esc(i)}</i></div>`).join(''));
+
+  // ── 1장
+  setHTML('ceilingLogic',
+    `박리행정   ${mm(M.panelL)} mm ÷ ${M.peelSpeed} mm/s = ${n1(peelOnly)} s   ← 줄일 수 없다\n`
+   +`셀 상한    3600 ÷ ${n1(peelOnly)} = ${n1(ceilRate)} 장/h   (고정동작·선행·복귀를 전부 0 으로 놓아도)\n`
+   +`실제 사이클 ${n2(M.cellCycle)} s → ${n1(3600/M.cellCycle)} 장/h · 90 % ${n1(3600/M.cellCycle*M.availability)} 장/h`);
+  setText('ceilRate',n1(ceilRate));
+
+  // ── 2장
+  setText('irInstall',n1(pick.kW)+' kW (1기)');
+  setHTML('dupRows',[
+    ['LD-101 투입 셔틀','1','택트 '+n1(takt)+' s 에 1장 — 셔틀 하나로 충분하다'],
+    ['HC-101 가열실','1','피치는 Q÷유효출력이라 대수와 무관하다 (2.1)'],
+    ['DL-101 탠덤 셀','2','<strong>여기가 병목이다</strong> — 셀 하나의 상한 '+n1(ceilRate)+' 장/h'],
+    ['GC-101 냉각 랙','1','필요 '+coolDecks+'단 · 가열실과 공용 '+pick.decks+'단 — 길이는 그대로'],
+    ['UL-101 반출 셔틀','1','검사·반출은 택트에 여유가 있다'],
+    ['WR 권취 · KC 매거진','2','셀마다 웹과 칼날이 따로 생긴다'],
+    ['RH 모노레일','1','반출 여섯을 한 레일이 순차로 낸다 (4.3)'],
+  ].map(([a,b,c])=>`<tr><th>${a}</th><td class="num">${b}</td><td>${c}</td></tr>`).join(''));
+
+  // ── 3장
+  setHTML('constraintLogic',
+    `① 열수지   피치 = Q ÷ 유효출력 ≤ 택트 ${n1(takt)} s      → 유효 ≥ ${n1(M.q*1000/takt)} kW → 설치 ≥ ${Math.ceil(M.q*1000/takt/M.eta)} kW\n`
+   +`② FDM     체류 = 단수 × 피치 ≥ ${M.fdm} s              → 단수 ≥ ${Math.ceil(M.fdm/takt)}\n`
+   +`③ 유리응력 σ = E·α·ΔT / 2(1−ν),  ΔT = q″·t/k ≤ ${M.glass.allow} MPa\n`
+   +`          q″ = (유효출력 ÷ 단수) × 유리몫 ${(glassShare*100).toFixed(1)} % ÷ 면적 ${n2(area)} m²`);
+  setHTML('sizingRows',CAND.map(c=>{
+    const cls=c===pick?' class="pick"':(c.ok?'':' class="out"');
+    const why=!c.ok?(c.sigma>M.glass.allow?'σ 초과':(c.pitch>takt?'피치 초과':'체류 부족')):
+      (c===pick?'채택':(c===alt?'대안 (저층)':'통과'));
+    return `<tr${cls}><th>${c.decks}단 ${c.banks}뱅크 × ${c.per} = ${c.lamps}등</th>`
+      +`<td class="num">${n1(c.kW)} kW</td><td class="num">${n2(c.pitch)} s</td>`
+      +`<td class="num">${n1(c.rate)}</td><td class="num">${n1(c.margin)} %</td>`
+      +`<td class="num">${n1(c.dwell)} s</td><td class="num">${n2(c.sigma)}</td><td>${why}</td></tr>`;
+  }).join(''));
+  setText('pickText',`${pick.decks}단 · ${pick.banks}뱅크 × ${pick.per} = ${pick.lamps}등 · ${n1(pick.kW)} kW`);
+  setText('pickMargin',n1(pick.margin)+' %');
+  setText('pickRoof',mm(pick.roof)+' mm');
+  setText('altText',alt?`${alt.decks}단 · ${alt.lamps}등 · ${n1(alt.kW)} kW (지붕 ${mm(alt.roof)} mm)`:'없음');
+  setText('altSigma',alt?n2(alt.sigma)+' MPa':'—');
+  setText('altGap',alt?n2(M.glass.allow-alt.sigma)+' MPa':'—');
+  setHTML('coolLogic',
+    `필요 냉각   ${n1(coolSec())} s   (${M.cool.tin} → ${M.cool.tout} °C · 강제공랭 h ${M.cool.h} W/(m²·K) · 양면)\n`
+   +`택트        ${n1(takt)} s        → 필요 단수 ${Math.ceil(coolSec()/takt)}단\n`
+   +`가열실 공용 ${pick.decks}단        → 여유 ${n1((pick.decks*takt/coolSec()-1)*100)} %`);
+
+  // ── 4장 본문 수치
+  setText('roofDelta',`${mm(M.hk60.roof)} → ${mm(pick.roof)} mm (+${mm(pick.roof-M.hk60.roof)})`);
+  setText('aisleW',mm(GEO.aisle)+' mm');
+
+  // ── 5장 비교
+  const rows=[
+    ['명목 처리량',n1(M.hk60.rate/M.availability)+' 장/h',n1(nominal)+' 장/h',n1(nominal)+' 장/h'],
+    ['90 % 순생산',n1(M.hk60.rate)+' 장/h',n1(net)+' 장/h',n1(net)+' 장/h'],
+    ['탠덤 셀','1','2','2'],
+    ['가열실','1기 · '+M.hk60.decks+'단','2기 · '+M.hk60.decks+'단','<strong>1기 · '+pick.decks+'단</strong>'],
+    ['IR 설치',n1(M.hk60.lamps*M.lampKW)+' kW',n1(2*M.hk60.lamps*M.lampKW)+' kW',n1(pick.kW)+' kW'],
+    ['챔버 지붕',mm(M.hk60.roof)+' mm',mm(M.hk60.roof)+' mm',mm(pick.roof)+' mm'],
+    ['전장',mm(M.hk60.length)+' mm',mm(M.hk60.length)+' mm',mm(GEO.len)+' mm'],
+    ['점유면적',n1(M.hk60.length*M.hk60.width)+' m²',n1(2*M.hk60.length*M.hk60.width)+' m²','<strong>'+n1(occupied)+' m²</strong>'],
+    ['건물 외곽',n1(M.hk60.length*M.hk60.width)+' m²',n1(2*M.hk60.length*M.hk60.width)+' m²',n1(bounding)+' m²'],
+    ['1 셀 정지 시','0 장/h',n1(degraded)+' 장/h','<strong>'+n1(degraded)+' 장/h</strong>'],
+    ['카세트 · 권취','2 · 1','4 · 2','4 · 2'],
+  ];
+  setHTML('compareRows',rows.map(([a,b,c,d])=>
+    `<tr><th>${a}</th><td class="num">${b}</td><td class="num">${c}</td><td class="num">${d}</td></tr>`).join(''));
+
+  // ── 6장
+  setHTML('redundancyLogic',
+    `정상      2 셀 × ${n2(M.cellCycle)} s → 택트 ${n1(takt)} s → ${n1(nominal)} 장/h · 90 % ${n1(net)} 장/h\n`
+   +`1 셀 정지 1 셀 × ${n2(M.cellCycle)} s → 택트 ${n2(M.cellCycle)} s → ${n1(3600/M.cellCycle)} 장/h · 90 % ${n1(degraded)} 장/h\n`
+   +`계약값    60 장/h                                            → ${degraded>=60?'충족':'미달'}`);
+  setText('degraded',n1(degraded));
+
+  // ── 7장
+  setHTML('costRows',[
+    ['챔버 높이',`지붕 ${mm(M.hk60.roof)} → ${mm(pick.roof)} mm — 건물 유효높이·반입·크레인 재검토`,'구조'],
+    ['EX-101 횡이송축',`방출 포크에 ±${mm(GEO.celly)} mm y축이 새로 든다 — 두 셀에 번갈아 넣는다`,'신규 축'],
+    ['DL 셀 폭',`${mm(M.hk60.width)} → ${mm(2*GEO.halfW)} mm (DL 구간만)`,'배치'],
+    ['소모품',`카세트 ${2*M.cells}벌 · 권취 ${M.cells}벌 — 교환 빈도 2배`,'운전'],
+    ['모노레일 부하','반출 6계통이 1선을 공유 — 배타 인터록 필요','제어'],
+    ['가열실 단일점',`챔버가 서면 두 셀이 같이 선다 — 이중화 범위 합의 필요`,'가용성'],
+  ].map(([a,b,c])=>`<tr><th>${a}</th><td>${b}</td><td class="k">${c}</td></tr>`).join(''));
+
+  // ── 8장 확인사항
+  setHTML('oiList',[
+    ['OI-T1','두 셀의 위상 관리',
+     `두 셀이 같은 챔버에서 ${n1(takt)} s 간격으로 패널을 받는다. 방출·투입·복귀가 겹치는 최악 위상에서 택트가 유지되는지 확인되지 않았다.`,
+     '두 셀의 상태머신을 시간축에 겹쳐 놓고 자원(에어록·포크·모노레일·냉각 랙 포크) 경합을 전수 검토한다. 필요하면 위상을 반 택트 어긋나게 고정한다.'],
+    ['OI-T2','EX-101 횡이송 주기',
+     `방출 포크가 ±${mm(GEO.celly)} mm 를 왕복하며 두 셀에 번갈아 넣는다. 그 왕복시간이 택트 ${n1(takt)} s 안에 드는지 실측 근거가 없다.`,
+     '이송질량·가감속·정렬 반복도를 반영해 왕복시간을 산정하고, 넘으면 포크를 2조로 늘리거나 챔버 방출을 2구로 나눈다.'],
+    ['OI-T3','건물 유효높이',
+     `채택안의 챔버 지붕이 ${mm(pick.roof)} mm 다. 발주처 건물 유효높이가 미확인이며, 이 값이 단수를 직접 정한다.`,
+     `실측 후 확정한다. 받지 못하면 ${alt?alt.decks+'단 · '+alt.lamps+'등':'저층안'} 으로 내리고 유리 열응력 여유를 다시 계산한다.`],
+    ['OI-T4','이중화 범위',
+     '박리부는 이중화되지만 가열실·냉각 랙·반출은 단일점이다. 어디까지를 이중화로 볼 것인지 합의되지 않았다.',
+     '설비별 정지 시나리오와 그때의 처리량을 표로 만들어 발주처와 합의한다. 열까지 이중화하려면 챔버를 나누어야 하고 그것은 다른 설계다.'],
+    ['OI-T5','유리 열응력 실측',
+     `채택안의 σ ${n2(pick.sigma)} MPa 는 정상상태 1차원 가정값이다. 램프 균일도와 도어 개폐 손실이 국부 ΔT 를 키운다.`,
+     'FAT 에서 유리 표면 온도분포를 열화상으로 실측해 가정을 확인하고, 초과하면 뱅크 출력배분을 조정한다.'],
+  ].map(([id,t,now,fix])=>
+    `<div class="oi"><div class="oi-h"><b>${id}</b><span>${esc(t)}</span></div>`
+   +`<div class="oi-b"><p><em>현황</em>${now}</p><p><em>해소</em>${fix}</p></div></div>`).join(''));
+
+  setText('footNote',
+    `채택안 ${pick.decks}단 · ${pick.lamps}등 · ${n1(pick.kW)} kW · 택트 ${n1(takt)} s · `
+   +`순생산 ${n1(net)} 장/h · 유리 열응력 ${n2(pick.sigma)} MPa (설계허용 ${n1(M.glass.allow)}) · `
+   +`점유면적 ${n1(occupied)} m² · 확인사항 5건.`);
+
+  /* ── 도면 ─────────────────────────────────────────────────────────
+     좌표는 위 모델에서 나온다. 도면과 표가 다른 값을 말할 수 없다. */
+  const SV=(w,h,inner,label)=>`<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(label)}">`
+    +`<defs><pattern id="tg" width="18" height="18" patternUnits="userSpaceOnUse">`
+    +`<path d="M18 0H0V18" fill="none" stroke="#dfe5e6" stroke-width="1"/></pattern>`
+    +`<marker id="ta" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">`
+    +`<path d="M0,0 L0,6 L8,3 z" fill="#17679b"/></marker></defs>`
+    +`<rect width="${w}" height="${h}" fill="#ffffff"/><rect width="${w}" height="${h}" fill="url(#tg)"/>`
+    +`<g font-family="Arial,'Noto Sans KR',sans-serif">${inner}</g></svg>`;
+  const T=(x,y,t,sz=11,c='#425663',w=400,a='middle')=>
+    `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${a}" font-size="${sz}" font-weight="${w}" fill="${c}">${esc(t)}</text>`;
+  const R=(x,y,w,h,f,st,sw=1.6)=>`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${f}" stroke="${st}" stroke-width="${sw}"/>`;
+  const L=(x1,y1,x2,y2,c,w=1.2,d='')=>`<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="${c}" stroke-width="${w}"${d?` stroke-dasharray="${d}"`:''} fill="none"/>`;
+
+  // GA-201 평면
+  (()=>{
+    const s=42, X=x=>70+x*s, Y=y=>0;            // Y 는 아래에서 다시 잡는다
+    const H=2*GEO.halfW*s+130, mid=68+GEO.halfW*s;
+    const Yy=y=>mid+y*s;
+    const ST=[['LD-101','투입 셔틀',3.00],['HC-101',pick.decks+'단 가열실',3.78],
+              ['DL-101','',GEO.dlLen],['GC-101','냉각 랙 '+pick.decks+'단',3.38],
+              ['UL-101','반출 셔틀',3.00]];
+    const CO=[['#e4f1f4','#17679b'],['#fbe6dc','#c84c28'],['#fdf3dc','#a8790a'],
+              ['#e2eefb','#228CC9'],['#e2f2e7','#278555']];
+    let g='',cur=.30,dlX=0,dlW=0;
+    ST.forEach(([code,name,len],i)=>{
+      const [f,st]=CO[i], x=X(cur), w=len*s;
+      if(code==='DL-101'){
+        dlX=x;dlW=w;
+        [-1,1].forEach(sgn=>{
+          const c=sgn*GEO.celly, top=Yy(c-GEO.gantryY), hh=2*GEO.gantryY*s;
+          g+=R(x,top,w,hh,f,st,2)
+            +T(x+w/2,Yy(c)-3,'DL-101 '+(sgn<0?'A':'B'),12.5,'#5f4404',700)
+            +T(x+w/2,Yy(c)+14,mm(GEO.dlLen)+' × '+mm(2*GEO.gantryY),10,'#8a6a12');
+          // CE 셀/EVA 인출 — 셀 바깥으로 나간다
+          const t0=Math.min(sgn*(c<0?-1:1)*0+ (sgn<0?-(GEO.celly+GEO.trough[1]):GEO.celly+GEO.trough[0]),
+                            sgn<0?-(GEO.celly+GEO.trough[0]):GEO.celly+GEO.trough[1]);
+          const t1=Math.max(sgn<0?-(GEO.celly+GEO.trough[1]):GEO.celly+GEO.trough[0],
+                            sgn<0?-(GEO.celly+GEO.trough[0]):GEO.celly+GEO.trough[1]);
+          g+=R(x+w*.12,Yy(t0),w*.76,(t1-t0)*s,'#eaf2f8','#228CC9',1.3)
+            +T(x+w/2,Yy((t0+t1)/2)+4,'CE — 셀/EVA 통째 인출',10,'#1b5f8d');
+          // CS 카트
+          const cy=sgn*(GEO.celly+GEO.cartY);
+          g+=R(x+w*.20,Yy(cy)-.65*s,w*.60,1.30*s,'#f2f4f1','#6b7f8b',1.3)
+            +T(x+w/2,Yy(cy)+4,'CS 평적 카트',10,'#556670');
+        });
+        // 중앙 통로
+        g+=R(x,Yy(-GEO.aisle/2),w,GEO.aisle*s,'#f2f7f4','#278555',1.5)
+          +T(x+w/2,Yy(0)-4,'중앙 통로 '+mm(GEO.aisle),11,'#1f6b47',700)
+          +T(x+w/2,Yy(0)+13,'KC 매거진 2조',9.5,'#4a7c66');
+      }else{
+        const hh=2*GEO.skin*s, top=Yy(-GEO.skin);
+        g+=R(x,top,w,hh,f,st,2)+T(x+w/2,Yy(0)-4,code,12.5,st,700)
+          +T(x+w/2,Yy(0)+14,name+' · '+mm(len),10,st);
+      }
+      cur+=len+.30;
+    });
+    /* 방책은 계단형이다 — DL 구간만 넓다. 직사각형으로 그리면 점유면적을
+       과장하게 되고, 이 구성의 요지(넓어지는 것은 DL 하나)가 사라진다. */
+    const fy=GEO.halfW, nfP=3.40, nfN=4.20;      // 좁은 구간 — DG-HK60C 방책 그대로
+    const x0=X(0)-16,x1=X(GEO.len)+16,d0=dlX-10,d1=dlX+dlW+10;
+    const pt=(x,y)=>`${x.toFixed(1)} ${Yy(y).toFixed(1)}`;
+    g+=`<path d="M${pt(x0,-nfP)}H${d0}V${Yy(-fy).toFixed(1)}H${d1}V${Yy(-nfP).toFixed(1)}H${x1}`
+      +`V${Yy(nfN).toFixed(1)}H${d1}V${Yy(fy).toFixed(1)}H${d0}V${Yy(nfN).toFixed(1)}H${x0}Z" `
+      +`fill="none" stroke="#8b9ba4" stroke-width="1.6" stroke-dasharray="9 5"/>`
+      +T(X(0)-10,Yy(-nfP)-9,'안전 방책 — 좁은 구간 '+mm(nfP+nfN)+' (DG-HK60C 그대로)',10,'#8b9ba4',400,'start')
+      +T(dlX+dlW/2,Yy(-fy)-9,'DL 구간만 '+mm(2*fy),10,'#8b9ba4')
+      +`<path d="M${X(0)} ${(Yy(fy)+30).toFixed(1)}H${X(GEO.len)}" stroke="#17679b" stroke-width="1.1" marker-start="url(#ta)" marker-end="url(#ta)"/>`
+      +T(X(GEO.len/2),Yy(fy)+24,'전장 '+mm(GEO.len)+' — DG-HK60C 와 같다',12,'#17679b',700)
+      +T(X(0),Yy(fy)+52,'중앙 통로가 두 셀의 카세트 인출 포락선 '+mm(1.44)+' 를 공유한다 · RH 모노레일 1선이 반출 6계통을 배타로 낸다 (4.3항)',10.5,'#4a7c66',400,'start')
+      +T(X(0),Yy(fy)+70,'점유면적 '+n1(occupied)+' m² · 건물 외곽으로 잡으면 '+n1(bounding)+' m² — 넓어지는 것은 DL 하나다',10.5,'#6b7f8b',400,'start')
+      +T(X(0),Yy(-fy)-30,'GA-201 · 평면 배치 (X 이송방향 · Y 횡방향 · 1 m = '+s+' px)',12.5,'#14202a',700,'start');
+    setHTML('planPlate',SV(1180,Yy(fy)+92,g,'DG-HK120C 평면 배치도'));
+  })();
+
+  // GA-202 정면 — 챔버 높이 비교
+  (()=>{
+    const s=44, X=x=>90+x*s, Z=z=>330-z*44;
+    let g=T(X(0),Z(0)+46,'GA-202 · 가열실 높이 비교 (1 m = '+s+' px)',12.5,'#14202a',700,'start');
+    const bar=(x0,decks,roof,tag,f,st)=>{
+      let o=R(X(x0),Z(roof),3.78*s,roof*44,f,st,2);
+      for(let k=0;k<decks;k++){const z=M.deckZ0+M.deckDz*(k+.5);
+        o+=L(X(x0)+6,Z(z),X(x0)+3.78*s-6,Z(z),st,1.1,'5 4');}
+      o+=T(X(x0)+3.78*s/2,Z(roof)-10,tag,11.5,st,700)
+        +T(X(x0)+3.78*s/2,Z(roof)+18,decks+'단',11,st,700)
+        +T(X(x0)+3.78*s/2,Z(0)+16,'지붕 '+mm(roof),10.5,'#425663');
+      return o;
+    };
+    // 검토선을 먼저 깐다 — 나중에 그리면 막대 이름표 위를 지나간다
+    [6.0,7.0].forEach(h=>{g+=L(X(-.3),Z(h),X(14.6),Z(h),'#8b9ba4',1.2,'8 5')
+      +T(X(14.7),Z(h)+4,'유효높이 '+h.toFixed(1)+' m',10,'#8b9ba4',400,'start');});
+    g+=bar(0,M.hk60.decks,M.hk60.roof,'DG-HK60C','#fbe6dc','#c84c28');
+    g+=bar(5.2,pick.decks,pick.roof,'DG-HK120C 채택','#e2f2e7','#278555');
+    if(alt)g+=bar(10.4,alt.decks,alt.roof,'저층 대안','#fdf3dc','#a8790a');
+    g+=L(X(-.3),Z(0),X(14.6),Z(0),'#425663',1.8);
+    setHTML('elevPlate',SV(1180,Z(0)+62,g,'가열실 높이 비교 정면도'));
+  })();
+
+  window.TWIN_MODEL={M,takt,nominal,net,ceilRate,pick,alt,CAND,coolDecks,degraded,GEO,occupied,bounding};
+})();
+</script>
+</body>
+</html>
