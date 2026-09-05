@@ -39,7 +39,9 @@ class TestInterlockModelRuns(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.m = _model()
-        cls.console = CONSOLE.read_text(encoding="utf-8")
+        # 도면이 장치 이름에 단수를 넣기 시작했다(`캐리지 존재센서×${DECKS}`).
+        # 모델이 대조에 쓰는 것과 같은, 펼쳐진 본문을 본다.
+        cls.console = cls.m.console_text()
 
     def test_every_term_has_a_definition(self):
         """부르는데 만드는 곳이 없는 신호가 있으면 그 논리식은 죽은 식이다."""
@@ -65,7 +67,7 @@ class TestInterlockModelRuns(unittest.TestCase):
         """도면 어딘가에 글자로 있는 것과 구매 품목인 것은 다르다."""
         bom = set()
         for m in re.finditer(r"parts:\[(.*?)\]\}", self.console):
-            bom |= set(re.findall(r"'([^']+)'", m.group(1)))
+            bom |= set(re.findall(r"[`']([^`']+)[`']", m.group(1)))
         # 백시트 끝단 비전은 여기 있었다. 폐기된 REV.05 문장에만 이름이 남아
         # 장치 대조를 통과하고 있었고, 그래서 구매 품목 요구도 면제돼 있었다.
         # 이제 GR-W1 상부에 실제로 세웠으므로 예외가 아니다.
@@ -73,8 +75,8 @@ class TestInterlockModelRuns(unittest.TestCase):
                 "UPS-101", "24VDC PSU A/B", "Q0 ACB 4P 800AF", "서보 랙피니언",
                 "절대치 엔코더", "HKB Z축 서보슬라이드", "HKS Z축 서보슬라이드",
                 "SH-101 투입롤러", "투입 에어록", "격리셔터", "외함 롤 포트",
-                "펜스 인터록 해치", "코너 승강대", "역화격리게이트", "층별 잠금실린더×5",
-                "분할클램프×4", "체크밸브×6", "SSR 분기모듈×60", "토크서보·직경센서",
+                "펜스 인터록 해치", "코너 승강대", "역화격리게이트",
+                "분할클램프×4", "체크밸브×6", "토크서보·직경센서",
                 "TS-101 2단 포크", "서보모터·감속기", "IE4 기어모터", "VFD 기어모터",
                 "VFD 기어모터×2", "GC-301A 캐리지", "RJ 횡셔틀", "배기팬 A", "배기팬 B",
                 "진공펌프 A/B"}
@@ -165,12 +167,13 @@ class TestSignalsFoundByRunningIt(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.console = CONSOLE.read_text(encoding="utf-8")
+        cls.m = _model()
+        cls.console = cls.m.console_text()
 
     def _bom(self):
         bom = set()
         for m in re.finditer(r"parts:\[(.*?)\]\}", self.console):
-            bom |= set(re.findall(r"'([^']+)'", m.group(1)))
+            bom |= set(re.findall(r"[`']([^`']+)[`']", m.group(1)))
         return bom
 
     def test_web_tension_load_cell_is_back(self):
@@ -181,7 +184,8 @@ class TestSignalsFoundByRunningIt(unittest.TestCase):
     def test_hard_trip_inputs_exist(self):
         """IR_HARD_TRIP 은 소프트웨어와 무관한 하드와이어 경로다."""
         bom = self._bom()
-        for part in ("독립 과온센서", "연기센서", "CO센서", "IR 뱅크 CT·SSR 피드백×6", "풍량센서"):
+        banks = f"IR 뱅크 CT·SSR 피드백×{self.m.BANKS}"
+        for part in ("독립 과온센서", "연기센서", "CO센서", banks, "풍량센서"):
             self.assertIn(part, bom, f"IR_HARD_TRIP 입력 {part} 가 없다")
 
     def test_permit_position_sensors_exist(self):

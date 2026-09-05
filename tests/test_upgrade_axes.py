@@ -54,7 +54,7 @@ class TestMassBalanceBasis(_Base):
               + self.c("MASS_EVA") * self.c("CP_EVA")
               + self.c("MASS_CELL") * self.c("CP_CELL")
               + self.c("MASS_BACK") * self.c("CP_BACK"))
-        heat = float(re.search(r"면적×([\d.]+)×\(200−25\)", self.console).group(1))
+        heat = float(re.search(r"면적×([\d.]+)×\(\$\{T_TARGET\}−\$\{T_AMB\}\)", self.console).group(1))
         self.assertLess(
             abs(cp - heat) / heat, 0.01,
             f"질량 가정의 면적열용량 {cp:.4f} 가 열수지가 쓰는 {heat} 와 1% 넘게 다르다 — "

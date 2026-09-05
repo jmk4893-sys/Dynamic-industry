@@ -23,17 +23,29 @@ import pathlib
 import re
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import console_consts                                        # noqa: E402
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
+
+
+# 단수와 램프 수는 도면이 정한다. 여기 값을 따로 적어 두면 도면만 고쳐지는
+# 날이 오고, 그때 이 모델은 없는 센서를 세게 된다.
+DECKS = int(console_consts.const("DECKS"))     # 가열 캐리지 단수
+LAMPS = int(console_consts.const("LAMPS"))     # IR 램프 수
+BANKS = DECKS + 1                      # IR 뱅크 — 하부 B0 + 단간 + 상부
 
 # ── I/O 종류 ────────────────────────────────────────────────────────────
 DI, DO, AI, AO, TC = "DI", "DO", "AI", "AO", "TC"
 FDI, FDO, COMM = "F-DI", "F-DO", "COMM"
 
 # 선언된 I/O 예산 (콘솔 PLC 도면 · 사양서 7.1)
-# 선언된 I/O 예산. 사양서 7.1 이 "예비 20% 이상"을 요구하므로 실사용에서
-# 역산해 카드 배수로 올린 값이다 — 이 모델을 돌려 정한 수량이다.
-BUDGET = {DI: 176, DO: 96, AI: 40, AO: 16, TC: 56, FDI: 40, FDO: 8}
+# 사양서 7.1 이 "예비 20% 이상"을 요구하므로 실사용에서 역산해 카드 배수로
+# 올린 값이다 — 이 모델을 돌려 정한 수량이다. 카드 단위는 DI/DO 16점,
+# 나머지 8점이고, 각 종류마다 20% 를 넘기는 가장 작은 배수를 골랐다.
+# 단수를 5 → 3 으로 줄이면서 DI 176→160 · AO 16→8 · TC 56→40 으로 내려왔다.
+BUDGET = {DI: 160, DO: 96, AI: 40, AO: 8, TC: 40, FDI: 40, FDO: 8}
 SPARE_MIN = 0.20                       # 사양서 7.1 이 요구하는 최소 예비율
 
 
@@ -73,14 +85,14 @@ LEAVES = [
     Leaf("NETWORK_RING_OK",    COMM, 0, "PLC-101반"),
     Leaf("PM_METER_OK",        COMM, 0, "전력품질계"),
     # 가열실
-    Leaf("C1_PRESENT",         DI, 5, "캐리지 존재센서×5", "C1~C5 각 1점"),
-    Leaf("ALL_DECK_LOCKED",    DI, 5, "층별 잠금실린더×5"),
-    Leaf("ACTIVE_DECK_PRESENT", DI, 1, "캐리지 존재센서×5"),
-    Leaf("ACTIVE_DECK_LOCKED", DI, 1, "층별 잠금실린더×5"),
-    Leaf("EVA_INTERFACE_200_ACK", TC, 15, "EVA 계면센서×5", "캐리지별 K열전대 3점"),
-    Leaf("ALL_TEMP_OK",        TC, 5, "표면 IR 센서×5"),
+    Leaf("C1_PRESENT",         DI, DECKS, f"캐리지 존재센서×{DECKS}", f"C1~C{DECKS} 각 1점"),
+    Leaf("ALL_DECK_LOCKED",    DI, DECKS, f"층별 잠금실린더×{DECKS}"),
+    Leaf("ACTIVE_DECK_PRESENT", DI, 1, f"캐리지 존재센서×{DECKS}"),
+    Leaf("ACTIVE_DECK_LOCKED", DI, 1, f"층별 잠금실린더×{DECKS}"),
+    Leaf("EVA_INTERFACE_ACK",  TC, DECKS * 3, f"EVA 계면센서×{DECKS}", "캐리지별 K열전대 3점"),
+    Leaf("ALL_TEMP_OK",        TC, DECKS, f"표면 IR 센서×{DECKS}"),
     Leaf("INDEPENDENT_OVERTEMP", FDI, 1, "독립 과온센서", "하드와이어 · IR 주접촉기 직접 차단"),
-    Leaf("SSR_STUCK",          DI, 6, "IR 뱅크 CT·SSR 피드백×6", "IR 뱅크 B0~B5 각 1점"),
+    Leaf("SSR_STUCK",          DI, BANKS, f"IR 뱅크 CT·SSR 피드백×{BANKS}", f"IR 뱅크 B0~B{DECKS} 각 1점"),
     Leaf("DP_OK",              AI, 1, "차압센서×3"),
     Leaf("INNER_DOOR_OPEN",    FDI, 4, "에어록 도어 위치센서×8"),
     Leaf("OUTER_DOOR_OPEN",    FDI, 4, "에어록 도어 위치센서×8"),
@@ -185,7 +197,7 @@ LEAVES = [
     Leaf("MUTE_SENSORS",       DI, 8, "뮤팅 센서 M1~M4×2조", "개구부 2곳 × M1~M4"),
     Leaf("ZERO_ENERGY_ACK",    DI, 4, "LOTO 스테이션"),
     Leaf("LOTO_APPLIED",       DI, 4, "LOTO 스테이션"),
-    Leaf("TEMP_SAFE",          TC, 0, "표면 IR 센서×5", "ALL_TEMP_OK 와 같은 점을 읽는다"),
+    Leaf("TEMP_SAFE",          TC, 0, f"표면 IR 센서×{DECKS}", "ALL_TEMP_OK 와 같은 점을 읽는다"),
     Leaf("VAC_DUMPED",         AI, 1, "진공압센서×6"),
     Leaf("ST_TOWER_CMD",       FDO, 0, "적층 신호등·부저 ST-101/102",
          "HORN_3S·BEACON_AMBER 는 입력이 아니라 F-DO 출력이다"),
@@ -258,9 +270,9 @@ DERIVED = [
     Derived("REFILL_ACK", ["ACTIVE_DECK_PRESENT", "ACTIVE_DECK_LOCKED", "FORK_HOME",
                            "ALL_DOORS_CLOSED", "DP_OK"]),
     Derived("LIFT_MOVE", ["ALL_DECK_LOCKED", "FORK_RETRACTED", "EXTRACTOR_HOME", "DOOR_LOCKED"]),
-    Derived("EVA_TARGET_ACK", ["EVA_INTERFACE_200_ACK"]),
+    Derived("EVA_TARGET_ACK", ["EVA_INTERFACE_ACK"]),
     Derived("TANDEM_READY", ["HKB_TEMP_OK", "HKS_TEMP_OK", "KNIVES_CLEAR"]),
-    Derived("RELEASE_200", ["EVA_INTERFACE_200_ACK", "TANDEM_READY", "AL102_EMPTY", "OUTER_OUT_CLOSED"]),
+    Derived("RELEASE_PERMIT", ["EVA_INTERFACE_ACK", "TANDEM_READY", "AL102_EMPTY", "OUTER_OUT_CLOSED"]),
     Derived("VAC_OK", ["VAC_6ZONE_OK"]),
     Derived("VAC_LOW", ["VAC_6ZONE_OK"]),
     Derived("MOTION_SYNC", ["X_LEFT", "X_RIGHT", "FOLLOWING_ERROR_OK"]),
@@ -383,7 +395,7 @@ DRIVES = [
     Drive("MT-903", "진공펌프 A",           DO, 2, "접촉기",  "진공펌프 A/B"),
     Drive("MT-904", "진공펌프 B",           DO, 2, "접촉기",  "진공펌프 A/B"),
     Drive("SH-101 투입롤러", "슈레더",               DO, 2, "접촉기",  "SH-101 투입롤러"),
-    Drive("CY-201", "층별 잠금실린더",      DO, 5, "덤프밸브", "층별 잠금실린더×5"),
+    Drive("CY-201", "층별 잠금실린더",      DO, DECKS, "덤프밸브", f"층별 잠금실린더×{DECKS}"),
     Drive("CY-202", "에어록 셔터",          DO, 4, "덤프밸브", "투입 에어록"),
     Drive("CY-301", "패널 스토퍼",          DO, 1, "덤프밸브", "패널 스토퍼"),
     Drive("CY-401", "분할클램프",           DO, 4, "덤프밸브", "분할클램프×4"),
@@ -393,7 +405,7 @@ DRIVES = [
     Drive("CY-501", "역화격리게이트",      DO, 2, "덤프밸브", "역화격리게이트"),
     Drive("CY-601", "코너 승강대",          DO, 2, "덤프밸브", "코너 승강대"),
     Drive("VV-101", "6존 진공밸브",         DO, 6, "덤프밸브", "체크밸브×6"),
-    Drive("SSR-B",  "IR 뱅크 SSR",          AO, 6, "주접촉기", "SSR 분기모듈×60"),
+    Drive("SSR-B",  "IR 뱅크 SSR",          AO, BANKS, "주접촉기", f"SSR 분기모듈×{LAMPS}"),
     Drive("ST-101", "적층 신호등·부저",     FDO, 4, "F-DO 직결", "적층 신호등·부저 ST-101/102"),
     # 무인 연속운전
     Drive("SV-405", "나이프 X축 이송",        COMM, 0, "STO 2CH", "나이프 X축 절대치 엔코더"),
@@ -420,8 +432,14 @@ def build():
     return leaves, derived
 
 
+def console_text():
+    """장치 대조에 쓰는 콘솔 본문 — 도면의 식이 값으로 펼쳐진 것."""
+    return console_consts.expand(CONSOLE.read_text(encoding="utf-8"),
+                                 {"BANKS": BANKS})
+
+
 def report():
-    console = CONSOLE.read_text(encoding="utf-8")
+    console = console_text()
     leaves, derived = build()
     problems = []
 

@@ -21,6 +21,8 @@ import unittest
 
 from . import _path  # noqa: F401
 
+import console_consts                                        # noqa: E402
+
 CONSOLE = (
     pathlib.Path(__file__).resolve().parents[1]
     / "docs" / "drawings" / "pv-delamination-3d.html"
@@ -43,8 +45,9 @@ T_HKB_C, T_HKS_C = 180, 200      # 칼날 — NPC 상용 밴드 180~200
 # 1D-FDM 으로 구한 계면 도달시간. 열수지상 더 빨리 넣을 수 있어도 열이
 # 계면까지 전도되는 데 걸리는 시간은 줄지 않으므로 체류시간의 하한이 된다.
 FDM_DWELL_S = 113.15
-LAMPS = 60
-DECKS = 5
+LAMPS = 40    # 2.5 kW × 40 = 100 kW 설치 — (DECKS+1) 뱅크 × 10
+MASS_GLASS_CP = 8.000 * 0.75            # kJ/(m²·K) — 적층 중 유리 몫
+DECKS = 3     # 가열 캐리지 단수
 KNIFE_PITCH_MM = 300     # HKB 가 HKS 보다 앞서는 거리
 RAPID_DISTANCE_MM = 300  # 장당 급속이송 등가거리
 
@@ -104,9 +107,11 @@ class TestModelConstantsAreShared(unittest.TestCase):
         return float(m.group(1))
 
     def _model_field(self, name):
-        m = re.search(rf"\b{name}:([\d.]+)", self.html)
+        """MODEL 필드 하나. 상수를 가리키면 한 단계 따라간다."""
+        m = re.search(rf"\b{name}:([A-Za-z_]\w*|[\d.]+)", self.html)
         self.assertIsNotNone(m, f"MODEL 에 {name} 이 없다")
-        return float(m.group(1))
+        v = m.group(1)
+        return float(v) if v[0].isdigit() or v[0] == "." else self._const(v)
 
     def test_console_uses_the_same_design_constants(self):
         self.assertAlmostEqual(self._model_field("arealCp"), AREAL_CP_KJ_M2K, places=7)
@@ -183,7 +188,7 @@ class TestStatedFiguresMatchTheModel(unittest.TestCase):
 
     def test_dwell_pitch_and_thermal_limit(self):
         dwell, pitch, rate = self._stated(
-            r"5장 열체류 ([\d.]+)초·방출피치 ([\d.]+)초·열공정 한계 ([\d.]+)장/h"
+            r"\$\{DECKS\}장 열체류 ([\d.]+)초·방출피치 ([\d.]+)초·열공정 한계 ([\d.]+)장/h"
         )
         self.assertAlmostEqual(self.m["dwell_s"], dwell, delta=0.05)
         self.assertAlmostEqual(self.m["pitch_s"], pitch, delta=0.05)
@@ -369,3 +374,87 @@ class TestProcessTemperature(unittest.TestCase):
         """칼날 200°C 는 남아도 되지만 '계면 200°C' 는 남으면 안 된다."""
         for stale in ("계면 200", "계면을 200", "25→200", "ΔT 175"):
             self.assertNotIn(stale, self.html, f"낡은 온도 표기가 남아 있다: {stale}")
+
+
+class TestTheHeatingChamberSizeIsDerived(unittest.TestCase):
+    """단수와 램프 수는 한 곳에서 나와야 한다.
+
+    단수를 5 → 3 으로 줄이면서 도면·부품표·부하표·PLC 모델·사양서가 한꺼번에
+    움직여야 했다. 값을 여러 곳에 적어 두면 그때마다 몇 군데가 남는다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = CONSOLE.read_text(encoding="utf-8")
+        cls.env = console_consts.env(cls.html)
+
+    def test_the_deck_and_lamp_counts_are_written_once(self):
+        for name in ("DECKS", "LAMPS"):
+            self.assertEqual(
+                len(re.findall(rf"const {name}=", self.html)), 1,
+                f"{name} 상수가 두 번 이상 선언돼 있다")
+
+    def test_the_banks_divide_the_lamps_evenly(self):
+        """뱅크는 단수+1(하부·단간·상부)이고 램프는 그 위에 고르게 실린다."""
+        banks = DECKS + 1
+        self.assertEqual(LAMPS % banks, 0,
+                         f"램프 {LAMPS} 개가 뱅크 {banks} 개로 나뉘지 않는다")
+        self.assertIn("PER=LAMPS/(DECKS+1)", self.html,
+                      "도면이 뱅크당 램프 수를 파생시키지 않는다")
+
+    def test_the_installed_power_follows_the_lamp_count(self):
+        """IR 분전반 정격이 램프 수에서 나와야 한다 — 값으로 적으면 갈라진다."""
+        m = re.search(r"\{id:'IR-DB1',load:[`'][^`']*[`'],kW:([\w.*+/ -]+?),", self.html)
+        self.assertIsNotNone(m, "IR-DB1 부하 행을 찾지 못했다")
+        self.assertIn("LAMPS", m.group(1),
+                      f"IR 설치전력이 램프 수에서 나오지 않는다: {m.group(1)}")
+        kw = console_consts.value(m.group(1), self.env)
+        self.assertAlmostEqual(kw, LAMPS * DEFAULTS["lampPower"], places=6)
+
+    def test_the_chamber_shell_follows_the_deck_count(self):
+        """껍데기 높이를 값으로 박아 두면 3단인데 외형만 5단으로 남는다."""
+        self.assertIn("const HC_Z=HC_Z0+HC_DZ*DECKS;", self.html,
+                      "가열실 높이가 단수에서 파생되지 않는다")
+        self.assertAlmostEqual(
+            self.env["HC_Z"], self.env["HC_Z0"] + self.env["HC_DZ"] * DECKS, places=6)
+
+
+class TestTheDeckCountIsBoundedByGlassStress(unittest.TestCase):
+    """단수를 정하는 것은 처리량이 아니라 유리 열응력이다.
+
+    처리량은 탠덤이 정하므로 단수를 줄여도 라인은 그대로다. 대신 같은 열을
+    더 적은 장수에 넣게 되어 장당 플럭스가 오르고, 그 플럭스가 유리 두께를
+    지나며 만드는 온도차가 열응력이 된다. 여기가 진짜 하한이다.
+
+    단파장 IR 은 유리를 투과해 셀 층에서 흡수된다. 그래서 열은 유리 뒤에서
+    생겨 유리를 지나 표면으로 빠진다 — 두께 전체를 한 방향으로 지나는
+    전도이므로 ΔT = q″·t/k 다(대칭 가열의 q″·t/2k 가 아니다).
+    """
+
+    GLASS_K = 1.0            # W/(m·K) 소다석회
+    GLASS_T = 3.2e-3         # m
+    E, ALPHA, NU = 73e9, 9e-6, 0.23
+    ALLOWABLE_MPA = 7.0      # 풀림유리 설계허용
+
+    def _stress_mpa(self, decks):
+        m = thermal_model()
+        useful_kw = m["rated_kw"] * DEFAULTS["heatEfficiency"] / 100   # 유효 IR 출력
+        glass_share = MASS_GLASS_CP / AREAL_CP_KJ_M2K
+        area = DEFAULTS["panelLength"] * DEFAULTS["panelWidth"] / 1e6
+        flux = useful_kw / decks * glass_share / area          # kW/m²
+        dt = flux * 1000 * self.GLASS_T / self.GLASS_K         # K
+        return self.E * self.ALPHA * dt / (2 * (1 - self.NU)) / 1e6, flux, dt
+
+    def test_the_chosen_deck_count_keeps_the_glass_inside_the_allowable(self):
+        sigma, flux, dt = self._stress_mpa(DECKS)
+        self.assertLessEqual(
+            sigma, self.ALLOWABLE_MPA + 0.2,
+            f"{DECKS}단에서 유리 열응력 {sigma:.2f} MPa 가 설계허용을 넘는다 "
+            f"(플럭스 {flux:.2f} kW/m², ΔT {dt:.1f} K)")
+
+    def test_one_deck_fewer_would_break_the_glass(self):
+        """왜 더 못 줄이는지 — 여기서 걸린다는 것이 3단을 고른 이유다."""
+        sigma, _, _ = self._stress_mpa(DECKS - 1)
+        self.assertGreater(
+            sigma, self.ALLOWABLE_MPA,
+            f"{DECKS - 1}단에서도 유리가 견딘다면 3단을 고른 근거가 다른 데 있다")

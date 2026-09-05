@@ -18,7 +18,9 @@ CONSOLE = (
     pathlib.Path(__file__).resolve().parents[1]
     / "docs" / "drawings" / "pv-delamination-3d.html"
 )
-TITLE = "DG-HK60 · 5단 IR 탠덤 PV 분리설비 · 3D 운전 콘솔"
+# 단수는 바뀌는 값이라 제목에서 뺐다 — 제목이 바뀌면 아티팩트 갤러리에서
+# 같은 문서가 다른 문서로 보인다.
+TITLE = "DG-HK60 · IR 탠덤 PV 분리설비 · 3D 운전 콘솔"
 
 # `$('foo')` 와 `document.getElementById('foo')` 로 참조하는 정적 id
 ID_REF = re.compile(r"""(?:\$|document\.getElementById)\(\s*['"]([A-Za-z][\w-]*)['"]\s*\)""")
@@ -335,6 +337,21 @@ class TestDeliverableEquipment(unittest.TestCase):
         self.assertIsNotNone(m, f"{name} 함수를 찾지 못했다")
         return m.group(0)
 
+    def _number(self, expr):
+        """숫자이거나, 콘솔 상수로만 이루어진 식이면 그 값.
+
+        설치전력 같은 값은 램프 수에서 나온다 — 값으로 적으면 램프 수를
+        바꿀 때 부하표만 남는다. 식으로 적힌 것을 여기서 풀어 읽는다.
+        """
+        expr = expr.strip()
+        env = {}
+        for name in set(re.findall(r"[A-Za-z_]\w*", expr)):
+            m = re.search(rf"const {name}=([\d.]+);", self.html)
+            self.assertIsNotNone(m, f"부하표가 쓰는 {name} 상수가 콘솔에 없다")
+            env[name] = float(m.group(1))
+        self.assertRegex(expr, r"^[\w.*+/ ()-]+$", f"부하표에 읽을 수 없는 식: {expr}")
+        return eval(expr, {"__builtins__": {}}, env)      # noqa: S307 — 위 검사가 막는다
+
     def test_every_fence_opening_is_guarded(self):
         """펜스가 끊긴 자리마다 광커튼이 서 있어야 한다.
 
@@ -415,17 +432,19 @@ class TestDeliverableEquipment(unittest.TestCase):
         마지막 것을 쓰는지 확인한다. 값이 아니라 방법을 잡는 시험이다.
         """
         rows = re.findall(
-            r"\{\s*id:'([^']+)'\s*,\s*load:'[^']*'\s*,"
-            r"\s*kW:(\d+)\s*,\s*pf:([\d.]+)\s*,\s*mccb:'([^']+)'\s*\}",
+            r"\{\s*id:'([^']+)'\s*,\s*load:[`'][^`']*[`']\s*,"
+            r"\s*kW:([\w.*+/ -]+?)\s*,\s*pf:([\d.]+)\s*,\s*mccb:'([^']+)'\s*\}",
             self.html,
         )
         self.assertGreaterEqual(len(rows), 5, "전기부하표를 찾지 못했다")
+        # IR 분기는 설치전력을 램프 수에서 낸다 — 값이 아니라 식이 적혀 있다.
+        rows = [(i, self._number(kw), pf, mccb) for i, kw, pf, mccb in rows]
         volts = int(re.search(r"const LINE_V=(\d+)", self.html).group(1))
         root3 = 3 ** 0.5
 
-        active = sum(int(kw) for _, kw, _, _ in rows)
+        active = sum(kw for _, kw, _, _ in rows)
         reactive = sum(
-            int(kw) * math.tan(math.acos(float(pf))) for _, kw, pf, _ in rows
+            kw * math.tan(math.acos(float(pf))) for _, kw, pf, _ in rows
         )
         apparent = math.hypot(active, reactive)
         phasor = apparent * 1000 / (root3 * volts)
@@ -761,7 +780,8 @@ class TestTenPanelTrial(unittest.TestCase):
                 ident = re.search(r"id:'([SC]\d+)'", row).group(1)
                 flow = re.search(r"flow:\[(.*?)\],cam:", row)
                 self.assertIsNotNone(flow, f"{ident} 에 자재흐름 문구가 없다")
-                self.assertEqual(len(re.findall(r"'", flow.group(1))) // 2, 3,
+                streams = re.findall(r"'[^']*'|`[^`]*`", flow.group(1))
+                self.assertEqual(len(streams), 3,
                                  f"{ident} 자재흐름이 3계통이 아니다")
                 cam = re.search(r"cam:\[(\d),\s*([^\]]+)\]", row)
                 self.assertIsNotNone(cam, f"{ident} 에 카메라가 없다")
@@ -835,10 +855,11 @@ class TestPanelScale(unittest.TestCase):
         # 가열실 M-002 — 표의 길이·폭이 실제로 그려진 외피와 같아야 한다
         tunnel = self._fn("preheatTunnel")
         self.assertRegex(tunnel, r"L\s*=\s*5\.6\b")
-        m = re.search(r"id:'M-002'[^}]*?size:'(\d+)×(\d+)×\d+'", self.html)
+        # 이름이 템플릿 리터럴이 되면서 }가 끼어들었다 — 창을 길이로 자른다.
+        m = re.search(r"id:'M-002'.{0,120}?size:[`'](\d+)×(\d+)×", self.html)
         self.assertIsNotNone(m, "M-002 제작도 치수를 찾지 못했다")
         self.assertAlmostEqual(float(m.group(1)), 5600, delta=1)
-        roof = re.search(r"box\(V\(cx,0,4\.86\),V\(L\+\.42,([\d.]+),", tunnel)
+        roof = re.search(r"box\(V\(cx,0,HZ\+\.94\),V\(L\+\.42,([\d.]+),", tunnel)
         self.assertIsNotNone(roof, "가열실 지붕 폭을 찾지 못했다")
         self.assertAlmostEqual(
             float(m.group(2)), float(roof.group(1)) * 1000, delta=1,

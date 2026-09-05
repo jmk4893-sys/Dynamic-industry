@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#141c20">
   <link rel="icon" id="favicon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E">
-  <title>DG-HK60 · 5단 IR 탠덤 PV 분리설비 · 3D 운전 콘솔</title>
-  <meta name="description" content="폐 태양광 모듈 백시트·셀/EVA·판유리 3계통 분리설비 DG-HK60의 3D 운전 콘솔 — 5단 밀폐 IR 가열 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 전기·PLC·제작도면 및 열수지 계산.">
+  <title>DG-HK60 · IR 탠덤 PV 분리설비 · 3D 운전 콘솔</title>
+  <meta name="description" content="폐 태양광 모듈 백시트·셀/EVA·판유리 3계통 분리설비 DG-HK60의 3D 운전 콘솔 — 3단 밀폐 IR 가열 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 전기·PLC·제작도면 및 열수지 계산.">
   <style>
     /* ===========================================================================
        DG-HK60 operator console.
@@ -396,8 +396,8 @@
         </div>
         <div class="np-id">
           <div class="np-model">DG-HK60 <span id="npModelRev">REV.21C</span></div>
-          <h1>단일 5단 IR · 고정 탠덤 · 수평 분리반출</h1>
-          <p id="npSub">60 IR · EVA 계면 140°C · 고정 진공테이블 + 이동 나이프</p>
+          <h1>단일 3단 IR · 고정 탠덤 · 수평 분리반출</h1>
+          <p id="npSub">40 IR · EVA 계면 140°C · 고정 진공테이블 + 이동 나이프</p>
         </div>
         <div class="np-status">
           <span class="led" aria-hidden="true"></span>
@@ -426,7 +426,7 @@
 
     <main>
       <section class="video-shell" aria-label="전체장비 3D 동작 영상">
-        <canvas id="scene" role="img" aria-label="5단 가열 캐리지의 투입·밀폐가열·방출·재투입 사이클과 HKB/HKS 고정 탠덤 박리를 근접 반복재생하는 단일 5단 60개 IR 전문형 3D 장비 영상"></canvas>
+        <canvas id="scene" role="img" aria-label="3단 가열 캐리지의 투입·밀폐가열·방출·재투입 사이클과 HKB/HKS 고정 탠덤 박리를 근접 반복재생하는 단일 3단 40개 IR 전문형 3D 장비 영상"></canvas>
         <div class="video-top">
           <div class="stage-readout" aria-live="polite"><b id="stageTitle">S0 · 패널 투입·자세 확인</b><span id="stageDesc">유리면을 아래로, 백시트를 위로 정렬해 캐리어 중심에 투입합니다.</span></div>
           <div class="sim-badge">캐리지 사이클 확대 · 탠덤 확대 · 컷어웨이 · 분해 0~200%</div>
@@ -447,18 +447,18 @@
           </div>
         </aside>
         <aside class="focus-hud carriage-hud" id="carriageHud" hidden aria-live="polite">
-          <h3>5단 캐리지 순환 · 외문/내문 동시개방 금지</h3>
+          <h3>3단 캐리지 순환 · 외문/내문 동시개방 금지</h3>
           <div class="focus-sequence">
-            <div id="carriageStep1" data-step="1"><span>5/5 밀폐가열</span><strong>FULL_LOAD_ACK</strong></div>
+            <div id="carriageStep1" data-step="1"><span>3/3 밀폐가열</span><strong>FULL_LOAD_ACK</strong></div>
             <div id="carriageStep2" data-step="2"><span>C1 방출 준비</span><strong>140°C + TDM READY</strong></div>
             <div id="carriageStep3" data-step="3"><span>배출 에어록</span><strong>내문→격리→외문</strong></div>
             <div id="carriageStep4" data-step="4"><span>새 패널 투입</span><strong>외문→격리→내문</strong></div>
             <div id="carriageStep5" data-step="5"><span>LI-101 층 선택</span><strong>C1 높이 정렬</strong></div>
-            <div id="carriageStep6" data-step="6"><span>TS-101 재적재</span><strong>잠금→5/5 ACK</strong></div>
+            <div id="carriageStep6" data-step="6"><span>TS-101 재적재</span><strong>잠금→3/3 ACK</strong></div>
           </div>
           <div class="focus-live">
             <div><span>선택 캐리지</span><b id="carriageDeckLive">C1 · 140°C</b></div>
-            <div><span>점유/잠금</span><b id="carriageLoadLive">5/5 · LOCKED</b></div>
+            <div><span>점유/잠금</span><b id="carriageLoadLive">3/3 · LOCKED</b></div>
             <div><span>AL-101 투입</span><b id="carriageInLive">외문·내문 닫힘</b></div>
             <div><span>AL-102 배출</span><b id="carriageOutLive">외문·내문 닫힘</b></div>
           </div>
@@ -533,7 +533,7 @@
   <dialog id="calcDialog" aria-labelledby="calcTitle">
     <div class="dialog-head"><div><div class="dialog-code">PLC / POWER / FABRICATION PACKAGE · REV.20</div><h2 id="calcTitle">60장/h 열수지·사이클 검증</h2></div><button class="close" type="button" id="calcClose">닫기</button></div>
     <div class="dialog-body">
-      <p>단일 5단 캐리지의 5장 적재·잠금·밀폐 완료(FULL_LOAD_ACK)를 0초로 계산합니다. 55mm/s는 90% 가동률에서 60장/h를 넘기는 생산보증점이며, 60mm/s는 FAT 상한입니다.</p>
+      <p>단일 3단 캐리지의 3장 적재·잠금·밀폐 완료(FULL_LOAD_ACK)를 0초로 계산합니다. 55mm/s는 90% 가동률에서 60장/h를 넘기는 생산보증점이며, 60mm/s는 FAT 상한입니다.</p>
       <div class="calc-grid">
         <div class="calc-field"><label for="panelLength">패널 길이 (mm)</label><input id="panelLength" type="number" min="1600" max="2400" step="50" value="2400"></div>
         <div class="calc-field"><label for="panelWidth">패널 폭 (mm)</label><input id="panelWidth" type="number" min="800" max="1200" step="50" value="1200"></div>
@@ -550,7 +550,7 @@
         <div class="calc-result"><span>적재 중 대기전력</span><strong id="standbyPower">—</strong></div>
         <div class="calc-result"><span>예상 IR 평균전력</span><strong id="avgLinePower">—</strong></div>
         <div class="calc-result"><span>패널당 IR 전력량</span><strong id="energyPerPanel">—</strong></div>
-        <div class="calc-result"><span>5단 가열 체류시간</span><strong id="heatDwell">—</strong></div>
+        <div class="calc-result"><span>3단 가열 체류시간</span><strong id="heatDwell">—</strong></div>
         <div class="calc-result"><span>IR 방출간격</span><strong id="releasePitch">—</strong></div>
         <div class="calc-result"><span>열공정 한계</span><strong id="thermalRate">—</strong></div>
         <div class="calc-result"><span>탠덤 사이클</span><strong id="tandemCycle">—</strong></div>
@@ -679,6 +679,25 @@
        '박리력 값'이 아니라 '온도별 박리력 곡선'으로 닫아야 하고, 그 곡선이
        목표온도·IR 용량·단수·패드 면적을 한꺼번에 정한다. 여기 140 은 곡선을
        재기 전의 설계 가정이다. */
+    /* ── 가열실 규모 ────────────────────────────────────────────────────
+       계면 목표를 200 → 140°C 로 내리면서 열공정 여유가 15.7 → 44.6% 로
+       벌어졌다. 그 여유를 단수와 설치전력으로 돌려준다.
+
+         5단 × 60개 × 2.5kW = 150kW  →  3단 × 40개 × 2.5kW = 100kW
+
+       처리량은 그대로다 — 방출피치는 q/유효출력이라 단수와 무관하고, 라인은
+       어차피 탠덤(53.6s)이 정한다. 열공정 한계 80.9장/h 로 여유 16.9% 는
+       종전 200°C·5단(15.7%)과 같은 수준이다.
+
+       단수를 정하는 진짜 조건은 처리량이 아니라 유리 열응력이다. 유리가
+       저장하는 열(면적열용량의 69.3%)이 두께 3.2mm 를 지나며 만드는 온도차가
+       σ = E·α·ΔT / 2(1−ν) 를 낳는데, 3단·100kW 에서 5.17 kW/m² → ΔT 16.5K →
+       7.1 MPa 로 풀림유리 설계허용(~7 MPa) 언저리다. 더 줄이면 여기서 걸린다. */
+    const DECKS=3;                       // 가열 캐리지 단수
+    const LAMPS=40;                      // IR 램프 — (DECKS+1) 뱅크 × 10
+    const DECK_TAG=`C1~C${DECKS}`;       // 단 범위 표기 — 문구가 단수를 따라온다
+    const HC_Z0=.82,HC_DZ=.62;           // 최하단 뱅크 높이와 단간 피치
+    const HC_Z=HC_Z0+HC_DZ*DECKS;        // 최상단 뱅크 — 껍데기와 제작도 표가 같이 따라온다
     const T_AMB=25;                      // 상온
     const T_TARGET=140;                  // EVA/유리 계면 목표
     const T_HKB=180;                     // 백시트 칼날 — NPC 밴드 하단(백시트에 닿는다)
@@ -763,14 +782,14 @@
     const PARK_X=12.0,PARK_Y=-1.18;                  // 캐리어 파킹 — 주행레일(-1.38) 안쪽
     const DATA_X=10.6;                               // 이력 서버·원격 콘솔 반
     const HX_X=42.6,RTO_X=45.6,STACK_X=48.6;         // 열교환·RTO·굴뚝 — 스크러버(≤41.5) 하류
-    const FLAME_X=[7.6,10.8],FLAME_Y=-.90,FLAME_Z=4.95;   // 가열실 지붕(z4.95) 위 불꽃감지
+    const FLAME_X=[7.6,10.8],FLAME_Y=-.90,FLAME_Z=.82+.62*DECKS+1.03;   // 가열실 지붕 위 불꽃감지
     const NP_X=13.6;                                 // 질소 퍼지
     const BIN_LEVELS=[[BS_RACK_X-1.35,BS_BIN_Y,2.05,'백시트함'],
                       [36.5,-1.00,2.45,'셀/EVA 호퍼'],
                       [22.35,-2.60,1.90,'리젝트함']];
     /* ── DG-HK60C 압축 배치 ──────────────────────────────────────────────
        Rev.20 은 끝에서 끝까지 53 m 다. 그런데 그 길이가 처리량을 만든 게
-       아니다 — 60장/h 는 5단 소킹(148.4s)과 2.4m 박리행정(43.6s)이 정하고
+       아니다 — 60장/h 는 3단 소킹(133.5s)과 2.4m 박리행정(43.6s)이 정하고
        둘 다 바닥 길이를 쓰지 않는다. 길이를 만든 것은 두 가지다:
 
          (1) 라인 안에 넣은 환경설비·후속공정·팔레타이징.
@@ -781,7 +800,7 @@
              제자리에 선다. 행정도 시간도 그대로다.
 
        그러고도 남는 원칙은 하나다 — 시간이 필요하면 높이로 사고 길이로
-       사지 않는다. 5단 가열실이 이미 그렇게 되어 있고, 유리 냉각도 같은
+       사지 않는다. 3단 가열실이 이미 그렇게 되어 있고, 유리 냉각도 같은
        방식으로 세워 8.8m 컨베이어를 3.4m 랙으로 바꾼다. */
     const CL_CLEAR=.30;                  // 스테이션 사이 정비 간격
     const CL_WALL=.35;                   // 가열실 단열벽 한 겹
@@ -792,26 +811,28 @@
        패널 사양이 바뀔 때 한쪽만 고쳐진다. */
     const COMPACT_STATIONS=[
       ['LD-101','투입 셔틀',      PANEL_L+2*CL_CLEAR,       '수동·지게차 적재 · 1장 버퍼'],
-      ['HC-101','5단 밀폐 가열실', DECK_L+2*CL_WALL+CL_DOOR, '5장 소킹 — 시간을 높이로 산다'],
+      ['HC-101',`${DECKS}단 밀폐 가열실`,DECK_L+2*CL_WALL+CL_DOOR,`${DECKS}장 소킹 — 시간을 높이로 산다`],
       ['DL-101','탠덤 분리 셀',    CARRIER_L+2*CL_PARK,      '고정 진공테이블 · 이동 나이프'],
-      ['GC-101','유리 냉각 랙',    DECK_L+2*CL_CLEAR,        '5단 강제공랭 — 같은 방식'],
+      ['GC-101','유리 냉각 랙',    DECK_L+2*CL_CLEAR,        `${DECKS}단 강제공랭 — 같은 방식`],
       ['UL-101','반출 셔틀',      PANEL_L+2*CL_CLEAR,       '유리 반출 · 셀/EVA 배출구'],
     ];
     const compactLength=()=>COMPACT_STATIONS.reduce((a,r)=>a+r[2],0)
       +(COMPACT_STATIONS.length-1)*CL_CLEAR+2*CL_END;
-    /* 유리 냉각 랙이 4단이어야 하는 근거. 유리는 180°C 로 나오고 60°C 밑으로
+    /* 유리 냉각 랙 단수의 근거. 유리는 계면 목표온도로 나오고 60°C 밑으로
        내려야 손이 닿는다. 강제공랭 25 W/(m²·K), 양면 노출로 잡으면 시간이
-       나오고, 그 시간을 60초 택트로 나눈 것이 필요한 단수다. */
-    const GCOOL_T_IN=180,GCOOL_T_OUT=60,GCOOL_T_AMB=25,GCOOL_H=25;   // °C · W/(m²·K)
+       나오고, 그 시간을 택트로 나눈 것이 필요한 단수다.
+       유입온도는 계면 목표를 따라간다 — 탠덤에서 더 식지만 그건 안전측으로
+       버린다. 값으로 적어 두면 목표를 옮길 때 여기만 180 으로 남는다. */
+    const GCOOL_T_IN=T_TARGET,GCOOL_T_OUT=60,GCOOL_T_AMB=T_AMB,GCOOL_H=25;   // °C · W/(m²·K)
     function glassCoolSec(){
       const m=MASS_GLASS*PANEL_L*PANEL_W,A=2*PANEL_L*PANEL_W;
       const dT=(GCOOL_T_IN-GCOOL_T_OUT)/Math.log((GCOOL_T_IN-GCOOL_T_AMB)/(GCOOL_T_OUT-GCOOL_T_AMB));
       return m*CP_GLASS*1e3*(GCOOL_T_IN-GCOOL_T_OUT)/(GCOOL_H*A*dT);
     }
     /* 단수는 필요값(냉각시간÷택트)보다 크기만 하면 되는데, 굳이 가열실과
-       같은 5단으로 맞춘다 — 랙 구조와 포크가 같아지면 예비품이 한 벌이면
-       된다. 세로로 쌓는 것이라 단수를 늘려도 라인은 길어지지 않는다. */
-    const GCOOL_DECKS=5;
+       같은 단수로 맞춘다 — 랙 구조와 포크가 같아지면 예비품이 한 벌이면
+       된다. 세로로 쌓는 것이라 단수를 바꿔도 라인은 길어지지 않는다. */
+    const GCOOL_DECKS=DECKS;
     /* 라인에서 떼어 발주자 설비로 넘기는 것들. 장치는 경계 밖으로 나가지만
        신호까지 없애면 안 된다 — 멈춘 슈레더에 셀을 밀어 넣지 않는 인터록은
        그 슈레더가 남의 것이 되어도 그대로 필요하다. 장치가 인터페이스가 될
@@ -931,7 +952,7 @@
     const REV20_STEPS=[
       {id:'S0',name:'투입·자세 확인',duration:3300,desc:'유리면 아래·백시트 위 자세로 투입하고 패널 중심과 크기를 확인합니다.',vac:'대기 · 0 kPa',temp:'식별 · 상온',out:'ORIENT_OK',flow:['권취 대기 → 전용 보관함','분리 대기 → Shredder','분리 대기 → 저장 캐리지'],cam:[0,3]},
       {id:'S1',name:'6존 진공 고정',duration:2200,desc:'VC-101이 유리면을 6개 구역으로 흡착해 권취·박리 반력을 지지합니다.',vac:'VC-101 · -65 kPa',temp:'예열 준비',out:'VAC_OK',flow:['권취 대기 → 전용 보관함','분리 대기 → Shredder','진공 캐리어 지지 중'],cam:[0,3]},
-      {id:'S2',name:'5단 투입·방출·재투입',duration:16000,desc:'C1~C5 5/5 잠금과 모든 문 닫힘을 확인해 밀폐 가열한 뒤, 140°C C1을 AL-102 내문→격리→외문 순으로 방출합니다. 이어 새 패널을 AL-101 외문→격리→내문, LI-101 층선택, TS-101 삽입 순으로 같은 빈 C1에 재투입합니다.',vac:'C1~C5 5/5 → C1 방출 → C1 재적재',temp:'EVA 계면 140°C · 60 IR',out:'FULL_LOAD→RELEASE→REFILL_ACK',flow:['권취 대기 → 전용 보관함','가열 중 → Shredder','가열 중 → 저장 캐리지'],cam:[1,9.2]},
+      {id:'S2',name:`${DECKS}단 투입·방출·재투입`,duration:16000,desc:`${DECK_TAG} ${DECKS}/${DECKS} 잠금과 모든 문 닫힘을 확인해 밀폐 가열한 뒤, 140°C C1을 AL-102 내문→격리→외문 순으로 방출합니다. 이어 새 패널을 AL-101 외문→격리→내문, LI-101 층선택, TS-101 삽입 순으로 같은 빈 C1에 재투입합니다.`,vac:`${DECK_TAG} ${DECKS}/${DECKS} → C1 방출 → C1 재적재`,temp:`EVA 계면 ${T_TARGET}°C · ${LAMPS} IR`,out:'FULL_LOAD→RELEASE→REFILL_ACK',flow:['권취 대기 → 전용 보관함','가열 중 → Shredder','가열 중 → 저장 캐리지'],cam:[1,9.2]},
       {id:'S3',name:'140°C 방출·HKB 진입',duration:4800,desc:'EVA/유리 내부 계면 140°C와 탠덤 READY를 확인한 패널을 방출합니다. HKB는 X축 위치를 유지한 채 독립 Z축으로 내려가고, 캐리어는 200mm/s 접근 후 S-curve로 55mm/s까지 감속합니다.',vac:'이동 VC-101 · -65 kPa',temp:'HKB 180°C · HKS 200°C',out:'EVA_TARGET_ACK ∧ CARRIER_AT_HKB',flow:['선단 개방 중','HKS 분리 대기','진공 캐리어 지지 중'],cam:[1,16.5]},
       {id:'S4',name:'300mm 선행·클램프',duration:2500,desc:'HKB가 백시트 선단 300mm를 개방하면 WR-101이 선단을 잡아 장력을 형성합니다. CLAMP_TENSION_ACK 뒤 HKS가 독립 Z축으로 EVA/유리 계면까지 접근해 2차 박리를 준비합니다.',vac:'VC-101 · -65 kPa 유지',temp:'HKB 가압 · HKS Z축 진입',out:'LEAD_300_ACK ∧ CLAMP_TENSION_ACK',flow:['클램프·장력 형성','HKS 진입 대기','진공 캐리어 지지 중'],cam:[2,17.8]},
       {id:'S5',name:'55mm/s 탠덤 통과박리',duration:7600,desc:'두 칼날의 X축은 300±2mm 간격으로 고정되고 Z축은 로드셀 하중을 추종합니다. 캐리어가 55mm/s로 통과하면 HKB는 백시트를 권취롤로 보내고 HKS는 셀/EVA를 유리에서 연속 분리합니다.',vac:'이동 캐리어 6존 · -65 kPa',temp:'HKB 180°C · HKS 200°C',out:'CARRIER_PEEL_COMPLETE',flow:['전장 권취 중','유리에서 분리 중','진공 캐리어 이동 중'],cam:[2,18.5]},
@@ -943,7 +964,7 @@
       {id:'S11',name:'품질검사·리젝트 분기',duration:4300,desc:'QI-301 상·하부 비전·열화상이 잔류 EVA, 미분리 셀, 균열과 표면온도를 검사합니다. 불합격품은 RJ-301 횡셔틀과 밀폐 파손품 캐리지로 분기합니다.',vac:'검사 위치 고정',temp:'온도·잔류물·균열 판정',out:'QUALITY_PASS_OR_REJECT_ACK',flow:['BS-301 보관 완료','SH-101 후속공정','QI-301 검사·RJ-301 분기'],cam:[2,23.5]},
       {id:'S12',name:'7＋1 캐리지 순환',duration:4200,desc:'5대는 가열실, 1대는 탠덤, 1대는 복귀·재장전 위치에서 순환하고, 1대는 MC-401 정비 대기 위치에 보관됩니다.',vac:'주캐리지 복귀·재장전',temp:'5 HEAT + 1 PROCESS + 1 RETURN + 1 SPARE',out:'EMPTY_CARRIER_RELOADED',flow:['WR 예비축 준비','CVC-301 CLEAR','7＋1 가열캐리지 순환'],cam:[1,13]},
       {id:'S13',name:'안전·환경 자가점검',duration:4200,desc:'VOC 응축·미스트·활성탄 처리, 독립 과온차단, 연기·CO·화재댐퍼, MCC 냉각, 진공 이중화와 LOTO 상태를 확인합니다.',vac:'VP-A/B 이중화 READY',temp:'FIRE_OK ∧ EXHAUST_OK ∧ MCC_OK',out:'SAFETY_UTILITY_ACK',flow:['배기·화재안전 확인','Shredder 격리게이트 확인','GC 냉각·도킹 안전확인'],cam:[0,20]},
-      {id:'S14',name:'단일라인 60장 시험',duration:8000,desc:'55mm/s 생산보증 레시피의 정상상태 60장 약 53분35초를 8초로 압축합니다. FULL_LOAD_ACK 이후 냉간 완료는 약 56분4초이며 90% 가동률 환산은 60.5장/h입니다.',vac:'이동 캐리어 −65 kPa',temp:'실공정 53m35s → 영상 8s',out:'SINGLE_60_TEST_COMPLETE',flow:['다음 권취롤 준비','Shredder 연속운전','빈 저장 캐리지 인덱싱'],cam:[0,19]},
+      {id:'S14',name:'단일라인 60장 시험',duration:8000,desc:'55mm/s 생산보증 레시피의 정상상태 60장 약 53분35초를 8초로 압축합니다. FULL_LOAD_ACK 이후 냉간 완료는 약 55분49초이며 90% 가동률 환산은 60.5장/h입니다.',vac:'이동 캐리어 −65 kPa',temp:'실공정 53m35s → 영상 8s',out:'SINGLE_60_TEST_COMPLETE',flow:['다음 권취롤 준비','Shredder 연속운전','빈 저장 캐리지 인덱싱'],cam:[0,19]},
       {id:'S15',name:'10장 연속 시운전',duration:9000,desc:'10장을 연속 통과시키며 세 계통이 실제로 쌓이는지를 한 화면에서 확인합니다. 유리는 GC-301 저장 캐리지에 한 장씩 적재되고, 셀/EVA는 CVC-301 컨베이어에 투입되어 SH-101로 이송되며, 백시트는 WR-101 롤에 감깁니다. 10장이면 롤은 Ø300에서 Ø314.9로 자랍니다 — 만권까지는 295장이 필요합니다.',vac:'장당 −65 kPa 흡착·해제 10회',temp:'계면 140°C 반복 도달',out:'TEN_PANEL_TRIAL_COMPLETE',flow:['WR-101 롤에 10장 권취','CVC-301 → SH-101 연속 투입','GC-301 캐리지 적재 중'],cam:[0,22]},
     ];
     /* ---- 사양 다이얼로그 본문 ------------------------------------------------
@@ -964,16 +985,16 @@
        --------------------------------------------------------------------- */
     const details={
       equipment:{
-        code:'DG-HK60 · REV.20',title:'단일 5단·완전 보조설비 통합장비',
-        intro:'5장의 패널을 먼저 적재·잠금·밀폐한 뒤 60개 IR로 EVA 계면을 140°C까지 JIT 가열합니다. 고정된 HKB/HKS 사이로 이동 진공 캐리어가 통과하며 백시트·셀/EVA·유리를 한 패스에서 분리합니다.',
+        code:'DG-HK60 · REV.20',title:`단일 ${DECKS}단·완전 보조설비 통합장비`,
+        intro:`${DECKS}장의 패널을 먼저 적재·잠금·밀폐한 뒤 ${LAMPS}개 IR로 EVA 계면을 ${T_TARGET}°C까지 JIT 가열합니다. 고정된 HKB/HKS 사이로 이동 진공 캐리어가 통과하며 백시트·셀/EVA·유리를 한 패스에서 분리합니다.`,
         hardware:[
           'M0 백시트 상향 투입·치수/자세검사·6존 진공 캐리어',
-          'M1 5단 밀폐 가열실: 하부 B0·단간 B1~B4·상부 B5, 6라인×10개 = 60 IR',
+          `M1 ${DECKS}단 밀폐 가열실: 하부 B0·단간 B1~B${DECKS-1}·상부 B${DECKS}, ${DECKS+1}라인×${LAMPS/(DECKS+1)}개 = ${LAMPS} IR`,
           'LI-101 양주형 서보승강기·카운터밸런스·무여자 브레이크·낙하방지 폴',
           'TS-101 이단 텔레스코픽 포크·IDX-101 테이퍼 위치결정핀·좌우 기계잠금',
           'AL-IN/OUT 이중셔터 에어록·RT-101 밀폐 빈 캐리지 하부복귀·신규패널 재장전',
           'INS-101 SUS304 내피·100mm 미네랄울·25mm 반사 공기층·열교차단 스페이서',
-          'PM-101 외벽 전력계: 순간 kW·누적 kWh·B0~B5 전류·SSR 듀티·역률',
+          `PM-101 외벽 전력계: 순간 kW·누적 kWh·B0~B${DECKS} 전류·SSR 듀티·역률`,
           'FGT-201 고정 브리지·HKB/HKS 독립 Z축·칼끝 300±2mm·헤드간극 60mm 이상',
           'WR-101 횡방향 분할클램프·터릿형 교대 권취롤·BS-301 전용 밀폐 보관함',
           'CVC-301/302 내열 밀폐 컨베이어·무낙하 직접이송·SH-101 연속투입',
@@ -1009,7 +1030,7 @@
         ],
         control:[
           'START_PERMIT = FULL_LOAD_ACK ∧ ALL_LOCKED ∧ ALL_TEMP_OK ∧ ALL_DOORS_CLOSED ∧ EXHAUST_OK',
-        'FULL_LOAD_ACK 은 5단 캐리지 존재센서 C1~C5 5점이 모두 서는 것이다 — 한 단이라도 비면 기동 허가가 서지 않는다',
+        `FULL_LOAD_ACK 은 ${DECKS}단 캐리지 존재센서 ${DECK_TAG} ${DECKS}점이 모두 서는 것이다 — 한 단이라도 비면 기동 허가가 서지 않는다`,
           '적재 중 각 IR 라인은 10% 이하 대기출력, FULL_LOAD_ACK 이후에만 생산출력 허가',
           'JIT 목표는 C1 140°C·C2 136°C·C3 132°C·C4 128°C·C5 124°C, 방출순서에 맞춰 승온',
           '각 캐리지 K열전대 3점·표면 IR 1점·램프출력/체류시간 소프트센서로 EVA 계면온도 확인',
@@ -1054,9 +1075,9 @@
           '무인 운전 중 칼날 자동교환은 LOTO 가 아니라 캐리어 파킹 상태에서 돈다 — 정비허가를 요구하면 무인 중에는 영원히 성립하지 않는다'
         ],
         verify:[
-          '최대 패널 2,400×1,200mm·5장 열체류 148.4초·정상 방출피치 29.7초',
+          `최대 패널 2,400×1,200mm·${DECKS}장 열체류 133.5초·정상 방출피치 44.5초`,
           '55mm/s 탠덤 사이클 53.6초·명목 67.2장/h·90% 환산 60.5장/h',
-          '60장 정상상태 약 53분35초·FULL_LOAD_ACK 이후 냉간 약 56분4초',
+          '60장 정상상태 약 53분35초·FULL_LOAD_ACK 이후 냉간 약 55분49초',
           '셀/EVA 4kg/장 기준 약 269kg/h, SH-101 권장 정격 350kg/h 이상',
           '3계통 반출 FAT: 유리 GC-301 도킹·백시트 BS-301 격리·셀모듈 SH-101 투입 ACK를 개별 기록',
           'STS304 2.9m 레일은 20→210°C에서 약 8~9mm 팽창 예상: 1점 고정+장공 지지로 흡수',
@@ -1071,8 +1092,8 @@
         intro:'열공정과 탠덤을 같은 단위로 계산해 60장/h 달성 여부를 확인합니다. 유리·백시트·셀모듈 반출은 서로 독립된 ACK로 다음 패널 투입을 허가합니다.',
         hardware:[
           '패널 면적열용량 8.736 kJ/(m²·K)·25→140°C·최대 면적 2.88m²·q 2.893MJ',
-          '패널당 필요열량 2.893MJ·60×2.5kW 설치정격 150kW·실효효율 기본 65%',
-          '5장 열체류 148.4초·방출피치 29.68초·열공정 한계 121.3장/h',
+          `패널당 필요열량 2.893MJ·${LAMPS}×2.5kW 설치정격 ${LAMPS*2.5}kW·실효효율 기본 65%`,
+          `${DECKS}장 열체류 133.5초·방출피치 44.51초·열공정 한계 80.9장/h`,
           '탠덤 유효이동 2,700mm·칼끝간격 300mm·급속분 300mm·고정동작 3초',
           '55mm/s 탠덤 53.6초·67.2장/h, 60mm/s 탠덤 49.5초·72.7장/h',
           '적층 면적질량 9.795 kg/m² (유리 8.000·EVA 0.855·셀 0.520·백시트 0.420) → 최대면적 28.2 kg/장',
@@ -1081,10 +1102,10 @@
           'BC-201 카세트 35 kg·표면 0.63 m²·쐐기 클램프 15 kN×2 = 30 kN (박리 추력 13.37 kN 대비 2.24배)'
         ],
         control:[
-          'Q = 면적×8.7359×(200−25), t열 = max(5Q/(60Pη), FDM 113.2초)',
+          `Q = 면적×8.7359×(${T_TARGET}−${T_AMB}), t열 = max(${DECKS}Q/(${LAMPS}Pη), FDM 113.2초)`,
           't탠덤 = (패널길이+300)/박리속도 + 300/급속속도 + 고정동작',
-          '라인능력 = 3600/max(t열/5, t탠덤), 순생산 = 라인능력×가동률',
-          'RELEASE_200 = EVA_INTERFACE_200_ACK ∧ TANDEM_READY ∧ AL102_EMPTY ∧ OUTER_OUT_CLOSED',
+          `라인능력 = 3600/max(t열/${DECKS}, t탠덤), 순생산 = 라인능력×가동률`,
+          'RELEASE_PERMIT = EVA_INTERFACE_ACK ∧ TANDEM_READY ∧ AL102_EMPTY ∧ OUTER_OUT_CLOSED',
           'HKS 절입 허가는 인터록의 HKS_Z_PERMIT 이 걸고, 사이클은 HKB 선행 300mm 확보 시점부터 계산한다',
           'ADAPT_ENABLE = PEEL_PERMIT ∧ LOAD_CELL_HEALTH_OK ∧ AE_OK ∧ RECIPE_VALIDATED',
           'SPEED_SETPOINT = ADAPT_ENABLE ∧ PEEL_FORCE ∧ HKB_LOAD_OK → 40~60mm/s 구간에서 박리력 목표대 추종',
@@ -1096,7 +1117,7 @@
           't수동교환 = 강제공랭 200→60°C 11.5분 + 교환 8분 + 검증 2분 + 냉간승온 5.2분 ≈ 26.7분'
         ],
         verify:[
-          '55mm/s에서 열공정 여유 약 44.6%, 90% 가동률 순생산 60.5장/h',
+          '55mm/s에서 열공정 여유 약 16.9%, 90% 가동률 순생산 60.5장/h',
           '8시간 90% 약 484장·16시간 90% 약 967장',
           '클램프 체결 목표 2.5초는 300/55=5.45초의 HKS 진입 여유 안에 완료',
           '터릿형 2축 권취 또는 자동 코어교환으로 권취롤 교환 정지를 탠덤 사이클 밖으로 분리',
@@ -1112,8 +1133,8 @@
         code:'SINGLE CELL SAFETY CHAIN',title:'생산·안전 인터록',
         intro:'고온 패널을 싣는 캐리어가 두 고정 칼날의 합성반력을 받으므로 승강·밀폐·진공·양축 동기·칼날하중·권취장력을 하나의 허가체인으로 묶습니다.',
         hardware:[
-          '5단별 PANEL_PRESENT/LOCK 2채널·절대높이·K열전대 3점·표면 IR 1점',
-          '60개 IR 라인별 CT·SSR 피드백·독립 과온리미터·절연감시',
+          `${DECKS}단별 PANEL_PRESENT/LOCK 2채널·절대높이·K열전대 3점·표면 IR 1점`,
+          `${LAMPS}개 IR 라인별 CT·SSR 피드백·독립 과온리미터·절연감시`,
           '좌우 절대엔코더·리니어스케일·6존 진공·어큐뮬레이터·평탄도 센서',
           'HKB/HKS 양단 하중셀·칼날온도·Z위치·가드락·파손음향센서',
           '권취 클램프 2채널·토크·장력·직경·끝단검출과 터릿 위치잠금',
@@ -1124,7 +1145,7 @@
           'CVC-301 셀/EVA 직접이송 컨베이어·SH-101 역화방지 격리게이트·분진 차압감시',
           '전력인입 CT·전력계·상감시·SPD 접점·주차단기 트립·PE 접지연속성 감시',
           'BC-201 카세트 잠금·존재센서 4점·커넥터 체결확인 2점·카세트 온도 2점·히터 차단확인 F-DI 2점',
-          'PLC-101 DI 176점·DO 96점·AI 40점·AO 16점·TC 56점·F-DI 40점·F-DO 8점',
+          'PLC-101 DI 160점·DO 96점·AI 40점·AO 8점·TC 40점·F-DI 40점·F-DO 8점',
           '개구부 광커튼 OSSD 2채널·교차감시·뮤팅램프 상시표시',
           '적층등·부저는 안전 PLC의 F-DO에서 직접 구동해 표준 PLC 정지와 무관하게 유지',
           'RTO 연소온도 3점·절환밸브 위치 4점·HX 출구/급기측 열전대·CEMS 시료 프로브',
@@ -1239,8 +1260,8 @@
 
     const assemblies=[
       {id:'M-001',name:'투입·정렬·식별',size:'6000×1800×4200',material:'SS400/AL6061',parts:['베드 프레임','우레탄 구동롤러','IE4 기어모터','폭조절 가이드','패널 스토퍼','2D 비전카메라','레이저 높이센서','바코드 리더','광전센서','WI-101 투입 계량 컨베이어','안전커버','케이블베어','앵커 세트']},
-      {id:'M-002',name:'5단 밀폐 IR 가열실',size:'5600×2600×4860',material:'SS400+세라믹단열',parts:['외부 용접프레임','130mm 이중 단열패널','B0~B5 IR 뱅크','2.5kW IR 램프×60','반사판×60','SSR 분기모듈×60','독립 과온센서','EVA 계면센서×5','투입 에어록','배출 에어록','차압센서','점검도어','에어록 도어 위치센서×8','격리실 존재센서×2','IR 뱅크 CT·SSR 피드백×6','가열실 불꽃감지기×2','표면 IR 센서×5']},
-      {id:'M-003',name:'5단 적재·승강장치',size:'2900×1700×4150',material:'SS400/LM 가이드',parts:['LI-101 승강프레임','서보모터·감속기','볼스크류/체인 동기축','TS-101 2단 포크','텔레스코픽 레일','캐리지 위치결정핀','층별 잠금실린더×5','캐리지 존재센서×5','상하한 리미트','절대치 엔코더','낙하방지 브레이크','정비 고정핀']},
+      {id:'M-002',name:`${DECKS}단 밀폐 IR 가열실`,size:`5600×2600×${Math.round((HC_Z+.94)*1000)}`,material:'SS400+세라믹단열',parts:['외부 용접프레임','130mm 이중 단열패널',`B0~B${DECKS} IR 뱅크`,`2.5kW IR 램프×${LAMPS}`,`반사판×${LAMPS}`,`SSR 분기모듈×${LAMPS}`,'독립 과온센서',`EVA 계면센서×${DECKS}`,'투입 에어록','배출 에어록','차압센서','점검도어','에어록 도어 위치센서×8','격리실 존재센서×2',`IR 뱅크 CT·SSR 피드백×${DECKS+1}`,'가열실 불꽃감지기×2',`표면 IR 센서×${DECKS}`]},
+      {id:'M-003',name:`${DECKS}단 적재·승강장치`,size:`2900×1700×${Math.round((HC_Z+.23)*1000)}`,material:'SS400/LM 가이드',parts:['LI-101 승강프레임','서보모터·감속기','볼스크류/체인 동기축','TS-101 2단 포크','텔레스코픽 레일','캐리지 위치결정핀',`층별 잠금실린더×${DECKS}`,`캐리지 존재센서×${DECKS}`,'상하한 리미트','절대치 엔코더','낙하방지 브레이크','정비 고정핀']},
       {id:'M-004',name:'진공 캐리어·이송축',size:'11200×1800×1500',material:'SS400/AL6061',parts:['캐리어 베이스','6존 진공매니폴드','흡착패드×18','진공압센서×6','진공필터×6','체크밸브×6','서보 랙피니언','LM가이드×2','절대치 엔코더','에너지체인','범퍼스토퍼','비상 진공어큐뮬레이터','패널 착좌·스퀘어 센서×4','캐리어 파킹 위치센서','주행로 광전센서×2']},
       {id:'M-005',name:'고정 HKB/HKS 탠덤',size:'10200×4200×4300',material:'SS400/SKD11',parts:['탠덤 포털프레임','HKB Z축 서보슬라이드','HKS Z축 서보슬라이드','프리로드 LM가이드×4','볼스크류·서보브레이크×2','BC-201 HKB 퀵체인지 카세트','BC-201 HKS 퀵체인지 카세트','카세트 테이퍼 로케이팅핀×4','카세트 쐐기 클램프×4','카세트 블라인드메이트 커넥터×2','카세트 냉각 퍼지밸브×2','카세트 온도센서×2','카세트 취급 지그','카세트 잠금·존재센서×4','HKB/HKS 카트리지히터','칼날 열전대×8','로드셀×4','스프링 컴플라이언스×4','AE 센서×4','300mm 레이저 간격센서','기계식 하드스톱×4','케이블베어·내열배선','용융 EVA 드립트레이','파편 회수트레이','국소배기 슬롯후드×2','코딩 정비도어 인터록','칼날 Z축 상하한센서×4','KC-101 칼날 카세트 매거진×2','KC-101 예열 포켓·냉각 포켓','셀 경로 광전센서×2','나이프 X축 절대치 엔코더','나이프 X축 원점·과주행센서×2']},
       {id:'M-006',name:'백시트 권취·반출부 (탠덤 하류)',size:'1900×6500×2900',material:'SS400/SUS304',parts:['문형 권취프레임','RH-201 모노레일 호이스트','BS-301 롤 보관 새들','GR-W1 박리 가이드롤','권취드럼 A/B (2축)','분할클램프×4','토크서보·직경센서','자동 절단·선단 이관암','역회전 브레이크','격리셔터','외함 롤 포트','펜스 인터록 해치','RH-301 반출 스키드','코너 승강대','굴림 레일·스토퍼','BS-301 롤 보관대','장력 로드셀','공압척','웹 파단 검출센서','백시트 끝단 비전','격리셔터 위치센서×2','롤 반출 위치센서×2','BS-301 새들 존재센서×2','WO-301 권취롤 계량 새들']},
@@ -1263,7 +1284,7 @@
        서보/VFD 는 DC 링크, 진공·배기·슈레더는 유도전동기. */
     const LINE_V=380;
     const LOAD_SCHEDULE=[
-      {id:'IR-DB1',load:'IR 램프 60×2.5kW',   kW:150,pf:1.00,mccb:'4P 250A'},
+      {id:'IR-DB1',load:`IR 램프 ${LAMPS}×2.5kW`,kW:LAMPS*2.5,pf:1.00,mccb:'4P 160A'},
       {id:'HK-DB2',load:'HKB/HKS 카트리지히터',kW:30, pf:1.00,mccb:'4P 100A'},
       {id:'MCC-1', load:'서보·VFD',           kW:45, pf:0.95,mccb:'4P 125A'},
       {id:'AUX-DB',load:'VOC·진공·냉각',      kW:18, pf:0.85,mccb:'4P 63A'},
@@ -1295,7 +1316,7 @@
       arealCp:8.7358962,   // kJ/(m²·K) 적층 면적열용량
       dT:T_TARGET-T_AMB,   // 25 → 140 °C — 값이 아니라 목표에서 파생시킨다
       fdmDwell:113.15,     // 1D-FDM 계면 도달시간 하한. 열수지가 이보다 빨라도 못 줄인다
-      lamps:60,decks:5,
+      lamps:LAMPS,decks:DECKS,
       knifePitch:300,      // 칼끝 간격 mm · HKB 선행분
       rapidDistance:300,   // 장당 급속 등가거리 mm
       netTarget:60,        // 계약 순생산 장/h
@@ -1347,7 +1368,7 @@
         knifeLineCycle:Math.max(pitch,knifeCycle),
         knifeLineRate:3600/Math.max(pitch,knifeCycle),
         averagePower:energyPerPanel*lineRate,
-        bottleneck:thermalRate<tandemRate?'5단 IR 열공정':'고정 탠덤·캐리어 이송'};
+        bottleneck:thermalRate<tandemRate?`${m.decks}단 IR 열공정`:'고정 탠덤·캐리어 이송'};
     }
     /* 화면 입력을 읽어 허용구간으로 자른다. 두 표시가 같은 값을 본다. */
     function readModelInputs(){
@@ -2184,58 +2205,67 @@
       }else serviceDoor(cx,lengthX,code);
       label3(label,V(cx,-2.15,4.55),C.teal);
     }
-    function exhaust(cx,r=.25){
-      cylinder(V(cx,1.2,4.9),r,1.7,'z',C.steel2,12);cylinder(V(cx,2.05,5.56),r,1.7,'y',C.steel2,12);
+    /* 배기 덕트. 덮개(lid)는 이 덕트가 뚫고 나오는 지붕 슬래브 윗면이다.
+       값으로 박아 두면 단수를 줄였을 때 굴뚝만 공중에 뜬 채로 남는다 —
+       아무것과도 겹치지 않으므로 간섭검사에도 안 걸린다. 기본값은 탠덤
+       상부처럼 지붕이 없는 자리에서 쓰던 높이 그대로다. */
+    function exhaust(cx,r=.25,lid=4.725){
+      cylinder(V(cx,1.2,lid+.175),r,1.7,'z',C.steel2,12);
+      cylinder(V(cx,2.05,lid+.835),r,1.7,'y',C.steel2,12);
     }
     function preheatTunnel(){
-      const cx=9.2,L=5.6,x0=cx-L/2,x1=cx+L/2,z0=.82,dz=.62,liftX=carriageFocus?3.4:5.55,exitX=carriageFocus?15:12.35;
+      const cx=9.2,L=5.6,x0=cx-L/2,x1=cx+L/2,z0=HC_Z0,dz=HC_DZ,liftX=carriageFocus?3.4:5.55,exitX=carriageFocus?15:12.35;
+      /* 껍데기 높이는 단수를 따라간다. HZ 는 최상단 뱅크 자리이고 아래 오프셋은
+         종전 5단 도면(HZ 3.92)에서 그대로 옮긴 것이다 — 단수만 바꾸면 챔버가
+         통째로 내려앉는다. 값으로 박아 두면 3단인데 껍데기만 5단으로 남는다. */
+      const HZ=HC_Z,topDeck=z0+dz*(DECKS-.5),PER=LAMPS/(DECKS+1);
       for(const x of [x0,x1])for(const y of [-1.15,1.15]){
-        column(x,y,4.78,{s:.18,color:C.steel,plate:.46});
-        gusset(x,y,4.74,y>0?-1:1,'y',.18,C.steel2);
+        column(x,y,HZ+.86,{s:.18,color:C.steel,plate:.46});
+        gusset(x,y,HZ+.82,y>0?-1:1,'y',.18,C.steel2);
       }
-      box(V(cx,0,4.86),V(L+.42,2.6,.18),C.steel2);box(V(cx,0,4.69),V(L+.18,2.34,.15),C.cab,{alpha:.92});box(V(cx,0,.47),V(L+.18,2.34,.18),C.dark,{alpha:.82});
-      box(V(cx,1.24,2.68),V(L+.15,.12,4.18),C.steel2,{alpha:.94});box(V(cx,1.10,2.68),V(L,.12,3.98),C.cab,{alpha:.78});
+      box(V(cx,0,HZ+.94),V(L+.42,2.6,.18),C.steel2);box(V(cx,0,HZ+.77),V(L+.18,2.34,.15),C.cab,{alpha:.92});box(V(cx,0,.47),V(L+.18,2.34,.18),C.dark,{alpha:.82});
+      box(V(cx,1.24,(.59+HZ+.85)/2),V(L+.15,.12,HZ+.26),C.steel2,{alpha:.94});box(V(cx,1.10,(.69+HZ+.75)/2),V(L,.12,HZ+.06),C.cab,{alpha:.78});
       if(!sectionView){
-        poly([V(x0,-1.26,.52),V(x1,-1.26,.52),V(x1,-1.26,4.72),V(x0,-1.26,4.72)],C.cab,.12,C.steel,.52);
-        poly([V(x0,-1.10,.65),V(x1,-1.10,.65),V(x1,-1.10,4.55),V(x0,-1.10,4.55)],C.yellow,.07,C.yellow,.16)
+        poly([V(x0,-1.26,.52),V(x1,-1.26,.52),V(x1,-1.26,HZ+.80),V(x0,-1.26,HZ+.80)],C.cab,.12,C.steel,.52);
+        poly([V(x0,-1.10,.65),V(x1,-1.10,.65),V(x1,-1.10,HZ+.63),V(x0,-1.10,HZ+.63)],C.yellow,.07,C.yellow,.16)
       }else{
-        line([V(x0,-1.26,.52),V(x1,-1.26,.52),V(x1,-1.26,4.72)],C.yellow,2,[6,3]);label3('INS-101 · 130mm 이중피복 단열단면',V(cx,-1.55,4.6),C.yellow)
+        line([V(x0,-1.26,.52),V(x1,-1.26,.52),V(x1,-1.26,HZ+.80)],C.yellow,2,[6,3]);label3('INS-101 · 130mm 이중피복 단열단면',V(cx,-1.55,HZ+.68),C.yellow)
       }
       for(const x of [x0+.42,cx,x1-.42])for(const y of [-.98,.98])
-        column(x,y,z0+dz*4.9,{s:.11,color:C.steel2,plate:.28});
-      for(let deck=0;deck<5;deck++){const z=z0+dz*(deck+.5);box(V(cx,0,z),V(DECK_L+.15,DECK_W+.2,.11),C.steel2);for(const y of [-DECK_W/2-.08,DECK_W/2+.08]){box(V(cx,y,z-.18),V(DECK_L+.2,.1,.35),C.rail);box(V(cx-DECK_L/2-.1,y,z+.03),V(.22,.18,.14),C.yellow);box(V(cx+DECK_L/2+.1,y,z+.03),V(.22,.18,.14),C.yellow)}cylinder(V(cx+DECK_L/2+.32,-DECK_W/2-.28,z+.12),.07,.16,'z',C.teal,9);label3(`C${deck+1}`,V(cx-DECK_L/2-.32,-DECK_W/2-.4,z+.12),C.white)}
-      for(let bank=0;bank<6;bank++){
+        column(x,y,z0+dz*(DECKS+1.9),{s:.11,color:C.steel2,plate:.28});
+      for(let deck=0;deck<DECKS;deck++){const z=z0+dz*(deck+.5);box(V(cx,0,z),V(DECK_L+.15,DECK_W+.2,.11),C.steel2);for(const y of [-DECK_W/2-.08,DECK_W/2+.08]){box(V(cx,y,z-.18),V(DECK_L+.2,.1,.35),C.rail);box(V(cx-DECK_L/2-.1,y,z+.03),V(.22,.18,.14),C.yellow);box(V(cx+DECK_L/2+.1,y,z+.03),V(.22,.18,.14),C.yellow)}cylinder(V(cx+DECK_L/2+.32,-DECK_W/2-.28,z+.12),.07,.16,'z',C.teal,9);label3(`C${deck+1}`,V(cx-DECK_L/2-.32,-DECK_W/2-.4,z+.12),C.white)}
+      for(let bank=0;bank<=DECKS;bank++){
         const z=z0+dz*bank;
         for(const y of [-.92,.92])box(V(cx,y,z),V(L-.46,.12,.15),C.steel2);       // lamp carrier channel
-        for(let lamp=0;lamp<10;lamp++){
-          const x=x0+.38+lamp*(L-.76)/9;
+        for(let lamp=0;lamp<PER;lamp++){
+          const x=x0+.38+lamp*(L-.76)/(PER-1);
           cylinder(V(x,0,z),.045,1.72,'y',C.heat,8);
           if(nearView())for(const y of [-.91,.91])box(V(x,y,z),V(.1,.14,.11),C.cab);  // ceramic end socket
         }
       }
       for(const y of [-1.0,1.0])column(x1+.55,y,.84,{s:.16,color:C.steel2,plate:.38});
       box(V(x1+.55,0,.86),V(.52,2.3,.16),C.steel2);
-      box(V(x1+.55,0,2.65),V(.48,2.26,3.7),C.cab);for(let deck=0;deck<5;deck++)box(V(x1+.57,-1.14,z0+dz*(deck+.5)),V(.22,.12,.18),C.teal);
+      box(V(x1+.55,0,(.80+HZ+.58)/2),V(.48,2.26,HZ-.22),C.cab);for(let deck=0;deck<DECKS;deck++)box(V(x1+.57,-1.14,z0+dz*(deck+.5)),V(.22,.12,.18),C.teal);
       for(const y of [-1.08,1.08]){
-        column(liftX,y,4.62,{s:.16,color:C.steel,plate:.42});
-        gusset(liftX,y,4.6,y>0?-1:1,'y',.16,C.steel2);
+        column(liftX,y,HZ+.70,{s:.16,color:C.steel,plate:.42});
+        gusset(liftX,y,HZ+.68,y>0?-1:1,'y',.16,C.steel2);
       }
-      box(V(liftX,0,4.68),V(.28,2.36,.2),C.steel2);
+      box(V(liftX,0,HZ+.76),V(.28,2.36,.2),C.steel2);
       box(V(liftX,0,1.0),V(.34,2.4,.2),C.steel2);                        // mast base beam
-      box(V(liftX,0,4.5),V(.34,2.4,.16),C.steel2);                       // mast crosshead
+      box(V(liftX,0,HZ+.58),V(.34,2.4,.16),C.steel2);                       // mast crosshead
       box(V(liftX,0,1.22),V(DECK_L-.1,DECK_W+.02,.16),C.cab);
-      for(const y of [-.9,.9])cylinder(V(liftX,y,2.65),.09,3.1,'z',C.rail,10);
-      box(V(liftX+.16,0,3.7),V(.32,1.9,.62),C.steel2);                   // fork carriage back plate
-      box(V(liftX+.6,0,3.67),V(1.35,1.7,.12),C.steel2);for(const y of [-.72,.72]){box(V(liftX+.65,y,3.78),V(1.45,.09,.18),C.rail);box(V(liftX+1.1,y,3.84),V(1.2,.07,.12),C.steel)}box(V(liftX-.35,1.2,3.95),V(.42,.38,.5),C.cab);cylinder(V(liftX-.35,1.2,4.3),.12,.35,'z',C.teal,10);
+      for(const y of [-.9,.9])cylinder(V(liftX,y,(1.10+HZ+.28)/2),.09,HZ-.82,'z',C.rail,10);
+      box(V(liftX+.16,0,topDeck+.09),V(.32,1.9,.62),C.steel2);                   // fork carriage back plate
+      box(V(liftX+.6,0,topDeck+.06),V(1.35,1.7,.12),C.steel2);for(const y of [-.72,.72]){box(V(liftX+.65,y,topDeck+.17),V(1.45,.09,.18),C.rail);box(V(liftX+1.1,y,topDeck+.23),V(1.2,.07,.12),C.steel)}box(V(liftX-.35,1.2,3.95),V(.42,.38,.5),C.cab);cylinder(V(liftX-.35,1.2,4.3),.12,.35,'z',C.teal,10);
       box(V(9.2,0,.48),V(7.25,1.86,.17),C.dark);for(let x=5.8;x<12.5;x+=.5)cylinder(V(x,0,.6),.09,1.66,'y',C.rail,9);
       for(const y of [-.84,.84])column(exitX,y,1.32,{s:.12,color:C.steel2,plate:.3});
       box(V(exitX,0,1.38),V(1.15,1.9,.14),C.steel2);for(const y of [-.85,.85])box(V(exitX+.2,y,1.51),V(1.55,.09,.18),C.rail);
       const meterY=carriageFocus?1.45:-1.45,meterFaceY=carriageFocus?1.64:-1.64,meterButtonY=carriageFocus?1.69:-1.69;
       const railY=carriageFocus?1.21:-1.21;
-      box(V(cx,railY,3.08),V(L-.2,.1,.13),C.steel2);                                    // wall mounting rail
-      for(const dx of [-.52,.52])box(V(cx+dx,meterY+(carriageFocus?-.19:.19),3.08),V(.11,.1,.94),C.steel2);  // standoff brackets
-      box(V(cx,meterY,3.08),V(1.35,.32,1.08),C.cab);box(V(cx,meterFaceY,3.18),V(1.02,.08,.5),C.black);for(let k=0;k<4;k++)box(V(cx-.32+k*.21,meterButtonY,2.75),V(.14,.06,.12),k<2?C.teal:C.yellow);
-      exhaust(cx,.23);label3('M1 · 완전단열 5단 밀폐가열실',V(cx,-1.52,5.08),C.heat);label3('6 라인 × 10 = 60 IR',V(cx,-1.52,4.72),C.yellow);label3('AL-101/102 · 이중셔터 에어록',V(cx,-1.52,4.38),C.teal);label3('PM-101 · IR 전력 계기판',V(cx,-1.86,3.72),C.yellow);label3('LI-101 · 5단 서보승강',V(liftX,-1.38,4.42),C.teal);label3('TS-101 · 이단 텔레스코픽 포크',V(liftX+.65,-1.28,3.95),C.yellow);label3('IDX-101 · 5단 위치결정·잠금',V(9.2,-1.34,4.25),C.teal);label3('RT-101 · 밀폐 빈 캐리지 복귀',V(9.2,-1.22,.52),C.teal);label3('EX-101 · 밀폐 방출 셔틀',V(exitX,-1.28,1.72),C.yellow);
+      box(V(cx,railY,HZ-.84),V(L-.2,.1,.13),C.steel2);                                    // wall mounting rail
+      for(const dx of [-.52,.52])box(V(cx+dx,meterY+(carriageFocus?-.19:.19),HZ-.84),V(.11,.1,.94),C.steel2);  // standoff brackets
+      box(V(cx,meterY,HZ-.84),V(1.35,.32,1.08),C.cab);box(V(cx,meterFaceY,HZ-.74),V(1.02,.08,.5),C.black);for(let k=0;k<4;k++)box(V(cx-.32+k*.21,meterButtonY,HZ-1.17),V(.14,.06,.12),k<2?C.teal:C.yellow);
+      exhaust(cx,.23,HZ+1.03);label3(`M1 · 완전단열 ${DECKS}단 밀폐가열실`,V(cx,-1.52,HZ+1.16),C.heat);label3(`${DECKS+1} 라인 × ${PER} = ${LAMPS} IR`,V(cx,-1.52,HZ+.80),C.yellow);label3('AL-101/102 · 이중셔터 에어록',V(cx,-1.52,HZ+.46),C.teal);label3('PM-101 · IR 전력 계기판',V(cx,-1.86,HZ-.20),C.yellow);label3(`LI-101 · ${DECKS}단 서보승강`,V(liftX,-1.38,HZ+.50),C.teal);label3('TS-101 · 이단 텔레스코픽 포크',V(liftX+.65,-1.28,HZ+.03),C.yellow);label3(`IDX-101 · ${DECKS}단 위치결정·잠금`,V(9.2,-1.34,HZ+.33),C.teal);label3('RT-101 · 밀폐 빈 캐리지 복귀',V(9.2,-1.22,.52),C.teal);label3('EX-101 · 밀폐 방출 셔틀',V(exitX,-1.28,1.72),C.yellow);
     }
     function liftConveyor(){
       const a=V(TDM_OUT+1.2,0,1.6),b=V(25,-2.35,1.16),dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z,plan=Math.hypot(dx,dy),L=Math.hypot(plan,dz),rz=Math.atan2(dy,dx),ry=-Math.atan2(dz,plan),cx=(a.x+b.x)/2,cy=(a.y+b.y)/2,cz=(a.z+b.z)/2;
@@ -2510,8 +2540,8 @@
          · 패널이 서고 칼날이 간다. 진공 테이블 VT-101 은 고정이고 갠트리
            KG-101 이 2,400mm 를 55mm/s 로 지나간 뒤 2,700mm 를 700mm/s 로
            돌아온다. 박리는 상대운동이므로 행정도 시간도 그대로다.
-         · 유리 냉각을 8.8m 컨베이어에서 5단 랙으로 세웠다 — 시간을 높이로
-           산다. 5단 가열실이 이미 쓰던 방법이다.
+         · 유리 냉각을 8.8m 컨베이어에서 냉각 랙으로 세웠다 — 시간을 높이로
+           산다. 가열실이 이미 쓰던 방법이다.
          · 환경설비·후속파쇄·팔레타이징이 빠진 자리에 경계 인터페이스
            (BJ-101/102 · 덕트 플랜지 · 배출 슈트)가 선다.
 
@@ -2588,7 +2618,7 @@
       if(i===10)return lerp(CHKB0,CHKB1,(p*4)%1);
       return CHKB_PARK;
     }
-    /* 5단 랙. 가열실과 냉각 랙이 같은 구조라 한 함수로 그린다 — 예비품이
+    /* 단수 랙. 가열실과 냉각 랙이 같은 구조라 한 함수로 그린다 — 예비품이
        한 벌이면 된다는 설계 판단이 도면에도 그대로 보여야 한다. */
     function cRack(cx,L,opt){
       const x0=cx-L/2,x1=cx+L/2;
@@ -2606,8 +2636,8 @@
         line([V(x0,-1.24,.55),V(x1,-1.24,.55),V(x1,-1.24,opt.top-.06)],C.yellow,2,[6,3]);
         label3(opt.section,V(cx,-1.52,opt.top-.2),C.yellow);
       }
-      /* 5단 데크와 층별 잠금. 데크는 2,780 — 챔버 안치수 3,080 안에 든다. */
-      for(let k=0;k<5;k++){const z=cDeckZ(k);
+      /* 데크와 층별 잠금. 데크는 2,780 — 챔버 안치수 3,080 안에 든다. */
+      for(let k=0;k<DECKS;k++){const z=cDeckZ(k);
         box(V(cx,0,z),V(DECK_L+.12,DECK_W+.18,.10),C.steel2);
         for(const y of [-DECK_W/2-.07,DECK_W/2+.07])box(V(cx,y,z-.16),V(DECK_L+.16,.09,.30),C.rail);
         for(const sx of [-1,1])box(V(cx+sx*(DECK_L/2+.09),-DECK_W/2-.02,z+.04),V(.18,.15,.12),C.yellow);  // 층별 잠금실린더×5
@@ -2621,20 +2651,24 @@
       box(V(cx,0,opt.top-.02),V(L-.4,2.1,.1),C.cab,{alpha:.9});
     }
     function cChamber(){
-      const g=CST.HC;
-      cRack(g.cx,g.w,{top:4.55,wall:C.cab,tag:'C',section:'INS-101 · 130mm 이중피복 단열단면',
+      const g=CST.HC,top=cDeckZ(DECKS-1)+.86;
+      /* 안쪽 부재의 높이는 전부 top 에서 잰다. 값으로 박아 두면 단수를
+         줄였을 때 브레이스와 계기판만 지붕 위에 뜬 채로 남는다 — 겹치지
+         않으므로 간섭검사에도 안 걸린다. */
+      cRack(g.cx,g.w,{top,wall:C.cab,tag:'C',section:'INS-101 · 130mm 이중피복 단열단면',
         inner:()=>{
-          /* 6 뱅크 × 8 = 48 IR. 챔버가 짧아진 만큼 램프 피치를 좁혀 같은
-             면적출력을 유지한다 — 정격은 열수지가 정하지 길이가 정하지 않는다. */
-          for(let bank=0;bank<6;bank++){const z=CDECK_Z0+CDECK_DZ*bank;
+          /* (DECKS+1) 뱅크 × (LAMPS/(DECKS+1)). 챔버가 짧아진 만큼 램프 피치를
+             좁혀 같은 면적출력을 유지한다 — 정격은 열수지가 정하지 길이가
+             정하지 않는다. */
+          for(let bank=0;bank<=DECKS;bank++){const z=CDECK_Z0+CDECK_DZ*bank;
             for(const y of [-.92,.92])box(V(g.cx,y,z),V(g.w-.5,.11,.14),C.steel2);
-            for(let n=0;n<8;n++){const x=g.x0+.42+n*(g.w-.84)/7;
-              cylinder(V(x,0,z),.042,1.70,'y',C.heat,8);                                   // 2.5kW IR 램프×60
-              if(nearView())for(const y of [-.90,.90])box(V(x,y,z),V(.09,.13,.10),C.cab);  // 반사판×60
+            for(let n=0,per=LAMPS/(DECKS+1);n<per;n++){const x=g.x0+.42+n*(g.w-.84)/(per-1);
+              cylinder(V(x,0,z),.042,1.70,'y',C.heat,8);                                   // 2.5kW IR 램프
+              if(nearView())for(const y of [-.90,.90])box(V(x,y,z),V(.09,.13,.10),C.cab);  // 반사판
             }}
-          for(const y of [-1.02,1.02])box(V(g.cx,y,4.20),V(g.w-.6,.10,.12),C.steel2);
-          box(V(g.cx,-1.34,3.10),V(1.10,.26,.86),C.cab);                                   // PM-101 IR 전력 계기판
-          box(V(g.cx,-1.49,3.16),V(.84,.07,.40),C.black);
+          for(const y of [-1.02,1.02])box(V(g.cx,y,top-.35),V(g.w-.6,.10,.12),C.steel2);
+          box(V(g.cx,-1.34,top-1.45),V(1.10,.26,.86),C.cab);                               // PM-101 IR 전력 계기판
+          box(V(g.cx,-1.49,top-1.39),V(.84,.07,.40),C.black);
           for(const y of [-1.04,1.04])box(V(g.cx,y,.72),V(g.w-.7,.14,.18),C.steel2);
           box(V(g.cx,-1.30,1.60),V(.30,.24,.30),C.teal);                                   // 독립 과온센서
           box(V(g.cx+.55,-1.30,1.60),V(.26,.22,.26),C.red);                                // 연기센서·불꽃센서
@@ -2647,25 +2681,25 @@
         box(V(x,-1.02,CZ+1.16),V(.12,.10,.14),C.teal);                                     // 에어록 도어 위치센서×8
         label3(`${tag} · 이중셔터 에어록`,V(x,-1.42,CZ+1.72),C.teal);
       }
-      exhaust(g.cx,.22);
-      label3('HC-101 · 5단 밀폐 IR 가열실 (3,780)',V(g.cx,-1.50,4.94),C.heat);
-      label3('6 뱅크 × 8 = 48 IR · 계면 140°C',V(g.cx,-1.50,4.62),C.yellow);
+      exhaust(g.cx,.22,top+.175);
+      label3(`HC-101 · ${DECKS}단 밀폐 IR 가열실 (3,780)`,V(g.cx,-1.50,cDeckZ(DECKS-1)+1.25),C.heat);
+      label3(`${DECKS+1} 뱅크 × ${LAMPS/(DECKS+1)} = ${LAMPS} IR · 계면 ${T_TARGET}°C`,V(g.cx,-1.50,cDeckZ(DECKS-1)+.93),C.yellow);
     }
     /* 승강 포크. 랙은 고정이고 포크가 층을 고른다 — 랙을 들면 챔버가
        2.5m 더 높아진다. 마스트는 이웃 스테이션의 끝자리를 쓴다. */
     function cFork(x,tag,dir,label){
       for(const y of [-1.12,1.12]){
-        column(x,y,4.35,{s:.15,color:C.steel,plate:.40});
-        gusset(x,y,4.32,y>0?-1:1,'y',.15,C.steel2);
+        column(x,y,cDeckZ(DECKS-1)+.66,{s:.15,color:C.steel,plate:.40});
+        gusset(x,y,cDeckZ(DECKS-1)+.63,y>0?-1:1,'y',.15,C.steel2);
       }
-      box(V(x,0,4.42),V(.26,2.34,.18),C.steel2);
+      box(V(x,0,cDeckZ(DECKS-1)+.73),V(.26,2.34,.18),C.steel2);
       box(V(x,0,.62),V(.30,2.36,.18),C.steel2);
-      for(const y of [-.86,.86])cylinder(V(x,y,2.45),.075,3.5,'z',C.rail,10);   // 서보모터·감속기
+      for(const y of [-.86,.86])cylinder(V(x,y,(.62+cDeckZ(DECKS-1)+.60)/2),.075,cDeckZ(DECKS-1)-.02,'z',C.rail,10);   // 서보모터·감속기
       box(V(x+dir*.13,0,CZ+.42),V(.26,1.80,.55),C.steel2);                      // 포크 캐리지
       box(V(x+dir*.28,0,CZ+.05),V(.55,1.62,.09),C.rail);                        // TS-101 2단 포크 (접힘)
       for(const y of [-.70,.70])box(V(x+dir*.28,y,CZ+.14),V(.62,.08,.14),C.rail);
       box(V(x-dir*.20,1.05,CZ+.86),V(.32,.30,.40),C.cab);
-      label3(label,V(x,-1.34,4.10),C.teal);
+      label3(label,V(x,-1.34,cDeckZ(DECKS-1)+.41),C.teal);
     }
     function cInfeed(){
       const g=CST.LD;
@@ -2786,21 +2820,24 @@
       label3('DL-101 · 탠덤 분리 셀 (3,800)',V(g.cx,-1.95,3.30),C.teal);
     }
     function cGlassRack(){
-      const g=CST.GC;
-      cRack(g.cx,g.w,{top:4.35,wall:C.glass,tag:'G',section:'GC-101 · 강제공랭 단면',
+      const g=CST.GC,top=cDeckZ(DECKS-1)+.66;
+      /* 팬 열과 급기 필터면도 랙 높이에서 잰다. 필터면을 3.0m 로 박아 두면
+         3단 랙에서 지붕을 600mm 뚫고 나간다. */
+      const fanZ=cDeckZ(Math.floor(DECKS/2)),airZ0=.65,airZ1=top-.06;
+      cRack(g.cx,g.w,{top,wall:C.glass,tag:'G',section:'GC-101 · 강제공랭 단면',
         inner:()=>{
-          for(let k=0;k<4;k++){const x=g.x0+.55+k*(g.w-1.1)/3;
-            cylinder(V(x,-1.06,2.30),.26,.22,'y',C.cab,12);                                  // 냉각 팬
-            cylinder(V(x,-1.06,2.30),.09,.30,'y',C.rail,9);
-            box(V(x,-1.18,2.30),V(.52,.06,.52),C.guard,{alpha:.55});
+          for(let k=0;k<DECKS+1;k++){const x=g.x0+.55+k*(g.w-1.1)/DECKS;
+            cylinder(V(x,-1.06,fanZ),.26,.22,'y',C.cab,12);                                  // 냉각 팬
+            cylinder(V(x,-1.06,fanZ),.09,.30,'y',C.rail,9);
+            box(V(x,-1.18,fanZ),V(.52,.06,.52),C.guard,{alpha:.55});
           }
-          box(V(g.cx,1.02,2.30),V(g.w-.7,.10,3.0),C.guard,{alpha:.42});                       // 필터 급기면
-          for(let k=0;k<5;k++)box(V(g.cx+DECK_L/2+.18,1.04,cDeckZ(k)),V(.14,.12,.14),C.teal); // 표면 IR 센서×5
+          box(V(g.cx,1.02,(airZ0+airZ1)/2),V(g.w-.7,.10,airZ1-airZ0),C.guard,{alpha:.42});    // 필터 급기면
+          for(let k=0;k<DECKS;k++)box(V(g.cx+DECK_L/2+.18,1.04,cDeckZ(k)),V(.14,.12,.14),C.teal); // 표면 IR 센서×3
         }});
       cFork(CST.DL.x1+.08,'GL',1,'GL-101 · 유리 적입 포크');
       cFork(CST.GC.x1+.34,'GU',1,'GU-101 · 유리 인출 포크');
-      label3(`GC-101 · 유리 5단 냉각 랙 (3,380 · ${GCOOL_DECKS}단)`,V(g.cx,-1.50,4.74),C.glass);
-      label3(`강제공랭 ${glassCoolSec().toFixed(0)}s · 180 → 60°C`,V(g.cx,-1.50,4.44),C.brand);
+      label3(`GC-101 · 유리 냉각 랙 (3,380 · ${GCOOL_DECKS}단)`,V(g.cx,-1.50,cDeckZ(DECKS-1)+1.05),C.glass);
+      label3(`강제공랭 ${glassCoolSec().toFixed(0)}s · ${GCOOL_T_IN} → ${GCOOL_T_OUT}°C`,V(g.cx,-1.50,cDeckZ(DECKS-1)+.75),C.brand);
     }
     function cOutfeed(){
       const g=CST.UL;
@@ -2930,13 +2967,13 @@
        후속파쇄·팔레타이징 단계는 경계 인계 한 단계로 접힌다. */
     const C21_STEPS=[
       {id:'C0',name:'투입·계량·정렬',duration:3200,desc:'발주자 픽업 스테이션에서 받은 패널을 유리면 아래·백시트 위로 놓고 WI-101 계량과 폭 정렬을 마칩니다.',vac:'대기 · 0 kPa',temp:'식별 · 상온',out:'ORIENT_OK',flow:['권취 대기','분리 대기 → CS-201 카트','분리 대기 → 냉각 랙'],cam:[0,CST.LD.cx]},
-      {id:'C1',name:'5단 밀폐가열 5/5',duration:15000,desc:'LI-101 이 층을 골라 밀어 넣고 5/5 잠금·밀폐를 확인한 뒤 EVA/유리 계면 140°C 까지 소킹합니다. 체류 225.9초를 5단이 나눠 갖습니다.',vac:'VT-101 대기',temp:'C1~C5 · 계면 140°C',out:'SEALED_FULL_LOAD_ACK',flow:['권취 대기','가열 중','가열 중'],cam:[1,CST.HC.cx]},
+      {id:'C1',name:`${DECKS}단 밀폐가열 ${DECKS}/${DECKS}`,duration:15000,desc:`LI-101 이 층을 골라 밀어 넣고 ${DECKS}/${DECKS} 잠금·밀폐를 확인한 뒤 EVA/유리 계면 ${T_TARGET}°C 까지 소킹합니다. 체류 ${thermalModel(MODEL_DEFAULT).dwell.toFixed(1)}초를 ${DECKS}단이 나눠 갖습니다.`,vac:'VT-101 대기',temp:`${DECK_TAG} · 계면 ${T_TARGET}°C`,out:'SEALED_FULL_LOAD_ACK',flow:['권취 대기','가열 중','가열 중'],cam:[1,CST.HC.cx]},
       {id:'C2',name:'140°C 방출 · 테이블 착좌',duration:4200,desc:'EX-101 이 140°C 패널을 꺼내 VT-101 6존 진공테이블에 앉힙니다. 이 순간부터 박리가 끝날 때까지 패널은 움직이지 않습니다.',vac:'VT-101 · −65 kPa',temp:'HKB 180°C · HKS 200°C',out:'TABLE_VAC_OK',flow:['장력 형성 대기','HKS 분리 대기','진공테이블 지지'],cam:[2,CTBL_CX]},
       {id:'C3',name:'나이프 원점 → 선단 300mm',duration:3000,desc:'KG-101 이 원점에서 나와 HKB 가 백시트 선단 300mm 를 열고 WR-101 장력을 잡습니다. HKS 는 300mm 뒤에서 따라옵니다.',vac:'VT-101 · −65 kPa',temp:'HKB 180°C',out:'LEAD_300_ACK',flow:['선단 개방 중','HKS 진입 대기','진공테이블 지지'],cam:[2,CTBL_CX-.8]},
       {id:'C4',name:'55mm/s 나이프 통과박리',duration:7600,desc:'패널은 서 있고 KG-101 이 55mm/s 로 2,400mm 를 지나갑니다. 상대운동이 같으므로 행정도 시간 43.6초도 이동 캐리어와 같습니다.',vac:'VT-101 6존 · −65 kPa',temp:'HKB 180°C · HKS 200°C',out:'KNIFE_PEEL_COMPLETE',flow:['GR-W1 이 같이 간다 — 권취 0','유리에서 분리 중','진공테이블 지지'],cam:[2,CTBL_CX]},
       {id:'C5',name:'3계통 분기',duration:4200,desc:'백시트는 GR-W1 을 지나 WR-101 로, 셀/EVA 는 갠트리 슈트에서 CE-201 트로프로, 유리는 테이블에 남습니다. 세 계통이 서로 다른 방향으로 갈라집니다.',vac:'VT-101 유지',temp:'유리 180°C',out:'STREAMS_SPLIT',flow:['웹 길이 상쇄 — 드럼 정지','CE-201 통째 인출 2,400×1,200','테이블에 유리만 남음'],cam:[1,CTBL_CX+.6]},
       {id:'C6',name:'700mm/s 복귀 · 패널 교환',duration:3000,desc:'나이프가 2,700mm 를 700mm/s 로 3.86초에 복귀합니다. 그 사이 유리가 나가고 다음 패널이 들어옵니다 — 두 동작이 같은 창(4.5초) 안에 있어 사이클이 늘지 않습니다.',vac:'VT-101 해제',temp:'카세트 온도 유지',out:'KNIFE_X_HOME',flow:['복귀 중 2,700mm 권취','CS-201 카트로 평적','GC-101 랙으로'],cam:[2,CTBL_CX]},
-      {id:'C7',name:'유리 5단 냉각 랙',duration:5200,desc:'GL-101 이 유리를 GC-101 랙에 넣고 강제공랭으로 180 → 60°C 로 내립니다. 필요한 179초를 길이가 아니라 단수로 삽니다.',vac:'—',temp:'유리 180 → 60°C',out:'GLASS_COOL_OK',flow:['BS-301 보관','CS-201 평적 중','G1~G5 강제공랭'],cam:[1,CST.GC.cx]},
+      {id:'C7',name:`유리 ${GCOOL_DECKS}단 냉각 랙`,duration:5200,desc:`GL-101 이 유리를 GC-101 랙에 넣고 강제공랭으로 ${GCOOL_T_IN} → ${GCOOL_T_OUT}°C 로 내립니다. 필요한 ${glassCoolSec().toFixed(0)}초를 길이가 아니라 단수로 삽니다.`,vac:'—',temp:`유리 ${GCOOL_T_IN} → ${GCOOL_T_OUT}°C`,out:'GLASS_COOL_OK',flow:['BS-301 보관','CS-201 평적 중',`G1~G${GCOOL_DECKS} 강제공랭`],cam:[1,CST.GC.cx]},
       {id:'C8',name:'QI 검사 · 반출',duration:4000,desc:'QI-301 이 잔류 EVA·균열·표면온도를 보고 합격품만 UL-101 로 내보냅니다. 불합격은 RJ-301 로 분기합니다.',vac:'—',temp:'유리 60°C 이하',out:'GLASS_DISCHARGE_PERMIT',flow:['BS-301 보관','CS-201 평적 중','QI-301 검사·RJ 분기'],cam:[0,CST.UL.cx]},
       {id:'C9',name:'경계 인계',duration:4000,desc:'세 계통이 각자 다른 방향으로 나갑니다 — 백시트는 RH-201 모노레일로 방책을 넘어 BS-301 로(357 kg · 4.9시간마다), 셀/EVA 는 CE-201 로 통째로 −y 로 밀려 CS-201 카트에 평적되어 게이트로, 유리는 픽업 스테이션으로. 설비는 발주자 것이 되어도 인터록은 경계 너머까지 성립합니다.',vac:'—',temp:'덕트 차압 확인',out:'BOUNDARY_READY',flow:['RH-201 모노레일 → BS-301 (펜스 밖)','CS-201 게이트 반출','픽업 스테이션 인계'],cam:[0,CBJ_X]},
       {id:'C10',name:'60장 연속 시험',duration:8000,desc:'53.6초 사이클의 정상상태 60장을 8초로 압축합니다. 나이프가 55mm/s 로 가고 700mm/s 로 돌아오기를 60번 반복합니다.',vac:'VT-101 · −65 kPa',temp:'실공정 53분35초 → 영상 8초',out:'SIXTY_TEST_COMPLETE',flow:['롤에 60장 권취','CE-201 연속 인출','GC-101 랙 순환'],cam:[2,CTBL_CX]},
@@ -3057,14 +3094,14 @@
     }
     function compactDynamic(i,p){
       const st=cState(i,p),o=explodeOffsets();
-      /* 가열실 안의 5장. 한 장만 그리면 '5단 소킹' 이 화면에 안 보인다. */
+      /* 가열실 안의 여러 장. 한 장만 그리면 '단수 소킹' 이 화면에 안 보인다. */
       if(i>=1)withPartOffset(o.heat,()=>{
-        const filled=i===1?Math.min(5,1+Math.floor(p*5)):5;
+        const filled=i===1?Math.min(DECKS,1+Math.floor(p*DECKS)):DECKS;
         for(let k=0;k<filled;k++){
           flatLayer(CST.HC.cx,PANEL_L,cDeckZ(k)+.09,C.glass,.72);
           flatLayer(CST.HC.cx,PANEL_L,cDeckZ(k)+.15,C.cell,.9);
         }
-        if(i===1)label3(`C1~C5 · ${filled}/5 밀폐가열`,V(CST.HC.cx,-1.28,cDeckZ(4)+.42),C.heat);
+        if(i===1)label3(`C1~C${DECKS} · ${filled}/${DECKS} 밀폐가열`,V(CST.HC.cx,-1.28,cDeckZ(DECKS-1)+.42),C.heat);
       });
       if(i<=2)withPartOffset(i===0?o.input:o.heat,()=>{
         if(i!==1)cPanelLayers(st.px,st.kx,false,0);
@@ -3075,9 +3112,9 @@
       if(st.glass>=0)withPartOffset(o.glass,()=>{
         if(i===6)flatLayer(lerp(CPNL_CX,CST.GC.cx,ease(p)),PANEL_L,CZ+.05,C.glass,.8);
         else if(i===7){
-          const n=Math.min(5,1+Math.floor(p*5));
+          const n=Math.min(DECKS,1+Math.floor(p*DECKS));
           for(let k=0;k<n;k++)flatLayer(CST.GC.cx,PANEL_L,cDeckZ(k)+.09,C.glass,.78);
-          label3(`G1~G5 · ${n}/5 강제공랭`,V(CST.GC.cx,1.30,cDeckZ(4)+.42),C.glass);
+          label3(`G1~G${DECKS} · ${n}/${DECKS} 강제공랭`,V(CST.GC.cx,1.30,cDeckZ(DECKS-1)+.42),C.glass);
         }
         else if(i===8)flatLayer(lerp(CST.GC.cx,CST.UL.cx,ease(p)),PANEL_L,CZ+.05,C.glass,.82);
         else flatLayer(CST.UL.cx+.6,PANEL_L,CZ+.05,C.glass,.82);
@@ -3169,7 +3206,7 @@
       machineSkin();
       lightCurtain(5.72,-1.78,1.78,'LC-001');lightCurtain(30.48,-1.78,1.78,'LC-002');
       signalTower(20.35,-3.34,2.62,'ST-101');signalTower(30.2,3.34,2.62,'ST-102');
-      explodeGuide(V(3,0,1.1),o.input,C.teal,'투입 모듈');explodeGuide(V(9.2,0,2.6),o.heat,C.heat,'5단 IR');explodeGuide(V(17.8,0,2.2),o.tandem,C.yellow,'탠덤');explodeGuide(V(WR_DRUM_X,-1.6,2.2),o.backsheet,C.sheet,'백시트');explodeGuide(V(28,-2.35,1.3),o.cell,C.cell2,'셀/EVA');explodeGuide(V(27.4,1.6,1.4),o.glass,C.glass,'유리');explodeGuide(V(38.8,0,2.4),o.exhaust,C.teal,'배기');explodeGuide(V(9.2,-4.2,1.8),o.utility,C.yellow,'유틸리티')
+      explodeGuide(V(3,0,1.1),o.input,C.teal,'투입 모듈');explodeGuide(V(9.2,0,2.6),o.heat,C.heat,`${DECKS}단 IR`);explodeGuide(V(17.8,0,2.2),o.tandem,C.yellow,'탠덤');explodeGuide(V(WR_DRUM_X,-1.6,2.2),o.backsheet,C.sheet,'백시트');explodeGuide(V(28,-2.35,1.3),o.cell,C.cell2,'셀/EVA');explodeGuide(V(27.4,1.6,1.4),o.glass,C.glass,'유리');explodeGuide(V(38.8,0,2.4),o.exhaust,C.teal,'배기');explodeGuide(V(9.2,-4.2,1.8),o.utility,C.yellow,'유틸리티')
     }
     function tandemFocusBase(){
       for(const y of [-CARRIER_W/2-.08,CARRIER_W/2+.08]){box(V(17.7,y,.36),V(11.2,.24,.18),C.steel2);box(V(17.7,y,.54),V(11.2,.16,.2),C.rail);for(let x=12.35;x<=23.05;x+=.32)box(V(x,y,.66),V(.2,.12,.08),C.steel);for(let x=12.4;x<=23.1;x+=1.34)column(x,y,.28,{s:.13,color:C.steel2,plate:.32})}
@@ -3984,25 +4021,25 @@
       return carriageFocus?{inOutside:-2.35,inVest:3.4,rack:9.2,outVest:15,outDone:20.75,inOuter:.4,inInner:6.4,outInner:12,outOuter:18}:{inOutside:3,inVest:5.55,rack:9.2,outVest:12.35,outDone:15.1,inOuter:6.16,inInner:6.58,outInner:11.82,outOuter:12.24}
     }
     function carriageCycleState(p,cycleNo=carriageCycleNo){
-      const q=clamp(p),active=((cycleNo%5)+5)%5,next=(active+1)%5,g=carriageGeometry(),z0=.82,dz=.62,deckZ=z0+dz*(active+.5);
-      let step=1,phase='5/5 밀폐가열',detail='FULL_LOAD_ACK · 모든 문 닫힘 · IR 생산출력',releaseX=g.rack,releaseZ=deckZ,refillX=g.inOutside,refillZ=1.42;
+      const q=clamp(p),active=((cycleNo%DECKS)+DECKS)%DECKS,next=(active+1)%DECKS,g=carriageGeometry(),z0=.82,dz=.62,deckZ=z0+dz*(active+.5);
+      let step=1,phase=`${DECKS}/${DECKS} 밀폐가열`,detail='FULL_LOAD_ACK · 모든 문 닫힘 · IR 생산출력',releaseX=g.rack,releaseZ=deckZ,refillX=g.inOutside,refillZ=1.42;
       if(q>=.18){step=2;phase=`C${active+1} 방출 준비`;detail='EVA 140°C · 탠덤 READY · IDX 잠금 해제'}
       if(q>=.26){step=3;phase='배출 내문 이송';detail='AL-102 내문 개방 · EX-101 격리실 진입';releaseX=lerp(g.rack,g.outVest,ease(clamp((q-.26)/.12)))}
       if(q>=.38){step=3;phase='배출 격리·높이 정렬';detail='내문 닫힘 · 씰 확인 · 공정 기준면 정렬';releaseX=g.outVest;releaseZ=lerp(deckZ,1.42,ease(clamp((q-.38)/.06)))}
       if(q>=.44){step=3;phase='배출 외문 통과';detail='AL-102 외문만 개방 · 탠덤 버퍼로 반출';releaseX=lerp(g.outVest,g.outDone,ease(clamp((q-.44)/.10)));releaseZ=1.42}
-      if(q>=.54){step=3;phase='배출 완료·재밀폐';detail='외문 닫힘 · 4/5 점유 · 입력 허가 대기'}
+      if(q>=.54){step=3;phase='배출 완료·재밀폐';detail=`외문 닫힘 · ${DECKS-1}/${DECKS} 점유 · 입력 허가 대기`}
       if(q>=.60){step=4;phase='새 패널·캐리지 투입';detail='AL-101 외문만 개방 · 입력 격리실 진입';refillX=lerp(g.inOutside,g.inVest,ease(clamp((q-.60)/.10)))}
       if(q>=.70){step=4;phase='입력 격리·씰 확인';detail='외문 닫힘 · 차압/문잠금 확인';refillX=g.inVest}
       if(q>=.76){step=5;phase=`LI-101 · C${active+1} 높이 선택`;detail='격리 상태에서 승강 · 위치핀 정합';refillX=g.inVest;refillZ=lerp(1.42,deckZ,ease(clamp((q-.76)/.08)))}
       if(q>=.84){step=6;phase=`TS-101 · C${active+1} 재적재`;detail='내문 개방 · 캐리지 삽입 · 포크만 복귀';refillX=lerp(g.inVest,g.rack,ease(clamp((q-.84)/.10)));refillZ=deckZ}
-      if(q>=.94){step=6;phase=`C${active+1} 잠금·5/5 복귀`;detail=`내문 닫힘 · FULL_LOAD_ACK · 다음 C${next+1} 승온`;refillX=g.rack;refillZ=deckZ}
+      if(q>=.94){step=6;phase=`C${active+1} 잠금·${DECKS}/${DECKS} 복귀`;detail=`내문 닫힘 · FULL_LOAD_ACK · 다음 C${next+1} 승온`;refillX=g.rack;refillZ=deckZ}
       const doors={
         inOuter:cycleWindow(q,.59,.705),inInner:cycleWindow(q,.825,.945),
         outInner:cycleWindow(q,.205,.385),outOuter:cycleWindow(q,.425,.545)
       };
       const doorsOpen=Math.max(doors.inOuter,doors.inInner,doors.outInner,doors.outOuter)>.02;
       const activeInRack=q<.26||q>=.94,releaseVisible=q>=.18&&q<.54,refillVisible=q>=.58&&q<.94;
-      const occupied=activeInRack?5:4,fullLoadAck=occupied===5&&!doorsOpen&&(q<.18||q>=.94);
+      const occupied=activeInRack?DECKS:DECKS-1,fullLoadAck=occupied===DECKS&&!doorsOpen&&(q<.18||q>=.94);
       return{q,active,next,g,z0,dz,deckZ,step,phase,detail,releaseX,releaseZ,refillX,refillZ,doors,doorsOpen,activeInRack,releaseVisible,refillVisible,occupied,fullLoadAck}
     }
     function heatCarriageAt(x,z,opt={}){
@@ -4021,17 +4058,17 @@
     }
     function preheatActivity(p,panelX){
       const st=carriageCycleState(p),cx=st.g.rack,{z0,dz}=st;
-      for(let deck=0;deck<5;deck++){
-        const z=z0+dz*(deck+.5),order=(deck-st.active+5)%5,baseTarget=200-order*10,nextRamp=deck===st.next&&p>.54?lerp(190,200,ease(clamp((p-.54)/.4))):baseTarget;
-        if(deck!==st.active||st.activeInRack){const fresh=deck===st.active&&p>=.94,temp=fresh?Math.round(25+8*clamp((p-.94)/.06)):Math.round(nextRamp);heatCarriageAt(cx,z,{hot:temp>=198,id:`C${deck+1}`});label3(`C${deck+1} · ${temp}°C`,V(cx,-1.16,z+.28),temp>=198?C.teal:C.heat)}
+      for(let deck=0;deck<DECKS;deck++){
+        const z=z0+dz*(deck+.5),order=(deck-st.active+DECKS)%DECKS,baseTarget=T_TARGET-order*4,nextRamp=deck===st.next&&p>.54?lerp(T_TARGET-4,T_TARGET,ease(clamp((p-.54)/.4))):baseTarget;
+        if(deck!==st.active||st.activeInRack){const fresh=deck===st.active&&p>=.94,temp=fresh?Math.round(25+8*clamp((p-.94)/.06)):Math.round(nextRamp);heatCarriageAt(cx,z,{hot:temp>=T_TARGET-2,id:`C${deck+1}`});label3(`C${deck+1} · ${temp}°C`,V(cx,-1.16,z+.28),temp>=198?C.teal:C.heat)}
         else label3(`C${deck+1} · 방출/재투입 중`,V(cx,-1.16,z+.28),C.yellow)
       }
       if(st.releaseVisible)heatCarriageAt(st.releaseX,st.releaseZ,{hot:true,id:`C${st.active+1}`});
-      for(let bank=0;bank<6;bank++){
+      for(let bank=0;bank<=DECKS;bank++){
         const z=z0+dz*bank,standby=.08,priority=st.doorsOpen?standby:.68+.18*Math.sin(Math.PI*clamp((p-.02)/.96));
-        for(let lamp=0;lamp<10;lamp++){const x=cx-2.42+lamp*4.84/9;line([V(x,-.84,z),V(x,.84,z)],C.heat,1.35,[3,3],Math.max(standby,priority))}
+        for(let lamp=0,per=LAMPS/(DECKS+1);lamp<per;lamp++){const x=cx-2.42+lamp*4.84/(per-1);line([V(x,-.84,z),V(x,.84,z)],C.heat,1.35,[3,3],Math.max(standby,priority))}
       }
-      label3(`${st.phase} · ${st.occupied}/5`,V(cx,-1.45,4.35),st.doorsOpen?C.yellow:C.teal)
+      label3(`${st.phase} · ${st.occupied}/${DECKS}`,V(cx,-1.45,z0+dz*DECKS+.43),st.doorsOpen?C.yellow:C.teal)
     }
     function carriageLoaderActivity(p){
       const st=carriageCycleState(p),liftX=st.g.inVest,insertP=clamp((p-.84)/.10),returnP=clamp((p-.94)/.06),forkReach=(st.g.rack-liftX)*ease(insertP)*(1-ease(returnP));
@@ -4054,7 +4091,7 @@
     function powerMeterActivity(i,p){
       const M=thermalModel(readModelInputs()),rated=M.rated,dwell=M.dwell,average=M.averagePower;
       /* 누적 전력량은 단계가 넘어가도 유지돼야 한다. 가열이 끝났다고 계기가
-         0 으로 돌아가면 '누적' 이 아니다. 5장 1배치의 가열 전력량을 S2 에서
+         0 으로 돌아가면 '누적' 이 아니다. 1배치의 가열 전력량을 S2 에서
          쌓고 이후 단계에서는 그 값을 유지한다. */
       const batchKwh=rated*dwell/3600;
       let duty=0,kwh=0;
@@ -4228,21 +4265,21 @@
     function updateCarriageHud(){
       const hud=$('carriageHud');hud.hidden=!carriageFocus;if(!carriageFocus)return;
       if(compactView){
-        const filled=index===1?Math.min(5,1+Math.floor(local*5)):index>=2?5:0;
+        const filled=index===1?Math.min(DECKS,1+Math.floor(local*DECKS)):index>=2?DECKS:0;
         for(let n=1;n<=6;n++)$(`carriageStep${n}`).classList.toggle('active',n===Math.min(6,index+1));
         $('carriageDeckLive').textContent=`C${Math.max(1,filled)} · ${index>=2?'140°C':'승온 중'}`;
-        $('carriageLoadLive').textContent=`${filled}/5 · ${filled===5?'SEALED_FULL_LOAD_ACK':'CYCLE ACTIVE'}`;
+        $('carriageLoadLive').textContent=`${filled}/${DECKS} · ${filled===DECKS?'SEALED_FULL_LOAD_ACK':'CYCLE ACTIVE'}`;
         $('carriageInLive').textContent=index===1&&local<.9?'AL-101 투입 중':'외문·내문 닫힘';
         $('carriageOutLive').textContent=index===2?'AL-102 방출 중':'외문·내문 닫힘';
         return;
       }
       const st=carriageCycleState(local);for(let n=1;n<=6;n++)$(`carriageStep${n}`).classList.toggle('active',n===st.step);
       $('carriageDeckLive').textContent=local>=.94?`다음 C${st.next+1} · 승온 중`:`C${st.active+1} · ${local<.54?'140°C':'교대 중'}`;
-      $('carriageLoadLive').textContent=`${st.occupied}/5 · ${st.fullLoadAck?'FULL_LOAD_ACK':st.occupied===5?'LOCKED':'CYCLE ACTIVE'}`;
+      $('carriageLoadLive').textContent=`${st.occupied}/${DECKS} · ${st.fullLoadAck?'FULL_LOAD_ACK':st.occupied===DECKS?'LOCKED':'CYCLE ACTIVE'}`;
       const doorText=(a,b)=>a>.02?`외문 ${Math.round(a*100)}% · 내문 닫힘`:b>.02?`외문 닫힘 · 내문 ${Math.round(b*100)}%`:'외문·내문 닫힘';
       $('carriageInLive').textContent=doorText(st.doors.inOuter,st.doors.inInner);$('carriageOutLive').textContent=doorText(st.doors.outOuter,st.doors.outInner);
       $('stageTitle').textContent=`S2 · ${st.phase}`;$('stageDesc').textContent=st.detail;
-      $('vacuumValue').textContent=`C${st.active+1} · ${st.occupied===5?'-65 kPa / 잠금':'이송 지지 유지'}`;$('tempValue').textContent=st.doorsOpen?'문 개방 · IR 대기출력 ≤10%':local>=.94?`다음 C${st.next+1} · 200°C 승온`:'EVA 계면 140°C · 밀폐가열';$('outputValue').textContent=st.fullLoadAck?'REFILL_ACK · 다음 방출 준비':st.phase;
+      $('vacuumValue').textContent=`C${st.active+1} · ${st.occupied===DECKS?'-65 kPa / 잠금':'이송 지지 유지'}`;$('tempValue').textContent=st.doorsOpen?'문 개방 · IR 대기출력 ≤10%':local>=.94?`다음 C${st.next+1} · 200°C 승온`:'EVA 계면 140°C · 밀폐가열';$('outputValue').textContent=st.fullLoadAck?'REFILL_ACK · 다음 방출 준비':st.phase;
     }
     function updateUI(){
       const s=steps[index];$('stageTitle').textContent=`${s.id} · ${s.name}`;$('stageDesc').textContent=s.desc;$('vacuumValue').textContent=s.vac;$('tempValue').textContent=s.temp;$('outputValue').textContent=s.out;$('plcValue').textContent=index===13?'F-PLC SELF TEST · SAFE':'PLC RUN · DC24 A/B · RING OK';
@@ -4302,7 +4339,7 @@
     }
     function play(){
       if(carriageFocus&&index!==2){index=2;local=0;updateUI()}else if(tandemFocus&&(index<3||index>6)){index=3;local=0;updateUI()}else if(index===steps.length-1&&local>=1){index=0;local=0}
-      if(playing)return;playing=true;last=0;$('playButton').textContent=carriageFocus?'캐리지 5단 순환 재생 중':tandemFocus?'탠덤 반복 재생 중':'재생 중';raf=requestAnimationFrame(tick)
+      if(playing)return;playing=true;last=0;$('playButton').textContent=carriageFocus?`캐리지 ${DECKS}단 순환 재생 중`:tandemFocus?'탠덤 반복 재생 중':'재생 중';raf=requestAnimationFrame(tick)
     }
     function pause(){playing=false;cancelAnimationFrame(raf);$('playButton').textContent='재생'}
     function deactivateTandemFocus(){tandemFocus=false;$('tandemHud').hidden=true;$('tandemFocusButton').setAttribute('aria-pressed','false');$('tandemFocusButton').textContent='탠덤 작동'}
@@ -4339,8 +4376,8 @@
       b.textContent=compact?`배치 Rev.21C · ${Math.round(compactLength()*1000).toLocaleString()}mm`:`배치 Rev.20 · ${Math.round(rev20Length()*1000).toLocaleString()}mm`;
       $('npModelRev').textContent=compact?'REV.21C':'REV.20';
       $('npSub').textContent=compact
-        ?`60 IR · EVA 계면 140°C · 고정 진공테이블 + 이동 나이프 · 전장 ${Math.round(compactLength()*1000).toLocaleString()}mm`
-        :'60 IR · EVA 계면 140°C · 7＋1 캐리지 · 유리/셀 무낙하 컨베이어 · 전기·제어 통합';
+        ?`${LAMPS} IR · EVA 계면 ${T_TARGET}°C · 고정 진공테이블 + 이동 나이프 · 전장 ${Math.round(compactLength()*1000).toLocaleString()}mm`
+        :`${LAMPS} IR · EVA 계면 ${T_TARGET}°C · 7＋1 캐리지 · 유리/셀 무낙하 컨베이어 · 전기·제어 통합`;
       updateUI();render();
     }
     $('layoutButton').addEventListener('click',()=>setLayout(!compactView));
@@ -4426,7 +4463,7 @@
       if(bottleneck==='고정 탠덤·캐리어 이송'){
         action=`${speed.toFixed(0)}mm/s에서 명목 ${lineRate.toFixed(1)}장/h, 90% 환산 ${(lineRate*.9).toFixed(1)}장/h입니다. 60장/h 순생산 최소속도는 약 ${requiredSpeed.toFixed(1)}mm/s이며 60mm/s FAT 상한은 ${rateAt60.toFixed(1)}장/h입니다. WR 터릿 전환과 GC 저장 캐리지 교대를 사이클 밖으로 분리하십시오.`;
       }else{
-        action=`IR 병목 · 현재 속도에서는 캐리어를 더 가속해도 ${thermalRate.toFixed(1)}장/h를 넘지 못합니다. 기계·열 균형속도는 약 ${balancedSpeed.toFixed(1)}mm/s입니다. 반사판·단열·도어 개방손실과 6라인 출력배분을 먼저 개선하십시오.`;
+        action=`IR 병목 · 현재 속도에서는 캐리어를 더 가속해도 ${thermalRate.toFixed(1)}장/h를 넘지 못합니다. 기계·열 균형속도는 약 ${balancedSpeed.toFixed(1)}mm/s입니다. 반사판·단열·도어 개방손실과 ${MODEL.decks+1}라인 출력배분을 먼저 개선하십시오.`;
       }
       $('heatPerPanel').textContent=`${(q/1000).toFixed(2)} MJ`;$('ratedPower').textContent=`${totalPower.toFixed(1)} kW`;$('standbyPower').textContent=`≤ ${(totalPower*.1).toFixed(1)} kW`;$('avgLinePower').textContent=`약 ${averageIRPower.toFixed(1)} kW`;$('energyPerPanel').textContent=`${energyPerPanelKWh.toFixed(2)} kWh/장`;$('heatDwell').textContent=`${dwell.toFixed(1)} s`;$('releasePitch').textContent=`${pitch.toFixed(1)} s/장`;$('thermalRate').textContent=`${thermalRate.toFixed(1)} 장/h`;$('tandemCycle').textContent=`${tandemCycle.toFixed(1)} s/장`;$('tandemRate').textContent=`${tandemRate.toFixed(1)} 장/h`;$('lineRate').textContent=`${lineRate.toFixed(1)} 장/h · 90% ${(lineRate*.9).toFixed(1)} · 병목: ${bottleneck}`;
       $('knifeCycle').textContent=`${M.knifeCycle.toFixed(1)} s/장`;
@@ -4436,9 +4473,9 @@
       $('compactBasis').textContent=`압축 전장 = ${COMPACT_STATIONS.map(r=>`${r[0]} ${Math.round(r[2]*1000)}`).join(' + ')} + 간격 ${COMPACT_STATIONS.length-1}×${CL_CLEAR*1000} + 끝벽 2×${CL_END*1000} = ${Math.round(compactLength()*1000)} mm | 유리 냉각 ${glassCoolSec().toFixed(0)}s ÷ 택트 ${M.knifeLineCycle.toFixed(0)}s → ${Math.ceil(glassCoolSec()/M.knifeLineCycle)}단 필요, 가열실과 공용 ${GCOOL_DECKS}단 적용 | t나이프 = ${M.leadTime.toFixed(2)} + ${M.peelTime.toFixed(2)} + max(교환 ${M.handling.toFixed(1)}, 복귀 ${M.returnTime.toFixed(2)}) = ${M.knifeCycle.toFixed(1)}s`;
       $('compactNotice').textContent=`이동 나이프는 박리 상대운동이 같으므로 행정 ${M.returnDistance-MODEL.knifePitch}mm 도 박리시간 ${M.peelTime.toFixed(1)}s 도 바뀌지 않습니다. 새로 드는 것은 복귀 ${M.returnDistance}mm 하나이며, 패널 교환창(${M.handling.toFixed(1)}s)과 겹치므로 복귀가 ${M.returnSpeedFloor.toFixed(0)}mm/s 이상이면 처리량은 그대로입니다. 현재 ${v.knifeReturnSpeed.toFixed(0)}mm/s 에서 ${M.knifeCycle<=M.targetCycle?`순생산 ${(M.knifeRate*.9).toFixed(1)}장/h 로 60장/h 를 지킵니다`:`순생산 ${(M.knifeRate*.9).toFixed(1)}장/h 로 60장/h 에 미치지 못합니다`}. 전장은 ${rev20Length().toFixed(1)} m(Rev.20) → ${scopedLength().toFixed(1)} m(공급범위 정리) → ${compactLength().toFixed(2)} m(압축 배치)입니다.`;
       $('motionProfile').textContent=`박리 ${speed.toFixed(0)} · 급속 ${rapid.toFixed(0)} mm/s`;$('test60Cold').textContent=formatTime(cold60);$('test60Steady').textContent=formatTime(steady60);$('hourlyPanels').textContent=`명목 ${lineRate.toFixed(1)} · 90% ${(lineRate*.9).toFixed(1)} 장/h`;$('shift8Panels').textContent=`약 ${shift8}장`;$('shift16Panels').textContent=`약 ${shift16}장`;$('bottleneckAction').textContent=action;
-      $('calcBasis').textContent=`t=0 = C1~C5 점유·잠금·밀폐 | Q=${(q/1000).toFixed(2)}MJ/장 | IR ${totalPower.toFixed(0)}kW×η ${(eta*100).toFixed(0)}%=${usefulPower.toFixed(1)}kW 유효 | t열=max[5Q/P유효, FDM 113.2s]=${dwell.toFixed(1)}s | t탠덤=(${L.toFixed(0)}+300)/${speed.toFixed(0)} + 300/${rapid.toFixed(0)} + ${fixedHandling.toFixed(1)} = ${tandemCycle.toFixed(1)}s | 선행시간=300/${speed.toFixed(0)}=${leadTime.toFixed(2)}s`;
-      const marks=[0,4,9,19,29,39,49,59];$('testSchedule').textContent=`초기 5장 적재시간 제외 · 냉간 완료시각: ${marks.map(i=>`P${i+1} ${(ends[i]/60).toFixed(1)}분`).join(' · ')} | 정상상태 = 60×${lineCycle.toFixed(1)}s = ${(steady60/60).toFixed(1)}분 | 실공정을 영상 8초로 압축합니다.`;
-      $('comparisonBasis').textContent=`Rev.20은 EVA 계면 140°C·60×2.5kW·최대 2,400×1,200mm·고정 탠덤·이동 캐리어 계산을 유지하고, 5/5 밀폐가열부터 C1~C5 순차 방출·에어록 격리·동일 슬롯 재투입까지의 반복 상태머신과 전문형 색상체계를 통합합니다.`;
+      $('calcBasis').textContent=`t=0 = ${DECK_TAG} 점유·잠금·밀폐 | Q=${(q/1000).toFixed(2)}MJ/장 | IR ${totalPower.toFixed(0)}kW×η ${(eta*100).toFixed(0)}%=${usefulPower.toFixed(1)}kW 유효 | t열=max[${DECKS}Q/P유효, FDM 113.2s]=${dwell.toFixed(1)}s | t탠덤=(${L.toFixed(0)}+300)/${speed.toFixed(0)} + 300/${rapid.toFixed(0)} + ${fixedHandling.toFixed(1)} = ${tandemCycle.toFixed(1)}s | 선행시간=300/${speed.toFixed(0)}=${leadTime.toFixed(2)}s`;
+      const marks=[0,4,9,19,29,39,49,59];$('testSchedule').textContent=`초기 ${DECKS}장 적재시간 제외 · 냉간 완료시각: ${marks.map(i=>`P${i+1} ${(ends[i]/60).toFixed(1)}분`).join(' · ')} | 정상상태 = 60×${lineCycle.toFixed(1)}s = ${(steady60/60).toFixed(1)}분 | 실공정을 영상 8초로 압축합니다.`;
+      $('comparisonBasis').textContent=`Rev.20은 EVA 계면 ${T_TARGET}°C·${LAMPS}×2.5kW·최대 2,400×1,200mm·고정 탠덤·이동 캐리어 계산을 유지하고, ${DECKS}/${DECKS} 밀폐가열부터 ${DECK_TAG} 순차 방출·에어록 격리·동일 슬롯 재투입까지의 반복 상태머신과 전문형 색상체계를 통합합니다.`;
     }
     calcIds.forEach(id=>$(id).addEventListener('input',updateCalculator));$('calcButton').addEventListener('click',()=>{updateCalculator();if(typeof calcDialog.showModal==='function')calcDialog.showModal();else calcDialog.setAttribute('open','')});$('calcClose').addEventListener('click',()=>calcDialog.close());calcDialog.addEventListener('click',e=>{if(e.target===calcDialog)calcDialog.close()});
 
@@ -4468,11 +4505,11 @@
       <rect x="585" y="455" width="535" height="70" rx="6" fill="#edf7fa" stroke="#19788a"/><text x="603" y="480" font-size="12" font-weight="700" fill="#153e49">필수 계전·계측</text><text x="603" y="502" font-size="11" fill="#476871">OCR/GFR · 결상/역상 · SPD 상태 · ACB TRIP · PQM Modbus TCP</text><text x="603" y="520" font-size="11" fill="#476871">IR 독립 과온 → 주접촉기 강제차단 / PLC 명령과 독립</text></g></svg></div><table class="bom-table"><thead><tr><th>분기</th><th>부하</th><th>kW</th><th>역률</th><th>전류 A</th><th>차단기</th></tr></thead><tbody>${schedRows}</tbody></table><p class="drawing-note">명판 전부하전류 ${Math.round(FLA)}A 는 분기별 유효·무효전력을 각각 합해 얻은 피상전력 ${CONNECTED_KVA.toFixed(1)}kVA(계통 역률 ${SYSTEM_PF.toFixed(3)})에서 산출했습니다. 분기전류의 크기만 더하면 역률이 서로 다른 무효분을 같은 방향으로 취급해 이 부하표에서 508.6A 로 2.9% 과대평가되고, 반대로 총 kW 를 가정한 혼합역률 하나로 나누면 과소평가되므로 둘 다 쓰지 않았습니다. 표의 분기전류는 각 분기 차단기 선정용입니다. 예상 최대수요 ${DEMAND_KW}kW 는 수용률을 반영한 별도 값이며 명판에 쓰지 않습니다. 명판 SCCR ${SCCR_KA}kA 는 ${TR_KVA}kVA·임피던스 ${(TR_Z[0]*100).toFixed(0)}~${(TR_Z[1]*100).toFixed(0)}% 기준 예상 단락전류 ${ISC_KA[0].toFixed(1)}~${ISC_KA[1].toFixed(1)}kA 에 여유를 둔 기기 정격 선정값입니다. 역률은 부하 성격에 따른 가정값이며, 실제 인입은 현장 수전전압, 실측 변압기 임피던스, 상위 계통 임피던스, 고조파와 케이블 포설조건을 반영한 전기기술자 검토 후 확정해야 합니다.</p>`;
     }
     function plcDrawing(){
-      return `<div class="drawing-kpi"><div><span>표준 I/O</span><strong>DI 176 · DO 96</strong></div><div><span>아날로그</span><strong>AI 40 · AO 16</strong></div><div><span>온도 입력</span><strong>TC 56</strong></div><div><span>안전 I/O</span><strong>F-DI 40 · F-DO 8</strong></div></div><div class="wire-legend"><span style="--wire:#d05532">230VAC/24VDC</span><span style="--wire:#19788a">PROFINET Ring</span><span style="--wire:#875bb0">4–20mA/TC</span><span style="--wire:#278555">Safety 2CH</span></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="DG-HK60 PLC 인입과 현장 배선 연결도">${svgDefs}${titleBlock('C-001 / C-101','PLC 전원 인입·I/O·현장 배선도','UPS 230VAC → 24VDC 이중전원 → PLC/Safety PLC → RIO-1~3')}
+      return `<div class="drawing-kpi"><div><span>표준 I/O</span><strong>DI 160 · DO 96</strong></div><div><span>아날로그</span><strong>AI 40 · AO 8</strong></div><div><span>온도 입력</span><strong>TC 40</strong></div><div><span>안전 I/O</span><strong>F-DI 40 · F-DO 8</strong></div></div><div class="wire-legend"><span style="--wire:#d05532">230VAC/24VDC</span><span style="--wire:#19788a">PROFINET Ring</span><span style="--wire:#875bb0">4–20mA/TC</span><span style="--wire:#278555">Safety 2CH</span></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="DG-HK60 PLC 인입과 현장 배선 연결도">${svgDefs}${titleBlock('C-001 / C-101','PLC 전원 인입·I/O·현장 배선도','UPS 230VAC → 24VDC 이중전원 → PLC/Safety PLC → RIO-1~3')}
       <g font-family="Arial,'Noto Sans KR',sans-serif"><rect x="55" y="110" width="140" height="70" rx="7" fill="#fff3e5" stroke="#d05532" stroke-width="2"/><text x="125" y="139" text-anchor="middle" font-size="13" font-weight="700" fill="#733317">AUX-DB 230VAC</text><text x="125" y="160" text-anchor="middle" font-size="11" fill="#733317">MCB 2P 32A</text><path d="M195 145H250" stroke="#d05532" stroke-width="5" marker-end="url(#arr)"/>
       <rect x="250" y="102" width="140" height="86" rx="7" fill="#fff3e5" stroke="#d05532" stroke-width="2"/><text x="320" y="130" text-anchor="middle" font-size="13" font-weight="700" fill="#733317">UPS-101</text><text x="320" y="152" text-anchor="middle" font-size="11" fill="#733317">3kVA · 10min</text><text x="320" y="170" text-anchor="middle" font-size="11" fill="#733317">Bypass 포함</text>
       <path d="M390 125H440M390 165H440" stroke="#d05532" stroke-width="4"/><rect x="440" y="92" width="145" height="58" rx="7" fill="#fff3e5" stroke="#d05532"/><rect x="440" y="158" width="145" height="58" rx="7" fill="#fff3e5" stroke="#d05532"/><text x="512" y="116" text-anchor="middle" font-size="12" font-weight="700" fill="#733317">PSU-A 24V 40A</text><text x="512" y="182" text-anchor="middle" font-size="12" font-weight="700" fill="#733317">PSU-B 24V 40A</text><path d="M585 121H635M585 187H635" stroke="#d05532" stroke-width="4"/><rect x="635" y="112" width="145" height="86" rx="7" fill="#eef8f1" stroke="#278555" stroke-width="2"/><text x="708" y="139" text-anchor="middle" font-size="12" font-weight="700" fill="#206b46">REDUNDANCY</text><text x="708" y="161" text-anchor="middle" font-size="11" fill="#206b46">DC-OK A/B</text><text x="708" y="180" text-anchor="middle" font-size="11" fill="#206b46">24VDC BUS</text>
-      <path d="M780 155H830" stroke="#d05532" stroke-width="5" marker-end="url(#arr)"/><rect x="830" y="92" width="145" height="126" rx="7" fill="#edf7fa" stroke="#19788a" stroke-width="2"/><text x="902" y="121" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">PLC-101 CPU</text><text x="902" y="143" text-anchor="middle" font-size="11" fill="#476871">DI176 / DO96</text><text x="902" y="162" text-anchor="middle" font-size="11" fill="#476871">AI40 / AO16 / TC56</text><text x="902" y="184" text-anchor="middle" font-size="11" fill="#476871">HMI · HS-101 · OPC UA</text><text x="902" y="203" text-anchor="middle" font-size="11" fill="#476871">Managed Switch</text>
+      <path d="M780 155H830" stroke="#d05532" stroke-width="5" marker-end="url(#arr)"/><rect x="830" y="92" width="145" height="126" rx="7" fill="#edf7fa" stroke="#19788a" stroke-width="2"/><text x="902" y="121" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">PLC-101 CPU</text><text x="902" y="143" text-anchor="middle" font-size="11" fill="#476871">DI160 / DO96</text><text x="902" y="162" text-anchor="middle" font-size="11" fill="#476871">AI40 / AO8 / TC40</text><text x="902" y="184" text-anchor="middle" font-size="11" fill="#476871">HMI · HS-101 · OPC UA</text><text x="902" y="203" text-anchor="middle" font-size="11" fill="#476871">Managed Switch</text>
       <rect x="1010" y="92" width="145" height="126" rx="7" fill="#eef8f1" stroke="#278555" stroke-width="2"/><text x="1082" y="121" text-anchor="middle" font-size="13" font-weight="700" fill="#206b46">F-PLC-101</text><text x="1082" y="143" text-anchor="middle" font-size="11" fill="#206b46">F-DI40 / F-DO8</text><text x="1082" y="165" text-anchor="middle" font-size="11" fill="#206b46">E-STOP · Door</text><text x="1082" y="184" text-anchor="middle" font-size="11" fill="#206b46">STO · Fire Trip</text><path d="M975 155H1010" stroke="#278555" stroke-width="4"/>
       <path d="M902 218V270H250V330M902 270H575V330M902 270H900V330" fill="none" stroke="#19788a" stroke-width="4"/><rect x="170" y="330" width="165" height="82" rx="7" fill="#edf7fa" stroke="#19788a"/><rect x="492" y="330" width="165" height="82" rx="7" fill="#edf7fa" stroke="#19788a"/><rect x="817" y="330" width="165" height="82" rx="7" fill="#edf7fa" stroke="#19788a"/><text x="252" y="358" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">RIO-1 · 가열실</text><text x="252" y="381" text-anchor="middle" font-size="11" fill="#476871">램프·TC·셔터·승강</text><text x="575" y="358" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">RIO-2 · 탠덤</text><text x="575" y="381" text-anchor="middle" font-size="11" fill="#476871">진공·칼날·권취</text><text x="900" y="358" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">RIO-3 · 반출</text><text x="900" y="381" text-anchor="middle" font-size="11" fill="#476871">유리·CVC·QI·GC</text>
       <path d="M252 412V462M575 412V462M900 412V462" stroke="#875bb0" stroke-width="4"/><rect x="85" y="462" width="305" height="72" rx="7" fill="#f7f0fb" stroke="#875bb0"/><rect x="445" y="462" width="305" height="72" rx="7" fill="#f7f0fb" stroke="#875bb0"/><rect x="805" y="462" width="305" height="72" rx="7" fill="#f7f0fb" stroke="#875bb0"/><text x="237" y="487" text-anchor="middle" font-size="12" font-weight="700" fill="#563873">TB1: DI/TC/4–20mA</text><text x="237" y="510" text-anchor="middle" font-size="11" fill="#563873">EVA TC · 차압 · 위치 · 램프</text><text x="597" y="487" text-anchor="middle" font-size="12" font-weight="700" fill="#563873">TB2: Vacuum/Load/AE</text><text x="597" y="510" text-anchor="middle" font-size="11" fill="#563873">PNP 3선 · 차폐 TP · PE 한쪽</text><text x="957" y="487" text-anchor="middle" font-size="12" font-weight="700" fill="#563873">TB3: Drive/QI/GC/SH</text><text x="957" y="510" text-anchor="middle" font-size="11" fill="#563873">VFD STO 2CH · Encoder · Gate</text>

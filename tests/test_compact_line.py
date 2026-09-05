@@ -26,6 +26,8 @@ import unittest
 
 from . import _path  # noqa: F401
 
+import console_consts                                        # noqa: E402
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
 RFQ = ROOT / "docs" / "dg-hk60-rfq.html"
@@ -77,7 +79,8 @@ def return_speed_floor():
 
 # ── 유리 냉각 ────────────────────────────────────────────────────────────
 MASS_GLASS, CP_GLASS = 8.000, 0.75          # kg/m² · kJ/(kg·K)
-GC_IN, GC_OUT, GC_AMB, GC_H = 180.0, 60.0, 25.0, 25.0
+# 유입온도는 계면 목표를 따라간다 — 콘솔이 GCOOL_T_IN=T_TARGET 으로 파생시킨다.
+GC_IN, GC_OUT, GC_AMB, GC_H = 140.0, 60.0, 25.0, 25.0
 
 
 def glass_cool_s():
@@ -117,7 +120,9 @@ class TestTheLengthIsDerived(unittest.TestCase):
         self.src = console()
         m = re.search(r"const COMPACT_STATIONS=\[(.*?)\n    \];", self.src, re.S)
         self.assertIsNotNone(m, "COMPACT_STATIONS 를 찾지 못했다")
-        self.rows = re.findall(r"\['([A-Z]{2}-\d+)','([^']*)',\s*([^,]+),", m.group(1))
+        # 이름은 단수를 담느라 템플릿 리터럴이 되기도 한다 — 두 따옴표를 다 받는다.
+        self.rows = re.findall(
+            r"\[[`']([A-Z]{2}-\d+)[`'],\s*[`']([^`']*)[`'],\s*([^,]+),", m.group(1))
         self.assertEqual(len(self.rows), len(STATIONS))
 
     def test_every_station_length_is_an_expression(self):
@@ -226,9 +231,15 @@ class TestGlassCoolingBuysTimeWithHeight(unittest.TestCase):
     """냉각은 길이가 아니라 단수로 산다 — 그 단수가 시간을 덮는지."""
 
     def _decks(self):
-        m = re.search(r"const GCOOL_DECKS=(\d+);", console())
+        """냉각 단수는 가열 단수를 가리킨다 — 한 단계 따라간다."""
+        m = re.search(r"const GCOOL_DECKS=([A-Za-z_]\w*|\d+);", console())
         self.assertIsNotNone(m)
-        return int(m.group(1))
+        v = m.group(1)
+        if v.isdigit():
+            return int(v)
+        n = re.search(rf"const {v}=(\d+);", console())
+        self.assertIsNotNone(n, f"{v} 상수를 찾지 못했다")
+        return int(n.group(1))
 
     def test_the_rack_covers_the_cooling_time(self):
         takt = knife_cycle()
@@ -236,13 +247,26 @@ class TestGlassCoolingBuysTimeWithHeight(unittest.TestCase):
                                 "냉각 랙 단수가 냉각시간을 덮지 못한다")
 
     def test_the_rack_matches_the_heating_chamber(self):
-        """가열실과 같은 단수라야 랙·포크·예비품이 한 벌이면 된다."""
-        self.assertEqual(self._decks(), 5)
+        """가열실과 같은 단수라야 랙·포크·예비품이 한 벌이면 된다.
+
+        값을 맞춰 적는 것으로는 부족하다 — 한쪽만 고쳐지는 날이 온다.
+        냉각 단수가 가열 단수를 *가리켜야* 이 성질이 유지된다.
+        """
+        self.assertIn("const GCOOL_DECKS=DECKS;", console(),
+                      "냉각 단수가 가열 단수에서 파생되지 않는다")
 
     def test_a_conveyor_would_have_been_longer(self):
-        """같은 시간을 길이로 사면 얼마였는지 — 높이로 산 이유가 이것이다."""
-        slots = glass_cool_s() / knife_cycle()
-        self.assertGreater(slots * (PANEL_L + CL_CLEAR), 8.0)
+        """같은 시간을 길이로 사면 얼마였는지 — 높이로 산 이유가 이것이다.
+
+        비교 대상은 그 시간을 대신 사고 있는 GC-101 스테이션 자신이다.
+        임계값을 손으로 적으면 온도를 옮길 때마다 그 숫자를 다시 맞춰야
+        하고, 그러다 보면 비교가 아니라 통과의식이 된다.
+        """
+        conveyor = glass_cool_s() / knife_cycle() * (PANEL_L + CL_CLEAR)
+        rack = DECK_L + 2 * CL_CLEAR                      # GC-101 스테이션 전장
+        self.assertGreater(conveyor, 2 * rack,
+                           f"컨베이어 {conveyor:.2f} m 가 랙 {rack:.2f} m 의 두 배도 안 된다 "
+                           "— 이 정도면 높이로 살 이유가 없다")
 
 
 class TestDescopingKeepsTheInterlocks(unittest.TestCase):
@@ -547,3 +571,111 @@ class TestWhereTheStreamsGo(unittest.TestCase):
         row = re.search(r"\{id:'C9',.*?\n", self.src).group(0)
         for token in ("RH-201", "CS-201", "픽업 스테이션"):
             self.assertIn(token, row, f"경계 인계 단계가 {token} 를 말하지 않는다")
+
+
+class TestTheRackInteriorFollowsTheRoof(unittest.TestCase):
+    """랙 안쪽 부재는 지붕 안에 들어와야 한다.
+
+    단수를 5 → 3 으로 줄이자 지붕이 1,240 mm 내려왔다. 그때 안쪽에 값으로
+    박혀 있던 상부 브레이스와 계기판은 지붕 위에 뜬 채로 남았고, 급기
+    필터면은 지붕을 600 mm 뚫고 나갔다.
+
+    뜬 부재는 *아무것과도 겹치지 않는다*. 그래서 AABB 간섭검사가 조용히
+    통과시킨다 — 화면에서만 떠 있다. 여기서는 값으로 풀리는 부재만 골라
+    윗면이 지붕 아래 있는지를 직접 잰다. 지붕(top)에서 잰 부재는 값으로
+    풀리지 않고, 단수를 바꿔도 알아서 따라오므로 볼 필요가 없다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.env = console_consts.env(console())
+
+    def _roof(self, body):
+        """이 랙 지붕 슬래브의 아랫면. cRack 이 top+.09 자리에 .17 두께로 깐다."""
+        m = re.search(r"top=cDeckZ\(DECKS-1\)\+([\d.]+)", body)
+        self.assertIsNotNone(m, "지붕 높이를 단수에서 내지 않는다")
+        e = self.env
+        top = e["CDECK_Z0"] + e["CDECK_DZ"] * (e["DECKS"] - .5) + float(m.group(1))
+        return top + .09 - .085
+
+    @staticmethod
+    def _args(body, start):
+        """괄호 균형을 맞춰 인자를 자른다."""
+        args, depth, last, k = [], 1, start, start
+        while k < len(body) and depth:
+            ch = body[k]
+            if ch in "([{":
+                depth += 1
+            elif ch in ")]}":
+                depth -= 1
+                if not depth:
+                    args.append(body[last:k])
+            elif ch == "," and depth == 1:
+                args.append(body[last:k]); last = k + 1
+            k += 1
+        return args
+
+    def _solids(self, body):
+        """값으로 풀리는 부재의 (윗면, 원문). 안 풀리면 건너뛴다."""
+        body = re.sub(r"//[^\n]*|/\*.*?\*/", "", body, flags=re.S)
+        # 함수 안에서 이름을 붙여 둔 숫자는 되돌린다 — 이름으로 검사를
+        # 피할 수 있으면 검사가 아니다.
+        for name, val in re.findall(r"\b([A-Za-z_]\w*)\s*=\s*(-?[\d.]+)\s*[,;]", body):
+            body = re.sub(rf"(?<![\w.]){re.escape(name)}(?![\w(])", val, body)
+        num = lambda e: console_consts.value(e, {})
+        out = []
+        for call in re.finditer(r"\b(box|cylinder)\(V\(", body):
+            centre = self._args(body, call.end())
+            if len(centre) != 3:
+                continue
+            cz = num(centre[2])
+            if cz is None:
+                continue
+            rest = self._args(body, call.end() - 2)      # box( 의 인자들
+            half = None
+            if call.group(1) == "box":
+                m = re.match(r"\s*V\(", rest[1] if len(rest) > 1 else "")
+                if m:
+                    size = self._args(rest[1], m.end())
+                    if len(size) == 3 and num(size[2]) is not None:
+                        half = num(size[2]) / 2
+            elif len(rest) >= 4:
+                axis = rest[3].strip().strip("'\"")
+                span = num(rest[2]) if axis == "z" else num(rest[1])
+                if span is not None:
+                    half = span / 2 if axis == "z" else span
+            if half is not None:
+                out.append((cz + half, body[call.start():call.start() + 60]))
+        return out
+
+    def test_nothing_typed_by_hand_reaches_above_the_roof(self):
+        for name in ("cChamber", "cGlassRack"):
+            body = fn(name)
+            roof = self._roof(body)
+            over = [(round(t, 3), src) for t, src in self._solids(body) if t > roof + .02]
+            self.assertEqual(
+                over, [],
+                f"{name} 지붕({roof:.2f} m) 위로 나간 부재가 있다: {over} "
+                "— 단수를 바꿔도 따라오도록 top 에서 재야 한다")
+
+    def test_the_exhaust_stack_is_told_where_the_roof_is(self):
+        """굴뚝은 지붕을 뚫고 나온다 — 지붕이 내려오면 같이 내려와야 한다.
+
+        굴뚝은 뚫고 올라가는 것이 정상이라 '지붕 위'를 이유로 걸 수 없다.
+        걸 수 있는 것은 하나다 — 지붕이 어디인지 듣고 그리는가.
+        """
+        self.assertRegex(fn("exhaust"), r"function exhaust\(cx,r=[\d.]+,lid=[\d.]+\)",
+                         "배기 덕트가 지붕 높이를 인자로 받지 않는다")
+        for name, arg in (("cChamber", "top+.175"), ("preheatTunnel", "HZ+1.03")):
+            self.assertRegex(
+                fn(name), rf"exhaust\([^)]*,{re.escape(arg)}\)",
+                f"{name} 이 배기 덕트에 지붕 높이를 넘기지 않는다")
+
+    def test_both_racks_take_their_height_from_the_deck_count(self):
+        for name in ("cChamber", "cGlassRack"):
+            body = fn(name)
+            self.assertRegex(
+                body, r"top=cDeckZ\(DECKS-1\)\+",
+                f"{name} 이 지붕 높이를 단수에서 내지 않는다")
+            self.assertIn("cRack(g.cx,g.w,{top,", body,
+                          f"{name} 이 그 높이를 랙에 넘기지 않는다")
