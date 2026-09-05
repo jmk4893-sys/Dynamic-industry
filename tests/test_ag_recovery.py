@@ -406,11 +406,40 @@ class AssumptionsAreMarked(unittest.TestCase):
     """미확정 결정 위에 선 값은 가정임이 코드에 남아 있어야 한다."""
 
     def test_undecided_constants_say_so(self):
-        for name in ("FC204_CELL_L", "AS102_CELL_L", "AS101B_CELL_L",
-                     "CU_PICKOFF_EFFICIENCY"):
+        for name in ("AS101B_CELL_L", "CU_PICKOFF_EFFICIENCY"):
             line = re.search(rf"const {name} = [^\n]*", LIVE)
             self.assertIsNotNone(line, f"{name} 이 없다")
             self.assertIn("가정", line.group(0), f"{name} 에 가정 표기가 없다")
+
+    def test_the_polymer_stage_kit_is_gone_not_just_unused(self):
+        """단을 지웠으면 그 단에만 쓰이던 장치도 같이 나가야 한다.
+
+        FC-204 세척 클리너와 AS-102 재해리는 폴리머 역부선에만 쓰였다. 상수만
+        남겨 두면 BOM·전력·배치가 없는 장치를 계속 싣고 다닌다.
+        """
+        for gone in ("FC204_CELL_L", "AS102_CELL_L"):
+            self.assertFalse(re.search(rf"const {gone} =", LIVE),
+                             f"{gone} 상수가 아직 남아 있다")
+        # 부선 셀은 기존 3 기뿐이고, 그 셋이 곧 기계식 대안이다.
+        block = re.search(r"const flotationCells = \[.*?\n    \]", LIVE, re.S)
+        self.assertIsNotNone(block, "flotationCells 를 못 찾음")
+        self.assertEqual(len(re.findall(r'tag: "FC-\d+"', block.group(0))), 3)
+        # 전력 분기에서도 빠져야 한다. 주석에 이름이 남는 것은 이력이지 부하가 아니다.
+        power = re.search(r"agRecovery:\{.*?\n    \}", LIVE, re.S)
+        self.assertIsNotNone(power, "agRecovery 전력 묶음을 못 찾음")
+        for gone in ("M-FC-204", "M-AS-102"):
+            self.assertFalse(re.search(rf'tag:"{gone}"', power.group(0)),
+                             f"{gone} 분기가 아직 계상돼 있다")
+
+    def test_ag_panel_demand_matches_its_branches(self):
+        """장치를 빼면 수요부하도 따라 내려가야 한다 — 27.30 → 19.10 kW."""
+        block = re.search(r"agRecovery:\{.*?\n    \}", LIVE, re.S)
+        self.assertIsNotNone(block, "agRecovery 전력 묶음을 못 찾음")
+        declared = float(re.search(r"declaredDemandKw:([\d.]+)", block.group(0)).group(1))
+        duty = sum(float(kw) * int(d) for d, kw in
+                   re.findall(r"duty:(\d+),kw:([\d.]+)", block.group(0)))
+        self.assertAlmostEqual(declared, duty, places=6,
+                               msg=f"선언 {declared} ≠ 분기 합 {duty}")
 
     def test_hold_values_say_hold(self):
         line = re.search(r"const WASHED_CLEANER_ENTRAINMENT_SUPPRESSION = [^\n]*", LIVE)
