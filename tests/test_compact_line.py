@@ -461,3 +461,98 @@ class TestTheCompactHall(unittest.TestCase):
 def fn_body(name):
     """콘솔에서 함수 하나의 본문을 잘라 온다 (모듈 수준 헬퍼의 얇은 껍데기)."""
     return fn(name)
+
+
+# ── 반출 3계통 ──────────────────────────────────────────────────────────
+CELL_KG = (0.855 + 0.520) * PANEL_L * PANEL_W_M      # 3.96 kg/장
+BACK_KG = 0.420 * PANEL_L * PANEL_W_M                # 1.21 kg/장
+CE_PITCH, CS_STACK = 0.003, 1.00
+
+
+class TestWhereTheStreamsGo(unittest.TestCase):
+    """분리한 세 가지가 실제로 기계 밖으로 나가는지.
+
+    분리는 절반이다. 나머지 절반은 유리·셀/EVA·백시트가 서로 섞이지 않고
+    각자 밖으로 나가는 것이고, 압축 배치에서는 이쪽이 오히려 어렵다 —
+    라인이 짧아진 만큼 옆으로 나갈 자리도 좁아지기 때문이다.
+
+    처음 그린 배치는 여기서 틀렸다. 갠트리 주행레일을 바닥에 깔아 y=±1,420
+    선이 z730~2,510 까지 막혔고, 셀/EVA 배출 슈트가 그 프레임을 20 mm 관통했다.
+    2,400 × 1,200 적층체를 폭 440 트로프로 빼려 한 것도 치수가 맞지 않았다.
+    """
+
+    def setUp(self):
+        self.src = console()
+
+    def _num(self, name):
+        m = re.search(rf"\b{name}=(-?[\d.]+)\s*[,;]", self.src)
+        self.assertIsNotNone(m, f"{name} 를 찾지 못했다")
+        return float(m.group(1))
+
+    # ── 통로가 실제로 비어 있는가
+    def test_the_rails_are_lifted_off_the_floor(self):
+        """바닥레일이면 옆으로 나갈 길이 없다 — 그것이 처음 배치의 오류였다."""
+        self.assertGreaterEqual(self._num("CRAIL_Z"), 1.80,
+                                "주행레일이 낮아 반출 통로를 막는다")
+
+    def test_the_gantry_stands_only_above_the_rail(self):
+        """갠트리가 레일 밑으로 내려오면 통로가 다시 막힌다."""
+        body = fn_body("cGantry")
+        for m in re.finditer(r"box\(V\(kx,y,([^)]+)\)", body):
+            self.assertIn("CRAIL_Z", m.group(1),
+                          f"갠트리 측면 부재 높이가 레일에 매여 있지 않다: {m.group(1)}")
+
+    # ── 셀/EVA
+    def test_the_cell_takeaway_fits_the_actual_sheet(self):
+        """적층체는 2,400 × 1,200 한 장이다. 폭이 모자라면 안 나간다."""
+        span = abs(self._num("CE_Y1") - self._num("CE_Y0"))
+        length = self._num("CE_X1") - self._num("CE_X0")
+        self.assertGreaterEqual(span, PANEL_W_M, "횡인출 폭이 패널 폭보다 좁다")
+        self.assertGreaterEqual(length, PANEL_L, "횡인출 길이가 패널 길이보다 짧다")
+
+    def test_the_cell_stream_leaves_through_a_guarded_opening(self):
+        """주석만 남기고 도형을 지우면 개구가 무방비로 열린다 — 주석을 걷고 본다."""
+        tree = fn_body("cEnclosure") + fn_body("cTandem")
+        self.assertIn("셀/EVA 반출 터널", tree, "외장에 반출 개구가 없다")
+        self.assertIn("CS-201 반출 인터록 게이트", tree, "카트가 나갈 게이트가 없다")
+        bare = re.sub(r"//[^\n]*|/\*.*?\*/", "", tree, flags=re.S)
+        self.assertRegex(bare, r"for\(const x of \[CE_X0[^\]]+\]\)\{[\s\S]{0,400}?box\(",
+                         "반출 개구에 광커튼 기둥이 서 있지 않다")
+        self.assertRegex(bare, r"line\(\[V\(CE_X0[^)]*\)[\s\S]{0,160}?C\.red",
+                         "반출 개구를 가로지르는 광축이 없다")
+
+    def test_the_cart_interval_is_derived(self):
+        panels = round(CS_STACK / CE_PITCH)
+        self.assertGreaterEqual(panels / 60, 4.0, "카트 교체가 4시간을 못 간다")
+        self.assertIn("const csCartPanels=()=>Math.round(CS_STACK/CE_PITCH)", self.src,
+                      "적재 장수가 계산이 아니라 적어 둔 값이다")
+
+    # ── 백시트
+    def test_the_full_roll_leaves_without_entering_the_guard(self):
+        """357 kg 롤이 4.9시간마다 나온다 — 보관대가 방책 안이면 무인 시간이 그 주기로 끊긴다."""
+        m = re.search(r"const BS_SADDLE=V\(([-\d.]+),([-\d.]+),", self.src)
+        self.assertIsNotNone(m, "BS-301 새들 좌표를 찾지 못했다")
+        self.assertLess(float(m.group(2)), -self._num("CFENCE_YN"),
+                        "BS-301 이 방책 안에 있다")
+        self.assertIn("RH-201", fn_body("cTandem"), "롤을 옮길 수단이 없다")
+
+    def test_the_roll_mass_and_interval_are_derived(self):
+        self.assertIn("const ROLL_MASS=MASS_BACK*PANEL_L*PANEL_W*ROLL_FULL_PANELS", self.src)
+        self.assertAlmostEqual(BACK_KG * 295, 357.1, places=0)
+
+    # ── 세 방향이 서로 다른가
+    def test_the_three_streams_leave_in_three_directions(self):
+        tandem = fn_body("cTandem")
+        self.assertIn("RH_Z", tandem, "백시트는 위로 넘어간다")
+        self.assertIn("CE_Y1", tandem, "셀/EVA 는 옆으로 나간다")
+        self.assertIn("GC-101", fn_body("cGlassRack"), "유리는 앞으로 나간다")
+        m = re.search(r"const CSCART=V\(([^,]+),([-\d.]+),", self.src)
+        self.assertIsNotNone(m)
+        bs = re.search(r"const BS_SADDLE=V\(([-\d.]+),([-\d.]+),", self.src)
+        self.assertNotAlmostEqual(float(m.group(2)), float(bs.group(2)), places=1,
+                                  msg="셀/EVA 카트와 백시트 새들이 같은 자리에 있다")
+
+    def test_the_streams_are_named_in_the_step_that_hands_them_over(self):
+        row = re.search(r"\{id:'C9',.*?\n", self.src).group(0)
+        for token in ("RH-201", "CS-201", "픽업 스테이션"):
+            self.assertIn(token, row, f"경계 인계 단계가 {token} 를 말하지 않는다")
