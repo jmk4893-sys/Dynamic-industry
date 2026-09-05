@@ -15783,10 +15783,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     pneumatic: { title: "05 · PC-101 음압 이송계통", spec: "보어 137 알루미나 라이닝 · 900 m³/h · 17 m/s · CY-101＋RV-101＋BF-101＋5.5 kW ID 팬", primaryPart: "P15", focus: [1.10, 1.52, 0.20, 5.4] },
     classifier: { title: "06 · SC-500 2단 경사스크린", spec: "W800 × L1400 · 경사 12° · 25 Hz · 3.0 mm p-p · 1단 2 mm → BIN-102 폐기 · 2단 500 µm → CV-102 환류", primaryPart: "P12", focus: [1.48, 0.92, 0, 3.60] },
     return: { title: "07 · CV-102 밀폐형 리턴스크류", spec: "100 kg/h · Ø140/P120 · 45 rpm · 0.75 kW 감속모터", primaryPart: "P13", focus: [0.42, 1.35, -0.20, 5.0] },
-    product: { title: "08 · CH-501＋밀폐 Sheeve 후단선별", spec: "CH-501 → RV-201 → PC-201 음압리프트 → VS-501 → 밀폐 중력슈트 → SV-201", primaryPart: "P19", focus: [2.85, 0.65, 0.10, 5.2] },
-    airclass: { title: "09 · CC-201 공기분급기", spec: "SV-201 106–280＋75–106 µm Y헤더 투입 · 중량물 RV-204 배출", primaryPart: "P20", focus: [4.70, 0.85, 0.10, 4.2] },
-    dust2: { title: "10 · CY-201＋BF-201", spec: "CY-201/RV-202 고체회수 · BF-201/RV-203 회분회수 · ID 팬＋배기스택", primaryPart: "P21", focus: [6.05, 1.25, 0.10, 5.2] },
-    polisher: { title: "11 · SS-201 75 µm 분리토출", spec: "CY-201 회수물＋SV-201 PAN 미분 · ≥75 µm 구리제품(BIN-Cu) / <75 µm 최종제품", primaryPart: "P22", focus: [6.38, -0.10, 0.18, 4.6] }
+    product: { title: "08 · CH-501＋밀폐 Sheeve 후단선별", spec: "CH-501 → RV-201 → PC-201 음압리프트 → VS-501 → 밀폐 중력슈트 → SV-201", primaryPart: "P19", focus: [3.95, 0.65, 0.10, 6.0] },
+    airclass: { title: "09 · CC-201 공기분급기", spec: "SV-201 106–280＋75–106 µm Y헤더 투입 · 중량물 RV-204 배출", primaryPart: "P20", focus: [6.30, 0.85, 0.10, 4.2] },
+    dust2: { title: "10 · CY-201＋BF-201", spec: "CY-201/RV-202 고체회수 · BF-201/RV-203 회분회수 · ID 팬＋배기스택", primaryPart: "P21", focus: [7.65, 1.25, 0.10, 5.2] },
+    polisher: { title: "11 · SS-201 75 µm 분리토출", spec: "CY-201 회수물＋SV-201 PAN 미분 · ≥75 µm 구리제품(BIN-Cu) / <75 µm 최종제품", primaryPart: "P22", focus: [7.98, -0.10, 0.18, 4.6] }
   };
 
   const partData = {
@@ -15910,7 +15910,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     { id: "SV201-RECT-PANEL", machine: "SV-201", tag: "P19", part: "상단 직사각 280 µm 핀인 모듈 패널",
       module: "핀인 모듈 패널", method: "상부커버 토글클램프 → 마모 모듈만 핀 2점 뽑아 교체 (텐셔닝 불요)",
       tools: "핀 뽑기", mttrMin: 15, bom: ["SV-021", "SV-023", "SV-071"],
-      life: { basis: "sieveMass", limit: 300000, unit: "kg" }, sensors: [], spare: "모듈 4매" },
+      life: { basis: "sieveMass", limit: 300000, unit: "kg" }, sensors: [], spare: "모듈 6매" },
     { id: "SV201-PANEL", machine: "SV-201", tag: "P19", part: "하단 원형 2단 데크 섹터 패널 (106/75 µm)",
       module: "핀인 섹터 패널", method: "데크링 클램프 → 마모 섹터만 교체 · 개스킷 재사용",
       tools: "공구 불요", mttrMin: 20, bom: ["SV-031", "SV-041", "SV-070"],
@@ -16769,6 +16769,24 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         -bx, 0, -bz, bx, 0, -bz, bx, 0, bz, -bx, 0, bz,
         -tx, height, -tz, tx, height, -tz, tx, height, tz, -tx, height, tz
       ]);
+      const indices = [
+        0, 1, 5, 0, 5, 4,
+        1, 2, 6, 1, 6, 5,
+        2, 3, 7, 2, 7, 6,
+        3, 0, 4, 3, 4, 7
+      ];
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+      return geometry;
+    }
+
+    // 상·하 사각이 서로 어긋난 열린 호퍼 — 출구가 한쪽으로 치우친 언더팬 같은 경우.
+    // 두 사각의 꼭짓점은 openFrustumGeometry 와 같은 (−x,−z) (+x,−z) (+x,+z) (−x,+z) 순서로,
+    // 그러나 절대좌표 [x, y, z] 로 준다(position 은 원점).
+    function openHopperGeometry(bottomQuad, topQuad) {
+      const vertices = new Float32Array([...bottomQuad, ...topQuad].flat());
       const indices = [
         0, 1, 5, 0, 5, 4,
         1, 2, 6, 1, 6, 5,
@@ -17991,7 +18009,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const secondaryGroup = new THREE.Group();
     parts.P19.add(secondaryGroup);
     const secondaryMotionOffset = new THREE.Vector3();
-    const secondaryCenter = new THREE.Vector3(3.18, 0.36, 0.20);
+    // 하단 원형은 상단 직사각의 동단 아래 선다 — 직선진동은 언더팬 위의 언더도 토출단 쪽으로
+    // 실어 나르므로 팬 출구가 동쪽에 오고, 그 출구 아래가 원형의 중앙 급입이다.
+    // (종전 x 3.18 은 데크 860 짜리 축소 모델의 중심이었다. SV-H3 이설 후 BOM 크기로 다시 세웠다.)
+    const secondaryCenter = new THREE.Vector3(4.62, 0.36, 0.20);
 
     // RV-201 pressure-isolating six-pocket airlock.
     addCylinder(parts.P18, 0.18, 0.34, { x: 2.30, y: -0.42, z: 0.20 }, material.solidsReceiver, "P18", "z", 36, false);
@@ -18083,14 +18104,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       addBox(secondaryGroup, { x: 1.14, y: 0.010, z: 0.014 }, { x: secondaryCenter.x, y: y + 0.045, z: secondaryCenter.z }, material.cover, "P19", { y: angle }, false))));
     markSwap(sv201Panels, "SV201-PANEL");
     // 상단 커버와 급입 스피곳. 종전의 넓은 급입 호퍼(0.82 각 · 상단 y 0.86)는 상단
-    // 직사각의 언더 호퍼가 그 자리를 대신하므로 없앴다. 스피곳은 원형 축에서 +x 로
-    // 8 cm 비켜 선다 — 언더 호퍼가 직사각 데크 중심(x 3.29) 아래 달리기 때문이고,
-    // 두 진동체 사이는 유연 슬리브(SV-061)가 잇는다.
+    // 직사각의 언더팬이 그 자리를 대신하므로 없앴다. 스피곳은 원형 축 위에 선다 — 원형
+    // 자체를 언더팬 출구 아래로 옮겼으므로 종전의 +x 8 cm 비킴이 필요 없다.
+    // 두 진동체 사이는 유연 슬리브(SV-061 · 더블 커프)가 잇는다: 스피곳 상단 0.66 과
+    // 팬 출구 하단 0.72 를 양쪽 1 cm 씩 물어 0.66…0.73 이다.
     addCylinder(secondaryGroup, 0.64, 0.035, { x: secondaryCenter.x, y: 0.535, z: secondaryCenter.z }, material.silverClamp, "P19", "y", 64, false);
     addCylinder(secondaryGroup, 0.63, 0.030, { x: secondaryCenter.x, y: 0.565, z: secondaryCenter.z }, material.screenHousing, "P19", "y", 64, false);
-    const SV201_SPIGOT_X = secondaryCenter.x + 0.08;
+    const SV201_SPIGOT_X = secondaryCenter.x;
     addCylinder(secondaryGroup, 0.17, 0.08, { x: SV201_SPIGOT_X, y: 0.62, z: secondaryCenter.z }, material.screenHousing, "P19", "y", 32, true);
-    addCylinder(parts.P19, 0.175, 0.05, { x: SV201_SPIGOT_X, y: 0.685, z: secondaryCenter.z }, material.belt, "P19", "y", 24, false);
+    addCylinder(parts.P19, 0.175, 0.07, { x: SV201_SPIGOT_X, y: 0.695, z: secondaryCenter.z }, material.belt, "P19", "y", 24, false);
     addCylinder(secondaryGroup, 0.62, 0.10, { x: secondaryCenter.x, y: -0.03, z: secondaryCenter.z }, material.screenHousing, "P19", "y", 64, true);
     addCylinder(secondaryGroup, 0.12, 0.34, { x: secondaryCenter.x, y: -0.24, z: secondaryCenter.z }, material.motor, "P19", "y", 32, false);
     const secondaryRotor = new THREE.Group();
@@ -18106,17 +18128,23 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }));
     // ---- SV-201 상단 직사각 진동스크린 (1단 280 µm) --------------------------
     // VS-501 에서 받아 서→동으로 흘려보내며 280 µm 로 1차 선별한다. 오버는 동쪽 끝의
-    // 토(toe)로 나가 280–500 제품이 되고, 언더는 데크 아래 언더 호퍼 → 유연 슬리브 →
+    // 토(toe)로 나가 280–500 제품이 되고, 언더는 데크 아래 언더팬 → 유연 슬리브 →
     // 하단 원형의 스피곳으로 떨어진다. 진동은 대향 진동모터 2대(SV-050)의 직선운동이라
     // 하단 원형(수직축 편심 · 나선운동)과 형식이 다르고, 그래서 스키드도 따로 선다.
     //
     // 경사는 5° 다. 되돌린 시도(f9ff339)는 SC-500 의 12° 를 그대로 가져왔는데, 그것은
     // 원운동 경사 스크린의 값이다. 직선진동 스크린은 던짐각(45°)으로 이송하므로 0–5° 에
-    // 설치하고, 여기서는 급입단 높이를 12 cm 낮춰 위의 VS-501 과의 간섭을 푸는 데도 쓴다.
-    const RECT_X0 = 2.86, RECT_X1 = 3.72;            // 급입(서·높은 쪽) → 토출(동·낮은 쪽)
-    const RECT_Z = secondaryCenter.z, RECT_HZ = 0.34; // 데크 폭 0.68 — 원형과 같은 축선
+    // 설치한다.
+    //
+    // 크기는 BOM 그대로다 — 데크 1,800×1,200 · 스키드 2,400×1,600 · 외형 폭 1,800. 종전
+    // 모델(860×680 · 스키드 1,200×1,280)은 PC-201 라이저와 CC-201 급입 사이 슬롯 1,270 mm
+    // 에 맞춰 줄인 것이었고, 그 불일치가 SV-H3 HOLD 였다. CC-201 이하를 동측 1.6 m 이설해
+    // (≥1.4 m 요구) 슬롯이 2,900 mm 가 됐으므로 줄일 이유가 없어졌다. 서단은 BIN-102
+    // (x ≤2.81)와 P01 스키드 가로재(x ≤2.67)가 정한다 → 스키드 x 2.90…5.30.
+    const RECT_X0 = 3.20, RECT_X1 = 5.00;            // 급입(서·높은 쪽) → 토출(동·낮은 쪽) · 데크 1,800
+    const RECT_Z = secondaryCenter.z, RECT_HZ = 0.60; // 데크 폭 1,200 — 원형과 같은 축선
     const RECT_INCLINE = THREE.MathUtils.degToRad(5);
-    const RECT_Y1 = 1.00;                              // 토출단 데크 높이
+    const RECT_Y1 = 0.92;                              // 토출단 데크 높이 — 급입단 1.08 이 VS-501 하우징(1.37)을 비킨다
     const RECT_Y0 = RECT_Y1 + (RECT_X1 - RECT_X0) * Math.tan(RECT_INCLINE);
     const rectLen = Math.hypot(RECT_X1 - RECT_X0, RECT_Y0 - RECT_Y1);
     const rectMid = { x: (RECT_X0 + RECT_X1) / 2, y: (RECT_Y0 + RECT_Y1) / 2, z: RECT_Z };
@@ -18125,7 +18153,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     parts.P19.add(rectGroup);
     const rectMotionOffset = new THREE.Vector3();
 
-    // 진동체 — 측판 · 스크린 데크(핀인 PU 모듈 4매) · 끝판 · 커버 · 급입 스파우트
+    // 진동체 — 측판 · 스크린 데크(핀인 PU 모듈 6매) · 끝판 · 커버 · 급입 스파우트
     for (const side of [-1, 1]) {
       addBox(rectGroup, { x: rectLen, y: 0.22, z: 0.04 }, { x: rectMid.x, y: rectMid.y + 0.05, z: RECT_Z + side * (RECT_HZ + 0.02) },
         material.screenHousing, "P19", { z: -RECT_INCLINE });
@@ -18133,58 +18161,76 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const rectScreen = addBox(rectGroup, { x: rectLen - 0.04, y: 0.016, z: RECT_HZ * 2 - 0.02 },
       { x: rectMid.x, y: rectMid.y, z: RECT_Z }, material.screen, "P19", { z: -RECT_INCLINE }, false);
     rectScreen.userData.cutUm = PRIMARY_RECT_CUT_UM;
-    // 모듈 경계 — 2 × 2 = 4 매. SC-500 과 같은 핀인 모듈이라 텐셔닝이 없다.
+    // 모듈 경계 — 3 × 2 = 6 매(600×600). SC-500 과 같은 핀인 모듈이라 텐셔닝이 없다.
+    const RECT_MODULE = 0.60;
     const rectPanels = [rectScreen,
-      addBox(rectGroup, { x: 0.012, y: 0.008, z: RECT_HZ * 2 - 0.02 }, { x: rectMid.x, y: rectMid.y + 0.012, z: RECT_Z }, material.cover, "P19", { z: -RECT_INCLINE }, false),
       addBox(rectGroup, { x: rectLen - 0.04, y: 0.008, z: 0.012 }, { x: rectMid.x, y: rectMid.y + 0.012, z: RECT_Z }, material.cover, "P19", { z: -RECT_INCLINE }, false)];
+    for (const xb of [RECT_X0 + RECT_MODULE, RECT_X0 + RECT_MODULE * 2]) {
+      rectPanels.push(addBox(rectGroup, { x: 0.012, y: 0.008, z: RECT_HZ * 2 - 0.02 }, { x: xb, y: rectDeckY(xb) + 0.012, z: RECT_Z }, material.cover, "P19", { z: -RECT_INCLINE }, false));
+    }
     markSwap(rectPanels, "SV201-RECT-PANEL");
     addBox(rectGroup, { x: 0.04, y: 0.22, z: RECT_HZ * 2 + 0.08 }, { x: RECT_X0 - 0.02, y: RECT_Y0 + 0.05, z: RECT_Z }, material.screenHousing, "P19");
     addBox(rectGroup, { x: 0.04, y: 0.12, z: RECT_HZ * 2 + 0.08 }, { x: RECT_X1 + 0.02, y: RECT_Y1 + 0.12, z: RECT_Z }, material.screenHousing, "P19");
     addBox(rectGroup, { x: rectLen + 0.02, y: 0.03, z: RECT_HZ * 2 + 0.08 }, { x: rectMid.x, y: rectMid.y + 0.16, z: RECT_Z }, material.cover, "P19", { z: -RECT_INCLINE });
     const RECT_FEED_X = RECT_X0 + 0.06, RECT_FEED_Z = 0.10;
     addCylinder(rectGroup, 0.075, 0.10, { x: RECT_FEED_X, y: rectDeckY(RECT_FEED_X) + 0.215, z: RECT_FEED_Z }, material.pipeDryTransfer, "P19", "y", 16, false);
-    // 언더 호퍼 — 데크 아래 전장을 받아 0.34 각 출구로 모은다. 진동체의 일부다.
-    addMesh(rectGroup, openFrustumGeometry(0.34, 0.34, rectLen - 0.02, RECT_HZ * 2, 0.27), material.screenHousing,
-      { x: rectMid.x, y: 0.71, z: RECT_Z }, null, "P19", true);
-    // 진동체 하부 프레임 — 스프링 상판을 잇고 측판·호퍼를 받는다
-    const RECT_FRAME_Y = 0.955;
-    for (const z of [RECT_Z - 0.44, RECT_Z + 0.44]) {
+    // 언더팬 — 데크 아래 전장을 받는 경사 팬. 직선진동은 팬 위의 언더도 데크 위와 같은
+    // 방향(동)으로 실어 나르므로 출구는 토출단 쪽에 둔다. 그래서 하단 원형이 직사각의
+    // 동단 아래(x 4.62)에 서고, 팬 출구 0.34 각이 원형의 중앙 급입 스피곳 바로 위에 온다.
+    // 서쪽 벽 경사 14° 는 중력 흐름이 아니라 던짐 이송을 전제한 값이다. 진동체의 일부다.
+    const RECT_PAN_OUT_Y = 0.72;
+    addMesh(rectGroup, openHopperGeometry(
+      [[secondaryCenter.x - 0.17, RECT_PAN_OUT_Y, RECT_Z - 0.17], [secondaryCenter.x + 0.17, RECT_PAN_OUT_Y, RECT_Z - 0.17],
+       [secondaryCenter.x + 0.17, RECT_PAN_OUT_Y, RECT_Z + 0.17], [secondaryCenter.x - 0.17, RECT_PAN_OUT_Y, RECT_Z + 0.17]],
+      [[RECT_X0, rectDeckY(RECT_X0) - 0.05, RECT_Z - RECT_HZ], [RECT_X1, rectDeckY(RECT_X1) - 0.05, RECT_Z - RECT_HZ],
+       [RECT_X1, rectDeckY(RECT_X1) - 0.05, RECT_Z + RECT_HZ], [RECT_X0, rectDeckY(RECT_X0) - 0.05, RECT_Z + RECT_HZ]]),
+      material.screenHousing, { x: 0, y: 0, z: 0 }, null, "P19", true);
+    // 진동체 하부 프레임 — 스프링 상판을 잇는 세로재 2본. 데크가 5° 로 기울어 서쪽에서는
+    // 측판 밑이 프레임에서 뜨므로 스프링 자리마다 브래킷으로 잇는다(동단은 겹친다).
+    const RECT_FRAME_Y = 0.875, RECT_FRAME_DZ = 0.70;
+    const RECT_SPRING_DX = [-0.66, -0.22, 0.22, 0.66];
+    for (const z of [RECT_Z - RECT_FRAME_DZ, RECT_Z + RECT_FRAME_DZ]) {
       addBox(rectGroup, { x: rectLen + 0.10, y: 0.05, z: 0.06 }, { x: rectMid.x, y: RECT_FRAME_Y, z }, material.frame, "P19");
     }
+    for (const dx of RECT_SPRING_DX) for (const side of [-1, 1]) {
+      const x = rectMid.x + dx, plateBottom = rectDeckY(x) - 0.06, frameTop = RECT_FRAME_Y + 0.025;
+      const h = Math.max(0.02, plateBottom - frameTop);
+      addBox(rectGroup, { x: 0.08, y: h, z: 0.16 }, { x, y: frameTop + h / 2, z: RECT_Z + side * (RECT_HZ + 0.06) }, material.frame, "P19");
+    }
     // 서쪽 가로재 하나만 둔다 — 동쪽 끝은 토(toe) 호퍼가 두 세로재를 잇는다.
-    addBox(rectGroup, { x: 0.06, y: 0.05, z: 0.94 }, { x: RECT_X0 - 0.03, y: RECT_FRAME_Y, z: RECT_Z }, material.frame, "P19");
-    // 오버 토(toe) — 데크 끝을 지난 것을 받아 아래 토출구로 모은다. 바닥(0.84)이 원형의
-    // 상단 커버 디스크(r 0.64 · y ≤0.58)와 스키드 동단 레일(y ≤0.74) 위에 머문다.
-    const RECT_TOE_X = RECT_X1 + 0.02;
+    addBox(rectGroup, { x: 0.06, y: 0.05, z: RECT_FRAME_DZ * 2 + 0.06 }, { x: RECT_X0 - 0.03, y: RECT_FRAME_Y, z: RECT_Z }, material.frame, "P19");
+    // 오버 토(toe) — 데크 끝을 지난 것을 받아 아래 토출구로 모은다. 바닥(0.76)이 원형의
+    // 상단 커버 디스크(r 0.64 · y ≤0.58)와 스키드 동단 레일(y ≤0.64) 위에 머문다.
+    const RECT_TOE_X = RECT_X1 + 0.02, RECT_TOE_Y = 0.76;
     addMesh(rectGroup, openFrustumGeometry(0.16, 0.16, 0.22, RECT_HZ * 2, 0.14), material.screenHousing,
-      { x: RECT_TOE_X, y: 0.84, z: RECT_Z }, null, "P19", true);
-    addBox(rectGroup, { x: 0.04, y: 0.10, z: RECT_HZ * 2 - 0.04 }, { x: RECT_X1 + 0.06, y: 0.95, z: RECT_Z }, material.screenHousing, "P19");
+      { x: RECT_TOE_X, y: RECT_TOE_Y, z: RECT_Z }, null, "P19", true);
+    addBox(rectGroup, { x: 0.04, y: 0.10, z: RECT_HZ * 2 - 0.04 }, { x: RECT_X1 + 0.06, y: RECT_Y1 - 0.05, z: RECT_Z }, material.screenHousing, "P19");
 
     // 대향 진동모터 2대 — SV-051 브래킷(각도 조정 ±15°)으로 측판 바깥면에 붙는다.
     // 위상 180° 로 돌아 던짐각 45° 의 직선운동을 만든다. 데크 중심에서 동쪽으로 20 cm
-    // 비켜 두어 VS-501 받침 기둥(x 2.76)과 간섭하지 않는다.
+    // 비켜 둔다. 편심추 끝 z ±0.895 가 곧 BOM 외형 폭 1,800 이다.
     const rectExciters = [];
     const RECT_EXCITER_X = rectMid.x + 0.20;
     for (const side of [-1, 1]) {
       const ey = rectDeckY(RECT_EXCITER_X) + 0.05;
-      addBox(rectGroup, { x: 0.20, y: 0.16, z: 0.05 }, { x: RECT_EXCITER_X, y: ey, z: RECT_Z + side * (RECT_HZ + 0.065) }, material.frame, "P19", { z: -RECT_INCLINE });
-      addCylinder(rectGroup, 0.085, 0.24, { x: RECT_EXCITER_X, y: ey, z: RECT_Z + side * (RECT_HZ + 0.21) }, material.motor, "P19", "z", 26, false);
+      addBox(rectGroup, { x: 0.20, y: 0.16, z: 0.05 }, { x: RECT_EXCITER_X, y: ey, z: RECT_Z + side * (RECT_HZ + 0.05) }, material.frame, "P19", { z: -RECT_INCLINE });
+      addCylinder(rectGroup, 0.085, 0.24, { x: RECT_EXCITER_X, y: ey, z: RECT_Z + side * (RECT_HZ + 0.155) }, material.motor, "P19", "z", 26, false);
       const rotor = new THREE.Group();
-      rotor.position.set(RECT_EXCITER_X, ey, RECT_Z + side * (RECT_HZ + 0.35));
+      rotor.position.set(RECT_EXCITER_X, ey, RECT_Z + side * (RECT_HZ + 0.28));
       rectGroup.add(rotor);
       addBox(rotor, { x: 0.13, y: 0.05, z: 0.03 }, { x: 0.033, y: 0, z: 0 }, material.fixed, "P19", null, false);
       rectExciters.push({ rotor, dir: side });
     }
 
-    // 독립 스키드 — 진동체와 비접촉. 원형을 타고 넘는 사각 프레임에 스프링 스트링거
-    // 2본, 다리 4개, 다리마다 그라우트 패드와 앵커 2본. BOM SV-001 C150×75 · SV-002
-    // 코일스프링 8 · SV-003 스프링 시트 16 · F-SV-01 M20 앵커 12.
+    // 독립 스키드 — 진동체와 비접촉. 원형을 타고 넘는 사각 프레임에 스프링 스트링거 2본,
+    // 다리 6개(모서리 4 + 중간 2), 다리마다 그라우트 패드와 앵커 2본. BOM SV-001 C150×75 ·
+    // SV-002 코일스프링 8 · SV-003 스프링 시트 16 · F-SV-01 M20 앵커 12.
     //
-    // 크기는 BOM(2,400×1,600)이 아니다. PC-201 라이저(x≈2.47)와 CC-201 급입(x 3.77)
-    // 사이 슬롯이 1.27 m 뿐이라 주변에 맞춰 줄였고, 그 차이는 아래 SV201_ENVELOPE 와
-    // 스펙의 SV-H3 HOLD 로 들고 다닌다. 다리 자리는 전부 실측으로 잡았다 — 서쪽 +z 다리는
-    // BIN-102(x ≤2.81)를, 동쪽 두 다리는 옛 280–500 제품관을 피한다.
-    const SKID_Y = 0.70, SKID_X0 = 2.72, SKID_X1 = 3.92, SKID_Z0 = -0.40, SKID_Z1 = 0.88;
+    // 크기는 BOM 2,400×1,600 이다(SV201_ENVELOPE 참조). 스트링거는 원형(r 0.64 · z −0.44…0.84)
+    // 바깥 z −0.50 / 0.90 을 달려 원형 커버 위를 지나지 않고, 가로재는 양단에만 둔다 —
+    // 중간 가로재는 원형 커버 디스크(y ≤0.58)를 치므로 다리가 대신 받는다. 높이 0.60 은
+    // 원형 106–280 토출관(y ≤0.52)이 동단 레일 밑을 지나야 해서 정해진 값이다.
+    const SKID_Y = 0.60, SKID_X0 = 2.90, SKID_X1 = 5.30, SKID_Z0 = -0.60, SKID_Z1 = 1.00;
     const skidMidX = (SKID_X0 + SKID_X1) / 2, skidMidZ = (SKID_Z0 + SKID_Z1) / 2;
     for (const z of [SKID_Z0, SKID_Z1]) {
       addBox(parts.P19, { x: SKID_X1 - SKID_X0 + 0.075, y: 0.075, z: 0.075 }, { x: skidMidX, y: SKID_Y, z }, material.frame, "P19");
@@ -18192,42 +18238,47 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     for (const x of [SKID_X0, SKID_X1]) {
       addBox(parts.P19, { x: 0.075, y: 0.075, z: SKID_Z1 - SKID_Z0 }, { x, y: SKID_Y, z: skidMidZ }, material.frame, "P19");
     }
-    for (const z of [RECT_Z - 0.44, RECT_Z + 0.44]) {
+    for (const z of [RECT_Z - RECT_FRAME_DZ, RECT_Z + RECT_FRAME_DZ]) {
       addBox(parts.P19, { x: SKID_X1 - SKID_X0, y: 0.06, z: 0.06 }, { x: skidMidX, y: SKID_Y, z }, material.frame, "P19");
     }
-    // 서쪽 두 다리는 원형의 베이스 링(r 0.62)을 바깥으로 비켜야 한다 — −z 다리는 P01
-    // 공통 스키드의 가로재(x ≤2.67) 동쪽에, +z 다리는 BIN-102(x ≤2.81)와 링 사이 좁은
-    // 틈에 서므로 둘 다 패드를 120 각으로 줄인다. 링까지 3.5 / 3.8 cm.
-    [[2.78, SKID_Z0 - 0.02, 0.12], [2.90, SKID_Z1, 0.12], [SKID_X1, SKID_Z0, 0.22], [SKID_X1, SKID_Z1, 0.22]].forEach(([x, z, pad]) => {
+    // 다리 6 · 앵커 12. 서쪽 두 다리(x 2.96)는 BIN-102(x ≤2.81)·P01 가로재(x ≤2.67) 동쪽,
+    // 동쪽 두 다리(x 5.24)는 이설된 CC-201 급입 호퍼(x ≥5.46) 서쪽, 중간 다리는 데크 중심 아래다.
+    const SKID_LEG_X = [SKID_X0 + 0.06, skidMidX, SKID_X1 - 0.06];
+    for (const x of SKID_LEG_X) for (const z of [SKID_Z0, SKID_Z1]) {
       const legTop = SKID_Y - 0.0375;
       addBox(parts.P19, { x: 0.07, y: legTop - 0.01, z: 0.07 }, { x, y: (legTop + 0.01) / 2, z }, material.frame, "P19");
-      addGroutedAnchor(parts.P19, "P19", x, z, -0.02, pad, 0.020, 0.07);
-    });
+      addGroutedAnchor(parts.P19, "P19", x, z, -0.02, 0.22, 0.020, 0.07);
+    }
     // 스프링 8점 — 스트링거 위에서 진동체 하부 프레임을 띄운다 (SV-002 OD120×H220)
-    for (const dx of [-0.44, -0.15, 0.15, 0.44]) {
-      for (const dz of [-0.44, 0.44]) {
+    for (const dx of RECT_SPRING_DX) {
+      for (const dz of [-RECT_FRAME_DZ, RECT_FRAME_DZ]) {
         addSpringIsolator(parts.P19, "P19", rectMid.x + dx, RECT_Z + dz, SKID_Y + 0.03, RECT_FRAME_Y - 0.025, 0.05);
       }
     }
+    // 배치 결정의 기록 — SV-H3 는 이설로 닫혔다. 모델 스키드 = BOM 스키드.
     const SV201_ENVELOPE = Object.freeze({
       bomOverallMm: [2600, 1800, 2700], bomSkidMm: [2400, 1600],
       modelSkidMm: [Math.round((SKID_X1 - SKID_X0) * 1000), Math.round((SKID_Z1 - SKID_Z0) * 1000)],
-      slotMm: 1270, slot: "PC-201 라이저(x≈2.47) ~ CC-201 급입(x 3.77)",
-      hold: "SV-H3 — BOM 외형이 슬롯에 들지 않는다. CC-201 이하 동측 ≥1.4 m 이설 또는 외형 축소를 확정할 것"
+      modelDeckMm: [Math.round(rectLen * 1000), Math.round(RECT_HZ * 2000)],
+      // 스키드 레일 바깥면 + 유연 스텁 / 편심추 끝 — 두 기계(직사각·원형)와 스키드만이고 VS-501 받침은 뺀다
+      modelOverallMm: [Math.round((SKID_X1 + 0.04 - (SKID_X0 - 0.04)) * 1000), Math.round((RECT_HZ + 0.295) * 2000)],
+      slotMm: 2990, slot: "PC-201 라이저(x≈2.47) ~ CC-201 급입 호퍼 서면(x 5.46)",
+      layoutDecision: "SV-H3 — CC-201 이하 동측 1.6 m 이설(2026-09-05 · ≥1.4 m 요구)로 슬롯 1,270 → 2,990 mm. 외형 축소 없음"
     });
 
     // VS-501 받침 — 스키드 서단의 포털(기둥 2 · 가로보) 에서 서쪽으로 내민 채널 2본 위에
     // 스프링 아이솔레이터 4점. 서쪽 바닥에는 다리를 세울 자리가 없다(PC-201 라이저 ·
     // CH-501 · BIN-102 · P01 방진마운트가 다 차지한다). 되돌린 시도의 기둥 4개는 원형
-    // 체와 언더 호퍼를 관통하고 있었다.
-    const VS501_BEAM_X = 2.76, VS501_BEAM_Y = 1.33;
+    // 체와 언더 호퍼를 관통하고 있었다. 기둥은 서단 레일 위 x 2.96 에 선다.
+    const VS501_BEAM_X = SKID_X0 + 0.06, VS501_BEAM_Y = 1.33;
     for (const z of [SKID_Z0, SKID_Z1]) {
       addBox(parts.P19, { x: 0.06, y: VS501_BEAM_Y - 0.03 - (SKID_Y + 0.0375), z: 0.06 },
         { x: VS501_BEAM_X, y: (VS501_BEAM_Y - 0.03 + SKID_Y + 0.0375) / 2, z }, material.frame, "P19");
     }
     addBox(parts.P19, { x: 0.06, y: 0.06, z: SKID_Z1 - SKID_Z0 + 0.06 }, { x: VS501_BEAM_X, y: VS501_BEAM_Y, z: skidMidZ }, material.frame, "P19");
     for (const dz of [-0.22, 0.22]) {
-      addBox(parts.P19, { x: 0.56, y: 0.06, z: 0.06 }, { x: VS501_BEAM_X - 0.06, y: VS501_BEAM_Y, z: VS501_Z + dz }, material.frame, "P19");
+      // 채널은 x 2.41…2.99 — 서쪽 스프링(x 2.50) 시트를 받고 포털 보(x 2.96)에 물린다.
+      addBox(parts.P19, { x: 0.58, y: 0.06, z: 0.06 }, { x: VS501_BEAM_X - 0.26, y: VS501_BEAM_Y, z: VS501_Z + dz }, material.frame, "P19");
       for (const x of [2.50, 2.92]) {
         // 하우징 바닥은 12° 로 기울어 있어 스프링 높이가 자리마다 다르다
         const housingBottom = VS501_DECK_Y + 0.07 - 0.12 + Math.tan(SIEVE_INCLINE_RAD) * (2.78 - x);
@@ -18235,28 +18286,28 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       }
     }
 
-    // VS-501 → 상단 급입. 분배기 동단(낮은 쪽)에서 나와 서쪽 급입 스파우트로 되돌아
-    // 내려간다 — 직사각의 급입단이 서쪽(높은 쪽)이기 때문이다.
+    // VS-501 → 상단 급입. 분배기 동단(낮은 쪽 · x 3.17)이 직사각의 급입 스파우트(x 3.26)
+    // 바로 서쪽이라 슈트는 되돌아 내려가지 않고 짧게 떨어진다.
     const distributorToRect = new THREE.CatmullRomCurve3([
       new THREE.Vector3(3.15, VS501_DECK_Y - 0.08, VS501_Z),
-      new THREE.Vector3(3.06, rectDeckY(RECT_FEED_X) + 0.36, RECT_FEED_Z),
+      new THREE.Vector3(3.21, rectDeckY(RECT_FEED_X) + 0.33, RECT_FEED_Z),
       new THREE.Vector3(RECT_FEED_X, rectDeckY(RECT_FEED_X) + 0.27, RECT_FEED_Z)
     ]);
     addMesh(parts.P19, new THREE.TubeGeometry(distributorToRect, 20, 0.070, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
 
     // 280–500 은 상단 직사각의 토에서 나가고, 나머지 셋은 하단 원형에서 나간다 —
-    // 토출구 높이가 곧 어느 기계의 산물인지를 말해 준다.
+    // 토출구 높이가 곧 어느 기계의 산물인지를 말해 준다. 원형 토출은 원형 축 기준이다.
     const secondaryOutlets = {
-      "product-280-500": new THREE.Vector3(RECT_TOE_X, 0.84, RECT_Z),
-      "product-106-280": new THREE.Vector3(3.82, 0.44, 0.03),
-      "product-75-106": new THREE.Vector3(3.82, 0.22, 0.22),
-      "product-under-75": new THREE.Vector3(3.38, -0.18, 0.50)
+      "product-280-500": new THREE.Vector3(RECT_TOE_X, RECT_TOE_Y, RECT_Z),
+      "product-106-280": new THREE.Vector3(secondaryCenter.x + 0.64, 0.44, 0.03),
+      "product-75-106": new THREE.Vector3(secondaryCenter.x + 0.64, 0.22, 0.22),
+      "product-under-75": new THREE.Vector3(secondaryCenter.x + 0.20, -0.18, 0.50)
     };
     // 상단 토 → 토출구(진동체) → 유연 스텁(고정측). 스텁은 동쪽으로 수평하게 나가
-    // 스키드 동단 레일(y ≤0.74) 위를 넘은 뒤에야 내려간다 — 그 아래는 원형의 커버 디스크다.
-    const RECT_COARSE_HANDOFF = new THREE.Vector3(3.98, 0.84, RECT_Z + 0.04);
+    // 스키드 동단 레일(y ≤0.64) 위를 넘은 뒤에야 내려간다 — 그 아래는 원형의 커버 디스크다.
+    const RECT_COARSE_HANDOFF = new THREE.Vector3(SKID_X1 + 0.04, RECT_TOE_Y, RECT_Z + 0.04);
     addMesh(rectGroup, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
-      new THREE.Vector3(RECT_TOE_X, 0.90, RECT_Z), secondaryOutlets["product-280-500"]
+      new THREE.Vector3(RECT_TOE_X, RECT_TOE_Y + 0.06, RECT_Z), secondaryOutlets["product-280-500"]
     ]), 6, 0.075, 14, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
     addMesh(parts.P19, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
       secondaryOutlets["product-280-500"], RECT_COARSE_HANDOFF
@@ -18265,7 +18316,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     ["product-106-280", "product-75-106", "product-under-75"].forEach((key, index) => {
       const outlet = secondaryOutlets[key];
       const start = index < 2
-        ? new THREE.Vector3(3.66, secondaryDeckYs[index] + 0.02, secondaryCenter.z)
+        ? new THREE.Vector3(secondaryCenter.x + 0.48, secondaryDeckYs[index] + 0.02, secondaryCenter.z)
         : new THREE.Vector3(secondaryCenter.x, -0.05, secondaryCenter.z + 0.32);
       addMesh(secondaryGroup, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([start, outlet]), 14, 0.075, 14, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P19", false);
       const flexEnd = outlet.clone().add(index < 2 ? new THREE.Vector3(0.08, 0, 0) : new THREE.Vector3(0.06, 0, 0.04));
@@ -18477,7 +18528,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // Complete downstream Sheeve line from the latest Sheeve workspace:
     // SV-201 -> CC-201 -> CY-201/BF-201 -> SS-201.
-    const ccCenter = new THREE.Vector3(4.72, 0.88, 0.20);
+    const ccCenter = new THREE.Vector3(6.32, 0.88, 0.20);
     addCylinder(parts.P20, 0.43, 1.10, ccCenter, material.shell, "P20", "y", 48, true);
     addMesh(parts.P20, openFrustumGeometry(0.18, 0.18, 0.78, 0.78, 0.48), material.shell, { x: ccCenter.x, y: 0.09, z: ccCenter.z }, null, "P20", true);
     addCylinder(parts.P20, 0.16, 0.32, { x: ccCenter.x, y: 1.58, z: ccCenter.z }, material.cover, "P20", "y", 28, false);
@@ -18501,21 +18552,21 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       const angle = i * Math.PI / 3;
       addBox(ccHeavyAirlockRotor, { x: 0.12, y: 0.020, z: 0.21 }, { x: Math.cos(angle) * 0.052, y: Math.sin(angle) * 0.052, z: 0 }, material.fixed, "P20", { z: angle }, false);
     }
-    const classifierFeedHopperCenter = new THREE.Vector3(4.08, -0.12, 0.12);
+    const classifierFeedHopperCenter = new THREE.Vector3(5.68, -0.12, 0.12);
     const classifierFeed106 = new THREE.CatmullRomCurve3([
       secondaryOutlets["product-106-280"],
-      new THREE.Vector3(3.92, 0.28, 0.02),
-      new THREE.Vector3(4.00, 0.18, 0.08)
+      new THREE.Vector3(5.52, 0.28, 0.02),
+      new THREE.Vector3(5.60, 0.18, 0.08)
     ]);
     const classifierFeed75 = new THREE.CatmullRomCurve3([
       secondaryOutlets["product-75-106"],
-      new THREE.Vector3(3.94, 0.14, 0.22),
-      new THREE.Vector3(4.14, 0.18, 0.16)
+      new THREE.Vector3(5.54, 0.14, 0.22),
+      new THREE.Vector3(5.74, 0.18, 0.16)
     ]);
     addMesh(parts.P20, new THREE.TubeGeometry(classifierFeed106, 20, 0.062, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P20", false);
     addMesh(parts.P20, new THREE.TubeGeometry(classifierFeed75, 20, 0.062, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P20", false);
     addMesh(parts.P20, openFrustumGeometry(0.16, 0.16, 0.44, 0.32, 0.30), material.cover, classifierFeedHopperCenter, null, "P20", true);
-    const rv204Center = new THREE.Vector3(4.08, -0.24, 0.12);
+    const rv204Center = new THREE.Vector3(5.68, -0.24, 0.12);
     addCylinder(parts.P20, 0.12, 0.26, rv204Center, material.solidsReceiver, "P20", "z", 32, false);
     const rv204Rotor = new THREE.Group();
     rv204Rotor.position.copy(rv204Center);
@@ -18526,21 +18577,21 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
     const sieveToClassifierDuct = new THREE.CatmullRomCurve3([
       new THREE.Vector3(rv204Center.x, -0.38, rv204Center.z),
-      new THREE.Vector3(4.22, -0.18, 0.14),
-      new THREE.Vector3(4.32, 0.18, 0.16),
-      new THREE.Vector3(4.40, 0.34, 0.18)
+      new THREE.Vector3(5.82, -0.18, 0.14),
+      new THREE.Vector3(5.92, 0.18, 0.16),
+      new THREE.Vector3(6.00, 0.34, 0.18)
     ]);
     addMesh(parts.P20, new THREE.TubeGeometry(sieveToClassifierDuct, 30, 0.067, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P20", false);
     const ccMakeupAir = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(4.72, 0.22, -0.66),
-      new THREE.Vector3(4.72, 0.22, -0.42),
-      new THREE.Vector3(4.72, 0.22, -0.20)
+      new THREE.Vector3(6.32, 0.22, -0.66),
+      new THREE.Vector3(6.32, 0.22, -0.42),
+      new THREE.Vector3(6.32, 0.22, -0.20)
     ]);
     addMesh(parts.P20, new THREE.TubeGeometry(ccMakeupAir, 18, 0.070, 16, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P20", false);
-    addBox(parts.P20, { x: 0.28, y: 0.24, z: 0.12 }, { x: 4.72, y: 0.22, z: -0.72 }, material.screen, "P20");
-    addCylinder(parts.P20, 0.090, 0.045, { x: 4.72, y: 0.22, z: -0.48 }, material.frame, "P20", "z", 24, false);
+    addBox(parts.P20, { x: 0.28, y: 0.24, z: 0.12 }, { x: 6.32, y: 0.22, z: -0.72 }, material.screen, "P20");
+    addCylinder(parts.P20, 0.090, 0.045, { x: 6.32, y: 0.22, z: -0.48 }, material.frame, "P20", "z", 24, false);
 
-    const cyclone2Center = new THREE.Vector3(5.82, 1.48, 0.20);
+    const cyclone2Center = new THREE.Vector3(7.42, 1.48, 0.20);
     addCylinder(parts.P21, 0.34, 0.58, { x: cyclone2Center.x, y: 1.54, z: cyclone2Center.z }, material.equipmentAir, "P21", "y", 48, true);
     addMesh(parts.P21, openFrustumGeometry(0.14, 0.14, 0.68, 0.68, 0.72), material.equipmentAir, { x: cyclone2Center.x, y: 0.53, z: cyclone2Center.z }, null, "P21", true);
     addCylinder(parts.P21, 0.12, 0.42, { x: cyclone2Center.x, y: 2.00, z: cyclone2Center.z }, material.equipmentAir, "P21", "y", 24, false);
@@ -18561,7 +18612,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       const angle = i * Math.PI / 3;
       addBox(rv202Rotor, { x: 0.15, y: 0.025, z: 0.22 }, { x: Math.cos(angle) * 0.075, y: Math.sin(angle) * 0.075, z: 0 }, material.fixed, "P21", { z: angle }, false);
     }
-    const bfCenter = new THREE.Vector3(6.72, 1.48, 0.20);
+    const bfCenter = new THREE.Vector3(8.32, 1.48, 0.20);
     addBox(parts.P21, { x: 0.72, y: 0.92, z: 0.62 }, bfCenter, material.equipmentAir, "P21", null, true);
     const bf201Cartridges = [];
     for (let i = -2; i <= 2; i += 1) bf201Cartridges.push(addCylinder(parts.P21, 0.050, 0.70, { x: bfCenter.x + i * 0.12, y: bfCenter.y, z: bfCenter.z }, material.screen, "P21", "y", 14, false));
@@ -18585,13 +18636,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
     const classifierToCyclone = new THREE.CatmullRomCurve3([
       new THREE.Vector3(ccCenter.x, 1.72, ccCenter.z),
-      new THREE.Vector3(5.16, 2.14, 0.18),
-      new THREE.Vector3(5.55, 1.76, 0.32)
+      new THREE.Vector3(6.76, 2.14, 0.18),
+      new THREE.Vector3(7.15, 1.76, 0.32)
     ]);
     const cycloneToFilter = new THREE.CatmullRomCurve3([
       new THREE.Vector3(cyclone2Center.x, 2.10, cyclone2Center.z),
-      new THREE.Vector3(6.18, 2.28, 0.18),
-      new THREE.Vector3(6.42, 1.78, 0.20)
+      new THREE.Vector3(7.78, 2.28, 0.18),
+      new THREE.Vector3(8.02, 1.78, 0.20)
     ]);
     addMesh(parts.P21, new THREE.TubeGeometry(classifierToCyclone, 38, 0.060, 16, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
     addMesh(parts.P21, new THREE.TubeGeometry(cycloneToFilter, 30, 0.055, 16, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
@@ -18607,29 +18658,29 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       airflowMarkers.push(marker);
     }
     const bfFanRotor = new THREE.Group();
-    bfFanRotor.position.set(7.38, 1.48, 0.20);
+    bfFanRotor.position.set(8.98, 1.48, 0.20);
     parts.P21.add(bfFanRotor);
-    addCylinder(parts.P21, 0.24, 0.24, { x: 7.38, y: 1.48, z: 0.20 }, material.equipmentAir, "P21", "z", 32, false);
+    addCylinder(parts.P21, 0.24, 0.24, { x: 8.98, y: 1.48, z: 0.20 }, material.equipmentAir, "P21", "z", 32, false);
     for (let i = 0; i < 8; i += 1) {
       const angle = i * Math.PI / 4;
       addBox(bfFanRotor, { x: 0.16, y: 0.04, z: 0.12 }, { x: Math.cos(angle) * 0.10, y: Math.sin(angle) * 0.10, z: 0 }, material.fixed, "P21", { z: angle + 0.45 }, false);
     }
     addMesh(parts.P21, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
-      new THREE.Vector3(7.08, 1.48, 0.20),
-      new THREE.Vector3(7.26, 1.48, 0.20)
+      new THREE.Vector3(8.68, 1.48, 0.20),
+      new THREE.Vector3(8.86, 1.48, 0.20)
     ]), 10, 0.070, 16, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
     const bf201Exhaust = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(7.56, 1.62, 0.20),
-      new THREE.Vector3(7.72, 1.82, 0.20),
-      new THREE.Vector3(7.72, 2.42, 0.20)
+      new THREE.Vector3(9.16, 1.62, 0.20),
+      new THREE.Vector3(9.32, 1.82, 0.20),
+      new THREE.Vector3(9.32, 2.42, 0.20)
     ]);
     addMesh(parts.P21, new THREE.TubeGeometry(bf201Exhaust, 28, 0.072, 18, false), material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
-    addCylinder(parts.P21, 0.105, 0.34, { x: 7.72, y: 2.42, z: 0.20 }, material.equipmentAir, "P21", "y", 28, true);
-    addCylinder(parts.P21, 0.105, 0.025, { x: 7.72, y: 2.60, z: 0.20 }, material.frame, "P21", "y", 28, false);
+    addCylinder(parts.P21, 0.105, 0.34, { x: 9.32, y: 2.42, z: 0.20 }, material.equipmentAir, "P21", "y", 28, true);
+    addCylinder(parts.P21, 0.105, 0.025, { x: 9.32, y: 2.60, z: 0.20 }, material.frame, "P21", "y", 28, false);
 
     const polisherGroup = new THREE.Group();
     parts.P22.add(polisherGroup);
-    const polisherCenter = new THREE.Vector3(6.08, -0.03, 0.20);
+    const polisherCenter = new THREE.Vector3(7.68, -0.03, 0.20);
     addCylinder(polisherGroup, 0.55, 0.32, polisherCenter, material.screenHousing, "P22", "y", 48, true);
     const polisherDeck = addCylinder(polisherGroup, 0.50, 0.022, { x: polisherCenter.x, y: 0.08, z: polisherCenter.z }, material.screen, "P22", "y", 48, false);
     const ss201Panels = [polisherDeck];
@@ -18642,30 +18693,33 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       addCylinder(parts.P22, 0.045, 0.28, { x: polisherCenter.x + dx, y: -0.29, z: polisherCenter.z + dz }, material.fixed, "P22", "y", 16, false);
       addBox(parts.P22, { x: 0.16, y: 0.04, z: 0.16 }, { x: polisherCenter.x + dx, y: -0.46, z: polisherCenter.z + dz }, material.frame, "P22");
     });
-    const ssCycloneFeedNozzle = new THREE.Vector3(5.86, 0.25, 0.02);
-    const ssFineFeedNozzle = new THREE.Vector3(6.26, 0.25, 0.42);
+    const ssCycloneFeedNozzle = new THREE.Vector3(7.46, 0.25, 0.02);
+    const ssFineFeedNozzle = new THREE.Vector3(7.86, 0.25, 0.42);
     const cycloneToPolisher = new THREE.CatmullRomCurve3([
       new THREE.Vector3(cyclone2Center.x, 0.20, cyclone2Center.z),
-      new THREE.Vector3(5.74, 0.29, 0.10),
-      new THREE.Vector3(5.78, 0.30, 0.03)
+      new THREE.Vector3(7.34, 0.29, 0.10),
+      new THREE.Vector3(7.38, 0.30, 0.03)
     ]);
     const cycloneFeedFlex = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(5.78, 0.30, 0.03),
+      new THREE.Vector3(7.38, 0.30, 0.03),
       ssCycloneFeedNozzle
     ]);
+    // PAN 토출(x 4.82 · z 0.50)에서 먼저 +z 로 빠져 원형 동쪽 다리(x 5.04 · z 0.54)를 비키고,
+    // z 0.72 로 CC-201 다리열(z ≤0.54)의 북쪽을 지나 SS-201 미분 급입 노즐로 간다.
     const finesToPolisher = new THREE.CatmullRomCurve3([
       secondaryOutlets["product-under-75"],
-      new THREE.Vector3(4.60, -0.04, 0.48),
-      new THREE.Vector3(5.55, 0.12, 0.46),
-      new THREE.Vector3(6.34, 0.32, 0.45)
+      new THREE.Vector3(5.10, -0.16, 0.78),
+      new THREE.Vector3(5.60, -0.06, 0.76),
+      new THREE.Vector3(7.15, 0.12, 0.66),
+      new THREE.Vector3(7.94, 0.32, 0.45)
     ]);
     const bfDustToPolisher = new THREE.CatmullRomCurve3([
       new THREE.Vector3(rv203Center.x, 0.59, rv203Center.z),
-      new THREE.Vector3(6.62, 0.46, 0.32),
-      new THREE.Vector3(6.34, 0.32, 0.45)
+      new THREE.Vector3(8.22, 0.46, 0.32),
+      new THREE.Vector3(7.94, 0.32, 0.45)
     ]);
     const fineFeedFlex = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(6.34, 0.32, 0.45),
+      new THREE.Vector3(7.94, 0.32, 0.45),
       ssFineFeedNozzle
     ]);
     addMesh(parts.P22, new THREE.TubeGeometry(cycloneToPolisher, 24, 0.070, 16, false), material.pipeDryTransfer, { x: 0, y: 0, z: 0 }, null, "P22", false);
@@ -18682,9 +18736,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 받아 RC-201 진공반송으로 BIN-Cu 에 넘긴다. 종전의 중량 제품빈(heavy)은
     // CC-201 중량물이 BIN-Cu 로 합류하면서 받을 것이 없어져 없앴다.
     const productBins = {
-      coarse: new THREE.Vector3(4.30, 0.04, -0.48),
-      ssRework: new THREE.Vector3(6.92, 0.04, -0.44),
-      ssFinal: new THREE.Vector3(6.78, 0.04, 0.72)
+      coarse: new THREE.Vector3(5.90, 0.04, -0.48),
+      ssRework: new THREE.Vector3(8.52, 0.04, -0.44),
+      ssFinal: new THREE.Vector3(8.38, 0.04, 0.72)
     };
     [
       { inlet: productBins.coarse, sourceMaterial: material.product500 },
@@ -18700,11 +18754,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // SS-201 스캘빙 75 µm 오버는 금속 농축물이다 — 종전에는 HSG 로 환류시켰지만
     // 이제 구리 제품으로 빼며, SV-201 280–500 µm 와 **같은 제품빈**을 쓴다.
     // CC-201 중량물도 같은 곳으로 모여 구리 산물이 한 빈에서 나온다.
-    // 빈까지 가는 수단은 중력슈트가 아니라 RC-201 밀폐 진공반송이다 — SS-201(x 6.9)과
-    // BIN-Cu(x 4.3) 는 2.6 m 떨어져 있고 높이차가 없어 중력으로는 흐르지 않는다.
+    // 빈까지 가는 수단은 중력슈트가 아니라 RC-201 밀폐 진공반송이다 — SS-201(x 8.5)과
+    // BIN-Cu(x 5.9) 는 2.6 m 떨어져 있고 높이차가 없어 중력으로는 흐르지 않는다.
     const ssFinalChute = new THREE.CatmullRomCurve3([
       new THREE.Vector3(polisherCenter.x + 0.12, -0.18, polisherCenter.z + 0.12),
-      new THREE.Vector3(6.48, -0.08, 0.58),
+      new THREE.Vector3(8.08, -0.08, 0.58),
       ssFinalOutlet
     ]);
     // 280–500 제품관 — 상단 직사각의 토(y 0.84)에서 동쪽으로 나와 스키드 동단 레일을
@@ -18713,12 +18767,12 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const coarseProductChute = new THREE.CatmullRomCurve3([
       secondaryOutlets["product-280-500"],
       RECT_COARSE_HANDOFF,
-      new THREE.Vector3(4.16, 0.40, 0.00),
+      new THREE.Vector3(5.76, 0.40, 0.00),
       productBins.coarse
     ]);
     const heavyProductChute = new THREE.CatmullRomCurve3([
       new THREE.Vector3(ccHeavyAirlockCenter.x, -0.20, ccHeavyAirlockCenter.z),
-      new THREE.Vector3(4.92, -0.14, -0.24),
+      new THREE.Vector3(6.52, -0.14, -0.24),
       productBins.coarse
     ]);
     addCylinder(parts.P22, 0.105, 0.16, { x: polisherCenter.x + 0.55, y: 0.06, z: polisherCenter.z }, material.cover, "P22", "x", 28, true);
@@ -18751,7 +18805,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return name;
     };
     // 헤더 시작점을 SC-500 2단 국소배기까지 당긴다 — 데크가 늘면 흡인점도 는다.
-    const ventHeaderX = [1.86, 6.95];
+    const ventHeaderX = [1.86, 8.55];
     addMesh(parts.P21, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
       new THREE.Vector3(ventHeaderX[0], VENT_HEADER_Y, RACK_Z),
       new THREE.Vector3(ventHeaderX[1], VENT_HEADER_Y, RACK_Z)
@@ -18769,8 +18823,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     ventRiser(productBins.ssFinal.x, 0.10, productBins.ssFinal.z - 0.12, 0.024, "최종제품빈 벤트");
     ventRiser(productBins.ssRework.x, 0.10, productBins.ssRework.z + 0.12, 0.024, "SS-201 오버 수신빈 벤트");
     // 헤더 → BF-201 상부 인입. 아래로 한 번 꺾어 사이클론 인입과 같은 노즐로 합류한다.
-    addMesh(parts.P21, new THREE.TubeGeometry(orthoCurve([[6.42, VENT_HEADER_Y, RACK_Z],
-      [6.42, VENT_HEADER_Y, 0.20], [6.42, 1.90, 0.20]], 0.18), 36, 0.050, 14, false),
+    addMesh(parts.P21, new THREE.TubeGeometry(orthoCurve([[8.02, VENT_HEADER_Y, RACK_Z],
+      [8.02, VENT_HEADER_Y, 0.20], [8.02, 1.90, 0.20]], 0.18), 36, 0.050, 14, false),
       material.pipeAir, { x: 0, y: 0, z: 0 }, null, "P21", false);
 
     const productOutletCurves = {
@@ -18780,20 +18834,20 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         backsheetOutlet, new THREE.Vector3(2.46, 0.74, 0.52), new THREE.Vector3(2.58, 0.50, 0.66), new THREE.Vector3(2.58, 0.06, 0.66)
       ]),
       "product-280-500": new THREE.CatmullRomCurve3([
-        secondaryOutlets["product-280-500"], RECT_COARSE_HANDOFF, new THREE.Vector3(4.16, 0.40, 0.00), productBins.coarse
+        secondaryOutlets["product-280-500"], RECT_COARSE_HANDOFF, new THREE.Vector3(5.76, 0.40, 0.00), productBins.coarse
       ]),
       // CC-201 중량물 — RV-204 로 빠져 구리 제품빈으로. 배관(heavyProductChute)이
       // 가리키는 곳과 입자가 가는 곳이 같아야 한다.
       "product-106-280": new THREE.CatmullRomCurve3([
-        secondaryOutlets["product-106-280"], new THREE.Vector3(4.00, 0.18, 0.08), new THREE.Vector3(rv204Center.x, -0.24, rv204Center.z), new THREE.Vector3(4.40, 0.34, 0.18), new THREE.Vector3(ccCenter.x, 0.92, ccCenter.z), new THREE.Vector3(ccHeavyAirlockCenter.x, -0.20, ccHeavyAirlockCenter.z), new THREE.Vector3(4.92, -0.14, -0.24), productBins.coarse
+        secondaryOutlets["product-106-280"], new THREE.Vector3(5.60, 0.18, 0.08), new THREE.Vector3(rv204Center.x, -0.24, rv204Center.z), new THREE.Vector3(6.00, 0.34, 0.18), new THREE.Vector3(ccCenter.x, 0.92, ccCenter.z), new THREE.Vector3(ccHeavyAirlockCenter.x, -0.20, ccHeavyAirlockCenter.z), new THREE.Vector3(6.52, -0.14, -0.24), productBins.coarse
       ]),
       // SS-201 스캘빙 75 µm 오버 — 환류물이 아니라 구리 산물이다. RV-402 수신빈에서
       // RC-201 밀폐 진공반송으로 랙 상단을 타고 같은 구리 제품빈에 합류한다.
       "product-75-106": new THREE.CatmullRomCurve3([
-        secondaryOutlets["product-75-106"], new THREE.Vector3(4.14, 0.18, 0.16), new THREE.Vector3(rv204Center.x, -0.24, rv204Center.z), new THREE.Vector3(4.40, 0.34, 0.18), new THREE.Vector3(ccCenter.x, 1.05, ccCenter.z), new THREE.Vector3(5.22, 1.82, 0.22), new THREE.Vector3(cyclone2Center.x, 1.42, cyclone2Center.z), new THREE.Vector3(cyclone2Center.x, 0.22, cyclone2Center.z), ssCycloneFeedNozzle, new THREE.Vector3(polisherCenter.x, 0.12, polisherCenter.z), ssReworkOutlet, new THREE.Vector3(6.92, 0.72, -0.44), new THREE.Vector3(6.92, DRY_RETURN_Y, -0.44), new THREE.Vector3(6.92, DRY_RETURN_Y, RACK_Z), new THREE.Vector3(productBins.coarse.x, DRY_RETURN_Y, RACK_Z), new THREE.Vector3(productBins.coarse.x, DRY_RETURN_Y, CU_RETURN_Z), new THREE.Vector3(productBins.coarse.x, 2.40, CU_RETURN_Z), new THREE.Vector3(productBins.coarse.x, 0.24, CU_RETURN_Z), new THREE.Vector3(productBins.coarse.x, 0.24, -0.58), productBins.coarse
+        secondaryOutlets["product-75-106"], new THREE.Vector3(5.74, 0.18, 0.16), new THREE.Vector3(rv204Center.x, -0.24, rv204Center.z), new THREE.Vector3(6.00, 0.34, 0.18), new THREE.Vector3(ccCenter.x, 1.05, ccCenter.z), new THREE.Vector3(6.82, 1.82, 0.22), new THREE.Vector3(cyclone2Center.x, 1.42, cyclone2Center.z), new THREE.Vector3(cyclone2Center.x, 0.22, cyclone2Center.z), ssCycloneFeedNozzle, new THREE.Vector3(polisherCenter.x, 0.12, polisherCenter.z), ssReworkOutlet, new THREE.Vector3(8.52, 0.72, -0.44), new THREE.Vector3(8.52, DRY_RETURN_Y, -0.44), new THREE.Vector3(8.52, DRY_RETURN_Y, RACK_Z), new THREE.Vector3(productBins.coarse.x, DRY_RETURN_Y, RACK_Z), new THREE.Vector3(productBins.coarse.x, DRY_RETURN_Y, CU_RETURN_Z), new THREE.Vector3(productBins.coarse.x, 2.40, CU_RETURN_Z), new THREE.Vector3(productBins.coarse.x, 0.24, CU_RETURN_Z), new THREE.Vector3(productBins.coarse.x, 0.24, -0.58), productBins.coarse
       ]),
       "product-under-75": new THREE.CatmullRomCurve3([
-        secondaryOutlets["product-under-75"], new THREE.Vector3(4.55, -0.02, 0.48), new THREE.Vector3(5.55, 0.12, 0.46), ssFineFeedNozzle, new THREE.Vector3(polisherCenter.x, 0.12, polisherCenter.z), new THREE.Vector3(polisherCenter.x + 0.12, -0.17, polisherCenter.z + 0.12), ssFinalOutlet
+        secondaryOutlets["product-under-75"], new THREE.Vector3(5.10, -0.16, 0.78), new THREE.Vector3(5.60, -0.06, 0.76), new THREE.Vector3(7.15, 0.12, 0.66), ssFineFeedNozzle, new THREE.Vector3(polisherCenter.x, 0.12, polisherCenter.z), new THREE.Vector3(polisherCenter.x + 0.12, -0.17, polisherCenter.z + 0.12), ssFinalOutlet
       ])
     };
     const finesCurve = productOutletCurves["product-under-75"];
@@ -18999,7 +19053,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     addVentPanel(parts.P21, "P21", { x: bfCenter.x, y: 1.98, z: bfCenter.z }, { x: 0.48, z: 0.40 });
 
     // 화염 차단밸브 — 집진기 앞 덕트. 로터리 에어록도 차단장치로 함께 계정한다.
-    [["P17", 1.62, 2.40, 0.55], ["P21", 5.30, 1.86, 0.20]].forEach(([id, x, y, z]) => {
+    [["P17", 1.62, 2.40, 0.55], ["P21", 6.90, 1.86, 0.20]].forEach(([id, x, y, z]) => {
       addCylinder(parts[id], 0.085, 0.16, { x, y, z }, explosionMaterial, id, "x", 20, false);
       addBox(parts[id], { x: 0.05, y: 0.20, z: 0.05 }, { x, y: y + 0.16, z }, explosionMaterial, id, null, false);
       // 스파크 검출헤드와 소화 노즐 — 검출에서 분사까지 수십 ms 안에 끝나야 한다
@@ -19008,7 +19062,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     });
 
     // 접지 모선과 본딩 — 장비·배관을 한 점 접지로 묶는다.
-    addBox(parts.P01, { x: 8.20, y: 0.035, z: 0.05 }, { x: 2.60, y: 0.06, z: -0.92 }, bondingMaterial, "P01", null, false);
+    addBox(parts.P01, { x: 9.90, y: 0.035, z: 0.05 }, { x: 3.45, y: 0.06, z: -0.92 }, bondingMaterial, "P01", null, false);   // x −1.50…8.40 — 이설된 BF-201(8.32)까지
     addBonding(parts.P02, "P02", { x: grinderX, y: 0.58, z: -0.30 }, { x: grinderX, y: 0.06, z: -0.92 });
     addBonding(parts.P15, "P15", { x: cycloneX, y: 1.40, z: cycloneZ - 0.20 }, { x: cycloneX, y: 0.06, z: -0.92 });
     // SC-500 하우징과 BIN-102 — 2단 스크린과 폐기빈도 착화원 관리 대상이다.
@@ -19619,7 +19673,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // Expanded non-safety process foundation: dry return, wet transfer,
     // reagent/air utilities, flotation, dewatering and process-water recovery.
-    wetBox(unifiedWet, [16.15, 0.08, 6.45], [13.88, -0.04, -0.18], gratingMaterial(16.15, 6.45), "통합 습식·유틸리티 공정 그레이팅 데크");
+    // CC-201 이하 동측 1.6 m 이설(SV-H3)로 습식 열차가 x 23.55 까지 나갔다. 데크는 옮기지 않고
+    // 동쪽으로 늘린다 — 서단(x 5.81)에는 제자리에 남는 VP-401 스키드와 제어반 열이 서 있다.
+    wetBox(unifiedWet, [17.75, 0.08, 6.45], [14.68, -0.04, -0.18], gratingMaterial(17.75, 6.45), "통합 습식·유틸리티 공정 그레이팅 데크");
 
     // 두 진공 지관은 VP-401 스키드(z = -2.46) 위 전용 랙 티어로 올려 직교로 내린다.
     const VAC_RACK_Y = 3.16;
@@ -19629,7 +19685,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 위의 헤더·건식반송은 지지가 없으면 공중에 뜬 것으로 보인다. z = RACK_Z 뒤쪽에 기둥을
     // 세우고 두 티어(VENT_HEADER_Y, DRY_RETURN_Y)에 캔틸레버 암을 내밀어 받친다.
     const RACK_COLUMN_Z = -0.94;
-    [0.90, 3.70, 6.40].forEach((x) => {
+    // 네 번째 기둥(x 8.60)은 이설로 x 8.5 까지 나간 벤트 헤더 동단과 RC-201 라이저 티를 받는다 —
+    // 6.40 에서 2.1 m 를 캔틸레버로 둘 수는 없다. FW-102 스키드(x ≤8.16)와 이설된 SS-201 오버
+    // 수신빈(x 8.28…8.76 · z ≥ −0.68) 사이 z −1.04…−0.84 가 비어 있어 거기 선다.
+    [0.90, 3.70, 6.40, 8.60].forEach((x) => {
       wetHBeam(unifiedWet, "파이프 랙 기둥 H200", [x, (DRY_RETURN_Y + 0.18) / 2, RACK_COLUMN_Z], DRY_RETURN_Y + 0.18, "y", 0.20, 0.10);
       wetBox(unifiedWet, [0.34, 0.03, 0.34], [x, -0.02, RACK_COLUMN_Z], material.frame, "파이프 랙 베이스플레이트");
       wetColumnGussets(unifiedWet, "파이프 랙 주각", x, 0.00, RACK_COLUMN_Z, 0.22, 0.06);
@@ -19649,42 +19708,46 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // SS-201 ≥75 µm 는 환류물이 아니라 **구리 산물**이다(회로 재설계). 반송 수단은
     // 그대로 두고 도착지만 FD-101/HSG-101 에서 BIN-Cu 구리 제품빈으로 바꾼다 —
-    // SS-201(x 6.92)과 BIN-Cu(x 4.30)는 높이차가 없어 중력으로 흐르지 않으므로
+    // SS-201(x 8.52)과 BIN-Cu(x 5.90)는 높이차가 없어 중력으로 흐르지 않으므로
     // 밀폐 진공반송이 여전히 필요하다. 경로가 2.6 m 로 짧아져 벤드가 3 → 2 개로 준다.
-    const ssReworkPickup = [6.92, 0.04, -0.44];
-    wetCylinder(unifiedWet, 0.12, 0.28, [6.92, 0.24, -0.44], material.solidsReceiver, "RV-402 SS-201 조대물 반송 에어록", 28, [Math.PI / 2, 0, 0]);
+    // (CC-201 이하 동측 1.6 m 이설 — 두 끝이 같이 옮겨져 길이는 그대로다.)
+    const ssReworkPickup = [8.52, 0.04, -0.44];
+    wetCylinder(unifiedWet, 0.12, 0.28, [8.52, 0.24, -0.44], material.solidsReceiver, "RV-402 SS-201 조대물 반송 에어록", 28, [Math.PI / 2, 0, 0]);
     // 랙 상단 티어는 z = RACK_Z 로 달린다 — 기둥열(z −0.94)을 피해 그 앞을 지나는 자리다.
-    // 수신기 자리로 내려가는 z 이동은 x 4.30 에서, 헤더보다 높은 y 3.42 에서 끝낸다.
-    wetTube(unifiedWet, orthoRoute([ssReworkPickup, [6.92, 0.72, -0.44], [6.92, DRY_RETURN_Y, -0.44],
-      [6.92, DRY_RETURN_Y, RACK_Z], [4.30, DRY_RETURN_Y, RACK_Z], [4.30, DRY_RETURN_Y, CU_RETURN_Z],
-      [4.30, 2.78, CU_RETURN_Z]], 0.30), 0.065, material.pipeDryTransfer,
+    // 수신기 자리로 내려가는 z 이동은 x 5.90 에서, 헤더보다 높은 y 3.42 에서 끝낸다.
+    wetTube(unifiedWet, orthoRoute([ssReworkPickup, [8.52, 0.72, -0.44], [8.52, DRY_RETURN_Y, -0.44],
+      [8.52, DRY_RETURN_Y, RACK_Z], [5.90, DRY_RETURN_Y, RACK_Z], [5.90, DRY_RETURN_Y, CU_RETURN_Z],
+      [5.90, 2.78, CU_RETURN_Z]], 0.30), 0.065, material.pipeDryTransfer,
       "RC-201 SS-201 ≥75 µm 구리산물 밀폐 진공반송", 1860, 9);
-    wetCylinder(unifiedWet, 0.26, 0.48, [4.30, 2.62, CU_RETURN_Z], material.solidsReceiver, "VR-201 구리산물 진공수신기", 32, null, true);
-    wetCone(unifiedWet, 0.26, 0.08, 0.30, [4.30, 2.24, CU_RETURN_Z], material.solidsReceiver, "VR-201 배출콘", 32);
-    wetBox(unifiedWet, [0.40, 0.12, 0.40], [4.30, 2.92, CU_RETURN_Z], material.screen, "VR-201 펄스필터");
+    wetCylinder(unifiedWet, 0.26, 0.48, [5.90, 2.62, CU_RETURN_Z], material.solidsReceiver, "VR-201 구리산물 진공수신기", 32, null, true);
+    wetCone(unifiedWet, 0.26, 0.08, 0.30, [5.90, 2.24, CU_RETURN_Z], material.solidsReceiver, "VR-201 배출콘", 32);
+    wetBox(unifiedWet, [0.40, 0.12, 0.40], [5.90, 2.92, CU_RETURN_Z], material.screen, "VR-201 펄스필터");
     // 빈 뚜껑에는 벤트 노즐(z −0.36)이 이미 있다 — 투입은 반대쪽(z −0.58)으로 넣어
     // 벤트 라이저와 0.22 m 떨어뜨린다.
-    wetTube(unifiedWet, orthoRoute([[4.30, 2.10, CU_RETURN_Z], [4.30, 0.24, CU_RETURN_Z],
-      [4.30, 0.24, -0.58], [4.30, 0.06, -0.58]], 0.10), 0.070, material.pipeDryTransfer, "VR-201 → BIN-Cu 중력배출", 1860, 4);
+    wetTube(unifiedWet, orthoRoute([[5.90, 2.10, CU_RETURN_Z], [5.90, 0.24, CU_RETURN_Z],
+      [5.90, 0.24, -0.58], [5.90, 0.06, -0.58]], 0.10), 0.070, material.pipeDryTransfer, "VR-201 → BIN-Cu 중력배출", 1860, 4);
     // VR-201 filter to the common vacuum header (was a dedicated PC-202 blower).
-    wetTube(unifiedWet, orthoRoute([[4.30, 2.98, CU_RETURN_Z], [4.30, VAC_RACK_Y, CU_RETURN_Z],
-      [4.30, VAC_RACK_Y, VAC_RACK_Z], [5.10, VAC_RACK_Y, VAC_RACK_Z], [5.10, 1.34, VAC_RACK_Z],
+    // VP-401 은 제자리다(공정 열차가 아니라 유틸리티). 이설된 VR-201(x 5.90)에서 진공 랙 티어를
+    // 타고 서쪽 x 5.10 으로 되돌아와 내려간다 — VR-401 지관은 같은 티어의 x 6.06 에서 내려오므로
+    // 두 지관이 티어 위에서 겹치지 않는다(5.10…5.90 / 6.06…9.16).
+    wetTube(unifiedWet, orthoRoute([[5.90, 2.98, CU_RETURN_Z], [5.90, VAC_RACK_Y, CU_RETURN_Z],
+      [5.90, VAC_RACK_Y, VAC_RACK_Z], [5.10, VAC_RACK_Y, VAC_RACK_Z], [5.10, 1.34, VAC_RACK_Z],
       [5.30, 1.34, VAC_RACK_Z]], 0.24), 0.042, material.pipeAir, "VR-201 필터 → VP-401 공통 진공헤더");
     wetBox(unifiedWet, [0.13, 0.13, 0.13], [5.10, 1.34, -2.46], material.silverClamp, "VR-201 지관 차단밸브");
     wetBox(unifiedWet, [0.11, 0.11, 0.11], [4.86, 1.44, -2.50], material.fixed, "VR-201 지관 역류방지밸브");
-    wetLabel("SS-201 ≥75 µm → RV-402/RC-201 → VR-201 → BIN-Cu 구리 제품", [3.18, 2.42, -2.68], [2.35, 0.23, 1]);
+    wetLabel("SS-201 ≥75 µm → RV-402/RC-201 → VR-201 → BIN-Cu 구리 제품", [4.78, 2.42, -2.68], [2.35, 0.23, 1]);
 
     // Motivated <75 µm transfer: VR-401 vacuum receiver discharges through the
     // weighed buffer, correctly retagged RV-401, enclosed screw and wetting cone.
-    const finalFinesOutlet = [6.78, -0.42, 0.72];
-    const bufferX = 7.82;
-    wetTube(unifiedWet, [finalFinesOutlet, [6.98, -0.20, 0.72], [7.12, 1.76, 0.72], [7.56, 2.10, 0.72]], 0.075, material.pipeAir, "SS-201 <75 µm → VR-401 진공이송", 1680, 8);
-    wetCylinder(unifiedWet, 0.25, 0.46, [7.56, 1.89, 0.72], material.solidsReceiver, "VR-401 <75 µm 진공수신기", 32, null, true);
-    wetCone(unifiedWet, 0.25, 0.09, 0.28, [7.56, 1.52, 0.72], material.solidsReceiver, "VR-401 배출콘", 32);
-    wetBox(unifiedWet, [0.40, 0.12, 0.40], [7.56, 2.18, 0.72], material.screen, "VR-401 상부 펄스필터");
+    const finalFinesOutlet = [8.38, -0.42, 0.72];
+    const bufferX = 9.42;
+    wetTube(unifiedWet, [finalFinesOutlet, [8.58, -0.20, 0.72], [8.72, 1.76, 0.72], [9.16, 2.10, 0.72]], 0.075, material.pipeAir, "SS-201 <75 µm → VR-401 진공이송", 1680, 8);
+    wetCylinder(unifiedWet, 0.25, 0.46, [9.16, 1.89, 0.72], material.solidsReceiver, "VR-401 <75 µm 진공수신기", 32, null, true);
+    wetCone(unifiedWet, 0.25, 0.09, 0.28, [9.16, 1.52, 0.72], material.solidsReceiver, "VR-401 배출콘", 32);
+    wetBox(unifiedWet, [0.40, 0.12, 0.40], [9.16, 2.18, 0.72], material.screen, "VR-401 상부 펄스필터");
     // VR-401 filter to the same common header (was a dedicated PC-401 blower).
-    wetTube(unifiedWet, orthoRoute([[7.56, 2.24, 0.72], [7.56, VAC_RACK_Y, 0.72],
-      [7.56, VAC_RACK_Y, VAC_RACK_Z], [6.06, VAC_RACK_Y, VAC_RACK_Z], [6.06, 1.34, VAC_RACK_Z],
+    wetTube(unifiedWet, orthoRoute([[9.16, 2.24, 0.72], [9.16, VAC_RACK_Y, 0.72],
+      [9.16, VAC_RACK_Y, VAC_RACK_Z], [6.06, VAC_RACK_Y, VAC_RACK_Z], [6.06, 1.34, VAC_RACK_Z],
       [5.86, 1.34, VAC_RACK_Z]], 0.24), 0.040, material.pipeAir, "VR-401 필터 → VP-401 공통 진공헤더");
     wetBox(unifiedWet, [0.13, 0.13, 0.13], [6.06, 1.34, -2.46], material.silverClamp, "VR-401 지관 차단밸브");
     wetBox(unifiedWet, [0.11, 0.11, 0.11], [6.30, 1.44, -2.42], material.fixed, "VR-401 지관 역류방지밸브");
@@ -19722,7 +19785,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     });
     wetCylinder(unifiedWet, 0.13, 0.42, [4.70, 2.02, -2.46], material.equipmentAir, "VP-401 공통 소음기", 24);
     wetRotors.push({ activation: 1260, rpm: DRIVE_RPM.vacuumBlower, parts: vp401Wheels, axis: "x", train: "A" });
-    wetTube(unifiedWet, [[7.56, 1.38, 0.72], [bufferX, 1.42, 0.72]], 0.070, material.pipeDryTransfer, "VR-401 → BH-101 중력인계", 1680, 4);
+    wetTube(unifiedWet, [[9.16, 1.38, 0.72], [bufferX, 1.42, 0.72]], 0.070, material.pipeDryTransfer, "VR-401 → BH-101 중력인계", 1680, 4);
     wetCone(unifiedWet, 0.36, 0.12, 0.72, [bufferX, 1.06, 0.72], material.solidsReceiver, "BH-101 로드셀 완충빈", 8);
     wetBox(unifiedWet, [0.64, 0.07, 0.64], [bufferX, 0.68, 0.72], material.frame, "BH-101 계량프레임");
     for (const dx of [-0.24, 0.24]) for (const dz of [-0.24, 0.24]) {
@@ -19732,43 +19795,43 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     }
     for (const dx of [-0.24, 0.24]) for (const dz of [-0.24, 0.24]) wetCylinder(unifiedWet, 0.025, 0.12, [bufferX + dx, 0.61, 0.72 + dz], material.silverClamp, "BH-101 로드셀", 14);
     wetCylinder(unifiedWet, 0.12, 0.28, [bufferX, 0.52, 0.72], material.solidsReceiver, "RV-401 습식 인계 로터리 에어록", 28, [Math.PI / 2, 0, 0]);
-    const sf401Rotor = addClosedScrewBetween(unifiedWet, new THREE.Vector3(7.96, 0.46, 0.72), new THREE.Vector3(8.62, 0.46, 0.72), 0.105, 0.034, 0.16, "SF-401", material.equipmentConveyor);
+    const sf401Rotor = addClosedScrewBetween(unifiedWet, new THREE.Vector3(9.56, 0.46, 0.72), new THREE.Vector3(10.22, 0.46, 0.72), 0.105, 0.034, 0.16, "SF-401", material.equipmentConveyor);
     wetRotors.push({ activation: 1680, rpm: DRIVE_RPM.rotaryFeeder, parts: [sf401Rotor], axis: "y" });
-    wetCone(unifiedWet, 0.24, 0.10, 0.42, [8.88, 0.55, 0.72], material.equipmentWetBody, "WC-401 밀폐 습윤콘", 24);
-    wetTube(unifiedWet, [[8.88, 0.34, 0.72], [9.02, 0.34, 0.72], [9.02, 1.18, 0.72], [8.94, 1.18, 0.72]], 0.065, wetFeedMaterial, "WC-401 → TK-001 습윤분말관", 1740, 5);
-    wetSampler("SAM-101", [8.95, 0.92, 0.72], wetFeedMaterial);
-    wetLabel("VR-401 → BH-101 → RV-401 → SF-401 → WC-401", [7.98, 2.52, 0.72], [2.10, 0.24, 1]);
+    wetCone(unifiedWet, 0.24, 0.10, 0.42, [10.48, 0.55, 0.72], material.equipmentWetBody, "WC-401 밀폐 습윤콘", 24);
+    wetTube(unifiedWet, [[10.48, 0.34, 0.72], [10.62, 0.34, 0.72], [10.62, 1.18, 0.72], [10.54, 1.18, 0.72]], 0.065, wetFeedMaterial, "WC-401 → TK-001 습윤분말관", 1740, 5);
+    wetSampler("SAM-101", [10.55, 0.92, 0.72], wetFeedMaterial);
+    wetLabel("VR-401 → BH-101 → RV-401 → SF-401 → WC-401", [9.58, 2.52, 0.72], [2.10, 0.24, 1]);
 
-    const tk001 = wetTank("TK-001", 9.42, 0.72, 0.48, 1.16, 900, { liquid: wetWaterMaterial, label: "55–70 wt% 조정" });
-    const as101 = wetTank("AS-101", 10.82, 0.72, 0.44, 1.16, 720, { octagonal: true, attrition: true, liquid: wetWaterMaterial, label: "40 L · 600 rpm · 5 min" });
-    const tk101 = wetTank("TK-101", 12.24, 0.72, 0.50, 1.20, 660, { liquid: wetWaterMaterial, label: "10–30 wt% 희석·컨디셔닝" });
-    const p101 = wetPumpPair("P-101", 10.02, -0.16, 900, wetFeedMaterial, "TK-001→AS-101 A/B");
-    const p102 = wetPumpPair("P-102", 11.48, -0.16, 780, wetFeedMaterial, "AS-101→TK-101 A/B");
-    const pp201 = wetPumpPair("PP-201", 12.62, -0.28, 660, wetFeedMaterial, "러퍼 급광 A/B");
-    wetTube(unifiedWet, [[9.42, 0.76, 0.30], [9.42, 0.24, -0.16], p101.suction], 0.060, wetFeedMaterial, "TK-001 → P-101A/B 흡입", 1800, 4);
-    wetTube(unifiedWet, [p101.discharge, [10.48, 0.76, 0.30], [10.48, 1.02, 0.72]], 0.060, wetFeedMaterial, "P-101A/B → AS-101", 1800, 5);
+    const tk001 = wetTank("TK-001", 11.02, 0.72, 0.48, 1.16, 900, { liquid: wetWaterMaterial, label: "55–70 wt% 조정" });
+    const as101 = wetTank("AS-101", 12.42, 0.72, 0.44, 1.16, 720, { octagonal: true, attrition: true, liquid: wetWaterMaterial, label: "40 L · 600 rpm · 5 min" });
+    const tk101 = wetTank("TK-101", 13.84, 0.72, 0.50, 1.20, 660, { liquid: wetWaterMaterial, label: "10–30 wt% 희석·컨디셔닝" });
+    const p101 = wetPumpPair("P-101", 11.62, -0.16, 900, wetFeedMaterial, "TK-001→AS-101 A/B");
+    const p102 = wetPumpPair("P-102", 13.08, -0.16, 780, wetFeedMaterial, "AS-101→TK-101 A/B");
+    const pp201 = wetPumpPair("PP-201", 14.22, -0.28, 660, wetFeedMaterial, "러퍼 급광 A/B");
+    wetTube(unifiedWet, [[11.02, 0.76, 0.30], [11.02, 0.24, -0.16], p101.suction], 0.060, wetFeedMaterial, "TK-001 → P-101A/B 흡입", 1800, 4);
+    wetTube(unifiedWet, [p101.discharge, [12.08, 0.76, 0.30], [12.08, 1.02, 0.72]], 0.060, wetFeedMaterial, "P-101A/B → AS-101", 1800, 5);
 
     // Alumina-media inventory and two-stage retention/recovery package.
-    wetCone(unifiedWet, 0.30, 0.07, 0.52, [10.28, 1.84, 1.70], material.silverClamp, "BM-101 알루미나 비드 보충호퍼", 24);
-    wetCylinder(unifiedWet, 0.10, 0.24, [10.28, 1.48, 1.70], wetBodyMaterial, "BM-101 계량밸브", 24, [Math.PI / 2, 0, 0]);
-    wetTube(unifiedWet, [[10.28, 1.38, 1.70], [10.62, 1.62, 1.20], [10.82, 1.64, 0.72]], 0.035, material.pipeBead, "BM-101 비드 보충관", 960, 4);
-    wetCylinder(unifiedWet, 0.155, 0.34, [11.40, 0.96, 0.72], material.screen, "BS-101A 1차 비드 보유스크린", 30, [0, 0, Math.PI / 2], true);
-    wetCylinder(unifiedWet, 0.145, 0.28, [11.72, 0.96, 0.72], material.screen, "BS-101B 2차 가드스크린", 30, [0, 0, Math.PI / 2], true);
-    wetTube(unifiedWet, [[11.24, 0.96, 0.72], [11.26, 0.96, 0.72]], 0.065, wetFeedMaterial, "AS-101 → BS-101A");
-    wetTube(unifiedWet, [[11.56, 0.96, 0.72], [11.58, 0.96, 0.72]], 0.060, wetFeedMaterial, "BS-101A → BS-101B");
-    wetTube(unifiedWet, [[11.84, 0.96, 0.72], [11.92, 0.78, 0.30], p102.suction], 0.060, wetFeedMaterial, "BS-101B → P-102A/B", 1860, 4);
-    wetCone(unifiedWet, 0.20, 0.07, 0.36, [11.56, 0.42, 1.24], material.silverClamp, "BR-101 비드 세척·회수빈", 24);
-    wetTube(unifiedWet, [[11.40, 0.80, 0.82], [11.56, 0.60, 1.24]], 0.032, material.pipeBead, "BS-101A 비드 회수 드레인");
-    wetSensor("PDIT-101", [11.56, 1.24, 0.92], material.product106);
-    wetTube(unifiedWet, [p102.discharge, [12.06, 0.78, 0.26], [12.06, 1.02, 0.72]], 0.060, wetFeedMaterial, "P-102A/B → TK-101", 1860, 5);
-    wetTube(unifiedWet, [[12.24, 0.76, 0.22], [12.16, 0.24, -0.28], pp201.suction], 0.060, wetFeedMaterial, "TK-101 → PP-201A/B", 1920, 4);
-    wetSampler("SAM-102", [11.96, 0.84, 0.48], wetFeedMaterial);
+    wetCone(unifiedWet, 0.30, 0.07, 0.52, [11.88, 1.84, 1.70], material.silverClamp, "BM-101 알루미나 비드 보충호퍼", 24);
+    wetCylinder(unifiedWet, 0.10, 0.24, [11.88, 1.48, 1.70], wetBodyMaterial, "BM-101 계량밸브", 24, [Math.PI / 2, 0, 0]);
+    wetTube(unifiedWet, [[11.88, 1.38, 1.70], [12.22, 1.62, 1.20], [12.42, 1.64, 0.72]], 0.035, material.pipeBead, "BM-101 비드 보충관", 960, 4);
+    wetCylinder(unifiedWet, 0.155, 0.34, [13.00, 0.96, 0.72], material.screen, "BS-101A 1차 비드 보유스크린", 30, [0, 0, Math.PI / 2], true);
+    wetCylinder(unifiedWet, 0.145, 0.28, [13.32, 0.96, 0.72], material.screen, "BS-101B 2차 가드스크린", 30, [0, 0, Math.PI / 2], true);
+    wetTube(unifiedWet, [[12.84, 0.96, 0.72], [12.86, 0.96, 0.72]], 0.065, wetFeedMaterial, "AS-101 → BS-101A");
+    wetTube(unifiedWet, [[13.16, 0.96, 0.72], [13.18, 0.96, 0.72]], 0.060, wetFeedMaterial, "BS-101A → BS-101B");
+    wetTube(unifiedWet, [[13.44, 0.96, 0.72], [13.52, 0.78, 0.30], p102.suction], 0.060, wetFeedMaterial, "BS-101B → P-102A/B", 1860, 4);
+    wetCone(unifiedWet, 0.20, 0.07, 0.36, [13.16, 0.42, 1.24], material.silverClamp, "BR-101 비드 세척·회수빈", 24);
+    wetTube(unifiedWet, [[13.00, 0.80, 0.82], [13.16, 0.60, 1.24]], 0.032, material.pipeBead, "BS-101A 비드 회수 드레인");
+    wetSensor("PDIT-101", [13.16, 1.24, 0.92], material.product106);
+    wetTube(unifiedWet, [p102.discharge, [13.66, 0.78, 0.26], [13.66, 1.02, 0.72]], 0.060, wetFeedMaterial, "P-102A/B → TK-101", 1860, 5);
+    wetTube(unifiedWet, [[13.84, 0.76, 0.22], [13.76, 0.24, -0.28], pp201.suction], 0.060, wetFeedMaterial, "TK-101 → PP-201A/B", 1920, 4);
+    wetSampler("SAM-102", [13.56, 0.84, 0.48], wetFeedMaterial);
 
     // Three independent reagent preparation/day-tank and metering-pump trains.
     const reagentSkids = [
-      { tag: "RS-201", name: "포수제", x: 9.15, mat: material.pipeReagent },
-      { tag: "RS-202", name: "기포제", x: 9.82, mat: material.pipeReagent },
-      { tag: "RS-203", name: "pH 조정제", x: 10.49, mat: material.pipeReagent }
+      { tag: "RS-201", name: "포수제", x: 10.75, mat: material.pipeReagent },
+      { tag: "RS-202", name: "기포제", x: 11.42, mat: material.pipeReagent },
+      { tag: "RS-203", name: "pH 조정제", x: 12.09, mat: material.pipeReagent }
     ];
     reagentSkids.forEach((skid, index) => {
       wetBox(unifiedWet, [0.58, 0.07, 0.66], [skid.x, 0.04, -1.55], material.frame, `${skid.tag} 방유형 베이스`);
@@ -19779,14 +19842,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       wetRotors.push({ activation: 420, rpm: DRIVE_RPM.tankAgitator, parts: [agitator], axis: "y" });
       wetBox(unifiedWet, [0.20, 0.14, 0.18], [skid.x + 0.27, 0.18, -1.55], material.equipmentPump, `${skid.tag} 정량펌프`);
       wetCylinder(unifiedWet, 0.055, 0.28, [skid.x - 0.25, 0.34, -1.55], material.silverClamp, `${skid.tag} 교정컬럼`, 18);
-      skid.injectionPoint = [12.82, 3.36 + index * 0.06, -0.84 + index * 0.08];
-      wetTube(unifiedWet, [[skid.x + 0.27, 0.18, -1.55], [11.05, 0.48 + index * 0.04, -1.55 + index * 0.10], skid.injectionPoint], 0.018, skid.mat, `${skid.tag} g/t 비율주입 헤더`, 420, 3);
+      skid.injectionPoint = [14.42, 3.36 + index * 0.06, -0.84 + index * 0.08];
+      wetTube(unifiedWet, [[skid.x + 0.27, 0.18, -1.55], [12.65, 0.48 + index * 0.04, -1.55 + index * 0.10], skid.injectionPoint], 0.018, skid.mat, `${skid.tag} g/t 비율주입 헤더`, 420, 3);
       wetLabel(`${skid.tag} · ${skid.name}`, [skid.x, 1.16, -1.55], [1.02, 0.18, 1]);
     });
 
     // Two-level flotation deck: FC-202 is cleaner and FC-203 is scavenger.
-    wetBox(unifiedWet, [5.10, 0.14, 3.45], [14.46, 2.44, 0.18], gratingMaterial(5.10, 3.45), "ST-201 2층 부유선별 그레이팅");
-    for (const x of [12.18, 16.72]) for (const z of [-1.20, 1.50]) {
+    wetBox(unifiedWet, [5.10, 0.14, 3.45], [16.06, 2.44, 0.18], gratingMaterial(5.10, 3.45), "ST-201 2층 부유선별 그레이팅");
+    for (const x of [13.78, 18.32]) for (const z of [-1.20, 1.50]) {
       wetHBeam(unifiedWet, "ST-201 2층 지지기둥 H250", [x, 1.20, z], 2.48, "y", 0.25, 0.125);
       wetBox(unifiedWet, [0.42, 0.03, 0.42], [x, -0.02, z], material.frame, "ST-201 기둥 베이스플레이트");
       wetColumnGussets(unifiedWet, "ST-201 주각", x, 0.00, z, 0.26, 0.07);
@@ -19805,7 +19868,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 보는 그레이팅 하면(2.37)과 기둥 상단(2.44) 사이 200 mm 대에 들어가 기둥 플랜지에
     // 엔드플레이트로 물린다. 기둥은 데크까지 그대로 올라가므로 길이를 건드리지 않는다.
     const BEAM_Y = 2.27;                          // H200 중심 → 2.17 ~ 2.37
-    const COL_X = [12.18, 16.72], COL_Z = [-1.20, 1.50];
+    const COL_X = [13.78, 18.32], COL_Z = [-1.20, 1.50];
     const GIRDER_LEN = COL_X[1] - COL_X[0] - 0.25;   // 기둥 x 면 사이 4.29
     const ENDBEAM_LEN = COL_Z[1] - COL_Z[0] - 0.125; // 기둥 z 면 사이 2.575
     const SEC_LEN = COL_Z[1] - COL_Z[0] - 0.10;      // 거더 웨브 사이 2.60
@@ -19818,7 +19881,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 작은보 6본 — 배관·기기가 데크를 관통하는 자리를 피해 잡았다. TK-101 VFD 모터
     // (x 12.52–12.82), PP-201A/B 급광관(12.82–13.22), 재이용수 행거(13.99–14.10 ·
     // 16.17–16.28) 를 비켜 간다. 최대 경간 1.22 m 로 30×5 그레이팅 5.0 kN/m² 에 든다.
-    const SEC_BEAM_X = [12.38, 13.60, 14.40, 15.10, 15.80, 16.45];
+    const SEC_BEAM_X = [13.98, 15.20, 16.00, 16.70, 17.40, 18.05];
     for (const x of SEC_BEAM_X) wetHBeam(unifiedWet, "ST-201 2층 작은보 H200", [x, BEAM_Y, BEAM_MID_Z], SEC_LEN, "z", 0.20, 0.10);
 
     // 현장접합 볼트 96본 = 기둥 접합 8개소 × 6 + 작은보 접합 12개소 × 4.
@@ -19846,22 +19909,22 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // MH-401 호이스트 지주(x 12.84)를 피해 x 13.00 에서 시작하고, +x 로 올라가 상단이
     // 모노레일(x≤12.90, y 3.28) 밑으로 들어가지 않게 한다.
     const DECK_TOP_Y = 2.51;                     // 데크 상면 = 2.44 + 0.14/2
-    const DECK_X0 = 11.91, DECK_X1 = 17.01;      // 5.10 폭
+    const DECK_X0 = 13.51, DECK_X1 = 18.61;      // 5.10 폭
     const DECK_Z0 = -1.545, DECK_Z1 = 1.905;     // 3.45 깊이
-    const STAIR_X0 = 13.00, STAIR_Z = 2.60;
+    const STAIR_X0 = 14.60, STAIR_Z = 2.60;
     const stair = wetAccessStair(unifiedWet, "ST-201 접근계단", STAIR_X0, STAIR_Z, DECK_TOP_Y);
     // 계단 상단 → 데크를 잇는 랜딩. 동쪽 끝을 데크 모서리(x 17.01)에 맞춰 난간이 이어진다.
     const LAND_X0 = STAIR_X0 + stair.run, LAND_X1 = DECK_X1, LAND_Z1 = 3.00;
     wetBox(unifiedWet, [LAND_X1 - LAND_X0, 0.14, LAND_Z1 - 1.85], [(LAND_X0 + LAND_X1) / 2, 2.44, (1.85 + LAND_Z1) / 2],
       gratingMaterial(LAND_X1 - LAND_X0, LAND_Z1 - 1.85), "ST-201 계단 랜딩");
     for (const lz of [2.10, 2.88]) {
-      wetHBeam(unifiedWet, "ST-201 랜딩 지지기둥 H250", [16.30, 1.22, lz], 2.44, "y", 0.25, 0.125);
-      wetBox(unifiedWet, [0.40, 0.03, 0.40], [16.30, -0.02, lz], material.frame, "ST-201 랜딩 베이스플레이트");
-      wetColumnGussets(unifiedWet, "ST-201 랜딩 주각", 16.30, 0.00, lz, 0.24, 0.07);
+      wetHBeam(unifiedWet, "ST-201 랜딩 지지기둥 H250", [17.90, 1.22, lz], 2.44, "y", 0.25, 0.125);
+      wetBox(unifiedWet, [0.40, 0.03, 0.40], [17.90, -0.02, lz], material.frame, "ST-201 랜딩 베이스플레이트");
+      wetColumnGussets(unifiedWet, "ST-201 랜딩 주각", 17.90, 0.00, lz, 0.24, 0.07);
       // 랜딩 기둥 2본에는 앵커가 없었다. F-FC-01 은 24SET 이고 주기둥 4본 × 4 = 16 이므로
       // 나머지 8본이 여기 자리다.
       for (const ax of [-0.14, 0.14]) for (const az of [-0.14, 0.14]) {
-        wetCylinder(unifiedWet, 0.012, 0.09, [16.30 + ax, 0.03, lz + az], material.silverClamp, "ST-201 기초 앵커볼트 M24", 10);
+        wetCylinder(unifiedWet, 0.012, 0.09, [17.90 + ax, 0.03, lz + az], material.silverClamp, "ST-201 기초 앵커볼트 M24", 10);
       }
     }
     // 데크 둘레 난간 — 랜딩이 붙는 북동쪽(x 16.12…17.01)만 비운다.
@@ -19872,56 +19935,56 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 랜딩 난간 — 계단이 들어오는 서쪽과 데크로 나가는 남쪽은 열어 둔다.
     wetRailing(unifiedWet, "ST-201 랜딩 동측", LAND_X1, DECK_Z1, LAND_X1, LAND_Z1, DECK_TOP_Y);
     wetRailing(unifiedWet, "ST-201 랜딩 북측", LAND_X0, LAND_Z1, LAND_X1, LAND_Z1, DECK_TOP_Y);
-    const fc201 = flotationCell("FC-201", 13.38, 0.08, 0.58, 1.34, 420, 0.060, DRIVE_RPM.flotationRougher, { arc: Math.PI * 2, from: 0, outlet: 0.681, code: "FC-011", spec: "360° peripheral" });
+    const fc201 = flotationCell("FC-201", 14.98, 0.08, 0.58, 1.34, 420, 0.060, DRIVE_RPM.flotationRougher, { arc: Math.PI * 2, from: 0, outlet: 0.681, code: "FC-011", spec: "360° peripheral" });
     fc201.group.position.y = 2.44;
     fc201.label.position.y += 2.44;
-    const fc202 = flotationCell("FC-202", 14.24, 1.14, 0.40, 1.00, 360, 0.020, DRIVE_RPM.flotationCleanerScav, { arc: Math.PI / 2, from: Math.PI / 4, outlet: Math.PI / 2, code: "FC-021", spec: "single lip" });
+    const fc202 = flotationCell("FC-202", 15.84, 1.14, 0.40, 1.00, 360, 0.020, DRIVE_RPM.flotationCleanerScav, { arc: Math.PI / 2, from: Math.PI / 4, outlet: Math.PI / 2, code: "FC-021", spec: "single lip" });
     fc202.group.position.y = 2.44;
     fc202.label.position.y += 2.44;
-    const fc203 = flotationCell("FC-203", 15.10, 0.08, 0.58, 1.34, 360, 0.075, DRIVE_RPM.flotationCleanerScav, { arc: Math.PI, from: -Math.PI, outlet: -Math.PI / 2, code: "FC-031", spec: "180° launder" });
+    const fc203 = flotationCell("FC-203", 16.70, 0.08, 0.58, 1.34, 360, 0.075, DRIVE_RPM.flotationCleanerScav, { arc: Math.PI, from: -Math.PI, outlet: -Math.PI / 2, code: "FC-031", spec: "180° launder" });
     fc203.group.position.y = 2.44;
     fc203.label.position.y += 2.44;
-    wetTube(unifiedWet, [pp201.discharge, [12.96, 0.68, -0.28], [12.96, 3.58, 0.08]], 0.070, wetFeedMaterial, "PP-201A/B → FC-201 러퍼 급광", 1920, 8);
-    wetTube(unifiedWet, [[13.38, 4.46, 0.08], [13.56, 4.64, 0.36], [14.24, 4.28, 1.14]], 0.055, wetConcentrateMaterial, "FC-201 러퍼 정광 → FC-202 클리너", 2040, 5);
-    wetTube(unifiedWet, [[13.96, 3.54, 0.08], [14.42, 3.54, 0.08], [14.52, 3.54, 0.08]], 0.065, wetTailingsMaterial, "FC-201 러퍼 광미 → FC-203 스캐빈저", 2040, 5);
-    const rp202 = wetCylinder(unifiedWet, 0.11, 0.25, [14.74, 3.02, 1.48], material.equipmentPump, "RP-202 클리너 미광 환류펌프", 26, [0, 0, Math.PI / 2]);
-    const rp203 = wetCylinder(unifiedWet, 0.11, 0.25, [15.48, 3.02, 1.30], material.equipmentPump, "RP-203 스캐빈저 정광 환류펌프", 26, [0, 0, Math.PI / 2]);
+    wetTube(unifiedWet, [pp201.discharge, [14.56, 0.68, -0.28], [14.56, 3.58, 0.08]], 0.070, wetFeedMaterial, "PP-201A/B → FC-201 러퍼 급광", 1920, 8);
+    wetTube(unifiedWet, [[14.98, 4.46, 0.08], [15.16, 4.64, 0.36], [15.84, 4.28, 1.14]], 0.055, wetConcentrateMaterial, "FC-201 러퍼 정광 → FC-202 클리너", 2040, 5);
+    wetTube(unifiedWet, [[15.56, 3.54, 0.08], [16.02, 3.54, 0.08], [16.12, 3.54, 0.08]], 0.065, wetTailingsMaterial, "FC-201 러퍼 광미 → FC-203 스캐빈저", 2040, 5);
+    const rp202 = wetCylinder(unifiedWet, 0.11, 0.25, [16.34, 3.02, 1.48], material.equipmentPump, "RP-202 클리너 미광 환류펌프", 26, [0, 0, Math.PI / 2]);
+    const rp203 = wetCylinder(unifiedWet, 0.11, 0.25, [17.08, 3.02, 1.30], material.equipmentPump, "RP-203 스캐빈저 정광 환류펌프", 26, [0, 0, Math.PI / 2]);
     wetRotors.push({ activation: 360, rpm: DRIVE_RPM.reagentPump, parts: [rp202, rp203], axis: "x" });
-    wetTube(unifiedWet, [[14.64, 3.46, 1.14], [14.74, 3.02, 1.48], [13.02, 3.30, 0.48]], 0.046, material.pipeReturn, "FC-202 클리너 미광 → FC-201 환류", 2160, 5);
-    wetTube(unifiedWet, [[15.10, 4.46, 0.08], [15.48, 3.02, 1.30], [13.02, 3.30, 0.48]], 0.046, material.pipeReturn, "FC-203 스캐빈저 정광 → FC-201 환류", 2160, 5);
+    wetTube(unifiedWet, [[16.24, 3.46, 1.14], [16.34, 3.02, 1.48], [14.62, 3.30, 0.48]], 0.046, material.pipeReturn, "FC-202 클리너 미광 → FC-201 환류", 2160, 5);
+    wetTube(unifiedWet, [[16.70, 4.46, 0.08], [17.08, 3.02, 1.30], [14.62, 3.30, 0.48]], 0.046, material.pipeReturn, "FC-203 스캐빈저 정광 → FC-201 환류", 2160, 5);
     reagentSkids.forEach((skid, index) => {
-      wetTube(unifiedWet, [skid.injectionPoint, [13.02, 3.50 + index * 0.03, -0.34 + index * 0.04], [13.10, 3.48 + index * 0.03, 0.02]], 0.012, material.pipeReagent, `${skid.tag} → FC-201 러퍼 주입`, 420, 2);
-      wetTube(unifiedWet, [skid.injectionPoint, [13.34 + index * 0.10, 3.58 + index * 0.03, -0.48 + index * 0.05], [14.52, 3.48 + index * 0.03, 0.02]], 0.012, material.pipeReagent, `${skid.tag} → FC-203 스캐빈저 주입`, 420, 2);
+      wetTube(unifiedWet, [skid.injectionPoint, [14.62, 3.50 + index * 0.03, -0.34 + index * 0.04], [14.70, 3.48 + index * 0.03, 0.02]], 0.012, material.pipeReagent, `${skid.tag} → FC-201 러퍼 주입`, 420, 2);
+      wetTube(unifiedWet, [skid.injectionPoint, [14.94 + index * 0.10, 3.58 + index * 0.03, -0.48 + index * 0.05], [16.12, 3.48 + index * 0.03, 0.02]], 0.012, material.pipeReagent, `${skid.tag} → FC-203 스캐빈저 주입`, 420, 2);
     });
 
     // Oil-free duty/standby blower, receiver and independent cell air controls.
-    wetBox(unifiedWet, [1.34, 0.08, 1.12], [17.72, 0.04, 1.72], material.frame, "AB-201 공기공급 스키드 베이스");
-    for (const dx of [-0.54, 0.54]) for (const dz of [-0.42, 0.42]) wetAvMount(unifiedWet, "AB-201", 17.72 + dx, -0.09, 1.72 + dz);
-    const ab201a = wetCylinder(unifiedWet, 0.18, 0.34, [17.48, 0.34, 1.50], material.equipmentAir, "AB-201A 오일프리 블로어", 28, [0, 0, Math.PI / 2]);
-    const ab201b = wetCylinder(unifiedWet, 0.18, 0.34, [17.48, 0.34, 1.94], material.equipmentAir, "AB-201B 오일프리 블로어", 28, [0, 0, Math.PI / 2]);
-    wetCylinder(unifiedWet, 0.13, 0.30, [17.86, 0.34, 1.50], wetMotorMaterial, "AB-201A VFD 모터", 26, [0, 0, Math.PI / 2]);
-    wetCylinder(unifiedWet, 0.13, 0.30, [17.86, 0.34, 1.94], wetMotorMaterial, "AB-201B VFD 모터", 26, [0, 0, Math.PI / 2]);
-    wetCylinder(unifiedWet, 0.24, 1.05, [18.42, 0.59, 1.72], material.equipmentAir, "AR-201 공기 리시버", 30);
+    wetBox(unifiedWet, [1.34, 0.08, 1.12], [19.32, 0.04, 1.72], material.frame, "AB-201 공기공급 스키드 베이스");
+    for (const dx of [-0.54, 0.54]) for (const dz of [-0.42, 0.42]) wetAvMount(unifiedWet, "AB-201", 19.32 + dx, -0.09, 1.72 + dz);
+    const ab201a = wetCylinder(unifiedWet, 0.18, 0.34, [19.08, 0.34, 1.50], material.equipmentAir, "AB-201A 오일프리 블로어", 28, [0, 0, Math.PI / 2]);
+    const ab201b = wetCylinder(unifiedWet, 0.18, 0.34, [19.08, 0.34, 1.94], material.equipmentAir, "AB-201B 오일프리 블로어", 28, [0, 0, Math.PI / 2]);
+    wetCylinder(unifiedWet, 0.13, 0.30, [19.46, 0.34, 1.50], wetMotorMaterial, "AB-201A VFD 모터", 26, [0, 0, Math.PI / 2]);
+    wetCylinder(unifiedWet, 0.13, 0.30, [19.46, 0.34, 1.94], wetMotorMaterial, "AB-201B VFD 모터", 26, [0, 0, Math.PI / 2]);
+    wetCylinder(unifiedWet, 0.24, 1.05, [20.02, 0.59, 1.72], material.equipmentAir, "AR-201 공기 리시버", 30);
     wetRotors.push({ activation: 420, rpm: DRIVE_RPM.airBlower, parts: [ab201a], axis: "x", train: "A" });
     wetRotors.push({ activation: 420, rpm: DRIVE_RPM.airBlower, parts: [ab201b], axis: "x", train: "B" });
-    wetTube(unifiedWet, [[17.65, 0.34, 1.50], [17.74, 0.84, 1.50], [18.42, 1.06, 1.72]], 0.042, material.pipeAir, "AB-201A → AR-201", 420, 2);
-    wetTube(unifiedWet, [[17.65, 0.34, 1.94], [17.74, 0.84, 1.94], [18.42, 1.06, 1.72]], 0.042, material.pipeAir, "AB-201B → AR-201", 420, 2);
-    wetTube(unifiedWet, [[18.42, 1.06, 1.72], [17.40, 2.14, 1.72], [16.52, 3.18, 1.70]], 0.042, material.pipeAir, "AR-201 → 부선 공기 매니폴드", 420, 6);
+    wetTube(unifiedWet, [[19.25, 0.34, 1.50], [19.34, 0.84, 1.50], [20.02, 1.06, 1.72]], 0.042, material.pipeAir, "AB-201A → AR-201", 420, 2);
+    wetTube(unifiedWet, [[19.25, 0.34, 1.94], [19.34, 0.84, 1.94], [20.02, 1.06, 1.72]], 0.042, material.pipeAir, "AB-201B → AR-201", 420, 2);
+    wetTube(unifiedWet, [[20.02, 1.06, 1.72], [19.00, 2.14, 1.72], [18.12, 3.18, 1.70]], 0.042, material.pipeAir, "AR-201 → 부선 공기 매니폴드", 420, 6);
     [
-      { tag: "FIC-201", cell: [13.38, 3.08, 0.08], branch: [16.52, 3.18, 1.70] },
-      { tag: "FIC-202", cell: [14.24, 3.08, 1.14], branch: [16.52, 3.18, 1.70] },
-      { tag: "FIC-203", cell: [15.10, 3.08, 0.08], branch: [16.52, 3.18, 1.70] }
+      { tag: "FIC-201", cell: [14.98, 3.08, 0.08], branch: [18.12, 3.18, 1.70] },
+      { tag: "FIC-202", cell: [15.84, 3.08, 1.14], branch: [18.12, 3.18, 1.70] },
+      { tag: "FIC-203", cell: [16.70, 3.08, 0.08], branch: [18.12, 3.18, 1.70] }
     ].forEach((air) => {
       wetBox(unifiedWet, [0.20, 0.16, 0.12], [air.cell[0], 3.12, air.cell[2] + 0.34], material.equipmentAir, `${air.tag} 질량유량제어기`);
       wetValve(`${air.tag}-CV`, [air.cell[0], 3.00, air.cell[2] + 0.22], material.pipeAir, 0.70);
       wetTube(unifiedWet, [air.branch, [air.cell[0], 3.18, air.cell[2] + 0.34], air.cell], 0.022, material.pipeAir, `${air.tag} 셀별 공기공급`, 420, 3);
     });
-    wetLabel("AB-201A/B · AR-201 · 셀별 FIC", [17.74, 1.42, 1.72], [1.65, 0.21, 1]);
+    wetLabel("AB-201A/B · AR-201 · 셀별 FIC", [19.34, 1.42, 1.72], [1.65, 0.21, 1]);
 
     // Separate concentrate and tailings surge/feed systems decouple continuous
     // flotation from the batch dewatering equipment.
-    const tk204 = wetTank("TK-204", 11.92, -2.30, 0.38, 0.88, 180, { liquid: wetConcentrateMaterial, label: "Ag 정광 급액조" });
-    const tk301 = wetTank("TK-301", 14.06, -2.58, 0.44, 1.02, 180, { liquid: wetTailingsMaterial, label: "Si 광미 급액조" });
+    const tk204 = wetTank("TK-204", 13.52, -2.30, 0.38, 0.88, 180, { liquid: wetConcentrateMaterial, label: "Ag 정광 급액조" });
+    const tk301 = wetTank("TK-301", 15.66, -2.58, 0.44, 1.02, 180, { liquid: wetTailingsMaterial, label: "Si 광미 급액조" });
     // ---- Ag 회수 신설 계통 ------------------------------------------------------------
     // ③ 을 한 줄로 받는다: AS-101/101B 어트리션 → CN-201 농축 → RM-201 P80 66 µm →
     // CT-101 조건조 → FC-101 리플럭스 부선 → 폴리싱. 여기서 뜨는 것이 Ag 정광이고
@@ -19933,40 +19996,45 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 서 있던 야드 자리(자유구역 G)에 같은 40 L 급인 AS-101B 를 세운다. 남는 대가는
     // AS-101 직하류가 아니라 7.7 m 떨어져 있다는 것뿐이고, 그 이송은 아래 HOLD 다.
     // 자리는 `scratchpad/newkit_space.py` 로 기존 배치표에 대고 확인했다 — 7 종 전부 OK.
-    const rm201 = wetBox(unifiedWet, [1.80, 1.10, 0.90], [14.70, 0.55, 1.28], material.equipmentWetBody, "RM-201 습식 로드밀");
-    wetBox(unifiedWet, [1.94, 0.10, 1.04], [14.70, 0.05, 1.28], material.frame, "RM-201 스키드");
-    wetCylinder(unifiedWet, 0.16, 0.44, [13.62, 0.55, 1.28], wetMotorMaterial, "RM-201 구동모터", 24, [0, 0, Math.PI / 2]);
+    const rm201 = wetBox(unifiedWet, [1.80, 1.10, 0.90], [16.30, 0.55, 1.28], material.equipmentWetBody, "RM-201 습식 로드밀");
+    wetBox(unifiedWet, [1.94, 0.10, 1.04], [16.30, 0.05, 1.28], material.frame, "RM-201 스키드");
+    wetCylinder(unifiedWet, 0.16, 0.44, [15.22, 0.55, 1.28], wetMotorMaterial, "RM-201 구동모터", 24, [0, 0, Math.PI / 2]);
     wetRotors.push({ activation: 300, rpm: DRIVE_RPM.tankAgitator, parts: [rm201], axis: "x" });
-    const cn201 = wetTank("CN-201", 20.30, -3.00, 0.62, 1.10, 300, { liquid: wetTailingsMaterial, label: "침강물 농축콘" });
-    wetCone(unifiedWet, 0.62, 0.10, 0.90, [20.30, 0.45, -3.00], material.equipmentWetBody, "CN-201 원추부");
-    const ct101 = wetTank("CT-101", 20.30, -1.75, 0.46, 0.90, 300, { liquid: wetFeedMaterial, label: "약제 조건조" });
-    wetBox(unifiedWet, [1.10, 0.70, 0.70], [21.25, 0.85, -1.75], material.equipmentDewater, "PS-201 폴리싱 스크린 100 µm");
-    wetBox(unifiedWet, [1.22, 0.10, 0.82], [21.25, 0.05, -1.75], material.frame, "PS-201 스키드");
+    const cn201 = wetTank("CN-201", 21.90, -3.00, 0.62, 1.10, 300, { liquid: wetTailingsMaterial, label: "침강물 농축콘" });
+    wetCone(unifiedWet, 0.62, 0.10, 0.90, [21.90, 0.45, -3.00], material.equipmentWetBody, "CN-201 원추부");
+    const ct101 = wetTank("CT-101", 21.90, -1.75, 0.46, 0.90, 300, { liquid: wetFeedMaterial, label: "약제 조건조" });
+    wetBox(unifiedWet, [1.10, 0.70, 0.70], [22.85, 0.85, -1.75], material.equipmentDewater, "PS-201 폴리싱 스크린 100 µm");
+    wetBox(unifiedWet, [1.22, 0.10, 0.82], [22.85, 0.05, -1.75], material.frame, "PS-201 스키드");
     // FC-101 리플럭스 Ag 부선주 — 기계식 셀이 아니라 세척수 bias 를 쓰는 컬럼이다.
     // 임펠러가 없으므로 wetRotors 에 넣지 않는다.
-    const fc101 = wetCylinder(unifiedWet, 0.30, 2.60, [16.45, 3.81, 0.85], material.equipmentWetBody, "FC-101 리플럭스 Ag 부선주", 30);
-    wetCylinder(unifiedWet, 0.33, 0.16, [16.45, 5.19, 0.85], material.equipmentWetBody, "FC-101 정광 런더", 30);
-    wetCylinder(unifiedWet, 0.31, 0.10, [16.45, 4.86, 0.85], wetWaterMaterial, "FC-101 세척수 분배기", 30);
-    wetCylinder(unifiedWet, 0.26, 0.34, [16.45, 2.68, 0.85], material.equipmentAir, "FC-101 스파저 챔버", 30);
-    wetBox(unifiedWet, [0.74, 0.08, 0.74], [16.45, 2.55, 0.85], material.frame, "FC-101 베이스플레이트");
+    const fc101 = wetCylinder(unifiedWet, 0.30, 2.60, [18.05, 3.81, 0.85], material.equipmentWetBody, "FC-101 리플럭스 Ag 부선주", 30);
+    wetCylinder(unifiedWet, 0.33, 0.16, [18.05, 5.19, 0.85], material.equipmentWetBody, "FC-101 정광 런더", 30);
+    wetCylinder(unifiedWet, 0.31, 0.10, [18.05, 4.86, 0.85], wetWaterMaterial, "FC-101 세척수 분배기", 30);
+    wetCylinder(unifiedWet, 0.26, 0.34, [18.05, 2.68, 0.85], material.equipmentAir, "FC-101 스파저 챔버", 30);
+    wetBox(unifiedWet, [0.74, 0.08, 0.74], [18.05, 2.55, 0.85], material.frame, "FC-101 베이스플레이트");
     // AS-101B 2 단 어트리션 — 종전 AS-102(재해리)가 서 있던 야드 자리를 그대로 쓴다.
     // 그 쪽 일감(FC-204 거품 재해리)은 폴리머 단과 함께 없어졌고, 이 공정에서 정작
     // 모자란 것은 어트리션 체류다. 같은 40 L 급이므로 태그만 바꿔 2 단으로 세운다.
-    wetTank("AS-101B", 18.30, 4.35, 0.56, 1.06, 300, { octagonal: true, attrition: true, liquid: wetWaterMaterial, label: "2단 어트리션 · 40 L" });
+    wetTank("AS-101B", 19.90, 4.35, 0.56, 1.06, 300, { octagonal: true, attrition: true, liquid: wetWaterMaterial, label: "2단 어트리션 · 40 L" });
     // FW-102 백시트 플레이크 마찰세척 — 건식 BIN-102 옆(자유구역 H)이다.
     wetBox(unifiedWet, [0.90, 1.00, 0.70], [7.65, 0.50, -1.15], material.equipmentDewater, "FW-102 플레이크 마찰세척");
     wetBox(unifiedWet, [1.02, 0.10, 0.82], [7.65, 0.05, -1.15], material.frame, "FW-102 스키드");
     wetCylinder(unifiedWet, 0.14, 0.34, [8.25, 0.62, -1.15], wetMotorMaterial, "FW-102 구동모터", 24, [0, 0, Math.PI / 2]);
     wetCylinder(unifiedWet, 0.05, 0.30, [7.65, 1.15, -1.15], wetWaterPipeMaterial, "FW-102 세척수 노즐", 16);
     // 신설 계통 배관 — 1단 침강물부터 정광까지.
-    wetTube(unifiedWet, [[15.10, 2.90, 0.66], [15.10, 1.40, 1.28], [15.60, 0.90, 1.28]], 0.060, wetTailingsMaterial, "FC-203 광미 → CN-201/RM-201", 300, 5);
-    wetTube(unifiedWet, [[13.80, 0.55, 1.28], [13.20, 0.55, -1.60], [19.68, 0.55, -3.00]], 0.055, wetTailingsMaterial, "RM-201 → CN-201 농축", 300, 6);
-    wetTube(unifiedWet, [[20.30, 1.10, -2.45], [20.30, 1.10, -2.21]], 0.048, wetFeedMaterial, "CN-201 언더플로 → CT-101", 300, 2);
-    wetTube(unifiedWet, [[20.30, 1.55, -1.29], [18.60, 2.20, 0.85], [16.45, 2.55, 0.85]], 0.048, wetFeedMaterial, "CT-101 → FC-101 급광", 300, 6);
-    wetTube(unifiedWet, [[16.45, 5.27, 0.85], [20.10, 1.60, -1.40], [20.70, 1.10, -1.75]], 0.042, wetConcentrateMaterial, "FC-101 정광 → PS-201 폴리싱", 300, 6);
-    wetTube(unifiedWet, [[21.80, 0.85, -1.75], [16.00, 0.60, -2.10], [12.42, 0.55, -2.30]], 0.042, wetConcentrateMaterial, "PS-201 언더 → TK-204 Ag 정광", 300, 6);
-    wetTube(unifiedWet, [[16.45, 2.55, 0.85], [16.45, 1.20, -1.00], [14.62, 0.80, -2.58]], 0.055, wetTailingsMaterial, "FC-101 광미 → TK-301 Si 광미", 300, 6);
-    wetTube(unifiedWet, [[7.65, 1.00, -1.15], [8.40, 1.00, 0.40], [8.82, 1.20, 0.72]], 0.038, wetFeedMaterial, "FW-102 세척 미분 → TK-001", 300, 4);
+    wetTube(unifiedWet, [[16.70, 2.90, 0.66], [16.70, 1.40, 1.28], [17.20, 0.90, 1.28]], 0.060, wetTailingsMaterial, "FC-203 광미 → CN-201/RM-201", 300, 5);
+    wetTube(unifiedWet, [[15.40, 0.55, 1.28], [14.80, 0.55, -1.60], [21.28, 0.55, -3.00]], 0.055, wetTailingsMaterial, "RM-201 → CN-201 농축", 300, 6);
+    wetTube(unifiedWet, [[21.90, 1.10, -2.45], [21.90, 1.10, -2.21]], 0.048, wetFeedMaterial, "CN-201 언더플로 → CT-101", 300, 2);
+    wetTube(unifiedWet, [[21.90, 1.55, -1.29], [20.20, 2.20, 0.85], [18.05, 2.55, 0.85]], 0.048, wetFeedMaterial, "CT-101 → FC-101 급광", 300, 6);
+    wetTube(unifiedWet, [[18.05, 5.27, 0.85], [21.70, 1.60, -1.40], [22.30, 1.10, -1.75]], 0.042, wetConcentrateMaterial, "FC-101 정광 → PS-201 폴리싱", 300, 6);
+    wetTube(unifiedWet, [[23.40, 0.85, -1.75], [17.60, 0.60, -2.10], [14.02, 0.55, -2.30]], 0.042, wetConcentrateMaterial, "PS-201 언더 → TK-204 Ag 정광", 300, 6);
+    wetTube(unifiedWet, [[18.05, 2.55, 0.85], [18.05, 1.20, -1.00], [16.22, 0.80, -2.58]], 0.055, wetTailingsMaterial, "FC-101 광미 → TK-301 Si 광미", 300, 6);
+    // FW-102 는 이설에서 제자리다 — 건식 BIN-102 쪽 자리이지 CC-201 하류가 아니다. 미분관만
+    // 옮겨 간 TK-001(x 11.02)까지 늘어난다. 옛 경로(x 8.4 · z 0.4 를 사선으로)는 이설된
+    // BF-201 하부 호퍼(x 7.99…8.65 · y 0.86…1.20 · z −0.08…0.48)를 정통으로 지나므로 버린다.
+    // 남쪽 z −1.15 를 따라 랙 기둥열 앞을 동진해(x 8.60 기둥은 z −0.99 까지) x 9.90 에서
+    // 북으로 꺾어 BH-101 콘(x ≤9.78)과 WC-401 콘(x ≥10.24) 사이를 지나 급액 노즐에 닿는다.
+    wetTube(unifiedWet, [[7.65, 1.06, -1.15], [9.90, 1.06, -1.15], [9.90, 1.08, 0.55], [10.42, 1.20, 0.72]], 0.038, wetFeedMaterial, "FW-102 세척 미분 → TK-001", 300, 4);
     // 신설 7 종은 전부 자리를 잡았다. 남은 것은 자리가 아니라 **이송**이다 —
     // AS-101B 가 AS-101 직하류가 아니라 야드에 서 있으므로 그 사이를 65 wt% 슬러리로
     // 넘겨야 한다. 펌프 정격을 지어내지 않고 HOLD 로 든다.
@@ -19995,7 +20063,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     jibCrane.name = "JC-201";
     unifiedWet.add(jibCrane);
     {
-      const jx = 14.24, jz = -1.05, deckTop = 2.51;
+      const jx = 15.84, jz = -1.05, deckTop = 2.51;
       wetBox(jibCrane, [0.36, 0.03, 0.36], [jx, deckTop + 0.015, jz], material.frame, "JC-201 기둥 베이스플레이트");
       for (const ax of [-1, 1]) for (const az of [-1, 1]) wetCylinder(jibCrane, 0.010, 0.06, [jx + ax * 0.14, deckTop + 0.05, jz + az * 0.14], material.silverClamp, "JC-201 앵커볼트", 8);
       wetCylinder(jibCrane, 0.07, 3.75, [jx, deckTop + 0.03 + 1.875, jz], material.frame, "JC-201 기둥", 24);
@@ -20012,30 +20080,30 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       markSwap(hoist, "FC-ROTOR");
       wetLabel("JC-201 · 로터 인양 지브크레인 SWL 0.5 t · 반경 2.3 m", [jx, 6.90, jz], [2.20, 0.22, 1]);
     }
-    const p204 = wetPumpPair("P-204", 12.82, -2.52, 180, wetConcentrateMaterial, "CF-204 급액 A/B");
-    const p301 = wetPumpPair("P-301", 16.72, -2.62, 180, wetTailingsMaterial, "FP-301 고압급액 A/B");
-    wetTube(unifiedWet, [[14.24, 4.42, 1.14], [13.78, 4.72, -2.30], [11.92, 1.34, -2.30]], 0.052, wetConcentrateMaterial, "FC-202 클리너 정광 → TK-204", 2160, 7);
-    wetTube(unifiedWet, [[15.68, 3.54, 0.08], [16.18, 3.54, -2.58], [14.06, 1.52, -2.58]], 0.062, wetTailingsMaterial, "FC-203 스캐빈저 광미 → TK-301", 2160, 8);
-    wetTube(unifiedWet, [[11.92, 0.38, -2.30], p204.suction], 0.055, wetConcentrateMaterial, "TK-204 → P-204A/B", 2160, 3);
-    wetTube(unifiedWet, [p204.discharge, [13.28, 0.48, -2.40], [13.28, 0.66, -1.82]], 0.055, wetConcentrateMaterial, "P-204A/B → CF-204", 2160, 4);
-    wetTube(unifiedWet, [[14.06, 0.40, -2.58], p301.suction], 0.062, wetTailingsMaterial, "TK-301 → P-301A/B", 2160, 3);
-    wetTube(unifiedWet, [p301.discharge, [16.18, 0.62, -2.18], [14.38, 1.02, -1.32]], 0.062, wetTailingsMaterial, "P-301A/B → FP-301", 2160, 5);
-    wetSampler("SAM-204", [12.02, 1.10, -2.30], wetConcentrateMaterial);
-    wetSampler("SAM-301", [14.20, 1.24, -2.58], wetTailingsMaterial);
+    const p204 = wetPumpPair("P-204", 14.42, -2.52, 180, wetConcentrateMaterial, "CF-204 급액 A/B");
+    const p301 = wetPumpPair("P-301", 18.32, -2.62, 180, wetTailingsMaterial, "FP-301 고압급액 A/B");
+    wetTube(unifiedWet, [[15.84, 4.42, 1.14], [15.38, 4.72, -2.30], [13.52, 1.34, -2.30]], 0.052, wetConcentrateMaterial, "FC-202 클리너 정광 → TK-204", 2160, 7);
+    wetTube(unifiedWet, [[17.28, 3.54, 0.08], [17.78, 3.54, -2.58], [15.66, 1.52, -2.58]], 0.062, wetTailingsMaterial, "FC-203 스캐빈저 광미 → TK-301", 2160, 8);
+    wetTube(unifiedWet, [[13.52, 0.38, -2.30], p204.suction], 0.055, wetConcentrateMaterial, "TK-204 → P-204A/B", 2160, 3);
+    wetTube(unifiedWet, [p204.discharge, [14.88, 0.48, -2.40], [14.88, 0.66, -1.82]], 0.055, wetConcentrateMaterial, "P-204A/B → CF-204", 2160, 4);
+    wetTube(unifiedWet, [[15.66, 0.40, -2.58], p301.suction], 0.062, wetTailingsMaterial, "TK-301 → P-301A/B", 2160, 3);
+    wetTube(unifiedWet, [p301.discharge, [17.78, 0.62, -2.18], [15.98, 1.02, -1.32]], 0.062, wetTailingsMaterial, "P-301A/B → FP-301", 2160, 5);
+    wetSampler("SAM-204", [13.62, 1.10, -2.30], wetConcentrateMaterial);
+    wetSampler("SAM-301", [15.80, 1.24, -2.58], wetTailingsMaterial);
 
     const cf204 = new THREE.Group();
     unifiedWet.add(cf204);
-    wetCylinder(cf204, 0.46, 1.10, [13.28, 0.66, -1.34], material.equipmentDewater, "CF-204 밀폐 원심탈수 케이싱", 40, [Math.PI / 2, 0, 0], true);
-    const cfBasket = wetCylinder(cf204, 0.34, 0.86, [13.28, 0.66, -1.34], material.screen, "CF-204 Ø360 여과바스켓", 40, [Math.PI / 2, 0, 0], true);
-    wetDrive(cf204, "CF-204", 13.28, 13.90, 1.02, -1.34, 120, DRIVE_RPM.centrifuge);
+    wetCylinder(cf204, 0.46, 1.10, [14.88, 0.66, -1.34], material.equipmentDewater, "CF-204 밀폐 원심탈수 케이싱", 40, [Math.PI / 2, 0, 0], true);
+    const cfBasket = wetCylinder(cf204, 0.34, 0.86, [14.88, 0.66, -1.34], material.screen, "CF-204 Ø360 여과바스켓", 40, [Math.PI / 2, 0, 0], true);
+    wetDrive(cf204, "CF-204", 14.88, 15.50, 1.02, -1.34, 120, DRIVE_RPM.centrifuge);
     wetRotors.push({ activation: 120, rpm: DRIVE_RPM.centrifuge, parts: [cfBasket], axis: "x" });
-    wetCone(unifiedWet, 0.25, 0.07, 0.38, [12.48, 0.34, -1.30], material.solidsReceiver, "BIN-204 Ag 정광 케이크빈", 24);
-    wetTube(unifiedWet, [[13.28, 0.66, -0.78], [12.48, 0.54, -1.30]], 0.065, wetConcentrateMaterial, "CF-204 케이크 → BIN-204", 2280, 3);
-    wetLabel("CF-204 · Ag 정광 원심탈수", [13.28, 1.62, -1.34]);
+    wetCone(unifiedWet, 0.25, 0.07, 0.38, [14.08, 0.34, -1.30], material.solidsReceiver, "BIN-204 Ag 정광 케이크빈", 24);
+    wetTube(unifiedWet, [[14.88, 0.66, -0.78], [14.08, 0.54, -1.30]], 0.065, wetConcentrateMaterial, "CF-204 케이크 → BIN-204", 2280, 3);
+    wetLabel("CF-204 · Ag 정광 원심탈수", [14.88, 1.62, -1.34]);
 
     const fp301 = new THREE.Group();
     unifiedWet.add(fp301);
-    wetBox(fp301, [2.30, 0.12, 0.90], [15.55, 0.12, -1.32], material.frame, "FP-301 베이스 프레임");
+    wetBox(fp301, [2.30, 0.12, 0.90], [17.15, 0.12, -1.32], material.frame, "FP-301 베이스 프레임");
     // FP-301 기초 — 앞 트랜치에서 여기에 방진마운트 6점을 깔았는데 그것이 틀렸다.
     // 소음·진동표의 FP-301 대책은 「개판 속도 제어 · **드립트레이** 방진」이지 프레임
     // 방진이 아니고, BOM 은 `F-FP-01 프레스 프레임 앵커세트 M24×500 20SET` 을 규정한다.
@@ -20043,89 +20111,89 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 필터프레스는 닫힘력을 프레임 안에서 자기폐합으로 받으므로 기초는 자중·전도만 받는다.
     // 패드 2줄은 CV-301 케이크 배출컨베이어(z −1.58…−1.06)를 사이로 통과시킨다.
     for (const pz of [-1.65, -0.99]) {
-      wetBox(fp301, [2.34, 0.045, 0.34], [15.55, 0.0225, pz], material.fixed, "FP-301 비수축 그라우트 패드");
-      wetBox(fp301, [2.34, 0.015, 0.34], [15.55, 0.0525, pz], material.frame, "FP-301 기초 베이스플레이트");
+      wetBox(fp301, [2.34, 0.045, 0.34], [17.15, 0.0225, pz], material.fixed, "FP-301 비수축 그라우트 패드");
+      wetBox(fp301, [2.34, 0.015, 0.34], [17.15, 0.0525, pz], material.frame, "FP-301 기초 베이스플레이트");
     }
     // 앵커 20본 — 줄당 10본. 프레임 밖(z −1.80 / −0.84)에 세워 밑에 숨지 않게 한다.
     for (const pz of [-1.80, -0.84]) {
       for (let i = 0; i < 10; i += 1) {
-        wetAnchor(fp301, "FP-301 기초 앵커볼트 M24", 14.50 + i * (2.10 / 9), 0.060, pz, 0.024, 0.07);
+        wetAnchor(fp301, "FP-301 기초 앵커볼트 M24", 16.10 + i * (2.10 / 9), 0.060, pz, 0.024, 0.07);
       }
     }
-    for (const z of [-0.38, 0.38]) wetBox(fp301, [2.24, 0.10, 0.10], [15.55, 0.82, -1.32 + z], material.frame, "FP-301 사이드바");
-    wetBox(fp301, [0.18, 1.45, 0.94], [14.48, 0.84, -1.32], material.equipmentDewater, "FP-301 고정헤드");
-    wetBox(fp301, [0.18, 1.45, 0.94], [16.62, 0.84, -1.32], material.equipmentDewater, "FP-301 유압헤드");
-    for (let index = 0; index < 18; index += 1) wetBox(fp301, [0.045, 1.08, 0.78], [14.74 + index * 0.095, 0.84, -1.32], material.equipmentDewater, `FP-301 ${index % 2 ? "멤브레인" : "챔버"}판 ${index + 1}`);
-    wetCylinder(fp301, 0.20, 0.88, [16.92, 0.84, -1.32], material.frame, "FP-301 유압실린더", 32, [0, 0, Math.PI / 2]);
-    wetBox(fp301, [2.05, 0.14, 0.52], [15.55, -0.02, -1.32], material.equipmentConveyor, "CV-301 필터케이크 배출컨베이어");
-    wetCone(fp301, 0.32, 0.10, 0.48, [16.86, 0.28, -0.58], material.solidsReceiver, "BIN-301 Si 케이크 제품빈", 24);
-    wetLabel("FP-301 · Si 광미 멤브레인 필터프레스", [15.55, 1.72, -1.32], [1.75, 0.23, 1]);
+    for (const z of [-0.38, 0.38]) wetBox(fp301, [2.24, 0.10, 0.10], [17.15, 0.82, -1.32 + z], material.frame, "FP-301 사이드바");
+    wetBox(fp301, [0.18, 1.45, 0.94], [16.08, 0.84, -1.32], material.equipmentDewater, "FP-301 고정헤드");
+    wetBox(fp301, [0.18, 1.45, 0.94], [18.22, 0.84, -1.32], material.equipmentDewater, "FP-301 유압헤드");
+    for (let index = 0; index < 18; index += 1) wetBox(fp301, [0.045, 1.08, 0.78], [16.34 + index * 0.095, 0.84, -1.32], material.equipmentDewater, `FP-301 ${index % 2 ? "멤브레인" : "챔버"}판 ${index + 1}`);
+    wetCylinder(fp301, 0.20, 0.88, [18.52, 0.84, -1.32], material.frame, "FP-301 유압실린더", 32, [0, 0, Math.PI / 2]);
+    wetBox(fp301, [2.05, 0.14, 0.52], [17.15, -0.02, -1.32], material.equipmentConveyor, "CV-301 필터케이크 배출컨베이어");
+    wetCone(fp301, 0.32, 0.10, 0.48, [18.46, 0.28, -0.58], material.solidsReceiver, "BIN-301 Si 케이크 제품빈", 24);
+    wetLabel("FP-301 · Si 광미 멤브레인 필터프레스", [17.15, 1.72, -1.32], [1.75, 0.23, 1]);
 
     // Filter-press membrane squeeze, core blow and cloth-wash ancillaries.
-    wetBox(unifiedWet, [1.32, 0.08, 0.92], [17.74, 0.04, -1.72], material.frame, "FS-301 필터프레스 보조스키드");
-    wetCylinder(unifiedWet, 0.20, 0.86, [17.42, 0.47, -1.82], material.equipmentAir, "AR-301 멤브레인 압착 리시버", 26);
-    wetCylinder(unifiedWet, 0.24, 0.64, [18.00, 0.36, -1.82], material.equipmentWater, "WT-301 여과포 세척수조", 28, null, true);
-    wetCylinder(unifiedWet, 0.11, 0.26, [17.90, 0.22, -1.36], material.equipmentPump, "P-302 세척·압착펌프", 24, [0, 0, Math.PI / 2]);
-    wetTube(unifiedWet, [[17.42, 0.88, -1.82], [16.68, 1.42, -1.72]], 0.030, material.pipeAir, "AR-301 코어블로·멤브레인 압착헤더");
-    wetTube(unifiedWet, [[18.00, 0.52, -1.82], [16.10, 1.48, -1.72]], 0.032, wetWaterPipeMaterial, "WT-301 자동 여과포 세척헤더");
+    wetBox(unifiedWet, [1.32, 0.08, 0.92], [19.34, 0.04, -1.72], material.frame, "FS-301 필터프레스 보조스키드");
+    wetCylinder(unifiedWet, 0.20, 0.86, [19.02, 0.47, -1.82], material.equipmentAir, "AR-301 멤브레인 압착 리시버", 26);
+    wetCylinder(unifiedWet, 0.24, 0.64, [19.60, 0.36, -1.82], material.equipmentWater, "WT-301 여과포 세척수조", 28, null, true);
+    wetCylinder(unifiedWet, 0.11, 0.26, [19.50, 0.22, -1.36], material.equipmentPump, "P-302 세척·압착펌프", 24, [0, 0, Math.PI / 2]);
+    wetTube(unifiedWet, [[19.02, 0.88, -1.82], [18.28, 1.42, -1.72]], 0.030, material.pipeAir, "AR-301 코어블로·멤브레인 압착헤더");
+    wetTube(unifiedWet, [[19.60, 0.52, -1.82], [17.70, 1.48, -1.72]], 0.032, wetWaterPipeMaterial, "WT-301 자동 여과포 세척헤더");
 
     // Dirty filtrate clarification/polishing and separately controlled fresh
     // and recycle-water headers.
-    const tk401 = wetStorageTank("TK-401", 17.62, -0.46, 0.42, 0.82, wetWaterMaterial, "오염 여액조");
-    wetCylinder(unifiedWet, 0.42, 0.64, [18.72, 0.48, -0.46], material.equipmentWater, "CL-401 소형 라멜라 청징기", 8, null, true);
-    for (let plate = -2; plate <= 2; plate += 1) wetBox(unifiedWet, [0.52, 0.025, 0.34], [18.72 + plate * 0.06, 0.56 + plate * 0.02, -0.46], material.screen, `CL-401 경사판 ${plate + 3}`, [0, 0, -0.58]);
-    wetCone(unifiedWet, 0.42, 0.10, 0.42, [18.72, 0.04, -0.46], material.equipmentWater, "CL-401 슬러지콘", 8);
-    wetCylinder(unifiedWet, 0.21, 0.82, [19.58, 0.54, -0.46], material.equipmentWater, "PF-401 듀플렉스 폴리싱필터", 28, null, true);
-    const tk402 = wetStorageTank("TK-402", 20.48, -0.46, 0.44, 0.90, wetWaterMaterial, "청정 재이용수조");
-    const tk501 = wetStorageTank("TK-501", 20.62, 1.36, 0.46, 1.02, wetWaterMaterial, "클리너 전용 신수조");
-    const p401 = wetPumpPair("P-401", 19.46, 0.44, 180, wetWaterPipeMaterial, "재이용수 A/B");
-    const p501 = wetPumpPair("P-501", 19.32, 1.90, 180, wetWaterPipeMaterial, "클리너 신수 A/B");
-    wetTube(unifiedWet, [[13.28, 0.18, -1.34], [13.28, -0.02, -0.46], [17.62, 0.12, -0.46]], 0.045, wetWaterPipeMaterial, "CF-204 여액 → TK-401", 2280, 5);
-    wetTube(unifiedWet, [[15.55, 0.18, -1.72], [16.10, 0.02, -0.46], [17.62, 0.18, -0.46]], 0.050, wetWaterPipeMaterial, "FP-301 여액 → TK-401", 2280, 5);
-    wetTube(unifiedWet, [[17.62, 0.36, -0.46], [18.30, 0.62, -0.46]], 0.045, wetWaterPipeMaterial, "TK-401 → CL-401 청징", 2280, 4);
-    wetTube(unifiedWet, [[19.14, 0.64, -0.46], [19.37, 0.64, -0.46]], 0.042, wetWaterPipeMaterial, "CL-401 월류 → PF-401");
-    wetTube(unifiedWet, [[19.79, 0.54, -0.46], [20.04, 0.54, -0.46]], 0.042, wetWaterPipeMaterial, "PF-401 → TK-402");
-    wetTube(unifiedWet, [[20.48, 0.34, -0.46], p401.suction], 0.042, wetWaterPipeMaterial, "TK-402 → P-401A/B");
-    wetTube(unifiedWet, [p401.discharge, [17.70, 2.06, -0.16], [12.24, 2.06, 0.72], [12.24, 1.74, 0.72]], 0.042, wetWaterPipeMaterial, "재이용수 헤더 → TK-101/러퍼", 2340, 7);
-    wetTube(unifiedWet, [[20.62, 0.40, 1.36], p501.suction], 0.042, wetWaterPipeMaterial, "TK-501 → P-501A/B");
-    wetTube(unifiedWet, [p501.discharge, [18.46, 2.18, 1.90], [14.24, 4.60, 1.14]], 0.040, wetWaterPipeMaterial, "신수 헤더 → FC-202 클리너 세척", 420, 7);
-    wetSensor("AIT-401-TURB", [19.92, 0.70, -0.46], material.product106);
-    wetSensor("AIT-402-pH/COND", [20.10, 1.04, -0.46], material.product280);
-    wetSampler("SAM-401", [20.08, 0.84, -0.46], wetWaterPipeMaterial);
+    const tk401 = wetStorageTank("TK-401", 19.22, -0.46, 0.42, 0.82, wetWaterMaterial, "오염 여액조");
+    wetCylinder(unifiedWet, 0.42, 0.64, [20.32, 0.48, -0.46], material.equipmentWater, "CL-401 소형 라멜라 청징기", 8, null, true);
+    for (let plate = -2; plate <= 2; plate += 1) wetBox(unifiedWet, [0.52, 0.025, 0.34], [20.32 + plate * 0.06, 0.56 + plate * 0.02, -0.46], material.screen, `CL-401 경사판 ${plate + 3}`, [0, 0, -0.58]);
+    wetCone(unifiedWet, 0.42, 0.10, 0.42, [20.32, 0.04, -0.46], material.equipmentWater, "CL-401 슬러지콘", 8);
+    wetCylinder(unifiedWet, 0.21, 0.82, [21.18, 0.54, -0.46], material.equipmentWater, "PF-401 듀플렉스 폴리싱필터", 28, null, true);
+    const tk402 = wetStorageTank("TK-402", 22.08, -0.46, 0.44, 0.90, wetWaterMaterial, "청정 재이용수조");
+    const tk501 = wetStorageTank("TK-501", 22.22, 1.36, 0.46, 1.02, wetWaterMaterial, "클리너 전용 신수조");
+    const p401 = wetPumpPair("P-401", 21.06, 0.44, 180, wetWaterPipeMaterial, "재이용수 A/B");
+    const p501 = wetPumpPair("P-501", 20.92, 1.90, 180, wetWaterPipeMaterial, "클리너 신수 A/B");
+    wetTube(unifiedWet, [[14.88, 0.18, -1.34], [14.88, -0.02, -0.46], [19.22, 0.12, -0.46]], 0.045, wetWaterPipeMaterial, "CF-204 여액 → TK-401", 2280, 5);
+    wetTube(unifiedWet, [[17.15, 0.18, -1.72], [17.70, 0.02, -0.46], [19.22, 0.18, -0.46]], 0.050, wetWaterPipeMaterial, "FP-301 여액 → TK-401", 2280, 5);
+    wetTube(unifiedWet, [[19.22, 0.36, -0.46], [19.90, 0.62, -0.46]], 0.045, wetWaterPipeMaterial, "TK-401 → CL-401 청징", 2280, 4);
+    wetTube(unifiedWet, [[20.74, 0.64, -0.46], [20.97, 0.64, -0.46]], 0.042, wetWaterPipeMaterial, "CL-401 월류 → PF-401");
+    wetTube(unifiedWet, [[21.39, 0.54, -0.46], [21.64, 0.54, -0.46]], 0.042, wetWaterPipeMaterial, "PF-401 → TK-402");
+    wetTube(unifiedWet, [[22.08, 0.34, -0.46], p401.suction], 0.042, wetWaterPipeMaterial, "TK-402 → P-401A/B");
+    wetTube(unifiedWet, [p401.discharge, [19.30, 2.06, -0.16], [13.84, 2.06, 0.72], [13.84, 1.74, 0.72]], 0.042, wetWaterPipeMaterial, "재이용수 헤더 → TK-101/러퍼", 2340, 7);
+    wetTube(unifiedWet, [[22.22, 0.40, 1.36], p501.suction], 0.042, wetWaterPipeMaterial, "TK-501 → P-501A/B");
+    wetTube(unifiedWet, [p501.discharge, [20.06, 2.18, 1.90], [15.84, 4.60, 1.14]], 0.040, wetWaterPipeMaterial, "신수 헤더 → FC-202 클리너 세척", 420, 7);
+    wetSensor("AIT-401-TURB", [21.52, 0.70, -0.46], material.product106);
+    wetSensor("AIT-402-pH/COND", [21.70, 1.04, -0.46], material.product280);
+    wetSampler("SAM-401", [21.68, 0.84, -0.46], wetWaterPipeMaterial);
 
     // Closed plant drain and recovery sump (process utility, no safety package).
-    wetBox(unifiedWet, [1.18, 0.28, 0.92], [18.70, -0.10, -2.66], material.equipmentWater, "DS-401 바닥 드레인 집수섬프");
-    wetCylinder(unifiedWet, 0.10, 0.38, [18.48, 0.14, -2.66], material.equipmentPump, "DP-401A 회수펌프", 22);
-    wetCylinder(unifiedWet, 0.10, 0.38, [18.88, 0.14, -2.66], material.equipmentPump, "DP-401B 회수펌프", 22);
-    wetTube(unifiedWet, [[18.68, 0.20, -2.66], [18.68, 0.56, -2.18], [17.62, 0.64, -0.82]], 0.038, wetWaterPipeMaterial, "DS-401 → TK-401 회수배관", 180, 4);
-    wetLabel("DS-401 · 공정배수 회수섬프", [18.70, 0.62, -2.66], [1.30, 0.19, 1]);
+    wetBox(unifiedWet, [1.18, 0.28, 0.92], [20.30, -0.10, -2.66], material.equipmentWater, "DS-401 바닥 드레인 집수섬프");
+    wetCylinder(unifiedWet, 0.10, 0.38, [20.08, 0.14, -2.66], material.equipmentPump, "DP-401A 회수펌프", 22);
+    wetCylinder(unifiedWet, 0.10, 0.38, [20.48, 0.14, -2.66], material.equipmentPump, "DP-401B 회수펌프", 22);
+    wetTube(unifiedWet, [[20.28, 0.20, -2.66], [20.28, 0.56, -2.18], [19.22, 0.64, -0.82]], 0.038, wetWaterPipeMaterial, "DS-401 → TK-401 회수배관", 180, 4);
+    wetLabel("DS-401 · 공정배수 회수섬프", [20.30, 0.62, -2.66], [1.30, 0.19, 1]);
 
     // Representative online process instrumentation and condition monitoring.
-    wetSensor("FIT/DIT-101", [9.18, 1.18, 0.34], material.product280);
-    wetSensor("pHIT-101", [12.52, 1.28, 0.72], material.product500);
-    wetSensor("LIT-201", [13.82, 3.88, 0.56], material.product106);
-    wetSensor("VIT-101", [10.98, 2.34, 0.72], material.product280);
-    wetSensor("VIT-204", [13.56, 1.04, -1.34], material.product280);
-    wetSensor("VIT-301", [16.66, 1.10, -1.32], material.product280);
-    wetSensor("VIT-AB201", [17.50, 0.64, 1.50], material.product280);
+    wetSensor("FIT/DIT-101", [10.78, 1.18, 0.34], material.product280);
+    wetSensor("pHIT-101", [14.12, 1.28, 0.72], material.product500);
+    wetSensor("LIT-201", [15.42, 3.88, 0.56], material.product106);
+    wetSensor("VIT-101", [12.58, 2.34, 0.72], material.product280);
+    wetSensor("VIT-204", [15.16, 1.04, -1.34], material.product280);
+    wetSensor("VIT-301", [18.26, 1.10, -1.32], material.product280);
+    wetSensor("VIT-AB201", [19.10, 0.64, 1.50], material.product280);
 
     // Maintenance monorail above TK-001/AS-101/TK-101 and physical integrated
     // process-control cabinets.  No DHA/Ex/LOTO/H2 safety package is modeled.
-    for (const x of [8.92, 12.84]) {
+    for (const x of [10.52, 14.44]) {
       wetHBeam(unifiedWet, "MH-401 정비호이스트 지주 H200", [x, 1.64, 2.38], 3.35, "y", 0.20, 0.10);
       wetBox(unifiedWet, [0.36, 0.03, 0.36], [x, -0.02, 2.38], material.frame, "MH-401 지주 베이스플레이트");
       wetColumnGussets(unifiedWet, "MH-401 주각", x, 0.00, 2.38, 0.24, 0.06);
       // 모노레일이 걸리는 목에도 거싯 — 여기가 캔틸레버 모멘트를 받는다
       wetColumnGussets(unifiedWet, "MH-401 보 접합", x, 3.10, 2.38, 0.18, 0.06);
     }
-    wetHBeam(unifiedWet, "MH-401 모노레일 I형", [10.88, 3.28, 2.38], 4.04, "x", 0.16, 0.11);
-    wetBox(unifiedWet, [0.34, 0.20, 0.30], [10.82, 3.12, 2.38], wetMotorMaterial, "MH-401 전동 트롤리");
-    wetCylinder(unifiedWet, 0.018, 1.10, [10.82, 2.50, 2.38], material.silverClamp, "MH-401 체인블록", 12);
-    wetMesh(unifiedWet, new THREE.TorusGeometry(0.10, 0.025, 8, 18, Math.PI * 1.5), material.silverClamp, [10.82, 1.94, 2.38], "MH-401 훅", [0, 0, Math.PI / 2]);
+    wetHBeam(unifiedWet, "MH-401 모노레일 I형", [12.48, 3.28, 2.38], 4.04, "x", 0.16, 0.11);
+    wetBox(unifiedWet, [0.34, 0.20, 0.30], [12.42, 3.12, 2.38], wetMotorMaterial, "MH-401 전동 트롤리");
+    wetCylinder(unifiedWet, 0.018, 1.10, [12.42, 2.50, 2.38], material.silverClamp, "MH-401 체인블록", 12);
+    wetMesh(unifiedWet, new THREE.TorusGeometry(0.10, 0.025, 8, 18, Math.PI * 1.5), material.silverClamp, [12.42, 1.94, 2.38], "MH-401 훅", [0, 0, Math.PI / 2]);
     wetControlPanel("PLC-001", 6.72, -2.82, 0.96, 1.84, "전체공정 통합 PLC");
     wetControlPanel("PLC-401", 7.92, -2.82, 0.86, 1.72, "습식·부선 로컬 PLC");
-    wetControlPanel("RIO-401", 11.60, 2.82, 0.56, 1.12, "어트리션·약품 현장 I/O");
-    wetControlPanel("RIO-402", 16.82, 2.82, 0.56, 1.12, "부선·탈수 현장 I/O");
+    wetControlPanel("RIO-401", 13.20, 2.82, 0.56, 1.12, "어트리션·약품 현장 I/O");
+    wetControlPanel("RIO-402", 18.42, 2.82, 0.56, 1.12, "부선·탈수 현장 I/O");
 
     // ── AI 감시제어 현장 장치 ─────────────────────────────────────────────
     // 카메라가 재는 것은 회수율이 아니라 거품의 겉모습이다. 셀 위에서 포말 표면을
@@ -20138,9 +20206,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       wetLabel(`${tag} · ${note}`, [x, y + 0.52, z], [1.50, 0.19, 1]);
     }
     // 부선 셀 3기 — 라우더 위에서 포말면을 본다
-    wetVisionCamera("VC-201", 13.38, 4.92, 0.86, "FC-201 거품 영상");
-    wetVisionCamera("VC-202", 14.24, 4.30, 1.86, "FC-202 거품 영상");
-    wetVisionCamera("VC-203", 15.10, 4.92, 0.86, "FC-203 거품 영상");
+    wetVisionCamera("VC-201", 14.98, 4.92, 0.86, "FC-201 거품 영상");
+    wetVisionCamera("VC-202", 15.84, 4.30, 1.86, "FC-202 거품 영상");
+    wetVisionCamera("VC-203", 16.70, 4.92, 0.86, "FC-203 거품 영상");
     // 투입 패널 분류 · 온라인 입도
     wetVisionCamera("VC-001", -6.40, 1.62, 1.30, "패널 종류·치수·파손 분류");
     // VC-101 은 PC-201 에어록 → VS-501 낙하 슈트를 본다. 슈트가 0.48 올라가면서 옛 자리
@@ -20154,7 +20222,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     for (const dy of [0.38, 0.50, 0.62]) {
       wetBox(unifiedWet, [0.40, 0.035, 0.03], [9.12, dy, -2.55], material.silverClamp, "AI-601 GPU 모듈");
     }
-    wetTube(unifiedWet, [[9.12, 1.42, -2.82], [9.12, 1.86, -2.60], [10.60, 1.86, 3.50]], 0.016, material.pipeAir, "AI-601 광케이블 트렁크");
+    // AI-601 은 제어반 열(제자리)에 있고 LAB-601 은 습식 열차와 함께 옮겨 갔다 — 트렁크 종점만 따라간다.
+    wetTube(unifiedWet, [[9.12, 1.42, -2.82], [9.12, 1.86, -2.60], [12.20, 1.86, 3.50]], 0.016, material.pipeAir, "AI-601 광케이블 트렁크");
     wetLabel("AI-601 엣지 추론 · 거품 소프트센서 · 권고(advisory)", [9.12, 1.72, -2.82], [2.15, 0.21, 1]);
 
     // ── 계량 · 시료 · 출하 (상업 플랜트 거래 경계) ─────────────────────────
@@ -20173,22 +20242,22 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetLabel("WB-001 트럭 계량대 · 60 t · 입출하 custody transfer", [-10.90, 1.40, YARD_ROW_Z], [2.55, 0.24, 1]);
 
     // SP-601 시료 축소탑 + LAB-601 분석실 — AI 소프트센서 교정의 데이터 원천
-    wetBox(unifiedWet, [0.70, 0.10, 0.70], [8.40, 0.05, YARD_ROW_Z], material.frame, "SP-601 기초");
-    wetCone(unifiedWet, 0.30, 0.10, 0.46, [8.40, 0.86, YARD_ROW_Z], material.solidsReceiver, "SP-601 리플 분할기", 20);
-    wetCylinder(unifiedWet, 0.30, 0.52, [8.40, 1.35, YARD_ROW_Z], material.solidsReceiver, "SP-601 시료 축소탑", 24, null, true);
-    for (const dz of [-0.34, 0.34]) wetCylinder(unifiedWet, 0.085, 0.22, [8.40, 0.42, YARD_ROW_Z + dz], material.equipmentReceiver, "SP-601 축소시료통", 18);
-    for (const dx of [-0.28, 0.28]) wetBox(unifiedWet, [0.06, 1.70, 0.06], [8.40 + dx, 0.85, YARD_ROW_Z + 0.40], hdgMaterial, "SP-601 지지대");
+    wetBox(unifiedWet, [0.70, 0.10, 0.70], [10.00, 0.05, YARD_ROW_Z], material.frame, "SP-601 기초");
+    wetCone(unifiedWet, 0.30, 0.10, 0.46, [10.00, 0.86, YARD_ROW_Z], material.solidsReceiver, "SP-601 리플 분할기", 20);
+    wetCylinder(unifiedWet, 0.30, 0.52, [10.00, 1.35, YARD_ROW_Z], material.solidsReceiver, "SP-601 시료 축소탑", 24, null, true);
+    for (const dz of [-0.34, 0.34]) wetCylinder(unifiedWet, 0.085, 0.22, [10.00, 0.42, YARD_ROW_Z + dz], material.equipmentReceiver, "SP-601 축소시료통", 18);
+    for (const dx of [-0.28, 0.28]) wetBox(unifiedWet, [0.06, 1.70, 0.06], [10.00 + dx, 0.85, YARD_ROW_Z + 0.40], hdgMaterial, "SP-601 지지대");
     // 야드 건축물(분석실·계량 키오스크)은 공정 장비가 아니라 건물이다. 제어반 티어에
     // 두면 3 m 에 가까운 상자가 화면에서 가장 어두운 덩어리가 돼 그 위 심볼 마크까지
     // 묻힌다. 트림 티어로 올려 한 가족으로 읽히게 한다.
-    const lab601Shell = wetBox(unifiedWet, [2.80, 2.50, 2.20], [10.60, 1.25, YARD_ROW_Z], material.cover, "LAB-601 분석실");
-    wetBox(unifiedWet, [1.20, 0.90, 0.04], [10.60, 1.60, YARD_ROW_Z - 1.12], material.screen, "LAB-601 창");
-    wetBox(unifiedWet, [0.80, 1.90, 0.05], [9.55, 0.95, YARD_ROW_Z - 1.10], material.cover, "LAB-601 출입문");
-    wetCylinder(unifiedWet, 0.11, 0.90, [11.70, 2.95, YARD_ROW_Z], material.equipmentAir, "LAB-601 흄후드 배기", 18);
-    wetLabel("SP-601 시료 축소 · LAB-601 분석실 — 정광 품위 확정", [9.50, 3.05, YARD_ROW_Z], [2.60, 0.24, 1]);
+    const lab601Shell = wetBox(unifiedWet, [2.80, 2.50, 2.20], [12.20, 1.25, YARD_ROW_Z], material.cover, "LAB-601 분석실");
+    wetBox(unifiedWet, [1.20, 0.90, 0.04], [12.20, 1.60, YARD_ROW_Z - 1.12], material.screen, "LAB-601 창");
+    wetBox(unifiedWet, [0.80, 1.90, 0.05], [11.15, 0.95, YARD_ROW_Z - 1.10], material.cover, "LAB-601 출입문");
+    wetCylinder(unifiedWet, 0.11, 0.90, [13.30, 2.95, YARD_ROW_Z], material.equipmentAir, "LAB-601 흄후드 배기", 18);
+    wetLabel("SP-601 시료 축소 · LAB-601 분석실 — 정광 품위 확정", [11.10, 3.05, YARD_ROW_Z], [2.60, 0.24, 1]);
 
     // BB-501/502 빅백 충진 스테이션 — 로드셀 계량 후 출하
-    [["BB-501", 13.60, "Si 케이크 제품"], ["BB-502", 16.10, "Ag 정광"]].forEach(([tag, bx, what]) => {
+    [["BB-501", 15.20, "Si 케이크 제품"], ["BB-502", 17.70, "Ag 정광"]].forEach(([tag, bx, what]) => {
       for (const dx of [-0.62, 0.62]) for (const dz of [-0.62, 0.62]) {
         wetHBeam(unifiedWet, `${tag} 충진 프레임 H200`, [bx + dx, 1.35, YARD_ROW_Z + dz], 2.70, "y", 0.20, 0.10);
         wetBox(unifiedWet, [0.30, 0.03, 0.30], [bx + dx, -0.02, YARD_ROW_Z + dz], material.frame, `${tag} 프레임 베이스플레이트`);
@@ -20208,13 +20277,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
 
     // 약품 방액범과 비상샤워 — RS-201/202/203 은 정량 약품이라 누출 대비가 필수다
     for (const [dx, dz, sx, sz] of [[0, -0.52, 2.30, 0.06], [0, 0.52, 2.30, 0.06], [-1.12, 0, 0.06, 1.10], [1.12, 0, 0.06, 1.10]]) {
-      wetBox(unifiedWet, [sx, 0.16, sz], [9.82 + dx, 0.08, -1.55 + dz], material.frame, "RS-201/202/203 방액범");
+      wetBox(unifiedWet, [sx, 0.16, sz], [11.42 + dx, 0.08, -1.55 + dz], material.frame, "RS-201/202/203 방액범");
     }
-    wetCylinder(unifiedWet, 0.045, 2.20, [11.30, 1.10, -1.55], material.safety, "SS-601 비상샤워 지주", 14);
-    wetCylinder(unifiedWet, 0.22, 0.06, [11.30, 2.16, -1.55], material.safety, "SS-601 샤워 헤드", 20);
-    wetBox(unifiedWet, [0.30, 0.10, 0.24], [11.30, 1.05, -1.40], material.safety, "SS-601 세안기");
+    wetCylinder(unifiedWet, 0.045, 2.20, [12.90, 1.10, -1.55], material.safety, "SS-601 비상샤워 지주", 14);
+    wetCylinder(unifiedWet, 0.22, 0.06, [12.90, 2.16, -1.55], material.safety, "SS-601 샤워 헤드", 20);
+    wetBox(unifiedWet, [0.30, 0.10, 0.24], [12.90, 1.05, -1.40], material.safety, "SS-601 세안기");
 
-    wetLabel("완전 통합공정 · 건식 환류 → 정량 습식인계 → 어트리션 → 부선 → 탈수 → 공정수 회수", [13.70, 5.36, 0.12], [3.05, 0.29, 1]);
+    wetLabel("완전 통합공정 · 건식 환류 → 정량 습식인계 → 어트리션 → 부선 → 탈수 → 공정수 회수", [15.30, 5.36, 0.12], [3.05, 0.29, 1]);
 
     // 습식 배관을 다 놓은 뒤 지지물을 한 번에 배치한다. 배관마다 손으로 다는 대신
     // 모아 둔 curve 를 2.4 m 간격으로 샘플해, 위에 걸 티어가 있으면 행거를,
@@ -20295,7 +20364,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     //   WB-001  계량 키오스크 정면 — 입출하 custody transfer 지점이다.
     // 습식 직속 자식은 분해 시 제 방향으로 흩어지므로 host 를 넘겨 장비를 따라가게 한다.
     addBrandMark(coolingPlant, "CH-601 심볼 명판", { x: 2.402, y: 0.95, z: YARD_Z }, 0.42, "x");
-    addBrandMark(unifiedWet, "LAB-601 심볼 명판", { x: 11.60, y: 1.60, z: YARD_ROW_Z - 1.105 }, 0.48, "-z", 0, lab601Shell);
+    addBrandMark(unifiedWet, "LAB-601 심볼 명판", { x: 13.20, y: 1.60, z: YARD_ROW_Z - 1.105 }, 0.48, "-z", 0, lab601Shell);
     addBrandMark(unifiedWet, "WB-001 심볼 명판", { x: -7.20, y: 0.80, z: YARD_ROW_Z - 2.552 }, 0.30, "-z", 0, wb001Kiosk);
 
     // TK-601 완충·팽창 탱크와 P-601A/B 순환펌프
@@ -20322,7 +20391,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetCylinder(coolingPlant, 0.075, 0.34, [2.55, 0.40, YARD_Z - 0.68], material.silverClamp, "F-601 Y형 스트레이너 800 µm", 20, [0, 0, Math.PI / 2]);
 
     // 공급·환수 헤더 DN50 과 발열원별 지관 냉각기
-    const headerFrom = -5.60, headerTo = 18.60;
+    const headerFrom = -5.60, headerTo = 20.20;   // 동단은 이설된 CF-BR 지관(x 19.00) 너머
     wetTube(coolingPlant, [[headerFrom, HEADER_Y, HEADER_Z], [2.00, HEADER_Y, HEADER_Z], [headerTo, HEADER_Y, HEADER_Z]],
       0.032, cwsMaterial, "CWS-601 공급 헤더 DN50 · 32 °C");
     wetTube(coolingPlant, [[headerFrom, HEADER_Y - 0.20, HEADER_Z], [2.00, HEADER_Y - 0.20, HEADER_Z], [headerTo, HEADER_Y - 0.20, HEADER_Z]],
@@ -20338,9 +20407,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       [-0.30, "HX-101", "HSG 폐회로 공기냉각기 17.02 kW", 0.20],
       [0.60, "JK-101", "HSG-101 챔버 자켓 13.62 kW", 0.20],
       [4.20, "AC-401", "VP-401A/B 후냉각 6.38 kW", 1.20],
-      [10.90, "AS-CL", "AS-101 슬러리 회로 2.48 kW", 1.60],
-      [16.20, "OC-301", "HPU-301 유압유 2.25 kW", 1.20],
-      [17.40, "CF-BR", "CF-204 베어링 0.84 kW", 1.20]
+      // 습식 열차 지관 셋은 대상기기와 함께 동측 1.6 m 옮겨 앉는다.
+      [12.50, "AS-CL", "AS-101 슬러리 회로 2.48 kW", 1.60],
+      [17.80, "OC-301", "HPU-301 유압유 2.25 kW", 1.20],
+      [19.00, "CF-BR", "CF-204 베어링 0.84 kW", 1.20]
     ].forEach(([x, tag, note, targetZ, runY = 0.30]) => {
       wetBox(coolingPlant, [0.44, 0.52, 0.34], [x, 0.44, HEADER_Z - 0.62], material.equipmentWater, `${tag} ${note}`);
       for (let fin = 0; fin < 5; fin += 1) {
@@ -20645,25 +20715,25 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       loops: Object.fromEntries([...root.querySelectorAll("[data-wet-loop]")].map((node) => [node.dataset.wetLoop, node]))
     };
     const unifiedPhases = [
-      { start: 0, end: 180, title: "통합 PLC · 공정 퍼미시브", route: "집진차압·공정수·블로어·탈수기·A/B 가용성 확인", target: [5.8, 1.6, 0.1], distance: 24 },
-      { start: 180, end: 420, title: "1 · 탈수·공정수 선기동", route: "CF-204·FP-301·CL/PF-401·TK-402·A/B 펌프 READY", target: [16.6, 0.9, -1.0], distance: 8.0 },
-      { start: 420, end: 720, title: "2 · 부유선별·공기·약품 기동", route: "AB-201A/B·AR-201·RS-201/202/203 → FC-202/203 → FC-201 확인", target: [14.8, 3.7, 0.5], distance: 8.2 },
-      { start: 720, end: 960, title: "3 · 습식 전처리 기동", route: "TK-101 → BS-101A/B → AS-101 600 rpm → TK-001·P-101/102A/B", target: [10.8, 1.1, 0.7], distance: 6.5 },
-      { start: 960, end: 1260, title: "4 · Sheeve 2단 복합·집진 기동", route: "IDF/BF → SS-201 → SV-201 하단 원형 106/75 → 상단 직사각 280 µm 하류우선 기동", target: [4.4, 0.8, 0.2], distance: 7.2 },
+      { start: 0, end: 180, title: "통합 PLC · 공정 퍼미시브", route: "집진차압·공정수·블로어·탈수기·A/B 가용성 확인", target: [6.6, 1.6, 0.1], distance: 24 },
+      { start: 180, end: 420, title: "1 · 탈수·공정수 선기동", route: "CF-204·FP-301·CL/PF-401·TK-402·A/B 펌프 READY", target: [18.2, 0.9, -1.0], distance: 8.0 },
+      { start: 420, end: 720, title: "2 · 부유선별·공기·약품 기동", route: "AB-201A/B·AR-201·RS-201/202/203 → FC-202/203 → FC-201 확인", target: [16.4, 3.7, 0.5], distance: 8.2 },
+      { start: 720, end: 960, title: "3 · 습식 전처리 기동", route: "TK-101 → BS-101A/B → AS-101 600 rpm → TK-001·P-101/102A/B", target: [12.4, 1.1, 0.7], distance: 6.5 },
+      { start: 960, end: 1260, title: "4 · Sheeve 2단 복합·집진 기동", route: "IDF/BF → SS-201 → SV-201 하단 원형 106/75 → 상단 직사각 280 µm 하류우선 기동", target: [5.9, 0.9, 0.2], distance: 9.0 },
       { start: 1260, end: 1560, title: "5 · HSG-101 폐회로 기동", route: "CV/PC 이송 확인 후 HSG-101 1,500 rpm 속도도달", target: [0.0, 1.05, 0.0], distance: 5.2 },
       { start: 1560, end: 1800, title: "6 · ICSH-301 원료투입 허가", route: "SCR-001·SCV-P1 정상 후 상부 X축→하부 Y축→압입롤 기동", target: [-4.35, 1.8, 0.0], distance: 6.0 },
-      { start: 1800, end: 2700, title: "7 · 전 공정 물질 이송", route: "SS ≥75 → BIN-Cu 구리제품 / <75 VR-401→BH/RV/SF/WC-401→어트리션→부선→탈수", target: [6.8, 1.7, 0.0], distance: 29 },
-      { start: 2700, end: 3120, title: "8 · 통합 정상운전", route: "건식 300 kg/h 기준 · <75 µm는 BH-101 완충 후 습식 설비부하에 맞춰 정량공급", target: [6.0, 1.7, 0.1], distance: 25 },
-      { start: 3120, end: 3420, title: "9 · 원료차단·잔류물 배출", route: "Shredder 공급 정지 → 건식 폐회로 비움 → 습식 탱크·배관 잔류분 탈수", target: [8.0, 1.6, 0.1], distance: 25 },
-      { start: 3420, end: 3601, title: "10 · 정상정지 완료", route: "상류부터 정지하고 집진·회수수·탈수 보조계통은 후행 정지", target: [5.8, 1.6, 0.1], distance: 25 }
+      { start: 1800, end: 2700, title: "7 · 전 공정 물질 이송", route: "SS ≥75 → BIN-Cu 구리제품 / <75 VR-401→BH/RV/SF/WC-401→어트리션→부선→탈수", target: [7.6, 1.7, 0.0], distance: 29 },
+      { start: 2700, end: 3120, title: "8 · 통합 정상운전", route: "건식 300 kg/h 기준 · <75 µm는 BH-101 완충 후 습식 설비부하에 맞춰 정량공급", target: [6.8, 1.7, 0.1], distance: 25 },
+      { start: 3120, end: 3420, title: "9 · 원료차단·잔류물 배출", route: "Shredder 공급 정지 → 건식 폐회로 비움 → 습식 탱크·배관 잔류분 탈수", target: [8.8, 1.6, 0.1], distance: 25 },
+      { start: 3420, end: 3601, title: "10 · 정상정지 완료", route: "상류부터 정지하고 집진·회수수·탈수 보조계통은 후행 정지", target: [6.6, 1.6, 0.1], distance: 25 }
     ];
     const wetFocusData = {
-      handoff: { title: "12 · SS-201 건식환류·습식 밀폐 인계", spec: "≥75 µm → VR-201/HSG · <75 µm → VR-401/BH-101/RV-401/SF-401/WC-401", target: [7.10, 1.25, 0.10], distance: 7.4 },
-      attrition: { title: "13 · TK-001＋AS-101＋TK-101", spec: "A/B 펌프 · 비드 보충 · BS-101A/B 보유/가드스크린 · SAM-102", target: [10.85, 1.05, 0.72], distance: 6.2 },
-      flotation: { title: "14 · FC-201 러퍼 / FC-202 클리너 / FC-203 스캐빈저", spec: "정광·미광 환류 완결 · AB-201A/B/AR-201 · 셀별 FIC", target: [14.50, 3.65, 0.45], distance: 7.6 },
-      dewatering: { title: "15 · TK-204/TK-301＋CF-204/FP-301", spec: "별도 정광·광미 급액조와 A/B 펌프 · 압착/코어블로/포세척 · 케이크 이송", target: [14.70, 0.85, -1.80], distance: 8.0 },
-      utilities: { title: "16 · 약품·부선공기·A/B 펌프", spec: "RS-201/202/203 · AB-201A/B·AR-201 · 유량제어·온라인 계측", target: [14.20, 1.15, 0.15], distance: 11.0 },
-      water: { title: "17 · 청징·폴리싱·신수/재이용수", spec: "TK-401→CL-401→PF-401→TK-402 · TK-501 클리너 신수 · DS-401 회수", target: [19.10, 0.85, 0.10], distance: 8.0 },
+      handoff: { title: "12 · SS-201 건식환류·습식 밀폐 인계", spec: "≥75 µm → VR-201/HSG · <75 µm → VR-401/BH-101/RV-401/SF-401/WC-401", target: [8.70, 1.25, 0.10], distance: 7.4 },
+      attrition: { title: "13 · TK-001＋AS-101＋TK-101", spec: "A/B 펌프 · 비드 보충 · BS-101A/B 보유/가드스크린 · SAM-102", target: [12.45, 1.05, 0.72], distance: 6.2 },
+      flotation: { title: "14 · FC-201 러퍼 / FC-202 클리너 / FC-203 스캐빈저", spec: "정광·미광 환류 완결 · AB-201A/B/AR-201 · 셀별 FIC", target: [16.10, 3.65, 0.45], distance: 7.6 },
+      dewatering: { title: "15 · TK-204/TK-301＋CF-204/FP-301", spec: "별도 정광·광미 급액조와 A/B 펌프 · 압착/코어블로/포세척 · 케이크 이송", target: [16.30, 0.85, -1.80], distance: 8.0 },
+      utilities: { title: "16 · 약품·부선공기·A/B 펌프", spec: "RS-201/202/203 · AB-201A/B·AR-201 · 유량제어·온라인 계측", target: [15.80, 1.15, 0.15], distance: 11.0 },
+      water: { title: "17 · 청징·폴리싱·신수/재이용수", spec: "TK-401→CL-401→PF-401→TK-402 · TK-501 클리너 신수 · DS-401 회수", target: [20.70, 0.85, 0.10], distance: 8.0 },
       control: { title: "18 · 통합 공정제어반", spec: "PLC-001 → PLC-101/PLC-401 → RIO-301/401/402", target: [8.50, 1.10, -2.35], distance: 9.0 }
     };
     let unifiedLastPhase = -1;
@@ -22583,11 +22653,11 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       const FP301_GAP = 0.050;   // 판 피치 0.095 − 판 두께 0.045
       for (let i = 0; i < FP301_PLATES - 1; i += 1) {
         const mesh = wetBox(fp301, [FP301_GAP * 0.88, 0.86, 0.62],
-          [14.74 + (i + 0.5) * 0.095, 0.84, -1.32], wetTailingsMaterial.clone(), `FP-301 ${i + 1}번 챔버 케이크`);
+          [16.34 + (i + 0.5) * 0.095, 0.84, -1.32], wetTailingsMaterial.clone(), `FP-301 ${i + 1}번 챔버 케이크`);
         mesh.userData.processParticle = true;
         mesh.material.transparent = true;
         mesh.visible = false;
-        fp301Cakes.push({ mesh, baseX: 14.74 + (i + 0.5) * 0.095, index: i });
+        fp301Cakes.push({ mesh, baseX: 16.34 + (i + 0.5) * 0.095, index: i });   // 판 열(x 16.34…)과 같이 이설
       }
     }
     function updateFilterPress(seconds) {
@@ -23057,7 +23127,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
           } else if (phase < 0.90) {
             marker.position.lerpVectors(
               new THREE.Vector3(bfCenter.x, 1.48, bfCenter.z),
-              new THREE.Vector3(7.38, 1.48, 0.20),
+              new THREE.Vector3(8.98, 1.48, 0.20),
               (phase - 0.80) / 0.10
             );
           } else {
@@ -23672,7 +23742,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     [fc201, fc202, fc203].forEach((cell) => {
       addEnvelope("FC-ROTOR", `${cell.group.name} 로터·스테이터 인양`, { x: cell.x - 0.33, y: 4.40, z: cell.z - 0.33 }, { x: cell.x + 0.33, y: 6.00, z: cell.z + 0.33 });
     });
-    addEnvelope("AS101-ROTOR", "AS-101 축·임펠러 인양", { x: 10.60, y: 1.95, z: 0.50 }, { x: 11.04, y: 3.25, z: 0.94 });
+    addEnvelope("AS101-ROTOR", "AS-101 축·임펠러 인양", { x: 12.20, y: 1.95, z: 0.50 }, { x: 12.64, y: 3.25, z: 0.94 });
 
     const wetMovers = unifiedWet.children.slice();
     const wetCentre = new THREE.Vector3();
@@ -24326,7 +24396,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       // 스크린이 화면에서 손톱만 해진다. 상단 직사각과 하단 원형이 한 프레임에 들도록
       // 시점을 두 기계 사이 높이에 둔다.
       { title: "SV-201 2단 복합기 — 상단 직사각 280 → 하단 원형 106/75", note: "상단 직사각(직선진동 · 대향 모터 2)이 280 µm 로 1차 선별해 오버를 동쪽 토로 토출하고, 언더만 언더 호퍼 → 슬리브로 하단 원형 Ø1200(수직축 편심)에 내려가 106/75 를 친다. 개구 280/106/75 µm · 선경 180/71/50 µm · 개구율 37.1/35.9/36.0%. 통과확률 P=((a−d)/(a+w))² 이라 개구의 80% 크기는 40% 크기의 1/9 로만 빠진다 — 직사각에서는 데크 길이의 그 비율만큼 흘러간 뒤, 원형에서는 그 반경까지 실려 나간 뒤에야 통과한다. 실제 컷은 공칭 개구의 0.8배(224/85/60 µm)이므로 물질수지의 밴드 경계는 낙관적이다 (HOLD)",
-        parts: ["P18", "P19"], wet: [], center: [3.24, 0.80, 0.20], distance: 3.3, yaw: 3.95, pitch: 0.20 },
+        parts: ["P18", "P19"], wet: [], center: [3.95, 0.80, 0.20], distance: 4.2, yaw: 3.95, pitch: 0.20 },
       { title: "PC-201 세라믹 스풀 — 라이저 한 스풀", note: "DN100 은 1 m 가 곧 10 D · RV-201 뒤 엘보＋라이저 전체(15 D)를 한 스풀로 · 보어 103 (DN125 셸＋12 mm 알루미나) · 11.7 m/s 유지 · 픽업 티만 맨 강관",
         parts: ["P18"], wet: [], center: [2.36, 0.45, -0.10], distance: 3.2, yaw: 2.35, pitch: 0.18 },
       { title: "CC-201 공기분급 · SS-201 75 µm", note: "0.70–1.00 m/s 중량물/경량물 분리 → CY-201·BF-201 회수 → SS-201에서 ≥75 구리제품 / <75 최종",
@@ -24335,13 +24405,13 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       // 잡는 기본 프레임에서는 입자가 화면에서 사라진다.
       { title: "AS-101 어트리션 스크러버 — 계면박리", note: "건식 계통은 계면박리 0.2255 에서 멈춘다. AS-101 40 L·600 rpm·5 min 고전단 순환류에서 1차 반응속도(k=0.548/min)로 0.95 까지 밀어 올린다 — 백시트가 들리다가 떨어지고 맨유리만 남는다",
         parts: [], wet: ["AS-101", "TK-001", "TK-101", "BS-101", "SAM-102"],
-        center: [10.82, 1.02, 0.72], distance: 2.9, yaw: 0.62, pitch: 0.20 },
+        center: [12.42, 1.02, 0.72], distance: 2.9, yaw: 0.62, pitch: 0.20 },
       { title: "FC-201/202/203 부유선별 — 입자군별 분리", note: "떨어진 유기물(B)은 소수성이라 기포에 붙어 거품으로 뜨고, 맨유리(A)는 친수성이라 가라앉는다. 명판 용적·공기량에서 Sb 와 체류시간을 잡아 R=kτ/(1+kτ) 로 본 회수율 — 러퍼 B 0.90 / A 0.21(연행), 클리너는 체류가 짧아 A 0.05 까지 떨궈 내고, 스캐빈저는 공기량이 가장 커 B 0.92. 부유도 비와 러퍼 목표는 벤치 락사이클 시험 대상(HOLD)",
         parts: [], wet: ["FC-201", "FC-202", "FC-203", "AB-201", "AR-201", "RS-20"],
-        center: [14.24, 3.45, 0.45], distance: 4.9, yaw: 0.68, pitch: 0.22 },
+        center: [15.84, 3.45, 0.45], distance: 4.9, yaw: 0.68, pitch: 0.22 },
       { title: "FP-301 멤브레인 필터프레스 — 케이크 여과", note: "정압 여과라 케이크는 √t 로 자란다 — 여액 유속은 1/√t 로 떨어진다. 명판 18.5 m²·챔버 32 mm 에서 케이크 414 kg/사이클, 습식 고형분 110 kg/h 이므로 급액 225 min · 사이클 251 min. 압착에서 8% 압밀되고, 개판은 고정헤드 쪽부터 한 장씩 열려 케이크가 순서대로 CV-301 로 떨어진다",
         parts: [], wet: ["FP-301", "TK-301", "HPW-301", "P-301"],
-        center: [15.55, 0.78, -1.32], distance: 3.6, yaw: 0.95, pitch: 0.20 },
+        center: [17.15, 0.78, -1.32], distance: 3.6, yaw: 0.95, pitch: 0.20 },
       { title: "CF-204 원심탈수", note: "TK-204 정광 급액 → Ø360 여과바스켓 원심탈수 → Ag 정광 케이크 BIN-204 · 여액 TK-401 회수",
         parts: [], wet: ["CF-204", "TK-204", "P-204", "BIN-204"] , pitch: 0.14, yaw: 0.62},
       { title: "전체 공정 조망", note: "ICSH-301 파쇄 → HSG 폐회로 → Sheeve 선별 → 어트리션 → 부유선별 → 필터프레스·원심탈수까지 한 좌표계",
@@ -25648,7 +25718,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       label:"Sheeve", tag:"SV-201 Two-Stage Composite Sieve", drawing:"DI-PVR-SV201-DD-001", revision:"DD-R4",
       capacity:"건식 미분 최대 300 kg/h · 4분획", overall:"2,600 L × 1,800 W × 2,700 H mm", mass:"예상 2.2 t · PC-201 포함",
       foundation:"독립 스키드 2,400×1,600 mm · M20 앵커 12SET · 스프링 베이스는 비고정 유연연결",
-      basis:"2단 복합 — 상단 직사각(280 µm · 12° · 직선진동 · 대향 모터 1.5 kW×2) → 하단 원형 Ø1,200(106/75 µm · 수직축 편심 2.2 kW) · 960 rpm · 상부 VS-501 → 밀폐 분배 → 4개 제품슈트",
+      basis:"2단 복합 — 상단 직사각 1,800×1,200(280 µm · 5° · 직선진동 · 대향 모터 1.5 kW×2) → 언더팬 동단 출구 → 하단 원형 Ø1,200(106/75 µm · 수직축 편심 2.2 kW) · 960 rpm · 상부 VS-501 → 밀폐 분배 → 4개 제품슈트",
       services:[powerService("sieve"), "이송: PC-201 DN100 음압리프트", "집진: DN80 branch → BF-201", "배출: 280–500(상단 토출단) / 106–280 / 75–106 / <75 µm(하단)"],
       installation:["진동체 주변 100 mm 비접촉 간극 · 상·하단 진동체 상호 비접촉", "메시 교환 상부 H1,000 mm", "유연커넥터 축방향 여유 ±25 mm", "기초와 진동스키드 사이 케이블 루프 적용"],
       acceptance:["960 rpm 공진통과 기록 (상·하단 각각)", "메시 장력 편차 ≤10%", "4개 토출 누설·교차오염 검사", "진폭·베어링온도 8 h"],
@@ -25660,10 +25730,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {code:"SV-010",assembly:"상부 수신·분배",name:"PC-201 진공수신기",qty:1,material:"SUS304",spec:"0.12 m³, DN100",note:"접선유입"},
         {code:"SV-011",assembly:"상부 수신·분배",name:"RV-201 로터리밸브",qty:1,material:"SUS304",spec:"6-pocket, 18 rpm",note:"0.37 kW"},
         {code:"SV-012",assembly:"상부 수신·분배",name:"VS-501 진동분배기",qty:1,material:"SUS304",spec:"Ø600, 밀폐커버",note:"정중앙 급광"},
-        {code:"SV-020",assembly:"상단 직사각 280 µm",name:"직사각 데크 프레임",qty:1,material:"SUS304",spec:"860×680 · 5° · 측판 t5",note:"진동체 일체 · 언더 집합호퍼 포함"},
-        {code:"SV-021",assembly:"상단 직사각 280 µm",name:"280 µm 핀인 PU 모듈",qty:4,material:"PU/SUS316L",spec:"430×340 · 개구 280 µm",note:"모듈 성적서 · 핀 2점 · 텐셔닝 불요"},
-        {code:"SV-022",assembly:"상단 직사각 280 µm",name:"데크 씰 스트립",qty:1,material:"VMQ",spec:"주변 3.1 m · 18 mm",note:"식별색 적용"},
-        {code:"SV-023",assembly:"상단 직사각 280 µm",name:"모듈 고정핀 세트",qty:8,material:"SUS316L",spec:"Ø12 · 스프링 래치",note:"모듈당 2점"},
+        {code:"SV-020",assembly:"상단 직사각 280 µm",name:"직사각 데크 프레임",qty:1,material:"SUS304",spec:"1,800×1,200 · 5° · 측판 t5",note:"진동체 일체 · 언더팬(동단 출구) 포함 · BOM 외형 그대로"},
+        {code:"SV-021",assembly:"상단 직사각 280 µm",name:"280 µm 핀인 PU 모듈",qty:6,material:"PU/SUS316L",spec:"600×600 · 개구 280 µm",note:"모듈 성적서 · 핀 2점 · 텐셔닝 불요 · 3×2 배열"},
+        {code:"SV-022",assembly:"상단 직사각 280 µm",name:"데크 씰 스트립",qty:1,material:"VMQ",spec:"주변 6.0 m · 18 mm",note:"식별색 적용"},
+        {code:"SV-023",assembly:"상단 직사각 280 µm",name:"모듈 고정핀 세트",qty:12,material:"SUS316L",spec:"Ø12 · 스프링 래치",note:"모듈당 2점"},
         {code:"SV-030",assembly:"하단 원형 106 µm",name:"2단 데크링",qty:1,material:"SUS304",spec:"Ø1,200×H160, t3",note:"클램프형"},
         {code:"SV-031",assembly:"하단 원형 106 µm",name:"106 µm 메시",qty:1,material:"SUS316L",spec:"Ø1,165, 60° 섹터 6매",note:"메시 성적서 · 섹터 단위 교체"},
         {code:"SV-032",assembly:"하단 원형 106 µm",name:"실리콘 데크 가스켓",qty:1,material:"VMQ",spec:"Ø1,180×18",note:"식별색 적용"},
@@ -25677,7 +25747,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {code:"SV-061",assembly:"제품슈트·집진",name:"유연커넥터",qty:5,material:"정전기방지 EPDM",spec:"L200, double cuff",note:"접지편 포함"},
         {code:"SV-062",assembly:"제품슈트·집진",name:"집진 매니폴드",qty:1,material:"SUS304",spec:"DN80→4×DN40",note:"밸런싱 댐퍼"},
         {code:"SV-070",assembly:"정비·교체",name:"예비 섹터 패널 세트 (하단 원형)",qty:6,material:"SUS316L",spec:"60° 섹터 · 106/75 µm 각 3",note:"개스킷 재사용 · MTTR 20분"},
-        {code:"SV-071",assembly:"정비·교체",name:"예비 핀인 모듈 (상단 직사각)",qty:4,material:"PU/SUS316L",spec:"430×340 · 280 µm",note:"핀 2점 · MTTR 15분"},
+        {code:"SV-071",assembly:"정비·교체",name:"예비 핀인 모듈 (상단 직사각)",qty:6,material:"PU/SUS316L",spec:"600×600 · 280 µm",note:"핀 2점 · MTTR 15분"},
         ...powerBom("sieve","SV"),
         {code:"F-SV-01",assembly:"체결구",type:"fastener",name:"스키드 앵커세트",qty:12,material:"8.8 HDG",spec:"M20×350 + 2N + PW",note:commonFastenerNote},
         {code:"F-SV-02",assembly:"체결구",type:"fastener",name:"데크 클램프 볼트세트",qty:48,material:"A4-80",spec:"M12×45 + N + 2PW",note:"하단 원형 데크당 24EA · 상단은 핀인"},
@@ -25910,7 +25980,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       holds:[{id:"HG-H1",stage:"로터 출하",check:"G2.5 밸런스·축 런아웃·날 간극",record:"Balance report",gate:"HOLD"},{id:"HG-H2",stage:"성능 SAT",check:"총부하 ≤400 kg/h·D95 0.428 mm 기준·Dmax <0.500 mm",record:"PSD/SAT report",gate:"HOLD"}]
     },
     sieve:{
-      foundation:{base:[2400,1600],envelope:[2600,1800],origin:"SV-201 진동중심 CL",anchorSpec:"M20×350 · 8.8 HDG · 12SET",hole:"스키드 PL Ø26",embed:"유효 매입 ≥240 mm",grout:"비수축 25 mm · 스프링 베이스 비고정",tolerance:"앵커 ±3 mm · 스프링 좌면 고저차 ≤1 mm",slab:"운전 진동력·인접 구조 공진 검토",anchors:gridAnchors([-1050,-350,350,1050],[-650,0,650])},
+      foundation:{base:[2400,1600],envelope:[2600,1800],origin:"스키드 중심(상단 직사각 데크 중심 x 4.10 · z 0.20) · 하단 원형 축은 +520 mm",anchorSpec:"M20×350 · 8.8 HDG · 12SET",hole:"다리 패드 PL Ø26",embed:"유효 매입 ≥240 mm",grout:"비수축 25 mm · 스프링 베이스 비고정",tolerance:"앵커 ±3 mm · 스프링 좌면 고저차 ≤1 mm",slab:"운전 진동력·인접 구조 공진 검토",anchors:gridAnchors([-1228,-1052,-88,88,1052,1228],[-800,800])},
       nozzles:[
         {tag:"SV-N01",service:"PC-201 수신",size:"DN100",rating:"음압이송",moc:"SUS304",orientation:"TOP",elevation:"EL +2,650",connection:"리시버 에어록+유연슈트"},
         {tag:"SV-N02",service:"국소집진",size:"DN80",rating:"BF-201",moc:"SUS304",orientation:"상부",elevation:"EL +2,450",connection:"진동 플렉시블"},
@@ -25932,7 +26002,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {item:"진동모터",mass:"제작사 확정",points:"모터 아이",swl:"실중량×1.5",route:"양측 900 mm"}
       ],
       erection:["독립 스키드 기준선·레벨 검측","스프링 좌면 높이 맞춤","하단 원형 2개 데크 가스켓·클램프 조립","상단 직사각 핀인 모듈 4매 장착·씰 스트립 연속성","대향 진동모터 위상·편심량 설정 (상단) · 편심추 각도 설정 (하단)","상단 언더 호퍼 → 하단 급입구 유연연결 · 모든 입출구 유연연결","공진구간 통과시험·볼트 마킹 (상·하단 각각)","각 입도별 체분석 SAT"],
-      holds:[{id:"SV-H1",stage:"데크 조립",check:"280 µm 모듈 · 106/75 µm 망 인증·가스켓 연속성",record:"Mesh certificate",gate:"HOLD"},{id:"SV-H2",stage:"진동 SAT",check:"960 rpm·진폭·좌우 위상·구조 공진 — 상·하단 두 진동체가 서로 비접촉인지",record:"Vibration map",gate:"HOLD"},{id:"SV-H3",stage:"배치",check:"BOM 외형 2,600×1,800 이 PC-201 라이저(x≈2.47)~CC-201 급입(x 3.77) 슬롯 1,270 mm 에 들지 않는다 — 모델은 스키드 1,200×1,280 으로 줄여 그렸다. CC-201 이하 동측 ≥1.4 m 이설 또는 외형 축소를 확정할 것",record:"Layout decision",gate:"HOLD"}]
+      holds:[{id:"SV-H1",stage:"데크 조립",check:"280 µm 모듈 · 106/75 µm 망 인증·가스켓 연속성",record:"Mesh certificate",gate:"HOLD"},{id:"SV-H2",stage:"진동 SAT",check:"960 rpm·진폭·좌우 위상·구조 공진 — 상·하단 두 진동체가 서로 비접촉인지",record:"Vibration map",gate:"HOLD"},{id:"SV-H3",stage:"배치",check:"BOM 외형 2,600×1,800 이 PC-201 라이저(x≈2.47)~CC-201 급입 슬롯 1,270 mm 에 들지 않던 것을 CC-201 이하(공기분급·집진·SS-201·제품빈·습식 열차 전부) 동측 1.6 m 이설로 해소 — 슬롯 2,990 mm · 모델 스키드 2,400×1,600 = BOM. 이설 좌표(CC-201 x 6.32 · CY-201 7.42 · BF-201 8.32 · SS-201 7.68 · TK-001 11.02)를 배치도·기초도에 반영할 것",record:"Layout decision 2026-09-05 — 동측 1.6 m 이설 확정",gate:"RELEASED"}]
     },
     attrition:{
       foundation:{base:[5000,2000],envelope:[5200,2200],origin:"AS-101 축 CL / 스키드 중심",anchorSpec:"M20×350 · A4-80 · 16SET",hole:"스키드 PL Ø26",embed:"유효 매입 ≥240 mm",grout:"내약품 비수축 30 mm · 커브 H100",tolerance:"앵커 ±3 mm · 용기 수직도 1 mm/m",slab:"습식 운전중량·번드 용량 포함 구조검토",anchors:gridAnchors([-2250,-750,750,2250],[-850,-283,283,850])},
