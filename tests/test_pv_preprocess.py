@@ -430,6 +430,35 @@ class TestOneTransferPlane(unittest.TestCase):
             self.assertFalse(layout.the_line_has_no_step(),
                              "예외를 지워도 통과하면 이 검사는 아무것도 안 막는다")
 
+    def test_the_scene_carries_the_zone_grid(self):
+        """3D 가 자기 자리를 존 표에 대고 검사받을 수 있어야 한다.
+
+        이 플랜트에는 격자가 **둘** 있었다. 존 표는 셀 GA 외형을 이어 붙여
+        만들고 케이싱·존 가드·EC 명판이 그것을 따르는데, 기계군은 씬에 손으로
+        놓은 좌표 위에 서 있었다. 두 격자가 AFR 아래에서 4,600 mm 갈라져
+        있었는데도 케이싱 검사도 하중 경로 검사도 그것을 못 봤다 — 둘 다
+        "형상끼리" 를 묻지 "형상이 자기 존 안에 있는가" 를 묻지 않기 때문이다.
+
+        존 범위를 씬에 값으로 들여보내고, 셀 그룹이 자기 존을 밝히게 한다.
+        실제 정합 여부는 `tools/check_cell_grid.mjs` 가 브라우저에서 잰다.
+        """
+        def _m(mm: int) -> str:
+            return _js((mm - 24_750) / 1000)
+        grid = ",".join(f"{z.key}:[{_m(z.x0_mm)},{_m(z.x1_mm)}]"
+                        for z in layout.build_zones())
+        self.assertIn("var pvZone={" + grid + "}", self.html,
+                      "존 격자가 모델에서 나오지 않는다")
+        # 격자는 씬 훅으로 나가야 검사기가 읽는다
+        self.assertIn("Vector3:C,zone:pvZone}", self.html)
+        # 셀 그룹은 전부 자기 존을 밝힌다
+        self.assertIn("function pvCell(g,k){g.userData.cell=k;return g}", self.html)
+        for group, key in (("wr", "afu"), ("be", "jbr"), ("Cn", "jbr"),
+                           ("ot", "afr"), ("ft", "buffer"), ("pvGrm", "grm")):
+            with self.subTest(group=group):
+                self.assertIn(f"pvCell({group},'{key}')", self.html)
+        self.assertTrue((ROOT / "tools" / "check_cell_grid.mjs").exists(),
+                        "격자 검사기가 없으면 이 값들은 확인되지 않는다")
+
     def test_the_afr_panel_sits_on_the_same_plane(self):
         """AFR 패널 높이는 build_afr 이 이송면에서 낸다 — 리터럴이 아니다."""
         import importlib.util
@@ -3290,7 +3319,7 @@ class TestGlassRemovalIntegration(unittest.TestCase):
 
     def test_the_3d_scene_actually_carries_the_cell(self):
         """도면에만 있고 영상에 없으면 '연결'이 아니다."""
-        self.assertIn("var pvGrm=new ce;pt.add(pvGrm);", self.html)
+        self.assertIn("var pvGrm=new ce;pt.add(pvCell(pvGrm,'grm'));", self.html)
         for tag in ("M0-101", "M1-101", "IR-701", "LI-101", "TS-101", "EX-101",
                     "TDM-201", "HKB-101", "HKS-201", "WR-101", "CB-201", "DS-301"):
             with self.subTest(part=tag):

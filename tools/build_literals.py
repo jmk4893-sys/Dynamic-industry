@@ -29,6 +29,9 @@ DRAWING = pathlib.Path(__file__).resolve().parent.parent / "docs/drawings/pv-pre
 # 시트의 BED 부품과 같은 값이어야 한다 (part('BED', …, [3250, …], [-400, …])).
 BED_X_MM, BED_L_MM = -400, 3250
 
+#: 3D 씬 원점의 플랜트 X (mm). world_x = (plant_x - 이 값) / 1000.
+SCENE_ORIGIN_X_MM = 24_750
+
 
 def q(v: object) -> str:
     if isinstance(v, bool):
@@ -88,6 +91,22 @@ def main() -> int:
         "    [" + ", ".join(q(c) for c in row) + "]" for row in zone_seed_rows())
     p.one(r"(  var zoneSeed = \[)(?:.*?)(\n  \];)",
           lambda m: m.group(1) + body + m.group(2))
+
+    # ── 3D 셀 격자 ───────────────────────────────────────────────────────
+    # 이 플랜트에는 격자가 둘 있었다. 존 표(여기)와, 씬에 손으로 놓은 셀 좌표.
+    # 두 격자는 AFR 아래에서 4,600 mm 갈라져 있었고 아무 검사도 그것을 안 봤다
+    # (케이싱·하중경로 검사는 "형상끼리" 를 묻지 "형상이 자기 존 안인가" 를
+    # 묻지 않는다). 존 범위를 씬에 값으로 들여보내 3D 가 그것을 기준으로
+    # 검사받게 한다 — `tools/check_cell_grid.mjs`.
+    def _m(mm: int) -> str:
+        """플랜트 mm → 씬 world m 문자열 (씬 원점은 x 24,750 mm)."""
+        t = f"{(mm - SCENE_ORIGIN_X_MM) / 1000:g}"
+        return t[1:] if t.startswith("0.") else (
+            "-" + t[2:] if t.startswith("-0.") else t)
+
+    grid = ",".join(f"{z.key}:[{_m(z.x0_mm)},{_m(z.x1_mm)}]"
+                    for z in layout.build_zones())
+    p.one(r"var pvZone=\{[^}]*\}", lambda m: "var pvZone={" + grid + "}")
 
     # ── 셀 외형·이름 ─────────────────────────────────────────────────────
     for key, st in layout.STATIONS.items():
