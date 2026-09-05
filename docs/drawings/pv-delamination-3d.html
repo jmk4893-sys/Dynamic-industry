@@ -395,9 +395,9 @@
           </div>
         </div>
         <div class="np-id">
-          <div class="np-model">DG-HK60 <span>REV.20</span></div>
+          <div class="np-model">DG-HK60 <span id="npModelRev">REV.21C</span></div>
           <h1>단일 5단 IR · 고정 탠덤 · 수평 분리반출</h1>
-          <p>60 IR · EVA 계면 200°C · 7＋1 캐리지 · 유리/셀 무낙하 컨베이어 · 전기·제어 통합</p>
+          <p id="npSub">60 IR · EVA 계면 200°C · 고정 진공테이블 + 이동 나이프</p>
         </div>
         <div class="np-status">
           <span class="led" aria-hidden="true"></span>
@@ -411,6 +411,7 @@
           <button type="button" id="explodeButton" aria-pressed="false">분해 보기</button>
           <label class="explode-control" for="explodeDistance"><span>분해 거리</span><output id="explodeDistanceValue" for="explodeDistance">100%</output><input id="explodeDistance" type="range" min="0" max="200" step="10" value="100" aria-label="분해 보기 거리"></label>
           <button type="button" id="labelButton" aria-pressed="false">부품 라벨</button>
+          <button type="button" id="layoutButton" aria-pressed="true">배치 Rev.21C</button>
           <button type="button" id="themeButton" aria-pressed="false">테마 자동</button>
         </div>
         <div class="ctl-group head-actions" role="group" aria-label="카메라">
@@ -908,23 +909,23 @@
       if(i>=6)return ROLL_SHIFT_BASE+1;
       return ROLL_SHIFT_BASE;
     }
-    const steps=[
-      {id:'S0',name:'투입·자세 확인',duration:3300,desc:'유리면 아래·백시트 위 자세로 투입하고 패널 중심과 크기를 확인합니다.',vac:'대기 · 0 kPa',temp:'식별 · 상온',out:'ORIENT_OK'},
-      {id:'S1',name:'6존 진공 고정',duration:2200,desc:'VC-101이 유리면을 6개 구역으로 흡착해 권취·박리 반력을 지지합니다.',vac:'VC-101 · -65 kPa',temp:'예열 준비',out:'VAC_OK'},
-      {id:'S2',name:'5단 투입·방출·재투입',duration:16000,desc:'C1~C5 5/5 잠금과 모든 문 닫힘을 확인해 밀폐 가열한 뒤, 200°C C1을 AL-102 내문→격리→외문 순으로 방출합니다. 이어 새 패널을 AL-101 외문→격리→내문, LI-101 층선택, TS-101 삽입 순으로 같은 빈 C1에 재투입합니다.',vac:'C1~C5 5/5 → C1 방출 → C1 재적재',temp:'EVA 계면 200°C · 60 IR',out:'FULL_LOAD→RELEASE→REFILL_ACK'},
-      {id:'S3',name:'200°C 방출·HKB 진입',duration:4800,desc:'EVA/유리 내부 계면 200°C와 탠덤 READY를 확인한 패널을 방출합니다. HKB는 X축 위치를 유지한 채 독립 Z축으로 내려가고, 캐리어는 200mm/s 접근 후 S-curve로 55mm/s까지 감속합니다.',vac:'이동 VC-101 · -65 kPa',temp:'HKB 230°C · HKS 250~270°C',out:'EVA_200_ACK ∧ CARRIER_AT_HKB'},
-      {id:'S4',name:'300mm 선행·클램프',duration:2500,desc:'HKB가 백시트 선단 300mm를 개방하면 WR-101이 선단을 잡아 장력을 형성합니다. CLAMP_TENSION_ACK 뒤 HKS가 독립 Z축으로 EVA/유리 계면까지 접근해 2차 박리를 준비합니다.',vac:'VC-101 · -65 kPa 유지',temp:'HKB 가압 · HKS Z축 진입',out:'LEAD_300_ACK ∧ CLAMP_TENSION_ACK'},
-      {id:'S5',name:'55mm/s 탠덤 통과박리',duration:7600,desc:'두 칼날의 X축은 300±2mm 간격으로 고정되고 Z축은 로드셀 하중을 추종합니다. 캐리어가 55mm/s로 통과하면 HKB는 백시트를 권취롤로 보내고 HKS는 셀/EVA를 유리에서 연속 분리합니다.',vac:'이동 캐리어 6존 · -65 kPa',temp:'HKB 230°C · HKS 250~270°C',out:'CARRIER_PEEL_COMPLETE'},
-      {id:'S6',name:'3계통 무낙하 분기',duration:4200,desc:'HKB/HKS Z축 안전복귀 후 유리의 롤러 완전지지를 먼저 확인합니다. GLASS_SUPPORT_ACK 뒤 진공을 해제하고 빈 캐리어를 복귀시키며, 셀/EVA와 백시트 반출축은 독립 ACK로 병렬 운전합니다.',vac:'GLASS_SUPPORT_ACK → VAC_OFF_ACK',temp:'KNIFE_Z_SAFE 후 캐리어 복귀',out:'LEVEL_CONVEYOR_OUTFEED'},
-      {id:'S7',name:'백시트 보관함 이동',duration:3200,desc:'롤 교체는 패널마다가 아니라 만권(Ø600 · 백시트 0.30mm 기준 295장 · 60장/h 로 약 4.9시간)에서만 일어납니다. 셔터를 닫고 예비축으로 전환한 뒤, 만권 롤을 내려 인터록 해치를 지나 펜스 밖 BS-301 보관대로 내보냅니다.',vac:'복귀 준비',temp:'권취부 안전',out:'BACKSHEET_BIN_ACK'},
-      {id:'S8',name:'셀모듈 직접 컨베이어',duration:3500,desc:'분리된 셀/EVA 적층체가 CVC-301 밀폐 인계·수평 컨베이어를 타고 중간 낙하나 보관 없이 SH-101 전단까지 이동합니다.',vac:'진공 해제',temp:'HKS 복귀',out:'CELL_ON_CONVEYOR_ACK'},
-      {id:'S9',name:'Shredder 연속 투입',duration:4200,desc:'SH-101 READY와 격리게이트 개방을 확인한 뒤 CVC-301이 셀/EVA를 투입롤러까지 연속 이송합니다. Shredder 트립 시 컨베이어를 즉시 정지하고 HKS 신규 분리를 차단합니다.',vac:'빈 캐리어 복귀',temp:'SH-101 READY',out:'SHREDDER_FEED_ACK'},
-      {id:'S10',name:'유리 수평인계·교대',duration:4300,desc:'유리를 받은 GC-301A가 컨베이어와 동일한 높이의 내열 지지롤 위에서 양면 균일냉각을 시작하며 격리 도크로 수평 이동합니다. 빈 GC-301B가 다음 유리를 받을 위치로 자동 인덱싱됩니다.',vac:'진공 해제 완료',temp:'GLASS COOLING · 출입잠금',out:'LEVEL_GLASS_DOCK_ACK'},
-      {id:'S11',name:'품질검사·리젝트 분기',duration:4300,desc:'QI-301 상·하부 비전·열화상이 잔류 EVA, 미분리 셀, 균열과 표면온도를 검사합니다. 불합격품은 RJ-301 횡셔틀과 밀폐 파손품 캐리지로 분기합니다.',vac:'검사 위치 고정',temp:'온도·잔류물·균열 판정',out:'QUALITY_PASS_OR_REJECT_ACK'},
-      {id:'S12',name:'7＋1 캐리지 순환',duration:4200,desc:'5대는 가열실, 1대는 탠덤, 1대는 복귀·재장전 위치에서 순환하고, 1대는 MC-401 정비 대기 위치에 보관됩니다.',vac:'주캐리지 복귀·재장전',temp:'5 HEAT + 1 PROCESS + 1 RETURN + 1 SPARE',out:'EMPTY_CARRIER_RELOADED'},
-      {id:'S13',name:'안전·환경 자가점검',duration:4200,desc:'VOC 응축·미스트·활성탄 처리, 독립 과온차단, 연기·CO·화재댐퍼, MCC 냉각, 진공 이중화와 LOTO 상태를 확인합니다.',vac:'VP-A/B 이중화 READY',temp:'FIRE_OK ∧ EXHAUST_OK ∧ MCC_OK',out:'SAFETY_UTILITY_ACK'},
-      {id:'S14',name:'단일라인 60장 시험',duration:8000,desc:'55mm/s 생산보증 레시피의 정상상태 60장 약 53분35초를 8초로 압축합니다. FULL_LOAD_ACK 이후 냉간 완료는 약 57분21초이며 90% 가동률 환산은 60.5장/h입니다.',vac:'이동 캐리어 −65 kPa',temp:'실공정 53m35s → 영상 8s',out:'SINGLE_60_TEST_COMPLETE'},
-      {id:'S15',name:'10장 연속 시운전',duration:9000,desc:'10장을 연속 통과시키며 세 계통이 실제로 쌓이는지를 한 화면에서 확인합니다. 유리는 GC-301 저장 캐리지에 한 장씩 적재되고, 셀/EVA는 CVC-301 컨베이어에 투입되어 SH-101로 이송되며, 백시트는 WR-101 롤에 감깁니다. 10장이면 롤은 Ø300에서 Ø314.9로 자랍니다 — 만권까지는 295장이 필요합니다.',vac:'장당 −65 kPa 흡착·해제 10회',temp:'계면 200°C 반복 도달',out:'TEN_PANEL_TRIAL_COMPLETE'},
+    const REV20_STEPS=[
+      {id:'S0',name:'투입·자세 확인',duration:3300,desc:'유리면 아래·백시트 위 자세로 투입하고 패널 중심과 크기를 확인합니다.',vac:'대기 · 0 kPa',temp:'식별 · 상온',out:'ORIENT_OK',flow:['권취 대기 → 전용 보관함','분리 대기 → Shredder','분리 대기 → 저장 캐리지'],cam:[0,3]},
+      {id:'S1',name:'6존 진공 고정',duration:2200,desc:'VC-101이 유리면을 6개 구역으로 흡착해 권취·박리 반력을 지지합니다.',vac:'VC-101 · -65 kPa',temp:'예열 준비',out:'VAC_OK',flow:['권취 대기 → 전용 보관함','분리 대기 → Shredder','진공 캐리어 지지 중'],cam:[0,3]},
+      {id:'S2',name:'5단 투입·방출·재투입',duration:16000,desc:'C1~C5 5/5 잠금과 모든 문 닫힘을 확인해 밀폐 가열한 뒤, 200°C C1을 AL-102 내문→격리→외문 순으로 방출합니다. 이어 새 패널을 AL-101 외문→격리→내문, LI-101 층선택, TS-101 삽입 순으로 같은 빈 C1에 재투입합니다.',vac:'C1~C5 5/5 → C1 방출 → C1 재적재',temp:'EVA 계면 200°C · 60 IR',out:'FULL_LOAD→RELEASE→REFILL_ACK',flow:['권취 대기 → 전용 보관함','가열 중 → Shredder','가열 중 → 저장 캐리지'],cam:[1,9.2]},
+      {id:'S3',name:'200°C 방출·HKB 진입',duration:4800,desc:'EVA/유리 내부 계면 200°C와 탠덤 READY를 확인한 패널을 방출합니다. HKB는 X축 위치를 유지한 채 독립 Z축으로 내려가고, 캐리어는 200mm/s 접근 후 S-curve로 55mm/s까지 감속합니다.',vac:'이동 VC-101 · -65 kPa',temp:'HKB 230°C · HKS 250~270°C',out:'EVA_200_ACK ∧ CARRIER_AT_HKB',flow:['선단 개방 중','HKS 분리 대기','진공 캐리어 지지 중'],cam:[1,16.5]},
+      {id:'S4',name:'300mm 선행·클램프',duration:2500,desc:'HKB가 백시트 선단 300mm를 개방하면 WR-101이 선단을 잡아 장력을 형성합니다. CLAMP_TENSION_ACK 뒤 HKS가 독립 Z축으로 EVA/유리 계면까지 접근해 2차 박리를 준비합니다.',vac:'VC-101 · -65 kPa 유지',temp:'HKB 가압 · HKS Z축 진입',out:'LEAD_300_ACK ∧ CLAMP_TENSION_ACK',flow:['클램프·장력 형성','HKS 진입 대기','진공 캐리어 지지 중'],cam:[2,17.8]},
+      {id:'S5',name:'55mm/s 탠덤 통과박리',duration:7600,desc:'두 칼날의 X축은 300±2mm 간격으로 고정되고 Z축은 로드셀 하중을 추종합니다. 캐리어가 55mm/s로 통과하면 HKB는 백시트를 권취롤로 보내고 HKS는 셀/EVA를 유리에서 연속 분리합니다.',vac:'이동 캐리어 6존 · -65 kPa',temp:'HKB 230°C · HKS 250~270°C',out:'CARRIER_PEEL_COMPLETE',flow:['전장 권취 중','유리에서 분리 중','진공 캐리어 이동 중'],cam:[2,18.5]},
+      {id:'S6',name:'3계통 무낙하 분기',duration:4200,desc:'HKB/HKS Z축 안전복귀 후 유리의 롤러 완전지지를 먼저 확인합니다. GLASS_SUPPORT_ACK 뒤 진공을 해제하고 빈 캐리어를 복귀시키며, 셀/EVA와 백시트 반출축은 독립 ACK로 병렬 운전합니다.',vac:'GLASS_SUPPORT_ACK → VAC_OFF_ACK',temp:'KNIFE_Z_SAFE 후 캐리어 복귀',out:'LEVEL_CONVEYOR_OUTFEED',flow:['권취 완료·보관함 대기','CVC-301 인계 컨베이어','동일높이 GC-301 즉시 인계'],cam:[0,22]},
+      {id:'S7',name:'백시트 보관함 이동',duration:3200,desc:'롤 교체는 패널마다가 아니라 만권(Ø600 · 백시트 0.30mm 기준 295장 · 60장/h 로 약 4.9시간)에서만 일어납니다. 셔터를 닫고 예비축으로 전환한 뒤, 만권 롤을 내려 인터록 해치를 지나 펜스 밖 BS-301 보관대로 내보냅니다.',vac:'복귀 준비',temp:'권취부 안전',out:'BACKSHEET_BIN_ACK',flow:['BS-301 전용 보관함 이동','CVC-301 직접 이송 대기','GC-301 수평 적재 완료'],cam:[2,22]},
+      {id:'S8',name:'셀모듈 직접 컨베이어',duration:3500,desc:'분리된 셀/EVA 적층체가 CVC-301 밀폐 인계·수평 컨베이어를 타고 중간 낙하나 보관 없이 SH-101 전단까지 이동합니다.',vac:'진공 해제',temp:'HKS 복귀',out:'CELL_ON_CONVEYOR_ACK',flow:['BS-301 격리 완료','CVC-301에서 이동 중','GC-301 수평 적재 완료'],cam:[2,29]},
+      {id:'S9',name:'Shredder 연속 투입',duration:4200,desc:'SH-101 READY와 격리게이트 개방을 확인한 뒤 CVC-301이 셀/EVA를 투입롤러까지 연속 이송합니다. Shredder 트립 시 컨베이어를 즉시 정지하고 HKS 신규 분리를 차단합니다.',vac:'빈 캐리어 복귀',temp:'SH-101 READY',out:'SHREDDER_FEED_ACK',flow:['BS-301 보관 완료','CVC-301 → SH-101 연속 투입','GC-301 수평 적재 완료'],cam:[1,33]},
+      {id:'S10',name:'유리 수평인계·교대',duration:4300,desc:'유리를 받은 GC-301A가 컨베이어와 동일한 높이의 내열 지지롤 위에서 양면 균일냉각을 시작하며 격리 도크로 수평 이동합니다. 빈 GC-301B가 다음 유리를 받을 위치로 자동 인덱싱됩니다.',vac:'진공 해제 완료',temp:'GLASS COOLING · 출입잠금',out:'LEVEL_GLASS_DOCK_ACK',flow:['BS-301 보관 완료','SH-101 후속공정','GC-301 동일높이 저장 도크'],cam:[1,27.4]},
+      {id:'S11',name:'품질검사·리젝트 분기',duration:4300,desc:'QI-301 상·하부 비전·열화상이 잔류 EVA, 미분리 셀, 균열과 표면온도를 검사합니다. 불합격품은 RJ-301 횡셔틀과 밀폐 파손품 캐리지로 분기합니다.',vac:'검사 위치 고정',temp:'온도·잔류물·균열 판정',out:'QUALITY_PASS_OR_REJECT_ACK',flow:['BS-301 보관 완료','SH-101 후속공정','QI-301 검사·RJ-301 분기'],cam:[2,23.5]},
+      {id:'S12',name:'7＋1 캐리지 순환',duration:4200,desc:'5대는 가열실, 1대는 탠덤, 1대는 복귀·재장전 위치에서 순환하고, 1대는 MC-401 정비 대기 위치에 보관됩니다.',vac:'주캐리지 복귀·재장전',temp:'5 HEAT + 1 PROCESS + 1 RETURN + 1 SPARE',out:'EMPTY_CARRIER_RELOADED',flow:['WR 예비축 준비','CVC-301 CLEAR','7＋1 가열캐리지 순환'],cam:[1,13]},
+      {id:'S13',name:'안전·환경 자가점검',duration:4200,desc:'VOC 응축·미스트·활성탄 처리, 독립 과온차단, 연기·CO·화재댐퍼, MCC 냉각, 진공 이중화와 LOTO 상태를 확인합니다.',vac:'VP-A/B 이중화 READY',temp:'FIRE_OK ∧ EXHAUST_OK ∧ MCC_OK',out:'SAFETY_UTILITY_ACK',flow:['배기·화재안전 확인','Shredder 격리게이트 확인','GC 냉각·도킹 안전확인'],cam:[0,20]},
+      {id:'S14',name:'단일라인 60장 시험',duration:8000,desc:'55mm/s 생산보증 레시피의 정상상태 60장 약 53분35초를 8초로 압축합니다. FULL_LOAD_ACK 이후 냉간 완료는 약 57분21초이며 90% 가동률 환산은 60.5장/h입니다.',vac:'이동 캐리어 −65 kPa',temp:'실공정 53m35s → 영상 8s',out:'SINGLE_60_TEST_COMPLETE',flow:['다음 권취롤 준비','Shredder 연속운전','빈 저장 캐리지 인덱싱'],cam:[0,19]},
+      {id:'S15',name:'10장 연속 시운전',duration:9000,desc:'10장을 연속 통과시키며 세 계통이 실제로 쌓이는지를 한 화면에서 확인합니다. 유리는 GC-301 저장 캐리지에 한 장씩 적재되고, 셀/EVA는 CVC-301 컨베이어에 투입되어 SH-101로 이송되며, 백시트는 WR-101 롤에 감깁니다. 10장이면 롤은 Ø300에서 Ø314.9로 자랍니다 — 만권까지는 295장이 필요합니다.',vac:'장당 −65 kPa 흡착·해제 10회',temp:'계면 200°C 반복 도달',out:'TEN_PANEL_TRIAL_COMPLETE',flow:['WR-101 롤에 10장 권취','CVC-301 → SH-101 연속 투입','GC-301 캐리지 적재 중'],cam:[0,22]},
     ];
     /* ---- 사양 다이얼로그 본문 ------------------------------------------------
        REV.05 부터 REV.20 까지의 개정 이력을 unshift/splice/filter/map 으로 쌓아
@@ -1438,6 +1439,9 @@
     function withBias(b,fn){const p=drawBias;drawBias=b;try{fn()}finally{drawBias=p}}
     const camera={target:{x:19,y:0,z:1.45},az:-2.18,el:.38,radius:44,auto:true,preset:0};
     const presets=[{az:-2.18,el:.38,r:44},{az:-1.56,el:.32,r:46},{az:-2.72,el:.55,r:44},{az:-2.12,el:1.06,r:49}];
+    let compactView=true;
+    let steps=REV20_STEPS,total=steps.reduce((a,v)=>a+v.duration,0);
+
     let basis=null;
     function makeBasis(){
       const ce=Math.cos(camera.el),pos=add(camera.target,V(camera.radius*ce*Math.cos(camera.az),camera.radius*ce*Math.sin(camera.az),camera.radius*Math.sin(camera.el)));
@@ -2479,6 +2483,521 @@
         for(let z=.82;z<2.72;z+=.32)line([V(x,-1.76,z),V(x,-1.76,z+.18)],C.red,1.2);
       }
       if(!sectionView&&!tandemFocus)poly([V(16.65,-1.92,.62),V(18.95,-1.92,.62),V(18.95,-1.92,3.62),V(16.65,-1.92,3.62)],C.guard,.08,C.guard,.55)
+    }
+
+    /* ── Rev.21C 압축 배치 3D ────────────────────────────────────────────
+       같은 기계를 18.76 m 안에 다시 세운다. 바뀐 것은 셋이다.
+
+         · 패널이 서고 칼날이 간다. 진공 테이블 VT-101 은 고정이고 갠트리
+           KG-101 이 2,400mm 를 55mm/s 로 지나간 뒤 2,700mm 를 700mm/s 로
+           돌아온다. 박리는 상대운동이므로 행정도 시간도 그대로다.
+         · 유리 냉각을 8.8m 컨베이어에서 5단 랙으로 세웠다 — 시간을 높이로
+           산다. 5단 가열실이 이미 쓰던 방법이다.
+         · 환경설비·후속파쇄·팔레타이징이 빠진 자리에 경계 인터페이스
+           (BJ-101/102 · 덕트 플랜지 · 배출 슈트)가 선다.
+
+       칼날이 움직이면 박리점도 움직인다. 가이드롤 GR-W1 을 갠트리에 얹고
+       만권 롤은 고정으로 두면 — 357kg 을 이동축에 싣지 않으려고 그렇게
+       두는 것인데 — 뜻밖의 결과가 따라온다. 박리점과 GR-W1 이 같은 속도로
+       가므로 GR-W1→고정 아이들러 구간이 55mm/s 로 길어지고, 벗겨지는 필름도
+       55mm/s 다. 둘이 정확히 상쇄되어 박리 중 드럼은 감지 않는다.
+       감기는 것은 복귀 3.86초 동안 2,700mm 뿐이다 — Ø600 에서 22rpm.
+       그래서 큰 댄서가 필요 없다. DN-101 은 가감속 과도만 먹는 300mm 짜리다.
+       셀/EVA 도 같은 이유로 갠트리에 실린 슈트를 타고 내려와 고정 트로프로
+       빠진다. 남는 난점은 축 선정 하나이고 그것이 OI-14 다. */
+    const CST=(()=>{let cur=CL_END;const o={};
+      for(const r of COMPACT_STATIONS){const k=r[0].slice(0,2);
+        o[k]={x0:cur,w:r[2],cx:cur+r[2]/2,x1:cur+r[2]};cur+=r[2]+CL_CLEAR}
+      return o})();
+    const CZ=1.15;                            // 공정 라인 높이 — 다섯 스테이션이 같다
+    const CDECK_Z0=.90,CDECK_DZ=.62;          // 랙 1단 바닥과 단 간격 (가열·냉각 공용)
+    const cDeckZ=k=>CDECK_Z0+CDECK_DZ*(k+.5); // 1.21 / 1.83 / 2.45 / 3.07 / 3.69
+    const CMAST_IN=CST.LD.x1-.42;             // LI-101 투입 승강 포크 — 에어록 도어와 이격
+    const CMAST_OUT=CST.DL.x0+.42;            // EX-101 방출 승강 포크
+    const CTBL_CX=CST.DL.x0+.87+CARRIER_L/2;  // VT-101 고정 진공테이블 중심 10.00
+    const CPNL_CX=CTBL_CX;
+    const CHKB0=CPNL_CX-PANEL_HL,CHKB1=CPNL_CX+PANEL_HL;   // 박리 시점·종점 8.80 → 11.20
+    const CHKB_PARK=CHKB0-LEAD_OPEN;                        // 원점 8.50
+    const CRAIL_X0=8.20,CRAIL_X1=11.50;       // 갠트리 주행레일
+    const CGY=1.42;                           // 갠트리 측면 프레임 y — 테이블(0.78) 바깥
+    const CBEAM_Z=2.55;                       // 크로스빔 상면 아래 — 웹은 그 밑으로 지난다
+    const CWEB_Z=2.20;                        // GR-W1 갠트리 가이드롤
+    const CID_X=8.05,CID_Z=2.05;              // 고정 아이들러
+    const CDN_X=7.72,CDN_Z0=2.50,CDN_Z1=2.80; // DN-101 장력 댄서 — 과도만 먹는 300mm
+    const CDRUM=V(7.98,0,3.70);               // WR-101 만권 롤
+    const CTROUGH_Y=-.95,CTROUGH_W=.44,CTROUGH_Z=.95;  // CE-201 트로프 — 갠트리 프레임(−1.29) 안쪽
+    const CBIN=V(8.60,-2.88,.40);             // BN-201 셀/EVA 배출함 — 외장(−2.39) 밖·펜스(−3.40) 안
+    const CSKIN_X0=CST.HC.x0-.20,CSKIN_X1=CST.GC.x1+.20;
+    const CSKIN_Y=2.35,CFENCE_Y=3.40;
+    const CFENCE_X0=-.90,CFENCE_X1=compactLength()+.84;
+    const CDUCT_Z=4.70,CDUCT_Y=1.88;          // 배기 헤더 — 갓돌(3.60) 위, 경계 플랜지까지
+    const CBJ_X=CST.UL.x1-1.0;                // 경계 인터페이스반
+
+    /* 갠트리 위치. 단계와 진행률에서 HKB 의 x 를 낸다 — 박리는 +x 로 가고
+       복귀는 −x 다. 값 하나로 칼날·가이드롤·슈트가 모두 따라간다. */
+    function cKnifeX(i,p){
+      if(i===3)return lerp(CHKB_PARK,CHKB0,ease(p));
+      if(i===4)return lerp(CHKB0,CHKB1,p);
+      if(i===5)return CHKB1;
+      if(i===6)return lerp(CHKB1,CHKB_PARK,ease(p));
+      if(i===10)return lerp(CHKB0,CHKB1,(p*4)%1);
+      return CHKB_PARK;
+    }
+    /* 5단 랙. 가열실과 냉각 랙이 같은 구조라 한 함수로 그린다 — 예비품이
+       한 벌이면 된다는 설계 판단이 도면에도 그대로 보여야 한다. */
+    function cRack(cx,L,opt){
+      const x0=cx-L/2,x1=cx+L/2;
+      for(const x of [x0,x1])for(const y of [-1.15,1.15]){
+        column(x,y,opt.top,{s:.17,color:C.steel,plate:.44});
+        gusset(x,y,opt.top-.04,y>0?-1:1,'y',.17,C.steel2);
+      }
+      box(V(cx,0,opt.top+.09),V(L+.10,2.56,.17),C.steel2);
+      box(V(cx,0,.50),V(L+.16,2.10,.17),C.dark,{alpha:.85});
+      box(V(cx,1.22,opt.top/2+.3),V(L+.13,.12,opt.top-.5),C.steel2,{alpha:.94});
+      box(V(cx,1.08,opt.top/2+.3),V(L,.12,opt.top-.7),opt.wall,{alpha:.76});
+      if(!sectionView)
+        poly([V(x0,-1.24,.55),V(x1,-1.24,.55),V(x1,-1.24,opt.top-.06),V(x0,-1.24,opt.top-.06)],opt.wall,.13,C.steel,.5);
+      else{
+        line([V(x0,-1.24,.55),V(x1,-1.24,.55),V(x1,-1.24,opt.top-.06)],C.yellow,2,[6,3]);
+        label3(opt.section,V(cx,-1.52,opt.top-.2),C.yellow);
+      }
+      /* 5단 데크와 층별 잠금. 데크는 2,780 — 챔버 안치수 3,080 안에 든다. */
+      for(let k=0;k<5;k++){const z=cDeckZ(k);
+        box(V(cx,0,z),V(DECK_L+.12,DECK_W+.18,.10),C.steel2);
+        for(const y of [-DECK_W/2-.07,DECK_W/2+.07])box(V(cx,y,z-.16),V(DECK_L+.16,.09,.30),C.rail);
+        for(const sx of [-1,1])box(V(cx+sx*(DECK_L/2+.09),-DECK_W/2-.02,z+.04),V(.18,.15,.12),C.yellow);  // 층별 잠금실린더×5
+        cylinder(V(cx+DECK_L/2+.28,-DECK_W/2-.24,z+.10),.06,.14,'z',C.teal,9);                            // 캐리지 존재센서×5
+        label3(`${opt.tag}${k+1}`,V(cx-DECK_L/2-.30,-DECK_W/2-.36,z+.10),C.white);
+      }
+      /* 승강 볼스크류 4본 — 데크(±0.74) 밖, 기둥(±1.15) 안. */
+      for(const sx of [-1,1])for(const y of [-.96,.96])
+        cylinder(V(cx+sx*(L/2-.30),y,opt.top/2+.35),.055,opt.top-.7,'z',C.rail,10);
+      opt.inner();
+      box(V(cx,0,opt.top-.02),V(L-.4,2.1,.1),C.cab,{alpha:.9});
+    }
+    function cChamber(){
+      const g=CST.HC;
+      cRack(g.cx,g.w,{top:4.55,wall:C.cab,tag:'C',section:'INS-101 · 130mm 이중피복 단열단면',
+        inner:()=>{
+          /* 6 뱅크 × 8 = 48 IR. 챔버가 짧아진 만큼 램프 피치를 좁혀 같은
+             면적출력을 유지한다 — 정격은 열수지가 정하지 길이가 정하지 않는다. */
+          for(let bank=0;bank<6;bank++){const z=CDECK_Z0+CDECK_DZ*bank;
+            for(const y of [-.92,.92])box(V(g.cx,y,z),V(g.w-.5,.11,.14),C.steel2);
+            for(let n=0;n<8;n++){const x=g.x0+.42+n*(g.w-.84)/7;
+              cylinder(V(x,0,z),.042,1.70,'y',C.heat,8);                                   // 2.5kW IR 램프×60
+              if(nearView())for(const y of [-.90,.90])box(V(x,y,z),V(.09,.13,.10),C.cab);  // 반사판×60
+            }}
+          for(const y of [-1.02,1.02])box(V(g.cx,y,4.20),V(g.w-.6,.10,.12),C.steel2);
+          box(V(g.cx,-1.34,3.10),V(1.10,.26,.86),C.cab);                                   // PM-101 IR 전력 계기판
+          box(V(g.cx,-1.49,3.16),V(.84,.07,.40),C.black);
+          for(const y of [-1.04,1.04])box(V(g.cx,y,.72),V(g.w-.7,.14,.18),C.steel2);
+          box(V(g.cx,-1.30,1.60),V(.30,.24,.30),C.teal);                                   // 독립 과온센서
+          box(V(g.cx+.55,-1.30,1.60),V(.26,.22,.26),C.red);                                // 연기센서·불꽃센서
+        }});
+      /* 양단 에어록 셔터. 문이 둘 다 열리지 않는다는 것이 이 기계의 첫 인터록이다. */
+      for(const [x,tag] of [[CST.HC.x0,'AL-101'],[CST.HC.x1,'AL-102']]){
+        box(V(x,0,CZ+.62),V(.09,1.75,1.30),C.guard,{alpha:.5});
+        box(V(x,0,CZ+1.34),V(.15,1.95,.16),C.yellow);
+        for(const y of [-.98,.98])box(V(x,y,CZ+.62),V(.13,.11,1.36),C.steel2);
+        box(V(x,-1.02,CZ+1.16),V(.12,.10,.14),C.teal);                                     // 에어록 도어 위치센서×8
+        label3(`${tag} · 이중셔터 에어록`,V(x,-1.42,CZ+1.72),C.teal);
+      }
+      exhaust(g.cx,.22);
+      label3('HC-101 · 5단 밀폐 IR 가열실 (3,780)',V(g.cx,-1.50,4.94),C.heat);
+      label3('6 뱅크 × 8 = 48 IR · 계면 200°C',V(g.cx,-1.50,4.62),C.yellow);
+    }
+    /* 승강 포크. 랙은 고정이고 포크가 층을 고른다 — 랙을 들면 챔버가
+       2.5m 더 높아진다. 마스트는 이웃 스테이션의 끝자리를 쓴다. */
+    function cFork(x,tag,dir,label){
+      for(const y of [-1.12,1.12]){
+        column(x,y,4.35,{s:.15,color:C.steel,plate:.40});
+        gusset(x,y,4.32,y>0?-1:1,'y',.15,C.steel2);
+      }
+      box(V(x,0,4.42),V(.26,2.34,.18),C.steel2);
+      box(V(x,0,.62),V(.30,2.36,.18),C.steel2);
+      for(const y of [-.86,.86])cylinder(V(x,y,2.45),.075,3.5,'z',C.rail,10);   // 서보모터·감속기
+      box(V(x+dir*.13,0,CZ+.42),V(.26,1.80,.55),C.steel2);                      // 포크 캐리지
+      box(V(x+dir*.28,0,CZ+.05),V(.55,1.62,.09),C.rail);                        // TS-101 2단 포크 (접힘)
+      for(const y of [-.70,.70])box(V(x+dir*.28,y,CZ+.14),V(.62,.08,.14),C.rail);
+      box(V(x-dir*.20,1.05,CZ+.86),V(.32,.30,.40),C.cab);
+      label3(label,V(x,-1.34,4.10),C.teal);
+    }
+    function cInfeed(){
+      const g=CST.LD;
+      conveyor(g.cx-.22,2.42,CZ,1.62);
+      box(V(g.cx-.22,0,CZ-.42),V(1.10,1.30,.22),C.steel2);                      // WI-101 계량 프레임
+      for(const sx of [-1,1])for(const y of [-.52,.52])box(V(g.cx-.22+sx*.48,y,CZ-.30),V(.16,.16,.14),C.teal);  // 투입 계량 로드셀×4
+      for(const y of [-.74,.74])box(V(g.x1-.42,y,CZ+.14),V(.10,.12,.22),C.yellow);        // 패널 스토퍼
+      for(const y of [-.80,.80])box(V(g.cx,y,CZ+.10),V(1.9,.09,.16),C.steel2);            // 폭조절 가이드
+      column(g.x0+.42,-1.10,2.55,{s:.12,color:C.steel2,plate:.30});
+      box(V(g.x0+.42,-1.10,2.62),V(.30,.28,.22),C.dark);                                  // 2D 비전카메라
+      box(V(g.x0+.42,-.82,2.44),V(.18,.16,.14),C.teal);                                   // 레이저 높이센서
+      box(V(g.x0+.90,-1.10,2.28),V(.24,.20,.18),C.cab);                                   // 바코드·라벨 리더
+      cFork(CMAST_IN,'LI','+1'*0+1,'LI-101 · 층선택 승강 포크');
+      /* 경계 인계 — 발주자 지게차·스태커가 여기까지 가져온다. */
+      plateQuad(-.75,.15,-.72,.72,.02,C.yellow,.55);
+      box(V(-.30,0,.11),V(1.30,1.34,.14),C.sheet);                                        // 인계 팔레트
+      for(let k=0;k<3;k++)box(V(-.30,0,.24+k*.055),V(1.22,1.26,.05),C.glass,{alpha:.55});
+      label3('발주자 인계 · 투입 픽업 스테이션',V(-.30,-1.05,1.06),C.brand);
+      label3('LD-101 · 투입 셔틀 (3,000)',V(g.cx,-1.32,2.20),C.teal);
+    }
+    function cTandem(){
+      const g=CST.DL;
+      cFork(CMAST_OUT,'EX',-1,'EX-101 · 200°C 방출 포크');
+      /* VT-101 고정 진공테이블. 패널이 여기서 움직이지 않는다는 것이
+         이 배치의 전부다 — 11.2m 이송축이 3.8m 셀이 된 이유다. */
+      box(V(CTBL_CX,0,CZ-.09),V(CARRIER_L,CARRIER_W,.18),C.steel2);
+      box(V(CTBL_CX,0,CZ+.01),V(CARRIER_L-.12,CARRIER_W-.10,.03),C.dark);
+      for(const x of [CTBL_CX-1.25,CTBL_CX+1.25])for(const y of [-.62,.62])
+        column(x,y,CZ-.20,{s:.13,color:C.steel2,plate:.32});
+      for(let c=0;c<6;c++)for(let r=0;r<3;r++){                                            // 흡착패드×18 · 6열이 6존
+        const x=CTBL_CX-1.0+c*.40,y=-.40+r*.40;
+        cylinder(V(x,y,CZ+.04),.115,.05,'z',C.belt,10);
+      }
+      for(let c=0;c<6;c++)box(V(CTBL_CX-1.0+c*.40,-.86,CZ-.16),V(.14,.16,.14),C.teal);     // 진공압센서×6
+      box(V(CTBL_CX,-.98,CZ-.30),V(CARRIER_L-.3,.16,.20),C.steel2);                        // 6존 진공매니폴드
+      for(const y of [-.70,.70])box(V(CTBL_CX-1.34,y,CZ+.06),V(.10,.12,.18),C.yellow);     // 패널 착좌·스퀘어 센서×4
+      for(const y of [-.70,.70])box(V(CTBL_CX+1.34,y,CZ+.06),V(.10,.12,.18),C.yellow);
+      /* KG-101 주행레일. 위에 실린 것이 칼날·가이드롤·슈트 전부다. */
+      for(const y of [-CGY,CGY]){
+        box(V((CRAIL_X0+CRAIL_X1)/2,y,.66),V(CRAIL_X1-CRAIL_X0,.20,.16),C.steel2);
+        box(V((CRAIL_X0+CRAIL_X1)/2,y,.76),V(CRAIL_X1-CRAIL_X0,.12,.06),C.rail);
+        for(let x=CRAIL_X0+.25;x<CRAIL_X1;x+=.82)column(x,y,.58,{s:.12,color:C.steel2,plate:.30});
+        for(let x=CRAIL_X0+.35;x<CRAIL_X1-.2;x+=.41)box(V(x,y,.60),V(.12,.14,.05),C.steel);  // 나이프 X축 원점·과주행센서×2
+      }
+      box(V(CRAIL_X0-.12,-CGY,.90),V(.20,.24,.34),C.yellow);
+      box(V(CRAIL_X1+.12,-CGY,.90),V(.20,.24,.34),C.yellow);
+      box(V(CRAIL_X0-.12,CGY,.86),V(.18,.22,.26),C.dark);                                   // 나이프 X축 절대치 엔코더
+      /* 고정 권취계통. 만권 롤은 이동축에 얹지 않는다. */
+      cylinder(V(CID_X,0,CID_Z),.08,ROLL_FACE,'y',C.rail,12);
+      for(const y of [-ROLL_FACE/2-.10,ROLL_FACE/2+.10])pillowBlock(CID_X,y,CID_Z,'y',.10,C.steel2);
+      for(const y of [-1.30,1.30])column(7.70,y,CDRUM.z+.36,{s:.13,color:C.steel2,plate:.32});
+      box(V(7.70,0,CDRUM.z+.42),V(.22,2.70,.14),C.steel2);
+      cylinder(V(CDN_X,0,(CDN_Z0+CDN_Z1)/2),.07,ROLL_FACE,'y',C.rail,10);                    // DN-101 장력 댄서 롤
+      box(V(CDN_X-.16,0,(CDN_Z0+CDN_Z1)/2),V(.10,.30,CDN_Z1-CDN_Z0+.24),C.steel2);
+      cylinder(V(CDRUM.x,CDRUM.y,CDRUM.z),WR_CORE_R,ROLL_FACE,'y',C.rail,14);
+      for(const y of [-ROLL_FACE/2-.12,ROLL_FACE/2+.12])pillowBlock(CDRUM.x,y,CDRUM.z,'y',.12,C.steel2);
+      for(const y of [-.50,-.17,.17,.50])box(V(CDRUM.x-.15,y,CDRUM.z),V(.12,.20,.09),C.yellow);  // 분할클램프×4
+      box(V(CDRUM.x+.34,-.72,CDRUM.z),V(.22,.24,.26),C.dark);                                // 토크서보·직경센서
+      box(V(CDRUM.x,1.02,CDRUM.z-.20),V(.24,.22,.22),C.teal);                                // 웹 파단 검출센서
+      box(V(CID_X-.30,-1.26,CDN_Z0),V(.22,.20,.24),C.teal);                                  // 장력 로드셀
+      /* CE-201 셀/EVA 트로프 — 레일 안쪽을 지나 경계 배출함으로 내려간다. */
+      box(V((CRAIL_X0+CRAIL_X1)/2,CTROUGH_Y,CTROUGH_Z-.10),V(CRAIL_X1-CRAIL_X0+.2,CTROUGH_W,.20),C.steel2);
+      box(V((CRAIL_X0+CRAIL_X1)/2,CTROUGH_Y,CTROUGH_Z),V(CRAIL_X1-CRAIL_X0+.1,CTROUGH_W-.08,.05),C.belt);
+      for(const x of [8.6,10.0,11.3])box(V(x,CTROUGH_Y-.30,CTROUGH_Z-.06),V(.14,.12,.14),C.teal);  // 셀 존재센서×4
+      poly([V(8.30,CTROUGH_Y-.18,CTROUGH_Z-.05),V(8.90,CTROUGH_Y-.18,CTROUGH_Z-.05),
+            V(8.90,CBIN.y+.28,CBIN.z+.52),V(8.30,CBIN.y+.28,CBIN.z+.52)],C.sheet,.95,C.steel2,.9);
+      box(V(CBIN.x,CBIN.y,CBIN.z),V(1.00,.80,.80),C.cab);
+      box(V(CBIN.x,CBIN.y,CBIN.z+.44),V(1.06,.86,.06),C.steel2);
+      box(V(CBIN.x,CBIN.y-.44,CBIN.z+.30),V(.20,.10,.16),C.teal);                            // 셀/EVA 배출슈트 레벨센서×2
+      box(V(CBIN.x,CBIN.y-.44,CBIN.z+.02),V(.20,.10,.16),C.teal);
+      label3('BN-201 · 셀/EVA 배출함 (경계 인계)',V(CBIN.x,CBIN.y-.70,1.10),C.cell2);
+      label3('CE-201 · 셀/EVA 인출 트로프',V(10.0,CTROUGH_Y-.60,CTROUGH_Z+.42),C.cell2);
+      label3('VT-101 · 6존 고정 진공테이블 (패널 정지)',V(CTBL_CX,-1.62,CZ+.44),C.yellow);
+      label3('WR-101 · 권취롤 (고정 · 이동축에 얹지 않는다)',V(CDRUM.x,-1.72,CDRUM.z+.50),C.sheet);
+      label3(`DN-101 · 장력 댄서 ${Math.round((CDN_Z1-CDN_Z0)*1000)}mm (박리 중 권취 0 — 웹이 스스로 상쇄)`,V(CID_X,-1.86,CDN_Z0-.34),C.brand);
+      label3('DL-101 · 탠덤 분리 셀 (3,800)',V(g.cx,-1.95,3.30),C.teal);
+    }
+    function cGlassRack(){
+      const g=CST.GC;
+      cRack(g.cx,g.w,{top:4.35,wall:C.glass,tag:'G',section:'GC-101 · 강제공랭 단면',
+        inner:()=>{
+          for(let k=0;k<4;k++){const x=g.x0+.55+k*(g.w-1.1)/3;
+            cylinder(V(x,-1.06,2.30),.26,.22,'y',C.cab,12);                                  // 냉각 팬
+            cylinder(V(x,-1.06,2.30),.09,.30,'y',C.rail,9);
+            box(V(x,-1.18,2.30),V(.52,.06,.52),C.guard,{alpha:.55});
+          }
+          box(V(g.cx,1.02,2.30),V(g.w-.7,.10,3.0),C.guard,{alpha:.42});                       // 필터 급기면
+          for(let k=0;k<5;k++)box(V(g.cx+DECK_L/2+.18,1.04,cDeckZ(k)),V(.14,.12,.14),C.teal); // 표면 IR 센서×5
+        }});
+      cFork(CST.DL.x1+.08,'GL',1,'GL-101 · 유리 적입 포크');
+      cFork(CST.GC.x1+.34,'GU',1,'GU-101 · 유리 인출 포크');
+      label3(`GC-101 · 유리 5단 냉각 랙 (3,380 · ${GCOOL_DECKS}단)`,V(g.cx,-1.50,4.74),C.glass);
+      label3(`강제공랭 ${glassCoolSec().toFixed(0)}s · 180 → 60°C`,V(g.cx,-1.50,4.44),C.brand);
+    }
+    function cOutfeed(){
+      const g=CST.UL;
+      conveyor(g.cx+.10,2.50,CZ,1.62);
+      box(V(g.cx-.30,0,CZ-.42),V(1.05,1.30,.22),C.steel2);                                    // WO-301 유리 계량
+      for(const sx of [-1,1])for(const y of [-.50,.50])box(V(g.cx-.30+sx*.45,y,CZ-.30),V(.15,.15,.13),C.teal);
+      /* QI-301 검사 아치 — 랙에서 나온 유리가 반드시 지난다. */
+      for(const y of [-1.02,1.02]){column(g.x0+.36,y,2.86,{s:.13,color:C.steel2,plate:.32});
+        gusset(g.x0+.36,y,2.82,y>0?-1:1,'y',.13,C.steel2)}
+      box(V(g.x0+.36,0,2.92),V(.26,2.30,.16),C.steel2);
+      box(V(g.x0+.36,0,2.42),V(.34,1.90,.26),C.dark);                                         // QI 상부 RGB 카메라
+      box(V(g.x0+.36,-.62,2.16),V(.22,.20,.18),C.cab);                                        // 열화상카메라
+      box(V(g.x0+.36,.62,2.16),V(.22,.20,.18),C.cab);                                         // 라인레이저
+      box(V(g.x0+.36,0,CZ-.34),V(.30,1.70,.14),C.dark);                                       // QI 하부 RGB 카메라
+      box(V(g.x0+.36,0,CZ-.20),V(.26,1.60,.05),C.white,{alpha:.65});                          // 투과조명
+      box(V(g.x0+.78,-1.02,CZ+.30),V(.16,.14,.16),C.teal);                                    // 검사 엔코더
+      /* RJ-301 리젝트 — 불합격은 라인 밖으로 뺀다. */
+      box(V(g.cx+.55,1.55,CZ-.05),V(1.30,.90,.14),C.rail);                                    // RJ 횡셔틀
+      for(const y of [1.20,1.90])box(V(g.cx+.55,y,CZ-.30),V(1.20,.10,.36),C.steel2);
+      box(V(g.cx+.55,2.30,.55),V(1.10,.80,1.00),C.cab);                                       // 리젝트 받침대
+      label3('RJ-301 · 리젝트 분기',V(g.cx+.55,2.62,1.70),C.red);
+      /* 경계 인계 — 유리는 발주자 스태커·랙으로 나간다. */
+      plateQuad(compactLength()-.15,compactLength()+.80,-.72,.72,.02,C.yellow,.55);
+      box(V(compactLength()+.34,0,.11),V(1.30,1.34,.14),C.sheet);
+      for(let k=0;k<4;k++)box(V(compactLength()+.34,0,.24+k*.055),V(1.22,1.26,.05),C.glass,{alpha:.55});
+      label3('발주자 인계 · 유리 반출 픽업 스테이션 (GLASS_TAKEAWAY_READY)',V(compactLength()+.34,-1.15,1.10),C.brand);
+      label3('UL-101 · 반출 셔틀 (3,000) · QI-301 검사',V(g.cx,-1.32,3.24),C.teal);
+    }
+    /* 경계. 설비를 떼는 것이 아무것도 주지 않는 것이 되면 현장에서 배선이
+       붕 뜬다 — 여기 서 있는 것이 우리가 경계에서 납품하는 전부다. */
+    function cBoundary(){
+      plinth(CBJ_X,-2.62,1.50,1.00,.14);
+      for(const [dx,tag,color] of [[-.38,'BJ-101',C.cab],[.38,'BJ-102',C.ok]]){
+        box(V(CBJ_X+dx,-2.62,1.14),V(.62,.52,1.86),color);                 // 경계 인터페이스반 BJ-101 / 경계 안전회로 인터페이스반 BJ-102
+        box(V(CBJ_X+dx,-2.90,1.52),V(.44,.05,.34),C.black);
+        box(V(CBJ_X+dx,-2.90,2.02),V(.10,.06,.10),tag==='BJ-102'?C.ok:C.brand);
+        label3(tag,V(CBJ_X+dx,-3.06,2.24),tag==='BJ-102'?C.ok:C.brand);
+      }
+      /* 배기 헤더 — 가열실·탠덤에서 모아 경계 플랜지까지만 간다. */
+      for(const x of [CST.HC.cx,CTBL_CX]){
+        cylinder(V(x,CDUCT_Y,(CDUCT_Z+3.2)/2),.20,CDUCT_Z-3.2,'z',C.steel2,12);
+        pipeHanger(x,CDUCT_Y,CDUCT_Z-.34,CDUCT_Z+.30,.24);
+      }
+      cylinder(V((CST.HC.cx+CFENCE_X1-.6)/2,CDUCT_Y,CDUCT_Z),.23,CFENCE_X1-.6-CST.HC.cx,'x',C.steel2,12);
+      cylinder(V(CFENCE_X1-.52,CDUCT_Y,CDUCT_Z),.30,.10,'x',C.yellow,12);                 // 경계 덕트 플랜지
+      box(V(CFENCE_X1-.90,CDUCT_Y-.34,CDUCT_Z),V(.20,.18,.22),C.teal);                    // 경계 덕트 차압센서
+      box(V(CST.DL.cx,CDUCT_Y-.34,CDUCT_Z-.42),V(.22,.18,.20),C.dark);                    // 풍량센서
+      label3('덕트 인터페이스 → 발주자 배기 후처리 (VOC_ABATE_READY)',V(CFENCE_X1-1.5,CDUCT_Y+.55,CDUCT_Z+.46),C.teal);
+      label3('경계 인터페이스반 · 안전회로는 경계에서 끊기지 않는다',V(CBJ_X,-3.30,2.62),C.brand);
+    }
+    function cUtilities(){
+      plinth(CST.HC.x0+.6,-2.88,1.60,.86,.14);
+      box(V(CST.HC.x0+.6,-2.88,1.72),V(1.55,.80,3.10),C.cab);                             // PLC-101반
+      box(V(CST.HC.x0+.6,-3.30,2.48),V(.78,.05,.56),C.black);
+      withBias(.22,()=>liveryStripe(V(CST.HC.x0-.18,-3.30,3.02),AISLE_U,AISLE_V,1.55,.05,C.brand,.95));
+      dataPlate(V(CST.HC.x0-.02,-3.30,1.28),AISLE_U,AISLE_V,.84,C.accent);
+      hazardDecal(V(CST.HC.x0+1.02,-3.30,2.02),AISLE_U,AISLE_V,.32,'shock');
+      label3('PLC-101 + HMI · 안전 PLC',V(CST.HC.x0+.6,-3.52,3.44),C.yellow);
+      plinth(CST.GC.x0+.5,-2.90,1.50,.86,.14);
+      box(V(CST.GC.x0+.5,-2.90,1.28),V(1.45,.80,2.20),C.cab);                              // 진공펌프 A/B
+      cylinder(V(CST.GC.x0+.5,-2.90,2.52),.30,.44,'z',C.steel2,12);
+      box(V(CST.GC.x0+1.32,-2.90,.92),V(.26,.54,1.30),C.steel2);                           // 진공어큐뮬레이터
+      label3('VU-101 · 진공·계장공기 스키드',V(CST.GC.x0+.5,-3.44,2.72),C.teal);
+      const bsx=CST.HC.cx+1.4;
+      plinth(bsx,-2.92,1.70,.90,.14);
+      for(const x of [bsx-.60,bsx+.60])for(const y of [-3.28,-2.56])
+        column(x,y,1.62,{s:.11,color:C.steel2,plate:.26});
+      for(const x of [bsx-.60,bsx+.60])box(V(x,-2.92,1.68),V(.11,.84,.12),C.steel2);
+      cylinder(V(bsx,-2.92,.92),WR_FULL_R,ROLL_FACE*.55,'y',C.web,20);                     // BS-301 새들 존재센서×2
+      cylinder(V(bsx,-2.92,.92),.09,ROLL_FACE*.55+.28,'y',C.rail,10);
+      label3(`BS-301 · 백시트 롤 보관대 (${ROLL_FULL_PANELS}장/롤)`,V(bsx,-3.42,1.46),C.sheet);
+    }
+    function cEnclosure(){
+      /* 외장 기준선은 Rev.20 과 같다 — 걸레받이·유리띠·리빌·갓돌. 길이만
+         짧아졌지 기계가 다른 회사 것처럼 보이면 안 된다. */
+      for(const side of [-1,1]){
+        const y=side*CSKIN_Y,cx=(CSKIN_X0+CSKIN_X1)/2,L=CSKIN_X1-CSKIN_X0;
+        if(sectionView&&side<0){
+          line([V(CSKIN_X0,y,.02),V(CSKIN_X1,y,.02),V(CSKIN_X1,y,SKIN_TOP),V(CSKIN_X0,y,SKIN_TOP),V(CSKIN_X0,y,.02)],C.yellow,1.4,[6,4],.85);
+          label3('외장 단면 (컷어웨이)',V(cx,y-.22,SKIN_TOP+.2),C.yellow);
+          continue;
+        }
+        box(V(cx,y-side*PLINTH_BACK,PLINTH_TOP/2),V(L,SKIN_T,PLINTH_TOP),C.reveal);
+        box(V(cx,y,(PLINTH_TOP+BAND_Z0)/2),V(L,SKIN_T,BAND_Z0-PLINTH_TOP),C.skin);
+        box(V(cx,y,(BAND_Z0+BAND_Z1)/2),V(L,SKIN_T*.6,BAND_Z1-BAND_Z0),C.glass,{alpha:.35});
+        box(V(cx,y,(BAND_Z1+SEAM_Z0)/2),V(L,SKIN_T,SEAM_Z0-BAND_Z1),C.skin);
+        box(V(cx,y-side*.03,(SEAM_Z0+SEAM_Z1)/2),V(L,SKIN_T*.5,SEAM_Z1-SEAM_Z0),C.reveal);
+        box(V(cx,y,(SEAM_Z1+SKIN_TOP)/2),V(L,SKIN_T,SKIN_TOP-SEAM_Z1),C.skin);
+        box(V(cx,y,SKIN_TOP+COPE_H/2),V(L+.06,SKIN_T+.05,COPE_H),C.steel2);
+        for(let x=CSKIN_X0+PANEL_MOD;x<CSKIN_X1-.05;x+=PANEL_MOD)
+          box(V(x,y,(PLINTH_TOP+SKIN_TOP)/2),V(REVEAL,SKIN_T*.7,SKIN_TOP-PLINTH_TOP),C.reveal);
+      }
+      if(!sectionView)withBias(.22,()=>{
+        liveryStripe(V(CSKIN_X0+.4,-CSKIN_Y-.036,SEAM_Z1+.22),AISLE_U,AISLE_V,CSKIN_X1-CSKIN_X0-.8,.05,C.brand,.96);
+        brandLockup(V(CSKIN_X0+1.0,-CSKIN_Y-.042,2.86),AISLE_U,AISLE_V,.34,null,'DYNAMIC INDUSTRY');
+        if(midView())decalText('DG-HK60C',V(CSKIN_X1-2.5,-CSKIN_Y-.042,2.90),AISLE_U,AISLE_V,.17,C.white,.24);
+      });
+      box(V(CBIN.x,-CSKIN_Y,.95),V(1.20,SKIN_T+.03,1.10),C.reveal);           // 셀/EVA 배출 포트
+      box(V(CBIN.x,-CSKIN_Y-.02,1.52),V(1.28,.05,.10),C.yellow);
+      transportSplit(CST.HC.x1+.15,'TP-1');transportSplit(CST.DL.x1+.15,'TP-2');
+      fenceSegment(CFENCE_X0,-CFENCE_Y,CFENCE_X1,-CFENCE_Y);
+      fenceSegment(CFENCE_X0,CFENCE_Y,CFENCE_X1,CFENCE_Y);
+      for(const x of [CFENCE_X0,CFENCE_X1]){
+        fenceSegment(x,-CFENCE_Y,x,-1.05);fenceSegment(x,1.05,x,CFENCE_Y);
+        box(V(x,-.98,1.08),V(.24,.24,2.10),C.red);
+      }
+      lightCurtain(CFENCE_X0+.14,-.95,.95,'LC-001');
+      lightCurtain(CFENCE_X1-.14,-.95,.95,'LC-002');
+      signalTower(CST.DL.x0-.3,-2.98,2.50,'ST-101');
+      signalTower(CST.GC.x1+.3,2.98,2.50,'ST-102');
+      for(const [x,y] of [[CST.HC.cx,-CSKIN_Y],[CTBL_CX,-CSKIN_Y],[CST.GC.cx,-CSKIN_Y]])
+        hazardDecal(V(x,y-.042,1.30),AISLE_U,AISLE_V,.30,'auto');
+      hazardDecal(V(CTBL_CX+.9,-CSKIN_Y-.042,1.30),AISLE_U,AISLE_V,.30,'shock');
+      label3(`DG-HK60C · 전장 ${Math.round(compactLength()*1000).toLocaleString()} mm`,V(compactLength()/2,-CFENCE_Y-.5,4.30),C.brand);
+    }
+    /* ── Rev.21C 압축 배치 단계 ──────────────────────────────────────────
+       공정은 같지만 이야기가 달라진다. Rev.20 은 패널이 53m 를 지나가는
+       이야기였고, 여기서는 패널이 한 자리에 서고 칼날이 오가는 이야기다.
+       후속파쇄·팔레타이징 단계는 경계 인계 한 단계로 접힌다. */
+    const C21_STEPS=[
+      {id:'C0',name:'투입·계량·정렬',duration:3200,desc:'발주자 픽업 스테이션에서 받은 패널을 유리면 아래·백시트 위로 놓고 WI-101 계량과 폭 정렬을 마칩니다.',vac:'대기 · 0 kPa',temp:'식별 · 상온',out:'ORIENT_OK',flow:['권취 대기','분리 대기 → 경계 배출함','분리 대기 → 냉각 랙'],cam:[0,CST.LD.cx]},
+      {id:'C1',name:'5단 밀폐가열 5/5',duration:15000,desc:'LI-101 이 층을 골라 밀어 넣고 5/5 잠금·밀폐를 확인한 뒤 EVA/유리 계면 200°C 까지 소킹합니다. 체류 225.9초를 5단이 나눠 갖습니다.',vac:'VT-101 대기',temp:'C1~C5 · 계면 200°C',out:'SEALED_FULL_LOAD_ACK',flow:['권취 대기','가열 중','가열 중'],cam:[1,CST.HC.cx]},
+      {id:'C2',name:'200°C 방출 · 테이블 착좌',duration:4200,desc:'EX-101 이 200°C 패널을 꺼내 VT-101 6존 진공테이블에 앉힙니다. 이 순간부터 박리가 끝날 때까지 패널은 움직이지 않습니다.',vac:'VT-101 · −65 kPa',temp:'HKB 230°C · HKS 250~270°C',out:'TABLE_VAC_OK',flow:['장력 형성 대기','HKS 분리 대기','진공테이블 지지'],cam:[2,CTBL_CX]},
+      {id:'C3',name:'나이프 원점 → 선단 300mm',duration:3000,desc:'KG-101 이 원점에서 나와 HKB 가 백시트 선단 300mm 를 열고 WR-101 장력을 잡습니다. HKS 는 300mm 뒤에서 따라옵니다.',vac:'VT-101 · −65 kPa',temp:'HKB 230°C',out:'LEAD_300_ACK',flow:['선단 개방 중','HKS 진입 대기','진공테이블 지지'],cam:[2,CTBL_CX-.8]},
+      {id:'C4',name:'55mm/s 나이프 통과박리',duration:7600,desc:'패널은 서 있고 KG-101 이 55mm/s 로 2,400mm 를 지나갑니다. 상대운동이 같으므로 행정도 시간 43.6초도 이동 캐리어와 같습니다.',vac:'VT-101 6존 · −65 kPa',temp:'HKB 230°C · HKS 250~270°C',out:'KNIFE_PEEL_COMPLETE',flow:['GR-W1 이 같이 간다 — 권취 0','유리에서 분리 중','진공테이블 지지'],cam:[2,CTBL_CX]},
+      {id:'C5',name:'3계통 분기',duration:4200,desc:'백시트는 GR-W1 을 지나 WR-101 로, 셀/EVA 는 갠트리 슈트에서 CE-201 트로프로, 유리는 테이블에 남습니다. 세 계통이 서로 다른 방향으로 갈라집니다.',vac:'VT-101 유지',temp:'유리 180°C',out:'STREAMS_SPLIT',flow:['웹 길이 상쇄 — 드럼 정지','CE-201 트로프 인출','테이블에 유리만 남음'],cam:[1,CTBL_CX+.6]},
+      {id:'C6',name:'700mm/s 복귀 · 패널 교환',duration:3000,desc:'나이프가 2,700mm 를 700mm/s 로 3.86초에 복귀합니다. 그 사이 유리가 나가고 다음 패널이 들어옵니다 — 두 동작이 같은 창(4.5초) 안에 있어 사이클이 늘지 않습니다.',vac:'VT-101 해제',temp:'카세트 온도 유지',out:'KNIFE_X_HOME',flow:['복귀 중 2,700mm 권취','경계 배출함으로','GC-101 랙으로'],cam:[2,CTBL_CX]},
+      {id:'C7',name:'유리 5단 냉각 랙',duration:5200,desc:'GL-101 이 유리를 GC-101 랙에 넣고 강제공랭으로 180 → 60°C 로 내립니다. 필요한 179초를 길이가 아니라 단수로 삽니다.',vac:'—',temp:'유리 180 → 60°C',out:'GLASS_COOL_OK',flow:['BS-301 보관','경계 배출함 대기','G1~G5 강제공랭'],cam:[1,CST.GC.cx]},
+      {id:'C8',name:'QI 검사 · 반출',duration:4000,desc:'QI-301 이 잔류 EVA·균열·표면온도를 보고 합격품만 UL-101 로 내보냅니다. 불합격은 RJ-301 로 분기합니다.',vac:'—',temp:'유리 60°C 이하',out:'GLASS_DISCHARGE_PERMIT',flow:['BS-301 보관','경계 배출함 대기','QI-301 검사·RJ 분기'],cam:[0,CST.UL.cx]},
+      {id:'C9',name:'경계 인계',duration:4000,desc:'유리·셀/EVA·배기 세 계통을 공급범위 경계까지 내보냅니다. 설비는 발주자 것이지만 인터록은 경계 너머까지 성립합니다.',vac:'—',temp:'덕트 차압 확인',out:'BOUNDARY_READY',flow:['BS-301 반출','BN-201 경계 인계','픽업 스테이션 인계'],cam:[0,CBJ_X]},
+      {id:'C10',name:'60장 연속 시험',duration:8000,desc:'53.6초 사이클의 정상상태 60장을 8초로 압축합니다. 나이프가 55mm/s 로 가고 700mm/s 로 돌아오기를 60번 반복합니다.',vac:'VT-101 · −65 kPa',temp:'실공정 53분35초 → 영상 8초',out:'SIXTY_TEST_COMPLETE',flow:['롤에 60장 권취','CE-201 연속 인출','GC-101 랙 순환'],cam:[2,CTBL_CX]},
+    ];
+    /* 압축 배치는 18.76m 라 Rev.20 과 같은 카메라 거리로는 화면에 점만 남는다. */
+    const cpresets=[{az:-2.18,el:.36,r:23},{az:-1.56,el:.30,r:25},{az:-2.66,el:.50,r:20},{az:-2.12,el:1.00,r:27}];
+    const viewPresets=()=>compactView?cpresets:presets;
+    function compactMachine(){
+      const o=explodeOffsets();
+      withPartOffset(o.input,cInfeed);
+      withPartOffset(o.heat,cChamber);
+      withPartOffset(o.tandem,cTandem);
+      withPartOffset(o.glass,cGlassRack);
+      withPartOffset(o.glass,cOutfeed);
+      withPartOffset(o.exhaust,cBoundary);
+      withPartOffset(o.utility,cUtilities);
+      cEnclosure();
+      explodeGuide(V(CST.LD.cx,0,CZ),o.input,C.teal,'투입 LD-101');
+      explodeGuide(V(CST.HC.cx,0,2.6),o.heat,C.heat,'가열 HC-101');
+      explodeGuide(V(CTBL_CX,0,2.0),o.tandem,C.yellow,'탠덤 DL-101');
+      explodeGuide(V(CST.GC.cx,0,2.4),o.glass,C.glass,'냉각·반출');
+      explodeGuide(V(CBJ_X,-2.62,1.8),o.exhaust,C.brand,'경계');
+    }
+
+    /* ── Rev.21C 동작 ────────────────────────────────────────────────────
+       Rev.20 은 패널이 움직여 상태가 패널 x 하나로 표현됐다. 여기서는 반대라
+       상태가 나이프 x 하나로 표현된다. 패널은 테이블에 앉은 뒤 박리가 끝날
+       때까지 움직이지 않는다. */
+    function cWebQuad(xa,za,xb,zb,alpha=.98){
+      poly([V(xa,-WEB_HALF,za),V(xb,-WEB_HALF,zb),V(xb,WEB_HALF,zb),V(xa,WEB_HALF,za)],
+           C.sheet,alpha,rgba(C.black,.3),.6);
+    }
+    function cWeb(kx,zS,panels){
+      const r=rollRadius(panels);
+      cWebQuad(kx,zS,kx,CWEB_Z);                    // 박리점 → GR-W1 (수직 · 박리각 ~90°)
+      cWebQuad(CID_X,CID_Z,kx,CWEB_Z);              // GR-W1 → 고정 아이들러 (여기가 늘어난다)
+      cWebQuad(CDN_X,CDN_Z0,CID_X,CID_Z);           // 아이들러 → DN-101
+      cWebQuad(CDN_X,CDN_Z0,CDRUM.x,CDRUM.z-r);     // DN-101 → WR-101
+      /* 웹이 어느 쪽으로 달리는지. 눈금이 흐르면 감기고 있다는 것이 읽힌다. */
+      const TICK=.4,ph=((panels*PANEL_L)/TICK)%1,len=Math.hypot(kx-CID_X,CWEB_Z-CID_Z);
+      for(let d=(1-ph)*TICK;d<len;d+=TICK){const t=d/len;
+        const x=lerp(CID_X,kx,t),z=lerp(CID_Z,CWEB_Z,t)+.012;
+        line([V(x,-WEB_HALF+.04,z),V(x,WEB_HALF-.04,z)],C.cell2,1.1,null,.7)}
+    }
+    function cRoll(panels,theta){
+      const r=rollRadius(panels);
+      cylinder(V(CDRUM.x,0,CDRUM.z),r,ROLL_FACE,'y',C.web,22);
+      cylinder(V(CDRUM.x,0,CDRUM.z),WR_CORE_R*.94,ROLL_FACE+.06,'y',shade(C.web,.9),18);
+      for(const yy of [-ROLL_FACE/2-.02,ROLL_FACE/2+.02])
+        line([V(CDRUM.x+WR_CORE_R*Math.cos(theta),yy,CDRUM.z+WR_CORE_R*Math.sin(theta)),
+              V(CDRUM.x+r*.98*Math.cos(theta),yy,CDRUM.z+r*.98*Math.sin(theta))],C.yellow,1.6,null,.9);
+      label3(`WR-101 · Ø${Math.round(r*2000)} · ${panels}장/${ROLL_FULL_PANELS}장`,
+             V(CDRUM.x,-1.10,CDRUM.z+r+.24),C.sheet);
+    }
+    /* 유리 위에 무엇이 얼마나 남아 있는가. 스윕은 +x 이고 HKB 가 앞선다 —
+       칼날 뒤(−x)는 벗겨졌고 앞(+x)은 아직 붙어 있다. */
+    function cPanelLayers(cx,kx,peeling,panels){
+      const zG=CZ+.05,zC=zG+.062,zS=zC+.042,rear=cx-PANEL_HL,front=cx+PANEL_HL;
+      flatLayer(cx,PANEL_L,zG,C.glass,.78);
+      if(!peeling){
+        flatLayer(cx,PANEL_L,zC,C.cell,.98);panelCellPattern(cx,zC+.026,PANEL_L,.72);
+        flatLayer(cx,PANEL_L,zS,C.sheet,.98);return;
+      }
+      const bs=clamp(kx,rear,front),cell=clamp(kx-TANDEM_GAP,rear,front);
+      flatLayer((cell+front)/2,front-cell,zC,C.cell,.98);
+      if(front-cell>.02)panelCellPattern((cell+front)/2,zC+.026,front-cell,.72);
+      flatLayer((bs+front)/2,front-bs,zS,C.sheet,.98);
+      /* 벗겨진 셀/EVA 는 HKS 뒤에서 30° 로 들려 갠트리 슈트로 간다. */
+      const lifted=Math.min(cell-rear,.55);
+      if(lifted>.02){
+        const a=Math.PI/6,tx=cell-lifted*Math.cos(a),tz=zC+lifted*Math.sin(a);
+        flexSurface(tx,cell,tz,zC,C.cell,.98);
+        for(let t=.2;t<1;t+=.2){const x=lerp(cell,tx,t),z=lerp(zC,tz,t)+.02;
+          line([V(x,-PANEL_HW+.03,z),V(x,PANEL_HW-.03,z)],C.cell2,.55,null,.7)}
+      }
+      if(bs>rear+.01)cWeb(kx,zS,panels);
+    }
+    /* 갠트리에 실린 것 — 칼날 2조·가이드롤·셀/EVA 슈트. 하나의 x 로 움직인다. */
+    function cGantry(kx,hot,engage){
+      const zk=CZ+.10+(1-engage)*.30;
+      for(const y of [-CGY,CGY]){
+        box(V(kx,y,1.62),V(.30,.26,1.78),C.steel2);                      // 측면 프레임
+        box(V(kx,y,.80),V(.42,.32,.16),C.rail);                          // 주행 대차
+        gusset(kx,y,2.48,y>0?-1:1,'y',.16,C.steel2);
+      }
+      box(V(kx,0,CBEAM_Z-.05),V(.30,3.10,.22),C.steel2);                 // 크로스빔
+      box(V(kx,0,CBEAM_Z+.12),V(.36,1.10,.14),C.dark);                   // X축 구동 — 랙피니언
+      for(const x of [kx,kx-TANDEM_GAP]){
+        box(V(x,0,(CBEAM_Z+zk)/2+.12),V(.16,.34,CBEAM_Z-zk-.2),C.rail);  // Z 슬라이드
+        box(V(x,0,zk+.30),V(.24,1.66,.26),C.steel2);
+        knifeCassette(x,zk,x===kx?C.knife:C.red,hot?1:.25);
+        for(const y of [-.60,.60])box(V(x,y,zk+.44),V(.15,.13,.15),C.teal);   // 로드셀×4
+      }
+      cylinder(V(kx,0,CWEB_Z),.08,ROLL_FACE,'y',C.rail,12);              // GR-W1 (갠트리 탑재)
+      for(const y of [-ROLL_FACE/2-.09,ROLL_FACE/2+.09])pillowBlock(kx,y,CWEB_Z,'y',.09,C.steel2);
+      /* 셀/EVA 슈트 — 갠트리 뒤쪽에 매달려 트로프로 떨군다. */
+      poly([V(kx-TANDEM_GAP-.06,.62,CZ+.46),V(kx-TANDEM_GAP-.06,CTROUGH_Y+.16,CTROUGH_Z+.10),
+            V(kx-TANDEM_GAP-.34,CTROUGH_Y+.16,CTROUGH_Z+.10),V(kx-TANDEM_GAP-.34,.62,CZ+.46)],
+           C.sheet,.92,C.steel2,.8);
+      line([V(kx,-1.66,.86),V(kx,-1.66,2.40)],C.yellow,1.4,[5,3],.8);
+      label3(`KG-101 · X ${(kx*1000).toFixed(0)}mm`,V(kx,-1.80,2.62),C.yellow);
+    }
+    function cState(i,p){
+      const kx=cKnifeX(i,p);
+      let px=CST.LD.cx-.22,onTable=false,peeling=false,glass=-1,wound=0;
+      if(i===0)px=lerp(-.30,CST.LD.cx-.22,ease(p));
+      else if(i===1)px=CST.HC.cx;
+      else if(i===2){px=lerp(CST.HC.cx,CPNL_CX,ease(p));onTable=p>.6}
+      else if(i>=3&&i<=5){px=CPNL_CX;onTable=true;peeling=i>=4}
+      else if(i===6){px=CPNL_CX;onTable=p<.5;glass=p}
+      else if(i===7)glass=1;
+      else if(i>=8)glass=1;
+      if(i===4)wound=0; else if(i===5)wound=0; else if(i===6)wound=Math.round(p*1); else if(i>=7)wound=1;
+      if(i===10)wound=Math.floor(p*60);
+      return{kx,px,onTable,peeling,glass,wound,
+        hot:i>=2&&i<=6||i===10,engage:i<3?0:i===3?ease(p):i<=5?1:1-ease(p)};
+    }
+    function compactDynamic(i,p){
+      const st=cState(i,p),o=explodeOffsets();
+      /* 가열실 안의 5장. 한 장만 그리면 '5단 소킹' 이 화면에 안 보인다. */
+      if(i>=1)withPartOffset(o.heat,()=>{
+        const filled=i===1?Math.min(5,1+Math.floor(p*5)):5;
+        for(let k=0;k<filled;k++){
+          flatLayer(CST.HC.cx,PANEL_L,cDeckZ(k)+.09,C.glass,.72);
+          flatLayer(CST.HC.cx,PANEL_L,cDeckZ(k)+.15,C.cell,.9);
+        }
+        if(i===1)label3(`C1~C5 · ${filled}/5 밀폐가열`,V(CST.HC.cx,-1.28,cDeckZ(4)+.42),C.heat);
+      });
+      if(i<=2)withPartOffset(i===0?o.input:o.heat,()=>{
+        if(i!==1)cPanelLayers(st.px,st.kx,false,0);
+      });
+      if(i>=2&&i<=6&&st.onTable)withPartOffset(o.tandem,()=>cPanelLayers(CPNL_CX,st.kx,st.peeling,st.wound));
+      if(!carriageFocus)withPartOffset(o.tandem,()=>{cGantry(st.kx,st.hot,st.engage);cRoll(st.wound,st.wound*PANEL_L/Math.max(WR_CORE_R,rollRadius(st.wound)))});
+      /* 유리는 테이블 → 냉각 랙 → 반출 셔틀 → 경계 순으로 간다. */
+      if(st.glass>=0)withPartOffset(o.glass,()=>{
+        if(i===6)flatLayer(lerp(CPNL_CX,CST.GC.cx,ease(p)),PANEL_L,CZ+.05,C.glass,.8);
+        else if(i===7){
+          const n=Math.min(5,1+Math.floor(p*5));
+          for(let k=0;k<n;k++)flatLayer(CST.GC.cx,PANEL_L,cDeckZ(k)+.09,C.glass,.78);
+          label3(`G1~G5 · ${n}/5 강제공랭`,V(CST.GC.cx,1.30,cDeckZ(4)+.42),C.glass);
+        }
+        else if(i===8)flatLayer(lerp(CST.GC.cx,CST.UL.cx,ease(p)),PANEL_L,CZ+.05,C.glass,.82);
+        else flatLayer(CST.UL.cx+.6,PANEL_L,CZ+.05,C.glass,.82);
+      });
+      /* 셀/EVA 는 트로프를 타고 −x 로 나가 경계 배출함에 떨어진다. */
+      if(i>=4&&i<=6){const u=i===4?p:1;
+        box(V(lerp(CTBL_CX,8.30,ease(u)),CTROUGH_Y,CTROUGH_Z+.06),V(PANEL_L*.5,.38,.05),C.cell,{alpha:.95});}
+      if(i===9||i===10)box(V(CBIN.x,CBIN.y,CBIN.z+.30),V(.86,.96,.34),C.cell,{alpha:.9});
+      if(i===9){
+        label3('경계 3개소 성립 — 후처리 준비 · 덕트 차압 · 안전회로',V(CBJ_X,-3.10,3.10),C.ok);
+        line([V(CFENCE_X1-.52,CDUCT_Y,CDUCT_Z),V(CFENCE_X1+.9,CDUCT_Y,CDUCT_Z)],C.teal,3,[7,4],.9);
+      }
+      if(i===10){
+        label3(`P${Math.min(60,Math.floor(p*60)+1)}/60 · 53.6초 사이클 · 순생산 60.5장/h`,V(CTBL_CX,-2.10,3.60),C.teal);
+        label3(`나이프 55mm/s 통과 → 700mm/s 복귀 ${(cKnifeX(10,p)*1000).toFixed(0)}mm`,V(CTBL_CX,-2.10,3.26),C.yellow);
+      }
     }
     function baseMachine(){
       const o=explodeOffsets();
@@ -3532,8 +4051,9 @@
       /* Build the scene first: the shadow pass needs every footprint before it draws,
          and the floor has to be laid down before the geometry that stands on it. */
       laneShift=0;laneCode='S';
-      if(carriageFocus)carriageFocusBase();else if(tandemFocus)tandemFocusBase();else baseMachine();
-      dynamicMachine(index,local);
+      if(compactView)compactMachine();
+      else if(carriageFocus)carriageFocusBase();else if(tandemFocus)tandemFocusBase();else baseMachine();
+      if(compactView)compactDynamic(index,local);else dynamicMachine(index,local);
       drawEnvironment();
       primitives.sort((a,b)=>b.depth-a.depth);primitives.forEach(drawPrimitive);
       drawLabels();drawVignette();drawTitleBlock();
@@ -3560,9 +4080,9 @@
       ctx.fillStyle=TH.accent;ctx.font='700 10px ui-monospace,SFMono-Regular,Consolas,monospace';
       ctx.fillText('DG-HK60 / M-000',x+40,y+21);
       ctx.fillStyle=TH.inkSoft;ctx.font='600 12px system-ui,sans-serif';
-      ctx.fillText('전체장비 배치 · 개념 제작도',x+14,y+40);
+      ctx.fillText(compactView?'DG-HK60C 압축 배치 · 개념 제작도':'전체장비 배치 · 개념 제작도',x+14,y+40);
       ctx.fillStyle=TH.inkDim;ctx.font='10px system-ui,sans-serif';
-      ctx.fillText('REV.20 · 축척 없음 · 치수 미확정',x+14,y+55);
+      ctx.fillText(`${compactView?'REV.21C':'REV.20'} · 전장 ${Math.round((compactView?compactLength():rev20Length())*1000).toLocaleString()} mm · 축척 없음 · 치수 미확정`,x+14,y+55);
       ctx.restore();
       drawScaleBar(x+w+16,y+h-14);
     }
@@ -3582,9 +4102,18 @@
     function resize(){const r=canvas.getBoundingClientRect();dpr=Math.min(window.devicePixelRatio||1,1.5);width=Math.max(320,r.width);height=Math.max(360,r.height);canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);render()}
 
     let index=0,local=0,playing=false,last=0,raf=0,showLabels=false,sectionView=false,explodeView=false,explodeDistance=1,panMode=false,tandemFocus=false,carriageFocus=false,carriageCycleNo=0;
-    const total=steps.reduce((s,v)=>s+v.duration,0);
+
     function updateTandemHud(){
       const hud=$('tandemHud');hud.hidden=!tandemFocus;if(!tandemFocus)return;
+      if(compactView){
+        const st=cState(index,local),phase=index<=3?0:index===4?(local<.42?1:2):index===5?2:3;
+        for(let n=1;n<=4;n++)$(`tandemStep${n}`).classList.toggle('active',n===phase+1);
+        $('hkbLive').textContent=st.engage>.97?'가압 유지 · 230°C':st.engage>.02?`Z축 진입 ${Math.round(st.engage*100)}%`:'안전 복귀 · 230°C';
+        $('hksLive').textContent=st.engage>.97?'가압 유지 · 260°C':st.engage>.02?`Z축 진입 ${Math.round(st.engage*100)}%`:'안전 복귀 · 260°C';
+        $('carrierLive').textContent=index===4?'나이프 55mm/s 전진':index===6?`나이프 700mm/s 복귀 (하한 550)`:index===3?'원점 → 선단 300mm':'원점 대기';
+        $('peelLive').textContent=index===3?`백시트 선단 ${Math.round(300*local)}mm`:index===4?`통과박리 ${Math.round(local*100)}% · X ${(st.kx*1000).toFixed(0)}mm`:index===5?'3계통 분기':index===6?`복귀 ${Math.round(local*100)}%`:'패널 정지 · 칼날 이동';
+        return;
+      }
       const eng=tandemEngagement(index,local),phase=index<=3?0:index===4?(local<.42?1:2):index===5?2:3;
       for(let n=1;n<=4;n++)$(`tandemStep${n}`).classList.toggle('active',n===phase+1);
       $('hkbLive').textContent=eng.hkb>.97?'가압 유지 · 230°C':eng.hkb>.02?`Z축 진입 ${Math.round(eng.hkb*100)}%`:'안전 복귀 · 230°C';
@@ -3594,6 +4123,15 @@
     }
     function updateCarriageHud(){
       const hud=$('carriageHud');hud.hidden=!carriageFocus;if(!carriageFocus)return;
+      if(compactView){
+        const filled=index===1?Math.min(5,1+Math.floor(local*5)):index>=2?5:0;
+        for(let n=1;n<=6;n++)$(`carriageStep${n}`).classList.toggle('active',n===Math.min(6,index+1));
+        $('carriageDeckLive').textContent=`C${Math.max(1,filled)} · ${index>=2?'200°C':'승온 중'}`;
+        $('carriageLoadLive').textContent=`${filled}/5 · ${filled===5?'SEALED_FULL_LOAD_ACK':'CYCLE ACTIVE'}`;
+        $('carriageInLive').textContent=index===1&&local<.9?'AL-101 투입 중':'외문·내문 닫힘';
+        $('carriageOutLive').textContent=index===2?'AL-102 방출 중':'외문·내문 닫힘';
+        return;
+      }
       const st=carriageCycleState(local);for(let n=1;n<=6;n++)$(`carriageStep${n}`).classList.toggle('active',n===st.step);
       $('carriageDeckLive').textContent=local>=.94?`다음 C${st.next+1} · 승온 중`:`C${st.active+1} · ${local<.54?'200°C':'교대 중'}`;
       $('carriageLoadLive').textContent=`${st.occupied}/5 · ${st.fullLoadAck?'FULL_LOAD_ACK':st.occupied===5?'LOCKED':'CYCLE ACTIVE'}`;
@@ -3604,30 +4142,19 @@
     }
     function updateUI(){
       const s=steps[index];$('stageTitle').textContent=`${s.id} · ${s.name}`;$('stageDesc').textContent=s.desc;$('vacuumValue').textContent=s.vac;$('tempValue').textContent=s.temp;$('outputValue').textContent=s.out;$('plcValue').textContent=index===13?'F-PLC SELF TEST · SAFE':'PLC RUN · DC24 A/B · RING OK';
-      const flowStates=[
-        ['권취 대기 → 전용 보관함','분리 대기 → Shredder','분리 대기 → 저장 캐리지'],
-        ['권취 대기 → 전용 보관함','분리 대기 → Shredder','진공 캐리어 지지 중'],
-        ['권취 대기 → 전용 보관함','가열 중 → Shredder','가열 중 → 저장 캐리지'],
-        ['선단 개방 중','HKS 분리 대기','진공 캐리어 지지 중'],
-        ['클램프·장력 형성','HKS 진입 대기','진공 캐리어 지지 중'],
-        ['전장 권취 중','유리에서 분리 중','진공 캐리어 이동 중'],
-        ['권취 완료·보관함 대기','CVC-301 인계 컨베이어','동일높이 GC-301 즉시 인계'],
-        ['BS-301 전용 보관함 이동','CVC-301 직접 이송 대기','GC-301 수평 적재 완료'],
-        ['BS-301 격리 완료','CVC-301에서 이동 중','GC-301 수평 적재 완료'],
-        ['BS-301 보관 완료','CVC-301 → SH-101 연속 투입','GC-301 수평 적재 완료'],
-        ['BS-301 보관 완료','SH-101 후속공정','GC-301 동일높이 저장 도크'],
-        ['BS-301 보관 완료','SH-101 후속공정','QI-301 검사·RJ-301 분기'],
-        ['WR 예비축 준비','CVC-301 CLEAR','7＋1 가열캐리지 순환'],
-        ['배기·화재안전 확인','Shredder 격리게이트 확인','GC 냉각·도킹 안전확인'],
-        ['다음 권취롤 준비','Shredder 연속운전','빈 저장 캐리지 인덱싱'],
-        ['WR-101 롤에 10장 권취','CVC-301 → SH-101 연속 투입','GC-301 캐리지 적재 중']
-      ][index];
+      const flowStates=s.flow;
       $('flowBacksheetText').textContent=flowStates[0];$('flowCellText').textContent=flowStates[1];$('flowGlassText').textContent=flowStates[2];
       /* 롤 상태는 고정 문구로 쓸 수 없다. 직경이 감은 장수를 따라가는 것이 이 계통의
          핵심이고, 3D 라벨은 '부품 라벨' 을 켜야만 보이므로 여기에 항상 띄운다.
          S7 은 배출 서브페이즈가 흘러가므로 단계 설명문도 같이 갈아끼운다 — 3.2초
          동안 문구가 고정돼 있으면 롤이 어디까지 갔는지 화면에서 읽을 길이 없다. */
-      if((index>=3&&index<=7)||index===15){
+      if(compactView&&index>=3){
+        const n=cState(index,local).wound,r=rollRadius(n);
+        $('flowBacksheetText').textContent=index===4||index===5
+          ?`GR-W1 동행 — 권취 0 · Ø${Math.round(r*2000)} / Ø${Math.round(WR_FULL_R*2000)}`
+          :`WR-101 Ø${Math.round(r*2000)} / Ø${Math.round(WR_FULL_R*2000)} · ${n}/${ROLL_FULL_PANELS}장`;
+      }
+      if(!compactView&&((index>=3&&index<=7)||index===15)){
         const w=winderState(index,local);
         $('flowBacksheetText').textContent=w.text;
         if(index===7){
@@ -3638,15 +4165,26 @@
       }
       /* 권취는 S3 선단 개방부터 시작한다. 그때부터 백시트 계통을 띄워야
          '언제부터 감기고 있는지' 가 보인다. */
-      $('materialFlow').classList.toggle('active',(index>=3&&index<=13)||index===15);
-      $('flowBacksheet').classList.toggle('moving',(index>=3&&index<=6)||index===7||index===15);
-      $('flowCell').classList.toggle('moving',index===5||index===6||index===8||index===9||index===15);
-      $('flowGlass').classList.toggle('moving',index===6||index===10||index===11||index===15);
+      if(compactView){
+        $('materialFlow').classList.toggle('active',index>=2);
+        $('flowBacksheet').classList.toggle('moving',index>=3&&index<=6||index===10);
+        $('flowCell').classList.toggle('moving',index>=4&&index<=6||index===9||index===10);
+        $('flowGlass').classList.toggle('moving',index===6||index===7||index===8||index===10);
+      }else{
+        $('materialFlow').classList.toggle('active',(index>=3&&index<=13)||index===15);
+        $('flowBacksheet').classList.toggle('moving',(index>=3&&index<=6)||index===7||index===15);
+        $('flowCell').classList.toggle('moving',index===5||index===6||index===8||index===9||index===15);
+        $('flowGlass').classList.toggle('moving',index===6||index===10||index===11||index===15);
+      }
       const done=steps.slice(0,index).reduce((sum,v)=>sum+v.duration,0)+s.duration*local,pct=100*done/total;$('progressBar').style.width=`${pct}%`;$('progressBar').parentElement.setAttribute('aria-valuenow',String(Math.round(pct)));
       document.querySelectorAll('.step').forEach((b,n)=>b.classList.toggle('active',n===index));
     }
-    function updateAutoCamera(dt){if(!camera.auto)return;const targets=[presets[0],presets[0],presets[1],presets[1],presets[2],presets[2],presets[0],presets[2],presets[2],presets[1],presets[1],presets[2],presets[1],presets[0],presets[0],presets[0]],focusX=[3,3,9.2,16.5,17.8,18.5,22,22,29,33,27.4,23.5,13,20,19,22],t=targets[index],k=1-Math.exp(-dt*.0022);camera.az=lerp(camera.az,t.az,k);camera.el=lerp(camera.el,t.el,k);camera.radius=lerp(camera.radius,t.r,k);camera.target.x=lerp(camera.target.x,focusX[index],k);camera.target.y=lerp(camera.target.y,0,k);camera.target.z=lerp(camera.target.z,1.45,k)}
-    function canAdvanceStage(i,p){return i!==2||carriageCycleState(Math.min(1,p)).fullLoadAck}
+    /* 카메라도 단계 객체에서 읽는다 — 종전에는 index 로 인덱싱하는 별도
+       배열이라 단계를 하나만 더해도 조용히 어긋났다. */
+    function updateAutoCamera(dt){if(!camera.auto)return;const cam=steps[index].cam,t=viewPresets()[cam[0]],focusX=[],k=1-Math.exp(-dt*.0022);focusX[index]=cam[1];camera.az=lerp(camera.az,t.az,k);camera.el=lerp(camera.el,t.el,k);camera.radius=lerp(camera.radius,t.r,k);camera.target.x=lerp(camera.target.x,focusX[index],k);camera.target.y=lerp(camera.target.y,0,k);camera.target.z=lerp(camera.target.z,compactView?1.55:1.45,k)}
+    /* 배치마다 홈 카메라가 다르다 — 53m 와 18.76m 를 같은 거리에서 볼 수 없다. */
+    const homeCam=()=>({x:compactView?compactLength()/2:19,y:0,z:compactView?1.55:1.45});
+    function canAdvanceStage(i,p){return compactView||i!==2||carriageCycleState(Math.min(1,p)).fullLoadAck}
     function tick(now){
       if(!playing)return;if(!last)last=now;const dt=Math.min(60,now-last);last=now;local+=dt/steps[index].duration;
       if(local>=1){
@@ -3666,16 +4204,42 @@
     function deactivateTandemFocus(){tandemFocus=false;$('tandemHud').hidden=true;$('tandemFocusButton').setAttribute('aria-pressed','false');$('tandemFocusButton').textContent='탠덤 작동'}
     function deactivateCarriageFocus(){carriageFocus=false;$('carriageHud').hidden=true;$('carriageFocusButton').setAttribute('aria-pressed','false');$('carriageFocusButton').textContent='캐리지 사이클'}
     function deactivateFocusModes(){deactivateTandemFocus();deactivateCarriageFocus()}
-    function enterTandemFocus(){pause();deactivateCarriageFocus();tandemFocus=true;sectionView=true;explodeView=false;index=3;local=0;panMode=false;$('sectionButton').setAttribute('aria-pressed','true');$('sectionButton').textContent='컷어웨이 표시 중';$('explodeButton').setAttribute('aria-pressed','false');$('explodeButton').textContent='분해 보기';$('panButton').setAttribute('aria-pressed','false');$('tandemFocusButton').setAttribute('aria-pressed','true');$('tandemFocusButton').textContent='확대 종료';Object.assign(camera,{target:{x:17.8,y:0,z:1.9},az:-1.82,el:.22,radius:8.4,auto:false});$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라';updateUI();render();play()}
-    function exitTandemFocus(){pause();deactivateTandemFocus();sectionView=false;$('sectionButton').setAttribute('aria-pressed','false');$('sectionButton').textContent='컷어웨이';Object.assign(camera,{target:{x:19,y:0,z:1.45},az:presets[0].az,el:presets[0].el,radius:presets[0].r,auto:false});updateUI();render()}
-    function enterCarriageFocus(){pause();deactivateTandemFocus();carriageFocus=true;carriageCycleNo=0;sectionView=true;explodeView=false;index=2;local=0;panMode=false;$('sectionButton').setAttribute('aria-pressed','true');$('sectionButton').textContent='컷어웨이 표시 중';$('explodeButton').setAttribute('aria-pressed','false');$('explodeButton').textContent='분해 보기';$('panButton').setAttribute('aria-pressed','false');$('carriageFocusButton').setAttribute('aria-pressed','true');$('carriageFocusButton').textContent='확대 종료';Object.assign(camera,{target:{x:9.2,y:0,z:2.25},az:-1.83,el:.3,radius:25.5,auto:false,preset:0});$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라';updateUI();render();play()}
-    function exitCarriageFocus(){pause();deactivateCarriageFocus();sectionView=false;$('sectionButton').setAttribute('aria-pressed','false');$('sectionButton').textContent='컷어웨이';Object.assign(camera,{target:{x:19,y:0,z:1.45},az:presets[0].az,el:presets[0].el,radius:presets[0].r,auto:false});updateUI();render()}
-    function reset(){pause();deactivateFocusModes();carriageCycleNo=0;index=0;local=0;Object.assign(camera,{target:{x:19,y:0,z:1.45},az:presets[0].az,el:presets[0].el,radius:presets[0].r,auto:true});panMode=false;sectionView=false;explodeView=false;explodeDistance=1;$('explodeDistance').value='100';$('explodeDistanceValue').textContent='100%';$('explodeDistance').setAttribute('aria-valuetext','100퍼센트');$('sectionButton').setAttribute('aria-pressed','false');$('sectionButton').textContent='컷어웨이';$('explodeButton').setAttribute('aria-pressed','false');$('explodeButton').textContent='분해 보기';$('panButton').setAttribute('aria-pressed','false');$('cameraButton').setAttribute('aria-pressed','true');$('cameraButton').textContent='자동 카메라';showLabels=false;$('labelButton').setAttribute('aria-pressed','false');$('labelButton').textContent='부품 라벨';updateUI();render()}
+    function enterTandemFocus(){pause();deactivateCarriageFocus();tandemFocus=true;sectionView=true;explodeView=false;index=compactView?4:3;local=0;panMode=false;$('sectionButton').setAttribute('aria-pressed','true');$('sectionButton').textContent='컷어웨이 표시 중';$('explodeButton').setAttribute('aria-pressed','false');$('explodeButton').textContent='분해 보기';$('panButton').setAttribute('aria-pressed','false');$('tandemFocusButton').setAttribute('aria-pressed','true');$('tandemFocusButton').textContent='확대 종료';Object.assign(camera,{target:{x:compactView?CTBL_CX:17.8,y:0,z:compactView?1.70:1.9},az:compactView?-1.66:-1.82,el:compactView?.30:.22,radius:compactView?11.2:8.4,auto:false});$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라';updateUI();render();play()}
+    function exitTandemFocus(){pause();deactivateTandemFocus();sectionView=false;$('sectionButton').setAttribute('aria-pressed','false');$('sectionButton').textContent='컷어웨이';Object.assign(camera,{target:homeCam(),az:viewPresets()[0].az,el:viewPresets()[0].el,radius:viewPresets()[0].r,auto:false});updateUI();render()}
+    function enterCarriageFocus(){pause();deactivateTandemFocus();carriageFocus=true;carriageCycleNo=0;sectionView=true;explodeView=false;index=compactView?1:2;local=0;panMode=false;$('sectionButton').setAttribute('aria-pressed','true');$('sectionButton').textContent='컷어웨이 표시 중';$('explodeButton').setAttribute('aria-pressed','false');$('explodeButton').textContent='분해 보기';$('panButton').setAttribute('aria-pressed','false');$('carriageFocusButton').setAttribute('aria-pressed','true');$('carriageFocusButton').textContent='확대 종료';Object.assign(camera,{target:{x:compactView?CST.HC.cx:9.2,y:0,z:2.25},az:-1.83,el:.3,radius:compactView?12:25.5,auto:false,preset:0});$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라';updateUI();render();play()}
+    function exitCarriageFocus(){pause();deactivateCarriageFocus();sectionView=false;$('sectionButton').setAttribute('aria-pressed','false');$('sectionButton').textContent='컷어웨이';Object.assign(camera,{target:homeCam(),az:viewPresets()[0].az,el:viewPresets()[0].el,radius:viewPresets()[0].r,auto:false});updateUI();render()}
+    function reset(){pause();deactivateFocusModes();carriageCycleNo=0;index=0;local=0;Object.assign(camera,{target:homeCam(),az:viewPresets()[0].az,el:viewPresets()[0].el,radius:viewPresets()[0].r,auto:true});panMode=false;sectionView=false;explodeView=false;explodeDistance=1;$('explodeDistance').value='100';$('explodeDistanceValue').textContent='100%';$('explodeDistance').setAttribute('aria-valuetext','100퍼센트');$('sectionButton').setAttribute('aria-pressed','false');$('sectionButton').textContent='컷어웨이';$('explodeButton').setAttribute('aria-pressed','false');$('explodeButton').textContent='분해 보기';$('panButton').setAttribute('aria-pressed','false');$('cameraButton').setAttribute('aria-pressed','true');$('cameraButton').textContent='자동 카메라';showLabels=false;$('labelButton').setAttribute('aria-pressed','false');$('labelButton').textContent='부품 라벨';updateUI();render()}
     function next(){
       pause();if(carriageFocus){const marks=[.09,.22,.31,.41,.49,.57,.65,.73,.80,.89,.97,.999],mark=marks.find(v=>v>local+.005);if(mark==null){carriageCycleNo=(carriageCycleNo+1)%5;local=0}else local=mark;updateUI();render();return}
       index=tandemFocus?(index>=6?3:index+1):Math.min(steps.length-1,index+1);local=0;updateUI();render()
     }
-    const timeline=$('timeline');steps.forEach((s,i)=>{const b=document.createElement('button');b.type='button';b.className='step';b.innerHTML=`<b>${s.id}</b><span>${s.name}</span>`;b.addEventListener('click',()=>{pause();deactivateFocusModes();index=i;local=0;updateUI();render()});timeline.appendChild(b)});
+    const timeline=$('timeline');
+    function buildTimeline(){
+      timeline.replaceChildren(...steps.map((s,i)=>{
+        const b=document.createElement('button');b.type='button';b.className='step';
+        const code=document.createElement('b'),name=document.createElement('span');
+        code.textContent=s.id;name.textContent=s.name;b.append(code,name);
+        b.addEventListener('click',()=>{pause();deactivateFocusModes();index=i;local=0;updateUI();render()});
+        return b}));
+    }
+    buildTimeline();
+    /* 배치 전환. 두 개정을 같은 콘솔에서 나란히 볼 수 있어야 '무엇을 떼어
+       무엇이 줄었는가' 가 말이 아니라 그림으로 확인된다. */
+    function setLayout(compact){
+      pause();deactivateFocusModes();compactView=compact;
+      steps=compact?C21_STEPS:REV20_STEPS;total=steps.reduce((a,v)=>a+v.duration,0);
+      index=0;local=0;carriageCycleNo=0;buildTimeline();
+      Object.assign(camera,{target:homeCam(),az:viewPresets()[0].az,el:viewPresets()[0].el,radius:viewPresets()[0].r,auto:true});
+      $('cameraButton').setAttribute('aria-pressed','true');$('cameraButton').textContent='자동 카메라';
+      const b=$('layoutButton');b.setAttribute('aria-pressed',String(compact));
+      b.textContent=compact?`배치 Rev.21C · ${Math.round(compactLength()*1000).toLocaleString()}mm`:`배치 Rev.20 · ${Math.round(rev20Length()*1000).toLocaleString()}mm`;
+      $('npModelRev').textContent=compact?'REV.21C':'REV.20';
+      $('npSub').textContent=compact
+        ?`60 IR · EVA 계면 200°C · 고정 진공테이블 + 이동 나이프 · 전장 ${Math.round(compactLength()*1000).toLocaleString()}mm`
+        :'60 IR · EVA 계면 200°C · 7＋1 캐리지 · 유리/셀 무낙하 컨베이어 · 전기·제어 통합';
+      updateUI();render();
+    }
+    $('layoutButton').addEventListener('click',()=>setLayout(!compactView));
     $('playButton').addEventListener('click',play);$('pauseButton').addEventListener('click',pause);$('nextButton').addEventListener('click',next);$('resetButton').addEventListener('click',reset);
     $('carriageFocusButton').addEventListener('click',()=>{if(carriageFocus)exitCarriageFocus();else enterCarriageFocus()});
     $('tandemFocusButton').addEventListener('click',()=>{if(tandemFocus)exitTandemFocus();else enterTandemFocus()});
@@ -3719,7 +4283,7 @@
     $('labelButton').addEventListener('click',e=>{showLabels=!showLabels;e.currentTarget.setAttribute('aria-pressed',String(showLabels));e.currentTarget.textContent=showLabels?'라벨 표시 중':'부품 라벨';render()});
     $('cameraButton').addEventListener('click',e=>{if(tandemFocus||carriageFocus)deactivateFocusModes();camera.auto=!camera.auto;e.currentTarget.setAttribute('aria-pressed',String(camera.auto));e.currentTarget.textContent=camera.auto?'자동 카메라':'수동 카메라';render()});
     $('panButton').addEventListener('click',e=>{panMode=!panMode;camera.auto=false;e.currentTarget.setAttribute('aria-pressed',String(panMode));e.currentTarget.textContent=panMode?'이동 모드 중':'화면 이동';$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라'});
-    $('fitButton').addEventListener('click',()=>{camera.auto=false;if(carriageFocus)Object.assign(camera,{target:{x:9.2,y:0,z:2.25},az:-1.83,el:.3,radius:25.5});else if(tandemFocus)Object.assign(camera,{target:{x:17.8,y:0,z:1.9},az:-1.82,el:.22,radius:8.4});else Object.assign(camera,{target:{x:19,y:0,z:1.45},az:presets[0].az,el:presets[0].el,radius:presets[0].r});$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라';render()});
+    $('fitButton').addEventListener('click',()=>{camera.auto=false;if(carriageFocus)Object.assign(camera,{target:{x:9.2,y:0,z:2.25},az:-1.83,el:.3,radius:25.5});else if(tandemFocus)Object.assign(camera,{target:{x:17.8,y:0,z:1.9},az:-1.82,el:.22,radius:8.4});else Object.assign(camera,{target:homeCam(),az:viewPresets()[0].az,el:viewPresets()[0].el,radius:viewPresets()[0].r});$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라';render()});
     $('viewButton').addEventListener('click',()=>{camera.auto=false;$('cameraButton').setAttribute('aria-pressed','false');$('cameraButton').textContent='수동 카메라';camera.preset=(camera.preset+1)%presets.length;if(carriageFocus){const v=[{az:-1.83,el:.3,r:25.5},{az:-2.35,el:.42,r:24},{az:-1.55,el:.58,r:25},{az:-2.05,el:.82,r:26}][camera.preset];Object.assign(camera,{target:{x:9.2,y:0,z:2.25},az:v.az,el:v.el,radius:v.r})}else if(tandemFocus){const v=[{az:-1.82,el:.22,r:8.4},{az:-2.28,el:.34,r:9.2},{az:-1.5,el:.5,r:9.6},{az:-2.05,el:.75,r:10.2}][camera.preset];Object.assign(camera,{target:{x:17.8,y:0,z:1.9},az:v.az,el:v.el,radius:v.r})}else{const p=presets[camera.preset];Object.assign(camera,{target:{x:19,y:0,z:1.45},az:p.az,el:p.el,radius:p.r})}render()});
     $('fullscreenButton').addEventListener('click',async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen()}catch(_){$('stageDesc').textContent='현재 브라우저에서는 전체화면 전환을 지원하지 않습니다.'}});
     document.addEventListener('fullscreenchange',()=>{$('fullscreenButton').textContent=document.fullscreenElement?'전체화면 종료':'전체화면';setTimeout(resize,80)});
@@ -4042,7 +4606,7 @@
        아무 오류도 보이지 않는다. */
     const favicon=$('favicon');
     if(favicon)favicon.href='data:image/svg+xml,'+encodeURIComponent(markSVG('width="64" height="57"'));
-    updateUI();applyTheme();resize();
+    setLayout(true);applyTheme();resize();
   })();
   </script>
 </body>

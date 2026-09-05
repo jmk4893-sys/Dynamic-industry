@@ -718,7 +718,7 @@ class TestBacksheetWinder(unittest.TestCase):
 
     def test_live_roll_diameter_is_readable_without_turning_on_labels(self):
         """3D 라벨은 기본이 꺼져 있다. 직경이 거기에만 있으면 아무도 못 본다."""
-        m = re.search(r"if\(\(index>=3&&index<=7\)\|\|index===15\)\{(.{0,1400}?)\n      \}",
+        m = re.search(r"if\(!?\w*&*&*\(\(index>=3&&index<=7\)\|\|index===15\)\)?\{(.{0,1400}?)\n      \}",
                       self.html, re.S)
         self.assertIsNotNone(m, "항상 보이는 권취 HUD 갱신 블록을 찾지 못했다")
         self.assertIn("winderState(index,local)", m.group(1),
@@ -747,21 +747,29 @@ class TestTenPanelTrial(unittest.TestCase):
         self.assertEqual(ids[-1], "S15", "새 단계가 타임라인 끝에 오지 않는다")
         self.assertEqual(len(ids), len(set(ids)), "단계 번호가 중복된다")
 
-    def test_stage_arrays_cover_every_step(self):
-        """단계를 추가하면서 카메라·자재흐름 배열을 놓치면 마지막 단계가 조용히 깨진다."""
-        steps = len(re.findall(r"\{id:'S\d+'", self.html))
-        cams = re.search(r"focusX=\[([-\d.,\s]+)\]", self.html)
-        self.assertIsNotNone(cams)
-        self.assertEqual(len(cams.group(1).split(",")), steps,
-                         "카메라 focusX 배열이 단계 수와 다르다")
-        targets = re.search(r"targets=\[(.*?)\],focusX", self.html, re.S)
-        self.assertEqual(len(targets.group(1).split(",")), steps,
-                         "카메라 targets 배열이 단계 수와 다르다")
-        flows = re.search(r"\]\[index\];", self.html)
-        block = self.html[:flows.start()]
-        rows = re.findall(r"\n        \['[^\]]*\],?", block[-2600:])
-        self.assertGreaterEqual(len(rows), steps - 1,
-                                "자재흐름 문구가 단계 수를 못 따라간다")
+    def test_every_step_carries_its_own_camera_and_flow(self):
+        """단계를 추가하면서 카메라·자재흐름을 놓치면 그 단계가 조용히 깨진다.
+
+        종전에는 index 로 인덱싱하는 별도 배열이라 길이만 맞추면 통과했다.
+        배치가 둘이 되면서 그 방식이 성립하지 않으므로, 값을 단계 객체가
+        직접 들고 있는지를 본다 — 빠뜨리면 그 단계에서 바로 드러난다.
+        """
+        for tag in ("S", "C"):
+            rows = re.findall(rf"\{{id:'{tag}\d+',.*?\n", self.html)
+            self.assertGreaterEqual(len(rows), 11, f"{tag} 단계 목록을 찾지 못했다")
+            for row in rows:
+                ident = re.search(r"id:'([SC]\d+)'", row).group(1)
+                flow = re.search(r"flow:\[(.*?)\],cam:", row)
+                self.assertIsNotNone(flow, f"{ident} 에 자재흐름 문구가 없다")
+                self.assertEqual(len(re.findall(r"'", flow.group(1))) // 2, 3,
+                                 f"{ident} 자재흐름이 3계통이 아니다")
+                cam = re.search(r"cam:\[(\d),\s*([^\]]+)\]", row)
+                self.assertIsNotNone(cam, f"{ident} 에 카메라가 없다")
+                self.assertLess(int(cam.group(1)), 4, f"{ident} 카메라 프리셋 번호가 범위를 넘는다")
+        self.assertIn("const cam=steps[index].cam", self.html,
+                      "카메라가 단계 객체에서 나오지 않는다")
+        self.assertIn("const flowStates=s.flow;", self.html,
+                      "자재흐름이 단계 객체에서 나오지 않는다")
 
     def test_all_three_material_paths_accumulate(self):
         body = re.search(r"function tenPanelTestActivity\(.*?\n    \}", self.html, re.S)
