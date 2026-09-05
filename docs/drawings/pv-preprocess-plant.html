@@ -10822,13 +10822,13 @@ CN(L([.024,2.66,.12],[33.3,1.47,.5],M.dark,null),'case:grm:endpost');
 var pvDecal=new ce;pt.add(pvDecal);
 (function(){
 var g=pvDecal;
-pvNamePlate(g,1.2,[-18.34,1.75,1.96],0,'AFU-101','LFT-A/B · BFC 투입');
-pvNamePlate(g,1.6,[-16.5,2.3,3.294],0,'RB-101','PT 정렬 · 반전 투입');
-pvNamePlate(g,1.4,[-6.2,2.1,1.519],0,'JBR-201','정션박스 제거');
-pvNamePlate(g,1.4,[6.1,2.1,1.519],0,'AFR-101','알루미늄 프레임 분리');
-pvNamePlate(g,1.6,[11,1.95,2.406],0,'SG-301','CV · SG · GI 유리 검사');
-pvNamePlate(g,1.6,[14.75,2.1,3.524],0,'GBR-301','레시피 버퍼');
-pvNamePlate(g,1.6,[27.025,2.05,3.544],0,'GRM-401','유리 제거');
+window.pdAfu=pvNamePlate(g,1.2,[-18.34,1.75,1.96],0,'AFU-101','LFT-A/B · BFC 투입');
+window.pdRob=pvNamePlate(g,1.6,[-16.5,2.3,3.294],0,'RB-101','PT 정렬 · 반전 투입');
+window.pdJbr=pvNamePlate(g,1.4,[-6.2,2.1,1.519],0,'JBR-201','정션박스 제거');
+window.pdAfr=pvNamePlate(g,1.4,[6.1,2.1,1.519],0,'AFR-101','알루미늄 프레임 분리');
+window.pdPos=pvNamePlate(g,1.6,[11,1.95,2.406],0,'SG-301','CV · SG · GI 유리 검사');
+window.pdBuf=pvNamePlate(g,1.6,[14.75,2.1,3.524],0,'GBR-301','레시피 버퍼');
+window.pdGrm=pvNamePlate(g,1.6,[27.025,2.05,3.544],0,'GRM-401','유리 제거');
 }());
 
 var pvGrm=new ce;pt.add(pvCell(pvGrm,'grm'));/* 원점을 존 중심에서 낸다 — REV.47 까지 27.025 리터럴이라 셀 베이스 빔이 자기 존보다 750 mm 하류에 서 있었다. 빔 길이는 14,050 으로 존과 정확히 같았다. */pvGrm.position.set((pvZone.grm[0]+pvZone.grm[1])/2,0,.5);
@@ -11365,6 +11365,25 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
       retiredLabels: retired.slice(),
       hiddenMeshes: hidden
     });
+  }());
+
+  /* REV.47: 셀 마크가 `pvDecal` 에 월드 좌표로 매달려 있어 셀을 옮기면
+     따라오지 않았다 — GRM 을 존 격자에 올린 뒤 이 마크만 27.025 에 남아
+     750 mm 어긋난 것이 그 증거다. 자리는 실측 가드 면이라 **옮기지 않고**,
+     소속만 제 셀로 바꾼다. 월드 좌표를 보존해 입양하므로 지금 화면은
+     하나도 안 움직이고, 다음에 셀이 움직일 때 같이 간다.
+     robot·post 는 아직 셀 그룹이 없어 pvDecal 에 남는다 — 그 셀을 세울 때
+     같이 입양한다. */
+  (function(){
+    /* 셀 그룹은 씬에서 `userData.cell` 로 찾는다 — 번들 안의 변수 이름에
+       기대지 않으므로 그 이름이 바뀌어도 안 깨진다. three.js 의 attach()
+       가 월드 변환을 보존하며 부모를 바꾸므로 자리를 다시 계산하지 않는다. */
+    var host=document.getElementById('jb-removal-operation');
+    var sc=host&&host.__pvScene&&host.__pvScene.scene;if(!sc)return;
+    var byCell={};sc.traverse(function(o){var k=o.userData&&o.userData.cell;if(k&&!byCell[k])byCell[k]=o;});
+    function adopt(m,k){var gp=byCell[k];if(m&&gp&&gp.attach)gp.attach(m);}
+    adopt(window.pdAfu,'afu');adopt(window.pdJbr,'jbr');adopt(window.pdAfr,'afr');
+    adopt(window.pdBuf,'buffer');adopt(window.pdGrm,'grm');
   }());
 
   // ── 메인 3D 영상: 컷어웨이·분해 ────────────────────────────────────────────

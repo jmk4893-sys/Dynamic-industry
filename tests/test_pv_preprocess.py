@@ -430,6 +430,37 @@ class TestOneTransferPlane(unittest.TestCase):
             self.assertFalse(layout.the_line_has_no_step(),
                              "예외를 지워도 통과하면 이 검사는 아무것도 안 막는다")
 
+    def test_the_cell_marks_belong_to_their_cell(self):
+        """셀 마크는 셀의 일부다 — 셀이 움직이면 같이 가야 한다.
+
+        REV.47 까지 마크 7장이 `pvDecal` 에 **월드 좌표**로 매달려 있었다.
+        GRM 셀을 존 격자에 올리자 셀은 750 mm 상류로 갔는데 마크만 27.025 에
+        남았다 — 그때까지 아무도 이 결합을 확인하지 않았다.
+
+        자리는 실측 가드 면이라 옮기지 않는다. **소속만** 제 셀로 바꾼다.
+        """
+        html = self.html
+        # 마크를 붙잡아 두는 손잡이가 있어야 입양할 수 있다
+        for var, tag in (("pdAfu", "AFU-101"), ("pdRob", "RB-101"), ("pdJbr", "JBR-201"),
+                         ("pdAfr", "AFR-101"), ("pdPos", "SG-301"), ("pdBuf", "GBR-301"),
+                         ("pdGrm", "GRM-401")):
+            with self.subTest(mark=tag):
+                self.assertIn(f"window.{var}=pvNamePlate(g,", html)
+                self.assertIn(f"0,'{tag}'", html)
+        # 셀 그룹은 씬에서 찾는다 — 번들 안의 변수 이름에 기대면 그 이름이 바뀔 때 깨진다
+        self.assertIn("var k=o.userData&&o.userData.cell;if(k&&!byCell[k])byCell[k]=o;", html)
+        self.assertIn("function adopt(m,k){var gp=byCell[k];if(m&&gp&&gp.attach)gp.attach(m);}", html)
+        for var, key in (("pdAfu", "afu"), ("pdJbr", "jbr"), ("pdAfr", "afr"),
+                         ("pdBuf", "buffer"), ("pdGrm", "grm")):
+            with self.subTest(adopt=key):
+                self.assertIn(f"adopt(window.{var},'{key}')", html)
+        # robot·post 는 아직 셀 그룹이 없다 — 없는 셀에 입양시키면 조용히 실패한다
+        for key in ("robot", "post"):
+            with self.subTest(pending=key):
+                self.assertNotIn(f"adopt(window.pd,'{key}')", html)
+                self.assertIn(key, layout.SCENE_GRID_OPEN + " robot post",
+                              "아직 그룹이 없는 셀은 미해결로 남아 있어야 한다")
+
     def test_the_scene_carries_the_zone_grid(self):
         """3D 가 자기 자리를 존 표에 대고 검사받을 수 있어야 한다.
 
