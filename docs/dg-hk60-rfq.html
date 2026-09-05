@@ -294,10 +294,10 @@
   <div class="clause"><div class="n">3.1</div><div class="c">
     <h3>공정 개요</h3>
     <p>패널을 유리면 아래·백시트 위 자세로 투입해 6존 진공 캐리어에 고정한다.
-      5단 밀폐 IR 가열실에서 EVA/유리 내부 계면을 200 °C까지 가열한 뒤,
+      5단 밀폐 IR 가열실에서 EVA/유리 내부 계면을 140 °C까지 가열한 뒤,
       고정된 HKB(선행)와 HKS(후행) 두 핫나이프 사이로 캐리어가 통과하며
       한 번의 연속 패스로 세 계통을 분리한다.</p>
-    <div class="logic">투입 → 진공고정 → 5단 밀폐가열(계면 200 °C) → 방출
+    <div class="logic">투입 → 진공고정 → 5단 밀폐가열(계면 140 °C) → 방출
    → HKB 백시트 선단 300 mm 개방 → 권취 클램프·장력 형성
    → HKS 셀/EVA 계면 진입 → 55 mm/s 탠덤 통과박리
    → 3계통 분기 : 백시트 권취 · 셀/EVA 컨베이어 · 판유리 롤러</div>
@@ -376,7 +376,7 @@
   <div class="clause"><div class="n">3.4</div><div class="c">
     <h3>압축 배치 — 라인 전장 18,760 mm</h3>
     <p>선행자료의 <span class="m">53,100 mm</span>는 처리량이 만든 길이가 아니다.
-      <strong>60 장/h는 5단 소킹 225.9 s와 2.4 m 박리행정 43.6 s가 정하고, 둘 다
+      <strong>60 장/h는 5단 소킹 148.4 s와 2.4 m 박리행정 43.6 s가 정하고, 둘 다
       바닥 길이를 쓰지 않는다.</strong> 길이를 만든 것은 두 가지였고, 성격이 서로
       다르므로 따로 처리한다 — 하나는 공급범위의 문제이고 하나는 기계 설계의
       문제다.</p>
@@ -559,6 +559,58 @@
       이때 라인은 길어지지 않고 후처리 스키드가 별동으로 붙는다
       (<a href="#c11">OI-15</a>).</div>
   </div></div>
+
+  <div class="clause"><div class="n">3.5</div><div class="c">
+    <h3>공정 온도 — 계면 140 °C · 칼날 180 / 200 °C</h3>
+    <p>선행자료는 계면 목표를 <span class="m">200 °C</span>, 칼날을
+      <span class="m">HKB 230 · HKS 250–270 °C</span>로 잡고 있었다. 이 값을 내린다.
+      근거가 세 갈래에서 같은 방향을 가리킨다.</p>
+    <div class="tw"><table>
+      <caption>온도를 내리는 근거</caption>
+      <thead><tr><th>근거</th><th>내용</th></tr></thead>
+      <tbody>
+        <tr><th>재료</th><td>가교 EVA 의 결정 융해는 DSC 로 <span class="m">55 – 95 °C</span>에서
+          끝나고 Tg 는 <span class="m">−33 °C</span>다. 겔분율 <span class="m">75 – 90 %</span>의
+          열경화 망상이라 <strong>그 위로는 액체가 되지 않고 물러지기만 한다</strong>.
+          TGA 상 열분해는 <span class="m">280 – 300 °C</span>에서 시작하므로 상한은 훨씬 위다</td></tr>
+        <tr><th>문헌</th><td>박리 온도 <span class="m">100 vs 140 °C</span> 비교에서 140 이 낫지만,
+          <strong>과열은 박리를 크게 개선하지 않는다</strong>는 것이 결론이다</td></tr>
+        <tr><th>상용 실적</th><td>상용 핫나이프 장비는 <strong>벌크 예열 자체가 없고</strong>
+          칼날만 <span class="m">180 – 200 °C</span>로 쓴다</td></tr>
+      </tbody>
+    </table></div>
+    <div class="tw"><table>
+      <caption>변경 전후</caption>
+      <thead><tr><th>항목</th><th class="num">종전</th><th class="num">변경</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><th>EVA/유리 계면 목표</th><td class="num">200 °C</td><td class="num">140 °C</td>
+          <td>ΔT 175 → 115 K</td></tr>
+        <tr><th>HKB 백시트 칼날</th><td class="num">230 °C</td><td class="num">180 °C</td>
+          <td>상용 밴드 하단 — 백시트에 직접 닿는다</td></tr>
+        <tr><th>HKS 유리계면 칼날</th><td class="num">250 – 270 °C</td><td class="num">200 °C</td>
+          <td>상용 밴드 상단 — 실란 결합 계면을 끊는다</td></tr>
+        <tr><th>패널당 열량</th><td class="num">4.403 MJ</td><td class="num">2.893 MJ</td>
+          <td>−34 %</td></tr>
+        <tr><th>IR 평균전력</th><td class="num">126 kW</td><td class="num">83 kW</td>
+          <td>−43 kW</td></tr>
+        <tr><th>열공정 여유</th><td class="num">15.7 %</td><td class="num">44.6 %</td>
+          <td>처리량은 탠덤이 정하므로 불변</td></tr>
+        <tr><th>카세트 자동교환 정지</th><td class="num">4.5 분</td><td class="num">3.9 분</td>
+          <td>승온 구간이 짧아진다</td></tr>
+      </tbody>
+    </table></div>
+    <div class="warn"><strong>200 °C 는 백시트 융점을 넘고 있었다.</strong>
+      PVDF <span class="m">165 °C</span> · PVF(Tedlar) <span class="m">195 °C</span>.
+      계면을 <span class="m">200 °C</span>로 올리면 이 두 층이 녹은 채로
+      <a href="#c6">6.4항</a> 권취부에 들어가 파단 위험이 생긴다.
+      <span class="m">140 °C</span>에서는 둘 다 고체이고 PET(Tm
+      <span class="m">255 °C</span>)는 애초에 여유가 있다.</div>
+    <div class="note"><strong>대가는 박리력이다.</strong> 온도를 내리면 박리력이 오르고,
+      그것이 <a href="#c11">OI-13</a>의 필요 패드 면적을 직접 키운다. 그래서
+      <a href="#c11">OI-01</a>을 <strong>값이 아니라 온도별 곡선</strong>으로 다시 세웠다.
+      본 항의 <span class="m">140 °C</span>는 그 곡선을 재기 전의 설계 가정이며,
+      곡선이 확정되면 목표온도·IR 용량·단수·패드 면적이 한꺼번에 재산정 대상이다.</div>
+  </div></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -574,7 +626,7 @@
         <tr><th>보증 처리량</th><td class="num">60 장/h</td><td>가동률 90 % 환산, 연속 8 h 기준</td></tr>
         <tr><th>명목 처리량</th><td class="num">67.2 장/h</td><td>박리속도 55 mm/s</td></tr>
         <tr><th>라인 사이클</th><td class="num">53.6 s/장</td><td>탠덤 병목</td></tr>
-        <tr><th>열공정 한계</th><td class="num">79.7 장/h</td><td>여유 15.7 %</td></tr>
+        <tr><th>열공정 한계</th><td class="num">121.3 장/h</td><td>여유 44.6 %</td></tr>
         <tr><th>8 h 생산량</th><td class="num">약 484 장</td><td>가동률 90 %</td></tr>
         <tr><th>16 h 생산량</th><td class="num">약 967 장</td><td>가동률 90 %</td></tr>
       </tbody>
@@ -648,9 +700,9 @@ RECOVERY_CERT   = LOT_CLOSE ∧ RESIDUAL_EVA_OK ∧ TRACE_WRITE_OK</div>
     <h3>열수지</h3>
     <p>선행자료의 열모델은 아래와 같다. 상수는 해석·문헌 기반 가정이며 검증 대상이다
       (<a href="#c11">OI-05</a>).</p>
-    <div class="logic">Q      = 면적 × 8.7359 kJ/(m²·K) × ΔT 175 K      최대면적 2.88 m² → 4.403 MJ/장
-t_열   = max( 5Q / (60 × 2.5 kW × η 0.65),  113.15 s )  = 225.8 s
-피치   = t_열 / 5 = 45.2 s/장                  → 열공정 한계 79.7 장/h</div>
+    <div class="logic">Q      = 면적 × 8.7359 kJ/(m²·K) × ΔT 115 K      최대면적 2.88 m² → 2.893 MJ/장
+t_열   = max( 5Q / (60 × 2.5 kW × η 0.65),  113.15 s )  = 148.4 s
+피치   = t_열 / 5 = 29.7 s/장                  → 열공정 한계 121.3 장/h</div>
     <p><code>113.15 s</code>는 1D-FDM으로 구한 계면 도달시간이다. 열수지상 더 빨리 넣을 수
       있어도 열이 계면까지 전도되는 시간은 줄지 않으므로 체류시간의 하한이 된다.
       입찰자는 이 하한의 타당성을 자체 해석으로 확인한다.</p>
@@ -661,7 +713,7 @@ t_열   = max( 5Q / (60 × 2.5 kW × η 0.65),  113.15 s )  = 225.8 s
     <div class="logic">t_탠덤 = (칼끝간격 300 + 패널길이 2400) / 55 mm/s
        + 급속 300 mm / 200 mm/s + 고정동작 3.0 s
        = 49.09 + 1.50 + 3.00 = 53.6 s/장
-라인   = 3600 / max(피치 45.2, 탠덤 53.6) = 67.2 장/h   병목: 탠덤</div>
+라인   = 3600 / max(피치 29.7, 탠덤 53.6) = 67.2 장/h   병목: 탠덤</div>
     <p>속도 프로파일은 급속접근 200 mm/s → HKB 진입 전 S-curve 감속 →
       생산보증 55 mm/s → HKS 이탈 후 200 mm/s 급속복귀로 한다.
       60 mm/s는 FAT 상한이며 승인 전 사용을 금한다.</p>
@@ -876,7 +928,7 @@ t_열   = max( 5Q / (60 × 2.5 kW × η 0.65),  113.15 s )  = 225.8 s
           <td class="k">PL-201 자동 스태커</td><td class="k">AUTO_STACK</td></tr>
         <tr><th>칼날 교환</th><td class="num">수명 도달 시 (<a href="#c11">OI-12</a>)</td>
           <td class="k">KC-101 카세트 매거진 2조</td><td class="k">KNIFE_AUTOCHANGE</td></tr>
-        <tr><th>— 그때의 정지</th><td class="num">4.5 분</td>
+        <tr><th>— 그때의 정지</th><td class="num">3.9 분</td>
           <td>BC-201 교체 단위 (<a href="#c6">6.9</a>)</td><td class="k">CASSETTE_READY</td></tr>
         <tr><th>만권 롤 반출</th><td class="num">4.9 h</td>
           <td class="k">AD-101 AGV 도킹</td><td class="k">ROLL_HANDOFF</td></tr>
@@ -982,28 +1034,28 @@ HEAT_RECOVERY = RTO_READY ∧ HX_OUTLET_TEMP ∧ DP_OK</div>
           <td><span class="m">15 kN × 2 = 30 kN</span>, 두 칼날 합성추력 <span class="m">13.37 kN</span>의 <span class="m">2.24 배</span> (<a href="#c11">OI-13</a>)</td></tr>
         <tr><th>서비스 분리</th><td>블라인드메이트 1블록 — 히터 <span class="m">230 V 65 A</span> · 열전대 · 접지</td>
           <td>접지 선접촉·후차단(first-make / last-break). 공구 없이 한 동작으로 끊긴다</td></tr>
-        <tr><th>열 관리</th><td>카세트 냉각 퍼지 2점, 매거진 예열 포켓 <span class="m">150 °C</span> 1칸 · 냉각 포켓 1칸</td>
+        <tr><th>열 관리</th><td>카세트 냉각 퍼지 2점, 매거진 예열 포켓 <span class="m">120 °C</span> 1칸 · 냉각 포켓 1칸</td>
           <td>냉각을 매거진이 맡아야 교환 정지에서 냉각시간이 빠진다</td></tr>
         <tr><th>교환 후 확인</th><td>레이저 간격센서로 칼끝 <span class="m">300 ± 2 mm</span> 재확인, 로드셀 영점, 박리력 기준선 재취득</td>
           <td><span class="k">KNIFE_GAP_OK</span> 없이는 <span class="k">CASSETTE_READY</span> 가 서지 않는다</td></tr>
       </tbody>
     </table></div>
     <div class="warn"><strong>사람의 조건과 기계의 조건을 같은 허가에 묶지 않는다.</strong>
-      <span class="k">KC-101</span> 교환암은 <span class="m">250 °C</span> 카세트를 그대로 집을 수 있으므로
+      <span class="k">KC-101</span> 교환암은 <span class="m">200 °C</span> 카세트를 그대로 집을 수 있으므로
       <span class="k">CASSETTE_RELEASE</span> 는 온도를 보지 않는다. <span class="m">60 °C</span> 이하와
       LOTO 는 사람이 만지는 <span class="k">CASSETTE_HANDLING_SAFE</span> 에만 건다.
-      둘을 하나로 묶으면 자동교환이 강제공랭 <span class="m">13.3 분</span>을 통째로 기다리게 되어,
+      둘을 하나로 묶으면 자동교환이 강제공랭 <span class="m">11.5 분</span>을 통째로 기다리게 되어,
       카세트를 도입한 이유가 사라진다.</div>
     <div class="tw"><table>
       <caption>교환 정지시간</caption>
       <thead><tr><th>방식</th><th class="num">정지</th><th>내역</th></tr></thead>
       <tbody>
-        <tr><th>자동 (KC-101)</th><td class="num">4.5 분</td>
-          <td>교환 <span class="m">90 s</span> + 예열포켓 <span class="m">150 → 250 °C</span> <span class="m">179 s</span>.
-            빼낸 카세트의 냉각 <span class="m">13.3 분</span>은 매거진 냉각포켓에서 돌아 임계경로 밖이다</td></tr>
-        <tr><th>수동 (정비도크)</th><td class="num">30.0 분</td>
-          <td>강제공랭 <span class="m">13.3 분</span> + 교환 <span class="m">8 분</span> +
-            검증 <span class="m">2 분</span> + 냉간승온 <span class="m">6.7 분</span></td></tr>
+        <tr><th>자동 (KC-101)</th><td class="num">3.9 분</td>
+          <td>교환 <span class="m">90 s</span> + 예열포켓 <span class="m">120 → 200 °C</span> <span class="m">143 s</span>.
+            빼낸 카세트의 냉각 <span class="m">11.5 분</span>은 매거진 냉각포켓에서 돌아 임계경로 밖이다</td></tr>
+        <tr><th>수동 (정비도크)</th><td class="num">26.7 분</td>
+          <td>강제공랭 <span class="m">11.5 분</span> + 교환 <span class="m">8 분</span> +
+            검증 <span class="m">2 분</span> + 냉간승온 <span class="m">5.2 분</span></td></tr>
       </tbody>
     </table></div>
     <ul>
@@ -1044,7 +1096,7 @@ HEAT_RECOVERY = RTO_READY ∧ HX_OUTLET_TEMP ∧ DP_OK</div>
     <div class="logic">START_PERMIT   = FULL_LOAD_ACK ∧ ALL_LOCKED ∧ ALL_TEMP_OK ∧ ALL_DOORS_CLOSED ∧ EXHAUST_OK
 IR_ENABLE      = SEALED_FULL_LOAD_ACK ∧ EXHAUST_OK ∧ FIRE_OK ∧ PM_METER_OK ∧ EMISSION_OK
 DOOR_MUTEX     = ¬(INNER_DOOR_OPEN ∧ OUTER_DOOR_OPEN)
-PEEL_PERMIT    = EVA_200_ACK ∧ HKB_TEMP_OK ∧ HKS_TEMP_OK ∧ VAC_6ZONE_OK
+PEEL_PERMIT    = EVA_TARGET_ACK ∧ HKB_TEMP_OK ∧ HKS_TEMP_OK ∧ VAC_6ZONE_OK
 MOTION_SYNC    = |X_LEFT − X_RIGHT| ≤ 0.3 mm ∧ FOLLOWING_ERROR_OK
 MOTION_TRIP    = SYNC_ERROR ∨ VAC_LOW ∨ KNIFE_OVERLOAD ∨ WEB_TENSION_HIGH ∨ GLASS_CRACK
 OPENING_SAFE   = LC_OSSD_CLEAR ∨ MUTE_VALID
@@ -1302,7 +1354,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
         <tr><td class="k">FAT</td><td>외벽 열화상</td><td>≤ 45 °C @ 주위 25 °C</td></tr>
         <tr><td class="k">FAT</td><td>축 반복정밀도·평행도</td><td>좌우 편차 ≤ 0.3 mm</td></tr>
         <tr><td class="k">FAT</td><td>카세트 교환 10회 반복</td><td>칼끝 간격 300 ± 2 mm 재현, 로드셀 영점 재현</td></tr>
-        <tr><td class="k">FAT</td><td>카세트 자동교환 정지시간</td><td>≤ 4.5 분 (무부하 계측, <a href="#c6">6.9</a>)</td></tr>
+        <tr><td class="k">FAT</td><td>카세트 자동교환 정지시간</td><td>≤ 3.9 분 (무부하 계측, <a href="#c6">6.9</a>)</td></tr>
         <tr><td class="k">FAT</td><td>활선 분리 방지</td><td>히터 접촉기 투입 상태에서 잠금해제 불성립</td></tr>
         <tr><td class="k">FAT</td><td>카세트 강제공랭 실측</td><td>250 → 60 °C 시간으로 h 가정 확정</td></tr>
         <tr><td class="k">SAT</td><td>60장 연속 처리</td><td>P95 사이클 ≤ 53.6 s, 60 장/h (90 %)</td></tr>
@@ -1328,12 +1380,24 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
 
   <div class="clause"><div class="n">11.2</div><div class="c">
     <div class="oi">
-      <div class="oi-h"><b>OI-01</b><span>로드셀 용량</span></div>
+      <div class="oi-h"><b>OI-01</b><span>온도별 박리력 곡선</span></div>
       <div class="oi-b">
         <p><em>현황</em>선행자료가 <span class="m">5 kN × 2</span>로 계획하면서, 계산상 최대 추력조건
-          (<span class="m">1.49 – 13.37 kN</span>)에서 여유가 부족할 수 있다고 스스로 밝히고 있다.</p>
-        <p><em>해소</em>실제 박리력 측정 또는 해석으로 최대 추력을 확정하고 용량을 상향 선정하거나
-          공정 조건을 제한한다.</p>
+          (<span class="m">1.49 – 13.37 kN</span> — <strong>9 배</strong>)에서 여유가 부족할 수 있다고
+          스스로 밝히고 있다. 참고로 상온 EVA/유리 박리강도는
+          <span class="m">75 – 125 N/cm</span>로 보고되며, 폭 <span class="m">1,200 mm</span>이면
+          <span class="m">9 – 15 kN</span>으로 이 상한과 같은 자릿수다.</p>
+        <p><em>왜 값이 아니라 곡선인가</em><a href="#c3">3.5항</a>이 계면 목표를
+          <span class="m">200 → 140 °C</span>로 내렸다. 온도를 내리면 박리력은 오른다.
+          그리고 그 박리력이 <a href="#c11">OI-13</a>의 필요 패드 면적
+          (<span class="m">A ≥ 2F / μ·Δp</span>)을 직접 정한다. 즉 <strong>목표온도 · 로드셀 용량 ·
+          패드 면적 · IR 용량 · 가열 단수가 하나의 곡선에 함께 매달려 있다.</strong>
+          값 하나를 재서는 이 다섯을 동시에 닫을 수 없다.</p>
+        <p><em>해소</em>동일 로트 시험 패널로 <span class="m">130 / 140 / 150 / 160 / 200 °C</span>
+          다섯 점에서 박리력을 실측해 <strong>온도–박리력 곡선</strong>을 제출한다. 곡선의 무릎이
+          어디인지가 목표온도를 정하고, 그 점의 힘이 로드셀 용량과 패드 면적을 정한다.
+          측정은 폭 방향 <span class="m">1,200 mm</span> 전폭 기준으로 환산하고, 경년열화
+          정도가 다른 패널 <span class="m">3 종</span> 이상으로 반복한다.</p>
       </div>
     </div>
     <div class="oi">
@@ -1417,7 +1481,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
       <div class="oi-h"><b>OI-12</b><span>칼날 수명 및 마모 판정</span></div>
       <div class="oi-b">
         <p><em>현황</em>교체 구조는 <a href="#c6">6.9항</a>에서 닫혔다 —
-          교체 단위(BC-201 카세트), 구속 방식, 교환 정지 <span class="m">4.5 분</span>까지
+          교체 단위(BC-201 카세트), 구속 방식, 교환 정지 <span class="m">3.9 분</span>까지
           정해져 있다. 남은 것은 <strong>언제 교체하는가</strong>다. 60 장/h로
           패널당 2,400 mm를 절단하면 시간당 <span class="m">144 m</span>,
           8 h 교대당 <span class="m">1,152 m</span>이다. 230 – 270 °C에서 EVA를 가르는
@@ -1426,7 +1490,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
         <p><em>해소</em>절단 연장(m) 또는 처리 장수 기준의 칼날 수명을 보증값으로
           제시하고, 마모 판정은 이미 설치된 칼날별 로드셀의 박리력 추세를 지표로
           삼는다. 판정 임계값을 FAT에서 실증한다. 수명이 정해지면
-          <span class="m">4.5 분</span> 정지가 며칠에 한 번인지 계산되고,
+          <span class="m">3.9 분</span> 정지가 며칠에 한 번인지 계산되고,
           카세트 예비 조수와 예열포켓 운용 방식이 함께 확정된다.</p>
       </div>
     </div>

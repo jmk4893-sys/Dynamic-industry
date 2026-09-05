@@ -146,8 +146,11 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
 
     def test_model_constants_match_the_console(self):
         """상수를 사양서에 옮겨 적으면서 틀리면 입찰자가 다른 설비를 설계한다."""
-        for literal in ("8.7359", "113.15", "175"):
+        target = float(re.search(r"const T_TARGET=([\d.]+);", self.console).group(1))
+        amb = float(re.search(r"const T_AMB=([\d.]+);", self.console).group(1))
+        for literal in ("8.7359", "113.15", f"{round(target - amb)}"):
             self.assertIn(literal, self.html, f"열모델 상수 {literal} 이 사양서에 없다")
+        self.assertIn(f"{round(target)}", self.html, "사양서가 계면 목표온도를 말하지 않는다")
         # 콘솔의 실제 상수와 대조 (사양서는 반올림 표기)
         areal = float(re.search(r"arealCp:([\d.]+)", self.console).group(1))
         self.assertAlmostEqual(
