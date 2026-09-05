@@ -2596,8 +2596,33 @@
        무인 운전 시간이 그 주기로 끊긴다. DL-101 은 지붕이 없으므로 포트를
        뚫지 않고 모노레일로 위를 넘어간다. */
     const ROLL_MASS=MASS_BACK*PANEL_L*PANEL_W*ROLL_FULL_PANELS;
-    const RH_Z=4.85,RH_Y0=.55,RH_Y1=-5.75;    // RH-201 모노레일 — EX-101 크로스헤드(4.51) 위
+    /* ── 칼날 카세트 인출 포락선 ────────────────────────────────────────
+       BC-201 은 1,440mm 소모품이다. 사양서 6.9 가 카세트 인터페이스를 전부
+       정해 놓았는데, 압축 배치에는 그 카세트가 지나갈 자리가 없었다.
+
+       재어 보면 바닥으로는 안 된다. 갠트리는 y ±1,420 · x 8,050~11,550 을
+       쓸고 다니므로 그 안에 고정 매거진을 둘 수 없고, 스윕 밖에 두면
+       카세트(y축 1,440) 중심이 y ≥ 2,140 이라 바깥 끝이 2,860 으로 외장
+       2,350 을 뚫는다. 방책 3,400 까지 남는 540mm 로는 사람이 서지 못한다.
+
+       그래서 자리를 높이로 산다 — 이 라인이 체류시간과 냉각시간에 쓴 것과
+       같은 방법이다. 갠트리 최상단은 2,740(X축 랙피니언 상면)이고 외장
+       갓돌은 3,600 이다. 그 사이 860mm 가 비어 있다. 매거진을 z 3,200 에
+       얹으면 갠트리와 310mm 떨어지고 바닥은 한 뼘도 쓰지 않는다.
+
+       y 자리는 만권 롤(y ±730)을 피해 −1,550 으로 잡는다. RH-201 모노레일이
+       x 8,050 선을 그대로 지나므로, 소모품 반출은 만권 롤과 같은 길을 쓴다 —
+       사람은 방책 밖에서만 200°C 를 지난 카세트를 만진다. */
+    /* x 는 8,600 이다 — 8,050 선은 레일 기둥·모노레일 기둥·만권 롤·아이들러가
+       이미 넷이나 서 있고, 8,100 에는 EX-101 포크 마스트가 있다. 550mm 옆으로
+       비키면 그 넷을 다 피하고, 갠트리는 z 2,740 아래로만 지나간다. */
+    const CKC_X=8.60,CKC_Y=-1.55,CKC_Z=3.30;     // KC-101 매거진 — 갠트리 상단(2.74) 위
+    const CKC_POCKETS=2;                        // 예열 120°C 1칸 · 냉각 1칸
+    const CKC_ENV_Z0=CKC_Z-.15,CKC_ENV_Z1=CKC_Z+.15;   // 인출 포락선 높이
+    const CKC_RACK_Y=-7.00;                     // KC-301 카세트 새들 — 만권 롤(−5.93) 밖
+    const RH_Z=4.85,RH_Y0=.55,RH_Y1=CKC_RACK_Y;// RH-201 모노레일 — 롤과 카세트를 같은 길로 낸다
     const BS_SADDLE=V(8.05,-5.20,.92);        // BS-301 롤 보관 새들 — 펜스(−4.20) 밖
+    const CKC_SADDLE=V(CKC_X,CKC_RACK_Y,1.05);   // KC-301 카세트 새들 — 방책 밖
     const CSKIN_X0=CST.HC.x0-.20,CSKIN_X1=CST.GC.x1+.20;
     const CSKIN_Y=2.35,CFENCE_Y=3.40;
     /* 반출 쪽 방책은 더 나가야 한다. 카트가 2,600 × 1,300 이고 외장(−2,385)과
@@ -2797,6 +2822,10 @@
       box(V(CRAIL_X0,(RH_Y0+RH_Y1)/2,RH_Z),V(.24,RH_Y0-RH_Y1,.26),C.steel2);                   // 롤 반출 위치센서×2
       box(V(CRAIL_X0,(RH_Y0+RH_Y1)/2,RH_Z-.16),V(.34,RH_Y0-RH_Y1,.07),C.rail);
       box(V(CRAIL_X0,-1.95,RH_Z-.34),V(.34,.44,.30),C.cab);                                     // RH-201 호이스트 트롤리
+      /* 매거진 스퍼. 본선은 만권 롤 축(x 8,050)에 있어야 하고 매거진은
+         기둥 넷을 피해 8,600 에 있다 — 그 550mm 를 분기로 잇는다. */
+      box(V((CRAIL_X0+CKC_X)/2,CKC_Y,RH_Z),V(CKC_X-CRAIL_X0,.22,.24),C.steel2);
+      box(V(CKC_X,CKC_Y,RH_Z-.20),V(.26,.26,.18),C.rail);
       line([V(CRAIL_X0,-1.95,RH_Z-.50),V(CRAIL_X0,-1.95,CDRUM.z+.42)],C.rail,2,null,.9);
       box(V(CRAIL_X0,-1.95,CDRUM.z+.34),V(.26,.20,.16),C.yellow);
       /* BS-301 은 펜스 밖이다. 롤은 이 모노레일로만 나간다. */
@@ -2813,11 +2842,60 @@
       cylinder(V(BS_SADDLE.x,BS_SADDLE.y,BS_SADDLE.z),.09,ROLL_FACE+.3,'y',C.rail,10);
       box(V(BS_SADDLE.x-.72,BS_SADDLE.y,BS_SADDLE.z-.10),V(.16,.14,.16),C.teal);                // BS-301 새들 존재센서×2
       box(V(BS_SADDLE.x+.72,BS_SADDLE.y,BS_SADDLE.z-.10),V(.16,.14,.16),C.teal);
-      label3(`RH-201 · 만권롤 모노레일 (${ROLL_MASS.toFixed(0)} kg · ${(ROLL_FULL_PANELS/MODEL.netTarget).toFixed(1)}h 마다)`,V(CRAIL_X0,-2.60,RH_Z+.30),C.yellow);
+      label3(`RH-201 · 만권롤·카세트 모노레일 (${ROLL_MASS.toFixed(0)} kg · ${(ROLL_FULL_PANELS/MODEL.netTarget).toFixed(1)}h 마다)`,V(CRAIL_X0,-2.60,RH_Z+.30),C.yellow);
       label3(`BS-301 · 백시트 롤 보관대 (펜스 밖 · ${ROLL_FULL_PANELS}장/롤)`,V(BS_SADDLE.x,BS_SADDLE.y-1.05,1.50),C.sheet);
+      cassetteMagazine();
       label3('WR-101 · 권취롤 (고정 · 이동축에 얹지 않는다)',V(CDRUM.x,-1.72,CDRUM.z+.50),C.sheet);
       label3(`DN-101 · 장력 댄서 ${Math.round((CDN_Z1-CDN_Z0)*1000)}mm (박리 중 권취 0 — 웹이 스스로 상쇄)`,V(CID_X,-1.86,CDN_Z0-.34),C.brand);
       label3('DL-101 · 탠덤 분리 셀 (3,800)',V(g.cx,-1.95,3.30),C.teal);
+    }
+    /* KC-101 매거진과 인출 포락선. 바닥을 쓰지 않고 갠트리 위 빈 층에 얹는다.
+       포켓 둘 — 예열 120°C 한 칸이 있어야 자동교환이 승온 143초를 기다리지
+       않는다(사양서 6.9). 사람 조건은 여기 걸지 않는다: 200°C 카세트를
+       기계가 집는 것과, 60°C 아래에서 사람이 만지는 것은 다른 허가다. */
+    function cassetteMagazine(){
+      /* 인출 포락선 — 슬라이드에서 매거진까지 카세트가 지나는 통로.
+         비워 두어야 하는 자리라 컷어웨이에서도 점선으로 남긴다. */
+      const envY0=CKC_Y-CASS_L/2,envY1=PANEL_HW+.12;
+      line([V(CKC_X-.10,envY0,CKC_ENV_Z0),V(CKC_X-.10,envY1,CKC_ENV_Z0),
+            V(CKC_X-.10,envY1,CKC_ENV_Z1),V(CKC_X-.10,envY0,CKC_ENV_Z1),
+            V(CKC_X-.10,envY0,CKC_ENV_Z0)],C.yellow,1.3,[6,4],.75);
+      line([V(CKC_X+.10,envY0,CKC_ENV_Z0),V(CKC_X+.10,envY1,CKC_ENV_Z0),
+            V(CKC_X+.10,envY1,CKC_ENV_Z1),V(CKC_X+.10,envY0,CKC_ENV_Z1),
+            V(CKC_X+.10,envY0,CKC_ENV_Z0)],C.yellow,1.3,[6,4],.75);
+      /* 매거진은 바닥에서 받치지 않고 스퍼 빔에 매단다 — 기둥을 내리면 그
+         기둥이 갠트리 스윕(x 8,350~11,350 · y ±1,550 · z ≤ 2,740)을 지난다. */
+      for(const y of [CKC_Y-CASS_L/2-.10,CKC_Y+CASS_L/2+.10])
+        box(V(CKC_X,y,(CKC_Z+.10+RH_Z-.13)/2),V(.13,.12,RH_Z-.13-CKC_Z-.10),C.steel2);
+      box(V(CKC_X,CKC_Y,CKC_Z-.14),V(.62,CASS_L+.30,.10),C.steel2);
+      for(let k=0;k<CKC_POCKETS;k++){
+        const x=CKC_X-.16+k*.32;
+        /* 포켓은 상자가 아니라 U 자 받침이다 — 카세트를 감싸면 교환암이
+           위에서 못 넣는다. 예열 포켓 1칸 · 냉각 포켓 1칸. */
+        for(const sy of [-1,1])box(V(x,CKC_Y+sy*(CASS_L/2+.07),CKC_Z),V(.24,.06,.22),C.cab,{alpha:.9});
+        knifeCassette(x,CKC_Z,k?C.red:C.knife,k?.25:1,CKC_Y);                              // KC-101 예열 포켓·냉각 포켓
+        box(V(x,CKC_Y-CASS_L/2-.20,CKC_Z),V(.14,.12,.14),C.teal);                           // 카세트 잠금·존재센서×4
+      }
+      /* 교환암 — 슬라이드(y 0)와 포켓(y −1,550) 사이를 잇는 2축.
+         빔은 카세트 최상단(포켓 z+360)보다 위에 둔다. 옆으로 지나가면
+         블라인드메이트 블록을 스치고, 그 블록이 히터 65A 를 무는 자리다. */
+      box(V(CKC_X-.24,(CKC_Y+.10)/2,RH_Z-.55),V(.22,Math.abs(CKC_Y)+.40,.12),C.rail);
+      box(V(CKC_X-.24,CKC_Y+.55,RH_Z-.70),V(.26,.30,.24),C.cab);                             // KC-101 교환암
+      label3(`KC-101 · 칼날 카세트 매거진 ${CKC_POCKETS}포켓 (z ${Math.round(CKC_Z*1000)} · 갠트리 위)`,
+             V(CKC_X,CKC_Y-1.16,CKC_Z+.46),C.yellow);
+      label3(`인출 포락선 ${Math.round(CASS_L*1000)} × ${Math.round((CKC_ENV_Z1-CKC_ENV_Z0)*1000)} — 비워 둔다`,
+             V(CKC_X,CKC_Y-1.16,CKC_ENV_Z0-.22),C.brand);
+      /* KC-301 은 방책 밖이다. 만권 롤과 같은 모노레일로만 나간다. */
+      plinth(CKC_SADDLE.x,CKC_SADDLE.y,1.10,1.00,.12);
+      for(const y of [CKC_SADDLE.y-CASS_L/2+.14,CKC_SADDLE.y+CASS_L/2-.14])
+        for(const x of [CKC_SADDLE.x-.30,CKC_SADDLE.x+.30])
+          column(x,y,CKC_SADDLE.z-.20,{s:.10,color:C.steel2,plate:.24});
+      box(V(CKC_SADDLE.x,CKC_SADDLE.y,CKC_SADDLE.z-.12),V(.74,CASS_L+.20,.10),C.steel2);
+      for(let k=0;k<CKC_POCKETS;k++)knifeCassette(CKC_SADDLE.x-.18+k*.36,CKC_SADDLE.z,C.red,.25,CKC_SADDLE.y);
+      box(V(CKC_SADDLE.x-.52,CKC_SADDLE.y,CKC_SADDLE.z-.06),V(.14,.12,.14),C.teal);          // KC-301 새들 존재센서×2
+      box(V(CKC_SADDLE.x+.52,CKC_SADDLE.y,CKC_SADDLE.z-.06),V(.14,.12,.14),C.teal);
+      label3(`KC-301 · 카세트 보관 새들 (펜스 밖 · 60°C 이하에서만 사람)`,
+             V(CKC_SADDLE.x,CKC_SADDLE.y-1.00,CKC_SADDLE.z+.66),C.brand);
     }
     function cGlassRack(){
       const g=CST.GC,top=cDeckZ(DECKS-1)+.66;
@@ -3450,19 +3528,19 @@
          무인 운전에서는 그 순간 라인이 선다. 매거진 2조를 탠덤 옆에 두고
          교환암이 파킹 상태에서 갈아 끼운다. */
       for(const [kx,tag] of [[HKB_X,'HKB'],[HKS_X+.9,'HKS']]){
-        plinth(kx,KC_Y,1.0,1.1,.14);
+        plinth(kx,CKC_Y,1.0,1.1,.14);
         for(const dy of [-.42,.42])
-          column(kx,KC_Y+dy,1.62,{s:.12,color:C.steel2,plate:.30});
-        box(V(kx,KC_Y,1.72),V(.72,1.02,.16),C.steel2);                   // KC-101 칼날 카세트 매거진×2 랙
+          column(kx,CKC_Y+dy,1.62,{s:.12,color:C.steel2,plate:.30});
+        box(V(kx,CKC_Y,1.72),V(.72,1.02,.16),C.steel2);                   // KC-101 칼날 카세트 매거진×2 랙
         /* 위 칸은 150°C 예열 포켓(신품 대기), 아래 칸은 냉각 포켓(사용품).
            뜨거운 카세트를 냉각 포켓이 받으므로 냉각 13분이 임계경로에서 빠진다. */
-        box(V(kx,KC_Y,2.18),V(.62,.86,.16),C.heat);                     // KC-101 칼날 카세트 매거진×2 예열 포켓
-        box(V(kx,KC_Y,1.92),V(.62,.86,.16),C.knife);                    // KC-101 칼날 카세트 매거진×2 냉각 포켓
+        box(V(kx,CKC_Y,2.18),V(.62,.86,.16),C.heat);                     // KC-101 칼날 카세트 매거진×2 예열 포켓
+        box(V(kx,CKC_Y,1.92),V(.62,.86,.16),C.knife);                    // KC-101 칼날 카세트 매거진×2 냉각 포켓
         for(const dy of [-.36,.36])
-          box(V(kx,KC_Y+dy,2.36),V(.14,.14,.13),C.yellow);               // KC-101 칼날 카세트 매거진×2 카세트 존재센서
-        box(V(kx,KC_Y-.62,2.10),V(.20,.16,.42),C.dark);                  // KC-101 칼날 카세트 매거진×2 교환암
-        box(V(kx,KC_Y-.62,2.36),V(.16,.16,.12),C.yellow);                // KC-101 칼날 카세트 매거진×2 교환암 원점센서
-        label3(`KC-101 · ${tag} 카세트 자동교환`,V(kx,KC_Y+.78,2.62),C.knife);
+          box(V(kx,CKC_Y+dy,2.36),V(.14,.14,.13),C.yellow);               // KC-101 칼날 카세트 매거진×2 카세트 존재센서
+        box(V(kx,CKC_Y-.62,2.10),V(.20,.16,.42),C.dark);                  // KC-101 칼날 카세트 매거진×2 교환암
+        box(V(kx,CKC_Y-.62,2.36),V(.16,.16,.12),C.yellow);                // KC-101 칼날 카세트 매거진×2 교환암 원점센서
+        label3(`KC-101 · ${tag} 카세트 자동교환`,V(kx,CKC_Y+.78,2.62),C.knife);
       }
 
       /* AD-101 — 만권 롤은 4.9시간마다 나간다. 무인 운전에서는 AGV 가 받아
@@ -3867,30 +3945,33 @@
     /* BC-201 인터페이스. 카세트 본체는 칼날·히터·열전대를 담은 교체 단위이고,
        그 위 슬라이드에 테이퍼 핀으로 앉아 쐐기 클램프로 물린다. 서비스(전력·
        열전대·접지)는 한 블록에서 블라인드메이트로 붙는다. */
-    function knifeCassette(x,zz,headColor,q){
+    /* cy 는 카세트 중심의 y 다. 슬라이드 위에서는 늘 패널 중심(0)이지만
+       매거진 포켓에서는 다른 자리에 눕는다 — 값을 0 으로 박아 두면 포켓에
+       넣은 카세트가 전부 라인 한가운데에 그려진다. */
+    function knifeCassette(x,zz,headColor,q,cy=0){
       const w=CASS_L/2;
-      box(V(x+.06,0,zz+.20),V(.30,CASS_L+.02,.10),C.steel2);            // BC-201 퀵체인지 칼날 카세트 프레임
+      box(V(x+.06,cy,zz+.20),V(.30,CASS_L+.02,.10),C.steel2);            // BC-201 퀵체인지 칼날 카세트 프레임
       /* 테이퍼 로케이팅핀 2점 — 하나는 원형, 하나는 다이아몬드(과구속 방지) */
       for(const sgn of [-1,1]){
-        cylinder(V(x+.06,sgn*(w-.12),zz+.29),.028,.07,'z',C.rail,10);   // 카세트 테이퍼 로케이팅핀×4
-        box(V(x+.06,sgn*(w-.12),zz+.335),V(.09,.09,.03),C.steel2);
+        cylinder(V(x+.06,cy+sgn*(w-.12),zz+.29),.028,.07,'z',C.rail,10);   // 카세트 테이퍼 로케이팅핀×4
+        box(V(x+.06,cy+sgn*(w-.12),zz+.335),V(.09,.09,.03),C.steel2);
       }
       /* 쐐기 클램프 2점 — 스프링으로 잠기고 공압으로 풀린다 */
       for(const sgn of [-1,1]){
-        box(V(x-.09,sgn*(w-.30),zz+.26),V(.11,.13,.16),q>.04?C.ok:C.yellow);  // 카세트 쐐기 클램프×4
-        box(V(x-.09,sgn*(w-.30),zz+.36),V(.08,.09,.07),C.dark);               // 카세트 잠금·존재센서×4
+        box(V(x-.09,cy+sgn*(w-.30),zz+.26),V(.11,.13,.16),q>.04?C.ok:C.yellow);  // 카세트 쐐기 클램프×4
+        box(V(x-.09,cy+sgn*(w-.30),zz+.36),V(.08,.09,.07),C.dark);               // 카세트 잠금·존재센서×4
       }
       /* 서비스 블라인드메이트 — 히터 65A·열전대 4점·접지가 한 블록에서 문다 */
-      box(V(x+.06,w+.10,zz+.22),V(.22,.16,.17),C.brand);                // 카세트 블라인드메이트 커넥터×2
-      box(V(x+.06,w+.20,zz+.22),V(.18,.06,.13),C.dark);
-      line([V(x+.06,w+.24,zz+.22),V(x+.06,w+.52,zz+.62)],C.brand,1.2,[4,3],.6);
+      box(V(x+.06,cy+w+.10,zz+.22),V(.22,.16,.17),C.brand);                // 카세트 블라인드메이트 커넥터×2
+      box(V(x+.06,cy+w+.20,zz+.22),V(.18,.06,.13),C.dark);
+      line([V(x+.06,cy+w+.24,zz+.22),V(x+.06,cy+w+.52,zz+.62)],C.brand,1.2,[4,3],.6);
       /* 냉각 퍼지 — 교환 전 60°C 까지 식힌다. 사람이 만질 때만 필요하다. */
-      box(V(x+.06,-w-.10,zz+.22),V(.20,.16,.13),C.teal);                // 카세트 냉각 퍼지밸브×2
-      for(let y=-w+.10;y<w;y+=.36)box(V(x+.20,y,zz+.17),V(.05,.05,.05),C.teal);
-      box(V(x-.09,-w-.10,zz+.24),V(.11,.13,.12),C.dark);                // 카세트 온도센서×2
+      box(V(x+.06,cy-w-.10,zz+.22),V(.20,.16,.13),C.teal);                // 카세트 냉각 퍼지밸브×2
+      for(let y=cy-w+.10;y<cy+w;y+=.36)box(V(x+.20,y,zz+.17),V(.05,.05,.05),C.teal);
+      box(V(x-.09,cy-w-.10,zz+.24),V(.11,.13,.12),C.dark);                // 카세트 온도센서×2
       /* 취급 핸들 — 35kg 이라 인력 취급 한계를 넘는다. 지그·교환암으로만 든다. */
-      for(const sgn of [-1,1])box(V(x+.06,sgn*(w-.46),zz+.36),V(.16,.05,.05),C.rail); // 카세트 취급 핸들×2
-      if(nearView())label3('BC-201 카세트',V(x+.06,-w-.34,zz+.46),headColor);
+      for(const sgn of [-1,1])box(V(x+.06,cy+sgn*(w-.46),zz+.36),V(.16,.05,.05),C.rail); // 카세트 취급 핸들×2
+      if(nearView())label3('BC-201 카세트',V(x+.06,cy-w-.34,zz+.46),headColor);
     }
     function knifeBar(x,z,hot,label,engage=0,kind='HKB'){
       const q=clamp(engage),lift=.62*(1-ease(q)),zz=z+lift,headColor=kind==='HKB'?C.knife:C.red;
@@ -4487,8 +4568,10 @@
     const engineeringDialog=$('engineeringDialog'),drawingContent=$('drawingContent');
     let drawingTab='power',drawingMode='2d',assemblyIndex=0;
     const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const svgDefs=`<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#0b6268"/></marker><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="#dce1df" stroke-width="1"/></pattern></defs>`;
-    const titleBlock=(code,title,subtitle,rev='REV.20')=>`<g font-family="Arial,'Noto Sans KR',sans-serif"><rect x="20" y="20" width="1160" height="610" rx="8" fill="#fafaf8" stroke="#7c898b" stroke-width="2"/><rect x="20" y="20" width="1160" height="610" rx="8" fill="url(#grid)"/><text x="45" y="58" font-size="24" font-weight="700" fill="#25353a">${esc(title)}</text><text x="45" y="82" font-size="13" fill="#647278">${esc(subtitle)}</text><rect x="870" y="548" width="310" height="82" fill="#f2f4f1" stroke="#7c898b"/><g transform="translate(880,552)">${markSVG('width="44" height="39"')}</g><text x="908" y="572" font-size="13" font-weight="700" fill="#25353a">DYNAMIC INDUSTRY · ${esc(code)}</text><text x="910" y="594" font-size="11" fill="#647278">DG-HK60 · ${esc(rev)} · CONCEPT / FAT BASIS</text><text x="910" y="614" font-size="11" fill="#647278">SCALE NTS · 2026-09-03</text></g>`;
+    const svgDefs=`<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#0b6268"/></marker><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="#dce1df" stroke-width="1"/></pattern><pattern id="hatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0V9" stroke="#d9b76a" stroke-width="2.2"/></pattern></defs>`;
+    /* 시트 높이는 도면이 정한다 — D-601 은 ④ 인출 단면을 더 갖는다. 값으로
+       박아 두면 단면을 붙였을 때 틀 밖으로 나간 채로 인쇄된다. */
+    const titleBlock=(code,title,subtitle,rev='REV.20',h=610)=>`<g font-family="Arial,'Noto Sans KR',sans-serif"><rect x="20" y="20" width="1160" height="${h}" rx="8" fill="#fafaf8" stroke="#7c898b" stroke-width="2"/><rect x="20" y="20" width="1160" height="${h}" rx="8" fill="url(#grid)"/><text x="45" y="58" font-size="24" font-weight="700" fill="#25353a">${esc(title)}</text><text x="45" y="82" font-size="13" fill="#647278">${esc(subtitle)}</text><rect x="870" y="${h-62}" width="310" height="82" fill="#f2f4f1" stroke="#7c898b"/><g transform="translate(880,${h-58})">${markSVG('width="44" height="39"')}</g><text x="908" y="${h-38}" font-size="13" font-weight="700" fill="#25353a">DYNAMIC INDUSTRY · ${esc(code)}</text><text x="910" y="${h-16}" font-size="11" fill="#647278">DG-HK60 · ${esc(rev)} · CONCEPT / FAT BASIS</text><text x="910" y="${h+4}" font-size="11" fill="#647278">SCALE NTS · 2026-09-03</text></g>`;
     function powerDrawing(){
       /* 분기함은 부하표에서 그린다. 도면의 차단기와 명판의 전류가 같은 근거를 쓴다. */
       const branch=(x,k)=>`<path d="M${x} 224V330" stroke="#c84c28" stroke-width="5"/><rect x="${x-63}" y="330" width="126" height="76" rx="7" fill="#fff7eb" stroke="#c47a17" stroke-width="2"/><text x="${x}" y="354" text-anchor="middle" font-size="13" font-weight="700" fill="#69420a">${esc(k.id)}</text><text x="${x}" y="375" text-anchor="middle" font-size="12" fill="#69420a">MCCB ${esc(k.mccb)}</text><text x="${x}" y="394" text-anchor="middle" font-size="11" fill="#745a35">${k.kW}kW · ${branchAmp(k).toFixed(0)}A</text>`;
@@ -4677,6 +4760,46 @@
             +`<rect x="${PX0}" y="${y}" width="${w.toFixed(1)}" height="26" fill="${f}" stroke="${st}" stroke-width="1.8"/>`
             +`<text x="${(PX0+w+9).toFixed(1)}" y="${y+18}" font-size="12" font-weight="700" fill="${st}">${L.toFixed(2)} m</text>`
             +`<text x="${(PX0+8).toFixed(1)}" y="${y+18}" font-size="10.5" fill="${st}">${esc(why)}</text></g>`}).join('');
+      /* ── ④ 칼날 인출 포락선 ────────────────────────────────────────
+         1,440mm 소모품이 지나갈 자리를 도면에 예약한다. 바닥에는 그 자리가
+         없다 — 갠트리가 y ±1,420 을 쓸고 다니고, 스윕 밖으로 나가면 외장을
+         뚫는다. 그래서 갠트리 최상단(2,740)과 갓돌(3,680) 사이의 빈 층을
+         쓴다. 이 단면이 없으면 현장에서 "칼날은 어디로 빼느냐" 가 나온다. */
+      const EZ=z=>856-z*40, EY=y=>830+y*95;          // 단면 축척 — z 40px/m · y 95px/m
+      const eLine=(y0,z0,y1,z1,c,w,d)=>`<path d="M${EY(y0).toFixed(1)} ${EZ(z0).toFixed(1)}L${EY(y1).toFixed(1)} ${EZ(z1).toFixed(1)}" stroke="${c}" stroke-width="${w}"${d?` stroke-dasharray="${d}"`:''} fill="none"/>`;
+      const eBox=(y0,z0,y1,z1,f,st,w=1.6)=>`<rect x="${EY(y0).toFixed(1)}" y="${EZ(z1).toFixed(1)}" width="${((y1-y0)*105).toFixed(1)}" height="${((z1-z0)*40).toFixed(1)}" fill="${f}" stroke="${st}" stroke-width="${w}"/>`;
+      const eTxt=(y,py,t,sz,c,w=400,a='middle')=>`<text x="${EY(y).toFixed(1)}" y="${py}" text-anchor="${a}" font-size="${sz}" font-weight="${w}" fill="${c}">${esc(t)}</text>`;
+      const env=`<g>`
+        // 바닥·기준선
+        +eLine(.40,0,CKC_RACK_Y-.9,0,'#4a565b',1.6)      // 표제란을 피해 자른다
+        // 갠트리 스윕 — 바닥에 자리가 없다는 것을 보이는 상자
+        +eBox(-CGY,CZ,CGY,2.74,'#eef2f3','#8b9aa0',1.4)
+        +eTxt(0,EZ(1.95),`KG-101 갠트리 스윕 y ±${mm(CGY)}`,10.5,'#5e6d72',700)
+        +eTxt(0,EZ(1.95)+15,'상단 2,740 — 이 안에 고정물을 둘 수 없다',9.5,'#7c8a90')
+        // 인출 포락선 — 슬라이드에서 포켓까지 카세트가 지나는 통로
+        +`<rect x="${EY(CKC_Y-CASS_L/2).toFixed(1)}" y="${EZ(CKC_ENV_Z1).toFixed(1)}" width="${((PANEL_HW+CASS_L/2-CKC_Y)*105).toFixed(1)}" height="${((CKC_ENV_Z1-CKC_ENV_Z0)*40).toFixed(1)}" fill="url(#hatch)" stroke="#a8790a" stroke-width="1.8" stroke-dasharray="7 4"/>`
+        +eTxt((CKC_Y+PANEL_HW)/2,EZ(CKC_ENV_Z1)-9,`인출 포락선 ${mm(CASS_L)} × ${mm(CKC_ENV_Z1-CKC_ENV_Z0)} — 비워 둔다`,11,'#8a6a12',700)
+        // KC-101 매거진과 교환암
+        +eBox(CKC_Y-CASS_L/2-.06,CKC_Z-.14,CKC_Y+CASS_L/2+.06,CKC_Z+.14,'#fdf3dc','#a8790a',2)
+        +eTxt(CKC_Y-CASS_L/2-.16,EZ(CKC_Z)+4,`KC-101 매거진 ${CKC_POCKETS}포켓 (예열 ${CASS_T_PRE}°C · 냉각)`,10.5,'#5f4404',700,'end')
+        +eLine(0,CKC_Z,CKC_Y,CKC_Z,'#a8790a',1.4,'5 4')
+        +eTxt(PANEL_HW+.45,EZ(CKC_Z)+4,'슬라이드',9.5,'#8a6a12',400,'start')
+        // RH-201 — 롤과 카세트가 같은 길로 방책을 넘는다
+        +eLine(RH_Y0,RH_Z,CKC_RACK_Y,RH_Z,'#c84c28',2.6)
+        +eLine(CKC_Y,RH_Z,CKC_Y,CKC_Z+.30,'#c84c28',1.3,'4 3')
+        +eLine(CKC_RACK_Y,RH_Z,CKC_RACK_Y,CKC_SADDLE.z+.30,'#c84c28',1.3,'4 3')
+        +eTxt((RH_Y0+CKC_RACK_Y)/2,EZ(RH_Z)+17,'RH-201 — 만권 롤과 카세트가 같은 길로 방책을 넘는다',11,'#8a3316',700)
+        // KC-301 · 방책 밖
+        +eBox(CKC_RACK_Y-CASS_L/2,CKC_SADDLE.z-.10,CKC_RACK_Y+CASS_L/2,CKC_SADDLE.z+.16,'#f4f2ee','#4a565b')
+        +eTxt(CKC_RACK_Y,EZ(CKC_SADDLE.z)+34,`KC-301 · 방책 밖 · ${CASS_T_TOUCH}°C 이하에서만 사람`,10.5,'#4a565b',700)
+        // 외장·방책 기준선
+        +`<g stroke="#8b9aa0" stroke-width="1.2" stroke-dasharray="6 4">`
+        +`<path d="M${EY(-CSKIN_Y).toFixed(1)} ${EZ(0).toFixed(1)}V${EZ(SKIN_TOP+COPE_H).toFixed(1)}"/>`
+        +`<path d="M${EY(-CFENCE_YN).toFixed(1)} ${EZ(0).toFixed(1)}V${EZ(2.2).toFixed(1)}"/></g>`
+        +eTxt(-CSKIN_Y,EZ(SKIN_TOP+COPE_H)-17,`외장 ${mm(CSKIN_Y)}`,9.5,'#8b9aa0')
+        +eTxt(-CFENCE_YN,EZ(2.2)-7,`방책 ${mm(CFENCE_YN)}`,9.5,'#8b9aa0')
+        +eTxt(CKC_RACK_Y-.9,EZ(0)+17,'A-A 단면 · DL-101 셀 — 바닥 면적 증가 0 · 전장·전폭·방책 불변',10,'#4a565b',400,'start')
+        +`</g>`;
       // ── ③ 공급범위 경계
       /* 경계선 하나로 그린다 — 왼쪽이 납품, 오른쪽이 발주자 설비이고,
          경계를 건너는 화살표에 신호 이름이 붙는다. 장치가 나가도 신호는
@@ -4704,8 +4827,8 @@
         +`<div><span>나이프 복귀속도 하한</span><strong>${M.returnSpeedFloor.toFixed(0)} mm/s</strong></div>`
         +`<div><span>유리 냉각 랙</span><strong>${GCOOL_DECKS}단 · 여유 ${coolMargin.toFixed(0)}%</strong></div></div>`
       +`<div class="wire-legend"><span style="--wire:#0b6268">납품 범위</span><span style="--wire:#8b9aa0">발주자 설비 인계</span><span style="--wire:#a8790a">이동 나이프 복귀</span></div>`
-      +`<div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="DG-HK60C 압축 배치 일반도">${svgDefs}`
-      +titleBlock('D-601','DG-HK60C · 압축 배치 일반도',`전장 ${fmt(total)} mm · 처리량 불변 · 공급범위 경계 3개소`,'REV.21C')
+      +`<div class="drawing-stage"><svg viewBox="0 0 1200 940" role="img" aria-label="DG-HK60C 압축 배치 일반도">${svgDefs}`
+      +titleBlock('D-601','DG-HK60C · 압축 배치 일반도',`전장 ${fmt(total)} mm · 처리량 불변 · 공급범위 경계 3개소`,'REV.21C',900)
       +`<g font-family="Arial,'Noto Sans KR',sans-serif">`
       +`<text x="45" y="120" font-size="13" font-weight="700" fill="#25353a">① 압축 배치 평면 — 축척 1 m = ${sPlan.toFixed(1)} px</text>`
       +plan+flow+dimLine
@@ -4713,6 +4836,8 @@
       +bars
       +`<text x="45" y="490" font-size="13" font-weight="700" fill="#25353a">③ 공급범위 경계 — 장치는 나가고 인터록은 남는다</text>`
       +bx
+      +`<text x="45" y="656" font-size="13" font-weight="700" fill="#25353a">④ 칼날 카세트 인출 포락선 — 자리가 없으면 높이로 산다 (A-A 단면 · z 40px/m · y 95px/m)</text>`
+      +env
       +`</g></svg></div>`
       +`<table class="bom-table"><thead><tr><th>스테이션</th><th>기능</th><th>길이 mm</th><th>근거</th></tr></thead><tbody>${rows}</tbody></table>`
       +`<table class="bom-table"><thead><tr><th>경계 납품품</th><th>왜 필요한가</th><th>신호</th></tr></thead><tbody>`
