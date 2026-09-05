@@ -21,7 +21,8 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
 
 from pv_preprocess import (access, acoustics, ai, crane, kinematics,  # noqa: E402
-                           layout, mounting, reliability, safety, smart, wiring)
+                           layout, mounting, reliability, safety, smart, thermal,
+                           wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parent.parent / "docs/drawings/pv-preprocess-plant.html"
 
@@ -135,6 +136,29 @@ def main() -> int:
     p.one(r"var LAYOUT_FOCUS = \{[^}]*\}",
           lambda m: "var LAYOUT_FOCUS = { all: null, upstream: ['afu', 'robot'], "
                     "jbr: ['jbr'], afr: ['afr', 'post'] }")
+
+    # ── 지지·장착 요약 ───────────────────────────────────────────────
+    # 부재 수·브래킷 수·앵커 수는 mounting 이 센다. 손으로 적으면 부재 하나를
+    # 빼도 배지가 옛 수를 보여 준다 (REV.49 에서 셔틀 포스트를 빼며 그랬다).
+    sm = mounting.summary()
+    p.one(r"MOUNT_SUMMARY = \{[^}]*\}",
+          lambda m: ("MOUNT_SUMMARY = { stations: %d, anchors: %d, m16: %d, m20: %d, m24: %d, "
+                     "members: %d, brackets: %d, keepOut: %d, floor: %d, frame: %d, gantry: %d, "
+                     "exempt: %d }")
+          % (sm["stations"], sm["anchors"], sm["by_bolt"]["M16"], sm["by_bolt"]["M20"],
+             sm["by_bolt"]["M24"], sm["members"], sm["brackets"], sm["keepOut"],
+             sm["by_class"]["floor"], sm["by_class"]["frame"], sm["by_class"]["gantry"],
+             sm["exempt"]))
+
+    # ── 반전기 기구학 요약 ───────────────────────────────────────────
+    # 3D 표제란이 그대로 보여 주는 값이다. REV.48 까지 손으로 적은 리터럴이었고,
+    # 시험이 모델 요약의 키·값이 도면에 있는지만 봤다 — 모델에서 키가 없어지면
+    # (REV.49 의 이송면·링 밑 여유) 도면에 옛 값이 남아도 아무도 몰랐을 자리다.
+    def _kv(k: str, v: object) -> str:
+        return f"{k}: {json.dumps(v)}" if isinstance(v, list) else f"{k}: {v}"
+    p.one(r"var KINEMATICS = \{[^}]*\}",
+          lambda m: "var KINEMATICS = {" + ", ".join(
+              _kv(k, v) for k, v in kinematics.summary().items()) + "}")
 
     # ── 소음 ─────────────────────────────────────────────────────────────
     p.rows("NOISE_SOURCES",
@@ -293,12 +317,52 @@ def main() -> int:
           + ", ".join('"' + k + '"' for k in crane.install_order()) + "]")
 
     # ── 스마트 시설 — 위치는 배선 모델이 존에서 파생한다 ───────────────
+    # 데이터량·태그 수는 서보 축 수의 함수다 (REV.49 에서 셔틀 X 축 2 가 빠지며
+    # 37 → 35 축, 태그 600 → 584, 시계열 94.1 → 89.2 kB/s). 손으로 적은 리터럴은
+    # 축을 빼도 옛 값을 보여 준다 — 그래서 요약에서 그대로 찍는다.
+    sm = smart.summary()
     for key, value in (("serverRoomX", wiring.server_room_center_x_mm()),
                        ("controlRoomX", wiring.control_room_center_x_mm()),
                        ("edgeCenterX", wiring.edge_cabinet_center_x_mm()),
                        ("facilityX0", wiring.facility_x0_mm()),
                        ("facilityX1", wiring.facility_span_mm()[1])):
         p.scalar(key, value)
+    # 나머지 키는 SMART 리터럴 **안에서만** 바꾼다 — itKw 같은 이름은 다른 표에도 있다.
+    smart_keys = (("racks", sm["racks"]), ("rackU", sm["rack_u"]),
+                  ("rackHeatKw", sm["rack_heat_kw"]),
+                  ("edgeCabinets", sm["edge_cabinets"]), ("wifiAps", sm["wifi_aps"]),
+                  ("instruments", sm["instruments"]), ("plcTags", sm["plc_tags"]),
+                  ("servos", sm["drive_counts"]["서보"]),
+                  ("inverters", sm["drive_counts"]["인버터"]),
+                  ("dol", sm["drive_counts"]["직입"] + sm["drive_counts"]["소프트스타터"]),
+                  ("timeseriesKbS", sm["timeseries_kb_s"]),
+                  ("visionRawMbS", sm["vision_raw_mb_s"]),
+                  ("visionKeptMbS", sm["vision_kept_mb_s"]),
+                  ("retentionPct", sm["vision_retention_pct"]),
+                  ("requiredMbps", sm["required_mbps"]),
+                  ("backboneMbps", sm["backbone_mbps"]),
+                  ("annualTb", sm["annual_tb"]), ("storageTb", sm["storage_tb"]),
+                  ("itKw", sm["it_kw"]), ("instKw", sm["inst_kw"]),
+                  ("smartKw", sm["smart_kw"]),
+                  ("hoursPerYear", int(sm["hours_per_year"])))
+
+    def _smart(m: re.Match) -> str:
+        body = m.group(0)
+        for key, value in smart_keys:
+            body, n = re.subn(rf"\b{key}: -?[\d.]+", f"{key}: {q(value)}", body)
+            assert n == 1, f"SMART 키 {key} {n}곳"
+        return body
+    p.one(r"var SMART = \{[^}]*\}", _smart)
+
+    # ── 열수지 — 반내 발열은 서보 일람에서 나온다 ────────────────────────
+    for src in thermal.heat_sources():
+        p.one(rf"(\['{re.escape(src.tag)}', '[^']*', )[\d.]+(, '[^']*', '[^']*', '[^']*', )[\d.]+\]",
+              lambda m, src=src: f"{m.group(1)}{src.loss_kw}{m.group(2)}{src.cooler_kw}]")
+    loads = thermal.cabinet_loads()
+    p.rows("THERMAL_CABINETS",
+           [(panel, kw, "열교환기" if thermal.cabinet_needs_exchanger(panel)
+             else ("필터팬" if kw > 0 else "— (전동기 없음)"))
+            for panel, kw in loads.items()])
 
     DRAWING.write_text(p.text, encoding="utf-8")
     print(f"도면 리터럴 재생성 — {p.changed}곳 갱신 "

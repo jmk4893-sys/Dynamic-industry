@@ -53,8 +53,6 @@ SERVO_AXES: tuple[Axis, ...] = (
     Axis("AXIS-BFC-Z", "LP-AFU", "BFC-101A/B", "카세트 승강 Z", 2, 1.1,
          "서보", "23 bit 절대", True,
          "포탈 LM 가이드 · 반전축 H=3,300 도킹, 볼스크루"),
-    Axis("AXIS-BFC-S", "LP-AFU", "BFC-101A/B", "단장 수평셔틀 X", 2, 0.4,
-         "서보", "23 bit 절대", False, "BHS 셔틀 레일 · 정지 ±0.5 mm"),
     Axis("AXIS-CD-Z", "LP-AFU", "CD-101", "포획빔 승강", 1, 0.4,
          "서보", "23 bit 절대", True, "중앙벽 수납 ↔ 포획 위치"),
     Axis("AXIS-RB-J13", "LP-RB", "RB-101", "다관절 J1–J3", 3, 1.2,

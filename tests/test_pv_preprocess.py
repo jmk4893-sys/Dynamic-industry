@@ -244,7 +244,7 @@ class TestDrawingMatchesModel(unittest.TestCase):
         # README·코드 주석이 적는 품목 수가 실제와 어긋나면 문서가 거짓말을 한다.
         # REV.23 까지 README 161 · 주석 150 · 실제 149 로 셋이 다 달랐다.
         total = sum(len(rows) for rows in parts.values())
-        self.assertEqual(total, 180, "sweep(동작 포락선)은 부품이 아니라 빠진다")
+        self.assertEqual(total, 177, "sweep(동작 포락선)은 부품이 아니라 빠진다")
         with io.open("README.md", encoding="utf-8") as handle:
             self.assertIn(f"부품 {total}품목", handle.read())
         self.assertIn(f"현재 {total}품목", self.html)
@@ -798,18 +798,18 @@ class TestInfeedHandoff(unittest.TestCase):
     알 수 없었다. 좌표는 3D 모델 실측값에서 왔으므로 두 문서가 같은 기계를 가리킨다.
     """
 
-    #: 투입 체인 부품과 3D 실측 (size, at). afu 는 월드 X + 15,400, bfc 는 월드 X + 14,800·Z + 1,600.
+    #: 투입 체인 부품과 3D 실측 (size, at). afu 는 월드 X + 19,100, bfc 는 월드 X + 20,350·Z + 1,600.
+    #: REV.49: 반전 드럼이 적층 바로 위에 서므로 셔틀(SHT)이 없고, 분리헤드·승강레일·
+    #: 포획빔이 전부 적층 중심 x −1,250 에 있다. 적층 z 는 ±1,900 → ±1,600 (드럼과 동심).
     AFU_CHAIN = {
-        "SEP-A": ([2180, 80, 120], [-1250, 2060, -1900]),
-        "SEP-B": ([2180, 80, 120], [-1250, 2060, 1900]),
-        "CAR-A1": ([2720, 100, 140], [-1250, 1760, -2572]),
-        "CAR-A2": ([2720, 100, 140], [-1250, 1760, -1228]),
-        "CAR-B1": ([2720, 100, 140], [-1250, 1760, 1228]),
-        "CAR-B2": ([2720, 100, 140], [-1250, 1760, 2572]),
-        "SHT-A": ([2280, 80, 1410], [-325, 1640, -1750]),
-        "SHT-B": ([2280, 80, 1410], [-325, 1640, 1750]),
-        "CD-A": ([4460, 60, 1540], [-325, 2020, -1600]),
-        "CD-B": ([4460, 60, 1540], [-325, 2020, 1600]),
+        "SEP-A": ([2180, 80, 120], [-1250, 2060, -1600]),
+        "SEP-B": ([2180, 80, 120], [-1250, 2060, 1600]),
+        "CAR-A1": ([2720, 100, 140], [-1250, 1760, -2272]),
+        "CAR-A2": ([2720, 100, 140], [-1250, 1760, -928]),
+        "CAR-B1": ([2720, 100, 140], [-1250, 1760, 928]),
+        "CAR-B2": ([2720, 100, 140], [-1250, 1760, 2272]),
+        "CD-A": ([2900, 60, 1540], [-1250, 2020, -1600]),
+        "CD-B": ([2900, 60, 1540], [-1250, 2020, 1600]),
     }
 
     @classmethod
@@ -831,8 +831,9 @@ class TestInfeedHandoff(unittest.TestCase):
         """반전카세트가 일반 매싱 상자가 아니라 실물 부품으로 전개돼 있는지."""
         block = self.stations["bfc"]
         tags = set(re.findall(r"part\('([^']+)'", block))
-        for tag in ("SEP", "CAR-1", "CAR-2", "SHT", "RNG-L", "RNG-R", "BGD", "CLP-U", "CLP-L", "CDR"):
+        for tag in ("SEP", "CAR-1", "CAR-2", "RNG-L", "RNG-R", "BGD", "CLP-U", "CLP-L", "CDR"):
             self.assertIn(tag, tags, f"{tag} 가 BFC 조립도에 없다")
+        self.assertNotIn("SHT", tags, "REV.49 — 드럼이 적층 위에 서니 셔틀은 없다")
         for tag in ("VC-1", "VC-2", "VC-3", "VC-4"):
             self.assertIn(tag, tags, "진공 4구역 컵이 없다 — 겹장검출 구역이 도면에 안 보인다")
         for index in range(1, 5):
@@ -850,16 +851,18 @@ class TestInfeedHandoff(unittest.TestCase):
             self.assertEqual([int(v) for v in found.group(1).split(",")], [180, 1980, 1980])
 
     def test_key_heights_agree_across_the_two_sheets(self):
-        """AFU GA 와 BFC 조립도가 같은 레벨을 쓰는지 — 3D 의 Gt=1,880 · At=3,300 · li=2,100."""
+        """AFU GA 와 BFC 조립도가 같은 레벨을 쓰는지 — 3D 의 Gt=1,880 · At=3,430 · li=2,100 · 대기면 2,250."""
+        dwell = f"DWELL {kinematics.dwell_mm():,}"
         for key in ("afu", "bfc"):
             block = self.stations[key]
-            for level in ("PICK 1,880", "HANDOFF 2,100", "SHUTTLE 1,640"):
+            for level in ("PICK 1,880", "HANDOFF 2,100", dwell):
                 with self.subTest(station=key, level=level):
                     self.assertIn(level, block)
+            self.assertNotIn("SHUTTLE", block, "REV.49 — 셔틀 레벨이 남아 있다")
             self.assertRegex(block, r"\[3430, '(FLIP )?AXIS 3,430'\]")
         bfc = self.stations["bfc"]
-        # 셔틀 1,640 · 캐리지 1,760 · 분리헤드 2,060 · 포획빔 2,020 은 3D 의 Gt 오프셋에서 온다.
-        for tag, height in (("SHT", 1640), ("CAR-1", 1760), ("CAR-2", 1760), ("SEP", 2060), ("CD-1", 2020)):
+        # 캐리지 1,760 · 분리헤드 2,060 · 포획빔 2,020 은 3D 의 Gt 오프셋에서 온다.
+        for tag, height in (("CAR-1", 1760), ("CAR-2", 1760), ("SEP", 2060), ("CD-1", 2020)):
             found = re.search(r"part\('%s', '[^']*', \[[-\d, ]+\], \[-?\d+, (-?\d+)," % re.escape(tag), bfc)
             self.assertIsNotNone(found, f"{tag} 를 못 찾았다")
             self.assertEqual(int(found.group(1)), height, f"{tag} 높이가 3D 실측과 다르다")
@@ -901,7 +904,9 @@ class TestInfeedHandoff(unittest.TestCase):
         for index, (left, right) in enumerate(zip(afu, bfc), start=1):
             with self.subTest(step=index):
                 # 표현은 시트마다 달라도 되지만 같은 동작이어야 한다 — 핵심어로 대조한다.
-                key = ("370", "전개", "1,874", "2,290", "180°", "1,330")[index - 1]
+                # REV.49: 3단계가 셔틀 1,874 에서 수직 승강 1,180 (대기면 2,250 → 축 3,430)
+                # 으로, 4단계가 링 밑 통과에서 조 체결로 바뀌었다.
+                key = ("370", "전개", "1,180", "체결", "180°", "1,330")[index - 1]
                 self.assertIn(key, left)
                 self.assertIn(key, right)
 
@@ -1202,8 +1207,9 @@ class TestFlipPortalAndLift(unittest.TestCase):
     동안 관통했다. 포탈 기둥은 그 대역 밖에 서야 한다.
     """
 
-    #: 패널 통과대역 (bfc 로컬 z). 스택 위치 −300±700 과 반전 위치 0±700 의 합집합.
-    BAND = (-1000, 700)
+    #: 패널 통과대역 (bfc 로컬 z). REV.49 부터 적층과 반전축이 동심이라 0±700 뿐이다 —
+    #: 종전에는 스택 −300±700 과의 합집합(−1,000…+700)이었다.
+    BAND = (-700, 700)
 
     @classmethod
     def setUpClass(cls):
@@ -1222,17 +1228,18 @@ class TestFlipPortalAndLift(unittest.TestCase):
         """통과대역 안에 서 있는 전고(全高) 부재가 하나도 없어야 한다 — 일반 불변식."""
         for tag, size, at in solid_part_rows(self.bfc):
             y_lo, y_hi = at[1] - size[1] / 2, at[1] + size[1] / 2
-            # 셔틀 높이(1,850…1,910)를 가로지르는 부재만 위험하다
-            if not (y_lo < 1850 and y_hi > 1910):
+            # 수직 승강 구간(픽업면 1,880 → 반전축 3,430)을 가로지르는 부재만 위험하다.
+            # 캐리지·분리헤드·조는 패널과 같이 움직이는 것이라 전고가 아니다.
+            if not (y_lo < 1880 and y_hi > 3430):
                 continue
             z_lo, z_hi = at[2] - size[2] / 2, at[2] + size[2] / 2
             x_lo, x_hi = at[0] - size[0] / 2, at[0] + size[0] / 2
-            # 패널 스윕 X: 스택 −1,850±1,250 → 축 0±1,250
-            if x_hi < -3100 or x_lo > 1250:
+            # 패널 스윕 X: 적층 = 축 0±1,250 (REV.49 — 수평 이동 없음)
+            if x_hi < -1250 or x_lo > 1250:
                 continue
             with self.subTest(part=tag):
                 self.assertTrue(z_hi <= self.BAND[0] or z_lo >= self.BAND[1],
-                                f"{tag} 가 셔틀 높이에서 패널 경로를 가로지른다")
+                                f"{tag} 가 수직 승강 경로를 가로지른다")
 
     def test_crossbeams_clear_the_clamp_sweep(self):
         """크로스빔은 클램프바 끝(x ±1,430) 밖에서만 하중을 받아야 한다."""
@@ -1271,7 +1278,13 @@ class TestFlipPortalAndLift(unittest.TestCase):
 
     def test_portal_labels_replace_the_old_posts_in_3d(self):
         self.assertIn("포탈 기둥·LM가이드", self.html)
-        self.assertNotIn("벽체형 승강·반전카세트`", self.html.replace("벽체형 수평셔틀", ""))
+        self.assertNotIn("벽체형 승강·반전카세트`", self.html)
+        # REV.49: 셔틀이 없다 — 레일·지지 포스트·서보 축·부품표 행이 전부 사라져야 한다.
+        for gone in ("단장 수평셔틀 레일`", "'BFC 셔틀 레일 지지 포스트 2본'", "'AXIS-BFC-S'", '["AFU-BHS-101"'):
+            with self.subTest(gone=gone):
+                self.assertNotIn(gone, self.html, "셔틀의 흔적이 남아 있다")
+        self.assertNotIn("AXIS-BFC-S", {a.tag for a in servos.SERVO_AXES})
+        self.assertFalse([m for m in mounting.MEMBERS if "셔틀" in m.label])
 
 
 
@@ -1384,7 +1397,7 @@ class TestServoAxes(unittest.TestCase):
 
     def test_axis_counts_match_established_wording(self):
         """유리제거셀 7축이 더해져 29 → 36축. JBR 7축은 제어반 문구가 근거다."""
-        self.assertEqual(servos.servo_axis_count(), 37)
+        self.assertEqual(servos.servo_axis_count(), 35)
         self.assertEqual(servos.servo_axis_count_for("LP-GRM-MEC"), 7)
         self.assertEqual(servos.servo_axis_count_for("LP-JBR"), 7)
         self.assertIn("EtherCAT 7축 서보", self.html)
@@ -2466,15 +2479,16 @@ class TestBrandMark(unittest.TestCase):
         zones = {z.key: z for z in layout.build_zones()}
 
         def px(raw: str) -> float:
-            m = re.fullmatch(r"\(pvZone\.(\w+)\[0\]\+pvZone\.(\w+)\[1\]\)/2", raw)
-            if m:
-                self.assertEqual(m.group(1), m.group(2), "한 셀의 두 끝이어야 한다")
+            """숫자이거나 `pvZone.<셀>[0|1]` 로만 된 산술식이다 — 씬과 같은 값을 낸다."""
+            def zone_value(m: re.Match) -> str:
                 z = zones[m.group(1)]
-                return (z.x0_mm + z.x1_mm) / 2000 - 24.75
-            return float(raw)
+                return repr((z.x0_mm if m.group(2) == "0" else z.x1_mm) / 1000 - 24.75)
+            expr = re.sub(r"pvZone\.(\w+)\[([01])\]", zone_value, raw)
+            self.assertRegex(expr, r"^[-\d.+*/() ]+$", f"명판 x 식을 못 읽는다: {raw}")
+            return float(eval(expr))  # noqa: S307 — 숫자·괄호·사칙만 남긴 식이다
 
         found = re.findall(r"pvNamePlate\(g,([\d.]+),"
-                           r"\[([-\d.]+|\(pvZone\.\w+\[0\]\+pvZone\.\w+\[1\]\)/2),"
+                           r"\[([-\d.]+|[-\d.+*/()]*pvZone\.[\w\[\]+*/().-]+),"
                            r"([\d.]+),([-\d.]+)\],0,'([\w-]+)','([^']*)'\)", self.html)
         return [(float(w), px(x), float(y), float(z), tag, sub)
                 for w, x, y, z, tag, sub in found]
@@ -2548,7 +2562,7 @@ class TestBrandMark(unittest.TestCase):
         # 로봇이 실제로 닿는가 — 그리고 존 안으로 물리면 못 닿는가
         self.assertTrue(layout.robot_can_reach(), "지금 자리에서 로봇이 인계점에 닿아야 한다")
         self.assertAlmostEqual(layout.robot_pickup_distance_mm(), 2680.0, places=1)
-        pulled_in = layout.BFC_PICKUP_X_MM - layout.zone_overlap_mm("afu")
+        pulled_in = layout.bfc_pickup_x_mm() - layout.zone_overlap_mm("afu")
         self.assertFalse(layout.robot_can_reach(pulled_in),
                          "존 안으로 물려도 닿는다면 넘침을 허용할 근거가 없다")
         # 검사 도구가 같은 값을 알고 있어야 한다 — 갈라지면 검사가 헐거워진다
@@ -3026,9 +3040,9 @@ class TestSmartFactory(unittest.TestCase):
         self.assertEqual(counts["서보"], servos.servo_axis_count())
         self.assertEqual(sum(counts.values()),
                          sum(a.qty for a in servos.SERVO_AXES + servos.MOTORS))
-        # 서보 37축 × 6신호 × 100 Hz × 4 B 가 드라이브 대역의 지배항이다
-        self.assertAlmostEqual(smart.drive_stream_bytes_per_s(), 90_456.0, places=1)
-        self.assertAlmostEqual(smart.timeseries_bytes_per_s() / 1000, 94.1, places=1)
+        # 서보 35축 × 6신호 × 100 Hz × 4 B 가 드라이브 대역의 지배항이다 (REV.49 셔틀 X 축 2 삭제)
+        self.assertAlmostEqual(smart.drive_stream_bytes_per_s(), 85_656.0, places=1)
+        self.assertAlmostEqual(smart.timeseries_bytes_per_s() / 1000, 89.2, places=1)
         # 공정 태그도 축·존에서 나온다
         self.assertEqual(smart.plc_tag_count(),
                          sum(a.qty for a in servos.SERVO_AXES + servos.MOTORS)
@@ -3054,8 +3068,8 @@ class TestSmartFactory(unittest.TestCase):
         """장당 350 MB 를 전량 보존하면 성립하지 않는다."""
         self.assertAlmostEqual(smart.flagged_ratio(), 0.1167, places=4)
         self.assertAlmostEqual(smart.vision_retention(), 0.1367, places=4)
-        self.assertAlmostEqual(smart.annual_storage_tb(), 14.19, places=2)
-        self.assertAlmostEqual(smart.storage_capacity_tb(), 63.9, places=1)
+        self.assertAlmostEqual(smart.annual_storage_tb(), 14.18, places=2)
+        self.assertAlmostEqual(smart.storage_capacity_tb(), 63.8, places=1)
         # 저장은 가동시간에 정비례한다 — 2교대 확정으로 2.06배가 됐다
         self.assertAlmostEqual(
             smart.annual_storage_tb() / 6.88,
@@ -3086,7 +3100,7 @@ class TestSmartFactory(unittest.TestCase):
                                                         stop_h=0.0), 2_000.0)
 
     def test_backbone_grade_is_chosen_above_the_requirement(self):
-        self.assertAlmostEqual(smart.required_mbps(), 112.0, places=1)
+        self.assertAlmostEqual(smart.required_mbps(), 111.9, places=1)
         self.assertEqual(smart.backbone_grade_mbps(), 1_000)
         self.assertIn(smart.backbone_grade_mbps(), smart.ETHERNET_GRADES_MBPS)
         self.assertGreater(smart.backbone_grade_mbps(), smart.required_mbps())
@@ -3398,7 +3412,7 @@ class TestMounting(unittest.TestCase):
         for key in ("grm", "afr", "afu"):
             with self.subTest(station=key):
                 self.assertTrue(mounting.members_of(key), f"{key} 에 지지 부재가 없다")
-        self.assertEqual(mounting.members_by_class()["floor"], 16)
+        self.assertEqual(mounting.members_by_class()["floor"], 15)
 
     def test_brackets_came_from_measured_gaps(self):
         """브래킷은 손으로 세운 것이 아니라 **도구가 잰 것**이다.
@@ -3488,8 +3502,8 @@ class TestGlassRemovalIntegration(unittest.TestCase):
         self.assertIn(grm.sheet, self.html, "도면 목록에 GA 시트가 없다")
         # 존은 장비 밴드 안에 들어와야 하고 통로를 잠식하면 안 된다
         self.assertLessEqual(zones[-1].y1_mm, layout.MACHINE_BAND_Y_MM)
-        self.assertEqual(layout.plant_envelope_mm()[0], 58050,
-                         "44,000(전처리) + 14,050(유리제거) = 58,050")
+        self.assertEqual(layout.plant_envelope_mm()[0], 56200,
+                         "42,150(전처리) + 14,050(유리제거) = 56,200")
 
     def test_the_3d_scene_actually_carries_the_cell(self):
         """도면에만 있고 영상에 없으면 '연결'이 아니다."""
@@ -3572,8 +3586,11 @@ class TestGlassRemovalIntegration(unittest.TestCase):
         # 배치에서도 실패한다 — REV.25 에서 실제로 그렇게 실패했다.
         self.assertEqual(wiring.MDB_POSITION_MM[0], round(centre / 500) * 500)
         self.assertLessEqual(abs(wiring.MDB_POSITION_MM[0] - centre), 250)
-        # 하류 IR 뱅크가 중심을 끌고 내려간 상태는 그대로여야 한다
-        self.assertGreater(centre, 40_000, "IR 뱅크가 부하중심을 하류로 끌었다")
+        # 하류 IR 뱅크가 중심을 끌고 내려간 상태는 그대로여야 한다 — 전장의 절반보다
+        # 한참 하류다. (REV.48 까지 40,000 이라는 리터럴이었는데 그건 전장 58,050 의
+        # 값이라, 전장이 줄면 규칙을 지킨 배치도 걸린다.)
+        self.assertGreater(centre, layout.plant_envelope_mm()[0] * 0.6,
+                           "IR 뱅크가 부하중심을 하류로 끌었다")
         self.assertGreaterEqual(wiring.aisle_clear_width_mm(), 900,
                                 "반을 옮겨도 보행 최소폭은 지켜야 한다")
 
@@ -3716,37 +3733,57 @@ class TestKinematics(unittest.TestCase):
         span = kinematics.cage_clear_span_mm()
         self.assertLess((span - 2615) / 2, 0, "2,615 짜리 패널은 들어가면 안 된다")
 
-    def test_the_panel_passes_under_the_ring_and_over_the_carriage(self):
-        """수평 이송은 캐리지 상단과 링 하단 사이 창을 지나간다.
+    def test_the_drum_stands_over_the_stack(self):
+        """REV.49 — 드럼이 적층 바로 위에 선다. 그 조건은 둘이다.
 
-        REV.26 은 그 창이 130 mm 였고 이송면이 링에 **22 mm** 까지 붙어
-        있었다 — 설계값이 아니라 우연이다. 반전축을 130 올려 창을 260 으로
-        벌리고 위아래를 100 mm 넘게 뒀다.
+        링 하단이 적층 최상단 유리면 위에 있어야 하고(522), 지게차가 팔레트를
+        링 **밑으로** 밀어 넣으므로 헤드가드(2,165)도 링 하단 아래여야 한다(275).
+        수평 이송이 없으니 "링 밑을 지나는 창" 은 더 이상 없다.
         """
-        self.assertGreaterEqual(kinematics.under_ring_clearance_mm(), 100)
-        self.assertGreaterEqual(kinematics.over_carriage_clearance_mm(), 100)
-        # 옛 반전축(3,300)으로 되돌리면 링 여유가 100 밑으로 떨어진다.
-        old = kinematics.FLIP_AXIS_MM - 130
-        old_gap = (old - kinematics.ring_outer_r_mm()) - (
-            kinematics.TRANSFER_MM + kinematics.PANEL_TOP_OFFSET_MM)
-        self.assertLess(old_gap, 0, "옛 축 높이에서는 이송면이 링에 걸린다")
+        self.assertGreaterEqual(kinematics.ring_over_stack_mm(), 500)
+        self.assertGreaterEqual(kinematics.ring_over_forklift_mm(), 250)
+        self.assertEqual(kinematics.dwell_mm(), kinematics.PICK_FACE_MM + kinematics.SEPARATION_MM)
+        self.assertLess(kinematics.dwell_mm() + kinematics.PANEL_TOP_OFFSET_MM,
+                        kinematics.ring_bottom_mm(), "대기면의 패널 상면이 링 하단 위다")
+        # 옛 반전축(3,300)으로 되돌리면 지게차 여유가 150 밑으로 떨어진다.
+        old_gap = (kinematics.FLIP_AXIS_MM - 130 - kinematics.ring_outer_r_mm()
+                   - kinematics.FORKLIFT_GUARD_TOP_MM)
+        self.assertLess(old_gap, 150)
+
+    def test_the_carriage_rides_through_the_ring_bore(self):
+        """캐리지(2,720)는 케이지 안지름(2,580)보다 길다 — 링 구멍 안으로만 오르내린다."""
+        self.assertTrue(kinematics.carriage_crosses_the_rings())
+        self.assertGreater(kinematics.carriage_bore_clearance_mm(), 100)
+        # 레일을 조 여는 자리(860)까지 벌리면 구멍(810)을 뚫는다 — 검사가 실제로 무는지
+        r = (kinematics.JAW_OPEN_Z_MM**2 + kinematics.CARRIAGE_RAIL_DROP_MM**2) ** 0.5
+        self.assertLess(kinematics.ring_bore_r_mm() - r, 0)
 
     def test_the_panel_fits_the_ring_bore(self):
         """반전축에 앉았을 때 패널 단면이 통과 구멍 안이어야 한다."""
         self.assertGreater(kinematics.bore_clearance_mm(), 0)
         self.assertEqual(round(kinematics.ring_bore_r_mm() * 2), 1620)
 
-    def test_the_path_never_climbs_while_crossing_a_ring(self):
-        """REV.26 의 결함 그 자체 — 링 평면을 가로지르면서 올라갔다.
+    def test_the_lift_is_vertical_and_the_clock_is_continuous(self):
+        """REV.26 의 결함은 링 평면을 가로지르며 올라간 것이었다 — REV.49 는 가로지르는
+        구간 자체를 없앴다. 경로 어느 구간도 X 로 움직이지 않아야 하고, 구간 시각은
+        3D 공정시계(hM)의 분기와 같아야 한다.
 
         지금 경로가 이미 맞아서 검사 코드가 죽어도 모르는 일을 막으려고
         어긋난 경로를 주입해 실제로 걸리는지까지 본다.
         """
-        self.assertTrue(kinematics.crossing_is_level())
-        bad = tuple((t0, t1, name, True) if name == kinematics.CROSSING_PHASE else (t0, t1, name, climbs)
-                    for t0, t1, name, climbs in kinematics.PATH)
-        self.assertFalse(kinematics.crossing_is_level(bad),
-                         "가로지르며 올라가는 경로를 걸러내지 못한다")
+        self.assertTrue(kinematics.lift_is_vertical())
+        self.assertTrue(kinematics.path_is_continuous())
+        bad = tuple((t0, t1, name, climbs, True) if "수직 승강" in name else (t0, t1, name, climbs, travels)
+                    for t0, t1, name, climbs, travels in kinematics.PATH)
+        self.assertFalse(kinematics.lift_is_vertical(bad), "X 로 움직이는 경로를 걸러내지 못한다")
+        gapped = kinematics.PATH[:2] + ((11.0,) + kinematics.PATH[2][1:],) + kinematics.PATH[3:]
+        self.assertFalse(kinematics.path_is_continuous(gapped))
+        # 3D 공정시계의 분기 시각이 모델의 구간 경계와 같다
+        for t0, t1, _name, _climbs, _travels in kinematics.PATH:
+            with self.subTest(t=(t0, t1)):
+                self.assertRegex(self.html, rf"(?<![\d.])i<{t1:g}\)")
+        self.assertIn("else if(i<13.3){R=s.x,A=le(pvTv,At,me(Se(i,10.5,13.3))),D=s.z}", self.html,
+                      "10.5–13.3 s 는 한 번의 수직 승강이어야 한다 — 수평 구간이 되살아났다")
 
     def test_the_clamp_jaw_reaches_the_panel_and_opens_clear_of_it(self):
         """조가 물어야 할 패널에서 660 mm 떨어져 있었고, 하강 경로를 막았다."""
@@ -3812,8 +3849,10 @@ class TestKinematics(unittest.TestCase):
             return text[1:] if text.startswith("0.") else text
 
         self.assertIn(f"var At={js(kinematics.FLIP_AXIS_MM)},"
-                      f"pvTv={js(kinematics.TRANSFER_MM)},", self.html,
-                      "반전축·이송면 3D 상수가 모델과 다르다")
+                      f"pvTv=Gt+{js(kinematics.SEPARATION_MM)},", self.html,
+                      "반전축·대기면 3D 상수가 모델과 다르다 — 대기면은 픽업면 + 안전분리다")
+        self.assertIn("xn=yn.map(i=>new C(i.x,At,i.z))", self.html,
+                      "반전 드럼이 적층과 동심이 아니다 (REV.49)")
         # 조는 반전 구간에만 물고, 진입·하강 구간에는 열려 있어야 한다.
         self.assertIn(f"jg.position.set(0,0,sg*{js(kinematics.JAW_OPEN_Z_MM)})", self.html)
         self.assertIn(f"le({js(kinematics.JAW_OPEN_Z_MM)},"
@@ -4422,11 +4461,11 @@ class TestSafety(unittest.TestCase):
     def test_sto_nodes_track_the_servo_count(self):
         """STO 는 드라이브마다 하나다 — 축을 늘리면 FSoE 노드가 따라 늘어야 한다.
 
-        지금 값이 37 이라는 것만 확인하면 37 을 상수로 박아도 시험이 통과한다.
+        지금 값이 35 라는 것만 확인하면 35 를 상수로 박아도 시험이 통과한다.
         축을 하나 얹어 답이 따라 오는지를 봐야 파생인지 아닌지가 갈린다.
         """
         self.assertEqual(safety.sto_nodes(), sum(a.qty for a in servos.SERVO_AXES))
-        self.assertEqual(safety.sto_nodes(), 37)
+        self.assertEqual(safety.sto_nodes(), 35)
         grown = servos.SERVO_AXES + (
             dataclasses.replace(servos.SERVO_AXES[0], tag="AXIS-TEST", qty=3),)
         self.assertEqual(safety.sto_nodes(grown), safety.sto_nodes() + 3)
@@ -5158,7 +5197,7 @@ class TestWorldClassGrade(unittest.TestCase):
         # D-03 도 닫혔다 — 전장을 안 늘리고 닫았다는 것이 요점이다
         self.assertNotIn("D-03", gaps, "단일고장 정리가 풀렸다")
         self.assertEqual(grade.single_point_blocks(), ())
-        self.assertEqual(layout.plant_envelope_mm()[0], 58050,
+        self.assertEqual(layout.plant_envelope_mm()[0], 56200,
                          "단일고장을 전장으로 산 것이라면 정리가 아니다")
         # 남아 있는 격차는 전부 **바깥에서 값이 와야** 닫히는 것들이다
         # 남은 격차 넷은 전부 **바깥에서 값이 와야** 닫힌다 — 설계를 더 고쳐서
@@ -5340,7 +5379,7 @@ class TestCasing(unittest.TestCase):
                            "실측이 공칭보다 얕으면 이 정정의 근거가 사라진다")
         self.assertEqual(casing.nominal_face_mm("robot"), 5500)
         # 껍질을 둘러도 **존은 하나도 안 길어졌다** — 늘어난 것은 판 두께뿐
-        self.assertEqual(layout.plant_envelope_mm()[0], 58050)
+        self.assertEqual(layout.plant_envelope_mm()[0], 56200)
         self.assertGreater(casing.clad_length_mm(), layout.plant_envelope_mm()[0],
                            "껍질을 둘렀는데 전장이 그대로면 판 두께가 어디로 갔나")
         self.assertLess(casing.clad_length_mm() - layout.plant_envelope_mm()[0], 200)
@@ -5466,7 +5505,9 @@ class TestCasing(unittest.TestCase):
 
     def test_we_do_not_claim_a_quieter_plant(self):
         """환기로 한 면을 열어 둔 껍질은 방음 인클로저가 아니다."""
-        self.assertAlmostEqual(acoustics.worst_aisle_dba()[1], 60.0, places=1)
+        # REV.49: 60.0 → 60.1. HPU-101·FL-101 소음원을 afu 존 시작에 매달자(중심에
+        # 매달았던 것이 존 단축으로 플랜트 밖으로 나갔다) 통로 최악점이 0.1 올랐다.
+        self.assertAlmostEqual(acoustics.worst_aisle_dba()[1], 60.1, places=1)
         self.assertAlmostEqual(thermal.room_load_kw(), 59.3, places=1)
         doc = casing.__doc__ or ""
         self.assertIn("acoustics.py", doc, "왜 소음값을 안 건드렸는지가 없다")
@@ -5542,7 +5583,7 @@ class TestBufferHasTwoDirections(unittest.TestCase):
                          handoff.BUFFER_CARRIAGES[0] * handoff.SLOTS_PER_CARRIAGE)
         self.assertEqual(handoff.BUFFER_RB_SLOTS,
                          handoff.BUFFER_CARRIAGES[1] * handoff.SLOTS_PER_CARRIAGE)
-        self.assertEqual(layout.plant_envelope_mm()[0], 58050, "존이 길어졌다")
+        self.assertEqual(layout.plant_envelope_mm()[0], 56200, "존이 길어졌다")
         # 3D 의 캐리지 수가 배분과 같아야 한다 — 모듈만 고치면 도면이 거짓말한다
         for prefix, count in (("A-501", handoff.BUFFER_CARRIAGES[0]),
                               ("B-501", handoff.BUFFER_CARRIAGES[1])):

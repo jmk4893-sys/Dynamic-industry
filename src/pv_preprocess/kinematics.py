@@ -37,6 +37,15 @@
 
 `tools/check_clearance.mjs` 가 이 값들을 기하로 검사한다. 여기서는 **왜 그
 값인지**를 정의하고, 도면 리터럴과 대조한다.
+
+REV.49 — 발주처가 물었다. **"반전기를 패널 바로 위에 설치하면 어떻게 되나."**
+링 하단(2,440)이 고정 픽업면(1,880) 위 560 mm 라 드럼을 적층 **바로 위**에 세울 수
+있었고, 그러면 수평셔틀 1,850 이 통째로 없어진다. 로봇과 그 하류 전부가 같은
+1,850 을 상류로 오며 전장이 58,050 → 56,200 이 됐다. 경로는 ㄱ자에서 **ㅣ자**가
+됐다 — 링 밑을 지나는 구간이 없으니 REV.26 의 결함이 생길 자리 자체가 없다.
+대신 새 조건 둘이 생긴다. 승강캐리지(2,720)는 케이지 안지름(2,580)보다 길어
+링 구멍 **안으로** 오르내려야 하고(`carriage_bore_clearance_mm`), 지게차가 팔레트를
+링 **밑으로** 밀어 넣으므로 헤드가드가 링 하단 아래여야 한다(`ring_over_forklift_mm`).
 """
 
 from __future__ import annotations
@@ -52,9 +61,8 @@ PANEL_MM: tuple[int, int] = (2500, 1400)
 PANEL_FRAME_H_MM = 75
 PANEL_JBOX_DROP_MM = 142
 
-#: 캐리어 원점 기준 패널 상·하면 (mm). 3D 실측값이다.
+#: 캐리어 원점 기준 패널 상면 (mm). 3D 실측값이다.
 PANEL_TOP_OFFSET_MM = 38
-PANEL_BOTTOM_OFFSET_MM = 6
 
 
 # ── 오픈센터 엔드링 ──────────────────────────────────────────────────────
@@ -71,28 +79,40 @@ FLIP_AXIS_MM = 3430
 
 
 # ── 투입 경로 ────────────────────────────────────────────────────────────
-#: 승강캐리지 상단 (mm). 패널은 이 위를 지나야 한다.
-CARRIAGE_TOP_MM = 2180
+#: 고정 픽업면 (mm) — LFT-101 이 30장 적층 최상단을 늘 이 높이에 맞춘다. afu 셀의
+#: 이송 높이가 곧 이 값이다.
+PICK_FACE_MM = layout.STATIONS["afu"].transfer_height_mm
 
-#: 수평 이송 높이 (mm). 캐리지 상단과 링 하단 사이 260 mm 창의 가운데다.
-TRANSFER_MM = 2290
+#: 안전분리 상승 (mm). 분리헤드가 한 장을 진공으로 물고 이만큼 올라오는 동안
+#: 진공 A/B·두께·중량·높이로 겹장을 확인한다. 올라선 높이(대기면)에서 포획빔이
+#: 프레임 밑으로 전개된다. REV.48 까지 대기면은 2,290 리터럴이었다 — 링 밑을
+#: 수평으로 지나던 "이송면" 이다. 지날 링이 없어졌으니 픽업면에서 파생한다.
+SEPARATION_MM = 370
 
 #: 로봇 인계 높이 (mm). 반전이 끝나면 여기까지 내린다.
 HANDOVER_MM = 2100
 
-#: 경로 구간 — (시각 s, 이름, 높이가 변하는가). 링 평면을 가로지르는 구간에서
-#: 높이가 변하면 패널이 링의 팔을 훑는다. 그것이 REV.26 의 결함이었다.
-PATH: tuple[tuple[float, float, str, bool], ...] = (
-    (7.5, 8.8, "캐리지에서 이송면까지 승강", True),
-    (8.8, 10.5, "이송면 대기", False),
-    (10.5, 12.1, "링 밑을 수평 통과 — 높이 불변", False),
-    (12.1, 13.3, "두 링 사이에서 수직 승강", True),
-    (13.3, 20.8, "반전축 유지·180° 반전", False),
-    (20.8, 24.0, "두 링 사이에서 인계 높이까지 하강", True),
-)
+#: 승강캐리지 레일 — 반전축 기준 z ∓672.5 (패널 장변 프레임 중심선), 캐리어 원점
+#: 아래 120. 캐리지는 2,720 으로 두 엔드링 안지름(2,580)보다 **길어서**, 링 평면을
+#: 지날 때 링 구멍(반경 810) **안으로** 지나가야 한다.
+CARRIAGE_RAIL_Z_MM = 672.5
+CARRIAGE_RAIL_DROP_MM = 120
+CARRIAGE_MM = 2720
 
-#: 링 평면을 가로지르는 구간의 이름. 이 구간은 높이가 변하면 안 된다.
-CROSSING_PHASE = "링 밑을 수평 통과 — 높이 불변"
+#: FL-101 헤드가드 상단 (mm, 3D 실측). 지게차가 팔레트를 링 밑으로 밀어 넣는다.
+FORKLIFT_GUARD_TOP_MM = 2165
+
+#: 경로 구간 — (시각 s, 이름, 높이가 변하는가, X 로 움직이는가). REV.49 부터 수평
+#: 구간이 **없다**. 드럼이 적층 바로 위에 서므로 패널은 픽업면에서 반전축까지 두 링
+#: 사이를 수직으로만 오른다 — 링 평면을 가로지르며 올라가던 REV.26 의 결함이 생길
+#: 자리 자체가 없다. 그 사실을 검사가 붙잡고 있어야 하므로 X 이동을 항으로 둔다.
+PATH: tuple[tuple[float, float, str, bool, bool], ...] = (
+    (7.5, 8.8, "픽업면에서 대기면까지 안전분리 상승", True, False),
+    (8.8, 10.5, "대기면 — 포획빔 전개 대기", False, False),
+    (10.5, 13.3, "두 링 사이에서 반전축까지 수직 승강", True, False),
+    (13.3, 20.8, "반전축 유지·180° 반전", False, False),
+    (20.8, 24.0, "두 링 사이에서 인계 높이까지 하강", True, False),
+)
 
 
 # ── 4점 단장 클램프 조 ───────────────────────────────────────────────────
@@ -180,7 +200,7 @@ def ring_outer_r_mm() -> float:
 
 
 def ring_bottom_mm() -> float:
-    """링의 가장 낮은 점. 수평 이송은 이 밑으로 지나가야 한다."""
+    """링의 가장 낮은 점. 적층·지게차가 이 밑에 있다."""
     return FLIP_AXIS_MM - ring_outer_r_mm()
 
 
@@ -189,16 +209,34 @@ def cage_clear_span_mm() -> float:
     return RING_PITCH_MM - 2 * RING_TUBE_MM
 
 
-def under_ring_clearance_mm(transfer_mm: float | None = None) -> float:
-    """수평 이송 중 패널 상면과 링 하단 사이 여유."""
-    t = TRANSFER_MM if transfer_mm is None else transfer_mm
-    return ring_bottom_mm() - (t + PANEL_TOP_OFFSET_MM)
+def dwell_mm() -> int:
+    """대기면 — 안전분리 상승이 끝나는 높이. 3D 의 pvTv 다."""
+    return PICK_FACE_MM + SEPARATION_MM
 
 
-def over_carriage_clearance_mm(transfer_mm: float | None = None) -> float:
-    """수평 이송 중 패널 하면과 승강캐리지 상단 사이 여유."""
-    t = TRANSFER_MM if transfer_mm is None else transfer_mm
-    return (t + PANEL_BOTTOM_OFFSET_MM) - CARRIAGE_TOP_MM
+def ring_over_stack_mm() -> float:
+    """적층 최상단 유리면과 링 하단 사이 여유. 드럼이 적층 위에 서는 조건이다."""
+    return ring_bottom_mm() - (PICK_FACE_MM + PANEL_TOP_OFFSET_MM)
+
+
+def ring_over_forklift_mm() -> float:
+    """지게차 헤드가드와 링 하단 사이 여유 — 팔레트 교환은 링 밑에서 일어난다."""
+    return ring_bottom_mm() - FORKLIFT_GUARD_TOP_MM
+
+
+def carriage_crosses_the_rings() -> bool:
+    """캐리지가 케이지보다 길어 링 평면을 지나는가."""
+    return CARRIAGE_MM > cage_clear_span_mm()
+
+
+def carriage_bore_clearance_mm() -> float:
+    """캐리지 레일과 링 구멍 사이 여유 (반경 방향).
+
+    레일은 축에서 z 672.5 · y −120 에 있다 — 그 반경이 구멍 반경 810 안이어야
+    캐리지가 링을 뚫지 않고 오르내린다.
+    """
+    r = (CARRIAGE_RAIL_Z_MM**2 + CARRIAGE_RAIL_DROP_MM**2) ** 0.5
+    return ring_bore_r_mm() - r
 
 
 def bore_clearance_mm() -> float:
@@ -232,18 +270,22 @@ def jaw_stroke_mm() -> float:
     return JAW_OPEN_Z_MM - JAW_CLOSED_Z_MM
 
 
-def crossing_is_level(path: tuple[tuple[float, float, str, bool], ...] | None = None) -> bool:
-    """링 평면을 가로지르는 구간에서 높이가 변하지 않는가.
+def lift_is_vertical(path: tuple[tuple[float, float, str, bool, bool], ...] | None = None) -> bool:
+    """경로 어느 구간도 X 로 움직이지 않는가 — 드럼이 적층 위에 선다는 뜻이다.
 
-    REV.26 의 결함이 정확히 이것이었다 — 가로지르면서 올라갔다. 인자를 열어
+    REV.26 의 결함은 링 평면을 가로지르며 올라간 것이었고 REV.27 은 그 구간을
+    수평으로 눕혀 고쳤다. REV.49 는 가로지르는 구간 자체를 없앴다. 인자를 열어
     둔 것은, 지금 경로가 이미 맞아서 검사 코드가 죽어도 아무도 모르는 일을
     막기 위해서다(§24·§25 에서 세 번 겪었다).
     """
     p = PATH if path is None else path
-    for _t0, _t1, name, climbs in p:
-        if name == CROSSING_PHASE and climbs:
-            return False
-    return True
+    return not any(travels for _t0, _t1, _name, _climbs, travels in p)
+
+
+def path_is_continuous(path: tuple[tuple[float, float, str, bool, bool], ...] | None = None) -> bool:
+    """구간이 빈틈·겹침 없이 이어지는가 — 3D 공정시계(hM)의 분기와 같은 시각이다."""
+    p = PATH if path is None else path
+    return all(a[1] == b[0] for a, b in zip(p, p[1:]))
 
 
 def afr_clamp_reaction_kn() -> float:
@@ -266,11 +308,13 @@ def summary() -> dict[str, object]:
     return {
         "panelMm": list(PANEL_MM),
         "flipAxisMm": FLIP_AXIS_MM,
-        "transferMm": TRANSFER_MM,
+        "pickFaceMm": PICK_FACE_MM,
+        "dwellMm": dwell_mm(),
         "ringBoreMm": round(ring_bore_r_mm() * 2),
         "ringBottomMm": round(ring_bottom_mm()),
-        "underRingMm": round(under_ring_clearance_mm()),
-        "overCarriageMm": round(over_carriage_clearance_mm()),
+        "ringOverStackMm": round(ring_over_stack_mm()),
+        "ringOverForkliftMm": round(ring_over_forklift_mm()),
+        "carriageBoreMm": round(carriage_bore_clearance_mm()),
         "boreClearMm": round(bore_clearance_mm()),
         "cageAxialMm": round(cage_axial_clearance_mm()),
         "jawStrokeMm": round(jaw_stroke_mm(), 1),

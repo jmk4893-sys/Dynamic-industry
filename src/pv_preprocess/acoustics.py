@@ -66,6 +66,10 @@ def _zone_center(key: str) -> int:
 def noise_sources() -> tuple[NoiseSource, ...]:
     """음원 목록 — 위치는 배치 모델에서 파생한다."""
     afu = _zone_center("afu")
+    # REV.49: HPU-101·FL-101 은 존 **시작**에 매단다. 셀 중심에 매달아 두었더니 afu
+    # 존이 1,850 짧아지며 두 원이 플랜트 밖(−625·−25)으로 나갔다 — 기계는 상류 끝에
+    # 그대로 서 있는데. 3D 실측: HPU −22,800 (존 시작 + 1,950), 지게차 주차 −23,200 (+1,550).
+    afu0 = next(z.x0_mm for z in build_zones() if z.key == "afu")
     jbr = _zone_center("jbr")
     afr = _zone_center("afr")
     post = _zone_center("post")
@@ -80,7 +84,7 @@ def noise_sources() -> tuple[NoiseSource, ...]:
                     "주 블로워와 같은 인클로저 동거", "정상"),
         NoiseSource("NS-HPU6", "HPU-601 유압 펌프", afr - 1_700, 88.0, 12.0,
                     "방음 커버 + AFR-AVM-601 방진 마운트", "정상"),
-        NoiseSource("NS-HPU1", "HPU-101 유압 펌프", afu - 3_100, 84.0, 12.0,
+        NoiseSource("NS-HPU1", "HPU-101 유압 펌프", afu0 + 1_950, 84.0, 12.0,
                     "중앙벽 뒤 배치 + 방음 커버 + AFU-AVM-101 방진 마운트", "정상"),
         NoiseSource("NS-JBR", "JBR-201 박리 충격·공압 배기", jbr, 86.0, 8.0,
                     "가드 흡음 라이닝 + 배기 포트 소음기", "충격성"),
@@ -88,7 +92,7 @@ def noise_sources() -> tuple[NoiseSource, ...]:
                     "저마킹 PU 롤러 + 분할식 체인커버", "정상"),
         NoiseSource("NS-RB", "RB-101·GBR 셔틀 서보", buffer_, 72.0, 0.0,
                     "— (가감속 저크 제한만)", "정상"),
-        NoiseSource("NS-FL", "FL-101 전동 지게차", afu - 2_500, 78.0, 0.0,
+        NoiseSource("NS-FL", "FL-101 전동 지게차", afu0 + 1_550, 78.0, 0.0,
                     "전동식 채택 (엔진식 88 대비 −10)", "간헐"),
         # ── REV.23 유리제거셀 ────────────────────────────────────────────
         # IR 램프와 탠덤 칼날 자체는 조용하다. 새 음원은 배기 블로워 두 대와

@@ -209,7 +209,10 @@ STATIONS: dict[str, Station] = {
         Station("afu", "PV-AFU-101-GA-2101", "AFU-101 · 투입·비전·듀얼 리프트 셀",
                 # REV.27: 선언 5,050 이 3D 실측(VG-101 비전보 상단 5,150)보다 100 낮았다.
                 # 기둥 0…4,950 + 보 200 이라 조립체가 5,150 이다 — 형상을 따라간다.
-                (6800, 7100, 5150), 1880),
+                # REV.49: 6,800 → 4,950. 반전 드럼을 적층 **바로 위**에 세우자 수평셔틀
+                # 1,850 이 없어졌고, 로봇과 그 하류 전부가 같은 1,850 을 상류로 왔다.
+                # 이 값은 임의가 아니라 도달거리에서 나온다 — afu_length_from_reach_mm().
+                (4950, 7100, 5150), 1880),
         # REV.22-P01: 3D 모델 실측으로 상세 전개하면서 분리헤드·셔틀·포획빔이 들어왔다.
         # 부품 실측 span X 4,940 · Y(깊이) 2,360 · Z(상하) 4,290 — 셔틀이 픽업면까지 나가고
         # 포획빔 수납 카세트가 중앙벽 쪽으로 물리므로 (3,600, 2,900, 3,500) 으로는 못 담는다.
@@ -221,8 +224,11 @@ STATIONS: dict[str, Station] = {
         # 사이가 130 mm 뿐이라 이송면이 링에 22 mm 까지 붙어 있었고, 그 대각 진입이
         # 엔드링 단면을 88 mm 파고들었다(실측). 링 상단이 4,290 → 4,420 이 되어
         # 외형 높이도 4,350 → 4,500 으로 따라 올라간다 (여유 80).
-        Station("bfc", "PV-BFC-101-ASM-2201", "BFC-101A/B · 단장 분리·셔틀·승강·180° 반전카세트",
-                (5100, 2900, 4500), 2100),
+        # REV.49: 드럼이 적층 바로 위로 오며 셔틀이 없어졌다. X 는 서보 상류면
+        # (−1,840)부터 포탈 기둥 하류면(+1,690)까지 3,530 — 외형은 반전축(0)에 대칭이라
+        # 서보 쪽이 정하며 ±1,850 = 3,700 으로 담는다 (5,100 → 3,700).
+        Station("bfc", "PV-BFC-101-ASM-2201", "BFC-101A/B · 단장 분리·수직 승강·180° 반전카세트",
+                (3700, 2900, 4500), 2100),
         Station("robot", "PV-RBPT-101-GA-2301", "RB-101 · EOAT · PT-101 정렬정반",
                 (5200, 3900, 4150), LINE_TRANSFER_MM),
         # REV.45 통합 제거셀 — AFR 과 한 베이스·한 가드다. 외형이 7,050 → 7,375 로
@@ -447,21 +453,78 @@ def scene_grid_is_registered() -> bool:
 #: RB-101 도달거리 (mm). 부품표 AFU-RB-101 — 110–130 kg급 6축 로봇.
 ROBOT_REACH_MM = 2800
 
-#: 3D 실측 (plant mm). RB-101 J2 축과 BFC 인계점 — 인계점은 라인 중심에서
-#: Z 로 비켜 서 있으므로(반전 베이가 통로 양측이다) 도달거리는 3D 직선거리다.
-ROBOT_PEDESTAL_X_MM = 8_400
-BFC_PICKUP_X_MM = 6_250
+#: 투입 무리의 자리 (plant mm). 사슬은 **상류에서 하류로** 한 방향이다.
+#:
+#:   적층 (BFC_PICKUP_X_MM)  = afu 존 시작 + 4,400  — 지게차 도킹·주차 여유가 정한다
+#:   반전 드럼               = 적층 바로 위 (REV.49 — 셔틀 없음)
+#:   RB-101 페데스털         = 적층 + 2,150         — 인계점 수평거리 2,680 (Z 1,600)
+#:   PT-101 놓는 자리        = 페데스털 + 2,290     — 그리고 그 자리는 jbr 존 중심 − 5,010
+#:
+#: 마지막 줄이 요점이다. PT 정반은 JBR 축적런에 매달려 jbr 존에서 자리를 받는데,
+#: 로봇은 그 정반에 2,290 으로 닿아야 한다. 두 조건이 동시에 서려면 afu 존 길이가
+#: 딱 하나로 정해진다 — afu_length_from_reach_mm(). STATIONS['afu'] 는 그 값이어야
+#: 하고 시험이 둘을 견준다. REV.48 까지는 8,400 / 6,250 리터럴이었다.
+BFC_PICKUP_OFFSET_MM = 4_400
 BFC_PICKUP_Z_MM = 1_600
+ROBOT_PICK_DX_MM = 2_150
+ROBOT_PLACE_DX_MM = 2_290
+PT_FROM_JBR_CENTER_MM = 5_010
+
+#: 전손 리젝트 랙 — 페데스털 양옆. 셔틀이 없어져 분리헤드가 랙까지 갈 수 없으므로
+#: 로봇이 반전 생략 픽업 뒤 PT-101 대신 여기 놓는다. 자리는 로봇 도달 안이면서
+#: 포탈 하류 기둥 발판(적층 + 1,850)·페데스털(Ø1,280)·PT-101 정반(z ±760)·JB-201
+#: 가드(±1,040)를 비켜 서고, 로봇 셀 외형 Y 3,900(±1,950) 안에 드는 값이다.
+REJECT_RACK_DX_MM = 600
+REJECT_RACK_Z_MM = 1_550
+
+
+def _zone_x0_mm(key: str) -> int:
+    return next(z.x0_mm for z in build_zones() if z.key == key)
+
+
+def bfc_pickup_x_mm() -> int:
+    """적층 = 반전 드럼 = 로봇 인계점의 X (plant mm)."""
+    return _zone_x0_mm("afu") + BFC_PICKUP_OFFSET_MM
+
+
+def robot_pedestal_x_mm() -> int:
+    return bfc_pickup_x_mm() + ROBOT_PICK_DX_MM
+
+
+def pt_place_x_mm() -> int:
+    """PT-101 놓는 자리 — jbr 존 중심에서 상류로 5,010 (3D 의 Ti)."""
+    jbr = next(z for z in build_zones() if z.key == "jbr")
+    return (jbr.x0_mm + jbr.x1_mm) // 2 - PT_FROM_JBR_CENTER_MM
 
 
 def robot_pickup_distance_mm(pickup_x_mm: int | None = None) -> float:
-    """RB-101 J2 축에서 BFC 인계점까지의 직선거리 (mm)."""
-    x = BFC_PICKUP_X_MM if pickup_x_mm is None else pickup_x_mm
-    return ((ROBOT_PEDESTAL_X_MM - x) ** 2 + BFC_PICKUP_Z_MM ** 2) ** 0.5
+    """RB-101 J2 축에서 BFC 인계점까지의 수평 직선거리 (mm)."""
+    x = bfc_pickup_x_mm() if pickup_x_mm is None else pickup_x_mm
+    return ((robot_pedestal_x_mm() - x) ** 2 + BFC_PICKUP_Z_MM ** 2) ** 0.5
+
+
+def robot_place_distance_mm() -> int:
+    """RB-101 J2 축에서 PT-101 놓는 자리까지 (mm). ROBOT_PLACE_DX_MM 이어야 한다."""
+    return pt_place_x_mm() - robot_pedestal_x_mm()
+
+
+def robot_reject_distance_mm() -> float:
+    return (REJECT_RACK_DX_MM ** 2 + REJECT_RACK_Z_MM ** 2) ** 0.5
 
 
 def robot_can_reach(pickup_x_mm: int | None = None) -> bool:
     return robot_pickup_distance_mm(pickup_x_mm) <= ROBOT_REACH_MM
+
+
+def afu_length_from_reach_mm() -> int:
+    """도달 사슬이 요구하는 afu 존 길이 (mm).
+
+    페데스털 + 2,290 = jbr 존 중심 − 5,010 을 afu 길이로 풀면
+    afu = 4,400 + 2,150 + 2,290 + 5,010 − robot − jbr/2 다.
+    """
+    robot, jbr = STATIONS["robot"].length_mm, STATIONS["jbr"].length_mm
+    return (BFC_PICKUP_OFFSET_MM + ROBOT_PICK_DX_MM + ROBOT_PLACE_DX_MM
+            + PT_FROM_JBR_CENTER_MM - robot - jbr // 2)
 
 
 @dataclass(frozen=True)
@@ -479,10 +542,12 @@ ZONE_OVERLAP_BY_DESIGN: tuple[ZoneOverlap, ...] = (
     ZoneOverlap(
         "afu", "robot", 1300,
         "RB-101 이 BFC 반전 베이 **안으로** 팔을 넣어 픽업하므로 베이가 로봇 쪽으로 "
-        "물려 있어야 한다. 페데스털 J2 축(8,400)에서 인계점(6,250, Z 1,600)까지가 "
+        "물려 있어야 한다. 페데스털 J2 축(6,550)에서 인계점(4,400, Z 1,600)까지가 "
         "2,680 mm 로 도달 2,800 의 120 mm 안쪽이다 — 베이를 존 안(넘침 0)으로 "
-        "1,300 물리면 그 거리가 3,803 이 되어 로봇이 닿지 못한다. 겹치는 것은 X 뿐이고 "
-        "Y·Z 로는 비켜 서 있어 간섭 스윕에 걸리지 않는다.",
+        "1,300 물리면 그 거리가 3,803 이 되어 로봇이 닿지 못한다. 넘치는 것은 포탈 "
+        "하류 기둥 발판(적층 + 1,850)·리프트 하류끝이고 X 뿐이라, Y·Z 로는 비켜 서 "
+        "있어 간섭 스윕에 걸리지 않는다. REV.49 에서 드럼이 적층 위로 오며 같은 "
+        "1,300 을 유지했다 — 로봇이 넣는 팔 길이는 그대로다.",
     ),
 )
 
