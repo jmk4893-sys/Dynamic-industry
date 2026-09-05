@@ -1709,16 +1709,20 @@ html>body{padding:0}</style>
       전체의 일부</strong>입니다. 아래 표의 분배는 그 일부 안에서 닫히는 값입니다 —
       플랜트 전체 Ag 회수율이 아닙니다.</p>
 
-    <strong>1 단 · 폴리머 역부선 수지 (실시간 · 급광 100 기준)</strong>
-    <p class="text-small">환류가 두 갈래(FC-203 거품·FC-204 광미 → FC-201, FC-202 광미 → FC-204)라
-      고정점 반복 40 회로 풉니다. 여기서 <strong>뜨는 것이 버리는 것</strong>이고
-      가라앉는 것이 2 단(Ag 부선)으로 갑니다. 급광 조성은 <b data-met-feed-source>—</b> 입니다.</p>
+    <strong>직접 Ag 부선 — 입자군 분배 (실시간 · 급광 100 기준)</strong>
+    <p class="text-small"><strong>뜨는 것이 제품(Ag 정광)이고 가라앉는 것이 Si 산물</strong>입니다.
+      ③ 스트림에 폴리머가 거의 없으므로 폴리머 역부선 단은 두지 않습니다.
+      급광 조성은 <b data-met-feed-source>—</b> 입니다.</p>
+    <p class="text-small text-muted">아래 표는 <strong>입자군(A/Ac/B/C) 기준 분배</strong>라 정광
+      품위가 낮게 보입니다 — 모델의 입자군 중 가장 Ag 가 높은 것이 4,500 g/t 이기 때문입니다.
+      실제 정광 품위는 Ag 에 붙어 함께 뜨는 Si 맥석(Ag 1 kg 당 1.1 kg)으로 정해지며,
+      아래 「플랜트 Ag 회수」 표의 성분 기준 값이 그것입니다.</p>
     <div class="table-responsive"><table class="table table-sm" aria-label="부선 회로 물질수지">
       <thead><tr><th>스트림</th><th class="text-end">질량</th><th class="text-end">Ag 품위</th><th class="text-end">주성분</th><th class="text-end">Ag 분배</th></tr></thead>
       <tbody>
         <tr><td>급광 (AS-101/101B 2 단 어트리션 통과)</td><td class="text-end">100.0 %</td><td class="text-end" data-met-head>—</td><td class="text-end">—</td><td class="text-end">100 %</td></tr>
-        <tr><td>폴리머 배출 (FC-202 최종 클리너 → DS-202)</td><td class="text-end" data-met-froth-mass>—</td><td class="text-end" data-met-froth-grade>—</td><td class="text-end">폴리머 <span data-met-froth-poly>—</span></td><td class="text-end" data-met-froth-ag>—</td></tr>
-        <tr><td>침강물 (FC-203 광미 → <strong>2 단 Ag 부선</strong>)</td><td class="text-end" data-met-si-mass>—</td><td class="text-end" data-met-si-grade>—</td><td class="text-end">Si <span data-met-si-si>—</span></td><td class="text-end" data-met-si-ag>—</td></tr>
+        <tr><td><strong>거품 = Ag 정광</strong> (→ 정련소)</td><td class="text-end" data-met-froth-mass>—</td><td class="text-end" data-met-froth-grade>—</td><td class="text-end">폴리머 <span data-met-froth-poly>—</span></td><td class="text-end" data-met-froth-ag>—</td></tr>
+        <tr><td><strong>광미 = Si 산물</strong> (살리려는 것)</td><td class="text-end" data-met-si-mass>—</td><td class="text-end" data-met-si-grade>—</td><td class="text-end">Si <span data-met-si-si>—</span></td><td class="text-end" data-met-si-ag>—</td></tr>
         <tr><td>수지 폐합 (Ag 분배 합)</td><td class="text-end">—</td><td class="text-end">—</td><td class="text-end">—</td><td class="text-end" data-met-closure>—</td></tr>
       </tbody>
     </table></div>
@@ -20917,7 +20921,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 두 값의 성격이 다르므로 출처를 함께 들고 다닌다 — 콘솔이 그것을 그대로 표기한다.
     const ROUTING_WET_FRACTION = Object.freeze({
       A: Object.freeze({ value: 1, source: "정확 (≤500 µm 전량 = 체 급광)" }),
-      C: Object.freeze({ value: 0.2712, source: "보간 추정 0.23–0.27 · 실측 아님" })
+      C: Object.freeze({ value: 0.2215, source: "모델 실측 (t=3,340 s 누적 밴드 질량)" })
     });
     const WET_FRACTION = ROUTING_WET_FRACTION[ROUTING_CASE_ID];
     const WET_FEED_KGH = SIEVE_FEED_KGH * WET_FRACTION.value;
@@ -21783,35 +21787,34 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     //   FC-204 거품 → AS-102 재해리 → FC-202       FC-204 광미 → FC-201 환류
     //   FC-202 거품 → 폴리머 배출(DS-202/BB-503)   FC-202 광미 → FC-204 환류
     //   FC-203 거품 → FC-201 환류                  FC-203 광미 → **2단으로**
-    // 환류가 두 갈래(러퍼행·클리너행)라 고정점 반복으로 푼다.
-    const POLYMER_FLOAT_PASSES = 40;
-    function solvePolymerFloat(feedMass) {
-      const R = Object.fromEntries(flotationCells.map((e) => [e.role, e.recovery]));
-      let toRougherRecycle = zeroTypes(), toCleanerRecycle = zeroTypes();
-      const polymerReject = zeroTypes(), sinks = zeroTypes();
-      for (let pass = 0; pass < POLYMER_FLOAT_PASSES; pass += 1) {
-        const nextRougher = zeroTypes(), nextCleaner = zeroTypes();
-        for (const t of FLOTATION_TYPES) {
-          const toRougher = feedMass[t] + toRougherRecycle[t];
-          const rougherFroth = toRougher * R.rougher[t];
-          const rougherTail = toRougher - rougherFroth;
-          const scavFroth = rougherTail * R.scavenger[t];
-          sinks[t] = rougherTail - scavFroth;                    // 스캐빈저 광미 = 2단 급광
-          const toCleaner = rougherFroth + toCleanerRecycle[t];
-          const cleanerFroth = toCleaner * R.cleaner[t];
-          const recleanerFroth = cleanerFroth * R.recleaner[t];
-          polymerReject[t] = recleanerFroth;                     // 최종 폴리머 배출
-          nextRougher[t] = scavFroth + (toCleaner - cleanerFroth);
-          nextCleaner[t] = cleanerFroth - recleanerFroth;
-        }
-        toRougherRecycle = nextRougher; toCleanerRecycle = nextCleaner;
-      }
-      return { polymerReject, sinks };
-    }
+    // ---- 습식은 직접 Ag 부선 **한 단**이다 ------------------------------------
+    // 사용자 확인(2026-09-05): 공기분급을 지난 ③ 스트림에는 **폴리머가 거의 없다.**
+    // 미량의 Cu·Ag·Si 와 미분화된 백시트 가루뿐이고, 눈으로도 모래·분말에 가깝다.
+    //
+    // 그래서 종전에 두었던 1 단 폴리머 역부선(FC-201 러퍼 → FC-204 세척 클리너 →
+    // AS-102 재해리 → FC-202 최종 클리너 → DS-202 배출)은 **뗄 것이 없는 공정**이다.
+    // 그 단을 걷어내고, ③ 을 곧바로 Ag 부선에 태운다 —
+    //
+    //     ③ → AS-101 어트리션(EVA 마찰제거 · Ag 노출) → RM-201 분쇄 → CT-101 조건조
+    //        → Ag 부선 ─거품→ Ag 정광 (정련소)
+    //                   └광미→ **Si 산물** (여기가 살리려는 것)
+    //
+    // 이것이 이 플랜트를 만든 목적 그대로다: ③ 을 부선해 Ag 만 띄우고 나머지를
+    // 실리콘으로 살린다. 회수율을 정하는 변수는 **어트리션의 Ag 노출도 하나**로 줄고,
+    // 손실점도 부선 광미 하나만 남는다.
+    //
+    // 부선기 선택은 두 갈래이며 회수율이 다르다 (제안서 결정 4):
+    //   mechanical — 기존 FC-201 러퍼 / FC-203 스캐빈저 / FC-202 클리너 폐회로.
+    //                신설·라이선스가 없다. 비부선 2.4 % 때문에 97.6 % 에서 점근한다.
+    //   reflux     — FC-101 리플럭스 부선주 신설. 문헌 99.7 %. AU 가출원 라이선스 검토 대상.
+    const AG_CIRCUIT_OPTIONS = Object.freeze({
+      mechanical: Object.freeze({ label: "기존 FC-201/203/202 폐회로", recovery: 0.976, licence: false }),
+      reflux: Object.freeze({ label: "FC-101 리플럭스 부선주 (신설)", recovery: 0.997, licence: true })
+    });
+    const AG_CIRCUIT_ID = "reflux";
+    const agCircuit = AG_CIRCUIT_OPTIONS[AG_CIRCUIT_ID];
 
-    // ---- 2단 · Ag 부선 (FC-101 리플럭스) -------------------------------------
-    // 1단 침강물만 받는다: CN-201 농축 → RM-201 P80 66 µm → CT-101 조건조 → FC-101.
-    // 여기서는 **뜨는 것이 제품**이다.
+    // ---- Ag 부선 ------------------------------------------------------------
     //
     // FC-101 회수율은 문헌 [2] 연속 실증의 99.7 % 다. 반박 3건이 그 값을 그대로
     // 쓰지 말 것을 지적했다 — (1) 단일 90 min 시험이고 광미가 검출한계 이하라
@@ -21850,8 +21853,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 따라서 ≥10 wt% 는 2 단이 폴리머를 얼마나 밀어내느냐로 정해진다: RM-201 이
     // P80 66 µm 로 갈아 EVA 를 Si 에서 떼고, FC-101 세척수와 PS-201 폴리싱(100 µm
     // 스크린 + 침부선별)이 그것을 걸러 낸다. 이 값에는 근거가 없다 — **관문 4** 다.
-    // 목표를 되짚으면 ≥10 wt% 에 0.94, 제안서가 말한 18.2 wt% 에 0.975 가 필요하다.
-    const AG_STAGE_POLYMER_REJECTION = 0.94;   // HOLD · 관문 4
+    // ③ 이 폴리머-희박임이 확인되면서(사용자, 2026-09-05) 이 문제는 사라졌다.
+    // 정광을 희석할 폴리머는 잔류 백시트 가루뿐이고, 그것은 소수성이라 뜬다.
+    // 뜨는 몫은 HOLD 이나 ③ 의 폴리머 자체가 미량이라 품위에 거의 영향이 없다.
+    const BACKSHEET_DUST_TO_CONCENTRATE = 0.60;   // HOLD
     // ≥99 % / ≥10 wt% 는 무조건 성립하는 값이 아니라 **관문 4 건을 넘겨야 성립하는
     // 조건부 값**이다. 넷 다 벤치·파일럿으로 확인해야 하며, 앞의 셋은 회수율을,
     // 넷째는 품위를 가른다. 아래 상수를 여기서 참조하므로 선언이 모두 위에 있다.
@@ -21860,27 +21865,52 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       // 포수제는 노출된 금속에만 붙으므로 이것이 회수율을 직접 곱한다.
       Object.freeze({ id: "agExposure", label: "Ag 표면 노출도", target: 0.994, unit: "",
         how: "어트리션 시간별 시료 SEM/EDS 표면 Ag 노출률 (또는 시간별 회분식 부선 곡선)" }),
-      Object.freeze({ id: "fw102", label: "FW-102 분진 세척률", target: FW102_DUST_RECOVERY, unit: "",
-        how: "급광·언더·오버 칭량 (또는 BIN-102 ≤ 66 g/t)" }),
-      Object.freeze({ id: "fc101Tails", label: "FC-101 광미 품위", target: 43, unit: "g/t",
-        how: "RM-201 실제 산물로 파일럿 24 h" }),
-      // 관문 4 는 회수율이 아니라 **품위**를 가른다. 1 단이 뗄 수 있는 폴리머가
-      // 34.6 % 뿐이므로 ≥10 wt% 는 전적으로 2 단에 걸려 있다.
-      Object.freeze({ id: "agStagePolymer", label: "2 단 폴리머 제거율", target: AG_STAGE_POLYMER_REJECTION, unit: "",
-        how: "RM-201 분쇄산물로 FC-101＋PS-201 폴리싱 벤치 (품위 목표를 가른다)" })
+      Object.freeze({ id: "fc101Tails", label: "부선 광미 품위", target: 43, unit: "g/t",
+        how: "RM-201 실제 산물로 파일럿 24 h — 이제 이것이 유일한 손실점이다" }),
+      // ③ 이 폴리머-희박임이 확인되면서 종전 관문 2(FW-102 세척률)와 4(2 단 폴리머
+      // 제거율)는 사라졌다. 대신 **③ 의 실제 조성**이 남는다 — LOI 로 폴리머 wt% 를
+      // 재고 Ag 를 assay 하면 이 수지 전체가 실측 위에 서게 된다.
+      Object.freeze({ id: "streamAssay", label: "③ 조성 (LOI + Ag assay)", target: 0, unit: "wt%",
+        how: "600 °C 강열감량으로 폴리머 wt% · 같은 시료로 Ag g/t" })
     ]);
     // 문헌의 99.7 % 는 **EVA 가 없는 박리 셀 분획**에서 잰 값이다(design_basis 는
     // 폴리머 0 을 명시한다). 즉 그것은 「완전 노출」일 때의 수치다. EVA 에 덮인 Ag 는
     // 포수제가 붙지 못하므로 뜨지 않고 광미로 간다. 그래서 실제 회수율은
     //     R = 노출도 × R_문헌
     // 이 된다 — 어트리션이 회수율을 정하는 지배 변수가 되는 것이 이 구조다.
-    function solveAgFlotation(sinksMass, agRecovery, exposure = 1) {
-      const a = blendAssay(sinksMass);
+    // ---- CC-201 공기분급 — 모델에 없던 단계 ---------------------------------
+    // 현행 플랜트는 고속분쇄 뒤 공기분급으로 **해리된 EVA·백시트를 제품 ② 로 뽑아낸다.**
+    // 그런데 모델의 건식 수지는 입도로만 갈라서(L06 이 CY-201 회수분을 SS-201 로
+    // 되돌린다) 폴리머가 산물에 그대로 남아 있었다. 그래서 부선 급광이 폴리머
+    // 57 wt% 로 나왔고, 사용자가 확인한 현장(「거의 없다 · 모래·분말에 가깝다」)과
+    // 어긋났다.
+    //
+    // 여기서 그 단계를 성분 수준으로 넣는다. 폴리머의 일부를 ② 로 빼고 남은 것을
+    // 다시 정규화한다 — 질량이 줄므로 Ag·Si 품위는 그만큼 올라간다(농축 조작).
+    // 제거율은 **HOLD** 다: 600 °C 강열감량이 ③ 의 잔류 폴리머 wt% 를 주면 확정된다.
+    const CC201_POLYMER_REJECTION = 0.985;   // HOLD — LOI 로 확정
+    function airClassified(a) {
+      const removed = a.mass * a.polymer / 100 * CC201_POLYMER_REJECTION;
+      const mass = a.mass - removed;
+      if (!(mass > 1e-12)) return { ...a, mass: 0 };
+      const keep = a.mass / mass;              // 남는 쪽의 품위 상승 배수
+      return {
+        mass,
+        Si: a.Si * keep, Cu: a.Cu * keep, Al: a.Al * keep,
+        polymer: (a.mass * a.polymer / 100 - removed) / mass * 100,
+        agGpt: a.agGpt * keep,
+        agUnits: a.agUnits,                    // Ag 는 넘어가지 않는다 — 보존된다
+      };
+    }
+    function solveAgFlotation(rawMass, agRecovery, exposure = 1) {
+      const a = airClassified(blendAssay(rawMass));
       const agKg = a.agUnits / 1e6;                       // g/t × kg ÷ 1e6 = kg Ag
       const agRecovered = agKg * agRecovery * exposure;
       const lockedGangue = agRecovered * AG_COMPOSITE_CARRY;
       const cuToConcentrate = a.mass * a.Cu / 100 * (1 - CU_PICKOFF_EFFICIENCY);
-      const polymerSlip = a.mass * a.polymer / 100 * (1 - AG_STAGE_POLYMER_REJECTION);
+      // ③ 이 폴리머-희박이므로 정광을 희석하는 폴리머는 잔류 백시트 가루뿐이다.
+      // 그 가루는 소수성이라 뜨지만 양이 미량이다 — a.polymer 가 곧 그 양이다.
+      const polymerSlip = a.mass * a.polymer / 100 * BACKSHEET_DUST_TO_CONCENTRATE;
       const concentrate = agRecovered + lockedGangue + cuToConcentrate + polymerSlip;
       return {
         feedKg: a.mass, feedAgKg: agKg,
@@ -21914,26 +21944,29 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       for (const t of ASSAY_TYPES) wetMass[t] += rejectRaw[t] * FW102_DUST_RECOVERY;
       const rejectLost = Object.fromEntries(ASSAY_TYPES.map((t) => [t, rejectRaw[t] * (1 - FW102_DUST_RECOVERY)]));
       if (blendAssay(wetMass).mass < FLOTATION_FEED_MIN_KG) return null;
-      // AS-101/101B 어트리션 — C 가 벗겨져 해리 셀(Ac)과 백시트(B)로 갈린다.
+      // AS-101/101B 어트리션 — 두 가지가 동시에 일어난다.
+      //   (1) 계면 박리: C 가 해리 셀(Ac)과 백시트(B)로 갈린다 (조성 보존).
+      //   (2) **EVA 마찰제거: Ag 표면이 드러난다** — 이쪽이 회수율을 정한다.
       const freed = wetMass.C * as101Debond(AS101_TRAIN_RESIDENCE_MIN);
       wetMass.Ac += freed * (1 - C_BACKSHEET_MASS_FRACTION);
       wetMass.B += freed * C_BACKSHEET_MASS_FRACTION;
       wetMass.C -= freed;
-      // 두 solver 는 질량에 선형이므로 실제 kg 을 그대로 통과시킨다.
-      const stage1 = solvePolymerFloat(wetMass);
-      const stage2 = solveAgFlotation(stage1.sinks, agRecovery, agExposure(AS101_TRAIN_RESIDENCE_MIN));
+      // 직접 Ag 부선 한 단. 뜨는 것이 제품이고 광미가 Si 산물이다.
+      const flot = solveAgFlotation(wetMass, agRecovery, agExposure(AS101_TRAIN_RESIDENCE_MIN));
       const out = {
         agFeedKg,
-        toConcentrateKg: stage2.concentrateAgKg,
+        toConcentrateKg: flot.concentrateAgKg,
         lossRejectKg: agKgOf(rejectLost), lossCopperKg: agKgOf(cuMass),
-        lossPolymerKg: agKgOf(stage1.polymerReject), lossTailsKg: stage2.tailsAgKg,
-        recovery: agFeedKg > 1e-12 ? stage2.concentrateAgKg / agFeedKg : 0,
-        concentrateKg: stage2.concentrateKg, gradeWtPct: stage2.gradeWtPct
+        lossTailsKg: flot.tailsAgKg,
+        recovery: agFeedKg > 1e-12 ? flot.concentrateAgKg / agFeedKg : 0,
+        concentrateKg: flot.concentrateKg, gradeWtPct: flot.gradeWtPct,
+        // 살리려는 것 — 부선 광미가 곧 Si 산물이다.
+        siProductKg: flot.tailsKg,
+        siProductShare: flot.feedKg > 1e-12 ? flot.tailsKg / flot.feedKg : 0
       };
-      // Ag 폐쇄 — 정광 + 네 손실이 급광과 같아야 한다. 1.0 에서 벗어나면 어딘가
+      // Ag 폐쇄 — 정광 + 세 손실이 급광과 같아야 한다. 1.0 에서 벗어나면 어딘가
       // Ag 를 만들거나 잃고 있다는 뜻이므로 콘솔에 그대로 띄운다.
-      const accounted = out.toConcentrateKg + out.lossRejectKg + out.lossCopperKg
-        + out.lossPolymerKg + out.lossTailsKg;
+      const accounted = out.toConcentrateKg + out.lossRejectKg + out.lossCopperKg + out.lossTailsKg;
       out.closure = agFeedKg > 1e-12 ? accounted / agFeedKg : 0;
       return out;
     }
@@ -21947,7 +21980,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     function renderAgRecovery() {
       if (!metUi.agActive) return;
       const cases = metallurgy.cases || {};
-      // 케이스마다 습식 급광의 출처가 다르다 — A 는 정확값, C 는 보간 추정이다.
+      // 케이스마다 습식 급광의 출처가 다르다 — A 는 정의상 정확값, C 는 모델 실측이다.
       // 그 차이를 화면에 그대로 적는다.
       metUi.agActive.textContent = `${ROUTING_CASE_ID} · ${routingCase.label}`
         + ` · 습식 급광 ${WET_FEED_KGH.toFixed(1)} kg/h (${WET_FRACTION.source})`;
@@ -21969,8 +22002,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         metUi.agLosses.textContent = active
           ? [["BIN-102 백시트(FW-102 통과분)", active.lossRejectKg],
              ["BIN-Cu", active.lossCopperKg],
-             ["폴리머 배출", active.lossPolymerKg],
-             ["FP-301 광미", active.lossTailsKg]]
+             ["부선 광미 = Si 산물", active.lossTailsKg]]
             .map(([label, kg]) => `${label} ${(active.agFeedKg > 0 ? kg / active.agFeedKg * 100 : 0).toFixed(2)} %`)
             .join(" · ")
           : PENDING;
@@ -22016,9 +22048,19 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       // 급광 조성은 이제 건식 미분 산물에서 계산된다(운전 초기에는 설계 조성).
       const feedComposition = flotationFeedComposition();
       metallurgy.feedIsLive = feedComposition !== FLOTATION_FEED_DESIGN;
-      const stage1 = solvePolymerFloat(feedComposition);
-      // 패널의 「거품」은 이제 폴리머 배출이고 「Si」는 2단으로 넘어가는 침강물이다.
-      const frothProduct = stage1.polymerReject, siProduct = stage1.sinks;
+      // 직접 Ag 부선 한 단 — 조성비(합 1) 기준으로 풀어 패널 표에 쓴다.
+      // 「거품」은 Ag 정광이고 「광미」가 **Si 산물**이다. 종전과 뜨는 쪽이 반대다.
+      const flot = solveAgFlotation(feedComposition, agCircuit.recovery,
+        agExposure(AS101_TRAIN_RESIDENCE_MIN));
+      const agShare = blendAssay(feedComposition).agUnits > 0
+        ? flot.concentrateAgKg / (blendAssay(feedComposition).agUnits / 1e6) : 0;
+      // 정광·광미를 입자군 비율로 되돌린다 — 정광은 Ag 를 지닌 군에서 나온다.
+      const frothProduct = zeroTypes(), siProduct = zeroTypes();
+      for (const t of FLOTATION_TYPES) {
+        const toConc = ASSAY[t] ? feedComposition[t] * agShare * (ASSAY[t].agGpt > 500 ? 1 : 0) : 0;
+        frothProduct[t] = Math.min(feedComposition[t] || 0, toConc);
+        siProduct[t] = (feedComposition[t] || 0) - frothProduct[t];
+      }
       // 두 라우팅 케이스를 각각, 그리고 FC-101 회수율 밴드의 양 끝을 각각 푼다.
       // 어느 쪽도 다른 쪽의 기본값이 아니므로 둘 다 들고 있다가 콘솔에 나란히 띄운다.
       metallurgy.cases = Object.fromEntries(Object.values(ROUTING_CASES).map((rc) => [rc.id, {

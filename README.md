@@ -31,7 +31,7 @@ Dynamic industry Development
 | 문서 | 내용 |
 |---|---|
 | [docs/flotation-separator-design.md](docs/flotation-separator-design.md) | 설계 사양서 — 근거, 두 안, 계장·안전, 시운전 계획 |
-| [docs/ag-recovery-laminate.md](docs/ag-recovery-laminate.md) | **라미네이트 급광에서의 Ag 회수** — 2단 회로, 라우팅 케이스 2종, 관문 4건, 그리고 목표 달성 여부(품위 달성 · 회수율 미달)와 그 이유 |
+| [docs/ag-recovery-stream3.md](docs/ag-recovery-stream3.md) | **③ 스트림 Ag 회수** — 공기분급 산물 ③(Si + Si 결합 Ag)에서 Ag 만 띄우고 나머지를 실리콘으로 살리는 직접 부선 회로. 노출도 모델, 라우팅 케이스 2종, 관문 3건, 그리고 미해결로 남긴 Ag 톤당 함량 불일치 |
 | [docs/design-calculation.md](docs/design-calculation.md) | 설계 계산서 (코드에서 자동 생성) |
 | [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 7매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
@@ -46,7 +46,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (426건)
+python -m unittest discover -s tests -t .                               # 테스트 (433건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
