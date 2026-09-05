@@ -60,8 +60,14 @@ const result = await page.evaluate(() => {
     for (let p = o; p; p = p.parent) if (p.userData && p.userData.cell) return p.userData.cell;
     return null;
   };
+  /* 공정 중인 물건은 존에 매이지 않는다 — 어느 순간에 어디 있느냐는 공정시계가
+     정한다. 씬에서 `pvTransit()` 로 표시한다 (하중 경로 검사의 예외와 같은 뜻). */
+  const inTransit = (o) => {
+    for (let p = o; p; p = p.parent) if (p.userData && p.userData.transit) return true;
+    return false;
+  };
   host.__pvScene.scene.traverse((o) => {
-    if (!o.isMesh || !o.geometry) return;
+    if (!o.isMesh || !o.geometry || inTransit(o)) return;
     const key = cellOf(o);
     const [x0, x1] = spanOf(o);
     const label = (o.userData && o.userData.label) || '';

@@ -110,8 +110,8 @@ from pv_preprocess import layout as _L
 # 하류 끝은 3D 격자가 존 표보다 뒤에 있다 — 그림에서만 그만큼 물러선다
 # (casing.scene_end_shim_mm 참고. 격자가 등록되면 0 이라 식이 그대로 맞는다).
 for key, at_x, label in (
-        ("afu", C.zone_span_mm("afu")[0] - C.END_OFFSET_MM, "상류"),
-        ("grm", C.zone_span_mm("grm")[1] + C.scene_end_shim_mm() + C.END_OFFSET_MM,
+        ("afu", C.zone_span_mm("afu")[0] - C.end_offset_mm("afu"), "상류"),
+        ("grm", C.zone_span_mm("grm")[1] + C.scene_end_shim_mm() + C.end_offset_mm("grm"),
          "하류")):
     zone = next(z for z in _L.build_zones() if z.key == key)
     zu, zd = wz(zone.y1_mm), wz(zone.y0_mm)

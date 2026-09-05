@@ -215,12 +215,32 @@ def nominal_face_mm(key: str) -> int:
 #: 파고든다 (검사가 4곳을 잡았다).
 MEASURED_END_FRAME_MM = 90
 
-#: 그래서 끝단 케이싱이 존 경계 밖으로 나가는 양 (mm).
-END_OFFSET_MM = MEASURED_END_FRAME_MM // 2 + PANEL_ASSY_MM
+#: 끝단 가드의 **바깥면**이 존 경계에서 나와 있는 양 (mm) — 끝단별 실측.
+#:
+#: 가드가 경계에 **중심**을 두면 단면의 절반이 밖으로 나가고, 끝단 판은 그만큼
+#: 더 물러서야 가드에 얹힌다. REV.47 에서 GRM 셀을 존 격자에 올리며 끝단
+#: 부재의 바깥면을 경계에 맞췄으므로 하류는 0 이 되었다 — 그 값을 그대로
+#: 45 로 두면 판이 가드에서 45 mm 떠서 하중 경로 검사가 잡는다(실제로 잡았다).
+#: 상류(AFU)는 아직 가드가 경계에 중심을 두고 있어 절반이 나와 있다.
+END_FRAME_OUT_MM: dict[str, int] = {"afu": MEASURED_END_FRAME_MM // 2, "grm": 0}
+
+#: 상류 끝 기준값 — 격자가 다 등록되면 두 끝이 같아지고 이 구분도 없어진다.
+END_OFFSET_MM = END_FRAME_OUT_MM["afu"] + PANEL_ASSY_MM
+
+
+def end_offset_mm(key: str) -> int:
+    """끝단 판이 존 경계 밖으로 나가는 양 (mm) — 가드 바깥면 + 판 조립 깊이."""
+    return END_FRAME_OUT_MM[key] + PANEL_ASSY_MM
 
 #: 하류 끝 기계의 **실측** X (플랜트 좌표 mm). 3D 에서 GRM 셀의 최하류 부재
-#: (WR-101 전장 권취롤러 · 셀 베이스 빔) 까지 잰 값이다.
-MEASURED_END_MM = 58_845
+#: (셀 베이스 빔 · 끝단 가드) 까지 잰 값이다.
+#:
+#: REV.47 까지 **58,845** 였다. GRM 셀 그룹이 씬에 27.025 라는 리터럴로 놓여
+#: 있어 자기 존보다 750 mm 하류에 섰고, 끝단 횡빔·가드가 존 경계에 중심을 둬
+#: 단면의 절반(80·45)이 더 나갔다. 셀 원점을 존 중심에서 내고 끝단 부재의
+#: **바깥면**을 경계에 맞추자 두 값이 만났다 — 이제 3D 하류 끝이 곧 존 하류
+#: 끝이라 `scene_end_shim_mm()` 이 0 이다.
+MEASURED_END_MM = 58_050
 
 def scene_end_shim_mm() -> int:
     """3D 끝단 판이 존 경계 밖으로 **더** 물러서야 하는 양 (mm). 등록되면 0.
@@ -265,7 +285,8 @@ def clad_length_mm() -> int:
     있었고, 껍질은 그 위에 얹히므로 양 끝에서 조금씩 는다. 존은 하나도 안
     길어졌다 — 늘어난 것은 껍질 두께뿐이고, 그 사실을 값으로 남긴다.
     """
-    return layout.plant_envelope_mm()[0] + 2 * (END_OFFSET_MM + PANEL_ASSY_MM // 2)
+    return (layout.plant_envelope_mm()[0]
+            + sum(end_offset_mm(k) + PANEL_ASSY_MM // 2 for k in END_FRAME_OUT_MM))
 
 
 #: 껍질이 통로로 나갈 수 있는 최대 (mm). 통로 1,200 에서 피난 유효 900 을

@@ -2401,7 +2401,11 @@ class TestBrandMark(unittest.TestCase):
         if tag in local:
             return qt + local[tag]
         if tag == "GRM-401":
-            return float(re.search(r"pvGrm\.position\.set\(([\d.]+),", self.html).group(1))
+            # REV.47: 리터럴이 아니라 존 중심 파생이다 (pvZone.grm 의 중점).
+            self.assertIn("pvGrm.position.set((pvZone.grm[0]+pvZone.grm[1])/2,",
+                          self.html)
+            grm = next(z for z in layout.build_zones() if z.key == "grm")
+            return (grm.x0_mm + grm.x1_mm) / 2000 - 24.75
         return None                                       # 상류 셀은 존 격자와 맞는다
 
     def test_the_scene_grid_and_the_zone_table_disagree(self):
@@ -5111,16 +5115,24 @@ class TestCasing(unittest.TestCase):
         shim = casing.scene_end_shim_mm()
         self.assertEqual(shim, casing.MEASURED_END_MM
                          - layout.plant_envelope_mm()[0])
-        self.assertGreater(shim, 0, "격자가 아직 안 맞았으면 보정이 있어야 한다")
-        # 보정은 3D 에만 쓴다 — 설계 전장은 존 표를 그대로 따른다
+        # REV.47: GRM 셀을 존 격자에 올리자 3D 하류 끝이 곧 존 하류 끝이 되어
+        # 보정이 **0** 이 되었다. 이 함수의 주기가 예고한 그대로다.
+        self.assertEqual(shim, 0, "하류 격자가 등록됐으면 보정이 없어야 한다")
+        self.assertEqual(casing.MEASURED_END_MM, layout.plant_envelope_mm()[0])
+        # 끝단 판은 가드 **바깥면**에 얹힌다 — 끝마다 그 면이 다를 수 있다
+        self.assertEqual(casing.END_FRAME_OUT_MM["grm"], 0,
+                         "하류 가드 바깥면이 존 경계에 맞아야 판이 뜨지 않는다")
+        self.assertEqual(casing.END_FRAME_OUT_MM["afu"],
+                         casing.MEASURED_END_FRAME_MM // 2)
         self.assertEqual(casing.clad_length_mm(),
                          layout.plant_envelope_mm()[0]
-                         + 2 * (casing.END_OFFSET_MM + casing.PANEL_ASSY_MM // 2))
-        # 그리고 그 사실이 미해결 항목으로 남아 있어야 한다
+                         + sum(casing.end_offset_mm(k) + casing.PANEL_ASSY_MM // 2
+                               for k in casing.END_FRAME_OUT_MM))
+        # 상류는 아직 안 맞았으므로 미해결 항목은 그대로 남는다
         self.assertTrue(layout.SCENE_GRID_OPEN)
         self.assertFalse(layout.scene_grid_is_registered())
         # 도면의 하류 끝단 판이 실제로 기계 밖에 있다
-        world_x = (casing.MEASURED_END_MM + casing.END_OFFSET_MM - 24_750) / 1000
+        world_x = (casing.MEASURED_END_MM + casing.end_offset_mm("grm") - 24_750) / 1000
         self.assertIn(f"{world_x:g},", read_drawing())
 
     def test_the_face_comes_from_measurement_not_the_zone_table(self):
