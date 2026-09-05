@@ -26,6 +26,8 @@ import unittest
 
 from . import _path  # noqa: F401
 
+import console_consts                                        # noqa: E402
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
 RFQ = ROOT / "docs" / "dg-hk60-rfq.html"
@@ -280,3 +282,85 @@ class TestTheSpecification(_Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheWithdrawalEnvelopeIsReserved(unittest.TestCase):
+    """교체 단위를 정했으면 그 단위가 지나갈 자리도 정해야 한다.
+
+    사양서 6.9 는 카세트 인터페이스(핀·클램프·블라인드메이트·포켓)를 전부
+    닫아 놓고도 카세트가 기계 밖으로 나가는 자리는 정하지 않았었다. 압축
+    배치를 재어 보면 바닥에는 그 자리가 없다 — 갠트리가 y ±1,420 을 쓸고
+    다니고, 스윕 밖으로 빼면 외장을 뚫는다.
+
+    그래서 갠트리 상단과 외장 갓돌 사이의 빈 층을 쓴다. 이 시험은 그 층이
+    실제로 비어 있는지, 그리고 포락선이 카세트보다 좁지 않은지를 본다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = CONSOLE.read_text(encoding="utf-8")
+        cls.env = console_consts.env(cls.src)
+
+    def c(self, name):
+        self.assertIn(name, self.env, f"콘솔에 {name} 상수가 없다")
+        return self.env[name]
+
+    def test_the_magazine_clears_the_gantry_sweep(self):
+        """갠트리가 지나가는 높이에 매거진을 두면 첫 사이클에 부딪힌다."""
+        gantry_top = self.c("CBEAM_Z") + .12 + .07          # X축 랙피니언 상면
+        magazine_bottom = self.c("CKC_Z") - .32              # 포켓 받침 아래
+        self.assertGreater(
+            magazine_bottom, gantry_top + .15,
+            f"매거진 하단 {magazine_bottom:.3f} m 가 갠트리 상단 "
+            f"{gantry_top:.3f} m 에 너무 가깝다")
+
+    def test_the_magazine_stays_under_the_skin(self):
+        """갓돌 위로 나가면 외장이 아니라 그냥 노출 설비가 된다."""
+        self.assertLess(self.c("CKC_Z") + .14, self.c("SKIN_TOP"),
+                        "매거진이 외장 갓돌보다 높다")
+
+    def test_the_envelope_is_at_least_the_cassette(self):
+        """포락선이 카세트보다 좁으면 예약한 뜻이 없다."""
+        cass = self.c("KNIFE_W")                             # CASS_L = KNIFE_W
+        depth = self.c("CKC_ENV_Z1") - self.c("CKC_ENV_Z0")
+        self.assertGreaterEqual(depth, .20, "포락선 높이가 카세트 두께에 못 미친다")
+        span = abs(self.c("CKC_Y")) + cass / 2 + self.c("PANEL_W") / 2
+        self.assertGreaterEqual(
+            span, cass, f"인출 통로 {span:.3f} m 가 카세트 {cass:.3f} m 보다 짧다")
+
+    def test_the_magazine_is_clear_of_the_full_roll(self):
+        """만권 롤과 같은 x 선을 쓰므로 y 로 비켜 있어야 한다."""
+        roll_edge = 1.46 / 2                                  # ROLL_FACE/2
+        cass_edge = self.c("CKC_Y") + self.c("KNIFE_W") / 2
+        self.assertLess(cass_edge, -roll_edge,
+                        f"카세트 끝 {cass_edge:.3f} m 가 만권 롤 {-roll_edge:.3f} m 와 겹친다")
+
+    def test_the_consumable_path_ends_outside_the_fence(self):
+        """소모품은 사람이 만지는 날이 온다 — 그때 방책 안이면 무인이 끊긴다."""
+        self.assertLess(self.c("CKC_RACK_Y"), -self.c("CFENCE_YN"),
+                        "KC-301 이 방책 안에 있다")
+        self.assertLessEqual(self.c("RH_Y1"), self.c("CKC_RACK_Y") + 1e-9,
+                             "모노레일이 KC-301 까지 닿지 않는다")
+
+    def test_the_saddle_is_clear_of_the_roll_saddle(self):
+        """같은 열에 두면서 겹치면 롤을 내려놓을 자리가 없어진다."""
+        roll_far = -5.20 - 1.46 / 2                           # BS_SADDLE.y − ROLL_FACE/2
+        cass_near = self.c("CKC_RACK_Y") + self.c("KNIFE_W") / 2
+        self.assertLess(cass_near, roll_far,
+                        f"KC-301 끝 {cass_near:.3f} m 가 만권 롤 끝 {roll_far:.3f} m 와 겹친다")
+
+    def test_the_drawing_reserves_the_envelope(self):
+        """도면에 없으면 현장에서 배관이 그 자리를 먹는다."""
+        m = re.search(r"\n    function compactDrawing\(.*?\n    \}", self.src, re.S)
+        self.assertIsNotNone(m, "compactDrawing 을 찾지 못했다")
+        body = m.group(0)
+        self.assertIn("인출 포락선", body, "D-601 이 포락선을 예약하지 않는다")
+        self.assertIn("url(#hatch)", body, "예약 공간이 해칭으로 표시되지 않는다")
+
+    def test_the_specification_states_the_envelope(self):
+        if not RFQ.exists():
+            self.skipTest("이 브랜치에는 사양서가 없다")
+        rfq = RFQ.read_text(encoding="utf-8")
+        self.assertIn("인출 포락선", rfq, "사양서 6.9 에 포락선 조항이 없다")
+        self.assertIn("KC-301", rfq, "사양서가 방책 밖 반출처를 적지 않았다")
+        self.assertIn("금지영역", rfq, "포락선을 금지영역으로 표기하라는 요구가 없다")
