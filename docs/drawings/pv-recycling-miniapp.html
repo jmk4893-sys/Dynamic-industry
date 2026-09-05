@@ -15983,7 +15983,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 도어 키가 잠금장치에 꽂혀 있으면 개폐기를 켤 수 없다. ISO 14119:2024 Type 5(Annex K).
     { id: "TK-101", where: "HSG-101 트랩키 세트 (개폐기 → LP-101 잠금핀 → 도어 래치)", covers: "M-101 · 로터 도어 개방 순서 강제", locks: 2 },
     { id: "LOTO-201", where: "LCP-SV-201 · LCP-CW-601 잠금형 개폐기", covers: "SV-201 · SS-201 · CC-201 · CH-601", locks: 4 },
-    { id: "LOTO-401", where: "PLC-001 습식 MCC 잠금형 개폐기", covers: "P-xxx 펌프 · FC 구동 · AS-101 · FP-301 유압", locks: 8 }
+    { id: "LOTO-401", where: "PLC-001 습식 MCC 잠금형 개폐기", covers: "P-xxx 펌프 · FC 구동 · AS-101 · FP-301 유압", locks: 8 },
+    // Ag 회수 신설 계통. RM-201 은 회전 매체가 있어 잔류 회전이 멎을 때까지 열지
+    // 않는다 — 개폐기 잠금만으로는 부족해 관성정지 확인이 절차에 들어간다.
+    { id: "LOTO-402", where: "LCP-AG-101 잠금형 개폐기", covers: "RM-201 · AS-101B/102 · FC-101 BL-101 · CN-201 · CT-101 · PS-201 · FW-102", locks: 7 }
   ]);
 
   try {
@@ -19634,6 +19637,56 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // flotation from the batch dewatering equipment.
     const tk204 = wetTank("TK-204", 11.92, -2.30, 0.38, 0.88, 180, { liquid: wetConcentrateMaterial, label: "Ag 정광 급액조" });
     const tk301 = wetTank("TK-301", 14.06, -2.58, 0.44, 1.02, 180, { liquid: wetTailingsMaterial, label: "Si 광미 급액조" });
+    // ---- Ag 회수 신설 계통 ------------------------------------------------------------
+    // 1단 폴리머 역부선 침강물만 받는 2단이다: CN-201 농축 → RM-201 P80 66 µm →
+    // CT-101 조건조 → FC-101 리플럭스 부선 → 폴리싱. 여기서 뜨는 것이 제품이다.
+    //
+    // 자리는 `scratchpad/newkit_space.py` 로 기존 배치표에 대고 확인했다. 9 종 중
+    // **7 종만 자리가 있다** — AS-101B(AS-101 옆 1.12 m 각이 BR-101·BM-101 호퍼에
+    // 막힘)와 FC-204(190 L 에 1.46 m 필요, 데크 동측 잔여 1.08 m)는 자리를 비우는
+    // 방법이 정해지기 전까지 수지에만 있고 형상이 없다. 아래 WET_NEW_KIT_HOLD 참조.
+    const rm201 = wetBox(unifiedWet, [1.80, 1.10, 0.90], [14.70, 0.55, 1.28], material.equipmentWetBody, "RM-201 습식 로드밀");
+    wetBox(unifiedWet, [1.94, 0.10, 1.04], [14.70, 0.05, 1.28], material.frame, "RM-201 스키드");
+    wetCylinder(unifiedWet, 0.16, 0.44, [13.62, 0.55, 1.28], wetMotorMaterial, "RM-201 구동모터", 24, [0, 0, Math.PI / 2]);
+    wetRotors.push({ activation: 300, rpm: DRIVE_RPM.tankAgitator, parts: [rm201], axis: "x" });
+    const cn201 = wetTank("CN-201", 20.30, -3.00, 0.62, 1.10, 300, { liquid: wetTailingsMaterial, label: "침강물 농축콘" });
+    wetCone(unifiedWet, 0.62, 0.10, 0.90, [20.30, 0.45, -3.00], material.equipmentWetBody, "CN-201 원추부");
+    const ct101 = wetTank("CT-101", 20.30, -1.75, 0.46, 0.90, 300, { liquid: wetFeedMaterial, label: "약제 조건조" });
+    wetBox(unifiedWet, [1.10, 0.70, 0.70], [21.25, 0.85, -1.75], material.equipmentDewater, "PS-201 폴리싱 스크린 100 µm");
+    wetBox(unifiedWet, [1.22, 0.10, 0.82], [21.25, 0.05, -1.75], material.frame, "PS-201 스키드");
+    // FC-101 리플럭스 Ag 부선주 — 기계식 셀이 아니라 세척수 bias 를 쓰는 컬럼이다.
+    // 임펠러가 없으므로 wetRotors 에 넣지 않는다.
+    const fc101 = wetCylinder(unifiedWet, 0.30, 2.60, [16.45, 3.81, 0.85], material.equipmentWetBody, "FC-101 리플럭스 Ag 부선주", 30);
+    wetCylinder(unifiedWet, 0.33, 0.16, [16.45, 5.19, 0.85], material.equipmentWetBody, "FC-101 정광 런더", 30);
+    wetCylinder(unifiedWet, 0.31, 0.10, [16.45, 4.86, 0.85], wetWaterMaterial, "FC-101 세척수 분배기", 30);
+    wetCylinder(unifiedWet, 0.26, 0.34, [16.45, 2.68, 0.85], material.equipmentAir, "FC-101 스파저 챔버", 30);
+    wetBox(unifiedWet, [0.74, 0.08, 0.74], [16.45, 2.55, 0.85], material.frame, "FC-101 베이스플레이트");
+    // AS-102 재해리 — 공정상 FC-204 거품을 받아야 하는데 그 FC-204 가 아직 형상이
+    // 없다. 야드(자유구역 G)에 세워 두고 배관은 FC-204 확정 뒤에 잇는다.
+    const as102 = wetTank("AS-102", 18.30, 4.35, 0.56, 1.06, 300, { octagonal: true, attrition: true, liquid: wetFrothMaterial, label: "재해리 어트리션" });
+    // FW-102 백시트 플레이크 마찰세척 — 건식 BIN-102 옆(자유구역 H)이다.
+    wetBox(unifiedWet, [0.90, 1.00, 0.70], [7.65, 0.50, -1.15], material.equipmentDewater, "FW-102 플레이크 마찰세척");
+    wetBox(unifiedWet, [1.02, 0.10, 0.82], [7.65, 0.05, -1.15], material.frame, "FW-102 스키드");
+    wetCylinder(unifiedWet, 0.14, 0.34, [8.25, 0.62, -1.15], wetMotorMaterial, "FW-102 구동모터", 24, [0, 0, Math.PI / 2]);
+    wetCylinder(unifiedWet, 0.05, 0.30, [7.65, 1.15, -1.15], wetWaterPipeMaterial, "FW-102 세척수 노즐", 16);
+    // 신설 계통 배관 — 1단 침강물부터 정광까지.
+    wetTube(unifiedWet, [[15.10, 2.90, 0.66], [15.10, 1.40, 1.28], [15.60, 0.90, 1.28]], 0.060, wetTailingsMaterial, "FC-203 광미 → CN-201/RM-201", 300, 5);
+    wetTube(unifiedWet, [[13.80, 0.55, 1.28], [13.20, 0.55, -1.60], [19.68, 0.55, -3.00]], 0.055, wetTailingsMaterial, "RM-201 → CN-201 농축", 300, 6);
+    wetTube(unifiedWet, [[20.30, 1.10, -2.45], [20.30, 1.10, -2.21]], 0.048, wetFeedMaterial, "CN-201 언더플로 → CT-101", 300, 2);
+    wetTube(unifiedWet, [[20.30, 1.55, -1.29], [18.60, 2.20, 0.85], [16.45, 2.55, 0.85]], 0.048, wetFeedMaterial, "CT-101 → FC-101 급광", 300, 6);
+    wetTube(unifiedWet, [[16.45, 5.27, 0.85], [20.10, 1.60, -1.40], [20.70, 1.10, -1.75]], 0.042, wetConcentrateMaterial, "FC-101 정광 → PS-201 폴리싱", 300, 6);
+    wetTube(unifiedWet, [[21.80, 0.85, -1.75], [16.00, 0.60, -2.10], [12.42, 0.55, -2.30]], 0.042, wetConcentrateMaterial, "PS-201 언더 → TK-204 Ag 정광", 300, 6);
+    wetTube(unifiedWet, [[16.45, 2.55, 0.85], [16.45, 1.20, -1.00], [14.62, 0.80, -2.58]], 0.055, wetTailingsMaterial, "FC-101 광미 → TK-301 Si 광미", 300, 6);
+    wetTube(unifiedWet, [[7.65, 1.00, -1.15], [8.40, 1.00, 0.40], [8.82, 1.20, 0.72]], 0.038, wetFeedMaterial, "FW-102 세척 미분 → TK-001", 300, 4);
+    // 3D 에 아직 없는 신설 2 종 — 자리가 나오면 여기 붙는다. 수지에는 이미 들어가
+    // 있으므로(FC-204 는 flotationCells, AS-101B 는 AS101_TRAIN_CELLS) 회수율은
+    // 이 둘을 포함한 값이다. 형상만 없다는 뜻이다.
+    const WET_NEW_KIT_HOLD = Object.freeze([
+      Object.freeze({ tag: "AS-101B", need: "AS-101 직하류 1.12 m 각",
+        blocker: "BR-101 · BM-101 호퍼", option: "호퍼 이설 또는 AS-101 단일 대형화" }),
+      Object.freeze({ tag: "FC-204", need: "부선열 동측 1.46 m",
+        blocker: "잔여 1.08 m (FC-203 ~ ST-201 데크 동단)", option: "데크 동측 연장 또는 셀 축소" })
+    ]);
     // ---- 로터 인양 — 부선 셀·어트리션 -------------------------------------------------
     // 로터·스테이터는 축과 함께 수직으로 뽑는 카트리지다. 셀마다 구동 브리지에 인양아이
     // 2점, 그 위로 2F 데크에 선 지브크레인(JC-201, SWL 0.5 t)이 세 셀을 선회 반경 안에 둔다.
@@ -20828,8 +20881,16 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     const AS101_FEED_M3H = slurryFlowM3H(WET_FEED_KGH, AS101_FEED_SOLIDS_WT);
     const FLOTATION_FEED_M3H = slurryFlowM3H(WET_FEED_KGH, FLOTATION_SOLIDS_WT);
     const residenceMin = (cellL, m3h) => cellL / 1000 / m3h * 60;
-    // 명판 5 min 이 아니라 **실제 체류시간**이다. 급광이 설계의 1/4 이므로 4 배 길다.
+    // 명판 5 min 이 아니라 **실제 체류시간**이다.
     const AS101_ACTUAL_RESIDENCE_MIN = residenceMin(AS101_CELL_L, AS101_FEED_M3H);
+    // 어트리션은 이제 2 단이다 — AS-101 + AS-101B(신설, 같은 40 L). 같은 유량에
+    // 용적이 두 배이므로 체류시간도 두 배가 되고, 해리도는 1 차 반응식을 그만큼 더
+    // 탄다. 총 해리도 ≥0.994 가 관문 1 이다.
+    // 주의 — AS-101B 는 **3D 에 아직 없다.** AS-101 바로 옆(공정상 요구 위치)에는
+    // BR-101·BM-101 호퍼가 있어 1.12 m 각이 들어가지 않는다(scratchpad/newkit_space.py).
+    // 자리를 비우는 방법이 정해지기 전까지 수지에만 존재한다.
+    const AS101_TRAIN_CELLS = 2;
+    const AS101_TRAIN_RESIDENCE_MIN = AS101_ACTUAL_RESIDENCE_MIN * AS101_TRAIN_CELLS;
     // 표준 체류시간 — 어트리션 5–15 · 러퍼 5–15 · 클리너 3–8 · 스캐빈저 8–20 min 의 중앙값
     const WET_STANDARD_RESIDENCE_MIN = Object.freeze({ attrition: 10, rougher: 10, cleaner: 5, scavenger: 14 });
     const WET_DUTY = Object.freeze([
@@ -21569,7 +21630,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       const fines = state.outletClassMass.fines;
       const total = fines.A + fines.B + fines.C;
       if (!(total >= FLOTATION_FEED_MIN_KG)) return FLOTATION_FEED_DESIGN;
-      const freed = fines.C * as101Debond(AS101_ACTUAL_RESIDENCE_MIN);
+      const freed = fines.C * as101Debond(AS101_TRAIN_RESIDENCE_MIN);
       const blend = {
         A: fines.A,
         Ac: freed * (1 - C_BACKSHEET_MASS_FRACTION),
@@ -21586,7 +21647,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       set("[data-wet-feed]", WET_FEED_KGH.toFixed(1));
       set("[data-wet-sieve-feed]", SIEVE_FEED_KGH.toFixed(0));
       set("[data-wet-fines-pct]", (MODEL_PRODUCT_UNDER75_FRACTION * 100).toFixed(1));
-      set("[data-wet-debond]", as101Debond(AS101_ACTUAL_RESIDENCE_MIN).toFixed(3));
+      set("[data-wet-debond]", as101Debond(AS101_TRAIN_RESIDENCE_MIN).toFixed(3));
       set("[data-wet-copper-share]", (COPPER_PRODUCT_KGH / SIEVE_FEED_KGH * 100).toFixed(1));
       const body = root.querySelector("[data-wet-duty]");
       if (body) {
@@ -21749,7 +21810,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       const rejectLost = Object.fromEntries(ASSAY_TYPES.map((t) => [t, rejectRaw[t] * (1 - FW102_DUST_RECOVERY)]));
       if (blendAssay(wetMass).mass < FLOTATION_FEED_MIN_KG) return null;
       // AS-101/101B 어트리션 — C 가 벗겨져 해리 셀(Ac)과 백시트(B)로 갈린다.
-      const freed = wetMass.C * as101Debond(AS101_ACTUAL_RESIDENCE_MIN);
+      const freed = wetMass.C * as101Debond(AS101_TRAIN_RESIDENCE_MIN);
       wetMass.Ac += freed * (1 - C_BACKSHEET_MASS_FRACTION);
       wetMass.B += freed * C_BACKSHEET_MASS_FRACTION;
       wetMass.C -= freed;
@@ -24457,7 +24518,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         copperProductKgh: +COPPER_PRODUCT_KGH.toFixed(2),
         legacyBasisKgh: WET_FEED_LEGACY_BASIS_KGH,
         as101ResidenceMin: +AS101_ACTUAL_RESIDENCE_MIN.toFixed(1),
-        as101Debond: +as101Debond(AS101_ACTUAL_RESIDENCE_MIN).toFixed(4),
+        as101Debond: +as101Debond(AS101_TRAIN_RESIDENCE_MIN).toFixed(4),
         duty: WET_DUTY.map((row) => ({
           unit: row.label, installedL: row.installedL,
           requiredL: +row.requiredL.toFixed(1), standardResidenceMin: row.std,
@@ -24842,6 +24903,26 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {tag:"M-CF-204",qty:1,duty:1,kw:8.0,drive:"VFD",status:"확정 설계값"},
         {tag:"PC-FP-301",qty:1,duty:1,kw:0.75,drive:"380/220 V TR · 패널 냉각유닛",status:"IP66 패널 에어컨 · 반내 발열 0.73 kW · 필터팬 불가"},
         {tag:"CP-FP-301",qty:1,duty:1,kw:0.5,drive:"380/220 V TR+24 VDC SMPS",status:"예비 보조부하"}
+      ]
+    },
+    // Ag 회수 신설 계통 — 2 단 부선(폴리머 역부선 → FC-101 리플럭스 Ag 부선).
+    // AS-101B·FC-204 는 3D 자리가 아직 없지만 **전기 부하는 설계에 실재**하므로
+    // 여기 계상한다. 위치가 정해져도 부하는 그대로다.
+    agRecovery:{
+      panel:"LCP-AG-101",source:"MCC-401",area:"습식·부선구역",ip:"IP66 / 내식형",declaredDemandKw:27.30,
+      branches:[
+        {tag:"M-RM-201",qty:1,duty:1,kw:4.0,drive:"VFD",status:"P80 66 µm 로드밀 · 제작사 확인 필요"},
+        {tag:"M-AS-101B",qty:1,duty:1,kw:5.2,drive:"VFD",status:"AS-101 동형 · 3D 배치 HOLD"},
+        {tag:"M-FC-204",qty:1,duty:1,kw:3.0,drive:"VFD",status:"FC-203 동형 190 L · 3D 배치 HOLD"},
+        {tag:"M-AS-102",qty:1,duty:1,kw:5.2,drive:"VFD",status:"AS-101 동형"},
+        {tag:"M-CN-201",qty:1,duty:1,kw:0.75,drive:"VFD",status:"농축콘 레이크"},
+        {tag:"M-CT-101",qty:1,duty:1,kw:1.5,drive:"VFD",status:"조건조 교반"},
+        {tag:"BL-101",qty:1,duty:1,kw:2.2,drive:"VFD",status:"FC-101 스파저 송풍"},
+        {tag:"P-101A/B",qty:2,duty:1,kw:1.5,drive:"VFD A/B",status:"FC-101 급광 · 유량 제작사 확인"},
+        {tag:"M-PS-201",qty:1,duty:1,kw:0.75,drive:"DOL",status:"폴리싱 스크린 가진"},
+        {tag:"M-FW-102",qty:1,duty:1,kw:2.2,drive:"VFD",status:"플레이크 마찰세척"},
+        {tag:"PC-AG-101",qty:1,duty:1,kw:0.5,drive:"380/220 V TR · 패널 냉각유닛",status:"IP66 패널 에어컨"},
+        {tag:"CP-AG-101",qty:1,duty:1,kw:0.5,drive:"380/220 V TR+24 VDC SMPS",status:"예비 보조부하"}
       ]
     }
   };
