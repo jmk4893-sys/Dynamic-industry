@@ -2490,6 +2490,74 @@ class TestBrandMark(unittest.TestCase):
         self.assertTrue(layout.scene_grid_is_registered())
         return None
 
+    def test_every_shape_says_whose_it_is(self):
+        """귀속을 빠뜨린 형상이 있으면 격자 검사는 그만큼 눈을 감고 있다.
+
+        REV.48 격자 등록 직후 미귀속 메시가 **450** 남아 있었다. 상류 기계군과
+        껍질·지지 부재가 `pt` 에 태그 없이 서 있었기 때문이다 — 셀을 옮겨도
+        따라오지 않고, "존을 넘는 셀 0" 이라는 결과도 그만큼 덜 본 결과였다.
+
+        형상은 셋 중 하나여야 한다: 어느 셀의 것(`pvCell`), 공정 중인 물건
+        (`pvTransit`), 셀에 속하지 않는 것(`pvSpans`). 여기서는 그 선언이
+        도면에 실제로 있는지를 본다 — 실측은 `tools/check_cell_grid.mjs` 가 한다.
+        """
+        html = self.html
+        # 셀에 속하지 않는다고 밝힌 것 — 시설과 셀을 건너는 부재
+        for var, why in (("pvCrn", "건물 철골이 받는 크레인"),
+                         ("pvAir", "압축공기 기계실"),
+                         ("pvCase", "셀들을 잇는 하나의 외피"),
+                         ("uu", "바닥판")):
+            with self.subTest(spans=var):
+                self.assertIn(f"pt.add(pvSpans({var}))", html, why)
+        # 투입 셀의 기계 — 리프트·반전기·벽체·비전보·진공 스키드·지게차
+        for var in ("pvVac", "jt", "Is"):
+            with self.subTest(cell=var):
+                self.assertIn(f"pt.add(pvCell({var},'afu'))", html)
+        # 공정 중인 물건 — 팔레트와 로봇이 들고 가는 패널
+        self.assertIn("pt.add(pvTransit(dn))", html, "이송 중 패널이 셀에 매여 있다")
+        self.assertIn("pt.add(pvTransit(n)),P(n,[2.76,.15,1.62]", html, "팔레트가 셀에 매여 있다")
+        # 지지 부재는 자기가 받치는 셀의 것 — 생성기와 손으로 쓴 것 모두
+        self.assertIn("var pvMountFor=function(k){g=pvCell(new ce,k);pvMount.add(g);return g;};", html)
+        for key in ("post", "afu", "afr", "buffer"):
+            with self.subTest(mount=key):
+                self.assertIn(f"pvMountFor('{key}');", html)
+        block = html.split("/* @brackets-begin */")[1].split("/* @brackets-end */")[0]
+        drawn = [ln for ln in block.splitlines() if "지지 브래킷" in ln]
+        self.assertEqual(len(drawn), mounting.BRACKET_COUNT)
+        for line in drawn:
+            with self.subTest(bracket=line[:40]):
+                self.assertRegex(line, r"^(pvCell\(L\(|pvSpans\(L\()",
+                                 "브래킷이 자기 소속을 안 밝혔다")
+
+    def test_a_zone_overlap_is_declared_with_its_reason(self):
+        """존을 넘는 것이 설계라면 **숫자와 사유로** 적혀 있어야 한다.
+
+        존은 X 를 잘라 나눈 것이라, 두 기계가 X 로 겹치되 Y·Z 로 비켜 서는
+        관계를 표현하지 못한다. RB-101 이 그 경우다 — BFC 반전 베이 안으로
+        팔을 넣어 픽업하므로 베이가 로봇 존 쪽으로 물려 있어야 한다. 숨기면
+        다음 사람이 "격자가 틀렸다" 며 되돌리려 들 것이므로 적어 둔다.
+        """
+        self.assertTrue(layout.ZONE_OVERLAP_BY_DESIGN)
+        zones = {z.key for z in layout.build_zones()}
+        for over in layout.ZONE_OVERLAP_BY_DESIGN:
+            with self.subTest(cell=over.cell):
+                self.assertIn(over.cell, zones)
+                self.assertIn(over.into, zones)
+                self.assertGreater(over.mm, 0)
+                self.assertGreater(len(over.reason), 60, "넘침에는 사유가 있어야 한다")
+        # 로봇이 실제로 닿는가 — 그리고 존 안으로 물리면 못 닿는가
+        self.assertTrue(layout.robot_can_reach(), "지금 자리에서 로봇이 인계점에 닿아야 한다")
+        self.assertAlmostEqual(layout.robot_pickup_distance_mm(), 2680.0, places=1)
+        pulled_in = layout.BFC_PICKUP_X_MM - layout.zone_overlap_mm("afu")
+        self.assertFalse(layout.robot_can_reach(pulled_in),
+                         "존 안으로 물려도 닿는다면 넘침을 허용할 근거가 없다")
+        # 검사 도구가 같은 값을 알고 있어야 한다 — 갈라지면 검사가 헐거워진다
+        tool = (ROOT / "tools" / "check_cell_grid.mjs").read_text(encoding="utf-8")
+        body = tool.split("const OVERLAP_BY_DESIGN = {")[1].split("};")[0]
+        in_tool = {k: int(v) for k, v in re.findall(r"(\w+):\s*(\d+)", body)}
+        self.assertEqual(in_tool, {o.cell: o.mm for o in layout.ZONE_OVERLAP_BY_DESIGN},
+                         "모델과 검사 도구의 허용 넘침이 다르다")
+
     def test_the_scene_grid_and_the_zone_table_agree(self):
         """3D 셀 원점이 존 표 위에 있다 — REV.48 에서 맞췄다.
 
@@ -5410,7 +5478,7 @@ class TestCasing(unittest.TestCase):
             token = f'"{key}": ' + _json.dumps(value, ensure_ascii=False)
             with self.subTest(token=token):
                 self.assertIn(token, self.plant)
-        self.assertIn("var pvCase=new ce;pt.add(pvCase);", self.plant,
+        self.assertIn("var pvCase=new ce;pt.add(pvSpans(pvCase));", self.plant,
                       "케이싱 그룹이 3D 에 없다")
         # 껐다 켤 수 있어야 한다 — 이 도면의 쓸모는 기구를 보는 데 있다
         self.assertIn('id="pv-case"', self.plant)

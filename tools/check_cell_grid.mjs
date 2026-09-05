@@ -26,6 +26,14 @@ const SPANS_THE_PLANT = [
   'MDB-101', 'LP-', 'F1',    // 전기 간선
 ];
 
+/** 넘침이 **설계**인 자리 — src/pv_preprocess/layout.py 의
+ *  `ZONE_OVERLAP_BY_DESIGN` 과 같아야 한다 (시험이 양방향으로 맞춘다).
+ *  존은 X 를 잘라 나눈 것이라, 두 기계가 X 로 겹치되 Y·Z 로 비켜 서는 관계를
+ *  표현하지 못한다. 그런 자리만 여기 적고, 나머지 넘침은 결함으로 잡는다. */
+const OVERLAP_BY_DESIGN = {
+  afu: 1300,   // RB-101 이 BFC 반전 베이 안으로 팔을 넣어 픽업한다
+};
+
 const browser = await chromium.launch({
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
@@ -100,19 +108,22 @@ for (const [key, z] of Object.entries(zones)) {
   if (!c) { rows.push({ key, state: '미귀속', over: null }); continue; }
   const up = z[0] - c.x0;          // 상류로 넘친 양 (양수면 넘침)
   const down = c.x1 - z[1];        // 하류로 넘친 양
+  const allow = (OVERLAP_BY_DESIGN[key] || 0) / 1000;
   const over = Math.max(0, up, down);
-  worst = Math.max(worst, over);
-  rows.push({ key, z, c, up, down, over });
+  const excess = Math.max(0, over - allow);
+  worst = Math.max(worst, excess);
+  rows.push({ key, z, c, up, down, over, allow, excess });
 }
 
 console.log(`셀 그룹 ${Object.keys(cells).length} · 셀 아님으로 밝힌 메시 ${declared} · 태그 없는 메시 ${loose.length}`);
 console.log(`\n${'존'.padEnd(8)} ${'존 X'.padStart(16)} ${'3D 실측 X'.padStart(16)} ${'상류넘침'.padStart(9)} ${'하류넘침'.padStart(9)}  메시`);
 for (const r of rows) {
   if (!r.c) { console.log(`${r.key.padEnd(8)} ${'—'.padStart(16)} ${'그룹 없음'.padStart(16)}`); continue; }
-  const flag = r.over > 0.05 ? '✗' : '·';
+  const flag = r.excess > 0.05 ? '✗' : (r.allow ? '△' : '·');
   console.log(`${flag} ${r.key.padEnd(6)} ${(r.z[0].toFixed(2) + '…' + r.z[1].toFixed(2)).padStart(16)}`
     + ` ${(r.c.x0.toFixed(2) + '…' + r.c.x1.toFixed(2)).padStart(16)}`
-    + ` ${mm(Math.max(0, r.up)).padStart(9)} ${mm(Math.max(0, r.down)).padStart(9)}  ${r.c.n}`);
+    + ` ${mm(Math.max(0, r.up)).padStart(9)} ${mm(Math.max(0, r.down)).padStart(9)}  ${String(r.c.n).padStart(5)}`
+    + (r.allow ? `  설계 허용 ${mm(r.allow)}` : ''));
 }
 
 const notCovered = loose.filter((m) => !SPANS_THE_PLANT.some((k) => m.label.includes(k)));
@@ -123,9 +134,11 @@ if (notCovered.length) {
   if (named.length > 12) console.log(`  … 외 ${named.length - 12}종`);
 }
 
-const bad = rows.filter((r) => r.c && r.over > 0.05);
+const bad = rows.filter((r) => r.c && r.excess > 0.05);
 if (bad.length || notCovered.length) {
   console.log(`\n✗ 격자 미정합 — 존을 넘는 셀 ${bad.length} · 최대 ${mm(worst)} mm · 미귀속 메시 ${notCovered.length}`);
   process.exit(1);
 }
-console.log('\n✓ 모든 셀이 자기 존 안에 있다');
+const allowed = rows.filter((r) => r.c && r.allow);
+console.log('\n✓ 모든 셀이 자기 존 안에 있다'
+  + (allowed.length ? ` (설계로 밝힌 넘침 ${allowed.length}곳 — ${allowed.map((r) => r.key + ' ' + mm(r.allow)).join(' · ')} mm)` : ''));

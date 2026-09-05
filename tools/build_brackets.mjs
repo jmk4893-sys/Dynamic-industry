@@ -76,7 +76,13 @@ const found = await page.evaluate(([exempt, adj, floor, maxSpan, keepOut]) => {
       lo = [Math.min(lo[0], v.x), Math.min(lo[1], v.y), Math.min(lo[2], v.z)];
       hi = [Math.max(hi[0], v.x), Math.max(hi[1], v.y), Math.max(hi[2], v.z)];
     }
-    items.push({ label, lo, hi });
+    // 브래킷은 **받치는 것의 셀**에 속한다 — 그 셀을 여기서 같이 읽어 둔다.
+    let cell = null, declared = false;
+    for (let p = o; p; p = p.parent) {
+      if (p.userData && (p.userData.transit || p.userData.spans)) { declared = true; break; }
+      if (p.userData && p.userData.cell) { cell = p.userData.cell; break; }
+    }
+    items.push({ label, lo, hi, cell, declared });
   });
 
   const isExempt = (i) => exempt.some((k) => items[i].label.includes(k));
@@ -107,7 +113,7 @@ const found = await page.evaluate(([exempt, adj, floor, maxSpan, keepOut]) => {
       if (!groups.has(r)) groups.set(r, []);
       groups.get(r).push(i);
     }
-    if (!groups.size) return { out, rounds: round };
+    if (!groups.size) return { out, rounds: round, zone: host.__pvScene.zone };
 
     let made = 0;
     for (const [, members] of groups) {
@@ -140,24 +146,37 @@ const found = await page.evaluate(([exempt, adj, floor, maxSpan, keepOut]) => {
         size[k] = Math.max(b - a, 0.06);
         at[k] = (a + b) / 2;
       }
-      out.push({ size, at, a: A.label || '(무명)', b: B.label || '(무명)', gap: best.g });
-      extra.push({ label: '', lo: [at[0] - size[0] / 2, at[1] - size[1] / 2, at[2] - size[2] / 2],
+      // 받치는 쪽(A)의 셀을 잇는다. A 가 셀을 안 밝혔으면 매다는 쪽(B)을 보고,
+      // 둘 다 없으면 이 브래킷은 어느 셀의 것도 아니다.
+      const cell = A.cell || B.cell || null;
+      out.push({ size, at, a: A.label || '(무명)', b: B.label || '(무명)', gap: best.g, cell });
+      extra.push({ label: '', cell, declared: false,
+                   lo: [at[0] - size[0] / 2, at[1] - size[1] / 2, at[2] - size[2] / 2],
                    hi: [at[0] + size[0] / 2, at[1] + size[1] / 2, at[2] + size[2] / 2] });
       made++;
     }
-    if (!made) return { out, rounds: round, stuck: groups.size };
+    if (!made) return { out, rounds: round, stuck: groups.size, zone: host.__pvScene.zone };
   }
-  return { out, rounds: 6, stuck: -1 };
+  return { out, rounds: 6, stuck: -1, zone: host.__pvScene.zone };
 }, [EXEMPT, ADJ, FLOOR, MAX_SPAN, KEEP_OUT]);
 await browser.close();
 
 if (found.error) { console.error('✗ ' + found.error); process.exit(1); }
 const { out } = found;
+const ZONES = found.zone;
 const f = (v) => v.toFixed(3);
+// 한 본이 두 존에 걸치면 그것은 셀을 건너는 부재다 — 자리로 판정한다.
+const inOneZone = (r) => {
+  const x0 = r.at[0] - r.size[0] / 2, x1 = r.at[0] + r.size[0] / 2;
+  const hits = Object.entries(ZONES).filter(([, z]) => x0 >= z[0] - 1e-6 && x1 <= z[1] + 1e-6);
+  return hits.length === 1 ? hits[0][0] : null;
+};
 const lines = out.map((r, i) => {
   const no = String(i + 1).padStart(3, '0');
-  return `L([${r.size.map(f).join(',')}],[${r.at.map(f).join(',')}],M.steel,`
-    + `'MB-${no} 지지 브래킷','${r.a} → ${r.b}');`;
+  const body = `L([${r.size.map(f).join(',')}],[${r.at.map(f).join(',')}],M.steel,`
+    + `'MB-${no} 지지 브래킷','${r.a} → ${r.b}')`;
+  const cell = r.cell && inOneZone(r) ? r.cell : null;
+  return cell ? `pvCell(${body},'${cell}');` : `pvSpans(${body});`;
 });
 
 console.log(`브래킷 ${out.length}본 · 반복 ${found.rounds}회`

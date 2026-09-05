@@ -32,7 +32,12 @@ TAG = {"afu": "AFU-101", "robot": "RB-101", "jbr": "JBR-201", "afr": "AFR-101",
 
 out = []
 w = out.append
-w("var pvCase=new ce;pt.add(pvCase);pvCase.name='pvCase';")
+w("/* 외장 케이싱은 셀의 기계가 아니라 셀들을 잇는 **하나의 외피**다 — 멀리언이")
+w("   존 경계 위에 서서 두 셀이 반씩 나눠 갖고, 이음매 리턴과 끝단 판은 아예")
+w("   경계를 물고 있다. 존 X 로 재면 셀마다 12 mm 씩 넘치는 것으로 잡히는데")
+w("   그것은 결함이 아니라 이음매의 두께다. 껍질은 casing.py 가 존에서 파생하고")
+w("   tools/check_casing_fit.mjs 가 기계와의 관계를 따로 검사한다. */")
+w("var pvCase=new ce;pt.add(pvSpans(pvCase));pvCase.name='pvCase';")
 w("(function(){")
 w("var g=pvCase,L=function(a,b,c,d,e,f){return P(g,a,b,c,d,e,f)};")
 w("// 메시마다 이름을 단다 — tools/check_casing_fit.mjs 가 껍질을 식별하는 근거다.")
@@ -147,13 +152,13 @@ if "glazing:new xo(" not in s:
     s = s.replace(anchor, anchor[:-1] + ",glazing:new xo({color:SC.rim,transparent:!0,"
                   "opacity:.20,roughness:.03,metalness:.02,depthWrite:!1,side:bn})}")
 
-start = "var pvCase=new ce;pt.add(pvCase);"
+start = "/* 외장 케이싱은 셀의 기계가 아니라"
 if start in s:
     i = s.index(start)
     j = s.index("\n}());", i) + len("\n}());")
     s = s[:i] + block + s[j:]
 else:
-    anchor2 = "var pvDecal=new ce;pt.add(pvDecal);"
+    anchor2 = "var pvDecal=new ce;pt.add(pvDecal);"  # 껍질 블록이 아직 없을 때만
     assert s.count(anchor2) == 1
     s = s.replace(anchor2, block + "\n" + anchor2)
 

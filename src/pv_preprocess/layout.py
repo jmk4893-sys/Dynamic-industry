@@ -438,6 +438,63 @@ def scene_grid_is_registered() -> bool:
     return SCENE_GRID_OPEN is None and scene_grid_gap_mm() == 0
 
 
+# ── 존 경계를 넘는 것이 설계인 자리 ──────────────────────────────────────
+# 존은 **X 를 잘라** 나눈 것이라, 두 기계가 X 로 겹치되 Y·Z 로 비켜 서는 관계를
+# 표현하지 못한다. 그런 자리가 하나 있고, 숨기면 다음 사람이 "격자가 틀렸다" 며
+# 되돌리려 들 것이므로 여기에 **숫자와 사유로** 적는다. 적힌 값을 넘으면
+# `tools/check_cell_grid.mjs` 가 잡는다.
+
+#: RB-101 도달거리 (mm). 부품표 AFU-RB-101 — 110–130 kg급 6축 로봇.
+ROBOT_REACH_MM = 2800
+
+#: 3D 실측 (plant mm). RB-101 J2 축과 BFC 인계점 — 인계점은 라인 중심에서
+#: Z 로 비켜 서 있으므로(반전 베이가 통로 양측이다) 도달거리는 3D 직선거리다.
+ROBOT_PEDESTAL_X_MM = 8_400
+BFC_PICKUP_X_MM = 6_250
+BFC_PICKUP_Z_MM = 1_600
+
+
+def robot_pickup_distance_mm(pickup_x_mm: int | None = None) -> float:
+    """RB-101 J2 축에서 BFC 인계점까지의 직선거리 (mm)."""
+    x = BFC_PICKUP_X_MM if pickup_x_mm is None else pickup_x_mm
+    return ((ROBOT_PEDESTAL_X_MM - x) ** 2 + BFC_PICKUP_Z_MM ** 2) ** 0.5
+
+
+def robot_can_reach(pickup_x_mm: int | None = None) -> bool:
+    return robot_pickup_distance_mm(pickup_x_mm) <= ROBOT_REACH_MM
+
+
+@dataclass(frozen=True)
+class ZoneOverlap:
+    """한 셀이 이웃 존으로 넘어가는 것을 허용한 자리."""
+
+    cell: str
+    into: str
+    mm: int
+    reason: str
+
+
+#: 넘침이 **설계**인 자리. 여기 없는 넘침은 결함이다.
+ZONE_OVERLAP_BY_DESIGN: tuple[ZoneOverlap, ...] = (
+    ZoneOverlap(
+        "afu", "robot", 1300,
+        "RB-101 이 BFC 반전 베이 **안으로** 팔을 넣어 픽업하므로 베이가 로봇 쪽으로 "
+        "물려 있어야 한다. 페데스털 J2 축(8,400)에서 인계점(6,250, Z 1,600)까지가 "
+        "2,680 mm 로 도달 2,800 의 120 mm 안쪽이다 — 베이를 존 안(넘침 0)으로 "
+        "1,300 물리면 그 거리가 3,803 이 되어 로봇이 닿지 못한다. 겹치는 것은 X 뿐이고 "
+        "Y·Z 로는 비켜 서 있어 간섭 스윕에 걸리지 않는다.",
+    ),
+)
+
+
+def zone_overlap_mm(key: str) -> int:
+    """그 셀이 이웃 존으로 넘어가도 되는 양 (mm). 없으면 0."""
+    for over in ZONE_OVERLAP_BY_DESIGN:
+        if over.cell == key:
+            return over.mm
+    return 0
+
+
 def plant_envelope_mm() -> tuple[int, int, int]:
     """영구설비 전체 포락선 (X, Y, Z). Y 는 장비 밴드 + 통로."""
     zones = build_zones()
