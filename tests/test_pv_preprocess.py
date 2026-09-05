@@ -16,6 +16,7 @@ import math
 import pathlib
 import re
 import unittest
+from unittest import mock
 
 from . import _path  # noqa: F401
 
@@ -334,12 +335,18 @@ class TestOneTransferPlane(unittest.TestCase):
             with self.subTest(cell=key):
                 self.assertEqual(layout.STATIONS[key].transfer_height_mm,
                                  layout.LINE_TRANSFER_MM)
-        # 이웃한 셀 사이에 단차가 없다 (버퍼로 올라가는 100 은 남는다)
+        # 롤러로 이어진 구간에는 단차가 하나도 없다 (REV.47 에서 buffer 가 들어왔다)
+        self.assertTrue(layout.the_line_has_no_step())
+        for up, down, step in layout.roller_steps_mm():
+            with self.subTest(pair=(up, down)):
+                self.assertEqual(step, 0, f"{up}→{down} 이송면 단차")
+        # 롤러가 아닌 인계만 단차를 물 수 있고, 그 사유가 값으로 있어야 한다
         steps = {(a, b): d for a, b, d in layout.transfer_steps_mm()}
-        self.assertEqual(steps[("robot", "jbr")], 0)
-        self.assertEqual(steps[("jbr", "afr")], 0)
-        self.assertEqual(steps[("afr", "post")], 0)
-        self.assertEqual(steps[("post", "buffer")], 100)
+        for pair, why in layout.NON_ROLLER_HANDOFF.items():
+            with self.subTest(pair=pair):
+                self.assertNotEqual(steps[pair], 0,
+                                    "단차가 없으면 예외로 둘 이유도 없다")
+                self.assertGreater(len(why), 40, "사유가 한 줄은 되어야 한다")
 
     def test_the_sheets_carry_the_model_height(self):
         for key, station in layout.STATIONS.items():
@@ -353,14 +360,75 @@ class TestOneTransferPlane(unittest.TestCase):
         """씬 상수 하나가 롤러 축을 정하고, 네 컨베이어가 그것만 본다."""
         line = _js(layout.LINE_TRANSFER_MM / 1000)
         radius = _js(layout.ROLLER_D_MM / 2000)
-        self.assertIn(f"var pvLine={line},pvRollY=pvLine-{radius},", self.html,
-                      "이송면 상수가 모델에서 나오지 않는다")
+        nip = _js(layout.BUFFER_NIP_MM / 1000)
+        self.assertIn(
+            f"var pvLine={line},pvRollR={radius},pvRollY=pvLine-pvRollR,pvNip={nip},",
+            self.html, "이송면 상수가 모델에서 나오지 않는다")
         # 라인 컨베이어 넷 — JB-201, AFR CV-101/102, JB/AFR-301 인계
         self.assertGreaterEqual(self.html.count("pvRollY"), 5)
         self.assertNotIn("le(.905,.98,", self.html,
                          "높이보정 램프가 남아 있으면 이송면이 하나가 아니다")
         # JBR 셀은 로컬 .98 이 이송면에 오도록 통째로 내려앉는다
         self.assertIn("pvJbDy=pvRollY-.98", self.html)
+
+    def test_every_line_roller_takes_its_diameter_from_the_model(self):
+        """지름도 높이만큼이나 파생이어야 한다 — 리젝트 스퍼가 여기서 걸렸다.
+
+        REV.46 까지 횡이송 리젝트 스퍼만 씬에 반지름 .042(Ø84)로 직접 박혀
+        있었다. **축은 905 로 같으니 도면에서는 티가 안 났고**, 불량 패널이
+        횡이송으로 넘어갈 때만 상면 947 로 3 mm 를 떨어졌다. 높이를 하나로
+        묶어 놓고 지름을 놓아 두면 이송면은 다시 갈라진다.
+        """
+        radius = layout.ROLLER_D_MM / 2000
+        # 라인 지름에서 10 mm 안쪽이면 그것은 라인 롤러다 — 다른 이름을 붙였을
+        # 뿐이다. 클램프 패드(Ø110)·진공컵(Ø104) 처럼 정말 다른 부품은 이 띠
+        # 밖에 있으므로 걸리지 않는다. 리젝트 스퍼 Ø84 는 정확히 이 안이었다.
+        band = 0.005
+        stray = re.findall(r"Ee\((\w+),\s*(\.\d+)\s*,[^)]*?M\.rubber", self.html)
+        line_like = [(g, r) for g, r in stray if abs(float(r) - radius) <= band]
+        self.assertEqual(line_like, [],
+                         f"이송 롤러가 pvRollR 이 아닌 리터럴을 쓴다: {line_like}")
+        # 그리고 실제로 파생 상수를 쓰는 자리가 라인 컨베이어 수만큼 있다.
+        self.assertGreaterEqual(self.html.count("pvRollR"), 12,
+                                "pvRollR 을 쓰는 롤러가 너무 적다")
+
+    def test_the_buffer_deck_meets_the_line_with_a_knife_gap(self):
+        """고정 컨베이어와 움직이는 데크는 붙일 수도, 벌릴 수도 없다.
+
+        REV.46 까지 이 자리는 **485 mm** 였고 데크는 라인보다 **270 mm 낮았다**
+        (모델 1,050 · 2D flow 1,053 · 3D 680 — 한 인계부에 값이 셋). 프레임을
+        뗀 맨유리가 그 끝에서 캔틸레버로 나갔다가 떨어지고 있었다.
+        """
+        self.assertIn("buffer", layout.SHARED_LINE)
+        self.assertEqual(layout.STATIONS["buffer"].transfer_height_mm,
+                         layout.LINE_TRANSFER_MM)
+        # 나이프 롤러가 셔틀 상류면에서 정확히 BUFFER_NIP_MM 만큼 떨어져 있다.
+        self.assertIn("[Ri-1.6-pvNip-pvRollR,pvRollY,0]", self.html,
+                      "나이프 롤러 위치가 모델에서 나오지 않는다")
+        # 셔틀 데크판은 롤러 밑으로 들어간다 — 유리는 롤러가 받는다.
+        self.assertIn("[Ri,pvRollY-pvRollR-.105,0]", self.html)
+        self.assertIn("Ee(ft,pvRollR,1.42,[Ri,pvRollY,i]", self.html)
+        # 2D 인계 시퀀스도 같은 높이를 적는다 (유리 두께 절반을 얹은 값).
+        self.assertIn(f"[-3090, {layout.LINE_TRANSFER_MM + 3}, 0]", self.html)
+        self.assertNotIn("[-1500, 1053,", self.html, "옛 1,050 인계면이 남아 있다")
+
+    def test_a_break_in_the_transfer_plane_needs_a_reason_in_the_model(self):
+        """이송면이 끊기는 자리마다 왜 끊겨도 되는지가 값으로 있어야 한다.
+
+        전부 0 이어야 한다고 하면 로봇 픽업까지 걸려 통과할 수 없고, 예외를
+        시험 코드에 적으면 그 예외가 곧 근거가 되어 버린다. 사유는 모델에 둔다.
+        """
+        pairs = {(a, b) for a, b, _ in layout.transfer_steps_mm()}
+        self.assertTrue(set(layout.NON_ROLLER_HANDOFF) <= pairs,
+                        "이웃하지 않는 쌍에 예외가 적혀 있다")
+        stepped = {(a, b) for a, b, d in layout.transfer_steps_mm() if d != 0}
+        self.assertEqual(stepped, set(layout.NON_ROLLER_HANDOFF),
+                         "사유 없는 단차가 있거나, 단차 없는 예외가 있다")
+        # 예외를 지우면 시험이 깨져야 한다 (사유가 장식이 아님을 보인다)
+        self.assertTrue(layout.the_line_has_no_step())
+        with mock.patch.object(layout, "NON_ROLLER_HANDOFF", {}):
+            self.assertFalse(layout.the_line_has_no_step(),
+                             "예외를 지워도 통과하면 이 검사는 아무것도 안 막는다")
 
     def test_the_afr_panel_sits_on_the_same_plane(self):
         """AFR 패널 높이는 build_afr 이 이송면에서 낸다 — 리터럴이 아니다."""
