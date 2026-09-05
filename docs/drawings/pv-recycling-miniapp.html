@@ -20900,14 +20900,20 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 종전 습식부 정격 176 kg/h 는 문서에 유도가 없지만 용기 용적이 그 값에서
     // 표준 체류시간 × 1.35–1.80 배로 잡혀 있어, 설계 기준 자체는 176 이었음이
     // 확인된다 — 건식이 그 양을 만들지 못할 뿐이다.
-    // 케이스별 습식 급광 몫. 케이스 A 는 ≤500 µm 전량이므로 체 급광 그 자체다(정확).
-    // 케이스 C 는 <106 µm 몫이 필요한데, 그 값은 MODEL_PRODUCT_UNDER75_FRACTION 과
-    // 마찬가지로 모델을 돌려 산물 PSD 에서 읽어야 하는 **실측값**이고 아직 없다.
-    // PSD 분위수 사이를 보간해 지어내지 않고 null 로 둔다 — 케이스 C 를 활성화하면
-    // 듀티 표가 「실측 필요」로 뜨고, 수지 쪽은 누적 원장에서 실제 밴드 질량을 읽는다.
-    const ROUTING_WET_FRACTION = Object.freeze({ A: 1, C: null });
-    const WET_FRACTION_MEASURED = ROUTING_WET_FRACTION[ROUTING_CASE_ID];
-    const WET_FEED_KGH = SIEVE_FEED_KGH * (WET_FRACTION_MEASURED ?? MODEL_PRODUCT_UNDER75_FRACTION);
+    // 케이스별 습식 급광 몫.
+    //   A — ≤500 µm 전량이므로 체 급광 그 자체다. **정확한 값**이고 유도가 필요 없다.
+    //   C — <106 µm 몫이 필요한데, MODEL_PRODUCT_UNDER75_FRACTION(0.165) 처럼 모델을
+    //       돌려 산물 PSD 에서 읽은 실측값은 아직 없다. 핀된 두 분위수
+    //       (75 µm, 0.165) 와 (223.3 µm, 0.500) 사이를 로그-선형 보간한 **추정값**이다.
+    //       미분갈래 GGS(m 0.950)로 외삽하면 0.229 가 나오므로 실제 값은 0.23–0.27
+    //       사이로 본다. 실측이 나오면 이 한 줄만 바꾸면 듀티·수지가 함께 따라온다.
+    // 두 값의 성격이 다르므로 출처를 함께 들고 다닌다 — 콘솔이 그것을 그대로 표기한다.
+    const ROUTING_WET_FRACTION = Object.freeze({
+      A: Object.freeze({ value: 1, source: "정확 (≤500 µm 전량 = 체 급광)" }),
+      C: Object.freeze({ value: 0.2712, source: "보간 추정 0.23–0.27 · 실측 아님" })
+    });
+    const WET_FRACTION = ROUTING_WET_FRACTION[ROUTING_CASE_ID];
+    const WET_FEED_KGH = SIEVE_FEED_KGH * WET_FRACTION.value;
     const COPPER_PRODUCT_KGH = SIEVE_FEED_KGH - WET_FEED_KGH;
     const WET_FEED_LEGACY_BASIS_KGH = 176;
     // 슬러리 환산 — 고형분 비중 2.4(유리 없는 c-Si·폴리머 혼합)
@@ -21904,7 +21910,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     function renderAgRecovery() {
       if (!metUi.agActive) return;
       const cases = metallurgy.cases || {};
-      metUi.agActive.textContent = `${ROUTING_CASE_ID} · ${routingCase.label}`;
+      // 케이스마다 습식 급광의 출처가 다르다 — A 는 정확값, C 는 보간 추정이다.
+      // 그 차이를 화면에 그대로 적는다.
+      metUi.agActive.textContent = `${ROUTING_CASE_ID} · ${routingCase.label}`
+        + ` · 습식 급광 ${WET_FEED_KGH.toFixed(1)} kg/h (${WET_FRACTION.source})`;
       metUi.agFc101.textContent = `${pct(FC101_AG_RECOVERY.low, 1)} – ${pct(FC101_AG_RECOVERY.design, 1)}`;
       for (const id of ["A", "C"]) {
         const ui = metUi.agCase[id], row = cases[id];
