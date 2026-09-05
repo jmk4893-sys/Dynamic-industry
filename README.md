@@ -54,7 +54,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (저장소 전체 322건)
+python -m unittest discover -s tests -t .                               # 테스트 (저장소 전체 398건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
@@ -150,7 +150,7 @@ python examples/04_hybrid_full.py  # 진동 + 파쇄 + 영상 한 번에
 python examples/05_tet_mesh.py     # 사면체 메쉬 + VTK/MSH/진단도
 python examples/06_dem_granite.py  # 화강암 DEM 파쇄·암발파 거동 (물리엔진)
 python tests/test_blastsim.py      # 검증 테스트 (54건, 테스트 프레임워크 없이)
-python -m unittest discover -s tests -t .   # 저장소 전체 테스트 340건
+python -m unittest discover -s tests -t .   # 저장소 전체 테스트 398건
 ```
 
 Python API:
