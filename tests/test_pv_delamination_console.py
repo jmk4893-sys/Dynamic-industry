@@ -18,7 +18,7 @@ CONSOLE = (
     pathlib.Path(__file__).resolve().parents[1]
     / "docs" / "drawings" / "pv-delamination-3d.html"
 )
-TITLE = "DG-HK60 · 단일 5단 IR 고정 탠덤 PV 분리설비 · 3D 운전 콘솔 Rev.20"
+TITLE = "DG-HK60 · 5단 IR 탠덤 PV 분리설비 · 3D 운전 콘솔"
 
 # `$('foo')` 와 `document.getElementById('foo')` 로 참조하는 정적 id
 ID_REF = re.compile(r"""(?:\$|document\.getElementById)\(\s*['"]([A-Za-z][\w-]*)['"]\s*\)""")
