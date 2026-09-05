@@ -54,10 +54,20 @@ class _Base(unittest.TestCase):
             self.skipTest("이 브랜치에는 사양서가 없다")
         return self._rfq
 
-    def c(self, name):
-        m = re.search(rf"\b{name}\s*=\s*([\d.]+)", self.console)
+    def c(self, name, _depth=0):
+        """콘솔 상수 하나. 다른 상수를 가리키면 한 단계 따라간다.
+
+        카세트 온도는 칼날 온도 그 자체다(CASS_T_HOT = T_HKS). 값을 두 번
+        적으면 칼날만 내리고 카세트는 그대로인 날이 온다 — 그래서 별칭으로
+        두었고, 시험은 별칭을 풀어서 본다.
+        """
+        m = re.search(rf"\b{name}\s*=\s*([A-Za-z_][A-Za-z0-9_]*|[\d.]+)", self.console)
         self.assertIsNotNone(m, f"콘솔에 {name} 상수가 없다")
-        return float(m.group(1))
+        v = m.group(1)
+        if v[0].isdigit() or v[0] == ".":
+            return float(v)
+        self.assertLess(_depth, 3, f"{name} 상수 참조가 너무 깊다")
+        return self.c(v, _depth + 1)
 
     def fn(self, name):
         m = re.search(rf"\n    function {name}\(.*?\n    \}}", self.console, re.S)

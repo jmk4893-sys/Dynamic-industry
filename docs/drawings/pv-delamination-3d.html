@@ -397,7 +397,7 @@
         <div class="np-id">
           <div class="np-model">DG-HK60 <span id="npModelRev">REV.21C</span></div>
           <h1>단일 5단 IR · 고정 탠덤 · 수평 분리반출</h1>
-          <p id="npSub">60 IR · EVA 계면 200°C · 고정 진공테이블 + 이동 나이프</p>
+          <p id="npSub">60 IR · EVA 계면 140°C · 고정 진공테이블 + 이동 나이프</p>
         </div>
         <div class="np-status">
           <span class="led" aria-hidden="true"></span>
@@ -440,8 +440,8 @@
             <div id="tandemStep4" data-step="4"><span>3방향 반출</span><strong>무낙하 이송</strong></div>
           </div>
           <div class="focus-live">
-            <div><span>HKB Z축</span><b id="hkbLive">대기 · 230°C</b></div>
-            <div><span>HKS Z축</span><b id="hksLive">대기 · 260°C</b></div>
+            <div><span>HKB Z축</span><b id="hkbLive">대기 · 180°C</b></div>
+            <div><span>HKS Z축</span><b id="hksLive">대기 · 200°C</b></div>
             <div><span>캐리어</span><b id="carrierLive">접근 200mm/s</b></div>
             <div><span>분리 상태</span><b id="peelLive">진입 대기</b></div>
           </div>
@@ -450,14 +450,14 @@
           <h3>5단 캐리지 순환 · 외문/내문 동시개방 금지</h3>
           <div class="focus-sequence">
             <div id="carriageStep1" data-step="1"><span>5/5 밀폐가열</span><strong>FULL_LOAD_ACK</strong></div>
-            <div id="carriageStep2" data-step="2"><span>C1 방출 준비</span><strong>200°C + TDM READY</strong></div>
+            <div id="carriageStep2" data-step="2"><span>C1 방출 준비</span><strong>140°C + TDM READY</strong></div>
             <div id="carriageStep3" data-step="3"><span>배출 에어록</span><strong>내문→격리→외문</strong></div>
             <div id="carriageStep4" data-step="4"><span>새 패널 투입</span><strong>외문→격리→내문</strong></div>
             <div id="carriageStep5" data-step="5"><span>LI-101 층 선택</span><strong>C1 높이 정렬</strong></div>
             <div id="carriageStep6" data-step="6"><span>TS-101 재적재</span><strong>잠금→5/5 ACK</strong></div>
           </div>
           <div class="focus-live">
-            <div><span>선택 캐리지</span><b id="carriageDeckLive">C1 · 200°C</b></div>
+            <div><span>선택 캐리지</span><b id="carriageDeckLive">C1 · 140°C</b></div>
             <div><span>점유/잠금</span><b id="carriageLoadLive">5/5 · LOCKED</b></div>
             <div><span>AL-101 투입</span><b id="carriageInLive">외문·내문 닫힘</b></div>
             <div><span>AL-102 배출</span><b id="carriageOutLive">외문·내문 닫힘</b></div>
@@ -664,19 +664,38 @@
     const BALANCE_TOL=0.02;                               // 물질수지 허용 오차 ±2%
     const WEB_HALF=PANEL_HW;             // 백시트 폭 = 패널 폭
     const KNIFE_W=1.44;                  // 칼날 유효폭
+    /* ── 공정 온도 ──────────────────────────────────────────────────────
+       종전 목표는 계면 140°C 였다. 그런데 가교 EVA 의 결정 융해는 DSC 로
+       55~95°C 에서 끝나고(Tg −33°C), 그 위로는 액체가 되는 게 아니라 고무처럼
+       물러질 뿐이다 — 열경화 망상이라 애초에 녹지 않는다. 그래서 100 vs 140°C
+       비교 연구도 "과열은 박리를 크게 개선하지 않는다"로 끝난다. 상용기(NPC
+       핫나이프)는 벌크 예열 자체가 없고 칼날만 180~200°C 로 쓴다.
+
+       벌크 140°C + 칼날 180/200°C 로 내린다. 상용 대비 여전히 공격적인 조합
+       이면서, 200°C 에서 PVDF(165) · PVF(195) 백시트가 융점을 넘어 권취 중에
+       찢어지던 문제가 사라진다. q 는 4.40 → 2.89 MJ/장, IR 평균은 126 → 83 kW.
+
+       대가가 없지는 않다 — 온도를 내리면 박리력이 오른다. 그래서 OI-01 은
+       '박리력 값'이 아니라 '온도별 박리력 곡선'으로 닫아야 하고, 그 곡선이
+       목표온도·IR 용량·단수·패드 면적을 한꺼번에 정한다. 여기 140 은 곡선을
+       재기 전의 설계 가정이다. */
+    const T_AMB=25;                      // 상온
+    const T_TARGET=140;                  // EVA/유리 계면 목표
+    const T_HKB=180;                     // 백시트 칼날 — NPC 밴드 하단(백시트에 닿는다)
+    const T_HKS=200;                     // 유리 계면 칼날 — NPC 밴드 상단
     /* ── BC-201 퀵체인지 칼날 카세트 ────────────────────────────────────
        칼날은 소모품인데 30kW 히터·열전대 8점·로드셀이 함께 붙어 있어 교체가
        분해 작업이었다. 칼날·히터·열전대를 한 카세트에 담고 슬라이드에는
        테이퍼 핀 2점과 쐐기 클램프 2점, 서비스는 블라인드메이트 하나로 문다.
 
        핵심은 '기계가 뽑는 조건' 과 '사람이 만지는 조건' 을 나눈 것이다.
-       교환암은 250°C 카세트를 그대로 집을 수 있고 손은 60°C 아래에서만 닿는다.
+       교환암은 200°C 카세트를 그대로 집을 수 있고 손은 60°C 아래에서만 닿는다.
        한 허가로 묶으면 자동 교환이 냉각 13분을 통째로 기다리게 된다. */
     const CASS_L=KNIFE_W,CASS_W=.12,CASS_H=.09;      // 카세트 외형 (m)
     const CASS_MASS=35,CASS_CP=.46;                  // kg · kJ/(kg·K) 공구강
     const CASS_AREA=2*(CASS_L*CASS_W+CASS_L*CASS_H+CASS_W*CASS_H);
     const CASS_HCONV=60;                             // W/(m²·K) 강제공랭
-    const CASS_T_HOT=250,CASS_T_TOUCH=60,CASS_T_AMB=25,CASS_T_PRE=150;
+    const CASS_T_HOT=T_HKS,CASS_T_TOUCH=60,CASS_T_AMB=T_AMB,CASS_T_PRE=120;
     const CASS_REPEAT=.05;                           // mm 반복정밀도
     const CASS_CLAMP_KN=15;                          // kN/개 — 2개로 추력 13.37kN 대비 2.24배
     const CASS_HEAT_KW=15,CASS_HEAT_ETA=.60;         // 카세트당 히터 정격·결합효율
@@ -751,7 +770,7 @@
                       [22.35,-2.60,1.90,'리젝트함']];
     /* ── DG-HK60C 압축 배치 ──────────────────────────────────────────────
        Rev.20 은 끝에서 끝까지 53 m 다. 그런데 그 길이가 처리량을 만든 게
-       아니다 — 60장/h 는 5단 소킹(225.9s)과 2.4m 박리행정(43.6s)이 정하고
+       아니다 — 60장/h 는 5단 소킹(148.4s)과 2.4m 박리행정(43.6s)이 정하고
        둘 다 바닥 길이를 쓰지 않는다. 길이를 만든 것은 두 가지다:
 
          (1) 라인 안에 넣은 환경설비·후속공정·팔레타이징.
@@ -912,10 +931,10 @@
     const REV20_STEPS=[
       {id:'S0',name:'투입·자세 확인',duration:3300,desc:'유리면 아래·백시트 위 자세로 투입하고 패널 중심과 크기를 확인합니다.',vac:'대기 · 0 kPa',temp:'식별 · 상온',out:'ORIENT_OK',flow:['권취 대기 → 전용 보관함','분리 대기 → Shredder','분리 대기 → 저장 캐리지'],cam:[0,3]},
       {id:'S1',name:'6존 진공 고정',duration:2200,desc:'VC-101이 유리면을 6개 구역으로 흡착해 권취·박리 반력을 지지합니다.',vac:'VC-101 · -65 kPa',temp:'예열 준비',out:'VAC_OK',flow:['권취 대기 → 전용 보관함','분리 대기 → Shredder','진공 캐리어 지지 중'],cam:[0,3]},
-      {id:'S2',name:'5단 투입·방출·재투입',duration:16000,desc:'C1~C5 5/5 잠금과 모든 문 닫힘을 확인해 밀폐 가열한 뒤, 200°C C1을 AL-102 내문→격리→외문 순으로 방출합니다. 이어 새 패널을 AL-101 외문→격리→내문, LI-101 층선택, TS-101 삽입 순으로 같은 빈 C1에 재투입합니다.',vac:'C1~C5 5/5 → C1 방출 → C1 재적재',temp:'EVA 계면 200°C · 60 IR',out:'FULL_LOAD→RELEASE→REFILL_ACK',flow:['권취 대기 → 전용 보관함','가열 중 → Shredder','가열 중 → 저장 캐리지'],cam:[1,9.2]},
-      {id:'S3',name:'200°C 방출·HKB 진입',duration:4800,desc:'EVA/유리 내부 계면 200°C와 탠덤 READY를 확인한 패널을 방출합니다. HKB는 X축 위치를 유지한 채 독립 Z축으로 내려가고, 캐리어는 200mm/s 접근 후 S-curve로 55mm/s까지 감속합니다.',vac:'이동 VC-101 · -65 kPa',temp:'HKB 230°C · HKS 250~270°C',out:'EVA_200_ACK ∧ CARRIER_AT_HKB',flow:['선단 개방 중','HKS 분리 대기','진공 캐리어 지지 중'],cam:[1,16.5]},
+      {id:'S2',name:'5단 투입·방출·재투입',duration:16000,desc:'C1~C5 5/5 잠금과 모든 문 닫힘을 확인해 밀폐 가열한 뒤, 140°C C1을 AL-102 내문→격리→외문 순으로 방출합니다. 이어 새 패널을 AL-101 외문→격리→내문, LI-101 층선택, TS-101 삽입 순으로 같은 빈 C1에 재투입합니다.',vac:'C1~C5 5/5 → C1 방출 → C1 재적재',temp:'EVA 계면 140°C · 60 IR',out:'FULL_LOAD→RELEASE→REFILL_ACK',flow:['권취 대기 → 전용 보관함','가열 중 → Shredder','가열 중 → 저장 캐리지'],cam:[1,9.2]},
+      {id:'S3',name:'140°C 방출·HKB 진입',duration:4800,desc:'EVA/유리 내부 계면 140°C와 탠덤 READY를 확인한 패널을 방출합니다. HKB는 X축 위치를 유지한 채 독립 Z축으로 내려가고, 캐리어는 200mm/s 접근 후 S-curve로 55mm/s까지 감속합니다.',vac:'이동 VC-101 · -65 kPa',temp:'HKB 180°C · HKS 200°C',out:'EVA_TARGET_ACK ∧ CARRIER_AT_HKB',flow:['선단 개방 중','HKS 분리 대기','진공 캐리어 지지 중'],cam:[1,16.5]},
       {id:'S4',name:'300mm 선행·클램프',duration:2500,desc:'HKB가 백시트 선단 300mm를 개방하면 WR-101이 선단을 잡아 장력을 형성합니다. CLAMP_TENSION_ACK 뒤 HKS가 독립 Z축으로 EVA/유리 계면까지 접근해 2차 박리를 준비합니다.',vac:'VC-101 · -65 kPa 유지',temp:'HKB 가압 · HKS Z축 진입',out:'LEAD_300_ACK ∧ CLAMP_TENSION_ACK',flow:['클램프·장력 형성','HKS 진입 대기','진공 캐리어 지지 중'],cam:[2,17.8]},
-      {id:'S5',name:'55mm/s 탠덤 통과박리',duration:7600,desc:'두 칼날의 X축은 300±2mm 간격으로 고정되고 Z축은 로드셀 하중을 추종합니다. 캐리어가 55mm/s로 통과하면 HKB는 백시트를 권취롤로 보내고 HKS는 셀/EVA를 유리에서 연속 분리합니다.',vac:'이동 캐리어 6존 · -65 kPa',temp:'HKB 230°C · HKS 250~270°C',out:'CARRIER_PEEL_COMPLETE',flow:['전장 권취 중','유리에서 분리 중','진공 캐리어 이동 중'],cam:[2,18.5]},
+      {id:'S5',name:'55mm/s 탠덤 통과박리',duration:7600,desc:'두 칼날의 X축은 300±2mm 간격으로 고정되고 Z축은 로드셀 하중을 추종합니다. 캐리어가 55mm/s로 통과하면 HKB는 백시트를 권취롤로 보내고 HKS는 셀/EVA를 유리에서 연속 분리합니다.',vac:'이동 캐리어 6존 · -65 kPa',temp:'HKB 180°C · HKS 200°C',out:'CARRIER_PEEL_COMPLETE',flow:['전장 권취 중','유리에서 분리 중','진공 캐리어 이동 중'],cam:[2,18.5]},
       {id:'S6',name:'3계통 무낙하 분기',duration:4200,desc:'HKB/HKS Z축 안전복귀 후 유리의 롤러 완전지지를 먼저 확인합니다. GLASS_SUPPORT_ACK 뒤 진공을 해제하고 빈 캐리어를 복귀시키며, 셀/EVA와 백시트 반출축은 독립 ACK로 병렬 운전합니다.',vac:'GLASS_SUPPORT_ACK → VAC_OFF_ACK',temp:'KNIFE_Z_SAFE 후 캐리어 복귀',out:'LEVEL_CONVEYOR_OUTFEED',flow:['권취 완료·보관함 대기','CVC-301 인계 컨베이어','동일높이 GC-301 즉시 인계'],cam:[0,22]},
       {id:'S7',name:'백시트 보관함 이동',duration:3200,desc:'롤 교체는 패널마다가 아니라 만권(Ø600 · 백시트 0.30mm 기준 295장 · 60장/h 로 약 4.9시간)에서만 일어납니다. 셔터를 닫고 예비축으로 전환한 뒤, 만권 롤을 내려 인터록 해치를 지나 펜스 밖 BS-301 보관대로 내보냅니다.',vac:'복귀 준비',temp:'권취부 안전',out:'BACKSHEET_BIN_ACK',flow:['BS-301 전용 보관함 이동','CVC-301 직접 이송 대기','GC-301 수평 적재 완료'],cam:[2,22]},
       {id:'S8',name:'셀모듈 직접 컨베이어',duration:3500,desc:'분리된 셀/EVA 적층체가 CVC-301 밀폐 인계·수평 컨베이어를 타고 중간 낙하나 보관 없이 SH-101 전단까지 이동합니다.',vac:'진공 해제',temp:'HKS 복귀',out:'CELL_ON_CONVEYOR_ACK',flow:['BS-301 격리 완료','CVC-301에서 이동 중','GC-301 수평 적재 완료'],cam:[2,29]},
@@ -924,8 +943,8 @@
       {id:'S11',name:'품질검사·리젝트 분기',duration:4300,desc:'QI-301 상·하부 비전·열화상이 잔류 EVA, 미분리 셀, 균열과 표면온도를 검사합니다. 불합격품은 RJ-301 횡셔틀과 밀폐 파손품 캐리지로 분기합니다.',vac:'검사 위치 고정',temp:'온도·잔류물·균열 판정',out:'QUALITY_PASS_OR_REJECT_ACK',flow:['BS-301 보관 완료','SH-101 후속공정','QI-301 검사·RJ-301 분기'],cam:[2,23.5]},
       {id:'S12',name:'7＋1 캐리지 순환',duration:4200,desc:'5대는 가열실, 1대는 탠덤, 1대는 복귀·재장전 위치에서 순환하고, 1대는 MC-401 정비 대기 위치에 보관됩니다.',vac:'주캐리지 복귀·재장전',temp:'5 HEAT + 1 PROCESS + 1 RETURN + 1 SPARE',out:'EMPTY_CARRIER_RELOADED',flow:['WR 예비축 준비','CVC-301 CLEAR','7＋1 가열캐리지 순환'],cam:[1,13]},
       {id:'S13',name:'안전·환경 자가점검',duration:4200,desc:'VOC 응축·미스트·활성탄 처리, 독립 과온차단, 연기·CO·화재댐퍼, MCC 냉각, 진공 이중화와 LOTO 상태를 확인합니다.',vac:'VP-A/B 이중화 READY',temp:'FIRE_OK ∧ EXHAUST_OK ∧ MCC_OK',out:'SAFETY_UTILITY_ACK',flow:['배기·화재안전 확인','Shredder 격리게이트 확인','GC 냉각·도킹 안전확인'],cam:[0,20]},
-      {id:'S14',name:'단일라인 60장 시험',duration:8000,desc:'55mm/s 생산보증 레시피의 정상상태 60장 약 53분35초를 8초로 압축합니다. FULL_LOAD_ACK 이후 냉간 완료는 약 57분21초이며 90% 가동률 환산은 60.5장/h입니다.',vac:'이동 캐리어 −65 kPa',temp:'실공정 53m35s → 영상 8s',out:'SINGLE_60_TEST_COMPLETE',flow:['다음 권취롤 준비','Shredder 연속운전','빈 저장 캐리지 인덱싱'],cam:[0,19]},
-      {id:'S15',name:'10장 연속 시운전',duration:9000,desc:'10장을 연속 통과시키며 세 계통이 실제로 쌓이는지를 한 화면에서 확인합니다. 유리는 GC-301 저장 캐리지에 한 장씩 적재되고, 셀/EVA는 CVC-301 컨베이어에 투입되어 SH-101로 이송되며, 백시트는 WR-101 롤에 감깁니다. 10장이면 롤은 Ø300에서 Ø314.9로 자랍니다 — 만권까지는 295장이 필요합니다.',vac:'장당 −65 kPa 흡착·해제 10회',temp:'계면 200°C 반복 도달',out:'TEN_PANEL_TRIAL_COMPLETE',flow:['WR-101 롤에 10장 권취','CVC-301 → SH-101 연속 투입','GC-301 캐리지 적재 중'],cam:[0,22]},
+      {id:'S14',name:'단일라인 60장 시험',duration:8000,desc:'55mm/s 생산보증 레시피의 정상상태 60장 약 53분35초를 8초로 압축합니다. FULL_LOAD_ACK 이후 냉간 완료는 약 56분4초이며 90% 가동률 환산은 60.5장/h입니다.',vac:'이동 캐리어 −65 kPa',temp:'실공정 53m35s → 영상 8s',out:'SINGLE_60_TEST_COMPLETE',flow:['다음 권취롤 준비','Shredder 연속운전','빈 저장 캐리지 인덱싱'],cam:[0,19]},
+      {id:'S15',name:'10장 연속 시운전',duration:9000,desc:'10장을 연속 통과시키며 세 계통이 실제로 쌓이는지를 한 화면에서 확인합니다. 유리는 GC-301 저장 캐리지에 한 장씩 적재되고, 셀/EVA는 CVC-301 컨베이어에 투입되어 SH-101로 이송되며, 백시트는 WR-101 롤에 감깁니다. 10장이면 롤은 Ø300에서 Ø314.9로 자랍니다 — 만권까지는 295장이 필요합니다.',vac:'장당 −65 kPa 흡착·해제 10회',temp:'계면 140°C 반복 도달',out:'TEN_PANEL_TRIAL_COMPLETE',flow:['WR-101 롤에 10장 권취','CVC-301 → SH-101 연속 투입','GC-301 캐리지 적재 중'],cam:[0,22]},
     ];
     /* ---- 사양 다이얼로그 본문 ------------------------------------------------
        REV.05 부터 REV.20 까지의 개정 이력을 unshift/splice/filter/map 으로 쌓아
@@ -946,7 +965,7 @@
     const details={
       equipment:{
         code:'DG-HK60 · REV.20',title:'단일 5단·완전 보조설비 통합장비',
-        intro:'5장의 패널을 먼저 적재·잠금·밀폐한 뒤 60개 IR로 EVA 계면을 200°C까지 JIT 가열합니다. 고정된 HKB/HKS 사이로 이동 진공 캐리어가 통과하며 백시트·셀/EVA·유리를 한 패스에서 분리합니다.',
+        intro:'5장의 패널을 먼저 적재·잠금·밀폐한 뒤 60개 IR로 EVA 계면을 140°C까지 JIT 가열합니다. 고정된 HKB/HKS 사이로 이동 진공 캐리어가 통과하며 백시트·셀/EVA·유리를 한 패스에서 분리합니다.',
         hardware:[
           'M0 백시트 상향 투입·치수/자세검사·6존 진공 캐리어',
           'M1 5단 밀폐 가열실: 하부 B0·단간 B1~B4·상부 B5, 6라인×10개 = 60 IR',
@@ -992,7 +1011,7 @@
           'START_PERMIT = FULL_LOAD_ACK ∧ ALL_LOCKED ∧ ALL_TEMP_OK ∧ ALL_DOORS_CLOSED ∧ EXHAUST_OK',
         'FULL_LOAD_ACK 은 5단 캐리지 존재센서 C1~C5 5점이 모두 서는 것이다 — 한 단이라도 비면 기동 허가가 서지 않는다',
           '적재 중 각 IR 라인은 10% 이하 대기출력, FULL_LOAD_ACK 이후에만 생산출력 허가',
-          'JIT 목표는 C1 200°C·C2 190°C·C3 180°C·C4 170°C·C5 160°C, 방출순서에 맞춰 승온',
+          'JIT 목표는 C1 140°C·C2 136°C·C3 132°C·C4 128°C·C5 124°C, 방출순서에 맞춰 승온',
           '각 캐리지 K열전대 3점·표면 IR 1점·램프출력/체류시간 소프트센서로 EVA 계면온도 확인',
           '방출·신규투입 때만 해당 에어록을 열고 메인가열실은 −30±10Pa 밀폐 유지',
           '55mm/s 생산보증, 60mm/s FAT 상한, 접근·복귀 200mm/s S-curve',
@@ -1009,7 +1028,7 @@
           'PLC_RUN = UPS_OK ∧ DC24_A_OK ∧ DC24_B_OK ∧ SAFETY_CPU_OK ∧ NETWORK_RING_OK',
           'GLASS_TRANSFER = LEVEL_ROLLER_READY ∧ GC_PRESENT_LOCKED ∧ ZERO_DROP_PATH_CLEAR',
           'CELL_TRANSFER = CVC_CLEAR ∧ SHREDDER_READY ∧ ISOLATION_GATE_OPEN ∧ CELL_BIN_SPACE_OK',
-          'HKB_Z_PERMIT = EVA_200_ACK ∧ VAC_6ZONE_OK ∧ CASSETTE_READY ∧ HKB_TEMP_OK',
+          'HKB_Z_PERMIT = EVA_TARGET_ACK ∧ VAC_6ZONE_OK ∧ CASSETTE_READY ∧ HKB_TEMP_OK',
           'HKS_Z_PERMIT = LEAD_300_ACK ∧ WEB_TENSION_OK ∧ HKB_LOAD_OK ∧ CELL_PATH_CLEAR',
           'TANDEM_SAFE_STOP = LOAD_HIGH ∨ AE_CRACK ∨ VAC_LOW ∨ WEB_BREAK → X_DECEL ∧ Z_RETRACT ∧ HEAT_STANDBY',
           'OPENING_SAFE = LC_OSSD_CLEAR ∨ MUTE_VALID',
@@ -1035,9 +1054,9 @@
           '무인 운전 중 칼날 자동교환은 LOTO 가 아니라 캐리어 파킹 상태에서 돈다 — 정비허가를 요구하면 무인 중에는 영원히 성립하지 않는다'
         ],
         verify:[
-          '최대 패널 2,400×1,200mm·5장 열체류 225.8초·정상 방출피치 45.2초',
+          '최대 패널 2,400×1,200mm·5장 열체류 148.4초·정상 방출피치 29.7초',
           '55mm/s 탠덤 사이클 53.6초·명목 67.2장/h·90% 환산 60.5장/h',
-          '60장 정상상태 약 53분35초·FULL_LOAD_ACK 이후 냉간 약 57분21초',
+          '60장 정상상태 약 53분35초·FULL_LOAD_ACK 이후 냉간 약 56분4초',
           '셀/EVA 4kg/장 기준 약 269kg/h, SH-101 권장 정격 350kg/h 이상',
           '3계통 반출 FAT: 유리 GC-301 도킹·백시트 BS-301 격리·셀모듈 SH-101 투입 ACK를 개별 기록',
           'STS304 2.9m 레일은 20→210°C에서 약 8~9mm 팽창 예상: 1점 고정+장공 지지로 흡수',
@@ -1045,15 +1064,15 @@
           '무인 8시간 연속: 팔레트 2회 교체·칼날 1회 자동교환·롤 1회 AGV 반출을 사람 개입 없이 통과',
           'RTO 파괴효율과 열회수량을 급기 예열 온도로 실측하고 IR 평균전력 절감분과 대조'
         ],
-        notice:'계면 200°C는 공정 설계 목표입니다. 양산 설정은 패널별 EVA 조성·유리 열응력·VOC·HKS 피크하중·박리잔류 DOE와 계측캐리지 실측으로 승인해야 합니다.'
+        notice:'계면 140°C는 공정 설계 목표입니다. 양산 설정은 패널별 EVA 조성·유리 열응력·VOC·HKS 피크하중·박리잔류 DOE와 계측캐리지 실측으로 승인해야 합니다.'
       },
       spec:{
         code:'60 PPH DESIGN BASIS',title:'열수지·사이클 설계값',
         intro:'열공정과 탠덤을 같은 단위로 계산해 60장/h 달성 여부를 확인합니다. 유리·백시트·셀모듈 반출은 서로 독립된 ACK로 다음 패널 투입을 허가합니다.',
         hardware:[
-          '패널 면적열용량 8.736 kJ/(m²·K)·25→200°C·최대 면적 2.88m²',
-          '패널당 필요열량 4.403MJ·60×2.5kW 설치정격 150kW·실효효율 기본 65%',
-          '5장 열체류 225.8초·방출피치 45.16초·열공정 한계 79.7장/h',
+          '패널 면적열용량 8.736 kJ/(m²·K)·25→140°C·최대 면적 2.88m²·q 2.893MJ',
+          '패널당 필요열량 2.893MJ·60×2.5kW 설치정격 150kW·실효효율 기본 65%',
+          '5장 열체류 148.4초·방출피치 29.68초·열공정 한계 121.3장/h',
           '탠덤 유효이동 2,700mm·칼끝간격 300mm·급속분 300mm·고정동작 3초',
           '55mm/s 탠덤 53.6초·67.2장/h, 60mm/s 탠덤 49.5초·72.7장/h',
           '적층 면적질량 9.795 kg/m² (유리 8.000·EVA 0.855·셀 0.520·백시트 0.420) → 최대면적 28.2 kg/장',
@@ -1073,11 +1092,11 @@
           'KNIFE_CHANGE_DUE = KNIFE_WEAR_WARN ∧ KNIVES_CLEAR',
           'HEAT_RECOVERY = RTO_READY ∧ HX_OUTLET_TEMP ∧ DP_OK',
           '적응 속도의 상한 60mm/s 는 FAT 승인 레시피, 하한 40mm/s 는 열공정 한계다. 고정 55mm/s 는 이 구간의 기본값일 뿐이다',
-          't자동교환 = 교환 90초 + 예열포켓 150°C→250°C 179초 ≈ 4.5분 (냉각은 매거진이 받으므로 임계경로 밖)',
-          't수동교환 = 강제공랭 250→60°C 13.3분 + 교환 8분 + 검증 2분 + 냉간승온 6.7분 ≈ 30분'
+          't자동교환 = 교환 90초 + 예열포켓 120°C→200°C 143초 ≈ 3.9분 (냉각은 매거진이 받으므로 임계경로 밖)',
+          't수동교환 = 강제공랭 200→60°C 11.5분 + 교환 8분 + 검증 2분 + 냉간승온 5.2분 ≈ 26.7분'
         ],
         verify:[
-          '55mm/s에서 열공정 여유 약 15.7%, 90% 가동률 순생산 60.5장/h',
+          '55mm/s에서 열공정 여유 약 44.6%, 90% 가동률 순생산 60.5장/h',
           '8시간 90% 약 484장·16시간 90% 약 967장',
           '클램프 체결 목표 2.5초는 300/55=5.45초의 HKS 진입 여유 안에 완료',
           '터릿형 2축 권취 또는 자동 코어교환으로 권취롤 교환 정지를 탠덤 사이클 밖으로 분리',
@@ -1115,7 +1134,7 @@
           'IR_ENABLE = SEALED_FULL_LOAD_ACK ∧ EXHAUST_OK ∧ FIRE_OK ∧ PM_METER_OK ∧ EMISSION_OK',
           'DOOR_MUTEX = ¬(INNER_DOOR_OPEN ∧ OUTER_DOOR_OPEN)',
           'MOTION_SYNC = |X_LEFT−X_RIGHT|≤0.3mm ∧ FOLLOWING_ERROR_OK',
-          'PEEL_PERMIT = EVA_200_ACK ∧ HKB_TEMP_OK ∧ HKS_TEMP_OK ∧ VAC_6ZONE_OK',
+          'PEEL_PERMIT = EVA_TARGET_ACK ∧ HKB_TEMP_OK ∧ HKS_TEMP_OK ∧ VAC_6ZONE_OK',
           'MOTION_TRIP = SYNC_ERROR ∨ VAC_LOW ∨ KNIFE_OVERLOAD ∨ WEB_TENSION_HIGH ∨ GLASS_CRACK',
           'NEXT_PANEL = BACKSHEET_BIN_ACK ∧ SHREDDER_FEED_ACK ∧ GLASS_CARRIAGE_ACK ∧ EMPTY_CARRIER_RELOADED',
           'IR_HARD_TRIP = INDEPENDENT_OVERTEMP ∨ SMOKE ∨ CO_HIGH ∨ EXHAUST_LOSS ∨ SSR_STUCK',
@@ -1136,7 +1155,7 @@
           'CASSETTE_COOL_OK = CASSETTE_TEMP',
           'CASSETTE_RELEASE = KNIVES_CLEAR ∧ CARRIER_PARKED ∧ HEATER_ISOLATED ∧ CASSETTE_PRESENT',
           'CASSETTE_HANDLING_SAFE = CASSETTE_RELEASE ∧ CASSETTE_COOL_OK ∧ MAINT_PERMIT',
-          '기계는 250°C 카세트를 그대로 집는다. 60°C 이하와 LOTO 는 사람이 만지는 CASSETTE_HANDLING_SAFE 에만 건다 — 둘을 한 허가로 묶으면 자동교환이 냉각 13.3분을 통째로 기다린다',
+          '기계는 200°C 카세트를 그대로 집는다. 60°C 이하와 LOTO 는 사람이 만지는 CASSETTE_HANDLING_SAFE 에만 건다 — 둘을 한 허가로 묶으면 자동교환이 냉각 13.3분을 통째로 기다린다',
           '히터가 살아 있으면 잠금이 풀리지 않는다 — HEATER_ISOLATED 는 F-DI 로 읽어 CASSETTE_RELEASE 앞에 세운다'
         ],
         verify:[
@@ -1274,7 +1293,7 @@
        처리량을 보고했다. 모델·상수·입력구간을 여기 한 곳에 둔다. */
     const MODEL={
       arealCp:8.7358962,   // kJ/(m²·K) 적층 면적열용량
-      dT:175,              // 25 → 200 °C
+      dT:T_TARGET-T_AMB,   // 25 → 140 °C — 값이 아니라 목표에서 파생시킨다
       fdmDwell:113.15,     // 1D-FDM 계면 도달시간 하한. 열수지가 이보다 빨라도 못 줄인다
       lamps:60,decks:5,
       knifePitch:300,      // 칼끝 간격 mm · HKB 선행분
@@ -2243,7 +2262,7 @@
     }
     /* M-008 셀/EVA 컨베이어의 부속기기.
 
-       제작도 목록이 부르는 장치들이 그림에 없었다. 이 계통은 200°C 를 막
+       제작도 목록이 부르는 장치들이 그림에 없었다. 이 계통은 140°C 를 막
        벗어난 EVA 적층체를 슈레더까지 끊김 없이 보내는 자리라, 감시 수단이
        없으면 인터록(CELL_ON_CONVEYOR_ACK · SHREDDER_FEED_ACK)이 성립할 근거가
        그림에 없다. */
@@ -2630,7 +2649,7 @@
       }
       exhaust(g.cx,.22);
       label3('HC-101 · 5단 밀폐 IR 가열실 (3,780)',V(g.cx,-1.50,4.94),C.heat);
-      label3('6 뱅크 × 8 = 48 IR · 계면 200°C',V(g.cx,-1.50,4.62),C.yellow);
+      label3('6 뱅크 × 8 = 48 IR · 계면 140°C',V(g.cx,-1.50,4.62),C.yellow);
     }
     /* 승강 포크. 랙은 고정이고 포크가 층을 고른다 — 랙을 들면 챔버가
        2.5m 더 높아진다. 마스트는 이웃 스테이션의 끝자리를 쓴다. */
@@ -2669,7 +2688,7 @@
     }
     function cTandem(){
       const g=CST.DL;
-      cFork(CMAST_OUT,'EX',-1,'EX-101 · 200°C 방출 포크');
+      cFork(CMAST_OUT,'EX',-1,'EX-101 · 140°C 방출 포크');
       /* VT-101 고정 진공테이블. 패널이 여기서 움직이지 않는다는 것이
          이 배치의 전부다 — 11.2m 이송축이 3.8m 셀이 된 이유다. */
       box(V(CTBL_CX,0,CZ-.09),V(CARRIER_L,CARRIER_W,.18),C.steel2);
@@ -2911,10 +2930,10 @@
        후속파쇄·팔레타이징 단계는 경계 인계 한 단계로 접힌다. */
     const C21_STEPS=[
       {id:'C0',name:'투입·계량·정렬',duration:3200,desc:'발주자 픽업 스테이션에서 받은 패널을 유리면 아래·백시트 위로 놓고 WI-101 계량과 폭 정렬을 마칩니다.',vac:'대기 · 0 kPa',temp:'식별 · 상온',out:'ORIENT_OK',flow:['권취 대기','분리 대기 → CS-201 카트','분리 대기 → 냉각 랙'],cam:[0,CST.LD.cx]},
-      {id:'C1',name:'5단 밀폐가열 5/5',duration:15000,desc:'LI-101 이 층을 골라 밀어 넣고 5/5 잠금·밀폐를 확인한 뒤 EVA/유리 계면 200°C 까지 소킹합니다. 체류 225.9초를 5단이 나눠 갖습니다.',vac:'VT-101 대기',temp:'C1~C5 · 계면 200°C',out:'SEALED_FULL_LOAD_ACK',flow:['권취 대기','가열 중','가열 중'],cam:[1,CST.HC.cx]},
-      {id:'C2',name:'200°C 방출 · 테이블 착좌',duration:4200,desc:'EX-101 이 200°C 패널을 꺼내 VT-101 6존 진공테이블에 앉힙니다. 이 순간부터 박리가 끝날 때까지 패널은 움직이지 않습니다.',vac:'VT-101 · −65 kPa',temp:'HKB 230°C · HKS 250~270°C',out:'TABLE_VAC_OK',flow:['장력 형성 대기','HKS 분리 대기','진공테이블 지지'],cam:[2,CTBL_CX]},
-      {id:'C3',name:'나이프 원점 → 선단 300mm',duration:3000,desc:'KG-101 이 원점에서 나와 HKB 가 백시트 선단 300mm 를 열고 WR-101 장력을 잡습니다. HKS 는 300mm 뒤에서 따라옵니다.',vac:'VT-101 · −65 kPa',temp:'HKB 230°C',out:'LEAD_300_ACK',flow:['선단 개방 중','HKS 진입 대기','진공테이블 지지'],cam:[2,CTBL_CX-.8]},
-      {id:'C4',name:'55mm/s 나이프 통과박리',duration:7600,desc:'패널은 서 있고 KG-101 이 55mm/s 로 2,400mm 를 지나갑니다. 상대운동이 같으므로 행정도 시간 43.6초도 이동 캐리어와 같습니다.',vac:'VT-101 6존 · −65 kPa',temp:'HKB 230°C · HKS 250~270°C',out:'KNIFE_PEEL_COMPLETE',flow:['GR-W1 이 같이 간다 — 권취 0','유리에서 분리 중','진공테이블 지지'],cam:[2,CTBL_CX]},
+      {id:'C1',name:'5단 밀폐가열 5/5',duration:15000,desc:'LI-101 이 층을 골라 밀어 넣고 5/5 잠금·밀폐를 확인한 뒤 EVA/유리 계면 140°C 까지 소킹합니다. 체류 225.9초를 5단이 나눠 갖습니다.',vac:'VT-101 대기',temp:'C1~C5 · 계면 140°C',out:'SEALED_FULL_LOAD_ACK',flow:['권취 대기','가열 중','가열 중'],cam:[1,CST.HC.cx]},
+      {id:'C2',name:'140°C 방출 · 테이블 착좌',duration:4200,desc:'EX-101 이 140°C 패널을 꺼내 VT-101 6존 진공테이블에 앉힙니다. 이 순간부터 박리가 끝날 때까지 패널은 움직이지 않습니다.',vac:'VT-101 · −65 kPa',temp:'HKB 180°C · HKS 200°C',out:'TABLE_VAC_OK',flow:['장력 형성 대기','HKS 분리 대기','진공테이블 지지'],cam:[2,CTBL_CX]},
+      {id:'C3',name:'나이프 원점 → 선단 300mm',duration:3000,desc:'KG-101 이 원점에서 나와 HKB 가 백시트 선단 300mm 를 열고 WR-101 장력을 잡습니다. HKS 는 300mm 뒤에서 따라옵니다.',vac:'VT-101 · −65 kPa',temp:'HKB 180°C',out:'LEAD_300_ACK',flow:['선단 개방 중','HKS 진입 대기','진공테이블 지지'],cam:[2,CTBL_CX-.8]},
+      {id:'C4',name:'55mm/s 나이프 통과박리',duration:7600,desc:'패널은 서 있고 KG-101 이 55mm/s 로 2,400mm 를 지나갑니다. 상대운동이 같으므로 행정도 시간 43.6초도 이동 캐리어와 같습니다.',vac:'VT-101 6존 · −65 kPa',temp:'HKB 180°C · HKS 200°C',out:'KNIFE_PEEL_COMPLETE',flow:['GR-W1 이 같이 간다 — 권취 0','유리에서 분리 중','진공테이블 지지'],cam:[2,CTBL_CX]},
       {id:'C5',name:'3계통 분기',duration:4200,desc:'백시트는 GR-W1 을 지나 WR-101 로, 셀/EVA 는 갠트리 슈트에서 CE-201 트로프로, 유리는 테이블에 남습니다. 세 계통이 서로 다른 방향으로 갈라집니다.',vac:'VT-101 유지',temp:'유리 180°C',out:'STREAMS_SPLIT',flow:['웹 길이 상쇄 — 드럼 정지','CE-201 통째 인출 2,400×1,200','테이블에 유리만 남음'],cam:[1,CTBL_CX+.6]},
       {id:'C6',name:'700mm/s 복귀 · 패널 교환',duration:3000,desc:'나이프가 2,700mm 를 700mm/s 로 3.86초에 복귀합니다. 그 사이 유리가 나가고 다음 패널이 들어옵니다 — 두 동작이 같은 창(4.5초) 안에 있어 사이클이 늘지 않습니다.',vac:'VT-101 해제',temp:'카세트 온도 유지',out:'KNIFE_X_HOME',flow:['복귀 중 2,700mm 권취','CS-201 카트로 평적','GC-101 랙으로'],cam:[2,CTBL_CX]},
       {id:'C7',name:'유리 5단 냉각 랙',duration:5200,desc:'GL-101 이 유리를 GC-101 랙에 넣고 강제공랭으로 180 → 60°C 로 내립니다. 필요한 179초를 길이가 아니라 단수로 삽니다.',vac:'—',temp:'유리 180 → 60°C',out:'GLASS_COOL_OK',flow:['BS-301 보관','CS-201 평적 중','G1~G5 강제공랭'],cam:[1,CST.GC.cx]},
@@ -3524,7 +3543,7 @@
       line([V(STACK_X+.62,0,3.50),V(STACK_X+1.5,0,2.00)],C.red,1,[4,4],.5);
       label3('CEMS-101 · 연속배출감시 (TOC·CO·O₂)',V(STACK_X+.9,-1.35,4.05),C.teal);
 
-      /* 가열실 불꽃감지기 — 200°C 계면가열은 EVA 를 열분해시킨다. 연기·CO
+      /* 가열실 불꽃감지기 — 140°C 계면가열은 EVA 를 열분해시킨다. 연기·CO
          만으로는 늦으므로 화염 자체를 F-DI 로 본다. */
       for(const x of FLAME_X){
         box(V(x,FLAME_Y,FLAME_Z+.09),V(.22,.22,.18),C.steel2);           // 가열실 불꽃감지기×2 관통 슬리브
@@ -3967,7 +3986,7 @@
     function carriageCycleState(p,cycleNo=carriageCycleNo){
       const q=clamp(p),active=((cycleNo%5)+5)%5,next=(active+1)%5,g=carriageGeometry(),z0=.82,dz=.62,deckZ=z0+dz*(active+.5);
       let step=1,phase='5/5 밀폐가열',detail='FULL_LOAD_ACK · 모든 문 닫힘 · IR 생산출력',releaseX=g.rack,releaseZ=deckZ,refillX=g.inOutside,refillZ=1.42;
-      if(q>=.18){step=2;phase=`C${active+1} 방출 준비`;detail='EVA 200°C · 탠덤 READY · IDX 잠금 해제'}
+      if(q>=.18){step=2;phase=`C${active+1} 방출 준비`;detail='EVA 140°C · 탠덤 READY · IDX 잠금 해제'}
       if(q>=.26){step=3;phase='배출 내문 이송';detail='AL-102 내문 개방 · EX-101 격리실 진입';releaseX=lerp(g.rack,g.outVest,ease(clamp((q-.26)/.12)))}
       if(q>=.38){step=3;phase='배출 격리·높이 정렬';detail='내문 닫힘 · 씰 확인 · 공정 기준면 정렬';releaseX=g.outVest;releaseZ=lerp(deckZ,1.42,ease(clamp((q-.38)/.06)))}
       if(q>=.44){step=3;phase='배출 외문 통과';detail='AL-102 외문만 개방 · 탠덤 버퍼로 반출';releaseX=lerp(g.outVest,g.outDone,ease(clamp((q-.44)/.10)));releaseZ=1.42}
@@ -4110,7 +4129,7 @@
       if(i===2)withPartOffset(o.heat,()=>{preheatActivity(p,s.panelX);carriageLoaderActivity(p)});
       if(!carriageFocus){
         const hkbHot=i>=3&&i<=5,hksHot=i>=4&&i<=5,eng=tandemEngagement(i,p);
-        withPartOffset(o.tandem,()=>{knifeBar(HKB_X,1.69,hkbHot,'고정 HKB · 230°C',eng.hkb,'HKB');knifeBar(HKS_X,1.63,hksHot,'고정 HKS · 250~270°C',eng.hks,'HKS');if(tandemFocus&&i>=3&&i<=6){const d=i===6?-1:1,x0=s.cx-d*1.2,x1=s.cx+d*1.2;line([V(x0,-1.66,.9),V(x1,-1.66,.9)],C.teal,3,[7,3],.95);line([V(x1-d*.2,-1.66,.82),V(x1,-1.66,.9),V(x1-d*.2,-1.66,.98)],C.teal,2.3)}if(i===3)label3('캐리어 200 → 55mm/s · 선행 300mm',V(s.cx,-1.72,2.28),C.yellow);if(i===5){label3(`캐리어 → 55mm/s · 칼날 X축 고정 · 간격 ${(TANDEM_GAP*1000).toFixed(0)}±2mm`,V(s.cx,-1.78,2.28),C.teal)}});
+        withPartOffset(o.tandem,()=>{knifeBar(HKB_X,1.69,hkbHot,'고정 HKB · 180°C',eng.hkb,'HKB');knifeBar(HKS_X,1.63,hksHot,'고정 HKS · 200°C',eng.hks,'HKS');if(tandemFocus&&i>=3&&i<=6){const d=i===6?-1:1,x0=s.cx-d*1.2,x1=s.cx+d*1.2;line([V(x0,-1.66,.9),V(x1,-1.66,.9)],C.teal,3,[7,3],.95);line([V(x1-d*.2,-1.66,.82),V(x1,-1.66,.9),V(x1-d*.2,-1.66,.98)],C.teal,2.3)}if(i===3)label3('캐리어 200 → 55mm/s · 선행 300mm',V(s.cx,-1.72,2.28),C.yellow);if(i===5){label3(`캐리어 → 55mm/s · 칼날 X축 고정 · 간격 ${(TANDEM_GAP*1000).toFixed(0)}±2mm`,V(s.cx,-1.78,2.28),C.teal)}});
         withPartOffset(o.backsheet,()=>windingRoll(winderState(i,p)));
         if(i===6)withPartOffset(o.cell,()=>outputLaminate(p));else if(i===7)withPartOffset(o.cell,()=>outputLaminate(1));
         if(i===8)withPartOffset(o.cell,()=>cellBufferActivity(p));if(i===9)withPartOffset(o.cell,()=>shredderActivity(p));
@@ -4193,16 +4212,16 @@
       if(compactView){
         const st=cState(index,local),phase=index<=3?0:index===4?(local<.42?1:2):index===5?2:3;
         for(let n=1;n<=4;n++)$(`tandemStep${n}`).classList.toggle('active',n===phase+1);
-        $('hkbLive').textContent=st.engage>.97?'가압 유지 · 230°C':st.engage>.02?`Z축 진입 ${Math.round(st.engage*100)}%`:'안전 복귀 · 230°C';
-        $('hksLive').textContent=st.engage>.97?'가압 유지 · 260°C':st.engage>.02?`Z축 진입 ${Math.round(st.engage*100)}%`:'안전 복귀 · 260°C';
+        $('hkbLive').textContent=st.engage>.97?'가압 유지 · 180°C':st.engage>.02?`Z축 진입 ${Math.round(st.engage*100)}%`:'안전 복귀 · 180°C';
+        $('hksLive').textContent=st.engage>.97?'가압 유지 · 200°C':st.engage>.02?`Z축 진입 ${Math.round(st.engage*100)}%`:'안전 복귀 · 200°C';
         $('carrierLive').textContent=index===4?'나이프 55mm/s 전진':index===6?`나이프 700mm/s 복귀 (하한 550)`:index===3?'원점 → 선단 300mm':'원점 대기';
         $('peelLive').textContent=index===3?`백시트 선단 ${Math.round(300*local)}mm`:index===4?`통과박리 ${Math.round(local*100)}% · X ${(st.kx*1000).toFixed(0)}mm`:index===5?'3계통 분기':index===6?`복귀 ${Math.round(local*100)}%`:'패널 정지 · 칼날 이동';
         return;
       }
       const eng=tandemEngagement(index,local),phase=index<=3?0:index===4?(local<.42?1:2):index===5?2:3;
       for(let n=1;n<=4;n++)$(`tandemStep${n}`).classList.toggle('active',n===phase+1);
-      $('hkbLive').textContent=eng.hkb>.97?'가압 유지 · 230°C':eng.hkb>.02?`Z축 진입 ${Math.round(eng.hkb*100)}%`:'안전 복귀 · 230°C';
-      $('hksLive').textContent=eng.hks>.97?'가압 유지 · 260°C':eng.hks>.02?`Z축 진입 ${Math.round(eng.hks*100)}%`:'안전 복귀 · 260°C';
+      $('hkbLive').textContent=eng.hkb>.97?'가압 유지 · 180°C':eng.hkb>.02?`Z축 진입 ${Math.round(eng.hkb*100)}%`:'안전 복귀 · 180°C';
+      $('hksLive').textContent=eng.hks>.97?'가압 유지 · 200°C':eng.hks>.02?`Z축 진입 ${Math.round(eng.hks*100)}%`:'안전 복귀 · 200°C';
       $('carrierLive').textContent=index===3?'200→55mm/s S-curve':index===4?'55mm/s · 클램프 대기':index===5?'55mm/s 정속 통과':'200mm/s 안전 이탈';
       $('peelLive').textContent=index===3?`백시트 선단 ${Math.round(300*local)}mm`:index===4?(local<.42?'WR-101 장력 형성':`HKS 계면 진입 ${Math.round(local*100)}%`):index===5?`전장 동시박리 ${Math.round(local*100)}%`:'유리·셀·백시트 분기';
     }
@@ -4211,19 +4230,19 @@
       if(compactView){
         const filled=index===1?Math.min(5,1+Math.floor(local*5)):index>=2?5:0;
         for(let n=1;n<=6;n++)$(`carriageStep${n}`).classList.toggle('active',n===Math.min(6,index+1));
-        $('carriageDeckLive').textContent=`C${Math.max(1,filled)} · ${index>=2?'200°C':'승온 중'}`;
+        $('carriageDeckLive').textContent=`C${Math.max(1,filled)} · ${index>=2?'140°C':'승온 중'}`;
         $('carriageLoadLive').textContent=`${filled}/5 · ${filled===5?'SEALED_FULL_LOAD_ACK':'CYCLE ACTIVE'}`;
         $('carriageInLive').textContent=index===1&&local<.9?'AL-101 투입 중':'외문·내문 닫힘';
         $('carriageOutLive').textContent=index===2?'AL-102 방출 중':'외문·내문 닫힘';
         return;
       }
       const st=carriageCycleState(local);for(let n=1;n<=6;n++)$(`carriageStep${n}`).classList.toggle('active',n===st.step);
-      $('carriageDeckLive').textContent=local>=.94?`다음 C${st.next+1} · 승온 중`:`C${st.active+1} · ${local<.54?'200°C':'교대 중'}`;
+      $('carriageDeckLive').textContent=local>=.94?`다음 C${st.next+1} · 승온 중`:`C${st.active+1} · ${local<.54?'140°C':'교대 중'}`;
       $('carriageLoadLive').textContent=`${st.occupied}/5 · ${st.fullLoadAck?'FULL_LOAD_ACK':st.occupied===5?'LOCKED':'CYCLE ACTIVE'}`;
       const doorText=(a,b)=>a>.02?`외문 ${Math.round(a*100)}% · 내문 닫힘`:b>.02?`외문 닫힘 · 내문 ${Math.round(b*100)}%`:'외문·내문 닫힘';
       $('carriageInLive').textContent=doorText(st.doors.inOuter,st.doors.inInner);$('carriageOutLive').textContent=doorText(st.doors.outOuter,st.doors.outInner);
       $('stageTitle').textContent=`S2 · ${st.phase}`;$('stageDesc').textContent=st.detail;
-      $('vacuumValue').textContent=`C${st.active+1} · ${st.occupied===5?'-65 kPa / 잠금':'이송 지지 유지'}`;$('tempValue').textContent=st.doorsOpen?'문 개방 · IR 대기출력 ≤10%':local>=.94?`다음 C${st.next+1} · 200°C 승온`:'EVA 계면 200°C · 밀폐가열';$('outputValue').textContent=st.fullLoadAck?'REFILL_ACK · 다음 방출 준비':st.phase;
+      $('vacuumValue').textContent=`C${st.active+1} · ${st.occupied===5?'-65 kPa / 잠금':'이송 지지 유지'}`;$('tempValue').textContent=st.doorsOpen?'문 개방 · IR 대기출력 ≤10%':local>=.94?`다음 C${st.next+1} · 200°C 승온`:'EVA 계면 140°C · 밀폐가열';$('outputValue').textContent=st.fullLoadAck?'REFILL_ACK · 다음 방출 준비':st.phase;
     }
     function updateUI(){
       const s=steps[index];$('stageTitle').textContent=`${s.id} · ${s.name}`;$('stageDesc').textContent=s.desc;$('vacuumValue').textContent=s.vac;$('tempValue').textContent=s.temp;$('outputValue').textContent=s.out;$('plcValue').textContent=index===13?'F-PLC SELF TEST · SAFE':'PLC RUN · DC24 A/B · RING OK';
@@ -4320,8 +4339,8 @@
       b.textContent=compact?`배치 Rev.21C · ${Math.round(compactLength()*1000).toLocaleString()}mm`:`배치 Rev.20 · ${Math.round(rev20Length()*1000).toLocaleString()}mm`;
       $('npModelRev').textContent=compact?'REV.21C':'REV.20';
       $('npSub').textContent=compact
-        ?`60 IR · EVA 계면 200°C · 고정 진공테이블 + 이동 나이프 · 전장 ${Math.round(compactLength()*1000).toLocaleString()}mm`
-        :'60 IR · EVA 계면 200°C · 7＋1 캐리지 · 유리/셀 무낙하 컨베이어 · 전기·제어 통합';
+        ?`60 IR · EVA 계면 140°C · 고정 진공테이블 + 이동 나이프 · 전장 ${Math.round(compactLength()*1000).toLocaleString()}mm`
+        :'60 IR · EVA 계면 140°C · 7＋1 캐리지 · 유리/셀 무낙하 컨베이어 · 전기·제어 통합';
       updateUI();render();
     }
     $('layoutButton').addEventListener('click',()=>setLayout(!compactView));
@@ -4419,7 +4438,7 @@
       $('motionProfile').textContent=`박리 ${speed.toFixed(0)} · 급속 ${rapid.toFixed(0)} mm/s`;$('test60Cold').textContent=formatTime(cold60);$('test60Steady').textContent=formatTime(steady60);$('hourlyPanels').textContent=`명목 ${lineRate.toFixed(1)} · 90% ${(lineRate*.9).toFixed(1)} 장/h`;$('shift8Panels').textContent=`약 ${shift8}장`;$('shift16Panels').textContent=`약 ${shift16}장`;$('bottleneckAction').textContent=action;
       $('calcBasis').textContent=`t=0 = C1~C5 점유·잠금·밀폐 | Q=${(q/1000).toFixed(2)}MJ/장 | IR ${totalPower.toFixed(0)}kW×η ${(eta*100).toFixed(0)}%=${usefulPower.toFixed(1)}kW 유효 | t열=max[5Q/P유효, FDM 113.2s]=${dwell.toFixed(1)}s | t탠덤=(${L.toFixed(0)}+300)/${speed.toFixed(0)} + 300/${rapid.toFixed(0)} + ${fixedHandling.toFixed(1)} = ${tandemCycle.toFixed(1)}s | 선행시간=300/${speed.toFixed(0)}=${leadTime.toFixed(2)}s`;
       const marks=[0,4,9,19,29,39,49,59];$('testSchedule').textContent=`초기 5장 적재시간 제외 · 냉간 완료시각: ${marks.map(i=>`P${i+1} ${(ends[i]/60).toFixed(1)}분`).join(' · ')} | 정상상태 = 60×${lineCycle.toFixed(1)}s = ${(steady60/60).toFixed(1)}분 | 실공정을 영상 8초로 압축합니다.`;
-      $('comparisonBasis').textContent=`Rev.20은 EVA 계면 200°C·60×2.5kW·최대 2,400×1,200mm·고정 탠덤·이동 캐리어 계산을 유지하고, 5/5 밀폐가열부터 C1~C5 순차 방출·에어록 격리·동일 슬롯 재투입까지의 반복 상태머신과 전문형 색상체계를 통합합니다.`;
+      $('comparisonBasis').textContent=`Rev.20은 EVA 계면 140°C·60×2.5kW·최대 2,400×1,200mm·고정 탠덤·이동 캐리어 계산을 유지하고, 5/5 밀폐가열부터 C1~C5 순차 방출·에어록 격리·동일 슬롯 재투입까지의 반복 상태머신과 전문형 색상체계를 통합합니다.`;
     }
     calcIds.forEach(id=>$(id).addEventListener('input',updateCalculator));$('calcButton').addEventListener('click',()=>{updateCalculator();if(typeof calcDialog.showModal==='function')calcDialog.showModal();else calcDialog.setAttribute('open','')});$('calcClose').addEventListener('click',()=>calcDialog.close());calcDialog.addEventListener('click',e=>{if(e.target===calcDialog)calcDialog.close()});
 
