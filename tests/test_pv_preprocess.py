@@ -461,6 +461,45 @@ class TestOneTransferPlane(unittest.TestCase):
                 self.assertIn(key, layout.SCENE_GRID_OPEN + " robot post",
                               "아직 그룹이 없는 셀은 미해결로 남아 있어야 한다")
 
+    def test_what_is_not_a_cell_says_so(self):
+        """셀에 안 속하는 것과 **귀속을 빠뜨린 것**은 다르다.
+
+        격자 검사는 태그 없는 메시를 세어 자기가 얼마나 눈을 감고 있는지
+        보고한다. 그런데 관제실·기계실·서버랙처럼 애초에 셀이 아닌 것까지
+        그 수에 들어가면, 진짜 빠뜨린 것이 그 안에 묻힌다. 시설은 시설이라고
+        **밝히고**, 밝히지 않은 것만 미귀속으로 남긴다.
+        """
+        html = self.html
+        self.assertIn("function pvSpans(g){g.userData.spans=!0;return g}", html)
+        for group in ("pvSmart", "pvEdge"):
+            with self.subTest(facility=group):
+                self.assertIn(f"pt.add(pvSpans({group}))", html)
+        # 검사기가 그 표식을 실제로 읽어야 한다
+        tool = (ROOT / "tools" / "check_cell_grid.mjs").read_text(encoding="utf-8")
+        self.assertIn("p.userData.spans", tool)
+        self.assertIn("declared += 1", tool)
+
+    def test_the_afr_structure_belongs_to_the_afr_cell(self):
+        """셀의 구조가 `pt` 에 월드 좌표로 서 있으면 셀이 움직여도 안 따라온다.
+
+        A-2b 첫 시도에서 AFR 을 옮기자 JB/AFR-301 인계 롤러 10본이 제자리에
+        남아 인계면이 끊겼다. CL-221 클램프 포탈도 같은 처지였다 — 기둥·베이스
+        플레이트·크로스헤드·타이빔이 전부 `pt` 에 있었다.
+        """
+        html = self.html
+        # 인계 롤러는 AFR 그룹 안에서 그린다 (월드 자리는 -qt 로 보정한다)
+        self.assertIn("u0.push(Ee(ot,pvRollR,1.5,[e-qt,pvRollY,0],M.rubber,", html)
+        # 포탈은 자리를 그대로 두고 소속만 셀로 바꾼다
+        self.assertIn("window.pdPortal = [];", html)
+        self.assertIn("window.pdTie = [];", html)
+        self.assertIn("(window.pdPortal||[]).forEach(function(m){adopt(m,'afr');});", html)
+        self.assertIn("(window.pdTie||[]).forEach(function(m){adopt(m,'afr');});", html)
+        # 그리고 포탈 부재는 여전히 mounting 의 부재표에 있다 — 소속만 바뀌었지
+        # 부재가 없어진 것이 아니다
+        names = {m.label for m in mounting.MEMBERS}
+        self.assertIn("AFR CL-221 클램프 포탈 기둥 4본", names)
+        self.assertIn("AFR CL-221 포탈 크로스헤드 2본", names)
+
     def test_the_scene_carries_the_zone_grid(self):
         """3D 가 자기 자리를 존 표에 대고 검사받을 수 있어야 한다.
 

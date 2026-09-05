@@ -42,6 +42,7 @@ const result = await page.evaluate(() => {
   if (!zones) return { error: 'pvZone 격자를 찾지 못했다' };
 
   const cells = {};       // cell → {x0,x1,n}
+  let declared = 0;       // 셀에 안 속한다고 밝힌 메시
   const loose = [];       // 태그 없는 메시
   const spanOf = (o) => {
     o.updateWorldMatrix(true, false);
@@ -66,8 +67,15 @@ const result = await page.evaluate(() => {
     for (let p = o; p; p = p.parent) if (p.userData && p.userData.transit) return true;
     return false;
   };
+  /* 셀에 속하지 않는다고 **밝힌** 것 — 시설과 셀을 건너는 부재. 씬에서
+     `pvSpans()` 로 표시한다. 존에 매이지 않는 것과 귀속을 빠뜨린 것은 다르다. */
+  const spans = (o) => {
+    for (let p = o; p; p = p.parent) if (p.userData && p.userData.spans) return true;
+    return false;
+  };
   host.__pvScene.scene.traverse((o) => {
     if (!o.isMesh || !o.geometry || inTransit(o)) return;
+    if (spans(o)) { declared += 1; return; }
     const key = cellOf(o);
     const [x0, x1] = spanOf(o);
     const label = (o.userData && o.userData.label) || '';
@@ -76,14 +84,14 @@ const result = await page.evaluate(() => {
     const c = cells[key];
     c.x0 = Math.min(c.x0, x0); c.x1 = Math.max(c.x1, x1); c.n += 1;
   });
-  return { zones, cells, loose };
+  return { zones, cells, loose, declared };
 });
 await browser.close();
 
 if (result.error) { console.error('✗ ' + result.error); process.exit(1); }
 if (errors.length) { console.error('✗ 페이지 오류:\n  ' + errors.join('\n  ')); process.exit(1); }
 
-const { zones, cells, loose } = result;
+const { zones, cells, loose, declared } = result;
 const mm = (m) => (m * 1000).toFixed(0);
 let worst = 0;
 const rows = [];
@@ -97,7 +105,7 @@ for (const [key, z] of Object.entries(zones)) {
   rows.push({ key, z, c, up, down, over });
 }
 
-console.log(`셀 그룹 ${Object.keys(cells).length} · 태그 없는 메시 ${loose.length}`);
+console.log(`셀 그룹 ${Object.keys(cells).length} · 셀 아님으로 밝힌 메시 ${declared} · 태그 없는 메시 ${loose.length}`);
 console.log(`\n${'존'.padEnd(8)} ${'존 X'.padStart(16)} ${'3D 실측 X'.padStart(16)} ${'상류넘침'.padStart(9)} ${'하류넘침'.padStart(9)}  메시`);
 for (const r of rows) {
   if (!r.c) { console.log(`${r.key.padEnd(8)} ${'—'.padStart(16)} ${'그룹 없음'.padStart(16)}`); continue; }
