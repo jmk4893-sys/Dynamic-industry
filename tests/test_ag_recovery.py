@@ -219,8 +219,17 @@ class PlantRecoveryLandsInTheStatedBand(unittest.TestCase):
                 out[role][t] = r
         return out
 
-    def plant(self, wet_raw, cu, reject, ag_recovery):
-        """plantAgBalance 와 같은 순서로 푼다."""
+    def plant(self, wet_raw, cu, reject, ag_recovery, exposure=None):
+        """plantAgBalance 와 같은 순서로 푼다.
+
+        ``exposure`` 를 주지 않으면 미니앱과 같은 값을 쓴다 — 어트리션 2 기
+        체류에서의 Ag 표면 노출도다. 이것을 곱하지 않으면 두 모델이 조용히
+        갈라지므로 기본값을 미니앱에서 유도한다.
+        """
+        if exposure is None:
+            e0 = const("AG_EXPOSURE_FEED")
+            k = -math.log((1 - const("AG_EXPOSURE_TARGET")) / (1 - e0)) / const("AG_EXPOSURE_NAMEPLATE_MIN")
+            exposure = 1 - (1 - e0) * math.exp(-k * 19.7)   # 40 L 2 기 · 케이스 A 급광
         fw = const("FW102_DUST_RECOVERY")
         carry = const("AG_COMPOSITE_CARRY")
         cu_pick = const("CU_PICKOFF_EFFICIENCY")
@@ -233,7 +242,7 @@ class PlantRecoveryLandsInTheStatedBand(unittest.TestCase):
         mass = sum(sinks.values())
         blend = {k: sum(sinks[t] * ASSAY[t][k] for t in TYPES) / mass for k in KEYS}
         ag = ag_kg(sinks)
-        recovered = ag * ag_recovery
+        recovered = ag * ag_recovery * exposure
         conc = (recovered + recovered * carry
                 + mass * blend["Cu"] / 100 * (1 - cu_pick)
                 + mass * blend["polymer"] / 100 * (1 - polish))
@@ -309,6 +318,71 @@ class PlantRecoveryLandsInTheStatedBand(unittest.TestCase):
         self.assertAlmostEqual(design["closure"], 1.0, places=9)
 
 
+class AttritionDrivesRecovery(unittest.TestCase):
+    """이 플랜트가 어트리션을 두는 이유가 모델에 들어 있는가.
+
+    포수제는 드러난 금속 Ag 에만 붙는다. 셀의 핑거·버스바는 EVA 로 덮여 있어
+    그대로는 뜨지 않고, 백시트를 다 떼어도 마찬가지다. 어트리션 스크러버는
+    그 피막을 마찰로 벗기려고 넣은 장치이므로, 회수율은 노출도의 함수여야 한다.
+
+    종전 모델은 부유도가 상수라 어트리션을 아무리 돌려도 회수율이 변하지 않았다 —
+    설계 의도와 정반대였다. 이 시험이 그 회귀를 막는다.
+    """
+
+    E0 = None
+    K = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.E0 = const("AG_EXPOSURE_FEED")
+        target = const("AG_EXPOSURE_TARGET")
+        nameplate = const("AG_EXPOSURE_NAMEPLATE_MIN")
+        cls.K = -math.log((1 - target) / (1 - cls.E0)) / nameplate
+
+    def exposure(self, minutes):
+        return 1 - (1 - self.E0) * math.exp(-self.K * max(0.0, minutes))
+
+    def test_exposure_is_a_separate_state_from_backsheet_debond(self):
+        # 두 상태량은 다른 현상이다 — 하나로 뭉뚱그리면 어트리션 설계가 무의미해진다.
+        self.assertIn("const AG_EXPOSURE_FEED", LIVE)
+        self.assertIn("const AS101_FEED_DEBOND", LIVE)
+        self.assertRegex(LIVE, r"const agExposure = \(minutes\)")
+        self.assertRegex(LIVE, r"const as101Debond = \(minutes\)")
+
+    def test_recovery_multiplies_by_exposure(self):
+        # solveAgFlotation 이 노출도를 곱하지 않으면 어트리션이 아무 일도 하지 않는다.
+        self.assertRegex(LIVE, r"agKg \* agRecovery \* exposure")
+        self.assertRegex(LIVE, r"solveAgFlotation\(stage1\.sinks, agRecovery, agExposure\(")
+
+    def test_exposure_rises_with_residence(self):
+        for a, b in ((0, 2), (2, 5), (5, 10), (10, 20)):
+            self.assertLess(self.exposure(a), self.exposure(b))
+
+    def test_nameplate_residence_hits_the_design_intent(self):
+        self.assertAlmostEqual(self.exposure(const("AG_EXPOSURE_NAMEPLATE_MIN")),
+                               const("AG_EXPOSURE_TARGET"), places=9)
+
+    def test_a_slow_eva_removal_rate_breaks_the_target(self):
+        """설계가 견디는 EVA 제거 속도에는 상한이 있다 — 그것이 관문 1 이다."""
+        rfc = 0.997
+        tau_one, tau_two = 9.9, 19.7          # 40 L 1 기 / 2 기, 케이스 A 급광 기준
+        slow = -math.log((1 - 0.95) / (1 - self.E0)) / 20.0   # t95 = 20 min 이면
+        exp_one = 1 - (1 - self.E0) * math.exp(-slow * tau_one)
+        exp_two = 1 - (1 - self.E0) * math.exp(-slow * tau_two)
+        self.assertLess(exp_one * rfc, 0.99, "느린 속도에서도 1 기로 99 % 가 나오면 모델이 둔감한 것")
+        self.assertLess(exp_two * rfc, 0.99)
+        self.assertGreater(exp_two, exp_one, "2 기가 1 기보다 나아야 한다")
+
+    def test_second_cell_buys_tolerance_not_just_a_little_liberation(self):
+        """AS-101B 의 값은 미지수에 대한 여유다 — 허용 t95 가 넓어져야 한다."""
+        rfc, need = 0.997, 0.99 / 0.997
+        def max_t95(tau):
+            k = -math.log((1 - need) / (1 - self.E0)) / tau
+            return -math.log((1 - 0.95) / (1 - self.E0)) / k
+        one, two = max_t95(9.9), max_t95(19.7)
+        self.assertGreater(two, one * 1.8, f"2 기가 여유를 두 배 가까이 넓혀야 한다: {one:.1f} → {two:.1f}")
+
+
 class RoutingCases(unittest.TestCase):
     """두 라우팅은 서로의 하위 모드가 아니라 각자 정의돼 있어야 한다."""
 
@@ -345,7 +419,7 @@ class RecoveryIsReportedAsABand(unittest.TestCase):
         block = re.search(r"const AG_RECOVERY_GATES = Object\.freeze\(\[.*?\n    \]\);",
                           LIVE, re.S)
         self.assertIsNotNone(block, "AG_RECOVERY_GATES 가 없다")
-        for gate in ("liberation", "fw102", "fc101Tails", "agStagePolymer"):
+        for gate in ("agExposure", "fw102", "fc101Tails", "agStagePolymer"):
             self.assertIn(f'id: "{gate}"', block.group(0))
 
     def test_no_bare_9923_claim(self):

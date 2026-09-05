@@ -1742,6 +1742,12 @@ html>body{padding:0}</style>
       </tbody>
     </table></div>
     <p class="text-small">활성 케이스의 Ag 손실 내역 — <b data-ag-losses>—</b></p>
+    <p class="text-small dd-warning"><strong>회수율을 정하는 것은 어트리션입니다.</strong>
+      포수제는 <strong>드러난 금속 Ag</strong> 에만 붙습니다. 셀의 핑거·버스바는 EVA 로 덮여 있어
+      그대로는 뜨지 않고, 백시트를 다 떼어도 마찬가지입니다. AS-101 은 그 피막을 마찰로
+      벗겨 Ag 를 드러내려고 넣은 장치이므로, <code>R = 노출도 × R<sub>문헌</sub></code> 입니다.
+      문헌의 99.7 % 는 EVA 가 없는 박리 셀 분획에서 잰 값 — 즉 완전 노출일 때의 수치입니다.<br>
+      <b data-ag-attrition>—</b></p>
     <strong>관문 4 건 — 이것을 넘겨야 ≥99 % · ≥10 wt% 가 성립합니다</strong>
     <div class="table-responsive"><table class="table table-sm" aria-label="Ag 회수·품위 관문 시험">
       <thead><tr><th>관문</th><th class="text-end">기준</th><th>확인 방법</th></tr></thead>
@@ -20306,6 +20312,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       agActive: root.querySelector("[data-ag-active]"),
       agFc101: root.querySelector("[data-ag-fc101]"),
       agLosses: root.querySelector("[data-ag-losses]"),
+      agAttrition: root.querySelector("[data-ag-attrition]"),
       agGates: root.querySelector("[data-ag-gates]"),
       agHold: root.querySelector("[data-ag-hold]"),
       agCase: Object.fromEntries(["A", "C"].map((id) => [id, {
@@ -21474,6 +21481,29 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       -Math.log((1 - AS101_TARGET_DEBOND) / (1 - AS101_FEED_DEBOND)) / AS101_RESIDENCE_MIN;
     const as101Debond = (minutes) =>
       1 - (1 - AS101_FEED_DEBOND) * Math.exp(-AS101_RATE_PER_MIN * Math.max(0, minutes));
+
+    // ---- Ag 노출 — 이 플랜트가 어트리션을 두는 진짜 이유 ---------------------
+    // 위 박리도는 **백시트가 셀에서 떨어지는가**를 재는 값이다. 그런데 부선이
+    // 실제로 묻는 것은 다른 것이다: **Ag 표면이 드러났는가.**
+    //
+    // 포수제는 노출된 금속 Ag 에만 붙는다. 셀의 핑거·버스바는 EVA 로 덮여 있어
+    // 그대로는 기포에 붙지 못한다 — 백시트를 다 떼어도 마찬가지다. 어트리션
+    // 스크러버는 바로 이 EVA 피막을 **마찰로 벗겨** Ag 를 드러내려고 넣은 장치다.
+    //
+    // 종전 모델에는 이 상태량이 없었다. 부유도가 `A: 0.03` 상수라서 어트리션을
+    // 아무리 돌려도 Ag 회수율이 변하지 않았다 — 공정 설계 의도와 정반대다.
+    //
+    // 노출도도 1 차로 본다. 속도상수는 **이 설계 전체에서 가장 중요한 미지수**이며
+    // 벤치(어트리션 시간별 시료의 SEM/EDS 표면 Ag 노출률, 또는 시간별 회분식 부선)
+    // 로만 정할 수 있다. 여기서는 명판 5 min 에 0.95 가 되도록 잡아 두었다 —
+    // 그것이 이 장치를 넣은 설계 의도이기 때문이지, 확인된 값이어서가 아니다.
+    const AG_EXPOSURE_FEED = 0.02;        // 건식 파쇄만으로 드러나는 몫 (HOLD)
+    const AG_EXPOSURE_NAMEPLATE_MIN = 5;  // AS-101 명판 체류
+    const AG_EXPOSURE_TARGET = 0.95;      // 명판 체류에서 노리는 노출도 (설계 의도)
+    const AG_EXPOSURE_RATE_PER_MIN =
+      -Math.log((1 - AG_EXPOSURE_TARGET) / (1 - AG_EXPOSURE_FEED)) / AG_EXPOSURE_NAMEPLATE_MIN;
+    const agExposure = (minutes) =>
+      1 - (1 - AG_EXPOSURE_FEED) * Math.exp(-AG_EXPOSURE_RATE_PER_MIN * Math.max(0, minutes));
     const attritionParticles = [];
     {
       // 고전단 어트리션 셀의 이중 토로이드 순환 — 축을 따라 내려가 바닥에서 바깥으로
@@ -21826,8 +21856,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 조건부 값**이다. 넷 다 벤치·파일럿으로 확인해야 하며, 앞의 셋은 회수율을,
     // 넷째는 품위를 가른다. 아래 상수를 여기서 참조하므로 선언이 모두 위에 있다.
     const AG_RECOVERY_GATES = Object.freeze([
-      Object.freeze({ id: "liberation", label: "총 해리도", target: 0.994, unit: "",
-        how: "AS-101B 토출 시료 TIMA/SEM" }),
+      // 관문 1 은 「백시트가 떨어졌는가」가 아니라 **「Ag 표면이 드러났는가」** 다.
+      // 포수제는 노출된 금속에만 붙으므로 이것이 회수율을 직접 곱한다.
+      Object.freeze({ id: "agExposure", label: "Ag 표면 노출도", target: 0.994, unit: "",
+        how: "어트리션 시간별 시료 SEM/EDS 표면 Ag 노출률 (또는 시간별 회분식 부선 곡선)" }),
       Object.freeze({ id: "fw102", label: "FW-102 분진 세척률", target: FW102_DUST_RECOVERY, unit: "",
         how: "급광·언더·오버 칭량 (또는 BIN-102 ≤ 66 g/t)" }),
       Object.freeze({ id: "fc101Tails", label: "FC-101 광미 품위", target: 43, unit: "g/t",
@@ -21837,10 +21869,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       Object.freeze({ id: "agStagePolymer", label: "2 단 폴리머 제거율", target: AG_STAGE_POLYMER_REJECTION, unit: "",
         how: "RM-201 분쇄산물로 FC-101＋PS-201 폴리싱 벤치 (품위 목표를 가른다)" })
     ]);
-    function solveAgFlotation(sinksMass, agRecovery) {
+    // 문헌의 99.7 % 는 **EVA 가 없는 박리 셀 분획**에서 잰 값이다(design_basis 는
+    // 폴리머 0 을 명시한다). 즉 그것은 「완전 노출」일 때의 수치다. EVA 에 덮인 Ag 는
+    // 포수제가 붙지 못하므로 뜨지 않고 광미로 간다. 그래서 실제 회수율은
+    //     R = 노출도 × R_문헌
+    // 이 된다 — 어트리션이 회수율을 정하는 지배 변수가 되는 것이 이 구조다.
+    function solveAgFlotation(sinksMass, agRecovery, exposure = 1) {
       const a = blendAssay(sinksMass);
       const agKg = a.agUnits / 1e6;                       // g/t × kg ÷ 1e6 = kg Ag
-      const agRecovered = agKg * agRecovery;
+      const agRecovered = agKg * agRecovery * exposure;
       const lockedGangue = agRecovered * AG_COMPOSITE_CARRY;
       const cuToConcentrate = a.mass * a.Cu / 100 * (1 - CU_PICKOFF_EFFICIENCY);
       const polymerSlip = a.mass * a.polymer / 100 * (1 - AG_STAGE_POLYMER_REJECTION);
@@ -21884,7 +21921,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       wetMass.C -= freed;
       // 두 solver 는 질량에 선형이므로 실제 kg 을 그대로 통과시킨다.
       const stage1 = solvePolymerFloat(wetMass);
-      const stage2 = solveAgFlotation(stage1.sinks, agRecovery);
+      const stage2 = solveAgFlotation(stage1.sinks, agRecovery, agExposure(AS101_TRAIN_RESIDENCE_MIN));
       const out = {
         agFeedKg,
         toConcentrateKg: stage2.concentrateAgKg,
@@ -21937,6 +21974,20 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
             .map(([label, kg]) => `${label} ${(active.agFeedKg > 0 ? kg / active.agFeedKg * 100 : 0).toFixed(2)} %`)
             .join(" · ")
           : PENDING;
+      }
+      if (metUi.agAttrition) {
+        // 설계가 실제로 견딜 수 있는 EVA 제거 속도를 t95(노출도 0.95 에 걸리는 시간)로
+        // 말한다 — 벤치가 재서 돌려줄 값이 바로 그것이기 때문이다.
+        const tau = AS101_TRAIN_RESIDENCE_MIN;
+        const e = agExposure(tau);
+        const need = 0.99 / FC101_AG_RECOVERY.design;    // 99 % 에 필요한 노출도
+        const kNeed = -Math.log((1 - need) / (1 - AG_EXPOSURE_FEED)) / tau;
+        const t95 = -Math.log((1 - 0.95) / (1 - AG_EXPOSURE_FEED)) / kNeed;
+        metUi.agAttrition.textContent =
+          `어트리션 ${AS101_TRAIN_CELLS} 기 · 체류 ${tau.toFixed(1)} min → 노출도 ${e.toFixed(4)}`
+          + ` → Ag 회수 ${(e * FC101_AG_RECOVERY.design * 100).toFixed(2)} %.`
+          + ` 목표 99 % 를 지키려면 EVA 마찰제거가 t95 ≤ ${t95.toFixed(1)} min 이어야 합니다`
+          + ` (여기서 쓴 속도상수는 명판 5 min 에 0.95 라는 설계 의도값이지 실측이 아닙니다 — 관문 1).`;
       }
       if (metUi.agGates && !metUi.agGates.dataset.filled) {
         // innerHTML 대신 DOM 으로 짓는다 — 이 블록에는 esc() 가 없다(다른 모듈 스코프).
