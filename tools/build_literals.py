@@ -220,8 +220,8 @@ def main() -> int:
           lambda m: f"L([.14, {col:g}, .14], [x, {col / 2:g}, z]")
     p.one(r"L\(\[\.16, [\d.]+, 3\.04\], \[x, [\d.]+, 0\]",
           lambda m: f"L([.16, {depth:g}, 3.04], [x, {soffit + depth / 2:g}, 0]")
-    p.one(r"L\(\[1\.98, [\d.]+, \.14\], \[6\.10, [\d.]+, z\]",
-          lambda m: f"L([1.98, {depth:g}, .14], [6.10, {soffit + depth / 2:g}, z]")
+    p.one(r"L\(\[1\.98, [\d.]+, \.14\], \[pvZone\.afr\[0\]\+2\.05, [\d.]+, z\]",
+          lambda m: f"L([1.98, {depth:g}, .14], [pvZone.afr[0]+2.05, {soffit + depth / 2:g}, z]")
     p.one(r"// 크로스헤드 하면 [\d.]+ 가 클램프 실린더 상단을 직접 받는다\.",
           lambda m: f"// 크로스헤드 하면 {soffit:g} 가 클램프 실린더 상단을 직접 받는다.")
     p.one(r"y 1\.03…[\d.]+ 에 서 있는데 \*\*[\d.]+ 위에 아무것도 없었다\*\*",

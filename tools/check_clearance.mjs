@@ -141,7 +141,11 @@ const result = await page.evaluate(([t0, t1, dt, tol, contacts, work, pass]) => 
   for (let t = t0; t <= t1 + 1e-9; t += dt) {
     anim.setTime(+t.toFixed(2));
     frames++;
-    const boxes = meshes.map((m, i) => (m.visible ? worldBox(m) : null));
+    // 조상이 숨으면 자식도 화면에 없다 — three.js 의 visible 은 서브트리에 걸린다.
+    // 메시 자기 플래그만 보면 이미 사라진 공정물(떨어진 프레임 따위)이 계속
+    // 설비를 뚫는 것으로 잡힌다.
+    const shown = (m) => { for (let p = m; p; p = p.parent) if (!p.visible) return false; return true; };
+    const boxes = meshes.map((m) => (shown(m) ? worldBox(m) : null));
     for (let i = 0; i < meshes.length; i++) {
       if (!dynamic[i] || !boxes[i]) continue;
       for (let j = 0; j < meshes.length; j++) {

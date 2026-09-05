@@ -245,7 +245,7 @@ def build_block() -> str:
       f'pvAfrRod.push(Ee(bg,{q(rod_r)},{q(rod_len)},'
       f'[-sx*{q(bar_w / 2 + rod_len / 2)},0,cz],M.orange,null,null,[0,0,Math.PI/2]))}});}});')
     # ── 패널과 프레임 ────────────────────────────────────────────────────
-    A('var Cs=new ce;ot.add(Cs);')
+    A('var Cs=pvTransit(new ce);ot.add(Cs);')
     A(f'var iM=P(Cs,[{q(2 * HALF_X)},{q(PANEL_T)},{q(2 * HALF_Z)}],[0,{q(PANEL_Y)},0],h0,'
       f'"JBR 완료 패널 · JBOX 제거상태",'
       f'"{kinematics.PANEL_MM[0]:,}×{kinematics.PANEL_MM[1]:,} mm 최대규격이며 유리면 아래·백시트 위, '
@@ -619,14 +619,17 @@ def patch_prose(text: str) -> str:
         text = pat.sub(lambda _m, b=body: name + ":" + b, text, count=1)
 
     # 명판이 엉뚱한 기계 위에 떠 있었다 — AFR 기구 바로 위에 'SG-301' 판이,
-    # AFR 판은 6 m 상류 빈자리에 있었다. 3D 실측 위치로 옮긴다 (기구 4.85…7.35,
-    # SG-301 연마휠 10.79…11.15).
-    for name, x in (("AFR-101", "6.1"), ("SG-301", "11")):
-        pat = re.compile(r"^pvNamePlate\(g,([\d.]+),\[[-\d.]+,([\d.]+),([\d.]+)\],0,'"
-                         + name + r"'", re.M)
+    # AFR 판은 상류 빈자리에 있었다. REV.48 부터 자리를 **존 중심**에서 낸다:
+    # 리터럴(6.1 · 11)로 박아 두면 셀이 격자 위로 올 때 판만 옛 자리에 남는다
+    # (실제로 8.4 m · 5.8 m 어긋나 있었다). 생성기가 존 식을 다시 써 넣는다.
+    for var, cell, name in (("pdAfr", "afr", "AFR-101"), ("pdPos", "post", "SG-301")):
+        pat = re.compile(r"window\." + var + r"=pvNamePlate\(g,([\d.]+),"
+                         r"\[[^,]+,([\d.]+),([\d.]+)\],0,'" + name + r"'")
         assert len(pat.findall(text)) == 1, f"명판 앵커 {name}"
-        text = pat.sub(lambda m, x=x, n=name: f"pvNamePlate(g,{m.group(1)},"
-                       f"[{x},{m.group(2)},{m.group(3)}],0,'{n}'", text, count=1)
+        text = pat.sub(lambda m, c=cell, v=var, n=name:
+                       f"window.{v}=pvNamePlate(g,{m.group(1)},"
+                       f"[(pvZone.{c}[0]+pvZone.{c}[1])/2,{m.group(2)},{m.group(3)}],0,'{n}'",
+                       text, count=1)
 
     # 옛 단일 휨 상수는 죽었다 — 두 변의 휨이 서로 다른 데서 나온다
     text = text.replace("var pvBow=.059;", "")
@@ -642,30 +645,32 @@ def patch_prose(text: str) -> str:
 
 def main() -> int:
     text = DRAWING.read_text(encoding="utf-8")
-    lines = text.split("\n")
-    idx = max(range(len(lines)), key=lambda i: len(lines[i]) if "AFR-101" in lines[i] else 0)
-    line = lines[idx]
 
-    b0 = line.index("var Pu=[];")
-    b1 = line.index("var Wr=4.55;")
-    a0 = line.index("w0(r);")
-    a1 = line.index("eu.visible=a&&l>=31.2,eu.scale.y=le(.2,1,x);") + len(
-        "eu.visible=a&&l>=31.2,eu.scale.y=le(.2,1,x);")
+    # 앵커는 파일 전체에서 찾는다. 종전에는 "AFR-101 이 든 가장 긴 줄" 하나를
+    # 골라 그 안에서 잘랐는데, 주석 한 줄이 들어가 번들 줄이 갈리자 형상 블록과
+    # 애니메이션이 서로 다른 줄로 나뉘어 생성기가 자기 자리를 못 찾았다.
+    # 각 구간은 그 자체로 유일한 문자열 사이에 있다.
+    def span(start: str, end: str, *, keep_end: bool) -> tuple[int, int]:
+        assert text.count(start) == 1, f"앵커 {text.count(start)}곳: {start}"
+        assert text.count(end) == 1, f"앵커 {text.count(end)}곳: {end}"
+        i = text.index(start)
+        j = text.index(end) + (len(end) if keep_end else 0)
+        assert i < j, (start, end)
+        return i, j
 
-    assert b0 < b1 < a0 < a1, (b0, b1, a0, a1)
-    line = line[:a0] + build_anim() + line[a1:]
-    line = line[:b0] + build_block() + line[b1:]
-    lines[idx] = line
+    a0, a1 = span("w0(r);", "eu.visible=a&&l>=31.2,eu.scale.y=le(.2,1,x);", keep_end=True)
+    text = text[:a0] + build_anim() + text[a1:]
+    b0, b1 = span("var Pu=[];", "/* @afr-block-end", keep_end=False)
+    text = text[:b0] + build_block() + text[b1:]
 
-    # 시험 훅은 다른 줄에 있다 — 거기도 모델값으로 맞춘다.
-    hits = [i for i, ln in enumerate(lines) if HOOK_OLD in ln or build_hook() in ln]
-    assert len(hits) == 1, f"시험 훅 앵커 {len(hits)}"
-    lines[hits[0]] = lines[hits[0]].replace(HOOK_OLD, build_hook())
+    # 시험 훅도 모델값으로 맞춘다.
+    assert text.count(HOOK_OLD) + text.count(build_hook()) == 1, "시험 훅 앵커"
+    text = text.replace(HOOK_OLD, build_hook())
 
-    text = patch_prose("\n".join(lines))
+    text = patch_prose(text)
     DRAWING.write_text(text, encoding="utf-8")
-    print(f"AFR 3D 블록 재생성 — 빌드 {b1 - b0} → {len(build_block())} 자, "
-          f"애니 {a1 - a0} → {len(build_anim())} 자")
+    print(f"AFR 3D 블록 재생성 — 빌드 {len(build_block()):,} 자 · "
+          f"애니 {len(build_anim()):,} 자")
     return 0
 
 

@@ -403,7 +403,8 @@ class TestOneTransferPlane(unittest.TestCase):
         self.assertEqual(layout.STATIONS["buffer"].transfer_height_mm,
                          layout.LINE_TRANSFER_MM)
         # 나이프 롤러가 셔틀 상류면에서 정확히 BUFFER_NIP_MM 만큼 떨어져 있다.
-        self.assertIn("[Ri-1.6-pvNip-pvRollR,pvRollY,0]", self.html,
+        self.assertIn("[pvZone.buffer[0]-pvNip-pvRollR"
+                      "-(pvZone.post[0]+pvZone.post[1])/2,pvRollY,0]", self.html,
                       "나이프 롤러 위치가 모델에서 나오지 않는다")
         # 셔틀 데크판은 롤러 밑으로 들어간다 — 유리는 롤러가 받는다.
         self.assertIn("[Ri,pvRollY-pvRollR-.105,0]", self.html)
@@ -454,12 +455,12 @@ class TestOneTransferPlane(unittest.TestCase):
                          ("pdBuf", "buffer"), ("pdGrm", "grm")):
             with self.subTest(adopt=key):
                 self.assertIn(f"adopt(window.{var},'{key}')", html)
-        # robot·post 는 아직 셀 그룹이 없다 — 없는 셀에 입양시키면 조용히 실패한다
-        for key in ("robot", "post"):
-            with self.subTest(pending=key):
-                self.assertNotIn(f"adopt(window.pd,'{key}')", html)
-                self.assertIn(key, layout.SCENE_GRID_OPEN + " robot post",
-                              "아직 그룹이 없는 셀은 미해결로 남아 있어야 한다")
+        # REV.48: robot·post 셀 그룹이 생겼으므로 남은 두 명판도 제 셀로 간다.
+        for var, key in (("pdRob", "robot"), ("pdPos", "post")):
+            with self.subTest(adopt=key):
+                self.assertIn(f"adopt(window.{var},'{key}')", html)
+        self.assertIsNone(layout.SCENE_GRID_OPEN, "격자가 맞았으면 미해결이 없다")
+        self.assertTrue(layout.scene_grid_is_registered())
 
     def test_what_is_not_a_cell_says_so(self):
         """셀에 안 속하는 것과 **귀속을 빠뜨린 것**은 다르다.
@@ -487,8 +488,11 @@ class TestOneTransferPlane(unittest.TestCase):
         플레이트·크로스헤드·타이빔이 전부 `pt` 에 있었다.
         """
         html = self.html
-        # 인계 롤러는 AFR 그룹 안에서 그린다 (월드 자리는 -qt 로 보정한다)
-        self.assertIn("u0.push(Ee(ot,pvRollR,1.5,[e-qt,pvRollY,0],M.rubber,", html)
+        # 인계 롤러는 AFR 그룹 안에서 그린다 (월드 자리는 -qt 로 보정한다).
+        # REV.48: 자리를 존 경계에서 내고, 셀을 건너는 이송면이라 transit 로 밝힌다.
+        self.assertIn("var pvJaHand=pvTransit(new ce);ot.add(pvJaHand);", html)
+        self.assertIn("le(pvZone.afr[0]-1.315,pvZone.afr[0]-.045,i/9)", html)
+        self.assertIn("u0.push(Ee(pvJaHand,pvRollR,1.5,[e-qt,pvRollY,0],M.rubber,", html)
         # 포탈은 자리를 그대로 두고 소속만 셀로 바꾼다
         self.assertIn("window.pdPortal = [];", html)
         self.assertIn("window.pdTie = [];", html)
@@ -2258,13 +2262,12 @@ class TestBrandMark(unittest.TestCase):
         want = {"EC-AFU": "afu", "EC-ROB": "robot", "EC-JBR": "jbr", "EC-AFR": "afr",
                 "EC-POS": "post", "EC-BUF": "buffer", "EC-GRM": "grm"}
         labels = {z.key: z.label for z in layout.build_zones()}
-        calls = re.findall(r"pvNamePlate\(g,([\d.]+),\[([-\d.]+),([\d.]+),([-\d.]+)\],"
-                           r"0,'([\w-]+)','([^']*)'\)", self.html)
+        calls = self.nameplate_calls()
         # 캐비닛 7면 + 관제실 1면 + 셀 마크 데칼 7장
         self.assertEqual(len(calls), len(want) + 1 + len(DECAL_TAGS))
         seen = {}
         for w, x, y, z, tag, sub in calls:
-            seen[tag] = (float(w), float(z), sub)
+            seen[tag] = (w, z, sub)
         for tag, key in want.items():
             with self.subTest(tag=tag):
                 self.assertIn(tag, seen, f"{tag} 명판이 없다")
@@ -2423,10 +2426,8 @@ class TestBrandMark(unittest.TestCase):
         그래서 셀마다 통로쪽 가드 면에 데칼을 붙였다. 여기서 지키는 것은 셋이다 —
         셀마다 하나일 것, 멀리서 읽힐 만큼 클 것, 통로를 먹지 않을 것.
         """
-        calls = re.findall(r"pvNamePlate\(g,([\d.]+),\[([-\d.]+),([\d.]+),([-\d.]+)\],"
-                           r"0,'([\w-]+)','([^']*)'\)", self.html)
-        decals = {tag: (float(w), float(x), float(z))
-                  for w, x, y, z, tag, _ in calls if tag in DECAL_TAGS}
+        calls = self.nameplate_calls()
+        decals = {tag: (w, x, z) for w, x, y, z, tag, _ in calls if tag in DECAL_TAGS}
         self.assertEqual(set(decals), set(DECAL_TAGS), "셀마다 데칼이 하나씩 있어야 한다")
 
         zones = {z.key: z for z in layout.build_zones() if z.key != "gate"}
@@ -2455,50 +2456,63 @@ class TestBrandMark(unittest.TestCase):
                                          f"{tag} 데칼이 자기 기계 위에 없다 "
                                          f"(씬 원점 {anchor:.2f}, 데칼 {x:.2f})")
 
+    def nameplate_calls(self):
+        """도면의 `pvNamePlate` 호출 — x 는 숫자일 수도 존 식일 수도 있다.
+
+        REV.48 부터 셀 마크 데칼의 x 를 `(pvZone.<셀>[0]+pvZone.<셀>[1])/2` 로
+        낸다. 숫자만 읽으면 그 데칼들이 목록에서 조용히 빠져 "셀마다 하나" 가
+        참인 것처럼 보인다 — 실제로 그렇게 통과했다. 식이면 존에서 값을 낸다.
+        """
+        zones = {z.key: z for z in layout.build_zones()}
+
+        def px(raw: str) -> float:
+            m = re.fullmatch(r"\(pvZone\.(\w+)\[0\]\+pvZone\.(\w+)\[1\]\)/2", raw)
+            if m:
+                self.assertEqual(m.group(1), m.group(2), "한 셀의 두 끝이어야 한다")
+                z = zones[m.group(1)]
+                return (z.x0_mm + z.x1_mm) / 2000 - 24.75
+            return float(raw)
+
+        found = re.findall(r"pvNamePlate\(g,([\d.]+),"
+                           r"\[([-\d.]+|\(pvZone\.\w+\[0\]\+pvZone\.\w+\[1\]\)/2),"
+                           r"([\d.]+),([-\d.]+)\],0,'([\w-]+)','([^']*)'\)", self.html)
+        return [(float(w), px(x), float(y), float(z), tag, sub)
+                for w, x, y, z, tag, sub in found]
+
     def scene_anchor(self, tag: str) -> float | None:
         """씬이 그 기계를 실제로 세워 둔 x (world m).
 
-        데칼 좌표와 **다른** 리터럴에서 읽는다 — 씬은 AFR 셀 그룹을 `qt` 로, 그
-        안의 후단 설비를 지역 오프셋 `ln`·`Ri` 로 세우고, GRM 셀은 자기
-        position.set 으로 세운다. 데칼을 데칼로 재면 아무것도 검증되지 않는다.
+        REV.47 까지는 셀마다 자기 리터럴(`qt`·`ln`·`Ri`)이 있어 데칼을 그것과
+        대조했다. REV.48 에서 **일곱 셀이 전부 존 격자 위로 올라왔으므로**
+        (`layout.scene_grid_is_registered()`) 기계의 자리가 곧 존이다. 씬이
+        정말 존에서 원점을 내는지는 아래 시험이 리터럴로 확인한다.
         """
-        qt = float(re.search(r"qt=([\d.]+),ot=new ce", self.html).group(1))
-        local = {"AFR-101": 0.0}
-        for name, key in (("ln", "SG-301"), ("Ri", "GBR-301")):
-            found = re.search(r"[,;]" + name + r"=([\d.]+)[,;]", self.html)
-            if found:
-                local[key] = float(found.group(1))
-        if tag in local:
-            return qt + local[tag]
-        if tag == "GRM-401":
-            # REV.47: 리터럴이 아니라 존 중심 파생이다 (pvZone.grm 의 중점).
-            self.assertIn("pvGrm.position.set((pvZone.grm[0]+pvZone.grm[1])/2,",
-                          self.html)
-            grm = next(z for z in layout.build_zones() if z.key == "grm")
-            return (grm.x0_mm + grm.x1_mm) / 2000 - 24.75
-        return None                                       # 상류 셀은 존 격자와 맞는다
+        self.assertTrue(layout.scene_grid_is_registered())
+        return None
 
-    def test_the_scene_grid_and_the_zone_table_disagree(self):
-        """**미해결** — 3D 셀 원점과 존 표가 AFR 아래에서 갈라져 있다.
+    def test_the_scene_grid_and_the_zone_table_agree(self):
+        """3D 셀 원점이 존 표 위에 있다 — REV.48 에서 맞췄다.
 
-        존 표는 셀 GA 포락선을 이어 붙여 만들고, 3D 씬은 셀 x 를 직접 박아 뒀다.
-        나중에 붙인 GRM·케이싱·EC 명판만 존 표를 따랐다. 실측하면 존 표가
-        AFR→버퍼에 25,350 을 주는데 3D 는 20,000 으로 그린다.
-
-        이 시험은 그 차이를 **기록**한다. 격자를 맞추면 이 시험이 깨지고, 그때
-        layout.SCENE_GRID_OPEN 과 함께 지우면 된다. 조용히 넘어가지 않게 남긴다.
+        종전에는 이 자리에 **미해결 기록** 시험이 있었다. AFR→버퍼 구간을 존
+        표는 24,600 으로, 3D 는 20,000 으로 그려 4,600 이 갈라져 있었고, 어느
+        쪽이 맞는지가 발주처 확인 사항이었다. 3D 를 옮기는 쪽으로 정리했으므로
+        이제 그 차이는 0 이고, 셀 원점이 **리터럴이 아니라 존 식**이어야 한다 —
+        리터럴로 되돌리면 다음에 존이 움직일 때 또 갈라진다.
         """
-        self.assertFalse(layout.scene_grid_is_registered(),
-                         "격자가 맞았다면 layout.SCENE_GRID_OPEN 과 이 시험을 지울 것")
-        self.assertEqual(layout.scene_grid_gap_mm(), layout.SCENE_GRID_GAP_MM)
-        self.assertEqual(layout.afr_to_buffer_zone_mm(),
-                         layout.SCENE_AFR_TO_BUFFER_MM + layout.SCENE_GRID_GAP_MM)
-        # 3D 가 실제로 그 길이인지 — 씬 리터럴에서 재확인한다
-        qt = float(re.search(r"qt=([\d.]+),ot=new ce", self.html).group(1))
-        zones = {z.key: z for z in layout.build_zones()}
-        afr_lo = (zones["afr"].x0_mm - 24750) / 1000
-        self.assertGreater(qt, afr_lo + 5,
-                           "AFR 셀 원점이 자기 존 안으로 들어왔다면 격자가 맞은 것이다")
+        self.assertIsNone(layout.SCENE_GRID_OPEN)
+        self.assertTrue(layout.scene_grid_is_registered())
+        self.assertEqual(layout.scene_grid_gap_mm(), 0)
+        self.assertEqual(layout.afr_to_buffer_zone_mm(), layout.SCENE_AFR_TO_BUFFER_MM)
+        # 셀 원점이 존에서 나온다 — 씬 리터럴로 확인한다
+        for anchor in (
+                "gt=(pvZone.jbr[0]+pvZone.jbr[1])/2",
+                "qt=pvZone.afr[0]+2.45-.4",
+                "op.position.x=(pvZone.post[0]+pvZone.post[1])/2",
+                "pvGrm.position.set((pvZone.grm[0]+pvZone.grm[1])/2,"):
+            with self.subTest(anchor=anchor):
+                self.assertIn(anchor, self.html, "셀 원점이 존에서 나오지 않는다")
+        # 그리고 격자 검사기가 저장소에 있다 — 이 값을 실제로 재는 것은 그쪽이다
+        self.assertTrue((ROOT / "tools" / "check_cell_grid.mjs").exists())
 
     def test_the_plate_texture_paints_the_mark_not_a_copy(self):
         """명판 텍스처가 마크를 **직접 그리지 않고** 전역을 부른다.
@@ -3758,6 +3772,27 @@ class TestKinematics(unittest.TestCase):
             with self.subTest(const=const):
                 self.assertEqual(words(const), set(model),
                                  f"{const} 가 모델과 검사 도구에서 다르다")
+
+    def test_the_sweep_only_sees_what_is_on_screen(self):
+        """조상이 숨으면 자식도 화면에 없다.
+
+        three.js 의 `visible` 은 서브트리에 걸린다 — 그룹을 숨기면 그 안의
+        메시는 `visible` 이 참이어도 그려지지 않는다. 스윕이 메시 자기
+        플래그만 보던 동안, 이미 사라진 공정물(AFR 에서 떨어져 나간 장축
+        프레임)이 후단 컨베이어 가대를 16 mm 뚫는 것으로 잡혔다. 없는 것이
+        뚫었다고 보고하면 진짜 관통이 그 안에 묻힌다.
+
+        고친 뒤 겹침 쌍이 1,110 → 319 로 줄었다 — 791 쌍이 화면에 없는
+        물건이었다는 뜻이다.
+        """
+        tool = (pathlib.Path(__file__).resolve().parents[1]
+                / "tools" / "check_clearance.mjs").read_text(encoding="utf-8")
+        self.assertIn("const shown = (m) => { for (let p = m; p; p = p.parent) "
+                      "if (!p.visible) return false; return true; };", tool,
+                      "조상 가시성을 따라 올라가는 판정이 없다")
+        self.assertIn("meshes.map((m) => (shown(m) ? worldBox(m) : null))", tool)
+        self.assertNotIn("m.visible ? worldBox(m)", tool,
+                         "메시 자기 플래그만 보는 옛 판정이 남아 있다")
 
 
 class TestCrane(unittest.TestCase):
@@ -5216,9 +5251,9 @@ class TestCasing(unittest.TestCase):
                          layout.plant_envelope_mm()[0]
                          + sum(casing.end_offset_mm(k) + casing.PANEL_ASSY_MM // 2
                                for k in casing.END_FRAME_OUT_MM))
-        # 상류는 아직 안 맞았으므로 미해결 항목은 그대로 남는다
-        self.assertTrue(layout.SCENE_GRID_OPEN)
-        self.assertFalse(layout.scene_grid_is_registered())
+        # REV.48: 상류까지 맞췄으므로 미해결 항목이 비었다
+        self.assertIsNone(layout.SCENE_GRID_OPEN)
+        self.assertTrue(layout.scene_grid_is_registered())
         # 도면의 하류 끝단 판이 실제로 기계 밖에 있다
         world_x = (casing.MEASURED_END_MM + casing.end_offset_mm("grm") - 24_750) / 1000
         self.assertIn(f"{world_x:g},", read_drawing())
