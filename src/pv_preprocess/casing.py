@@ -163,7 +163,8 @@ MODULE_ZONE: dict[str, str] = {
     "RB-POST": "post",
     "RB-GBR": "buffer",
     "RB-GRM": "grm",
-    "RB-DUST": "post",     # DX-601 은 SG-301 옆(post 존)에 선다
+    "RB-DUST": "post",     # DX-601 은 GI-301 옆(post 존)에 선다 — REV.50: SG-301 은
+                           # AFR 반출롤러 위(존 경계 −475)라 연마휠(SP-03)은 post 문에서 닿는다
 }
 
 #: 이 껍질이 아닌 교환 모듈과 그 사유. **여기 적지 않고 빠지면 시험이 잡는다** —
@@ -243,7 +244,8 @@ def end_offset_mm(key: str) -> int:
 #:
 #: REV.49: 58,050 → 56,200. afu 존이 1,850 줄며 하류 전부가 같이 왔다 —
 #: 격자가 등록돼 있으므로 3D 끝단이 존 끝을 그대로 따라온 값이다(재실측).
-MEASURED_END_MM = 56_200
+#: REV.50: 56,200 → 50,750. 후단 셀 8,900 → 3,350 (−5,550), AFR +100 (SG 몸체가 롤러 런 밖으로 100).
+MEASURED_END_MM = 50_750
 
 def scene_end_shim_mm() -> int:
     """3D 끝단 판이 존 경계 밖으로 **더** 물러서야 하는 양 (mm). 등록되면 0.

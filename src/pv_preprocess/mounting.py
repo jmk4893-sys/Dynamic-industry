@@ -132,8 +132,11 @@ MEMBERS: tuple[Member, ...] = (
     Member("HKS-201 Z축 슬라이드", "grm", "gantry", "셀/EVA 분리 핫나이프"),
     Member("GRM-EX-401 덕트 스탠션 4", "grm", "frame", "IR 배기 덕트"),
     Member("GRM-CD-401 후드 독립지지 기둥 4본", "grm", "floor", "냉각 후드"),
-    Member("AFR CV-101 컨베이어 사이드 프레임 2본", "afr", "floor", "투입 롤러 12본"),
-    Member("AFR CV-101 가대 다리 8본 (베이스플레이트 240□)", "afr", "floor",
+    # REV.50: 이 가대는 후단 셀의 CV-102 통과 롤러 런을 받는다 — 라벨이 'AFR CV-101'
+    # 이고 소속이 afr 이었지만 3D 는 처음부터 post 셀에 세우고 있었다. 이름과 소속을
+    # 형상에 맞춘다 (8,100 → 2,850 · 다리 8 → 4).
+    Member("CV-102 컨베이어 사이드 프레임 2본", "post", "floor", "GI 통과 롤러 12본"),
+    Member("CV-102 가대 다리 4본 (베이스플레이트 240□)", "post", "floor",
            "컨베이어 사이드 프레임"),
     Member("CMP-701 컴프레서 방진 마운트 2조", "post", "floor",
            "스크류 2대 × 5.5 kW — 회전기라 방진 마운트로 받는다"),
@@ -169,7 +172,7 @@ BRACKET_PREFIX = "MB-"
 #:
 #: 폐번 대장(MB-021·022)은 없앴다 — 번호가 생성물이면 지킬 것이 없다. 대신
 #: **그 번호들이 가르쳐 준 것**을 규칙으로 옮겼다 (`BRACKET_KEEP_OUT`).
-BRACKET_COUNT = 50
+BRACKET_COUNT = 46
 
 #: 브래킷이 들어가면 안 되는 부피 — (이름, (x0, x1, y0, y1), 사유). 단위 m, 씬 월드.
 #:

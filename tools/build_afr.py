@@ -622,7 +622,8 @@ def patch_prose(text: str) -> str:
     # AFR 판은 상류 빈자리에 있었다. REV.48 부터 자리를 **존 중심**에서 낸다:
     # 리터럴(6.1 · 11)로 박아 두면 셀이 격자 위로 올 때 판만 옛 자리에 남는다
     # (실제로 8.4 m · 5.8 m 어긋나 있었다). 생성기가 존 식을 다시 써 넣는다.
-    for var, cell, name in (("pdAfr", "afr", "AFR-101"), ("pdPos", "post", "SG-301")):
+    # REV.50: 후단 셀의 기계는 GI-301/302 다 — SG-301 은 AFR 반출롤러 위로 갔다.
+    for var, cell, name in (("pdAfr", "afr", "AFR-101"), ("pdPos", "post", "GI-302")):
         pat = re.compile(r"window\." + var + r"=pvNamePlate\(g,([\d.]+),"
                          r"\[[^,]+,([\d.]+),([\d.]+)\],0,'" + name + r"'")
         assert len(pat.findall(text)) == 1, f"명판 앵커 {name}"

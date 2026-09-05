@@ -144,7 +144,8 @@ INSTRUMENTS: tuple[Instrument, ...] = (
                "LP-INST", 6.0, "펌프·전동기 베어링 열화 추세", "AI-05"),
     Instrument("VIB-902", "afr", "HPU-601 유압펌프 3축 진동", 1, 16, 1.0,
                "LP-INST", 6.0, "7.5 kW 펌프 — 라인 최대 유압원", "AI-05"),
-    Instrument("VIB-903", "post", "SG-301 연마 스핀들 3축 진동", 2, 16, 1.0,
+    # REV.50: SG-301 이 AFR 반출롤러 위로 갔으므로 스핀들 진동 센서도 afr 존이다.
+    Instrument("VIB-903", "afr", "SG-301 연마 스핀들 3축 진동", 2, 16, 1.0,
                "LP-INST", 6.0, "휠 마모·불평형 — 유리 흠집의 선행지표", "AI-05"),
     Instrument("VIB-904", "post", "DX-601 집진 블로워 3축 진동", 2, 16, 1.0,
                "LP-INST", 6.0, "임펠러 분진 부착 불평형", "AI-05"),

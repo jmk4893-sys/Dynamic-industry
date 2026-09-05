@@ -191,7 +191,7 @@ def main() -> int:
     # ── 통합 제거셀의 가드 ───────────────────────────────────────────────
     # 두 스테이션은 한 인클로저 안에 있다. 접합부에는 벽이 없으므로 각 시트의
     # 가드는 자기 존 구간만 그린다 — 폭·중심을 장비 실측에서 파생한다.
-    hardware = {"jbr": (-3400, 3400), "afr": (-2325, 3225)}
+    hardware = {"jbr": (-3400, 3400), "afr": (-2325, 3325)}   # REV.50: SG-301 몸체 끝 (롤러 런 중심 2,225 + 1,100)
     edge, junction = layout.GUARD_CLEARANCE_X_MM, layout.STATION_JUNCTION_MM // 2
     guard_lo: dict[str, int] = {}
     for key, (h0, h1) in hardware.items():

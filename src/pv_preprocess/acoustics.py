@@ -72,11 +72,13 @@ def noise_sources() -> tuple[NoiseSource, ...]:
     afu0 = next(z.x0_mm for z in build_zones() if z.key == "afu")
     jbr = _zone_center("jbr")
     afr = _zone_center("afr")
+    # REV.50: SG-301 은 AFR 반출롤러 위(afr 존 시작 + 4,675 — 시트 2,225, 롤러 런 중심)에 선다.
+    afr0 = next(z.x0_mm for z in build_zones() if z.key == "afr")
     post = _zone_center("post")
     buffer_ = _zone_center("buffer")
     grm = _zone_center("grm")
     return (
-        NoiseSource("NS-SG", "SG-301 양측 연마 스핀들", post, 96.0, 18.0,
+        NoiseSource("NS-SG", "SG-301 양측 연마 스핀들", afr0 + 4_675, 96.0, 18.0,
                     "가드 흡음 라이닝 + 국소집진 후드 밀착", "정상"),
         NoiseSource("NS-DXM", "DX-601 주 집진 블로워", post, 92.0, 20.0,
                     "AFR-ENC-601 흡음 인클로저 + AFR-SIL-601 배기 소음기", "정상"),

@@ -24,11 +24,11 @@ def num(v):
     return t[1:] if t.startswith("0.") else ("-" + t[2:] if t.startswith("-0.") else t)
 
 SUB = {"afu": "LFT-A/B · BFC 투입", "robot": "PT 정렬 · 반전 투입",
-       "jbr": "정션박스 제거", "afr": "알루미늄 프레임 분리",
-       "post": "CV · SG · GI 유리 검사", "buffer": "레시피 버퍼",
+       "jbr": "정션박스 제거", "afr": "프레임 분리 · SG 연마",
+       "post": "CV · GI 유리 검사", "buffer": "레시피 버퍼",
        "grm": "유리 제거"}
 TAG = {"afu": "AFU-101", "robot": "RB-101", "jbr": "JBR-201", "afr": "AFR-101",
-       "post": "SG-301", "buffer": "GBR-301", "grm": "GRM-401"}
+       "post": "GI-302", "buffer": "GBR-301", "grm": "GRM-401"}   # REV.50: SG-301 은 afr
 
 out = []
 w = out.append
@@ -95,8 +95,10 @@ for key in C.CASED_ZONES:
         w(f"CN(L([{num(seam*3)},{num(m(C.SHOULDER_MM))},{num(assy)}],"
           f"[{mx},{num(m(C.SHOULDER_MM/2))},{num(round(fz - assy/2, 4))}],M.dark,null),"
           f"'case:{key}:mullion{i}');")
-    # 마크는 존마다 한 곳, 같은 높이 — 첫 막힌 칸
-    first = next(b for b in C.bays(key) if b.kind == "solid")
+    # 마크는 존마다 한 곳, 같은 높이 — 첫 막힌 칸. REV.50 부터 post 존은 3칸(문·창·문)뿐이라
+    # 막힌 칸이 없다 — 그때는 첫 문에 붙인다 (문 손가락 홈은 리빌 밑이라 마크와 안 겹친다).
+    first = next((b for b in C.bays(key) if b.kind == "solid"), None) \
+        or next(b for b in C.bays(key) if b.kind == "door")
     mcx = num(wx(x0 + (first.index + 0.5) * bw))
     w(f"CN(pvNamePlate(g,{num(m(bw*0.62))},[{mcx},{num(m(1750))},{num(round(fz - 0.006, 4))}],0,"
       f"'{TAG[key]}','{SUB[key]}','{key} 외장 케이싱 — 어깨 {C.SHOULDER_MM} · 리빌 {C.DATUM_MM} mm'),"
