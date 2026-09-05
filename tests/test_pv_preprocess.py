@@ -3249,21 +3249,39 @@ class TestMounting(unittest.TestCase):
         self.assertEqual(mounting.members_by_class()["floor"], 16)
 
     def test_brackets_came_from_measured_gaps(self):
-        """브래킷은 임의로 세운 것이 아니라 잰 것이다 — 전부 도면에 있어야 한다."""
-        self.assertEqual(mounting.BRACKET_SERIES, 53)
-        self.assertEqual(mounting.BRACKET_COUNT, 51)
-        for tag in mounting.bracket_tags():
-            with self.subTest(bracket=tag):
-                self.assertIn(tag + " 지지 브래킷", self.html)
-        # 폐번은 도면에 없어야 하고, 왜 물렸는지가 남아야 한다
-        for tag, why in mounting.BRACKET_WITHDRAWN:
-            with self.subTest(withdrawn=tag):
-                # 부품으로는 없어야 한다. 폐번 사유를 적은 주석에는 이름이 남는다 —
-                # 그게 이 번호를 다시 쓰지 않는 근거다.
-                self.assertNotIn(tag + " 지지 브래킷", self.html)
-                self.assertGreater(len(why), 20, "폐번 사유가 한 줄은 있어야 한다")
-        # 번호는 재사용하지 않는다 — 채번 범위 밖은 비어 있어야 한다
-        self.assertNotIn(f"{mounting.BRACKET_PREFIX}{mounting.BRACKET_SERIES + 1:03d}", self.html)
+        """브래킷은 손으로 세운 것이 아니라 **도구가 잰 것**이다.
+
+        REV.47 까지 51본이 씬에 월드 좌표 리터럴로 박혀 있었고 만든 도구가
+        저장소에 없었다 — 셀을 옮기면 브래킷이 옛 자리에 남아 하중 경로가
+        끊겼다(A-2b 첫 시도에서 12본). 이제 `tools/build_brackets.mjs` 가
+        실측 틈에서 낸다. 이 시험은 그 출력과 모델이 같은지를 본다.
+        """
+        block = self.html.split("/* @brackets-begin */")[1].split("/* @brackets-end */")[0]
+        drawn = re.findall(r"'(MB-\d{3}) 지지 브래킷'", block)
+        self.assertEqual(drawn, list(mounting.bracket_tags()),
+                         "브래킷 번호가 001 부터 빈 번호 없이 이어지지 않는다")
+        self.assertEqual(len(drawn), mounting.BRACKET_COUNT)
+        # 블록 밖에는 브래킷이 없어야 한다 — 손으로 하나 더 세우면 걸린다
+        self.assertEqual(self.html.count(" 지지 브래킷'"), len(drawn))
+        # 그리고 브래킷은 **움직이는 것의 경로** 안에 서면 안 된다
+        self.assertTrue(mounting.BRACKET_KEEP_OUT)
+        for name, (x0, x1, y0, y1), why in mounting.BRACKET_KEEP_OUT:
+            with self.subTest(volume=name):
+                self.assertLess(x0, x1)
+                self.assertLess(y0, y1)
+                self.assertGreater(len(why), 30, "금지 부피에는 사유가 있어야 한다")
+                # 재생성기가 같은 부피를 알고 있어야 한다
+                tool = (ROOT / "tools" / "build_brackets.mjs").read_text(encoding="utf-8")
+                self.assertIn(f"'{name}', {x0:g}, {x1:g}, {y0:g}, {y1:g}", tool,
+                              "모델과 재생성기의 금지 부피가 다르다")
+        for line in block.splitlines():
+            found = re.search(r"L\(\[[\d., ]+\],\[(-?[\d.]+),(-?[\d.]+)", line)
+            if not found:
+                continue
+            bx, by = float(found.group(1)), float(found.group(2))
+            for name, (x0, x1, y0, y1), _ in mounting.BRACKET_KEEP_OUT:
+                self.assertFalse(x0 < bx < x1 and y0 < by < y1,
+                                 f"브래킷이 {name} 안에 서 있다 (x={bx} y={by})")
 
     def test_exemptions_are_named_and_justified(self):
         """받칠 대상이 아닌 것은 근거와 함께 적는다 — 늘리기 쉬우면 안 된다."""

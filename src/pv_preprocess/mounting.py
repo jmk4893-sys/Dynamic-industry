@@ -160,27 +160,37 @@ MEMBERS: tuple[Member, ...] = (
 #: **실측 간격**에서 나왔다 — 임의로 세운 것이 아니라 잰 것이다.
 BRACKET_PREFIX = "MB-"
 
-#: 채번 범위. 폐번이 있어도 번호는 재사용하지 않는다 — 도면 관례다.
-BRACKET_SERIES = 53
+#: 브래킷 본수 — `tools/build_brackets.mjs` 의 출력이다. 손으로 정하지 않는다.
+#:
+#: REV.47 까지 51본이 씬에 **월드 좌표 리터럴**로 박혀 있었고 만든 도구가
+#: 저장소에 없었다. 그래서 셀을 하나라도 옮기면 브래킷이 옛 자리에 남아 하중
+#: 경로가 끊겼다 — A-2b 첫 시도에서 12본이 실제로 그렇게 떴다. 형상을 옮길 수
+#: 없는 도면은 고칠 수 없는 도면이므로, 재생성기를 세우고 이 값을 그 출력으로
+#: 바꾼다. 형상이 바뀌면 도구를 다시 돌리고 이 한 줄을 같이 고친다.
+#:
+#: 폐번 대장(MB-021·022)은 없앴다 — 번호가 생성물이면 지킬 것이 없다. 대신
+#: **그 번호들이 가르쳐 준 것**을 규칙으로 옮겼다 (`BRACKET_KEEP_OUT`).
+BRACKET_COUNT = 31
 
-#: 폐번 — 세웠다가 물린 것. 왜 물렸는지가 남아야 같은 실수를 반복하지 않는다.
-BRACKET_WITHDRAWN: tuple[tuple[str, str], ...] = (
-    ("MB-021", "BFC-101A 셔틀 레일을 가장 가까운 부재(x −15.73)에 물리려 했는데 "
-               "그 자리가 팔레트 리프트의 승강 경로 한가운데였다 — 간섭 스윕이 "
-               "팔레트와의 겹침으로 잡아냈다. 팔레트 발자국 밖의 지지 포스트로 대체."),
-    ("MB-022", "BFC-101B 셔틀 레일도 같은 이유다 — 자동 생성이 고른 최근접 부재가 "
-               "팔레트 리프트 승강 경로 안이었다. 대칭 위치의 지지 포스트로 대체."),
+#: 브래킷이 들어가면 안 되는 부피 — (이름, (x0, x1, y0, y1), 사유). 단위 m, 씬 월드.
+#:
+#: "가장 가까운 접지 부재에 매단다" 는 규칙은 **움직이는 것 옆에서 틀린다.**
+#: 그 자리에 부재가 있다는 것과 그 자리가 늘 비어 있다는 것은 다른 말이다.
+#: 팔레트는 발자국 그대로 픽업면 1,880 까지 올라가므로, 막아야 할 것은 바닥
+#: 자리가 아니라 **쓸고 지나가는 부피**다 — 그래서 높이까지 적는다.
+BRACKET_KEEP_OUT: tuple[tuple[str, tuple[float, float, float, float], str], ...] = (
+    ("LFT-101A 팔레트 승강 경로", (-22.45, -19.65, 0.20, 1.95),
+     "팔레트 발자국(2,760)이 픽업면 1,880 까지 그대로 올라간다."),
+    ("LFT-101B 팔레트 승강 경로", (-18.05, -15.25, 0.20, 1.95),
+     "BFC 셔틀 레일을 최근접 부재(x −15.73)에 물리려던 브래킷 2본이 바로 여기 "
+     "섰다가 간섭 스윕에 팔레트와의 겹침으로 잡혔다(옛 MB-021·022). 팔레트 "
+     "발자국 밖(x −14.85)의 지지 포스트로 대체했고, 이 부피에는 세우지 않는다."),
 )
 
 
 def bracket_tags() -> tuple[str, ...]:
-    """실제로 도면에 있는 브래킷 태그 — 폐번을 뺀다."""
-    dead = {tag for tag, _ in BRACKET_WITHDRAWN}
-    return tuple(f"{BRACKET_PREFIX}{i:03d}" for i in range(1, BRACKET_SERIES + 1)
-                 if f"{BRACKET_PREFIX}{i:03d}" not in dead)
-
-
-BRACKET_COUNT = BRACKET_SERIES - len(BRACKET_WITHDRAWN)
+    """도면에 있는 브래킷 태그 — 생성기가 001 부터 빈 번호 없이 매긴다."""
+    return tuple(f"{BRACKET_PREFIX}{i:03d}" for i in range(1, BRACKET_COUNT + 1))
 
 
 # ── 받칠 대상이 아닌 것 ──────────────────────────────────────────────────
@@ -258,7 +268,7 @@ def summary() -> dict[str, object]:
         "by_bolt": anchors_by_bolt(),
         "members": len(MEMBERS),
         "brackets": BRACKET_COUNT,
-        "withdrawn": len(BRACKET_WITHDRAWN),
+        "keepOut": len(BRACKET_KEEP_OUT),
         "by_class": members_by_class(),
         "exempt": len(UNSUPPORTED_BY_DESIGN),
     }
