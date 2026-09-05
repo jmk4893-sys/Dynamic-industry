@@ -45,7 +45,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (286건)
+python -m unittest discover -s tests -t .                               # 테스트 (426건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.

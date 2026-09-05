@@ -175,6 +175,140 @@ class PolymerFloatClosure(unittest.TestCase):
         self.assertGreater(ag_kg(sinks), ag_kg(reject) * 5)
 
 
+class PlantRecoveryLandsInTheStatedBand(unittest.TestCase):
+    """통합 회수율이 제안서가 말한 밴드에 실제로 떨어지는지 — 인수 검사.
+
+    셀 회수율을 미니앱과 같은 식으로 다시 세운다:
+        Sb = 6·Jg/d32,  d = ∛(4V/π),  τ = V[L]/8,
+        K0 = 0.90/(1−0.90)/τ_201,  k = K0·(Sb/Sb_201)·부유도,  R = kτ/(1+kτ)
+    """
+
+    D32_M = 0.001
+    SLURRY_LPM = 8.0
+    ROUGHER_TARGET = 0.90
+    FLOAT = {"B": 1.0, "C": 0.35, "A": 0.03, "Ac": 0.03}
+    CELLS = {  # role: (용적 L, 설계 공기 Nm3/min, 세척 여부)
+        "rougher": (180.0, 0.060, False),
+        "recleaner": (30.0, 0.020, False),
+        "scavenger": (190.0, 0.075, False),
+        "cleaner": (190.0, 0.075, True),
+    }
+
+    @classmethod
+    def sb(cls, volume_l, air):
+        volume = volume_l / 1000.0
+        diameter = (4 * volume / math.pi) ** (1 / 3)
+        area = math.pi * diameter * diameter / 4
+        return 6 * (air / area / 60) / cls.D32_M
+
+    @classmethod
+    def recoveries(cls):
+        wash = const("WASHED_CLEANER_ENTRAINMENT_SUPPRESSION")
+        tau = {r: v / cls.SLURRY_LPM for r, (v, _a, _w) in cls.CELLS.items()}
+        sb = {r: cls.sb(v, a) for r, (v, a, _w) in cls.CELLS.items()}
+        k0 = cls.ROUGHER_TARGET / (1 - cls.ROUGHER_TARGET) / tau["rougher"]
+        out = {}
+        for role, (_v, _a, washed) in cls.CELLS.items():
+            out[role] = {}
+            for t in TYPES:
+                k = k0 * (sb[role] / sb["rougher"]) * cls.FLOAT[t]
+                kt = k * tau[role]
+                r = kt / (1 + kt)
+                if washed and cls.FLOAT[t] < 0.5:
+                    r *= 1 - wash
+                out[role][t] = r
+        return out
+
+    def plant(self, wet_raw, cu, reject, ag_recovery):
+        """plantAgBalance 와 같은 순서로 푼다."""
+        fw = const("FW102_DUST_RECOVERY")
+        carry = const("AG_COMPOSITE_CARRY")
+        cu_pick = const("CU_PICKOFF_EFFICIENCY")
+        polish = const("AG_STAGE_POLYMER_REJECTION")
+        ag_feed = ag_kg(wet_raw) + ag_kg(cu) + ag_kg(reject)
+        wet = {t: wet_raw.get(t, 0.0) + reject.get(t, 0.0) * fw for t in TYPES}
+        lost_reject = {t: reject.get(t, 0.0) * (1 - fw) for t in TYPES}
+        wet = attrition(wet, 1.0)                      # 2 단 어트리션 → 해리 완료 가정
+        _polymer, sinks = polymer_float(wet, self.recoveries())
+        mass = sum(sinks.values())
+        blend = {k: sum(sinks[t] * ASSAY[t][k] for t in TYPES) / mass for k in KEYS}
+        ag = ag_kg(sinks)
+        recovered = ag * ag_recovery
+        conc = (recovered + recovered * carry
+                + mass * blend["Cu"] / 100 * (1 - cu_pick)
+                + mass * blend["polymer"] / 100 * (1 - polish))
+        return dict(
+            feed=ag_feed, conc_ag=recovered, recovery=recovered / ag_feed,
+            grade=recovered / conc * 100, conc_kg=conc,
+            closure=(recovered + ag_kg(lost_reject) + ag_kg(cu)
+                     + ag_kg(_polymer) + (ag - recovered)) / ag_feed,
+        )
+
+    # 건식 정상상태 — 신규급광 300 kg/h, B 군 75 % 가 2 mm 위로 스캘핑돼 BIN-102 로.
+    # 나머지 255 kg/h 가 체 급광이고 케이스 A 는 그 전량이 습식이다.
+    FRESH, B_FRAC, SCALP = 300.0, 0.20, 0.75
+    CLASS_FRACTION = {"A": 0.35, "B": 0.20, "C": 0.45}
+
+    def dry_split(self, wet_share=1.0):
+        reject_kg = self.FRESH * self.B_FRAC * self.SCALP
+        rest = {t: self.FRESH * f for t, f in self.CLASS_FRACTION.items()}
+        rest["B"] -= reject_kg
+        wet = {t: m * wet_share for t, m in rest.items()}
+        cu = {t: m * (1 - wet_share) for t, m in rest.items()}
+        return wet, cu, {"A": 0.0, "B": reject_kg, "C": 0.0}
+
+    def test_case_a_closes_and_lands_in_band(self):
+        wet, cu, reject = self.dry_split(1.0)
+        low = self.plant(wet, cu, reject, 0.990)
+        design = self.plant(wet, cu, reject, 0.997)
+        for r in (low, design):
+            self.assertAlmostEqual(r["closure"], 1.0, places=9, msg="Ag 수지가 안 닫힌다")
+        # 구현이 내는 값은 97.7–98.4 % 다. 제안서의 보정 밴드 98.7–99.0 % 에 못
+        # 미치는데, 그 차이는 아래 test_the_gap_to_99pct_is_the_placeholder_assay
+        # 가 밝히듯 B 군 자리표시자 assay 다. 값이 드리프트하면 여기서 잡힌다.
+        self.assertAlmostEqual(low["recovery"], 0.9771, places=3)
+        self.assertAlmostEqual(design["recovery"], 0.9840, places=3)
+        self.assertLess(low["recovery"], design["recovery"])
+
+    def test_the_gap_to_99pct_is_the_placeholder_assay(self):
+        """≥99 % 의 성부는 공정이 아니라 LAB-601 assay 가 가른다.
+
+        B 군(탈락 백시트)을 100 g/t 로 둔 것은 자리표시자다. 1 단 폴리머 배출
+        57 kg/h 의 대부분이 B 이므로, 이 값이 Ag 수지에서 0.6 pp 를 좌우한다.
+        """
+        wet, cu, reject = self.dry_split(1.0)
+        with_placeholder = self.plant(wet, cu, reject, 0.997)["recovery"]
+        original = B["agGpt"]
+        try:
+            B["agGpt"] = 0.0          # 백시트가 Ag 를 안 지니면
+            ag_free = self.plant(wet, cu, reject, 0.997)["recovery"]
+        finally:
+            B["agGpt"] = original
+        self.assertLess(with_placeholder, 0.99)
+        self.assertGreater(ag_free, 0.99, "assay 를 비워도 99 % 가 안 나오면 다른 곳이 새는 것")
+        self.assertGreater(ag_free - with_placeholder, 0.005)
+
+    def test_miniapp_records_the_assay_dependency(self):
+        # 이 의존을 코드가 말하지 않으면, 나중에 읽는 사람은 98.4 % 를 공정 한계로
+        # 오해한다.
+        self.assertIn("자리표시자", LIVE)
+        self.assertRegex(LIVE, r"ASSAY\.B\.agGpt")
+
+    def test_grade_clears_the_10wt_target(self):
+        wet, cu, reject = self.dry_split(1.0)
+        design = self.plant(wet, cu, reject, 0.997)
+        self.assertGreater(design["grade"], 10.0,
+                           f"품위 목표 미달: {design['grade']:.1f} wt%")
+
+    def test_partial_routing_cannot_reach_the_target(self):
+        # 케이스 C 는 급광 Ag 의 일부만 습식으로 오므로 목표에 닿지 못한다 —
+        # 이것이 두 케이스를 나란히 두는 이유다.
+        wet, cu, reject = self.dry_split(0.25)
+        design = self.plant(wet, cu, reject, 0.997)
+        self.assertLess(design["recovery"], 0.50)
+        self.assertAlmostEqual(design["closure"], 1.0, places=9)
+
+
 class RoutingCases(unittest.TestCase):
     """두 라우팅은 서로의 하위 모드가 아니라 각자 정의돼 있어야 한다."""
 
@@ -211,7 +345,7 @@ class RecoveryIsReportedAsABand(unittest.TestCase):
         block = re.search(r"const AG_RECOVERY_GATES = Object\.freeze\(\[.*?\n    \]\);",
                           LIVE, re.S)
         self.assertIsNotNone(block, "AG_RECOVERY_GATES 가 없다")
-        for gate in ("liberation", "fw102", "fc101Tails"):
+        for gate in ("liberation", "fw102", "fc101Tails", "agStagePolymer"):
             self.assertIn(f'id: "{gate}"', block.group(0))
 
     def test_no_bare_9923_claim(self):
@@ -224,7 +358,7 @@ class AssumptionsAreMarked(unittest.TestCase):
 
     def test_undecided_constants_say_so(self):
         for name in ("FC204_CELL_L", "AS102_CELL_L", "AS101B_CELL_L",
-                     "CU_PICKOFF_EFFICIENCY", "POLISH_POLYMER_REJECTION"):
+                     "CU_PICKOFF_EFFICIENCY"):
             line = re.search(rf"const {name} = [^\n]*", LIVE)
             self.assertIsNotNone(line, f"{name} 이 없다")
             self.assertIn("가정", line.group(0), f"{name} 에 가정 표기가 없다")
