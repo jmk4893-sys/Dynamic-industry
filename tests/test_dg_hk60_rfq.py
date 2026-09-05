@@ -15,8 +15,10 @@ import unittest
 
 from . import _path  # noqa: F401
 
+import console_consts                                        # noqa: E402
+
 from .test_drawings import standalone_document_checks
-from .test_pv_console_calculator import thermal_model, sixty_panel_run
+from .test_pv_console_calculator import DECKS, thermal_model, sixty_panel_run
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 RFQ = ROOT / "docs" / "dg-hk60-rfq.html"
@@ -140,7 +142,7 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
             self._num(r"113\.15 s \)\s*= ([\d.]+) s"), self.m["dwell_s"], delta=0.05
         )
         self.assertAlmostEqual(
-            self._num(r"피치\s*= t_열 / 5 = ([\d.]+) s/장"),
+            self._num(rf"피치\s*= t_열 / {DECKS} = ([\d.]+) s/장"),
             self.m["pitch_s"], delta=0.05,
         )
 
@@ -167,13 +169,20 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
 
     # ── 전기 ────────────────────────────────────────────────────────
     def _load_schedule(self):
+        """콘솔 부하표. kW 는 램프 수에서 나온 식일 수 있어 풀어 읽는다."""
         rows = re.findall(
-            r"\{\s*id:'([^']+)'\s*,\s*load:'[^']*'\s*,"
-            r"\s*kW:(\d+)\s*,\s*pf:([\d.]+)\s*,\s*mccb:'([^']+)'\s*\}",
+            r"\{\s*id:'([^']+)'\s*,\s*load:[`'][^`']*[`']\s*,"
+            r"\s*kW:([\w.*+/ -]+?)\s*,\s*pf:([\d.]+)\s*,\s*mccb:'([^']+)'\s*\}",
             self.console,
         )
         self.assertGreaterEqual(len(rows), 5, "콘솔 부하표를 찾지 못했다")
-        return rows
+        env = console_consts.env(self.console)
+        out = []
+        for ident, kw, pf, mccb in rows:
+            v = console_consts.value(kw, env)
+            self.assertIsNotNone(v, f"{ident} 의 kW '{kw}' 를 읽지 못했다")
+            out.append((ident, v, pf, mccb))
+        return out
 
     def test_load_schedule_rows_match_the_console(self):
         for ident, kw, pf, mccb in self._load_schedule():
@@ -182,7 +191,7 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
                 rf'{re.escape(ident)}</td>.*?</tr>', self.html, re.S
             )
             self.assertIsNotNone(row, f"{ident} 행을 사양서에서 찾지 못했다")
-            self.assertIn(kw, row.group(0), f"{ident} 의 kW 가 콘솔과 다르다")
+            self.assertIn(f"{kw:g}", row.group(0), f"{ident} 의 kW 가 콘솔과 다르다")
             self.assertIn(f"{float(pf):.2f}", row.group(0),
                           f"{ident} 의 역률이 콘솔과 다르다")
             self.assertIn(mccb, row.group(0), f"{ident} 의 차단기가 콘솔과 다르다")
@@ -190,9 +199,9 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
     def test_full_load_current_matches_the_phasor_sum(self):
         rows = self._load_schedule()
         volts = int(re.search(r"const LINE_V=(\d+)", self.console).group(1))
-        active = sum(int(kw) for _, kw, _, _ in rows)
+        active = sum(kw for _, kw, _, _ in rows)
         reactive = sum(
-            int(kw) * math.tan(math.acos(float(pf))) for _, kw, pf, _ in rows
+            kw * math.tan(math.acos(float(pf))) for _, kw, pf, _ in rows
         )
         apparent = math.hypot(active, reactive)
         fla = apparent * 1000 / (3 ** 0.5 * volts)
@@ -200,18 +209,18 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
         self.assertAlmostEqual(self._num(r"FLA ([\d.]+) A"), round(fla), delta=0.5)
         self.assertAlmostEqual(self._num(r"([\d.]+) kVA"), apparent, delta=0.05)
         self.assertAlmostEqual(
-            self._num(r"class=\"num\">([\d.]+)</td><td class=\"num\">494\.2"),
+            self._num(rf"class=\"num\">([\d.]+)</td><td class=\"num\">{fla:.1f}"),
             active / apparent, delta=0.001,
         )
 
     def test_breaker_headroom_claim_is_true(self):
-        """'630AT 기준 1.27배 여유' 는 검산 가능한 주장이다."""
+        """'630AT 기준 n배 여유' 는 검산 가능한 주장이다."""
         claimed = self._num(r"630AT 기준 ([\d.]+)배 여유")
         rows = self._load_schedule()
         volts = int(re.search(r"const LINE_V=(\d+)", self.console).group(1))
-        active = sum(int(kw) for _, kw, _, _ in rows)
+        active = sum(kw for _, kw, _, _ in rows)
         reactive = sum(
-            int(kw) * math.tan(math.acos(float(pf))) for _, kw, pf, _ in rows
+            kw * math.tan(math.acos(float(pf))) for _, kw, pf, _ in rows
         )
         fla = math.hypot(active, reactive) * 1000 / (3 ** 0.5 * volts)
         self.assertAlmostEqual(claimed, 630 / fla, delta=0.01)
@@ -227,8 +236,9 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
         console_rows = dict(
             (m.group(1), (m.group(2), m.group(3), m.group(4)))
             for m in re.finditer(
-                r"\{id:'(M-\d+)',name:'([^']+)',size:'([^']+)',material:'([^']+)'",
-                self.console,
+                r"\{id:'(M-\d+)',name:[`']([^`']+)[`'],"
+                r"size:[`']([^`']+)[`'],material:'([^']+)'",
+                console_consts.expand(self.console),
             )
         )
         self.assertGreaterEqual(len(console_rows), 13, "콘솔 제작도 목록을 찾지 못했다")
