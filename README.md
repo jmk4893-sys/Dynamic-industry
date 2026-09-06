@@ -34,9 +34,10 @@ Dynamic industry Development
 | [docs/design-calculation.md](docs/design-calculation.md) | 설계 계산서 (코드에서 자동 생성) |
 | [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 7매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
-| [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 13종, 열수지 계산기 (브라우저로 열 것) |
+| [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 15종, **부품도 174장 · 모듈 조립도 13장**, 열수지 계산기 (브라우저로 열 것) |
 | [docs/dg-hk60-rfq.html](docs/dg-hk60-rfq.html) | **DG-HK60 상세설계 기술사양서 (RFQ)** — 상세설계 용역 발주용. 요구성능·설계기준·기계/전기/안전 요구사항·납품물·FAT/SAT·입찰자 확인사항 10건 (브라우저로 열 것, A4 인쇄 가능) |
 | [docs/dg-hk60-fab-spec.html](docs/dg-hk60-fab-spec.html) | **DG-HK60C 제작 지침서 (FAB-001)** — 볼트 등급·체결력·조임토크, 용접 각장, 부재 판두께·재질, 기초 앵커 매입깊이·연단거리를 하중에서 유도한 문서. 접합부 12개소·부재 27종·앵커 7개소·ITP 14단계 (브라우저로 열 것, A4 인쇄 가능) |
+| [docs/dg-hk60-assembly.html](docs/dg-hk60-assembly.html) | **DG-HK60C 조립 지침서 (ASM-001)** — 도면을 처음 보는 사람이 조립도·부품도만으로 세울 수 있게 쓴 문서. 안전·공구·도면 읽는 법·볼트 조이는 법·모듈 사이의 순서·모듈별 74단계 (부품 카탈로그에서 생성) |
 | [docs/dg-hk120-twin-cell.html](docs/dg-hk120-twin-cell.html) | **DG-HK120C 트윈 셀 검토서** — 1챔버·2탠덤셀 수평병렬로 처리량을 배로 올리는 안의 배치·전력·인터록 검토 (브라우저로 열 것) |
 
 ### 사용법
@@ -47,7 +48,13 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (802건)
+python -m unittest discover -s tests -t .                               # 테스트 (838건)
+
+# 부품 카탈로그 — 형상·치수·재질에서 질량과 자중을 계산한다
+python3 tools/parts.py                     # 카탈로그 리포트 (품목·질량·자중 검증)
+python3 tools/fab_spec.py                  # 제작 지침서 계산 근거
+python3 tools/gen_parts_js.py --write      # 카탈로그 → 콘솔의 부품도·조립도 데이터
+python3 tools/gen_assembly_doc.py --write  # 카탈로그 → 조립 지침서 HTML
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.

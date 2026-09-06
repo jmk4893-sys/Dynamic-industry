@@ -274,22 +274,55 @@ class TestTheSpecificationCarriesTheDecisions(unittest.TestCase):
         self.assertIn("스프링와셔를 쓰지 않는다", self.html)
         self.assertIn("마찰접합면에 도장하면 설계가 무효", self.html)
 
-    def test_it_declares_which_masses_are_assumptions(self):
-        """자중 넷은 계산이 아니라 가정이다 — 그것을 숨기면 앵커가 틀어진다.
+    def test_the_masses_come_from_the_part_catalogue(self):
+        """자중을 형상 없이 적으면 앵커가 그 오차만큼 틀어진다.
 
-        두 곳에 있어야 한다: 하중표 옆에서 '이 넷은 가정' 이라고 밝히고,
-        제출 목록에서 '중량표를 내라' 고 요구해야 한다. 한쪽만 있으면
-        읽는 사람이 가정인 줄 모르거나, 알아도 확정할 수단이 없다.
+        초판은 넷을 개산으로 적었다. 카탈로그를 세워 대조하니 권취 문형이
+        +48 % 빗나가 있었다 — 그래서 이제 설계는 카탈로그가 계산한 값을
+        쓴다. 이 시험이 지키는 것은 그 연결이다: 계산기가 카탈로그에서
+        자중을 가져오고, 문서의 하중표가 그 값을 그대로 적어야 한다.
+
+        누가 다시 상수로 되돌려 적으면 (예: M_WINDER = 620) 여기서 걸린다.
         """
-        load = self.html[self.html.index("설계하중 — 특성값과 설계값"):][:4000]
-        load = load.replace("±15 %", "± 15 %")
-        for m in ("자중 넷은 설계 가정이다", "중량표", "± 15 %"):
-            self.assertIn(m, load, f"하중표 옆에 '{m}' 가 없다")
+        import parts
+
+        for sym in ("M_CHAMBER", "M_GANTRY", "M_TABLE", "M_WINDER"):
+            self.assertAlmostEqual(
+                getattr(F, sym), parts.mass(sym), delta=0.5,
+                msg=f"{sym} 가 부품 카탈로그의 계산값이 아니다 — 상수로 되돌아갔다")
+
+        load = self.html[self.html.index("설계하중 — 특성값과 설계값"):
+                         self.html.index("피로 하중 반복수")]
+        for sym, th in (("M_CHAMBER", "HC-101 가열실 자중"), ("M_GANTRY", "KG-101 갠트리 자중"),
+                        ("M_TABLE", "VT-101 테이블 자중"), ("M_WINDER", "WR-101 권취부 자중")):
+            m = getattr(F, sym)
+            self.assertIn(th, load, f"하중표에 {th} 행이 없다")
+            self.assertIn(f"{F.kn(m):.1f} kN", load, f"{th} 특성값이 계산과 다르다")
+            self.assertIn(f"{m / 1000:.2f} t", load, f"{th} 질량이 계산과 다르다")
+
+        # 카탈로그가 개념설계 유도값이라는 것과, 재검토 조건이 남아 있어야 한다
+        load_n = load.replace("±15 %", "± 15 %")
+        for m in ("부품 카탈로그", "중량표", "± 15 %", "매입깊이가 규격보다 먼저 움직인다"):
+            self.assertIn(m, load_n, f"하중표 옆에 '{m}' 가 없다")
         submit = self.html[self.html.index("착수 전 제출"):][:2000]
         self.assertIn("중량표", submit, "제출 목록에 중량표가 없다")
-        # 그리고 계산기가 그 넷을 실제로 가정으로 들고 있어야 한다
-        src = (ROOT / "tools" / "fab_spec.py").read_text(encoding="utf-8")
-        self.assertIn("설계 가정 — 제작사 중량표로 확인한다", src)
+
+    def test_the_recomputed_masses_did_not_change_any_size(self):
+        """자중이 +48 % 늘었는데 규격이 그대로인 것은 결론이지 우연이 아니다.
+
+        문서가 그렇게 적었으므로 계산이 실제로 그런지 확인한다 — 이 설비의
+        접합은 강성·피로·최소규격이 지배하므로 이용률이 여전히 낮아야 한다.
+        어느 접합이든 0.70 을 넘으면 그 문장이 거짓이 되고, 규격을 다시
+        잡아야 한다.
+        """
+        self.assertIn("규격이 바뀐 접합·앵커는 없다", self.html,
+                      "자중을 다시 계산하고도 그 결과를 문서가 말하지 않는다")
+        worst = max(F.JOINTS, key=lambda j: j["util"])
+        self.assertLess(worst["util"], 0.70,
+                        f"{worst['id']} 이용률 {worst['util']:.2f} — 규격을 다시 잡아야 한다")
+        for a in F.ANCHORS:
+            self.assertEqual(a["gov"], "콘크리트 콘",
+                             f"{a['id']} 지배 파괴가 바뀌었다 — 매입깊이를 다시 본다")
 
     def test_it_explains_why_utilisation_is_low(self):
         """0.05 를 그대로 두면 '왜 M20 인가' 에 답하지 못한다."""

@@ -337,19 +337,28 @@
           <td>35 kg/벌</td></tr>
         <tr><th>박리 추력 (합성)</th><td class="num">13.37 kN</td><td class="num">26.07 kN</td>
           <td>OI-01 상한 × ψ1.3 × γ<sub>Q</sub>1.5</td></tr>
-        <tr><th>HC-101 가열실 자중</th><td class="num">65.7 kN</td><td class="num">88.7 kN</td>
-          <td>벽체 4겹 + 골조 + 데크 + IR — <strong>설계 가정 6.70 t</strong></td></tr>
-        <tr><th>KG-101 갠트리 자중</th><td class="num">14.2 kN</td><td class="num">19.2 kN</td>
-          <td><strong>설계 가정 1.45 t</strong></td></tr>
-        <tr><th>VT-101 테이블 자중</th><td class="num">8.8 kN</td><td class="num">11.9 kN</td>
-          <td><strong>설계 가정 0.90 t</strong></td></tr>
-        <tr><th>WR-101 권취부 자중</th><td class="num">6.1 kN</td><td class="num">8.2 kN</td>
-          <td><strong>설계 가정 0.62 t</strong></td></tr>
+        <tr><th>HC-101 가열실 자중</th><td class="num">55.9 kN</td><td class="num">75.4 kN</td>
+          <td>골조·벽체 4겹·데크·IR 전 부재 — <strong>부품 카탈로그 계산 5.70 t</strong> (개념 개산 대비 -15%)</td></tr>
+        <tr><th>KG-101 갠트리 자중</th><td class="num">12.1 kN</td><td class="num">16.3 kN</td>
+          <td>이동부 — 주행 문형·레일 제외 — <strong>부품 카탈로그 계산 1.23 t</strong> (개념 개산 대비 -15%)</td></tr>
+        <tr><th>VT-101 테이블 자중</th><td class="num">12.2 kN</td><td class="num">16.5 kN</td>
+          <td>상판·리브·기둥·진공계통 — <strong>부품 카탈로그 계산 1.24 t</strong> (개념 개산 대비 +38%)</td></tr>
+        <tr><th>WR-101 권취부 자중</th><td class="num">9.0 kN</td><td class="num">12.2 kN</td>
+          <td>문형·드럼·서보 — RH-201 런웨이 제외 — <strong>부품 카탈로그 계산 0.92 t</strong> (개념 개산 대비 +48%)</td></tr>
       </tbody>
     </table></div>
-    <div class="note"><strong>자중 넷은 설계 가정이다.</strong> 제작사는 상세설계 30 % 시점에
-      <strong>중량표</strong>를 제출하고, 가정값을 <span class="m">±15 %</span> 넘게 벗어나면
-      앵커와 기초를 다시 잡는다. 그 넷 말고는 전부 계산에서 나온 값이다.</div>
+    <div class="decide"><strong>총괄 결정 — 자중은 가정이 아니라 부품 카탈로그에서 계산한다.</strong>
+      이 문서의 초판은 네 자중을 형상 없이 개산으로 적었다. 부품 카탈로그
+      (<span class="k">tools/parts.py</span>)를 세우고 부재마다 <span class="m">단면적 × 길이 × 밀도</span>를
+      더해 대조해 보니 <strong>권취 문형이 +48 %, 진공테이블이 +38 %</strong> 빗나가 있었다.
+      형상 없이 적은 자중으로 앵커를 정한다는 것은 그만한 오차를 안고 가는 일이다.
+      이제 <span class="k">M_CHAMBER · M_GANTRY · M_TABLE · M_WINDER</span> 는 카탈로그가 든다.
+      <strong>다시 계산한 결과 규격이 바뀐 접합·앵커는 없다</strong> — 이 설비는 강도가 아니라
+      강성·피로·최소규격이 지배하기 때문이다. 바뀐 것은 근거의 성격이다.</div>
+    <div class="note"><strong>그래도 카탈로그는 개념설계가 유도한 형상이다.</strong> 제작사는 상세설계
+      30 % 시점에 <strong>중량표</strong>를 제출한다. 카탈로그 값을 <span class="m">±15 %</span> 넘게
+      벗어나면 앵커와 기초를 다시 잡는다 — 일곱 개소 전부 콘크리트 콘 파괴가 지배하므로
+      자중이 늘면 <strong>매입깊이가 규격보다 먼저 움직인다</strong>.</div>
   </div></div>
 
   <div class="clause"><div class="n">3.3</div><div class="c">
@@ -527,11 +536,11 @@ F<sub>p,C</sub>  = 0.7·f<sub>ub</sub>·A<sub>s</sub>             설계 체결�
 <tr class="sub"><td></td><td colspan="9">칼날 1기 분담 13.0 kN — 인장·전단 동시</td></tr>
 <tr><td class="k">J5</td><td>BC-201 카세트 테이퍼 로케이팅핀</td><td class="k">M16 × 4</td><td class="k">10.9</td><td>핀 전단</td><td class="num">0.00</td><td class="num">3.26</td><td class="num">0.03</td><td class="num">109.9</td><td class="num">352 / 246</td></tr>
 <tr class="sub"><td></td><td colspan="9">쐐기 클램프(15 kN×2)는 밀착용 — 전단은 핀 4개가 받는다</td></tr>
-<tr><td class="k">J6</td><td>HC-101 가열실 기둥 ↔ 베이스플레이트</td><td class="k">M20 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.00</td><td class="num">1.23</td><td class="num">0.01</td><td class="num">137.2</td><td class="num">549 / 384</td></tr>
+<tr><td class="k">J6</td><td>HC-101 가열실 기둥 ↔ 베이스플레이트</td><td class="k">M20 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.00</td><td class="num">1.05</td><td class="num">0.01</td><td class="num">137.2</td><td class="num">549 / 384</td></tr>
 <tr class="sub"><td></td><td colspan="9">자중 6.7 t · 지진 0.30W @ 무게중심 EL 2,400</td></tr>
 <tr><td class="k">J7</td><td>데크 레일 ↔ 기둥 (가열실 내부)</td><td class="k">M12 × 4</td><td class="k">A2-70</td><td>지압접합</td><td class="num">0.27</td><td class="num">0.55</td><td class="num">0.02</td><td class="num">41.3</td><td class="num">99 / 69</td></tr>
 <tr class="sub"><td></td><td colspan="9">데크 1단 1.45 kN · 140 °C 환경 — STS304 볼트</td></tr>
-<tr><td class="k">J8</td><td>WR-101 권취 문형 기둥 ↔ 베이스플레이트</td><td class="k">M16 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.60</td><td class="num">0.42</td><td class="num">0.01</td><td class="num">87.9</td><td class="num">281 / 197</td></tr>
+<tr><td class="k">J8</td><td>WR-101 권취 문형 기둥 ↔ 베이스플레이트</td><td class="k">M16 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.76</td><td class="num">0.53</td><td class="num">0.01</td><td class="num">87.9</td><td class="num">281 / 197</td></tr>
 <tr class="sub"><td></td><td colspan="9">만권 롤 3.50 kN @ EL 3,700 · 문형 스팬 2.60 m</td></tr>
 <tr><td class="k">J9</td><td>RH-201 런웨이 빔 ↔ 기둥 두상판</td><td class="k">M16 × 6</td><td class="k">10.9</td><td>지압접합</td><td class="num">1.55</td><td class="num">0.52</td><td class="num">0.02</td><td class="num">109.9</td><td class="num">352 / 246</td></tr>
 <tr class="sub"><td></td><td colspan="9">롤 3.50 kN + 호이스트 자중 · 동적계수 1.25</td></tr>
@@ -573,16 +582,16 @@ F<sub>p,C</sub>  = 0.7·f<sub>ub</sub>·A<sub>s</sub>             설계 체결�
       <thead><tr><th>접합</th><th class="num">설계력 kN</th><th class="num">용접장 mm</th>
         <th>재질</th><th class="num">판두께</th><th>각장</th><th>근거</th></tr></thead>
       <tbody>
-<tr><td>가열실 기둥 ↔ 베이스플레이트</td><td class="num">22.2</td><td class="num">800</td><td class="k">SS400</td><td class="num">25</td><td class="k">z8</td><td>판두께 t25</td></tr>
-<tr><td>가열실 기둥 ↔ 거싯</td><td class="num">11.1</td><td class="num">500</td><td class="k">SS400</td><td class="num">12</td><td class="k">z5</td><td>판두께 t12</td></tr>
-<tr><td>테이블 기둥 ↔ 베이스플레이트</td><td class="num">6.5</td><td class="num">600</td><td class="k">SM490A</td><td class="num">28</td><td class="k">z10</td><td>판두께 t28</td></tr>
-<tr><td>테이블 상판 ↔ 리브</td><td class="num">3.3</td><td class="num">800</td><td class="k">SS400</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
-<tr><td>갠트리 문형 기둥 ↔ 베이스플레이트</td><td class="num">6.5</td><td class="num">1,000</td><td class="k">SM490A</td><td class="num">30</td><td class="k">z10</td><td>판두께 t30</td></tr>
-<tr><td>크로스빔 ↔ 대차 브래킷</td><td class="num">13.0</td><td class="num">600</td><td class="k">SM490A</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
-<tr><td>크로스빔 웨브 ↔ 플랜지 (BOX)</td><td class="num">13.0</td><td class="num">5,680</td><td class="k">SM490A</td><td class="num">12</td><td class="k">z5</td><td>판두께 t12</td></tr>
-<tr><td>권취 문형 기둥 ↔ 베이스플레이트</td><td class="num">5.2</td><td class="num">600</td><td class="k">SS400</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
-<tr><td>RH-201 런웨이 ↔ 기둥 두상판</td><td class="num">6.6</td><td class="num">400</td><td class="k">SS400</td><td class="num">16</td><td class="k">z6</td><td>판두께 t16</td></tr>
-<tr><td>데크 프레임 ↔ 레일 (가열실 내부)</td><td class="num">0.4</td><td class="num">5,560</td><td class="k">STS304</td><td class="num">6</td><td class="k">z4</td><td>판두께 t6</td></tr>
+<tr><td>가열실 기둥 ↔ 베이스플레이트</td><td class="num">18.86</td><td class="num">800</td><td class="k">SS400</td><td class="num">25</td><td class="k">z8</td><td>판두께 t25</td></tr>
+<tr><td>가열실 기둥 ↔ 거싯</td><td class="num">9.43</td><td class="num">500</td><td class="k">SS400</td><td class="num">12</td><td class="k">z5</td><td>판두께 t12</td></tr>
+<tr><td>테이블 기둥 ↔ 베이스플레이트</td><td class="num">6.52</td><td class="num">600</td><td class="k">SM490A</td><td class="num">28</td><td class="k">z10</td><td>판두께 t28</td></tr>
+<tr><td>테이블 상판 ↔ 리브</td><td class="num">3.26</td><td class="num">800</td><td class="k">SS400</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
+<tr><td>갠트리 문형 기둥 ↔ 베이스플레이트</td><td class="num">6.52</td><td class="num">1,000</td><td class="k">SM490A</td><td class="num">30</td><td class="k">z10</td><td>판두께 t30</td></tr>
+<tr><td>크로스빔 ↔ 대차 브래킷</td><td class="num">13.04</td><td class="num">600</td><td class="k">SM490A</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
+<tr><td>크로스빔 웨브 ↔ 플랜지 (BOX)</td><td class="num">13.04</td><td class="num">5,680</td><td class="k">SM490A</td><td class="num">12</td><td class="k">z5</td><td>판두께 t12</td></tr>
+<tr><td>권취 문형 기둥 ↔ 베이스플레이트</td><td class="num">5.25</td><td class="num">600</td><td class="k">SS400</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
+<tr><td>RH-201 런웨이 ↔ 기둥 두상판</td><td class="num">6.56</td><td class="num">400</td><td class="k">SS400</td><td class="num">16</td><td class="k">z6</td><td>판두께 t16</td></tr>
+<tr><td>데크 프레임 ↔ 레일 (가열실 내부)</td><td class="num">0.41</td><td class="num">5,560</td><td class="k">STS304</td><td class="num">6</td><td class="k">z4</td><td>판두께 t6</td></tr>
 <tr><td>방책 기둥 ↔ 베이스</td><td class="num">1.0</td><td class="num">240</td><td class="k">SS400</td><td class="num">6</td><td class="k">z4</td><td>판두께 t6</td></tr>
       </tbody>
     </table></div>

@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#eceff1">
+<title>DG-HK60C 조립 지침서</title>
+<meta name="description" content="DG-HK60C 폐태양광 패널 분리설비를 도면만 보고 조립하기 위한 지침서 — 안전, 공구, 도면 읽는 법, 볼트 조이는 법, 모듈을 세우는 순서, 모듈별 조립 단계와 검사.">
+<style>
+  /* ===========================================================================
+     DG-HK60 상세설계 발주 기술사양서.
+
+     입찰자가 조항번호로 인용하는 문서다("귀사 제안서 4.3항"). 그래서 번호가
+     장식이 아니라 주소이고, 왼쪽 여백에 고정폭으로 세워 어느 화면에서도
+     같은 자리에 온다. 부호·논리식·수치는 모두 모노로 두어 본문과 구분한다.
+
+     인쇄를 먼저 고려했다. 입찰자는 이 문서를 출력해 회람한다.
+     =========================================================================== */
+  :root{
+    color-scheme:light dark;
+    --paper:#ffffff;--ground:#eceff1;--band:#f4f6f7;--sunk:#e3e8ea;
+    --ink:#14202a;--ink2:#425663;--ink3:#6b7f8b;--ink4:#8b9ba4;
+    --brand:#17679b;--brand2:#228CC9;--brand-sunk:#e7f0f7;
+    --accent:#a06a08;--accent-sunk:#fbf3e0;--accent-line:#e0c68a;
+    --flag:#9a2b30;--flag-sunk:#fbeeee;--flag-line:#e3bcbc;
+    --ok:#1f6b47;
+    --rule:#cbd5da;--rule2:#aebcc4;--rule3:#8b9ba4;
+    --sans:Pretendard,"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --paper:#171f25;--ground:#10171c;--band:#1c262c;--sunk:#232f36;
+      --ink:#e6edf0;--ink2:#adbdc6;--ink3:#8598a2;--ink4:#687c87;
+      --brand:#5cb0e4;--brand2:#228CC9;--brand-sunk:#12303f;
+      --accent:#e0aa4a;--accent-sunk:#33280f;--accent-line:#6b5620;
+      --flag:#e8767a;--flag-sunk:#331b1c;--flag-line:#6b3436;
+      --ok:#54b487;
+      --rule:#2f3d45;--rule2:#41535d;--rule3:#5b7180;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --paper:#171f25;--ground:#10171c;--band:#1c262c;--sunk:#232f36;
+    --ink:#e6edf0;--ink2:#adbdc6;--ink3:#8598a2;--ink4:#687c87;
+    --brand:#5cb0e4;--brand2:#228CC9;--brand-sunk:#12303f;
+    --accent:#e0aa4a;--accent-sunk:#33280f;--accent-line:#6b5620;
+    --flag:#e8767a;--flag-sunk:#331b1c;--flag-line:#6b3436;
+    --ok:#54b487;
+    --rule:#2f3d45;--rule2:#41535d;--rule3:#5b7180;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--sans);font-size:15px;line-height:1.72;
+    -webkit-font-smoothing:antialiased}
+  .sheet{width:min(1080px,100%);margin:0 auto;background:var(--paper);
+    padding:0 clamp(16px,4vw,64px) 72px}
+
+  /* ── 표제부 ─────────────────────────────────────────────────────── */
+  .masthead{padding:clamp(28px,5vw,52px) 0 22px;border-bottom:2px solid var(--ink)}
+  .issuer{display:flex;align-items:center;gap:13px;margin-bottom:clamp(20px,4vw,32px)}
+  .issuer svg{width:38px;height:38px;flex:none;display:block}
+  .issuer-name{display:grid;gap:2px}
+  .issuer-name i{font:600 8.5px/1 var(--mono);font-style:normal;letter-spacing:.17em;color:var(--ink4)}
+  .issuer-name b{font:700 14px/1 var(--sans);letter-spacing:.06em;color:var(--brand)}
+  .doc-kind{font:700 11px/1 var(--mono);letter-spacing:.2em;color:var(--accent);margin-bottom:14px}
+  h1{margin:0;font-size:clamp(25px,4.4vw,38px);line-height:1.24;letter-spacing:-.02em;
+    font-weight:800;text-wrap:balance}
+  .subtitle{margin:12px 0 0;font-size:clamp(14px,1.7vw,16px);color:var(--ink2);max-width:62ch}
+  .docref{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:1px;margin-top:clamp(22px,4vw,30px);background:var(--rule);
+    border:1px solid var(--rule)}
+  .docref div{background:var(--paper);padding:10px 13px}
+  .docref dt{font:600 9.5px/1 var(--mono);letter-spacing:.11em;color:var(--ink4);
+    text-transform:uppercase;margin:0}
+  .docref dd{margin:5px 0 0;font:600 13px/1.35 var(--mono);color:var(--ink);
+    font-variant-numeric:tabular-nums}
+
+  /* ── 조항 ───────────────────────────────────────────────────────── */
+  .toc{margin:34px 0 0;padding:18px 20px;background:var(--band);border-left:3px solid var(--brand)}
+  .toc h2{margin:0 0 11px;font:700 10.5px/1 var(--mono);letter-spacing:.15em;color:var(--brand);text-transform:uppercase}
+  .toc ol{margin:0;padding:0;list-style:none;columns:2;column-gap:34px}
+  .toc li{margin:0 0 5px;font-size:13.5px;break-inside:avoid}
+  .toc a{color:var(--ink2);text-decoration:none;display:flex;gap:10px}
+  .toc a:hover{color:var(--brand)}
+  .toc b{font:600 12px/1.5 var(--mono);color:var(--ink4);min-width:22px;font-variant-numeric:tabular-nums}
+
+  section{margin-top:clamp(38px,6vw,58px);scroll-margin-top:16px}
+  section > h2{display:grid;grid-template-columns:var(--gutter,58px) 1fr;align-items:baseline;
+    gap:0;margin:0 0 20px;padding-bottom:11px;border-bottom:1.5px solid var(--rule2);
+    font-size:clamp(18px,2.5vw,23px);font-weight:800;letter-spacing:-.01em}
+  section > h2 span{font:700 14px/1 var(--mono);color:var(--brand);font-variant-numeric:tabular-nums}
+
+  .clause{display:grid;grid-template-columns:var(--gutter,58px) 1fr;margin:0 0 20px;
+    break-inside:avoid}
+  .clause > .n{font:600 12.5px/1.72 var(--mono);color:var(--ink4);
+    font-variant-numeric:tabular-nums;padding-right:12px}
+  .clause > .c{min-width:0}
+  .clause h3{margin:0 0 7px;font-size:15.5px;font-weight:700;color:var(--ink)}
+  .clause p{margin:0 0 10px;color:var(--ink2);max-width:70ch}
+  .clause p:last-child,.clause ul:last-child,.clause table:last-child{margin-bottom:0}
+  .clause ul,.clause ol{margin:0 0 10px;padding-left:19px;color:var(--ink2)}
+  .clause li{margin-bottom:4px}
+  .clause li::marker{color:var(--ink4)}
+  code,.m{font-family:var(--mono);font-size:.9em;font-variant-numeric:tabular-nums}
+  code{background:var(--sunk);padding:1.5px 5px;border-radius:2px;color:var(--ink)}
+  strong{font-weight:700;color:var(--ink)}
+
+  /* ── 표 ─────────────────────────────────────────────────────────── */
+  .tw{overflow-x:auto;margin:0 0 12px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:480px}
+  caption{caption-side:top;text-align:left;font:600 10px/1.5 var(--mono);
+    letter-spacing:.1em;color:var(--ink4);text-transform:uppercase;padding-bottom:7px}
+  th,td{padding:8px 11px;text-align:left;vertical-align:top;
+    border-bottom:1px solid var(--rule)}
+  thead th{font:700 10.5px/1.4 var(--mono);letter-spacing:.06em;color:var(--brand);
+    text-transform:uppercase;background:var(--band);border-bottom:1.5px solid var(--rule2)}
+  tbody th{font-weight:600;color:var(--ink)}
+  td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  td.k{font-family:var(--mono);font-size:12.5px;color:var(--ink);white-space:nowrap}
+  tfoot td,tfoot th{border-top:1.5px solid var(--rule2);border-bottom:0;
+    font-weight:700;background:var(--band)}
+
+  /* ── 강조 블록 ──────────────────────────────────────────────────── */
+  .note{margin:0 0 12px;padding:12px 15px;background:var(--brand-sunk);
+    border-left:3px solid var(--brand2);font-size:13.5px;color:var(--ink2)}
+  .warn{margin:0 0 12px;padding:12px 15px;background:var(--accent-sunk);
+    border-left:3px solid var(--accent);font-size:13.5px;color:var(--ink2)}
+  .note strong,.warn strong{color:var(--ink)}
+  .logic{margin:0 0 12px;padding:13px 15px;background:var(--sunk);
+    font:500 12.5px/1.9 var(--mono);color:var(--ink);overflow-x:auto;white-space:pre}
+
+  /* ── 확인사항 등록부 ────────────────────────────────────────────── */
+  .oi{border:1px solid var(--flag-line);border-left:3px solid var(--flag);
+    margin:0 0 11px;break-inside:avoid}
+  .oi-h{display:flex;align-items:baseline;gap:11px;padding:9px 14px;
+    background:var(--flag-sunk);border-bottom:1px solid var(--flag-line)}
+  .oi-h b{font:700 12px/1 var(--mono);color:var(--flag);letter-spacing:.05em}
+  .oi-h span{font-size:14px;font-weight:700;color:var(--ink)}
+  .oi-b{padding:11px 14px}
+  .oi-b p{margin:0 0 7px;font-size:13.5px;color:var(--ink2)}
+  .oi-b p:last-child{margin:0}
+  .oi-b em{font-style:normal;font:600 10px/1 var(--mono);letter-spacing:.1em;
+    color:var(--ink4);text-transform:uppercase;display:block;margin-bottom:3px}
+
+  footer{margin-top:clamp(44px,7vw,68px);padding-top:20px;border-top:2px solid var(--ink);
+    font-size:12.5px;color:var(--ink3)}
+  footer p{margin:0 0 7px;max-width:74ch}
+
+  @media(max-width:640px){
+    :root{--gutter:42px}
+    .toc ol{columns:1}
+    .clause > .n{font-size:11.5px;padding-right:8px}
+    body{font-size:14.5px}
+  }
+  @media print{
+    body{background:#fff;font-size:10.5pt;line-height:1.6}
+    .sheet{width:auto;padding:0;background:#fff}
+    .toc{break-inside:avoid}
+    section{break-before:auto;margin-top:22pt}
+    section > h2{break-after:avoid}
+    .clause,.oi,table,.logic,.note,.warn{break-inside:avoid}
+    thead{display:table-header-group}
+    a{color:inherit;text-decoration:none}
+    @page{margin:18mm 16mm}
+  }
+
+  /* 제작 지침서 추가 — 표가 많아 행 구분이 더 필요하다 */
+  .tw table td.num,.tw table th.num{text-align:right;font-family:var(--mono);white-space:nowrap}
+  .tw table th.grp{background:var(--sunk);color:var(--ink2);text-align:left;
+    font-size:12.5px;letter-spacing:.02em;padding-top:9px;padding-bottom:9px}
+  .tw table tr.sub td{color:var(--ink3);font-size:12px;padding-top:2px;padding-bottom:8px;
+    border-top:none;line-height:1.55}
+  .calc{background:var(--band);border-left:3px solid var(--brand);padding:11px 14px;
+    margin:12px 0;font-family:var(--mono);font-size:12.5px;line-height:1.9;
+    white-space:pre-wrap;border-radius:0 3px 3px 0}
+  .decide{background:var(--accent-sunk);border:1px solid var(--accent-line);
+    border-left:4px solid var(--accent);padding:12px 15px;margin:14px 0;border-radius:0 3px 3px 0}
+  .decide b:first-child{color:var(--accent)}
+</style>
+<style>
+  /* 이 문서만의 것 — 초보자용 읽기 안내와 확인 열 */
+  .read{border-left:3px solid var(--brand2);padding:2px 0 2px 14px;margin:14px 0}
+  .read h4{margin:0 0 4px;font-size:15px;color:var(--ink)}
+  .read p{margin:0}
+  td.chk{color:#2f6b4f}
+  html[data-theme="dark"] td.chk,
+  :root:not([data-theme="light"]) td.chk{color:#7fd0a8}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) td.chk{color:#7fd0a8}}
+  tr.buy td{color:var(--ink2)}
+  tr.buy td:first-child::after{content:' · 구매';color:var(--ink4);font-size:11px}
+  details{margin:12px 0 0}
+  details summary{cursor:pointer;font-size:13px;color:var(--brand);padding:6px 0}
+  details[open] summary{margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<header class="masthead">
+  <div class="issuer">
+    <svg viewBox="0 0 100.0 88.9723" aria-label="DYNAMIC INDUSTRY" role="img">
+      <!--mark-->
+      <path d="M8.8423 30.8126L1.1845 44.0763C-0.3949 46.8121 -0.3949 50.1826 1.1849 52.9184L15.6495 77.9723L25.8596 60.2876Z" fill="#228CC9"/>
+      <path d="M36.0703 42.6025L19.0529 13.1275L12.2461 24.9173L29.2634 54.3923Z" fill="#228CC9"/>
+      <path d="M46.2805 24.9174L38.7015 11.7899L25.0877 11.7899L39.4737 36.7073Z" fill="#228CC9"/>
+      <path d="M19.0528 83.8669L19.4479 84.5512C21.0276 87.287 23.9465 88.9723 27.1053 88.9723L72.8952 88.9723C76.054 88.9723 78.9733 87.287 80.5527 84.5512L95.0173 59.4973L33.1202 59.4973Z" fill="#228CC9"/>
+      <path d="M98.8155 44.0761L75.9205 4.421C74.3411 1.6852 71.4219 0.0 68.2631 0.0L50.0008 0.0004L50.0008 0.0L33.8944 0.0L42.0531 4.7103L70.282 53.6047L98.4203 53.6026L98.8155 52.9182C100.3948 50.1824 100.3948 46.8119 98.8155 44.0761Z" fill="#FECA4A"/>
+      <!--/mark-->
+    </svg>
+    <div class="issuer-name"><i>FOR NET ZERO PROJECTION</i><b>DYNAMIC INDUSTRY</b></div>
+  </div>
+
+  <div class="doc-kind">조립 지침서 · Assembly Instruction</div>
+  <h1>DG-HK60C 태양광 패널 분리설비<br>조립 지침서</h1>
+  <p class="subtitle">도면을 처음 보는 사람이 <strong>조립도와 부품도만으로</strong> 이 설비를 세울 수 있게 쓴다.
+    무엇을 먼저 놓는지, 왜 그 순서인지, 그 단계를 끝내고 무엇을 재는지를 모든 단계에 적었다.
+    부품 <strong>174 종 · 1,511 개 · 21,816 kg</strong>
+    — 제작품 115 종 / 구매품 59 종.</p>
+
+  <dl class="docref">
+    <div><dt>문서번호</dt><dd>DG-HK60C-ASM-001</dd></div>
+    <div><dt>개정</dt><dd>Rev.0</dd></div>
+    <div><dt>발행일</dt><dd>2026-09-06</dd></div>
+    <div><dt>대상 배치</dt><dd>REV.21C (DG-HK60C)</dd></div>
+    <div><dt>부품 근거</dt><dd>tools/parts.py</dd></div>
+    <div><dt>체결 근거</dt><dd>DG-HK60C-FAB-001</dd></div>
+  </dl>
+</header>
+
+<nav class="toc" aria-label="목차">
+  <h2>목차</h2>
+  <ol><li><a href="#a1"><b>1</b>이 문서를 쓰는 법</a></li><li><a href="#a2"><b>2</b>안전 — 조립 중에 다치는 자리</a></li><li><a href="#a3"><b>3</b>공구와 계측기</a></li><li><a href="#a4"><b>4</b>도면 읽는 법</a></li><li><a href="#a5"><b>5</b>볼트 조이는 법</a></li><li><a href="#a6"><b>6</b>모듈을 세우는 순서</a></li><li><a href="#a7"><b>7</b>모듈별 조립</a></li><li><a href="#a8"><b>8</b>검사와 기록</a></li><li><a href="#a9"><b>9</b>흔한 실수 열 가지</a></li></ol>
+</nav>
+
+<!-- ═══ 1 ═══ -->
+<section id="a1"><h2><span class="sn">1</span>이 문서를 쓰는 법</h2>
+
+  <div class="clause"><div class="n">1.1</div><div class="c">
+    <h3>도면 세 가지를 함께 본다</h3>
+    <p>이 설비의 도면은 성격이 셋이고, 조립하는 사람은 <strong>세 가지를 동시에 펴 놓는다</strong>.
+      하나만 보면 반드시 막힌다.</p>
+    <div class="tw"><table>
+      <caption>도면 세 가지 — 각각 무엇에 답하는가</caption>
+      <thead><tr><th>도면</th><th>어디에 있나</th><th>무엇에 답하나</th></tr></thead>
+      <tbody>
+        <tr><td><strong>조립도</strong></td><td class="k">콘솔 · 조립도 탭 (모듈별)</td>
+          <td><strong>무엇을 어떤 순서로</strong> 놓는가. 분해 등각도 + 단계표 + 부품표.</td></tr>
+        <tr><td><strong>부품도</strong></td><td class="k">콘솔 · 부품도 탭 (품번별)</td>
+          <td>그 부품이 <strong>어떻게 생겼고 얼마나 두꺼운가</strong>. 등각 그림 + 정투상 + 재질.</td></tr>
+        <tr><td><strong>제작 지침서</strong></td><td class="k">DG-HK60C-FAB-001</td>
+          <td><strong>어떤 볼트로 얼마나 조이는가</strong>. 등급 · 체결력 · 조임토크 · 용접 각장.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note"><strong>찾는 순서는 정해져 있다.</strong>
+      조립도의 <strong>원 안 숫자</strong> → 그 아래 <strong>부품표</strong>에서 품번(<span class="k">P-002-01</span> 같은 것) →
+      그 품번으로 <strong>부품도</strong>를 연다. 반대로 가면 같은 부품이 여러 모듈에 나오는 자리에서 헤맨다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">1.2</div><div class="c">
+    <h3>이 문서의 지위</h3>
+    <p>형상과 치수는 <strong>개념설계가 유도한 값</strong>이다. 상세설계에서 확정한다.
+      바뀌는 것은 <span class="k">tools/parts.py</span> 의 숫자이고, 부품도·조립도·질량표·이 문서가 함께 따라온다 —
+      <strong>어느 한 곳만 고쳐지는 일이 없도록</strong> 전부 한 곳에서 생성한다.</p>
+    <div class="warn"><strong>그래서 도면을 손으로 고치지 않는다.</strong> 콘솔의 도면을 직접 편집하면
+      다음 생성에서 지워진다. 치수가 틀렸으면 카탈로그를 고치고 다시 찍는다.</div>
+  </div></div>
+</section>
+
+<!-- ═══ 2 ═══ -->
+<section id="a2"><h2><span class="sn">2</span>안전 — 조립 중에 다치는 자리</h2>
+  <div class="clause"><div class="n">2.1</div><div class="c">
+    <h3>이 설비에서 실제로 위험한 것</h3>
+    <div class="warn"><strong>중량물이 첫째다.</strong> 가열실 기둥 한 본이
+      <strong class="m">222 kg</strong>, 크로스빔이 <strong class="m">278 kg</strong>,
+      만권 롤이 <strong class="m">357 kg</strong> 이다. <strong>25 kg 이 넘는 것은 사람 손으로 들지 않는다</strong> —
+      부품도의 질량 칸이 그 판단의 근거다.</div>
+    <ul>
+      <li><strong>고소</strong> — 랙 상단이 <span class="m">EL 4,550</span>, 모노레일이 <span class="m">EL 5,100</span> 이다.
+        2 m 이상은 전부 안전대 착용 구간이고, 사다리가 아니라 <strong>비계 또는 고소작업대</strong>를 쓴다.</li>
+      <li><strong>인양 중 하부</strong> — 인양물 아래로 지나가지 않는다. 태그라인으로 유도한다.</li>
+      <li><strong>가용접 상태</strong> — 가용접만 된 부재는 서 있어도 서 있는 것이 아니다.
+        본용접 전에는 반드시 <strong>가새 또는 체인블록</strong>으로 잡아 둔다.</li>
+      <li><strong>통전</strong> — 접지(<span class="k">M-011</span> 3단계)가 끝나기 전에는 어떤 회로도 넣지 않는다.</li>
+      <li><strong>시운전 전 방호</strong> — 회전부는 <strong>처음 도는 순간에 이미 덮여 있어야 한다</strong>.
+        돌려 보고 덮는 것이 아니다.</li>
+    </ul>
+    <p>보호구는 상시 <strong>안전모 · 안전화 · 보안경 · 장갑</strong>, 용접 시 차광면과 방염복,
+      연삭 시 방진마스크와 귀마개다.</p>
+  </div></div>
+</section>
+
+<!-- ═══ 3 ═══ -->
+<section id="a3"><h2><span class="sn">3</span>공구와 계측기</h2>
+  <div class="clause"><div class="n">3.1</div><div class="c">
+    <h3>없으면 조립이 성립하지 않는 것</h3>
+    <div class="tw"><table>
+      <caption>조립에 필요한 공구·계측기</caption>
+      <thead><tr><th>공구</th><th>사양</th><th>어디에 쓰나 · 왜 필요한가</th></tr></thead>
+      <tbody><tr><td><strong>토크렌치</strong></td><td class="k">0~100 / 100~800 N·m 2본</td><td>교정 성적서 유효기간 1년 · 정밀도 ±4 % — 이것 없이는 체결이 성립하지 않는다</td></tr><tr><td><strong>임팩트렌치</strong></td><td class="k">예비 조임 전용</td><td>본 조임에 쓰지 않는다. 임팩트는 체결력을 못 만든다</td></tr><tr><td><strong>레이저 레벨</strong></td><td class="k">정확도 ±1 mm / 10 m</td><td>기둥 상단 레벨과 레일면을 여기서 잡는다</td></tr><tr><td><strong>데오돌라이트 또는 토탈스테이션</strong></td><td class="k">각도 ±5″</td><td>4기둥 스팬과 직각도 — 줄자로는 3,500 을 ±1 로 못 잡는다</td></tr><tr><td><strong>다이얼게이지·마그네틱베이스</strong></td><td class="k">0.01 mm</td><td>축 흔들림 · 레일 직진도 · 상판 평면도</td></tr><tr><td><strong>직각자·수평기</strong></td><td class="k">1 급</td><td>용접 조립 중 상시</td></tr><tr><td><strong>틈새 게이지</strong></td><td class="k">0.05~1.0 mm</td><td>베이스플레이트 밀착 — 0.1 이 안 들어가야 한다</td></tr><tr><td><strong>줄자·강철자</strong></td><td class="k">5 m / 1 m</td><td>일반 치수</td></tr><tr><td><strong>절연저항계</strong></td><td class="k">500 V DC</td><td>IR 램프 회로 · 동력 회로</td></tr><tr><td><strong>접지저항계</strong></td><td class="k">—</td><td>통전 전 필수 — 10 Ω 이하</td></tr><tr><td><strong>체인블록·슬링</strong></td><td class="k">2 t 이상</td><td>가열실 기둥 222 kg · 크로스빔 · 만권 롤</td></tr><tr><td><strong>표면온도계 (비접촉)</strong></td><td class="k">0~300 ℃</td><td>외피 60 ℃ 확인 · 냉각 랙 판정</td></tr></tbody>
+    </table></div>
+    <div class="note"><strong>토크렌치 교정 성적서가 없으면 체결을 시작하지 않는다.</strong>
+      이 설비의 접합은 볼트가 <strong>정해진 힘으로 눌러 주는 것</strong>으로 성립한다.
+      교정되지 않은 렌치로 조인 볼트는 조인 것이 아니라 돌린 것이다.</div>
+  </div></div>
+</section>
+
+<!-- ═══ 4 ═══ -->
+<section id="a4"><h2><span class="sn">4</span>도면 읽는 법</h2>
+  <div class="clause"><div class="n">4.1</div><div class="c">
+    <h3>처음 보는 사람을 위한 일곱 가지</h3>
+    <div class="read"><h4>정면도 · 측면도 · 단면 A-A</h4><p>같은 물건을 세 방향에서 본 그림이다. 정면도의 가로가 측면도의 가로와 같은 치수라면 그 둘은 같은 방향을 보고 있는 것이다. 이 도면집은 <b>제3각법</b>을 쓴다 — 표제란 오른쪽 아래의 원뿔 기호가 그것을 말한다.</p></div><div class="read"><h4>등각 그림</h4><p>정투상이 안 읽히면 <b>이것부터 본다.</b> 부품이 실제로 어떻게 생겼는지를 그린 것이고, 주황색 <b>‘위’</b> 화살표가 어느 면이 위로 가는지를 말한다. 긴 부재는 지그재그 <b>파단선</b>으로 줄여 그렸다 — 실제 길이는 옆에 글로 적혀 있다.</p></div><div class="read"><h4>치수</h4><p>숫자는 전부 <b>mm</b> 다. 화살표 두 개 사이의 숫자가 그 두 점 사이의 거리다. <b>Ø</b> 는 지름, <b>t</b> 는 두께, <b>R</b> 은 반지름이다. 도면에 없는 치수는 재지 말고 물어본다 — 그린 대로 재면 축척 오차가 들어간다.</p></div><div class="read"><h4>공차</h4><p>치수 옆에 아무것도 없으면 <b>ISO 2768-mK</b> 를 따른다 (100 mm 급에서 ±0.3, 1,000 mm 급에서 ±0.8). ±0.5 처럼 따로 적힌 것은 그 자리가 특별히 중요하다는 뜻이다.</p></div><div class="read"><h4>용접기호</h4><p>화살표가 <b>용접할 자리</b>를 가리킨다. 삼각형은 필릿 용접, 앞의 숫자 <b>z</b> 가 각장(다리 길이)이다. 기준선 끝의 <b>동그라미</b>는 전주(둘레 전체) 용접이다.</p></div><div class="read"><h4>풍선번호</h4><p>조립도의 원 안 숫자는 <b>부품표의 번호</b>다. 그 번호로 부품표에서 품번(P-002-01 같은 것)을 찾고, 그 품번으로 부품도를 연다. 조립도 → 부품표 → 부품도 순서다.</p></div><div class="read"><h4>데이텀과 기하공차</h4><p>네모 안의 <b>A · B · C</b> 는 가공 기준면이다. 그 면을 먼저 잡고 나머지를 재라는 뜻이다. 기준면을 임의로 바꾸면 각 부품은 맞는데 조립이 안 맞는 일이 생긴다.</p></div>
+    <div class="note"><strong>모르면 재지 말고 묻는다.</strong> 도면에 없는 치수를 화면에서 재면
+      축척만큼 틀린다. 부품도는 <strong>표준 축척</strong>(1:1 · 1:2 · 1:5 · 1:10 …)으로만 그려져 있고,
+      축척은 각 그림의 제목 옆에 적혀 있다.</div>
+  </div></div>
+</section>
+
+<!-- ═══ 5 ═══ -->
+<section id="a5"><h2><span class="sn">5</span>볼트 조이는 법</h2>
+  <div class="clause"><div class="n">5.1</div><div class="c">
+    <h3>토크가 아니라 체결력이 사양이다</h3>
+    <p>같은 <span class="m">137.2 kN</span> 을 만드는 데도 건조 아연도금은
+      <span class="m">549 N·m</span>,
+      윤활은 <span class="m">384 N·m</span> 가 필요하다 —
+      <strong>40 % 차이</strong>다. 그래서 도면과 지침서는 체결력과 마찰 조건을 함께 적는다.
+      제작사가 다른 표면처리를 쓰면 토크를 다시 계산해 제출한다.</p>
+    <ol>
+      <li><strong>예비 조임 60 %</strong> — 대각선 순서로 한 바퀴. 임팩트렌치는 여기까지만.</li>
+      <li><strong>본 조임 100 %</strong> — 같은 대각선 순서로 한 바퀴. 토크렌치로만.</li>
+      <li><strong>마킹</strong> — 조임이 끝나면 볼트 머리 · 너트 · 모재에 걸쳐 <strong>한 줄</strong>을 긋는다.
+        나중에 풀리면 그 선이 어긋난다. 이것이 이 설비의 풀림 점검 방법이다.</li>
+      <li><strong>재사용 금지</strong> — 10.9 등급과 마찰접합 볼트는 1회용이다. 해체하면 신품으로 바꾼다.</li>
+    </ol>
+    <div class="warn"><strong>스프링와셔를 쓰지 않는다.</strong> 체결력 유지에 기여하지 않고 도장을 긁는다.
+      풀림방지는 <strong>체결력 관리 + 마킹</strong>이 하고, 진동·왕복 부위에만 쐐기형 와셔를 쓴다.
+      상세는 지침서 <span class="k">DG-HK60C-FAB-001</span> 5.3 과 표준상세 <span class="k">F-901</span>.</div>
+  </div></div>
+</section>
+
+<!-- ═══ 6 ═══ -->
+<section id="a6"><h2><span class="sn">6</span>모듈을 세우는 순서</h2>
+  <div class="clause"><div class="n">6.1</div><div class="c">
+    <h3>모듈 사이의 순서 — 이것이 제일 먼저 정해진다</h3>
+    <p>모듈 <em>안</em>의 순서는 각 모듈의 조립도가 든다. 모듈 <em>사이</em>의 순서는 여기서 정한다.
+      이것을 안 적으면 현장이 <strong>반입 순서대로</strong> 세우고, 그러면 나중에 들어갈 기계가 못 들어간다.</p>
+    <div class="tw"><table>
+      <caption>세우는 순서 — 7 단계</caption>
+      <thead><tr><th>순서</th><th>무엇을</th><th>모듈</th><th>왜 이 순서인가</th><th>내용</th></tr></thead>
+      <tbody><tr><td class="num">1</td><td><strong>기초·앵커</strong></td><td class="k">—</td><td>전 모듈의 앵커를 한 번에 심는다. 나눠 심으면 두 번째 타설에서 위치가 밀린다.</td><td>D-602 배치도 · 앵커 41점 · 그라우트 양생 7일</td></tr><tr><td class="num">2</td><td><strong>무거운 골조</strong></td><td class="k">M-002 · M-007 · M-004 · M-005</td><td>가장 무겁고 가장 정확해야 하는 것부터. 나중에 세우면 이미 선 것들 사이로 인양해야 한다.</td><td>가열실 · 냉각 랙 · 진공테이블 · 갠트리 주행 문형</td></tr><tr><td class="num">3</td><td><strong>이송 문형</strong></td><td class="k">M-003</td><td>골조가 선 뒤에 그 사이를 오가는 것을 단다. 반대로 하면 포크가 갈 곳이 없다.</td><td>승강 포크 4기 (LI · EX · GL · GU)</td></tr><tr><td class="num">4</td><td><strong>후단 설비</strong></td><td class="k">M-006 · M-008 · M-009</td><td>공정 상류가 확정된 뒤에 하류를 맞춘다. 웹 경로와 유리 경로가 상류 위치에서 나온다.</td><td>권취·롤 반출 · 횡인출 · 검사</td></tr><tr><td class="num">5</td><td><strong>유틸리티</strong></td><td class="k">M-011 · M-012</td><td>기계가 다 앉은 뒤에 전기와 배관을 깐다. 먼저 깔면 기계를 앉힐 때 밟는다.</td><td>전력·제어반 · 진공·계장공기 스키드</td></tr><tr><td class="num">6</td><td><strong>경계</strong></td><td class="k">M-017</td><td>우리 쪽 끝까지만 세운다. 그 너머는 발주자 설비이므로 경계가 확정된 뒤에 잇는다.</td><td>경계 덕트 · 단자반 · 배관반</td></tr><tr><td class="num">7</td><td><strong>방책</strong></td><td class="k">M-013</td><td>**맨 마지막이다.** 방책을 먼저 세우면 그 안으로 들어갈 기계의 반입로가 막힌다 — 현장에서 가장 흔한 사고이고, 되돌리려면 방책을 다시 뜯어야 한다.</td><td>방책 34기둥 · 메시 32매 · 안전문 2 · 라이트커튼 2조</td></tr></tbody>
+    </table></div>
+    <div class="warn"><strong>방책은 맨 마지막이다.</strong> 이것 하나만 지켜도 현장에서 가장 비싼 실수를 피한다.
+      방책을 먼저 세우면 그 안으로 들어갈 기계의 반입로가 막히고, 되돌리려면 방책을 다시 뜯어야 한다.</div>
+  </div></div>
+</section>
+
+<!-- ═══ 7 ═══ -->
+<section id="a7"><h2><span class="sn">7</span>모듈별 조립</h2>
+  <div class="clause"><div class="n">7.0</div><div class="c">
+    <h3>읽는 법</h3>
+    <p>각 모듈의 표는 <strong>단계 · 무엇을 · 왜 이 순서인가 · 끝내고 확인</strong> 네 칸이다.
+      <strong>‘왜’ 를 읽고 나서 손을 댄다</strong> — 순서를 바꾸면 무엇이 안 되는지 알아야
+      현장에서 임의로 바꾸지 않는다. 초록색 <strong>확인</strong> 칸은 그 단계를 끝냈다고 말하기 위해
+      실제로 재야 하는 값이다. 재지 않았으면 그 단계는 끝난 것이 아니다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">7.1</div><div class="c">
+    <h3>M-001 · 투입 셔틀·정렬·식별</h3>
+    <p>부품 <strong class="m">11 종</strong> · 개수 <strong class="m">20 개</strong> ·
+      질량 <strong class="m">301 kg</strong> — 제작품 7 종 / 구매품 4 종.
+      가장 무거운 단품은 <span class="k">P-001-03</span> 셔틀 상판
+      <strong class="m">129 kg</strong> 이다 — 사람 손으로 들지 않는다.</p>
+    <div class="tw"><table>
+      <caption>M-001 조립 순서 — 6 단계</caption>
+      <thead><tr><th>단계</th><th>무엇을</th><th>왜 이 순서인가</th><th>끝내고 확인</th></tr></thead>
+      <tbody><tr><td class="num">1</td><td><strong>레일·프레임 지상 조립</strong></td><td>셔틀은 가벼워 지상에서 다 짜고 통째로 올려도 된다 — 자리에서 짜면 용접 자세가 나쁘다</td><td class="chk">프레임 대각선 차 ≤ 2 mm</td></tr><tr><td class="num">2</td><td><strong>상판 취부</strong></td><td>상판을 먼저 덮으면 프레임 내부 용접을 못 한다</td><td class="chk">상판 단차 ≤ 1 mm</td></tr><tr><td class="num">3</td><td><strong>정렬 가이드 세팅</strong></td><td>패널을 넣어 보고 잡는다 — 도면 치수만으로는 안 맞는다</td><td class="chk">패널 폭 1,200 ± 3</td></tr><tr><td class="num">4</td><td><strong>대차·레일 맞물림</strong></td><td>레일 직진도를 먼저 잡아야 대차가 안 튄다</td><td class="chk">손으로 밀어 전 행정 무저항</td></tr><tr><td class="num">5</td><td><strong>실린더 연결</strong></td><td>대차가 손으로 자유롭게 구른 뒤에 동력을 건다 — 저항이 남은 채 실린더를 달면 원인을 못 찾는다</td><td class="chk">행정 500 ± 2 · 양단 완충 작동</td></tr><tr><td class="num">6</td><td><strong>센서·리더 초점</strong></td><td>기구가 다 선 뒤에 광학을 잡는다 — 먼저 잡으면 조립 진동으로 초점이 나간다</td><td class="chk">코드 판독률 10/10 · 존재 센서 오검출 0</td></tr></tbody>
+    </table></div>
+    <details><summary>M-001 부품표 — 전 11 종</summary>
+    <div class="tw"><table>
+      <caption>M-001 부품표</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>형상·규격</th><th>재질</th><th>수량</th><th>kg</th><th>단계</th><th>어떻게 붙는가</th></tr></thead>
+      <tbody><tr><td class="k">P-001-01</td><td>셔틀 프레임 종재</td><td>□-100×50×3.2t · L 2,600</td><td>SS400</td><td class="num">2</td><td class="num">37.5</td><td class="num">1</td><td>횡재와 필릿 용접 z5</td></tr><tr><td class="k">P-001-02</td><td>셔틀 프레임 횡재</td><td>□-100×50×3.2t · L 1,300</td><td>SS400</td><td class="num">4</td><td class="num">37.5</td><td class="num">1</td><td>종재 사이 필릿 용접 z5</td></tr><tr><td class="k">P-001-03</td><td>셔틀 상판</td><td>PL 4.5t · 2,600×1,400</td><td>SS400</td><td class="num">1</td><td class="num">128.6</td><td class="num">2</td><td>프레임에 M8×24 @300</td></tr><tr><td class="k">P-001-04</td><td>정렬 가이드 (고정측)</td><td>L-60×60×5 · L 2,600</td><td>SS400</td><td class="num">1</td><td class="num">11.7</td><td class="num">3</td><td>상판에 M8×6</td></tr><tr><td class="k">P-001-05</td><td>정렬 가이드 (가동측)</td><td>L-60×60×5 · L 2,600</td><td>SS400</td><td class="num">1</td><td class="num">11.7</td><td class="num">3</td><td>가이드 슬롯 + M8 손잡이볼트 4</td></tr><tr class="buy"><td class="k">P-001-06</td><td>셔틀 주행 대차</td><td>외형 300×200×120</td><td>—</td><td class="num">4</td><td class="num">24.8</td><td class="num">4</td><td>프레임 하면에 M10×4</td></tr><tr><td class="k">P-001-07</td><td>셔틀 레일</td><td>L-75×75×6 · L 3,200</td><td>SS400</td><td class="num">2</td><td class="num">43.4</td><td class="num">1</td><td>기초 앵커 M12 @800</td></tr><tr class="buy"><td class="k">P-001-08</td><td>인출 실린더</td><td>외형 680×90×90</td><td>—</td><td class="num">1</td><td class="num">4.8</td><td class="num">5</td><td>프레임 단부 클레비스 핀 Ø16</td></tr><tr class="buy"><td class="k">P-001-09</td><td>2D 코드 리더</td><td>외형 60×45×40</td><td>—</td><td class="num">1</td><td class="num">0.3</td><td class="num">6</td><td>브래킷에 M4×2</td></tr><tr><td class="k">P-001-10</td><td>리더 브래킷</td><td>PL 5t · 160×90</td><td>SS400</td><td class="num">1</td><td class="num">0.6</td><td class="num">6</td><td>가이드에 M8×2 (장공으로 초점 조정)</td></tr><tr class="buy"><td class="k">P-001-11</td><td>패널 존재 센서</td><td>외형 50×18×32</td><td>—</td><td class="num">2</td><td class="num">0.2</td><td class="num">6</td><td>브래킷에 M3×2</td></tr></tbody>
+    </table></div></details>
+  </div></div>
+  <div class="clause"><div class="n">7.2</div><div class="c">
+    <h3>M-002 · HC-101 5단 밀폐 IR 가열실</h3>
+    <p>부품 <strong class="m">24 종</strong> · 개수 <strong class="m">575 개</strong> ·
+      질량 <strong class="m">5,699 kg</strong> — 제작품 20 종 / 구매품 4 종.
+      가장 무거운 단품은 <span class="k">P-002-10</span> 외피 단부판
+      <strong class="m">248 kg</strong> 이다 — 사람 손으로 들지 않는다.</p>
+    <div class="tw"><table>
+      <caption>M-002 조립 순서 — 9 단계</caption>
+      <thead><tr><th>단계</th><th>무엇을</th><th>왜 이 순서인가</th><th>끝내고 확인</th></tr></thead>
+      <tbody><tr><td class="num">1</td><td><strong>기둥 6본 · 베이스 앵커</strong></td><td>가장 무겁고 가장 정확해야 하는 것부터. 나머지는 여기에 붙는다</td><td class="chk">기둥 수직도 ≤ H/1000 · 상단 레벨 차 ≤ 2 mm</td></tr><tr><td class="num">2</td><td><strong>상부 타이빔</strong></td><td>기둥을 서로 묶기 전에는 사다리를 걸면 안 된다</td><td class="chk">대각선 차 ≤ 3 mm</td></tr><tr><td class="num">3</td><td><strong>데크 프레임·레일 5단</strong></td><td>아래 단부터. 위부터 달면 아래를 달 자리가 없다</td><td class="chk">단별 레벨 차 ≤ 2 mm · 레일 상면 동일 평면 ≤ 1 mm</td></tr><tr><td class="num">4</td><td><strong>IR 뱅크·램프</strong></td><td>데크가 선 뒤에 램프를 넣는다 — 반대로 하면 램프를 밟는다</td><td class="chk">40등 점등 · 절연저항 ≥ 5 MΩ</td></tr><tr><td class="num">5</td><td><strong>단열·반사·내피</strong></td><td>안쪽에서 바깥으로. 내피를 먼저 붙이면 단열재를 넣을 길이 없다</td><td class="chk">이음 어긋 물림 · 스페이서 @600 누락 0</td></tr><tr><td class="num">6</td><td><strong>외피 측·단부판</strong></td><td>안이 다 끝난 뒤에 덮는다. 덮고 나면 못 고친다</td><td class="chk">외피 표면 60 ℃ 이하 (열간 시험)</td></tr><tr><td class="num">7</td><td><strong>지붕판·배기 노즐</strong></td><td>지붕은 마지막이다 — 그 전까지 여기가 사람과 자재가 드나드는 유일한 구멍이다</td><td class="chk">누기 시험 · 노즐 플랜지 밀착</td></tr><tr><td class="num">8</td><td><strong>에어록 셔터</strong></td><td>외피가 선 뒤에 셔터 궤도를 잡는다 — 외피가 없으면 씰이 닿을 상대면이 없다</td><td class="chk">개폐 시간 ≤ 3 s · 씰 밀착 전주</td></tr><tr><td class="num">9</td><td><strong>열전대·배선</strong></td><td>구조가 더 이상 움직이지 않게 된 뒤에 계장을 건다 — 먼저 걸면 용접열에 열전대가 상한다</td><td class="chk">10점 지시 편차 ≤ 3 ℃</td></tr></tbody>
+    </table></div>
+    <details><summary>M-002 부품표 — 전 24 종</summary>
+    <div class="tw"><table>
+      <caption>M-002 부품표</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>형상·규격</th><th>재질</th><th>수량</th><th>kg</th><th>단계</th><th>어떻게 붙는가</th></tr></thead>
+      <tbody><tr><td class="k">P-002-01</td><td>가열실 기둥</td><td>H-200×200×8/12 · L 4,550</td><td>SS400</td><td class="num">6</td><td class="num">1,330.4</td><td class="num">1</td><td>베이스플레이트에 완전용입 + 거싯 4</td></tr><tr><td class="k">P-002-02</td><td>기둥 베이스플레이트</td><td>PL 25t · 400×400</td><td>SS400</td><td class="num">6</td><td class="num">186.6</td><td class="num">1</td><td>앵커 M20 (A2) ×4 · hef 170</td></tr><tr><td class="k">P-002-03</td><td>기둥 거싯</td><td>거싯 200×200 × 12t</td><td>SS400</td><td class="num">24</td><td class="num">45.2</td><td class="num">1</td><td>기둥·베이스에 양면 필릿 z8</td></tr><tr><td class="k">P-002-04</td><td>상부 종방향 타이빔</td><td>□-150×100×6t · L 3,780</td><td>SS400</td><td class="num">2</td><td class="num">169.5</td><td class="num">2</td><td>기둥 상단에 필릿 z6</td></tr><tr><td class="k">P-002-05</td><td>상부 횡방향 타이빔</td><td>□-150×100×6t · L 2,360</td><td>SS400</td><td class="num">3</td><td class="num">158.7</td><td class="num">2</td><td>종방향 빔에 필릿 z6</td></tr><tr><td class="k">P-002-06</td><td>데크 프레임 종재</td><td>L-65×65×6 · L 2,780</td><td>SS400</td><td class="num">10</td><td class="num">162.4</td><td class="num">3</td><td>기둥에 M12×4 (단별 높이 조정 장공)</td></tr><tr><td class="k">P-002-07</td><td>데크 프레임 횡재</td><td>L-65×65×6 · L 1,350</td><td>SS400</td><td class="num">15</td><td class="num">118.3</td><td class="num">3</td><td>종재에 필릿 z5</td></tr><tr><td class="k">P-002-08</td><td>데크 레일</td><td>각봉 40×40 · L 2,780</td><td>STS304</td><td class="num">10</td><td class="num">352.7</td><td class="num">3</td><td>종재 상면에 M8×6 접시머리</td></tr><tr><td class="k">P-002-09</td><td>외피 측판</td><td>PL 3.2t · 1,890×3,860</td><td>SS400</td><td class="num">4</td><td class="num">733.0</td><td class="num">6</td><td>기둥·타이빔에 M8×@250</td></tr><tr><td class="k">P-002-10</td><td>외피 단부판</td><td>PL 3.2t · 2,560×3,860</td><td>SS400</td><td class="num">1</td><td class="num">248.2</td><td class="num">6</td><td>기둥에 M8×@250</td></tr><tr><td class="k">P-002-11</td><td>외피 지붕판</td><td>PL 3.2t · 3,780×2,560</td><td>SS400</td><td class="num">1</td><td class="num">243.1</td><td class="num">7</td><td>타이빔에 M8×@250 · 실링</td></tr><tr><td class="k">P-002-12</td><td>내피 측판</td><td>PL 2t · 1,890×3,860</td><td>STS304</td><td class="num">4</td><td class="num">462.8</td><td class="num">5</td><td>열교 차단 스페이서 개재 M6</td></tr><tr><td class="k">P-002-13</td><td>내피 단부·지붕판</td><td>PL 2t · 3,780×2,560</td><td>STS304</td><td class="num">2</td><td class="num">306.9</td><td class="num">5</td><td>스페이서 개재 M6</td></tr><tr><td class="k">P-002-14</td><td>단열재</td><td>100t · 1,000×600</td><td>미네랄울</td><td class="num">62</td><td class="num">372.0</td><td class="num">5</td><td>핀 용접 + 와셔 고정</td></tr><tr><td class="k">P-002-15</td><td>반사층</td><td>0.5t · 1,000×600</td><td>AL반사판</td><td class="num">62</td><td class="num">50.2</td><td class="num">5</td><td>단열재 위 겹침 20</td></tr><tr><td class="k">P-002-16</td><td>열교 차단 스페이서</td><td>12t · 60×60</td><td>GFRP</td><td class="num">210</td><td class="num">17.2</td><td class="num">5</td><td>내피·외피 사이 개재 M6</td></tr><tr><td class="k">P-002-17</td><td>IR 뱅크 캐리어</td><td>C-100×50×5/5 · L 2,260</td><td>SS400</td><td class="num">10</td><td class="num">168.5</td><td class="num">4</td><td>기둥에 M10×2 (램프 교체용 슬라이드)</td></tr><tr class="buy"><td class="k">P-002-18</td><td>IR 램프</td><td>외형 1,300×25×25</td><td>—</td><td class="num">40</td><td class="num">36.0</td><td class="num">4</td><td>캐리어 소켓 압입 + 클립</td></tr><tr class="buy"><td class="k">P-002-19</td><td>램프 소켓·배선</td><td>외형 60×40×40</td><td>—</td><td class="num">80</td><td class="num">12.0</td><td class="num">4</td><td>캐리어에 M4×2</td></tr><tr><td class="k">P-002-20</td><td>에어록 셔터판</td><td>PL 4.5t · 1,680×4,090</td><td>SS400</td><td class="num">2</td><td class="num">485.5</td><td class="num">8</td><td>가이드 레일 + 공압 실린더</td></tr><tr><td class="k">P-002-21</td><td>셔터 씰</td><td>15t · 1,680×40</td><td>세라믹파이버</td><td class="num">8</td><td class="num">2.1</td><td class="num">8</td><td>셔터 프레임 홈에 압입</td></tr><tr class="buy"><td class="k">P-002-22</td><td>셔터 실린더</td><td>외형 1,200×80×80</td><td>—</td><td class="num">2</td><td class="num">19.0</td><td class="num">8</td><td>상부 타이빔에 M12×4</td></tr><tr class="buy"><td class="k">P-002-23</td><td>단별 열전대</td><td>외형 200×6×6</td><td>—</td><td class="num">10</td><td class="num">0.5</td><td class="num">9</td><td>내피 관통 압축피팅 M8</td></tr><tr><td class="k">P-002-24</td><td>배기 덕트 노즐</td><td>Ø600 × 3t · L 400</td><td>SS400</td><td class="num">1</td><td class="num">17.7</td><td class="num">7</td><td>지붕판에 플랜지 M12×12</td></tr></tbody>
+    </table></div></details>
+  </div></div>
+  <div class="clause"><div class="n">7.3</div><div class="c">
+    <h3>M-003 · 승강 포크 문형 ×4</h3>
+    <p>부품 <strong class="m">18 종</strong> · 개수 <strong class="m">180 개</strong> ·
+      질량 <strong class="m">3,219 kg</strong> — 제작품 10 종 / 구매품 8 종.
+      가장 무거운 단품은 <span class="k">P-003-05</span> 기초보
+      <strong class="m">156 kg</strong> 이다 — 사람 손으로 들지 않는다.</p>
+    <div class="tw"><table>
+      <caption>M-003 조립 순서 — 6 단계</caption>
+      <thead><tr><th>단계</th><th>무엇을</th><th>왜 이 순서인가</th><th>끝내고 확인</th></tr></thead>
+      <tbody><tr><td class="num">1</td><td><strong>문형 기둥 2본 · 앵커</strong></td><td>4기 전부 같은 순서다. 한 기를 익히면 나머지는 반복이다</td><td class="chk">기둥 수직도 ≤ H/1000 · 두 기둥 간격 ± 1 mm</td></tr><tr><td class="num">2</td><td><strong>두상보·기초보</strong></td><td>보를 걸어야 기둥 둘이 서로를 잡는다 — 그 전에는 사다리도 걸면 안 된다</td><td class="chk">보 수평 ≤ 1 mm/m</td></tr><tr><td class="num">3</td><td><strong>볼스크류·LM·서보</strong></td><td>직선 요소를 먼저. 캐리지를 먼저 달면 레일을 못 넣는다</td><td class="chk">스크류 흔들림 ≤ 0.05 · LM 전 행정 무저항</td></tr><tr><td class="num">4</td><td><strong>포크 캐리지</strong></td><td>LM 블록에 얹는다. 두 스크류 동기를 여기서 맞춘다</td><td class="chk">좌우 높이 차 ≤ 0.5 mm</td></tr><tr><td class="num">5</td><td><strong>텔레스코픽 포크·티인</strong></td><td>캐리지가 두 스크류에 안정되게 물린 뒤에 무거운 포크를 건다 — 반대로 하면 동기를 못 맞춘다</td><td class="chk">인출 2,610 ± 3 · 처짐 ≤ 3 mm</td></tr><tr><td class="num">6</td><td><strong>엔코더·리미트·하드스톱</strong></td><td>하드스톱을 마지막에 다는 것이 아니라, 시운전 전에 반드시 단다</td><td class="chk">리미트 → 정지거리 &lt; 하드스톱까지 거리</td></tr></tbody>
+    </table></div>
+    <details><summary>M-003 부품표 — 전 18 종</summary>
+    <div class="tw"><table>
+      <caption>M-003 부품표</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>형상·규격</th><th>재질</th><th>수량</th><th>kg</th><th>단계</th><th>어떻게 붙는가</th></tr></thead>
+      <tbody><tr><td class="k">P-003-01</td><td>포크 문형 기둥</td><td>□-125×125×6t · L 4,510</td><td>SS400</td><td class="num">8</td><td class="num">808.9</td><td class="num">1</td><td>베이스플레이트에 완전용입 + 거싯 4</td></tr><tr><td class="k">P-003-02</td><td>포크 기둥 베이스플레이트</td><td>PL 19t · 400×400</td><td>SS400</td><td class="num">8</td><td class="num">189.1</td><td class="num">1</td><td>앵커 M20 ×4 · hef 170</td></tr><tr><td class="k">P-003-03</td><td>포크 기둥 거싯</td><td>거싯 150×150 × 12t</td><td>SS400</td><td class="num">32</td><td class="num">33.9</td><td class="num">1</td><td>기둥·베이스에 양면 필릿 z8</td></tr><tr><td class="k">P-003-04</td><td>두상보</td><td>□-260×180×9t · L 2,390</td><td>SS400</td><td class="num">4</td><td class="num">570.0</td><td class="num">2</td><td>기둥 상단에 완전용입 + 거싯</td></tr><tr><td class="k">P-003-05</td><td>기초보</td><td>□-300×180×9t · L 2,390</td><td>SS400</td><td class="num">4</td><td class="num">624.1</td><td class="num">2</td><td>기둥 하단에 완전용입</td></tr><tr><td class="k">P-003-06</td><td>보 접합 거싯</td><td>거싯 180×180 × 12t</td><td>SS400</td><td class="num">16</td><td class="num">24.4</td><td class="num">2</td><td>기둥·보에 양면 필릿 z8</td></tr><tr class="buy"><td class="k">P-003-07</td><td>볼스크류</td><td>외형 3,180×32×32</td><td>—</td><td class="num">8</td><td class="num">113.6</td><td class="num">3</td><td>상·하단 지지베어링 유닛</td></tr><tr class="buy"><td class="k">P-003-08</td><td>지지베어링 유닛</td><td>외형 80×80×60</td><td>—</td><td class="num">16</td><td class="num">22.4</td><td class="num">3</td><td>보에 M8×4</td></tr><tr class="buy"><td class="k">P-003-09</td><td>서보모터·감속기</td><td>외형 280×130×130</td><td>—</td><td class="num">8</td><td class="num">92.0</td><td class="num">3</td><td>기초보에 M10×4 + 커플링</td></tr><tr class="buy"><td class="k">P-003-10</td><td>LM 가이드 레일</td><td>외형 4,110×23×22</td><td>—</td><td class="num">8</td><td class="num">68.8</td><td class="num">3</td><td>기둥 전면에 M6 @80</td></tr><tr class="buy"><td class="k">P-003-11</td><td>LM 블록</td><td>외형 90×70×36</td><td>—</td><td class="num">16</td><td class="num">9.6</td><td class="num">3</td><td>캐리지에 M6×4</td></tr><tr><td class="k">P-003-12</td><td>포크 캐리지</td><td>PL 12t · 1,800×550</td><td>SS400</td><td class="num">4</td><td class="num">373.0</td><td class="num">4</td><td>LM 블록 4 + 볼너트 2</td></tr><tr><td class="k">P-003-13</td><td>캐리지 보강 리브</td><td>PL 10t · 550×120</td><td>SS400</td><td class="num">16</td><td class="num">82.9</td><td class="num">4</td><td>캐리지에 필릿 z6</td></tr><tr class="buy"><td class="k">P-003-14</td><td>TS-101 텔레스코픽 포크</td><td>외형 1,900×200×160</td><td>—</td><td class="num">4</td><td class="num">168.0</td><td class="num">5</td><td>캐리지에 M12×8</td></tr><tr><td class="k">P-003-15</td><td>포크 티인</td><td>PL 14t · 620×140</td><td>A6061-T6</td><td class="num">8</td><td class="num">26.2</td><td class="num">5</td><td>포크 선단에 M10×4</td></tr><tr class="buy"><td class="k">P-003-16</td><td>절대치 엔코더</td><td>외형 60×60×45</td><td>—</td><td class="num">4</td><td class="num">1.2</td><td class="num">6</td><td>감속기 후단 M4×4</td></tr><tr class="buy"><td class="k">P-003-17</td><td>상하한 리미트</td><td>외형 70×30×35</td><td>—</td><td class="num">8</td><td class="num">1.2</td><td class="num">6</td><td>기둥에 M5×2</td></tr><tr><td class="k">P-003-18</td><td>기계식 하드스톱</td><td>PL 16t · 120×80</td><td>SS400</td><td class="num">8</td><td class="num">9.6</td><td class="num">6</td><td>기둥에 M12×2</td></tr></tbody>
+    </table></div></details>
+  </div></div>
+  <div class="clause"><div class="n">7.4</div><div class="c">
+    <h3>M-004 · VT-101 6존 고정 진공테이블</h3>
+    <p>부품 <strong class="m">12 종</strong> · 개수 <strong class="m">82 개</strong> ·
+      질량 <strong class="m">1,245 kg</strong> — 제작품 8 종 / 구매품 4 종.
+      가장 무거운 단품은 <span class="k">P-004-01</span> VT-101 상판
+      <strong class="m">710 kg</strong> 이다 — 사람 손으로 들지 않는다.</p>
+    <div class="tw"><table>
+      <caption>M-004 조립 순서 — 5 단계</caption>
+      <thead><tr><th>단계</th><th>무엇을</th><th>왜 이 순서인가</th><th>끝내고 확인</th></tr></thead>
+      <tbody><tr><td class="num">1</td><td><strong>기둥 4본 · 앵커</strong></td><td>박리 추력이 여기로 내려온다. 라이너로 밀착시켜야 전단이 걸린다</td><td class="chk">베이스 밀착 — 틈새 게이지 0.1 불통과</td></tr><tr><td class="num">2</td><td><strong>상판 리브 용접</strong></td><td>리브를 먼저 짜고 상판을 덮는다. 반대로 하면 안쪽 용접을 못 한다</td><td class="chk">용접 변형 확인 — 연삭 전 평면도 ≤ 1 mm</td></tr><tr><td class="num">3</td><td><strong>상판 취부·연삭</strong></td><td>볼트 접합이다. 나중에 떼어 다시 연삭할 수 있어야 한다</td><td class="chk">평면도 0.2/2,900 · 상면 EL 1,150 ± 1</td></tr><tr><td class="num">4</td><td><strong>흡착패드 18개</strong></td><td>상판을 연삭해 평평해진 뒤에 패드를 심는다 — 먼저 심으면 연삭 부스러기를 패드가 먹는다</td><td class="chk">패드 상면 동일 평면 ≤ 0.3 mm</td></tr><tr><td class="num">5</td><td><strong>매니폴드·밸브·센서</strong></td><td>배관은 마지막. 먼저 깔면 연삭 부스러기를 먹는다</td><td class="chk">존별 −65 kPa 도달 · 유지 60 s 누설 ≤ 2 kPa</td></tr></tbody>
+    </table></div>
+    <details><summary>M-004 부품표 — 전 12 종</summary>
+    <div class="tw"><table>
+      <caption>M-004 부품표</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>형상·규격</th><th>재질</th><th>수량</th><th>kg</th><th>단계</th><th>어떻게 붙는가</th></tr></thead>
+      <tbody><tr><td class="k">P-004-01</td><td>VT-101 상판</td><td>PL 20t · 2,900×1,560</td><td>SS400</td><td class="num">1</td><td class="num">710.3</td><td class="num">3</td><td>리브에 완전용입 후 상면 연삭</td></tr><tr><td class="k">P-004-02</td><td>상판 리브 (종)</td><td>PL 10t · 2,900×120</td><td>SS400</td><td class="num">4</td><td class="num">109.3</td><td class="num">2</td><td>상판에 양면 필릿 z6</td></tr><tr><td class="k">P-004-03</td><td>상판 리브 (횡)</td><td>PL 10t · 1,540×120</td><td>SS400</td><td class="num">7</td><td class="num">101.5</td><td class="num">2</td><td>종리브에 필릿 z6</td></tr><tr><td class="k">P-004-04</td><td>테이블 기둥</td><td>□-150×150×6t · L 1,000</td><td>SM490A</td><td class="num">4</td><td class="num">108.5</td><td class="num">1</td><td>베이스플레이트에 완전용입 + 거싯 4</td></tr><tr><td class="k">P-004-05</td><td>테이블 베이스플레이트</td><td>PL 28t · 360×360</td><td>SM490A</td><td class="num">4</td><td class="num">112.1</td><td class="num">1</td><td>앵커 M24 (A8) ×4 · hef 210</td></tr><tr><td class="k">P-004-06</td><td>테이블 기둥 거싯</td><td>거싯 180×180 × 12t</td><td>SM490A</td><td class="num">16</td><td class="num">24.4</td><td class="num">1</td><td>기둥·베이스에 양면 필릿 z8</td></tr><tr><td class="k">P-004-07</td><td>기둥·상판 접합판</td><td>PL 16t · 300×300</td><td>SM490A</td><td class="num">4</td><td class="num">45.2</td><td class="num">3</td><td>기둥에 완전용입 · 상판에 M16×4</td></tr><tr class="buy"><td class="k">P-004-08</td><td>흡착패드</td><td>외형 250×250×55</td><td>NBR</td><td class="num">18</td><td class="num">6.3</td><td class="num">4</td><td>상판 흡착홀에 G1/4 니플</td></tr><tr><td class="k">P-004-09</td><td>진공 매니폴드</td><td>Ø25 × 2t · L 2,700</td><td>STS304</td><td class="num">6</td><td class="num">18.6</td><td class="num">5</td><td>상판 하면 클램프 @400</td></tr><tr class="buy"><td class="k">P-004-10</td><td>존 밸브·체크밸브</td><td>외형 90×60×70</td><td>—</td><td class="num">6</td><td class="num">4.8</td><td class="num">5</td><td>매니폴드에 G1/4</td></tr><tr class="buy"><td class="k">P-004-11</td><td>진공 압력센서</td><td>외형 45×30×40</td><td>—</td><td class="num">6</td><td class="num">0.7</td><td class="num">5</td><td>매니폴드에 G1/8</td></tr><tr class="buy"><td class="k">P-004-12</td><td>진공 필터</td><td>외형 80×60×110</td><td>—</td><td class="num">6</td><td class="num">3.0</td><td class="num">5</td><td>매니폴드 입구 G1/4</td></tr></tbody>
+    </table></div></details>
+  </div></div>
+  <div class="clause"><div class="n">7.5</div><div class="c">
+    <h3>M-005 · DL-101 이동 나이프 탠덤 셀</h3>
+    <p>부품 <strong class="m">22 종</strong> · 개수 <strong class="m">82 개</strong> ·
+      질량 <strong class="m">2,565 kg</strong> — 제작품 12 종 / 구매품 10 종.
+      가장 무거운 단품은 <span class="k">P-005-08</span> 크로스빔
+      <strong class="m">278 kg</strong> 이다 — 사람 손으로 들지 않는다.</p>
+    <div class="tw"><table>
+      <caption>M-005 조립 순서 — 8 단계</caption>
+      <thead><tr><th>단계</th><th>무엇을</th><th>왜 이 순서인가</th><th>끝내고 확인</th></tr></thead>
+      <tbody><tr><td class="num">1</td><td><strong>주행 문형 4기둥 · 앵커</strong></td><td>칼끝 간격 300±2 가 여기서 시작한다. 여기가 틀리면 아래가 다 틀린다</td><td class="chk">4기둥 상단 레벨 차 ≤ 1 mm · 스팬 ± 1 mm</td></tr><tr><td class="num">2</td><td><strong>주행레일 빔 2본</strong></td><td>빔을 걸고 상면을 연삭한다 — 현장 연삭이 원칙이다</td><td class="chk">레일면 직진도 0.1/1,000 · 두 빔 높이 차 ≤ 0.5 mm</td></tr><tr><td class="num">3</td><td><strong>LM 레일·랙 취부</strong></td><td>빔 상면을 연삭해 기준면이 나온 뒤에 레일을 깐다 — 레일은 자기 밑면을 그대로 베낀다</td><td class="chk">레일 평행도 ≤ 0.1 · 랙 백래시 ≤ 0.05</td></tr><tr><td class="num">4</td><td><strong>갠트리 프레임·크로스빔</strong></td><td>마찰접합이다 — 접합면에 도장이 있으면 미끄러진다</td><td class="chk">접합면 Sa 2½ 확인 · 체결력 109.9 kN 마킹</td></tr><tr><td class="num">5</td><td><strong>Z축 슬라이드 2조</strong></td><td>갠트리가 레일 위에 선 뒤에 Z축을 얹는다</td><td class="chk">Z 수직도 ≤ 0.05/300</td></tr><tr><td class="num">6</td><td><strong>칼날 빔·인서트·히터·핀</strong></td><td>칼날은 마지막에 단다. 먼저 달면 조립 중에 다친다</td><td class="chk">칼끝 간격 300 ± 2 · 히터 12본 승온 확인</td></tr><tr><td class="num">7</td><td><strong>BC-201 카세트 장착</strong></td><td>핀이 먼저 물리고 클램프는 나중이다 — 순서가 반대면 핀이 상한다</td><td class="chk">핀 4개 완전 착좌 후 클램프 · 유격 0</td></tr><tr><td class="num">8</td><td><strong>GR-W1 가이드롤</strong></td><td>갠트리가 레일 위에서 다 선 뒤에 롤을 건다 — 먼저 달면 조립 중에 롤 면이 상한다</td><td class="chk">롤 진원도 ≤ 0.05 · 회전 무저항</td></tr></tbody>
+    </table></div>
+    <details><summary>M-005 부품표 — 전 22 종</summary>
+    <div class="tw"><table>
+      <caption>M-005 부품표</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>형상·규격</th><th>재질</th><th>수량</th><th>kg</th><th>단계</th><th>어떻게 붙는가</th></tr></thead>
+      <tbody><tr><td class="k">P-005-01</td><td>주행레일 문형 기둥</td><td>H-250×250×9/14 · L 2,100</td><td>SM490A</td><td class="num">4</td><td class="num">593.3</td><td class="num">1</td><td>베이스플레이트에 완전용입 + 거싯 4</td></tr><tr><td class="k">P-005-02</td><td>문형 베이스플레이트</td><td>PL 22t · 440×440</td><td>SM490A</td><td class="num">4</td><td class="num">132.3</td><td class="num">1</td><td>앵커 M24 (A7) ×4 · hef 210</td></tr><tr><td class="k">P-005-03</td><td>문형 기둥 거싯</td><td>거싯 220×220 × 14t</td><td>SM490A</td><td class="num">16</td><td class="num">42.6</td><td class="num">1</td><td>기둥·베이스에 양면 필릿 z10</td></tr><tr><td class="k">P-005-04</td><td>주행레일 빔</td><td>□-220×220×9t · L 4,100</td><td>SM490A</td><td class="num">2</td><td class="num">489.0</td><td class="num">2</td><td>기둥 상단에 완전용입</td></tr><tr class="buy"><td class="k">P-005-05</td><td>LM 주행레일</td><td>외형 4,000×45×38</td><td>—</td><td class="num">2</td><td class="num">62.0</td><td class="num">3</td><td>빔 상면에 M12 @105</td></tr><tr class="buy"><td class="k">P-005-06</td><td>주행 대차 (LM 블록)</td><td>외형 160×120×60</td><td>—</td><td class="num">4</td><td class="num">9.6</td><td class="num">3</td><td>측면 프레임에 M12×4</td></tr><tr><td class="k">P-005-07</td><td>갠트리 측면 프레임</td><td>PL 16t · 900×700</td><td>SM490A</td><td class="num">2</td><td class="num">158.3</td><td class="num">4</td><td>LM 블록 M12×8 (마찰접합 μ0.50)</td></tr><tr><td class="k">P-005-08</td><td>크로스빔</td><td>□-300×200×12t · L 3,100</td><td>SM490A</td><td class="num">1</td><td class="num">278.0</td><td class="num">4</td><td>측면 프레임에 M16×8</td></tr><tr class="buy"><td class="k">P-005-09</td><td>X축 랙</td><td>외형 3,900×40×40</td><td>—</td><td class="num">1</td><td class="num">12.0</td><td class="num">3</td><td>빔 측면에 M10 @100</td></tr><tr class="buy"><td class="k">P-005-10</td><td>X축 피니언·감속기</td><td>외형 320×160×160</td><td>—</td><td class="num">1</td><td class="num">18.0</td><td class="num">4</td><td>측면 프레임에 M12×4</td></tr><tr><td class="k">P-005-11</td><td>Z축 서보슬라이드 베이스</td><td>PL 20t · 700×400</td><td>SM490A</td><td class="num">2</td><td class="num">87.9</td><td class="num">5</td><td>크로스빔에 M16×6</td></tr><tr class="buy"><td class="k">P-005-12</td><td>Z축 볼스크류</td><td>외형 600×32×32</td><td>—</td><td class="num">2</td><td class="num">8.4</td><td class="num">5</td><td>베이스 지지베어링</td></tr><tr class="buy"><td class="k">P-005-13</td><td>Z축 LM 가이드</td><td>외형 500×23×22</td><td>—</td><td class="num">4</td><td class="num">12.4</td><td class="num">5</td><td>베이스에 M6 @80</td></tr><tr><td class="k">P-005-14</td><td>칼날 빔</td><td>PL 25t · 1,560×220</td><td>SS400</td><td class="num">2</td><td class="num">134.7</td><td class="num">6</td><td>Z축 슬라이드에 M16×6</td></tr><tr><td class="k">P-005-15</td><td>SKD11 인서트</td><td>PL 8t · 1,440×60</td><td>SKD11</td><td class="num">2</td><td class="num">10.6</td><td class="num">6</td><td>칼날 빔에 M10×8 (접시머리)</td></tr><tr class="buy"><td class="k">P-005-16</td><td>카트리지 히터</td><td>외형 200×12×12</td><td>—</td><td class="num">12</td><td class="num">2.4</td><td class="num">6</td><td>칼날 빔 홀에 압입 + 세트스크류</td></tr><tr><td class="k">P-005-17</td><td>BC-201 카세트 본체</td><td>PL 90t · 1,440×120</td><td>SS400</td><td class="num">2</td><td class="num">244.2</td><td class="num">7</td><td>테이퍼 로케이팅핀 4 + 쐐기 클램프 2</td></tr><tr><td class="k">P-005-18</td><td>테이퍼 로케이팅핀</td><td>단차축 Ø20×40 / Ø16×20</td><td>SM45C</td><td class="num">8</td><td class="num">1.0</td><td class="num">6</td><td>칼날 빔에 압입 H7/p6</td></tr><tr class="buy"><td class="k">P-005-19</td><td>쐐기 클램프</td><td>외형 180×90×110</td><td>—</td><td class="num">4</td><td class="num">12.8</td><td class="num">6</td><td>칼날 빔에 M12×4</td></tr><tr><td class="k">P-005-20</td><td>GR-W1 박리 가이드롤</td><td>Ø160 · L 1,580</td><td>SM45C</td><td class="num">1</td><td class="num">249.4</td><td class="num">8</td><td>측면 프레임 필로우블록 2</td></tr><tr class="buy"><td class="k">P-005-21</td><td>가이드롤 필로우블록</td><td>외형 120×80×90</td><td>—</td><td class="num">2</td><td class="num">4.2</td><td class="num">8</td><td>측면 프레임에 M12×4</td></tr><tr class="buy"><td class="k">P-005-22</td><td>칼날 로드셀</td><td>외형 60×60×30</td><td>—</td><td class="num">4</td><td class="num">1.6</td><td class="num">6</td><td>Z축 슬라이드·빔 사이 M12</td></tr></tbody>
+    </table></div></details>
+  </div></div>
+  <div class="clause"><div class="n">7.6</div><div class="c">
+    <h3>M-006 · WR-101 권취 · RH-201 롤 반출</h3>
+    <p>부품 <strong class="m">23 종</strong> · 개수 <strong class="m">43 개</strong> ·
+      질량 <strong class="m">1,608 kg</strong> — 제작품 17 종 / 구매품 6 종.
+      가장 무거운 단품은 <span class="k">P-006-13</span> 고정 아이들러
+      <strong class="m">246 kg</strong> 이다 — 사람 손으로 들지 않는다.</p>
+    <div class="tw"><table>
+      <caption>M-006 조립 순서 — 8 단계</caption>
+      <thead><tr><th>단계</th><th>무엇을</th><th>왜 이 순서인가</th><th>끝내고 확인</th></tr></thead>
+      <tbody><tr><td class="num">1</td><td><strong>권취 문형 2기둥 · 앵커</strong></td><td>만권 롤 350 kg 이 이 두 기둥에 걸린다 — 이 모듈에서 가장 먼저·가장 정확해야 하는 부재다</td><td class="chk">기둥 수직도 ≤ H/1000</td></tr><tr><td class="num">2</td><td><strong>상부보</strong></td><td>베어링 가로보 — 여기가 처지면 권취축이 기운다</td><td class="chk">수평 ≤ 0.5 mm/m</td></tr><tr><td class="num">3</td><td><strong>권취축·코어·필로우블록</strong></td><td>축을 먼저 넣고 코어를 물린다. 코어를 먼저 끼우면 축이 안 들어간다</td><td class="chk">축 흔들림 ≤ 0.03 · 코어 진원 ≤ 0.2</td></tr><tr><td class="num">4</td><td><strong>토크서보·직경센서</strong></td><td>손으로 돌려 저항이 없음을 본 뒤에 동력을 건다 — 저항이 남은 채 서보를 달면 원인을 못 찾는다</td><td class="chk">무부하 회전 · 장력 지령 추종</td></tr><tr><td class="num">5</td><td><strong>댄서·아이들러·로드셀</strong></td><td>웹 경로를 순서대로 — 박리점에서 드럼 쪽으로</td><td class="chk">웹 경로 단차 ≤ 2 mm · 장력 0점 조정</td></tr><tr><td class="num">6</td><td><strong>RH-201 런웨이 기둥·빔</strong></td><td>롤이 감기기 전에 반출로를 세운다. 나중에 세우면 롤을 못 내린다</td><td class="chk">레일면 EL 5,100 ± 3 · 처짐 ≤ L/500</td></tr><tr><td class="num">7</td><td><strong>호이스트·인양빔·그리퍼</strong></td><td>런웨이 빔이 선 뒤에 트롤리를 끼운다 — 빔을 나중에 걸면 트롤리를 넣을 단부가 막힌다</td><td class="chk">정격 1 t 하중시험 · 전 행정 주행</td></tr><tr><td class="num">8</td><td><strong>BS-301 보관 새들</strong></td><td>방책 밖에 놓이므로 방책 공사와 부딪히지 않게 마지막에 앉힌다</td><td class="chk">롤 안착 안정 — 굴러가지 않는다</td></tr></tbody>
+    </table></div>
+    <details><summary>M-006 부품표 — 전 23 종</summary>
+    <div class="tw"><table>
+      <caption>M-006 부품표</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>형상·규격</th><th>재질</th><th>수량</th><th>kg</th><th>단계</th><th>어떻게 붙는가</th></tr></thead>
+      <tbody><tr><td class="k">P-006-01</td><td>권취 문형 기둥</td><td>H-150×150×7/10 · L 2,600</td><td>SS400</td><td class="num">2</td><td class="num">159.6</td><td class="num">1</td><td>베이스플레이트에 완전용입 + 거싯 4</td></tr><tr><td class="k">P-006-02</td><td>권취 기둥 베이스플레이트</td><td>PL 19t · 360×360</td><td>SS400</td><td class="num">2</td><td class="num">38.2</td><td class="num">1</td><td>앵커 M20 (A9) ×4 · hef 170</td></tr><tr><td class="k">P-006-03</td><td>권취 기둥 거싯</td><td>거싯 150×150 × 12t</td><td>SS400</td><td class="num">8</td><td class="num">8.5</td><td class="num">1</td><td>기둥·베이스에 양면 필릿 z8</td></tr><tr><td class="k">P-006-04</td><td>권취 문형 상부보</td><td>□-220×140×9t · L 2,160</td><td>SS400</td><td class="num">1</td><td class="num">104.4</td><td class="num">2</td><td>기둥 상단에 완전용입</td></tr><tr><td class="k">P-006-05</td><td>WR-101 권취축</td><td>단차축 Ø60×180 / Ø55×1,500 / Ø60×180</td><td>SM45C</td><td class="num">1</td><td class="num">36.0</td><td class="num">3</td><td>필로우블록 2 · 키 12×8</td></tr><tr><td class="k">P-006-06</td><td>권취 드럼 코어</td><td>Ø300 × 8t · L 1,460</td><td>SS400</td><td class="num">1</td><td class="num">84.1</td><td class="num">3</td><td>축에 분할클램프 4로 물림</td></tr><tr><td class="k">P-006-07</td><td>코어 분할클램프</td><td>PL 16t · 160×120</td><td>SS400</td><td class="num">4</td><td class="num">9.6</td><td class="num">3</td><td>코어·축 사이 M12×2씩</td></tr><tr class="buy"><td class="k">P-006-08</td><td>드럼 필로우블록</td><td>외형 180×110×140</td><td>—</td><td class="num">2</td><td class="num">11.6</td><td class="num">3</td><td>상부보에 M16×4</td></tr><tr class="buy"><td class="k">P-006-09</td><td>토크서보·감속기</td><td>외형 340×150×150</td><td>—</td><td class="num">1</td><td class="num">22.0</td><td class="num">4</td><td>상부보 브래킷에 M12×4</td></tr><tr class="buy"><td class="k">P-006-10</td><td>직경센서</td><td>외형 80×50×60</td><td>—</td><td class="num">1</td><td class="num">0.3</td><td class="num">4</td><td>브래킷에 M5×2</td></tr><tr><td class="k">P-006-11</td><td>DN-101 댄서롤</td><td>Ø140 · L 1,560</td><td>SM45C</td><td class="num">1</td><td class="num">188.5</td><td class="num">5</td><td>댄서암 베어링 2</td></tr><tr><td class="k">P-006-12</td><td>댄서암</td><td>PL 12t · 420×120</td><td>SS400</td><td class="num">2</td><td class="num">9.5</td><td class="num">5</td><td>기둥 피벗 Ø20 + 공압 실린더</td></tr><tr><td class="k">P-006-13</td><td>고정 아이들러</td><td>Ø160 · L 1,560</td><td>SM45C</td><td class="num">1</td><td class="num">246.2</td><td class="num">5</td><td>기둥 필로우블록 2</td></tr><tr class="buy"><td class="k">P-006-14</td><td>장력 로드셀</td><td>외형 60×60×30</td><td>—</td><td class="num">2</td><td class="num">0.8</td><td class="num">5</td><td>아이들러 베어링 하우징 M10</td></tr><tr class="buy"><td class="k">P-006-15</td><td>웹 파단 검출센서</td><td>외형 50×20×35</td><td>—</td><td class="num">1</td><td class="num">0.1</td><td class="num">5</td><td>기둥 브래킷 M4×2</td></tr><tr><td class="k">P-006-16</td><td>RH-201 런웨이 빔</td><td>H-200×100×5.5/8 · L 7,550</td><td>SS400</td><td class="num">1</td><td class="num">154.8</td><td class="num">6</td><td>런웨이 기둥에 M16×6 (J9)</td></tr><tr><td class="k">P-006-17</td><td>런웨이 기둥</td><td>H-170×170×7/10 · L 4,900</td><td>SS400</td><td class="num">2</td><td class="num">342.3</td><td class="num">6</td><td>베이스플레이트에 완전용입 + 거싯 4</td></tr><tr><td class="k">P-006-18</td><td>런웨이 기둥 베이스플레이트</td><td>PL 19t · 380×380</td><td>SS400</td><td class="num">2</td><td class="num">42.6</td><td class="num">6</td><td>앵커 M20 (A10) ×4 · hef 170</td></tr><tr><td class="k">P-006-19</td><td>런웨이 기둥 두상판</td><td>PL 16t · 300×220</td><td>SS400</td><td class="num">2</td><td class="num">16.3</td><td class="num">6</td><td>기둥에 완전용입 · 빔에 M16×6</td></tr><tr class="buy"><td class="k">P-006-20</td><td>RH-201 호이스트 트롤리</td><td>외형 420×300×380</td><td>—</td><td class="num">1</td><td class="num">46.0</td><td class="num">7</td><td>런웨이 빔 하부 플랜지에 물림</td></tr><tr><td class="k">P-006-21</td><td>인양빔</td><td>□-150×100×6t · L 1,580</td><td>SS400</td><td class="num">1</td><td class="num">35.4</td><td class="num">7</td><td>호이스트 후크 + 슬링 2본</td></tr><tr><td class="k">P-006-22</td><td>코어 그리퍼</td><td>PL 12t · 220×160</td><td>SS400</td><td class="num">2</td><td class="num">6.6</td><td class="num">7</td><td>인양빔에 M12×4</td></tr><tr><td class="k">P-006-23</td><td>BS-301 보관 새들</td><td>PL 10t · 700×400</td><td>SS400</td><td class="num">2</td><td class="num">44.0</td><td class="num">8</td><td>바닥 앵커 M12×4</td></tr></tbody>
+    </table></div></details>
+  </div></div>
+  <div class="clause"><div class="n">7.7</div><div class="c">
+    <h3>M-007 · GC-101 5단 유리 냉각 랙</h3>
+    <p>부품 <strong class="m">11 종</strong> · 개수 <strong class="m">84 개</strong> ·
+      질량 <strong class="m">2,475 kg</strong> — 제작품 8 종 / 구매품 3 종.
+      가장 무거운 단품은 <span class="k">P-007-01</span> 냉각 랙 골조 일식
+      <strong class="m">222 kg</strong> 이다 — 사람 손으로 들지 않는다.</p>
+    <div class="tw"><table>
+      <caption>M-007 조립 순서 — 5 단계</caption>
+      <thead><tr><th>단계</th><th>무엇을</th><th>왜 이 순서인가</th><th>끝내고 확인</th></tr></thead>
+      <tbody><tr><td class="num">1</td><td><strong>골조 6기둥 · 앵커</strong></td><td>M-002 와 같은 부품·같은 지그·같은 순서다</td><td class="chk">M-002 1단계와 동일 기준</td></tr><tr><td class="num">2</td><td><strong>데크 프레임·레일 5단</strong></td><td>아래 단부터 올린다 — M-002 와 같은 이유로, 위부터 달면 아래를 달 자리가 없다</td><td class="chk">M-002 3단계와 동일 기준</td></tr><tr><td class="num">3</td><td><strong>측벽 PC·필터 프레임</strong></td><td>여기는 단열이 아니라 방호다. 막으면 냉각이 안 된다</td><td class="chk">PC 고무와셔 개재 — 직접 조이면 깨진다</td></tr><tr><td class="num">4</td><td><strong>냉각 팬 6대·가드</strong></td><td>급기면(필터)이 선 뒤에 팬을 단다 — 팬을 먼저 달면 필터를 끼울 틈이 없다</td><td class="chk">풍향 확인 · 진동 ≤ 4.5 mm/s</td></tr><tr><td class="num">5</td><td><strong>표면 IR 센서 5점</strong></td><td>골조·팬이 다 선 뒤에 센다 — 팬 진동이 남아 있으면 비접촉 온도가 흔들린다</td><td class="chk">60 ℃ 판정 편차 ≤ 3 ℃ · 흑체 대조</td></tr></tbody>
+    </table></div>
+    <details><summary>M-007 부품표 — 전 11 종</summary>
+    <div class="tw"><table>
+      <caption>M-007 부품표</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>형상·규격</th><th>재질</th><th>수량</th><th>kg</th><th>단계</th><th>어떻게 붙는가</th></tr></thead>
+      <tbody><tr><td class="k">P-007-01</td><td>냉각 랙 골조 일식</td><td>H-200×200×8/12 · L 4,550</td><td>SS400</td><td class="num">6</td><td class="num">1,330.4</td><td class="num">1</td><td>M-002 P-002-01~08 준용</td></tr><tr><td class="k">P-007-02</td><td>냉각 랙 베이스플레이트</td><td>PL 25t · 400×400</td><td>SS400</td><td class="num">6</td><td class="num">186.6</td><td class="num">1</td><td>앵커 M20 (A11) ×4 · hef 170</td></tr><tr><td class="k">P-007-03</td><td>냉각 데크 프레임 종재</td><td>L-65×65×6 · L 2,780</td><td>SS400</td><td class="num">10</td><td class="num">162.4</td><td class="num">2</td><td>기둥에 M12×4</td></tr><tr><td class="k">P-007-04</td><td>냉각 데크 프레임 횡재</td><td>L-65×65×6 · L 1,350</td><td>SS400</td><td class="num">15</td><td class="num">118.3</td><td class="num">2</td><td>종재에 필릿 z5</td></tr><tr><td class="k">P-007-05</td><td>냉각 데크 레일</td><td>각봉 40×40 · L 2,780</td><td>STS304</td><td class="num">10</td><td class="num">352.7</td><td class="num">2</td><td>종재 상면에 M8×6</td></tr><tr><td class="k">P-007-06</td><td>측벽 폴리카보네이트</td><td>6t · 1,690×3,600</td><td>PC</td><td class="num">4</td><td class="num">175.2</td><td class="num">3</td><td>골조에 M6 @300 (고무 와셔)</td></tr><tr><td class="k">P-007-07</td><td>필터 급기 프레임</td><td>L-50×50×4 · L 3,380</td><td>SS400</td><td class="num">4</td><td class="num">40.8</td><td class="num">3</td><td>골조에 M8 @400</td></tr><tr class="buy"><td class="k">P-007-08</td><td>G4 프리필터</td><td>외형 600×600×48</td><td>—</td><td class="num">12</td><td class="num">13.2</td><td class="num">3</td><td>프레임 홈에 슬라이드 + 클립</td></tr><tr class="buy"><td class="k">P-007-09</td><td>냉각 팬</td><td>외형 520×520×180</td><td>—</td><td class="num">6</td><td class="num">75.0</td><td class="num">4</td><td>지붕 프레임에 M10×4 + 방진고무</td></tr><tr><td class="k">P-007-10</td><td>팬 가드 그릴</td><td>메시 Ø4@40 · 560×560</td><td>SS400</td><td class="num">6</td><td class="num">19.4</td><td class="num">4</td><td>팬 플랜지에 M6×4</td></tr><tr class="buy"><td class="k">P-007-11</td><td>표면 IR 센서</td><td>외형 70×40×45</td><td>—</td><td class="num">5</td><td class="num">0.8</td><td class="num">5</td><td>골조 브래킷 M5×2</td></tr></tbody>
+    </table></div></details>
+  </div></div>
+  <div class="clause"><div class="n">7.8</div><div class="c">
+    <h3>M-008 · CE-201 횡인출 · CS-201 평적 카트</h3>
+    <p>부품 <strong class="m">11 종</strong> · 개수 <strong class="m">77 개</strong> ·
+      질량 <strong class="m">396 kg</strong> — 제작품 6 종 / 구매품 5 종.
+      가장 무거운 단품은 <span class="k">P-008-09</span> 카트 적재판
+      <strong class="m">124 kg</strong> 이다 — 사람 손으로 들지 않는다.</p>
+    <div class="tw"><table>
+      <caption>M-008 조립 순서 — 5 단계</caption>
+      <thead><tr><th>단계</th><th>무엇을</th><th>왜 이 순서인가</th><th>끝내고 확인</th></tr></thead>
+      <tbody><tr><td class="num">1</td><td><strong>컨베이어 프레임·다리</strong></td><td>높이 조정 볼트로 라인 높이 1,150 을 맞춘다</td><td class="chk">롤러 상면 EL 1,150 ± 2</td></tr><tr><td class="num">2</td><td><strong>롤러 18본</strong></td><td>가운데부터 양쪽으로 — 끝부터 넣으면 마지막 한 본이 안 들어간다</td><td class="chk">롤러 상면 동일 평면 ≤ 1 mm</td></tr><tr><td class="num">3</td><td><strong>구동 기어모터·체인</strong></td><td>롤러가 다 자유롭게 구른 뒤에 체인을 건다</td><td class="chk">체인 처짐 10~15 mm</td></tr><tr><td class="num">4</td><td><strong>평적 카트 조립</strong></td><td>카트는 라인 구조와 무관하므로 따로 짠다 — 1~3단계와 나란히 해도 되는 유일한 자리다</td><td class="chk">캐스터 4점 접지 · 브레이크 작동</td></tr><tr><td class="num">5</td><td><strong>센서</strong></td><td>롤러가 다 돌고 체인 장력이 잡힌 뒤에 광축을 세운다 — 먼저 잡으면 진동으로 틀어진다</td><td class="chk">유리 존재·겹침 판정 10/10</td></tr></tbody>
+    </table></div>
+    <details><summary>M-008 부품표 — 전 11 종</summary>
+    <div class="tw"><table>
+      <caption>M-008 부품표</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>형상·규격</th><th>재질</th><th>수량</th><th>kg</th><th>단계</th><th>어떻게 붙는가</th></tr></thead>
+      <tbody><tr><td class="k">P-008-01</td><td>횡인출 컨베이어 프레임</td><td>□-120×60×3.2t · L 2,600</td><td>SS400</td><td class="num">2</td><td class="num">45.4</td><td class="num">1</td><td>다리에 M10×4</td></tr><tr><td class="k">P-008-02</td><td>컨베이어 다리</td><td>□-80×80×3.2t · L 950</td><td>SS400</td><td class="num">4</td><td class="num">29.3</td><td class="num">1</td><td>베이스에 필릿 z5 · 앵커 M12×2</td></tr><tr><td class="k">P-008-03</td><td>컨베이어 다리 베이스</td><td>PL 12t · 200×200</td><td>SS400</td><td class="num">4</td><td class="num">15.0</td><td class="num">1</td><td>앵커 M12 (A12) ×2</td></tr><tr><td class="k">P-008-04</td><td>이송 롤러</td><td>Ø60 × 2t · L 1,600</td><td>STS304</td><td class="num">18</td><td class="num">83.2</td><td class="num">2</td><td>프레임 베어링 하우징 2</td></tr><tr class="buy"><td class="k">P-008-05</td><td>롤러 베어링 하우징</td><td>외형 60×40×50</td><td>—</td><td class="num">36</td><td class="num">12.6</td><td class="num">2</td><td>프레임에 M8×2</td></tr><tr class="buy"><td class="k">P-008-06</td><td>롤러 구동 기어모터</td><td>외형 260×120×120</td><td>—</td><td class="num">1</td><td class="num">8.4</td><td class="num">3</td><td>프레임에 M10×4</td></tr><tr class="buy"><td class="k">P-008-07</td><td>구동 체인·스프라켓</td><td>외형 2,600×40×40</td><td>—</td><td class="num">1</td><td class="num">6.0</td><td class="num">3</td><td>롤러 축단 스프라켓</td></tr><tr><td class="k">P-008-08</td><td>CS-201 평적 카트 프레임</td><td>□-80×40×3.2t · L 2,600</td><td>SS400</td><td class="num">4</td><td class="num">59.4</td><td class="num">4</td><td>용접 조립 z5</td></tr><tr><td class="k">P-008-09</td><td>카트 적재판</td><td>PL 4.5t · 2,500×1,400</td><td>SS400</td><td class="num">1</td><td class="num">123.6</td><td class="num">4</td><td>프레임에 M8 @300</td></tr><tr class="buy"><td class="k">P-008-10</td><td>카트 캐스터</td><td>외형 160×60×200</td><td>—</td><td class="num">4</td><td class="num">12.8</td><td class="num">4</td><td>프레임에 M12×4</td></tr><tr class="buy"><td class="k">P-008-11</td><td>유리 두께·존재 센서</td><td>외형 50×20×35</td><td>—</td><td class="num">2</td><td class="num">0.2</td><td class="num">5</td><td>프레임 브래킷 M4×2</td></tr></tbody>
+    </table></div></details>
+  </div></div>
+  <div class="clause"><div class="n">7.9</div><div class="c">
+    <h3>M-009 · QI-301 검사 · RJ-301 리젝트</h3>
+    <p>부품 <strong class="m">9 종</strong> · 개수 <strong class="m">18 개</strong> ·
+      질량 <strong class="m">202 kg</strong> — 제작품 6 종 / 구매품 3 종.
+      가장 무거운 단품은 <span class="k">P-009-01</span> 검사 문형 기둥
+      <strong class="m">39 kg</strong> 이다 — 사람 손으로 들지 않는다.</p>
+    <div class="tw"><table>
+      <caption>M-009 조립 순서 — 3 단계</caption>
+      <thead><tr><th>단계</th><th>무엇을</th><th>왜 이 순서인가</th><th>끝내고 확인</th></tr></thead>
+      <tbody><tr><td class="num">1</td><td><strong>검사 문형·상부보</strong></td><td>카메라를 달 틀부터 세운다 — 틀이 흔들리면 초점을 몇 번 잡아도 다시 틀어진다</td><td class="chk">보 수평 ≤ 1 mm/m · 기둥 수직 ≤ H/1000</td></tr><tr><td class="num">2</td><td><strong>카메라·조명 취부·초점</strong></td><td>구조가 더 이상 움직이지 않게 된 뒤에 광학을 잡는다 — 순서를 바꾸면 초점을 두 번 잡는다</td><td class="chk">전폭 2,400 시야 · 잔막 0.2 mm 판독</td></tr><tr><td class="num">3</td><td><strong>리젝트 슈트·박스</strong></td><td>검사부와 구조가 독립이므로 1·2단계와 나란히 해도 된다 — 공기를 줄일 수 있는 유일한 자리다</td><td class="chk">경사 35° · 유리 자중 활강 · 만재 센서 작동</td></tr></tbody>
+    </table></div>
+    <details><summary>M-009 부품표 — 전 9 종</summary>
+    <div class="tw"><table>
+      <caption>M-009 부품표</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>형상·규격</th><th>재질</th><th>수량</th><th>kg</th><th>단계</th><th>어떻게 붙는가</th></tr></thead>
+      <tbody><tr><td class="k">P-009-01</td><td>검사 문형 기둥</td><td>□-100×100×4.5t · L 2,900</td><td>SS400</td><td class="num">2</td><td class="num">78.3</td><td class="num">1</td><td>베이스에 필릿 z6 · 앵커 M12×4</td></tr><tr><td class="k">P-009-02</td><td>검사 문형 상부보</td><td>□-120×80×4.5t · L 2,300</td><td>SS400</td><td class="num">1</td><td class="num">31.0</td><td class="num">1</td><td>기둥에 M12×4</td></tr><tr><td class="k">P-009-03</td><td>카메라 브래킷</td><td>PL 6t · 200×120</td><td>SS400</td><td class="num">3</td><td class="num">3.4</td><td class="num">2</td><td>상부보에 M10×2 (장공)</td></tr><tr class="buy"><td class="k">P-009-04</td><td>라인스캔 카메라</td><td>외형 120×80×80</td><td>—</td><td class="num">3</td><td class="num">3.6</td><td class="num">2</td><td>브래킷에 M4×4</td></tr><tr class="buy"><td class="k">P-009-05</td><td>LED 라인 조명</td><td>외형 1,300×60×70</td><td>—</td><td class="num">2</td><td class="num">7.0</td><td class="num">2</td><td>상부보에 M6×4</td></tr><tr><td class="k">P-009-06</td><td>리젝트 슈트판</td><td>PL 3.2t · 1,400×900</td><td>STS304</td><td class="num">1</td><td class="num">32.0</td><td class="num">3</td><td>프레임에 M8 @250</td></tr><tr><td class="k">P-009-07</td><td>리젝트 슈트 프레임</td><td>L-50×50×5 · L 1,500</td><td>SS400</td><td class="num">4</td><td class="num">22.4</td><td class="num">3</td><td>용접 z5 + 앵커 M12×2</td></tr><tr><td class="k">P-009-08</td><td>리젝트 박스</td><td>PL 3.2t · 1,200×800</td><td>SS400</td><td class="num">1</td><td class="num">24.1</td><td class="num">3</td><td>캐스터 4 · M10</td></tr><tr class="buy"><td class="k">P-009-09</td><td>리젝트 만재 센서</td><td>외형 50×20×35</td><td>—</td><td class="num">1</td><td class="num">0.1</td><td class="num">3</td><td>박스 상단 브래킷 M4×2</td></tr></tbody>
+    </table></div></details>
+  </div></div>
+  <div class="clause"><div class="n">7.10</div><div class="c">
+    <h3>M-011 · 전력·MCC·제어반</h3>
+    <p>부품 <strong class="m">6 종</strong> · 개수 <strong class="m">29 개</strong> ·
+      질량 <strong class="m">648 kg</strong> — 제작품 3 종 / 구매품 3 종.
+      가장 무거운 단품은 <span class="k">P-011-01</span> MCC 반
+      <strong class="m">320 kg</strong> 이다 — 사람 손으로 들지 않는다.</p>
+    <div class="tw"><table>
+      <caption>M-011 조립 순서 — 3 단계</caption>
+      <thead><tr><th>단계</th><th>무엇을</th><th>왜 이 순서인가</th><th>끝내고 확인</th></tr></thead>
+      <tbody><tr><td class="num">1</td><td><strong>베이스 채널·반 설치</strong></td><td>반이 서야 배선이 시작된다 — 트레이를 먼저 깔면 반을 넣을 길이 막힌다</td><td class="chk">반 수직 ≤ 2 mm/m · 문 개폐 간섭 없음</td></tr><tr><td class="num">2</td><td><strong>케이블 트레이·행거</strong></td><td>반에서 기계 쪽으로 깔아 나간다 — 반대로 깔면 마지막 구간에서 여장이 모자란다</td><td class="chk">동력/제어 분리 2단 유지 · 행거 @1,500</td></tr><tr><td class="num">3</td><td><strong>접지 부스바·본딩</strong></td><td>통전 전에 반드시 끝낸다 — 접지 없이 한 번 넣어 본 회로는 이미 위험한 회로다</td><td class="chk">접지저항 ≤ 10 Ω · 전 프레임 본딩 도통</td></tr></tbody>
+    </table></div>
+    <details><summary>M-011 부품표 — 전 6 종</summary>
+    <div class="tw"><table>
+      <caption>M-011 부품표</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>형상·규격</th><th>재질</th><th>수량</th><th>kg</th><th>단계</th><th>어떻게 붙는가</th></tr></thead>
+      <tbody><tr class="buy"><td class="k">P-011-01</td><td>MCC 반</td><td>외형 800×600×2,100</td><td>—</td><td class="num">1</td><td class="num">320.0</td><td class="num">1</td><td>베이스 채널에 M12×4</td></tr><tr class="buy"><td class="k">P-011-02</td><td>PLC-101 제어반</td><td>외형 800×400×2,100</td><td>—</td><td class="num">1</td><td class="num">210.0</td><td class="num">1</td><td>베이스 채널에 M12×4</td></tr><tr><td class="k">P-011-03</td><td>반 베이스 채널</td><td>C-100×50×5/5 · L 1,700</td><td>SS400</td><td class="num">2</td><td class="num">25.4</td><td class="num">1</td><td>바닥 앵커 M12 @600</td></tr><tr class="buy"><td class="k">P-011-04</td><td>케이블 트레이</td><td>외형 3,000×300×100</td><td>—</td><td class="num">8</td><td class="num">72.0</td><td class="num">2</td><td>행거에 M8×2</td></tr><tr><td class="k">P-011-05</td><td>트레이 행거</td><td>PL 6t · 400×60</td><td>SS400</td><td class="num">16</td><td class="num">17.9</td><td class="num">2</td><td>천장·기둥에 M10×2</td></tr><tr><td class="k">P-011-06</td><td>접지 부스바</td><td>PL 5t · 2,000×30</td><td>동</td><td class="num">1</td><td class="num">2.7</td><td class="num">3</td><td>절연 스탠드오프 M8 @500</td></tr></tbody>
+    </table></div></details>
+  </div></div>
+  <div class="clause"><div class="n">7.11</div><div class="c">
+    <h3>M-012 · VU-101 진공·계장공기 스키드</h3>
+    <p>부품 <strong class="m">11 종</strong> · 개수 <strong class="m">27 개</strong> ·
+      질량 <strong class="m">539 kg</strong> — 제작품 8 종 / 구매품 3 종.
+      가장 무거운 단품은 <span class="k">P-012-04</span> 진공 펌프
+      <strong class="m">88 kg</strong> 이다 — 사람 손으로 들지 않는다.</p>
+    <div class="tw"><table>
+      <caption>M-012 조립 순서 — 4 단계</caption>
+      <thead><tr><th>단계</th><th>무엇을</th><th>왜 이 순서인가</th><th>끝내고 확인</th></tr></thead>
+      <tbody><tr><td class="num">1</td><td><strong>스키드 프레임·상판</strong></td><td>지상에서 다 짜고 지게차로 들여놓는다 — 자리에서 짜면 포크 진입로가 없다</td><td class="chk">프레임 대각선 차 ≤ 2 mm</td></tr><tr><td class="num">2</td><td><strong>펌프·탱크·새들</strong></td><td>무거운 것부터 앉힌다 — 가벼운 것을 먼저 놓으면 그것을 넘어 인양해야 한다</td><td class="chk">방진고무 균등 압축 · 탱크 수평 ≤ 1 mm/m</td></tr><tr><td class="num">3</td><td><strong>배관·플랜지·계장</strong></td><td>기기가 다 앉은 뒤에 배관한다 — 먼저 깔면 기기를 앉힐 때 배관을 밟는다</td><td class="chk">기밀 시험 0.6 MPa · 누설 0</td></tr><tr><td class="num">4</td><td><strong>방호 커버</strong></td><td>회전부가 처음 도는 순간에는 이미 덮여 있어야 한다 — 시운전 뒤에 덮는 것이 아니다</td><td class="chk">공구 없이 안 열림 · 개구 기준 충족</td></tr></tbody>
+    </table></div>
+    <details><summary>M-012 부품표 — 전 11 종</summary>
+    <div class="tw"><table>
+      <caption>M-012 부품표</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>형상·규격</th><th>재질</th><th>수량</th><th>kg</th><th>단계</th><th>어떻게 붙는가</th></tr></thead>
+      <tbody><tr><td class="k">P-012-01</td><td>스키드 프레임 종재</td><td>C-150×75×6.5/10 · L 1,500</td><td>SS400</td><td class="num">2</td><td class="num">55.2</td><td class="num">1</td><td>횡재에 필릿 z6</td></tr><tr><td class="k">P-012-02</td><td>스키드 프레임 횡재</td><td>C-150×75×6.5/10 · L 860</td><td>SS400</td><td class="num">3</td><td class="num">47.5</td><td class="num">1</td><td>종재에 필릿 z6</td></tr><tr><td class="k">P-012-03</td><td>스키드 상판</td><td>PL 6t · 1,500×860</td><td>SS400</td><td class="num">1</td><td class="num">60.8</td><td class="num">1</td><td>프레임에 M10 @300</td></tr><tr class="buy"><td class="k">P-012-04</td><td>진공 펌프</td><td>외형 700×350×400</td><td>—</td><td class="num">2</td><td class="num">176.0</td><td class="num">2</td><td>상판에 M12×4 + 방진고무</td></tr><tr><td class="k">P-012-05</td><td>진공 탱크</td><td>Ø500 × 6t · L 900</td><td>SS400</td><td class="num">1</td><td class="num">65.8</td><td class="num">2</td><td>새들 2 · M12×4</td></tr><tr><td class="k">P-012-06</td><td>탱크 새들</td><td>PL 10t · 500×200</td><td>SS400</td><td class="num">2</td><td class="num">15.7</td><td class="num">2</td><td>상판에 M12×4</td></tr><tr><td class="k">P-012-07</td><td>진공 배관</td><td>Ø50 × 2t · L 2,000</td><td>STS304</td><td class="num">4</td><td class="num">19.1</td><td class="num">3</td><td>플랜지 + 클램프 @1,000</td></tr><tr><td class="k">P-012-08</td><td>배관 플랜지</td><td>플랜지 Ø140/Ø50 × 12t · PCD 110-4×Ø14</td><td>STS304</td><td class="num">8</td><td class="num">9.8</td><td class="num">3</td><td>맞대기 용접 + M12×4</td></tr><tr class="buy"><td class="k">P-012-09</td><td>계장공기 필터·레귤레이터</td><td>외형 300×150×400</td><td>—</td><td class="num">1</td><td class="num">6.5</td><td class="num">3</td><td>상판 브래킷에 M8×4</td></tr><tr class="buy"><td class="k">P-012-10</td><td>공기 리시버 탱크</td><td>외형 400×400×1,200</td><td>—</td><td class="num">1</td><td class="num">62.0</td><td class="num">3</td><td>상판에 M12×4</td></tr><tr><td class="k">P-012-11</td><td>스키드 방호 커버</td><td>메시 Ø4@40 · 1,500×900</td><td>SS400</td><td class="num">2</td><td class="num">20.3</td><td class="num">4</td><td>프레임에 M8×6 (공구 필요)</td></tr></tbody>
+    </table></div></details>
+  </div></div>
+  <div class="clause"><div class="n">7.12</div><div class="c">
+    <h3>M-013 · 방책·안전장치</h3>
+    <p>부품 <strong class="m">10 종</strong> · 개수 <strong class="m">256 개</strong> ·
+      질량 <strong class="m">1,592 kg</strong> — 제작품 6 종 / 구매품 4 종.
+      가장 무거운 단품은 <span class="k">P-013-03</span> 메시 패널
+      <strong class="m">30 kg</strong> 이다 — 사람 손으로 들지 않는다.</p>
+    <div class="tw"><table>
+      <caption>M-013 조립 순서 — 5 단계</caption>
+      <thead><tr><th>단계</th><th>무엇을</th><th>왜 이 순서인가</th><th>끝내고 확인</th></tr></thead>
+      <tbody><tr><td class="num">1</td><td><strong>기둥 34본 · 앵커</strong></td><td>방책은 기계가 다 선 뒤에 세운다 — 먼저 세우면 반입로가 막힌다</td><td class="chk">기둥 수직 · 피치 2,000 ± 10</td></tr><tr><td class="num">2</td><td><strong>메시 패널 32매</strong></td><td>기둥이 다 서고 피치가 확정된 뒤에 패널을 채운다 — 먼저 달면 마지막 한 장이 안 들어간다</td><td class="chk">바닥 틈 ≤ 180 · 개구 기준 충족</td></tr><tr><td class="num">3</td><td><strong>안전문·인터록</strong></td><td>문이 제자리에서 여닫힌 뒤에 인터록을 건다 — 문틀이 틀어진 채 걸면 안 잠긴다</td><td class="chk">문 열림 → 정지 확인 (양쪽 채널)</td></tr><tr><td class="num">4</td><td><strong>라이트커튼·광축</strong></td><td>개구 2개소. 광축이 안 맞으면 뮤팅이 안 걸린다</td><td class="chk">차광 시험 Ø30 봉 · 응답 ≤ 30 ms</td></tr><tr><td class="num">5</td><td><strong>비상정지·신호탑</strong></td><td>마지막에 다는 것이 아니라 통전 전에 반드시 단다</td><td class="chk">4개소 전부 정지 · 복귀 요구 확인</td></tr></tbody>
+    </table></div>
+    <details><summary>M-013 부품표 — 전 10 종</summary>
+    <div class="tw"><table>
+      <caption>M-013 부품표</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>형상·규격</th><th>재질</th><th>수량</th><th>kg</th><th>단계</th><th>어떻게 붙는가</th></tr></thead>
+      <tbody><tr><td class="k">P-013-01</td><td>방책 기둥</td><td>□-60×60×3.2t · L 2,550</td><td>SS400</td><td class="num">34</td><td class="num">494.8</td><td class="num">1</td><td>베이스플레이트 앵커 M10 (A11)×2</td></tr><tr><td class="k">P-013-02</td><td>방책 기둥 베이스플레이트</td><td>PL 10t · 150×150</td><td>SS400</td><td class="num">34</td><td class="num">59.4</td><td class="num">1</td><td>앵커 M10 ×2</td></tr><tr><td class="k">P-013-03</td><td>메시 패널</td><td>메시 Ø4@40 · 1,960×2,400</td><td>SS400</td><td class="num">32</td><td class="num">953.4</td><td class="num">2</td><td>기둥에 전용 클램프 M8×4</td></tr><tr><td class="k">P-013-04</td><td>패널 클램프</td><td>PL 5t · 80×50</td><td>SS400</td><td class="num">128</td><td class="num">19.8</td><td class="num">2</td><td>기둥·패널 사이 M8×1</td></tr><tr><td class="k">P-013-05</td><td>안전문 프레임</td><td>□-50×50×3.2t · L 1,000</td><td>SS400</td><td class="num">8</td><td class="num">37.6</td><td class="num">3</td><td>용접 z4 + 힌지 2</td></tr><tr class="buy"><td class="k">P-013-06</td><td>안전문 인터록 스위치</td><td>외형 120×40×40</td><td>—</td><td class="num">2</td><td class="num">0.6</td><td class="num">3</td><td>기둥·문에 M5×4</td></tr><tr class="buy"><td class="k">P-013-07</td><td>라이트커튼 (투광·수광)</td><td>외형 2,000×50×60</td><td>—</td><td class="num">4</td><td class="num">16.8</td><td class="num">4</td><td>기둥에 전용 브래킷 M6×4</td></tr><tr><td class="k">P-013-08</td><td>라이트커튼 브래킷</td><td>PL 6t · 180×80</td><td>SS400</td><td class="num">8</td><td class="num">5.4</td><td class="num">4</td><td>기둥에 M8×2 (장공)</td></tr><tr class="buy"><td class="k">P-013-09</td><td>비상정지 버튼함</td><td>외형 120×120×90</td><td>—</td><td class="num">4</td><td class="num">2.4</td><td class="num">5</td><td>기둥에 M6×4</td></tr><tr class="buy"><td class="k">P-013-10</td><td>신호탑·부저</td><td>외형 90×90×400</td><td>—</td><td class="num">2</td><td class="num">2.2</td><td class="num">5</td><td>기둥 상단에 M6×3</td></tr></tbody>
+    </table></div></details>
+  </div></div>
+  <div class="clause"><div class="n">7.13</div><div class="c">
+    <h3>M-017 · BJ-101/102 경계 인터페이스</h3>
+    <p>부품 <strong class="m">6 종</strong> · 개수 <strong class="m">38 개</strong> ·
+      질량 <strong class="m">1,329 kg</strong> — 제작품 4 종 / 구매품 2 종.
+      가장 무거운 단품은 <span class="k">P-017-01</span> 경계 덕트
+      <strong class="m">133 kg</strong> 이다 — 사람 손으로 들지 않는다.</p>
+    <div class="tw"><table>
+      <caption>M-017 조립 순서 — 3 단계</caption>
+      <thead><tr><th>단계</th><th>무엇을</th><th>왜 이 순서인가</th><th>끝내고 확인</th></tr></thead>
+      <tbody><tr><td class="num">1</td><td><strong>덕트·플랜지·행거</strong></td><td>우리 쪽 끝까지만 세운다. 그 너머는 발주자 설비다</td><td class="chk">지지 @3,000 · 부압 시험</td></tr><tr><td class="num">2</td><td><strong>경계 단자반·배관반</strong></td><td>여기서 우리 배선과 배관이 끝난다 — 이 반이 서야 발주자 설비와의 경계가 물리적으로 확정된다</td><td class="chk">단자 번호 도면 일치 · 차단밸브 작동</td></tr><tr><td class="num">3</td><td><strong>경계 표지판</strong></td><td>표지가 붙어야 경계가 지켜진다 — 도면에만 있는 경계는 현장에서 지워진다</td><td class="chk">4개소 부착 · 판독 가능</td></tr></tbody>
+    </table></div>
+    <details><summary>M-017 부품표 — 전 6 종</summary>
+    <div class="tw"><table>
+      <caption>M-017 부품표</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>형상·규격</th><th>재질</th><th>수량</th><th>kg</th><th>단계</th><th>어떻게 붙는가</th></tr></thead>
+      <tbody><tr><td class="k">P-017-01</td><td>경계 덕트</td><td>Ø600 × 3t · L 3,000</td><td>SS400</td><td class="num">8</td><td class="num">1,060.1</td><td class="num">1</td><td>플랜지 M12×12 · 지지 @3,000</td></tr><tr><td class="k">P-017-02</td><td>덕트 플랜지</td><td>플랜지 Ø700/Ø600 × 12t · PCD 660-12×Ø14</td><td>SS400</td><td class="num">16</td><td class="num">151.1</td><td class="num">1</td><td>덕트에 맞대기 용접 + M12×12</td></tr><tr><td class="k">P-017-03</td><td>덕트 지지 행거</td><td>PL 8t · 500×80</td><td>SS400</td><td class="num">8</td><td class="num">19.9</td><td class="num">1</td><td>천장·기둥에 M12×2</td></tr><tr class="buy"><td class="k">P-017-04</td><td>BJ-101 경계 단자반</td><td>외형 600×300×800</td><td>—</td><td class="num">1</td><td class="num">48.0</td><td class="num">2</td><td>벽·기둥에 M10×4</td></tr><tr class="buy"><td class="k">P-017-05</td><td>BJ-102 경계 배관반</td><td>외형 600×300×800</td><td>—</td><td class="num">1</td><td class="num">42.0</td><td class="num">2</td><td>벽·기둥에 M10×4</td></tr><tr><td class="k">P-017-06</td><td>경계 표지판</td><td>PL 2t · 400×300</td><td>SS400</td><td class="num">4</td><td class="num">7.5</td><td class="num">3</td><td>반·덕트에 M5×4</td></tr></tbody>
+    </table></div></details>
+  </div></div>
+</section>
+
+<!-- ═══ 8 ═══ -->
+<section id="a8"><h2><span class="sn">8</span>검사와 기록</h2>
+  <div class="clause"><div class="n">8.1</div><div class="c">
+    <h3>단계마다 남기는 것</h3>
+    <p>각 단계의 <strong>확인</strong> 칸이 곧 검사 항목이다. 측정값을 적고, 측정한 사람과 날짜를 적는다.
+      합격 여부만 적힌 기록은 나중에 아무것도 증명하지 못한다 —
+      <strong>값을 적어야</strong> 나중에 문제가 생겼을 때 어디서부터 틀어졌는지 찾을 수 있다.</p>
+    <ul>
+      <li><strong>기초</strong> — 앵커 위치 실측도, 그라우트 배합·양생 기록</li>
+      <li><strong>골조</strong> — 기둥 수직도·레벨, 스팬 실측, 베이스 밀착(틈새 게이지)</li>
+      <li><strong>정밀부</strong> — 레일 직진도, 상판 평면도, 축 흔들림 (다이얼게이지 기록지)</li>
+      <li><strong>체결</strong> — 토크렌치 교정 성적서, 체결 완료 마킹 사진</li>
+      <li><strong>용접</strong> — 용접사 자격, 육안검사(ISO 5817 C급), 지정 부위 비파괴</li>
+      <li><strong>전기</strong> — 절연저항, 접지저항, 인터록 기능시험</li>
+    </ul>
+    <div class="note">전체 검사 계획(ITP 14단계)은 제작 지침서 <span class="k">DG-HK60C-FAB-001</span> 13항이 든다.
+      이 문서는 그 중 <strong>조립 현장에서 재는 것</strong>만 단계별로 풀어 적은 것이다.</div>
+  </div></div>
+</section>
+
+<!-- ═══ 9 ═══ -->
+<section id="a9"><h2><span class="sn">9</span>흔한 실수 열 가지</h2>
+  <div class="clause"><div class="n">9.1</div><div class="c">
+    <h3>이 열 가지가 현장에서 실제로 나온다</h3>
+    <div class="tw"><table>
+      <caption>흔한 실수와 그 결과</caption>
+      <thead><tr><th>이렇게 한다</th><th>그러면 이렇게 된다</th></tr></thead>
+      <tbody><tr><td><strong>방책을 먼저 세운다</strong></td><td>그 안으로 들어갈 기계의 반입로가 막힌다. 방책은 <b>7단계, 맨 마지막</b>이다.</td></tr><tr><td><strong>임팩트렌치로 본 조임을 한다</strong></td><td>임팩트는 체결력을 만들지 못한다. 예비 조임까지만 쓰고 본 조임은 토크렌치로 한다.</td></tr><tr><td><strong>마찰접합면에 도장을 한다</strong></td><td>J3(갠트리 크로스빔)은 <b>마찰</b>로 힘을 받는다. 도장하면 μ 가 떨어져 미끄러지고, 미끄러지면 칼끝 간격 300±2 가 깨진다. 접합면은 Sa 2½ 로 두고 도장하지 않는다.</td></tr><tr><td><strong>스프링와셔를 쓴다</strong></td><td>체결력 유지에 기여하지 않는다. 이 설비는 <b>체결력 관리 + 마킹</b>으로 풀림을 막고, 진동부에만 쐐기형 풀림방지 와셔를 쓴다.</td></tr><tr><td><strong>베이스플레이트를 그라우트 없이 조인다</strong></td><td>판이 콘크리트에 점으로 닿아 앵커에 휨이 걸린다. 무수축 그라우트 t30 을 반드시 채운다.</td></tr><tr><td><strong>카세트 클램프를 핀보다 먼저 조인다</strong></td><td>핀이 완전히 착좌하기 전에 클램프가 물면 테이퍼 핀이 상한다. <b>핀 4개 착좌 → 클램프</b> 순서다.</td></tr><tr><td><strong>위아래를 뒤집어 단다</strong></td><td>부품도의 주황색 <b>‘위’</b> 화살표를 본다. 대칭처럼 보여도 볼트 홀 배치가 다른 부품이 있다.</td></tr><tr><td><strong>내피 연마면을 바깥으로 붙인다</strong></td><td>가열실 내피(STS304 #400)는 <b>연마면이 안쪽</b>이다. 반대로 붙이면 복사 효율이 떨어진다.</td></tr><tr><td><strong>단열재를 이음 맞춰 붙인다</strong></td><td>이음을 나란히 맞추면 그 선이 열교가 된다. <b>어긋 물림</b>으로 깐다.</td></tr><tr><td><strong>리미트만 믿고 하드스톱을 생략한다</strong></td><td>리미트가 죽으면 캐리지가 끝까지 간다. 기계식 하드스톱은 선택이 아니다.</td></tr></tbody>
+    </table></div>
+  </div></div>
+</section>
+
+<footer class="foot">
+  <p><strong>DG-HK60C-ASM-001 Rev.0</strong> · 2026-09-06 · DYNAMIC INDUSTRY</p>
+  <p>이 문서는 <span class="k">tools/gen_assembly_doc.py</span> 가 부품 카탈로그
+    <span class="k">tools/parts.py</span> 에서 생성한다. 문서를 손으로 고치면 다음 생성에서 지워진다 —
+    고칠 곳은 카탈로그다.</p>
+</footer>
+
+</div>
+</body>
+</html>
