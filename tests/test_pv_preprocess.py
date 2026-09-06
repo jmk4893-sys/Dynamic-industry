@@ -5629,6 +5629,22 @@ class TestBufferHasTwoDirections(unittest.TestCase):
         self.assertGreater(handoff.BUFFER_RB_SLOTS / rb_per_h, 3.0,
                            "R-B 를 너무 줄여 파편 계통이 막힌다")
 
+    def test_the_printed_bom_row_agrees_with_the_carriage_count(self):
+        """3D 메시 개수만 맞고 인쇄용 부품표 수량 문구가 옛 배분으로 남아 있던 자리.
+
+        `test_the_carriages_were_reallocated_not_bought` 는 `part('A-501` 3D 메시
+        개수만 센다 — AFR-A-501/AFR-B-501 행 자체의 EA·장수 문구는 아무도 안 봤고,
+        2:2 시절 "2EA·총 50장" 그대로 남아 있었다. 이 시험이 그 문구를 잡는다.
+        """
+        ra, rb = handoff.BUFFER_CARRIAGES
+        spc = handoff.SLOTS_PER_CARRIAGE
+        self.assertIn(f'"AFR-A-501","레시피 버퍼","R-A 수평 카세트 캐리지 A/B/C","{ra}EA"',
+                      self.plant)
+        self.assertIn(f"총 {ra * spc}장 저장", self.plant)
+        self.assertIn(f'"AFR-B-501","레시피 버퍼","R-B 밀폐형 카세트 캐리지 A","{rb}EA"',
+                      self.plant)
+        self.assertIn(f"총 {rb * spc}장 저장", self.plant)
+
     def test_absorption_is_computed_not_declared(self):
         """완충시간을 깎으면 흡수가 풀려야 한다 — 안 풀리면 적어 둔 값이다."""
         buffered = {b.tag for b in reliability.BLOCKS if b.buffered}
