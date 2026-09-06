@@ -114,9 +114,13 @@ class TestRfqDocument(unittest.TestCase):
         self.assertIn("dg-hk120-twin-cell.html", body, "검토서 경로를 대지 않았다")
         self.assertIn("범위 밖", body, "확장 설계가 본 용역 밖임을 못 박지 않았다")
 
-        decks = re.search(r"<span class=\"m\">3 → (\d+)</span>단", body)
+        decks = re.search(r"<span class=\"m\">(\d+) → (\d+)</span>단", body)
         self.assertIsNotNone(decks, "확장 시 단수를 밝히지 않았다")
-        self.assertEqual(decks.group(1), "7",
+        base = int(re.search(r"const DECKS=(\d+)",
+                             CONSOLE.read_text(encoding="utf-8")).group(1))
+        self.assertEqual(int(decks.group(1)), base,
+                         f"확장의 출발 단수가 납품 표준({base}단)과 다르다")
+        self.assertEqual(decks.group(2), "7",
                          "검토서가 고른 단수는 7 단이다")
         self.assertIn("decks:7", CONSOLE.read_text(encoding="utf-8").replace(" ", ""),
                       "콘솔의 확장 배치가 7 단이 아니다")
