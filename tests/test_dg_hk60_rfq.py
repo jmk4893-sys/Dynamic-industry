@@ -8,6 +8,7 @@
 및 콘솔의 전기부하표와 직접 대조한다. 사양서만 고치거나 콘솔만 고치면 실패한다.
 """
 
+import datetime
 import math
 import pathlib
 import re
@@ -55,6 +56,15 @@ class TestRfqDocument(unittest.TestCase):
         ids = re.findall(r"<b>(OI-\d+)</b>", self.html)
         self.assertGreaterEqual(len(ids), 10, "확인사항이 10건 미만이다")
         self.assertEqual(len(ids), len(set(ids)), "확인사항 번호가 중복된다")
+        nums = [int(i.split("-")[1]) for i in ids]
+        self.assertEqual(
+            nums, sorted(nums),
+            "확인사항이 번호 순으로 놓여 있지 않다: %s\n"
+            "입찰자는 목록을 번호로 훑는다 — 순서가 흐트러지면 항목을 빠뜨린다"
+            % ids)
+        self.assertEqual(
+            nums, list(range(1, len(nums) + 1)),
+            "확인사항 번호에 빈 자리가 있다: %s" % ids)
         # 각 항목이 현황과 해소 방법을 모두 갖는지
         for block in re.findall(r'<div class="oi">(.*?)</div>\s*</div>', self.html, re.S):
             oid = re.search(r"<b>(OI-\d+)</b>", block).group(1)
@@ -64,6 +74,80 @@ class TestRfqDocument(unittest.TestCase):
             self.assertEqual(
                 block.count("<em>해소</em>"), 1, f"{oid} 에 해소 방법이 없다"
             )
+
+    def test_the_module_count_matches_the_module_table(self):
+        """모듈 수는 본문·표제·표의 행 수 세 곳에서 같은 값이어야 한다.
+
+        입찰자는 이 숫자로 부품도 물량을 잡는다. 표에 한 줄을 더하고 문장을
+        안 고치면 견적 물량이 한 모듈만큼 비는데, 그 사실은 제작 단계에서야 나온다.
+        """
+        rows = re.findall(r'<tr><td class="k">(M-\d+)</td>', self.html)
+        self.assertEqual(len(rows), len(set(rows)), "모듈 번호가 중복된다")
+        nums = [int(r.split("-")[1]) for r in rows]
+        self.assertEqual(nums, list(range(1, len(nums) + 1)),
+                         "모듈 번호가 M-001 부터 이어지지 않는다: %s" % rows)
+        body = re.search(r"라인은 아래 (\d+)개 모듈로 구성한다", self.html)
+        self.assertIsNotNone(body, "모듈 수를 밝히는 문장이 없다")
+        cap = re.search(r"<caption>모듈 구성 (\d+)종", self.html)
+        self.assertIsNotNone(cap, "모듈 구성 표제가 없다")
+        for where, n in (("본문", body.group(1)), ("표제", cap.group(1))):
+            self.assertEqual(
+                int(n), len(rows),
+                "%s 은 %s개라 적었는데 표에는 %d 행이 있다" % (where, n, len(rows)))
+        self.assertIn(
+            "%d개 모듈의 부품도" % len(rows), self.html,
+            "9항 납품물이 세는 모듈 수가 3항의 표와 다르다")
+
+    def test_the_expansion_clause_matches_the_parallel_study(self):
+        """1.4 가 요구하는 확장 여지는 검토서가 실제로 계산한 값이어야 한다.
+
+        확장 여지는 치수로만 지켜진다. 사양서가 검토서보다 좁은 값을 적으면
+        상세설계가 그 좁은 값으로 굳고, 확장은 재설계가 된다.
+        """
+        study = (ROOT / "docs" / "dg-hk120-twin-cell.html").read_text(encoding="utf-8")
+        clause = re.search(
+            r'<div class="n">1\.4</div>(.*?)</div></div>', self.html, re.S)
+        self.assertIsNotNone(clause, "1.4 장래 확장 조항이 없다")
+        body = clause.group(1)
+        self.assertIn("수평", body, "확장이 수평 병렬임을 밝히지 않았다")
+        self.assertIn("DG-HK120C", body)
+        self.assertIn("dg-hk120-twin-cell.html", body, "검토서 경로를 대지 않았다")
+        self.assertIn("범위 밖", body, "확장 설계가 본 용역 밖임을 못 박지 않았다")
+
+        decks = re.search(r"<span class=\"m\">3 → (\d+)</span>단", body)
+        self.assertIsNotNone(decks, "확장 시 단수를 밝히지 않았다")
+        self.assertEqual(decks.group(1), "7",
+                         "검토서가 고른 단수는 7 단이다")
+        self.assertIn("decks:7", CONSOLE.read_text(encoding="utf-8").replace(" ", ""),
+                      "콘솔의 확장 배치가 7 단이 아니다")
+
+        aisle = re.search(r'셀 사이 통로 <span class="m">([\d,]+) mm</span>', body)
+        self.assertIsNotNone(aisle, "셀 사이 통로 폭을 밝히지 않았다")
+        self.assertIn("EX-101", body, "통로 폭을 정하는 장치를 대지 않았다")
+        self.assertEqual(aisle.group(1), "2,760",
+                         "통로 폭이 EX-101 포탈에서 나온 2,760 mm 가 아니다")
+        self.assertIn("aisleFork", study,
+                      "검토서가 포크 포탈로 통로를 유도하지 않는다")
+
+    def test_the_handed_over_console_revision_is_the_one_on_disk(self):
+        """사양서가 인계한다고 적은 개정과 콘솔이 스스로 붙이는 개정이 같아야 한다.
+
+        둘이 갈리면 입찰자는 자기가 받은 파일이 사양서가 말하는 그 파일인지
+        확인할 방법이 없다 — 개정 표기는 인계물의 신원이다.
+        """
+        console = CONSOLE.read_text(encoding="utf-8")
+        stated = re.findall(r"REV\.\d+[A-Z]?", self.html)
+        head = re.search(r"<dt>선행자료</dt><dd>(REV\.\d+[A-Z]?)", self.html)
+        self.assertIsNotNone(head, "머리말에 인계 개정이 없다")
+        self.assertIn("rev:'%s'" % head.group(1),
+                      console.replace(" ", ""),
+                      "머리말이 적은 %s 를 콘솔이 쓰지 않는다" % head.group(1))
+        self.assertIn("개념설계(%s) 결과" % head.group(1), self.html,
+                      "꼬리말의 개정이 머리말과 다르다")
+        # 폐기된 선행 개정을 인용할 때는 그것이 폐기된 것임을 밝힌다.
+        if "REV.20" in stated:
+            self.assertIn("폐기된 선행 개정", self.html,
+                          "REV.20 을 인용하면서 그것이 폐기된 개정임을 밝히지 않았다")
 
     def test_states_the_prior_package_has_no_fabrication_drawings(self):
         """입찰자가 가장 먼저 알아야 할 사실이다. 빠지면 견적이 틀어진다."""
@@ -623,7 +707,7 @@ class TestProcurementTerms(unittest.TestCase):
         """실적 요구는 이 설비가 실제로 요구하는 기술에서 나와야 한다."""
         table = self._table("필수 실적")
         for token, why in (
-            ("≥ 200 °C", "가열 계면온도 200 °C"),
+            ("≥ 200 °C", "칼날·카세트가 도달하는 200 °C 공정온도"),
             ("2축 이상 위치 동기", "좌우 동기 이송축"),
             ("ISO 13849-1", "안전기능 PLr 검증"),
             ("과도 열전도 해석", "체류시간 하한을 정하는 해석"),
@@ -636,6 +720,72 @@ class TestProcurementTerms(unittest.TestCase):
         self.assertEqual(len(dates), 3, "접수 일정이 3행이 아니다")
         self.assertEqual(dates, sorted(dates), "질의·답변·접수 마감 순서가 뒤집혔다")
         self.assertGreater(dates[0], issue, "질의 마감이 발행일보다 앞선다")
+
+    def test_the_issue_date_is_the_same_in_all_three_places(self):
+        """발행일은 머리말·접수 일정 표제·꼬리말 세 곳에 적힌다.
+
+        한 곳만 고치면 입찰자는 어느 날짜로 기간을 세야 하는지 알 수 없고,
+        마감을 다투는 순간 그 불일치가 그대로 분쟁이 된다.
+        """
+        head = re.search(r"<dt>발행일</dt><dd>(\d{4}-\d{2}-\d{2})</dd>", self.html)
+        self.assertIsNotNone(head, "머리말에 발행일이 없다")
+        caption = re.search(r"<caption>접수 일정 — 본 사양서 발행일 "
+                            r"(\d{4}-\d{2}-\d{2}) 기준</caption>", self.html)
+        self.assertIsNotNone(caption, "접수 일정 표제에 발행일이 없다")
+        foot = re.search(r"DYNAMIC INDUSTRY · (\d{4}-\d{2}-\d{2})</p>", self.html)
+        self.assertIsNotNone(foot, "꼬리말에 발행일이 없다")
+        found = {head.group(1), caption.group(1), foot.group(1)}
+        self.assertEqual(
+            len(found), 1,
+            "발행일이 세 곳에서 갈렸다: 머리말 %s · 표제 %s · 꼬리말 %s"
+            % (head.group(1), caption.group(1), foot.group(1)))
+
+    def test_every_deadline_falls_on_a_business_day(self):
+        """마감을 휴일에 걸면 그 조항은 그날 지킬 수 없는 조항이 된다.
+
+        2026 년 추석은 9/24(목) – 9/26(토)이고 그 다음 월요일까지 사실상 연휴다.
+        개천절 10/3(토)은 10/5(월)이 대체공휴일, 한글날은 10/9(금)이다.
+        """
+        holidays = {
+            "2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18",
+            "2026-03-01", "2026-03-02", "2026-05-05", "2026-05-24",
+            "2026-05-25", "2026-06-06", "2026-08-15", "2026-08-17",
+            "2026-09-24", "2026-09-25", "2026-09-26", "2026-10-03",
+            "2026-10-05", "2026-10-09", "2026-12-25",
+        }
+        dates = re.findall(r'class="num">(\d{4}-\d{2}-\d{2})', self.c12)
+        self.assertEqual(len(dates), 3, "접수 일정이 3행이 아니다")
+        for d in dates:
+            day = datetime.date(*map(int, d.split("-")))
+            self.assertLess(day.weekday(), 5,
+                            "%s 은 %s요일이다 — 마감을 주말에 걸었다"
+                            % (d, "월화수목금토일"[day.weekday()]))
+            self.assertNotIn(d, holidays, "%s 은 공휴일이다 — 마감이 설 수 없다" % d)
+
+    def test_the_proposal_window_clears_the_chuseok_holiday(self):
+        """답변 회신부터 접수 마감까지 실제로 몇 영업일인지 센다."""
+        closed = {
+            "2026-09-24", "2026-09-25", "2026-09-26", "2026-10-03",
+            "2026-10-05", "2026-10-09",
+        }
+        dates = re.findall(r'class="num">(\d{4}-\d{2}-\d{2})', self.c12)
+        reply = datetime.date(*map(int, dates[1].split("-")))
+        close = datetime.date(*map(int, dates[2].split("-")))
+        working, day = 0, reply + datetime.timedelta(days=1)
+        while day <= close:
+            if day.weekday() < 5 and day.isoformat() not in closed:
+                working += 1
+            day += datetime.timedelta(days=1)
+        self.assertGreaterEqual(
+            working, 10,
+            "제안서 작성 기간이 %d 영업일뿐이다 — 상세설계 제안에는 짧다" % working)
+        stated = re.search(r"제안서 작성 기간은[^<]*<span class=\"m\">(\d+) 영업일</span>",
+                           self.c12)
+        self.assertIsNotNone(stated, "본문이 제안서 작성 기간을 영업일로 밝히지 않았다")
+        self.assertEqual(
+            int(stated.group(1)), working,
+            "본문은 %s 영업일이라 적었는데 표의 날짜로 세면 %d 영업일이다"
+            % (stated.group(1), working))
 
     def test_payment_is_tied_to_approval_not_submission(self):
         """제출만으로 기성이 나가면 승인 단계가 압력을 잃는다."""

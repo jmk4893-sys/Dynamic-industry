@@ -241,7 +241,7 @@ LEAVES = [
     Leaf("RTO_VALVE_OK",       DI, 4, "RTO-101 축열식 열산화로"),
     Leaf("HX_OUTLET_TEMP",     TC, 2, "HX-101 배기–급기 열교환기"),
     Leaf("CEMS_OK",            COMM, 0, "CEMS-101 연속배출감시"),
-    Leaf("TOC_HIGH",           AI, 1, "CEMS-101 연속배출감시"),
+    Leaf("TOC_HIGH",           AI, 1, "CEMS-101 연속배출감시"),   # 경보 신호 — 허가에는 부정으로 들어간다
     Leaf("FLAME_DETECT",       FDI, 2, "가열실 불꽃감지기×2"),
     Leaf("N2_PRESSURE_OK",     DI, 1, "NP-101 질소 퍼지 유닛"),
 ]
@@ -370,7 +370,8 @@ DERIVED = [
     # 나이프가 원점에 있고 위치가 읽혀야 다음 장의 박리를 시작한다.
     Derived("KNIFE_TRAVERSE_PERMIT", ["PEEL_PERMIT", "KNIFE_X_HOME", "KNIFE_X_POS"]),
     Derived("HEAT_RECOVERY", ["RTO_READY", "HX_OUTLET_TEMP", "DP_OK"]),
-    Derived("EMISSION_OK", ["CEMS_OK", "TOC_HIGH", "RTO_READY"]),
+    Derived("EMISSION_OK", ["CEMS_OK", "TOC_HIGH", "RTO_READY"],
+            "TOC_HIGH 는 부정 항 — EMISSION_OK = CEMS_OK ∧ ¬TOC_HIGH ∧ RTO_READY"),
     Derived("CHAMBER_FIRE_TRIP", ["FLAME_DETECT", "SMOKE", "CO_HIGH"]),
     Derived("N2_PURGE", ["CHAMBER_FIRE_TRIP", "N2_PRESSURE_OK"]),
 ]
