@@ -32,6 +32,7 @@ const SPANS_THE_PLANT = [
  *  표현하지 못한다. 그런 자리만 여기 적고, 나머지 넘침은 결함으로 잡는다. */
 const OVERLAP_BY_DESIGN = {
   afu: 1300,   // RB-101 이 BFC 반전 베이 안으로 팔을 넣어 픽업한다
+  grm: 475,    // REV.53: BX-101 브리지가 버퍼 존 끝 너머 GBR 캐리지까지 닿는다
 };
 
 const browser = await chromium.launch({

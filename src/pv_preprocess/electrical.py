@@ -164,7 +164,7 @@ FEEDERS: tuple[Feeder, ...] = (
     Feeder("F10", "LP-GRM-IRB", "GRM-401 IR 뱅크 B (라인 4–6 · 30등 × 2.92 kW)",
            87.5, 0.75, 200, "4C×70 mm² Cu", "계획(순차가열 수용률)"),
     Feeder("F11", "LP-GRM-MEC",
-           "LI-101 승강 2축 · TS-101 포크 · EX-101/RT-101 · TDM-201 X/Z · WR-101 · GR-201/DS-301",
+           "LI-101 승강 2축 · TS-101 포크 · BX-101 인계 브리지 · EX-101/RT-101 · TDM-201 X/Z · WR-101 · GR-201/DS-301",
            14.0, 0.65, 40, "4C×10 mm² Cu", "계획"),
     Feeder("F12", "LP-GRM-EXH", "IR 배기 · CV-301 슈레더 투입부 집진",
            9.0, 0.90, 32, "4C×6 mm² Cu", "계획"),

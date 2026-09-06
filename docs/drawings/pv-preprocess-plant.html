@@ -1862,6 +1862,7 @@ html>body{padding:0}</style>
           <tr><td>단축→장축 전환</td><td>단축 프레임 존재해제와 FH-501 수거 가능 이중확인, 좌우 힘차 ≤3 kN, 장축 4캐리지 위치편차 정상</td><td>자동재시도 금지·기계식 보유·검사 요청</td></tr>
           <tr><td>GI·SG·GI 후단</td><td>GI-301 느슨한 파편 없음, DX-601 풍량·차압 정상, SG-301 완료, GI-302 신뢰도·결함맵·엣지프로파일 승인</td><td>GBR 진입 금지·HOLD 또는 작업자 검사</td></tr>
           <tr><td>GBR 캐리지 적재</td><td>route 코드, RFID, 이중 도킹핀, 빈 슬롯, 점유·돌출센서, 집진도크, ResultAck 저장</td><td>셔틀 정지·패널 유지·상류 HOLD, 수동 캐리지 교환·리셋 전 자동복귀 금지</td></tr>
+          <tr><td>BX-101 인계</td><td>GBR 캐리지 슬롯 점유·RFID 일치, M0-101 빈 상태·진공 정상, 브리지 원점 ACK</td><td>브리지 정지·유리 현재 위치 유지, M0-101 진공 이상 시 자동복귀 금지·작업자 확인 요청</td></tr>
           <tr><td>안전정지</td><td>도어·라이트커튼·비상정지 이중채널</td><td>서보 STO·에어 덤프·로드락·포획품 무전원 유지래치, 제어 하강/수거 후 재기동 방지</td></tr>
         </tbody>
       </table>
@@ -1869,7 +1870,7 @@ html>body{padding:0}</style>
   </details>
 
   <details class="jb-engineering" id="jb-servo-axes">
-    <summary>서보모터 축 일람 · 라이브 동작 확인 <span class="viz-badge">EtherCAT 37축 · FSoE STO</span></summary>
+    <summary>서보모터 축 일람 · 라이브 동작 확인 <span class="viz-badge">EtherCAT 38축 · FSoE STO</span></summary>
     <div class="viz-grid jb-servo-live">
       <div class="card"><div class="text-small text-muted">사이클 클록</div><b class="tabular-nums" id="jb-sv-time">–</b><div class="text-small text-muted" id="jb-sv-stage">시뮬레이션 대기</div></div>
       <div class="card"><div class="text-small text-muted">지령 중인 축</div><b id="jb-sv-active">–</b><div class="text-small text-muted">스테이지 → 축 매핑 · 표 행 강조</div></div>
@@ -3102,7 +3103,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
     return [left, top, width, height].map(Math.round).join(' ');
   }
 
-  var DRAWING_REVISION = 'REV.52';
+  var DRAWING_REVISION = 'REV.53';
   // 뷰별 축 선택. PART_AXIS 는 part.at/part.size 의 [X, 상하, 깊이] 기준,
   // ENVELOPE_AXIS 는 station.envelope 의 [L, W, H] 기준 — 두 배열의 축 순서가 다르다.
   var PART_AXIS = { plan: [0, 2], front: [0, 1], side: [2, 1] };
@@ -3740,7 +3741,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
   var INCOMER = { method: '기존 부지 인입 1,200 kW 에서 분기 (이 플랜트 24.8 %)', tapsSite: true, tapLowVoltage: true, siteServiceKw: 1200.0, siteUtilPct: 24.8, siteHeadroomKw: 902.9, worstCaseKw: 303.7, coincidentWorstCaseKw: 297.0, lvTapMaxM: 170.4, highVoltage: true, hvV: 380, contractKw: 297.1, contractKva: 330.1, apparentKva: 244.6, transformerKva: 0, transformerKvaIfHv: 500, transformerLoadPct: 0.0, capacitorKvar: 35, hvCurrentA: 0.0, hvCable: '4C×300 mm² Cu (부지 저압 배전반 분기)', vcbA: 0, lvMainMm2: 300, substationMm: [0, 0, 0], lowVoltageLimitKw: 100.0, incomingKnown: false, withinLvLimit: true, lvTapConfirmed: true, dropPct: 3.0, breakerHeadroomKw: 49.2 };
   // 스마트 팩토리 계층 — src/pv_preprocess/smart.py 파생 (테스트 대조).
   var AIR = { useBar: 6.0, supplyBar: 7.0, averageNlMin: 393.1, peakNlMin: 553.1, unlistedMargin: 0.15, leakageMargin: 0.2, requiredFadNlMin: 542.5, compressorKw: 5.5, compressorUnits: 2, compressorFadNlMin: 800, compressorMargin: 1.47, receiverL: 300, receiverGovernedBy: '기동 횟수', dryerDewPointC: 3.0, headerBoreMm: 20, headerVelocityMs: 3.6, filterAreaM2: 18.8, pulseValves: 7, roomMm: [3100, 1700, 2700], installedKw: 11.5, demandKw: 4.25, headerRunMm: 50950, hangers: 18, hangerPitchMm: 3000, hangerLoadKg: 3.9, noiseDba: 75.0 };
-  var SMART = { serverRoomX: 36600, controlRoomX: 39700, edgeCenterX: 20500, facilityX0: 35700, facilityX1: 41700, serverRoomMm: [1800, 3200, 2700], controlRoomMm: [4000, 3400, 2700], racks: 2, rackU: 28, rackHeatKw: 6.03, edgeCabinets: 7, wifiAps: 5, instruments: 47, plcTags: 608, servos: 37, inverters: 11, dol: 7, timeseriesKbS: 94.5, visionRawMbS: 13.32, visionKeptMbS: 1.82, retentionPct: 13.7, requiredMbps: 214.6, backboneMbps: 1000, annualTb: 27.22, storageTb: 122.5, itKw: 10.3, instKw: 4.5, smartKw: 14.8, hoursPerYear: 4125 };
+  var SMART = { serverRoomX: 36600, controlRoomX: 39700, edgeCenterX: 20500, facilityX0: 35700, facilityX1: 41700, serverRoomMm: [1800, 3200, 2700], controlRoomMm: [4000, 3400, 2700], racks: 2, rackU: 28, rackHeatKw: 6.03, edgeCabinets: 7, wifiAps: 5, instruments: 47, plcTags: 616, servos: 38, inverters: 11, dol: 7, timeseriesKbS: 96.9, visionRawMbS: 13.32, visionKeptMbS: 1.82, retentionPct: 13.7, requiredMbps: 214.7, backboneMbps: 1000, annualTb: 27.22, storageTb: 122.5, itKw: 10.3, instKw: 4.5, smartKw: 14.8, hoursPerYear: 4125 };
   // [태그, 존, 이름, 수량, 신호수, Hz, 분전반, W, 용도, 여는 과제]
   var INSTRUMENTS = [
     ['VIB-901', 'afu', 'HPU-101 유압펌프 3축 진동', 1, 16, 1.0, 'LP-INST', 6.0, '펌프·전동기 베어링 열화 추세', 'AI-05'],
@@ -3877,7 +3878,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
   // [이름, 셀, 질량, 높이, 베이스폭, 벽부, 세장비, 유연, 앵커수, 규격, 들림SDS, 사용률, 근거]
   var SEISMIC_COMPONENTS = [["BFC 반전 카세트 (Bay 1식)", "bfc", 2500, 4500, 2660, false, 1.69, false, 16, "M20", 1.97, 0.0, "3D 실측 — BFC-101A 포탈 기둥·LM가이드 조립체의 Z 폭. 카세트는 그 안에 있으므로 넘어질 때 버티는 것은 포탈이다"], ["GRM-401 5단 단열랙 M1-101", "grm", 1700, 3000, 1900, false, 1.58, false, 8, "M20", 2.11, 0.0, "3D 실측 — M1-101 5단 단열랙의 Z 폭"], ["AFR-101 셀 베이스 프레임", "afr", 1290, 450, 865, false, 0.52, false, 16, "M20", 6.41, 0.0, "3D 실측 — S355 베이스 프레임과 CV-101 가대 다리의 Z 폭. X 로는 11.4 m 라 길이 방향 전도는 문제가 아니다"], ["AFR CL-221 클램프 포탈 1조", "afr", 700, 2130, 2900, false, 0.73, false, 16, "M20", 4.54, 0.0, "기구 도면 — 기둥 자리 z ±1,450 (kinematics 의 포탈 기둥 위치). 통과 폭·정렬 셔틀·LM 레일 밖, 안전가드 안쪽에서 정해진 값이다"], ["VG-101 독립 방진 비전보 조립체", "afu", 620, 5150, 2130, false, 2.42, true, 0, "미배정", 1.03, null, "3D 실측 — 독립 기둥 2본의 X 간격. Z 로는 6.7 m 라 짧은 쪽이 지레비를 정한다"], ["HPU-601 유압 파워유닛", "afr", 450, 1500, 820, false, 1.83, false, 8, "M16", 1.82, 0.0, "3D 실측 — HPU 본체·방진 마운트의 Z 폭"], ["MDB-101 주 분전반", "afr", 400, 2100, 300, true, 7.0, true, 0, "미배정", 0.36, null, "**벽부 D300 이다.** 바닥에 서 있지 않으므로 전도가 아니라 벽 앵커의 인장으로 받는다 — 지레비가 깊이 300 뿐이라 이 플랜트에서 가장 불리한 자리다"], ["VAC-101 진공 스키드", "afu", 320, 1620, 860, false, 1.88, false, 0, "미배정", 1.77, null, "3D 실측 — 스키드 베이스의 Z 폭"]];
   var SEISMIC_REMEDY = [["베이스를 넓힌다", "복원 모멘트는 베이스 반폭에 **비례**하고 인장은 지레비에 반비례한다 — 폭을 1.5배 하면 두 쪽이 같이 좋아진다"], ["무게중심을 낮춘다", "전도 모멘트가 높이에 비례한다. 상부 중량물을 내리는 것이 앵커를 키우는 것보다 싸다"], ["앵커를 키운다", "마지막이다. 굵히면 연단거리·매입깊이가 따라 커져 바닥 슬래브 두께까지 올라간다"], ["횡지지를 건다", "높고 좁은 것(VG-101 같은)은 상부를 건물 철골에 잡아 주는 편이 바닥에서 버티는 것보다 낫다 — 다만 건축 인터페이스가 된다"]];
-  var SAFETY = {"hazards": 14, "functions": 11, "plantPlr": "e", "plrA": 0, "plrB": 1, "plrC": 1, "plrD": 11, "plrE": 1, "resolutionMm": 30, "penetrationMm": 128, "approachFastMmS": 2000, "approachSlowMmS": 1600, "approachSwitchMm": 500, "stopChainMs": 287, "tightestOpening": "OP-OUT", "tightestBudgetMs": 445, "contestedMm": 320, "contestedBudgetMs": 96, "fixedChainMs": 37, "contestedMechanicalMs": 59, "contestedSlowdown": 4.2, "mutingCyclesPerDay": 2228, "cyclesPerYear": 612700, "missionYears": 20, "inputs": 45, "outputs": 12, "inputModules": 7, "outputModules": 2, "ioModulePoints": 8, "ioSparePct": 20, "fsoeDeviceNodes": 4, "stoNodes": 37, "fsoeNodes": 41};
+  var SAFETY = {"hazards": 14, "functions": 11, "plantPlr": "e", "plrA": 0, "plrB": 1, "plrC": 1, "plrD": 11, "plrE": 1, "resolutionMm": 30, "penetrationMm": 128, "approachFastMmS": 2000, "approachSlowMmS": 1600, "approachSwitchMm": 500, "stopChainMs": 287, "tightestOpening": "OP-OUT", "tightestBudgetMs": 445, "contestedMm": 320, "contestedBudgetMs": 96, "fixedChainMs": 37, "contestedMechanicalMs": 59, "contestedSlowdown": 4.2, "mutingCyclesPerDay": 2228, "cyclesPerYear": 612700, "missionYears": 20, "inputs": 45, "outputs": 12, "inputModules": 7, "outputModules": 2, "ioModulePoints": 8, "ioSparePct": 20, "fsoeDeviceNodes": 4, "stoNodes": 38, "fsoeNodes": 42};
   // [tag, cell, 설명, S, F, P, PLr, 근거] — src/pv_preprocess/safety.py 파생
   var HAZARDS = [["HZ-01", "afu", "AFU-101 듀얼 도킹 Bay — 지게차 진입·리프트 승강 협착", 2, 2, 1, "d", "S2 지게차와 리프트 사이 협착은 비가역이다. F2 반입은 상시 작업이라 사람이 늘 옆에 있다. P1 접근속도가 낮고 BW-101 안전벽체가 Bay 를 나눠 대피 방향이 남는다"], ["HZ-02", "bfc", "BFC-101A/B 반전 카세트 180° 회전 — 회전체·고정물 사이 협착", 2, 1, 2, "d", "S2 2,500 kg 회전체다. F1 가드 안이라 정비 때만 들어간다. P2 링과 프레임 사이에 들어간 뒤에는 피할 방향이 없다"], ["HZ-03", "bfc", "BFC 카세트 승강 Z — 낙하·협착", 2, 1, 2, "d", "S2 4,500 mm 높이의 카세트가 떨어진다. F1 정비 노출. P2 밑에 있으면 피할 수 없다 — 기계식 정비 안전받침이 그래서 있다"], ["HZ-04", "robot", "RB-101 다관절 작업영역 — 충돌·협착", 2, 1, 2, "d", "S2 6축 로봇 충돌. F1 티칭·정비 때만. P2 로봇 도달범위 안에서는 사람이 로봇보다 느리다"], ["HZ-05", "jbr", "JBR-201 3헤드 승강 플레이트·박리 Z 추력 — 협착", 2, 1, 2, "d", "S2 1:10 감속 추력이다. F1 가드 안. P2 헤드 밑에서는 피할 수 없다"], ["HZ-06", "jbr", "JBR-201 A/B 순차 공압 가위 — 절단", 2, 1, 2, "d", "S2 손가락 절단은 비가역이다. F1 가드 안. P2 가위 행정은 사람 반응보다 빠르다"], ["HZ-07", "jbr", "JBR 투입·반출 개구부 — 뮤팅 중 사람 진입", 2, 2, 2, "e", "S2 진입하면 HZ-05·06 을 그대로 만난다. **F2 뮤팅은 패널마다 열린다 — 투입·반출 합쳐 하루 2,228 회다.** P2 열린 개구를 사람이 따라 들어가면 안에서 멈출 방법이 없다"], ["HZ-08", "afr", "AFR-101 25 kN 인발·CL-221 클램프 12 kN — 협착·튕김", 2, 1, 2, "d", "S2 25 kN 은 사람을 잡는다. F1 가드 안. P2 인발은 힘 제어라 물린 뒤에 멈춰도 이미 늦다"], ["HZ-09", "afr", "SG-301 연마 회전체 ×3 — 말림·비산", 2, 1, 2, "d", "S2 회전체 말림. F1 가드 안. P2 말리면 놓을 수 없다"], ["HZ-10", "buffer", "GBR-301 셔틀 주행·슬롯 로더 승강 — 협착·낙하", 2, 1, 2, "d", "S2 적재 캐리지 낙하. F1 가드 안. P2 주행로 위에서는 피할 방향이 좁다"], ["HZ-11", "grm", "GRM-401 60-IR 뱅크 고온부 — 접촉 화상", 2, 1, 1, "c", "S2 IR 뱅크 표면 화상은 비가역이다. F1 정비 노출. P1 열은 접촉 전에 느껴지고 인터록에 냉각 지연이 걸린다"], ["HZ-12", "post", "유리 파손 비산 — 눈·피부 열상", 1, 2, 1, "b", "S1 보안경·가드로 막히는 경상이다. F2 파손은 60장 중 5장 몫으로 설계에 이미 들어 있다. P1 비산 방향이 가드로 제한된다"], ["HZ-13", "jbr", "정비 중 예기치 않은 기동 — 공압·유압 잔압", 2, 1, 2, "d", "S2 잔압으로 실린더가 한 번 더 나간다. F1 정비 때. P2 손을 넣은 상태에서 나가면 피할 수 없다 — 안전 잔압배출 밸브가 그래서 있다"], ["HZ-14", "afu", "CRN-901 인양물 낙하 — 운전 중 설비 위 통과", 2, 1, 2, "d", "S2 2,500 kg 낙하. F1 설치·정비 인양 때만. P2 밑에 있으면 끝이다. **이 위험원은 electrical 의 비동시 전제를 떠받친다** — 규칙이 아니라 인터록이어야 계약전력 근거가 선다"]];
   // [tag, 이름, [위험원], 검출, 논리, 구동, PLr, 카테고리, 비고]
@@ -3913,7 +3914,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
         ['F8', 'LP-CTRL', '안전 PLC · 비전 LAN · 제어반 UPS · 조명', 5.0, 1.0, 20, '4C×4 mm² Cu', '계획'],
         ['F9', 'LP-GRM-IRA', 'GRM-401 IR 뱅크 A (라인 1–3 · 30등 × 2.92 kW)', 87.5, 0.75, 200, '4C×70 mm² Cu', '계획(순차가열 수용률)'],
         ['F10', 'LP-GRM-IRB', 'GRM-401 IR 뱅크 B (라인 4–6 · 30등 × 2.92 kW)', 87.5, 0.75, 200, '4C×70 mm² Cu', '계획(순차가열 수용률)'],
-        ['F11', 'LP-GRM-MEC', 'LI-101 승강 2축 · TS-101 포크 · EX-101/RT-101 · TDM-201 X/Z · WR-101 · GR-201/DS-301', 14.0, 0.65, 40, '4C×10 mm² Cu', '계획'],
+        ['F11', 'LP-GRM-MEC', 'LI-101 승강 2축 · TS-101 포크 · BX-101 인계 브리지 · EX-101/RT-101 · TDM-201 X/Z · WR-101 · GR-201/DS-301', 14.0, 0.65, 40, '4C×10 mm² Cu', '계획'],
         ['F12', 'LP-GRM-EXH', 'IR 배기 · CV-301 슈레더 투입부 집진', 9.0, 0.9, 32, '4C×6 mm² Cu', '계획'],
         ['F13', 'LP-IT', 'SVR-902 랙 2면(코어망·히스토리안·MES·엣지추론 GPU·UPS) · 랙실 항온항습 · MCR-901 관제실', 10.3, 0.85, 32, '4C×6 mm² Cu', '계획(smart.it_installed_kw)'],
         ['F14', 'LP-INST', '존별 엣지 캐비닛 7면 · 무선 AP 5대 · 신규 계측기 46점 · 라인스캔 조명', 4.5, 0.9, 20, '4C×4 mm² Cu', '계획(smart.instrument_installed_kw)'],
@@ -3966,6 +3967,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
         ['AXIS-GBR-X', 'LP-GBR', 'GBR-301', '수평셔틀 주행 (2구동)', 2, 1.5, '서보', '23 bit 절대', false, '분기 정지 ±1.0 mm · PU 롤러 · 한 구동 상실 시 감속 주행'],
         ['AXIS-GBR-LF', 'LP-GBR', 'GBR-301', '슬롯 로더 승강', 1, 0.75, '서보', '23 bit 절대', true, '캐리지 슬롯 정렬 승강'],
         ['AXIS-GBR-FK', 'LP-GBR', 'GBR-301', '슬롯 로더 포크', 1, 0.4, '서보', '23 bit 절대', false, '슬롯 삽입·복귀'],
+        ['AXIS-GRM-BX', 'LP-GRM-MEC', 'BX-101', 'GBR 인계 브리지', 1, 0.75, '서보', '23 bit 절대', false, 'GBR 캐리지 슬롯 앞 950 mm 공백을 건너 M0-101 상면(1,050)에 내려놓는다 — M0-101 자세·중심 확인은 그대로 두고, 그 앞 950 을 새로 잇는다'],
         ['AXIS-GRM-LI', 'LP-GRM-MEC', 'LI-101', '5단 랙 양주 승강', 2, 1.5, '서보', '23 bit 절대', true, '볼스크루/타이밍벨트 동기축 · 카운터밸런스 · 무여자 브레이크 (앱 명시)'],
         ['AXIS-GRM-TS', 'LP-GRM-MEC', 'TS-101', '2단 텔레스코픽 포크', 1, 0.75, '서보', '23 bit 절대', true, '4점 LM 가이드 · 푸시풀 핀 · 낙하방지 폴'],
         ['AXIS-GRM-TX', 'LP-GRM-MEC', 'TDM-201', '탠덤 공통 X축', 1, 1.5, '서보', '23 bit 절대', false, '칼끝 300±2 mm 전자기어 추종 (앱 명시)'],
@@ -4039,7 +4041,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
         ['TH-HPU1', 'HPU-101 유압 (3.7 kW 입력)', 1.11, '유압유', '공랭 오일쿨러 + 60 L 증량 탱크', 'AFU-OC-101', 1.5],
         ['TH-HPU6', 'HPU-601 유압 (7.5 kW 입력)', 2.25, '유압유', '공랭 오일쿨러 (릴리프 체류 대응)', 'AFR-OC-601', 3.0],
         ['TH-CAB-JBR', 'JBR 7축 드라이브·PLC 반', 0.57, '반내', '필터팬·열교환기 (기존 JB-EL-006, 0.8 kW)', 'JB-EL-006', 0.8],
-        ['TH-CAB-LP', '셀 분전반 6면 드라이브 합 (JBR 반 별도)', 3.37, '반내', '발열 ≥0.4 kW 반은 열교환기, 그 외 필터팬', '—', 0.0],
+        ['TH-CAB-LP', '셀 분전반 6면 드라이브 합 (JBR 반 별도)', 3.4, '반내', '발열 ≥0.4 kW 반은 열교환기, 그 외 필터팬', '—', 0.0],
         ['TH-SG', 'SG-301 연마 절삭열·스핀들', 3.2, '배기', '국소집진 기류로 반출 (1,000 m³/h)', '—', 0.0],
         ['TH-DX', 'DX-601 블로워 축동력', 9.7, '배기', '배기 기류로 옥외 반출', '—', 0.0],
         ['TH-GRM-IR', 'GRM-401 IR 인클로저 손실 (수요의 35 %)', 45.94, '배기', 'IR 배기 덕트 · 블로워 3.7 kW (배기유량 감시 인터록)', 'GRM-EX-401', 0.0],
@@ -4056,7 +4058,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
         ['LP-CTRL', 0.0, '— (전동기 없음)'],
         ['LP-GRM-IRA', 0.0, '— (전동기 없음)'],
         ['LP-GRM-IRB', 0.0, '— (전동기 없음)'],
-        ['LP-GRM-MEC', 0.45, '열교환기'],
+        ['LP-GRM-MEC', 0.48, '열교환기'],
         ['LP-GRM-EXH', 0.44, '열교환기'],
         ['LP-IT', 0.0, '— (전동기 없음)'],
         ['LP-INST', 0.0, '— (전동기 없음)'],
@@ -10939,8 +10941,14 @@ var g=pvGrm,L=function(a,b,c,d,e,f){return P(g,a,b,c,d,e,f)};
 [-gIn(.09),gIn(.09)].forEach(function(x){L([.09,2.4,6.1],[x,1.2,0],M.guard,null)});
 [-gIn(.09),-3.5,0,3.5,gIn(.09)].forEach(function(x){[-3.05,3.05].forEach(function(z){
   L([.09,2.4,.09],[x,1.2,z],M.guard,null)})});
+// REV.53: BX-101 브리지 — GBR 캐리지 슬롯과 M0-101 사이 950 mm 공백을 잇는다.
+// 캐리지는 그대로 두고 유리 한 장만 건넌다 — M1-101 은 롤링(한 장 빠지면 한 장
+// 채움)이라 캐리지를 통째로 바꾸면 배치식이 되어 처리율(외부 DG-HK 2400 앱
+// 값, 재유도하지 않는다)을 다시 내야 한다. AXIS-GRM-BX 가 이 축이다.
+[-.7,.7].forEach(function(z){L([.95,.05,.05],[-7.025,1.0,z],M.steel,z<0?"BX-101 인계 브리지 레일":null,z<0?"GBR 캐리지 슬롯 앞 950 mm 공백을 건너 M0-101 상면(1,050)까지 왕복합니다.":null)});
+L([.9,.04,1.42],[-7.025,1.05,0],M.frame,"BX-101 인계 브리지","유리 한 장을 얹어 950 mm 를 건너는 캐리어 — M0-101 의 자세·중심 확인은 그대로 받습니다 (REV.53).");
 // M0 투입 정렬·6존 진공테이블
-L([2.75,.9,1.7],[-5.175,.6,0],M.frame,"M0-101 투입 정렬·6존 진공테이블","버퍼에서 인계받아 자세·중심을 확인하고 6존으로 흡착한다. 최대 2,500 × 1,400 mm");
+L([2.75,.9,1.7],[-5.175,.6,0],M.frame,"M0-101 투입 정렬·6존 진공테이블","버퍼에서 BX-101 브리지로 한 장씩 인계받아 자세·중심을 확인하고 6존으로 흡착한다. 최대 2,500 × 1,400 mm");
 L([2.6,.26,1.55],[-5.175,1.18,0],M.steel,"VC-601 6존 진공 캐리어","유리면을 6구역으로 나눠 흡착 — 권취·박리 반력을 지지한다");
 [-.52,0,.52].forEach(function(z){[-.86,0,.86].forEach(function(x){
   L([.62,.05,.42],[-5.175+x,1.33,z],M.rubber,null)})});
