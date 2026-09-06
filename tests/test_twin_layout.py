@@ -32,6 +32,7 @@ from .test_twin_cell_study import aisle, celly, geo, half_width
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
+STUDY = ROOT / "docs" / "dg-hk120-twin-cell.html"
 
 DECKS, LAMPS, CELLS = 7, 80, 2
 
@@ -258,8 +259,8 @@ class TestThePictureSaysWhatItIs(unittest.TestCase):
         """카메라가 어떻게 서든 계통은 글로 남아야 한다."""
         self.assertIn("functiondrawFlowMimic()", self.b)
         self.assertIn("drawTitleBlock();drawFlowMimic();", self.b)
-        self.assertIn("탠덤${L.cells}셀병렬", self.b)
-        self.assertIn("병렬은박리뿐—가열·냉각은한벌", self.b)
+        self.assertIn("탠덤${L.cells}셀수평병렬", self.b)
+        self.assertIn("확장옵션·두셀같은바닥", self.b)
 
     def test_the_floor_paint_shows_the_branch(self):
         """Y 자로 갈라졌다 합쳐지는 도색은 어느 각도에서도 분기로 읽힌다."""
@@ -414,6 +415,67 @@ class TestTheThreeStreamsAreVisible(unittest.TestCase):
         self.assertIn("CE-201${opt.tag}→CS-201${opt.tag}·셀/EVA반출", self.b)
         self.assertIn("C.sheet,!!opt.tag)", self.b, "권취부 이름표가 항상 뜨지 않는다")
         self.assertIn("C.cell2,true)", self.b, "반출 이름표가 항상 뜨지 않는다")
+
+
+class TestTheStandardAndTheOptionAreNamedAsSuch(unittest.TestCase):
+    """두 구조를 나란히 보존하기로 했다면, 어느 쪽이 납품 표준이고 어느 쪽이
+    확장 옵션인지가 그림과 문서에 적혀 있어야 한다. 안 적으면 다음 사람이
+    둘 중 아무거나 고르고, 고른 줄도 모른다.
+
+    배치 방향도 마찬가지다 — 병렬은 수직 적층이 아니라 수평이다. 형상만으로
+    남겨 두면 다음 개정에서 '바닥을 아끼자' 는 이유로 쌓이게 된다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = console()
+        cls.b = cls.src.replace(" ", "").replace("\n", "")
+        cls.study = STUDY.read_text(encoding="utf-8")
+
+    def test_each_layout_declares_its_role(self):
+        for name, role in (("HK60C", "표준"), ("HK120C", "확장 · 수평 병렬")):
+            self.assertEqual(layout(name)["role"], role,
+                             f"{name} 이 자기 역할을 말하지 않는다")
+            self.assertTrue(layout(name)["roleNote"],
+                            f"{name} 에 역할 설명이 없다")
+
+    def test_the_console_shows_the_role_where_it_is_read(self):
+        """버튼·명판·표제란 — 셋 다 어느 구조인지 말해야 한다."""
+        self.assertIn("L.cells>1?'수평 병렬':'단일 탠덤'", self.src, "버튼이 구조를 말하지 않는다")
+        self.assertIn("[${L.role}]${L.roleNote}", self.b, "명판이 역할을 말하지 않는다")
+        self.assertIn("${TL.plan}·${TL.role}", self.b, "표제란이 역할을 말하지 않는다")
+
+    def test_the_mimic_says_the_parallel_is_horizontal(self):
+        self.assertIn("탠덤${L.cells}셀수평병렬", self.b)
+        self.assertIn("두셀같은바닥—쌓지않는다", self.b,
+                      "수평이라는 것이 미믹에 없다")
+        self.assertIn("납품표준·직렬5스테이션", self.b)
+
+    def test_the_two_cells_share_one_floor_datum(self):
+        """수평의 정의 — 셀 오프셋이 y 에만 걸린다. z 가 끼면 그것은 적층이다."""
+        m = re.search(r"const cellY=n=>(.*?);", self.src)
+        self.assertIsNotNone(m)
+        self.assertNotIn("z", m.group(1), "셀 오프셋에 z 가 들어 있다 — 수평이 아니다")
+        # 한 자리만 보면 안 된다 — 셀을 놓는 자리가 정적·동적 둘이고,
+        # 한쪽만 쌓아도 그것은 적층이다.
+        places = re.findall(r"y:cellY\(c\),z:([^}]*)\}", self.b)
+        self.assertGreaterEqual(len(places), 2, "셀을 놓는 자리를 다 찾지 못했다")
+        for z in places:
+            self.assertEqual(z, "0", f"셀 오프셋 z 가 {z} 다 — 수평이 아니라 적층이다")
+
+    def test_the_study_records_the_decision(self):
+        """검토서가 '이것도 가능하다' 로 끝나면 결정이 남지 않는다."""
+        st = self.study.replace(" ", "").replace("\n", "")
+        self.assertIn("납품표준안은<strong>DG-HK60C단일탠덤</strong>", st)
+        self.assertIn("확장옵션으로설계에나란히보존", st)
+        self.assertIn("수직적층이아니라", st)
+
+    def test_the_study_explains_why_horizontal_and_what_it_costs(self):
+        st = self.study.replace(" ", "").replace("\n", "")
+        self.assertIn("수평병렬을택한이유", st, "배치 방향의 근거가 없다")
+        for why in ("추락", "정비발판", "같은바닥기준면"):
+            self.assertIn(why, st, f"수평을 택한 이유에 {why} 가 없다")
+        self.assertIn("setText('orientArea'", self.study,
+                      "면적 대가가 모델에서 나오지 않는다")
 
 
 class TestTheLayoutOrderStartsAtTheDeliveredLine(unittest.TestCase):

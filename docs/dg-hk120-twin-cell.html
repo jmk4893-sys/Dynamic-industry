@@ -264,6 +264,13 @@
       계약 보증은 <span class="m">60 장/h</span> 이고 DG-HK60C 가
       <span class="m">60.5 장/h</span> 를 낸다. 발주처 요구가 <span class="m">120</span> 대로
       바뀌는 경우에만 의미가 있는 별건 검토다.</div>
+    <div class="good"><strong>채택 방침 — 표준은 단일 탠덤이다.</strong>
+      Dynamic Industry 의 납품 표준안은 <strong>DG-HK60C 단일 탠덤</strong>이고,
+      이 병렬 구성은 <strong>확장 옵션으로 설계에 나란히 보존</strong>한다.
+      두 구조는 스테이션 사슬·전장·상태머신을 공유하므로 한 벌의 설계로
+      둘 다 유지된다 — 3D 콘솔에서 같은 화면의 배치 버튼으로 오간다.
+      병렬을 세울 때의 배치 방향도 함께 정한다: <strong>수직 적층이 아니라
+      수평 병렬</strong>이다 (<a href="#c4">4.4</a>).</div>
   </div></div>
 
   <div class="clause"><div class="n">1.2</div><div class="c">
@@ -403,10 +410,30 @@
       방출 문형과 셀 기둥이 겹친 도면이 나가고, 그 겹침은 제작에서야
       드러난다. 채택값은 <span id="aisleW2" class="m">—</span> 이고
       셀 중심간격 <span id="cellyW" class="m">—</span> 이 여기서 나온다.</p>
-    <div class="warn"><strong>모노레일 1선에 반출이 여섯이다.</strong>
+    <div class="warn" id="railWarn"><strong>모노레일 1선에 반출이 여섯이다.</strong>
       만권 롤 2 · 카세트 4 가 한 레일을 쓰므로 동시에 일어날 수 없다.
       배타 인터록(<span class="k">RH_TASK_EXCLUSIVE</span>)과 대기열을 상세설계에서
       세우고, 최악 위상에서 무인 운전이 끊기지 않는지 확인한다.</div>
+  </div></div>
+  <div class="clause"><div class="n">4.4</div><div class="c">
+    <h3>수평 병렬을 택한 이유</h3>
+    <p>두 셀을 <strong>쌓는 안(수직 병렬)</strong>도 놓고 보았다. 바닥은 확실히
+      아낀다 — DL 구간이 넓어지지 않으니 방책도 계단형이 될 이유가 없고,
+      점유면적은 DG-HK60C 와 거의 같아진다. 그런데 아끼는 것이 바닥뿐이다.</p>
+    <p>위 셀의 <span class="m">VT-101</span> 진공테이블과
+      <span class="m">KG-101</span> 나이프 레일이 사람 키를 넘는 자리로 올라간다.
+      그러면 거기에 오르기 위한 계단·정비발판·추락방지 난간이 새로 서고,
+      칼날 카세트 교환점도 두 높이가 된다 — 같은 작업에 절차가 두 벌이 되고,
+      위 칸은 <strong>추락 위험작업</strong>으로 분류가 바뀐다. 아래 셀의 정비 중
+      위 셀을 돌릴 수 있는가 하는 문제도 새로 생긴다.</p>
+    <p>수평은 그 전부를 만들지 않는다. 두 셀이 <strong>같은 바닥기준면</strong>에
+      서므로 VT-101·KG-101·KC 교환점의 높이가 단일 탠덤과 한 치도 다르지 않고,
+      DG-HK60C 를 다룬 손이 그대로 이 라인을 다룬다. 중앙 통로 하나로 두 셀의
+      진공테이블과 나이프 슬라이드를 함께 본다 (<a href="#c4">4.3</a>).</p>
+    <div class="good"><strong>대가는 면적이고, 그 대가를 치른다.</strong>
+      점유면적이 <span id="orientArea" class="m">—</span> 로 늘고 넓어지는 것은
+      DL 구간 하나다. 계단과 발판을 세우는 대신 바닥을 더 쓰는 쪽을 택했다 —
+      <strong>안전 분류와 정비 절차가 한 벌로 남는다</strong>는 것이 그 값이다.</div>
   </div></div>
 </section>
 
@@ -633,6 +660,7 @@
   // ── 4장 본문 수치
   setText('roofDelta',`${mm(M.hk60.roof)} → ${mm(pick.roof)} mm (+${mm(pick.roof-M.hk60.roof)})`);
   setText('aisleW',mm(GEO.aisle)+' mm');
+  setText('orientArea',n1(occupied)+' m² (건물 외곽 '+n1(bounding)+' m²)');
   setText('aisleCass',mm(GEO.aisleCass)+' mm');
   setText('aisleFork',mm(GEO.aisleFork)+' mm');
   setText('aisleW2',mm(GEO.aisle)+' mm');
@@ -666,7 +694,7 @@
   setHTML('costRows',[
     ['챔버 높이',`지붕 ${mm(M.hk60.roof)} → ${mm(pick.roof)} mm — 건물 유효높이·반입·크레인 재검토`,'구조'],
     ['EX-101 횡이송축',`방출 포크에 ±${mm(GEO.celly)} mm y축이 새로 든다 — 두 셀에 번갈아 넣는다`,'신규 축'],
-    ['DL 셀 폭',`${mm(M.hk60.width)} → ${mm(2*GEO.halfW)} mm (DL 구간만)`,'배치'],
+    ['DL 셀 폭',`${mm(M.hk60.width)} → ${mm(2*GEO.halfW)} mm (DL 구간만) — 수평 병렬의 대가`,'배치'],
     ['소모품',`카세트 ${2*M.cells}벌 · 권취 ${M.cells}벌 — 교환 빈도 2배`,'운전'],
     ['모노레일 부하','반출 6계통이 1선을 공유 — 배타 인터록 필요','제어'],
     ['가열실 단일점',`챔버가 서면 두 셀이 같이 선다 — 이중화 범위 합의 필요`,'가용성'],

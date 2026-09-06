@@ -2706,9 +2706,11 @@
                    EX-101 문형 2×(1,120+75+85+100) = 2,760 중 큰 쪽
          방책 7,450 카트 바깥 끝 6,650 + 정비 여유 800 */
     const HK60C={id:'compact',rev:'REV.21C',model:'DG-HK60C',plan:'압축 배치',
+      role:'표준',roleNote:'납품 표준 — 계약 60 장/h',
       decks:DECKS,lamps:LAMPS,cells:1,celly:0,aisle:0,
       fenceP:CFENCE_Y,fenceN:CFENCE_YN,rate:60.5,cycle:53.6};
     const HK120C={id:'twin',rev:'REV.22T',model:'DG-HK120C',plan:'1가열실 · 탠덤 2셀 병렬',
+      role:'확장 · 수평 병렬',roleNote:'확장 옵션 — 120 장/h 요구 시',
       decks:7,lamps:80,cells:2,celly:2.80,aisle:2.76,
       fenceP:7.45,fenceN:7.45,rate:120.9,cycle:26.8};
     /* 보관열(BS-301 롤 · KC-301 카세트)은 방책 밖이어야 한다. 압축은 방책이
@@ -4748,7 +4750,7 @@
       const TL=LC(),tCom=compactView();
       ctx.fillText(`${tCom?TL.model:'DG-HK60'} / M-000`,x+40,y+21);
       ctx.fillStyle=TH.inkSoft;ctx.font='600 12px system-ui,sans-serif';
-      ctx.fillText(tCom?`${TL.model} ${TL.plan} · 개념 제작도`:'전체장비 배치 · 개념 제작도',x+14,y+40);
+      ctx.fillText(tCom?`${TL.model} ${TL.plan} · ${TL.role}`:'전체장비 배치 · 개념 제작도',x+14,y+40);
       ctx.fillStyle=TH.inkDim;ctx.font='10px system-ui,sans-serif';
       ctx.fillText(`${tCom?TL.rev:'REV.20'} · 전장 ${Math.round((tCom?compactLength():rev20Length())*1000).toLocaleString()} mm · 축척 없음 · 치수 미확정`,x+14,y+55);
       ctx.restore();
@@ -4769,7 +4771,7 @@
       ctx.fillStyle=TH.accent;ctx.fillRect(x,y,4,h);
       ctx.textAlign='left';ctx.textBaseline='alphabetic';
       ctx.fillStyle=TH.accent;ctx.font='700 9px ui-monospace,SFMono-Regular,Consolas,monospace';
-      ctx.fillText(twin?`공정 계통 · 가열 1 → 탠덤 ${L.cells}셀 병렬 → 냉각 1`:'공정 계통 · 직렬 1열',x+13,y+15);
+      ctx.fillText(twin?`공정 계통 · 가열 1 → 탠덤 ${L.cells}셀 수평병렬 → 냉각 1`:'공정 계통 · 직렬 1열 (표준)',x+13,y+15);
       /* 다섯 칸을 폭으로 나누고, 트윈이면 가운데 칸만 위아래로 가른다. */
       const bx=x+13,bw=w-26,cw=bw/5,mid=y+(twin?52:42),bh=13;
       const cell=(cx,cy,code,fill,ink)=>{
@@ -4796,8 +4798,8 @@
         }
       }
       ctx.fillStyle=TH.inkDim;ctx.font='9px system-ui,sans-serif';
-      ctx.fillText(twin?`병렬은 박리뿐 — 가열·냉각은 한 벌 · 택트 ${L.cycle}s`
-                       :`직렬 5 스테이션 · 택트 ${L.cycle}s`,x+13,y+h-9);
+      ctx.fillText(twin?`확장 옵션 · 두 셀 같은 바닥 — 쌓지 않는다 · 택트 ${L.cycle}s`
+                       :`납품 표준 · 직렬 5 스테이션 · 택트 ${L.cycle}s`,x+13,y+h-9);
       ctx.restore();
     }
     /* One-metre reference measured through the live projection at the machine centre. */
@@ -4974,15 +4976,15 @@
       $('cameraButton').setAttribute('aria-pressed','true');$('cameraButton').textContent='자동 카메라';
       const b=$('layoutButton');b.setAttribute('aria-pressed',String(compactView()));
       b.textContent=compactView()
-        ?`배치 ${L.rev} · ${mm(compactLength())}mm`
-        :`배치 Rev.20 · ${mm(rev20Length())}mm`;
+        ?`배치 ${L.rev} · ${L.cells>1?'수평 병렬':'단일 탠덤'}`
+        :`배치 Rev.20 · 이전 전체 설계`;
       $('npModel').textContent=compactView()?L.model:'DG-HK60';
       $('npModelRev').textContent=compactView()?L.rev:'REV.20';
       $('npPlan').textContent=!compactView()?'단일 3단 IR · 고정 탠덤 · 수평 분리반출'
         :L.cells>1?`단일 ${L.decks}단 IR 1가열실 · 탠덤 ${L.cells}셀 병렬 · 냉각 랙 통합`
                   :`단일 ${L.decks}단 IR · 고정 탠덤 · 수평 분리반출`;
       $('npSub').textContent=compactView()
-        ?`${L.lamps} IR · ${L.decks}단 · 탠덤 ${L.cells}셀 · EVA 계면 ${T_TARGET}°C · 전장 ${mm(compactLength())}mm · 순생산 ${L.rate} 장/h`
+        ?`[${L.role}] ${L.roleNote} · ${L.lamps} IR · ${L.decks}단 · 탠덤 ${L.cells}셀 · 전장 ${mm(compactLength())}mm · 순생산 ${L.rate} 장/h`
         :`${LAMPS} IR · EVA 계면 ${T_TARGET}°C · 7＋1 캐리지 · 유리/셀 무낙하 컨베이어 · 전기·제어 통합`;
       updateUI();render();
     }
