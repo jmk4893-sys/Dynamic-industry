@@ -82,11 +82,13 @@ def station_blocks(html: str) -> dict[str, str]:
 def part_span(block: str, tag: str, axis: int = 0) -> tuple[float, float]:
     """한 부품의 축 방향 구간 (lo, hi)."""
     found = re.search(
-        r"part\('%s', '[^']*', \[([-\d, ]+)\], \[([-\d, ]+)\]" % re.escape(tag), block)
+        r"part\('%s', '[^']*', \[([-\d., ]+)\], \[([-\d., ]+)\]" % re.escape(tag), block)
     if found is None:
         raise AssertionError(f"{tag} 를 부품표에서 못 찾았다")
-    size = [int(v) for v in found.group(1).split(",")]
-    at = [int(v) for v in found.group(2).split(",")]
+    # 홀수 구간(접합부를 반씩 나눠 가진 스테이션)은 중심이 .5 로 떨어진다 —
+    # 반올림하면 부재 끝이 0.5 mm 어긋나므로 도면이 실제 기하를 적는다.
+    size = [float(v) for v in found.group(1).split(",")]
+    at = [float(v) for v in found.group(2).split(",")]
     return at[axis] - size[axis] / 2, at[axis] + size[axis] / 2
 
 
@@ -98,13 +100,16 @@ def solid_part_rows(block: str) -> list[tuple[str, list[int], list[int]]]:
     """
     rows = []
     for line in block.splitlines():
-        if "'sweep'" in line or "'guard'" in line:
+        # 'panel' 은 **공정 중인 유리·패널**이라 설비가 아니다. 가드와 장비 사이
+        # 여유를 잴 때 이것을 장비로 세면, 롤러 위로 25 mm 내민 유리가 여유를
+        # 먹은 것처럼 보인다 (REV.52 후단 스테이션에서 실제로 그랬다).
+        if "'sweep'" in line or "'guard'" in line or "'panel')" in line:
             continue
-        found = re.search(r"part\('([^']*)', '[^']*', \[([-\d, ]+)\], \[([-\d, ]+)\]", line)
+        found = re.search(r"part\('([^']*)', '[^']*', \[([-\d., ]+)\], \[([-\d., ]+)\]", line)
         if found:
             rows.append((found.group(1),
-                         [int(v) for v in found.group(2).split(",")],
-                         [int(v) for v in found.group(3).split(",")]))
+                         [float(v) for v in found.group(2).split(",")],
+                         [float(v) for v in found.group(3).split(",")]))
     return rows
 
 
@@ -275,7 +280,7 @@ class TestDrawingMatchesModel(unittest.TestCase):
         self.assertIn(f"var AISLE_WIDTH = {layout.AISLE_WIDTH_MM};", self.html)
         self.assertIn(f"var STATION_JUNCTION = {layout.STATION_JUNCTION_MM};", self.html)
 
-    def test_the_two_stations_are_one_machine(self):
+    def test_the_stations_are_one_machine(self):
         """JBR·AFR 은 한 베이스·한 가드·한 안전존의 두 스테이션이다 (REV.45).
 
         게이트 350 은 두 가드 벽 **사이**의 이격이었다. 벽이 하나로 합쳐지면
@@ -287,11 +292,17 @@ class TestDrawingMatchesModel(unittest.TestCase):
         self.assertTrue(layout.stations_are_one_machine())
         # REV.50: 13,550 → 13,650. SG-301 몸체 2,200 이 AFR 반출롤러 런 중심 2,225 위에 서며
         # AFR 장비 끝 3,225 → 3,325 (+100).
-        self.assertEqual(layout.integrated_cell_length_mm(), 13_650)
-        self.assertEqual(layout.integrated_saving_mm(), 650)
+        # REV.52: 후단 검사(post)가 세 번째 스테이션이다. 13,650 + 3,025 = 16,325 이고,
+        # 종전 afr·post 사이에 있던 가드 여유 950 이 접합부 250 이 되어 −675 다.
+        self.assertEqual(layout.integrated_cell_length_mm(), 16_325)
+        self.assertEqual(layout.integrated_saving_mm(), 1_325)
         self.assertEqual([z.key for z in layout.build_zones()
-                          if z.key in layout.INTEGRATED_CELL], ["jbr", "afr"],
-                         "두 스테이션은 붙어 있어야 한 기계다")
+                          if z.key in layout.INTEGRATED_CELL], ["jbr", "afr", "post"],
+                         "세 스테이션은 붙어 있어야 한 기계다")
+        # 바깥 끝만 여유고 안쪽은 이격이다 — 그 규칙이 값으로 남아야 한다
+        self.assertEqual(layout.station_edges_mm("jbr"), (475, 125))
+        self.assertEqual(layout.station_edges_mm("afr"), (125, 125))
+        self.assertEqual(layout.station_edges_mm("post"), (125, layout.BUFFER_NIP_MM))
         # 게이트가 실제로 도면에서 사라졌는가
         self.assertNotIn("'gate', 'JB/AFR'", self.html)
         self.assertNotIn("HANDOFF_CLEARANCE", self.html,
@@ -302,10 +313,11 @@ class TestDrawingMatchesModel(unittest.TestCase):
         keep = layout.STATION_JUNCTION_MM
         try:
             layout.STATION_JUNCTION_MM = 650
-            self.assertEqual(layout.integrated_cell_length_mm(), 14_050)
+            # 접합부가 둘이므로 400 × 2 만큼 길어진다
+            self.assertEqual(layout.integrated_cell_length_mm(), 17_125)
         finally:
             layout.STATION_JUNCTION_MM = keep
-        self.assertEqual(layout.integrated_cell_length_mm(), 13_650)
+        self.assertEqual(layout.integrated_cell_length_mm(), 16_325)
 
     def test_downstream_span_text_matches(self):
         """AFR-101–GBR-301 구간 치수는 존에서 파생한 값과 같아야 한다."""
@@ -405,8 +417,7 @@ class TestOneTransferPlane(unittest.TestCase):
         self.assertEqual(layout.STATIONS["buffer"].transfer_height_mm,
                          layout.LINE_TRANSFER_MM)
         # 나이프 롤러가 셔틀 상류면에서 정확히 BUFFER_NIP_MM 만큼 떨어져 있다.
-        self.assertIn("[pvZone.buffer[0]-pvNip-pvRollR"
-                      "-(pvZone.post[0]+pvZone.post[1])/2,pvRollY,0]", self.html,
+        self.assertIn("[pvZone.buffer[0]-pvNip-pvRollR-op.position.x,pvRollY,0]", self.html,
                       "나이프 롤러 위치가 모델에서 나오지 않는다")
         # 셔틀 데크판은 롤러 밑으로 들어간다 — 유리는 롤러가 받는다.
         self.assertIn("[Ri,pvRollY-pvRollR-.105,0]", self.html)
@@ -990,7 +1001,7 @@ class TestLineLengthReduction(unittest.TestCase):
         self.assertGreaterEqual(depth_lo - guard_lo, 1200)
         self.assertGreaterEqual(guard_hi - depth_hi, 1200)
 
-    def test_the_integrated_cell_has_one_guard_and_two_stations(self):
+    def test_the_integrated_cell_has_one_guard_and_three_stations(self):
         """통합셀은 바깥에만 가드 여유를 두고, 접합부에는 벽이 없다 (REV.45).
 
         REV.22-P01 에서 AFR 가드 여유를 475 로 균등화했고, REV.44 에서 단축
@@ -998,19 +1009,16 @@ class TestLineLengthReduction(unittest.TestCase):
         한 인클로저로 묶으며 그 남은 자리와 게이트 350 이 접합부 200 으로
         합쳐졌다 — 대신 JBR 상류는 125 밖에 없던 여유가 기준 475 가 됐다.
         """
-        first, last = layout.INTEGRATED_CELL
-        for key, outer, inner in ((first, "up", "down"), (last, "down", "up")):
+        for key in layout.INTEGRATED_CELL:
             with self.subTest(station=key):
                 block = self.stations[key]
                 guard = part_span(block, "GUARD")
                 rows = solid_part_rows(block)
                 lo = min(at[0] - size[0] / 2 for _, size, at in rows)
                 hi = max(at[0] + size[0] / 2 for _, size, at in rows)
-                gap = {"up": lo - guard[0], "down": guard[1] - hi}
-                self.assertEqual(gap[outer], layout.GUARD_CLEARANCE_X_MM,
-                                 "바깥 끝 여유가 플랜트 기준과 다르다")
-                self.assertEqual(gap[inner], layout.STATION_JUNCTION_MM / 2,
-                                 "접합부는 벽이 없으므로 여유가 아니라 이격이다")
+                up, down = layout.station_edges_mm(key)
+                self.assertEqual(lo - guard[0], up, "상류 여유가 모델과 다르다")
+                self.assertEqual(guard[1] - hi, down, "하류 여유가 모델과 다르다")
         # 그리고 두 시트를 이으면 통합셀 전장이 나온다
         self.assertEqual(sum(layout.STATIONS[k].envelope[0]
                              for k in layout.INTEGRATED_CELL),
@@ -2592,7 +2600,7 @@ class TestBrandMark(unittest.TestCase):
         for anchor in (
                 "gt=(pvZone.jbr[0]+pvZone.jbr[1])/2",
                 "qt=pvZone.afr[0]+2.45-.4",
-                "op.position.x=(pvZone.post[0]+pvZone.post[1])/2",
+                "op.position.x=pvZone.post[0]+1.35",
                 "pvGrm.position.set((pvZone.grm[0]+pvZone.grm[1])/2,"):
             with self.subTest(anchor=anchor):
                 self.assertIn(anchor, self.html, "셀 원점이 존에서 나오지 않는다")
@@ -3511,8 +3519,8 @@ class TestGlassRemovalIntegration(unittest.TestCase):
         self.assertIn(grm.sheet, self.html, "도면 목록에 GA 시트가 없다")
         # 존은 장비 밴드 안에 들어와야 하고 통로를 잠식하면 안 된다
         self.assertLessEqual(zones[-1].y1_mm, layout.MACHINE_BAND_Y_MM)
-        self.assertEqual(layout.plant_envelope_mm()[0], 50750,
-                         "36,700(전처리) + 14,050(유리제거) = 50,750")
+        self.assertEqual(layout.plant_envelope_mm()[0], 50075,
+                         "36,025(전처리) + 14,050(유리제거) = 50,075")
 
     def test_the_3d_scene_actually_carries_the_cell(self):
         """도면에만 있고 영상에 없으면 '연결'이 아니다."""
@@ -5214,7 +5222,7 @@ class TestWorldClassGrade(unittest.TestCase):
         # D-03 도 닫혔다 — 전장을 안 늘리고 닫았다는 것이 요점이다
         self.assertNotIn("D-03", gaps, "단일고장 정리가 풀렸다")
         self.assertEqual(grade.single_point_blocks(), ())
-        self.assertEqual(layout.plant_envelope_mm()[0], 50750,
+        self.assertEqual(layout.plant_envelope_mm()[0], 50075,
                          "단일고장을 전장으로 산 것이라면 정리가 아니다")
         # 남아 있는 격차는 전부 **바깥에서 값이 와야** 닫히는 것들이다
         # 남은 격차 넷은 전부 **바깥에서 값이 와야** 닫힌다 — 설계를 더 고쳐서
@@ -5396,7 +5404,7 @@ class TestCasing(unittest.TestCase):
                            "실측이 공칭보다 얕으면 이 정정의 근거가 사라진다")
         self.assertEqual(casing.nominal_face_mm("robot"), 5500)
         # 껍질을 둘러도 **존은 하나도 안 길어졌다** — 늘어난 것은 판 두께뿐
-        self.assertEqual(layout.plant_envelope_mm()[0], 50750)
+        self.assertEqual(layout.plant_envelope_mm()[0], 50075)
         self.assertGreater(casing.clad_length_mm(), layout.plant_envelope_mm()[0],
                            "껍질을 둘렀는데 전장이 그대로면 판 두께가 어디로 갔나")
         self.assertLess(casing.clad_length_mm() - layout.plant_envelope_mm()[0], 200)
@@ -5605,7 +5613,7 @@ class TestBufferHasTwoDirections(unittest.TestCase):
                          handoff.BUFFER_CARRIAGES[0] * handoff.SLOTS_PER_CARRIAGE)
         self.assertEqual(handoff.BUFFER_RB_SLOTS,
                          handoff.BUFFER_CARRIAGES[1] * handoff.SLOTS_PER_CARRIAGE)
-        self.assertEqual(layout.plant_envelope_mm()[0], 50750, "존이 길어졌다")
+        self.assertEqual(layout.plant_envelope_mm()[0], 50075, "존이 길어졌다")
         # 3D 의 캐리지 수가 배분과 같아야 한다 — 모듈만 고치면 도면이 거짓말한다
         for prefix, count in (("A-501", handoff.BUFFER_CARRIAGES[0]),
                               ("B-501", handoff.BUFFER_CARRIAGES[1])):

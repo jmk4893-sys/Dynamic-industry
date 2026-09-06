@@ -51,7 +51,11 @@ from .layout import AISLE_WIDTH_MM, build_zones, plant_envelope_mm
 #: REV.51 에서 **35,500.** SG-301 3헤드·GI-303 이 F5(LP-GLASS, x≈52,000)를 +3.2 kW
 #: 올렸는데, 그 반은 부하중심보다 하류라 중심이 35,838 → 35,733 으로 조금 내려왔고
 #: 500 단위 반올림이 36,000 에서 35,500 으로 넘어갔다. 값이 아니라 규칙이 움직였다.
-MDB_POSITION_MM = (35_500, 8_150)
+#: REV.52 에서 **35,000.** 두 가지가 겹쳤다 — ① 후단 셀이 통합셀에 들어오며 하류
+#: 전부가 675 상류로 왔고 ② LP-GLASS 가 LP-AFR 로 합쳐지며 그 8.54 kW 의 급전점이
+#: post 존 중심에서 afr 존 중심으로(약 4,400 상류) 옮겨졌다. 부하중심 35,733 →
+#: 35,013 이고 500 단위가 35,000 이다.
+MDB_POSITION_MM = (35_000, 8_150)
 
 #: 주 트레이 높이와 Y 위치 (mm)
 TRAY_HEIGHT_MM = 2_600
@@ -93,8 +97,9 @@ def lp_positions_mm() -> dict[str, int]:
         "LP-AFU": _zone_center("afu"),
         "LP-RB": _zone_center("robot"),
         "LP-JBR": _zone_center("jbr"),
+        # REV.52: LP-GLASS 가 LP-AFR 로 합쳐졌다. 반은 AFR 스테이션 옆에 선다 —
+        # 급전 대상(정반·반출롤러·SG·CV-102·GI)이 한 기계이고 그 무게중심이 여기다.
         "LP-AFR": _zone_center("afr"),
-        "LP-GLASS": _zone_center("post"),
         "LP-GBR": _zone_center("buffer"),
     }
     # DX-601 은 post 존 안 국소집진(존 로컬 x +125 부근), 제어반 LP-CTRL 은
@@ -227,7 +232,8 @@ def control_segments() -> list[Cable]:
     구간 길이는 인접 분전반 사이 트레이 경로로 잡는다 (수평 |Δx| + 드롭 2×700).
     """
     positions = lp_positions_mm()
-    chain = ["LP-AFU", "LP-RB", "LP-JBR", "LP-CTRL", "LP-AFR", "LP-GLASS", "LP-DX", "LP-GBR",
+    # REV.52: LP-GLASS 가 LP-AFR 로 합쳐져 체인에서 한 면이 빠진다.
+    chain = ["LP-AFU", "LP-RB", "LP-JBR", "LP-CTRL", "LP-AFR", "LP-DX", "LP-GBR",
              # REV.23: 유리제거셀 4면을 X 순서대로 체인 끝에 잇는다.
              "LP-GRM-IRA", "LP-GRM-IRB", "LP-GRM-MEC", "LP-GRM-EXH"]
     # REV.25 정정 — LP-INST·LP-IT 는 **여기 없다.**

@@ -111,7 +111,13 @@ HANDOFF_CLEARANCE_MM = 350
 #: 각자 자기 패널을 물고 있으므로 판을 하나로 만들 수 없다. (검토 단계에서 이것을
 #: 공유 항목으로 적었던 것은 두 공정이 같은 자리에서 일어난다고 잘못 본 것이다 —
 #: 같은 자리에서 하면 직렬 84 s 가 되어 처리량이 41 % 떨어진다.)
-INTEGRATED_CELL: tuple[str, ...] = ("jbr", "afr")
+#: **REV.52 — 후단 유리검사(post)가 세 번째 스테이션이 된다.** REV.50 에서
+#: SG-301 연마 헤드가 AFR 반출롤러 위로 올라가며 이 셋은 이미 한 이송 흐름이
+#: 됐다: AFR 정반 → 반출롤러(SG 가 그 위) → CV-102 통과 런(GI 가 그 위에 선다).
+#: 그런데 afr 과 post 사이에는 아직 가드 벽 둘과 케이싱 칸막이가 서 있어, 한
+#: 흐름을 두 인클로저가 끊고 있었다 — 그 자리에 950 mm(475+475)가 들어가 있다.
+#: 벽을 없애고 접합부 250 만 두면 **−675 mm** 다 (틈은 925 → 250).
+INTEGRATED_CELL: tuple[str, ...] = ("jbr", "afr", "post")
 
 #: 가드-장비 X 여유 (mm) — 플랜트 표준. AFR 이 REV.22-P01 에서 이 값으로 균등화
 #: 했고, JBR 은 125 mm 뿐이었다. 통합하면서 양 끝에 같은 기준을 적용한다.
@@ -123,34 +129,74 @@ GUARD_CLEARANCE_X_MM = 475
 #: 200 으로 잡으면 외형이 홀수(7,375·6,125)가 되어 2D 부재 중심이 0.5 mm 로 나온다.
 STATION_JUNCTION_MM = 250
 
+#: 통합셀 **하류 끝**의 여유 (mm). 여기는 가드 벽이 아니라 GBR-301 인계면이라
+#: 바깥 기준 475 를 쓸 수 없다 — 나이프 롤러가 셔틀 데크에 닿아야 유리가 건너간다.
+#: 그 간극은 이미 `BUFFER_NIP_MM` 으로 근거가 적혀 있으므로 그 값을 그대로 쓴다.
+#: (REV.51 까지 post 는 자기 셀이라 하류에도 475 를 적어 뒀는데, 3D 는 그 자리에
+#: 30 을 그리고 있었다 — 선언과 형상이 다른 자리였고 이번에 하나가 된다.)
+CELL_DOWNSTREAM_EDGE_MM = BUFFER_NIP_MM
+
 #: 각 스테이션의 장비 X 실측 스팬 (mm) — 도면 부품표 실측(가드 제외).
 #: jbr −3,400…3,400 · afr −2,325…3,325 (REV.44 에서 단축 실린더가 정반 안으로
 #: 들어가며 상류 −2,725 → −2,325 로 400 mm 물러났다. REV.50: SG-301 연마 헤드가
 #: 반출롤러 위로 오며 하류 끝이 롤러 끝 3,225 에서 SG 몸체 끝 3,325 로 100 나갔다 —
 #: 몸체 2,200 을 롤러 런 1,225…3,225 의 중심 2,225 에 둔다).
-STATION_HARDWARE_X_MM: dict[str, int] = {"jbr": 6800, "afr": 5650}
+#: REV.52 post 2,870 — CV-102 통과 롤러 런의 3D 실측(사이드 프레임 2,850 +
+#: GBR 인계 나이프 롤러가 하류로 20 더)이다. REV.51 까지 이 자리는 GI 검사대
+#: 2,400 만 세고 있었는데, 그 선언대로면 존 안에서 롤러 런이 상류로 25 ·
+#: 하류로 425 삐져나간다 — 우연히 존 길이(475+2,400+475)가 실물을 담고 있었을 뿐이다.
+STATION_HARDWARE_X_MM: dict[str, int] = {"jbr": 6800, "afr": 5650, "post": 2870}
+
+#: 후단 스테이션 하드웨어(CV-102 런) 상류 끝에서 GI-301/302 검사대 **중심**까지 (mm).
+#: 2D 시트 로컬 원점이자 3D 그룹 원점이 이 점이다 — 존 중심이 아니다. REV.51
+#: 까지는 둘이 같았는데(GI 가 존 한가운데 있었다), 통합으로 상류 여유가 475 →
+#: 125 가 되며 갈라졌다. 원점은 형상(검사대 중심)에 붙는 쪽이 옳다.
+POST_GI_FROM_HARDWARE_MM = 1225
 
 
 def integrated_cell_length_mm() -> int:
-    """통합 제거셀 전장 (mm) — 바깥 가드 여유 + 두 스테이션 장비 + 접합부."""
+    """통합 제거셀 전장 (mm) — 바깥 여유 + 스테이션 장비 + 접합부."""
     hardware = sum(STATION_HARDWARE_X_MM[k] for k in INTEGRATED_CELL)
-    return (2 * GUARD_CLEARANCE_X_MM + hardware
+    return (GUARD_CLEARANCE_X_MM + CELL_DOWNSTREAM_EDGE_MM + hardware
             + STATION_JUNCTION_MM * (len(INTEGRATED_CELL) - 1))
 
 
 def integrated_saving_mm() -> int:
-    """통합으로 줄어든 길이 (mm) — 통합 전 jbr + gate + afr 대비."""
-    before = 7050 + HANDOFF_CLEARANCE_MM + 6900
+    """통합으로 줄어든 길이 (mm) — 스테이션마다 자기 셀이던 때 대비.
+
+    통합 전 실적값이다: JBR 7,050 · 게이트 350 · AFR 6,900 (REV.44) 에
+    REV.52 에서 들어온 후단 셀 3,350 (REV.51) 을 더한다.
+    """
+    before = 7050 + HANDOFF_CLEARANCE_MM + 6900 + 3350
     return before - integrated_cell_length_mm()
+
+
+def station_edges_mm(key: str) -> tuple[int, int]:
+    """한 스테이션의 (상류, 하류) 여유 (mm).
+
+    바깥 끝만 여유고 안쪽은 여유가 아니라 이격이다 — 그 자리엔 벽이 없다.
+    셀 상류 끝은 가드 벽(475), 하류 끝은 GBR 인계면(30)이다.
+    """
+    if key not in INTEGRATED_CELL:
+        raise KeyError(key)
+    index, last = INTEGRATED_CELL.index(key), len(INTEGRATED_CELL) - 1
+    half_junction = STATION_JUNCTION_MM // 2
+    return (GUARD_CLEARANCE_X_MM if index == 0 else half_junction,
+            CELL_DOWNSTREAM_EDGE_MM if index == last else half_junction)
 
 
 def station_span_mm(key: str) -> int:
     """통합셀 안에서 한 스테이션이 갖는 X (mm). 접합부를 반씩 나눠 갖는다."""
-    if key not in INTEGRATED_CELL:
-        raise KeyError(key)
-    half_junction = STATION_JUNCTION_MM // 2
-    edge = GUARD_CLEARANCE_X_MM
-    return STATION_HARDWARE_X_MM[key] + edge + half_junction
+    up, down = station_edges_mm(key)
+    return STATION_HARDWARE_X_MM[key] + up + down
+
+
+def post_origin_offset_mm() -> int:
+    """후단 스테이션 로컬 원점이 자기 존 시작에서 떨어진 거리 (mm).
+
+    2D 시트(PV-GLASS-301-GA-5101) 로컬 원점 = 3D 그룹 원점 = GI 검사대 중심.
+    """
+    return station_edges_mm("post")[0] + POST_GI_FROM_HARDWARE_MM
 
 
 def stations_are_one_machine() -> bool:
@@ -262,15 +308,23 @@ STATIONS: dict[str, Station] = {
         # "프레임 제거기 안에서 잔사도 제거하면?" 의 답이다. 정반 위가 아니라 반출 통과
         # 중에 갈므로 택트는 그대로이고, 분진은 정반에서 1.3 m 하류 후드 안이다. SG 몸체
         # 끝이 3,325 라(몸체 2,200 을 롤러 런 중심 2,225 에) 하드웨어 5,650 → 125 + 5,650 + 475 = 6,250.
+        # REV.52: 후단 스테이션이 통합셀에 들어오며 AFR 은 **가운데** 스테이션이
+        # 됐다 — 하류에도 가드 벽이 없어 여유 475 가 접합부 125 가 된다
+        # (125 + 5,650 + 125 = 5,900). 기계는 1 mm 도 안 움직인다: 존 시작이
+        # 그대로라 정반·클램프·반출롤러의 플랜트 좌표가 전부 같다.
         Station("afr", "PV-AFR-101-GA-4101", "AFR-101 · 프레임 분리 · SG-301 반출 연마 스테이션",
-                (6250, 5600, 2800), LINE_TRANSFER_MM),
+                (5900, 5600, 2800), LINE_TRANSFER_MM),
         # V-4 적용: 잔사 검사와 레시피 판정을 연마 후 한 광학 스테이션으로 통합.
         # CV-102 는 광학을 떼고 이송만 3,700→2,800, 통합 검사대는 2,000→2,400. 순 −500 mm.
         # REV.50: 연마가 AFR 반출롤러 위로 가면서 별도 이송 스테이션이 없어졌다. 남는 것은
         # GI-301/302 검사대(2,400)와 그 밑을 지나는 CV-102 통과 롤러 런뿐이라
         # 475 + 2,400 + 475 = 3,350 (8,900 → 3,350). DX-601 은 여기 남고 덕트로 SG 후드와 잇는다.
+        # REV.52: 통합셀의 **세 번째 스테이션**이 된다. 상류는 접합부 125,
+        # 하류는 GBR 인계 나이프 간극 30 — 125 + 2,870 + 30 = 3,025.
+        # 3,350 → 3,025 (−325) 이고, 상류 여유가 475 → 125 로 줄며 셀 내용물
+        # 전체가 675 상류로 온다. 하류 전부(버퍼·GRM)가 같은 675 를 따라온다.
         Station("post", "PV-GLASS-301-GA-5101", "CV-102 · GI-301/302 통합 유리 후단",
-                (3350, 4900, 2800), LINE_TRANSFER_MM),
+                (3025, 4900, 2800), LINE_TRANSFER_MM),
         # X 7,000 → 8,700: R-A/R-B 캐리지 2열의 부품 실측 span 이 8,675 라 외형을 넘었다.
         # REV.22-P01 에서 두 가지가 더 나왔다. 이건 단축이 아니라 결함 수정이라 +850 이다.
         #  * 2열 캐리지가 같은 Z(−2,350 / +2,350)에서 X 로 250 mm 겹쳐 있었다. 피치 2,500 이
@@ -323,7 +377,8 @@ ZONE_SEED: tuple[tuple[str, str, int, str, tuple[int, int, int] | None], ...] = 
     # 'gate' 존 350 은 두 가드 벽 사이의 이격이었는데, 벽이 하나로 합쳐지며 없어졌다.
     ("jbr", "JBR-201", 2025, "케이블·JBOX (통합셀 상류 스테이션)", None),
     ("afr", "AFR-101", 1200, "단축→장축 (통합셀 하류 스테이션)", None),
-    ("post", "CV · GI", 1100, "통과이송·통합검사", None),   # REV.50: SG-301 은 afr 반출단
+    # REV.52: 통합셀 하류 스테이션 — afr 과 사이에 벽이 없다.
+    ("post", "CV · GI", 1100, "통과이송·통합검사 (통합셀 하류 스테이션)", None),
     ("buffer", "GBR · BUFFER", 0, "R-A/R-B/HOLD", None),
     # 통로측(Y 7,100)에 붙여 셀 컨테이너·백시트 회수를 통로에서 빼낸다.
     ("grm", "GRM-401 유리제거", 1000, "적재·가열·박리·3계통", None),
@@ -436,7 +491,9 @@ SCENE_GRID_GAP_MM = 0
 #: 3D 가 그 구간을 실제로 그리는 길이 (mm) — 실측. 격자를 맞춘 뒤로는 존 값과 같다.
 #: REV.50: 24,600 → 19,150. afr 6,250 + post 3,350 + buffer 9,550 — 셀 원점이 존 식이라
 #: 3D 가 그대로 따라왔다 (tools/check_cell_grid.mjs 재실측 · 넘침 0).
-SCENE_AFR_TO_BUFFER_MM = 19_150
+#: REV.52: 19,150 → 18,475. 후단 검사가 통합셀 세 번째 스테이션이 되며 afr −350 ·
+#: post −325 다. 3D 는 존에서 원점을 내므로 실측이 그대로 따라온다.
+SCENE_AFR_TO_BUFFER_MM = 18_475
 
 
 def afr_to_buffer_zone_mm() -> int:

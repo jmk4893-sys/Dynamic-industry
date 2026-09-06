@@ -93,7 +93,9 @@ def heat_sources() -> tuple[HeatSource, ...]:
                    "유압유", "공랭 오일쿨러 (릴리프 체류 대응)", "AFR-OC-601", 3.0),
         HeatSource("TH-CAB-JBR", "JBR 7축 드라이브·PLC 반", jbr_cab,
                    "반내", "필터팬·열교환기 (기존 JB-EL-006, 0.8 kW)", "JB-EL-006", 0.8),
-        HeatSource("TH-CAB-LP", "셀 분전반 7면 드라이브 합 (JBR 반 별도)", lp_sum,
+        # REV.52: LP-GLASS 가 LP-AFR 로 합쳐져 7면 → 6면. 합계는 그대로다 —
+        # 같은 전동기를 다른 반에서 먹일 뿐이라 발열이 옮겨 갔을 뿐이다.
+        HeatSource("TH-CAB-LP", "셀 분전반 6면 드라이브 합 (JBR 반 별도)", lp_sum,
                    "반내", "발열 ≥0.4 kW 반은 열교환기, 그 외 필터팬", "—", 0.0),
         HeatSource("TH-SG", "SG-301 연마 절삭열·스핀들", 3.2,
                    "배기", "국소집진 기류로 반출 (1,000 m³/h)", "—", 0.0),

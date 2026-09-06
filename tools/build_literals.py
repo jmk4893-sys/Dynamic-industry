@@ -191,20 +191,29 @@ def main() -> int:
     # ── 통합 제거셀의 가드 ───────────────────────────────────────────────
     # 두 스테이션은 한 인클로저 안에 있다. 접합부에는 벽이 없으므로 각 시트의
     # 가드는 자기 존 구간만 그린다 — 폭·중심을 장비 실측에서 파생한다.
-    hardware = {"jbr": (-3400, 3400), "afr": (-2325, 3325)}   # REV.50: SG-301 몸체 끝 (롤러 런 중심 2,225 + 1,100)
-    edge, junction = layout.GUARD_CLEARANCE_X_MM, layout.STATION_JUNCTION_MM // 2
+    # REV.52: 스테이션이 셋이다 — post 하드웨어는 CV-102 통과 롤러 런이고 시트
+    # 로컬 원점(GI 검사대 중심)에서 상류 1,225 · 하류 1,645 다.
+    hardware = {"jbr": (-3400, 3400),
+                "afr": (-2325, 3325),   # REV.50: SG-301 몸체 끝 (롤러 런 중심 2,225 + 1,100)
+                "post": (-layout.POST_GI_FROM_HARDWARE_MM,
+                         layout.STATION_HARDWARE_X_MM["post"]
+                         - layout.POST_GI_FROM_HARDWARE_MM)}
+    sides = {0: "상류", len(layout.INTEGRATED_CELL) - 1: "하류"}
     guard_lo: dict[str, int] = {}
     for key, (h0, h1) in hardware.items():
-        lo = h0 - (edge if key == layout.INTEGRATED_CELL[0] else junction)
-        hi = h1 + (junction if key == layout.INTEGRATED_CELL[0] else edge)
+        up, down = layout.station_edges_mm(key)
+        lo, hi = h0 - up, h1 + down
         assert hi - lo == layout.STATIONS[key].envelope[0], (key, hi - lo)
         guard_lo[key] = lo
-        side = "상류" if key == layout.INTEGRATED_CELL[0] else "하류"
+        side = sides.get(layout.INTEGRATED_CELL.index(key), "가운데")
+        # 접합부 250 을 반씩 나눠 가지면 구간이 홀수인 스테이션이 생긴다 —
+        # post 가 그렇다(3,025). 중심을 반올림하면 부재 끝이 0.5 mm 어긋나므로
+        # 공용 인계롤러(CV-JA)와 같은 이유로 실제 기하를 그대로 적는다.
         p.one(rf"(\n    {key}: \{{.*?part\('GUARD', )'[^']*', \[\d+, (\d+), (\d+)\], "
-              rf"\[-?\d+, (\d+), 0\]",
+              rf"\[-?[\d.]+, (\d+), 0\]",
               lambda m, lo=lo, hi=hi, side=side:
               m.group(1) + f"'JB/AFR 통합 가드 ({side} 스테이션 구간)', "
-              f"[{hi - lo}, {m.group(2)}, {m.group(3)}], [{round((lo + hi) / 2)}, {m.group(4)}, 0]")
+              f"[{hi - lo}, {m.group(2)}, {m.group(3)}], [{(lo + hi) / 2:g}, {m.group(4)}, 0]")
 
     # 접합부를 넘어 이어지는 공용 인계롤러는 자기 시트 안에서만 그린다.
     # 통합 전에는 AFR 가드(-3,200)까지 그려도 됐지만, 가드가 물러나며 시트
@@ -362,9 +371,12 @@ def main() -> int:
           lambda m: f"SG-301 반출롤러 점유 {campaign.sg_occupancy_s():g} s")
 
     # ── 열수지 — 반내 발열은 서보 일람에서 나온다 ────────────────────────
+    # 이름표도 모델에서 찍는다 — "셀 분전반 7면" 처럼 반 수가 박힌 문구가 있어,
+    # 반이 합쳐지면 값만 고쳐서는 도면이 옛 이야기를 계속 한다 (REV.52).
     for src in thermal.heat_sources():
-        p.one(rf"(\['{re.escape(src.tag)}', '[^']*', )[\d.]+(, '[^']*', '[^']*', '[^']*', )[\d.]+\]",
-              lambda m, src=src: f"{m.group(1)}{src.loss_kw}{m.group(2)}{src.cooler_kw}]")
+        p.one(rf"(\['{re.escape(src.tag)}', ')[^']*(', )[\d.]+(, '[^']*', '[^']*', '[^']*', )[\d.]+\]",
+              lambda m, src=src: f"{m.group(1)}{src.equipment}{m.group(2)}{src.loss_kw}"
+                                 f"{m.group(3)}{src.cooler_kw}]")
     loads = thermal.cabinet_loads()
     p.rows("THERMAL_CABINETS",
            [(panel, kw, "열교환기" if thermal.cabinet_needs_exchanger(panel)
