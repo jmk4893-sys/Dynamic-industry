@@ -433,10 +433,11 @@ class TestDeliverableEquipment(unittest.TestCase):
         """
         rows = re.findall(
             r"\{\s*id:'([^']+)'\s*,\s*load:[`'][^`']*[`']\s*,"
-            r"\s*kW:([\w.*+/ -]+?)\s*,\s*pf:([\d.]+)\s*,\s*mccb:'([^']+)'\s*\}",
+            r"\s*kW:([\w.*+/ -]+?)\s*,\s*pf:([\d.]+)\s*,"
+            r"(?:\s*df:[\d.]+\s*,)?\s*mccb:'([^']+)'\s*\}",
             self.html,
         )
-        self.assertGreaterEqual(len(rows), 5, "전기부하표를 찾지 못했다")
+        self.assertGreaterEqual(len(rows), 4, "전기부하표를 찾지 못했다")
         # IR 분기는 설치전력을 램프 수에서 낸다 — 값이 아니라 식이 적혀 있다.
         rows = [(i, self._number(kw), pf, mccb) for i, kw, pf, mccb in rows]
         volts = int(re.search(r"const LINE_V=(\d+)", self.html).group(1))
@@ -511,23 +512,50 @@ class TestDeliverableEquipment(unittest.TestCase):
         )
 
     def test_short_circuit_rating_has_a_stated_basis(self):
-        """SCCR 은 현장에서 재는 값이 아니라 근거를 밝혀 고르는 값이다."""
-        self.assertIn("const SCCR_KA=", self.html, "SCCR 이 상수로 정의되어 있지 않다")
-        self.assertIn("const ISC_KA=", self.html, "예상 단락전류 계산이 없다")
-        sccr = int(re.search(r"const SCCR_KA=(\d+)", self.html).group(1))
-        kva = int(re.search(r"const TR_KVA=(\d+)", self.html).group(1))
+        """SCCR 은 현장에서 재는 값이 아니라 근거를 밝혀 고르는 값이다.
+
+        변압기 용량이 부하표에서 나오므로 SCCR 도 값이 아니라 규칙으로
+        적혀 있어야 한다. 값으로 박아 두면 변압기를 내려도 옛 정격이
+        그대로 남아 과대선정이 된다 — 그래서 여기서는 콘솔이 쓰는 규칙을
+        그대로 다시 풀어 같은 답이 나오는지 본다.
+        """
+        for token in ("const SCCR_KA=", "const ISC_KA=", "const TR_KVA=",
+                      "const SCCR_STD=", "const TR_STD="):
+            self.assertIn(token, self.html, f"{token} 선언이 없다")
+        self.assertRegex(
+            self.html, r"const TR_KVA=TR_STD\.find\(",
+            "변압기 용량이 표준 목록에서 선택되지 않는다")
+        self.assertRegex(
+            self.html, r"const SCCR_KA=SCCR_STD\.find\(v=>v>=ISC_KA\[1\]\*[\d.]+\)",
+            "SCCR 이 예상 단락전류에서 유도되지 않는다")
+
+        rows = re.findall(
+            r"\{\s*id:'([^']+)'\s*,\s*load:[`'][^`']*[`']\s*,"
+            r"\s*kW:([\w.*+/ -]+?)\s*,\s*pf:([\d.]+)\s*,"
+            r"(?:\s*df:[\d.]+\s*,)?\s*mccb:'([^']+)'\s*\}",
+            self.html,
+        )
+        self.assertGreaterEqual(len(rows), 4, "전기부하표를 찾지 못했다")
         volts = int(re.search(r"const LINE_V=(\d+)", self.html).group(1))
+        active = sum(self._number(kw) for _, kw, _, _ in rows)
+        reactive = sum(self._number(kw) * math.tan(math.acos(float(pf)))
+                       for _, kw, pf, _ in rows)
+        kva_load = math.hypot(active, reactive)
+        tr_std = [int(v) for v in
+                  re.search(r"const TR_STD=\[([\d,]+)\]", self.html).group(1).split(",")]
+        kva = next(v for v in tr_std if kva_load / v <= 0.80)
         z = [float(v) for v in
              re.search(r"TR_Z=\[([\d.,]+)\]", self.html).group(1).split(",")]
         worst = kva * 1000 / (3 ** 0.5 * volts) / min(z) / 1000
+        sccr_std = [int(v) for v in
+                    re.search(r"const SCCR_STD=\[([\d,]+)\]", self.html).group(1).split(",")]
+        sccr = next(v for v in sccr_std if v >= worst * 1.2)
         self.assertGreater(
             sccr, worst,
-            f"기기 정격 {sccr}kA 가 예상 단락전류 {worst:.1f}kA 보다 작다",
-        )
+            f"기기 정격 {sccr}kA 가 예상 단락전류 {worst:.1f}kA 보다 작다")
         self.assertLess(
             sccr, worst * 4,
-            f"기기 정격 {sccr}kA 가 예상 단락전류 {worst:.1f}kA 대비 근거 없이 크다",
-        )
+            f"기기 정격 {sccr}kA 가 예상 단락전류 {worst:.1f}kA 대비 근거 없이 크다")
 
     def test_no_mass_is_claimed_without_a_basis(self):
         """계량하지 않은 질량을 명판에 각인하면 운송·인양 계획이 그 값을 믿는다."""

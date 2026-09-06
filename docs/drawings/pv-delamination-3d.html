@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#141c20">
   <link rel="icon" id="favicon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E">
   <title>DG-HK60 · IR 탠덤 PV 분리설비 · 3D 운전 콘솔</title>
-  <meta name="description" content="폐 태양광 모듈 백시트·셀/EVA·판유리 3계통 분리설비 DG-HK60의 3D 운전 콘솔 — 3단 밀폐 IR 가열 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 전기·PLC·제작도면 및 열수지 계산.">
+  <meta name="description" content="폐 태양광 모듈 백시트·셀/EVA·판유리 3계통 분리설비 DG-HK60의 3D 운전 콘솔 — 5단 밀폐 IR 가열 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 전기·PLC·제작도면 및 열수지 계산.">
   <style>
     /* ===========================================================================
        DG-HK60 operator console.
@@ -396,7 +396,7 @@
         </div>
         <div class="np-id">
           <div class="np-model"><span id="npModel">DG-HK60C</span> <span id="npModelRev">REV.21C</span></div>
-          <h1 id="npPlan">단일 3단 IR · 고정 탠덤 · 수평 분리반출</h1>
+          <h1 id="npPlan">단일 5단 IR · 고정 탠덤 · 수평 분리반출</h1>
           <p id="npSub">40 IR · EVA 계면 140°C · 고정 진공테이블 + 이동 나이프</p>
         </div>
         <div class="np-status">
@@ -426,7 +426,7 @@
 
     <main>
       <section class="video-shell" aria-label="전체장비 3D 동작 영상">
-        <canvas id="scene" role="img" aria-label="3단 가열 캐리지의 투입·밀폐가열·방출·재투입 사이클과 HKB/HKS 고정 탠덤 박리를 근접 반복재생하는 단일 3단 40개 IR 전문형 3D 장비 영상"></canvas>
+        <canvas id="scene" role="img" aria-label="5단 가열 캐리지의 투입·밀폐가열·방출·재투입 사이클과 HKB/HKS 고정 탠덤 박리를 근접 반복재생하는 단일 5단 40개 IR 전문형 3D 장비 영상"></canvas>
         <div class="video-top">
           <div class="stage-readout" aria-live="polite"><b id="stageTitle">S0 · 패널 투입·자세 확인</b><span id="stageDesc">유리면을 아래로, 백시트를 위로 정렬해 캐리어 중심에 투입합니다.</span></div>
           <div class="sim-badge">캐리지 사이클 확대 · 탠덤 확대 · 컷어웨이 · 분해 0~200%</div>
@@ -447,7 +447,7 @@
           </div>
         </aside>
         <aside class="focus-hud carriage-hud" id="carriageHud" hidden aria-live="polite">
-          <h3>3단 캐리지 순환 · 외문/내문 동시개방 금지</h3>
+          <h3>5단 캐리지 순환 · 외문/내문 동시개방 금지</h3>
           <div class="focus-sequence">
             <div id="carriageStep1" data-step="1"><span>3/3 밀폐가열</span><strong>FULL_LOAD_ACK</strong></div>
             <div id="carriageStep2" data-step="2"><span>C1 방출 준비</span><strong>140°C + TDM READY</strong></div>
@@ -533,7 +533,7 @@
   <dialog id="calcDialog" aria-labelledby="calcTitle">
     <div class="dialog-head"><div><div class="dialog-code">PLC / POWER / FABRICATION PACKAGE · REV.20</div><h2 id="calcTitle">60장/h 열수지·사이클 검증</h2></div><button class="close" type="button" id="calcClose">닫기</button></div>
     <div class="dialog-body">
-      <p>단일 3단 캐리지의 3장 적재·잠금·밀폐 완료(FULL_LOAD_ACK)를 0초로 계산합니다. 55mm/s는 90% 가동률에서 60장/h를 넘기는 생산보증점이며, 60mm/s는 FAT 상한입니다.</p>
+      <p>단일 5단 캐리지의 5장 적재·잠금·밀폐 완료(FULL_LOAD_ACK)를 0초로 계산합니다. 55mm/s는 90% 가동률에서 60장/h를 넘기는 생산보증점이며, 60mm/s는 FAT 상한입니다.</p>
       <div class="calc-grid">
         <div class="calc-field"><label for="panelLength">패널 길이 (mm)</label><input id="panelLength" type="number" min="1600" max="2400" step="50" value="2400"></div>
         <div class="calc-field"><label for="panelWidth">패널 폭 (mm)</label><input id="panelWidth" type="number" min="800" max="1200" step="50" value="1200"></div>
@@ -550,7 +550,7 @@
         <div class="calc-result"><span>적재 중 대기전력</span><strong id="standbyPower">—</strong></div>
         <div class="calc-result"><span>예상 IR 평균전력</span><strong id="avgLinePower">—</strong></div>
         <div class="calc-result"><span>패널당 IR 전력량</span><strong id="energyPerPanel">—</strong></div>
-        <div class="calc-result"><span>3단 가열 체류시간</span><strong id="heatDwell">—</strong></div>
+        <div class="calc-result"><span>5단 가열 체류시간</span><strong id="heatDwell">—</strong></div>
         <div class="calc-result"><span>IR 방출간격</span><strong id="releasePitch">—</strong></div>
         <div class="calc-result"><span>열공정 한계</span><strong id="thermalRate">—</strong></div>
         <div class="calc-result"><span>탠덤 사이클</span><strong id="tandemCycle">—</strong></div>
@@ -679,22 +679,106 @@
        '박리력 값'이 아니라 '온도별 박리력 곡선'으로 닫아야 하고, 그 곡선이
        목표온도·IR 용량·단수·패드 면적을 한꺼번에 정한다. 여기 140 은 곡선을
        재기 전의 설계 가정이다. */
-    /* ── 가열실 규모 ────────────────────────────────────────────────────
-       계면 목표를 200 → 140°C 로 내리면서 열공정 여유가 15.7 → 44.6% 로
-       벌어졌다. 그 여유를 단수와 설치전력으로 돌려준다.
+    /* ── 가열실 규모 — 5단 · 40등 · 100kW ──────────────────────────────
+       한동안 이 자리에 '5단 60등 150kW 를 3단 40등 100kW 로 내렸다' 고 적혀
+       있었다. 전력을 줄인 것은 맞지만 단수까지 함께 내려간 것은 그래야 해서가
+       아니라, '뱅크 = 단수+1, 뱅크당 10등' 이라는 배열 규칙이 둘을 묶어 놓고
+       있었기 때문이다. 그 규칙은 물리가 아니다.
 
-         5단 × 60개 × 2.5kW = 150kW  →  3단 × 40개 × 2.5kW = 100kW
+       규칙을 끊으면 둘이 따로 정해진다.
+         · 설치전력 — 탠덤 택트가 정한다. 방출피치는 q/(정격·η) 이고 단수와
+           무관하므로, 여유 16.9% 를 지키는 값이 100kW 다. 단수를 올려도
+           이 값은 움직이지 않는다.
+         · 단수 — 유리 열응력이 정한다. IR 이 넣는 열의 69.3% 가 두께 3.2mm
+           유리를 지나며 만드는 두께방향 온도차가 σ = E·α·ΔT / 2(1−ν) 이고,
+           플럭스는 정격을 단수로 나눈 값이다.
 
-       처리량은 그대로다 — 방출피치는 q/유효출력이라 단수와 무관하고, 라인은
-       어차피 탠덤(53.6s)이 정한다. 열공정 한계 80.9장/h 로 여유 16.9% 는
-       종전 200°C·5단(15.7%)과 같은 수준이다.
+         3단 100kW → 5.17 kW/m² → ΔT 16.5K → σ 7.05 MPa   (허용 ~7 MPa 초과)
+         5단 100kW → 3.10 kW/m² → ΔT  9.9K → σ 4.23 MPa   (여유 40%)
 
-       단수를 정하는 진짜 조건은 처리량이 아니라 유리 열응력이다. 유리가
-       저장하는 열(면적열용량의 69.3%)이 두께 3.2mm 를 지나며 만드는 온도차가
-       σ = E·α·ΔT / 2(1−ν) 를 낳는데, 3단·100kW 에서 5.17 kW/m² → ΔT 16.5K →
-       7.1 MPa 로 풀림유리 설계허용(~7 MPa) 언저리다. 더 줄이면 여기서 걸린다. */
-    const DECKS=3;                       // 가열 캐리지 단수
-    const LAMPS=40;                      // IR 램프 — (DECKS+1) 뱅크 × 10
+       3단은 허용치를 이미 미세하게 넘고 있었다. 5단으로 올리는 이유가 이것이다
+       — 전력도 처리량도 아니고 유리다. 램프는 40등 그대로 두고 6뱅크에
+       [6,7,7,7,7,6] 으로 나눈다(bankLampCount). 끝 뱅크가 하나 적은 것은
+       그쪽이 패널을 한쪽으로만 보기 때문이다.
+
+       평균 소비전력은 83.06kW 로 단수·설치전력 어느 쪽으로도 움직이지 않는다.
+       에너지 보존이 정하는 값이다 — 전기를 줄이려면 여기가 아니라 부하표를
+       봐야 한다. */
+    const DECKS=5;                       // 가열 캐리지 단수
+    const LAMPS=40;                      // IR 램프 — 총수. 뱅크 분배는 bankLampCount()
+    /* 뱅크당 램프 수. 종전에는 '(DECKS+1) 뱅크 × 10' 이라 단수를 올리면
+       설치전력이 따라 올라갔다 — 3단 40등 100kW, 5단 60등 150kW. 그런데 그
+       비례는 물리가 아니라 배열 관습이었다. 총 정격은 열수지가 정하고(택트를
+       맞추는 데 필요한 출력), 단수는 유리 열응력과 체류 여유가 정한다.
+       둘을 끊으면 5단을 100kW 그대로 갈 수 있다.
+       나머지는 안쪽 뱅크부터 하나씩 더 준다 — 끝 뱅크는 패널을 한쪽으로만
+       보므로 복사의 절반이 벽으로 간다. 5단이면 [6,7,7,7,7,6] = 40 이다. */
+    function bankLampCount(bank,decks,lamps){
+      const n=decks+1,base=Math.floor(lamps/n),rem=lamps%n;
+      const order=[];for(let i=1;i<n-1;i++)order.push(i);order.push(0);order.push(n-1);
+      return base+(order.indexOf(bank)<rem?1:0);
+    }
+    /* 라벨은 분배를 그대로 읽는다 — 균등이면 '×10', 아니면 '6·7·7·7·7·6'.
+       나눗셈으로 적으면 5단에서 '× 6.666666666666667' 이 화면에 찍힌다. */
+    function bankPlanText(decks,lamps){
+      const a=[];for(let b=0;b<=decks;b++)a.push(bankLampCount(b,decks,lamps));
+      return a.every(v=>v===a[0])?`× ${a[0]}`:a.join('·');
+    }
+
+    /* 전기부하표. 명판의 전부하전류와 E-001 도면의 분기함이 모두 이 표에서
+       나온다. 명판은 법정 표시라 손으로 적은 값이 도면과 갈라지면 안 된다.
+       역률은 부하 성격에 따른 가정값이다: IR 램프와 카트리지히터는 SSR 저항부하,
+       서보/VFD 는 DC 링크, 진공·배기는 유도전동기.
+
+       SH-101 슈레더 75kW 가 오래 이 표에 있었다. 그런데 그 설비는 DESCOPED
+       에서 이미 발주자 설비로 넘어갔다 — 표만 따라오지 못한 것이다. 남의
+       설비를 우리 수전에 얹으면 변압기도 주차단기도 한 등급씩 과대선정된다.
+       인터록(SHREDDER_READY)은 그대로 남는다. 장치가 인터페이스가 될 뿐이다.
+
+       수용률(df)은 분기별 실제 듀티다. IR 은 평균전력/정격 = 83.06/100,
+       나머지는 운전 패턴 가정값이며 FAT 실측으로 확정한다. */
+    const LINE_V=380;
+    const LOAD_SCHEDULE=[
+      {id:'IR-DB1',load:`IR 램프 ${LAMPS}×2.5kW`,kW:LAMPS*2.5,pf:1.00,df:0.83,mccb:'4P 160A'},
+      {id:'HK-DB2',load:'HKB/HKS 카트리지히터',kW:30, pf:1.00,df:0.60,mccb:'4P 100A'},
+      {id:'MCC-1', load:'서보·VFD',           kW:45, pf:0.95,df:0.50,mccb:'4P 125A'},
+      {id:'AUX-DB',load:'VOC·진공·냉각',      kW:18, pf:0.85,df:0.80,mccb:'4P 63A'}
+    ];
+    const branchAmp=k=>k.kW*1000/(Math.sqrt(3)*LINE_V*k.pf);
+    const CONNECTED_KW=LOAD_SCHEDULE.reduce((a,k)=>a+k.kW,0);
+    /* 전부하전류는 유효·무효를 각각 더한 뒤 합성한 피상전력에서 낸다.
+       분기전류의 크기만 더하면 역률이 서로 다른 무효분을 같은 방향으로
+       취급해 과대평가되고(이 부하표에서 +2.9%), 반대로 총 kW 를 가정한
+       혼합역률 하나로 나누면 과소평가된다. 둘 다 쓰지 않는다. */
+    const CONNECTED_KVAR=LOAD_SCHEDULE.reduce((a,k)=>a+k.kW*Math.tan(Math.acos(k.pf)),0);
+    const CONNECTED_KVA=Math.hypot(CONNECTED_KW,CONNECTED_KVAR);
+    const SYSTEM_PF=CONNECTED_KW/CONNECTED_KVA;
+    const FLA=CONNECTED_KVA*1000/(Math.sqrt(3)*LINE_V);
+    /* 예상 최대수요는 분기별 수용률의 합이다. 값으로 박아 두면 연결부하보다
+       큰 수요(수용률 > 1)가 조용히 남는다 — 실제로 270 이 268 을 넘고 있었다. */
+    const DEMAND_KW=Math.round(LOAD_SCHEDULE.reduce((a,k)=>a+k.kW*k.df,0));
+    /* 변압기는 표준 용량 중 부하율 60~80% 에 드는 최소값을 고른다.
+       주차단기 AT 는 FLA 의 1.25배 이상에서 표준 정격을 고른다. */
+    const TR_STD=[100,150,200,300,400,500,750,1000];
+    const TR_KVA=TR_STD.find(v=>CONNECTED_KVA/v<=0.80)||1000;
+    const TR_LOAD_PCT=CONNECTED_KVA/TR_KVA*100;
+    const AT_STD=[100,125,160,200,250,320,350,400,500,630,800];
+    const MAIN_AT=AT_STD.find(v=>v>=FLA*1.25)||800;
+    const MAIN_AF=[100,225,400,630,800].find(v=>v>=MAIN_AT)||800;
+    const MAIN_HEADROOM=MAIN_AT/FLA;
+    const TR_Z=[0.05,0.06];              // 변압기 임피던스 범위
+    /* 예상 단락전류: 무한모선 가정의 2차측 대칭 단락전류. 상위 임피던스를
+       무시하므로 보수적으로 크게 나온다. */
+    const ISC_KA=TR_Z.map(z=>TR_KVA*1000/(Math.sqrt(3)*LINE_V)/z/1000).reverse();
+    /* 기기 SCCR 은 예상 단락전류 상한 위의 표준 정격을 고른다. 값으로 박아
+       두면 변압기를 내려도 25kA 가 그대로 남아 과대선정이 된다. */
+    const SCCR_STD=[10,18,25,35,50,65,85,100];
+    const SCCR_KA=SCCR_STD.find(v=>v>=ISC_KA[1]*1.2)||100;
+    const DWG_NO='E-001';
+    /* 표준·안전 I/O 선언. 실사용은 tools/plc_model.py 가 세고, 여기 값은
+       그 실사용 위에 예비 20% 를 남기고 카드 배수로 올린 것이다. 두 곳에
+       손으로 적어 두면 단수를 바꿀 때 한쪽만 남는다 — 시험이 대조한다. */
+    const IO_BUDGET={DI:176,DO:96,AI:40,AO:16,TC:56,FDI:40,FDO:8};
     const DECK_TAG=`C1~C${DECKS}`;       // 단 범위 표기 — 문구가 단수를 따라온다
     const HC_Z0=.82,HC_DZ=.62;           // 최하단 뱅크 높이와 단간 피치
     const HC_Z=HC_Z0+HC_DZ*DECKS;        // 최상단 뱅크 — 껍데기와 제작도 표가 같이 따라온다
@@ -794,7 +878,7 @@
                       [22.35,-2.60,1.90,'리젝트함']];
     /* ── DG-HK60C 압축 배치 ──────────────────────────────────────────────
        Rev.20 은 끝에서 끝까지 53 m 다. 그런데 그 길이가 처리량을 만든 게
-       아니다 — 60장/h 는 3단 소킹(133.5s)과 2.4m 박리행정(43.6s)이 정하고
+       아니다 — 60장/h 는 소킹(단수×피치)과 2.4m 박리행정(43.6s)이 정하고
        둘 다 바닥 길이를 쓰지 않는다. 길이를 만든 것은 두 가지다:
 
          (1) 라인 안에 넣은 환경설비·후속공정·팔레타이징.
@@ -805,7 +889,7 @@
              제자리에 선다. 행정도 시간도 그대로다.
 
        그러고도 남는 원칙은 하나다 — 시간이 필요하면 높이로 사고 길이로
-       사지 않는다. 3단 가열실이 이미 그렇게 되어 있고, 유리 냉각도 같은
+       사지 않는다. 밀폐 가열실이 이미 그렇게 되어 있고, 유리 냉각도 같은
        방식으로 세워 8.8m 컨베이어를 3.4m 랙으로 바꾼다. */
     const CL_CLEAR=.30;                  // 스테이션 사이 정비 간격
     const CL_WALL=.35;                   // 가열실 단열벽 한 겹
@@ -994,7 +1078,7 @@
         intro:`${DECKS}장의 패널을 먼저 적재·잠금·밀폐한 뒤 ${LAMPS}개 IR로 EVA 계면을 ${T_TARGET}°C까지 JIT 가열합니다. 고정된 HKB/HKS 사이로 이동 진공 캐리어가 통과하며 백시트·셀/EVA·유리를 한 패스에서 분리합니다.`,
         hardware:[
           'M0 백시트 상향 투입·치수/자세검사·6존 진공 캐리어',
-          `M1 ${DECKS}단 밀폐 가열실: 하부 B0·단간 B1~B${DECKS-1}·상부 B${DECKS}, ${DECKS+1}라인×${LAMPS/(DECKS+1)}개 = ${LAMPS} IR`,
+          `M1 ${DECKS}단 밀폐 가열실: 하부 B0·단간 B1~B${DECKS-1}·상부 B${DECKS}, ${DECKS+1}라인 ${bankPlanText(DECKS,LAMPS)} = ${LAMPS}개 = ${LAMPS} IR`,
           'LI-101 양주형 서보승강기·카운터밸런스·무여자 브레이크·낙하방지 폴',
           'TS-101 이단 텔레스코픽 포크·IDX-101 테이퍼 위치결정핀·좌우 기계잠금',
           'AL-IN/OUT 이중셔터 에어록·RT-101 밀폐 빈 캐리지 하부복귀·신규패널 재장전',
@@ -1011,7 +1095,7 @@
           'FA-401 독립 과온리미터·연기/CO 감지·방화댐퍼·소화설비 인터페이스',
           'UT-401 진공펌프 이중화·어큐뮬레이터·계장공기·냉각수·MCC/SSR반 냉각',
           'MC-401 HKB/HKS 퀵체인지 카세트·세척대·7＋1 가열캐리지 정비 도크',
-          'E-001 3상4선 380/220V 60Hz 전력인입·500kVA 변압기·800AF 주차단기·1000A 동버스',
+          `E-001 3상4선 380/220V 60Hz 전력인입·${TR_KVA}kVA 변압기·${MAIN_AF}AF 주차단기·주모선 ${Math.max(400,Math.ceil(FLA*1.25/100)*100)}A`,
           'E-101 IR/HK/MCC/VOC/VAC/SHREDDER 분기반·SPD·전력계·고조파 대응',
           'PLC-101 안전 PLC·표준 PLC·원격 I/O 3반·24VDC 이중전원·산업용 UPS·관리형 네트워크',
           'TDM-201 HKB/HKS 독립 Z축 서보슬라이드·프리로드 LM가이드·기계식 하드스톱',
@@ -1080,9 +1164,9 @@
           '무인 운전 중 칼날 자동교환은 LOTO 가 아니라 캐리어 파킹 상태에서 돈다 — 정비허가를 요구하면 무인 중에는 영원히 성립하지 않는다'
         ],
         verify:[
-          `최대 패널 2,400×1,200mm·${DECKS}장 열체류 133.5초·정상 방출피치 44.5초`,
+          `최대 패널 2,400×1,200mm·${DECKS}장 열체류 222.6초·정상 방출피치 44.5초`,
           '55mm/s 탠덤 사이클 53.6초·명목 67.2장/h·90% 환산 60.5장/h',
-          '60장 정상상태 약 53분35초·FULL_LOAD_ACK 이후 냉간 약 55분49초',
+          '60장 정상상태 약 53분35초·FULL_LOAD_ACK 이후 냉간 약 57분18초',
           '셀/EVA 4kg/장 기준 약 269kg/h, SH-101 권장 정격 350kg/h 이상',
           '3계통 반출 FAT: 유리 GC-301 도킹·백시트 BS-301 격리·셀모듈 SH-101 투입 ACK를 개별 기록',
           'STS304 2.9m 레일은 20→210°C에서 약 8~9mm 팽창 예상: 1점 고정+장공 지지로 흡수',
@@ -1098,7 +1182,7 @@
         hardware:[
           '패널 면적열용량 8.736 kJ/(m²·K)·25→140°C·최대 면적 2.88m²·q 2.893MJ',
           `패널당 필요열량 2.893MJ·${LAMPS}×2.5kW 설치정격 ${LAMPS*2.5}kW·실효효율 기본 65%`,
-          `${DECKS}장 열체류 133.5초·방출피치 44.51초·열공정 한계 80.9장/h`,
+          `${DECKS}장 열체류 222.6초·방출피치 44.51초·열공정 한계 80.9장/h`,
           '탠덤 유효이동 2,700mm·칼끝간격 300mm·급속분 300mm·고정동작 3초',
           '55mm/s 탠덤 53.6초·67.2장/h, 60mm/s 탠덤 49.5초·72.7장/h',
           '적층 면적질량 9.795 kg/m² (유리 8.000·EVA 0.855·셀 0.520·백시트 0.420) → 최대면적 28.2 kg/장',
@@ -1150,7 +1234,7 @@
           'CVC-301 셀/EVA 직접이송 컨베이어·SH-101 역화방지 격리게이트·분진 차압감시',
           '전력인입 CT·전력계·상감시·SPD 접점·주차단기 트립·PE 접지연속성 감시',
           'BC-201 카세트 잠금·존재센서 4점·커넥터 체결확인 2점·카세트 온도 2점·히터 차단확인 F-DI 2점',
-          'PLC-101 DI 160점·DO 96점·AI 40점·AO 8점·TC 40점·F-DI 40점·F-DO 8점',
+          `PLC-101 DI ${IO_BUDGET.DI}점·DO ${IO_BUDGET.DO}점·AI ${IO_BUDGET.AI}점·AO ${IO_BUDGET.AO}점·TC ${IO_BUDGET.TC}점·F-DI ${IO_BUDGET.FDI}점·F-DO ${IO_BUDGET.FDO}점`,
           '개구부 광커튼 OSSD 2채널·교차감시·뮤팅램프 상시표시',
           '적층등·부저는 안전 PLC의 F-DO에서 직접 구동해 표준 PLC 정지와 무관하게 유지',
           'RTO 연소온도 3점·절환밸브 위치 4점·HX 출구/급기측 열전대·CEMS 시료 프로브',
@@ -1196,7 +1280,7 @@
           '배기 농도·활성탄 파과·응축액 성상·소음·전력품질·접지연속성 SAT',
           'C1→C5 순환마다 캐리지 ID·패널 ID를 유지하고 방출·재투입 후 동일 슬롯 잠금 신호를 추적',
           '셔터는 캐리지·포크 완전통과 센서와 씰 확인 후에만 반대편 문 개방을 허가',
-          '500kVA·800AF/630~800AT·케이블 2회선 예비값은 단락전류·전압강하·포설보정 후 확정',
+          `${TR_KVA}kVA·${MAIN_AF}AF/${MAIN_AT}AT·케이블 2회선 예비값은 단락전류·전압강하·포설보정 후 확정`,
           '전기 도면 E-001/E-101과 PLC 도면 C-001/C-101의 단자번호·케이블번호를 제작 BOM과 교차검증',
           '명판 전부하전류는 E-001 부하표 분기전류의 산술합이며, 각 분기의 역률 가정과 동시운전 조건을 실부하 측정으로 확인',
           '명판 SCCR는 변압기 임피던스 실측값과 상위 계통 임피던스를 반영한 단락계산으로 확정하고, 선정 차단기 Icu가 그 값 이상인지 대조',
@@ -1274,7 +1358,7 @@
       {id:'M-008',name:'셀/EVA 직접 컨베이어',size:'16000×1500×2500',material:'SS400/SUS304',parts:['CE-201 횡인출 컨베이어','CS-201 셀/EVA 평적 카트','CS-201 반출 인터록 게이트','CVC-301 사선 인계벨트','CVC-302 수평 밀폐벨트','내열 벨트','VFD 기어모터×2','셀 존재센서×4','WO-302 셀 벨트 계량기','벨트 편심센서×2','금속검출기','점검커버','국소배기노즐','역화격리게이트','SH-101 투입롤러','토크리미터']},
       {id:'M-009',name:'품질검사·리젝트',size:'3100×5000×3900',material:'SS400/AL6061',parts:['QI 상부 RGB 카메라','QI 하부 RGB 카메라','열화상카메라','투과조명','라인레이저','검사 엔코더','RJ 횡셔틀','리젝트 받침트레이','밀폐 리젝트 캐리지','도어인터록','캐리지 존재센서','재처리 라벨러','RE-101 잔류 EVA 분광계']},
       {id:'M-010',name:'VOC 배기·응축·흡착',size:'6500×3000×5600',material:'SUS304/FRP',parts:['국소배기 덕트','응축기','응축액 탱크','미스트 제거기','활성탄 흡착탑','배기팬 A','배기팬 B','방화댐퍼','풍량센서','차압센서×3','VOC 샘플포트','굴뚝','방화댐퍼 위치센서×2']},
-      {id:'M-011',name:'전력·MCC·제어반',size:'7600×1600×3600',material:'도장강판 IP54',parts:['TR-1 500kVA','Q0 ACB 4P 800AF','1000A 동버스','SPD Type1+2','전력품질계','IR 분전반','HK 히터반','MCC/VFD반','PLC-101반','24VDC PSU A/B','UPS-101','접지바','히터 차단 확인 접촉기×2']},
+      {id:'M-011',name:'전력·MCC·제어반',size:'7600×1600×3600',material:'도장강판 IP54',parts:[`TR-1 ${TR_KVA}kVA`,'Q0 ACB 주차단기',`주모선 ${Math.max(400,Math.ceil(FLA*1.25/100)*100)}A`,'SPD Type1+2','전력품질계','IR 분전반','HK 히터반','MCC/VFD반','PLC-101반','24VDC PSU A/B','UPS-101','접지바','히터 차단 확인 접촉기×2']},
       {id:'M-012',name:'유틸리티·화재안전',size:'9000×2500×4600',material:'SS400/SUS304',parts:['진공펌프 A/B','진공어큐뮬레이터','계장공기 FRL','냉각수 매니폴드','연기센서','CO센서','불꽃센서','NP-101 질소 퍼지 유닛','독립 과온릴레이','소화배관','노즐×6','E-STOP×4','안전 PLC']},
       {id:'M-014',name:'데이터·이력·원격감시',size:'1400×1200×3500',material:'도장강판 IP54',parts:['이력 서버 HS-101','RC-101 원격 감시 콘솔','OPC UA 게이트웨이','랙 마운트 UPS','원격승인 키스위치','시각동기 GPS','백업 스토리지','네트워크 방화벽']},
       {id:'M-015',name:'자동 팔레타이징·무인 감시',size:'3800×4600×3700',material:'SS400/AL6061',parts:['PL-101 자동 디스태커','PL-201 자동 스태커','흡착 포크·진공발생기','승강 서보·무여자 브레이크','팔레트 컨베이어','AD-101 AGV 도킹 스테이션','무인 감시 열화상 카메라×3','반출함 레벨센서×3','디스태커 방호펜스','스태커 방호펜스']},
@@ -1283,35 +1367,6 @@
       {id:'M-013',name:'가드·발판·정비설비',size:'25000×7000×3000',material:'SS400/메시패널',parts:['안전펜스','인터록 도어×4','상부 정비발판','고정사다리','가드레일','칼날 카세트랙','세척대','LOTO 스테이션','용융물 트레이','조명','케이블트레이','바닥 앵커','안전 광커튼 LC-001/002','뮤팅 센서 M1~M4×2조','적층 신호등·부저 ST-101/102']}
     ];
 
-    /* 전기부하표. 명판의 전부하전류와 E-001 도면의 분기함이 모두 이 표에서
-       나온다. 명판은 법정 표시라 손으로 적은 값이 도면과 갈라지면 안 된다.
-       역률은 부하 성격에 따른 가정값이다: IR 램프와 카트리지히터는 SSR 저항부하,
-       서보/VFD 는 DC 링크, 진공·배기·슈레더는 유도전동기. */
-    const LINE_V=380;
-    const LOAD_SCHEDULE=[
-      {id:'IR-DB1',load:`IR 램프 ${LAMPS}×2.5kW`,kW:LAMPS*2.5,pf:1.00,mccb:'4P 160A'},
-      {id:'HK-DB2',load:'HKB/HKS 카트리지히터',kW:30, pf:1.00,mccb:'4P 100A'},
-      {id:'MCC-1', load:'서보·VFD',           kW:45, pf:0.95,mccb:'4P 125A'},
-      {id:'AUX-DB',load:'VOC·진공·냉각',      kW:18, pf:0.85,mccb:'4P 63A'},
-      {id:'SH-101',load:'슈레더 계통',        kW:75, pf:0.87,mccb:'4P 160A'}
-    ];
-    const branchAmp=k=>k.kW*1000/(Math.sqrt(3)*LINE_V*k.pf);
-    const CONNECTED_KW=LOAD_SCHEDULE.reduce((a,k)=>a+k.kW,0);
-    /* 전부하전류는 유효·무효를 각각 더한 뒤 합성한 피상전력에서 낸다.
-       분기전류의 크기만 더하면 역률이 서로 다른 무효분을 같은 방향으로
-       취급해 과대평가되고(이 부하표에서 +2.9%), 반대로 총 kW 를 가정한
-       혼합역률 하나로 나누면 과소평가된다. 둘 다 쓰지 않는다. */
-    const CONNECTED_KVAR=LOAD_SCHEDULE.reduce((a,k)=>a+k.kW*Math.tan(Math.acos(k.pf)),0);
-    const CONNECTED_KVA=Math.hypot(CONNECTED_KW,CONNECTED_KVAR);
-    const SYSTEM_PF=CONNECTED_KW/CONNECTED_KVA;
-    const FLA=CONNECTED_KVA*1000/(Math.sqrt(3)*LINE_V);
-    const DEMAND_KW=270;                 // 수용률 반영 예상 최대수요
-    const TR_KVA=500,TR_Z=[0.05,0.06];   // 변압기 용량과 임피던스 범위
-    /* 예상 단락전류: 무한모선 가정의 2차측 대칭 단락전류. 상위 임피던스를
-       무시하므로 보수적으로 크게 나온다. */
-    const ISC_KA=TR_Z.map(z=>TR_KVA*1000/(Math.sqrt(3)*LINE_V)/z/1000).reverse();
-    const SCCR_KA=25;                    // ISC 상한에 여유를 둔 기기 정격
-    const DWG_NO='E-001';
 
     /* 열수지·사이클 모델. 계산 대화상자와 HUD 전력표시가 같은 식을 각각
        구현하고 있었고, 입력 허용구간까지 서로 달라(대화상자는 패널길이를
@@ -2276,7 +2331,7 @@
       /* 껍데기 높이는 단수를 따라간다. HZ 는 최상단 뱅크 자리이고 아래 오프셋은
          종전 5단 도면(HZ 3.92)에서 그대로 옮긴 것이다 — 단수만 바꾸면 챔버가
          통째로 내려앉는다. 값으로 박아 두면 3단인데 껍데기만 5단으로 남는다. */
-      const HZ=HC_Z,topDeck=z0+dz*(DECKS-.5),PER=LAMPS/(DECKS+1);
+      const HZ=HC_Z,topDeck=z0+dz*(DECKS-.5);
       for(const x of [x0,x1])for(const y of [-1.15,1.15]){
         column(x,y,HZ+.86,{s:.18,color:C.steel,plate:.46});
         gusset(x,y,HZ+.82,y>0?-1:1,'y',.18,C.steel2);
@@ -2295,6 +2350,7 @@
       for(let bank=0;bank<=DECKS;bank++){
         const z=z0+dz*bank;
         for(const y of [-.92,.92])box(V(cx,y,z),V(L-.46,.12,.15),C.steel2);       // lamp carrier channel
+        const PER=bankLampCount(bank,DECKS,LAMPS);
         for(let lamp=0;lamp<PER;lamp++){
           const x=x0+.38+lamp*(L-.76)/(PER-1);
           cylinder(V(x,0,z),.045,1.72,'y',C.heat,8);
@@ -2323,7 +2379,7 @@
       box(V(cx,railY,HZ-.84),V(L-.2,.1,.13),C.steel2);                                    // wall mounting rail
       for(const dx of [-.52,.52])box(V(cx+dx,meterY+(carriageFocus?-.19:.19),HZ-.84),V(.11,.1,.94),C.steel2);  // standoff brackets
       box(V(cx,meterY,HZ-.84),V(1.35,.32,1.08),C.cab);box(V(cx,meterFaceY,HZ-.74),V(1.02,.08,.5),C.black);for(let k=0;k<4;k++)box(V(cx-.32+k*.21,meterButtonY,HZ-1.17),V(.14,.06,.12),k<2?C.teal:C.yellow);
-      exhaust(cx,.23,HZ+1.03);label3(`M1 · 완전단열 ${DECKS}단 밀폐가열실`,V(cx,-1.52,HZ+1.16),C.heat);label3(`${DECKS+1} 라인 × ${PER} = ${LAMPS} IR`,V(cx,-1.52,HZ+.80),C.yellow);label3('AL-101/102 · 이중셔터 에어록',V(cx,-1.52,HZ+.46),C.teal);label3('PM-101 · IR 전력 계기판',V(cx,-1.86,HZ-.20),C.yellow);label3(`LI-101 · ${DECKS}단 서보승강`,V(liftX,-1.38,HZ+.50),C.teal);label3('TS-101 · 이단 텔레스코픽 포크',V(liftX+.65,-1.28,HZ+.03),C.yellow);label3(`IDX-101 · ${DECKS}단 위치결정·잠금`,V(9.2,-1.34,HZ+.33),C.teal);label3('RT-101 · 밀폐 빈 캐리지 복귀',V(9.2,-1.22,.52),C.teal);label3('EX-101 · 밀폐 방출 셔틀',V(exitX,-1.28,1.72),C.yellow);
+      exhaust(cx,.23,HZ+1.03);label3(`M1 · 완전단열 ${DECKS}단 밀폐가열실`,V(cx,-1.52,HZ+1.16),C.heat);label3(`${DECKS+1} 라인 ${bankPlanText(DECKS,LAMPS)} = ${LAMPS} IR`,V(cx,-1.52,HZ+.80),C.yellow);label3('AL-101/102 · 이중셔터 에어록',V(cx,-1.52,HZ+.46),C.teal);label3('PM-101 · IR 전력 계기판',V(cx,-1.86,HZ-.20),C.yellow);label3(`LI-101 · ${DECKS}단 서보승강`,V(liftX,-1.38,HZ+.50),C.teal);label3('TS-101 · 이단 텔레스코픽 포크',V(liftX+.65,-1.28,HZ+.03),C.yellow);label3(`IDX-101 · ${DECKS}단 위치결정·잠금`,V(9.2,-1.34,HZ+.33),C.teal);label3('RT-101 · 밀폐 빈 캐리지 복귀',V(9.2,-1.22,.52),C.teal);label3('EX-101 · 밀폐 방출 셔틀',V(exitX,-1.28,1.72),C.yellow);
     }
     function liftConveyor(){
       const a=V(TDM_OUT+1.2,0,1.6),b=V(25,-2.35,1.16),dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z,plan=Math.hypot(dx,dy),L=Math.hypot(plan,dz),rz=Math.atan2(dy,dx),ry=-Math.atan2(dz,plan),cx=(a.x+b.x)/2,cy=(a.y+b.y)/2,cz=(a.z+b.z)/2;
@@ -2529,7 +2585,7 @@
         box(V(x,-4.05,4.72),V(.11,.52,.06),C.steel2);                     // tray cross-arm
       }for(const x of [3.1,9.2,18.1,26.5,36])line([V(x,-4.05,4.45),V(x,-2.5,4.1),V(x,-1.8,3.35)],C.orange,2.1,[6,3],.9);
       line([V(-2.5,-4.7,.08),V(38,-4.7,.08)],C.ok,2.5,[8,4],.92);for(const x of [-1.35,1.25,9.2,19,36])line([V(x,-4.7,.08),V(x,-3.5,.08)],C.ok,1.8);
-      label3('TR-1 · 500kVA',V(-1.35,-5.9,3.65),C.teal);label3('MDP-1 · ACB 800AF',V(1.25,-5.65,3.95),C.yellow);
+      label3(`TR-1 · ${TR_KVA}kVA`,V(-1.35,-5.9,3.65),C.teal);label3(`MDP-1 · ACB ${MAIN_AF}AF`,V(1.25,-5.65,3.95),C.yellow);
     }
     function maintenanceStation(){
       plinth(18.4,4.75,4.3,1.5);box(V(18.4,4.75,.88),V(4.3,1.5,1.65),C.cab);for(const x of [17.05,17.7,18.4,19.1,19.75])box(V(x,4.75,1.85),V(.13,1.15,1.25),C.knife);
@@ -2679,7 +2735,19 @@
     const CKC_POCKETS=2;                        // 예열 120°C 1칸 · 냉각 1칸
     const CKC_ENV_Z0=CKC_Z-.15,CKC_ENV_Z1=CKC_Z+.15;   // 인출 포락선 높이
     const CKC_RACK_Y=-7.00;                     // KC-301 카세트 새들 — 만권 롤(−5.93) 밖
-    const RH_Z=4.85,RH_Y0=.55,RH_Y1=CKC_RACK_Y;// RH-201 모노레일 — 롤과 카세트를 같은 길로 낸다
+    /* RH-201 모노레일 높이. 4.85 로 박혀 있었는데 그것은 3단 시절의 값이고,
+       EX-101 방출 포크의 두상보는 최상단 데크를 따라 올라간다 — 단수를 올리면
+       두상보가 호이스트 트롤리를 뚫는다. 만권롤 357kg 과 200°C 카세트가
+       방책 밖으로 나가는 유일한 길이라, 막히면 무인 운전이 거기서 끝난다.
+       그러므로 값이 아니라 두상보 상단에서 유도한다.
+         두상보 상단 = cDeckZ(DK−1) + .73 + .09
+         트롤리 하단 = RH_Z − .34 − .15
+         여유 .10 → RH_Z ≥ cDeckZ(DK−1) + 1.41 */
+    const RH_CLR=.10;
+    const rhMinZ=decks=>cDeckZ(decks-1)+.73+.09+.15+.34+RH_CLR;
+    const RH_Z=Math.max(4.85,Math.ceil(rhMinZ(DECKS)*20)/20);
+    const RH_Y0=.55;                       // 모노레일 본선 시작 — 드럼 쪽
+    const RH_Y1=CKC_RACK_Y;                // 끝 — 방책 밖 카세트 랙. 롤과 카세트가 같은 길로 난다
     const BS_SADDLE=V(8.05,-5.20,.92);        // BS-301 롤 보관 새들 — 펜스(−4.20) 밖
     const CKC_SADDLE=V(CKC_X,CKC_RACK_Y,1.05);   // KC-301 카세트 새들 — 방책 밖
     const CSKIN_X0=CST.HC.x0-.20,CSKIN_X1=CST.GC.x1+.20;
@@ -2689,7 +2757,12 @@
        반출 구역은 실치수를 갖는다 — 그 자리를 안 그리면 현장에서 생긴다. */
     const CFENCE_YN=4.20;
     const CFENCE_X0=-.90,CFENCE_X1=compactLength()+.84;
-    const CDUCT_Z=4.70,CDUCT_Y=1.88;          // 배기 헤더 — 갓돌(3.60) 위, 경계 플랜지까지
+    /* 배기 헤더. 4.70 은 '갓돌 3.60 위' 라는 뜻이었는데 갓돌이 단높임으로
+       올라가면 헤더가 지붕 아래로 들어간다 — 챔버 분기가 헤더를 위로 지나
+       공중에 뜨고, 그 상태가 화면에는 아무 표시도 내지 않는다. 갓돌에서
+       유도한다. cCrownTop 은 아래에서 정의되므로 함수로 둔다. */
+    const CDUCT_Y=1.88;
+    const cDuctZ=()=>Math.max(4.70,Math.ceil((cCrownTop()+COPE_H+.20)*20)/20);
     const CBJ_X=CST.UL.x1-1.0;                // 경계 인터페이스반
 
     /* ── 배치 계열 설정 ────────────────────────────────────────────────
@@ -2728,7 +2801,7 @@
        를 만나지 않는다. 트윈은 셀 B 롤이 +2,800 이라 본선이 헤더를 가로지른다
        — 헤더 Ø460 상단 4,930 위로 넘긴다. 값을 박아 두면 레일이 덕트를
        뚫은 채로 남고, 그 교차는 위에서 내려다봐야만 보인다. */
-    const cRhZ=()=>twinView()?CDUCT_Z+.55:RH_Z;
+    const cRhZ=()=>{const L=LC();return Math.max(twinView()?cDuctZ()+.55:RH_Z,Math.ceil(rhMinZ(L.decks)*20)/20)};
     /* EX-101 문형의 x. 압축은 8,100 이면 되지만 트윈은 같은 x 를 RH-201
        본선(폭 240, x 7,930~8,170)이 세로로 지나간다 — 마스트가 레일을
        뚫는다. 200mm 하류로 비키면 레일과 55mm, 나이프 갠트리 기둥
@@ -2787,12 +2860,12 @@
          않으므로 간섭검사에도 안 걸린다. */
       cRack(g.cx,g.w,{top,decks:DK,wall:C.cab,tag:'C',section:'INS-101 · 130mm 이중피복 단열단면',
         inner:()=>{
-          /* (DECKS+1) 뱅크 × (LAMPS/(DECKS+1)). 챔버가 짧아진 만큼 램프 피치를
+          /* (DECKS+1) 뱅크 · 뱅크당 램프는 bankLampCount(). 챔버가 짧아진 만큼 램프 피치를
              좁혀 같은 면적출력을 유지한다 — 정격은 열수지가 정하지 길이가
              정하지 않는다. */
           for(let bank=0;bank<=DK;bank++){const z=CDECK_Z0+CDECK_DZ*bank;
             for(const y of [-.92,.92])box(V(g.cx,y,z),V(g.w-.5,.11,.14),C.steel2);
-            for(let n=0,per=LP/(DK+1);n<per;n++){const x=g.x0+.42+n*(g.w-.84)/(per-1);
+            for(let n=0,per=bankLampCount(bank,DK,LP);n<per;n++){const x=g.x0+.42+n*(g.w-.84)/(per-1);
               cylinder(V(x,0,z),.042,1.70,'y',C.heat,8);                                   // 2.5kW IR 램프
               if(nearView())for(const y of [-.90,.90])box(V(x,y,z),V(.09,.13,.10),C.cab);  // 반사판
             }}
@@ -2813,7 +2886,7 @@
       }
       exhaust(g.cx,.22,top+.175);
       label3(`HC-101 · ${DK}단 밀폐 IR 가열실 — 1기 (직렬)`,V(g.cx,-1.50,cDeckZ(DK-1)+1.25),C.heat,twinView());
-      label3(`${DK+1} 뱅크 × ${LP/(DK+1)} = ${LP} IR · 계면 ${T_TARGET}°C`,V(g.cx,-1.50,cDeckZ(DK-1)+.93),C.yellow);
+      label3(`${DK+1} 뱅크 ${bankPlanText(DK,LP)} = ${LP} IR · 계면 ${T_TARGET}°C`,V(g.cx,-1.50,cDeckZ(DK-1)+.93),C.yellow);
     }
     /* 승강 포크. 랙은 고정이고 포크가 층을 고른다 — 랙을 들면 챔버가
        2.5m 더 높아진다. 마스트는 이웃 스테이션의 끝자리를 쓴다. */
@@ -3208,7 +3281,7 @@
     function cGlassRack(){
       const DK=LC().decks,g=CST.GC,top=cDeckZ(DK-1)+.66;
       /* 팬 열과 급기 필터면도 랙 높이에서 잰다. 필터면을 3.0m 로 박아 두면
-         3단 랙에서 지붕을 600mm 뚫고 나간다. */
+         낮은 단수의 랙에서 지붕을 600mm 뚫고 나간다. */
       const fanZ=cDeckZ(Math.floor(DK/2)),airZ0=.65,airZ1=top-.06;
       cRack(g.cx,g.w,{top,decks:DK,wall:C.glass,tag:'G',section:'GC-101 · 강제공랭 단면',
         inner:()=>{
@@ -3264,14 +3337,14 @@
       }
       /* 배기 헤더 — 가열실·탠덤에서 모아 경계 플랜지까지만 간다. */
       for(const x of [CST.HC.cx,CTBL_CX]){
-        cylinder(V(x,CDUCT_Y,(CDUCT_Z+3.2)/2),.20,CDUCT_Z-3.2,'z',C.steel2,12);
-        pipeHanger(x,CDUCT_Y,CDUCT_Z-.34,CDUCT_Z+.30,.24);
+        const dz=cDuctZ();cylinder(V(x,CDUCT_Y,(dz+3.2)/2),.20,dz-3.2,'z',C.steel2,12);
+        pipeHanger(x,CDUCT_Y,dz-.34,dz+.30,.24);
       }
-      cylinder(V((CST.HC.cx+CFENCE_X1-.6)/2,CDUCT_Y,CDUCT_Z),.23,CFENCE_X1-.6-CST.HC.cx,'x',C.steel2,12);
-      cylinder(V(CFENCE_X1-.52,CDUCT_Y,CDUCT_Z),.30,.10,'x',C.yellow,12);                 // 경계 덕트 플랜지
-      box(V(CFENCE_X1-.90,CDUCT_Y-.34,CDUCT_Z),V(.20,.18,.22),C.teal);                    // 경계 덕트 차압센서
-      box(V(CST.DL.cx,CDUCT_Y-.34,CDUCT_Z-.42),V(.22,.18,.20),C.dark);                    // 풍량센서
-      label3('덕트 인터페이스 → 발주자 배기 후처리 (VOC_ABATE_READY)',V(CFENCE_X1-1.5,CDUCT_Y+.55,CDUCT_Z+.46),C.teal);
+      cylinder(V((CST.HC.cx+CFENCE_X1-.6)/2,CDUCT_Y,cDuctZ()),.23,CFENCE_X1-.6-CST.HC.cx,'x',C.steel2,12);
+      cylinder(V(CFENCE_X1-.52,CDUCT_Y,cDuctZ()),.30,.10,'x',C.yellow,12);                 // 경계 덕트 플랜지
+      box(V(CFENCE_X1-.90,CDUCT_Y-.34,cDuctZ()),V(.20,.18,.22),C.teal);                    // 경계 덕트 차압센서
+      box(V(CST.DL.cx,CDUCT_Y-.34,cDuctZ()-.42),V(.22,.18,.20),C.dark);                    // 풍량센서
+      label3('덕트 인터페이스 → 발주자 배기 후처리 (VOC_ABATE_READY)',V(CFENCE_X1-1.5,CDUCT_Y+.55,cDuctZ()+.46),C.teal);
       label3('경계 인터페이스반 · 안전회로는 경계에서 끊기지 않는다',V(CBJ_X,-3.30,2.62),C.brand);
     }
     function cUtilities(){
@@ -3299,6 +3372,20 @@
     const cBayOpen=()=>twinView(),
           COP0=CST.DL.x0-.16,COP1=CST.DL.x1+.16,
           cSkinRuns=()=>cBayOpen()?[[CSKIN_X0,COP0],[COP1,CSKIN_X1]]:[[CSKIN_X0,CSKIN_X1]];
+    /* ── 단높임(크라운) ────────────────────────────────────────────────
+       가열 랙과 냉각 랙은 단수만큼 높아진다. 3단에서는 지붕이 3,485 라
+       벽 3,600 아래에 들어갔지만 5단은 4,725 로 올라와, 벽을 그대로 두면
+       랙 윗도리가 갓돌 위로 나온 채 몸체가 깨진다. 벽을 랙 위까지 올려
+       다시 닫되, 탠덤 구간만 유리로 올린다 — 6.8항이 요구한 '전고 유리'
+       이고, 이 설비에서 보여 줄 장면이 거기 있기 때문이다.
+       높이는 값이 아니라 랙 지붕에서 유도한다. 값으로 박아 두면 단수를
+       바꿨을 때 크라운만 옛 높이로 남는다. */
+    const CROWN_CLR=.075;                                   // 랙 지붕 위 여유
+    function cCrownTop(){
+      const L=LC(),top=cDeckZ(L.decks-1)+.86+.175+CROWN_CLR;
+      return top<=SKIN_TOP?SKIN_TOP:Math.ceil(top*20)/20;    // 50 mm 단위로 올린다
+    }
+    const cHasCrown=()=>cCrownTop()>SKIN_TOP+1e-6;
     function cEnclosure(){
       /* 외장 기준선은 Rev.20 과 같다 — 걸레받이·유리띠·리빌·갓돌. 길이만
          짧아졌지 기계가 다른 회사 것처럼 보이면 안 된다. */
@@ -3319,7 +3406,26 @@
           box(V(cx,y,(BAND_Z1+SEAM_Z0)/2),V(L,SKIN_T,SEAM_Z0-BAND_Z1),C.skin);
           box(V(cx,y-side*.03,(SEAM_Z0+SEAM_Z1)/2),V(L,SKIN_T*.5,SEAM_Z1-SEAM_Z0),C.reveal);
           box(V(cx,y,(SEAM_Z1+SKIN_TOP)/2),V(L,SKIN_T,SKIN_TOP-SEAM_Z1),C.skin);
-          box(V(cx,y,SKIN_TOP+COPE_H/2),V(L+.06,SKIN_T+.05,COPE_H),C.steel2);
+          const crown=cCrownTop(),top=crown;
+          if(crown>SKIN_TOP+1e-6){
+            /* 크라운은 스테이션 단위로 나뉜다 — 랙이 선 구간은 판재,
+               탠덤 구간은 유리. 한 장으로 두르면 탠덤이 가려진다. */
+            const dl0=Math.max(rx0,CST.DL.x0-.16),dl1=Math.min(rx1,CST.DL.x1+.16);
+            const segs=dl1>dl0?[[rx0,dl0,'skin'],[dl0,dl1,'glass'],[dl1,rx1,'skin']]
+                             :[[rx0,rx1,'skin']];
+            for(const [sx0,sx1,kind] of segs){
+              if(sx1-sx0<.05)continue;
+              const scx=(sx0+sx1)/2,sL=sx1-sx0;
+              if(kind==='glass')box(V(scx,y,(SKIN_TOP+crown)/2),V(sL,SKIN_T*.6,crown-SKIN_TOP),C.glass,{alpha:.32});
+              else{
+                box(V(scx,y,(SKIN_TOP+crown)/2),V(sL,SKIN_T,crown-SKIN_TOP),C.skin);
+                for(let x=sx0+PANEL_MOD;x<sx1-.05;x+=PANEL_MOD)
+                  box(V(x,y,(SKIN_TOP+crown)/2),V(REVEAL,SKIN_T*.7,crown-SKIN_TOP),C.reveal);
+              }
+              box(V(scx,y-side*.03,SKIN_TOP+.04),V(sL,SKIN_T*.5,.08),C.reveal);   // 크라운 발치 리빌
+            }
+          }
+          box(V(cx,y,top+COPE_H/2),V(L+.06,SKIN_T+.05,COPE_H),C.steel2);
           for(let x=rx0+PANEL_MOD;x<rx1-.05;x+=PANEL_MOD)
             box(V(x,y,(PLINTH_TOP+SKIN_TOP)/2),V(REVEAL,SKIN_T*.7,SKIN_TOP-PLINTH_TOP),C.reveal);
         }
@@ -3658,7 +3764,7 @@
       }
       if(i===9){
         label3('경계 3개소 성립 — 후처리 준비 · 덕트 차압 · 안전회로',V(CBJ_X,-3.10,3.10),C.ok);
-        line([V(CFENCE_X1-.52,CDUCT_Y,CDUCT_Z),V(CFENCE_X1+.9,CDUCT_Y,CDUCT_Z)],C.teal,3,[7,4],.9);
+        line([V(CFENCE_X1-.52,CDUCT_Y,cDuctZ()),V(CFENCE_X1+.9,CDUCT_Y,cDuctZ())],C.teal,3,[7,4],.9);
       }
       if(i===10){
         label3(`P${Math.min(60,Math.floor(p*60)+1)}/60 · 53.6초 사이클 · 순생산 60.5장/h`,V(CTBL_CX,-2.10,3.60),C.teal);
@@ -4594,7 +4700,7 @@
       if(st.releaseVisible)heatCarriageAt(st.releaseX,st.releaseZ,{hot:true,id:`C${st.active+1}`});
       for(let bank=0;bank<=DECKS;bank++){
         const z=z0+dz*bank,standby=.08,priority=st.doorsOpen?standby:.68+.18*Math.sin(Math.PI*clamp((p-.02)/.96));
-        for(let lamp=0,per=LAMPS/(DECKS+1);lamp<per;lamp++){const x=cx-2.42+lamp*4.84/(per-1);line([V(x,-.84,z),V(x,.84,z)],C.heat,1.35,[3,3],Math.max(standby,priority))}
+        for(let lamp=0,per=bankLampCount(bank,DECKS,LAMPS);lamp<per;lamp++){const x=cx-2.42+lamp*4.84/(per-1);line([V(x,-.84,z),V(x,.84,z)],C.heat,1.35,[3,3],Math.max(standby,priority))}
       }
       label3(`${st.phase} · ${st.occupied}/${DECKS}`,V(cx,-1.45,z0+dz*DECKS+.43),st.doorsOpen?C.yellow:C.teal)
     }
@@ -4980,7 +5086,7 @@
         :`배치 Rev.20 · 이전 전체 설계`;
       $('npModel').textContent=compactView()?L.model:'DG-HK60';
       $('npModelRev').textContent=compactView()?L.rev:'REV.20';
-      $('npPlan').textContent=!compactView()?'단일 3단 IR · 고정 탠덤 · 수평 분리반출'
+      $('npPlan').textContent=!compactView()?`단일 ${DECKS}단 IR · 고정 탠덤 · 수평 분리반출`
         :L.cells>1?`단일 ${L.decks}단 IR 1가열실 · 탠덤 ${L.cells}셀 병렬 · 냉각 랙 통합`
                   :`단일 ${L.decks}단 IR · 고정 탠덤 · 수평 분리반출`;
       $('npSub').textContent=compactView()
@@ -5108,23 +5214,23 @@
       const branch=(x,k)=>`<path d="M${x} 224V330" stroke="#c84c28" stroke-width="5"/><rect x="${x-63}" y="330" width="126" height="76" rx="7" fill="#fff7eb" stroke="#c47a17" stroke-width="2"/><text x="${x}" y="354" text-anchor="middle" font-size="13" font-weight="700" fill="#69420a">${esc(k.id)}</text><text x="${x}" y="375" text-anchor="middle" font-size="12" fill="#69420a">MCCB ${esc(k.mccb)}</text><text x="${x}" y="394" text-anchor="middle" font-size="11" fill="#745a35">${k.kW}kW · ${branchAmp(k).toFixed(0)}A</text>`;
       const schedRows=LOAD_SCHEDULE.map(k=>`<tr><td>${esc(k.id)}</td><td>${esc(k.load)}</td><td>${k.kW}</td><td>${k.pf.toFixed(2)}</td><td>${branchAmp(k).toFixed(1)}</td><td>${esc(k.mccb)}</td></tr>`).join('')
         +`<tr><th>합계</th><th>${CONNECTED_KVAR.toFixed(1)} kvar · ${CONNECTED_KVA.toFixed(1)} kVA</th><th>${CONNECTED_KW}</th><th>${SYSTEM_PF.toFixed(3)}</th><th>${FLA.toFixed(1)}</th><th>명판 FLA ${Math.round(FLA)}A</th></tr>`;
-      return `<div class="drawing-kpi"><div><span>연결부하</span><strong>${CONNECTED_KW} kW</strong></div><div><span>전부하전류 · 명판</span><strong>${Math.round(FLA)} A</strong></div><div><span>수전·변압기</span><strong>${TR_KVA} kVA</strong></div><div><span>주차단기</span><strong>4P 800AF</strong></div></div><div class="wire-legend"><span style="--wire:#c84c28">3Φ4W 380/220V</span><span style="--wire:#278555">PE 접지</span><span style="--wire:#19788a">계측·통신</span></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="DG-HK60 전력 인입 및 단선 결선도">${svgDefs}${titleBlock('E-001','전력 인입·단선 결선도','3Φ4W AC 380/220V 60Hz · TR-1 500kVA · 주모선 1000A')}
+      return `<div class="drawing-kpi"><div><span>연결부하</span><strong>${CONNECTED_KW} kW</strong></div><div><span>전부하전류 · 명판</span><strong>${Math.round(FLA)} A</strong></div><div><span>수전·변압기</span><strong>${TR_KVA} kVA</strong></div><div><span>주차단기</span><strong>4P ${MAIN_AF}AF / ${MAIN_AT}AT</strong></div></div><div class="wire-legend"><span style="--wire:#c84c28">3Φ4W 380/220V</span><span style="--wire:#278555">PE 접지</span><span style="--wire:#19788a">계측·통신</span></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="DG-HK60 전력 인입 및 단선 결선도">${svgDefs}${titleBlock('E-001','전력 인입·단선 결선도',`3Φ4W AC 380/220V 60Hz · TR-1 ${TR_KVA}kVA · FLA ${Math.round(FLA)}A · 주차단기 ${MAIN_AF}AF/${MAIN_AT}AT`)}
       <g font-family="Arial,'Noto Sans KR',sans-serif"><rect x="45" y="125" width="130" height="86" rx="7" fill="#edf7fa" stroke="#19788a" stroke-width="2"/><text x="110" y="151" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">공장 MSB</text><text x="110" y="174" text-anchor="middle" font-size="12" fill="#476871">22.9kV 또는</text><text x="110" y="193" text-anchor="middle" font-size="12" fill="#476871">기존 380V BUS</text>
-      <path d="M175 168H225" stroke="#c84c28" stroke-width="6" marker-end="url(#arr)"/><rect x="225" y="120" width="145" height="96" rx="7" fill="#edf7fa" stroke="#19788a" stroke-width="2"/><text x="298" y="148" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">TR-1</text><text x="298" y="171" text-anchor="middle" font-size="12" fill="#476871">500kVA</text><text x="298" y="193" text-anchor="middle" font-size="12" fill="#476871">22.9/0.38kV</text>
-      <path d="M370 168H420" stroke="#c84c28" stroke-width="6" marker-end="url(#arr)"/><rect x="420" y="112" width="150" height="112" rx="7" fill="#fff3e5" stroke="#c84c28" stroke-width="2"/><text x="495" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="#733317">Q0 · ACB</text><text x="495" y="163" text-anchor="middle" font-size="12" fill="#733317">4P 800AF</text><text x="495" y="184" text-anchor="middle" font-size="11" fill="#733317">LSIG + UVT + SHUNT</text><text x="495" y="204" text-anchor="middle" font-size="11" fill="#733317">CT · PQM · SPD T1+T2</text>
-      <path d="M570 168H1125" stroke="#c84c28" stroke-width="9"/><text x="820" y="147" text-anchor="middle" font-size="12" font-weight="700" fill="#733317">MDP-1 · 1000A Cu BUS · Icw는 단락계산 후 확정</text>
+      <path d="M175 168H225" stroke="#c84c28" stroke-width="6" marker-end="url(#arr)"/><rect x="225" y="120" width="145" height="96" rx="7" fill="#edf7fa" stroke="#19788a" stroke-width="2"/><text x="298" y="148" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">TR-1</text><text x="298" y="171" text-anchor="middle" font-size="12" fill="#476871">${TR_KVA}kVA</text><text x="298" y="193" text-anchor="middle" font-size="12" fill="#476871">22.9/0.38kV</text>
+      <path d="M370 168H420" stroke="#c84c28" stroke-width="6" marker-end="url(#arr)"/><rect x="420" y="112" width="150" height="112" rx="7" fill="#fff3e5" stroke="#c84c28" stroke-width="2"/><text x="495" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="#733317">Q0 · ACB</text><text x="495" y="163" text-anchor="middle" font-size="12" fill="#733317">4P ${MAIN_AF}AF / ${MAIN_AT}AT</text><text x="495" y="184" text-anchor="middle" font-size="11" fill="#733317">LSIG + UVT + SHUNT</text><text x="495" y="204" text-anchor="middle" font-size="11" fill="#733317">CT · PQM · SPD T1+T2</text>
+      <path d="M570 168H1125" stroke="#c84c28" stroke-width="9"/><text x="820" y="147" text-anchor="middle" font-size="12" font-weight="700" fill="#733317">MDP-1 · ${Math.max(400,Math.ceil(FLA*1.25/100)*100)}A Cu BUS · Icw는 단락계산 후 확정</text>
       ${LOAD_SCHEDULE.map((k,i)=>branch(635+i*110,k)).join('')}
       <path d="M590 224V454H1125" fill="none" stroke="#278555" stroke-width="4"/><text x="600" y="478" font-size="12" fill="#206b46">PE BAR 50×6t Cu → 각 반·프레임·덕트·캐리지 등전위 본딩</text>
       <rect x="60" y="455" width="490" height="70" rx="6" fill="#eef8f1" stroke="#278555"/><text x="78" y="480" font-size="12" font-weight="700" fill="#206b46">예비 인입 케이블</text><text x="78" y="502" font-size="12" fill="#315d48">2회선 × Cu 4C 240mm² + 각 회선 PE 120mm²</text><text x="78" y="520" font-size="11" fill="#52717a">허용전류·포설·주위온도·전압강하·단락내량으로 재산정</text>
       <rect x="585" y="455" width="535" height="70" rx="6" fill="#edf7fa" stroke="#19788a"/><text x="603" y="480" font-size="12" font-weight="700" fill="#153e49">필수 계전·계측</text><text x="603" y="502" font-size="11" fill="#476871">OCR/GFR · 결상/역상 · SPD 상태 · ACB TRIP · PQM Modbus TCP</text><text x="603" y="520" font-size="11" fill="#476871">IR 독립 과온 → 주접촉기 강제차단 / PLC 명령과 독립</text></g></svg></div><table class="bom-table"><thead><tr><th>분기</th><th>부하</th><th>kW</th><th>역률</th><th>전류 A</th><th>차단기</th></tr></thead><tbody>${schedRows}</tbody></table><p class="drawing-note">명판 전부하전류 ${Math.round(FLA)}A 는 분기별 유효·무효전력을 각각 합해 얻은 피상전력 ${CONNECTED_KVA.toFixed(1)}kVA(계통 역률 ${SYSTEM_PF.toFixed(3)})에서 산출했습니다. 분기전류의 크기만 더하면 역률이 서로 다른 무효분을 같은 방향으로 취급해 이 부하표에서 508.6A 로 2.9% 과대평가되고, 반대로 총 kW 를 가정한 혼합역률 하나로 나누면 과소평가되므로 둘 다 쓰지 않았습니다. 표의 분기전류는 각 분기 차단기 선정용입니다. 예상 최대수요 ${DEMAND_KW}kW 는 수용률을 반영한 별도 값이며 명판에 쓰지 않습니다. 명판 SCCR ${SCCR_KA}kA 는 ${TR_KVA}kVA·임피던스 ${(TR_Z[0]*100).toFixed(0)}~${(TR_Z[1]*100).toFixed(0)}% 기준 예상 단락전류 ${ISC_KA[0].toFixed(1)}~${ISC_KA[1].toFixed(1)}kA 에 여유를 둔 기기 정격 선정값입니다. 역률은 부하 성격에 따른 가정값이며, 실제 인입은 현장 수전전압, 실측 변압기 임피던스, 상위 계통 임피던스, 고조파와 케이블 포설조건을 반영한 전기기술자 검토 후 확정해야 합니다.</p>`;
     }
     function plcDrawing(){
-      return `<div class="drawing-kpi"><div><span>표준 I/O</span><strong>DI 160 · DO 96</strong></div><div><span>아날로그</span><strong>AI 40 · AO 8</strong></div><div><span>온도 입력</span><strong>TC 40</strong></div><div><span>안전 I/O</span><strong>F-DI 40 · F-DO 8</strong></div></div><div class="wire-legend"><span style="--wire:#d05532">230VAC/24VDC</span><span style="--wire:#19788a">PROFINET Ring</span><span style="--wire:#875bb0">4–20mA/TC</span><span style="--wire:#278555">Safety 2CH</span></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="DG-HK60 PLC 인입과 현장 배선 연결도">${svgDefs}${titleBlock('C-001 / C-101','PLC 전원 인입·I/O·현장 배선도','UPS 230VAC → 24VDC 이중전원 → PLC/Safety PLC → RIO-1~3')}
+      return `<div class="drawing-kpi"><div><span>표준 I/O</span><strong>DI ${IO_BUDGET.DI} · DO ${IO_BUDGET.DO}</strong></div><div><span>아날로그</span><strong>AI ${IO_BUDGET.AI} · AO ${IO_BUDGET.AO}</strong></div><div><span>온도 입력</span><strong>TC ${IO_BUDGET.TC}</strong></div><div><span>안전 I/O</span><strong>F-DI ${IO_BUDGET.FDI} · F-DO ${IO_BUDGET.FDO}</strong></div></div><div class="wire-legend"><span style="--wire:#d05532">230VAC/24VDC</span><span style="--wire:#19788a">PROFINET Ring</span><span style="--wire:#875bb0">4–20mA/TC</span><span style="--wire:#278555">Safety 2CH</span></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="DG-HK60 PLC 인입과 현장 배선 연결도">${svgDefs}${titleBlock('C-001 / C-101','PLC 전원 인입·I/O·현장 배선도','UPS 230VAC → 24VDC 이중전원 → PLC/Safety PLC → RIO-1~3')}
       <g font-family="Arial,'Noto Sans KR',sans-serif"><rect x="55" y="110" width="140" height="70" rx="7" fill="#fff3e5" stroke="#d05532" stroke-width="2"/><text x="125" y="139" text-anchor="middle" font-size="13" font-weight="700" fill="#733317">AUX-DB 230VAC</text><text x="125" y="160" text-anchor="middle" font-size="11" fill="#733317">MCB 2P 32A</text><path d="M195 145H250" stroke="#d05532" stroke-width="5" marker-end="url(#arr)"/>
       <rect x="250" y="102" width="140" height="86" rx="7" fill="#fff3e5" stroke="#d05532" stroke-width="2"/><text x="320" y="130" text-anchor="middle" font-size="13" font-weight="700" fill="#733317">UPS-101</text><text x="320" y="152" text-anchor="middle" font-size="11" fill="#733317">3kVA · 10min</text><text x="320" y="170" text-anchor="middle" font-size="11" fill="#733317">Bypass 포함</text>
       <path d="M390 125H440M390 165H440" stroke="#d05532" stroke-width="4"/><rect x="440" y="92" width="145" height="58" rx="7" fill="#fff3e5" stroke="#d05532"/><rect x="440" y="158" width="145" height="58" rx="7" fill="#fff3e5" stroke="#d05532"/><text x="512" y="116" text-anchor="middle" font-size="12" font-weight="700" fill="#733317">PSU-A 24V 40A</text><text x="512" y="182" text-anchor="middle" font-size="12" font-weight="700" fill="#733317">PSU-B 24V 40A</text><path d="M585 121H635M585 187H635" stroke="#d05532" stroke-width="4"/><rect x="635" y="112" width="145" height="86" rx="7" fill="#eef8f1" stroke="#278555" stroke-width="2"/><text x="708" y="139" text-anchor="middle" font-size="12" font-weight="700" fill="#206b46">REDUNDANCY</text><text x="708" y="161" text-anchor="middle" font-size="11" fill="#206b46">DC-OK A/B</text><text x="708" y="180" text-anchor="middle" font-size="11" fill="#206b46">24VDC BUS</text>
-      <path d="M780 155H830" stroke="#d05532" stroke-width="5" marker-end="url(#arr)"/><rect x="830" y="92" width="145" height="126" rx="7" fill="#edf7fa" stroke="#19788a" stroke-width="2"/><text x="902" y="121" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">PLC-101 CPU</text><text x="902" y="143" text-anchor="middle" font-size="11" fill="#476871">DI160 / DO96</text><text x="902" y="162" text-anchor="middle" font-size="11" fill="#476871">AI40 / AO8 / TC40</text><text x="902" y="184" text-anchor="middle" font-size="11" fill="#476871">HMI · HS-101 · OPC UA</text><text x="902" y="203" text-anchor="middle" font-size="11" fill="#476871">Managed Switch</text>
-      <rect x="1010" y="92" width="145" height="126" rx="7" fill="#eef8f1" stroke="#278555" stroke-width="2"/><text x="1082" y="121" text-anchor="middle" font-size="13" font-weight="700" fill="#206b46">F-PLC-101</text><text x="1082" y="143" text-anchor="middle" font-size="11" fill="#206b46">F-DI40 / F-DO8</text><text x="1082" y="165" text-anchor="middle" font-size="11" fill="#206b46">E-STOP · Door</text><text x="1082" y="184" text-anchor="middle" font-size="11" fill="#206b46">STO · Fire Trip</text><path d="M975 155H1010" stroke="#278555" stroke-width="4"/>
+      <path d="M780 155H830" stroke="#d05532" stroke-width="5" marker-end="url(#arr)"/><rect x="830" y="92" width="145" height="126" rx="7" fill="#edf7fa" stroke="#19788a" stroke-width="2"/><text x="902" y="121" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">PLC-101 CPU</text><text x="902" y="143" text-anchor="middle" font-size="11" fill="#476871">DI${IO_BUDGET.DI} / DO${IO_BUDGET.DO}</text><text x="902" y="162" text-anchor="middle" font-size="11" fill="#476871">AI${IO_BUDGET.AI} / AO${IO_BUDGET.AO} / TC${IO_BUDGET.TC}</text><text x="902" y="184" text-anchor="middle" font-size="11" fill="#476871">HMI · HS-101 · OPC UA</text><text x="902" y="203" text-anchor="middle" font-size="11" fill="#476871">Managed Switch</text>
+      <rect x="1010" y="92" width="145" height="126" rx="7" fill="#eef8f1" stroke="#278555" stroke-width="2"/><text x="1082" y="121" text-anchor="middle" font-size="13" font-weight="700" fill="#206b46">F-PLC-101</text><text x="1082" y="143" text-anchor="middle" font-size="11" fill="#206b46">F-DI${IO_BUDGET.FDI} / F-DO${IO_BUDGET.FDO}</text><text x="1082" y="165" text-anchor="middle" font-size="11" fill="#206b46">E-STOP · Door</text><text x="1082" y="184" text-anchor="middle" font-size="11" fill="#206b46">STO · Fire Trip</text><path d="M975 155H1010" stroke="#278555" stroke-width="4"/>
       <path d="M902 218V270H250V330M902 270H575V330M902 270H900V330" fill="none" stroke="#19788a" stroke-width="4"/><rect x="170" y="330" width="165" height="82" rx="7" fill="#edf7fa" stroke="#19788a"/><rect x="492" y="330" width="165" height="82" rx="7" fill="#edf7fa" stroke="#19788a"/><rect x="817" y="330" width="165" height="82" rx="7" fill="#edf7fa" stroke="#19788a"/><text x="252" y="358" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">RIO-1 · 가열실</text><text x="252" y="381" text-anchor="middle" font-size="11" fill="#476871">램프·TC·셔터·승강</text><text x="575" y="358" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">RIO-2 · 탠덤</text><text x="575" y="381" text-anchor="middle" font-size="11" fill="#476871">진공·칼날·권취</text><text x="900" y="358" text-anchor="middle" font-size="13" font-weight="700" fill="#153e49">RIO-3 · 반출</text><text x="900" y="381" text-anchor="middle" font-size="11" fill="#476871">유리·CVC·QI·GC</text>
       <path d="M252 412V462M575 412V462M900 412V462" stroke="#875bb0" stroke-width="4"/><rect x="85" y="462" width="305" height="72" rx="7" fill="#f7f0fb" stroke="#875bb0"/><rect x="445" y="462" width="305" height="72" rx="7" fill="#f7f0fb" stroke="#875bb0"/><rect x="805" y="462" width="305" height="72" rx="7" fill="#f7f0fb" stroke="#875bb0"/><text x="237" y="487" text-anchor="middle" font-size="12" font-weight="700" fill="#563873">TB1: DI/TC/4–20mA</text><text x="237" y="510" text-anchor="middle" font-size="11" fill="#563873">EVA TC · 차압 · 위치 · 램프</text><text x="597" y="487" text-anchor="middle" font-size="12" font-weight="700" fill="#563873">TB2: Vacuum/Load/AE</text><text x="597" y="510" text-anchor="middle" font-size="11" fill="#563873">PNP 3선 · 차폐 TP · PE 한쪽</text><text x="957" y="487" text-anchor="middle" font-size="12" font-weight="700" fill="#563873">TB3: Drive/QI/GC/SH</text><text x="957" y="510" text-anchor="middle" font-size="11" fill="#563873">VFD STO 2CH · Encoder · Gate</text>
       <path d="M1082 218V550H1125" fill="none" stroke="#278555" stroke-width="4"/><text x="780" y="566" font-size="11" fill="#206b46">Safety: OSSD 2CH → F-DI / F-DO → K1·K2·STO / 수동 RESET은 위험구역 밖</text></g></svg></div><p class="drawing-note">배선 원칙: 24VDC PNP 3선식, 4–20mA 차폐 연선, 열전대 전용 보상도선, 동력/신호 트레이 분리, VFD 모터케이블 양단 360° 차폐, 안전신호 2채널 교차단락 진단.</p>`;

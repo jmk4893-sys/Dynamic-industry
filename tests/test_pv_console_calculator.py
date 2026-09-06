@@ -45,9 +45,9 @@ T_HKB_C, T_HKS_C = 180, 200      # 칼날 — NPC 상용 밴드 180~200
 # 1D-FDM 으로 구한 계면 도달시간. 열수지상 더 빨리 넣을 수 있어도 열이
 # 계면까지 전도되는 데 걸리는 시간은 줄지 않으므로 체류시간의 하한이 된다.
 FDM_DWELL_S = 113.15
-LAMPS = 40    # 2.5 kW × 40 = 100 kW 설치 — (DECKS+1) 뱅크 × 10
+LAMPS = 40    # 2.5 kW × 40 = 100 kW 설치 — 6 뱅크에 [6,7,7,7,7,6]
 MASS_GLASS_CP = 8.000 * 0.75            # kJ/(m²·K) — 적층 중 유리 몫
-DECKS = 3     # 가열 캐리지 단수
+DECKS = 5     # 가열 캐리지 단수 — 유리 열응력이 정한다 (3단은 σ 7.05 > 허용 7)
 KNIFE_PITCH_MM = 300     # HKB 가 HKS 보다 앞서는 거리
 RAPID_DISTANCE_MM = 300  # 장당 급속이송 등가거리
 
@@ -394,13 +394,36 @@ class TestTheHeatingChamberSizeIsDerived(unittest.TestCase):
                 len(re.findall(rf"const {name}=", self.html)), 1,
                 f"{name} 상수가 두 번 이상 선언돼 있다")
 
-    def test_the_banks_divide_the_lamps_evenly(self):
-        """뱅크는 단수+1(하부·단간·상부)이고 램프는 그 위에 고르게 실린다."""
-        banks = DECKS + 1
-        self.assertEqual(LAMPS % banks, 0,
-                         f"램프 {LAMPS} 개가 뱅크 {banks} 개로 나뉘지 않는다")
-        self.assertIn("PER=LAMPS/(DECKS+1)", self.html,
-                      "도면이 뱅크당 램프 수를 파생시키지 않는다")
+    def test_the_banks_carry_every_lamp(self):
+        """뱅크는 단수+1 이고, 나뉘어 실린 램프의 합이 총수와 같아야 한다.
+
+        종전에는 '뱅크당 10등' 이라 총수가 단수에 비례했고, 그래서 단수를
+        올리면 설치전력이 따라 올라갔다. 그 비례는 물리가 아니라 배열
+        관습이었다 — 총 정격은 열수지가, 단수는 유리 열응력이 따로 정한다.
+        규칙을 끊었으므로 시험도 '나누어떨어지는가' 가 아니라 '한 개도
+        잃지 않고 실리는가' 를 본다.
+        """
+        self.assertIn("function bankLampCount(", self.html,
+                      "도면이 뱅크별 램프 수를 계산하지 않는다")
+        self.assertNotIn("LAMPS/(DECKS+1)", self.html,
+                         "아직 균등 분배로 나누는 자리가 남아 있다")
+        counts = [self._bank_lamps(b) for b in range(DECKS + 1)]
+        self.assertEqual(sum(counts), LAMPS,
+                         f"뱅크 분배 {counts} 의 합이 램프 총수 {LAMPS} 와 다르다")
+        self.assertLessEqual(max(counts) - min(counts), 1,
+                             f"뱅크 사이 램프 수가 2개 이상 벌어진다: {counts}")
+        self.assertEqual(counts[0], min(counts),
+                         "최하단 뱅크가 끝 뱅크인데 안쪽보다 많다")
+        self.assertEqual(counts[-1], min(counts),
+                         "최상단 뱅크가 끝 뱅크인데 안쪽보다 많다")
+
+    @staticmethod
+    def _bank_lamps(bank, decks=DECKS, lamps=LAMPS):
+        """콘솔의 bankLampCount 와 같은 규칙 — 나머지는 안쪽 뱅크부터."""
+        n = decks + 1
+        base, rem = divmod(lamps, n)
+        order = list(range(1, n - 1)) + [0, n - 1]
+        return base + (1 if order.index(bank) < rem else 0)
 
     def test_the_installed_power_follows_the_lamp_count(self):
         """IR 분전반 정격이 램프 수에서 나와야 한다 — 값으로 적으면 갈라진다."""
@@ -412,7 +435,7 @@ class TestTheHeatingChamberSizeIsDerived(unittest.TestCase):
         self.assertAlmostEqual(kw, LAMPS * DEFAULTS["lampPower"], places=6)
 
     def test_the_chamber_shell_follows_the_deck_count(self):
-        """껍데기 높이를 값으로 박아 두면 3단인데 외형만 5단으로 남는다."""
+        """껍데기 높이를 값으로 박아 두면 단수를 바꿔도 외형만 옛 값으로 남는다."""
         self.assertIn("const HC_Z=HC_Z0+HC_DZ*DECKS;", self.html,
                       "가열실 높이가 단수에서 파생되지 않는다")
         self.assertAlmostEqual(
@@ -452,9 +475,30 @@ class TestTheDeckCountIsBoundedByGlassStress(unittest.TestCase):
             f"{DECKS}단에서 유리 열응력 {sigma:.2f} MPa 가 설계허용을 넘는다 "
             f"(플럭스 {flux:.2f} kW/m², ΔT {dt:.1f} K)")
 
-    def test_one_deck_fewer_would_break_the_glass(self):
-        """왜 더 못 줄이는지 — 여기서 걸린다는 것이 3단을 고른 이유다."""
-        sigma, _, _ = self._stress_mpa(DECKS - 1)
+    def test_three_decks_would_have_broken_the_glass(self):
+        """3단을 떠난 이유 — 그 자리에서 유리가 허용치를 넘고 있었다.
+
+        한동안 이 라인은 3단이었고, 단수를 더 줄이면 유리가 깨진다는 것이
+        3단을 고른 근거로 적혀 있었다. 그런데 그 계산을 3단 자신에게 돌리면
+        이미 넘고 있다 — σ 7.05 > 허용 7.0. 근거가 자기를 배제한 셈이다.
+        단수를 올린 진짜 이유가 이것이므로 시험으로 고정한다.
+        """
+        sigma, flux, dt = self._stress_mpa(3)
         self.assertGreater(
             sigma, self.ALLOWABLE_MPA,
-            f"{DECKS - 1}단에서도 유리가 견딘다면 3단을 고른 근거가 다른 데 있다")
+            f"3단에서 유리 열응력이 {sigma:.2f} MPa 로 허용치 안에 든다면 "
+            f"단수를 올린 근거가 다른 데 있다 (플럭스 {flux:.2f} kW/m², ΔT {dt:.1f} K)")
+
+    def test_the_chosen_deck_count_leaves_real_margin(self):
+        """허용치에 겨우 붙는 것은 근거가 아니다 — 가정 오차를 덮을 여유가 있어야 한다.
+
+        σ 는 E·α·ν 문헌값과 정상상태 1차원 가정에서 나온다. 램프 배열
+        균일도와 도어 개폐 손실이 국부 ΔT 를 키우므로, 허용치를 아슬아슬하게
+        지키는 단수는 FAT 열화상 한 번에 무너진다.
+        """
+        sigma, _, _ = self._stress_mpa(DECKS)
+        margin = (self.ALLOWABLE_MPA - sigma) / self.ALLOWABLE_MPA
+        self.assertGreaterEqual(
+            margin, 0.25,
+            f"{DECKS}단 유리 응력 여유가 {margin*100:.0f}% 뿐이다 "
+            f"(σ {sigma:.2f} / 허용 {self.ALLOWABLE_MPA} MPa)")

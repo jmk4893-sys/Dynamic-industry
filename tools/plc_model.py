@@ -45,7 +45,7 @@ FDI, FDO, COMM = "F-DI", "F-DO", "COMM"
 # 올린 값이다 — 이 모델을 돌려 정한 수량이다. 카드 단위는 DI/DO 16점,
 # 나머지 8점이고, 각 종류마다 20% 를 넘기는 가장 작은 배수를 골랐다.
 # 단수를 5 → 3 으로 줄이면서 DI 176→160 · AO 16→8 · TC 56→40 으로 내려왔다.
-BUDGET = {DI: 160, DO: 96, AI: 40, AO: 8, TC: 40, FDI: 40, FDO: 8}
+BUDGET = {DI: 176, DO: 96, AI: 40, AO: 16, TC: 56, FDI: 40, FDO: 8}
 SPARE_MIN = 0.20                       # 사양서 7.1 이 요구하는 최소 예비율
 
 
@@ -74,7 +74,7 @@ class Drive:
 # ── 현장 입력 ───────────────────────────────────────────────────────────
 LEAVES = [
     # 전원·제어
-    Leaf("MAIN_ACB_ON",        DI, 1, "Q0 ACB 4P 800AF"),
+    Leaf("MAIN_ACB_ON",        DI, 1, "Q0 ACB 주차단기"),   # 정격은 부하표가 정한다
     Leaf("PHASE_OK",           COMM, 0, "전력품질계"),
     Leaf("PE_OK",              DI, 1, "접지바"),
     Leaf("SPD_OK",             DI, 1, "SPD Type1+2"),

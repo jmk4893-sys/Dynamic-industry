@@ -129,14 +129,24 @@ class TestIoBudget(unittest.TestCase):
                                     f"{k} 예비 {100*spare:.1f}% 가 20% 미만이다")
 
     def test_console_drawing_declares_the_same_budget(self):
+        """콘솔은 점수를 IO_BUDGET 한 곳에 두고 도면·사양문구가 그것을 읽는다.
+
+        예전에는 같은 점수가 도면 KPI·사양 문구·배선도에 각각 글자로 적혀
+        있어서, 단수를 바꿔 실사용이 늘면 한 곳만 고치고 나머지가 남았다.
+        그래서 여기서는 문자열이 아니라 상수를 읽어 모델과 대조한다.
+        """
+        m = re.search(r"const IO_BUDGET=\{([^}]*)\}", self.console)
+        self.assertIsNotNone(m, "콘솔에 IO_BUDGET 선언이 없다")
+        got = {k: int(v) for k, v in re.findall(r"(\w+):(\d+)", m.group(1))}
         b = self.m.BUDGET
-        self.assertIn(f"DI {b['DI']} · DO {b['DO']}", self.console)
-        self.assertIn(f"AI {b['AI']} · AO {b['AO']}", self.console)
-        self.assertIn(f"TC {b['TC']}", self.console)
-        self.assertIn(f"F-DI {b['F-DI']} · F-DO {b['F-DO']}", self.console)
-        self.assertIn(f">DI{b['DI']} / DO{b['DO']}<", self.console)
-        self.assertIn(f">AI{b['AI']} / AO{b['AO']} / TC{b['TC']}<", self.console)
-        self.assertIn(f">F-DI{b['F-DI']} / F-DO{b['F-DO']}<", self.console)
+        want = {"DI": b["DI"], "DO": b["DO"], "AI": b["AI"], "AO": b["AO"],
+                "TC": b["TC"], "FDI": b["F-DI"], "FDO": b["F-DO"]}
+        self.assertEqual(got, want, "콘솔 IO_BUDGET 이 실행 모델의 예산과 다르다")
+        # 도면·사양 문구가 그 상수를 실제로 읽는지 — 값을 다시 적어 두면 갈라진다.
+        for token in ("IO_BUDGET.DI", "IO_BUDGET.AO", "IO_BUDGET.TC"):
+            self.assertIn(token, self.console,
+                          f"도면 문구가 {token} 를 읽지 않고 값을 적어 두었다")
+        self.assertNotIn(">DI160 / DO96<", self.console, "옛 I/O 점수가 배선도에 남아 있다")
 
     def test_specification_declares_the_same_budget_and_the_actual_use(self):
         if self.rfq is None:

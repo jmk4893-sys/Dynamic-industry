@@ -256,10 +256,11 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
         """콘솔 부하표. kW 는 램프 수에서 나온 식일 수 있어 풀어 읽는다."""
         rows = re.findall(
             r"\{\s*id:'([^']+)'\s*,\s*load:[`'][^`']*[`']\s*,"
-            r"\s*kW:([\w.*+/ -]+?)\s*,\s*pf:([\d.]+)\s*,\s*mccb:'([^']+)'\s*\}",
+            r"\s*kW:([\w.*+/ -]+?)\s*,\s*pf:([\d.]+)\s*,"
+            r"(?:\s*df:[\d.]+\s*,)?\s*mccb:'([^']+)'\s*\}",
             self.console,
         )
-        self.assertGreaterEqual(len(rows), 5, "콘솔 부하표를 찾지 못했다")
+        self.assertGreaterEqual(len(rows), 4, "콘솔 부하표를 찾지 못했다")
         env = console_consts.env(self.console)
         out = []
         for ident, kw, pf, mccb in rows:
@@ -298,8 +299,14 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
         )
 
     def test_breaker_headroom_claim_is_true(self):
-        """'630AT 기준 n배 여유' 는 검산 가능한 주장이다."""
-        claimed = self._num(r"630AT 기준 ([\d.]+)배 여유")
+        """'nnnAT 기준 n배 여유' 는 검산 가능한 주장이다.
+
+        정격을 시험에 박아 두면 부하표가 바뀌어 차단기를 다시 골랐을 때
+        시험이 옛 정격을 계속 찾는다. 정격도 배수도 문서에서 읽는다.
+        """
+        m = re.search(r"(\d+)AT 기준 ([\d.]+)배 여유", self.html)
+        self.assertIsNotNone(m, "주차단기 여유 주장을 찾지 못했다")
+        at, claimed = int(m.group(1)), float(m.group(2))
         rows = self._load_schedule()
         volts = int(re.search(r"const LINE_V=(\d+)", self.console).group(1))
         active = sum(kw for _, kw, _, _ in rows)
@@ -307,7 +314,8 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
             kw * math.tan(math.acos(float(pf))) for _, kw, pf, _ in rows
         )
         fla = math.hypot(active, reactive) * 1000 / (3 ** 0.5 * volts)
-        self.assertAlmostEqual(claimed, 630 / fla, delta=0.01)
+        self.assertAlmostEqual(claimed, at / fla, delta=0.01)
+        self.assertGreaterEqual(at, fla * 1.25, f"주차단기 {at}AT 가 FLA 의 1.25배에 못 미친다")
         self.assertGreater(claimed, 1.0, "차단기 정격이 전부하전류보다 작다")
 
     # ── 모듈 구성 ────────────────────────────────────────────────

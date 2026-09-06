@@ -161,7 +161,18 @@ class TestTheTwinCrossingsAreResolved(unittest.TestCase):
 
     def test_the_monorail_clears_the_exhaust_header(self):
         """트윈 본선은 셀 B 롤까지 오므로 배기 헤더(y1,880)를 가로지른다."""
-        self.assertIn("cRhZ=()=>twinView()?CDUCT_Z+.55:RH_Z", self.b)
+        self.assertIn("cRhZ=()=>", self.b, "모노레일 높이가 배치에서 파생되지 않는다")
+        self.assertIn("cDuctZ()+.55", self.b,
+                      "트윈 본선이 배기 헤더 위로 올라가지 않는다")
+        # 헤더 자체도 값이 아니라 갓돌에서 나와야 한다 — 단높임 지붕이 올라가면
+        # 값으로 박은 헤더는 지붕 아래로 들어가고, 챔버 분기가 공중에 뜬다.
+        src = CONSOLE.read_text(encoding="utf-8")
+        self.assertIn("const cDuctZ=()=>Math.max(", src,
+                      "배기 헤더 높이가 갓돌에서 파생되지 않는다")
+        self.assertNotIn("const CDUCT_Z=", src, "배기 헤더가 아직 값으로 박혀 있다")
+        # 그리고 본선은 EX-101 포크 두상보 위여야 한다 — 만권롤과 카세트가
+        # 방책을 넘는 유일한 길이라 막히면 무인 운전이 거기서 끝난다.
+        self.assertIn("rhMinZ", self.b, "모노레일이 포크 두상보 하한을 받지 않는다")
 
     def test_the_storage_rows_move_out_with_the_fence(self):
         """방책이 물러나면 보관대도 같이 나가야 방책 밖에 남는다."""
