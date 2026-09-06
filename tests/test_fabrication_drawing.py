@@ -194,6 +194,86 @@ class TestNoSheetPrintsTextOverText(unittest.TestCase):
                         "안전회로 설명이 표제란 쪽으로 흘러간다")
 
 
+class TestTheCoolerSheetDefinesOnlyTheDifference(unittest.TestCase):
+    """M-007 은 F-002 와 같은 랙이다 — 그래서 도면이 짧아야 옳다.
+
+    기둥·거싯·크로스빔·베이스·데크·볼스크류가 전부 같고, 지그도 검사도
+    예비품도 한 벌로 끝난다. 냉각 단수를 필요값보다 많은 가열실 단수에
+    맞춘 이유가 바로 그것이었다. 같은 것을 두 번 그리면 둘 중 하나만
+    고쳐지는 날이 오므로, 이 시트는 다른 것만 정한다.
+
+    그래서 여기서 보는 것은 "제작도가 갖춰졌는가"가 아니라 두 가지다.
+      ① 차이가 실제로 도면에 적혀 있는가 (급기면·팬·랙 상단·단열 없음)
+      ② 그 차이가 값이 아니라 열모델과 층 상수에서 나오는가
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = CONSOLE.read_text(encoding="utf-8")
+        cls.body = _fn(cls.src, "coolerFabDrawing")
+        cls.flat = cls.body.replace(" ", "")
+
+    def test_the_sheet_is_reachable(self):
+        self.assertIn('data-drawing="cooler"', self.src, "탭이 없다")
+        self.assertIn("drawingTab==='cooler')drawingContent.innerHTML=coolerFabDrawing()",
+                      self.src, "탭이 시트를 그리지 않는다")
+
+    def test_it_uses_the_fabrication_frame(self):
+        for token, why in (("fabSheet(", "A3 도면틀을 쓰지 않는다"),
+                           ("fabTitleBlock({", "ISO 7200 표제란이 없다"),
+                           ("revBlock([", "개정란이 없다"),
+                           ("no:'F-007'", "도면번호가 없다")):
+            self.assertTrue(token in self.body, why)
+
+    def test_the_rack_follows_the_deck_chain_not_a_typed_height(self):
+        """랙 상단도 데크 높이도 층 상수에서 나와야 한다."""
+        self.assertIn("DK=GCOOL_DECKS", self.flat, "단수가 냉각 상수에서 나오지 않는다")
+        self.assertIn("TOP=cDeckZ(DK-1)+.66", self.flat, "랙 상단이 유도되지 않는다")
+        self.assertIn("HC_TOP=cDeckZ(DECKS-1)+.86", self.flat,
+                      "가열실 상단이 유도되지 않아 높이차를 비교할 수 없다")
+        self.assertIn("mm(HC_TOP-TOP)", self.body, "높이차가 계산되지 않는다")
+        self.assertIn("for(let k=0;k<DK;k++)", self.body, "데크가 단수만큼 그려지지 않는다")
+
+    def test_the_deck_count_is_justified_against_the_cooling_time(self):
+        """필요 단수는 냉각시간 ÷ 택트다 — 여유를 적으려면 둘 다 있어야 한다."""
+        self.assertIn("COOL=glassCoolSec()", self.flat, "냉각시간이 열모델에서 나오지 않는다")
+        self.assertIn("TAKT=thermalModel(MODEL_DEFAULT).knifeLineCycle", self.flat,
+                      "택트가 모델에서 나오지 않는다")
+        self.assertIn("NEED=Math.ceil(COOL/TAKT)", self.flat, "필요 단수가 유도되지 않는다")
+        self.assertIn("MARGIN=(DK*TAKT/COOL-1)*100", self.flat, "여유가 유도되지 않는다")
+        for token in ("MASS_GLASS", "CP_GLASS", "GCOOL_H", "GCOOL_T_IN", "GCOOL_T_OUT"):
+            self.assertIn(token, self.body, f"냉각시간 근거에 {token} 가 없다")
+
+    def test_the_fans_stand_where_the_lamp_banks_did(self):
+        """열원 자리를 대신하는 것이 이 랙의 요지다 — 대수도 단수를 따라간다."""
+        self.assertIn("FANS=DK+1", self.flat, "팬 대수가 단수에서 나오지 않는다")
+        self.assertIn("FANZ=cDeckZ(", self.flat, "팬 높이가 층 상수에서 나오지 않는다")
+        self.assertIn("IR 뱅크가 있던 자리", self.body, "무엇을 대신하는지가 도면에 없다")
+
+    def test_the_sheet_says_the_frame_is_shared_and_not_insulated(self):
+        """두 가지가 빠지면 이 도면은 F-002 의 축소 복사본이 된다."""
+        self.assertIn("F-002", self.body, "가열실 도면을 준용한다는 말이 없다")
+        self.assertIn("준용", self.body, "준용 관계가 적히지 않는다")
+        self.assertIn("단열하지 않는다", self.body, "단열하지 않는다는 것이 도면에 없다")
+        self.assertIn("필터 급기면", self.body, "급기면이 도면에 없다")
+        self.assertIn("F-002 부품란", self.body,
+                      "부품란이 골조를 준용으로 넘기지 않아 같은 것을 두 번 적는다")
+
+    def test_the_difference_table_is_actually_on_the_sheet(self):
+        """표를 만들고 시트에 붙이지 않으면 도면에는 없는 것과 같다."""
+        self.assertIn("const DIFF=[", self.body, "차이 표가 없다")
+        self.assertIn("+front+side+tbl+tbl2+noteSvg", self.flat,
+                      "정면도·측면도·차이표·부품란이 시트에 조립되지 않는다")
+
+    def test_it_does_not_pretend_to_know_the_fan_selection(self):
+        self.assertIn("정하지 않는 것", self.body)
+        self.assertIn("Not For Construction", self.body)
+
+    def test_the_sheet_never_reads_the_layout_the_screen_happens_to_show(self):
+        for bad in ("LC()", "cForkHalf()", "twinView()", "compactView()"):
+            self.assertNotIn(bad, self.body, f"F-007 이 활성 배치({bad})를 읽는다")
+
+
 class TestTheWinderSheetShowsBothJourneys(unittest.TestCase):
     """M-006 은 도면이 두 장면을 함께 담아야 한다.
 
@@ -547,12 +627,22 @@ class TestTheSpecificationAgreesAboutWhatWasHandedOver(unittest.TestCase):
                       "도면 확정이 용역 범위임을 여전히 밝혀야 한다")
 
     def test_the_clause_names_every_fabrication_level_sheet(self):
-        """참고도 목록이 시트보다 짧으면, 빠진 시트는 성격이 규정되지 않은 채 나간다."""
-        console = CONSOLE.read_text(encoding="utf-8")
-        for no in ("F-002", "D-501", "D-602"):
-            self.assertIn(f"no:'{no}'", console.replace(" ", "") ,
-                          f"콘솔에 {no} 시트가 없다") if no != "D-501" else None
-            self.assertIn(no, self.rfq, f"1.2 가 {no} 를 참고도로 부르지 않는다")
+        """참고도 목록이 시트보다 짧으면, 빠진 시트는 성격이 규정되지 않은 채 나간다.
+
+        목록을 손으로 적어 두면 시트를 한 장 더 그린 날 사양서만 옛 목록으로
+        남는다 — 그래서 목록을 콘솔의 표제란에서 뽑아 대조한다.
+        """
+        console = CONSOLE.read_text(encoding="utf-8").replace(" ", "")
+        sheets = sorted(set(re.findall(r"fabTitleBlock\(\{no:'([A-Z]-\d+)'", console)))
+        self.assertGreaterEqual(len(sheets), 6, "콘솔에 제작수준 시트가 없다")
+        clause = self.rfq[self.rfq.index("인계되는 도면은 참고도"):][:2000]
+        for no in sheets:
+            self.assertIn(no, clause, f"1.2 가 {no} 를 참고도로 부르지 않는다")
+        # D-501 은 fabTitleBlock 을 쓰지 않는 상세도지만 성격은 같다
+        self.assertIn("D-501", clause, "1.2 가 칼날 카세트 상세도를 부르지 않는다")
+        for no in sheets + ["D-501"]:
+            self.assertIn(no, self.rfq[self.rfq.index("참고도가 있는 것은"):][:600],
+                          f"12.2 의 부품도 물량 근거가 {no} 를 빠뜨린다")
 
     def test_the_clause_says_what_the_foundation_sheet_does_not_fix(self):
         """앵커 위치만 정한 도면을 받아 바로 타설하면 그 기초는 다시 깬다."""

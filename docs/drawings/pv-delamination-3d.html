@@ -591,6 +591,7 @@
         <button type="button" data-drawing="tandem">탠덤 셀 제작도</button>
         <button type="button" data-drawing="fork">승강 포크 제작도</button>
         <button type="button" data-drawing="winder">권취·반출 제작도</button>
+        <button type="button" data-drawing="cooler">냉각 랙 제작도</button>
         <button type="button" data-drawing="cassette">칼날 카세트 상세</button>
         <button type="button" data-drawing="compact">압축 배치</button>
         <button type="button" data-drawing="foundation">기초·앵커 배치도</button>
@@ -5605,6 +5606,153 @@
         운전 콘솔의 모델 상수에서 나오므로 단수·배치를 바꾸면 이 도면이 함께 따라온다.</p>`;
     }
 
+    /* ── M-007 유리 냉각 랙 제작도 (F-007) ────────────────────────────
+       이 시트는 F-002 를 되풀이하지 않는다. 랙 골조가 가열실과 같은 물건이기
+       때문이다 — 기둥·거싯·크로스빔·베이스·데크·볼스크류가 전부 같고, 지그도
+       검사도 예비품도 한 벌로 끝난다. 그것이 냉각 단수를 필요값(3단)보다
+       많은 5단으로 맞춘 이유였다.
+
+       그래서 여기서는 다른 것만 정한다: 껍데기가 단열벽이 아니라 필터 급기면
+       이라는 것, IR 뱅크 자리에 냉각 팬이 선다는 것, 그리고 랙 상단이 가열실보다
+       200 낮다는 것. 같은 것을 두 번 그리면 둘 중 하나만 고쳐지는 날이 온다. */
+    function coolerFabDrawing(){
+      const mm=v=>Math.round(v*1000), fmt=v=>mm(v).toLocaleString();
+      const g=CST.GC, DK=GCOOL_DECKS;
+      const TOP=cDeckZ(DK-1)+.66, ROOF=TOP+.175;
+      const HC_TOP=cDeckZ(DECKS-1)+.86;
+      const COOL=glassCoolSec(), TAKT=thermalModel(MODEL_DEFAULT).knifeLineCycle;
+      const NEED=Math.ceil(COOL/TAKT), MARGIN=(DK*TAKT/COOL-1)*100;
+      const FANZ=cDeckZ(Math.floor(DK/2)), FANS=DK+1;
+      /* ── 정면도 (좌상) 1:34 */
+      const FX=36,FY=48,S_=1/34;
+      const fx=v=>FX+(v-g.x0)*1000*S_, fz=v=>FY+(ROOF+.20-v)*1000*S_;
+      let front=`<g stroke="#1a2b30" fill="none">`;
+      front+=`<path d="M${fx(g.x0)-4} ${fz(0)}H${fx(g.x1)+4}" stroke-width="${LW.out}"/>`;
+      for(const x of [g.x0,g.x1]){
+        front+=`<rect x="${fx(x)-.17*1000*S_/2}" y="${fz(TOP)}" width="${.17*1000*S_}" height="${TOP*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+        front+=`<rect x="${fx(x)-.44*1000*S_/2}" y="${fz(.022)}" width="${.44*1000*S_}" height="${.022*1000*S_+1.2}" fill="#1a2b30"/>`;
+      }
+      front+=`<rect x="${fx(g.x0)-.05*1000*S_}" y="${fz(ROOF)}" width="${(g.w+.10)*1000*S_}" height="${.17*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      front+=`<rect x="${fx(g.x0)-.08*1000*S_}" y="${fz(.59)}" width="${(g.w+.16)*1000*S_}" height="${.17*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      // 데크 — 가열실과 같은 자리, 같은 피치
+      for(let k=0;k<DK;k++){const z=cDeckZ(k);
+        front+=`<rect x="${fx(g.cx-DECK_L/2)}" y="${fz(z)-1}" width="${DECK_L*1000*S_}" height="2" fill="#c8d2d6" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+        front+=`<text stroke="none" x="${fx(g.x0)+2}" y="${fz(z)-2}" ${FS(2.5)} fill="#5b6d74">G${k+1}</text>`;
+      }
+      // 냉각 팬 — IR 뱅크가 있던 자리를 대신한다
+      for(let k=0;k<FANS;k++){const x=g.x0+.55+k*(g.w-1.1)/DK;
+        front+=`<circle cx="${fx(x)}" cy="${fz(FANZ)}" r="${.26*1000*S_}" fill="#e7f1f4" stroke="#19788a" stroke-width="${LW.out}"/>`;
+        front+=`<path d="M${fx(x)-.18*1000*S_} ${fz(FANZ)}h${.36*1000*S_}M${fx(x)} ${fz(FANZ)-.18*1000*S_}v${.36*1000*S_}" stroke="#19788a" stroke-width="${LW.thin}"/>`;
+      }
+      front+=`</g>`;
+      front+=`<text stroke="none" x="${fx(g.cx)}" y="${fz(FANZ)+.26*1000*S_+4}" text-anchor="middle" ${FS(2.6)} fill="#0f6b78">`
+        +`냉각 팬 ×${FANS} — IR 뱅크가 있던 자리</text>`
+        +dimH(fx(g.x0),fx(g.x1),fz(0)+10,String(mm(g.w)),'±5')
+        +dimV(fz(ROOF),fz(0),fx(g.x0)-10,String(mm(ROOF)),'±5')
+        +dimV(fz(cDeckZ(0)),fz(0),fx(g.x1)+10,String(mm(cDeckZ(0))),'±2')
+        +datum(fx(g.cx-1.05),fz(0),'A',1)
+        +fcf(fx(g.cx)-13,fz(0)+22,'⏥','0.5','A');
+      /* ── 측면도 (우상) 1:34 — 급기·배기의 방향이 이 도면의 요지 */
+      const SX=150;
+      const sy=v=>SX+(v+1.40)*1000*S_;
+      let side=`<g stroke="#1a2b30" fill="none">`;
+      side+=`<path d="M${sy(-1.40)} ${fz(0)}H${sy(1.40)}" stroke-width="${LW.out}"/>`;
+      for(const y of [-1.15,1.15])
+        side+=`<rect x="${sy(y)-.17*1000*S_/2}" y="${fz(TOP)}" width="${.17*1000*S_}" height="${TOP*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      side+=`<rect x="${sy(-1.28)}" y="${fz(ROOF)}" width="${2.56*1000*S_}" height="${.17*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      // 필터 급기면(+y)과 팬(−y) — 공기가 지나가는 방향
+      side+=`<rect x="${sy(1.02)}" y="${fz(TOP-.06)}" width="${.10*1000*S_}" height="${(TOP-.06-.65)*1000*S_}" fill="#eef6f8" stroke="#19788a" stroke-width="${LW.out}"/>`;
+      side+=`<circle cx="${sy(-1.06)}" cy="${fz(FANZ)}" r="${.26*1000*S_}" fill="#e7f1f4" stroke="#19788a" stroke-width="${LW.out}"/>`;
+      for(let k=0;k<DK;k++)
+        side+=`<rect x="${sy(-DECK_W/2)}" y="${fz(cDeckZ(k))-1}" width="${DECK_W*1000*S_}" height="2" fill="#c8d2d6" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      side+=`</g>`;
+      for(let k=0;k<DK;k++)
+        side+=`<path d="M${sy(.98)} ${fz(cDeckZ(k))-3}H${sy(-.90)}" stroke="#19788a" stroke-width="${LW.thin}" stroke-dasharray="4 2" fill="none" marker-end="url(#fa)"/>`;
+      side+=`<text stroke="none" x="${sy(1.06)}" y="${fz(.65)+5}" text-anchor="middle" ${FS(2.5)} fill="#0f6b78">필터 급기면</text>`
+        +`<text stroke="none" x="${sy(-1.06)}" y="${fz(FANZ)+.26*1000*S_+4}" text-anchor="middle" ${FS(2.5)} fill="#0f6b78">팬 배기</text>`
+        +dimH(sy(-1.28),sy(1.28),fz(0)+10,String(mm(2.56)));
+      /* ── F-002 와의 차이 표 (우) */
+      const bx=252, by=52;
+      const DIFF=[
+        ['골조','기둥·거싯·크로스빔·베이스·데크·볼스크류','F-002 와 동일 — 지그·예비품 공용'],
+        ['단수',`${DK}단 (피치 ${mm(CDECK_DZ)})`,`필요 ${NEED}단 · 공용으로 ${DK}단 · 여유 ${MARGIN.toFixed(0)} %`],
+        ['랙 상단',`${mm(TOP)}`,`가열실 ${mm(HC_TOP)} 보다 ${mm(HC_TOP-TOP)} 낮다`],
+        ['벽체','폴리카보네이트 + 필터 급기면','F-002 는 4겹 단열벽 — 여기는 단열하지 않는다'],
+        ['열원 자리',`냉각 팬 ×${FANS} @ EL ${mm(FANZ)}`,`F-002 는 IR 뱅크 ×${DECKS+1}`],
+        ['계측',`표면 IR 센서 ×${DK}`,'계면 열전대는 없다 — 표면만 본다'],
+        ['에어록','없음','밀폐가 아니므로 셔터·차압이 없다'],
+        ['포크','GL-101 적입 · GU-101 인출','F-003 문형과 동일 (2기)'],
+      ];
+      let tbl=`<text stroke="none" x="${bx}" y="${by-3}" ${FS(3.4)} font-weight="700" fill="#0f1c21">F-002 가열실과의 차이</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none">`
+        +`<rect x="${bx}" y="${by}" width="153" height="${8+DIFF.length*9.4}"/>`
+        +`<path d="M${bx} ${by+8}h153"/></g>`;
+      ['항목','이 랙','가열실과 다른 점'].forEach((h,i)=>{
+        tbl+=`<text stroke="none" x="${bx+[2,22,22][i]}" y="${by+5.6}" ${FS(2.5)} font-weight="700" fill="#5b6d74">${i<2?h:''}</text>`;
+      });
+      DIFF.forEach(([a,b,c],i)=>{
+        const y=by+8+i*9.4;
+        tbl+=`<text stroke="none" x="${bx+2}" y="${y+5}" ${FS(2.5)} font-weight="700" fill="#0f1c21">${esc(a)}</text>`
+          +`<text stroke="none" x="${bx+26}" y="${y+5}" ${FS(2.4)} fill="#0f1c21">${esc(b)}</text>`
+          +`<text stroke="none" x="${bx+26}" y="${y+9}" ${FS(2.3)} fill="#5b6d74">${esc(c)}</text>`;
+      });
+      /* ── 부품란 (차이분만) */
+      const cy2=by+8+DIFF.length*9.4+12;
+      const bom=[
+        ['01','냉각 팬','축류 Ø520 · 8극','가드 그릴 포함',FANS],
+        ['02','필터 급기면','G4 프리필터 + 프레임',`${mm(g.w-.7)} × ${mm(TOP-.06-.65)}`,1],
+        ['03','측벽 폴리카보네이트','t6 · 투명','정비 가시성',2],
+        ['04','표면 IR 센서','비접촉 · 0~200 °C','단별 1점',DK],
+        ['05','랙 골조 일식','F-002 부품란 01~05 준용','—',1],
+      ];
+      let tbl2=`<text stroke="none" x="${bx}" y="${cy2-3}" ${FS(3.4)} font-weight="700" fill="#0f1c21">부품란 (차이분)</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none">`
+        +`<rect x="${bx}" y="${cy2}" width="153" height="${8+bom.length*5.6}"/>`
+        +`<path d="M${bx} ${cy2+8}h153"/></g>`;
+      ['품번','품명','규격','비고','수량'].forEach((h,i)=>{
+        tbl2+=`<text stroke="none" x="${bx+[2,12,54,104,146][i]}" y="${cy2+5.6}" ${FS(2.5)} font-weight="700" fill="#5b6d74">${h}</text>`;
+      });
+      bom.forEach((r,i)=>{
+        const y=cy2+8+(i+1)*5.6-1.7;
+        r.forEach((c,j)=>{
+          tbl2+=`<text stroke="none" x="${bx+[2,12,54,104,148][j]}" y="${y}" text-anchor="${j===4?'end':'start'}" ${FS(2.4)} fill="#0f1c21">${esc(String(c))}</text>`;
+        });
+      });
+      /* ── 주기 */
+      const notes=[
+        `냉각시간 ${COOL.toFixed(0)} s 는 유리 ${MASS_GLASS} kg/m² · 비열 ${CP_GLASS} kJ/(kg·K) · 강제공랭 h ${GCOOL_H} W/(m²·K) · 양면 노출에서 나온 값이다 (${GCOOL_T_IN} → ${GCOOL_T_OUT} °C).`,
+        `택트 ${TAKT.toFixed(1)} s 로 나누면 ${NEED}단이면 되지만 가열실과 같은 ${DK}단으로 맞췄다 — 랙 골조·포크·예비품이 한 벌로 끝난다. 여유 ${MARGIN.toFixed(0)} %.`,
+        `랙 골조는 F-002 와 같은 물건이다. 그 도면을 준용하고 여기서는 차이만 정한다 — 같은 것을 두 번 그리면 둘 중 하나만 고쳐지는 날이 온다.`,
+        `공기는 +y 필터 급기면에서 들어와 단 사이를 지나 −y 팬으로 나간다. 팬을 단마다 두지 않고 ${FANS}대를 EL ${mm(FANZ)} 한 줄에 두는 것은 자연대류가 위로 흐르기 때문이다.`,
+        `단열하지 않는다. ${GCOOL_T_OUT} °C 아래로 내리는 것이 목적이므로 벽을 막으면 반대로 간다 — 폴리카보네이트는 방호이지 단열재가 아니다.`,
+        '정하지 않는 것 — 팬 정압·단별 풍량 배분, 프리필터 교체주기, 폴리카보네이트 고정 상세는 제작사 선정 후 확정한다.',
+        '본 도면은 발주자 개념설계의 참고도이며 제작 착수 도면이 아니다 (Not For Construction).',
+      ];
+      const noteSvg=`<path d="M30 248.5h196" stroke="#7b8d94" stroke-width="${LW.thin}"/>`
+        +`<text stroke="none" x="30" y="246" ${FS(3)} font-weight="700" fill="#0f1c21">주기</text>`
+        +notes.map((n,i)=>`<text stroke="none" x="30" y="${253.5+i*4.6}" ${FS(2.55)} fill="#0f1c21">${i+1}. ${esc(n)}</text>`).join('');
+      return `<div class="drawing-stage">`+fabSheet(
+          `<text stroke="none" x="30" y="21" ${FS(5)} font-weight="800" fill="#0f1c21">M-007 · GC-101 ${DK}단 유리 냉각 랙</text>`
+        + `<text stroke="none" x="30" y="26.5" ${FS(2.8)} fill="#5b6d74">정면도 · 측면도 · F-002 와의 차이 — 치수 mm · 랙 골조는 가열실과 같은 물건이다</text>`
+        + `<text stroke="none" x="30" y="${FY-6}" ${FS(3.4)} font-weight="700" fill="#0f1c21">정면도 (1:34)</text>`
+        + `<text stroke="none" x="${SX}" y="${FY-6}" ${FS(3.4)} font-weight="700" fill="#0f1c21">측면도 (1:34) — 급기·배기</text>`
+        + front + side + tbl + tbl2 + noteSvg
+        + revBlock([
+            {rev:'0',date:'2026-09-03',desc:'개념 배치 — GC-301 캐리지 2대 교대 (REV.20)',by:'DI'},
+            {rev:'1',date:'2026-09-06',desc:`고정 ${DK}단 랙으로 정정 — F-002 골조 공용`,by:'DI'},
+          ])
+        + fabTitleBlock({no:'F-007',title:`GC-101 · ${DK}단 유리 냉각 랙`,scale:'1:34',sheet:'1 / 1',
+            material:'SS400 · 폴리카보네이트',mass:'F-002 준용',
+            tol:'ISO 2768-mK',tol2:'데크 정합 ±2 · 평면도 0.5'}))
+        + `</div>`
+        + `<p class="drawing-note"><b>이 시트는 F-002 를 되풀이하지 않는다.</b> 랙 골조가 가열실과 같은 물건이기 때문이다 — `
+        + `기둥·거싯·크로스빔·베이스·데크·볼스크류가 전부 같고, 지그도 검사도 예비품도 한 벌로 끝난다. `
+        + `그것이 냉각 단수를 필요값 ${NEED}단보다 많은 ${DK}단으로 맞춘 이유였다(여유 ${MARGIN.toFixed(0)} %). `
+        + `여기서 정하는 것은 다른 것뿐이다: 껍데기가 단열벽이 아니라 필터 급기면이라는 것, IR 뱅크 자리에 `
+        + `냉각 팬 ${FANS}대가 선다는 것, 랙 상단이 가열실보다 ${mm(HC_TOP-TOP)} 낮다는 것. `
+        + `<b>단열하지 않는다</b>는 점이 특히 중요하다 — ${GCOOL_T_OUT} °C 아래로 내리는 것이 목적이므로 벽을 막으면 `
+        + `반대로 간다. 폴리카보네이트는 방호이지 단열재가 아니다.</p>`;
+    }
     /* ── M-006 권취·롤 반출 제작도 (F-006) ────────────────────────────
        이 모듈은 도면이 두 장면을 함께 담아야 한다. 하나는 필름이 지나가는
        길(박리점 → GR-W1 → 고정 아이들러 → DN-101 댄서 → WR-101 드럼)이고,
@@ -6606,7 +6754,7 @@
     }
     function renderEngineering(){
       document.querySelectorAll('[data-drawing]').forEach(b=>b.classList.toggle('active',b.dataset.drawing===drawingTab));
-      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else if(drawingTab==='chamber')drawingContent.innerHTML=chamberFabDrawing();else if(drawingTab==='tandem')drawingContent.innerHTML=tandemFabDrawing();else if(drawingTab==='fork')drawingContent.innerHTML=forkFabDrawing();else if(drawingTab==='winder')drawingContent.innerHTML=winderFabDrawing();else if(drawingTab==='cassette')drawingContent.innerHTML=cassetteDrawing();else if(drawingTab==='compact')drawingContent.innerHTML=compactDrawing();else if(drawingTab==='foundation')drawingContent.innerHTML=foundationDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
+      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else if(drawingTab==='chamber')drawingContent.innerHTML=chamberFabDrawing();else if(drawingTab==='tandem')drawingContent.innerHTML=tandemFabDrawing();else if(drawingTab==='fork')drawingContent.innerHTML=forkFabDrawing();else if(drawingTab==='winder')drawingContent.innerHTML=winderFabDrawing();else if(drawingTab==='cooler')drawingContent.innerHTML=coolerFabDrawing();else if(drawingTab==='cassette')drawingContent.innerHTML=cassetteDrawing();else if(drawingTab==='compact')drawingContent.innerHTML=compactDrawing();else if(drawingTab==='foundation')drawingContent.innerHTML=foundationDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
       const sel=$('assemblySelect');if(sel)sel.addEventListener('change',e=>{assemblyIndex=Number(e.target.value)||0;renderEngineering()});
       drawingContent.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{drawingMode=b.dataset.mode;renderEngineering()}));
     }
