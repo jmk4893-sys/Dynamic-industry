@@ -51,12 +51,19 @@ class TestTheHeightsAboveTheRackFollowTheDeckCount(unittest.TestCase):
     # ── 유도식이 소스에 있는가 ───────────────────────────────────────
     def test_every_height_is_derived_not_written(self):
         for pattern, why in (
-            (r"function cCrownTop\(\)\{\s*const L=LC\(\),"
-             r"top=cDeckZ\(L\.decks-1\)\+\.86\+\.175\+CROWN_CLR;",
+            # 유도는 단수의 함수여야 한다 — 기초도면(D-602)이 납품 배치 단수로
+            # 같은 식을 다시 풀기 때문이다. LC() 안에 갇혀 있으면 도면이
+            # 화면에 켜 둔 배치를 따라가고, 그것은 도면이 아니라 화면이다.
+            (r"function crownTopOf\(decks\)\{\s*"
+             r"const top=cDeckZ\(decks-1\)\+\.86\+\.175\+CROWN_CLR;",
              "크라운이 랙 지붕에서 나오지 않는다"),
-            (r"const cDuctZ=\(\)=>Math\.max\(4\.70,"
-             r"Math\.ceil\(\(cCrownTop\(\)\+COPE_H\+\.20\)\*20\)/20\);",
+            (r"const cCrownTop=\(\)=>crownTopOf\(LC\(\)\.decks\);",
+             "활성 배치의 크라운이 그 식을 쓰지 않는다"),
+            (r"const ductZOf=decks=>Math\.max\(4\.70,"
+             r"Math\.ceil\(\(crownTopOf\(decks\)\+COPE_H\+\.20\)\*20\)/20\);",
              "배기 헤더가 갓돌에서 나오지 않는다"),
+            (r"const cDuctZ=\(\)=>ductZOf\(LC\(\)\.decks\);",
+             "활성 배치의 배기 헤더가 그 식을 쓰지 않는다"),
             (r"const rhMinZ=decks=>cDeckZ\(decks-1\)\+\.73\+\.09\+\.15\+\.34\+RH_CLR;",
              "모노레일 하한이 포크 두상보에서 나오지 않는다"),
             (r"const RH_Z=Math\.max\(4\.85,Math\.ceil\(rhMinZ\(DECKS\)\*20\)/20\);",

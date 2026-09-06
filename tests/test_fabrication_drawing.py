@@ -163,6 +163,121 @@ class TestTheChamberSheetIsFabricationLevel(unittest.TestCase):
                       "화면 설명문이 참고도임을 밝히지 않는다")
 
 
+class TestTheArrangementSheetIsFabricationLevel(unittest.TestCase):
+    """D-601 로는 바닥에 구멍을 못 뚫는다.
+
+    배치 일반도는 "무엇을 떼면 무엇이 남는가" 를 적은 도면이라 앵커도 레벨도
+    유틸리티 인입점도 없다. 기계 도면과 건축·설비 도면이 만나는 자리가 비어
+    있으면 그 조정은 현장에서 일어나고, 현장에서 일어난 조정은 도면에 남지
+    않는다. D-602 가 그 자리다.
+
+    여기서도 보는 것은 두 가지다 — 기초도면이 갖춰야 할 것을 담았는가,
+    그리고 그 좌표가 3D 가 기둥을 세운 상수에서 나오는가.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = CONSOLE.read_text(encoding="utf-8")
+        cls.body = _fn(cls.src, "foundationDrawing")
+        cls.flat = re.sub(r"\s+", " ", cls.body)
+
+    def test_the_sheet_is_reachable(self):
+        self.assertIn('data-drawing="foundation"', self.src, "탭이 없다")
+        self.assertIn("drawingTab==='foundation')drawingContent.innerHTML=foundationDrawing()",
+                      self.src, "탭이 시트를 그리지 않는다")
+
+    def test_it_uses_the_fabrication_frame(self):
+        """개념 시트(titleBlock)가 아니라 ISO 7200 표제란을 쓴다."""
+        for token, why in (("=fabSheet(", "A3 도면틀을 쓰지 않는다"),
+                           ("+fabTitleBlock({", "ISO 7200 표제란이 없다"),
+                           ("+revBlock([", "개정란이 없다"),
+                           ("no:'D-602'", "도면번호가 없다")):
+            # assertIn 은 실패하면 본문 전체를 덤프한다 — 시트가 커서 못 읽는다
+            self.assertTrue(token in self.body, why)
+        self.assertIn("scale:'1:80 / 1:40'", self.body, "축척이 없다")
+        self.assertIn("tol:'ISO 2768-mK'", self.body, "일반공차가 없다")
+
+    def test_the_title_block_sits_inside_the_drawing_frame(self):
+        """종전 표제란은 아래끝이 289 로 도면틀 안쪽(287) 밖이었다 — 재단선을 밟는다."""
+        self.assertIn("const TB_H=38,TB_Y=A3H-10-TB_H;", self.src,
+                      "표제란이 도면틀 아래끝에 맞춰져 있지 않다")
+        self.assertIn("const X=A3W-140,Y=TB_Y,W=130,H=TB_H;", self.src)
+        self.assertIn("Y=TB_Y-6-rows.length*6", self.src,
+                      "개정란이 표제란 위에 붙지 않는다")
+
+    def test_every_anchor_coordinate_comes_from_the_layout(self):
+        """좌표를 손으로 적으면 배치를 옮길 때 3D 만 따라오고 기초는 옛 자리에 뚫는다."""
+        for name in ("CST.HC.x0", "CST.GC.x1", "CMAST_IN", "CMAST_OUT",
+                     "CRAIL_X0", "CRAIL_X1", "CGY", "CTBL_CX", "CWFR_X",
+                     "CE_X0", "BS_SADDLE", "CKC_SADDLE", "CKC_RACK_Y",
+                     "CFENCE_YN", "FORK_HALF_STD"):
+            self.assertIn(name, self.body, f"앵커 좌표가 {name} 에서 나오지 않는다")
+        # 평면 좌표계 자체도 방책선에서 나온다
+        self.assertIn("PX=x=>33+(x-CFENCE_X0)*S", self.flat.replace(" ", ""))
+        self.assertIn("PY=y=>32+(CFENCE_Y-y)*S", self.flat.replace(" ", ""))
+
+    def test_the_levels_are_the_derivation_not_a_list_of_numbers(self):
+        """레벨은 단수의 함수다 — 단수를 바꾸면 EL 이 통째로 따라와야 한다."""
+        for name in ("cDeckZ(k)", "crownTopOf(DECKS)", "ductZOf(DECKS)",
+                     "RH_Z", "CRAIL_Z", "CG_Z", "SKIN_TOP+COPE_H", "PLINTH_TOP", "CZ"):
+            self.assertIn(name, self.body, f"레벨 {name} 가 유도되지 않는다")
+        self.assertIn("length:DECKS", self.flat.replace(" ", ""),
+                      "데크 레벨이 단수만큼 생기지 않는다")
+
+    def test_the_sheet_never_reads_the_layout_the_screen_happens_to_show(self):
+        """D-602 는 납품 배치(DG-HK60C)의 기초도면이다.
+
+        화면은 압축·트윈·Rev.20 을 오간다. 시트가 LC()·cCrownTop()·cDuctZ()·
+        cForkHalf() 같은 '활성 배치' 형태를 쓰면, 트윈을 켜 둔 채 도면을 열었을
+        때 7단 기준 EL 이 D-602 라는 이름으로 인쇄된다. 그 도면으로 바닥을
+        치면 앵커가 맞지 않는다 — 도면은 화면을 따라가면 안 된다.
+        """
+        for bad, why in (("LC()", "활성 배치 설정을 읽는다"),
+                         ("cCrownTop()", "활성 배치의 갓돌을 읽는다"),
+                         ("cDuctZ()", "활성 배치의 덕트 높이를 읽는다"),
+                         ("cForkHalf()", "활성 배치의 문형 반폭을 읽는다"),
+                         ("twinView()", "트윈 여부를 본다"),
+                         ("compactView()", "배치 상태를 본다")):
+            self.assertNotIn(bad, self.body, f"D-602 가 {why}")
+
+    def test_the_shared_foundation_is_not_counted_twice(self):
+        """RH-201 내측 기둥과 KG-101 레일 문형은 같은 자리다.
+
+        3D 가 두 함수에서 각각 기둥을 세우므로 그대로 세면 앵커가 하나 더
+        잡히고, 기초가 있지도 않은 자리에 하나 더 들어간다."""
+        self.assertIn("A7 과 기초 공용", self.body,
+                      "공용 기초가 도면에 표시되지 않는다")
+        self.assertIn("pts:grid([CRAIL_X0],[-(CFENCE_YN+.10)])", self.body,
+                      "모노레일 앵커가 아직 내측 기둥을 중복해 센다")
+
+    def test_it_does_not_pretend_to_know_the_bolt_or_the_dead_load(self):
+        """모르는 값을 적는 순간 도면이 근거를 잃는다.
+
+        앵커볼트 규격·매입깊이·연단거리와 구조 자중은 부재 단면을 알아야
+        나오는데 이 콘솔은 그것을 모른다. 적재하중만 유도해 적고 나머지는
+        구조계산으로 넘긴다고 도면에 밝혀야 한다."""
+        self.assertIn("앵커볼트 규격·매입깊이·연단거리는 구조계산 후 확정한다",
+                      self.body, "앵커볼트를 정하지 않는다는 것이 도면에 없다")
+        self.assertIn("구조 자중은 포함하지 않는다", self.body,
+                      "자중을 뺐다는 것이 도면에 없다")
+        self.assertIn("NOT FOR CONSTRUCTION", self.body,
+                      "타설 금지 표기가 없다")
+
+    def test_the_live_loads_are_derived_from_the_material_model(self):
+        """적재하중은 유도되는 것만 적는다 — 그것이 '유도치' 라는 말의 뜻이다."""
+        for name in ("ROLL_MASS", "MASS_AREAL", "MASS_GLASS", "CASS_MASS"):
+            self.assertIn(name, self.body, f"적재하중이 {name} 에서 나오지 않는다")
+        self.assertNotRegex(self.body, r"live:\s*\d+\s*[,}]",
+                            "적재하중에 손으로 적은 숫자가 있다")
+
+    def test_the_utility_entries_carry_the_electrical_derivation(self):
+        """인입점이 부하표와 갈라지면 현장에서 케이블이 안 맞는다."""
+        for name in ("LINE_V", "MAIN_AF", "MAIN_AT", "FLA", "TR_KVA"):
+            self.assertIn(name, self.body, f"인입점이 {name} 를 쓰지 않는다")
+        self.assertIn("ductZOf(DECKS)", self.body,
+                      "덕트 플랜지 레벨이 갓돌에서 나오지 않는다")
+
+
 class TestTheSpecificationAgreesAboutWhatWasHandedOver(unittest.TestCase):
     """1.2 가 '제작도면이 없다' 고 적어 두면 F-002 가 그 문장을 거짓으로 만든다."""
 
@@ -177,6 +292,19 @@ class TestTheSpecificationAgreesAboutWhatWasHandedOver(unittest.TestCase):
                          "콘솔이 제작수준 시트를 담게 되었는데 1.2 가 옛 문장으로 남아 있다")
         self.assertIn("검증·확정은 본 용역의 범위에 속한다", self.rfq,
                       "도면 확정이 용역 범위임을 여전히 밝혀야 한다")
+
+    def test_the_clause_names_every_fabrication_level_sheet(self):
+        """참고도 목록이 시트보다 짧으면, 빠진 시트는 성격이 규정되지 않은 채 나간다."""
+        console = CONSOLE.read_text(encoding="utf-8")
+        for no in ("F-002", "D-501", "D-602"):
+            self.assertIn(f"no:'{no}'", console.replace(" ", "") ,
+                          f"콘솔에 {no} 시트가 없다") if no != "D-501" else None
+            self.assertIn(no, self.rfq, f"1.2 가 {no} 를 참고도로 부르지 않는다")
+
+    def test_the_clause_says_what_the_foundation_sheet_does_not_fix(self):
+        """앵커 위치만 정한 도면을 받아 바로 타설하면 그 기초는 다시 깬다."""
+        self.assertIn("앵커볼트 규격·매입깊이·연단거리·기초 두께·배근은 정하지", self.rfq,
+                      "1.2 가 D-602 의 한계를 밝히지 않는다")
 
 
 if __name__ == "__main__":

@@ -167,8 +167,10 @@ class TestTheTwinCrossingsAreResolved(unittest.TestCase):
         # 헤더 자체도 값이 아니라 갓돌에서 나와야 한다 — 단높임 지붕이 올라가면
         # 값으로 박은 헤더는 지붕 아래로 들어가고, 챔버 분기가 공중에 뜬다.
         src = CONSOLE.read_text(encoding="utf-8")
-        self.assertIn("const cDuctZ=()=>Math.max(", src,
+        self.assertIn("const ductZOf=decks=>Math.max(", src,
                       "배기 헤더 높이가 갓돌에서 파생되지 않는다")
+        self.assertIn("const cDuctZ=()=>ductZOf(LC().decks);", src,
+                      "활성 배치의 헤더가 그 식을 쓰지 않는다")
         self.assertNotIn("const CDUCT_Z=", src, "배기 헤더가 아직 값으로 박혀 있다")
         # 그리고 본선은 EX-101 포크 두상보 위여야 한다 — 만권롤과 카세트가
         # 방책을 넘는 유일한 길이라 막히면 무인 운전이 거기서 끝난다.
@@ -338,7 +340,9 @@ class TestEachCellIsItsOwnMachine(unittest.TestCase):
     def test_the_transfer_portals_narrow_so_the_guard_fits(self):
         """통로 반폭은 셀중심 − 갠트리기둥 바깥 = 1,295 뿐이다. ±1,120 문형
         (바깥 1,195)으로는 가드 벽이 들어갈 100mm 가 남지 않는다."""
-        self.assertIn("constcForkHalf=()=>twinView()?.95:1.12", self.b)
+        self.assertIn("constcForkHalf=()=>twinView()?FORK_HALF_TWIN:FORK_HALF_STD", self.b)
+        self.assertIn("constFORK_HALF_STD=1.12,FORK_HALF_TWIN=.95", self.b,
+                      "문형 반폭이 이름 있는 상수에서 나오지 않는다")
         L = layout("HK120C")
         half, post, wall = .95, .17, .05
         aisle_half = L["celly"] - (1.42 + post / 2)

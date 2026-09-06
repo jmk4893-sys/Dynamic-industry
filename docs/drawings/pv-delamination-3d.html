@@ -590,6 +590,7 @@
         <button type="button" data-drawing="chamber">가열실 제작도</button>
         <button type="button" data-drawing="cassette">칼날 카세트 상세</button>
         <button type="button" data-drawing="compact">압축 배치</button>
+        <button type="button" data-drawing="foundation">기초·앵커 배치도</button>
         <button type="button" id="printDrawingButton">현재 도면 인쇄</button>
       </div>
       <div id="drawingContent" aria-live="polite"></div>
@@ -2763,7 +2764,8 @@
        공중에 뜨고, 그 상태가 화면에는 아무 표시도 내지 않는다. 갓돌에서
        유도한다. cCrownTop 은 아래에서 정의되므로 함수로 둔다. */
     const CDUCT_Y=1.88;
-    const cDuctZ=()=>Math.max(4.70,Math.ceil((cCrownTop()+COPE_H+.20)*20)/20);
+    const ductZOf=decks=>Math.max(4.70,Math.ceil((crownTopOf(decks)+COPE_H+.20)*20)/20);
+    const cDuctZ=()=>ductZOf(LC().decks);
     const CBJ_X=CST.UL.x1-1.0;                // 경계 인터페이스반
 
     /* ── 배치 계열 설정 ────────────────────────────────────────────────
@@ -2912,7 +2914,11 @@
       box(V(x-dir*.20,1.05*k,CZ+.86),V(.32,.30,.40),C.cab);
       label3(label,V(x,-1.34,cDeckZ(DK-1)+.41),C.teal);
     }
-    const cForkHalf=()=>twinView()?.95:1.12;
+    /* 문형 반폭. 압축은 패널 1,200 이 지나갈 자리에서 나오고, 트윈은 셀 사이
+       통로가 좁아 더 죈다. 이름을 주는 것은 기초도면이 납품 배치 값을 그대로
+       집어야 하기 때문이다 — 도면이 twinView() 를 따라가면 안 된다. */
+    const FORK_HALF_STD=1.12,FORK_HALF_TWIN=.95;
+    const cForkHalf=()=>twinView()?FORK_HALF_TWIN:FORK_HALF_STD;
     function cInfeed(){
       const g=CST.LD;
       conveyor(g.cx-.22,2.42,CZ,1.62);
@@ -3382,10 +3388,11 @@
        높이는 값이 아니라 랙 지붕에서 유도한다. 값으로 박아 두면 단수를
        바꿨을 때 크라운만 옛 높이로 남는다. */
     const CROWN_CLR=.075;                                   // 랙 지붕 위 여유
-    function cCrownTop(){
-      const L=LC(),top=cDeckZ(L.decks-1)+.86+.175+CROWN_CLR;
-      return top<=SKIN_TOP?SKIN_TOP:Math.ceil(top*20)/20;    // 50 mm 단위로 올린다
+    function crownTopOf(decks){
+      const top=cDeckZ(decks-1)+.86+.175+CROWN_CLR;
+      return top<=SKIN_TOP?SKIN_TOP:Math.ceil(top*20)/20;
     }
+    const cCrownTop=()=>crownTopOf(LC().decks);
     const cHasCrown=()=>cCrownTop()>SKIN_TOP+1e-6;
     function cEnclosure(){
       /* 외장 기준선은 Rev.20 과 같다 — 걸레받이·유리띠·리빌·갓돌. 길이만
@@ -5311,8 +5318,11 @@
     /* ISO 7200 표제란. 개념 시트의 표제란은 제목·회사·NTS·날짜뿐이었고
        축척·투상법·재질·질량·일반공차·개정·서명이 없었다. 그 여섯이 없으면
        도면을 받은 제작사가 물어볼 곳이 도면 밖이 된다. */
+    /* 표제란 아래끝은 도면틀 안쪽 아래끝(A3H−10)에 맞춘다. 종전에는 2mm 밖으로
+       나가 있어 재단선을 밟았다 — 인쇄해서 철하면 그 2mm 가 잘린다. */
+    const TB_H=38,TB_Y=A3H-10-TB_H;
     function fabTitleBlock(o){
-      const X=A3W-140,Y=A3H-46,W=130,H=38;
+      const X=A3W-140,Y=TB_Y,W=130,H=TB_H;
       const row=(dx,dy,w,h)=>`<rect x="${X+dx}" y="${Y+dy}" width="${w}" height="${h}" fill="none" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
       const lab=(dx,dy,t)=>`<text stroke="none" x="${X+dx+1.6}" y="${Y+dy+3.4}" ${FS(2.3)} fill="#5b6d74" letter-spacing=".3">${esc(t)}</text>`;
       const val=(dx,dy,t,fs=3.6,w=700)=>`<text stroke="none" x="${X+dx+1.6}" y="${Y+dy+8.6}" ${FS(fs)} font-weight="${w}" fill="#0f1c21">${esc(t)}</text>`;
@@ -5338,7 +5348,7 @@
     /* 개정란 — 어느 개정에서 무엇이 바뀌었는지. 도면번호만 같고 내용이
        달라진 도면 두 장이 현장에 돌면 그때부터 아무도 믿지 않는다. */
     function revBlock(rows){
-      const X=A3W-140,Y=A3H-46-6-rows.length*6,W=130;
+      const X=A3W-140,Y=TB_Y-6-rows.length*6,W=130;
       let out=`<g font-family="Arial,'Noto Sans KR',sans-serif">`
         +`<rect x="${X}" y="${Y}" width="${W}" height="${6+rows.length*6}" fill="#fff" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
       ['REV','DATE','DESCRIPTION','BY'].forEach((h,i)=>{
@@ -5428,7 +5438,8 @@
       const H=mm(HC_Z+.94), decks=DECKS, banks=DECKS+1;
       const chamberL=5600;
       /* ── 정면도 (좌상) — 단면으로 자른다. 외피만 그리면 벽 구성이 안 보인다 */
-      const FX=30,FY=40,FS_=.0225;                // 1:44 — 좌열 폭 126 mm 에 맞춘다
+      const FX=36,FY=40,FS_=.0225;                // 1:44 — 좌열 폭 126 mm 에 맞춘다
+      /* FX 는 30 이었는데 그러면 치수 문자(fx(0)−11)가 도면틀 왼쪽 20 을 뚫는다. */
       const fx=v=>FX+v*FS_, fy=v=>FY+(H-v)*FS_;
       let front=`<g stroke="#1a2b30" fill="none">`;
       // 벽체 4겹 — 내피 SUS304 2t / 미네랄울 100 / 반사공기층 25 / 외피 SS400 3.2t
@@ -5475,7 +5486,8 @@
           +`<text stroke="none" x="${DX}" y="${DY-5}" ${FS(3.4)} font-weight="700" fill="#0f1c21">상세 A — 벽체 구성 (1:2.4)</text>`
           +`<text stroke="none" x="${DX}" y="${DY+130.2*DS+7}" ${FS(2.6)} fill="#5b6d74">열교 차단 스페이서 @600 · 외피 표면온도 ≤ 45 °C @주위 25 °C</text>`;
       /* ── 평면도 (좌하) */
-      const PX=30,PY=170,PS=.0225;
+      /* 정면도와 같은 이유로 36 이다 — 30 이면 폭 치수 문자가 도면틀을 뚫는다. */
+      const PX=36,PY=170,PS=.0225;
       const px=v=>PX+v*PS, py=v=>PY+v*PS;
       let plan=`<g stroke="#1a2b30" fill="none">`
         +`<rect x="${px(0)}" y="${py(0)}" width="${chamberL*PS}" height="${W*PS}" stroke-width="${LW.out}"/>`
@@ -5631,6 +5643,264 @@
       +`냉각 시간은 강제공랭 h=${CASS_HCONV} W/(m²·K) 가정에서 나온 값이라 FAT 에서 실측해 확정한다.</p>`;
     }
 
+    /* ── D-602 기초·앵커·유틸리티 배치도 ────────────────────────────────
+       D-601 은 "무엇을 떼면 무엇이 남는가" 를 적은 배치 일반도다. 그 도면으로는
+       바닥에 구멍을 못 뚫는다 — 앵커가 어디에 몇 개 박히는지, 바닥에서 몇 mm
+       위가 공정선인지, 전기와 공기가 어느 자리로 들어오는지가 없기 때문이다.
+       기계 도면과 건축·설비 도면이 만나는 곳이 이 한 장이고, 없으면 그 조정이
+       현장에서 일어난다.
+
+       앵커 위치는 3D 가 기둥을 세운 바로 그 좌표에서 나온다. 베이스플레이트
+       크기도 같은 자리의 plate 값이다 — 도면에 손으로 적으면 배치를 옮길 때
+       3D 만 따라오고 기초도면은 옛 좌표에 구멍을 뚫는다.
+
+       적재하중은 유도되는 것만 적는다. 만권 롤 357kg 은 백시트 두께와 장수에서
+       나오고, 랙 적재는 패널 면적질량 × 단수에서 나온다. 구조 자중은 이 콘솔이
+       모르는 값이라 비워 두고 구조계산으로 넘긴다 — 모르는 것을 적는 순간
+       도면이 근거를 잃는다. */
+    function foundationDrawing(){
+      const mm=v=>Math.round(v*1000), fmt=v=>mm(v).toLocaleString();
+      const S=12.5;                                   // 1:80 — 1 m = 12.5 mm
+      const PX=x=>33+(x-CFENCE_X0)*S, PY=y=>32+(CFENCE_Y-y)*S;
+      const LEV=1000/40;                              // 레벨도 1:40
+      const LZ=z=>175-z*LEV;
+      const TOT=compactLength(), HALF=FORK_HALF_STD;
+      const PANEL_KG=MASS_AREAL*PANEL_L*PANEL_W;      // 28.2 kg/장
+      const GLASS_KG=MASS_GLASS*PANEL_L*PANEL_W;
+      const grid=(xs,ys)=>{const o=[];for(const x of xs)for(const y of ys)o.push([x,y]);return o};
+      /* 앵커군 — 3D 가 기둥을 세운 좌표 그대로. plate 는 그 자리의 베이스플레이트. */
+      const GROUPS=[
+        {id:'A1',eq:`HC-101 ${DECKS}단 가열실 랙`,pts:grid([CST.HC.x0,CST.HC.x1],[-1.15,1.15]),plate:.44,bo:[-6,-7],
+         live:DECKS*PANEL_KG,note:`${DECKS}단 적재 · 크라운 EL +${fmt(crownTopOf(DECKS))}`},
+        {id:'A2',eq:`GC-101 ${GCOOL_DECKS}단 냉각 랙`,pts:grid([CST.GC.x0,CST.GC.x1],[-1.15,1.15]),plate:.44,bo:[-6,-7],
+         live:GCOOL_DECKS*GLASS_KG,note:'강제공랭 · 급기 필터면 +y'},
+        {id:'A3',eq:'LI-101 투입 승강 포크',pts:grid([CMAST_IN],[-HALF,HALF]),plate:.40,bo:[-8,7],
+         live:PANEL_KG,note:'서보 승강 — 수평반력이 지배한다'},
+        {id:'A4',eq:'EX-101 방출 승강 포크',pts:grid([CMAST_OUT],[-HALF,HALF]),plate:.40,bo:[-8,7],
+         live:PANEL_KG,note:`${T_TARGET}°C 패널 · 좌동`},
+        {id:'A5',eq:'GL-101 유리 적입 포크',pts:grid([CST.DL.x1+.08],[-HALF,HALF]),plate:.40,bo:[8,7],
+         live:GLASS_KG,note:'냉각 랙 적입'},
+        {id:'A6',eq:'GU-101 유리 인출 포크',pts:grid([CST.GC.x1+.34],[-HALF,HALF]),plate:.40,bo:[8,7],
+         live:GLASS_KG,note:'반출 셔틀 인계'},
+        {id:'A7',eq:'KG-101 갠트리 주행레일 문형',pts:grid([CRAIL_X0,CRAIL_X1],[-CGY,CGY]),plate:.44,bo:[-7,-9],
+         live:null,note:`레일 EL +${fmt(CRAIL_Z)} · 55↔700 mm/s 왕복 관성`},
+        {id:'A8',eq:'VT-101 고정 진공테이블',pts:grid([CTBL_CX-1.25,CTBL_CX+1.25],[-.62,.62]),plate:.32,bo:[3,-10],
+         live:PANEL_KG,note:'박리 추력 13.37 kN 을 이 넷이 받는다'},
+        {id:'A9',eq:'WR-101 권취 지지 문형',pts:grid([CWFR_X],[-1.30,1.30]),plate:.32,bo:[-15,-2],
+         live:ROLL_MASS,note:`만권 Ø${mm(2*WR_FULL_R)} · 드럼 EL +${fmt(CDRUM.z)}`},
+                /* 내측 단부는 갠트리 레일 문형(A7)과 같은 x·y 에 선다 — 실제로는 한 기둥이
+           둘을 받으므로 앵커를 두 번 세면 기초가 두 배로 잡힌다. */
+        {id:'A10',eq:'RH-201 모노레일 방책측 기둥',pts:grid([CRAIL_X0],[-(CFENCE_YN+.10)]),plate:.44,bo:[-9,0],
+         live:ROLL_MASS,note:`레일 EL +${fmt(RH_Z)} · 내측 단부는 A7 과 기초 공용`},
+        {id:'A11',eq:'CE-201 횡인출 컨베이어',pts:grid([CE_X0+.10,CE_X1-.10],[CE_Y0-.30,CE_Y1+.46]),plate:.28,bo:[-5,9],
+         live:(MASS_EVA+MASS_CELL)*PANEL_L*PANEL_W,note:`적층체 ${mm(PANEL_L)}×${mm(PANEL_W)} 통째`},
+        {id:'A12',eq:'BS-301 롤 보관 새들',pts:grid([BS_SADDLE.x-.42,BS_SADDLE.x+.42],
+          [BS_SADDLE.y-ROLL_FACE/2+.16,BS_SADDLE.y+ROLL_FACE/2-.16]),plate:.26,bo:[-10,0],
+         live:ROLL_MASS,note:'방책 밖 — 무인 운전 중 사람이 닿는 유일한 자리'},
+        {id:'A13',eq:'KC-301 카세트 보관 새들',pts:grid([CKC_SADDLE.x-.30,CKC_SADDLE.x+.30],
+          [CKC_RACK_Y-CASS_L/2+.14,CKC_RACK_Y+CASS_L/2-.14]),plate:.24,bo:[-10,0],
+         live:CKC_POCKETS*CASS_MASS,note:`카세트 ${CKC_POCKETS}벌 × ${CASS_MASS} kg · 방책 밖`},
+        {id:'A14',eq:'QI-301 검사 아치',pts:grid([CST.UL.x0+.36],[-1.02,1.02]),plate:.32,bo:[8,-8],
+         live:null,note:'상하 비전·투과조명 — 진동 격리 필요'},
+      ];
+      const PADS=[
+        {id:'P1',eq:'PLC-101 + HMI 반',x:CST.HC.x0+.6,y:-2.88,w:1.60,d:.86,
+         note:`데이터플레이트 · ${LINE_V}V 3P4W · FLA ${Math.round(FLA)} A`},
+        {id:'P2',eq:'VU-101 진공·계장공기 스키드',x:CST.GC.x0+.5,y:-2.90,w:1.50,d:.86,
+         note:'진공펌프 A/B · 어큐뮬레이터 — 방진 패드'},
+        {id:'P3',eq:'BJ-101/102 경계 인터페이스반',x:CBJ_X,y:-2.62,w:1.50,d:1.00,
+         note:'발주자 설비와의 배선·안전회로 경계'},
+      ];
+      /* 유틸리티 인입점. 전부 −y 정비통로 쪽이다 — 반출은 그쪽으로 나가고
+         사람도 그쪽에서 접근하므로, 인입을 +y 로 내면 배관이 라인을 넘는다. */
+      const EPS=[
+        {id:'EP-1',x:CST.HC.x0+.6,y:-3.55,t:`동력 ${LINE_V}V 3Φ4W · ${MAIN_AF}AF/${MAIN_AT}AT`,
+         d:`FLA ${Math.round(FLA)} A · TR ${TR_KVA} kVA · 바닥 트렌치`},
+        {id:'EP-2',x:CST.HC.x0+1.5,y:-3.55,t:'제어·통신 (PROFINET Ring)',d:'동력 트레이와 분리 포설'},
+        {id:'EP-3',x:CST.GC.x0+.5,y:-3.62,t:'계장공기 · 진공 배관',d:'VU-101 스키드 하부'},
+        {id:'EP-4',x:CBJ_X,y:-3.35,t:'경계 안전회로 (2CH OSSD)',d:'BJ-102 — 경계 너머까지 성립'},
+        {id:'EP-5',x:CFENCE_X1-.52,y:CDUCT_Y,t:`배기 덕트 플랜지 Ø600 · EL +${fmt(ductZOf(DECKS))}`,
+         d:'천장 인출 — 바닥 인입 아님'},
+        {id:'EP-6',x:1.20,y:-3.90,t:'접지 PE 50×6t Cu 등전위 그리드',d:'전 기초 앵커 본딩'},
+      ];
+      /* ── ① 기초·앵커 평면 ─────────────────────────────────────── */
+      let plan=`<text stroke="none" x="33" y="15" ${FS(4.2)} font-weight="700" fill="#0f1c21">`
+        +`① 기초·앵커 평면 — 축척 1:80 · 좌표는 기계 통심(X0 · YC) 기준</text>`;
+      // 방책 (계단 없음 — 납품 배치는 −y 만 넓다)
+      plan+=`<rect x="${PX(CFENCE_X0)}" y="${PY(CFENCE_Y)}" width="${(CFENCE_X1-CFENCE_X0)*S}"`
+        +` height="${(CFENCE_Y+CFENCE_YN)*S}" fill="none" stroke="#8b9ba4" stroke-width="${LW.thin}" stroke-dasharray="4 2"/>`;
+      // 외장 윤곽
+      plan+=`<rect x="${PX(CSKIN_X0)}" y="${PY(CSKIN_Y)}" width="${(CSKIN_X1-CSKIN_X0)*S}"`
+        +` height="${2*CSKIN_Y*S}" fill="#f5f7f8" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      // 스테이션 경계와 이름
+      for(const k of ['LD','HC','DL','GC','UL']){const g=CST[k];
+        plan+=`<rect x="${PX(g.x0)}" y="${PY(1.30)}" width="${g.w*S}" height="${2.60*S}"`
+          +` fill="none" stroke="#7b8d94" stroke-width="${LW.thin}" stroke-dasharray="3 1.5"/>`
+          +`<text stroke="none" x="${PX(g.cx)}" y="${PY(1.30)-1.4}" text-anchor="middle" ${FS(2.6)} fill="#5b6d74">${k}-101</text>`;
+      }
+      // 그리드 통심 — X 는 스테이션 경계, Y 는 방책·외장·통심
+      const GX=[[0,'X1'],[CST.HC.x0,'X2'],[CST.DL.x0,'X3'],[CST.GC.x0,'X4'],[CST.UL.x0,'X5'],[TOT,'X6']];
+      const GY=[[CFENCE_Y,'YE'],[CSKIN_Y,'YD'],[0,'YC'],[-CSKIN_Y,'YB'],[-CFENCE_YN,'YA'],[CKC_RACK_Y,'YF']];
+      for(const [x,t] of GX){
+        plan+=ctrLine(PX(x),PY(CFENCE_Y)-6,PX(x),PY(CKC_RACK_Y)-4)
+          +`<circle cx="${PX(x)}" cy="${PY(CFENCE_Y)-11}" r="3.4" fill="#fff" stroke="#1a2b30" stroke-width="${LW.thin}"/>`
+          +`<text stroke="none" x="${PX(x)}" y="${PY(CFENCE_Y)-9.8}" text-anchor="middle" ${FS(2.8)} font-weight="700" fill="#1a2b30">${t}</text>`;
+      }
+      for(const [y,t] of GY){
+        plan+=ctrLine(PX(CFENCE_X0)-5.4,PY(y),PX(CFENCE_X1)+4,PY(y))
+          +`<circle cx="${PX(CFENCE_X0)-9}" cy="${PY(y)}" r="3.4" fill="#fff" stroke="#1a2b30" stroke-width="${LW.thin}"/>`
+          +`<text stroke="none" x="${PX(CFENCE_X0)-9}" y="${PY(y)+1.1}" text-anchor="middle" ${FS(2.8)} font-weight="700" fill="#1a2b30">${t}</text>`;
+      }
+      // 앵커군
+      GROUPS.forEach(g=>{
+        for(const [x,y] of g.pts){
+          const w=g.plate*S;
+          plan+=`<rect x="${PX(x)-w/2}" y="${PY(y)-w/2}" width="${w}" height="${w}"`
+            +` fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.out}"/>`
+            +`<path d="M${PX(x)-1.4} ${PY(y)}h2.8M${PX(x)} ${PY(y)-1.4}v2.8" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+        }
+        /* 풍선은 군마다 다른 쪽으로 뺀다 — 같은 오프셋을 쓰면 x 가 가까운
+           여섯 군(A7·A9·A10·A11·A12·A13)이 한 덩어리로 뭉쳐 못 읽는다. */
+        const [ax,ay]=g.pts[0],[bx,by]=g.bo,cx=PX(ax)+bx,cy=PY(ay)+by;
+        const len=Math.hypot(bx,by);
+        plan+=`<path d="M${cx-bx/len*3.6} ${cy-by/len*3.6}L${PX(ax)} ${PY(ay)}"`
+          +` stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"/>`
+          +balloon(cx,cy,g.id.slice(1));
+      });
+      // 기초 패드
+      PADS.forEach(p=>{
+        plan+=`<rect x="${PX(p.x-p.w/2)}" y="${PY(p.y+p.d/2)}" width="${p.w*S}" height="${p.d*S}"`
+          +` fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`
+          +`<text stroke="none" x="${PX(p.x)}" y="${PY(p.y-p.d/2)+3.4}" text-anchor="middle" ${FS(2.4)} fill="#1a2b30">${p.id}</text>`;
+      });
+      // 방책 밖 보관열 — 앵커만 찍혀 있으면 그 넷이 무엇을 받는지 도면에 없다
+      /* 이름표는 상자마다 빈 쪽으로 낸다. 오른쪽으로 통일하면 CS-201 이름표가
+         VU-101 기초 패드(P2) 해치 위에 얹히고, KC-301 것은 YF 통심선을 밟는다. */
+      for(const [cx,cy,w,d,t,right] of [
+        [BS_SADDLE.x,BS_SADDLE.y,1.30,ROLL_FACE,`BS-301 만권롤 Ø${mm(2*WR_FULL_R)}`,1],
+        [CKC_SADDLE.x,CKC_RACK_Y,1.10,CASS_L,`KC-301 카세트 ${CKC_POCKETS}벌`,1],
+        [CSCART.x,CSCART.y,CSCART_L,CSCART_W,`CS-201 평적 카트 (이동)`,0]]){
+        plan+=`<rect x="${PX(cx-w/2)}" y="${PY(cy+d/2)}" width="${w*S}" height="${d*S}"`
+          +` fill="none" stroke="#7b8d94" stroke-width="${LW.hid}" stroke-dasharray="3 1.5"/>`
+          +`<text stroke="none" x="${right?PX(cx+w/2)+2:PX(cx-w/2)-2}" y="${PY(cy)+1}"`
+          +` text-anchor="${right?'start':'end'}" ${FS(2.5)} fill="#5b6d74">${esc(t)}</text>`;
+      }
+      // 유틸리티 인입점 — 삼각형 마크
+      EPS.forEach(e=>{
+        plan+=`<path d="M${PX(e.x)} ${PY(e.y)-3}l-2.6 4.6h5.2z" fill="#c8791a" stroke="#7c4a06" stroke-width="${LW.thin}"/>`
+          +`<text stroke="none" x="${PX(e.x)}" y="${PY(e.y)+5.4}" text-anchor="middle" ${FS(2.4)} font-weight="700" fill="#7c4a06">${e.id}</text>`;
+      });
+      // 반입·설치 경로 — 분할면 TP-1/TP-2 와 −y 통로
+      /* 경로선은 방책 밖 −y 를 따라 지난다. 이름표는 그 선 위가 아니라 도면
+         아래 빈 띠에 두고 지시선으로 잇는다 — 선 위에 얹으면 EP-1·EP-2·EP-4
+         인입점 이름표와 같은 줄을 쓴다. */
+      const routeY=-(CFENCE_YN+.55), routePY=PY(routeY);
+      const legX=PX(CFENCE_X0)+6, legY=PY(CKC_RACK_Y)-6;
+      plan+=`<path d="M${PX(CFENCE_X0)-4} ${routePY}H${PX(CFENCE_X1)+2}" stroke="#1f6b47"`
+        +` stroke-width="${LW.hid}" stroke-dasharray="7 3" fill="none" marker-end="url(#fa)"/>`
+        +`<path d="M${legX+2} ${legY-3.4}V${routePY}" stroke="#1f6b47" stroke-width="${LW.thin}" fill="none"/>`
+        +`<text stroke="none" x="${legX}" y="${legY}" ${FS(2.6)} fill="#1f6b47">`
+        +`반입·설치 경로 — 방책 밖 ${fmt(CFENCE_YN-CSKIN_Y)} 통로`
+        +`<tspan x="${legX}" dy="4">분할 모듈 최대폭 ${fmt(2*CSKIN_Y)} — TP-1 · TP-2 에서 나뉘어 들어온다</tspan></text>`;
+      for(const [x,t] of [[CST.HC.x1+.15,'TP-1'],[CST.DL.x1+.15,'TP-2']])
+        plan+=`<path d="M${PX(x)} ${PY(CSKIN_Y)}V${PY(-CSKIN_Y)}" stroke="#c8791a" stroke-width="${LW.hid}" stroke-dasharray="2 1.4" fill="none"/>`
+          +`<text stroke="none" x="${PX(x)}" y="${PY(CSKIN_Y)-1.4}" text-anchor="middle" ${FS(2.4)} fill="#7c4a06">${t}</text>`;
+      // 치수
+      const dy=PY(CKC_RACK_Y-CASS_L/2)+15;
+      plan+=dimH(PX(0),PX(TOT),dy,fmt(TOT),'±10')
+        +dimH(PX(0),PX(CST.HC.x0),dy-8,fmt(CST.HC.x0))
+        +dimH(PX(CST.HC.x0),PX(CST.DL.x0),dy-8,fmt(CST.DL.x0-CST.HC.x0))
+        +dimH(PX(CST.DL.x0),PX(CST.GC.x0),dy-8,fmt(CST.GC.x0-CST.DL.x0))
+        +dimH(PX(CST.GC.x0),PX(CST.UL.x0),dy-8,fmt(CST.UL.x0-CST.GC.x0))
+        +dimH(PX(CST.UL.x0),PX(TOT),dy-8,fmt(TOT-CST.UL.x0))
+        +dimV(PY(CFENCE_Y),PY(-CFENCE_YN),PX(CFENCE_X1)+6,fmt(CFENCE_Y+CFENCE_YN))
+        +dimV(PY(0),PY(CKC_RACK_Y),PX(CFENCE_X1)+15,fmt(-CKC_RACK_Y));
+      plan+=datum(PX(0),PY(-CSKIN_Y)+1,'A',1)+datum(PX(CFENCE_X0)+3,PY(0),'B',-1);
+      /* ── ② 레벨 계획 ─────────────────────────────────────────── */
+      const LX=308;
+      const levels=[[0,'FL','마감 바닥 = 앵커 기준면'],
+        [PLINTH_TOP,'','걸레받이 상단'],
+        [CZ,'','공정 기준선 (5 스테이션 공통)'],
+        ...Array.from({length:DECKS},(_,k)=>[cDeckZ(k),'',`C${k+1} / G${k+1} 데크`]),
+        [CRAIL_Z,'','KG-101 주행레일'],
+        [CG_Z,'','셀 가드 상단'],
+        [SKIN_TOP+COPE_H,'','외장 갓돌'],
+        [crownTopOf(DECKS),'','랙 갓돌 (단높임)'],
+        [ductZOf(DECKS),'','배기 헤더 중심'],
+        [RH_Z,'','RH-201 모노레일']]
+        .sort((a,b)=>b[0]-a[0]);
+      let lev=`<text stroke="none" x="${LX}" y="24" ${FS(4.2)} font-weight="700" fill="#0f1c21">② 레벨 계획 (1:40)</text>`
+        +`<path d="M${LX} ${LZ(0)}H${LX+34}" stroke="#1a2b30" stroke-width="${LW.out}" fill="none"/>`
+        +`<path d="M${LX+2} ${LZ(RH_Z)-4}V${LZ(0)}" stroke="#7b8d94" stroke-width="${LW.ctr}" stroke-dasharray="6 1.6 1 1.6" fill="none"/>`;
+      const step=(175-42)/(levels.length-1);
+      levels.forEach(([z,,t],i)=>{
+        const ty=42+i*step;
+        lev+=`<path d="M${LX} ${LZ(z)}H${LX+30}" stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"/>`
+          +`<path d="M${LX+30} ${LZ(z)}L${LX+38} ${ty}h4" stroke="#5b6d74" stroke-width="${LW.thin}" fill="none"/>`
+          +`<path d="M${LX+0} ${LZ(z)}l2.2 -3.2l-4.4 0z" fill="#1a2b30"/>`
+          +`<text stroke="none" x="${LX+43}" y="${ty+1}" ${FS(2.9)} font-weight="700" fill="#0f1c21">EL +${fmt(z)}</text>`
+          +`<text stroke="none" x="${LX+68}" y="${ty+1}" ${FS(2.5)} fill="#5b6d74">${esc(t)}</text>`;
+      });
+      lev+=`<text stroke="none" x="${LX}" y="184" ${FS(2.5)} fill="#5b6d74">`
+        +`레벨은 전부 CDECK_Z0 ${fmt(CDECK_Z0)} · 피치 ${fmt(CDECK_DZ)} · 단수 ${DECKS} 에서 유도한다.</text>`
+        +`<text stroke="none" x="${LX}" y="189" ${FS(2.5)} fill="#5b6d74">`
+        +`바닥 평탄도는 앵커 기준면 기준 — 건축 마감과 별도로 확인한다.</text>`;
+      /* ── ③ 범례 ──────────────────────────────────────────────── */
+      let leg=`<text stroke="none" x="26" y="196" ${FS(4.2)} font-weight="700" fill="#0f1c21">③ 범례와 유틸리티 인입점</text>`;
+      leg+=`<rect x="26" y="200" width="9" height="9" fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.out}"/>`
+        +`<text stroke="none" x="38" y="206.4" ${FS(2.8)} fill="#1a2b30">앵커 베이스플레이트 (④ 스케줄 참조)</text>`
+        +`<rect x="26" y="212" width="9" height="9" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`
+        +`<text stroke="none" x="38" y="218.4" ${FS(2.8)} fill="#1a2b30">기초 패드 — 반·스키드 (P1~P3)</text>`
+        +`<path d="M30.5 224l-2.6 4.6h5.2z" fill="#c8791a" stroke="#7c4a06" stroke-width="${LW.thin}"/>`
+        +`<text stroke="none" x="38" y="230.4" ${FS(2.8)} fill="#1a2b30">유틸리티 인입점</text>`
+        +`<path d="M26 236H35" stroke="#1f6b47" stroke-width="${LW.hid}" stroke-dasharray="7 3" fill="none"/>`
+        +`<text stroke="none" x="38" y="238.4" ${FS(2.8)} fill="#1a2b30">반입·설치 경로</text>`;
+      EPS.forEach((e,i)=>{
+        const cx=120+Math.floor(i/3)*78, cy=204+(i%3)*12;
+        leg+=`<text stroke="none" x="${cx}" y="${cy}" ${FS(2.8)} font-weight="700" fill="#7c4a06">${e.id}</text>`
+          +`<text stroke="none" x="${cx+13}" y="${cy}" ${FS(2.6)} fill="#1a2b30">${esc(e.t)}</text>`
+          +`<text stroke="none" x="${cx+13}" y="${cy+4.4}" ${FS(2.3)} fill="#5b6d74">${esc(e.d)}</text>`;
+      });
+      const notes=['앵커볼트 규격·매입깊이·연단거리는 구조계산 후 확정한다 — 이 도면은 위치와 베이스플레이트만 정한다.',
+        '적재하중은 유도치이며 구조 자중은 포함하지 않는다. 진공 추력 13.37 kN 은 A8 이 받는다.',
+        '바닥은 전 앵커를 PE 50×6t Cu 로 등전위 본딩한다 (EP-6).',
+        'NOT FOR CONSTRUCTION — 상세설계 확정 전 제작·타설 금지.'];
+      let note=`<text stroke="none" x="26" y="246" ${FS(2.5)} fill="#5b6d74">`
+        +notes.map((t,i)=>`<tspan x="26" dy="${i?4.2:0}">${i+1}. ${esc(t)}</tspan>`).join('')+`</text>`;
+      const svg=fabSheet(plan+lev+leg+note
+        +revBlock([{rev:'A',date:'2026-09-06',desc:'최초 발행 — 기초·앵커·레벨·유틸리티 인입',by:'DI'}])
+        +fabTitleBlock({no:'D-602',title:'DG-HK60C 기초·앵커·유틸리티 배치도',
+          scale:'1:80 / 1:40',sheet:'1 / 1',
+          material:'기초 콘크리트 — 구조계산 확정',
+          mass:`앵커 ${GROUPS.reduce((a,g)=>a+g.pts.length,0)}점 · 패드 ${PADS.length}개소`,
+          tol:'ISO 2768-mK',tol2:`앵커 위치 ±10 · 레벨 ±5`}));
+      const rows=GROUPS.map(g=>`<tr><td>${esc(g.id)}</td><td>${esc(g.eq)}</td>`
+        +`<td>${g.pts.length}</td><td>${mm(g.plate)} □</td>`
+        +`<td>${g.live!=null?g.live.toFixed(0)+' kg':'—'}</td><td>${esc(g.note)}</td></tr>`).join('')
+        +PADS.map(p=>`<tr><td>${esc(p.id)}</td><td>${esc(p.eq)}</td><td>패드</td>`
+        +`<td>${mm(p.w)} × ${mm(p.d)}</td><td>—</td><td>${esc(p.note)}</td></tr>`).join('')
+        +`<tr><th>합계</th><th>앵커군 ${GROUPS.length} · 패드 ${PADS.length}</th>`
+        +`<th>${GROUPS.reduce((a,g)=>a+g.pts.length,0)}점</th><th>—</th>`
+        +`<th>${GROUPS.reduce((a,g)=>a+(g.live||0),0).toFixed(0)} kg</th><th>자중 구조계산 별도</th></tr>`;
+      return `<div class="drawing-kpi">`
+        +`<div><span>기계 전장 × 방책폭</span><strong>${fmt(TOT)} × ${fmt(CFENCE_Y+CFENCE_YN)} mm</strong></div>`
+        +`<div><span>앵커</span><strong>${GROUPS.reduce((a,g)=>a+g.pts.length,0)}점 · ${GROUPS.length}군</strong></div>`
+        +`<div><span>최고 레벨</span><strong>EL +${fmt(Math.max(RH_Z,ductZOf(DECKS)))}</strong></div>`
+        +`<div><span>유틸리티 인입</span><strong>${EPS.length}개소</strong></div></div>`
+        +`<div class="wire-legend"><span style="--wire:#1a2b30">앵커·기초</span>`
+        +`<span style="--wire:#c8791a">유틸리티 인입</span><span style="--wire:#1f6b47">반입 경로</span>`
+        +`<span style="--wire:#8b9ba4">그리드 통심</span></div>`
+        +`<div class="drawing-stage">${svg}</div>`
+        +`<table class="bom-table"><thead><tr><th>기호</th><th>설비</th><th>앵커</th>`
+        +`<th>베이스플레이트 mm</th><th>적재하중</th><th>비고</th></tr></thead><tbody>${rows}</tbody></table>`
+        +`<p class="drawing-note"><b>이 도면이 정하는 것과 정하지 않는 것.</b> 앵커 좌표·베이스플레이트·레벨·`
+        +`유틸리티 인입점은 여기서 확정한다 — 전부 3D 모델이 기둥을 세운 그 좌표에서 나오므로 배치가 바뀌면 `
+        +`도면도 같이 바뀐다. 반대로 <b>앵커볼트 규격·매입깊이·연단거리·기초 두께·배근은 정하지 않는다</b>. `
+        +`그 넷은 구조 자중을 알아야 나오는데 이 콘솔은 부재 단면을 모른다. 표의 적재하중은 유도되는 것만 적었다 — `
+        +`만권 롤 ${ROLL_MASS.toFixed(0)} kg 은 백시트 ${(BACKSHEET_T*1000).toFixed(2)} mm 와 ${ROLL_FULL_PANELS}장에서, `
+        +`랙 적재는 면적질량 ${MASS_AREAL.toFixed(2)} kg/m² × ${(PANEL_L*PANEL_W).toFixed(2)} m² × 단수에서 나온다. `
+        +`모르는 값을 적는 순간 도면이 근거를 잃으므로 자중은 비워 두고 구조계산으로 넘긴다.</p>`;
+    }
     /* ── D-601 DG-HK60C 압축 배치 ─────────────────────────────────────────
        발주자가 지금 쓰는 기계가 5 m 인데 이 설계는 53 m 였다. 그 길이를 무엇이
        만들었는지, 무엇을 떼면 무엇이 남는지를 한 장에 적는다. 세 가지를 본다:
@@ -5771,7 +6041,7 @@
     }
     function renderEngineering(){
       document.querySelectorAll('[data-drawing]').forEach(b=>b.classList.toggle('active',b.dataset.drawing===drawingTab));
-      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else if(drawingTab==='chamber')drawingContent.innerHTML=chamberFabDrawing();else if(drawingTab==='cassette')drawingContent.innerHTML=cassetteDrawing();else if(drawingTab==='compact')drawingContent.innerHTML=compactDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
+      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else if(drawingTab==='chamber')drawingContent.innerHTML=chamberFabDrawing();else if(drawingTab==='cassette')drawingContent.innerHTML=cassetteDrawing();else if(drawingTab==='compact')drawingContent.innerHTML=compactDrawing();else if(drawingTab==='foundation')drawingContent.innerHTML=foundationDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
       const sel=$('assemblySelect');if(sel)sel.addEventListener('change',e=>{assemblyIndex=Number(e.target.value)||0;renderEngineering()});
       drawingContent.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{drawingMode=b.dataset.mode;renderEngineering()}));
     }
