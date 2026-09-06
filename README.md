@@ -38,6 +38,7 @@ Dynamic industry Development
 | [docs/dg-hk60-rfq.html](docs/dg-hk60-rfq.html) | **DG-HK60 상세설계 기술사양서 (RFQ)** — 상세설계 용역 발주용. 요구성능·설계기준·기계/전기/안전 요구사항·납품물·FAT/SAT·입찰자 확인사항 10건 (브라우저로 열 것, A4 인쇄 가능) |
 | [docs/dg-hk60-fab-spec.html](docs/dg-hk60-fab-spec.html) | **DG-HK60C 제작 지침서 (FAB-001)** — 볼트 등급·체결력·조임토크, 용접 각장, 부재 판두께·재질, 기초 앵커 매입깊이·연단거리를 하중에서 유도한 문서. 접합부 12개소·부재 27종·앵커 7개소·ITP 14단계 (브라우저로 열 것, A4 인쇄 가능) |
 | [docs/dg-hk60-assembly.html](docs/dg-hk60-assembly.html) | **DG-HK60C 조립 지침서 (ASM-001)** — 도면을 처음 보는 사람이 조립도·부품도만으로 세울 수 있게 쓴 문서. 안전·공구·도면 읽는 법·볼트 조이는 법·모듈 사이의 순서·모듈별 74단계 (부품 카탈로그에서 생성) |
+| [docs/dg-hk60-procurement.html](docs/dg-hk60-procurement.html) | **DG-HK60C 조달 지침서 (PRC-001)** — 자재 발주표(1차원 절단 배치를 푼 정척 본수·시트 매수) · 운반 분할(세우는 순서를 따르는 차수표) · 구매품 사양 59종 (부품 카탈로그에서 생성) |
 | [docs/dg-hk120-twin-cell.html](docs/dg-hk120-twin-cell.html) | **DG-HK120C 트윈 셀 검토서** — 1챔버·2탠덤셀 수평병렬로 처리량을 배로 올리는 안의 배치·전력·인터록 검토 (브라우저로 열 것) |
 
 ### 사용법
@@ -48,13 +49,16 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (838건)
+python -m unittest discover -s tests -t .                               # 테스트 (868건)
 
 # 부품 카탈로그 — 형상·치수·재질에서 질량과 자중을 계산한다
 python3 tools/parts.py                     # 카탈로그 리포트 (품목·질량·자중 검증)
 python3 tools/fab_spec.py                  # 제작 지침서 계산 근거
 python3 tools/gen_parts_js.py --write      # 카탈로그 → 콘솔의 부품도·조립도 데이터
 python3 tools/gen_assembly_doc.py --write  # 카탈로그 → 조립 지침서 HTML
+python3 tools/procure.py                   # 조달 계산 (자재·운반·구매)
+python3 tools/gen_procure_doc.py --write   # 카탈로그 → 조달 지침서 HTML
+python3 tools/sync_fab_doc.py --write      # 제작 지침서의 파생 숫자를 계산기와 맞춤
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.

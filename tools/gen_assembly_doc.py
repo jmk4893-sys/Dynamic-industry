@@ -29,6 +29,16 @@ OUT = ROOT / "docs" / "dg-hk60-assembly.html"
 def esc(t: str) -> str:
     return (str(t).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
+def md(t) -> str:
+    """이스케이프한 뒤 **강조** 만 <strong> 으로 바꾼다.
+
+    산문 필드에 마크다운 습관으로 ** 를 쓰는 일이 실제로 있었고, 그대로
+    인쇄됐다. 태그를 손으로 적게 하는 대신 여기서 한 번에 바꾼다 —
+    이스케이프가 먼저이므로 데이터가 태그를 만들 수는 없다.
+    """
+    import re as _re
+    return _re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", esc(t))
+
 
 def house_style() -> str:
     """제작 지침서의 스타일을 그대로 쓴다 — 두 문서가 한 벌로 회람된다."""
@@ -178,7 +188,7 @@ def build() -> str:
 
     erect = "".join(
         f'<tr><td class="num">{n}</td><td><strong>{esc(t)}</strong></td>'
-        f'<td class="k">{esc(" · ".join(ms))}</td><td>{why}</td><td>{esc(what)}</td></tr>'
+        f'<td class="k">{esc(" · ".join(ms))}</td><td>{md(why)}</td><td>{esc(what)}</td></tr>'
         for n, t, ms, why, what in ERECTION)
 
     tools = "".join(

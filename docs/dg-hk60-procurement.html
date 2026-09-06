@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#eceff1">
+<title>DG-HK60C 조달 지침서</title>
+<meta name="description" content="DG-HK60C 폐태양광 패널 분리설비의 조달 지침서 — 정척 절단 배치를 푼 자재 발주표, 세우는 순서를 따르는 운반 차수표, 발주 가능한 수준의 구매품 사양.">
+<style>
+  /* ===========================================================================
+     DG-HK60 상세설계 발주 기술사양서.
+
+     입찰자가 조항번호로 인용하는 문서다("귀사 제안서 4.3항"). 그래서 번호가
+     장식이 아니라 주소이고, 왼쪽 여백에 고정폭으로 세워 어느 화면에서도
+     같은 자리에 온다. 부호·논리식·수치는 모두 모노로 두어 본문과 구분한다.
+
+     인쇄를 먼저 고려했다. 입찰자는 이 문서를 출력해 회람한다.
+     =========================================================================== */
+  :root{
+    color-scheme:light dark;
+    --paper:#ffffff;--ground:#eceff1;--band:#f4f6f7;--sunk:#e3e8ea;
+    --ink:#14202a;--ink2:#425663;--ink3:#6b7f8b;--ink4:#8b9ba4;
+    --brand:#17679b;--brand2:#228CC9;--brand-sunk:#e7f0f7;
+    --accent:#a06a08;--accent-sunk:#fbf3e0;--accent-line:#e0c68a;
+    --flag:#9a2b30;--flag-sunk:#fbeeee;--flag-line:#e3bcbc;
+    --ok:#1f6b47;
+    --rule:#cbd5da;--rule2:#aebcc4;--rule3:#8b9ba4;
+    --sans:Pretendard,"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --paper:#171f25;--ground:#10171c;--band:#1c262c;--sunk:#232f36;
+      --ink:#e6edf0;--ink2:#adbdc6;--ink3:#8598a2;--ink4:#687c87;
+      --brand:#5cb0e4;--brand2:#228CC9;--brand-sunk:#12303f;
+      --accent:#e0aa4a;--accent-sunk:#33280f;--accent-line:#6b5620;
+      --flag:#e8767a;--flag-sunk:#331b1c;--flag-line:#6b3436;
+      --ok:#54b487;
+      --rule:#2f3d45;--rule2:#41535d;--rule3:#5b7180;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --paper:#171f25;--ground:#10171c;--band:#1c262c;--sunk:#232f36;
+    --ink:#e6edf0;--ink2:#adbdc6;--ink3:#8598a2;--ink4:#687c87;
+    --brand:#5cb0e4;--brand2:#228CC9;--brand-sunk:#12303f;
+    --accent:#e0aa4a;--accent-sunk:#33280f;--accent-line:#6b5620;
+    --flag:#e8767a;--flag-sunk:#331b1c;--flag-line:#6b3436;
+    --ok:#54b487;
+    --rule:#2f3d45;--rule2:#41535d;--rule3:#5b7180;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--sans);font-size:15px;line-height:1.72;
+    -webkit-font-smoothing:antialiased}
+  .sheet{width:min(1080px,100%);margin:0 auto;background:var(--paper);
+    padding:0 clamp(16px,4vw,64px) 72px}
+
+  /* ── 표제부 ─────────────────────────────────────────────────────── */
+  .masthead{padding:clamp(28px,5vw,52px) 0 22px;border-bottom:2px solid var(--ink)}
+  .issuer{display:flex;align-items:center;gap:13px;margin-bottom:clamp(20px,4vw,32px)}
+  .issuer svg{width:38px;height:38px;flex:none;display:block}
+  .issuer-name{display:grid;gap:2px}
+  .issuer-name i{font:600 8.5px/1 var(--mono);font-style:normal;letter-spacing:.17em;color:var(--ink4)}
+  .issuer-name b{font:700 14px/1 var(--sans);letter-spacing:.06em;color:var(--brand)}
+  .doc-kind{font:700 11px/1 var(--mono);letter-spacing:.2em;color:var(--accent);margin-bottom:14px}
+  h1{margin:0;font-size:clamp(25px,4.4vw,38px);line-height:1.24;letter-spacing:-.02em;
+    font-weight:800;text-wrap:balance}
+  .subtitle{margin:12px 0 0;font-size:clamp(14px,1.7vw,16px);color:var(--ink2);max-width:62ch}
+  .docref{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:1px;margin-top:clamp(22px,4vw,30px);background:var(--rule);
+    border:1px solid var(--rule)}
+  .docref div{background:var(--paper);padding:10px 13px}
+  .docref dt{font:600 9.5px/1 var(--mono);letter-spacing:.11em;color:var(--ink4);
+    text-transform:uppercase;margin:0}
+  .docref dd{margin:5px 0 0;font:600 13px/1.35 var(--mono);color:var(--ink);
+    font-variant-numeric:tabular-nums}
+
+  /* ── 조항 ───────────────────────────────────────────────────────── */
+  .toc{margin:34px 0 0;padding:18px 20px;background:var(--band);border-left:3px solid var(--brand)}
+  .toc h2{margin:0 0 11px;font:700 10.5px/1 var(--mono);letter-spacing:.15em;color:var(--brand);text-transform:uppercase}
+  .toc ol{margin:0;padding:0;list-style:none;columns:2;column-gap:34px}
+  .toc li{margin:0 0 5px;font-size:13.5px;break-inside:avoid}
+  .toc a{color:var(--ink2);text-decoration:none;display:flex;gap:10px}
+  .toc a:hover{color:var(--brand)}
+  .toc b{font:600 12px/1.5 var(--mono);color:var(--ink4);min-width:22px;font-variant-numeric:tabular-nums}
+
+  section{margin-top:clamp(38px,6vw,58px);scroll-margin-top:16px}
+  section > h2{display:grid;grid-template-columns:var(--gutter,58px) 1fr;align-items:baseline;
+    gap:0;margin:0 0 20px;padding-bottom:11px;border-bottom:1.5px solid var(--rule2);
+    font-size:clamp(18px,2.5vw,23px);font-weight:800;letter-spacing:-.01em}
+  section > h2 span{font:700 14px/1 var(--mono);color:var(--brand);font-variant-numeric:tabular-nums}
+
+  .clause{display:grid;grid-template-columns:var(--gutter,58px) 1fr;margin:0 0 20px;
+    break-inside:avoid}
+  .clause > .n{font:600 12.5px/1.72 var(--mono);color:var(--ink4);
+    font-variant-numeric:tabular-nums;padding-right:12px}
+  .clause > .c{min-width:0}
+  .clause h3{margin:0 0 7px;font-size:15.5px;font-weight:700;color:var(--ink)}
+  .clause p{margin:0 0 10px;color:var(--ink2);max-width:70ch}
+  .clause p:last-child,.clause ul:last-child,.clause table:last-child{margin-bottom:0}
+  .clause ul,.clause ol{margin:0 0 10px;padding-left:19px;color:var(--ink2)}
+  .clause li{margin-bottom:4px}
+  .clause li::marker{color:var(--ink4)}
+  code,.m{font-family:var(--mono);font-size:.9em;font-variant-numeric:tabular-nums}
+  code{background:var(--sunk);padding:1.5px 5px;border-radius:2px;color:var(--ink)}
+  strong{font-weight:700;color:var(--ink)}
+
+  /* ── 표 ─────────────────────────────────────────────────────────── */
+  .tw{overflow-x:auto;margin:0 0 12px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:480px}
+  caption{caption-side:top;text-align:left;font:600 10px/1.5 var(--mono);
+    letter-spacing:.1em;color:var(--ink4);text-transform:uppercase;padding-bottom:7px}
+  th,td{padding:8px 11px;text-align:left;vertical-align:top;
+    border-bottom:1px solid var(--rule)}
+  thead th{font:700 10.5px/1.4 var(--mono);letter-spacing:.06em;color:var(--brand);
+    text-transform:uppercase;background:var(--band);border-bottom:1.5px solid var(--rule2)}
+  tbody th{font-weight:600;color:var(--ink)}
+  td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  td.k{font-family:var(--mono);font-size:12.5px;color:var(--ink);white-space:nowrap}
+  tfoot td,tfoot th{border-top:1.5px solid var(--rule2);border-bottom:0;
+    font-weight:700;background:var(--band)}
+
+  /* ── 강조 블록 ──────────────────────────────────────────────────── */
+  .note{margin:0 0 12px;padding:12px 15px;background:var(--brand-sunk);
+    border-left:3px solid var(--brand2);font-size:13.5px;color:var(--ink2)}
+  .warn{margin:0 0 12px;padding:12px 15px;background:var(--accent-sunk);
+    border-left:3px solid var(--accent);font-size:13.5px;color:var(--ink2)}
+  .note strong,.warn strong{color:var(--ink)}
+  .logic{margin:0 0 12px;padding:13px 15px;background:var(--sunk);
+    font:500 12.5px/1.9 var(--mono);color:var(--ink);overflow-x:auto;white-space:pre}
+
+  /* ── 확인사항 등록부 ────────────────────────────────────────────── */
+  .oi{border:1px solid var(--flag-line);border-left:3px solid var(--flag);
+    margin:0 0 11px;break-inside:avoid}
+  .oi-h{display:flex;align-items:baseline;gap:11px;padding:9px 14px;
+    background:var(--flag-sunk);border-bottom:1px solid var(--flag-line)}
+  .oi-h b{font:700 12px/1 var(--mono);color:var(--flag);letter-spacing:.05em}
+  .oi-h span{font-size:14px;font-weight:700;color:var(--ink)}
+  .oi-b{padding:11px 14px}
+  .oi-b p{margin:0 0 7px;font-size:13.5px;color:var(--ink2)}
+  .oi-b p:last-child{margin:0}
+  .oi-b em{font-style:normal;font:600 10px/1 var(--mono);letter-spacing:.1em;
+    color:var(--ink4);text-transform:uppercase;display:block;margin-bottom:3px}
+
+  footer{margin-top:clamp(44px,7vw,68px);padding-top:20px;border-top:2px solid var(--ink);
+    font-size:12.5px;color:var(--ink3)}
+  footer p{margin:0 0 7px;max-width:74ch}
+
+  @media(max-width:640px){
+    :root{--gutter:42px}
+    .toc ol{columns:1}
+    .clause > .n{font-size:11.5px;padding-right:8px}
+    body{font-size:14.5px}
+  }
+  @media print{
+    body{background:#fff;font-size:10.5pt;line-height:1.6}
+    .sheet{width:auto;padding:0;background:#fff}
+    .toc{break-inside:avoid}
+    section{break-before:auto;margin-top:22pt}
+    section > h2{break-after:avoid}
+    .clause,.oi,table,.logic,.note,.warn{break-inside:avoid}
+    thead{display:table-header-group}
+    a{color:inherit;text-decoration:none}
+    @page{margin:18mm 16mm}
+  }
+
+  /* 제작 지침서 추가 — 표가 많아 행 구분이 더 필요하다 */
+  .tw table td.num,.tw table th.num{text-align:right;font-family:var(--mono);white-space:nowrap}
+  .tw table th.grp{background:var(--sunk);color:var(--ink2);text-align:left;
+    font-size:12.5px;letter-spacing:.02em;padding-top:9px;padding-bottom:9px}
+  .tw table tr.sub td{color:var(--ink3);font-size:12px;padding-top:2px;padding-bottom:8px;
+    border-top:none;line-height:1.55}
+  .calc{background:var(--band);border-left:3px solid var(--brand);padding:11px 14px;
+    margin:12px 0;font-family:var(--mono);font-size:12.5px;line-height:1.9;
+    white-space:pre-wrap;border-radius:0 3px 3px 0}
+  .decide{background:var(--accent-sunk);border:1px solid var(--accent-line);
+    border-left:4px solid var(--accent);padding:12px 15px;margin:14px 0;border-radius:0 3px 3px 0}
+  .decide b:first-child{color:var(--accent)}
+</style>
+<style>
+  details{margin:10px 0 0}
+  details summary{cursor:pointer;font-size:13px;color:var(--brand);padding:6px 0}
+  details[open] summary{margin-bottom:6px}
+  td.k{white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<header class="masthead">
+  <div class="issuer">
+    <svg viewBox="0 0 100.0 88.9723" aria-label="DYNAMIC INDUSTRY" role="img">
+      <!--mark-->
+      <path d="M8.8423 30.8126L1.1845 44.0763C-0.3949 46.8121 -0.3949 50.1826 1.1849 52.9184L15.6495 77.9723L25.8596 60.2876Z" fill="#228CC9"/>
+      <path d="M36.0703 42.6025L19.0529 13.1275L12.2461 24.9173L29.2634 54.3923Z" fill="#228CC9"/>
+      <path d="M46.2805 24.9174L38.7015 11.7899L25.0877 11.7899L39.4737 36.7073Z" fill="#228CC9"/>
+      <path d="M19.0528 83.8669L19.4479 84.5512C21.0276 87.287 23.9465 88.9723 27.1053 88.9723L72.8952 88.9723C76.054 88.9723 78.9733 87.287 80.5527 84.5512L95.0173 59.4973L33.1202 59.4973Z" fill="#228CC9"/>
+      <path d="M98.8155 44.0761L75.9205 4.421C74.3411 1.6852 71.4219 0.0 68.2631 0.0L50.0008 0.0004L50.0008 0.0L33.8944 0.0L42.0531 4.7103L70.282 53.6047L98.4203 53.6026L98.8155 52.9182C100.3948 50.1824 100.3948 46.8119 98.8155 44.0761Z" fill="#FECA4A"/>
+      <!--/mark-->
+    </svg>
+    <div class="issuer-name"><i>FOR NET ZERO PROJECTION</i><b>DYNAMIC INDUSTRY</b></div>
+  </div>
+
+  <div class="doc-kind">조달 지침서 · Procurement &amp; Logistics</div>
+  <h1>DG-HK60C 태양광 패널 분리설비<br>조달 지침서</h1>
+  <p class="subtitle">부품 카탈로그를 <strong>살 수 있는 것과 실을 수 있는 것</strong>으로 바꾼다.
+    정척 <strong>210 본</strong> · 시트 <strong>145 매</strong> ·
+    강재 <strong>18,381 kg</strong> · 운반 <strong>7 차</strong> ·
+    구매품 <strong>59 종</strong>.</p>
+
+  <dl class="docref">
+    <div><dt>문서번호</dt><dd>DG-HK60C-PRC-001</dd></div>
+    <div><dt>개정</dt><dd>Rev.0</dd></div>
+    <div><dt>발행일</dt><dd>2026-09-06</dd></div>
+    <div><dt>대상 배치</dt><dd>REV.21C (DG-HK60C)</dd></div>
+    <div><dt>부품 근거</dt><dd>tools/parts.py</dd></div>
+    <div><dt>계산 근거</dt><dd>tools/procure.py</dd></div>
+  </dl>
+</header>
+
+<nav class="toc" aria-label="목차">
+  <h2>목차</h2>
+  <ol><li><a href="#p1"><b>1</b>자재 발주표</a></li><li><a href="#p2"><b>2</b>운반 분할</a></li><li><a href="#p3"><b>3</b>구매품 사양</a></li></ol>
+</nav>
+
+<div class="clause"><div class="n">0</div><div class="c">
+  <h3>이 문서를 나눠 쓰는 법</h3>
+  <p>세 부는 읽는 사람이 다르다 — <strong>1부는 자재 담당, 2부는 물류·현장, 3부는 구매 담당</strong>.
+    부별로 따로 뽑아 써도 되지만 근거는 하나다. 부품 카탈로그
+    (<span class="k">tools/parts.py</span>)가 바뀌면 세 부가 함께 움직인다 —
+    따로 만들면 카탈로그를 고친 날 셋이 따로 낡는다.</p>
+  <div class="note"><strong>이 문서는 손으로 고치지 않는다.</strong>
+    <span class="k">tools/gen_procure_doc.py</span> 가 카탈로그에서 생성한다.
+    수량이 틀렸으면 카탈로그를 고치고 다시 찍는다.</div>
+</div></div>
+
+<section id="p1"><h2><span class="sn">1</span>자재 발주표</h2>
+
+  <div class="clause"><div class="n">1.1</div><div class="c">
+    <h3>이 표가 답하는 것</h3>
+    <p>"총 길이 96 m" 는 발주서가 아니다. <strong>"6 m 정척 19본"</strong> 이 발주서다.
+      아래 표는 부재를 재질 × 단면으로 묶고 <strong>1차원 절단 배치를 실제로 풀어</strong>
+      정척 몇 본을 사야 하는지와 남는 토막이 얼마인지를 낸다. 총 길이를 정척으로 나누면
+      4,550 짜리 두 개가 6 m 정척 한 본에 들어간다고 착각한다 — 실제로는 한 본에 하나다.</p>
+    <p>절단 손실 <span class="m">5 mm</span>(톱날 폭 + 단면 정리)와
+      정척 양단 트림 <span class="m">50 mm</span> 를 각 조각에 얹었다.
+      판재는 사방 <span class="m">20 mm</span> 재단 여유를 본다
+      (무른 재료는 칼로 재단하므로 여유 없음).</p>
+    
+  </div></div>
+
+  <div class="clause"><div class="n">1.2</div><div class="c">
+    <h3>형강 · 강관 · 봉</h3>
+    <div class="tw"><table>
+      <caption>정척 발주 — 총 210 본 · 순중량 11,925 kg</caption>
+      <thead><tr><th>재질</th><th>단면</th><th>정척 mm</th><th>본수</th><th>조각</th>
+        <th>순길이 m</th><th>손실</th><th>순중량 kg</th></tr></thead>
+      <tbody><tr><td class="k">SM45C</td><td>Ø140</td><td class="num">4,000</td><td class="num"><strong>1</strong></td><td class="num">1</td><td class="num">1.6</td><td class="num">61%</td><td class="num">189</td></tr><tr><td class="k">SM45C</td><td>Ø160</td><td class="num">4,000</td><td class="num"><strong>1</strong></td><td class="num">2</td><td class="num">3.1</td><td class="num">22%</td><td class="num">496</td></tr><tr><td class="k">SM45C</td><td>단차축 Ø20×40 / Ø16×20</td><td class="num">4,000</td><td class="num"><strong>1</strong></td><td class="num">8</td><td class="num">0.5</td><td class="num">88%</td><td class="num">1</td></tr><tr><td class="k">SM45C</td><td>단차축 Ø60×180 / Ø55×1,500 / Ø60×180</td><td class="num">4,000</td><td class="num"><strong>1</strong></td><td class="num">1</td><td class="num">1.9</td><td class="num">54%</td><td class="num">36</td></tr><tr><td class="k">SM490A</td><td>□-150×150×6t</td><td class="num">4,000</td><td class="num"><strong>2</strong></td><td class="num">4</td><td class="num">4.0</td><td class="num">50%</td><td class="num">109</td></tr><tr><td class="k">SM490A</td><td>□-220×220×9t</td><td class="num">6,000</td><td class="num"><strong>2</strong></td><td class="num">2</td><td class="num">8.2</td><td class="num">32%</td><td class="num">489</td></tr><tr><td class="k">SM490A</td><td>□-300×200×12t</td><td class="num">4,000</td><td class="num"><strong>1</strong></td><td class="num">1</td><td class="num">3.1</td><td class="num">22%</td><td class="num">278</td></tr><tr><td class="k">SM490A</td><td>H-250×250×9/14</td><td class="num">4,000</td><td class="num"><strong>4</strong></td><td class="num">4</td><td class="num">8.4</td><td class="num">48%</td><td class="num">593</td></tr><tr><td class="k">SS400</td><td>L-50×50×4</td><td class="num">4,000</td><td class="num"><strong>4</strong></td><td class="num">4</td><td class="num">13.5</td><td class="num">16%</td><td class="num">41</td></tr><tr><td class="k">SS400</td><td>L-50×50×5</td><td class="num">4,000</td><td class="num"><strong>2</strong></td><td class="num">4</td><td class="num">6.0</td><td class="num">25%</td><td class="num">22</td></tr><tr><td class="k">SS400</td><td>L-60×60×5</td><td class="num">4,000</td><td class="num"><strong>2</strong></td><td class="num">2</td><td class="num">5.2</td><td class="num">35%</td><td class="num">23</td></tr><tr><td class="k">SS400</td><td>L-65×65×6</td><td class="num">4,000</td><td class="num"><strong>35</strong></td><td class="num">50</td><td class="num">96.1</td><td class="num">31%</td><td class="num">561</td></tr><tr><td class="k">SS400</td><td>L-75×75×6</td><td class="num">4,000</td><td class="num"><strong>2</strong></td><td class="num">2</td><td class="num">6.4</td><td class="num">20%</td><td class="num">43</td></tr><tr><td class="k">SS400</td><td>□-100×100×4.5t</td><td class="num">4,000</td><td class="num"><strong>2</strong></td><td class="num">2</td><td class="num">5.8</td><td class="num">28%</td><td class="num">78</td></tr><tr><td class="k">SS400</td><td>□-100×50×3.2t</td><td class="num">4,000</td><td class="num"><strong>3</strong></td><td class="num">6</td><td class="num">10.4</td><td class="num">13%</td><td class="num">75</td></tr><tr><td class="k">SS400</td><td>□-120×60×3.2t</td><td class="num">4,000</td><td class="num"><strong>2</strong></td><td class="num">2</td><td class="num">5.2</td><td class="num">35%</td><td class="num">45</td></tr><tr><td class="k">SS400</td><td>□-120×80×4.5t</td><td class="num">4,000</td><td class="num"><strong>1</strong></td><td class="num">1</td><td class="num">2.3</td><td class="num">42%</td><td class="num">31</td></tr><tr><td class="k">SS400</td><td>□-120×90×6t</td><td class="num">4,000</td><td class="num"><strong>1</strong></td><td class="num">2</td><td class="num">2.9</td><td class="num">28%</td><td class="num">54</td></tr><tr><td class="k">SS400</td><td>□-125×125×6t</td><td class="num">6,000</td><td class="num"><strong>8</strong></td><td class="num">8</td><td class="num">36.1</td><td class="num">25%</td><td class="num">809</td></tr><tr><td class="k">SS400</td><td>□-150×100×6t</td><td class="num">4,000</td><td class="num"><strong>5</strong></td><td class="num">6</td><td class="num">16.2</td><td class="num">19%</td><td class="num">364</td></tr><tr><td class="k">SS400</td><td>□-220×140×9t</td><td class="num">4,000</td><td class="num"><strong>1</strong></td><td class="num">1</td><td class="num">2.2</td><td class="num">46%</td><td class="num">104</td></tr><tr><td class="k">SS400</td><td>□-260×180×9t</td><td class="num">4,000</td><td class="num"><strong>4</strong></td><td class="num">4</td><td class="num">9.6</td><td class="num">40%</td><td class="num">570</td></tr><tr><td class="k">SS400</td><td>□-300×180×9t</td><td class="num">4,000</td><td class="num"><strong>4</strong></td><td class="num">4</td><td class="num">9.6</td><td class="num">40%</td><td class="num">624</td></tr><tr><td class="k">SS400</td><td>□-50×50×3.2t</td><td class="num">4,000</td><td class="num"><strong>3</strong></td><td class="num">8</td><td class="num">8.0</td><td class="num">33%</td><td class="num">38</td></tr><tr><td class="k">SS400</td><td>□-60×60×3.2t</td><td class="num">4,000</td><td class="num"><strong>34</strong></td><td class="num">34</td><td class="num">86.7</td><td class="num">36%</td><td class="num">495</td></tr><tr><td class="k">SS400</td><td>□-80×40×3.2t</td><td class="num">4,000</td><td class="num"><strong>4</strong></td><td class="num">4</td><td class="num">10.4</td><td class="num">35%</td><td class="num">59</td></tr><tr><td class="k">SS400</td><td>□-80×80×3.2t</td><td class="num">4,000</td><td class="num"><strong>1</strong></td><td class="num">4</td><td class="num">3.8</td><td class="num">5%</td><td class="num">29</td></tr><tr><td class="k">SS400</td><td>C-100×50×5/5</td><td class="num">4,000</td><td class="num"><strong>11</strong></td><td class="num">12</td><td class="num">26.0</td><td class="num">41%</td><td class="num">194</td></tr><tr><td class="k">SS400</td><td>C-150×75×6.5/10</td><td class="num">4,000</td><td class="num"><strong>2</strong></td><td class="num">5</td><td class="num">5.6</td><td class="num">30%</td><td class="num">103</td></tr><tr><td class="k">SS400</td><td>H-150×150×7/10</td><td class="num">4,000</td><td class="num"><strong>2</strong></td><td class="num">2</td><td class="num">5.2</td><td class="num">35%</td><td class="num">160</td></tr><tr><td class="k">SS400</td><td>H-170×170×7/10</td><td class="num">6,000</td><td class="num"><strong>2</strong></td><td class="num">2</td><td class="num">9.8</td><td class="num">18%</td><td class="num">342</td></tr><tr><td class="k">SS400</td><td>H-200×100×5.5/8</td><td class="num">12,000</td><td class="num"><strong>1</strong></td><td class="num">1</td><td class="num">7.5</td><td class="num">37%</td><td class="num">155</td></tr><tr><td class="k">SS400</td><td>H-200×200×8/12</td><td class="num">6,000</td><td class="num"><strong>12</strong></td><td class="num">12</td><td class="num">54.6</td><td class="num">24%</td><td class="num">2,661</td></tr><tr><td class="k">SS400</td><td>Ø300 × 8t</td><td class="num">4,000</td><td class="num"><strong>1</strong></td><td class="num">1</td><td class="num">1.5</td><td class="num">64%</td><td class="num">84</td></tr><tr><td class="k">SS400</td><td>Ø500 × 6t</td><td class="num">4,000</td><td class="num"><strong>1</strong></td><td class="num">1</td><td class="num">0.9</td><td class="num">78%</td><td class="num">66</td></tr><tr><td class="k">SS400</td><td>Ø600 × 3t</td><td class="num">4,000</td><td class="num"><strong>8</strong></td><td class="num">9</td><td class="num">24.4</td><td class="num">24%</td><td class="num">1,078</td></tr><tr><td class="k">STS304</td><td>각봉 40×40</td><td class="num">4,000</td><td class="num"><strong>20</strong></td><td class="num">20</td><td class="num">55.6</td><td class="num">30%</td><td class="num">705</td></tr><tr><td class="k">STS304</td><td>Ø25 × 2t</td><td class="num">4,000</td><td class="num"><strong>6</strong></td><td class="num">6</td><td class="num">16.2</td><td class="num">32%</td><td class="num">19</td></tr><tr><td class="k">STS304</td><td>Ø50 × 2t</td><td class="num">4,000</td><td class="num"><strong>4</strong></td><td class="num">4</td><td class="num">8.0</td><td class="num">50%</td><td class="num">19</td></tr><tr><td class="k">STS304</td><td>Ø60 × 2t</td><td class="num">4,000</td><td class="num"><strong>9</strong></td><td class="num">18</td><td class="num">28.8</td><td class="num">20%</td><td class="num">83</td></tr></tbody>
+    </table></div>
+    <div class="note"><strong>손실률이 높은 것은 잔재가 아니라 설계다.</strong>
+      한 단면을 한두 조각만 쓰면 정척 한 본을 사서 대부분 남긴다. 아래 1.4 의
+      배치표에서 어느 단면이 그런지 보이고, 상세설계에서 <strong>단면을 통합할 수 있는지</strong>가
+      거기서 나온다 — 단면 종류를 줄이면 손실도 줄고 재고도 준다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">1.3</div><div class="c">
+    <h3>판재</h3>
+    <div class="tw"><table>
+      <caption>시트 발주 — 총 145 매 · 순중량 6,456 kg</caption>
+      <thead><tr><th>재질</th><th>두께</th><th>시트 규격</th><th>매수</th>
+        <th>조각</th><th>순면적 ㎡</th><th>순중량 kg</th></tr></thead>
+      <tbody><tr><td class="k">A6061-T6</td><td class="num">14 t</td><td class="k">1,524×3,048</td><td class="num"><strong>1</strong></td><td class="num">8</td><td class="num">0.69</td><td class="num">26</td></tr><tr><td class="k">AL반사판</td><td class="num">0.5 t</td><td class="k">1,000×2,000</td><td class="num"><strong>21</strong></td><td class="num">62</td><td class="num">37.20</td><td class="num">50</td></tr><tr><td class="k">GFRP</td><td class="num">12 t</td><td class="k">1,220×2,440</td><td class="num"><strong>1</strong></td><td class="num">210</td><td class="num">0.76</td><td class="num">17</td></tr><tr><td class="k">PC</td><td class="num">6 t</td><td class="k">2,050×3,050</td><td class="num"><strong>8</strong></td><td class="num">8</td><td class="num">24.34</td><td class="num">175</td></tr><tr><td class="k">SKD11</td><td class="num">8 t</td><td class="k">100×2,000</td><td class="num"><strong>2</strong></td><td class="num">2</td><td class="num">0.17</td><td class="num">11</td></tr><tr><td class="k">SM490A</td><td class="num">16 t</td><td class="k">2,438×6,096</td><td class="num"><strong>1</strong></td><td class="num">6</td><td class="num">1.62</td><td class="num">203</td></tr><tr><td class="k">SM490A</td><td class="num">20 t</td><td class="k">2,438×6,096</td><td class="num"><strong>1</strong></td><td class="num">2</td><td class="num">0.56</td><td class="num">88</td></tr><tr><td class="k">SM490A</td><td class="num">22 t</td><td class="k">2,438×6,096</td><td class="num"><strong>1</strong></td><td class="num">4</td><td class="num">0.77</td><td class="num">132</td></tr><tr><td class="k">SM490A</td><td class="num">28 t</td><td class="k">2,438×6,096</td><td class="num"><strong>1</strong></td><td class="num">4</td><td class="num">0.52</td><td class="num">112</td></tr><tr><td class="k">SS400</td><td class="num">2 t</td><td class="k">2,438×6,096</td><td class="num"><strong>1</strong></td><td class="num">4</td><td class="num">0.48</td><td class="num">8</td></tr><tr><td class="k">SS400</td><td class="num">3.2 t</td><td class="k">2,438×6,096</td><td class="num"><strong>8</strong></td><td class="num">9</td><td class="num">49.70</td><td class="num">1,248</td></tr><tr><td class="k">SS400</td><td class="num">4.5 t</td><td class="k">2,438×6,096</td><td class="num"><strong>3</strong></td><td class="num">4</td><td class="num">20.88</td><td class="num">738</td></tr><tr><td class="k">SS400</td><td class="num">5 t</td><td class="k">2,438×6,096</td><td class="num"><strong>1</strong></td><td class="num">129</td><td class="num">0.53</td><td class="num">20</td></tr><tr><td class="k">SS400</td><td class="num">6 t</td><td class="k">2,438×6,096</td><td class="num"><strong>1</strong></td><td class="num">28</td><td class="num">1.86</td><td class="num">87</td></tr><tr><td class="k">SS400</td><td class="num">8 t</td><td class="k">2,438×6,096</td><td class="num"><strong>1</strong></td><td class="num">8</td><td class="num">0.32</td><td class="num">20</td></tr><tr><td class="k">SS400</td><td class="num">10 t</td><td class="k">2,438×6,096</td><td class="num"><strong>1</strong></td><td class="num">65</td><td class="num">5.27</td><td class="num">413</td></tr><tr><td class="k">SS400</td><td class="num">12 t</td><td class="k">2,438×6,096</td><td class="num"><strong>1</strong></td><td class="num">12</td><td class="num">4.29</td><td class="num">404</td></tr><tr><td class="k">SS400</td><td class="num">16 t</td><td class="k">2,438×6,096</td><td class="num"><strong>1</strong></td><td class="num">14</td><td class="num">0.29</td><td class="num">36</td></tr><tr><td class="k">SS400</td><td class="num">19 t</td><td class="k">2,438×6,096</td><td class="num"><strong>1</strong></td><td class="num">12</td><td class="num">1.83</td><td class="num">270</td></tr><tr><td class="k">SS400</td><td class="num">20 t</td><td class="k">2,438×6,096</td><td class="num"><strong>1</strong></td><td class="num">1</td><td class="num">4.52</td><td class="num">710</td></tr><tr><td class="k">SS400</td><td class="num">25 t</td><td class="k">2,438×6,096</td><td class="num"><strong>1</strong></td><td class="num">14</td><td class="num">2.61</td><td class="num">508</td></tr><tr><td class="k">STS304</td><td class="num">2 t</td><td class="k">1,219×2,438</td><td class="num"><strong>22</strong></td><td class="num">28</td><td class="num">48.54</td><td class="num">770</td></tr><tr><td class="k">STS304</td><td class="num">3.2 t</td><td class="k">1,524×3,048</td><td class="num"><strong>1</strong></td><td class="num">1</td><td class="num">1.26</td><td class="num">32</td></tr><tr><td class="k">동</td><td class="num">5 t</td><td class="k">100×4,000</td><td class="num"><strong>1</strong></td><td class="num">1</td><td class="num">0.06</td><td class="num">3</td></tr><tr><td class="k">미네랄울</td><td class="num">100 t</td><td class="k">600×1,000</td><td class="num"><strong>62</strong></td><td class="num">62</td><td class="num">37.20</td><td class="num">372</td></tr><tr><td class="k">세라믹파이버</td><td class="num">15 t</td><td class="k">610×7,300</td><td class="num"><strong>1</strong></td><td class="num">8</td><td class="num">0.54</td><td class="num">2</td></tr></tbody>
+    </table></div>
+    <div class="note"><strong>매수는 직교 재단(길로틴) 기준의 하한이다.</strong>
+      실제 네스팅은 제작사가 더 잘 뽑는다 — 이 표는 <strong>몇 매를 사야 하는가</strong>를
+      정직하게 내는 데까지다. 제작사가 네스팅 도면을 내면 그 매수를 쓴다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">1.4</div><div class="c">
+    <h3>절단 배치 — 손실이 큰 단면</h3>
+    <div class="tw"><table>
+      <caption>정척 한 본에 얼마를 썼는가 (mm) — 손실 상위 8 단면</caption>
+      <thead><tr><th>재질 · 단면</th><th>정척</th><th>본수</th><th>손실</th><th>본별 사용 길이</th></tr></thead>
+      <tbody><tr><td class="k">SM45C 단차축 Ø20×40 / Ø16×20</td><td class="num">4,000</td><td class="num">1</td><td class="num">88%</td><td>520</td></tr><tr><td class="k">SS400 Ø500 × 6t</td><td class="num">4,000</td><td class="num">1</td><td class="num">78%</td><td>905</td></tr><tr><td class="k">SS400 Ø300 × 8t</td><td class="num">4,000</td><td class="num">1</td><td class="num">64%</td><td>1,465</td></tr><tr><td class="k">SM45C Ø140</td><td class="num">4,000</td><td class="num">1</td><td class="num">61%</td><td>1,565</td></tr><tr><td class="k">SM45C 단차축 Ø60×180 / Ø55×1,500 / Ø60×180</td><td class="num">4,000</td><td class="num">1</td><td class="num">54%</td><td>1,865</td></tr><tr><td class="k">SM490A □-150×150×6t</td><td class="num">4,000</td><td class="num">2</td><td class="num">50%</td><td>3,015 / 1,005</td></tr><tr><td class="k">STS304 Ø50 × 2t</td><td class="num">4,000</td><td class="num">4</td><td class="num">50%</td><td>2,005 / 2,005 / 2,005 / 2,005</td></tr><tr><td class="k">SM490A H-250×250×9/14</td><td class="num">4,000</td><td class="num">4</td><td class="num">48%</td><td>2,105 / 2,105 / 2,105 / 2,105</td></tr></tbody>
+    </table></div>
+  </div></div>
+
+  <div class="clause"><div class="n">1.5</div><div class="c">
+    <h3>발주 시점 — 무엇을 먼저 사는가</h3>
+    <p>납기가 긴 것이 공정을 정한다. 자재가 늦으면 절단이 늦고, 서보가 늦으면
+      조립이 다 끝나고도 못 돌린다.</p>
+    <div class="tw"><table>
+      <caption>발주 시점과 납기</caption>
+      <thead><tr><th>시점</th><th>무엇을</th><th>왜 그때인가</th><th>납기</th></tr></thead>
+      <tbody><tr><td class="k">즉시</td><td><strong>형강 · 강판 · 강관</strong></td><td>재고품이다. 그러나 <strong>제작 착수 = 절단 착수</strong>이므로 이것이 늦으면 전부 늦는다.</td><td class="k">1~2 주</td></tr><tr><td class="k">즉시</td><td><strong>서보·감속기 · LM 가이드 · 볼스크류</strong></td><td>이 설비에서 가장 납기가 길다. 사양 확정 전이라도 <strong>수량과 규격만으로 선발주</strong>한다.</td><td class="k">8~12 주</td></tr><tr><td class="k">즉시</td><td><strong>안전 부품 (라이트커튼 · 인터록 · 비상정지)</strong></td><td>인증품이라 대체가 어렵다. 늦으면 시운전을 못 한다 — 안전회로 없이는 돌릴 수 없다.</td><td class="k">6~8 주</td></tr><tr><td class="k">30 %</td><td><strong>MCC · PLC 반</strong></td><td><strong>승인도 제출 후 제작</strong>이다. 승인 왕복에 2~3 주가 더 붙는다.</td><td class="k">10~14 주 (승인 포함)</td></tr><tr><td class="k">30 %</td><td><strong>진공펌프 · 공기 리시버</strong></td><td>압력용기 검사가 붙는다. 검사증 없이는 반입하지 않는다.</td><td class="k">8~10 주</td></tr><tr><td class="k">50 %</td><td><strong>IR 램프 · 히터 · 열전대</strong></td><td>규격품이나 수량이 많다(램프 40등). 시운전 소모를 보아 예비를 함께 산다.</td><td class="k">4~6 주</td></tr><tr><td class="k">70 %</td><td><strong>필터 · 패드 · 소모품</strong></td><td>마지막에 산다. 먼저 사면 창고에서 늙는다 — 특히 NBR 패드와 필터.</td><td class="k">2~4 주</td></tr></tbody>
+    </table></div>
+    <div class="warn"><strong>서보·감속기와 안전 부품은 지금 발주한다.</strong>
+      8~12 주는 이 프로젝트의 어떤 설계 작업보다 길다. 사양이 확정되기를 기다리면
+      그만큼 준공이 밀린다 — 수량과 규격은 이미 확정되어 있다.</div>
+  </div></div>
+</section>
+
+<section id="p2"><h2><span class="sn">2</span>운반 분할</h2>
+
+  <div class="clause"><div class="n">2.1</div><div class="c">
+    <h3>차수가 곧 도착 순서다</h3>
+    <p>부재를 차량 적재 단위로 묶되, 순서는 <strong>세우는 순서</strong>를 따른다
+      (조립 지침서 6항). 나중에 세울 것이 먼저 도착하면 현장에 둘 자리가 없고,
+      그것을 옮기느라 기중기를 두 번 부른다.</p>
+    <p>차량은 <strong>남은 짐 가운데 가장 긴 것</strong>이 정하고, 그 차를 채운다.
+      7.5 m 런웨이 빔 하나 때문에 트레일러를 부르게 되면, 같은 차수의 다른 짐도
+      그 차에 싣는다 — 이미 부른 차를 비워 보내는 것이 가장 비싸다.</p>
+    <div class="tw"><table>
+      <caption>차량 제원 — 적재 한도는 정격의 90%</caption>
+      <thead><tr><th>차량</th><th>적재장 mm</th><th>폭</th><th>높이</th>
+        <th>정격 kg</th><th>계획 한도 kg</th></tr></thead>
+      <tbody><tr><td><strong>5 t 카고</strong></td><td class="num">4,300</td><td class="num">1,800</td><td class="num">1,900</td><td class="num">5,000</td><td class="num">4,500</td></tr><tr><td><strong>11 t 카고</strong></td><td class="num">6,200</td><td class="num">2,350</td><td class="num">2,400</td><td class="num">11,000</td><td class="num">9,900</td></tr><tr><td><strong>25 t 트레일러</strong></td><td class="num">12,000</td><td class="num">2,400</td><td class="num">2,600</td><td class="num">25,000</td><td class="num">22,500</td></tr></tbody>
+    </table></div>
+    <div class="note">정격을 꽉 채워 계획하면 결박구·받침목 무게와 계근 오차에서 초과가 난다.
+      그래서 <strong>90%</strong> 로 잡는다.
+      도로법 한도는 전장 <span class="m">16,700</span> ·
+      폭 <span class="m">2,500</span> ·
+      높이 <span class="m">4,000</span> mm 이고, 넘으면 운행 허가와 유도차가 붙는다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">2.2</div><div class="c">
+    <h3>차수표</h3>
+    <div class="tw"><table>
+      <caption>운반 차수 — 총 7 차 · 21,625 kg</caption>
+      <thead><tr><th>차수</th><th>세우는 단계</th><th>차량</th><th>품목</th>
+        <th>적재 kg</th><th>적재율</th><th>최장변</th><th>최중량 단품</th><th>비고</th></tr></thead>
+      <tbody><tr><td class="num"><strong>1</strong></td><td>무거운 골조</td><td class="k">11 t 카고</td><td class="num">42</td><td class="num">9,900</td><td class="num">90%</td><td class="num">4,550</td><td>가열실 기둥 <span class="k">1,330 kg</span></td><td></td></tr><tr><td class="num"><strong>2</strong></td><td>무거운 골조</td><td class="k">5 t 카고</td><td class="num">27</td><td class="num">1,893</td><td class="num">38%</td><td class="num">1,280</td><td>단열재 <span class="k">372 kg</span></td><td></td></tr><tr><td class="num"><strong>3</strong></td><td>이송·투입</td><td class="k">11 t 카고</td><td class="num">29</td><td class="num">3,520</td><td class="num">32%</td><td class="num">4,510</td><td>포크 문형 기둥 <span class="k">809 kg</span></td><td></td></tr><tr><td class="num"><strong>4</strong></td><td>후단 설비</td><td class="k">25 t 트레일러</td><td class="num">43</td><td class="num">2,205</td><td class="num">9%</td><td class="num">7,550</td><td>런웨이 기둥 <span class="k">342 kg</span></td><td></td></tr><tr><td class="num"><strong>5</strong></td><td>유틸리티</td><td class="k">5 t 카고</td><td class="num">17</td><td class="num">1,187</td><td class="num">24%</td><td class="num">3,000</td><td>MCC 반 <span class="k">320 kg</span></td><td></td></tr><tr><td class="num"><strong>6</strong></td><td>경계</td><td class="k">5 t 카고</td><td class="num">6</td><td class="num">1,329</td><td class="num">27%</td><td class="num">3,000</td><td>경계 덕트 <span class="k">1,060 kg</span></td><td></td></tr><tr><td class="num"><strong>7</strong></td><td>방책</td><td class="k">5 t 카고</td><td class="num">10</td><td class="num">1,592</td><td class="num">32%</td><td class="num">2,550</td><td>메시 패널 <span class="k">953 kg</span></td><td></td></tr></tbody>
+    </table></div>
+    <div class="note"><strong>최중량 단품 열이 기중기를 정한다.</strong>
+      짐 전체 무게가 아니라 한 번에 드는 것의 무게가 양중 계획의 근거다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">2.3</div><div class="c">
+    <h3>차수별 적재 명세</h3>
+    <details><summary>1차 · 무거운 골조 · 11 t 카고 · 9,900 kg · 42 품목</summary><div class="tw"><table><caption>1차 적재 명세</caption><thead><tr><th>품번</th><th>명칭</th><th>수량</th><th>kg</th><th>최장변 mm</th></tr></thead><tbody><tr><td class="k">P-002-01</td><td>가열실 기둥</td><td class="num">6</td><td class="num">1,330.4</td><td class="num">4,550</td></tr><tr><td class="k">P-007-01</td><td>냉각 랙 골조 일식</td><td class="num">6</td><td class="num">1,330.4</td><td class="num">4,550</td></tr><tr><td class="k">P-002-09</td><td>외피 측판</td><td class="num">4</td><td class="num">733.0</td><td class="num">3,860</td></tr><tr><td class="k">P-004-01</td><td>VT-101 상판</td><td class="num">1</td><td class="num">710.3</td><td class="num">2,900</td></tr><tr><td class="k">P-005-01</td><td>주행레일 문형 기둥</td><td class="num">4</td><td class="num">593.3</td><td class="num">2,100</td></tr><tr><td class="k">P-005-04</td><td>주행레일 빔</td><td class="num">2</td><td class="num">489.0</td><td class="num">4,100</td></tr><tr><td class="k">P-002-20</td><td>에어록 셔터판</td><td class="num">2</td><td class="num">485.5</td><td class="num">4,090</td></tr><tr><td class="k">P-002-12</td><td>내피 측판</td><td class="num">16</td><td class="num">462.8</td><td class="num">1,930</td></tr><tr><td class="k">P-002-08</td><td>데크 레일</td><td class="num">10</td><td class="num">352.7</td><td class="num">2,780</td></tr><tr><td class="k">P-007-05</td><td>냉각 데크 레일</td><td class="num">10</td><td class="num">352.7</td><td class="num">2,780</td></tr><tr><td class="k">P-005-08</td><td>크로스빔</td><td class="num">1</td><td class="num">278.0</td><td class="num">3,100</td></tr><tr><td class="k">P-005-20</td><td>GR-W1 박리 가이드롤</td><td class="num">1</td><td class="num">249.4</td><td class="num">1,580</td></tr><tr><td class="k">P-002-10</td><td>외피 단부판</td><td class="num">2</td><td class="num">248.2</td><td class="num">2,560</td></tr><tr><td class="k">P-002-11</td><td>외피 지붕판</td><td class="num">2</td><td class="num">243.1</td><td class="num">3,780</td></tr><tr><td class="k">P-007-06</td><td>측벽 폴리카보네이트</td><td class="num">8</td><td class="num">175.2</td><td class="num">1,800</td></tr><tr><td class="k">P-002-04</td><td>상부 종방향 타이빔</td><td class="num">2</td><td class="num">169.5</td><td class="num">3,780</td></tr><tr><td class="k">P-002-17</td><td>IR 뱅크 캐리어</td><td class="num">10</td><td class="num">168.5</td><td class="num">2,260</td></tr><tr><td class="k">P-002-06</td><td>데크 프레임 종재</td><td class="num">10</td><td class="num">162.4</td><td class="num">2,780</td></tr><tr><td class="k">P-007-03</td><td>냉각 데크 프레임 종재</td><td class="num">10</td><td class="num">162.4</td><td class="num">2,780</td></tr><tr><td class="k">P-002-05</td><td>상부 횡방향 타이빔</td><td class="num">3</td><td class="num">158.7</td><td class="num">2,360</td></tr><tr><td class="k">P-005-14</td><td>칼날 빔</td><td class="num">2</td><td class="num">134.7</td><td class="num">1,560</td></tr><tr><td class="k">P-002-07</td><td>데크 프레임 횡재</td><td class="num">15</td><td class="num">118.3</td><td class="num">1,350</td></tr><tr><td class="k">P-007-04</td><td>냉각 데크 프레임 횡재</td><td class="num">15</td><td class="num">118.3</td><td class="num">1,350</td></tr><tr><td class="k">P-004-02</td><td>상판 리브 (종)</td><td class="num">4</td><td class="num">109.3</td><td class="num">2,900</td></tr><tr><td class="k">P-004-04</td><td>테이블 기둥</td><td class="num">4</td><td class="num">108.5</td><td class="num">1,000</td></tr><tr><td class="k">P-004-03</td><td>상판 리브 (횡)</td><td class="num">7</td><td class="num">101.5</td><td class="num">1,540</td></tr><tr><td class="k">P-005-05</td><td>LM 주행레일</td><td class="num">2</td><td class="num">62.0</td><td class="num">4,000</td></tr><tr><td class="k">P-005-17</td><td>BC-201 카세트 본체</td><td class="num">2</td><td class="num">53.7</td><td class="num">1,440</td></tr><tr><td class="k">P-002-15</td><td>반사층</td><td class="num">62</td><td class="num">50.2</td><td class="num">1,000</td></tr><tr><td class="k">P-007-07</td><td>필터 급기 프레임</td><td class="num">4</td><td class="num">40.8</td><td class="num">3,380</td></tr><tr><td class="k">P-002-18</td><td>IR 램프</td><td class="num">40</td><td class="num">36.0</td><td class="num">1,300</td></tr><tr><td class="k">P-002-22</td><td>셔터 실린더</td><td class="num">2</td><td class="num">19.0</td><td class="num">1,200</td></tr><tr><td class="k">P-004-09</td><td>진공 매니폴드</td><td class="num">6</td><td class="num">18.6</td><td class="num">2,700</td></tr><tr><td class="k">P-002-24</td><td>배기 덕트 노즐</td><td class="num">1</td><td class="num">17.7</td><td class="num">600</td></tr><tr><td class="k">P-007-08</td><td>G4 프리필터</td><td class="num">12</td><td class="num">13.2</td><td class="num">600</td></tr><tr><td class="k">P-005-09</td><td>X축 랙</td><td class="num">1</td><td class="num">12.0</td><td class="num">3,900</td></tr><tr><td class="k">P-005-15</td><td>SKD11 인서트</td><td class="num">2</td><td class="num">10.6</td><td class="num">1,440</td></tr><tr><td class="k">P-005-12</td><td>Z축 볼스크류</td><td class="num">2</td><td class="num">8.4</td><td class="num">600</td></tr><tr><td class="k">P-004-08</td><td>흡착패드</td><td class="num">18</td><td class="num">6.3</td><td class="num">250</td></tr><tr><td class="k">P-005-16</td><td>카트리지 히터</td><td class="num">12</td><td class="num">2.4</td><td class="num">200</td></tr><tr><td class="k">P-002-21</td><td>셔터 씰</td><td class="num">8</td><td class="num">2.1</td><td class="num">1,680</td></tr><tr><td class="k">P-002-23</td><td>단별 열전대</td><td class="num">10</td><td class="num">0.5</td><td class="num">200</td></tr></tbody></table></div></details><details><summary>2차 · 무거운 골조 · 5 t 카고 · 1,893 kg · 27 품목</summary><div class="tw"><table><caption>2차 적재 명세</caption><thead><tr><th>품번</th><th>명칭</th><th>수량</th><th>kg</th><th>최장변 mm</th></tr></thead><tbody><tr><td class="k">P-002-14</td><td>단열재</td><td class="num">62</td><td class="num">372.0</td><td class="num">1,000</td></tr><tr><td class="k">P-002-13</td><td>내피 단부·지붕판</td><td class="num">12</td><td class="num">306.9</td><td class="num">1,280</td></tr><tr><td class="k">P-002-02</td><td>기둥 베이스플레이트</td><td class="num">6</td><td class="num">186.6</td><td class="num">400</td></tr><tr><td class="k">P-007-02</td><td>냉각 랙 베이스플레이트</td><td class="num">6</td><td class="num">186.6</td><td class="num">400</td></tr><tr><td class="k">P-005-07</td><td>갠트리 측면 프레임</td><td class="num">2</td><td class="num">158.3</td><td class="num">900</td></tr><tr><td class="k">P-005-02</td><td>문형 베이스플레이트</td><td class="num">4</td><td class="num">132.3</td><td class="num">440</td></tr><tr><td class="k">P-004-05</td><td>테이블 베이스플레이트</td><td class="num">4</td><td class="num">112.1</td><td class="num">360</td></tr><tr><td class="k">P-005-11</td><td>Z축 서보슬라이드 베이스</td><td class="num">2</td><td class="num">87.9</td><td class="num">700</td></tr><tr><td class="k">P-007-09</td><td>냉각 팬</td><td class="num">6</td><td class="num">75.0</td><td class="num">520</td></tr><tr><td class="k">P-004-07</td><td>기둥·상판 접합판</td><td class="num">4</td><td class="num">45.2</td><td class="num">300</td></tr><tr><td class="k">P-002-03</td><td>기둥 거싯</td><td class="num">24</td><td class="num">45.2</td><td class="num">200</td></tr><tr><td class="k">P-005-03</td><td>문형 기둥 거싯</td><td class="num">16</td><td class="num">42.6</td><td class="num">220</td></tr><tr><td class="k">P-004-06</td><td>테이블 기둥 거싯</td><td class="num">16</td><td class="num">24.4</td><td class="num">180</td></tr><tr><td class="k">P-007-10</td><td>팬 가드 그릴</td><td class="num">6</td><td class="num">19.4</td><td class="num">560</td></tr><tr><td class="k">P-005-10</td><td>X축 피니언·감속기</td><td class="num">1</td><td class="num">18.0</td><td class="num">320</td></tr><tr><td class="k">P-002-16</td><td>열교 차단 스페이서</td><td class="num">210</td><td class="num">17.2</td><td class="num">60</td></tr><tr><td class="k">P-005-19</td><td>쐐기 클램프</td><td class="num">4</td><td class="num">12.8</td><td class="num">180</td></tr><tr><td class="k">P-005-13</td><td>Z축 LM 가이드</td><td class="num">4</td><td class="num">12.4</td><td class="num">500</td></tr><tr><td class="k">P-002-19</td><td>램프 소켓·배선</td><td class="num">80</td><td class="num">12.0</td><td class="num">60</td></tr><tr><td class="k">P-005-06</td><td>주행 대차 (LM 블록)</td><td class="num">4</td><td class="num">9.6</td><td class="num">160</td></tr><tr><td class="k">P-004-10</td><td>존 밸브·체크밸브</td><td class="num">6</td><td class="num">4.8</td><td class="num">90</td></tr><tr><td class="k">P-005-21</td><td>가이드롤 필로우블록</td><td class="num">2</td><td class="num">4.2</td><td class="num">120</td></tr><tr><td class="k">P-004-12</td><td>진공 필터</td><td class="num">6</td><td class="num">3.0</td><td class="num">110</td></tr><tr><td class="k">P-005-22</td><td>칼날 로드셀</td><td class="num">4</td><td class="num">1.6</td><td class="num">60</td></tr><tr><td class="k">P-005-18</td><td>테이퍼 로케이팅핀</td><td class="num">8</td><td class="num">1.0</td><td class="num">60</td></tr><tr><td class="k">P-007-11</td><td>표면 IR 센서</td><td class="num">5</td><td class="num">0.8</td><td class="num">70</td></tr><tr><td class="k">P-004-11</td><td>진공 압력센서</td><td class="num">6</td><td class="num">0.7</td><td class="num">45</td></tr></tbody></table></div></details><details><summary>3차 · 이송·투입 · 11 t 카고 · 3,520 kg · 29 품목</summary><div class="tw"><table><caption>3차 적재 명세</caption><thead><tr><th>품번</th><th>명칭</th><th>수량</th><th>kg</th><th>최장변 mm</th></tr></thead><tbody><tr><td class="k">P-003-01</td><td>포크 문형 기둥</td><td class="num">8</td><td class="num">808.9</td><td class="num">4,510</td></tr><tr><td class="k">P-003-05</td><td>기초보</td><td class="num">4</td><td class="num">624.1</td><td class="num">2,390</td></tr><tr><td class="k">P-003-04</td><td>두상보</td><td class="num">4</td><td class="num">570.0</td><td class="num">2,390</td></tr><tr><td class="k">P-003-12</td><td>포크 캐리지</td><td class="num">4</td><td class="num">373.0</td><td class="num">1,800</td></tr><tr><td class="k">P-003-02</td><td>포크 기둥 베이스플레이트</td><td class="num">8</td><td class="num">189.1</td><td class="num">400</td></tr><tr><td class="k">P-003-14</td><td>TS-101 텔레스코픽 포크</td><td class="num">4</td><td class="num">168.0</td><td class="num">1,900</td></tr><tr><td class="k">P-001-03</td><td>셔틀 상판</td><td class="num">1</td><td class="num">128.6</td><td class="num">2,600</td></tr><tr><td class="k">P-003-07</td><td>볼스크류</td><td class="num">8</td><td class="num">113.6</td><td class="num">3,180</td></tr><tr><td class="k">P-003-09</td><td>서보모터·감속기</td><td class="num">8</td><td class="num">92.0</td><td class="num">280</td></tr><tr><td class="k">P-003-13</td><td>캐리지 보강 리브</td><td class="num">16</td><td class="num">82.9</td><td class="num">550</td></tr><tr><td class="k">P-003-10</td><td>LM 가이드 레일</td><td class="num">8</td><td class="num">68.8</td><td class="num">4,110</td></tr><tr><td class="k">P-001-07</td><td>셔틀 레일</td><td class="num">2</td><td class="num">43.4</td><td class="num">3,200</td></tr><tr><td class="k">P-001-01</td><td>셔틀 프레임 종재</td><td class="num">2</td><td class="num">37.5</td><td class="num">2,600</td></tr><tr><td class="k">P-001-02</td><td>셔틀 프레임 횡재</td><td class="num">4</td><td class="num">37.5</td><td class="num">1,300</td></tr><tr><td class="k">P-003-03</td><td>포크 기둥 거싯</td><td class="num">32</td><td class="num">33.9</td><td class="num">150</td></tr><tr><td class="k">P-003-15</td><td>포크 티인</td><td class="num">8</td><td class="num">26.2</td><td class="num">620</td></tr><tr><td class="k">P-001-06</td><td>셔틀 주행 대차</td><td class="num">4</td><td class="num">24.8</td><td class="num">300</td></tr><tr><td class="k">P-003-06</td><td>보 접합 거싯</td><td class="num">16</td><td class="num">24.4</td><td class="num">180</td></tr><tr><td class="k">P-003-08</td><td>지지베어링 유닛</td><td class="num">16</td><td class="num">22.4</td><td class="num">80</td></tr><tr><td class="k">P-001-04</td><td>정렬 가이드 (고정측)</td><td class="num">1</td><td class="num">11.7</td><td class="num">2,600</td></tr><tr><td class="k">P-001-05</td><td>정렬 가이드 (가동측)</td><td class="num">1</td><td class="num">11.7</td><td class="num">2,600</td></tr><tr><td class="k">P-003-18</td><td>기계식 하드스톱</td><td class="num">8</td><td class="num">9.6</td><td class="num">120</td></tr><tr><td class="k">P-003-11</td><td>LM 블록</td><td class="num">16</td><td class="num">9.6</td><td class="num">90</td></tr><tr><td class="k">P-001-08</td><td>인출 실린더</td><td class="num">1</td><td class="num">4.8</td><td class="num">680</td></tr><tr><td class="k">P-003-17</td><td>상하한 리미트</td><td class="num">8</td><td class="num">1.2</td><td class="num">70</td></tr><tr><td class="k">P-003-16</td><td>절대치 엔코더</td><td class="num">4</td><td class="num">1.2</td><td class="num">60</td></tr><tr><td class="k">P-001-10</td><td>리더 브래킷</td><td class="num">1</td><td class="num">0.6</td><td class="num">160</td></tr><tr><td class="k">P-001-09</td><td>2D 코드 리더</td><td class="num">1</td><td class="num">0.3</td><td class="num">60</td></tr><tr><td class="k">P-001-11</td><td>패널 존재 센서</td><td class="num">2</td><td class="num">0.2</td><td class="num">50</td></tr></tbody></table></div></details><details><summary>4차 · 후단 설비 · 25 t 트레일러 · 2,205 kg · 43 품목</summary><div class="tw"><table><caption>4차 적재 명세</caption><thead><tr><th>품번</th><th>명칭</th><th>수량</th><th>kg</th><th>최장변 mm</th></tr></thead><tbody><tr><td class="k">P-006-17</td><td>런웨이 기둥</td><td class="num">2</td><td class="num">342.3</td><td class="num">4,900</td></tr><tr><td class="k">P-006-13</td><td>고정 아이들러</td><td class="num">1</td><td class="num">246.2</td><td class="num">1,560</td></tr><tr><td class="k">P-006-11</td><td>DN-101 댄서롤</td><td class="num">1</td><td class="num">188.5</td><td class="num">1,560</td></tr><tr><td class="k">P-006-01</td><td>권취 문형 기둥</td><td class="num">2</td><td class="num">159.6</td><td class="num">2,600</td></tr><tr><td class="k">P-006-16</td><td>RH-201 런웨이 빔</td><td class="num">1</td><td class="num">154.8</td><td class="num">7,550</td></tr><tr><td class="k">P-008-09</td><td>카트 적재판</td><td class="num">1</td><td class="num">123.6</td><td class="num">2,500</td></tr><tr><td class="k">P-006-04</td><td>권취 문형 상부보</td><td class="num">1</td><td class="num">104.4</td><td class="num">2,160</td></tr><tr><td class="k">P-006-06</td><td>권취 드럼 코어</td><td class="num">1</td><td class="num">84.1</td><td class="num">1,460</td></tr><tr><td class="k">P-008-04</td><td>이송 롤러</td><td class="num">18</td><td class="num">83.2</td><td class="num">1,600</td></tr><tr><td class="k">P-009-01</td><td>검사 문형 기둥</td><td class="num">2</td><td class="num">78.3</td><td class="num">2,900</td></tr><tr><td class="k">P-008-08</td><td>CS-201 평적 카트 프레임</td><td class="num">4</td><td class="num">59.4</td><td class="num">2,600</td></tr><tr><td class="k">P-006-20</td><td>RH-201 호이스트 트롤리</td><td class="num">1</td><td class="num">46.0</td><td class="num">420</td></tr><tr><td class="k">P-008-01</td><td>횡인출 컨베이어 프레임</td><td class="num">2</td><td class="num">45.4</td><td class="num">2,600</td></tr><tr><td class="k">P-006-23</td><td>BS-301 보관 새들</td><td class="num">2</td><td class="num">44.0</td><td class="num">700</td></tr><tr><td class="k">P-006-18</td><td>런웨이 기둥 베이스플레이트</td><td class="num">2</td><td class="num">42.6</td><td class="num">380</td></tr><tr><td class="k">P-006-02</td><td>권취 기둥 베이스플레이트</td><td class="num">2</td><td class="num">38.2</td><td class="num">360</td></tr><tr><td class="k">P-006-05</td><td>WR-101 권취축</td><td class="num">1</td><td class="num">36.0</td><td class="num">1,860</td></tr><tr><td class="k">P-006-21</td><td>인양빔</td><td class="num">1</td><td class="num">35.4</td><td class="num">1,580</td></tr><tr><td class="k">P-009-06</td><td>리젝트 슈트판</td><td class="num">1</td><td class="num">32.0</td><td class="num">1,400</td></tr><tr><td class="k">P-009-02</td><td>검사 문형 상부보</td><td class="num">1</td><td class="num">31.0</td><td class="num">2,300</td></tr><tr><td class="k">P-008-02</td><td>컨베이어 다리</td><td class="num">4</td><td class="num">29.3</td><td class="num">950</td></tr><tr><td class="k">P-009-08</td><td>리젝트 박스</td><td class="num">1</td><td class="num">24.1</td><td class="num">1,200</td></tr><tr><td class="k">P-009-07</td><td>리젝트 슈트 프레임</td><td class="num">4</td><td class="num">22.4</td><td class="num">1,500</td></tr><tr><td class="k">P-006-09</td><td>토크서보·감속기</td><td class="num">1</td><td class="num">22.0</td><td class="num">340</td></tr><tr><td class="k">P-006-19</td><td>런웨이 기둥 두상판</td><td class="num">2</td><td class="num">16.3</td><td class="num">300</td></tr><tr><td class="k">P-008-03</td><td>컨베이어 다리 베이스</td><td class="num">4</td><td class="num">15.0</td><td class="num">200</td></tr><tr><td class="k">P-008-10</td><td>카트 캐스터</td><td class="num">4</td><td class="num">12.8</td><td class="num">200</td></tr><tr><td class="k">P-008-05</td><td>롤러 베어링 하우징</td><td class="num">36</td><td class="num">12.6</td><td class="num">60</td></tr><tr><td class="k">P-006-08</td><td>드럼 필로우블록</td><td class="num">2</td><td class="num">11.6</td><td class="num">180</td></tr><tr><td class="k">P-006-07</td><td>코어 분할클램프</td><td class="num">4</td><td class="num">9.6</td><td class="num">160</td></tr><tr><td class="k">P-006-12</td><td>댄서암</td><td class="num">2</td><td class="num">9.5</td><td class="num">420</td></tr><tr><td class="k">P-006-03</td><td>권취 기둥 거싯</td><td class="num">8</td><td class="num">8.5</td><td class="num">150</td></tr><tr><td class="k">P-008-06</td><td>롤러 구동 기어모터</td><td class="num">1</td><td class="num">8.4</td><td class="num">260</td></tr><tr><td class="k">P-009-05</td><td>LED 라인 조명</td><td class="num">2</td><td class="num">7.0</td><td class="num">1,300</td></tr><tr><td class="k">P-006-22</td><td>코어 그리퍼</td><td class="num">2</td><td class="num">6.6</td><td class="num">220</td></tr><tr><td class="k">P-008-07</td><td>구동 체인·스프라켓</td><td class="num">1</td><td class="num">6.0</td><td class="num">2,600</td></tr><tr><td class="k">P-009-04</td><td>라인스캔 카메라</td><td class="num">3</td><td class="num">3.6</td><td class="num">120</td></tr><tr><td class="k">P-009-03</td><td>카메라 브래킷</td><td class="num">3</td><td class="num">3.4</td><td class="num">200</td></tr><tr><td class="k">P-006-14</td><td>장력 로드셀</td><td class="num">2</td><td class="num">0.8</td><td class="num">60</td></tr><tr><td class="k">P-006-10</td><td>직경센서</td><td class="num">1</td><td class="num">0.3</td><td class="num">80</td></tr><tr><td class="k">P-008-11</td><td>유리 두께·존재 센서</td><td class="num">2</td><td class="num">0.2</td><td class="num">50</td></tr><tr><td class="k">P-006-15</td><td>웹 파단 검출센서</td><td class="num">1</td><td class="num">0.1</td><td class="num">50</td></tr><tr><td class="k">P-009-09</td><td>리젝트 만재 센서</td><td class="num">1</td><td class="num">0.1</td><td class="num">50</td></tr></tbody></table></div></details><details><summary>5차 · 유틸리티 · 5 t 카고 · 1,187 kg · 17 품목</summary><div class="tw"><table><caption>5차 적재 명세</caption><thead><tr><th>품번</th><th>명칭</th><th>수량</th><th>kg</th><th>최장변 mm</th></tr></thead><tbody><tr><td class="k">P-011-01</td><td>MCC 반</td><td class="num">1</td><td class="num">320.0</td><td class="num">2,100</td></tr><tr><td class="k">P-011-02</td><td>PLC-101 제어반</td><td class="num">1</td><td class="num">210.0</td><td class="num">2,100</td></tr><tr><td class="k">P-012-04</td><td>진공 펌프</td><td class="num">2</td><td class="num">176.0</td><td class="num">700</td></tr><tr><td class="k">P-011-04</td><td>케이블 트레이</td><td class="num">8</td><td class="num">72.0</td><td class="num">3,000</td></tr><tr><td class="k">P-012-05</td><td>진공 탱크</td><td class="num">1</td><td class="num">65.8</td><td class="num">900</td></tr><tr><td class="k">P-012-10</td><td>공기 리시버 탱크</td><td class="num">1</td><td class="num">62.0</td><td class="num">1,200</td></tr><tr><td class="k">P-012-03</td><td>스키드 상판</td><td class="num">1</td><td class="num">60.8</td><td class="num">1,500</td></tr><tr><td class="k">P-012-01</td><td>스키드 프레임 종재</td><td class="num">2</td><td class="num">55.2</td><td class="num">1,500</td></tr><tr><td class="k">P-012-02</td><td>스키드 프레임 횡재</td><td class="num">3</td><td class="num">47.5</td><td class="num">860</td></tr><tr><td class="k">P-011-03</td><td>반 베이스 채널</td><td class="num">2</td><td class="num">25.4</td><td class="num">1,700</td></tr><tr><td class="k">P-012-11</td><td>스키드 방호 커버</td><td class="num">2</td><td class="num">20.3</td><td class="num">1,500</td></tr><tr><td class="k">P-012-07</td><td>진공 배관</td><td class="num">4</td><td class="num">19.1</td><td class="num">2,000</td></tr><tr><td class="k">P-011-05</td><td>트레이 행거</td><td class="num">16</td><td class="num">17.9</td><td class="num">400</td></tr><tr><td class="k">P-012-06</td><td>탱크 새들</td><td class="num">2</td><td class="num">15.7</td><td class="num">500</td></tr><tr><td class="k">P-012-08</td><td>배관 플랜지</td><td class="num">8</td><td class="num">9.8</td><td class="num">140</td></tr><tr><td class="k">P-012-09</td><td>계장공기 필터·레귤레이터</td><td class="num">1</td><td class="num">6.5</td><td class="num">400</td></tr><tr><td class="k">P-011-06</td><td>접지 부스바</td><td class="num">1</td><td class="num">2.7</td><td class="num">2,000</td></tr></tbody></table></div></details><details><summary>6차 · 경계 · 5 t 카고 · 1,329 kg · 6 품목</summary><div class="tw"><table><caption>6차 적재 명세</caption><thead><tr><th>품번</th><th>명칭</th><th>수량</th><th>kg</th><th>최장변 mm</th></tr></thead><tbody><tr><td class="k">P-017-01</td><td>경계 덕트</td><td class="num">8</td><td class="num">1,060.1</td><td class="num">3,000</td></tr><tr><td class="k">P-017-02</td><td>덕트 플랜지</td><td class="num">16</td><td class="num">151.1</td><td class="num">700</td></tr><tr><td class="k">P-017-04</td><td>BJ-101 경계 단자반</td><td class="num">1</td><td class="num">48.0</td><td class="num">800</td></tr><tr><td class="k">P-017-05</td><td>BJ-102 경계 배관반</td><td class="num">1</td><td class="num">42.0</td><td class="num">800</td></tr><tr><td class="k">P-017-03</td><td>덕트 지지 행거</td><td class="num">8</td><td class="num">19.9</td><td class="num">500</td></tr><tr><td class="k">P-017-06</td><td>경계 표지판</td><td class="num">4</td><td class="num">7.5</td><td class="num">400</td></tr></tbody></table></div></details><details><summary>7차 · 방책 · 5 t 카고 · 1,592 kg · 10 품목</summary><div class="tw"><table><caption>7차 적재 명세</caption><thead><tr><th>품번</th><th>명칭</th><th>수량</th><th>kg</th><th>최장변 mm</th></tr></thead><tbody><tr><td class="k">P-013-03</td><td>메시 패널</td><td class="num">32</td><td class="num">953.4</td><td class="num">2,400</td></tr><tr><td class="k">P-013-01</td><td>방책 기둥</td><td class="num">34</td><td class="num">494.8</td><td class="num">2,550</td></tr><tr><td class="k">P-013-02</td><td>방책 기둥 베이스플레이트</td><td class="num">34</td><td class="num">59.4</td><td class="num">150</td></tr><tr><td class="k">P-013-05</td><td>안전문 프레임</td><td class="num">8</td><td class="num">37.6</td><td class="num">1,000</td></tr><tr><td class="k">P-013-04</td><td>패널 클램프</td><td class="num">128</td><td class="num">19.8</td><td class="num">80</td></tr><tr><td class="k">P-013-07</td><td>라이트커튼 (투광·수광)</td><td class="num">4</td><td class="num">16.8</td><td class="num">2,000</td></tr><tr><td class="k">P-013-08</td><td>라이트커튼 브래킷</td><td class="num">8</td><td class="num">5.4</td><td class="num">180</td></tr><tr><td class="k">P-013-09</td><td>비상정지 버튼함</td><td class="num">4</td><td class="num">2.4</td><td class="num">120</td></tr><tr><td class="k">P-013-10</td><td>신호탑·부저</td><td class="num">2</td><td class="num">2.2</td><td class="num">400</td></tr><tr><td class="k">P-013-06</td><td>안전문 인터록 스위치</td><td class="num">2</td><td class="num">0.6</td><td class="num">120</td></tr></tbody></table></div></details>
+  </div></div>
+
+  <div class="clause"><div class="n">2.4</div><div class="c">
+    <h3>운반·양중 주의</h3>
+    <div class="tw"><table>
+      <caption>짐이 아니라 현장이 정하는 것들</caption>
+      <thead><tr><th>항목</th><th>기준</th></tr></thead>
+      <tbody><tr><td><strong>반입로 폭</strong></td><td>차량 폭 + 1,000 이상. 25 t 트레일러는 회전반경 12 m 를 본다.</td></tr><tr><td><strong>양중</strong></td><td>가장 무거운 단품이 기중기를 정한다. 아래 표의 <strong>최중량 단품</strong> 열을 본다.</td></tr><tr><td><strong>적재 순서</strong></td><td>무거운 것을 바닥에, 긴 것을 아래에. 판재는 세워 싣고 받침목으로 잡는다.</td></tr><tr><td><strong>보양</strong></td><td>STS304 내피와 연삭면(레일·상판)은 <strong>비닐 보양 후 합판 개재</strong>. 긁히면 현장에서 못 고친다.</td></tr><tr><td><strong>결박</strong></td><td>각 짐마다 결박점을 도면에 표시한다. 리프팅 러그가 있는 부재는 러그로만 든다.</td></tr><tr><td><strong>도착 순서</strong></td><td>차수 번호가 곧 도착 순서다. 앞 차수가 세워지기 전에 뒤 차수가 오면 둘 자리가 없다.</td></tr></tbody>
+    </table></div>
+  </div></div>
+</section>
+
+<section id="p3"><h2><span class="sn">3</span>구매품 사양</h2>
+
+  <div class="clause"><div class="n">3.1</div><div class="c">
+    <h3>구매품은 형상을 그리지 않는다</h3>
+    <p>사는 물건의 내부 치수를 도면에 적으면 그것은 거짓말이다. 대신 발주에 필요한
+      다섯 가지를 적는다 — <strong>정격·성능 · 인터페이스 · 수량 · 검사·승인 · 예비품</strong>.
+      이것이 없으면 구매 담당이 임의로 고르고, 그 선택이 조립 날에 드러난다.</p>
+    <p>전 <strong class="m">59 종</strong>이고, 부품도(콘솔 <span class="k">부품도</span> 탭)에는
+      외형 상자와 장착면이 그려져 있다 — <strong>앉힐 자리를 잡는 데까지</strong>가 도면의 몫이다.</p>
+    <div class="warn"><strong>승인도 제출 대상 2 종</strong>
+      (<span class="k">P-011-01 · P-011-02</span>) 은
+      <strong>승인 후 제작</strong>이다. 승인 왕복 2~3 주를 일정에 넣는다.
+      <strong>인증서·검사증 대상 6 종</strong>은 서류 없이 반입하지 않는다 —
+      안전 부품과 압력용기는 서류가 곧 사용 허가다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">3.2</div><div class="c">
+    
+    <h3>안전 — 4 종</h3>
+    <div class="tw"><table>
+      <caption>안전 구매품</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>정격·성능</th><th>인터페이스</th>
+        <th>수량</th><th>검사·승인</th><th>예비품</th></tr></thead>
+      <tbody><tr><td class="k">P-003-17</td><td><strong>상하한 리미트</strong></td><td>안전등급 위치스위치 · PL d · 강제개리 접점</td><td>M5 2 · 2채널</td><td class="num">8</td><td>기능시험 · 인증서</td><td class="k"></td></tr><tr><td class="k">P-013-06</td><td><strong>안전문 인터록 스위치</strong></td><td>코드화 인터록 스위치 (텅) · PL d · 2채널</td><td>M5 4 · 안전회로 배선</td><td class="num">2</td><td><strong>문 열림 → 정지 실증 · 인증서</strong></td><td class="k"></td></tr><tr><td class="k">P-013-07</td><td><strong>라이트커튼 (투광·수광)</strong></td><td>라이트커튼 분해능 30 mm · 보호높이 2,000 · Type 4 · 뮤팅</td><td>전용 브래킷 M6 4 · 안전회로</td><td class="num">4</td><td><strong>차광 시험 Ø30 · 응답 ≤ 30 ms · 인증서</strong></td><td class="k">라이트커튼 1조 (안전정지가 곧 생산정지다)</td></tr><tr><td class="k">P-013-09</td><td><strong>비상정지 버튼함</strong></td><td>비상정지 버튼 ISO 13850 · 유지형·해제 회전 · 강제개리 2채널</td><td>M6 4</td><td class="num">4</td><td><strong>인증서 · 4개소 전부 정지 실증 · 복귀 요구 확인</strong></td><td class="k"></td></tr></tbody>
+    </table></div>
+    <h3>전기 — 15 종</h3>
+    <div class="tw"><table>
+      <caption>전기 구매품</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>정격·성능</th><th>인터페이스</th>
+        <th>수량</th><th>검사·승인</th><th>예비품</th></tr></thead>
+      <tbody><tr><td class="k">P-002-18</td><td><strong>IR 램프</strong></td><td>단파장 IR 2.5 kW · 230 V · 석영관</td><td>세라믹 소켓 압입 · 내열 리드</td><td class="num">40</td><td>40등 점등 · 절연저항 ≥ 5 MΩ</td><td class="k">IR 램프 40등의 10 % = 4등</td></tr><tr><td class="k">P-002-19</td><td><strong>램프 소켓·배선</strong></td><td>세라믹 소켓 · 250 ℃ · 실리콘 리드 200 ℃</td><td>M4 2 · 압착단자</td><td class="num">80</td><td>내열 성적서</td><td class="k"></td></tr><tr><td class="k">P-003-09</td><td><strong>서보모터·감속기</strong></td><td>서보 1.5 kW · 무여자 브레이크 · 절대치</td><td>M10 4 · 동력/엔코더 커넥터</td><td class="num">8</td><td>2축 동기 ≤ 0.5 mm 실증</td><td class="k"></td></tr><tr><td class="k">P-003-16</td><td><strong>절대치 엔코더</strong></td><td>다회전 절대치 엔코더 · 배터리리스</td><td>M4 4 · 시리얼</td><td class="num">4</td><td>정전 후 원점 유지 실증</td><td class="k"></td></tr><tr><td class="k">P-005-10</td><td><strong>X축 피니언·감속기</strong></td><td>서보 + 유성감속 · 백래시 ≤ 3′</td><td>M12 4 · 편심 부시 조정</td><td class="num">1</td><td>위치결정 ±0.1 실증</td><td class="k"></td></tr><tr><td class="k">P-005-16</td><td><strong>카트리지 히터</strong></td><td>카트리지 히터 Ø12 · 200 W · 400 ℃</td><td>압입 + 세트스크류 · 내열 리드</td><td class="num">12</td><td>12본 승온 · 편차 ≤ 5 ℃</td><td class="k">카트리지 히터 2본</td></tr><tr><td class="k">P-006-09</td><td><strong>토크서보·감속기</strong></td><td>토크서보 2.2 kW · 장력제어 · 직경 추종</td><td>M12 4 · 커플링</td><td class="num">1</td><td>장력 지령 추종 실증</td><td class="k"></td></tr><tr><td class="k">P-007-09</td><td><strong>냉각 팬</strong></td><td>축류 팬 Ø520 · 8극 · 0.55 kW</td><td>M10 4 + 방진고무 · 3상 400 V</td><td class="num">6</td><td>풍량 실측 · 진동 ≤ 4.5 mm/s</td><td class="k"></td></tr><tr><td class="k">P-008-06</td><td><strong>롤러 구동 기어모터</strong></td><td>기어모터 0.4 kW · 인버터 구동</td><td>M10 4 · 3상 400 V</td><td class="num">1</td><td>속도 가변 실증</td><td class="k"></td></tr><tr><td class="k">P-009-05</td><td><strong>LED 라인 조명</strong></td><td>LED 라인조명 1,300 mm · 투과/반사 2조</td><td>M6 4 · DC24V 조광</td><td class="num">2</td><td>조도 균일도 ≥ 80 %</td><td class="k"></td></tr><tr><td class="k">P-011-01</td><td><strong>MCC 반</strong></td><td>MCC IP54 · 주회로 400 AF/400 AT · 3Φ4W 380/220 V</td><td>베이스 채널 M12 4 · 케이블 하부 인입</td><td class="num">1</td><td><strong>승인도 제출 · 절연내력 · 시퀀스 시험</strong></td><td class="k"></td></tr><tr><td class="k">P-011-02</td><td><strong>PLC-101 제어반</strong></td><td>안전 PLC + 원격 I/O · UPS 이중전원 · IP54</td><td>베이스 채널 M12 4 · 광/동 통신</td><td class="num">1</td><td><strong>승인도 제출 · I/O 도통 · 인터록 기능시험</strong></td><td class="k"></td></tr><tr><td class="k">P-011-04</td><td><strong>케이블 트레이</strong></td><td>케이블 트레이 300×100 · 아연도금 · 2단(동력/제어)</td><td>행거 M8 2 @1,500</td><td class="num">8</td><td>접지 본딩 도통</td><td class="k"></td></tr><tr><td class="k">P-013-10</td><td><strong>신호탑·부저</strong></td><td>적·황·녹 신호탑 + 부저 85 dB · DC24V</td><td>M6 3</td><td class="num">2</td><td>상태별 표시 실증</td><td class="k"></td></tr><tr><td class="k">P-017-04</td><td><strong>BJ-101 경계 단자반</strong></td><td>경계 단자반 IP54 · 단자 번호 도면 일치</td><td>M10 4 · 하부 인입</td><td class="num">1</td><td><strong>단자 번호 대조 · 도통 시험</strong></td><td class="k"></td></tr></tbody>
+    </table></div>
+    <h3>계장 — 12 종</h3>
+    <div class="tw"><table>
+      <caption>계장 구매품</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>정격·성능</th><th>인터페이스</th>
+        <th>수량</th><th>검사·승인</th><th>예비품</th></tr></thead>
+      <tbody><tr><td class="k">P-001-09</td><td><strong>2D 코드 리더</strong></td><td>2D 코드 리더 · 초점 120 mm · Ethernet/IP</td><td>M12 4핀 · DC24V</td><td class="num">1</td><td>판독률 10/10 실증</td><td class="k"></td></tr><tr><td class="k">P-001-11</td><td><strong>패널 존재 센서</strong></td><td>반사형 광전 · 검출 500 mm · PNP</td><td>M8 3핀 · DC24V</td><td class="num">2</td><td>오검출 0 실증</td><td class="k"></td></tr><tr><td class="k">P-002-23</td><td><strong>단별 열전대</strong></td><td>K형 시스 열전대 Ø3 · 0~600 ℃ · 등급 1</td><td>압축피팅 M8 · 보상도선</td><td class="num">10</td><td>10점 편차 ≤ 3 ℃</td><td class="k"></td></tr><tr><td class="k">P-004-11</td><td><strong>진공 압력센서</strong></td><td>진공 압력센서 −100~0 kPa · 아날로그</td><td>G1/8 · M8 4핀</td><td class="num">6</td><td>−65 kPa 판정 · 교정 성적서</td><td class="k"></td></tr><tr><td class="k">P-005-22</td><td><strong>칼날 로드셀</strong></td><td>로드셀 0~20 kN · 압축형</td><td>M12 · 4선식</td><td class="num">4</td><td>교정 성적서 (OI-01 실측용)</td><td class="k"></td></tr><tr><td class="k">P-006-10</td><td><strong>직경센서</strong></td><td>레이저 거리센서 100~600 mm · 아날로그</td><td>M5 2 · M12 4핀</td><td class="num">1</td><td>권경 추종 실증</td><td class="k"></td></tr><tr><td class="k">P-006-14</td><td><strong>장력 로드셀</strong></td><td>로드셀 0~2 kN · 인장형</td><td>M10 · 4선식</td><td class="num">2</td><td>0점 조정 · 교정 성적서</td><td class="k"></td></tr><tr><td class="k">P-006-15</td><td><strong>웹 파단 검출센서</strong></td><td>투과형 광전 · 응답 ≤ 1 ms</td><td>M4 2 · M8 3핀</td><td class="num">1</td><td>웹 파단 → 즉시 정지 실증</td><td class="k"></td></tr><tr><td class="k">P-007-11</td><td><strong>표면 IR 센서</strong></td><td>비접촉 IR 온도계 0~200 ℃ · 아날로그</td><td>M5 2 · M12 4핀</td><td class="num">5</td><td>흑체 대조 편차 ≤ 3 ℃</td><td class="k"></td></tr><tr><td class="k">P-008-11</td><td><strong>유리 두께·존재 센서</strong></td><td>광전 · 유리 존재·겹침 검출</td><td>M4 2 · M8 3핀</td><td class="num">2</td><td>겹침 판정 10/10</td><td class="k"></td></tr><tr><td class="k">P-009-04</td><td><strong>라인스캔 카메라</strong></td><td>라인스캔 카메라 4K · GigE Vision</td><td>M4 4 · PoE</td><td class="num">3</td><td>잔막 0.2 mm 판독 실증</td><td class="k"></td></tr><tr><td class="k">P-009-09</td><td><strong>리젝트 만재 센서</strong></td><td>만재 검출 광전</td><td>M4 2 · M8 3핀</td><td class="num">1</td><td>만재 → 정지 실증</td><td class="k"></td></tr></tbody>
+    </table></div>
+    <h3>기계 — 20 종</h3>
+    <div class="tw"><table>
+      <caption>기계 구매품</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>정격·성능</th><th>인터페이스</th>
+        <th>수량</th><th>검사·승인</th><th>예비품</th></tr></thead>
+      <tbody><tr><td class="k">P-001-06</td><td><strong>셔틀 주행 대차</strong></td><td>V홈 캠폴로워 Ø40 · 정격 2.0 kN/개</td><td>M10 볼트 4 · 편심축 조정</td><td class="num">4</td><td>재질 성적서</td><td class="k"></td></tr><tr><td class="k">P-003-07</td><td><strong>볼스크류</strong></td><td>볼스크류 Ø32 리드 10 · C5급 · 예압</td><td>지지베어링 유닛 · 커플링</td><td class="num">8</td><td>흔들림 ≤ 0.05 · 성적서</td><td class="k"></td></tr><tr><td class="k">P-003-08</td><td><strong>지지베어링 유닛</strong></td><td>지지베어링 유닛 (고정측/지지측)</td><td>M8 4</td><td class="num">16</td><td>예압 확인</td><td class="k"></td></tr><tr><td class="k">P-003-10</td><td><strong>LM 가이드 레일</strong></td><td>LM 레일 사이즈 25 · 프리로드 C1</td><td>M6 @80 · 기준면 밀착</td><td class="num">8</td><td>직진도 성적서</td><td class="k"></td></tr><tr><td class="k">P-003-11</td><td><strong>LM 블록</strong></td><td>LM 블록 사이즈 25 · 프리로드 C1</td><td>M6 4</td><td class="num">16</td><td>예압 확인</td><td class="k"></td></tr><tr><td class="k">P-003-14</td><td><strong>TS-101 텔레스코픽 포크</strong></td><td>2단 텔레스코픽 포크 · 인출 2,610 · 적재 200 kg</td><td>M12 8 · 낙하방지 밸브</td><td class="num">4</td><td>인출 ±3 · 처짐 ≤ 3 mm 실증</td><td class="k"></td></tr><tr><td class="k">P-004-08</td><td><strong>흡착패드</strong></td><td>NBR 벨로우즈 패드 Ø250 · 내열 120 ℃</td><td>G1/4 니플</td><td class="num">18</td><td>18점 동일 평면 ≤ 0.3</td><td class="k">흡착패드 4개</td></tr><tr><td class="k">P-005-05</td><td><strong>LM 주행레일</strong></td><td>LM 주행레일 사이즈 45 · 프리로드 · 정격수명 20,000 h</td><td>M12 @105 · 연삭 기준면</td><td class="num">2</td><td>직진도 0.1/1,000 성적서</td><td class="k"></td></tr><tr><td class="k">P-005-06</td><td><strong>주행 대차 (LM 블록)</strong></td><td>LM 블록 사이즈 45 · 프리로드</td><td>M12 4 · <strong>마찰접합</strong></td><td class="num">4</td><td>접합면 Sa 2½ · 도장 금지</td><td class="k"></td></tr><tr><td class="k">P-005-09</td><td><strong>X축 랙</strong></td><td>경화 랙 모듈 3 · 백래시 ≤ 0.05</td><td>M10 @100</td><td class="num">1</td><td>백래시 실측</td><td class="k"></td></tr><tr><td class="k">P-005-12</td><td><strong>Z축 볼스크류</strong></td><td>볼스크류 Ø32 리드 10 · 무여자 브레이크</td><td>지지베어링 유닛</td><td class="num">2</td><td>흔들림 ≤ 0.05</td><td class="k"></td></tr><tr><td class="k">P-005-13</td><td><strong>Z축 LM 가이드</strong></td><td>LM 가이드 사이즈 25 · 프리로드 C1</td><td>M6 @80</td><td class="num">4</td><td>직진도 성적서</td><td class="k"></td></tr><tr><td class="k">P-005-21</td><td><strong>가이드롤 필로우블록</strong></td><td>자동조심 볼베어링 필로우블록</td><td>M12 4</td><td class="num">2</td><td>회전 무저항</td><td class="k"></td></tr><tr><td class="k">P-006-08</td><td><strong>드럼 필로우블록</strong></td><td>SN-510 상당 자동조심 볼베어링 · 그리스</td><td>M16 4</td><td class="num">2</td><td>축 흔들림 ≤ 0.03</td><td class="k"></td></tr><tr><td class="k">P-006-20</td><td><strong>RH-201 호이스트 트롤리</strong></td><td>수동 트롤리 + 전동 호이스트 정격 1 t · 인양 5 m</td><td>런웨이 하부 플랜지 물림</td><td class="num">1</td><td><strong>정격 하중시험 · 검사증</strong></td><td class="k"></td></tr><tr><td class="k">P-007-08</td><td><strong>G4 프리필터</strong></td><td>G4 프리필터 600×600×48 · 교체형</td><td>프레임 슬라이드 + 클립</td><td class="num">12</td><td>초기 차압 기록</td><td class="k">G4 프리필터 12매 1회분</td></tr><tr><td class="k">P-008-05</td><td><strong>롤러 베어링 하우징</strong></td><td>롤러 베어링 하우징 · 그리스 봉입</td><td>M8 2</td><td class="num">36</td><td>회전 무저항</td><td class="k"></td></tr><tr><td class="k">P-008-07</td><td><strong>구동 체인·스프라켓</strong></td><td>롤러체인 RS50 + 스프라켓 · 장력 아이들러</td><td>축단 키 고정</td><td class="num">1</td><td>처짐 10~15 mm</td><td class="k"></td></tr><tr><td class="k">P-008-10</td><td><strong>카트 캐스터</strong></td><td>캐스터 Ø150 · 브레이크 2 / 자유 2 · 정격 200 kg/개</td><td>M12 4</td><td class="num">4</td><td>4점 접지 확인</td><td class="k"></td></tr><tr><td class="k">P-012-04</td><td><strong>진공 펌프</strong></td><td>드라이 스크류 진공펌프 · 도달 −95 kPa · 2대(1 예비)</td><td>M12 4 + 방진고무 · 3상 400 V</td><td class="num">2</td><td><strong>1대 운전으로 −65 kPa 도달 실증</strong></td><td class="k">진공펌프 실 킷 1벌</td></tr></tbody>
+    </table></div>
+    <h3>공압 — 8 종</h3>
+    <div class="tw"><table>
+      <caption>공압 구매품</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>정격·성능</th><th>인터페이스</th>
+        <th>수량</th><th>검사·승인</th><th>예비품</th></tr></thead>
+      <tbody><tr><td class="k">P-001-08</td><td><strong>인출 실린더</strong></td><td>복동 Ø40 · 행정 500 · 0.5 MPa</td><td>G1/8 포트 2 · 클레비스 Ø16</td><td class="num">1</td><td>행정·속도 시운전</td><td class="k"></td></tr><tr><td class="k">P-002-22</td><td><strong>셔터 실린더</strong></td><td>복동 Ø63 · 행정 900 · 속도제어 양방향</td><td>G1/4 포트 2 · M12 4</td><td class="num">2</td><td>개폐 ≤ 3 s 실증</td><td class="k"></td></tr><tr><td class="k">P-004-10</td><td><strong>존 밸브·체크밸브</strong></td><td>진공 존 밸브 + 체크밸브 · Cv 1.0</td><td>G1/4</td><td class="num">6</td><td>존별 차단 실증</td><td class="k"></td></tr><tr><td class="k">P-004-12</td><td><strong>진공 필터</strong></td><td>진공 필터 5 µm · 교체형 엘리먼트</td><td>G1/4</td><td class="num">6</td><td>차압 경보 설정</td><td class="k"></td></tr><tr><td class="k">P-005-19</td><td><strong>쐐기 클램프</strong></td><td>쐐기 클램프 15 kN · 공압 작동</td><td>M12 4 · G1/8</td><td class="num">4</td><td><strong>밀착·열전달 전용 — 전단은 핀이 받는다</strong></td><td class="k"></td></tr><tr><td class="k">P-012-09</td><td><strong>계장공기 필터·레귤레이터</strong></td><td>필터·레귤레이터 0.6 MPa · 자동 드레인</td><td>M8 4 · Rc1/2</td><td class="num">1</td><td>누설 0</td><td class="k"></td></tr><tr><td class="k">P-012-10</td><td><strong>공기 리시버 탱크</strong></td><td>공기 리시버 400 L · 안전밸브 · 압력용기 등록</td><td>M12 4 · Rc1</td><td class="num">1</td><td><strong>압력용기 검사증</strong></td><td class="k"></td></tr><tr><td class="k">P-017-05</td><td><strong>BJ-102 경계 배관반</strong></td><td>경계 배관반 · 계통별 차단밸브 · 압력계</td><td>M10 4 · Rc1/2</td><td class="num">1</td><td><strong>차단밸브 작동 · 기밀 시험</strong></td><td class="k"></td></tr></tbody>
+    </table></div>
+  </div></div>
+
+  <div class="clause"><div class="n">3.3</div><div class="c">
+    <h3>예비품</h3>
+    <p>전부 예비를 두면 창고가 공장이 된다. <strong>소모품과 정지시간이 큰 것</strong>만 든다.</p>
+    <ul>
+      <li><span class='k'>P-002-18</span> IR 램프 40등의 10 % = 4등</li><li><span class='k'>P-005-15</span> SKD11 인서트 2벌 (소모품 — 교체 전제)</li><li><span class='k'>P-005-16</span> 카트리지 히터 2본</li><li><span class='k'>P-007-08</span> G4 프리필터 12매 1회분</li><li><span class='k'>P-004-08</span> 흡착패드 4개</li><li><span class='k'>P-012-04</span> 진공펌프 실 킷 1벌</li><li><span class='k'>P-013-07</span> 라이트커튼 1조 (안전정지가 곧 생산정지다)</li>
+    </ul>
+    <div class="note"><strong>라이트커튼이 예비품 목록에 있는 이유</strong> — 안전 부품이 고장나면
+      기계가 서고, 대체품 납기가 6~8 주다. 안전정지가 곧 생산정지다.</div>
+  </div></div>
+</section>
+
+<footer class="foot">
+  <p><strong>DG-HK60C-PRC-001 Rev.0</strong> · 2026-09-06 · DYNAMIC INDUSTRY</p>
+  <p>제작 지침서 <span class="k">DG-HK60C-FAB-001</span> ·
+    조립 지침서 <span class="k">DG-HK60C-ASM-001</span> 과 한 벌로 낸다.
+    수량과 형상은 개념설계가 유도한 값이며 상세설계에서 확정한다 —
+    <strong>확정 전 발주는 납기가 긴 품목(서보·안전 부품)에 한한다.</strong></p>
+</footer>
+
+</div>
+</body>
+</html>
