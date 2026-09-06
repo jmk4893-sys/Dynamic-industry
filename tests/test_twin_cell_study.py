@@ -42,6 +42,38 @@ def const(name, src=None):
     return float(m.group(1))
 
 
+GEO_INPUTS = ("gantryY", "cassette", "forkY", "forkS", "gantryS", "gap",
+              "cartY", "skin", "fenceD", "dlLen")
+
+
+def geo():
+    """배치 블록의 입력값. 유도값(aisle·celly·halfW)은 여기서 다시 계산한다 —
+    검토서가 스스로 계산하므로 그 자리에는 0 이 적혀 있다."""
+    m = re.search(r"const GEO=\{(.*?)\};", study(), re.S)
+    assert m, "검토서에 배치 블록이 없다"
+    blk = m.group(1)
+    out = {}
+    for k in GEO_INPUTS:
+        v = re.search(rf"\b{k}\s*:\s*([\d.]+)", blk)
+        assert v, f"배치 블록에 {k} 이 없다"
+        out[k] = float(v.group(1))
+    return out
+
+
+def aisle():
+    g = geo()
+    return max(g["cassette"] + 2 * .18,
+               2 * (g["forkY"] + g["forkS"] / 2 + g["gantryS"] / 2 + g["gap"]))
+
+
+def celly():
+    return geo()["gantryY"] + aisle() / 2
+
+
+def half_width():
+    return celly() + geo()["cartY"] + .65 + .80
+
+
 class TestTheStudyIsAStandaloneDocument(unittest.TestCase):
     def test_is_standalone_document(self):
         standalone_document_checks(self, study(), TITLE)
@@ -170,10 +202,29 @@ class TestTheLayoutKeepsWhatWasEarned(unittest.TestCase):
 
     def test_the_aisle_takes_the_cassette(self):
         """A안이 찾아낸 인출 포락선을 두 셀 구성이 다시 잃으면 안 된다."""
-        aisle = const("aisle")
         cass = console_consts.const("KNIFE_W")
-        self.assertGreaterEqual(aisle + 1e-9, cass,
-                                f"중앙 통로 {aisle:.2f} m 가 카세트 {cass:.2f} m 를 못 받는다")
+        self.assertGreaterEqual(aisle() + 1e-9, cass,
+                                f"중앙 통로 {aisle():.2f} m 가 카세트 {cass:.2f} m 를 못 받는다")
+
+    def test_the_aisle_also_takes_the_discharge_portal(self):
+        """3D 배치가 찾아낸 두 번째 제약 — 통로에 서는 것은 카세트만이 아니다.
+
+        EX-101 방출 문형은 패널 1,200 을 통과시켜야 하므로 마스트가 ±1,120 이고,
+        셀 갠트리 기둥이 ±1,420 에 선다. 카세트만 보면 통로가 좁게 나오고,
+        좁게 나온 통로로는 문형이 기둥을 뚫는다."""
+        g = geo()
+        fork = 2 * (g["forkY"] + g["forkS"] / 2 + g["gantryS"] / 2 + g["gap"])
+        self.assertAlmostEqual(aisle(), max(g["cassette"] + .36, fork), delta=1e-9)
+        self.assertGreater(fork, g["cassette"] + .36,
+                           "문형 제약이 카세트보다 좁다면 이 시험의 전제가 바뀐 것이다")
+        self.assertIn("GEO.aisle=Math.max(GEO.aisleCass,GEO.aisleFork)",
+                      study().replace(" ", ""),
+                      "통로 폭이 둘 중 큰 쪽에서 나오지 않는다")
+
+    def test_the_cell_pitch_follows_the_aisle(self):
+        """셀 중심간격은 통로에서 나온다 — 값으로 박으면 통로만 넓어진다."""
+        self.assertIn("GEO.celly=GEO.gantryY+GEO.aisle/2", study().replace(" ", ""))
+        self.assertAlmostEqual(celly(), geo()["gantryY"] + aisle() / 2, delta=1e-9)
 
     def test_the_fence_is_stepped_not_rectangular(self):
         """직사각형으로 그리면 점유면적을 과장한다."""

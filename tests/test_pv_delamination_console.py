@@ -737,7 +737,7 @@ class TestBacksheetWinder(unittest.TestCase):
 
     def test_live_roll_diameter_is_readable_without_turning_on_labels(self):
         """3D 라벨은 기본이 꺼져 있다. 직경이 거기에만 있으면 아무도 못 본다."""
-        m = re.search(r"if\(!?\w*&*&*\(\(index>=3&&index<=7\)\|\|index===15\)\)?\{(.{0,1400}?)\n      \}",
+        m = re.search(r"if\(!compactView\(\)&&\(\(index>=3&&index<=7\)\|\|index===15\)\)\{(.{0,1400}?)\n      \}",
                       self.html, re.S)
         self.assertIsNotNone(m, "항상 보이는 권취 HUD 갱신 블록을 찾지 못했다")
         self.assertIn("winderState(index,local)", m.group(1),
@@ -778,11 +778,15 @@ class TestTenPanelTrial(unittest.TestCase):
             self.assertGreaterEqual(len(rows), 11, f"{tag} 단계 목록을 찾지 못했다")
             for row in rows:
                 ident = re.search(r"id:'([SC]\d+)'", row).group(1)
-                flow = re.search(r"flow:\[(.*?)\],cam:", row)
+                flow = re.search(r"flow:(.*?),cam:", row)
                 self.assertIsNotNone(flow, f"{ident} 에 자재흐름 문구가 없다")
-                streams = re.findall(r"'[^']*'|`[^`]*`", flow.group(1))
-                self.assertEqual(len(streams), 3,
-                                 f"{ident} 자재흐름이 3계통이 아니다")
+                # 배치마다 문구가 다른 단계는 삼항으로 갈라진다 — 갈래마다 센다.
+                lists = re.findall(r"\[(.*?)\]", flow.group(1))
+                self.assertTrue(lists, f"{ident} 에 자재흐름 목록이 없다")
+                for lst in lists:
+                    streams = re.findall(r"'[^']*'|`[^`]*`", lst)
+                    self.assertEqual(len(streams), 3,
+                                     f"{ident} 자재흐름이 3계통이 아니다")
                 cam = re.search(r"cam:\[(\d),\s*([^\]]+)\]", row)
                 self.assertIsNotNone(cam, f"{ident} 에 카메라가 없다")
                 self.assertLess(int(cam.group(1)), 4, f"{ident} 카메라 프리셋 번호가 범위를 넘는다")

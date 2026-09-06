@@ -99,10 +99,23 @@ def console():
 
 
 def fn(name):
-    """콘솔에서 함수 하나의 본문을 잘라 온다."""
+    """콘솔에서 함수 하나의 본문을 잘라 온다.
+
+    본문의 시작은 인자 목록을 닫은 뒤의 중괄호다. 그냥 첫 중괄호를 잡으면
+    기본인자(opt={})의 빈 객체를 본문으로 읽고 한 줄만 돌려준다 — 그러면
+    시험이 통과하는 것이 아니라 볼 것이 없어진 것이다."""
     src = console()
     i = src.index(f"function {name}(")
-    depth, j = 0, src.index("{", i)
+    par, k = 0, src.index("(", i)
+    while True:
+        if src[k] == "(":
+            par += 1
+        elif src[k] == ")":
+            par -= 1
+            if not par:
+                break
+        k += 1
+    depth, j = 0, src.index("{", k)
     for k in range(j, len(src)):
         if src[k] == "{":
             depth += 1
@@ -393,20 +406,23 @@ class TestTheCompactHall(unittest.TestCase):
 
     def test_the_compact_hall_is_what_opens(self):
         """압축 배치가 발주 범위다 — 콘솔이 그것을 먼저 보여야 한다."""
-        self.assertIn("let compactView=true;", self.src)
-        self.assertIn("setLayout(true);", self.src)
+        self.assertIn("let layoutId='compact';", self.src)
+        self.assertIn("setLayout('compact');", self.src)
 
     def test_both_layouts_stay_reachable(self):
         """Rev.20 을 지우지 않는다 — 무엇을 떼어 무엇이 줄었는지 나란히 봐야 한다."""
         self.assertIn('id="layoutButton"', self.src)
-        self.assertIn("function setLayout(compact)", self.src)
-        self.assertIn("steps=compact?C21_STEPS:REV20_STEPS", self.src)
+        self.assertIn("function setLayout(id)", self.src)
+        self.assertIn("steps=compactView()?compactSteps(L):REV20_STEPS", self.src)
+        self.assertIn("'rev20'", self.src.replace("\n", ""),
+                      "Rev.20 이 배치 순환에서 빠졌다")
         self.assertIn("buildTimeline()", fn("setLayout"),
                       "배치를 바꿔도 타임라인이 그대로면 단계가 어긋난다")
 
     def test_the_five_stations_are_drawn(self):
         """주석 처리된 호출은 부르는 것이 아니다 — 주석을 걷고 본다."""
-        scene = re.sub(r"//[^\n]*|/\*.*?\*/", "", fn_body("compactMachine"), flags=re.S)
+        scene = re.sub(r"//[^\n]*|/\*.*?\*/", "",
+                       fn_body("compactMachine") + fn_body("compactCells"), flags=re.S)
         for name in ("cInfeed", "cChamber", "cTandem", "cGlassRack", "cOutfeed"):
             self.assertIn(f"function {name}(", self.src, f"{name} 이 없다")
             self.assertIn(name, scene, f"{name} 이 장면에 불리지 않는다")
@@ -478,7 +494,9 @@ class TestTheCompactHall(unittest.TestCase):
         self.assertIn("cRack(g.cx,g.w", fn_body("cGlassRack"))
 
     def test_the_title_block_says_which_revision(self):
-        self.assertIn("compactView?'REV.21C':'REV.20'", self.src)
+        """개정을 표제란에 박아 두면 배치를 바꿔도 옛 개정이 남는다."""
+        self.assertIn("tCom?TL.rev:'REV.20'", self.src)
+        self.assertIn("rev:'REV.21C'", self.src)
         self.assertIn("치수 미확정", self.src)
 
 
@@ -601,7 +619,7 @@ class TestTheRackInteriorFollowsTheRoof(unittest.TestCase):
 
     def _roof(self, body):
         """이 랙 지붕 슬래브의 아랫면. cRack 이 top+.09 자리에 .17 두께로 깐다."""
-        m = re.search(r"top=cDeckZ\(DECKS-1\)\+([\d.]+)", body)
+        m = re.search(r"top=cDeckZ\((?:DECKS|DK)-1\)\+([\d.]+)", body)
         self.assertIsNotNone(m, "지붕 높이를 단수에서 내지 않는다")
         e = self.env
         top = e["CDECK_Z0"] + e["CDECK_DZ"] * (e["DECKS"] - .5) + float(m.group(1))
@@ -684,7 +702,9 @@ class TestTheRackInteriorFollowsTheRoof(unittest.TestCase):
         for name in ("cChamber", "cGlassRack"):
             body = fn(name)
             self.assertRegex(
-                body, r"top=cDeckZ\(DECKS-1\)\+",
+                body, r"top=cDeckZ\((?:DECKS|DK)-1\)\+",
                 f"{name} 이 지붕 높이를 단수에서 내지 않는다")
+            self.assertIn("LC()", body,
+                          f"{name} 이 단수를 배치에서 받지 않는다 — 확장안에서 랙만 옛 단수로 남는다")
             self.assertIn("cRack(g.cx,g.w,{top,", body,
                           f"{name} 이 그 높이를 랙에 넘기지 않는다")

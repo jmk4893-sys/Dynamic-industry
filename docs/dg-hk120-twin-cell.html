@@ -392,8 +392,17 @@
     <ul>
       <li>KC 매거진 2조 — 셀당 1조, x 로 엇갈려 배치해 통로 폭을 카세트 하나로 끝낸다</li>
       <li>RH 모노레일 1선 — 만권 롤 2벌과 카세트 4벌을 같은 길로 방책 밖까지 낸다</li>
+      <li>EX-101 방출 문형 — 패널 1,200 이 지나가야 하므로 마스트가 ±1,120 이다</li>
       <li>정비 접근 — 두 셀의 진공테이블·나이프 슬라이드를 한 통로에서 본다</li>
     </ul>
+    <p>통로 폭은 이 넷 중 <strong>가장 넓은 것이 정한다</strong>. 초판은
+      카세트만 보고 <span id="aisleCass" class="m">—</span> 로 잡았는데,
+      3D 배치를 세워 보니 EX-101 문형이 더 넓었다 —
+      마스트 ±1,120 과 셀 갠트리 기둥 ±1,420 이 같은 통로에 서므로
+      <span id="aisleFork" class="m">—</span> 가 필요하다. 좁은 쪽으로 두면
+      방출 문형과 셀 기둥이 겹친 도면이 나가고, 그 겹침은 제작에서야
+      드러난다. 채택값은 <span id="aisleW2" class="m">—</span> 이고
+      셀 중심간격 <span id="cellyW" class="m">—</span> 이 여기서 나온다.</p>
     <div class="warn"><strong>모노레일 1선에 반출이 여섯이다.</strong>
       만권 롤 2 · 카세트 4 가 한 레일을 쓰므로 동시에 일어날 수 없다.
       배타 인터록(<span class="k">RH_TASK_EXCLUSIVE</span>)과 대기열을 상세설계에서
@@ -540,10 +549,22 @@
   const alt=pass.filter(c=>c!==pick && c.decks<pick.decks).sort((a,b)=>b.margin-a.margin)[0];
   const coolDecks=Math.ceil(coolSec()/takt);
   const degraded=3600/M.cellCycle*M.availability;
-  /* 배치 — 셀 중심간격은 중앙 통로가 카세트 하나(1,440)를 받는 데서 나온다. */
-  const GEO={len:M.hk60.length,gantryY:1.42,aisle:1.80,celly:0,
+  /* 배치 — 중앙 통로 폭이 셀 중심간격을 정하고, 그 통로에는 두 가지가
+     들어간다. 초판은 ① 만 보았으나 3D 배치를 세워 보니 ② 가 더 크다.
+       ① 칼날 카세트 1,440 이 갠트리 스윕 위 빈 층으로 나간다
+          → 1,440 + 양쪽 여유 2×180 = 1,800
+       ② EX-101 방출 문형이 그 통로에 선다. 마스트는 패널 1,200 을 통과
+          시켜야 하므로 ±1,120(각재 150)이고, 셀 갠트리 기둥이 ±1,420
+          (각재 170)에 선다 → 2×(1,120+75+85+100) = 2,760
+     통로는 둘 중 큰 쪽이다. ② 를 빠뜨리면 방출 문형과 셀 기둥이 겹친 채
+     도면이 나가고, 그 겹침은 제작 단계에서야 드러난다. */
+  const GEO={len:M.hk60.length,gantryY:1.42,cassette:1.44,aisle:0,celly:0,
+    forkY:1.12,forkS:.15,gantryS:.17,gap:.10,
     trough:[.90,2.90],cartY:3.20,skin:2.35,fenceD:4.20,dlLen:3.80};
-  GEO.celly=GEO.gantryY+GEO.aisle/2;                       // 셀 중심 — 통로가 카세트 하나를 받는다
+  GEO.aisleCass=GEO.cassette+2*.18;
+  GEO.aisleFork=2*(GEO.forkY+GEO.forkS/2+GEO.gantryS/2+GEO.gap);
+  GEO.aisle=Math.max(GEO.aisleCass,GEO.aisleFork);
+  GEO.celly=GEO.gantryY+GEO.aisle/2;                       // 셀 중심 — 통로가 문형과 카세트를 함께 받는다
   GEO.cartOut=GEO.celly+GEO.cartY+.65;                     // CS 카트 바깥 끝
   GEO.halfW=GEO.cartOut+.80;                               // 방책 — 카트 밖 정비 여유
   const occupied=(GEO.len-GEO.dlLen)*M.hk60.width + GEO.dlLen*(2*GEO.halfW);
@@ -612,6 +633,10 @@
   // ── 4장 본문 수치
   setText('roofDelta',`${mm(M.hk60.roof)} → ${mm(pick.roof)} mm (+${mm(pick.roof-M.hk60.roof)})`);
   setText('aisleW',mm(GEO.aisle)+' mm');
+  setText('aisleCass',mm(GEO.aisleCass)+' mm');
+  setText('aisleFork',mm(GEO.aisleFork)+' mm');
+  setText('aisleW2',mm(GEO.aisle)+' mm');
+  setText('cellyW','±'+mm(GEO.celly)+' mm');
 
   // ── 5장 비교
   const rows=[
