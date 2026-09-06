@@ -160,6 +160,60 @@ class TestTheChamberSizingIsBounded(unittest.TestCase):
         self.assertGreater(self._sigma(84, 6), GLASS_ALLOW_MPA,
                            "6단 84등에서도 유리가 견디면 단수 선택 근거가 다른 데 있다")
 
+    def test_no_deck_count_is_typed_into_the_prose(self):
+        """단수는 세 부등식이 정한다 — 본문에 손으로 적으면 그 자리만 남는다.
+
+        5단 전환 때 3.3항의 "DG-HK60C 가 3단 으로 맞춘 것" 하나가 3단인 채로
+        남았다. 값이 열 군데서 파생되는 문서에 한 군데만 손글씨가 섞이면,
+        갈라진 그 한 군데가 문서 전체를 거짓말로 만든다. 그래서 정적 본문에는
+        단수를 적지 않고 자리표시만 두고, 값은 전부 모델이 채운다.
+        """
+        body = self.s.split("<script>")[0]
+        # <meta description> 은 카드 요약이라 스크립트가 닿지 않는다 — 따로 본다
+        body = re.sub(r'<meta[^>]*>', '', body)
+        typed = re.findall(r"\d+\s*단", body)
+        self.assertEqual(typed, [], f"본문에 손으로 적은 단수가 남아 있다: {typed}")
+        for anchor_id in ("hk60Decks", "altDecks"):
+            self.assertIn(f'id="{anchor_id}"', body,
+                          f"단수 자리표시 {anchor_id} 가 본문에서 사라졌다")
+            self.assertRegex(self.s, rf"setText\('{anchor_id}'",
+                             f"{anchor_id} 를 채우는 코드가 없다")
+
+    def test_the_card_summary_says_what_the_model_picked(self):
+        """meta description 은 아티팩트 카드가 되므로 갈라지면 밖에서 보인다."""
+        m = re.search(r'name="description" content="([^"]+)"', self.s)
+        self.assertIsNotNone(m, "검토서에 카드 요약이 없다")
+        desc = m.group(1)
+        pick = self._pick()
+        for token in (f"{pick['decks']}단", f"{pick['lamps']}등",
+                      f"{round(pick['kW'])}kW"):
+            self.assertIn(token, desc,
+                          f"카드 요약이 채택안과 다르다 — {token} 이 없다: {desc}")
+
+    def _pick(self):
+        """검토서의 채택 규칙을 그대로 다시 돌린다."""
+        takt, best = self.takt, None
+        ref = float(re.search(r"hk60:\{[^}]*margin:([\d.]+)", self.s).group(1))
+        fdm = const("fdm", self.s)
+        for decks, banks, per in ((6, 7, 10), (6, 7, 11), (6, 7, 12),
+                                  (7, 8, 10), (7, 8, 11)):
+            lamps = banks * per
+            pitch = self.q * 1000 / (lamps * const("lampKW", self.s)
+                                     * const("eta", self.s))
+            if pitch > takt or decks * pitch < fdm:
+                continue
+            if self._sigma(lamps, decks) > GLASS_ALLOW_MPA:
+                continue
+            margin = (3600 / pitch - 3600 / takt) / (3600 / pitch) * 100
+            cand = {"decks": decks, "lamps": lamps,
+                    "kW": lamps * const("lampKW", self.s), "per": per,
+                    "margin": margin}
+            if best is None or (abs(cand["margin"] - ref)
+                                < abs(best["margin"] - ref)):
+                best = cand
+        self.assertIsNotNone(best, "세 제약을 통과하는 후보가 없다")
+        return best
+
     def test_the_selection_rule_is_written_down(self):
         """규칙 없이 고른 값은 다음 사람이 다시 고른다."""
         for token in ("per===10", "Math.abs(a.margin-REF_MARGIN)"):

@@ -344,7 +344,7 @@
       DG-HK60C 의 <span class="m">16.9 %</span> 와 같은 수준이다 —
       <strong>같은 열설계를 규모만 키운 것</strong>이지 다른 설계가 아니다.</div>
     <div class="warn"><strong>대안 — <span id="altText">—</span>.</strong>
-      건물 유효높이가 <span id="pickRoof" class="m">—</span> 를 받지 못하면 6단으로 내린다.
+      건물 유효높이가 <span id="pickRoof" class="m">—</span> 를 받지 못하면 <span class="m" id="altDecks">—</span>으로 내린다.
       대신 유리 열응력이 <span id="altSigma" class="m">—</span> 로 올라 설계허용
       <span class="m">7 MPa</span> 에 <span id="altGap" class="m">—</span> 밖에 안 남는다.
       <a href="dg-hk60-rfq.html#c11">OI-05</a> 의 열모델 실측 결과에 따라 다시 잡는다.</div>
@@ -356,7 +356,7 @@
       들어오는 간격이 절반이기 때문이다.</p>
     <div class="logic" id="coolLogic"></div>
     <p>가열실과 같은 단수로 맞추면 랙 구조·포크·예비품이 한 벌로 끝난다.
-      DG-HK60C 가 <span class="m">3단</span> 으로 맞춘 것과 같은 이유다.</p>
+      DG-HK60C 가 <span class="m" id="hk60Decks">—</span> 으로 맞춘 것과 같은 이유다.</p>
   </div></div>
 </section>
 
@@ -658,6 +658,8 @@
    +`가열실 공용 ${pick.decks}단        → 여유 ${n1((pick.decks*takt/coolSec()-1)*100)} %`);
 
   // ── 4장 본문 수치
+  setText('hk60Decks',M.hk60.decks+'단');
+  setText('altDecks',alt?alt.decks+'단':'저층안');
   setText('roofDelta',`${mm(M.hk60.roof)} → ${mm(pick.roof)} mm (+${mm(pick.roof-M.hk60.roof)})`);
   setText('aisleW',mm(GEO.aisle)+' mm');
   setText('orientArea',n1(occupied)+' m² (건물 외곽 '+n1(bounding)+' m²)');
