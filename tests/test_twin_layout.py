@@ -195,6 +195,158 @@ class TestTheTwinCrossingsAreResolved(unittest.TestCase):
         self.assertLess(cz + 2.01 + .09, drum_z - full_r, "횡이송 레일이 만권 롤을 친다")
 
 
+class TestThePictureSaysWhatItIs(unittest.TestCase):
+    """그림이 위상을 거짓말하지 않는가.
+
+    가열실(지붕 5,880)과 냉각 랙(5,680)은 탑이고 탠덤 셀은 낮다. 낮은 각도로
+    보면 그 탑 둘이 앞뒤로 서서 '탠덤 2대가 직렬' 처럼 읽히고, 정작 병렬인
+    셀 둘은 앞 셀이 뒤 셀을 가려 한 대로 보인다 — 실제로 그렇게 읽혔다.
+    형상이 맞아도 그림이 틀리면 그 그림은 못 쓴다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = console()
+        # 이 절이 보는 것들은 그리기 계층에 있어 압축 배치 블록 밖이다 —
+        # 전체를 공백만 지워 본다.
+        cls.b = cls.src.replace(" ", "").replace("\n", "")
+
+    def test_the_twin_looks_down_on_the_bay(self):
+        """압축과 같은 낮은 시점을 쓰면 앞 셀이 뒤 셀을 가린다."""
+        m = re.search(r"consttpresets=\[(.*?)\];", self.b)
+        self.assertIsNotNone(m, "트윈 전용 시점이 없다")
+        els = [float(v) for v in re.findall(r"el:([\d.]+)", m.group(1))]
+        self.assertEqual(len(els), 4)
+        self.assertGreaterEqual(min(els), .55,
+                                f"트윈 시점 앙각 {min(els)} — 낮으면 두 셀이 겹쳐 한 대로 보인다")
+        self.assertIn("viewPresets=()=>twinView()?tpresets:", self.b)
+
+    def test_the_tandem_focus_fits_both_cells(self):
+        """탠덤 베이는 x 로 3,800 인데 y 로 14,900 이다 — 세로로 넓다."""
+        m = re.search(r"if\(twinView\(\)\)return\[(.*?)\]\[k%4\]", self.b)
+        self.assertIsNotNone(m, "트윈 탠덤 확대 시점이 없다")
+        radii = [float(v) for v in re.findall(r"radius:([\d.]+)", m.group(1))]
+        self.assertEqual(len(radii), 4)
+        span = 2 * (layout("HK120C")["celly"] + 3.85)          # 카트 바깥 끝까지
+        self.assertGreaterEqual(min(radii), span,
+                                f"확대 반경 {min(radii)} m 로는 폭 {span:.1f} m 베이가 안 들어온다")
+
+    def test_the_focus_cameras_come_from_one_place(self):
+        """확대·화면맞춤·시점변경이 값을 따로 들면 한 군데만 고쳐진다 —
+        그러면 그 버튼만 Rev.20 의 x 17,800 으로 날아간다."""
+        for fn in ("tandemFocusCam", "carriageFocusCam"):
+            self.assertIn("const" + fn + "=(k=0)=>", self.b)
+        # 부르는 자리 셋 — 확대 진입 · 화면 맞춤 · 시점 변경
+        self.assertEqual(self.src.count("tandemFocusCam("), 3)
+        self.assertEqual(self.src.count("carriageFocusCam("), 3)
+        self.assertNotIn("17.8,y:0,z:1.9},az:compactView()", self.src,
+                         "옛 삼항 좌표가 남아 있다")
+
+    def test_the_station_names_are_always_on_in_the_twin(self):
+        """라벨은 기본이 꺼져 있다. 이름 없는 그림이 탑 둘을 탠덤으로 읽게 했다."""
+        self.assertIn("functionlabel3(text,p,color=C.white,always=false)",
+                      self.src.replace(" ", "").replace("\n", ""))
+        for frag in ("C.heat,twinView())", "C.glass,twinView())"):
+            self.assertIn(frag, self.b, "스테이션 이름이 트윈에서 항상 뜨지 않는다")
+        self.assertIn("C.teal,!!opt.tag)", self.b, "셀 이름이 항상 뜨지 않는다")
+
+    def test_the_cell_labels_say_which_of_two(self):
+        """'DL-101' 만으로는 두 개가 있다는 사실이 안 읽힌다."""
+        for frag in ("라인(병렬2중", "opt.tag==='A'?'−y':'+y'"):
+            self.assertIn(frag, self.b, f"셀 이름표에 {frag} 이 없다")
+
+    def test_the_console_carries_a_process_mimic(self):
+        """카메라가 어떻게 서든 계통은 글로 남아야 한다."""
+        self.assertIn("functiondrawFlowMimic()", self.b)
+        self.assertIn("drawTitleBlock();drawFlowMimic();", self.b)
+        self.assertIn("탠덤${L.cells}셀병렬", self.b)
+        self.assertIn("병렬은박리뿐—가열·냉각은한벌", self.b)
+
+    def test_the_floor_paint_shows_the_branch(self):
+        """Y 자로 갈라졌다 합쳐지는 도색은 어느 각도에서도 분기로 읽힌다."""
+        self.assertIn("if(twinView()){", self.b)
+        for frag in ("floorStrip(sp1,0,br0,sg*cy,.17,P,.80)",
+                     "floorStrip(br0,sg*cy,br1,sg*cy,.17,P,.88)",
+                     "floorStrip(br1,sg*cy,mg,0,.17,P,.80)"):
+            self.assertIn(frag, self.b, "바닥 분기 도색이 없다")
+
+    def test_the_floor_mark_is_not_the_old_footprint(self):
+        """Rev.20 의 발자국(x 4,500~31,700)을 그대로 쓰면 18.76m 기계가
+        27m 짜리 테두리 안에 놓인다."""
+        self.assertIn("functiongroundFor()", self.b)
+        self.assertIn("mark:[x0,-L.fenceN,x1,L.fenceP]", self.b)
+        self.assertIn("constg=groundFor();", self.b)
+
+
+class TestEachCellIsItsOwnMachine(unittest.TestCase):
+    """셀마다 자기 가드를 갖는가.
+
+    트윈에서 DL 구간 외장을 열어 두 셀을 밖으로 내보낸 순간 셀은 자기 외장을
+    잃었다 — 200°C 칼날과 갠트리 스윕이 방책 안에 그대로 드러난다. 방책은
+    사람을 라인 밖에 두는 것이고 가드는 라인 안에서 일하는 사람을 움직이는
+    축에서 떼어 놓는 것이라 둘은 다른 물건이다.
+
+    그리고 이것이 '두 대' 라는 표시이기도 하다 — 같은 상자가 둘 나란히 서면
+    병렬이라는 것이 이름표 없이 형상으로 읽힌다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = console()
+        cls.b = cls.src.replace(" ", "").replace("\n", "")
+
+    def test_each_twin_cell_gets_a_guard(self):
+        self.assertIn("functioncCellGuard(dy,tag)", self.b)
+        self.assertIn("if(opt.tag&&!sectionView)cCellGuard(dy,opt.tag)", self.b,
+                      "가드가 셀마다 그려지지 않는다")
+
+    def test_the_guard_height_is_bounded_from_three_sides(self):
+        """갠트리 레일 상면 위 · 나이프 갠트리 상단 아래 · EX 인계 높이 아래.
+        갠트리는 셀 안에서만 돌고 패널은 가드 위로 들어온다."""
+        gz = float(re.search(r"CG_Z=([\d.]+)", self.b).group(1))
+        rail_top = 1.95 + .22 / 2                       # CRAIL_Z + 레일 두께의 절반
+        self.assertGreater(gz, rail_top, "가드가 갠트리 레일보다 낮다")
+        self.assertLess(gz, 2.74, "가드가 나이프 갠트리 상단을 덮는다")
+        cz = 1.15
+        self.assertLess(gz, cz + 1.79 - .11, "가드가 EX-101 인계 높이를 막는다")
+
+    def test_the_guard_plan_steps_around_the_cooling_rack_column(self):
+        """+x 안쪽 모서리에는 GC-101 기둥 베이스플레이트가 깔려 있다."""
+        self.assertIn("SX=11.44,SY=1.20", self.b)
+        self.assertIn("run(true,SY,SX,x1)", self.b, "계단 구간이 없다")
+        self.assertIn("run(false,SX,SY,CG_Y)", self.b)
+
+    def test_the_outboard_wall_has_the_discharge_tunnel(self):
+        """적층체 2,400 × 1,200 이 통째로 지나가는 개구."""
+        self.assertIn("run(true,-CG_Y,x0,x1,[TX0,TX1])", self.b)
+        self.assertIn("TX0=CE_X0-.14,TX1=CE_X1+.14", self.b)
+
+    def test_the_inboard_wall_has_one_interlocked_door(self):
+        self.assertIn("run(true,CG_Y,x0,SX,[DX-DW/2,DX+DW/2])", self.b)
+        self.assertIn("도어인터록스위치", self.b)
+
+    def test_the_transfer_portals_narrow_so_the_guard_fits(self):
+        """통로 반폭은 셀중심 − 갠트리기둥 바깥 = 1,295 뿐이다. ±1,120 문형
+        (바깥 1,195)으로는 가드 벽이 들어갈 100mm 가 남지 않는다."""
+        self.assertIn("constcForkHalf=()=>twinView()?.95:1.12", self.b)
+        L = layout("HK120C")
+        half, post, wall = .95, .17, .05
+        aisle_half = L["celly"] - (1.42 + post / 2)
+        self.assertGreater(aisle_half - (half + .15 / 2) - wall / 2, .05,
+                           "좁힌 문형으로도 가드 벽이 통로에 못 선다")
+        # 두 문형 모두 배치가 정한 폭으로 부른다
+        for call in ("cFork(EXX,'EX',-1,", "cFork(CST.DL.x1+.08,'GL',1,"):
+            i = self.b.index(call)
+            self.assertIn("cForkHalf()", self.b[i:i + 260],
+                          f"{call} 이 배치를 보지 않는다")
+
+    def test_the_cutaway_does_not_hide_the_guards(self):
+        """컷어웨이는 불투명 외장을 걷어내려고 있다. 가드는 이미 투명하므로
+        걷어내면 두 상자만 사라진다."""
+        self.assertIn("tandemFocus=true;sectionView=!twinView();", self.b)
+
+    def test_the_vacuum_skid_moves_out_of_the_guard(self):
+        self.assertIn("constvx=CST.GC.x0+(twinView()?.75:.5)", self.b)
+
+
 class TestTheLayoutOrderStartsAtTheDeliveredLine(unittest.TestCase):
     def test_the_console_boots_on_the_delivered_layout(self):
         """확장안이 먼저 뜨면 발주자가 그것을 납품 배치로 읽는다."""
