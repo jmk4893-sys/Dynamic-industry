@@ -347,6 +347,75 @@ class TestEachCellIsItsOwnMachine(unittest.TestCase):
         self.assertIn("constvx=CST.GC.x0+(twinView()?.75:.5)", self.b)
 
 
+class TestTheThreeStreamsAreVisible(unittest.TestCase):
+    """세 계통이 그림에서 실제로 보이는가.
+
+    형상이 있어도 나오는 단계가 좁으면 '표현이 안 된다' 로 읽힌다 — 실제로
+    그렇게 읽혔다. 필름은 박리 중에만 걸려 있었고(나머지 아홉 단계에서 권취부는
+    빈 롤러 셋), 롤은 늘 코어 Ø300 이었으며(295장에 걸쳐 자라는 물건이다),
+    셀/EVA 는 트로프 위 세 단계와 카트 위 한 장 사이가 비어 있었다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = console()
+        cls.b = cls.src.replace(" ", "").replace("\n", "")
+
+    def test_the_web_stays_threaded_between_panels(self):
+        """통과 사이에도 필름은 드럼에서 댄서·아이들러까지 걸려 있다."""
+        self.assertIn("functioncWebThread(panels)", self.b)
+        self.assertIn("cWebThread(wn);", self.b)
+        self.assertIn("if(!(cs.onTable&&cs.peeling))cWebTail();", self.b,
+                      "박리하지 않을 때 필름 자유단이 없다")
+        # 상시 구간은 박리 여부와 무관한 자리에서 불려야 한다
+        i = self.b.index("cWebThread(wn);")
+        self.assertLess(self.b.index("cRoll(wn,"), i,
+                        "웹 걸기가 롤과 같은 블록에 있지 않다")
+
+    def test_the_rollers_show_the_film_wrapping_them(self):
+        self.assertIn("functionwebWrap(cx,cz,r,a0,a1,seg=7)", self.b)
+        self.assertIn("webWrap(CID_X,CID_Z", self.b)
+        self.assertIn("webWrap(CDN_X,", self.b)
+
+    def test_the_roll_is_not_forever_at_core_diameter(self):
+        """코어만인 시간은 전체의 1/295 다. 늘 코어면 권취부가 축으로 보인다."""
+        m = re.search(r"constCROLL_BASE=Math\.round\(ROLL_FULL_PANELS\*([\d.]+)\)", self.b)
+        self.assertIsNotNone(m, "권취 바탕값이 없다")
+        frac = float(m.group(1))
+        self.assertGreater(frac, .2)
+        self.assertLess(frac, .9)
+        self.assertIn("constwn=CROLL_BASE+cs.wound;", self.b)
+        self.assertIn("constn=CROLL_BASE+cState(index,local).wound", self.b,
+                      "HUD 가 3D 와 다른 권취량을 말한다")
+
+    def test_the_cell_stream_does_not_break_between_trough_and_cart(self):
+        self.assertIn("if(i>=4&&i<=7)withPartOffset(off,()=>{", self.b)
+        self.assertIn("if(i>=6)withPartOffset(off,()=>{", self.b)
+        self.assertIn("constn=1+((carriageCycleNo+c)%4);", self.b,
+                      "카트에 한 장만 얹으면 평적이 안 보인다")
+
+    def test_the_roll_reclaim_has_visible_gear_and_a_standing_route(self):
+        """357 kg 이 셀당 4.9시간마다 나간다 — 그 수단과 길이 보여야 한다."""
+        self.assertIn("functioncHoist(hy,rz,bsy)", self.b)
+        # 주석이 아니라 그려지는 것을 본다 — 설명만 남고 형상이 빠질 수 있다
+        for part, frag in (
+                ("훅블록", "box(V(CRAIL_X0,hy,rz-.56),V(.20,.24,.16),C.steel2)"),
+                ("슬링", "line([V(CRAIL_X0,hy,rz-.80),V(CRAIL_X0,hy+dyy,bz)]"),
+                ("인양빔", "box(V(CRAIL_X0,hy,bz),V(.16,ROLL_FACE+.12,.10),C.steel2)"),
+                ("코어 그리퍼", "box(V(CRAIL_X0,hy+dyy,bz-.09),V(.11,.09,.10),C.yellow)")):
+            self.assertIn(frag, self.b, f"인양구에 {part} 이 그려지지 않는다")
+        self.assertIn("line([V(CRAIL_X0,hy,rz-.50),V(CRAIL_X0,bsy,rz-.50)]", self.b,
+                      "반출 경로가 상시 표시되지 않는다")
+        self.assertIn("cHoist(0,RH_Z,BS_SADDLE.y);", self.b)      # 압축
+        self.assertIn("cHoist(ya,RHZ,BSY);", self.b)              # 트윈
+
+    def test_each_cell_names_its_own_two_outlets(self):
+        """셀이 둘이면 반출도 둘이다 — 이름이 없으면 어느 셀 것인지 모른다."""
+        self.assertIn("WR-101${opt.tag}·백시트권취부", self.b)
+        self.assertIn("CE-201${opt.tag}→CS-201${opt.tag}·셀/EVA반출", self.b)
+        self.assertIn("C.sheet,!!opt.tag)", self.b, "권취부 이름표가 항상 뜨지 않는다")
+        self.assertIn("C.cell2,true)", self.b, "반출 이름표가 항상 뜨지 않는다")
+
+
 class TestTheLayoutOrderStartsAtTheDeliveredLine(unittest.TestCase):
     def test_the_console_boots_on_the_delivered_layout(self):
         """확장안이 먼저 뜨면 발주자가 그것을 납품 배치로 읽는다."""
