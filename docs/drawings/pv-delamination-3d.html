@@ -589,6 +589,7 @@
         <button type="button" data-drawing="assemblies">구성품 2D·3D</button>
         <button type="button" data-drawing="chamber">가열실 제작도</button>
         <button type="button" data-drawing="tandem">탠덤 셀 제작도</button>
+        <button type="button" data-drawing="fork">승강 포크 제작도</button>
         <button type="button" data-drawing="cassette">칼날 카세트 상세</button>
         <button type="button" data-drawing="compact">압축 배치</button>
         <button type="button" data-drawing="foundation">기초·앵커 배치도</button>
@@ -5603,6 +5604,176 @@
         운전 콘솔의 모델 상수에서 나오므로 단수·배치를 바꾸면 이 도면이 함께 따라온다.</p>`;
     }
 
+    /* ── M-003 승강 포크 문형 제작도 (F-003) ──────────────────────────
+       모듈표는 오래도록 이 모듈을 'LI-101 승강프레임' 하나로 적고 수량을
+       1 SET 으로 냈다. 그런데 압축 배치는 같은 문형을 넷 세운다 — 투입
+       LI-101, 방출 EX-101, 유리 적입 GL-101, 유리 인출 GU-101. 넷이 같은
+       도면이라는 것이 이 시트의 요지이고, 그래서 표제란 수량이 4 다.
+
+       높이는 단수가 정한다. 두상보 상단 = 최상단 데크 + 820 이고, 그 값이
+       RH-201 모노레일 하한을 만든다(rhMinZ). 값으로 적으면 단수를 올렸을 때
+       포크가 최상단 데크에 닿지 못하거나 모노레일 트롤리와 부딪친다. */
+    function forkFabDrawing(){
+      const mm=v=>Math.round(v*1000), fmt=v=>mm(v).toLocaleString();
+      const HALF=FORK_HALF_STD, W=2*(HALF+.075), TOP=cDeckZ(DECKS-1)+.73+.09;
+      const BEAM=cDeckZ(DECKS-1)+.73, BASE=.62;
+      const UNITS=[['LI-101','투입 층선택',CMAST_IN,'+x'],
+                   ['EX-101',`${T_TARGET}°C 방출`,CMAST_OUT,'−x'],
+                   ['GL-101','유리 적입',CST.DL.x1+.08,'+x'],
+                   ['GU-101','유리 인출',CST.GC.x1+.34,'+x']];
+      /* ── 정면도 (좌) 1:30 — 문형을 y-z 로 본다 */
+      /* FX 는 36 이었는데 그러면 세로 치수(−19)가 도면틀 20 을 뚫는다. */
+      const FX=44,FY=48,S_=1/30;
+      const fy=v=>FX+(v+W/2)*1000*S_, fz=v=>FY+(TOP+.14-v)*1000*S_;
+      let front=`<g stroke="#1a2b30" fill="none">`;
+      front+=`<path d="M${fy(-W/2)-6} ${fz(0)}H${fy(W/2)+6}" stroke-width="${LW.out}"/>`;
+      for(const y of [-HALF,HALF]){                                   // 기둥과 베이스
+        front+=`<rect x="${fy(y)-.15*1000*S_/2}" y="${fz(BEAM)}" width="${.15*1000*S_}" height="${BEAM*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+        front+=`<rect x="${fy(y)-.40*1000*S_/2}" y="${fz(.022)}" width="${.40*1000*S_}" height="${.022*1000*S_+1.2}" fill="#1a2b30"/>`;
+      }
+      front+=`<rect x="${fy(-1.17)}" y="${fz(BEAM+.09)}" width="${2.34*1000*S_}" height="${.18*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      front+=`<rect x="${fy(-1.18)}" y="${fz(BASE+.09)}" width="${2.36*1000*S_}" height="${.18*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      for(const y of [-.86,.86])                                       // 볼스크류 2본
+        front+=`<rect x="${fy(y)-.075*1000*S_}" y="${fz(BEAM-.13)}" width="${.15*1000*S_}" height="${(BEAM-.13-BASE-.09)*1000*S_}" fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      // 데크 레벨 — 포크가 닿아야 하는 다섯 자리
+      for(let k=0;k<DECKS;k++){
+        const z=cDeckZ(k);
+        front+=`<path d="M${fy(-W/2)-4} ${fz(z)}H${fy(W/2)+4}" stroke="#7b8d94" stroke-width="${LW.ctr}" stroke-dasharray="6 1.6 1 1.6"/>`;
+        front+=`<text stroke="none" x="${fy(W/2)+6}" y="${fz(z)+1}" ${FS(2.4)} fill="#5b6d74">C${k+1} ${fmt(z)}</text>`;
+      }
+      // 포크 캐리지 — 공정선에 접힌 상태
+      front+=`<rect x="${fy(-.90)}" y="${fz(CZ+.70)}" width="${1.80*1000*S_}" height="${.55*1000*S_}" fill="#eef2f3" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      front+=`<rect x="${fy(-.81)}" y="${fz(CZ+.10)}" width="${1.62*1000*S_}" height="${.09*1000*S_}" fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      for(const y of [-.70,.70])
+        front+=`<rect x="${fy(y)-.04*1000*S_}" y="${fz(CZ+.21)}" width="${.08*1000*S_}" height="${.14*1000*S_}" fill="#1a2b30" opacity=".7"/>`;
+      front+=`</g>`;
+      /* 승강 행정을 따로 화살표로 그리면 단 라벨(C1~C5)과 같은 줄을 쓴다.
+         범위는 그 라벨과 주기 5항이 이미 적고 있으므로 여기서는 생략한다. */
+      front+=dimH(fy(-HALF),fy(HALF),fz(0)+10,String(mm(2*HALF)),'±2')
+        +dimH(fy(-W/2),fy(W/2),fz(0)+19,String(mm(W)))
+        +dimV(fz(TOP),fz(0),fy(-W/2)-10,String(mm(TOP)),'±3')
+        +dimV(fz(CZ),fz(0),fy(-W/2)-19,String(mm(CZ)),'±1')
+        +datum(fy(-HALF),fz(0),'A',1)
+        +weldSym(fy(HALF)-4,fz(BEAM+.02),fy(HALF)+8,fz(BEAM+.30),'6','fillet',true)
+        +rough(fy(-.86)-6,fz(BEAM-.30),'0.8');
+      /* ── 측면도 (중) 1:30 */
+      const SX=156;
+      const sx=v=>SX+(v+.40)*1000*S_;
+      let side=`<g stroke="#1a2b30" fill="none">`;
+      side+=`<path d="M${sx(-.40)} ${fz(0)}H${sx(.62)}" stroke-width="${LW.out}"/>`;
+      side+=`<rect x="${sx(-.13)}" y="${fz(BEAM)}" width="${.26*1000*S_}" height="${BEAM*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      side+=`<rect x="${sx(0)}" y="${fz(CZ+.70)}" width="${.26*1000*S_}" height="${.55*1000*S_}" fill="#eef2f3" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      side+=`<rect x="${sx(.15)}" y="${fz(CZ+.10)}" width="${.55*1000*S_}" height="${.09*1000*S_}" fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      side+=`<rect x="${sx(-.36)}" y="${fz(CZ+1.06)}" width="${.32*1000*S_}" height="${.40*1000*S_}" fill="#f4f2ee" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      side+=`</g>`;
+      side+=`<text stroke="none" x="${sx(.13)}" y="${fz(CZ+.02)}" ${FS(2.4)} fill="#5b6d74">TS-101 (접힘)</text>`
+        +`<text stroke="none" x="${sx(-.36)}" y="${fz(CZ+1.14)}" ${FS(2.4)} fill="#5b6d74">서보·제동</text>`
+        +dimH(sx(-.36),sx(.62),fz(0)+10,'950');
+      /* ── 포크 인출 상세 (우상) 1:12 — 2단 텔레스코픽이 데크에 닿는 자리 */
+      /* 포크 인출 상세 — 1:26. 종전 1:12 는 그림이 1.12 m 만큼만 그려져
+         있는데 치수는 2,610 을 적고 있었다. 도면이 치수와 다른 길이를
+         그리면 그 도면은 치수만 맞는 그림이 된다. 실척으로 다시 그린다. */
+      const DX=196,DY=178,DS=1/26;
+      const REACH=CST.HC.cx-CMAST_IN;
+      const dx=v=>DX+(v+.10)*1000*DS, dz=v=>DY+(1.10-v)*1000*DS;
+      let det=`<g stroke="#1a2b30" fill="none">`;
+      // 마스트 — 이 자리에서 포크가 나간다
+      det+=`<rect x="${dx(-.08)}" y="${dz(.72)}" width="${.16*1000*DS}" height="${.72*1000*DS}" fill="url(#steel)" stroke-width="${LW.out}"/>`;
+      // 1단 — 마스트에서 절반 남짓
+      det+=`<rect x="${dx(.08)}" y="${dz(.34)}" width="${(REACH*.58)*1000*DS}" height="${.055*1000*DS}" fill="#dce6ea" stroke-width="${LW.out}"/>`;
+      // 2단 — 1단 위를 미끄러져 데크까지
+      det+=`<rect x="${dx(REACH*.42)}" y="${dz(.285)}" width="${(REACH*.62)*1000*DS}" height="${.05*1000*DS}" fill="#eef2f3" stroke-width="${LW.out}"/>`;
+      // 데크와 그 위 패널
+      det+=`<rect x="${dx(REACH-.14)}" y="${dz(.235)}" width="${.62*1000*DS}" height="${.05*1000*DS}" fill="#cfe3ea" stroke-width="${LW.thin}"/>`;
+      det+=ctrLine(dx(REACH),dz(.42),dx(REACH),dz(.10));
+      det+=`</g>`;
+      det+=`<text stroke="none" x="${dx(REACH*.26)}" y="${dz(.40)}" text-anchor="middle" ${FS(2.4)} fill="#5b6d74">1단</text>`
+        +`<text stroke="none" x="${dx(REACH*.74)}" y="${dz(.35)}" text-anchor="middle" ${FS(2.4)} fill="#5b6d74">2단</text>`
+        +`<text stroke="none" x="${dx(REACH)}" y="${dz(.19)}" text-anchor="middle" ${FS(2.4)} fill="#125d8c">데크 중심</text>`
+        +`<text stroke="none" x="${dx(-.08)}" y="${dz(.78)}" ${FS(2.4)} fill="#5b6d74">마스트</text>`
+        +dimH(dx(0),dx(REACH),dz(.10),String(mm(REACH)),'±3')
+        +`<text stroke="none" x="${dx(REACH/2)}" y="${dz(.02)}" text-anchor="middle" ${FS(2.4)} fill="#5b6d74">`
+        +`인출 = 랙 중심 ${fmt(CST.HC.cx)} − 마스트 ${fmt(CMAST_IN)}</text>`;
+      /* ── 부품란 */
+      const bom=[
+        ['01','문형 기둥',`SS400 H-150×150×7/10 · H ${mm(BEAM)}`,`베이스 PL-400×400×19t`,2],
+        ['02','두상보','SS400 BOX-260×180×9t','상면 EL '+mm(BEAM+.18),1],
+        ['03','기초보','SS400 BOX-300×180×9t','EL '+mm(BASE+.18),1],
+        ['04','거싯','SS400 PL-12t','기둥·보 접합 4개소',4],
+        ['05','볼스크류','Ø32 · 리드 10 · C5급',`행정 ${mm(cDeckZ(DECKS-1)-cDeckZ(0))}`,2],
+        ['06','서보모터·감속기','1.5 kW · 무여자 브레이크','동기축 커플링',2],
+        ['07','LM 가이드','THK HSR25 상당','프리로드 C1',4],
+        ['08','포크 캐리지','SS400 PL-12t 용접','1,800 × 550',1],
+        ['09','TS-101 2단 텔레스코픽 포크',`SS400 · 인출 ${mm(REACH)}`,'낙하방지 체크밸브',1],
+        ['10','포크 티인','SS400 PL-14t','620 × 140',2],
+        ['11','절대치 엔코더','다회전 · 배터리리스','원점 유지',1],
+        ['12','상하한 리미트','안전등급 위치스위치','기계식 하드스톱 병설',2],
+        ['13','낙하방지 브레이크','무여자 작동식','정전 시 유지',1],
+      ];
+      const bx=252, by=52;
+      let tbl=`<text stroke="none" x="${bx}" y="${by-3}" ${FS(3.4)} font-weight="700" fill="#0f1c21">부품란 (1기분)</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none">`
+        +`<rect x="${bx}" y="${by}" width="153" height="${8+bom.length*5.6}"/>`
+        +`<path d="M${bx} ${by+8}h153"/></g>`;
+      ['품번','품명','재질·규격','비고','수량'].forEach((h,i)=>{
+        tbl+=`<text stroke="none" x="${bx+[2,12,58,108,146][i]}" y="${by+5.6}" ${FS(2.5)} font-weight="700" fill="#5b6d74">${h}</text>`;
+      });
+      bom.forEach((r,i)=>{
+        const y=by+8+(i+1)*5.6-1.7;
+        r.forEach((c,j)=>{
+          tbl+=`<text stroke="none" x="${bx+[2,12,58,108,148][j]}" y="${y}" text-anchor="${j===4?'end':'start'}" ${FS(2.4)} fill="#0f1c21">${esc(String(c))}</text>`;
+        });
+      });
+      /* ── 설치 위치표 — 같은 문형 넷 */
+      const uy=by+8+bom.length*5.6+12;
+      let ut=`<text stroke="none" x="${bx}" y="${uy-3}" ${FS(3.4)} font-weight="700" fill="#0f1c21">설치 위치 — 동일 문형 ${UNITS.length}기</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none">`
+        +`<rect x="${bx}" y="${uy}" width="153" height="${8+UNITS.length*5.6}"/>`
+        +`<path d="M${bx} ${uy+8}h153"/></g>`;
+      ['부호','기능','X 좌표','포크 방향'].forEach((h,i)=>{
+        ut+=`<text stroke="none" x="${bx+[2,26,84,124][i]}" y="${uy+5.6}" ${FS(2.5)} font-weight="700" fill="#5b6d74">${h}</text>`;
+      });
+      UNITS.forEach(([id,fn,x,d],i)=>{
+        const y=uy+8+(i+1)*5.6-1.7;
+        [id,fn,fmt(x),d].forEach((c,j)=>{
+          ut+=`<text stroke="none" x="${bx+[2,26,84,124][j]}" y="${y}" ${FS(2.4)} fill="#0f1c21">${esc(String(c))}</text>`;
+        });
+      });
+      /* ── 주기 */
+      const notes=[
+        `두상보 상단 ${mm(TOP)} = 최상단 데크 ${mm(cDeckZ(DECKS-1))} + 820. 이 값이 RH-201 모노레일 하한(EL ${mm(RH_Z)})을 만든다 — 문형을 높이면 트롤리와 부딪친다.`,
+        `문형 넷은 같은 도면이다. 좌표와 포크 방향만 다르므로 지그·검사도 한 벌로 끝난다.`,
+        `포크 인출 ${mm(REACH)} 는 랙 중심에서 마스트 중심을 뺀 값이다 — 데크 위치가 바뀌면 같이 바뀐다.`,
+        `낙하방지 브레이크는 무여자 작동식이다. 정전 시 캐리지는 그 자리에 선다.`,
+        `상하한은 안전등급 위치스위치 + 기계식 하드스톱으로 이중화한다 (C1 ${mm(cDeckZ(0))} ~ C${DECKS} ${mm(cDeckZ(DECKS-1))}).`,
+        '본 도면은 발주자 개념설계의 참고도이며 제작 착수 도면이 아니다 (Not For Construction).',
+      ];
+      const noteSvg=`<path d="M30 248.5h196" stroke="#7b8d94" stroke-width="${LW.thin}"/>`
+        +`<text stroke="none" x="30" y="246" ${FS(3)} font-weight="700" fill="#0f1c21">주기</text>`
+        +notes.map((n,i)=>`<text stroke="none" x="30" y="${253.5+i*4.6}" ${FS(2.55)} fill="#0f1c21">${i+1}. ${esc(n)}</text>`).join('');
+      return `<div class="drawing-stage">`+fabSheet(
+          `<text stroke="none" x="30" y="21" ${FS(5)} font-weight="800" fill="#0f1c21">M-003 · 승강 포크 문형 ×${UNITS.length}</text>`
+        + `<text stroke="none" x="30" y="26.5" ${FS(2.8)} fill="#5b6d74">정면도 · 측면도 · 포크 인출 상세 — 치수 mm · LI · EX · GL · GU 동일 문형</text>`
+        + `<text stroke="none" x="30" y="${FY-6}" ${FS(3.4)} font-weight="700" fill="#0f1c21">정면도 (1:30)</text>`
+        + `<text stroke="none" x="${SX}" y="${FY-6}" ${FS(3.4)} font-weight="700" fill="#0f1c21">측면도 (1:30)</text>`
+        + `<text stroke="none" x="${DX}" y="${DY-6}" ${FS(3.4)} font-weight="700" fill="#0f1c21">포크 인출 C (1:26)</text>`
+        + front + side + det + tbl + ut + noteSvg
+        + revBlock([
+            {rev:'0',date:'2026-09-03',desc:'개념 배치 — LI-101 1기 (REV.20)',by:'DI'},
+            {rev:'1',date:'2026-09-06',desc:`동일 문형 ${UNITS.length}기로 정정 — 두상보 ${mm(TOP)}`,by:'DI'},
+          ])
+        + fabTitleBlock({no:'F-003',title:`승강 포크 문형 (LI·EX·GL·GU) ×${UNITS.length}`,
+            scale:'1:30 / 1:26',sheet:'1 / 1',
+            material:'SS400 · LM 가이드 · 볼스크류',mass:'계량 확정 (OI-04)',
+            tol:'ISO 2768-mK',tol2:'데크 정합 ±2 · 직각도 0.3'}))
+        + `</div>`
+        + `<p class="drawing-note"><b>같은 문형이 넷이다.</b> 모듈표는 오래도록 이 모듈을 'LI-101 승강프레임' 하나로 적고 `
+        + `수량을 1 SET 으로 냈지만, 압축 배치는 투입(LI-101) · 방출(EX-101) · 유리 적입(GL-101) · 유리 인출(GU-101) `
+        + `넷을 세운다. 좌표와 포크 방향만 다르므로 도면도 지그도 검사도 한 벌로 끝나고, 예비품도 한 벌이면 된다 — `
+        + `그것이 이 시트를 넷으로 나누지 않은 이유다. 높이는 단수가 정한다: 두상보 상단 ${mm(TOP)} = `
+        + `최상단 데크 ${mm(cDeckZ(DECKS-1))} + 820 이고, 그 값이 RH-201 모노레일 하한을 만든다. `
+        + `<b>정하지 않는 것</b>은 부재 단면과 볼스크류 좌굴 검토다 — 승강 질량이 확정된 뒤에 나온다.</p>`;
+    }
     /* ── M-005 탠덤 셀 제작도 (F-005) ─────────────────────────────────
        이 모듈이 Rev.20 과 가장 크게 달라진 자리다. 종전에는 칼날이 고정이고
        패널이 11.2m 를 지나갔는데, 압축 배치에서는 패널이 서고 칼날이 3,500 을
@@ -6269,7 +6440,7 @@
     }
     function renderEngineering(){
       document.querySelectorAll('[data-drawing]').forEach(b=>b.classList.toggle('active',b.dataset.drawing===drawingTab));
-      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else if(drawingTab==='chamber')drawingContent.innerHTML=chamberFabDrawing();else if(drawingTab==='tandem')drawingContent.innerHTML=tandemFabDrawing();else if(drawingTab==='cassette')drawingContent.innerHTML=cassetteDrawing();else if(drawingTab==='compact')drawingContent.innerHTML=compactDrawing();else if(drawingTab==='foundation')drawingContent.innerHTML=foundationDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
+      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else if(drawingTab==='chamber')drawingContent.innerHTML=chamberFabDrawing();else if(drawingTab==='tandem')drawingContent.innerHTML=tandemFabDrawing();else if(drawingTab==='fork')drawingContent.innerHTML=forkFabDrawing();else if(drawingTab==='cassette')drawingContent.innerHTML=cassetteDrawing();else if(drawingTab==='compact')drawingContent.innerHTML=compactDrawing();else if(drawingTab==='foundation')drawingContent.innerHTML=foundationDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
       const sel=$('assemblySelect');if(sel)sel.addEventListener('change',e=>{assemblyIndex=Number(e.target.value)||0;renderEngineering()});
       drawingContent.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{drawingMode=b.dataset.mode;renderEngineering()}));
     }

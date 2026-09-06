@@ -163,6 +163,76 @@ class TestTheChamberSheetIsFabricationLevel(unittest.TestCase):
                       "화면 설명문이 참고도임을 밝히지 않는다")
 
 
+class TestTheForkSheetIsOneDrawingForFour(unittest.TestCase):
+    """모듈표는 이 모듈을 'LI-101 승강프레임' 하나 · 1 SET 으로 적고 있었다.
+
+    압축 배치는 같은 문형을 넷 세운다 — LI-101 투입 · EX-101 방출 ·
+    GL-101 적입 · GU-101 인출. 넷이 같은 도면이라는 것이 이 시트의 요지이고,
+    그것이 지그·검사·예비품을 한 벌로 끝내는 근거다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = CONSOLE.read_text(encoding="utf-8")
+        cls.body = _fn(cls.src, "forkFabDrawing")
+        cls.flat = cls.body.replace(" ", "")
+
+    def test_the_sheet_is_reachable(self):
+        self.assertIn('data-drawing="fork"', self.src, "탭이 없다")
+        self.assertIn("drawingTab==='fork')drawingContent.innerHTML=forkFabDrawing()",
+                      self.src, "탭이 시트를 그리지 않는다")
+
+    def test_it_uses_the_fabrication_frame(self):
+        for token, why in (("fabSheet(", "A3 도면틀을 쓰지 않는다"),
+                           ("fabTitleBlock({", "ISO 7200 표제란이 없다"),
+                           ("revBlock([", "개정란이 없다"),
+                           ("no:'F-003'", "도면번호가 없다")):
+            self.assertTrue(token in self.body, why)
+
+    def test_all_four_portals_are_on_the_sheet(self):
+        """넷 가운데 하나라도 빠지면 그 문형은 도면 없이 제작된다."""
+        for tag in ("LI-101", "EX-101", "GL-101", "GU-101"):
+            self.assertIn(tag, self.body, f"{tag} 가 설치 위치표에 없다")
+        for coord in ("CMAST_IN", "CMAST_OUT", "CST.DL.x1+.08", "CST.GC.x1+.34"):
+            self.assertIn(coord, self.flat.replace("+.08", "+.08"),
+                          f"{coord} 좌표가 배치에서 나오지 않는다")
+        self.assertIn("UNITS.length", self.body, "기수가 목록에서 나오지 않는다")
+
+    def test_the_height_follows_the_deck_count(self):
+        """두상보 상단이 RH-201 모노레일 하한을 만든다 — 값으로 적으면 부딪친다."""
+        self.assertIn("TOP=cDeckZ(DECKS-1)+.73+.09", self.flat,
+                      "두상보 상단이 최상단 데크에서 나오지 않는다")
+        self.assertIn("W=2*(HALF+.075)", self.flat, "문형 폭이 반폭에서 나오지 않는다")
+        self.assertIn("HALF=FORK_HALF_STD", self.flat, "반폭이 납품 배치 상수가 아니다")
+        self.assertIn("RH_Z", self.body, "모노레일 하한과의 관계가 도면에 없다")
+
+    def test_the_reach_is_drawn_at_the_length_it_is_dimensioned(self):
+        """치수는 2,610 인데 그림이 1,120 이면 그 도면은 치수만 맞는 그림이다."""
+        self.assertIn("REACH=CST.HC.cx-CMAST_IN", self.flat,
+                      "인출 길이가 랙 중심 − 마스트에서 나오지 않는다")
+        # 상세도가 REACH 를 실제 좌표로 써서 그려야 한다
+        for expr in ("dx(REACH", "REACH*.58", "REACH*.62"):
+            self.assertIn(expr, self.flat.replace(" ", ""),
+                          f"인출 상세가 {expr} 로 실척을 그리지 않는다")
+        self.assertIn("dimH(dx(0),dx(REACH)", self.flat,
+                      "인출 치수가 그린 길이에 걸리지 않는다")
+
+    def test_every_deck_level_is_marked(self):
+        """포크가 닿아야 하는 자리가 전부 도면에 있어야 한다."""
+        # flat 은 공백을 지우므로 'let k' 같은 토큰이 사라진다 — 원문에서 본다
+        self.assertIn("for(let k=0;k<DECKS;k++)", self.body,
+                      "단 레벨이 단수만큼 그려지지 않는다")
+        self.assertIn("cDeckZ(k)", self.body)
+
+    def test_it_does_not_pretend_to_know_the_section(self):
+        self.assertIn("정하지 않는 것", self.body)
+        self.assertIn("Not For Construction", self.body)
+
+    def test_the_sheet_never_reads_the_layout_the_screen_happens_to_show(self):
+        for bad in ("LC()", "cForkHalf()", "twinView()", "compactView()"):
+            self.assertNotIn(bad, self.body, f"F-003 이 활성 배치({bad})를 읽는다")
+
+
 class TestTheTandemSheetSaysWhatMoves(unittest.TestCase):
     """M-005 는 Rev.20 과 가장 크게 달라진 모듈이다.
 
