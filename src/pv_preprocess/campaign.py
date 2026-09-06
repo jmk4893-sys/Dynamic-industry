@@ -53,6 +53,29 @@ AFR_S = 39.03
 #: 전손 배출이 투입부만 쓰는 시간 (s) — 픽업·판정·반전 생략 하강·로봇 랙 배출·복귀
 INFEED_REJECT_S = 15.0
 
+#: SG-301 이 AFR 반출롤러(CV-103) 위에서 한 장을 잡고 있는 시간 (s) — REV.51.
+#: 장변은 유리가 300 mm/s 로 고정 헤드 밑을 **지나며** 갈리고(REV.50), 단변은 유리를
+#: 세운 채 횡행 헤드가 폭 1,400 을 훑는다(REV.51). 앞단변 → 장변 통과 → 뒷단변 순서라
+#: 정지가 두 번이고, 정지마다 헤드 하강·상승이 든다. 이 점유는 AFR 정반 점유 `AFR_S`
+#: 보다 짧아야 한다 — 다음 장이 정반을 떠날 때 반출롤러가 비어 있어야 하기 때문이다.
+SG_PASS_MM_S = 300.0        # 장변 통과 연마 속도 (발주처·벤더 확인 항목)
+SG_SWEEP_MM_S = 250.0       # 단변 횡행 속도
+SG_HEAD_STROKE_S = 1.0      # 정지마다 헤드 하강+상승
+SG_INDEX_S = 1.5            # 정지 두 번의 감속·정착 합
+PANEL_WIDTH_MM = 1400.0
+
+
+def sg_occupancy_s() -> float:
+    """SG-301 반출롤러 점유 (s) — 앞단변 + 장변 통과 + 뒷단변 + 정지·헤드 행정."""
+    short = PANEL_WIDTH_MM / SG_SWEEP_MM_S + SG_HEAD_STROKE_S
+    long = PANEL_LENGTH_MM / SG_PASS_MM_S
+    return round(2 * short + long + SG_INDEX_S, 2)
+
+
+def sg_fits_the_exit_roller() -> bool:
+    """반출롤러가 다음 장이 나오기 전에 비는가 — SG 점유 ≤ AFR 정반 점유."""
+    return sg_occupancy_s() <= AFR_S
+
 #: JBR 진입 후 스토퍼·측면 정렬이 작동하기까지 (s).
 #: 영상 스테이지 "JBR-201 · 스토퍼·측면 정렬" 이 48.0 s 에 시작하고 JBR 진입이 40.0 s 이므로 8.0 s.
 JBR_STOPPER_OFFSET_S = 8.0

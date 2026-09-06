@@ -63,6 +63,12 @@ def _zone_center(key: str) -> int:
     return (zone.x0_mm + zone.x1_mm) // 2
 
 
+def sg_spindles() -> int:
+    """SG-301 스핀들 수 — servos 의 정본."""
+    from . import servos
+    return next(a.qty for a in servos.MOTORS if a.tag == "MTR-SG-SP")
+
+
 def noise_sources() -> tuple[NoiseSource, ...]:
     """음원 목록 — 위치는 배치 모델에서 파생한다."""
     afu = _zone_center("afu")
@@ -78,7 +84,10 @@ def noise_sources() -> tuple[NoiseSource, ...]:
     buffer_ = _zone_center("buffer")
     grm = _zone_center("grm")
     return (
-        NoiseSource("NS-SG", "SG-301 양측 연마 스핀들", afr0 + 4_675, 96.0, 18.0,
+        # REV.51: 96 dB(A) 는 스핀들 2 기준이다 — 단변 헤드가 더해져 스핀들 수로 파생한다.
+        # 세 헤드가 순차 운전이라도 동시 가동을 가정하는 쪽이 보수적이다.
+        NoiseSource("NS-SG", "SG-301 연마 스핀들 (장변 2 + 단변 1)", afr0 + 4_675,
+                    round(96.0 + 10 * math.log10(sg_spindles() / 2), 1), 18.0,
                     "가드 흡음 라이닝 + 국소집진 후드 밀착", "정상"),
         NoiseSource("NS-DXM", "DX-601 주 집진 블로워", post, 92.0, 20.0,
                     "AFR-ENC-601 흡음 인클로저 + AFR-SIL-601 배기 소음기", "정상"),

@@ -353,7 +353,7 @@ def SPARES() -> tuple[Spare, ...]:
               "시운전 run-at-rate 에서 마모량을 재야 나온다"),
         Spare("SP-02", "핫나이프 (TDM-201 탠덤)", "RB-GRM", 2, None, 8,
               "60 mm/s 로 EVA 를 가른다. 수명은 GRM 벤더값"),
-        Spare("SP-03", "연마휠 (SG-301)", "RB-POST", 2, None, 4,
+        Spare("SP-03", "연마휠 (SG-301 · 장변 2 + 단변 1)", "RB-POST", 3, None, 4,
               "유리 엣지 연마. 마모 보상이 컴플라이언스 제어에 있으므로 "
               "보상량 한계가 곧 교체 시점이다 — 그 한계도 벤더값"),
         Spare("SP-04", "집진 필터백", "RB-UTIL", filter_bags(),

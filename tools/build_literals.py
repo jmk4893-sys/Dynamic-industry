@@ -354,6 +354,13 @@ def main() -> int:
         return body
     p.one(r"var SMART = \{[^}]*\}", _smart)
 
+    # ── 패널 구조 레시피 (REV.51) — recipe.py 가 정본이다 ──────────────────
+    from pv_preprocess import recipe, campaign
+    p.rows("STRUCTURE_RECIPES", recipe.literal_rows(), indent="    ")
+    # SG-301 반출롤러 점유 — 설계·PLC·검증 표의 문구가 campaign 값을 따른다
+    p.one(r"SG-301 반출롤러 점유 [\d.]+ s",
+          lambda m: f"SG-301 반출롤러 점유 {campaign.sg_occupancy_s():g} s")
+
     # ── 열수지 — 반내 발열은 서보 일람에서 나온다 ────────────────────────
     for src in thermal.heat_sources():
         p.one(rf"(\['{re.escape(src.tag)}', '[^']*', )[\d.]+(, '[^']*', '[^']*', '[^']*', )[\d.]+\]",

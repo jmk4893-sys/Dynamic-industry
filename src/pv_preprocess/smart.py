@@ -145,7 +145,7 @@ INSTRUMENTS: tuple[Instrument, ...] = (
     Instrument("VIB-902", "afr", "HPU-601 유압펌프 3축 진동", 1, 16, 1.0,
                "LP-INST", 6.0, "7.5 kW 펌프 — 라인 최대 유압원", "AI-05"),
     # REV.50: SG-301 이 AFR 반출롤러 위로 갔으므로 스핀들 진동 센서도 afr 존이다.
-    Instrument("VIB-903", "afr", "SG-301 연마 스핀들 3축 진동", 2, 16, 1.0,
+    Instrument("VIB-903", "afr", "SG-301 연마 스핀들 3축 진동", 3, 16, 1.0,
                "LP-INST", 6.0, "휠 마모·불평형 — 유리 흠집의 선행지표", "AI-05"),
     Instrument("VIB-904", "post", "DX-601 집진 블로워 3축 진동", 2, 16, 1.0,
                "LP-INST", 6.0, "임펠러 분진 부착 불평형", "AI-05"),
@@ -270,6 +270,9 @@ def image_streams() -> tuple[ImageStream, ...]:
     if "GI-302" in kept:
         # 연마 후 통합 검사 — 라인스캔. 정상 유리만 통과한다.
         rows.append(ImageStream("GI-302", "post", line_px, 1, normal_per_h))
+    if "GI-303" in kept:
+        # REV.51: 하부 유리면 라인스캔 — CV-102 롤러 사이 틈에서 같은 해상도로 밑을 본다.
+        rows.append(ImageStream("GI-303", "post", line_px, 1, normal_per_h))
     # 신규 박리 완전도 — 면적 12 MP, 장당 1프레임. 정상 유리 흐름을 탄다.
     rows.append(ImageStream("VS-401", "grm", 12_000_000, 1, normal_per_h))
     return tuple(rows)
