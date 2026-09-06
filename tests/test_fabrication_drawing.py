@@ -163,6 +163,113 @@ class TestTheChamberSheetIsFabricationLevel(unittest.TestCase):
                       "화면 설명문이 참고도임을 밝히지 않는다")
 
 
+class TestNoSheetPrintsTextOverText(unittest.TestCase):
+    """글자가 글자 위에 얹히면 인쇄한 도면에서 둘 다 못 읽는다.
+
+    E-001 은 접지 설명이 '필수 계전·계측' 상자 안에 있었고, C-001 은
+    안전회로 설명이 표제란 위로 흘러들어가 있었다. 화면에서는 겹쳐도
+    글자가 보이지만 인쇄하면 서로를 지운다.
+
+    좌표를 브라우저에서 재는 것은 시험 밖(스크래치의 경계상자 검사)에서
+    하고, 여기서는 다시 그 자리로 돌아가지 않게 좌표를 못 박는다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = CONSOLE.read_text(encoding="utf-8")
+
+    def test_the_earth_note_sits_above_the_relay_box(self):
+        box = re.search(r'<rect x="585" y="(\d+)"', self.src)
+        self.assertIsNotNone(box, "E-001 계전·계측 상자를 찾지 못했다")
+        note = re.search(r'<text x="600" y="(\d+)"[^>]*>PE BAR', self.src)
+        self.assertIsNotNone(note, "E-001 접지 설명을 찾지 못했다")
+        self.assertLess(int(note.group(1)), int(box.group(1)),
+                        "접지 설명이 계전·계측 상자 안에 있다")
+
+    def test_the_safety_note_clears_the_title_block(self):
+        note = re.search(r'<text x="(\d+)" y="\d+"[^>]*>Safety: OSSD', self.src)
+        self.assertIsNotNone(note, "C-001 안전회로 설명을 찾지 못했다")
+        # 개념 시트 표제란은 x 870 에서 시작한다 — 그 앞에서 끝나야 한다
+        self.assertLess(int(note.group(1)), 300,
+                        "안전회로 설명이 표제란 쪽으로 흘러간다")
+
+
+class TestTheWinderSheetShowsBothJourneys(unittest.TestCase):
+    """M-006 은 도면이 두 장면을 함께 담아야 한다.
+
+    하나는 필름이 지나가는 길(박리점 → GR-W1 → 아이들러 → DN-101 → 드럼)이고,
+    다른 하나는 다 감긴 357 kg 롤이 나가는 길(RH-201 → 방책 밖 BS-301)이다.
+    둘째가 없으면 무인 운전이 4.9시간마다 끊긴다 — 보관대가 방책 안이면
+    사람이 그 주기로 들어가야 하기 때문이다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = CONSOLE.read_text(encoding="utf-8")
+        cls.body = _fn(cls.src, "winderFabDrawing")
+        cls.flat = cls.body.replace(" ", "")
+
+    def test_the_sheet_is_reachable(self):
+        self.assertIn('data-drawing="winder"', self.src, "탭이 없다")
+        self.assertIn("drawingTab==='winder')drawingContent.innerHTML=winderFabDrawing()",
+                      self.src, "탭이 시트를 그리지 않는다")
+
+    def test_it_uses_the_fabrication_frame(self):
+        for token, why in (("fabSheet(", "A3 도면틀을 쓰지 않는다"),
+                           ("fabTitleBlock({", "ISO 7200 표제란이 없다"),
+                           ("revBlock([", "개정란이 없다"),
+                           ("no:'F-006'", "도면번호가 없다")):
+            self.assertTrue(token in self.body, why)
+
+    def test_both_journeys_are_drawn(self):
+        """웹 경로만 그리면 롤이 어떻게 나가는지가 도면에 없다."""
+        for part in ("CID_X", "CDN_X", "CDRUM", "WR_CORE_R", "WR_FULL_R"):
+            self.assertIn(part, self.body, f"웹 경로에 {part} 가 없다")
+        for part in ("RH_Y0", "CKC_RACK_Y", "BS_SADDLE", "CFENCE_YN"):
+            self.assertIn(part, self.body, f"반출 경로에 {part} 가 없다")
+        self.assertIn("롤 반출 단면 B-B", self.body, "반출 단면이 없다")
+        # 그리기만 하고 시트에 붙이지 않으면 도면에는 없는 것과 같다
+        self.assertIn("+ route + seq + tbl", self.body,
+                      "반출 단면이 시트에 조립되지 않는다")
+
+    def test_the_roll_mass_and_interval_are_derived(self):
+        """357 kg 도 4.9시간도 백시트 두께와 순생산에서 나온다."""
+        self.assertIn("ROLL_MASS", self.body, "롤 질량이 유도되지 않는다")
+        self.assertIn("ROLL_FULL_PANELS", self.body, "롤당 장수가 유도되지 않는다")
+        self.assertIn("HRS=ROLL_FULL_PANELS/MODEL.netTarget", self.flat,
+                      "교체 주기가 롤당 장수 ÷ 순생산에서 나오지 않는다")
+        self.assertIn("ROLLKG=ROLL_MASS", self.flat,
+                      "롤 질량이 모델값에서 나오지 않는다")
+        self.assertIn("BACKSHEET_T", self.body, "백시트 두께가 근거로 적히지 않는다")
+
+    def test_the_sheet_says_the_drum_does_not_wind_during_peel(self):
+        """이 계통의 요지 — GR-W1 이 같이 가므로 웹 길이가 상쇄된다."""
+        self.assertIn("박리 중 드럼", self.body, "박리 중 권취 0 이 도면에 없다")
+        self.assertIn("상쇄", self.body)
+        self.assertIn("CDN_Z1-CDN_Z0", self.flat, "댄서 행정이 유도되지 않는다")
+
+    def test_the_ejection_sequence_is_on_the_sheet(self):
+        """인터록이 잠그는 순서가 도면에 없으면 안전회로 시험에 근거가 없다."""
+        self.assertIn("const SEQ=[", self.body, "반출 순서가 없다")
+        self.assertIn("반출 순서", self.body)
+        self.assertGreaterEqual(self.body.count("','"), 6, "순서 단계가 모자란다")
+
+    def test_it_records_what_rev20_had_that_this_does_not(self):
+        """예비축·절단암·격리셔터·롤 포트·코너 승강대는 압축 배치에 없다."""
+        self.assertIn("예비 권취축", self.body, "Rev.20 과의 차이가 도면에 없다")
+        self.assertIn("단일 고정 드럼", self.body)
+        self.assertIn("단일 고정 드럼", self.src[self.src.index("no:'F-006'") - 4000:],
+                      "개정란·표제가 정정을 담지 않는다")
+
+    def test_it_does_not_pretend_to_know_the_shaft(self):
+        self.assertIn("정하지 않는 것", self.body)
+        self.assertIn("Not For Construction", self.body)
+
+    def test_the_sheet_never_reads_the_layout_the_screen_happens_to_show(self):
+        for bad in ("LC()", "cForkHalf()", "twinView()", "compactView()"):
+            self.assertNotIn(bad, self.body, f"F-006 이 활성 배치({bad})를 읽는다")
+
+
 class TestTheForkSheetIsOneDrawingForFour(unittest.TestCase):
     """모듈표는 이 모듈을 'LI-101 승강프레임' 하나 · 1 SET 으로 적고 있었다.
 

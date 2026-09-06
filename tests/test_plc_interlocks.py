@@ -95,6 +95,48 @@ class TestInterlockModelRuns(unittest.TestCase):
         dead = sorted(soft - need)
         self.assertEqual(dead, [], f"모델이 부르지 않는 면제 항목: {dead}")
 
+    def test_drawings_only_name_signals_the_model_defines(self):
+        """제작도가 부르는 신호 이름은 모델에 있어야 한다.
+
+        도면에만 있는 이름을 적으면 그 단계는 잠기지 않는데 도면은 잠긴다고
+        말한다 — 없는 장치를 읽는 신호와 같은 결함이고, 화면에도 표시가 나지
+        않는다. 제작도 시트의 순서도·주기가 부르는 대문자 신호를 전부 본다.
+        """
+        names = ({l.name for l in self.m.LEAVES}
+                 | {d.name for d in self.m.DERIVED})
+        # 신호가 아닌 대문자 토큰(규격·재질·단위)은 제외한다
+        allow = {"ISO", "SS400", "SUS304", "SKD11", "GFRP", "NBR", "THK", "HSR35",
+                 "HSR25", "LM", "STO", "EL", "PL", "BOX", "AL", "CU", "IP54",
+                 "DI", "DO", "AI", "AO", "TC", "COMM", "NFC", "A3", "B", "C", "A",
+                 "AF", "AT", "FS", "RGB", "NIR", "OSSD", "PE", "SPD", "UPS", "PSU",
+                 "ACB", "MCCB", "VFD", "IE4", "OPC", "UA", "HMI", "CPU", "PLC",
+                 "NOT", "FOR", "CONSTRUCTION", "MASS", "SCALE", "SHEET", "TITLE",
+                 "MATERIAL", "GENERAL", "PROJECTION", "REV", "DATE", "DESCRIPTION",
+                 "BY", "TOL", "DYNAMIC", "INDUSTRY", "NET", "ZERO", "KC", "CE"}
+        bad = {}
+        for fn in ("chamberFabDrawing", "forkFabDrawing", "winderFabDrawing",
+                   "tandemFabDrawing", "foundationDrawing"):
+            i = self.console.index(f"function {fn}(")
+            j = self.console.index("{", i)
+            depth = 0
+            for k in range(j, len(self.console)):
+                if self.console[k] == "{":
+                    depth += 1
+                elif self.console[k] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        break
+            body = self.console[i:k + 1]
+            # 'SIGNAL_NAME' 꼴 — 밑줄이 있는 대문자 토큰만 신호로 본다
+            for tok in set(re.findall(r"\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b", body)):
+                if tok in allow or tok in names:
+                    continue
+                # 콘솔 상수는 신호가 아니다
+                if re.search(rf"\b(?:const|let|var)\s[^\n]*\b{tok}\b\s*=", self.console):
+                    continue
+                bad.setdefault(fn, []).append(tok)
+        self.assertEqual(bad, {}, f"모델에 없는 신호를 부르는 도면: {bad}")
+
     def test_every_drive_has_a_safe_stop(self):
         """구동부에 안전정지 수단이 없으면 트립이 걸려도 축은 돈다."""
         no_stop = [d.tag for d in self.m.DRIVES if not d.stop]
