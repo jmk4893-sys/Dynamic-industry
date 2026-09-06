@@ -596,6 +596,7 @@
         <button type="button" data-drawing="winder">권취·반출 제작도</button>
         <button type="button" data-drawing="cooler">냉각 랙 제작도</button>
         <button type="button" data-drawing="cassette">칼날 카세트 상세</button>
+        <button type="button" data-drawing="bolt">볼트 체결 표준상세</button>
         <button type="button" data-drawing="compact">압축 배치</button>
         <button type="button" data-drawing="foundation">기초·앵커 배치도</button>
         <span class="tab-group">선행 REV.20 (폐기)</span>
@@ -7220,6 +7221,183 @@
         + `바꿔 ${fmt(R20.alOutDone-R20.alInOutside)} 를 ${fmt(CST.HC.w)} 로 줄였지만, 포크가 들어가는 동안 챔버가 열린다. `
         + `그 순간의 배기를 배기 설계가 감당한다 — <b>공짜로 줄인 길이가 아니다.</b></p>`;
     }
+    /* F-901 · 볼트 체결 표준상세.
+
+       제작 지침서(docs/dg-hk60-fab-spec.html)의 표를 현장에서 보는 그림으로
+       옮긴다. 지침서는 사무실에서 읽고, 이 시트는 조립 현장에 붙는다 —
+       그래서 여기에는 계산이 없고 '어떻게 생겨야 하는가' 만 있다.
+
+       네 가지 상세가 이 설비의 접합 전부를 덮는다:
+         ① 기둥 베이스플레이트 — 앵커·라이너·무수축 그라우트
+         ② 마찰접합 — 도장하지 않은 접합면과 경화와셔
+         ③ 플랜지 이음 — 개스킷과 대각 조임
+         ④ 조임 순서와 마킹 — 두 번 조이고 선을 긋는다
+
+       토크값은 지침서 계산기(tools/fab_spec.py)가 낸 값과 같아야 하고,
+       시험이 그것을 대조한다. 두 곳에 적힌 숫자가 갈라지면 현장이 먼저 안다. */
+    const FAB_TORQUE=[
+      ['M12','8.8',47.2,113,79],  ['M12','10.9',59.0,142,99],
+      ['M16','8.8',87.9,281,197], ['M16','10.9',109.9,352,246],
+      ['M20','8.8',137.2,549,384],['M20','10.9',171.5,686,480],
+      ['M24','8.8',197.7,949,664],['M24','10.9',247.1,1186,830],
+    ];
+    function boltDetailDrawing(){
+      const cap=(x,y,t)=>`<text stroke="none" x="${x}" y="${y}" ${FS(3.2)} font-weight="700" fill="#0f1c21">${esc(t)}</text>`;
+      const lead=(x0,y0,x1,y1,n)=>`<path d="M${x0} ${y0}L${x1} ${y1}" stroke="#1a2b30" stroke-width="${LW.ctr}" fill="none"/>`+balloon(x1,y1,n);
+      const note=(x,y,t)=>`<text stroke="none" x="${x}" y="${y}" ${FS(2.4)} fill="#5b6d74">${esc(t)}</text>`;
+
+      /* ── ① 기둥 베이스플레이트 (1:5) — 앵커가 콘크리트로 내려가는 길 */
+      const AX=34,AY=54,AS_=1/5;
+      const ax=v=>AX+v*AS_, az=v=>AY+(120-v)*AS_;   // v 는 mm · z 는 위로
+      let d1=`<g stroke="#1a2b30" fill="none">`;
+      // 콘크리트
+      d1+=`<rect x="${ax(0)}" y="${az(0)}" width="${ax(300)-ax(0)}" height="${az(-260)-az(0)}" fill="#eceff1" stroke="#7b8d94" stroke-width="${LW.thin}"/>`;
+      for(let i=0;i<9;i++)d1+=`<path d="M${ax(6+i*34)} ${az(0)}l-6 -8" stroke="#9aa8ad" stroke-width="${LW.ctr}"/>`;
+      // 무수축 그라우트 30
+      d1+=`<rect x="${ax(30)}" y="${az(30)}" width="${ax(240)-ax(30)}" height="${az(0)-az(30)}" fill="url(#insul)" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      // 베이스플레이트 PL28
+      d1+=`<rect x="${ax(20)}" y="${az(58)}" width="${ax(260)-ax(20)}" height="${az(30)-az(58)}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      // 기둥 □150×150×6
+      d1+=`<rect x="${ax(75)}" y="${az(134)}" width="${ax(225)-ax(75)}" height="${az(58)-az(134)}" fill="none" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      d1+=`<rect x="${ax(81)}" y="${az(134)}" width="${ax(219)-ax(81)}" height="${az(64)-az(134)}" fill="#fff" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      // 부분단면 파단선 — 기둥은 계속 올라간다
+      d1+=`<path d="M${ax(75)} ${az(134)}l${(ax(225)-ax(75))/6} -2.2l${(ax(225)-ax(75))/6} 4.4l${(ax(225)-ax(75))/6} -4.4l${(ax(225)-ax(75))/6} 4.4l${(ax(225)-ax(75))/6} -4.4l${(ax(225)-ax(75))/6} 2.2" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      // 용접 각장 10 — 양면
+      for(const s of [-1,1]){const cx=s<0?75:225;
+        d1+=`<path d="M${ax(cx)} ${az(58)}l${s*10*AS_} 0l0 ${-10*AS_}z" fill="#1a2b30"/>`;}
+      // 앵커 M24 hef 210 · 너트·와셔
+      for(const cx of [46,254]){
+        d1+=`<rect x="${ax(cx-12)}" y="${az(58)}" width="${ax(cx+12)-ax(cx-12)}" height="${az(-210)-az(58)}" fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+        d1+=`<rect x="${ax(cx-20)}" y="${az(63)}" width="${ax(cx+20)-ax(cx-20)}" height="${az(58)-az(63)}" fill="#c8d2d6" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;   // 와셔
+        d1+=`<rect x="${ax(cx-18)}" y="${az(85)}" width="${ax(cx+18)-ax(cx-18)}" height="${az(63)-az(85)}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;  // 너트
+      }
+      // 라이너
+      d1+=`<rect x="${ax(150-16)}" y="${az(30)}" width="${ax(150+16)-ax(150-16)}" height="${az(0)-az(30)}" fill="#f6ddd0" stroke="#b84a23" stroke-width="${LW.thin}"/>`;
+      d1+=`</g>`
+        +lead(ax(150),az(15),ax(150)+2,az(-40),'1')
+        +lead(ax(254),az(74),ax(254)+16,az(120),'2')
+        +lead(ax(150),az(44),ax(150)-30,az(96),'3')
+        +lead(ax(46),az(-120),ax(46)-14,az(-190),'4')
+        +dimV(az(58),az(30),ax(0)-7,'30')
+        +dimV(az(0),az(-210),ax(300)+9,'210')
+        +note(ax(0),az(-250),'C25/30 이상 · 연단 ≥ 315')
+        +weldSym(ax(225)+2,az(60),ax(225)+16,az(96),'z10','fillet',true);
+
+      /* ── ② 마찰접합 (1:5) */
+      const BX=155,BY=54;
+      const bx=v=>BX+v*AS_, bz=v=>BY+(120-v)*AS_;
+      let d2=`<g stroke="#1a2b30" fill="none">`;
+      d2+=`<rect x="${bx(0)}" y="${bz(72)}" width="${bx(190)-bx(0)}" height="${bz(60)-bz(72)}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      d2+=`<rect x="${bx(0)}" y="${bz(60)}" width="${bx(190)-bx(0)}" height="${bz(48)-bz(60)}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      // 접합면 — 도장 금지
+      d2+=`<path d="M${bx(0)} ${bz(60)}H${bx(190)}" stroke="#9a2b30" stroke-width="${LW.out}"/>`;
+      for(const cx of [50,140]){
+        d2+=`<rect x="${bx(cx-8)}" y="${bz(72)}" width="${bx(cx+8)-bx(cx-8)}" height="${bz(48)-bz(72)}" fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+        for(const [zz,hh] of [[84,72],[48,36]])
+          d2+=`<rect x="${bx(cx-15)}" y="${bz(zz)}" width="${bx(cx+15)-bx(cx-15)}" height="${bz(hh)-bz(zz)}" fill="#c8d2d6" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+        d2+=`<rect x="${bx(cx-13)}" y="${bz(100)}" width="${bx(cx+13)-bx(cx-13)}" height="${bz(84)-bz(100)}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+        d2+=`<rect x="${bx(cx-13)}" y="${bz(36)}" width="${bx(cx+13)-bx(cx-13)}" height="${bz(20)-bz(36)}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      }
+      d2+=`</g>`
+        +lead(bx(95),bz(60),bx(95)-26,bz(24),'5')
+        +lead(bx(140),bz(78),bx(180),bz(112),'6')
+        +note(bx(0),bz(4),'접합면 Sa 2½ · 도장 금지 · μ = 0.50');
+
+      /* ── ③ 플랜지 이음 (1:8) */
+      const CX=280,CY=54,CS=1/8;
+      const cx3=v=>CX+v*CS, cz3=v=>CY+(140-v)*CS;
+      let d3=`<g stroke="#1a2b30" fill="none">`;
+      d3+=`<circle cx="${cx3(120)}" cy="${cz3(20)}" r="${100*CS}" fill="#fff" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      d3+=`<circle cx="${cx3(120)}" cy="${cz3(20)}" r="${75*CS}" fill="none" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      d3+=`<circle cx="${cx3(120)}" cy="${cz3(20)}" r="${88*CS}" fill="none" stroke="#7b8d94" stroke-width="${LW.ctr}" stroke-dasharray="5 1.5 1 1.5"/>`;
+      for(let i=0;i<12;i++){const a=i*Math.PI/6;
+        d3+=`<circle cx="${cx3(120)+88*CS*Math.cos(a)}" cy="${cz3(20)+88*CS*Math.sin(a)}" r="${6*CS}" fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;}
+      d3+=`</g>`
+        +lead(cx3(120)+88*CS,cz3(20),cx3(120)+140*CS,cz3(20)-30,'7')
+        +note(cx3(20),cz3(-108),'Ø600 · M12 × 12 등분 · 개스킷 t3')
+        +note(cx3(20),cz3(-125),'대각 조임 2단 · 60 % → 100 %');
+
+      /* ── ④ 조임 순서와 마킹 (1:1 개념) */
+      const DX=34,DY=158;
+      const seq=[1,5,3,7,2,6,4,8];
+      let d4=`<circle cx="${DX+32}" cy="${DY+26}" r="23" fill="none" stroke="#7b8d94" stroke-width="${LW.ctr}" stroke-dasharray="5 1.5 1 1.5"/>`;
+      seq.forEach((n,i)=>{const a=-Math.PI/2+i*Math.PI/4;
+        const px=DX+32+23*Math.cos(a), py=DY+26+23*Math.sin(a);
+        d4+=`<circle cx="${px}" cy="${py}" r="4.4" fill="#fff" stroke="#1a2b30" stroke-width="${LW.thin}"/>`
+          +`<text stroke="none" x="${px}" y="${py+1.5}" text-anchor="middle" ${FS(3.4)} font-weight="700" fill="#b84a23">${n}</text>`;});
+      // 마킹 도해
+      d4+=`<g stroke="#1a2b30" fill="none">`
+        +`<rect x="${DX+92}" y="${DY+16}" width="30" height="10" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.thin}"/>`
+        +`<rect x="${DX+99}" y="${DY+6}" width="16" height="10" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/></g>`
+        +`<path d="M${DX+107} ${DY+4}V${DY+28}" stroke="#b84a23" stroke-width="1.1" fill="none"/>`
+        +`<rect x="${DX+140}" y="${DY+16}" width="30" height="10" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.thin}"/>`
+        +`<rect x="${DX+147}" y="${DY+6}" width="16" height="10" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`
+        +`<path d="M${DX+155} ${DY+4}V${DY+16}" stroke="#b84a23" stroke-width="1.1" fill="none"/>`
+        +`<path d="M${DX+149} ${DY+16}V${DY+28}" stroke="#b84a23" stroke-width="1.1" fill="none"/>`
+        +note(DX+92,DY+36,'조임 직후 — 선이 이어진다')
+        +note(DX+140,DY+36,'풀림 — 선이 어긋난다')
+        +note(DX,DY+56,'대각 순서로 60 % → 같은 순서로 100 % · 완료 후 볼트·너트·모재에 걸쳐 마킹')
+        +note(DX,DY+63,'한 개라도 미달이면 그 접합 전체를 다시 조인다 — 한 개만 조이면 인접 볼트가 빠진다');
+
+      /* ── 토크표 */
+      const TX=240,TY=158,TP=5.0;
+      let tbl=`<text stroke="none" x="${TX}" y="${TY-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">체결력과 조임토크 — 지침서 5.1 발췌</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${TX}" y="${TY}" width="165" height="${7+FAB_TORQUE.length*TP}"/>`
+        +`<path d="M${TX} ${TY+7}h165"/></g>`;
+      ['규격','등급','Fp,C  kN','T 건조 K0.20','T 윤활 K0.14'].forEach((h,i)=>{
+        tbl+=`<text stroke="none" x="${TX+[3,24,54,92,132][i]}" y="${TY+5}" ${FS(2.4)} font-weight="700" fill="#5b6d74">${h}</text>`;});
+      FAB_TORQUE.forEach((r,i)=>{const y=TY+7+i*TP+3.9;
+        r.forEach((cv,k)=>{tbl+=`<text stroke="none" x="${TX+[3,24,78,120,162][k]}" y="${y}" text-anchor="${k>1?'end':'start'}" ${FS(2.4)} font-weight="${k<2?700:400}" fill="#0f1c21">${esc(String(cv))}</text>`;});});
+
+      /* ── 부품란 */
+      const bomX=34,bomY=228;
+      const BOM=[
+        ['1','무수축 그라우트','t30 · 압축강도 60 MPa 이상'],
+        ['2','접착식 앵커','M24 · hef 210 · 등급 10.9 전산볼트'],
+        ['3','레벨 라이너','t1/2/3 조합 · SS400'],
+        ['4','천공·청소','압축공기 + 브러시 3회 — 청소 불량이 접착 실패의 최대 원인'],
+        ['5','접합면','Sa 2½ 블라스트 · 도장 금지 — 도장하면 μ 가 0.2 이하로 떨어진다'],
+        ['6','경화와셔','ISO 7089 300HV · 10.9 와 마찰접합은 양쪽 필수'],
+        ['7','플랜지 볼트','M12 × 12 등분 · 개스킷 압착이 지배'],
+      ];
+      let bom=`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none">`
+        +`<rect x="${bomX}" y="${bomY}" width="192" height="${6+BOM.length*4.6}"/>`
+        +`<path d="M${bomX} ${bomY+6}h192"/></g>`
+        +`<text stroke="none" x="${bomX+2}" y="${bomY+4.4}" ${FS(2.3)} font-weight="700" fill="#5b6d74">№</text>`
+        +`<text stroke="none" x="${bomX+12}" y="${bomY+4.4}" ${FS(2.3)} font-weight="700" fill="#5b6d74">품목 · 요구</text>`;
+      BOM.forEach(([n,a,b2],i)=>{const y=bomY+6+i*4.6+3.3;
+        bom+=`<text stroke="none" x="${bomX+2}" y="${y}" ${FS(2.3)} font-weight="700" fill="#0f1c21">${n}</text>`
+          +`<text stroke="none" x="${bomX+12}" y="${y}" ${FS(2.3)} font-weight="700" fill="#0f1c21">${esc(a)}</text>`
+          +`<text stroke="none" x="${bomX+52}" y="${y}" ${FS(2.3)} fill="#5b6d74">${esc(b2)}</text>`;});
+
+      const notes=[
+        '토크가 아니라 체결력이 사양이다 — 표면처리가 다르면 토크를 다시 계산해 제출한다.',
+        '스프링와셔를 쓰지 않는다. 풀림방지는 체결력 관리와 마킹이 한다.',
+        '10.9 등급과 마찰접합 볼트는 1회용 — 해체하면 신품으로 교체한다.',
+        '치수·재질·지배 검토는 제작 지침서 DG-HK60C-FAB-001 을 따른다.',
+      ];
+      const noteSvg=`<path d="M${240} 210h165" stroke="#7b8d94" stroke-width="${LW.thin}"/>`
+        +`<text stroke="none" x="240" y="207.5" ${FS(3)} font-weight="700" fill="#0f1c21">주기</text>`
+        +notes.map((n,i)=>`<text stroke="none" x="240" y="${215+i*4.6}" ${FS(2.3)} fill="#0f1c21">${i+1}. ${esc(n)}</text>`).join('');
+
+      return `<div class="drawing-stage">`+fabSheet(
+          `<text stroke="none" x="30" y="21" ${FS(5)} font-weight="800" fill="#0f1c21">F-901 · 볼트 체결 표준상세</text>`
+        + `<text stroke="none" x="30" y="26.5" ${FS(2.8)} fill="#5b6d74">기둥 베이스 · 마찰접합 · 플랜지 이음 · 조임 순서 — 치수 mm · 제작 지침서 DG-HK60C-FAB-001 부속</text>`
+        + cap(34,48,'① 기둥 베이스플레이트 (1:5)')
+        + cap(155,48,'② 마찰접합 (1:5)')
+        + cap(280,48,'③ 플랜지 이음 Ø600 (1:8)')
+        + cap(34,152,'④ 조임 순서와 마킹')
+        + d1 + d2 + d3 + d4 + tbl + bom + noteSvg
+        + revBlock([{rev:'0',date:'2026-09-06',desc:'제작 지침서 부속 표준상세 신규',by:'DI'}])
+        + fabTitleBlock({no:'F-901',title:'볼트 체결 표준상세',scale:'1:5 / 1:8',sheet:'1 / 1',
+            material:'—',mass:'—',tol:'ISO 2768-mK',tol2:'체결력 ±10 % · 마킹 필수'}))
+        + `</div>`
+        + `<p class="drawing-note"><b>이 시트는 계산을 담지 않는다.</b> 볼트 규격이 왜 그 규격인지,`
+        + ` 앵커 매입깊이가 왜 210 인지는 제작 지침서 <b>DG-HK60C-FAB-001</b> 이 하중에서 유도한다.`
+        + ` 여기 있는 것은 <b>어떻게 생겨야 하는가</b> 뿐이다 — 그림 넷과 표 하나로 이 설비의 접합 전부를 덮는다.`
+        + ` 표의 토크는 지침서 계산기가 낸 값과 같아야 하고, 시험이 그것을 대조한다.`
+        + ` <b>두 곳에 적힌 숫자가 갈라지면 현장이 먼저 안다.</b></p>`;
+    }
     function cassetteDrawing(){
       const cool=cassCoolSec(),hPre=cassHeatSec(CASS_T_PRE),hCold=cassHeatSec(CASS_T_AMB);
       const auto=cassStopAuto(),man=cassStopManual();
@@ -7700,7 +7878,7 @@
     }
     function renderEngineering(){
       document.querySelectorAll('[data-drawing]').forEach(b=>b.classList.toggle('active',b.dataset.drawing===drawingTab));
-      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else if(drawingTab==='chamber')drawingContent.innerHTML=chamberFabDrawing();else if(drawingTab==='tandem')drawingContent.innerHTML=tandemFabDrawing();else if(drawingTab==='fork')drawingContent.innerHTML=forkFabDrawing();else if(drawingTab==='winder')drawingContent.innerHTML=winderFabDrawing();else if(drawingTab==='cooler')drawingContent.innerHTML=coolerFabDrawing();else if(drawingTab==='cassette')drawingContent.innerHTML=cassetteDrawing();else if(drawingTab==='compact')drawingContent.innerHTML=compactDrawing();else if(drawingTab==='foundation')drawingContent.innerHTML=foundationDrawing();else if(drawingTab==='r20plan')drawingContent.innerHTML=r20PlanDrawing();else if(drawingTab==='r20carrier')drawingContent.innerHTML=r20CarrierDrawing();else if(drawingTab==='r20tandem')drawingContent.innerHTML=r20TandemDrawing();else if(drawingTab==='r20winder')drawingContent.innerHTML=r20WinderDrawing();else if(drawingTab==='r20glass')drawingContent.innerHTML=r20GlassDrawing();else if(drawingTab==='r20cell')drawingContent.innerHTML=r20CellDrawing();else if(drawingTab==='r20airlock')drawingContent.innerHTML=r20AirlockDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
+      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else if(drawingTab==='chamber')drawingContent.innerHTML=chamberFabDrawing();else if(drawingTab==='tandem')drawingContent.innerHTML=tandemFabDrawing();else if(drawingTab==='fork')drawingContent.innerHTML=forkFabDrawing();else if(drawingTab==='winder')drawingContent.innerHTML=winderFabDrawing();else if(drawingTab==='cooler')drawingContent.innerHTML=coolerFabDrawing();else if(drawingTab==='cassette')drawingContent.innerHTML=cassetteDrawing();else if(drawingTab==='bolt')drawingContent.innerHTML=boltDetailDrawing();else if(drawingTab==='compact')drawingContent.innerHTML=compactDrawing();else if(drawingTab==='foundation')drawingContent.innerHTML=foundationDrawing();else if(drawingTab==='r20plan')drawingContent.innerHTML=r20PlanDrawing();else if(drawingTab==='r20carrier')drawingContent.innerHTML=r20CarrierDrawing();else if(drawingTab==='r20tandem')drawingContent.innerHTML=r20TandemDrawing();else if(drawingTab==='r20winder')drawingContent.innerHTML=r20WinderDrawing();else if(drawingTab==='r20glass')drawingContent.innerHTML=r20GlassDrawing();else if(drawingTab==='r20cell')drawingContent.innerHTML=r20CellDrawing();else if(drawingTab==='r20airlock')drawingContent.innerHTML=r20AirlockDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
       const sel=$('assemblySelect');if(sel)sel.addEventListener('change',e=>{assemblyIndex=Number(e.target.value)||0;renderEngineering()});
       drawingContent.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{drawingMode=b.dataset.mode;renderEngineering()}));
     }

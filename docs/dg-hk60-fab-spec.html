@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#eceff1">
+<title>DG-HK60C 제작 지침서 · 볼트·용접·부재</title>
+<meta name="description" content="DG-HK60C 폐태양광 패널 분리설비의 제작 지침서 — 볼트 등급·체결력·조임토크, 용접 각장, 부재 판두께·재질, 기초 앵커, 표면처리, 공차, 조립 순서와 검사까지 하중에서 유도한 제작 사양.">
+<style>
+  /* ===========================================================================
+     DG-HK60 상세설계 발주 기술사양서.
+
+     입찰자가 조항번호로 인용하는 문서다("귀사 제안서 4.3항"). 그래서 번호가
+     장식이 아니라 주소이고, 왼쪽 여백에 고정폭으로 세워 어느 화면에서도
+     같은 자리에 온다. 부호·논리식·수치는 모두 모노로 두어 본문과 구분한다.
+
+     인쇄를 먼저 고려했다. 입찰자는 이 문서를 출력해 회람한다.
+     =========================================================================== */
+  :root{
+    color-scheme:light dark;
+    --paper:#ffffff;--ground:#eceff1;--band:#f4f6f7;--sunk:#e3e8ea;
+    --ink:#14202a;--ink2:#425663;--ink3:#6b7f8b;--ink4:#8b9ba4;
+    --brand:#17679b;--brand2:#228CC9;--brand-sunk:#e7f0f7;
+    --accent:#a06a08;--accent-sunk:#fbf3e0;--accent-line:#e0c68a;
+    --flag:#9a2b30;--flag-sunk:#fbeeee;--flag-line:#e3bcbc;
+    --ok:#1f6b47;
+    --rule:#cbd5da;--rule2:#aebcc4;--rule3:#8b9ba4;
+    --sans:Pretendard,"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --paper:#171f25;--ground:#10171c;--band:#1c262c;--sunk:#232f36;
+      --ink:#e6edf0;--ink2:#adbdc6;--ink3:#8598a2;--ink4:#687c87;
+      --brand:#5cb0e4;--brand2:#228CC9;--brand-sunk:#12303f;
+      --accent:#e0aa4a;--accent-sunk:#33280f;--accent-line:#6b5620;
+      --flag:#e8767a;--flag-sunk:#331b1c;--flag-line:#6b3436;
+      --ok:#54b487;
+      --rule:#2f3d45;--rule2:#41535d;--rule3:#5b7180;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --paper:#171f25;--ground:#10171c;--band:#1c262c;--sunk:#232f36;
+    --ink:#e6edf0;--ink2:#adbdc6;--ink3:#8598a2;--ink4:#687c87;
+    --brand:#5cb0e4;--brand2:#228CC9;--brand-sunk:#12303f;
+    --accent:#e0aa4a;--accent-sunk:#33280f;--accent-line:#6b5620;
+    --flag:#e8767a;--flag-sunk:#331b1c;--flag-line:#6b3436;
+    --ok:#54b487;
+    --rule:#2f3d45;--rule2:#41535d;--rule3:#5b7180;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--sans);font-size:15px;line-height:1.72;
+    -webkit-font-smoothing:antialiased}
+  .sheet{width:min(1080px,100%);margin:0 auto;background:var(--paper);
+    padding:0 clamp(16px,4vw,64px) 72px}
+
+  /* ── 표제부 ─────────────────────────────────────────────────────── */
+  .masthead{padding:clamp(28px,5vw,52px) 0 22px;border-bottom:2px solid var(--ink)}
+  .issuer{display:flex;align-items:center;gap:13px;margin-bottom:clamp(20px,4vw,32px)}
+  .issuer svg{width:38px;height:38px;flex:none;display:block}
+  .issuer-name{display:grid;gap:2px}
+  .issuer-name i{font:600 8.5px/1 var(--mono);font-style:normal;letter-spacing:.17em;color:var(--ink4)}
+  .issuer-name b{font:700 14px/1 var(--sans);letter-spacing:.06em;color:var(--brand)}
+  .doc-kind{font:700 11px/1 var(--mono);letter-spacing:.2em;color:var(--accent);margin-bottom:14px}
+  h1{margin:0;font-size:clamp(25px,4.4vw,38px);line-height:1.24;letter-spacing:-.02em;
+    font-weight:800;text-wrap:balance}
+  .subtitle{margin:12px 0 0;font-size:clamp(14px,1.7vw,16px);color:var(--ink2);max-width:62ch}
+  .docref{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:1px;margin-top:clamp(22px,4vw,30px);background:var(--rule);
+    border:1px solid var(--rule)}
+  .docref div{background:var(--paper);padding:10px 13px}
+  .docref dt{font:600 9.5px/1 var(--mono);letter-spacing:.11em;color:var(--ink4);
+    text-transform:uppercase;margin:0}
+  .docref dd{margin:5px 0 0;font:600 13px/1.35 var(--mono);color:var(--ink);
+    font-variant-numeric:tabular-nums}
+
+  /* ── 조항 ───────────────────────────────────────────────────────── */
+  .toc{margin:34px 0 0;padding:18px 20px;background:var(--band);border-left:3px solid var(--brand)}
+  .toc h2{margin:0 0 11px;font:700 10.5px/1 var(--mono);letter-spacing:.15em;color:var(--brand);text-transform:uppercase}
+  .toc ol{margin:0;padding:0;list-style:none;columns:2;column-gap:34px}
+  .toc li{margin:0 0 5px;font-size:13.5px;break-inside:avoid}
+  .toc a{color:var(--ink2);text-decoration:none;display:flex;gap:10px}
+  .toc a:hover{color:var(--brand)}
+  .toc b{font:600 12px/1.5 var(--mono);color:var(--ink4);min-width:22px;font-variant-numeric:tabular-nums}
+
+  section{margin-top:clamp(38px,6vw,58px);scroll-margin-top:16px}
+  section > h2{display:grid;grid-template-columns:var(--gutter,58px) 1fr;align-items:baseline;
+    gap:0;margin:0 0 20px;padding-bottom:11px;border-bottom:1.5px solid var(--rule2);
+    font-size:clamp(18px,2.5vw,23px);font-weight:800;letter-spacing:-.01em}
+  section > h2 span{font:700 14px/1 var(--mono);color:var(--brand);font-variant-numeric:tabular-nums}
+
+  .clause{display:grid;grid-template-columns:var(--gutter,58px) 1fr;margin:0 0 20px;
+    break-inside:avoid}
+  .clause > .n{font:600 12.5px/1.72 var(--mono);color:var(--ink4);
+    font-variant-numeric:tabular-nums;padding-right:12px}
+  .clause > .c{min-width:0}
+  .clause h3{margin:0 0 7px;font-size:15.5px;font-weight:700;color:var(--ink)}
+  .clause p{margin:0 0 10px;color:var(--ink2);max-width:70ch}
+  .clause p:last-child,.clause ul:last-child,.clause table:last-child{margin-bottom:0}
+  .clause ul,.clause ol{margin:0 0 10px;padding-left:19px;color:var(--ink2)}
+  .clause li{margin-bottom:4px}
+  .clause li::marker{color:var(--ink4)}
+  code,.m{font-family:var(--mono);font-size:.9em;font-variant-numeric:tabular-nums}
+  code{background:var(--sunk);padding:1.5px 5px;border-radius:2px;color:var(--ink)}
+  strong{font-weight:700;color:var(--ink)}
+
+  /* ── 표 ─────────────────────────────────────────────────────────── */
+  .tw{overflow-x:auto;margin:0 0 12px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:480px}
+  caption{caption-side:top;text-align:left;font:600 10px/1.5 var(--mono);
+    letter-spacing:.1em;color:var(--ink4);text-transform:uppercase;padding-bottom:7px}
+  th,td{padding:8px 11px;text-align:left;vertical-align:top;
+    border-bottom:1px solid var(--rule)}
+  thead th{font:700 10.5px/1.4 var(--mono);letter-spacing:.06em;color:var(--brand);
+    text-transform:uppercase;background:var(--band);border-bottom:1.5px solid var(--rule2)}
+  tbody th{font-weight:600;color:var(--ink)}
+  td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  td.k{font-family:var(--mono);font-size:12.5px;color:var(--ink);white-space:nowrap}
+  tfoot td,tfoot th{border-top:1.5px solid var(--rule2);border-bottom:0;
+    font-weight:700;background:var(--band)}
+
+  /* ── 강조 블록 ──────────────────────────────────────────────────── */
+  .note{margin:0 0 12px;padding:12px 15px;background:var(--brand-sunk);
+    border-left:3px solid var(--brand2);font-size:13.5px;color:var(--ink2)}
+  .warn{margin:0 0 12px;padding:12px 15px;background:var(--accent-sunk);
+    border-left:3px solid var(--accent);font-size:13.5px;color:var(--ink2)}
+  .note strong,.warn strong{color:var(--ink)}
+  .logic{margin:0 0 12px;padding:13px 15px;background:var(--sunk);
+    font:500 12.5px/1.9 var(--mono);color:var(--ink);overflow-x:auto;white-space:pre}
+
+  /* ── 확인사항 등록부 ────────────────────────────────────────────── */
+  .oi{border:1px solid var(--flag-line);border-left:3px solid var(--flag);
+    margin:0 0 11px;break-inside:avoid}
+  .oi-h{display:flex;align-items:baseline;gap:11px;padding:9px 14px;
+    background:var(--flag-sunk);border-bottom:1px solid var(--flag-line)}
+  .oi-h b{font:700 12px/1 var(--mono);color:var(--flag);letter-spacing:.05em}
+  .oi-h span{font-size:14px;font-weight:700;color:var(--ink)}
+  .oi-b{padding:11px 14px}
+  .oi-b p{margin:0 0 7px;font-size:13.5px;color:var(--ink2)}
+  .oi-b p:last-child{margin:0}
+  .oi-b em{font-style:normal;font:600 10px/1 var(--mono);letter-spacing:.1em;
+    color:var(--ink4);text-transform:uppercase;display:block;margin-bottom:3px}
+
+  footer{margin-top:clamp(44px,7vw,68px);padding-top:20px;border-top:2px solid var(--ink);
+    font-size:12.5px;color:var(--ink3)}
+  footer p{margin:0 0 7px;max-width:74ch}
+
+  @media(max-width:640px){
+    :root{--gutter:42px}
+    .toc ol{columns:1}
+    .clause > .n{font-size:11.5px;padding-right:8px}
+    body{font-size:14.5px}
+  }
+  @media print{
+    body{background:#fff;font-size:10.5pt;line-height:1.6}
+    .sheet{width:auto;padding:0;background:#fff}
+    .toc{break-inside:avoid}
+    section{break-before:auto;margin-top:22pt}
+    section > h2{break-after:avoid}
+    .clause,.oi,table,.logic,.note,.warn{break-inside:avoid}
+    thead{display:table-header-group}
+    a{color:inherit;text-decoration:none}
+    @page{margin:18mm 16mm}
+  }
+
+  /* 제작 지침서 추가 — 표가 많아 행 구분이 더 필요하다 */
+  .tw table td.num,.tw table th.num{text-align:right;font-family:var(--mono);white-space:nowrap}
+  .tw table th.grp{background:var(--sunk);color:var(--ink2);text-align:left;
+    font-size:12.5px;letter-spacing:.02em;padding-top:9px;padding-bottom:9px}
+  .tw table tr.sub td{color:var(--ink3);font-size:12px;padding-top:2px;padding-bottom:8px;
+    border-top:none;line-height:1.55}
+  .calc{background:var(--band);border-left:3px solid var(--brand);padding:11px 14px;
+    margin:12px 0;font-family:var(--mono);font-size:12.5px;line-height:1.9;
+    white-space:pre-wrap;border-radius:0 3px 3px 0}
+  .decide{background:var(--accent-sunk);border:1px solid var(--accent-line);
+    border-left:4px solid var(--accent);padding:12px 15px;margin:14px 0;border-radius:0 3px 3px 0}
+  .decide b:first-child{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<header class="masthead">
+  <div class="issuer">
+    <svg viewBox="0 0 100.0 88.9723" aria-label="DYNAMIC INDUSTRY" role="img">
+      <!--mark-->
+      <path d="M8.8423 30.8126L1.1845 44.0763C-0.3949 46.8121 -0.3949 50.1826 1.1849 52.9184L15.6495 77.9723L25.8596 60.2876Z" fill="#228CC9"/>
+      <path d="M36.0703 42.6025L19.0529 13.1275L12.2461 24.9173L29.2634 54.3923Z" fill="#228CC9"/>
+      <path d="M46.2805 24.9174L38.7015 11.7899L25.0877 11.7899L39.4737 36.7073Z" fill="#228CC9"/>
+      <path d="M19.0528 83.8669L19.4479 84.5512C21.0276 87.287 23.9465 88.9723 27.1053 88.9723L72.8952 88.9723C76.054 88.9723 78.9733 87.287 80.5527 84.5512L95.0173 59.4973L33.1202 59.4973Z" fill="#228CC9"/>
+      <path d="M98.8155 44.0761L75.9205 4.421C74.3411 1.6852 71.4219 0.0 68.2631 0.0L50.0008 0.0004L50.0008 0.0L33.8944 0.0L42.0531 4.7103L70.282 53.6047L98.4203 53.6026L98.8155 52.9182C100.3948 50.1824 100.3948 46.8119 98.8155 44.0761Z" fill="#FECA4A"/>
+      <!--/mark-->
+    </svg>
+    <div class="issuer-name"><i>FOR NET ZERO PROJECTION</i><b>DYNAMIC INDUSTRY</b></div>
+  </div>
+
+  <div class="doc-kind">제작 지침서 · Fabrication &amp; Assembly Specification</div>
+  <h1>DG-HK60C 태양광 패널 분리설비<br>제작 지침서</h1>
+  <p class="subtitle">볼트 등급과 체결력, 용접 각장, 부재 판두께와 재질, 기초 앵커를
+    <strong>하중에서 유도해</strong> 정한다. 값이 아니라 식을 적었으므로 하중이 바뀌면 표가 따라 움직인다.
+    제작사는 이 문서와 콘솔의 제작도(F-002 · F-003 · F-005 · F-006 · F-007 · D-501 · D-602)를 함께 본다.</p>
+
+  <dl class="docref">
+    <div><dt>문서번호</dt><dd>DG-HK60C-FAB-001</dd></div>
+    <div><dt>개정</dt><dd>Rev.0</dd></div>
+    <div><dt>발행일</dt><dd>2026-09-06</dd></div>
+    <div><dt>대상 배치</dt><dd>REV.21C (DG-HK60C)</dd></div>
+    <div><dt>계산 근거</dt><dd>tools/fab_spec.py</dd></div>
+  </dl>
+</header>
+
+<nav class="toc" aria-label="목차">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#f1"><b>1</b>총칙 — 이 문서의 지위</a></li>
+    <li><a href="#f2"><b>2</b>적용 규격</a></li>
+    <li><a href="#f3"><b>3</b>설계 기준과 하중</a></li>
+    <li><a href="#f4"><b>4</b>재료</a></li>
+    <li><a href="#f5"><b>5</b>볼트 체결 — 내력·체결력·토크</a></li>
+    <li><a href="#f6"><b>6</b>접합부별 체결 사양</a></li>
+    <li><a href="#f7"><b>7</b>용접</a></li>
+    <li><a href="#f8"><b>8</b>부재표 — 판두께·단면·재질</a></li>
+    <li><a href="#f9"><b>9</b>지배 검토 — 왜 이 단면인가</a></li>
+    <li><a href="#f10"><b>10</b>기초 앵커</a></li>
+    <li><a href="#f11"><b>11</b>표면처리·도장</a></li>
+    <li><a href="#f12"><b>12</b>공차·끼워맞춤</a></li>
+    <li><a href="#f13"><b>13</b>조립 순서와 검사</a></li>
+    <li><a href="#f14"><b>14</b>제작 승인과 기록</a></li>
+  </ol>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="f1">
+  <h2><span>1</span>총칙 — 이 문서의 지위</h2>
+
+  <div class="clause"><div class="n">1.1</div><div class="c">
+    <h3>무엇을 정하는가</h3>
+    <p>제작에 들어가는 데 필요한 <strong>체결·용접·재료·공차</strong>를 정한다. 형상과 좌표는
+      콘솔의 제작도가 정하고, 이 문서는 그 형상을 <strong>무엇으로 어떻게 붙이는가</strong>를 정한다.
+      두 문서가 다투면 <strong>치수는 도면이, 사양은 이 문서가</strong> 이긴다.</p>
+    <div class="warn"><strong>값이 아니라 식을 적었다.</strong> 볼트 규격도 각장도 앵커 매입깊이도
+      전부 <span class="k">tools/fab_spec.py</span> 가 하중에서 계산한 값이다. 하중이 바뀌면
+      이 문서의 표가 통째로 바뀌어야 하며, 시험이 문서와 계산기가 같은 값을 말하는지 대조한다.
+      표의 숫자를 손으로 고치면 시험이 먼저 실패한다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">1.2</div><div class="c">
+    <h3>박리 추력을 포락으로 잡은 이유</h3>
+    <p>박리력은 아직 곡선이 아니라 밴드다 — <span class="m">1.49 ~ 13.37 kN</span>
+      (기술사양서 OI-01). 실측 곡선을 기다리면 제작이 서고, 하한으로 잡으면 상한에서 무너진다.</p>
+    <div class="decide"><b>총괄 결정</b> — <strong>상한 13.37 kN 에 동적계수를 얹어 포락 설계한다.</strong>
+      설계 추력은 <span class="m">13.37 × 1.3 × 1.5 = 26.07 kN</span> 이다.
+      실측 곡선이 이보다 낮게 나오면 그것은 <strong>여유</strong>이지 재설계가 아니다 —
+      이 방향으로만 안전하다. 곡선이 상한을 넘으면 그때는 재설계이고,
+      그 확률을 낮추려고 상한을 골랐다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">1.3</div><div class="c">
+    <h3>도면 두 장의 모순을 정정한다</h3>
+    <p>제작도 <span class="k">F-005</span> 는 “박리 추력은 칼날 → 갠트리 → 주행레일 문형 → 기초(A7)로
+      흐르고 테이블(A8)은 패널 반력만 받는다” 고 적었고, 배치도 <span class="k">D-602</span> 는
+      “추력 13.37 kN 을 A8 넷이 받는다” 고 적었다. 둘은 서로 다른 말을 한다.</p>
+    <div class="decide"><b>총괄 판정</b> — <strong>둘 다 옳고 둘 다 절반이다.</strong> 추력은
+      작용·반작용 쌍이다. 칼날이 패널을 밀면 패널은 흡착패드를 통해 테이블을 같은 크기로 민다.
+      <strong>A7 과 A8 이 반대 방향으로 같은 힘을 받는다.</strong> 한쪽만 설계하면 반대쪽이 뜬다.
+      이 문서의 <a href="#f6">6항</a>은 J1(테이블)과 J2(갠트리)를 <strong>같은 설계 추력으로</strong> 잡는다.</div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="f2">
+  <h2><span>2</span>적용 규격</h2>
+  <div class="clause"><div class="n">2.1</div><div class="c">
+    <div class="tw"><table>
+      <caption>제작에 적용하는 규격 — 이 목록 밖의 규격을 쓰려면 사전 승인</caption>
+      <thead><tr><th>분야</th><th>규격</th><th>적용</th></tr></thead>
+      <tbody>
+        <tr><th>구조 설계</th><td class="k">EN 1993-1-1</td><td>부재 단면·좌굴</td></tr>
+        <tr><th>접합 설계</th><td class="k">EN 1993-1-8</td><td>볼트·용접 내력, 마찰접합</td></tr>
+        <tr><th>피로</th><td class="k">EN 1993-1-9</td><td>상세 등급과 응력범위 한계</td></tr>
+        <tr><th>앵커</th><td class="k">EN 1992-4</td><td>콘크리트 정착 — 콘·접착 파괴</td></tr>
+        <tr><th>볼트 기계적 성질</th><td class="k">ISO 898-1 / ISO 3506-1</td><td>강 볼트 / 스테인리스 볼트</td></tr>
+        <tr><th>볼트 형상</th><td class="k">ISO 4014 · 4017 · 4032 · 7089 · 7090</td><td>육각볼트·너트·와셔</td></tr>
+        <tr><th>용접 기호</th><td class="k">ISO 2553</td><td>도면 표기</td></tr>
+        <tr><th>용접 품질</th><td class="k">ISO 5817 등급 C</td><td>일반부 — 피로부는 B</td></tr>
+        <tr><th>용접 절차</th><td class="k">ISO 15614-1</td><td>WPS/PQR 제출</td></tr>
+        <tr><th>용접사 자격</th><td class="k">ISO 9606-1</td><td>자격증 사본 제출</td></tr>
+        <tr><th>비파괴검사</th><td class="k">ISO 17635 · 17637 · 17638</td><td>VT · MT</td></tr>
+        <tr><th>일반 공차</th><td class="k">ISO 2768-mK</td><td>도면 미지정 치수</td></tr>
+        <tr><th>끼워맞춤</th><td class="k">ISO 286-2</td><td>축·구멍 공차등급</td></tr>
+        <tr><th>기하공차</th><td class="k">ISO 1101</td><td>데이텀·형상·자세·위치</td></tr>
+        <tr><th>표면조도</th><td class="k">ISO 1302</td><td>가공면 지시</td></tr>
+        <tr><th>도장 전처리</th><td class="k">ISO 8501-1 Sa 2½</td><td>블라스트 청정도</td></tr>
+        <tr><th>도장 사양</th><td class="k">ISO 12944-5 (C3)</td><td>실내 공장 환경</td></tr>
+        <tr><th>재료</th><td class="k">KS D 3503 · 3515 · 3705 · 3752</td><td>SS400 · SM490A · STS304 · SM45C</td></tr>
+        <tr><th>안전 방호</th><td class="k">ISO 14120 · ISO 13857</td><td>방책 강도·개구 기준</td></tr>
+      </tbody>
+    </table></div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="f3">
+  <h2><span>3</span>설계 기준과 하중</h2>
+
+  <div class="clause"><div class="n">3.1</div><div class="c">
+    <h3>부분계수</h3>
+    <div class="calc">γ<sub>G</sub> = 1.35   자중 (EN 1990)
+γ<sub>Q</sub> = 1.5   적재·공정하중
+γ<sub>M0</sub> = 1.0   단면 항복
+γ<sub>M2</sub> = 1.25   볼트·용접 파단
+γ<sub>M3</sub> = 1.25   마찰접합 미끄러짐
+ψ<sub>dyn</sub> = 1.3   칼날 물림 충격 — 정적 박리력에 얹는다
+지진 = 0.3·W   기계 정착부 수평계수 (KDS 41 17 00 간이)</div>
+    <p>볼트 이용률 상한은 <strong>1.00 이 아니라 0.7</strong> 으로 둔다. 현장에서 구멍이 밀리고
+      와셔가 빠지고 토크가 덜 들어간다 — 도면상 100 % 인 접합은 실제로 100 % 가 아니다.</p>
+  </div></div>
+
+  <div class="clause"><div class="n">3.2</div><div class="c">
+    <h3>설계하중</h3>
+    <div class="tw"><table>
+      <caption>설계하중 — 특성값과 설계값</caption>
+      <thead><tr><th>하중</th><th class="num">특성값</th><th class="num">설계값</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><th>패널 1장</th><td class="num">0.277 kN</td><td class="num">0.415 kN</td>
+          <td>면밀도 9.795 kg/m² × 2.4 × 1.2 m</td></tr>
+        <tr><th>판유리 1장</th><td class="num">0.226 kN</td><td class="num">0.339 kN</td>
+          <td>유리 8.0 kg/m²</td></tr>
+        <tr><th>만권 백시트 롤</th><td class="num">3.499 kN</td><td class="num">5.249 kN</td>
+          <td>Ø600 · 295 장/롤</td></tr>
+        <tr><th>칼날 카세트</th><td class="num">0.343 kN</td><td class="num">0.515 kN</td>
+          <td>35 kg/벌</td></tr>
+        <tr><th>박리 추력 (합성)</th><td class="num">13.37 kN</td><td class="num">26.07 kN</td>
+          <td>OI-01 상한 × ψ1.3 × γ<sub>Q</sub>1.5</td></tr>
+        <tr><th>HC-101 가열실 자중</th><td class="num">65.7 kN</td><td class="num">88.7 kN</td>
+          <td>벽체 4겹 + 골조 + 데크 + IR — <strong>설계 가정 6.70 t</strong></td></tr>
+        <tr><th>KG-101 갠트리 자중</th><td class="num">14.2 kN</td><td class="num">19.2 kN</td>
+          <td><strong>설계 가정 1.45 t</strong></td></tr>
+        <tr><th>VT-101 테이블 자중</th><td class="num">8.8 kN</td><td class="num">11.9 kN</td>
+          <td><strong>설계 가정 0.90 t</strong></td></tr>
+        <tr><th>WR-101 권취부 자중</th><td class="num">6.1 kN</td><td class="num">8.2 kN</td>
+          <td><strong>설계 가정 0.62 t</strong></td></tr>
+      </tbody>
+    </table></div>
+    <div class="note"><strong>자중 넷은 설계 가정이다.</strong> 제작사는 상세설계 30 % 시점에
+      <strong>중량표</strong>를 제출하고, 가정값을 <span class="m">±15 %</span> 넘게 벗어나면
+      앵커와 기초를 다시 잡는다. 그 넷 말고는 전부 계산에서 나온 값이다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">3.3</div><div class="c">
+    <h3>피로 하중 반복수</h3>
+    <div class="calc">60 장/h × 7,884 h/년 × 20 년 = 9.5 × 10⁶ 회</div>
+    <p>박리 추력은 장마다 <span class="m">0 ↔ 최대</span>를 오간다. 9.5×10⁶ 회는
+      <strong>일정진폭 피로한도 이하로 설계</strong>해야 하는 영역이다 —
+      손상누적을 따지지 않고 응력범위를 한도 아래로 두는 쪽이 확실하고,
+      실제 하중이 예상보다 커도 급격히 무너지지 않는다.</p>
+    <div class="tw"><table>
+      <caption>적용 상세 등급 (EN 1993-1-9) — Δσ<sub>D</sub> = Δσ<sub>C</sub>·(2/5)<sup>1/3</sup></caption>
+      <thead><tr><th>상세</th><th class="num">Δσ<sub>C</sub> (MPa)</th><th class="num">Δσ<sub>D</sub> 한계 (MPa)</th></tr></thead>
+      <tbody>
+<tr><th>모재 (압연면)</th><td class="num">160</td><td class="num">117.9</td></tr>
+<tr><th>고장력 마찰접합</th><td class="num">112</td><td class="num">82.5</td></tr>
+<tr><th>맞대기 용접 (완전용입·연삭)</th><td class="num">90</td><td class="num">66.3</td></tr>
+<tr><th>필릿 용접 부착물</th><td class="num">71</td><td class="num">52.3</td></tr>
+<tr><th>십자 이음 (하중전달 필릿)</th><td class="num">36</td><td class="num">26.5</td></tr>
+      </tbody>
+    </table></div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="f4">
+  <h2><span>4</span>재료</h2>
+  <div class="clause"><div class="n">4.1</div><div class="c">
+    <div class="tw"><table>
+      <caption>재료 규격과 사용처 — 대체는 사전 승인</caption>
+      <thead><tr><th>재질</th><th>규격</th><th class="num">f<sub>y</sub> MPa</th><th class="num">f<sub>u</sub> MPa</th>
+        <th class="num">ρ kg/m³</th><th>사용처</th></tr></thead>
+      <tbody>
+<tr><td class="k">SS400</td><td class="k">KS D 3503</td><td class="num">235</td><td class="num">400</td><td class="num">7,850</td><td>일반 구조·외함·데크</td></tr>
+<tr><td class="k">SM490A</td><td class="k">KS D 3515</td><td class="num">325</td><td class="num">490</td><td class="num">7,850</td><td>갠트리·주행레일 문형·고응력 부재</td></tr>
+<tr><td class="k">STS304</td><td class="k">KS D 3705</td><td class="num">205</td><td class="num">520</td><td class="num">7,930</td><td>가열실 내피·고온 습부·식품접촉 없음</td></tr>
+<tr><td class="k">SM45C</td><td class="k">KS D 3752</td><td class="num">343</td><td class="num">569</td><td class="num">7,850</td><td>축류 (권취축·롤러축)</td></tr>
+<tr><td class="k">A6061-T6</td><td class="k">KS D 6759</td><td class="num">240</td><td class="num">290</td><td class="num">2,700</td><td>이동 경량부 (캐리지·포크 암)</td></tr>
+<tr><td class="k">SKD11</td><td class="k">KS D 3753</td><td class="num">—</td><td class="num">—</td><td class="num">7,700</td><td>칼날 인서트 (HRC 58~62)</td></tr>
+      </tbody>
+    </table></div>
+    <ul>
+      <li><strong>밀시트(MTC) 제출</strong> — 구조 부재 전량. EN 10204 3.1 이상.</li>
+      <li><strong>SM490A 를 쓰는 곳은 갠트리 계통뿐이다.</strong> 추력이 반복해서 지나가는 부재이고,
+        SS400 으로 하면 단면이 커져 관성이 늘고 그만큼 서보가 커진다.</li>
+      <li><strong>STS304 는 가열실 내부와 데크 레일에만</strong> 쓴다. 140 °C 에서
+        SS400 은 스케일이 벗겨져 유리면을 긁는다.</li>
+      <li><strong>이종금속 접촉 금지</strong> — 알루미늄과 강이 만나는 자리에는 절연 와셔·부시를 넣는다.</li>
+    </ul>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="f5">
+  <h2><span>5</span>볼트 체결 — 내력·체결력·토크</h2>
+
+  <div class="clause"><div class="n">5.1</div><div class="c">
+    <h3>내력표</h3>
+    <div class="calc">F<sub>t,Rd</sub> = 0.9·f<sub>ub</sub>·A<sub>s</sub> / γ<sub>M2</sub>       인장
+F<sub>v,Rd</sub> = α<sub>v</sub>·f<sub>ub</sub>·A<sub>s</sub> / γ<sub>M2</sub>       전단 (전단면당 · 나사부)
+F<sub>p,C</sub>  = 0.7·f<sub>ub</sub>·A<sub>s</sub>             설계 체결력
+조합    V/F<sub>v,Rd</sub> + N/(1.4·F<sub>t,Rd</sub>) ≤ 1.0</div>
+    <div class="warn"><strong>전단면은 나사부를 지나는 것으로 설계했다.</strong> 몸통 전단으로 잡으면
+      내력이 커지지만 그리프 길이를 도면에서 지정해야 하고, 현장에서 그것이 지켜졌는지
+      확인할 방법이 없다. 볼트 길이는 <a href="#f5">5.4항</a>의 식으로만 정한다.</div>
+    <div class="tw"><table>
+      <caption>볼트 내력·체결력·조임토크 — 토크는 건조(K=0.2) / 윤활(K=0.14)</caption>
+      <thead><tr><th>규격</th><th class="num">A<sub>s</sub> mm²</th><th class="num">피치</th><th class="num">이면폭</th>
+        <th class="num">F<sub>t,Rd</sub> kN</th><th class="num">F<sub>v,Rd</sub> kN</th>
+        <th class="num">F<sub>p,C</sub> kN</th><th class="num">T N·m</th></tr></thead>
+      <tbody>
+<tr><th colspan="8" class="grp">등급 8.8 — 일반 구조 접합 · f<sub>ub</sub> 800 MPa · α<sub>v</sub> 0.6</th></tr>
+<tr><td class="k">M10</td><td class="num">58.0</td><td class="num">1.50</td><td class="num">17</td><td class="num">33.4</td><td class="num">22.3</td><td class="num">32.5</td><td class="num">65 / 45</td></tr>
+<tr><td class="k">M12</td><td class="num">84.3</td><td class="num">1.75</td><td class="num">19</td><td class="num">48.6</td><td class="num">32.4</td><td class="num">47.2</td><td class="num">113 / 79</td></tr>
+<tr><td class="k">M16</td><td class="num">157.0</td><td class="num">2.00</td><td class="num">24</td><td class="num">90.4</td><td class="num">60.3</td><td class="num">87.9</td><td class="num">281 / 197</td></tr>
+<tr><td class="k">M20</td><td class="num">245.0</td><td class="num">2.50</td><td class="num">30</td><td class="num">141.1</td><td class="num">94.1</td><td class="num">137.2</td><td class="num">549 / 384</td></tr>
+<tr><td class="k">M24</td><td class="num">353.0</td><td class="num">3.00</td><td class="num">36</td><td class="num">203.3</td><td class="num">135.6</td><td class="num">197.7</td><td class="num">949 / 664</td></tr>
+<tr><td class="k">M30</td><td class="num">561.0</td><td class="num">3.50</td><td class="num">46</td><td class="num">323.1</td><td class="num">215.4</td><td class="num">314.2</td><td class="num">1885 / 1319</td></tr>
+<tr><td class="k">M36</td><td class="num">817.0</td><td class="num">4.00</td><td class="num">55</td><td class="num">470.6</td><td class="num">313.7</td><td class="num">457.5</td><td class="num">3294 / 2306</td></tr>
+<tr><th colspan="8" class="grp">등급 10.9 — 갠트리·마찰접합·고하중 · f<sub>ub</sub> 1000 MPa · α<sub>v</sub> 0.5</th></tr>
+<tr><td class="k">M10</td><td class="num">58.0</td><td class="num">1.50</td><td class="num">17</td><td class="num">41.8</td><td class="num">23.2</td><td class="num">40.6</td><td class="num">81 / 57</td></tr>
+<tr><td class="k">M12</td><td class="num">84.3</td><td class="num">1.75</td><td class="num">19</td><td class="num">60.7</td><td class="num">33.7</td><td class="num">59.0</td><td class="num">142 / 99</td></tr>
+<tr><td class="k">M16</td><td class="num">157.0</td><td class="num">2.00</td><td class="num">24</td><td class="num">113.0</td><td class="num">62.8</td><td class="num">109.9</td><td class="num">352 / 246</td></tr>
+<tr><td class="k">M20</td><td class="num">245.0</td><td class="num">2.50</td><td class="num">30</td><td class="num">176.4</td><td class="num">98.0</td><td class="num">171.5</td><td class="num">686 / 480</td></tr>
+<tr><td class="k">M24</td><td class="num">353.0</td><td class="num">3.00</td><td class="num">36</td><td class="num">254.2</td><td class="num">141.2</td><td class="num">247.1</td><td class="num">1186 / 830</td></tr>
+<tr><td class="k">M30</td><td class="num">561.0</td><td class="num">3.50</td><td class="num">46</td><td class="num">403.9</td><td class="num">224.4</td><td class="num">392.7</td><td class="num">2356 / 1649</td></tr>
+<tr><td class="k">M36</td><td class="num">817.0</td><td class="num">4.00</td><td class="num">55</td><td class="num">588.2</td><td class="num">326.8</td><td class="num">571.9</td><td class="num">4118 / 2882</td></tr>
+<tr><th colspan="8" class="grp">등급 A2-70 — 가열실 내부·습부 (STS304 볼트) · f<sub>ub</sub> 700 MPa · α<sub>v</sub> 0.6</th></tr>
+<tr><td class="k">M10</td><td class="num">58.0</td><td class="num">1.50</td><td class="num">17</td><td class="num">29.2</td><td class="num">19.5</td><td class="num">28.4</td><td class="num">57 / 40</td></tr>
+<tr><td class="k">M12</td><td class="num">84.3</td><td class="num">1.75</td><td class="num">19</td><td class="num">42.5</td><td class="num">28.3</td><td class="num">41.3</td><td class="num">99 / 69</td></tr>
+<tr><td class="k">M16</td><td class="num">157.0</td><td class="num">2.00</td><td class="num">24</td><td class="num">79.1</td><td class="num">52.8</td><td class="num">76.9</td><td class="num">246 / 172</td></tr>
+<tr><td class="k">M20</td><td class="num">245.0</td><td class="num">2.50</td><td class="num">30</td><td class="num">123.5</td><td class="num">82.3</td><td class="num">120.0</td><td class="num">480 / 336</td></tr>
+<tr><td class="k">M24</td><td class="num">353.0</td><td class="num">3.00</td><td class="num">36</td><td class="num">177.9</td><td class="num">118.6</td><td class="num">173.0</td><td class="num">830 / 581</td></tr>
+<tr><td class="k">M30</td><td class="num">561.0</td><td class="num">3.50</td><td class="num">46</td><td class="num">282.7</td><td class="num">188.5</td><td class="num">274.9</td><td class="num">1649 / 1155</td></tr>
+<tr><td class="k">M36</td><td class="num">817.0</td><td class="num">4.00</td><td class="num">55</td><td class="num">411.8</td><td class="num">274.5</td><td class="num">400.3</td><td class="num">2882 / 2018</td></tr>
+      </tbody>
+    </table></div>
+  </div></div>
+
+  <div class="clause"><div class="n">5.2</div><div class="c">
+    <h3>토크가 아니라 체결력이 사양이다</h3>
+    <div class="calc">T = K · d · F<sub>p,C</sub>       K 는 마찰이 정한다</div>
+    <p>같은 체결력이라도 건조 아연도금(K=0.2)과 윤활(K=0.14)은 토크가
+      <strong>40 % 다르다</strong>. 그래서 이 문서는 토크를 사양으로 적지 않고
+      <strong>체결력 F<sub>p,C</sub> 와 마찰 조건</strong>을 함께 적는다. 제작사가 다른 표면처리를
+      쓰면 토크를 다시 계산해 제출한다.</p>
+    <ul>
+      <li><strong>토크렌치 교정</strong> — 사용 전 교정 성적서, 유효기간 1년, 정밀도 ±4 %.</li>
+      <li><strong>2단 조임</strong> — 60 % → 100 %, 대각 순서.</li>
+      <li><strong>마킹</strong> — 조임 완료 후 볼트·너트·모재에 걸쳐 표시선. 풀리면 선이 어긋난다.</li>
+      <li><strong>재사용 금지</strong> — 10.9 등급과 마찰접합 볼트는 1회용. 해체하면 신품으로 교체한다.</li>
+    </ul>
+  </div></div>
+
+  <div class="clause"><div class="n">5.3</div><div class="c">
+    <h3>와셔와 풀림방지</h3>
+    <div class="tw"><table>
+      <caption>와셔</caption>
+      <thead><tr><th>종류</th><th>규격</th><th>적용</th></tr></thead>
+      <tbody>
+<tr><th>평와셔</th><td class="k">ISO 7089 200HV</td><td>볼트머리·너트 양쪽 각 1매 — 도장면 보호와 하중분산</td></tr>
+<tr><th>경화와셔</th><td class="k">ISO 7089 300HV</td><td>10.9 등급과 마찰접합에는 경화와셔 필수</td></tr>
+<tr><th>스프링와셔</th><td class="k">사용 금지</td><td>체결력 유지에 기여하지 않고 도장을 긁는다 — 풀림방지는 아래로</td></tr>
+      </tbody>
+    </table></div>
+    <div class="tw"><table>
+      <caption>풀림방지 — 부위별</caption>
+      <thead><tr><th>부위</th><th>방법</th><th>적용처</th></tr></thead>
+      <tbody>
+<tr><th>정적 구조 접합</th><td class="k">체결력 관리 (Fp,C 70 %)</td><td>토크렌치 + 마킹 — 별도 풀림방지 불요</td></tr>
+<tr><th>진동·왕복 부위</th><td class="k">쐐기형 풀림방지 와셔</td><td>갠트리 대차·포크 캐리지·권취 베어링</td></tr>
+<tr><th>고온부 (>120 °C)</th><td class="k">전 나사 고착방지제 + 록너트</td><td>가열실 내부 — 나사 소착 방지</td></tr>
+<tr><th>정비 중 반복 탈착</th><td class="k">헬리코일 인서트</td><td>카세트 인터페이스·점검도어</td></tr>
+      </tbody>
+    </table></div>
+    <div class="decide"><b>총괄 결정</b> — <strong>스프링와셔를 쓰지 않는다.</strong>
+      체결력이 제대로 들어간 접합에서 스프링와셔는 풀림방지에 기여하지 않고,
+      도장을 긁어 부식 기점을 만든다. 풀림방지는 <strong>체결력 관리</strong>가 기본이고,
+      진동 부위만 쐐기형 와셔를 쓴다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">5.4</div><div class="c">
+    <h3>볼트 길이</h3>
+    <div class="calc">L = 체결두께 + 와셔 2매(0.15d 각) + 너트(0.8d) + 여유 나사산 3피치
+    → 5 mm 단위 올림</div>
+    <p>여유 나사산 <strong>3피치</strong>는 너트 밖으로 나오는 몫이다. 나사산이 너트 안에서 끝나면
+      체결력이 들어가지 않는다. 길이는 <strong>넉넉한 쪽으로만</strong> 올림한다.</p>
+    <div class="tw"><table>
+      <caption>체결두께별 호칭길이 예</caption>
+      <thead><tr><th>규격</th><th class="num">체결두께 30</th><th class="num">40</th><th class="num">50</th>
+        <th class="num">60</th><th class="num">80</th></tr></thead>
+      <tbody>
+<tr><td class="k">M12</td><td class="num">50</td><td class="num">60</td><td class="num">70</td><td class="num">80</td><td class="num">100</td></tr><tr><td class="k">M16</td><td class="num">55</td><td class="num">65</td><td class="num">75</td><td class="num">85</td><td class="num">105</td></tr><tr><td class="k">M20</td><td class="num">60</td><td class="num">70</td><td class="num">80</td><td class="num">90</td><td class="num">110</td></tr><tr><td class="k">M24</td><td class="num">70</td><td class="num">80</td><td class="num">90</td><td class="num">100</td><td class="num">120</td></tr>
+      </tbody>
+    </table></div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="f6">
+  <h2><span>6</span>접합부별 체결 사양</h2>
+  <div class="clause"><div class="n">6.1</div><div class="c">
+    <div class="tw"><table>
+      <caption>접합부 12개소 — 규격·등급·설계력·이용률·체결력·토크</caption>
+      <thead><tr><th>ID</th><th>접합</th><th>볼트</th><th>등급</th><th>형식</th>
+        <th class="num">N<sub>Ed</sub> kN</th><th class="num">V<sub>Ed</sub> kN</th>
+        <th class="num">이용률</th><th class="num">F<sub>p,C</sub> kN</th><th class="num">T N·m</th></tr></thead>
+      <tbody>
+<tr><td class="k">J1</td><td>VT-101 기둥 ↔ 베이스플레이트</td><td class="k">M16 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">1.50</td><td class="num">1.63</td><td class="num">0.04</td><td class="num">87.9</td><td class="num">281 / 197</td></tr>
+<tr class="sub"><td></td><td colspan="9">추력 반작용 26.1 kN · 팔길이 1.15 m · 기둥간격 2.50 m</td></tr>
+<tr><td class="k">J2</td><td>KG-101 주행레일 문형 기둥 ↔ 베이스플레이트</td><td class="k">M20 × 4</td><td class="k">10.9</td><td>지압접합</td><td class="num">1.82</td><td class="num">1.63</td><td class="num">0.02</td><td class="num">171.5</td><td class="num">686 / 480</td></tr>
+<tr class="sub"><td></td><td colspan="9">추력 26.1 kN @ EL 1950 · 문형 스팬 3.50 m</td></tr>
+<tr><td class="k">J3</td><td>KG-101 크로스빔 ↔ 주행대차 (마찰접합)</td><td class="k">M16 × 8</td><td class="k">10.9</td><td>마찰접합</td><td class="num">0.00</td><td class="num">3.26</td><td class="num">0.05</td><td class="num">109.9</td><td class="num">352 / 246</td></tr>
+<tr class="sub"><td></td><td colspan="9">칼끝 간격 300±2 를 지키려면 미끄러지면 안 된다 — 마찰접합 μ=0.50</td></tr>
+<tr><td class="k">J4</td><td>칼날 빔 ↔ Z축 서보슬라이드</td><td class="k">M12 × 6</td><td class="k">10.9</td><td>지압접합</td><td class="num">2.17</td><td class="num">2.17</td><td class="num">0.09</td><td class="num">59.0</td><td class="num">142 / 99</td></tr>
+<tr class="sub"><td></td><td colspan="9">칼날 1기 분담 13.0 kN — 인장·전단 동시</td></tr>
+<tr><td class="k">J5</td><td>BC-201 카세트 테이퍼 로케이팅핀</td><td class="k">M16 × 4</td><td class="k">10.9</td><td>핀 전단</td><td class="num">0.00</td><td class="num">3.26</td><td class="num">0.03</td><td class="num">109.9</td><td class="num">352 / 246</td></tr>
+<tr class="sub"><td></td><td colspan="9">쐐기 클램프(15 kN×2)는 밀착용 — 전단은 핀 4개가 받는다</td></tr>
+<tr><td class="k">J6</td><td>HC-101 가열실 기둥 ↔ 베이스플레이트</td><td class="k">M20 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.00</td><td class="num">1.23</td><td class="num">0.01</td><td class="num">137.2</td><td class="num">549 / 384</td></tr>
+<tr class="sub"><td></td><td colspan="9">자중 6.7 t · 지진 0.30W @ 무게중심 EL 2,400</td></tr>
+<tr><td class="k">J7</td><td>데크 레일 ↔ 기둥 (가열실 내부)</td><td class="k">M12 × 4</td><td class="k">A2-70</td><td>지압접합</td><td class="num">0.27</td><td class="num">0.55</td><td class="num">0.02</td><td class="num">41.3</td><td class="num">99 / 69</td></tr>
+<tr class="sub"><td></td><td colspan="9">데크 1단 1.45 kN · 140 °C 환경 — STS304 볼트</td></tr>
+<tr><td class="k">J8</td><td>WR-101 권취 문형 기둥 ↔ 베이스플레이트</td><td class="k">M16 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.60</td><td class="num">0.42</td><td class="num">0.01</td><td class="num">87.9</td><td class="num">281 / 197</td></tr>
+<tr class="sub"><td></td><td colspan="9">만권 롤 3.50 kN @ EL 3,700 · 문형 스팬 2.60 m</td></tr>
+<tr><td class="k">J9</td><td>RH-201 런웨이 빔 ↔ 기둥 두상판</td><td class="k">M16 × 6</td><td class="k">10.9</td><td>지압접합</td><td class="num">1.55</td><td class="num">0.52</td><td class="num">0.02</td><td class="num">109.9</td><td class="num">352 / 246</td></tr>
+<tr class="sub"><td></td><td colspan="9">롤 3.50 kN + 호이스트 자중 · 동적계수 1.25</td></tr>
+<tr><td class="k">J10</td><td>승강 포크 볼스크류 지지 ↔ 문형 기둥</td><td class="k">M12 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.92</td><td class="num">0.23</td><td class="num">0.02</td><td class="num">47.2</td><td class="num">113 / 79</td></tr>
+<tr class="sub"><td></td><td colspan="9">포크 + 패널 · 급정지 1.20 — 낙하방지 브레이크와 별개로 정적 지지</td></tr>
+<tr><td class="k">J11</td><td>안전방책 기둥 ↔ 바닥 앵커</td><td class="k">M10 × 2</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.50</td><td class="num">0.75</td><td class="num">0.04</td><td class="num">32.5</td><td class="num">65 / 45</td></tr>
+<tr class="sub"><td></td><td colspan="9">ISO 14120 — 수평 1,000 N 을 기둥 상단에서 견딘다</td></tr>
+<tr><td class="k">J12</td><td>배기 헤더 Ø600 플랜지 (M-017 경계)</td><td class="k">M12 × 12</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.10</td><td class="num">0.05</td><td class="num">0.00</td><td class="num">47.2</td><td class="num">113 / 79</td></tr>
+<tr class="sub"><td></td><td colspan="9">발주자 설비와의 인계면 — 개스킷 압착과 기밀이 지배</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note"><strong>이용률이 전부 0.1 미만이다 — 그것이 정상이다.</strong>
+      이 설비의 접합은 강도가 아니라 <strong>강성·피로·최소규격</strong>이 지배한다.
+      볼트 하나가 받는 힘은 몇 kN 인데 M16 하나가 90 kN 을 견딘다. 그래서 규격을 강도로 줄이지 않고
+      <strong>기계 기초에 쓰는 최소 규격</strong>과 <strong>판두께 대비 볼트경</strong>으로 잡았다.
+      왜 이 단면인지는 <a href="#f9">9항</a>이 답한다.</div>
+    <div class="decide"><b>총괄 결정 · J5</b> — <strong>카세트 쐐기 클램프는 전단재가 아니다.</strong>
+      선행 자료는 “쐐기 클램프 15 kN × 2 = 30 kN 으로 추력 13.37 kN 대비 2.24 배”
+      라고 적었지만, 설계 추력 26.1 kN 에 대면 <strong>1.15 배</strong>밖에 안 된다.
+      마찰로 전단을 받는 설계는 여기서 성립하지 않는다. <strong>전단은 테이퍼 로케이팅핀 4개가
+      확실하게 받고, 클램프는 밀착과 열전달만 담당한다</strong>고 못 박는다.</div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="f7">
+  <h2><span>7</span>용접</h2>
+
+  <div class="clause"><div class="n">7.1</div><div class="c">
+    <h3>각장은 하중이 아니라 판두께가 정한다</h3>
+    <div class="calc">F<sub>w,Rd</sub> = f<sub>u</sub> / (√3 · β<sub>w</sub> · γ<sub>M2</sub>) · a       a = 0.7·z
+최소 각장  t ≤ 6 → z4 · t ≤ 12 → z5 · t ≤ 19 → z6 · t ≤ 25 → z8 · t &gt; 25 → z10</div>
+    <p>강도로 계산하면 이 설비의 필릿 용접은 거의 전부 <strong>4 mm</strong> 로 나온다 —
+      하중이 작기 때문이다. 그러나 두꺼운 판에 얇은 각장을 놓으면 용융지가 빨리 식어
+      <strong>균열이 생긴다</strong>. 그래서 강도로 나온 각장과 판두께 최소 각장 중
+      <strong>큰 쪽</strong>을 쓴다. 아래 표의 ‘근거’ 열이 어느 쪽이 이겼는지 밝힌다.</p>
+    <div class="tw"><table>
+      <caption>주요 용접 접합 — 양면 필릿 기준</caption>
+      <thead><tr><th>접합</th><th class="num">설계력 kN</th><th class="num">용접장 mm</th>
+        <th>재질</th><th class="num">판두께</th><th>각장</th><th>근거</th></tr></thead>
+      <tbody>
+<tr><td>가열실 기둥 ↔ 베이스플레이트</td><td class="num">22.2</td><td class="num">800</td><td class="k">SS400</td><td class="num">25</td><td class="k">z8</td><td>판두께 t25</td></tr>
+<tr><td>가열실 기둥 ↔ 거싯</td><td class="num">11.1</td><td class="num">500</td><td class="k">SS400</td><td class="num">12</td><td class="k">z5</td><td>판두께 t12</td></tr>
+<tr><td>테이블 기둥 ↔ 베이스플레이트</td><td class="num">6.5</td><td class="num">600</td><td class="k">SM490A</td><td class="num">28</td><td class="k">z10</td><td>판두께 t28</td></tr>
+<tr><td>테이블 상판 ↔ 리브</td><td class="num">3.3</td><td class="num">800</td><td class="k">SS400</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
+<tr><td>갠트리 문형 기둥 ↔ 베이스플레이트</td><td class="num">6.5</td><td class="num">1,000</td><td class="k">SM490A</td><td class="num">30</td><td class="k">z10</td><td>판두께 t30</td></tr>
+<tr><td>크로스빔 ↔ 대차 브래킷</td><td class="num">13.0</td><td class="num">600</td><td class="k">SM490A</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
+<tr><td>크로스빔 웨브 ↔ 플랜지 (BOX)</td><td class="num">13.0</td><td class="num">5,680</td><td class="k">SM490A</td><td class="num">12</td><td class="k">z5</td><td>판두께 t12</td></tr>
+<tr><td>권취 문형 기둥 ↔ 베이스플레이트</td><td class="num">5.2</td><td class="num">600</td><td class="k">SS400</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
+<tr><td>RH-201 런웨이 ↔ 기둥 두상판</td><td class="num">6.6</td><td class="num">400</td><td class="k">SS400</td><td class="num">16</td><td class="k">z6</td><td>판두께 t16</td></tr>
+<tr><td>데크 프레임 ↔ 레일 (가열실 내부)</td><td class="num">0.4</td><td class="num">5,560</td><td class="k">STS304</td><td class="num">6</td><td class="k">z4</td><td>판두께 t6</td></tr>
+<tr><td>방책 기둥 ↔ 베이스</td><td class="num">1.0</td><td class="num">240</td><td class="k">SS400</td><td class="num">6</td><td class="k">z4</td><td>판두께 t6</td></tr>
+      </tbody>
+    </table></div>
+  </div></div>
+
+  <div class="clause"><div class="n">7.2</div><div class="c">
+    <h3>절차·자격·검사</h3>
+    <ul>
+      <li><strong>WPS/PQR</strong> — ISO 15614-1. 재질·두께·자세별로 제출하고 승인 후 착수.</li>
+      <li><strong>용접사 자격</strong> — ISO 9606-1. 자격 범위가 실제 시공 자세를 덮어야 한다.</li>
+      <li><strong>품질등급</strong> — 일반부 ISO 5817 <strong>C</strong>,
+        피로 지배부(<a href="#f9">9항</a> C2·C3·C4)는 <strong>B</strong>.</li>
+      <li><strong>검사 범위</strong> — 육안(VT) 100 %, 자분(MT)은 피로 지배부 용접 100 % ·
+        그 밖의 하중전달 용접 20 %.</li>
+      <li><strong>언더컷</strong> — 피로부 불허(0.05t 이하), 일반부 0.1t 이하.</li>
+      <li><strong>변형 관리</strong> — 가열실 외피는 <strong>단속 용접 금지</strong>(기밀),
+        대신 지그 고정 + 대칭 시공으로 변형을 잡는다.</li>
+      <li><strong>용접 후 처리</strong> — 피로 지배부 지단은 <strong>그라인딩으로 매끄럽게</strong> 한다.
+        상세 등급이 71 에서 90 으로 올라가는 것은 이 한 공정에서 나온다.</li>
+    </ul>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="f8">
+  <h2><span>8</span>부재표 — 판두께·단면·재질</h2>
+  <div class="clause"><div class="n">8.1</div><div class="c">
+    <div class="tw"><table>
+      <caption>모듈별 부재 — 단면·재질과 그 두께를 정한 검토</caption>
+      <thead><tr><th>부재</th><th>단면·두께</th><th>재질</th><th>지배 검토</th></tr></thead>
+      <tbody>
+<tr><th colspan="4" class="grp">M-002</th></tr>
+<tr><td>가열실 기둥</td><td class="k">H-200×200×8/12</td><td class="k">SS400</td><td>지진 전도 + 좌굴 (세장비 λ≤120)</td></tr>
+<tr><td>기둥 거싯</td><td class="k">PL 12</td><td class="k">SS400</td><td>기둥 국부 좌굴 보강 · 용접 각장 8</td></tr>
+<tr><td>베이스플레이트</td><td class="k">PL 25 · 400×400</td><td class="k">SS400</td><td>앵커 인장에 대한 판 휨</td></tr>
+<tr><td>외피</td><td class="k">PL 3.2</td><td class="k">SS400</td><td>면외 강성 · 1,200 모듈 리브 간격</td></tr>
+<tr><td>내피</td><td class="k">PL 2.0</td><td class="k">STS304</td><td>140 °C 복사면 · 내식</td></tr>
+<tr><td>단열재</td><td class="k">미네랄울 100t · 100 kg/m³</td><td class="k">—</td><td>외피 표면 60 °C 이하</td></tr>
+<tr><td>열교 차단 스페이서</td><td class="k">GFRP t12 @600</td><td class="k">GFRP</td><td>관통 열교 차단</td></tr>
+<tr><td>데크 프레임</td><td class="k">L-65×65×6</td><td class="k">SS400</td><td>패널 + 캐리지 집중하중</td></tr>
+<tr><td>데크 레일</td><td class="k">각봉 40×40</td><td class="k">STS304</td><td>마모 · 고온 크리프</td></tr>
+<tr><th colspan="4" class="grp">M-004</th></tr>
+<tr><td>VT-101 상판</td><td class="k">PL 20 (리브 PL 10 @400)</td><td class="k">SS400</td><td>진공 −65 kPa 면외 압력</td></tr>
+<tr><td>테이블 기둥</td><td class="k">□-150×150×6</td><td class="k">SM490A</td><td>박리 추력 전도</td></tr>
+<tr><td>베이스플레이트</td><td class="k">PL 28 · 360×360</td><td class="k">SM490A</td><td>앵커 인장 · 추력 전단</td></tr>
+<tr><th colspan="4" class="grp">M-005</th></tr>
+<tr><td>주행레일 문형 기둥</td><td class="k">H-250×250×9/14</td><td class="k">SM490A</td><td>추력 전도 + 갠트리 관성</td></tr>
+<tr><td>주행레일</td><td class="k">프리로드 LM 레일 (사이즈 45)</td><td class="k">베어링강</td><td>정격 수명 20,000 h</td></tr>
+<tr><td>크로스빔</td><td class="k">BOX-300×200×12</td><td class="k">SM490A</td><td>칼날 2기 자중 + 추력 휨</td></tr>
+<tr><td>Z축 서보슬라이드 베이스</td><td class="k">PL 20</td><td class="k">SM490A</td><td>칼날 반력 편심</td></tr>
+<tr><td>칼날 빔</td><td class="k">PL 25 + SKD11 인서트 t8</td><td class="k">SS400/SKD11</td><td>카트리지히터 홀 + 인서트 볼트</td></tr>
+<tr><th colspan="4" class="grp">M-006</th></tr>
+<tr><td>권취 문형 기둥</td><td class="k">H-150×150×7/10</td><td class="k">SS400</td><td>만권 롤 + 지진</td></tr>
+<tr><td>권취축</td><td class="k">Ø60 h6</td><td class="k">SM45C</td><td>휨 + 비틀림 합성 피로 (조질 후 연삭)</td></tr>
+<tr><td>RH-201 런웨이 빔</td><td class="k">H-200×100×5.5/8</td><td class="k">SS400</td><td>호이스트 이동하중 · 처짐 L/500</td></tr>
+<tr><th colspan="4" class="grp">M-007</th></tr>
+<tr><td>냉각 랙 골조</td><td class="k">H-200×200×8/12</td><td class="k">SS400</td><td>F-002 준용 — 지그 공용</td></tr>
+<tr><td>측벽</td><td class="k">폴리카보네이트 t6</td><td class="k">PC</td><td>방호 · 투시 (단열 아님)</td></tr>
+<tr><th colspan="4" class="grp">M-003</th></tr>
+<tr><td>포크 문형 기둥</td><td class="k">□-125×125×6</td><td class="k">SS400</td><td>볼스크류 반력 + 편심</td></tr>
+<tr><td>포크 암</td><td class="k">압출형재 t8</td><td class="k">A6061-T6</td><td>이동 관성 최소화</td></tr>
+<tr><th colspan="4" class="grp">M-013</th></tr>
+<tr><td>방책 기둥</td><td class="k">□-60×60×3.2</td><td class="k">SS400</td><td>ISO 14120 수평 1,000 N</td></tr>
+<tr><td>메시 패널</td><td class="k">Ø4 @40×40</td><td class="k">SS400 아연도금</td><td>ISO 13857 개구 기준</td></tr>
+<tr><th colspan="4" class="grp">M-017</th></tr>
+<tr><td>경계 덕트</td><td class="k">Ø600 t3.0</td><td class="k">SS400</td><td>부압 · 지지 간격 3,000</td></tr>
+      </tbody>
+    </table></div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="f9">
+  <h2><span>9</span>지배 검토 — 왜 이 단면인가</h2>
+  <div class="clause"><div class="n">9.1</div><div class="c">
+    <p>볼트 이용률이 0.1 이하인 구조물에서 단면을 정하는 것은 강도가 아니다.
+      <strong>칼끝 간격을 지키는 강성</strong>과 <strong>9.5×10⁶ 회를 견디는 피로</strong>다.</p>
+    <div class="tw"><table>
+      <caption>정렬·피로 지배 부재 — 값과 한계</caption>
+      <thead><tr><th>ID</th><th>부재</th><th>지배 검토</th><th class="num">값</th>
+        <th class="num">한계</th><th class="num">이용률</th></tr></thead>
+      <tbody>
+<tr><td class="k">C1</td><td>KG-101 크로스빔 BOX-300×200×12</td><td>처짐 (칼끝 간격 300±2)</td><td class="num">0.21 mm</td><td class="num">0.50 mm</td><td class="num">0.43</td></tr>
+<tr class="sub"><td></td><td colspan="5">스팬 2840 · 특성 추력 13.37 kN · 한계는 공차의 1/4</td></tr>
+<tr><td class="k">C2</td><td>KG-101 크로스빔 (용접 부착부)</td><td>피로 — 필릿 용접 부착물 (등급 71)</td><td class="num">5.03 MPa</td><td class="num">52.31 MPa</td><td class="num">0.10</td></tr>
+<tr class="sub"><td></td><td colspan="5">9.5×10⁶ 회 — 5×10⁶ 초과이므로 피로한도 이하로 둔다</td></tr>
+<tr><td class="k">C3</td><td>VT-101 테이블 기둥 □-150×150×6</td><td>피로 — 필릿 용접 부착물 (등급 71)</td><td class="num">24.10 MPa</td><td class="num">52.31 MPa</td><td class="num">0.46</td></tr>
+<tr class="sub"><td></td><td colspan="5">기둥당 3.34 kN @ EL 1150 캔틸레버</td></tr>
+<tr><td class="k">C4</td><td>KG-101 문형 기둥 H-250×250×9/14</td><td>피로 — 필릿 용접 부착물 (등급 71)</td><td class="num">7.52 MPa</td><td class="num">52.31 MPa</td><td class="num">0.14</td></tr>
+<tr class="sub"><td></td><td colspan="5">레일 EL 1950 에서의 캔틸레버 휨</td></tr>
+<tr><td class="k">C5</td><td>WR-101 권취축 Ø60 h6</td><td>피로 — 모재 회전굽힘 (등급 160 · 안전측 90 적용)</td><td class="num">45.70 MPa</td><td class="num">66.31 MPa</td><td class="num">0.69</td></tr>
+<tr class="sub"><td></td><td colspan="5">휨 0.76 + 비틀림 0.60 합성 0.97 kN·m · 스팬 1740</td></tr>
+<tr><td class="k">C6</td><td>RH-201 런웨이 빔 H-200×100×5.5/8</td><td>처짐 L/500 (호이스트 주행)</td><td class="num">0.71 mm</td><td class="num">6.00 mm</td><td class="num">0.12</td></tr>
+<tr class="sub"><td></td><td colspan="5">롤 3.50 + 호이스트 1.47 kN · 지지 간격 3000</td></tr>
+      </tbody>
+    </table></div>
+    <div class="decide"><b>총괄 결정 · C5</b> — <strong>권취축을 Ø55 에서 Ø60 으로 올렸다.</strong>
+      Ø55 는 피로 이용률 <span class="m">0.89</span> 였다. 계산상 성립하지만 회전축에 두기엔 빡빡하고,
+      축은 한 번 깨지면 롤과 웹이 함께 간다. 한 치수 올려 <span class="m">0.69</span> 로 낮췄다 —
+      가공비 차이는 무시할 수 있고 베어링은 같은 계열에서 잡힌다.</div>
+    <div class="note"><strong>C1 이 이 설비에서 가장 중요한 숫자다.</strong>
+      갠트리 크로스빔이 추력 아래에서 <span class="m">0.21 mm</span> 휜다. 칼끝 간격 공차가
+      <span class="m">300 ± 2 mm</span> 이므로 한계를 공차의 1/4 인 <span class="m">0.5 mm</span> 로 잡았다.
+      이 값이 커지면 두 칼날의 간격이 벌어져 박리가 흔들린다 —
+      <strong>크로스빔 단면을 줄이려면 이 숫자부터 다시 본다.</strong></div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="f10">
+  <h2><span>10</span>기초 앵커</h2>
+  <div class="clause"><div class="n">10.1</div><div class="c">
+    <p>배치도 <span class="k">D-602</span> 는 앵커 <em>위치</em>만 정하고 규격·매입깊이·연단거리·
+      기초 두께를 남겨 두었다. 여기서 닫는다.</p>
+    <div class="calc">N<sub>Rd,c</sub> = 7.7·√f<sub>ck</sub>·h<sub>ef</sub><sup>1.5</sup> / γ<sub>Mc</sub>     콘크리트 콘
+N<sub>Rd,p</sub> = π·d·h<sub>ef</sub>·τ<sub>Rk</sub> / γ<sub>Mc</sub>          접착
+f<sub>ck</sub> = 25 MPa (C25/30 최소) · τ<sub>Rk</sub> = 10.0 MPa · γ<sub>Mc</sub> = 1.5</div>
+    <div class="tw"><table>
+      <caption>접착식 앵커 — 기초별 규격과 배치 요구</caption>
+      <thead><tr><th>기초</th><th>설비</th><th>앵커</th><th class="num">h<sub>ef</sub></th>
+        <th class="num">강재 kN</th><th class="num">콘 kN</th><th class="num">접착 kN</th><th>지배</th>
+        <th class="num">연단</th><th class="num">간격</th><th class="num">기초 t</th></tr></thead>
+      <tbody>
+<tr><td class="k">A2</td><td>HC-101 가열실</td><td class="k">M20 × 4</td><td class="num">170</td><td class="num">141.1</td><td class="num">56.9</td><td class="num">71.2</td><td class="k">콘크리트 콘</td><td class="num">255</td><td class="num">510</td><td class="num">300</td></tr>
+<tr><td class="k">A7</td><td>KG-101 주행레일 문형</td><td class="k">M24 × 4</td><td class="num">210</td><td class="num">254.2</td><td class="num">78.1</td><td class="num">105.6</td><td class="k">콘크리트 콘</td><td class="num">315</td><td class="num">630</td><td class="num">310</td></tr>
+<tr><td class="k">A8</td><td>VT-101 진공테이블</td><td class="k">M24 × 4</td><td class="num">210</td><td class="num">254.2</td><td class="num">78.1</td><td class="num">105.6</td><td class="k">콘크리트 콘</td><td class="num">315</td><td class="num">630</td><td class="num">310</td></tr>
+<tr><td class="k">A9</td><td>WR-101 권취 문형</td><td class="k">M20 × 4</td><td class="num">170</td><td class="num">141.1</td><td class="num">56.9</td><td class="num">71.2</td><td class="k">콘크리트 콘</td><td class="num">255</td><td class="num">510</td><td class="num">300</td></tr>
+<tr><td class="k">A10</td><td>RH-201 모노레일 기둥</td><td class="k">M20 × 4</td><td class="num">170</td><td class="num">141.1</td><td class="num">56.9</td><td class="num">71.2</td><td class="k">콘크리트 콘</td><td class="num">255</td><td class="num">510</td><td class="num">300</td></tr>
+<tr><td class="k">A11</td><td>CE-201 횡인출</td><td class="k">M16 × 4</td><td class="num">125</td><td class="num">90.4</td><td class="num">35.9</td><td class="num">41.9</td><td class="k">콘크리트 콘</td><td class="num">188</td><td class="num">375</td><td class="num">300</td></tr>
+<tr><td class="k">A12</td><td>BS-301 롤 새들</td><td class="k">M16 × 4</td><td class="num">125</td><td class="num">90.4</td><td class="num">35.9</td><td class="num">41.9</td><td class="k">콘크리트 콘</td><td class="num">188</td><td class="num">375</td><td class="num">300</td></tr>
+      </tbody>
+    </table></div>
+    <div class="decide"><b>총괄 결정</b> — <strong>전 앵커에서 콘크리트측이 지배한다.</strong>
+      강재 내력이 콘 내력의 2~3 배이므로 앵커를 굵히는 것은 의미가 없다.
+      성능을 정하는 것은 <strong>매입깊이 · 연단거리 · 기초 두께 · 콘크리트 강도</strong> 넷이고,
+      그 넷을 표에 못 박았다. 기초는 <strong>C25/30 이상</strong>, 표의 두께 이상,
+      연단거리 미달 시 <strong>보강근 또는 기초 확대</strong>로 해결하고 앵커 규격으로 해결하지 않는다.</div>
+    <ul>
+      <li><strong>천공</strong> — 해머드릴 · 압축공기 + 브러시 3회 청소. 청소 불량이 접착 실패의 최대 원인이다.</li>
+      <li><strong>시공 시험</strong> — 기초별 <strong>10 % 발췌</strong>로 인발시험, 설계하중의 1.5 배 유지 60 초.</li>
+      <li><strong>양생</strong> — 제조사 지정 시간 경과 전 체결 금지. 온도별 양생표를 현장에 게시한다.</li>
+      <li><strong>레벨링</strong> — 베이스플레이트 아래 무수축 그라우트 <span class="m">30 mm</span>,
+        압축강도 <span class="m">60 MPa</span> 이상. 라이너로 높이를 잡고 그라우트를 채운다.</li>
+    </ul>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="f11">
+  <h2><span>11</span>표면처리·도장</h2>
+  <div class="clause"><div class="n">11.1</div><div class="c">
+    <div class="tw"><table>
+      <caption>도장 사양 — ISO 12944-5 C3 (실내 공장)</caption>
+      <thead><tr><th>부위</th><th>전처리</th><th>도장</th><th class="num">건조도막</th><th>색</th></tr></thead>
+      <tbody>
+        <tr><th>일반 구조·외장</th><td class="k">ISO 8501-1 Sa 2½</td>
+          <td>에폭시 프라이머 80 + 에폭시 중도 80 + 폴리우레탄 상도 60</td>
+          <td class="num">220 µm</td><td>무광 라이트 뉴트럴</td></tr>
+        <tr><th>리빌·그림자면</th><td class="k">Sa 2½</td><td>동일</td><td class="num">220 µm</td><td>그림자 검정</td></tr>
+        <tr><th>가동부·주의부</th><td class="k">Sa 2½</td><td>동일</td><td class="num">220 µm</td><td>안전 옐로 (RAL 1023)</td></tr>
+        <tr><th>가열실 외피</th><td class="k">Sa 2½</td>
+          <td>내열 실리콘 알루미늄 2회</td><td class="num">50 µm</td><td>은색 (200 °C 대응)</td></tr>
+        <tr><th>가열실 내피</th><td>산세·부동태</td><td class="k">도장 금지</td><td class="num">—</td><td>STS304 소지</td></tr>
+        <tr><th>마찰접합 접촉면</th><td class="k">Sa 2½ 블라스트</td><td class="k">도장 금지</td>
+          <td class="num">—</td><td>μ = 0.50 확보 — 조립 후 실링만</td></tr>
+        <tr><th>기계 가공면</th><td>—</td><td>방청유</td><td class="num">—</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+    <div class="warn"><strong>마찰접합면에 도장하면 설계가 무효가 된다.</strong>
+      J3 의 미끄러짐 내력은 μ = 0.50 (블라스트 청정면)을 전제로 계산했다.
+      도장면의 μ 는 0.2 이하이므로 <strong>내력이 절반 이하로 떨어진다.</strong>
+      해당 면은 마스킹하고, 조립 후 가장자리만 실링한다.</div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="f12">
+  <h2><span>12</span>공차·끼워맞춤</h2>
+  <div class="clause"><div class="n">12.1</div><div class="c">
+    <div class="tw"><table>
+      <caption>공차 — 도면 미지정 치수는 ISO 2768-mK</caption>
+      <thead><tr><th>항목</th><th>공차</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><th>일반 길이</th><td class="k">ISO 2768-m</td><td>도면 미지정 치수</td></tr>
+        <tr><th>일반 기하</th><td class="k">ISO 2768-K</td><td>직각도·평면도·진직도</td></tr>
+        <tr><th>칼끝 간격</th><td class="k">300 ± 2 mm</td><td>박리 품질 — C1 처짐 한계의 근거</td></tr>
+        <tr><th>데크 정합</th><td class="k">± 2 mm</td><td>포크 진입 여유</td></tr>
+        <tr><th>주행레일 직진도</th><td class="k">0.3 / 3,000 mm</td><td>LM 가이드 제조사 요구</td></tr>
+        <tr><th>레일 상호 평행도</th><td class="k">0.5 mm 전장</td><td>대차 구속 방지</td></tr>
+        <tr><th>테이블 상판 평면도</th><td class="k">0.5 mm 전면</td><td>진공 누설 · 유리 파손</td></tr>
+        <tr><th>기둥 베이스 평면도</th><td class="k">0.5 mm</td><td>그라우트 밀착</td></tr>
+        <tr><th>권취축 진원·흔들림</th><td class="k">0.02 mm TIR</td><td>웹 사행 방지</td></tr>
+        <tr><th>베어링 하우징</th><td class="k">H7</td><td>ISO 286 — 외륜 끼워맞춤</td></tr>
+        <tr><th>축 베어링부</th><td class="k">h6 (k6 내륜 회전측)</td><td>ISO 286</td></tr>
+        <tr><th>테이퍼 로케이팅핀</th><td class="k">H7/h6</td><td>반복 탈착 정합</td></tr>
+        <tr><th>가공면 조도</th><td class="k">Ra 3.2 일반 · Ra 1.6 끼워맞춤 · Ra 0.8 축</td><td>ISO 1302</td></tr>
+      </tbody>
+    </table></div>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="f13">
+  <h2><span>13</span>조립 순서와 검사</h2>
+  <div class="clause"><div class="n">13.1</div><div class="c">
+    <h3>순서 — 왜 이 순서인가</h3>
+    <div class="tw"><table>
+      <caption>조립·설치 순서 (ITP)</caption>
+      <thead><tr><th class="num">단계</th><th>작업</th><th>검사</th><th>합격 기준</th><th>기록</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td>기초 타설·양생</td><td>강도시험</td>
+          <td class="k">C25/30 · 28일</td><td>공시체 성적서</td></tr>
+        <tr><td class="num">2</td><td>먹매김 — 기준선 X0 · Y0 설정</td><td>측량</td>
+          <td class="k">± 2 mm / 전장</td><td>측량 야장</td></tr>
+        <tr><td class="num">3</td><td>앵커 천공·시공</td><td>인발시험 10 %</td>
+          <td class="k">설계하중 × 1.5 · 60 s</td><td>시험 성적서</td></tr>
+        <tr><td class="num">4</td><td><strong>KG-101 주행레일 문형</strong> 건립</td><td>레벨·직진도</td>
+          <td class="k">0.3 / 3,000</td><td>레벨 기록</td></tr>
+        <tr><td class="num">5</td><td><strong>VT-101 테이블</strong> 설치</td><td>상판 평면도·레일 상대위치</td>
+          <td class="k">0.5 mm</td><td>측정 기록</td></tr>
+        <tr><td class="num">6</td><td>그라우트 주입·양생</td><td>충전 확인</td>
+          <td class="k">공극 없음</td><td>사진</td></tr>
+        <tr><td class="num">7</td><td>HC-101 가열실 건립·외피 조립</td><td>기밀시험</td>
+          <td class="k">차압 유지</td><td>시험 기록</td></tr>
+        <tr><td class="num">8</td><td>GC-101 냉각 랙 · 승강 포크 문형</td><td>데크 정합</td>
+          <td class="k">± 2 mm</td><td>측정 기록</td></tr>
+        <tr><td class="num">9</td><td>KG-101 갠트리 탑재·주행 시운전</td><td>무부하 주행</td>
+          <td class="k">전 행정 · 진동 이상 없음</td><td>주행 기록</td></tr>
+        <tr><td class="num">10</td><td>칼날 카세트 장착·간격 조정</td><td>레이저 간격 측정</td>
+          <td class="k">300 ± 2 mm</td><td>측정 기록</td></tr>
+        <tr><td class="num">11</td><td>WR-101 권취부 · RH-201 모노레일</td><td>축 흔들림·하중시험</td>
+          <td class="k">0.02 TIR · 1.25 × 정격</td><td>시험 기록</td></tr>
+        <tr><td class="num">12</td><td>배관·배선·방책</td><td>절연·도통·접지</td>
+          <td class="k">IEC 60204-1</td><td>시험 성적서</td></tr>
+        <tr><td class="num">13</td><td>볼트 전수 토크 확인·마킹</td><td>토크렌치</td>
+          <td class="k">6항 표 · ± 10 %</td><td>체결 점검표</td></tr>
+        <tr><td class="num">14</td><td>무부하 시운전 → 10장 시운전</td><td>동작·인터록</td>
+          <td class="k">전 허가체인 성립</td><td>시운전 기록</td></tr>
+      </tbody>
+    </table></div>
+    <div class="decide"><b>총괄 결정 · 순서</b> — <strong>주행레일 문형(4)을 테이블(5)보다 먼저 세운다.</strong>
+      칼끝 간격은 갠트리와 테이블의 <em>상대</em> 위치에서 나온다. 레일을 먼저 세워 기준으로 삼고
+      테이블을 거기에 맞추면 조정이 한 번으로 끝난다. 반대로 하면 무거운 레일 문형을
+      나중에 맞춰야 하고, 그 조정은 그라우트를 깨야 한다.</div>
+  </div></div>
+
+  <div class="clause"><div class="n">13.2</div><div class="c">
+    <h3>볼트 체결 점검표</h3>
+    <p>13 단계의 <strong>전수 확인</strong>은 기록으로 남긴다. 접합 ID 별로
+      볼트 수량 · 규격 · 등급 · 목표 체결력 · 실측 토크 · 마킹 여부 · 확인자를 적고,
+      <strong>한 개라도 미달이면 그 접합 전체를 다시 조인다</strong> —
+      한 개만 다시 조이면 인접 볼트의 체결력이 빠진다.</p>
+  </div></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="f14">
+  <h2><span>14</span>제작 승인과 기록</h2>
+  <div class="clause"><div class="n">14.1</div><div class="c">
+    <h3>착수 전 제출</h3>
+    <ul>
+      <li><strong>제작 상세도</strong> — 이 문서의 사양을 반영한 부품도·조립도. 승인 후 착수.</li>
+      <li><strong>중량표</strong> — <a href="#f3">3.2항</a>의 자중 가정 넷을 확정한다.
+        ± 15 % 초과 시 앵커·기초 재검토.</li>
+      <li><strong>WPS/PQR · 용접사 자격</strong></li>
+      <li><strong>재료 밀시트(MTC)</strong> — EN 10204 3.1</li>
+      <li><strong>볼트 시험성적서</strong> — 등급별 로트 단위</li>
+      <li><strong>앵커 ETA</strong> — 접착강도 τ<sub>Rk</sub> 가 10.0 MPa 이상임을 증명</li>
+      <li><strong>토크렌치 교정 성적서</strong></li>
+    </ul>
+  </div></div>
+
+  <div class="clause"><div class="n">14.2</div><div class="c">
+    <h3>인도 시 제출</h3>
+    <ul>
+      <li>As-built 도면 (변경 이력 포함)</li>
+      <li>ITP 전 항목 검사 기록</li>
+      <li>볼트 체결 점검표 (접합 ID 별 전수)</li>
+      <li>용접 검사 기록 (VT 100 % · MT 해당분)</li>
+      <li>앵커 인발시험 성적서</li>
+      <li>도막 두께 측정 기록</li>
+      <li>기하 정밀도 측정 기록 (레일 직진도 · 상판 평면도 · 칼끝 간격)</li>
+      <li>시운전 기록 및 잔여 조치 목록</li>
+    </ul>
+    <div class="note"><strong>이 문서가 닫지 못한 것.</strong> 자중 넷은 설계 가정이고,
+      박리력은 포락값이다. 둘 다 제작 과정에서 실측으로 대체되며, 그때
+      이 문서의 계산기를 다시 돌려 표를 갱신한다 —
+      <strong>표를 손으로 고치지 않는다.</strong></div>
+  </div></div>
+</section>
+
+<footer>
+  <p>DG-HK60C-FAB-001 Rev.0 · 2026-09-06 · DYNAMIC INDUSTRY</p>
+  <p>계산 근거 <span class="k">tools/fab_spec.py</span> · 형상 근거 콘솔 제작도
+    <span class="k">F-002 · F-003 · F-005 · F-006 · F-007 · D-501 · D-602</span></p>
+</footer>
+
+</div>
+</body>
+</html>

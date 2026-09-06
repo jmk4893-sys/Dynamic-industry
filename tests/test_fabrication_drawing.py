@@ -767,6 +767,12 @@ class TestTheSpecificationAgreesAboutWhatWasHandedOver(unittest.TestCase):
         self.assertIn("검증·확정은 본 용역의 범위에 속한다", self.rfq,
                       "도면 확정이 용역 범위임을 여전히 밝혀야 한다")
 
+    def _window(self, start, end):
+        """두 표지 사이만 잘라 낸다 — 옆 문단이 창 안으로 새어 들면 검사가 죽는다."""
+        i = self.rfq.index(start)
+        j = self.rfq.index(end, i + len(start))
+        return self.rfq[i:j]
+
     def test_the_clause_names_every_fabrication_level_sheet(self):
         """참고도 목록이 시트보다 짧으면, 빠진 시트는 성격이 규정되지 않은 채 나간다.
 
@@ -776,6 +782,10 @@ class TestTheSpecificationAgreesAboutWhatWasHandedOver(unittest.TestCase):
         시트는 두 계열이다. 납품 배치(F- · D-)는 견적 대상이고, 폐기된 선행
         개정(R-)은 아니다. 둘을 한 목록에 섞으면 입찰자가 폐기 배치를 견적에
         넣거나, 반대로 인계 목록에서 빠뜨린다. 계열별로 따로 확인한다.
+
+        창은 글자수가 아니라 문단 경계로 자른다. 고정 길이로 자르면 뒤따르는
+        문단이 창 안으로 밀려들어와, 목록에서 시트가 빠져도 그 이름이 옆
+        문단에 남아 있다는 이유로 검사가 통과한다 — 실제로 F-901 이 그랬다.
         """
         console = CONSOLE.read_text(encoding="utf-8").replace(" ", "")
         sheets = sorted(set(re.findall(r"fabTitleBlock\(\{no:'([A-Z]-\d+)'", console)))
@@ -784,21 +794,23 @@ class TestTheSpecificationAgreesAboutWhatWasHandedOver(unittest.TestCase):
         self.assertGreaterEqual(len(delivered), 6, "콘솔에 납품 배치 제작수준 시트가 없다")
         self.assertGreaterEqual(len(legacy), 6, "콘솔에 REV.20 제작도 계열이 없다")
 
-        clause = self.rfq[self.rfq.index("인계되는 도면은 참고도"):][:2200]
+        clause = self._window("인계되는 도면은 참고도",
+                              '제작 지침서 <span class="k">DG-HK60C-FAB-001</span>')
         for no in delivered:
             self.assertIn(no, clause, f"1.2 가 {no} 를 참고도로 부르지 않는다")
         # D-501 은 fabTitleBlock 을 쓰지 않는 상세도지만 성격은 같다
         self.assertIn("D-501", clause, "1.2 가 칼날 카세트 상세도를 부르지 않는다")
 
         # 폐기 계열은 따로 밝히고, 견적 대상이 아님을 못 박아야 한다
-        legacy_clause = self.rfq[self.rfq.index("선행 개정(REV.20)의 도면도"):][:2200]
+        legacy_clause = self._window("선행 개정(REV.20)의 도면도",
+                                     "선행자료의 수치는 설계 가설이다")
         for no in legacy:
             self.assertIn(no, legacy_clause, f"1.2 가 {no} 를 선행 개정 도면으로 밝히지 않는다")
         self.assertIn("견적 대상이 아니다", legacy_clause,
                       "R- 계열이 견적 대상이 아님을 못 박지 않았다")
 
         # 12.2 의 부품도 물량 근거는 납품 계열만 센다
-        volume = self.rfq[self.rfq.index("참고도가 있는 것은"):][:900]
+        volume = self._window("참고도가 있는 것은", "확인사항(")
         for no in delivered + ["D-501"]:
             self.assertIn(no, volume, f"12.2 의 부품도 물량 근거가 {no} 를 빠뜨린다")
         for no in legacy:
