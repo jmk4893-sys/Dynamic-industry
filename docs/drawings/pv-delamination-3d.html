@@ -587,6 +587,7 @@
         <button type="button" data-drawing="power">전력 인입·단선결선</button>
         <button type="button" data-drawing="plc">PLC I/O·배선</button>
         <button type="button" data-drawing="assemblies">구성품 2D·3D</button>
+        <button type="button" data-drawing="chamber">가열실 제작도</button>
         <button type="button" data-drawing="cassette">칼날 카세트 상세</button>
         <button type="button" data-drawing="compact">압축 배치</button>
         <button type="button" id="printDrawingButton">현재 도면 인쇄</button>
@@ -5205,6 +5206,161 @@
     const engineeringDialog=$('engineeringDialog'),drawingContent=$('drawingContent');
     let drawingTab='power',drawingMode='2d',assemblyIndex=0;
     const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    /* ══ 제작도 기반 ══════════════════════════════════════════════════
+       개념도와 제작도의 차이는 그림 솜씨가 아니라 **적혀 있는 것**이다.
+       개념도는 "여기에 판이 선다" 를 말하고, 제작도는 그 판의 두께·재질·
+       공차·용접·가공기준면을 말한다. 앞의 것으로는 견적도 가공도 못 한다.
+
+       그래서 여기서는 세 가지를 갖춘다.
+         ① A3 밀리미터 좌표 — 축척을 선언할 수 있어야 축척이 뜻을 갖는다.
+            개념 시트의 무단위 1200×650 으로는 "NTS" 밖에 적을 수 없다.
+         ② 제도 기호 — 치수선·용접기호(ISO 2553)·데이텀과 기하공차
+            (ISO 1101)·표면조도·부품 풍선.
+         ③ ISO 7200 표제란 — 도면번호·축척·투상법·재질·질량·일반공차·
+            개정란·서명란. 없으면 도면이 아니라 그림이다.
+
+       치수는 모두 모델 상수에서 나온다. 도면에 손으로 적으면 단수를 바꿀 때
+       3D 만 따라오고 도면은 옛 치수로 남는다 — 그것이 이 저장소가 계속
+       고쳐 온 실패다. */
+    const A3W=420,A3H=297;                    // mm — ISO 216 A3 가로
+    const fabDefs=`<defs>
+      <marker id="fa" markerWidth="10" markerHeight="8" refX="9.5" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M0,0 L0,6 L10,3 z" fill="#1a2b30"/></marker>
+      <marker id="fb" markerWidth="10" markerHeight="8" refX="0.5" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M10,0 L10,6 L0,3 z" fill="#1a2b30"/></marker>
+      <pattern id="steel" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <path d="M0 0V3" stroke="#8a99a0" stroke-width=".5"/></pattern>
+      <pattern id="insul" width="4" height="4" patternUnits="userSpaceOnUse">
+        <path d="M0 2h4M2 0v4" stroke="#c9a86a" stroke-width=".4"/></pattern>
+      <pattern id="refl" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+        <path d="M0 0V3" stroke="#7fa8b8" stroke-width=".5"/></pattern>
+    </defs>`;
+    const FS=v=>`font-size="${v}"`;
+    /* 선 굵기는 ISO 128 의 두 굵기 계열을 쓴다 — 외형선은 굵게(0.5),
+       치수·해치·중심선은 가늘게(0.25). 한 굵기로 그리면 무엇이 부재이고
+       무엇이 설명인지 도면에서 구분되지 않는다. */
+    const LW={out:.5,thin:.25,hid:.3,ctr:.25};
+    const fabG=(c,extra='')=>`<g stroke="${c}" fill="none" ${extra}>`;
+    /* 수평 치수선. tol 을 주면 공차를 함께 적는다. */
+    function dimH(x1,x2,y,text,tol){
+      const t=text!==undefined?text:Math.round(Math.abs(x2-x1)).toLocaleString();
+      return `<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none">`
+        +`<path d="M${x1} ${y}H${x2}" marker-start="url(#fb)" marker-end="url(#fa)"/>`
+        +`<path d="M${x1} ${y-2.6}v5.2M${x2} ${y-2.6}v5.2"/></g>`
+        +`<text stroke="none" x="${(x1+x2)/2}" y="${y-1.6}" text-anchor="middle" ${FS(3.2)} fill="#1a2b30">${esc(t)}`
+        +(tol?`<tspan ${FS(2.3)} fill="#5b6d74"> ${esc(tol)}</tspan>`:'')+`</text>`;
+    }
+    /* 수직 치수선. 글자는 눕히지 않고 세워 둔다 — 인쇄해 회람하는 문서다. */
+    function dimV(y1,y2,x,text,tol){
+      const t=text!==undefined?text:Math.round(Math.abs(y2-y1)).toLocaleString();
+      return `<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none">`
+        +`<path d="M${x} ${y1}V${y2}" marker-start="url(#fb)" marker-end="url(#fa)"/>`
+        +`<path d="M${x-2.6} ${y1}h5.2M${x-2.6} ${y2}h5.2"/></g>`
+        +`<text stroke="none" x="${x-1.8}" y="${(y1+y2)/2}" text-anchor="middle" ${FS(3.2)} fill="#1a2b30"`
+        +` transform="rotate(-90 ${x-1.8} ${(y1+y2)/2})">${esc(t)}`
+        +(tol?`<tspan ${FS(2.3)} fill="#5b6d74"> ${esc(tol)}</tspan>`:'')+`</text>`;
+    }
+    /* ISO 2553 용접기호. 화살선 + 기준선 + 기호, 필릿은 각장을 앞에 적는다.
+       all=true 면 전주용접(원). */
+    function weldSym(ax,ay,bx,by,size,kind='fillet',all){
+      const dir=bx>=ax?1:-1;
+      return `<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none">`
+        +`<path d="M${ax} ${ay}L${bx} ${by}" marker-start="url(#fa)"/>`
+        +`<path d="M${bx} ${by}h${dir*14}"/>`
+        +(all?`<circle cx="${bx}" cy="${by}" r="1.5"/>`:'')
+        +(kind==='fillet'
+          ?`<path d="M${bx+dir*3} ${by} l0 -3.4 l${dir*3.4} 3.4 z" fill="#1a2b30"/>`
+          :`<path d="M${bx+dir*3} ${by-3.4}v3.4h${dir*3.4}" />`)
+        +`</g><text stroke="none" x="${bx+dir*1.2}" y="${by-1.2}" text-anchor="${dir>0?'end':'start'}" ${FS(2.6)} fill="#1a2b30">${esc(size)}</text>`;
+    }
+    /* 데이텀 — 채운 삼각형과 사각 테두리 안의 문자. 가공기준면이 어디인지
+       도면에 없으면 제작사가 임의로 잡고, 조립에서 그 차이가 나타난다. */
+    function datum(x,y,letter,dir=1){
+      return `<g stroke="#1a2b30" stroke-width="${LW.thin}">`
+        +`<path d="M${x} ${y}l${-2.2} ${dir*3.4}h4.4z" fill="#1a2b30"/>`
+        +`<path d="M${x} ${y+dir*3.4}v${dir*3.2}" fill="none"/>`
+        +`<rect x="${x-3}" y="${y+dir*(dir>0?6.6:10.2)}" width="6" height="5.4" fill="#fff"/></g>`
+        +`<text stroke="none" x="${x}" y="${y+dir*(dir>0?10.5:6.3)}" text-anchor="middle" ${FS(3.4)} font-weight="700" fill="#1a2b30">${esc(letter)}</text>`;
+    }
+    /* 기하공차 틀 (ISO 1101) — 기호 · 공차 · 데이텀 순서. */
+    function fcf(x,y,sym,tol,refs){
+      const cells=[sym,tol].concat(refs?refs.split(''):[]);
+      const w=cells.map(c=>c===sym?7:c.length>2?15:6);
+      let cx=x,out=`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="#fff">`;
+      w.forEach(ww=>{out+=`<rect x="${cx}" y="${y}" width="${ww}" height="6"/>`;cx+=ww});
+      out+='</g>';cx=x;
+      cells.forEach((c,i)=>{out+=`<text stroke="none" x="${cx+w[i]/2}" y="${y+4.3}" text-anchor="middle" ${FS(3.4)} fill="#1a2b30">${esc(c)}</text>`;cx+=w[i]});
+      return out;
+    }
+    /* 표면조도 (ISO 1302) — 제거가공 기호에 Ra 값. */
+    function rough(x,y,ra){
+      return `<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none">`
+        +`<path d="M${x} ${y}l2.6 -4.5l5.2 0"/><path d="M${x} ${y}l-2.6 -4.5"/></g>`
+        +`<text stroke="none" x="${x+3.2}" y="${y-5.4}" ${FS(2.8)} fill="#1a2b30">Ra ${esc(ra)}</text>`;
+    }
+    const balloon=(x,y,n)=>`<circle cx="${x}" cy="${y}" r="3.6" fill="#fff" stroke="#1a2b30" stroke-width="${LW.thin}"/>`
+      +`<text stroke="none" x="${x}" y="${y+1.3}" text-anchor="middle" ${FS(3.4)} font-weight="700" fill="#1a2b30">${n}</text>`;
+    const ctrLine=(x1,y1,x2,y2)=>`<path d="M${x1} ${y1}L${x2} ${y2}" stroke="#7b8d94" stroke-width="${LW.ctr}" stroke-dasharray="6 1.6 1 1.6" fill="none"/>`;
+    /* 제3각 투상 기호 — 원뿔대 정면과 측면. 어느 각법인지 밝히지 않으면
+       좌우가 뒤집힌 채로 가공된다. */
+    const thirdAngle=(x,y)=>`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none">`
+      +`<circle cx="${x+5}" cy="${y}" r="4"/><circle cx="${x+5}" cy="${y}" r="1.7"/>`
+      +`<path d="M${x+13} ${y-4}l7 1.6v4.8l-7 1.6z"/>`
+      +ctrLine(x,y,x+22,y)+`</g>`;
+
+    /* ISO 7200 표제란. 개념 시트의 표제란은 제목·회사·NTS·날짜뿐이었고
+       축척·투상법·재질·질량·일반공차·개정·서명이 없었다. 그 여섯이 없으면
+       도면을 받은 제작사가 물어볼 곳이 도면 밖이 된다. */
+    function fabTitleBlock(o){
+      const X=A3W-140,Y=A3H-46,W=130,H=38;
+      const row=(dx,dy,w,h)=>`<rect x="${X+dx}" y="${Y+dy}" width="${w}" height="${h}" fill="none" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      const lab=(dx,dy,t)=>`<text stroke="none" x="${X+dx+1.6}" y="${Y+dy+3.4}" ${FS(2.3)} fill="#5b6d74" letter-spacing=".3">${esc(t)}</text>`;
+      const val=(dx,dy,t,fs=3.6,w=700)=>`<text stroke="none" x="${X+dx+1.6}" y="${Y+dy+8.6}" ${FS(fs)} font-weight="${w}" fill="#0f1c21">${esc(t)}</text>`;
+      return `<g font-family="Arial,'Noto Sans KR',sans-serif">`
+        +`<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="#fff" stroke="#1a2b30" stroke-width="${LW.out}"/>`
+        +row(0,0,W,11)+row(0,11,64,11)+row(64,11,33,11)+row(97,11,33,11)
+        +row(0,22,42,16)+row(42,22,44,16)+row(86,22,44,16)
+        +`<g transform="translate(${X+2},${Y+2.2}) scale(${7.4/MARK.vb[0]})">`
+        +MARK.paths.map(p=>`<path d="${p.d}" fill="${p.f}" stroke="none"/>`).join('')+`</g>`
+        +`<text stroke="none" x="${X+11}" y="${Y+5.2}" ${FS(3.2)} font-weight="700" fill="#17679b">DYNAMIC INDUSTRY</text>`
+        +`<text stroke="none" x="${X+11}" y="${Y+9.2}" ${FS(2.4)} fill="#5b6d74">FOR NET ZERO PROJECTION</text>`
+        +`<text stroke="none" x="${X+W-2}" y="${Y+7.4}" text-anchor="end" ${FS(4.6)} font-weight="800" fill="#0f1c21">${esc(o.no)}</text>`
+        +lab(0,11,'TITLE')+val(0,11,o.title,3.8)
+        +lab(64,11,'SCALE')+val(64,11,o.scale)
+        +lab(97,11,'SHEET')+val(97,11,o.sheet)
+        +lab(0,22,'MATERIAL')+val(0,22,o.material,2.9,600)
+        +`<text stroke="none" x="${X+1.6}" y="${Y+35}" ${FS(2.5)} fill="#5b6d74">MASS ${esc(o.mass)}</text>`
+        +lab(42,22,'GENERAL TOL.')+val(42,22,o.tol,2.9,600)
+        +`<text stroke="none" x="${X+43.6}" y="${Y+35}" ${FS(2.5)} fill="#5b6d74">${esc(o.tol2||'')}</text>`
+        +lab(86,22,'PROJECTION')+thirdAngle(X+90,Y+31)
+        +`</g>`;
+    }
+    /* 개정란 — 어느 개정에서 무엇이 바뀌었는지. 도면번호만 같고 내용이
+       달라진 도면 두 장이 현장에 돌면 그때부터 아무도 믿지 않는다. */
+    function revBlock(rows){
+      const X=A3W-140,Y=A3H-46-6-rows.length*6,W=130;
+      let out=`<g font-family="Arial,'Noto Sans KR',sans-serif">`
+        +`<rect x="${X}" y="${Y}" width="${W}" height="${6+rows.length*6}" fill="#fff" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      ['REV','DATE','DESCRIPTION','BY'].forEach((h,i)=>{
+        const dx=[0,12,34,112][i];
+        out+=`<text stroke="none" x="${X+dx+1.4}" y="${Y+4.2}" ${FS(2.4)} fill="#5b6d74">${h}</text>`;
+      });
+      out+=`<path d="M${X} ${Y+6}h${W}" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      rows.forEach((r,i)=>{
+        const y=Y+6+i*6;
+        [r.rev,r.date,r.desc,r.by].forEach((c,j)=>{
+          const dx=[0,12,34,112][j];
+          out+=`<text stroke="none" x="${X+dx+1.4}" y="${y+4.2}" ${FS(2.6)} fill="#0f1c21">${esc(c)}</text>`;
+        });
+      });
+      return out+'</g>';
+    }
+    /* A3 시트 틀 — 도면틀과 재단여백. 왼쪽 여백이 넓은 것은 철하기 위해서다. */
+    const fabSheet=inner=>`<svg viewBox="0 0 ${A3W} ${A3H}" role="img" aria-label="DG-HK60 제작도">${fabDefs}`
+      +`<rect width="${A3W}" height="${A3H}" fill="#fff"/>`
+      +`<rect x="20" y="10" width="${A3W-30}" height="${A3H-20}" fill="none" stroke="#1a2b30" stroke-width="${LW.out}"/>`
+      +`<g font-family="Arial,'Noto Sans KR',sans-serif">${inner}</g></svg>`;
+
     const svgDefs=`<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#0b6268"/></marker><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="#dce1df" stroke-width="1"/></pattern><pattern id="hatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0V9" stroke="#d9b76a" stroke-width="2.2"/></pattern></defs>`;
     /* 시트 높이는 도면이 정한다 — D-601 은 ④ 인출 단면을 더 갖는다. 값으로
        박아 두면 단면을 붙였을 때 틀 밖으로 나간 채로 인쇄된다. */
@@ -5257,6 +5413,136 @@
       }
       return `<div class="drawing-controls"><label>어셈블리<select id="assemblySelect">${assemblies.map((v,i)=>`<option value="${i}"${i===assemblyIndex?' selected':''}>${esc(v.id)} · ${esc(v.name)}</option>`).join('')}</select></label><button type="button" data-mode="2d" class="${mode==='2d'?'active':''}">2D 삼면도</button><button type="button" data-mode="3d" class="${mode==='3d'?'active':''}">3D 분해도</button></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="${esc(a.name)} ${mode==='2d'?'2D 제작도':'3D 분해 조립도'}">${svgDefs}${titleBlock(a.id,`${a.id} · ${a.name} · ${mode==='2d'?'2D 삼면도':'3D 분해 조립도'}`,`외형 ${a.size} mm · 주재질 ${a.material}`)}<g font-family="Arial,'Noto Sans KR',sans-serif">${graphic}</g></svg></div><table class="bom-table"><thead><tr><th>품번</th><th>구성품</th><th>수량</th><th>구분</th></tr></thead><tbody>${parts}</tbody></table><p class="drawing-note">표시 치수는 외형·인터페이스 개념치입니다. 판두께, 용접기호, 공차, 베어링 끼워맞춤, 체결토크와 가공기준면은 구조해석·부품선정 후 제작도에서 동결합니다.</p>`;
     }
+    /* ── M-002 가열실 제작도 (F-002) ──────────────────────────────────
+       단수를 5로 올리면서 이 모듈이 가장 크게 바뀌었다 — 높이 3,620 → 4,860,
+       뱅크 4 → 6, 데크 3 → 5. 그런데 종전 "2D 삼면도" 는 모든 모듈에 같은
+       고정 사각형 셋을 그렸으므로 무엇이 바뀌었는지 도면에 나타나지 않았다.
+
+       여기서는 치수를 전부 모델 상수에서 낸다. 벽 두께는 CL_WALL, 단 간격은
+       HC_DZ, 데크는 DECK_L/DECK_W, 뱅크 램프 수는 bankLampCount 다. 손으로
+       적으면 다음에 단수를 옮길 때 3D 만 따라오고 이 도면은 남는다. */
+    function chamberFabDrawing(){
+      const mm=v=>Math.round(v*1000);
+      const W=2600;                             // 챔버 외형 폭 — 모듈표 M-002
+      const wall=mm(CL_WALL), pitch=mm(HC_DZ), z0=mm(HC_Z0);
+      const H=mm(HC_Z+.94), decks=DECKS, banks=DECKS+1;
+      const chamberL=5600;
+      /* ── 정면도 (좌상) — 단면으로 자른다. 외피만 그리면 벽 구성이 안 보인다 */
+      const FX=30,FY=40,FS_=.0225;                // 1:44 — 좌열 폭 126 mm 에 맞춘다
+      const fx=v=>FX+v*FS_, fy=v=>FY+(H-v)*FS_;
+      let front=`<g stroke="#1a2b30" fill="none">`;
+      // 벽체 4겹 — 내피 SUS304 2t / 미네랄울 100 / 반사공기층 25 / 외피 SS400 3.2t
+      const layers=[[0,3.2,'url(#steel)','외피 SS400 3.2t'],[3.2,25,'url(#refl)','반사 공기층 25'],
+                    [28.2,100,'url(#insul)','미네랄울 100t'],[128.2,2,'url(#steel)','내피 SUS304 2.0t']];
+      for(const side of [0,1]){
+        let off=0;
+        for(const [o,t] of layers.map(l=>[l[0],l[1]])){
+          const x=side?chamberL-o-t:o;
+          front+=`<rect x="${fx(x)}" y="${fy(H)}" width="${t*FS_}" height="${H*FS_}" fill="${layers.find(l=>l[0]===o)[2]}" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+        }
+      }
+      front+=`<rect x="${fx(0)}" y="${fy(H)}" width="${chamberL*FS_}" height="${H*FS_}" stroke-width="${LW.out}"/>`;
+      // 데크와 뱅크
+      for(let d=0;d<decks;d++){
+        const z=z0+pitch*d+310;
+        front+=`<rect x="${fx(wall+120)}" y="${fy(z)-1}" width="${(chamberL-2*wall-240)*FS_}" height="2" fill="#c8d2d6" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+        front+=`<text stroke="none" x="${fx(wall+60)}" y="${fy(z)+1}" ${FS(2.6)} fill="#5b6d74">C${d+1}</text>`;
+      }
+      for(let b=0;b<banks;b++){
+        const z=z0+pitch*b, n=bankLampCount(b,DECKS,LAMPS);
+        for(let i=0;i<n;i++){
+          const x=wall+300+i*(chamberL-2*wall-600)/(n-1);
+          front+=`<circle cx="${fx(x)}" cy="${fy(z)}" r="1.1" fill="#e8935c" stroke="#1a2b30" stroke-width=".2"/>`;
+        }
+        front+=`<text stroke="none" x="${fx(chamberL)+2}" y="${fy(z)+1}" ${FS(2.6)} fill="#a0522d">B${b} · ${n}등</text>`;
+      }
+      front+=`</g>`;
+      front+=dimV(fy(H),fy(0),fx(0)-11,H.toLocaleString(),'±5')
+            +dimV(fy(z0+pitch),fy(z0),fx(0)-4,pitch.toLocaleString(),'±1.5')
+            +dimH(fx(0),fx(chamberL),fy(0)+8,chamberL.toLocaleString(),'±5')
+            +weldSym(fx(chamberL*.80),fy(0),fx(chamberL*.80)+13,fy(0)-13,'a4','fillet',true)
+            +datum(fx(chamberL*.30),fy(0),'A',1)
+            +rough(fx(chamberL*.52),fy(H)-3,'6.3');
+      /* ── 벽체 상세 (우상) — 실제 두께를 축척 1:2 로 */
+      const DX=252,DY=44,DS=.42;
+      let det=`<g stroke="#1a2b30" fill="none">`;
+      let o=0;
+      for(const [off,t,pat,name] of layers){
+        det+=`<rect x="${DX}" y="${DY+off*DS}" width="46" height="${t*DS}" fill="${pat}" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+        det+=`<text stroke="none" x="${DX+50}" y="${DY+off*DS+t*DS/2+1}" ${FS(2.8)} fill="#1a2b30">${esc(name)}</text>`;
+      }
+      det+=`</g>`+dimV(DY,DY+130.2*DS,DX-6,'130.2')
+          +`<text stroke="none" x="${DX}" y="${DY-5}" ${FS(3.4)} font-weight="700" fill="#0f1c21">상세 A — 벽체 구성 (1:2.4)</text>`
+          +`<text stroke="none" x="${DX}" y="${DY+130.2*DS+7}" ${FS(2.6)} fill="#5b6d74">열교 차단 스페이서 @600 · 외피 표면온도 ≤ 45 °C @주위 25 °C</text>`;
+      /* ── 평면도 (좌하) */
+      const PX=30,PY=170,PS=.0225;
+      const px=v=>PX+v*PS, py=v=>PY+v*PS;
+      let plan=`<g stroke="#1a2b30" fill="none">`
+        +`<rect x="${px(0)}" y="${py(0)}" width="${chamberL*PS}" height="${W*PS}" stroke-width="${LW.out}"/>`
+        +`<rect x="${px(wall)}" y="${py(wall)}" width="${(chamberL-2*wall)*PS}" height="${(W-2*wall)*PS}" stroke-width="${LW.thin}"/>`
+        +`<rect x="${px((chamberL-mm(DECK_L))/2)}" y="${py((W-mm(DECK_W))/2)}" width="${mm(DECK_L)*PS}" height="${mm(DECK_W)*PS}" fill="#eef3f5" stroke-width="${LW.out}"/>`
+        +`</g>`
+        +ctrLine(px(-6),py(W/2),px(chamberL+6),py(W/2))
+        +ctrLine(px(chamberL/2),py(-6),px(chamberL/2),py(W+6))
+        +dimH(px(0),px(chamberL),py(W)+9,chamberL.toLocaleString(),'±5')
+        +dimV(py(0),py(W),px(0)-9,W.toLocaleString(),'±5')
+        +dimH(px((chamberL-mm(DECK_L))/2),px((chamberL+mm(DECK_L))/2),py(W/2)-3,mm(DECK_L).toLocaleString())
+        +fcf(px(chamberL)+8,py(W/2)-3,'⏥','0.5','A')
+        +`<text stroke="none" x="${px(0)}" y="${py(0)-5}" ${FS(3.4)} font-weight="700" fill="#0f1c21">평면도 (1:44)</text>`;
+      /* ── 부품란 */
+      const bom=[
+        ['01','외피 판재','SS400 3.2t','도장 2회',2],
+        ['02','내피 판재','SUS304 2.0t','#400 연마',2],
+        ['03','단열재','미네랄울 100t 128 kg/m³','—',1],
+        ['04','반사층','AL 반사판 0.5t + 공기층 25','—',1],
+        ['05','열교 차단 스페이서','GFRP t12 @600','—',1],
+        ['06','데크 레일','SS400 L-75×75×6','도장 2회',decks*2],
+        ['07','IR 뱅크 캐리어','SS400 C-100×50×5','내열도장',banks],
+        ['08','IR 램프','2.5 kW 단파장','—',LAMPS],
+        ['09','에어록 셔터','SS400 4.5t + 세라믹 파이버 씰','—',2],
+      ];
+      const BX=252,BY=112;
+      let tbl=`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none">`
+        +`<rect x="${BX}" y="${BY}" width="130" height="${7+bom.length*5.6}"/>`
+        +`<path d="M${BX} ${BY+7}h130"/></g>`
+        +['품번','명칭','재질·규격','표면','수량'].map((h,i)=>
+          `<text stroke="none" x="${BX+[1.4,10,44,98,120][i]}" y="${BY+5}" ${FS(2.4)} fill="#5b6d74">${h}</text>`).join('');
+      bom.forEach((r,i)=>{
+        const y=BY+7+i*5.6+4;
+        r.forEach((c,j)=>{
+          tbl+=`<text stroke="none" x="${BX+[1.4,10,44,98,122][j]}" y="${y}" ${FS(2.5)} fill="#0f1c21"`
+            +(j===4?' text-anchor="end"':'')+`>${esc(String(c))}</text>`;
+        });
+      });
+      const notes=[
+        '1. 표시 없는 일반공차 ISO 2768-mK 를 적용한다.',
+        '2. 용접은 ISO 2553 표기에 따르고, 표시 없는 필릿은 a4 전주용접이다.',
+        '3. 데크 레일 상면은 데이텀 A 에 대해 평면도 0.5 를 만족한다 — 포크 인계면이다.',
+        `4. 단 간격 ${pitch} ±1.5 는 캐리지 두께와 패널 여유가 정한다. 누적공차는 최하단에서 잰다.`,
+        '5. 내피 용접부는 기밀 시험 후 −30 ± 10 Pa 차압을 30 분 유지한다.',
+        '6. 본 도면은 발주자 개념설계의 참고도이며 제작 착수 도면이 아니다 (Not For Construction).',
+      ];
+      const noteSvg=`<path d="M30 248.5h196" stroke="#7b8d94" stroke-width="${LW.thin}"/>`
+        +`<text stroke="none" x="30" y="246" ${FS(3)} font-weight="700" fill="#0f1c21">주기</text>`
+        +notes.map((n,i)=>`<text stroke="none" x="30" y="${253.5+i*4.6}" ${FS(2.55)} fill="#0f1c21">${esc(n)}</text>`).join('');
+      return `<div class="drawing-stage">`+fabSheet(
+          `<text stroke="none" x="30" y="21" ${FS(5)} font-weight="800" fill="#0f1c21">M-002 · ${DECKS}단 밀폐 IR 가열실</text>`
+        + `<text stroke="none" x="30" y="26.5" ${FS(2.8)} fill="#5b6d74">단면 정면도 · 평면도 · 벽체 상세 — 치수 mm</text>`
+        + `<text stroke="none" x="30" y="${FY-5}" ${FS(3.4)} font-weight="700" fill="#0f1c21">단면 정면도 A-A (1:44)</text>`
+        + front + det + plan + tbl + noteSvg
+        + revBlock([
+            {rev:'0',date:'2026-09-03',desc:'개념 배치 — 3단 40등 100 kW',by:'DI'},
+            {rev:'1',date:'2026-09-07',desc:`${DECKS}단으로 상향 — 유리 열응력 7.05 → 4.23 MPa`,by:'DI'},
+          ])
+        + fabTitleBlock({no:'F-002',title:`${DECKS}단 밀폐 IR 가열실`,scale:'1:44 / 1:2.4',sheet:'1 / 1',
+            material:'SS400 · SUS304 · 미네랄울',mass:'계량 확정 (OI-04)',
+            tol:'ISO 2768-mK',tol2:'ISO 1101 · ISO 2553'})
+      )+`</div>`
+      +`<p class="drawing-note"><strong>참고도 (Not For Construction).</strong> 판두께·공차·용접기호·데이텀은
+        개념설계가 세운 가정이며, 상세설계에서 구조·열 해석 결과로 확정한다. 치수는 모두
+        운전 콘솔의 모델 상수에서 나오므로 단수·배치를 바꾸면 이 도면이 함께 따라온다.</p>`;
+    }
+
     /* ── D-501 BC-201 칼날 카세트 인터페이스 상세도 ────────────────────────
        칼날은 소모품인데 히터·열전대·로드셀이 함께 붙어 있어 교체가 분해였다.
        이 시트는 교체 단위의 경계(무엇이 카세트에 담기고 무엇이 슬라이드에
@@ -5485,7 +5771,7 @@
     }
     function renderEngineering(){
       document.querySelectorAll('[data-drawing]').forEach(b=>b.classList.toggle('active',b.dataset.drawing===drawingTab));
-      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else if(drawingTab==='cassette')drawingContent.innerHTML=cassetteDrawing();else if(drawingTab==='compact')drawingContent.innerHTML=compactDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
+      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else if(drawingTab==='chamber')drawingContent.innerHTML=chamberFabDrawing();else if(drawingTab==='cassette')drawingContent.innerHTML=cassetteDrawing();else if(drawingTab==='compact')drawingContent.innerHTML=compactDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
       const sel=$('assemblySelect');if(sel)sel.addEventListener('change',e=>{assemblyIndex=Number(e.target.value)||0;renderEngineering()});
       drawingContent.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{drawingMode=b.dataset.mode;renderEngineering()}));
     }

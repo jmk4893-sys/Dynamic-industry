@@ -95,8 +95,8 @@ class TestRfqDocument(unittest.TestCase):
                 int(n), len(rows),
                 "%s 은 %s개라 적었는데 표에는 %d 행이 있다" % (where, n, len(rows)))
         self.assertIn(
-            "%d개 모듈의 부품도" % len(rows), self.html,
-            "9항 납품물이 세는 모듈 수가 3항의 표와 다르다")
+            "%d개 모듈 <strong class=\"m\">246 품목</strong>의" % len(rows), self.html,
+            "12.2 의 일정 근거가 세는 모듈 수가 3항의 표와 다르다")
 
     def test_the_expansion_clause_matches_the_parallel_study(self):
         """1.4 가 요구하는 확장 여지는 검토서가 실제로 계산한 값이어야 한다.
@@ -153,10 +153,22 @@ class TestRfqDocument(unittest.TestCase):
             self.assertIn("폐기된 선행 개정", self.html,
                           "REV.20 을 인용하면서 그것이 폐기된 개정임을 밝히지 않았다")
 
-    def test_states_the_prior_package_has_no_fabrication_drawings(self):
-        """입찰자가 가장 먼저 알아야 할 사실이다. 빠지면 견적이 틀어진다."""
-        self.assertIn("선행자료에는 제작도면이 없다", self.html)
+    def test_states_what_the_handed_over_drawings_are_worth(self):
+        """입찰자가 가장 먼저 알아야 할 사실이다. 빠지면 견적이 틀어진다.
+
+        한동안 이 자리는 "선행자료에는 제작도면이 없다" 였다. 콘솔이 제작수준
+        표기를 갖춘 시트를 담게 되면서 그 문장이 거짓이 되었는데, 그렇다고
+        "제작도가 있다" 도 참이 아니다 — 해석으로 검증되지 않은 가정값이다.
+        그래서 성격을 규정하는 쪽으로 바꿨다.
+        """
+        self.assertIn("참고도(Not For Construction)", self.html,
+                      "인계 도면의 성격을 규정하지 않았다")
+        self.assertIn("제작 착수\n      도면이 아니다".replace("\n      ", " "),
+                      re.sub(r"\s+", " ", self.html),
+                      "참고도가 제작 착수 도면이 아님을 밝히지 않았다")
         self.assertIn("부품도", self.html)
+        self.assertIn("검증·확정은 본 용역의 범위에 속한다", self.html,
+                      "도면 확정이 용역 범위임을 밝히지 않았다")
 
     def test_cites_the_governing_standards(self):
         for std in ("ISO 12100", "ISO 13849-1", "ISO 13855",
