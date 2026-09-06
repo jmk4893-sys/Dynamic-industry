@@ -23,6 +23,8 @@ import unittest
 
 from . import _path  # noqa: F401
 
+import console_consts
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
 RFQ = ROOT / "docs" / "dg-hk60-rfq.html"
@@ -611,6 +613,145 @@ class TestTheArrangementSheetIsFabricationLevel(unittest.TestCase):
                       "덕트 플랜지 레벨이 갓돌에서 나오지 않는다")
 
 
+R20_SHEETS = {
+    "r20plan":    ("r20PlanDrawing",    "R-601"),
+    "r20carrier": ("r20CarrierDrawing", "R-101"),
+    "r20tandem":  ("r20TandemDrawing",  "R-102"),
+    "r20winder":  ("r20WinderDrawing",  "R-103"),
+    "r20glass":   ("r20GlassDrawing",   "R-104"),
+    "r20cell":    ("r20CellDrawing",    "R-105"),
+    "r20airlock": ("r20AirlockDrawing", "R-106"),
+}
+
+
+class TestTheLegacySheetsSayTheyAreSuperseded(unittest.TestCase):
+    """폐기된 개정의 도면을 그리는 것은 위험하다 — 그래서 규칙이 하나 더 있다.
+
+    R- 계열은 REV.20 의 기계를 그린다. 납품 기계가 아니다. 한 장을 떼어
+    인쇄한 사람에게 그 사실이 전해지지 않으면, 그 도면은 없는 기계의 제작
+    지시가 된다. 그래서 모든 시트가 세 곳에서 같은 말을 해야 한다:
+    표제 옆 도장, 주기 마지막 줄, 개정란.
+
+    그리고 좌표는 전부 R20 에서 나와야 한다. 3D 는 R20 을 읽고 도면도
+    R20 을 읽으므로, 좌표를 바꾸면 둘이 함께 움직인다 — 이 저장소가 계속
+    고쳐 온 실패(그림과 도면이 갈라지는 것)를 여기서 미리 막는다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = CONSOLE.read_text(encoding="utf-8")
+        cls.bodies = {tab: _fn(cls.src, fn) for tab, (fn, _) in R20_SHEETS.items()}
+
+    def test_every_legacy_sheet_is_reachable(self):
+        for tab, (fn, _) in R20_SHEETS.items():
+            self.assertIn(f'data-drawing="{tab}"', self.src, f"{tab} 탭이 없다")
+            self.assertIn(f"drawingTab==='{tab}')drawingContent.innerHTML={fn}()",
+                          self.src, f"{tab} 탭이 시트를 그리지 않는다")
+
+    def test_every_legacy_sheet_says_it_is_superseded_three_times(self):
+        """한 곳만 적으면 그 장만 떼어 인쇄한 사람에게는 아무 말도 안 한 것과 같다."""
+        for tab, body in self.bodies.items():
+            self.assertTrue("r20Stamp(" in body, f"{tab}: 표제 옆 폐기 도장이 없다")
+            self.assertTrue("R20_NFC" in body, f"{tab}: 주기에 폐기 개정 문구가 없다")
+            self.assertTrue("revBlock(R20_REV)" in body, f"{tab}: 개정란이 R20 이력을 쓰지 않는다")
+        self.assertIn("SUPERSEDED · REV.20", self.src, "폐기 도장 문구가 없다")
+        self.assertIn("납품 기계는 REV.21C", self.src, "무엇이 납품 기계인지 밝히지 않는다")
+
+    def test_every_legacy_sheet_uses_the_fabrication_frame(self):
+        for tab, (fn, no) in R20_SHEETS.items():
+            body = self.bodies[tab]
+            for token, why in (("fabSheet(", "A3 도면틀"),
+                               ("fabTitleBlock({", "ISO 7200 표제란"),
+                               (f"no:'{no}'", "도면번호")):
+                self.assertTrue(token in body, f"{tab}: {why} 이 없다")
+
+    def test_the_legacy_coordinates_come_from_one_place(self):
+        """좌표를 도면에 다시 적으면 3D 와 갈라진다 — 그날 R- 도면은 다른 기계를 그린다.
+
+        시트마다 읽어야 할 상수가 다르다. 배치 좌표는 R20 이 들고, 권취
+        계통은 오래전부터 WR_/HATCH_/BS_ 가 들고 있다. 어느 쪽이든 이름이
+        있는 상수여야 하고, 그 이름을 3D 도 같이 읽어야 대조가 성립한다.
+        """
+        need = {
+            "r20plan":    ["R20.", "rev20Length()"],
+            "r20carrier": ["R20.railL", "R20.railY", "TDM_IN", "TDM_OUT"],
+            "r20tandem":  ["R20.knifeColH", "R20.knifeBeamZ", "HKB_X", "HKS_X"],
+            "r20winder":  ["WR_DRUM_X", "WR_WEB_Z", "HATCH_W", "BS_BIN_Y", "EJECT_PHASES"],
+            "r20glass":   ["R20.gcX0", "R20.gcYA", "R20.dockX"],
+            "r20cell":    ["R20.cvcA", "R20.cellCx", "R20.gateX"],
+            "r20airlock": ["R20.alInOuter", "R20.hcCx", "carriageGeometry()"],
+        }
+        for tab, tokens in need.items():
+            body = self.bodies[tab]
+            for tok in tokens:
+                self.assertTrue(tok in body, f"{tab}: {tok} 를 읽지 않는다")
+        # 유도식 자체가 남아 있어야 한다 — 값으로 접어 두면 상수를 바꿔도 안 따라온다
+        derived = {
+            "r20carrier": ["rx0=r20RailX0()", "rx1=r20RailX1()", "TR=r20CarrierTravel()"],
+            "r20plan":    ["rx0=r20RailX0()", "rx1=r20RailX1()"],
+            "r20winder":  ["SPARE_Z=WR_WEB_Z+.62", "HRS=ROLL_FULL_PANELS/MODEL.netTarget"],
+            "r20airlock": ["g=carriageGeometry()"],
+        }
+        for tab, forms in derived.items():
+            flat = self.bodies[tab].replace(" ", "")
+            for form in forms:
+                self.assertTrue(form.replace(" ", "") in flat,
+                                f"{tab}: {form} 이 값으로 접혀 있다")
+        # 3D 쪽도 같은 상수를 읽어야 도면과 화면이 함께 움직인다
+        for token, why in (("box(V(R20.railCx,y,R20.railBedZ)", "주행축 레일"),
+                           ("gantry(R20.bridgeCx,R20.bridgeL", "탠덤 브리지"),
+                           ("fenceSegment(R20.fenceX0", "방책"),
+                           ("const cx=R20.hcCx,L=R20.hcL", "가열실"),
+                           ("conveyor(R20.cellCx,R20.cellL", "셀 컨베이어"),
+                           ("column(x,y,R20.gcColH", "유리 캐리지")):
+            self.assertTrue(token in self.src, f"3D 의 {why} 가 R20 을 읽지 않는다")
+
+    def test_the_rail_gauge_sits_under_the_carrier_wheels(self):
+        """단면을 그려 보고서야 드러난 것 — 레일이 y ±1,500 인데 주행륜은 ±840 이었다.
+
+        캐리어가 레일에 닿지 않는 그림이었다. 궤간을 캐리어 폭에서 유도해
+        둘이 따로 움직일 수 없게 한다.
+        """
+        self.assertIn("railY:CARRIER_W/2+.06", self.src.replace(" ", ""),
+                      "궤간이 캐리어 폭에서 나오지 않는다")
+        gauge = console_consts.const("R20.railY")
+        wheel = console_consts.const("CARRIER_W") / 2 + 0.06
+        self.assertAlmostEqual(gauge, wheel, places=6, msg="궤간과 주행륜 위치가 다르다")
+        # 레일 상면과 바퀴 하단이 만나야 한다 (바퀴 중심 EL 720 · 반경 160)
+        top = console_consts.const("R20.railTopZ") + console_consts.const("R20.railTopH") / 2
+        self.assertAlmostEqual(top, 0.72 - 0.16, places=6,
+                               msg="레일 상면이 주행륜 하단과 만나지 않는다")
+
+    def test_each_legacy_sheet_says_what_replaced_it(self):
+        """폐기 도면의 값은 '무엇이 대신하는가' 다. 그것이 없으면 그냥 옛 그림이다."""
+        for tab, body in self.bodies.items():
+            self.assertTrue("REV.21C" in body, f"{tab}: 무엇이 대신하는지 적지 않는다")
+        for tab, phrase in (("r20carrier", "VT-101 고정 진공테이블"),
+                            ("r20tandem", "KG-101"),
+                            ("r20winder", "RH-201 모노레일"),
+                            ("r20glass", "고정 5단 랙"),
+                            ("r20airlock", "승강 포크 문형"),
+                            ("r20cell", "인터록은 넘기지 않는다")):
+            self.assertTrue(phrase in self.bodies[tab],
+                            f"{tab}: 대체물 '{phrase}' 를 적지 않는다")
+
+    def test_the_arrangement_sheet_accounts_for_the_whole_length(self):
+        """R-601 은 53,100 이 18,760 이 된 경위를 도면 하나로 말해야 한다."""
+        body = self.bodies["r20plan"]
+        for token in ("rev20Length()", "scopedLength()", "compactLength()"):
+            self.assertTrue(token in body, f"전장 회계에 {token} 가 없다")
+        self.assertTrue("const ST=[" in body, "구간표가 없다")
+        self.assertTrue("+ plan + elev + tbl + acc + noteSvg" in body,
+                        "평면도·입면도·구간표·전장 회계가 시트에 조립되지 않는다")
+
+    def test_the_legacy_sheets_never_read_the_layout_the_screen_shows(self):
+        """R- 도면은 REV.20 을 그린다 — 화면이 압축·트윈이어도 마찬가지다."""
+        for tab, body in self.bodies.items():
+            for bad in ("LC()", "cCrownTop()", "cDuctZ()", "cForkHalf()",
+                        "twinView()", "compactView()"):
+                self.assertFalse(bad in body, f"{tab} 이 활성 배치({bad})를 읽는다")
+
+
 class TestTheSpecificationAgreesAboutWhatWasHandedOver(unittest.TestCase):
     """1.2 가 '제작도면이 없다' 고 적어 두면 F-002 가 그 문장을 거짓으로 만든다."""
 
@@ -631,18 +772,38 @@ class TestTheSpecificationAgreesAboutWhatWasHandedOver(unittest.TestCase):
 
         목록을 손으로 적어 두면 시트를 한 장 더 그린 날 사양서만 옛 목록으로
         남는다 — 그래서 목록을 콘솔의 표제란에서 뽑아 대조한다.
+
+        시트는 두 계열이다. 납품 배치(F- · D-)는 견적 대상이고, 폐기된 선행
+        개정(R-)은 아니다. 둘을 한 목록에 섞으면 입찰자가 폐기 배치를 견적에
+        넣거나, 반대로 인계 목록에서 빠뜨린다. 계열별로 따로 확인한다.
         """
         console = CONSOLE.read_text(encoding="utf-8").replace(" ", "")
         sheets = sorted(set(re.findall(r"fabTitleBlock\(\{no:'([A-Z]-\d+)'", console)))
-        self.assertGreaterEqual(len(sheets), 6, "콘솔에 제작수준 시트가 없다")
-        clause = self.rfq[self.rfq.index("인계되는 도면은 참고도"):][:2000]
-        for no in sheets:
+        delivered = [n for n in sheets if not n.startswith("R-")]
+        legacy = [n for n in sheets if n.startswith("R-")]
+        self.assertGreaterEqual(len(delivered), 6, "콘솔에 납품 배치 제작수준 시트가 없다")
+        self.assertGreaterEqual(len(legacy), 6, "콘솔에 REV.20 제작도 계열이 없다")
+
+        clause = self.rfq[self.rfq.index("인계되는 도면은 참고도"):][:2200]
+        for no in delivered:
             self.assertIn(no, clause, f"1.2 가 {no} 를 참고도로 부르지 않는다")
         # D-501 은 fabTitleBlock 을 쓰지 않는 상세도지만 성격은 같다
         self.assertIn("D-501", clause, "1.2 가 칼날 카세트 상세도를 부르지 않는다")
-        for no in sheets + ["D-501"]:
-            self.assertIn(no, self.rfq[self.rfq.index("참고도가 있는 것은"):][:600],
-                          f"12.2 의 부품도 물량 근거가 {no} 를 빠뜨린다")
+
+        # 폐기 계열은 따로 밝히고, 견적 대상이 아님을 못 박아야 한다
+        legacy_clause = self.rfq[self.rfq.index("선행 개정(REV.20)의 도면도"):][:2200]
+        for no in legacy:
+            self.assertIn(no, legacy_clause, f"1.2 가 {no} 를 선행 개정 도면으로 밝히지 않는다")
+        self.assertIn("견적 대상이 아니다", legacy_clause,
+                      "R- 계열이 견적 대상이 아님을 못 박지 않았다")
+
+        # 12.2 의 부품도 물량 근거는 납품 계열만 센다
+        volume = self.rfq[self.rfq.index("참고도가 있는 것은"):][:900]
+        for no in delivered + ["D-501"]:
+            self.assertIn(no, volume, f"12.2 의 부품도 물량 근거가 {no} 를 빠뜨린다")
+        for no in legacy:
+            self.assertNotIn(no, volume,
+                             f"12.2 가 폐기 계열 {no} 를 납품 물량으로 센다")
 
     def test_the_clause_says_what_the_foundation_sheet_does_not_fix(self):
         """앵커 위치만 정한 도면을 받아 바로 타설하면 그 기초는 다시 깬다."""

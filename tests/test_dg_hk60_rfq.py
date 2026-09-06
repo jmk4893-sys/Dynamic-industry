@@ -76,25 +76,50 @@ class TestRfqDocument(unittest.TestCase):
             )
 
     def test_the_module_table_is_the_delivered_scope_not_the_prior_revision(self):
-        """모듈 번호는 이어지지 않아도 된다 — 이어지지 않는 것이 정보다.
+        """표는 값을 매기는 목록이다 — 값이 없는 행은 목록에 없어야 한다.
 
-        압축 배치는 Rev.20 의 17 모듈 가운데 넷(M-010 VOC · M-014 데이터 ·
-        M-015 팔레타이징 · M-016 RTO)을 발주자 설비로 넘겼다. 표를 M-001 부터
-        연번으로 다시 매기면 그 사실이 지워지고, 입찰자는 어느 모듈이 빠졌는지
-        알 수 없게 된다. 그래서 번호는 유지하고 납품/경계 밖을 나누어 적는다.
+        한동안 Rev.20 의 17 모듈을 전부 싣고 넷(M-010 VOC · M-014 데이터 ·
+        M-015 팔레타이징 · M-016 RTO)에 '공급범위 밖' 을 달아 두었다. 빠진
+        것을 입찰자가 알아야 한다는 이유였는데, 값이 '—' 인 행은 어느 쪽으로든
+        오해를 만든다. 발주자 결정으로 넷을 뺐다.
+
+        빼면서 잃으면 안 되는 것이 둘이다. 하나는 번호다 — M-001 부터 연번으로
+        다시 매기면 넷이 있었다는 사실이 지워진다. 번호의 구멍이 그 자리를
+        지킨다. 다른 하나는 경계다 — 표가 말하지 않게 됐으므로 3.4항과 M-017
+        이 대신 말해야 한다. 인터록은 넘어가지 않았기 때문이다.
         """
         rows = re.findall(r'<tr><td class="k">(M-\d+)</td>', self.html)
         self.assertEqual(len(rows), len(set(rows)), "모듈 번호가 중복된다")
         nums = sorted(int(r.split("-")[1]) for r in rows)
-        self.assertEqual(nums, list(range(1, 18)),
-                         "M-001~M-017 이 모두 표에 있어야 한다: %s" % rows)
-        # 공급범위 밖 넷은 표 안에서 따로 구분되어야 한다
-        self.assertIn("공급범위 밖 — 발주자 설비", self.html,
-                      "표가 납품품과 발주자 설비를 구분하지 않는다")
-        for out in ("M-010", "M-015", "M-016"):
-            block = self.html.split("공급범위 밖 — 발주자 설비")[1]
-            self.assertIn(out, block, f"{out} 이 공급범위 밖으로 표시되지 않았다")
-        # 그리고 그 사실을 문장으로도 밝혀야 한다
+        gone = [10, 14, 15, 16]
+        self.assertEqual(nums, [n for n in range(1, 18) if n not in gone],
+                         "표가 납품 13 모듈이 아니다: %s" % rows)
+        # 번호를 다시 매기면 안 된다 — 구멍이 정보다
+        self.assertNotIn(17, [n for n in nums if n > 13],
+                         "번호를 연번으로 다시 매겼다") if len(nums) != 13 else None
+        self.assertIn(17, nums, "M-017 경계 인터페이스반이 표에서 사라졌다")
+        # 뺀 넷은 표의 행으로 다시 나타나면 안 된다
+        for out in ("M-010", "M-014", "M-015", "M-016"):
+            self.assertNotIn(f'<tr><td class="k">{out}</td>', self.html,
+                             f"{out} 이 다시 표의 행으로 들어왔다")
+        # 값이 없는 행이 모듈표에 남아 있으면 안 된다
+        table = re.search(r"<caption>납품 모듈.*?</table>", self.html, re.S)
+        self.assertIsNotNone(table, "납품 모듈표를 찾지 못했다")
+        self.assertNotIn('<td class="num">—</td>', table.group(0),
+                         "치수가 '—' 인 행이 모듈표에 남아 있다")
+        self.assertNotIn("<tfoot", table.group(0),
+                         "모듈표에 공급범위 밖 꼬리가 남아 있다")
+        # 표가 말하지 않게 된 경계를 문장과 3.4 항이 대신 말해야 한다
+        self.assertIn("이 표에 없는 것은 공급범위에 없다", self.html,
+                      "표의 범위를 문장으로 못 박지 않았다")
+        boundary = re.search(r"<caption>공급범위 경계 3개소</caption>.*?</table>",
+                             self.html, re.S)
+        self.assertIsNotNone(boundary, "3.4 경계 표가 사라졌다")
+        for term in ("VOC_ABATE_READY", "SHREDDER_READY", "STACK_PRESENT"):
+            self.assertIn(term, boundary.group(0),
+                          f"{term} — 설비를 넘겨도 인터록은 넘기지 않는다는 것이 "
+                          "경계 표에서 사라졌다")
+        # 그리고 Rev.20 모듈표를 그대로 쓰지 않는다는 경고는 남아야 한다
         self.assertIn("납품 기계에\n      존재하지 않는다", self.html.replace("</strong>", ""),
                       "Rev.20 모듈표를 그대로 쓰지 않는다는 경고가 없다")
 

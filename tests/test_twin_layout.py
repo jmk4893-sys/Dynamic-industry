@@ -255,13 +255,29 @@ class TestThePictureSaysWhatItIs(unittest.TestCase):
         self.assertNotIn("17.8,y:0,z:1.9},az:compactView()", self.src,
                          "옛 삼항 좌표가 남아 있다")
 
-    def test_the_station_names_are_always_on_in_the_twin(self):
-        """라벨은 기본이 꺼져 있다. 이름 없는 그림이 탑 둘을 탠덤으로 읽게 했다."""
-        self.assertIn("functionlabel3(text,p,color=C.white,always=false)",
-                      self.src.replace(" ", "").replace("\n", ""))
-        for frag in ("C.heat,twinView())", "C.glass,twinView())"):
-            self.assertIn(frag, self.b, "스테이션 이름이 트윈에서 항상 뜨지 않는다")
-        self.assertIn("C.teal,!!opt.tag)", self.b, "셀 이름이 항상 뜨지 않는다")
+    def test_no_label_gets_to_ignore_the_button(self):
+        """라벨은 전부 '부품 라벨' 버튼에 달려 있다 — 예외를 두지 않는다.
+
+        한동안 트윈의 스테이션 이름 넷만 always 로 두어 항상 띄웠다. 켜 둔
+        라벨은 화면을 글자밭으로 만들고, 예외가 하나 있으면 다음 배치에서
+        그 예외만 안 고쳐진다. 이름은 형상이 말한다 — 바닥 분기 도색과 셀
+        갠트리 옆면 도색은 기계에 실제로 칠하는 것이라 버튼과 무관하다.
+        """
+        flat = self.src.replace(" ", "").replace("\n", "")
+        self.assertIn("functionlabel3(text,p,color=C.white){if(!showLabels)return;", flat,
+                      "label3 이 버튼을 우회할 수 있는 인자를 다시 갖고 있다")
+        self.assertIn("labels.push({text,x:q.x,y:q.y,z:q.z,color})", flat,
+                      "라벨이 우회 표식을 다시 들고 다닌다")
+        self.assertIn("labels.sort((a,b)=>a.z-b.z);", self.src,
+                      "정렬이 우회 표식을 다시 본다")
+        for frag in ("C.heat,twinView())", "C.glass,twinView())", "C.teal,!!opt.tag)"):
+            self.assertNotIn(frag, self.b, f"{frag} 라벨이 버튼을 우회한다")
+
+    def test_the_twin_still_says_which_cell_is_which_without_labels(self):
+        """라벨을 껐으므로 병렬이라는 사실은 도색이 말해야 한다."""
+        self.assertIn("decalText(`DL-101 ${opt.tag}`", self.src,
+                      "셀 갠트리 옆면 도색이 없다 — 라벨을 끄면 셀 구분이 사라진다")
+        self.assertIn("if(twinView()){", self.b, "바닥 분기 도색이 없다")
 
     def test_the_cell_labels_say_which_of_two(self):
         """'DL-101' 만으로는 두 개가 있다는 사실이 안 읽힌다."""

@@ -224,7 +224,7 @@ LEAVES = [
     Leaf("BELT_SPEED_OK",      COMM, 0, "WO-302 셀 벨트 계량기"),
     Leaf("GLASS_MASS",         AI, 2, "WO-303 유리 캐리지 계량대"),
     Leaf("RESIDUAL_EVA",       COMM, 0, "RE-101 잔류 EVA 분광계"),
-    Leaf("LOT_COUNT_REACHED",  COMM, 0, "이력 서버 HS-101"),
+    Leaf("LOT_COUNT_REACHED",  COMM, 0, "PLC-101반", "PLC 가 WI-101 계수로 직접 센다 — 이력 서버는 옵션"),
     # ── 공정 지능 ───────────────────────────────────────────────────────
     # 고정 레시피 한 벌로 모든 패널을 처리하면 쉬운 패널에서 시간을 버리고
     # 어려운 패널에서 유리를 깬다. 이미 달려 있는 로드셀을 닫힌 루프로 묶는다.
@@ -233,27 +233,27 @@ LEAVES = [
     Leaf("RECIPE_VALIDATED",   COMM, 0, "PLC-101반"),
     Leaf("CUT_LENGTH_TOTAL",   COMM, 0, "PLC-101반", "칼날별 누적 절단 연장"),
     Leaf("QI_DONE",            COMM, 0, "QI 상부 RGB 카메라"),
-    Leaf("TRACE_DB_OK",        COMM, 0, "이력 서버 HS-101"),
-    Leaf("OPC_UA_LINK_OK",     COMM, 0, "이력 서버 HS-101"),
+    Leaf("TRACE_DB_OK",        COMM, 0, "PLC-101반", "OPC UA 서버는 납품품 · 이력 DB 클라이언트는 발주자/옵션"),
+    Leaf("OPC_UA_LINK_OK",     COMM, 0, "PLC-101반", "링크 상태는 서버 쪽에서 안다"),
     Leaf("STOP_REASON_CODED",  COMM, 0, "PLC-101반", "ISO 22400 정지 사유 분류"),
     # ── 무인 연속운전 ───────────────────────────────────────────────────
-    Leaf("PL_IN_STACK_PRESENT", DI, 2, "PL-101 자동 디스태커"),
-    Leaf("PL_OUT_SPACE_OK",    DI, 2, "PL-201 자동 스태커"),
+    Leaf("PL_IN_STACK_PRESENT", DI, 2, "경계 인터페이스반 BJ-101", "발주자 디스태커 픽업 스테이션 접점"),
+    Leaf("PL_OUT_SPACE_OK",    DI, 2, "경계 인터페이스반 BJ-101", "발주자 스태커 여유 접점"),
     Leaf("KC_MAGAZINE_READY",  DI, 4, "KC-101 칼날 카세트 매거진"),
     Leaf("KC_ARM_HOME",        DI, 2, "KC-101 칼날 카세트 매거진"),
     Leaf("CARRIER_PARKED",     DI, 1, "나이프 X축 원점·과주행센서×2"),
-    Leaf("AGV_DOCKED",         COMM, 0, "AD-101 AGV 도킹 스테이션"),
-    Leaf("THERMAL_CAM_OK",     COMM, 0, "무인 감시 열화상 카메라×3"),
-    Leaf("REMOTE_ACK",         COMM, 0, "RC-101 원격 감시 콘솔"),
+    Leaf("AGV_DOCKED",         COMM, 0, "경계 인터페이스반 BJ-101", "AGV 귀속 미정 (OI) — 경계에서 도킹 확인만 받는다"),
+    Leaf("THERMAL_CAM_OK",     COMM, 0, "경계 인터페이스반 BJ-101", "발주자 무인 감시 카메라 상태"),
+    Leaf("REMOTE_ACK",         COMM, 0, "PLC-101반", "원격 콘솔 RC-101 은 옵션 — 확인 접점은 HMI 망에서 받는다"),
     Leaf("BIN_LEVEL_OK",       AI, 3, "셀/EVA 배출슈트 레벨센서×2"),
     # ── 환경·인증 ───────────────────────────────────────────────────────
     # 200 kW 배기열을 그대로 버리고 있었다. RTO 로 태우고 그 열로 급기를
     # 예열하면 같은 배기 처리가 에너지 회수가 된다.
-    Leaf("RTO_TEMP_OK",        TC, 3, "RTO-101 축열식 열산화로"),
-    Leaf("RTO_VALVE_OK",       DI, 4, "RTO-101 축열식 열산화로"),
-    Leaf("HX_OUTLET_TEMP",     TC, 2, "HX-101 배기–급기 열교환기"),
-    Leaf("CEMS_OK",            COMM, 0, "CEMS-101 연속배출감시"),
-    Leaf("TOC_HIGH",           AI, 1, "CEMS-101 연속배출감시"),   # 경보 신호 — 허가에는 부정으로 들어간다
+    Leaf("RTO_TEMP_OK",        DI, 1, "경계 인터페이스반 BJ-101", "발주자 RTO 연소온도 도달 접점 — 연소실 열전대는 발주자 공급"),
+    Leaf("RTO_VALVE_OK",       DI, 1, "경계 인터페이스반 BJ-101", "발주자 RTO 절환밸브 정상 접점"),
+    Leaf("HX_OUTLET_TEMP",     AI, 1, "경계 인터페이스반 BJ-101", "발주자 열교환기 출구온도 4–20 mA"),
+    Leaf("CEMS_OK",            COMM, 0, "경계 인터페이스반 BJ-101", "발주자 CEMS 건전성"),
+    Leaf("TOC_HIGH",           AI, 1, "경계 인터페이스반 BJ-101", "발주자 CEMS TOC 4–20 mA"),   # 경보 — 허가에는 부정으로 들어간다
     Leaf("FLAME_DETECT",       FDI, 2, "가열실 불꽃감지기×2"),
     Leaf("N2_PRESSURE_OK",     DI, 1, "NP-101 질소 퍼지 유닛"),
 ]
@@ -421,17 +421,11 @@ DRIVES = [
     Drive("ST-101", "적층 신호등·부저",     FDO, 4, "F-DO 직결", "적층 신호등·부저 ST-101/102"),
     # 무인 연속운전
     Drive("SV-405", "나이프 X축 이송",        COMM, 0, "STO 2CH", "나이프 X축 절대치 엔코더"),
-    Drive("SV-701", "PL-101 디스태커 승강",  COMM, 0, "STO 2CH", "PL-101 자동 디스태커"),
-    Drive("SV-702", "PL-201 스태커 승강",    COMM, 0, "STO 2CH", "PL-201 자동 스태커"),
     Drive("SV-801", "KC-101 카세트 교환암",  COMM, 0, "STO 2CH", "KC-101 카세트 교환암"),
     # 스프링으로 잠기고 공압으로 풀린다 — 공압이 빠지면 카세트가 물린 채 남는다.
     Drive("CY-405", "카세트 쐐기클램프",     DO, 4, "스프링 잠금", "카세트 쐐기 클램프×4"),
     Drive("CY-406", "카세트 냉각 퍼지밸브",  DO, 2, "덤프밸브", "카세트 냉각 퍼지밸브×2"),
-    Drive("MT-1001", "AGV 도킹 로크",        DO, 2, "접촉기",  "AD-101 AGV 도킹 스테이션"),
     # 환경·인증
-    Drive("MT-905", "RTO 급기팬",            DO, 2, "접촉기",  "RTO-101 축열식 열산화로"),
-    Drive("CY-701", "RTO 절환밸브",          DO, 4, "덤프밸브", "RTO-101 축열식 열산화로"),
-    Drive("BR-101", "RTO 보조버너",          AO, 1, "주차단밸브", "RTO-101 축열식 열산화로"),
     Drive("CY-702", "질소 퍼지 밸브",        FDO, 2, "F-DO 직결", "NP-101 질소 퍼지 유닛"),
     # 계량
     Drive("MT-1101", "WI-101 계량 컨베이어", DO, 2, "접촉기",  "WI-101 투입 계량 컨베이어"),

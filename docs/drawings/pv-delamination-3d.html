@@ -297,7 +297,10 @@
 
     /* -------------------------------------------------------------------- drawings */
     .drawing-dialog{width:min(1240px,calc(100% - 24px));max-height:92vh}
-    .drawing-toolbar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+    .drawing-toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+    /* 계열 구분표 — REV.20 시트는 폐기 개정이라 버튼만으로는 구별되지 않는다 */
+    .tab-group{margin-left:6px;padding:3px 9px;border-radius:999px;border:1px solid var(--flag-line,#e3bcbc);
+      background:var(--flag-sunk,#fbeeee);color:var(--red);font-size:11px;font-weight:700;letter-spacing:.2px}
     .drawing-toolbar button.active{border-color:var(--brand2);color:var(--brand-ink);background:var(--btn-on)}
     /* the sheet stays paper-white in both themes — it is a drawing, and it prints */
     .drawing-stage{border:1px solid var(--line2);border-radius:var(--r2);background:var(--sheet);padding:13px;overflow:auto}
@@ -595,6 +598,14 @@
         <button type="button" data-drawing="cassette">칼날 카세트 상세</button>
         <button type="button" data-drawing="compact">압축 배치</button>
         <button type="button" data-drawing="foundation">기초·앵커 배치도</button>
+        <span class="tab-group">선행 REV.20 (폐기)</span>
+        <button type="button" data-drawing="r20plan">REV.20 전체 배치도</button>
+        <button type="button" data-drawing="r20carrier">이동 캐리어·주행축</button>
+        <button type="button" data-drawing="r20tandem">고정 탠덤 브리지</button>
+        <button type="button" data-drawing="r20winder">2축 권취·롤 반출</button>
+        <button type="button" data-drawing="r20glass">유리 저장 캐리지</button>
+        <button type="button" data-drawing="r20cell">셀/EVA 인계·경계</button>
+        <button type="button" data-drawing="r20airlock">에어록·캐리지 순환</button>
         <button type="button" id="printDrawingButton">현재 도면 인쇄</button>
       </div>
       <div id="drawingContent" aria-live="polite"></div>
@@ -959,6 +970,55 @@
     const SCOPED_X0=0,SCOPED_X1=29.3;    // 환경·후속·팔레타이징을 뗀 나머지
     const rev20Length=()=>REV20_X1-REV20_X0;
     const scopedLength=()=>SCOPED_X1-SCOPED_X0;
+    /* ── REV.20 배치 상수 ────────────────────────────────────────────
+       폐기된 선행 개정이다. 그런데 콘솔이 계속 그리고 있고 제작도(R- 계열)도
+       그린다 — 두 배치를 나란히 놓고 보려면 옛것도 그려져 있어야 하기 때문이다.
+
+       그 좌표가 지금까지 3D 함수 안에 숫자로 흩어져 있었다. 도면이 그 숫자를
+       다시 적으면 둘 중 하나만 고쳐지는 날이 오고, 그날 R- 도면은 화면과 다른
+       기계를 그린다. 한 곳에서 낸다.
+
+       압축 배치의 CST 와 나란한 물건이다. 다른 점은 이쪽이 '패널이 움직이는'
+       기계라는 것이고, 그래서 주행축(rail*)이 사슬의 중심에 있다. */
+    const R20={
+      x0:REV20_X0,x1:REV20_X1,                        // 끝에서 끝까지
+      fenceX0:5.70,fenceX1:30.50,fenceY:3.62,         // 방호구획
+      /* VC-101 이동 진공 캐리어 주행축 — 이 기계의 정의 */
+      /* 궤간은 캐리어 주행륜이 정한다 — 바퀴는 y ±(CARRIER_W/2 + 60) 에 있다.
+         한동안 레일만 y ±1,500 에 그려져 있었다. 그림에서는 레일이 넓게 뻗어
+         보기 좋았지만, 단면을 그려 보니 캐리어가 레일에 닿지 않았다.
+         레일 상면(480 + 160/2 = 560)이 바퀴 하단(720 − 160 = 560)과 만난다. */
+      railCx:17.70,railL:11.20,railY:CARRIER_W/2+.06,
+      railBedZ:.31,railBedH:.18,railTopZ:.48,railTopH:.16,
+      railPost0:12.40,railPost1:23.10,railPitch:1.34,driveX:12.10,
+      carrierZ:.78,                                   // 캐리어 데크 상면
+      fleetHeat:DECKS,fleetProcess:1,fleetReturn:1,fleetSpare:1,
+      /* FGT-201 고정 HKB/HKS 탠덤 브리지 — 칼날이 X 로 움직이지 않는다 */
+      bridgeCx:17.80,bridgeL:10.20,
+      knifePostY:1.78,knifeColH:3.36,knifeBeamZ:3.50,
+      /* 가열실 — 포크가 아니라 에어록으로 캐리지가 드나든다.
+         alInOuter~alOutOuter 가 두 에어록의 외문·내문이고, 그 사이가 격리실이다. */
+      hcCx:9.20,hcL:5.60,hcPostY:1.15,
+      alInOutside:3.00,alInVest:5.55,alRack:9.20,alOutVest:12.35,alOutDone:15.10,
+      alInOuter:6.16,alInInner:6.58,alOutInner:11.82,alOutOuter:12.24,
+      /* GC-301 유리 저장 캐리지 2대 교대 + 수평 도크 */
+      gcYA:2.55,gcYB:5.05,gcX0:26.05,gcX1:28.75,gcColH:2.86,gcRailZ:.34,
+      dockX:[25.30,27.40,29.50],dockRollZ:[2.15,3.10],dockLegY:[1.35,6.30],
+      /* CVC-301 셀/EVA 무낙하 인계 — 경사 컨베이어 한 대와 수평 한 대 */
+      cvcA:{x:TDM_OUT+1.2,y:0,z:1.60},cvcB:{x:25.00,y:-2.35,z:1.16},
+      cellCx:30.55,cellL:11.40,cellY:-2.35,cellZ:1.12,cellW:1.50,gateX:35.25,
+      /* QI-301 검사 · RJ-301 리젝트 */
+      qiX:22.35,rjX:23.80,rjY:5.36,
+      /* 투입·유틸리티·안전 */
+      infeedCx:3.00,infeedL:6.00,plcX:13.00,plcY:-3.30,
+      towerX:[20.35,30.20],curtainX:[5.72,30.48],
+      /* 배기 헤더 — 라인 전 길이를 y +2,900 위로 지난다 */
+      ductY:2.90,ductZ:5.56,ductX0:9.40,ductX1:38.40,
+      /* 배기 후처리 열차 — 압축 배치에서 발주자 설비로 넘어간 구간 */
+      scrubX:38.80,hxX:HX_X,rtoX:RTO_X,stackX:STACK_X,stackTop:8.10,
+    };
+    const r20RailX0=()=>R20.railCx-R20.railL/2, r20RailX1=()=>R20.railCx+R20.railL/2;
+    const r20CarrierTravel=()=>TDM_OUT-TDM_IN;        // 탠덤 통과 행정
     /* ── 외장 기준선 ────────────────────────────────────────────────────
        비싼 기계와 잘 만든 리그의 차이는 부품이 아니라 기준선이다. 높이가
        제각각인 덩어리를 하나의 몸체로 묶고, 수평 사건을 네 개만 둔다 —
@@ -1649,11 +1709,16 @@
       else addCaster(center,axis==='x'?length:radius*2,axis==='y'?length:radius*2,-radius,opt.alpha??1);
     }
     function plateQuad(x0,x1,y0,y1,z,color,alpha=1){poly([V(x0,y0,z),V(x1,y0,z),V(x1,y1,z),V(x0,y1,z)],color,alpha,rgba(C.black,.4),.7)}
-    /* 라벨은 기본이 꺼져 있다. 그런데 트윈에서는 이름 없는 그림이 거짓말을
-       한다 — 키 5,880 짜리 가열실과 5,680 짜리 냉각 랙이 탠덤 2대로 읽힌다.
-       스테이션 이름 넷만 always 로 두어 항상 뜨게 하고, 나머지는 그대로
-       버튼에 맡긴다. 전부 켜면 글자밭이 되어 오히려 안 읽힌다. */
-    function label3(text,p,color=C.white,always=false){if(!showLabels&&!always)return;const q=project(p);if(q)labels.push({text,x:q.x,y:q.y,z:q.z,color,always})}
+    /* 라벨은 전부 '부품 라벨' 버튼에 달려 있다 — 예외를 두지 않는다.
+
+       한동안 트윈의 스테이션 이름 넷(HC-101 · GC-101 · DL-101 A/B)만 always
+       로 두어 항상 띄웠다. 이름 없는 그림이 키 큰 가열실과 냉각 랙을 '탠덤
+       2대' 로 읽게 한다는 지적 때문이었다. 그 걱정은 라벨이 아니라 형상으로
+       풀었다 — 바닥의 Y 자 분기 도색과 셀 갠트리 옆면의 'DL-101 A/B' 도색은
+       라벨과 달리 기계에 실제로 칠하는 것이고, 어느 각도에서도 읽힌다.
+       그래서 상시 라벨은 뗐다. 켜 둔 라벨은 화면을 글자밭으로 만들고,
+       예외가 하나 있으면 다음 배치에서 그 예외만 안 고쳐진다. */
+    function label3(text,p,color=C.white){if(!showLabels)return;const q=project(p);if(q)labels.push({text,x:q.x,y:q.y,z:q.z,color})}
     function drawPrimitive(p){
       ctx.save();ctx.globalAlpha=p.alpha??1;
       if(p.type==='poly'){ctx.beginPath();ctx.moveTo(p.points[0].x,p.points[0].y);for(let i=1;i<p.points.length;i++)ctx.lineTo(p.points[i].x,p.points[i].y);ctx.closePath();ctx.fillStyle=p.fill;ctx.fill();if(p.stroke){ctx.globalAlpha=(p.alpha??1)*(p.edgeFade??1);ctx.strokeStyle=p.stroke;ctx.lineWidth=p.lineWidth;ctx.lineJoin='round';ctx.stroke()}}
@@ -1665,7 +1730,7 @@
        first, so the callouts you most need stay put while the rest give way. */
     function drawLabels(){
       if(!labels.length)return;
-      labels.sort((a,b)=>(b.always?1:0)-(a.always?1:0)||a.z-b.z);   // 이름표가 먼저 자리를 잡는다
+      labels.sort((a,b)=>a.z-b.z);                 // 가까운 부품이 먼저 자리를 잡는다
       ctx.save();
       ctx.font='600 11px system-ui,-apple-system,"Noto Sans KR",sans-serif';
       ctx.textAlign='left';ctx.textBaseline='middle';
@@ -2314,7 +2379,7 @@
       cylinder(V(cx,2.05,lid+.835),r,1.7,'y',C.steel2,12);
     }
     function preheatTunnel(){
-      const cx=9.2,L=5.6,x0=cx-L/2,x1=cx+L/2,z0=HC_Z0,dz=HC_DZ,liftX=carriageFocus?3.4:5.55,exitX=carriageFocus?15:12.35;
+      const cx=R20.hcCx,L=R20.hcL,x0=cx-L/2,x1=cx+L/2,z0=HC_Z0,dz=HC_DZ,liftX=carriageFocus?3.4:5.55,exitX=carriageFocus?15:12.35;
       /* 껍데기 높이는 단수를 따라간다. HZ 는 최상단 뱅크 자리이고 아래 오프셋은
          종전 5단 도면(HZ 3.92)에서 그대로 옮긴 것이다 — 단수만 바꾸면 챔버가
          통째로 내려앉는다. 값으로 박아 두면 3단인데 껍데기만 5단으로 남는다. */
@@ -2369,20 +2434,20 @@
       exhaust(cx,.23,HZ+1.03);label3(`M1 · 완전단열 ${DECKS}단 밀폐가열실`,V(cx,-1.52,HZ+1.16),C.heat);label3(`${DECKS+1} 라인 ${bankPlanText(DECKS,LAMPS)} = ${LAMPS} IR`,V(cx,-1.52,HZ+.80),C.yellow);label3('AL-101/102 · 이중셔터 에어록',V(cx,-1.52,HZ+.46),C.teal);label3('PM-101 · IR 전력 계기판',V(cx,-1.86,HZ-.20),C.yellow);label3(`LI-101 · ${DECKS}단 서보승강`,V(liftX,-1.38,HZ+.50),C.teal);label3('TS-101 · 이단 텔레스코픽 포크',V(liftX+.65,-1.28,HZ+.03),C.yellow);label3(`IDX-101 · ${DECKS}단 위치결정·잠금`,V(9.2,-1.34,HZ+.33),C.teal);label3('RT-101 · 밀폐 빈 캐리지 복귀',V(9.2,-1.22,.52),C.teal);label3('EX-101 · 밀폐 방출 셔틀',V(exitX,-1.28,1.72),C.yellow);
     }
     function liftConveyor(){
-      const a=V(TDM_OUT+1.2,0,1.6),b=V(25,-2.35,1.16),dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z,plan=Math.hypot(dx,dy),L=Math.hypot(plan,dz),rz=Math.atan2(dy,dx),ry=-Math.atan2(dz,plan),cx=(a.x+b.x)/2,cy=(a.y+b.y)/2,cz=(a.z+b.z)/2;
+      const a=V(R20.cvcA.x,R20.cvcA.y,R20.cvcA.z),b=V(R20.cvcB.x,R20.cvcB.y,R20.cvcB.z),dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z,plan=Math.hypot(dx,dy),L=Math.hypot(plan,dz),rz=Math.atan2(dy,dx),ry=-Math.atan2(dz,plan),cx=(a.x+b.x)/2,cy=(a.y+b.y)/2,cz=(a.z+b.z)/2;
       box(V(cx,cy,cz),V(L,1.5,.16),C.belt,{rz,ry});
       for(let t=.06;t<.98;t+=.1){const x=lerp(a.x,b.x,t),y=lerp(a.y,b.y,t),z=lerp(a.z,b.z,t);box(V(x,y,z+.08),V(.12,1.36,.12),C.rail,{rz})}
       for(const t of [.08,.92]){const x=lerp(a.x,b.x,t),y=lerp(a.y,b.y,t),z=lerp(a.z,b.z,t);for(const s of [-.66,.66])box(V(x-s*Math.sin(rz),y+s*Math.cos(rz),z/2),V(.12,.12,Math.max(.3,z)),C.steel2)}
       label3('CVC-301 · 셀/EVA 무낙하 인계',V(23,-2.15,2.25),C.cell2);
     }
     function cellHandlingStation(){
-      conveyor(30.55,11.4,1.12,1.5,-2.35);
+      conveyor(R20.cellCx,R20.cellL,R20.cellZ,R20.cellW,R20.cellY);
       for(const x of [25.1,27.8,30.5,33.2])for(const y of [-3.27,-1.43])
         column(x,y,2.28,{s:.1,color:C.guard,plate:.26,plateColor:C.guard});
       poly([V(24.9,-3.22,1.05),V(35.1,-3.22,1.05),V(35.1,-3.22,2.15),V(24.9,-3.22,2.15)],C.guard,.08,C.guard,.55);
-      for(const y of [-3.28,-1.42])column(35.25,y,2.42,{s:.14,color:C.steel2,plate:.34});
-      box(V(35.25,-2.35,2.5),V(.18,2.05,.16),C.steel2);                    // gate head frame
-      box(V(35.25,-2.35,1.25),V(.16,1.72,1.65),C.red);
+      for(const y of [-3.28,-1.42])column(R20.gateX,y,2.42,{s:.14,color:C.steel2,plate:.34});
+      box(V(R20.gateX,-2.35,2.5),V(.18,2.05,.16),C.steel2);                // gate head frame
+      box(V(R20.gateX,-2.35,1.25),V(.16,1.72,1.65),C.red);
       box(V(35.25,-1.42,1.72),V(.42,.28,.52),C.yellow);cylinder(V(35.25,-1.42,2.22),.07,.65,'z',C.steel,10);
       plinth(36.5,-2.35,2,2.1);box(V(36.5,-2.35,1.05),V(2,2.1,2.05),C.cab);
       withBias(.22,()=>liveryStripe(V(35.5,-3.412,1.86),AISLE_U,AISLE_V,2,.055,C.brand,.95));
@@ -2454,7 +2519,7 @@
        세운다. 유리는 여기서 합·부가 갈리므로, 무엇으로 판정하는지가 그림에
        없으면 QUALITY_PASS_OR_REJECT_ACK 에 근거가 없다. */
     function inspectionRejectStation(){
-      const qx=22.35,bz=1.365;
+      const qx=R20.qiX,bz=1.365;
       /* 비전 아치 — 상부 RGB·열화상·라인레이저 */
       for(const y of [-1.35,1.35]){
         column(qx,y,2.62,{s:.15,color:C.steel,plate:.38});
@@ -2498,27 +2563,27 @@
       label3('RJ-301 · 횡셔틀·밀폐 리젝트 캐리지',V(23.8,5.75,1.72),C.red);
     }
     function scrubberUnit(){
-      plinth(38.8,0,2.4,2.4);box(V(38.8,0,2.2),V(2.4,2.4,4.4),C.cab);
+      plinth(R20.scrubX,0,2.4,2.4);box(V(R20.scrubX,0,2.2),V(2.4,2.4,4.4),C.cab);
       withBias(.22,()=>liveryStripe(V(37.6,-1.212,3.9),AISLE_U,AISLE_V,2.4,.07,C.brand,.95));
       cabinetBadge(38.0,-1.2,3.05,.52);cylinder(V(38.8,0,4.65),.52,.55,'z',C.steel2,14);box(V(38.8,0,5.06),V(1,1,.42),C.dark);cylinder(V(39.5,0,5.48),.28,1.4,'x',C.steel2,12);
       vesselSkirt(35.8,0,.62,.2);cylinder(V(35.8,0,2.15),.62,3.9,'z',C.steel2,14);
       vesselSkirt(37.2,0,.5,.35);cylinder(V(37.2,0,2.15),.5,3.6,'z',C.guard,14);
       plinth(40.8,0,1.45,2.25,.16);box(V(40.8,0,2.05),V(1.45,2.25,3.8),C.dark);
       for(const x of [40.45,41.15])cylinder(V(x,0,3.15),.38,.48,'y',C.teal,12);plinth(40.8,-1.2,1.25,.7);box(V(40.8,-1.2,.9),V(1.25,.7,1.45),C.cab);
-      cylinder(V(24,2.9,5.56),.3,29.6,'x',C.cab,12);
-      box(V(24,2.9,5.23),V(30,.42,.15),C.reveal);                        // duct support beam
-      for(let x=9.4;x<38.4;x+=4.2){
-        column(x,2.9,5.15,{s:.16,color:C.steel,plate:.42});               // beam is carried to the floor
-        gusset(x,2.9,5.12,-1,'y',.16,C.steel2);
-        box(V(x,2.9,5.34),V(.13,.72,.08),C.reveal);                       // duct saddle
+      cylinder(V(24,R20.ductY,R20.ductZ),.3,29.6,'x',C.cab,12);
+      box(V(24,R20.ductY,R20.ductZ-.33),V(30,.42,.15),C.reveal);          // duct support beam
+      for(let x=R20.ductX0;x<R20.ductX1;x+=4.2){
+        column(x,R20.ductY,5.15,{s:.16,color:C.steel,plate:.42});         // beam is carried to the floor
+        gusset(x,R20.ductY,5.12,-1,'y',.16,C.steel2);
+        box(V(x,R20.ductY,5.34),V(.13,.72,.08),C.reveal);                 // duct saddle
       }
-      for(let x=11.5;x<38;x+=4.2)box(V(x,2.9,5.31),V(.07,.68,.06),C.rail);  // intermediate straps
+      for(let x=11.5;x<38;x+=4.2)box(V(x,R20.ductY,5.31),V(.07,.68,.06),C.rail);  // intermediate straps
       label3('M6 · VOC 스크러버',V(38.8,-1.55,5.35),C.guard);
     }
     function qualityRejectStation(){
       for(const y of [-1.12,1.12]){
-        column(22.35,y,3.78,{s:.16,color:C.steel2,plate:.4});
-        gusset(22.35,y,3.75,y>0?-1:1,'y',.16,C.steel2);
+        column(R20.qiX,y,3.78,{s:.16,color:C.steel2,plate:.4});
+        gusset(R20.qiX,y,3.75,y>0?-1:1,'y',.16,C.steel2);
       }
       box(V(22.35,0,3.78),V(.24,2.4,.26),C.cab);
       box(V(22.35,-1.2,2.42),V(.5,.28,.42),C.cell2);box(V(22.35,1.2,2.42),V(.5,.28,.42),C.heat);
@@ -2527,20 +2592,20 @@
       for(const x of [22.5,25.1])for(const y of [3.85,5.05])column(x,y,.7,{s:.15,color:C.steel2,plate:.34});
     }
     function glassCoolingStation(){
-      for(const y of [2.55,5.05])for(const x of [26.05,28.75])box(V(x,y,.34),V(.16,.22,.18),C.rail);
-      for(const y of [2.55,5.05]){
-        for(const x of [26.05,28.75]){
-          column(x,y,2.86,{s:.15,color:C.steel2,plate:.38});               // carriage end frame
+      for(const y of [R20.gcYA,R20.gcYB])for(const x of [R20.gcX0,R20.gcX1])box(V(x,y,R20.gcRailZ),V(.16,.22,.18),C.rail);
+      for(const y of [R20.gcYA,R20.gcYB]){
+        for(const x of [R20.gcX0,R20.gcX1]){
+          column(x,y,R20.gcColH,{s:.15,color:C.steel2,plate:.38});         // carriage end frame
           for(const z of [1.35,2.25]){cylinder(V(x,y,z),.23,.24,'y',C.teal,12);pillowBlock(x,y,z,'y',.15,C.steel2)}
         }
         box(V(27.4,y,2.9),V(CARRIER_L-.3,.16,.16),C.steel2);                // top tie between end frames
         box(V(27.4,y,2.95),V(CARRIER_L+.4,CARRIER_W+.4,.18),C.guard,{alpha:.18});
       }
-      for(const x of [25.3,27.4,29.5]){
+      for(const x of R20.dockX){
         box(V(x,3.82,3.55),V(.12,5.2,.12),C.steel);
-        for(const y of [1.35,6.3])column(x,y,3.49,{s:.12,color:C.steel,plate:.32});   // dock gantry legs
+        for(const y of R20.dockLegY)column(x,y,3.49,{s:.12,color:C.steel,plate:.32}); // dock gantry legs
         box(V(x,3.82,2.72),V(.13,.13,1.62),C.steel2);                                 // roller post
-        for(const z of [2.15,3.1]){cylinder(V(x,3.82,z),.18,.18,'y',C.glass,10);box(V(x,3.82,z),V(.2,.26,.2),C.steel2)}
+        for(const z of R20.dockRollZ){cylinder(V(x,3.82,z),.18,.18,'y',C.glass,10);box(V(x,3.82,z),V(.2,.26,.2),C.steel2)}
       }
       box(V(27.4,5.05,1.1),V(5.25,2.72,.24),C.steel2);box(V(27.4,5.05,1.32),V(4.95,2.52,.16),C.yellow);for(let x=25.3;x<29.7;x+=.48)cylinder(V(x,5.05,1.42),.1,2.38,'y',C.rail,9);
       for(const x of [25.25,29.55])for(const yy of [-1.12,1.12])cylinder(V(x,5.05+yy,.92),.16,.18,'y',C.black,10);
@@ -2594,20 +2659,20 @@
       label3('DV-101 · 중앙 교번분배 A/B',V(.2,-1.2,2.55),C.teal);label3('정상 ≤35.93초/장',V(.2,-1.2,2.18),C.yellow);
     }
     function carrierMotionAxis(){
-      for(const y of [-1.5,1.5]){
-        box(V(17.7,y,.36),V(11.2,.24,.18),C.steel2);                 // rail bed beam
-        box(V(17.7,y,.54),V(11.2,.16,.2),C.rail);                    // guide rail
-        for(let x=12.35;x<=23.05;x+=.32)box(V(x,y,.66),V(.2,.12,.08),C.steel);
-        for(let x=12.4;x<=23.1;x+=1.34)column(x,y,.28,{s:.13,color:C.steel2,plate:.32});
-        box(V(12.1,y,.78),V(.62,.52,.72),C.cab);cylinder(V(11.72,y,.78),.24,.42,'x',C.teal,12);
-        column(12.1,y,.42,{s:.16,color:C.steel2,plate:.38});         // drive-end pedestal
+      for(const y of [-R20.railY,R20.railY]){
+        box(V(R20.railCx,y,R20.railBedZ),V(R20.railL,.24,R20.railBedH),C.steel2);   // rail bed beam
+        box(V(R20.railCx,y,R20.railTopZ),V(R20.railL,.16,R20.railTopH),C.rail);     // guide rail
+        for(let x=r20RailX0()+.25;x<=r20RailX1()-.25;x+=.32)box(V(x,y,.62),V(.2,.12,.08),C.steel);
+        for(let x=R20.railPost0;x<=R20.railPost1;x+=R20.railPitch)column(x,y,.24,{s:.13,color:C.steel2,plate:.32});
+        box(V(R20.driveX,y,R20.carrierZ),V(.62,.52,.72),C.cab);cylinder(V(R20.driveX-.38,y,R20.carrierZ),.24,.42,'x',C.teal,12);
+        column(R20.driveX,y,.42,{s:.16,color:C.steel2,plate:.38});   // drive-end pedestal
       }
       for(const x of [HKB_X,HKS_X]){
-        for(const y of [-1.78,1.78]){
-          column(x,y,3.36,{s:.22,color:C.steel2,plate:.5});
-          gusset(x,y,3.34,y>0?-1:1,'y',.22,C.steel2);
+        for(const y of [-R20.knifePostY,R20.knifePostY]){
+          column(x,y,R20.knifeColH,{s:.22,color:C.steel2,plate:.5});
+          gusset(x,y,R20.knifeColH-.02,y>0?-1:1,'y',.22,C.steel2);
         }
-        box(V(x,0,3.5),V(.26,4.05,.3),C.steel2);
+        box(V(x,0,R20.knifeBeamZ),V(.26,4.05,.3),C.steel2);
       }
       line([V(15.1,-1.68,1.05),V(20.5,-1.68,1.05)],C.teal,2.1,[8,4]);
       label3(`AX-${laneCode} · 전자갠트리 서보 캐리어축`,V(17.6,1.82,.82),C.teal);
@@ -2873,7 +2938,7 @@
         label3(`${tag} · 이중셔터 에어록`,V(x,-1.42,CZ+1.72),C.teal);
       }
       exhaust(g.cx,.22,top+.175);
-      label3(`HC-101 · ${DK}단 밀폐 IR 가열실 — 1기 (직렬)`,V(g.cx,-1.50,cDeckZ(DK-1)+1.25),C.heat,twinView());
+      label3(`HC-101 · ${DK}단 밀폐 IR 가열실 — 1기 (직렬)`,V(g.cx,-1.50,cDeckZ(DK-1)+1.25),C.heat);
       label3(`${DK+1} 뱅크 ${bankPlanText(DK,LP)} = ${LP} IR · 계면 ${T_TARGET}°C`,V(g.cx,-1.50,cDeckZ(DK-1)+.93),C.yellow);
     }
     /* 승강 포크. 랙은 고정이고 포크가 층을 고른다 — 랙을 들면 챔버가
@@ -3138,7 +3203,7 @@
       if(opt.tag&&!sectionView)cCellGuard(dy,opt.tag);
       label3(opt.tag?`DL-101 ${opt.tag} · 탠덤 분리 셀 — ${opt.tag==='A'?'−y':'+y'} 라인 (병렬 2 중 ${opt.tag==='A'?1:2})`
                     :'DL-101 · 탠덤 분리 셀 (3,800)',
-             V(g.cx,dy*-1.95,3.30),C.teal,!!opt.tag);
+             V(g.cx,dy*-1.95,3.30),C.teal);
     }
     /* 트윈의 공유 계통. 두 셀이 함께 쓰는 것만 여기 있다.
 
@@ -3287,7 +3352,7 @@
         }});
       cFork(CST.DL.x1+.08,'GL',1,`GL-101 · 유리 적입 포크${twinView()?' (A/B 교대 · 횡이송)':''}`,cForkHalf());
       cFork(CST.GC.x1+.34,'GU',1,'GU-101 · 유리 인출 포크');
-      label3(`GC-101 · 유리 냉각 랙 ${DK}단 — 1기 (직렬)`,V(g.cx,-1.50,cDeckZ(DK-1)+1.05),C.glass,twinView());
+      label3(`GC-101 · 유리 냉각 랙 ${DK}단 — 1기 (직렬)`,V(g.cx,-1.50,cDeckZ(DK-1)+1.05),C.glass);
       label3(`강제공랭 ${glassCoolSec().toFixed(0)}s · ${GCOOL_T_IN} → ${GCOOL_T_OUT}°C`,V(g.cx,-1.50,cDeckZ(DK-1)+.75),C.brand);
     }
     function cOutfeed(){
@@ -3767,12 +3832,12 @@
     function baseMachine(){
       const o=explodeOffsets();
       withPartOffset(o.input,()=>{
-        conveyor(3,6,1.12,1.8);label3('M0 · 투입·정렬·식별',V(3,-1.4,2.95));
+        conveyor(R20.infeedCx,R20.infeedL,1.12,1.8);label3('M0 · 투입·정렬·식별',V(R20.infeedCx,-1.4,2.95));
         infeedStation();
       });
       withPartOffset(o.heat,preheatTunnel);
       for(const y of [-1.38,1.38])box(V(13.9,y,.68),V(21.8,.16,.18),C.rail);for(let x=3.1;x<24.8;x+=1.15){box(V(x,-1.38,.33),V(.13,.17,.65),C.steel2);box(V(x,1.38,.33),V(.13,.17,.65),C.steel2)}
-      withPartOffset(o.tandem,()=>{carrierMotionAxis();gantry(17.8,10.2,'FGT-201 · 고정 HKB/HKS 탠덤 브리지','FIXED-TDM');transportSplit(12.7,'TP-2');transportSplit(22.9,'TP-3');tandemProfessionalDetail();exhaust(15.5);exhaust(21.2);box(V(17.8,0,.28),V(2.4,3.05,.16),C.steel2);box(V(17.8,0,.39),V(2.1,2.72,.08),C.dark)});
+      withPartOffset(o.tandem,()=>{carrierMotionAxis();gantry(R20.bridgeCx,R20.bridgeL,'FGT-201 · 고정 HKB/HKS 탠덤 브리지','FIXED-TDM');transportSplit(12.7,'TP-2');transportSplit(22.9,'TP-3');tandemProfessionalDetail();exhaust(15.5);exhaust(21.2);box(V(17.8,0,.28),V(2.4,3.05,.16),C.steel2);box(V(17.8,0,.39),V(2.1,2.72,.08),C.dark)});
       withPartOffset(o.backsheet,()=>{
         winderFrame();
         /* 예비 권취축. 만권 롤을 내리는 동안 라인을 세우지 않으려면 축이 둘이어야 한다. */
@@ -3815,7 +3880,7 @@
       weighingStations();autonomyStations();dataCabinet();
       /* PLC/HMI 는 종전 x=19 에 있었는데 그 자리가 탠덤 하류 권취부와 롤 반출 해치와
          겹친다. 조작반을 가열실 출구 옆으로 옮겨 반출 통로를 비웠다. */
-      withPartOffset(o.utility,()=>{plinth(13,-3.3,1.6,1.2);box(V(13,-3.3,1.8),V(1.6,1.2,3.6),C.cab);
+      withPartOffset(o.utility,()=>{plinth(R20.plcX,R20.plcY,1.6,1.2);box(V(R20.plcX,R20.plcY,1.8),V(1.6,1.2,3.6),C.cab);
         withBias(.22,()=>liveryStripe(V(12.2,-3.912,3.28),AISLE_U,AISLE_V,1.6,.06,C.brand,.95));
         dataPlate(V(12.36,-3.9,1.32),AISLE_U,AISLE_V,.88,C.accent);box(V(13,-2.67,2.75),V(.8,.05,.6),C.black);label3('PLC + HMI',V(13,-3.35,3.85));
         hazardDecal(V(13.42,-3.9,2.28),AISLE_U,AISLE_V,.34,'shock');
@@ -3824,16 +3889,18 @@
       withPartOffset(o.glass,()=>{glassOutfeedStation();qualityRejectStation();glassCoolingStation()});
       withPartOffset(o.exhaust,()=>{scrubberUnit();thermalOxidiser()});withPartOffset(o.power,powerInfeedStation);withPartOffset(o.maintenance,maintenanceStation);
       line([V(22.2,0,.1),V(24.4,0,.1),V(27,-2.35,.1),V(36.5,-2.35,.1)],C.cell2,3,[8,4],.78);
-      fenceSegment(5.7,-3.62,30.5,-3.62);fenceSegment(5.7,3.62,30.5,3.62);fenceSegment(5.7,-3.62,5.7,-1.9);fenceSegment(5.7,1.9,5.7,3.62);fenceSegment(30.5,-3.62,30.5,-1.9);fenceSegment(30.5,1.9,30.5,3.62);
+      fenceSegment(R20.fenceX0,-R20.fenceY,R20.fenceX1,-R20.fenceY);fenceSegment(R20.fenceX0,R20.fenceY,R20.fenceX1,R20.fenceY);
+      fenceSegment(R20.fenceX0,-R20.fenceY,R20.fenceX0,-1.9);fenceSegment(R20.fenceX0,1.9,R20.fenceX0,R20.fenceY);
+      fenceSegment(R20.fenceX1,-R20.fenceY,R20.fenceX1,-1.9);fenceSegment(R20.fenceX1,1.9,R20.fenceX1,R20.fenceY);
       box(V(5.55,-1.82,1.08),V(.28,.28,2.15),C.red);box(V(30.65,1.82,1.08),V(.28,.28,2.15),C.red);
       /* 펜스 양 끝은 자재가 드나드는 3.8m 개구부라 도어를 달 수 없다. */
       machineSkin();
-      lightCurtain(5.72,-1.78,1.78,'LC-001');lightCurtain(30.48,-1.78,1.78,'LC-002');
-      signalTower(20.35,-3.34,2.62,'ST-101');signalTower(30.2,3.34,2.62,'ST-102');
+      lightCurtain(R20.curtainX[0],-1.78,1.78,'LC-001');lightCurtain(R20.curtainX[1],-1.78,1.78,'LC-002');
+      signalTower(R20.towerX[0],-3.34,2.62,'ST-101');signalTower(R20.towerX[1],3.34,2.62,'ST-102');
       explodeGuide(V(3,0,1.1),o.input,C.teal,'투입 모듈');explodeGuide(V(9.2,0,2.6),o.heat,C.heat,`${DECKS}단 IR`);explodeGuide(V(17.8,0,2.2),o.tandem,C.yellow,'탠덤');explodeGuide(V(WR_DRUM_X,-1.6,2.2),o.backsheet,C.sheet,'백시트');explodeGuide(V(28,-2.35,1.3),o.cell,C.cell2,'셀/EVA');explodeGuide(V(27.4,1.6,1.4),o.glass,C.glass,'유리');explodeGuide(V(38.8,0,2.4),o.exhaust,C.teal,'배기');explodeGuide(V(9.2,-4.2,1.8),o.utility,C.yellow,'유틸리티')
     }
     function tandemFocusBase(){
-      for(const y of [-CARRIER_W/2-.08,CARRIER_W/2+.08]){box(V(17.7,y,.36),V(11.2,.24,.18),C.steel2);box(V(17.7,y,.54),V(11.2,.16,.2),C.rail);for(let x=12.35;x<=23.05;x+=.32)box(V(x,y,.66),V(.2,.12,.08),C.steel);for(let x=12.4;x<=23.1;x+=1.34)column(x,y,.28,{s:.13,color:C.steel2,plate:.32})}
+      for(const y of [-R20.railY,R20.railY]){box(V(R20.railCx,y,R20.railBedZ),V(R20.railL,.24,R20.railBedH),C.steel2);box(V(R20.railCx,y,R20.railTopZ),V(R20.railL,.16,R20.railTopH),C.rail);for(let x=r20RailX0()+.25;x<=r20RailX1()-.25;x+=.32)box(V(x,y,.62),V(.2,.12,.08),C.steel);for(let x=R20.railPost0;x<=R20.railPost1;x+=R20.railPitch)column(x,y,.24,{s:.13,color:C.steel2,plate:.32})}
       for(const x of [HKB_X,HKS_X]){                       // Z-axis portal, same as the layout view
         for(const y of [-1.78,1.78]){
           column(x,y,3.36,{s:.22,color:C.steel2,plate:.5});
@@ -4645,7 +4712,11 @@
       const opening=ease(clamp((p-start)/edge)),closing=1-ease(clamp((p-(end-edge))/edge));return clamp(opening*closing)
     }
     function carriageGeometry(){
-      return carriageFocus?{inOutside:-2.35,inVest:3.4,rack:9.2,outVest:15,outDone:20.75,inOuter:.4,inInner:6.4,outInner:12,outOuter:18}:{inOutside:3,inVest:5.55,rack:9.2,outVest:12.35,outDone:15.1,inOuter:6.16,inInner:6.58,outInner:11.82,outOuter:12.24}
+      /* 확대 화면은 에어록을 벌려 그린다 — 실제 배치는 오른쪽 가지다.
+         도면(R- 계열)은 확대 상태를 읽으면 안 되므로 R20 에서 바로 가져간다. */
+      return carriageFocus?{inOutside:-2.35,inVest:3.4,rack:9.2,outVest:15,outDone:20.75,inOuter:.4,inInner:6.4,outInner:12,outOuter:18}
+        :{inOutside:R20.alInOutside,inVest:R20.alInVest,rack:R20.alRack,outVest:R20.alOutVest,outDone:R20.alOutDone,
+          inOuter:R20.alInOuter,inInner:R20.alInInner,outInner:R20.alOutInner,outOuter:R20.alOutOuter}
     }
     function carriageCycleState(p,cycleNo=carriageCycleNo){
       const q=clamp(p),active=((cycleNo%DECKS)+DECKS)%DECKS,next=(active+1)%DECKS,g=carriageGeometry(),z0=.82,dz=.62,deckZ=z0+dz*(active+.5);
@@ -5230,8 +5301,13 @@
 
        그래서 치수를 전부 배치 상수의 식으로 되돌린다. mmv() 가 그 식을
        mm 문자열로 바꾸므로, 스테이션 폭이나 단수를 바꾸면 표가 같이 움직인다.
-       공급범위 밖 모듈에는 scope 를 달아 BOM 과 사양서가 그것을 '납품품' 으로
-       세지 않게 한다. */
+
+       한동안 공급범위 밖 넷(M-010 VOC · M-014 데이터 · M-015 팔레타이징 ·
+       M-016 RTO)을 scope 표식과 함께 표 끝에 남겨 두었다. 발주자 결정으로
+       뺐다 — 표는 값을 매기는 목록이고, 값이 '—' 인 행이 목록에 있으면
+       어느 쪽이든 오해가 생긴다. 경계는 표가 아니라 경계가 말한다:
+       M-017 BJ-101/102 인터페이스반이 그 자리에 서 있고, 사양서 3.4항이
+       세 계통을 이름으로 넘긴다. 인터록은 넘기지 않았다. */
     const mmv=v=>Math.round(v*1000);
     const dim=(l,w,h)=>`${mmv(l)}×${mmv(w)}×${mmv(h)}`;
     /* 랙 계열 파생값 — 가열실과 냉각 랙이 같은 구조라 한 곳에서 낸다. */
@@ -5264,18 +5340,6 @@
        parts:[`안전펜스 ${mmv(CFENCE_X1-CFENCE_X0)} × ${mmv(CFENCE_Y+CFENCE_YN)}`,'인터록 도어×1 (CS-201 반출 게이트 · ISO 14119 코딩)','안전 광커튼 LC-001/002','뮤팅 센서 M1~M4×2조','안전 광커튼 LC-003','적층 신호등·부저 ST-101/102','비상정지 기둥×2','바닥 앵커·등전위 본딩']},
       {id:'M-017',name:'BJ-101/102 · 공급범위 경계 인터페이스',size:dim(1.50,1.00,ductZOf(DECKS)+.30),material:'도장강판 IP54',
        parts:['경계 인터페이스반 BJ-101','경계 안전회로 인터페이스반 BJ-102','하드와이어 단자대','안전릴레이 2CH','경계 표시등·명판','배기 헤더 지선 Ø400×2 + 파이프행어','배기 헤더 본관 Ø460','경계 덕트 플랜지 Ø600','경계 덕트 차압센서','풍량센서']},
-      /* ── 공급범위 밖 ──────────────────────────────────────────────
-         DESCOPED 가 발주자 설비로 넘긴 것들이다. 목록에서 지우지 않는 것은
-         입찰자가 '무엇이 빠졌는지' 를 알아야 경계 신호를 걸 수 있기 때문이고,
-         scope 를 다는 것은 그것을 납품품으로 세지 않기 위해서다. */
-      {id:'M-010',name:'VOC 배기·응축·흡착',size:'—',material:'—',scope:'발주자 설비',
-       parts:['발주자 후처리 설비 — 납품 경계는 M-017 덕트 플랜지 Ø600 (VOC_ABATE_READY)','배기팬 A','배기팬 B','차압센서×3','방화댐퍼 위치센서×2']},
-      {id:'M-014',name:'데이터·이력·원격감시',size:'—',material:'—',scope:'옵션 (Rev.20 구성)',
-       parts:['HS-101 이력 서버 · RC-101 원격 콘솔 — 압축 배치 기본 구성에 포함되지 않음','이력 서버 HS-101','RC-101 원격 감시 콘솔']},
-      {id:'M-015',name:'자동 팔레타이징·무인 감시',size:'—',material:'—',scope:'발주자 설비',
-       parts:['PL-101/201 · AD-101 — 납품 경계는 투입·반출 픽업 스테이션','PL-101 자동 디스태커','PL-201 자동 스태커','AD-101 AGV 도킹 스테이션','무인 감시 열화상 카메라×3']},
-      {id:'M-016',name:'축열식 열산화·열회수',size:'—',material:'—',scope:'발주자 설비',
-       parts:['RTO-101 · HX-101 · CEMS-101 · 굴뚝 — 납품 경계는 M-017 덕트 플랜지','RTO-101 축열식 열산화로','HX-101 배기–급기 열교환기','CEMS-101 연속배출감시']},
     ];
 
     const A3W=420,A3H=297;                    // mm — ISO 216 A3 가로
@@ -5453,7 +5517,7 @@
     function assemblyDrawing(a,mode){
       /* 공급범위 밖 모듈은 수량을 세지 않는다 — 세는 순간 견적에 들어간다. */
       const parts=a.parts.map((p,i)=>`<tr><td>${String(i+1).padStart(2,'0')}</td><td>${esc(p)}</td>`
-        +`<td>${a.scope?'—':'1 SET'}</td><td>${esc(a.scope||'제작·구매품')}</td></tr>`).join('');
+        +`<td>1 SET</td><td>제작·구매품</td></tr>`).join('');
       const dims=a.size.split('×');
       let graphic='';
       if(mode==='2d'){
@@ -5472,7 +5536,7 @@
       }else{
         graphic=a.parts.slice(0,20).map((p,i)=>{const c=i%5,r=Math.floor(i/5),x=72+c*218,y=125+r*125,w=100,h=48,d=22,color=i%2?'#9fbfc1':'#bbc3c3';return `<g><polygon points="${x},${y} ${x+w},${y} ${x+w+d},${y-d} ${x+d},${y-d}" fill="${color}" stroke="#48575b"/><polygon points="${x+w},${y} ${x+w+d},${y-d} ${x+w+d},${y+h-d} ${x+w},${y+h}" fill="#71878b" stroke="#48575b"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" stroke="#48575b"/><circle cx="${x+14}" cy="${y+14}" r="11" fill="#0b6268"/><text x="${x+14}" y="${y+18}" text-anchor="middle" font-size="10" fill="#fff">${i+1}</text><text x="${x+w/2}" y="${y+h+18}" text-anchor="middle" font-size="9.5" fill="#25353a">${esc(p)}</text></g>`}).join('');
       }
-      return `<div class="drawing-controls"><label>어셈블리<select id="assemblySelect">${assemblies.map((v,i)=>`<option value="${i}"${i===assemblyIndex?' selected':''}>${esc(v.id)} · ${esc(v.name)}</option>`).join('')}</select></label><button type="button" data-mode="2d" class="${mode==='2d'?'active':''}">2D 삼면도</button><button type="button" data-mode="3d" class="${mode==='3d'?'active':''}">3D 분해도</button></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="${esc(a.name)} ${mode==='2d'?'2D 제작도':'3D 분해 조립도'}">${svgDefs}${titleBlock(a.id,`${a.id} · ${a.name} · ${mode==='2d'?'2D 삼면도':'3D 분해 조립도'}`,`외형 ${a.size} mm · 주재질 ${a.material}${a.scope?' · '+a.scope+' (공급범위 밖)':''}`)}<g font-family="Arial,'Noto Sans KR',sans-serif">${graphic}</g></svg></div><table class="bom-table"><thead><tr><th>품번</th><th>구성품</th><th>수량</th><th>구분</th></tr></thead><tbody>${parts}</tbody></table><p class="drawing-note">표시 치수는 외형·인터페이스 개념치입니다. 판두께, 용접기호, 공차, 베어링 끼워맞춤, 체결토크와 가공기준면은 구조해석·부품선정 후 제작도에서 동결합니다.</p>`;
+      return `<div class="drawing-controls"><label>어셈블리<select id="assemblySelect">${assemblies.map((v,i)=>`<option value="${i}"${i===assemblyIndex?' selected':''}>${esc(v.id)} · ${esc(v.name)}</option>`).join('')}</select></label><button type="button" data-mode="2d" class="${mode==='2d'?'active':''}">2D 삼면도</button><button type="button" data-mode="3d" class="${mode==='3d'?'active':''}">3D 분해도</button></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="${esc(a.name)} ${mode==='2d'?'2D 제작도':'3D 분해 조립도'}">${svgDefs}${titleBlock(a.id,`${a.id} · ${a.name} · ${mode==='2d'?'2D 삼면도':'3D 분해 조립도'}`,`외형 ${a.size} mm · 주재질 ${a.material}`)}<g font-family="Arial,'Noto Sans KR',sans-serif">${graphic}</g></svg></div><table class="bom-table"><thead><tr><th>품번</th><th>구성품</th><th>수량</th><th>구분</th></tr></thead><tbody>${parts}</tbody></table><p class="drawing-note">표시 치수는 외형·인터페이스 개념치입니다. 판두께, 용접기호, 공차, 베어링 끼워맞춤, 체결토크와 가공기준면은 구조해석·부품선정 후 제작도에서 동결합니다.</p>`;
     }
     /* ── M-002 가열실 제작도 (F-002) ──────────────────────────────────
        단수를 5로 올리면서 이 모듈이 가장 크게 바뀌었다 — 높이 3,620 → 4,860,
@@ -6274,6 +6338,888 @@
        남는가), 구속 방식, 서비스 분리, 그리고 교환에 걸리는 시간을 한 장에
        적는다. 시간은 이 콘솔의 열 계산에서 나오므로 표와 계산이 갈라지지
        않는다. */
+    /* ── REV.20 제작도 (R- 계열) ──────────────────────────────────────────
+       폐기된 선행 개정의 도면이다. 왜 그리는가 — 두 배치를 나란히 놓고
+       "무엇이 사라졌고 무엇이 남았는가" 를 보려면 옛것도 도면으로 있어야 한다.
+       글로만 적힌 차이는 견적에서 빠지고, 빠진 차이는 현장에서 다시 나온다.
+
+       그래서 이 계열에는 규칙이 하나 더 있다: 모든 시트가 자기가 폐기 개정임을
+       표제·주기·개정란 세 곳에서 말한다. 한 곳만 적으면 그 장만 떼어 인쇄한
+       사람에게는 아무 말도 하지 않은 것과 같다. */
+    const R20_REV=[
+      {rev:'0',date:'2026-08-28',desc:'REV.20 개념 배치 — 이동 캐리어 · 고정 탠덤',by:'DI'},
+      {rev:'1',date:'2026-09-06',desc:'폐기 개정으로 표기 · 참고도로 제작수준 정리',by:'DI'},
+      {rev:'2',date:'2026-09-06',desc:'주행 궤간 정정 — 레일이 캐리어 주행륜 아래로 (단면 A-A)',by:'DI'},
+    ];
+    const R20_NFC='REV.20 은 폐기된 선행 개정이다. 납품 기계는 REV.21C (DG-HK60C) 이며 본 도면은 비교·이력 목적의 참고도다 (Not For Construction).';
+    /* 폐기 개정임을 시트 머리에서 한 번 더 말하는 붉은 띠. */
+    const r20Stamp=(x,y)=>`<g><rect x="${x}" y="${y}" width="74" height="9" fill="#fdecec" stroke="#9a2b30" stroke-width="${LW.thin}"/>`
+      +`<text stroke="none" x="${x+37}" y="${y+6.2}" text-anchor="middle" ${FS(3)} font-weight="700" fill="#9a2b30">SUPERSEDED · REV.20</text></g>`;
+
+    /* R-601 · REV.20 전체 배치도.
+
+       53,100 mm 를 한 장에 담아야 하므로 1:200 이다. 그 축척에서 부품은 안
+       보이므로 부품을 그리지 않는다 — 구간을 그리고 번호를 달고, 그 번호가
+       구간표에서 "압축 배치에서 어떻게 됐는가" 를 만난다. 이 도면이 답해야
+       하는 질문은 "무엇이 어디 있었나" 가 아니라 "무엇이 왜 없어졌나" 다. */
+    function r20PlanDrawing(){
+      const mm=v=>Math.round(v*1000), fmt=v=>mm(v).toLocaleString();
+      const S=5, PX=x=>32+(x-R20.x0)*S, PY=y=>106-(y+6.2)*S, EZ=z=>160-z*S;
+      const rx0=r20RailX0(), rx1=r20RailX1();
+      const box2=(x0,y0,x1,y1,f,st,w)=>`<rect x="${PX(x0)}" y="${PY(y1)}" width="${(x1-x0)*S}" height="${(y1-y0)*S}" fill="${f}" stroke="${st}" stroke-width="${w||LW.thin}"/>`;
+      /* 구간. from·to 는 좌표에서 나오고, fate 는 압축 배치가 그것을 어떻게 했는지다. */
+      const ST=[
+        ['1','LD · 투입 셔틀·정렬·식별',R20.infeedCx-R20.infeedL/2,R20.infeedCx+R20.infeedL/2,-1.5,'유지 — M-001'],
+        ['2','AL-101 입력 에어록',R20.alInOuter,R20.alInInner,1.5,'삭제 — LI-101 승강 포크'],
+        ['3',`HC-101 ${DECKS}단 밀폐 IR 가열실`,R20.hcCx-R20.hcL/2,R20.hcCx+R20.hcL/2,-1.5,'유지 — M-002'],
+        ['4','AL-102 출력 에어록',R20.alOutInner,R20.alOutOuter,1.5,'삭제 — EX-101 승강 포크'],
+        ['5','VC-101 이동 진공 캐리어 주행축',rx0,rx1,-1.5,'삭제 — VT-101 고정 진공테이블'],
+        ['6','FGT-201 고정 HKB/HKS 탠덤 브리지',R20.bridgeCx-R20.bridgeL/2,R20.bridgeCx+R20.bridgeL/2,2.4,'삭제 — KG-101 이동 나이프 갠트리'],
+        ['7','WR-101 2축 권취 · 롤 반출 해치',WR_DRUM_X-.8,WR_DRUM_X+.8,-2.6,'단순화 — 단일 드럼 + RH-201'],
+        ['8','BS-301 백시트 롤 보관대 (방책 밖)',BS_RACK_X-1,BS_RACK_X+1,-5.4,'유지 — M-006'],
+        ['9','QI-301 검사 · RJ-301 리젝트',R20.qiX-.7,R20.rjX+.9,3.2,'유지 — M-009'],
+        ['10','GC-301 유리 저장 캐리지 2대 · 수평 도크',R20.gcX0-.8,R20.dockX[2]+.8,5.9,'삭제 — GC-101 고정 5단 랙'],
+        ['11','CVC-301 셀/EVA 무낙하 인계 컨베이어',R20.cvcA.x,R20.cellCx+R20.cellL/2,-3.1,'공급범위 밖 — 발주자'],
+        ['12','SH-101 슈레더 격리게이트',R20.gateX-.4,R20.gateX+.4,-1.4,'공급범위 밖 — 발주자'],
+        ['13','VOC 스크러버 · 응축 · 흡착',R20.scrubX-3.2,R20.scrubX+2.4,1.6,'공급범위 밖 — 발주자'],
+        ['14','HX-101 · RTO-101 · CEMS · 굴뚝',R20.hxX-1.2,R20.stackX+1.1,1.6,'공급범위 밖 — 발주자'],
+      ];
+      /* ── 평면도 1:200 */
+      let plan=`<g fill="none">`;
+      // 방호구획과 외장
+      plan+=box2(R20.fenceX0,-R20.fenceY,R20.fenceX1,R20.fenceY,'#f7fafb','#9a2b30',LW.out);
+      plan+=box2(SKIN_X0,-SKIN_Y,SKIN_X1,SKIN_Y,'#eef3f5','#1a2b30',LW.thin);
+      // 주행축 두 줄 — 이 기계의 정의
+      for(const sy of [-R20.railY,R20.railY])
+        plan+=`<path d="M${PX(rx0)} ${PY(sy)}H${PX(rx1)}" stroke="#b84a23" stroke-width="${LW.out}"/>`;
+      plan+=`<path d="M${PX(TDM_IN)} ${PY(0)}H${PX(TDM_OUT)}" stroke="#b84a23" stroke-width="${LW.thin}" stroke-dasharray="5 2.5" marker-start="url(#fb)" marker-end="url(#fa)"/>`;
+      // 구간 상자
+      ST.forEach(([n,,x0,x1,ly],i)=>{
+        const out=i>=10;
+        plan+=box2(x0,ly-1.05,x1,ly+1.05,out?'#f4f1ea':'#e7f1f4',out?'#8a7a52':'#19788a',LW.thin);
+      });
+      // 배기 헤더 — 라인 전 길이를 지난다
+      plan+=`<path d="M${PX(R20.ductX0)} ${PY(R20.ductY)}H${PX(R20.ductX1)}" stroke="#5b6d74" stroke-width="${LW.hid}" stroke-dasharray="7 3"/>`;
+      plan+=`</g>`;
+      // 번호 풍선
+      ST.forEach(([n,,x0,x1,ly])=>{plan+=balloon(PX((x0+x1)/2),PY(ly),n)});
+      plan+=`<text stroke="none" x="${PX(R20.ductX1)+2}" y="${PY(R20.ductY)+1}" ${FS(2.4)} fill="#5b6d74">배기 헤더 Ø600 @ EL ${mm(R20.ductZ)}</text>`
+        +dimH(PX(R20.x0),PX(R20.x1),PY(-6.2)+7,fmt(rev20Length()),'참고')
+        +dimH(PX(R20.fenceX0),PX(R20.fenceX1),PY(R20.fenceY)-4,fmt(R20.fenceX1-R20.fenceX0))
+        +dimV(PY(R20.fenceY),PY(-R20.fenceY),PX(R20.x0)-8,fmt(2*R20.fenceY));
+      /* ── 입면도 1:200 — 높이가 어디서 정해지는지만 본다 */
+      let elev=`<g fill="none">`;
+      elev+=`<path d="M${PX(R20.x0)} ${EZ(0)}H${PX(R20.x1)}" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      const EB=[[SKIN_X0,SKIN_X1,SKIN_TOP,'#eef3f5','외장 갓돌'],
+                [R20.hcCx-R20.hcL/2,R20.hcCx+R20.hcL/2,HC_Z+.94,'#fdf4de','가열실 지붕'],
+                [rx0,rx1,R20.knifeBeamZ+.15,'#f4eae5','탠덤 브리지'],
+                [WR_DRUM_X-.8,WR_DRUM_X+.8,WR_WEB_Z+.55,'#eef3f5','권취'],
+                [R20.gcX0-.8,R20.dockX[2]+.8,3.55,'#e9f4ef','유리 도크'],
+                [R20.scrubX-3.2,R20.scrubX+2.4,5.5,'#f4f1ea','스크러버'],
+                [R20.hxX-1.2,R20.stackX+1.1,R20.stackTop,'#f4f1ea','RTO·굴뚝']];
+      for(const [a,b,h,f] of EB)
+        elev+=`<rect x="${PX(a)}" y="${EZ(h)}" width="${(b-a)*S}" height="${h*S}" fill="${f}" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      elev+=`</g>`;
+      // 무엇이 얼마나 높은지 — 이름 없는 덩어리는 입면도가 아니다
+      for(const [a,b,h,,name] of EB)
+        elev+=`<text stroke="none" x="${(PX(a)+PX(b))/2}" y="${EZ(h)-1.6}" text-anchor="middle" ${FS(2.3)} fill="#5b6d74">${esc(name)} ${fmt(h)}</text>`;
+      elev+=`<g fill="none">`;
+      elev+=`<path d="M${PX(R20.ductX0)} ${EZ(R20.ductZ)}H${PX(R20.ductX1)}" stroke="#5b6d74" stroke-width="${LW.hid}" stroke-dasharray="7 3"/>`;
+      elev+=`</g>`
+        +dimV(EZ(R20.stackTop),EZ(0),PX(R20.stackX)+9,fmt(R20.stackTop))
+        +dimV(EZ(SKIN_TOP),EZ(0),PX(SKIN_X0)-8,fmt(SKIN_TOP))
+        +`<text stroke="none" x="${PX(R20.stackX)+13}" y="${EZ(R20.stackTop/2)}" ${FS(2.4)} fill="#5b6d74">굴뚝 — 라인 최고</text>`;
+      /* ── 구간표 */
+      const TX=30,TY=168,TW=208,TP=4.4;
+      let tbl=`<text stroke="none" x="${TX}" y="${TY-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">구간표 — 압축 배치(REV.21C)에서의 처분</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${TX}" y="${TY}" width="${TW}" height="${7+ST.length*TP}"/>`
+        +`<path d="M${TX} ${TY+7}h${TW}"/></g>`;
+      ['№','구간','범위 X (mm)','처분'].forEach((h,i)=>{
+        tbl+=`<text stroke="none" x="${TX+[2,9,96,140][i]}" y="${TY+5}" ${FS(2.4)} font-weight="700" fill="#5b6d74">${h}</text>`;
+      });
+      ST.forEach(([n,name,x0,x1,,fate],i)=>{
+        const y=TY+7+i*TP+3.2, gone=fate.startsWith('삭제'), out=fate.startsWith('공급범위');
+        tbl+=`<text stroke="none" x="${TX+2}" y="${y}" ${FS(2.4)} font-weight="700" fill="#0f1c21">${n}</text>`
+          +`<text stroke="none" x="${TX+9}" y="${y}" ${FS(2.4)} fill="#0f1c21">${esc(name)}</text>`
+          +`<text stroke="none" x="${TX+96}" y="${y}" ${FS(2.3)} fill="#5b6d74">${fmt(x0)} ~ ${fmt(x1)}</text>`
+          +`<text stroke="none" x="${TX+140}" y="${y}" ${FS(2.3)} fill="${gone?'#9a2b30':out?'#8a6a12':'#1f6b47'}">${esc(fate)}</text>`;
+      });
+      /* ── 전장 회계 */
+      const AX=248,AY=168,AW=148;
+      const BARS=[['REV.20 · 끝에서 끝까지',rev20Length(),'#c9d0d2','#5b6d74'],
+                  ['공급범위 정리',scopedLength(),'#f6ddd0','#b84a23'],
+                  ['REV.21C 압축 배치',compactLength(),'#d6ecf3','#0f6b78']];
+      const AS_=AW/rev20Length();
+      let acc=`<text stroke="none" x="${AX}" y="${AY-3}" ${FS(3.4)} font-weight="700" fill="#0f1c21">전장 회계</text>`;
+      BARS.forEach(([lab,v,f,st],i)=>{
+        const y=AY+4+i*13;
+        acc+=`<rect x="${AX}" y="${y}" width="${v*AS_}" height="7" fill="${f}" stroke="${st}" stroke-width="${LW.thin}"/>`
+          +`<text stroke="none" x="${AX}" y="${y-1.4}" ${FS(2.4)} fill="#5b6d74">${esc(lab)}</text>`
+          +(v*AS_>AW-16
+              ? `<text stroke="none" x="${AX+v*AS_-2}" y="${y+5.2}" text-anchor="end" ${FS(2.6)} font-weight="700" fill="${st}">${fmt(v)}</text>`
+              : `<text stroke="none" x="${AX+v*AS_+2}" y="${y+5.2}" ${FS(2.6)} font-weight="700" fill="${st}">${fmt(v)}</text>`);
+      });
+      acc+=`<text stroke="none" x="${AX}" y="${AY+46}" ${FS(2.4)} fill="#5b6d74">기계는 그대로다 — 앞의 감소는 공급범위,</text>`
+        +`<text stroke="none" x="${AX}" y="${AY+50}" ${FS(2.4)} fill="#5b6d74">뒤의 감소는 이동 나이프와 냉각 랙이 낸다.</text>`;
+      /* ── 주기 */
+      const notes=[
+        `전장 ${fmt(rev20Length())} 는 도면 좌표 X ${fmt(R20.x0)} (디스태커 방책 앞) ~ ${fmt(R20.x1)} (굴뚝 뒤) 를 그대로 잰 값이다. 선행 본문의 '약 38,000' 은 방호구획이 서 있는 구간만 센 값이었다.`,
+        `이 배치의 정의는 ⑤ 주행축이다. 패널이 캐리어에 실려 ${fmt(rx1-rx0)} 를 움직이고 칼날은 X 로 고정된다. REV.21C 는 이것을 뒤집었다 — 패널이 서고 칼날이 ${fmt(CRAIL_X1-CRAIL_X0)} 를 왕복한다.`,
+        `방호구획 ${fmt(R20.fenceX1-R20.fenceX0)} × ${fmt(2*R20.fenceY)} 는 ⑪~⑭ 를 포함하지 않는다. 그 넷은 방책 밖에 서고, 압축 배치에서 발주자 설비로 넘어갔다.`,
+        `축척 1:200 에서 부품은 그리지 않는다. 부품 제작도는 R-101 ~ R-106 이고, 그중 압축 배치와 같은 물건(가열실 골조·IR 뱅크)은 F-002 를 준용한다.`,
+        R20_NFC,
+      ];
+      const noteSvg=`<path d="M30 244h196" stroke="#7b8d94" stroke-width="${LW.thin}"/>`
+        +`<text stroke="none" x="30" y="241.5" ${FS(3)} font-weight="700" fill="#0f1c21">주기</text>`
+        +notes.map((n,i)=>`<text stroke="none" x="30" y="${249+i*5.4}" ${FS(2.55)} fill="#0f1c21">${i+1}. ${esc(n)}</text>`).join('');
+      return `<div class="drawing-stage">`+fabSheet(
+          `<text stroke="none" x="30" y="21" ${FS(5)} font-weight="800" fill="#0f1c21">R-601 · DG-HK60 REV.20 전체 배치도</text>`
+        + `<text stroke="none" x="30" y="26.5" ${FS(2.8)} fill="#5b6d74">평면도 · 입면도 · 구간표 — 치수 mm · 폐기된 선행 개정의 참고도</text>`
+        + r20Stamp(A3W-108,17)
+        + `<text stroke="none" x="30" y="36" ${FS(3.4)} font-weight="700" fill="#0f1c21">평면도 (1:200)</text>`
+        + `<text stroke="none" x="30" y="120" ${FS(3.4)} font-weight="700" fill="#0f1c21">입면도 (1:200) — 조작측(−Y)에서</text>`
+        + plan + elev + tbl + acc + noteSvg
+        + revBlock(R20_REV)
+        + fabTitleBlock({no:'R-601',title:'DG-HK60 REV.20 전체 배치도',scale:'1:200',sheet:'1 / 1',
+            material:'—',mass:'—',tol:'ISO 2768-mK',tol2:'배치 ±20 · 참고도'}))
+        + `</div>`
+        + `<p class="drawing-note"><b>이 도면은 폐기된 개정을 그린다.</b> 그래도 그리는 이유는, `
+        + `두 배치의 차이가 글로만 적혀 있으면 견적에서 빠지기 때문이다. ${fmt(rev20Length())} 가 `
+        + `${fmt(compactLength())} 로 줄어든 것은 기계를 줄여서가 아니다 — 앞의 `
+        + `${fmt(rev20Length()-scopedLength())} 는 배기 후처리·후속 파쇄·팔레타이징을 발주자 설비로 `
+        + `넘긴 것이고, 뒤의 ${fmt(scopedLength()-compactLength())} 는 이동 나이프와 유리 냉각 랙이 낸 것이다. `
+        + `구간표의 '삭제' 는 기능이 없어졌다는 뜻이 아니라 <b>다른 물건이 그 일을 한다</b>는 뜻이다.</p>`;
+    }
+    /* R-101 · VC-101 이동 진공 캐리어와 주행축.
+
+       REV.20 을 REV.21C 와 가르는 것이 이 한 장이다. 여기서는 패널이
+       캐리어에 실려 주행축을 지나가고 칼날은 X 로 서 있다. 압축 배치는
+       정확히 반대다 — 테이블이 서고 갠트리가 왕복한다.
+
+       그 뒤집기가 왜 길이를 줄이는지도 이 도면이 답한다: 패널이 움직이려면
+       패널 길이 + 통과 행정만큼의 자리가 필요하고, 칼날이 움직이면 그
+       자리가 칼날 행정으로 줄어든다. 주행축 11,200 이 3,500 이 된다. */
+    function r20CarrierDrawing(){
+      const mm=v=>Math.round(v*1000), fmt=v=>mm(v).toLocaleString();
+      const rx0=r20RailX0(), rx1=r20RailX1(), TR=r20CarrierTravel();
+      const FLEET=R20.fleetHeat+R20.fleetProcess+R20.fleetReturn+R20.fleetSpare;
+      /* ── 정면도 (좌상) 1:60 — 주행축 전체가 들어와야 하므로 낮게 잡는다 */
+      const FX=34,FY=52,S_=1/60;
+      const fx=v=>FX+(v-rx0+.7)*1000*S_, fz=v=>FY+(R20.knifeBeamZ+.45-v)*1000*S_;
+      let front=`<g stroke="#1a2b30" fill="none">`;
+      front+=`<path d="M${fx(rx0-.6)} ${fz(0)}H${fx(rx1+.6)}" stroke-width="${LW.out}"/>`;
+      // 레일 베드와 가이드레일
+      front+=`<rect x="${fx(rx0)}" y="${fz(R20.railBedZ+R20.railBedH/2)}" width="${R20.railL*1000*S_}" height="${R20.railBedH*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      front+=`<rect x="${fx(rx0)}" y="${fz(R20.railTopZ+R20.railTopH/2)}" width="${R20.railL*1000*S_}" height="${R20.railTopH*1000*S_}" fill="#c8d2d6" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      // 지주 — 피치 1,340
+      for(let x=R20.railPost0;x<=R20.railPost1+.01;x+=R20.railPitch){
+        front+=`<rect x="${fx(x)-.13*1000*S_/2}" y="${fz(R20.railBedZ-R20.railBedH/2)}" width="${.13*1000*S_}" height="${(R20.railBedZ-R20.railBedH/2)*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+        front+=`<rect x="${fx(x)-.30*1000*S_/2}" y="${fz(.024)}" width="${.30*1000*S_}" height="${.024*1000*S_+1}" fill="#1a2b30"/>`;
+      }
+      // 구동단 — 랙피니언 대신 마찰구동 페데스탈
+      front+=`<rect x="${fx(R20.driveX)-.62*1000*S_/2}" y="${fz(R20.carrierZ+.36)}" width="${.62*1000*S_}" height="${.72*1000*S_}" fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      // 칼날 Z축 문형 — X 로 고정
+      for(const x of [HKB_X,HKS_X]){
+        front+=`<rect x="${fx(x)-.22*1000*S_/2}" y="${fz(R20.knifeColH)}" width="${.22*1000*S_}" height="${R20.knifeColH*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      }
+      front+=`<rect x="${fx(HKB_X)-.30*1000*S_}" y="${fz(R20.knifeBeamZ+.15)}" width="${(HKS_X-HKB_X+.6)*1000*S_}" height="${.30*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      // 캐리어 — 통과 시작 위치와 끝 위치
+      for(const [cx,al] of [[TDM_IN,1],[TDM_OUT,.32]]){
+        front+=`<rect x="${fx(cx-CARRIER_L/2)}" y="${fz(R20.carrierZ+.10)}" width="${CARRIER_L*1000*S_}" height="${.20*1000*S_}" fill="#e7f1f4" stroke="#19788a" stroke-width="${LW.out}" opacity="${al}"/>`;
+        front+=`<rect x="${fx(cx-PANEL_L/2)}" y="${fz(R20.carrierZ+.16)}" width="${PANEL_L*1000*S_}" height="1.4" fill="#8a6a12" opacity="${al}"/>`;
+      }
+      front+=`</g>`;
+      front+=`<path d="M${fx(TDM_IN)} ${fz(R20.carrierZ+.46)}H${fx(TDM_OUT)}" stroke="#b84a23" stroke-width="${LW.thin}" fill="none" marker-start="url(#fb)" marker-end="url(#fa)"/>`
+        +`<text stroke="none" x="${fx(TDM_IN)-3}" y="${fz(R20.carrierZ+.46)-2}" text-anchor="end" ${FS(2.6)} fill="#b84a23">통과 행정 ${fmt(TR)} — 패널이 움직인다</text>`
+        +dimH(fx(rx0),fx(rx1),fz(0)+10,fmt(R20.railL),'±3')
+        +dimH(fx(HKB_X),fx(HKS_X),fz(R20.knifeBeamZ+.60),fmt(TANDEM_GAP),'±2')
+        +dimV(fz(R20.knifeBeamZ),fz(0),fx(rx0)-9,fmt(R20.knifeBeamZ),'±3')
+        +dimV(fz(R20.railTopZ),fz(0),fx(rx1)+9,fmt(R20.railTopZ),'±1')
+        +datum(fx(R20.driveX),fz(0),'A',1);
+      /* ── 캐리어 단면 (우상) 1:14 — 흡착과 반력 */
+      const DX=318,DY=58,DS=1/22;
+      const dx=v=>DX+v*1000*DS, dz=v=>DY+(R20.carrierZ+.30-v)*1000*DS;
+      let det=`<g stroke="#1a2b30" fill="none">`;
+      det+=`<rect x="${dx(-CARRIER_W/2)}" y="${dz(R20.carrierZ+.10)}" width="${CARRIER_W*1000*DS}" height="${.20*1000*DS}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      det+=`<rect x="${dx(-PANEL_W/2)}" y="${dz(R20.carrierZ+.145)}" width="${PANEL_W*1000*DS}" height="2.2" fill="#8a6a12"/>`;
+      for(const y of padYs())
+        det+=`<circle cx="${dx(y)}" cy="${dz(R20.carrierZ+.115)}" r="${PAD_R*1000*DS}" fill="#e7f1f4" stroke="#19788a" stroke-width="${LW.thin}"/>`;
+      for(const y of [-R20.railY,R20.railY]){
+        det+=`<rect x="${dx(y)-.16*1000*DS/2}" y="${dz(R20.railTopZ+R20.railTopH/2)}" width="${.16*1000*DS}" height="${R20.railTopH*1000*DS}" fill="#c8d2d6" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+        det+=`<circle cx="${dx(y)}" cy="${dz(R20.carrierZ-.06)}" r="${.10*1000*DS}" fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      }
+      det+=`<path d="M${dx(-CARRIER_W/2)} ${dz(0)}H${dx(CARRIER_W/2)}" stroke-width="${LW.out}"/>`;
+      det+=`</g>`
+        +dimH(dx(-R20.railY),dx(R20.railY),dz(0)+9,fmt(2*R20.railY),'±1')
+        +dimH(dx(-CARRIER_W/2),dx(CARRIER_W/2),dz(R20.carrierZ+.30)-4,fmt(CARRIER_W))
+        +rough(dx(R20.railY)+4,dz(R20.railTopZ)-3,'1.6');
+      /* ── 압축 배치와의 차이 */
+      const bx=250,by=150;
+      const DIFF=[
+        ['움직이는 것','패널 (캐리어 탑재)','REV.21C — 칼날 (KG-101 갠트리)'],
+        ['행정',`${fmt(TR)} 통과`,`REV.21C — ${fmt(CRAIL_X1-CRAIL_X0)} 왕복`],
+        ['주행축 길이',`${fmt(R20.railL)}`,'REV.21C — 없음 (VT-101 고정 진공테이블)'],
+        ['반력 경로','패드 → 캐리어 → 대차 → 레일 → 기초','REV.21C — 칼날 → 갠트리 → 주행레일 문형 → 기초'],
+        ['캐리어 대수',`${FLEET}대 (가열 ${R20.fleetHeat} · 공정 1 · 복귀 1 · 예비 1)`,'REV.21C — 0대'],
+        ['흡착',`${PAD_COLS}×${PAD_ROWS} = ${PAD_AREA.toFixed(3)} m²`,'REV.21C — VT-101 에 동일 사양'],
+      ];
+      let tbl=`<text stroke="none" x="${bx}" y="${by-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">압축 배치(REV.21C)와의 차이</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${bx}" y="${by}" width="155" height="${8+DIFF.length*9.6}"/>`
+        +`<path d="M${bx} ${by+8}h155"/></g>`;
+      ['항목','REV.20','바뀐 것'].forEach((h,i)=>{
+        tbl+=`<text stroke="none" x="${bx+[2,26,26][i]}" y="${by+5.6}" ${FS(2.4)} font-weight="700" fill="#5b6d74">${i<2?h:''}</text>`;
+      });
+      DIFF.forEach(([a,b,c],i)=>{const y=by+8+i*9.6;
+        tbl+=`<text stroke="none" x="${bx+2}" y="${y+5}" ${FS(2.4)} font-weight="700" fill="#0f1c21">${esc(a)}</text>`
+          +`<text stroke="none" x="${bx+28}" y="${y+5}" ${FS(2.4)} fill="#0f1c21">${esc(b)}</text>`
+          +`<text stroke="none" x="${bx+28}" y="${y+8.8}" ${FS(2.3)} fill="#9a2b30">${esc(c)}</text>`;
+      });
+      /* ── 부품란 */
+      const cx2=34,cy2=150;
+      const bom=[
+        ['01','주행 레일 베드보',`H형강 · ${fmt(R20.railL)} 2본`,'y ±'+fmt(R20.railY),2],
+        ['02','가이드 레일','프리로드 LM 레일 · P급',`베드보 상면 EL ${fmt(R20.railTopZ)}`,2],
+        ['03','레일 지주',`각형강관 · 피치 ${fmt(R20.railPitch)}`,'베이스플레이트 앵커 M20×4',2*Math.round((R20.railPost1-R20.railPost0)/R20.railPitch+1)],
+        ['04','VC-101 진공 캐리어',`${fmt(CARRIER_L)} × ${fmt(CARRIER_W)} · 6존`,`흡착패드 ${PAD_COLS}×${PAD_ROWS} Ø${(PAD_R*2000).toFixed(0)}`,FLEET],
+        ['05','마찰 구동 페데스탈',`EL ${fmt(R20.carrierZ)} · VFD 기어모터`,'구동단 x '+fmt(R20.driveX),2],
+        ['06','칼날 Z축 문형',`기둥 EL ${fmt(R20.knifeColH)} · 두상보 EL ${fmt(R20.knifeBeamZ)}`,`HKB x ${fmt(HKB_X)} · HKS x ${fmt(HKS_X)}`,2],
+      ];
+      let tbl2=`<text stroke="none" x="${cx2}" y="${cy2-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">부품란</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${cx2}" y="${cy2}" width="200" height="${8+bom.length*5.8}"/>`
+        +`<path d="M${cx2} ${cy2+8}h200"/></g>`;
+      ['품번','품명','규격','비고','수량'].forEach((h,i)=>{
+        tbl2+=`<text stroke="none" x="${cx2+[2,12,66,132,194][i]}" y="${cy2+5.6}" ${FS(2.4)} font-weight="700" fill="#5b6d74">${h}</text>`;
+      });
+      bom.forEach((r,i)=>{const y=cy2+8+(i+1)*5.8-1.8;
+        r.forEach((c,j)=>{tbl2+=`<text stroke="none" x="${cx2+[2,12,66,132,196][j]}" y="${y}" text-anchor="${j===4?'end':'start'}" ${FS(2.35)} fill="#0f1c21">${esc(String(c))}</text>`;});
+      });
+      const notes=[
+        `이 축이 REV.20 의 정의다. 패널이 ${fmt(TR)} 를 지나가는 동안 칼날은 X 로 서 있다 — HKB x ${fmt(HKB_X)} · HKS x ${fmt(HKS_X)} 는 고정값이고 Z 만 로드셀을 따라간다.`,
+        `박리 추력은 패드 마찰로만 받는다. 필요 면적 A ≥ 2F/(μ·Δp) = 0.686 m² (μ 0.6 · Δp 65 kPa) 이고 ${PAD_COLS}×${PAD_ROWS} = ${PAD_AREA.toFixed(3)} m² 로 그 ${(PAD_AREA/0.686).toFixed(2)}배다.`,
+        `주행축은 반력을 받지 않는다 — 추력은 패널→패드→캐리어에서 닫히고 레일은 자중과 관성만 받는다. 그래서 레일 지주가 문형이 아니라 단주다.`,
+        `캐리어는 ${FLEET}대다. ${R20.fleetHeat}대가 가열실 데크에, 1대가 탠덤에, 1대가 복귀·재장전에, 1대가 정비 대기에 있다. REV.21C 는 이 ${FLEET}대를 전부 쓰지 않는다.`,
+        R20_NFC,
+      ];
+      const noteSvg=`<path d="M30 244h196" stroke="#7b8d94" stroke-width="${LW.thin}"/>`
+        +`<text stroke="none" x="30" y="241.5" ${FS(3)} font-weight="700" fill="#0f1c21">주기</text>`
+        +notes.map((n,i)=>`<text stroke="none" x="30" y="${249+i*5.4}" ${FS(2.55)} fill="#0f1c21">${i+1}. ${esc(n)}</text>`).join('');
+      return `<div class="drawing-stage">`+fabSheet(
+          `<text stroke="none" x="30" y="21" ${FS(5)} font-weight="800" fill="#0f1c21">R-101 · VC-101 이동 진공 캐리어 · 주행축</text>`
+        + `<text stroke="none" x="30" y="26.5" ${FS(2.8)} fill="#5b6d74">정면도 · 캐리어 단면 · 차이표 — 치수 mm · 패널이 움직이고 칼날이 선다</text>`
+        + r20Stamp(A3W-108,17)
+        + `<text stroke="none" x="30" y="${FY-6}" ${FS(3.4)} font-weight="700" fill="#0f1c21">정면도 (1:60)</text>`
+        + `<text stroke="none" x="${DX-68}" y="${FY-6}" ${FS(3.4)} font-weight="700" fill="#0f1c21">캐리어 단면 A-A (1:22)</text>`
+        + front + det + tbl + tbl2 + noteSvg
+        + revBlock(R20_REV)
+        + fabTitleBlock({no:'R-101',title:'VC-101 이동 진공 캐리어 · 주행축',scale:'1:60 / 1:22',sheet:'1 / 1',
+            material:'SS400 · AL6061 · LM 가이드',mass:'참고도',tol:'ISO 2768-mK',tol2:'레일 직진도 0.3/3000'}))
+        + `</div>`
+        + `<p class="drawing-note"><b>이 한 장이 두 배치를 가른다.</b> REV.20 은 패널이 `
+        + `${fmt(TR)} 를 지나가고 칼날이 X 로 서 있는 기계다. 압축 배치는 그것을 뒤집어 `
+        + `테이블을 세우고 갠트리를 ${fmt(CRAIL_X1-CRAIL_X0)} 왕복시켰다. `
+        + `박리는 상대운동이므로 박리시간도 박리력도 바뀌지 않는다 — 바뀌는 것은 <b>자리</b>다. `
+        + `패널이 움직이려면 주행축 ${fmt(R20.railL)} 가 필요하고, 칼날이 움직이면 그 자리가 `
+        + `칼날 행정으로 줄어든다. 그것이 전장 ${fmt(scopedLength())} → ${fmt(compactLength())} 의 대부분이다.</p>`;
+    }
+    /* R-102 · FGT-201 고정 HKB/HKS 탠덤 브리지.
+
+       칼날이 X 로 움직이지 않는 기계의 골조다. 두 칼날은 Z 축 문형에 각각
+       매달려 로드셀 하중만 따라가고, 그 문형은 브리지 아래에 고정된다.
+       브리지가 받는 것은 칼날 자중과 박리 반력의 수직 성분뿐이다 — 수평
+       추력은 패널 쪽(패드 → 캐리어 → 레일)에서 닫힌다. 압축 배치는 이
+       관계를 뒤집어, 추력이 칼날 → 갠트리 → 주행레일 문형으로 흐른다. */
+    function r20TandemDrawing(){
+      const mm=v=>Math.round(v*1000), fmt=v=>mm(v).toLocaleString();
+      const BX0=13.10,BX1=22.50,BY=1.90,BZ=4.18,BEAM=4.08;   // 브리지 문형 (tandemFocusBase 와 같은 물건)
+      /* ── 정면도 (좌상) 1:44 */
+      const FX=30,FY=50,S_=1/52;
+      const fx=v=>FX+(v-BX0+.7)*1000*S_, fz=v=>FY+(BZ+.35-v)*1000*S_;
+      let front=`<g stroke="#1a2b30" fill="none">`;
+      front+=`<path d="M${fx(BX0-.6)} ${fz(0)}H${fx(BX1+.6)}" stroke-width="${LW.out}"/>`;
+      for(const x of [BX0,BX1]){
+        front+=`<rect x="${fx(x)-.18*1000*S_/2}" y="${fz(BZ)}" width="${.18*1000*S_}" height="${BZ*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+        front+=`<rect x="${fx(x)-.46*1000*S_/2}" y="${fz(.024)}" width="${.46*1000*S_}" height="${.024*1000*S_+1.2}" fill="#1a2b30"/>`;
+      }
+      front+=`<rect x="${fx(BX0)-.10*1000*S_}" y="${fz(BEAM+.15)}" width="${(BX1-BX0+.2)*1000*S_}" height="${.30*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      // 칼날 Z축 문형 두 기 — X 로 고정
+      for(const [x,tag] of [[HKB_X,'HKB'],[HKS_X,'HKS']]){
+        front+=`<rect x="${fx(x)-.22*1000*S_/2}" y="${fz(R20.knifeColH)}" width="${.22*1000*S_}" height="${R20.knifeColH*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+        front+=`<rect x="${fx(x)-.42*1000*S_/2}" y="${fz(1.90)}" width="${.42*1000*S_}" height="${.55*1000*S_}" fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+        front+=`<path d="M${fx(x)} ${fz(1.35)}v${.42*1000*S_}" stroke="#b84a23" stroke-width="${LW.thin}" stroke-dasharray="2.4 1.6"/>`;
+      }
+      front+=`<rect x="${fx(HKB_X)-.30*1000*S_}" y="${fz(R20.knifeBeamZ+.15)}" width="${(TANDEM_GAP+.6)*1000*S_}" height="${.30*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      // 캐리어와 패널 — 지나가는 쪽
+      front+=`<rect x="${fx(TDM_IN-CARRIER_L/2)}" y="${fz(R20.carrierZ+.10)}" width="${CARRIER_L*1000*S_}" height="${.20*1000*S_}" fill="#e7f1f4" stroke="#19788a" stroke-width="${LW.thin}"/>`;
+      front+=`</g>`
+        +`<text stroke="none" x="${fx(HKB_X)-7}" y="${fz(2.30)}" text-anchor="end" ${FS(2.5)} fill="#b84a23">HKB</text>`
+        +`<text stroke="none" x="${fx(HKS_X)+7}" y="${fz(2.30)}" ${FS(2.5)} fill="#b84a23">HKS</text>`
+        +`<path d="M${fx(HKB_X)-6} ${fz(2.30)-1}H${fx(HKB_X)-1}M${fx(HKS_X)+6} ${fz(2.30)-1}H${fx(HKS_X)+1}" stroke="#b84a23" stroke-width="${LW.ctr}" fill="none"/>`
+        +dimH(fx(BX0),fx(BX1),fz(0)+10,fmt(BX1-BX0),'±3')
+        +dimH(fx(HKB_X),fx(HKS_X),fz(R20.knifeBeamZ+.62),fmt(TANDEM_GAP),'±2')
+        +dimV(fz(BEAM),fz(0),fx(BX0)-9,fmt(BEAM),'±3')
+        +dimV(fz(R20.knifeBeamZ),fz(0),fx(BX1)+9,fmt(R20.knifeBeamZ),'±3')
+        +datum(fx(BX0),fz(0),'A',1);
+      /* ── 측면도 (우상) 1:44 — 문형의 폭과 Z축 행정 */
+      const SX=300;
+      const sy=v=>SX+v*1000*S_;
+      let side=`<g stroke="#1a2b30" fill="none">`;
+      side+=`<path d="M${sy(-BY-.6)} ${fz(0)}H${sy(BY+.6)}" stroke-width="${LW.out}"/>`;
+      for(const y of [-BY,BY])
+        side+=`<rect x="${sy(y)-.18*1000*S_/2}" y="${fz(BZ)}" width="${.18*1000*S_}" height="${BZ*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      side+=`<rect x="${sy(-BY)-.10*1000*S_}" y="${fz(BEAM+.15)}" width="${(2*BY+.2)*1000*S_}" height="${.30*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      for(const y of [-R20.knifePostY,R20.knifePostY])
+        side+=`<rect x="${sy(y)-.22*1000*S_/2}" y="${fz(R20.knifeColH)}" width="${.22*1000*S_}" height="${R20.knifeColH*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      side+=`<rect x="${sy(-KNIFE_POST_Y)}" y="${fz(1.72)}" width="${2*KNIFE_POST_Y*1000*S_}" height="${.16*1000*S_}" fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      side+=`<rect x="${sy(-CARRIER_W/2)}" y="${fz(R20.carrierZ+.10)}" width="${CARRIER_W*1000*S_}" height="${.20*1000*S_}" fill="#e7f1f4" stroke="#19788a" stroke-width="${LW.thin}"/>`;
+      side+=`</g>`
+        +dimH(sy(-BY),sy(BY),fz(0)+10,fmt(2*BY))
+        +dimH(sy(-R20.knifePostY),sy(R20.knifePostY),fz(R20.knifeColH)-6,fmt(2*R20.knifePostY))
+        +`<text stroke="none" x="${sy(0)}" y="${fz(1.72)-2}" text-anchor="middle" ${FS(2.4)} fill="#5b6d74">칼날 빔 (폭 ${fmt(2*KNIFE_POST_Y)})</text>`;
+      /* ── 차이표 */
+      const bx=250,by=168;
+      const DIFF=[
+        ['칼날 X','고정 — HKB '+fmt(HKB_X)+' · HKS '+fmt(HKS_X),'REV.21C — KG-101 이 '+fmt(CRAIL_X1-CRAIL_X0)+' 왕복'],
+        ['추력 경로','패널→패드→캐리어→레일→기초','REV.21C — 칼날→갠트리→주행레일 문형→기초'],
+        ['브리지 하중','칼날 자중 + 반력 수직성분','REV.21C — 수평 추력 13.37 kN 까지 받는다'],
+        ['문형 기둥',`${fmt(BX1-BX0)} 스팬 · y ±${fmt(BY)}`,'REV.21C — 주행레일 문형 4기둥'],
+        ['Z축','문형별 서보슬라이드 (X 고정)','REV.21C — 동일 (X 만 갠트리로 옮김)'],
+      ];
+      let tbl=`<text stroke="none" x="${bx}" y="${by-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">압축 배치(REV.21C)와의 차이</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${bx}" y="${by}" width="155" height="${8+DIFF.length*9.6}"/>`
+        +`<path d="M${bx} ${by+8}h155"/></g>`
+        +`<text stroke="none" x="${bx+2}" y="${by+5.6}" ${FS(2.4)} font-weight="700" fill="#5b6d74">항목</text>`
+        +`<text stroke="none" x="${bx+28}" y="${by+5.6}" ${FS(2.4)} font-weight="700" fill="#5b6d74">REV.20</text>`;
+      DIFF.forEach(([a,b,c],i)=>{const y=by+8+i*9.6;
+        tbl+=`<text stroke="none" x="${bx+2}" y="${y+5}" ${FS(2.4)} font-weight="700" fill="#0f1c21">${esc(a)}</text>`
+          +`<text stroke="none" x="${bx+28}" y="${y+5}" ${FS(2.4)} fill="#0f1c21">${esc(b)}</text>`
+          +`<text stroke="none" x="${bx+28}" y="${y+8.8}" ${FS(2.3)} fill="#9a2b30">${esc(c)}</text>`;
+      });
+      /* ── 부품란 */
+      const cx2=36,cy2=168;
+      const bom=[
+        ['01','브리지 문형 기둥',`H형강 · EL ${fmt(BZ)}`,`x ${fmt(BX0)} / ${fmt(BX1)} · y ±${fmt(BY)}`,4],
+        ['02','브리지 상부보',`박스거더 · 스팬 ${fmt(BX1-BX0)}`,`EL ${fmt(BEAM)}`,1],
+        ['03','칼날 Z축 문형',`기둥 EL ${fmt(R20.knifeColH)} · y ±${fmt(R20.knifePostY)}`,`HKB · HKS 각 1조`,2],
+        ['04','칼날 두상보',`${fmt(2*R20.knifePostY+.45)} · 거싯 4매`,`EL ${fmt(R20.knifeBeamZ)}`,2],
+        ['05','Z축 서보슬라이드','볼스크류 + 프리로드 LM','로드셀 4점 추종',2],
+        ['06','칼날 빔',`폭 ${fmt(2*KNIFE_POST_Y)} · SKD11 인서트`,'카트리지히터 · 열전대 8점',2],
+      ];
+      let tbl2=`<text stroke="none" x="${cx2}" y="${cy2-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">부품란</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${cx2}" y="${cy2}" width="198" height="${8+bom.length*5.8}"/>`
+        +`<path d="M${cx2} ${cy2+8}h198"/></g>`;
+      ['품번','품명','규격','비고','수량'].forEach((h,i)=>{
+        tbl2+=`<text stroke="none" x="${cx2+[2,12,64,130,192][i]}" y="${cy2+5.6}" ${FS(2.4)} font-weight="700" fill="#5b6d74">${h}</text>`;
+      });
+      bom.forEach((r,i)=>{const y=cy2+8+(i+1)*5.8-1.8;
+        r.forEach((c,j)=>{tbl2+=`<text stroke="none" x="${cx2+[2,12,64,130,194][j]}" y="${y}" text-anchor="${j===4?'end':'start'}" ${FS(2.35)} fill="#0f1c21">${esc(String(c))}</text>`;});
+      });
+      const notes=[
+        `칼날 간격 ${fmt(TANDEM_GAP)}±2 는 두 문형의 X 좌표 차이다. REV.20 에서는 이것이 조립 치수이고 운전 중 바뀌지 않는다 — 압축 배치에서는 같은 값이 한 갠트리 위 두 슬라이드의 상대 좌표가 된다.`,
+        `브리지는 수평 추력을 받지 않는다. 박리 반력은 패널 쪽에서 닫히므로(R-101 주기 3) 이 문형의 설계하중은 칼날 자중과 반력의 수직성분이다.`,
+        `Z 축만 로드셀 하중을 따라간다. X 를 서보로 잡지 않는 것이 REV.20 의 이점이었고, 그 대신 주행축 ${fmt(R20.railL)} 를 샀다.`,
+        R20_NFC,
+      ];
+      const noteSvg=`<path d="M30 244h196" stroke="#7b8d94" stroke-width="${LW.thin}"/>`
+        +`<text stroke="none" x="30" y="241.5" ${FS(3)} font-weight="700" fill="#0f1c21">주기</text>`
+        +notes.map((n,i)=>`<text stroke="none" x="30" y="${249+i*5.4}" ${FS(2.55)} fill="#0f1c21">${i+1}. ${esc(n)}</text>`).join('');
+      return `<div class="drawing-stage">`+fabSheet(
+          `<text stroke="none" x="30" y="21" ${FS(5)} font-weight="800" fill="#0f1c21">R-102 · FGT-201 고정 HKB/HKS 탠덤 브리지</text>`
+        + `<text stroke="none" x="30" y="26.5" ${FS(2.8)} fill="#5b6d74">정면도 · 측면도 · 차이표 — 치수 mm · 칼날은 X 로 움직이지 않는다</text>`
+        + r20Stamp(A3W-108,17)
+        + `<text stroke="none" x="30" y="${FY-6}" ${FS(3.4)} font-weight="700" fill="#0f1c21">정면도 (1:52)</text>`
+        + `<text stroke="none" x="${SX-46}" y="${FY-6}" ${FS(3.4)} font-weight="700" fill="#0f1c21">측면도 (1:52)</text>`
+        + front + side + tbl + tbl2 + noteSvg
+        + revBlock(R20_REV)
+        + fabTitleBlock({no:'R-102',title:'FGT-201 고정 HKB/HKS 탠덤 브리지',scale:'1:52',sheet:'1 / 1',
+            material:'SS400 · SKD11 인서트',mass:'참고도',tol:'ISO 2768-mK',tol2:'칼날 간격 ±2 · 문형 직각도 0.5'}))
+        + `</div>`
+        + `<p class="drawing-note"><b>이 브리지는 추력을 받지 않는다.</b> REV.20 에서 박리 반력은 `
+        + `패널→흡착패드→캐리어→대차→레일에서 닫히고, 문형이 받는 것은 칼날 자중과 반력의 `
+        + `수직성분뿐이다. 압축 배치는 그 경로를 뒤집었다 — 칼날이 움직이므로 `
+        + `13.37 kN 이 칼날→갠트리→주행레일 문형→기초로 흐르고, 그래서 F-005 의 주행레일 문형이 `
+        + `이 브리지보다 무겁다. <b>같은 박리를 하는 두 기계가 서로 다른 부재를 굵게 쓴다</b>는 것이 `
+        + `두 배치를 비교할 때 가장 자주 놓치는 대목이다.</p>`;
+    }
+    /* R-103 · WR-101 2축 권취 · ISO-101 격리셔터 · 롤 반출 해치.
+
+       REV.20 이 이 계통에 쓴 부품이 REV.21C 보다 다섯 개 많다: 예비 권취축,
+       웹 절단·이관암, 격리셔터, 외함 롤 포트, 코너 승강대. 그 다섯은 하나의
+       요구에서 나왔다 — 만권 롤을 내리는 동안에도 라인이 서지 않아야 한다.
+
+       압축 배치는 그 요구를 다르게 풀었다. 축을 둘로 두는 대신 롤 교체를
+       택트 안에 넣고, 반출을 모노레일 한 선으로 처리한다. 어느 쪽이 옳은지는
+       교체 주기(만권 = 롤당 장수 ÷ 순생산)와 교체 시간이 정한다. */
+    function r20WinderDrawing(){
+      const mm=v=>Math.round(v*1000), fmt=v=>mm(v).toLocaleString();
+      const SPARE_Z=WR_WEB_Z+.62, HRS=ROLL_FULL_PANELS/MODEL.netTarget;
+      /* ── 정면도 (좌상) 1:26 — 두 축이 위아래로 선다 */
+      const FX=40,FY=52,S_=1/40;
+      const fx=v=>FX+(v-WR_DRUM_X+1.35)*1000*S_, fz=v=>FY+(SPARE_Z+.62-v)*1000*S_;
+      let front=`<g stroke="#1a2b30" fill="none">`;
+      front+=`<path d="M${fx(WR_DRUM_X-1.4)} ${fz(0)}H${fx(WR_DRUM_X+1.4)}" stroke-width="${LW.out}"/>`;
+      for(const x of [WR_DRUM_X-.5,WR_DRUM_X+.5]){
+        front+=`<rect x="${fx(x)-.14*1000*S_/2}" y="${fz(SPARE_Z+.30)}" width="${.14*1000*S_}" height="${(SPARE_Z+.30)*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+        front+=`<rect x="${fx(x)-.34*1000*S_/2}" y="${fz(.024)}" width="${.34*1000*S_}" height="${.024*1000*S_+1.2}" fill="#1a2b30"/>`;
+      }
+      front+=`<rect x="${fx(WR_DRUM_X-.62)}" y="${fz(SPARE_Z+.44)}" width="${1.24*1000*S_}" height="${.16*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      // 주축 — 만권, 예비축 — 빈 코어
+      front+=`<circle cx="${fx(WR_DRUM_X)}" cy="${fz(WR_WEB_Z)}" r="${WR_FULL_R*1000*S_}" fill="#e7d9c6" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      front+=`<circle cx="${fx(WR_DRUM_X)}" cy="${fz(WR_WEB_Z)}" r="${WR_CORE_R*1000*S_}" fill="#f4f2ee" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      front+=`<circle cx="${fx(WR_DRUM_X)}" cy="${fz(SPARE_Z)}" r="${WR_CORE_R*1000*S_}" fill="#f4f2ee" stroke="#1a2b30" stroke-width="${LW.out}" stroke-dasharray="3 1.6"/>`;
+      // ISO-101 격리셔터 — 반출 중 권취를 막는다
+      front+=`<rect x="${fx(WR_DRUM_X-.72)}" y="${fz(WR_WEB_Z+.42)}" width="${.10*1000*S_}" height="${.92*1000*S_}" fill="#dce6ea" stroke="#9a2b30" stroke-width="${LW.out}"/>`;
+      // 승강레일 — 만권 롤이 내려가는 자리
+      front+=`<path d="M${fx(WR_DRUM_X)} ${fz(WR_WEB_Z-WR_FULL_R-.05)}V${fz(RH_CARRY_Z+WR_FULL_R+.05)}" stroke="#b84a23" stroke-width="${LW.thin}" stroke-dasharray="3 2" marker-end="url(#fa)"/>`;
+      front+=`<circle cx="${fx(WR_DRUM_X)}" cy="${fz(RH_CARRY_Z)}" r="${WR_FULL_R*1000*S_}" fill="none" stroke="#b84a23" stroke-width="${LW.hid}" stroke-dasharray="4 2"/>`;
+      front+=`</g>`
+        +`<text stroke="none" x="${fx(WR_DRUM_X-.78)}" y="${fz(WR_WEB_Z+.92)}" text-anchor="end" ${FS(2.4)} fill="#9a2b30">ISO-101 격리셔터</text>`
+        +`<text stroke="none" x="${fx(WR_DRUM_X)-WR_CORE_R*1000*S_-3}" y="${fz(SPARE_Z)}" text-anchor="end" ${FS(2.4)} fill="#5b6d74">WR-101B 예비축</text>`
+        +dimV(fz(SPARE_Z),fz(WR_WEB_Z),fx(WR_DRUM_X+.86),fmt(SPARE_Z-WR_WEB_Z),'±2')
+        +dimV(fz(WR_WEB_Z),fz(0),fx(WR_DRUM_X-1.15),fmt(WR_WEB_Z),'±3')
+        +dimH(fx(WR_DRUM_X-.5),fx(WR_DRUM_X+.5),fz(0)+10,fmt(1.0))
+        +datum(fx(WR_DRUM_X-.5),fz(0),'A',1);
+      /* ── 반출 단면 B-B (우상) 1:60 — 롤이 방책을 넘어 나가는 길 */
+      const RX=190,RY=52,RS=1/60;
+      const ry=v=>RX+(v-.9)*-1000*RS, rz=v=>RY+(SPARE_Z+.62-v)*1000*RS;
+      let route=`<g stroke="#1a2b30" fill="none">`;
+      route+=`<path d="M${ry(.9)} ${rz(0)}H${ry(BS_BIN_Y-1.2)}" stroke-width="${LW.out}"/>`;
+      // 방책선과 해치
+      route+=`<path d="M${ry(HATCH_Y)} ${rz(0)}V${rz(2.40)}" stroke="#9a2b30" stroke-width="${LW.out}"/>`;
+      route+=`<rect x="${ry(HATCH_Y)-1.2}" y="${rz(HATCH_Z+HATCH_H/2)}" width="2.4" height="${HATCH_H*1000*RS}" fill="#fdecec" stroke="#9a2b30" stroke-width="${LW.thin}"/>`;
+      // BS-301 새들과 롤
+      // 새들은 x 방향으로 둘이지만 이 단면(y-z)에서는 겹친다 — 하나만 그린다
+      route+=`<rect x="${ry(BS_BIN_Y)-6}" y="${rz(BS_ROLL_Z-WR_FULL_R)}" width="12" height="${(BS_ROLL_Z-WR_FULL_R)*1000*RS}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      route+=`<circle cx="${ry(BS_BIN_Y)}" cy="${rz(BS_ROLL_Z)}" r="${WR_FULL_R*1000*RS}" fill="#e7d9c6" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      route+=`<circle cx="${ry(0)}" cy="${rz(WR_WEB_Z)}" r="${WR_FULL_R*1000*RS}" fill="#e7d9c6" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      route+=`</g>`;
+      // 경로 — EJECT_PATH 그대로
+      const seg=EJECT_PATH.map(q=>`${ry(q.y)} ${rz(q.z)}`);
+      route+=`<path d="M${ry(0)} ${rz(WR_WEB_Z)}L${seg.join('L')}" stroke="#b84a23" stroke-width="${LW.thin}" stroke-dasharray="5 2.5" fill="none" marker-end="url(#fa)"/>`
+        +`<text stroke="none" x="${ry(HATCH_Y)}" y="${rz(2.40)-2}" text-anchor="middle" ${FS(2.4)} fill="#9a2b30">인터록 해치 ${fmt(HATCH_W)} × ${fmt(HATCH_H)}</text>`
+        +`<text stroke="none" x="${ry(BS_BIN_Y)}" y="${rz(0)+11}" text-anchor="middle" ${FS(2.4)} fill="#5b6d74">BS-301 (방책 밖)</text>`
+        +dimH(ry(0),ry(BS_BIN_Y),rz(0)+5,fmt(-BS_BIN_Y))
+        +dimV(rz(RH_CARRY_Z),rz(0),ry(BS_BIN_Y-.9),fmt(RH_CARRY_Z),'±3');
+      /* ── 반출 순서 — EJECT_PHASES 가 화면·HUD·도면에 같은 값을 준다 */
+      const QX=250,QY=130;
+      let seq=`<text stroke="none" x="${QX}" y="${QY-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">롤 반출 순서 (만권에서만)</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${QX}" y="${QY}" width="155" height="${7+EJECT_PHASES.length*5.4}"/>`
+        +`<path d="M${QX} ${QY+7}h155"/></g>`
+        +`<text stroke="none" x="${QX+2}" y="${QY+5}" ${FS(2.4)} font-weight="700" fill="#5b6d74">단계</text>`
+        +`<text stroke="none" x="${QX+16}" y="${QY+5}" ${FS(2.4)} font-weight="700" fill="#5b6d74">동작</text>`;
+      EJECT_PHASES.forEach((p,i)=>{const y=QY+7+i*5.4+3.6;
+        seq+=`<text stroke="none" x="${QX+2}" y="${y}" ${FS(2.4)} font-weight="700" fill="#0f1c21">${i+1}</text>`
+          +`<text stroke="none" x="${QX+16}" y="${y}" ${FS(2.4)} fill="#0f1c21">${esc(p.name)}</text>`;
+      });
+      /* ── 차이표 */
+      const bx=250,by=190,DP=5.6;
+      const DIFF=[
+        ['권취축','2축 (주 + 예비)','단일 고정 드럼'],
+        ['반출','승강레일 → 해치 → 승강대','RH-201 모노레일 1선'],
+        ['격리','ISO-101 격리셔터','셔터 없음 (드럼 정지 확인)'],
+        ['교체 주기',`만권 ${ROLL_FULL_PANELS}장 = ${HRS.toFixed(1)} h`,'동일 — 롤 사양이 같다'],
+      ];
+      let tbl=`<text stroke="none" x="${bx}" y="${by-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">압축 배치(REV.21C)와의 차이</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${bx}" y="${by}" width="155" height="${7+DIFF.length*DP}"/>`
+        +`<path d="M${bx} ${by+7}h155"/></g>`;
+      ['항목','REV.20','REV.21C'].forEach((h,i)=>{
+        tbl+=`<text stroke="none" x="${bx+[2,26,92][i]}" y="${by+5}" ${FS(2.4)} font-weight="700" fill="#5b6d74">${h}</text>`;
+      });
+      DIFF.forEach((r,i)=>{const y=by+7+i*DP+3.8;
+        r.forEach((c,k)=>{
+          tbl+=`<text stroke="none" x="${bx+[2,26,92][k]}" y="${y}" ${FS(2.35)} font-weight="${k===0?700:400}" fill="${k===2?'#9a2b30':'#0f1c21'}">${esc(c)}</text>`;
+        });
+      });
+      /* ── 부품란 */
+      const cx2=40,cy2=166;
+      const bom=[
+        ['01','권취 지지 문형',`기둥 2 · 상부보 EL ${fmt(SPARE_Z+.44)}`,`x ${fmt(WR_DRUM_X)} ±500`,1],
+        ['02','WR-101A 주 권취축',`코어 Ø${mm(2*WR_CORE_R)} · 면폭 ${fmt(ROLL_FACE)}`,`EL ${fmt(WR_WEB_Z)} · 토크서보`,1],
+        ['03','WR-101B 예비 권취축','동일 사양',`EL ${fmt(SPARE_Z)} — 무정지 교체용`,1],
+        ['04','웹 절단·이관암','자동 절단칼 + 선단 그리퍼','예비축 빈 코어로 이관',1],
+        ['05','ISO-101 격리셔터','판재 t3 · 공압',`반출 중 권취부 차단 · SHUTTER_CLOSED`,1],
+        ['06','승강레일·롤 포트',`행정 ${fmt(WR_WEB_Z-RH_CARRY_Z)}`,`반출 높이 EL ${fmt(RH_CARRY_Z)}`,1],
+        ['07','인터록 해치',`${fmt(HATCH_W)} × ${fmt(HATCH_H)} @ EL ${fmt(HATCH_Z)}`,`방책선 y ${fmt(HATCH_Y)} · ISO 14119`,1],
+        ['08','코너 승강대 · BS-301 새들',`보관 EL ${fmt(BS_ROLL_Z)} · 타이레일 EL ${fmt(BS_TIE_Z)}`,`y ${fmt(BS_BIN_Y)} (방책 밖)`,2],
+      ];
+      let tbl2=`<text stroke="none" x="${cx2}" y="${cy2-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">부품란</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${cx2}" y="${cy2}" width="192" height="${8+bom.length*5.8}"/>`
+        +`<path d="M${cx2} ${cy2+8}h192"/></g>`;
+      ['품번','품명','규격','비고','수량'].forEach((h,i)=>{
+        tbl2+=`<text stroke="none" x="${cx2+[2,12,62,126,186][i]}" y="${cy2+5.6}" ${FS(2.4)} font-weight="700" fill="#5b6d74">${h}</text>`;
+      });
+      bom.forEach((r,i)=>{const y=cy2+8+(i+1)*5.8-1.8;
+        r.forEach((c,j)=>{tbl2+=`<text stroke="none" x="${cx2+[2,12,62,126,188][j]}" y="${y}" text-anchor="${j===4?'end':'start'}" ${FS(2.35)} fill="#0f1c21">${esc(String(c))}</text>`;});
+      });
+      const notes=[
+        `축을 둘로 둔 이유는 하나다 — 만권 롤을 내리는 ${EJECT_PHASES.length}단계 동안 라인을 세우지 않기 위해서다. 교체는 ${HRS.toFixed(1)}시간마다 한 번(롤당 ${ROLL_FULL_PANELS}장 ÷ 순생산 ${MODEL.netTarget}장/h)이므로 교대당 2회다.`,
+        `롤은 ${ROLL_MASS.toFixed(0)} kg 이다. 사람이 방책 안으로 들어가 옮기는 물건이 아니므로, 해치와 코너 승강대가 그 하중을 방책 밖까지 가져간다.`,
+        `해치는 SHUTTER_CLOSED ∧ 권취축 정지 ∧ CARRIAGE_OUT 에서만 열린다. 셋 중 하나라도 성립하지 않으면 문이 잠긴 채로 남는다.`,
+        `압축 배치는 이 다섯 부품(예비축·이관암·격리셔터·롤 포트·코너 승강대)을 쓰지 않는다. 대신 RH-201 모노레일 한 선이 같은 일을 하고, 교체가 택트 안에 들어간다.`,
+        R20_NFC,
+      ];
+      const noteSvg=`<path d="M30 244h196" stroke="#7b8d94" stroke-width="${LW.thin}"/>`
+        +`<text stroke="none" x="30" y="241.5" ${FS(3)} font-weight="700" fill="#0f1c21">주기</text>`
+        +notes.map((n,i)=>`<text stroke="none" x="30" y="${249+i*5.4}" ${FS(2.55)} fill="#0f1c21">${i+1}. ${esc(n)}</text>`).join('');
+      return `<div class="drawing-stage">`+fabSheet(
+          `<text stroke="none" x="30" y="21" ${FS(5)} font-weight="800" fill="#0f1c21">R-103 · WR-101 2축 권취 · ISO-101 격리셔터 · 롤 반출</text>`
+        + `<text stroke="none" x="30" y="26.5" ${FS(2.8)} fill="#5b6d74">정면도 · 반출 단면 B-B · 반출 순서 — 치수 mm · 무정지 롤 교체 계통</text>`
+        + r20Stamp(A3W-108,17)
+        + `<text stroke="none" x="30" y="${FY-6}" ${FS(3.4)} font-weight="700" fill="#0f1c21">정면도 (1:40)</text>`
+        + `<text stroke="none" x="${RX-40}" y="${FY-6}" ${FS(3.4)} font-weight="700" fill="#0f1c21">반출 단면 B-B (1:60)</text>`
+        + front + route + seq + tbl + tbl2 + noteSvg
+        + revBlock(R20_REV)
+        + fabTitleBlock({no:'R-103',title:'WR-101 2축 권취 · 롤 반출',scale:'1:40 / 1:60',sheet:'1 / 1',
+            material:'SS400 · SUS304',mass:`만권 롤 ${ROLL_MASS.toFixed(0)} kg`,tol:'ISO 2768-mK',tol2:'축 평행도 0.2/1000'}))
+        + `</div>`
+        + `<p class="drawing-note"><b>부품 다섯 개가 한 요구에서 나왔다.</b> 예비 권취축 · 웹 절단·이관암 · `
+        + `ISO-101 격리셔터 · 외함 롤 포트 · 코너 승강대는 전부 "만권 롤을 내리는 동안 라인을 세우지 않는다" `
+        + `를 위한 것이다. 롤 교체는 ${HRS.toFixed(1)}시간마다이므로 교대당 2회이고, 롤은 ${ROLL_MASS.toFixed(0)} kg 이다. `
+        + `압축 배치는 같은 요구를 <b>다르게 풀었다</b> — 축을 하나로 두고 교체를 택트 안에 넣고, 반출을 `
+        + `RH-201 모노레일 한 선으로 처리한다. 부품 다섯이 하나로 줄어든 대신 교체가 택트를 먹는다. `
+        + `어느 쪽이 옳은지는 롤 사양이 아니라 <b>가동률 목표</b>가 정한다.</p>`;
+    }
+    /* R-104 · GC-301 유리 저장 캐리지 2대 교대 · 수평 도크.
+
+       REV.20 은 유리를 세우지 않고 눕혀 보관했다. 컨베이어와 같은 높이의
+       내열 지지롤 위에 유리를 받아 그대로 옆으로 밀어 도크에 넣는다 —
+       낙차가 0 이라 유리가 깨질 자리가 없다. 대신 캐리지 두 대가 번갈아야
+       하고, 그 둘이 서는 자리가 y 방향으로 ${'폭'} 을 먹는다.
+
+       압축 배치는 같은 '낙차 0' 을 다른 방법으로 지킨다 — 고정 5단 랙에
+       포크가 층을 골라 넣는다. 캐리지가 없으므로 교대도 없고, 그 대신
+       포크 문형 두 기(GL-101 · GU-101)가 선다. */
+    function r20GlassDrawing(){
+      const mm=v=>Math.round(v*1000), fmt=v=>mm(v).toLocaleString();
+      const GX0=R20.gcX0-.8, GX1=R20.dockX[2]+.8, GY0=R20.dockLegY[0], GY1=R20.dockLegY[1];
+      const TOP=3.55;
+      /* ── 평면도 (좌상) 1:42 */
+      const PX0=40,PY0=66,S_=1/48;
+      const px=v=>PX0+(v-GX0)*1000*S_, py=v=>PY0+(GY1-v)*1000*S_;
+      let plan=`<g stroke="#1a2b30" fill="none">`;
+      // 도크 갠트리 세 열
+      for(const x of R20.dockX){
+        plan+=`<path d="M${px(x)} ${py(GY0)}V${py(GY1)}" stroke="#7b8d94" stroke-width="${LW.thin}" stroke-dasharray="6 2"/>`;
+        for(const y of R20.dockLegY)
+          plan+=`<rect x="${px(x)-2}" y="${py(y)-2}" width="4" height="4" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      }
+      // 캐리지 A(−y 쪽) · B — 같은 물건이 두 대
+      [[R20.gcYA,'GC-301A'],[R20.gcYB,'GC-301B']].forEach(([y,tag])=>{
+        plan+=`<rect x="${px(R20.gcX0-.35)}" y="${py(y+CARRIER_W/2)}" width="${(R20.gcX1-R20.gcX0+.7)*1000*S_}" height="${CARRIER_W*1000*S_}" fill="#e9f4ef" stroke="#1f6b47" stroke-width="${LW.out}"/>`;
+        for(const x of [R20.gcX0,R20.gcX1])
+          plan+=`<rect x="${px(x)-2.2}" y="${py(y+CARRIER_W/2)-2.2}" width="4.4" height="${CARRIER_W*1000*S_+4.4}" fill="none" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+        plan+=`<rect x="${px(R20.gcX0+.1)}" y="${py(y+PANEL_W/2)}" width="${PANEL_L*1000*S_}" height="${PANEL_W*1000*S_}" fill="#dbeef6" stroke="#19788a" stroke-width="${LW.thin}"/>`;
+      });
+      plan+=`</g>`;
+      [[R20.gcYA,'GC-301A'],[R20.gcYB,'GC-301B']].forEach(([y,tag])=>{
+        plan+=`<text stroke="none" x="${px(R20.gcX0-.35)+2}" y="${py(y)+1}" ${FS(2.6)} font-weight="700" fill="#1f6b47">${tag}</text>`;
+      });
+      // 수평 인계 — 낙차 0
+      plan+=`<path d="M${px(R20.gcX0+1.35)} ${py(1.05)}V${py(R20.gcYA-CARRIER_W/2-.1)}" stroke="#b84a23" stroke-width="${LW.thin}" stroke-dasharray="5 2.5" fill="none" marker-end="url(#fa)"/>`
+        +`<text stroke="none" x="${px(R20.gcX0+1.20)}" y="${py(1.62)}" text-anchor="end" ${FS(2.4)} fill="#b84a23">수평 인계 — 낙차 0</text>`
+        +dimH(px(R20.gcX0),px(R20.gcX1),py(GY0)+8,fmt(R20.gcX1-R20.gcX0),'±3')
+        +dimV(py(R20.gcYB),py(R20.gcYA),px(GX0)-9,fmt(R20.gcYB-R20.gcYA),'±3')
+        +dimH(px(R20.dockX[0]),px(R20.dockX[2]),py(GY1)-6,fmt(R20.dockX[2]-R20.dockX[0]));
+      /* ── 단면 C-C (우상) 1:42 — 도크 갠트리와 지지롤 두 단 */
+      const CX=252,CY=60;
+      const cy2f=v=>CY+(TOP+.35-v)*1000*S_, cyf=v=>CX+(GY1-v)*1000*S_;
+      let sec=`<g stroke="#1a2b30" fill="none">`;
+      sec+=`<path d="M${cyf(GY1+.5)} ${cy2f(0)}H${cyf(GY0-.5)}" stroke-width="${LW.out}"/>`;
+      for(const y of R20.dockLegY)
+        sec+=`<rect x="${cyf(y)-.12*1000*S_/2}" y="${cy2f(TOP)}" width="${.12*1000*S_}" height="${TOP*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      sec+=`<rect x="${cyf(GY1)}" y="${cy2f(TOP+.12)}" width="${(GY1-GY0)*1000*S_}" height="${.12*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      for(const z of R20.dockRollZ)
+        sec+=`<rect x="${cyf(GY1-.4)}" y="${cy2f(z)-1.4}" width="${(GY1-GY0-.8)*1000*S_}" height="2.8" fill="#dbeef6" stroke="#19788a" stroke-width="${LW.thin}"/>`;
+      for(const y of [R20.gcYA,R20.gcYB]){
+        sec+=`<rect x="${cyf(y+CARRIER_W/2)}" y="${cy2f(R20.gcColH)}" width="${CARRIER_W*1000*S_}" height="${R20.gcColH*1000*S_}" fill="#e9f4ef" stroke="#1f6b47" stroke-width="${LW.thin}"/>`;
+        sec+=`<rect x="${cyf(y+CARRIER_W/2)}" y="${cy2f(R20.gcRailZ)}" width="${CARRIER_W*1000*S_}" height="${R20.gcRailZ*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      }
+      sec+=`</g>`
+        +dimV(cy2f(TOP),cy2f(0),cyf(GY0-.35),fmt(TOP),'±3')
+        +dimV(cy2f(R20.dockRollZ[1]),cy2f(R20.dockRollZ[0]),cyf(GY1+.3),fmt(R20.dockRollZ[1]-R20.dockRollZ[0]),'±2')
+        +`<text stroke="none" x="${cyf((GY0+GY1)/2)}" y="${cy2f(R20.dockRollZ[1])-3}" text-anchor="middle" ${FS(2.4)} fill="#19788a">내열 지지롤 2단</text>`
+        +datum(cyf(GY0-.2),cy2f(0),'A',1);
+      /* ── 차이표 */
+      const bx=252,by=176,DP=5.6;
+      const DIFF=[
+        ['보관','수평 캐리지 2대 교대','고정 5단 랙 (GC-101)'],
+        ['인계','컨베이어와 동일 높이 · 낙차 0',`포크가 층 선택 · 낙차 0`],
+        ['교대','A/B 인덱싱 필요','없음 — 단이 기다린다'],
+        ['점유 폭',`y ${fmt(GY0)} ~ ${fmt(GY1)}`,`랙 폭 ${fmt(2.56)}`],
+        ['냉각',`강제공랭 · 표면 IR ×2`,`강제공랭 · 표면 IR ×${GCOOL_DECKS}`],
+      ];
+      let tbl=`<text stroke="none" x="${bx}" y="${by-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">압축 배치(REV.21C)와의 차이</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${bx}" y="${by}" width="153" height="${7+DIFF.length*DP}"/>`
+        +`<path d="M${bx} ${by+7}h153"/></g>`;
+      ['항목','REV.20','REV.21C'].forEach((h,i)=>{
+        tbl+=`<text stroke="none" x="${bx+[2,24,90][i]}" y="${by+5}" ${FS(2.4)} font-weight="700" fill="#5b6d74">${h}</text>`;});
+      DIFF.forEach((r,i)=>{const y=by+7+i*DP+3.8;
+        r.forEach((c,k)=>{tbl+=`<text stroke="none" x="${bx+[2,24,90][k]}" y="${y}" ${FS(2.35)} font-weight="${k===0?700:400}" fill="${k===2?'#9a2b30':'#0f1c21'}">${esc(c)}</text>`;});});
+      /* ── 부품란 */
+      const cx3=40,cy3=190;
+      const bom=[
+        ['01','GC-301 저장 캐리지',`${fmt(R20.gcX1-R20.gcX0)} × ${fmt(CARRIER_W)} · 단부 프레임 2`,`기둥 EL ${fmt(R20.gcColH)} · 주행레일 EL ${fmt(R20.gcRailZ)}`,2],
+        ['02','내열 지지롤','Ø460 · 실리콘 피복',`EL ${fmt(R20.dockRollZ[0])} / ${fmt(R20.dockRollZ[1])} 2단`,2],
+        ['03','도크 갠트리',`3열 · x ${R20.dockX.map(v=>fmt(v)).join(' / ')}`,`다리 y ${fmt(GY0)} · ${fmt(GY1)}`,3],
+        ['04','상부 타이빔',`${fmt(GY1-GY0)} · EL ${fmt(TOP+.06)}`,'캐리지 단부 프레임 연결',2],
+        ['05','캐리지 존재센서','광전 · 도크 진입 확인','DOCK_LOCKED',2],
+        ['06','표면 IR 센서','비접촉 0~200 °C','GLASS_COOL_OK',2],
+      ];
+      let tbl2=`<text stroke="none" x="${cx3}" y="${cy3-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">부품란</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${cx3}" y="${cy3}" width="200" height="${8+bom.length*5.8}"/>`
+        +`<path d="M${cx3} ${cy3+8}h200"/></g>`;
+      ['품번','품명','규격','비고','수량'].forEach((h,i)=>{
+        tbl2+=`<text stroke="none" x="${cx3+[2,12,64,132,194][i]}" y="${cy3+5.6}" ${FS(2.4)} font-weight="700" fill="#5b6d74">${h}</text>`;});
+      bom.forEach((r,i)=>{const y=cy3+8+(i+1)*5.8-1.8;
+        r.forEach((c,j)=>{tbl2+=`<text stroke="none" x="${cx3+[2,12,64,132,196][j]}" y="${y}" text-anchor="${j===4?'end':'start'}" ${FS(2.35)} fill="#0f1c21">${esc(String(c))}</text>`;});});
+      const notes=[
+        `유리는 눕힌 채로만 움직인다. 컨베이어 상면과 캐리지 지지롤이 같은 높이라 낙차가 0 이고, 그것이 이 계통의 유일한 설계 요구다 — 판유리는 모서리 충격 한 번으로 깨진다.`,
+        `캐리지가 두 대인 이유는 냉각시간 때문이다. 한 대가 냉각 도크에 있는 동안 다른 한 대가 다음 유리를 받아야 라인이 서지 않는다. 압축 배치는 같은 시간을 ${GCOOL_DECKS}단으로 사서 교대를 없앴다.`,
+        `도크 갠트리 3열은 캐리지를 덮는 구조가 아니라 지지롤을 매다는 문형이다. 캐리지는 그 아래를 지나 도크로 들어간다.`,
+        R20_NFC,
+      ];
+      const noteSvg=`<path d="M30 244h196" stroke="#7b8d94" stroke-width="${LW.thin}"/>`
+        +`<text stroke="none" x="30" y="241.5" ${FS(3)} font-weight="700" fill="#0f1c21">주기</text>`
+        +notes.map((n,i)=>`<text stroke="none" x="30" y="${249+i*5.4}" ${FS(2.55)} fill="#0f1c21">${i+1}. ${esc(n)}</text>`).join('');
+      return `<div class="drawing-stage">`+fabSheet(
+          `<text stroke="none" x="30" y="21" ${FS(5)} font-weight="800" fill="#0f1c21">R-104 · GC-301 유리 저장 캐리지 · 수평 도크</text>`
+        + `<text stroke="none" x="30" y="26.5" ${FS(2.8)} fill="#5b6d74">평면도 · 단면 C-C · 차이표 — 치수 mm · 유리는 눕힌 채로만 움직인다</text>`
+        + r20Stamp(A3W-108,17)
+        + `<text stroke="none" x="30" y="${PY0-14}" ${FS(3.4)} font-weight="700" fill="#0f1c21">평면도 (1:48)</text>`
+        + `<text stroke="none" x="${CX-40}" y="${PY0-14}" ${FS(3.4)} font-weight="700" fill="#0f1c21">단면 C-C (1:48)</text>`
+        + plan + sec + tbl + tbl2 + noteSvg
+        + revBlock(R20_REV)
+        + fabTitleBlock({no:'R-104',title:'GC-301 유리 저장 캐리지 · 수평 도크',scale:'1:48',sheet:'1 / 1',
+            material:'SS400 · SUS304 · 피복롤',mass:'참고도',tol:'ISO 2768-mK',tol2:'지지롤 동일높이 ±2'}))
+        + `</div>`
+        + `<p class="drawing-note"><b>이 계통의 설계 요구는 하나다 — 낙차 0.</b> 판유리는 모서리 충격 한 번으로 `
+        + `깨지므로, 컨베이어 상면과 캐리지 지지롤을 같은 높이에 두고 옆으로만 민다. `
+        + `REV.20 은 그것을 <b>캐리지 두 대의 교대</b>로 지켰고, 압축 배치는 <b>고정 ${GCOOL_DECKS}단 랙</b>으로 지켰다. `
+        + `둘 다 낙차는 0 이다. 다른 것은 <b>냉각시간을 어디서 사느냐</b> 뿐이다 — 캐리지는 대수로, 랙은 단수로 산다. `
+        + `랙 쪽이 이긴 이유는 골조를 가열실과 공용할 수 있어서였다(F-007).</p>`;
+    }
+    /* R-105 · CVC-301 셀/EVA 무낙하 인계 컨베이어 · SH-101 격리게이트.
+
+       분리된 셀/EVA 적층체는 부서지기 쉽다. REV.20 은 그것을 박리점에서
+       슈레더 투입롤러까지 한 번도 떨어뜨리지 않고 보낸다 — 경사 인계 한
+       대와 수평 한 대, 그 사이에 낙차가 없다. 길이가 그 대가다.
+
+       압축 배치는 이 구간 전체를 발주자 설비로 넘겼다. 남는 것은 CE-201
+       횡인출과 CS-201 카트, 그리고 경계 인터록뿐이다. 설비를 넘겨도
+       인터록은 넘기지 않는다 — 멈춘 슈레더에 셀을 밀어 넣지 않는 조건은
+       그 슈레더가 발주자의 것이 되었다고 사라지지 않는다. */
+    function r20CellDrawing(){
+      const mm=v=>Math.round(v*1000), fmt=v=>mm(v).toLocaleString();
+      const A=R20.cvcA, B=R20.cvcB, X0=A.x-1.6, X1=R20.gateX+1.2;
+      const CE0=R20.cellCx-R20.cellL/2, CE1=R20.cellCx+R20.cellL/2;
+      /* ── 평면도 (상) 1:80 */
+      const PX0=40,PY0=56,S_=1/80;
+      const px=v=>PX0+(v-X0)*1000*S_, py=v=>PY0+(1.0-v)*1000*S_;
+      let plan=`<g stroke="#1a2b30" fill="none">`;
+      // 경사 인계 — 박리점에서 수평 라인으로 비스듬히 내려온다
+      plan+=`<path d="M${px(A.x)} ${py(A.y)}L${px(B.x)} ${py(B.y)}" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      plan+=`<path d="M${px(A.x)} ${py(A.y+.75)}L${px(B.x)} ${py(B.y+.75)}L${px(B.x)} ${py(B.y-.75)}L${px(A.x)} ${py(A.y-.75)}Z" fill="#f0e7d8" stroke="#8a6a12" stroke-width="${LW.thin}"/>`;
+      // 수평 컨베이어
+      plan+=`<rect x="${px(CE0)}" y="${py(R20.cellY+R20.cellW/2)}" width="${R20.cellL*1000*S_}" height="${R20.cellW*1000*S_}" fill="#f0e7d8" stroke="#8a6a12" stroke-width="${LW.out}"/>`;
+      // 격리게이트와 경계선
+      plan+=`<path d="M${px(R20.gateX)} ${py(R20.cellY+1.1)}V${py(R20.cellY-1.1)}" stroke="#9a2b30" stroke-width="${LW.out}"/>`;
+      plan+=`<path d="M${px(R20.fenceX1)} ${py(1.0)}V${py(-3.3)}" stroke="#9a2b30" stroke-width="${LW.thin}" stroke-dasharray="6 3"/>`;
+      plan+=`</g>`
+        +balloon(px((A.x+B.x)/2),py((A.y+B.y)/2-1.05),'1')
+        +balloon(px(R20.cellCx),py(R20.cellY+R20.cellW/2+.55),'2')
+        +balloon(px(R20.gateX),py(R20.cellY-1.5),'3')
+        +`<text stroke="none" x="${px(R20.fenceX1)+2}" y="${py(.6)}" ${FS(2.4)} fill="#9a2b30">방책선 x ${fmt(R20.fenceX1)}</text>`
+        +`<text stroke="none" x="${px(X1)}" y="${py(R20.cellY)}" text-anchor="end" ${FS(2.4)} fill="#9a2b30">→ SH-101</text>`
+        +dimH(px(A.x),px(R20.gateX),py(-3.3)+8,fmt(R20.gateX-A.x),'참고')
+        +dimH(px(CE0),px(CE1),py(R20.cellY-R20.cellW/2)+5,fmt(R20.cellL))
+        +datum(px(CE0),py(R20.cellY-R20.cellW/2),'A',1);
+      /* ── 입면도 (중) 1:80 — 낙차가 없다는 것이 요지 */
+      const EY=134;
+      const ez=v=>EY+(2.6-v)*1000*S_;
+      let elev=`<g stroke="#1a2b30" fill="none">`;
+      elev+=`<path d="M${px(X0)} ${ez(0)}H${px(X1)}" stroke-width="${LW.out}"/>`;
+      elev+=`<path d="M${px(A.x)} ${ez(A.z)}L${px(B.x)} ${ez(B.z)}" stroke="#8a6a12" stroke-width="${LW.out}"/>`;
+      elev+=`<path d="M${px(CE0)} ${ez(R20.cellZ)}H${px(CE1)}" stroke="#8a6a12" stroke-width="${LW.out}"/>`;
+      for(const x of [A.x,B.x,CE0+1.5,R20.cellCx,CE1-1.5])
+        elev+=`<rect x="${px(x)-1.2}" y="${ez(x<=B.x?(x===A.x?A.z:B.z):R20.cellZ)}" width="2.4" height="${(x<=B.x?(x===A.x?A.z:B.z):R20.cellZ)*1000*S_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      elev+=`<rect x="${px(R20.gateX)-1.6}" y="${ez(2.42)}" width="3.2" height="${2.42*1000*S_}" fill="#fdecec" stroke="#9a2b30" stroke-width="${LW.out}"/>`;
+      elev+=`</g>`
+        +dimV(ez(A.z),ez(0),px(A.x)-8,fmt(A.z),'±3')
+        +dimV(ez(R20.cellZ),ez(0),px(X1)+2,fmt(R20.cellZ),'±3')
+        +`<text stroke="none" x="${px(B.x)}" y="${ez(B.z)-3}" text-anchor="middle" ${FS(2.4)} fill="#8a6a12">인계점 EL ${fmt(B.z)} — 낙차 0</text>`;
+      /* ── 경계표 — 설비는 넘기고 인터록은 넘기지 않는다 */
+      const bx=40,by=176,DP=5.8;
+      const BND=[
+        ['1','CVC-301 경사 인계 컨베이어',`EL ${fmt(A.z)} → ${fmt(B.z)}`,'공급범위 밖 — 발주자','—'],
+        ['2','CVC-301 수평 컨베이어',`${fmt(R20.cellL)} @ EL ${fmt(R20.cellZ)}`,'공급범위 밖 — 발주자','CELL_TAKEAWAY_READY'],
+        ['3','SH-101 격리게이트',`x ${fmt(R20.gateX)}`,'공급범위 밖 — 발주자','SHREDDER_READY'],
+        ['—','셀/EVA 배출슈트 레벨센서','빈 만재 감지','납품 (M-008)','CELL_BIN_SPACE_OK'],
+        ['—','경계 인터페이스반 BJ-101','하드와이어 단자대','납품 (M-017)','IF_ESTOP_LOOP_OK'],
+      ];
+      let tbl=`<text stroke="none" x="${bx}" y="${by-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">경계표 — 설비는 넘기고 인터록은 넘기지 않는다</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${bx}" y="${by}" width="220" height="${7+BND.length*DP}"/>`
+        +`<path d="M${bx} ${by+7}h220"/></g>`;
+      ['№','품목','치수','공급','경계 신호'].forEach((h,i)=>{
+        tbl+=`<text stroke="none" x="${bx+[2,10,84,124,164][i]}" y="${by+5}" ${FS(2.4)} font-weight="700" fill="#5b6d74">${h}</text>`;});
+      BND.forEach((r,i)=>{const y=by+7+i*DP+3.9, out=r[3].startsWith('공급범위');
+        r.forEach((c,k)=>{
+          tbl+=`<text stroke="none" x="${bx+[2,10,84,124,164][k]}" y="${y}" ${FS(2.35)} font-weight="${k===0?700:400}" fill="${k===3?(out?'#8a6a12':'#1f6b47'):k===4?'#19788a':'#0f1c21'}">${esc(c)}</text>`;});});
+      /* ── 차이표 */
+      const dx2=270,dy2=176,DQ=5.8;
+      const DIFF=[
+        ['반출 방식','컨베이어 직송','CE-201 횡인출 + CS-201 카트'],
+        ['점유 길이',`${fmt(R20.gateX-A.x)}`,`${fmt(CE_X1-CE_X0)} (스테이션 안)`],
+        ['낙차','0 — 경사 + 수평','0 — 통째로 들어 옮긴다'],
+        ['슈레더','라인에 직결','발주자 설비 · 경계 신호만'],
+        ['정지 조건','SHREDDER_READY','동일 — 인터록은 넘기지 않았다'],
+      ];
+      let tbl2=`<text stroke="none" x="${dx2}" y="${dy2-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">REV.21C 와의 차이</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${dx2}" y="${dy2}" width="135" height="${7+DIFF.length*DQ}"/>`
+        +`<path d="M${dx2} ${dy2+7}h135"/></g>`;
+      ['항목','REV.20','REV.21C'].forEach((h,i)=>{
+        tbl2+=`<text stroke="none" x="${dx2+[2,26,72][i]}" y="${dy2+5}" ${FS(2.4)} font-weight="700" fill="#5b6d74">${h}</text>`;});
+      DIFF.forEach((r,i)=>{const y=dy2+7+i*DQ+3.9;
+        r.forEach((c,k)=>{tbl2+=`<text stroke="none" x="${dx2+[2,26,72][k]}" y="${y}" ${FS(2.3)} font-weight="${k===0?700:400}" fill="${k===2?'#9a2b30':'#0f1c21'}">${esc(c)}</text>`;});});
+      const notes=[
+        `이 계통의 요구는 '무낙하' 다. 셀/EVA 적층체는 박리 직후 가장 약하므로 경사 인계에서 수평 컨베이어로 넘어가는 지점(EL ${fmt(B.z)})에 단차를 두지 않는다.`,
+        `이 ${fmt(R20.gateX-A.x)} 가운데 방책 안은 x ${fmt(R20.fenceX1)} 까지이고 나머지는 방책 밖을 지난다 — REV.20 에서도 이 구간은 이미 별동 취급이었다.`,
+        `압축 배치는 이 구간 전체를 발주자 설비로 넘겼다 (사양서 3.4항). 그래도 SHREDDER_READY · CELL_TAKEAWAY_READY · CELL_BIN_SPACE_OK 세 신호는 남는다.`,
+        `멈춘 슈레더에 셀을 밀어 넣지 않는 조건은 그 슈레더의 소유자가 바뀐다고 사라지지 않기 때문이다. 경계에서 납품하는 것은 그 신호를 받는 BJ-101 이다.`,
+        R20_NFC,
+      ];
+      const noteSvg=`<path d="M30 244h196" stroke="#7b8d94" stroke-width="${LW.thin}"/>`
+        +`<text stroke="none" x="30" y="241.5" ${FS(3)} font-weight="700" fill="#0f1c21">주기</text>`
+        +notes.map((n,i)=>`<text stroke="none" x="30" y="${249+i*5.4}" ${FS(2.55)} fill="#0f1c21">${i+1}. ${esc(n)}</text>`).join('');
+      return `<div class="drawing-stage">`+fabSheet(
+          `<text stroke="none" x="30" y="21" ${FS(5)} font-weight="800" fill="#0f1c21">R-105 · CVC-301 셀/EVA 무낙하 인계 · SH-101 경계</text>`
+        + `<text stroke="none" x="30" y="26.5" ${FS(2.8)} fill="#5b6d74">평면도 · 입면도 · 경계표 — 치수 mm · 설비는 넘기고 인터록은 넘기지 않는다</text>`
+        + r20Stamp(A3W-108,17)
+        + `<text stroke="none" x="30" y="${PY0-8}" ${FS(3.4)} font-weight="700" fill="#0f1c21">평면도 (1:80)</text>`
+        + `<text stroke="none" x="30" y="${EY-10}" ${FS(3.4)} font-weight="700" fill="#0f1c21">입면도 (1:80) — 낙차 0</text>`
+        + plan + elev + tbl + tbl2 + noteSvg
+        + revBlock(R20_REV)
+        + fabTitleBlock({no:'R-105',title:'CVC-301 셀/EVA 인계 · SH-101 경계',scale:'1:80',sheet:'1 / 1',
+            material:'SS400 · 내열벨트',mass:'참고도',tol:'ISO 2768-mK',tol2:'인계점 단차 0 (±2)'}))
+        + `</div>`
+        + `<p class="drawing-note"><b>설비는 넘겼고 인터록은 넘기지 않았다.</b> 압축 배치는 이 `
+        + `${fmt(R20.gateX-A.x)} 구간 전체 — 경사 인계 · 수평 컨베이어 · 슈레더 격리게이트 — 를 발주자 설비로 `
+        + `보냈다. 그래도 <b>SHREDDER_READY · CELL_TAKEAWAY_READY · CELL_BIN_SPACE_OK</b> 는 남는다. `
+        + `멈춘 슈레더에 셀을 밀어 넣지 않는 조건은 그 슈레더가 누구 것이 되었는지와 무관하기 때문이다. `
+        + `경계에서 우리가 납품하는 것은 그 신호를 받는 <b>BJ-101 인터페이스반</b>이고, 그것이 M-017 이 표에 `
+        + `남아 있는 이유다.</p>`;
+    }
+    /* R-106 · AL-101/102 에어록 · 7＋1 가열 캐리지 순환.
+
+       REV.20 의 가열실은 문이 넷이다. 밀폐를 깨지 않고 캐리지를 넣고 빼려면
+       외문·내문이 짝을 이뤄야 하고(DOOR_MUTEX), 그 사이 격리실이 하나씩
+       필요하다. 압축 배치는 이 넷을 승강 포크 문형 둘(LI-101 · EX-101)로
+       바꿨다 — 캐리지가 없으므로 격리실도 없다.
+
+       무엇을 잃었는지도 적어 둔다: 포크 방식은 문이 열려 있는 동안 챔버가
+       열린다. REV.20 의 에어록은 그 순간에도 밀폐를 지켰다. 그 차이를
+       감당하는 것이 압축 배치의 배기 설계다. */
+    function r20AirlockDrawing(){
+      const mm=v=>Math.round(v*1000), fmt=v=>mm(v).toLocaleString();
+      const g=carriageGeometry(), HZ=HC_Z;
+      const FLEET=R20.fleetHeat+R20.fleetProcess+R20.fleetReturn+R20.fleetSpare;
+      /* ── 정면도 (상) 1:56 */
+      const FX=32,FY=58,S_=1/64;
+      const fx=v=>FX+(v-R20.alInOutside+.8)*1000*S_, fz=v=>FY+(HZ+1.05-v)*1000*S_;
+      let front=`<g stroke="#1a2b30" fill="none">`;
+      front+=`<path d="M${fx(R20.alInOutside-.7)} ${fz(0)}H${fx(R20.alOutDone+.7)}" stroke-width="${LW.out}"/>`;
+      // 가열실 몸통
+      front+=`<rect x="${fx(R20.hcCx-R20.hcL/2)}" y="${fz(HZ+.94)}" width="${R20.hcL*1000*S_}" height="${(HZ+.94)*1000*S_}" fill="#fdf4de" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      // 데크 — 캐리지가 서는 층
+      for(let k=0;k<DECKS;k++){const z=HC_Z0+HC_DZ*(k+.5);
+        front+=`<rect x="${fx(R20.hcCx-DECK_L/2)}" y="${fz(z)-1}" width="${DECK_L*1000*S_}" height="2" fill="#c8d2d6" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+        front+=`<text stroke="none" x="${fx(R20.hcCx+DECK_L/2)+1.5}" y="${fz(z)+1}" ${FS(2.3)} fill="#5b6d74">C${k+1}</text>`;
+      }
+      // 두 에어록 — 외문·내문과 그 사이 격리실
+      [[R20.alInOuter,R20.alInInner,'AL-101'],[R20.alOutInner,R20.alOutOuter,'AL-102']].forEach(([a,b,tag])=>{
+        front+=`<rect x="${fx(a)}" y="${fz(2.66)}" width="${(b-a)*1000*S_}" height="${2.66*1000*S_}" fill="#e7f1f4" stroke="#19788a" stroke-width="${LW.out}"/>`;
+        for(const x of [a,b])
+          front+=`<rect x="${fx(x)-1}" y="${fz(2.42)}" width="2" height="${2.42*1000*S_}" fill="#9a2b30"/>`;
+        front+=`<text stroke="none" x="${fx((a+b)/2)}" y="${fz(2.66)-2}" text-anchor="middle" ${FS(2.5)} font-weight="700" fill="#0f6b78">${tag}</text>`;
+      });
+      // 캐리지 — 격리실·복귀·예비 자리
+      for(const [x,al] of [[R20.alInVest,.35],[R20.alOutVest,.35],[R20.alInOutside,1],[R20.alOutDone,1]])
+        front+=`<rect x="${fx(x-CARRIER_L/2)}" y="${fz(1.52)}" width="${CARRIER_L*1000*S_}" height="${.20*1000*S_}" fill="#e7f1f4" stroke="#19788a" stroke-width="${LW.thin}" opacity="${al}"/>`;
+      front+=`</g>`
+        +dimH(fx(R20.alInOuter),fx(R20.alInInner),fz(0)+9,fmt(R20.alInInner-R20.alInOuter),'±2')
+        +dimH(fx(R20.alOutInner),fx(R20.alOutOuter),fz(0)+9,fmt(R20.alOutOuter-R20.alOutInner),'±2')
+        +dimH(fx(R20.alInOutside),fx(R20.alOutDone),fz(0)+18,fmt(R20.alOutDone-R20.alInOutside),'참고')
+        +dimV(fz(HZ+.94),fz(0),fx(R20.alInOutside-.4),fmt(HZ+.94),'±5')
+        +dimV(fz(HC_Z0+HC_DZ*(DECKS-.5)),fz(HC_Z0+HC_DZ*.5),fx(R20.alOutDone+.4),fmt(HC_DZ*(DECKS-1)),'±2')
+        +datum(fx(R20.hcCx),fz(0),'A',1);
+      /* ── 순환 표 — carriageCycleState 의 여섯 단계 */
+      const QX=32,QY=172,DP=5.6;
+      const CYC=[
+        ['1',`${DECKS}/${DECKS} 밀폐가열`,'FULL_LOAD_ACK · 모든 문 닫힘'],
+        ['2','C 방출 준비','EVA 140 °C · 탠덤 READY · IDX 잠금 해제'],
+        ['3','배출 내문 → 격리 → 외문','DOOR_MUTEX · 씰 확인 · 높이 정렬'],
+        ['4','새 패널·캐리지 투입','AL-101 외문만 개방 → 격리실 진입'],
+        ['5','LI-101 층 선택','격리 상태에서 승강 · 위치핀 정합'],
+        ['6','TS-101 재적재','내문 개방 · 캐리지 삽입 · 포크만 복귀'],
+      ];
+      let cyc=`<text stroke="none" x="${QX}" y="${QY-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">캐리지 순환 — 한 장이 도는 여섯 단계</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${QX}" y="${QY}" width="224" height="${7+CYC.length*DP}"/>`
+        +`<path d="M${QX} ${QY+7}h224"/></g>`;
+      ['단계','동작','허가 조건'].forEach((h,i)=>{
+        cyc+=`<text stroke="none" x="${QX+[2,16,100][i]}" y="${QY+5}" ${FS(2.4)} font-weight="700" fill="#5b6d74">${h}</text>`;});
+      CYC.forEach((r,i)=>{const y=QY+7+i*DP+3.9;
+        r.forEach((c,k)=>{cyc+=`<text stroke="none" x="${QX+[2,16,100][k]}" y="${y}" ${FS(2.35)} font-weight="${k===0?700:400}" fill="${k===2?'#5b6d74':'#0f1c21'}">${esc(c)}</text>`;});});
+      /* ── 캐리지 대수 */
+      const FX2=258,FY2=62;
+      const FLT=[[`가열실 데크`,R20.fleetHeat],['탠덤 (공정)',R20.fleetProcess],['복귀·재장전',R20.fleetReturn],['MC-401 정비 대기',R20.fleetSpare]];
+      let fleet=`<text stroke="none" x="${FX2}" y="${FY2-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">캐리지 ${FLEET}대의 자리</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${FX2}" y="${FY2}" width="147" height="${7+FLT.length*5.4}"/>`
+        +`<path d="M${FX2} ${FY2+7}h147"/></g>`
+        +`<text stroke="none" x="${FX2+2}" y="${FY2+5}" ${FS(2.4)} font-weight="700" fill="#5b6d74">자리</text>`
+        +`<text stroke="none" x="${FX2+120}" y="${FY2+5}" ${FS(2.4)} font-weight="700" fill="#5b6d74">대수</text>`;
+      FLT.forEach(([a,n],i)=>{const y=FY2+7+i*5.4+3.8;
+        fleet+=`<text stroke="none" x="${FX2+2}" y="${y}" ${FS(2.35)} fill="#0f1c21">${esc(a)}</text>`
+          +`<text stroke="none" x="${FX2+128}" y="${y}" ${FS(2.35)} font-weight="700" fill="#0f1c21">${n}</text>`;});
+      /* ── 차이표 */
+      const bx=258,by=100,DQ=5.8;
+      const DIFF=[
+        ['출입','에어록 4문 (외·내 × 2)','승강 포크 문형 2기'],
+        ['격리실',`${fmt(R20.alInInner-R20.alInOuter)} × 2`,'없음'],
+        ['밀폐','문 여는 동안에도 유지','포크 진입 중 챔버 열림'],
+        ['운반체',`캐리지 ${FLEET}대`,'없음 — 포크가 유리만 든다'],
+        ['층 선택','LI-101 승강 + 위치핀','포크 Z축 절대치'],
+        ['점유 길이',`${fmt(R20.alOutDone-R20.alInOutside)}`,`${fmt(CST.HC.w)} (가열실만)`],
+      ];
+      let tbl=`<text stroke="none" x="${bx}" y="${by-3}" ${FS(3.2)} font-weight="700" fill="#0f1c21">REV.21C 와의 차이</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none"><rect x="${bx}" y="${by}" width="147" height="${7+DIFF.length*DQ}"/>`
+        +`<path d="M${bx} ${by+7}h147"/></g>`;
+      ['항목','REV.20','REV.21C'].forEach((h,i)=>{
+        tbl+=`<text stroke="none" x="${bx+[2,26,84][i]}" y="${by+5}" ${FS(2.4)} font-weight="700" fill="#5b6d74">${h}</text>`;});
+      DIFF.forEach((r,i)=>{const y=by+7+i*DQ+3.9;
+        r.forEach((c,k)=>{tbl+=`<text stroke="none" x="${bx+[2,26,84][k]}" y="${y}" ${FS(2.3)} font-weight="${k===0?700:400}" fill="${k===2?'#9a2b30':'#0f1c21'}">${esc(c)}</text>`;});});
+      const notes=[
+        `문이 넷인 이유는 밀폐다. 외문과 내문이 동시에 열리면 챔버가 열리므로 DOOR_MUTEX 가 그것을 막고, 그 사이에 캐리지가 설 격리실 ${fmt(R20.alInInner-R20.alInOuter)} 이 하나씩 필요하다.`,
+        `캐리지는 ${FLEET}대다 — 데크 ${R20.fleetHeat} + 공정 1 + 복귀 1 + 예비 1. 데크 수를 바꾸면 대수가 따라 바뀐다.`,
+        `압축 배치는 이 넷을 포크 문형 둘로 바꾸면서 밀폐를 일부 내줬다. 포크가 들어가는 동안 챔버가 열리므로, 그 순간의 배기를 배기 설계가 감당해야 한다 — 공짜로 줄인 길이가 아니다.`,
+        R20_NFC,
+      ];
+      const noteSvg=`<path d="M30 244h196" stroke="#7b8d94" stroke-width="${LW.thin}"/>`
+        +`<text stroke="none" x="30" y="241.5" ${FS(3)} font-weight="700" fill="#0f1c21">주기</text>`
+        +notes.map((n,i)=>`<text stroke="none" x="30" y="${249+i*5.4}" ${FS(2.55)} fill="#0f1c21">${i+1}. ${esc(n)}</text>`).join('');
+      return `<div class="drawing-stage">`+fabSheet(
+          `<text stroke="none" x="30" y="21" ${FS(5)} font-weight="800" fill="#0f1c21">R-106 · AL-101/102 에어록 · ${FLEET}대 가열 캐리지 순환</text>`
+        + `<text stroke="none" x="30" y="26.5" ${FS(2.8)} fill="#5b6d74">정면도 · 순환표 · 차이표 — 치수 mm · 문이 넷인 이유는 밀폐다</text>`
+        + r20Stamp(A3W-108,17)
+        + `<text stroke="none" x="30" y="${FY-8}" ${FS(3.4)} font-weight="700" fill="#0f1c21">정면도 (1:64)</text>`
+        + front + cyc + fleet + tbl + noteSvg
+        + revBlock(R20_REV)
+        + fabTitleBlock({no:'R-106',title:`AL-101/102 에어록 · 캐리지 순환`,scale:'1:64',sheet:'1 / 1',
+            material:'SS400 · SUS304 · 실리콘 씰',mass:'참고도',tol:'ISO 2768-mK',tol2:'문 씰면 평면도 0.5'}))
+        + `</div>`
+        + `<p class="drawing-note"><b>길이를 줄이면서 무엇을 내줬는지도 이 도면이 말한다.</b> REV.20 의 `
+        + `에어록 넷은 <b>문이 열려 있는 동안에도 챔버 밀폐를 지켰다</b> — 외문과 내문이 짝을 이루고 `
+        + `그 사이 격리실 ${fmt(R20.alInInner-R20.alInOuter)} 에 캐리지가 선다. 압축 배치는 이 넷을 승강 포크 문형 둘로 `
+        + `바꿔 ${fmt(R20.alOutDone-R20.alInOutside)} 를 ${fmt(CST.HC.w)} 로 줄였지만, 포크가 들어가는 동안 챔버가 열린다. `
+        + `그 순간의 배기를 배기 설계가 감당한다 — <b>공짜로 줄인 길이가 아니다.</b></p>`;
+    }
     function cassetteDrawing(){
       const cool=cassCoolSec(),hPre=cassHeatSec(CASS_T_PRE),hCold=cassHeatSec(CASS_T_AMB);
       const auto=cassStopAuto(),man=cassStopManual();
@@ -6754,7 +7700,7 @@
     }
     function renderEngineering(){
       document.querySelectorAll('[data-drawing]').forEach(b=>b.classList.toggle('active',b.dataset.drawing===drawingTab));
-      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else if(drawingTab==='chamber')drawingContent.innerHTML=chamberFabDrawing();else if(drawingTab==='tandem')drawingContent.innerHTML=tandemFabDrawing();else if(drawingTab==='fork')drawingContent.innerHTML=forkFabDrawing();else if(drawingTab==='winder')drawingContent.innerHTML=winderFabDrawing();else if(drawingTab==='cooler')drawingContent.innerHTML=coolerFabDrawing();else if(drawingTab==='cassette')drawingContent.innerHTML=cassetteDrawing();else if(drawingTab==='compact')drawingContent.innerHTML=compactDrawing();else if(drawingTab==='foundation')drawingContent.innerHTML=foundationDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
+      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else if(drawingTab==='chamber')drawingContent.innerHTML=chamberFabDrawing();else if(drawingTab==='tandem')drawingContent.innerHTML=tandemFabDrawing();else if(drawingTab==='fork')drawingContent.innerHTML=forkFabDrawing();else if(drawingTab==='winder')drawingContent.innerHTML=winderFabDrawing();else if(drawingTab==='cooler')drawingContent.innerHTML=coolerFabDrawing();else if(drawingTab==='cassette')drawingContent.innerHTML=cassetteDrawing();else if(drawingTab==='compact')drawingContent.innerHTML=compactDrawing();else if(drawingTab==='foundation')drawingContent.innerHTML=foundationDrawing();else if(drawingTab==='r20plan')drawingContent.innerHTML=r20PlanDrawing();else if(drawingTab==='r20carrier')drawingContent.innerHTML=r20CarrierDrawing();else if(drawingTab==='r20tandem')drawingContent.innerHTML=r20TandemDrawing();else if(drawingTab==='r20winder')drawingContent.innerHTML=r20WinderDrawing();else if(drawingTab==='r20glass')drawingContent.innerHTML=r20GlassDrawing();else if(drawingTab==='r20cell')drawingContent.innerHTML=r20CellDrawing();else if(drawingTab==='r20airlock')drawingContent.innerHTML=r20AirlockDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
       const sel=$('assemblySelect');if(sel)sel.addEventListener('change',e=>{assemblyIndex=Number(e.target.value)||0;renderEngineering()});
       drawingContent.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{drawingMode=b.dataset.mode;renderEngineering()}));
     }

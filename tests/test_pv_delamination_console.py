@@ -12,6 +12,8 @@ import unittest
 
 from . import _path  # noqa: F401
 
+import console_consts
+
 from .test_drawings import standalone_document_checks
 
 CONSOLE = (
@@ -358,7 +360,8 @@ class TestDeliverableEquipment(unittest.TestCase):
         반입·반출구는 자재가 지나야 해서 도어를 달 수 없다. 방호 없이 열어두면
         3.8m 개구부가 그대로 남는다.
         """
-        fence = re.findall(r"fenceSegment\(([-\d.,\s]+)\)", self.html)
+        fence = re.findall(r"fenceSegment\(([-\d.,\s]+)\)",
+                              console_consts.inline(self.html))
         self.assertTrue(fence, "안전펜스가 없다")
         ends = {}
         for call in fence:
@@ -366,7 +369,7 @@ class TestDeliverableEquipment(unittest.TestCase):
             if x0 == x1:                       # 라인 끝을 막는 세로 구간
                 ends.setdefault(x0, []).append((min(y0, y1), max(y0, y1)))
         self.assertTrue(ends, "라인 양 끝 펜스가 없다")
-        guarded = [float(m) for m in re.findall(r"lightCurtain\(([-\d.]+),", self.html)]
+        guarded = [float(m) for m in re.findall(r"lightCurtain\(([-\d.]+),", console_consts.inline(self.html))]
         for x, spans in ends.items():
             covered = sum(hi - lo for lo, hi in spans)
             outer = max(hi for _, hi in spans) - min(lo for lo, _ in spans)
@@ -756,14 +759,16 @@ class TestBacksheetWinder(unittest.TestCase):
         bin_y = self._const("BS_BIN_Y")
         fence = min(
             float(c.split(",")[1])
-            for c in re.findall(r"fenceSegment\(([-\d.,\s]+)\)", self.html)
+            for c in re.findall(r"fenceSegment\(([-\d.,\s]+)\)",
+                              console_consts.inline(self.html))
         )
         self.assertLess(bin_y, fence, "BS-301 보관대가 안전펜스 안에 있다")
         self.assertIn("BS-301", self.html)
 
     def test_control_cabinet_does_not_block_the_roll_exit(self):
         """조작반이 반출 해치 앞을 막으면 롤이 나올 길이 없다."""
-        m = re.search(r"plinth\((\d+(?:\.\d+)?),-3\.3,1\.6,1\.2\)", self.html)
+        m = re.search(r"plinth\((\d+(?:\.\d+)?),-3\.3,1\.6,1\.2\)",
+                      console_consts.inline(self.html))
         self.assertIsNotNone(m, "PLC/HMI 캐비닛을 찾지 못했다")
         cabinet_x = float(m.group(1))
         drum = self._const("WR_DRUM_X")
@@ -904,7 +909,8 @@ class TestPanelScale(unittest.TestCase):
         제작도 표에 적힌 치수와 3D 좌표가 다섯 군데에서 맞아야 성립한다.
         """
         # 안전펜스 — Rev.20 좌표는 그대로 남아 있다(배치 전환으로 볼 수 있다)
-        fence = re.findall(r"fenceSegment\(([-\d.,\s]+)\)", self.html)
+        fence = re.findall(r"fenceSegment\(([-\d.,\s]+)\)",
+                              console_consts.inline(self.html))
         xs = [float(v) for call in fence for v in call.split(",")[:4:2]]
         self.assertAlmostEqual(max(xs) - min(xs), 24.8, delta=0.05)
         # 모듈표 치수는 이제 값이 아니라 배치 상수의 식이다 — 그 식이 미터를
@@ -913,12 +919,13 @@ class TestPanelScale(unittest.TestCase):
                       "모듈표 치수가 미터→mm 변환을 거치지 않는다")
         self.assertIn("size:dim(CST.DL.w,", self.html.replace(" ", ""),
                       "탠덤 셀 외형이 스테이션 폭에서 나오지 않는다")
-        # 탠덤 브리지 10,200 mm 는 Rev.20 갠트리 — 좌표는 남아 있어야 한다
-        self.assertIn("gantry(17.8,10.2,", self.html)
+        # 탠덤 브리지 10,200 mm 는 Rev.20 갠트리 — 좌표는 남아 있어야 한다.
+        # 좌표 자체는 R20 이 들고 있으므로 값으로 펼친 뒤 확인한다.
+        self.assertIn("gantry(17.8,10.2,", console_consts.inline(self.html))
         # 가열실 M-002 — 표의 치수가 압축 배치 스테이션 폭과 랙 높이에서 나온다.
         # Rev.20 챔버(preheatTunnel, L=5.6)는 배치 전환용으로 남아 있으므로
         # 좌표는 그대로 확인하되, 표는 더 이상 그 값을 인용하지 않는다.
-        tunnel = self._fn("preheatTunnel")
+        tunnel = console_consts.inline(self._fn("preheatTunnel"))
         self.assertRegex(tunnel, r"L\s*=\s*5\.6\b")
         self.assertIn("size:dim(CST.HC.w,RACK_W,RACK_ROOF())",
                       self.html.replace(" ", ""),

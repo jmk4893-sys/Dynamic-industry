@@ -114,6 +114,81 @@ def text():
     return expand(CONSOLE.read_text(encoding="utf-8"))
 
 
+def _object_body(console, name):
+    """`const NAME={ ... };` 의 중괄호 안을 중괄호 균형으로 잘라 낸다."""
+    m = re.search(r"\bconst %s\s*=\s*\{" % re.escape(name), console)
+    if m is None:
+        raise KeyError(name)
+    i = console.index("{", m.start())
+    depth = 0
+    for k in range(i, len(console)):
+        if console[k] == "{":
+            depth += 1
+        elif console[k] == "}":
+            depth -= 1
+            if depth == 0:
+                return console[i + 1:k]
+    raise KeyError(name)
+
+
+def obj(name, console=None):
+    """설정 객체 하나를 이름→값으로 편다.
+
+    배치 상수가 낱개 const 에서 객체로 옮겨 가면서(R20 · CST) 시험이 값을
+    물을 데가 없어졌다. 숫자와 숫자 배열만 편다 — 함수나 문자열은 두고
+    간다. 모르면 그대로 두는 이 모듈의 규칙은 여기서도 같다.
+    """
+    console = CONSOLE.read_text(encoding="utf-8") if console is None else console
+    scope = env(console)
+    # 주석을 먼저 걷어 낸다 — 주석 안의 쉼표("y +2,900")가 필드 경계로 읽힌다
+    body = _object_body(console, name)
+    body = re.sub(r"/\*.*?\*/", "", body, flags=re.S)
+    body = re.sub(r"//[^\n]*", "", body)
+    out = {}
+    for part in _split_top(body):
+        part = part.strip()
+        m = re.fullmatch(r"([A-Za-z_][\w]*)\s*:\s*(.+)", part, re.S)
+        if not m:
+            continue
+        key, rhs = m.group(1), m.group(2).strip()
+        if rhs.startswith("[") and rhs.endswith("]"):
+            items = [value(x, scope) for x in _split_top(rhs[1:-1])]
+            if items and all(v is not None for v in items):
+                out[key] = items
+            continue
+        v = value(rhs, scope)
+        if v is not None:
+            out[key] = v
+    return out
+
+
+def inline(text, *names):
+    """`R20.railCx` 같은 객체 참조를 값으로 바꾼다.
+
+    배치 좌표가 낱개 const 에서 객체로 옮겨 가면 도면·3D 는 함께 움직이지만
+    소스를 글자로 읽던 시험은 눈이 먼다. 값으로 펼쳐 주면 시험은 하던 대로
+    좌표를 물을 수 있고, 소스는 한 곳에서만 좌표를 든다.
+    """
+    console = CONSOLE.read_text(encoding="utf-8")
+    for name in names or ("R20",):
+        try:
+            fields = obj(name, console)
+        except KeyError:
+            continue
+        for key, v in sorted(fields.items(), key=lambda kv: -len(kv[0])):
+            if isinstance(v, list):
+                # 배열은 첨자까지 함께 편다 — R20.dockX[1] 도 좌표다
+                for i, item in enumerate(v):
+                    text = text.replace(f"{name}.{key}[{i}]", _fmt(item))
+                continue
+            text = text.replace(f"{name}.{key}", _fmt(v))
+    return text
+
+
 def const(name):
-    """콘솔 상수 하나. 없으면 KeyError."""
-    return env(CONSOLE.read_text(encoding="utf-8"))[name]
+    """콘솔 상수 하나. `R20.railCx` 처럼 객체 필드도 받는다. 없으면 KeyError."""
+    console = CONSOLE.read_text(encoding="utf-8")
+    if "." in name:
+        owner, key = name.split(".", 1)
+        return obj(owner, console)[key]
+    return env(console)[name]
