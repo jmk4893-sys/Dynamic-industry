@@ -163,6 +163,82 @@ class TestTheChamberSheetIsFabricationLevel(unittest.TestCase):
                       "화면 설명문이 참고도임을 밝히지 않는다")
 
 
+class TestTheTandemSheetSaysWhatMoves(unittest.TestCase):
+    """M-005 는 Rev.20 과 가장 크게 달라진 모듈이다.
+
+    종전에는 칼날이 고정이고 패널이 11,200 mm 를 지나갔는데, 압축 배치는
+    반대다 — 패널이 서고 칼날이 왕복한다. 모듈표가 오래도록 '고정 HKB/HKS
+    탠덤 10,200 × 4,200' 을 부르고 있었으므로, 그 위에 제작도를 그렸다면
+    반대로 움직이는 기계가 도면으로 굳었을 것이다. 이 시험이 보는 것은
+    그 방향이다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = CONSOLE.read_text(encoding="utf-8")
+        cls.body = _fn(cls.src, "tandemFabDrawing")
+        cls.flat = cls.body.replace(" ", "")
+
+    def test_the_sheet_is_reachable(self):
+        self.assertIn('data-drawing="tandem"', self.src, "탭이 없다")
+        self.assertIn("drawingTab==='tandem')drawingContent.innerHTML=tandemFabDrawing()",
+                      self.src, "탭이 시트를 그리지 않는다")
+
+    def test_it_uses_the_fabrication_frame(self):
+        for token, why in (("fabSheet(", "A3 도면틀을 쓰지 않는다"),
+                           ("fabTitleBlock({", "ISO 7200 표제란이 없다"),
+                           ("revBlock([", "개정란이 없다"),
+                           ("no:'F-005'", "도면번호가 없다")):
+            self.assertTrue(token in self.body, why)
+
+    def test_the_travel_is_the_rail_span_not_a_typed_number(self):
+        """행정을 손으로 적으면 레일을 옮겼을 때 도면만 옛 행정으로 남는다."""
+        self.assertIn("TRAV=mm(CRAIL_X1-CRAIL_X0)", self.flat,
+                      "행정이 주행레일 좌표에서 나오지 않는다")
+        self.assertIn("L=mm(g.w)", self.flat, "셀 길이가 스테이션 폭에서 나오지 않는다")
+        self.assertIn("GAP=mm(TANDEM_GAP)", self.flat, "칼끝 간격이 상수에서 나오지 않는다")
+        self.assertIn("constg=CST.DL", self.flat, "셀이 배치의 DL 스테이션이 아니다")
+
+    def test_the_sheet_says_the_panel_stands_and_the_knife_moves(self):
+        """도면이 방향을 밝히지 않으면 Rev.20 과 구별되지 않는다."""
+        self.assertIn("칼날이 움직이고 패널은 선다", self.body,
+                      "무엇이 움직이는지가 도면에 없다")
+        self.assertIn("이동 나이프 탠덤 셀", self.body, "표제가 아직 '고정 탠덤' 이다")
+        self.assertNotIn("고정 HKB/HKS 탠덤", self.body,
+                         "Rev.20 의 이름이 시트에 남아 있다")
+        # 개정란이 그 정정을 기록해야 한다
+        self.assertIn("이동 나이프로 정정", self.body, "개정 이력에 정정이 없다")
+
+    def test_the_thrust_path_is_written_down(self):
+        """13.37 kN 이 어디로 흐르는지가 이 셀의 구조 요건 전부다."""
+        self.assertIn("13.37 kN 은 칼날 → 갠트리 → 주행레일 문형 → 기초", self.body,
+                      "추력 경로가 도면에 없다")
+        self.assertIn("A7", self.body, "기초 도면(D-602)의 앵커군과 이어지지 않는다")
+        self.assertIn("A8", self.body, "테이블 기초가 구분되지 않는다")
+
+    def test_the_pad_area_is_checked_against_the_requirement(self):
+        """패드가 모자라면 패널이 미끄러진다 — 그 여유를 도면이 적어야 한다."""
+        self.assertIn("PAD_AREA.toFixed", self.body, "흡착면적이 계산되지 않는다")
+        # 검산은 값 하나가 아니라 식이 적혀 있어야 확인이 된다
+        self.assertIn("A ≥ 2F/(μ·Δp)", self.body, "필요면적 식이 도면에 없다")
+        # 값만 보면 안 된다 — PAD_AREA/0.686 안에도 같은 숫자가 있어
+        # 요구값 문장을 지워도 통과한다. 근거(μ·Δp)까지 함께 본다.
+        self.assertIn("0.686 m² (μ 0.6 · Δp 65 kPa)", self.body,
+                      "필요면적 상한과 그 근거가 도면에 없다")
+        self.assertIn("PAD_AREA/0.686", self.body.replace(" ", ""),
+                      "실제 면적이 상한의 몇 배인지 도면이 밝히지 않는다")
+        self.assertIn("PAD_COLS", self.body)
+        self.assertIn("PAD_ROWS", self.body)
+
+    def test_it_does_not_pretend_to_know_the_section(self):
+        self.assertIn("정하지 않는 것", self.body, "정하지 않는 것을 밝히지 않는다")
+        self.assertIn("Not For Construction", self.body, "제작 착수 금지 표기가 없다")
+
+    def test_the_sheet_never_reads_the_layout_the_screen_happens_to_show(self):
+        for bad in ("LC()", "cForkHalf()", "twinView()", "compactView()"):
+            self.assertNotIn(bad, self.body, f"F-005 가 활성 배치({bad})를 읽는다")
+
+
 class TestTheArrangementSheetIsFabricationLevel(unittest.TestCase):
     """D-601 로는 바닥에 구멍을 못 뚫는다.
 

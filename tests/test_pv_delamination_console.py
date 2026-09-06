@@ -487,6 +487,27 @@ class TestDeliverableEquipment(unittest.TestCase):
             "분기전류 식이 3상 전류식이 아니다",
         )
 
+    def test_the_headline_says_which_way_the_machine_works(self):
+        """압축 배치는 패널이 서고 칼날이 움직인다 — 표제가 그것을 말해야 한다.
+
+        모듈표가 'M-005 고정 HKB/HKS 탠덤' 을 부르는 동안 표제도 '고정 탠덤'
+        이었다. 표를 고치고 표제를 두면 같은 오류가 화면으로 되돌아온다.
+        Rev.20 만 고정 탠덤이고 압축·트윈은 이동 나이프다.
+        """
+        block = re.search(r"\$\('npPlan'\)\.textContent=(.*?);", self.html, re.S)
+        self.assertIsNotNone(block, "표제를 정하는 코드를 찾지 못했다")
+        expr = block.group(1)
+        rev20, rest = expr.split("?", 1)[1].split(":", 1)
+        self.assertIn("고정 탠덤", rev20, "Rev.20 은 고정 탠덤이 맞다")
+        self.assertNotIn("고정 탠덤", rest,
+                         "압축·트윈 표제가 아직 '고정 탠덤' 이다 — 칼날이 움직인다")
+        self.assertIn("이동 나이프", rest, "무엇이 움직이는지가 표제에 없다")
+        # 정적 마크업과 meta 도 같은 말을 해야 한다
+        self.assertIn("이동 나이프 탠덤 · 수평 분리반출", self.html,
+                      "초기 표제가 아직 고정 탠덤이다")
+        meta = re.search(r'name="description" content="([^"]+)"', self.html)
+        self.assertIn("이동 나이프", meta.group(1), "카드 요약이 아직 고정 탠덤이다")
+
     def test_exhaust_permit_rests_on_what_we_can_actually_measure(self):
         """배기팬이 경계 너머로 넘어가면서 이 허가의 근거가 바뀌었다.
 

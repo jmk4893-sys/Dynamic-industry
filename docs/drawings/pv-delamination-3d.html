@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#141c20">
   <link rel="icon" id="favicon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E">
   <title>DG-HK60 · IR 탠덤 PV 분리설비 · 3D 운전 콘솔</title>
-  <meta name="description" content="폐 태양광 모듈 백시트·셀/EVA·판유리 3계통 분리설비 DG-HK60의 3D 운전 콘솔 — 5단 밀폐 IR 가열 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 전기·PLC·제작도면 및 열수지 계산.">
+  <meta name="description" content="폐 태양광 모듈 백시트·셀/EVA·판유리 3계통 분리설비 DG-HK60의 3D 운전 콘솔 — 5단 밀폐 IR 가열 캐리지 순환, 이동 나이프 HKB/HKS 탠덤 박리, 전기·PLC·제작도면 및 열수지 계산.">
   <style>
     /* ===========================================================================
        DG-HK60 operator console.
@@ -396,7 +396,7 @@
         </div>
         <div class="np-id">
           <div class="np-model"><span id="npModel">DG-HK60C</span> <span id="npModelRev">REV.21C</span></div>
-          <h1 id="npPlan">단일 5단 IR · 고정 탠덤 · 수평 분리반출</h1>
+          <h1 id="npPlan">단일 5단 IR · 이동 나이프 탠덤 · 수평 분리반출</h1>
           <p id="npSub">40 IR · EVA 계면 140°C · 고정 진공테이블 + 이동 나이프</p>
         </div>
         <div class="np-status">
@@ -588,6 +588,7 @@
         <button type="button" data-drawing="plc">PLC I/O·배선</button>
         <button type="button" data-drawing="assemblies">구성품 2D·3D</button>
         <button type="button" data-drawing="chamber">가열실 제작도</button>
+        <button type="button" data-drawing="tandem">탠덤 셀 제작도</button>
         <button type="button" data-drawing="cassette">칼날 카세트 상세</button>
         <button type="button" data-drawing="compact">압축 배치</button>
         <button type="button" data-drawing="foundation">기초·앵커 배치도</button>
@@ -5075,9 +5076,12 @@
         :`배치 Rev.20 · 이전 전체 설계`;
       $('npModel').textContent=compactView()?L.model:'DG-HK60';
       $('npModelRev').textContent=compactView()?L.rev:'REV.20';
+      /* Rev.20 은 칼날이 고정이고 패널이 지나갔다. 압축·트윈은 반대다 —
+         패널이 서고 칼날이 왕복한다. 같은 문구로 부르면 모듈표에서 고친
+         그 오류가 표제로 되돌아온다. */
       $('npPlan').textContent=!compactView()?`단일 ${DECKS}단 IR · 고정 탠덤 · 수평 분리반출`
-        :L.cells>1?`단일 ${L.decks}단 IR 1가열실 · 탠덤 ${L.cells}셀 병렬 · 냉각 랙 통합`
-                  :`단일 ${L.decks}단 IR · 고정 탠덤 · 수평 분리반출`;
+        :L.cells>1?`단일 ${L.decks}단 IR 1가열실 · 이동 나이프 탠덤 ${L.cells}셀 병렬 · 냉각 랙 통합`
+                  :`단일 ${L.decks}단 IR · 이동 나이프 탠덤 · 수평 분리반출`;
       $('npSub').textContent=compactView()
         ?`[${L.role}] ${L.roleNote} · ${L.lamps} IR · ${L.decks}단 · 탠덤 ${L.cells}셀 · 전장 ${mm(compactLength())}mm · 순생산 ${L.rate} 장/h`
         :`${LAMPS} IR · EVA 계면 ${T_TARGET}°C · 7＋1 캐리지 · 유리/셀 무낙하 컨베이어 · 전기·제어 통합`;
@@ -5599,6 +5603,186 @@
         운전 콘솔의 모델 상수에서 나오므로 단수·배치를 바꾸면 이 도면이 함께 따라온다.</p>`;
     }
 
+    /* ── M-005 탠덤 셀 제작도 (F-005) ─────────────────────────────────
+       이 모듈이 Rev.20 과 가장 크게 달라진 자리다. 종전에는 칼날이 고정이고
+       패널이 11.2m 를 지나갔는데, 압축 배치에서는 패널이 서고 칼날이 3,500 을
+       왕복한다. 그런데 모듈표가 오래도록 '고정 HKB/HKS 탠덤 10,200 × 4,200' 을
+       부르고 있었고 — 그 표 위에 제작도를 그렸다면 반대로 움직이는 기계가
+       도면으로 굳었을 것이다.
+
+       그래서 이 시트가 정하는 것은 '무엇이 움직이고 무엇이 서 있는가' 다.
+       움직이는 것은 KG-101 갠트리(칼날 2조 · GR-W1 · 셀/EVA 슈트)이고,
+       서 있는 것은 VT-101 진공테이블과 그 아래 기둥 넷이다. 박리 추력
+       13.37 kN 이 지나가는 길도 그 둘 사이에서 갈린다.
+
+       치수는 전부 배치 상수에서 나온다 — 스테이션 폭도, 레일 행정도, 칼끝
+       간격도, 흡착패드 배열도. 손으로 적으면 배치를 옮길 때 이 도면만
+       옛 자리에 남는다. */
+    function tandemFabDrawing(){
+      const mm=v=>Math.round(v*1000), fmt=v=>mm(v).toLocaleString();
+      const g=CST.DL;
+      const L=mm(g.w), TRAV=mm(CRAIL_X1-CRAIL_X0), GAP=mm(TANDEM_GAP);
+      /* ── 정면도 (좌상) — 박리방향 단면. 1:26 으로 3,800 이 146mm 에 든다 */
+      /* 1:26 이면 정면 111 + 평면 116 = 227mm 로 왼쪽 칸(44~240)을 넘어
+         두 도면이 겹친다. 1:38 로 낮춰 둘을 세로로 쌓는다. */
+      const FX=36,FY=44,FS_=.026;
+      const fx=v=>FX+(v-g.x0)*1000*FS_, fz=v=>FY+(CBEAM_Z+.34-v)*1000*FS_;
+      let front=`<g stroke="#1a2b30" fill="none">`;
+      // 바닥선과 셀 경계
+      front+=`<path d="M${fx(g.x0)} ${fz(0)}H${fx(g.x1)}" stroke-width="${LW.out}"/>`;
+      front+=ctrLine(fx(CTBL_CX),fz(0)+4,fx(CTBL_CX),fz(CBEAM_Z+.30));
+      // KG-101 주행레일 문형 — 행정 밖 네 기둥이 받는다
+      for(const x of [CRAIL_X0,CRAIL_X1]){
+        front+=`<rect x="${fx(x)-.17*1000*FS_/2}" y="${fz(CRAIL_Z-.13)}" width="${.17*1000*FS_}" height="${(CRAIL_Z-.13)*1000*FS_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+        front+=`<rect x="${fx(x)-.44*1000*FS_/2}" y="${fz(.02)}" width="${.44*1000*FS_}" height="${.02*1000*FS_+1.2}" fill="#1a2b30"/>`;
+      }
+      front+=`<rect x="${fx(CRAIL_X0)}" y="${fz(CRAIL_Z+.11)}" width="${(CRAIL_X1-CRAIL_X0)*1000*FS_}" height="${.22*1000*FS_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      // 갠트리 — 박리 시점(CHKB0)에 세워 그린다
+      const KX=CHKB0;
+      front+=`<rect x="${fx(KX)-.42*1000*FS_/2}" y="${fz(CRAIL_Z+.33)}" width="${.42*1000*FS_}" height="${.16*1000*FS_}" fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      front+=`<rect x="${fx(KX)-.30*1000*FS_/2}" y="${fz(CBEAM_Z+.06)}" width="${.30*1000*FS_}" height="${(CBEAM_Z+.06-CRAIL_Z-.41)*1000*FS_}" fill="#eef2f3" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      front+=`<rect x="${fx(KX)-.36*1000*FS_/2}" y="${fz(CBEAM_Z+.19)}" width="${.36*1000*FS_}" height="${.14*1000*FS_}" fill="#1a2b30" opacity=".82"/>`;
+      // 칼날 2조 — HKB 가 앞서고 HKS 가 TANDEM_GAP 뒤에 온다
+      for(const [x,tag] of [[KX,'HKB'],[KX-TANDEM_GAP,'HKS']]){
+        front+=`<rect x="${fx(x)-.16*1000*FS_/2}" y="${fz(CBEAM_Z-.05)}" width="${.16*1000*FS_}" height="${(CBEAM_Z-.05-CZ-.40)*1000*FS_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+        front+=`<rect x="${fx(x)-.24*1000*FS_/2}" y="${fz(CZ+.40)}" width="${.24*1000*FS_}" height="${.26*1000*FS_}" fill="#f6e3da" stroke="#b84a23" stroke-width="${LW.out}"/>`;
+        front+=`<path d="M${fx(x)} ${fz(CZ+.14)}l${-2.2} ${-3.4}h4.4z" fill="#b84a23"/>`;
+        front+=`<text stroke="none" x="${fx(x)}" y="${fz(CZ+.52)-2}" text-anchor="middle" ${FS(2.6)} font-weight="700" fill="#8a3316">${tag}</text>`;
+      }
+      // GR-W1 가이드롤 — 갠트리에 실려 같이 간다
+      front+=`<circle cx="${fx(KX)}" cy="${fz(CWEB_Z)}" r="${.08*1000*FS_}" fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      front+=`<text stroke="none" x="${fx(KX)+8}" y="${fz(CWEB_Z)-3}" ${FS(2.5)} fill="#5b6d74">GR-W1 (갠트리 탑재)</text>`;
+      // VT-101 고정 진공테이블 — 이 도면의 다른 절반
+      front+=`<rect x="${fx(CTBL_CX-CARRIER_L/2)}" y="${fz(CZ)}" width="${CARRIER_L*1000*FS_}" height="${.18*1000*FS_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      for(const x of [CTBL_CX-1.25,CTBL_CX+1.25]){
+        front+=`<rect x="${fx(x)-.13*1000*FS_/2}" y="${fz(CZ-.20)}" width="${.13*1000*FS_}" height="${(CZ-.20)*1000*FS_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+        front+=`<rect x="${fx(x)-.32*1000*FS_/2}" y="${fz(.02)}" width="${.32*1000*FS_}" height="${.02*1000*FS_+1.2}" fill="#1a2b30"/>`;
+      }
+      // 패널 — 서 있다
+      front+=`<rect x="${fx(CTBL_CX-PANEL_HL)}" y="${fz(CZ+.10)}" width="${PANEL_L*1000*FS_}" height="${.04*1000*FS_+1}" fill="#cfe3ea" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      front+=`</g>`;
+      // 행정 화살표 — 무엇이 움직이는지가 이 도면의 요지다
+      front+=`<g stroke="#b84a23" stroke-width="${LW.hid}" fill="none">`
+        +`<path d="M${fx(CHKB_PARK)} ${fz(CBEAM_Z+.30)}H${fx(CHKB1)}" marker-start="url(#fb)" marker-end="url(#fa)"/></g>`
+        +`<text stroke="none" x="${fx(CHKB_PARK)}" y="${fz(CBEAM_Z+.30)-3}" ${FS(2.8)} font-weight="700" fill="#8a3316">`
+        +`KG-101 행정 ${TRAV} — 칼날이 움직이고 패널은 선다</text>`;
+      front+=dimH(fx(CRAIL_X0),fx(CRAIL_X1),fz(0)+10,String(TRAV),'±2')
+        +dimH(fx(g.x0),fx(g.x1),fz(0)+19,String(L),'±5')
+        +dimV(fz(CRAIL_Z+.11),fz(0),fx(g.x0)-9,String(mm(CRAIL_Z)),'±3')
+        +dimV(fz(CZ),fz(0),fx(g.x1)+9,String(mm(CZ)),'±1')
+        +datum(fx(CTBL_CX-1.25),fz(0),'A',1)
+        +weldSym(fx(CTBL_CX+1.25)+3,fz(CZ-.10),fx(CTBL_CX+1.25)+16,fz(CZ+.30),'6','fillet',true)
+        +rough(fx(CTBL_CX+.55),fz(CZ)-1,'1.6')
+        +fcf(fx(g.x1)+6,fz(CZ)-16,'⏥','0.2','A');
+      /* ── 평면도 (좌하) — 갠트리 스윕과 테이블 · 1:26 */
+      const PY0=191;
+      const px=v=>FX+(v-g.x0)*1000*FS_, py=v=>PY0-v*1000*FS_;
+      let plan=`<g stroke="#1a2b30" fill="none">`;
+      plan+=`<rect x="${px(g.x0)}" y="${py(CGY+.085)}" width="${g.w*1000*FS_}" height="${2*(CGY+.085)*1000*FS_}" stroke-width="${LW.thin}" stroke-dasharray="3 1.5"/>`;
+      for(const y of [-CGY,CGY])
+        plan+=`<rect x="${px(CRAIL_X0)}" y="${py(y)-.22*1000*FS_/2}" width="${(CRAIL_X1-CRAIL_X0)*1000*FS_}" height="${.22*1000*FS_}" fill="url(#steel)" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      plan+=`<rect x="${px(CTBL_CX-CARRIER_L/2)}" y="${py(CARRIER_W/2)}" width="${CARRIER_L*1000*FS_}" height="${CARRIER_W*1000*FS_}" fill="#f5f7f8" stroke="#1a2b30" stroke-width="${LW.out}"/>`;
+      // 흡착패드 6열 × 3행 — 열 하나가 진공 1존
+      for(let c=0;c<PAD_COLS;c++)for(let r=0;r<PAD_ROWS;r++){
+        const x=CTBL_CX+(c-(PAD_COLS-1)/2)*PANEL_L/PAD_COLS, y=(r-(PAD_ROWS-1)/2)*PANEL_W/PAD_ROWS;
+        plan+=`<circle cx="${px(x)}" cy="${py(y)}" r="${PAD_R*1000*FS_}" fill="#dce6ea" stroke="#1a2b30" stroke-width="${LW.thin}"/>`;
+      }
+      plan+=`<rect x="${px(CHKB0-TANDEM_GAP)-.24*1000*FS_/2}" y="${py(.72)}" width="${.24*1000*FS_}" height="${1.44*1000*FS_}" fill="#f6e3da" stroke="#b84a23" stroke-width="${LW.out}"/>`;
+      plan+=ctrLine(px(g.x0)-4,py(0),px(g.x1)+4,py(0));
+      plan+=`</g>`;
+      plan+=dimV(py(CGY),py(-CGY),px(g.x0)-9,String(mm(2*CGY)),'±2')
+        +dimH(px(CTBL_CX-CARRIER_L/2),px(CTBL_CX+CARRIER_L/2),py(-CARRIER_W/2)+10,String(mm(CARRIER_L)))
+        +dimV(py(CARRIER_W/2),py(-CARRIER_W/2),px(g.x1)+9,String(mm(CARRIER_W)))
+        +`<text stroke="none" x="${px(CTBL_CX)}" y="${py(-CARRIER_W/2)+4.4}" text-anchor="middle" ${FS(2.6)} fill="#5b6d74">`
+        +`VT-101 · ${PAD_COLS}존 ${PAD_COLS*PAD_ROWS}패드 Ø${(PAD_R*2000).toFixed(0)} · ${PAD_AREA.toFixed(2)} m²</text>`
+        +`<text stroke="none" x="${px(CHKB0-TANDEM_GAP)}" y="${py(.72)-2}" text-anchor="middle" ${FS(2.5)} fill="#8a3316">BC-201 ${mm(CASS_L)}</text>`;
+      /* ── 칼끝 상세 (우상) — 이 셀의 유일한 정밀치수 1:2.6 */
+      /* 1:2.6 은 세로 142mm 를 먹어 부품란(y 124)을 밟았다 — 1:5 로 줄인다. */
+      const DX=252,DY=46,DS=.20;
+      const dx=v=>DX+v*1000*DS, dz=v=>DY+(.30-v)*1000*DS;
+      let det=`<g stroke="#1a2b30" fill="none">`;
+      det+=`<rect x="${dx(-.02)}" y="${dz(.06)}" width="${.34*1000*DS}" height="${.024*1000*DS}" fill="#cfe3ea" stroke-width="${LW.out}"/>`;
+      det+=`<rect x="${dx(-.02)}" y="${dz(.088)}" width="${.34*1000*DS}" height="${.014*1000*DS}" fill="#e7d9c6" stroke-width="${LW.thin}"/>`;
+      for(const [x,tag,col] of [[.30,'HKB','#b84a23'],[0,'HKS','#8a3316']]){
+        det+=`<path d="M${dx(x)} ${dz(.102)}l${-4.6} ${-7}h9.2z" fill="${col}"/>`;
+        det+=`<rect x="${dx(x)-.024*1000*DS}" y="${dz(.20)}" width="${.048*1000*DS}" height="${.09*1000*DS}" fill="#f6e3da" stroke="${col}" stroke-width="${LW.out}"/>`;
+        det+=`<text stroke="none" x="${dx(x)}" y="${dz(.235)}" text-anchor="middle" ${FS(2.6)} font-weight="700" fill="${col}">${tag}</text>`;
+      }
+      det+=`</g>`;
+      det+=dimH(dx(0),dx(.30),dz(.02),String(GAP),'±2')
+        +`<text stroke="none" x="${dx(.15)}" y="${dz(-.03)}" text-anchor="middle" ${FS(2.5)} fill="#5b6d74">교환 후 레이저로 재확인 (KNIFE_GAP_OK)</text>`
+        +`<text stroke="none" x="${dx(.36)}" y="${dz(.072)}" ${FS(2.4)} fill="#5b6d74">유리 3.2t</text>`
+        +`<text stroke="none" x="${dx(.36)}" y="${dz(.094)}" ${FS(2.4)} fill="#8a6a12">셀·EVA</text>`
+        +rough(dx(.30)+9,dz(.20)-1,'0.8');
+      /* ── 부품란 */
+      const bom=[
+        ['01','주행레일 문형 기둥','SS400 H-150×150×7/10','베이스 PL-440×440×22t',4],
+        ['02','주행레일 빔',`SS400 BOX-220×220×9t · ${TRAV} 행정`,'레일면 연삭 Ra 1.6',2],
+        ['03','LM 레일·주행 대차','THK HSR35 상당','프리로드 C1',4],
+        ['04','갠트리 측면 프레임','SS400 PL-16t 용접',`레일 y ±${mm(CGY)}`,2],
+        ['05','크로스빔',`SS400 BOX-300×220×9t · L 3,100`,`상면 EL ${mm(CBEAM_Z)}`,1],
+        ['06','X축 랙피니언','모듈 3 · 경화 랙','백래시 ≤ 0.05',1],
+        ['07','HKB/HKS Z축 서보슬라이드','볼스크류 Ø32 · 리드 10','무여자 브레이크 부',2],
+        ['08','BC-201 퀵체인지 카세트',`SKD11 · ${mm(CASS_L)} × ${mm(CASS_W)} × ${mm(CASS_H)}`,'상세 D-501',2],
+        ['09','VT-101 테이블 상판',`SS400 PL-25t · ${mm(CARRIER_L)} × ${mm(CARRIER_W)}`,'상면 연삭 · 평면도 0.2',1],
+        ['10','테이블 지지기둥','SS400 H-125×125×6.5/9','베이스 PL-320×320×19t',4],
+        ['11','흡착패드',`NBR 벨로우즈 Ø${(PAD_R*2000).toFixed(0)}`,`${PAD_COLS}존 × ${PAD_ROWS}행`,PAD_COLS*PAD_ROWS],
+        ['12','진공 매니폴드·센서','SUS304 Ø25 · 압력센서 6','존별 필터·체크밸브',6],
+        ['13','GR-W1 박리 가이드롤',`Ø160 · 면폭 ${mm(ROLL_FACE)}`,'갠트리 탑재',1],
+        ['14','셀/EVA 인양 슈트','SUS304 1.5t',`적층체 ${mm(PANEL_L)} × ${mm(PANEL_W)} 통째`,1],
+      ];
+      const bx=252, by=122;
+      let tbl=`<text stroke="none" x="${bx}" y="${by-3}" ${FS(3.4)} font-weight="700" fill="#0f1c21">부품란</text>`
+        +`<g stroke="#1a2b30" stroke-width="${LW.thin}" fill="none">`
+        +`<rect x="${bx}" y="${by}" width="153" height="${8+bom.length*5.6}"/>`
+        +`<path d="M${bx} ${by+8}h153"/></g>`;
+      ['품번','품명','재질·규격','비고','수량'].forEach((h,i)=>{
+        tbl+=`<text stroke="none" x="${bx+[2,12,52,105,146][i]}" y="${by+5.6}" ${FS(2.5)} font-weight="700" fill="#5b6d74">${h}</text>`;
+      });
+      bom.forEach((r,i)=>{
+        const y=by+8+(i+1)*5.6-1.7;
+        r.forEach((c,j)=>{
+          tbl+=`<text stroke="none" x="${bx+[2,12,52,105,148][j]}" y="${y}" text-anchor="${j===4?'end':'start'}" ${FS(2.4)} fill="#0f1c21">${esc(String(c))}</text>`;
+        });
+      });
+      bom.forEach((r,i)=>{ if(i<10) tbl+=balloon(bx-6,by+8+(i+1)*5.6-3.4,r[0].replace(/^0/,'')); });
+      /* ── 주기 */
+      const notes=[
+        '박리 추력 13.37 kN 은 칼날 → 갠트리 → 주행레일 문형 → 기초(A7)로 흐른다. 테이블(A8)은 패널 반력만 받는다.',
+        `흡착 필요면적 A ≥ 2F/(μ·Δp) = 0.686 m² (μ 0.6 · Δp 65 kPa). ${PAD_COLS}×${PAD_ROWS} = ${PAD_AREA.toFixed(3)} m² 로 상한의 ${(PAD_AREA/0.686).toFixed(2)}배.`,
+        `칼끝 간격 ${GAP} ± 2 는 카세트 교환 때마다 레이저로 재확인한다 — 확인 전에는 KNIFE_PEEL 을 허가하지 않는다.`,
+        '레일면·테이블 상면은 조립 후 현장 연삭으로 맞춘다. 두 면의 평행도가 박리력 편차를 결정한다.',
+        `주행 정지는 STO 2채널 + 기계식 하드스톱 4개소로 이중화한다 (원점 ${fmt(CHKB_PARK)} · 종점 ${fmt(CHKB1)}).`,
+        '본 도면은 발주자 개념설계의 참고도이며 제작 착수 도면이 아니다 (Not For Construction).',
+      ];
+      const noteSvg=`<path d="M30 248.5h196" stroke="#7b8d94" stroke-width="${LW.thin}"/>`
+        +`<text stroke="none" x="30" y="246" ${FS(3)} font-weight="700" fill="#0f1c21">주기</text>`
+        +notes.map((n,i)=>`<text stroke="none" x="30" y="${253.5+i*4.6}" ${FS(2.55)} fill="#0f1c21">${i+1}. ${esc(n)}</text>`).join('');
+      return `<div class="drawing-stage">`+fabSheet(
+          `<text stroke="none" x="30" y="21" ${FS(5)} font-weight="800" fill="#0f1c21">M-005 · DL-101 이동 나이프 탠덤 셀</text>`
+        + `<text stroke="none" x="30" y="26.5" ${FS(2.8)} fill="#5b6d74">단면 정면도 · 평면도 · 칼끝 상세 — 치수 mm · 패널은 서고 칼날이 움직인다</text>`
+        + `<text stroke="none" x="30" y="${FY-9}" ${FS(3.4)} font-weight="700" fill="#0f1c21">단면 정면도 A-A (1:38)</text>`
+        + front
+        + `<text stroke="none" x="30" y="${PY0-(CGY+.085)*1000*FS_-6}" ${FS(3.4)} font-weight="700" fill="#0f1c21">평면도 (1:38)</text>`
+        + plan
+        + `<text stroke="none" x="${DX}" y="${DY-6}" ${FS(3.4)} font-weight="700" fill="#0f1c21">칼끝 상세 B (1:5)</text>`
+        + det + tbl + noteSvg
+        + revBlock([
+            {rev:'0',date:'2026-09-03',desc:'개념 배치 — 고정 탠덤 브리지 10,200 (REV.20)',by:'DI'},
+            {rev:'1',date:'2026-09-06',desc:`이동 나이프로 정정 — 셀 ${L} · 행정 ${TRAV}`,by:'DI'},
+          ])
+        + fabTitleBlock({no:'F-005',title:'DL-101 이동 나이프 탠덤 셀',scale:'1:38 / 1:5',sheet:'1 / 1',
+            material:'SS400 · SKD11 · SUS304',mass:'계량 확정 (OI-07)',
+            tol:'ISO 2768-mK',tol2:`칼끝 간격 ±2 · 평면도 0.2`}))
+        + `</div>`
+        + `<p class="drawing-note"><b>이 시트가 정하는 것은 무엇이 움직이는가다.</b> Rev.20 은 칼날이 고정이고 패널이 `
+        + `11,200 mm 를 지나갔다. 압축 배치는 반대다 — VT-101 이 패널을 잡고 서 있고 KG-101 갠트리가 `
+        + `${TRAV} mm 를 왕복한다. 박리는 상대운동이므로 행정 ${mm(PANEL_L)} mm 도 박리시간도 그대로이고, `
+        + `새로 드는 것은 복귀 하나뿐이다. 추력 13.37 kN 이 흐르는 길이 그래서 갈린다: 칼날에서 갠트리를 지나 `
+        + `주행레일 문형으로, 그 문형은 행정 밖 네 기둥으로만 바닥에 닿는다(기초 A7). 테이블 기둥 넷(A8)은 `
+        + `패널 반력만 받는다. <b>정하지 않는 것</b>은 부재 단면과 용접 개선 형상이다 — 그 둘은 `
+        + `<a href="#" onclick="return false">OI-07</a> 구동 선정과 구조해석이 끝난 뒤에 나온다.</p>`;
+    }
     /* ── D-501 BC-201 칼날 카세트 인터페이스 상세도 ────────────────────────
        칼날은 소모품인데 히터·열전대·로드셀이 함께 붙어 있어 교체가 분해였다.
        이 시트는 교체 단위의 경계(무엇이 카세트에 담기고 무엇이 슬라이드에
@@ -6085,7 +6269,7 @@
     }
     function renderEngineering(){
       document.querySelectorAll('[data-drawing]').forEach(b=>b.classList.toggle('active',b.dataset.drawing===drawingTab));
-      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else if(drawingTab==='chamber')drawingContent.innerHTML=chamberFabDrawing();else if(drawingTab==='cassette')drawingContent.innerHTML=cassetteDrawing();else if(drawingTab==='compact')drawingContent.innerHTML=compactDrawing();else if(drawingTab==='foundation')drawingContent.innerHTML=foundationDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
+      if(drawingTab==='power')drawingContent.innerHTML=powerDrawing();else if(drawingTab==='plc')drawingContent.innerHTML=plcDrawing();else if(drawingTab==='chamber')drawingContent.innerHTML=chamberFabDrawing();else if(drawingTab==='tandem')drawingContent.innerHTML=tandemFabDrawing();else if(drawingTab==='cassette')drawingContent.innerHTML=cassetteDrawing();else if(drawingTab==='compact')drawingContent.innerHTML=compactDrawing();else if(drawingTab==='foundation')drawingContent.innerHTML=foundationDrawing();else drawingContent.innerHTML=assemblyDrawing(assemblies[assemblyIndex],drawingMode);
       const sel=$('assemblySelect');if(sel)sel.addEventListener('change',e=>{assemblyIndex=Number(e.target.value)||0;renderEngineering()});
       drawingContent.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{drawingMode=b.dataset.mode;renderEngineering()}));
     }
