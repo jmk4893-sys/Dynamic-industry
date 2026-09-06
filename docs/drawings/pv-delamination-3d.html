@@ -1131,7 +1131,7 @@
           '품질 분기: QI_FAIL 이면 RJ-301 잠금 리젝트함으로, 아니면 GC-301 냉각 캐리지로 보낸다 (분기 허가는 REJECT_PERMIT)',
           'GLASS_ACCESS = SURFACE_TEMP_SAFE ∧ COOLING_COMPLETE ∧ DOCK_LOCKED',
           '배기팬 상용/예비: 상용 1대 운전 · 나머지 1대 대기, 상용 트립·풍량저하 시 자동 절체하고 교대운전으로 균등 사용',
-          'EXHAUST_RUN = (FAN_A_OK ∨ FAN_B_OK) ∧ DP_OK ∧ CARBON_DP_OK ∧ FIRE_DAMPER_OPEN',
+          'EXHAUST_RUN = VOC_ABATE_READY ∧ DP_OK ∧ CARBON_DP_OK ∧ DUCT_DP_OK',
           '캐리지 시퀀스: 만재가열 → 해당 단 잠금해제 → 출측 내문 → 출측 씰 → 출측 외문 → 입측 외문 → 입측 씰 → 승강단 선택 → 입측 내문 → 재장전 잠금',
           'AL101_MUTEX = ¬(INNER_DOOR_OPEN ∧ OUTER_DOOR_OPEN) — 입측 에어록',
           'AL102_MUTEX = ¬(INNER_DOOR_OPEN ∧ OUTER_DOOR_OPEN) — 출측 에어록',
@@ -1139,7 +1139,7 @@
           'POWER_ENABLE = MAIN_ACB_ON ∧ PHASE_OK ∧ PE_OK ∧ SPD_OK ∧ FIRE_OK',
           'PLC_RUN = UPS_OK ∧ DC24_A_OK ∧ DC24_B_OK ∧ SAFETY_CPU_OK ∧ NETWORK_RING_OK',
           'GLASS_TRANSFER = LEVEL_ROLLER_READY ∧ GC_PRESENT_LOCKED ∧ ZERO_DROP_PATH_CLEAR',
-          'CELL_TRANSFER = CVC_CLEAR ∧ SHREDDER_READY ∧ ISOLATION_GATE_OPEN ∧ CELL_BIN_SPACE_OK',
+          'CELL_TRANSFER = CVC_CLEAR ∧ SHREDDER_READY ∧ CELL_TAKEAWAY_READY ∧ CELL_BIN_SPACE_OK',
           'HKB_Z_PERMIT = EVA_TARGET_ACK ∧ VAC_6ZONE_OK ∧ CASSETTE_READY ∧ HKB_TEMP_OK',
           'HKS_Z_PERMIT = LEAD_300_ACK ∧ WEB_TENSION_OK ∧ HKB_LOAD_OK ∧ CELL_PATH_CLEAR',
           'TANDEM_SAFE_STOP = LOAD_HIGH ∨ AE_CRACK ∨ VAC_LOW ∨ WEB_BREAK → X_DECEL ∧ Z_RETRACT ∧ HEAT_STANDBY',
@@ -1250,9 +1250,9 @@
           'MOTION_TRIP = SYNC_ERROR ∨ VAC_LOW ∨ KNIFE_OVERLOAD ∨ WEB_TENSION_HIGH ∨ GLASS_CRACK',
           'NEXT_PANEL = BACKSHEET_BIN_ACK ∧ SHREDDER_FEED_ACK ∧ GLASS_CARRIAGE_ACK ∧ EMPTY_CARRIER_RELOADED',
           'IR_HARD_TRIP = INDEPENDENT_OVERTEMP ∨ SMOKE ∨ CO_HIGH ∨ EXHAUST_LOSS ∨ SSR_STUCK',
-          'REJECT_PERMIT = QI_FAIL ∧ RJ_CARRIAGE_PRESENT ∧ RJ_DOOR_LOCKED ∧ GLASS_PATH_CLEAR',
+          'REJECT_PERMIT = QI_FAIL ∧ RJ_CARRIAGE_PRESENT ∧ DOOR_LOCKED ∧ GLASS_PATH_CLEAR',
           'GLASS_SWAP = GC_A_COOLING ∧ GC_B_EMPTY_LOCKED ∧ CROSS_TRANSFER_CLEAR',
-          'SHREDDER_ISOLATION = FIRE_BACKFLOW ∨ SHREDDER_TRIP → GATE_CLOSE ∧ FEED_STOP',
+          'SHREDDER_ISOLATION = CELL_TAKEAWAY_READY ∧ CELL_BIN_SPACE_OK',
           'MAINT_PERMIT = ZERO_ENERGY_ACK ∧ LOTO_APPLIED ∧ TEMP_SAFE ∧ VAC_DUMPED',
           'RTO_READY = RTO_TEMP_OK ∧ RTO_VALVE_OK ∧ EXHAUST_RUN',
           'EMISSION_OK = CEMS_OK ∧ ¬TOC_HIGH ∧ RTO_READY',
@@ -1349,25 +1349,6 @@
       }
     };
 
-    const assemblies=[
-      {id:'M-001',name:'투입·정렬·식별',size:'6000×1800×4200',material:'SS400/AL6061',parts:['베드 프레임','우레탄 구동롤러','IE4 기어모터','폭조절 가이드','패널 스토퍼','2D 비전카메라','레이저 높이센서','바코드 리더','광전센서','WI-101 투입 계량 컨베이어','안전커버','케이블베어','앵커 세트']},
-      {id:'M-002',name:`${DECKS}단 밀폐 IR 가열실`,size:`5600×2600×${Math.round((HC_Z+.94)*1000)}`,material:'SS400+세라믹단열',parts:['외부 용접프레임','130mm 이중 단열패널',`B0~B${DECKS} IR 뱅크`,`2.5kW IR 램프×${LAMPS}`,`반사판×${LAMPS}`,`SSR 분기모듈×${LAMPS}`,'독립 과온센서',`EVA 계면센서×${DECKS}`,'투입 에어록','배출 에어록','차압센서','점검도어','에어록 도어 위치센서×8','격리실 존재센서×2',`IR 뱅크 CT·SSR 피드백×${DECKS+1}`,'가열실 불꽃감지기×2',`표면 IR 센서×${DECKS}`]},
-      {id:'M-003',name:`${DECKS}단 적재·승강장치`,size:`2900×1700×${Math.round((HC_Z+.23)*1000)}`,material:'SS400/LM 가이드',parts:['LI-101 승강프레임','서보모터·감속기','볼스크류/체인 동기축','TS-101 2단 포크','텔레스코픽 레일','캐리지 위치결정핀',`층별 잠금실린더×${DECKS}`,`캐리지 존재센서×${DECKS}`,'상하한 리미트','절대치 엔코더','낙하방지 브레이크','정비 고정핀']},
-      {id:'M-004',name:'진공 캐리어·이송축',size:'11200×1800×1500',material:'SS400/AL6061',parts:['캐리어 베이스','6존 진공매니폴드','흡착패드×18','진공압센서×6','진공필터×6','체크밸브×6','서보 랙피니언','LM가이드×2','절대치 엔코더','에너지체인','범퍼스토퍼','비상 진공어큐뮬레이터','패널 착좌·스퀘어 센서×4','캐리어 파킹 위치센서','주행로 광전센서×2']},
-      {id:'M-005',name:'고정 HKB/HKS 탠덤',size:'10200×4200×4300',material:'SS400/SKD11',parts:['탠덤 포털프레임','HKB Z축 서보슬라이드','HKS Z축 서보슬라이드','프리로드 LM가이드×4','볼스크류·서보브레이크×2','BC-201 HKB 퀵체인지 카세트','BC-201 HKS 퀵체인지 카세트','카세트 테이퍼 로케이팅핀×4','카세트 쐐기 클램프×4','카세트 블라인드메이트 커넥터×2','카세트 냉각 퍼지밸브×2','카세트 온도센서×2','카세트 취급 지그','카세트 잠금·존재센서×4','HKB/HKS 카트리지히터','칼날 열전대×8','로드셀×4','스프링 컴플라이언스×4','AE 센서×4','300mm 레이저 간격센서','기계식 하드스톱×4','케이블베어·내열배선','용융 EVA 드립트레이','파편 회수트레이','국소배기 슬롯후드×2','코딩 정비도어 인터록','칼날 Z축 상하한센서×4','KC-101 칼날 카세트 매거진×2','KC-101 예열 포켓·냉각 포켓','셀 경로 광전센서×2','나이프 X축 절대치 엔코더','나이프 X축 원점·과주행센서×2']},
-      {id:'M-006',name:'백시트 권취·반출부 (탠덤 하류)',size:'1900×6500×2900',material:'SS400/SUS304',parts:['문형 권취프레임','RH-201 모노레일 호이스트','BS-301 롤 보관 새들','GR-W1 박리 가이드롤','권취드럼 A/B (2축)','분할클램프×4','토크서보·직경센서','자동 절단·선단 이관암','역회전 브레이크','격리셔터','외함 롤 포트','펜스 인터록 해치','RH-301 반출 스키드','코너 승강대','굴림 레일·스토퍼','BS-301 롤 보관대','장력 로드셀','공압척','웹 파단 검출센서','백시트 끝단 비전','격리셔터 위치센서×2','롤 반출 위치센서×2','BS-301 새들 존재센서×2','WO-301 권취롤 계량 새들']},
-      {id:'M-007',name:'유리 수평 컨베이어·냉각 캐리지',size:'9000×5500×3000',material:'SS400/우레탄',parts:['동일높이 인계롤러','우레탄 롤러×24','VFD 기어모터','측면 가이드','파손 감지센서','QI-301 비전아치','GC-301A 캐리지','GC-301B 캐리지','내열 지지롤','로드셀×8','냉각팬×8','도킹핀×4','유리 경로 광전센서×3','GC 교대 광전센서×2','GC 캐리지 온도센서×4','WO-303 유리 캐리지 계량대']},
-      {id:'M-008',name:'셀/EVA 직접 컨베이어',size:'16000×1500×2500',material:'SS400/SUS304',parts:['CE-201 횡인출 컨베이어','CS-201 셀/EVA 평적 카트','CS-201 반출 인터록 게이트','CVC-301 사선 인계벨트','CVC-302 수평 밀폐벨트','내열 벨트','VFD 기어모터×2','셀 존재센서×4','WO-302 셀 벨트 계량기','벨트 편심센서×2','금속검출기','점검커버','국소배기노즐','역화격리게이트','SH-101 투입롤러','토크리미터']},
-      {id:'M-009',name:'품질검사·리젝트',size:'3100×5000×3900',material:'SS400/AL6061',parts:['QI 상부 RGB 카메라','QI 하부 RGB 카메라','열화상카메라','투과조명','라인레이저','검사 엔코더','RJ 횡셔틀','리젝트 받침트레이','밀폐 리젝트 캐리지','도어인터록','캐리지 존재센서','재처리 라벨러','RE-101 잔류 EVA 분광계']},
-      {id:'M-010',name:'VOC 배기·응축·흡착',size:'6500×3000×5600',material:'SUS304/FRP',parts:['국소배기 덕트','응축기','응축액 탱크','미스트 제거기','활성탄 흡착탑','배기팬 A','배기팬 B','방화댐퍼','풍량센서','차압센서×3','VOC 샘플포트','굴뚝','방화댐퍼 위치센서×2']},
-      {id:'M-011',name:'전력·MCC·제어반',size:'7600×1600×3600',material:'도장강판 IP54',parts:[`TR-1 ${TR_KVA}kVA`,'Q0 ACB 주차단기',`주모선 ${Math.max(400,Math.ceil(FLA*1.25/100)*100)}A`,'SPD Type1+2','전력품질계','IR 분전반','HK 히터반','MCC/VFD반','PLC-101반','24VDC PSU A/B','UPS-101','접지바','히터 차단 확인 접촉기×2']},
-      {id:'M-012',name:'유틸리티·화재안전',size:'9000×2500×4600',material:'SS400/SUS304',parts:['진공펌프 A/B','진공어큐뮬레이터','계장공기 FRL','냉각수 매니폴드','연기센서','CO센서','불꽃센서','NP-101 질소 퍼지 유닛','독립 과온릴레이','소화배관','노즐×6','E-STOP×4','안전 PLC']},
-      {id:'M-014',name:'데이터·이력·원격감시',size:'1400×1200×3500',material:'도장강판 IP54',parts:['이력 서버 HS-101','RC-101 원격 감시 콘솔','OPC UA 게이트웨이','랙 마운트 UPS','원격승인 키스위치','시각동기 GPS','백업 스토리지','네트워크 방화벽']},
-      {id:'M-015',name:'자동 팔레타이징·무인 감시',size:'3800×4600×3700',material:'SS400/AL6061',parts:['PL-101 자동 디스태커','PL-201 자동 스태커','흡착 포크·진공발생기','승강 서보·무여자 브레이크','팔레트 컨베이어','AD-101 AGV 도킹 스테이션','무인 감시 열화상 카메라×3','반출함 레벨센서×3','디스태커 방호펜스','스태커 방호펜스']},
-      {id:'M-016',name:'축열식 열산화·열회수',size:'8300×3400×8100',material:'SUS310S/내화캐스터블',parts:['RTO-101 축열식 열산화로','축열체 세라믹 허니컴','RTO 절환밸브·구동기','RTO 보조버너','RTO 급기팬','HX-101 배기–급기 열교환기','CEMS-101 연속배출감시','굴뚝·시료 프로브','배기 바이패스 댐퍼']},
-      {id:'M-017',name:'공급범위 경계 인터페이스',size:'1200×600×2000',material:'도장강판 IP54',parts:['경계 인터페이스반 BJ-101','경계 안전회로 인터페이스반 BJ-102','경계 덕트 차압센서','셀/EVA 배출슈트 레벨센서×2','하드와이어 단자대','안전릴레이 2CH','경계 표시등·명판']},
-      {id:'M-013',name:'가드·발판·정비설비',size:'25000×7000×3000',material:'SS400/메시패널',parts:['안전펜스','인터록 도어×4','상부 정비발판','고정사다리','가드레일','칼날 카세트랙','세척대','LOTO 스테이션','용융물 트레이','조명','케이블트레이','바닥 앵커','안전 광커튼 LC-001/002','뮤팅 센서 M1~M4×2조','적층 신호등·부저 ST-101/102']}
-    ];
 
 
     /* 열수지·사이클 모델. 계산 대화상자와 HUD 전력표시가 같은 식을 각각
@@ -5229,6 +5210,67 @@
        치수는 모두 모델 상수에서 나온다. 도면에 손으로 적으면 단수를 바꿀 때
        3D 만 따라오고 도면은 옛 치수로 남는다 — 그것이 이 저장소가 계속
        고쳐 온 실패다. */
+    /* ── 납품 모듈표 ────────────────────────────────────────────────────
+       이 표가 입찰자가 값을 매기는 목록이다. 그런데 오랫동안 Rev.20 의
+       치수와 부품이 그대로 앉아 있었다 — 손으로 적은 문자열이라 배치가
+       Rev.21C 로 바뀌어도 따라오지 않았다.
+
+       그 결과가 가벼운 오차가 아니다. M-004 는 11,200mm 이송축을 부르는데
+       납품 기계에서는 패널이 아예 움직이지 않고(VT-101 고정 진공테이블),
+       M-005 는 '고정 탠덤' 인데 실제로는 칼날이 3,500mm 를 왕복한다.
+       M-008 은 16m 컨베이어와 슈레더 투입롤러를 부르는데 그 둘은 발주자
+       설비로 넘어갔다. 표대로 견적하면 없는 기계를 사고 있는 기계를 빠뜨린다.
+
+       그래서 치수를 전부 배치 상수의 식으로 되돌린다. mmv() 가 그 식을
+       mm 문자열로 바꾸므로, 스테이션 폭이나 단수를 바꾸면 표가 같이 움직인다.
+       공급범위 밖 모듈에는 scope 를 달아 BOM 과 사양서가 그것을 '납품품' 으로
+       세지 않게 한다. */
+    const mmv=v=>Math.round(v*1000);
+    const dim=(l,w,h)=>`${mmv(l)}×${mmv(w)}×${mmv(h)}`;
+    /* 랙 계열 파생값 — 가열실과 냉각 랙이 같은 구조라 한 곳에서 낸다. */
+    const RACK_W=2.56, RACK_TOP=()=>cDeckZ(DECKS-1)+.86, RACK_ROOF=()=>RACK_TOP()+.175;
+    const FORK_TOP=()=>cDeckZ(DECKS-1)+.82, FORK_W=2*(FORK_HALF_STD+.075);
+    const assemblies=[
+      {id:'M-001',name:'투입 셔틀·정렬·식별',size:dim(CST.LD.w,2.09,2.73),material:'SS400/AL6061',
+       parts:['베드 프레임 (2,420 × 1,620 @ EL 1,150)','우레탄 구동롤러','IE4 기어모터','폭조절 가이드 800~1,200','패널 스토퍼','WI-101 투입 계량 컨베이어','투입 계량 로드셀×4','2D 비전카메라','레이저 높이센서','바코드 리더','라벨 리더','광전센서','케이블베어','앵커 세트']},
+      {id:'M-002',name:`HC-101 · ${DECKS}단 밀폐 IR 가열실`,size:dim(CST.HC.w,RACK_W,RACK_ROOF()),material:'SS400·SUS304·미네랄울',
+       parts:['외부 용접프레임 (기둥×4 · 거싯×4)','벽체 4겹 — 외피 SS400 3.2t / 반사공기층 25 / 미네랄울 100t / 내피 SUS304 2.0t','GFRP t12 열교 차단 스페이서 @600',`데크 ${DECKS}단 + 데크 레일×${DECKS*2}`,`B0~B${DECKS} IR 뱅크`,`2.5kW IR 램프×${LAMPS}`,`반사판×${LAMPS}`,`SSR 분기모듈×${LAMPS}`,'PM-101 IR 전력 계기판','독립 과온센서',`EVA 계면센서×${DECKS}`,`표면 IR 센서×${DECKS}`,'투입 에어록','배출 에어록','에어록 셔터 4매','차압센서','점검도어','에어록 도어 위치센서×8','격리실 존재센서×2',`IR 뱅크 CT·SSR 피드백×${DECKS+1}`,'가열실 불꽃감지기×2',`층별 잠금실린더×${DECKS}`,`캐리지 존재센서×${DECKS}`]},
+      {id:'M-003',name:'승강 포크 문형 ×4 (LI·EX·GL·GU)',size:dim(.95,FORK_W,FORK_TOP()),material:'SS400/LM 가이드',
+       parts:['승강 문형 프레임×4 (기둥 ±1,120 · 두상보)','서보모터·감속기','볼스크류 동기축×8','TS-101 2단 포크','포크 캐리지×4','상하한 리미트×8','절대치 엔코더','낙하방지 브레이크×4','정비 고정핀','LI-101 투입 · EX-101 방출 · GL-101 적입 · GU-101 인출']},
+      {id:'M-004',name:'VT-101 · 6존 고정 진공테이블',size:dim(CARRIER_L,CARRIER_W,CZ+.15),material:'SS400/AL6061',
+       parts:['테이블 상판 2,900 × 1,560 @ EL 1,150','지지기둥×4 (박리 추력 13.37 kN 수용)','6존 진공매니폴드',`흡착패드×${PAD_COLS*PAD_ROWS} Ø${(PAD_R*2000).toFixed(0)}`,'진공압센서×6','진공필터×6','체크밸브×6','비상 진공어큐뮬레이터','패널 착좌·스퀘어 센서×4']},
+      {id:'M-005',name:'DL-101 · 이동 나이프 탠덤 셀',size:dim(CST.DL.w,2*(CGY+.085),CBEAM_Z+.17),material:'SS400/SKD11',
+       parts:[`KG-101 주행레일 문형 (행정 ${mmv(CRAIL_X1-CRAIL_X0)} @ EL ${mmv(CRAIL_Z)})`,'레일 지지기둥×4 · 거싯×4','주행 대차×2','측면 프레임×2','크로스빔 3,100','X축 랙피니언 구동','나이프 X축 절대치 엔코더','나이프 X축 원점·과주행센서×2','HKB Z축 서보슬라이드','HKS Z축 서보슬라이드','프리로드 LM가이드×4','볼스크류·서보브레이크×2','BC-201 HKB 퀵체인지 카세트','BC-201 HKS 퀵체인지 카세트','카세트 테이퍼 로케이팅핀×4','카세트 쐐기 클램프×4','카세트 블라인드메이트 커넥터×2','카세트 냉각 퍼지밸브×2','카세트 온도센서×2','카세트 잠금·존재센서×4','HKB/HKS 카트리지히터','칼날 열전대×8','로드셀×4','스프링 컴플라이언스×4','AE 센서×4','300mm 레이저 간격센서','기계식 하드스톱×4','칼날 Z축 상하한센서×4','GR-W1 박리 가이드롤 (갠트리 탑재)','백시트 끝단 비전','셀/EVA 인양 슈트 (갠트리 탑재)','KC-101 칼날 카세트 매거진',`예열·냉각 포켓 ${CKC_POCKETS}칸`,'KC-101 카세트 교환암','케이블베어·내열배선','용융 EVA 드립트레이','파편 회수트레이','코딩 정비도어 인터록']},
+      {id:'M-006',name:'WR-101 권취·RH-201 롤 반출',size:dim(1.30,RH_Y0-CKC_RACK_Y,RH_Z+.13),material:'SS400/SUS304',
+       parts:['권취 지지 문형 (기둥×2 · 상부보)','고정 아이들러 + 필로우블록×2','DN-101 장력 댄서 (행정 300)','WR-101 권취드럼 1축 (코어 Ø300 · 면폭 1,460)','드럼 필로우블록×2','분할클램프×4','토크서보·직경센서','장력 로드셀','웹 파단 검출센서',`RH-201 모노레일 런웨이 (${mmv(RH_Y0-CKC_RACK_Y)} @ EL ${mmv(RH_Z)}) · 기둥×2`,'RH-201 호이스트 트롤리·훅블록·슬링 2본·인양빔·코어 그리퍼×2','매거진 스퍼 빔','BS-301 롤 보관 새들 (방책 밖) + V 크래들','BS-301 새들 존재센서×2','롤 반출 위치센서×2','WO-301 권취롤 계량 새들','KC-301 카세트 보관 새들 (방책 밖)']},
+      {id:'M-007',name:`GC-101 · ${GCOOL_DECKS}단 유리 냉각 랙`,size:dim(CST.GC.w,RACK_W,cDeckZ(DECKS-1)+.66+.175),material:'SS400/SUS304',
+       parts:['랙 프레임 (기둥×4 · 거싯×4 · 상부 크로스빔 · 하부 베이스)','측벽 프레임·패널 · 후면 패널',`데크 ${GCOOL_DECKS}단 + 데크 레일×${GCOOL_DECKS*2}`,`층별 잠금실린더×${GCOOL_DECKS}`,`캐리지 존재센서×${GCOOL_DECKS}`,'승강 볼스크류 4본',`냉각 팬×${DECKS+1} + 팬 가드`,'필터 급기면',`표면 IR 센서×${GCOOL_DECKS}`,'상부 커버']},
+      {id:'M-008',name:'CE-201 횡인출 · CS-201 평적 카트',size:dim(CE_X1-CE_X0,CE_Y0-CE_Y1,CE_Z+.30),material:'SS400/SUS304',
+       parts:['CE-201 횡인출 컨베이어 (2,600 × 2,000 @ EL 1,050)','내열 벨트·롤러','VFD 기어모터','횡송 푸셔','셀 존재센서×4','CS-201 셀/EVA 평적 카트 (2,600 × 1,300)','적재 가이드포스트×4','셀/EVA 배출슈트 레벨센서×2','CS-201 반출 인터록 게이트','LC-003 반출 터널 광커튼','WO-302 셀 벨트 계량기']},
+      {id:'M-009',name:'QI-301 검사 · RJ-301 리젝트',size:dim(1.30,2.30,2.92),material:'SS400/AL6061',
+       parts:['QI 검사 아치 (기둥×2 · 거싯×2 · 가로보)','QI 상부 RGB 카메라','QI 하부 RGB 카메라','열화상카메라','라인레이저','투과조명','검사 엔코더','RJ 횡셔틀','셔틀 레일×2','리젝트 받침대','캐리지 존재센서','WO-303 유리 캐리지 계량대','RE-101 잔류 EVA 분광계']},
+      {id:'M-011',name:'전력·MCC·제어반',size:dim(1.60,.86,3.10),material:'도장강판 IP54',
+       parts:[`TR-1 ${TR_KVA}kVA`,'Q0 ACB 주차단기',`정격 ${MAIN_AF}AF / ${MAIN_AT}AT`,`주모선 ${Math.max(400,Math.ceil(FLA*1.25/100)*100)}A`,'SPD Type1+2','전력품질계','IR 분전반','HK 히터반','MCC/VFD반','PLC-101반','HMI','24VDC PSU A/B','UPS-101','접지바','히터 차단 확인 접촉기×2','LOTO 스테이션','데이터플레이트 (IEC 60204-1 16.4)']},
+      {id:'M-012',name:'VU-101 진공·계장공기 스키드',size:dim(1.50,.86,2.52),material:'SS400/SUS304',
+       parts:['진공펌프 A/B','진공어큐뮬레이터','계장공기 FRL','방진 패드','연기센서','CO센서','불꽃센서','NP-101 질소 퍼지 유닛','독립 과온릴레이','소화배관·노즐','E-STOP×4','안전 PLC F-PLC-101']},
+      {id:'M-013',name:'방책·안전장치',size:dim(CFENCE_X1-CFENCE_X0,CFENCE_Y+CFENCE_YN,2.40),material:'SS400/메시패널',
+       parts:[`안전펜스 ${mmv(CFENCE_X1-CFENCE_X0)} × ${mmv(CFENCE_Y+CFENCE_YN)}`,'인터록 도어×1 (CS-201 반출 게이트 · ISO 14119 코딩)','안전 광커튼 LC-001/002','뮤팅 센서 M1~M4×2조','안전 광커튼 LC-003','적층 신호등·부저 ST-101/102','비상정지 기둥×2','바닥 앵커·등전위 본딩']},
+      {id:'M-017',name:'BJ-101/102 · 공급범위 경계 인터페이스',size:dim(1.50,1.00,ductZOf(DECKS)+.30),material:'도장강판 IP54',
+       parts:['경계 인터페이스반 BJ-101','경계 안전회로 인터페이스반 BJ-102','하드와이어 단자대','안전릴레이 2CH','경계 표시등·명판','배기 헤더 지선 Ø400×2 + 파이프행어','배기 헤더 본관 Ø460','경계 덕트 플랜지 Ø600','경계 덕트 차압센서','풍량센서']},
+      /* ── 공급범위 밖 ──────────────────────────────────────────────
+         DESCOPED 가 발주자 설비로 넘긴 것들이다. 목록에서 지우지 않는 것은
+         입찰자가 '무엇이 빠졌는지' 를 알아야 경계 신호를 걸 수 있기 때문이고,
+         scope 를 다는 것은 그것을 납품품으로 세지 않기 위해서다. */
+      {id:'M-010',name:'VOC 배기·응축·흡착',size:'—',material:'—',scope:'발주자 설비',
+       parts:['발주자 후처리 설비 — 납품 경계는 M-017 덕트 플랜지 Ø600 (VOC_ABATE_READY)','배기팬 A','배기팬 B','차압센서×3','방화댐퍼 위치센서×2']},
+      {id:'M-014',name:'데이터·이력·원격감시',size:'—',material:'—',scope:'옵션 (Rev.20 구성)',
+       parts:['HS-101 이력 서버 · RC-101 원격 콘솔 — 압축 배치 기본 구성에 포함되지 않음','이력 서버 HS-101','RC-101 원격 감시 콘솔']},
+      {id:'M-015',name:'자동 팔레타이징·무인 감시',size:'—',material:'—',scope:'발주자 설비',
+       parts:['PL-101/201 · AD-101 — 납품 경계는 투입·반출 픽업 스테이션','PL-101 자동 디스태커','PL-201 자동 스태커','AD-101 AGV 도킹 스테이션','무인 감시 열화상 카메라×3']},
+      {id:'M-016',name:'축열식 열산화·열회수',size:'—',material:'—',scope:'발주자 설비',
+       parts:['RTO-101 · HX-101 · CEMS-101 · 굴뚝 — 납품 경계는 M-017 덕트 플랜지','RTO-101 축열식 열산화로','HX-101 배기–급기 열교환기','CEMS-101 연속배출감시']},
+    ];
+
     const A3W=420,A3H=297;                    // mm — ISO 216 A3 가로
     const fabDefs=`<defs>
       <marker id="fa" markerWidth="10" markerHeight="8" refX="9.5" refY="3" orient="auto" markerUnits="userSpaceOnUse">
@@ -5402,7 +5444,9 @@
       <path d="M1082 218V550H1125" fill="none" stroke="#278555" stroke-width="4"/><text x="780" y="566" font-size="11" fill="#206b46">Safety: OSSD 2CH → F-DI / F-DO → K1·K2·STO / 수동 RESET은 위험구역 밖</text></g></svg></div><p class="drawing-note">배선 원칙: 24VDC PNP 3선식, 4–20mA 차폐 연선, 열전대 전용 보상도선, 동력/신호 트레이 분리, VFD 모터케이블 양단 360° 차폐, 안전신호 2채널 교차단락 진단.</p>`;
     }
     function assemblyDrawing(a,mode){
-      const parts=a.parts.map((p,i)=>`<tr><td>${String(i+1).padStart(2,'0')}</td><td>${esc(p)}</td><td>1 SET</td><td>제작·구매품</td></tr>`).join('');
+      /* 공급범위 밖 모듈은 수량을 세지 않는다 — 세는 순간 견적에 들어간다. */
+      const parts=a.parts.map((p,i)=>`<tr><td>${String(i+1).padStart(2,'0')}</td><td>${esc(p)}</td>`
+        +`<td>${a.scope?'—':'1 SET'}</td><td>${esc(a.scope||'제작·구매품')}</td></tr>`).join('');
       const dims=a.size.split('×');
       let graphic='';
       if(mode==='2d'){
@@ -5421,7 +5465,7 @@
       }else{
         graphic=a.parts.slice(0,20).map((p,i)=>{const c=i%5,r=Math.floor(i/5),x=72+c*218,y=125+r*125,w=100,h=48,d=22,color=i%2?'#9fbfc1':'#bbc3c3';return `<g><polygon points="${x},${y} ${x+w},${y} ${x+w+d},${y-d} ${x+d},${y-d}" fill="${color}" stroke="#48575b"/><polygon points="${x+w},${y} ${x+w+d},${y-d} ${x+w+d},${y+h-d} ${x+w},${y+h}" fill="#71878b" stroke="#48575b"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" stroke="#48575b"/><circle cx="${x+14}" cy="${y+14}" r="11" fill="#0b6268"/><text x="${x+14}" y="${y+18}" text-anchor="middle" font-size="10" fill="#fff">${i+1}</text><text x="${x+w/2}" y="${y+h+18}" text-anchor="middle" font-size="9.5" fill="#25353a">${esc(p)}</text></g>`}).join('');
       }
-      return `<div class="drawing-controls"><label>어셈블리<select id="assemblySelect">${assemblies.map((v,i)=>`<option value="${i}"${i===assemblyIndex?' selected':''}>${esc(v.id)} · ${esc(v.name)}</option>`).join('')}</select></label><button type="button" data-mode="2d" class="${mode==='2d'?'active':''}">2D 삼면도</button><button type="button" data-mode="3d" class="${mode==='3d'?'active':''}">3D 분해도</button></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="${esc(a.name)} ${mode==='2d'?'2D 제작도':'3D 분해 조립도'}">${svgDefs}${titleBlock(a.id,`${a.id} · ${a.name} · ${mode==='2d'?'2D 삼면도':'3D 분해 조립도'}`,`외형 ${a.size} mm · 주재질 ${a.material}`)}<g font-family="Arial,'Noto Sans KR',sans-serif">${graphic}</g></svg></div><table class="bom-table"><thead><tr><th>품번</th><th>구성품</th><th>수량</th><th>구분</th></tr></thead><tbody>${parts}</tbody></table><p class="drawing-note">표시 치수는 외형·인터페이스 개념치입니다. 판두께, 용접기호, 공차, 베어링 끼워맞춤, 체결토크와 가공기준면은 구조해석·부품선정 후 제작도에서 동결합니다.</p>`;
+      return `<div class="drawing-controls"><label>어셈블리<select id="assemblySelect">${assemblies.map((v,i)=>`<option value="${i}"${i===assemblyIndex?' selected':''}>${esc(v.id)} · ${esc(v.name)}</option>`).join('')}</select></label><button type="button" data-mode="2d" class="${mode==='2d'?'active':''}">2D 삼면도</button><button type="button" data-mode="3d" class="${mode==='3d'?'active':''}">3D 분해도</button></div><div class="drawing-stage"><svg viewBox="0 0 1200 650" role="img" aria-label="${esc(a.name)} ${mode==='2d'?'2D 제작도':'3D 분해 조립도'}">${svgDefs}${titleBlock(a.id,`${a.id} · ${a.name} · ${mode==='2d'?'2D 삼면도':'3D 분해 조립도'}`,`외형 ${a.size} mm · 주재질 ${a.material}${a.scope?' · '+a.scope+' (공급범위 밖)':''}`)}<g font-family="Arial,'Noto Sans KR',sans-serif">${graphic}</g></svg></div><table class="bom-table"><thead><tr><th>품번</th><th>구성품</th><th>수량</th><th>구분</th></tr></thead><tbody>${parts}</tbody></table><p class="drawing-note">표시 치수는 외형·인터페이스 개념치입니다. 판두께, 용접기호, 공차, 베어링 끼워맞춤, 체결토크와 가공기준면은 구조해석·부품선정 후 제작도에서 동결합니다.</p>`;
     }
     /* ── M-002 가열실 제작도 (F-002) ──────────────────────────────────
        단수를 5로 올리면서 이 모듈이 가장 크게 바뀌었다 — 높이 3,620 → 4,860,

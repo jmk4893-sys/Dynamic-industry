@@ -93,13 +93,14 @@ LEAVES = [
     Leaf("ALL_TEMP_OK",        TC, DECKS, f"표면 IR 센서×{DECKS}"),
     Leaf("INDEPENDENT_OVERTEMP", FDI, 1, "독립 과온센서", "하드와이어 · IR 주접촉기 직접 차단"),
     Leaf("SSR_STUCK",          DI, BANKS, f"IR 뱅크 CT·SSR 피드백×{BANKS}", f"IR 뱅크 B0~B{DECKS} 각 1점"),
-    Leaf("DP_OK",              AI, 1, "차압센서×3"),
+    Leaf("DP_OK",              AI, 1, "차압센서"),
     Leaf("INNER_DOOR_OPEN",    FDI, 4, "에어록 도어 위치센서×8"),
     Leaf("OUTER_DOOR_OPEN",    FDI, 4, "에어록 도어 위치센서×8"),
     Leaf("FORK_HOME",          DI, 1, "TS-101 2단 포크"),
     Leaf("FORK_RETRACTED",     DI, 1, "TS-101 2단 포크"),
     Leaf("EXTRACTOR_HOME",     DI, 1, "TS-101 2단 포크"),
-    Leaf("DOOR_LOCKED",        FDI, 4, "인터록 도어×4"),
+    Leaf("DOOR_LOCKED",        FDI, 2, "인터록 도어×1 (CS-201 반출 게이트 · ISO 14119 코딩)",
+         "압축 배치의 잠금식 게이트는 CS-201 반출구 하나 — 양단 개구는 광커튼이 막는다"),
     Leaf("AL102_EMPTY",        DI, 2, "격리실 존재센서×2"),
     Leaf("OUTER_OUT_CLOSED",   FDI, 0, "에어록 도어 위치센서×8"),
     # 진공 캐리어·이송축
@@ -107,9 +108,11 @@ LEAVES = [
     Leaf("PANEL_VAC_OK",       AI, 1, "진공압센서×6"),
     Leaf("X_LEFT",             COMM, 0, "절대치 엔코더"),
     Leaf("X_RIGHT",            COMM, 0, "절대치 엔코더"),
-    Leaf("FOLLOWING_ERROR_OK", COMM, 0, "서보 랙피니언"),
+    Leaf("FOLLOWING_ERROR_OK", COMM, 0, "X축 랙피니언 구동"),
     Leaf("CARRIER_SQUARE",     DI, 4, "패널 착좌·스퀘어 센서×4"),
-    Leaf("TRACK_CLEAR",        DI, 2, "주행로 광전센서×2"),
+    # 압축 배치에는 캐리어 주행로가 없다 — 비워 두어야 하는 것은 갠트리 스윕이고,
+    # 그 자리를 읽는 것은 나이프 X축 과주행센서다.
+    Leaf("TRACK_CLEAR",        DI, 2, "나이프 X축 원점·과주행센서×2"),
     # 탠덤
     Leaf("HKB_TEMP_OK",        TC, 4, "칼날 열전대×8"),
     Leaf("HKS_TEMP_OK",        TC, 4, "칼날 열전대×8"),
@@ -131,22 +134,25 @@ LEAVES = [
          "교환 뒤 칼끝 간격 300±2mm 재확인"),
     Leaf("KNIVES_CLEAR",       DI, 4, "칼날 Z축 상하한센서×4"),
     Leaf("LEAD_300_ACK",       COMM, 0, "백시트 끝단 비전"),
-    Leaf("CELL_PATH_CLEAR",    DI, 2, "셀 경로 광전센서×2"),
+    Leaf("CELL_PATH_CLEAR",    DI, 2, "셀 존재센서×4"),
     # 권취·반출
     Leaf("CLAMP_CLOSED",       DI, 4, "분할클램프×4"),
     Leaf("WEB_TENSION_OK",     AI, 1, "장력 로드셀"),
     Leaf("WEB_BREAK",          DI, 1, "웹 파단 검출센서"),
     Leaf("BACKSHEET_FULL_ACK", DI, 1, "백시트 끝단 비전"),
-    Leaf("ROLL_ISOLATED",      DI, 2, "격리셔터 위치센서×2"),
-    Leaf("SHUTTER_CLOSED",     DI, 2, "격리셔터 위치센서×2"),
+    # 단일 고정 드럼이라 절단·이관·격리셔터가 없다. 롤이 분리되었다는 근거는
+    # 모노레일이 롤을 들어 올린 위치이지 셔터의 닫힘이 아니다.
+    Leaf("ROLL_ISOLATED",      DI, 2, "롤 반출 위치센서×2"),
+    Leaf("SHUTTER_CLOSED",     DI, 2, "롤 반출 위치센서×2"),
     Leaf("CARRIAGE_OUT",       DI, 2, "롤 반출 위치센서×2"),
     Leaf("BIN_READY",          DI, 2, "BS-301 새들 존재센서×2"),
     Leaf("T2_READY",           TC, 0, "칼날 열전대×8", "HKS 온도에서 파생"),
     # 셀/EVA 반출
     Leaf("CELL_BUFFERED",      DI, 4, "셀 존재센서×4"),
-    Leaf("CV_CLEAR",           DI, 2, "벨트 편심센서×2"),
+    Leaf("CV_CLEAR",           DI, 2, "셀 존재센서×4"),
     Leaf("CVC_CLEAR",          DI, 2, "셀 존재센서×4"),
-    Leaf("SHREDDER_READY",     COMM, 0, "SH-101 투입롤러"),
+    Leaf("SHREDDER_READY",     COMM, 0, "경계 인터페이스반 BJ-101",
+         "후속 파쇄는 발주자 설비다 — 준비 접점이 슈레더 자체를 대신한다"),
     # ── 공급범위 경계 (Rev.21C 압축 배치) ───────────────────────────────
     # 환경설비·후속파쇄·팔레타이징을 라인에서 떼어 발주자 설비로 넘겨도
     # 인터록은 남는다 — 멈춘 슈레더에 셀을 밀어 넣지 않는 조건은 그 슈레더가
@@ -166,35 +172,41 @@ LEAVES = [
     # 다만 나이프가 스스로 움직이면 그 축의 위치와 원점이 허가 조건이 된다.
     Leaf("KNIFE_X_HOME",       DI, 2, "나이프 X축 원점·과주행센서×2"),
     Leaf("KNIFE_X_POS",        COMM, 0, "나이프 X축 절대치 엔코더"),
-    Leaf("SHREDDER_TRIP",      DI, 1, "토크리미터"),
-    Leaf("FIRE_BACKFLOW",      DI, 1, "역화격리게이트"),
-    Leaf("ISOLATION_GATE_OPEN", DI, 2, "역화격리게이트"),
+    # 토크리미터·역화격리게이트는 슈레더 투입부의 장치라 발주자 설비와 같이 넘어갔다.
+    # 우리 쪽에 남는 것은 경계에서 카트를 내보내도 되는가 하나뿐이다.
+    Leaf("CELL_TAKEAWAY_READY", DI, 2, "경계 인터페이스반 BJ-101",
+         "CS-201 카트를 게이트 밖으로 낼 수 있는가 — 발주자 수취 준비"),
     # 유리·검사
-    Leaf("GLASS_CRACK",        DI, 2, "파손 감지센서"),
-    Leaf("LEVEL_ROLLER_READY", DI, 2, "동일높이 인계롤러"),
-    Leaf("GC_PRESENT_LOCKED",  DI, 4, "도킹핀×4"),
-    Leaf("GC_A_COOLING",       TC, 4, "GC 캐리지 온도센서×4"),
-    Leaf("GC_B_EMPTY_LOCKED",  DI, 2, "GC-301B 캐리지"),
+    # 냉각은 교대 캐리지 2대가 아니라 고정 랙 5단이다. "어느 캐리지가 식고 있나"
+    # 대신 "어느 단이 비었나 · 그 단 유리가 식었나" 가 허가 조건이 된다.
+    Leaf("GLASS_CRACK",        DI, 2, "QI 상부 RGB 카메라"),
+    Leaf("LEVEL_ROLLER_READY", DI, 2, "TS-101 2단 포크"),
+    Leaf("GC_PRESENT_LOCKED",  DI, 4, f"층별 잠금실린더×{DECKS}"),
+    Leaf("GC_A_COOLING",       TC, 4, f"표면 IR 센서×{DECKS}"),
+    Leaf("GC_B_EMPTY_LOCKED",  DI, 2, f"캐리지 존재센서×{DECKS}"),
     Leaf("SURFACE_TEMP_SAFE",  COMM, 0, "열화상카메라"),
-    Leaf("DOCK_LOCKED",        DI, 2, "도킹핀×4"),
-    Leaf("ZERO_DROP_PATH_CLEAR", DI, 2, "유리 경로 광전센서×3"),
-    Leaf("CROSS_TRANSFER_CLEAR", DI, 2, "GC 교대 광전센서×2"),
+    Leaf("DOCK_LOCKED",        DI, 2, f"층별 잠금실린더×{DECKS}"),
+    Leaf("ZERO_DROP_PATH_CLEAR", DI, 2, f"캐리지 존재센서×{DECKS}"),
+    Leaf("CROSS_TRANSFER_CLEAR", DI, 2, f"캐리지 존재센서×{DECKS}"),
     Leaf("QI_FAIL",            COMM, 0, "QI 상부 RGB 카메라"),
     Leaf("RJ_CARRIAGE_PRESENT", DI, 1, "캐리지 존재센서"),
-    Leaf("RJ_DOOR_LOCKED",     FDI, 1, "도어인터록"),
-    Leaf("GLASS_PATH_CLEAR",   DI, 1, "유리 경로 광전센서×3"),
+    # 리젝트는 밀폐 캐리지가 아니라 방책 안 횡셔틀이라 자기 도어가 없다.
+    # 접근은 방책 게이트가 막는다 — DOOR_LOCKED 가 그 자리를 이미 본다.
+    Leaf("GLASS_PATH_CLEAR",   DI, 1, f"캐리지 존재센서×{DECKS}"),
     # 배기·화재·환경
-    Leaf("FAN_A_OK",           DI, 1, "배기팬 A"),
-    Leaf("FAN_B_OK",           DI, 1, "배기팬 B"),
-    Leaf("CARBON_DP_OK",       AI, 1, "차압센서×3"),
-    Leaf("FIRE_DAMPER_OPEN",   FDI, 2, "방화댐퍼 위치센서×2"),
+    # 팬·흡착탑·방화댐퍼는 전부 경계 너머에 있다. 우리가 확인할 수 있는 것은
+    # 발주자 설비가 준비되었다는 접점과, 덕트가 실제로 빨고 있는지 우리가 잰 값이다.
+    Leaf("CARBON_DP_OK",       AI, 1, "경계 덕트 차압센서"),
     Leaf("SMOKE",              FDI, 2, "연기센서"),
     Leaf("CO_HIGH",            AI, 1, "CO센서"),
     Leaf("EXHAUST_LOSS",       AI, 1, "풍량센서"),
     Leaf("FIRE_OK",            FDI, 1, "불꽃센서"),
     # 안전
-    Leaf("LC_OSSD_CLEAR",      FDI, 4, "안전 광커튼 LC-001/002", "LC-001/002 각 OSSD 2채널"),
+    Leaf("LC_OSSD_CLEAR",      FDI, 6, "안전 광커튼 LC-001/002",
+         "LC-001/002 양단 개구 + LC-003 셀/EVA 반출 터널, 각 OSSD 2채널"),
     Leaf("MUTE_SENSORS",       DI, 8, "뮤팅 센서 M1~M4×2조", "개구부 2곳 × M1~M4"),
+    # 압축 배치에는 Rev.20 의 정비 베이가 없다. 잠그는 자리는 주차단기가 있는
+    # 제어반이고, LOTO 스테이션도 거기 선다.
     Leaf("ZERO_ENERGY_ACK",    DI, 4, "LOTO 스테이션"),
     Leaf("LOTO_APPLIED",       DI, 4, "LOTO 스테이션"),
     Leaf("TEMP_SAFE",          TC, 0, f"표면 IR 센서×{DECKS}", "ALL_TEMP_OK 와 같은 점을 읽는다"),
@@ -227,13 +239,13 @@ LEAVES = [
     # ── 무인 연속운전 ───────────────────────────────────────────────────
     Leaf("PL_IN_STACK_PRESENT", DI, 2, "PL-101 자동 디스태커"),
     Leaf("PL_OUT_SPACE_OK",    DI, 2, "PL-201 자동 스태커"),
-    Leaf("KC_MAGAZINE_READY",  DI, 4, "KC-101 칼날 카세트 매거진×2"),
-    Leaf("KC_ARM_HOME",        DI, 2, "KC-101 칼날 카세트 매거진×2"),
-    Leaf("CARRIER_PARKED",     DI, 1, "캐리어 파킹 위치센서"),
+    Leaf("KC_MAGAZINE_READY",  DI, 4, "KC-101 칼날 카세트 매거진"),
+    Leaf("KC_ARM_HOME",        DI, 2, "KC-101 칼날 카세트 매거진"),
+    Leaf("CARRIER_PARKED",     DI, 1, "나이프 X축 원점·과주행센서×2"),
     Leaf("AGV_DOCKED",         COMM, 0, "AD-101 AGV 도킹 스테이션"),
     Leaf("THERMAL_CAM_OK",     COMM, 0, "무인 감시 열화상 카메라×3"),
     Leaf("REMOTE_ACK",         COMM, 0, "RC-101 원격 감시 콘솔"),
-    Leaf("BIN_LEVEL_OK",       AI, 3, "반출함 레벨센서×3"),
+    Leaf("BIN_LEVEL_OK",       AI, 3, "셀/EVA 배출슈트 레벨센서×2"),
     # ── 환경·인증 ───────────────────────────────────────────────────────
     # 200 kW 배기열을 그대로 버리고 있었다. RTO 로 태우고 그 열로 급기를
     # 예열하면 같은 배기 처리가 에너지 회수가 된다.
@@ -258,7 +270,10 @@ DERIVED = [
     Derived("SEALED_FULL_LOAD_ACK",
             ["FULL_LOAD_ACK", "ALL_INNER_DOORS_CLOSED", "ALL_OUTER_DOORS_CLOSED", "DP_OK"]),
     Derived("EXHAUST_OK", ["EXHAUST_RUN"]),
-    Derived("EXHAUST_RUN", ["FAN_A_OK", "FAN_B_OK", "DP_OK", "CARBON_DP_OK", "FIRE_DAMPER_OPEN"]),
+    # 팬 두 대와 방화댐퍼는 발주자 설비 안에 있다. 우리가 배기를 허가하는 근거는
+    # 그쪽 준비 접점과, 경계에서 우리가 직접 재는 차압 두 점이다.
+    Derived("EXHAUST_RUN", ["VOC_ABATE_READY", "DP_OK", "CARBON_DP_OK", "DUCT_DP_OK"],
+            "발주자 후처리 준비 ∧ 챔버 차압 ∧ 경계 덕트 차압"),
     Derived("IR_ENABLE", ["SEALED_FULL_LOAD_ACK", "EXHAUST_OK", "FIRE_OK",
                           "PM_METER_OK", "EMISSION_OK"]),
     Derived("IR_HARD_TRIP", ["INDEPENDENT_OVERTEMP", "SMOKE", "CO_HIGH", "EXHAUST_LOSS", "SSR_STUCK"]),
@@ -301,19 +316,24 @@ DERIVED = [
     Derived("EJECT_PERMIT", ["SHUTTER_CLOSED", "CARRIAGE_OUT", "BIN_READY"]),
     Derived("BACKSHEET_BIN_ACK", ["EJECT_PERMIT", "BIN_READY"]),
     Derived("ROLL_EJECT_ACK", ["BACKSHEET_BIN_ACK"]),
-    Derived("CELL_TRANSFER", ["CVC_CLEAR", "SHREDDER_READY", "ISOLATION_GATE_OPEN",
+    Derived("CELL_TRANSFER", ["CVC_CLEAR", "SHREDDER_READY", "CELL_TAKEAWAY_READY",
                               "CELL_BIN_SPACE_OK"]),
     Derived("SHREDDER_FEED", ["CELL_BUFFERED", "CV_CLEAR", "SHREDDER_READY"]),
     Derived("SHREDDER_FEED_ACK", ["SHREDDER_FEED"]),
     Derived("CELL_OUT_ACK", ["CELL_TRANSFER"]),
-    Derived("SHREDDER_ISOLATION", ["FIRE_BACKFLOW", "SHREDDER_TRIP"]),
+    # 역화 격리와 토크 트립은 슈레더 투입부의 기능이라 설비와 같이 넘어갔다.
+    # 우리 쪽 격리는 카트를 게이트 밖으로 내보내지 않는 것 하나다.
+    Derived("SHREDDER_ISOLATION", ["CELL_TAKEAWAY_READY", "CELL_BIN_SPACE_OK"],
+            "발주자 수취 준비 ∧ 카트 여유 — 아니면 카트를 내보내지 않는다"),
     Derived("GLASS_TRANSFER", ["LEVEL_ROLLER_READY", "GC_PRESENT_LOCKED", "ZERO_DROP_PATH_CLEAR"]),
     Derived("GLASS_SWAP", ["GC_A_COOLING", "GC_B_EMPTY_LOCKED", "CROSS_TRANSFER_CLEAR"]),
     Derived("GLASS_ACCESS", ["SURFACE_TEMP_SAFE", "COOLING_COMPLETE", "DOCK_LOCKED"]),
     Derived("COOLING_COMPLETE", ["GC_A_COOLING"]),
     Derived("GLASS_CARRIAGE_ACK", ["GLASS_TRANSFER", "GC_PRESENT_LOCKED"]),
     Derived("GLASS_OUT_ACK", ["GLASS_CARRIAGE_ACK"]),
-    Derived("REJECT_PERMIT", ["QI_FAIL", "RJ_CARRIAGE_PRESENT", "RJ_DOOR_LOCKED", "GLASS_PATH_CLEAR"]),
+    # RJ-301 은 방책 안 횡셔틀이라 자기 도어가 없다 — 접근은 방책 게이트가 막고,
+    # 그것은 DOOR_LOCKED 가 이미 보고 있다.
+    Derived("REJECT_PERMIT", ["QI_FAIL", "RJ_CARRIAGE_PRESENT", "DOOR_LOCKED", "GLASS_PATH_CLEAR"]),
     Derived("EMPTY_CARRIER_RELOADED", ["REFILL_ACK"]),
     Derived("NEXT_PANEL", ["BACKSHEET_BIN_ACK", "SHREDDER_FEED_ACK",
                            "GLASS_CARRIAGE_ACK", "EMPTY_CARRIER_RELOADED"]),
@@ -379,32 +399,23 @@ DERIVED = [
 # ── 구동부 ──────────────────────────────────────────────────────────────
 DRIVES = [
     Drive("MT-101", "투입 롤러 구동",       DO, 2, "접촉기",  "IE4 기어모터"),
-    Drive("SV-201", "캐리어 이송축 좌",     COMM, 0, "STO 2CH", "서보 랙피니언"),
-    Drive("SV-202", "캐리어 이송축 우",     COMM, 0, "STO 2CH", "서보 랙피니언"),
     Drive("SV-301", "LI-101 승강 서보",     COMM, 0, "STO 2CH", "서보모터·감속기"),
     Drive("SV-302", "TS-101 포크 서보",     COMM, 0, "STO 2CH", "TS-101 2단 포크"),
     Drive("SV-401", "HKB Z축 서보",         COMM, 0, "STO 2CH", "HKB Z축 서보슬라이드"),
     Drive("SV-402", "HKS Z축 서보",         COMM, 0, "STO 2CH", "HKS Z축 서보슬라이드"),
     Drive("SV-501", "WR-101 권취 토크서보", COMM, 0, "STO 2CH", "토크서보·직경센서"),
-    Drive("MT-601", "CVC-301 벨트",         DO, 2, "접촉기",  "VFD 기어모터×2"),
-    Drive("MT-602", "CVC-302 벨트",         DO, 2, "접촉기",  "VFD 기어모터×2"),
+    # 캐리어 이송축 2기·CVC 벨트 2기·GC 캐리지 주행·배기팬 2기·슈레더·롤 포트 해치·
+    # 역화게이트는 압축 배치에 없거나 발주자 설비다. 없는 기계에 STO 를 걸어 둘 수는
+    # 없으므로 목록에서 뺀다 — 남기면 안전회로 시험이 걸 데 없는 축을 찾는다.
+    Drive("MT-601", "CE-201 횡인출 벨트",   DO, 2, "접촉기",  "VFD 기어모터"),
     Drive("MT-701", "유리 컨베이어",        DO, 2, "접촉기",  "VFD 기어모터"),
-    Drive("MT-702", "GC 캐리지 주행",       DO, 2, "접촉기",  "GC-301A 캐리지"),
     Drive("MT-801", "RJ-301 횡셔틀",        DO, 2, "접촉기",  "RJ 횡셔틀"),
-    Drive("MT-901", "배기팬 A",             DO, 2, "접촉기",  "배기팬 A"),
-    Drive("MT-902", "배기팬 B",             DO, 2, "접촉기",  "배기팬 B"),
     Drive("MT-903", "진공펌프 A",           DO, 2, "접촉기",  "진공펌프 A/B"),
     Drive("MT-904", "진공펌프 B",           DO, 2, "접촉기",  "진공펌프 A/B"),
-    Drive("SH-101 투입롤러", "슈레더",               DO, 2, "접촉기",  "SH-101 투입롤러"),
     Drive("CY-201", "층별 잠금실린더",      DO, DECKS, "덤프밸브", f"층별 잠금실린더×{DECKS}"),
-    Drive("CY-202", "에어록 셔터",          DO, 4, "덤프밸브", "투입 에어록"),
+    Drive("CY-202", "에어록 셔터",          DO, 4, "덤프밸브", "에어록 셔터 4매"),
     Drive("CY-301", "패널 스토퍼",          DO, 1, "덤프밸브", "패널 스토퍼"),
     Drive("CY-401", "분할클램프",           DO, 4, "덤프밸브", "분할클램프×4"),
-    Drive("CY-402", "권취 격리셔터",        DO, 2, "덤프밸브", "격리셔터"),
-    Drive("CY-403", "외함 롤 포트 셔터",    DO, 2, "덤프밸브", "외함 롤 포트"),
-    Drive("CY-404", "펜스 인터록 해치",     DO, 2, "덤프밸브", "펜스 인터록 해치"),
-    Drive("CY-501", "역화격리게이트",      DO, 2, "덤프밸브", "역화격리게이트"),
-    Drive("CY-601", "코너 승강대",          DO, 2, "덤프밸브", "코너 승강대"),
     Drive("VV-101", "6존 진공밸브",         DO, 6, "덤프밸브", "체크밸브×6"),
     Drive("SSR-B",  "IR 뱅크 SSR",          AO, BANKS, "주접촉기", f"SSR 분기모듈×{LAMPS}"),
     Drive("ST-101", "적층 신호등·부저",     FDO, 4, "F-DO 직결", "적층 신호등·부저 ST-101/102"),
@@ -412,7 +423,7 @@ DRIVES = [
     Drive("SV-405", "나이프 X축 이송",        COMM, 0, "STO 2CH", "나이프 X축 절대치 엔코더"),
     Drive("SV-701", "PL-101 디스태커 승강",  COMM, 0, "STO 2CH", "PL-101 자동 디스태커"),
     Drive("SV-702", "PL-201 스태커 승강",    COMM, 0, "STO 2CH", "PL-201 자동 스태커"),
-    Drive("SV-801", "KC-101 카세트 교환암",  COMM, 0, "STO 2CH", "KC-101 칼날 카세트 매거진×2"),
+    Drive("SV-801", "KC-101 카세트 교환암",  COMM, 0, "STO 2CH", "KC-101 카세트 교환암"),
     # 스프링으로 잠기고 공압으로 풀린다 — 공압이 빠지면 카세트가 물린 채 남는다.
     Drive("CY-405", "카세트 쐐기클램프",     DO, 4, "스프링 잠금", "카세트 쐐기 클램프×4"),
     Drive("CY-406", "카세트 냉각 퍼지밸브",  DO, 2, "덤프밸브", "카세트 냉각 퍼지밸브×2"),

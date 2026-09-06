@@ -72,17 +72,28 @@ class TestInterlockModelRuns(unittest.TestCase):
         # 장치 대조를 통과하고 있었고, 그래서 구매 품목 요구도 면제돼 있었다.
         # 이제 GR-W1 상부에 실제로 세웠으므로 예외가 아니다.
         soft = {"전력품질계", "PLC-101반", "접지바", "SPD Type1+2",
-                "UPS-101", "24VDC PSU A/B", "Q0 ACB 4P 800AF", "서보 랙피니언",
+                "UPS-101", "24VDC PSU A/B",
                 "절대치 엔코더", "HKB Z축 서보슬라이드", "HKS Z축 서보슬라이드",
-                "SH-101 투입롤러", "투입 에어록", "격리셔터", "외함 롤 포트",
-                "펜스 인터록 해치", "코너 승강대", "역화격리게이트",
                 "분할클램프×4", "체크밸브×6", "토크서보·직경센서",
                 "TS-101 2단 포크", "서보모터·감속기", "IE4 기어모터", "VFD 기어모터",
-                "VFD 기어모터×2", "GC-301A 캐리지", "RJ 횡셔틀", "배기팬 A", "배기팬 B",
-                "진공펌프 A/B"}
+                "RJ 횡셔틀", "진공펌프 A/B"}
         need = {l.device for l in self.m.LEAVES} | {d.device for d in self.m.DRIVES}
         missing = sorted(d for d in need - bom - soft)
         self.assertEqual(missing, [], f"제작도 목록에 없는 장치: {missing}")
+
+    def test_the_exemption_list_carries_no_dead_names(self):
+        """면제 목록은 모델이 실제로 부르는 이름만 담아야 한다.
+
+        Rev.20 장치를 면제한 채로 두면, 그 이름이 되살아나도 이 시험이
+        통과한다 — 면제가 방패가 되는 순간 대조는 성립하지 않는다.
+        """
+        src = pathlib.Path(__file__).read_text(encoding="utf-8")
+        block = src[src.index("soft = {"):src.index("}", src.index("soft = {")) + 1]
+        soft = set(re.findall(r'"([^"]+)"', block))
+        need = ({l.device for l in self.m.LEAVES}
+                | {d.device for d in self.m.DRIVES})
+        dead = sorted(soft - need)
+        self.assertEqual(dead, [], f"모델이 부르지 않는 면제 항목: {dead}")
 
     def test_every_drive_has_a_safe_stop(self):
         """구동부에 안전정지 수단이 없으면 트립이 걸려도 축은 돈다."""
@@ -199,17 +210,31 @@ class TestSignalsFoundByRunningIt(unittest.TestCase):
             self.assertIn(part, bom, f"IR_HARD_TRIP 입력 {part} 가 없다")
 
     def test_permit_position_sensors_exist(self):
-        """허가 조건이 읽는 위치센서. 액추에이터만 있고 위치확인이 없으면 허가가 성립하지 않는다."""
+        """허가 조건이 읽는 위치센서. 액추에이터만 있고 위치확인이 없으면 허가가 성립하지 않는다.
+
+        이름은 배치를 따라 바뀐다 — 압축 배치에는 권취 격리셔터도 방화댐퍼도
+        없다(단일 고정 드럼 · 배기 후처리는 발주자 설비). 그래서 이름을 손으로
+        적지 않고 모델이 실제로 읽는 위치·존재 신호에서 뽑아 대조한다.
+        """
         bom = self._bom()
-        for part in ("에어록 도어 위치센서×8", "격리셔터 위치센서×2", "롤 반출 위치센서×2",
-                     "BS-301 새들 존재센서×2", "칼날 Z축 상하한센서×4", "방화댐퍼 위치센서×2"):
+        want = {l.device for l in self.m.LEAVES
+                if any(k in l.name for k in ("_LOCKED", "_CLOSED", "_PRESENT",
+                                             "_HOME", "OUT", "READY"))}
+        missing = sorted(d for d in want if d not in bom)
+        self.assertEqual(missing, [], f"위치확인 장치가 목록에 없다: {missing}")
+        # 그 가운데 이 넷은 압축 배치에서도 반드시 살아 있어야 한다
+        for part in ("에어록 도어 위치센서×8", "롤 반출 위치센서×2",
+                     "BS-301 새들 존재센서×2", "칼날 Z축 상하한센서×4"):
             self.assertIn(part, bom, f"위치확인 장치 {part} 가 없다")
 
     def test_path_clear_photocells_exist(self):
+        """경로가 비었는지 읽는 장치. 압축 배치에서 그 경로가 바뀌었다 —
+        캐리어 주행로와 유리 컨베이어가 사라지고, 갠트리 스윕과 냉각 랙 단이
+        그 자리를 대신한다."""
         bom = self._bom()
-        for part in ("주행로 광전센서×2", "셀 경로 광전센서×2",
-                     "유리 경로 광전센서×3", "GC 교대 광전센서×2"):
-            self.assertIn(part, bom, f"경로확인 광전센서 {part} 가 없다")
+        for part in ("나이프 X축 원점·과주행센서×2", "셀 존재센서×4",
+                     f"캐리지 존재센서×{self.m.DECKS}"):
+            self.assertIn(part, bom, f"경로확인 장치 {part} 가 없다")
 
     def test_safety_devices_are_purchasable_lines(self):
         """광커튼·뮤팅·신호등은 그려져 있었지만 구매 품목이 아니었다."""

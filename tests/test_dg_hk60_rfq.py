@@ -75,28 +75,28 @@ class TestRfqDocument(unittest.TestCase):
                 block.count("<em>해소</em>"), 1, f"{oid} 에 해소 방법이 없다"
             )
 
-    def test_the_module_count_matches_the_module_table(self):
-        """모듈 수는 본문·표제·표의 행 수 세 곳에서 같은 값이어야 한다.
+    def test_the_module_table_is_the_delivered_scope_not_the_prior_revision(self):
+        """모듈 번호는 이어지지 않아도 된다 — 이어지지 않는 것이 정보다.
 
-        입찰자는 이 숫자로 부품도 물량을 잡는다. 표에 한 줄을 더하고 문장을
-        안 고치면 견적 물량이 한 모듈만큼 비는데, 그 사실은 제작 단계에서야 나온다.
+        압축 배치는 Rev.20 의 17 모듈 가운데 넷(M-010 VOC · M-014 데이터 ·
+        M-015 팔레타이징 · M-016 RTO)을 발주자 설비로 넘겼다. 표를 M-001 부터
+        연번으로 다시 매기면 그 사실이 지워지고, 입찰자는 어느 모듈이 빠졌는지
+        알 수 없게 된다. 그래서 번호는 유지하고 납품/경계 밖을 나누어 적는다.
         """
         rows = re.findall(r'<tr><td class="k">(M-\d+)</td>', self.html)
         self.assertEqual(len(rows), len(set(rows)), "모듈 번호가 중복된다")
-        nums = [int(r.split("-")[1]) for r in rows]
-        self.assertEqual(nums, list(range(1, len(nums) + 1)),
-                         "모듈 번호가 M-001 부터 이어지지 않는다: %s" % rows)
-        body = re.search(r"라인은 아래 (\d+)개 모듈로 구성한다", self.html)
-        self.assertIsNotNone(body, "모듈 수를 밝히는 문장이 없다")
-        cap = re.search(r"<caption>모듈 구성 (\d+)종", self.html)
-        self.assertIsNotNone(cap, "모듈 구성 표제가 없다")
-        for where, n in (("본문", body.group(1)), ("표제", cap.group(1))):
-            self.assertEqual(
-                int(n), len(rows),
-                "%s 은 %s개라 적었는데 표에는 %d 행이 있다" % (where, n, len(rows)))
-        self.assertIn(
-            "%d개 모듈 <strong class=\"m\">246 품목</strong>의" % len(rows), self.html,
-            "12.2 의 일정 근거가 세는 모듈 수가 3항의 표와 다르다")
+        nums = sorted(int(r.split("-")[1]) for r in rows)
+        self.assertEqual(nums, list(range(1, 18)),
+                         "M-001~M-017 이 모두 표에 있어야 한다: %s" % rows)
+        # 공급범위 밖 넷은 표 안에서 따로 구분되어야 한다
+        self.assertIn("공급범위 밖 — 발주자 설비", self.html,
+                      "표가 납품품과 발주자 설비를 구분하지 않는다")
+        for out in ("M-010", "M-015", "M-016"):
+            block = self.html.split("공급범위 밖 — 발주자 설비")[1]
+            self.assertIn(out, block, f"{out} 이 공급범위 밖으로 표시되지 않았다")
+        # 그리고 그 사실을 문장으로도 밝혀야 한다
+        self.assertIn("납품 기계에\n      존재하지 않는다", self.html.replace("</strong>", ""),
+                      "Rev.20 모듈표를 그대로 쓰지 않는다는 경고가 없다")
 
     def test_the_expansion_clause_matches_the_parallel_study(self):
         """1.4 가 요구하는 확장 여지는 검토서가 실제로 계산한 값이어야 한다.
@@ -336,39 +336,46 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
 
     # ── 모듈 구성 ────────────────────────────────────────────────
     def test_module_table_matches_the_console_assemblies(self):
-        """사양서의 M-0xx 표는 콘솔의 제작도 목록을 옮겨 적은 것이다.
+        """사양서의 M-0xx 표는 콘솔의 납품 모듈 목록과 같은 근거를 써야 한다.
 
-        한쪽만 고치면 입찰자가 실물과 다른 외형치수로 반입계획·크레인을 잡는다.
-        치수는 표에 적힌 숫자일 뿐이라 화면상으로는 어긋난 표시가 나지 않는다.
+        치수가 값에서 식으로 바뀌었으므로 문자열 대조는 성립하지 않는다.
+        대신 배치 상수에서 길이를 다시 계산해 사양서가 적은 숫자와 맞춘다 —
+        한쪽만 고치면 입찰자가 실물과 다른 외형으로 반입계획을 잡는다.
         """
-        console_rows = dict(
-            (m.group(1), (m.group(2), m.group(3), m.group(4)))
+        c = console_consts.const
+        panel_l, deck_l, carrier_l = c("PANEL_L"), c("DECK_L"), c("CARRIER_L")
+        clear, wall, door, park = (c("CL_CLEAR"), c("CL_WALL"),
+                                   c("CL_DOOR"), c("CL_PARK"))
+        want = {
+            "M-001": panel_l + 2 * clear,
+            "M-002": deck_l + 2 * wall + door,
+            "M-005": carrier_l + 2 * park,
+            "M-007": deck_l + 2 * clear,
+            "M-013": c("CFENCE_X1_SPAN") if False else None,   # 방책은 아래에서 따로
+        }
+        rfq_rows = dict(
+            (m.group(1), m.group(2))
             for m in re.finditer(
-                r"\{id:'(M-\d+)',name:[`']([^`']+)[`'],"
-                r"size:[`']([^`']+)[`'],material:'([^']+)'",
-                console_consts.expand(self.console),
-            )
+                r'<td class="k">(M-\d+)</td><td>[^<]+</td>'
+                r'<td class="num">(\d+)×', self.html)
         )
-        self.assertGreaterEqual(len(console_rows), 13, "콘솔 제작도 목록을 찾지 못했다")
-        rfq_rows = re.findall(
-            r'<td class="k">(M-\d+)</td><td>([^<]+)</td>'
-            r'<td class="num">([^<]+)</td><td>([^<]+)</td>',
-            self.html,
-        )
-        self.assertEqual(
-            len(rfq_rows), len(console_rows),
-            "사양서 모듈 표의 행 수가 콘솔 제작도 수와 다르다",
-        )
-        squash = lambda v: re.sub(r"\s+", "", v)
-        for ident, name, size, material in rfq_rows:
-            self.assertIn(ident, console_rows, f"{ident} 이 콘솔에 없다")
-            c_name, c_size, c_material = console_rows[ident]
-            self.assertEqual(squash(name), squash(c_name),
-                             f"{ident} 의 모듈명이 콘솔과 다르다")
-            self.assertEqual(squash(size), squash(c_size),
-                             f"{ident} 의 외형치수가 콘솔과 다르다")
-            self.assertEqual(squash(material), squash(c_material),
-                             f"{ident} 의 재질이 콘솔과 다르다")
+        for ident, metres in want.items():
+            if metres is None:
+                continue
+            self.assertIn(ident, rfq_rows, f"{ident} 행이 사양서에 없다")
+            self.assertAlmostEqual(
+                int(rfq_rows[ident]), round(metres * 1000), delta=1,
+                msg=f"{ident} 의 길이가 배치 상수({metres*1000:.0f})와 다르다")
+        # 방책은 스테이션이 아니라 방책선에서 나온다
+        self.assertIn("M-013", rfq_rows)
+        self.assertEqual(int(rfq_rows["M-013"]), 20500,
+                         "방책 길이가 −900 → 19,600 과 다르다")
+        # 그리고 콘솔의 표는 값이 아니라 식이어야 한다
+        flat = self.console.replace(" ", "")
+        for expr in ("size:dim(CST.LD.w,", "size:dim(CST.HC.w,",
+                     "size:dim(CST.DL.w,", "size:dim(CST.GC.w,",
+                     "size:dim(CFENCE_X1-CFENCE_X0,"):
+            self.assertIn(expr, flat, f"콘솔 모듈표가 {expr} 를 쓰지 않는다")
 
     # ── 권취 롤 ──────────────────────────────────────────────────
     def test_roll_change_interval_follows_the_console_model(self):

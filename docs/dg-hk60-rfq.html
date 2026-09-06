@@ -353,32 +353,46 @@
 
   <div class="clause"><div class="n">3.2</div><div class="c">
     <h3>설비 구성</h3>
-    <p>라인은 아래 17개 모듈로 구성한다. 외형 치수는 개념 배치 기준이며 상세설계에서 확정한다.</p>
+    <p>라인은 아래 모듈로 구성한다. 외형 치수는 압축 배치(Rev.21C)의 스테이션 폭·
+      데크 높이·방책선에서 파생한 계산치이며 상세설계에서 확정한다.</p>
+    <div class="warn"><strong>선행자료(REV.20)의 모듈표를 그대로 쓰지 않는다.</strong>
+      REV.20 은 패널이 11.2 m 를 이동하고 칼날이 고정인 기계였다. 압축 배치는
+      그 반대다 — 패널이 서고 칼날이 3,500 mm 를 왕복한다. 따라서
+      <span class="k">M-004</span> 의 이송축, <span class="k">M-005</span> 의
+      '고정' 탠덤, <span class="k">M-007</span> 의 냉각 캐리지 교대,
+      <span class="k">M-008</span> 의 16 m 직접 컨베이어는 <strong>납품 기계에
+      존재하지 않는다</strong>. 아래 표는 압축 배치가 실제로 세우는 것이다.
+      REV.20 구성은 <a href="#c3">3.4항</a>의 전장 회계에서 대조한다.</div>
     <div class="tw"><table>
-      <caption>모듈 구성 17종 — 외형 치수는 개념치</caption>
-      <thead><tr><th>부호</th><th>모듈</th><th class="num">외형 L×W×H (mm)</th><th>주재질</th></tr></thead>
+      <caption>납품 모듈 — 압축 배치 Rev.21C · 외형은 배치 상수 파생치</caption>
+      <thead><tr><th>부호</th><th>모듈</th><th class="num">외형 L×W×H (mm)</th><th>주재질</th><th>근거</th></tr></thead>
       <tbody>
-        <tr><td class="k">M-001</td><td>투입·정렬·식별</td><td class="num">6000×1800×4200</td><td>SS400 / AL6061</td></tr>
-        <tr><td class="k">M-002</td><td>5단 밀폐 IR 가열실</td><td class="num">5600×2600×4860</td><td>SS400 + 세라믹단열</td></tr>
-        <tr><td class="k">M-003</td><td>5단 적재·승강장치</td><td class="num">2900×1700×4150</td><td>SS400 / LM 가이드</td></tr>
-        <tr><td class="k">M-004</td><td>진공 캐리어·이송축</td><td class="num">11200×1800×1500</td><td>SS400 / AL6061</td></tr>
-        <tr><td class="k">M-005</td><td>고정 HKB/HKS 탠덤</td><td class="num">10200×4200×4300</td><td>SS400 / SKD11</td></tr>
-        <tr><td class="k">M-006</td><td>백시트 권취·반출부 (탠덤 하류)</td><td class="num">1900×6500×2900</td><td>SS400 / SUS304</td></tr>
-        <tr><td class="k">M-007</td><td>유리 수평 컨베이어·냉각 캐리지</td><td class="num">9000×5500×3000</td><td>SS400 / 우레탄</td></tr>
-        <tr><td class="k">M-008</td><td>셀/EVA 직접 컨베이어</td><td class="num">16000×1500×2500</td><td>SS400 / SUS304</td></tr>
-        <tr><td class="k">M-009</td><td>품질검사·리젝트</td><td class="num">3100×5000×3900</td><td>SS400 / AL6061</td></tr>
-        <tr><td class="k">M-010</td><td>VOC 배기·응축·흡착</td><td class="num">6500×3000×5600</td><td>SUS304 / FRP</td></tr>
-        <tr><td class="k">M-011</td><td>전력·MCC·제어반</td><td class="num">7600×1600×3600</td><td>도장강판 IP54</td></tr>
-        <tr><td class="k">M-012</td><td>유틸리티·화재안전</td><td class="num">9000×2500×4600</td><td>SS400 / SUS304</td></tr>
-        <tr><td class="k">M-013</td><td>가드·발판·정비설비</td><td class="num">25000×7000×3000</td><td>SS400 / 메시패널</td></tr>
-        <tr><td class="k">M-014</td><td>데이터·이력·원격감시</td><td class="num">1400×1200×3500</td><td>도장강판 IP54</td></tr>
-        <tr><td class="k">M-015</td><td>자동 팔레타이징·무인 감시</td><td class="num">3800×4600×3700</td><td>SS400 / AL6061</td></tr>
-        <tr><td class="k">M-016</td><td>축열식 열산화·열회수</td><td class="num">8300×3400×8100</td><td>SUS310S / 내화캐스터블</td></tr>
-        <tr><td class="k">M-017</td><td>공급범위 경계 인터페이스</td><td class="num">1200×600×2000</td><td>도장강판 IP54</td></tr>
+        <tr><td class="k">M-001</td><td>투입 셔틀·정렬·식별</td><td class="num">3000×2090×2730</td><td>SS400 / AL6061</td><td>LD-101 = 패널 2,400 + 2 × 300</td></tr>
+        <tr><td class="k">M-002</td><td>HC-101 · 5단 밀폐 IR 가열실</td><td class="num">3780×2560×4725</td><td>SS400 · SUS304 · 미네랄울</td><td>데크 2,780 + 벽 2 × 350 + 도어 300</td></tr>
+        <tr><td class="k">M-003</td><td>승강 포크 문형 ×4 (LI·EX·GL·GU)</td><td class="num">950×2390×4510</td><td>SS400 / LM 가이드</td><td>두상보 = 최상단 데크 3,690 + 820</td></tr>
+        <tr><td class="k">M-004</td><td>VT-101 · 6존 고정 진공테이블</td><td class="num">2900×1560×1300</td><td>SS400 / AL6061</td><td>캐리어 외형 · 공정선 EL 1,150</td></tr>
+        <tr><td class="k">M-005</td><td>DL-101 · 이동 나이프 탠덤 셀</td><td class="num">3800×3010×2720</td><td>SS400 / SKD11</td><td>캐리어 2,900 + 파킹 2 × 450</td></tr>
+        <tr><td class="k">M-006</td><td>WR-101 권취 · RH-201 롤 반출</td><td class="num">1300×7550×5230</td><td>SS400 / SUS304</td><td>모노레일 +550 → −7,000 · 레일 EL 5,100</td></tr>
+        <tr><td class="k">M-007</td><td>GC-101 · 5단 유리 냉각 랙</td><td class="num">3380×2560×4525</td><td>SS400 / SUS304</td><td>데크 2,780 + 정비간격 2 × 300</td></tr>
+        <tr><td class="k">M-008</td><td>CE-201 횡인출 · CS-201 평적 카트</td><td class="num">2600×2000×1350</td><td>SS400 / SUS304</td><td>적층체 2,400 × 1,200 통째 반출</td></tr>
+        <tr><td class="k">M-009</td><td>QI-301 검사 · RJ-301 리젝트</td><td class="num">1300×2300×2920</td><td>SS400 / AL6061</td><td>UL-101 반출 셔틀 상부 아치</td></tr>
+        <tr><td class="k">M-011</td><td>전력·MCC·제어반</td><td class="num">1600×860×3100</td><td>도장강판 IP54</td><td>기초 패드 P1</td></tr>
+        <tr><td class="k">M-012</td><td>VU-101 진공·계장공기 스키드</td><td class="num">1500×860×2520</td><td>SS400 / SUS304</td><td>기초 패드 P2</td></tr>
+        <tr><td class="k">M-013</td><td>방책·안전장치</td><td class="num">20500×7600×2400</td><td>SS400 / 메시패널</td><td>방책선 −900 → 19,600 · +3,400 / −4,200</td></tr>
+        <tr><td class="k">M-017</td><td>BJ-101/102 · 경계 인터페이스 (배기 헤더 포함)</td><td class="num">1500×1000×5400</td><td>도장강판 IP54</td><td>덕트 플랜지 EL 5,100</td></tr>
+      </tbody>
+      <tfoot>
+        <tr><th colspan="5">공급범위 밖 — 발주자 설비 (인터록 신호는 경계 너머까지 성립한다)</th></tr>
+        <tr><td class="k">M-010</td><td>VOC 배기·응축·흡착</td><td class="num">—</td><td>—</td><td>경계 = M-017 덕트 플랜지 Ø600</td></tr>
+        <tr><td class="k">M-015</td><td>자동 팔레타이징·무인 감시</td><td class="num">—</td><td>—</td><td>경계 = 투입·반출 픽업 스테이션</td></tr>
+        <tr><td class="k">M-016</td><td>축열식 열산화·열회수</td><td class="num">—</td><td>—</td><td>경계 = M-017 덕트 플랜지</td></tr>
+        <tr><td class="k">M-014</td><td>데이터·이력·원격감시</td><td class="num">—</td><td>—</td><td>옵션 — 기본 구성 밖</td></tr>
       </tbody>
     </table></div>
-    <p>주 방호구획(M-013)은 <strong class="m">25,000 × 7,000 mm</strong>이지만 그것은
-      방호구획의 치수이지 라인 전장이 아니다. 도면 좌표로 끝에서 끝까지 재면
+    <p>납품 방호구획(M-013)은 <strong class="m">20,500 × 7,600 mm</strong>이고
+      기계 전장은 <strong class="m">18,760 mm</strong>다 — 방책은 기계보다
+      앞뒤로 넓다. 선행자료(REV.20)의 방호구획은 <span class="m">25,000 × 7,000 mm</span>였는데
+      그것도 방호구획의 치수이지 라인 전장이 아니었다. 도면 좌표로 끝에서 끝까지 재면
       선행자료(REV.20)의 실제 전장은 <strong class="m">53,100 mm</strong>이다 —
       상류 디스태커 방책(X −3,400)에서 하류 굴뚝(X 49,700)까지이며, 여기에는
       셀/EVA 컨베이어와 슈레더, 스크러버·열교환기·RTO·굴뚝이 모두 들어 있다.
@@ -720,10 +734,10 @@
           <td class="num">100 kW · 40 등</td><td>불변 — 배열만 바뀐다</td></tr>
         <tr><th>IR 뱅크</th><td class="num">B0 ~ B3 × 10</td><td class="num">B0 ~ B5 · 6·7·7·7·7·6</td>
           <td>뱅크 = 단수 + 1</td></tr>
-        <tr><th>가열실 외형</th><td class="num">5600×2600×3620</td><td class="num">5600×2600×4860</td>
+        <tr><th>가열실 외형</th><td class="num">3780×2560×3485</td><td class="num">3780×2560×4725</td>
           <td>높이 <span class="m">+1,240 mm</span> — 외장을 단높임으로 다시 닫는다</td></tr>
-        <tr><th>승강장치 외형</th><td class="num">2900×1700×2910</td><td class="num">2900×1700×4150</td>
-          <td>승강행정도 같은 만큼 길다</td></tr>
+        <tr><th>승강 문형 외형</th><td class="num">950×2390×3270</td><td class="num">950×2390×4510</td>
+          <td>두상보 = 최상단 데크 + 820 — 승강행정도 같은 만큼 길다</td></tr>
         <tr><th>계면 K열전대</th><td class="num">TC 9</td><td class="num">TC 15</td>
           <td>단별 3점 유지</td></tr>
         <tr><th>표준 I/O 선언</th><td class="num">DI 160 · AO 8 · TC 40</td>
@@ -774,8 +788,9 @@
     </table></div>
     <div class="note"><strong>합격 판정은 평균값이 아니라 P95 사이클과 60장 연속 데이터로 한다.</strong>
       개별 동작이 규정 시간 안에 들어도 최악 위상이 겹치면 사이클을 넘길 수 있다.
-      WR 터릿 전환, 유리 냉각 캐리지 교대, 셀/EVA 이송, 캐리지 재장전이 모두
-      53.6 s 안에 끝나는지 각각 확인한다.</div>
+      나이프 복귀(2,700 mm), GL-101 적입·GU-101 인출 포크 인덱스,
+      CE-201 횡인출, EX-101 방출·LI-101 재장전이 모두 53.6 s 안에
+      끝나는지 각각 확인한다.</div>
   </div></div>
 
   <div class="clause"><div class="n">4.2</div><div class="c">
@@ -797,7 +812,9 @@
     <h3>분리 품질</h3>
     <ul>
       <li><strong>백시트</strong> — 전장 연속 권취. 찢김·편권·클램프 미끄럼 없이 롤 형성</li>
-      <li><strong>셀/EVA</strong> — 중간 낙하·보관 없이 컨베이어로 직접 이송</li>
+      <li><strong>셀/EVA</strong> — 적층체 2,400 × 1,200 을 자르지 않고 통째로
+        CE-201 로 횡인출해 CS-201 카트에 평적한다. 낙하·절단은 없다 —
+        후속 파쇄는 발주자 설비이므로 경계까지 원형을 유지한다</li>
       <li><strong>판유리</strong> — 잔류 EVA·미분리 셀·균열을 비전·열화상으로 판정,
         불합격품은 밀폐 리젝트 캐리지로 분기</li>
     </ul>
@@ -815,8 +832,8 @@
       <tbody>
         <tr><td class="k">WI-101</td><td>투입 패널 (기준점)</td><td>계량 컨베이어 · 로드셀 4점 합산</td><td class="num">± 0.2 % F.S.</td></tr>
         <tr><td class="k">WO-301</td><td>백시트 만권 롤</td><td>BS-301 계량 새들</td><td class="num">± 0.5 % F.S.</td></tr>
-        <tr><td class="k">WO-302</td><td>셀/EVA</td><td>벨트 계량기 적산 (하중 × 벨트속도)</td><td class="num">± 1.0 % 적산</td></tr>
-        <tr><td class="k">WO-303</td><td>판유리</td><td>GC 캐리지 계량대 · 캐리지 자중 영점</td><td class="num">± 0.3 % F.S.</td></tr>
+        <tr><td class="k">WO-302</td><td>셀/EVA</td><td>CS-201 평적 카트 계량 · 로트 단위</td><td class="num">± 1.0 % 로트</td></tr>
+        <tr><td class="k">WO-303</td><td>판유리</td><td>UL-101 반출 셔틀 인라인 계량 · 로드셀 4점</td><td class="num">± 0.3 % F.S.</td></tr>
         <tr><td class="k">RE-101</td><td>유리 잔류 EVA</td><td>NIR 분광 · 3점 스캔</td><td class="num">± 5 g/m²</td></tr>
       </tbody>
     </table></div>
@@ -1279,8 +1296,8 @@ KG-101 갠트리 스윕   y ±1,420 · x 8,050 ~ 11,550 · 상단 2,740  → 이
     <h3>제어 구성</h3>
     <ul>
       <li>안전 PLC와 표준 PLC 분리, 원격 I/O 3반</li>
-      <li>표준 I/O — <span class="m">DI 176 · DO 96 · AI 40 · AO 16 · TC 56</span>. 실사용 <span class="m">DI 132 · DO 68 · AI 29 · AO 7 · TC 39</span> 에서 예비 20 % 이상을 남기고 카드 배수로 올린 값이다</li>
-      <li>안전 I/O — <span class="m">F-DI 40 · F-DO 8</span> (실사용 F-DI 29 · F-DO 6)</li>
+      <li>표준 I/O — <span class="m">DI 176 · DO 96 · AI 40 · AO 16 · TC 56</span>. 실사용 <span class="m">DI 128 · DO 48 · AI 29 · AO 7 · TC 39</span> 에서 예비 20 % 이상을 남기고 카드 배수로 올린 값이다</li>
+      <li>안전 I/O — <span class="m">F-DI 40 · F-DO 8</span> (실사용 F-DI 26 · F-DO 6)</li>
       <li>24 VDC 이중전원, 산업용 UPS, 관리형 네트워크 링</li>
       <li>HS-101 이력 서버와 OPC UA 서버 — 공정값은 읽기 전용으로 공개하고 레시피 쓰기는 인증서로 제한한다</li>
     </ul>
@@ -1299,7 +1316,7 @@ MOTION_SYNC    = |X_LEFT − X_RIGHT| ≤ 0.3 mm ∧ FOLLOWING_ERROR_OK
 MOTION_TRIP    = SYNC_ERROR ∨ VAC_LOW ∨ KNIFE_OVERLOAD ∨ WEB_TENSION_HIGH ∨ GLASS_CRACK
 OPENING_SAFE   = LC_OSSD_CLEAR ∨ MUTE_VALID
 MUTE_VALID     = M1→M2 순차차폐 ∧ Δt ≤ 2 s ∧ 자재존재 ∧ 뮤팅시간 ≤ 120 s
-EXHAUST_RUN    = (FAN_A_OK ∨ FAN_B_OK) ∧ DP_OK ∧ CARBON_DP_OK ∧ FIRE_DAMPER_OPEN
+EXHAUST_RUN    = VOC_ABATE_READY ∧ DP_OK ∧ CARBON_DP_OK ∧ DUCT_DP_OK
 IR_HARD_TRIP   = INDEPENDENT_OVERTEMP ∨ SMOKE ∨ CO_HIGH ∨ EXHAUST_LOSS ∨ SSR_STUCK
 NEXT_PANEL     = BACKSHEET_BIN_ACK ∧ SHREDDER_FEED_ACK ∧ GLASS_CARRIAGE_ACK ∧ EMPTY_CARRIER_RELOADED
 CASSETTE_READY = CASSETTE_LOCKED ∧ CONNECTOR_MATED ∧ KNIFE_GAP_OK
@@ -1356,12 +1373,12 @@ KNIFE_TRAVERSE_PERMIT = PEEL_PERMIT ∧ KNIFE_X_HOME ∧ KNIFE_X_POS</div>
         <tr><td class="k">ROLL_ISOLATED · SHUTTER_CLOSED</td><td>HKS_PERMIT · EJECT_PERMIT</td><td>격리셔터 위치센서 × 2</td><td class="num">DI 2</td></tr>
         <tr><td class="k">CARRIAGE_OUT</td><td>EJECT_PERMIT</td><td>롤 반출 위치센서 × 2</td><td class="num">DI 2</td></tr>
         <tr><td class="k">BIN_READY</td><td>EJECT_PERMIT</td><td>BS-301 새들 존재센서 × 2</td><td class="num">DI 2</td></tr>
-        <tr><td class="k">ZERO_DROP_PATH_CLEAR · GLASS_PATH_CLEAR</td><td>GLASS_TRANSFER · REJECT_PERMIT</td><td>유리 경로 광전센서 × 3</td><td class="num">DI 3</td></tr>
-        <tr><td class="k">CROSS_TRANSFER_CLEAR</td><td>GLASS_SWAP</td><td>GC 교대 광전센서 × 2</td><td class="num">DI 2</td></tr>
-        <tr><td class="k">FIRE_DAMPER_OPEN</td><td>EXHAUST_RUN</td><td>방화댐퍼 위치센서 × 2</td><td class="num">F-DI 2</td></tr>
-        <tr><td class="k">LC_OSSD_CLEAR · MUTE_VALID</td><td>OPENING_SAFE</td><td>안전 광커튼 LC-001/002 · 뮤팅 센서 M1~M4 × 2조</td><td class="num">F-DI 4 · DI 8</td></tr>
-        <tr><td class="k">ALL_TEMP_OK</td><td>START_PERMIT</td><td>표면 IR 센서 × 3</td><td class="num">TC 3</td></tr>
-        <tr><td class="k">GC_A_COOLING</td><td>GLASS_SWAP · GLASS_ACCESS</td><td>GC 캐리지 온도센서 × 4</td><td class="num">TC 4</td></tr>
+        <tr><td class="k">ZERO_DROP_PATH_CLEAR · GLASS_PATH_CLEAR</td><td>GLASS_TRANSFER · REJECT_PERMIT</td><td>GC-101 캐리지 존재센서 × 5 (단수)</td><td class="num">DI 5</td></tr>
+        <tr><td class="k">DECK_SELECT_OK</td><td>GLASS_INDEX</td><td>GC-101 캐리지 존재센서 × 5 (단수)</td><td class="num">DI 5</td></tr>
+        <tr><td class="k">CARBON_DP_OK · DUCT_DP_OK</td><td>EXHAUST_RUN</td><td>경계 덕트 차압센서 (팬·댐퍼는 발주자 설비)</td><td class="num">AI 2</td></tr>
+        <tr><td class="k">LC_OSSD_CLEAR · MUTE_VALID</td><td>OPENING_SAFE</td><td>안전 광커튼 LC-001/002 (양단 개구) · LC-003 (셀/EVA 반출 터널) · 뮤팅 센서 M1~M4 × 2조</td><td class="num">F-DI 6 · DI 8</td></tr>
+        <tr><td class="k">ALL_TEMP_OK</td><td>START_PERMIT</td><td>표면 IR 센서 × 5 (단수)</td><td class="num">TC 5</td></tr>
+        <tr><td class="k">GLASS_COOL_OK</td><td>GLASS_DISCHARGE_PERMIT · GLASS_ACCESS</td><td>GC-101 표면 IR 센서 × 5 (단수)</td><td class="num">TC 5</td></tr>
         <tr><td class="k">LEAD_300_ACK · BACKSHEET_FULL_ACK</td><td>HKS_Z_PERMIT · HKS_PERMIT</td><td>백시트 끝단 비전 (GR-W1 상부)</td><td class="num">DI 1 · COMM</td></tr>
         <tr><td class="k">CASSETTE_LOCKED · CASSETTE_PRESENT</td><td>CASSETTE_READY · CASSETTE_RELEASE</td><td>BC-201 카세트 잠금·존재센서 × 4</td><td class="num">DI 4</td></tr>
         <tr><td class="k">CONNECTOR_MATED</td><td>CASSETTE_READY</td><td>블라인드메이트 체결확인 접점 × 2</td><td class="num">DI 2</td></tr>
@@ -1374,7 +1391,7 @@ KNIFE_TRAVERSE_PERMIT = PEEL_PERMIT ∧ KNIFE_X_HOME ∧ KNIFE_X_POS</div>
       대조로 확정한 실사용은 <span class="m">DI 105 · TC 32</span>인데 종전 선언은
       <span class="m">DI 96 · TC 16</span>이었다. 위 표의 장치를 더하기 전부터 이미
       초과 상태였다. <a href="#c3">3.3항</a> 고도화 네 축과 <a href="#c3">3.4항</a> 공급범위 경계 인터페이스까지 더한 실사용은
-      <span class="m">DI 132 · DO 68 · AI 29 · AO 7 · TC 39 · F-DI 29 · F-DO 6</span>이며,
+      <span class="m">DI 128 · DO 48 · AI 29 · AO 7 · TC 39 · F-DI 26 · F-DO 6</span>이며,
       <a href="#c7">7.1항</a>의 I/O 수량은 여기서 예비 20 %를 남기고 카드 배수로 올려
       다시 잡은 값이다.</div>
     <p><span class="m">HORN_3S</span>와 <span class="m">BEACON_AMBER</span>는
@@ -1435,7 +1452,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
   <div class="clause"><div class="n">8.1</div><div class="c">
     <h3>방호 개념</h3>
     <ul>
-      <li><strong>주위 방호</strong> — 안전펜스, 잠금식 인터록 도어 4개소(ISO 14119 코딩)</li>
+      <li><strong>주위 방호</strong> — 안전펜스 20,500 × 7,600, 잠금식 인터록 게이트 1개소(CS-201 반출구 · ISO 14119 코딩). 양단 자재 개구는 도어를 달 수 없어 광커튼 LC-001/002 로 방호하고, 셀/EVA 반출 터널은 LC-003 로 방호한다</li>
       <li><strong>개구부 방호</strong> — 자재 반입·반출구는 도어를 달 수 없으므로
         Type 4 광커튼으로 방호하고, 자재 통과 시에만 뮤팅 4점으로 일시 무효화한다.
         이격거리는 ISO 13855 접근속도 1.6 m/s 기준으로 산정하고 정지시간을 실측한다.</li>
@@ -1826,8 +1843,8 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
       100 % 검토만 제작승인도 착수 전에 끝나야 하므로 <strong>일정에 행으로 세웠다</strong> —
       용역기간 30주는 이 2주를 포함한 값이다. 검토의견 반영에 드는 기간은 해당 단계 소요에 포함한다.</p>
     <div class="note"><strong>100 % 단계에 10주를 둔 것은 부품도 물량 때문이다.</strong>
-      참고도가 있는 모듈은 두 개뿐이고(<a href="#c1">1.2항</a>), 그것도 해석으로
-      검증되지 않은 가정값이다. 17개 모듈 <strong class="m">246 품목</strong>의
+      참고도가 있는 것은 세 장뿐이고(<a href="#c1">1.2항</a> — F-002 · D-501 · D-602), 그것도 해석으로
+      검증되지 않은 가정값이다. 납품 13개 모듈 <strong class="m">192 품목</strong>의
       부품도를 판두께·공차·용접기호·가공기준면까지 확정해 그리는 것이 이 단계다.
       입찰자가 이보다 짧은 일정을 제안하려면 도면 매수 산정 근거를 함께 제시한다.</div>
     <p>확인사항(<a href="#c11">11항</a>) 중 실측·DOE가 필요한 항목은 시험 일정이

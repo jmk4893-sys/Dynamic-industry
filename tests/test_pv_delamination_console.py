@@ -487,21 +487,27 @@ class TestDeliverableEquipment(unittest.TestCase):
             "분기전류 식이 3상 전류식이 아니다",
         )
 
-    def test_redundant_fans_may_both_be_healthy(self):
-        """2×100% 이중화에서 '둘 다 건전' 은 정상이지 기동 금지 조건이 아니다.
+    def test_exhaust_permit_rests_on_what_we_can_actually_measure(self):
+        """배기팬이 경계 너머로 넘어가면서 이 허가의 근거가 바뀌었다.
 
-        XOR 로 적어두면 정상 상태에서 배기 기동허가가 성립하지 않아, 한 대를
-        일부러 못 쓰게 만들어야 기동되는 논리가 된다.
+        Rev.20 은 팬 2대를 우리가 갖고 있어 '한 대라도 건전' 이 조건이었다.
+        압축 배치에서 팬·흡착탑·방화댐퍼는 전부 발주자 설비다 — 그 접점 하나만
+        믿으면 덕트가 실제로 빨고 있는지 모르는 채 IR 을 켜게 되므로, 준비 접점과
+        함께 경계에서 우리가 직접 재는 차압을 조건에 둔다.
         """
         permit = re.search(r"EXHAUST_RUN = ([^']*)", self.html)
         self.assertIsNotNone(permit, "배기 기동허가 조건을 찾지 못했다")
-        self.assertNotIn(
-            "XOR", permit.group(1), "배기 기동허가가 팬 이중화 정상상태를 거부한다"
-        )
-        self.assertIn("∨", permit.group(1), "적어도 한 대 건전 조건이 아니다")
-        # 한 대만 돌린다는 의도는 기동조건이 아니라 상용·예비 선택으로 남아야 한다.
-        # 그 선택은 불 논리가 아니므로 '=' 을 쓴 논리식으로 적지 않는다
-        # (tests/test_logic_expressions.py 의 표기 규약).
+        expr = permit.group(1)
+        self.assertNotIn("XOR", expr, "배기 기동허가가 정상상태를 거부한다")
+        self.assertIn("VOC_ABATE_READY", expr, "발주자 후처리 준비 접점을 읽지 않는다")
+        for dp in ("DP_OK", "DUCT_DP_OK"):
+            self.assertIn(dp, expr,
+                          f"원격 접점만 믿고 우리가 재는 {dp} 를 읽지 않는다")
+        for gone in ("FAN_A_OK", "FAN_B_OK", "FIRE_DAMPER_OPEN"):
+            self.assertNotIn(gone, expr,
+                             f"경계 너머 장치 {gone} 를 아직 우리 신호로 읽는다")
+        # 팬 이중화의 '한 대라도' 는 이제 발주자 설비 안의 사정이라 우리 논리식에
+        # 남지 않는다. 그 대신 준비 접점 하나만 믿지 않는다는 것이 조건이 되었다.
         duty = re.search(r"배기팬 상용/예비: ([^']*)", self.html)
         self.assertIsNotNone(duty, "상용·예비 절체 조건이 없다")
         for word in ("대기", "절체", "교대운전"):
@@ -876,27 +882,28 @@ class TestPanelScale(unittest.TestCase):
 
         제작도 표에 적힌 치수와 3D 좌표가 다섯 군데에서 맞아야 성립한다.
         """
-        # 안전펜스 25,000 mm = M-013
+        # 안전펜스 — Rev.20 좌표는 그대로 남아 있다(배치 전환으로 볼 수 있다)
         fence = re.findall(r"fenceSegment\(([-\d.,\s]+)\)", self.html)
         xs = [float(v) for call in fence for v in call.split(",")[:4:2]]
         self.assertAlmostEqual(max(xs) - min(xs), 24.8, delta=0.05)
-        self.assertIn("25000×7000", self.html.replace(" ", ""))
-        # 탠덤 브리지 10,200 mm = M-005
+        # 모듈표 치수는 이제 값이 아니라 배치 상수의 식이다 — 그 식이 미터를
+        # mm 로 바꾸는 지점이 여기이므로, 축척의 근거도 그 식이 된다.
+        self.assertIn("const mmv=v=>Math.round(v*1000);", self.html,
+                      "모듈표 치수가 미터→mm 변환을 거치지 않는다")
+        self.assertIn("size:dim(CST.DL.w,", self.html.replace(" ", ""),
+                      "탠덤 셀 외형이 스테이션 폭에서 나오지 않는다")
+        # 탠덤 브리지 10,200 mm 는 Rev.20 갠트리 — 좌표는 남아 있어야 한다
         self.assertIn("gantry(17.8,10.2,", self.html)
-        self.assertIn("10200×4200", self.html)
-        # 가열실 M-002 — 표의 길이·폭이 실제로 그려진 외피와 같아야 한다
+        # 가열실 M-002 — 표의 치수가 압축 배치 스테이션 폭과 랙 높이에서 나온다.
+        # Rev.20 챔버(preheatTunnel, L=5.6)는 배치 전환용으로 남아 있으므로
+        # 좌표는 그대로 확인하되, 표는 더 이상 그 값을 인용하지 않는다.
         tunnel = self._fn("preheatTunnel")
         self.assertRegex(tunnel, r"L\s*=\s*5\.6\b")
-        # 이름이 템플릿 리터럴이 되면서 }가 끼어들었다 — 창을 길이로 자른다.
-        m = re.search(r"id:'M-002'.{0,120}?size:[`'](\d+)×(\d+)×", self.html)
-        self.assertIsNotNone(m, "M-002 제작도 치수를 찾지 못했다")
-        self.assertAlmostEqual(float(m.group(1)), 5600, delta=1)
-        roof = re.search(r"box\(V\(cx,0,HZ\+\.94\),V\(L\+\.42,([\d.]+),", tunnel)
-        self.assertIsNotNone(roof, "가열실 지붕 폭을 찾지 못했다")
-        self.assertAlmostEqual(
-            float(m.group(2)), float(roof.group(1)) * 1000, delta=1,
-            msg="M-002 표의 폭이 실제로 그려진 가열실 외피와 다르다",
-        )
+        self.assertIn("size:dim(CST.HC.w,RACK_W,RACK_ROOF())",
+                      self.html.replace(" ", ""),
+                      "M-002 외형이 가열실 스테이션 폭·랙 지붕에서 나오지 않는다")
+        self.assertIn("RACK_ROOF=()=>RACK_TOP()+.175", self.html.replace(" ", ""),
+                      "랙 지붕 높이가 랙 기둥 상단에서 나오지 않는다")
         # 칼끝 간격 300 mm
         hkb = self._const("HKB_X")
         hks = self._const("HKS_X")
