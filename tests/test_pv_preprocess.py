@@ -6274,3 +6274,67 @@ class TestShortEdgeGrinding(unittest.TestCase):
         self.assertEqual(streams["GI-303"].pixels, streams["GI-302"].pixels)
         self.assertIn('["AFR-GI-303"', self.html)
         self.assertGreaterEqual(self.html.count("AFR GI-303 하부 유리 라인스캔"), 2)
+
+
+class TestInfeedStation(unittest.TestCase):
+    """§56 — 마지막 통합 후보(PT-101 겸용)를 닫은 근거를 값으로 붙든다.
+
+    닫은 이유가 "이미 한 스테이션이라 걷을 게 300 뿐" 이므로, 그 300 을 만드는
+    네 값(정반 위치·길이, 축적런 위치·길이)이 도면과 갈라지면 근거가 사라진다.
+    그래서 모델을 정본으로 두고 3D 리터럴·2D 규격표와 대조한다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_the_table_and_the_accumulator_are_one_station(self):
+        self.assertEqual(layout.pt_deck_span_mm(), (7530, 10150))
+        self.assertEqual(layout.accumulator_span_mm(), (7830, 10580))
+        # 겹친다는 것이 "둘이 아니라 하나" 라는 근거다 — 패널 한 장에 가까운 길이가 겹친다
+        self.assertEqual(layout.pt_accumulator_overlap_mm(), 2320)
+        self.assertGreater(layout.pt_accumulator_overlap_mm(),
+                           layout.one_panel_station_mm() * 0.8)
+        self.assertEqual(layout.infeed_station_span_mm(), (7530, 10580))
+
+    def test_the_merge_prize_was_already_taken_in_rev48(self):
+        """REV.48 이 축적런을 4,630 → 2,750 으로 줄이며 −1,500…2,750 을 가져갔다."""
+        self.assertEqual(layout.one_panel_station_mm(), 2750)
+        self.assertEqual(layout.ACCUM_RUN_MM, layout.one_panel_station_mm(),
+                         "축적런은 패널 + 그립 여유 125×2 여야 한다 (REV.48 규칙)")
+        self.assertEqual(layout.infeed_merge_residue_mm(), 300)
+        # 남은 잔여가 패널 한 장보다 한참 작다 — 이것이 후보를 닫은 근거다
+        from pv_preprocess import campaign as _c
+        self.assertLess(layout.infeed_merge_residue_mm(), _c.PANEL_LENGTH_MM / 5)
+
+    def test_the_scene_carries_the_same_four_numbers(self):
+        """3D 리터럴이 모델과 갈라지면 실측 근거가 죽는다."""
+        self.assertIn(f"Ti=-{layout.PT_FROM_JBR_CENTER_MM / 1000:g}+gt", self.html)
+        deck_x, deck_z = (v / 1000 for v in layout.PT_DECK_MM)
+        self.assertIn(f"[{deck_x:g},.09,{deck_z:g}]", self.html)
+        self.assertIn(f"[{layout.ACCUM_RUN_MM / 1000:g},.1,.1],"
+                      f"[-{layout.ACCUM_FROM_JBR_CENTER_MM / 1000:g},.79,i]", self.html)
+
+    def test_the_seed_tolerance_is_declared_not_buried_in_a_string(self):
+        row = (f"<code>PT-101</code> {layout.PT_TABLE_MM[0]:,} × {layout.PT_TABLE_MM[1]:,}"
+               f" × H{layout.PT_TABLE_MM[2]} mm, 3-2-1 스토퍼·양측 푸셔,"
+               f" 목표 ±{layout.PT_SEED_TOLERANCE_MM} mm"
+               f" / yaw ±{layout.PT_SEED_YAW_DEG}°")
+        self.assertIn(row, self.html, "2D 규격표가 모델의 시드 공차와 다르다")
+
+    def test_the_seed_and_the_bridge_do_not_swap_numbers(self):
+        """±1.0 mm 는 패널 시드, 0.08 mm 는 브리지 동기오차다 — 바꿔 적은 이력이 있다."""
+        bridge = next(a for a in servos.SERVO_AXES if a.tag == "AXIS-JBR-X")
+        self.assertIn("0.08 mm", bridge.note)
+        self.assertNotEqual(layout.PT_SEED_TOLERANCE_MM, 0.08)
+        i = self.html.find("<th>정렬 정반</th>")
+        self.assertGreater(i, 0)
+        self.assertNotIn("0.08", self.html[i:i + 400],
+                         "정렬 정반 행에 브리지 값이 들어가 있다")
+
+    def test_deleting_the_table_would_buy_the_cameras_back(self):
+        """시드를 근거로 내린 헤드가 실제로 있다 — 정반을 빼면 여기부터 다시 봐야 한다."""
+        retired = [h for h in vision.HEADS if not h.kept and "PT-101" in h.note]
+        self.assertTrue(retired, "시드를 근거로 삼은 은퇴 헤드가 없다")
+        self.assertIn("좌표시드", " ".join(h.note for h in retired))
+        self.assertLess(vision.head_reduction()[1], vision.head_reduction()[0])

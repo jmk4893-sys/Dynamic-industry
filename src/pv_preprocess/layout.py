@@ -545,6 +545,42 @@ PT_FROM_JBR_CENTER_MM = 5_010
 REJECT_RACK_DX_MM = 600
 REJECT_RACK_Z_MM = 1_550
 
+# ── 투입 스테이션 (PT-101 + JB-201) — 통합 후보를 닫으며 값으로 올린 자리 ──────
+#
+# "PT-101 정렬 정반을 JBR 축적런과 겸용하면 2,620 을 걷는다" 가 REV.51 부터 마지막
+# 통합 후보로 남아 있었다. README §56 에서 3D 좌표를 재 보니 **둘은 이미 2,320 겹친 한
+# 스테이션**이었다 — 3-2-1 기준 스톱도 축적런 안에 서 있고 이송면도 같은 950 이다.
+# 걷을 수 있는 것은 2,620 이 아니라 합집합(3,050)과 한 장 축적 소요(2,750)의 차이
+# **300** 뿐이고, −1,500…2,750 은 REV.48 이 축적런을 4,630 → 2,750 으로 줄이며 이미
+# 가져간 몫이었다. 그 300 의 대가는 좌표시드이므로 **발주처 결정으로 후보를 닫았다.**
+#
+# 근거가 3D 리터럴과 2D 규격표 문자열에만 있으면 다음 회차에 조용히 갈라진다.
+# REV.52 가 post 존에서 같은 종류의 갈라짐 둘을 닫았고, 여기도 같게 한다.
+
+#: PT-101 정렬 정반 외형 (X, Y, H) — 2D 규격표 "정렬 정반" 행과 같아야 한다.
+PT_TABLE_MM = (2_850, 1_650, 900)
+
+#: 3D 출구 정반 (X, Z) — 패널 2,500 에 60 씩 물린다.
+PT_DECK_MM = (2_620, 1_520)
+
+#: 3-2-1 스토퍼·양측 푸셔가 만드는 좌표시드. **이 라인의 유일한 기계 기준이다.**
+#: 로봇이 놓은 뒤 진공을 순차 해제하며 손목이 패널을 추종하는 동안 스톱과 푸셔가
+#: 패널을 기준면으로 끌어당긴다 — 로봇 자세오차를 흡수하는 자리가 여기 하나다.
+#: `vision.py` 의 영상 헤드 감축과 `ai.py` AI-10("파지 자세 비전 추정 권고하지
+#: 않음")이 둘 다 이 값 위에 서 있다. 정반을 빼면 카메라를 되사야 한다.
+#:
+#: 브리지 동기오차 0.08 mm(AXIS-JBR-X · JB-MX-005)와 **다른 값이다.** REV.51·52
+#: 기록이 둘을 바꿔 적었고 §56 에서 고쳤다 — 시험이 둘의 자리를 지킨다.
+PT_SEED_TOLERANCE_MM = 1.0
+PT_SEED_YAW_DEG = 0.15
+
+#: 축적·인계 런 JB-201 — 가드 기준 길이와 jbr 존 중심으로부터의 거리 (3D 실측).
+ACCUM_RUN_MM = 2_750
+ACCUM_FROM_JBR_CENTER_MM = 4_645
+
+#: 한 장 축적에 필요한 그립 여유 (편측). 패널 + 이것의 2배가 스테이션 길이다.
+GRIP_CLEARANCE_MM = 125
+
 
 def _zone_x0_mm(key: str) -> int:
     return next(z.x0_mm for z in build_zones() if z.key == key)
@@ -574,6 +610,50 @@ def robot_pickup_distance_mm(pickup_x_mm: int | None = None) -> float:
 def robot_place_distance_mm() -> int:
     """RB-101 J2 축에서 PT-101 놓는 자리까지 (mm). ROBOT_PLACE_DX_MM 이어야 한다."""
     return pt_place_x_mm() - robot_pedestal_x_mm()
+
+
+def pt_deck_span_mm() -> tuple[int, int]:
+    """PT-101 출구 정반이 차지하는 X 구간 (plant mm)."""
+    half = PT_DECK_MM[0] // 2
+    return (pt_place_x_mm() - half, pt_place_x_mm() + half)
+
+
+def accumulator_span_mm() -> tuple[int, int]:
+    """JB-201 축적·인계 런이 차지하는 X 구간 (plant mm). 존 경계를 건넌다."""
+    jbr = next(z for z in build_zones() if z.key == "jbr")
+    centre = (jbr.x0_mm + jbr.x1_mm) // 2 - ACCUM_FROM_JBR_CENTER_MM
+    half = ACCUM_RUN_MM // 2
+    return (centre - half, centre + half)
+
+
+def pt_accumulator_overlap_mm() -> int:
+    """정반과 축적런이 겹치는 길이 (mm). 둘이 한 스테이션이라는 근거다."""
+    a0, a1 = pt_deck_span_mm()
+    b0, b1 = accumulator_span_mm()
+    return max(0, min(a1, b1) - max(a0, b0))
+
+
+def infeed_station_span_mm() -> tuple[int, int]:
+    """정반과 축적런을 한 스테이션으로 본 X 구간 (plant mm)."""
+    a0, a1 = pt_deck_span_mm()
+    b0, b1 = accumulator_span_mm()
+    return (min(a0, b0), max(a1, b1))
+
+
+def one_panel_station_mm() -> int:
+    """한 장 축적에 필요한 길이 (mm) — 패널 + 그립 여유 양측. REV.48 의 규칙."""
+    from . import campaign
+    return int(campaign.PANEL_LENGTH_MM) + 2 * GRIP_CLEARANCE_MM
+
+
+def infeed_merge_residue_mm() -> int:
+    """겸용으로 더 걷을 수 있는 길이 (mm).
+
+    합집합에서 한 장 축적 소요를 뺀 나머지다. 이 값이 패널 한 장보다 한참
+    작다는 것이 **통합 후보가 소진됐다**는 뜻이고, §56 이 후보를 닫은 근거다.
+    """
+    lo, hi = infeed_station_span_mm()
+    return (hi - lo) - one_panel_station_mm()
 
 
 def robot_reject_distance_mm() -> float:
