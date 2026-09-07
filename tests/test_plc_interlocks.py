@@ -265,7 +265,8 @@ class TestSignalsFoundByRunningIt(unittest.TestCase):
         missing = sorted(d for d in want if d not in bom)
         self.assertEqual(missing, [], f"위치확인 장치가 목록에 없다: {missing}")
         # 그 가운데 이 넷은 압축 배치에서도 반드시 살아 있어야 한다
-        for part in ("에어록 도어 위치센서×8", "롤 반출 위치센서×2",
+        decks = int(self.m.DECKS)
+        for part in (f"에어록 단별 셔터 위치센서×{decks*4}", "롤 반출 위치센서×2",
                      "BS-301 새들 존재센서×2", "칼날 Z축 상하한센서×4"):
             self.assertIn(part, bom, f"위치확인 장치 {part} 가 없다")
 

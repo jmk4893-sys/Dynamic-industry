@@ -398,3 +398,42 @@ class TestTheShopDetailSheetAgreesWithTheSpecification(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheReflectanceRequirementIsBuildable(unittest.TestCase):
+    """IR 뱅크 검토가 만든 요구 RIR3 이 제작 지침서에서 **만들 수 있는 것**이 됐는가.
+
+    요구는 세 번 적혀야 지켜진다 — 무엇을(표면처리 사양) · 언제 재는가(ITP) ·
+    미달이면 무엇을 하는가. 하나라도 빠지면 도면과 같은 치수의 다른 물건이 온다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = SPEC.read_text(encoding="utf-8")
+
+    def test_the_surface_table_carries_the_polish_and_the_reflectance(self):
+        i = self.html.index("<th>가열실 내피</th>")
+        row = self.html[i:i + 320]
+        self.assertIn("#400", row, "연마 등급이 없으면 만들 방법이 안 적힌다")
+        self.assertIn("ρ ≥ 0.4", row, "반사율이 없으면 2B 소지가 온다")
+
+    def test_the_shutter_inner_face_gets_the_same_finish(self):
+        """셔터도 공동의 벽면이다 — 셔터만 무광이면 그 자리가 냉점이 된다."""
+        self.assertIn("에어록 단별 셔터 내면", self.html)
+
+    def test_the_reflectance_is_measured_before_the_lamps_go_in(self):
+        """램프가 붙으면 벽에 반사율계를 댈 자리가 없다."""
+        i = self.html.index("가열실 내피 반사율 확인")
+        row = self.html[i:i + 400]
+        self.assertIn("램프 장착 전", row)
+        self.assertIn("9", row, "몇 점을 재는지가 없다")
+        self.assertIn("최저점", row, "평균만 보면 한 벽이 죽어도 통과한다")
+
+    def test_the_itp_steps_are_numbered_without_a_gap(self):
+        rows = re.findall(r'<tr><td class="num">(\d+)</td><td>', self.html)
+        self.assertEqual(rows, [str(i) for i in range(1, len(rows) + 1)],
+                         "ITP 단계 번호가 끊기거나 겹친다")
+
+    def test_the_shutter_interlock_is_proven_at_assembly(self):
+        self.assertIn("동시개방 금지", self.html,
+                      "두 단이 동시에 열리면 손실이 두 배다 — 조립 때 확인한다")

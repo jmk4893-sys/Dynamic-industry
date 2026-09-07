@@ -351,3 +351,35 @@ class TestTheReportIsGeneratedFromTheModel(unittest.TestCase):
         """검증이 잡은 것을 지우면 검증표가 장식이 된다."""
         self.assertIn("15 배", self.html)
         self.assertIn("64 %", self.html)
+
+
+class TestPlainTextFieldsCarryNoMarkdown(unittest.TestCase):
+    """요구의 '무엇'·'값'·'받는 곳' 칸은 `esc()` 로 찍힌다 — ** 가 그대로 인쇄된다.
+
+    부품 카탈로그의 `fix` 칸에서 한 번 겪었고, 요구의 `value` 칸에서 또
+    겪었다. **어느 칸이 마크다운을 렌더하는지는 생성기만 안다** — 그래서
+    산문 칸(`why`)만 강조를 허용하고 나머지는 여기서 막는다.
+    """
+
+    def _reqs(self):
+        import airlock as AIR
+        import analysis_irbank as IRB
+        import analysis_thermal as TH
+        import heatbalance as HBAL
+        import lampmount as LMT
+        out = []
+        for m in (TH, IRB, LMT, HBAL, AIR):
+            out += list(m.requirements())
+        return out
+
+    def test_no_markdown_in_the_escaped_columns(self):
+        for q in self._reqs():
+            for field in ("what", "value", "owner"):
+                with self.subTest(f"{q.id}.{field}"):
+                    self.assertNotIn("**", getattr(q, field),
+                                     f"{q.id} 의 {field} 칸은 강조를 렌더하지 않는다")
+
+    def test_the_prose_column_is_where_emphasis_belongs(self):
+        """반대로 산문 칸에는 강조가 살아 있어야 한다 — 없으면 md() 가 죽은 것이다."""
+        self.assertTrue(any("**" in q.why for q in self._reqs()),
+                        "어떤 요구도 강조를 쓰지 않으면 md() 가 도는지 알 수 없다")

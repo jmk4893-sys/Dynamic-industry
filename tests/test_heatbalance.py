@@ -89,17 +89,38 @@ class TestTheTermsAreRight(unittest.TestCase):
                         HB.panel(HB.RATE_THERMAL),
                         "계약 처리량이 열공정 한계보다 낮아야 이 논지가 선다")
 
-    def test_airlock_energy_is_bounded_by_the_isolation_volume(self):
-        """막다른 방이므로 부피가 교환량을 막는다 — 부피에 비례해야 한다."""
-        a1 = HB.airlock(v=1.0)[1]
-        a2 = HB.airlock(v=2.0)[1]
-        self.assertAlmostEqual(a2 / a1, 2.0, places=9)
+    def test_the_airlock_term_comes_from_the_airlock_solver(self):
+        """열수지가 이 항을 스스로 세면 반드시 에어록 검토와 갈라진다."""
+        import airlock as AIR
+        self.assertAlmostEqual(HB.airlock()[1], AIR.kw(), places=12)
+        self.assertAlmostEqual(HB.balance()["airlock"], AIR.kw(), places=12)
 
-    def test_shrinking_the_airlock_is_the_biggest_lever(self):
+    def test_the_airlock_is_bounded_by_the_opening_not_by_a_volume(self):
+        """납품 배치에는 격리실이 없다 — 막는 것은 부피가 아니라 개구다.
+
+        옛 모델은 격리실 부피에 비례했다. 그 방이 없으므로 지금은 개구
+        높이의 1.5 제곱에 비례해야 한다.
+        """
+        import airlock as AIR
+        t = AIR.open_time(AIR.OPEN_H)        # 같은 시간에서 높이만 바꾼다
+        r = (AIR.loss_kw(2 * AIR.OPEN_H, t_open=t)
+             / AIR.loss_kw(AIR.OPEN_H, t_open=t))
+        self.assertAlmostEqual(r, 2.0 ** 1.5, places=9)
+        # 시간에는 선형이다 — 문 열림 시간이 두 배면 손실도 두 배
+        self.assertAlmostEqual(
+            AIR.loss_kw(AIR.OPEN_H, t_open=2 * t)
+            / AIR.loss_kw(AIR.OPEN_H, t_open=t), 2.0, places=9)
+        # 격리실을 더해도 안 줄어든다 — 교환이 그 방을 채우지 못한다
+        self.assertAlmostEqual(
+            AIR.loss_kw(AIR.OPEN_H, vest=AIR.vestibule(AIR.OPEN_H)),
+            AIR.loss_kw(AIR.OPEN_H), places=12)
+
+    def test_the_airlock_is_still_the_biggest_loss_term(self):
         _, ex = HB.run()
         self.assertGreater(ex["b"]["airlock"], ex["b"]["wall"],
-                           "에어록이 벽보다 작으면 RHB2 를 쓸 이유가 없다")
-        self.assertGreater(ex["b"]["airlock"] - ex["small"], 2.0)
+                           "에어록이 벽보다 작으면 이 장을 쓸 이유가 없다")
+        self.assertGreater(ex["full"], 100.0,
+                           "전고 개구가 정격을 안 넘으면 AL1 의 논지가 죽는다")
 
     def test_infiltration_and_exhaust_are_the_same_term(self):
         """부압이 빼내는 만큼 새 구멍으로 들어온다 — 따로 세면 두 번 센다."""
@@ -113,13 +134,24 @@ class TestTheTermsAreRight(unittest.TestCase):
         want = (LM.K_Q * 1e-3 * A) * m * (LM.T_TUBE - LM.T_BUSH) * LM.N_PEN / 1000
         self.assertAlmostEqual(HB.terminal(), want, places=9)
 
-    def test_the_fork_term_is_set_by_rest_temperature_not_mass(self):
+    def test_the_fork_term_is_set_by_exposure_time_not_mass(self):
+        """질량은 이 항에 안 들어온다. 들어오는 것은 노출 시간과 대기 온도다."""
+        import airlock as AIR
+        self.assertAlmostEqual(HB.FORK_EXPOSE, 2 * AIR.REACH / AIR.V_FORK,
+                               places=12)
         cold = HB.fork(t_rest=c("T_AMB"))
-        warm = HB.fork(t_rest=HB.T_AIRLOCK)
+        warm = HB.fork(t_rest=60.0)
         self.assertGreater(cold, warm)
         self.assertAlmostEqual(cold / warm,
                                (c("T_TARGET") - c("T_AMB"))
-                               / (c("T_TARGET") - HB.T_AIRLOCK), places=9)
+                               / (c("T_TARGET") - 60.0), places=9)
+
+    def test_the_fork_and_the_airlock_share_one_time(self):
+        """포크가 들어가 있는 동안 문이 열려 있다 — 하나를 줄이면 둘이 준다."""
+        import airlock as AIR
+        self.assertLess(HB.FORK_EXPOSE, AIR.open_time())
+        self.assertGreater(HB.FORK_EXPOSE, 0.5 * AIR.open_time(),
+                           "포크 왕복이 문 열림 시간의 대부분이어야 RHB3 가 선다")
 
     def test_startup_energy_is_dominated_by_the_inner_steel(self):
         su = HB.startup()

@@ -265,3 +265,41 @@ class TestTheCatalogueStaysConsistentWithTheSpecification(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheLampIsBoughtWithItsGuarantee(unittest.TestCase):
+    """램프 지지 검토가 만든 요구 RLM4 — 우리가 못 정하는 값은 **사는 조건**이 된다.
+
+    봉착부 온도 창은 폭 6.5 mm 로 제작 공차보다 좁다. 그것을 설치 위치로
+    맞추려 들면 매번 실패하므로, 제작사가 보증하는 형식으로 사는 수밖에 없다.
+    **구매 사양에 안 적으면 그냥 램프가 온다.**
+    """
+
+    def test_the_seal_temperature_window_is_in_the_purchase_spec(self):
+        sys_, rating, iface, insp = PR.BUY_SPEC["P-002-18"]
+        self.assertIn("250", rating)
+        self.assertIn("350", rating)
+        self.assertIn("보증", rating, "'보증' 이 없으면 참고값이 된다")
+
+    def test_the_guarantee_is_witnessed_not_just_claimed(self):
+        _s, _r, _i, insp = PR.BUY_SPEC["P-002-18"]
+        self.assertIn("성적서", insp, "곡선 성적서가 없으면 보증을 확인할 방법이 없다")
+        self.assertIn("SAT", insp, "인수 때 실측하지 않으면 서류로 끝난다")
+
+    def test_the_heated_length_matches_the_ir_bank_review(self):
+        _s, rating, iface, _i = PR.BUY_SPEC["P-002-18"]
+        self.assertIn("2,200", rating, "발열장이 구매 사양에 없으면 1,300 이 온다")
+        self.assertIn("유동", iface, "양단 고정이면 첫 승온에서 뜯긴다")
+
+    def test_the_shutter_cylinder_follows_the_airlock_decision(self):
+        import airlock as AIR
+        _s, rating, _i, insp = PR.BUY_SPEC["P-002-22"]
+        self.assertIn(f"행정 {AIR.stroke()*1000:.0f}", rating)
+        self.assertIn("단별", rating)
+        self.assertIn("동시개방 금지", insp)
+
+    def test_every_purchased_item_still_has_a_spec(self):
+        rows = PR.buy_rows()
+        self.assertGreater(len(rows), 40, "구매품이 없다면 이 시험이 지키는 것이 없다")
+        missing = [r[0].pid for r in rows if r[0].pid not in PR.BUY_SPEC]
+        self.assertEqual(missing, [], f"구매 사양이 없는 품목: {missing}")

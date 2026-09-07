@@ -47,6 +47,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
+import airlock as AIR  # noqa: E402
 import analysis_thermal as TH  # noqa: E402
 import lampmount as LM  # noqa: E402
 import parts as PT  # noqa: E402
@@ -70,18 +71,11 @@ RHO_AIR = lambda t: 353.0 / (273.15 + t)     # kg/m³ 대기압 건공기
 
 # ── 챔버·에어록 ──────────────────────────────────────────────────────
 CAV_L, CAV_W, CAV_H = 3.52, 2.30, 3.60       # m 내부 공동
-SHUT_W, SHUT_H = 1.680, 4.090                # m 에어록 셔터판 (P-002-20)
-AIRLOCK_D = c("CL_DOOR")                     # 0.30 m 이중 셔터 사이 격리 깊이
-T_AIRLOCK = 40.0                             # ℃ 격리실 정상 온도 (보수측)
 SEAL_SPEC = 3.0                              # mm²/m 압착 씰의 등가 누설면적
 
 
 def chamber_volume() -> float:
     return CAV_L * CAV_W * CAV_H
-
-
-def airlock_volume() -> float:
-    return SHUT_W * SHUT_H * AIRLOCK_D
 
 
 # ── OUT ① 패널 엔탈피 ───────────────────────────────────────────────
@@ -98,25 +92,20 @@ def wall() -> float:
 
 
 # ── OUT ③ 에어록 교환 ───────────────────────────────────────────────
-def airlock(v: float = None, takt: float = TAKT) -> tuple[float, float]:
-    """이중 셔터가 한 번 여닫을 때 나가는 열.
+def airlock() -> tuple[float, float]:
+    """문이 열려 있는 동안 개구를 지나는 부력 교환유동. `tools/airlock.py` 가 푼다.
 
-    내문이 열리면 챔버(140)와 격리실이 섞이고, 외문이 열리면 그 격리실이
-    실온과 섞인다. **격리실이 막다른 방이므로 교환량은 그 부피로 막힌다** —
-    부력이 아무리 세도 그보다 많이 못 바꾼다. 그래서 이 항의 크기를 정하는
-    것은 문의 크기도 여는 시간도 아니고 **격리실 부피**다.
+    **처음에는 이 항을 통째로 잘못 세웠다.** 있지도 않은 격리실의 부피를
+    문 포켓 깊이(0.30 m)로 잡고, 내문으로 나간 열과 외문으로 나간 열을
+    더했다 — 같은 열인데. 도면을 다시 보니 납품 배치(REV.21C)에는 격리실이
+    아예 없다(R-106 차이표: "격리실 없음 · 포크 진입 중 챔버 열림").
 
-    격리실 부피는 셔터가 랙 전고(4.09 m)인 데서 온다. 한 번에 한 단만
-    쓰는데 전고를 여는 구조라 그렇다 — 그것이 이 항의 값이다.
+    격리실이 없으면 교환량을 막는 것은 부피가 아니라 **개구를 지나는
+    유동**이고, 그것은 개구 높이의 1.5 제곱에 비례한다. 그래서 이 항의
+    크기를 정하는 것은 **문의 높이와 열려 있는 시간**이다.
     """
-    v = airlock_volume() if v is None else v
-    rho = RHO_AIR(T_HOT)
-    inner = v * rho * CP_AIR * (T_HOT - T_AIRLOCK)      # J 내문: 챔버 → 격리
-    outer = v * rho * CP_AIR * (T_HOT - T_AMB)          # J 외문: 격리 → 실온
-    per_cycle = inner + outer
-    return per_cycle / 1000.0, per_cycle / takt / 1000.0     # kJ/회 · kW
-
-
+    j = AIR.kw() * TAKT * 1000.0
+    return j / 1000.0, AIR.kw()                          # kJ/사이클 · kW
 # ── OUT ④ 침기 ──────────────────────────────────────────────────────
 def infiltration() -> tuple[float, float, float]:
     """부압 운전이 부르는 찬 공기. 관통부 + 셔터 씰.
@@ -126,7 +115,7 @@ def infiltration() -> tuple[float, float, float]:
     누설 유량 엔탈피**다. 둘을 따로 세면 두 번 센다.
     """
     a_pen = LM.LEAK_RAW * LM.N_PEN * LM.SEAL_FACTOR          # mm² 관통부
-    perim = 2 * (SHUT_W + SHUT_H) * 2                        # m 셔터 2장
+    perim = AIR.shutters()["perim"]                          # m 단별 셔터 전 둘레
     a_seal = perim * SEAL_SPEC                               # mm² 씰
     area = (a_pen + a_seal) * 1e-6                           # m²
     q = LM.CD * area * math.sqrt(2 * LM.DP / LM.RHO_AIR)     # m³/s
@@ -149,11 +138,11 @@ def terminal() -> float:
 
 # ── OUT ⑥ 포크 반출 ─────────────────────────────────────────────────
 FORK_AREA = 1.5          # m² 챔버 안으로 들어가는 포크 표면
-FORK_EXPOSE = 5.0        # s 사이클당 챔버 체류
 FORK_H = 12.0            # W/(m²·K) 복사(ε 0.5) + 자연대류
+FORK_EXPOSE = 2 * AIR.REACH / AIR.V_FORK        # s 챔버 체류 = 포크 왕복
 
 
-def fork(t_rest: float = None, takt: float = TAKT) -> float:
+def fork(t_rest: float = T_AMB, takt: float = TAKT) -> float:
     """TS-101 텔레스코픽 포크가 퍼올려 나가는 열.
 
     **처음에 200 배 틀렸다.** 포크 42 kg 이 매 사이클 (140−40)/3 만큼
@@ -167,9 +156,11 @@ def fork(t_rest: float = None, takt: float = TAKT) -> float:
 
         Q = h·A·(T챔버 − T포크)·t노출
 
-    질량은 이 항에 안 들어온다 — 들어오는 것은 **대기 위치의 온도**다.
+    질량은 이 항에 안 들어온다. 들어오는 것은 **대기 온도와 노출 시간**이고,
+    노출 시간은 에어록이 문을 열어 두는 시간과 **같은 시간**이다 — 포크가
+    들어가 있는 동안 문이 열려 있으니까. 그래서 포크를 빠르게 하면 이 항과
+    에어록 항이 **함께** 준다 (RHB3).
     """
-    t_rest = T_AIRLOCK if t_rest is None else t_rest
     q = FORK_H * FORK_AREA * (T_HOT - t_rest) * FORK_EXPOSE     # J/회
     return q / takt / 1000.0
 
@@ -226,7 +217,7 @@ def run():
     per_cycle, al = airlock()
     area, m3h, inf = infiltration()
     su = startup()
-    small = airlock(v=SHUT_W * 0.70 * AIRLOCK_D)[1]     # 한 단 높이 격리실
+    full = AIR.solve()[0]["kw"]                 # 전고 개구였다면
 
     return [
         Result("HB1", "계약 처리량의 패널 엔탈피", b["panel"], "kW",
@@ -254,23 +245,26 @@ def run():
                f"를 들고 있다 — 그대로 둔다"),
         Result("HB4", "에어록 교환 — 최대 손실 항", al, "kW", b["loss"],
                "세어 낸 손실 합계 — 이 항이 그 절반을 넘으면 여기가 설계 레버다",
-               f"회당 {per_cycle:.0f} kJ · 택트 {TAKT:.1f} s. 손실의 "
-               f"{al/b['loss']:.0%} 다. 내문이 챔버와 격리실을 섞고 외문이 "
-               f"격리실과 실온을 섞는다 — **막다른 방이라 교환량이 격리실 "
-               f"부피로 막힌다**. 문 크기도 여는 시간도 아니고 부피가 정한다"),
-        Result("HB5", "격리실 부피가 사 오는 손실", al - small, "kW", 2.0,
-               "한 단 높이(0.70 m) 격리실로 줄였을 때 아끼는 몫 — 2 kW 를 "
-               "넘으면 구조를 다시 볼 값이다",
-               f"셔터가 랙 전고 {SHUT_H:.2f} m 라 격리실이 "
-               f"{airlock_volume():.2f} m³ 다. 한 번에 한 단만 쓰는데 전고를 "
-               f"연다. 한 단 높이면 {small:.2f} kW 로 **{al-small:.1f} kW 를 "
-               f"아낀다** — 포크가 챔버 안에서 층을 고를 수 있다면 격리실은 "
-               f"전고일 이유가 없다 (RHB2)"),
+               f"회당 {per_cycle:.0f} kJ · 택트 {TAKT:.1f} s · 손실의 "
+               f"{al/b['loss']:.0%}. 납품 배치에는 격리실이 없어(R-106 차이표) "
+               f"교환을 막는 것은 부피가 아니라 **개구를 지나는 부력유동**이고, "
+               f"그것은 개구 높이의 **1.5 제곱**에 비례한다. 문의 크기와 열려 "
+               f"있는 시간이 이 항의 전부다 (에어록 검토 AL1~AL8)"),
+        Result("HB5", "개구 높이가 사 오는 손실", full, "kW", b["assumed_loss"],
+               f"η {ETA_ASSUMED:.2f} 가 허용하는 손실 전액 {b['assumed_loss']:.1f} kW — "
+               f"한 항이 이것을 넘으면 설계가 성립하지 않는다",
+               f"카탈로그의 전고 셔터({AIR.FULL_H:.2f} m)를 그대로 열면 이 항 "
+               f"하나가 **{full:,.0f} kW** 로 설치정격 {RATED_KW:.0f} kW 를 "
+               f"{full/RATED_KW:.0f} 배 넘는다. 단별 셔터로 나눠 패널 통과 "
+               f"포락선({AIR.OPEN_H*1e3:.0f} mm)만 열면 {al:.2f} kW 다 — "
+               f"**{full/al:.0f} 배.** RHB2 는 격리실을 줄이라고 물었는데 "
+               f"답은 격리실이 아니라 **문**이었다 (RAL1)"),
         Result("HB6", "침기 (관통 + 셔터 씰)", inf, "kW", 2.0,
                "손실 항으로 유의미해지는 문턱",
                f"등가 누설면적 {area:,.0f} mm² ({m3h:.1f} m³/h) — 관통부 "
                f"{LM.LEAK_RAW*LM.N_PEN*LM.SEAL_FACTOR:,.0f} + 셔터 씰 "
-               f"{2*(SHUT_W+SHUT_H)*2*SEAL_SPEC:,.0f}. **배기 엔탈피와 같은 "
+               f"{AIR.shutters()['perim']*SEAL_SPEC:,.0f} (단별 셔터 "
+               f"{AIR.shutters()['n']} 장). **배기 엔탈피와 같은 "
                f"항이다** — 부압이 빼내는 만큼 새 구멍으로 들어오므로 따로 "
                f"세면 두 번 센다"),
         Result("HB7", "냉간 기동 시간", su["minutes"], "min", 45.0,
@@ -283,13 +277,14 @@ def run():
         Result("HB8", "포크가 퍼올려 나가는 열", b["fork"], "kW", 2.0,
                "손실 항으로 유의미해지는 문턱",
                f"전열률이 정한다 — h {FORK_H:.0f} W/(m²·K) · A {FORK_AREA:.1f} m² · "
-               f"노출 {FORK_EXPOSE:.0f} s. **처음에 포크가 통째로 열화한다고 "
+               f"노출 {FORK_EXPOSE:.1f} s. **처음에 포크가 통째로 열화한다고 "
                f"놓아 13 kW 가 나왔고 수지가 η 64.3 % 로 너무 잘 닫혔다** — "
                f"그 온도변화는 5 초에 140 kW 를 요구하는데 정격이 100 kW 다. "
-               f"질량이 아니라 **대기 위치**가 정하는 항이라, 실온으로 물러나면 "
-               f"{fork(t_rest=T_AMB):.3f} kW 로 {fork(t_rest=T_AMB)/b['fork']:.1f} 배가 "
-               f"된다 (RHB3)"),
-    ], dict(b=b, bt=bt, startup=su, per_cycle=per_cycle, small=small,
+               f"질량이 아니라 **노출 시간**이 정하는 항이고, 그 시간은 포크 "
+               f"왕복 {2*AIR.REACH:.1f} m ÷ {AIR.V_FORK:.2f} m/s 로 **에어록이 "
+               f"문을 열어 두는 시간과 같다** — 포크를 빠르게 하면 두 항이 "
+               f"함께 준다 (RHB3)"),
+    ], dict(b=b, bt=bt, startup=su, per_cycle=per_cycle, full=full,
             area=area, m3h=m3h)
 
 
@@ -306,19 +301,26 @@ def requirements() -> list[Req]:
             f"{b['loss']:.1f} kW 이고, 평균 IR 소요는 {b['p_ir']:.1f} kW 다. "
             f"**설치정격 100 kW 는 승온 속도가 정하지 정상 소비가 정하지 "
             f"않는다** — 두 값을 같은 표에 나란히 적어야 오해가 안 생긴다"),
-        Req("RHB2", "격리실 높이", "한 단 높이로 줄일 수 있는지 확인",
-            "상세설계 · M-002 에어록",
-            f"에어록이 손실의 {ex['b']['airlock']/b['loss']:.0%} 이고 그 크기를 "
-            f"정하는 것은 격리실 부피다. 전고 셔터를 한 단 높이로 줄이면 "
-            f"**{b['airlock']-ex['small']:.1f} kW** 를 아낀다. 포크가 챔버 안에서 "
-            f"층을 고르는 구조라면 격리실이 전고일 이유가 없다 — 못 줄인다면 "
-            f"그 이유를 도면 주기에 남긴다"),
-        Req("RHB3", "포크 대기 위치", "격리실 안 (실온 노출 금지)",
-            "상세설계 · 운전 시퀀스",
-            f"포크가 실온으로 물러나면 {fork(t_rest=T_AMB):.3f} kW, 격리실에서 "
-            f"기다리면 {b['fork']:.3f} kW 다 — {fork(t_rest=T_AMB)/b['fork']:.1f} 배. "
-            f"작은 항이지만 **질량이 아니라 대기 위치가 정한다**는 점이 중요하다. "
-            f"시퀀스로 지켜야 하고 도면만으로는 안 지켜진다"),
+        Req("RHB2", "격리실이 아니라 문을 줄인다",
+            f"단별 셔터 {AIR.shutters()['n']} 장 · 개구 "
+            f"{AIR.OPEN_W*1e3:,.0f} × {AIR.OPEN_H*1e3:.0f} — 격리실 미채용",
+            "상세설계 · M-002 · 에어록 검토 RAL1~RAL5",
+            f"이 요구는 '격리실을 한 단 높이로 줄일 수 있는가' 로 나갔고, "
+            f"답은 **격리실이 아니었다.** 납품 배치에는 격리실이 애초에 없고"
+            f"(R-106 차이표), 격리실이 없으면 교환을 막는 것은 부피가 아니라 "
+            f"개구를 지나는 부력유동이며 그것은 **높이의 1.5 제곱**이다. "
+            f"전고 개구 {ex['full']:,.0f} kW → 단별 개구 {b['airlock']:.2f} kW. "
+            f"거꾸로 개구를 줄이고 나면 격리실을 더해도 아끼는 것이 "
+            f"**0.00 kW** 라 사지 않는다 (AL4)"),
+        Req("RHB3", "포크 왕복이 두 항을 동시에 정한다",
+            f"노출 {FORK_EXPOSE:.1f} s = 문 열림 시간 · 포크 "
+            f"{AIR.V_FORK:.2f} m/s 를 사양으로 적는다",
+            "상세설계 · TS-101 · 운전 시퀀스 · FAT",
+            f"포크가 챔버에 들어가 있는 동안 문이 열려 있다 — **같은 시간**이다. "
+            f"그래서 포크 속도가 절반이 되면 에어록 {b['airlock']:.2f} kW 와 포크 "
+            f"{b['fork']:.3f} kW 가 **함께 두 배**가 된다. 이 커플링은 도면에 "
+            f"안 보이고 시퀀스에만 있다 — 속도를 사양으로 적고 FAT 에서 "
+            f"실측한다"),
         Req("RHB4", "예열을 교대 전에 시작한다",
             f"냉간 기동 {su['minutes']:.0f} 분 · {su['kwh']:.0f} kWh",
             "운전 지침 · PLC 스케줄",

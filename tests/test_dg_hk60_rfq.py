@@ -854,3 +854,94 @@ class TestProcurementTerms(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheAnalysisRequirementsReachedTheSpecification(unittest.TestCase):
+    """해석이 만든 요구는 사양서에 적혀야 비로소 구속력이 생긴다.
+
+    **요구를 만들어 놓고 문서에 안 넣으면 아무 일도 일어나지 않는다.**
+    입찰자는 CAL-001 을 받지 않는다 — 사양서만 받는다. 그래서 여기서는
+    보고서가 만든 요구 셋이 사양서 문장으로 살아 있는지를 본다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = RFQ.read_text(encoding="utf-8")
+
+    # ── RIR3 · 내피 반사율
+    def test_the_inner_skin_reflectance_is_a_specified_value(self):
+        self.assertIn("ρ ≥ 0.4", self.html,
+                      "내피 반사율이 사양서에 없으면 2B 소지가 납품된다")
+        self.assertRegex(self.html, r"연마\s*STS304\s*#400",
+                         "연마 등급이 없으면 반사율을 만들 방법이 안 적힌다")
+
+    def test_the_reflectance_is_inspected_not_just_specified(self):
+        """적기만 하고 검사하지 않으면 도면으로 구분이 안 된다."""
+        self.assertRegex(self.html, r"가열실 내피 반사율",
+                         "FAT 항목에 반사율 측정이 없다")
+        self.assertIn("최저점", self.html, "점별 최저값 판정이 없다")
+
+    def test_the_reflectance_is_maintained_not_just_accepted(self):
+        """반사율은 열화한다 — 인수 시점만 보면 2 년 뒤 처리량이 준다."""
+        seg = self.html[self.html.index("정비 매뉴얼"):][:700]
+        self.assertIn("ρ ≥ 0.4", seg)
+        self.assertIn("재연마", seg, "미달 시 무엇을 하는지가 없다")
+
+    # ── RLM4 · 램프 봉착부
+    def test_the_lamp_seal_temperature_is_a_purchase_condition(self):
+        self.assertIn("250", self.html)
+        self.assertIn("350", self.html)
+        self.assertRegex(self.html, r"봉착부.{0,40}보증",
+                         "봉착부 온도를 '보증' 으로 사지 않으면 우리가 못 정하는 값이 열린다")
+
+    def test_the_lamp_seal_is_an_open_item_with_a_way_to_close_it(self):
+        i = self.html.index("<b>OI-16</b>")
+        seg = self.html[i:i + 2200]
+        self.assertIn("해소", seg, "닫는 방법이 없는 미결항목은 미결이 아니라 방치다")
+        self.assertRegex(seg, r"시험성적서|성적서")
+
+    # ── RHB2 / RAL1 · 단별 셔터
+    def test_the_airlock_is_specified_as_per_deck_shutters(self):
+        self.assertIn("단별 셔터", self.html)
+        self.assertIn("DECK_SHUTTER_MUTEX", self.html)
+        self.assertNotIn("이중셔터 에어록", self.html,
+                         "격리실이 없는데 이중셔터라고 적으면 제작사가 격리실을 만든다")
+
+    def test_the_full_height_opening_is_recorded_as_rejected(self):
+        """'검토하지 않았다' 와 '검토하고 안 샀다' 는 다르다."""
+        import airlock as AIR
+        full = AIR.solve()[0]["kw"]
+        self.assertRegex(self.html, r"전고 개구.{0,80}kW",
+                         "전고 개구를 왜 안 쓰는지가 사양서에 없다")
+        self.assertIn(f"{full:,.0f} kW", self.html.replace("<span class=\"m\">", "")
+                      .replace("</span>", ""))
+
+    def test_the_shutter_count_follows_the_deck_count(self):
+        """단수를 바꾸면 셔터 수도 바뀐다 — 상수로 박히면 갈라진다."""
+        import parts
+        plain = re.sub(r"<[^>]+>", "", self.html)
+        self.assertIn(f"모두 {parts.SHUTTERS} 매", plain)
+        self.assertIn(f"양단 각 {int(console_consts.const('DECKS'))} 단", plain)
+
+
+class TestTheSafetyIoBudgetFollowsTheAirlock(unittest.TestCase):
+    """단별 셔터가 안전 I/O 를 밀어 올렸다 — 그 대가가 문서에 적혀야 한다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = RFQ.read_text(encoding="utf-8")
+
+    def test_the_declared_safety_io_matches_the_interlock_model(self):
+        import plc_model as M
+        used = {k: 0 for k in M.BUDGET}
+        for l in M.LEAVES:
+            if l.io in used:
+                used[l.io] += l.count
+        for d in M.DRIVES:
+            if d.io in used:
+                used[d.io] += d.count
+        plain = re.sub(r"<[^>]+>", "", self.html)
+        self.assertIn(f"F-DI {M.BUDGET[M.FDI]} · F-DO {M.BUDGET[M.FDO]}", plain,
+                      "7.1 의 안전 I/O 선언이 실행 모델의 예산과 다르다")
+        self.assertIn(f"실사용 F-DI {used[M.FDI]}", plain,
+                      "실사용 F-DI 가 모델과 다르다")
