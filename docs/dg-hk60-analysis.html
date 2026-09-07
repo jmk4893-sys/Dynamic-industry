@@ -209,8 +209,9 @@
   <h1>DG-HK60C 태양광 패널 분리설비<br>구조 · 열해석 보고서</h1>
   <p class="subtitle">이 설비를 정하는 것은 강도가 아니라 <strong>변형과 온도</strong>다.
     구조 <strong>12 건</strong> · 열 <strong>13 건</strong> ·
-    IR 뱅크 <strong>8 건</strong> · 닫힌해 검증 <strong>10 건</strong> ·
-    해석이 만든 요구 <strong>11 건</strong> ·
+    IR 뱅크 <strong>8 건</strong> · 램프 지지 <strong>7 건</strong> ·
+    닫힌해 검증 <strong>10 건</strong> · 해석이 만든 요구
+    <strong>16 건</strong> ·
     검토 초과 <strong>2 건</strong> (S11 · T13).</p>
 
   <dl class="docref">
@@ -449,11 +450,77 @@
   <div class="tw"><table>
     <caption>이 검토가 만든 요구</caption>
     <thead><tr><th>ID</th><th>무엇</th><th>값</th><th>받는 곳</th><th>왜</th></tr></thead>
-    <tbody><tr><td class="k">RIR1</td><td>IR 램프 발열장</td><td class="k">2200 mm (현행 1,300)</td><td>부품 카탈로그 P-002-18 · 구매 사양</td><td>면내 결손의 정체가 램프 축 방향이라 <strong>길이가 유일하게 크게 듣는 기하 변수</strong>다. 1,300 은 패널 폭 1,200 에 끝단 여유 50 mm 뿐이고, 그 상태로는 어떤 배치·어떤 출력제어로도 창이 닫히지 않는다</td></tr><tr><td class="k">RIR2</td><td>뱅크 램프 x 위치</td><td class="k">±0·475·948·1340 mm</td><td>콘솔 도면 · F-002 제작도</td><td>균등 배치가 아니다. 끝을 바깥으로 밀어 패널 끝단(±1,200)을 넘긴다 — 끝 램프가 패널 안쪽에 있으면 그 바깥은 아무도 데우지 않는다. 인접 뱅크는 <strong>같은 위치</strong>를 쓴다 (엇갈리면 나빠진다)</td></tr><tr><td class="k">RIR3</td><td>내피 반사율</td><td class="k">ρ ≥ 0.4 · 검사·정비 항목</td><td>사양서 · ITP · 정비 지침</td><td>연마 STS304 #400 이 0.8 를 주므로 요구는 그 절반이다. 그러나 <strong>오손되면 유리가 깨진다</strong> — 지금까지 내피는 내식·복사면으로만 적혀 있었고 반사율은 아무도 요구하지 않았다. 정기 청소와 광택 검사가 성능 항목이 된다</td></tr><tr><td class="k">RIR4</td><td>2,200 mm 램프의 지지·관통 상세</td><td class="k">처짐 · 실링 · 그림자를 함께 푸는 상세</td><td>상세설계 (이 검토가 확정하지 않는다)</td><td>단자를 측벽 밖으로 빼는 것은 길이를 벌기 위해서만이 아니라 석영 단자가 고온부 밖에 있어야 수명이 서기 때문이다. 대신 뱅크당 14 · 총 84 개소의 관통을 밀폐해야 하고, 2.2 m 수평 석영관은 중간 지지가 필요할 수 있다. 지지대는 <strong>위에서</strong> 잡아 그림자가 패널이 아니라 반사판으로 가게 한다 — 아래에서 잡으면 이 검토가 애써 만든 균일도를 지지대가 도로 깬다</td></tr><tr><td class="k">RIR5</td><td>이 배치의 실측 검증</td><td class="k">파일럿 PT-04 · 열화상 전폭</td><td>파일럿 시험 계획 PIL-001</td><td>이 검토는 램프를 등방 선원으로, 벽을 정반사로 놓았다. 실제 반사판은 배광을 만들고 연마면은 확산이 섞인다. 예측 면내 편차 11 K 를 열화상으로 확인하고, 어긋나면 위치가 아니라 <strong>반사판 형상</strong>부터 본다</td></tr></tbody>
+    <tbody><tr><td class="k">RIR1</td><td>IR 램프 발열장</td><td class="k">2200 mm (현행 1,300)</td><td>부품 카탈로그 P-002-18 · 구매 사양</td><td>면내 결손의 정체가 램프 축 방향이라 <strong>길이가 유일하게 크게 듣는 기하 변수</strong>다. 1,300 은 패널 폭 1,200 에 끝단 여유 50 mm 뿐이고, 그 상태로는 어떤 배치·어떤 출력제어로도 창이 닫히지 않는다</td></tr><tr><td class="k">RIR2</td><td>뱅크 램프 x 위치</td><td class="k">±0·475·948·1340 mm</td><td>콘솔 도면 · F-002 제작도</td><td>균등 배치가 아니다. 끝을 바깥으로 밀어 패널 끝단(±1,200)을 넘긴다 — 끝 램프가 패널 안쪽에 있으면 그 바깥은 아무도 데우지 않는다. 인접 뱅크는 <strong>같은 위치</strong>를 쓴다 (엇갈리면 나빠진다)</td></tr><tr><td class="k">RIR3</td><td>내피 반사율</td><td class="k">ρ ≥ 0.4 · 검사·정비 항목</td><td>사양서 · ITP · 정비 지침</td><td>연마 STS304 #400 이 0.8 를 주므로 요구는 그 절반이다. 그러나 <strong>오손되면 유리가 깨진다</strong> — 지금까지 내피는 내식·복사면으로만 적혀 있었고 반사율은 아무도 요구하지 않았다. 정기 청소와 광택 검사가 성능 항목이 된다</td></tr><tr><td class="k">RIR4</td><td>2,200 mm 램프의 지지·관통 상세</td><td class="k">별도 검토로 해소 — tools/lampmount.py (LM1~LM7 · RLM1~RLM5)</td><td>상세설계 · 구매 사양</td><td>넘길 때 '처짐 · 실링 · 그림자' 셋을 적었는데 풀어 보니 <strong>적지 않은 둘이 더 컸다</strong> — 강재·석영 차등 열팽창(양단 고정하면 첫 승온에서 램프가 뜯긴다)과 봉착부 온도 창(물리가 주는 창이 제작 공차보다 좁다). 처짐은 1.8 mm 로 문제가 아니었고, 지지가 필요 없으니 그림자도 사라졌다 — 걱정한 셋 중 둘이 서로를 지웠다</td></tr><tr><td class="k">RIR5</td><td>이 배치의 실측 검증</td><td class="k">파일럿 PT-04 · 열화상 전폭</td><td>파일럿 시험 계획 PIL-001</td><td>이 검토는 램프를 등방 선원으로, 벽을 정반사로 놓았다. 실제 반사판은 배광을 만들고 연마면은 확산이 섞인다. 예측 면내 편차 11 K 를 열화상으로 확인하고, 어긋나면 위치가 아니라 <strong>반사판 형상</strong>부터 본다</td></tr></tbody>
   </table></div>
 </div></div>
 
 <div class="clause" id="p6"><div class="n">6</div><div class="c">
+  <h3>램프 지지·관통 상세 — 걱정한 셋 중 둘이 서로를 지웠다</h3>
+  <p>IR 뱅크 검토가 발열장을 2,200 으로 늘리고 단자를 측벽 밖으로 빼면서
+    <strong>“처짐 · 실링 · 그림자”</strong>를 상세설계로 넘겼다. 풀어 보니
+    <strong>적지 않은 둘이 더 컸다.</strong></p>
+
+  <div class="warn"><strong>처짐은 문제가 아니었다.</strong>
+    Ø25×1.2t 석영관 2,200 스팬의 자중 처짐은 <span class="m">1.8 mm</span>
+    이고, 램프–패널 거리 310 mm 에서 유속 변화는
+    <span class="m">0.57%</span> 다 — 면내 편차 11 K 옆에서 보이지
+    않는다. <strong>중간 지지가 필요 없고, 필요 없으면 그림자도 없다.</strong>
+    남는 것은 관이 아니라 <strong>관 안 필라멘트</strong>의 처짐이고, 그것은
+    램프 안쪽 지지대로 제조사가 푼다 — 우리가 지정할 것이지 설계할 것이 아니다.</div>
+
+  <div class="tw"><table>
+    <caption>검토 — 값 · 한계 · 이용률</caption>
+    <thead><tr><th>ID</th><th>항목</th><th class="num">값</th><th class="num">단위</th>
+      <th class="num">한계</th><th class="num">이용률</th><th>판정</th></tr></thead>
+    <tbody><tr><td class="k">LM1</td><td>석영관 자중 처짐 (2,200 스팬)</td><td class="num">1.779</td><td class="num">mm</td><td class="num">5.000</td><td class="num">36%</td><td>OK</td></tr><tr><td class="k">LM2</td><td>처짐이 유속에 주는 변화</td><td class="num">0.574</td><td class="num">%</td><td class="num">2.000</td><td class="num">29%</td><td>OK</td></tr><tr><td class="k">LM3</td><td>차등 열팽창이 요구하는 유동 행정</td><td class="num">8.291</td><td class="num">mm</td><td class="num">10.000</td><td class="num">83%</td><td>OK</td></tr><tr><td class="k">LM4</td><td>관통부 열교 (세라믹 부시)</td><td class="num">0.057</td><td class="num">kW</td><td class="num">5.476</td><td class="num">1%</td><td>OK</td></tr><tr><td class="k">LM5</td><td>관통부 침기 손실 (실링 후)</td><td class="num">0.397</td><td class="num">kW</td><td class="num">29.524</td><td class="num">1%</td><td>OK</td></tr><tr class="over"><td class="k">LM6</td><td>봉착부 배치에 필요한 공차 창</td><td class="num">8.000</td><td class="num">mm</td><td class="num">6.460</td><td class="num">124%</td><td>★ 초과</td></tr><tr class="over"><td class="k">LM7</td><td>아래 지지대를 썼다면 (쓰지 않는다)</td><td class="num">32.978</td><td class="num">K</td><td class="num">21.000</td><td class="num">157%</td><td>★ 초과</td></tr></tbody>
+  </table></div>
+
+  <h4>넘길 때 적지 않은 둘</h4>
+  <div class="warn"><strong>① 차등 열팽창 — 첫 승온에서 램프가 뜯긴다.</strong>
+    강재 챔버 <span class="m">2,300 mm</span> 가
+    <span class="m">4.77 mm</span> 늘 때 석영관은
+    <span class="m">0.48 mm</span> 만 는다 (α
+    <span class="m">17.3</span> vs <span class="m">0.55</span>×10⁻⁶).
+    차이에 길이공차를 더해 <strong>유동단 행정 8 mm</strong> 가
+    필요하다. 처짐보다 이쪽이 먼저 부러지는 자리다.</div>
+  <div class="warn"><strong>② 봉착부 온도 — “밖에 둔다”가 “실온에 노출한다”가
+    되면 램프가 검어진다.</strong> 단파장(할로겐) 램프는 몰리브덴 박 봉착부가
+    350 ℃ 를 넘으면 산화하고 250 ℃ 밑이면 할로겐이 거기 응축해 사이클이 죽는다.
+    석영은 열을 거의 안 날라 열길이가 <span class="m">12.6 mm</span>
+    뿐이라, 그 창이 발광부 경계에서
+    <span class="m">11.1~17.5 mm</span> —
+    폭 <span class="m">6.5 mm</span> 다.
+    <strong>제작 공차(8 mm)보다 좁으므로 우리가 위치를 잡을
+    문제가 아니다.</strong></div>
+
+  <h4>관통이 사 오는 대가</h4>
+  <p>80 개소를 뚫는다. <strong>열교는 작지만 침기가 크다.</strong> 연기(EVA 초산·
+    불화물)를 잡으려면 챔버를 부압으로 둬야 하고, 그러면 그 구멍으로 찬 공기가
+    들어와 그것을 140 ℃ 까지 데우는 것이 그대로 손실이 된다. 실링을 안 하면
+    <span class="m">5.0 kW</span>
+    (<span class="m">129 m³/h</span>) 로 벽 손실
+    <span class="m">5.48 kW</span> 의
+    <strong>0.9 배</strong>다 — 효율 65 % 의 나머지를
+    찾는 일(<span class="k">R5</span>)에 이 항이 들어간다. 파이버 로프 패킹으로
+    <span class="m">0.40 kW</span> 까지 내린다.</p>
+  <p>부시 재질도 사양이지 선택이 아니다. 강재 슬리브로 바꾸면 열교가
+    <strong>18 배</strong>가 되는데
+    <strong>치수가 같아 도면으로는 구분이 안 된다.</strong></p>
+
+  <div class="tw"><table>
+    <caption>근거와 읽는 법</caption>
+    <thead><tr><th>ID</th><th>한계의 근거</th><th>무엇을 뜻하는가</th></tr></thead>
+    <tbody><tr><td class="k">LM1</td><td>유속 1.6 % 를 내는 처짐 — 면내 편차 예산 11 K 의 1/6</td><td>Ø25×1.2t · I 6,369 mm⁴ · 관+필라멘트 0.60 kg. <strong>중간 지지가 필요 없다</strong> — 필요 없으면 그림자도 없다. 넘길 때 걱정한 셋 중 둘이 서로를 지웠다</td></tr><tr><td class="k">LM2</td><td>면내 편차 11 K 대비 무시할 수준의 상한</td><td>선원은 1/h 로 떨어지므로 1.8 mm 가 310 mm 거리에서 0.57% 다. 남는 것은 관이 아니라 <strong>관 안 필라멘트의 처짐</strong>이고, 그것은 램프 안쪽 지지대로 제조사가 푼다 (RLM4)</td></tr><tr><td class="k">LM3</td><td>설계 행정 10 mm — 한쪽 고정 · 한쪽 유동</td><td>강재 2,300 mm 가 4.77 mm 늘 때 석영은 0.48 mm 만 는다 (α 17.3 vs 0.55). 차이 4.29 + 길이공차 4. <strong>양단을 고정하면 램프가 뜯긴다</strong> — 처짐보다 이쪽이 먼저 부러지는 자리인데 넘길 때 적지 않았다</td></tr><tr><td class="k">LM4</td><td>열교 포함 벽 손실 5.48 kW — 그보다 작아야 한다</td><td>80 개소 · k 0.9 W/(m·K) · 고체 단면 Ø45/Ø28. 강재 슬리브로 바꾸면 1.01 kW 로 18 배다 — <strong>부시 재질이 사양이지 선택이 아니다</strong></td></tr><tr><td class="k">LM5</td><td>손실 예산 35 kW − 벽 5.48 kW</td><td>챔버를 −20 Pa 부압으로 둬야 연기를 잡는다. 그러면 구멍으로 찬 공기가 들어오고 그것을 데우는 것이 손실이다. <strong>실링을 안 하면 5.0 kW</strong> (129 m³/h) 로 벽 손실의 0.9 배다 — 파이버 로프 패킹으로 0.40 kW (10 m³/h) 까지 내린다</td></tr><tr><td class="k">LM6</td><td>물리가 주는 창 6.5 mm (250~350 ℃ 사이 구간)</td><td>석영은 열을 거의 안 나른다 — 열길이 1/m = 12.6 mm 라 발광부 경계에서 11.1 mm 면 350 ℃, 17.5 mm 면 250 ℃ 다. 램프 길이공차 ±2 · 부시 위치 ±1 · 발광부 경계 정의 ±1 을 더하면 <strong>필요 공차가 물리가 주는 창보다 넓다.</strong> '밖에 둔다' 를 '실온에 노출한다' 로 지으면 250 ℃ 밑으로 떨어져 할로겐이 봉착부에 응축하고 램프가 검어진다. <strong>우리가 위치를 잡을 문제가 아니다</strong> — 제조사가 봉착부 온도를 보증하는 형식으로 발주한다 (RLM4)</td></tr><tr><td class="k">LM7</td><td>유리 허용 면내 편차 21 K</td><td>지지대는 가장 가까운 램프의 <strong>직달을 통째로 지운다.</strong> 그 자리 유속의 29% 가 직달이므로 그 줄만 33 K 낮아진다 — IR 검토가 만든 11 K 를 지지대 하나가 넘긴다. LM1 이 지지를 없앴으므로 이 항은 <strong>쓰지 않는 이유의 값</strong>이다</td></tr></tbody>
+  </table></div>
+
+  <div class="tw"><table>
+    <caption>이 검토가 만든 요구</caption>
+    <thead><tr><th>ID</th><th>무엇</th><th>값</th><th>받는 곳</th><th>왜</th></tr></thead>
+    <tbody><tr><td class="k">RLM1</td><td>한쪽 고정 · 한쪽 유동</td><td class="k">유동단 행정 ≥ 8 mm (설계 10)</td><td>F-002 제작도 · 상세설계</td><td>강재 챔버가 4.77 mm 늘 때 석영은 0.48 mm 만 는다. 양단 고정은 <strong>첫 승온에서 램프를 뜯는다.</strong> 유동단은 스프링 하중으로 눌러 전기 접촉은 유지하되 축방향으로는 미끄러지게 한다</td></tr><tr><td class="k">RLM2</td><td>관통 부시 재질</td><td class="k">k ≤ 0.9 W/(m·K) · 섬유충전 세라믹</td><td>부품 카탈로그 P-002-25 · 구매 사양</td><td>강재 슬리브로 바꾸면 열교가 18 배가 되어 벽 손실을 혼자 1.0 kW 올린다. 치수가 같으니 도면으로는 구분이 안 된다 — <strong>재질을 사양으로 적지 않으면 싸고 튼튼한 것이 온다</strong></td></tr><tr><td class="k">RLM3</td><td>관통부 실링과 챔버 부압</td><td class="k">개소당 잔여 누설 ≤ 10 mm² · 챔버 −20 Pa</td><td>상세설계 · 배기 계통 · 시운전 검사</td><td>실링 없이는 침기가 5.0 kW 로 벽 손실의 0.9 배다. 부압은 <strong>연기를 잡기 위해 필요하고</strong>(EVA 초산·불화물), 그 대가가 침기다. 두 요구가 서로를 부르므로 실링이 유일한 출구다. 시운전에서 부압과 누설을 실측한다</td></tr><tr><td class="k">RLM4</td><td>램프 제조사 확인 항목</td><td class="k">수평 정격 · 내부 필라멘트 지지 · 봉착부 위치와 허용온도</td><td>구매 사양 · 승인도</td><td>관의 처짐은 1.8 mm 로 문제가 아니지만 <strong>관 안 필라멘트</strong>는 다르다 — 2.2 m 수평은 내부 지지 없이는 못 간다. 봉착부는 발광부에서 11~18 mm 창에 들어와야 하는데 폭이 6 mm 뿐이라 우리가 위치를 잡을 문제가 아니다. <strong>제조사가 봉착부 온도를 보증하는 형식으로 발주한다</strong></td></tr><tr><td class="k">RLM5</td><td>중간 지지 금지</td><td class="k">발광부 구간에 지지대를 두지 않는다</td><td>F-002 제작도 주기 · 조립 지침서</td><td>폭 20 mm 지지대 하나가 그 줄에 33 K 차를 만든다 — IR 검토가 만든 11 K 를 혼자 깬다. 처짐이 1.8 mm 뿐이라 필요도 없다. <strong>도면에 '지지 금지' 를 적지 않으면 현장이 좋은 뜻으로 받쳐 놓는다</strong> — 처지는 것이 보이면 사람은 받치고 싶어진다</td></tr></tbody>
+  </table></div>
+</div></div>
+
+<div class="clause" id="p7"><div class="n">7</div><div class="c">
   <h3>이 해석이 만든 요구</h3>
   <p>결과에는 두 갈래가 있다. <strong>검토</strong>는 한계가 있어 통과·초과가 나오고,
     <strong>요구</strong>는 해석이 새로 만들어 낸 조건이라 아직 지킬 사람이 없다.
@@ -467,7 +534,7 @@
   </table></div>
 </div></div>
 
-<div class="clause" id="p7"><div class="n">7</div><div class="c">
+<div class="clause" id="p8"><div class="n">8</div><div class="c">
   <h3>이 해석이 못 보는 것</h3>
   <p>해석의 한계를 적지 않으면 “해석했다”가 해석하지 않은 것까지 덮는다.
     아래는 <strong>이 두 해석기로는 원리적으로 볼 수 없는 것</strong>이며, 상세설계에서
@@ -495,6 +562,9 @@
         가교가 진행되면 그 열이 수지에 들어온다</td><td>DSC · 파일럿 PT-05</td></tr>
       <tr><td>램프의 단파장 복사 분배</td><td>흡수유속을 규정했다 — 실효 열효율
         65 % 가 그 가정을 통째로 담고 있다</td><td>파일럿 PT-05 (열수지)</td></tr>
+      <tr><td>석영관의 고온 크리프</td><td>탄성 처짐만 봤다. 관벽이 변형점
+        (1,070 ℃) 아래라 무시했지만 수천 시간의 누적은 안 봤다</td>
+        <td>램프 제조사 수평 정격 · 초기 운전</td></tr>
       <tr><td>박리력 그 자체</td><td>재료가 답한다. 어떤 해석기도 폐패널 EVA 의
         박리강도를 지어낼 수 없다</td><td>파일럿 PT-01</td></tr>
     </tbody>

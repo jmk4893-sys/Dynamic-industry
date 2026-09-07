@@ -17,6 +17,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import analysis_irbank as IRB  # noqa: E402
+import lampmount as LMT  # noqa: E402
 import analysis_structural as ST  # noqa: E402
 import analysis_thermal as TH  # noqa: E402
 import fea  # noqa: E402
@@ -338,6 +339,81 @@ def part4b() -> str:
 </div></div>"""
 
 
+# ── 5b. 램프 지지·관통 상세 ──────────────────────────────────────────
+def part4c() -> str:
+    rs, ex = LMT.run()
+    rq = "".join(
+        f'<tr><td class="k">{esc(q.id)}</td><td>{esc(q.what)}</td>'
+        f'<td class="k">{esc(q.value)}</td><td>{esc(q.owner)}</td>'
+        f'<td>{md(q.why)}</td></tr>' for q in LMT.requirements())
+    return f"""
+<div class="clause" id="p6"><div class="n">6</div><div class="c">
+  <h3>램프 지지·관통 상세 — 걱정한 셋 중 둘이 서로를 지웠다</h3>
+  <p>IR 뱅크 검토가 발열장을 2,200 으로 늘리고 단자를 측벽 밖으로 빼면서
+    <strong>“처짐 · 실링 · 그림자”</strong>를 상세설계로 넘겼다. 풀어 보니
+    <strong>적지 않은 둘이 더 컸다.</strong></p>
+
+  <div class="warn"><strong>처짐은 문제가 아니었다.</strong>
+    Ø25×1.2t 석영관 2,200 스팬의 자중 처짐은 <span class="m">{ex['sag']:.1f} mm</span>
+    이고, 램프–패널 거리 310 mm 에서 유속 변화는
+    <span class="m">{ex['dflux']:.2%}</span> 다 — 면내 편차 11 K 옆에서 보이지
+    않는다. <strong>중간 지지가 필요 없고, 필요 없으면 그림자도 없다.</strong>
+    남는 것은 관이 아니라 <strong>관 안 필라멘트</strong>의 처짐이고, 그것은
+    램프 안쪽 지지대로 제조사가 푼다 — 우리가 지정할 것이지 설계할 것이 아니다.</div>
+
+  <div class="tw"><table>
+    <caption>검토 — 값 · 한계 · 이용률</caption>
+    <thead><tr><th>ID</th><th>항목</th><th class="num">값</th><th class="num">단위</th>
+      <th class="num">한계</th><th class="num">이용률</th><th>판정</th></tr></thead>
+    <tbody>{_rows(rs)}</tbody>
+  </table></div>
+
+  <h4>넘길 때 적지 않은 둘</h4>
+  <div class="warn"><strong>① 차등 열팽창 — 첫 승온에서 램프가 뜯긴다.</strong>
+    강재 챔버 <span class="m">2,300 mm</span> 가
+    <span class="m">{ex['steel']:.2f} mm</span> 늘 때 석영관은
+    <span class="m">{ex['quartz']:.2f} mm</span> 만 는다 (α
+    <span class="m">17.3</span> vs <span class="m">0.55</span>×10⁻⁶).
+    차이에 길이공차를 더해 <strong>유동단 행정 {ex['float_req']:.0f} mm</strong> 가
+    필요하다. 처짐보다 이쪽이 먼저 부러지는 자리다.</div>
+  <div class="warn"><strong>② 봉착부 온도 — “밖에 둔다”가 “실온에 노출한다”가
+    되면 램프가 검어진다.</strong> 단파장(할로겐) 램프는 몰리브덴 박 봉착부가
+    350 ℃ 를 넘으면 산화하고 250 ℃ 밑이면 할로겐이 거기 응축해 사이클이 죽는다.
+    석영은 열을 거의 안 날라 열길이가 <span class="m">{ex['mlen']:.1f} mm</span>
+    뿐이라, 그 창이 발광부 경계에서
+    <span class="m">{ex['x_hot']:.1f}~{ex['x_cold']:.1f} mm</span> —
+    폭 <span class="m">{ex['x_cold']-ex['x_hot']:.1f} mm</span> 다.
+    <strong>제작 공차({LMT.TOL_PINCH:.0f} mm)보다 좁으므로 우리가 위치를 잡을
+    문제가 아니다.</strong></div>
+
+  <h4>관통이 사 오는 대가</h4>
+  <p>80 개소를 뚫는다. <strong>열교는 작지만 침기가 크다.</strong> 연기(EVA 초산·
+    불화물)를 잡으려면 챔버를 부압으로 둬야 하고, 그러면 그 구멍으로 찬 공기가
+    들어와 그것을 140 ℃ 까지 데우는 것이 그대로 손실이 된다. 실링을 안 하면
+    <span class="m">{ex['kw_raw']:.1f} kW</span>
+    (<span class="m">{ex['m3h_raw']:,.0f} m³/h</span>) 로 벽 손실
+    <span class="m">{ex['base_kw']:.2f} kW</span> 의
+    <strong>{ex['kw_raw']/ex['base_kw']:.1f} 배</strong>다 — 효율 65 % 의 나머지를
+    찾는 일(<span class="k">R5</span>)에 이 항이 들어간다. 파이버 로프 패킹으로
+    <span class="m">{ex['kw_seal']:.2f} kW</span> 까지 내린다.</p>
+  <p>부시 재질도 사양이지 선택이 아니다. 강재 슬리브로 바꾸면 열교가
+    <strong>{ex['add_st']/ex['add_low']:.0f} 배</strong>가 되는데
+    <strong>치수가 같아 도면으로는 구분이 안 된다.</strong></p>
+
+  <div class="tw"><table>
+    <caption>근거와 읽는 법</caption>
+    <thead><tr><th>ID</th><th>한계의 근거</th><th>무엇을 뜻하는가</th></tr></thead>
+    <tbody>{_basis(rs)}</tbody>
+  </table></div>
+
+  <div class="tw"><table>
+    <caption>이 검토가 만든 요구</caption>
+    <thead><tr><th>ID</th><th>무엇</th><th>값</th><th>받는 곳</th><th>왜</th></tr></thead>
+    <tbody>{rq}</tbody>
+  </table></div>
+</div></div>"""
+
+
 # ── 5. 요구 ──────────────────────────────────────────────────────────
 def part5() -> str:
     rq = "".join(
@@ -345,7 +421,7 @@ def part5() -> str:
         f'<td class="k">{esc(q.value)}</td><td>{esc(q.owner)}</td>'
         f'<td>{md(q.why)}</td></tr>' for q in TH.requirements())
     return f"""
-<div class="clause" id="p6"><div class="n">6</div><div class="c">
+<div class="clause" id="p7"><div class="n">7</div><div class="c">
   <h3>이 해석이 만든 요구</h3>
   <p>결과에는 두 갈래가 있다. <strong>검토</strong>는 한계가 있어 통과·초과가 나오고,
     <strong>요구</strong>는 해석이 새로 만들어 낸 조건이라 아직 지킬 사람이 없다.
@@ -363,7 +439,7 @@ def part5() -> str:
 # ── 6. 경계 ──────────────────────────────────────────────────────────
 def part6() -> str:
     return """
-<div class="clause" id="p7"><div class="n">7</div><div class="c">
+<div class="clause" id="p8"><div class="n">8</div><div class="c">
   <h3>이 해석이 못 보는 것</h3>
   <p>해석의 한계를 적지 않으면 “해석했다”가 해석하지 않은 것까지 덮는다.
     아래는 <strong>이 두 해석기로는 원리적으로 볼 수 없는 것</strong>이며, 상세설계에서
@@ -391,6 +467,9 @@ def part6() -> str:
         가교가 진행되면 그 열이 수지에 들어온다</td><td>DSC · 파일럿 PT-05</td></tr>
       <tr><td>램프의 단파장 복사 분배</td><td>흡수유속을 규정했다 — 실효 열효율
         65 % 가 그 가정을 통째로 담고 있다</td><td>파일럿 PT-05 (열수지)</td></tr>
+      <tr><td>석영관의 고온 크리프</td><td>탄성 처짐만 봤다. 관벽이 변형점
+        (1,070 ℃) 아래라 무시했지만 수천 시간의 누적은 안 봤다</td>
+        <td>램프 제조사 수평 정격 · 초기 운전</td></tr>
       <tr><td>박리력 그 자체</td><td>재료가 답한다. 어떤 해석기도 폐패널 EVA 의
         박리강도를 지어낼 수 없다</td><td>파일럿 PT-01</td></tr>
     </tbody>
@@ -402,6 +481,7 @@ def build() -> str:
     srs, _ = ST.run()
     trs, _ = TH.run()
     irs, _ = IRB.run()
+    lms, _ = LMT.run()
     over = [r.id for r in list(srs) + list(trs) if not r.ok]
     toc = "".join(
         f'<li><a href="#p{i}"><b>{i}</b>{t}</a></li>'
@@ -437,8 +517,9 @@ def build() -> str:
   <h1>DG-HK60C 태양광 패널 분리설비<br>구조 · 열해석 보고서</h1>
   <p class="subtitle">이 설비를 정하는 것은 강도가 아니라 <strong>변형과 온도</strong>다.
     구조 <strong>{len(srs)} 건</strong> · 열 <strong>{len(trs)} 건</strong> ·
-    IR 뱅크 <strong>{len(irs)} 건</strong> · 닫힌해 검증 <strong>10 건</strong> ·
-    해석이 만든 요구 <strong>{6 + len(IRB.requirements())} 건</strong> ·
+    IR 뱅크 <strong>{len(irs)} 건</strong> · 램프 지지 <strong>{len(lms)} 건</strong> ·
+    닫힌해 검증 <strong>10 건</strong> · 해석이 만든 요구
+    <strong>{6 + len(IRB.requirements()) + len(LMT.requirements())} 건</strong> ·
     검토 초과 <strong>{len(over)} 건</strong> ({' · '.join(over) if over else '없음'}).</p>
 
   <dl class="docref">
@@ -460,6 +541,7 @@ def build() -> str:
 {part3()}
 {part4()}
 {part4b()}
+{part4c()}
 {part5()}
 {part6()}
 

@@ -28,6 +28,20 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
 
 
+class TestFieldsRenderedAsPlainTextCarryNoMarkdown(unittest.TestCase):
+    """체결 지시(fix)는 SVG 도면 글자로도 그려진다 — 거기서는 ** 가 안 통한다.
+
+    카탈로그에 `**한쪽 고정 · 한쪽 유동**` 을 적었더니 조립 지침서에 별 두 개가
+    그대로 인쇄됐다. 주기(note)는 md() 를 거치지만 체결 지시는 부품도 라벨로도
+    나가므로 **평문이어야 한다** — 생성기 한 곳을 고쳐 덮을 문제가 아니라
+    필드의 성질이다.
+    """
+
+    def test_no_markdown_in_the_fastening_instruction(self):
+        bad = [p.pid for p in PT.P if "**" in p.fix]
+        self.assertEqual(bad, [], f"체결 지시에 마크다운: {bad}")
+
+
 class TestTheCatalogueCoversTheMachine(unittest.TestCase):
     """빠진 부품은 조립 날에 없는 부품이다."""
 
