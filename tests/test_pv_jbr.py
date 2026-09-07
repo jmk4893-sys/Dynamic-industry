@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import importlib.util
+import math
 import pathlib
 import re
 import unittest
@@ -368,12 +369,137 @@ class TestJbrCloseup(unittest.TestCase):
         conv = _load("build_artifact")
         self.assertIn("jbr-closeup", conv.TARGETS)
         body = conv.convert(self.html, CLOSEUP)
-        self.assertIn("<title>정션박스 박리 순간</title>", body)
+        self.assertIn("<title>정션박스 박리·절단·배출</title>", body)
 
     def test_the_readme_lists_the_sheet(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("docs/drawings/pv-jbr-closeup.html", readme)
         self.assertIn("tools/build_jbr_closeup.py", readme)
+
+    def test_the_render_check_exists_and_names_the_sheet(self):
+        """파이썬 시험은 캔버스가 백지인 것을 못 본다 — 그건 브라우저가 잰다."""
+        check = (ROOT / "tools/check_jbr_closeup.mjs").read_text(encoding="utf-8")
+        self.assertIn("docs/drawings/pv-jbr-closeup.html", check)
+        for tab in ("near", "cable", "bin"):
+            self.assertIn(f"'{tab}'", check)
+
+    # ── 전선 포획·절단 ─────────────────────────────────────────────────
+    def test_the_scissor_law_is_sequential_a_then_b(self):
+        """두 도체가 동시에 열리면 안 된다 — A 가 완전히 후퇴한 뒤 B 가 닫힌다."""
+        S = self.builder.scissor_motion(self.plant)
+        self.assertLess(S["cutA"], S["cutB"])
+        self.assertLessEqual(S["cutA"] + S["openTo"], S["cutB"] + 1e-9,
+                             "A 가 다 열리기 전에 B 가 닫힌다")
+        self.assertLess(S["close"], S["openFrom"])
+        # 닫히면 두 조가 서로 지나쳐야 자른다.
+        self.assertLess(abs(S["shift"][1]), abs(S["shift"][0]))
+        self.assertLess(abs(S["rot"][1]), abs(S["rot"][0]))
+
+    def test_the_scissor_units_straddle_the_detected_row(self):
+        m = self.builder.model(self.plant)
+        for scen in m["scenarios"]:
+            with self.subTest(scen=scen["key"]):
+                z0 = self.builder.unit_z(m, scen, 0)
+                z1 = self.builder.unit_z(m, scen, 1)
+                self.assertLess(z0, z1)
+                for b in scen["boxes"]:
+                    self.assertLess(z0, b["z"])
+                    self.assertGreater(z1, b["z"])
+
+    def test_the_cable_topologies_are_both_read(self):
+        cb = self.builder.cable_path(self.plant)
+        self.assertGreater(cb["radius"], 0)
+        self.assertEqual(len(cb["split"]["left"]["points"]), 3)
+        self.assertEqual(len(cb["split"]["right"]["points"]), 3)
+        self.assertEqual(len(cb["single"]["lanes"]), 2)
+        # 3분할형은 좌·우가 서로 거울이다.
+        for a, b in zip(cb["split"]["left"]["points"], cb["split"]["right"]["points"]):
+            self.assertAlmostEqual(a[0], -b[0], places=6)
+            self.assertAlmostEqual(a[2], -b[2], places=6)
+        keys = {s["topology"] for s in self.builder.model(self.plant)["scenarios"]}
+        self.assertEqual(keys, {"dual-split", "single-lead"})
+
+    def test_the_harness_goes_to_the_cable_bin_not_a_winder(self):
+        """이 셀에 권취 드럼은 없다 — 잘린 하네스는 슈트로 흘러 수거함에 담긴다."""
+        m = self.builder.model(self.plant)
+        h, b = m["motion"]["harness"], m["bin"]
+        self.assertLess(m["motion"]["scissor"]["cutB"], h["from"],
+                        "다 자르기 전에 하네스를 끌어낸다")
+        self.assertAlmostEqual(h["x"], b["cableAt"][0], delta=0.30)
+        self.assertLess(h["z"], b["cableAt"][2] + 0.30)
+        # JBR-201 부품표 어디에도 권취 드럼은 없다 — 권취롤러는 상류 GRM-401 것이다.
+        names = re.findall(r'\["JB-[A-Z]{2}-\d{3}","[^"]*","([^"]*)"', self.plant)
+        self.assertGreater(len(names), 50)
+        self.assertEqual([n for n in names if "권취" in n], [])
+        self.assertIn("케이블 수거함", names)
+        self.assertIn("권취하지 않는다", self.html)
+
+    # ── 브리지 · 수거함 배출 ───────────────────────────────────────────
+    def test_the_bridge_law_covers_the_whole_window(self):
+        """20–33 s 만 읽으면 케이블 절단 자세도 배출 자세도 나오지 않는다."""
+        m = self.builder.model(self.plant)
+        mo, br = m["motion"], m["motion"]["bridge"]
+        self.assertLessEqual(br["inTo"], mo["descend"][0])
+        self.assertEqual(br["outFrom"], mo["raise"][1])
+        self.assertLessEqual(br["parkTo"], br["restAt"])
+        # 창의 어느 시각에서도 값이 나온다.
+        for t in (self.builder.T_FROM, 18.0, 24.0, 34.0, self.builder.T_TO - 0.01):
+            with self.subTest(t=t):
+                self.assertIsInstance(self.builder.plate_y(t, mo), float)
+        # 케이블 절단 자세는 칼날 하강 자세보다 얕다 — 같은 축을 두 번 쓴다.
+        self.assertGreater(br["dropY"][1], mo["descend"][3])
+
+    def test_the_discharge_drops_into_the_wide_bin(self):
+        m = self.builder.model(self.plant)
+        D, B = m["motion"]["discharge"], m["bin"]
+        self.assertAlmostEqual(D["binX"], B["at"][0], places=6)
+        self.assertEqual(D["highY"], m["motion"]["boxTop"])
+        self.assertLess(D["restY"], D["highY"])
+        # 슈트 통과 확인이 먼저, 수거함 중량 확인이 나중이다.
+        self.assertLess(D["chuteLight"][0], D["binWeigh"])
+        self.assertLess(D["binWeigh"], D["chuteLight"][1])
+        # 광폭 수거함은 검출 3 개가 폭 방향으로 나란히 들어갈 만큼 넓다.
+        width = B["base"]["size"][2] * B["widthScale"]
+        for scen in m["scenarios"]:
+            zs = [b["z"] for b in scen["boxes"]]
+            self.assertLess(max(zs) - min(zs) + m["parts"]["box"]["size"][2], width)
+
+    # ── 원본 자체 검산 ─────────────────────────────────────────────────
+    def test_the_checks_table_is_computed_not_typed(self):
+        m = self.builder.model(self.plant)
+        rows = self.builder.checks(m)
+        self.assertGreaterEqual(len(rows), 5)
+        for c in rows:
+            with self.subTest(item=c["item"]):
+                for key in ("item", "found", "spec", "ok", "why", "fix"):
+                    self.assertIn(key, c)
+                self.assertIn(c["item"], self.html)
+                self.assertIn(c["found"], self.html)
+
+    def test_the_chute_tilt_matches_its_bom_tolerance(self):
+        """맞는 것도 같은 방법으로 재야 표가 검산으로 읽힌다."""
+        m = self.builder.model(self.plant)
+        tilt = abs(m["bin"]["chute"]["tilt"]) * 180 / math.pi
+        self.assertAlmostEqual(tilt, m["chuteDeg"], delta=m["chuteTolDeg"])
+
+    def test_the_known_mismatches_are_still_reported(self):
+        """고쳐지면 이 시험이 먼저 깨진다 — 그때 표와 함께 지운다."""
+        m = self.builder.model(self.plant)
+        bad = {c["item"] for c in self.builder.checks(m) if not c["ok"]}
+        self.assertIn("가위 A 절단 자세", bad)
+        self.assertIn("가위날 겹침 (완전 닫힘)", bad)
+        self.assertIn("수거함 착지 이격", bad)
+        self.assertIn(f"불일치하는 자리 {len(bad)} 건".replace("불일치하는 자리", "어긋나는 자리"),
+                      self.html.replace("사양과 어긋나는 자리", "어긋나는 자리"))
+
+    def test_the_bom_tolerances_are_quoted_verbatim(self):
+        m = self.builder.model(self.plant)
+        for tag, name, key in (("JB-CB-003", "교체형 케이블 가위날", "jawSpec"),
+                               ("JB-WH-001", "정션박스 일괄 낙하슈트", "chuteSpec"),
+                               ("JB-CB-001", "비전 연동 케이블 포획콤", "combSpec")):
+            with self.subTest(tag=tag):
+                self.assertEqual(m[key], self.builder.bom_tolerance(self.plant, tag, name))
+                self.assertIn(m[key], self.html)
 
 
 class TestPlantConsoleDefects(unittest.TestCase):

@@ -1,21 +1,28 @@
 # -*- coding: utf-8 -*-
-"""JBR-201 박리 순간 클로즈업 — 정션박스가 실제로 떨어져 나오는 15 초.
+"""JBR-201 — 잡고 · 끊고 · 떨구는 세 순간.
 
 3D 파생본은 이 셀이 움직이는 것을 보여 주고 상세도는 그 값을 편다. 그런데 정작
-**정션박스가 떨어져 나오는 순간**은 3D 에서 보이지 않는다 — 칼날 팁 0.8 mm,
-쐐기 12°, 접착 계면, POM 기준 슈, ±8 mm Z 플로팅이 전부 밀리미터 단위라 셀 전체를
-담은 시점에서는 몇 픽셀이다.
+**손이 무엇을 붙잡고 무엇을 끊는지**는 3D 에서 보이지 않는다 — 칼날 팁 0.8 mm,
+쐐기 12°, 접착 계면, POM 기준 슈, 가위날 겹침 0.3 mm 가 전부 밀리미터 단위라 셀
+전체를 담은 시점에서는 몇 픽셀이다.
 
-이 화면은 그 구간만 두 배율로 그린다.
+이 화면은 그 구간을 세 장면으로 나누고, 장면마다 **전경 하나와 실척 근접 하나**를
+그린다.
 
-* **헤드 전폭** (±700 mm) — 좌·우 L 칼날 카세트가 ±610 에서 ±10 까지 들어와
-  박스 밑에서 만나는 것.
-* **계면 확대** (±60 mm) — 칼날 팁이 접착 계면을 파고드는 자리. 팁 두께·쐐기각·
-  절입 깊이·기준 슈 접촉이 전부 실척이다.
+* **① 박스 박리** — 헤드 전폭(±740 mm)에서 진공컵·스프링 손가락이 박스를 물고
+  좌·우 L 칼날이 들어오는 것, 그리고 계면 확대(±54 mm)에서 팁이 접착을 파고드는 것.
+* **② 전선 포획·절단** — 절단 평면 평면도(X–Z)에서 어느 가닥이 어느 가위 앞을
+  지나는지, 활성 가위의 X–Y 단면에서 콤이 케이블을 홈으로 쓸어 넣고 두 날이 겹치는 것.
+* **③ 수거함 배출** — 전경(X–Y)에서 브리지 반출·칼날 개방·낙하, 착지 근접(Z–Y)에서
+  1–3 개가 폭 방향으로 나란히 떨어지는 것.
 
 **형상도 운동도 손으로 쓰지 않는다.** 부품 치수는 통합 설계도 3D 의 생성 호출에서
-라벨로 찾아 읽고, 운동식은 같은 파일의 `wt()` 에서 상수를 그대로 뽑는다. 어느
-하나라도 원본에서 사라지면 생성이 실패한다 — 화면이 조용히 옛 값으로 남는 대신.
+라벨로 찾아 읽고, 운동식은 같은 파일의 `wt()` 에서 상수를 그대로 뽑으며, 합·부를
+가르는 공차는 부품표의 공차란을 인용한다. 어느 하나라도 원본에서 사라지면 생성이
+실패한다 — 화면이 조용히 옛 값으로 남는 대신.
+
+`checks()` 는 그 둘을 맞대 **원본이 스스로 정한 사양과 어긋나는 자리**를 생성
+시점에 찾아 표로 싣는다. 고쳐지면 표가 먼저 바뀐다.
 
     PYTHONPATH=src python tools/build_jbr_closeup.py
 
@@ -26,6 +33,7 @@ from __future__ import annotations
 
 import html
 import json
+import math
 import pathlib
 import re
 import sys
@@ -38,11 +46,12 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 PLANT = ROOT / "docs/drawings/pv-preprocess-plant.html"
 OUT = ROOT / "docs/drawings/pv-jbr-closeup.html"
 
-#: 이 화면이 다루는 JBR 로컬 시각 (s). 케이블 회수 직전부터 후검증 진입까지.
-T_FROM, T_TO = 19.0, 38.0
+#: 이 화면이 다루는 JBR 로컬 시각 (s). 케이블 절단 진입부터 수거함 착지 직후까지.
+T_FROM, T_TO = 16.0, 38.0
 
-#: 처음 보여 주는 시각 — 전단 한복판.
-T_START = 26.0
+#: 처음 보여 주는 시각. 전단이 시작되는 23 s 에는 칼날 팁이 아직 박스 발자국 밖이라
+#: 계면 확대에 아무것도 없다 — 팁이 박스 밑으로 확실히 들어온 뒤를 고른다.
+T_START = 27.0
 
 #: 셀 그룹 y 오프셋 `be.position.y = pvJbDy = pvRollY - .98` (m).
 CELL_Y = -0.075
@@ -213,6 +222,7 @@ def scenarios(text: str) -> list[dict[str, object]]:
         out.append({"key": key,
                     "label": re.search(r'label:"([^"]*)"', body).group(1),
                     "plan": re.search(r'plan:"([^"]*)"', body).group(1),
+                    "topology": re.search(r'topology:"([^"]*)"', body).group(1),
                     "boxes": boxes})
     if len(out) != 4:
         raise SystemExit(f"✗ 검출 시나리오가 {len(out)}개 — 4개여야 한다")
@@ -228,6 +238,201 @@ def blade_spec(text: str) -> tuple[str, float, float]:
     if not tip or not wedge:
         raise SystemExit(f"✗ 칼날 사양에서 팁·쐐기각을 못 읽었다: {spec}")
     return spec, float(tip.group(1)), float(wedge.group(1))
+
+
+def scissor_motion(text: str) -> dict[str, object]:
+    """케이블 가위 — A/B 순차 절단의 시각과 조 궤적."""
+    when = _one(text, r"let Ne=de===0\?([\d.]+):([\d.]+),Ue=v\?me\(Se\(t,Ne,Ne\+([\d.]+)\)\)"
+                      r"\*\(1-me\(Se\(t,Ne\+([\d.]+),Ne\+([\d.]+)\)\)\):0", "가위 시각")
+    rot = _one(text, r"ue\.rotation\.z=le\((-[\d.]+),(-[\d.]+),Ue\),se\.rotation\.z=le\(([\d.]+),([\d.]+),Ue\)",
+               "가위 조 회전")
+    mov = _one(text, r"ue\.position\.x=le\((-[\d.]+),(-[\d.]+),Ue\),se\.position\.x=le\(([\d.]+),([\d.]+),Ue\)",
+               "가위 조 이동")
+    off = _one(text, r"U\.position\.z=o===1\?n\.boxes\[0\]\.z\+\(de===0\?(-[\d.]+):([\d.]+)\)"
+                     r":De\[de\]", "가위 z 배치")
+    env = _one(text, r"De=\[Math\.min\(\.\.\.ie\)-([\d.]+),Math\.max\(\.\.\.ie\)\+([\d.]+)\]",
+               "가위 z 포락")
+    return {
+        "cutA": float(when.group(1)), "cutB": float(when.group(2)),
+        "close": float(when.group(3)), "openFrom": float(when.group(4)), "openTo": float(when.group(5)),
+        "rot": [float(rot.group(1)), float(rot.group(2))],
+        "shift": [float(mov.group(1)), float(mov.group(2))],
+        "single": [float(off.group(1)), float(off.group(2))],
+        "envelope": [float(env.group(1)), float(env.group(2))],
+    }
+
+
+def cable_motion(text: str) -> dict[str, object]:
+    """케이블 하네스 회수 — 잘린 하네스가 케이블 수거함으로 가는 구간."""
+    m = _one(text, r"else if\(t<([\d.]+)\)\{let U=me\(Se\(t,([\d.]+),[\d.]+\)\);"
+                   r"rt\.position\.set\(le\(Ie,(-[\d.]+),U\),le\(Ar\.y,([\d.]+),U\),"
+                   r"le\(Z,(-[\d.]+),U\)\),rt\.rotation\.x=U\*Math\.PI\*([\d.]+)",
+              "하네스 회수")
+    return {"from": float(m.group(2)), "to": float(m.group(1)),
+            "x": float(m.group(3)), "y": float(m.group(4)), "z": float(m.group(5)),
+            "spin": float(m.group(6))}
+
+
+def discharge_motion(text: str) -> dict[str, object]:
+    """수거함 배출 — 브리지 추종·낙하·착지."""
+    fall = _one(text, r"else if\(t<([\d.]+)\)\{let de=me\(Se\(t,([\d.]+),([\d.]+)\)\);"
+                      r"U\.group\.position\.set\((-[\d.]+),le\(([\d.]+),([\d.]+),de\),se\.z\),"
+                      r"U\.group\.rotation\.set\(de\*([\d.]+),Jn\(se,ue\),de\*\(ue-1\)\*([\d.]+)\)",
+               "박스 낙하")
+    lights = _one(text, r"t0\.forEach\(\(\{material:U\},ue\)=>\{let se=v&&\(ue===0\?"
+                        r"t>=([\d.]+)&&t<([\d.]+):t>=([\d.]+)&&t<([\d.]+)\)", "슈트 통과 센서")
+    weigh = _one(text, r"e0\.forEach\(\(\{material:U\},ue\)=>\{let se=v&&\(ue===0\?"
+                       r"t>=([\d.]+):t>=([\d.]+)\)", "수거함 중량 센서")
+    return {
+        "carry": float(fall.group(1)), "from": float(fall.group(2)), "to": float(fall.group(3)),
+        "binX": float(fall.group(4)),
+        "highY": float(fall.group(5)), "restY": float(fall.group(6)),
+        "tumble": float(fall.group(7)), "fan": float(fall.group(8)),
+        "chuteLight": [float(lights.group(1)), float(lights.group(2))],
+        "cableLight": [float(lights.group(3)), float(lights.group(4))],
+        "binWeigh": float(weigh.group(1)), "cableWeigh": float(weigh.group(2)),
+    }
+
+
+def bridge_motion(text: str) -> dict[str, object]:
+    """X 브리지의 x 와 승강 플레이트의 y — 16 s 진입부터 38 s 세척대 대기까지.
+
+    기존 `motion()` 은 20–33 s 구간(하강·인양)만 읽었다. 케이블 절단과 수거함
+    배출은 그 앞뒤에 있어서 그 구간만으로는 브리지가 어디 있는지도, 가위가 얼마나
+    내려왔는지도 알 수 없다. 원본 `wt()` 의 `let V=…,ae=…` 한 덩어리를 통째로 읽는다.
+    """
+    park = _one(text, r"let V=(-[\d.]+),ae=([\d.]+);if\(t>=[\d.]+&&t<[\d.]+\)", "브리지 대기 자세")
+    approach = _one(text, r"\{V=le\((-[\d.]+),Ie,me\(Se\(t,([\d.]+),([\d.]+)\)\)\);"
+                          r"let U=me\(Se\(t,([\d.]+),([\d.]+)\)\),ue=me\(Se\(t,([\d.]+),([\d.]+)\)\);"
+                          r"ae=le\(([\d.]+),(-[\d.]+),U\*\(1-ue\)\)\}", "브리지 진입·가위 하강")
+    out = _one(text, r"V=t<([\d.]+)\?le\(Ie,(-[\d.]+),me\(Se\(t,([\d.]+),([\d.]+)\)\)\)"
+                     r":le\((-[\d.]+),(-[\d.]+),me\(Se\(t,([\d.]+),([\d.]+)\)\)\),"
+                     r"ae=t<[\d.]+\?([\d.]+):le\(([\d.]+),([\d.]+),me\(Se\(t,([\d.]+),([\d.]+)\)\)\)",
+               "브리지 배출·퇴출")
+    rest = _one(text, r"t>=([\d.]+)&&\(V=(-[\d.]+),ae=([\d.]+)\);", "브리지 세척대 대기")
+    return {
+        "park": [_num(park.group(1)), _num(park.group(2))],
+        "inFrom": _num(approach.group(2)), "inTo": _num(approach.group(3)),
+        "inX": _num(approach.group(1)),
+        "dropIn": [_num(approach.group(4)), _num(approach.group(5))],
+        "dropOut": [_num(approach.group(6)), _num(approach.group(7))],
+        "dropY": [_num(approach.group(8)), _num(approach.group(9))],
+        "outFrom": _num(out.group(3)), "outTo": _num(out.group(4)),
+        "outX": _num(out.group(2)), "outAt": _num(out.group(1)),
+        "parkFrom": _num(out.group(7)), "parkTo": _num(out.group(8)),
+        "parkX": [_num(out.group(5)), _num(out.group(6))],
+        "carryY": _num(out.group(9)),
+        "parkY": [_num(out.group(10)), _num(out.group(11))],
+        "restAt": _num(rest.group(1)),
+        "restX": _num(rest.group(2)), "restY": _num(rest.group(3)),
+    }
+
+
+def bin_parts(text: str) -> dict[str, object]:
+    """수거함·슈트 — `Qp()` 가 만드는 상자와 그 위의 낙하 슈트, 그리고 센서 자리."""
+    box = _one(text, r"function Qp\(i,e,t,n\)\{let s=new ce;return s\.position\.set\(i,0,e\),"
+                     r"be\.add\(s\),P\(s,\[([^\]]*)\],\[([^\]]*)\],M\.steel,t,n\),"
+                     r"P\(s,\[([^\]]*)\],\[(-[\d.]+),([\d.]+),([\d.]+)\],M\.steel\),"
+                     r"P\(s,\[[^\]]*\],\[[^\]]*\],M\.steel\),"
+                     r"P\(s,\[([^\]]*)\],\[0,([\d.]+),(-[\d.]+)\],M\.steel\)",
+               "수거함 몸체")
+    place = _one(text, r'var Qv=Qp\((-[\d.]+),([\d.]+),"광폭 정션박스 수거함"', "정션박스 수거함 자리")
+    scale = _one(text, r"Qv\.scale\.z=([\d.]+)", "수거함 폭 배율")
+    cbin = _one(text, r'var eM=Qp\((-[\d.]+),(-[\d.]+),"케이블 수거함"', "케이블 수거함 자리")
+    chute = _one(text, r'P\(be,\[([^\]]*)\],\[(-[\d.]+),([\d.]+),([\d.]+)\],M\.steel,'
+                       r'"정션박스 일괄 낙하 슈트",[^,]*,\[0,0,(-[\d.]+)\]\)', "낙하 슈트")
+    side = _one(text, r'\[(-[\d.]+),([\d.]+)\]\.forEach\(i=>P\(be,\[([^\]]*)\],'
+                      r'\[(-[\d.]+),([\d.]+),i\],M\.steel,"광폭 슈트 측판"', "슈트 측판")
+    cchute = _one(text, r"P\(be,\[([^\]]*)\],\[(-[\d.]+),([\d.]+),(-[\d.]+)\],M\.steel,"
+                        r"null,null,\[([\d.]+),0,0\]\)", "케이블 배출슈트")
+    sensor = _one(text, r"\[\[(-[\d.]+),(0),([\d.]+),([\d.]+)\],"
+                        r"\[(-[\d.]+),(-[\d.]+),([\d.]+),([\d.]+)\]\]"
+                        r"\.forEach\(\(\[i,e,t,n\],s\)=>", "수거함 중량 센서 자리")
+    height = _one(text, r"r\.position\.set\(i,([\d.]+),e\),be\.add\(r\),"
+                        r"P\(r,\[t,([\d.]+),n\]", "중량 센서 판 두께")
+    passer = _one(text, r"\[\[(-[\d.]+),([\d.]+),([\d.]+)\],\[(-[\d.]+),([\d.]+),(-[\d.]+)\]\]"
+                        r"\.forEach\(\(i,e\)=>\{let t=M\.sensor\.clone\(\),"
+                        r"n=P\(be,\[([^\]]*)\]", "슈트 통과 센서 자리")
+    ring = _one(text, r"new vr\(([\d.]+)\+i\*([\d.]+),([\d.]+),8,32\),M\.rubber\);"
+                      r"e\.position\.set\(\(i-2\)\*([\d.]+),([\d.]+)\+i\*([\d.]+),"
+                      r"i%2\?([\d.]+):(-[\d.]+)\)", "케이블 코일")
+    wy, wt_ = _num(height.group(1)), _num(height.group(2))
+    return {
+        "base": {"size": [_num(v) for v in box.group(1).split(",")],
+                 "at": [_num(v) for v in box.group(2).split(",")]},
+        "wall": {"size": [_num(v) for v in box.group(3).split(",")],
+                 "at": [_num(box.group(4)), _num(box.group(5)), _num(box.group(6))]},
+        "back": {"size": [_num(v) for v in box.group(7).split(",")],
+                 "at": [0.0, _num(box.group(8)), _num(box.group(9))]},
+        "at": [_num(place.group(1)), 0.0, _num(place.group(2))],
+        "widthScale": _num(scale.group(1)),
+        "cableAt": [_num(cbin.group(1)), 0.0, _num(cbin.group(2))],
+        "chute": {"size": [_num(v) for v in chute.group(1).split(",")],
+                  "at": [_num(chute.group(2)), _num(chute.group(3)), _num(chute.group(4))],
+                  "tilt": _num(chute.group(5))},
+        "chuteSide": {"size": [_num(v) for v in side.group(3).split(",")],
+                      "at": [_num(side.group(4)), _num(side.group(5))],
+                      "z": [_num(side.group(1)), _num(side.group(2))]},
+        "cableChute": {"size": [_num(v) for v in cchute.group(1).split(",")],
+                       "at": [_num(cchute.group(2)), _num(cchute.group(3)), _num(cchute.group(4))],
+                       "tilt": _num(cchute.group(5))},
+        "weigh": [{"at": [_num(sensor.group(1)), wy, _num(sensor.group(2))],
+                   "size": [_num(sensor.group(3)), wt_, _num(sensor.group(4))]},
+                  {"at": [_num(sensor.group(5)), wy, _num(sensor.group(6))],
+                   "size": [_num(sensor.group(7)), wt_, _num(sensor.group(8))]}],
+        "passer": {"size": [_num(v) for v in passer.group(7).split(",")],
+                   "at": [[_num(passer.group(1)), _num(passer.group(2)), _num(passer.group(3))],
+                          [_num(passer.group(4)), _num(passer.group(5)), _num(passer.group(6))]]},
+        "coil": {"r0": _num(ring.group(1)), "dr": _num(ring.group(2)), "tube": _num(ring.group(3)),
+                 "dx": _num(ring.group(4)), "y0": _num(ring.group(5)), "dy": _num(ring.group(6)),
+                 "dz": _num(ring.group(7))},
+    }
+
+
+def cable_path(text: str) -> dict[str, object]:
+    """PV 케이블의 곡선 — 튜브 반지름과 두 토폴로지(3분할·1개형)의 경로점.
+
+    어느 쪽이 화면에 뜨는지는 검출 시나리오의 `topology` 가 정한다 —
+    `zo`(3분할) 는 좌·우 한 가닥씩, `Il`(1개형) 은 같은 방향으로 두 가닥이다.
+    """
+    tube = _one(text, r"new Mr\(s,24,([\d.]+),10,!1\),M\.rubber\)", "케이블 튜브")
+    single = _one(text, r"\[(-[\d.]+),([\d.]+)\]\.forEach\(i=>yu\(Il,"
+                        r"\[\[i,(-[\d.]+),(-[\d.]+)\],\[i\*([\d.]+),([\d.]+),(-[\d.]+)\],"
+                        r"\[i\*([\d.]+),([\d.]+),(-[\d.]+)\]\],"
+                        r'\[i\*([\d.]+),([\d.]+),(-[\d.]+)\],"1개형 PV 케이블"\)\)', "1개형 케이블")
+    left = _one(text, r'yu\(zo,\[\[(-[\d.]+),(-[\d.]+),(-[\d.]+)\],\[(-[\d.]+),([\d.]+),'
+                      r'(-[\d.]+)\],\[(-[\d.]+),([\d.]+),(-[\d.]+)\]\],'
+                      r'\[(-[\d.]+),([\d.]+),(-[\d.]+)\],"3분할형 좌측 PV 케이블"\)', "좌측 케이블")
+    right = _one(text, r'yu\(zo,\[\[([\d.]+),(-[\d.]+),([\d.]+)\],\[([\d.]+),([\d.]+),'
+                       r'([\d.]+)\],\[([\d.]+),([\d.]+),([\d.]+)\]\],'
+                       r'\[([\d.]+),([\d.]+),([\d.]+)\],"3분할형 우측 PV 케이블"\)', "우측 케이블")
+    def curve(m: re.Match[str]) -> dict[str, object]:
+        g = [_num(x) for x in m.groups()]
+        return {"points": [g[0:3], g[3:6], g[6:9]], "connector": g[9:12]}
+    sg = [_num(x) for x in single.groups()]
+    return {
+        "radius": _num(tube.group(1)),
+        "split": {"left": curve(left), "right": curve(right)},
+        "single": {"lanes": [sg[0], sg[1]],
+                   "points": [[1.0, sg[2], sg[3]], [sg[4], sg[5], sg[6]], [sg[7], sg[8], sg[9]]],
+                   "connector": [sg[10], sg[11], sg[12]]},
+    }
+
+
+def bom_tolerance(text: str, tag: str, name: str) -> str:
+    """부품표 한 줄의 공차란. 값의 출처를 코드가 아니라 **부품표**에 둔다 —
+    거기서 바뀌면 이 화면의 합·부 판정도 같이 바뀐다."""
+    m = _one(text, '"' + tag + r'","[^"]*","' + re.escape(name) + r'","[^"]*",\[[^\]]*\],'
+                   r'"[^"]*","[^"]*","([^"]*)"', tag + " 공차")
+    return m.group(1)
+
+
+def pm(spec: str, what: str) -> tuple[float, float]:
+    """「0.3±0.1 mm」 같은 공차 문장에서 값과 공차."""
+    v = re.search(r"([\d.]+)\s*±\s*([\d.]+)", spec)
+    if not v:
+        raise SystemExit(f"✗ {what} 에서 값±공차를 못 읽었다: {spec}")
+    return float(v.group(1)), float(v.group(2))
 
 
 def shoe_spec(text: str) -> tuple[str, float, float]:
@@ -252,6 +457,13 @@ def model(text: str) -> dict[str, object]:
         "gripper": box_part(text, "진공·스프링 포획그리퍼"),
         "cup": cyl_part(text, "진공컵·체크밸브"),
         "compliance": box_part(text, "Z 플로팅 컴플라이언스 모듈"),
+        "comb": box_part(text, "비전 연동 케이블 포획 콤"),
+        "scissor": box_part(text, "V가이드 공압 케이블 가위"),
+        "interlock": box_part(text, "절연 도체구속·순차절단 인터록"),
+        "shroud": box_part(text, "아크 차폐 절단 슈라우드"),
+        "vgroove": box_part(text, "케이블 V홈"),
+        "jaw": box_part(text, "교체형 케이블 가위날"),
+        "handle": box_part(text, "수거함 손잡이"),
         "stem": box_part(text, "Z 변위센서"),
         "nozzle": box_part(text, "국소 파편흡입 노즐"),
         "toolId": box_part(text, "공구 ID·칼날 상태센서"),
@@ -268,6 +480,11 @@ def model(text: str) -> dict[str, object]:
                           "at": [0.0, -_num(connector.group(3)), -_num(connector.group(4))]}
     spec, tip, wedge = blade_spec(text)
     cut_spec, cut, cut_tol = shoe_spec(text)
+    jaw_spec = bom_tolerance(text, "JB-CB-003", "교체형 케이블 가위날")
+    jaw_mm, jaw_tol = pm(jaw_spec, "가위날 겹침")
+    chute_spec = bom_tolerance(text, "JB-WH-001", "정션박스 일괄 낙하슈트")
+    chute_deg, chute_tol = pm(chute_spec, "일괄 낙하슈트 경사")
+    comb_spec = bom_tolerance(text, "JB-CB-001", "비전 연동 케이블 포획콤")
     return {
         "rev": revision(text),
         "cellY": CELL_Y,
@@ -275,12 +492,160 @@ def model(text: str) -> dict[str, object]:
         "from": T_FROM, "to": T_TO, "start": T_START,
         "infeed": campaign.INFEED_S,
         "parts": parts,
-        "motion": motion(text),
+        # 운동식은 전부 `motion` 아래로 모은다 — 화면에서 `MO.…` 하나로 읽는다.
+        "motion": dict(motion(text),
+                       bridge=bridge_motion(text),
+                       scissor=scissor_motion(text),
+                       harness=cable_motion(text),
+                       discharge=discharge_motion(text)),
         "stages": [s for s in stages(text) if s["end"] > T_FROM and s["start"] < T_TO],
         "scenarios": scenarios(text),
         "bladeSpec": spec, "bladeTipMm": tip, "bladeWedgeDeg": wedge,
         "cutSpec": cut_spec, "cutMm": cut, "cutTolMm": cut_tol,
+        "jawSpec": jaw_spec, "jawMm": jaw_mm, "jawTolMm": jaw_tol,
+        "chuteSpec": chute_spec, "chuteDeg": chute_deg, "chuteTolDeg": chute_tol,
+        "combSpec": comb_spec,
+        "bin": bin_parts(text),
+        "cable": cable_path(text),
     }
+
+
+# ── 원본 자체 검산 ───────────────────────────────────────────────────────
+# 화면은 지금 자세를 재고, 아래는 **원본이 스스로 정한 사양과 어긋나는 자리**를
+# 생성 시점에 찾아 표로 적는다. 값이 원본에서 바뀌면 이 표도 같이 바뀐다.
+
+def _sat(v: float) -> float:
+    return 0.0 if v < 0 else 1.0 if v > 1 else v
+
+
+def _step(t: float, a: float, b: float) -> float:
+    x = _sat((t - a) / (b - a))
+    return x * x * (3 - 2 * x)
+
+
+def _lerp(a: float, b: float, u: float) -> float:
+    return a + (b - a) * u
+
+
+def plate_y(t: float, mo: dict) -> float:
+    """승강 플레이트 y — 화면의 `plateY()` 와 같은 식이다."""
+    br, d, r = mo["bridge"], mo["descend"], mo["raise"]
+    if t < d[0]:
+        return _lerp(br["dropY"][0], br["dropY"][1],
+                     _step(t, br["dropIn"][0], br["dropIn"][1])
+                     * (1 - _step(t, br["dropOut"][0], br["dropOut"][1])))
+    if t < r[0]:
+        return _lerp(d[2], d[3], _step(t, d[0], d[1]))
+    if t < r[1]:
+        return _lerp(r[2], r[3], _step(t, r[0], r[1]))
+    if t < br["outAt"]:
+        return br["carryY"]
+    if t < br["restAt"]:
+        return _lerp(br["parkY"][0], br["parkY"][1], _step(t, br["parkFrom"], br["parkTo"]))
+    return br["restY"]
+
+
+def lane_z_span(M: dict, scen: dict) -> tuple[float, float]:
+    """검출 시나리오의 케이블이 덮는 z 범위 (셀 좌표)."""
+    cb = M["cable"]
+    zs = [0.0]
+    if scen["topology"] == "single-lead":
+        zs += [q[2] for q in cb["single"]["points"]] + [cb["single"]["connector"][2]]
+    else:
+        for side in ("left", "right"):
+            zs += [q[2] for q in cb["split"][side]["points"]]
+            zs.append(cb["split"][side]["connector"][2])
+    row_z = sum(b["z"] for b in scen["boxes"]) / len(scen["boxes"])
+    return row_z + min(zs), row_z + max(zs)
+
+
+def unit_z(M: dict, scen: dict, i: int) -> float:
+    S, zs = M["motion"]["scissor"], [b["z"] for b in scen["boxes"]]
+    if len(zs) == 1:
+        return zs[0] + S["single"][i]
+    return min(zs) - S["envelope"][0] if i == 0 else max(zs) + S["envelope"][1]
+
+
+def checks(M: dict) -> list[dict[str, object]]:
+    mo = M["motion"]
+    S, br, D, B = mo["scissor"], mo["bridge"], mo["discharge"], M["bin"]
+    out: list[dict[str, object]] = []
+
+    # ① 가위 A 는 헤드가 케이블 높이까지 내려오기 전에 닫힌다.
+    cut_y = br["dropY"][1] * 1000
+    ya, yb = plate_y(S["cutA"], mo) * 1000, plate_y(S["cutA"] + S["close"], mo) * 1000
+    out.append({
+        "item": "가위 A 절단 자세",
+        "found": f"플레이트 y {ya:+,.0f} → {yb:+,.0f} mm",
+        "spec": f"절단 자세 {cut_y:+,.0f} mm "
+                f"({br['dropIn'][0]:g}–{br['dropIn'][1]:g} s 하강 완료)",
+        "ok": abs(yb - cut_y) <= 5,
+        "why": f"A 의 절단 행정 {S['cutA']:g}–{S['cutA'] + S['close']:g} s 가 하강 완료 "
+               f"{br['dropIn'][1]:g} s 보다 앞선다. B({S['cutB']:g} s)는 하강 뒤라 정상이다.",
+        "fix": "16–20 s 예산 안에서 진입·하강·A·B 를 다시 배치해야 한다 "
+               "(하강을 앞당기면 가위가 패널면을 스치므로 이송속도 쪽을 손봐야 한다).",
+    })
+
+    # ② 닫힌 두 날의 겹침.
+    w = M["parts"]["jaw"]["size"][0] / 2
+    over = (w * math.cos(S["rot"][1]) - abs(S["shift"][1])) * 2000
+    out.append({
+        "item": "가위날 겹침 (완전 닫힘)",
+        "found": f"{over:,.2f} mm",
+        "spec": f"JB-CB-003 {M['jawSpec']}",
+        "ok": abs(over - M["jawMm"]) <= M["jawTolMm"] + 1e-6,
+        "why": "닫힘 자세의 조 위치 ±"
+               f"{abs(S['shift'][1]) * 1000:g} mm 와 날 반폭 {w * 1000:g} mm 가 만드는 값이다.",
+        "fix": f"조 닫힘 위치를 ±{abs(S['shift'][1]) * 1000:g} → "
+               f"±{(w * math.cos(S['rot'][1]) - M['jawMm'] / 2000) * 1000:,.3f} mm 로 하면 "
+               f"{M['jawMm']:g} mm 가 된다.",
+    })
+
+    # ③ 착지 자세가 수거함 바닥에서 뜬다.
+    floor = B["base"]["at"][1] + B["base"]["size"][1] / 2
+    gap = (D["restY"] - M["parts"]["box"]["size"][1] / 2 - floor) * 1000
+    out.append({
+        "item": "수거함 착지 이격",
+        "found": f"{gap:,.0f} mm 뜸",
+        "spec": "바닥 상면 접촉 (0 mm)",
+        "ok": abs(gap) <= 1,
+        "why": f"낙하 정지 y {D['restY'] * 1000:,.0f} mm 에서 박스 하면은 "
+               f"{(D['restY'] - M['parts']['box']['size'][1] / 2) * 1000:,.0f} mm, "
+               f"수거함 바닥 상면은 {floor * 1000:,.0f} mm 다.",
+        "fix": f"정지 y 를 {D['restY'] * 1000:,.0f} → "
+               f"{(floor + M['parts']['box']['size'][1] / 2) * 1000:,.0f} mm 로 내리면 닿는다 "
+               f"(전복각 {D['tumble']:g} rad 을 감안하면 그보다 조금 위).",
+    })
+
+    # ④ 1개형 토폴로지에서 가위 B 앞을 지나는 케이블이 없다.
+    for scen in M["scenarios"]:
+        if scen["topology"] != "single-lead":
+            continue
+        lo, hi = lane_z_span(M, scen)
+        zb = unit_z(M, scen, 1)
+        out.append({
+            "item": f"가위 B 절단 대상 ({scen['label']})",
+            "found": f"B 는 z {zb * 1000:+,.0f} mm, 케이블은 z "
+                     f"{lo * 1000:+,.0f} … {hi * 1000:+,.0f} mm",
+            "spec": "두 가위가 각각 한 도체를 맡는다",
+            "ok": lo <= zb <= hi,
+            "why": "1개형은 두 가닥이 같은 쪽(−z)으로 나가는데 가위는 박스 양옆 ±"
+                   f"{abs(S['single'][1]) * 1000:g} mm 에 놓인다.",
+            "fix": "1개형에서는 두 가위를 모두 케이블이 나가는 쪽에 배치해야 한다 "
+                   "(예: 박스 z − 220 과 z − 420).",
+        })
+
+    # ⑤ 낙하 슈트 경사 — 이건 맞는다. 맞는 것도 같이 적어야 표가 검산으로 읽힌다.
+    tilt = abs(B["chute"]["tilt"]) * 180 / math.pi
+    out.append({
+        "item": "일괄 낙하 슈트 경사",
+        "found": f"{tilt:,.1f}°",
+        "spec": f"JB-WH-001 {M['chuteSpec']}",
+        "ok": abs(tilt - M["chuteDeg"]) <= M["chuteTolDeg"],
+        "why": f"3D 의 회전 {abs(B['chute']['tilt']):g} rad 을 도로 옮긴 값이다.",
+        "fix": "—",
+    })
+    return out
 
 
 # ── 화면 ────────────────────────────────────────────────────────────────
@@ -349,6 +714,15 @@ th,td{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;verti
 thead th{background:var(--card2);color:var(--ink2);font-weight:600;white-space:nowrap}
 tbody tr:last-child td{border-bottom:0}
 td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.bad{color:var(--red);font-weight:600;white-space:nowrap}
+td.good{color:var(--ok);font-weight:600;white-space:nowrap}
+ul.lead{margin:.5em 0;padding-left:1.15em;max-width:78ch}
+ul.lead li{margin:.2em 0}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.tabs button{font-size:13.5px;padding:5px 12px}
+.tabs button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.jump{font-size:12px;min-height:26px;padding:2px 9px;margin-right:8px}
+.text-small{font-size:13px;color:var(--ink2);margin:6px 4px 0}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 .chip{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--card2);
  border:1px solid var(--line);color:var(--ink2)}
@@ -366,16 +740,33 @@ def build() -> str:
     data = json.dumps(M, ensure_ascii=False, separators=(",", ":"))
     t0, t1 = M["from"] + M["infeed"], M["to"] + M["infeed"]
     shear = M["motion"]["shear"]
+    S, D = M["motion"]["scissor"], M["motion"]["discharge"]
+    rows = checks(M)
+    bad = [c for c in rows if not c["ok"]]
+    check_rows = "\n".join(
+        f'<tr><td>{esc(c["item"])}</td>'
+        f'<td class="num">{esc(c["found"])}</td><td>{esc(c["spec"])}</td>'
+        f'<td class="{"bad" if not c["ok"] else "good"}">{"불일치" if not c["ok"] else "일치"}</td>'
+        f'<td>{esc(c["why"])} <b>{esc(c["fix"])}</b></td></tr>'
+        for c in rows)
 
     body = f"""<div class="wrap">
 <header class="top">
   <div class="eyebrow">DYNAMIC INDUSTRY · JBR-201 · ENGINEERING BASE {esc(M['rev'])}</div>
-  <h1>정션박스가 떨어져 나오는 순간</h1>
+  <h1>잡고 · 끊고 · 떨군다 — JBR-201 의 세 순간</h1>
   <p class="lead">JBR-201 의 45 초 가운데 <b>로컬 {M['from']:g}–{M['to']:g} s</b>
-  (플랜트 {t0:g}–{t1:g} s)만 떼어 두 배율로 그린다. 좌·우 L 칼날이
-  ±{mm(M['motion']['openWide'])} 에서 ±{mm(M['motion']['openShut'])} 까지 들어와 박스 밑에서 만나는 것이
-  위 그림, 칼날 팁이 접착 계면을 파고드는 자리가 아래 그림이다. 전단은
-  <b>로컬 {shear[0]:g}–{shear[1]:g} s</b>({shear[1] - shear[0]:g} 초) 동안 일어난다.</p>
+  (플랜트 {t0:g}–{t1:g} s)만 떼어 낸다. 셀 전체를 담은 시점에서는 몇 픽셀인 자리를
+  장면마다 <b>전경 하나와 실척 근접 하나</b>로 나눠 그린다.</p>
+  <ul class="lead">
+    <li><b>① 박스 박리</b> — 진공컵이 박스 상면을 물고 스프링 손가락이 옆면을 잡은 뒤
+      좌·우 L 칼날이 ±{mm(M['motion']['openWide'])} 에서 ±{mm(M['motion']['openShut'])} 까지 들어와
+      접착 계면을 전단한다 (<b>{shear[0]:g}–{shear[1]:g} s</b>).</li>
+    <li><b>② 전선 포획·절단</b> — 포획 콤이 케이블을 V홈으로 쓸어 넣고 절연 인터록이 두 도체를
+      가른 뒤, 가위 <b>A {S['cutA']:g} s → B {S['cutB']:g} s</b> 순으로 끊는다.
+      권취는 하지 않는다.</li>
+    <li><b>③ 수거함 배출</b> — 브리지가 패널 밖 광폭 수거함 위로 나가 칼날을 다시 열면
+      1–3 개가 같은 자리에서 일괄 낙하한다 (<b>{D['from']:g}–{D['to']:g} s</b>).</li>
+  </ul>
 </header>
 
 <div class="ctl" role="group" aria-label="재생 제어">
@@ -408,18 +799,23 @@ def build() -> str:
 </div>
 <div class="chips" id="chips" aria-live="polite"></div>
 
-<div class="stage">
-  <div class="viewhead"><b>헤드 전폭 — 칼날 진입과 박스 분리</b>
-    <span id="scale1"></span></div>
-  <canvas id="wide" role="img"
-    aria-label="좌우 L 칼날 카세트가 정션박스 밑으로 들어와 접착 계면을 전단하고 박스를 들어 올리는 단면"></canvas>
+<div class="tabs" role="tablist" aria-label="장면">
+  <button type="button" role="tab" data-tab="near" class="on">① 박스 박리 — 칼날·진공 그리퍼</button>
+  <button type="button" role="tab" data-tab="cable">② 전선 포획·절단 — 콤·가위 A→B</button>
+  <button type="button" role="tab" data-tab="bin">③ 수거함 배출 — 슈트·낙하</button>
+  <button id="jump" type="button" class="jump">이 장면의 순간으로</button>
 </div>
 
 <div class="stage">
-  <div class="viewhead"><b>계면 확대 — 칼날 팁·쐐기·기준 슈</b>
-    <span id="scale2"></span></div>
-  <canvas id="near" role="img"
-    aria-label="칼날 팁이 백시트면 접착 계면을 파고드는 자리의 확대 단면"></canvas>
+  <div class="viewhead"><b id="wideName"></b><span id="scale1"></span></div>
+  <canvas id="wide" role="img"
+    aria-label="선택한 장면의 전체 단면 — 칼날 진입과 박스 분리, 케이블 포획 평면, 또는 수거함 배출"></canvas>
+</div>
+
+<div class="stage">
+  <div class="viewhead"><b id="nearName"></b><span id="scale2"></span></div>
+  <canvas id="near" role="img" aria-label="선택한 장면의 실척 근접 단면"></canvas>
+  <p class="note" id="tabNote"></p>
 </div>
 
 <div class="readout" id="readout"></div>
@@ -434,6 +830,15 @@ def build() -> str:
 <div class="tw"><table><thead><tr><th>면</th><th>월드 H (mm)</th>
 <th>패널 상면 기준 (mm)</th><th>비고</th></tr></thead><tbody id="stack"></tbody></table></div>
 
+<h2>원본 자체 검산 — 사양과 어긋나는 자리 {len(bad)} 건</h2>
+<p class="lead">아래 표는 손으로 적지 않는다. 생성기가 원본 <code>wt()</code> 의 운동상수와
+부품표의 공차란을 같이 읽어 <b>서로 어긋나는 자리</b>를 찾아 적는다. 원본이 고쳐지면
+이 표도 같이 바뀐다 — 고쳤는데 표가 그대로면 고친 것이 아니다.</p>
+<div class="tw"><table><thead><tr><th>항목</th><th>원본 값</th><th>사양·의도</th>
+<th>판정</th><th>근거와 제안</th></tr></thead><tbody>
+{check_rows}
+</tbody></table></div>
+
 <h2>칼날과 기준 슈</h2>
 <p class="lead" id="bladespec"></p>
 <div class="note">기준 슈 공차란이 <code>{esc(M['cutSpec'])}</code> 이고 기능란이 「백시트 기준면 접촉」이다.
@@ -441,7 +846,7 @@ def build() -> str:
 이 그림의 절입 치수가 그 값과 어긋나면 붉게 표시된다.</div>
 
 <footer>
-  JBR-201 박리 순간 클로즈업 · {esc(M['rev'])} ·
+  JBR-201 박리·절단·배출 클로즈업 · {esc(M['rev'])} ·
   생성 <code>PYTHONPATH=src python tools/build_jbr_closeup.py</code><br>
   형상·운동 출처 — <code>docs/drawings/pv-preprocess-plant.html</code> 의 3D 생성 호출과
   <code>wt()</code>, 시각 출처 — <code>src/pv_preprocess/campaign.py</code>
@@ -472,6 +877,8 @@ def build() -> str:
 
   // ── 운동식 — 원본 wt() 와 같은 보간 ─────────────────────────────────
   var BLADE_TIP = M.bladeTipMm / 1000, BLADE_WEDGE = M.bladeWedgeDeg;
+  //: 「닫혔다」로 볼 문턱. 닫히는 도중의 자세를 겹침 사양으로 재면 전부 불합격이 된다.
+  var SHUT = 0.995;
 
   function sat(v) {{ return v < 0 ? 0 : v > 1 ? 1 : v; }}
   function span(t, a, b) {{ return sat((t - a) / (b - a)); }}
@@ -485,12 +892,26 @@ def build() -> str:
     if (t >= MO.reopen[0]) h = lerp(MO.reopenTo, MO.openWide, step(t, MO.reopen[0], MO.reopen[1]));
     return h;
   }}
+  // 승강 플레이트 y. 원본 wt() 는 16 s 진입(가위 하강)부터 38 s 세척대 대기까지를
+  // 한 덩어리로 쓴다 — 20–33 s 만 읽으면 케이블 절단 자세도 배출 자세도 나오지 않는다.
   function plateY(t) {{
-    var d = MO.descend, r = MO.raise;                 // [t0,t1,from,to]
-    if (t < d[0]) return d[2];
+    var B = MO.bridge, d = MO.descend, r = MO.raise;  // [t0,t1,from,to]
+    if (t < d[0]) return lerp(B.dropY[0], B.dropY[1],
+      step(t, B.dropIn[0], B.dropIn[1]) * (1 - step(t, B.dropOut[0], B.dropOut[1])));
     if (t < r[0]) return lerp(d[2], d[3], step(t, d[0], d[1]));
     if (t < r[1]) return lerp(r[2], r[3], step(t, r[0], r[1]));
-    return r[3];
+    if (t < B.outAt) return B.carryY;
+    if (t < B.restAt) return lerp(B.parkY[0], B.parkY[1], step(t, B.parkFrom, B.parkTo));
+    return B.restY;
+  }}
+  // X 브리지 x — 가위 유닛·3 헤드·검증 카메라가 전부 여기 매달려 있다.
+  function bridgeX(t) {{
+    var B = MO.bridge, row = rowX();
+    if (t < MO.descend[0]) return lerp(B.inX, row, step(t, B.inFrom, B.inTo));
+    if (t < B.outFrom) return row;
+    if (t < B.outAt) return lerp(row, B.outX, step(t, B.outFrom, B.outTo));
+    if (t < B.restAt) return lerp(B.parkX[0], B.parkX[1], step(t, B.parkFrom, B.parkTo));
+    return B.restX;
   }}
   function gripT(t) {{
     return step(t, MO.grip[0], MO.grip[1]) * (1 - step(t, MO.grip[2], MO.grip[3]));
@@ -505,14 +926,128 @@ def build() -> str:
   }}
   function shearing(t) {{ return t >= MO.shear[0] && t < MO.shear[1]; }}
 
+  // ── 검출열 · 가위 · 케이블 ──────────────────────────────────────────
+  function rowX() {{
+    var v = 0; scen.boxes.forEach(function (b) {{ v += b.x; }});
+    return v / scen.boxes.length;
+  }}
+  function rowZ() {{
+    var v = 0; scen.boxes.forEach(function (b) {{ v += b.z; }});
+    return v / scen.boxes.length;
+  }}
+  // 가위 유닛의 z — 박스가 하나면 그 박스 양옆 ±220, 여럿이면 검출열 포락 바깥 ±180.
+  function unitZ(i) {{
+    var S = MO.scissor, zs = scen.boxes.map(function (b) {{ return b.z; }});
+    if (zs.length === 1) return zs[0] + S.single[i];
+    return i === 0 ? Math.min.apply(null, zs) - S.envelope[0]
+                   : Math.max.apply(null, zs) + S.envelope[1];
+  }}
+  // A 가 완전히 절단·후퇴한 뒤 B 가 닫힌다 — 두 도체가 동시에 열리지 않는다.
+  function jawClose(t, i) {{
+    var S = MO.scissor, n = i === 0 ? S.cutA : S.cutB;
+    return step(t, n, n + S.close) * (1 - step(t, n + S.openFrom, n + S.openTo));
+  }}
+  function cutDone(t, i) {{
+    var S = MO.scissor;
+    return t >= (i === 0 ? S.cutA : S.cutB) + S.close;
+  }}
+  // 잘린 하네스가 케이블 수거함으로 가는 행정 — 그동안 케이블 그룹이 통째로 움직인다.
+  function harnessAt(t) {{
+    var h = MO.harness, u = step(t, h.from, h.to);
+    return {{ u: u, gone: t >= h.to,
+             x: lerp(rowX(), h.x, u), y: lerp(M.boxY, h.y, u), z: lerp(rowZ(), h.z, u),
+             spin: u * Math.PI * h.spin }};
+  }}
+  // 화면에 뜨는 가닥들 — 3분할형은 좌·우 한 가닥씩, 1개형은 같은 쪽으로 두 가닥.
+  function cableLanes(t) {{
+    var a = harnessAt(t), CB = M.cable, out = [];
+    function lane(pts, conn, key) {{
+      var all = [[a.x, a.y, a.z]];
+      pts.concat([conn]).forEach(function (q) {{
+        all.push([a.x + q[0], a.y + q[1], a.z + q[2]]);
+      }});
+      return {{ key: key, pts: all }};
+    }}
+    if (scen.topology === 'single-lead') {{
+      CB.single.lanes.forEach(function (i, n) {{
+        out.push(lane(CB.single.points.map(function (q) {{ return [i * q[0], q[1], q[2]]; }}),
+                      [i * CB.single.connector[0], CB.single.connector[1],
+                       CB.single.connector[2]], n === 0 ? 'L' : 'R'));
+      }});
+    }} else {{
+      out.push(lane(CB.split.left.points, CB.split.left.connector, 'L'));
+      out.push(lane(CB.split.right.points, CB.split.right.connector, 'R'));
+    }}
+    return out;
+  }}
+  // 한 가닥이 어떤 z 평면을 지나는 자리. 지나지 않으면 null — 그 평면에는 자를 것이 없다.
+  function laneAt(lane, z) {{
+    var q = lane.pts;
+    for (var i = 0; i < q.length - 1; i += 1) {{
+      var z0 = q[i][2], z1 = q[i + 1][2];
+      if (z0 !== z1 && (z - z0) * (z - z1) <= 0) {{
+        var u = (z - z0) / (z1 - z0);
+        return {{ x: lerp(q[i][0], q[i + 1][0], u), y: lerp(q[i][1], q[i + 1][1], u) }};
+      }}
+    }}
+    return null;
+  }}
+  // 가위 i 가 그 z 평면에서 만나는 케이블. 브리지 중심에 가까운 가닥을 고른다.
+  function cutTarget(t, i) {{
+    var z = unitZ(i), bx = bridgeX(t), best = null;
+    cableLanes(t).forEach(function (L) {{
+      var h = laneAt(L, z);
+      if (!h) return;
+      if (!best || Math.abs(h.x - bx) < Math.abs(best.x - bx)) {{
+        best = {{ x: h.x, y: h.y, key: L.key }};
+      }}
+    }});
+    return best;
+  }}
+  // 닫힌 두 날의 x 중첩 (mm). 부품표 JB-CB-003 이 0.3±0.1 mm 로 정한 값이다.
+  function jawOverlap(u) {{
+    var S = MO.scissor, w = P.jaw.size[0] / 2;
+    var x = lerp(S.shift[0], S.shift[1], u), a = lerp(S.rot[0], S.rot[1], u);
+    return (w * Math.cos(a) - Math.abs(x)) * 2000;
+  }}
+  // 배출 자세 — 인양 · 브리지 반출 · 낙하 · 착지.
+  function boxPose(t, i) {{
+    var D = MO.discharge, b = scen.boxes[i];
+    if (t < MO.boxLift[0]) return {{ x: b.x, y: M.boxY, z: b.z, tilt: 0, fan: 0 }};
+    if (t < MO.boxLift[1]) {{
+      return {{ x: b.x, y: lerp(M.boxY, MO.boxTop, step(t, MO.boxLift[0], MO.boxLift[1])),
+               z: b.z, tilt: 0, fan: 0, held: true }};
+    }}
+    if (t < D.from) {{
+      return {{ x: bridgeX(t) + (b.x - rowX()), y: MO.boxTop, z: b.z, tilt: 0, fan: 0, held: true }};
+    }}
+    var u = step(t, D.from, D.to);
+    return {{ x: D.binX, y: lerp(D.highY, D.restY, u), z: b.z,
+             tilt: u * D.tumble, fan: u * (i - 1) * D.fan, dropped: true, u: u }};
+  }}
+
   // ── 상태 ────────────────────────────────────────────────────────────
   var t = M.start, playing = true, speed = 0.15, showDims = true;
   var scen = M.scenarios[0], yawMode = 'recipe';
   var el = function (id) {{ return document.getElementById(id); }};
   var wide = el('wide'), near = el('near');
 
-  function activeBox() {{ return scen.boxes[Math.min(1, scen.boxes.length - 1)]; }}
+  function activeIndex() {{ return Math.min(1, scen.boxes.length - 1); }}
+  function activeBox() {{ return scen.boxes[activeIndex()]; }}
   function yawRad() {{ return yawMode === 'fail' ? 5.2 * Math.PI / 180 : activeBox().angle; }}
+  // 원본 Jn(box, i) — coverage 리젝트는 0 번 헤드에만 5.2° 를 물린다.
+  function yawOf(i) {{
+    return yawMode === 'fail' && i === 0 ? 5.2 * Math.PI / 180 : scen.boxes[i].angle;
+  }}
+  // 지금 보고 있어야 할 가위 — B 가 닫히기 시작하면 B 로 넘어간다.
+  function activeUnit(t) {{ return t < MO.scissor.cutB ? 0 : 1; }}
+  function chuteLit(t, i) {{
+    var w = i === 0 ? MO.discharge.chuteLight : MO.discharge.cableLight;
+    return t >= w[0] && t < w[1];
+  }}
+  function weighLit(t, i) {{
+    return t >= (i === 0 ? MO.discharge.binWeigh : MO.discharge.cableWeigh);
+  }}
 
   // ── 제도판 ──────────────────────────────────────────────────────────
   function board(cv, halfWidth, cx, cyWorld, halfHeight) {{
@@ -722,20 +1257,456 @@ def build() -> str:
     }}
   }}
 
+  // ── ② 전선 포획·절단 · 절단 평면 평면도 (X–Z) ──────────────────────
+  // 어느 가닥이 어느 가위 앞을 지나는지는 위에서 봐야 보인다. 콤이 느슨한
+  // 케이블을 V홈으로 쓸어 넣어 **붙잡고**, A 가 자르고 완전히 후퇴한 뒤에야
+  // B 가 닫힌다 — 두 도체가 동시에 열리지 않게 하는 것이 인터록의 일이다.
+  function drawPlan(bd, t) {{
+    var g = bd.g, ink = C('ink'), ink2 = C('ink2'), ink3 = C('ink3'), line = C('line2');
+    var B = M.bin, S = MO.scissor, bx = bridgeX(t), a = harnessAt(t);
+    var pw = P.panel.size[0] / 2, pz = P.panel.size[2] / 2;
+    function R(x0, z0, x1, z1, f, st) {{ bd.rect(x0, -z0, x1, -z1, f, st); }}
+    function T(x, z, s2, c, al, sz, dx, dy) {{ bd.text(x, -z, s2, c, al, sz, dx, dy); }}
+
+    R(-pw, -pz, pw, pz, C('glass'), line);
+    [-0.6725, 0.6725].forEach(function (z) {{ R(-pw, z - 0.0275, pw, z + 0.0275, C('steel'), line); }});
+
+
+    // 아직 패널 위에 있는 정션박스 — 인양된 뒤에는 이 평면에 없다.
+    scen.boxes.forEach(function (b, i) {{
+      var q = boxPose(t, i);
+      if (q.y > M.boxY + 0.005) return;
+      g.save();
+      g.translate(bd.X(q.x), bd.Y(-q.z)); g.rotate(-yawOf(i));
+      g.fillStyle = C('jbox'); g.strokeStyle = C('ink'); g.lineWidth = 0.9;
+      var w = b.sx * bd.s, h = b.sz * bd.s;
+      g.fillRect(-w / 2, -h / 2, w, h); g.strokeRect(-w / 2, -h / 2, w, h);
+      g.restore();
+      if (showDims) T(q.x, q.z, 'JB' + (i + 1), '#fff', 'center', 10.5, 0, 4);
+    }});
+
+    // PV 케이블 — 절단 뒤에는 그룹째 케이블 수거함으로 끌려 나간다.
+    var owner = {{}};
+    [0, 1].forEach(function (i) {{ var c = cutTarget(t, i); if (c) owner[c.key] = i; }});
+    cableLanes(t).forEach(function (L) {{
+      var who = owner[L.key], done = who !== undefined && cutDone(t, who);
+      g.save();
+      g.strokeStyle = done ? C('ink3') : C('rubber');
+      g.lineWidth = Math.max(1.6, M.cable.radius * 2 * bd.s);
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      g.globalAlpha = a.gone ? 0.5 : 1;
+      g.beginPath();
+      L.pts.forEach(function (q, n) {{
+        if (n === 0) g.moveTo(bd.X(q[0]), bd.Y(-q[2])); else g.lineTo(bd.X(q[0]), bd.Y(-q[2]));
+      }});
+      g.stroke(); g.restore();
+    }});
+    if (showDims) {{
+      var arrow = a.u > 0 && a.u < 1;
+      T(MO.harness.x, 0.74, (arrow ? '하네스 회수 ' + (a.u * 100).toFixed(0) + ' % → ' : '→ ')
+        + '케이블 배출슈트·80 L 수거함 (z ' + (M.bin.cableAt[2] * 1000).toFixed(0) + ', 프레임 밖)',
+        arrow ? C('brand') : ink3, 'center', 11);
+    }}
+
+    // 가위 유닛 두 대 — 콤(포획)·가위 몸체·인터록·두 날.
+    [0, 1].forEach(function (i) {{
+      var z = unitZ(i), u = jawClose(t, i), tgt = cutTarget(t, i);
+      // 절연 분리벽은 박스보다 위에 있다 — 평면에서 가리므로 비쳐 보이게 그린다.
+      g.save(); g.globalAlpha = 0.62;
+      R(bx - P.interlock.size[0] / 2, z + P.interlock.at[2] - P.interlock.size[2] / 2,
+        bx + P.interlock.size[0] / 2, z + P.interlock.at[2] + P.interlock.size[2] / 2,
+        C('warn-bg'), line);
+      g.restore();
+      R(bx - P.comb.size[0] / 2, z - P.comb.size[2] / 2,
+        bx + P.comb.size[0] / 2, z + P.comb.size[2] / 2, C('alu'), C('ink'));
+      R(bx - P.scissor.size[0] / 2, z - P.scissor.size[2] / 2,
+        bx + P.scissor.size[0] / 2, z + P.scissor.size[2] / 2, C('accent'), line);
+      [-1, 1].forEach(function (sgn) {{
+        var jx = bx + sgn * Math.abs(lerp(S.shift[0], S.shift[1], u));
+        R(jx - P.jaw.size[0] / 2, z - P.jaw.size[2] / 2,
+          jx + P.jaw.size[0] / 2, z + P.jaw.size[2] / 2, C('steel'), C('ink'));
+      }});
+      if (tgt) {{
+        g.save();
+        g.fillStyle = cutDone(t, i) ? C('red') : C('rubber');
+        g.strokeStyle = C('ink'); g.lineWidth = 0.9;
+        g.beginPath();
+        g.arc(bd.X(tgt.x), bd.Y(-z), Math.max(2.4, M.cable.radius * bd.s), 0, 6.2832);
+        g.fill(); g.stroke(); g.restore();
+      }}
+      if (!showDims) return;
+      T(bx - P.comb.size[0] / 2 - 0.03, z,
+        '가위 ' + (i === 0 ? 'A' : 'B') + ' · ' + (i === 0 ? S.cutA : S.cutB).toFixed(2) + ' s'
+        + (cutDone(t, i) ? ' · 절단완료' : u > 0.02 ? ' · 닫히는 중' : ' · 대기'),
+        u > 0.02 ? C('red') : cutDone(t, i) ? C('ok') : ink2, 'right', 11.5, 0, 4);
+      if (tgt) {{
+        var reach = Math.abs(tgt.x - bx) * 1000, comb = P.comb.size[0] / 2 * 1000;
+        var engaged = u > 0.02 || cutDone(t, i);
+        bd.dimX(Math.min(bx, tgt.x), Math.max(bx, tgt.x),
+                -(z + P.comb.size[2] / 2 + 0.055),
+                '콤 → 케이블 ' + reach.toFixed(0) + ' / 반폭 ' + comb.toFixed(0),
+                !engaged ? ink3 : reach <= comb ? C('ok') : C('red'));
+      }} else {{
+        T(bx, z - 0.10, '이 z 평면에 케이블 없음', C('red'), 'center', 11);
+      }}
+    }});
+    if (showDims) {{
+      T(-pw + 0.04, pz - 0.06, '태양광 패널 (평면 · 위에서 본다)', ink2, 'left', 11);
+      bd.dimX(bx - P.comb.size[0] / 2, bx + P.comb.size[0] / 2,
+              -(unitZ(0) - P.comb.size[2] / 2 - 0.055),
+              (P.comb.size[0] * 1000).toFixed(0) + ' 포획 콤 (V 가이드 폭)', ink3);
+    }}
+  }}
+
+  // ── ② 전선 포획·절단 · 활성 가위의 X–Y 단면 ────────────────────────
+  function drawCut(bd, t, frameTop) {{
+    var g = bd.g, ink = C('ink'), ink2 = C('ink2'), ink3 = C('ink3'), line = C('line2');
+    var S = MO.scissor, i = activeUnit(t), u = jawClose(t, i), tgt = cutTarget(t, i);
+    var bx = bridgeX(t), base = M.cellY + plateY(t);
+    var panelTop = M.cellY + P.panel.at[1] + P.panel.size[1] / 2;
+    var panelBot = M.cellY + P.panel.at[1] - P.panel.size[1] / 2;
+    bd.rect(bx - 1.4, panelBot - 0.05, bx + 1.4, panelBot, C('steel'), line);
+    bd.rect(bx - 1.4, panelBot, bx + 1.4, panelTop, C('glass'), line);
+    bd.line(bx - 1.4, panelTop - 0.004, bx + 1.4, panelTop - 0.004, C('lam'), [], 1.6);
+
+    // 이 z 평면에서 잘리지 않는 것 — 뒤(인터록)와 앞(슈라우드·V홈)은 윤곽만.
+    function ghost(part, sgn) {{
+      var x = bx + (sgn ? sgn * Math.abs(part.at[0]) : 0);
+      g.save(); g.globalAlpha = 0.42; g.setLineDash([4, 3]);
+      bd.rect(x - part.size[0] / 2, base + part.at[1] - part.size[1] / 2,
+              x + part.size[0] / 2, base + part.at[1] + part.size[1] / 2, null, ink3);
+      g.restore();
+    }}
+    ghost(P.interlock, 0); ghost(P.shroud, 0); ghost(P.vgroove, -1); ghost(P.vgroove, 1);
+
+    // 이 평면에 있는 것 — 포획 콤 · 가위 몸체 · 두 날.
+    bd.rect(bx - P.comb.size[0] / 2, base + P.comb.at[1] - P.comb.size[1] / 2,
+            bx + P.comb.size[0] / 2, base + P.comb.at[1] + P.comb.size[1] / 2, C('alu'), C('ink'));
+    bd.rect(bx - P.scissor.size[0] / 2, base + P.scissor.at[1] - P.scissor.size[1] / 2,
+            bx + P.scissor.size[0] / 2, base + P.scissor.at[1] + P.scissor.size[1] / 2,
+            C('accent'), line);
+    [-1, 1].forEach(function (sgn) {{
+      var jx = bx + sgn * Math.abs(lerp(S.shift[0], S.shift[1], u));
+      var ang = sgn * Math.abs(lerp(S.rot[0], S.rot[1], u));
+      g.save();
+      g.translate(bd.X(jx), bd.Y(base + P.jaw.at[1])); g.rotate(-ang);
+      g.fillStyle = C('steel'); g.strokeStyle = C('ink'); g.lineWidth = 0.9;
+      var w = P.jaw.size[0] * bd.s, h = P.jaw.size[1] * bd.s;
+      g.fillRect(-w / 2, -h / 2, w, h); g.strokeRect(-w / 2, -h / 2, w, h);
+      g.restore();
+    }});
+
+    // 케이블 — 이 평면을 지나는 자리에 실척 단면으로 찍는다. 3D 원본은 콤이
+    // 케이블을 쓸어 오는 **변형**까지는 그리지 않는다. 그래서 여기서는 그 두 자리를
+    // 다 보여 준다: 절단 전 포설 자리(실선)와 V홈에 들어온 자리(점선), 그 사이가 콤이
+    // 해야 하는 일이다.
+    if (tgt) {{
+      var cy = M.cellY + tgt.y, rr = M.cable.radius * bd.s;
+      g.save(); g.globalAlpha = 0.45; g.setLineDash([3, 3]);
+      g.strokeStyle = C('ink'); g.lineWidth = 1;
+      g.beginPath(); g.arc(bd.X(bx), bd.Y(cy), rr, 0, 6.2832); g.stroke();
+      g.restore();
+      // 포획 스윕 — 포설 자리에서 홈까지
+      if (Math.abs(tgt.x - bx) > 0.004) {{
+        var dir = tgt.x > bx ? -1 : 1, y2 = bd.Y(cy + M.cable.radius + 0.012);
+        g.save(); g.strokeStyle = C('brand'); g.fillStyle = C('brand'); g.lineWidth = 1.4;
+        g.setLineDash([5, 3]);
+        g.beginPath(); g.moveTo(bd.X(tgt.x), y2); g.lineTo(bd.X(bx), y2); g.stroke();
+        g.setLineDash([]);
+        g.beginPath();
+        g.moveTo(bd.X(bx), y2);
+        g.lineTo(bd.X(bx) - dir * 8, y2 - 4);
+        g.lineTo(bd.X(bx) - dir * 8, y2 + 4);
+        g.closePath(); g.fill(); g.restore();
+      }}
+      g.save();
+      g.fillStyle = cutDone(t, i) ? C('red') : C('rubber');
+      g.strokeStyle = C('ink'); g.lineWidth = 0.9;
+      g.beginPath(); g.arc(bd.X(tgt.x), bd.Y(cy), rr, 0, 6.2832);
+      g.fill(); g.stroke(); g.restore();
+    }}
+
+    if (!showDims) return;
+    // 콤·가위가 프레임 위로 올라가 있으면 그 사실을 적는다 — 잘려 나간 것이 아니다.
+    var combTop = base + P.comb.at[1] + P.comb.size[1] / 2;
+    if (combTop > frameTop) {{
+      bd.text(bx, frameTop - 0.012, '▲ 포획 콤은 이 프레임 위 '
+              + ((combTop - frameTop) * 1000).toFixed(0) + ' mm — 아직 내려오지 않았다',
+              C('warn'), 'center', 11);
+    }}
+    // 날 하단이 케이블 높이에 닿았는가. 이것이 안 맞으면 절단은 허공에서 일어난다.
+    var jawBot = base + P.jaw.at[1] - P.jaw.size[1] / 2;
+    if (tgt) {{
+      var gap = (jawBot - (M.cellY + tgt.y)) * 1000;
+      bd.dimY(M.cellY + tgt.y, jawBot, bx - P.comb.size[0] / 2 - 0.055,
+              (gap > 0 ? '+' : '') + gap.toFixed(0) + ' 날 하단 → 케이블',
+              gap <= 0 ? C('ok') : C('red'));
+      if (gap > 0 && u > 0.02) {{
+        bd.text(bx - P.comb.size[0] / 2 - 0.05, jawBot + 0.012,
+                '가위가 케이블에 닿기 전에 닫힌다', C('red'), 'left', 11);
+      }}
+    }}
+    var over = jawOverlap(u), okOver = Math.abs(over - M.jawMm) <= M.jawTolMm + 1e-6;
+    var ang = Math.abs(lerp(S.rot[0], S.rot[1], u)) * 180 / Math.PI;
+    bd.dimY(base + P.jaw.at[1] - P.jaw.size[1] / 2, base + P.jaw.at[1] + P.jaw.size[1] / 2,
+            bx + P.scissor.size[0] / 2 + 0.012,
+            '가위날 ' + (P.jaw.size[1] * 1000).toFixed(0), ink3);
+    // 콤이 닿는 범위 — 이 밖에 놓인 케이블은 홈으로 들어오지 못한다.
+    var reachY = M.cellY + P.panel.at[1] + P.panel.size[1] / 2 + 0.010;
+    bd.dimX(bx - P.comb.size[0] / 2, bx + P.comb.size[0] / 2, reachY,
+            '콤 포획 반폭 ±' + (P.comb.size[0] / 2 * 1000).toFixed(0), C('brand'));
+    bd.text(bx, base + P.comb.at[1], '비전 연동 케이블 포획 콤 ' + (P.comb.size[0] * 1000).toFixed(0),
+            ink, 'center', 11, 0, 4);
+    bd.text(bx, base + P.scissor.at[1], 'Ø63 공압 가위 ' + (i === 0 ? 'A' : 'B'), ink, 'center', 11, 0, 4);
+    bd.text(bx - P.comb.size[0] / 2 - 0.03, base + P.interlock.at[1],
+            '절연 인터록 (z +' + (P.interlock.at[2] * 1000).toFixed(0) + ')', ink3, 'right', 10.5);
+    bd.text(bx - P.comb.size[0] / 2 - 0.03, base + P.shroud.at[1],
+            '아크 차폐 슈라우드 (z ' + (P.shroud.at[2] * 1000).toFixed(0) + ')', ink3, 'right', 10.5);
+    bd.text(bx, base + P.jaw.at[1] + P.jaw.size[1] / 2 + 0.016,
+            u >= SHUT ? '날 겹침 ' + over.toFixed(2) + ' mm · 사양 ' + M.jawMm + '±'
+                      + M.jawTolMm + ' mm'
+                    : '날 개도 ' + ang.toFixed(1) + '° · ' + (u > 0.02 ? '닫히는 중' : '대기'),
+            u >= SHUT ? (okOver ? C('ok') : C('red')) : ink2, 'center', 11);
+    if (tgt) {{
+      var engaged = u > 0.02 || cutDone(t, i);
+      bd.dimX(Math.min(bx, tgt.x), Math.max(bx, tgt.x), M.cellY + tgt.y - 0.055,
+              (Math.abs(tgt.x - bx) * 1000).toFixed(0) + ' 콤 → 케이블',
+              !engaged ? ink3
+                : Math.abs(tgt.x - bx) <= P.comb.size[0] / 2 ? C('ok') : C('red'));
+      bd.text(tgt.x + 0.020, M.cellY + tgt.y - 0.020,
+              'PV 케이블 Ø' + (M.cable.radius * 2000).toFixed(0) + ' · 절단 전 포설 자리'
+              + (cutDone(t, i) ? ' (절단됨)' : ''),
+              cutDone(t, i) ? C('red') : ink, 'left', 10.5);
+      if (Math.abs(tgt.x - bx) > 0.004) {{
+        bd.text(bx + 0.020, M.cellY + tgt.y + 0.046,
+                '콤이 쓸어 넣어야 하는 거리 ' + (Math.abs(tgt.x - bx) * 1000).toFixed(0)
+                + ' mm · 점선이 V홈 안 자리', C('brand'), 'left', 10.5);
+      }}
+    }} else {{
+      bd.text(bx, base + P.comb.at[1] + 0.06, '이 z 평면에 케이블이 없다', C('red'), 'center', 11);
+    }}
+    bd.text(bx - 1.38, panelTop - 0.03, '패널 상면 (백시트)', ink2, 'left', 11);
+  }}
+
+  // ── ③ 수거함 배출 · 전경 (X–Y) ─────────────────────────────────────
+  function drawBinBodyXY(bd, t) {{
+    var B = M.bin, y0 = M.cellY, line = C('line2'), bx = B.at[0];
+    bd.rect(bx - B.base.size[0] / 2, y0 + B.base.at[1] - B.base.size[1] / 2,
+            bx + B.base.size[0] / 2, y0 + B.base.at[1] + B.base.size[1] / 2, C('steel'), line);
+    [-1, 1].forEach(function (s) {{
+      var wx = bx + s * Math.abs(B.wall.at[0]);
+      bd.rect(wx - B.wall.size[0] / 2, y0 + B.wall.at[1] - B.wall.size[1] / 2,
+              wx + B.wall.size[0] / 2, y0 + B.wall.at[1] + B.wall.size[1] / 2, C('steel'), line);
+      var hx = bx + s * Math.abs(P.handle.at[0]);
+      bd.rect(hx - P.handle.size[0] / 2, y0 + P.handle.at[1] - P.handle.size[1] / 2,
+              hx + P.handle.size[0] / 2, y0 + P.handle.at[1] + P.handle.size[1] / 2, C('jbox'), line);
+    }});
+    var w = B.weigh[0];
+    bd.rect(w.at[0] - w.size[0] / 2, y0 + w.at[1] - w.size[1] / 2,
+            w.at[0] + w.size[0] / 2, y0 + w.at[1] + w.size[1] / 2,
+            weighLit(t, 0) ? C('ok') : C('pom'), line);
+  }}
+
+  function drawBinWide(bd, t) {{
+    var g = bd.g, ink = C('ink'), ink2 = C('ink2'), ink3 = C('ink3'), line = C('line2');
+    var B = M.bin, D = MO.discharge, y0 = M.cellY;
+    var bx = bridgeX(t), ae = plateY(t), base = y0 + ae;
+    var panelTop = y0 + P.panel.at[1] + P.panel.size[1] / 2;
+    bd.line(-2.75, 0, 1.05, 0, line, [], 1.4);
+    bd.rect(-P.panel.size[0] / 2, y0 + P.panel.at[1] - P.panel.size[1] / 2,
+            P.panel.size[0] / 2, panelTop, C('glass'), line);
+
+    // 낙하 슈트 · 통과 확인센서
+    var ch = B.chute, pa = B.passer.at[0];
+    g.save();
+    g.translate(bd.X(ch.at[0]), bd.Y(y0 + ch.at[1])); g.rotate(-ch.tilt);
+    g.fillStyle = C('steel'); g.strokeStyle = line; g.lineWidth = 0.9;
+    g.fillRect(-ch.size[0] / 2 * bd.s, -ch.size[1] / 2 * bd.s, ch.size[0] * bd.s, ch.size[1] * bd.s);
+    g.strokeRect(-ch.size[0] / 2 * bd.s, -ch.size[1] / 2 * bd.s, ch.size[0] * bd.s, ch.size[1] * bd.s);
+    g.restore();
+    bd.rect(pa[0] - B.passer.size[0] / 2, y0 + pa[1] - B.passer.size[1] / 2,
+            pa[0] + B.passer.size[0] / 2, y0 + pa[1] + B.passer.size[1] / 2,
+            chuteLit(t, 0) ? C('ok') : C('pom'), line);
+    drawBinBodyXY(bd, t);
+    // 낙하 궤적 — 잡고 있던 높이에서 수거함 바닥까지. 이 길이가 배출 낙하고다.
+    var floorTop = y0 + B.base.at[1] + B.base.size[1] / 2;
+    g.save(); g.strokeStyle = C('brand'); g.setLineDash([5, 4]); g.lineWidth = 1.1;
+    g.beginPath();
+    g.moveTo(bd.X(D.binX), bd.Y(y0 + MO.boxTop - P.box.size[1] / 2));
+    g.lineTo(bd.X(D.binX), bd.Y(floorTop));
+    g.stroke(); g.restore();
+
+    // X 브리지 — 승강 플레이트와 활성 헤드의 L 칼날 캐리어.
+    var H = bladeOpen(t), plateBot = base + P.plate.at[1] - P.plate.size[1] / 2;
+    bd.rect(bx - P.plate.size[0] / 2, plateBot,
+            bx + P.plate.size[0] / 2, plateBot + P.plate.size[1], C('alu'), line);
+    scen.boxes.forEach(function (b, i) {{
+      var q = boxPose(t, i), hx = bridgeX(t) + (b.x - rowX());
+      [-1, 1].forEach(function (s) {{
+        var cx2 = hx + s * H;
+        bd.rect(cx2 - P.carrier.size[0] / 2, base + P.carrier.at[1] - P.carrier.size[1] / 2,
+                cx2 + P.carrier.size[0] / 2, base + P.carrier.at[1] + P.carrier.size[1] / 2,
+                C('steel'), line);
+      }});
+      g.save();
+      g.globalAlpha = scen.boxes.length > 1 ? 0.72 : 1;
+      g.translate(bd.X(q.x), bd.Y(y0 + q.y)); g.rotate(-q.fan);
+      g.fillStyle = C('jbox'); g.strokeStyle = C('ink'); g.lineWidth = 0.9;
+      var w = b.sx * bd.s, h = P.box.size[1] * bd.s;
+      g.fillRect(-w / 2, -h / 2, w, h); g.strokeRect(-w / 2, -h / 2, w, h);
+      g.restore();
+    }});
+
+    if (!showDims) return;
+    bd.text(0, panelTop + 0.10, '태양광 패널 (정면 X–Y)', ink2, 'center', 11);
+    bd.text(B.at[0], y0 + B.wall.at[1] + B.wall.size[1] / 2 + 0.04,
+            '광폭 정션박스 수거함 180 L', ink2, 'center', 11);
+    bd.text(ch.at[0] + 0.34, y0 + ch.at[1] + 0.12,
+            '일괄 낙하 슈트 ' + (Math.abs(ch.tilt) * 180 / Math.PI).toFixed(1) + '° · 사양 '
+            + M.chuteDeg + '±' + M.chuteTolDeg + '°',
+            Math.abs(Math.abs(ch.tilt) * 180 / Math.PI - M.chuteDeg) <= M.chuteTolDeg
+              ? C('ok') : C('red'), 'left', 11);
+    bd.text(pa[0] - 0.08, y0 + pa[1], '슈트 통과 확인',
+            chuteLit(t, 0) ? C('ok') : ink3, 'right', 10.5, 0, 4);
+    bd.dimY(floorTop, y0 + MO.boxTop - P.box.size[1] / 2, D.binX + 0.02,
+            ((MO.boxTop - P.box.size[1] / 2 - B.base.at[1] - B.base.size[1] / 2) * 1000)
+              .toFixed(0) + ' 낙하고', C('brand'));
+    bd.text(B.at[0] - B.base.size[0] / 2 - 0.05, y0 + B.weigh[0].at[1], '수거함 존재·중량',
+            weighLit(t, 0) ? C('ok') : ink3, 'right', 10.5, 0, 4);
+    bd.text(bx, plateBot + P.plate.size[1] + 0.05, 'X 브리지 x = '
+            + (bx * 1000).toFixed(0) + ' mm', C('brand'), 'center', 11);
+  }}
+
+  // ── ③ 수거함 배출 · 착지 근접 (Z–Y) ────────────────────────────────
+  // 1–3 개가 나란히 떨어지므로 폭 방향(z)으로 갈라야 서로 겹치지 않는다.
+  function drawBinNear(bd, t) {{
+    var g = bd.g, ink = C('ink'), ink2 = C('ink2'), ink3 = C('ink3'), line = C('line2');
+    var B = M.bin, y0 = M.cellY, sc = B.widthScale, D = MO.discharge;
+    var halfZ = B.base.size[2] / 2 * sc;
+    var floorTop = y0 + B.base.at[1] + B.base.size[1] / 2;
+    bd.rect(-halfZ, y0 + B.base.at[1] - B.base.size[1] / 2, halfZ, floorTop, C('steel'), line);
+    var backZ = B.back.at[2] * sc, backT = B.back.size[2] * sc;
+    bd.rect(backZ - backT / 2, y0 + B.back.at[1] - B.back.size[1] / 2,
+            backZ + backT / 2, y0 + B.back.at[1] + B.back.size[1] / 2, C('steel'), line);
+    var w = B.weigh[0];
+    bd.rect(-w.size[2] / 2, y0 + w.at[1] - w.size[1] / 2,
+            w.size[2] / 2, y0 + w.at[1] + w.size[1] / 2,
+            weighLit(t, 0) ? C('ok') : C('pom'), line);
+    // 슈트와 그 측판 — 이 단면에서는 폭 1,320 이 보인다.
+    var ch = B.chute, cs = B.chuteSide;
+    bd.rect(-ch.size[2] / 2, y0 + ch.at[1] - ch.size[1] / 2,
+            ch.size[2] / 2, y0 + ch.at[1] + ch.size[1] / 2, C('steel'), line);
+    cs.z.forEach(function (z) {{
+      bd.rect(z - cs.size[2] / 2, y0 + cs.at[1] - cs.size[1] / 2,
+              z + cs.size[2] / 2, y0 + cs.at[1] + cs.size[1] / 2, C('steel'), line);
+    }});
+    var pa = B.passer.at[0];
+    bd.rect(pa[2] - B.passer.size[2] / 2, y0 + pa[1] - B.passer.size[1] / 2,
+            pa[2] + B.passer.size[2] / 2, y0 + pa[1] + B.passer.size[1] / 2,
+            chuteLit(t, 0) ? C('ok') : C('pom'), line);
+
+    var lowest = null;
+    scen.boxes.forEach(function (b, i) {{
+      var q = boxPose(t, i);
+      g.save();
+      g.translate(bd.X(q.z), bd.Y(y0 + q.y)); g.rotate(q.tilt);
+      g.fillStyle = C('jbox'); g.strokeStyle = C('ink'); g.lineWidth = 0.9;
+      var ww = b.sz * bd.s, hh = P.box.size[1] * bd.s;
+      g.fillRect(-ww / 2, -hh / 2, ww, hh); g.strokeRect(-ww / 2, -hh / 2, ww, hh);
+      g.restore();
+      if (showDims) bd.text(q.z, y0 + q.y, 'JB' + (i + 1), '#fff', 'center', 10.5, 0, 4);
+      if (q.dropped && (lowest === null || q.y < lowest.y)) lowest = q;
+    }});
+
+    if (!showDims) return;
+    bd.text(0, y0 + B.base.at[1] - 0.055,
+            '광폭 정션박스 수거함 — 폭 ' + (B.base.size[2] * sc * 1000).toFixed(0) + ' (Z–Y 단면)',
+            ink2, 'center', 11);
+    bd.text(0, y0 + ch.at[1] + 0.075, '일괄 낙하 슈트 폭 ' + (ch.size[2] * 1000).toFixed(0),
+            ink3, 'center', 10.5);
+    bd.text(pa[2] - 0.06, y0 + pa[1], '슈트 통과 확인',
+            chuteLit(t, 0) ? C('ok') : ink3, 'right', 10.5, 0, 4);
+    bd.text(backZ + 0.05, y0 + B.back.at[1] + B.back.size[1] / 2 + 0.03,
+            '뒷벽 (앞은 열려 있다 · 포크 인출)', ink3, 'left', 10.5);
+    if (lowest) {{
+      var clear = (y0 + lowest.y - P.box.size[1] / 2 - floorTop) * 1000;
+      bd.dimY(floorTop, y0 + lowest.y - P.box.size[1] / 2, halfZ - 0.10,
+              clear.toFixed(0) + ' 바닥 이격', Math.abs(clear) <= 1 ? C('ok') : C('red'));
+      if (Math.abs(clear) > 1) {{
+        bd.text(halfZ - 0.02, floorTop + 0.05,
+                '착지 자세가 바닥에서 떠 있다 — 원본 wt() 의 정지 y = '
+                + (D.restY * 1000).toFixed(0), C('red'), 'right', 10.5);
+      }}
+    }}
+  }}
+
+  // ── 장면 전환 ───────────────────────────────────────────────────────
+  var TABS = {{
+    near: {{
+      wide: '헤드 전폭 — 칼날 진입과 진공 그리퍼 포획',
+      near: '계면 확대 — 칼날 팁·POM 기준 슈·접착 계면',
+      jump: M.start, span: [MO.grip[0], MO.raise[1]],
+      note: '아래 그림은 좌측 칼날 팁을 따라간다. 진공컵이 박스 상면을 물고(진공 포획) '
+        + '스프링 손가락이 옆면을 잡은 뒤에야 좌·우 L 칼날이 계면을 전단한다 — '
+        + '잡기 전에 끊으면 떨어져 나온 박스가 어디로 갈지 정해지지 않는다.'
+    }},
+    cable: {{
+      wide: '절단 평면 평면도 — 어느 가닥이 어느 가위 앞을 지나는가',
+      near: '활성 가위의 X–Y 단면 — 포획 콤·두 날·케이블',
+      jump: MO.scissor.cutB, span: [M.from, MO.harness.to],
+      note: '포획 콤이 느슨한 PV 케이블을 V홈으로 쓸어 넣어 붙잡고, 절연 인터록이 두 도체를 '
+        + '갈라 구속한 다음, 가위 A 가 닫혀 자르고 완전히 후퇴한 뒤에야 B 가 닫힌다. '
+        + '두 도체가 동시에 열리지 않게 하는 것이 이 순서의 목적이다. '
+        + '자른 하네스는 권취하지 않는다 — 이 셀에는 권취 드럼이 없고, 잘린 하네스를 그대로 '
+        + '케이블 배출슈트로 흘려 80 L 수거함에 떨군다 (권취롤러 WR-101 은 상류 GRM-401 이다).'
+    }},
+    bin: {{
+      wide: '수거함 배출 전경 — 브리지 반출·칼날 개방·낙하',
+      near: '착지 근접 (Z–Y) — 1–3 개가 폭 방향으로 나란히 떨어진다',
+      jump: MO.discharge.from - 0.5, span: [MO.bridge.outFrom, M.to],
+      note: '브리지가 패널 왼쪽 밖으로 나가 광폭 수거함 위에 서고, 칼날이 다시 열리면 '
+        + '잡고 있던 박스가 같은 자리에서 일괄 낙하한다. 슈트 통과 확인센서가 실제 통과를, '
+        + '수거함 존재·중량 센서가 투입량을 각각 확인한다.'
+    }}
+  }};
+  var tab = 'near';
+
   function draw() {{
-    var p = pose(t);
-    // 위 그림 — 승강 플레이트 밑면부터 지지정반까지가 프레임을 채우게 잡는다.
-    var hi = p.plateBot + 0.035, lo = p.panelBot - 0.085;
-    var b1 = board(wide, 0.74, 0, (hi + lo) / 2, Math.max(0.165, (hi - lo) / 2));
-    drawScene(b1, p, true);
-    el('scale1').textContent = '가로 ±740 mm · 1 px ≈ ' + (1000 / b1.s).toFixed(2) + ' mm';
-    // 아래 그림 — 좌측 칼날의 팁을 따라간다. 팁이 박스 밑으로 들어가면 계면에 머문다.
-    var cs = cassetteSpan(p, -1);
-    var tipX = cs[1];                       // 좌측 카세트의 안쪽 끝 = 팁
-    var b2 = board(near, 0.054, tipX, p.panelTop - 0.0155, 0.036);
-    drawScene(b2, p, false, tipX);
-    el('scale2').textContent = '가로 ±54 mm · 1 px ≈ ' + (1000 / b2.s).toFixed(3)
-      + ' mm · 좌측 칼날 팁 추종 (x = ' + (tipX * 1000).toFixed(0) + ' mm)';
+    var p = pose(t), T2 = TABS[tab];
+    var b1, b2;
+    if (tab === 'cable') {{
+      b1 = board(wide, 1.30, 0, 0, 0.92);                  // 평면도 — 두 번째 축은 −z
+      drawPlan(b1, t);
+      var i = activeUnit(t), bx = bridgeX(t);
+      // 세로 프레임은 **고정**한다. 자세를 따라가면 재생 중에 캔버스 높이가 널뛴다.
+      var lo = M.cellY + P.panel.at[1] - P.panel.size[1] / 2 - 0.03;
+      var hi = M.cellY + P.panel.at[1] + P.panel.size[1] / 2 + 0.30;
+      b2 = board(near, 0.34, bx, (hi + lo) / 2, (hi - lo) / 2);
+      drawCut(b2, t, hi);
+      el('scale1').textContent = '평면 ±1,300 mm · 1 px ≈ ' + (1000 / b1.s).toFixed(2) + ' mm';
+      el('scale2').textContent = '가로 ±340 mm · 가위 ' + (i === 0 ? 'A' : 'B')
+        + ' · z = ' + (unitZ(i) * 1000).toFixed(0) + ' mm';
+    }} else if (tab === 'bin') {{
+      b1 = board(wide, 1.56, -0.94, 0.80, 0.86);
+      drawBinWide(b1, t);
+      b2 = board(near, 0.80, 0, 0.42, 0.46);
+      drawBinNear(b2, t);
+      el('scale1').textContent = '가로 ±1,560 mm · 1 px ≈ ' + (1000 / b1.s).toFixed(2) + ' mm';
+      el('scale2').textContent = '폭 ±800 mm · 1 px ≈ ' + (1000 / b2.s).toFixed(2) + ' mm';
+    }} else {{
+      var hiN = p.plateBot + 0.035, loN = p.panelBot - 0.085;
+      b1 = board(wide, 0.74, 0, (hiN + loN) / 2, Math.max(0.165, (hiN - loN) / 2));
+      drawScene(b1, p, true);
+      var cs = cassetteSpan(p, -1), tipX = cs[1];
+      b2 = board(near, 0.054, tipX, p.panelTop - 0.0155, 0.036);
+      drawScene(b2, p, false, tipX);
+      el('scale1').textContent = '가로 ±740 mm · 1 px ≈ ' + (1000 / b1.s).toFixed(2) + ' mm';
+      el('scale2').textContent = '가로 ±54 mm · 1 px ≈ ' + (1000 / b2.s).toFixed(3)
+        + ' mm · 좌측 칼날 팁 추종 (x = ' + (tipX * 1000).toFixed(0) + ' mm)';
+    }}
+    el('wideName').textContent = T2.wide;
+    el('nearName').textContent = T2.near;
+    el('tabNote').textContent = T2.note;
     paint(p);
   }}
 
@@ -755,16 +1726,23 @@ def build() -> str:
   function row(label, value, cls) {{
     return '<div class="r ' + (cls || '') + '"><span>' + label + '</span><b>' + value + '</b></div>';
   }}
+  function chip(on, label) {{
+    return '<span class="chip' + (on ? ' on' : '') + '">' + label + '</span>';
+  }}
   function paint(p) {{
     el('tlocal').textContent = '로컬 ' + t.toFixed(2) + ' s';
     el('tplant').textContent = '플랜트 ' + (t + M.infeed).toFixed(2) + ' s';
     el('scrub').value = t.toFixed(2);
-    var st = stageAt(t), sh = shearing(t);
+    var st = stageAt(t), sh = shearing(t), S = MO.scissor, D = MO.discharge;
     el('chips').innerHTML =
-      '<span class="chip on">' + st.name + '</span>' +
-      '<span class="chip' + (sh ? ' on' : '') + '">전단 ' + MO.shear[0] + '–' + MO.shear[1] + ' s</span>' +
-      '<span class="chip' + (p.tt > 0.02 ? ' on' : '') + '">진공 포획</span>' +
-      '<span class="chip' + (t >= MO.boxLift[0] && t < MO.boxLift[1] ? ' on' : '') + '">인양</span>';
+      chip(true, st.name) +
+      chip(jawClose(t, 0) > 0.02 || jawClose(t, 1) > 0.02, '케이블 절단 A→B') +
+      chip(p.tt > 0.02, '진공·스프링 그리퍼 포획') +
+      chip(sh, '전단 ' + MO.shear[0] + '–' + MO.shear[1] + ' s') +
+      chip(t >= MO.boxLift[0] && t < MO.boxLift[1], '동시 인양') +
+      chip(t >= D.from, '수거함 배출');
+    if (tab === 'cable') {{ el('readout').innerHTML = readCable(); return; }}
+    if (tab === 'bin') {{ el('readout').innerHTML = readBin(); return; }}
     var l = cassetteSpan(p, -1), r = cassetteSpan(p, 1);
     var cut = (p.cassetteY - p.cassetteT / 2 - p.panelTop) * 1000;
     el('readout').innerHTML =
@@ -787,6 +1765,69 @@ def build() -> str:
           bonded(p) <= 0 ? 'alarm' : sh ? 'hot' : '') +
       row('박스 중심 (패널 상면 기준)', ((p.boxCy - p.panelTop) * 1000).toFixed(0) + ' mm',
           t >= MO.boxLift[0] ? 'hot' : '');
+  }}
+
+  function readCable() {{
+    var S = MO.scissor, i = activeUnit(t), u = jawClose(t, i), tgt = cutTarget(t, i);
+    var over = jawOverlap(u), a = harnessAt(t);
+    var reach = tgt ? Math.abs(tgt.x - bridgeX(t)) * 1000 : null;
+    var comb = P.comb.size[0] / 2 * 1000;
+    return row('활성 가위', (i === 0 ? 'A' : 'B') + ' · z = ' + (unitZ(i) * 1000).toFixed(0) + ' mm',
+               u > 0.02 ? 'hot' : '') +
+      row('가위 A · ' + S.cutA.toFixed(2) + ' s',
+          cutDone(t, 0) ? '절단 완료' : jawClose(t, 0) > 0.02
+            ? (jawClose(t, 0) * 100).toFixed(0) + ' % 닫힘' : '대기',
+          jawClose(t, 0) > 0.02 ? 'hot' : '') +
+      row('가위 B · ' + S.cutB.toFixed(2) + ' s',
+          cutDone(t, 1) ? '절단 완료' : jawClose(t, 1) > 0.02
+            ? (jawClose(t, 1) * 100).toFixed(0) + ' % 닫힘' : 'A 후퇴 대기',
+          jawClose(t, 1) > 0.02 ? 'hot' : '') +
+      row('날 개도', (Math.abs(lerp(S.rot[0], S.rot[1], u)) * 180 / Math.PI).toFixed(1) + '°') +
+      row('날 겹침 · 사양 ' + M.jawMm + '±' + M.jawTolMm + ' mm',
+          over > 0 ? over.toFixed(2) + ' mm' : (-over).toFixed(2) + ' mm 열림',
+          u < SHUT ? '' : Math.abs(over - M.jawMm) > M.jawTolMm + 1e-6 ? 'alarm' : 'hot') +
+      row('콤 중심 → 케이블 · 반폭 ' + comb.toFixed(0) + ' mm',
+          reach === null ? '이 평면에 없음' : reach.toFixed(0) + ' mm',
+          reach === null || reach > comb ? 'alarm' : '') +
+      row('브리지 x', (bridgeX(t) * 1000).toFixed(0) + ' mm') +
+      row('가위 하강 (플레이트 y)', (plateY(t) * 1000).toFixed(0) + ' mm',
+          plateY(t) < 0 ? 'hot' : '') +
+      row('하네스 회수 ' + MO.harness.from + '–' + MO.harness.to + ' s',
+          a.gone ? '수거함 투입 완료' : a.u > 0 ? (a.u * 100).toFixed(0) + ' %' : '대기',
+          a.u > 0 && !a.gone ? 'hot' : '') +
+      row('케이블 슈트 통과 확인', chuteLit(t, 1) ? '통과 검출' : '—',
+          chuteLit(t, 1) ? 'hot' : '') +
+      row('케이블 수거함 중량', weighLit(t, 1) ? '증가 확인' : '—', weighLit(t, 1) ? 'hot' : '') +
+      row('검출 토폴로지', scen.topology === 'single-lead' ? '1개형 · 2가닥' : '3분할형 · 좌우 2가닥');
+  }}
+
+  function readBin() {{
+    var B = M.bin, D = MO.discharge, y0 = M.cellY;
+    var floorTop = y0 + B.base.at[1] + B.base.size[1] / 2;
+    var q = boxPose(t, 0), low = y0 + q.y - P.box.size[1] / 2;
+    var clear = (low - floorTop) * 1000;
+    var tilt = Math.abs(B.chute.tilt) * 180 / Math.PI;
+    return row('브리지 x', (bridgeX(t) * 1000).toFixed(0) + ' mm',
+               t >= MO.bridge.outFrom ? 'hot' : '') +
+      row('반출 행정 ' + MO.bridge.outFrom + '–' + MO.bridge.outTo + ' s',
+          t < MO.bridge.outFrom ? '패널 위' : t < MO.bridge.outAt
+            ? '수거함 위 이동' : '세척대 대기') +
+      row('칼날 개도 (열리면 떨어진다)', '±' + (bladeOpen(t) * 1000).toFixed(0) + ' mm',
+          t >= MO.reopen[0] ? 'hot' : '') +
+      row('낙하 ' + D.from + '–' + D.to + ' s',
+          q.dropped ? (q.u * 100).toFixed(0) + ' %' : '대기', q.dropped ? 'hot' : '') +
+      row('박스 하면 높이', (low * 1000).toFixed(0) + ' mm') +
+      row('수거함 바닥 상면', (floorTop * 1000).toFixed(0) + ' mm') +
+      row('바닥 이격 (착지 시 0 이어야)', clear.toFixed(0) + ' mm',
+          q.dropped && q.u >= 1 && Math.abs(clear) > 1 ? 'alarm' : '') +
+      row('슈트 경사 · 사양 ' + M.chuteDeg + '±' + M.chuteTolDeg + '°', tilt.toFixed(1) + '°',
+          Math.abs(tilt - M.chuteDeg) <= M.chuteTolDeg ? '' : 'alarm') +
+      row('슈트 통과 확인 ' + D.chuteLight[0] + '–' + D.chuteLight[1] + ' s',
+          chuteLit(t, 0) ? '통과 검출' : '—', chuteLit(t, 0) ? 'hot' : '') +
+      row('수거함 존재·중량 ≥ ' + D.binWeigh + ' s', weighLit(t, 0) ? '투입 확인' : '—',
+          weighLit(t, 0) ? 'hot' : '') +
+      row('일괄 배출 개수', scen.boxes.length + ' 개 · 같은 자리') +
+      row('수거함 폭', (B.base.size[2] * B.widthScale * 1000).toFixed(0) + ' mm');
   }}
 
   // ── 표 ──────────────────────────────────────────────────────────────
@@ -861,6 +1902,24 @@ def build() -> str:
   el('dims').addEventListener('change', function () {{ showDims = this.checked; draw(); }});
   el('scen').addEventListener('change', function () {{ scen = M.scenarios[Number(this.value)]; draw(); }});
   el('yaw').addEventListener('change', function () {{ yawMode = this.value; draw(); }});
+  var tabButtons = [].slice.call(document.querySelectorAll('.tabs [data-tab]'));
+  tabButtons.forEach(function (b) {{
+    b.addEventListener('click', function () {{
+      tab = b.getAttribute('data-tab');
+      tabButtons.forEach(function (o) {{
+        var on = o === b;
+        o.classList.toggle('on', on);
+        o.setAttribute('aria-selected', on ? 'true' : 'false');
+      }});
+      // 그 장면이 벌어지는 구간 밖이면 볼 것이 없다 — 시계를 그 장면으로 옮긴다.
+      var sp = TABS[tab].span;
+      if (t < sp[0] || t > sp[1]) {{ t = TABS[tab].jump; setPlaying(false); }}
+      draw();
+    }});
+  }});
+  el('jump').addEventListener('click', function () {{
+    t = TABS[tab].jump; setPlaying(false); draw();
+  }});
   el('scrub').addEventListener('input', function () {{
     t = Number(this.value); setPlaying(false); draw();
   }});
@@ -897,10 +1956,10 @@ def build() -> str:
             "     3D 생성 호출과 wt() 에서 찍는다. 손으로 고치지 않는다. -->\n"
             '<html lang="ko">\n<head>\n<meta charset="utf-8">\n'
             '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
-            "<title>정션박스 박리 순간</title>\n"
-            '<meta name="description" content="JBR-201 이 정션박스를 떼어 내는 15 초를 헤드 전폭과 '
-            '접착 계면 두 배율로 그린 실척 단면 — 칼날 개도·절입·Z 플로팅·진공 포획·인양을 '
-            '원본 운동식 그대로 재생한다.">\n'
+            "<title>정션박스 박리·절단·배출</title>\n"
+            '<meta name="description" content="JBR-201 이 정션박스를 잡고·전선을 끊고·수거함에 '
+            '떨구는 22 초를 세 장면 여섯 배율로 그린 실척 단면 — 칼날 개도·절입·진공 포획·'
+            '포획 콤·가위 A→B·낙하 슈트를 원본 운동식 그대로 재생하고 사양과 대조한다.">\n'
             f"<style>{CSS}</style>\n</head>\n<body>\n{body}</body>\n</html>\n")
 
 
