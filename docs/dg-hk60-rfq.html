@@ -1695,13 +1695,24 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
       <div class="oi-h"><b>OI-05</b><span>열모델 상수</span></div>
       <div class="oi-b">
         <p><em>현황</em>면적열용량 <span class="m">8.7359 kJ/(m²·K)</span>와 FDM 도달시간
-          <span class="m">113.15 s</span>는 해석·문헌 기반 가정이다. 전 처리량 계산이 여기에 걸려 있다.
-          유리 냉각 랙의 강제공랭 계수 <span class="m">h = 25 W/(m²·K)</span>도 같은 가정이며,
-          <a href="#c3">3.4항</a>의 랙 단수가 여기에 걸려 있다 — 여유가
-          <span class="m">13 %</span>뿐이라 가정이 틀리면 바로 단수가 바뀐다.</p>
-        <p><em>해소</em>계측 캐리지(초박형 K열전대 3점 + 표면 IR)로 실측해 모델을 보정하고,
-          보정 결과를 처리량 계산에 반영한다. 냉각 h 는 FAT 에서 유리 1장의
-          냉각곡선을 실측해 대체하고, 필요하면 랙만 4단으로 올린다.</p>
+          <span class="m">113.15 s</span>는 해석·문헌 기반 가정이었다. 전 처리량 계산이 여기에 걸려 있다.
+          <strong>열해석(<span class="k">CAL-001</span>)이 두 가지를 정리했다.</strong>
+          같은 적층을 1차원 과도 유한차분으로 풀면 면적열용량은
+          <span class="m">8.663</span>으로 위 값과 <span class="m">0.8 %</span> 차이이고,
+          체류시간 하한을 정하는 것은 계면 도달이 아니라 <strong>백시트 융점</strong>이다 —
+          유속을 올리면 계면이 <span class="m">140 °C</span>에 닿기 전에 백시트가
+          PVDF <span class="m">165 °C</span>를 넘는다. 그 하한은
+          <span class="m">104 s</span>(융점 −10 K)이므로 위 값은 보수측이다.
+          유리 냉각 랙의 강제공랭 계수 <span class="m">h = 25 W/(m²·K)</span>는
+          여전히 가정이다. 다만 <span class="m">Bi = 0.04</span>로 덩어리 가정이 성립함을
+          확인했고, <a href="#c3">3.4항</a>의 <strong>5단</strong> 랙은 여유가
+          <span class="m">88 %</span>라 <span class="m">h</span>가 절반으로 틀려도 견딘다.</p>
+        <p><em>해소</em>남은 것은 <strong>실효 열효율 65 %</strong>다. 벽 손실은
+          <span class="m">5.5 kW</span>로 손실 예산 <span class="m">35 kW</span>의
+          <span class="m">16 %</span>뿐이고, 나머지 <span class="m">30 kW</span>의 행방은
+          아직 아무도 세지 않았다. 파일럿(<span class="k">PT-05</span>)에서 전력량계·배기
+          엔탈피·벽 열류계로 열수지를 닫고, 냉각 <span class="m">h</span>는
+          <span class="k">PT-06</span>에서 유리 1장의 냉각곡선으로 실측해 대체한다.</p>
       </div>
     </div>
     <div class="oi">

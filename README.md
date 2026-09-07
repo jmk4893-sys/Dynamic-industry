@@ -39,6 +39,8 @@ Dynamic industry Development
 | [docs/dg-hk60-fab-spec.html](docs/dg-hk60-fab-spec.html) | **DG-HK60C 제작 지침서 (FAB-001)** — 볼트 등급·체결력·조임토크, 용접 각장, 부재 판두께·재질, 기초 앵커 매입깊이·연단거리를 하중에서 유도한 문서. 접합부 12개소·부재 27종·앵커 7개소·ITP 14단계 (브라우저로 열 것, A4 인쇄 가능) |
 | [docs/dg-hk60-assembly.html](docs/dg-hk60-assembly.html) | **DG-HK60C 조립 지침서 (ASM-001)** — 도면을 처음 보는 사람이 조립도·부품도만으로 세울 수 있게 쓴 문서. 안전·공구·도면 읽는 법·볼트 조이는 법·모듈 사이의 순서·모듈별 74단계 (부품 카탈로그에서 생성) |
 | [docs/dg-hk60-procurement.html](docs/dg-hk60-procurement.html) | **DG-HK60C 조달 지침서 (PRC-001)** — 자재 발주표(1차원 절단 배치를 푼 정척 본수·시트 매수) · 운반 분할(세우는 순서를 따르는 차수표) · 구매품 사양 59종 (부품 카탈로그에서 생성) |
+| [docs/dg-hk60-analysis.html](docs/dg-hk60-analysis.html) | **DG-HK60C 구조·열해석 보고서 (CAL-001)** — 직접강성법 프레임 해석과 1차원 과도 열전도 해석. 닫힌해 10건으로 해석기를 검증하고, 구조 12건·열 13건을 푼 뒤 해석이 만든 요구 6건과 **해석이 못 보는 것** 10가지를 적었다 (두 해석 모듈에서 생성) |
+| [docs/dg-hk60-pilot.html](docs/dg-hk60-pilot.html) | **DG-HK60C 파일럿 시험 계획서 (PIL-001)** — 온도–박리력 곡선·칼날 수명·유리 수율·면내 온도 균일도·열수지. 시료 수를 요구정밀도에서 거꾸로 풀어(t 분위수·Clopper–Pearson) 총 422장·2단계로 잡았다 (계획 모델에서 생성) |
 | [docs/dg-hk120-twin-cell.html](docs/dg-hk120-twin-cell.html) | **DG-HK120C 트윈 셀 검토서** — 1챔버·2탠덤셀 수평병렬로 처리량을 배로 올리는 안의 배치·전력·인터록 검토 (브라우저로 열 것) |
 
 ### 사용법
@@ -49,7 +51,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (868건)
+python -m unittest discover -s tests -t .                               # 테스트 (920건)
 
 # 부품 카탈로그 — 형상·치수·재질에서 질량과 자중을 계산한다
 python3 tools/parts.py                     # 카탈로그 리포트 (품목·질량·자중 검증)
@@ -58,6 +60,15 @@ python3 tools/gen_parts_js.py --write      # 카탈로그 → 콘솔의 부품�
 python3 tools/gen_assembly_doc.py --write  # 카탈로그 → 조립 지침서 HTML
 python3 tools/procure.py                   # 조달 계산 (자재·운반·구매)
 python3 tools/gen_procure_doc.py --write   # 카탈로그 → 조달 지침서 HTML
+
+# 해석 — 형상이 바뀌면 결과가 따라 움직인다
+python3 tools/fea.py                       # 구조 해석기 검증 (닫힌해 5건)
+python3 tools/therm.py                     # 열 해석기 검증 (닫힌해 5건)
+python3 tools/analysis_structural.py       # 구조해석 S1~S12
+python3 tools/analysis_thermal.py          # 열해석 T1~T13 + 요구 R1~R6
+python3 tools/gen_analysis_doc.py --write  # 해석 → 보고서 HTML
+python3 tools/pilot_plan.py                # 파일럿 시료 수·규모·일정
+python3 tools/gen_pilot_doc.py --write     # 계획 → 시험 계획서 HTML
 python3 tools/sync_fab_doc.py --write      # 제작 지침서의 파생 숫자를 계산기와 맞춤
 ```
 

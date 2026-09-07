@@ -73,6 +73,30 @@ def sync(text: str) -> tuple[str, list[str]]:
                 log.append(f"{j['id']} 열{idx} {cur} → {val}")
         lines[i] = "".join(parts_)
 
+    # ── 부재 표: 단면·재질·지배 검토
+    # 형상이 바뀌면 지배 검토가 바뀐다 — VT-101 상판이 그랬다. 진공이
+    # 지배한다고 적혀 있었는데 구조해석이 자중이라고 답했고, 표는 그대로
+    # 남아 시험이 잡았다. 손으로 안 고치도록 여기서 같이 쓴다.
+    grp = None
+    byname = {(m[0], m[1]): m for m in F.MEMBERS}
+    for i, ln in enumerate(lines):
+        g = re.match(r'<tr><th colspan="4" class="grp">(M-\d+)</th></tr>', ln)
+        if g:
+            grp = g.group(1)
+            continue
+        mm = re.match(r"<tr><td>(.*?)</td>", ln)
+        if not (grp and mm and (grp, mm.group(1)) in byname):
+            continue
+        _mod, name, sec, mat, gov = byname[(grp, mm.group(1))]
+        cells = re.findall(r"<td[^>]*>(.*?)</td>", ln)
+        if len(cells) < 4:
+            continue
+        for cur, want in zip(cells[1:4], (sec, mat, gov)):
+            if cur != want:
+                ln = ln.replace(">" + cur + "<", ">" + want + "<", 1)
+                log.append(f"부재 {grp} {name} {cur} → {want}")
+        lines[i] = ln
+
     # ── 용접 표: 설계력
     for name, force, _len, _mat, _t in F.WELDS:
         for i, ln in enumerate(lines):
