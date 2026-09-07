@@ -64,9 +64,9 @@ class TestTheCalculatorClosesTheDesign(unittest.TestCase):
 
     def test_the_peel_thrust_is_the_bounding_case(self):
         """하한으로 잡으면 상한에서 무너진다 — 상한 × 동적 × γQ 여야 한다."""
-        self.assertAlmostEqual(F.F_PEEL_K, 13.37, places=3,
-                               msg="포락 추력이 OI-01 상한이 아니다")
-        self.assertAlmostEqual(F.F_PEEL_D, 13.37 * 1.30 * 1.50, places=6)
+        self.assertAlmostEqual(F.F_PEEL_K, 13.37 * F.PANEL_W / 1.2, places=3,
+                               msg="포락 추력이 OI-01 상한(폭 1,200)을 포락선 폭으로 환산한 값이 아니다")
+        self.assertAlmostEqual(F.F_PEEL_D, F.F_PEEL_K * 1.30 * 1.50, places=6)
 
     def test_the_loads_come_from_the_console_not_from_typed_numbers(self):
         """하중을 손으로 적으면 배치를 바꿨을 때 지침서만 옛 하중으로 남는다."""
@@ -76,7 +76,9 @@ class TestTheCalculatorClosesTheDesign(unittest.TestCase):
             F.W_PANEL, c("MASS_AREAL") * c("PANEL_L") * c("PANEL_W") * F.G / 1000, places=9)
         self.assertAlmostEqual(
             F.W_GLASS, c("MASS_GLASS") * c("PANEL_L") * c("PANEL_W") * F.G / 1000, places=9)
-        self.assertEqual(F.ROLL_PANELS, 295, "롤당 장수가 면적보존에서 나오지 않는다")
+        turn = F.PANEL_L * F.c("BACKSHEET_T") / math.pi
+        self.assertEqual(F.ROLL_PANELS, round((0.30 ** 2 - 0.15 ** 2) / turn),
+                         "롤당 장수가 면적보존에서 나오지 않는다")
         src = (ROOT / "tools" / "fab_spec.py").read_text(encoding="utf-8")
         self.assertIn("import console_consts", src, "계산기가 콘솔 상수를 읽지 않는다")
 

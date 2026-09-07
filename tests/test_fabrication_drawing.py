@@ -469,9 +469,9 @@ class TestTheTandemSheetSaysWhatMoves(unittest.TestCase):
         self.assertIn("이동 나이프로 정정", self.body, "개정 이력에 정정이 없다")
 
     def test_the_thrust_path_is_written_down(self):
-        """13.37 kN 이 어디로 흐르는지가 이 셀의 구조 요건 전부다."""
-        self.assertIn("13.37 kN 은 칼날 → 갠트리 → 주행레일 문형 → 기초", self.body,
-                      "추력 경로가 도면에 없다")
+        """박리 추력이 어디로 흐르는지가 이 셀의 구조 요건 전부다."""
+        self.assertIn("${F_PEEL.toFixed(2)} kN 은 칼날 → 갠트리 → 주행레일 문형 → 기초", self.body,
+                      "추력 경로가 도면에 없거나 추력이 상수에서 오지 않는다")
         self.assertIn("A7", self.body, "기초 도면(D-602)의 앵커군과 이어지지 않는다")
         self.assertIn("A8", self.body, "테이블 기초가 구분되지 않는다")
 
@@ -482,9 +482,9 @@ class TestTheTandemSheetSaysWhatMoves(unittest.TestCase):
         self.assertIn("A ≥ 2F/(μ·Δp)", self.body, "필요면적 식이 도면에 없다")
         # 값만 보면 안 된다 — PAD_AREA/0.686 안에도 같은 숫자가 있어
         # 요구값 문장을 지워도 통과한다. 근거(μ·Δp)까지 함께 본다.
-        self.assertIn("0.686 m² (μ 0.6 · Δp 65 kPa)", self.body,
+        self.assertIn("${PAD_NEED.toFixed(3)} m² (F ${F_PEEL.toFixed(2)} kN · μ ${PAD_MU} · Δp ${PAD_DP} kPa)", self.body,
                       "필요면적 상한과 그 근거가 도면에 없다")
-        self.assertIn("PAD_AREA/0.686", self.body.replace(" ", ""),
+        self.assertIn("PAD_AREA/PAD_NEED", self.body.replace(" ", ""),
                       "실제 면적이 상한의 몇 배인지 도면이 밝히지 않는다")
         self.assertIn("PAD_COLS", self.body)
         self.assertIn("PAD_ROWS", self.body)

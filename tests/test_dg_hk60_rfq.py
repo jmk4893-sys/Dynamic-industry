@@ -245,7 +245,8 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
             (self.m["thermal_rate"] - self.m["line_rate"]) / self.m["thermal_rate"] * 100
         )
         self.assertAlmostEqual(
-            self._num(r"여유 ([\d.]+) %"), margin, delta=0.05
+            self._num(r"열공정 한계</th><td class=\"num\">[\d.]+ 장/h</td><td>여유 ([\d.]+) %"),
+            margin, delta=0.05,
         )
 
     def test_shift_output(self):
@@ -393,8 +394,12 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
                 msg=f"{ident} 의 길이가 배치 상수({metres*1000:.0f})와 다르다")
         # 방책은 스테이션이 아니라 방책선에서 나온다
         self.assertIn("M-013", rfq_rows)
-        self.assertEqual(int(rfq_rows["M-013"]), 20500,
-                         "방책 길이가 −900 → 19,600 과 다르다")
+        env = console_consts.env(self.console)
+        cst = env["CST"]
+        compact = (sum(getattr(cst, k).w for k in ("LD", "HC", "DL", "GC", "UL"))
+                   + 4 * env["CL_CLEAR"] + 2 * env["CL_END"])
+        self.assertEqual(int(rfq_rows["M-013"]), round((compact + .84 - env["CFENCE_X0"]) * 1000),
+                         "방책 길이가 −900 → 전장 + 840 과 다르다")
         # 그리고 콘솔의 표는 값이 아니라 식이어야 한다
         flat = self.console.replace(" ", "")
         for expr in ("size:dim(CST.LD.w,", "size:dim(CST.HC.w,",
@@ -464,7 +469,7 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
     # ── 탠덤 동시부하 ────────────────────────────────────────────
     def test_dual_engagement_fraction_is_arithmetic(self):
         """두 칼날이 동시에 물리는 구간은 패널 길이와 칼끝 간격에서 나온다."""
-        length = 2400.0
+        length = console_consts.const("PANEL_L") * 1000
         gap = float(re.search(r"칼끝 간격 <span class=\"m\">(\d+) ± 2 mm", self.html).group(1))
         self.assertAlmostEqual(gap, 300.0, delta=0.5)
         self.assertAlmostEqual(
@@ -482,10 +487,12 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
                       "필요 패드 면적 식이 두 칼날 합(2F)이 아니다")
         mu = float(re.search(r"μ = ([\d.]+)", body).group(1))
         dp = float(re.search(r"Δp = (\d+) kPa", body).group(1)) * 1000
-        glass = 2.4 * 1.2
+        L, W = console_consts.const("PANEL_L"), console_consts.const("PANEL_W")
+        glass = L * W
+        scale = W / 1.2                                  # 밴드는 폭 1,200 에서 잰 값 — 포락선 폭으로 환산
         for thrust, area_pat, pct_pat in (
-            (1.49e3, r"<span class=\"m\">([\d.]+) m²</span>\(", r"유리면의 ([\d.]+) %\)"),
-            (13.37e3, r"상한[^<]*<span class=\"m\">[^<]*</span>[^<]*<span class=\"m\">([\d.]+) m²</span>",
+            (1.49e3 * scale, r"<span class=\"m\">([\d.]+) m²</span>\(", r"유리면의 ([\d.]+) %\)"),
+            (13.37e3 * scale, r"상한[^<]*<span class=\"m\">[^<]*</span>[^<]*<span class=\"m\">([\d.]+) m²</span>",
              r"유리면의 <span class=\"m\">([\d.]+) %</span>"),
         ):
             want = 2 * thrust / (mu * dp)
@@ -617,7 +624,8 @@ class TestVacuumPadLayout(unittest.TestCase):
     있다는 진술이다. 콘솔에서 패드 하나만 빼도 사양서의 1.29 배가 거짓이 된다.
     """
 
-    MU, DP, F_HI = 0.6, 65_000, 13_370
+    MU, DP = 0.6, 65_000
+    F_HI = console_consts.const("F_PEEL") * 1000          # 포락선 폭으로 환산한 OI-01 상한
 
     @classmethod
     def setUpClass(cls):
@@ -637,8 +645,8 @@ class TestVacuumPadLayout(unittest.TestCase):
     def test_pad_grid_matches_the_console(self):
         cols, rows = int(self._c("PAD_COLS")), int(self._c("PAD_ROWS"))
         r = self._c("PAD_R")
-        self.assertAlmostEqual(self._num(r"<span class=\"m\">(\d+)열 × 3행"), cols, delta=0)
-        self.assertAlmostEqual(self._num(r"열 × (\d+)행 = 18패드"), rows, delta=0)
+        self.assertAlmostEqual(self._num(rf"<span class=\"m\">(\d+)열 × {rows}행"), cols, delta=0)
+        self.assertAlmostEqual(self._num(rf"열 × (\d+)행 = {cols*rows}패드"), rows, delta=0)
         self.assertAlmostEqual(self._num(r"= (\d+)패드 Ø250"), cols * rows, delta=0)
         self.assertAlmostEqual(self._num(r"패드 Ø(\d+)"), r * 2000, delta=0.5)
 
@@ -659,12 +667,16 @@ class TestVacuumPadLayout(unittest.TestCase):
         cols, rows, r = int(self._c("PAD_COLS")), int(self._c("PAD_ROWS")), self._c("PAD_R")
         length, width = self._c("PANEL_L"), self._c("PANEL_W")
         px, py = length / cols, width / rows
-        self.assertAlmostEqual(self._num(r"피치 <span class=\"m\">(\d+) × 400 mm"), px * 1000, delta=1)
-        self.assertAlmostEqual(self._num(r"피치 <span class=\"m\">400 × (\d+) mm"), py * 1000, delta=1)
-        self.assertAlmostEqual(self._num(r"패드 간 여유\s*<span class=\"m\">(\d+) mm"),
-                               (px - 2 * r) * 1000, delta=1)
-        self.assertAlmostEqual(self._num(r"가장자리 여유\s*\n?\s*<span class=\"m\">(\d+) mm"),
-                               (width / 2 - (rows - 1) / 2 * py - r) * 1000, delta=1)
+        self.assertAlmostEqual(self._num(rf"피치 <span class=\"m\">(\d+) × {round(py*1000)} mm"), px * 1000, delta=1)
+        self.assertAlmostEqual(self._num(rf"피치 <span class=\"m\">{round(px*1000)} × (\d+) mm"), py * 1000, delta=1)
+        gap = re.search(r"패드 간 여유\s*<span class=\"m\">(\d+) / (\d+) mm", self.html)
+        self.assertIsNotNone(gap, "패드 간 여유(길이 / 폭)가 없다")
+        self.assertAlmostEqual(float(gap.group(1)), (px - 2 * r) * 1000, delta=1)
+        self.assertAlmostEqual(float(gap.group(2)), (py - 2 * r) * 1000, delta=1)
+        edge = re.search(r"가장자리 여유\s*\n?\s*<span class=\"m\">(\d+) / (\d+) mm", self.html)
+        self.assertIsNotNone(edge, "가장자리 여유(길이 / 폭)가 없다")
+        self.assertAlmostEqual(float(edge.group(1)), (length / 2 - (cols - 1) / 2 * px - r) * 1000, delta=1)
+        self.assertAlmostEqual(float(edge.group(2)), (width / 2 - (rows - 1) / 2 * py - r) * 1000, delta=1)
 
     def test_the_assumption_behind_the_layout_is_stated(self):
         """μ 0.6 가정이 빠지면 이 배치가 무조건 성립하는 것처럼 읽힌다."""

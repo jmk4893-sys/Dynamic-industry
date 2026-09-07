@@ -40,6 +40,7 @@ from typing import NamedTuple
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import therm as T  # noqa: E402
+import cycle as CY  # noqa: E402
 from console_consts import const as c  # noqa: E402
 
 
@@ -80,11 +81,12 @@ DECKS = int(c("DECKS"))             # 5
 LAMPS = int(c("LAMPS"))             # 40
 PANEL_L, PANEL_W = c("PANEL_L"), c("PANEL_W")
 PANEL_A = PANEL_L * PANEL_W         # 2.88 m²
-LAMP_KW, ETA = 2.5, 0.65            # 콘솔 기본 입력
-USEFUL_KW = LAMPS * LAMP_KW * ETA   # 65 kW
+LAMP_KW = CY.DEFAULT["lampPower"]                 # 콘솔 기본 입력 2.5 kW
+ETA = CY.DEFAULT["heatEfficiency"] / 100          # 0.65
+USEFUL_KW = LAMPS * LAMP_KW * ETA   # 78 kW
 FLUX = (USEFUL_KW * 1000 / DECKS) / PANEL_A     # W/m² 패널 양면 합
-DWELL = 222.6                       # s 콘솔 열체류 (5장 소킹)
-TAKT = 53.6                         # s 콘솔 라인 사이클
+DWELL = CY.DWELL                    # s 콘솔 열체류 (5장 소킹) — thermalModel 거울
+TAKT = CY.TAKT                      # s 콘솔 라인 사이클
 
 # 백시트 상한. 콘솔 주석: PVDF 165 · PVF 195. **낮은 쪽을 쓴다** —
 # 어느 것이 붙어 올지는 폐패널이 정하지 우리가 정하지 않는다.
@@ -211,20 +213,24 @@ def dwell_floor():
     q_cap, t_cap = _flux_cap(T_BACK_MAX)          # 융점 그대로
     q_des, t_des = _flux_cap(T_BACK_DESIGN)       # 여유 10 K
 
-    # 콘솔 입력구간의 모서리 — 최소 패널 · 최대 램프 · 최대 효율
-    q_worst = (LAMPS * 3.0 * 0.80 * 1000 / DECKS) / (1.6 * 0.8)
+    # 콘솔 입력구간의 모서리 — 최소 패널 · 최대 램프 · 최대 효율 (MODEL_RANGE)
+    R = CY.RANGE
+    kw_max, eta_max = R["lampPower"][1], R["heatEfficiency"][1] / 100
+    a_min = R["panelLength"][0] * R["panelWidth"][0] / 1e6
+    q_worst = (LAMPS * kw_max * eta_max * 1000 / DECKS) / a_min
     w = soak(round(q_worst, 3))
 
     return [
         Result("T4", "체류시간 하한 (백시트 설계한계)", t_des, "s", DWELL,
-               "설계 체류 222.6 s — 하한이 이보다 짧아야 설계가 성립한다",
+               f"설계 체류 {DWELL:.1f} s — 하한이 이보다 짧아야 설계가 성립한다",
                f"백시트 {T_BACK_DESIGN:.0f} ℃ (융점 −10 K) 에서 유속 상한 "
                f"{q_des:,.0f} W/m² = 설계의 {q_des/FLUX:.1f} 배. 융점 그대로면 "
                f"{t_cap:.0f} s. 콘솔의 `fdmDwell:113.15` 는 **유도된 적 없는 "
                f"값**이었다 — 근거는 이제 이것이다"),
         Result("T5", "입력구간 모서리의 백시트 온도", w["t_back"], "℃", T_BACK_MAX,
                "PVDF 융점 165 ℃",
-               f"1600×800 · 램프 3 kW · 효율 80 % — 콘솔 입력구간의 모서리. "
+               f"{R['panelLength'][0]:.0f}×{R['panelWidth'][0]:.0f} · 램프 {kw_max} kW · "
+               f"효율 {eta_max:.0%} — 콘솔 입력구간의 모서리. "
                f"유속 {q_worst:,.0f} W/m² 에서 계면 도달 {w['t_face']:.0f} s, "
                f"백시트 여유 {T_BACK_MAX-w['t_back']:.1f} K 뿐이다. **하한을 "
                f"{t_des:.0f} s 로 두면 이 모서리가 막힌다** — 하한은 살려 둔다"),

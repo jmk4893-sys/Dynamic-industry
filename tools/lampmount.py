@@ -41,11 +41,13 @@ import analysis_irbank as AIR  # noqa: E402
 import analysis_thermal as TH  # noqa: E402
 import irbank as IR  # noqa: E402
 from analysis_thermal import Req, Result  # noqa: E402
+import cycle as CY  # noqa: E402
 from console_consts import const as c  # noqa: E402
 
 # ── 램프 ─────────────────────────────────────────────────────────────
 OD, WALL = 25.0, 1.2                 # mm 석영관 외경 · 관두께
-HEAT_L = AIR.NEW_LEN * 1000          # 2,200 mm 발열장
+HEAT_L = AIR.NEW_LEN * 1000          # 2,400 mm 발열장
+FLOAT_DESIGN = 12.0                  # mm 설계 유동 행정 — 요구 9.0 에 여유 1/3
 E_Q, RHO_Q = 72_000.0, 2200.0        # MPa · kg/m³ 용융석영
 ALPHA_Q, K_Q = 0.55e-6, 1.4          # 1/K · W/(m·K)
 M_LAMP = 0.60                        # kg 관+필라멘트 (단자 제외)
@@ -59,7 +61,7 @@ TOL_PINCH = 8.0                             # mm 봉착부 배치에 필요한 �
 H_PINCH = 10.0                              # W/(m²·K) 부시 안 자연대류
 
 # ── 관통부 ───────────────────────────────────────────────────────────
-N_PEN = int(c("LAMPS")) * 2          # 80 개소
+N_PEN = int(c("LAMPS")) * 2          # 96 개소
 WALL_T = 0.130                       # m 4겹 벽 두께
 BUSH_OD, BUSH_BORE = 45.0, 28.0      # mm 세라믹 부시 외경 · 보어
 K_BUSH_LOW, K_BUSH_STEEL = 0.9, 16.0  # W/(m·K) 섬유충전 세라믹 · 강재 슬리브
@@ -69,10 +71,10 @@ DP = 20.0                            # Pa 챔버 부압 (연기 봉쇄)
 CD, RHO_AIR, CP_AIR = 0.62, 1.20, 1005.0
 
 # ── 챔버 ─────────────────────────────────────────────────────────────
-CAV_W = IR.CAVITY_W * 1000           # 2,300 mm 관통부 사이 거리
+CAV_W = IR.CAVITY_W * 1000           # 2,500 mm 관통부 사이 거리
 ALPHA_STS = 17.3e-6                  # 1/K STS304 내피 — 강재 중 가장 큰 쪽
 T_SKIN, T_COLD = c("T_TARGET"), 20.0
-LOSS_BUDGET = 35.0                   # kW 정격 100 − 유효 65
+LOSS_BUDGET = CY.model()["rated"] - CY.USEFUL_KW   # kW 정격 120 − 유효 78
 
 
 def _section():
@@ -149,12 +151,14 @@ def shadow():
     """
     lam = IR.from_positions(list(AIR.NEW_X), length=AIR.NEW_LEN) * 2
     full = IR.field(IR.images(lam, IR.RHO_WALL), 41, 21)
-    nx, ny = len(full.xs), len(full.ys)
-    i, j = nx // 2, ny // 2                       # 중앙 램프 바로 아래
+    ny = len(full.ys)
+    # 중앙에 가장 가까운 램프 바로 아래 — 8등 배치는 x=0 에 램프가 없다
+    x0 = min(AIR.NEW_X, key=abs)
+    i, j = min(range(len(full.xs)), key=lambda k: abs(full.xs[k] - x0)), ny // 2
     total = full.E[i][j]
-    # 그 자리를 비추는 중앙 램프 두 개(아래·위 뱅크)의 직달분
+    # 그 자리를 비추는 같은 x 의 램프 두 개(아래·위 뱅크)의 직달분
     direct = sum(lp.irradiance(full.xs[i], full.ys[j])
-                 for lp in lam if abs(lp.x) < 1e-9)
+                 for lp in lam if abs(lp.x - x0) < 1e-9)
     frac = direct / total
     return frac, frac * (TH.T_TARGET - c("T_AMB"))
 
@@ -182,8 +186,8 @@ def run():
                f"{IR.BANK_GAP*1000:.0f} mm 거리에서 {dflux:.2%} 다. "
                f"남는 것은 관이 아니라 **관 안 필라멘트의 처짐**이고, 그것은 "
                f"램프 안쪽 지지대로 제조사가 푼다 (RLM4)"),
-        Result("LM3", "차등 열팽창이 요구하는 유동 행정", float_req, "mm", 10.0,
-               "설계 행정 10 mm — 한쪽 고정 · 한쪽 유동",
+        Result("LM3", "차등 열팽창이 요구하는 유동 행정", float_req, "mm", FLOAT_DESIGN,
+               f"설계 행정 {FLOAT_DESIGN:.0f} mm — 한쪽 고정 · 한쪽 유동",
                f"강재 {CAV_W:,.0f} mm 가 {steel:.2f} mm 늘 때 석영은 "
                f"{quartz:.2f} mm 만 는다 (α {ALPHA_STS*1e6:.1f} vs "
                f"{ALPHA_Q*1e6:.2f}). 차이 {diff:.2f} + 길이공차 4. "
@@ -232,7 +236,7 @@ def requirements() -> list[Req]:
     _, ex = run()
     return [
         Req("RLM1", "한쪽 고정 · 한쪽 유동",
-            f"유동단 행정 ≥ {ex['float_req']:.0f} mm (설계 10)",
+            f"유동단 행정 ≥ {ex['float_req']:.0f} mm (설계 {FLOAT_DESIGN:.0f})",
             "F-002 제작도 · 상세설계",
             f"강재 챔버가 {ex['steel']:.2f} mm 늘 때 석영은 "
             f"{ex['quartz']:.2f} mm 만 는다. 양단 고정은 **첫 승온에서 램프를 "

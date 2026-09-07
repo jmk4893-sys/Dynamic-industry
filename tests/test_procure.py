@@ -288,7 +288,8 @@ class TestTheLampIsBoughtWithItsGuarantee(unittest.TestCase):
 
     def test_the_heated_length_matches_the_ir_bank_review(self):
         _s, rating, iface, _i = PR.BUY_SPEC["P-002-18"]
-        self.assertIn("2,200", rating, "발열장이 구매 사양에 없으면 1,300 이 온다")
+        import analysis_irbank as AIR
+        self.assertIn(f"{AIR.NEW_LEN*1000:,.0f}", rating, "발열장이 구매 사양에 없으면 관습 길이가 온다")
         self.assertIn("유동", iface, "양단 고정이면 첫 승온에서 뜯긴다")
 
     def test_the_shutter_cylinder_follows_the_airlock_decision(self):

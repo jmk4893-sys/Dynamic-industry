@@ -68,10 +68,12 @@ class TestMassBalanceBasis(_Base):
         self.assertGreater(shares[0], 0.75, "유리가 회수 질량의 대부분이어야 한다")
 
     def test_cell_eva_mass_matches_the_shredder_assumption(self):
-        """OI-08 슈레더 부하는 패널당 셀/EVA 4 kg 가정 위에 서 있다."""
+        """OI-08 슈레더 부하는 패널당 셀/EVA 4.8 kg(포락선 3.50 m²) 가정 위에 서 있다."""
         per = (self.c("MASS_EVA") + self.c("MASS_CELL")) * self.c("PANEL_L") * self.c("PANEL_W")
-        self.assertTrue(3.2 <= per <= 4.0,
-                        f"패널당 셀/EVA {per:.2f} kg 가 사양서의 3.2~4.0 범위 밖이다")
+        self.assertTrue(3.9 <= per <= 4.9,
+                        f"패널당 셀/EVA {per:.2f} kg 가 사양서의 3.9~4.9 범위 밖이다")
+        if self.rfq is not None:
+            self.assertIn(f"셀/EVA {per:.1f} kg 기준", self.rfq, "OI-08 의 장당 셀/EVA 가정이 계산과 다르다")
 
     def test_balance_tolerance_is_declared(self):
         self.assertAlmostEqual(self.c("BALANCE_TOL"), 0.02, places=6)

@@ -33,7 +33,7 @@ CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
 RFQ = ROOT / "docs" / "dg-hk60-rfq.html"
 
 # ── 설계 치수 (m) ────────────────────────────────────────────────────────
-PANEL_L, DECK_L, CARRIER_L = 2.400, 2.780, 2.900
+PANEL_L, DECK_L, CARRIER_L = 2.500, 2.880, 3.000        # 포락선 2,500 · 데크 +380 · 캐리어 +500
 CL_CLEAR, CL_WALL, CL_DOOR, CL_PARK, CL_END = 0.30, 0.35, 0.30, 0.45, 0.30
 
 STATIONS = [
@@ -53,7 +53,7 @@ SCOPED_M = 29.3 - 0.0            # 환경·후속·팔레타이징을 뗀 나머
 KNIFE_PITCH, RAPID_DISTANCE = 300.0, 300.0      # mm
 PEEL_SPEED, RAPID_SPEED, HANDLING_FIX = 55.0, 200.0, 3.0
 RETURN_SPEED = 700.0
-NET_TARGET, AVAILABILITY = 60.0, 0.90
+NET_TARGET, AVAILABILITY = 58.0, 0.90
 
 LEAD_S = KNIFE_PITCH / PEEL_SPEED
 PEEL_S = PANEL_L * 1000 / PEEL_SPEED
@@ -91,7 +91,7 @@ def glass_cool_s():
     return m * CP_GLASS * 1e3 * (GC_IN - GC_OUT) / (GC_H * area * lmtd)
 
 
-PANEL_W_M = 1.200
+PANEL_W_M = 1.400
 
 
 def console():
@@ -171,8 +171,11 @@ class TestTheCompactLine(unittest.TestCase):
 
     def _num(self, name):
         m = re.search(rf"\b{name}=(-?[\d.]+)\s*[,;]", self.src)
-        self.assertIsNotNone(m, f"{name} 를 찾지 못했다")
-        return float(m.group(1))
+        if m:
+            return float(m.group(1))
+        env = console_consts.env(self.src)          # 식으로 적힌 상수는 풀어서 본다
+        self.assertIn(name, env, f"{name} 를 찾지 못했다")
+        return env[name]
 
     def test_the_clearances_match(self):
         for name, want in [("CL_CLEAR", CL_CLEAR), ("CL_WALL", CL_WALL),
@@ -180,8 +183,9 @@ class TestTheCompactLine(unittest.TestCase):
                            ("CL_END", CL_END)]:
             self.assertAlmostEqual(self._num(name), want, places=6)
 
-    def test_the_total_is_eighteen_point_seven_six_metres(self):
-        self.assertAlmostEqual(COMPACT_M, 18.760, places=6)
+    def test_the_total_is_nineteen_point_two_six_metres(self):
+        """2,400 × 1,200 의 18,760 이 포락선에서 다섯 스테이션 × 100 = 500 늘었다."""
+        self.assertAlmostEqual(COMPACT_M, 19.260, places=6)
 
     def test_the_three_stages_shrink(self):
         self.assertAlmostEqual(self._num("REV20_X1") - self._num("REV20_X0"),
@@ -204,8 +208,8 @@ class TestThroughputSurvivesTheMovingKnife(unittest.TestCase):
     """박리가 상대운동이라는 주장이 숫자로도 성립하는지."""
 
     def test_the_peel_stroke_and_time_do_not_change(self):
-        self.assertAlmostEqual(PEEL_S, 2400 / 55, places=9)
-        self.assertAlmostEqual(RETURN_DISTANCE, 2700.0, places=9)
+        self.assertAlmostEqual(PEEL_S, 2500 / 55, places=9)
+        self.assertAlmostEqual(RETURN_DISTANCE, 2800.0, places=9)
 
     def test_at_the_specified_return_speed_the_cycle_is_unchanged(self):
         self.assertAlmostEqual(knife_cycle(), carrier_cycle(), places=9)
@@ -214,8 +218,10 @@ class TestThroughputSurvivesTheMovingKnife(unittest.TestCase):
         net = 3600 / knife_cycle() * AVAILABILITY
         self.assertGreaterEqual(net, NET_TARGET)
 
-    def test_the_floor_is_five_hundred_and_fifty(self):
-        self.assertAlmostEqual(return_speed_floor(), 550.0, places=6)
+    def test_the_floor_is_five_hundred_and_sixty_five(self):
+        """2,400 × 1,200 · 60 장/h 에서 550 이었다 — 행정 100 늘고 계약이 58 이 되며 565."""
+        self.assertAlmostEqual(return_speed_floor(), 2800 / (3600 / (58 / .9) - 300 / 55 - 2500 / 55), places=6)
+        self.assertAlmostEqual(return_speed_floor(), 565.3, delta=0.1)
         at_floor = 3600 / knife_cycle(return_speed_floor()) * AVAILABILITY
         self.assertAlmostEqual(at_floor, NET_TARGET, places=6)
 
@@ -401,8 +407,11 @@ class TestTheCompactHall(unittest.TestCase):
 
     def _num(self, name):
         m = re.search(rf"\b{name}=(-?[\d.]+)\s*[,;]", self.src)
-        self.assertIsNotNone(m, f"{name} 를 찾지 못했다")
-        return float(m.group(1))
+        if m:
+            return float(m.group(1))
+        env = console_consts.env(self.src)          # 식으로 적힌 상수는 풀어서 본다
+        self.assertIn(name, env, f"{name} 를 찾지 못했다")
+        return env[name]
 
     def test_the_compact_hall_is_what_opens(self):
         """압축 배치가 발주 범위다 — 콘솔이 그것을 먼저 보여야 한다."""
@@ -468,7 +477,7 @@ class TestTheCompactHall(unittest.TestCase):
         """박리 중 권취가 0 인 이유가 코드 옆에 남아 있어야 한다 — 다음 사람이 큰 댄서를 다시 넣는다."""
         head = self.src[self.src.index("Rev.21C 압축 배치 3D"):][:1600]
         self.assertIn("상쇄", head)
-        self.assertIn("2,700mm", head)
+        self.assertIn(f"{PANEL_L*1000+300:,.0f}mm", head)
 
     def test_the_descoped_equipment_is_not_in_the_hall(self):
         body = fn_body("compactMachine")
@@ -528,8 +537,11 @@ class TestWhereTheStreamsGo(unittest.TestCase):
 
     def _num(self, name):
         m = re.search(rf"\b{name}=(-?[\d.]+)\s*[,;]", self.src)
-        self.assertIsNotNone(m, f"{name} 를 찾지 못했다")
-        return float(m.group(1))
+        if m:
+            return float(m.group(1))
+        env = console_consts.env(self.src)          # 식으로 적힌 상수는 풀어서 본다
+        self.assertIn(name, env, f"{name} 를 찾지 못했다")
+        return env[name]
 
     # ── 통로가 실제로 비어 있는가
     def test_the_rails_are_lifted_off_the_floor(self):
@@ -546,7 +558,7 @@ class TestWhereTheStreamsGo(unittest.TestCase):
 
     # ── 셀/EVA
     def test_the_cell_takeaway_fits_the_actual_sheet(self):
-        """적층체는 2,400 × 1,200 한 장이다. 폭이 모자라면 안 나간다."""
+        """적층체는 2,500 × 1,400 한 장이다. 폭이 모자라면 안 나간다."""
         span = abs(self._num("CE_Y1") - self._num("CE_Y0"))
         length = self._num("CE_X1") - self._num("CE_X0")
         self.assertGreaterEqual(span, PANEL_W_M, "횡인출 폭이 패널 폭보다 좁다")
@@ -565,22 +577,22 @@ class TestWhereTheStreamsGo(unittest.TestCase):
 
     def test_the_cart_interval_is_derived(self):
         panels = round(CS_STACK / CE_PITCH)
-        self.assertGreaterEqual(panels / 60, 4.0, "카트 교체가 4시간을 못 간다")
+        self.assertGreaterEqual(panels / NET_TARGET, 4.0, "카트 교체가 4시간을 못 간다")
         self.assertIn("const csCartPanels=()=>Math.round(CS_STACK/CE_PITCH)", self.src,
                       "적재 장수가 계산이 아니라 적어 둔 값이다")
 
     # ── 백시트
     def test_the_full_roll_leaves_without_entering_the_guard(self):
-        """357 kg 롤이 4.9시간마다 나온다 — 보관대가 방책 안이면 무인 시간이 그 주기로 끊긴다."""
-        m = re.search(r"const BS_SADDLE=V\(([-\d.]+),([-\d.]+),", self.src)
-        self.assertIsNotNone(m, "BS-301 새들 좌표를 찾지 못했다")
-        self.assertLess(float(m.group(2)), -self._num("CFENCE_YN"),
+        """416 kg 롤이 4.9시간마다 나온다 — 보관대가 방책 안이면 무인 시간이 그 주기로 끊긴다."""
+        self.assertIn("const BS_SADDLE=V(CRAIL_X0,BS_SADDLE_Y,.92)", self.src,
+                      "BS-301 새들 좌표가 방책에서 파생되지 않는다")
+        self.assertLess(self._num("BS_SADDLE_Y"), -self._num("CFENCE_YN"),
                         "BS-301 이 방책 안에 있다")
         self.assertIn("RH-201", fn_body("cTandem"), "롤을 옮길 수단이 없다")
 
     def test_the_roll_mass_and_interval_are_derived(self):
         self.assertIn("const ROLL_MASS=MASS_BACK*PANEL_L*PANEL_W*ROLL_FULL_PANELS", self.src)
-        self.assertAlmostEqual(BACK_KG * 295, 357.1, places=0)
+        self.assertAlmostEqual(BACK_KG * 283, 416.0, places=0)
 
     # ── 세 방향이 서로 다른가
     def test_the_three_streams_leave_in_three_directions(self):
@@ -588,10 +600,7 @@ class TestWhereTheStreamsGo(unittest.TestCase):
         self.assertIn("RH_Z", tandem, "백시트는 위로 넘어간다")
         self.assertIn("CE_Y1", tandem, "셀/EVA 는 옆으로 나간다")
         self.assertIn("GC-101", fn_body("cGlassRack"), "유리는 앞으로 나간다")
-        m = re.search(r"const CSCART=V\(([^,]+),([-\d.]+),", self.src)
-        self.assertIsNotNone(m)
-        bs = re.search(r"const BS_SADDLE=V\(([-\d.]+),([-\d.]+),", self.src)
-        self.assertNotAlmostEqual(float(m.group(2)), float(bs.group(2)), places=1,
+        self.assertNotAlmostEqual(self._num("CSCART_Y"), self._num("BS_SADDLE_Y"), places=1,
                                   msg="셀/EVA 카트와 백시트 새들이 같은 자리에 있다")
 
     def test_the_streams_are_named_in_the_step_that_hands_them_over(self):

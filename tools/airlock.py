@@ -63,6 +63,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import parts as PT  # noqa: E402
 from analysis_thermal import Req, Result  # noqa: E402
+import cycle as CY  # noqa: E402
 from console_consts import const as c  # noqa: E402
 
 G = 9.80665
@@ -71,9 +72,9 @@ RHO_AIR = lambda t: 353.0 / (273.15 + t)     # kg/m³ 대기압 건공기
 
 T_HOT, T_AMB = c("T_TARGET"), c("T_AMB")     # 140 · 25 ℃
 DECKS = int(c("DECKS"))
-TAKT = 53.6                                  # s 라인 사이클 (탠덤이 정한다)
+TAKT = CY.TAKT                               # s 라인 사이클 (탠덤이 정한다 — 콘솔 thermalModel)
 N_DOOR = 2                                   # 사이클당 문 통과 — 방출 1 · 투입 1
-RATED_KW = int(c("LAMPS")) * 2.5              # 100 kW 설치정격
+RATED_KW = int(c("LAMPS")) * 2.5              # 120 kW 설치정격
 
 # ── 개구 ─────────────────────────────────────────────────────────────
 OPEN_W = c("DECK_W") + 0.20                  # 1.68 m 셔터 폭 (P-002-20)

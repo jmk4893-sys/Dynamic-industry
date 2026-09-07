@@ -97,6 +97,30 @@ def sync(text: str) -> tuple[str, list[str]]:
                 log.append(f"부재 {grp} {name} {cur} → {want}")
         lines[i] = ln
 
+    # ── 정렬·피로 지배 부재 표: 값 · 한계 · 이용률 · 근거 행
+    # 추력이 폭에 비례해 커지던 날(2,400 → 2,500 × 1,400) C1~C4 가 전부 움직였는데
+    # 표는 그대로였다. 근거 행(스팬·추력)도 계산기의 문장이므로 함께 쓴다.
+    byc = {x["id"]: x for x in F.CRITICAL}
+    for i, ln in enumerate(lines):
+        mm = re.match(r'<tr><td class="k">(C\d+)</td>', ln)
+        if not mm or mm.group(1) not in byc:
+            continue
+        x = byc[mm.group(1)]
+        cells = re.findall(r"<td[^>]*>(.*?)</td>", ln)
+        if len(cells) != 6:
+            continue
+        want = (f"{x['value']:.2f} {x['unit']}", f"{x['limit']:.2f} {x['unit']}", f"{x['util']:.2f}")
+        for cur, val in zip(cells[3:6], want):
+            if cur != val:
+                ln = ln.replace(">" + cur + "<", ">" + val + "<", 1)
+                log.append(f"{x['id']} {cur} → {val}")
+        lines[i] = ln
+        nxt = lines[i + 1] if i + 1 < len(lines) else ""
+        sm = re.match(r'(<tr class="sub"><td></td><td colspan="5">)(.*?)(</td></tr>)$', nxt)
+        if sm and sm.group(2) != x["note"]:
+            lines[i + 1] = sm.group(1) + x["note"] + sm.group(3)
+            log.append(f"{x['id']} 근거 {sm.group(2)[:30]}… → {x['note'][:30]}…")
+
     # ── 용접 표: 설계력
     for name, force, _len, _mat, _t in F.WELDS:
         for i, ln in enumerate(lines):

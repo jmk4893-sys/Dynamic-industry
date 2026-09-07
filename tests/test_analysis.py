@@ -279,14 +279,16 @@ class TestTheThermalResultsFollowThePhysics(unittest.TestCase):
         보이려면, 사양서의 모델도 코드에 있어야 한다.
         """
         rfq = (ROOT / "docs" / "dg-hk60-rfq.html").read_text(encoding="utf-8")
-        printed = float(re.search(
-            r'<td class="num">3\.10 kW/m²</td><td class="num">9\.9 K</td>\s*'
-            r'<td class="num">([\d.]+) MPa</td>', rfq).group(1))
+        row = re.search(
+            r'<td class="num">5</td><td class="num">([\d.]+) kW/m²</td><td class="num">([\d.]+) K</td>\s*'
+            r'<td class="num">([\d.]+) MPa</td>', rfq)
+        self.assertIsNotNone(row, "사양서 3.6 의 5단 행을 찾지 못했다")
+        q_p, dt_p, printed = (float(g) for g in row.groups())
         q, dt, sig = TH.rfq_bound(5)
         self.assertAlmostEqual(sig, printed, delta=0.05,
                                msg=f"보수 모델 재현 {sig:.2f} · 인쇄 {printed}")
-        self.assertAlmostEqual(q, 3.10, delta=0.05)
-        self.assertAlmostEqual(dt, 9.9, delta=0.15)
+        self.assertAlmostEqual(q, q_p, delta=0.05)
+        self.assertAlmostEqual(dt, dt_p, delta=0.15)
 
     def test_the_transient_result_sits_below_the_conservative_bound(self):
         """상한을 상한이라고 부르려면 실제로 위에 있어야 한다."""

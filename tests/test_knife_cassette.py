@@ -32,8 +32,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
 RFQ = ROOT / "docs" / "dg-hk60-rfq.html"
 
-#: 두 칼날 합성추력. 사양서 OI-13 과 같은 값이어야 한다.
-TANDEM_THRUST_KN = 13.37
+#: 두 칼날 합성추력 — OI-01 상한 13.37 kN(폭 1,200)을 포락선 폭으로 환산한 콘솔 F_PEEL.
+TANDEM_THRUST_KN = console_consts.const("F_PEEL")
 
 
 def _model():
@@ -63,6 +63,9 @@ class _Base(unittest.TestCase):
         적으면 칼날만 내리고 카세트는 그대로인 날이 온다 — 그래서 별칭으로
         두었고, 시험은 별칭을 풀어서 본다.
         """
+        env = console_consts.env(self.console)
+        if name in env:                      # 식으로 적힌 상수(CASS_MASS 등)는 풀어서 본다
+            return env[name]
         m = re.search(rf"\b{name}\s*=\s*([A-Za-z_][A-Za-z0-9_]*|[\d.]+)", self.console)
         self.assertIsNotNone(m, f"콘솔에 {name} 상수가 없다")
         v = m.group(1)
@@ -211,11 +214,13 @@ class TestChangeoverTime(_Base):
         cool = self._cool() / 60
         table = re.search(r"<caption>교환 정지시간</caption>.*?</table>", self.rfq, re.S)
         self.assertIsNotNone(table, "사양서에 교환 정지시간 표가 없다")
+        # 콘솔 사양 대화상자는 값을 적지 않고 식을 든다 — 카세트 질량이 바뀌면 따라온다
+        for token in ("${(cassStopAuto()/60).toFixed(1)}분", "${(cassCoolSec()/60).toFixed(1)}분",
+                      "${(cassStopManual()/60).toFixed(1)}분"):
+            self.assertIn(token, self.console, f"콘솔 사양 대화상자가 {token} 를 식으로 들지 않는다")
         for value, what in ((auto, "자동교환 정지"), (cool, "강제공랭")):
-            for doc, where in ((self.console, "콘솔 사양 대화상자"),
-                               (table.group(0), "사양서 6.9 정지시간 표")):
-                self.assertIn(f"{value:.1f}", self._minutes(doc),
-                              f"{where} 의 {what} 이 계산값 {value:.1f} 분과 다르다")
+            self.assertIn(f"{value:.1f}", self._minutes(table.group(0)),
+                          f"사양서 6.9 정지시간 표 의 {what} 이 계산값 {value:.1f} 분과 다르다")
         # 6.6 무인운전 표도 같은 값을 인용한다 — 인용처가 둘이면 둘 다 봐야 한다
         row = re.search(r"<th>— 그때의 정지</th>.*?</tr>", self.rfq, re.S)
         self.assertIsNotNone(row, "6.6 표에 칼날교환 정지시간 행이 없다")
@@ -289,7 +294,7 @@ class TestTheWithdrawalEnvelopeIsReserved(unittest.TestCase):
 
     사양서 6.9 는 카세트 인터페이스(핀·클램프·블라인드메이트·포켓)를 전부
     닫아 놓고도 카세트가 기계 밖으로 나가는 자리는 정하지 않았었다. 압축
-    배치를 재어 보면 바닥에는 그 자리가 없다 — 갠트리가 y ±1,420 을 쓸고
+    배치를 재어 보면 바닥에는 그 자리가 없다 — 갠트리가 y ±1,520 을 쓸고
     다니고, 스윕 밖으로 빼면 외장을 뚫는다.
 
     그래서 갠트리 상단과 외장 갓돌 사이의 빈 층을 쓴다. 이 시험은 그 층이
@@ -344,7 +349,7 @@ class TestTheWithdrawalEnvelopeIsReserved(unittest.TestCase):
 
     def test_the_saddle_is_clear_of_the_roll_saddle(self):
         """같은 열에 두면서 겹치면 롤을 내려놓을 자리가 없어진다."""
-        roll_far = -5.20 - 1.46 / 2                           # BS_SADDLE.y − ROLL_FACE/2
+        roll_far = self.c("BS_SADDLE_Y") - self.c("ROLL_FACE") / 2   # BS_SADDLE.y − ROLL_FACE/2
         cass_near = self.c("CKC_RACK_Y") + self.c("KNIFE_W") / 2
         self.assertLess(cass_near, roll_far,
                         f"KC-301 끝 {cass_near:.3f} m 가 만권 롤 끝 {roll_far:.3f} m 와 겹친다")

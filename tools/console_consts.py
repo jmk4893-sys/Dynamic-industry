@@ -55,7 +55,9 @@ def _split_top(body):
 def value(expr, env):
     """상수와 Math 몇 개만으로 된 식이면 그 값, 아니면 None."""
     expr = expr.strip()
-    if not expr or not re.fullmatch(r"[\w.\s+\-*/()]+", expr):
+    # 쉼표는 Math.max(a,b) 의 인수 구분이다 — env() 가 괄호 밖 쉼표에서만
+    # 자르므로 여기까지 온 쉼표는 전부 괄호 안이다.
+    if not expr or not re.fullmatch(r"[\w.\s+\-*/(),]+", expr):
         return None
     scope = dict(env)
     scope["Math"] = _MATH
@@ -87,9 +89,43 @@ def env(console):
             if v is not None:
                 out[name], moved = v, True
                 del pend[name]
+        if "CST" not in out:
+            cst = _stations(console, out)
+            if cst is not None:
+                out["CST"], moved = cst, True
         if not moved:
             break
     return out
+
+
+class _NS:
+    """`CST.DL.x0` 처럼 점으로 파고드는 도면 객체의 대역."""
+
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
+
+def _stations(console, scope):
+    """압축 배치의 스테이션 좌표 — 콘솔의 CST 와 같은 식으로 잇는다.
+
+    도면은 `COMPACT_STATIONS` 의 폭을 CL_END 부터 CL_CLEAR 간격으로 이어
+    x0·cx·x1 을 만든다. 테이블 중심·레일·컨베이어가 전부 여기서 나오므로
+    이 사슬을 못 풀면 그 뒤의 상수도 못 푼다.
+    """
+    m = re.search(r"const COMPACT_STATIONS=\[(.*?)\n\s*\];", console, re.S)
+    if m is None or not {"CL_END", "CL_CLEAR"} <= scope.keys():
+        return None
+    rows = re.findall(r"\['([A-Z]{2})[^']*',[^,]*,\s*([^,]+),", m.group(1))
+    if not rows:
+        return None
+    cur, out = scope["CL_END"], {}
+    for key, expr in rows:
+        w = value(expr, scope)
+        if w is None:
+            return None
+        out[key] = _NS(x0=cur, w=w, cx=cur + w / 2, x1=cur + w)
+        cur += w + scope["CL_CLEAR"]
+    return _NS(**out)
 
 
 def _fmt(v):

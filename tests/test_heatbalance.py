@@ -76,10 +76,15 @@ class TestTheControlVolumeCloses(unittest.TestCase):
 
 class TestTheTermsAreRight(unittest.TestCase):
     def test_panel_enthalpy_matches_the_console_formula(self):
-        q = (c("AREAL_CP") * c("PANEL_L") * c("PANEL_W")
-             * (c("T_TARGET") - c("T_AMB")))
+        """열모델의 q 를 그대로 쓴다 — 콘솔의 질량 기반 AREAL_CP(8.663)는 열모델의
+        arealCp(8.7359)와 1 % 안에서만 같은 다른 값이라, 여기서 쓰면 HB1 의
+        '유효 78 kW' 가 0.8 % 어긋난다."""
+        import cycle as CY
+        q = CY.model()["q"]
         self.assertAlmostEqual(HB.Q_PANEL_KJ, q, places=9)
         self.assertAlmostEqual(HB.panel(3600.0), q, places=9)
+        mass_based = (c("AREAL_CP") * c("PANEL_L") * c("PANEL_W") * (c("T_TARGET") - c("T_AMB")))
+        self.assertLess(abs(mass_based / q - 1), 0.01, "질량 가정과 열 가정이 1 % 밖으로 갈라졌다")
 
     def test_the_thermal_limit_rate_reproduces_the_console_useful_power(self):
         """65 kW 가 어느 운전점의 값인지가 이 검토의 출발점이다."""

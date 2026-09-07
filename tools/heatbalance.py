@@ -52,25 +52,27 @@ import analysis_thermal as TH  # noqa: E402
 import lampmount as LM  # noqa: E402
 import parts as PT  # noqa: E402
 from analysis_thermal import Req, Result  # noqa: E402
+import cycle as CY  # noqa: E402
+import irbank as IR  # noqa: E402
 from console_consts import const as c  # noqa: E402
 
 # ── 운전점 ───────────────────────────────────────────────────────────
-RATE_CONTRACT = 60.0                 # 장/h 계약 순생산
-RATE_THERMAL = 80.9                  # 장/h 열공정 한계 (콘솔)
-TAKT = 53.6                          # s 라인 사이클 — 에어록이 이 주기로 열린다
+RATE_CONTRACT = float(CY.NET_TARGET) # 장/h 계약 순생산 (콘솔 NET_TARGET)
+RATE_THERMAL = CY.RATE_THERMAL       # 장/h 열공정 한계 (콘솔 thermalModel)
+TAKT = CY.TAKT                       # s 라인 사이클 — 에어록이 이 주기로 열린다
 RATED_KW = c("LAMPS") * 2.5          # 100 kW 설치정격
 ETA_ASSUMED = 0.65                   # 콘솔 MODEL 기본값
 T_HOT, T_AMB = c("T_TARGET"), c("T_AMB")
 
 # 장당 열량 — 콘솔과 같은 식
-Q_PANEL_KJ = (c("AREAL_CP") * c("PANEL_L") * c("PANEL_W") * (T_HOT - T_AMB))
+Q_PANEL_KJ = CY.Q_PANEL_KJ                   # kJ/장 — 콘솔 thermalModel 의 q (arealCp 8.7359)
 
 # ── 공기 ─────────────────────────────────────────────────────────────
 CP_AIR = 1005.0                      # J/(kg·K)
 RHO_AIR = lambda t: 353.0 / (273.15 + t)     # kg/m³ 대기압 건공기
 
 # ── 챔버·에어록 ──────────────────────────────────────────────────────
-CAV_L, CAV_W, CAV_H = 3.52, 2.30, 3.60       # m 내부 공동
+CAV_L, CAV_W, CAV_H = IR.CAVITY_L, IR.CAVITY_W, 3.60   # m 내부 공동 — 평면은 IR 뱅크 모델과 같은 값
 SEAL_SPEC = 3.0                              # mm²/m 압착 씰의 등가 누설면적
 
 

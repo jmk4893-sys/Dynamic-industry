@@ -34,7 +34,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
 STUDY = ROOT / "docs" / "dg-hk120-twin-cell.html"
 
-DECKS, LAMPS, CELLS = 7, 80, 2
+DECKS, LAMPS, CELLS = 7, 96, 2
 
 
 def console():
@@ -42,24 +42,28 @@ def console():
 
 
 def layout(name):
-    """콘솔의 배치 설정 하나 — const HK120C={...}; 안의 값들."""
-    m = re.search(rf"const {name}=\{{(.*?)\}};", console(), re.S)
+    """콘솔의 배치 설정 하나 — const HK120C={...}; 안의 값들.
+
+    숫자 필드는 식이다(celly:TWIN_CELLY · lamps:2*LAMPS). console_consts 가
+    풀어 주고, 문자열 필드만 여기서 읽는다."""
+    src = console()
+    out = console_consts.obj(name, src)
+    m = re.search(rf"const {name}=\{{(.*?)\}};", src, re.S)
     assert m, f"콘솔에 {name} 설정이 없다"
-    blk = m.group(1)
-    out = {}
-    for k, v in re.findall(r"(\w+)\s*:\s*('[^']*'|[A-Za-z0-9_.]+)", blk):
-        try:
-            out[k] = float(v)
-        except ValueError:
-            out[k] = v.strip("'")
+    for k, v1, v2 in re.findall(r"(\w+)\s*:\s*(?:'([^']*)'|`([^`]*)`)", m.group(1)):
+        out.setdefault(k, v1 or v2)
     return out
 
 
 def vec(name):
-    """콘솔의 V(x,y,z) 상수 하나."""
-    m = re.search(rf"const {name}=V\(([-\d.]+),([-\d.]+),([-\d.]+)\)", console())
+    """콘솔의 V(x,y,z) 상수 하나 — 성분이 상수 이름이어도 값으로 푼다."""
+    src = console()
+    m = re.search(rf"const {name}=V\(([^)]*)\)", src)
     assert m, f"콘솔에 {name} 이 없다"
-    return tuple(float(g) for g in m.groups())
+    env = console_consts.env(src)
+    out = tuple(console_consts.value(x, env) for x in m.group(1).split(","))
+    assert all(v is not None for v in out), f"{name} 의 성분을 풀지 못했다"
+    return out
 
 
 def body():
@@ -235,12 +239,13 @@ class TestThePictureSaysWhatItIs(unittest.TestCase):
         self.assertIn("viewPresets=()=>twinView()?tpresets:", self.b)
 
     def test_the_tandem_focus_fits_both_cells(self):
-        """탠덤 베이는 x 로 3,800 인데 y 로 14,900 이다 — 세로로 넓다."""
+        """탠덤 베이는 x 로 3,900 인데 y 로 16,100 이다 — 세로로 넓다."""
         m = re.search(r"if\(twinView\(\)\)return\[(.*?)\]\[k%4\]", self.b)
         self.assertIsNotNone(m, "트윈 탠덤 확대 시점이 없다")
         radii = [float(v) for v in re.findall(r"radius:([\d.]+)", m.group(1))]
         self.assertEqual(len(radii), 4)
-        span = 2 * (layout("HK120C")["celly"] + 3.85)          # 카트 바깥 끝까지
+        cart_out = -console_consts.const("CSCART_Y") + console_consts.const("CSCART_W") / 2
+        span = 2 * (layout("HK120C")["celly"] + cart_out)      # 카트 바깥 끝까지
         self.assertGreaterEqual(min(radii), span,
                                 f"확대 반경 {min(radii)} m 로는 폭 {span:.1f} m 베이가 안 들어온다")
 
@@ -340,7 +345,7 @@ class TestEachCellIsItsOwnMachine(unittest.TestCase):
 
     def test_the_guard_plan_steps_around_the_cooling_rack_column(self):
         """+x 안쪽 모서리에는 GC-101 기둥 베이스플레이트가 깔려 있다."""
-        self.assertIn("SX=11.44,SY=1.20", self.b)
+        self.assertIn("SX=CST.GC.x0-.34,SY=1.20", self.b)
         self.assertIn("run(true,SY,SX,x1)", self.b, "계단 구간이 없다")
         self.assertIn("run(false,SX,SY,CG_Y)", self.b)
 
@@ -354,14 +359,14 @@ class TestEachCellIsItsOwnMachine(unittest.TestCase):
         self.assertIn("도어인터록스위치", self.b)
 
     def test_the_transfer_portals_narrow_so_the_guard_fits(self):
-        """통로 반폭은 셀중심 − 갠트리기둥 바깥 = 1,295 뿐이다. ±1,120 문형
-        (바깥 1,195)으로는 가드 벽이 들어갈 100mm 가 남지 않는다."""
+        """통로 반폭은 셀중심 − 갠트리기둥 바깥 = 1,395 뿐이다. ±1,220 문형
+        (바깥 1,295)으로는 가드 벽이 들어갈 100mm 가 남지 않는다."""
         self.assertIn("constcForkHalf=()=>twinView()?FORK_HALF_TWIN:FORK_HALF_STD", self.b)
-        self.assertIn("constFORK_HALF_STD=1.12,FORK_HALF_TWIN=.95", self.b,
-                      "문형 반폭이 이름 있는 상수에서 나오지 않는다")
+        self.assertIn("constFORK_HALF_STD=CARRIER_W/2+.34,FORK_HALF_TWIN=PANEL_HW+.35",
+                      console().replace(" ", ""), "문형 반폭이 패널·캐리어에서 파생되지 않는다")
         L = layout("HK120C")
-        half, post, wall = .95, .17, .05
-        aisle_half = L["celly"] - (1.42 + post / 2)
+        half, post, wall = console_consts.const("FORK_HALF_TWIN"), .17, .05
+        aisle_half = L["celly"] - (console_consts.const("CGY") + post / 2)
         self.assertGreater(aisle_half - (half + .15 / 2) - wall / 2, .05,
                            "좁힌 문형으로도 가드 벽이 통로에 못 선다")
         # 두 문형 모두 배치가 정한 폭으로 부른다
