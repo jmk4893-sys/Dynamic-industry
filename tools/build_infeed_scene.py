@@ -13,9 +13,15 @@
 * **시점** — 기본 시점을 통합라인에서 투입셀 전체로, 시점 버튼은 투입 구간의
   다섯 개만 남긴다. 자동추적은 원래 투입 단계마다 stack·turner·robot·handoff 를
   고르므로 그대로 둔다.
-* **화면** — 흐름표는 JB-201 까지, 도면 모듈 선택은 AFU·BFC·RB/PT 세 장, 배치도
-  초점은 상류. 결과가 꺼진 셀에서 일어나는 하류 전용 조작(정션박스 검출·JBR 검증·
-  AFR 레시피 시나리오·버퍼 초기화)은 숨기고, 40–48 s 단계 이름은 인계 관점으로 적는다.
+* **화면** — 흐름표는 JB-201 까지, 도면 모듈 선택은 AFU·BFC·RB/PT 세 장. 결과가
+  꺼진 셀에서 일어나는 하류 전용 조작(정션박스 검출·JBR 검증·AFR 레시피 시나리오·
+  버퍼 초기화)은 숨기고, 40–48 s 단계 이름은 인계 관점으로 적는다.
+  외장 케이싱은 기구를 가리므로 그룹을 끄고 토글도 치운다. 3D 그림자(shadow map)는 끈다.
+* **배치도** — 원본의 '전체 장비배치도' 탭은 플랜트 전 장비를 그린다. 파생본에서는
+  그 자리에 **투입 장비만** 둔다: 상세도(`build_infeed_detail.plan_view`)의 투입 구간
+  평면 배치와, 투입 셀·장비의 가로(L·X)·세로(W·Y)·높이(H·Z) 외형 표다. 원본의
+  전체 배치 SVG·초점 선택·존 표는 숨기고, 하류 AFR–GBR 평면배치도 접이도 숨긴다.
+  외형 값은 통합 설계도 부품표와 `layout.STATIONS` 에서 읽는다.
 
 원본 파일을 **문자열로 고친다.** 앵커가 정확히 한 곳이어야 하고 아니면 멈춘다 —
 원본이 바뀌어 앵커가 사라지면 파생본이 조용히 옛 모습으로 남는 대신 생성이
@@ -34,6 +40,9 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+import build_infeed_detail as detail  # noqa: E402
 from pv_preprocess import campaign, layout  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -48,6 +57,72 @@ KEEP_STATIONS: tuple[str, ...] = ("afu", "bfc", "robot")
 KEEP_FLOW_STEPS = 6
 #: 숨기는 하류 전용 조작 — 정션박스 검출 시나리오 · JBR 안전·품질 검증 시나리오 · AFR 레시피 시나리오.
 DOWNSTREAM_CONTROLS: tuple[str, ...] = ("jb-box-mode", "jb-validation-mode", "afr-route-mode")
+#: 배치도 탭에 외형을 적는 투입 셀 — layout.STATIONS 키.
+SPEC_CELLS: tuple[str, ...] = ("afu", "bfc", "robot")
+#: JB-201 축적·인계 런의 가드 반폭 (mm) — 통합 설계도 "JB-201 가드(±1,040)" 실측. 부품표에 행이 없어 여기 적는다.
+JB_GUARD_HALF_Y_MM = 1_040
+
+
+def _scoped_css() -> str:
+    """상세도 CSS 중 도판(svg) 규칙과 색 변수만 `.pv-infeed-layout` 아래로 좁혀 가져온다."""
+    css = detail.CSS
+
+    def block(pattern: str) -> str:
+        m = re.search(pattern, css, re.S)
+        if not m:
+            raise SystemExit(f"✗ 상세도 CSS 에서 {pattern} 을 못 찾았다")
+        return m.group(1)
+
+    out = [
+        ".pv-infeed-layout {" + block(r"\n:root \{(.*?)\}") + "}",
+        ':root[data-theme="dark"] .pv-infeed-layout {' + block(r'\n:root\[data-theme="dark"\] \{(.*?)\}') + "}",
+        '@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pv-infeed-layout {'
+        + block(r'@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{(.*?)\}') + "} }",
+    ]
+    for line in css.splitlines():
+        if line.startswith("svg"):
+            out.append(".pv-infeed-layout " + line)
+    out.append(".pv-infeed-layout text { font-family: inherit; }")
+    out.append("#pv-panel-layout > :not(.pv-infeed-layout) { display: none; }")
+    return "\n".join(out)
+
+
+def spec_rows(text: str) -> list[tuple[str, str, str, int, int, int, str]]:
+    """(품번, 품명, 수량, L, W, H, 구분) — 투입 셀 외형과 투입 무리 부품표."""
+    rows: list[tuple[str, str, str, int, int, int, str]] = []
+    for key in SPEC_CELLS:
+        s = layout.STATIONS[key]
+        rows.append((s.sheet, s.name, "1", *s.envelope, "셀 외형 (GA)"))
+    for row in detail.catalog(text):
+        tag, _group, name, qty, dims, _mat, _proc, _tol, kind, *_ = row
+        rows.append((tag, name, qty, int(dims[0]), int(dims[1]), int(dims[2]), kind))
+    rows.append(("JB-201", "가드형 축적·인계 컨베이어 (JBR 존 경계를 건넌다)", "1식",
+                 layout.ACCUM_RUN_MM, JB_GUARD_HALF_Y_MM * 2, layout.LINE_TRANSFER_MM, "이송면 높이"))
+    return rows
+
+
+def layout_panel(text: str) -> str:
+    """배치도 탭 내용 — 투입 구간 평면 배치 + 투입 장비 외형 표."""
+    n, esc = detail.n, detail.esc
+    afu, robot = detail.zones()["afu"], detail.zones()["robot"]
+    x0, x1 = afu.x0_mm, robot.x1_mm
+    y0, y1 = min(afu.y0_mm, robot.y0_mm), max(afu.y1_mm, robot.y1_mm)
+    h = max(layout.STATIONS[k].height_mm for k in SPEC_CELLS)
+    trs = []
+    for tag, name, qty, L, W, H, kind in spec_rows(text):
+        trs.append(f"<tr><td><code>{esc(tag)}</code></td><td>{esc(name)}</td><td>{esc(qty)}</td>"
+                   f"<td>{n(L)}</td><td>{n(W)}</td><td>{n(H)}</td><td>{esc(kind)}</td></tr>")
+    return (
+        '<div class="pv-infeed-layout">'
+        f'<p class="text-small text-muted">투입 구간 전체 — X {n(x0)}…{n(x1)} ({n(x1 - x0)}) × Y {n(y0)}…{n(y1)} ({n(y1 - y0)}) × 최대 높이 {n(h)} mm. '
+        '가로 L = X(공정방향) · 세로 W = Y(라인 좌측) · 높이 H = Z(FFL 상향). 하류 셀(JBR·AFR·후단·버퍼·GRM)은 범위 밖이라 싣지 않는다.</p>'
+        '<div class="pv-sheet-surface">' + detail.plan_view() + "</div>"
+        '<div class="table-responsive"><table class="table table-sm">'
+        "<thead><tr><th>품번</th><th>장비</th><th>수량</th><th>가로 L (mm)</th><th>세로 W (mm)</th><th>높이 H (mm)</th><th>구분</th></tr></thead>"
+        "<tbody>" + "".join(trs) + "</tbody></table></div>"
+        '<p class="text-small text-muted">외형은 통합 설계도 부품표(REV 동일)와 셀 GA 외형 그대로다 · 상세 치수·재질·체결은 상세도와 제작 도면집을 본다.</p>'
+        "</div>"
+    )
 
 
 def _once(text: str, old: str, new: str, what: str) -> str:
@@ -96,8 +171,10 @@ def scene_script(takt_s: float, boundary_world_x: float, upstream_world_x: float
   // 매 프레임 다시 켠다 — 그래서 주기적으로 다시 훑고 매 프레임 끈다.
   let frame = 0;
   function scan() {{ S.scene.updateMatrixWorld(true); S.scene.traverse(classify); }}
+  const casing = S.scene.getObjectByName('pvCase');   // 외장 케이싱 — 투입 구간 파생본에서는 뺀다 (기구를 가린다)
   function tick() {{
     if (frame++ % 30 === 0) scan();
+    if (casing) casing.visible = false;
     for (const o of hidden) o.visible = false;
     for (const tr of transit) {{ tr.getWorldPosition(v); tr.visible = v.x < BOUNDARY + 1.4; }}
     requestAnimationFrame(tick);
@@ -149,8 +226,19 @@ def build() -> str:
     for key, label in (("jbr", "JBR-201 · 정션박스 제거"), ("afr", "AFR-101 · 프레임 분리 · SG 연마"),
                        ("post", "CV·GI · 유리 후단"), ("buffer", "GBR-301 · R-A/R-B/HOLD 버퍼")):
         t = _once(t, f'          <option value="{key}">{label}</option>\n', "", f"도면 모듈 {key}")
-    # 배치도 초점 — 상류
-    t = _once(t, "focus: 'all', clearance: true", "focus: 'upstream', clearance: true", "배치도 초점")
+    # 배치도 탭 — 전체 장비배치도 대신 투입 장비만: 평면 배치 + 외형 표. 원본 SVG·초점·존 표는 CSS 로 숨긴다.
+    t = _once(t, '<div id="pv-panel-layout" role="tabpanel" aria-labelledby="pv-tab-layout" hidden>\n',
+              '<div id="pv-panel-layout" role="tabpanel" aria-labelledby="pv-tab-layout" hidden>\n' + layout_panel(text) + "\n",
+              "배치도 패널")
+    t = _once(t, "</head>", f"<style>{_scoped_css()}</style>\n</head>", "배치도 CSS")
+    t = _once(t, '<span>상세 장비배치도</span></button>', '<span>투입 장비 배치·외형</span></button>', "배치도 프로그램 버튼")
+    t = _once(t, 'aria-controls="pv-panel-layout" aria-selected="false" type="button">전체 장비배치도</button>',
+              'aria-controls="pv-panel-layout" aria-selected="false" type="button">투입 장비 배치·외형</button>', "배치도 탭")
+    t = _once(t, "layout: '전체 장비 상세 배치도',", "layout: '투입 장비 배치 · 외형 (L × W × H)',", "배치도 제목")
+    t = _once(t, '<h3 id="pv-drawing-title">Rev.22 2D·3D 상세 제작도면 및 전체 장비배치</h3>',
+              '<h3 id="pv-drawing-title">투입 구간 2D·3D 상세 제작도면 및 투입 장비 배치·외형</h3>', "도면 표제")
+    t = _once(t, '<details class="jb-engineering">\n    <summary>AFR-101–GBR-301 비전통합 상세 2D 평면배치도',
+              '<details class="jb-engineering" hidden>\n    <summary>AFR-101–GBR-301 비전통합 상세 2D 평면배치도', "하류 평면배치도 접이")
     # 흐름표 — JB-201 까지만 보인다
     t = _once(t, '<h3 id="pv-flow-title">전체 공정 흐름</h3>',
               '<h3 id="pv-flow-title">투입 구간 공정 흐름 <span class="text-small text-muted">JBR-201 부터 범위 밖</span></h3>', "흐름표 제목")
@@ -162,6 +250,11 @@ def build() -> str:
     for key in DOWNSTREAM_CONTROLS:
         if f'<label class="form-label" for="{key}">' not in t:
             raise SystemExit(f"✗ 하류 조작 {key} 의 라벨이 없다")
+    t = _once(t, '<input class="form-check-input" id="pv-case" type="checkbox" checked>',
+              '<input class="form-check-input" id="pv-case" type="checkbox">', "케이싱 토글 기본 off")
+    hidden_controls += ", label.form-switch:has(#pv-case)"
+    # 3D 그림자 — 렌더러 섀도맵을 첫 렌더 전에 끈다 (재질 재컴파일이 필요 없다)
+    t = _once(t, "Dt.shadowMap.enabled=!0;", "Dt.shadowMap.enabled=!1;", "3D 그림자")
     t = _once(t, '<button class="btn" id="afr-buffer-reset" type="button">',
               '<button class="btn" id="afr-buffer-reset" type="button" hidden>', "버퍼 초기화 버튼")
     t = _once(t, "</head>", f"<style>{hidden_controls} {{ display: none; }}</style>\n</head>", "하류 조작 CSS")

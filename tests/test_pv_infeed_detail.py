@@ -86,6 +86,16 @@ class TestInfeedDetail(unittest.TestCase):
                 self.assertIn(f"<code>{h.tag}</code>", self.html)
                 self.assertIn(f"PL{h.plr}", self.html)
 
+    def test_the_plan_draws_only_infeed_equipment(self):
+        """평면 배치에는 범위 밖 존을 그리지 않는다 — 방향 표기만 남는다."""
+        plan = self.html.split('<section id="plan">')[1].split("</section>")[0]
+        self.assertNotIn("zone-out", plan)
+        self.assertNotIn("JBR-201 존 (범위 밖)", plan)
+        self.assertNotIn("jbr 존 중심", plan)
+        self.assertNotIn('<span class="l-out">', self.html)
+        for tag in ("FL-101", "LFT-101A", "RB-101", "PT-101 · JB-201", "RJ-101A", "VAC-101", "HPU-101"):
+            self.assertIn(tag, plan)
+
     def test_the_artifact_converter_accepts_it(self):
         """외부에서 받아 오는 자리가 없고 골격 태그가 벗겨지는 문서여야 발행할 수 있다."""
         conv = _load("build_artifact")
@@ -132,6 +142,12 @@ class TestInfeedSim(unittest.TestCase):
             with self.subTest(key=key):
                 self.assertEqual(self.model["permits"][key][0], first)
         self.assertEqual(self.model["permits"]["handshake"][-1], "TRANSFER_COMPLETE")
+
+    def test_the_plan_draws_only_infeed_equipment(self):
+        """운전 콘솔 평면에도 범위 밖 존은 그리지 않는다 — 방향 표기만."""
+        self.assertNotIn("'out', 'JBR-201 존 (범위 밖)'", self.html)
+        self.assertNotIn("svg .out {", self.html)
+        self.assertIn("'→ JBR-201 (범위 밖)'", self.html)
 
     def test_the_clock_is_continuous(self):
         b = self.builder
@@ -204,6 +220,38 @@ class TestInfeedScene(unittest.TestCase):
         self.assertIn("JB-201 → JBR-201 인계", self.html)
         self.assertNotIn("ENGINEERING BASE REV.22", self.html)
         self.assertNotIn("Rev.22 · 비전 2헤드", self.html)
+
+    def test_the_casing_is_removed(self):
+        self.assertIn('id="pv-case" type="checkbox">', self.html)
+        self.assertNotIn('id="pv-case" type="checkbox" checked', self.html)
+        self.assertIn("label.form-switch:has(#pv-case)", self.html)
+        self.assertIn("getObjectByName('pvCase')", self.html)
+
+    def test_the_3d_shadows_are_off(self):
+        self.assertIn("Dt.shadowMap.enabled=!1;", self.html)
+        self.assertNotIn("Dt.shadowMap.enabled=!0;", self.html)
+
+    def test_the_layout_tab_shows_only_infeed_equipment(self):
+        """원본의 전체 장비배치도 대신 투입 구간 평면 배치와 투입 장비 L×W×H 표만."""
+        self.assertNotIn(">전체 장비배치도</button>", self.html)
+        self.assertNotIn("<span>상세 장비배치도</span>", self.html)
+        self.assertNotIn("layout: '전체 장비 상세 배치도'", self.html)
+        self.assertIn('<details class="jb-engineering" hidden>\n    <summary>AFR-101–GBR-301', self.html)
+        self.assertIn("#pv-panel-layout > :not(.pv-infeed-layout) { display: none; }", self.html)
+        panel = self.html.split('<div class="pv-infeed-layout">')[1].split("</div>\n")[0]
+        self.assertIn('aria-label="투입 구간 평면 배치도"', panel)
+        detail = _load("build_infeed_detail")
+        rows = self.builder.spec_rows(self.plant)
+        tags = [r[0] for r in rows]
+        for tag in detail.SCOPE_PART_NUMBERS:
+            self.assertIn(tag, tags)
+        self.assertNotIn("AFR", "".join(tags))
+        for key in self.builder.SPEC_CELLS:
+            s = layout.STATIONS[key]
+            self.assertIn(f"<td><code>{s.sheet}</code></td><td>{s.name}</td><td>1</td>"
+                          f"<td>{detail.n(s.length_mm)}</td><td>{detail.n(s.width_mm)}</td><td>{detail.n(s.height_mm)}</td>", panel)
+        self.assertIn(f"<td>{detail.n(layout.ACCUM_RUN_MM)}</td>", panel)
+        self.assertEqual(panel.count("<tr>") - 1, len(rows))
 
     def test_the_artifact_converter_accepts_it(self):
         conv = _load("build_artifact")
