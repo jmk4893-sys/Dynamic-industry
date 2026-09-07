@@ -211,6 +211,10 @@ class TestInfeedScene(unittest.TestCase):
         self.assertIn("label.form-switch:has(#pv-case)", self.html)
         self.assertIn("getObjectByName('pvCase')", self.html)
 
+    def test_the_3d_shadows_are_off(self):
+        self.assertIn("Dt.shadowMap.enabled=!1;", self.html)
+        self.assertNotIn("Dt.shadowMap.enabled=!0;", self.html)
+
     def test_the_layout_tab_shows_only_infeed_equipment(self):
         """원본의 전체 장비배치도 대신 투입 구간 평면 배치와 투입 장비 L×W×H 표만."""
         self.assertNotIn(">전체 장비배치도</button>", self.html)

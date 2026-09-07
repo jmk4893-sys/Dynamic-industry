@@ -242,8 +242,8 @@ def plan_view() -> str:
     s.text(11_300, band + aisle / 2, f"보행·정비 통로 {n(aisle)}", "lbl-muted", "end", dy=4)
     for z, cls in ((afu, "zone zone-in"), (robot, "zone zone-in")):
         s.rect(z.x0_mm, z.x1_mm, z.y0_mm, z.y1_mm, cls, f"{z.label} 존 {n(z.length_mm)} × {n(z.width_mm)}")
-    s.rect(jbr.x0_mm, 11_400, jbr.y0_mm, jbr.y1_mm, "zone zone-out", "JBR-201 존 (범위 밖)")
-    s.text(11_300, jbr.y0_mm + 260, "JBR-201 존 · 범위 밖 →", "lbl-muted", "end")
+    # 하류(JBR-201 부터)는 범위 밖이라 장비도 존도 그리지 않는다 — 방향만 적는다.
+    s.text(11_300, jbr.y0_mm + 260, "→ JBR-201 (범위 밖)", "lbl-muted", "end")
     s.text(afu.x0_mm + 120, band - 220, f"afu 존 · {afu.label}", "lbl-zone")
     s.text(robot.x0_mm + 120, robot.y1_mm + 300, f"robot 존 · {robot.label}", "lbl-zone")
 
@@ -335,7 +335,6 @@ def plan_view() -> str:
     s.dim_x(afu.x0_mm, pick, top - 190, f"적층 {n(layout.BFC_PICKUP_OFFSET_MM)}")
     s.dim_x(pick, ped, top - 190, f"픽업→페데스털 {n(layout.ROBOT_PICK_DX_MM)}")
     s.dim_x(ped, pt, top - 190, f"페데스털→PT {n(layout.ROBOT_PLACE_DX_MM)}")
-    s.dim_x(pt, 11_300, top - 190, f"jbr 존 중심({n(jbr.x0_mm + jbr.length_mm // 2)})까지 {n(layout.PT_FROM_JBR_CENTER_MM)} →")
     s.dim_y(plant_y(0), plant_y(layout.BFC_PICKUP_Z_MM), pick + 1_700, f"Z {n(layout.BFC_PICKUP_Z_MM)}")
     s.dim_y(0, band, 11_250, f"장비 밴드 {n(band)}", right=False)
     s.line(afu.x0_mm, plant_y(0), 11_400, plant_y(0), "centre")
@@ -967,7 +966,7 @@ def build() -> str:
         # 평면
         '<section id="plan">',
         "<h2>평면 배치</h2>",
-        '<div class="legend"><span class="l-zone">존 (범위 안)</span><span class="l-out">범위 밖</span><span class="l-panel">패널·적층</span><span class="l-safe">포획빔·가드</span><span class="l-path">로봇 경로 / 도달 반경</span></div>',
+        '<div class="legend"><span class="l-zone">존 (범위 안)</span><span class="l-panel">패널·적층</span><span class="l-safe">포획빔·가드</span><span class="l-path">로봇 경로 / 도달 반경</span></div>',
         plan_view(),
         "<p class=\"note\">Bay A/B 는 라인 중심에 대칭이다. 반전 드럼(두 엔드링)은 적층 바로 위에 서므로 수평 셔틀이 없고, 지게차는 팔레트를 링 밑으로 밀어 넣는다. BFC 하류 포탈 기둥 발판은 로봇 존으로 "
         f"{n(layout.zone_overlap_mm('afu'))} mm 물려 있다 — 로봇이 베이 안으로 팔을 넣어 픽업하려면 그래야 한다(설계 넘침).</p>",

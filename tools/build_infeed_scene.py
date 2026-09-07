@@ -16,7 +16,7 @@
 * **화면** — 흐름표는 JB-201 까지, 도면 모듈 선택은 AFU·BFC·RB/PT 세 장. 결과가
   꺼진 셀에서 일어나는 하류 전용 조작(정션박스 검출·JBR 검증·AFR 레시피 시나리오·
   버퍼 초기화)은 숨기고, 40–48 s 단계 이름은 인계 관점으로 적는다.
-  외장 케이싱은 기구를 가리므로 그룹을 끄고 토글도 치운다.
+  외장 케이싱은 기구를 가리므로 그룹을 끄고 토글도 치운다. 3D 그림자(shadow map)는 끈다.
 * **배치도** — 원본의 '전체 장비배치도' 탭은 플랜트 전 장비를 그린다. 파생본에서는
   그 자리에 **투입 장비만** 둔다: 상세도(`build_infeed_detail.plan_view`)의 투입 구간
   평면 배치와, 투입 셀·장비의 가로(L·X)·세로(W·Y)·높이(H·Z) 외형 표다. 원본의
@@ -253,6 +253,8 @@ def build() -> str:
     t = _once(t, '<input class="form-check-input" id="pv-case" type="checkbox" checked>',
               '<input class="form-check-input" id="pv-case" type="checkbox">', "케이싱 토글 기본 off")
     hidden_controls += ", label.form-switch:has(#pv-case)"
+    # 3D 그림자 — 렌더러 섀도맵을 첫 렌더 전에 끈다 (재질 재컴파일이 필요 없다)
+    t = _once(t, "Dt.shadowMap.enabled=!0;", "Dt.shadowMap.enabled=!1;", "3D 그림자")
     t = _once(t, '<button class="btn" id="afr-buffer-reset" type="button">',
               '<button class="btn" id="afr-buffer-reset" type="button" hidden>', "버퍼 초기화 버튼")
     t = _once(t, "</head>", f"<style>{hidden_controls} {{ display: none; }}</style>\n</head>", "하류 조작 CSS")
