@@ -3074,7 +3074,9 @@ window.pvMarkPaint = function (ctx, x, y, w) {
   function focusBox(focus) {
     var pair = LAYOUT_FOCUS[focus];
     if (!pair) return '0 0 1400 760';
-    var from = zoneByKey(pair[0]), to = zoneByKey(pair[1]);
+    // 초점이 한 존일 수도 있다 — `jbr` 이 그렇다. pair[1] 을 그대로 읽으면 zoneByKey 가
+    // null 을 돌려주고 to[3] 에서 터진다. 마지막 키를 오른쪽 끝으로 삼는다.
+    var from = zoneByKey(pair[0]), to = zoneByKey(pair[pair.length - 1]);
     var top = 60, pad = 46;
     var height = mapY(PLANT_Y) + 34 - top;
     var minWidth = height * 1400 / 760;
@@ -5947,7 +5949,10 @@ window.pvMarkPaint = function (ctx, x, y, w) {
     out.push(text(1128, 244, (runS / 60).toFixed(1) + '분 · 적색 세로선 = 전손 리젝트', 'pv-fab-small', 'end'));
     el('#jb-cam-timeline').innerHTML = out.join('');
     camState.rendered = true;
-    setCampaignIndex(camState.index);
+    // 표만 그린다. 여기서 3D 에 명령하면 **페이지를 여는 것만으로** 영상이 멈추고 0 s 로
+    // 되감긴다 — 마크업은 재생 상태(일시정지 버튼)로 나가는데 화면은 멈춰 있었다.
+    // 그동안 이 결함은 focusBox 가 그 앞줄에서 터져 여기까지 오지 못한 덕에 가려져 있었다.
+    setCampaignIndex(camState.index, false);
   }
   function markCampaignIndex(n) {
     var data = campaignData();
@@ -5959,13 +5964,15 @@ window.pvMarkPaint = function (ctx, x, y, w) {
     var row = host.querySelector('[data-cam-row="' + n + '"]');
     if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
   }
-  function setCampaignIndex(index) {
+  // commit === false 면 캠페인 표의 표시만 옮기고 3D 공정시계는 건드리지 않는다.
+  // 사람이 장을 고를 때(이전·다음·스트립)는 기본값으로 3D 를 같이 옮긴다.
+  function setCampaignIndex(index, commit) {
     var data = campaignData();
     if (!data) return;
     var n = Math.max(1, Math.min(data.roster.length, index));
     camState.index = n;
     var panel = data.roster[n - 1];
-    host.__pvInfeedTest.setCampaignIndex(n);
+    if (commit !== false) host.__pvInfeedTest.setCampaignIndex(n);
     el('#jb-cam-now').textContent = n + ' / ' + data.roster.length + ' · ' + panel.lift + ' · ' + panel.action
       + ' · 공정시계 ' + Math.floor(panel.infeedStart / 60) + '분 '
       + String(Math.floor(panel.infeedStart % 60)).padStart(2, '0') + '초';

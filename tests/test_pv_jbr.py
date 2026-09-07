@@ -1,0 +1,152 @@
+"""JBR-201 정션박스 제거장치 파생본 — 생성기 출력과 커밋된 파일, 그리고 모델과의 일치.
+
+파생본은 손으로 쓰지 않는다. `tools/build_jbr_scene.py` 가 통합 설계도에서 JBR 셀만
+남겨 찍어 내고, 여기서는 (1) 커밋된 파일이 그 출력과 같은지, (2) 시계 창이 캠페인
+모델에서 온 값인지, (3) 원본 3D 형상 코드가 그대로인지(파생본은 보이기만 끈다),
+(4) 아티팩트 변환기가 받아들이는 문서인지를 본다.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import pathlib
+import re
+import unittest
+
+from tests import _path  # noqa: F401
+
+from pv_preprocess import campaign, layout
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+SCENE = ROOT / "docs/drawings/pv-jbr-scene.html"
+
+
+def _load(name: str):
+    spec = importlib.util.spec_from_file_location(name, ROOT / "tools" / f"{name}.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class TestJbrScene(unittest.TestCase):
+    """통합 설계도에서 JBR-201 셀만 남긴 파생본."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.builder = _load("build_jbr_scene")
+        cls.html = SCENE.read_text(encoding="utf-8")
+        cls.plant = cls.builder.PLANT.read_text(encoding="utf-8")
+
+    def test_the_committed_file_is_what_the_builder_makes(self):
+        self.assertEqual(self.html, self.builder.build(),
+                         "docs/drawings/pv-jbr-scene.html 이 생성기 출력과 다르다 — "
+                         "PYTHONPATH=src python tools/build_jbr_scene.py 를 돌리고 커밋한다")
+
+    def test_the_clock_window_is_the_cell_occupancy(self):
+        """창은 [투입부 점유, 투입부 점유 + JBR 점유] 다 — 새로 정한 숫자가 없다."""
+        t0, t1 = self.builder.window()
+        self.assertEqual(t0, campaign.INFEED_S)
+        self.assertEqual(t1, campaign.INFEED_S + campaign.JBR_S)
+        self.assertIn(f",ci={t1:g}", self.html)
+        self.assertIn(f",Ve={t0:g},ai=0", self.html)
+        self.assertIn(f'min="{t0:g}" max="{t1:g}"', self.html)
+        self.assertNotIn(",ci=nt+Lr", self.html)
+        self.assertNotIn('max="124.03"', self.html)
+
+    def test_every_rewind_lands_inside_the_window(self):
+        """조작을 바꿔도 시계가 창 밖(0 s)으로 되감기면 안 된다."""
+        t0, _ = self.builder.window()
+        # 원본의 `Ve=0` 은 선언 1 + 되감기 6 이다. 생성기는 선언을 먼저 바꾸고 남은 6 을 센다.
+        self.assertEqual(len(re.findall(r"\bVe=0\b", self.plant)), 7, "원본의 되감기 수가 바뀌었다")
+        self.assertNotIn("Ve=0", self.html)
+        # 파생본의 `Ve=40` 은 선언 1 + 반복 되돌림 1 + 되감기 6 이다.
+        self.assertEqual(len(re.findall(rf"\bVe={t0:g}\b", self.html)), 8)
+        self.assertIn(f"Ve={t0:g}+(Ve-{t0:g})%(ci-{t0:g})", self.html)
+
+    def test_only_jbr_views_and_the_jbr_sheet_remain(self):
+        views = re.findall(r'data-jb-view="([a-z]+)" type="button"', self.html)
+        self.assertEqual(sorted(views), sorted(self.builder.KEEP_VIEWS))
+        for view in self.builder.AUTO_VIEWS:
+            self.assertIn(view, self.builder.KEEP_VIEWS, "자동추적이 고르는 시점이 버튼에 없다")
+        sheets = self.html.split('id="pv-drawing-station"')[1][:900]
+        for key in self.builder.DROP_STATIONS:
+            self.assertNotIn(f'<option value="{key}"', sheets)
+        self.assertIn('<option value="jbr" selected>', sheets)
+        self.assertIn(',xl="overall"', self.html)
+
+    def test_the_auto_camera_list_is_the_plant_literal(self):
+        """자동추적 시점 목록이 원본과 어긋나면 파생본의 시점 버튼이 모자란다."""
+        literal = ",".join(f'"{v}"' for v in self.builder.AUTO_VIEWS)
+        self.assertIn(f"ue=[{literal}]", self.plant)
+
+    def test_the_scene_is_narrowed_not_rewritten(self):
+        """3D 형상 코드는 원본과 같아야 한다 — 파생본은 보이기만 끈다."""
+        i = self.plant.index("var pvZone=")
+        j = self.plant.index("Ae.__pvScene=")
+        patched = (",ci=nt+Lr", ',xl="line"', "fp.line:fp[i]", '"reset"?"line"',
+                   "overall:{position:new C(3.5,6,-10.2)")
+        for line in self.plant[i:j].splitlines():
+            if any(anchor in line for anchor in patched):
+                continue
+            self.assertIn(line, self.html, f"원본 장면 코드가 파생본에서 바뀌었다: {line[:80]}")
+        self.assertIn("window.__pvJbrScene", self.html)
+
+    def test_the_scene_boundary_is_the_zone_table(self):
+        low, high = self.builder.zone_world_x()
+        zone = next(z for z in layout.build_zones() if z.key == "jbr")
+        self.assertEqual(low, (zone.x0_mm - self.builder.SCENE_ORIGIN_X_MM) / 1000)
+        self.assertEqual(high, (zone.x1_mm - self.builder.SCENE_ORIGIN_X_MM) / 1000)
+        self.assertIn(f"const LOW = {low:g};", self.html)
+        self.assertIn(f"const HIGH = {high:g};", self.html)
+
+    def test_out_of_scope_controls_are_hidden_and_the_cell_keeps_its_own(self):
+        for key in self.builder.HIDDEN_CONTROLS:
+            self.assertIn(f'label[for="{key}"]', self.html)
+        self.assertIn('id="afr-buffer-reset" type="button" hidden', self.html)
+        for key in ("jb-box-mode", "jb-validation-mode", "pv-panel-structure"):
+            self.assertIn(f'<label class="form-label" for="{key}">', self.html)
+            self.assertNotIn(f'label[for="{key}"] {{ display: none', self.html)
+        self.assertNotIn("ENGINEERING BASE REV.22", self.html)
+        self.assertIn("JBR-201 단독 파생본", self.html)
+
+    def test_the_flow_strip_shows_only_the_handoffs_and_the_cell(self):
+        first, last = self.builder.FLOW_FIRST, self.builder.FLOW_LAST
+        self.assertEqual((first, last), (6, 8))
+        self.assertIn(f".pv-flow-track > li:nth-child(-n+{first - 1})", self.html)
+        self.assertIn(f".pv-flow-track > li:nth-child(n+{last + 1})", self.html)
+        steps = re.findall(r'<li data-flow-step="(\d+)"', self.html)
+        self.assertEqual(len(steps), 11, "흐름표 칸은 지우지 않고 CSS 로만 가린다")
+
+    def test_the_artifact_converter_accepts_it(self):
+        conv = _load("build_artifact")
+        self.assertIn("jbr-scene", conv.TARGETS)
+        body = conv.convert(self.html, SCENE)
+        self.assertIn("<title>JBR-201 정션박스 제거장치</title>", body)
+
+    def test_the_readme_lists_the_sheet(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("docs/drawings/pv-jbr-scene.html", readme)
+        self.assertIn("tools/build_jbr_scene.py", readme)
+
+
+class TestPlantConsoleDefects(unittest.TestCase):
+    """파생본을 만들며 드러난 통합 설계도 자체의 결함 두 개 — 회귀 방지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.plant = (ROOT / "docs/drawings/pv-preprocess-plant.html").read_text(encoding="utf-8")
+
+    def test_a_single_zone_focus_does_not_crash(self):
+        """LAYOUT_FOCUS.jbr 은 존이 하나다 — pair[1] 을 읽으면 zoneByKey 가 null 을 준다."""
+        self.assertIn("var from = zoneByKey(pair[0]), to = zoneByKey(pair[pair.length - 1]);", self.plant)
+        focus = re.search(r"var LAYOUT_FOCUS = \{(.*?)\};", self.plant).group(1)
+        self.assertIn("jbr: ['jbr']", focus)
+
+    def test_drawing_the_campaign_chart_does_not_stop_the_video(self):
+        """표를 그리는 것만으로 3D 공정시계가 멈추고 0 s 로 되감기면 안 된다."""
+        self.assertIn("setCampaignIndex(camState.index, false);", self.plant)
+        self.assertIn("if (commit !== false) host.__pvInfeedTest.setCampaignIndex(n);", self.plant)
+
+
+if __name__ == "__main__":
+    unittest.main()
