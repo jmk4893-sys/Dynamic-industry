@@ -274,6 +274,46 @@ class TestJbrReview(unittest.TestCase):
         self.assertIn("후검증 실측으로 확인할 것", detail)
 
 
+class TestJbrBenchPlan(unittest.TestCase):
+    """벤치 시험 계획 — 공압으로 바뀌면서 재는 대상이 힘에서 압력으로 옮겨졌다."""
+
+    def test_the_bore_series_is_discrete_and_the_lookup_lands_on_it(self):
+        """계열이 이산값이라 측정이 거칠어도 답이 안 갈린다 — 그것이 공압의 이점이다."""
+        for kn, want in ((1.5, 63.0), (2.0, 80.0), (2.5, 80.0), (3.0, 100.0)):
+            self.assertEqual(jf.bore_for(kn), want, f"{kn} kN")
+        for b in jf.BORE_SERIES:
+            self.assertIn(b, jf.BORE_SERIES)
+        with self.assertRaises(ValueError):
+            jf.bore_for(999.0)
+
+    def test_a_twenty_percent_error_does_not_change_the_bore(self):
+        """서보였다면 같은 오차가 수명을 두 배로 흔든다 — 그 대비가 계획의 근거다."""
+        self.assertEqual(jf.bore_for(2.1), jf.bore_for(2.1 * 1.19))
+
+    def test_the_plan_covers_ageing_and_temperature(self):
+        text = " ".join(x for row in jf.bench_plan() for x in row)
+        self.assertIn("노화", text)
+        self.assertEqual(len(jf.BENCH_TEMPS_C), 2)
+        self.assertGreaterEqual(jf.BENCH_SAMPLES, 30)
+
+    def test_every_downstream_condition_is_measured(self):
+        """하류 조건 셋이 기하로만 서 있었다 — 이 시험이 실측으로 바꾼다."""
+        judged = " ".join(b for _, b, _ in jf.bench_measurements())
+        self.assertIn(f"{handoff.RIBBON_STUB_MAX_MM:g}", judged)
+        self.assertIn(f"{handoff.SILICONE_RESIDUE_MAX_MM:g}", judged)
+        self.assertIn(f"{handoff.BACKSHEET_NOTCH_MAX_MM:g}", judged)
+
+    def test_the_ribbon_gap_is_on_the_measurement_list(self):
+        """리본이 도면에 없다 — 같은 시험에서 실측하면 그 자리가 채워진다."""
+        items = " ".join(a for a, _, _ in jf.bench_measurements())
+        self.assertIn("리본", items)
+
+    def test_the_sheet_says_what_the_test_cannot_answer(self):
+        html = SHEET.read_text(encoding="utf-8")
+        self.assertIn("이 시험이 답하지 못하는 것", html)
+        self.assertIn("재는 것이 힘이 아니라 압력이다", html)
+
+
 class TestJbrFabSheet(unittest.TestCase):
     def setUp(self):
         self.b = _builder()

@@ -312,6 +312,39 @@ def review() -> str:
     return "".join(out)
 
 
+def bench() -> str:
+    """벤치 시험 계획 — 공압으로 가면 재는 것이 힘이 아니라 압력이 된다."""
+    lo, hi = jf.BENCH_PRESSURE_MPA
+    rows = [[f"Ø{b:g}", f'{3.14159 / 4 * b ** 2 * jf.AIR_MPA_MIN / 1000:.2f} kN',
+             f'{3.14159 / 4 * b ** 2 * jf.AIR_MPA_MAX / 1000:.2f} kN']
+            for b in (63.0, 80.0, 100.0, 125.0)]
+    return (
+        '<p>서보·볼스크루를 전제하면 시험의 목적은 <b>정격 작업력을 ±30 % 안에서 재는 것</b>'
+        '이었다 — L10 이 하중의 3 제곱에 걸리니까. <b>공압으로 가면 목적이 바뀐다.</b> 실린더 '
+        '수명은 주행거리에 걸리므로 힘을 정밀하게 알 필요가 없고, 필요한 것은 「어느 보어면 '
+        '되는가」 하나다. 보어는 이산값이라 훨씬 거친 측정으로 충분하다.</p>'
+        '<p><b>그래서 재는 것이 힘이 아니라 압력이다.</b> 실린더를 실제로 달고 압력을 올리다가 '
+        '박스가 떨어지는 압력을 읽으면 그 값이 곧 보어 선정 입력이다 — 로드셀도 토크 계산도 '
+        '필요 없다.</p>'
+        + '<h3>7.1 어떻게 잡는가</h3>'
+        + table(["항목", "내용", "왜 그렇게 잡는가"],
+                [[f"<b>{esc(a_)}</b>", b_, c_] for a_, b_, c_ in jf.bench_plan()])
+        + '<h3>7.2 무엇을 재는가 — 한 번의 시험이 미결 여럿을 닫는다</h3>'
+        + table(["측정", "판정", "이 측정이 닫는 것"],
+                [[esc(a_), esc(b_), esc(c_)] for a_, b_, c_ in jf.bench_measurements()])
+        + '<h3>7.3 결과를 보어로 옮긴다</h3>'
+        + table(["보어", f"{jf.AIR_MPA_MIN:g} MPa", f"{jf.AIR_MPA_MAX:g} MPa"], rows)
+        + f'<p class="note">P95 분리력이 나오면 <span class="mono">jbr_fabrication.bore_for()</span> '
+          f'가 표준 계열에서 그 힘을 {jf.AIR_MPA_MIN:g} MPa 에 내는 가장 작은 보어를 돌려준다 — '
+          f'2.0 kN 이면 Ø80, 3.0 kN 이면 Ø100 이다. 계열이 이산값이라 <b>측정이 ±20 % 만 맞아도 '
+          f'답이 갈리지 않는다</b>. 서보였다면 같은 오차가 수명을 두 배로 흔들었다.</p>'
+        + '<div class="note"><b>이 시험이 답하지 못하는 것.</b> 30 사이클로는 <b>칼날 장기 수명</b>이 '
+          '안 나온다(초기 마모만 본다). 셀 사이클타임·브리지 정정 시간·구조 피로도 여기서 나오지 '
+          '않는다 — 그것들은 실기 run-at-rate 몫이다. 여기서 얻는 것은 <b>발주 전에 정해야 하는 '
+          '것들</b>뿐이고, 그것이 이 시험을 지금 하는 이유다.</div>'
+    )
+
+
 def open_items() -> str:
     rows = [
         ["구조 검증이 없다",
@@ -484,7 +517,10 @@ def build() -> str:
 {findings()}
 {review()}
 </section>
-<section class="card"><h2>7. 미결</h2>
+<section class="card"><h2>7. 벤치 시험 계획 — 발주 전에 정해야 하는 것</h2>
+{bench()}
+</section>
+<section class="card"><h2>8. 미결</h2>
 <p class="note">이 도면집이 답하지 못한 것들. 답이 오면 정본(<span class="mono">src/pv_preprocess/jbr_fabrication.py</span>)만 고치고 다시 찍는다.</p>
 {open_items()}
 </section>

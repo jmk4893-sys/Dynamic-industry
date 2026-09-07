@@ -27,7 +27,7 @@ JBR 재질은 여기서 따로 갖는다 — 공구강·고력 알루미늄은 �
 
 from __future__ import annotations
 
-from . import fabrication as fab, fasteners, mounting
+from . import fabrication as fab, fasteners, handoff, mounting
 from .fabrication import (  # 자료형과 체결 표준은 투입 구간과 같은 것을 쓴다.
     ANCHOR_EMBED_MM, Assembly, Commercial, HOLE_MM, Hole, Joint, Part, Step,
     TORQUE_NM, corners, row,
@@ -1038,3 +1038,69 @@ def mass_check() -> dict[str, float | bool]:
         "over_kg": round(body - PLANT_CELL_MASS_KG, 1),
         "ok": body <= PLANT_CELL_MASS_KG,
     }
+# ── 벤치 시험 계획 (공압 기준) ───────────────────────────────────────────
+# 서보·볼스크루를 전제하면 시험의 목적은 **정격 작업력을 ±30 % 안에서 재는 것**이었다
+# (L10 이 하중의 3 제곱에 걸리니까). 공압으로 가면 목적이 바뀐다 — 실린더 수명은
+# 주행거리에 걸리므로 힘을 정밀하게 알 필요가 없고, 필요한 것은 **어느 보어면 되는가**
+# 하나다. 보어는 이산값(50·63·80·100·125)이라 훨씬 거친 측정으로 충분하다.
+#
+# 그래서 재는 것이 힘이 아니라 **압력**이 된다. 실린더를 실제로 달고 압력을 올리다가
+# 박스가 떨어지는 압력을 읽으면, 그 값이 곧 보어 선정 입력이다. 로드셀도 토크 계산도
+# 필요 없다.
+#
+# 박스는 한 번만 뗄 수 있으므로 시료마다 이진 판정이 아니라 **압력을 서서히 올려
+# 문턱값 하나**를 얻는다 — 시료 수가 그대로 표본 수가 된다.
+
+BENCH_SAMPLES = 30
+BENCH_TEMPS_C = (10.0, 30.0)
+BENCH_PRESSURE_MPA = (0.15, 0.65)
+BENCH_RAMP_MPA_S = 0.01
+BENCH_RIG_BORE_MM = 80.0
+
+#: 공압 실린더 표준 보어 계열 (mm). 임의 보어는 안 나온다.
+BORE_SERIES: tuple[float, ...] = (32.0, 40.0, 50.0, 63.0, 80.0, 100.0, 125.0, 160.0)
+
+
+def bore_for(force_kn: float, air_mpa: float = AIR_MPA_MIN) -> float:
+    """그 힘을 그 압력에서 내는 가장 작은 표준 보어. 시험 결과를 넣으면 답이 나온다."""
+    for bore in BORE_SERIES:
+        if 3.14159 / 4 * bore ** 2 * air_mpa / 1000.0 >= force_kn:
+            return bore
+    raise ValueError(f"표준 계열에 {force_kn} kN 을 내는 보어가 없다 ({air_mpa} MPa)")
+
+
+def bench_plan() -> tuple[tuple[str, str, str], ...]:
+    """(항목, 내용, 왜 그렇게 잡는가)."""
+    lo, hi = BENCH_PRESSURE_MPA
+    return (
+        ("무엇을 재는가", "박스가 떨어지는 **공급 압력**",
+         "보어 선정 입력이 곧 압력이다. 힘·토크로 환산할 일이 없다"),
+        ("시험체", f"헤드 1 기 목업 — 실제 L칼날 카세트(랜드 {BLADE_LAND_MIN_MM:g} mm 이상 · 쐐기 12°) · "
+                f"POM 기준 슈 · Ø{BENCH_RIG_BORE_MM:g} 실린더 · 정밀 레귤레이터 · 압력 로거",
+         "슈가 절입을 잡는 구조를 그대로 써야 실제 절입에서의 힘이 나온다"),
+        ("시료", f"폐패널 정션박스 {BENCH_SAMPLES} 개 — 제조사 3 × 연식 2 × 5",
+         "20 년 노화라 값이 아니라 분포다. 흩어 뽑지 않으면 P95 가 안 나온다"),
+        ("온도", f"{BENCH_TEMPS_C[0]:g} ℃ · {BENCH_TEMPS_C[1]:g} ℃ 각 절반",
+         "실리콘 강성이 온도로 갈린다. 겨울 라인이 최악이면 그것이 설계 조건이다"),
+        ("가압", f"{lo:g} → {hi:g} MPa 를 {BENCH_RAMP_MPA_S:g} MPa/s 로 올린다",
+         "박스는 한 번만 뗄 수 있다. 램프로 시료마다 문턱값 하나를 얻는다"),
+        ("표본", "박스 1 개 = 문턱값 1 개",
+         f"{BENCH_SAMPLES} 개면 P50 과 P95 를 낼 수 있다"),
+    )
+
+
+def bench_measurements() -> tuple[tuple[str, str, str], ...]:
+    """(측정 항목, 판정 기준, 이 측정이 닫는 미결)."""
+    return (
+        ("분리 압력 (MPa)", "P50 · P95 를 낸다", "정격 작업 박리력 · 보어 선정"),
+        ("분리까지 행정 (mm)", "칼날이 박스 밑으로 몇 mm 들어가야 떨어지는가",
+         "행정 360 mm 중 실제 절삭 구간 — 급속·절삭 분리 판단의 근거"),
+        ("리본 가닥 수 · 단면 (mm²)", "실측 기록",
+         "리본이 도면에 없다 — 이 측정이 그 자리를 채운다"),
+        ("리본 스텁 길이 (mm)", f"≤ {handoff.RIBBON_STUB_MAX_MM:g}", "하류 출력 조건 (기하로만 서 있던 것)"),
+        ("실리콘 잔여 높이 (mm)", f"≤ {handoff.SILICONE_RESIDUE_MAX_MM:g}", "하류 출력 조건 · 잔여 0 이 실측인지"),
+        ("백시트 절결 깊이 (mm)", f"≤ {handoff.BACKSHEET_NOTCH_MAX_MM:g}", "하류 수용 조건 · 여유 0 인 치수의 공정능력"),
+        ("박스 발자국 (mm)", "절단 전선 폭 — 힘과 함께 기록", "힘이 폭에 비례하는지 확인"),
+        ("칼날 상태 (30 회 후)", "날 치수·결손 촬영", "칼날 수명 초기값 (장기 수명은 아니다)"),
+    )
+
