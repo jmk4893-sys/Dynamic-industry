@@ -27,11 +27,12 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
 
-from pv_preprocess import campaign, handoff, hk60c, layout, line, mounting  # noqa: E402
+from pv_preprocess import campaign, casing, handoff, hk60c, layout, line, mounting  # noqa: E402
 
 LINE = line.LINE_MAX_MM   # 라인 패널 상한 — 기계 안에서 움직이는 유리는 이 크기다
 
 DRAWING = pathlib.Path(__file__).resolve().parent.parent / "docs/drawings/pv-preprocess-plant.html"
+CAPTURE = pathlib.Path(__file__).resolve().parent.parent / "docs/drawings/hk60c-capture.json"
 X0, Z0 = 24_750.0, 3_550.0          # 씬 월드 원점 (플랜트 좌표 mm) — build_casing 과 같다
 
 
@@ -76,6 +77,278 @@ def lz(y_mm: float) -> float:
     return -m(y_mm)
 
 
+
+# ── 벤더 원본 형상 ────────────────────────────────────────────────────────
+#: 방책 밖으로 나가는 것은 인도 범위가 아니다. 상류 x<0 는 발주자 픽업 스테이션
+#: 자리(플랜트에서는 BX-101 브리지가 대신하고), −y 방책 밖은 롤·카세트 레인인데
+#: 플랜트는 그것을 자기 통로 밖 레인에 따로 놓는다 (RFQ OI-17).
+def _delivered(part: dict) -> bool:
+    """캡처 한 덩어리가 **인도 범위(방책 안)** 인가 — 중심으로 가른다."""
+    if part["t"] == "p":
+        c = [sum(v[k] for v in part["v"]) / len(part["v"]) for k in range(3)]
+    else:
+        c = part["c"]
+    return (0.0 <= c[0] <= H.FENCE_X1_MM / 1000.0
+            and -H.FENCE_YN_MM / 1000.0 <= c[1] <= H.FENCE_YP_MM / 1000.0)
+
+
+#: 인도 경계에서 자른다. 상류 −900 은 벤더 방책의 팔레트 픽업 자리인데 플랜트는
+#: 그 자리에 버퍼 끝단 케이싱과 브리지 개구를 두므로 그 900 을 세우지 않는다.
+#: 하류로 넘어가는 배기 헤더는 경계 플랜지 뒤가 발주자 몫이라 존 끝에서 끊는다.
+#: 자르는 것은 **길이뿐**이다 — 자리도 치수도 도장도 벤더가 그린 그대로다.
+#: 상류 물림 — 버퍼 끝단 케이싱의 끝판이 존 경계를 **넘어와** 선다. 판 중심이
+#: `casing.END_OFFSET_MM`(69) 이고 조립 두께가 24 라 하류면이 81 이다. 기계는 그
+#: 뒤에 설치 여유를 두고 서므로, 벤더 방책 레일의 상류 끝 106 mm 는 세우지 않는다
+#: (그 자리가 브리지 개구이기도 하다). 이것을 안 두면 케이싱 검사가 접촉을 잡는다.
+UPSTREAM_SETBACK_MM = casing.END_OFFSET_MM + casing.PANEL_ASSY_MM // 2 + 25
+
+
+def _clip_x(part: dict) -> dict | None:
+    lo, hi = UPSTREAM_SETBACK_MM / 1000.0, H.FENCE_X1_MM / 1000.0
+    q = dict(part)
+    if part["t"] == "b":
+        if any(part.get("r") or (0, 0, 0)):
+            return q                       # 회전한 상자는 자르지 않는다 (경계에 없다)
+        a, b = part["c"][0] - part["s"][0] / 2, part["c"][0] + part["s"][0] / 2
+        na, nb = max(a, lo), min(b, hi)
+        if nb - na <= 1e-4:
+            return None
+        if (na, nb) != (a, b):
+            q["c"] = [round((na + nb) / 2, 4), part["c"][1], part["c"][2]]
+            q["s"] = [round(nb - na, 4), part["s"][1], part["s"][2]]
+    elif part["t"] == "c" and part["x"] == "x":
+        a, b = part["c"][0] - part["l"] / 2, part["c"][0] + part["l"] / 2
+        na, nb = max(a, lo), min(b, hi)
+        if nb - na <= 1e-4:
+            return None
+        if (na, nb) != (a, b):
+            q["c"] = [round((na + nb) / 2, 4), part["c"][1], part["c"][2]]
+            q["l"] = round(nb - na, 4)
+    elif part["t"] == "p":
+        q["v"] = [[min(max(v[0], lo), hi), v[1], v[2]] for v in part["v"]]
+    return q
+
+
+def _finish(hex_color: str, alpha: float, table: dict) -> tuple[float, float]:
+    """벤더의 표면 마감(sp 반사강도 · gl 하이라이트 폭)을 거칠기·금속도로 옮긴다.
+
+    콘솔은 자기 소프트웨어 렌더러용으로 sp/gl 을 갖고 three.js 는 roughness/
+    metalness 를 갖는다. 같은 도장을 두 렌더러가 같게 보이도록 하는 환산이고,
+    **색은 환산하지 않는다** — 색이 도장의 정본이다.
+    """
+    f = table.get(hex_color) or {"sp": 0.18, "gl": 17}
+    rough = min(0.92, max(0.08, 0.95 - float(f["gl"]) / 110.0))
+    metal = min(0.80, max(0.02, float(f["sp"]) * 0.9))
+    if alpha < 1.0:                       # 유리·투명 가드는 금속이 아니다
+        rough, metal = 0.08, 0.05
+    return round(rough, 3), round(metal, 3)
+
+
+#: 플랜트가 **이름으로 부르는** 부재 — 앵커 계획(`mounting.MEMBERS`)·정비 동선·
+#: 부품 검색이 이 이름으로 기계를 가리킨다. 형상은 벤더 원본이므로, 그 이름을
+#: 가장 가까운 벤더 덩어리에 얹는다. 자리는 전부 모델에서 낸다(리터럴이 아니다).
+def _plant_tags() -> list[tuple[float, float, float, str, str]]:
+    ld, hc, dl, gc, ul = ST["LD"], ST["HC"], ST["DL"], ST["GC"], ST["UL"]
+    tbl_cx = m(dl.x0_mm) + .87 + H.const("CARRIER_L") / 2
+    rx0, rz, gy = H.const("CRAIL_X0"), H.const("CRAIL_Z"), H.const("CGY")
+    cex = [m(v) for v in H.CE_X_MM]
+    cey = (m(H.const("CE_Y0") * 1000), m(H.const("CE_Y1") * 1000))
+    fk = H.MODULES["M-003"][1]
+    bjx, bjy = m(H.BJ_X_MM), m(H.BJ_Y_MM)
+    px = m(GLASS_PICKUP_IN_MM)
+    return [
+        (m(ld.cx_mm), 0, EL - .07, "LD-101 투입 셔틀 롤러베드",
+         f"브리지가 유리 한 장을 내려놓는 자리 — 공정선 EL {H.LINE_EL_MM:,}"),
+        (m(ld.cx_mm) - .22, 0, EL - .39, "WI-101 투입 계량 컨베이어",
+         "로드셀 4점 합산 ±0.2 % F.S. — 물질수지의 입력값"),
+        (m(hc.cx_mm), 0, .3, "DG-HK60C HC-101 가열실 골조 (벤더 앵커군 A1)",
+         f"{H.DECKS}단 밀폐 IR — 벤더 D-602 기초에 앵커군 A1"),
+        (m(ld.x1_mm) - .42, -m(fk[1]) / 2, m(fk[2]) / 2, "LI-101 승강 포크 문형",
+         "층 사이를 오르내리며 캐리어를 데크에 넣는다"),
+        (m(dl.x0_mm) + .42, -m(fk[1]) / 2, m(fk[2]) / 2, "EX-101 승강 포크 문형",
+         "소킹이 끝난 단에서 캐리어를 뽑아 탠덤으로 보낸다"),
+        (tbl_cx, 0, .55, "DG-HK60C VT-101 진공테이블 기둥 6본 (벤더 앵커군 A8)",
+         "상판 710 kg — 최중량 단품. 기둥 6본이 바닥으로 내린다"),
+        (rx0, -gy, 1.0, "DG-HK60C KG-101 갠트리 주행 문형 4본 (벤더 앵커군 A7)",
+         f"주행레일 EL {round(rz * 1000):,} — 55 mm/s 박리 · 700 mm/s 복귀"),
+        (m(H.WINDER_X_MM), 0, 3.7, "WR-101 백시트 만권 롤",
+         f"Ø600 × 1,460 · {H.ROLL_MASS_KG} kg — RH-201 모노레일로 방책 밖 새들에 내린다"),
+        ((cex[0] + cex[1]) / 2, (cey[0] + cey[1]) / 2, m(H.CE_EL_MM),
+         "CE-201 셀/EVA 횡인출 컨베이어", "적층체를 자르지 않고 통째로 옆으로 뺀다"),
+        (m(H.CART_X_MM), m(H.CART_Y_MM), .275, "CS-201 셀/EVA 평적 카트",
+         f"{H.CART_L_MM:,} × {H.CART_W_MM:,} · 통로쪽 레인에서 AGV 가 받는다"),
+        (m(gc.cx_mm), 0, .3, "DG-HK60C GC-101 냉각 랙 골조 (벤더 앵커군 A2)",
+         f"{H.DECKS}단 강제공랭 140 → 60 ℃ — 배기는 경계 덕트에 합류"),
+        (m(ul.cx_mm), 0, EL - .07, "UL-101 반출 셔틀 · WO-303 인라인 계량",
+         "60 ℃ 이하로 식은 판유리를 계량하며 내보낸다"),
+        (m(ul.x0_mm) + .36, -1.1, 1.45, "QI-301 검사 아치",
+         "상부 RGB 카메라 — GLASS_CRACK · QI_FAIL 판정"),
+        (bjx, bjy - .38, 1.0, "BJ-101 경계 인터페이스반",
+         "VOC_ABATE_READY · GLASS/CELL_TAKEAWAY_READY · 상류 브리지 핸드셰이크 UP_*"),
+        (bjx, bjy + .38, 1.0, "BJ-102 경계 인터페이스반 (안전)",
+         "IF_ESTOP_LOOP_OK · 광커튼 뮤팅 — 안전회로는 별도 반이다"),
+        (bjx, bjy, .07, "DG-HK60C 기초 패드 P1~P3",
+         "P1 MCC(EP-1) · P2 진공 스키드(EP-3) · P3 경계 인터페이스"),
+        (4.2, -3.2, 1.69, "DG-HK60C 전력·MCC·제어반 M-011",
+         f"IR-DB1 {H.LAMPS * H.LAMP_KW:g} kW · HK-DB2 · MCC-1 — 벤더 반이 기초 패드 P1 에 선다"),
+        (12.28, -3.2, 1.39, "DG-HK60C VU-101 진공·계장공기 스키드 M-012",
+         "진공 펌프·계장공기 — 기초 패드 P2 (EP-3)"),
+        (px + .36, -.95, .975, "LC-002 안전 광커튼 (하류 개구)",
+         "광축면 Y ±950 × Z 1,950 — 유리 반출 개구를 지킨다"),
+    ]
+
+
+def build_vendor() -> str:
+    """벤더 콘솔에서 받아 적은 부품을 **색 버킷별 병합 지오메트리**로 찍는다.
+
+    부품이 1,500 개가 넘어 한 덩어리에 한 메시씩 만들면 드로우콜이 그만큼 는다.
+    색이 같은 것끼리 삼각형을 합치면 24 개 남짓이고, 형상은 하나도 잃지 않는다.
+    이름이 붙은 덩어리(벤더가 `label3` 로 부른 자리에서 가장 가까운 것)만 따로
+    메시로 세워 집기·검색이 되게 한다.
+    """
+    cap = json.loads(CAPTURE.read_text(encoding="utf-8"))
+    parts = [r for r in (_clip_x(q) for q in cap["base"] + cap["dynamic"] if _delivered(q))
+             if r is not None]
+    labels = [l for l in cap["labels"]
+              if 0.0 <= l["p"][0] <= H.FENCE_X1_MM / 1000.0
+              and -H.FENCE_YN_MM / 1000.0 <= l["p"][1] <= H.FENCE_YP_MM / 1000.0]
+    table = cap["finish"]
+
+    # 이름 붙은 자리마다 가장 가까운 상자·원통을 하나 골라 낱개 메시로 뺀다.
+    # 플랜트가 부르는 이름이 먼저다 — 앵커 계획·정비 동선·부품 검색이 그 이름을 쓴다.
+    named: dict[int, str] = {}
+    note: dict[int, str] = {}
+    solid = [i for i, q in enumerate(parts) if q["t"] in ("b", "c")]
+
+    def _attach(x: float, y: float, z: float, tag: str, tip: str, reach: float) -> None:
+        best, bd = None, reach ** 2
+        for i in solid:
+            if i in named:
+                continue
+            c = parts[i]["c"]
+            d = (c[0] - x) ** 2 + (c[1] - y) ** 2 + (c[2] - z) ** 2
+            if d < bd:
+                best, bd = i, d
+        if best is not None:
+            named[best] = tag
+            if tip:
+                note[best] = tip
+
+    # 탠덤 칼날 두 대는 자리가 아니라 **형상**으로 찾는다 — 정지 자세가 행정 중간이라
+    # 캐리지 위치가 단계마다 다르다. 패널 폭을 건너지르는 같은 단면의 바 두 개이고,
+    # 그 사이가 칼끝 리드(300)다. 그 사실을 여기서 확인하고 이름을 붙인다.
+    lead_m = H.KNIFE_PITCH_MM / 1000.0
+    cand = sorted((i for i, q in enumerate(parts)
+                   if q["t"] == "b" and .20 <= q["s"][0] <= .30
+                   and m(H.PANEL_MAX_MM[1]) < q["s"][1] <= m(H.PANEL_MAX_MM[1]) + .4
+                   and .20 <= q["s"][2] <= .35), key=lambda i: parts[i]["c"][0])
+    bars = next(([a, b] for a in cand for b in cand
+                 if abs((parts[b]["c"][0] - parts[a]["c"][0]) - lead_m) < .02), [])
+    if len(bars) >= 2:
+        lead = round((parts[bars[1]]["c"][0] - parts[bars[0]]["c"][0]) * 1000)
+        named[bars[0]] = "HKB-101 백시트 개방 핫나이프 (카세트)"
+        note[bars[0]] = f"백시트/EVA 계면을 {lead} 선행해 연다 — 180 ℃ (벤더 원본 형상)"
+        named[bars[1]] = "HKS-201 셀/EVA 분리 핫나이프 (카세트)"
+        note[bars[1]] = f"{lead} 뒤를 따라가며 셀/EVA 를 유리에서 뗀다 — 200 ℃ (벤더 원본 형상)"
+    for tx, ty, tz, tag, tip in _plant_tags():
+        _attach(tx, ty, tz, tag, tip, 2.5)
+    for lab in labels:
+        _attach(lab["p"][0], lab["p"][1], lab["p"][2], lab["t"], "", 2.0)
+
+    colors: list[str] = []
+    for q in parts:
+        key = (q["k"], q["a"])
+        if key not in colors:
+            colors.append(key)
+    ci = {k: i for i, k in enumerate(colors)}
+
+    box, boxr, cyl, poly = [], [], [], []
+    for i, q in enumerate(parts):
+        if i in named:
+            continue
+        k = ci[(q["k"], q["a"])]
+        if q["t"] == "b":
+            r = q.get("r") or [0, 0, 0]
+            row = [k] + [round(v, 4) for v in q["c"] + q["s"]]
+            (boxr if any(r) else box).append(row + ([round(v, 5) for v in r] if any(r) else []))
+        elif q["t"] == "c":
+            cyl.append([k] + [round(v, 4) for v in q["c"]]
+                       + [round(q["r"], 4), round(q["l"], 4), "xyz".index(q["x"]), int(q["g"])])
+        else:
+            poly.append([k, len(q["v"])] + [round(v, 4) for pt in q["v"] for v in pt])
+
+    def arr(rows: list[list]) -> str:
+        return "[" + ",".join(",".join(n(v) if isinstance(v, float) else str(v) for v in row)
+                              for row in rows) + "]"
+
+    o: list[str] = []
+    w = o.append
+    w("// ── 벤더 원본 형상 — tools/capture_hk60c.mjs 가 벤더 콘솔에서 받아 적은 그리기")
+    w("//    호출 그대로다(압축 배치 · 4단계 정지 자세). 좌표·치수·도장색을 여기서 고치지")
+    w(f"//    않는다. 인도 범위(방책 x 0…{H.FENCE_X1_MM:,} · y {-H.FENCE_YN_MM:,}…{H.FENCE_YP_MM:,}) 안 {len(parts):,}덩어리,")
+    w(f"//    그중 이름 붙은 {len(named)}개는 낱개 메시로 세워 집기·검색이 된다.")
+    w("var VC=[" + ",".join(s(c) for c, _ in colors) + "];")
+    w("var VF=[" + ",".join("[%s,%s,%s]" % (n(_finish(c, a, table)[0]), n(_finish(c, a, table)[1]), n(a))
+                            for c, a in colors) + "];")
+    w("var VM=VC.map(function(c,i){var t=M.frame.clone();t.color.set(c);"
+      "t.roughness=VF[i][0];t.metalness=VF[i][1];"
+      "if(VF[i][2]<1){t.transparent=!0;t.opacity=VF[i][2];t.depthWrite=VF[i][2]>.6}return t});")
+    w("var VB=" + arr(box) + ",VBR=" + arr(boxr) + ",VY=" + arr(cyl) + ",VP=" + arr(poly) + ";")
+    w("(function(){")
+    w("var BG=Object.getPrototypeOf(Wn.prototype).constructor,BA=new Wn(1,1,1).attributes.position.constructor;")
+    w("var A=VC.map(function(){return{p:[],n:[]}});")
+    # 기계 (x,y,z) → 셀 로컬 (x, z, −y). 행렬식 +1 이라 감김·법선이 그대로 산다.
+    w("function tri(a,P,Q,R){var ux=Q[0]-P[0],uy=Q[1]-P[1],uz=Q[2]-P[2],vx=R[0]-P[0],vy=R[1]-P[1],vz=R[2]-P[2];")
+    w("var nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,L=Math.hypot(nx,ny,nz)||1;nx/=L;ny/=L;nz/=L;")
+    w("[P,Q,R].forEach(function(t){a.p.push(t[0],t[2],-t[1]);a.n.push(nx,nz,-ny)})}")
+    w("function quad(a,P,Q,R,S){tri(a,P,Q,R);tri(a,P,R,S)}")
+    w("function rot(p,rx,ry,rz){var x=p[0],y=p[1],z=p[2],c,s,t;")
+    w("c=Math.cos(rx);s=Math.sin(rx);t=y*c-z*s;z=y*s+z*c;y=t;")
+    w("c=Math.cos(ry);s=Math.sin(ry);t=x*c+z*s;z=-x*s+z*c;x=t;")
+    w("c=Math.cos(rz);s=Math.sin(rz);t=x*c-y*s;y=x*s+y*c;x=t;return[x,y,z]}")
+    w("function boxTri(a,c,sz,r){var hx=sz[0]/2,hy=sz[1]/2,hz=sz[2]/2,")
+    w("V=[[-hx,-hy,-hz],[hx,-hy,-hz],[hx,hy,-hz],[-hx,hy,-hz],[-hx,-hy,hz],[hx,-hy,hz],[hx,hy,hz],[-hx,hy,hz]];")
+    w("if(r)V=V.map(function(v){return rot(v,r[0],r[1],r[2])});")
+    w("V=V.map(function(v){return[c[0]+v[0],c[1]+v[1],c[2]+v[2]]});")
+    w("[[0,3,2,1],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]].forEach(function(f){quad(a,V[f[0]],V[f[1]],V[f[2]],V[f[3]])})}")
+    w("function cylTri(a,c,r,l,ax,g){var A0=[0,0,0],U=[0,0,0],W=[0,0,0];")
+    w("if(ax===0){A0=[1,0,0];U=[0,1,0];W=[0,0,1]}else if(ax===1){A0=[0,1,0];U=[1,0,0];W=[0,0,1]}else{A0=[0,0,1];U=[1,0,0];W=[0,1,0]}")
+    w("var r0=[],r1=[],i,j;for(i=0;i<g;i++){var t=i*2*Math.PI/g,cs=Math.cos(t)*r,sn=Math.sin(t)*r,")
+    w("q=[U[0]*cs+W[0]*sn,U[1]*cs+W[1]*sn,U[2]*cs+W[2]*sn];")
+    w("r0.push([c[0]-A0[0]*l/2+q[0],c[1]-A0[1]*l/2+q[1],c[2]-A0[2]*l/2+q[2]]);")
+    w("r1.push([c[0]+A0[0]*l/2+q[0],c[1]+A0[1]*l/2+q[1],c[2]+A0[2]*l/2+q[2]])}")
+    w("for(i=0;i<g;i++){j=(i+1)%g;quad(a,r0[i],r0[j],r1[j],r1[i])}")
+    w("for(i=1;i<g-1;i++){tri(a,r0[0],r0[i+1],r0[i]);tri(a,r1[0],r1[i],r1[i+1])}}")
+    w("for(var i=0;i<VB.length;i+=7)boxTri(A[VB[i]],[VB[i+1],VB[i+2],VB[i+3]],[VB[i+4],VB[i+5],VB[i+6]],null);")
+    w("for(var i=0;i<VBR.length;i+=10)boxTri(A[VBR[i]],[VBR[i+1],VBR[i+2],VBR[i+3]],[VBR[i+4],VBR[i+5],VBR[i+6]],[VBR[i+7],VBR[i+8],VBR[i+9]]);")
+    w("for(var i=0;i<VY.length;i+=8)cylTri(A[VY[i]],[VY[i+1],VY[i+2],VY[i+3]],VY[i+4],VY[i+5],VY[i+6],VY[i+7]);")
+    w("for(var i=0;i<VP.length;){var k=VP[i],m=VP[i+1],v=[],b=i+2;for(var q=0;q<m;q++)v.push([VP[b+q*3],VP[b+q*3+1],VP[b+q*3+2]]);")
+    w("for(var q=1;q<m-1;q++)tri(A[k],v[0],v[q],v[q+1]);i=b+m*3}")
+    w("A.forEach(function(a,i){if(!a.p.length)return;var gm=new BG();")
+    w("gm.setAttribute('position',new BA(new Float32Array(a.p),3));")
+    w("gm.setAttribute('normal',new BA(new Float32Array(a.n),3));")
+    w("gm.computeBoundingBox();gm.computeBoundingSphere();")
+    w("var me=new et(gm,VM[i]);me.castShadow=!0;me.receiveShadow=!0;")
+    w("me.userData.label='DG-HK60C 유리제거기 (벤더 도면 원본)';")
+    w("me.userData.note='벤더 콘솔 pv-delamination-3d.html 의 그리기 호출을 그대로 옮긴 형상·도장이다. 이름 붙은 부품은 따로 집힌다.';")
+    w("Ns.push(me);g.add(me)})})();")
+    # 이름 붙은 덩어리 — 낱개 메시
+    for i, tag in sorted(named.items(), key=lambda kv: kv[0]):
+        q = parts[i]
+        k = ci[(q["k"], q["a"])]
+        tip = s(note[i]) if i in note else s("벤더 원본 · 도장 " + q["k"])
+        if q["t"] == "b":
+            r = q.get("r") or [0, 0, 0]
+            rot = (f",[{n(r[0])},{n(r[2])},{n(-r[1])}]" if any(r) else "")
+            w(f"L([{n(q['s'][0])},{n(q['s'][2])},{n(q['s'][1])}],"
+              f"[{n(q['c'][0])},{n(q['c'][2])},{n(-q['c'][1])}],VM[{k}],{s(tag)},{tip}{rot});")
+        else:
+            ax = {"x": "[0,0,Math.PI/2]", "y": "[Math.PI/2,0,0]", "z": "null"}[q["x"]]
+            w(f"Ee(g,{n(q['r'])},{n(q['l'])},"
+              f"[{n(q['c'][0])},{n(q['c'][2])},{n(-q['c'][1])}],VM[{k}],{s(tag)},{tip},{ax});")
+    return "\n".join(o)
+
+
 # ── 3D ────────────────────────────────────────────────────────────────────
 def build_3d() -> str:
     o: list[str] = []
@@ -102,29 +375,10 @@ def build_3d() -> str:
     w("var g=pvGrm,L=function(a,b,c,d,e,f){return P(g,a,b,c,d,e,f)};")
     w("var MP=function(w,d,y0,y1,x,z,label){L([w,y1-y0,d],[x,(y0+y1)/2,z],M.frame,label);L([w+.14,.03,d+.14],[x,y0+.015,z],M.steel,null)};")
     w("var AB=function(x,z,k,dx){for(var i=0;i<k;i++)L([.05,.05,.05],[x+(i-(k-1)/2)*dx,.045,z],M.dark,null)};")
-    # 방책 M-013 — 상류(x 0)는 플랜트 끝단 케이싱·브리지 개구가 대신한다
-    fx1 = m(H.FENCE_X1_MM); fyp = m(H.FENCE_YP_MM); fyn = m(H.FENCE_YN_MM)
-    w(f"// 방책 M-013 — x 0…{n(fx1)} · z {n(-fyp)}(벽쪽)…{n(fyn)}(통로쪽) · 높이 2.4. 상류선(−0.9)은 브리지 개구라 안 세운다.")
-    w(f"[{n(-fyp)},{n(fyn)}].forEach(function(z){{L([{n(fx1)},.06,.06],[{n(fx1/2)},2.4,z],M.guard,z>0?'DG-HK60C M-013 방책':null,z>0?'방책선 {H.FENCE_X0_MM:,} → {H.FENCE_X1_MM:,} · +{H.FENCE_YP_MM:,} / {H.FENCE_YN_MM * -1:,} — 카트 레인이 −y 쪽이라 통로 쪽이 {H.FENCE_YN_MM - H.FENCE_YP_MM:,} 넓다':null);"
-      f"for(var x=.05;x<{n(fx1)};x+=2.4)L([.06,2.4,.06],[Math.min(x,{n(fx1-.05)}),1.2,z],M.guard,null)}});")
-    w(f"L([.06,2.4,{n(fyp+fyn)}],[{n(fx1-.03)},1.2,{n((fyn-fyp)/2)}],M.guard,null);")
-    w(f"L([.06,2.4,{n(fyp+fyn)}],[.03,1.2,{n((fyn-fyp)/2)}],M.guard,null,null);")
-    # 외장 (외피) — 벽 두 장 + 갓돌
-    sx0 = m(ST["HC"].x0_mm - 200); sx1 = m(ST["GC"].x1_mm + 200); sky = m(H.SKIN_Y_MM)
-    w(f"// 외장 — x {n(sx0)}…{n(sx1)} · z ±{n(sky)} · 3.6 (갓돌 4.8 단높임은 가열실·냉각 랙 위)")
-    w(f"[{n(-sky)},{n(sky)}].forEach(function(z){{L([{n(sx1-sx0)},3.6,.07],[{n((sx0+sx1)/2)},1.8,z],M.guard,z>0?'DG-HK60C 외장 (연마 STS304 #400)':null,z>0?'내피 반사율 ρ ≥ 0.4 — IR 뱅크 검토가 미관이 아니라 검사 항목으로 만든 값':null)}});")
-    # LD-101 투입 셔틀 + WI-101
-    ld = ST["LD"]
-    w(f"// LD-101 투입 셔틀 — x {n(m(ld.x0_mm))}…{n(m(ld.x1_mm))} · 공정선 EL {n(EL)}")
-    w(f"L([{n(m(ld.length_mm))},.14,1.48],[{n(m(ld.cx_mm))},{n(EL-.07)},0],M.frame,'LD-101 투입 셔틀 롤러베드','브리지가 유리 한 장을 내려놓는 벤더 공정선 EL 1,150 — 폭 정렬 가이드가 1,200±3 으로 문다. 지게차 수동 적재는 비상 우회로만 남는다');")
-    w(f"for(var i=0;i<12;i++)Ee(g,pvRollR,1.4,[{n(m(ld.x0_mm)+.2)}+i*.24,{n(EL)}-pvRollR,0],M.rubber,i===0?'LD-101 이송 롤러':null,null,[Math.PI/2,0,0]);")
-    w(f"[[{n(m(ld.x0_mm)+.3)},-.6],[{n(m(ld.x0_mm)+.3)},.6],[{n(m(ld.x1_mm)-.3)},-.6],[{n(m(ld.x1_mm)-.3)},.6]].forEach(function(p){{L([.1,{n(EL-.14)},.1],[p[0],{n((EL-.14)/2)},p[1]],M.steel,null)}});")
-    # WI-101 은 롤러베드 밑에 제 다리로 선다 — 하중경로 검사가 뜬 계량기를 잡았다 (REV.54)
-    w(f"L([1.1,.5,1.3],[{n(m(ld.cx_mm)-.22)},{n(EL-.14-.25)},0],M.steel,'WI-101 투입 계량 컨베이어','로드셀 4점 합산 ±0.2 % F.S. — 물질수지의 투입 1점. 롤러베드 밑 자립 프레임에 로드셀 4점');")
-    w(f"[[-.5,-.6],[-.5,.6],[.5,-.6],[.5,.6]].forEach(function(p){{L([.08,{n(EL-.14-.5)},.08],[{n(m(ld.cx_mm)-.22)}+p[0],{n((EL-.14-.5)/2)},p[1]],M.steel,null)}});")
-    w(f"[-.8,.8].forEach(function(z){{L([1.9,.09,.16],[{n(m(ld.cx_mm))},{n(EL+.1)},z],M.steel,z<0?'LD-101 폭조절 가이드':null,z<0?'패널 폭 편차 흡수 · 1,200±3 로 문다':null)}});")
-    w(f"L([.24,.2,.18],[{n(m(ld.x0_mm)+.9)},2.28,1.1],M.dark,'LD-101 바코드·라벨 리더','LOT_ID_VALID — 브리지 핸드셰이크가 넘긴 패널 ID 와 대조 (RF-902)');")
-    w(f"L([.06,2.18,.06],[{n(m(ld.x0_mm)+.9)},1.09,1.1],M.steel,null);")  # 리더 지주
+    # ── 벤더 원본 기계 — 방책·외장·다섯 스테이션·갠트리·권취·경계반·배기까지
+    #    벤더 콘솔에서 받아 적은 그대로 찍는다 (손으로 다시 그리지 않는다).
+    w(build_vendor())
+    # ── 플랜트가 대는 것 — 벤더가 그리지 않거나, 플랜트가 자리를 옮긴 것들 ────
     # BX-101 브리지
     w(f"// BX-101 인계 브리지 — 기계 x {n(pick)} (GBR 캐리지 슬롯 면) → {n(place)} (LD-101 데크 중심) · 행정 {layout.bridge_travel_mm():,} · 승강 {layout.bridge_lift_mm()}")
     w(f"[-.75,.75].forEach(function(z){{L([{n(place-pick)},.05,.05],[{n((pick+place)/2)},{n(EL+.35)},z],M.steel,z<0?'BX-101 브리지 레일':null,z<0?'GBR 캐리지 슬롯 앞에서 LD-101 데크 중심까지 {layout.bridge_travel_mm():,} mm — 벤더가 발주자 설비로 넘긴 디스태커 PL-101 의 자리 (REV.54)':null)}});")
@@ -133,45 +387,12 @@ def build_3d() -> str:
     w(f"[[{n(pick+.15)},-1.0],[{n(place-.4)},-1.0]].forEach(function(p,i){{MP(.14,.14,0,{n(EL+.32)},p[0],p[1],i===0?'BX-101 브리지 지주 2본 (베이스 4×M16)':null);AB(p[0],p[1],2,.16)}});")
     w(f"[[{n(pick+.15)},1.0],[{n(place-.4)},1.0]].forEach(function(p){{MP(.14,.14,0,{n(EL+.32)},p[0],p[1],null);AB(p[0],p[1],2,.16)}});")
     w(f"L([.15,.3,.12],[{n(pick+.2)},.15,1.35],M.red,'BX-SF-301 브리지 안전 스캐너','브리지 행정 구간 진입 방지 — 안전 PLC (SF-07)');")
-    # HC-101 가열실
-    hc = ST["HC"]; hcw = m(mods["M-002"][1][1]); hch = m(mods["M-002"][1][2])
-    w(f"// HC-101 {H.DECKS}단 밀폐 IR 가열실 — x {n(m(hc.x0_mm))}…{n(m(hc.x1_mm))} · 폭 {n(hcw)} · 높이 {n(hch)} (M-002)")
-    w(f"L([{n(m(hc.length_mm))},{n(hch)},{n(hcw)}],[{n(m(hc.cx_mm))},{n(hch/2)},0],M.frame,'DG-HK60C HC-101 가열실 골조 (벤더 앵커군 A1)','{H.DECKS}단 밀폐 가열실 · IR {H.LAMPS}등 × {n(H.LAMP_KW)} kW = {H.IR_INSTALLED_KW:g} kW · 소킹 {H.rate().dwell_s:g} s · 방출 피치 {H.rate().release_pitch_s:g} s · 차압 −30 Pa · 5,763 kg 현장 조립');")
-    for k in range(H.DECKS):
-        dz = H.const("CDECK_Z0") + H.const("CDECK_DZ") * (k + .5)
-        lab = s("C1…C5 데크 (만재 후 회전식 재장전)") if k == 0 else "null"
-        tip = s("FULL_LOAD_ACK 뒤 소킹이 끝난 단부터 한 장 방출 → 같은 단 재장전") if k == 0 else "null"
-        w(f"L([{n(m(hc.length_mm)-.8)},.04,{n(hcw-.4)}],[{n(m(hc.cx_mm))},{n(dz)},0],M.aluminum,{lab},{tip});")
-    w(f"L([{n(m(hc.length_mm)-.6)},.12,.16],[{n(m(hc.cx_mm))},{n(hch+.06)},0],M.orange,'HC-101 IR 뱅크 B0~B{H.DECKS} 램프 단자 (측벽 관통 · 챔버 밖 소켓)','발열장 2,200 · 램프 교체는 챔버를 열지 않는다');")
-    w(f"L([.3,{n(EL)},.4],[{n(m(hc.x0_mm)-.15)},{n(EL/2)},0],M.dark,'HC-101 에어록 도어','AL-101 — 밀폐상실 시 셔터 닫힘 유지');")
-    # 승강 포크 문형 ×4 (M-003) — LI·EX·GL·GU
-    fk = mods["M-003"][1]
-    portals = [(m(ld.x1_mm) - .42, "LI-101"), (m(ST["DL"].x0_mm) + .42, "EX-101"),
-               (m(ST["GC"].x0_mm) - .42, "GL-101"), (m(ST["GC"].x1_mm) + .42, "GU-101")]
-    w(f"// 승강 포크 문형 ×4 (M-003 {fk[0]}×{fk[1]}×{fk[2]}) — LI 투입 · EX 방출 · GL 냉각 적입 · GU 인출")
-    for x, tag in portals:
-        w(f"[-1,1].forEach(function(s){{L([.22,{n(m(fk[2]))},.22],[{n(x)},{n(m(fk[2])/2)},s*{n(m(fk[1])/2)}],M.steel,s<0?'{tag} 승강 포크 문형':null,s<0?'층선택 승강 · 2단 텔레스코픽 포크 · 두상보 EL {fk[2]:,}':null)}});")
-        w(f"L([.22,.2,{n(m(fk[1]))}],[{n(x)},{n(m(fk[2])-.1)},0],M.steel,null);")
-        w(f"L([{n(m(fk[0]))},.09,{n(m(fk[1])-.6)}],[{n(x)},{n(EL)},0],M.aluminum,null);")
-    # DL-101 탠덤 셀
-    dl = ST["DL"]; tbl_cx = m(dl.x0_mm) + .87 + H.const("CARRIER_L") / 2
-    w(f"// DL-101 탠덤 분리 셀 — x {n(m(dl.x0_mm))}…{n(m(dl.x1_mm))} · VT-101 고정 진공테이블 중심 {n(tbl_cx)} · 이동 나이프")
-    w(f"L([{n(H.const('CARRIER_L'))},.12,{n(H.const('CARRIER_W'))}],[{n(tbl_cx)},{n(EL-.06)},0],M.steel,'VT-101 6존 고정 진공테이블','상판 710 kg — 이 기계의 최중량 단품. 박리 추력 13.37 kN 을 앵커군 A8 넷이 받는다 · −65 kPa 6존');")
-    w(f"[[-1.2,-.6],[-1.2,.6],[0,-.6],[0,.6],[1.2,-.6],[1.2,.6]].forEach(function(p,i){{MP(.16,.16,0,{n(EL-.12)},{n(tbl_cx)}+p[0],p[1],i===0?'DG-HK60C VT-101 진공테이블 기둥 6본 (벤더 앵커군 A8)':null);AB({n(tbl_cx)}+p[0],p[1],2,.16)}});")
-    w(f"L([{n(m(LINE[0]))},.02,{n(m(LINE[1]))}],[{n(tbl_cx)},{n(EL+.01)},0],M.panel,'박리 중 패널','{LINE[0]:,} × {LINE[1]:,} · 계면 140 ℃ · HKB 180 ℃ / HKS 200 ℃');")
-    rx0 = H.const("CRAIL_X0"); rx1 = H.const("CRAIL_X1"); rz = H.const("CRAIL_Z"); gy = H.const("CGY")
-    w(f"// KG-101 갠트리 — 주행레일 x {n(rx0)}…{n(rx1)} · 레일 EL {n(rz)} · 문형 4본 (셀/EVA 가 그 아래로 옆으로 나간다)")
-    w(f"[[{n(rx0)},{n(-gy)}],[{n(rx0)},{n(gy)}],[{n(rx1)},{n(-gy)}],[{n(rx1)},{n(gy)}]].forEach(function(p,i){{MP(.18,.18,0,{n(rz+.15)},p[0],p[1],i===0?'DG-HK60C KG-101 갠트리 주행 문형 4본 (벤더 앵커군 A7)':null);AB(p[0],p[1],3,.16)}});")
-    w(f"[{n(-gy)},{n(gy)}].forEach(function(z){{L([{n(rx1-rx0)},.12,.14],[{n((rx0+rx1)/2)},{n(rz+.15)},z],M.steel,z<0?'KG-101 주행레일':null,z<0?'55 mm/s 박리 → 700 mm/s 복귀 · 랙피니언':null)}});")
-    w(f"L([.32,.62,{n(2*gy+.2)}],[{n(tbl_cx-.9)},{n(rz+.52)},0],M.frame,'KG-101 크로스빔·나이프 캐리지','HKB-101/HKS-201 카세트 BC-201 · 칼끝 간격 300±2 · 웹은 이 밑으로 지난다');")
-    w(f"L([.26,.9,{n(H.const('KNIFE_W'))}],[{n(tbl_cx-1.05)},{n(EL+.47)},0],M.orange,'HKB-101 백시트 개방 핫나이프 (카세트)','백시트/EVA 계면을 300 먼저 연다 — 180 ℃');")
-    w(f"L([.26,.9,{n(H.const('KNIFE_W'))}],[{n(tbl_cx-.75)},{n(EL+.47)},0],M.red,'HKS-201 셀/EVA 분리 핫나이프 (카세트)','300 뒤를 따라가며 셀/EVA 를 유리에서 뗀다 — 200 ℃ · 생산보증 55 mm/s');")
-    # 권취 WR-101 + 문형 + RH-201 모노레일 + 새들
+    # RH-201 모노레일은 방책을 넘어 통로 **밖** 새들까지 간다 — 그 연장과 기둥,
+    # 롤·카세트 새들은 플랜트가 자기 레인에 놓는다 (RFQ OI-17). 방책 안 권취
+    # 드럼·문형은 벤더 원본에 있으므로 여기서 다시 그리지 않는다.
     wrx = m(H.WINDER_X_MM)
-    w(f"// WR-101 권취 (M-006) — 드럼 x {n(wrx)} EL 3.7 · RH-201 모노레일 EL {n(rh_z)} · 롤은 방책을 넘어 통로 밖 새들로")
-    w(f"[-.75,.75].forEach(function(z){{L([.16,{n(rh_z-.3)},.16],[{n(wrx-.4)},{n((rh_z-.3)/2)},z],M.steel,z<0?'WR-101 권취 문형 2본':null,z<0?'문형 919 kg — 드럼·댄서·모노레일 시점을 받는다':null)}});")
-    w(f"L([.9,.16,1.66],[{n(wrx-.4)},{n(rh_z-.22)},0],M.steel,null);")
-    w(f"Ee(g,{n(H.const('WR_FULL_R'))},{n(H.const('ROLL_FACE'))},[{n(wrx)},3.7,0],M.rubber,'WR-101 백시트 만권 롤','Ø600 × 1,460 · {H.ROLL_MASS_KG} kg · {H.ROLL_PERIOD_H:g} h 마다 — 사람이 들 수 없다',[Math.PI/2,0,0]);")
+    hc = ST["HC"]                       # 명판 자리 — 가열실 중심 위
+    fyn = m(H.FENCE_YN_MM)              # 통로쪽 방책선 (명판이 그 안쪽 면에 붙는다)
     w(f"L([.12,.12,{n(m(H.RH_Y_MM[0]-cass_y))}],[{n(wrx)},{n(rh_z)},{n((lz(H.RH_Y_MM[0])+lz(cass_y))/2)}],M.steel,'RH-201 모노레일 (EL {H.monorail_el_mm():,})','드럼 위(+550)에서 통로 위를 넘어 카세트 새들(−7,000)까지 — 롤과 소모품이 같은 길로 난다. 통로 위 헤드룸 {H.monorail_el_mm()-490:,}');")
     # 기둥은 방책 안(방책선 −50)과 통로 밖(방책선 − 통로폭 − 100)에 선다 — 플랜트 통로는 비운다
     aisle = layout.AISLE_WIDTH_MM
@@ -182,53 +403,6 @@ def build_3d() -> str:
     w(f"L([1.4,.4,.9],[{n(wrx)},.72,{n(lz(roll_y))}],M.dark,'BS-301 만권 롤 새들 (통로 밖 · AGV 도킹)','기계 좌표 −5,200 은 플랜트 통로 한가운데(Y 8,600)라 −{-roll_y:,.0f}(Y {layout.roll_saddle_plant_y_mm():,})으로 낸다 — 벤더 확인사항 OI-16');")
     w(f"Ee(g,{n(H.const('WR_FULL_R'))},{n(H.const('ROLL_FACE'))},[{n(wrx)},1.22,{n(lz(roll_y))}],M.rubber,null,null,[Math.PI/2,0,0]);")
     w(f"L([1.2,.3,.8],[{n(wrx+.55)},.9,{n(lz(cass_y))}],M.dark,'KC-301 칼날 카세트 새들 (통로 밖)','200 ℃ 를 지난 카세트는 방책 밖에서만 만진다');")
-    w(f"L([1.0,.4,.7],[{n(H.const('CKC_X'))},{n(H.const('CKC_Z'))},{n(lz(H.const('CKC_Y')*1000))}],M.orange,'KC-101 칼날 카세트 매거진 (갠트리 위 EL 3,300)','예열 1칸 · 냉각 1칸 · 자동교환 3.9 분 — 268 장마다 한 번보다 잦으면 계약 60 장/h 가 무너진다');")
-    w(f"[-.3,.3].forEach(function(dz){{L([.1,{n(H.const('CKC_Z')-.2)},.1],[{n(H.const('CKC_X'))},{n((H.const('CKC_Z')-.2)/2)},{n(lz(H.const('CKC_Y')*1000))}+dz],M.steel,null)}});")
-    # CE-201 횡인출 + CS-201 카트
-    cex = [m(v) for v in H.CE_X_MM]; cey0 = m(H.const("CE_Y0") * 1000); cey1 = m(H.const("CE_Y1") * 1000); cez = m(H.CE_EL_MM)
-    w(f"// CE-201 횡인출 컨베이어 (EL {H.CE_EL_MM:,}) → 외장 반출 터널 LC-003 → CS-201 평적 카트 (통로쪽 레인)")
-    w(f"L([{n(cex[1]-cex[0])},.1,{n(-(cey1-cey0))}],[{n((cex[0]+cex[1])/2)},{n(cez)},{n(-(cey0+cey1)/2)}],M.dark,'CE-201 셀/EVA 횡인출 컨베이어','적층체 {LINE[0]:,} × {LINE[1]:,} 을 자르지 않고 통째로 옆으로 밀어 낸다 — 3.96 kg/장 · 238 kg/h');")
-    w(f"[[{n(cex[0]+.3)},{n(-cey0-.2)}],[{n(cex[1]-.3)},{n(-cey0-.2)}],[{n(cex[0]+.3)},{n(-cey1+.2)}],[{n(cex[1]-.3)},{n(-cey1+.2)}]].forEach(function(p){{L([.1,{n(cez-.05)},.1],[p[0],{n((cez-.05)/2)},p[1]],M.steel,null)}});")
-    w(f"L([{n(m(H.CART_L_MM))},.55,{n(m(H.CART_W_MM))}],[{n(m(H.CART_X_MM))},.275,{n(lz(H.CART_Y_MM))}],M.frame,'CS-201 셀/EVA 평적 카트','2,600 × 1,300 · 333 장 ≈ 5.6 h — 방책 게이트(ISO 14119)로 나간다 · 발주자 파쇄 (OI-08)');")
-    w(f"for(var k=0;k<4;k++)L([{n(LINE[0]/1000)},.02,{n(LINE[1]/1000)}],[{n(m(H.CART_X_MM))},.56+k*.03,{n(lz(H.CART_Y_MM))}],M.panel,k===0?'평적 셀/EVA 적층체':null);")
-    # GC-101 냉각 랙
-    gc = ST["GC"]; gcw = m(mods["M-007"][1][1]); gch = m(mods["M-007"][1][2])
-    w(f"// GC-101 {H.DECKS}단 유리 냉각 랙 — x {n(m(gc.x0_mm))}…{n(m(gc.x1_mm))} (M-007) · 140 → 60 ℃ 143 s 강제공랭 · 배기는 경계 덕트에 합류 (OI-16)")
-    w(f"L([{n(m(gc.length_mm))},{n(gch)},{n(gcw)}],[{n(m(gc.cx_mm))},{n(gch/2)},0],M.frame,'DG-HK60C GC-101 냉각 랙 골조 (벤더 앵커군 A2)','{H.DECKS}단 강제공랭 h = 25 W/(m²·K) · 냉각 배기 26 kW 를 경계 덕트로 — 실내로 들이면 환기가 오른다');")
-    for k in range(H.DECKS):
-        dz = H.const("CDECK_Z0") + H.const("CDECK_DZ") * (k + .5)
-        lab = s("G1…G5 냉각 데크") if k == 0 else "null"
-        w(f"L([{n(m(gc.length_mm)-.8)},.04,{n(gcw-.4)}],[{n(m(gc.cx_mm))},{n(dz)},0],M.aluminum,{lab});")
-    w(f"L([.4,.5,1.2],[{n(m(gc.cx_mm))},{n(gch+.25)},0],M.steel,'GC-101 냉각 팬 (배기 → 경계 덕트)','VIB-906');")
-    # UL-101 반출 셔틀 + QI-301 + RJ-301 + 픽업 스테이션 + LC-002
-    ul = ST["UL"]
-    w(f"// UL-101 반출 셔틀 — x {n(m(ul.x0_mm))}…{n(m(ul.x1_mm))} · QI-301 검사 아치 · RJ-301 리젝트 (+y 벽쪽) · 유리 픽업 스테이션 (하류 끝)")
-    w(f"L([{n(m(ul.length_mm))},.14,1.48],[{n(m(ul.cx_mm))},{n(EL-.07)},0],M.frame,'UL-101 반출 셔틀 · WO-303 인라인 계량','60 ℃ 이하로 식은 판유리 — GLASS_TAKEAWAY_READY 로 발주자 팔레트에 넘긴다');")
-    w(f"[[{n(m(ul.x0_mm)+.3)},-.6],[{n(m(ul.x0_mm)+.3)},.6],[{n(m(ul.x1_mm)-.3)},-.6],[{n(m(ul.x1_mm)-.3)},.6]].forEach(function(p){{L([.1,{n(EL-.14)},.1],[p[0],{n((EL-.14)/2)},p[1]],M.steel,null)}});")
-    w(f"[-1,1].forEach(function(s){{L([.16,2.9,.16],[{n(m(ul.x0_mm)+.36)},1.45,s*1.1],M.steel,s<0?'QI-301 검사 아치':null,s<0?'상부 RGB 카메라 — GLASS_CRACK · QI_FAIL · 불합격은 RJ-301 로':null)}});")
-    w(f"L([.16,.16,2.36],[{n(m(ul.x0_mm)+.36)},2.85,0],M.steel,null);L([.5,.3,.3],[{n(m(ul.x0_mm)+.36)},2.6,0],M.dark,null);")
-    w(f"L([1.3,.14,.9],[{n(m(ul.cx_mm)+.55)},{n(EL-.05)},-1.55],M.dark,'RJ-301 리젝트 횡셔틀','불합격 유리를 라인 밖(벽쪽)으로 뺀다');")
-    w(f"L([1.1,1.0,.8],[{n(m(ul.cx_mm)+.55)},.5,-2.3],M.frame,null);")
-    # 콘솔의 픽업 스테이션(x 19,100 · 팔레트 1,300)은 방책선 19,600 을 150 넘는다 — 벤더 방책
-    # 밖 발주자 자리라 그렇다. 플랜트에서는 존 안에 둔다 (GLASS_PICKUP_IN_MM).
-    px = m(GLASS_PICKUP_IN_MM)
-    w(f"L([1.3,.14,1.34],[{n(px)},.11,0],M.aluminum,'발주자 인계 · 유리 반출 픽업 스테이션','팔레트 약 20장 · 20분마다 — 하류 끝단에서 지게차·AGV 가 받는다 (GLASS_TAKEAWAY_READY)');")
-    w(f"for(var k=0;k<4;k++)L([1.22,.02,1.26],[{n(px)},.2+k*.05,0],M.panel,k===0?'회수 판유리':null,k===0?'{LINE[0]:,} × {LINE[1]:,} · 23.0 kg/장 · 전처리 → 유리제거까지 끝난 결과물':null);")
-    w(f"[-.95,.95].forEach(function(z){{L([.08,1.95,.08],[{n(px+.36)},.975,z],M.sensor,z<0?'LC-002 안전 광커튼 (하류 개구)':null,z<0?'광축면 Y ±950 × Z 50–1,910 · 뮤팅 4점':null)}});")
-    # 경계 인터페이스반 · 기초 패드 · MCC · 진공 스키드
-    bjx = m(H.BJ_X_MM); bjz = lz(H.BJ_Y_MM)
-    w(f"// 경계 인터페이스반 BJ-101/102 (x {n(bjx)} · 통로쪽 레인) · 기초 패드 P1~P3 · MCC M-011 · VU-101 스키드 M-012")
-    w(f"L([1.5,.14,1.0],[{n(bjx)},.07,{n(bjz)}],M.dark,'DG-HK60C 기초 패드 P1~P3','P3 경계 인터페이스 — P1 MCC(EP-1 x 4,200) · P2 진공 스키드(EP-3 x 12,280) 와 함께 벤더 D-602 가 정한다');")
-    w(f"[[-.38,'BJ-101 경계 인터페이스반','VOC_ABATE_READY · GLASS_TAKEAWAY_READY · CELL_TAKEAWAY_READY · 상류 브리지 핸드셰이크 UP_* — 발주자(플랜트) 신호는 전부 여기로'],[.38,'BJ-102 경계 안전회로 인터페이스반','IF_ESTOP_LOOP_OK — 안전회로는 공급범위 경계에서 끊기지 않는다 (SF-09)']].forEach(function(b){{L([.62,1.86,.52],[{n(bjx)}+b[0],1.07,{n(bjz)}],M.frame,b[1],b[2])}});")
-    w(f"L([1.6,.14,.86],[4.2,.07,{n(lz(-3200))}],M.dark,null);L([1.6,3.1,.86],[4.2,1.69,{n(lz(-3200))}],M.frame,'DG-HK60C 전력·MCC·제어반 M-011','IR-DB1 100 · HK-DB2 30 · MCC-1 45 · AUX-DB 18 kW — 플랜트 피더 F9(IR)·F10(기구) 두 본이 여기로');")
-    w(f"L([1.5,.14,.86],[12.28,.07,{n(lz(-3200))}],M.dark,null);L([1.5,2.5,.86],[12.28,1.39,{n(lz(-3200))}],M.steel,'DG-HK60C VU-101 진공·계장공기 스키드 M-012','드라이 스크류 진공펌프 2대(1 예비) −95 kPa · 리시버 400 L · VIB-905');")
-    # 배기 헤더 → 경계 플랜지
-    dy = lz(H.DUCT_Y_MM); dfx = m(H.DUCT_FLANGE_X_MM)
-    w(f"// 배기 헤더 — 가열실·탠덤 분기 Ø400 → 본관 Ø460 → 경계 플랜지 Ø600 (x {n(dfx)} · EL {n(duct_el)}) → 발주자 후처리")
-    w(f"[[{n(m(hc.cx_mm))},{n(hch)}],[{n(tbl_cx)},{n(rz+.8)}]].forEach(function(p,i){{Ee(g,.2,{n(duct_el)}-p[1],[p[0],(p[1]+{n(duct_el)})/2,{n(dy)}],M.steel,i===0?'HC-101 배기 지선 Ø400':null,i===0?'−30 Pa 차압 · VOC 는 경계 CEMS 로':null);L([.3,.16,.5],[p[0],p[1]+.08,{n(dy)}],M.steel,null)}});")
-    w(f"Ee(g,.23,{n(dfx-m(hc.cx_mm))},[{n((m(hc.cx_mm)+dfx)/2)},{n(duct_el)},{n(dy)}],M.steel,'배기 본관 Ø460','헤더는 경계 플랜지까지만 — 팬(2×100 %)·스크러버·RTO 는 발주자 설비',[0,0,Math.PI/2]);")
-    w(f"Ee(g,.3,.1,[{n(dfx)},{n(duct_el)},{n(dy)}],M.yellow,'경계 덕트 플랜지 Ø600 (EL {H.DUCT_FLANGE_EL_MM:,})','DUCT_DP_OK · 풍량 — 원격 준비 접점만 믿지 않고 여기서 잰다',[0,0,Math.PI/2]);")
-    w(f"L([.14,{n(duct_el-.25)},.14],[{n(dfx-.4)},{n((duct_el-.25)/2)},{n(dy)}],M.steel,'배기 헤더 지주',null);")
     # 명판
     # 데칼은 월드 그룹에 존 식으로 놓고 adopt() 가 셀에 입양한다 — 통로 경계(방책 안쪽 면)
     w("})();")

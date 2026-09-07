@@ -1957,6 +1957,24 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
           팔레트 투입 우회 운전은 인수시험 항목에 남긴다.</p>
       </div>
     </div>
+    <div class="oi">
+      <div class="oi-h"><b>OI-18</b><span>배기 헤더 최고점 — 모듈 외형표 5,400 과 운전 콘솔 도면 5,780 의 차이</span></div>
+      <div class="oi-b">
+        <p><em>현황</em>사양서 3.x 납품 모듈 외형표는 <span class="k">M-017</span>(경계 인터페이스 ·
+          <strong>배기 헤더 포함</strong>)의 높이를 <span class="m">5,400 mm</span> 로 적는다. 그런데 본 기계의
+          운전 콘솔(<span class="k">pv-delamination-3d.html</span>)은 HC-101 가열실 배기 라이저를
+          <span class="m">EL 5,780</span> 까지, 경계로 나가는 헤더를 <span class="m">EL 5,560</span> 에 그린다.
+          같은 기계의 두 문서가 최고점을 <span class="m">380 mm</span> 다르게 말한다.</p>
+        <p><em>왜 미해결인가</em>둘 다 맞을 수 있다 — 모듈표는 <strong>운송·앵커용 외형</strong>이고 라이저는
+          현장에서 잇는 배관일 수 있다. 하지만 발주자가 <strong>비워 둘 높이</strong>는 그 구분과 무관하게 큰 쪽이라,
+          전처리 플랜트는 유리제거기 존 높이를 <span class="m">5,780</span> 으로 잡았다(건축 유효고·천장크레인
+          거더 하면·배기 덕트 경로가 그 값에서 나온다). 모듈표 값이 맞다면 플랜트가 380 을 과하게 비운 것이고,
+          콘솔이 맞다면 모듈표가 배기 헤더를 덜 적은 것이다.</p>
+        <p><em>해소</em>입찰자는 배기 헤더·라이저의 <strong>최고점 확정값</strong>과 그것이 납품 범위인지
+          현장 배관인지를 밝히고, 경계 플랜지 중심 EL(사양서 부기 <span class="m">5,100</span>)과의 관계를
+          단면도로 제시한다. 확정값이 5,400 이하면 플랜트 존 높이를 되돌린다.</p>
+      </div>
+    </div>
   </div></div>
 </section>
 
@@ -2136,7 +2154,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
       <thead><tr><th>구분</th><th>항목</th><th class="num">배점</th></tr></thead>
       <tbody>
         <tr><td class="k" rowspan="4">기술</td><td>과업 이해도 및 설계 접근 방법</td><td class="num">20</td></tr>
-        <tr><td><strong>11항 확인사항 17건의 해소 계획</strong></td><td class="num">25</td></tr>
+        <tr><td><strong>11항 확인사항 18건의 해소 계획</strong></td><td class="num">25</td></tr>
         <tr><td>수행 조직 및 실적</td><td class="num">20</td></tr>
         <tr><td>일정 및 품질관리 계획</td><td class="num">15</td></tr>
         <tr><td class="k">가격</td><td>최저 제안가 기준 상대평가</td><td class="num">20</td></tr>

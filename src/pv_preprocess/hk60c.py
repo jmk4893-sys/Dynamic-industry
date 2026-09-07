@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import importlib.util
 import math
+import json
 import pathlib
 import re
 import sys
@@ -35,6 +36,7 @@ from functools import lru_cache
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
+CAPTURE = ROOT / "docs" / "drawings" / "hk60c-capture.json"
 RFQ = ROOT / "docs" / "dg-hk60-rfq.html"
 ASSEMBLY = ROOT / "docs" / "dg-hk60-assembly.html"
 TOOLS = ROOT / "tools"
@@ -215,8 +217,28 @@ MODULES: dict[str, tuple[str, tuple[int, int, int]]] = {
     m: (name.strip(), (int(L), int(W), int(H))) for m, name, L, W, H in _modules}
 HEIGHT_MM: int = max(h for _, (_, _, h) in MODULES.values())         # 5,400
 
-#: 존 외형 (X, Y, Z) — 플랜트 `layout.Station("grm")` 이 그대로 받는다.
-ENVELOPE_MM: tuple[int, int, int] = (FENCE_X1_MM, FENCE_WIDTH_MM, HEIGHT_MM)
+def _drawn_top_mm() -> int:
+    """콘솔이 **그린** 기계의 최고점 (mm) — 캡처(`tools/capture_hk60c.mjs`)에서 잰다.
+
+    사양서 3.x 모듈 외형표는 M-017(경계 인터페이스·배기 헤더 포함) 5,400 을 최고로
+    적는데, 콘솔은 가열실 배기 라이저를 5,780 까지, 헤더를 EL 5,560 까지 그린다.
+    모듈표는 **운송·앵커용 외형**이고 라이저는 현장 배관이라 둘 다 맞을 수 있지만,
+    플랜트가 비워 둘 높이는 큰 쪽이다. 차이는 발주 확인사항(OI-18)으로 남긴다.
+    캡처가 없으면 모듈표 값을 쓴다 — 도면을 못 그릴 뿐 모델은 서야 한다.
+    """
+    try:
+        top = json.loads(CAPTURE.read_text(encoding="utf-8"))["bbox"]["hi"][2]
+    except (OSError, KeyError, ValueError):
+        return HEIGHT_MM
+    return int(round(top * 1000))
+
+
+#: 콘솔이 그린 최고점. `HEIGHT_MM`(사양서 모듈표) 과 다르면 그 차이가 OI-18 이다.
+DRAWN_TOP_MM: int = _drawn_top_mm()
+
+#: 존 외형 (X, Y, Z) — 플랜트 `layout.Station("grm")` 이 그대로 받는다. 높이는
+#: 사양서 모듈표와 콘솔이 그린 최고점 중 **큰 쪽**이다 (플랜트는 실물을 비운다).
+ENVELOPE_MM: tuple[int, int, int] = (FENCE_X1_MM, FENCE_WIDTH_MM, max(HEIGHT_MM, DRAWN_TOP_MM))
 
 # ── 플랜트 안에 놓는 방식 — 여기만 플랜트가 정한다 ─────────────────────────
 #: 기계의 −y 면(카트 레인·BJ-101/102·인입점·모노레일 반출)을 **통로 쪽**에 둔다.

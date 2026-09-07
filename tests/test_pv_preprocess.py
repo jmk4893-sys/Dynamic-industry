@@ -3581,7 +3581,7 @@ class TestGlassRemovalIntegration(unittest.TestCase):
         self.assertEqual(zones[-1].key, "grm")
         grm = layout.STATIONS["grm"]
         self.assertEqual(grm.envelope, hk60c.ENVELOPE_MM)
-        self.assertEqual(grm.envelope, (20100, 8300, 5400))   # 방책 −900…20,100 × +3,700/−4,600
+        self.assertEqual(grm.envelope, (20100, 8300, 5780))   # 방책 −900…20,100 × +3,700/−4,600 · 그린 최고점 5,780
         self.assertEqual(grm.sheet, "PV-DGM-401-GA-6101")
         self.assertIn(grm.sheet, self.html, "도면 목록에 GA 시트가 없다")
         # 존은 장비 밴드 안에 들어와야 하고 통로를 잠식하면 안 된다
@@ -3610,13 +3610,20 @@ class TestGlassRemovalIntegration(unittest.TestCase):
 
     def test_knife_heads_fit_the_300mm_lead(self):
         """칼끝 리드가 300 이면 두 헤드 몸체는 그보다 좁아야 나란히 선다."""
-        self.assertIn("M.orange,'HKB-101 백시트 개방 핫나이프 (카세트)'", self.html)
-        self.assertIn("M.red,'HKS-201 셀/EVA 분리 핫나이프 (카세트)'", self.html)
+        # REV.55: 칼날은 벤더 원본 형상이라 도장도 벤더 팔레트(VM[i])다. 이름은 자리가
+        # 아니라 **형상**으로 붙는다 — 패널 폭을 건너지르는 같은 단면의 바 두 개이고
+        # 그 사이가 칼끝 리드다. 그래서 이 시험이 리드를 실제로 재는 시험이 된다.
+        xs = []
         for head in ("HKB-101 백시트 개방 핫나이프 (카세트)", "HKS-201 셀/EVA 분리 핫나이프 (카세트)"):
-            body = re.search(r"L\(\[(\.\d+),[^\]]*\],\[[^\]]*\],M\.\w+,'%s'" % re.escape(head), self.html)
+            body = re.search(r"L\(\[(\.\d+),[^\]]*\],\[([-\d.]+),[^\]]*\],VM\[\d+\],'%s'"
+                             % re.escape(head), self.html)
             with self.subTest(head=head):
-                self.assertIsNotNone(body)
-                self.assertLess(float(body.group(1)), 0.3, "몸체가 리드 300 보다 넓다")
+                self.assertIsNotNone(body, "칼날에 플랜트 이름이 안 붙었다")
+                self.assertLess(float(body.group(1)), hk60c.KNIFE_PITCH_MM / 1000.0,
+                                "몸체가 리드 300 보다 넓다")
+                xs.append(float(body.group(2)))
+        self.assertAlmostEqual(abs(xs[1] - xs[0]) * 1000, hk60c.KNIFE_PITCH_MM, delta=2.0,
+                               msg="두 칼날 사이가 칼끝 리드가 아니다")
 
     def test_campaign_now_ends_at_glass_not_at_the_buffer(self):
         """캠페인이 버퍼에서 끝나면 유리가 벗겨졌는지 알 수 없다."""
@@ -4095,15 +4102,20 @@ class TestCrane(unittest.TestCase):
     def test_it_cannot_carry_over_installed_equipment(self):
         """넘길 수 없다는 사실이 시공 순서를 정한다 — 크레인 사양이 아니다."""
         tallest_fixed = layout.plant_envelope_mm()[2]
-        self.assertEqual(tallest_fixed, 5_400)   # REV.54: DG-HK60C 배기 헤더·방책 5,400
-        self.assertEqual(crane.carry_over_hook_mm(tallest_fixed), 13_220)
+        # REV.55: 벤더 콘솔이 가열실 배기 라이저를 5,780 까지 그린다. 사양서 모듈표는
+        # M-017 을 5,400 으로 적는데(운송·앵커용 외형), 플랜트가 비워 둘 높이는 큰 쪽이다.
+        # 그 차이가 발주 확인사항 OI-18 이다.
+        self.assertEqual(tallest_fixed, 5_780)
+        self.assertEqual(tallest_fixed, hk60c.DRAWN_TOP_MM)
+        self.assertGreater(hk60c.DRAWN_TOP_MM, hk60c.HEIGHT_MM, "OI-18 이 닫혔다면 시험을 고친다")
+        self.assertEqual(crane.carry_over_hook_mm(tallest_fixed), 13_600)
         self.assertGreater(crane.carry_over_hook_mm(tallest_fixed),
                            crane.hook_height_mm(),
                            "넘길 수 있으면 시공 순서를 논할 이유가 없다")
         self.assertGreater(crane.carry_over_hook_mm(tallest_fixed), crane.CEILING_MM,
                            "천장을 키워도 안 되는 값이라야 순서로 푸는 것이 답이 된다")
         # 거더 하면은 설비 최고점 위로 넉넉히 뜬다 — 넘기는 것과는 다른 이야기다
-        self.assertEqual(crane.clears_plant(tallest_fixed), 5_350)
+        self.assertEqual(crane.clears_plant(tallest_fixed), 4_970)
 
     def test_the_install_order_runs_against_the_process_flow(self):
         """반입 동선이 곧 안 세운 장비 밴드라, 먼 쪽부터 소비해야 한다.
@@ -6461,3 +6473,92 @@ class TestInfeedStation(unittest.TestCase):
         self.assertTrue(retired, "시드를 근거로 삼은 은퇴 헤드가 없다")
         self.assertIn("좌표시드", " ".join(h.note for h in retired))
         self.assertLess(vision.head_reduction()[1], vision.head_reduction()[0])
+
+
+class TestVendorOriginal(unittest.TestCase):
+    """후단 기계의 형상·도장은 벤더 콘솔에서 **받아 적은 것**이다.
+
+    REV.54 까지 이 셀은 `hk60c` 의 치수로 우리가 **다시 그린** 것이었다. 치수는
+    맞았지만 형상도 도장도 벤더 콘솔과 달라, 같은 기계가 두 화면에서 다르게
+    보였다. REV.55 에서 `tools/capture_hk60c.mjs` 가 벤더 콘솔의 그리기 호출을
+    가로채 좌표·치수·도장색 그대로 받아 적고, `build_dgm.py` 가 그것을 찍는다.
+    이 시험은 그 사슬이 끊기지 않았는지를 본다 — 끊기면 도면이 다시 우리 그림이
+    되는데, 그때는 아무도 눈치채지 못한다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+        cls.cap = json.loads(
+            (pathlib.Path(__file__).resolve().parents[1]
+             / "docs" / "drawings" / "hk60c-capture.json").read_text(encoding="utf-8"))
+
+    def test_the_capture_is_the_vendors_delivered_machine(self):
+        """받아 적은 것은 **압축 배치**여야 한다 — 확장 배치는 하류까지 펼친 참고도다."""
+        self.assertEqual(self.cap["layout"], "compact")
+        self.assertEqual(self.cap["source"], "docs/drawings/pv-delamination-3d.html")
+        self.assertAlmostEqual(self.cap["length_m"] * 1000, hk60c.LENGTH_MM, delta=1.0,
+                               msg="캡처한 전장이 hk60c.LENGTH_MM 과 다르다 — 다른 배치를 찍었다")
+        self.assertEqual(self.cap["panel_m"], [hk60c.PANEL_MAX_MM[0] / 1000,
+                                               hk60c.PANEL_MAX_MM[1] / 1000])
+        self.assertEqual(self.cap["stage"], 4, "정지 자세는 4단계(탠덤 박리 중)다")
+        self.assertGreater(self.cap["counts"]["base"], 1_000)
+
+    def test_the_drawing_paints_with_the_vendor_livery(self):
+        """도장색은 환산하지 않는다 — 색이 도장의 정본이다."""
+        block = self.html.split("/* @dgm-3d-begin */")[1].split("/* @dgm-3d-end */")[0]
+        used = re.search(r"var VC=\[([^\]]*)\];", block)
+        self.assertIsNotNone(used, "벤더 도장 팔레트를 안 찍었다")
+        colors = [c.lower() for c in re.findall(r"'([^']+)'", used.group(1))]
+        self.assertGreater(len(colors), 15)
+        drawn = {str(p["k"]).lower() for p in self.cap["base"] + self.cap["dynamic"]}
+        for c in colors:
+            with self.subTest(color=c):
+                self.assertIn(c, drawn, "캡처에 없는 색을 칠했다 — 우리가 고른 색이다")
+        # 대부분은 이름 있는 도장색이다. 나머지 셋은 콘솔이 상태에 따라 섞어 내는
+        # 표시등 색이라 팔레트에 상수로 없다 — 그것도 벤더가 칠한 색이다.
+        livery = {str(v).lower() for v in self.cap["palette"].values()}
+        self.assertGreaterEqual(len(set(colors) & livery), len(set(colors)) - 3)
+        # 표면 마감은 환산한다 — 두 렌더러가 쓰는 값이 다르기 때문이다
+        self.assertIn("t.roughness=VF[i][0];t.metalness=VF[i][1];", block)
+
+    def test_the_machine_is_not_hand_drawn_any_more(self):
+        """플랜트 팔레트로 기계를 다시 그리면 다시 어긋난다 — 그 자국이 없어야 한다."""
+        block = self.html.split("/* @dgm-3d-begin */")[1].split("/* @dgm-3d-end */")[0]
+        for gone in ("M.orange,'HKB-101", "M.red,'HKS-201",
+                     "M.frame,'DG-HK60C HC-101", "M.frame,'DG-HK60C GC-101"):
+            with self.subTest(gone=gone):
+                self.assertNotIn(gone, block, "기계를 아직 손으로 그린다")
+        # 플랜트가 대는 것은 남아 있어야 한다 — 브리지와 통로 밖 새들은 플랜트 몫이다
+        self.assertIn("BX-101 인계 브리지", block)
+        self.assertIn("BS-301 만권 롤 새들 (통로 밖 · AGV 도킹)", block)
+
+    def test_the_plant_still_calls_its_members_by_name(self):
+        """형상이 벤더 것이어도 **이름은 플랜트 것**이다 — 앵커 계획이 그 이름을 부른다."""
+        block = self.html.split("/* @dgm-3d-begin */")[1].split("/* @dgm-3d-end */")[0]
+        for member in mounting.members_of("grm"):
+            with self.subTest(member=member.label):
+                self.assertIn("'" + member.label + "'", block,
+                              "앵커 계획이 부르는 부재가 3D 에 없다")
+
+    def test_the_delivery_boundary_is_where_the_plant_stops(self):
+        """방책 밖은 인도 범위가 아니다 — 상류 900 은 브리지 개구, 하류는 발주자 몫이다."""
+        block = self.html.split("/* @dgm-3d-begin */")[1].split("/* @dgm-3d-end */")[0]
+        xs = [float(v) for v in re.findall(r"var VB=\[([^\]]*)\]", block)[0].split(",")[1::7]]
+        self.assertGreaterEqual(min(xs), 0.0, "인도 경계 상류로 넘어간 부품이 있다")
+        self.assertLessEqual(max(xs), hk60c.FENCE_X1_MM / 1000.0)
+        # 캡처 원본은 그보다 넓다 — 자른 것이지 벤더가 안 그린 것이 아니다
+        self.assertLess(self.cap["bbox"]["lo"][0], 0.0)
+        self.assertGreater(self.cap["bbox"]["hi"][0], hk60c.FENCE_X1_MM / 1000.0)
+
+    def test_the_drawn_machine_is_taller_than_the_module_table(self):
+        """콘솔이 그린 최고점과 사양서 모듈표가 다르다 — 그 차이가 OI-18 이다.
+
+        모듈표(M-017 5,400)는 운송·앵커용 외형이고 콘솔은 가열실 배기 라이저를
+        5,780 까지 그린다. 둘 다 맞을 수 있지만 **플랜트가 비워 둘 높이는 큰 쪽**이라,
+        존 높이는 큰 값을 쓰고 차이는 발주 확인사항으로 남긴다.
+        """
+        self.assertEqual(hk60c.DRAWN_TOP_MM, round(self.cap["bbox"]["hi"][2] * 1000))
+        self.assertGreater(hk60c.DRAWN_TOP_MM, hk60c.HEIGHT_MM)
+        self.assertEqual(hk60c.ENVELOPE_MM[2], hk60c.DRAWN_TOP_MM)
+        self.assertEqual(layout.STATIONS["grm"].height_mm, hk60c.DRAWN_TOP_MM)
