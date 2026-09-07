@@ -1449,10 +1449,10 @@ def build() -> str:
     var over = jawOverlap(u), okOver = Math.abs(over - M.jawMm) <= M.jawTolMm + 1e-6;
     var ang = Math.abs(lerp(S.rot[0], S.rot[1], u)) * 180 / Math.PI;
     bd.dimY(base + P.jaw.at[1] - P.jaw.size[1] / 2, base + P.jaw.at[1] + P.jaw.size[1] / 2,
-            bx + P.scissor.size[0] / 2 + 0.012,
+            bx - P.scissor.size[0] / 2 - 0.030,
             '가위날 ' + (P.jaw.size[1] * 1000).toFixed(0), ink3);
     // 콤이 닿는 범위 — 이 밖에 놓인 케이블은 홈으로 들어오지 못한다.
-    var reachY = M.cellY + P.panel.at[1] + P.panel.size[1] / 2 + 0.010;
+    var reachY = M.cellY + P.panel.at[1] + P.panel.size[1] / 2 - 0.014;
     bd.dimX(bx - P.comb.size[0] / 2, bx + P.comb.size[0] / 2, reachY,
             '콤 포획 반폭 ±' + (P.comb.size[0] / 2 * 1000).toFixed(0), C('brand'));
     bd.text(bx, base + P.comb.at[1], '비전 연동 케이블 포획 콤 ' + (P.comb.size[0] * 1000).toFixed(0),
@@ -1469,7 +1469,8 @@ def build() -> str:
             u >= SHUT ? (okOver ? C('ok') : C('red')) : ink2, 'center', 11);
     if (tgt) {{
       var engaged = u > 0.02 || cutDone(t, i);
-      bd.dimX(Math.min(bx, tgt.x), Math.max(bx, tgt.x), M.cellY + tgt.y - 0.055,
+      bd.dimX(Math.min(bx, tgt.x), Math.max(bx, tgt.x),
+              M.cellY + P.panel.at[1] + P.panel.size[1] / 2 - 0.034,
               (Math.abs(tgt.x - bx) * 1000).toFixed(0) + ' 콤 → 케이블',
               !engaged ? ink3
                 : Math.abs(tgt.x - bx) <= P.comb.size[0] / 2 ? C('ok') : C('red'));
