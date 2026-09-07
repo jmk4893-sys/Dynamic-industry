@@ -610,6 +610,7 @@ def build() -> str:
 <li><b>구조 검증</b> — 포탈 기둥·크로스빔·엔드링 지지롤러·페데스털의 응력·처짐 계산 또는 FEA, 앵커 인발 계산 (기술사 검토).</li>
 <li><b>OEM 자료</b> — 로봇 베이스 볼트 패턴·TCP·하중도, 시저 리프트 GA·베이스 구멍, 서보·감속기 플랜지, LM·볼스크루 규격 확정.</li>
 <li><b>미결 3건</b> — 적층→픽업 4,400 → 3,750 축소 결정(FL-101 제원), LFT 인덱스 50/45 mm 통일, RBPT 2D 시트의 PT 위치 310 mm 정정.</li>
+<li><b>설계 미결</b> — 아래 <a href="#open">미결 항목</a> 절. 발주처·벤더 자료나 실물 시험이 있어야 정해지는 것들이고, 도면에 임의값을 넣지 않았다.</li>
 </ol>
 값을 고칠 때는 <code>src/pv_preprocess/fabrication.py</code> 를 고치고 이 문서를 다시 찍는다 — 손으로 고친 도면은 다음 회차에 갈라진다.</div>
 </section>""")
@@ -676,6 +677,20 @@ def build() -> str:
                  + '<h3>기구학 치수 대조</h3>' + table(["항목", "판정"], [[esc(k), '<span class="ok">일치</span>' if v else '<span class="bad">불일치</span>'] for k, v in checks.items()])
                  + '<h3>서보 축 — 상용품 반영</h3>' + table(["축", "판정"], [[esc(k), '<span class="ok">반영</span>' if v else '<span class="bad">누락</span>'] for k, v in sv.items()])
                  + f'<p class="note">제작품 총중량 {n(S["weight_kg"])} kg (조립체 수량 반영) · 방출 주기 {campaign.release_takt_s():g} s 기준 투입부 점유 {campaign.INFEED_S:g} s.</p>'
+                 "</section>")
+    # 6. 미결 항목
+    oi_rows = [[f'<span class="mono">{esc(o.tag)}</span>', esc(o.title), esc(o.why_open),
+                esc(o.closes_with), esc(o.blocks), esc(o.question or "—")]
+               for o in fab.OPEN_ITEMS]
+    parts.append('<section id="open"><h2>미결 항목 — 도면으로 못 닫는 것</h2>'
+                 '<p class="note">설계 검토에서 나온 지적 중 <b>계산으로 닫을 수 있는 것은 이미 닫혀 모델 안에 있다</b> '
+                 '(구동계 검산 <code>drives.py</code>, 볼트·앵커 길이 <code>fasteners.py</code>, 프레임 처짐 '
+                 '<code>frames.py</code>). 아래는 발주처·벤더 자료나 실물 시험이 있어야 정해지는 것들이다. '
+                 '<b>임의값으로 채우지 않는다</b> — 채우면 검산이 거짓으로 통과하고, 그 사실을 현장에서 안다.</p>'
+                 + table(["번호", "항목", "왜 지금 못 정하는가", "무엇이 있어야 닫히는가",
+                          "닫히기 전에 하면 안 되는 것", "시작품 질문"], oi_rows, "tb")
+                 + '<p class="note">시작품 질문 번호는 <code>src/pv_preprocess/prototype.py</code> 의 '
+                 'Q1–Q7 이다 — 그 질문에 걸린 항목은 BFC 시작품이 답한다.</p>'
                  "</section>")
     parts.append("</main>\n</body>\n</html>\n")
     return "\n".join(parts)

@@ -28,7 +28,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
 
-from pv_preprocess import (campaign, electrical, kinematics, layout,  # noqa: E402
+from pv_preprocess import (campaign, drives, electrical, kinematics, layout,  # noqa: E402
                            maintain, mounting, reliability, safety, servos, vision)
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -604,7 +604,13 @@ def station_table() -> str:
         ["겸용으로 더 걷을 수 있는 길이", n(layout.infeed_merge_residue_mm()),
          "합집합 − 한 장 축적 소요 — 그 대가가 좌표시드라 **발주처 결정으로 후보를 닫았다** (§56)"],
         ["좌표시드 공차", f"±{layout.PT_SEED_TOLERANCE_MM:g} mm / yaw ±{layout.PT_SEED_YAW_DEG:g}°",
-         "이 라인의 유일한 기계 기준. 브리지 동기오차 0.08 mm 와 **다른 값**이다"],
+         "이 라인의 유일한 기계 기준. **기준 모서리**(장변 스토퍼 2 + 단변 스토퍼 1 이 "
+         "만나는 점)의 위치 공차와 그 점을 중심으로 한 회전 공차다. "
+         "브리지 동기오차 0.08 mm 와 **다른 값**이다"],
+        ["반대편 모서리 흔들림", f"±{layout.seed_far_corner_mm():g} mm",
+         f"±{layout.PT_SEED_TOLERANCE_MM:g} + {n(campaign.PANEL_LENGTH_MM)}·tan{layout.PT_SEED_YAW_DEG:g}° — "
+         f"하류가 패널 전체 ±1 mm 를 기대하면 yaw 를 ±{layout.seed_yaw_for(1.0):g}° 로 조여야 하고, "
+         "그것은 3-2-1 스토퍼로 성립하지 않는다. **하류 공차는 기준 모서리 기준으로 읽는다**"],
         ["축적구간 입구 비움", f"{campaign.accumulator_clear_s():g} s",
          f"패널 {n(campaign.PANEL_LENGTH_MM)} ÷ 이송 {campaign.transfer_speed_mm_s():g} mm/s — 지금은 스토퍼 확인 {campaign.JBR_STOPPER_OFFSET_S:g} s 로 다음 장을 놓는다"],
     ]
@@ -667,6 +673,39 @@ def drives_table() -> str:
                          "있음" if a.brake else "—", esc(a.note)])
     return table(["축", "분전반", "장비", "동작", "수", "정격 kW", "합 kW", "구동", "피드백", "브레이크", "비고"],
                  rows, "", (4, 5, 6))
+
+
+def transmission_table() -> str:
+    """전동기와 기구 사이 — 그 속도로 돌 수 있는가, 그 토크가 전달되는가.
+
+    정격만 적어 두면 검산이 안 된다. 행정 ÷ 시각으로 속도를 내고 리드·감속비로
+    회전수를 환산해 정격 안에 드는지 본다 (`drives.py`).
+    """
+    spd, trq = drives.speed_checks(), drives.torque_checks()
+    pre = drives.preload_is_specified()
+    rows = []
+    for b in drives.ballscrews():
+        rms, peak, rated, ok = trq[b.axis]
+        rows.append([f"<code>{esc(b.axis)}</code>", "볼스크루 직결",
+                     f"리드 {b.lead_mm:g} × {b.screws}본 · i={b.ratio:g}",
+                     f"{b.mean_mm_s:.0f} mm/s (최고 {b.peak_mm_s:.0f})",
+                     f"{spd[b.axis][0]:,} / {drives.SERVO_MAX_RPM:,}",
+                     f"{rms:g} / {rated:g}", f"{peak:g} / {rated * drives.SERVO_PEAK_FACTOR:g}",
+                     "—", "만족" if ok and spd[b.axis][1] else "**미달**"])
+    for f in drives.friction_drives():
+        need, _peak, rated, ok = trq[f.axis]
+        have, want, pok = pre[f.axis]
+        rows.append([f"<code>{esc(f.axis)}</code>", "마찰 롤러",
+                     f"링 Ø{n(f.ring_od_mm)} ← 롤러 Ø{n(f.roller_od_mm)} · i={f.ratio:g}",
+                     f"{f.ring_rpm:.1f} rpm (링)",
+                     f"{spd[f.axis][0]:,} / {drives.SERVO_MAX_RPM:,}",
+                     f"{need:g} / {rated:g}",
+                     f"링 {f.torque_nm:.0f} / 전달 상한 {f.torque_limit_nm():.0f}",
+                     f"{have:g} / {want:g}",
+                     "만족" if ok and pok and spd[f.axis][1] else "**미달**"])
+    return table(["축", "전동", "감속·리드", "기구 속도", "모터 rpm / 최대",
+                  "실효 N·m / 정격", "피크 N·m / 한계", "압착 N / 필요", "판정"],
+                 rows, "", (3, 4, 5, 6, 7))
 
 
 def feeders_table() -> str:
@@ -1017,6 +1056,11 @@ def build() -> str:
         '<section id="drives">',
         "<h2>구동·전기</h2>",
         drives_table(),
+        "<h3>전동–기구 검산</h3>",
+        transmission_table(),
+        f"<p class=\"note\">반전축이 돌리는 것은 링·조·패드·패널 <strong>{drives.flip_rotating_kg():.0f} kg</strong> "
+        f"(관성 {drives.flip_inertia_kgm2():.0f} kg·m²)이지 포탈을 포함한 인양 무게가 아니다. "
+        "승강축은 감속기 없이 직결한다 — 리드 10 에 i=10 을 물리면 모터가 25,000 rpm 이어야 했다.</p>",
         "<h3>급전</h3>",
         feeders_table(),
         "<p class=\"note\">서보는 EtherCAT CoE(CSP) · FSoE STO 계층에 올라간다. 중력·자세 유지 축(승강·반전·포획빔 승강·로봇 관절)은 전부 브레이크가 있다.</p>",

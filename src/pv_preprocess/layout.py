@@ -572,6 +572,11 @@ PT_DECK_MM = (2_620, 1_520)
 #:
 #: 브리지 동기오차 0.08 mm(AXIS-JBR-X · JB-MX-005)와 **다른 값이다.** REV.51·52
 #: 기록이 둘을 바꿔 적었고 §56 에서 고쳤다 — 시험이 둘의 자리를 지킨다.
+#: **기준면 정의.** 두 공차는 같은 점에 걸리지 않는다 — 이걸 안 적으면 모순이다.
+#: `PT_SEED_TOLERANCE_MM` 은 3-2-1 이 만드는 **기준 모서리**(장변 스토퍼 2 와
+#: 단변 스토퍼 1 이 만나는 점)의 위치 공차이고, `PT_SEED_YAW_DEG` 는 그 모서리를
+#: 중심으로 한 **회전** 공차다. 둘을 합치면 반대편 모서리의 흔들림은
+#: `seed_far_corner_mm()` 이고 ±1 mm 가 아니다.
 PT_SEED_TOLERANCE_MM = 1.0
 PT_SEED_YAW_DEG = 0.15
 
@@ -581,6 +586,31 @@ ACCUM_FROM_JBR_CENTER_MM = 4_645
 
 #: 한 장 축적에 필요한 그립 여유 (편측). 패널 + 이것의 2배가 스테이션 길이다.
 GRIP_CLEARANCE_MM = 125
+
+
+def seed_far_corner_mm() -> float:
+    """좌표시드 공차가 **반대편 모서리**에서 만드는 흔들림 (mm).
+
+    기준 모서리의 ±1.0 mm 에, yaw ±0.15° 가 패널 길이 끝에서 만드는 값을
+    더한다. 하류가 ±1 mm 를 기대하고 설계돼 있으면 이 값이 실제 요구다 —
+    그때 yaw 는 `seed_yaw_for(1.0)` 이하여야 한다.
+    """
+    import math
+
+    from . import campaign
+    return round(PT_SEED_TOLERANCE_MM
+                 + campaign.PANEL_LENGTH_MM * math.tan(math.radians(PT_SEED_YAW_DEG)), 2)
+
+
+def seed_yaw_for(far_corner_mm: float) -> float:
+    """반대편 모서리를 이 값 안에 넣으려면 yaw 가 몇 도여야 하는가."""
+    import math
+
+    from . import campaign
+    slack = far_corner_mm - PT_SEED_TOLERANCE_MM
+    if slack <= 0:
+        return 0.0
+    return round(math.degrees(math.atan(slack / campaign.PANEL_LENGTH_MM)), 4)
 
 
 def _zone_x0_mm(key: str) -> int:
