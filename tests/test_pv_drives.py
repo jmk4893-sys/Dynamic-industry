@@ -141,6 +141,77 @@ class TestSeedDatum(unittest.TestCase):
         self.assertLess(yaw, layout.PT_SEED_YAW_DEG)
 
 
+class TestClampPad(unittest.TestCase):
+    """조 패드 — 접촉폭이 정해졌다. 그것이 무엇을 정하는가.
+
+    발주처가 접촉폭 25 mm 를 확정하면서 OI-01 이 닫혔다. 닫히면서 **패드 면이
+    평면이면 안 된다**는 것이 따라 나왔다 — 폭 180 패드를 그대로 누르면 92 가
+    유리 위에 얹힌다. 여기서 지키는 것은 그 결과다.
+    """
+
+    def test_the_contact_width_is_the_confirmed_value(self):
+        self.assertEqual(kinematics.JAW_PAD_CONTACT_MM, 25.0)
+
+    def test_the_land_sits_entirely_on_the_frame(self):
+        """랜드의 바깥 끝은 패널 가장자리, 안쪽 끝은 거기서 접촉폭만큼이다."""
+        lo, hi = kinematics.jaw_pad_land_z_mm()
+        self.assertEqual(hi, kinematics.PANEL_MM[1] / 2)
+        self.assertEqual(hi - lo, kinematics.JAW_PAD_CONTACT_MM)
+
+    def test_a_centred_land_would_ride_on_the_glass(self):
+        """편심이 0 이 아니어야 한다 — 0 이면 패드를 대칭으로 만들어도 됐다는 뜻이다."""
+        self.assertGreater(kinematics.jaw_pad_land_offset_mm(), 0)
+        lo, _hi = kinematics.jaw_pad_land_z_mm()
+        self.assertLess(kinematics.JAW_CLOSED_Z_MM, lo,
+                        "패드 중심이 프레임 안쪽이다 — 가운데 랜드는 유리에 앉는다")
+
+    def test_the_land_fits_inside_the_pad(self):
+        self.assertTrue(kinematics.jaw_pad_land_is_inside_the_pad())
+
+    def test_the_pressed_pad_clears_the_glass(self):
+        """릴리프가 단차 + 압축량보다 깊어야 한다 — 얕으면 눌린 PU 가 유리에 닿는다."""
+        self.assertTrue(kinematics.jaw_pad_clears_the_glass())
+        self.assertGreater(kinematics.JAW_PAD_RELIEF_MM,
+                           kinematics.PANEL_FRAME_GLASS_STEP_MM
+                           + kinematics.jaw_pad_compression_mm())
+
+    def test_the_contact_pressure_is_derived_not_written_down(self):
+        self.assertAlmostEqual(kinematics.jaw_pad_contact_area_mm2(),
+                               kinematics.JAW_PAD_CONTACT_MM * kinematics.JAW_PAD_L_MM)
+        self.assertAlmostEqual(kinematics.jaw_pad_pressure_mpa(),
+                               kinematics.jaw_clamp_force_n()
+                               / kinematics.jaw_pad_contact_area_mm2())
+        self.assertLess(kinematics.jaw_pad_pressure_mpa(), 1.0, "PU 70A 에 과한 면압")
+
+    def test_the_fabrication_model_agrees(self):
+        checks = fabrication.geometry_checks()
+        for key in ("패드 외형 = JAW_PAD_L × JAW_PAD_W",
+                    "패드 접촉 랜드가 패드 면 안", "눌린 패드가 유리에 안 닿음"):
+            self.assertIn(key, checks)
+            self.assertTrue(checks[key], key)
+
+    def test_the_pad_drawing_says_it_is_relieved(self):
+        """치수만 맞고 도면이 평면이면 평면으로 만들어진다."""
+        pad = next(p for a in fabrication.ASSEMBLIES for p in a.parts if p.tag == "BFC-PAD-01")
+        self.assertIn("25", pad.process)
+        self.assertIn("파냄", pad.process)
+        self.assertIn("편심", pad.process)
+
+    def test_the_assembly_step_checks_which_way_the_land_faces(self):
+        step = next(s for s in fabrication.assembly("PV-FAB-A03").steps if s.no == 10)
+        self.assertIn("랜드", step.check)
+
+    def test_the_detail_sheet_carries_it(self):
+        html = (ROOT / "docs/drawings/pv-infeed-detail.html").read_text(encoding="utf-8")
+        self.assertIn("패드 접촉폭", html)
+        self.assertIn(f"{kinematics.jaw_pad_pressure_mpa():.2f} MPa", html)
+
+    def test_the_open_item_it_closed_is_gone(self):
+        self.assertNotIn("OI-01", {o.tag for o in fabrication.OPEN_ITEMS})
+        text = " ".join(o.title + o.why_open for o in fabrication.OPEN_ITEMS)
+        self.assertNotIn("접촉폭", text)
+
+
 class TestOpenItems(unittest.TestCase):
     """못 닫은 것을 못 닫았다고 적었는가 — 임의값으로 채우면 검산이 거짓으로 통과한다."""
 

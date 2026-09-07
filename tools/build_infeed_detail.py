@@ -556,6 +556,15 @@ def kinematics_table() -> str:
          f"캐리지 {n(k.CARRIAGE_MM)} 은 케이지보다 길어 링 구멍 **안으로** 오르내린다 (레일 z ∓{k.CARRIAGE_RAIL_Z_MM:g} · y −{k.CARRIAGE_RAIL_DROP_MM})"],
         ["조 행정 (무는 자리 → 여는 자리)", f"{k.jaw_stroke_mm():g}", f"z ∓{k.JAW_CLOSED_Z_MM:g} → ∓{k.JAW_OPEN_Z_MM:g}"],
         ["조를 열었을 때 패드–패널 옆면 여유", n(k.jaw_open_clearance_mm()), "양수여야 반전 뒤 패널이 두 링 사이로 내려간다"],
+        ["패드 접촉폭 (프레임 플랜지)", f"{k.JAW_PAD_CONTACT_MM:g}", "**발주처 확정값.** 접촉 면적 "
+         f"{n(k.jaw_pad_contact_area_mm2())} mm²/매 — 면압 {k.jaw_pad_pressure_mpa():.2f} MPa "
+         f"(Ø{k.JAW_CYLINDER_BORE_MM:g} 실린더 {k.JAW_AIR_MPA:g} MPa · 지레비 1:1 기준, 실린더 자리는 미결)"],
+        ["패드 랜드 z 구간 · 편심", f"{n(k.jaw_pad_land_z_mm()[0])}…{n(k.jaw_pad_land_z_mm()[1])} · "
+         f"+{k.jaw_pad_land_offset_mm():g}", "랜드는 프레임 위에만 앉는다. 패드 중심 "
+         f"{k.JAW_CLOSED_Z_MM:g} 에 가운데를 두면 유리 위로 {k.jaw_pad_land_offset_mm():g} 밀린다 — "
+         "**패드를 편심 랜드로 만든다**"],
+        ["패드 릴리프 깊이", f"{k.JAW_PAD_RELIEF_MM:g}", f"프레임–유리 단차 {k.PANEL_FRAME_GLASS_STEP_MM:g}"
+         f"(가정) + 압축 {k.jaw_pad_compression_mm():.1f} 보다 깊다 — 평면 패드면 폭 92 가 유리에 얹힌다"],
         ["링 하단–적층 최상단 유리면", n(k.ring_over_stack_mm()), "드럼이 적층 위에 서는 조건 (≥ 500)"],
         ["링 하단–지게차 헤드가드", n(k.ring_over_forklift_mm()), "팔레트 교환이 링 밑에서 일어난다 (≥ 250)"],
         ["대기면", n(k.dwell_mm()), f"픽업면 {n(k.PICK_FACE_MM)} + 안전분리 {k.SEPARATION_MM}"],

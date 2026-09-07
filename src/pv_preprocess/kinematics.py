@@ -124,6 +124,34 @@ JAW_OPEN_Z_MM = 860.0
 #: 조의 패드 폭 (mm). 여는 자리에서 이 절반만큼 패널 쪽으로 나온다.
 JAW_PAD_W_MM = 180
 
+#: 패드 길이 (mm, 패널 장변 방향). 제작 패키지 BFC-PAD-01 의 L 과 같아야 한다 —
+#: `fabrication.geometry_checks()` 가 그것을 본다.
+JAW_PAD_L_MM = 180
+
+#: 패드가 프레임 플랜지에 무는 폭 (mm). **발주처 확정값이다.**
+#:
+#: 이 값이 없으면 접촉 면적이 안 나오고, 면적이 없으면 면압이 안 나오고, 면압이
+#: 없으면 패드 경도를 못 고른다 — 그래서 이것이 패드 발주를 막고 있었다.
+#:
+#: 값이 정해지자 **패드 면이 평면이면 안 된다**는 것이 따라 나왔다. 패드는 폭
+#: 180 이라 무는 자리에서 z 582.5…762.5 를 덮는데, 프레임은 패널 가장자리
+#: (반폭 700)에서 안쪽으로 이 값만큼뿐이다. 나머지 92 는 **유리 위**고 62.5 는
+#: 패널 밖 허공이다. 그래서 접촉면을 이 폭만큼만 남기고 파낸다.
+JAW_PAD_CONTACT_MM = 25.0
+
+#: 프레임 상면이 유리면보다 솟은 높이 (mm). **가정이다** — 프레임 단면표가 오면
+#: 확인한다. 릴리프 깊이는 이 값과 패드 압축량의 합보다 커야 유리에 안 닿는다.
+PANEL_FRAME_GLASS_STEP_MM = 4.0
+
+#: 패드 접촉면을 뺀 나머지를 파내는 깊이 (mm). 단차 4 + 압축량 약 3 위에
+#: 여유를 둔 값이다 — 이보다 얕으면 눌린 패드가 유리에 닿는다.
+JAW_PAD_RELIEF_MM = 8.0
+
+#: 조 개폐 실린더 (BFC-JCY-01) 안지름 (mm) 과 공압 작동 압력 (MPa).
+#: 조 1대에 2본이 붙고 패드도 2매다.
+JAW_CYLINDER_BORE_MM = 63.0
+JAW_AIR_MPA = 0.5
+
 
 # ── AFR 상부 클램프 포탈 ─────────────────────────────────────────────────
 #: 상부 클램프 1기당 체결력 (kN) 과 기수. 이 반력을 받을 구조가 없었다.
@@ -268,6 +296,71 @@ def jaw_open_clearance_mm() -> float:
 
 def jaw_stroke_mm() -> float:
     return JAW_OPEN_Z_MM - JAW_CLOSED_Z_MM
+
+
+def jaw_pad_land_z_mm() -> tuple[float, float]:
+    """패드 접촉면(랜드)의 안쪽·바깥쪽 z (mm, 패널 중심 기준).
+
+    랜드는 프레임 위에만 앉아야 한다. 프레임의 바깥면이 곧 패널 가장자리이므로
+    랜드를 **가장자리에 맞춰** 안쪽으로 접촉폭만큼 낸다 — 이보다 안쪽으로
+    옮기면 유리에 올라탄다. 이 배치는 플랜지가 접촉폭 이상이라는 뜻이고,
+    발주처가 접촉폭을 25 로 준 것이 그 전제다.
+    """
+    outer = PANEL_MM[1] / 2
+    return (outer - JAW_PAD_CONTACT_MM, outer)
+
+
+def jaw_pad_land_offset_mm() -> float:
+    """랜드 중심이 패드 중심에서 바깥으로 밀린 양 (mm).
+
+    조가 무는 자리(패드 중심)는 672.5 인데 랜드 중심은 687.5 다. 랜드를 패드
+    한가운데 두면 유리 위로 15 밀려 앉는다 — **패드는 편심 랜드로 만든다.**
+    조 행정과 캐리어는 그대로 두고 패드 하나만 바꾸면 되기 때문이다.
+    """
+    lo, hi = jaw_pad_land_z_mm()
+    return (lo + hi) / 2 - JAW_CLOSED_Z_MM
+
+
+def jaw_pad_land_is_inside_the_pad() -> bool:
+    """랜드가 패드 면 안에 들어오는가 — 벗어나면 패드를 키워야 한다."""
+    lo, hi = jaw_pad_land_z_mm()
+    return (JAW_CLOSED_Z_MM - JAW_PAD_W_MM / 2 <= lo
+            and hi <= JAW_CLOSED_Z_MM + JAW_PAD_W_MM / 2)
+
+
+def jaw_pad_contact_area_mm2() -> float:
+    """패드 1매의 접촉 면적 (mm²)."""
+    return JAW_PAD_CONTACT_MM * JAW_PAD_L_MM
+
+
+def jaw_clamp_force_n() -> float:
+    """패드 1매가 받는 압착력 (N).
+
+    조 1대에 실린더 2본·패드 2매라 지레비가 1:1 이면 실린더 1본이 패드 1매를
+    맡는다. **지레비는 아직 안 정해졌다** (실린더 장착 위치 = 미결 OI-03) —
+    1:1 은 그 결정 전의 기준값이고, 실린더를 조의 안쪽에 달면 면압이 이보다
+    커진다.
+    """
+    return 3.141592653589793 / 4 * JAW_CYLINDER_BORE_MM ** 2 * JAW_AIR_MPA
+
+
+def jaw_pad_pressure_mpa() -> float:
+    """패드 접촉면의 면압 (MPa) — 압착력 ÷ 접촉 면적."""
+    return jaw_clamp_force_n() / jaw_pad_contact_area_mm2()
+
+
+def jaw_pad_compression_mm() -> float:
+    """면압에서 나오는 패드 압축량 (mm).
+
+    PU 70A 의 압축 탄성률을 6 MPa 로 잡는다 (쇼어 A 70 의 통상 범위 5–8).
+    두께 50 이 이 변형률만큼 준다.
+    """
+    return 50.0 * (jaw_pad_pressure_mpa() / 6.0)
+
+
+def jaw_pad_clears_the_glass() -> bool:
+    """눌린 패드가 유리에 안 닿는가 — 릴리프 > 단차 + 압축량."""
+    return JAW_PAD_RELIEF_MM > PANEL_FRAME_GLASS_STEP_MM + jaw_pad_compression_mm()
 
 
 def lift_is_vertical(path: tuple[tuple[float, float, str, bool, bool], ...] | None = None) -> bool:
