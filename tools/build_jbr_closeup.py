@@ -248,7 +248,8 @@ def scissor_motion(text: str) -> dict[str, object]:
                "가위 조 회전")
     mov = _one(text, r"ue\.position\.x=le\((-[\d.]+),(-[\d.]+),Ue\),se\.position\.x=le\(([\d.]+),([\d.]+),Ue\)",
                "가위 조 이동")
-    off = _one(text, r"U\.position\.z=o===1\?n\.boxes\[0\]\.z\+\(de===0\?(-[\d.]+):([\d.]+)\)"
+    # 1개형의 두 가위 z 오프셋. 둘 다 케이블이 나가는 쪽이므로 부호는 같을 수 있다.
+    off = _one(text, r"U\.position\.z=o===1\?n\.boxes\[0\]\.z\+\(de===0\?(-?[\d.]+):(-?[\d.]+)\)"
                      r":De\[de\]", "가위 z 배치")
     env = _one(text, r"De=\[Math\.min\(\.\.\.ie\)-([\d.]+),Math\.max\(\.\.\.ie\)\+([\d.]+)\]",
                "가위 z 포락")
@@ -275,9 +276,10 @@ def cable_motion(text: str) -> dict[str, object]:
 
 def discharge_motion(text: str) -> dict[str, object]:
     """수거함 배출 — 브리지 추종·낙하·착지."""
-    fall = _one(text, r"else if\(t<([\d.]+)\)\{let de=me\(Se\(t,([\d.]+),([\d.]+)\)\);"
+    fall = _one(text, r"else if\(t<([\d.]+)\)\{let de=me\(Se\(t,([\d.]+),([\d.]+)\)\),"
+                      r"tu=de\*\(1-de\)\*([\d.]+);"
                       r"U\.group\.position\.set\((-[\d.]+),le\(([\d.]+),([\d.]+),de\),se\.z\),"
-                      r"U\.group\.rotation\.set\(de\*([\d.]+),Jn\(se,ue\),de\*\(ue-1\)\*([\d.]+)\)",
+                      r"U\.group\.rotation\.set\(tu\*([\d.]+),Jn\(se,ue\),tu\*\(ue-1\)\*([\d.]+)\)",
                "박스 낙하")
     lights = _one(text, r"t0\.forEach\(\(\{material:U\},ue\)=>\{let se=v&&\(ue===0\?"
                         r"t>=([\d.]+)&&t<([\d.]+):t>=([\d.]+)&&t<([\d.]+)\)", "슈트 통과 센서")
@@ -285,9 +287,12 @@ def discharge_motion(text: str) -> dict[str, object]:
                        r"t>=([\d.]+):t>=([\d.]+)\)", "수거함 중량 센서")
     return {
         "carry": float(fall.group(1)), "from": float(fall.group(2)), "to": float(fall.group(3)),
-        "binX": float(fall.group(4)),
-        "highY": float(fall.group(5)), "restY": float(fall.group(6)),
-        "tumble": float(fall.group(7)), "fan": float(fall.group(8)),
+        # 전복은 낙하 **중에만** 준다 — de(1−de)·k 는 중간에 1, 양끝에 0 이다.
+        # 그래서 정지 자세가 눕고, 정지 높이가 상자 크기와 무관해진다.
+        "tumbleGain": float(fall.group(4)),
+        "binX": float(fall.group(5)),
+        "highY": float(fall.group(6)), "restY": float(fall.group(7)),
+        "tumble": float(fall.group(8)), "fan": float(fall.group(9)),
         "chuteLight": [float(lights.group(1)), float(lights.group(2))],
         "cableLight": [float(lights.group(3)), float(lights.group(4))],
         "binWeigh": float(weigh.group(1)), "cableWeigh": float(weigh.group(2)),
@@ -571,19 +576,27 @@ def checks(M: dict) -> list[dict[str, object]]:
     S, br, D, B = mo["scissor"], mo["bridge"], mo["discharge"], M["bin"]
     out: list[dict[str, object]] = []
 
-    # ① 가위 A 는 헤드가 케이블 높이까지 내려오기 전에 닫힌다.
+    # ① 두 가위가 다 케이블 높이에 내려온 뒤에 닫히는가.
     cut_y = br["dropY"][1] * 1000
-    ya, yb = plate_y(S["cutA"], mo) * 1000, plate_y(S["cutA"] + S["close"], mo) * 1000
+    poses = [(k, plate_y(n, mo) * 1000, plate_y(n + S["close"], mo) * 1000)
+             for k, n in (("A", S["cutA"]), ("B", S["cutB"]))]
+    worst = max(abs(v - cut_y) for _, a, b in poses for v in (a, b))
+    ok1 = worst <= 0.5
     out.append({
-        "item": "가위 A 절단 자세",
-        "found": f"플레이트 y {ya:+,.0f} → {yb:+,.0f} mm",
+        "item": "가위 A·B 절단 자세",
+        "found": " · ".join(f"{k} {a:+,.0f} → {b:+,.0f} mm" for k, a, b in poses),
         "spec": f"절단 자세 {cut_y:+,.0f} mm "
-                f"({br['dropIn'][0]:g}–{br['dropIn'][1]:g} s 하강 완료)",
-        "ok": abs(yb - cut_y) <= 5,
-        "why": f"A 의 절단 행정 {S['cutA']:g}–{S['cutA'] + S['close']:g} s 가 하강 완료 "
-               f"{br['dropIn'][1]:g} s 보다 앞선다. B({S['cutB']:g} s)는 하강 뒤라 정상이다.",
-        "fix": "16–20 s 예산 안에서 진입·하강·A·B 를 다시 배치해야 한다 "
-               "(하강을 앞당기면 가위가 패널면을 스치므로 이송속도 쪽을 손봐야 한다).",
+                f"(하강 {br['dropIn'][0]:g}–{br['dropIn'][1]:g} s · 상승 "
+                f"{br['dropOut'][0]:g}–{br['dropOut'][1]:g} s)",
+        "ok": ok1,
+        "why": f"A 는 {S['cutA']:g}–{S['cutA'] + S['close']:g} s, B 는 "
+               f"{S['cutB']:g}–{S['cutB'] + S['close']:g} s 에 닫히고, 하강 자세는 "
+               f"{br['dropIn'][1]:g}–{br['dropOut'][0]:g} s 동안 유지된다. "
+               f"순차 인터록은 A 가 완전히 열리는 {S['cutA'] + S['openTo']:g} s 가 "
+               f"B 시작 {S['cutB']:g} s 이하일 것을 요구한다.",
+        "fix": "—" if ok1 else
+               "16–20 s 예산 안에서 진입·하강·A·B 를 다시 배치해야 한다 "
+               "(하강을 앞당기면 조 하단이 패널 상면 아래라 진입 중 유리면을 쓴다).",
     })
 
     # ② 닫힌 두 날의 겹침.
@@ -595,26 +608,36 @@ def checks(M: dict) -> list[dict[str, object]]:
         "spec": f"JB-CB-003 {M['jawSpec']}",
         "ok": abs(over - M["jawMm"]) <= M["jawTolMm"] + 1e-6,
         "why": "닫힘 자세의 조 위치 ±"
-               f"{abs(S['shift'][1]) * 1000:g} mm 와 날 반폭 {w * 1000:g} mm 가 만드는 값이다.",
-        "fix": f"조 닫힘 위치를 ±{abs(S['shift'][1]) * 1000:g} → "
+               f"{abs(S['shift'][1]) * 1000:g} mm 와 날 반폭 {w * 1000:g} mm, "
+               f"닫힘 회전 {abs(S['rot'][1]):g} rad 이 만드는 값이다.",
+        "fix": "—" if abs(over - M["jawMm"]) <= M["jawTolMm"] + 1e-6 else
+               f"조 닫힘 위치를 ±{abs(S['shift'][1]) * 1000:g} → "
                f"±{(w * math.cos(S['rot'][1]) - M['jawMm'] / 2000) * 1000:,.3f} mm 로 하면 "
                f"{M['jawMm']:g} mm 가 된다.",
     })
 
-    # ③ 착지 자세가 수거함 바닥에서 뜬다.
+    # ③ 착지 자세가 수거함 바닥에 놓이는가. 정지 자세가 누워 있어야
+    #    이 한 값이 상자 크기와 무관하게 성립한다 — 기울어진 채 멈추면
+    #    모서리 깊이가 크기마다 갈려 어떤 정지 높이로도 전부 닿게 못 한다.
     floor = B["base"]["at"][1] + B["base"]["size"][1] / 2
     gap = (D["restY"] - M["parts"]["box"]["size"][1] / 2 - floor) * 1000
+    gap = 0.0 if abs(gap) < 5e-4 else gap                    # −0 은 값이 아니라 찌꺼기다
+    flat = D["tumbleGain"] > 0
+    ok3 = abs(gap) <= 1 and flat
     out.append({
         "item": "수거함 착지 이격",
-        "found": f"{gap:,.0f} mm 뜸",
-        "spec": "바닥 상면 접촉 (0 mm)",
-        "ok": abs(gap) <= 1,
+        "found": f"{gap:+,.0f} mm" + ("" if flat else " · 기울어진 채 정지"),
+        "spec": "바닥 상면 접촉 (0 mm) · 정지 자세 수평",
+        "ok": ok3,
         "why": f"낙하 정지 y {D['restY'] * 1000:,.0f} mm 에서 박스 하면은 "
                f"{(D['restY'] - M['parts']['box']['size'][1] / 2) * 1000:,.0f} mm, "
-               f"수거함 바닥 상면은 {floor * 1000:,.0f} mm 다.",
-        "fix": f"정지 y 를 {D['restY'] * 1000:,.0f} → "
-               f"{(floor + M['parts']['box']['size'][1] / 2) * 1000:,.0f} mm 로 내리면 닿는다 "
-               f"(전복각 {D['tumble']:g} rad 을 감안하면 그보다 조금 위).",
+               f"수거함 바닥 상면은 {floor * 1000:,.0f} mm 다. 전복 "
+               f"{D['tumble']:g} rad · 부채 {D['fan']:g} rad 은 "
+               f"de(1−de)·{D['tumbleGain']:g} 로 낙하 중에만 실려 정지에서 0 이 된다.",
+        "fix": "—" if ok3 else
+               f"정지 y 를 {D['restY'] * 1000:,.0f} → "
+               f"{(floor + M['parts']['box']['size'][1] / 2) * 1000:,.0f} mm 로 내리고, "
+               "전복·부채를 낙하 구간에만 실어 정지 자세를 눕힌다.",
     })
 
     # ④ 1개형 토폴로지에서 가위 B 앞을 지나는 케이블이 없다.
@@ -623,16 +646,19 @@ def checks(M: dict) -> list[dict[str, object]]:
             continue
         lo, hi = lane_z_span(M, scen)
         zb = unit_z(M, scen, 1)
+        za = unit_z(M, scen, 0)
+        ok4 = lo <= zb <= hi and lo <= za <= hi
         out.append({
-            "item": f"가위 B 절단 대상 ({scen['label']})",
-            "found": f"B 는 z {zb * 1000:+,.0f} mm, 케이블은 z "
+            "item": f"가위 A·B 절단 대상 ({scen['label']})",
+            "found": f"A z {za * 1000:+,.0f} · B z {zb * 1000:+,.0f} mm, 케이블은 z "
                      f"{lo * 1000:+,.0f} … {hi * 1000:+,.0f} mm",
-            "spec": "두 가위가 각각 한 도체를 맡는다",
-            "ok": lo <= zb <= hi,
-            "why": "1개형은 두 가닥이 같은 쪽(−z)으로 나가는데 가위는 박스 양옆 ±"
-                   f"{abs(S['single'][1]) * 1000:g} mm 에 놓인다.",
-            "fix": "1개형에서는 두 가위를 모두 케이블이 나가는 쪽에 배치해야 한다 "
-                   "(예: 박스 z − 220 과 z − 420).",
+            "spec": "두 가위 앞에 각각 자를 도체가 있다",
+            "ok": ok4,
+            "why": "1개형은 두 가닥이 같은 쪽(−z)으로 나간다. 그래서 가위 z 오프셋도 "
+                   f"{S['single'][0] * 1000:+,.0f} · {S['single'][1] * 1000:+,.0f} mm 로 "
+                   "둘 다 그쪽에 두고 순차 절단 간격만큼 벌린다.",
+            "fix": "—" if ok4 else
+                   "1개형에서는 두 가위를 모두 케이블이 나가는 쪽에 배치해야 한다.",
         })
 
     # ⑤ 낙하 슈트 경사 — 이건 맞는다. 맞는 것도 같이 적어야 표가 검산으로 읽힌다.
@@ -643,7 +669,8 @@ def checks(M: dict) -> list[dict[str, object]]:
         "spec": f"JB-WH-001 {M['chuteSpec']}",
         "ok": abs(tilt - M["chuteDeg"]) <= M["chuteTolDeg"],
         "why": f"3D 의 회전 {abs(B['chute']['tilt']):g} rad 을 도로 옮긴 값이다.",
-        "fix": "—",
+        "fix": "—" if abs(tilt - M["chuteDeg"]) <= M["chuteTolDeg"] else
+               f"회전을 {M['chuteDeg'] * math.pi / 180:.4f} rad 으로 맞춘다.",
     })
     return out
 
@@ -743,6 +770,8 @@ def build() -> str:
     S, D = M["motion"]["scissor"], M["motion"]["discharge"]
     rows = checks(M)
     bad = [c for c in rows if not c["ok"]]
+    verdict = (f"{len(rows)} 항목 전부 일치" if not bad
+               else f"사양과 어긋나는 자리 {len(bad)} 건")
     check_rows = "\n".join(
         f'<tr><td>{esc(c["item"])}</td>'
         f'<td class="num">{esc(c["found"])}</td><td>{esc(c["spec"])}</td>'
@@ -830,7 +859,7 @@ def build() -> str:
 <div class="tw"><table><thead><tr><th>면</th><th>월드 H (mm)</th>
 <th>패널 상면 기준 (mm)</th><th>비고</th></tr></thead><tbody id="stack"></tbody></table></div>
 
-<h2>원본 자체 검산 — 사양과 어긋나는 자리 {len(bad)} 건</h2>
+<h2>원본 자체 검산 — {verdict}</h2>
 <p class="lead">아래 표는 손으로 적지 않는다. 생성기가 원본 <code>wt()</code> 의 운동상수와
 부품표의 공차란을 같이 읽어 <b>서로 어긋나는 자리</b>를 찾아 적는다. 원본이 고쳐지면
 이 표도 같이 바뀐다 — 고쳤는데 표가 그대로면 고친 것이 아니다.</p>
@@ -1021,9 +1050,11 @@ def build() -> str:
     if (t < D.from) {{
       return {{ x: bridgeX(t) + (b.x - rowX()), y: MO.boxTop, z: b.z, tilt: 0, fan: 0, held: true }};
     }}
-    var u = step(t, D.from, D.to);
+    // 전복·부채는 낙하 **중에만** 준다. u(1−u)·4 는 중간에 1, 양끝에 0 이라
+    // 정지 자세가 눕고, 그래서 정지 높이가 상자 크기와 무관해진다.
+    var u = step(t, D.from, D.to), tu = u * (1 - u) * D.tumbleGain;
     return {{ x: D.binX, y: lerp(D.highY, D.restY, u), z: b.z,
-             tilt: u * D.tumble, fan: u * (i - 1) * D.fan, dropped: true, u: u }};
+             tilt: tu * D.tumble, fan: tu * (i - 1) * D.fan, dropped: true, u: u }};
   }}
 
   // ── 상태 ────────────────────────────────────────────────────────────
@@ -1631,9 +1662,15 @@ def build() -> str:
             '뒷벽 (앞은 열려 있다 · 포크 인출)', ink3, 'left', 10.5);
     if (lowest) {{
       var clear = (y0 + lowest.y - P.box.size[1] / 2 - floorTop) * 1000;
-      bd.dimY(floorTop, y0 + lowest.y - P.box.size[1] / 2, halfZ - 0.10,
-              clear.toFixed(0) + ' 바닥 이격', Math.abs(clear) <= 1 ? C('ok') : C('red'));
-      if (Math.abs(clear) > 1) {{
+      if (Math.abs(clear) < 0.05) clear = 0;              // −0 은 값이 아니라 찌꺼기다
+      if (Math.abs(clear) <= 0.5) {{
+        // 닿아 있으면 치수선이 길이 0 이라 뜻이 없다 — 접촉선을 긋고 값을 적는다.
+        bd.line(-halfZ, floorTop, halfZ, floorTop, C('ok'), [5, 3], 1.4);
+        bd.text(halfZ - 0.02, floorTop + P.box.size[1] + 0.035,
+                '바닥 접촉 0 mm · 정지 자세 수평', C('ok'), 'right', 10.5);
+      }} else {{
+        bd.dimY(floorTop, y0 + lowest.y - P.box.size[1] / 2, halfZ - 0.16,
+                clear.toFixed(0) + ' 바닥 이격', C('red'));
         bd.text(halfZ - 0.02, floorTop + 0.05,
                 '착지 자세가 바닥에서 떠 있다 — 원본 wt() 의 정지 y = '
                 + (D.restY * 1000).toFixed(0), C('red'), 'right', 10.5);
@@ -1807,6 +1844,7 @@ def build() -> str:
     var floorTop = y0 + B.base.at[1] + B.base.size[1] / 2;
     var q = boxPose(t, 0), low = y0 + q.y - P.box.size[1] / 2;
     var clear = (low - floorTop) * 1000;
+    if (Math.abs(clear) < 0.05) clear = 0;
     var tilt = Math.abs(B.chute.tilt) * 180 / Math.PI;
     return row('브리지 x', (bridgeX(t) * 1000).toFixed(0) + ' mm',
                t >= MO.bridge.outFrom ? 'hot' : '') +

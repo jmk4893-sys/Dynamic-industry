@@ -395,16 +395,28 @@ class TestJbrCloseup(unittest.TestCase):
         self.assertLess(abs(S["shift"][1]), abs(S["shift"][0]))
         self.assertLess(abs(S["rot"][1]), abs(S["rot"][0]))
 
-    def test_the_scissor_units_straddle_the_detected_row(self):
+    def test_each_scissor_has_a_conductor_at_its_own_plane(self):
+        """가위는 자를 것이 있는 z 에 서야 한다 — 어느 쪽에 서느냐는 토폴로지가 정한다.
+
+        3분할형은 좌·우로 한 가닥씩 나가므로 검출열을 사이에 두고 갈라서고,
+        1개형은 두 가닥이 같은 쪽으로 나가므로 **둘 다 그쪽**에 선다.
+        """
         m = self.builder.model(self.plant)
         for scen in m["scenarios"]:
             with self.subTest(scen=scen["key"]):
                 z0 = self.builder.unit_z(m, scen, 0)
                 z1 = self.builder.unit_z(m, scen, 1)
-                self.assertLess(z0, z1)
-                for b in scen["boxes"]:
-                    self.assertLess(z0, b["z"])
-                    self.assertGreater(z1, b["z"])
+                self.assertNotAlmostEqual(z0, z1, places=3, msg="두 가위가 같은 자리다")
+                lo, hi = self.builder.lane_z_span(m, scen)
+                for z in (z0, z1):
+                    self.assertGreaterEqual(z, lo)
+                    self.assertLessEqual(z, hi)
+                if scen["topology"] == "single-lead":
+                    for z in (z0, z1):
+                        self.assertLess(z, max(b["z"] for b in scen["boxes"]))
+                else:
+                    self.assertLess(z0, min(b["z"] for b in scen["boxes"]))
+                    self.assertGreater(z1, max(b["z"] for b in scen["boxes"]))
 
     def test_the_cable_topologies_are_both_read(self):
         cb = self.builder.cable_path(self.plant)
@@ -482,15 +494,65 @@ class TestJbrCloseup(unittest.TestCase):
         tilt = abs(m["bin"]["chute"]["tilt"]) * 180 / math.pi
         self.assertAlmostEqual(tilt, m["chuteDeg"], delta=m["chuteTolDeg"])
 
-    def test_the_known_mismatches_are_still_reported(self):
-        """고쳐지면 이 시험이 먼저 깨진다 — 그때 표와 함께 지운다."""
+    def test_every_check_passes(self):
+        """REV.54 에서 넷을 다 고쳤다. 다시 어긋나면 여기서 먼저 걸린다."""
         m = self.builder.model(self.plant)
-        bad = {c["item"] for c in self.builder.checks(m) if not c["ok"]}
-        self.assertIn("가위 A 절단 자세", bad)
-        self.assertIn("가위날 겹침 (완전 닫힘)", bad)
-        self.assertIn("수거함 착지 이격", bad)
-        self.assertIn(f"불일치하는 자리 {len(bad)} 건".replace("불일치하는 자리", "어긋나는 자리"),
-                      self.html.replace("사양과 어긋나는 자리", "어긋나는 자리"))
+        bad = [f"{c['item']}: {c['found']} vs {c['spec']}"
+               for c in self.builder.checks(m) if not c["ok"]]
+        self.assertEqual(bad, [])
+        self.assertIn(f"{len(self.builder.checks(m))} 항목 전부 일치", self.html)
+
+    # ── REV.54 에서 고친 넷 — 값이 되돌아가면 여기서 걸린다 ──────────────
+    def test_both_cuts_happen_at_the_lowered_pose(self):
+        """가위 A 가 하강 전에 닫히던 것을 고쳤다 (플레이트 +150 → 절단 자세 −120)."""
+        m = self.builder.model(self.plant)
+        mo, S, br = m["motion"], m["motion"]["scissor"], m["motion"]["bridge"]
+        for n in (S["cutA"], S["cutB"]):
+            for t in (n, n + S["close"]):
+                with self.subTest(t=t):
+                    self.assertAlmostEqual(self.builder.plate_y(t, mo), br["dropY"][1],
+                                           places=6, msg="절단 순간에 가위가 케이블 높이에 없다")
+        # 하강 자세를 유지하는 창 안에 두 절단이 다 들어간다.
+        self.assertGreaterEqual(S["cutA"], br["dropIn"][1])
+        self.assertLessEqual(S["cutB"] + S["close"], br["dropOut"][0])
+        # 하강을 앞당기는 쪽은 못 쓴다 — 그 자세의 조 하단이 패널 상면보다 아래다.
+        P = m["parts"]
+        jaw_bottom = (m["cellY"] + br["dropY"][1] + P["jaw"]["at"][1]
+                      - P["jaw"]["size"][1] / 2)
+        panel_top = m["cellY"] + P["panel"]["at"][1] + P["panel"]["size"][1] / 2
+        self.assertLess(jaw_bottom, panel_top)
+
+    def test_the_harness_is_pulled_only_after_both_cuts(self):
+        m = self.builder.model(self.plant)
+        S, h, D = m["motion"]["scissor"], m["motion"]["harness"], m["motion"]["discharge"]
+        self.assertGreaterEqual(h["from"], S["cutB"] + S["close"])
+        self.assertEqual(D["cableLight"][0], h["from"])
+        self.assertEqual(D["cableLight"][1], h["to"])
+
+    def test_the_closed_jaws_overlap_by_the_bom_amount(self):
+        m = self.builder.model(self.plant)
+        S, w = m["motion"]["scissor"], m["parts"]["jaw"]["size"][0] / 2
+        over = (w * math.cos(S["rot"][1]) - abs(S["shift"][1])) * 2000
+        self.assertAlmostEqual(over, m["jawMm"], delta=m["jawTolMm"])
+        self.assertGreater(over, 0, "닫혀도 두 날이 지나치지 않으면 잘리지 않는다")
+
+    def test_the_box_settles_flat_on_the_bin_floor(self):
+        m = self.builder.model(self.plant)
+        D, B, box = m["motion"]["discharge"], m["bin"], m["parts"]["box"]["size"]
+        floor = B["base"]["at"][1] + B["base"]["size"][1] / 2
+        self.assertAlmostEqual(D["restY"] - box[1] / 2, floor, places=6)
+        # 전복·부채는 낙하 중에만 실린다 — de(1−de)·k 는 양끝에서 0 이다.
+        self.assertGreater(D["tumbleGain"], 0)
+        for u in (0.0, 1.0):
+            self.assertAlmostEqual(u * (1 - u) * D["tumbleGain"], 0.0, places=9)
+        self.assertAlmostEqual(0.5 * 0.5 * D["tumbleGain"], 1.0, places=9)
+
+    def test_the_revision_moved_with_the_change(self):
+        """형상·운동이 바뀌면 도면 리비전도 같이 움직인다."""
+        rev = self.builder.revision(self.plant)
+        self.assertRegex(rev, r"^REV\.\d+$")
+        self.assertGreaterEqual(int(rev.split(".")[1]), 54)
+        self.assertEqual(self.plant.count("REV.54:"), 2)
 
     def test_the_bom_tolerances_are_quoted_verbatim(self):
         m = self.builder.model(self.plant)

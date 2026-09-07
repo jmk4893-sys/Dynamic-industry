@@ -94,7 +94,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
 <body>
 <div class="wrap">
 <header class="top">
-  <div class="eyebrow">DYNAMIC INDUSTRY · JBR-201 · ENGINEERING BASE REV.53</div>
+  <div class="eyebrow">DYNAMIC INDUSTRY · JBR-201 · ENGINEERING BASE REV.54</div>
   <h1>잡고 · 끊고 · 떨군다 — JBR-201 의 세 순간</h1>
   <p class="lead">JBR-201 의 45 초 가운데 <b>로컬 16–38 s</b>
   (플랜트 56–78 s)만 떼어 낸다. 셀 전체를 담은 시점에서는 몇 픽셀인 자리를
@@ -104,7 +104,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
       좌·우 L 칼날이 ±620 에서 ±260 까지 들어와
       접착 계면을 전단한다 (<b>23–29 s</b>).</li>
     <li><b>② 전선 포획·절단</b> — 포획 콤이 케이블을 V홈으로 쓸어 넣고 절연 인터록이 두 도체를
-      가른 뒤, 가위 <b>A 17 s → B 18.25 s</b> 순으로 끊는다.
+      가른 뒤, 가위 <b>A 17.85 s → B 18.85 s</b> 순으로 끊는다.
       권취는 하지 않는다.</li>
     <li><b>③ 수거함 배출</b> — 브리지가 패널 밖 광폭 수거함 위로 나가 칼날을 다시 열면
       1–3 개가 같은 자리에서 일괄 낙하한다 (<b>36.2–37.5 s</b>).</li>
@@ -172,16 +172,16 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
 <div class="tw"><table><thead><tr><th>면</th><th>월드 H (mm)</th>
 <th>패널 상면 기준 (mm)</th><th>비고</th></tr></thead><tbody id="stack"></tbody></table></div>
 
-<h2>원본 자체 검산 — 사양과 어긋나는 자리 4 건</h2>
+<h2>원본 자체 검산 — 5 항목 전부 일치</h2>
 <p class="lead">아래 표는 손으로 적지 않는다. 생성기가 원본 <code>wt()</code> 의 운동상수와
 부품표의 공차란을 같이 읽어 <b>서로 어긋나는 자리</b>를 찾아 적는다. 원본이 고쳐지면
 이 표도 같이 바뀐다 — 고쳤는데 표가 그대로면 고친 것이 아니다.</p>
 <div class="tw"><table><thead><tr><th>항목</th><th>원본 값</th><th>사양·의도</th>
 <th>판정</th><th>근거와 제안</th></tr></thead><tbody>
-<tr><td>가위 A 절단 자세</td><td class="num">플레이트 y +150 → +6 mm</td><td>절단 자세 -120 mm (16.9–17.8 s 하강 완료)</td><td class="bad">불일치</td><td>A 의 절단 행정 17–17.38 s 가 하강 완료 17.8 s 보다 앞선다. B(18.25 s)는 하강 뒤라 정상이다. <b>16–20 s 예산 안에서 진입·하강·A·B 를 다시 배치해야 한다 (하강을 앞당기면 가위가 패널면을 스치므로 이송속도 쪽을 손봐야 한다).</b></td></tr>
-<tr><td>가위날 겹침 (완전 닫힘)</td><td class="num">0.99 mm</td><td>JB-CB-003 날 겹침 0.3±0.1 mm</td><td class="bad">불일치</td><td>닫힘 자세의 조 위치 ±12 mm 와 날 반폭 12.5 mm 가 만드는 값이다. <b>조 닫힘 위치를 ±12 → ±12.344 mm 로 하면 0.3 mm 가 된다.</b></td></tr>
-<tr><td>수거함 착지 이격</td><td class="num">215 mm 뜸</td><td>바닥 상면 접촉 (0 mm)</td><td class="bad">불일치</td><td>낙하 정지 y 370 mm 에서 박스 하면은 320 mm, 수거함 바닥 상면은 105 mm 다. <b>정지 y 를 370 → 155 mm 로 내리면 닿는다 (전복각 0.22 rad 을 감안하면 그보다 조금 위).</b></td></tr>
-<tr><td>가위 B 절단 대상 (1개 · 편심 위치)</td><td class="num">B 는 z +460 mm, 케이블은 z -400 … +240 mm</td><td>두 가위가 각각 한 도체를 맡는다</td><td class="bad">불일치</td><td>1개형은 두 가닥이 같은 쪽(−z)으로 나가는데 가위는 박스 양옆 ±220 mm 에 놓인다. <b>1개형에서는 두 가위를 모두 케이블이 나가는 쪽에 배치해야 한다 (예: 박스 z − 220 과 z − 420).</b></td></tr>
+<tr><td>가위 A·B 절단 자세</td><td class="num">A -120 → -120 mm · B -120 → -120 mm</td><td>절단 자세 -120 mm (하강 16.9–17.8 s · 상승 19.4–20 s)</td><td class="good">일치</td><td>A 는 17.85–18.23 s, B 는 18.85–19.23 s 에 닫히고, 하강 자세는 17.8–19.4 s 동안 유지된다. 순차 인터록은 A 가 완전히 열리는 18.85 s 가 B 시작 18.85 s 이하일 것을 요구한다. <b>—</b></td></tr>
+<tr><td>가위날 겹침 (완전 닫힘)</td><td class="num">0.31 mm</td><td>JB-CB-003 날 겹침 0.3±0.1 mm</td><td class="good">일치</td><td>닫힘 자세의 조 위치 ±12.34 mm 와 날 반폭 12.5 mm, 닫힘 회전 0.03 rad 이 만드는 값이다. <b>—</b></td></tr>
+<tr><td>수거함 착지 이격</td><td class="num">+0 mm</td><td>바닥 상면 접촉 (0 mm) · 정지 자세 수평</td><td class="good">일치</td><td>낙하 정지 y 155 mm 에서 박스 하면은 105 mm, 수거함 바닥 상면은 105 mm 다. 전복 0.22 rad · 부채 0.12 rad 은 de(1−de)·4 로 낙하 중에만 실려 정지에서 0 이 된다. <b>—</b></td></tr>
+<tr><td>가위 A·B 절단 대상 (1개 · 편심 위치)</td><td class="num">A z +20 · B z -180 mm, 케이블은 z -400 … +240 mm</td><td>두 가위 앞에 각각 자를 도체가 있다</td><td class="good">일치</td><td>1개형은 두 가닥이 같은 쪽(−z)으로 나간다. 그래서 가위 z 오프셋도 -220 · -420 mm 로 둘 다 그쪽에 두고 순차 절단 간격만큼 벌린다. <b>—</b></td></tr>
 <tr><td>일괄 낙하 슈트 경사</td><td class="num">16.0°</td><td>JB-WH-001 경사 16±1°</td><td class="good">일치</td><td>3D 의 회전 0.28 rad 을 도로 옮긴 값이다. <b>—</b></td></tr>
 </tbody></table></div>
 
@@ -192,7 +192,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
 이 그림의 절입 치수가 그 값과 어긋나면 붉게 표시된다.</div>
 
 <footer>
-  JBR-201 박리·절단·배출 클로즈업 · REV.53 ·
+  JBR-201 박리·절단·배출 클로즈업 · REV.54 ·
   생성 <code>PYTHONPATH=src python tools/build_jbr_closeup.py</code><br>
   형상·운동 출처 — <code>docs/drawings/pv-preprocess-plant.html</code> 의 3D 생성 호출과
   <code>wt()</code>, 시각 출처 — <code>src/pv_preprocess/campaign.py</code>
@@ -201,7 +201,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
 <script>
 (function () {
   'use strict';
-  var M = {"rev":"REV.53","cellY":-0.075,"boxY":1.12,"from":16.0,"to":38.0,"start":27.0,"infeed":40.0,"parts":{"head":{"parent":"t","size":[1.35,0.11,0.24],"at":[0.0,1.49,0.0]},"carrier":{"parent":"f","size":[0.1,0.2,0.25],"at":[0.0,1.32,0.0]},"lip":{"parent":"f","size":[0.055,0.17,0.22],"at":[0.0,1.3,0.0]},"cassette":{"parent":"f","size":[0.24,0.018,0.22],"dx":0.13,"y":1.2159,"z":0.0},"shoe":{"parent":"f","size":[0.25,0.03,0.24],"dx":0.12,"y":1.2225,"z":0.0},"gripper":{"parent":"l","size":[0.28,0.035,0.18],"at":[0.0,1.46,0.0]},"cup":{"parent":"l","r":0.052,"h":0.08,"at":[0.0,1.36,0.0]},"compliance":{"parent":"a","size":[0.29,0.035,0.2],"at":[0.0,1.535,0.0]},"comb":{"parent":"e","size":[0.42,0.045,0.08],"at":[0.0,1.46,0.0]},"scissor":{"parent":"e","size":[0.18,0.1,0.16],"at":[0.0,1.38,0.0]},"interlock":{"parent":"e","size":[0.34,0.055,0.2],"at":[0.0,1.31,0.12]},"shroud":{"parent":"e","size":[0.26,0.12,0.1],"at":[0.0,1.34,-0.1]},"vgroove":{"parent":"e","size":[0.05,0.1,0.05],"at":[-0.1,1.3,-0.07]},"jaw":{"parent":"e","size":[0.025,0.15,0.055],"at":[-0.035,1.27,0.0]},"handle":{"parent":"s","size":[0.18,0.035,0.06],"at":[-0.3,0.43,0.0]},"stem":{"parent":"a","size":[0.025,0.12,0.025],"at":[0.18,1.51,0.08]},"nozzle":{"parent":"t","size":[0.26,0.055,0.08],"at":[0.0,1.225,0.18]},"toolId":{"parent":"t","size":[0.11,0.055,0.05],"at":[0.31,1.23,0.16]},"yaw":{"parent":"t","size":[0.035,0.03,0.15],"at":[0.0,1.58,-0.09]},"plate":{"parent":"Un","size":[1.82,0.1,2.18],"at":[0.0,1.45,0.0]},"panel":{"parent":"Bt","size":[2.5,0.045,1.4],"at":[0.0,1.055,0.0]},"box":{"parent":"e","size":[0.32,0.1,0.22],"at":[0.0,0.0,0.0]},"finger":{"size":[0.035,0.16,0.16],"dx":0.12,"y":1.34},"connector":{"r":0.022,"h":0.08,"at":[0.0,0.02,0.14]}},"motion":{"shear":[23.0,29.0],"openWide":0.62,"openShut":0.26,"hold":[29.0,35.8,0.26],"reopen":[35.8,37.2],"reopenTo":0.62,"place":[19.4,22.8],"grip":[22.1,23.1,36.0,36.5],"gripDrop":-0.055,"cupSquash":0.72,"finger":[-0.16,0.08],"float":[23.0,29.0,17.0,0.004],"stemGain":18.0,"descend":[20.0,23.0,0.16,-0.13],"raise":[29.0,33.0,-0.13,0.26],"boxTop":1.51,"boxLift":[29.0,33.0],"interface":[23.0,29.0],"interfaceOpacity":[0.34,0.05],"bridge":{"park":[-1.55,0.16],"inFrom":16.0,"inTo":17.2,"inX":-1.55,"dropIn":[16.9,17.8],"dropOut":[19.0,20.0],"dropY":[0.16,-0.12],"outFrom":33.0,"outTo":35.6,"outX":-1.55,"outAt":36.8,"parkFrom":36.8,"parkTo":37.6,"parkX":[-1.55,-2.22],"carryY":0.26,"parkY":[0.26,0.16],"restAt":38.0,"restX":-2.22,"restY":0.16},"scissor":{"cutA":17.0,"cutB":18.25,"close":0.38,"openFrom":0.65,"openTo":1.0,"rot":[-0.32,-0.03],"shift":[-0.035,-0.012],"single":[-0.22,0.22],"envelope":[0.18,0.18]},"harness":{"from":19.2,"to":22.2,"x":-0.52,"y":0.38,"z":-1.32,"spin":0.7},"discharge":{"carry":38.0,"from":36.2,"to":37.5,"binX":-1.55,"highY":1.51,"restY":0.37,"tumble":0.22,"fan":0.12,"chuteLight":[36.2,37.6],"cableLight":[19.2,22.2],"binWeigh":37.2,"cableWeigh":22.2}},"stages":[{"name":"절연 구속·도체 A→B 순차 절단","start":16.0,"end":20.0},{"name":"활성 헤드 X·Y 자동배치","start":20.0,"end":23.0},{"name":"패시브 요 추종·L칼날 동시 박리","start":23.0,"end":29.0},{"name":"진공·스프링 포획·동시 인양","start":29.0,"end":33.0},{"name":"수거함 일괄 배출","start":33.0,"end":36.8},{"name":"JBR-VS-201A 후검증·JB/AFR 공유맵 생성 (동일 정반)","start":36.8,"end":38.0}],"scenarios":[{"key":"triple-wide","label":"3개 · 비대칭 위치","plan":"동일 X열 · 3헤드 1회 동시 박리","topology":"dual-split","boxes":[{"x":0.28,"z":-0.5,"sx":0.3,"sz":0.21,"angle":-0.018},{"x":0.28,"z":-0.04,"sx":0.32,"sz":0.22,"angle":0.012},{"x":0.28,"z":0.42,"sx":0.29,"sz":0.21,"angle":-0.009}]},{"key":"triple-compact","label":"3개 · 조밀 위치","plan":"동일 X열 · 소형 카세트 1회 동시 박리","topology":"dual-split","boxes":[{"x":0.12,"z":-0.36,"sx":0.25,"sz":0.18,"angle":0.01},{"x":0.12,"z":0.0,"sx":0.25,"sz":0.18,"angle":-0.012},{"x":0.12,"z":0.36,"sx":0.25,"sz":0.18,"angle":0.008}]},{"key":"double-offset","label":"2개 · 편심 위치","plan":"동일 X열 · 2헤드 1회 동시 박리","topology":"dual-split","boxes":[{"x":-0.05,"z":-0.31,"sx":0.34,"sz":0.23,"angle":-0.016},{"x":-0.05,"z":0.39,"sx":0.34,"sz":0.23,"angle":0.014}]},{"key":"single-offset","label":"1개 · 편심 위치","plan":"편심 좌표 · 1헤드 단독 박리","topology":"single-lead","boxes":[{"x":-0.22,"z":0.24,"sx":0.43,"sz":0.29,"angle":0.018}]}],"bladeSpec":"SKD11 HRC 58–60, 팁 0.8 mm, 12° 쐐기. 두 볼트와 위치결정핀으로 10분 이내 교환합니다.","bladeTipMm":0.8,"bladeWedgeDeg":12.0,"cutSpec":"절입간격 0.6±0.2 mm","cutMm":0.6,"cutTolMm":0.2,"jawSpec":"날 겹침 0.3±0.1 mm","jawMm":0.3,"jawTolMm":0.1,"chuteSpec":"경사 16±1°","chuteDeg":16.0,"chuteTolDeg":1.0,"combSpec":"V홈 위치 ±0.20 mm","bin":{"base":{"size":[0.58,0.05,0.54],"at":[0.0,0.08,0.0]},"wall":{"size":[0.05,0.48,0.54],"at":[-0.29,0.3,0.0]},"back":{"size":[0.58,0.48,0.05],"at":[0.0,0.3,-0.27]},"at":[-1.55,0.0,0.0],"widthScale":2.45,"cableAt":[-0.52,0.0,-1.48],"chute":{"size":[0.5,0.05,1.32],"at":[-1.5,0.72,0.0],"tilt":-0.28},"chuteSide":{"size":[0.5,0.16,0.035],"at":[-1.5,0.78],"z":[-0.66,0.66]},"cableChute":{"size":[0.34,0.05,0.72],"at":[-0.52,0.72,-1.14],"tilt":0.36},"weigh":[{"at":[-1.55,0.035,0.0],"size":[0.78,0.055,1.38]},{"at":[-0.52,0.035,-1.48],"size":[0.68,0.055,0.62]}],"passer":{"size":[0.1,0.06,0.06],"at":[[-1.48,0.92,0.74],[-0.52,0.9,-1.24]]},"coil":{"r0":0.11,"dr":0.012,"tube":0.011,"dx":0.035,"y0":0.19,"dy":0.018,"dz":0.04}},"cable":{"radius":0.012,"split":{"left":{"points":[[-0.06,-0.02,-0.52],[-0.18,0.0,-0.63],[-0.42,0.01,-0.76]],"connector":[-0.45,0.01,-0.8]},"right":{"points":[[0.06,-0.02,0.52],[0.18,0.0,0.63],[0.42,0.01,0.76]],"connector":[0.45,0.01,0.8]}},"single":{"lanes":[-0.09,0.09],"points":[[1.0,-0.02,-0.15],[1.15,0.0,-0.34],[1.3,0.01,-0.59]],"connector":[1.3,0.01,-0.64]}}};
+  var M = {"rev":"REV.54","cellY":-0.075,"boxY":1.12,"from":16.0,"to":38.0,"start":27.0,"infeed":40.0,"parts":{"head":{"parent":"t","size":[1.35,0.11,0.24],"at":[0.0,1.49,0.0]},"carrier":{"parent":"f","size":[0.1,0.2,0.25],"at":[0.0,1.32,0.0]},"lip":{"parent":"f","size":[0.055,0.17,0.22],"at":[0.0,1.3,0.0]},"cassette":{"parent":"f","size":[0.24,0.018,0.22],"dx":0.13,"y":1.2159,"z":0.0},"shoe":{"parent":"f","size":[0.25,0.03,0.24],"dx":0.12,"y":1.2225,"z":0.0},"gripper":{"parent":"l","size":[0.28,0.035,0.18],"at":[0.0,1.46,0.0]},"cup":{"parent":"l","r":0.052,"h":0.08,"at":[0.0,1.36,0.0]},"compliance":{"parent":"a","size":[0.29,0.035,0.2],"at":[0.0,1.535,0.0]},"comb":{"parent":"e","size":[0.42,0.045,0.08],"at":[0.0,1.46,0.0]},"scissor":{"parent":"e","size":[0.18,0.1,0.16],"at":[0.0,1.38,0.0]},"interlock":{"parent":"e","size":[0.34,0.055,0.2],"at":[0.0,1.31,0.12]},"shroud":{"parent":"e","size":[0.26,0.12,0.1],"at":[0.0,1.34,-0.1]},"vgroove":{"parent":"e","size":[0.05,0.1,0.05],"at":[-0.1,1.3,-0.07]},"jaw":{"parent":"e","size":[0.025,0.15,0.055],"at":[-0.035,1.27,0.0]},"handle":{"parent":"s","size":[0.18,0.035,0.06],"at":[-0.3,0.43,0.0]},"stem":{"parent":"a","size":[0.025,0.12,0.025],"at":[0.18,1.51,0.08]},"nozzle":{"parent":"t","size":[0.26,0.055,0.08],"at":[0.0,1.225,0.18]},"toolId":{"parent":"t","size":[0.11,0.055,0.05],"at":[0.31,1.23,0.16]},"yaw":{"parent":"t","size":[0.035,0.03,0.15],"at":[0.0,1.58,-0.09]},"plate":{"parent":"Un","size":[1.82,0.1,2.18],"at":[0.0,1.45,0.0]},"panel":{"parent":"Bt","size":[2.5,0.045,1.4],"at":[0.0,1.055,0.0]},"box":{"parent":"e","size":[0.32,0.1,0.22],"at":[0.0,0.0,0.0]},"finger":{"size":[0.035,0.16,0.16],"dx":0.12,"y":1.34},"connector":{"r":0.022,"h":0.08,"at":[0.0,0.02,0.14]}},"motion":{"shear":[23.0,29.0],"openWide":0.62,"openShut":0.26,"hold":[29.0,35.8,0.26],"reopen":[35.8,37.2],"reopenTo":0.62,"place":[19.4,22.8],"grip":[22.1,23.1,36.0,36.5],"gripDrop":-0.055,"cupSquash":0.72,"finger":[-0.16,0.08],"float":[23.0,29.0,17.0,0.004],"stemGain":18.0,"descend":[20.0,23.0,0.16,-0.13],"raise":[29.0,33.0,-0.13,0.26],"boxTop":1.51,"boxLift":[29.0,33.0],"interface":[23.0,29.0],"interfaceOpacity":[0.34,0.05],"bridge":{"park":[-1.55,0.16],"inFrom":16.0,"inTo":17.2,"inX":-1.55,"dropIn":[16.9,17.8],"dropOut":[19.4,20.0],"dropY":[0.16,-0.12],"outFrom":33.0,"outTo":35.6,"outX":-1.55,"outAt":36.8,"parkFrom":36.8,"parkTo":37.6,"parkX":[-1.55,-2.22],"carryY":0.26,"parkY":[0.26,0.16],"restAt":38.0,"restX":-2.22,"restY":0.16},"scissor":{"cutA":17.85,"cutB":18.85,"close":0.38,"openFrom":0.65,"openTo":1.0,"rot":[-0.32,-0.03],"shift":[-0.035,-0.01234],"single":[-0.22,-0.42],"envelope":[0.18,0.18]},"harness":{"from":19.4,"to":22.2,"x":-0.52,"y":0.38,"z":-1.32,"spin":0.7},"discharge":{"carry":38.0,"from":36.2,"to":37.5,"tumbleGain":4.0,"binX":-1.55,"highY":1.51,"restY":0.155,"tumble":0.22,"fan":0.12,"chuteLight":[36.2,37.6],"cableLight":[19.4,22.2],"binWeigh":37.2,"cableWeigh":22.2}},"stages":[{"name":"절연 구속·도체 A→B 순차 절단","start":16.0,"end":20.0},{"name":"활성 헤드 X·Y 자동배치","start":20.0,"end":23.0},{"name":"패시브 요 추종·L칼날 동시 박리","start":23.0,"end":29.0},{"name":"진공·스프링 포획·동시 인양","start":29.0,"end":33.0},{"name":"수거함 일괄 배출","start":33.0,"end":36.8},{"name":"JBR-VS-201A 후검증·JB/AFR 공유맵 생성 (동일 정반)","start":36.8,"end":38.0}],"scenarios":[{"key":"triple-wide","label":"3개 · 비대칭 위치","plan":"동일 X열 · 3헤드 1회 동시 박리","topology":"dual-split","boxes":[{"x":0.28,"z":-0.5,"sx":0.3,"sz":0.21,"angle":-0.018},{"x":0.28,"z":-0.04,"sx":0.32,"sz":0.22,"angle":0.012},{"x":0.28,"z":0.42,"sx":0.29,"sz":0.21,"angle":-0.009}]},{"key":"triple-compact","label":"3개 · 조밀 위치","plan":"동일 X열 · 소형 카세트 1회 동시 박리","topology":"dual-split","boxes":[{"x":0.12,"z":-0.36,"sx":0.25,"sz":0.18,"angle":0.01},{"x":0.12,"z":0.0,"sx":0.25,"sz":0.18,"angle":-0.012},{"x":0.12,"z":0.36,"sx":0.25,"sz":0.18,"angle":0.008}]},{"key":"double-offset","label":"2개 · 편심 위치","plan":"동일 X열 · 2헤드 1회 동시 박리","topology":"dual-split","boxes":[{"x":-0.05,"z":-0.31,"sx":0.34,"sz":0.23,"angle":-0.016},{"x":-0.05,"z":0.39,"sx":0.34,"sz":0.23,"angle":0.014}]},{"key":"single-offset","label":"1개 · 편심 위치","plan":"편심 좌표 · 1헤드 단독 박리","topology":"single-lead","boxes":[{"x":-0.22,"z":0.24,"sx":0.43,"sz":0.29,"angle":0.018}]}],"bladeSpec":"SKD11 HRC 58–60, 팁 0.8 mm, 12° 쐐기. 두 볼트와 위치결정핀으로 10분 이내 교환합니다.","bladeTipMm":0.8,"bladeWedgeDeg":12.0,"cutSpec":"절입간격 0.6±0.2 mm","cutMm":0.6,"cutTolMm":0.2,"jawSpec":"날 겹침 0.3±0.1 mm","jawMm":0.3,"jawTolMm":0.1,"chuteSpec":"경사 16±1°","chuteDeg":16.0,"chuteTolDeg":1.0,"combSpec":"V홈 위치 ±0.20 mm","bin":{"base":{"size":[0.58,0.05,0.54],"at":[0.0,0.08,0.0]},"wall":{"size":[0.05,0.48,0.54],"at":[-0.29,0.3,0.0]},"back":{"size":[0.58,0.48,0.05],"at":[0.0,0.3,-0.27]},"at":[-1.55,0.0,0.0],"widthScale":2.45,"cableAt":[-0.52,0.0,-1.48],"chute":{"size":[0.5,0.05,1.32],"at":[-1.5,0.72,0.0],"tilt":-0.28},"chuteSide":{"size":[0.5,0.16,0.035],"at":[-1.5,0.78],"z":[-0.66,0.66]},"cableChute":{"size":[0.34,0.05,0.72],"at":[-0.52,0.72,-1.14],"tilt":0.36},"weigh":[{"at":[-1.55,0.035,0.0],"size":[0.78,0.055,1.38]},{"at":[-0.52,0.035,-1.48],"size":[0.68,0.055,0.62]}],"passer":{"size":[0.1,0.06,0.06],"at":[[-1.48,0.92,0.74],[-0.52,0.9,-1.24]]},"coil":{"r0":0.11,"dr":0.012,"tube":0.011,"dx":0.035,"y0":0.19,"dy":0.018,"dz":0.04}},"cable":{"radius":0.012,"split":{"left":{"points":[[-0.06,-0.02,-0.52],[-0.18,0.0,-0.63],[-0.42,0.01,-0.76]],"connector":[-0.45,0.01,-0.8]},"right":{"points":[[0.06,-0.02,0.52],[0.18,0.0,0.63],[0.42,0.01,0.76]],"connector":[0.45,0.01,0.8]}},"single":{"lanes":[-0.09,0.09],"points":[[1.0,-0.02,-0.15],[1.15,0.0,-0.34],[1.3,0.01,-0.59]],"connector":[1.3,0.01,-0.64]}}};
   var P = M.parts, MO = M.motion;
   var css = getComputedStyle(document.documentElement);
   var cache = {};
@@ -367,9 +367,11 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
     if (t < D.from) {
       return { x: bridgeX(t) + (b.x - rowX()), y: MO.boxTop, z: b.z, tilt: 0, fan: 0, held: true };
     }
-    var u = step(t, D.from, D.to);
+    // 전복·부채는 낙하 **중에만** 준다. u(1−u)·4 는 중간에 1, 양끝에 0 이라
+    // 정지 자세가 눕고, 그래서 정지 높이가 상자 크기와 무관해진다.
+    var u = step(t, D.from, D.to), tu = u * (1 - u) * D.tumbleGain;
     return { x: D.binX, y: lerp(D.highY, D.restY, u), z: b.z,
-             tilt: u * D.tumble, fan: u * (i - 1) * D.fan, dropped: true, u: u };
+             tilt: tu * D.tumble, fan: tu * (i - 1) * D.fan, dropped: true, u: u };
   }
 
   // ── 상태 ────────────────────────────────────────────────────────────
@@ -977,9 +979,15 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
             '뒷벽 (앞은 열려 있다 · 포크 인출)', ink3, 'left', 10.5);
     if (lowest) {
       var clear = (y0 + lowest.y - P.box.size[1] / 2 - floorTop) * 1000;
-      bd.dimY(floorTop, y0 + lowest.y - P.box.size[1] / 2, halfZ - 0.10,
-              clear.toFixed(0) + ' 바닥 이격', Math.abs(clear) <= 1 ? C('ok') : C('red'));
-      if (Math.abs(clear) > 1) {
+      if (Math.abs(clear) < 0.05) clear = 0;              // −0 은 값이 아니라 찌꺼기다
+      if (Math.abs(clear) <= 0.5) {
+        // 닿아 있으면 치수선이 길이 0 이라 뜻이 없다 — 접촉선을 긋고 값을 적는다.
+        bd.line(-halfZ, floorTop, halfZ, floorTop, C('ok'), [5, 3], 1.4);
+        bd.text(halfZ - 0.02, floorTop + P.box.size[1] + 0.035,
+                '바닥 접촉 0 mm · 정지 자세 수평', C('ok'), 'right', 10.5);
+      } else {
+        bd.dimY(floorTop, y0 + lowest.y - P.box.size[1] / 2, halfZ - 0.16,
+                clear.toFixed(0) + ' 바닥 이격', C('red'));
         bd.text(halfZ - 0.02, floorTop + 0.05,
                 '착지 자세가 바닥에서 떠 있다 — 원본 wt() 의 정지 y = '
                 + (D.restY * 1000).toFixed(0), C('red'), 'right', 10.5);
@@ -1157,6 +1165,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
     var floorTop = y0 + B.base.at[1] + B.base.size[1] / 2;
     var q = boxPose(t, 0), low = y0 + q.y - P.box.size[1] / 2;
     var clear = (low - floorTop) * 1000;
+    if (Math.abs(clear) < 0.05) clear = 0;
     var tilt = Math.abs(B.chute.tilt) * 180 / Math.PI;
     return row('브리지 x', (bridgeX(t) * 1000).toFixed(0) + ' mm',
                t >= MO.bridge.outFrom ? 'hot' : '') +
