@@ -20,6 +20,7 @@ from __future__ import annotations
 import contextlib
 import html
 import pathlib
+import re
 import sys
 from collections.abc import Iterator
 
@@ -27,11 +28,30 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import build_infeed_fab as bif  # noqa: E402  — 그리는 코드를 빌려 온다
+import build_jbr_closeup as bjc  # noqa: E402  — 운동식·칼날 사양 파서를 빌려 온다
 from pv_preprocess import campaign, fabrication as fab, handoff  # noqa: E402
 from pv_preprocess import jbr_fabrication as jf  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs/drawings/pv-jbr-fab.html"
+PLANT = ROOT / "docs/drawings/pv-preprocess-plant.html"
+
+
+def plant_values() -> dict[str, object]:
+    """검산이 쓰는 값 — 전부 통합 설계도에서 읽는다. 손으로 옮기면 갈린다."""
+    text = PLANT.read_text(encoding="utf-8")
+    M = bjc.model(text)
+    mo = M["motion"]
+    lo, hi = mo["shear"]
+    stroke = (mo["openWide"] - mo["openShut"]) * 1000.0
+    heads = tuple(float(z) for z in re.findall(
+        r"part\('HD-\d',[^\]]*\],\s*\[[^,]+,[^,]+,\s*(-?[\d.]+)\]", text))
+    pl = re.search(r"part\('PLATEN',[^\[]*\[([\d.]+),\s*[\d.]+,\s*([\d.]+)\]", text)
+    return {
+        "stroke_mm": stroke, "shear_s": hi - lo, "shear": (lo, hi),
+        "tip_mm": M["bladeTipMm"], "cut_mm": M["cutMm"], "cut_tol_mm": M["cutTolMm"],
+        "head_z": heads, "platen": (float(pl.group(1)), float(pl.group(2))),
+    }
 
 esc, n, table = bif.esc, bif.n, bif.table
 
@@ -174,6 +194,108 @@ def findings() -> str:
     )
 
 
+def review() -> str:
+    """설계 검토 — 부품표·서보·운동식을 곱해 보고 안 맞는 것을 낸다.
+
+    이 절은 「무엇을 만든다」가 아니라 **「만들 수 있는가」**를 묻는다. 답이 아니오면
+    여기서 고치지 않는다 — 고치는 것은 설계 결정이고, 이 문서가 할 일은 재는 것이다.
+    """
+    V = plant_values()
+    pa = jf.peel_axis_check(V["stroke_mm"], V["shear_s"])
+    be = jf.blade_edge_check(V["tip_mm"], V["cut_mm"], V["cut_tol_mm"])
+    sc = jf.support_check(campaign.PANEL_LENGTH_MM, campaign.PANEL_WIDTH_MM,
+                          V["platen"][0], V["platen"][1], V["head_z"])
+    bm = jf.bridge_mode((100.0, 150.0), 8.0, 2_500.0, jf.moving_mass_kg(), jf.X_DECEL_MS2)
+    ss = jf.scissor_check(63.0, jf.AIR_MPA_MIN, 4.0)
+    takt = campaign.summary()["takt_s"]
+    lives = [jf.ballscrew_life(x, V["stroke_mm"], takt) for x in (15.0, 5.0, 2.0)]
+    bad = lambda ok: '<b class="ok">성립</b>' if ok else '<b class="bad">불성립</b>'
+
+    out = ['<h3>6.5 박리축 — 그 행정을 그 시간에 낼 수 있는가</h3>']
+    out.append(table(["항목", "값"], [
+        ["칼날 행정 (운동식 <span class='mono'>openWide→openShut</span>)", f'{n(V["stroke_mm"])} mm'],
+        ["박리 구간 (스테이지 <span class='mono'>shear</span>)", f'{n(V["shear"][0])} – {n(V["shear"][1])} s = {n(V["shear_s"])} s'],
+        ["평균 · 피크 속도", f'{pa["v_mean_mms"]:g} · {pa["v_peak_mms"]:g} mm/s'],
+        [f'볼스크루 {jf.PEEL_SCREW_LEAD_MM:g} mm 리드 회전수', f'{n(pa["screw_rpm"])} rpm'],
+        [f'감속 1:{jf.PEEL_GEAR_RATIO:g} → <b>모터 회전수</b>',
+         f'<b>{n(pa["motor_rpm"])} rpm</b> (0.75 kW 급 통상 상한 {n(pa["motor_max_rpm"])}) — {bad(pa["ok"])}'],
+    ]))
+    out.append(
+        f'<div class="note warn"><b>이 구동계로는 이 운동을 못 낸다.</b> 힘을 하나도 안 넣고 '
+        f'행정과 시간만 나눈 결과라 가정이 없다 — 모터가 상한의 <b>{pa["over"]}배</b>로 돌아야 한다. '
+        f'뿌리는 <b>한 축에 두 가지 일을 시킨 것</b>이다: {n(V["stroke_mm"])} mm 중 실제로 접착을 '
+        f'자르는 구간은 칼날이 박스 밑으로 드는 마지막 10–20 mm 뿐이고 나머지는 공주행인데, '
+        f'급속 이송과 고추력 절삭은 최적점이 반대라 한 드라이브로 둘 다 못 한다. '
+        f'리드를 <b>{pa["lead_needed_mm"]:g} mm 이상</b>으로 올리면(20×20) 회전수가 들어온다.</div>')
+    out.append(
+        f'<div class="note warn"><b>움직이는 동안에는 {jf.JAM_TRIP_KN:g} kN 임계가 트립되지 않는다.</b> '
+        f'{pa["v_mean_mms"]:g} mm/s 에서 이 구동계가 낼 수 있는 최대 힘은 '
+        f'<b>{pa["force_at_speed_kn"]:g} kN</b> 이다 (0.75 kW × 효율 {jf.DRIVETRAIN_EFF} ÷ 속도). '
+        f'힘이 쌓이는 것은 속도가 0 으로 죽는 잼에서뿐이므로, 그 임계는 공정 감시가 아니라 '
+        f'<b>잼 보호</b>다. 그러면 공정창은 정의된 적이 없다.</div>')
+
+    out.append('<h3>6.6 정격 작업 박리력이 없다 — 볼스크루 수명이 정해지지 않는다</h3>')
+    out.append(table(["가정한 작업력", "L10 회전", "사이클", "가동 시간", "연수 (8,000 h/년)"],
+                     [[f'{c["working_kn"]:g} kN', f'{c["rev_life"]:.3g} rev', f'{n(c["cycles"])}',
+                       f'{n(c["hours"])} h', f'<b>{c["years_8000h"]}</b> 년'] for c in lives]))
+    out.append(
+        f'<div class="note warn"><b>5 주와 46 년 사이다.</b> C ≥ {jf.BALLSCREW_C_KN:g} kN · '
+        f'사이클당 {n(V["stroke_mm"] / jf.PEEL_SCREW_LEAD_MM)} rev · 택트 {takt:.2f} s 기준. '
+        f'{jf.JAM_TRIP_KN:g} kN 은 <b>임계이지 작업력이 아닌데</b>(원본: 「소프트웨어 제한」·'
+        f'「{jf.JAM_TRIP_KN:g} kN/헤드에서 자동 후퇴」) 서보 선정·볼스크루·FEA·앵커가 모두 그 값에 '
+        f'매달려 있다. <b>정격 작업 박리력 한 줄이 이 셀에서 가장 먼저 필요한 값이다</b> — '
+        f'실리콘 접착층을 폭 210 mm 로 자르는 파괴에너지에서 보면 1–2 kN 쪽이겠지만, '
+        f'추정으로 조달과 보전 계획을 세울 수는 없다. '
+        f'정본의 <span class="mono">WORKING_PEEL_KN</span> 이 비어 있는 것이 그 자리다.</div>')
+
+    out.append('<h3>6.7 칼날 날끝 — 자르는가 밀어내는가</h3>')
+    out.append(table(["항목", "값"], [
+        ["날끝 (부품표 JB-HD-008)", f'{be["tip_mm"]:g} mm'],
+        ["절입 · 얕은 쪽 공차", f'{be["cut_mm"]:g} mm · {be["shallow_mm"]:g} mm'],
+        ["날끝 / 절입", f'<b>{be["ratio_shallow"]:g}</b> (절삭 관례 ≤ {be["want_max"]:g}) — {bad(be["ok"])}'],
+        ["관례를 맞추는 날끝", f'{be["tip_for_ratio_mm"]:g} mm 이하'],
+    ]))
+    out.append(
+        '<div class="note warn"><b>날끝이 절입보다 크다.</b> 절삭에서 날끝 반경은 절입의 '
+        '1/5~1/10 이어야 한다. 그보다 무디면 재료가 잘리지 않고 소성으로 흘러 비절삭력이 '
+        '급등하고 표면에 뭉개진 잔여가 남는다. <b>하류 조건 「접착 실리콘 잔여 ≤ 2 mm」를 '
+        '위협하는 것이 이것이다</b> — 상세도 §7 의 「잔여 0」은 날이 깨끗이 자른다는 전제 위에 '
+        '서는데, 이 날끝에서는 그 전제가 약하다.</div>')
+
+    out.append('<h3>6.8 지지 — 패널이 정반 위에 다 올라가는가</h3>')
+    out.append(table(["항목", "값"], [
+        ["패널", f'{n(campaign.PANEL_LENGTH_MM)} × {n(campaign.PANEL_WIDTH_MM)} mm'],
+        ["지지정반 JB-SP-001", f'{n(V["platen"][0])} × {n(V["platen"][1])} mm'],
+        ["받쳐지지 않는 돌출", f'X {sc["over_l_mm"]:g} mm/측 · Z {sc["over_w_mm"]:g} mm/측'],
+        ["헤드 z (GA)", " · ".join(f"{z:+g}" for z in V["head_z"])],
+        ["정반 반폭", f'{sc["platen_half_w_mm"]:g} mm — 헤드 {len(sc["heads_outside"])} 기가 '
+                    f'{sc["worst_out_mm"]:g} mm 바깥 {bad(sc["ok"])}'],
+    ]))
+    out.append(
+        '<div class="note warn"><b>정반이 패널보다 작고, 헤드 1·3 이 정반 밖에서 누른다.</b> '
+        '프레임이 붙은 채 들어오므로(프레임 제거는 하류 AFR-101 이다) 프레임이 하중을 나르긴 '
+        '하지만 <b>그 전제가 도면에 없다</b>. 24 구역 지지의 의미도 헤드 자리에서 끊긴다 — '
+        '정반을 넓히든지, 헤드 간격을 좁히든지, 프레임 지지를 명시하든지 셋 중 하나다.</div>')
+
+    out.append('<h3>6.9 브리지 동특성 · 가위</h3>')
+    out.append(table(["항목", "값"], [
+        [f'브리지 RHS 150×100×8 · 스팬 2,500 · 가동부 {n(jf.moving_mass_kg())} kg',
+         f'k = {n(bm["k_n_mm"])} N/mm · <b>1 차 {bm["f_hz"]:g} Hz</b>'],
+        [f'가감속 {bm["accel_ms2"]:g} m/s² 관성력 {n(bm["inertia_force_n"])} N',
+         f'탄성 처짐 <b>{bm["deflection_mm"]:g} mm</b> (헤드 datum 공차 ±0.10)'],
+        [f'가위 Ø{ss["bore_mm"]:g} @ {ss["air_mpa"]:g} MPa', f'{n(ss["force_n"])} N · 4 mm² 구리 전단 '
+         f'{n(ss["need_n"])} N → 여유 {ss["margin"]:g} (레버비 미기재)'],
+    ]))
+    out.append(
+        f'<div class="note"><b>처짐은 위반이 아니라 정정 시간이다.</b> 멈추면 회복되므로 '
+        f'{bm["deflection_mm"]:g} mm 가 공차를 깨는 것은 아니지만, 0.10 mm 아래로 가라앉는 데 '
+        f'감쇠 2 % 기준 0.3–0.5 s 가 든다. <b>그 시간이 11 단계 시간표 어디에도 없다.</b> '
+        f'빔을 약축으로 돌려 세우면 13 Hz · 0.38 mm 로 더 나빠지므로 <b>단면 방향도 도면이 '
+        f'정해야 한다</b>. 가위는 레버비가 도면에 없어 1:1 로 본 값이라 여유 {ss["margin"]:g} 는 '
+        f'하한이다 — 케이블 반경이 운동식에 12 mm 로 잡혀 있어 4 mm² PV 케이블보다 굵다.</div>')
+    return "".join(out)
+
+
 def open_items() -> str:
     rows = [
         ["구조 검증이 없다",
@@ -185,6 +307,28 @@ def open_items() -> str:
         ["Z 승강 실린더가 모자란다",
          f"Ø{jf.LIFT_BORE_MM:g}×{jf.LIFT_COUNT} 로 이용률 {jf.lift_check()['utilisation']:g}. "
          "실린더·중량·카운터밸런스 중 무엇을 고칠지 미정.", "6.4 절"],
+        ["<b>정격 작업 박리력이 없다</b>",
+         f"{jf.JAM_TRIP_KN:g} kN 은 자동 후퇴 임계이지 작업 조건이 아니다. 서보 선정·볼스크루 "
+         "수명(5 주~46 년)·FEA·앵커가 전부 그 값에 매달려 있다. <b>이 셀에서 가장 먼저 "
+         "필요한 한 줄.</b> 정해지면 <span class='mono'>WORKING_PEEL_KN</span> 에 넣는다.",
+         "6.6 절"],
+        ["<b>박리축 리드·감속비 재선정</b>",
+         f"20×{jf.PEEL_SCREW_LEAD_MM:g} + 1:{jf.PEEL_GEAR_RATIO:g} 로는 모터가 통상 상한의 "
+         "2.16 배로 돌아야 한다. 급속 이송과 고추력 절삭을 한 축이 겸하는 것이 뿌리다 — "
+         "리드를 올리거나(20×20) 접근·절삭을 나눠야 한다.", "6.5 절"],
+        ["<b>칼날 날끝 0.8 mm</b>",
+         "절입 0.6(얕은 쪽 0.4)보다 날끝이 크다. 자르는 것이 아니라 밀어내는 영역이라 "
+         "하류 「실리콘 잔여 ≤ 2 mm」를 위협한다. 관례를 맞추려면 0.08 mm 이하.", "6.7 절"],
+        ["<b>정반이 패널보다 작다 · 헤드가 정반 밖</b>",
+         "정반 1,900×1,200 대 패널 2,500×1,400, 헤드 1·3 이 정반 반폭 600 밖 20 mm. "
+         "프레임 지지를 전제로 삼는다면 그 전제를 도면에 적어야 한다.", "6.8 절"],
+        ["브리지 정정 시간이 시간표에 없다",
+         "1 차 18 Hz · 가감속 처짐 0.196 mm 가 헤드 datum ±0.10 의 2 배다. 회복에 0.3–0.5 s 가 "
+         "드는데 11 단계 시간표에 그 자리가 없다. 빔 단면 방향도 도면이 정해야 한다(약축이면 더 나쁘다).",
+         "6.9 절"],
+        ["가위 레버비가 없다",
+         "Ø63 @0.5 MPa = 1,559 N 을 1:1 로 본 여유 1.95 는 하한이다. 운동식의 케이블 반경 12 mm 가 "
+         "맞다면 도체가 훨씬 굵어 여유가 사라진다.", "6.9 절"],
         ["칼날 수명",
          "SKD11 카세트의 교체 주기(장수)를 모른다. 시운전 run-at-rate 마모량에서 나온다.",
          "reliability.SPARES()"],
@@ -320,6 +464,7 @@ def build() -> str:
 <section class="card"><h2>6. 검산 — 이 도면집이 스스로 재는 것</h2>
 {load_table()}
 {findings()}
+{review()}
 </section>
 <section class="card"><h2>7. 미결</h2>
 <p class="note">이 도면집이 답하지 못한 것들. 답이 오면 정본(<span class="mono">src/pv_preprocess/jbr_fabrication.py</span>)만 고치고 다시 찍는다.</p>

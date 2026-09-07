@@ -798,6 +798,14 @@ def stage_span(text: str, needle: str) -> tuple[float, float]:
     return hit[0]
 
 
+def blade_tip_mm(text: str) -> float:
+    """L칼날 날끝 mm — 3D 주기의 「팁 0.8 mm」에서 읽는다. 절입과 견줄 값이다."""
+    m = re.search(r"팁\s*([\d.]+)\s*mm", text)
+    if not m:
+        raise SystemExit("칼날 주기에서 팁 치수를 못 찾았다 — 원본이 바뀌었다")
+    return float(m.group(1))
+
+
 def output_table(text: str) -> str:
     """출력 조건과, **기구의 무엇이 그것을 보증하는가**.
 
@@ -805,6 +813,7 @@ def output_table(text: str) -> str:
     온다. 둘을 맞대 보는 것이 이 표의 일이다 — 조건만 적어 두면 지켜지는지 알 수 없다.
     """
     cut, tol = cut_gap_mm(text)
+    tip = blade_tip_mm(text)
     cable = stage_span(text, "순차 절단")
     shear = stage_span(text, "동시 박리")
     lift = stage_span(text, "동시 인양")
@@ -835,8 +844,12 @@ def output_table(text: str) -> str:
             True, ""),
         "접착 실리콘 잔여": (
             f"접착층은 백시트 면 <b>위</b>에 있고 전단면은 그보다 {cut:g} mm 아래다. "
-            "그래서 접착은 전량 박스와 함께 떨어진다 — 잔여 0 mm.",
-            0.0 <= handoff.SILICONE_RESIDUE_MAX_MM, ""),
+            "기하로는 접착이 전량 박스와 함께 떨어진다. "
+            f"다만 이것은 <b>날이 깨끗이 자른다는 전제</b> 위에 선다 — 날끝 {tip:g} mm 가 "
+            f"절입 {cut - tol:g}(얕은 쪽)보다 커서 소성으로 밀어내는 영역이라, "
+            "뭉개진 잔여가 남을 수 있다.",
+            0.0 <= handoff.SILICONE_RESIDUE_MAX_MM,
+            f"날끝 {tip:g} mm > 절입 — 잔여 0 은 기하이지 실측이 아니다"),
         "정션박스 자리 백시트 절결": (
             f"절결을 내는 것은 절입 그 자체다 — 깊이가 곧 <b>{cut:g}±{tol:g} mm</b>이고 "
             f"범위는 L칼날이 쓸고 가는 박스 발자국 안이다. 공차 상단 "

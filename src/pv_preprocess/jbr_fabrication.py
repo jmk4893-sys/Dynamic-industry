@@ -161,6 +161,118 @@ LOAD_IS_NOT_BINDING = True
 FORCE_LOOP_CLOSES_INSIDE = True
 
 
+# ── 설계 검토 검산 ───────────────────────────────────────────────────────
+# 아래는 이 셀을 기계·물리 쪽에서 다시 본 결과다. 값은 전부 부품표·서보 모델·운동식
+# 에서 오고, 여기서는 그것들을 **곱해 보기만** 한다. 곱해서 안 맞는 것이 나오면
+# 그것이 소견이다 — 고치는 것은 사람이 정할 일이라 여기서는 재기만 한다.
+
+#: 박리축 구동계. 출처는 부품표 「20 × 5 볼스크루(C≥25 kN, C₀≥45 kN), 1:10 감속기」와
+#: `servos.AXIS-JBR-PZ` (0.75 kW).
+PEEL_SCREW_LEAD_MM = 5.0
+PEEL_GEAR_RATIO = 10.0
+PEEL_SERVO_KW = 0.75
+BALLSCREW_C_KN = 25.0
+BALLSCREW_C0_KN = 45.0
+
+#: 0.75 kW 급 서보의 통상 최대 회전수. 카탈로그 확정 전의 관례값이다.
+SERVO_MAX_RPM = 5_000.0
+#: 감속기 0.95 × 볼스크루 0.9.
+DRIVETRAIN_EFF = 0.855
+#: smoothstep 운동의 피크/평균 속도비.
+SMOOTHSTEP_PEAK = 1.5
+
+#: **15 kN 은 사양이 아니라 임계다.** 원본이 그렇게 적었다 — 「15 kN 소프트웨어 제한」,
+#: 「실제 박리력을 감시하고 15 kN/헤드에서 자동 후퇴합니다」. 기계가 도달하지 않도록
+#: 설계된 값이므로 작업 조건이 아니라 보호 조건이다.
+JAM_TRIP_KN = BLADE_THRUST_KN
+
+#: 정격 작업 박리력 — **문서 어디에도 없다.** 볼스크루 수명·서보 선정·공정창이
+#: 전부 이 값에 매달리는데 비어 있다. 채워지면 여기만 고치면 된다.
+WORKING_PEEL_KN: float | None = None
+
+
+def peel_axis_check(stroke_mm: float, seconds: float) -> dict[str, float | bool]:
+    """박리축이 그 행정을 그 시간에 낼 수 있는가 — 힘을 빼고 회전수만 본다."""
+    v_mean = stroke_mm / seconds
+    v_peak = v_mean * SMOOTHSTEP_PEAK
+    screw_rpm = v_peak / PEEL_SCREW_LEAD_MM * 60.0
+    motor_rpm = screw_rpm * PEEL_GEAR_RATIO
+    f_max_kn = PEEL_SERVO_KW * 1000.0 * DRIVETRAIN_EFF / (v_mean / 1000.0) / 1000.0
+    return {
+        "stroke_mm": stroke_mm, "seconds": seconds,
+        "v_mean_mms": round(v_mean, 1), "v_peak_mms": round(v_peak, 1),
+        "screw_rpm": round(screw_rpm), "motor_rpm": round(motor_rpm),
+        "motor_max_rpm": SERVO_MAX_RPM, "ok": motor_rpm <= SERVO_MAX_RPM,
+        "over": round(motor_rpm / SERVO_MAX_RPM, 2),
+        "force_at_speed_kn": round(f_max_kn, 1),
+        "trip_reachable": f_max_kn >= JAM_TRIP_KN,
+        "lead_needed_mm": round(v_peak * 60.0 / (SERVO_MAX_RPM / PEEL_GEAR_RATIO), 1),
+    }
+
+
+def ballscrew_life(working_kn: float, stroke_mm: float, takt_s: float) -> dict[str, float]:
+    """L10 = (C/P)³ × 10⁶ rev. 사이클당 회전수는 행정÷리드다."""
+    rev_life = (BALLSCREW_C_KN / working_kn) ** 3 * 1e6
+    rev_cycle = stroke_mm / PEEL_SCREW_LEAD_MM
+    cycles = rev_life / rev_cycle
+    hours = cycles / (3600.0 / takt_s)
+    return {"working_kn": working_kn, "rev_life": rev_life, "cycles": round(cycles),
+            "hours": round(hours), "years_8000h": round(hours / 8000.0, 2)}
+
+
+def bridge_mode(section_wh_mm: tuple[float, float], wall_mm: float, span_mm: float,
+                moving_kg: float, accel_ms2: float) -> dict[str, float | bool]:
+    """브리지를 양단 지지 보로 보고 1 차 고유진동수와 가감속 처짐을 낸다.
+
+    각관 단면 2 차 모멘트는 바깥에서 안쪽을 뺀다. 강축으로 세운 경우다 —
+    약축으로 돌려 놓으면 더 나빠지므로 어느 쪽인지 도면이 정해야 한다.
+    """
+    w, h = section_wh_mm
+    t = wall_mm
+    inertia = (w * h ** 3 - (w - 2 * t) * (h - 2 * t) ** 3) / 12.0
+    k = 48.0 * 206_000.0 * inertia / span_mm ** 3          # N/mm
+    f_hz = (k * 1000.0 / moving_kg) ** 0.5 / (2 * 3.14159)
+    delta = moving_kg * accel_ms2 / k
+    return {"inertia_mm4": inertia, "k_n_mm": round(k), "f_hz": round(f_hz, 1),
+            "inertia_force_n": round(moving_kg * accel_ms2),
+            "deflection_mm": round(delta, 3), "accel_ms2": accel_ms2}
+
+
+def blade_edge_check(tip_mm: float, cut_mm: float, tol_mm: float) -> dict[str, float | bool]:
+    """날끝이 절입보다 크면 자르는 것이 아니라 밀어낸다.
+
+    절삭에서 날끝 반경은 절입의 1/5~1/10 이어야 한다. 그보다 무디면 재료가 잘리지
+    않고 소성으로 흘러 비절삭력이 급등하고 표면에 뭉개진 잔여가 남는다.
+    """
+    shallow = cut_mm - tol_mm
+    return {"tip_mm": tip_mm, "cut_mm": cut_mm, "shallow_mm": round(shallow, 2),
+            "ratio": round(tip_mm / cut_mm, 2), "ratio_shallow": round(tip_mm / shallow, 2),
+            "want_max": 0.2, "ok": tip_mm / shallow <= 0.2,
+            "tip_for_ratio_mm": round(shallow * 0.2, 2)}
+
+
+def support_check(panel_l_mm: float, panel_w_mm: float, platen_l_mm: float,
+                  platen_w_mm: float, head_z_mm: tuple[float, ...]) -> dict[str, object]:
+    """패널이 정반 위에 다 올라가는가, 헤드가 정반 안에서 누르는가."""
+    half = platen_w_mm / 2.0
+    outside = tuple(z for z in head_z_mm if abs(z) > half)
+    return {"over_l_mm": round((panel_l_mm - platen_l_mm) / 2.0, 1),
+            "over_w_mm": round((panel_w_mm - platen_w_mm) / 2.0, 1),
+            "platen_half_w_mm": half, "heads_outside": outside,
+            "worst_out_mm": round(max((abs(z) - half for z in outside), default=0.0), 1),
+            "ok": not outside and panel_l_mm <= platen_l_mm and panel_w_mm <= platen_w_mm}
+
+
+def scissor_check(bore_mm: float, air_mpa: float, conductor_mm2: float,
+                  shear_mpa: float = 200.0) -> dict[str, float | bool]:
+    """가위 실린더가 도체를 자를 힘이 되는가. 레버비가 도면에 없어 1:1 로 본다."""
+    force_n = 3.14159 / 4 * bore_mm ** 2 * air_mpa
+    need_n = conductor_mm2 * shear_mpa
+    return {"bore_mm": bore_mm, "air_mpa": air_mpa, "force_n": round(force_n),
+            "need_n": round(need_n), "margin": round(force_n / need_n, 2),
+            "ok": force_n >= need_n, "lever_stated": False}
+
+
 # ── 앵커 로드 길이 ───────────────────────────────────────────────────────
 # 기준 브랜치의 체결 부품 도면집이 규칙을 세웠다 — 로드 길이는 **매입 + 베이스플레이트
 # + 그라우트 + 평와셔 + 너트 + 나사산 여유**를 넘어야 한다. 기초 위로 나오는 부속을

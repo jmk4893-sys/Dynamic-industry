@@ -26,7 +26,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tools"))
 
 from pv_preprocess import fabrication as fab  # noqa: E402
-from pv_preprocess import fasteners, handoff, jbr_fabrication as jf, mounting  # noqa: E402
+from pv_preprocess import campaign, fasteners, handoff, jbr_fabrication as jf, mounting  # noqa: E402
 
 PLANT = (ROOT / "docs/drawings/pv-preprocess-plant.html").read_text(encoding="utf-8")
 SHEET = ROOT / "docs/drawings/pv-jbr-fab.html"
@@ -176,6 +176,84 @@ class TestJbrFabFindings(unittest.TestCase):
         html = SHEET.read_text(encoding="utf-8")
         self.assertIn("절입 깊이 공정능력", html)
         self.assertIn(handoff.BACKSHEET_NOTCH_SOURCE, html)
+
+
+class TestJbrReview(unittest.TestCase):
+    """설계 검토가 짚은 것들 — 값이 고쳐지면 여기가 먼저 알려 준다.
+
+    시험이 「불성립」을 단언하는 것이 이상해 보이지만, 이것들은 **아직 안 고친 것**
+    이고 고치는 것은 설계 결정이다. 누군가 고치면 이 시험이 깨지면서 「고쳐졌다」를
+    알려 준다 — 그때 문구와 미결 항목을 같이 내리면 된다.
+    """
+
+    def setUp(self):
+        self.b = _builder()
+        self.V = self.b.plant_values()
+        self.html = SHEET.read_text(encoding="utf-8")
+
+    def test_the_stroke_and_window_come_from_the_plant(self):
+        """검산이 손으로 옮긴 숫자 위에 서면 안 된다."""
+        self.assertEqual(self.V["stroke_mm"], 360.0)
+        self.assertEqual(self.V["shear_s"], 6.0)
+        self.assertEqual(self.V["tip_mm"], 0.8)
+        self.assertEqual(self.V["head_z"], (-620.0, 0.0, 620.0))
+        self.assertEqual(self.V["platen"], (1900.0, 1200.0))
+
+    def test_the_peel_axis_overruns_the_servo(self):
+        """힘을 안 넣고 행정÷시간만 나눈 결과 — 가정이 없는 모순이다."""
+        c = jf.peel_axis_check(self.V["stroke_mm"], self.V["shear_s"])
+        self.assertFalse(c["ok"])
+        self.assertGreater(c["motor_rpm"], jf.SERVO_MAX_RPM)
+        self.assertGreater(c["lead_needed_mm"], jf.PEEL_SCREW_LEAD_MM)
+
+    def test_the_jam_trip_cannot_be_reached_while_moving(self):
+        c = jf.peel_axis_check(self.V["stroke_mm"], self.V["shear_s"])
+        self.assertFalse(c["trip_reachable"])
+        self.assertLess(c["force_at_speed_kn"], jf.JAM_TRIP_KN)
+
+    def test_the_working_peel_force_is_still_undefined(self):
+        """정해지면 여기가 깨진다 — 그때 수명 표와 미결을 같이 닫는다."""
+        self.assertIsNone(jf.WORKING_PEEL_KN)
+        self.assertEqual(jf.JAM_TRIP_KN, jf.BLADE_THRUST_KN)
+
+    def test_the_ballscrew_life_spans_five_weeks_to_decades(self):
+        takt = campaign.summary()["takt_s"]
+        hot = jf.ballscrew_life(15.0, self.V["stroke_mm"], takt)
+        cool = jf.ballscrew_life(2.0, self.V["stroke_mm"], takt)
+        self.assertLess(hot["years_8000h"], 0.2)
+        self.assertGreater(cool["years_8000h"], 10)
+
+    def test_the_blade_edge_is_blunter_than_the_cut(self):
+        c = jf.blade_edge_check(self.V["tip_mm"], self.V["cut_mm"], self.V["cut_tol_mm"])
+        self.assertFalse(c["ok"])
+        self.assertGreater(c["ratio_shallow"], c["want_max"])
+
+    def test_the_platen_is_smaller_than_the_panel(self):
+        c = jf.support_check(campaign.PANEL_LENGTH_MM, campaign.PANEL_WIDTH_MM,
+                             self.V["platen"][0], self.V["platen"][1], self.V["head_z"])
+        self.assertFalse(c["ok"])
+        self.assertEqual(len(c["heads_outside"]), 2)
+        self.assertGreater(c["over_l_mm"], 0)
+
+    def test_the_bridge_deflects_past_the_head_tolerance(self):
+        c = jf.bridge_mode((100.0, 150.0), 8.0, 2_500.0, jf.moving_mass_kg(), jf.X_DECEL_MS2)
+        self.assertGreater(c["deflection_mm"], 0.10)
+        self.assertLess(c["f_hz"], 30)
+
+    def test_the_sheet_carries_every_one_of_them(self):
+        for phrase in ("이 구동계로는 이 운동을 못 낸다",
+                       "임계가 트립되지 않는다",
+                       "5 주와 46 년 사이다",
+                       "날끝이 절입보다 크다",
+                       "정반이 패널보다 작고",
+                       "처짐은 위반이 아니라 정정 시간이다"):
+            self.assertIn(phrase, self.html, f"소견이 사라졌다: {phrase}")
+
+    def test_the_detail_sheet_no_longer_claims_a_clean_cut(self):
+        """상세도 §7 의 「잔여 0」은 날이 깨끗이 자른다는 전제 위에 섰다 — 그 전제를 적었다."""
+        detail = (ROOT / "docs/drawings/pv-jbr-detail.html").read_text(encoding="utf-8")
+        self.assertIn("날이 깨끗이 자른다는 전제", detail)
+        self.assertIn("잔여 0 은 기하이지 실측이 아니다", detail)
 
 
 class TestJbrFabSheet(unittest.TestCase):
