@@ -16,7 +16,7 @@ import unittest
 
 from tests import _path  # noqa: F401
 
-from pv_preprocess import campaign, layout, servos
+from pv_preprocess import campaign, handoff, layout, servos
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCENE = ROOT / "docs/drawings/pv-jbr-scene.html"
@@ -288,6 +288,46 @@ class TestJbrDetail(unittest.TestCase):
         self.assertIn(f"{z.x0_mm:,} … {z.x1_mm:,} mm", self.html)
         self.assertIn(f"{z.y0_mm:,} … {z.y1_mm:,} mm", self.html)
         self.assertIn(f"{layout.STATION_HARDWARE_X_MM['jbr']:,} mm", self.html)
+
+    # ── 출력 조건 (하류 DG-HK60 투입 조건) ─────────────────────────────
+    def test_the_output_spec_numbers_come_from_the_model(self):
+        """사양은 손으로 적지 않는다 — `handoff` 가 들고 시트가 읽는다."""
+        for item, spec, why in handoff.jbox_trace_spec():
+            with self.subTest(item=item):
+                self.assertIn(item, self.html)
+                self.assertIn(spec, self.html)
+                self.assertIn(why, self.html)
+        self.assertIn(handoff.JBOX_TRACE_SOURCE, self.html)
+        self.assertEqual(handoff.RIBBON_STUB_MAX_MM, 5.0)
+        self.assertEqual(handoff.SILICONE_RESIDUE_MAX_MM, 2.0)
+        self.assertFalse(handoff.RIBBON_MAY_BE_LAID_OVER)
+        self.assertFalse(handoff.CABLE_RESIDUE_ALLOWED)
+
+    def test_the_shear_finishes_before_the_lift(self):
+        """붙어 있는 채로 들어 올리면 리본이 눕는다 — 순서가 그 조건을 보증한다."""
+        shear = self.builder.stage_span(self.plant, "동시 박리")
+        lift = self.builder.stage_span(self.plant, "동시 인양")
+        self.assertLessEqual(shear[1], lift[0])
+
+    def test_the_cut_plane_sits_below_the_backsheet_datum(self):
+        """리본 돌출과 실리콘 잔여를 보증하는 것은 이 한 가지 사실이다."""
+        cut, tol = self.builder.cut_gap_mm(self.plant)
+        self.assertGreater(cut - tol, 0.0, "얕은 쪽 공차에서 절단면이 기준면 위로 올라온다")
+        # 그래서 돌출은 남지 않는다 — 사양 5 mm 대비 여유.
+        self.assertLessEqual(-(cut - tol), handoff.RIBBON_STUB_MAX_MM)
+
+    def test_the_cut_depth_pierces_the_backsheet_and_says_so(self):
+        """고쳐지지 않은 채로 있는 충돌 — 표가 조용해지면 여기서 먼저 걸린다."""
+        cut, tol = self.builder.cut_gap_mm(self.plant)
+        self.assertGreater(cut - tol, handoff.LAMINATE_BACKSHEET_MM)
+        self.assertIn("절입이 백시트보다 깊다", self.html)
+        self.assertIn("리본이 도면에 없다", self.html)
+
+    def test_no_part_handles_the_ribbon(self):
+        """미결의 근거 — 있으면 그때 미결에서 내린다."""
+        names = re.findall(r'\["JB-[A-Z]{2}-\d{3}","[^"]*","([^"]*)"', self.plant)
+        self.assertGreater(len(names), 50)
+        self.assertEqual([n for n in names if "리본" in n or "플러시" in n], [])
 
     def test_the_plan_draws_this_cell_only(self):
         """상세도 평면에서도 이웃 존 사각형을 뺐다 — 방향만 남긴다."""

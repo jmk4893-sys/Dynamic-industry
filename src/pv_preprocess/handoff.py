@@ -493,3 +493,52 @@ JBR_UTILISATION_BASE = campaign.JBR_S / campaign.summary()["takt_s"]
 
 def plans() -> tuple[Plan, Plan]:
     return (plan_b(), plan_c())
+
+
+# ── JBR-201 출력 조건 (하류 DG-HK60 투입 조건) ───────────────────────────
+# 발주자가 DG-HK60 의 투입 상태를 「프레임·정션박스·케이블 제거 후 라미네이트」로
+# 확정했다. 그 사양서가 정션박스 흔적 허용치를 적었고, 그것이 곧 **상류 JBR-201 의
+# 출력 조건**이다 — 눕혀 굽힌 리본 단부가 백시트 박리 중 구멍을 걸어 찢기 때문이다.
+#
+# 값의 출처는 이 저장소 안에 있다. 다시 유도하지 않았다 — 그 문서가 바뀌면 여기도
+# 같이 고쳐야 한다.
+
+#: 출처 문서와 그 안의 절.
+JBOX_TRACE_SOURCE = "docs/dg-hk60-rfq.html §4.2 · 발주자 확정"
+
+#: 리본 단부가 백시트 면 **위로** 나올 수 있는 최대 높이 (mm).
+RIBBON_STUB_MAX_MM = 5.0
+
+#: 접착 실리콘이 백시트 면에 남을 수 있는 최대 높이 (mm).
+SILICONE_RESIDUE_MAX_MM = 2.0
+
+#: 리본 단부를 백시트 위로 눕혀 굽히는 것은 허용하지 않는다.
+RIBBON_MAY_BE_LAID_OVER = False
+
+#: 케이블은 잔여를 허용하지 않는다 (프레임 실란트 잔여는 AFR 쪽 항목이라 여기 없다).
+CABLE_RESIDUE_ALLOWED = False
+
+#: 하류가 전제하는 적층 구성 — 백시트 두께는 JBR 절입 깊이와 직접 부딪친다.
+LAMINATE_BACKSHEET_MM = 0.30
+
+
+def jbox_trace_spec() -> tuple[tuple[str, str, str], ...]:
+    """출력 조건 — (항목, 사양, 왜 상류 조건인가).
+
+    수치는 위 상수에서 온다. 문장을 손으로 적으면 사양서와 갈라진다.
+    """
+    return (
+        ("리본 단부 돌출",
+         f"백시트 면 위 ≤ {RIBBON_STUB_MAX_MM:g} mm",
+         "튀어나온 단부는 박리 중 백시트를 걸어 찢는다"),
+        ("리본 단부 자세",
+         "백시트 위로 눕혀 굽히지 않는다"
+         if not RIBBON_MAY_BE_LAID_OVER else "눕힘 허용",
+         "눕힌 단부는 백시트 구멍을 걸어 찢는다 — 하류가 가장 먼저 적은 항목이다"),
+        ("케이블 잔여",
+         "없음" if not CABLE_RESIDUE_ALLOWED else "허용",
+         "권취 클램프와 장력에 걸린다"),
+        ("접착 실리콘 잔여",
+         f"백시트 면 위 ≤ {SILICONE_RESIDUE_MAX_MM:g} mm",
+         "핫나이프가 계면으로 들어가는 것을 방해한다"),
+    )

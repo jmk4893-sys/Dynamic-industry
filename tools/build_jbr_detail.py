@@ -34,8 +34,8 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
 
 from pv_preprocess import (access, acoustics, air, campaign, dust,  # noqa: E402
-                           electrical, layout, mounting, reliability, safety,
-                           servos, thermal, wiring)
+                           electrical, handoff, layout, mounting, reliability,
+                           safety, servos, thermal, wiring)
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PLANT = ROOT / "docs/drawings/pv-preprocess-plant.html"
@@ -778,7 +778,88 @@ def interface_table(text: str) -> str:
     return table(["항목", "내용"], [[esc(k), v] for k, v in interface_rows(text)], "kv")
 
 
-def open_items() -> str:
+def cut_gap_mm(text: str) -> tuple[float, float]:
+    """POM 기준 슈가 정하는 절입 깊이 — 부품표 JB-HD-009 의 공차란이 출처다."""
+    m = re.search(r'"JB-HD-009","[^"]*","스프링 POM 기준 슈","[^"]*",\[[^\]]*\],'
+                  r'"[^"]*","[^"]*","([^"]*)"', text)
+    if not m:
+        raise SystemExit("✗ JB-HD-009 의 공차란을 못 읽었다")
+    v = re.search(r"([\d.]+)\s*±\s*([\d.]+)", m.group(1))
+    if not v:
+        raise SystemExit(f"✗ 절입간격을 못 읽었다: {m.group(1)}")
+    return float(v.group(1)), float(v.group(2))
+
+
+def stage_span(text: str, needle: str) -> tuple[float, float]:
+    """이름에 `needle` 이 든 스테이지의 로컬 구간."""
+    hit = [(a, b) for name, a, b in stages(text) if needle in name]
+    if len(hit) != 1:
+        raise SystemExit(f"✗ 스테이지 «{needle}» 가 {len(hit)} 개 — 1 개여야 한다")
+    return hit[0]
+
+
+def output_table(text: str) -> str:
+    """출력 조건과, **기구의 무엇이 그것을 보증하는가**.
+
+    사양은 `handoff` 모델에서, 보증 수단은 이 도면의 값(절입 공차·스테이지 시각)에서
+    온다. 둘을 맞대 보는 것이 이 표의 일이다 — 조건만 적어 두면 지켜지는지 알 수 없다.
+    """
+    cut, tol = cut_gap_mm(text)
+    cable = stage_span(text, "순차 절단")
+    shear = stage_span(text, "동시 박리")
+    lift = stage_span(text, "동시 인양")
+    back = handoff.LAMINATE_BACKSHEET_MM
+
+    # 전단면이 백시트 기준면보다 아래다 — 그 평면을 지나는 것은 그 높이에서 잘린다.
+    stub = -(cut - tol)                                   # 최악(얕은 절입)의 돌출
+    guards = {
+        "리본 단부 돌출": (
+            f"L칼날이 POM 기준 슈로 백시트 기준면을 잡고 그보다 <b>{cut:g}±{tol:g} mm 아래</b>에서 "
+            f"박스 발자국 전체를 쓴다. 그 평면을 지나는 것은 같은 높이에서 잘리므로 "
+            f"얕은 쪽 공차({cut - tol:g} mm)에서도 절단면이 기준면 아래라 "
+            f"<b>돌출이 남지 않는다</b>.",
+            stub <= handoff.RIBBON_STUB_MAX_MM,
+            "리본이 도면에 없다 — 계산은 서지만 검증할 대상이 없다"),
+        "리본 단부 자세": (
+            f"전단 <b>{n(shear[0])}–{n(shear[1])} s</b> 가 인양 "
+            f"<b>{n(lift[0])}–{n(lift[1])} s</b> 보다 <b>먼저</b> 끝난다. 붙어 있는 채로 "
+            "들어 올리는 순간이 없으므로 단부가 눕을 자리가 없다.",
+            shear[1] <= lift[0], ""),
+        "케이블 잔여": (
+            f"콤이 도체를 홈에 물고 가위 A→B 가 <b>{n(cable[0])}–{n(cable[1])} s</b> 에 "
+            "순차 절단한 뒤 하네스를 전량 케이블 배출슈트로 흘린다. 절단은 검출열 밖에서 "
+            "이루어지고 남는 꼬리는 박스에 붙어 함께 나간다.",
+            True, ""),
+        "접착 실리콘 잔여": (
+            f"접착층은 백시트 면 <b>위</b>에 있고 전단면은 그보다 {cut:g} mm 아래다. "
+            "그래서 접착은 전량 박스와 함께 떨어진다 — 잔여 0 mm.",
+            0.0 <= handoff.SILICONE_RESIDUE_MAX_MM, ""),
+    }
+    rows = []
+    for item, spec, why in handoff.jbox_trace_spec():
+        how, ok, caveat = guards[item]
+        mark = ('<b class="ok">보증</b>' if ok else '<b class="bad">미보증</b>')
+        if caveat:
+            mark += f'<span class="cav">{esc(caveat)}</span>'
+        rows.append([esc(item), esc(spec), how, mark, esc(why)])
+    body = table(["항목", "사양", "무엇이 보증하는가", "판정", "왜 상류 조건인가"], rows)
+
+    pierce = cut - tol > back
+    note = (
+        f'<div class="note warn"><b>두 가지를 같이 올린다.</b> '
+        f'① <b>리본이 도면에 없다.</b> JB 품번 어디에도 리본·플러시 절단 항목이 없고 3D 에도 '
+        f'리본이 없다. 위 계산은 전단면이 백시트 기준면보다 아래라는 데서 나오지만, 잴 대상이 '
+        f'도면에 없으므로 <b>검증되지 않았다</b> — 리본 관통 위치를 도면에 넣고 후검증'
+        f'(JBR-VS-201A)에 돌출 높이 측정을 더해야 한다. '
+        f'② <b>절입 {cut:g}±{tol:g} mm 가 백시트 {back:g} mm 보다 깊다</b>'
+        f'{" — 얕은 쪽 공차에서도 그렇다" if pierce else ""}. 그래서 칼날이 박스 발자국마다 '
+        f'백시트를 관통한다. 하류는 백시트를 <b>전장 연속 권취</b>하므로 '
+        f'(같은 사양서 4.3 절) 그 구멍을 감당할 수 있는지는 두 셀이 같이 '
+        f'정해야 한다.</div>')
+    return body + note
+
+
+def open_items(text: str) -> str:
     """미결 항목 — 모델이 스스로 '미확정' 이라고 적은 것만 모은다."""
     items = [
         ("칼날 수명", "SP-01 SKD11 칼날 카세트의 연간 소요가 <b>없다</b>. 패널당 절단 길이는 "
@@ -796,6 +877,18 @@ def open_items() -> str:
          "통합 설계도 상업화 사양표"),
         ("차광 조도", "차광 투입 터널의 허용 내부조도는 실물 위험성평가에서 확정한다.",
          "3D 차광 투입 터널 주석"),
+        ("리본이 도면에 없다",
+         f"하류가 리본 단부 돌출 ≤{handoff.RIBBON_STUB_MAX_MM:g} mm 와 눕힘 금지를 "
+         "요구하는데 <b>리본이 이 도면 어디에도 없다</b> — JB 품번에도, 3D 에도. 전단면이 "
+         "백시트 기준면보다 아래라 계산은 서지만 잴 대상이 없다. 리본 관통 위치·높이를 "
+         "도면에 넣고 후검증에 돌출 측정을 더해야 조건이 검증된다.",
+         f"{handoff.JBOX_TRACE_SOURCE} vs 부품표 JB-*"),
+        ("절입이 백시트보다 깊다",
+         f"절입 {n(cut_gap_mm(text)[0])}±{n(cut_gap_mm(text)[1])} mm 는 백시트 "
+         f"{handoff.LAMINATE_BACKSHEET_MM:g} mm 보다 깊다. 칼날이 박스 발자국마다 백시트를 "
+         "관통하는데, 하류는 백시트를 전장 연속 권취한다. 구멍을 감당할지 아니면 절입을 "
+         "접착층 안으로 올릴지는 두 셀이 같이 정해야 한다.",
+         "JB-HD-009 공차란 vs DG-HK60 4.2·4.3"),
         ("2D·3D 원점", f"GA 시트는 장비 중심을, 3D 장면은 존 중심을 부품 좌표 원점으로 쓴다. "
                     f"가드 여유가 상류 {n(layout.station_edges_mm(CELL)[0])} · 하류 "
                     f"{n(layout.station_edges_mm(CELL)[1])} 로 비대칭이라 둘이 "
@@ -869,6 +962,9 @@ svg text{fill:var(--ink);font:12px -apple-system,system-ui,sans-serif}
 svg text.dimt{fill:var(--ink3);font-size:11px;font-variant-numeric:tabular-nums}
 svg text.dimt.dim2{fill:var(--ink3);opacity:.72}
 svg text.small{font-size:11.5px;fill:var(--ink2)}
+b.ok{color:var(--ok)}
+b.bad{color:var(--red)}
+.cav{display:block;font-size:11.5px;color:var(--ink3);font-weight:400;margin-top:2px}
 svg text.tiny{font-size:10.5px;fill:var(--ink2)}
 svg text.axis{fill:var(--brand);font-family:var(--mono);font-size:9.5px}
 svg text.axis.inbar{fill:var(--card);}
@@ -976,6 +1072,14 @@ JB-201 축적·인계 런으로, 셀 귀속은 jbr 이지만 자리는 상류 ro
 <h2>7. 인계 조건</h2>
 {interface_table(text)}
 
+<h3>JBR-201 출력 조건 — 하류 DG-HK60 투입 조건</h3>
+<p class="lead">발주자가 DG-HK60 의 투입 상태를 「프레임·정션박스·케이블 제거 후
+라미네이트」로 확정했다. 그 사양서가 적은 <b>정션박스 흔적 허용치</b>가 곧 이 셀의
+출력 조건이고, 같은 값이 JB/AFR-301 통합 검증의 합격 조건에 들어간다.
+값의 출처는 <code>{esc(handoff.JBOX_TRACE_SOURCE)}</code> 이고 수치는
+<code>handoff.py</code> 에서 온다.</p>
+{output_table(text)}
+
 <h2>8. 구동과 전기</h2>
 {drive_table()}
 {power_table()}
@@ -1008,7 +1112,7 @@ JB-PV-002 의 허용전압·CAT 등급과 함께 실물 위험성평가에서 �
 {catalog_table(parts)}
 
 <h2>13. 미결 항목</h2>
-{open_items()}
+{open_items(text)}
 
 <footer>
   {esc(ga['sheet'])} · {esc(rev)} · 생성 <code>PYTHONPATH=src python tools/build_jbr_detail.py</code><br>
