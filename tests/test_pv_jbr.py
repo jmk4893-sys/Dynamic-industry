@@ -134,6 +134,73 @@ class TestJbrScene(unittest.TestCase):
         body = conv.convert(self.html, SCENE)
         self.assertIn("<title>JBR-201 정션박스 제거장치</title>", body)
 
+    # ── 배치도를 이 셀 것으로 좁혔는가 ────────────────────────────────
+    def test_the_cell_envelope_agrees_between_model_and_ga_sheet(self):
+        """가로·세로·높이는 배치 모델과 GA 시트 두 곳에 있다 — 갈라지면 멈춘다."""
+        L, W, H = self.builder.cell_envelope(self.plant)
+        z = next(x for x in layout.build_zones() if x.key == "jbr")
+        self.assertEqual((L, W, H), (z.x1_mm - z.x0_mm, z.y1_mm - z.y0_mm, z.height_mm))
+        with self.assertRaises(SystemExit):
+            self.builder.cell_envelope(
+                self.plant.replace("envelope: [7400, 3050, 2800]",
+                                   "envelope: [7400, 3050, 2801]"))
+
+    def test_the_layout_draws_this_cell_only(self):
+        """원본 초점은 뷰박스만 옮긴다 — 그리는 단계에서 존을 걸러야 한다."""
+        self.assertIn("var layoutZones = window.__pvLayoutZones", self.html)
+        self.assertIn("return zone[0] === 'jbr'; }", self.html)
+        self.assertIn("[['jbr', 'jbr']].forEach(function (pair) {", self.html)
+        # 원본은 그대로다 — 손댄 것은 파생본뿐이다.
+        self.assertIn("[['afu', 'robot'], ['jbr', 'afr'], ['post', 'buffer']]", self.plant)
+        self.assertNotIn("[['jbr', 'jbr']]", self.plant)
+        self.assertNotIn("var layoutZones = window.__pvLayoutZones", self.plant)
+
+    def test_the_layout_stops_claiming_plant_totals(self):
+        """셀 하나만 그리는데 「전체 X = 50,075」가 서 있으면 그 폭으로 읽힌다."""
+        for gone in ("'전체 X = ' + n(PLANT_X)", "'전체 Y = ' + n(PLANT_Y)",
+                     "[PLANT_X, PLANT_Y, PLANT_Z].map(n)"):
+            with self.subTest(gone=gone):
+                self.assertIn(gone, self.plant)
+                self.assertNotIn(gone, self.html)
+        self.assertIn("'셀 X = ' + n(layoutZones[0][3] - layoutZones[0][2])", self.html)
+        self.assertIn("'셀 Y = ' + n(layoutZones[0][5] - layoutZones[0][4])", self.html)
+
+    def test_the_spec_block_carries_the_three_dimensions(self):
+        L, W, H = self.builder.cell_envelope(self.plant)
+        self.assertIn(f'<span class="viz-badge">{L:,} × {W:,} × {H:,} mm</span>', self.html)
+        for label, value in (("가로 (X · 공정방향)", L), ("세로 (Y · 진행방향 좌측)", W),
+                             ("높이 (Z · FFL 상향)", H)):
+            with self.subTest(label=label):
+                self.assertIn(f"<tr><td>{label}</td><td>{value:,} mm</td>", self.html)
+        # 스펙은 배치도 패널 안, 도면보다 앞에 선다.
+        panel = self.html.index('id="pv-panel-layout"')
+        self.assertLess(panel, self.html.index('class="pv-jbr-spec"'))
+        self.assertLess(self.html.index('class="pv-jbr-spec"'),
+                        self.html.index('id="pv-layout-svg"'))
+
+    def test_the_layout_names_this_cell(self):
+        for was, now in (("전체 장비배치도", "장비 스펙·셀 배치"),
+                         ("상세 장비배치도", "장비 스펙·셀 배치"),
+                         ("layout: '전체 장비 상세 배치도'", "layout: 'JBR-201 장비 스펙 · 셀 배치'")):
+            with self.subTest(now=now):
+                self.assertIn(was, self.plant)
+                self.assertNotIn(was, self.html)
+                self.assertIn(now, self.html)
+        self.assertIn("PV-JBR-201-GA-3101 · JBR-201 셀 배치", self.html)
+
+    def test_the_render_check_exists(self):
+        """무엇이 실제로 그려졌는지는 브라우저만 안다 — 그리는 쪽이 던지는 예외도."""
+        check = (ROOT / "tools/check_jbr_layout.mjs").read_text(encoding="utf-8")
+        self.assertIn("docs/drawings/pv-jbr-scene.html", check)
+        self.assertIn("pv-layout-station", check)
+        self.assertIn("pv-jbr-spec", check)
+
+    def test_the_focus_control_is_hidden_hard_enough(self):
+        """`.pv-layout-toolbar .form-label` 이 클래스 둘이라 그냥은 못 이긴다."""
+        self.assertIn("pv-layout-focus", self.builder.HIDDEN_CONTROLS)
+        self.assertIn('label[for="pv-layout-focus"]', self.html)
+        self.assertIn("display: none !important;", self.html)
+
     def test_the_readme_lists_the_sheet(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("docs/drawings/pv-jbr-scene.html", readme)

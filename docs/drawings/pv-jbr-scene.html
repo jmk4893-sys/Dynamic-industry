@@ -1044,7 +1044,7 @@ svg.lucide {
 
 html>body{padding:0}</style>
 <style>.pv-flow-track > li:nth-child(-n+5), .pv-flow-track > li:nth-child(n+9) { display: none; }</style>
-<style>label[for="pv-face-in"], label[for="pv-lift-mode"], label[for="afr-route-mode"], #afr-buffer-reset { display: none; }</style>
+<style>label[for="pv-face-in"], label[for="pv-lift-mode"], label[for="afr-route-mode"], label[for="pv-layout-focus"], #afr-buffer-reset { display: none !important; }</style>
 </head>
 <body>
 <div id="jb-removal-operation">
@@ -1101,7 +1101,7 @@ html>body{padding:0}</style>
         <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="simulation" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h4M12 7h8M4 17h8M16 17h4"/><circle cx="10" cy="7" r="2"/><circle cx="14" cy="17" r="2"/></svg><span>통합 시뮬레이션</span></button>
         <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="drawing" data-pv-drawing-tab="fab" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="8" rx="1"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/></svg><span>2D 제작도</span></button>
         <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="drawing" data-pv-drawing-tab="explode" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 21 7.5v9L12 21 3 16.5v-9z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg><span>3D 분해도</span></button>
-        <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="drawing" data-pv-drawing-tab="layout" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 10h18M10 10v10"/></svg><span>상세 장비배치도</span></button>
+        <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="drawing" data-pv-drawing-tab="layout" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 10h18M10 10v10"/></svg><span>장비 스펙·셀 배치</span></button>
         <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="drawing" data-pv-drawing-tab="register" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M11 12h9M11 18h9"/><path d="M4 5v12a1 1 0 0 0 1 1h2M4 11h3"/></svg><span>도면 목록</span></button>
         <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="drawing" data-pv-drawing-tab="electrical" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><span>전기 인입도</span></button>
         <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="parts" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg><span>부품 2D·3D</span></button>
@@ -1331,7 +1331,7 @@ html>body{padding:0}</style>
   <section class="pv-drawing-suite" aria-labelledby="pv-drawing-title">
     <div class="pv-drawing-head">
       <div>
-        <h3 id="pv-drawing-title">Rev.22 2D·3D 상세 제작도면 및 전체 장비배치</h3>
+        <h3 id="pv-drawing-title">JBR-201 2D·3D 제작도면 및 장비 스펙</h3>
         <div class="text-small text-muted" id="pv-drawing-live" aria-live="polite">PV-AFU-101-GA-2101 · 투입·비전·듀얼 리프트 셀</div>
       </div>
       <span class="viz-badge">BASIC DESIGN · mm · NTS</span>
@@ -1340,7 +1340,7 @@ html>body{padding:0}</style>
     <div class="nav nav-pills" role="tablist" aria-label="도면 보기">
       <button class="nav-link active" id="pv-tab-fab" role="tab" aria-controls="pv-panel-fab" aria-selected="true" type="button">2D 제작도</button>
       <button class="nav-link" id="pv-tab-explode" role="tab" aria-controls="pv-panel-explode" aria-selected="false" type="button">3D 분해·조립도</button>
-      <button class="nav-link" id="pv-tab-layout" role="tab" aria-controls="pv-panel-layout" aria-selected="false" type="button">전체 장비배치도</button>
+      <button class="nav-link" id="pv-tab-layout" role="tab" aria-controls="pv-panel-layout" aria-selected="false" type="button">장비 스펙·셀 배치</button>
       <button class="nav-link" id="pv-tab-register" role="tab" aria-controls="pv-panel-register" aria-selected="false" type="button">도면 목록</button>
       <button class="nav-link" id="pv-tab-electrical" role="tab" aria-controls="pv-panel-electrical" aria-selected="false" type="button">전기 인입도</button>
       <button class="nav-link" id="pv-tab-smart" role="tab" aria-controls="pv-panel-smart" aria-selected="false" type="button">스마트·AI</button>
@@ -1401,6 +1401,14 @@ html>body{padding:0}</style>
     </div>
 
     <div id="pv-panel-layout" role="tabpanel" aria-labelledby="pv-tab-layout" hidden>
+      <div class="pv-jbr-spec">
+        <h4 class="text-small" style="margin:0 0 6px">장비 전체 스펙 <span class="viz-badge">7,400 × 3,050 × 2,800 mm</span></h4>
+        <div class="table-responsive"><table class="table table-sm">
+          <thead><tr><th>항목</th><th>값</th><th>기준</th></tr></thead>
+          <tbody><tr><td>가로 (X · 공정방향)</td><td>7,400 mm</td><td>존 10,150 → 17,550 mm</td></tr><tr><td>세로 (Y · 진행방향 좌측)</td><td>3,050 mm</td><td>존 2,025 → 5,075 mm</td></tr><tr><td>높이 (Z · FFL 상향)</td><td>2,800 mm</td><td>이송면 H=950 · X 브리지 H=2,200 · 비전 H=2,620</td></tr></tbody>
+        </table></div>
+        <p class="text-small text-muted">셀 외형 포락선이다. 아래 배치도는 이 파생본에서 <b>JBR-201 셀 장비만</b> 그린다 — 상·하류 존은 통합 설계도에 그대로 있고 여기서만 뺐다.</p>
+      </div>
       <div class="pv-layout-toolbar viz-controls" aria-label="배치도 제어">
         <label class="form-label" for="pv-layout-focus">배치 초점
           <select class="form-select" id="pv-layout-focus">
@@ -3052,7 +3060,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
   ];
 
   // [키, 표기, X0, X1, Y0, Y1, 높이, 주기]
-  var layoutZones = zoneSeed.reduce(function (rows, seed) {
+  var pvAllZones, layoutZones = pvAllZones = zoneSeed.reduce(function (rows, seed) {
     var envelope = stations[seed[0]] && stations[seed[0]].envelope;
     var spanX = envelope ? envelope[0] : seed[4];
     var spanY = envelope ? envelope[1] : seed[5];
@@ -3648,17 +3656,22 @@ window.pvMarkPaint = function (ctx, x, y, w) {
   }
 
   function renderLayout() {
+    /* JBR-201 파생본: 이 함수 안에서만 존을 셀 하나로 가린다. */
+    var layoutZones = window.__pvLayoutZones
+      || (window.__pvLayoutZones = pvAllZones.filter(function (zone) { return zone[0] === 'jbr'; }));
     var ox = LAYOUT_ORIGIN_X, oy = LAYOUT_ORIGIN_Y, scale = LAYOUT_SCALE, floorY = LAYOUT_FLOOR_Y;
     var out = [];
     out.push('<defs><marker id="pv-layout-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10" fill="var(--viz-series-1)"/></marker><marker id="pv-layout-dim-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M10 0L0 5L10 10" fill="var(--muted-foreground)"/></marker><marker id="pv-layout-dim-end" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10" fill="var(--muted-foreground)"/></marker></defs>');
-    out.push('<title>태양광 패널 전처리 플랜트 전체 상세 장비배치도</title><desc>듀얼 리프트부터 반전 로봇 정션박스 제거 프레임 분리 검사 연마 레시피 버퍼까지 ' +
+    out.push('<title>JBR-201 정션박스·케이블 제거셀 장비배치도</title><desc>이 셀 하나의 평면과 종단 배치 — 상하류 존은 통합 설계도에 있다. 설비 전체는 ' +
       (PLANT_X / 1000).toFixed(1) + '미터 곱하기 ' + (PLANT_Y / 1000).toFixed(1) + '미터 평면 및 종단 배치</desc>');
     out.push('<rect class="pv-layout-frame" x="14" y="14" width="1372" height="732"/>');
-    out.push(text(40, 48, 'PV-PLANT-GA-1001 · 전체 플랜트 상세 배치 · REV.22-P01', 'pv-fab-title'));
-    out.push(text(40, 72, 'X=공정방향 · Y=진행방향 좌측 · Z=FFL 상향 · 영구설비 ' +
-      [PLANT_X, PLANT_Y, PLANT_Z].map(n).join(' × ') + ' mm', 'pv-layout-small'));
+    out.push(text(40, 48, 'PV-JBR-201-GA-3101 · JBR-201 셀 배치 · ' + DRAWING_REVISION, 'pv-fab-title'));
+    out.push(text(40, 72, 'X=공정방향 · Y=진행방향 좌측 · Z=FFL 상향 · 셀 외형 ' +
+      [layoutZones[0][3] - layoutZones[0][2], layoutZones[0][5] - layoutZones[0][4],
+       layoutZones[0][6]].map(n).join(' × ') + ' mm', 'pv-layout-small'));
     // 전체 X 치수선은 y=100. REV.21 에서는 y=90 이라 위 기준 문구와 글자가 겹쳤다.
-    out.push(dimension(mapX(0), 100, mapX(PLANT_X), 100, '전체 X = ' + n(PLANT_X) + ' mm', false, 'layout'));
+    out.push(dimension(mapX(layoutZones[0][2]), 100, mapX(layoutZones[0][3]), 100,
+      '셀 X = ' + n(layoutZones[0][3] - layoutZones[0][2]) + ' mm', false, 'layout'));
     out.push('<rect class="pv-layout-boundary" x="' + ox + '" y="' + oy + '" width="' + (PLANT_X * scale) + '" height="' + (PLANT_Y * scale) + '"/>');
     // 여유공간은 장비 밴드 안으로만 확장한다 — 통로를 잠식하면 통로가 아니다.
     if (state.clearance) layoutZones.forEach(function (zone) {
@@ -3669,7 +3682,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
     out.push('<rect class="pv-layout-aisle" x="' + ox + '" y="' + mapY(MACHINE_BAND_Y) + '" width="' + (PLANT_X * scale) + '" height="' + (AISLE_WIDTH * scale) + '"/>');
     out.push(text(ox + 8, mapY(MACHINE_BAND_Y + AISLE_WIDTH * 0.68), '보행·정비 통로 ' + n(AISLE_WIDTH) + ' MIN · 장비 포락선 밖 전용 밴드 · 문 스윙·전장 작업공간과 중첩 금지', 'pv-layout-small'));
     // 안전 구역은 존 묶음에서 파생한다 — 존 X 가 바뀌면 같이 따라간다.
-    [['afu', 'robot'], ['jbr', 'afr'], ['post', 'buffer']].forEach(function (pair) {
+    [['jbr', 'jbr']].forEach(function (pair) {
       var group = layoutZones.filter(function (zone) {
         return zone[2] >= zoneByKey(pair[0])[2] && zone[3] <= zoneByKey(pair[1])[3];
       });
@@ -3694,7 +3707,9 @@ window.pvMarkPaint = function (ctx, x, y, w) {
         out.push(text(x + w / 2, y + h / 2 + 16, zone[7], 'pv-layout-small', 'middle'));
       }
     });
-    out.push(dimension(mapX(PLANT_X) + 28, mapY(0), mapX(PLANT_X) + 28, mapY(PLANT_Y), '전체 Y = ' + n(PLANT_Y) + ' mm', true, 'layout'));
+    out.push(dimension(mapX(layoutZones[0][2]) - 34, mapY(layoutZones[0][4]),
+      mapX(layoutZones[0][2]) - 34, mapY(layoutZones[0][5]),
+      '셀 Y = ' + n(layoutZones[0][5] - layoutZones[0][4]) + ' mm', true, 'layout'));
     out.push(text(40, 438, '종단면 · 이송면·최대 설비높이', 'pv-fab-title'));
     out.push(line(ox, floorY, mapX(PLANT_X), floorY, 'pv-layout-frame'));
     layoutZones.forEach(function (zone) {
@@ -11128,7 +11143,7 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
   var drawingTitles = {
     fab: '2D 상세 제작도',
     explode: '3D 분해·조립도',
-    layout: '전체 장비 상세 배치도',
+    layout: 'JBR-201 장비 스펙 · 셀 배치',
     register: '도면 목록',
     electrical: '전기 인입 단선결선도',
     smart: '스마트 팩토리 · 네트워크·계측·AI 검토',

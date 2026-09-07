@@ -21,10 +21,16 @@
   정렬·구동·공압·안전·리젝트)과 인계부·상부·초기화만 남긴다. 자동추적이 JBR
   단계마다 고르는 시점(`handoff·safetyflow·clamp·overall·service·tool·capture`)이
   전부 그 안에 있다.
-* **화면** — 흐름표는 JB-201 → JBR-201 → JB/AFR-301 세 칸, 도면 모듈은 JBR 한 장,
-  배치도 초점은 정렬·JBR. 상류 전용 조작(상부 비전 판정·리프트 운전)과 하류 전용
-  조작(AFR 레시피·버퍼 초기화)은 숨기고, **JBR 자신의 조작**(정션박스 검출
-  시나리오·안전품질 검증 시나리오·패널 구조 레시피)은 남긴다.
+* **화면** — 흐름표는 JB-201 → JBR-201 → JB/AFR-301 세 칸, 도면 모듈은 JBR 한 장.
+  상류 전용 조작(상부 비전 판정·리프트 운전)과 하류 전용 조작(AFR 레시피·버퍼
+  초기화)은 숨기고, **JBR 자신의 조작**(정션박스 검출 시나리오·안전품질 검증
+  시나리오·패널 구조 레시피)은 남긴다.
+* **배치도** — 「장비 스펙·셀 배치」로 바꾼다. 원본의 초점(`focusBox`)은 **뷰박스만**
+  옮기므로 존 밖 장비가 SVG 에 그대로 남아 축소하면 플랜트 50 m 가 다 나왔다.
+  `renderLayout` 안에서만 존을 jbr 하나로 가려 **이 셀 장비만** 그리고, 전체 X·Y
+  치수도 셀 값으로 바꾸며, 패널 맨 위에 **장비 전체 스펙(가로·세로·높이)** 을 세운다.
+  값은 배치 모델의 존 폭에서 내고 GA 시트의 `envelope` 과 맞는지 확인한다 —
+  갈라지면 멈춘다. 원본 통합 설계도의 배치도는 그대로다.
 
 원본 파일을 **문자열로 고친다.** 앵커가 정확히 한 곳이어야 하고 아니면 멈춘다 —
 원본이 바뀌어 앵커가 사라지면 파생본이 조용히 옛 모습으로 남는 대신 생성이
@@ -71,7 +77,10 @@ FLOW_FIRST, FLOW_LAST = 6, 8
 
 #: 숨기는 상·하류 전용 조작. JBR 자신의 조작(jb-box-mode·jb-validation-mode)과
 #: 반입 등록 레시피(pv-panel-structure)는 이 셀에서 실제로 결과가 달라지므로 남긴다.
-HIDDEN_CONTROLS: tuple[str, ...] = ("pv-face-in", "pv-lift-mode", "afr-route-mode")
+#: 배치 초점(`pv-layout-focus`)도 여기 든다 — 배치도에 이 셀만 그리므로 다른
+#: 초점은 빈 자리를 확대할 뿐이다. 요소는 남는다 (원본 렌더러가 읽는다).
+HIDDEN_CONTROLS: tuple[str, ...] = ("pv-face-in", "pv-lift-mode", "afr-route-mode",
+                                   "pv-layout-focus")
 
 #: 꺼진 셀에 속하는 셀 키.
 DOWN_CELLS: tuple[str, ...] = ("afu", "robot", "afr", "post", "buffer", "grm")
@@ -105,6 +114,50 @@ def zone_world_x() -> tuple[float, float]:
     zone = next(z for z in layout.build_zones() if z.key == "jbr")
     return ((zone.x0_mm - SCENE_ORIGIN_X_MM) / 1000.0,
             (zone.x1_mm - SCENE_ORIGIN_X_MM) / 1000.0)
+
+
+def cell_envelope(plant: str) -> tuple[int, int, int]:
+    """JBR-201 셀의 가로 × 세로 × 높이 (mm).
+
+    배치 모델의 존 폭에서 내고, 통합 설계도 GA 시트가 적어 둔 `envelope` 과
+    맞는지 확인한다. 두 곳이 갈라지면 어느 쪽이 맞는지 화면이 알 수 없으므로
+    여기서 멈춘다 — 조용히 한쪽을 고르지 않는다.
+    """
+    zone = next(z for z in layout.build_zones() if z.key == "jbr")
+    got = (zone.x1_mm - zone.x0_mm, zone.y1_mm - zone.y0_mm, zone.height_mm)
+    m = re.search(r"jbr: \{.*?envelope: \[(\d+), (\d+), (\d+)\]", plant, re.S)
+    if not m:
+        raise SystemExit("✗ GA 시트에서 jbr 의 envelope 을 못 읽었다")
+    want = tuple(int(v) for v in m.groups())
+    if tuple(int(v) for v in got) != want:
+        raise SystemExit(f"✗ 셀 외형이 갈렸다 — 배치 모델 {got} vs GA 시트 {want}")
+    return want
+
+
+def spec_block(plant: str) -> str:
+    """배치도 패널 맨 위에 세우는 「장비 전체 스펙」 — 가로·세로·높이."""
+    L, W, H = cell_envelope(plant)
+    zone = next(z for z in layout.build_zones() if z.key == "jbr")
+    rows = (
+        ("가로 (X · 공정방향)", L, f"존 {zone.x0_mm:,} → {zone.x1_mm:,} mm"),
+        ("세로 (Y · 진행방향 좌측)", W, f"존 {zone.y0_mm:,} → {zone.y1_mm:,} mm"),
+        ("높이 (Z · FFL 상향)", H, "이송면 H=950 · X 브리지 H=2,200 · 비전 H=2,620"),
+    )
+    body = "".join(
+        f"<tr><td>{label}</td><td>{value:,} mm</td><td>{note}</td></tr>"
+        for label, value, note in rows)
+    return (
+        '      <div class="pv-jbr-spec">\n'
+        '        <h4 class="text-small" style="margin:0 0 6px">장비 전체 스펙 '
+        f'<span class="viz-badge">{L:,} × {W:,} × {H:,} mm</span></h4>\n'
+        '        <div class="table-responsive"><table class="table table-sm">\n'
+        "          <thead><tr><th>항목</th><th>값</th><th>기준</th></tr></thead>\n"
+        f"          <tbody>{body}</tbody>\n"
+        "        </table></div>\n"
+        '        <p class="text-small text-muted">셀 외형 포락선이다. 아래 배치도는 '
+        "이 파생본에서 <b>JBR-201 셀 장비만</b> 그린다 — 상·하류 존은 통합 설계도에 "
+        "그대로 있고 여기서만 뺐다.</p>\n"
+        "      </div>\n")
 
 
 def scene_script(low: float, high: float, t0: float, t1: float) -> str:
@@ -265,6 +318,82 @@ def build() -> str:
     t = _once(t, '<option value="jbr">정렬·JBR</option>',
               '<option value="jbr" selected>정렬·JBR</option>', "배치 초점 기본값")
 
+    # ── 배치도를 이 셀 것으로 좁힌다 ────────────────────────────────────────
+    # 초점(`focusBox`)은 **뷰박스만** 옮긴다 — 존 밖 장비도 SVG 에 그대로 그려져
+    # 있어서 축소하면 플랜트 50 m 가 다 나온다. 이 파생본은 셀 하나를 보는 화면이라
+    # 그리는 단계에서 존을 거른다. `renderLayout` 안에서만 `layoutZones` 를 가리므로
+    # 바깥의 `zoneByKey`(초점 계산)는 여전히 모든 존을 본다.
+    t = _once(t, "function renderLayout() {\n"
+                 "    var ox = LAYOUT_ORIGIN_X, oy = LAYOUT_ORIGIN_Y, "
+                 "scale = LAYOUT_SCALE, floorY = LAYOUT_FLOOR_Y;",
+              "function renderLayout() {\n"
+              "    /* JBR-201 파생본: 이 함수 안에서만 존을 셀 하나로 가린다. */\n"
+              "    var layoutZones = window.__pvLayoutZones\n"
+              "      || (window.__pvLayoutZones = pvAllZones.filter(function (zone) "
+              "{ return zone[0] === 'jbr'; }));\n"
+              "    var ox = LAYOUT_ORIGIN_X, oy = LAYOUT_ORIGIN_Y, "
+              "scale = LAYOUT_SCALE, floorY = LAYOUT_FLOOR_Y;",
+              "배치도 존 거르기")
+    # 가린 이름 너머의 원본 목록을 붙잡아 둔다 — 위 filter 가 읽는 것이 이것이다.
+    t = _once(t, "  // [키, 표기, X0, X1, Y0, Y1, 높이, 주기]\n  var layoutZones = ",
+              "  // [키, 표기, X0, X1, Y0, Y1, 높이, 주기]\n  var pvAllZones, layoutZones = pvAllZones = ",
+              "원본 존 목록 별칭")
+    # 안전구역은 존 묶음 셋을 도는데, 거르고 나면 나머지 둘은 빈 묶음이라 높이가
+    # 음수인 사각형이 나온다. 이 셀 하나만 돈다.
+    t = _once(t, "[['afu', 'robot'], ['jbr', 'afr'], ['post', 'buffer']].forEach(function (pair) {",
+              "[['jbr', 'jbr']].forEach(function (pair) {", "안전구역 묶음")
+    # 도면 이름·설명도 셀 것으로.
+    t = _once(t, "out.push('<title>태양광 패널 전처리 플랜트 전체 상세 장비배치도</title><desc>듀얼 "
+                 "리프트부터 반전 로봇 정션박스 제거 프레임 분리 검사 연마 레시피 버퍼까지 ' +",
+              "out.push('<title>JBR-201 정션박스·케이블 제거셀 장비배치도</title><desc>이 셀 하나의 "
+              "평면과 종단 배치 — 상하류 존은 통합 설계도에 있다. 설비 전체는 ' +",
+              "배치도 제목")
+    t = _once(t, "'PV-PLANT-GA-1001 · 전체 플랜트 상세 배치 · REV.22-P01'",
+              "'PV-JBR-201-GA-3101 · JBR-201 셀 배치 · ' + DRAWING_REVISION",
+              "배치도 시트번호")
+    # 탭·버튼 이름과 모듈 제목.
+    t = _once(t, '<button class="nav-link" id="pv-tab-layout" role="tab" '
+                 'aria-controls="pv-panel-layout" aria-selected="false" type="button">'
+                 "전체 장비배치도</button>",
+              '<button class="nav-link" id="pv-tab-layout" role="tab" '
+              'aria-controls="pv-panel-layout" aria-selected="false" type="button">'
+              "장비 스펙·셀 배치</button>", "배치도 탭 이름")
+    t = _once(t, "<span>상세 장비배치도</span>", "<span>장비 스펙·셀 배치</span>",
+              "배치도 버튼 이름")
+    t = _once(t, "<h3 id=\"pv-drawing-title\">Rev.22 2D·3D 상세 제작도면 및 전체 장비배치</h3>",
+              "<h3 id=\"pv-drawing-title\">JBR-201 2D·3D 제작도면 및 장비 스펙</h3>",
+              "도면 모듈 제목")
+    # 전체 치수는 이제 뜻이 없다 — 셀 하나만 그리는데 옆에 「전체 X = 50,075」가
+    # 서 있으면 그 폭이 이 장비의 것으로 읽힌다. 셋 다 셀 값으로 바꾼다.
+    t = _once(t, "out.push(text(40, 72, 'X=공정방향 · Y=진행방향 좌측 · Z=FFL 상향 · 영구설비 ' +\n"
+                 "      [PLANT_X, PLANT_Y, PLANT_Z].map(n).join(' × ') + ' mm', 'pv-layout-small'));",
+              "out.push(text(40, 72, 'X=공정방향 · Y=진행방향 좌측 · Z=FFL 상향 · 셀 외형 ' +\n"
+              "      [layoutZones[0][3] - layoutZones[0][2], layoutZones[0][5] - layoutZones[0][4],\n"
+              "       layoutZones[0][6]].map(n).join(' × ') + ' mm', 'pv-layout-small'));",
+              "배치도 기준 문구")
+    t = _once(t, "out.push(dimension(mapX(0), 100, mapX(PLANT_X), 100, "
+                 "'전체 X = ' + n(PLANT_X) + ' mm', false, 'layout'));",
+              "out.push(dimension(mapX(layoutZones[0][2]), 100, mapX(layoutZones[0][3]), 100,\n"
+              "      '셀 X = ' + n(layoutZones[0][3] - layoutZones[0][2]) + ' mm', false, 'layout'));",
+              "배치도 X 전체치수")
+    t = _once(t, "out.push(dimension(mapX(PLANT_X) + 28, mapY(0), mapX(PLANT_X) + 28, mapY(PLANT_Y), "
+                 "'전체 Y = ' + n(PLANT_Y) + ' mm', true, 'layout'));",
+              # 오른쪽에 세우면 존 주기 글자를 밟는다 — 비어 있는 왼쪽에 세운다.
+              "out.push(dimension(mapX(layoutZones[0][2]) - 34, mapY(layoutZones[0][4]),\n"
+              "      mapX(layoutZones[0][2]) - 34, mapY(layoutZones[0][5]),\n"
+              "      '셀 Y = ' + n(layoutZones[0][5] - layoutZones[0][4]) + ' mm', true, 'layout'));",
+              "배치도 Y 전체치수")
+    # 팝업 머리글도 셀 것으로.
+    t = _once(t, "    layout: '전체 장비 상세 배치도',",
+              "    layout: 'JBR-201 장비 스펙 · 셀 배치',", "배치도 팝업 제목")
+
+    # 스펙은 배치도 패널 맨 위에 세운다.
+    t = _once(t, '    <div id="pv-panel-layout" role="tabpanel" '
+                 'aria-labelledby="pv-tab-layout" hidden>\n',
+              '    <div id="pv-panel-layout" role="tabpanel" '
+              'aria-labelledby="pv-tab-layout" hidden>\n' + spec_block(text),
+              "장비 전체 스펙")
+
     # ── 흐름표 ──────────────────────────────────────────────────────────────
     t = _once(t, '<h3 id="pv-flow-title">전체 공정 흐름</h3>',
               '<h3 id="pv-flow-title">JBR-201 공정 흐름 '
@@ -283,10 +412,13 @@ def build() -> str:
     for key in HIDDEN_CONTROLS:
         if f'<label class="form-label" for="{key}">' not in t:
             raise SystemExit(f"✗ 범위 밖 조작 {key} 의 라벨이 없다")
+    # `!important` 없이는 못 이긴다 — 배치 초점 라벨은 `.pv-layout-toolbar .form-label`
+    # (클래스 둘)이 잡고 있어서 `label[for=…]`(클래스 하나) 보다 우선순위가 높다.
     hidden = ", ".join(f'label[for="{k}"]' for k in HIDDEN_CONTROLS) + ", #afr-buffer-reset"
     t = _once(t, '<button class="btn" id="afr-buffer-reset" type="button">',
               '<button class="btn" id="afr-buffer-reset" type="button" hidden>', "버퍼 초기화 버튼")
-    t = _once(t, "</head>", f"<style>{hidden} {{ display: none; }}</style>\n</head>", "범위 밖 조작 CSS")
+    t = _once(t, "</head>", f"<style>{hidden} {{ display: none !important; }}</style>\n</head>",
+              "범위 밖 조작 CSS")
 
     # ── 장면을 좁히는 모듈 — 원본 모듈 뒤에 선다 ────────────────────────────
     t = _once(t, "</body>", scene_script(low, high, t0, t1) + "</body>", "장면 모듈")
