@@ -141,6 +141,8 @@ class ThreeDimensionalMarkersTest(unittest.TestCase):
         cls.marked = set(re.findall(r'markSwap\([^;]*?"([A-Z0-9-]+)"\)', live))
         if 'markSwap(wetEnd, `${tag.replace("-", "")}-WETEND`)' in live:
             cls.marked |= {pid for pid in cls.ids if pid.endswith("-WETEND")}
+        if 'markSwap([hose], `${tag.replace("-", "")}-HOSE`)' in live:
+            cls.marked |= {pid for pid in cls.ids if pid.endswith("-HOSE")}
         cls.envelopes = set(re.findall(r'addEnvelope\("([A-Z0-9-]+)"', live))
         if '["P101-WETEND", p101]' in live:
             cls.envelopes |= {pid for pid in cls.ids if pid.endswith("-WETEND")}

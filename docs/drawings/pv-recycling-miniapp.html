@@ -15948,6 +15948,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     { id: "P102-WETEND", machine: "P-102 A/B", tag: "wet", part: "슬러리펌프 습식단 카트리지", module: "백풀아웃 카트리지",
       method: "P-101 과 동일", tools: "인양 러그", mttrMin: 50, bom: ["AS-051", "AS-060"],
       life: { basis: "wetHours", limit: 3000, unit: "h" }, sensors: ["VIT-P102"], spare: "카트리지 1" },
+    // 호스펌프의 마모부는 호스 하나뿐이다 — 접액부에 임펠러도 라이너도 씰도 없다.
+    // 그 대신 호스는 소모품이라 수명이 짧고, 파단하면 케이싱 윤활유로 슬러리가 샌다.
+    { id: "P103-HOSE", machine: "P-103 A/B", tag: "wet", part: "압착호스 DN32 (AS-101 → AS-101B)", module: "호스",
+      method: "전면커버 → 슈를 후퇴시켜 호스를 빼고 새 호스를 감는다 (배관 무접촉 · 씰 없음)",
+      tools: "육각렌치", mttrMin: 40, bom: ["AS-053", "AS-055"],
+      life: { basis: "wetHours", limit: 2000, unit: "h" }, sensors: ["LDT-P103"], spare: "호스 2 (A/B 각 1)" },
+    { id: "P104-HOSE", machine: "P-104 A/B", tag: "wet", part: "압착호스 DN32 (AS-101B → BS-101A)", module: "호스",
+      method: "P-103 과 동일", tools: "육각렌치", mttrMin: 40, bom: ["AS-054", "AS-055"],
+      life: { basis: "wetHours", limit: 2000, unit: "h" }, sensors: ["LDT-P104"], spare: "호스 2 (A/B 각 1)" },
     { id: "PP201-WETEND", machine: "PP-201 A/B", tag: "wet", part: "러퍼 급광펌프 습식단", module: "백풀아웃 카트리지",
       method: "P-101 과 동일", tools: "인양 러그", mttrMin: 50, bom: ["AS-060"],
       life: { basis: "wetHours", limit: 3000, unit: "h" }, sensors: ["VIT-PP201"], spare: "카트리지 1" },
@@ -16011,6 +16020,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     { tag: "VIT-P101", asset: "P-101 베어링 프레임", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "P101-WETEND" },
     { tag: "VIT-P102", asset: "P-102 베어링 프레임", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "P102-WETEND" },
     { tag: "VIT-PP201", asset: "PP-201 베어링 프레임", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "PP201-WETEND" },
+    // 호스 파단은 진동이 아니라 케이싱 윤활유의 전도도로 잡는다 — 슬러리가 섞이면 뛴다.
+    { tag: "LDT-P103", asset: "P-103 케이싱 호스파단", kind: "leak", unit: "µS/cm", alarm: 50, trip: 200, wearOf: "P103-HOSE" },
+    { tag: "LDT-P104", asset: "P-104 케이싱 호스파단", kind: "leak", unit: "µS/cm", alarm: 50, trip: 200, wearOf: "P104-HOSE" },
     { tag: "VIT-P204", asset: "P-204 베어링 프레임", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "P204-WETEND" },
     { tag: "VIT-P301", asset: "P-301 헤드", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "P301-WETEND" },
     { tag: "VIT-211", asset: "FC-201 로터 베어링", kind: "vib", unit: "mm/s", alarm: 4.5, trip: 7.1, wearOf: "FC-ROTOR" },
@@ -16031,7 +16043,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     { id: "LOTO-401", where: "PLC-001 습식 MCC 잠금형 개폐기", covers: "P-xxx 펌프 · FC 구동 · AS-101 · FP-301 유압", locks: 8 },
     // Ag 회수 신설 계통. RM-201 은 회전 매체가 있어 잔류 회전이 멎을 때까지 열지
     // 않는다 — 개폐기 잠금만으로는 부족해 관성정지 확인이 절차에 들어간다.
-    { id: "LOTO-402", where: "LCP-AG-101 잠금형 개폐기", covers: "RM-201 · AS-101B · FC-101 BL-101 · CN-201 · CT-101 · PS-201 · FW-102", locks: 7 }
+    // P-103/104 는 호스펌프라 정지해도 호스 안에 압력이 남는다 — 개폐기 잠금 뒤
+    // 케이싱을 열기 전에 토출 감쇠기의 드레인으로 잔압을 빼는 것이 절차에 들어간다.
+    { id: "LOTO-402", where: "LCP-AG-101 잠금형 개폐기", covers: "RM-201 · AS-101B · FC-101 BL-101 · CN-201 · CT-101 · PS-201 · FW-102 · P-103A/B · P-104A/B", locks: 9 }
   ]);
 
   try {
@@ -17811,6 +17825,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       vacuumBlower: 2900,         // 가정 · 2극 60 Hz
       rotaryFeeder: 30,           // 가정 · SF-401
       reagentPump: 45,            // 가정 · 정량펌프
+      hosePump: 42,               // 가정 · P-103/104 호스펌프 — 감속기 출력축
       centrifuge: 1800,           // 가정 · CF-204 바스켓
       chillerFan: 900,            // 가정 · CH-601 축류 응축기팬
       coolingPump: 1750           // 가정 · P-601A/B 4극 60 Hz
@@ -19615,6 +19630,75 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       return { group, suction: [x - 0.55, 0.24, z], discharge: [x + 0.55, 0.42, z] };
     }
 
+    // ---- 호스(연동) 펌프 A/B — 어트리션 2 단 이송 -------------------------------
+    // 어트리션 순환물은 65 wt% 페이스트에 BM-101 알루미나 비드(BS-101A 슬롯 1.0 mm 이
+    // 잡는 크기이므로 ≥1 mm)가 섞여 있고, 유량은 0.24 m³/h 뿐이다. 원심 슬러리펌프는
+    // 두 가지 이유로 못 쓴다 — 그 유량이 DN50 원심의 최소유량 아래라 되돌림만 하고,
+    // 비드가 임펠러·라이너를 갉는다. 호스펌프는 유체가 호스 안에만 있어 접액 마모부가
+    // 호스 하나뿐이고, 씰이 없어 누설점이 없으며, 자흡·건회전·역회전 라인비움이 된다.
+    // 대신 맥동이 있으므로 토출에 감쇠기를 달고 스키드는 방진이 아니라 강접 앵커다.
+    function wetHosePumpPair(tag, x, z, activation, streamMaterial, label) {
+      const group = new THREE.Group();
+      group.name = tag;
+      unifiedWet.add(group);
+      wetBox(group, [1.30, 0.10, 0.86], [x, 0.05, z], material.frame, `${tag} 공통 스키드 베이스`);
+      // 맥동 하중을 기초로 흘린다 — 방진마운트를 쓰면 스키드가 맥동에 올라탄다.
+      for (const dx of [-0.55, 0.55]) for (const dz of [-0.34, 0.34]) {
+        wetBox(group, [0.18, 0.022, 0.18], [x + dx, 0.111, z + dz], material.fixed, `${tag} 그라우트 패드`);
+        wetAnchor(group, `${tag} 기초 앵커볼트 M16`, x + dx, 0.122, z + dz, 0.016, 0.06);
+      }
+      [-0.26, 0.26].forEach((offset, index) => {
+        const suffix = index ? "B" : "A";
+        const pz = z + offset;
+        // 케이싱 — 축이 x 방향이라 둥근 면이 남·북으로 보인다
+        wetCylinder(group, 0.19, 0.20, [x + 0.06, 0.42, pz], material.equipmentPump, `${tag}${suffix} 호스펌프 케이싱`, 30, [0, 0, Math.PI / 2], true);
+        wetCylinder(group, 0.20, 0.025, [x + 0.17, 0.42, pz], material.cover, `${tag}${suffix} 케이싱 전면커버`, 30, [0, 0, Math.PI / 2]);
+        // 호스 — 케이싱 안을 한 바퀴 도는 보강 고무호스. 이것이 유일한 접액 마모부다.
+        const hose = wetMesh(group, new THREE.TorusGeometry(0.135, 0.030, 8, 26), wetBeltMaterial,
+          [x + 0.06, 0.42, pz], `${tag}${suffix} 압착호스 DN32`, [0, Math.PI / 2, 0]);
+        // 슈 2 개가 호스를 눌러 밀어낸다 — 로터 한 바퀴에 두 번 토출한다.
+        const rotor = new THREE.Group();
+        rotor.position.set(x + 0.06, 0.42, pz);
+        group.add(rotor);
+        wetCylinder(rotor, 0.045, 0.17, [0, 0, 0], material.fixed, `${tag}${suffix} 로터 허브`, 20, [0, 0, Math.PI / 2]);
+        for (const side of [-1, 1]) {
+          wetBox(rotor, [0.16, 0.075, 0.10], [0, side * 0.115, 0], material.silverClamp, `${tag}${suffix} 압착슈`);
+        }
+        wetRotors.push({ activation, rpm: DRIVE_RPM.hosePump, parts: [rotor], axis: "x", train: suffix });
+        markSwap([hose], `${tag.replace("-", "")}-HOSE`);
+        // 감속기 — 호스펌프는 저속·고토크라 모터가 바로 붙지 않는다
+        wetBox(group, [0.24, 0.24, 0.22], [x - 0.24, 0.40, pz], material.cover, `${tag}${suffix} 감속기`);
+        wetCylinder(group, 0.105, 0.26, [x - 0.49, 0.40, pz], wetMotorMaterial, `${tag}${suffix} IE5 PM VFD 모터 0.75 kW`, 24, [0, 0, Math.PI / 2]);
+        // 호스 파단 검출 — 파단하면 케이싱 윤활유에 슬러리가 섞인다. 그 전에 잡는다.
+        // 전도도 루프는 A/B 공통 1 점(LDT-P10x)이고 프로브만 케이싱마다 하나씩 잠긴다.
+        const leakProbe = wetCylinder(group, 0.028, 0.06, [x + 0.06, 0.235, pz], material.product106, `${tag}${suffix} 호스 파단 검출기`, 14);
+        leakProbe.userData.sensorTag = `LDT-${tag.replace("-", "")}`;
+        // 흡입(아래·서) · 토출(아래·동) 스텁
+        wetCylinder(group, 0.042, 0.12, [x - 0.05, 0.27, pz], streamMaterial, `${tag}${suffix} 흡입 스텁`, 16, [0, 0, Math.PI / 3]);
+        wetCylinder(group, 0.042, 0.12, [x + 0.17, 0.28, pz], streamMaterial, `${tag}${suffix} 토출 스텁`, 16, [0, 0, -Math.PI / 3]);
+      });
+      // 흡입은 감속기(하면 0.28) 밑을 지나므로 y 0.20 으로 낮춘다.
+      const suctionTee = [x - 0.30, 0.20, z];
+      const dischargeTee = [x + 0.40, 0.26, z];
+      wetTube(group, [[x - 0.62, 0.20, z], suctionTee], 0.040, streamMaterial, `${tag} 공통 흡입헤더`);
+      for (const offset of [-0.26, 0.26]) {
+        wetTube(group, [suctionTee, [x - 0.22, 0.20, z + offset], [x - 0.09, 0.24, z + offset]], 0.036, streamMaterial, `${tag}${offset < 0 ? "A" : "B"} 흡입분기`);
+        wetTube(group, [[x + 0.21, 0.26, z + offset], [x + 0.34, 0.24, z + offset], dischargeTee], 0.036, streamMaterial, `${tag}${offset < 0 ? "A" : "B"} 토출분기`);
+        wetValve(`${tag}-XV-${offset < 0 ? "A" : "B"}`, [x - 0.30, 0.20, z + offset], streamMaterial, 0.62);
+      }
+      // 맥동 감쇠기 — 슈가 호스를 놓는 순간마다 압력이 튄다. 배관 피로의 원인이라
+      // 토출 직후에 공기실을 둔다.
+      wetCylinder(group, 0.085, 0.30, [x + 0.40, 0.46, z], material.equipmentAir, `${tag} 맥동 감쇠기`, 22);
+      wetCylinder(group, 0.095, 0.03, [x + 0.40, 0.62, z], material.silverClamp, `${tag} 감쇠기 상부캡`, 22);
+      wetTube(group, [dischargeTee, [x + 0.62, 0.26, z]], 0.040, streamMaterial, `${tag} 공통 토출헤더`);
+      for (const [name, px, py] of [["흡입 압력계", x - 0.56, 0.38], ["토출 압력계", x + 0.56, 0.42]]) {
+        wetCylinder(group, 0.010, 0.08, [px, py - 0.05, z], material.silverClamp, `${tag} ${name} 스템`, 8);
+        wetCylinder(group, 0.036, 0.016, [px, py, z], material.screen, `${tag} ${name}`, 18, [Math.PI / 2, 0, 0]);
+      }
+      wetLabel(`${tag} · ${label}`, [x, 0.90, z], [1.45, 0.20, 1]);
+      return { group, suction: [x - 0.62, 0.20, z], discharge: [x + 0.62, 0.26, z] };
+    }
+
     function wetStorageTank(tag, x, z, radius, height, sourceMaterial, label) {
       const group = new THREE.Group();
       group.name = tag;
@@ -19817,7 +19901,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     wetTube(unifiedWet, [[11.88, 1.38, 1.70], [12.22, 1.62, 1.20], [12.42, 1.64, 0.72]], 0.035, material.pipeBead, "BM-101 비드 보충관", 960, 4);
     wetCylinder(unifiedWet, 0.155, 0.34, [13.00, 0.96, 0.72], material.screen, "BS-101A 1차 비드 보유스크린", 30, [0, 0, Math.PI / 2], true);
     wetCylinder(unifiedWet, 0.145, 0.28, [13.32, 0.96, 0.72], material.screen, "BS-101B 2차 가드스크린", 30, [0, 0, Math.PI / 2], true);
-    wetTube(unifiedWet, [[12.84, 0.96, 0.72], [12.86, 0.96, 0.72]], 0.065, wetFeedMaterial, "AS-101 → BS-101A");
+    // AS-101 의 배출은 이제 BS-101A 로 바로 가지 않는다 — 2 단(AS-101B)을 거쳐 돌아온다.
+    // 그 두 다리는 아래 Ag 회수 신설 계통의 P-103/P-104 가 맡는다.
     wetTube(unifiedWet, [[13.16, 0.96, 0.72], [13.18, 0.96, 0.72]], 0.060, wetFeedMaterial, "BS-101A → BS-101B");
     wetTube(unifiedWet, [[13.44, 0.96, 0.72], [13.52, 0.78, 0.30], p102.suction], 0.060, wetFeedMaterial, "BS-101B → P-102A/B", 1860, 4);
     wetCone(unifiedWet, 0.20, 0.07, 0.36, [13.16, 0.42, 1.24], material.silverClamp, "BR-101 비드 세척·회수빈", 24);
@@ -20016,6 +20101,69 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 그 쪽 일감(FC-204 거품 재해리)은 폴리머 단과 함께 없어졌고, 이 공정에서 정작
     // 모자란 것은 어트리션 체류다. 같은 40 L 급이므로 태그만 바꿔 2 단으로 세운다.
     wetTank("AS-101B", 19.90, 4.35, 0.56, 1.06, 300, { octagonal: true, attrition: true, liquid: wetWaterMaterial, label: "2단 어트리션 · 40 L" });
+
+    // ---- AS-101 ↔ AS-101B 이송 (P-103/P-104) — 사용자 결정 2026-09-07 「펌프안」 ----
+    // 야드에 세운 대가가 여기서 나온다. AS-101B 는 바닥에 서 있고 두 노즐 높이가
+    //   AS-101 배출 0.639 → AS-101B 급액 1.263   (+0.624 m)
+    //   AS-101B 배출 0.627 → BS-101A 인입 1.110  (+0.483 m)
+    // 오는 쪽 인입이 스크린 중심(0.960)이 아니라 상부 노즐인 이유는 아래 배관 주석 참조.
+    // 이므로 **가는 다리도 오는 다리도 오르막**이다. 65 wt% 페이스트는 5 % 경사로
+    // 흘러내리지 않으므로 중력 복귀가 성립하지 않는다 — 이송은 한 짝이 아니라 두 짝이다.
+    // 종전 HOLD 는 가는 다리만 세고 있었다.
+    const AS101B_TRANSFER = Object.freeze({
+      designM3H: 0.32,                    // 운전 0.244(AS101_FEED_M3H) 에 31 % 여유
+      solidsWt: 0.65, slurrySg: 1.61,
+      forwardLiftM: 0.624, returnLiftM: 0.483,
+      type: "호스(연동) 펌프 · DN32",
+      // 남은 것은 「펌프가 있느냐」가 아니라 페이스트의 항복응력이다. 그것이 정해지기
+      // 전까지 차압은 설계 밴드(단거리 광물 페이스트 이송의 통상값)로 든다.
+      designBar: 2.5, dutyKw: 0.75,
+      vendorHold: "페이스트 유변물성(항복응력) 미측정 — 차압 2.5 bar 는 설계 밴드값이다. 실측되면 모터가 0.75 kW 프레임에 그대로 남는지 확인할 것"
+    });
+    const p103 = wetHosePumpPair("P-103", 11.60, 2.55, 720, wetFeedMaterial, "AS-101 → AS-101B 이송 A/B");
+    const p104 = wetHosePumpPair("P-104", 21.50, 4.35, 300, wetFeedMaterial, "AS-101B → BS-101A 반송 A/B");
+    // 두 줄 다 **수평부를 y 0.80 아래로** 유지한다. 그 위로 올리면 배관지지 자동배치가
+    // 행거로 판정해 로드를 y 2.46 티어까지 뽑는데, 야드 회랑에는 매달 구조가 없다.
+    // 높이를 바꾸는 구간은 |tangent.y| > 0.72 가 되도록 가파르게 끊어 지지에서 제외한다.
+    //
+    // 가는 다리 — AS-101 배출에서 서쪽으로 빠진다. 냉각수 「AS-CL 대상기기 연결」이
+    // x 12.50 을 z 1.60…3.82 로 세로지르므로, 그 남쪽(z ≤1.45)에서 x 12.50 을 건넌다.
+    // 바닥 스탠션이 서는 자리라 관만 비켜서는 안 되고 건너는 z 자체를 피해야 한다.
+    // 스키드 남쪽으로 붙으면 A 펌프 케이싱을 뚫는다 — 서단(x 10.78)으로 돌아 헤더 끝에 붙는다.
+    wetTube(unifiedWet, [[12.97, 0.639, 0.72], [12.99, 0.68, 1.10], [12.80, 0.66, 1.42],
+      [11.60, 0.56, 1.50], [10.78, 0.46, 1.78], [10.78, 0.28, 2.42], p103.suction], 0.040, wetFeedMaterial,
+      "AS-101 배출 → P-103A/B 흡입", 780, 4);
+    // 야드 회랑 z 3.20 — RIO-401/402(z ≤3.10)와 LAB-601(z ≥3.46) 사이 0.36 m 틈이다.
+    // 지관 냉각수 「대상기기 연결」 3 본(y 0.28–0.36)을 y 0.55 로 타고 넘는다. 직선부에
+    // 중간점을 촘촘히 두는 이유는 CatmullRom 이 모서리에서 처져 RIO-402·계단을 스쳤기 때문이다.
+    // 북으로 꺾여 AS-101B 로 올라가는 구간은 오는 다리(z 3.36)를 반드시 가로지른다.
+    // 밑으로는 못 지난다(오는 다리가 이미 y 0.72 · 바닥 스탠션 상단 0.70)므로 넘는데,
+    // **넘은 채로 달리지는 않는다** — 마루 없는 뒤집힌 V 로 z 0.10 안에 올라갔다 내려와
+    // 곧장 y 0.66 으로 되돌아온다. 평평한 마루를 두면 그 구간이 행거로 잡혀 야드 허공에
+    // 로드가 선다(실제로 x 18.57 에 하나 섰다). 노즐 앞에서만 수직으로 EL 1.263 에 붙는다.
+    // 넘는 자리는 x 18.72 다 — 동쪽은 CF-BR 냉각기 케이싱(x ≥18.78)이 막는다. 서쪽의
+    // 오는 다리 스탠션(새들 상단 0.72)은 옆으로 비켜서 피하지 않는다. 지지 위치는
+    // 곡선 샘플링에서 나오는 값이라 어느 쪽 곡선을 건드려도 움직인다 — 실제로 두 번
+    // 움직였다. 그래서 z 3.20 에서부터 세워 새들 구간(z 3.27–3.45)을 **y 0.90 위로**
+    // 넘어간다. 지지가 다시 옮겨 앉아도 성립하는 구속은 높이뿐이다.
+    wetTube(unifiedWet, [p103.discharge, [12.32, 0.42, 2.86], [12.32, 0.55, 3.20],
+      [14.00, 0.55, 3.20], [16.20, 0.55, 3.20], [18.30, 0.55, 3.20], [18.60, 0.62, 3.20],
+      [18.68, 1.14, 3.32], [18.72, 0.66, 3.58], [18.72, 0.64, 4.06], [18.74, 0.66, 4.28],
+      [18.98, 0.70, 4.35], [19.08, 1.10, 4.35], [19.23, 1.263, 4.35]], 0.038, wetFeedMaterial,
+      "P-103A/B → AS-101B 급액", 780, 8);
+    // 오는 다리 — AS-101B 배출에서 바로 옆 P-104 로 받아, 같은 회랑의 한 줄 뒤(z 3.36 ·
+    // y 0.72)로 되돌아온다. 두 줄을 z 로 갈라 놓아야 바닥 스탠션이 서로 겹치지 않는다.
+    wetTube(unifiedWet, [[20.57, 0.627, 4.35], [20.72, 0.42, 4.35], p104.suction], 0.040, wetFeedMaterial, "AS-101B 배출 → P-104A/B 흡입", 300, 3);
+    // 마지막은 BS-101A 보유스크린 동체 **위**에 얹는다. 서단 면(x 12.83)으로 축방향
+    // 인입은 못 한다 — AS-101 동체가 x 12.86 까지 와 있어 그 자리가 없다. 그래서
+    // 상부 노즐(크라운 EL 1,115 · 중심 EL 1,110)이고, 반송 양정 0.333 이 아니라 0.483 이다.
+    // 오르는 구간은 z 1.50 까지 y 0.72 로 끌고 가서 한 번에 세운다 — 완만하게 올리면
+    // 그 사면이 행거로 잡혀 야드 허공에 로드가 선다(실제로 x 12.96 에 하나 섰다).
+    wetTube(unifiedWet, [p104.discharge, [22.38, 0.72, 4.30], [22.38, 0.72, 3.36],
+      [20.00, 0.72, 3.36], [17.00, 0.72, 3.36], [14.00, 0.72, 3.36], [12.70, 0.72, 3.20],
+      [12.70, 0.72, 2.35], [12.90, 0.72, 1.50], [12.93, 0.76, 1.20],
+      [12.93, 1.11, 0.80]], 0.038, wetFeedMaterial, "P-104A/B → BS-101A 반송", 300, 10);
+    wetLabel("P-103/104 · 어트리션 2단 이송 — 65 wt% 페이스트 왕복 두 다리", [16.40, 1.10, 3.28], [2.60, 0.22, 1]);
     // FW-102 백시트 플레이크 마찰세척 — 건식 BIN-102 옆(자유구역 H)이다.
     wetBox(unifiedWet, [0.90, 1.00, 0.70], [7.65, 0.50, -1.15], material.equipmentDewater, "FW-102 플레이크 마찰세척");
     wetBox(unifiedWet, [1.02, 0.10, 0.82], [7.65, 0.05, -1.15], material.frame, "FW-102 스키드");
@@ -20035,13 +20183,14 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 남쪽 z −1.15 를 따라 랙 기둥열 앞을 동진해(x 8.60 기둥은 z −0.99 까지) x 9.90 에서
     // 북으로 꺾어 BH-101 콘(x ≤9.78)과 WC-401 콘(x ≥10.24) 사이를 지나 급액 노즐에 닿는다.
     wetTube(unifiedWet, [[7.65, 1.06, -1.15], [9.90, 1.06, -1.15], [9.90, 1.08, 0.55], [10.42, 1.20, 0.72]], 0.038, wetFeedMaterial, "FW-102 세척 미분 → TK-001", 300, 4);
-    // 신설 7 종은 전부 자리를 잡았다. 남은 것은 자리가 아니라 **이송**이다 —
-    // AS-101B 가 AS-101 직하류가 아니라 야드에 서 있으므로 그 사이를 65 wt% 슬러리로
-    // 넘겨야 한다. 펌프 정격을 지어내지 않고 HOLD 로 든다.
+    // 신설 7 종은 전부 자리를 잡았고, 남아 있던 **이송**도 2026-09-07 사용자 결정으로
+    // 닫혔다 — 「펌프안」. 호퍼를 이설해 직결하는 쪽은 채택되지 않았다.
+    // 남은 것은 장치가 아니라 유변물성 한 줄이다(아래 vendorHold).
     const WET_NEW_KIT_HOLD = Object.freeze([
-      Object.freeze({ tag: "AS-101 → AS-101B", need: "7.7 m 슬러리 이송 (65 wt%)",
-        blocker: "BR-101 · BM-101 호퍼가 직하류 1.12 m 각을 막는다",
-        option: "이송펌프 신설(정격 미정) 또는 호퍼 이설 후 직결" })
+      Object.freeze({ tag: "AS-101 ↔ AS-101B", need: "65 wt% 페이스트 왕복 이송 (가는 다리 8.4 m · 오는 다리 10.9 m)",
+        blocker: "해소 — 야드 배치라 양쪽이 오르막이어서 중력 복귀가 안 된다는 것이 확인됐다",
+        option: `해결 · P-103A/B + P-104A/B 호스펌프 (${AS101B_TRANSFER.dutyKw} kW × 4, duty 2) 신설`,
+        residual: AS101B_TRANSFER.vendorHold })
     ]);
     // ---- 로터 인양 — 부선 셀·어트리션 -------------------------------------------------
     // 로터·스테이터는 축과 함께 수직으로 뽑는 카트리지다. 셀마다 구동 브리지에 인양아이
@@ -20288,7 +20437,21 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 습식 배관을 다 놓은 뒤 지지물을 한 번에 배치한다. 배관마다 손으로 다는 대신
     // 모아 둔 curve 를 2.4 m 간격으로 샘플해, 위에 걸 티어가 있으면 행거를,
     // 없거나 통행 높이 아래면 바닥 스탠션을 놓는다. 탱크 동체 안은 건너뛴다.
-    const wetSupportTiers = [VENT_HEADER_Y, DECK_TOP_Y, VAC_RACK_Y, DRY_RETURN_Y].sort((a, b) => a - b);
+    // 티어는 무한 평면이 아니다. 종전 배치는 y 만 보고 행거를 걸었는데, 그러면 위가
+    // 텅 빈 야드에서도 로드가 2.46 m 까지 올라간다 — 실측하니 행거 36 개 중 33 개가
+    // 매달 상대가 없는 허공 행거였다. 각 티어가 **실제로 덮는 x·z** 를 함께 든다.
+    const RACK_TIER_Z = [RACK_COLUMN_Z - 0.11, RACK_Z + 0.11];
+    const wetSupportTiers = [
+      { y: VENT_HEADER_Y, x: [0.90, 8.60], z: RACK_TIER_Z },                       // 파이프 랙 하단 암
+      { y: DRY_RETURN_Y, x: [0.90, 8.60], z: RACK_TIER_Z },                        // 파이프 랙 상단 암
+      { y: DECK_TOP_Y, x: [DECK_X0, DECK_X1], z: [DECK_Z0, DECK_Z1] },             // 2F 데크
+      { y: DECK_TOP_Y, x: [LAND_X0, LAND_X1], z: [1.85, LAND_Z1] },                // ST-201 랜딩
+      { y: VAC_RACK_Y, x: [1.60, 4.20], z: [VAC_RACK_Z - 0.24, VAC_RACK_Z + 0.06] } // VP-401 지관 랙 암
+    ].sort((a, b) => a.y - b.y);
+    // 덮는 티어가 없으면 **아무것도 놓지 않는다.** 바닥 스탠션으로 대신 받쳐 보니
+    // 그 11 본 중 6 본이 AB-201A 모터·P-401A 펌프·AR-301 리시버를 관통했다 — 허공
+    // 행거를 설비 관통 기둥으로 바꾸는 맞바꿈일 뿐이다. 없는 구조를 지어내느니 비워
+    // 두고 배관 아이소메트릭에서 정한다(스풀 이음과 같은 이유로 보류 중인 항목이다).
     let wetSupportCount = 0;
     {
       const point = new THREE.Vector3(), tangent = new THREE.Vector3();
@@ -20306,9 +20469,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
           if (Math.abs(tangent.y) > 0.72) continue;   // 약 46° 보다 가파르면 수직 취급
           if (wetVesselFootprints.some((v) => Math.hypot(point.x - v.x, point.z - v.z) < v.radius)) continue;
           if (point.y >= PIPE_HANGER_MIN_Y) {
-            const tier = wetSupportTiers.find((t) => t > point.y + 0.26);
-            if (tier === undefined) continue;      // 위에 매달 구조가 없으면 놓지 않는다
-            wetPipeHanger(run.name, point.x, point.y, point.z, tier, run.radius);
+            const tier = wetSupportTiers.find((t) => t.y > point.y + 0.26
+              && point.x >= t.x[0] && point.x <= t.x[1] && point.z >= t.z[0] && point.z <= t.z[1]);
+            if (tier === undefined) continue;      // 그 x·z 위에 강재가 없다
+            wetPipeHanger(run.name, point.x, point.y, point.z, tier.y, run.radius);
           } else {
             wetPipeStanchion(run.name, point.x, point.y, point.z, run.radius);
           }
@@ -20536,7 +20700,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
       mcsa: { idle: 0,    read: (load, w) => 0.8 + 5.5 * w,                   slope: () => 5.5 },
       ae:   { idle: 30,   read: (load, w) => 48 + 4 * load + 20 * w,          slope: () => 20 },
       dp:   { idle: 120,  read: (load, w) => 600 + 1300 * w,                  slope: () => 1300 },
-      loop: { idle: 0,    read: (load, w) => (w > 0.92 ? 1 : 0),              slope: () => 0 }
+      loop: { idle: 0,    read: (load, w) => (w > 0.92 ? 1 : 0),              slope: () => 0 },
+      // 호스펌프 케이싱 윤활유의 전도도. 호스는 서서히 얇아지다 마지막에 터지므로
+      // 값도 그렇게 움직여야 한다 — w⁴ 로 두면 0.6 까지 잠잠하다가 0.85 부터 뛴다.
+      leak: { idle: 2,    read: (load, w) => 4 + 3 * load + 260 * w ** 4,     slope: (w) => 1040 * w ** 3 }
     };
     function sensorZone(sensor, value) {
       if (sensor.kind === "loop") return value ? "D" : "A";
@@ -20548,7 +20715,7 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     function sensorReading(sensor, wear) {
       const model = SENSOR_MODEL[sensor.kind];
       const w = Math.min(1.35, wear ? wear.fraction : 0);
-      const wet = /^VIT-(P|PP|2[01][0-9])/.test(sensor.tag) || sensor.tag === "VIT-101";
+      const wet = /^VIT-(P|PP|2[01][0-9])/.test(sensor.tag) || /^LDT-P/.test(sensor.tag) || sensor.tag === "VIT-101";
       const load = wet ? wetLoad() : dryLoad();
       const value = load > 0 ? model.read(load, w) : model.idle;
       const zone = sensorZone(sensor, value);
@@ -21265,9 +21432,9 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // 어트리션은 이제 2 단이다 — AS-101 + AS-101B(신설, 같은 40 L). 같은 유량에
     // 용적이 두 배이므로 체류시간도 두 배가 되고, 해리도는 1 차 반응식을 그만큼 더
     // 탄다. 총 해리도 ≥0.994 가 관문 1 이다.
-    // 주의 — AS-101B 는 **3D 에 아직 없다.** AS-101 바로 옆(공정상 요구 위치)에는
-    // BR-101·BM-101 호퍼가 있어 1.12 m 각이 들어가지 않는다(scratchpad/newkit_space.py).
-    // 자리를 비우는 방법이 정해지기 전까지 수지에만 존재한다.
+    // AS-101B 는 야드(구 AS-102 자리)에 서 있고, AS-101 과는 P-103/P-104 호스펌프
+    // 두 짝으로 왕복 이송한다(2026-09-07 「펌프안」 결정). 직하류 1.12 m 각은
+    // BR-101·BM-101 호퍼가 막고 있어 직결은 채택되지 않았다.
     const AS101_TRAIN_CELLS = 2;
     const AS101_TRAIN_RESIDENCE_MIN = AS101_ACTUAL_RESIDENCE_MIN * AS101_TRAIN_CELLS;
     // 표준 체류시간 — 어트리션 5–15 · 러퍼 5–15 · 클리너 3–8 · 스캐빈저 8–20 min 의 중앙값
@@ -22351,8 +22518,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         metUi.agGates.dataset.filled = "1";
       }
       if (metUi.agHold) {
+        // 해소된 항목도 잔여 확인사항이 남아 있으면 그대로 보여 준다 — 「해결」만 찍고
+        // 잔여를 숨기면 패널이 실제보다 확정적으로 읽힌다.
         metUi.agHold.textContent = WET_NEW_KIT_HOLD
-          .map((h) => `${h.tag}(${h.need} — ${h.blocker}; ${h.option})`).join(" · ");
+          .map((h) => `${h.tag}(${h.need} — ${h.blocker}; ${h.option}${h.residual ? `; 잔여 — ${h.residual}` : ""})`).join(" · ");
       }
     }
 
@@ -25479,8 +25648,10 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
     // Ag 회수 신설 계통 — 직접 Ag 부선 한 단(AS-101/101B → RM-201 → CT-101 → FC-101).
     // 폴리머 역부선을 걷어내면서 그 단에만 쓰이던 M-FC-204(3.0 kW)와, AS-101B 와
     // 중복이던 M-AS-102(5.2 kW)를 뺐다. 수요부하 27.30 → 19.10 kW.
+    // 2026-09-07 「펌프안」 결정으로 AS-101 ↔ AS-101B 왕복 이송 호스펌프 4 대(운전 2)가
+    // 들어왔다 — 19.10 → 20.60 kW. 야드 배치의 대가가 전력에서도 한 줄로 드러난다.
     agRecovery:{
-      panel:"LCP-AG-101",source:"MCC-401",area:"습식·부선구역",ip:"IP66 / 내식형",declaredDemandKw:19.10,
+      panel:"LCP-AG-101",source:"MCC-401",area:"습식·부선구역",ip:"IP66 / 내식형",declaredDemandKw:20.60,
       branches:[
         {tag:"M-RM-201",qty:1,duty:1,kw:4.0,drive:"VFD",status:"P80 66 µm 로드밀 · 제작사 확인 필요"},
         {tag:"M-AS-101B",qty:1,duty:1,kw:5.2,drive:"VFD",status:"AS-101 동형 · 야드(구 AS-102 자리)"},
@@ -25488,6 +25659,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {tag:"M-CT-101",qty:1,duty:1,kw:1.5,drive:"VFD",status:"조건조 교반"},
         {tag:"BL-101",qty:1,duty:1,kw:2.2,drive:"VFD",status:"FC-101 스파저 송풍"},
         {tag:"P-101A/B",qty:2,duty:1,kw:1.5,drive:"VFD A/B",status:"FC-101 급광 · 유량 제작사 확인"},
+        {tag:"P-103A/B",qty:2,duty:1,kw:0.75,drive:"VFD A/B",status:"호스펌프 · 유량은 확정(0.24 m³/h) · 차압 2.5 bar 는 페이스트 유변물성 HOLD"},
+        {tag:"P-104A/B",qty:2,duty:1,kw:0.75,drive:"VFD A/B",status:"P-103 동형 · 반송 다리"},
         {tag:"M-PS-201",qty:1,duty:1,kw:0.75,drive:"DOL",status:"폴리싱 스크린 가진"},
         {tag:"M-FW-102",qty:1,duty:1,kw:2.2,drive:"VFD",status:"플레이크 마찰세척"},
         {tag:"PC-AG-101",qty:1,duty:1,kw:0.5,drive:"380/220 V TR · 패널 냉각유닛",status:"IP66 패널 에어컨"},
@@ -25786,6 +25959,15 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {code:"AS-050",assembly:"P-101/102 A/B",name:"P-101 슬러리펌프",qty:2,material:"Hi-chrome A05/rubber",spec:"DN50, 2.2 kW",note:"A/B duty-standby · 백풀아웃 카트리지 · 외부 간극 조정"},
         {code:"AS-051",assembly:"P-101/102 A/B",name:"P-102 슬러리펌프",qty:2,material:"Hi-chrome A05/rubber",spec:"DN50, 1.5 kW",note:"A/B duty-standby · 백풀아웃 카트리지 · 외부 간극 조정"},
         {code:"AS-052",assembly:"스키드·배관",name:"슬러리 배관·밸브",qty:1,material:"SUS316L/NR",spec:"DN50/65, PN10",note:"샘플포트 2EA"},
+        // 어트리션 2 단 왕복 이송 — 야드에 세운 AS-101B 와 주기기 사이. 원심이 아니라
+        // 호스펌프인 이유는 유량(0.24 m³/h)이 DN50 원심의 최소유량 아래이고, 순환물에
+        // BS-101A 가 잡는 크기(≥1 mm)의 알루미나 비드가 섞여 있기 때문이다.
+        {code:"AS-053",assembly:"P-103/104 A/B",name:"P-103 호스펌프 (AS-101→AS-101B)",qty:2,material:"주철 케이싱/NR 호스",spec:"DN32, 0.32 m³/h @ 2.5 bar, 0.75 kW",note:"A/B duty-standby · 접액 마모부는 호스뿐 · 씰 없음"},
+        {code:"AS-054",assembly:"P-103/104 A/B",name:"P-104 호스펌프 (AS-101B→BS-101A)",qty:2,material:"주철 케이싱/NR 호스",spec:"DN32, 0.32 m³/h @ 2.5 bar, 0.75 kW",note:"P-103 동형 · 반송 다리"},
+        {code:"AS-055",assembly:"정비·교체",name:"압착호스 DN32 (예비)",qty:4,material:"NR/나일론 보강 4겹",spec:"DN32 · 65 wt% 슬러리용",note:"P-103/104 공용 · 수명 2,000 h · MTTR 40분"},
+        {code:"AS-056",assembly:"P-103/104 A/B",name:"맥동 감쇠기",qty:2,material:"SUS316L/EPDM",spec:"0.7 L 공기실 · PN10",note:"슈 이탈 맥동 흡수 · 잔압 드레인 포함(LOTO-402)"},
+        {code:"AS-057",assembly:"P-103/104 A/B",name:"이송배관·지지",qty:1,material:"SUS316L/HDG",spec:"DN32 PN10 · 19.3 m · 스탠션",note:"야드 회랑 z 3.20/3.36 2 단"},
+        {code:"AS-058",assembly:"계장",name:"LDT-P103/104 호스파단 검출기",qty:2,material:"Vendor",spec:"윤활유 전도도 · 경보 50 / 트립 200 µS/cm",note:"케이싱 하부"},
         {code:"AS-060",assembly:"정비·교체",name:"백풀아웃 습식단 카트리지 (예비)",qty:2,material:"Hi-chrome A05/SiC 씰",spec:"DN50 · 임펠러+라이너+씰+베어링프레임 조립",note:"P-101/102/PP-201/P-204 공용 · MTTR 50분"},
         {code:"AS-061",assembly:"정비·교체",name:"펌프 분할링·인양아이",qty:14,material:"SUS304",spec:"Ø256 분할링 · M12 아이",note:"펌프당 1조 · 배관 무접촉 인양"},
         {code:"AS-062",assembly:"정비·교체",name:"VIT-P101/P102/PP201 무선 진동 노드",qty:3,material:"Vendor",spec:"±50 g · IP66",note:"A 펌프 베어링 프레임"},
@@ -26013,7 +26195,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {tag:"AS-N01",service:"어트리션 투입",size:"DN50 PN10",rating:"최대 250 kg/h",moc:"SUS316L",orientation:"측면",elevation:"EL +1,300",connection:"플렉시블 스풀"},
         {tag:"AS-N02",service:"중공축 공기",size:"DN20 PN10",rating:"6-port",moc:"SUS316L",orientation:"TOP",elevation:"EL +2,350",connection:"FR-101"},
         {tag:"AS-N03",service:"비드 보충",size:"DN80",rating:"BLIND",moc:"SUS316L",orientation:"TOP",elevation:"EL +2,050",connection:"BM-101"},
-        {tag:"AS-N04",service:"어트리션 배출",size:"DN50 PN10",rating:"5 min",moc:"SUS316L",orientation:"BOTTOM",elevation:"EL +300",connection:"P-102A/B → TK-101"},
+        {tag:"AS-N04",service:"어트리션 1단 배출",size:"DN50 PN10",rating:"5 min",moc:"SUS316L",orientation:"BOTTOM",elevation:"EL +300",connection:"P-103A/B → AS-101B (2단)"},
+        {tag:"AS-N05",service:"어트리션 2단 반송 수입",size:"DN32 PN10",rating:"0.32 m³/h",moc:"SUS316L",orientation:"TOP",elevation:"EL +1110",connection:"P-104A/B → BS-101A (스크린 크라운 상부)"},
         {tag:"TK1-N04",service:"부선 공급",size:"DN50 PN10",rating:"10–30 wt%",moc:"SUS316L",orientation:"BOTTOM",elevation:"EL +320",connection:"PP-201A/B → FC-201"}
       ],
       electrical:[
@@ -26022,6 +26205,8 @@ window.__HSG_CANNON__=Object.freeze({"AABB":AABB,"ArrayCollisionMatrix":ArrayCol
         {tag:"M-AG-101",load:"3.0 kW",supply:"380 V 3Φ 60 Hz",starter:"VFD",signal:"Run/Trip/Speed",installation:"TK-101 교반"},
         {tag:"P-101A/B",load:"2.2 kW×2",supply:"380 V 3Φ 60 Hz",starter:"VFD A/B",signal:"Run/Trip/Flow/Pressure",installation:"드립루프·로컬 SW"},
         {tag:"P-102A/B",load:"1.5 kW×2",supply:"380 V 3Φ 60 Hz",starter:"VFD A/B",signal:"Run/Trip/Flow/Pressure",installation:"드립루프·로컬 SW"},
+        {tag:"P-103A/B",load:"0.75 kW×2",supply:"380 V 3Φ 60 Hz",starter:"VFD A/B",signal:"Run/Trip/Speed/호스파단 LDT",installation:"드립루프·로컬 SW · 역회전(라인비움) 허용"},
+        {tag:"P-104A/B",load:"0.75 kW×2",supply:"380 V 3Φ 60 Hz",starter:"VFD A/B",signal:"Run/Trip/Speed/호스파단 LDT",installation:"P-103 과 동일"},
         {tag:"DIT/LIT",load:"24 VDC",supply:"PLC-401",starter:"—",signal:"농도/레벨 4–20 mA",installation:"계장접지 분리"},
         {tag:"SIC/BS",load:"24 VDC",supply:"PLC-401",starter:"—",signal:"속도/비드보유 ΔP",installation:"차폐 케이블"}
       ],
