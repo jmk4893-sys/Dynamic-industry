@@ -105,7 +105,7 @@ def build_3d() -> str:
     # 방책 M-013 — 상류(x 0)는 플랜트 끝단 케이싱·브리지 개구가 대신한다
     fx1 = m(H.FENCE_X1_MM); fyp = m(H.FENCE_YP_MM); fyn = m(H.FENCE_YN_MM)
     w(f"// 방책 M-013 — x 0…{n(fx1)} · z {n(-fyp)}(벽쪽)…{n(fyn)}(통로쪽) · 높이 2.4. 상류선(−0.9)은 브리지 개구라 안 세운다.")
-    w(f"[{n(-fyp)},{n(fyn)}].forEach(function(z){{L([{n(fx1)},.06,.06],[{n(fx1/2)},2.4,z],M.guard,z>0?'DG-HK60C M-013 방책':null,z>0?'방책선 −900 → 19,600 · +3,400 / −4,200 — 카트 레인이 −y 쪽이라 통로 쪽이 800 넓다':null);"
+    w(f"[{n(-fyp)},{n(fyn)}].forEach(function(z){{L([{n(fx1)},.06,.06],[{n(fx1/2)},2.4,z],M.guard,z>0?'DG-HK60C M-013 방책':null,z>0?'방책선 {H.FENCE_X0_MM:,} → {H.FENCE_X1_MM:,} · +{H.FENCE_YP_MM:,} / {H.FENCE_YN_MM * -1:,} — 카트 레인이 −y 쪽이라 통로 쪽이 {H.FENCE_YN_MM - H.FENCE_YP_MM:,} 넓다':null);"
       f"for(var x=.05;x<{n(fx1)};x+=2.4)L([.06,2.4,.06],[Math.min(x,{n(fx1-.05)}),1.2,z],M.guard,null)}});")
     w(f"L([.06,2.4,{n(fyp+fyn)}],[{n(fx1-.03)},1.2,{n((fyn-fyp)/2)}],M.guard,null);")
     w(f"L([.06,2.4,{n(fyp+fyn)}],[.03,1.2,{n((fyn-fyp)/2)}],M.guard,null,null);")
@@ -190,7 +190,7 @@ def build_3d() -> str:
     w(f"L([{n(cex[1]-cex[0])},.1,{n(-(cey1-cey0))}],[{n((cex[0]+cex[1])/2)},{n(cez)},{n(-(cey0+cey1)/2)}],M.dark,'CE-201 셀/EVA 횡인출 컨베이어','적층체 {LINE[0]:,} × {LINE[1]:,} 을 자르지 않고 통째로 옆으로 밀어 낸다 — 3.96 kg/장 · 238 kg/h');")
     w(f"[[{n(cex[0]+.3)},{n(-cey0-.2)}],[{n(cex[1]-.3)},{n(-cey0-.2)}],[{n(cex[0]+.3)},{n(-cey1+.2)}],[{n(cex[1]-.3)},{n(-cey1+.2)}]].forEach(function(p){{L([.1,{n(cez-.05)},.1],[p[0],{n((cez-.05)/2)},p[1]],M.steel,null)}});")
     w(f"L([{n(m(H.CART_L_MM))},.55,{n(m(H.CART_W_MM))}],[{n(m(H.CART_X_MM))},.275,{n(lz(H.CART_Y_MM))}],M.frame,'CS-201 셀/EVA 평적 카트','2,600 × 1,300 · 333 장 ≈ 5.6 h — 방책 게이트(ISO 14119)로 나간다 · 발주자 파쇄 (OI-08)');")
-    w(f"for(var k=0;k<4;k++)L([2.4,.02,1.2],[{n(m(H.CART_X_MM))},.56+k*.03,{n(lz(H.CART_Y_MM))}],M.panel,k===0?'평적 셀/EVA 적층체':null);")
+    w(f"for(var k=0;k<4;k++)L([{n(LINE[0]/1000)},.02,{n(LINE[1]/1000)}],[{n(m(H.CART_X_MM))},.56+k*.03,{n(lz(H.CART_Y_MM))}],M.panel,k===0?'평적 셀/EVA 적층체':null);")
     # GC-101 냉각 랙
     gc = ST["GC"]; gcw = m(mods["M-007"][1][1]); gch = m(mods["M-007"][1][2])
     w(f"// GC-101 {H.DECKS}단 유리 냉각 랙 — x {n(m(gc.x0_mm))}…{n(m(gc.x1_mm))} (M-007) · 140 → 60 ℃ 143 s 강제공랭 · 배기는 경계 덕트에 합류 (OI-16)")

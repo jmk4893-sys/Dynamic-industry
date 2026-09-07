@@ -10879,7 +10879,7 @@ var g=pvGrm,L=function(a,b,c,d,e,f){return P(g,a,b,c,d,e,f)};
 var MP=function(w,d,y0,y1,x,z,label){L([w,y1-y0,d],[x,(y0+y1)/2,z],M.frame,label);L([w+.14,.03,d+.14],[x,y0+.015,z],M.steel,null)};
 var AB=function(x,z,k,dx){for(var i=0;i<k;i++)L([.05,.05,.05],[x+(i-(k-1)/2)*dx,.045,z],M.dark,null)};
 // 방책 M-013 — x 0…20.1 · z -3.7(벽쪽)…4.6(통로쪽) · 높이 2.4. 상류선(−0.9)은 브리지 개구라 안 세운다.
-[-3.7,4.6].forEach(function(z){L([20.1,.06,.06],[10.05,2.4,z],M.guard,z>0?'DG-HK60C M-013 방책':null,z>0?'방책선 −900 → 19,600 · +3,400 / −4,200 — 카트 레인이 −y 쪽이라 통로 쪽이 800 넓다':null);for(var x=.05;x<20.1;x+=2.4)L([.06,2.4,.06],[Math.min(x,20.05),1.2,z],M.guard,null)});
+[-3.7,4.6].forEach(function(z){L([20.1,.06,.06],[10.05,2.4,z],M.guard,z>0?'DG-HK60C M-013 방책':null,z>0?'방책선 -900 → 20,100 · +3,700 / -4,600 — 카트 레인이 −y 쪽이라 통로 쪽이 900 넓다':null);for(var x=.05;x<20.1;x+=2.4)L([.06,2.4,.06],[Math.min(x,20.05),1.2,z],M.guard,null)});
 L([.06,2.4,8.3],[20.07,1.2,.45],M.guard,null);
 L([.06,2.4,8.3],[.03,1.2,.45],M.guard,null,null);
 // 외장 — x 3.5…15.76 · z ±2.65 · 3.6 (갓돌 4.8 단높임은 가열실·냉각 랙 위)
