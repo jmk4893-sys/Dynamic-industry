@@ -150,8 +150,11 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
 <div class="tw"><table><thead><tr><th>면</th><th>월드 H (mm)</th>
 <th>패널 상면 기준 (mm)</th><th>비고</th></tr></thead><tbody id="stack"></tbody></table></div>
 
-<h2>칼날</h2>
+<h2>칼날과 기준 슈</h2>
 <p class="lead" id="bladespec"></p>
+<div class="note">기준 슈 공차란이 <code>절입간격 0.6±0.2 mm</code> 이고 기능란이 「백시트 기준면 접촉」이다.
+즉 하강이 끝난 자세에서 <b>슈 밑면이 백시트에 닿고 칼날은 그보다 0.6 mm 만 더 내려간다.</b>
+이 그림의 절입 치수가 그 값과 어긋나면 붉게 표시된다.</div>
 
 <footer>
   JBR-201 박리 순간 클로즈업 · REV.53 ·
@@ -163,7 +166,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
 <script>
 (function () {
   'use strict';
-  var M = {"rev":"REV.53","cellY":-0.075,"boxY":1.12,"from":19.0,"to":38.0,"start":26.0,"infeed":40.0,"parts":{"head":{"parent":"t","size":[1.35,0.11,0.24],"at":[0.0,1.49,0.0]},"carrier":{"parent":"f","size":[0.1,0.2,0.25],"at":[0.0,1.32,0.0]},"lip":{"parent":"f","size":[0.055,0.17,0.22],"at":[0.0,1.3,0.0]},"cassette":{"parent":"f","size":[0.24,0.018,0.22],"dx":0.13,"y":1.215,"z":0.0},"shoe":{"parent":"f","size":[0.25,0.03,0.24],"dx":0.12,"y":1.19,"z":0.0},"gripper":{"parent":"l","size":[0.28,0.035,0.18],"at":[0.0,1.46,0.0]},"cup":{"parent":"l","r":0.052,"h":0.08,"at":[0.0,1.36,0.0]},"compliance":{"parent":"a","size":[0.29,0.035,0.2],"at":[0.0,1.535,0.0]},"stem":{"parent":"a","size":[0.025,0.12,0.025],"at":[0.18,1.51,0.08]},"nozzle":{"parent":"t","size":[0.26,0.055,0.08],"at":[0.0,1.225,0.18]},"toolId":{"parent":"t","size":[0.11,0.055,0.05],"at":[0.31,1.23,0.16]},"yaw":{"parent":"t","size":[0.035,0.03,0.15],"at":[0.0,1.58,-0.09]},"plate":{"parent":"Un","size":[1.82,0.1,2.18],"at":[0.0,1.45,0.0]},"panel":{"parent":"Bt","size":[2.5,0.045,1.4],"at":[0.0,1.055,0.0]},"box":{"parent":"e","size":[0.32,0.1,0.22],"at":[0.0,0.0,0.0]},"finger":{"size":[0.035,0.16,0.16],"dx":0.12,"y":1.34},"connector":{"r":0.022,"h":0.08,"at":[0.0,0.02,0.14]}},"motion":{"shear":[23.0,29.0],"openWide":0.62,"openShut":0.26,"hold":[29.0,35.8,0.26],"reopen":[35.8,37.2],"reopenTo":0.62,"place":[19.4,22.8],"grip":[22.1,23.1,36.0,36.5],"gripDrop":-0.055,"cupSquash":0.72,"finger":[-0.16,0.08],"float":[23.0,29.0,17.0,0.004],"stemGain":18.0,"descend":[20.0,23.0,0.16,-0.13],"raise":[29.0,33.0,-0.13,0.26],"boxTop":1.51,"boxLift":[29.0,33.0],"interface":[23.0,29.0],"interfaceOpacity":[0.34,0.05]},"stages":[{"name":"절연 구속·도체 A→B 순차 절단","start":16.0,"end":20.0},{"name":"활성 헤드 X·Y 자동배치","start":20.0,"end":23.0},{"name":"패시브 요 추종·L칼날 동시 박리","start":23.0,"end":29.0},{"name":"진공·스프링 포획·동시 인양","start":29.0,"end":33.0},{"name":"수거함 일괄 배출","start":33.0,"end":36.8},{"name":"JBR-VS-201A 후검증·JB/AFR 공유맵 생성 (동일 정반)","start":36.8,"end":38.0}],"scenarios":[{"key":"triple-wide","label":"3개 · 비대칭 위치","plan":"동일 X열 · 3헤드 1회 동시 박리","boxes":[{"x":0.28,"z":-0.5,"sx":0.3,"sz":0.21,"angle":-0.018},{"x":0.28,"z":-0.04,"sx":0.32,"sz":0.22,"angle":0.012},{"x":0.28,"z":0.42,"sx":0.29,"sz":0.21,"angle":-0.009}]},{"key":"triple-compact","label":"3개 · 조밀 위치","plan":"동일 X열 · 소형 카세트 1회 동시 박리","boxes":[{"x":0.12,"z":-0.36,"sx":0.25,"sz":0.18,"angle":0.01},{"x":0.12,"z":0.0,"sx":0.25,"sz":0.18,"angle":-0.012},{"x":0.12,"z":0.36,"sx":0.25,"sz":0.18,"angle":0.008}]},{"key":"double-offset","label":"2개 · 편심 위치","plan":"동일 X열 · 2헤드 1회 동시 박리","boxes":[{"x":-0.05,"z":-0.31,"sx":0.34,"sz":0.23,"angle":-0.016},{"x":-0.05,"z":0.39,"sx":0.34,"sz":0.23,"angle":0.014}]},{"key":"single-offset","label":"1개 · 편심 위치","plan":"편심 좌표 · 1헤드 단독 박리","boxes":[{"x":-0.22,"z":0.24,"sx":0.43,"sz":0.29,"angle":0.018}]}],"bladeSpec":"SKD11 HRC 58–60, 팁 0.8 mm, 12° 쐐기. 두 볼트와 위치결정핀으로 10분 이내 교환합니다.","bladeTipMm":0.8,"bladeWedgeDeg":12.0};
+  var M = {"rev":"REV.53","cellY":-0.075,"boxY":1.12,"from":19.0,"to":38.0,"start":26.0,"infeed":40.0,"parts":{"head":{"parent":"t","size":[1.35,0.11,0.24],"at":[0.0,1.49,0.0]},"carrier":{"parent":"f","size":[0.1,0.2,0.25],"at":[0.0,1.32,0.0]},"lip":{"parent":"f","size":[0.055,0.17,0.22],"at":[0.0,1.3,0.0]},"cassette":{"parent":"f","size":[0.24,0.018,0.22],"dx":0.13,"y":1.2159,"z":0.0},"shoe":{"parent":"f","size":[0.25,0.03,0.24],"dx":0.12,"y":1.2225,"z":0.0},"gripper":{"parent":"l","size":[0.28,0.035,0.18],"at":[0.0,1.46,0.0]},"cup":{"parent":"l","r":0.052,"h":0.08,"at":[0.0,1.36,0.0]},"compliance":{"parent":"a","size":[0.29,0.035,0.2],"at":[0.0,1.535,0.0]},"stem":{"parent":"a","size":[0.025,0.12,0.025],"at":[0.18,1.51,0.08]},"nozzle":{"parent":"t","size":[0.26,0.055,0.08],"at":[0.0,1.225,0.18]},"toolId":{"parent":"t","size":[0.11,0.055,0.05],"at":[0.31,1.23,0.16]},"yaw":{"parent":"t","size":[0.035,0.03,0.15],"at":[0.0,1.58,-0.09]},"plate":{"parent":"Un","size":[1.82,0.1,2.18],"at":[0.0,1.45,0.0]},"panel":{"parent":"Bt","size":[2.5,0.045,1.4],"at":[0.0,1.055,0.0]},"box":{"parent":"e","size":[0.32,0.1,0.22],"at":[0.0,0.0,0.0]},"finger":{"size":[0.035,0.16,0.16],"dx":0.12,"y":1.34},"connector":{"r":0.022,"h":0.08,"at":[0.0,0.02,0.14]}},"motion":{"shear":[23.0,29.0],"openWide":0.62,"openShut":0.26,"hold":[29.0,35.8,0.26],"reopen":[35.8,37.2],"reopenTo":0.62,"place":[19.4,22.8],"grip":[22.1,23.1,36.0,36.5],"gripDrop":-0.055,"cupSquash":0.72,"finger":[-0.16,0.08],"float":[23.0,29.0,17.0,0.004],"stemGain":18.0,"descend":[20.0,23.0,0.16,-0.13],"raise":[29.0,33.0,-0.13,0.26],"boxTop":1.51,"boxLift":[29.0,33.0],"interface":[23.0,29.0],"interfaceOpacity":[0.34,0.05]},"stages":[{"name":"절연 구속·도체 A→B 순차 절단","start":16.0,"end":20.0},{"name":"활성 헤드 X·Y 자동배치","start":20.0,"end":23.0},{"name":"패시브 요 추종·L칼날 동시 박리","start":23.0,"end":29.0},{"name":"진공·스프링 포획·동시 인양","start":29.0,"end":33.0},{"name":"수거함 일괄 배출","start":33.0,"end":36.8},{"name":"JBR-VS-201A 후검증·JB/AFR 공유맵 생성 (동일 정반)","start":36.8,"end":38.0}],"scenarios":[{"key":"triple-wide","label":"3개 · 비대칭 위치","plan":"동일 X열 · 3헤드 1회 동시 박리","boxes":[{"x":0.28,"z":-0.5,"sx":0.3,"sz":0.21,"angle":-0.018},{"x":0.28,"z":-0.04,"sx":0.32,"sz":0.22,"angle":0.012},{"x":0.28,"z":0.42,"sx":0.29,"sz":0.21,"angle":-0.009}]},{"key":"triple-compact","label":"3개 · 조밀 위치","plan":"동일 X열 · 소형 카세트 1회 동시 박리","boxes":[{"x":0.12,"z":-0.36,"sx":0.25,"sz":0.18,"angle":0.01},{"x":0.12,"z":0.0,"sx":0.25,"sz":0.18,"angle":-0.012},{"x":0.12,"z":0.36,"sx":0.25,"sz":0.18,"angle":0.008}]},{"key":"double-offset","label":"2개 · 편심 위치","plan":"동일 X열 · 2헤드 1회 동시 박리","boxes":[{"x":-0.05,"z":-0.31,"sx":0.34,"sz":0.23,"angle":-0.016},{"x":-0.05,"z":0.39,"sx":0.34,"sz":0.23,"angle":0.014}]},{"key":"single-offset","label":"1개 · 편심 위치","plan":"편심 좌표 · 1헤드 단독 박리","boxes":[{"x":-0.22,"z":0.24,"sx":0.43,"sz":0.29,"angle":0.018}]}],"bladeSpec":"SKD11 HRC 58–60, 팁 0.8 mm, 12° 쐐기. 두 볼트와 위치결정핀으로 10분 이내 교환합니다.","bladeTipMm":0.8,"bladeWedgeDeg":12.0,"cutSpec":"절입간격 0.6±0.2 mm","cutMm":0.6,"cutTolMm":0.2};
   var P = M.parts, MO = M.motion;
   var css = getComputedStyle(document.documentElement);
   var cache = {};
@@ -291,8 +294,9 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
   }
 
   // ── 한 장면의 좌표 계산 ─────────────────────────────────────────────
-  function pose(t) {
-    var ae = plateY(t), H = bladeOpen(t), tt = gripT(t), fl = floatY(t, 1);
+  // flat=true 면 워페이지 추종 플로팅을 뺀 **공칭** 자세다 — 스택업은 그것으로 잰다.
+  function pose(t, flat) {
+    var ae = plateY(t), H = bladeOpen(t), tt = gripT(t), fl = flat ? 0 : floatY(t, 1);
     var base = M.cellY + ae;                       // 승강 플레이트가 실은 프레임의 y 기준
     var b = P.box, bx = activeBox();
     return {
@@ -415,17 +419,22 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
               ((p.cassetteY - p.cassetteT / 2 - p.panelTop) * 1000).toFixed(1) + ' 칼날 하면', ink);
       bd.dimY(p.panelTop, p.boxCy - p.boxH / 2, x0 + 0.026,
               ((p.boxCy - p.boxH / 2 - p.panelTop) * 1000).toFixed(1) + ' 박스 하면', ink);
+      // 절입간격 — 기준 슈 밑면에서 칼날 밑면까지. 부품표가 정한 값과 대조한다.
+      var cut = cutGap(p), okCut = Math.abs(cut - M.cutMm) <= M.cutTolMm + 1e-6;
+      bd.dimY(p.shoeY - p.shoeT / 2, p.cassetteY - p.cassetteT / 2, x0 - 0.014,
+              cut.toFixed(2) + ' 절입', okCut ? C('ok') : C('red'));
       bd.text(x0 - 0.046, p.panelTop, '패널 상면 (기준)', ink, 'left', 10.5, 0, 13);
       bd.text(x0 - 0.046, p.cassetteY + p.cassetteT / 2, 'SKD11 카세트 '
               + (p.cassetteT * 1000).toFixed(0) + ' t · 팁 ' + M.bladeTipMm
               + ' · 쐐기 ' + M.bladeWedgeDeg + '°', C('blade'), 'left', 10.5, 0, -4);
       bd.text(x0 + 0.046, p.panelTop - 0.0038, '아직 붙어 있는 접착', ink, 'right', 10.5);
       if (x0 > -p.boxW / 2) bd.text(x0 + 0.046, p.boxCy, 'JBOX', ink, 'right', 11);
-      if (p.shoeY + p.shoeT / 2 < p.panelTop) {
-        bd.text(x0 - 0.046, p.shoeY, 'POM 기준 슈가 패널 상면 아래 '
-                + ((p.panelTop - p.shoeY - p.shoeT / 2) * 1000).toFixed(1) + ' mm',
-                C('red'), 'left', 10.5, 0, 3);
-      }
+      var seat = (p.shoeY - p.shoeT / 2 - p.panelTop) * 1000;
+      var nominal = seat - p.fl * 1000;          // 플로팅을 뺀 공칭 착좌
+      bd.text(x0 + 0.046, p.shoeY, 'POM 기준 슈 착좌 공칭 '
+              + (nominal >= 0 ? '+' : '') + nominal.toFixed(2) + ' · 플로팅 '
+              + (p.fl * 1000 >= 0 ? '+' : '') + (p.fl * 1000).toFixed(2) + ' mm',
+              Math.abs(nominal) <= 0.05 ? C('ok') : C('red'), 'right', 10.5, 0, -5);
     }
   }
 
@@ -453,6 +462,10 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
     }
     return M.stages[M.stages.length - 1];
   }
+  function cutGap(p) {
+    return (p.shoeY - p.shoeT / 2 - (p.cassetteY - p.cassetteT / 2)) * 1000;
+  }
+
   function bonded(p) {
     var h = p.boxW / 2, a = Math.max(-h, Math.min(h, cassetteSpan(p, -1)[1]));
     var b = Math.min(h, Math.max(-h, cassetteSpan(p, 1)[0]));
@@ -477,8 +490,15 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
     el('readout').innerHTML =
       row('캐리어 개도', '±' + (p.H * 1000).toFixed(0) + ' mm', sh ? 'hot' : '') +
       row('칼날 간극', ((r[0] - l[1]) * 1000).toFixed(0) + ' mm', sh ? 'hot' : '') +
-      row('칼날 절입 (패널 상면 기준)', cut.toFixed(1) + ' mm') +
-      row('Z 플로팅', (p.fl * 1000).toFixed(2) + ' mm', Math.abs(p.fl) > 0.0001 ? 'hot' : '') +
+      row('칼날 하면 (패널 상면 기준)', cut.toFixed(1) + ' mm') +
+      row('절입간격 · 사양 ' + M.cutMm + '±' + M.cutTolMm,
+          cutGap(p).toFixed(2) + ' mm',
+          Math.abs(cutGap(p) - M.cutMm) <= M.cutTolMm + 1e-6 ? '' : 'alarm') +
+      row('기준 슈 착좌 (공칭)',
+          (((p.shoeY - p.shoeT / 2 - p.panelTop) - p.fl) * 1000).toFixed(2) + ' mm',
+          Math.abs((p.shoeY - p.shoeT / 2 - p.panelTop) - p.fl) <= 5e-5 ? '' : 'alarm') +
+      row('Z 플로팅 (워페이지 추종)', (p.fl * 1000).toFixed(2) + ' mm',
+          Math.abs(p.fl) > 0.0001 ? 'hot' : '') +
       row('Z 변위센서 신장', '×' + (1 + Math.abs(p.fl) * MO.stemGain).toFixed(3)) +
       row('패시브 요', (p.yaw * 180 / Math.PI).toFixed(2) + '°',
           p.angleOver && sh ? 'alarm' : '') +
@@ -522,16 +542,19 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
         '<td>' + r[2] + '</td><td><code>' + r[3] + '</code></td></tr>';
     }).join('');
 
-    var p = pose(MO.shear[0] + 0.5);
+    var p = pose(MO.shear[0] + 0.5, true);
     var faces = [
       ['승강 플레이트 하면', p.plateBot, '3헤드가 매달린 기준면'],
       ['칼날 캐리어 중심', p.carrierY, 'L 칼날 카세트를 무는 자리'],
       ['칼날 카세트 상면', p.cassetteY + p.cassetteT / 2, ''],
-      ['칼날 카세트 하면', p.cassetteY - p.cassetteT / 2, '이 면이 접착 계면을 지난다'],
+      ['칼날 카세트 하면', p.cassetteY - p.cassetteT / 2,
+       '기준 슈 밑면보다 ' + cutGap(p).toFixed(2) + ' mm 아래 — 사양 '
+       + M.cutMm + '±' + M.cutTolMm + ' mm 안이다'],
       ['정션박스 상면', p.boxCy + p.boxH / 2, '진공컵이 무는 면'],
       ['패널 상면 (백시트)', p.panelTop, '기준면'],
       ['정션박스 하면', p.boxCy - p.boxH / 2, '패널 상면보다 아래 — 그 차이가 접착 두께다'],
-      ['POM 기준 슈 하면', p.shoeY - p.shoeT / 2, '칼날 높이를 기계적으로 정하는 면'],
+      ['POM 기준 슈 하면', p.shoeY - p.shoeT / 2,
+       '칼날 높이를 기계적으로 정하는 면 — 백시트에 닿는다 (JB-HD-009)'],
       ['패널 하면 (유리)', p.panelBot, '']
     ];
     el('stack').innerHTML = faces.map(function (f) {

@@ -111,6 +111,13 @@ class TestJbrScene(unittest.TestCase):
         self.assertNotIn("ENGINEERING BASE REV.22", self.html)
         self.assertIn("JBR-201 단독 파생본", self.html)
 
+    def test_the_casing_is_off_by_default(self):
+        """이 파생본은 기구를 보는 화면이다 — 껍질은 기본으로 벗겨 둔다."""
+        self.assertIn('<input class="form-check-input" id="pv-case" type="checkbox" checked>',
+                      self.plant, "원본은 켜 둔 채로 나간다")
+        self.assertIn('<input class="form-check-input" id="pv-case" type="checkbox">', self.html)
+        self.assertNotIn('id="pv-case" type="checkbox" checked', self.html)
+
     def test_the_flow_strip_shows_only_the_handoffs_and_the_cell(self):
         first, last = self.builder.FLOW_FIRST, self.builder.FLOW_LAST
         self.assertEqual((first, last), (6, 8))
@@ -332,6 +339,30 @@ class TestJbrCloseup(unittest.TestCase):
                 self.assertIn(key, m["parts"])
         self.assertEqual(m["parts"]["panel"]["size"][:2],
                          [campaign.PANEL_LENGTH_MM / 1000, 0.045])
+
+    def test_the_shoe_seats_on_the_backsheet_and_the_blade_cuts_the_spec_gap(self):
+        """JB-HD-009 가 「백시트 기준면 접촉」·「절입간격 0.6±0.2 mm」 라고 적는다 — 형상이 그래야 한다."""
+        m = self.builder.model(self.plant)
+        P, mo = m["parts"], m["motion"]
+        base = m["cellY"] + mo["descend"][3]                 # 하강이 끝난 자세
+        panel_top = m["cellY"] + P["panel"]["at"][1] + P["panel"]["size"][1] / 2
+        shoe_bottom = base + P["shoe"]["y"] - P["shoe"]["size"][1] / 2
+        blade_bottom = base + P["cassette"]["y"] - P["cassette"]["size"][1] / 2
+        self.assertAlmostEqual(shoe_bottom, panel_top, places=6,
+                               msg="기준 슈 밑면이 백시트에 닿지 않는다")
+        gap = (shoe_bottom - blade_bottom) * 1000
+        self.assertAlmostEqual(gap, m["cutMm"], delta=m["cutTolMm"],
+                               msg=f"절입간격 {gap:.2f} mm 가 사양 밖이다")
+        self.assertGreater(blade_bottom, panel_top - P["box"]["size"][1],
+                           "칼날이 패널을 뚫고 들어간다")
+
+    def test_the_cut_spec_is_read_from_the_bom(self):
+        spec, cut, tol = self.builder.shoe_spec(self.plant)
+        self.assertIn("절입간격", spec)
+        self.assertGreater(cut, 0)
+        self.assertGreater(tol, 0)
+        self.assertIn(f'"cutMm":{cut:g}', self.html)
+        self.assertIn(f'"cutTolMm":{tol:g}', self.html)
 
     def test_the_artifact_converter_accepts_it(self):
         conv = _load("build_artifact")

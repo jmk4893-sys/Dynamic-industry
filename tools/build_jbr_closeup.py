@@ -230,6 +230,17 @@ def blade_spec(text: str) -> tuple[str, float, float]:
     return spec, float(tip.group(1)), float(wedge.group(1))
 
 
+def shoe_spec(text: str) -> tuple[str, float, float]:
+    """POM 기준 슈가 정하는 절입간격 — 부품표 JB-HD-009 의 공차란이 값의 출처다."""
+    m = _one(text, r'"JB-HD-009","[^"]*","스프링 POM 기준 슈","[^"]*",\[[^\]]*\],'
+                   r'"[^"]*","[^"]*","([^"]*)"', "기준 슈 공차")
+    spec = m.group(1)
+    v = re.search(r"([\d.]+)\s*±\s*([\d.]+)", spec)
+    if not v:
+        raise SystemExit(f"✗ 기준 슈 공차에서 절입간격을 못 읽었다: {spec}")
+    return spec, float(v.group(1)), float(v.group(2))
+
+
 def model(text: str) -> dict[str, object]:
     """화면이 쓰는 값 전부 — 형상·운동·시각·시나리오."""
     parts = {
@@ -256,6 +267,7 @@ def model(text: str) -> dict[str, object]:
     parts["connector"] = {"r": _num(connector.group(1)), "h": _num(connector.group(2)),
                           "at": [0.0, -_num(connector.group(3)), -_num(connector.group(4))]}
     spec, tip, wedge = blade_spec(text)
+    cut_spec, cut, cut_tol = shoe_spec(text)
     return {
         "rev": revision(text),
         "cellY": CELL_Y,
@@ -267,6 +279,7 @@ def model(text: str) -> dict[str, object]:
         "stages": [s for s in stages(text) if s["end"] > T_FROM and s["start"] < T_TO],
         "scenarios": scenarios(text),
         "bladeSpec": spec, "bladeTipMm": tip, "bladeWedgeDeg": wedge,
+        "cutSpec": cut_spec, "cutMm": cut, "cutTolMm": cut_tol,
     }
 
 
@@ -421,8 +434,11 @@ def build() -> str:
 <div class="tw"><table><thead><tr><th>면</th><th>월드 H (mm)</th>
 <th>패널 상면 기준 (mm)</th><th>비고</th></tr></thead><tbody id="stack"></tbody></table></div>
 
-<h2>칼날</h2>
+<h2>칼날과 기준 슈</h2>
 <p class="lead" id="bladespec"></p>
+<div class="note">기준 슈 공차란이 <code>{esc(M['cutSpec'])}</code> 이고 기능란이 「백시트 기준면 접촉」이다.
+즉 하강이 끝난 자세에서 <b>슈 밑면이 백시트에 닿고 칼날은 그보다 {M['cutMm']:g} mm 만 더 내려간다.</b>
+이 그림의 절입 치수가 그 값과 어긋나면 붉게 표시된다.</div>
 
 <footer>
   JBR-201 박리 순간 클로즈업 · {esc(M['rev'])} ·
@@ -562,8 +578,9 @@ def build() -> str:
   }}
 
   // ── 한 장면의 좌표 계산 ─────────────────────────────────────────────
-  function pose(t) {{
-    var ae = plateY(t), H = bladeOpen(t), tt = gripT(t), fl = floatY(t, 1);
+  // flat=true 면 워페이지 추종 플로팅을 뺀 **공칭** 자세다 — 스택업은 그것으로 잰다.
+  function pose(t, flat) {{
+    var ae = plateY(t), H = bladeOpen(t), tt = gripT(t), fl = flat ? 0 : floatY(t, 1);
     var base = M.cellY + ae;                       // 승강 플레이트가 실은 프레임의 y 기준
     var b = P.box, bx = activeBox();
     return {{
@@ -686,17 +703,22 @@ def build() -> str:
               ((p.cassetteY - p.cassetteT / 2 - p.panelTop) * 1000).toFixed(1) + ' 칼날 하면', ink);
       bd.dimY(p.panelTop, p.boxCy - p.boxH / 2, x0 + 0.026,
               ((p.boxCy - p.boxH / 2 - p.panelTop) * 1000).toFixed(1) + ' 박스 하면', ink);
+      // 절입간격 — 기준 슈 밑면에서 칼날 밑면까지. 부품표가 정한 값과 대조한다.
+      var cut = cutGap(p), okCut = Math.abs(cut - M.cutMm) <= M.cutTolMm + 1e-6;
+      bd.dimY(p.shoeY - p.shoeT / 2, p.cassetteY - p.cassetteT / 2, x0 - 0.014,
+              cut.toFixed(2) + ' 절입', okCut ? C('ok') : C('red'));
       bd.text(x0 - 0.046, p.panelTop, '패널 상면 (기준)', ink, 'left', 10.5, 0, 13);
       bd.text(x0 - 0.046, p.cassetteY + p.cassetteT / 2, 'SKD11 카세트 '
               + (p.cassetteT * 1000).toFixed(0) + ' t · 팁 ' + M.bladeTipMm
               + ' · 쐐기 ' + M.bladeWedgeDeg + '°', C('blade'), 'left', 10.5, 0, -4);
       bd.text(x0 + 0.046, p.panelTop - 0.0038, '아직 붙어 있는 접착', ink, 'right', 10.5);
       if (x0 > -p.boxW / 2) bd.text(x0 + 0.046, p.boxCy, 'JBOX', ink, 'right', 11);
-      if (p.shoeY + p.shoeT / 2 < p.panelTop) {{
-        bd.text(x0 - 0.046, p.shoeY, 'POM 기준 슈가 패널 상면 아래 '
-                + ((p.panelTop - p.shoeY - p.shoeT / 2) * 1000).toFixed(1) + ' mm',
-                C('red'), 'left', 10.5, 0, 3);
-      }}
+      var seat = (p.shoeY - p.shoeT / 2 - p.panelTop) * 1000;
+      var nominal = seat - p.fl * 1000;          // 플로팅을 뺀 공칭 착좌
+      bd.text(x0 + 0.046, p.shoeY, 'POM 기준 슈 착좌 공칭 '
+              + (nominal >= 0 ? '+' : '') + nominal.toFixed(2) + ' · 플로팅 '
+              + (p.fl * 1000 >= 0 ? '+' : '') + (p.fl * 1000).toFixed(2) + ' mm',
+              Math.abs(nominal) <= 0.05 ? C('ok') : C('red'), 'right', 10.5, 0, -5);
     }}
   }}
 
@@ -724,7 +746,7 @@ def build() -> str:
     }}
     return M.stages[M.stages.length - 1];
   }}
-  function bonded(p) {{
+  function cutGap(p) {{\n    return (p.shoeY - p.shoeT / 2 - (p.cassetteY - p.cassetteT / 2)) * 1000;\n  }}\n\n  function bonded(p) {{
     var h = p.boxW / 2, a = Math.max(-h, Math.min(h, cassetteSpan(p, -1)[1]));
     var b = Math.min(h, Math.max(-h, cassetteSpan(p, 1)[0]));
     return Math.max(0, (b - a) * 1000);
@@ -748,8 +770,15 @@ def build() -> str:
     el('readout').innerHTML =
       row('캐리어 개도', '±' + (p.H * 1000).toFixed(0) + ' mm', sh ? 'hot' : '') +
       row('칼날 간극', ((r[0] - l[1]) * 1000).toFixed(0) + ' mm', sh ? 'hot' : '') +
-      row('칼날 절입 (패널 상면 기준)', cut.toFixed(1) + ' mm') +
-      row('Z 플로팅', (p.fl * 1000).toFixed(2) + ' mm', Math.abs(p.fl) > 0.0001 ? 'hot' : '') +
+      row('칼날 하면 (패널 상면 기준)', cut.toFixed(1) + ' mm') +
+      row('절입간격 · 사양 ' + M.cutMm + '±' + M.cutTolMm,
+          cutGap(p).toFixed(2) + ' mm',
+          Math.abs(cutGap(p) - M.cutMm) <= M.cutTolMm + 1e-6 ? '' : 'alarm') +
+      row('기준 슈 착좌 (공칭)',
+          (((p.shoeY - p.shoeT / 2 - p.panelTop) - p.fl) * 1000).toFixed(2) + ' mm',
+          Math.abs((p.shoeY - p.shoeT / 2 - p.panelTop) - p.fl) <= 5e-5 ? '' : 'alarm') +
+      row('Z 플로팅 (워페이지 추종)', (p.fl * 1000).toFixed(2) + ' mm',
+          Math.abs(p.fl) > 0.0001 ? 'hot' : '') +
       row('Z 변위센서 신장', '×' + (1 + Math.abs(p.fl) * MO.stemGain).toFixed(3)) +
       row('패시브 요', (p.yaw * 180 / Math.PI).toFixed(2) + '°',
           p.angleOver && sh ? 'alarm' : '') +
@@ -793,16 +822,19 @@ def build() -> str:
         '<td>' + r[2] + '</td><td><code>' + r[3] + '</code></td></tr>';
     }}).join('');
 
-    var p = pose(MO.shear[0] + 0.5);
+    var p = pose(MO.shear[0] + 0.5, true);
     var faces = [
       ['승강 플레이트 하면', p.plateBot, '3헤드가 매달린 기준면'],
       ['칼날 캐리어 중심', p.carrierY, 'L 칼날 카세트를 무는 자리'],
       ['칼날 카세트 상면', p.cassetteY + p.cassetteT / 2, ''],
-      ['칼날 카세트 하면', p.cassetteY - p.cassetteT / 2, '이 면이 접착 계면을 지난다'],
+      ['칼날 카세트 하면', p.cassetteY - p.cassetteT / 2,
+       '기준 슈 밑면보다 ' + cutGap(p).toFixed(2) + ' mm 아래 — 사양 '
+       + M.cutMm + '±' + M.cutTolMm + ' mm 안이다'],
       ['정션박스 상면', p.boxCy + p.boxH / 2, '진공컵이 무는 면'],
       ['패널 상면 (백시트)', p.panelTop, '기준면'],
       ['정션박스 하면', p.boxCy - p.boxH / 2, '패널 상면보다 아래 — 그 차이가 접착 두께다'],
-      ['POM 기준 슈 하면', p.shoeY - p.shoeT / 2, '칼날 높이를 기계적으로 정하는 면'],
+      ['POM 기준 슈 하면', p.shoeY - p.shoeT / 2,
+       '칼날 높이를 기계적으로 정하는 면 — 백시트에 닿는다 (JB-HD-009)'],
       ['패널 하면 (유리)', p.panelBot, '']
     ];
     el('stack').innerHTML = faces.map(function (f) {{

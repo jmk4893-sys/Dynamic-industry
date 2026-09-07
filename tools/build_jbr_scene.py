@@ -270,6 +270,11 @@ def build() -> str:
               f" .pv-flow-track > li:nth-child(n+{FLOW_LAST + 1}) {{ display: none; }}</style>\n</head>",
               "흐름표 CSS")
 
+    # 케이싱은 원본에서 기본으로 켜 있다. 이 파생본은 셀 하나의 **기구를 보는** 화면이고
+    # 껍질은 그것을 가리므로 기본을 끈다 — 토글은 남으니 외형이 필요하면 켜면 된다.
+    t = _once(t, '<input class="form-check-input" id="pv-case" type="checkbox" checked>',
+              '<input class="form-check-input" id="pv-case" type="checkbox">', "외장 케이싱 기본값")
+
     # ── 상·하류 전용 조작 ───────────────────────────────────────────────────
     for key in HIDDEN_CONTROLS:
         if f'<label class="form-label" for="{key}">' not in t:
