@@ -203,6 +203,7 @@ class TestTheSpecimenStateReachesTheDocument(unittest.TestCase):
         html = (ROOT / "docs" / "dg-hk60-pilot.html").read_text(encoding="utf-8")
         self.assertIn(P.SPECIMEN_STATE, html)
         self.assertIn("5 mm 이하로 자르고 눕히지 않는다", html)
+        self.assertIn("발자국만큼 백시트를 절결", html)
 
     def test_the_report_and_the_budget_carry_it_too(self):
         self.assertIn(P.SPECIMEN_STATE, P.report())

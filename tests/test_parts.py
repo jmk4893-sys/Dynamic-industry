@@ -454,6 +454,7 @@ class TestTheAlignmentGuideNeverTouchesGlassWithSteel(unittest.TestCase):
         self.assertIn("P-001-12", rfq)
         self.assertNotIn("프레임 제거 여부", rfq, "결정된 것을 협의 항목으로 남겼다")
         self.assertIn("리본 단부 백시트 면 위 돌출 ≤ 5 mm", rfq)
+        self.assertIn("정션박스 자리 백시트 절결", rfq, "상류 절입이 백시트를 관통한다 — 절결 수용을 적어야 한다")
 
 
 if __name__ == "__main__":
