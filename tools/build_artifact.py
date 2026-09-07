@@ -57,11 +57,32 @@ FORBIDDEN = (
 #: 요청이 아니라 사람이 읽는 문장이다. XML 네임스페이스(`http://www.w3.org/2000/svg`)
 #: 도 식별자일 뿐이라 애초에 이 자리들에 나타나지 않는다.
 FETCHING = (
-    re.compile(r"""\b(?:src|href)\s*=\s*["']?\s*(https?:)?//""", re.I),   # <script>·<link>·<img>
+    # <a href> 는 이동이지 요청이 아니다 — 아티팩트끼리 잇는 링크는 허용한다 (LINKS)
+    re.compile(r"""<(?:script|link|img|iframe|source|video|audio|embed|object|track)\b[^>]*\b(?:src|href)\s*=\s*["']?\s*(https?:)?//""", re.I),
     re.compile(r"""url\(\s*["']?\s*(https?:)?//""", re.I),                # CSS url()
     re.compile(r"""@import\s+["']?\s*(https?:)?//""", re.I),              # CSS @import
     re.compile(r"""\b(?:fetch|importScripts|Worker)\s*\(\s*["'`]\s*(https?:)?//""", re.I),
 )
+
+
+#: 저장소 상대 링크 → 발행된 아티팩트. 도면은 저장소 안에서는 파일로, 발행본에서는
+#: 아티팩트로 서로를 가리킨다 — 같은 원본에서 두 벌이 나오되 링크만 자리에 맞게 바뀐다.
+#: 매핑에 없는 상대 .html 링크가 남으면 발행본에서 죽은 링크가 되므로 변환이 멈춘다.
+LINKS: dict[str, str] = {
+    "pv-delamination-3d.html": "https://claude.ai/code/artifact/063a9784-6c8c-4c25-8d85-1035befed92d",   # DG-HK60 3D 운전 콘솔
+    "../dg-hk60-rfq.html": "https://claude.ai/code/artifact/377241f9-3731-4e2a-aecc-178adcdb288e",      # DG-HK60 상세설계 기술사양서 · RFQ
+    "../dg-hk60-assembly.html": "https://claude.ai/code/artifact/613c1af7-8a2b-4868-b75b-360ab1c4591c", # DG-HK60C 조립 지침서
+}
+
+
+def relink(text: str, src: pathlib.Path) -> str:
+    """상대 .html 링크를 아티팩트 URL 로 바꾼다. 모르는 링크는 실패다."""
+    def swap(m: re.Match) -> str:
+        target = m.group(2)
+        if target not in LINKS:
+            raise SystemExit(f"✗ {src}: 아티팩트 URL 을 모르는 상대 링크 — {target} (LINKS 에 넣을 것)")
+        return m.group(1) + LINKS[target] + m.group(3)
+    return re.sub(r"""(href=["'])((?:\.\./)?[\w.-]+\.html)(["'#])""", swap, text)
 
 
 def head_commit() -> str:
@@ -77,6 +98,7 @@ def convert(text: str, src: pathlib.Path) -> str:
     for pat in STRIP_HEAD_TAGS:
         out = pat.sub("", out)
     out = out.lstrip()
+    out = relink(out, src)
 
     if not re.search(r"<title>(.*?)</title>", out, re.S):
         raise SystemExit(f"✗ {src}: <title> 이 없다 — 아티팩트 이름이 파일명으로 떨어진다")

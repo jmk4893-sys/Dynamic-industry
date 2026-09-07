@@ -394,6 +394,7 @@ def build_handoff_html() -> str:
     <summary>후단 인계 — {H.MODEL} 유리제거기 <span class="viz-badge">PV-PLANT-HO-1012</span></summary>
     <p class="text-small text-muted">전처리의 마지막 공정은 알루미늄 프레임 제거(AFR) 뒤의 <b>유리 버퍼</b>다. 그 버퍼가
       <a href="pv-delamination-3d.html" target="_blank" rel="noopener"><b>{H.MODEL}</b> — {H.DECKS}단 밀폐 IR 가열실·이동 나이프 탠덤·{H.DECKS}단 냉각 랙 ({H.REV} {H.PLAN})</a> 의 투입 셔틀 LD-101 로 이어진다.
+      벤더 문서: <a href="../dg-hk60-rfq.html" target="_blank" rel="noopener">발주 기술사양서 (RFQ)</a> · <a href="../dg-hk60-assembly.html" target="_blank" rel="noopener">조립 지침서</a> — 상류 직결 확인사항은 RFQ OI-16.
       잇는다는 것은 링크를 거는 일이 아니라 <b>경계 조건이 맞는지 따지는 일</b>이다. REV.54 에서 넷을 다시 쟀다 — 자세 하나만 그대로 맞고, 치수·처리율·인계 방식은 결정이 필요했다.
       후단 수치는 옮겨 적지 않는다 — <code>src/pv_preprocess/hk60c.py</code> 가 그 기계의 콘솔·사양서에서 읽고, <code>handoff.py</code> 와 어긋나면 테스트가 실패한다.</p>
     <div class="table-responsive">
