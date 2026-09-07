@@ -39,6 +39,7 @@ Dynamic industry Development
 | [docs/drawings/pv-infeed-sim.html](docs/drawings/pv-infeed-sim.html) | **투입 구간 운전 콘솔** — 같은 구간이 실제로 움직이는 것. 평면·측면·단면이 한 공정시계에 묶여 리프트 인덱스·분리·승강·180° 반전·로봇 이송·PT-101 정렬·JB-201 인계를 재생하고, 허가 조건·핸드셰이크·리프트 잔량이 기계 상태에서 켜진다. 한 장 추적 / 60장 캠페인(듀얼 리프트·지게차 교환) 모드 (`PYTHONPATH=src python tools/build_infeed_sim.py`, 브라우저로 열 것) |
 | [docs/drawings/pv-infeed-scene.html](docs/drawings/pv-infeed-scene.html) | **통합 설계도 · 투입 구간 파생본** — 통합 설계도의 3D 영상 콘솔에서 afu·robot 존(JB-201 인계 롤러까지)만 남기고 하류 셀을 끈 것. 공정시계는 방출 주기 48 s, 기본 시점은 투입셀, 흐름표·도면 모듈도 투입 구간만, 외장 케이싱은 뺀다. 배치도 탭은 전체 장비배치도 대신 투입 구간 평면 배치와 투입 장비 가로·세로·높이 외형 표다. 원본 형상은 그대로이고 문자열 패치로 만든다 (`PYTHONPATH=src python tools/build_infeed_scene.py`, 브라우저로 열 것) |
 | [docs/drawings/pv-infeed-fab.html](docs/drawings/pv-infeed-fab.html) | **투입 구간 제작 도면집** — 조립체 12벌 · 제작품 117종의 부품도(3면·치수·두께·구멍·재질) · 등각 분해도 · 부품표 · 상용품 규격 · 체결표(볼트 호칭·등급·토크·앵커) · 조립 순서 · 검사 항목 · 총괄 사양(재질·체결 표준·용접·도장·공차) · 플랜트 설치 순서. 정본은 `src/pv_preprocess/fabrication.py` (`PYTHONPATH=src python tools/build_infeed_fab.py`, 브라우저로 열 것) |
+| [docs/drawings/pv-bfc-prototype.html](docs/drawings/pv-bfc-prototype.html) | **BFC 반전 카세트 시작품 계획** — 라인을 짓기 전에 한 Bay 만 만들어 공정 가정을 시험한다. 닫는 질문 7 · 범위와 대체품 · 리그 입면 · 관문 G0–G6 20주 · 시험 12건(합격 기준은 설계 모델에서) · 시료 100장 · 리그 안전 · 수량 산출(단가는 견적) · 위험 · 모델 반영. 정본은 `src/pv_preprocess/prototype.py` (`PYTHONPATH=src python tools/build_prototype.py`, 브라우저로 열 것) |
 | [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 13종, 열수지 계산기 (브라우저로 열 것) |
 
 ### 사용법
@@ -89,6 +90,7 @@ src/flotation_design/
 src/pv_preprocess/
   layout.py         전처리 플랜트 배치 — 셀 외형에서 존·전체 포락선 파생
   fabrication.py    투입 구간 제작 패키지 — 제작품 치수·두께·재질·구멍, 체결 표준·토크, 조립 순서
+  prototype.py      BFC 반전 카세트 시작품 — 닫는 질문·범위·관문·시험 기준·수량 산출
   electrical.py     전기 인입 부하 집계 · 차단기·계약전력 산정
   smart.py          스마트 팩토리 — 계측·네트워크·데이터량·시설 산정
   ai.py             AI 적용 검토 — 등급·라벨 공급·오분류 대가

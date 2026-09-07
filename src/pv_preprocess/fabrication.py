@@ -775,6 +775,14 @@ ASSEMBLIES: tuple[Assembly, ...] = (
 
 
 # ── 파생·검사 ────────────────────────────────────────────────────────────
+def assembly(sheet: str) -> Assembly:
+    """도번으로 조립체를 찾는다. 없으면 KeyError — 오타가 조용히 지나가지 않는다."""
+    for a in ASSEMBLIES:
+        if a.sheet == sheet:
+            return a
+    raise KeyError(sheet)
+
+
 def fabricated_parts() -> list[tuple[Assembly, Part]]:
     return [(a, p) for a in ASSEMBLIES for p in a.parts]
 
