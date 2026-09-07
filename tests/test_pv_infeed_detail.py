@@ -19,6 +19,7 @@ from pv_preprocess import campaign, kinematics, layout, safety, servos
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DETAIL = ROOT / "docs/drawings/pv-infeed-detail.html"
 SIM = ROOT / "docs/drawings/pv-infeed-sim.html"
+SCENE = ROOT / "docs/drawings/pv-infeed-scene.html"
 
 
 def _load(name: str):
@@ -149,3 +150,53 @@ class TestInfeedSim(unittest.TestCase):
         self.assertIn("infeed-sim", conv.TARGETS)
         body = conv.convert(self.html, SIM)
         self.assertIn("<title>", body)
+
+
+class TestInfeedScene(unittest.TestCase):
+    """통합 설계도에서 투입 구간만 남긴 파생본 — 원본 형상은 그대로, 시계·시점·화면만 좁혔는가."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.builder = _load("build_infeed_scene")
+        cls.html = SCENE.read_text(encoding="utf-8")
+        cls.plant = cls.builder.PLANT.read_text(encoding="utf-8")
+
+    def test_the_committed_file_is_what_the_builder_makes(self):
+        self.assertEqual(self.html, self.builder.build(),
+                         "docs/drawings/pv-infeed-scene.html 이 생성기 출력과 다르다 — "
+                         "PYTHONPATH=src python tools/build_infeed_scene.py 를 돌리고 커밋한다")
+
+    def test_the_clock_is_the_release_takt(self):
+        takt = campaign.release_takt_s()
+        self.assertIn(f",ci={takt:g}", self.html)
+        self.assertNotIn(",ci=nt+Lr", self.html)
+        self.assertIn(f'max="{takt:g}"', self.html)
+        self.assertNotIn('max="124.03"', self.html)
+
+    def test_only_infeed_views_and_stations_remain(self):
+        import re
+        views = re.findall(r'data-jb-view="([a-z]+)" type="button"', self.html)
+        self.assertEqual(sorted(views), sorted(self.builder.KEEP_VIEWS))
+        self.assertIn('class="btn btn-primary" data-jb-view="afu"', self.html)
+        for key in ("jbr", "afr", "post", "buffer"):
+            self.assertNotIn(f'<option value="{key}">', self.html.split('id="pv-drawing-station"')[1][:600])
+        self.assertIn(',xl="afu"', self.html)
+
+    def test_the_scene_is_narrowed_not_rewritten(self):
+        """3D 형상 코드는 원본과 같아야 한다 — 파생본은 보이기만 끈다."""
+        i = self.plant.index("var pvZone=")
+        j = self.plant.index("Ae.__pvScene=")
+        patched = (",ci=nt+Lr", ',xl="line"', 'fp.line:fp[i]', '"reset"?"line"')
+        for line in self.plant[i:j].splitlines():
+            if any(anchor in line for anchor in patched):
+                continue
+            self.assertIn(line, self.html, f"원본 장면 코드가 파생본에서 바뀌었다: {line[:80]}")
+        self.assertIn("window.__pvInfeedScene", self.html)
+        robot_end = next(z.x1_mm for z in layout.build_zones() if z.key == "robot")
+        self.assertIn(f"const BOUNDARY = {(robot_end - 24_750) / 1000 + 0.5:g};", self.html)
+
+    def test_the_artifact_converter_accepts_it(self):
+        conv = _load("build_artifact")
+        self.assertIn("infeed-scene", conv.TARGETS)
+        body = conv.convert(self.html, SCENE)
+        self.assertIn("<title>태양광 전처리 플랜트 · 투입 구간</title>", body)
