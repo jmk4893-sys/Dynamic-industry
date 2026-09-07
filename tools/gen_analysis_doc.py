@@ -16,6 +16,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
+import analysis_irbank as IRB  # noqa: E402
 import analysis_structural as ST  # noqa: E402
 import analysis_thermal as TH  # noqa: E402
 import fea  # noqa: E402
@@ -249,6 +250,94 @@ def part4() -> str:
 </div></div>"""
 
 
+# ── 4b. IR 뱅크 배치 ─────────────────────────────────────────────────
+def part4b() -> str:
+    rs, ex = IRB.run()
+    now, new = ex["now"], ex["new"]
+    pos = " · ".join(f"{x*1000:+.0f}" for x in IRB.NEW_X)
+    rq = "".join(
+        f'<tr><td class="k">{esc(q.id)}</td><td>{esc(q.what)}</td>'
+        f'<td class="k">{esc(q.value)}</td><td>{esc(q.owner)}</td>'
+        f'<td>{md(q.why)}</td></tr>' for q in IRB.requirements())
+    return f"""
+<div class="clause" id="p5"><div class="n">5</div><div class="c">
+  <h3>IR 뱅크 배치 — 1 차원이 못 보던 자리</h3>
+  <p>열해석은 요구 <span class="k">R1</span>(면내 온도편차)을 만들어 놓고 스스로
+    닫지 못했다. 1 차원은 두께 방향만 보므로 면내 편차를 <strong>원리적으로</strong>
+    낼 수 없고, 그 편차는 램프 배치와 반사면이 정한다. 유한 선원 조사도의
+    닫힌해에 정반사 이미지를 얹고, 그 유속장을 면내 2 차원 과도 전도로 풀었다.</p>
+
+  <div class="warn"><strong>전도가 구해 주지 않는다.</strong>
+    면내 유효 확산계수는 <span class="m">3.7×10⁻⁷ m²/s</span> 이고 소킹
+    <span class="m">222 초</span>의 확산길이는 <span class="m">9 mm</span> 다.
+    램프 피치는 <span class="m">400 mm</span> 대다 —
+    <strong>유속 분포가 그대로 온도 분포가 된다.</strong> 셀(실리콘)의 k·t 가
+    유리의 10 배지만 156 mm 웨이퍼가 2 mm 씩 떨어져 있어 셀을 <em>건너서는</em>
+    전도하지 않는다. 연속체로 놓으면 있지도 않은 평활화를 계산에 넣게 된다.</p></div>
+
+  <div class="warn"><strong>창을 정하는 것은 유리가 아니라 백시트다.</strong>
+    실제 운전 규칙이 “<strong>가장 찬 점</strong>이 140 ℃ 에 닿을 때까지 소킹한다”
+    이므로, 면내 편차는 두 곳을 동시에 친다 — 체류시간이 늘어 처리량이 깎이고,
+    중앙이 넘쳐 백시트가 녹는다. 그 창은 165 − 140 − 7 =
+    <span class="m">18 K</span> 로, 유리 열응력이 주는 21 K 보다 <strong>좁다</strong>.</div>
+
+  <div class="tw"><table>
+    <caption>현행 배치와 개선 배치 — 냉점을 140 ℃ 에 올렸을 때</caption>
+    <thead><tr><th>ID</th><th>항목</th><th class="num">값</th><th class="num">단위</th>
+      <th class="num">한계</th><th class="num">이용률</th><th>판정</th></tr></thead>
+    <tbody>{_rows(rs)}</tbody>
+  </table></div>
+
+  <h4>무엇이 듣고 무엇이 안 듣는가</h4>
+  <ul>
+    <li><strong>램프 발열장</strong> — 가장 크게 듣는다. 결손이 램프 축을 따라
+      있기 때문이다. 카탈로그의 <span class="m">1,300 mm</span> 는 패널 폭
+      1,200 에 끝단 여유 <span class="m">50 mm</span> 뿐이라 폭 가장자리 유속이
+      중앙의 <span class="m">69 %</span> 였다.</li>
+    <li><strong>길이방향 배치</strong> — 듣는다. 끝을 패널 끝단(±1,200) 바깥
+      <span class="m">±1,340</span> 까지 민다.</li>
+    <li><strong>내피 반사율</strong> — 크게 듣는다. 연마 STS 가 하는 일이
+      장식이 아니었다. 반사가 없으면 편차가
+      <span class="m">{IRB.new(0.0)["spread"]:.0f} K</span>, ρ 0.8 이면
+      <span class="m">{new["spread"]:.0f} K</span> 다.</li>
+    <li><strong>인접 뱅크 반피치 엇갈림</strong> — <strong>안 듣는다. 오히려
+      나빠진다.</strong> 처음에 듣는다고 봤고 모델이 아니라고 했다 — 편차의 정체가
+      램프 사이 맥놀이가 아니라 가장자리 결손이라, 엇갈리면 끝쪽 램프가
+      가장자리에서 멀어진다.</li>
+    <li><strong>존 출력 제어</strong> — 거의 안 듣는다. 램프별 SSR 듀티를 잡아도
+      결손이 <strong>램프 축 방향</strong>에 있어 자기 축을 따라서는 못 고친다.
+      산업용 IR 로의 표준 해법이 여기서는 표준이 아니다.</li>
+  </ul>
+
+  <div class="tw"><table>
+    <caption>확정 배치</caption>
+    <tbody>
+      <tr><th>램프</th><td>발열장 <strong>{IRB.NEW_LEN*1000:.0f} mm</strong> ·
+        2.5 kW · 뱅크당 {len(IRB.NEW_X)} 등 (총 {IRB.IR.LAMPS} 등 · 100 kW 불변)</td></tr>
+      <tr><th>위치</th><td class="k">x = {pos} mm</td></tr>
+      <tr><th>단자</th><td>측벽 관통 · 챔버 밖 소켓. 길이를 벌려고가 아니라
+        <strong>석영 단자는 고온부 밖에 있어야 수명이 선다</strong> — 램프 교체도
+        챔버를 열지 않고 한다. 대가는 총 80 개소의 관통 실링이다</td></tr>
+      <tr><th>내피</th><td>연마 STS304 #400 · 반사율
+        <strong>ρ ≥ {IRB.RHO_SPEC:.1f}</strong> — 이제 미관이 아니라 검사·정비 항목이다</td></tr>
+      <tr><th>엇갈림</th><td>쓰지 않는다 — 인접 뱅크는 같은 x 위치</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="tw"><table>
+    <caption>근거와 읽는 법</caption>
+    <thead><tr><th>ID</th><th>한계의 근거</th><th>무엇을 뜻하는가</th></tr></thead>
+    <tbody>{_basis(rs)}</tbody>
+  </table></div>
+
+  <div class="tw"><table>
+    <caption>이 검토가 만든 요구</caption>
+    <thead><tr><th>ID</th><th>무엇</th><th>값</th><th>받는 곳</th><th>왜</th></tr></thead>
+    <tbody>{rq}</tbody>
+  </table></div>
+</div></div>"""
+
+
 # ── 5. 요구 ──────────────────────────────────────────────────────────
 def part5() -> str:
     rq = "".join(
@@ -256,7 +345,7 @@ def part5() -> str:
         f'<td class="k">{esc(q.value)}</td><td>{esc(q.owner)}</td>'
         f'<td>{md(q.why)}</td></tr>' for q in TH.requirements())
     return f"""
-<div class="clause" id="p5"><div class="n">5</div><div class="c">
+<div class="clause" id="p6"><div class="n">6</div><div class="c">
   <h3>이 해석이 만든 요구</h3>
   <p>결과에는 두 갈래가 있다. <strong>검토</strong>는 한계가 있어 통과·초과가 나오고,
     <strong>요구</strong>는 해석이 새로 만들어 낸 조건이라 아직 지킬 사람이 없다.
@@ -274,7 +363,7 @@ def part5() -> str:
 # ── 6. 경계 ──────────────────────────────────────────────────────────
 def part6() -> str:
     return """
-<div class="clause" id="p6"><div class="n">6</div><div class="c">
+<div class="clause" id="p7"><div class="n">7</div><div class="c">
   <h3>이 해석이 못 보는 것</h3>
   <p>해석의 한계를 적지 않으면 “해석했다”가 해석하지 않은 것까지 덮는다.
     아래는 <strong>이 두 해석기로는 원리적으로 볼 수 없는 것</strong>이며, 상세설계에서
@@ -292,8 +381,10 @@ def part6() -> str:
       <tr><td>3 차원 응력집중</td><td>거싯 · 개구부 · 용접 지단의 형상계수는
         형상을 그려야 나온다</td><td>상용 FEA</td></tr>
       <tr><td>잔류응력</td><td>용접 열이력을 풀지 않는다</td><td>열탄소성 해석 · 응력제거</td></tr>
-      <tr><td>패널 면내 온도분포</td><td>1 차원은 두께 방향만 본다. 면내는 램프
-        배치와 반사판 형상이 정한다</td><td>파일럿 PT-04 (열화상)</td></tr>
+      <tr><td>램프의 방향성 배광</td><td>등방 선원으로 놓았다. 실제 반사판 형상은
+        배광을 만든다</td><td>파일럿 PT-04 (열화상)</td></tr>
+      <tr><td>연마면의 확산 반사</td><td>벽을 정반사로 놓아 가장자리 보상을
+        과대평가한다 — ρ 0 인 경우를 함께 낸 이유다</td><td>파일럿 PT-04</td></tr>
       <tr><td>대류계수 h</td><td>가정이지 계산이 아니다. 유리 25 · 카세트 60 ·
         벽 4~5 W/(m²·K) 전부 문헌값이다</td><td>파일럿 PT-06 · FAT</td></tr>
       <tr><td>EVA 의 가교 반응열과 상변화</td><td>비열을 상수로 놓았다.
@@ -310,6 +401,7 @@ def part6() -> str:
 def build() -> str:
     srs, _ = ST.run()
     trs, _ = TH.run()
+    irs, _ = IRB.run()
     over = [r.id for r in list(srs) + list(trs) if not r.ok]
     toc = "".join(
         f'<li><a href="#p{i}"><b>{i}</b>{t}</a></li>'
@@ -345,8 +437,9 @@ def build() -> str:
   <h1>DG-HK60C 태양광 패널 분리설비<br>구조 · 열해석 보고서</h1>
   <p class="subtitle">이 설비를 정하는 것은 강도가 아니라 <strong>변형과 온도</strong>다.
     구조 <strong>{len(srs)} 건</strong> · 열 <strong>{len(trs)} 건</strong> ·
-    닫힌해 검증 <strong>10 건</strong> · 해석이 만든 요구 <strong>6 건</strong> ·
-    초과 <strong>{len(over)} 건</strong> ({' · '.join(over) if over else '없음'}).</p>
+    IR 뱅크 <strong>{len(irs)} 건</strong> · 닫힌해 검증 <strong>10 건</strong> ·
+    해석이 만든 요구 <strong>{6 + len(IRB.requirements())} 건</strong> ·
+    검토 초과 <strong>{len(over)} 건</strong> ({' · '.join(over) if over else '없음'}).</p>
 
   <dl class="docref">
     <div><dt>문서번호</dt><dd>DG-HK60C-{DOC}</dd></div>
@@ -366,6 +459,7 @@ def build() -> str:
 {part2()}
 {part3()}
 {part4()}
+{part4b()}
 {part5()}
 {part6()}
 
