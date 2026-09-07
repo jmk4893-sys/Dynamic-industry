@@ -38,6 +38,7 @@ Dynamic industry Development
 | [docs/drawings/pv-infeed-detail.html](docs/drawings/pv-infeed-detail.html) | **투입 구간 상세도** — FL-101 반입 → LFT-101A/B → SE/VS-101 판정 → BFC-101A/B 분리·승강·반전 → RB-101 직접 픽업 → PT-101 3-2-1 정렬 → JB-201 인계까지만 떼어 낸 상세. 평면·입면·시각표·기구학 여유·도달 사슬·부품표·구동·안전·장착·미결 항목을 모델에서 생성 (`PYTHONPATH=src python tools/build_infeed_detail.py`) |
 | [docs/drawings/pv-infeed-sim.html](docs/drawings/pv-infeed-sim.html) | **투입 구간 운전 콘솔** — 같은 구간이 실제로 움직이는 것. 평면·측면·단면이 한 공정시계에 묶여 리프트 인덱스·분리·승강·180° 반전·로봇 이송·PT-101 정렬·JB-201 인계를 재생하고, 허가 조건·핸드셰이크·리프트 잔량이 기계 상태에서 켜진다. 한 장 추적 / 60장 캠페인(듀얼 리프트·지게차 교환) 모드 (`PYTHONPATH=src python tools/build_infeed_sim.py`, 브라우저로 열 것) |
 | [docs/drawings/pv-infeed-scene.html](docs/drawings/pv-infeed-scene.html) | **통합 설계도 · 투입 구간 파생본** — 통합 설계도의 3D 영상 콘솔에서 afu·robot 존(JB-201 인계 롤러까지)만 남기고 하류 셀을 끈 것. 공정시계는 방출 주기 48 s, 기본 시점은 투입셀, 흐름표·도면 모듈도 투입 구간만. 원본 형상은 그대로이고 문자열 패치로 만든다 (`PYTHONPATH=src python tools/build_infeed_scene.py`, 브라우저로 열 것) |
+| [docs/drawings/pv-infeed-fab.html](docs/drawings/pv-infeed-fab.html) | **투입 구간 제작 도면집** — 조립체 12벌 · 제작품 117종의 부품도(3면·치수·두께·구멍·재질) · 등각 분해도 · 부품표 · 상용품 규격 · 체결표(볼트 호칭·등급·토크·앵커) · 조립 순서 · 검사 항목 · 총괄 사양(재질·체결 표준·용접·도장·공차) · 플랜트 설치 순서. 정본은 `src/pv_preprocess/fabrication.py` (`PYTHONPATH=src python tools/build_infeed_fab.py`, 브라우저로 열 것) |
 | [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 13종, 열수지 계산기 (브라우저로 열 것) |
 
 ### 사용법
@@ -87,6 +88,7 @@ src/flotation_design/
   report.py         Markdown 계산서 생성
 src/pv_preprocess/
   layout.py         전처리 플랜트 배치 — 셀 외형에서 존·전체 포락선 파생
+  fabrication.py    투입 구간 제작 패키지 — 제작품 치수·두께·재질·구멍, 체결 표준·토크, 조립 순서
   electrical.py     전기 인입 부하 집계 · 차단기·계약전력 산정
   smart.py          스마트 팩토리 — 계측·네트워크·데이터량·시설 산정
   ai.py             AI 적용 검토 — 등급·라벨 공급·오분류 대가
