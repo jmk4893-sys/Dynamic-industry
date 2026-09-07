@@ -43,7 +43,7 @@ from . import campaign, handoff, hk60c, reliability, smart
 _BANK_KW = round(handoff.IR_INSTALLED_KW, 1)
 _DWELL_MIN_S = handoff.FDM_DWELL_S
 _DWELL_S = handoff.downstream_rate().dwell_s
-_IR_HEADROOM_PER_H = hk60c.rate().thermal_per_h
+_IR_HEADROOM_PER_H = handoff.downstream_rate().thermal_per_h
 
 # ── 표본 공급 ────────────────────────────────────────────────────────────
 #: 사전학습 모델을 미세조정(전이학습)할 때 클래스당 필요한 최소 표본.
@@ -289,7 +289,7 @@ def envelope_bounds() -> dict[str, float]:
     경계를 여기서 계산하고, 사양 문장에 쓰이는 숫자가 이 값들과 같은지를
     시험이 강제한다.
 
-    - ``maxBankKw``   뱅크 설치용량. 40등 × 관당 2.5 kW 이고, 그 위는 물리적으로 없다
+    - ``maxBankKw``   뱅크 설치용량. 램프 수 × 관당 정격이고, 그 위는 물리적으로 없다
     - ``minDwellS``   열전달 하한 체류시간. 이보다 짧으면 열이 못 들어간다
     - ``maxDwellS``   현행 고정 소성시간. 모델은 **줄이기만** 한다 — 위쪽으로
                       여는 순간 에너지·온도 양쪽에서 새 근거가 필요해진다

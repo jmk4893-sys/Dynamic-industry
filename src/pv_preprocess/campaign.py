@@ -41,7 +41,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import hk60c
+from . import hk60c, line
 
 #: 투입부 점유 (s) — 픽업·판정·반전·로봇 투입·정렬·인계까지
 INFEED_S = 40.0
@@ -65,7 +65,7 @@ SG_SWEEP_MM_S = 250.0       # 단변 횡행 속도
 SG_HEAD_STROKE_S = 1.0      # 정지마다 헤드 하강+상승
 SG_INDEX_S = 1.5            # 정지 두 번의 감속·정착 합
 #: REV.54 — 라인 상한을 후단(DG-HK60C) 상한으로 통일했다. 값은 후단이 갖는다.
-PANEL_WIDTH_MM = float(hk60c.PANEL_MAX_MM[1])
+PANEL_WIDTH_MM = float(line.LINE_MAX_MM[1])
 
 
 def sg_occupancy_s() -> float:
@@ -86,7 +86,7 @@ JBR_STOPPER_OFFSET_S = 8.0
 #: 축적구간 JB-201 길이 (mm) 와 그것이 함의하는 이송 속도.
 #: 스토퍼까지 4,900 mm 를 8.0 s 에 가므로 612.5 mm/s 다.
 ACCUMULATOR_MM = 4900.0
-PANEL_LENGTH_MM = float(hk60c.PANEL_MAX_MM[0])
+PANEL_LENGTH_MM = float(line.LINE_MAX_MM[0])
 
 
 def transfer_speed_mm_s() -> float:
@@ -122,7 +122,7 @@ def downstream_limited_takt_s() -> float:
     그래서 페이스의 상한은 후단 능력이지 앞단 기구가 아니다. 후단 능력은
     `hk60c.RATE_PER_H` (콘솔 순생산) 하나이고 캠페인과 무관하다.
     """
-    allowed_ra = hk60c.RATE_PER_H - HANDOFF_MARGIN_PER_H
+    allowed_ra = line.downstream_rate().line_per_h - HANDOFF_MARGIN_PER_H
     return round(3600.0 / (allowed_ra / normal_ratio()), 2)
 
 
@@ -353,7 +353,7 @@ def grm_equivalent_s() -> float:
     라인 한 장당으로 환산하려면 R-A 로 가는 비율을 곱해야 한다 — 깨진 유리와
     전손은 이 셀을 지나지 않기 때문이다.
     """
-    return round(3600.0 / hk60c.RATE_PER_H * normal_ratio(), 2)
+    return round(3600.0 / line.downstream_rate().line_per_h * normal_ratio(), 2)
 
 
 def cell_occupancy_s() -> tuple[tuple[str, float], ...]:

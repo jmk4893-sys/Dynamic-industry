@@ -245,7 +245,8 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
             (self.m["thermal_rate"] - self.m["line_rate"]) / self.m["thermal_rate"] * 100
         )
         self.assertAlmostEqual(
-            self._num(r"여유 ([\d.]+) %"), margin, delta=0.05
+            self._num(r"열공정 한계</th><td class=\"num\">[\d.]+ 장/h</td><td>여유 ([\d.]+) %"),
+            margin, delta=0.05,
         )
 
     def test_shift_output(self):
@@ -393,8 +394,12 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
                 msg=f"{ident} 의 길이가 배치 상수({metres*1000:.0f})와 다르다")
         # 방책은 스테이션이 아니라 방책선에서 나온다
         self.assertIn("M-013", rfq_rows)
-        self.assertEqual(int(rfq_rows["M-013"]), 20500,
-                         "방책 길이가 −900 → 19,600 과 다르다")
+        env = console_consts.env(self.console)
+        cst = env["CST"]
+        compact = (sum(getattr(cst, k).w for k in ("LD", "HC", "DL", "GC", "UL"))
+                   + 4 * env["CL_CLEAR"] + 2 * env["CL_END"])
+        self.assertEqual(int(rfq_rows["M-013"]), round((compact + .84 - env["CFENCE_X0"]) * 1000),
+                         "방책 길이가 −900 → 전장 + 840 과 다르다")
         # 그리고 콘솔의 표는 값이 아니라 식이어야 한다
         flat = self.console.replace(" ", "")
         for expr in ("size:dim(CST.LD.w,", "size:dim(CST.HC.w,",
@@ -464,7 +469,7 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
     # ── 탠덤 동시부하 ────────────────────────────────────────────
     def test_dual_engagement_fraction_is_arithmetic(self):
         """두 칼날이 동시에 물리는 구간은 패널 길이와 칼끝 간격에서 나온다."""
-        length = 2400.0
+        length = console_consts.const("PANEL_L") * 1000
         gap = float(re.search(r"칼끝 간격 <span class=\"m\">(\d+) ± 2 mm", self.html).group(1))
         self.assertAlmostEqual(gap, 300.0, delta=0.5)
         self.assertAlmostEqual(
@@ -482,10 +487,12 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
                       "필요 패드 면적 식이 두 칼날 합(2F)이 아니다")
         mu = float(re.search(r"μ = ([\d.]+)", body).group(1))
         dp = float(re.search(r"Δp = (\d+) kPa", body).group(1)) * 1000
-        glass = 2.4 * 1.2
+        L, W = console_consts.const("PANEL_L"), console_consts.const("PANEL_W")
+        glass = L * W
+        scale = W / 1.2                                  # 밴드는 폭 1,200 에서 잰 값 — 포락선 폭으로 환산
         for thrust, area_pat, pct_pat in (
-            (1.49e3, r"<span class=\"m\">([\d.]+) m²</span>\(", r"유리면의 ([\d.]+) %\)"),
-            (13.37e3, r"상한[^<]*<span class=\"m\">[^<]*</span>[^<]*<span class=\"m\">([\d.]+) m²</span>",
+            (1.49e3 * scale, r"<span class=\"m\">([\d.]+) m²</span>\(", r"유리면의 ([\d.]+) %\)"),
+            (13.37e3 * scale, r"상한[^<]*<span class=\"m\">[^<]*</span>[^<]*<span class=\"m\">([\d.]+) m²</span>",
              r"유리면의 <span class=\"m\">([\d.]+) %</span>"),
         ):
             want = 2 * thrust / (mu * dp)
@@ -617,7 +624,8 @@ class TestVacuumPadLayout(unittest.TestCase):
     있다는 진술이다. 콘솔에서 패드 하나만 빼도 사양서의 1.29 배가 거짓이 된다.
     """
 
-    MU, DP, F_HI = 0.6, 65_000, 13_370
+    MU, DP = 0.6, 65_000
+    F_HI = console_consts.const("F_PEEL") * 1000          # 포락선 폭으로 환산한 OI-01 상한
 
     @classmethod
     def setUpClass(cls):
@@ -637,8 +645,8 @@ class TestVacuumPadLayout(unittest.TestCase):
     def test_pad_grid_matches_the_console(self):
         cols, rows = int(self._c("PAD_COLS")), int(self._c("PAD_ROWS"))
         r = self._c("PAD_R")
-        self.assertAlmostEqual(self._num(r"<span class=\"m\">(\d+)열 × 3행"), cols, delta=0)
-        self.assertAlmostEqual(self._num(r"열 × (\d+)행 = 18패드"), rows, delta=0)
+        self.assertAlmostEqual(self._num(rf"<span class=\"m\">(\d+)열 × {rows}행"), cols, delta=0)
+        self.assertAlmostEqual(self._num(rf"열 × (\d+)행 = {cols*rows}패드"), rows, delta=0)
         self.assertAlmostEqual(self._num(r"= (\d+)패드 Ø250"), cols * rows, delta=0)
         self.assertAlmostEqual(self._num(r"패드 Ø(\d+)"), r * 2000, delta=0.5)
 
@@ -659,12 +667,16 @@ class TestVacuumPadLayout(unittest.TestCase):
         cols, rows, r = int(self._c("PAD_COLS")), int(self._c("PAD_ROWS")), self._c("PAD_R")
         length, width = self._c("PANEL_L"), self._c("PANEL_W")
         px, py = length / cols, width / rows
-        self.assertAlmostEqual(self._num(r"피치 <span class=\"m\">(\d+) × 400 mm"), px * 1000, delta=1)
-        self.assertAlmostEqual(self._num(r"피치 <span class=\"m\">400 × (\d+) mm"), py * 1000, delta=1)
-        self.assertAlmostEqual(self._num(r"패드 간 여유\s*<span class=\"m\">(\d+) mm"),
-                               (px - 2 * r) * 1000, delta=1)
-        self.assertAlmostEqual(self._num(r"가장자리 여유\s*\n?\s*<span class=\"m\">(\d+) mm"),
-                               (width / 2 - (rows - 1) / 2 * py - r) * 1000, delta=1)
+        self.assertAlmostEqual(self._num(rf"피치 <span class=\"m\">(\d+) × {round(py*1000)} mm"), px * 1000, delta=1)
+        self.assertAlmostEqual(self._num(rf"피치 <span class=\"m\">{round(px*1000)} × (\d+) mm"), py * 1000, delta=1)
+        gap = re.search(r"패드 간 여유\s*<span class=\"m\">(\d+) / (\d+) mm", self.html)
+        self.assertIsNotNone(gap, "패드 간 여유(길이 / 폭)가 없다")
+        self.assertAlmostEqual(float(gap.group(1)), (px - 2 * r) * 1000, delta=1)
+        self.assertAlmostEqual(float(gap.group(2)), (py - 2 * r) * 1000, delta=1)
+        edge = re.search(r"가장자리 여유\s*\n?\s*<span class=\"m\">(\d+) / (\d+) mm", self.html)
+        self.assertIsNotNone(edge, "가장자리 여유(길이 / 폭)가 없다")
+        self.assertAlmostEqual(float(edge.group(1)), (length / 2 - (cols - 1) / 2 * px - r) * 1000, delta=1)
+        self.assertAlmostEqual(float(edge.group(2)), (width / 2 - (rows - 1) / 2 * py - r) * 1000, delta=1)
 
     def test_the_assumption_behind_the_layout_is_stated(self):
         """μ 0.6 가정이 빠지면 이 배치가 무조건 성립하는 것처럼 읽힌다."""
@@ -854,3 +866,94 @@ class TestProcurementTerms(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheAnalysisRequirementsReachedTheSpecification(unittest.TestCase):
+    """해석이 만든 요구는 사양서에 적혀야 비로소 구속력이 생긴다.
+
+    **요구를 만들어 놓고 문서에 안 넣으면 아무 일도 일어나지 않는다.**
+    입찰자는 CAL-001 을 받지 않는다 — 사양서만 받는다. 그래서 여기서는
+    보고서가 만든 요구 셋이 사양서 문장으로 살아 있는지를 본다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = RFQ.read_text(encoding="utf-8")
+
+    # ── RIR3 · 내피 반사율
+    def test_the_inner_skin_reflectance_is_a_specified_value(self):
+        self.assertIn("ρ ≥ 0.4", self.html,
+                      "내피 반사율이 사양서에 없으면 2B 소지가 납품된다")
+        self.assertRegex(self.html, r"연마\s*STS304\s*#400",
+                         "연마 등급이 없으면 반사율을 만들 방법이 안 적힌다")
+
+    def test_the_reflectance_is_inspected_not_just_specified(self):
+        """적기만 하고 검사하지 않으면 도면으로 구분이 안 된다."""
+        self.assertRegex(self.html, r"가열실 내피 반사율",
+                         "FAT 항목에 반사율 측정이 없다")
+        self.assertIn("최저점", self.html, "점별 최저값 판정이 없다")
+
+    def test_the_reflectance_is_maintained_not_just_accepted(self):
+        """반사율은 열화한다 — 인수 시점만 보면 2 년 뒤 처리량이 준다."""
+        seg = self.html[self.html.index("정비 매뉴얼"):][:700]
+        self.assertIn("ρ ≥ 0.4", seg)
+        self.assertIn("재연마", seg, "미달 시 무엇을 하는지가 없다")
+
+    # ── RLM4 · 램프 봉착부
+    def test_the_lamp_seal_temperature_is_a_purchase_condition(self):
+        self.assertIn("250", self.html)
+        self.assertIn("350", self.html)
+        self.assertRegex(self.html, r"봉착부.{0,40}보증",
+                         "봉착부 온도를 '보증' 으로 사지 않으면 우리가 못 정하는 값이 열린다")
+
+    def test_the_lamp_seal_is_an_open_item_with_a_way_to_close_it(self):
+        i = self.html.index("<b>OI-16</b>")
+        seg = self.html[i:i + 2200]
+        self.assertIn("해소", seg, "닫는 방법이 없는 미결항목은 미결이 아니라 방치다")
+        self.assertRegex(seg, r"시험성적서|성적서")
+
+    # ── RHB2 / RAL1 · 단별 셔터
+    def test_the_airlock_is_specified_as_per_deck_shutters(self):
+        self.assertIn("단별 셔터", self.html)
+        self.assertIn("DECK_SHUTTER_MUTEX", self.html)
+        self.assertNotIn("이중셔터 에어록", self.html,
+                         "격리실이 없는데 이중셔터라고 적으면 제작사가 격리실을 만든다")
+
+    def test_the_full_height_opening_is_recorded_as_rejected(self):
+        """'검토하지 않았다' 와 '검토하고 안 샀다' 는 다르다."""
+        import airlock as AIR
+        full = AIR.solve()[0]["kw"]
+        self.assertRegex(self.html, r"전고 개구.{0,80}kW",
+                         "전고 개구를 왜 안 쓰는지가 사양서에 없다")
+        self.assertIn(f"{full:,.0f} kW", self.html.replace("<span class=\"m\">", "")
+                      .replace("</span>", ""))
+
+    def test_the_shutter_count_follows_the_deck_count(self):
+        """단수를 바꾸면 셔터 수도 바뀐다 — 상수로 박히면 갈라진다."""
+        import parts
+        plain = re.sub(r"<[^>]+>", "", self.html)
+        self.assertIn(f"모두 {parts.SHUTTERS} 매", plain)
+        self.assertIn(f"양단 각 {int(console_consts.const('DECKS'))} 단", plain)
+
+
+class TestTheSafetyIoBudgetFollowsTheAirlock(unittest.TestCase):
+    """단별 셔터가 안전 I/O 를 밀어 올렸다 — 그 대가가 문서에 적혀야 한다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = RFQ.read_text(encoding="utf-8")
+
+    def test_the_declared_safety_io_matches_the_interlock_model(self):
+        import plc_model as M
+        used = {k: 0 for k in M.BUDGET}
+        for l in M.LEAVES:
+            if l.io in used:
+                used[l.io] += l.count
+        for d in M.DRIVES:
+            if d.io in used:
+                used[d.io] += d.count
+        plain = re.sub(r"<[^>]+>", "", self.html)
+        self.assertIn(f"F-DI {M.BUDGET[M.FDI]} · F-DO {M.BUDGET[M.FDO]}", plain,
+                      "7.1 의 안전 I/O 선언이 실행 모델의 예산과 다르다")
+        self.assertIn(f"실사용 F-DI {used[M.FDI]}", plain,
+                      "실사용 F-DI 가 모델과 다르다")

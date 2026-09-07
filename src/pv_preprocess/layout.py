@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import hk60c
+from . import hk60c, line
 
 #: 장비가 점유할 수 있는 Y 밴드 (mm). 모든 존의 Y 구간은 이 안에 들어와야 한다.
 #:
@@ -24,7 +24,10 @@ from . import hk60c
 #: 넓히면 방책이 통로를 500 먹어 피난 유효폭 900 이 400 이 된다. 통로는 밴드
 #: 바깥에 그대로 1,200 이고, 플랜트 폭은 8,300 → 8,800 이다. `band_is_the_widest_station()`
 #: 이 이 관계를 지킨다.
-MACHINE_BAND_Y_MM = 7600
+#: 전처리 셀들의 밴드 — REV.53 까지의 값. 후단 벤더 방책이 이보다 넓으면 밴드가 그만큼 는다.
+PREPROCESS_BAND_Y_MM = 7100
+#: 가장 넓은 셀이 밴드다 — 벤더 포락선 개정(방책 +3,700/−4,600 = 8,300)이 그대로 따라온다.
+MACHINE_BAND_Y_MM = max(PREPROCESS_BAND_Y_MM, hk60c.ENVELOPE_MM[1])
 
 #: 보행·정비 통로 폭 (mm). 장비 밴드 바깥에 별도로 확보한다.
 AISLE_WIDTH_MM = 1200
@@ -577,7 +580,7 @@ GRIP_CLEARANCE_MM = 125
 
 #: 축적·인계 런 JB-201 — 가드 기준 길이와 jbr 존 중심으로부터의 거리 (3D 실측).
 #: REV.54: 길이는 패널 상한에서 나온다 — 2,500 + 250 = 2,750 이 2,400 + 250 = 2,650 이 됐다.
-ACCUM_RUN_MM = hk60c.PANEL_MAX_MM[0] + 2 * GRIP_CLEARANCE_MM
+ACCUM_RUN_MM = line.LINE_MAX_MM[0] + 2 * GRIP_CLEARANCE_MM
 ACCUM_FROM_JBR_CENTER_MM = 4_645
 
 

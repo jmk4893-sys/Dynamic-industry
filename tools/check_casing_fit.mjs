@@ -42,7 +42,7 @@ const SKIN_T_M = 0.024;
 
 const T0 = 0, T1 = 130, DT = 0.5;
 const TOL_M = 0.002;          // 이보다 얕으면 수치오차
-const AISLE_Z = 4.05;         // 통로 시작 (월드 z) — layout.MACHINE_BAND_Y_MM 7,600 (REV.54: 3.55 → 4.05)
+const AISLE_Z = 4.75;         // 통로 시작 (월드 z) — layout.MACHINE_BAND_Y_MM 7,600 (REV.54: 3.55 → 4.05)
 const AISLE_W = 1.20;
 
 const browser = await chromium.launch({

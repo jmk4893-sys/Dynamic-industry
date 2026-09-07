@@ -28,7 +28,7 @@ TITLE = "DG-HK120C 검토서 · 1챔버 2탠덤셀"
 
 CELLS = 2
 GLASS_ALLOW_MPA = 7.0
-REF_MARGIN = 16.9          # DG-HK60C 열공정 여유
+REF_MARGIN = 18.6          # DG-HK60C 열공정 여유 — 포락선 2,500 × 1,400 · 48등
 
 
 def study():
@@ -43,7 +43,7 @@ def const(name, src=None):
 
 
 GEO_INPUTS = ("gantryY", "cassette", "forkY", "forkS", "gantryS", "gap",
-              "cartY", "skin", "fenceD", "dlLen")
+              "cartY", "cartW", "skin", "fenceD", "dlLen")
 
 
 def geo():
@@ -71,7 +71,8 @@ def celly():
 
 
 def half_width():
-    return celly() + geo()["cartY"] + .65 + .80
+    g = geo()
+    return celly() + g["cartY"] + g["cartW"] / 2 + .80
 
 
 class TestTheStudyIsAStandaloneDocument(unittest.TestCase):
@@ -91,7 +92,7 @@ class TestTheCellCeilingIsReal(unittest.TestCase):
     def test_the_ceiling_is_the_peel_stroke_alone(self):
         peel = DEFAULTS["panelLength"] / DEFAULTS["knifeSpeed"]
         ceiling = 3600 / peel
-        self.assertAlmostEqual(ceiling, 82.5, delta=.1)
+        self.assertAlmostEqual(ceiling, 3600 / (2500 / 55), delta=.1)
         self.assertLess(3600 / thermal_model()["cycle_s"], ceiling,
                         "실제 사이클이 박리만 한 것보다 빠를 수는 없다")
 
@@ -137,16 +138,18 @@ class TestTheChamberSizingIsBounded(unittest.TestCase):
     def test_the_heat_balance_sets_a_floor_on_power(self):
         useful_needed = self.q * 1000 / self.takt
         installed = useful_needed / const("eta", self.s)
-        self.assertGreater(installed, 160, "필요 설치전력이 비현실적으로 낮다")
-        self.assertLess(installed, 175, "필요 설치전력이 비현실적으로 높다")
+        self.assertGreater(installed, 185, "필요 설치전력이 비현실적으로 낮다")
+        self.assertLess(installed, 205, "필요 설치전력이 비현실적으로 높다")
 
     def test_the_fdm_limit_sets_a_floor_on_decks(self):
         self.assertGreaterEqual(math.ceil(FDM_DWELL_S / self.takt), 5,
                                 "FDM 하한이 단수를 전혀 묶지 않는다")
 
     def test_the_chosen_candidate_passes_all_three(self):
-        """7단 · 80등 — 통과하고, 여유가 DG-HK60C 와 같아야 한다."""
-        lamps, decks = 80, 7
+        """7단 · 96등 — 통과하고, 여유가 DG-HK60C 와 같아야 한다.
+
+        택트가 정확히 반이므로 같은 여유는 정확히 램프 두 배(2 × 48)로 떨어진다."""
+        lamps, decks = 96, 7
         pitch = self.q * 1000 / (lamps * const("lampKW", self.s) * const("eta", self.s))
         margin = (3600 / pitch - 3600 / self.takt) / (3600 / pitch) * 100
         self.assertLessEqual(pitch, self.takt, "피치가 택트를 넘는다")
@@ -157,8 +160,8 @@ class TestTheChamberSizingIsBounded(unittest.TestCase):
 
     def test_one_more_lamp_bank_would_break_the_glass(self):
         """왜 더 못 키우는지 — 유리가 먼저 걸린다는 것이 이 설계의 하한이다."""
-        self.assertGreater(self._sigma(84, 6), GLASS_ALLOW_MPA,
-                           "6단 84등에서도 유리가 견디면 단수 선택 근거가 다른 데 있다")
+        self.assertGreater(self._sigma(98, 6), GLASS_ALLOW_MPA,
+                           "6단 98등에서도 유리가 견디면 단수 선택 근거가 다른 데 있다")
 
     def test_no_deck_count_is_typed_into_the_prose(self):
         """단수는 세 부등식이 정한다 — 본문에 손으로 적으면 그 자리만 남는다.
@@ -195,8 +198,11 @@ class TestTheChamberSizingIsBounded(unittest.TestCase):
         takt, best = self.takt, None
         ref = float(re.search(r"hk60:\{[^}]*margin:([\d.]+)", self.s).group(1))
         fdm = const("fdm", self.s)
-        for decks, banks, per in ((6, 7, 10), (6, 7, 11), (6, 7, 12),
-                                  (7, 8, 10), (7, 8, 11)):
+        hk = re.search(r"hk60:\{decks:(\d+),lamps:(\d+)", self.s)
+        per_ref = int(hk.group(2)) / (int(hk.group(1)) + 1)
+        cands = []
+        for decks, banks, per in ((6, 7, 12), (6, 7, 13), (6, 7, 14),
+                                  (7, 8, 11), (7, 8, 12), (7, 8, 13), (8, 9, 11)):
             lamps = banks * per
             pitch = self.q * 1000 / (lamps * const("lampKW", self.s)
                                      * const("eta", self.s))
@@ -208,15 +214,15 @@ class TestTheChamberSizingIsBounded(unittest.TestCase):
             cand = {"decks": decks, "lamps": lamps,
                     "kW": lamps * const("lampKW", self.s), "per": per,
                     "margin": margin}
-            if best is None or (abs(cand["margin"] - ref)
-                                < abs(best["margin"] - ref)):
-                best = cand
-        self.assertIsNotNone(best, "세 제약을 통과하는 후보가 없다")
+            cands.append(cand)
+        self.assertTrue(cands, "세 제약을 통과하는 후보가 없다")
+        same = [c for c in cands if c["per"] == per_ref]
+        best = min(same or cands, key=lambda c: abs(c["margin"] - ref))
         return best
 
     def test_the_selection_rule_is_written_down(self):
         """규칙 없이 고른 값은 다음 사람이 다시 고른다."""
-        for token in ("per===10", "Math.abs(a.margin-REF_MARGIN)"):
+        for token in ("per===PER_HK60", "Math.abs(a.margin-REF_MARGIN)"):
             self.assertIn(token, self.s.replace(" ", ""),
                           f"채택 규칙이 코드에 없다: {token}")
 
@@ -237,7 +243,10 @@ class TestRedundancyIsTheOtherHalf(unittest.TestCase):
     def test_one_cell_still_meets_the_contract(self):
         cell = const("cellCycle")
         degraded = 3600 / cell * const("availability")
-        self.assertGreaterEqual(degraded, 60.0,
+        contract = console_consts.const("NET_TARGET")
+        self.assertAlmostEqual(const("contract"), contract, delta=1e-9,
+                               msg="검토서의 계약값이 콘솔 NET_TARGET 과 다르다")
+        self.assertGreaterEqual(degraded, contract,
                                 f"1셀 정지 시 {degraded:.1f} 장/h — 계약값에 못 미친다")
 
     def test_the_study_names_the_single_point(self):
@@ -263,8 +272,8 @@ class TestTheLayoutKeepsWhatWasEarned(unittest.TestCase):
     def test_the_aisle_also_takes_the_discharge_portal(self):
         """3D 배치가 찾아낸 두 번째 제약 — 통로에 서는 것은 카세트만이 아니다.
 
-        EX-101 방출 문형은 패널 1,200 을 통과시켜야 하므로 마스트가 ±1,120 이고,
-        셀 갠트리 기둥이 ±1,420 에 선다. 카세트만 보면 통로가 좁게 나오고,
+        EX-101 방출 문형은 패널 1,400 을 통과시켜야 하므로 마스트가 ±1,220 이고,
+        셀 갠트리 기둥이 ±1,520 에 선다. 카세트만 보면 통로가 좁게 나오고,
         좁게 나온 통로로는 문형이 기둥을 뚫는다."""
         g = geo()
         fork = 2 * (g["forkY"] + g["forkS"] / 2 + g["gantryS"] / 2 + g["gap"])

@@ -24,7 +24,8 @@ from pv_preprocess import (access, acoustics, ai, crane, kinematics,  # noqa: E4
                            layout, mounting, reliability, safety, smart, thermal,
                            wiring)
 
-DRAWING = pathlib.Path(__file__).resolve().parent.parent / "docs/drawings/pv-preprocess-plant.html"
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+DRAWING = ROOT / "docs/drawings/pv-preprocess-plant.html"
 
 # AFR 시트에 손으로 그린 12구역 지지베드 — 공용 인계롤러가 여기서 끝난다.
 # 시트의 BED 부품과 같은 값이어야 한다 (part('BED', …, [3250, …], [-400, …])).
@@ -526,6 +527,20 @@ def main() -> int:
     p.one(r"var MACHINE_BAND_Y = \d+;", lambda m: f"var MACHINE_BAND_Y = {layout.MACHINE_BAND_Y_MM};")
     p.one(r"var AISLE_WIDTH = \d+;", lambda m: f"var AISLE_WIDTH = {layout.AISLE_WIDTH_MM};")
 
+    # ── 통로 바깥벽의 것들 — 밴드가 넓어지면 같이 밀린다 ────────────────────
+    # 엣지 캐비닛 7면(깊이 300, 통로 바깥벽 벽부)과 그 명판, 케이싱 검사의 통로 시작선.
+    # REV.54 에 밴드 7,100 → 7,600 → (벤더 방책 개정) 8,300 으로 두 번 움직였고, 손으로
+    # 적힌 z 가 매번 남았다 — 여기서 밴드에서 찍는다. 씬 z 원점은 플랜트 Y 3,550.
+    cab_z = (layout.MACHINE_BAND_Y_MM + layout.AISLE_WIDTH_MM - 150 - 3550) / 1000
+    n_cab = len(re.findall(r",\.7,[\d.]+\],M\.frame,'EC-", p.text))
+    if n_cab != 7:
+        raise SystemExit(f"✗ 엣지 캐비닛 3D 가 7면이 아니다 ({n_cab})")
+    p.text = re.sub(r",\.7,[\d.]+\],M\.frame,'EC-", f",.7,{cab_z:g}],M.frame,'EC-", p.text)
+    p.text = re.sub(r",1\.18,[\d.]+\],0,'EC-", f",1.18,{cab_z - 0.144:g}],0,'EC-", p.text)
+    fit = ROOT / "tools" / "check_casing_fit.mjs"
+    aisle_z = (layout.MACHINE_BAND_Y_MM - 3550) / 1000
+    fit.write_text(re.sub(r"const AISLE_Z = [\d.]+;", f"const AISLE_Z = {aisle_z:g};",
+                          fit.read_text(encoding="utf-8"), count=1), encoding="utf-8")
     DRAWING.write_text(p.text, encoding="utf-8")
     print(f"도면 리터럴 재생성 — {p.changed}곳 갱신 "
           f"(존 {len(layout.ZONE_SEED)}개 · 전장 {layout.plant_envelope_mm()[0]:,} mm)")

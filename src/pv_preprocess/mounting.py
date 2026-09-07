@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import hk60c, kinematics
+from . import crane, hk60c, kinematics
 from .layout import STATIONS
 
 # ── 지지 등급 ────────────────────────────────────────────────────────────
@@ -224,7 +224,7 @@ UNSUPPORTED_BY_DESIGN: tuple[tuple[str, str], ...] = (
      "행거당 3.9 kg 이다"),
     ("CRN-901", "천장크레인은 **건물 철골**이 받는다. 이 플랜트의 공급 범위가 "
      "아니라 기둥을 지어내지 않고, 건물 측에 요구값(주행레일 상면 10,750 · "
-     "스팬 8,800 · 주행 반력)을 도면으로 넘긴다"),
+     f"스팬 {crane.SPAN_MM:,} · 주행 반력)을 도면으로 넘긴다"),
 )
 
 

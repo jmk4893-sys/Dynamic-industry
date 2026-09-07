@@ -45,7 +45,11 @@ FDI, FDO, COMM = "F-DI", "F-DO", "COMM"
 # 올린 값이다 — 이 모델을 돌려 정한 수량이다. 카드 단위는 DI/DO 16점,
 # 나머지 8점이고, 각 종류마다 20% 를 넘기는 가장 작은 배수를 골랐다.
 # 단수를 5 → 3 으로 줄이면서 DI 176→160 · AO 16→8 · TC 56→40 으로 내려왔다.
-BUDGET = {DI: 176, DO: 96, AI: 40, AO: 16, TC: 56, FDI: 40, FDO: 8}
+# F-DI 는 40 → 48 로 올렸다. 에어록 검토가 전고 셔터 2 장을 단별 셔터
+# 10 장으로 바꾸면서 안전 위치센서가 8 → 20 점이 됐고, 40 점 예산으로는
+# 예비가 5 % 밖에 안 남는다. **안전 카드 한 장(8점)을 더 사는 것이
+# 개구를 다시 키우는 것보다 싸다** — 개구를 전고로 되돌리면 604 kW 다.
+BUDGET = {DI: 176, DO: 96, AI: 40, AO: 16, TC: 56, FDI: 48, FDO: 8}
 SPARE_MIN = 0.20                       # 사양서 7.1 이 요구하는 최소 예비율
 
 
@@ -94,15 +98,23 @@ LEAVES = [
     Leaf("INDEPENDENT_OVERTEMP", FDI, 1, "독립 과온센서", "하드와이어 · IR 주접촉기 직접 차단"),
     Leaf("SSR_STUCK",          DI, BANKS, f"IR 뱅크 CT·SSR 피드백×{BANKS}", f"IR 뱅크 B0~B{DECKS} 각 1점"),
     Leaf("DP_OK",              AI, 1, "차압센서"),
-    Leaf("INNER_DOOR_OPEN",    FDI, 4, "에어록 도어 위치센서×8"),
-    Leaf("OUTER_DOOR_OPEN",    FDI, 4, "에어록 도어 위치센서×8"),
+    # 에어록 검토(tools/airlock.py)가 전고 셔터 2 장을 **단별 셔터**로 바꿨다.
+    # 신호도 따라 바뀐다 — 짝이 '내문·외문' 이 아니라 '투입측 단별 · 배출측
+    # 단별' 이고, 막아야 하는 것은 내·외 동시개방이 아니라 **두 단 동시개방**
+    # 이다. 두 장이 함께 열리면 개구가 두 배가 되고 손실도 두 배가 된다.
+    Leaf("IN_SHUTTER_OPEN",    FDI, DECKS * 2, f"에어록 단별 셔터 위치센서×{DECKS*4}",
+         f"투입측 {DECKS} 장 × 2 채널"),
+    Leaf("OUT_SHUTTER_OPEN",   FDI, DECKS * 2, f"에어록 단별 셔터 위치센서×{DECKS*4}",
+         f"배출측 {DECKS} 장 × 2 채널"),
     Leaf("FORK_HOME",          DI, 1, "TS-101 2단 포크"),
     Leaf("FORK_RETRACTED",     DI, 1, "TS-101 2단 포크"),
     Leaf("EXTRACTOR_HOME",     DI, 1, "TS-101 2단 포크"),
     Leaf("DOOR_LOCKED",        FDI, 2, "인터록 도어×1 (CS-201 반출 게이트 · ISO 14119 코딩)",
          "압축 배치의 잠금식 게이트는 CS-201 반출구 하나 — 양단 개구는 광커튼이 막는다"),
-    Leaf("AL102_EMPTY",        DI, 2, "격리실 존재센서×2"),
-    Leaf("OUTER_OUT_CLOSED",   FDI, 0, "에어록 도어 위치센서×8"),
+    # 격리실이 없어졌으므로 '격리실이 비었는가' 도 없다. 대신 물어야 하는 것은
+    # **받을 자리가 비었는가** 다 — 뜨거운 패널을 점유된 테이블에 밀어 넣지
+    # 않는다.
+    Leaf("TANDEM_SEAT_EMPTY",  DI, 2, "탠덤 착좌 존재센서×2"),
     # 진공 캐리어·이송축
     Leaf("VAC_6ZONE_OK",       AI, 6, "진공압센서×6"),
     Leaf("PANEL_VAC_OK",       AI, 1, "진공압센서×6"),
@@ -272,11 +284,9 @@ DERIVED = [
     Derived("PLC_RUN", ["UPS_OK", "DC24_A_OK", "DC24_B_OK", "SAFETY_CPU_OK", "NETWORK_RING_OK"]),
     Derived("FULL_LOAD_ACK", ["C1_PRESENT"]),
     Derived("ALL_LOCKED", ["ALL_DECK_LOCKED"]),
-    Derived("ALL_DOORS_CLOSED", ["INNER_DOOR_OPEN", "OUTER_DOOR_OPEN"]),
-    Derived("ALL_INNER_DOORS_CLOSED", ["INNER_DOOR_OPEN"]),
-    Derived("ALL_OUTER_DOORS_CLOSED", ["OUTER_DOOR_OPEN"]),
+    Derived("ALL_DOORS_CLOSED", ["IN_SHUTTER_OPEN", "OUT_SHUTTER_OPEN"]),
     Derived("SEALED_FULL_LOAD_ACK",
-            ["FULL_LOAD_ACK", "ALL_INNER_DOORS_CLOSED", "ALL_OUTER_DOORS_CLOSED", "DP_OK"]),
+            ["FULL_LOAD_ACK", "ALL_DOORS_CLOSED", "DP_OK"]),
     Derived("EXHAUST_OK", ["EXHAUST_RUN"]),
     # 팬 두 대와 방화댐퍼는 발주자 설비 안에 있다. 우리가 배기를 허가하는 근거는
     # 그쪽 준비 접점과, 경계에서 우리가 직접 재는 차압 두 점이다.
@@ -285,17 +295,19 @@ DERIVED = [
     Derived("IR_ENABLE", ["SEALED_FULL_LOAD_ACK", "EXHAUST_OK", "FIRE_OK",
                           "PM_METER_OK", "EMISSION_OK"]),
     Derived("IR_HARD_TRIP", ["INDEPENDENT_OVERTEMP", "SMOKE", "CO_HIGH", "EXHAUST_LOSS", "SSR_STUCK"]),
-    # 에어록은 입측 AL-101 · 출측 AL-102 두 곳이고 각각 내문·외문을 동시에
-    # 열 수 없다. 문 위치센서 8점은 2 에어록 × 2 문 × 2 채널이다.
-    Derived("AL101_MUTEX", ["INNER_DOOR_OPEN", "OUTER_DOOR_OPEN"]),
-    Derived("AL102_MUTEX", ["INNER_DOOR_OPEN", "OUTER_DOOR_OPEN"]),
-    Derived("DOOR_MUTEX", ["AL101_MUTEX", "AL102_MUTEX"]),
+    # 단별 셔터라 막아야 하는 짝이 바뀌었다. 예전에는 내문·외문 동시개방을
+    # 막았고(격리실이 있었으니까), 지금은 **두 단 동시개방**을 막는다 —
+    # 격리실이 없어 개구가 곧 손실이고, 두 장이 열리면 손실이 두 배다.
+    Derived("IN_SHUTTER_MUTEX", ["IN_SHUTTER_OPEN"], "투입측 한 번에 한 단"),
+    Derived("OUT_SHUTTER_MUTEX", ["OUT_SHUTTER_OPEN"], "배출측 한 번에 한 단"),
+    Derived("DECK_SHUTTER_MUTEX", ["IN_SHUTTER_MUTEX", "OUT_SHUTTER_MUTEX"]),
     Derived("REFILL_ACK", ["ACTIVE_DECK_PRESENT", "ACTIVE_DECK_LOCKED", "FORK_HOME",
                            "ALL_DOORS_CLOSED", "DP_OK"]),
     Derived("LIFT_MOVE", ["ALL_DECK_LOCKED", "FORK_RETRACTED", "EXTRACTOR_HOME", "DOOR_LOCKED"]),
     Derived("EVA_TARGET_ACK", ["EVA_INTERFACE_ACK"]),
     Derived("TANDEM_READY", ["HKB_TEMP_OK", "HKS_TEMP_OK", "KNIVES_CLEAR"]),
-    Derived("RELEASE_PERMIT", ["EVA_INTERFACE_ACK", "TANDEM_READY", "AL102_EMPTY", "OUTER_OUT_CLOSED"]),
+    Derived("RELEASE_PERMIT", ["EVA_INTERFACE_ACK", "TANDEM_READY",
+                               "TANDEM_SEAT_EMPTY", "DECK_SHUTTER_MUTEX"]),
     Derived("VAC_OK", ["VAC_6ZONE_OK"]),
     Derived("VAC_LOW", ["VAC_6ZONE_OK"]),
     Derived("MOTION_SYNC", ["X_LEFT", "X_RIGHT", "FOLLOWING_ERROR_OK"]),
@@ -424,7 +436,8 @@ DRIVES = [
     Drive("MT-903", "진공펌프 A",           DO, 2, "접촉기",  "진공펌프 A/B"),
     Drive("MT-904", "진공펌프 B",           DO, 2, "접촉기",  "진공펌프 A/B"),
     Drive("CY-201", "층별 잠금실린더",      DO, DECKS, "덤프밸브", f"층별 잠금실린더×{DECKS}"),
-    Drive("CY-202", "에어록 셔터",          DO, 4, "덤프밸브", "에어록 셔터 4매"),
+    Drive("CY-202", "에어록 단별 셔터",     DO, DECKS * 2, "덤프밸브",
+          f"에어록 단별 셔터 {DECKS*2}매 (양단 각 {DECKS}단)"),
     Drive("CY-301", "패널 스토퍼",          DO, 1, "덤프밸브", "패널 스토퍼"),
     Drive("CY-401", "분할클램프",           DO, 4, "덤프밸브", "분할클램프×4"),
     Drive("VV-101", "6존 진공밸브",         DO, 6, "덤프밸브", "체크밸브×6"),

@@ -98,12 +98,13 @@ _hk = _obj("HK60C")
 REV = _str_field("HK60C", "rev")                     # 'REV.21C'
 PLAN = _str_field("HK60C", "plan")                   # '압축 배치'
 
-#: 순생산 (장/h) 과 라인 사이클 (s). 콘솔 `HK60C.rate / .cycle`.
+#: 순생산 (장/h) 과 라인 사이클 (s). 콘솔 `HK60C.rate / .cycle` 은 REV.21C 까지 리터럴
+#: (60.5 / 53.6)이었고, 포락선 2,500×1,400 개정부터 `CYC.knifeLineRate × MODEL.availability`
+#: 로 **계산**된다 — 그래서 여기서도 같은 식(`rate()`)으로 낸다. 값은 아래 `RATE_PER_H`
+#: 정의 뒤에서 채운다(식이 상수들을 다 읽은 뒤에야 돌 수 있다).
 #: 순생산 = 명목(3600/사이클) × 가동률 — 가동률 0.90 은 칼날 카세트 교환·만권
 #: 롤 반출 같은 **계획 정지 예산(시간당 360 s)** 이지 고장이 아니다. 고장은
 #: 플랜트 신뢰도 모델(`reliability.py` RB-GRM)이 따로 센다.
-RATE_PER_H: float = _hk["rate"]
-CYCLE_S: float = _hk["cycle"]
 DECKS: int = int(const("DECKS"))
 LAMPS: int = int(const("LAMPS"))
 
@@ -131,7 +132,9 @@ FDM_DWELL_S: float = _model_field("fdmDwell")        # 113.15 — 백시트가 �
 KNIFE_PITCH_MM: float = _model_field("knifePitch")   # 300 칼끝 간격
 RAPID_DISTANCE_MM: float = _model_field("rapidDistance")  # 300
 AVAILABILITY: float = _model_field("availability")   # 0.90
-NET_TARGET_PER_H: float = _model_field("netTarget")  # 60 계약 순생산
+#: 계약 순생산 — 포락선 개정부터 콘솔 최상단 `NET_TARGET`(정수)이고, 그 전에는 MODEL.netTarget 이었다.
+NET_TARGET_PER_H: float = (const("NET_TARGET") if "NET_TARGET" in _env()
+                           else _model_field("netTarget"))   # 58 (2,500×1,400) · 60 (REV.21C)
 T_TARGET_C: float = const("T_TARGET")                # 140 계면
 T_AMB_C: float = const("T_AMB")                      # 25
 IR_INSTALLED_KW: float = LAMPS * LAMP_KW             # 100
@@ -139,8 +142,10 @@ IR_INSTALLED_KW: float = LAMPS * LAMP_KW             # 100
 # ── 패널 ──────────────────────────────────────────────────────────────────
 #: 투입 상한 (mm) — 콘솔 `PANEL_L/W`. 사양서 4.2 의 범위와 같아야 한다.
 PANEL_MAX_MM: tuple[int, int] = (round(const("PANEL_L") * 1000), round(const("PANEL_W") * 1000))
-_range = re.search(r"panelLength:\[(\d+),(\d+)\],panelWidth:\[(\d+),(\d+)\]", _console_text())
-PANEL_MIN_MM: tuple[int, int] = (int(_range.group(1)), int(_range.group(3)))
+#: 투입 하한 — 콘솔 계산기 범위 `panelLength:[1600,…],panelWidth:[800,…]` 의 하한. 상한은
+#: 포락선 개정부터 `PANEL_L*1000` 식이라 여기서 안 읽는다(위 PANEL_MAX_MM 이 정본).
+_range = re.search(r"panelLength:\[(\d+),[^\]]*\],panelWidth:\[(\d+),[^\]]*\]", _console_text())
+PANEL_MIN_MM: tuple[int, int] = (int(_range.group(1)), int(_range.group(2)))
 PANEL_MASS_KG: float = round(const("PANEL_MASS"), 2)     # 28.21
 GLASS_KG: float = round(const("GLASS_KG"), 2)            # 23.04
 CELL_EVA_KG: float = round(const("CE_KG"), 2)            # 3.96
@@ -243,15 +248,17 @@ CE_EL_MM: int = round(const("CE_Z") * 1000)             # 1,050
 _cart = _tool("console_consts")._split_top(
     re.search(r"const CSCART=V\((.*?)\);", _console_text()).group(1))
 CART_X_MM: int = (CE_X_MM[0] + CE_X_MM[1]) // 2         # (CE_X0+CE_X1)/2
-CART_Y_MM: int = round(float(_cart[1]) * 1000)          # −3,200
+#: 포락선 개정부터 `V((CE_X0+CE_X1)/2,CSCART_Y,.55)` 처럼 이름·식이라 값으로 푼다.
+_cc = _tool("console_consts")
+CART_Y_MM: int = round(_cc.value(_cart[1], _env()) * 1000)   # −3,200 (CSCART_Y = CE_Y1 − .30)
 CART_L_MM: int = round(const("CSCART_L") * 1000)        # 2,600
 CART_W_MM: int = round(const("CSCART_W") * 1000)        # 1,300
 
 #: 백시트 만권 롤·칼날 카세트 반출 — RH-201 모노레일 (기계 좌표).
 WINDER_X_MM: int = round(const("CRAIL_X0") * 1000)      # 8,050 드럼·모노레일 x
 RH_Y_MM: tuple[int, int] = (round(const("RH_Y0") * 1000), round(const("RH_Y1") * 1000))  # +550 → −7,000
-_saddle = re.search(r"const BS_SADDLE=V\(([^)]*)\)", _console_text()).group(1).split(",")
-ROLL_SADDLE_Y_MM: int = round(float(_saddle[1]) * 1000)  # −5,200 — 방책 밖
+_saddle = _cc._split_top(re.search(r"const BS_SADDLE=V\((.*?)\);", _console_text()).group(1))
+ROLL_SADDLE_Y_MM: int = round(_cc.value(_saddle[1], _env()) * 1000)  # −5,200 — 방책 밖
 CASSETTE_SADDLE_Y_MM: int = round(const("CKC_RACK_Y") * 1000)  # −7,000
 
 
@@ -267,7 +274,6 @@ def monorail_el_mm() -> int:
 
 ROLL_MASS_KG: int = round(const("ROLL_MASS")) if "ROLL_MASS" in _env() else 357
 ROLL_PERIOD_H: float = 4.9                                       # 사양서 6.x — OI-11
-CELL_EVA_KG_PER_H: float = round(CELL_EVA_KG * RATE_PER_H, 1)    # 239.6 → 사양서 '238 kg/h' 는 60.0 기준
 
 #: 경계 인터페이스반 BJ-101/102 과 경계 덕트 플랜지 (기계 좌표).
 BJ_X_MM: int = STATION["UL"].x1_mm - 1000               # CBJ_X = CST.UL.x1 − 1.0
@@ -357,17 +363,33 @@ def rate(length_mm: float | None = None, width_mm: float | None = None,
                 "IR 열공정" if pitch > tandem else "탠덤 박리")
 
 
+#: 콘솔이 계산하는 값을 같은 식으로 낸다 — 콘솔 `HK60C.rate/cycle` 과 대조하는 것은
+#: `reproduces_the_console()` 이고, 계약 순생산(`NET_TARGET_PER_H`)은 그 아래 정수다.
+RATE_PER_H: float = rate().line_per_h
+CYCLE_S: float = rate().tandem_cycle_s
+CELL_EVA_KG_PER_H: float = round(CELL_EVA_KG * RATE_PER_H, 1)    # 셀/EVA 반출 질량률 (kg/h)
+
+
 def reproduces_the_console() -> bool:
-    """재현한 순생산·사이클이 콘솔 값과 같은가."""
+    """재현한 순생산·사이클이 콘솔 값과 같은가 — 콘솔은 `+(CYC.knifeLineRate*availability).toFixed(1)`.
+
+    콘솔 식: 사이클 = (칼끝 간격 + 패널 길이)/칼날속도 + 급속거리/급속속도 + 고정동작,
+    명목 = 3600/사이클, 순생산 = 명목 × 가동률. 계약 순생산(NET_TARGET)은 그 값을
+    내림한 정수라 순생산이 계약을 넘어야 한다.
+    """
     r = rate()
-    return abs(r.line_per_h - RATE_PER_H) < 0.06 and abs(r.tandem_cycle_s - CYCLE_S) < 0.06
+    tandem = (KNIFE_PITCH_MM + PANEL_MAX_MM[0]) / KNIFE_SPEED_MM_S + RAPID_DISTANCE_MM / RAPID_SPEED_MM_S + HANDLING_S
+    console_rate = round(3600.0 / tandem * AVAILABILITY, 1)
+    return (abs(r.line_per_h - console_rate) < 0.06 and abs(r.tandem_cycle_s - round(tandem, 1)) < 0.06
+            and r.line_per_h >= NET_TARGET_PER_H)
 
 
-def ir_average_kw() -> float:
-    """IR 평균 소비 (kW) = 장당 열량 / 효율 / 라인 사이클 — 사양서 5.x '83.06 kW'."""
-    L, W = PANEL_MAX_MM
+def ir_average_kw(length_mm: float | None = None, width_mm: float | None = None) -> float:
+    """IR 평균 소비 (kW) = 장당 열량 / 효율 / 라인 사이클. 기본은 포락선, 라인 패널을 주면 그 값."""
+    L = PANEL_MAX_MM[0] if length_mm is None else length_mm
+    W = PANEL_MAX_MM[1] if width_mm is None else width_mm
     heat_kj = (L * W / 1e6) * AREAL_CP_KJ_M2K * (T_TARGET_C - T_AMB_C)
-    return round(heat_kj / (HEAT_EFFICIENCY_PCT / 100.0) / rate().tandem_cycle_s, 2)
+    return round(heat_kj / (HEAT_EFFICIENCY_PCT / 100.0) / rate(L, W).tandem_cycle_s, 2)
 
 
 # ── 질량 — 부품 카탈로그 ──────────────────────────────────────────────────

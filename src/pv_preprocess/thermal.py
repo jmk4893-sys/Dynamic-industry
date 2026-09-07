@@ -68,7 +68,8 @@ def ir_demand_kw() -> float:
     사양서 5.x 의 83 kW)다. 설치 100 kW 에 수용률을 곱한 IR-DB1 수요 83 kW 와
     같은 값이 나오지만, 근거는 열수지 쪽이다.
     """
-    return hk60c.ir_average_kw()
+    from . import line
+    return hk60c.ir_average_kw(*line.LINE_MAX_MM)
 
 
 def hk_demand_kw() -> float:

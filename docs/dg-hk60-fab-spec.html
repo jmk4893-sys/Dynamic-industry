@@ -252,9 +252,9 @@
   <div class="clause"><div class="n">1.2</div><div class="c">
     <h3>박리 추력을 포락으로 잡은 이유</h3>
     <p>박리력은 아직 곡선이 아니라 밴드다 — <span class="m">1.49 ~ 13.37 kN</span>
-      (기술사양서 OI-01). 실측 곡선을 기다리면 제작이 서고, 하한으로 잡으면 상한에서 무너진다.</p>
-    <div class="decide"><b>총괄 결정</b> — <strong>상한 13.37 kN 에 동적계수를 얹어 포락 설계한다.</strong>
-      설계 추력은 <span class="m">13.37 × 1.3 × 1.5 = 26.07 kN</span> 이다.
+      (기술사양서 OI-01 · 폭 1,200 에서 잰 값 — 포락선 폭 1,400 으로 환산하면 <span class="m">1.74 ~ 15.60 kN</span>). 실측 곡선을 기다리면 제작이 서고, 하한으로 잡으면 상한에서 무너진다.</p>
+    <div class="decide"><b>총괄 결정</b> — <strong>폭 환산 상한 15.60 kN 에 동적계수를 얹어 포락 설계한다.</strong>
+      설계 추력은 <span class="m">15.60 × 1.3 × 1.5 = 30.42 kN</span> 이다.
       실측 곡선이 이보다 낮게 나오면 그것은 <strong>여유</strong>이지 재설계가 아니다 —
       이 방향으로만 안전하다. 곡선이 상한을 넘으면 그때는 재설계이고,
       그 확률을 낮추려고 상한을 골랐다.</div>
@@ -264,7 +264,7 @@
     <h3>도면 두 장의 모순을 정정한다</h3>
     <p>제작도 <span class="k">F-005</span> 는 “박리 추력은 칼날 → 갠트리 → 주행레일 문형 → 기초(A7)로
       흐르고 테이블(A8)은 패널 반력만 받는다” 고 적었고, 배치도 <span class="k">D-602</span> 는
-      “추력 13.37 kN 을 A8 넷이 받는다” 고 적었다. 둘은 서로 다른 말을 한다.</p>
+      “추력 15.60 kN 을 A8 넷이 받는다” 고 적었다. 둘은 서로 다른 말을 한다.</p>
     <div class="decide"><b>총괄 판정</b> — <strong>둘 다 옳고 둘 다 절반이다.</strong> 추력은
       작용·반작용 쌍이다. 칼날이 패널을 밀면 패널은 흡착패드를 통해 테이블을 같은 크기로 민다.
       <strong>A7 과 A8 이 반대 방향으로 같은 힘을 받는다.</strong> 한쪽만 설계하면 반대쪽이 뜬다.
@@ -333,18 +333,18 @@
           <td>유리 8.0 kg/m²</td></tr>
         <tr><th>만권 백시트 롤</th><td class="num">3.499 kN</td><td class="num">5.249 kN</td>
           <td>Ø600 · 295 장/롤</td></tr>
-        <tr><th>칼날 카세트</th><td class="num">0.343 kN</td><td class="num">0.515 kN</td>
-          <td>35 kg/벌</td></tr>
-        <tr><th>박리 추력 (합성)</th><td class="num">13.37 kN</td><td class="num">26.07 kN</td>
+        <tr><th>칼날 카세트</th><td class="num">0.392 kN</td><td class="num">0.588 kN</td>
+          <td>40 kg/벌</td></tr>
+        <tr><th>박리 추력 (합성)</th><td class="num">15.60 kN</td><td class="num">30.42 kN</td>
           <td>OI-01 상한 × ψ1.3 × γ<sub>Q</sub>1.5</td></tr>
-        <tr><th>HC-101 가열실 자중</th><td class="num">56.5 kN</td><td class="num">76.3 kN</td>
-          <td>골조·벽체 4겹·데크·IR 전 부재 — <strong>부품 카탈로그 계산 5.76 t</strong> (개념 개산 대비 -14%)</td></tr>
-        <tr><th>KG-101 갠트리 자중</th><td class="num">10.2 kN</td><td class="num">13.8 kN</td>
-          <td>이동부 — 주행 문형·레일 제외 — <strong>부품 카탈로그 계산 1.04 t</strong> (개념 개산 대비 -28%)</td></tr>
-        <tr><th>VT-101 테이블 자중</th><td class="num">13.4 kN</td><td class="num">18.1 kN</td>
-          <td>상판·리브·기둥·진공계통 — <strong>부품 카탈로그 계산 1.37 t</strong> (개념 개산 대비 +52%)</td></tr>
-        <tr><th>WR-101 권취부 자중</th><td class="num">9.0 kN</td><td class="num">12.2 kN</td>
-          <td>문형·드럼·서보 — RH-201 런웨이 제외 — <strong>부품 카탈로그 계산 0.92 t</strong> (개념 개산 대비 +48%)</td></tr>
+        <tr><th>HC-101 가열실 자중</th><td class="num">57.2 kN</td><td class="num">77.2 kN</td>
+          <td>골조·벽체 4겹·데크·IR 전 부재 — <strong>부품 카탈로그 계산 5.83 t</strong> (개념 개산 대비 -13%)</td></tr>
+        <tr><th>KG-101 갠트리 자중</th><td class="num">11.0 kN</td><td class="num">14.8 kN</td>
+          <td>이동부 — 주행 문형·레일 제외 — <strong>부품 카탈로그 계산 1.12 t</strong> (개념 개산 대비 -23%)</td></tr>
+        <tr><th>VT-101 테이블 자중</th><td class="num">14.8 kN</td><td class="num">19.9 kN</td>
+          <td>상판·리브·기둥·진공계통 — <strong>부품 카탈로그 계산 1.51 t</strong> (개념 개산 대비 +67%)</td></tr>
+        <tr><th>WR-101 권취부 자중</th><td class="num">9.8 kN</td><td class="num">13.2 kN</td>
+          <td>문형·드럼·서보 — RH-201 런웨이 제외 — <strong>부품 카탈로그 계산 1.00 t</strong> (개념 개산 대비 +61%)</td></tr>
       </tbody>
     </table></div>
     <div class="decide"><strong>총괄 결정 — 자중은 가정이 아니라 부품 카탈로그에서 계산한다.</strong>
@@ -363,8 +363,8 @@
 
   <div class="clause"><div class="n">3.3</div><div class="c">
     <h3>피로 하중 반복수</h3>
-    <div class="calc">60 장/h × 7,884 h/년 × 20 년 = 9.5 × 10⁶ 회</div>
-    <p>박리 추력은 장마다 <span class="m">0 ↔ 최대</span>를 오간다. 9.5×10⁶ 회는
+    <div class="calc">58 장/h × 7,884 h/년 × 20 년 = 9.1 × 10⁶ 회</div>
+    <p>박리 추력은 장마다 <span class="m">0 ↔ 최대</span>를 오간다. 9.1×10⁶ 회는
       <strong>일정진폭 피로한도 이하로 설계</strong>해야 하는 영역이다 —
       손상누적을 따지지 않고 응력범위를 한도 아래로 두는 쪽이 확실하고,
       실제 하중이 예상보다 커도 급격히 무너지지 않는다.</p>
@@ -526,25 +526,25 @@ F<sub>p,C</sub>  = 0.7·f<sub>ub</sub>·A<sub>s</sub>             설계 체결�
         <th class="num">N<sub>Ed</sub> kN</th><th class="num">V<sub>Ed</sub> kN</th>
         <th class="num">이용률</th><th class="num">F<sub>p,C</sub> kN</th><th class="num">T N·m</th></tr></thead>
       <tbody>
-<tr><td class="k">J1</td><td>VT-101 기둥 ↔ 베이스플레이트</td><td class="k">M16 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">1.50</td><td class="num">1.63</td><td class="num">0.04</td><td class="num">87.9</td><td class="num">281 / 197</td></tr>
+<tr><td class="k">J1</td><td>VT-101 기둥 ↔ 베이스플레이트</td><td class="k">M16 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">1.68</td><td class="num">1.90</td><td class="num">0.04</td><td class="num">87.9</td><td class="num">281 / 197</td></tr>
 <tr class="sub"><td></td><td colspan="9">추력 반작용 26.1 kN · 팔길이 1.15 m · 기둥간격 2.50 m</td></tr>
-<tr><td class="k">J2</td><td>KG-101 주행레일 문형 기둥 ↔ 베이스플레이트</td><td class="k">M20 × 4</td><td class="k">10.9</td><td>지압접합</td><td class="num">1.82</td><td class="num">1.63</td><td class="num">0.02</td><td class="num">171.5</td><td class="num">686 / 480</td></tr>
+<tr><td class="k">J2</td><td>KG-101 주행레일 문형 기둥 ↔ 베이스플레이트</td><td class="k">M20 × 4</td><td class="k">10.9</td><td>지압접합</td><td class="num">2.06</td><td class="num">1.90</td><td class="num">0.03</td><td class="num">171.5</td><td class="num">686 / 480</td></tr>
 <tr class="sub"><td></td><td colspan="9">추력 26.1 kN @ EL 1950 · 문형 스팬 3.50 m</td></tr>
-<tr><td class="k">J3</td><td>KG-101 크로스빔 ↔ 주행대차 (마찰접합)</td><td class="k">M16 × 8</td><td class="k">10.9</td><td>마찰접합</td><td class="num">0.00</td><td class="num">3.26</td><td class="num">0.05</td><td class="num">109.9</td><td class="num">352 / 246</td></tr>
+<tr><td class="k">J3</td><td>KG-101 크로스빔 ↔ 주행대차 (마찰접합)</td><td class="k">M16 × 8</td><td class="k">10.9</td><td>마찰접합</td><td class="num">0.00</td><td class="num">3.80</td><td class="num">0.06</td><td class="num">109.9</td><td class="num">352 / 246</td></tr>
 <tr class="sub"><td></td><td colspan="9">칼끝 간격 300±2 를 지키려면 미끄러지면 안 된다 — 마찰접합 μ=0.50</td></tr>
-<tr><td class="k">J4</td><td>칼날 빔 ↔ Z축 서보슬라이드</td><td class="k">M12 × 6</td><td class="k">10.9</td><td>지압접합</td><td class="num">2.17</td><td class="num">2.17</td><td class="num">0.09</td><td class="num">59.0</td><td class="num">142 / 99</td></tr>
+<tr><td class="k">J4</td><td>칼날 빔 ↔ Z축 서보슬라이드</td><td class="k">M12 × 6</td><td class="k">10.9</td><td>지압접합</td><td class="num">2.53</td><td class="num">2.53</td><td class="num">0.10</td><td class="num">59.0</td><td class="num">142 / 99</td></tr>
 <tr class="sub"><td></td><td colspan="9">칼날 1기 분담 13.0 kN — 인장·전단 동시</td></tr>
-<tr><td class="k">J5</td><td>BC-201 카세트 테이퍼 로케이팅핀</td><td class="k">M16 × 4</td><td class="k">10.9</td><td>핀 전단</td><td class="num">0.00</td><td class="num">3.26</td><td class="num">0.03</td><td class="num">109.9</td><td class="num">352 / 246</td></tr>
+<tr><td class="k">J5</td><td>BC-201 카세트 테이퍼 로케이팅핀</td><td class="k">M16 × 4</td><td class="k">10.9</td><td>핀 전단</td><td class="num">0.00</td><td class="num">3.80</td><td class="num">0.03</td><td class="num">109.9</td><td class="num">352 / 246</td></tr>
 <tr class="sub"><td></td><td colspan="9">쐐기 클램프(15 kN×2)는 밀착용 — 전단은 핀 4개가 받는다</td></tr>
-<tr><td class="k">J6</td><td>HC-101 가열실 기둥 ↔ 베이스플레이트</td><td class="k">M20 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.00</td><td class="num">1.06</td><td class="num">0.01</td><td class="num">137.2</td><td class="num">549 / 384</td></tr>
+<tr><td class="k">J6</td><td>HC-101 가열실 기둥 ↔ 베이스플레이트</td><td class="k">M20 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.00</td><td class="num">1.07</td><td class="num">0.01</td><td class="num">137.2</td><td class="num">549 / 384</td></tr>
 <tr class="sub"><td></td><td colspan="9">자중 6.7 t · 지진 0.30W @ 무게중심 EL 2,400</td></tr>
-<tr><td class="k">J7</td><td>데크 레일 ↔ 기둥 (가열실 내부)</td><td class="k">M12 × 4</td><td class="k">A2-70</td><td>지압접합</td><td class="num">0.27</td><td class="num">0.55</td><td class="num">0.02</td><td class="num">41.3</td><td class="num">99 / 69</td></tr>
+<tr><td class="k">J7</td><td>데크 레일 ↔ 기둥 (가열실 내부)</td><td class="k">M12 × 4</td><td class="k">A2-70</td><td>지압접합</td><td class="num">0.28</td><td class="num">0.57</td><td class="num">0.02</td><td class="num">41.3</td><td class="num">99 / 69</td></tr>
 <tr class="sub"><td></td><td colspan="9">데크 1단 1.45 kN · 140 °C 환경 — STS304 볼트</td></tr>
-<tr><td class="k">J8</td><td>WR-101 권취 문형 기둥 ↔ 베이스플레이트</td><td class="k">M16 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.76</td><td class="num">0.53</td><td class="num">0.01</td><td class="num">87.9</td><td class="num">281 / 197</td></tr>
+<tr><td class="k">J8</td><td>WR-101 권취 문형 기둥 ↔ 베이스플레이트</td><td class="k">M16 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.85</td><td class="num">0.60</td><td class="num">0.02</td><td class="num">87.9</td><td class="num">281 / 197</td></tr>
 <tr class="sub"><td></td><td colspan="9">만권 롤 3.50 kN @ EL 3,700 · 문형 스팬 2.60 m</td></tr>
-<tr><td class="k">J9</td><td>RH-201 런웨이 빔 ↔ 기둥 두상판</td><td class="k">M16 × 6</td><td class="k">10.9</td><td>지압접합</td><td class="num">1.55</td><td class="num">0.52</td><td class="num">0.02</td><td class="num">109.9</td><td class="num">352 / 246</td></tr>
+<tr><td class="k">J9</td><td>RH-201 런웨이 빔 ↔ 기둥 두상판</td><td class="k">M16 × 6</td><td class="k">10.9</td><td>지압접합</td><td class="num">1.73</td><td class="num">0.58</td><td class="num">0.02</td><td class="num">109.9</td><td class="num">352 / 246</td></tr>
 <tr class="sub"><td></td><td colspan="9">롤 3.50 kN + 호이스트 자중 · 동적계수 1.25</td></tr>
-<tr><td class="k">J10</td><td>승강 포크 볼스크류 지지 ↔ 문형 기둥</td><td class="k">M12 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.92</td><td class="num">0.23</td><td class="num">0.02</td><td class="num">47.2</td><td class="num">113 / 79</td></tr>
+<tr><td class="k">J10</td><td>승강 포크 볼스크류 지지 ↔ 문형 기둥</td><td class="k">M12 × 4</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.95</td><td class="num">0.24</td><td class="num">0.02</td><td class="num">47.2</td><td class="num">113 / 79</td></tr>
 <tr class="sub"><td></td><td colspan="9">포크 + 패널 · 급정지 1.20 — 낙하방지 브레이크와 별개로 정적 지지</td></tr>
 <tr><td class="k">J11</td><td>안전방책 기둥 ↔ 바닥 앵커</td><td class="k">M10 × 2</td><td class="k">8.8</td><td>지압접합</td><td class="num">0.50</td><td class="num">0.75</td><td class="num">0.04</td><td class="num">32.5</td><td class="num">65 / 45</td></tr>
 <tr class="sub"><td></td><td colspan="9">ISO 14120 — 수평 1,000 N 을 기둥 상단에서 견딘다</td></tr>
@@ -558,8 +558,8 @@ F<sub>p,C</sub>  = 0.7·f<sub>ub</sub>·A<sub>s</sub>             설계 체결�
       <strong>기계 기초에 쓰는 최소 규격</strong>과 <strong>판두께 대비 볼트경</strong>으로 잡았다.
       왜 이 단면인지는 <a href="#f9">9항</a>이 답한다.</div>
     <div class="decide"><b>총괄 결정 · J5</b> — <strong>카세트 쐐기 클램프는 전단재가 아니다.</strong>
-      선행 자료는 “쐐기 클램프 15 kN × 2 = 30 kN 으로 추력 13.37 kN 대비 2.24 배”
-      라고 적었지만, 설계 추력 26.1 kN 에 대면 <strong>1.15 배</strong>밖에 안 된다.
+      선행 자료는 “쐐기 클램프 20 kN × 2 = 40 kN 으로 추력 15.60 kN 대비 2.56 배”
+      라고 적었지만, 설계 추력 30.4 kN 에 대면 <strong>1.31 배</strong>밖에 안 된다.
       마찰로 전단을 받는 설계는 여기서 성립하지 않는다. <strong>전단은 테이퍼 로케이팅핀 4개가
       확실하게 받고, 클램프는 밀착과 열전달만 담당한다</strong>고 못 박는다.</div>
   </div></div>
@@ -582,16 +582,16 @@ F<sub>p,C</sub>  = 0.7·f<sub>ub</sub>·A<sub>s</sub>             설계 체결�
       <thead><tr><th>접합</th><th class="num">설계력 kN</th><th class="num">용접장 mm</th>
         <th>재질</th><th class="num">판두께</th><th>각장</th><th>근거</th></tr></thead>
       <tbody>
-<tr><td>가열실 기둥 ↔ 베이스플레이트</td><td class="num">19.07</td><td class="num">800</td><td class="k">SS400</td><td class="num">25</td><td class="k">z8</td><td>판두께 t25</td></tr>
-<tr><td>가열실 기둥 ↔ 거싯</td><td class="num">9.54</td><td class="num">500</td><td class="k">SS400</td><td class="num">12</td><td class="k">z5</td><td>판두께 t12</td></tr>
-<tr><td>테이블 기둥 ↔ 베이스플레이트</td><td class="num">6.52</td><td class="num">600</td><td class="k">SM490A</td><td class="num">28</td><td class="k">z10</td><td>판두께 t28</td></tr>
-<tr><td>테이블 상판 ↔ 리브</td><td class="num">3.26</td><td class="num">800</td><td class="k">SS400</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
-<tr><td>갠트리 문형 기둥 ↔ 베이스플레이트</td><td class="num">6.52</td><td class="num">1,000</td><td class="k">SM490A</td><td class="num">30</td><td class="k">z10</td><td>판두께 t30</td></tr>
-<tr><td>크로스빔 ↔ 대차 브래킷</td><td class="num">13.04</td><td class="num">600</td><td class="k">SM490A</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
-<tr><td>크로스빔 웨브 ↔ 플랜지 (BOX)</td><td class="num">13.04</td><td class="num">5,680</td><td class="k">SM490A</td><td class="num">12</td><td class="k">z5</td><td>판두께 t12</td></tr>
-<tr><td>권취 문형 기둥 ↔ 베이스플레이트</td><td class="num">5.25</td><td class="num">600</td><td class="k">SS400</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
-<tr><td>RH-201 런웨이 ↔ 기둥 두상판</td><td class="num">6.56</td><td class="num">400</td><td class="k">SS400</td><td class="num">16</td><td class="k">z6</td><td>판두께 t16</td></tr>
-<tr><td>데크 프레임 ↔ 레일 (가열실 내부)</td><td class="num">0.41</td><td class="num">5,560</td><td class="k">STS304</td><td class="num">6</td><td class="k">z4</td><td>판두께 t6</td></tr>
+<tr><td>가열실 기둥 ↔ 베이스플레이트</td><td class="num">19.30</td><td class="num">800</td><td class="k">SS400</td><td class="num">25</td><td class="k">z8</td><td>판두께 t25</td></tr>
+<tr><td>가열실 기둥 ↔ 거싯</td><td class="num">9.65</td><td class="num">500</td><td class="k">SS400</td><td class="num">12</td><td class="k">z5</td><td>판두께 t12</td></tr>
+<tr><td>테이블 기둥 ↔ 베이스플레이트</td><td class="num">7.60</td><td class="num">600</td><td class="k">SM490A</td><td class="num">28</td><td class="k">z10</td><td>판두께 t28</td></tr>
+<tr><td>테이블 상판 ↔ 리브</td><td class="num">3.80</td><td class="num">800</td><td class="k">SS400</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
+<tr><td>갠트리 문형 기둥 ↔ 베이스플레이트</td><td class="num">7.60</td><td class="num">1,000</td><td class="k">SM490A</td><td class="num">30</td><td class="k">z10</td><td>판두께 t30</td></tr>
+<tr><td>크로스빔 ↔ 대차 브래킷</td><td class="num">15.21</td><td class="num">600</td><td class="k">SM490A</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
+<tr><td>크로스빔 웨브 ↔ 플랜지 (BOX)</td><td class="num">15.21</td><td class="num">5,680</td><td class="k">SM490A</td><td class="num">12</td><td class="k">z5</td><td>판두께 t12</td></tr>
+<tr><td>권취 문형 기둥 ↔ 베이스플레이트</td><td class="num">6.12</td><td class="num">600</td><td class="k">SS400</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
+<tr><td>RH-201 런웨이 ↔ 기둥 두상판</td><td class="num">7.65</td><td class="num">400</td><td class="k">SS400</td><td class="num">16</td><td class="k">z6</td><td>판두께 t16</td></tr>
+<tr><td>데크 프레임 ↔ 레일 (가열실 내부)</td><td class="num">0.50</td><td class="num">5,560</td><td class="k">STS304</td><td class="num">6</td><td class="k">z4</td><td>판두께 t6</td></tr>
 <tr><td>방책 기둥 ↔ 베이스</td><td class="num">1.0</td><td class="num">240</td><td class="k">SS400</td><td class="num">6</td><td class="k">z4</td><td>판두께 t6</td></tr>
       </tbody>
     </table></div>
@@ -668,28 +668,29 @@ F<sub>p,C</sub>  = 0.7·f<sub>ub</sub>·A<sub>s</sub>             설계 체결�
   <h2><span>9</span>지배 검토 — 왜 이 단면인가</h2>
   <div class="clause"><div class="n">9.1</div><div class="c">
     <p>볼트 이용률이 0.1 이하인 구조물에서 단면을 정하는 것은 강도가 아니다.
-      <strong>칼끝 간격을 지키는 강성</strong>과 <strong>9.5×10⁶ 회를 견디는 피로</strong>다.</p>
+      <strong>칼끝 간격을 지키는 강성</strong>과 <strong>9.1×10⁶ 회를 견디는 피로</strong>다.</p>
     <div class="tw"><table>
       <caption>정렬·피로 지배 부재 — 값과 한계</caption>
       <thead><tr><th>ID</th><th>부재</th><th>지배 검토</th><th class="num">값</th>
         <th class="num">한계</th><th class="num">이용률</th></tr></thead>
       <tbody>
-<tr><td class="k">C1</td><td>KG-101 크로스빔 BOX-300×200×12</td><td>처짐 (칼끝 간격 300±2)</td><td class="num">0.21 mm</td><td class="num">0.50 mm</td><td class="num">0.43</td></tr>
-<tr class="sub"><td></td><td colspan="5">스팬 2840 · 특성 추력 13.37 kN · 한계는 공차의 1/4</td></tr>
-<tr><td class="k">C2</td><td>KG-101 크로스빔 (용접 부착부)</td><td>피로 — 필릿 용접 부착물 (등급 71)</td><td class="num">5.03 MPa</td><td class="num">52.31 MPa</td><td class="num">0.10</td></tr>
-<tr class="sub"><td></td><td colspan="5">9.5×10⁶ 회 — 5×10⁶ 초과이므로 피로한도 이하로 둔다</td></tr>
-<tr><td class="k">C3</td><td>VT-101 테이블 기둥 □-150×150×6</td><td>피로 — 필릿 용접 부착물 (등급 71)</td><td class="num">24.10 MPa</td><td class="num">52.31 MPa</td><td class="num">0.46</td></tr>
-<tr class="sub"><td></td><td colspan="5">기둥당 3.34 kN @ EL 1150 캔틸레버</td></tr>
-<tr><td class="k">C4</td><td>KG-101 문형 기둥 H-250×250×9/14</td><td>피로 — 필릿 용접 부착물 (등급 71)</td><td class="num">7.52 MPa</td><td class="num">52.31 MPa</td><td class="num">0.14</td></tr>
+<tr><td class="k">C1</td><td>KG-101 크로스빔 BOX-300×200×12</td><td>처짐 (칼끝 간격 300±2)</td><td class="num">0.31 mm</td><td class="num">0.50 mm</td><td class="num">0.61</td></tr>
+<tr class="sub"><td></td><td colspan="5">스팬 3040 · 특성 추력 15.60 kN · 한계는 공차의 1/4</td></tr>
+<tr><td class="k">C2</td><td>KG-101 크로스빔 (용접 부착부)</td><td>피로 — 필릿 용접 부착물 (등급 71)</td><td class="num">6.28 MPa</td><td class="num">52.31 MPa</td><td class="num">0.12</td></tr>
+<tr class="sub"><td></td><td colspan="5">9.1×10⁶ 회 — 5×10⁶ 초과이므로 피로한도 이하로 둔다</td></tr>
+<tr><td class="k">C3</td><td>VT-101 테이블 기둥 □-150×150×6</td><td>피로 — 필릿 용접 부착물 (등급 71)</td><td class="num">28.11 MPa</td><td class="num">52.31 MPa</td><td class="num">0.54</td></tr>
+<tr class="sub"><td></td><td colspan="5">기둥당 3.90 kN @ EL 1150 캔틸레버</td></tr>
+<tr><td class="k">C4</td><td>KG-101 문형 기둥 H-250×250×9/14</td><td>피로 — 필릿 용접 부착물 (등급 71)</td><td class="num">8.77 MPa</td><td class="num">52.31 MPa</td><td class="num">0.17</td></tr>
 <tr class="sub"><td></td><td colspan="5">레일 EL 1950 에서의 캔틸레버 휨</td></tr>
-<tr><td class="k">C5</td><td>WR-101 권취축 Ø60 h6</td><td>피로 — 모재 회전굽힘 (등급 160 · 안전측 90 적용)</td><td class="num">45.70 MPa</td><td class="num">66.31 MPa</td><td class="num">0.69</td></tr>
-<tr class="sub"><td></td><td colspan="5">휨 0.76 + 비틀림 0.60 합성 0.97 kN·m · 스팬 1740</td></tr>
-<tr><td class="k">C6</td><td>RH-201 런웨이 빔 H-200×100×5.5/8</td><td>처짐 L/500 (호이스트 주행)</td><td class="num">0.71 mm</td><td class="num">6.00 mm</td><td class="num">0.12</td></tr>
-<tr class="sub"><td></td><td colspan="5">롤 3.50 + 호이스트 1.47 kN · 지지 간격 3000</td></tr>
+<tr><td class="k">C5</td><td>WR-101 권취축 Ø60 h6</td><td>피로 — 모재 회전굽힘 (등급 160 · 안전측 90 적용)</td><td class="num">54.56 MPa</td><td class="num">66.31 MPa</td><td class="num">0.82</td></tr>
+<tr class="sub"><td></td><td colspan="5">휨 0.99 + 비틀림 0.60 합성 1.16 kN·m · 스팬 1940</td></tr>
+<tr><td class="k">C6</td><td>RH-201 런웨이 빔 H-200×100×5.5/8</td><td>처짐 L/500 (호이스트 주행)</td><td class="num">0.80 mm</td><td class="num">6.00 mm</td><td class="num">0.13</td></tr>
+<tr class="sub"><td></td><td colspan="5">롤 4.08 + 호이스트 1.47 kN · 지지 간격 3000</td></tr>
       </tbody>
     </table></div>
     <div class="decide"><b>총괄 결정 · C5</b> — <strong>권취축을 Ø55 에서 Ø60 으로 올렸다.</strong>
-      Ø55 는 피로 이용률 <span class="m">0.89</span> 였다. 계산상 성립하지만 회전축에 두기엔 빡빡하고,
+      Ø55 는 2,400 × 1,200 시절 피로 이용률 <span class="m">0.89</span> 였고, 포락선 만권 롤(416 kg)에서는
+      <span class="m">1.07</span> 로 넘는다 — Ø60 이 <span class="m">0.82</span> 다. 계산상 성립하지만 회전축에 두기엔 빡빡하고,
       축은 한 번 깨지면 롤과 웹이 함께 간다. 한 치수 올려 <span class="m">0.69</span> 로 낮췄다 —
       가공비 차이는 무시할 수 있고 베어링은 같은 계열에서 잡힌다.</div>
     <div class="note"><strong>C1 이 이 설비에서 가장 중요한 숫자다.</strong>
@@ -754,12 +755,24 @@ f<sub>ck</sub> = 25 MPa (C25/30 최소) · τ<sub>Rk</sub> = 10.0 MPa · γ<sub>
         <tr><th>가동부·주의부</th><td class="k">Sa 2½</td><td>동일</td><td class="num">220 µm</td><td>안전 옐로 (RAL 1023)</td></tr>
         <tr><th>가열실 외피</th><td class="k">Sa 2½</td>
           <td>내열 실리콘 알루미늄 2회</td><td class="num">50 µm</td><td>은색 (200 °C 대응)</td></tr>
-        <tr><th>가열실 내피</th><td>산세·부동태</td><td class="k">도장 금지</td><td class="num">—</td><td>STS304 소지</td></tr>
+        <tr><th>가열실 내피</th><td>산세·부동태 + <strong>연마 #400 이상</strong></td>
+          <td class="k">도장 금지</td><td class="num">—</td>
+          <td><strong>전반사율 ρ ≥ 0.4</strong> (0.8~3 µm)</td></tr>
+        <tr><th>에어록 단별 셔터 내면</th><td>산세·부동태 + 연마 #400 이상</td>
+          <td class="k">도장 금지</td><td class="num">—</td><td>내피와 같은 면 · ρ ≥ 0.4</td></tr>
         <tr><th>마찰접합 접촉면</th><td class="k">Sa 2½ 블라스트</td><td class="k">도장 금지</td>
           <td class="num">—</td><td>μ = 0.50 확보 — 조립 후 실링만</td></tr>
         <tr><th>기계 가공면</th><td>—</td><td>방청유</td><td class="num">—</td><td>—</td></tr>
       </tbody>
     </table></div>
+    <div class="warn"><strong>가열실 내피의 광택은 미관이 아니라 성능이다.</strong>
+      IR 뱅크 배치 검토는 폭 가장자리 유속 결손을 내피의 정반사로 보상하도록 잡았고,
+      면내 온도편차 <span class="k">11 K</span> 는 <strong>ρ ≥ 0.4</strong> 를 전제로 한 값이다.
+      ρ 가 0 이면 같은 배치로도 편차가 커져 <strong>체류시간이 늘고 처리량이 깎인다.</strong>
+      2B 소지(ρ ≈ 0.25)로 납품하면 치수는 도면과 같은데 성능이 다르다 —
+      <strong>도면으로는 구분이 안 되므로 검사 항목으로 관리한다</strong>
+      (ITP 8 · 정비 주기 점검).</div>
+
     <div class="warn"><strong>마찰접합면에 도장하면 설계가 무효가 된다.</strong>
       J3 의 미끄러짐 내력은 μ = 0.50 (블라스트 청정면)을 전제로 계산했다.
       도장면의 μ 는 0.2 이하이므로 <strong>내력이 절반 이하로 떨어진다.</strong>
@@ -816,22 +829,32 @@ f<sub>ck</sub> = 25 MPa (C25/30 최소) · τ<sub>Rk</sub> = 10.0 MPa · γ<sub>
           <td class="k">공극 없음</td><td>사진</td></tr>
         <tr><td class="num">7</td><td>HC-101 가열실 건립·외피 조립</td><td>기밀시험</td>
           <td class="k">차압 유지</td><td>시험 기록</td></tr>
-        <tr><td class="num">8</td><td>GC-101 냉각 랙 · 승강 포크 문형</td><td>데크 정합</td>
+        <tr><td class="num">8</td><td><strong>가열실 내피 반사율 확인</strong> — 램프 장착 전</td>
+          <td>휴대형 반사율계 · 벽면 <strong>9 점</strong>(좌·중·우 × 상·중·하)</td>
+          <td class="k">ρ ≥ 0.4 · 최저점 ≥ 0.35</td><td>측정 기록 (점별 값)</td></tr>
+        <tr><td class="num">9</td><td><strong>에어록 단별 셔터 개폐·기밀</strong></td>
+          <td>단별 개폐 시간 · 씰 밀착 · <strong>동시개방 금지 확인</strong></td>
+          <td class="k">≤ 1.5 s · 한 번에 1 장만</td><td>시운전 기록</td></tr>
+        <tr><td class="num">10</td><td>GC-101 냉각 랙 · 승강 포크 문형</td><td>데크 정합</td>
           <td class="k">± 2 mm</td><td>측정 기록</td></tr>
-        <tr><td class="num">9</td><td>KG-101 갠트리 탑재·주행 시운전</td><td>무부하 주행</td>
+        <tr><td class="num">11</td><td>KG-101 갠트리 탑재·주행 시운전</td><td>무부하 주행</td>
           <td class="k">전 행정 · 진동 이상 없음</td><td>주행 기록</td></tr>
-        <tr><td class="num">10</td><td>칼날 카세트 장착·간격 조정</td><td>레이저 간격 측정</td>
+        <tr><td class="num">12</td><td>칼날 카세트 장착·간격 조정</td><td>레이저 간격 측정</td>
           <td class="k">300 ± 2 mm</td><td>측정 기록</td></tr>
-        <tr><td class="num">11</td><td>WR-101 권취부 · RH-201 모노레일</td><td>축 흔들림·하중시험</td>
+        <tr><td class="num">13</td><td>WR-101 권취부 · RH-201 모노레일</td><td>축 흔들림·하중시험</td>
           <td class="k">0.02 TIR · 1.25 × 정격</td><td>시험 기록</td></tr>
-        <tr><td class="num">12</td><td>배관·배선·방책</td><td>절연·도통·접지</td>
+        <tr><td class="num">14</td><td>배관·배선·방책</td><td>절연·도통·접지</td>
           <td class="k">IEC 60204-1</td><td>시험 성적서</td></tr>
-        <tr><td class="num">13</td><td>볼트 전수 토크 확인·마킹</td><td>토크렌치</td>
+        <tr><td class="num">15</td><td>볼트 전수 토크 확인·마킹</td><td>토크렌치</td>
           <td class="k">6항 표 · ± 10 %</td><td>체결 점검표</td></tr>
-        <tr><td class="num">14</td><td>무부하 시운전 → 10장 시운전</td><td>동작·인터록</td>
+        <tr><td class="num">16</td><td>무부하 시운전 → 10장 시운전</td><td>동작·인터록</td>
           <td class="k">전 허가체인 성립</td><td>시운전 기록</td></tr>
       </tbody>
     </table></div>
+    <div class="decide"><b>총괄 결정 · 순서</b> — <strong>내피 반사율(8)은 램프를 달기 전에 잰다.</strong>
+      램프와 반사판이 붙으면 벽면에 반사율계를 댈 자리가 없어지고, 그때 ρ 가 모자라는 것을
+      알면 <strong>다 뜯어야 한다.</strong> 재연마는 램프 장착 전이면 하루, 후면 일주일이다.</div>
+
     <div class="decide"><b>총괄 결정 · 순서</b> — <strong>주행레일 문형(4)을 테이블(5)보다 먼저 세운다.</strong>
       칼끝 간격은 갠트리와 테이블의 <em>상대</em> 위치에서 나온다. 레일을 먼저 세워 기준으로 삼고
       테이블을 거기에 맞추면 조정이 한 번으로 끝난다. 반대로 하면 무거운 레일 문형을
@@ -868,7 +891,7 @@ f<sub>ck</sub> = 25 MPa (C25/30 최소) · τ<sub>Rk</sub> = 10.0 MPa · γ<sub>
     <h3>인도 시 제출</h3>
     <ul>
       <li>As-built 도면 (변경 이력 포함)</li>
-      <li>ITP 전 항목 검사 기록</li>
+      <li>ITP 전 항목 검사 기록 (내피 반사율 9 점 측정값 포함)</li>
       <li>볼트 체결 점검표 (접합 ID 별 전수)</li>
       <li>용접 검사 기록 (VT 100 % · MT 해당분)</li>
       <li>앵커 인발시험 성적서</li>

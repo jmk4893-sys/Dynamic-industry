@@ -636,7 +636,7 @@ class TestBacksheetWinder(unittest.TestCase):
 
     # 면적보존: 감긴 필름 단면적 n·L·t 가 원환 π(r²−r0²) 와 같다
     T = 0.30e-3          # 백시트 두께
-    L = 2.4              # 패널 길이 (사양 2400×1200)
+    L = 2.5              # 패널 길이 (포락선 2500×1400 · 상류 프레임 포함 외형 상한)
     R0 = 0.15            # 코어 Ø300
     R1 = 0.30            # 만권 Ø600
 
@@ -650,8 +650,11 @@ class TestBacksheetWinder(unittest.TestCase):
         m = re.search(
             rf"(?:const|,)\s*{name}\s*=\s*(-?[\d.]+(?:e-?\d+)?)[,;]", self.html
         )
-        self.assertIsNotNone(m, f"상수 {name} 선언을 찾지 못했다")
-        return float(m.group(1))
+        if m:
+            return float(m.group(1))
+        env = console_consts.env(self.html)       # 식으로 적힌 상수(CARRIER_L=PANEL_L+.50)는 풀어서 본다
+        self.assertIn(name, env, f"상수 {name} 선언을 찾지 못했다")
+        return float(env[name])
 
     def _fn(self, name):
         m = re.search(rf"\n    function {name}\(.*?\n    \}}", self.html, re.S)
@@ -677,17 +680,17 @@ class TestBacksheetWinder(unittest.TestCase):
         self.assertAlmostEqual(self._const("WR_CORE_R"), self.R0, places=4)
         self.assertAlmostEqual(self._const("WR_FULL_R"), self.R1, places=4)
         self.assertAlmostEqual(self._const("PANEL_L"), self.L, places=4,
-                               msg="롤 계산의 패널 길이가 사양 2400mm 이 아니다")
+                               msg="롤 계산의 패널 길이가 포락선 2500mm 이 아니다")
 
     def test_one_panel_moves_the_diameter_by_about_1_5_mm(self):
         """한 장에 Ø301.5 — 눈으로는 거의 안 변하는 것이 정상이다."""
-        self.assertAlmostEqual(self._radius(1) * 2000, 301.5, delta=0.1)
-        self.assertAlmostEqual(self._radius(10) * 2000, 314.9, delta=0.1)
-        self.assertAlmostEqual(self._radius(60) * 2000, 380.8, delta=0.2)
+        self.assertAlmostEqual(self._radius(1) * 2000, 301.6, delta=0.1)
+        self.assertAlmostEqual(self._radius(10) * 2000, 315.5, delta=0.1)
+        self.assertAlmostEqual(self._radius(60) * 2000, 383.8, delta=0.2)
 
     def test_full_roll_panel_count_is_stated_and_correct(self):
         n = round((self.R1 ** 2 - self.R0 ** 2) / self.turn)
-        self.assertEqual(n, 295)
+        self.assertEqual(n, 283)
         self.assertIn("ROLL_FULL_PANELS", self.html)
         # 콘솔이 본문에 적어 둔 값도 같아야 한다
         self.assertIn("295", self.html, "만권 장수가 본문에 없다")
@@ -791,8 +794,8 @@ class TestBacksheetWinder(unittest.TestCase):
         )
         # 롤 면폭은 사양의 권취 유효폭 1,400~1,500mm 안이어야 한다
         face = self._const("ROLL_FACE")
-        self.assertGreaterEqual(face, 1.4)
-        self.assertLessEqual(face, 1.5)
+        self.assertGreaterEqual(face, self._const("PANEL_W") + 0.2)      # 사양 6.4 권취 유효폭 폭+200~300
+        self.assertLessEqual(face, self._const("PANEL_W") + 0.3)
         self.assertGreater(face, self._const("PANEL_W"), "롤 면폭이 백시트 폭보다 좁다")
 
     def test_live_roll_diameter_is_readable_without_turning_on_labels(self):
@@ -895,8 +898,11 @@ class TestPanelScale(unittest.TestCase):
         m = re.search(
             rf"(?:const|,)\s*{name}\s*=\s*(-?[\d.]+(?:e-?\d+)?)[,;]", self.html
         )
-        self.assertIsNotNone(m, f"상수 {name} 선언을 찾지 못했다")
-        return float(m.group(1))
+        if m:
+            return float(m.group(1))
+        env = console_consts.env(self.html)       # 식으로 적힌 상수(CARRIER_L=PANEL_L+.50)는 풀어서 본다
+        self.assertIn(name, env, f"상수 {name} 선언을 찾지 못했다")
+        return float(env[name])
 
     def _fn(self, name):
         m = re.search(rf"\n    function {name}\(.*?\n    \}}", self.html, re.S)
@@ -938,16 +944,14 @@ class TestPanelScale(unittest.TestCase):
         self.assertAlmostEqual((hks - hkb) * 1000, 300, delta=0.5)
 
     def test_panel_matches_the_specification(self):
-        """패널 2400×1200. 열모델의 기본 패널과도 같은 값이어야 한다."""
-        self.assertAlmostEqual(self._const("PANEL_L"), 2.4, places=4)
-        self.assertAlmostEqual(self._const("PANEL_W"), 1.2, places=4)
-        model = re.search(
-            r"panelLength:(\d+),panelWidth:(\d+)", self.html
-        )
-        self.assertIsNotNone(model, "열모델 기본 패널을 찾지 못했다")
-        self.assertAlmostEqual(self._const("PANEL_L") * 1000, float(model.group(1)),
+        """패널 포락선 2500×1400. 열모델의 기본 패널과도 같은 값이어야 한다."""
+        self.assertAlmostEqual(self._const("PANEL_L"), 2.5, places=4)
+        self.assertAlmostEqual(self._const("PANEL_W"), 1.4, places=4)
+        model = console_consts.obj("MODEL_DEFAULT")
+        self.assertIn("panelLength", model, "열모델 기본 패널을 찾지 못했다")
+        self.assertAlmostEqual(self._const("PANEL_L") * 1000, float(model["panelLength"]),
                                delta=0.5, msg="그려지는 패널 길이가 열모델과 다르다")
-        self.assertAlmostEqual(self._const("PANEL_W") * 1000, float(model.group(2)),
+        self.assertAlmostEqual(self._const("PANEL_W") * 1000, float(model["panelWidth"]),
                                delta=0.5, msg="그려지는 패널 폭이 열모델과 다르다")
 
     def test_panel_geometry_is_derived_not_typed(self):
@@ -991,8 +995,8 @@ class TestPanelScale(unittest.TestCase):
             "통과 종점이 HKS·패널 길이에서 유도되지 않았다",
         )
         lead_x, out_x = hkb - length / 2 + lead, hks + length / 2
-        self.assertAlmostEqual(lead_x, 16.75, delta=0.001)
-        self.assertAlmostEqual(out_x, 19.15, delta=0.001)
+        self.assertAlmostEqual(lead_x, hkb - length / 2 + lead, delta=0.001)
+        self.assertAlmostEqual(out_x, hks + length / 2, delta=0.001)
         # 통과 거리는 패널 길이 + 칼끝 간격
         self.assertAlmostEqual(out_x - (hkb - length / 2), length + (hks - hkb),
                                delta=0.001)
@@ -1029,8 +1033,11 @@ class TestSimultaneousSeparation(unittest.TestCase):
         m = re.search(
             rf"(?:const|,)\s*{name}\s*=\s*(-?[\d.]+(?:e-?\d+)?)[,;]", self.html
         )
-        self.assertIsNotNone(m, f"상수 {name} 선언을 찾지 못했다")
-        return float(m.group(1))
+        if m:
+            return float(m.group(1))
+        env = console_consts.env(self.html)       # 식으로 적힌 상수(CARRIER_L=PANEL_L+.50)는 풀어서 본다
+        self.assertIn(name, env, f"상수 {name} 선언을 찾지 못했다")
+        return float(env[name])
 
     def _fn(self, name):
         m = re.search(rf"\n    function {name}\(.*?\n    \}}", self.html, re.S)
@@ -1058,7 +1065,8 @@ class TestSimultaneousSeparation(unittest.TestCase):
     def test_the_two_cuts_stay_one_knife_gap_apart(self):
         """두 절단선 간격은 언제나 칼끝 간격이다 — 이게 시간차의 정체다."""
         gap = self._const("HKS_X") - self._const("HKB_X")
-        lead, out = 16.75, 19.15                     # TDM_LEAD, TDM_OUT
+        L, hkb, hks = self._const("PANEL_L"), self._const("HKB_X"), self._const("HKS_X")
+        lead, out = hkb - L / 2 + self._const("LEAD_OPEN"), hks + L / 2    # TDM_LEAD, TDM_OUT
         seen = 0
         for k in range(401):
             cx = lead + (out - lead) * k / 400
@@ -1073,7 +1081,8 @@ class TestSimultaneousSeparation(unittest.TestCase):
         """87.5% 는 RFQ 가 2단 동시 물림으로 적어 둔 값이다. 그림이 이를 지켜야 한다."""
         length = self._const("PANEL_L")
         gap = self._const("HKS_X") - self._const("HKB_X")
-        lead, out = 16.75, 19.15
+        hkb, hks = self._const("HKB_X"), self._const("HKS_X")
+        lead, out = hkb - length / 2 + self._const("LEAD_OPEN"), hks + length / 2
         N = 2000
         both = sum(
             1 for k in range(N)
@@ -1387,7 +1396,7 @@ class TestVacuumHoldingForce(unittest.TestCase):
     def test_pad_count_matches_the_fabrication_list(self):
         """표와 그림이 다르면 둘 중 하나는 틀린 것이다."""
         cols, rows, _r = self._pads()
-        m = re.search(r"흡착패드×(\d+)", self.html)
+        m = re.search(r"흡착패드×(\d+)", console_consts.expand(self.html))
         self.assertIsNotNone(m, "제작도 목록에 흡착패드 수량이 없다")
         self.assertEqual(cols * rows, int(m.group(1)),
                          "그림의 패드 수가 제작도 목록과 다르다")

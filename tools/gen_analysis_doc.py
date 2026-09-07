@@ -16,7 +16,10 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
+import airlock as AIR  # noqa: E402
 import analysis_irbank as IRB  # noqa: E402
+import heatbalance as HBAL  # noqa: E402
+import lampmount as LMT  # noqa: E402
 import analysis_structural as ST  # noqa: E402
 import analysis_thermal as TH  # noqa: E402
 import fea  # noqa: E402
@@ -134,6 +137,19 @@ def part2() -> str:
     지배해 <span class="m">2,700 초</span>였다. 정상해의 <span class="m">36 %</span>
     지점을 정상상태라고 답했고, 검증 ⑤ 가 <span class="m">64 %</span> 오차로 잡았다.
     지금은 어림하지 않고 <strong>변화가 멎을 때까지</strong> 돌린다.</div>
+
+  <div class="tw"><table>
+    <caption>에어록 <span class="k">tools/airlock.py</span> — 닫힌해 대조</caption>
+    <thead><tr><th>검증 문제</th><th class="num">해석</th><th class="num">닫힌해</th>
+      <th class="num">오차</th><th>판정</th></tr></thead>
+    <tbody>{_valid(AIR.validate(), 0.01)}</tbody>
+  </table></div>
+  <div class="warn"><strong>같은 열을 두 번 세고 있었다.</strong>
+    열수지는 에어록 손실을 <span class="k">내문 교환 + 외문 교환</span> 으로 더했다.
+    그런데 <strong>내문으로 챔버를 떠난 열이 곧 외문으로 실온에 나가는 열</strong>이다 —
+    같은 줄을 두 번 센 것이다. 검증 ③ 이 공기 덩어리를 따라가며 <em>계를 실제로
+    떠나는 것</em> 만 세어 그것을 잡았다. 정상 사이클의 물질수지가 남기는 것은
+    <span class="k">V · ρ(실온) · cp · ΔT</span> 하나뿐이고, ΔT 는 한 번만 들어온다.</div>
 </div></div>"""
 
 
@@ -206,7 +222,9 @@ def part4() -> str:
   <p>콘솔의 면적질량을 밀도로 나눠 두께를 얻는다. 그래야 이 적층의 면적열용량이
     콘솔의 <span class="k">AREAL_CP</span> 와 <strong>같은 값</strong>이 된다.
     두께를 따로 적으면 두 모델이 서로 다른 패널을 데우게 되고, 그것은 아무도
-    눈치채지 못한 채 갈라진다.</p>
+    눈치채지 못한 채 갈라진다. 이 적층이 패널의 전부다 — 프레임과 정션박스는
+    상류에서 제거되어 들어오므로(발주자 확정) 가장자리에서 열을 빼앗는 알루미늄
+    프레임도, 백시트 위에 서는 상자도 모델에 없다.</p>
   <div class="tw"><table>
     <caption>적층 — 유리를 아래에 두고 쌓는다 (진공 캐리어가 유리면을 잡는다)</caption>
     <thead><tr><th>층</th><th class="num">두께 mm</th><th class="num">k W/(m·K)</th>
@@ -338,6 +356,290 @@ def part4b() -> str:
 </div></div>"""
 
 
+# ── 5b. 램프 지지·관통 상세 ──────────────────────────────────────────
+def part4c() -> str:
+    rs, ex = LMT.run()
+    rq = "".join(
+        f'<tr><td class="k">{esc(q.id)}</td><td>{esc(q.what)}</td>'
+        f'<td class="k">{esc(q.value)}</td><td>{esc(q.owner)}</td>'
+        f'<td>{md(q.why)}</td></tr>' for q in LMT.requirements())
+    return f"""
+<div class="clause" id="p6"><div class="n">6</div><div class="c">
+  <h3>램프 지지·관통 상세 — 걱정한 셋 중 둘이 서로를 지웠다</h3>
+  <p>IR 뱅크 검토가 발열장을 2,200 으로 늘리고 단자를 측벽 밖으로 빼면서
+    <strong>“처짐 · 실링 · 그림자”</strong>를 상세설계로 넘겼다. 풀어 보니
+    <strong>적지 않은 둘이 더 컸다.</strong></p>
+
+  <div class="warn"><strong>처짐은 문제가 아니었다.</strong>
+    Ø25×1.2t 석영관 2,200 스팬의 자중 처짐은 <span class="m">{ex['sag']:.1f} mm</span>
+    이고, 램프–패널 거리 310 mm 에서 유속 변화는
+    <span class="m">{ex['dflux']:.2%}</span> 다 — 면내 편차 11 K 옆에서 보이지
+    않는다. <strong>중간 지지가 필요 없고, 필요 없으면 그림자도 없다.</strong>
+    남는 것은 관이 아니라 <strong>관 안 필라멘트</strong>의 처짐이고, 그것은
+    램프 안쪽 지지대로 제조사가 푼다 — 우리가 지정할 것이지 설계할 것이 아니다.</div>
+
+  <div class="tw"><table>
+    <caption>검토 — 값 · 한계 · 이용률</caption>
+    <thead><tr><th>ID</th><th>항목</th><th class="num">값</th><th class="num">단위</th>
+      <th class="num">한계</th><th class="num">이용률</th><th>판정</th></tr></thead>
+    <tbody>{_rows(rs)}</tbody>
+  </table></div>
+
+  <h4>넘길 때 적지 않은 둘</h4>
+  <div class="warn"><strong>① 차등 열팽창 — 첫 승온에서 램프가 뜯긴다.</strong>
+    강재 챔버 <span class="m">2,300 mm</span> 가
+    <span class="m">{ex['steel']:.2f} mm</span> 늘 때 석영관은
+    <span class="m">{ex['quartz']:.2f} mm</span> 만 는다 (α
+    <span class="m">17.3</span> vs <span class="m">0.55</span>×10⁻⁶).
+    차이에 길이공차를 더해 <strong>유동단 행정 {ex['float_req']:.0f} mm</strong> 가
+    필요하다. 처짐보다 이쪽이 먼저 부러지는 자리다.</div>
+  <div class="warn"><strong>② 봉착부 온도 — “밖에 둔다”가 “실온에 노출한다”가
+    되면 램프가 검어진다.</strong> 단파장(할로겐) 램프는 몰리브덴 박 봉착부가
+    350 ℃ 를 넘으면 산화하고 250 ℃ 밑이면 할로겐이 거기 응축해 사이클이 죽는다.
+    석영은 열을 거의 안 날라 열길이가 <span class="m">{ex['mlen']:.1f} mm</span>
+    뿐이라, 그 창이 발광부 경계에서
+    <span class="m">{ex['x_hot']:.1f}~{ex['x_cold']:.1f} mm</span> —
+    폭 <span class="m">{ex['x_cold']-ex['x_hot']:.1f} mm</span> 다.
+    <strong>제작 공차({LMT.TOL_PINCH:.0f} mm)보다 좁으므로 우리가 위치를 잡을
+    문제가 아니다.</strong></div>
+
+  <h4>관통이 사 오는 대가</h4>
+  <p>80 개소를 뚫는다. <strong>열교는 작지만 침기가 크다.</strong> 연기(EVA 초산·
+    불화물)를 잡으려면 챔버를 부압으로 둬야 하고, 그러면 그 구멍으로 찬 공기가
+    들어와 그것을 140 ℃ 까지 데우는 것이 그대로 손실이 된다. 실링을 안 하면
+    <span class="m">{ex['kw_raw']:.1f} kW</span>
+    (<span class="m">{ex['m3h_raw']:,.0f} m³/h</span>) 로 벽 손실
+    <span class="m">{ex['base_kw']:.2f} kW</span> 의
+    <strong>{ex['kw_raw']/ex['base_kw']:.1f} 배</strong>다 — 효율 65 % 의 나머지를
+    찾는 일(<span class="k">R5</span>)에 이 항이 들어간다. 파이버 로프 패킹으로
+    <span class="m">{ex['kw_seal']:.2f} kW</span> 까지 내린다.</p>
+  <p>부시 재질도 사양이지 선택이 아니다. 강재 슬리브로 바꾸면 열교가
+    <strong>{ex['add_st']/ex['add_low']:.0f} 배</strong>가 되는데
+    <strong>치수가 같아 도면으로는 구분이 안 된다.</strong></p>
+
+  <div class="tw"><table>
+    <caption>근거와 읽는 법</caption>
+    <thead><tr><th>ID</th><th>한계의 근거</th><th>무엇을 뜻하는가</th></tr></thead>
+    <tbody>{_basis(rs)}</tbody>
+  </table></div>
+
+  <div class="tw"><table>
+    <caption>이 검토가 만든 요구</caption>
+    <thead><tr><th>ID</th><th>무엇</th><th>값</th><th>받는 곳</th><th>왜</th></tr></thead>
+    <tbody>{rq}</tbody>
+  </table></div>
+</div></div>"""
+
+
+# ── 5c. 열수지 ───────────────────────────────────────────────────────
+def part4d() -> str:
+    rs, ex = HBAL.run()
+    b, su = ex["b"], ex["startup"]
+    rows = "".join(
+        f'<tr><td>{esc(n)}</td><td class="num">{b[k]:.2f}</td>'
+        f'<td class="num">{b[k]/b["p_ir"]:.1%}</td></tr>'
+        for n, k in (("패널 엔탈피 — 이 설비가 하는 일", "panel"),
+                     ("에어록 교환", "airlock"), ("벽 전도", "wall"),
+                     ("램프 단자 전도", "terminal"),
+                     ("침기 = 배기 엔탈피", "infil"), ("포크 반출", "fork")))
+    rq = "".join(
+        f'<tr><td class="k">{esc(q.id)}</td><td>{esc(q.what)}</td>'
+        f'<td class="k">{esc(q.value)}</td><td>{esc(q.owner)}</td>'
+        f'<td>{md(q.why)}</td></tr>' for q in HBAL.requirements())
+    return f"""
+<div class="clause" id="p7"><div class="n">7</div><div class="c">
+  <h3>열수지 — 30 kW 는 새지 않았다</h3>
+  <p>열해석이 요구 <span class="k">R5</span> 를 남겼다: 벽 손실은
+    <span class="m">5.5 kW</span> 로 손실 예산 35 kW 의 16 % 뿐인데 나머지
+    30 kW 의 행방을 아무도 세지 않았다. 세어 보니
+    <strong>질문 자체가 틀려 있었다.</strong> 두 군데가 어긋난다.</p>
+
+  <div class="warn"><strong>① 65 kW 는 계약 처리량의 값이 아니다.</strong>
+    콘솔은 <span class="k">유효 = 정격 100 × η 0.65 = 65 kW</span> 를 쓰지만
+    그것은 <strong>열공정 한계 {HBAL.RATE_THERMAL:.1f} 장/h</strong> 에서
+    패널이 받는 값이다. 라인은 탠덤이 정하는
+    <strong>{HBAL.RATE_CONTRACT:.0f} 장/h</strong> 로 돌고, 그때 패널이 가져가는
+    것은 <span class="m">{b['panel']:.1f} kW</span> 다.
+    <span class="k">100 − 65 = 35</span> 은 <strong>서로 다른 두 운전점에서
+    하나씩 가져온 뺄셈</strong>이었다.</div>
+
+  <div class="warn"><strong>② 빗나간 복사는 손실이 아니다.</strong>
+    η 0.65 는 <strong>결합효율</strong>(지금 이 순간 복사 중 얼마가 패널에
+    흡수되는가)이고 그것이 승온 속도를 정한다. 그런데 챔버는 닫힌 공동이고
+    내피는 연마 STS(ρ 0.8)다 — 패널을 빗나간 복사는 되튀어 결국 패널·벽·배기
+    중 하나로 간다. <strong>정상상태에서 계를 실제로 떠나는 것만이
+    손실이다.</strong> 그것을 세면 <span class="m">{b['loss']:.1f} kW</span> 이고
+    남는 항이 없다 — 30 kW 는 새는 것이 아니라 <strong>돌고 있었다.</strong></div>
+
+  <div class="tw"><table>
+    <caption>제어체적 — 챔버 내부 · 정상상태 · {HBAL.RATE_CONTRACT:.0f} 장/h ·
+      IN = IR 전기 {b['p_ir']:.1f} kW (역산)</caption>
+    <thead><tr><th>나가는 곳</th><th class="num">kW</th><th class="num">IN 대비</th></tr></thead>
+    <tbody>{rows}
+      <tr><th>손실 소계</th><th class="num">{b['loss']:.2f}</th>
+        <th class="num">{b['loss']/b['p_ir']:.1%}</th></tr>
+      <tr><th>정상상태 효율</th><th class="num">{b['eta']:.1%}</th>
+        <th class="num">가정 {HBAL.ETA_ASSUMED:.0%}</th></tr>
+    </tbody>
+  </table></div>
+
+  <p><strong>가정 65 % 는 그대로 둔다.</strong> 결합효율로 체류시간을 잡는 것은
+    옳고, 수지가 내는 {b['eta']:.0%} 보다 낮으므로
+    <span class="m">{b['assumed_loss']-b['loss']:.1f} kW</span> 의 여유를 들고 있다.
+    바꾸는 것은 값이 아니라 <strong>손실 예산의 정의</strong>다 —
+    설치정격 100 kW 는 <strong>승온 속도</strong>가 정하지 정상 소비가 정하지
+    않으며, 정상 소비는 <span class="m">{b['p_ir']:.1f} kW</span> 다.</p>
+
+  <div class="tw"><table>
+    <caption>검토 — 값 · 한계 · 이용률</caption>
+    <thead><tr><th>ID</th><th>항목</th><th class="num">값</th><th class="num">단위</th>
+      <th class="num">한계</th><th class="num">이용률</th><th>판정</th></tr></thead>
+    <tbody>{_rows(rs)}</tbody>
+  </table></div>
+
+  <h4>가장 큰 손실 항은 에어록이고, 그 크기는 <em>문</em>이 정한다</h4>
+  <p>손실의 <strong>{b['airlock']/b['loss']:.0%}</strong> 가 에어록이다. 그 크기를
+    정하는 것은 격리실 부피가 아니라 <strong>개구를 지나는 부력 교환유동</strong>이고,
+    그것은 개구 높이의 <strong>1.5 제곱</strong>에 비례한다. 카탈로그의 전고 셔터
+    (<span class="m">{AIR.FULL_H:.2f} m</span>)를 그대로 열면 이 항 하나가
+    <span class="m">{ex['full']:,.0f} kW</span> — 설치정격의
+    <strong>{ex['full']/HBAL.RATED_KW:.0f} 배</strong>다. 다음 장이 그것을 푼다
+    (<span class="k">RHB2</span> → <span class="k">RAL1</span>).</p>
+
+  <div class="note"><strong>포크 항에서 200 배 틀렸다.</strong>
+    포크 42 kg 이 매 사이클 통째로 열화한다고 놓아 13 kW 가 나왔고, 그 값이
+    수지를 η 64.3 % 로 <em>너무 잘</em> 닫았다 — 가정 65 % 와 소수점까지 맞은
+    것이 오히려 신호였다. 그 온도변화는 699 kJ 을 5 초에 넣는 것이라
+    <span class="m">140 kW</span> 가 필요한데 설치정격이 100 kW 다. 챔버가 줄 수
+    없는 열이었다. 실제로는 전열률이 정하고
+    <span class="m">{b['fork']:.2f} kW</span> 다.</div>
+
+  <div class="tw"><table>
+    <caption>근거와 읽는 법</caption>
+    <thead><tr><th>ID</th><th>한계의 근거</th><th>무엇을 뜻하는가</th></tr></thead>
+    <tbody>{_basis(rs)}</tbody>
+  </table></div>
+
+  <div class="tw"><table>
+    <caption>이 검토가 만든 요구</caption>
+    <thead><tr><th>ID</th><th>무엇</th><th>값</th><th>받는 곳</th><th>왜</th></tr></thead>
+    <tbody>{rq}</tbody>
+  </table></div>
+</div></div>"""
+
+
+# ── 4e. 에어록 ───────────────────────────────────────────────────────
+def part4e() -> str:
+    rs, ex = AIR.run()
+    o = ex["opts"]
+    sh = ex["sh"]
+    pick = ' class="pick"'
+    opt = "".join(
+        f'<tr{pick if d["key"] == "C" else ""}>'
+        f'<td class="k">{esc(d["key"])}</td><td>{md(d["name"])}</td>'
+        f'<td class="num">{d["h"]*1e3:,.0f}</td>'
+        f'<td class="num">{d["Q"]:,.3f}</td>'
+        f'<td class="num">{d["t"]:,.1f}</td>'
+        f'<td class="num">{d["kw"]:,.2f}</td>'
+        f'<td class="num">{d["add"]*1e3:,.0f}</td></tr>'
+        for d in (o["A"], o["B"], o["C"], o["D"]))
+    rq = "".join(
+        f'<tr><td class="k">{esc(q.id)}</td><td>{esc(q.what)}</td>'
+        f'<td class="k">{esc(q.value)}</td><td>{esc(q.owner)}</td>'
+        f'<td>{md(q.why)}</td></tr>' for q in AIR.requirements())
+    return f"""
+<div class="clause" id="p8"><div class="n">8</div><div class="c">
+  <h3>에어록 — 답은 격리실이 아니라 문이었다</h3>
+  <p>열수지가 요구 <span class="k">RHB2</span> 를 남겼다: <em>에어록이 손실의
+    절반을 넘고 그 크기를 격리실 부피가 정하니, 한 단 높이로 줄일 수 있는지
+    확인하라 — 5.9 kW 가 걸려 있다.</em> 풀어 보니
+    <strong>질문이 세 군데에서 어긋나 있었다.</strong></p>
+
+  <div class="warn"><strong>① 도면이 격리실의 유무를 두 곳에서 다르게 말한다.</strong>
+    콘솔의 압축 배치는 챔버 양단을 <span class="k">AL-101/102 · 이중셔터 에어록</span>
+    이라 적는데, 같은 콘솔의 <span class="k">R-106</span> 차이표는 REV.21C 를
+    <strong>“격리실 없음 · 포크 진입 중 챔버 열림”</strong> 이라 적는다. 길이를
+    줄이면서 내준 것이고 주기가 그렇게 남아 있다 — “그 순간의 배기를 배기
+    설계가 감당한다”. <strong>납품 배치에는 격리실이 없고</strong>, 열수지는 그
+    틈에서 <em>있지도 않은 방</em>의 부피를 세고 있었다.</div>
+
+  <div class="warn"><strong>② 그 방의 부피를 문 포켓 깊이로 잡았다.</strong>
+    격리 깊이를 <span class="k">CL_DOOR</span> <span class="m">0.30 m</span> 로
+    놓았는데, 두 문을 다 닫으려면 그 방에 <strong>패널 2,400 mm 가 통째로
+    서야</strong> 한다. 0.30 m 짜리 격리실은 기하학적으로 있을 수 없다.</div>
+
+  <div class="warn"><strong>③ 같은 열을 두 번 셌다.</strong>
+    내문으로 챔버를 떠난 열과 외문으로 실온에 나간 열을 더했는데 그것은
+    <strong>같은 열</strong>이다. 정상 사이클의 물질수지가 남기는 것은
+    <span class="k">V · ρ(실온) · cp · (T챔버 − T실온)</span> 하나뿐이다 —
+    ΔT 가 한 번만 들어온다.</div>
+
+  <h4>격리실이 없으면 부피가 아니라 <em>유동</em>이 막는다</h4>
+  <p>막다른 방이 아니면 교환량의 상한은 부피가 아니라 개구를 지나는 부력
+    교환유동이다. 수직 개구의 중립면 적분이 닫힌해를 준다 — 계수
+    <span class="m">1/3</span> 은 어림이 아니라 <strong>적분에서 그대로
+    나온다</strong>(검증 ①·②).</p>
+  <p class="eq"><span class="k">v(z) = √(2 g z Δρ/ρ̄)</span> ·
+    <span class="k">Q = Cd·w·∫₀^(h/2) v dz = (1/3)·Cd·w·h<sup>3/2</sup>·√(g Δρ/ρ̄)</span></p>
+  <p><strong>Q ∝ h<sup>3/2</sup></strong> — 문의 높이가 1.5 제곱으로 들어온다.
+    그래서 답이 뒤집힌다. 줄여야 하는 것은 격리실이 아니라 <strong>개구</strong>다.</p>
+
+  <div class="tw"><table>
+    <caption>안 — 개구 높이 · 교환유동 · 문 열림 시간 · 손실 · 라인 길이 대가</caption>
+    <thead><tr><th>안</th><th>무엇</th><th class="num">개구 h [mm]</th>
+      <th class="num">Q [m³/s]</th><th class="num">열림 [s]</th>
+      <th class="num">손실 [kW]</th><th class="num">전장 대가 [mm]</th></tr></thead>
+    <tbody>{opt}</tbody>
+  </table></div>
+
+  <p><strong>확정은 C 다.</strong> 포크 {AIR.FORK_T*1e3:.0f} + 패널
+    {AIR.PANEL_T*1e3:.0f} + 내려놓기 {AIR.SET_DROP*1e3:.0f} + 여유
+    2×{AIR.OPEN_CLR*1e3:.0f} = <span class="m">{AIR.PASS_H*1e3:.0f} mm</span> 가
+    지나갈 것의 전부이므로 개구를 <span class="m">{AIR.OPEN_H*1e3:.0f} mm</span> 로
+    잡는다. 전고 개구 대비 <strong>{o['A']['kw']/o['C']['kw']:.0f} 배</strong>가
+    줄고, <strong>라인은 1 mm 도 길어지지 않는다.</strong></p>
+
+  <div class="note"><strong>격리실을 더해도 아끼는 것이 0.00 kW 다.</strong>
+    개구를 포락선까지 줄이고 나면 한 번 여닫는 동안 지나가는 양이
+    <span class="m">{o['C']['V']:.2f} m³</span> 뿐이라 격리실
+    (<span class="m">{AIR.vestibule(AIR.OPEN_H):.2f} m³</span>)을 채우지도 못한다 —
+    <strong>부피 상한이 걸리지 않는다.</strong> 그런데 출력측은 탠덤과 붙어 있어
+    격리실을 두면 <span class="m">{AIR.VEST_ADD*1e3:,.0f} mm</span> 가 새로 든다.
+    <strong>안 사는 것이 결론이지만, “검토하지 않았다”와 “검토하고 안 샀다”는
+    다르다</strong> — 도면 주기에 이 숫자를 남긴다 (<span class="k">RAL3</span>).</div>
+
+  <div class="tw"><table>
+    <caption>검토 — 값 · 한계 · 이용률</caption>
+    <thead><tr><th>ID</th><th>항목</th><th class="num">값</th><th class="num">단위</th>
+      <th class="num">한계</th><th class="num">이용률</th><th>판정</th></tr></thead>
+    <tbody>{_rows(rs)}</tbody>
+  </table></div>
+
+  <div class="note"><strong>실린더가 이미 답을 알고 있었다.</strong>
+    카탈로그의 셔터 실린더는 행정 <span class="m">900</span> 인데 판은
+    <span class="m">4,090</span> 이었다 — 다 들어도 개구의
+    <span class="m">{0.9/AIR.FULL_H:.0%}</span> 밖에 안 비운다. <strong>실린더는
+    단별 개구를, 판은 전고 개구를 가리키고 있었고 둘이 서로를 부정했다.</strong>
+    지금은 단별 셔터 <span class="m">{sh['n']} 장</span> ·
+    <span class="m">{AIR.OPEN_W*1e3:,.0f} × {sh['plate_h']*1e3:.0f}</span> ·
+    행정 <span class="m">{sh['stroke']*1e3:.0f}</span> 이고, 장수는
+    {sh['n']//2} 배인데 강재는 {sh['mass_old']:,.0f} → {sh['mass']:,.0f} kg 로
+    <strong>오히려 준다.</strong></div>
+
+  <div class="tw"><table>
+    <caption>근거와 읽는 법</caption>
+    <thead><tr><th>ID</th><th>한계의 근거</th><th>무엇을 뜻하는가</th></tr></thead>
+    <tbody>{_basis(rs)}</tbody>
+  </table></div>
+
+  <div class="tw"><table>
+    <caption>이 검토가 만든 요구</caption>
+    <thead><tr><th>ID</th><th>무엇</th><th>값</th><th>받는 곳</th><th>왜</th></tr></thead>
+    <tbody>{rq}</tbody>
+  </table></div>
+</div></div>"""
+
+
 # ── 5. 요구 ──────────────────────────────────────────────────────────
 def part5() -> str:
     rq = "".join(
@@ -345,7 +647,7 @@ def part5() -> str:
         f'<td class="k">{esc(q.value)}</td><td>{esc(q.owner)}</td>'
         f'<td>{md(q.why)}</td></tr>' for q in TH.requirements())
     return f"""
-<div class="clause" id="p6"><div class="n">6</div><div class="c">
+<div class="clause" id="p9"><div class="n">9</div><div class="c">
   <h3>이 해석이 만든 요구</h3>
   <p>결과에는 두 갈래가 있다. <strong>검토</strong>는 한계가 있어 통과·초과가 나오고,
     <strong>요구</strong>는 해석이 새로 만들어 낸 조건이라 아직 지킬 사람이 없다.
@@ -363,7 +665,7 @@ def part5() -> str:
 # ── 6. 경계 ──────────────────────────────────────────────────────────
 def part6() -> str:
     return """
-<div class="clause" id="p7"><div class="n">7</div><div class="c">
+<div class="clause" id="p10"><div class="n">10</div><div class="c">
   <h3>이 해석이 못 보는 것</h3>
   <p>해석의 한계를 적지 않으면 “해석했다”가 해석하지 않은 것까지 덮는다.
     아래는 <strong>이 두 해석기로는 원리적으로 볼 수 없는 것</strong>이며, 상세설계에서
@@ -391,6 +693,12 @@ def part6() -> str:
         가교가 진행되면 그 열이 수지에 들어온다</td><td>DSC · 파일럿 PT-05</td></tr>
       <tr><td>램프의 단파장 복사 분배</td><td>흡수유속을 규정했다 — 실효 열효율
         65 % 가 그 가정을 통째로 담고 있다</td><td>파일럿 PT-05 (열수지)</td></tr>
+      <tr><td>램프의 파장별 흡수율</td><td>백시트는 근적외를 많이 반사한다.
+        그 몫이 공동 안에서 돌다가 어느 항으로 나가는지는 수지가 못 가른다</td>
+        <td>파일럿 PT-05 (열수지 실측)</td></tr>
+      <tr><td>석영관의 고온 크리프</td><td>탄성 처짐만 봤다. 관벽이 변형점
+        (1,070 ℃) 아래라 무시했지만 수천 시간의 누적은 안 봤다</td>
+        <td>램프 제조사 수평 정격 · 초기 운전</td></tr>
       <tr><td>박리력 그 자체</td><td>재료가 답한다. 어떤 해석기도 폐패널 EVA 의
         박리강도를 지어낼 수 없다</td><td>파일럿 PT-01</td></tr>
     </tbody>
@@ -398,16 +706,38 @@ def part6() -> str:
 </div></div>"""
 
 
+def _chapters(body: str):
+    """목차를 본문에서 뽑는다 — 손으로 적으면 반드시 갈라진다.
+
+    **실제로 갈라져 있었다.** 장이 9 개로 늘 동안 목차는 6 줄에 멈춰 있었고,
+    5·6 번 줄의 제목이 가리키는 장과 달랐다(‘이 해석이 만든 요구’ 를 눌렀는데
+    IR 뱅크 장으로 갔다). 앵커는 전부 살아 있어서 ‘끊긴 앵커 0’ 검사는
+    통과했다 — 깨진 것은 링크가 아니라 **이름**이었다.
+    """
+    return [(m.group(1), m.group(2),
+             re.sub(r"<[^>]+>", "", m.group(3)).strip())
+            for m in re.finditer(
+                r'<div class="clause" id="(p\d+)"><div class="n">(\d+)</div>'
+                r'<div class="c">\s*<h3>(.*?)</h3>', body, re.S)]
+
+
 def build() -> str:
     srs, _ = ST.run()
     trs, _ = TH.run()
     irs, _ = IRB.run()
-    over = [r.id for r in list(srs) + list(trs) if not r.ok]
-    toc = "".join(
-        f'<li><a href="#p{i}"><b>{i}</b>{t}</a></li>'
-        for i, t in enumerate(["무엇을 왜 푸는가", "해석기 검증", "구조해석",
-                               "열해석", "이 해석이 만든 요구",
-                               "이 해석이 못 보는 것"], start=1))
+    lms, _ = LMT.run()
+    hbs, _ = HBAL.run()
+    als, _ = AIR.run()
+    checks = list(srs) + list(trs) + list(irs) + list(lms) + list(hbs) + list(als)
+    over = [r.id for r in checks if not r.ok]
+    reqs = (len(TH.requirements()) + len(IRB.requirements())
+            + len(LMT.requirements()) + len(HBAL.requirements())
+            + len(AIR.requirements()))
+    valid = len(fea.validate()) + len(therm.validate()) + len(AIR.validate())
+    body = "\n".join([part1(), part2(), part3(), part4(), part4b(), part4c(),
+                       part4d(), part4e(), part5(), part6()])
+    toc = "".join(f'<li><a href="#{pid}"><b>{n}</b>{esc(t)}</a></li>'
+                  for pid, n, t in _chapters(body))
     return f"""<!doctype html>
 <html lang="ko">
 <head>
@@ -415,10 +745,11 @@ def build() -> str:
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#eceff1">
 <title>DG-HK60C 구조·열해석 보고서</title>
-<meta name="description" content="DG-HK60C 폐태양광 패널 분리설비의 구조·열해석 보고서 — 직접강성법 프레임 해석과 1차원 과도 열전도 해석, 닫힌해 검증, 검토 25건과 해석이 만든 요구 6건.">
+<meta name="description" content="DG-HK60C 폐태양광 패널 분리설비의 구조·열해석 보고서 — 직접강성법 프레임 해석 · 1차원 과도 열전도 · 복사 유속과 면내 전도 · 부력 교환유동, 닫힌해 검증 {valid}건, 검토 {len(checks)}건과 해석이 만든 요구 {reqs}건.">
 {house_style()}
 <style>
   tr.over td{{background:var(--flag-sunk)}}
+  tr.pick td{{background:var(--rule-soft,#e6edf0);font-weight:600}}
   tr.over td:last-child{{color:var(--flag);font-weight:700}}
   td.k{{white-space:nowrap}}
   .tw td:nth-child(3),.tw td:nth-child(5){{font-variant-numeric:tabular-nums}}
@@ -437,8 +768,10 @@ def build() -> str:
   <h1>DG-HK60C 태양광 패널 분리설비<br>구조 · 열해석 보고서</h1>
   <p class="subtitle">이 설비를 정하는 것은 강도가 아니라 <strong>변형과 온도</strong>다.
     구조 <strong>{len(srs)} 건</strong> · 열 <strong>{len(trs)} 건</strong> ·
-    IR 뱅크 <strong>{len(irs)} 건</strong> · 닫힌해 검증 <strong>10 건</strong> ·
-    해석이 만든 요구 <strong>{6 + len(IRB.requirements())} 건</strong> ·
+    IR 뱅크 <strong>{len(irs)} 건</strong> · 램프 지지 <strong>{len(lms)} 건</strong> ·
+    열수지 <strong>{len(hbs)} 건</strong> · 에어록 <strong>{len(als)} 건</strong> ·
+    닫힌해 검증 <strong>{valid} 건</strong> ·
+    해석이 만든 요구 <strong>{reqs} 건</strong> ·
     검토 초과 <strong>{len(over)} 건</strong> ({' · '.join(over) if over else '없음'}).</p>
 
   <dl class="docref">
@@ -455,13 +788,7 @@ def build() -> str:
   <h2>목차</h2>
   <ol>{toc}</ol>
 </nav>
-{part1()}
-{part2()}
-{part3()}
-{part4()}
-{part4b()}
-{part5()}
-{part6()}
+{body}
 
 <footer class="foot">
   <p><strong>DG-HK60C-{DOC} Rev.0</strong> · {ISSUED} · DYNAMIC INDUSTRY</p>

@@ -96,10 +96,10 @@ class TestTheRadiantModelIsPhysics(unittest.TestCase):
         전제가 모델링 선택에 기대지 않는다는 것까지 본다: 셀을 연속체로
         놓아 전도를 11 배로 **후하게** 줘도 여전히 평활화가 안 된다.
         """
-        pitch = 2.48 / 6
+        pitch = AIR.NOW_SPAN / (AIR.NOW_N - 1)
         for name, kt in (("유리 단독", IR.KT_PLATE),
                          ("셀 포함 (낙관)", IR.KT_PLATE + 148.0 * 0.223e-3)):
-            diff_len = math.sqrt(kt / IR.CP_AREAL * 222.6)
+            diff_len = math.sqrt(kt / IR.CP_AREAL * AIR.DWELL_1D)
             self.assertLess(diff_len * 10, pitch,
                             f"{name}: 확산길이 {diff_len*1000:.0f} mm 가 피치 "
                             f"{pitch*1000:.0f} mm 에 비해 작지 않다 — 그러면 "
@@ -143,10 +143,10 @@ class TestTheConclusionFollowsFromTheModel(unittest.TestCase):
     def test_the_new_layout_keeps_the_contract_throughput(self):
         self.assertLess(self.ex["new"]["pitch"], AIR.TAKT,
                         "피치가 택트를 넘으면 처리량을 소킹이 정하게 된다")
-        self.assertGreaterEqual(self.ex["new"]["rate"], 60.0)
+        self.assertGreaterEqual(self.ex["new"]["rate"], AIR.CY.NET_TARGET)
 
     def test_the_present_layout_breaks_the_contract_throughput(self):
-        self.assertLess(self.ex["now"]["rate"], 60.0)
+        self.assertLess(self.ex["now"]["rate"], AIR.CY.NET_TARGET)
 
     def test_stagger_is_worse_not_better(self):
         """엇갈리면 좋아진다는 것이 처음 가설이었고 모델이 아니라고 했다.
@@ -199,7 +199,7 @@ class TestTheDecisionReachedTheDrawings(unittest.TestCase):
                                 "카탈로그 램프가 확정 발열장보다 짧다")
 
     def test_the_console_uses_the_optimised_positions(self):
-        m = re.search(r"const LAMP_POS=\{[^}]*7:\[([^\]]+)\]", self.console)
+        m = re.search(r"const LAMP_POS=\{[^}]*%d:\[([^\]]+)\]" % len(AIR.NEW_X), self.console)
         self.assertIsNotNone(m, "콘솔에 램프 위치표가 없다")
         got = [float(v) for v in m.group(1).split(",")]
         self.assertEqual([round(v, 3) for v in got],
@@ -207,9 +207,9 @@ class TestTheDecisionReachedTheDrawings(unittest.TestCase):
                          "콘솔의 램프 위치가 검토 결과와 다르다")
 
     def test_the_console_uses_the_new_heated_length(self):
-        m = re.search(r"const LAMP_HEAT=([\d.]+);", self.console)
-        self.assertIsNotNone(m)
-        self.assertAlmostEqual(float(m.group(1)), AIR.NEW_LEN, places=3)
+        self.assertIn("const LAMP_HEAT=RACK_W-.36;", self.console,
+                      "발열장이 공동 폭에서 파생되지 않는다")
+        self.assertAlmostEqual(c("LAMP_HEAT"), AIR.NEW_LEN, places=3)
 
     def test_the_console_no_longer_spaces_lamps_evenly(self):
         """균등 배치 식이 남아 있으면 어느 도면 하나가 옛 배치를 그린다.

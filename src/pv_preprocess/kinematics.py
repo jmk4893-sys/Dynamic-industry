@@ -50,7 +50,7 @@ REV.49 — 발주처가 물었다. **"반전기를 패널 바로 위에 설치�
 
 from __future__ import annotations
 
-from . import hk60c
+from . import hk60c, line
 
 from . import layout
 
@@ -58,7 +58,7 @@ from . import layout
 #: 최대 모듈 외곽 (mm). 프레임이 곧 외곽이다 — 유리 바깥에 프레임을 덧붙이면
 #: 안 된다. REV.26 까지 3D 가 그렇게 그려 조립체가 2,615 × 1,515 였다.
 #: REV.54 — 라인 상한을 후단 DG-HK60C 상한으로 통일했다. 값은 hk60c 가 갖는다.
-PANEL_MM: tuple[int, int] = hk60c.PANEL_MAX_MM
+PANEL_MM: tuple[int, int] = line.LINE_MAX_MM
 
 #: 프레임 높이와 정션박스 돌출 (mm). 정션박스는 프레임 밑으로 내려온다.
 PANEL_FRAME_H_MM = 75

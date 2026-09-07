@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import campaign, hk60c
+from . import campaign, hk60c, line
 
 # ── 전처리 쪽 경계 (버퍼 출구) ────────────────────────────────────────────
 #: 버퍼가 세워 두는 자세. 후단 투입 자세와 같아야 반전기가 안 붙는다.
@@ -55,7 +55,7 @@ BUFFER_HOLD_SLOTS = 5
 #: 전처리가 다루는 최대 모듈 (mm) — **후단 상한과 같다** (REV.54 통일).
 #: 한 라인에 상한이 둘이면 반드시 한쪽이 못 받는다. 값은 후단이 갖고, 전처리는
 #: 그것을 읽는다 — `campaign.PANEL_LENGTH_MM`·`kinematics.PANEL_MM` 도 같은 값이다.
-UPSTREAM_MAX_MM = hk60c.PANEL_MAX_MM
+UPSTREAM_MAX_MM = line.LINE_MAX_MM
 
 # ── 후단 DG-HK60C ──────────────────────────────────────────────────────────
 #: 투입 상한·하한 (mm) — 사양서 4.2 의 범위.
@@ -94,7 +94,10 @@ def downstream_rate(lamp_count: int | None = None, lamp_kw: float | None = None)
     램프 수·관 정격은 이 모듈의 값을 **호출 시점에** 읽는다 — ai.envelope_bounds 가
     뱅크를 흔들어 소성시간이 따라오는지를 시험한다(리터럴이면 못 따라온다).
     """
-    r = hk60c.rate(lamps=LAMP_COUNT if lamp_count is None else lamp_count,
+    # 라인 패널 크기에서의 능력 — 벤더 사이클은 패널 길이에 비례하므로 포락선(2,500)이 아니라
+    # 실제로 들어가는 패널(line.LINE_MAX_MM)로 낸다. 벤더 계약값(포락선)은 hk60c.RATE_PER_H.
+    r = hk60c.rate(UPSTREAM_MAX_MM[0], UPSTREAM_MAX_MM[1],
+                   lamps=LAMP_COUNT if lamp_count is None else lamp_count,
                    lamp_kw=LAMP_KW if lamp_kw is None else lamp_kw)
     return DownstreamRate(r.heat_per_panel_mj, r.dwell_s, r.release_pitch_s, r.thermal_per_h,
                           r.tandem_cycle_s, r.tandem_per_h, r.line_per_h, r.bottleneck)

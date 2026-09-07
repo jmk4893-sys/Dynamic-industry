@@ -279,14 +279,16 @@ class TestTheThermalResultsFollowThePhysics(unittest.TestCase):
         보이려면, 사양서의 모델도 코드에 있어야 한다.
         """
         rfq = (ROOT / "docs" / "dg-hk60-rfq.html").read_text(encoding="utf-8")
-        printed = float(re.search(
-            r'<td class="num">3\.10 kW/m²</td><td class="num">9\.9 K</td>\s*'
-            r'<td class="num">([\d.]+) MPa</td>', rfq).group(1))
+        row = re.search(
+            r'<td class="num">5</td><td class="num">([\d.]+) kW/m²</td><td class="num">([\d.]+) K</td>\s*'
+            r'<td class="num">([\d.]+) MPa</td>', rfq)
+        self.assertIsNotNone(row, "사양서 3.6 의 5단 행을 찾지 못했다")
+        q_p, dt_p, printed = (float(g) for g in row.groups())
         q, dt, sig = TH.rfq_bound(5)
         self.assertAlmostEqual(sig, printed, delta=0.05,
                                msg=f"보수 모델 재현 {sig:.2f} · 인쇄 {printed}")
-        self.assertAlmostEqual(q, 3.10, delta=0.05)
-        self.assertAlmostEqual(dt, 9.9, delta=0.15)
+        self.assertAlmostEqual(q, q_p, delta=0.05)
+        self.assertAlmostEqual(dt, dt_p, delta=0.15)
 
     def test_the_transient_result_sits_below_the_conservative_bound(self):
         """상한을 상한이라고 부르려면 실제로 위에 있어야 한다."""
@@ -351,3 +353,35 @@ class TestTheReportIsGeneratedFromTheModel(unittest.TestCase):
         """검증이 잡은 것을 지우면 검증표가 장식이 된다."""
         self.assertIn("15 배", self.html)
         self.assertIn("64 %", self.html)
+
+
+class TestPlainTextFieldsCarryNoMarkdown(unittest.TestCase):
+    """요구의 '무엇'·'값'·'받는 곳' 칸은 `esc()` 로 찍힌다 — ** 가 그대로 인쇄된다.
+
+    부품 카탈로그의 `fix` 칸에서 한 번 겪었고, 요구의 `value` 칸에서 또
+    겪었다. **어느 칸이 마크다운을 렌더하는지는 생성기만 안다** — 그래서
+    산문 칸(`why`)만 강조를 허용하고 나머지는 여기서 막는다.
+    """
+
+    def _reqs(self):
+        import airlock as AIR
+        import analysis_irbank as IRB
+        import analysis_thermal as TH
+        import heatbalance as HBAL
+        import lampmount as LMT
+        out = []
+        for m in (TH, IRB, LMT, HBAL, AIR):
+            out += list(m.requirements())
+        return out
+
+    def test_no_markdown_in_the_escaped_columns(self):
+        for q in self._reqs():
+            for field in ("what", "value", "owner"):
+                with self.subTest(f"{q.id}.{field}"):
+                    self.assertNotIn("**", getattr(q, field),
+                                     f"{q.id} 의 {field} 칸은 강조를 렌더하지 않는다")
+
+    def test_the_prose_column_is_where_emphasis_belongs(self):
+        """반대로 산문 칸에는 강조가 살아 있어야 한다 — 없으면 md() 가 죽은 것이다."""
+        self.assertTrue(any("**" in q.why for q in self._reqs()),
+                        "어떤 요구도 강조를 쓰지 않으면 md() 가 도는지 알 수 없다")

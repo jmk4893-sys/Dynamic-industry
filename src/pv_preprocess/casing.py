@@ -308,7 +308,8 @@ def end_opening_mm() -> tuple[int, int, int, int]:
     from . import hk60c
     grm = next(z for z in layout.build_zones() if z.key == "grm")
     axis = grm.y0_mm + hk60c.FENCE_YP_MM          # 기계 y 0 → 플랜트 Y
-    half = hk60c.PANEL_MAX_MM[1] // 2 + BRIDGE_OPENING_CLEAR_MM
+    from . import line
+    half = line.LINE_MAX_MM[1] // 2 + BRIDGE_OPENING_CLEAR_MM
     el0 = hk60c.LINE_EL_MM - BRIDGE_OPENING_BELOW_MM
     el1 = hk60c.LINE_EL_MM + layout.bridge_lift_mm() + BRIDGE_OPENING_ABOVE_MM
     return axis, half, el0, el1
@@ -318,7 +319,8 @@ def end_opening_frames_the_bridge() -> bool:
     """개구가 브리지 레일(EL+350 · ±775)·캐리어를 여유 있게 감싸고 존 안에 드는가."""
     from . import hk60c
     axis, half, el0, el1 = end_opening_mm()
-    rail_half = hk60c.PANEL_MAX_MM[1] // 2 + 175
+    from . import line
+    rail_half = line.LINE_MAX_MM[1] // 2 + 175
     rail_el = hk60c.LINE_EL_MM + 350 + 25
     zone = next(z for z in layout.build_zones() if z.key == CASED_ZONES[-1])
     return (half > rail_half and el0 < hk60c.LINE_EL_MM + 260 and el1 > rail_el

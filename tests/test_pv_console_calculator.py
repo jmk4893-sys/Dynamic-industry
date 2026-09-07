@@ -48,14 +48,14 @@ T_HKB_C, T_HKS_C = 180, 200      # 칼날 — NPC 상용 밴드 180~200
 # 계면이 140 ℃ 에 닿기 전에 백시트가 PVDF 융점 165 ℃ 를 넘는다. 융점
 # 그대로면 63 s, 여유 10 K 를 두면 104 s. 아래 값은 그보다 보수적이다.
 FDM_DWELL_S = 113.15
-LAMPS = 40    # 2.5 kW × 40 = 100 kW 설치 — 6 뱅크에 [6,7,7,7,7,6]
+LAMPS = 48    # 2.5 kW × 48 = 120 kW 설치 — 6 뱅크 × 8 (포락선 2,500 × 1,400 이 뱅크당 한 등을 더했다)
 MASS_GLASS_CP = 8.000 * 0.75            # kJ/(m²·K) — 적층 중 유리 몫
-DECKS = 5     # 가열 캐리지 단수 — 유리 열응력이 정한다 (3단은 σ 7.05 > 허용 7)
+DECKS = 5     # 가열 캐리지 단수 — 유리 열응력이 정한다 (3단은 σ 6.97 — 허용 7 에 붙어 여유가 없다)
 KNIFE_PITCH_MM = 300     # HKB 가 HKS 보다 앞서는 거리
 RAPID_DISTANCE_MM = 300  # 장당 급속이송 등가거리
 
 DEFAULTS = dict(
-    panelLength=2400.0, panelWidth=1200.0, lampPower=2.5,
+    panelLength=2500.0, panelWidth=1400.0, lampPower=2.5,   # 포락선 상한 · 투입은 프레임·정션박스 제거 후 라미네이트
     heatEfficiency=65.0, knifeSpeed=55.0, rapidSpeed=200.0, handlingTime=3.0,
 )
 
@@ -479,18 +479,22 @@ class TestTheDeckCountIsBoundedByGlassStress(unittest.TestCase):
             f"(플럭스 {flux:.2f} kW/m², ΔT {dt:.1f} K)")
 
     def test_three_decks_would_have_broken_the_glass(self):
-        """3단을 떠난 이유 — 그 자리에서 유리가 허용치를 넘고 있었다.
+        """3단을 떠난 이유 — 그 자리에서 유리가 허용치에 붙어 있었다.
 
         한동안 이 라인은 3단이었고, 단수를 더 줄이면 유리가 깨진다는 것이
         3단을 고른 근거로 적혀 있었다. 그런데 그 계산을 3단 자신에게 돌리면
-        이미 넘고 있다 — σ 7.05 > 허용 7.0. 근거가 자기를 배제한 셈이다.
-        단수를 올린 진짜 이유가 이것이므로 시험으로 고정한다.
+        2,400 × 1,200 · 40등에서는 이미 넘고 있었고(σ 7.05 > 허용 7.0),
+        포락선 2,500 × 1,400 · 48등에서는 면적당 출력이 같아 6.97 — 허용치의
+        99.6 % 다. 어느 쪽이든 여유가 없다는 것이 단수를 올린 진짜 이유이므로
+        시험으로 고정한다: 3단의 여유는 채택 기준 25 % 근처에도 못 간다.
         """
         sigma, flux, dt = self._stress_mpa(3)
         self.assertGreater(
-            sigma, self.ALLOWABLE_MPA,
-            f"3단에서 유리 열응력이 {sigma:.2f} MPa 로 허용치 안에 든다면 "
+            sigma, 0.95 * self.ALLOWABLE_MPA,
+            f"3단에서 유리 열응력이 {sigma:.2f} MPa 로 허용치에서 멀다면 "
             f"단수를 올린 근거가 다른 데 있다 (플럭스 {flux:.2f} kW/m², ΔT {dt:.1f} K)")
+        self.assertLess((self.ALLOWABLE_MPA - sigma) / self.ALLOWABLE_MPA, 0.25,
+                        "3단이 채택 기준 여유 25 % 를 만족한다면 5단의 근거가 사라진다")
 
     def test_the_chosen_deck_count_leaves_real_margin(self):
         """허용치에 겨우 붙는 것은 근거가 아니다 — 가정 오차를 덮을 여유가 있어야 한다.
@@ -505,3 +509,19 @@ class TestTheDeckCountIsBoundedByGlassStress(unittest.TestCase):
             margin, 0.25,
             f"{DECKS}단 유리 응력 여유가 {margin*100:.0f}% 뿐이다 "
             f"(σ {sigma:.2f} / 허용 {self.ALLOWABLE_MPA} MPa)")
+
+
+class TestTheLoadScheduleFollowsTheModel(unittest.TestCase):
+    """IR 분기의 수용률은 평균전력/정격이다 — 부하표가 열모델 앞에 선언되어
+    값으로 적혀 있으므로, 모델과 갈라지지 않는지를 여기서 묶는다."""
+
+    def test_ir_demand_factor_is_the_average_over_rated(self):
+        html = CONSOLE.read_text(encoding="utf-8")
+        m = thermal_model()
+        row = re.search(r"\{id:'IR-DB1'.*?df:([\d.]+).*?mccb:'4P (\d+)A'\}", html)
+        self.assertIsNotNone(row, "부하표에 IR 분기가 없다")
+        self.assertAlmostEqual(float(row.group(1)), m["average_kw"] / m["rated_kw"], delta=0.005,
+                               msg="IR 수용률이 열모델의 평균/정격과 다르다")
+        amps = m["rated_kw"] * 1000 / (3 ** 0.5 * 380)
+        self.assertGreaterEqual(float(row.group(2)), amps, "IR 분기 차단기가 정격전류보다 작다")
+        self.assertLess(float(row.group(2)), amps * 1.5, "IR 분기 차단기가 한 등급 이상 크다")

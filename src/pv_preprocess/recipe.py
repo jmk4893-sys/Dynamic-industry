@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import hk60c
+from . import hk60c, line
 
 
 @dataclass(frozen=True)
@@ -88,7 +88,7 @@ DEFAULT = "GLASS_BACKSHEET"
 # 등록해도 들어갈 수 없기 때문이다.
 
 #: 자동 가공 치수 범위 (mm) — 후단이 갖는 값을 읽는다.
-SIZE_MAX_MM: tuple[int, int] = hk60c.PANEL_MAX_MM
+SIZE_MAX_MM: tuple[int, int] = line.LINE_MAX_MM
 SIZE_MIN_MM: tuple[int, int] = hk60c.PANEL_MIN_MM
 
 #: 치수 게이트가 걸리는 자리와 검증 수단.

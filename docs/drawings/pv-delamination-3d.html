@@ -548,12 +548,12 @@
   </dialog>
 
   <dialog id="calcDialog" aria-labelledby="calcTitle">
-    <div class="dialog-head"><div><div class="dialog-code">PLC / POWER / FABRICATION PACKAGE · REV.20</div><h2 id="calcTitle">60장/h 열수지·사이클 검증</h2></div><button class="close" type="button" id="calcClose">닫기</button></div>
+    <div class="dialog-head"><div><div class="dialog-code">PLC / POWER / FABRICATION PACKAGE · REV.20</div><h2 id="calcTitle">58장/h 열수지·사이클 검증</h2></div><button class="close" type="button" id="calcClose">닫기</button></div>
     <div class="dialog-body">
-      <p>단일 5단 캐리지의 5장 적재·잠금·밀폐 완료(FULL_LOAD_ACK)를 0초로 계산합니다. 55mm/s는 90% 가동률에서 60장/h를 넘기는 생산보증점이며, 60mm/s는 FAT 상한입니다.</p>
+      <p>단일 5단 캐리지의 5장 적재·잠금·밀폐 완료(FULL_LOAD_ACK)를 0초로 계산합니다. 55mm/s는 90% 가동률에서 58장/h를 넘기는 생산보증점이며, 60mm/s는 FAT 상한입니다.</p>
       <div class="calc-grid">
-        <div class="calc-field"><label for="panelLength">패널 길이 (mm)</label><input id="panelLength" type="number" min="1600" max="2400" step="50" value="2400"></div>
-        <div class="calc-field"><label for="panelWidth">패널 폭 (mm)</label><input id="panelWidth" type="number" min="800" max="1200" step="50" value="1200"></div>
+        <div class="calc-field"><label for="panelLength">패널 길이 (mm)</label><input id="panelLength" type="number" min="1600" max="2500" step="50" value="2500"></div>
+        <div class="calc-field"><label for="panelWidth">패널 폭 (mm)</label><input id="panelWidth" type="number" min="800" max="1400" step="50" value="1400"></div>
         <div class="calc-field"><label for="lampPower">IR 램프 1개 정격 (kW)</label><input id="lampPower" type="number" min="1" max="3" step="0.1" value="2.5"></div>
         <div class="calc-field"><label for="heatEfficiency">실효 열효율 (%)</label><input id="heatEfficiency" type="number" min="35" max="80" step="1" value="65"></div>
         <div class="calc-field"><label for="knifeSpeed">캐리어 박리속도 (mm/s)</label><input id="knifeSpeed" type="number" min="35" max="60" step="1" value="55"></div>
@@ -673,15 +673,23 @@
       [C.skin]  :{sp:.09,gl:9, ao:1},    [C.reveal]:{sp:.05,gl:6, ao:1}
     };
     const HKB_X=17.65,HKS_X=17.95,TANDEM_GAP=HKS_X-HKB_X;
-    /* 패널 실치수 2400×1200. 도면 축척은 1 unit = 1 m 다(펜스 25000·챔버 5600·
-       갠트리 10200·나이프 간격 300 으로 확인). 패널을 잡거나 실어 나르는 치수는
-       전부 여기서 파생시킨다 — 값을 흩어 두면 다음에 사양이 바뀔 때 또 한쪽만
-       고쳐진다. 반대로 챔버 외피·갠트리·펜스·라인 전장은 사람과 구조가 정하는
+    /* 패널 포락선 2500×1400 — 상류 GBR-301 버퍼 출구의 프레임 포함 외형 상한.
+       거기서 나오는 것은 무엇이든 여기 들어온다. 투입은 프레임·정션박스·케이블을
+       상류(AFR-101·JBR-201)에서 뗀 라미네이트다 (발주자 확정) — 그래서 질량 상한
+       34.3 kg 은 적층 면적질량 × 포락선 면적이고 프레임 무게가 없다. 낱장 투입.
+       도면 축척은 1 unit = 1 m 다(펜스 25000·챔버 5600·갠트리 10200·나이프
+       간격 300 으로 확인). 패널을 잡거나 실어 나르는 치수는 전부 여기서
+       파생시킨다 — 값을 흩어 두면 다음에 사양이 바뀔 때 또 한쪽만 고쳐진다.
+       2,400×1,200 → 2,500×1,400 전환이 그 증명이었다: 캐리어·데크·칼날폭·
+       권취폭·랙폭·문형 반폭·카트·방책이 전부 '패널 + 여유' 였는데 낱개 값으로
+       적혀 있었다. 반대로 챔버 벽·갠트리 높이·정비 간격은 사람과 구조가 정하는
        치수라 패널을 따라가지 않는다. */
-    const PANEL_L=2.4,PANEL_W=1.2,PANEL_HL=PANEL_L/2,PANEL_HW=PANEL_W/2;
+    const PANEL_L=2.5,PANEL_W=1.4,PANEL_HL=PANEL_L/2,PANEL_HW=PANEL_W/2;
     const LEAD_OPEN=.30;                 // HKB 선단 개방 300mm
-    const CARRIER_L=2.90,CARRIER_W=1.56; // 진공 캐리어 — 패널 + 흡착 여유
-    const DECK_L=2.78,DECK_W=1.48;       // 가열 캐리지 데크
+    const CARRIER_L=PANEL_L+.50,CARRIER_W=PANEL_W+.36;   // 진공 캐리어 3,000 × 1,760 — 패널 + 흡착 여유
+    const DECK_L=PANEL_L+.38,DECK_W=PANEL_W+.28;         // 가열 캐리지 데크 2,880 × 1,680
+    const RACK_W=DECK_W+1.08;            // 랙 외폭 2,760 — 데크 + 양쪽 (램프 소켓 공간 + 4겹 벽) 540
+    const FORK_HALF_STD=CARRIER_W/2+.34,FORK_HALF_TWIN=PANEL_HW+.35;   // 승강 문형 반폭 ±1,220 · 트윈 ±1,050 (cFork · 트윈 통로)
     /* 물질수지 기준 질량. 회수율은 무게 비율이므로 적층 구성에서 면적당
        질량을 세우고 패널 면적을 곱해 얻는다. 같은 구성으로 비열을 곱하면
        면적열용량이 나오는데, 열수지가 쓰는 8.7359 kJ/(m²·K) 와 1% 안에서
@@ -689,7 +697,16 @@
     const MASS_GLASS=8.000,MASS_EVA=0.855,MASS_CELL=0.520,MASS_BACK=0.420;  // kg/m²
     const CP_GLASS=0.75,CP_EVA=2.05,CP_CELL=0.70,CP_BACK=1.30;              // kJ/(kg·K)
     const MASS_AREAL=MASS_GLASS+MASS_EVA+MASS_CELL+MASS_BACK;
-    const PANEL_MASS=MASS_AREAL*PANEL_L*PANEL_W;          // 최대 면적 기준 kg/장
+    const PANEL_MASS=MASS_AREAL*PANEL_L*PANEL_W;          // 포락선 기준 34.3 kg/장 — 투입 질량 상한
+    /* 계약 순생산. 기준 패널(포락선 2,500 × 1,400 · 34.3 kg)에서 55 mm/s 박리
+       사이클 55.4 s × 가동률 90 % = 58.5 장/h 가 나오므로 보증은 58 장/h 다.
+       질량으로는 58 × 34.3 = 1,988 kg/h ≈ 2.0 t/h — 발주자 물질수지가 쓰는 단위.
+       2,400 × 1,200 때의 60 장/h 는 같은 박리속도에서 행정이 100 mm 짧았기
+       때문이고, 박리속도를 올려 60 을 지키는 길은 택하지 않았다 — 박리력
+       밴드(OI-01)가 속도에 어떻게 반응하는지 아직 모른다. 모델명 HK60 은
+       제품군 이름으로 남는다. */
+    const NET_TARGET=58;                                  // 장/h 계약 순생산 (기준 패널)
+    const MASS_RATE=NET_TARGET*PANEL_MASS;                // kg/h 계약의 질량 환산 1,988
     const AREAL_CP=MASS_GLASS*CP_GLASS+MASS_EVA*CP_EVA+MASS_CELL*CP_CELL+MASS_BACK*CP_BACK;
     /* 3계통 회수 비율. 물질수지는 이 셋의 합과 투입을 대조해 닫는다. */
     const SHARE_GLASS=MASS_GLASS/MASS_AREAL;
@@ -697,7 +714,14 @@
     const SHARE_BACK=MASS_BACK/MASS_AREAL;
     const BALANCE_TOL=0.02;                               // 물질수지 허용 오차 ±2%
     const WEB_HALF=PANEL_HW;             // 백시트 폭 = 패널 폭
-    const KNIFE_W=1.44;                  // 칼날 유효폭
+    const KNIFE_W=PANEL_W+.24;           // 칼날 유효폭 1,640 — 패널 폭 + 양쪽 120
+    /* 박리 추력. OI-01 밴드 상한 13.37 kN 은 폭 1,200 에서 잰 값이다(폭당
+       111 N/cm). 추력은 박리 전선 폭에 비례하므로 포락선 폭으로 환산한다 —
+       1,400 에서 15.60 kN. 구조·앵커·클램프·흡착 면적이 전부 이 값을 받는다. */
+    const F_PEEL_REF=13.37,W_PEEL_REF=1.2;               // kN @ m
+    const F_PEEL=F_PEEL_REF*PANEL_W/W_PEEL_REF;          // kN 포락선 폭 추력
+    const PAD_MU=0.6,PAD_DP=65;                           // 패드 마찰계수 · 진공 Δp kPa
+    const PAD_NEED=2*F_PEEL/(PAD_MU*PAD_DP);              // m² 흡착 필요면적 0.800
     /* ── 공정 온도 ──────────────────────────────────────────────────────
        종전 목표는 계면 140°C 였다. 그런데 가교 EVA 의 결정 융해는 DSC 로
        55~95°C 에서 끝나고(Tg −33°C), 그 위로는 액체가 되는 게 아니라 고무처럼
@@ -713,7 +737,7 @@
        '박리력 값'이 아니라 '온도별 박리력 곡선'으로 닫아야 하고, 그 곡선이
        목표온도·IR 용량·단수·패드 면적을 한꺼번에 정한다. 여기 140 은 곡선을
        재기 전의 설계 가정이다. */
-    /* ── 가열실 규모 — 5단 · 40등 · 100kW ──────────────────────────────
+    /* ── 가열실 규모 — 5단 · 48등 · 120kW ──────────────────────────────
        한동안 이 자리에 '5단 60등 150kW 를 3단 40등 100kW 로 내렸다' 고 적혀
        있었다. 전력을 줄인 것은 맞지만 단수까지 함께 내려간 것은 그래야 해서가
        아니라, '뱅크 = 단수+1, 뱅크당 10등' 이라는 배열 규칙이 둘을 묶어 놓고
@@ -721,47 +745,49 @@
 
        규칙을 끊으면 둘이 따로 정해진다.
          · 설치전력 — 탠덤 택트가 정한다. 방출피치는 q/(정격·η) 이고 단수와
-           무관하므로, 여유 16.9% 를 지키는 값이 100kW 다. 단수를 올려도
-           이 값은 움직이지 않는다.
-         · 단수 — 유리 열응력이 정한다. IR 이 넣는 열의 69.3% 가 두께 3.2mm
+           무관하다. 2,400×1,200 에서는 40등 100kW 가 여유 16.9% 를 지켰다.
+           포락선이 2,500×1,400 이 되며 q 가 21.5% 늘었는데(면적 2.88 → 3.50 m²)
+           사이클은 1.8 s 만 늘었으므로 100kW 로는 여유가 2.4% 로 무너진다.
+           뱅크당 한 등을 더해 48등 120kW — 여유 18.6%.
+         · 단수 — 유리 열응력이 정한다. IR 이 넣는 열의 68.7% 가 두께 3.2mm
            유리를 지나며 만드는 두께방향 온도차가 σ = E·α·ΔT / 2(1−ν) 이고,
-           플럭스는 정격을 단수로 나눈 값이다.
+           플럭스는 유효출력을 단수와 면적으로 나눈 값이다.
 
-         3단 100kW → 5.17 kW/m² → ΔT 16.5K → σ 7.05 MPa   (허용 ~7 MPa 초과)
-         5단 100kW → 3.10 kW/m² → ΔT  9.9K → σ 4.23 MPa   (여유 40%)
+         3단 120kW → 5.10 kW/m² → ΔT 16.3K → σ 6.97 MPa   (허용 7 MPa 의 99.6% — 여유 없음)
+         5단 120kW → 3.06 kW/m² → ΔT  9.8K → σ 4.18 MPa   (여유 40%)
 
-       3단은 허용치를 이미 미세하게 넘고 있었다. 5단으로 올리는 이유가 이것이다
-       — 전력도 처리량도 아니고 유리다. 램프는 40등 그대로 두고 6뱅크에
-       [6,7,7,7,7,6] 으로 나눈다(bankLampCount). 끝 뱅크가 하나 적은 것은
-       그쪽이 패널을 한쪽으로만 보기 때문이다.
+       48등/3.50 m² 는 40등/2.88 m² 와 같은 면적당 출력이라 유리 쪽 결론은
+       그대로다 — 3단은 허용치에 붙고 5단이 여유를 가진다. 램프는 6뱅크에
+       × 8 로 균등 분배된다(bankLampCount).
 
-       평균 소비전력은 83.06kW 로 단수·설치전력 어느 쪽으로도 움직이지 않는다.
+       평균 소비전력은 97.6kW 로 단수·설치전력 어느 쪽으로도 움직이지 않는다.
        에너지 보존이 정하는 값이다 — 전기를 줄이려면 여기가 아니라 부하표를
        봐야 한다. */
     /* 램프 x 위치는 **균등이 아니다.** IR 뱅크 배치 검토
        (tools/analysis_irbank.py) 가 면내 온도편차에서 잡은 값이다.
 
-       균등 배치는 끝 램프가 패널 끝단(±1,200) 안쪽에 있어 그 바깥을
+       균등 배치는 끝 램프가 패널 끝단(±1,250) 안쪽에 있어 그 바깥을
        아무도 데우지 않는다. 냉점을 140 ℃ 로 올리려 소킹을 늘리면 중앙
-       백시트가 235 ℃ 로 녹고 체류가 327 초로 늘어 계약 60 장/h 가 깨진다.
-       끝을 ±1,340 까지 밀고 발열장을 1,300 → 2,200 으로 늘리면 면내
-       편차가 87 K 에서 11 K 로 떨어진다.
+       백시트가 240 ℃ 로 녹고 체류가 348 초로 늘어 계약 58 장/h 가
+       깨진다. 끝을 ±1,390 까지 밀고 발열장을 관습 1,500(폭+2×50) 이 아니라
+       공동 폭 −100 = 2,400 으로 잡으면 면내 편차가 96 K 에서 9 K 로
+       떨어진다. 뱅크당 8등은 48등을 6뱅크에 나눈 것이다.
 
        인접 뱅크는 **같은 위치**를 쓴다 — 반피치 엇갈림은 나빠진다.
        편차의 정체가 램프 사이 맥놀이가 아니라 가장자리 결손이기 때문이다. */
-    const LAMP_HEAT=2.20;                // m 발열장 (단자는 측벽 밖 소켓)
-    const LAMP_POS={6:[-1.340,-0.831,-0.278,0.278,0.831,1.340],
-                    7:[-1.340,-0.948,-0.475,0,0.475,0.948,1.340]};
-    const lampX=(i,n)=>(LAMP_POS[n]||LAMP_POS[7])[i];
+    const LAMP_HEAT=RACK_W-.36;          // m 발열장 2,400 — 내피 안치수(랙 −260)에서 벽면 여유 2×50 (단자는 측벽 밖 소켓)
+    const LAMP_POS={8:[-1.390,-1.062,-0.637,-0.213,0.213,0.637,1.062,1.390]};   // IR.optimize(8) · 인접 뱅크 동일 위치
+    const lampX=(i,n)=>(LAMP_POS[n]||LAMP_POS[8])[i];
     const DECKS=5;                       // 가열 캐리지 단수
-    const LAMPS=40;                      // IR 램프 — 총수. 뱅크 분배는 bankLampCount()
+    const LAMPS=48;                      // IR 램프 — 총수 (6뱅크 × 8). 뱅크 분배는 bankLampCount()
     /* 뱅크당 램프 수. 종전에는 '(DECKS+1) 뱅크 × 10' 이라 단수를 올리면
        설치전력이 따라 올라갔다 — 3단 40등 100kW, 5단 60등 150kW. 그런데 그
        비례는 물리가 아니라 배열 관습이었다. 총 정격은 열수지가 정하고(택트를
        맞추는 데 필요한 출력), 단수는 유리 열응력과 체류 여유가 정한다.
-       둘을 끊으면 5단을 100kW 그대로 갈 수 있다.
+       둘을 끊으면 단수와 전력을 따로 고를 수 있다.
        나머지는 안쪽 뱅크부터 하나씩 더 준다 — 끝 뱅크는 패널을 한쪽으로만
-       보므로 복사의 절반이 벽으로 간다. 5단이면 [6,7,7,7,7,6] = 40 이다. */
+       보므로 복사의 절반이 벽으로 간다. 5단 48등이면 6뱅크 × 8 로 균등이고,
+       2,400×1,200 시절의 40등은 [6,7,7,7,7,6] 이었다. */
     function bankLampCount(bank,decks,lamps){
       const n=decks+1,base=Math.floor(lamps/n),rem=lamps%n;
       const order=[];for(let i=1;i<n-1;i++)order.push(i);order.push(0);order.push(n-1);
@@ -784,11 +810,12 @@
        설비를 우리 수전에 얹으면 변압기도 주차단기도 한 등급씩 과대선정된다.
        인터록(SHREDDER_READY)은 그대로 남는다. 장치가 인터페이스가 될 뿐이다.
 
-       수용률(df)은 분기별 실제 듀티다. IR 은 평균전력/정격 = 83.06/100,
-       나머지는 운전 패턴 가정값이며 FAT 실측으로 확정한다. */
+       수용률(df)은 분기별 실제 듀티다. IR 은 평균전력/정격 = 97.6/120
+       (thermalModel 의 averagePower — 시험이 대조한다), 나머지는 운전 패턴
+       가정값이며 FAT 실측으로 확정한다. */
     const LINE_V=380;
     const LOAD_SCHEDULE=[
-      {id:'IR-DB1',load:`IR 램프 ${LAMPS}×2.5kW`,kW:LAMPS*2.5,pf:1.00,df:0.83,mccb:'4P 160A'},
+      {id:'IR-DB1',load:`IR 램프 ${LAMPS}×2.5kW`,kW:LAMPS*2.5,pf:1.00,df:0.81,mccb:'4P 200A'},
       {id:'HK-DB2',load:'HKB/HKS 카트리지히터',kW:30, pf:1.00,df:0.60,mccb:'4P 100A'},
       {id:'MCC-1', load:'서보·VFD',           kW:45, pf:0.95,df:0.50,mccb:'4P 125A'},
       {id:'AUX-DB',load:'VOC·진공·냉각',      kW:18, pf:0.85,df:0.80,mccb:'4P 63A'}
@@ -827,7 +854,7 @@
     /* 표준·안전 I/O 선언. 실사용은 tools/plc_model.py 가 세고, 여기 값은
        그 실사용 위에 예비 20% 를 남기고 카드 배수로 올린 것이다. 두 곳에
        손으로 적어 두면 단수를 바꿀 때 한쪽만 남는다 — 시험이 대조한다. */
-    const IO_BUDGET={DI:176,DO:96,AI:40,AO:16,TC:56,FDI:40,FDO:8};
+    const IO_BUDGET={DI:176,DO:96,AI:40,AO:16,TC:56,FDI:48,FDO:8};
     const DECK_TAG=`C1~C${DECKS}`;       // 단 범위 표기 — 문구가 단수를 따라온다
     const HC_Z0=.82,HC_DZ=.62;           // 최하단 뱅크 높이와 단간 피치
     const HC_Z=HC_Z0+HC_DZ*DECKS;        // 최상단 뱅크 — 껍데기와 제작도 표가 같이 따라온다
@@ -844,12 +871,13 @@
        교환암은 200°C 카세트를 그대로 집을 수 있고 손은 60°C 아래에서만 닿는다.
        한 허가로 묶으면 자동 교환이 냉각 13분을 통째로 기다리게 된다. */
     const CASS_L=KNIFE_W,CASS_W=.12,CASS_H=.09;      // 카세트 외형 (m)
-    const CASS_MASS=35,CASS_CP=.46;                  // kg · kJ/(kg·K) 공구강
+    const CASS_KG_PER_M=35/1.44;                     // kg/m — 1,440 카세트가 35 kg 이었다
+    const CASS_MASS=Math.round(CASS_KG_PER_M*KNIFE_W),CASS_CP=.46;   // 40 kg · kJ/(kg·K) 공구강
     const CASS_AREA=2*(CASS_L*CASS_W+CASS_L*CASS_H+CASS_W*CASS_H);
     const CASS_HCONV=60;                             // W/(m²·K) 강제공랭
     const CASS_T_HOT=T_HKS,CASS_T_TOUCH=60,CASS_T_AMB=T_AMB,CASS_T_PRE=120;
     const CASS_REPEAT=.05;                           // mm 반복정밀도
-    const CASS_CLAMP_KN=15;                          // kN/개 — 2개로 추력 13.37kN 대비 2.24배
+    const CASS_CLAMP_KN=20;                          // kN/개 — 2개로 추력 15.60kN 대비 2.56배 (15 kN 은 1.92배라 2배 규칙에 못 미친다)
     const CASS_HEAT_KW=15,CASS_HEAT_ETA=.60;         // 카세트당 히터 정격·결합효율
     /* 대수평균온도차로 강제공랭 방열량을 잡고 냉각 시간을 낸다. */
     function cassCoolSec(){
@@ -862,7 +890,7 @@
     const cassStopAuto=()=>CASS_SWAP_AUTO+cassHeatSec(CASS_T_PRE);
     const cassStopManual=()=>cassCoolSec()+CASS_SWAP_MANUAL+CASS_VERIFY+cassHeatSec(CASS_T_AMB);
     const KNIFE_POST_Y=.90;              // Z축 기둥 — 웹 가장자리에서 300mm
-    const ROLL_FACE=1.46;                // 권취 유효폭 1400~1500mm
+    const ROLL_FACE=PANEL_W+.26;         // 권취 유효폭 1,660 — 백시트 폭 + 클램프 여유 (드럼 면폭 1,600~1,700 급)
     /* 탠덤 통과 구간. 선단이 HKB 에 닿는 자리에서 시작해 후단이 HKS 를 벗어날
        때까지 패널은 자기 길이 + 칼끝 간격만큼 움직인다. */
     const TDM_IN=15.9,TDM_LEAD=HKB_X-PANEL_HL+LEAD_OPEN,TDM_OUT=HKS_X+PANEL_HL;
@@ -870,14 +898,14 @@
        나온다: 감긴 필름의 단면적 n·L·t 가 원환 π(r²−r0²) 와 같으므로
        r(n) = √(r0² + n·L·t/π). 백시트 0.30mm, 패널 2.4m, 코어 Ø300 이면
        1장에 반경 0.76mm — 한 장 감고 롤이 두 배가 되는 일은 없다.
-       Ø600 만권까지 295장, 60장/h 기준 4.9시간이므로 롤 교체는 교대당 2회다. */
+       Ø600 만권까지 283장, 58장/h 기준 4.9시간이므로 롤 교체는 교대당 2회다. */
     const BACKSHEET_T=0.30e-3,WR_CORE_R=.15,WR_FULL_R=.30;
     const WR_TURN=PANEL_L*BACKSHEET_T/Math.PI;
     const rollRadius=n=>Math.min(WR_FULL_R,Math.sqrt(WR_CORE_R*WR_CORE_R+Math.max(0,n)*WR_TURN));
     const ROLL_FULL_PANELS=Math.round((WR_FULL_R*WR_FULL_R-WR_CORE_R*WR_CORE_R)/WR_TURN);
     /* 화면이 보여 주는 것은 교대 중반이다. 한 장을 따라가는 단계에서 권취량을
        0 으로 두면 롤이 늘 코어(Ø300)만 해서 권취부가 축 하나로 보인다 —
-       실제로 롤은 295장에 걸쳐 자라고, 코어만인 시간은 전체의 1/295 다.
+       실제로 롤은 283장에 걸쳐 자라고, 코어만인 시간은 전체의 1/283 다.
        55% 지점을 바탕에 깔고 그 위에 이번 사이클 분을 얹는다. */
     const CROLL_BASE=Math.round(ROLL_FULL_PANELS*.55);
     /* 권취부는 탠덤 하류다. 필름은 칼날에서 분리되는 순간부터 패널 진행방향(+x)
@@ -927,7 +955,7 @@
                       [22.35,-2.60,1.90,'리젝트함']];
     /* ── DG-HK60C 압축 배치 ──────────────────────────────────────────────
        Rev.20 은 끝에서 끝까지 53 m 다. 그런데 그 길이가 처리량을 만든 게
-       아니다 — 60장/h 는 소킹(단수×피치)과 2.4m 박리행정(43.6s)이 정하고
+       아니다 — 처리량은 소킹(단수×피치)과 2.5m 박리행정(45.5s)이 정하고
        둘 다 바닥 길이를 쓰지 않는다. 길이를 만든 것은 두 가지다:
 
          (1) 라인 안에 넣은 환경설비·후속공정·팔레타이징.
@@ -994,7 +1022,7 @@
     /* Rev.21C 이동 나이프 축. 캐리어 X축을 대신하며, 축이 스스로 움직이므로
        그 위치와 원점이 박리 허가의 조건이 된다. */
     const KNIFE_AXIS_IF=[
-      ['나이프 X축 절대치 엔코더','캐리어 X축을 대신한다 — 행정 2400 + 선행 300','KNIFE_X_POS'],
+      ['나이프 X축 절대치 엔코더',`캐리어 X축을 대신한다 — 행정 ${PANEL_L*1000} + 선행 300`,'KNIFE_X_POS'],
       ['나이프 X축 원점·과주행센서×2','원점에 있어야 다음 장을 시작한다','KNIFE_X_HOME'],
     ];
     /* 세 단계의 전장. 실제 도면 좌표에서 읽은 값이라 그림과 어긋나지 않는다. */
@@ -1144,7 +1172,7 @@
       {id:'S4',name:'300mm 선행·클램프',duration:2500,desc:'HKB가 백시트 선단 300mm를 개방하면 WR-101이 선단을 잡아 장력을 형성합니다. CLAMP_TENSION_ACK 뒤 HKS가 독립 Z축으로 EVA/유리 계면까지 접근해 2차 박리를 준비합니다.',vac:'VC-101 · -65 kPa 유지',temp:'HKB 가압 · HKS Z축 진입',out:'LEAD_300_ACK ∧ CLAMP_TENSION_ACK',flow:['클램프·장력 형성','HKS 진입 대기','진공 캐리어 지지 중'],cam:[2,17.8]},
       {id:'S5',name:'55mm/s 탠덤 통과박리',duration:7600,desc:'두 칼날의 X축은 300±2mm 간격으로 고정되고 Z축은 로드셀 하중을 추종합니다. 캐리어가 55mm/s로 통과하면 HKB는 백시트를 권취롤로 보내고 HKS는 셀/EVA를 유리에서 연속 분리합니다.',vac:'이동 캐리어 6존 · -65 kPa',temp:'HKB 180°C · HKS 200°C',out:'CARRIER_PEEL_COMPLETE',flow:['전장 권취 중','유리에서 분리 중','진공 캐리어 이동 중'],cam:[2,18.5]},
       {id:'S6',name:'3계통 무낙하 분기',duration:4200,desc:'HKB/HKS Z축 안전복귀 후 유리의 롤러 완전지지를 먼저 확인합니다. GLASS_SUPPORT_ACK 뒤 진공을 해제하고 빈 캐리어를 복귀시키며, 셀/EVA와 백시트 반출축은 독립 ACK로 병렬 운전합니다.',vac:'GLASS_SUPPORT_ACK → VAC_OFF_ACK',temp:'KNIFE_Z_SAFE 후 캐리어 복귀',out:'LEVEL_CONVEYOR_OUTFEED',flow:['권취 완료·보관함 대기','CVC-301 인계 컨베이어','동일높이 GC-301 즉시 인계'],cam:[0,22]},
-      {id:'S7',name:'백시트 보관함 이동',duration:3200,desc:'롤 교체는 패널마다가 아니라 만권(Ø600 · 백시트 0.30mm 기준 295장 · 60장/h 로 약 4.9시간)에서만 일어납니다. 셔터를 닫고 예비축으로 전환한 뒤, 만권 롤을 내려 인터록 해치를 지나 펜스 밖 BS-301 보관대로 내보냅니다.',vac:'복귀 준비',temp:'권취부 안전',out:'BACKSHEET_BIN_ACK',flow:['BS-301 전용 보관함 이동','CVC-301 직접 이송 대기','GC-301 수평 적재 완료'],cam:[2,22]},
+      {id:'S7',name:'백시트 보관함 이동',duration:3200,desc:`롤 교체는 패널마다가 아니라 만권(Ø${WR_FULL_R*2000} · 백시트 ${(BACKSHEET_T*1000).toFixed(2)}mm 기준 ${ROLL_FULL_PANELS}장 · ${NET_TARGET}장/h 로 약 ${(ROLL_FULL_PANELS/NET_TARGET).toFixed(1)}시간)에서만 일어납니다. 셔터를 닫고 예비축으로 전환한 뒤, 만권 롤을 내려 인터록 해치를 지나 펜스 밖 BS-301 보관대로 내보냅니다.`,vac:'복귀 준비',temp:'권취부 안전',out:'BACKSHEET_BIN_ACK',flow:['BS-301 전용 보관함 이동','CVC-301 직접 이송 대기','GC-301 수평 적재 완료'],cam:[2,22]},
       {id:'S8',name:'셀모듈 직접 컨베이어',duration:3500,desc:'분리된 셀/EVA 적층체가 CVC-301 밀폐 인계·수평 컨베이어를 타고 중간 낙하나 보관 없이 SH-101 전단까지 이동합니다.',vac:'진공 해제',temp:'HKS 복귀',out:'CELL_ON_CONVEYOR_ACK',flow:['BS-301 격리 완료','CVC-301에서 이동 중','GC-301 수평 적재 완료'],cam:[2,29]},
       {id:'S9',name:'Shredder 연속 투입',duration:4200,desc:'SH-101 READY와 격리게이트 개방을 확인한 뒤 CVC-301이 셀/EVA를 투입롤러까지 연속 이송합니다. Shredder 트립 시 컨베이어를 즉시 정지하고 HKS 신규 분리를 차단합니다.',vac:'빈 캐리어 복귀',temp:'SH-101 READY',out:'SHREDDER_FEED_ACK',flow:['BS-301 보관 완료','CVC-301 → SH-101 연속 투입','GC-301 수평 적재 완료'],cam:[1,33]},
       {id:'S10',name:'유리 수평인계·교대',duration:4300,desc:'유리를 받은 GC-301A가 컨베이어와 동일한 높이의 내열 지지롤 위에서 양면 균일냉각을 시작하며 격리 도크로 수평 이동합니다. 빈 GC-301B가 다음 유리를 받을 위치로 자동 인덱싱됩니다.',vac:'진공 해제 완료',temp:'GLASS COOLING · 출입잠금',out:'LEVEL_GLASS_DOCK_ACK',flow:['BS-301 보관 완료','SH-101 후속공정','GC-301 동일높이 저장 도크'],cam:[1,27.4]},
@@ -1152,7 +1180,7 @@
       {id:'S12',name:'7＋1 캐리지 순환',duration:4200,desc:'5대는 가열실, 1대는 탠덤, 1대는 복귀·재장전 위치에서 순환하고, 1대는 MC-401 정비 대기 위치에 보관됩니다.',vac:'주캐리지 복귀·재장전',temp:'5 HEAT + 1 PROCESS + 1 RETURN + 1 SPARE',out:'EMPTY_CARRIER_RELOADED',flow:['WR 예비축 준비','CVC-301 CLEAR','7＋1 가열캐리지 순환'],cam:[1,13]},
       {id:'S13',name:'안전·환경 자가점검',duration:4200,desc:'VOC 응축·미스트·활성탄 처리, 독립 과온차단, 연기·CO·화재댐퍼, MCC 냉각, 진공 이중화와 LOTO 상태를 확인합니다.',vac:'VP-A/B 이중화 READY',temp:'FIRE_OK ∧ EXHAUST_OK ∧ MCC_OK',out:'SAFETY_UTILITY_ACK',flow:['배기·화재안전 확인','Shredder 격리게이트 확인','GC 냉각·도킹 안전확인'],cam:[0,20]},
       {id:'S14',name:'단일라인 60장 시험',duration:8000,desc:'55mm/s 생산보증 레시피의 정상상태 60장 약 53분35초를 8초로 압축합니다. FULL_LOAD_ACK 이후 냉간 완료는 약 55분49초이며 90% 가동률 환산은 60.5장/h입니다.',vac:'이동 캐리어 −65 kPa',temp:'실공정 53m35s → 영상 8s',out:'SINGLE_60_TEST_COMPLETE',flow:['다음 권취롤 준비','Shredder 연속운전','빈 저장 캐리지 인덱싱'],cam:[0,19]},
-      {id:'S15',name:'10장 연속 시운전',duration:9000,desc:'10장을 연속 통과시키며 세 계통이 실제로 쌓이는지를 한 화면에서 확인합니다. 유리는 GC-301 저장 캐리지에 한 장씩 적재되고, 셀/EVA는 CVC-301 컨베이어에 투입되어 SH-101로 이송되며, 백시트는 WR-101 롤에 감깁니다. 10장이면 롤은 Ø300에서 Ø314.9로 자랍니다 — 만권까지는 295장이 필요합니다.',vac:'장당 −65 kPa 흡착·해제 10회',temp:'계면 140°C 반복 도달',out:'TEN_PANEL_TRIAL_COMPLETE',flow:['WR-101 롤에 10장 권취','CVC-301 → SH-101 연속 투입','GC-301 캐리지 적재 중'],cam:[0,22]},
+      {id:'S15',name:'10장 연속 시운전',duration:9000,desc:`10장을 연속 통과시키며 세 계통이 실제로 쌓이는지를 한 화면에서 확인합니다. 유리는 GC-301 저장 캐리지에 한 장씩 적재되고, 셀/EVA는 CVC-301 컨베이어에 투입되어 SH-101로 이송되며, 백시트는 WR-101 롤에 감깁니다. 10장이면 롤은 Ø300에서 Ø${(2000*Math.sqrt(WR_CORE_R*WR_CORE_R+10*WR_TURN)).toFixed(1)}로 자랍니다 — 만권까지는 ${ROLL_FULL_PANELS}장이 필요합니다.`,vac:'장당 −65 kPa 흡착·해제 10회',temp:'계면 140°C 반복 도달',out:'TEN_PANEL_TRIAL_COMPLETE',flow:['WR-101 롤에 10장 권취','CVC-301 → SH-101 연속 투입','GC-301 캐리지 적재 중'],cam:[0,22]},
     ];
     /* ---- 사양 다이얼로그 본문 ------------------------------------------------
        REV.05 부터 REV.20 까지의 개정 이력을 unshift/splice/filter/map 으로 쌓아
@@ -1229,8 +1257,8 @@
           '배기팬 상용/예비: 상용 1대 운전 · 나머지 1대 대기, 상용 트립·풍량저하 시 자동 절체하고 교대운전으로 균등 사용',
           'EXHAUST_RUN = VOC_ABATE_READY ∧ DP_OK ∧ CARBON_DP_OK ∧ DUCT_DP_OK',
           '캐리지 시퀀스: 만재가열 → 해당 단 잠금해제 → 출측 내문 → 출측 씰 → 출측 외문 → 입측 외문 → 입측 씰 → 승강단 선택 → 입측 내문 → 재장전 잠금',
-          'AL101_MUTEX = ¬(INNER_DOOR_OPEN ∧ OUTER_DOOR_OPEN) — 입측 에어록',
-          'AL102_MUTEX = ¬(INNER_DOOR_OPEN ∧ OUTER_DOOR_OPEN) — 출측 에어록',
+          'IN_SHUTTER_MUTEX = 투입측 열린 단별 셔터 ≤ 1 장',
+          'OUT_SHUTTER_MUTEX = 배출측 열린 단별 셔터 ≤ 1 장',
           'REFILL_ACK = ACTIVE_DECK_PRESENT ∧ ACTIVE_DECK_LOCKED ∧ FORK_HOME ∧ ALL_DOORS_CLOSED ∧ DP_OK',
           'POWER_ENABLE = MAIN_ACB_ON ∧ PHASE_OK ∧ PE_OK ∧ SPD_OK ∧ FIRE_OK',
           'PLC_RUN = UPS_OK ∧ DC24_A_OK ∧ DC24_B_OK ∧ SAFETY_CPU_OK ∧ NETWORK_RING_OK',
@@ -1262,10 +1290,10 @@
           '무인 운전 중 칼날 자동교환은 LOTO 가 아니라 캐리어 파킹 상태에서 돈다 — 정비허가를 요구하면 무인 중에는 영원히 성립하지 않는다'
         ],
         verify:[
-          `최대 패널 2,400×1,200mm·${DECKS}장 열체류 222.6초·정상 방출피치 44.5초`,
-          '55mm/s 탠덤 사이클 53.6초·명목 67.2장/h·90% 환산 60.5장/h',
-          '60장 정상상태 약 53분35초·FULL_LOAD_ACK 이후 냉간 약 57분18초',
-          '셀/EVA 4kg/장 기준 약 269kg/h, SH-101 권장 정격 350kg/h 이상',
+          `최대 패널 ${PANEL_L*1000}×${PANEL_W*1000}mm·${DECKS}장 열체류 225.4초·정상 방출피치 45.1초`,
+          '55mm/s 탠덤 사이클 55.4초·명목 65.0장/h·90% 환산 58.5장/h',
+          '60장 정상상태 약 55분25초·FULL_LOAD_ACK 이후 냉간 약 59분10초',
+          `셀/EVA ${((MASS_EVA+MASS_CELL)*PANEL_L*PANEL_W).toFixed(1)}kg/장 기준 약 ${Math.round((MASS_EVA+MASS_CELL)*PANEL_L*PANEL_W*NET_TARGET)}kg/h, SH-101 권장 정격 350kg/h 이상`,
           '3계통 반출 FAT: 유리 GC-301 도킹·백시트 BS-301 격리·셀모듈 SH-101 투입 ACK를 개별 기록',
           'STS304 2.9m 레일은 20→210°C에서 약 8~9mm 팽창 예상: 1점 고정+장공 지지로 흡수',
           '물질수지 마감: 로트 20장 연속에서 투입 질량과 3계통 반출 질량의 차가 ±2 % 이내',
@@ -1276,23 +1304,23 @@
       },
       spec:{
         code:'60 PPH DESIGN BASIS',title:'열수지·사이클 설계값',
-        intro:'열공정과 탠덤을 같은 단위로 계산해 60장/h 달성 여부를 확인합니다. 유리·백시트·셀모듈 반출은 서로 독립된 ACK로 다음 패널 투입을 허가합니다.',
+        intro:`열공정과 탠덤을 같은 단위로 계산해 ${NET_TARGET}장/h 달성 여부를 확인합니다. 유리·백시트·셀모듈 반출은 서로 독립된 ACK로 다음 패널 투입을 허가합니다.`,
         hardware:[
-          '패널 면적열용량 8.736 kJ/(m²·K)·25→140°C·최대 면적 2.88m²·q 2.893MJ',
-          `패널당 필요열량 2.893MJ·${LAMPS}×2.5kW 설치정격 ${LAMPS*2.5}kW·실효효율 기본 65%`,
-          `${DECKS}장 열체류 222.6초·방출피치 44.51초·열공정 한계 80.9장/h`,
-          '탠덤 유효이동 2,700mm·칼끝간격 300mm·급속분 300mm·고정동작 3초',
-          '55mm/s 탠덤 53.6초·67.2장/h, 60mm/s 탠덤 49.5초·72.7장/h',
-          '적층 면적질량 9.795 kg/m² (유리 8.000·EVA 0.855·셀 0.520·백시트 0.420) → 최대면적 28.2 kg/장',
+          `패널 면적열용량 8.736 kJ/(m²·K)·25→140°C·최대 면적 ${(PANEL_L*PANEL_W).toFixed(2)}m²·q 3.516MJ`,
+          `패널당 필요열량 3.516MJ·${LAMPS}×2.5kW 설치정격 ${LAMPS*2.5}kW·실효효율 기본 65%`,
+          `${DECKS}장 열체류 225.4초·방출피치 45.08초·열공정 한계 79.9장/h`,
+          `탠덤 유효이동 ${PANEL_L*1000+300}mm·칼끝간격 300mm·급속분 300mm·고정동작 3초`,
+          '55mm/s 탠덤 55.4초·65.0장/h, 60mm/s 탠덤 51.2초·70.4장/h',
+          '적층 면적질량 9.795 kg/m² (유리 8.000·EVA 0.855·셀 0.520·백시트 0.420) → 포락선 34.3 kg/장 — 프레임·정션박스·케이블 제거 후 라미네이트 (상류 AFR-101·JBR-201 출력)',
           '면적열용량을 같은 적층에서 재계산하면 8.663 kJ/(m²·K) 로 열수지가 쓰는 8.7359 와 1 % 안에서 일치',
           '회수 비율: 유리 81.7 % · 셀/EVA 14.0 % · 백시트 4.3 %',
-          'BC-201 카세트 35 kg·표면 0.63 m²·쐐기 클램프 15 kN×2 = 30 kN (박리 추력 13.37 kN 대비 2.24배)'
+          `BC-201 카세트 ${CASS_MASS} kg·표면 ${CASS_AREA.toFixed(2)} m²·쐐기 클램프 ${CASS_CLAMP_KN} kN×2 = ${2*CASS_CLAMP_KN} kN (박리 추력 ${F_PEEL.toFixed(2)} kN 대비 ${(2*CASS_CLAMP_KN/F_PEEL).toFixed(2)}배)`
         ],
         control:[
           `Q = 면적×8.7359×(${T_TARGET}−${T_AMB}), t열 = max(${DECKS}Q/(${LAMPS}Pη), 백시트 하한 113.2초)`,
           't탠덤 = (패널길이+300)/박리속도 + 300/급속속도 + 고정동작',
           `라인능력 = 3600/max(t열/${DECKS}, t탠덤), 순생산 = 라인능력×가동률`,
-          'RELEASE_PERMIT = EVA_INTERFACE_ACK ∧ TANDEM_READY ∧ AL102_EMPTY ∧ OUTER_OUT_CLOSED',
+          'RELEASE_PERMIT = EVA_INTERFACE_ACK ∧ TANDEM_READY ∧ TANDEM_SEAT_EMPTY ∧ DECK_SHUTTER_MUTEX',
           'HKS 절입 허가는 인터록의 HKS_Z_PERMIT 이 걸고, 사이클은 HKB 선행 300mm 확보 시점부터 계산한다',
           'ADAPT_ENABLE = PEEL_PERMIT ∧ LOAD_CELL_HEALTH_OK ∧ AE_OK ∧ RECIPE_VALIDATED',
           'SPEED_SETPOINT = ADAPT_ENABLE ∧ PEEL_FORCE ∧ HKB_LOAD_OK → 40~60mm/s 구간에서 박리력 목표대 추종',
@@ -1300,12 +1328,12 @@
           'KNIFE_CHANGE_DUE = KNIFE_WEAR_WARN ∧ KNIVES_CLEAR',
           'HEAT_RECOVERY = RTO_READY ∧ HX_OUTLET_TEMP ∧ DP_OK',
           '적응 속도의 상한 60mm/s 는 FAT 승인 레시피, 하한 40mm/s 는 열공정 한계다. 고정 55mm/s 는 이 구간의 기본값일 뿐이다',
-          't자동교환 = 교환 90초 + 예열포켓 120°C→200°C 143초 ≈ 3.9분 (냉각은 매거진이 받으므로 임계경로 밖)',
-          't수동교환 = 강제공랭 200→60°C 11.5분 + 교환 8분 + 검증 2분 + 냉간승온 5.2분 ≈ 26.7분'
+          `t자동교환 = 교환 ${CASS_SWAP_AUTO}초 + 예열포켓 ${CASS_T_PRE}°C→${CASS_T_HOT}°C ${cassHeatSec(CASS_T_PRE).toFixed(0)}초 ≈ ${(cassStopAuto()/60).toFixed(1)}분 (냉각은 매거진이 받으므로 임계경로 밖)`,
+          `t수동교환 = 강제공랭 ${CASS_T_HOT}→${CASS_T_TOUCH}°C ${(cassCoolSec()/60).toFixed(1)}분 + 교환 ${CASS_SWAP_MANUAL/60}분 + 검증 ${CASS_VERIFY/60}분 + 냉간승온 ${(cassHeatSec(CASS_T_AMB)/60).toFixed(1)}분 ≈ ${(cassStopManual()/60).toFixed(1)}분`
         ],
         verify:[
-          '55mm/s에서 열공정 여유 약 16.9%, 90% 가동률 순생산 60.5장/h',
-          '8시간 90% 약 484장·16시간 90% 약 967장',
+          '55mm/s에서 열공정 여유 약 18.6%, 90% 가동률 순생산 58.5장/h',
+          '8시간 90% 약 468장·16시간 90% 약 936장',
           '클램프 체결 목표 2.5초는 300/55=5.45초의 HKS 진입 여유 안에 완료',
           '터릿형 2축 권취 또는 자동 코어교환으로 권취롤 교환 정지를 탠덤 사이클 밖으로 분리',
           '병목 우선순위: 탠덤 53.6초 → WR 터릿 전환/GC 캐리지 교대 → 신규 캐리지 재장전',
@@ -1314,7 +1342,7 @@
           '자동교환 정지 4.5분은 예열포켓 온도 가정에서 나온 값이다 — FAT 에서 실측해 확정한다',
           '강제공랭 h=60 W/(m²·K) 가정도 같은 시험에서 실측 대체한다'
         ],
-        notice:'계산값은 설계 가설입니다. 평균값이 아니라 P95 사이클과 60장 연속 데이터로 60장/h를 합격 판정하십시오.'
+        notice:`계산값은 설계 가설입니다. 평균값이 아니라 P95 사이클과 60장 연속 데이터로 ${NET_TARGET}장/h를 합격 판정하십시오.`
       },
       interlock:{
         code:'SINGLE CELL SAFETY CHAIN',title:'생산·안전 인터록',
@@ -1340,7 +1368,7 @@
         ],
         control:[
           'IR_ENABLE = SEALED_FULL_LOAD_ACK ∧ EXHAUST_OK ∧ FIRE_OK ∧ PM_METER_OK ∧ EMISSION_OK',
-          'DOOR_MUTEX = ¬(INNER_DOOR_OPEN ∧ OUTER_DOOR_OPEN)',
+          'DECK_SHUTTER_MUTEX = IN_SHUTTER_MUTEX ∧ OUT_SHUTTER_MUTEX',
           'MOTION_SYNC = |X_LEFT−X_RIGHT|≤0.3mm ∧ FOLLOWING_ERROR_OK',
           'PEEL_PERMIT = EVA_TARGET_ACK ∧ HKB_TEMP_OK ∧ HKS_TEMP_OK ∧ VAC_6ZONE_OK',
           'MOTION_TRIP = SYNC_ERROR ∨ VAC_LOW ∨ KNIFE_OVERLOAD ∨ WEB_TENSION_HIGH ∨ GLASS_CRACK',
@@ -1400,7 +1428,7 @@
       },
       support:{
         code:'MANDATORY AUXILIARY PACKAGE',title:'Rev.20 필수 보조장치',
-        intro:'60장/h를 안전하게 지속하려면 본체 외에 반출·냉각·리젝트·환경·유틸리티·정비 장치가 독립적으로 준비되어야 합니다.',
+        intro:`${NET_TARGET}장/h를 안전하게 지속하려면 본체 외에 반출·냉각·리젝트·환경·유틸리티·정비 장치가 독립적으로 준비되어야 합니다.`,
         hardware:[
           'GC-301A/B: 내열 지지핀·양면 저속 균일냉각·로드셀·온도·2위치 교대도크',
           'RJ-301: 횡셔틀·파손유리 받침·밀폐 리젝트 캐리지·재처리 식별',
@@ -1435,7 +1463,7 @@
           'QI 정상/잔류/균열/오염 샘플로 검출률·오검률·재검 분기 검증',
           '배기·화재·정전·진공상실·유리파손·Shredder 트립 통합 연동시험',
           '전기부하표·단선결선도·접지·고조파·단락전류·MCC 열부하를 상세설계에서 확정',
-          'FAT는 무부하 시퀀스·안전기능·계측 교정, SAT는 실패널 60장/h 연속 8h와 배기·소음 실측으로 구분',
+          `FAT는 무부하 시퀀스·안전기능·계측 교정, SAT는 실패널 ${NET_TARGET}장/h 연속 8h와 배기·소음 실측으로 구분`,
           '반입 분할 4모듈(최대 12.7m·18t)의 운송한계·크레인 용량·반입구 치수를 사전확인',
           '작업위치 소음 ≤80dBA, 조도 ≥300lx, 배기 포집풍속 ≥0.5m/s 실측',
           '계량 4계통은 인증 분동으로 연 1회 교정하고 교정성적서를 이력에 첨부한다',
@@ -1449,7 +1477,7 @@
 
     /* 열수지·사이클 모델. 계산 대화상자와 HUD 전력표시가 같은 식을 각각
        구현하고 있었고, 입력 허용구간까지 서로 달라(대화상자는 패널길이를
-       2400 에 클램프, HUD 는 상한 없음) 범위 밖 값을 넣으면 두 곳이 다른
+       포락선 길이에 클램프, HUD 는 상한 없음) 범위 밖 값을 넣으면 두 곳이 다른
        처리량을 보고했다. 모델·상수·입력구간을 여기 한 곳에 둔다. */
     const MODEL={
       arealCp:8.7358962,   // kJ/(m²·K) 적층 면적열용량
@@ -1465,16 +1493,16 @@
       lamps:LAMPS,decks:DECKS,
       knifePitch:300,      // 칼끝 간격 mm · HKB 선행분
       rapidDistance:300,   // 장당 급속 등가거리 mm
-      netTarget:60,        // 계약 순생산 장/h
+      netTarget:NET_TARGET,// 계약 순생산 장/h — 뿌리 상수에서
       availability:.90     // 가동률 — 순생산은 명목의 90%
     };
     const MODEL_RANGE={
-      panelLength:[1600,2400],panelWidth:[800,1200],lampPower:[1,3],
+      panelLength:[1600,PANEL_L*1000],panelWidth:[800,PANEL_W*1000],lampPower:[1,2.5],   // 램프 상한 = 구매 정격 (P-002-18) · IR-DB1 200 A 가 받는 값 — 3 kW 는 48등에서 144 kW 로 분기를 넘고 최소 패널 모서리에서 백시트를 녹인다 (CAL-001 T5)
       heatEfficiency:[35,80],knifeSpeed:[35,60],rapidSpeed:[100,250],handlingTime:[2,12],
       knifeReturnSpeed:[300,1500]
     };
     const MODEL_DEFAULT={
-      panelLength:2400,panelWidth:1200,lampPower:2.5,
+      panelLength:PANEL_L*1000,panelWidth:PANEL_W*1000,lampPower:2.5,
       heatEfficiency:65,knifeSpeed:55,rapidSpeed:200,handlingTime:3,
       knifeReturnSpeed:700
     };
@@ -1491,10 +1519,10 @@
       const tandemRate=3600/tandemCycle;
       const lineCycle=Math.max(pitch,tandemCycle),lineRate=3600/lineCycle;
       /* ── 이동 나이프 환산 ────────────────────────────────────────────
-         박리는 상대운동이다. 패널을 밀든 칼날을 끌든 행정 2400mm 도 시간
-         43.6s 도 바뀌지 않는다. 바뀌는 것은 딱 하나 — 복귀다. 캐리어는
+         박리는 상대운동이다. 패널을 밀든 칼날을 끌든 행정 2500mm 도 시간
+         45.5s 도 바뀌지 않는다. 바뀌는 것은 딱 하나 — 복귀다. 캐리어는
          두 대가 번갈아 돌아 복귀가 다음 장 뒤로 숨었지만, 나이프는 한 대라
-         자기가 지나온 2700mm 를 되돌아와야 다음 장을 시작한다.
+         자기가 지나온 2800mm 를 되돌아와야 다음 장을 시작한다.
          복귀는 유리 반출·패널 투입과 같은 창에서 일어나므로 사이클에는
          둘 중 긴 쪽만 든다. 곧 복귀가 교환창보다 빠르면 처리량은 그대로다. */
       const returnDistance=m.knifePitch+v.panelLength;               // mm
@@ -1502,7 +1530,7 @@
       const peelTime=v.panelLength/v.knifeSpeed;
       const knifeCycle=leadTime+peelTime+Math.max(handling,returnTime);
       const knifeRate=3600/knifeCycle;
-      /* 순생산 60장/h 를 지키는 복귀속도의 하한. 값을 손으로 적지 않고
+      /* 계약 순생산을 지키는 복귀속도의 하한. 값을 손으로 적지 않고
          목표 사이클에서 거꾸로 푼다 — 박리속도를 바꾸면 하한도 따라 움직인다. */
       const targetCycle=3600/(m.netTarget/m.availability);
       const returnWindow=targetCycle-leadTime-peelTime;
@@ -1816,7 +1844,7 @@
       fillBand([V(x0+nx,y0+ny,z),V(x1+nx,y1+ny,z),V(x1-nx,y1-ny,z),V(x0-nx,y0-ny,z)],style,alpha);
     }
     /* 바닥 도색은 배치를 따라간다. GROUND.base 의 발자국·보도는 Rev.20
-       (x 4,500~31,700)의 것이라, 압축 계열에 그대로 쓰면 18.76m 기계가
+       (x 4,500~31,700)의 것이라, 압축 계열에 그대로 쓰면 19.26m 기계가
        27m 짜리 노란 테두리 안에 놓인다 — 그림이 기계보다 길어진다. */
     function groundFor(){
       if(carriageFocus)return GROUND.carriage;
@@ -2470,7 +2498,7 @@
       box(V(cx,railY,HZ-.84),V(L-.2,.1,.13),C.steel2);                                    // wall mounting rail
       for(const dx of [-.52,.52])box(V(cx+dx,meterY+(carriageFocus?-.19:.19),HZ-.84),V(.11,.1,.94),C.steel2);  // standoff brackets
       box(V(cx,meterY,HZ-.84),V(1.35,.32,1.08),C.cab);box(V(cx,meterFaceY,HZ-.74),V(1.02,.08,.5),C.black);for(let k=0;k<4;k++)box(V(cx-.32+k*.21,meterButtonY,HZ-1.17),V(.14,.06,.12),k<2?C.teal:C.yellow);
-      exhaust(cx,.23,HZ+1.03);label3(`M1 · 완전단열 ${DECKS}단 밀폐가열실`,V(cx,-1.52,HZ+1.16),C.heat);label3(`${DECKS+1} 라인 ${bankPlanText(DECKS,LAMPS)} = ${LAMPS} IR`,V(cx,-1.52,HZ+.80),C.yellow);label3('AL-101/102 · 이중셔터 에어록',V(cx,-1.52,HZ+.46),C.teal);label3('PM-101 · IR 전력 계기판',V(cx,-1.86,HZ-.20),C.yellow);label3(`LI-101 · ${DECKS}단 서보승강`,V(liftX,-1.38,HZ+.50),C.teal);label3('TS-101 · 이단 텔레스코픽 포크',V(liftX+.65,-1.28,HZ+.03),C.yellow);label3(`IDX-101 · ${DECKS}단 위치결정·잠금`,V(9.2,-1.34,HZ+.33),C.teal);label3('RT-101 · 밀폐 빈 캐리지 복귀',V(9.2,-1.22,.52),C.teal);label3('EX-101 · 밀폐 방출 셔틀',V(exitX,-1.28,1.72),C.yellow);
+      exhaust(cx,.23,HZ+1.03);label3(`M1 · 완전단열 ${DECKS}단 밀폐가열실`,V(cx,-1.52,HZ+1.16),C.heat);label3(`${DECKS+1} 라인 ${bankPlanText(DECKS,LAMPS)} = ${LAMPS} IR`,V(cx,-1.52,HZ+.80),C.yellow);label3('AL-101/102 · 단별 셔터 에어록',V(cx,-1.52,HZ+.46),C.teal);label3('PM-101 · IR 전력 계기판',V(cx,-1.86,HZ-.20),C.yellow);label3(`LI-101 · ${DECKS}단 서보승강`,V(liftX,-1.38,HZ+.50),C.teal);label3('TS-101 · 이단 텔레스코픽 포크',V(liftX+.65,-1.28,HZ+.03),C.yellow);label3(`IDX-101 · ${DECKS}단 위치결정·잠금`,V(9.2,-1.34,HZ+.33),C.teal);label3('RT-101 · 밀폐 빈 캐리지 복귀',V(9.2,-1.22,.52),C.teal);label3('EX-101 · 밀폐 방출 셔틀',V(exitX,-1.28,1.72),C.yellow);
     }
     function liftConveyor(){
       const a=V(R20.cvcA.x,R20.cvcA.y,R20.cvcA.z),b=V(R20.cvcB.x,R20.cvcB.y,R20.cvcB.z),dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z,plan=Math.hypot(dx,dy),L=Math.hypot(plan,dz),rz=Math.atan2(dy,dx),ry=-Math.atan2(dz,plan),cx=(a.x+b.x)/2,cy=(a.y+b.y)/2,cz=(a.z+b.z)/2;
@@ -2715,7 +2743,7 @@
       }
       line([V(15.1,-1.68,1.05),V(20.5,-1.68,1.05)],C.teal,2.1,[8,4]);
       label3(`AX-${laneCode} · 전자갠트리 서보 캐리어축`,V(17.6,1.82,.82),C.teal);
-      label3('유효 공정이동 2,700mm · 스트로크 ≥3,200mm',V(17.8,-1.92,.62),C.yellow);
+      label3(`유효 공정이동 ${PANEL_L*1000+300}mm · 스트로크 ≥${PANEL_L*1000+800}mm`,V(17.8,-1.92,.62),C.yellow);
     }
     function tandemProfessionalDetail(){
       box(V(17.8,0,.72),V(1.45,3.08,.16),C.dark);box(V(17.8,0,.84),V(1.25,2.86,.08),C.cab,{alpha:.92});
@@ -2740,10 +2768,10 @@
     }
 
     /* ── Rev.21C 압축 배치 3D ────────────────────────────────────────────
-       같은 기계를 18.76 m 안에 다시 세운다. 바뀐 것은 셋이다.
+       같은 기계를 19.26 m 안에 다시 세운다. 바뀐 것은 셋이다.
 
          · 패널이 서고 칼날이 간다. 진공 테이블 VT-101 은 고정이고 갠트리
-           KG-101 이 2,400mm 를 55mm/s 로 지나간 뒤 2,700mm 를 700mm/s 로
+           KG-101 이 2,500mm 를 55mm/s 로 지나간 뒤 2,800mm 를 700mm/s 로
            돌아온다. 박리는 상대운동이므로 행정도 시간도 그대로다.
          · 유리 냉각을 8.8m 컨베이어에서 냉각 랙으로 세웠다 — 시간을 높이로
            산다. 가열실이 이미 쓰던 방법이다.
@@ -2751,11 +2779,11 @@
            (BJ-101/102 · 덕트 플랜지 · 배출 슈트)가 선다.
 
        칼날이 움직이면 박리점도 움직인다. 가이드롤 GR-W1 을 갠트리에 얹고
-       만권 롤은 고정으로 두면 — 357kg 을 이동축에 싣지 않으려고 그렇게
+       만권 롤은 고정으로 두면 — 416kg 을 이동축에 싣지 않으려고 그렇게
        두는 것인데 — 뜻밖의 결과가 따라온다. 박리점과 GR-W1 이 같은 속도로
        가므로 GR-W1→고정 아이들러 구간이 55mm/s 로 길어지고, 벗겨지는 필름도
        55mm/s 다. 둘이 정확히 상쇄되어 박리 중 드럼은 감지 않는다.
-       감기는 것은 복귀 3.86초 동안 2,700mm 뿐이다 — Ø600 에서 22rpm.
+       감기는 것은 복귀 4.00초 동안 2,800mm 뿐이다 — Ø600 에서 22rpm.
        그래서 큰 댄서가 필요 없다. DN-101 은 가감속 과도만 먹는 300mm 짜리다.
        셀/EVA 도 같은 이유로 갠트리에 실린 슈트를 타고 내려와 고정 트로프로
        빠진다. 남는 난점은 축 선정 하나이고 그것이 OI-14 다. */
@@ -2772,44 +2800,51 @@
     const CPNL_CX=CTBL_CX;
     const CHKB0=CPNL_CX-PANEL_HL,CHKB1=CPNL_CX+PANEL_HL;   // 박리 시점·종점 8.80 → 11.20
     const CHKB_PARK=CHKB0-LEAD_OPEN;                        // 원점 8.50
-    const CRAIL_X0=8.05,CRAIL_X1=11.55;       // 갠트리 주행레일 — 행정 밖 4기둥으로만 받는다
+    const CRAIL_X0=CHKB_PARK-.45,CRAIL_X1=CHKB1+.35;   // 갠트리 주행레일 — 행정 밖 4기둥으로만 받는다
     const CRAIL_Z=1.95;                       // 레일 높이. 바닥에 깔면 y±1420 선이 x8.35~11.35
                                               // 구간에서 z730~2510 까지 막혀 셀/EVA 가 옆으로
                                               // 나갈 길이 없어진다 — 올려서 그 아래를 비운다
-    const CGY=1.42;                           // 갠트리 측면 프레임 y — 테이블(0.78) 바깥
+    const CGY=CARRIER_W/2+.64;                // 갠트리 측면 프레임 y 1,520 — 테이블(0.88) 바깥
     const CBEAM_Z=2.55;                       // 크로스빔 상면 아래 — 웹은 그 밑으로 지난다
     const CWEB_Z=2.20;                        // GR-W1 갠트리 가이드롤
-    const CID_X=8.05,CID_Z=2.05;              // 고정 아이들러
-    const CWFR_X=7.86;                        // 권취 지지 문형 — 가드 단부와 갠트리 기둥 사이
-    const CDN_X=7.72,CDN_Z0=2.50,CDN_Z1=2.80; // DN-101 장력 댄서 — 과도만 먹는 300mm
-    const CDRUM=V(8.05,0,3.70);               // WR-101 만권 롤 — RH-201 모노레일 바로 아래
+    const CID_X=CRAIL_X0,CID_Z=2.05;          // 고정 아이들러 — 레일 기둥 선
+    const CWFR_X=CRAIL_X0-.19;                // 권취 지지 문형 — 가드 단부와 갠트리 기둥 사이
+    const CDN_X=CRAIL_X0-.33,CDN_Z0=2.50,CDN_Z1=2.80; // DN-101 장력 댄서 — 과도만 먹는 300mm
+    const CDRUM=V(CRAIL_X0,0,3.70);           // WR-101 만권 롤 — RH-201 모노레일 바로 아래
     /* ── 셀/EVA 반출 ────────────────────────────────────────────────────
-       분리된 적층체는 2,400 × 1,200 mm 짜리 한 장이다. 좁은 트로프로는 나가지
+       분리된 적층체는 2,500 × 1,400 mm 짜리 한 장이다. 좁은 트로프로는 나가지
        않는다 — 폭이 안 맞는다. 잘라서 부피를 줄이는 길도 있지만 발주자 쪽
        파쇄가 어차피 크기를 줄이므로, 여기서는 자르지 않고 통째로 옆으로 밀어
        내 평적한다. 유리와 같은 취급이 되고 재료도 상하지 않는다.
        레일을 z1950 으로 올린 것이 이 통로를 만든 조건이다. */
-    const CE_Y0=-.90,CE_Y1=-2.90,CE_Z=1.05;   // CE-201 횡인출 컨베이어 — 테이블(−0.78) 바깥
-    const CE_X0=8.60,CE_X1=11.20;
-    const CE_KG=(MASS_EVA+MASS_CELL)*PANEL_L*PANEL_W;   // 3.96 kg/장
+    const CE_Y0=-(CARRIER_W/2+.12),CE_Y1=CE_Y0-(PANEL_W+.80),CE_Z=1.05;   // CE-201 횡인출 컨베이어 — 테이블(−0.88) 바깥, 적층체 폭 + 이송 800
+    const CE_X0=CTBL_CX-PANEL_HL-.10,CE_X1=CTBL_CX+PANEL_HL+.10;       // 적층체 길이 + 양쪽 100
+    const CE_KG=(MASS_EVA+MASS_CELL)*PANEL_L*PANEL_W;   // 4.81 kg/장
     const CE_PITCH=.003,CS_STACK=1.00;        // 평적 피치 · 적재높이
     const csCartPanels=()=>Math.round(CS_STACK/CE_PITCH);
-    const CSCART=V((CE_X0+CE_X1)/2,-3.20,.55);          // CS-201 셀/EVA 적재 카트
-    const CSCART_L=2.60,CSCART_W=1.30;
+    const CSCART_Y=CE_Y1-.30;                 // CS-201 카트 중심 — 컨베이어 끝에서 300 안쪽
+    const CSCART=V((CE_X0+CE_X1)/2,CSCART_Y,.55);       // CS-201 셀/EVA 적재 카트
+    const CSCART_L=PANEL_L+.20,CSCART_W=PANEL_W+.10;    // 적층체 + 가이드포스트 여유
+    /* 반출 쪽 방책은 더 나가야 한다. 카트가 2,700 × 1,500 이고 외장과 방책
+       사이에 들어가야 하므로 −y 만 카트 바깥 끝 + 350 = −4,600 으로 잡는다.
+       기계는 좁아졌지만 반출 구역은 실치수를 갖는다 — 그 자리를 안 그리면
+       현장에서 생긴다. 롤 보관 새들은 그 방책 밖 1,000 이다. */
+    const CFENCE_YN=-CSCART_Y+CSCART_W/2+.35;
+    const BS_SADDLE_Y=-(CFENCE_YN+1.00);      // BS-301 롤 보관 새들 y — 펜스 밖
     /* ── 백시트 롤 반출 ─────────────────────────────────────────────────
-       만권 롤은 357 kg 이라 사람이 들 수 없고, 4.9시간마다 나온다. Rev.20 이
+       만권 롤은 416 kg 이라 사람이 들 수 없고, 4.9시간마다 나온다. Rev.20 이
        그랬듯 보관대는 펜스 밖이어야 한다 — 교체하러 방책 안에 들어가면
        무인 운전 시간이 그 주기로 끊긴다. DL-101 은 지붕이 없으므로 포트를
        뚫지 않고 모노레일로 위를 넘어간다. */
     const ROLL_MASS=MASS_BACK*PANEL_L*PANEL_W*ROLL_FULL_PANELS;
     /* ── 칼날 카세트 인출 포락선 ────────────────────────────────────────
-       BC-201 은 1,440mm 소모품이다. 사양서 6.9 가 카세트 인터페이스를 전부
+       BC-201 은 1,640mm 소모품이다. 사양서 6.9 가 카세트 인터페이스를 전부
        정해 놓았는데, 압축 배치에는 그 카세트가 지나갈 자리가 없었다.
 
-       재어 보면 바닥으로는 안 된다. 갠트리는 y ±1,420 · x 8,050~11,550 을
+       재어 보면 바닥으로는 안 된다. 갠트리는 y ±1,520 · x 8,250~11,850 을
        쓸고 다니므로 그 안에 고정 매거진을 둘 수 없고, 스윕 밖에 두면
-       카세트(y축 1,440) 중심이 y ≥ 2,140 이라 바깥 끝이 2,860 으로 외장
-       2,350 을 뚫는다. 방책 3,400 까지 남는 540mm 로는 사람이 서지 못한다.
+       카세트(y축 1,640) 중심이 y ≥ 2,425 이라 바깥 끝이 3,245 로 외장
+       2,650 을 뚫는다. 방책 3,700 까지 남는 455mm 로는 사람이 서지 못한다.
 
        그래서 자리를 높이로 산다 — 이 라인이 체류시간과 냉각시간에 쓴 것과
        같은 방법이다. 갠트리 최상단은 2,740(X축 랙피니언 상면)이고 외장
@@ -2817,18 +2852,19 @@
        얹으면 갠트리와 310mm 떨어지고 바닥은 한 뼘도 쓰지 않는다.
 
        y 자리는 만권 롤(y ±730)을 피해 −1,550 으로 잡는다. RH-201 모노레일이
-       x 8,050 선을 그대로 지나므로, 소모품 반출은 만권 롤과 같은 길을 쓴다 —
+       x 8,250 선을 그대로 지나므로, 소모품 반출은 만권 롤과 같은 길을 쓴다 —
        사람은 방책 밖에서만 200°C 를 지난 카세트를 만진다. */
-    /* x 는 8,600 이다 — 8,050 선은 레일 기둥·모노레일 기둥·만권 롤·아이들러가
-       이미 넷이나 서 있고, 8,100 에는 EX-101 포크 마스트가 있다. 550mm 옆으로
-       비키면 그 넷을 다 피하고, 갠트리는 z 2,740 아래로만 지나간다. */
-    const CKC_X=8.60,CKC_Y=-1.55,CKC_Z=3.30;     // KC-101 매거진 — 갠트리 상단(2.74) 위
+    /* x 는 컨베이어 시작선 8,900 이다 — 8,250 선은 레일 기둥·모노레일 기둥·
+       만권 롤·아이들러가 이미 넷이나 서 있고, 8,300 에는 EX-101 포크 마스트가
+       있다. 650mm 옆으로 비키면 그 넷을 다 피하고, 갠트리는 z 2,740 아래로만
+       지나간다. */
+    const CKC_X=CE_X0,CKC_Y=-(CARRIER_W/2+.05+KNIFE_W/2),CKC_Z=3.30;   // KC-101 매거진 — 갠트리 상단(2.74) 위 · 포켓 안쪽 끝이 테이블 밖 50
     const CKC_POCKETS=2;                        // 예열 120°C 1칸 · 냉각 1칸
     const CKC_ENV_Z0=CKC_Z-.15,CKC_ENV_Z1=CKC_Z+.15;   // 인출 포락선 높이
-    const CKC_RACK_Y=-7.00;                     // KC-301 카세트 새들 — 만권 롤(−5.93) 밖
+    const CKC_RACK_Y=BS_SADDLE_Y-ROLL_FACE/2-KNIFE_W/2-.35;   // KC-301 카세트 새들 — 만권 롤 바깥 끝에서 350 밖
     /* RH-201 모노레일 높이. 4.85 로 박혀 있었는데 그것은 3단 시절의 값이고,
        EX-101 방출 포크의 두상보는 최상단 데크를 따라 올라간다 — 단수를 올리면
-       두상보가 호이스트 트롤리를 뚫는다. 만권롤 357kg 과 200°C 카세트가
+       두상보가 호이스트 트롤리를 뚫는다. 만권롤 416kg 과 200°C 카세트가
        방책 밖으로 나가는 유일한 길이라, 막히면 무인 운전이 거기서 끝난다.
        그러므로 값이 아니라 두상보 상단에서 유도한다.
          두상보 상단 = cDeckZ(DK−1) + .73 + .09
@@ -2839,14 +2875,11 @@
     const RH_Z=Math.max(4.85,Math.ceil(rhMinZ(DECKS)*20)/20);
     const RH_Y0=.55;                       // 모노레일 본선 시작 — 드럼 쪽
     const RH_Y1=CKC_RACK_Y;                // 끝 — 방책 밖 카세트 랙. 롤과 카세트가 같은 길로 난다
-    const BS_SADDLE=V(8.05,-5.20,.92);        // BS-301 롤 보관 새들 — 펜스(−4.20) 밖
+    const BS_SADDLE=V(CRAIL_X0,BS_SADDLE_Y,.92);   // BS-301 롤 보관 새들 — 모노레일 선 · 펜스 밖
     const CKC_SADDLE=V(CKC_X,CKC_RACK_Y,1.05);   // KC-301 카세트 새들 — 방책 밖
     const CSKIN_X0=CST.HC.x0-.20,CSKIN_X1=CST.GC.x1+.20;
-    const CSKIN_Y=2.35,CFENCE_Y=3.40;
-    /* 반출 쪽 방책은 더 나가야 한다. 카트가 2,600 × 1,300 이고 외장(−2,385)과
-       방책 사이에 들어가야 하므로 −y 만 −4,200 으로 잡는다. 기계는 좁아졌지만
-       반출 구역은 실치수를 갖는다 — 그 자리를 안 그리면 현장에서 생긴다. */
-    const CFENCE_YN=4.20;
+    const CSKIN_Y=-CKC_Y+KNIFE_W/2+.08;       // 외장 — 카세트 매거진 바깥 끝 + 80
+    const CFENCE_Y=CSKIN_Y+1.05;              // +y 방책 — 외장 밖 통로 1,050
     const CFENCE_X0=-.90,CFENCE_X1=compactLength()+.84;
     /* 배기 헤더. 4.70 은 '갓돌 3.60 위' 라는 뜻이었는데 갓돌이 단높임으로
        올라가면 헤더가 지붕 아래로 들어간다 — 챔버 분기가 헤더를 위로 지나
@@ -2864,20 +2897,32 @@
        나누면 한쪽만 고쳐지는 날이 오고, 그날 두 배치가 다른 기계가 된다.
 
        트윈의 값은 검토서(docs/dg-hk120-twin-cell.html)가 유도한 것이다:
-         7단·80등  열수지(피치 ≤ 택트) · 백시트 하한(체류 ≥ 113.2s) ·
-                   유리 열응력(σ ≤ 7 MPa) 세 부등식의 교집합
-         셀 ±2,800 중앙 통로가 둘을 함께 받는 데서 나온다 —
-                   카세트 1,440+2×180 = 1,800 과
-                   EX-101 문형 2×(1,120+75+85+100) = 2,760 중 큰 쪽
-         방책 7,450 카트 바깥 끝 6,650 + 정비 여유 800 */
+         7단·96등  열수지(피치 ≤ 택트) · 백시트 하한(체류 ≥ 113.2s) ·
+                   유리 열응력(σ ≤ 7 MPa) 세 부등식의 교집합 — 택트가 반이라
+                   같은 여유를 두면 정확히 램프 두 배
+         셀 ±3,000 중앙 통로가 둘을 함께 받는 데서 나온다 —
+                   카세트 1,640+2×180 = 2,000 과
+                   EX-101 문형 2×(1,220+75+85+100) = 2,960 중 큰 쪽
+         방책 8,050 카트 바깥 끝 7,250 + 정비 여유 800 */
+    /* 처리량은 열모델이 낸다 — 값으로 적으면 패널이 바뀔 때 여기만 남는다.
+       트윈의 통로·셀 중심·방책은 검토서 GEO 와 같은 식으로 여기서 파생한다:
+         통로 = max(카세트 KNIFE_W + 2×180, EX-101 문형 2×(반폭+75+85+100))
+         셀 중심 = 갠트리 프레임 y + 통로/2
+         방책 = 셀 중심 + 카트 바깥 끝 + 정비 여유 800 */
+    const CYC=thermalModel(MODEL_DEFAULT);
+    const TWIN_AISLE=Math.max(KNIFE_W+.36,2*(FORK_HALF_STD+.075+.085+.10));
+    const TWIN_CELLY=CGY+TWIN_AISLE/2;
+    const TWIN_FENCE=TWIN_CELLY-CSCART_Y+CSCART_W/2+.80;
     const HK60C={id:'compact',rev:'REV.21C',model:'DG-HK60C',plan:'압축 배치',
-      role:'표준',roleNote:'납품 표준 — 계약 60 장/h',
+      role:'표준',roleNote:`납품 표준 — 계약 ${NET_TARGET} 장/h`,
       decks:DECKS,lamps:LAMPS,cells:1,celly:0,aisle:0,
-      fenceP:CFENCE_Y,fenceN:CFENCE_YN,rate:60.5,cycle:53.6};
+      fenceP:CFENCE_Y,fenceN:CFENCE_YN,
+      rate:+(CYC.knifeLineRate*MODEL.availability).toFixed(1),cycle:+CYC.knifeLineCycle.toFixed(1)};
     const HK120C={id:'twin',rev:'REV.22T',model:'DG-HK120C',plan:'1가열실 · 탠덤 2셀 병렬',
-      role:'확장 · 수평 병렬',roleNote:'확장 옵션 — 120 장/h 요구 시',
-      decks:7,lamps:80,cells:2,celly:2.80,aisle:2.76,
-      fenceP:7.45,fenceN:7.45,rate:120.9,cycle:26.8};
+      role:'확장 · 수평 병렬',roleNote:`확장 옵션 — ${2*NET_TARGET} 장/h 요구 시`,
+      decks:7,lamps:2*LAMPS,cells:2,celly:TWIN_CELLY,aisle:TWIN_AISLE,
+      fenceP:TWIN_FENCE,fenceN:TWIN_FENCE,
+      rate:+(CYC.knifeLineRate*2*MODEL.availability).toFixed(1),cycle:+(CYC.knifeLineCycle/2).toFixed(1)};
     /* 보관열(BS-301 롤 · KC-301 카세트)은 방책 밖이어야 한다. 압축은 방책이
        −4,200 이라 −5,200 / −7,000 이 이미 밖이지만, 트윈은 반출이 양쪽으로
        나뉘어 방책이 −6,970 까지 물러난다. 값을 박아 두면 그날 보관대가
@@ -2898,7 +2943,7 @@
        본선(폭 240, x 7,930~8,170)이 세로로 지나간다 — 마스트가 레일을
        뚫는다. 200mm 하류로 비키면 레일과 55mm, 나이프 갠트리 기둥
        (7,965~8,135)과 90mm 떨어지고, 갠트리 프레임은 |y| ≥ 1,380 이라
-       ±1,120 문형과는 애초에 만나지 않는다. */
+       ±1,220 문형과는 애초에 만나지 않는다. */
     const cMastOut=()=>twinView()?CMAST_OUT+.20:CMAST_OUT;
     const cBsY=()=>BS_SADDLE.y-cOutRow(),cKcY=()=>CKC_RACK_Y-cOutRow();
 
@@ -2930,7 +2975,7 @@
         line([V(x0,-1.24,.55),V(x1,-1.24,.55),V(x1,-1.24,opt.top-.06)],C.yellow,2,[6,3]);
         label3(opt.section,V(cx,-1.52,opt.top-.2),C.yellow);
       }
-      /* 데크와 층별 잠금. 데크는 2,780 — 챔버 안치수 3,080 안에 든다.
+      /* 데크와 층별 잠금. 데크는 2,880 — 챔버 안치수 3,180 안에 든다.
          단수는 배치가 정한다 — 값으로 박으면 트윈에서 랙만 3단으로 남는다. */
       for(let k=0;k<(opt.decks??DECKS);k++){const z=cDeckZ(k);
         box(V(cx,0,z),V(DECK_L+.12,DECK_W+.18,.10),C.steel2);
@@ -2973,8 +3018,8 @@
         box(V(x,0,CZ+.62),V(.09,1.75,1.30),C.guard,{alpha:.5});
         box(V(x,0,CZ+1.34),V(.15,1.95,.16),C.yellow);
         for(const y of [-.98,.98])box(V(x,y,CZ+.62),V(.13,.11,1.36),C.steel2);
-        box(V(x,-1.02,CZ+1.16),V(.12,.10,.14),C.teal);                                     // 에어록 도어 위치센서×8
-        label3(`${tag} · 이중셔터 에어록`,V(x,-1.42,CZ+1.72),C.teal);
+        box(V(x,-1.02,CZ+1.16),V(.12,.10,.14),C.teal);                                     // 에어록 단별 셔터 위치센서×20
+        label3(`${tag} · 단별 셔터 ${DECKS}단`,V(x,-1.42,CZ+1.72),C.teal);
       }
       exhaust(g.cx,.22,top+.175);
       label3(`HC-101 · ${DK}단 밀폐 IR 가열실 — 1기 (직렬)`,V(g.cx,-1.50,cDeckZ(DK-1)+1.25),C.heat);
@@ -2982,14 +3027,14 @@
     }
     /* 승강 포크. 랙은 고정이고 포크가 층을 고른다 — 랙을 들면 챔버가
        2.5m 더 높아진다. 마스트는 이웃 스테이션의 끝자리를 쓴다. */
-    /* 승강 포크 문형. 폭은 패널 1,200 이 지나갈 자리에서 나오므로 압축은
-       ±1,120 이면 넉넉하다. 트윈은 사정이 다르다 — 이 문형이 두 셀 사이
+    /* 승강 포크 문형. 폭은 패널 1,400 이 지나갈 자리에서 나오므로 압축은
+       ±1,220 이면 넉넉하다. 트윈은 사정이 다르다 — 이 문형이 두 셀 사이
        통로에 서고, 그 통로에는 셀 가드 벽도 서야 한다. 통로 반폭은
-       셀중심 2,800 − 갠트리기둥 바깥 1,505 = 1,295 뿐이라 ±1,120(바깥
-       1,195)으로는 가드 벽이 들어갈 100mm 가 남지 않는다. ±950 으로
+       셀중심 3,000 − 갠트리기둥 바깥 1,605 = 1,395 뿐이라 ±1,220(바깥
+       1,295)으로는 가드 벽이 들어갈 100mm 가 남지 않는다. ±1,050 으로
        좁히면 패널 옆 여유가 275mm 로 여전히 넉넉하고 가드가 선다. */
-    function cFork(x,tag,dir,label,half=1.12){
-      const DK=LC().decks,k=half/1.12;
+    function cFork(x,tag,dir,label,half=FORK_HALF_STD){
+      const DK=LC().decks,k=half/FORK_HALF_STD;
       for(const y of [-half,half]){
         column(x,y,cDeckZ(DK-1)+.66,{s:.15,color:C.steel,plate:.40});
         gusset(x,y,cDeckZ(DK-1)+.63,y>0?-1:1,'y',.15,C.steel2);
@@ -3003,18 +3048,19 @@
       box(V(x-dir*.20,1.05*k,CZ+.86),V(.32,.30,.40),C.cab);
       label3(label,V(x,-1.34,cDeckZ(DK-1)+.41),C.teal);
     }
-    /* 문형 반폭. 압축은 패널 1,200 이 지나갈 자리에서 나오고, 트윈은 셀 사이
-       통로가 좁아 더 죈다. 이름을 주는 것은 기초도면이 납품 배치 값을 그대로
-       집어야 하기 때문이다 — 도면이 twinView() 를 따라가면 안 된다. */
-    const FORK_HALF_STD=1.12,FORK_HALF_TWIN=.95;
+    /* 문형 반폭은 뿌리 블록(FORK_HALF_STD · FORK_HALF_TWIN)에 있다 — 트윈 통로
+       폭이 그보다 앞에서 쓴다. 압축은 패널 1,400 이 지나갈 자리(테이블 반폭 +
+       340)에서 나오고, 트윈은 셀 사이 통로가 좁아 패널 반폭 + 350 으로 죈다.
+       이름을 주는 것은 기초도면이 납품 배치 값을 그대로 집어야 하기 때문이다 —
+       도면이 twinView() 를 따라가면 안 된다. */
     const cForkHalf=()=>twinView()?FORK_HALF_TWIN:FORK_HALF_STD;
     function cInfeed(){
       const g=CST.LD;
-      conveyor(g.cx-.22,2.42,CZ,1.62);
+      conveyor(g.cx-.22,PANEL_L+.02,CZ,PANEL_W+.42);
       box(V(g.cx-.22,0,CZ-.42),V(1.10,1.30,.22),C.steel2);                      // WI-101 계량 프레임
       for(const sx of [-1,1])for(const y of [-.52,.52])box(V(g.cx-.22+sx*.48,y,CZ-.30),V(.16,.16,.14),C.teal);  // 투입 계량 로드셀×4
-      for(const y of [-.74,.74])box(V(g.x1-.42,y,CZ+.14),V(.10,.12,.22),C.yellow);        // 패널 스토퍼
-      for(const y of [-.80,.80])box(V(g.cx,y,CZ+.10),V(1.9,.09,.16),C.steel2);            // 폭조절 가이드
+      for(const y of [-(PANEL_HW+.14),PANEL_HW+.14])box(V(g.x1-.42,y,CZ+.14),V(.10,.12,.22),C.yellow);        // 패널 스토퍼
+      for(const y of [-(PANEL_HW+.20),PANEL_HW+.20])box(V(g.cx,y,CZ+.10),V(PANEL_L-.50,.09,.16),C.steel2);            // 폭조절 가이드
       column(g.x0+.42,-1.10,2.55,{s:.12,color:C.steel2,plate:.30});
       box(V(g.x0+.42,-1.10,2.62),V(.30,.28,.22),C.dark);                                  // 2D 비전카메라
       box(V(g.x0+.42,-.82,2.44),V(.18,.16,.14),C.teal);                                   // 레이저 높이센서
@@ -3025,7 +3071,7 @@
       box(V(-.30,0,.11),V(1.30,1.34,.14),C.sheet);                                        // 인계 팔레트
       for(let k=0;k<3;k++)box(V(-.30,0,.24+k*.055),V(1.22,1.26,.05),C.glass,{alpha:.55});
       label3('발주자 인계 · 투입 픽업 스테이션',V(-.30,-1.05,1.06),C.brand);
-      label3('LD-101 · 투입 셔틀 (3,000)',V(g.cx,-1.32,2.20),C.teal);
+      label3(`LD-101 · 투입 셔틀 (${Math.round(CST.LD.w*1000).toLocaleString()})`,V(g.cx,-1.32,2.20),C.teal);
     }
     /* 셀 하나. 트윈에서는 이 함수를 두 번 부르고 y 로 옮긴다.
          mirror  — 셀 B 는 셀/EVA 를 +y 로 낸다. 그대로 두면 두 셀의 인출이
@@ -3048,7 +3094,7 @@
        벽은 폴리카보네이트다 — 가둘 것은 가두되 안이 보여야 정비가 산다. */
     const CG_Y=1.64,CG_Z=2.55,CG_PL=.34;
     /* RH-201 인양구. 트롤리 상자 하나만 있으면 반출 수단이 그림에 없는
-       것과 같다 — 만권 롤은 357 kg 이고 셀당 4.9시간마다 나온다. 훅블록·
+       것과 같다 — 만권 롤은 416 kg 이고 셀당 4.9시간마다 나온다. 훅블록·
        슬링 2본·인양빔까지 그려야 그 길이 길로 읽힌다. */
     function cHoist(hy,rz,bsy){
       box(V(CRAIL_X0,hy,rz-.34),V(.34,.44,.30),C.cab);                       // 호이스트 트롤리
@@ -3066,11 +3112,11 @@
     }
     function cCellGuard(dy,tag){
       /* 평면은 직사각형이 아니라 계단이다. +x 안쪽 모서리에 GC-101 랙
-         기둥의 베이스플레이트(x 11,560~12,000)가 깔려 있어 그 자리에는
-         가드 기둥이 못 선다. 11,440 에서 통로 쪽으로 물러섰다가 다시
+         기둥의 베이스플레이트(x 11,860~12,300)가 깔려 있어 그 자리에는
+         가드 기둥이 못 선다. 랙 기둥 340 앞(11,740)에서 통로 쪽으로 물러섰다가 다시
          나가는 계단으로 피한다 — 가드가 이웃 설비를 비켜 가는 것은
          현장에서 늘 하는 일이고, 직사각형으로 우기면 기둥이 겹친다. */
-      const x0=CST.DL.x0-.02,x1=CST.DL.x1+.24,SX=11.44,SY=1.20,
+      const x0=CST.DL.x0-.02,x1=CST.DL.x1+.24,SX=CST.GC.x0-.34,SY=1.20,
             TX0=CE_X0-.14,TX1=CE_X1+.14,TZ0=.72,TZ1=1.46,   // CE-201 반출 터널
             DX=(x0+x1)/2+.55,DW=1.00,T=.05;                 // 정비 도어
       /* 한 구간을 세운다. gap 이 있으면 그 구간만 비우고, 비운 자리는
@@ -3097,7 +3143,7 @@
       run(false,SX,SY,CG_Y);
       run(true,CG_Y,x0,SX,[DX-DW/2,DX+DW/2]);             // 안쪽면 — 정비 도어
       run(false,x0,-CG_Y,CG_Y);                           // −x 단부
-      /* 터널 — 적층체 2,400 × 1,200 이 통째로 지나간다. 위아래는 막고
+      /* 터널 — 적층체 2,500 × 1,400 이 통째로 지나간다. 위아래는 막고
          프레임을 노랗게 둘러 개구가 개구로 읽히게 한다. */
       const ty=dy*-CG_Y;
       box(V((TX0+TX1)/2,ty,(TZ1+CG_Z)/2),V(TX1-TX0,.03,CG_Z-TZ1),C.glass,{alpha:.26});
@@ -3125,13 +3171,11 @@
          이 배치의 전부다 — 11.2m 이송축이 3.8m 셀이 된 이유다. */
       box(V(CTBL_CX,0,CZ-.09),V(CARRIER_L,CARRIER_W,.18),C.steel2);
       box(V(CTBL_CX,0,CZ+.01),V(CARRIER_L-.12,CARRIER_W-.10,.03),C.dark);
-      for(const x of [CTBL_CX-1.25,CTBL_CX+1.25])for(const y of [-.62,.62])
-        column(x,y,CZ-.20,{s:.13,color:C.steel2,plate:.32});
-      for(let c=0;c<6;c++)for(let r=0;r<3;r++){                                            // 흡착패드×18 · 6열이 6존
-        const x=CTBL_CX-1.0+c*.40,y=-.40+r*.40;
-        cylinder(V(x,y,CZ+.04),.115,.05,'z',C.belt,10);
-      }
-      for(let c=0;c<6;c++)box(V(CTBL_CX-1.0+c*.40,-.86,CZ-.16),V(.14,.16,.14),C.teal);     // 진공압센서×6
+      for(const x of [CTBL_CX-(CARRIER_L-.40)/2,CTBL_CX+(CARRIER_L-.40)/2])for(const y of [-(CARRIER_W-.32)/2,(CARRIER_W-.32)/2])
+        column(x,y,CZ-.20,{s:.13,color:C.steel2,plate:.32});                             // 기둥 간격 = 제작 지침서 tbl_span
+      for(const xx of padXs())for(const yy of padYs())                                     // 흡착패드 PAD_COLS×PAD_ROWS · 열이 존
+        cylinder(V(CTBL_CX+xx,yy,CZ+.04),PAD_R*.92,.05,'z',C.belt,10);
+      for(const xx of padXs())box(V(CTBL_CX+xx,-(PANEL_HW+.16),CZ-.16),V(.14,.16,.14),C.teal);   // 진공압센서×6 (열마다)
       box(V(CTBL_CX,-.98,CZ-.30),V(CARRIER_L-.3,.16,.20),C.steel2);                        // 6존 진공매니폴드
       for(const y of [-.70,.70])box(V(CTBL_CX-1.34,y,CZ+.06),V(.10,.12,.18),C.yellow);     // 패널 착좌·스퀘어 센서×4
       for(const y of [-.70,.70])box(V(CTBL_CX+1.34,y,CZ+.06),V(.10,.12,.18),C.yellow);
@@ -3166,7 +3210,7 @@
       box(V(CDRUM.x,1.02,CDRUM.z-.20),V(.24,.22,.22),C.teal);                                // 웹 파단 검출센서
       box(V(CID_X-.30,-1.26,CDN_Z0),V(.22,.20,.24),C.teal);                                  // 장력 로드셀
       /* CE-201 횡인출 컨베이어. 적층체를 자르지 않고 통째로 −y 로 밀어낸다.
-         2,400 × 1,200 한 장이 그대로 지나가야 하므로 폭은 테이블 밖에서 시작해
+         2,500 × 1,400 한 장이 그대로 지나가야 하므로 폭은 테이블 밖에서 시작해
          외장 밖까지 이어진다. 레일을 올린 덕에 그 아래로 지날 수 있다. */
       const cey=dy*(CE_Y0+CE_Y1)/2,cew=CE_Y0-CE_Y1,cex=(CE_X0+CE_X1)/2,cel=CE_X1-CE_X0;
       box(V(cex,cey,CE_Z-.10),V(cel,cew,.20),C.steel2);
@@ -3192,7 +3236,7 @@
       label3(`CE-201 · 횡인출 컨베이어 ${Math.round(PANEL_L*1000)} × ${Math.round(PANEL_W*1000)} 통째 반출`,V(cex,dy*(CE_Y0+.35),CE_Z+.46),C.cell2);
       label3('VT-101 · 6존 고정 진공테이블 (패널 정지)',V(CTBL_CX,-1.62,CZ+.44),C.yellow);
       if(shared){
-      /* RH-201 모노레일. 357 kg 롤이 4.9시간마다 나오는데 보관대가 방책 안이면
+      /* RH-201 모노레일. 416 kg 롤이 4.9시간마다 나오는데 보관대가 방책 안이면
          그 주기마다 사람이 들어가야 한다 — Rev.20 이 펜스 밖에 둔 이유다.
          DL-101 은 지붕이 없으므로 외장에 포트를 내지 않고 위로 넘긴다. */
       column(CRAIL_X0,-CGY,RH_Z-.12,{s:.17,color:C.steel,plate:.44});
@@ -3241,7 +3285,7 @@
       }
       if(opt.tag&&!sectionView)cCellGuard(dy,opt.tag);
       label3(opt.tag?`DL-101 ${opt.tag} · 탠덤 분리 셀 — ${opt.tag==='A'?'−y':'+y'} 라인 (병렬 2 중 ${opt.tag==='A'?1:2})`
-                    :'DL-101 · 탠덤 분리 셀 (3,800)',
+                    :`DL-101 · 탠덤 분리 셀 (${Math.round(CST.DL.w*1000).toLocaleString()})`,
              V(g.cx,dy*-1.95,3.30),C.teal);
     }
     /* 트윈의 공유 계통. 두 셀이 함께 쓰는 것만 여기 있다.
@@ -3259,7 +3303,7 @@
          레일 높이가 이 축의 전부다. 나이프 갠트리 최상단이 2,740 이므로
          패널은 그 위로 지나야 하고, 만권 롤 하단이 3,400 이므로 그 아래로
          지나야 한다. 그 사이 660mm 에 레일(3,160)과 캐리지(2,940)를 넣는다.
-         레일은 문형 기둥(±1,120)에서 양쪽으로 내밀린 캔틸레버다 — 관통시키면
+         레일은 문형 기둥(±1,220)에서 양쪽으로 내밀린 캔틸레버다 — 관통시키면
          자기 기둥을 뚫는다. */
       const EXZ=CZ+2.01,EXC=CZ+1.79,EX0=cForkHalf()+.075;   // 캔틸레버는 제 기둥에서 나간다
       for(const sg of [-1,1])
@@ -3273,7 +3317,7 @@
              V(EXX,0,EXZ+.34),C.yellow);
       /* RH-201 모노레일 1선. 두 셀의 만권 롤이 같은 축(x 8,050)에 있으므로
          레일도 한 선이면 된다 — 다만 기둥 자리가 문제다. 통로 한가운데는
-         EX-101 포크 마스트(±1,120)가 서 있고, 셀 A/B 의 갠트리 기둥이
+         EX-101 포크 마스트(±1,220)가 서 있고, 셀 A/B 의 갠트리 기둥이
          ±1,380 · ±4,220 에 넷 서 있다. 레일 자체는 높이 1,820 짜리 갠트리
          기둥 위를 그냥 지나가지만 기둥은 바닥에 닿아야 하므로, 셀 바깥
          한 쌍과 방책 밖 한 자리로 뺀다. */
@@ -3396,7 +3440,7 @@
     }
     function cOutfeed(){
       const g=CST.UL;
-      conveyor(g.cx+.10,2.50,CZ,1.62);
+      conveyor(g.cx+.10,PANEL_L+.10,CZ,PANEL_W+.42);
       box(V(g.cx-.30,0,CZ-.42),V(1.05,1.30,.22),C.steel2);                                    // WO-301 유리 계량
       for(const sx of [-1,1])for(const y of [-.50,.50])box(V(g.cx-.30+sx*.45,y,CZ-.30),V(.15,.15,.13),C.teal);
       /* QI-301 검사 아치 — 랙에서 나온 유리가 반드시 지난다. */
@@ -3419,7 +3463,7 @@
       box(V(compactLength()+.34,0,.11),V(1.30,1.34,.14),C.sheet);
       for(let k=0;k<4;k++)box(V(compactLength()+.34,0,.24+k*.055),V(1.22,1.26,.05),C.glass,{alpha:.55});
       label3('발주자 인계 · 유리 반출 픽업 스테이션 (GLASS_TAKEAWAY_READY)',V(compactLength()+.34,-1.15,1.10),C.brand);
-      label3('UL-101 · 반출 셔틀 (3,000) · QI-301 검사',V(g.cx,-1.32,3.24),C.teal);
+      label3(`UL-101 · 반출 셔틀 (${Math.round(CST.UL.w*1000).toLocaleString()}) · QI-301 검사`,V(g.cx,-1.32,3.24),C.teal);
     }
     /* 경계. 설비를 떼는 것이 아무것도 주지 않는 것이 되면 현장에서 배선이
        붕 뜬다 — 여기 서 있는 것이 우리가 경계에서 납품하는 전부다. */
@@ -3629,16 +3673,16 @@
       {id:'C1',name:`${DK}단 밀폐가열 ${DK}/${DK}`,duration:15000,desc:`LI-101 이 층을 골라 밀어 넣고 ${DK}/${DK} 잠금·밀폐를 확인한 뒤 EVA/유리 계면 ${T_TARGET}°C 까지 소킹합니다. 체류 ${thermalModel(MODEL_DEFAULT).dwell.toFixed(1)}초를 ${DK}단이 나눠 갖습니다.`,vac:'VT-101 대기',temp:`${TAG} · 계면 ${T_TARGET}°C`,out:'SEALED_FULL_LOAD_ACK',flow:['권취 대기','가열 중','가열 중'],cam:[1,CST.HC.cx]},
       {id:'C2',name:twin?'140°C 방출 · A/B 교대 착좌':'140°C 방출 · 테이블 착좌',duration:4200,desc:twin?`EX-101 이 ${T_TARGET}°C 패널을 꺼내 횡이송으로 A·B 두 셀에 번갈아 앉힙니다. 챔버 방출은 한 구인데 셀이 둘이라, 두 셀은 반 택트 어긋나 돕니다.`:`EX-101 이 ${T_TARGET}°C 패널을 꺼내 VT-101 6존 진공테이블에 앉힙니다. 이 순간부터 박리가 끝날 때까지 패널은 움직이지 않습니다.`,vac:'VT-101 · −65 kPa',temp:'HKB 180°C · HKS 200°C',out:'TABLE_VAC_OK',flow:['장력 형성 대기','HKS 분리 대기','진공테이블 지지'],cam:[2,CTBL_CX]},
       {id:'C3',name:'나이프 원점 → 선단 300mm',duration:3000,desc:'KG-101 이 원점에서 나와 HKB 가 백시트 선단 300mm 를 열고 WR-101 장력을 잡습니다. HKS 는 300mm 뒤에서 따라옵니다.',vac:'VT-101 · −65 kPa',temp:'HKB 180°C',out:'LEAD_300_ACK',flow:['선단 개방 중','HKS 진입 대기','진공테이블 지지'],cam:[2,CTBL_CX-.8]},
-      {id:'C4',name:twin?'55mm/s 나이프 통과박리 · 2셀 병렬':'55mm/s 나이프 통과박리',duration:7600,desc:twin?'두 셀이 각자 55mm/s 로 2,400mm 를 지나갑니다. 셀 하나의 사이클은 53.6초로 그대로이고, 반 택트 어긋나 돌기 때문에 라인 택트만 절반이 됩니다.':'패널은 서 있고 KG-101 이 55mm/s 로 2,400mm 를 지나갑니다. 상대운동이 같으므로 행정도 시간 43.6초도 이동 캐리어와 같습니다.',vac:'VT-101 6존 · −65 kPa',temp:'HKB 180°C · HKS 200°C',out:'KNIFE_PEEL_COMPLETE',flow:['GR-W1 이 같이 간다 — 권취 0','유리에서 분리 중','진공테이블 지지'],cam:[2,CTBL_CX]},
-      {id:'C5',name:'3계통 분기',duration:4200,desc:'백시트는 GR-W1 을 지나 WR-101 로, 셀/EVA 는 갠트리 슈트에서 CE-201 트로프로, 유리는 테이블에 남습니다. 세 계통이 서로 다른 방향으로 갈라집니다.',vac:'VT-101 유지',temp:'유리 180°C',out:'STREAMS_SPLIT',flow:['웹 길이 상쇄 — 드럼 정지','CE-201 통째 인출 2,400×1,200','테이블에 유리만 남음'],cam:[1,CTBL_CX+.6]},
-      {id:'C6',name:'700mm/s 복귀 · 패널 교환',duration:3000,desc:'나이프가 2,700mm 를 700mm/s 로 3.86초에 복귀합니다. 그 사이 유리가 나가고 다음 패널이 들어옵니다 — 두 동작이 같은 창(4.5초) 안에 있어 사이클이 늘지 않습니다.',vac:'VT-101 해제',temp:'카세트 온도 유지',out:'KNIFE_X_HOME',flow:['복귀 중 2,700mm 권취','CS-201 카트로 평적','GC-101 랙으로'],cam:[2,CTBL_CX]},
+      {id:'C4',name:twin?'55mm/s 나이프 통과박리 · 2셀 병렬':'55mm/s 나이프 통과박리',duration:7600,desc:twin?`두 셀이 각자 55mm/s 로 ${PANEL_L*1000}mm 를 지나갑니다. 셀 하나의 사이클은 ${(takt*L.cells).toFixed(1)}초로 그대로이고, 반 택트 어긋나 돌기 때문에 라인 택트만 절반이 됩니다.`:`패널은 서 있고 KG-101 이 55mm/s 로 ${PANEL_L*1000}mm 를 지나갑니다. 상대운동이 같으므로 행정도 시간 ${(PANEL_L*1000/55).toFixed(1)}초도 이동 캐리어와 같습니다.`,vac:'VT-101 6존 · −65 kPa',temp:'HKB 180°C · HKS 200°C',out:'KNIFE_PEEL_COMPLETE',flow:['GR-W1 이 같이 간다 — 권취 0','유리에서 분리 중','진공테이블 지지'],cam:[2,CTBL_CX]},
+      {id:'C5',name:'3계통 분기',duration:4200,desc:'백시트는 GR-W1 을 지나 WR-101 로, 셀/EVA 는 갠트리 슈트에서 CE-201 트로프로, 유리는 테이블에 남습니다. 세 계통이 서로 다른 방향으로 갈라집니다.',vac:'VT-101 유지',temp:'유리 180°C',out:'STREAMS_SPLIT',flow:['웹 길이 상쇄 — 드럼 정지',`CE-201 통째 인출 ${PANEL_L*1000}×${PANEL_W*1000}`,'테이블에 유리만 남음'],cam:[1,CTBL_CX+.6]},
+      {id:'C6',name:'700mm/s 복귀 · 패널 교환',duration:3000,desc:`나이프가 ${PANEL_L*1000+300}mm 를 700mm/s 로 ${((PANEL_L*1000+300)/700).toFixed(2)}초에 복귀합니다. 그 사이 유리가 나가고 다음 패널이 들어옵니다 — 두 동작이 같은 창(4.5초) 안에 있어 사이클이 늘지 않습니다.`,vac:'VT-101 해제',temp:'카세트 온도 유지',out:'KNIFE_X_HOME',flow:[`복귀 중 ${PANEL_L*1000+300}mm 권취`,'CS-201 카트로 평적','GC-101 랙으로'],cam:[2,CTBL_CX]},
       {id:'C7',name:`유리 ${DK}단 냉각 랙`,duration:5200,desc:`GL-101 이 유리를 GC-101 랙에 넣고 강제공랭으로 ${GCOOL_T_IN} → ${GCOOL_T_OUT}°C 로 내립니다. 필요한 ${glassCoolSec().toFixed(0)}초를 길이가 아니라 단수로 삽니다.`,vac:'—',temp:`유리 ${GCOOL_T_IN} → ${GCOOL_T_OUT}°C`,out:'GLASS_COOL_OK',flow:['BS-301 보관','CS-201 평적 중',`G1~G${DK} 강제공랭`],cam:[1,CST.GC.cx]},
       {id:'C8',name:'QI 검사 · 반출',duration:4000,desc:'QI-301 이 잔류 EVA·균열·표면온도를 보고 합격품만 UL-101 로 내보냅니다. 불합격은 RJ-301 로 분기합니다.',vac:'—',temp:'유리 60°C 이하',out:'GLASS_DISCHARGE_PERMIT',flow:['BS-301 보관','CS-201 평적 중','QI-301 검사·RJ 분기'],cam:[0,CST.UL.cx]},
-      {id:'C9',name:'경계 인계',duration:4000,desc:'세 계통이 각자 다른 방향으로 나갑니다 — 백시트는 RH-201 모노레일로 방책을 넘어 BS-301 로(357 kg · 4.9시간마다), 셀/EVA 는 CE-201 로 통째로 −y 로 밀려 CS-201 카트에 평적되어 게이트로, 유리는 픽업 스테이션으로. 설비는 발주자 것이 되어도 인터록은 경계 너머까지 성립합니다.',vac:'—',temp:'덕트 차압 확인',out:'BOUNDARY_READY',flow:['RH-201 모노레일 → BS-301 (펜스 밖)','CS-201 게이트 반출','픽업 스테이션 인계'],cam:[0,CBJ_X]},
-      {id:'C10',name:twin?'120장 연속 시험 · 1셀 정지 시험':'60장 연속 시험',duration:8000,desc:twin?`택트 ${takt.toFixed(1)}초의 정상상태를 8초로 압축합니다. 셀 하나를 세우면 남은 하나가 ${(3600/thermalModel(MODEL_DEFAULT).knifeLineCycle*.9).toFixed(1)}장/h 를 내므로 계약 60장/h 는 그대로 나옵니다 — 이 구성이 처리량 2배와 함께 파는 것이 이것입니다.`:'53.6초 사이클의 정상상태 60장을 8초로 압축합니다. 나이프가 55mm/s 로 가고 700mm/s 로 돌아오기를 60번 반복합니다.',vac:'VT-101 · −65 kPa',temp:twin?`택트 ${takt.toFixed(1)}초 · ${rate.toFixed(1)} 장/h`:'실공정 53분35초 → 영상 8초',out:twin?'TWIN_CELL_TEST_COMPLETE':'SIXTY_TEST_COMPLETE',flow:twin?['셀별 롤에 권취','CE-201 A/B 인출','GC-101 랙 순환']:['롤에 60장 권취','CE-201 연속 인출','GC-101 랙 순환'],cam:[2,CTBL_CX]},
+      {id:'C9',name:'경계 인계',duration:4000,desc:`세 계통이 각자 다른 방향으로 나갑니다 — 백시트는 RH-201 모노레일로 방책을 넘어 BS-301 로(${ROLL_MASS.toFixed(0)} kg · ${(ROLL_FULL_PANELS/NET_TARGET).toFixed(1)}시간마다), 셀/EVA 는 CE-201 로 통째로 −y 로 밀려 CS-201 카트에 평적되어 게이트로, 유리는 픽업 스테이션으로. 설비는 발주자 것이 되어도 인터록은 경계 너머까지 성립합니다.`,vac:'—',temp:'덕트 차압 확인',out:'BOUNDARY_READY',flow:['RH-201 모노레일 → BS-301 (펜스 밖)','CS-201 게이트 반출','픽업 스테이션 인계'],cam:[0,CBJ_X]},
+      {id:'C10',name:twin?'120장 연속 시험 · 1셀 정지 시험':'60장 연속 시험',duration:8000,desc:twin?`택트 ${takt.toFixed(1)}초의 정상상태를 8초로 압축합니다. 셀 하나를 세우면 남은 하나가 ${(3600/thermalModel(MODEL_DEFAULT).knifeLineCycle*.9).toFixed(1)}장/h 를 내므로 계약 ${NET_TARGET}장/h 는 그대로 나옵니다 — 이 구성이 처리량 2배와 함께 파는 것이 이것입니다.`:`${takt.toFixed(1)}초 사이클의 정상상태 60장을 8초로 압축합니다. 나이프가 55mm/s 로 가고 700mm/s 로 돌아오기를 60번 반복합니다.`,vac:'VT-101 · −65 kPa',temp:twin?`택트 ${takt.toFixed(1)}초 · ${rate.toFixed(1)} 장/h`:`실공정 ${Math.floor(60*takt/60)}분${Math.round(60*takt%60)}초 → 영상 8초`,out:twin?'TWIN_CELL_TEST_COMPLETE':'SIXTY_TEST_COMPLETE',flow:twin?['셀별 롤에 권취','CE-201 A/B 인출','GC-101 랙 순환']:['롤에 60장 권취','CE-201 연속 인출','GC-101 랙 순환'],cam:[2,CTBL_CX]},
       ];
     }
-    /* 압축 배치는 18.76m 라 Rev.20 과 같은 카메라 거리로는 화면에 점만 남는다. */
+    /* 압축 배치는 19.26m 라 Rev.20 과 같은 카메라 거리로는 화면에 점만 남는다. */
     const cpresets=[{az:-2.18,el:.36,r:23},{az:-1.56,el:.30,r:25},{az:-2.66,el:.50,r:20},{az:-2.12,el:1.00,r:27}];
     /* 트윈은 시점이 배치의 일부다. 압축과 같은 낮은 각도(el .30~.36)로 보면
        앞 셀이 뒤 셀을 그대로 가려 두 대가 한 대로 읽히고, 그 대신 높이
@@ -3842,7 +3886,7 @@
           const u=i===4?clamp(q*1.3):(i===7?1-clamp(q*1.6):1),
                 ly=lerp(CE_Y0-.6,CE_Y1+.6,ease(clamp(u)));
           box(V((CE_X0+CE_X1)/2,dy*ly,CE_Z+.06),V(PANEL_L,PANEL_W,.045),C.cell,{alpha:.95});
-          if(i===4&&c===0)label3('CE-201 · 2,400 × 1,200 통째 인출',V((CE_X0+CE_X1)/2,dy*(CE_Y1+.2),CE_Z+.42),C.cell2)});
+          if(i===4&&c===0)label3(`CE-201 · ${PANEL_L*1000} × ${PANEL_W*1000} 통째 인출`,V((CE_X0+CE_X1)/2,dy*(CE_Y1+.2),CE_Z+.42),C.cell2)});
         /* 카트 위 — 통과 회수만큼 쌓인다. 한 장만 얹으면 '평적' 이 안 보인다. */
         if(i>=6)withPartOffset(off,()=>{
           const n=1+((carriageCycleNo+c)%4);
@@ -3981,14 +4025,17 @@
     /* VC-101 진공 캐리어.
 
        패널은 흡착만으로 잡혀 있고 두 칼날의 추력은 전부 패드 마찰로 받는다.
-       필요 패드면적은 A ≥ 2F/(μ·Δp) (RFQ OI-13) 이고, 추력 상한 13.37kN·
-       μ0.6·Δp65kPa 에서 0.686m² 다. 종전 그림의 3×3 = 9패드 Ø280 은 0.554m²
-       라 상한의 0.81배 — 그림대로면 패널이 미끄러진다. 제작도 목록도 패드를
-       18개로 적고 있어 그림과 표가 서로 달랐다.
+       필요 패드면적은 A ≥ 2F/(μ·Δp) (RFQ OI-13) 이고, 추력 상한 F_PEEL 15.60kN·
+       μ0.6·Δp65kPa 에서 PAD_NEED = 0.800m² 다(2,400×1,200 시절 13.37kN 에서는
+       0.686). 종전 그림의 3×3 = 9패드 Ø280 은 0.554m² 라 상한의 0.81배 —
+       그림대로면 패널이 미끄러진다. 제작도 목록도 패드를 18개로 적고 있어
+       그림과 표가 서로 달랐다.
 
-       6열 × 3행 = 18패드 Ø250 → 0.884m², 상한 대비 1.29배. 열 하나가 진공
-       1존이라 존별 압력센서·필터·체크밸브 6조와 그대로 맞는다. */
-    const PAD_COLS=6,PAD_ROWS=3,PAD_R=.125;
+       6열 × 3행 = 18패드 Ø250 → 0.884m² 는 폭 1,200 에서 1.29배였는데 폭이
+       1,400 이 되며 추력이 16.7% 늘어 1.10배 — 가정 오차 안이다. 4행으로
+       올려 24패드 → 1.178m², 1.47배. 열 하나가 진공 1존이라 존별 압력센서·
+       필터·체크밸브 6조는 그대로다. */
+    const PAD_COLS=6,PAD_ROWS=4,PAD_R=.125;
     const PAD_PITCH_X=PANEL_L/PAD_COLS,PAD_PITCH_Y=PANEL_W/PAD_ROWS;
     const PAD_AREA=PAD_COLS*PAD_ROWS*Math.PI*PAD_R*PAD_R;
     function padXs(){return Array.from({length:PAD_COLS},(_,i)=>(i-(PAD_COLS-1)/2)*PAD_PITCH_X)}
@@ -4003,7 +4050,7 @@
        않는다. */
     function infeedStation(){
       const cx=3,bedZ=1.12;
-      /* 폭조절 가이드 — 패널 폭 800~1200 에 맞춰 좌우가 같이 움직인다 */
+      /* 폭조절 가이드 — 패널 폭 800~1400 에 맞춰 좌우가 같이 움직인다 */
       for(const y of [-PANEL_HW-.08,PANEL_HW+.08]){
         box(V(cx,y,bedZ+.16),V(5.2,.07,.20),C.steel2);                // 폭조절 가이드 레일
         for(const x of [cx-2.0,cx,cx+2.0]){
@@ -4043,7 +4090,7 @@
       box(V(cx+2.75,-1.15,bedZ-.32),V(.42,.34,.34),C.dark);              // IE4 기어모터
       cylinder(V(cx+2.75,-.92,bedZ-.32),.13,.24,'y',C.steel2,10);
       label3('QI-101 비전·높이·바코드',V(5.1,-1.9,4.42),C.teal);
-      label3('폭조절 가이드 800~1200',V(cx,-1.62,bedZ+.42),C.steel);
+      label3(`폭조절 가이드 800~${PANEL_W*1000}`,V(cx,-1.62,bedZ+.42),C.steel);
     }
     /* 인터록이 읽는데 현장에 없던 센서들.
 
@@ -4501,7 +4548,7 @@
           box(V(x+xx,0,1.04),V(.06,.10,.05),C.black);                 // 체크밸브
         }
       }
-      /* 흡착패드 18개 — 벨로우즈 컵과 스템 */
+      /* 흡착패드 PAD_COLS×PAD_ROWS — 벨로우즈 컵과 스템 */
       for(const yy of padYs())for(const xx of padXs()){
         cylinder(V(x+xx,yy,1.31),PAD_R,.16,'z',live,12);
         cylinder(V(x+xx,yy,1.40),PAD_R*.62,.06,'z',shade(live,.88),12);
@@ -4882,7 +4929,7 @@
        설비가 실제로 성립하는지는 세 계통이 동시에 쌓일 때만 드러난다:
        유리는 GC-301 캐리지에 적재되고, 셀/EVA 는 CVC-301 에 투입되어 SH-101 로
        이송되며, 백시트는 WR-101 롤에 감긴다. 10장이면 롤은 Ø300 → Ø314.9 로만
-       자란다 — 만권 Ø600 까지는 295장이 필요하다. */
+       자란다 — 만권 Ø600 까지는 283장이 필요하다. */
     function tenPanelTestActivity(p){
       const N=10,done=Math.min(N,Math.floor(p*N)),local=(p*N)%1,wound=woundCount(15,p);
       const cx=lerp(TDM_IN,TDM_OUT,ease(local));
@@ -5107,7 +5154,7 @@
     /* 카메라도 단계 객체에서 읽는다 — 종전에는 index 로 인덱싱하는 별도
        배열이라 단계를 하나만 더해도 조용히 어긋났다. */
     function updateAutoCamera(dt){if(!camera.auto)return;const cam=steps[index].cam,t=viewPresets()[cam[0]],focusX=[],k=1-Math.exp(-dt*.0022);focusX[index]=cam[1];camera.az=lerp(camera.az,t.az,k);camera.el=lerp(camera.el,t.el,k);camera.radius=lerp(camera.radius,t.r,k);camera.target.x=lerp(camera.target.x,focusX[index],k);camera.target.y=lerp(camera.target.y,0,k);camera.target.z=lerp(camera.target.z,compactView()?1.55:1.45,k)}
-    /* 배치마다 홈 카메라가 다르다 — 53m 와 18.76m 를 같은 거리에서 볼 수 없다. */
+    /* 배치마다 홈 카메라가 다르다 — 53m 와 19.26m 를 같은 거리에서 볼 수 없다. */
     const homeCam=()=>({x:compactView()?compactLength()/2:19,y:0,z:compactView()?1.55:1.45});
     function canAdvanceStage(i,p){return compactView()||i!==2||carriageCycleState(Math.min(1,p)).fullLoadAck}
     function tick(now){
@@ -5130,7 +5177,7 @@
        한다 — 흩어 두면 배치를 늘릴 때 한 군데만 고쳐지고, 그 버튼만 옛
        배치의 좌표(Rev.20 의 x 17,800)로 날아간다. */
     const tandemFocusCam=(k=0)=>{
-      /* 트윈 탠덤 베이는 x 로 3,800 인데 y 로 14,900 이다 — 가로가 아니라
+      /* 트윈 탠덤 베이는 x 로 3,900 인데 y 로 16,100 이다 — 가로가 아니라
          세로로 넓다. 압축과 같은 반경으로 잡으면 두 셀이 화면 밖으로
          나가고 남는 것은 가열실·냉각 랙 지붕뿐이다. */
       if(twinView())return [{target:{x:CTBL_CX,y:0,z:.90},az:-2.16,el:.98,radius:25.5},
@@ -5285,7 +5332,7 @@
       const shift8=Math.round(lineRate*8*.9),shift16=Math.round(lineRate*16*.9),targetCycle=3600/(60/.9),requiredSpeed=handling<targetCycle?(L+300)/(targetCycle-handling):Infinity,rateAt60=3600/Math.max(pitch,(L+300)/60+handling),balancedSpeed=pitch>handling?(L+300)/(pitch-handling):60,thermalMargin=Math.max(0,(thermalRate-lineRate)/thermalRate*100);
       let action;
       if(bottleneck==='고정 탠덤·캐리어 이송'){
-        action=`${speed.toFixed(0)}mm/s에서 명목 ${lineRate.toFixed(1)}장/h, 90% 환산 ${(lineRate*.9).toFixed(1)}장/h입니다. 60장/h 순생산 최소속도는 약 ${requiredSpeed.toFixed(1)}mm/s이며 60mm/s FAT 상한은 ${rateAt60.toFixed(1)}장/h입니다. WR 터릿 전환과 GC 저장 캐리지 교대를 사이클 밖으로 분리하십시오.`;
+        action=`${speed.toFixed(0)}mm/s에서 명목 ${lineRate.toFixed(1)}장/h, 90% 환산 ${(lineRate*.9).toFixed(1)}장/h입니다. ${NET_TARGET}장/h 순생산 최소속도는 약 ${requiredSpeed.toFixed(1)}mm/s이며 60mm/s FAT 상한은 ${rateAt60.toFixed(1)}장/h입니다. WR 터릿 전환과 GC 저장 캐리지 교대를 사이클 밖으로 분리하십시오.`;
       }else{
         action=`IR 병목 · 현재 속도에서는 캐리어를 더 가속해도 ${thermalRate.toFixed(1)}장/h를 넘지 못합니다. 기계·열 균형속도는 약 ${balancedSpeed.toFixed(1)}mm/s입니다. 반사판·단열·도어 개방손실과 ${MODEL.decks+1}라인 출력배분을 먼저 개선하십시오.`;
       }
@@ -5299,7 +5346,7 @@
       $('motionProfile').textContent=`박리 ${speed.toFixed(0)} · 급속 ${rapid.toFixed(0)} mm/s`;$('test60Cold').textContent=formatTime(cold60);$('test60Steady').textContent=formatTime(steady60);$('hourlyPanels').textContent=`명목 ${lineRate.toFixed(1)} · 90% ${(lineRate*.9).toFixed(1)} 장/h`;$('shift8Panels').textContent=`약 ${shift8}장`;$('shift16Panels').textContent=`약 ${shift16}장`;$('bottleneckAction').textContent=action;
       $('calcBasis').textContent=`t=0 = ${DECK_TAG} 점유·잠금·밀폐 | Q=${(q/1000).toFixed(2)}MJ/장 | IR ${totalPower.toFixed(0)}kW×η ${(eta*100).toFixed(0)}%=${usefulPower.toFixed(1)}kW 유효 | t열=max[${DECKS}Q/P유효, 백시트 하한 113.2s]=${dwell.toFixed(1)}s | t탠덤=(${L.toFixed(0)}+300)/${speed.toFixed(0)} + 300/${rapid.toFixed(0)} + ${fixedHandling.toFixed(1)} = ${tandemCycle.toFixed(1)}s | 선행시간=300/${speed.toFixed(0)}=${leadTime.toFixed(2)}s`;
       const marks=[0,4,9,19,29,39,49,59];$('testSchedule').textContent=`초기 ${DECKS}장 적재시간 제외 · 냉간 완료시각: ${marks.map(i=>`P${i+1} ${(ends[i]/60).toFixed(1)}분`).join(' · ')} | 정상상태 = 60×${lineCycle.toFixed(1)}s = ${(steady60/60).toFixed(1)}분 | 실공정을 영상 8초로 압축합니다.`;
-      $('comparisonBasis').textContent=`Rev.20은 EVA 계면 ${T_TARGET}°C·${LAMPS}×2.5kW·최대 2,400×1,200mm·고정 탠덤·이동 캐리어 계산을 유지하고, ${DECKS}/${DECKS} 밀폐가열부터 ${DECK_TAG} 순차 방출·에어록 격리·동일 슬롯 재투입까지의 반복 상태머신과 전문형 색상체계를 통합합니다.`;
+      $('comparisonBasis').textContent=`Rev.20은 EVA 계면 ${T_TARGET}°C·${LAMPS}×2.5kW·최대 ${PANEL_L*1000}×${PANEL_W*1000}mm·고정 탠덤·이동 캐리어 계산을 유지하고, ${DECKS}/${DECKS} 밀폐가열부터 ${DECK_TAG} 순차 방출·에어록 격리·동일 슬롯 재투입까지의 반복 상태머신과 전문형 색상체계를 통합합니다.`;
     }
     calcIds.forEach(id=>$(id).addEventListener('input',updateCalculator));$('calcButton').addEventListener('click',()=>{updateCalculator();if(typeof calcDialog.showModal==='function')calcDialog.showModal();else calcDialog.setAttribute('open','')});$('calcClose').addEventListener('click',()=>calcDialog.close());calcDialog.addEventListener('click',e=>{if(e.target===calcDialog)calcDialog.close()});
 
@@ -5351,26 +5398,26 @@
     const mmv=v=>Math.round(v*1000);
     const dim=(l,w,h)=>`${mmv(l)}×${mmv(w)}×${mmv(h)}`;
     /* 랙 계열 파생값 — 가열실과 냉각 랙이 같은 구조라 한 곳에서 낸다. */
-    const RACK_W=2.56, RACK_TOP=()=>cDeckZ(DECKS-1)+.86, RACK_ROOF=()=>RACK_TOP()+.175;
+    const RACK_TOP=()=>cDeckZ(DECKS-1)+.86, RACK_ROOF=()=>RACK_TOP()+.175;
     const FORK_TOP=()=>cDeckZ(DECKS-1)+.82, FORK_W=2*(FORK_HALF_STD+.075);
     const assemblies=[
-      {id:'M-001',name:'투입 셔틀·정렬·식별',size:dim(CST.LD.w,2.09,2.73),material:'SS400/AL6061',
-       parts:['베드 프레임 (2,420 × 1,620 @ EL 1,150)','우레탄 구동롤러','IE4 기어모터','폭조절 가이드 800~1,200','패널 스토퍼','WI-101 투입 계량 컨베이어','투입 계량 로드셀×4','2D 비전카메라','레이저 높이센서','바코드 리더','라벨 리더','광전센서','케이블베어','앵커 세트']},
+      {id:'M-001',name:'투입 셔틀·정렬·식별',size:dim(CST.LD.w,PANEL_W+.89,2.73),material:'SS400/AL6061',
+       parts:[`베드 프레임 (${mmv(PANEL_L+.02)} × ${mmv(PANEL_W+.42)} @ EL 1,150)`,'우레탄 구동롤러','IE4 기어모터',`폭조절 가이드 800~${mmv(PANEL_W)}`,'패널 스토퍼','WI-101 투입 계량 컨베이어','투입 계량 로드셀×4','2D 비전카메라','레이저 높이센서','바코드 리더','라벨 리더','광전센서','케이블베어','앵커 세트']},
       {id:'M-002',name:`HC-101 · ${DECKS}단 밀폐 IR 가열실`,size:dim(CST.HC.w,RACK_W,RACK_ROOF()),material:'SS400·SUS304·미네랄울',
-       parts:['외부 용접프레임 (기둥×4 · 거싯×4)','벽체 4겹 — 외피 SS400 3.2t / 반사공기층 25 / 미네랄울 100t / 내피 SUS304 2.0t','GFRP t12 열교 차단 스페이서 @600',`데크 ${DECKS}단 + 데크 레일×${DECKS*2}`,`B0~B${DECKS} IR 뱅크`,`2.5kW IR 램프×${LAMPS}`,`반사판×${LAMPS}`,`SSR 분기모듈×${LAMPS}`,'PM-101 IR 전력 계기판','독립 과온센서',`EVA 계면센서×${DECKS}`,`표면 IR 센서×${DECKS}`,'투입 에어록','배출 에어록','에어록 셔터 4매','차압센서','점검도어','에어록 도어 위치센서×8','격리실 존재센서×2',`IR 뱅크 CT·SSR 피드백×${DECKS+1}`,'가열실 불꽃감지기×2',`층별 잠금실린더×${DECKS}`,`캐리지 존재센서×${DECKS}`]},
+       parts:['외부 용접프레임 (기둥×4 · 거싯×4)','벽체 4겹 — 외피 SS400 3.2t / 반사공기층 25 / 미네랄울 100t / 내피 SUS304 2.0t','GFRP t12 열교 차단 스페이서 @600',`데크 ${DECKS}단 + 데크 레일×${DECKS*2}`,`B0~B${DECKS} IR 뱅크`,`2.5kW IR 램프×${LAMPS}`,`반사판×${LAMPS}`,`SSR 분기모듈×${LAMPS}`,'PM-101 IR 전력 계기판','독립 과온센서',`EVA 계면센서×${DECKS}`,`표면 IR 센서×${DECKS}`,'투입 에어록','배출 에어록',`에어록 단별 셔터 ${DECKS*2}매 (양단 각 ${DECKS}단)`,`셔터 실린더 Ø50 행정 450×${DECKS*2}`,'차압센서','점검도어',`에어록 단별 셔터 위치센서×${DECKS*4}`,`IR 뱅크 CT·SSR 피드백×${DECKS+1}`,'가열실 불꽃감지기×2',`층별 잠금실린더×${DECKS}`,`캐리지 존재센서×${DECKS}`]},
       {id:'M-003',name:'승강 포크 문형 ×4 (LI·EX·GL·GU)',size:dim(.95,FORK_W,FORK_TOP()),material:'SS400/LM 가이드',
-       parts:['승강 문형 프레임×4 (기둥 ±1,120 · 두상보)','서보모터·감속기','볼스크류 동기축×8','TS-101 2단 포크','포크 캐리지×4','상하한 리미트×8','절대치 엔코더','낙하방지 브레이크×4','정비 고정핀','LI-101 투입 · EX-101 방출 · GL-101 적입 · GU-101 인출']},
+       parts:[`승강 문형 프레임×4 (기둥 ±${mmv(FORK_HALF_STD)} · 두상보)`,'서보모터·감속기','볼스크류 동기축×8','TS-101 2단 포크','포크 캐리지×4','상하한 리미트×8','절대치 엔코더','낙하방지 브레이크×4','정비 고정핀','LI-101 투입 · EX-101 방출 · GL-101 적입 · GU-101 인출']},
       {id:'M-004',name:'VT-101 · 6존 고정 진공테이블',size:dim(CARRIER_L,CARRIER_W,CZ+.15),material:'SS400/AL6061',
-       parts:['테이블 상판 2,900 × 1,560 @ EL 1,150','지지기둥×4 (박리 추력 13.37 kN 수용)','6존 진공매니폴드',`흡착패드×${PAD_COLS*PAD_ROWS} Ø${(PAD_R*2000).toFixed(0)}`,'진공압센서×6','진공필터×6','체크밸브×6','비상 진공어큐뮬레이터','패널 착좌·스퀘어 센서×4']},
+       parts:[`테이블 상판 ${mmv(CARRIER_L)} × ${mmv(CARRIER_W)} @ EL 1,150`,`지지기둥×4 (박리 추력 ${F_PEEL.toFixed(2)} kN 수용)`,'탠덤 착좌 존재센서×2','6존 진공매니폴드',`흡착패드×${PAD_COLS*PAD_ROWS} Ø${(PAD_R*2000).toFixed(0)}`,'진공압센서×6','진공필터×6','체크밸브×6','비상 진공어큐뮬레이터','패널 착좌·스퀘어 센서×4']},
       {id:'M-005',name:'DL-101 · 이동 나이프 탠덤 셀',size:dim(CST.DL.w,2*(CGY+.085),CBEAM_Z+.17),material:'SS400/SKD11',
        parts:[`KG-101 주행레일 문형 (행정 ${mmv(CRAIL_X1-CRAIL_X0)} @ EL ${mmv(CRAIL_Z)})`,'레일 지지기둥×4 · 거싯×4','주행 대차×2','측면 프레임×2','크로스빔 3,100','X축 랙피니언 구동','나이프 X축 절대치 엔코더','나이프 X축 원점·과주행센서×2','HKB Z축 서보슬라이드','HKS Z축 서보슬라이드','프리로드 LM가이드×4','볼스크류·서보브레이크×2','BC-201 HKB 퀵체인지 카세트','BC-201 HKS 퀵체인지 카세트','카세트 테이퍼 로케이팅핀×4','카세트 쐐기 클램프×4','카세트 블라인드메이트 커넥터×2','카세트 냉각 퍼지밸브×2','카세트 온도센서×2','카세트 잠금·존재센서×4','HKB/HKS 카트리지히터','칼날 열전대×8','로드셀×4','스프링 컴플라이언스×4','AE 센서×4','300mm 레이저 간격센서','기계식 하드스톱×4','칼날 Z축 상하한센서×4','GR-W1 박리 가이드롤 (갠트리 탑재)','백시트 끝단 비전','셀/EVA 인양 슈트 (갠트리 탑재)','KC-101 칼날 카세트 매거진',`예열·냉각 포켓 ${CKC_POCKETS}칸`,'KC-101 카세트 교환암','케이블베어·내열배선','용융 EVA 드립트레이','파편 회수트레이','코딩 정비도어 인터록']},
       {id:'M-006',name:'WR-101 권취·RH-201 롤 반출',size:dim(1.30,RH_Y0-CKC_RACK_Y,RH_Z+.13),material:'SS400/SUS304',
-       parts:['권취 지지 문형 (기둥×2 · 상부보)','고정 아이들러 + 필로우블록×2','DN-101 장력 댄서 (행정 300)','WR-101 권취드럼 1축 (코어 Ø300 · 면폭 1,460)','드럼 필로우블록×2','분할클램프×4','토크서보·직경센서','장력 로드셀','웹 파단 검출센서',`RH-201 모노레일 런웨이 (${mmv(RH_Y0-CKC_RACK_Y)} @ EL ${mmv(RH_Z)}) · 기둥×2`,'RH-201 호이스트 트롤리·훅블록·슬링 2본·인양빔·코어 그리퍼×2','매거진 스퍼 빔','BS-301 롤 보관 새들 (방책 밖) + V 크래들','BS-301 새들 존재센서×2','롤 반출 위치센서×2','WO-301 권취롤 계량 새들','KC-301 카세트 보관 새들 (방책 밖)']},
+       parts:['권취 지지 문형 (기둥×2 · 상부보)','고정 아이들러 + 필로우블록×2','DN-101 장력 댄서 (행정 300)',`WR-101 권취드럼 1축 (코어 Ø300 · 면폭 ${mmv(ROLL_FACE)})`,'드럼 필로우블록×2','분할클램프×4','토크서보·직경센서','장력 로드셀','웹 파단 검출센서',`RH-201 모노레일 런웨이 (${mmv(RH_Y0-CKC_RACK_Y)} @ EL ${mmv(RH_Z)}) · 기둥×2`,'RH-201 호이스트 트롤리·훅블록·슬링 2본·인양빔·코어 그리퍼×2','매거진 스퍼 빔','BS-301 롤 보관 새들 (방책 밖) + V 크래들','BS-301 새들 존재센서×2','롤 반출 위치센서×2','WO-301 권취롤 계량 새들','KC-301 카세트 보관 새들 (방책 밖)']},
       {id:'M-007',name:`GC-101 · ${GCOOL_DECKS}단 유리 냉각 랙`,size:dim(CST.GC.w,RACK_W,cDeckZ(DECKS-1)+.66+.175),material:'SS400/SUS304',
        parts:['랙 프레임 (기둥×4 · 거싯×4 · 상부 크로스빔 · 하부 베이스)','측벽 프레임·패널 · 후면 패널',`데크 ${GCOOL_DECKS}단 + 데크 레일×${GCOOL_DECKS*2}`,`층별 잠금실린더×${GCOOL_DECKS}`,`캐리지 존재센서×${GCOOL_DECKS}`,'승강 볼스크류 4본',`냉각 팬×${DECKS+1} + 팬 가드`,'필터 급기면',`표면 IR 센서×${GCOOL_DECKS}`,'상부 커버']},
       {id:'M-008',name:'CE-201 횡인출 · CS-201 평적 카트',size:dim(CE_X1-CE_X0,CE_Y0-CE_Y1,CE_Z+.30),material:'SS400/SUS304',
        parts:['CE-201 횡인출 컨베이어 (2,600 × 2,000 @ EL 1,050)','내열 벨트·롤러','VFD 기어모터','횡송 푸셔','셀 존재센서×4','CS-201 셀/EVA 평적 카트 (2,600 × 1,300)','적재 가이드포스트×4','셀/EVA 배출슈트 레벨센서×2','CS-201 반출 인터록 게이트','LC-003 반출 터널 광커튼','WO-302 셀 벨트 계량기']},
-      {id:'M-009',name:'QI-301 검사 · RJ-301 리젝트',size:dim(1.30,2.30,2.92),material:'SS400/AL6061',
+      {id:'M-009',name:'QI-301 검사 · RJ-301 리젝트',size:dim(1.30,PANEL_W+1.10,2.92),material:'SS400/AL6061',
        parts:['QI 검사 아치 (기둥×2 · 거싯×2 · 가로보)','QI 상부 RGB 카메라','QI 하부 RGB 카메라','열화상카메라','라인레이저','투과조명','검사 엔코더','RJ 횡셔틀','셔틀 레일×2','리젝트 받침대','캐리지 존재센서','WO-303 유리 캐리지 계량대','RE-101 잔류 EVA 분광계']},
       {id:'M-011',name:'전력·MCC·제어반',size:dim(1.60,.86,3.10),material:'도장강판 IP54',
        parts:[`TR-1 ${TR_KVA}kVA`,'Q0 ACB 주차단기',`정격 ${MAIN_AF}AF / ${MAIN_AT}AT`,`주모선 ${Math.max(400,Math.ceil(FLA*1.25/100)*100)}A`,'SPD Type1+2','전력품질계','IR 분전반','HK 히터반','MCC/VFD반','PLC-101반','HMI','24VDC PSU A/B','UPS-101','접지바','히터 차단 확인 접촉기×2','LOTO 스테이션','데이터플레이트 (IEC 60204-1 16.4)']},
@@ -5588,7 +5635,7 @@
        적으면 다음에 단수를 옮길 때 3D 만 따라오고 이 도면은 남는다. */
     function chamberFabDrawing(){
       const mm=v=>Math.round(v*1000);
-      const W=2600;                             // 챔버 외형 폭 — 모듈표 M-002
+      const W=mm(RACK_W)+40;                    // 챔버 외형 폭 — 랙 외폭 + 외피 2×20 (모듈표 M-002)
       const wall=mm(CL_WALL), pitch=mm(HC_DZ), z0=mm(HC_Z0);
       const H=mm(HC_Z+.94), decks=DECKS, banks=DECKS+1;
       const chamberL=5600;
@@ -5860,7 +5907,7 @@
     /* ── M-006 권취·롤 반출 제작도 (F-006) ────────────────────────────
        이 모듈은 도면이 두 장면을 함께 담아야 한다. 하나는 필름이 지나가는
        길(박리점 → GR-W1 → 고정 아이들러 → DN-101 댄서 → WR-101 드럼)이고,
-       다른 하나는 다 감긴 357 kg 롤이 나가는 길(RH-201 모노레일 → 방책 밖
+       다른 하나는 다 감긴 416 kg 롤이 나가는 길(RH-201 모노레일 → 방책 밖
        BS-301 새들)이다. 둘째가 없으면 무인 운전이 4.9시간마다 끊긴다 —
        사람이 방책 안으로 들어가야 하기 때문이다.
 
@@ -6202,7 +6249,7 @@
        그래서 이 시트가 정하는 것은 '무엇이 움직이고 무엇이 서 있는가' 다.
        움직이는 것은 KG-101 갠트리(칼날 2조 · GR-W1 · 셀/EVA 슈트)이고,
        서 있는 것은 VT-101 진공테이블과 그 아래 기둥 넷이다. 박리 추력
-       13.37 kN 이 지나가는 길도 그 둘 사이에서 갈린다.
+       박리 추력이 지나가는 길도 그 둘 사이에서 갈린다.
 
        치수는 전부 배치 상수에서 나온다 — 스테이션 폭도, 레일 행정도, 칼끝
        간격도, 흡착패드 배열도. 손으로 적으면 배치를 옮길 때 이 도면만
@@ -6211,7 +6258,7 @@
       const mm=v=>Math.round(v*1000), fmt=v=>mm(v).toLocaleString();
       const g=CST.DL;
       const L=mm(g.w), TRAV=mm(CRAIL_X1-CRAIL_X0), GAP=mm(TANDEM_GAP);
-      /* ── 정면도 (좌상) — 박리방향 단면. 1:26 으로 3,800 이 146mm 에 든다 */
+      /* ── 정면도 (좌상) — 박리방향 단면. 1:26 으로 3,900 이 150mm 에 든다 */
       /* 1:26 이면 정면 111 + 평면 116 = 227mm 로 왼쪽 칸(44~240)을 넘어
          두 도면이 겹친다. 1:38 로 낮춰 둘을 세로로 쌓는다. */
       const FX=36,FY=44,FS_=.026;
@@ -6337,8 +6384,8 @@
       bom.forEach((r,i)=>{ if(i<10) tbl+=balloon(bx-6,by+8+(i+1)*5.6-3.4,r[0].replace(/^0/,'')); });
       /* ── 주기 */
       const notes=[
-        '박리 추력 13.37 kN 은 칼날 → 갠트리 → 주행레일 문형 → 기초(A7)로 흐른다. 테이블(A8)은 패널 반력만 받는다.',
-        `흡착 필요면적 A ≥ 2F/(μ·Δp) = 0.686 m² (μ 0.6 · Δp 65 kPa). ${PAD_COLS}×${PAD_ROWS} = ${PAD_AREA.toFixed(3)} m² 로 상한의 ${(PAD_AREA/0.686).toFixed(2)}배.`,
+        `박리 추력 ${F_PEEL.toFixed(2)} kN 은 칼날 → 갠트리 → 주행레일 문형 → 기초(A7)로 흐른다. 테이블(A8)은 패널 반력만 받는다.`,
+        `흡착 필요면적 A ≥ 2F/(μ·Δp) = ${PAD_NEED.toFixed(3)} m² (F ${F_PEEL.toFixed(2)} kN · μ ${PAD_MU} · Δp ${PAD_DP} kPa). ${PAD_COLS}×${PAD_ROWS} = ${PAD_AREA.toFixed(3)} m² 로 상한의 ${(PAD_AREA/PAD_NEED).toFixed(2)}배.`,
         `칼끝 간격 ${GAP} ± 2 는 카세트 교환 때마다 레이저로 재확인한다 — 확인 전에는 PEEL_PERMIT 이 성립하지 않는다.`,
         '레일면·테이블 상면은 조립 후 현장 연삭으로 맞춘다. 두 면의 평행도가 박리력 편차를 결정한다.',
         `주행 정지는 STO 2채널 + 기계식 하드스톱 4개소로 이중화한다 (원점 ${fmt(CHKB_PARK)} · 종점 ${fmt(CHKB1)}).`,
@@ -6367,7 +6414,7 @@
         + `<p class="drawing-note"><b>이 시트가 정하는 것은 무엇이 움직이는가다.</b> Rev.20 은 칼날이 고정이고 패널이 `
         + `11,200 mm 를 지나갔다. 압축 배치는 반대다 — VT-101 이 패널을 잡고 서 있고 KG-101 갠트리가 `
         + `${TRAV} mm 를 왕복한다. 박리는 상대운동이므로 행정 ${mm(PANEL_L)} mm 도 박리시간도 그대로이고, `
-        + `새로 드는 것은 복귀 하나뿐이다. 추력 13.37 kN 이 흐르는 길이 그래서 갈린다: 칼날에서 갠트리를 지나 `
+        + `새로 드는 것은 복귀 하나뿐이다. 추력 ${F_PEEL.toFixed(2)} kN 이 흐르는 길이 그래서 갈린다: 칼날에서 갠트리를 지나 `
         + `주행레일 문형으로, 그 문형은 행정 밖 네 기둥으로만 바닥에 닿는다(기초 A7). 테이블 기둥 넷(A8)은 `
         + `패널 반력만 받는다. <b>정하지 않는 것</b>은 부재 단면과 용접 개선 형상이다 — 그 둘은 `
         + `<a href="#" onclick="return false">OI-07</a> 구동 선정과 구조해석이 끝난 뒤에 나온다.</p>`;
@@ -6538,7 +6585,7 @@
 
        그 뒤집기가 왜 길이를 줄이는지도 이 도면이 답한다: 패널이 움직이려면
        패널 길이 + 통과 행정만큼의 자리가 필요하고, 칼날이 움직이면 그
-       자리가 칼날 행정으로 줄어든다. 주행축 11,200 이 3,500 이 된다. */
+       자리가 칼날 행정으로 줄어든다. 주행축 11,200 이 3,600 이 된다. */
     function r20CarrierDrawing(){
       const mm=v=>Math.round(v*1000), fmt=v=>mm(v).toLocaleString();
       const rx0=r20RailX0(), rx1=r20RailX1(), TR=r20CarrierTravel();
@@ -6635,7 +6682,7 @@
       });
       const notes=[
         `이 축이 REV.20 의 정의다. 패널이 ${fmt(TR)} 를 지나가는 동안 칼날은 X 로 서 있다 — HKB x ${fmt(HKB_X)} · HKS x ${fmt(HKS_X)} 는 고정값이고 Z 만 로드셀을 따라간다.`,
-        `박리 추력은 패드 마찰로만 받는다. 필요 면적 A ≥ 2F/(μ·Δp) = 0.686 m² (μ 0.6 · Δp 65 kPa) 이고 ${PAD_COLS}×${PAD_ROWS} = ${PAD_AREA.toFixed(3)} m² 로 그 ${(PAD_AREA/0.686).toFixed(2)}배다.`,
+        `박리 추력은 패드 마찰로만 받는다. 필요 면적 A ≥ 2F/(μ·Δp) = ${PAD_NEED.toFixed(3)} m² (F ${F_PEEL.toFixed(2)} kN · μ ${PAD_MU} · Δp ${PAD_DP} kPa) 이고 ${PAD_COLS}×${PAD_ROWS} = ${PAD_AREA.toFixed(3)} m² 로 그 ${(PAD_AREA/PAD_NEED).toFixed(2)}배다.`,
         `주행축은 반력을 받지 않는다 — 추력은 패널→패드→캐리어에서 닫히고 레일은 자중과 관성만 받는다. 그래서 레일 지주가 문형이 아니라 단주다.`,
         `캐리어는 ${FLEET}대다. ${R20.fleetHeat}대가 가열실 데크에, 1대가 탠덤에, 1대가 복귀·재장전에, 1대가 정비 대기에 있다. REV.21C 는 이 ${FLEET}대를 전부 쓰지 않는다.`,
         R20_NFC,
@@ -6720,7 +6767,7 @@
       const DIFF=[
         ['칼날 X','고정 — HKB '+fmt(HKB_X)+' · HKS '+fmt(HKS_X),'REV.21C — KG-101 이 '+fmt(CRAIL_X1-CRAIL_X0)+' 왕복'],
         ['추력 경로','패널→패드→캐리어→레일→기초','REV.21C — 칼날→갠트리→주행레일 문형→기초'],
-        ['브리지 하중','칼날 자중 + 반력 수직성분','REV.21C — 수평 추력 13.37 kN 까지 받는다'],
+        ['브리지 하중','칼날 자중 + 반력 수직성분',`REV.21C — 수평 추력 ${F_PEEL.toFixed(2)} kN 까지 받는다`],
         ['문형 기둥',`${fmt(BX1-BX0)} 스팬 · y ±${fmt(BY)}`,'REV.21C — 주행레일 문형 4기둥'],
         ['Z축','문형별 서보슬라이드 (X 고정)','REV.21C — 동일 (X 만 갠트리로 옮김)'],
       ];
@@ -6776,7 +6823,7 @@
         + `<p class="drawing-note"><b>이 브리지는 추력을 받지 않는다.</b> REV.20 에서 박리 반력은 `
         + `패널→흡착패드→캐리어→대차→레일에서 닫히고, 문형이 받는 것은 칼날 자중과 반력의 `
         + `수직성분뿐이다. 압축 배치는 그 경로를 뒤집었다 — 칼날이 움직이므로 `
-        + `13.37 kN 이 칼날→갠트리→주행레일 문형→기초로 흐르고, 그래서 F-005 의 주행레일 문형이 `
+        + `${F_PEEL.toFixed(2)} kN 이 칼날→갠트리→주행레일 문형→기초로 흐르고, 그래서 F-005 의 주행레일 문형이 `
         + `이 브리지보다 무겁다. <b>같은 박리를 하는 두 기계가 서로 다른 부재를 굵게 쓴다</b>는 것이 `
         + `두 배치를 비교할 때 가장 자주 놓치는 대목이다.</p>`;
     }
@@ -7283,8 +7330,8 @@
 
     /* ⟨PARTS-DATA⟩ tools/gen_parts_js.py 가 찍는다 — 손으로 고치지 않는다 */
 const PART_MODULES=[["M-001","투입 셔틀·정렬·식별"],["M-002","HC-101 5단 밀폐 IR 가열실"],["M-003","승강 포크 문형 ×4"],["M-004","VT-101 6존 고정 진공테이블"],["M-005","DL-101 이동 나이프 탠덤 셀"],["M-006","WR-101 권취 · RH-201 롤 반출"],["M-007","GC-101 5단 유리 냉각 랙"],["M-008","CE-201 횡인출 · CS-201 평적 카트"],["M-009","QI-301 검사 · RJ-301 리젝트"],["M-011","전력·MCC·제어반"],["M-012","VU-101 진공·계장공기 스키드"],["M-013","방책·안전장치"],["M-017","BJ-101/102 경계 인터페이스"]];
-const PARTS=[{"id":"P-001-01","m":"M-001","n":"셔틀 프레임 종재","k":"BOX","g":{"h":100,"b":50,"t":3.2,"L":2600.0},"mat":"SS400","fin":"분체도장","q":2,"fix":"횡재와 필릿 용접 z5","note":"패널 장변 방향 · 상면이 롤러 기준면","st":1,"kg":18.758,"lbl":"□-100×50×3.2t · L 2,600"},{"id":"P-001-02","m":"M-001","n":"셔틀 프레임 횡재","k":"BOX","g":{"h":100,"b":50,"t":3.2,"L":1300.0},"mat":"SS400","fin":"분체도장","q":4,"fix":"종재 사이 필릿 용접 z5","note":"양단 + 중간 2 — 롤러 지지 간격 700","st":1,"kg":9.379,"lbl":"□-100×50×3.2t · L 1,300"},{"id":"P-001-03","m":"M-001","n":"셔틀 상판","k":"PL","g":{"L":2600.0,"W":1400.0,"t":4.5,"holes":[]},"mat":"SS400","fin":"분체도장","q":1,"fix":"프레임에 M8×24 @300","note":"모서리 R20 · 손 닿는 면이라 버 제거 필수","st":2,"kg":128.583,"lbl":"PL 4.5t · 2,600×1,400"},{"id":"P-001-04","m":"M-001","n":"정렬 가이드 (고정측)","k":"ANG","g":{"a":60,"b":60,"t":5,"L":2600.0},"mat":"SS400","fin":"분체도장","q":1,"fix":"상판에 M8×6","note":"기준면 — 이 면에서 패널 위치가 나온다","st":3,"kg":11.736,"lbl":"L-60×60×5 · L 2,600"},{"id":"P-001-05","m":"M-001","n":"정렬 가이드 (가동측)","k":"ANG","g":{"a":60,"b":60,"t":5,"L":2600.0},"mat":"SS400","fin":"분체도장","q":1,"fix":"가이드 슬롯 + M8 손잡이볼트 4","note":"패널 폭 편차 흡수 · 1,200±3 로 물린다","st":3,"kg":11.736,"lbl":"L-60×60×5 · L 2,600"},{"id":"P-001-06","m":"M-001","n":"셔틀 주행 대차","k":"BUY","g":{"L":300,"W":200,"H":120,"kg":6.2},"mat":"—","fin":"—","q":4,"fix":"프레임 하면에 M10×4","note":"V홈 캠폴로워 · 레일 위를 구른다","st":4,"kg":6.2,"lbl":"외형 300×200×120"},{"id":"P-001-07","m":"M-001","n":"셔틀 레일","k":"ANG","g":{"a":75,"b":75,"t":6,"L":3200.0},"mat":"SS400","fin":"분체도장","q":2,"fix":"기초 앵커 M12 @800","note":"V홈 대차의 주행면 — 상면 직진도 1.0/2,000","st":1,"kg":21.704,"lbl":"L-75×75×6 · L 3,200"},{"id":"P-001-08","m":"M-001","n":"인출 실린더","k":"BUY","g":{"L":680,"W":90,"H":90,"kg":4.8},"mat":"—","fin":"—","q":1,"fix":"프레임 단부 클레비스 핀 Ø16","note":"복동 공압 Ø40 · 행정 500 · 속도제어 양방향","st":5,"kg":4.8,"lbl":"외형 680×90×90"},{"id":"P-001-09","m":"M-001","n":"2D 코드 리더","k":"BUY","g":{"L":60,"W":45,"H":40,"kg":0.3},"mat":"—","fin":"—","q":1,"fix":"브래킷에 M4×2","note":"패널 라벨 판독 — 초점거리 120","st":6,"kg":0.3,"lbl":"외형 60×45×40"},{"id":"P-001-10","m":"M-001","n":"리더 브래킷","k":"PL","g":{"L":160,"W":90,"t":5,"holes":[[20,45,9],[140,45,9]]},"mat":"SS400","fin":"분체도장","q":1,"fix":"가이드에 M8×2 (장공으로 초점 조정)","note":"장공 방향이 초점 방향이다 — 세워 붙이면 조정이 안 된다","st":6,"kg":0.56,"lbl":"PL 5t · 160×90"},{"id":"P-001-11","m":"M-001","n":"패널 존재 센서","k":"BUY","g":{"L":50,"W":18,"H":32,"kg":0.1},"mat":"—","fin":"—","q":2,"fix":"브래킷에 M3×2","note":"반사형 광전 · 투입 확인 PL_IN_STACK_PRESENT","st":6,"kg":0.1,"lbl":"외형 50×18×32"},{"id":"P-002-01","m":"M-002","n":"가열실 기둥","k":"HB","g":{"h":200,"b":200,"tw":8,"tf":12,"L":4550.0},"mat":"SS400","fin":"내열도장 2회","q":6,"fix":"베이스플레이트에 완전용입 + 거싯 4","note":"6기둥 — 종방향 3열(0/1,890/3,780) × 횡방향 2열(±1,280)","st":1,"kg":221.734,"lbl":"H-200×200×8/12 · L 4,550"},{"id":"P-002-02","m":"M-002","n":"기둥 베이스플레이트","k":"PL","g":{"L":400,"W":400,"t":25,"holes":[[60,60,22],[340,60,22],[60,340,22],[340,340,22]]},"mat":"SS400","fin":"내열도장 2회","q":6,"fix":"앵커 M20 (A2) ×4 · hef 170","note":"홀 Ø22 — 앵커 Ø20 에 여유 2. 무수축 그라우트 t30","st":1,"kg":31.102,"lbl":"PL 25t · 400×400"},{"id":"P-002-03","m":"M-002","n":"기둥 거싯","k":"GU","g":{"a":200,"b":200,"t":12},"mat":"SS400","fin":"내열도장 2회","q":24,"fix":"기둥·베이스에 양면 필릿 z8","note":"기둥당 4매 · 4방향","st":1,"kg":1.884,"lbl":"거싯 200×200 × 12t"},{"id":"P-002-04","m":"M-002","n":"상부 종방향 타이빔","k":"BOX","g":{"h":150,"b":100,"t":6,"L":3780.0},"mat":"SS400","fin":"내열도장 2회","q":2,"fix":"기둥 상단에 필릿 z6","note":"랙 상단 EL 4,550 — 지붕 하중과 기둥 좌굴 구속","st":2,"kg":84.746,"lbl":"□-150×100×6t · L 3,780"},{"id":"P-002-05","m":"M-002","n":"상부 횡방향 타이빔","k":"BOX","g":{"h":150,"b":100,"t":6,"L":2360.0},"mat":"SS400","fin":"내열도장 2회","q":3,"fix":"종방향 빔에 필릿 z6","note":"3열 — 기둥 열과 같은 위치","st":2,"kg":52.91,"lbl":"□-150×100×6t · L 2,360"},{"id":"P-002-06","m":"M-002","n":"데크 프레임 종재","k":"ANG","g":{"a":65,"b":65,"t":6,"L":2780.0},"mat":"SS400","fin":"내열도장 2회","q":10,"fix":"기둥에 M12×4 (단별 높이 조정 장공)","note":"단 EL 1,210 / 1,830 / 2,450 / 3,070 / 3,690","st":3,"kg":16.236,"lbl":"L-65×65×6 · L 2,780"},{"id":"P-002-07","m":"M-002","n":"데크 프레임 횡재","k":"ANG","g":{"a":65,"b":65,"t":6,"L":1350.0},"mat":"SS400","fin":"내열도장 2회","q":15,"fix":"종재에 필릿 z5","note":"단당 3 — 양단 + 중간","st":3,"kg":7.885,"lbl":"L-65×65×6 · L 1,350"},{"id":"P-002-08","m":"M-002","n":"데크 레일","k":"SQB","g":{"a":40,"L":2780.0},"mat":"STS304","fin":"무도장 (고온)","q":10,"fix":"종재 상면에 M8×6 접시머리","note":"패널이 미끄러지는 면 — 도장하면 벗겨져 유리를 긁는다","st":3,"kg":35.273,"lbl":"각봉 40×40 · L 2,780"},{"id":"P-002-09","m":"M-002","n":"외피 측판","k":"PL","g":{"L":1890,"W":3860,"t":3.2,"holes":[]},"mat":"SS400","fin":"내열도장 2회","q":4,"fix":"기둥·타이빔에 M8×@250","note":"장변 2분할 — 3,780 한 장은 운반·취급이 안 된다","st":6,"kg":183.26,"lbl":"PL 3.2t · 1,890×3,860"},{"id":"P-002-10","m":"M-002","n":"외피 단부판","k":"PL","g":{"L":2560.0,"W":1930,"t":3.2,"holes":[]},"mat":"SS400","fin":"내열도장 2회","q":2,"fix":"기둥에 M8×@250 · 이음 겹침 30 + 실링","note":"반출측 — 2분할. 2,560×3,860 한 장은 유통 시트를 넘는다","st":6,"kg":124.113,"lbl":"PL 3.2t · 2,560×1,930"},{"id":"P-002-11","m":"M-002","n":"외피 지붕판","k":"PL","g":{"L":3780.0,"W":1280.0,"t":3.2,"holes":[]},"mat":"SS400","fin":"내열도장 2회","q":2,"fix":"타이빔에 M8×@250 · 이음 겹침 30 + 실링","note":"2분할 (유통 시트 폭). 배기 덕트 관통 Ø600 은 한 장에","st":7,"kg":121.541,"lbl":"PL 3.2t · 3,780×1,280"},{"id":"P-002-12","m":"M-002","n":"내피 측판","k":"PL","g":{"L":945,"W":1930,"t":2.0,"holes":[]},"mat":"STS304","fin":"#400 연마","q":16,"fix":"스페이서 개재 M6 · 이음 어긋 물림 겹침 30","note":"복사면 — 연마면이 안쪽. STS 시트 한계로 4분할","st":5,"kg":28.926,"lbl":"PL 2t · 945×1,930"},{"id":"P-002-13","m":"M-002","n":"내피 단부·지붕판","k":"PL","g":{"L":1260.0,"W":1280.0,"t":2.0,"holes":[]},"mat":"STS304","fin":"#400 연마","q":12,"fix":"스페이서 개재 M6 · 이음 어긋 물림 겹침 30","note":"단부 6 + 지붕 6 — STS 시트 한계로 분할","st":5,"kg":25.579,"lbl":"PL 2t · 1,260×1,280"},{"id":"P-002-14","m":"M-002","n":"단열재","k":"SLAB","g":{"L":1000,"W":600,"t":100},"mat":"미네랄울","fin":"—","q":62,"fix":"핀 용접 + 와셔 고정","note":"100t 100 kg/m³ · 이음 어긋 물림 (열교)","st":5,"kg":6.0,"lbl":"100t · 1,000×600"},{"id":"P-002-15","m":"M-002","n":"반사층","k":"SLAB","g":{"L":1000,"W":600,"t":0.5},"mat":"AL반사판","fin":"—","q":62,"fix":"단열재 위 겹침 20","note":"AL 반사판 + 공기층 25 — 공기층이 없으면 반사층이 일한다고 못 한다","st":5,"kg":0.81,"lbl":"0.5t · 1,000×600"},{"id":"P-002-16","m":"M-002","n":"열교 차단 스페이서","k":"SLAB","g":{"L":60,"W":60,"t":12},"mat":"GFRP","fin":"—","q":210,"fix":"내피·외피 사이 개재 M6","note":"@600 격자 — 금속으로 바꾸면 외피 표면이 60 ℃ 를 넘는다","st":5,"kg":0.082,"lbl":"12t · 60×60"},{"id":"P-002-17","m":"M-002","n":"IR 뱅크 캐리어 · 반사판","k":"CH","g":{"h":100,"b":50,"tw":5,"tf":5,"L":2260.0},"mat":"SS400","fin":"내열도장 2회","q":12,"fix":"기둥에 M10×2","note":"뱅크는 단수+1 = 6 이고 뱅크당 2본이다 — 종전 수량 10 은 '단당 2뱅크' 로 세어 한 뱅크를 빠뜨린 값이었다. 램프 교체는 캐리어를 빼지 않고 측벽 밖 소켓에서 한다","st":4,"kg":16.854,"lbl":"C-100×50×5/5 · L 2,260"},{"id":"P-002-18","m":"M-002","n":"IR 램프","k":"BUY","g":{"L":2320,"W":25,"H":25,"kg":1.5},"mat":"—","fin":"—","q":40,"fix":"측벽 관통 · 챔버 밖 소켓","note":"2.5 kW 단파장 · **발열장 2,200** + 단자 2×60 · 뱅크당 7등 · 총 40등. 1,300 이었던 것을 IR 뱅크 배치 검토가 바꿨다 — 패널 폭 1,200 에 끝단 여유 50 mm 뿐이라 폭 가장자리 유속이 중앙의 69 % 였고, 냉점을 140 ℃ 에 올리면 중앙 백시트가 235 ℃ 로 녹았다","st":4,"kg":1.5,"lbl":"외형 2,320×25×25"},{"id":"P-002-19","m":"M-002","n":"램프 소켓·배선","k":"BUY","g":{"L":60,"W":40,"H":40,"kg":0.15},"mat":"—","fin":"—","q":80,"fix":"측벽 브래킷에 M4×2 (챔버 밖)","note":"세라믹 소켓 · 내열 실리콘 리드 200 ℃. 단자를 고온부 밖에 두는 것이 석영램프 수명을 정한다 — 길이를 벌려고 밖으로 뺀 것이 아니라 원래 밖에 있어야 한다","st":4,"kg":0.15,"lbl":"외형 60×40×40"},{"id":"P-002-20","m":"M-002","n":"에어록 셔터판","k":"PL","g":{"L":1680.0,"W":4090.0,"t":4.5,"holes":[]},"mat":"SS400","fin":"내열도장 2회","q":2,"fix":"가이드 레일 + 공압 실린더","note":"세라믹 파이버 씰 개재 — 씰이 없으면 소킹 온도가 안 선다","st":8,"kg":242.725,"lbl":"PL 4.5t · 1,680×4,090"},{"id":"P-002-25","m":"M-002","n":"램프 관통 실링 부시","k":"BUY","g":{"L":90,"W":45,"H":45,"kg":0.08},"mat":"—","fin":"—","q":80,"fix":"내피·단열·외피 관통 후 압축","note":"세라믹 부시 + 파이버 실. 뱅크당 14 · 총 80 개소 — 밀폐 가열실에 구멍을 내는 것이므로 소킹 온도가 여기서 샌다","st":5,"kg":0.08,"lbl":"외형 90×45×45"},{"id":"P-002-21","m":"M-002","n":"셔터 씰","k":"SLAB","g":{"L":1680.0,"W":40,"t":15},"mat":"세라믹파이버","fin":"—","q":8,"fix":"셔터 프레임 홈에 압입","note":"4변 × 2셔터","st":8,"kg":0.262,"lbl":"15t · 1,680×40"},{"id":"P-002-22","m":"M-002","n":"셔터 실린더","k":"BUY","g":{"L":1200,"W":80,"H":80,"kg":9.5},"mat":"—","fin":"—","q":2,"fix":"상부 타이빔에 M12×4","note":"복동 공압 Ø63 · 행정 900 · 속도제어","st":8,"kg":9.5,"lbl":"외형 1,200×80×80"},{"id":"P-002-23","m":"M-002","n":"단별 열전대","k":"BUY","g":{"L":200,"W":6,"H":6,"kg":0.05},"mat":"—","fin":"—","q":10,"fix":"내피 관통 압축피팅 M8","note":"K 형 시스 Ø3 — 단당 2점 (좌·우)","st":9,"kg":0.05,"lbl":"외형 200×6×6"},{"id":"P-002-24","m":"M-002","n":"배기 덕트 노즐","k":"TU","g":{"od":600,"t":3.0,"L":400},"mat":"SS400","fin":"내열도장 2회","q":1,"fix":"지붕판에 플랜지 M12×12","note":"경계 덕트로 나가는 자리 — M-017 이 받는다","st":7,"kg":17.668,"lbl":"Ø600 × 3t · L 400"},{"id":"P-003-01","m":"M-003","n":"포크 문형 기둥","k":"BOX","g":{"h":125,"b":125,"t":6,"L":4510.0},"mat":"SS400","fin":"분체도장","q":8,"fix":"베이스플레이트에 완전용입 + 거싯 4","note":"문형 1기당 2 · 4기분","st":1,"kg":101.112,"lbl":"□-125×125×6t · L 4,510"},{"id":"P-003-02","m":"M-003","n":"포크 기둥 베이스플레이트","k":"PL","g":{"L":400,"W":400,"t":19,"holes":[[60,60,22],[340,60,22],[60,340,22],[340,340,22]]},"mat":"SS400","fin":"분체도장","q":8,"fix":"앵커 M20 ×4 · hef 170","note":"홀 Ø22 · 그라우트 t30","st":1,"kg":23.637,"lbl":"PL 19t · 400×400"},{"id":"P-003-03","m":"M-003","n":"포크 기둥 거싯","k":"GU","g":{"a":150,"b":150,"t":12},"mat":"SS400","fin":"분체도장","q":32,"fix":"기둥·베이스에 양면 필릿 z8","note":"기둥당 4매","st":1,"kg":1.06,"lbl":"거싯 150×150 × 12t"},{"id":"P-003-04","m":"M-003","n":"두상보","k":"BOX","g":{"h":260,"b":180,"t":9,"L":2390.0},"mat":"SS400","fin":"분체도장","q":4,"fix":"기둥 상단에 완전용입 + 거싯","note":"볼스크류 상단 베어링을 받는다 — 여기가 처지면 스크류가 휜다","st":2,"kg":142.512,"lbl":"□-260×180×9t · L 2,390"},{"id":"P-003-05","m":"M-003","n":"기초보","k":"BOX","g":{"h":300,"b":180,"t":9,"L":2390.0},"mat":"SS400","fin":"분체도장","q":4,"fix":"기둥 하단에 완전용입","note":"볼스크류 하단 + 서보 감속기 지지","st":2,"kg":156.021,"lbl":"□-300×180×9t · L 2,390"},{"id":"P-003-06","m":"M-003","n":"보 접합 거싯","k":"GU","g":{"a":180,"b":180,"t":12},"mat":"SS400","fin":"분체도장","q":16,"fix":"기둥·보에 양면 필릿 z8","note":"문형당 4매 (상 2 · 하 2)","st":2,"kg":1.526,"lbl":"거싯 180×180 × 12t"},{"id":"P-003-07","m":"M-003","n":"볼스크류","k":"BUY","g":{"L":3180.0,"W":32,"H":32,"kg":14.2},"mat":"—","fin":"—","q":8,"fix":"상·하단 지지베어링 유닛","note":"Ø32 리드 10 C5급 · 행정 2,480","st":3,"kg":14.2,"lbl":"외형 3,180×32×32"},{"id":"P-003-08","m":"M-003","n":"지지베어링 유닛","k":"BUY","g":{"L":80,"W":80,"H":60,"kg":1.4},"mat":"—","fin":"—","q":16,"fix":"보에 M8×4","note":"상단 지지측 + 하단 고정측","st":3,"kg":1.4,"lbl":"외형 80×80×60"},{"id":"P-003-09","m":"M-003","n":"서보모터·감속기","k":"BUY","g":{"L":280,"W":130,"H":130,"kg":11.5},"mat":"—","fin":"—","q":8,"fix":"기초보에 M10×4 + 커플링","note":"1.5 kW 무여자 브레이크 · 2축 동기","st":3,"kg":11.5,"lbl":"외형 280×130×130"},{"id":"P-003-10","m":"M-003","n":"LM 가이드 레일","k":"BUY","g":{"L":4110.0,"W":23,"H":22,"kg":8.6},"mat":"—","fin":"—","q":8,"fix":"기둥 전면에 M6 @80","note":"HSR25 상당 · 프리로드 C1 · 기준면은 기둥 가공면","st":3,"kg":8.6,"lbl":"외형 4,110×23×22"},{"id":"P-003-11","m":"M-003","n":"LM 블록","k":"BUY","g":{"L":90,"W":70,"H":36,"kg":0.6},"mat":"—","fin":"—","q":16,"fix":"캐리지에 M6×4","note":"레일당 2블록","st":3,"kg":0.6,"lbl":"외형 90×70×36"},{"id":"P-003-12","m":"M-003","n":"포크 캐리지","k":"PL","g":{"L":1800,"W":550,"t":12,"holes":[]},"mat":"SS400","fin":"분체도장","q":4,"fix":"LM 블록 4 + 볼너트 2","note":"용접 조립 후 LM 취부면 연삭 — 여기가 안 평평하면 포크가 흔들린다","st":4,"kg":93.258,"lbl":"PL 12t · 1,800×550"},{"id":"P-003-13","m":"M-003","n":"캐리지 보강 리브","k":"PL","g":{"L":550,"W":120,"t":10,"holes":[]},"mat":"SS400","fin":"분체도장","q":16,"fix":"캐리지에 필릿 z6","note":"캐리지당 4매 · 볼너트 반력 분산","st":4,"kg":5.181,"lbl":"PL 10t · 550×120"},{"id":"P-003-14","m":"M-003","n":"TS-101 텔레스코픽 포크","k":"BUY","g":{"L":1900,"W":200,"H":160,"kg":42.0},"mat":"—","fin":"—","q":4,"fix":"캐리지에 M12×8","note":"2단 · 인출 2,610 · 낙하방지 체크밸브 내장","st":5,"kg":42.0,"lbl":"외형 1,900×200×160"},{"id":"P-003-15","m":"M-003","n":"포크 티인","k":"PL","g":{"L":620,"W":140,"t":14,"holes":[]},"mat":"A6061-T6","fin":"아노다이징","q":8,"fix":"포크 선단에 M10×4","note":"패널이 얹히는 면 — 알루미늄이라 유리를 안 긁는다","st":5,"kg":3.281,"lbl":"PL 14t · 620×140"},{"id":"P-003-16","m":"M-003","n":"절대치 엔코더","k":"BUY","g":{"L":60,"W":60,"H":45,"kg":0.3},"mat":"—","fin":"—","q":4,"fix":"감속기 후단 M4×4","note":"다회전 배터리리스 — 정전 후 원점복귀가 필요 없다","st":6,"kg":0.3,"lbl":"외형 60×60×45"},{"id":"P-003-17","m":"M-003","n":"상하한 리미트","k":"BUY","g":{"L":70,"W":30,"H":35,"kg":0.15},"mat":"—","fin":"—","q":8,"fix":"기둥에 M5×2","note":"안전등급 위치스위치 · 기계식 하드스톱 병설","st":6,"kg":0.15,"lbl":"외형 70×30×35"},{"id":"P-003-18","m":"M-003","n":"기계식 하드스톱","k":"PL","g":{"L":120,"W":80,"t":16,"holes":[]},"mat":"SS400","fin":"분체도장","q":8,"fix":"기둥에 M12×2","note":"리미트가 죽어도 캐리지가 여기서 선다 — 마지막 방벽","st":6,"kg":1.206,"lbl":"PL 16t · 120×80"},{"id":"P-004-01","m":"M-004","n":"VT-101 상판","k":"PL","g":{"L":2900.0,"W":1560.0,"t":20,"holes":[]},"mat":"SS400","fin":"상면 연삭 Ra 3.2","q":1,"fix":"리브에 완전용입 후 상면 연삭","note":"평면도 0.2/2,900 · 흡착홀 18×Ø8","st":3,"kg":710.268,"lbl":"PL 20t · 2,900×1,560"},{"id":"P-004-02","m":"M-004","n":"상판 리브 (종)","k":"PL","g":{"L":2900.0,"W":120,"t":10,"holes":[]},"mat":"SS400","fin":"—","q":4,"fix":"상판에 양면 필릿 z6","note":"@400 — 진공이 아니라 자중 처짐이 정한 간격 (진공은 내력 쌍이다)","st":2,"kg":27.318,"lbl":"PL 10t · 2,900×120"},{"id":"P-004-03","m":"M-004","n":"상판 리브 (횡)","k":"PL","g":{"L":1540.0,"W":120,"t":10,"holes":[]},"mat":"SS400","fin":"—","q":7,"fix":"종리브에 필릿 z6","note":"@400 · 기둥 6본과 함께 평면도 0.2 를 만든다","st":2,"kg":14.507,"lbl":"PL 10t · 1,540×120"},{"id":"P-004-04","m":"M-004","n":"테이블 기둥","k":"BOX","g":{"h":150,"b":150,"t":6,"L":1000.0},"mat":"SM490A","fin":"분체도장","q":6,"fix":"베이스플레이트에 완전용입 + 거싯 4","note":"6본 — 구조해석이 4본에서 상판 자중 처짐 0.378 을 냈다(칼날 깊이 예산 0.15 초과)","st":1,"kg":27.13,"lbl":"□-150×150×6t · L 1,000"},{"id":"P-004-05","m":"M-004","n":"테이블 베이스플레이트","k":"PL","g":{"L":360,"W":360,"t":28,"holes":[[55,55,26],[305,55,26],[55,305,26],[305,305,26]]},"mat":"SM490A","fin":"분체도장","q":6,"fix":"앵커 M24 (A8) ×4 · hef 210","note":"홀 Ø26 · 추력 전단이 지배 — 라이너로 밀착","st":1,"kg":28.019,"lbl":"PL 28t · 360×360"},{"id":"P-004-06","m":"M-004","n":"테이블 기둥 거싯","k":"GU","g":{"a":180,"b":180,"t":12},"mat":"SM490A","fin":"분체도장","q":24,"fix":"기둥·베이스에 양면 필릿 z8","note":"기둥당 4매","st":1,"kg":1.526,"lbl":"거싯 180×180 × 12t"},{"id":"P-004-07","m":"M-004","n":"기둥·상판 접합판","k":"PL","g":{"L":300,"W":300,"t":16,"holes":[]},"mat":"SM490A","fin":"—","q":4,"fix":"기둥에 완전용입 · 상판에 M16×4","note":"볼트 접합 — 상판을 떼어 연삭·수리할 수 있어야 한다","st":3,"kg":11.304,"lbl":"PL 16t · 300×300"},{"id":"P-004-08","m":"M-004","n":"흡착패드","k":"BUY","g":{"L":250.0,"W":250.0,"H":55,"kg":0.35},"mat":"NBR","fin":"—","q":18,"fix":"상판 흡착홀에 G1/4 니플","note":"벨로우즈 Ø250 · 6존 × 3행","st":4,"kg":0.35,"lbl":"외형 250×250×55"},{"id":"P-004-09","m":"M-004","n":"진공 매니폴드","k":"TU","g":{"od":25,"t":2.0,"L":2700.0},"mat":"STS304","fin":"—","q":6,"fix":"상판 하면 클램프 @400","note":"존당 1본 — 존을 나눈 이유는 깨진 패널에서 진공을 잃지 않기 위해서다","st":5,"kg":3.094,"lbl":"Ø25 × 2t · L 2,700"},{"id":"P-004-10","m":"M-004","n":"존 밸브·체크밸브","k":"BUY","g":{"L":90,"W":60,"H":70,"kg":0.8},"mat":"—","fin":"—","q":6,"fix":"매니폴드에 G1/4","note":"존별 차단 + 역류 방지","st":5,"kg":0.8,"lbl":"외형 90×60×70"},{"id":"P-004-11","m":"M-004","n":"진공 압력센서","k":"BUY","g":{"L":45,"W":30,"H":40,"kg":0.12},"mat":"—","fin":"—","q":6,"fix":"매니폴드에 G1/8","note":"존별 1점 · −65 kPa 확인 후 박리 허가","st":5,"kg":0.12,"lbl":"외형 45×30×40"},{"id":"P-004-12","m":"M-004","n":"진공 필터","k":"BUY","g":{"L":80,"W":60,"H":110,"kg":0.5},"mat":"—","fin":"—","q":6,"fix":"매니폴드 입구 G1/4","note":"유리 가루가 펌프로 가면 펌프가 죽는다","st":5,"kg":0.5,"lbl":"외형 80×60×110"},{"id":"P-005-01","m":"M-005","n":"주행레일 문형 기둥","k":"HB","g":{"h":250,"b":250,"tw":9,"tf":14,"L":2100.0},"mat":"SM490A","fin":"분체도장","q":4,"fix":"베이스플레이트에 완전용입 + 거싯 4","note":"행정 밖 x 8,050 / 11,550 · y ±1,420","st":1,"kg":148.332,"lbl":"H-250×250×9/14 · L 2,100"},{"id":"P-005-02","m":"M-005","n":"문형 베이스플레이트","k":"PL","g":{"L":440,"W":440,"t":22,"holes":[[65,65,26],[375,65,26],[65,375,26],[375,375,26]]},"mat":"SM490A","fin":"분체도장","q":4,"fix":"앵커 M24 (A7) ×4 · hef 210","note":"홀 Ø26 · 10.9 등급 · 그라우트 t30","st":1,"kg":33.068,"lbl":"PL 22t · 440×440"},{"id":"P-005-03","m":"M-005","n":"문형 기둥 거싯","k":"GU","g":{"a":220,"b":220,"t":14},"mat":"SM490A","fin":"분체도장","q":16,"fix":"기둥·베이스에 양면 필릿 z10","note":"기둥당 4매","st":1,"kg":2.66,"lbl":"거싯 220×220 × 14t"},{"id":"P-005-04","m":"M-005","n":"주행레일 빔","k":"BOX","g":{"h":220,"b":220,"t":9,"L":4100.0},"mat":"SM490A","fin":"레일면 연삭 Ra 1.6","q":2,"fix":"기둥 상단에 완전용입","note":"이 면의 직진도가 칼끝 간격을 정한다 — 연삭 후 0.1/1,000","st":2,"kg":244.477,"lbl":"□-220×220×9t · L 4,100"},{"id":"P-005-05","m":"M-005","n":"LM 주행레일","k":"BUY","g":{"L":4000.0,"W":45,"H":38,"kg":31.0},"mat":"—","fin":"—","q":2,"fix":"빔 상면에 M12 @105","note":"사이즈 45 프리로드 · 정격 수명 20,000 h","st":3,"kg":31.0,"lbl":"외형 4,000×45×38"},{"id":"P-005-06","m":"M-005","n":"주행 대차 (LM 블록)","k":"BUY","g":{"L":160,"W":120,"H":60,"kg":2.4},"mat":"—","fin":"—","q":4,"fix":"측면 프레임에 M12×4","note":"레일당 2블록 — 마찰접합 (J3)","st":3,"kg":2.4,"lbl":"외형 160×120×60"},{"id":"P-005-07","m":"M-005","n":"갠트리 측면 프레임","k":"PL","g":{"L":900,"W":700,"t":16,"holes":[]},"mat":"SM490A","fin":"분체도장","q":2,"fix":"LM 블록 M12×8 (마찰접합 μ0.50)","note":"접합면 Sa 2½ · 도장 금지 — 도장하면 미끄러진다","st":4,"kg":79.128,"lbl":"PL 16t · 900×700"},{"id":"P-005-08","m":"M-005","n":"크로스빔","k":"BOX","g":{"h":300,"b":200,"t":12,"L":3100},"mat":"SM490A","fin":"분체도장","q":1,"fix":"측면 프레임에 M16×8","note":"칼날 2기 자중 + 추력 휨 · 처짐 0.21 < 0.50","st":4,"kg":278.003,"lbl":"□-300×200×12t · L 3,100"},{"id":"P-005-09","m":"M-005","n":"X축 랙","k":"BUY","g":{"L":3900.0,"W":40,"H":40,"kg":12.0},"mat":"—","fin":"—","q":1,"fix":"빔 측면에 M10 @100","note":"모듈 3 경화랙 · 백래시 ≤ 0.05","st":3,"kg":12.0,"lbl":"외형 3,900×40×40"},{"id":"P-005-10","m":"M-005","n":"X축 피니언·감속기","k":"BUY","g":{"L":320,"W":160,"H":160,"kg":18.0},"mat":"—","fin":"—","q":1,"fix":"측면 프레임에 M12×4","note":"서보 + 유성감속 · 백래시 조정 편심 부시","st":4,"kg":18.0,"lbl":"외형 320×160×160"},{"id":"P-005-11","m":"M-005","n":"Z축 서보슬라이드 베이스","k":"PL","g":{"L":700,"W":400,"t":20,"holes":[]},"mat":"SM490A","fin":"취부면 연삭","q":2,"fix":"크로스빔에 M16×6","note":"칼날 반력 편심 — 취부면이 안 평평하면 칼끝이 기운다","st":5,"kg":43.96,"lbl":"PL 20t · 700×400"},{"id":"P-005-12","m":"M-005","n":"Z축 볼스크류","k":"BUY","g":{"L":600,"W":32,"H":32,"kg":4.2},"mat":"—","fin":"—","q":2,"fix":"베이스 지지베어링","note":"Ø32 리드 10 · 무여자 브레이크","st":5,"kg":4.2,"lbl":"외형 600×32×32"},{"id":"P-005-13","m":"M-005","n":"Z축 LM 가이드","k":"BUY","g":{"L":500,"W":23,"H":22,"kg":3.1},"mat":"—","fin":"—","q":4,"fix":"베이스에 M6 @80","note":"슬라이드당 2본","st":5,"kg":3.1,"lbl":"외형 500×23×22"},{"id":"P-005-14","m":"M-005","n":"칼날 빔","k":"PL","g":{"L":1560.0,"W":220,"t":25,"holes":[]},"mat":"SS400","fin":"인서트면 연삭","q":2,"fix":"Z축 슬라이드에 M16×6","note":"카트리지히터 홀 Ø12×6 + SKD11 인서트 볼트 M10×8","st":6,"kg":67.353,"lbl":"PL 25t · 1,560×220"},{"id":"P-005-15","m":"M-005","n":"SKD11 인서트","k":"PL","g":{"L":1440.0,"W":60,"t":8,"holes":[]},"mat":"SKD11","fin":"HRC 58~62 · 연삭","q":2,"fix":"칼날 빔에 M10×8 (접시머리)","note":"이것이 실제로 유리를 떼는 면 — 소모품, 교체 전제","st":6,"kg":5.322,"lbl":"PL 8t · 1,440×60"},{"id":"P-005-16","m":"M-005","n":"카트리지 히터","k":"BUY","g":{"L":200,"W":12,"H":12,"kg":0.2},"mat":"—","fin":"—","q":12,"fix":"칼날 빔 홀에 압입 + 세트스크류","note":"빔당 6본 · HKB 180 ℃ / HKS 200 ℃","st":6,"kg":0.2,"lbl":"외형 200×12×12"},{"id":"P-005-17","m":"M-005","n":"BC-201 카세트 본체","k":"BOX","g":{"h":120.0,"b":90.0,"t":6,"L":1440.0},"mat":"SS400","fin":"분체도장","q":2,"fix":"테이퍼 로케이팅핀 4 + 쐐기 클램프 2","note":"상세 D-501 · 전단은 핀이 받고 클램프는 밀착만 한다","st":7,"kg":26.858,"lbl":"□-120×90×6t · L 1,440"},{"id":"P-005-18","m":"M-005","n":"테이퍼 로케이팅핀","k":"RB","g":{"d":20,"L":60,"steps":[[20,40],[16,20]]},"mat":"SM45C","fin":"침탄 HRC 58 · 연삭","q":8,"fix":"칼날 빔에 압입 H7/p6","note":"카세트당 4 — 이 핀 4개가 전단 26.1 kN 을 받는다","st":6,"kg":0.13,"lbl":"단차축 Ø20×40 / Ø16×20"},{"id":"P-005-19","m":"M-005","n":"쐐기 클램프","k":"BUY","g":{"L":180,"W":90,"H":110,"kg":3.2},"mat":"—","fin":"—","q":4,"fix":"칼날 빔에 M12×4","note":"공압 15 kN ×2 — 밀착·열전달용","st":6,"kg":3.2,"lbl":"외형 180×90×110"},{"id":"P-005-20","m":"M-005","n":"GR-W1 박리 가이드롤","k":"RB","g":{"d":160,"L":1580.0,"steps":[]},"mat":"SM45C","fin":"경질크롬 도금 20 µm","q":1,"fix":"측면 프레임 필로우블록 2","note":"갠트리에 실려 박리점과 같이 간다 — 그래서 웹이 안 늘어난다","st":8,"kg":249.377,"lbl":"Ø160 · L 1,580"},{"id":"P-005-21","m":"M-005","n":"가이드롤 필로우블록","k":"BUY","g":{"L":120,"W":80,"H":90,"kg":2.1},"mat":"—","fin":"—","q":2,"fix":"측면 프레임에 M12×4","note":"자동조심 볼베어링","st":8,"kg":2.1,"lbl":"외형 120×80×90"},{"id":"P-005-22","m":"M-005","n":"칼날 로드셀","k":"BUY","g":{"L":60,"W":60,"H":30,"kg":0.4},"mat":"—","fin":"—","q":4,"fix":"Z축 슬라이드·빔 사이 M12","note":"칼날당 2점 — 박리력 실측 (OI-01)","st":6,"kg":0.4,"lbl":"외형 60×60×30"},{"id":"P-006-01","m":"M-006","n":"권취 문형 기둥","k":"HB","g":{"h":150,"b":150,"tw":7,"tf":10,"L":2600.0},"mat":"SS400","fin":"분체도장","q":2,"fix":"베이스플레이트에 완전용입 + 거싯 4","note":"만권 롤 3.50 kN + 지진","st":1,"kg":79.803,"lbl":"H-150×150×7/10 · L 2,600"},{"id":"P-006-02","m":"M-006","n":"권취 기둥 베이스플레이트","k":"PL","g":{"L":360,"W":360,"t":19,"holes":[[55,55,22],[305,55,22],[55,305,22],[305,305,22]]},"mat":"SS400","fin":"분체도장","q":2,"fix":"앵커 M20 (A9) ×4 · hef 170","note":"홀 Ø22 · 그라우트 t30","st":1,"kg":19.103,"lbl":"PL 19t · 360×360"},{"id":"P-006-03","m":"M-006","n":"권취 기둥 거싯","k":"GU","g":{"a":150,"b":150,"t":12},"mat":"SS400","fin":"분체도장","q":8,"fix":"기둥·베이스에 양면 필릿 z8","note":"기둥당 4매","st":1,"kg":1.06,"lbl":"거싯 150×150 × 12t"},{"id":"P-006-04","m":"M-006","n":"권취 문형 상부보","k":"BOX","g":{"h":220,"b":140,"t":9,"L":2160.0},"mat":"SS400","fin":"분체도장","q":1,"fix":"기둥 상단에 완전용입","note":"드럼 베어링 가로보","st":2,"kg":104.381,"lbl":"□-220×140×9t · L 2,160"},{"id":"P-006-05","m":"M-006","n":"WR-101 권취축","k":"RB","g":{"d":60,"L":1860.0,"steps":[[60,180],[55,1500.0],[60,180]]},"mat":"SM45C","fin":"조질 후 연삭 h6","q":1,"fix":"필로우블록 2 · 키 12×8","note":"Ø55 에서 피로 0.89 였다 — Ø60 으로 올려 0.69 (총괄 결정)","st":3,"kg":35.966,"lbl":"단차축 Ø60×180 / Ø55×1,500 / Ø60×180"},{"id":"P-006-06","m":"M-006","n":"권취 드럼 코어","k":"TU","g":{"od":300.0,"t":8,"L":1460.0},"mat":"SS400","fin":"분체도장","q":1,"fix":"축에 분할클램프 4로 물림","note":"코어 Ø300 · 만권 Ø600","st":3,"kg":84.11,"lbl":"Ø300 × 8t · L 1,460"},{"id":"P-006-07","m":"M-006","n":"코어 분할클램프","k":"PL","g":{"L":160,"W":120,"t":16,"holes":[]},"mat":"SS400","fin":"—","q":4,"fix":"코어·축 사이 M12×2씩","note":"공압 작동 — 만권 롤을 축에서 빼는 유일한 길","st":3,"kg":2.412,"lbl":"PL 16t · 160×120"},{"id":"P-006-08","m":"M-006","n":"드럼 필로우블록","k":"BUY","g":{"L":180,"W":110,"H":140,"kg":5.8},"mat":"—","fin":"—","q":2,"fix":"상부보에 M16×4","note":"SN-510 상당 자동조심 볼베어링","st":3,"kg":5.8,"lbl":"외형 180×110×140"},{"id":"P-006-09","m":"M-006","n":"토크서보·감속기","k":"BUY","g":{"L":340,"W":150,"H":150,"kg":22.0},"mat":"—","fin":"—","q":1,"fix":"상부보 브래킷에 M12×4","note":"2.2 kW 장력제어 · 직경 추종","st":4,"kg":22.0,"lbl":"외형 340×150×150"},{"id":"P-006-10","m":"M-006","n":"직경센서","k":"BUY","g":{"L":80,"W":50,"H":60,"kg":0.3},"mat":"—","fin":"—","q":1,"fix":"브래킷에 M5×2","note":"레이저 거리 — 권경이 커지면 회전수를 줄인다","st":4,"kg":0.3,"lbl":"외형 80×50×60"},{"id":"P-006-11","m":"M-006","n":"DN-101 댄서롤","k":"RB","g":{"d":140,"L":1560.0,"steps":[]},"mat":"SM45C","fin":"경질크롬 도금","q":1,"fix":"댄서암 베어링 2","note":"행정 300 — 가감속 과도만 흡수한다 (박리 중엔 안 감는다)","st":5,"kg":188.513,"lbl":"Ø140 · L 1,560"},{"id":"P-006-12","m":"M-006","n":"댄서암","k":"PL","g":{"L":420,"W":120,"t":12,"holes":[]},"mat":"SS400","fin":"분체도장","q":2,"fix":"기둥 피벗 Ø20 + 공압 실린더","note":"정하중 실린더로 장력을 만든다","st":5,"kg":4.748,"lbl":"PL 12t · 420×120"},{"id":"P-006-13","m":"M-006","n":"고정 아이들러","k":"RB","g":{"d":160,"L":1560.0,"steps":[]},"mat":"SM45C","fin":"경질크롬 도금","q":1,"fix":"기둥 필로우블록 2","note":"박리각 고정 — 이 롤이 움직이면 박리각이 흔들린다","st":5,"kg":246.22,"lbl":"Ø160 · L 1,560"},{"id":"P-006-14","m":"M-006","n":"장력 로드셀","k":"BUY","g":{"L":60,"W":60,"H":30,"kg":0.4},"mat":"—","fin":"—","q":2,"fix":"아이들러 베어링 하우징 M10","note":"0~2 kN · 웹 장력 피드백","st":5,"kg":0.4,"lbl":"외형 60×60×30"},{"id":"P-006-15","m":"M-006","n":"웹 파단 검출센서","k":"BUY","g":{"L":50,"W":20,"H":35,"kg":0.1},"mat":"—","fin":"—","q":1,"fix":"기둥 브래킷 M4×2","note":"투과형 광전 · 즉시 정지","st":5,"kg":0.1,"lbl":"외형 50×20×35"},{"id":"P-006-16","m":"M-006","n":"RH-201 런웨이 빔","k":"HB","g":{"h":200,"b":100,"tw":5.5,"tf":8,"L":7550},"mat":"SS400","fin":"분체도장","q":1,"fix":"런웨이 기둥에 M16×6 (J9)","note":"레일면 EL 5,100 · 처짐 L/500","st":6,"kg":154.807,"lbl":"H-200×100×5.5/8 · L 7,550"},{"id":"P-006-17","m":"M-006","n":"런웨이 기둥","k":"HB","g":{"h":170,"b":170,"tw":7,"tf":10,"L":4900.0},"mat":"SS400","fin":"분체도장","q":2,"fix":"베이스플레이트에 완전용입 + 거싯 4","note":"셀 밖·방책 밖 2개소","st":6,"kg":171.169,"lbl":"H-170×170×7/10 · L 4,900"},{"id":"P-006-18","m":"M-006","n":"런웨이 기둥 베이스플레이트","k":"PL","g":{"L":380,"W":380,"t":19,"holes":[[58,58,22],[322,58,22],[58,322,22],[322,322,22]]},"mat":"SS400","fin":"분체도장","q":2,"fix":"앵커 M20 (A10) ×4 · hef 170","note":"홀 Ø22","st":6,"kg":21.31,"lbl":"PL 19t · 380×380"},{"id":"P-006-19","m":"M-006","n":"런웨이 기둥 두상판","k":"PL","g":{"L":300,"W":220,"t":16,"holes":[[40,40,18],[260,40,18],[40,180,18],[260,180,18]]},"mat":"SS400","fin":"분체도장","q":2,"fix":"기둥에 완전용입 · 빔에 M16×6","note":"빔을 볼트로 받는다 — 반입 후 조립","st":6,"kg":8.162,"lbl":"PL 16t · 300×220"},{"id":"P-006-20","m":"M-006","n":"RH-201 호이스트 트롤리","k":"BUY","g":{"L":420,"W":300,"H":380,"kg":46.0},"mat":"—","fin":"—","q":1,"fix":"런웨이 빔 하부 플랜지에 물림","note":"정격 1 t · 수동 트롤리 + 전동 호이스트","st":7,"kg":46.0,"lbl":"외형 420×300×380"},{"id":"P-006-21","m":"M-006","n":"인양빔","k":"BOX","g":{"h":150,"b":100,"t":6,"L":1580.0},"mat":"SS400","fin":"분체도장","q":1,"fix":"호이스트 후크 + 슬링 2본","note":"롤을 수평으로 든다 — 한 점으로 들면 코어가 휜다","st":7,"kg":35.423,"lbl":"□-150×100×6t · L 1,580"},{"id":"P-006-22","m":"M-006","n":"코어 그리퍼","k":"PL","g":{"L":220,"W":160,"t":12,"holes":[]},"mat":"SS400","fin":"분체도장","q":2,"fix":"인양빔에 M12×4","note":"코어 내경을 물어 든다","st":7,"kg":3.316,"lbl":"PL 12t · 220×160"},{"id":"P-006-23","m":"M-006","n":"BS-301 보관 새들","k":"PL","g":{"L":700,"W":400,"t":10,"holes":[]},"mat":"SS400","fin":"분체도장","q":2,"fix":"바닥 앵커 M12×4","note":"V 크래들 · 방책 밖 — 사람이 여기서 롤을 받는다","st":8,"kg":21.98,"lbl":"PL 10t · 700×400"},{"id":"P-007-01","m":"M-007","n":"냉각 랙 골조 일식","k":"HB","g":{"h":200,"b":200,"tw":8,"tf":12,"L":4550.0},"mat":"SS400","fin":"분체도장","q":6,"fix":"M-002 P-002-01~08 준용","note":"같은 부품도로 만든다 — 지그·검사·예비품 한 벌","st":1,"kg":221.734,"lbl":"H-200×200×8/12 · L 4,550"},{"id":"P-007-02","m":"M-007","n":"냉각 랙 베이스플레이트","k":"PL","g":{"L":400,"W":400,"t":25,"holes":[[60,60,22],[340,60,22],[60,340,22],[340,340,22]]},"mat":"SS400","fin":"분체도장","q":6,"fix":"앵커 M20 (A11) ×4 · hef 170","note":"M-002 와 동일 — 앵커도 같다","st":1,"kg":31.102,"lbl":"PL 25t · 400×400"},{"id":"P-007-03","m":"M-007","n":"냉각 데크 프레임 종재","k":"ANG","g":{"a":65,"b":65,"t":6,"L":2780.0},"mat":"SS400","fin":"분체도장","q":10,"fix":"기둥에 M12×4","note":"M-002 와 같은 부품","st":2,"kg":16.236,"lbl":"L-65×65×6 · L 2,780"},{"id":"P-007-04","m":"M-007","n":"냉각 데크 프레임 횡재","k":"ANG","g":{"a":65,"b":65,"t":6,"L":1350.0},"mat":"SS400","fin":"분체도장","q":15,"fix":"종재에 필릿 z5","note":"M-002 와 같은 부품","st":2,"kg":7.885,"lbl":"L-65×65×6 · L 1,350"},{"id":"P-007-05","m":"M-007","n":"냉각 데크 레일","k":"SQB","g":{"a":40,"L":2780.0},"mat":"STS304","fin":"무도장","q":10,"fix":"종재 상면에 M8×6","note":"M-002 와 같은 부품","st":2,"kg":35.273,"lbl":"각봉 40×40 · L 2,780"},{"id":"P-007-06","m":"M-007","n":"측벽 폴리카보네이트","k":"SLAB","g":{"L":1690,"W":1800,"t":6},"mat":"PC","fin":"—","q":8,"fix":"골조에 M6 @300 (고무 와셔) · 이음 겹침 40","note":"방호·투시 — 단열이 아니다. PC 시트 한계로 2분할","st":3,"kg":21.902,"lbl":"6t · 1,690×1,800"},{"id":"P-007-07","m":"M-007","n":"필터 급기 프레임","k":"ANG","g":{"a":50,"b":50,"t":4,"L":3380.0},"mat":"SS400","fin":"분체도장","q":4,"fix":"골조에 M8 @400","note":"G4 프리필터를 무는 틀","st":3,"kg":10.189,"lbl":"L-50×50×4 · L 3,380"},{"id":"P-007-08","m":"M-007","n":"G4 프리필터","k":"BUY","g":{"L":600,"W":600,"H":48,"kg":1.1},"mat":"—","fin":"—","q":12,"fix":"프레임 홈에 슬라이드 + 클립","note":"급기면 — 유리 위에 먼지가 앉으면 검사에서 걸린다","st":3,"kg":1.1,"lbl":"외형 600×600×48"},{"id":"P-007-09","m":"M-007","n":"냉각 팬","k":"BUY","g":{"L":520,"W":520,"H":180,"kg":12.5},"mat":"—","fin":"—","q":6,"fix":"지붕 프레임에 M10×4 + 방진고무","note":"축류 Ø520 8극 · EL 2,450 한 줄 (자연대류가 위로 흐른다)","st":4,"kg":12.5,"lbl":"외형 520×520×180"},{"id":"P-007-10","m":"M-007","n":"팬 가드 그릴","k":"MESH","g":{"L":560,"W":560,"wire":4,"pitch":40,"frame":3},"mat":"SS400","fin":"아연도금","q":6,"fix":"팬 플랜지에 M6×4","note":"손가락 방호 — ISO 13857","st":4,"kg":3.24,"lbl":"메시 Ø4@40 · 560×560"},{"id":"P-007-11","m":"M-007","n":"표면 IR 센서","k":"BUY","g":{"L":70,"W":40,"H":45,"kg":0.15},"mat":"—","fin":"—","q":5,"fix":"골조 브래킷 M5×2","note":"비접촉 0~200 ℃ · 단별 1점 — 60 ℃ 밑을 확인하고 내보낸다","st":5,"kg":0.15,"lbl":"외형 70×40×45"},{"id":"P-008-01","m":"M-008","n":"횡인출 컨베이어 프레임","k":"BOX","g":{"h":120,"b":60,"t":3.2,"L":2600},"mat":"SS400","fin":"분체도장","q":2,"fix":"다리에 M10×4","note":"유리가 옆으로 나가는 길","st":1,"kg":22.676,"lbl":"□-120×60×3.2t · L 2,600"},{"id":"P-008-02","m":"M-008","n":"컨베이어 다리","k":"BOX","g":{"h":80,"b":80,"t":3.2,"L":950.0},"mat":"SS400","fin":"분체도장","q":4,"fix":"베이스에 필릿 z5 · 앵커 M12×2","note":"높이 조정 볼트 M16 내장","st":1,"kg":7.331,"lbl":"□-80×80×3.2t · L 950"},{"id":"P-008-03","m":"M-008","n":"컨베이어 다리 베이스","k":"PL","g":{"L":200,"W":200,"t":12,"holes":[[40,100,14],[160,100,14]]},"mat":"SS400","fin":"분체도장","q":4,"fix":"앵커 M12 (A12) ×2","note":"홀 Ø14","st":1,"kg":3.739,"lbl":"PL 12t · 200×200"},{"id":"P-008-04","m":"M-008","n":"이송 롤러","k":"TU","g":{"od":60,"t":2.0,"L":1600},"mat":"STS304","fin":"—","q":18,"fix":"프레임 베어링 하우징 2","note":"@140 — 유리 2,400 이 최소 3롤에 걸린다","st":2,"kg":4.624,"lbl":"Ø60 × 2t · L 1,600"},{"id":"P-008-05","m":"M-008","n":"롤러 베어링 하우징","k":"BUY","g":{"L":60,"W":40,"H":50,"kg":0.35},"mat":"—","fin":"—","q":36,"fix":"프레임에 M8×2","note":"롤러당 2","st":2,"kg":0.35,"lbl":"외형 60×40×50"},{"id":"P-008-06","m":"M-008","n":"롤러 구동 기어모터","k":"BUY","g":{"L":260,"W":120,"H":120,"kg":8.4},"mat":"—","fin":"—","q":1,"fix":"프레임에 M10×4","note":"0.4 kW · 체인 구동","st":3,"kg":8.4,"lbl":"외형 260×120×120"},{"id":"P-008-07","m":"M-008","n":"구동 체인·스프라켓","k":"BUY","g":{"L":2600,"W":40,"H":40,"kg":6.0},"mat":"—","fin":"—","q":1,"fix":"롤러 축단 스프라켓","note":"RS50 · 장력 조정 아이들러 1","st":3,"kg":6.0,"lbl":"외형 2,600×40×40"},{"id":"P-008-08","m":"M-008","n":"CS-201 평적 카트 프레임","k":"BOX","g":{"h":80,"b":40,"t":3.2,"L":2600},"mat":"SS400","fin":"분체도장","q":4,"fix":"용접 조립 z5","note":"카트 1대 = 종재 2 + 횡재 2","st":4,"kg":14.839,"lbl":"□-80×40×3.2t · L 2,600"},{"id":"P-008-09","m":"M-008","n":"카트 적재판","k":"PL","g":{"L":2500,"W":1400,"t":4.5,"holes":[]},"mat":"SS400","fin":"분체도장","q":1,"fix":"프레임에 M8 @300","note":"유리 평적 — 합판 깔개 위에 얹는다","st":4,"kg":123.638,"lbl":"PL 4.5t · 2,500×1,400"},{"id":"P-008-10","m":"M-008","n":"카트 캐스터","k":"BUY","g":{"L":160,"W":60,"H":200,"kg":3.2},"mat":"—","fin":"—","q":4,"fix":"프레임에 M12×4","note":"Ø150 · 브레이크 2 / 자유 2","st":4,"kg":3.2,"lbl":"외형 160×60×200"},{"id":"P-008-11","m":"M-008","n":"유리 두께·존재 센서","k":"BUY","g":{"L":50,"W":20,"H":35,"kg":0.1},"mat":"—","fin":"—","q":2,"fix":"프레임 브래킷 M4×2","note":"반출 확인 · 겹침 검출","st":5,"kg":0.1,"lbl":"외형 50×20×35"},{"id":"P-009-01","m":"M-009","n":"검사 문형 기둥","k":"BOX","g":{"h":100,"b":100,"t":4.5,"L":2900},"mat":"SS400","fin":"분체도장","q":2,"fix":"베이스에 필릿 z6 · 앵커 M12×4","note":"카메라·조명을 다는 틀","st":1,"kg":39.133,"lbl":"□-100×100×4.5t · L 2,900"},{"id":"P-009-02","m":"M-009","n":"검사 문형 상부보","k":"BOX","g":{"h":120,"b":80,"t":4.5,"L":2300},"mat":"SS400","fin":"분체도장","q":1,"fix":"기둥에 M12×4","note":"카메라 높이 조정 장공","st":1,"kg":31.037,"lbl":"□-120×80×4.5t · L 2,300"},{"id":"P-009-03","m":"M-009","n":"카메라 브래킷","k":"PL","g":{"L":200,"W":120,"t":6,"holes":[[30,60,11],[170,60,11]]},"mat":"SS400","fin":"분체도장","q":3,"fix":"상부보에 M10×2 (장공)","note":"장공이 시야 조정 방향 — 3대가 2,400 폭을 나눠 본다","st":2,"kg":1.121,"lbl":"PL 6t · 200×120"},{"id":"P-009-04","m":"M-009","n":"라인스캔 카메라","k":"BUY","g":{"L":120,"W":80,"H":80,"kg":1.2},"mat":"—","fin":"—","q":3,"fix":"브래킷에 M4×4","note":"유리 잔막·크랙 검사","st":2,"kg":1.2,"lbl":"외형 120×80×80"},{"id":"P-009-05","m":"M-009","n":"LED 라인 조명","k":"BUY","g":{"L":1300,"W":60,"H":70,"kg":3.5},"mat":"—","fin":"—","q":2,"fix":"상부보에 M6×4","note":"투과 + 반사 2조","st":2,"kg":3.5,"lbl":"외형 1,300×60×70"},{"id":"P-009-06","m":"M-009","n":"리젝트 슈트판","k":"PL","g":{"L":1400,"W":900,"t":3.2,"holes":[]},"mat":"STS304","fin":"#400 연마","q":1,"fix":"프레임에 M8 @250","note":"불합격 유리가 미끄러져 내려가는 면 — 연마 안 하면 걸린다","st":3,"kg":31.974,"lbl":"PL 3.2t · 1,400×900"},{"id":"P-009-07","m":"M-009","n":"리젝트 슈트 프레임","k":"ANG","g":{"a":50,"b":50,"t":5,"L":1500},"mat":"SS400","fin":"분체도장","q":4,"fix":"용접 z5 + 앵커 M12×2","note":"경사 35° — 유리가 스스로 내려간다","st":3,"kg":5.593,"lbl":"L-50×50×5 · L 1,500"},{"id":"P-009-08","m":"M-009","n":"리젝트 박스","k":"PL","g":{"L":1200,"W":800,"t":3.2,"holes":[]},"mat":"SS400","fin":"분체도장","q":1,"fix":"캐스터 4 · M10","note":"사람이 끌어낸다 · 만재 센서","st":3,"kg":24.115,"lbl":"PL 3.2t · 1,200×800"},{"id":"P-009-09","m":"M-009","n":"리젝트 만재 센서","k":"BUY","g":{"L":50,"W":20,"H":35,"kg":0.1},"mat":"—","fin":"—","q":1,"fix":"박스 상단 브래킷 M4×2","note":"차면 라인이 선다 — 넘치면 바닥에 유리가 깔린다","st":3,"kg":0.1,"lbl":"외형 50×20×35"},{"id":"P-011-01","m":"M-011","n":"MCC 반","k":"BUY","g":{"L":800,"W":600,"H":2100,"kg":320.0},"mat":"—","fin":"—","q":1,"fix":"베이스 채널에 M12×4","note":"IP54 도장강판 · 주회로 400 AF","st":1,"kg":320.0,"lbl":"외형 800×600×2,100"},{"id":"P-011-02","m":"M-011","n":"PLC-101 제어반","k":"BUY","g":{"L":800,"W":400,"H":2100,"kg":210.0},"mat":"—","fin":"—","q":1,"fix":"베이스 채널에 M12×4","note":"안전 PLC + 원격 I/O · UPS 이중전원","st":1,"kg":210.0,"lbl":"외형 800×400×2,100"},{"id":"P-011-03","m":"M-011","n":"반 베이스 채널","k":"CH","g":{"h":100,"b":50,"tw":5,"tf":5,"L":1700},"mat":"SS400","fin":"분체도장","q":2,"fix":"바닥 앵커 M12 @600","note":"반을 바닥에서 100 띄운다 — 침수·청소 여유","st":1,"kg":12.678,"lbl":"C-100×50×5/5 · L 1,700"},{"id":"P-011-04","m":"M-011","n":"케이블 트레이","k":"BUY","g":{"L":3000,"W":300,"H":100,"kg":9.0},"mat":"—","fin":"—","q":8,"fix":"행거에 M8×2","note":"메인 간선 · 동력/제어 분리 2단","st":2,"kg":9.0,"lbl":"외형 3,000×300×100"},{"id":"P-011-05","m":"M-011","n":"트레이 행거","k":"PL","g":{"L":400,"W":60,"t":6,"holes":[[30,30,11],[370,30,11]]},"mat":"SS400","fin":"아연도금","q":16,"fix":"천장·기둥에 M10×2","note":"@1,500 — 트레이 처짐 기준","st":2,"kg":1.121,"lbl":"PL 6t · 400×60"},{"id":"P-011-06","m":"M-011","n":"접지 부스바","k":"PL","g":{"L":2000,"W":30,"t":5,"holes":[]},"mat":"동","fin":"나동 (도장 금지)","q":1,"fix":"절연 스탠드오프 M8 @500","note":"TN-S 주접지 — 반·기계 프레임이 여기로 모인다","st":3,"kg":2.688,"lbl":"PL 5t · 2,000×30"},{"id":"P-012-01","m":"M-012","n":"스키드 프레임 종재","k":"CH","g":{"h":150,"b":75,"tw":6.5,"tf":10,"L":1500},"mat":"SS400","fin":"분체도장","q":2,"fix":"횡재에 필릿 z6","note":"지게차 포크가 들어가는 높이","st":1,"kg":27.612,"lbl":"C-150×75×6.5/10 · L 1,500"},{"id":"P-012-02","m":"M-012","n":"스키드 프레임 횡재","k":"CH","g":{"h":150,"b":75,"tw":6.5,"tf":10,"L":860},"mat":"SS400","fin":"분체도장","q":3,"fix":"종재에 필릿 z6","note":"양단 + 중간","st":1,"kg":15.831,"lbl":"C-150×75×6.5/10 · L 860"},{"id":"P-012-03","m":"M-012","n":"스키드 상판","k":"PL","g":{"L":1500,"W":860,"t":6,"holes":[]},"mat":"SS400","fin":"분체도장","q":1,"fix":"프레임에 M10 @300","note":"펌프·탱크 취부면","st":1,"kg":60.759,"lbl":"PL 6t · 1,500×860"},{"id":"P-012-04","m":"M-012","n":"진공 펌프","k":"BUY","g":{"L":700,"W":350,"H":400,"kg":88.0},"mat":"—","fin":"—","q":2,"fix":"상판에 M12×4 + 방진고무","note":"드라이 스크류 · 1대 예비 (1대로도 돌아간다)","st":2,"kg":88.0,"lbl":"외형 700×350×400"},{"id":"P-012-05","m":"M-012","n":"진공 탱크","k":"TU","g":{"od":500,"t":6,"L":900},"mat":"SS400","fin":"내면 방청","q":1,"fix":"새들 2 · M12×4","note":"맥동 흡수 — 존 6개가 동시에 물면 펌프가 못 따라간다","st":2,"kg":65.787,"lbl":"Ø500 × 6t · L 900"},{"id":"P-012-06","m":"M-012","n":"탱크 새들","k":"PL","g":{"L":500,"W":200,"t":10,"holes":[]},"mat":"SS400","fin":"분체도장","q":2,"fix":"상판에 M12×4","note":"R250 곡면 절단","st":2,"kg":7.85,"lbl":"PL 10t · 500×200"},{"id":"P-012-07","m":"M-012","n":"진공 배관","k":"TU","g":{"od":50,"t":2.0,"L":2000},"mat":"STS304","fin":"—","q":4,"fix":"플랜지 + 클램프 @1,000","note":"펌프 → 탱크 → 매니폴드","st":3,"kg":4.783,"lbl":"Ø50 × 2t · L 2,000"},{"id":"P-012-08","m":"M-012","n":"배관 플랜지","k":"FL","g":{"od":140,"id":50,"t":12,"pcd":110,"n":4,"dh":14},"mat":"STS304","fin":"—","q":8,"fix":"맞대기 용접 + M12×4","note":"가스켓 NBR t3","st":3,"kg":1.219,"lbl":"플랜지 Ø140/Ø50 × 12t · PCD 110-4×Ø14"},{"id":"P-012-09","m":"M-012","n":"계장공기 필터·레귤레이터","k":"BUY","g":{"L":300,"W":150,"H":400,"kg":6.5},"mat":"—","fin":"—","q":1,"fix":"상판 브래킷에 M8×4","note":"0.6 MPa · 드레인 자동배출","st":3,"kg":6.5,"lbl":"외형 300×150×400"},{"id":"P-012-10","m":"M-012","n":"공기 리시버 탱크","k":"BUY","g":{"L":400,"W":400,"H":1200,"kg":62.0},"mat":"—","fin":"—","q":1,"fix":"상판에 M12×4","note":"압축공기 버퍼 · 안전밸브 부착","st":3,"kg":62.0,"lbl":"외형 400×400×1,200"},{"id":"P-012-11","m":"M-012","n":"스키드 방호 커버","k":"MESH","g":{"L":1500,"W":900,"wire":4,"pitch":40,"frame":3},"mat":"SS400","fin":"아연도금","q":2,"fix":"프레임에 M8×6 (공구 필요)","note":"회전부 방호 — 공구 없이 열리면 안 된다","st":4,"kg":10.168,"lbl":"메시 Ø4@40 · 1,500×900"},{"id":"P-013-01","m":"M-013","n":"방책 기둥","k":"BOX","g":{"h":60,"b":60,"t":3.2,"L":2550.0},"mat":"SS400","fin":"아연도금","q":34,"fix":"베이스플레이트 앵커 M10 (A11)×2","note":"피치 2,000 · ISO 14120 수평 1,000 N","st":1,"kg":14.554,"lbl":"□-60×60×3.2t · L 2,550"},{"id":"P-013-02","m":"M-013","n":"방책 기둥 베이스플레이트","k":"PL","g":{"L":150,"W":150,"t":10,"holes":[[35,75,12],[115,75,12]]},"mat":"SS400","fin":"아연도금","q":34,"fix":"앵커 M10 ×2","note":"홀 Ø12","st":1,"kg":1.748,"lbl":"PL 10t · 150×150"},{"id":"P-013-03","m":"M-013","n":"메시 패널","k":"MESH","g":{"L":1960,"W":2400.0,"wire":4,"pitch":40,"frame":3},"mat":"SS400","fin":"아연도금","q":32,"fix":"기둥에 전용 클램프 M8×4","note":"Ø4 @40×40 — ISO 13857 개구 기준","st":2,"kg":29.792,"lbl":"메시 Ø4@40 · 1,960×2,400"},{"id":"P-013-04","m":"M-013","n":"패널 클램프","k":"PL","g":{"L":80,"W":50,"t":5,"holes":[[25,25,9]]},"mat":"SS400","fin":"아연도금","q":128,"fix":"기둥·패널 사이 M8×1","note":"패널당 4 — 공구 없이 못 푼다","st":2,"kg":0.155,"lbl":"PL 5t · 80×50"},{"id":"P-013-05","m":"M-013","n":"안전문 프레임","k":"BOX","g":{"h":50,"b":50,"t":3.2,"L":1000},"mat":"SS400","fin":"아연도금","q":8,"fix":"용접 z4 + 힌지 2","note":"문 2개소 × 프레임 4변","st":3,"kg":4.702,"lbl":"□-50×50×3.2t · L 1,000"},{"id":"P-013-06","m":"M-013","n":"안전문 인터록 스위치","k":"BUY","g":{"L":120,"W":40,"H":40,"kg":0.3},"mat":"—","fin":"—","q":2,"fix":"기둥·문에 M5×4","note":"ISO 14119 코드화 · 텅 방식 — 속임이 어렵다","st":3,"kg":0.3,"lbl":"외형 120×40×40"},{"id":"P-013-07","m":"M-013","n":"라이트커튼 (투광·수광)","k":"BUY","g":{"L":2000,"W":50,"H":60,"kg":4.2},"mat":"—","fin":"—","q":4,"fix":"기둥에 전용 브래킷 M6×4","note":"개구 2개소 × 2본 · 뮤팅 부","st":4,"kg":4.2,"lbl":"외형 2,000×50×60"},{"id":"P-013-08","m":"M-013","n":"라이트커튼 브래킷","k":"PL","g":{"L":180,"W":80,"t":6,"holes":[[30,40,9],[150,40,9]]},"mat":"SS400","fin":"아연도금","q":8,"fix":"기둥에 M8×2 (장공)","note":"장공이 광축 조정 방향","st":4,"kg":0.672,"lbl":"PL 6t · 180×80"},{"id":"P-013-09","m":"M-013","n":"비상정지 버튼함","k":"BUY","g":{"L":120,"W":120,"H":90,"kg":0.6},"mat":"—","fin":"—","q":4,"fix":"기둥에 M6×4","note":"4개소 — 어디서든 5 m 안에 하나","st":5,"kg":0.6,"lbl":"외형 120×120×90"},{"id":"P-013-10","m":"M-013","n":"신호탑·부저","k":"BUY","g":{"L":90,"W":90,"H":400,"kg":1.1},"mat":"—","fin":"—","q":2,"fix":"기둥 상단에 M6×3","note":"적·황·녹 + 85 dB 부저","st":5,"kg":1.1,"lbl":"외형 90×90×400"},{"id":"P-017-01","m":"M-017","n":"경계 덕트","k":"TU","g":{"od":600,"t":3.0,"L":3000},"mat":"SS400","fin":"내외면 방청","q":8,"fix":"플랜지 M12×12 · 지지 @3,000","note":"부압 — 지지 간격을 넓히면 찌그러진다","st":1,"kg":132.506,"lbl":"Ø600 × 3t · L 3,000"},{"id":"P-017-02","m":"M-017","n":"덕트 플랜지","k":"FL","g":{"od":700,"id":600,"t":12,"pcd":660,"n":12,"dh":14},"mat":"SS400","fin":"방청","q":16,"fix":"덕트에 맞대기 용접 + M12×12","note":"가스켓 논아스베스토 t3","st":1,"kg":9.444,"lbl":"플랜지 Ø700/Ø600 × 12t · PCD 660-12×Ø14"},{"id":"P-017-03","m":"M-017","n":"덕트 지지 행거","k":"PL","g":{"L":500,"W":80,"t":8,"holes":[[40,40,14],[460,40,14]]},"mat":"SS400","fin":"아연도금","q":8,"fix":"천장·기둥에 M12×2","note":"@3,000","st":1,"kg":2.493,"lbl":"PL 8t · 500×80"},{"id":"P-017-04","m":"M-017","n":"BJ-101 경계 단자반","k":"BUY","g":{"L":600,"W":300,"H":800,"kg":48.0},"mat":"—","fin":"—","q":1,"fix":"벽·기둥에 M10×4","note":"발주자 설비 신호가 여기서 끊긴다 — 이 반 밖은 우리 책임이 아니다","st":2,"kg":48.0,"lbl":"외형 600×300×800"},{"id":"P-017-05","m":"M-017","n":"BJ-102 경계 배관반","k":"BUY","g":{"L":600,"W":300,"H":800,"kg":42.0},"mat":"—","fin":"—","q":1,"fix":"벽·기둥에 M10×4","note":"공압·용수 경계 · 각 계통 차단밸브","st":2,"kg":42.0,"lbl":"외형 600×300×800"},{"id":"P-017-06","m":"M-017","n":"경계 표지판","k":"PL","g":{"L":400,"W":300,"t":2.0,"holes":[]},"mat":"SS400","fin":"실크인쇄","q":4,"fix":"반·덕트에 M5×4","note":"'이 선 너머는 발주자 설비' — 글자가 경계를 지킨다","st":3,"kg":1.884,"lbl":"PL 2t · 400×300"}];
-const PART_STEPS={"M-001":[[1,"레일·프레임 지상 조립","셔틀은 가벼워 지상에서 다 짜고 통째로 올려도 된다 — 자리에서 짜면 용접 자세가 나쁘다","프레임 대각선 차 ≤ 2 mm"],[2,"상판 취부","상판을 먼저 덮으면 프레임 내부 용접을 못 한다","상판 단차 ≤ 1 mm"],[3,"정렬 가이드 세팅","패널을 넣어 보고 잡는다 — 도면 치수만으로는 안 맞는다","패널 폭 1,200 ± 3"],[4,"대차·레일 맞물림","레일 직진도를 먼저 잡아야 대차가 안 튄다","손으로 밀어 전 행정 무저항"],[5,"실린더 연결","대차가 손으로 자유롭게 구른 뒤에 동력을 건다 — 저항이 남은 채 실린더를 달면 원인을 못 찾는다","행정 500 ± 2 · 양단 완충 작동"],[6,"센서·리더 초점","기구가 다 선 뒤에 광학을 잡는다 — 먼저 잡으면 조립 진동으로 초점이 나간다","코드 판독률 10/10 · 존재 센서 오검출 0"]],"M-002":[[1,"기둥 6본 · 베이스 앵커","가장 무겁고 가장 정확해야 하는 것부터. 나머지는 여기에 붙는다","기둥 수직도 ≤ H/1000 · 상단 레벨 차 ≤ 2 mm"],[2,"상부 타이빔","기둥을 서로 묶기 전에는 사다리를 걸면 안 된다","대각선 차 ≤ 3 mm"],[3,"데크 프레임·레일 5단","아래 단부터. 위부터 달면 아래를 달 자리가 없다","단별 레벨 차 ≤ 2 mm · 레일 상면 동일 평면 ≤ 1 mm"],[4,"IR 뱅크·램프","데크가 선 뒤에 램프를 넣는다 — 반대로 하면 램프를 밟는다","40등 점등 · 절연저항 ≥ 5 MΩ"],[5,"단열·반사·내피","안쪽에서 바깥으로. 내피를 먼저 붙이면 단열재를 넣을 길이 없다","이음 어긋 물림 · 스페이서 @600 누락 0"],[6,"외피 측·단부판","안이 다 끝난 뒤에 덮는다. 덮고 나면 못 고친다","외피 표면 60 ℃ 이하 (열간 시험)"],[7,"지붕판·배기 노즐","지붕은 마지막이다 — 그 전까지 여기가 사람과 자재가 드나드는 유일한 구멍이다","누기 시험 · 노즐 플랜지 밀착"],[8,"에어록 셔터","외피가 선 뒤에 셔터 궤도를 잡는다 — 외피가 없으면 씰이 닿을 상대면이 없다","개폐 시간 ≤ 3 s · 씰 밀착 전주"],[9,"열전대·배선","구조가 더 이상 움직이지 않게 된 뒤에 계장을 건다 — 먼저 걸면 용접열에 열전대가 상한다","10점 지시 편차 ≤ 3 ℃"]],"M-003":[[1,"문형 기둥 2본 · 앵커","4기 전부 같은 순서다. 한 기를 익히면 나머지는 반복이다","기둥 수직도 ≤ H/1000 · 두 기둥 간격 ± 1 mm"],[2,"두상보·기초보","보를 걸어야 기둥 둘이 서로를 잡는다 — 그 전에는 사다리도 걸면 안 된다","보 수평 ≤ 1 mm/m"],[3,"볼스크류·LM·서보","직선 요소를 먼저. 캐리지를 먼저 달면 레일을 못 넣는다","스크류 흔들림 ≤ 0.05 · LM 전 행정 무저항"],[4,"포크 캐리지","LM 블록에 얹는다. 두 스크류 동기를 여기서 맞춘다","좌우 높이 차 ≤ 0.5 mm"],[5,"텔레스코픽 포크·티인","캐리지가 두 스크류에 안정되게 물린 뒤에 무거운 포크를 건다 — 반대로 하면 동기를 못 맞춘다","인출 2,610 ± 3 · 처짐 ≤ 3 mm"],[6,"엔코더·리미트·하드스톱","하드스톱을 마지막에 다는 것이 아니라, 시운전 전에 반드시 단다","리미트 → 정지거리 < 하드스톱까지 거리"]],"M-004":[[1,"기둥 4본 · 앵커","박리 추력이 여기로 내려온다. 라이너로 밀착시켜야 전단이 걸린다","베이스 밀착 — 틈새 게이지 0.1 불통과"],[2,"상판 리브 용접","리브를 먼저 짜고 상판을 덮는다. 반대로 하면 안쪽 용접을 못 한다","용접 변형 확인 — 연삭 전 평면도 ≤ 1 mm"],[3,"상판 취부·연삭","볼트 접합이다. 나중에 떼어 다시 연삭할 수 있어야 한다","평면도 0.2/2,900 · 상면 EL 1,150 ± 1"],[4,"흡착패드 18개","상판을 연삭해 평평해진 뒤에 패드를 심는다 — 먼저 심으면 연삭 부스러기를 패드가 먹는다","패드 상면 동일 평면 ≤ 0.3 mm"],[5,"매니폴드·밸브·센서","배관은 마지막. 먼저 깔면 연삭 부스러기를 먹는다","존별 −65 kPa 도달 · 유지 60 s 누설 ≤ 2 kPa"]],"M-005":[[1,"주행 문형 4기둥 · 앵커","칼끝 간격 300±2 가 여기서 시작한다. 여기가 틀리면 아래가 다 틀린다","4기둥 상단 레벨 차 ≤ 1 mm · 스팬 ± 1 mm"],[2,"주행레일 빔 2본","빔을 걸고 상면을 연삭한다 — 현장 연삭이 원칙이다","레일면 직진도 0.1/1,000 · 두 빔 높이 차 ≤ 0.5 mm"],[3,"LM 레일·랙 취부","빔 상면을 연삭해 기준면이 나온 뒤에 레일을 깐다 — 레일은 자기 밑면을 그대로 베낀다","레일 평행도 ≤ 0.1 · 랙 백래시 ≤ 0.05"],[4,"갠트리 프레임·크로스빔","마찰접합이다 — 접합면에 도장이 있으면 미끄러진다","접합면 Sa 2½ 확인 · 체결력 109.9 kN 마킹"],[5,"Z축 슬라이드 2조","갠트리가 레일 위에 선 뒤에 Z축을 얹는다","Z 수직도 ≤ 0.05/300"],[6,"칼날 빔·인서트·히터·핀","칼날은 마지막에 단다. 먼저 달면 조립 중에 다친다","칼끝 간격 300 ± 2 · 히터 12본 승온 확인"],[7,"BC-201 카세트 장착","핀이 먼저 물리고 클램프는 나중이다 — 순서가 반대면 핀이 상한다","핀 4개 완전 착좌 후 클램프 · 유격 0"],[8,"GR-W1 가이드롤","갠트리가 레일 위에서 다 선 뒤에 롤을 건다 — 먼저 달면 조립 중에 롤 면이 상한다","롤 진원도 ≤ 0.05 · 회전 무저항"]],"M-006":[[1,"권취 문형 2기둥 · 앵커","만권 롤 350 kg 이 이 두 기둥에 걸린다 — 이 모듈에서 가장 먼저·가장 정확해야 하는 부재다","기둥 수직도 ≤ H/1000"],[2,"상부보","베어링 가로보 — 여기가 처지면 권취축이 기운다","수평 ≤ 0.5 mm/m"],[3,"권취축·코어·필로우블록","축을 먼저 넣고 코어를 물린다. 코어를 먼저 끼우면 축이 안 들어간다","축 흔들림 ≤ 0.03 · 코어 진원 ≤ 0.2"],[4,"토크서보·직경센서","손으로 돌려 저항이 없음을 본 뒤에 동력을 건다 — 저항이 남은 채 서보를 달면 원인을 못 찾는다","무부하 회전 · 장력 지령 추종"],[5,"댄서·아이들러·로드셀","웹 경로를 순서대로 — 박리점에서 드럼 쪽으로","웹 경로 단차 ≤ 2 mm · 장력 0점 조정"],[6,"RH-201 런웨이 기둥·빔","롤이 감기기 전에 반출로를 세운다. 나중에 세우면 롤을 못 내린다","레일면 EL 5,100 ± 3 · 처짐 ≤ L/500"],[7,"호이스트·인양빔·그리퍼","런웨이 빔이 선 뒤에 트롤리를 끼운다 — 빔을 나중에 걸면 트롤리를 넣을 단부가 막힌다","정격 1 t 하중시험 · 전 행정 주행"],[8,"BS-301 보관 새들","방책 밖에 놓이므로 방책 공사와 부딪히지 않게 마지막에 앉힌다","롤 안착 안정 — 굴러가지 않는다"]],"M-007":[[1,"골조 6기둥 · 앵커","M-002 와 같은 부품·같은 지그·같은 순서다","M-002 1단계와 동일 기준"],[2,"데크 프레임·레일 5단","아래 단부터 올린다 — M-002 와 같은 이유로, 위부터 달면 아래를 달 자리가 없다","M-002 3단계와 동일 기준"],[3,"측벽 PC·필터 프레임","여기는 단열이 아니라 방호다. 막으면 냉각이 안 된다","PC 고무와셔 개재 — 직접 조이면 깨진다"],[4,"냉각 팬 6대·가드","급기면(필터)이 선 뒤에 팬을 단다 — 팬을 먼저 달면 필터를 끼울 틈이 없다","풍향 확인 · 진동 ≤ 4.5 mm/s"],[5,"표면 IR 센서 5점","골조·팬이 다 선 뒤에 센다 — 팬 진동이 남아 있으면 비접촉 온도가 흔들린다","60 ℃ 판정 편차 ≤ 3 ℃ · 흑체 대조"]],"M-008":[[1,"컨베이어 프레임·다리","높이 조정 볼트로 라인 높이 1,150 을 맞춘다","롤러 상면 EL 1,150 ± 2"],[2,"롤러 18본","가운데부터 양쪽으로 — 끝부터 넣으면 마지막 한 본이 안 들어간다","롤러 상면 동일 평면 ≤ 1 mm"],[3,"구동 기어모터·체인","롤러가 다 자유롭게 구른 뒤에 체인을 건다","체인 처짐 10~15 mm"],[4,"평적 카트 조립","카트는 라인 구조와 무관하므로 따로 짠다 — 1~3단계와 나란히 해도 되는 유일한 자리다","캐스터 4점 접지 · 브레이크 작동"],[5,"센서","롤러가 다 돌고 체인 장력이 잡힌 뒤에 광축을 세운다 — 먼저 잡으면 진동으로 틀어진다","유리 존재·겹침 판정 10/10"]],"M-009":[[1,"검사 문형·상부보","카메라를 달 틀부터 세운다 — 틀이 흔들리면 초점을 몇 번 잡아도 다시 틀어진다","보 수평 ≤ 1 mm/m · 기둥 수직 ≤ H/1000"],[2,"카메라·조명 취부·초점","구조가 더 이상 움직이지 않게 된 뒤에 광학을 잡는다 — 순서를 바꾸면 초점을 두 번 잡는다","전폭 2,400 시야 · 잔막 0.2 mm 판독"],[3,"리젝트 슈트·박스","검사부와 구조가 독립이므로 1·2단계와 나란히 해도 된다 — 공기를 줄일 수 있는 유일한 자리다","경사 35° · 유리 자중 활강 · 만재 센서 작동"]],"M-011":[[1,"베이스 채널·반 설치","반이 서야 배선이 시작된다 — 트레이를 먼저 깔면 반을 넣을 길이 막힌다","반 수직 ≤ 2 mm/m · 문 개폐 간섭 없음"],[2,"케이블 트레이·행거","반에서 기계 쪽으로 깔아 나간다 — 반대로 깔면 마지막 구간에서 여장이 모자란다","동력/제어 분리 2단 유지 · 행거 @1,500"],[3,"접지 부스바·본딩","통전 전에 반드시 끝낸다 — 접지 없이 한 번 넣어 본 회로는 이미 위험한 회로다","접지저항 ≤ 10 Ω · 전 프레임 본딩 도통"]],"M-012":[[1,"스키드 프레임·상판","지상에서 다 짜고 지게차로 들여놓는다 — 자리에서 짜면 포크 진입로가 없다","프레임 대각선 차 ≤ 2 mm"],[2,"펌프·탱크·새들","무거운 것부터 앉힌다 — 가벼운 것을 먼저 놓으면 그것을 넘어 인양해야 한다","방진고무 균등 압축 · 탱크 수평 ≤ 1 mm/m"],[3,"배관·플랜지·계장","기기가 다 앉은 뒤에 배관한다 — 먼저 깔면 기기를 앉힐 때 배관을 밟는다","기밀 시험 0.6 MPa · 누설 0"],[4,"방호 커버","회전부가 처음 도는 순간에는 이미 덮여 있어야 한다 — 시운전 뒤에 덮는 것이 아니다","공구 없이 안 열림 · 개구 기준 충족"]],"M-013":[[1,"기둥 34본 · 앵커","방책은 기계가 다 선 뒤에 세운다 — 먼저 세우면 반입로가 막힌다","기둥 수직 · 피치 2,000 ± 10"],[2,"메시 패널 32매","기둥이 다 서고 피치가 확정된 뒤에 패널을 채운다 — 먼저 달면 마지막 한 장이 안 들어간다","바닥 틈 ≤ 180 · 개구 기준 충족"],[3,"안전문·인터록","문이 제자리에서 여닫힌 뒤에 인터록을 건다 — 문틀이 틀어진 채 걸면 안 잠긴다","문 열림 → 정지 확인 (양쪽 채널)"],[4,"라이트커튼·광축","개구 2개소. 광축이 안 맞으면 뮤팅이 안 걸린다","차광 시험 Ø30 봉 · 응답 ≤ 30 ms"],[5,"비상정지·신호탑","마지막에 다는 것이 아니라 통전 전에 반드시 단다","4개소 전부 정지 · 복귀 요구 확인"]],"M-017":[[1,"덕트·플랜지·행거","우리 쪽 끝까지만 세운다. 그 너머는 발주자 설비다","지지 @3,000 · 부압 시험"],[2,"경계 단자반·배관반","여기서 우리 배선과 배관이 끝난다 — 이 반이 서야 발주자 설비와의 경계가 물리적으로 확정된다","단자 번호 도면 일치 · 차단밸브 작동"],[3,"경계 표지판","표지가 붙어야 경계가 지켜진다 — 도면에만 있는 경계는 현장에서 지워진다","4개소 부착 · 판독 가능"]]};
+const PARTS=[{"id":"P-001-01","m":"M-001","n":"셔틀 프레임 종재","k":"BOX","g":{"h":100,"b":50,"t":3.2,"L":2700.0},"mat":"SS400","fin":"분체도장","q":2,"fix":"횡재와 필릿 용접 z5","note":"패널 장변 방향 · 상면이 롤러 기준면","st":1,"kg":19.479,"lbl":"□-100×50×3.2t · L 2,700"},{"id":"P-001-02","m":"M-001","n":"셔틀 프레임 횡재","k":"BOX","g":{"h":100,"b":50,"t":3.2,"L":1500.0},"mat":"SS400","fin":"분체도장","q":4,"fix":"종재 사이 필릿 용접 z5","note":"양단 + 중간 2 — 롤러 지지 간격 700","st":1,"kg":10.822,"lbl":"□-100×50×3.2t · L 1,500"},{"id":"P-001-03","m":"M-001","n":"셔틀 상판","k":"PL","g":{"L":2700.0,"W":1600.0,"t":4.5,"holes":[]},"mat":"SS400","fin":"분체도장","q":1,"fix":"프레임에 M8×24 @300","note":"모서리 R20 · 손 닿는 면이라 버 제거 필수","st":2,"kg":152.604,"lbl":"PL 4.5t · 2,700×1,600"},{"id":"P-001-04","m":"M-001","n":"정렬 가이드 (고정측)","k":"ANG","g":{"a":60,"b":60,"t":5,"L":2700.0},"mat":"SS400","fin":"분체도장","q":1,"fix":"상판에 M8×6","note":"기준면 — 이 면에서 패널 위치가 나온다. 유리 모서리가 닿는 자리는 P-001-12 접촉면이다 (프레임 없이 들어온다 — 강재가 직접 닿으면 안 된다)","st":3,"kg":12.187,"lbl":"L-60×60×5 · L 2,700"},{"id":"P-001-05","m":"M-001","n":"정렬 가이드 (가동측)","k":"ANG","g":{"a":60,"b":60,"t":5,"L":2700.0},"mat":"SS400","fin":"분체도장","q":1,"fix":"가이드 슬롯 + M8 손잡이볼트 4","note":"패널 폭 편차 흡수 · 접촉면 기준 1,400±3 로 물린다","st":3,"kg":12.187,"lbl":"L-60×60×5 · L 2,700"},{"id":"P-001-06","m":"M-001","n":"셔틀 주행 대차","k":"BUY","g":{"L":300,"W":200,"H":120,"kg":6.2},"mat":"—","fin":"—","q":4,"fix":"프레임 하면에 M10×4","note":"V홈 캠폴로워 · 레일 위를 구른다","st":4,"kg":6.2,"lbl":"외형 300×200×120"},{"id":"P-001-07","m":"M-001","n":"셔틀 레일","k":"ANG","g":{"a":75,"b":75,"t":6,"L":3300.0},"mat":"SS400","fin":"분체도장","q":2,"fix":"기초 앵커 M12 @800","note":"V홈 대차의 주행면 — 상면 직진도 1.0/2,000","st":1,"kg":22.382,"lbl":"L-75×75×6 · L 3,300"},{"id":"P-001-08","m":"M-001","n":"인출 실린더","k":"BUY","g":{"L":680,"W":90,"H":90,"kg":4.8},"mat":"—","fin":"—","q":1,"fix":"프레임 단부 클레비스 핀 Ø16","note":"복동 공압 Ø40 · 행정 500 · 속도제어 양방향","st":5,"kg":4.8,"lbl":"외형 680×90×90"},{"id":"P-001-09","m":"M-001","n":"2D 코드 리더","k":"BUY","g":{"L":60,"W":45,"H":40,"kg":0.3},"mat":"—","fin":"—","q":1,"fix":"브래킷에 M4×2","note":"패널 라벨 판독 — 초점거리 120","st":6,"kg":0.3,"lbl":"외형 60×45×40"},{"id":"P-001-10","m":"M-001","n":"리더 브래킷","k":"PL","g":{"L":160,"W":90,"t":5,"holes":[[20,45,9],[140,45,9]]},"mat":"SS400","fin":"분체도장","q":1,"fix":"가이드에 M8×2 (장공으로 초점 조정)","note":"장공 방향이 초점 방향이다 — 세워 붙이면 조정이 안 된다","st":6,"kg":0.56,"lbl":"PL 5t · 160×90"},{"id":"P-001-11","m":"M-001","n":"패널 존재 센서","k":"BUY","g":{"L":50,"W":18,"H":32,"kg":0.1},"mat":"—","fin":"—","q":2,"fix":"브래킷에 M3×2","note":"반사형 광전 · 투입 확인 PL_IN_STACK_PRESENT","st":6,"kg":0.1,"lbl":"외형 50×18×32"},{"id":"P-001-12","m":"M-001","n":"정렬 가이드 접촉면","k":"PL","g":{"L":2700.0,"W":40,"t":10,"holes":[[150,20,6.5],[450,20,6.5],[750,20,6.5],[1050,20,6.5],[1350,20,6.5],[1650,20,6.5],[1950,20,6.5],[2250,20,6.5],[2550,20,6.5]]},"mat":"UHMW-PE","fin":"—","q":2,"fix":"가이드 수직면에 M6 접시 @300 · 머리 매몰 1 이상","note":"유리 모서리가 닿는 면 — 프레임·정션박스를 떼고 들어오므로 기준면이 유리 자체다. 상단 5×45° 인입 면취 · 잔재는 예비로 보관 (마모 소모품)","st":3,"kg":1.012,"lbl":"PL 10t · 2,700×40"},{"id":"P-002-01","m":"M-002","n":"가열실 기둥","k":"HB","g":{"h":200,"b":200,"tw":8,"tf":12,"L":4550.0},"mat":"SS400","fin":"내열도장 2회","q":6,"fix":"베이스플레이트에 완전용입 + 거싯 4","note":"6기둥 — 종방향 3열(0/1,890/3,780) × 횡방향 2열(±1,280)","st":1,"kg":221.734,"lbl":"H-200×200×8/12 · L 4,550"},{"id":"P-002-02","m":"M-002","n":"기둥 베이스플레이트","k":"PL","g":{"L":400,"W":400,"t":25,"holes":[[60,60,22],[340,60,22],[60,340,22],[340,340,22]]},"mat":"SS400","fin":"내열도장 2회","q":6,"fix":"앵커 M20 (A2) ×4 · hef 170","note":"홀 Ø22 — 앵커 Ø20 에 여유 2. 무수축 그라우트 t30","st":1,"kg":31.102,"lbl":"PL 25t · 400×400"},{"id":"P-002-03","m":"M-002","n":"기둥 거싯","k":"GU","g":{"a":200,"b":200,"t":12},"mat":"SS400","fin":"내열도장 2회","q":24,"fix":"기둥·베이스에 양면 필릿 z8","note":"기둥당 4매 · 4방향","st":1,"kg":1.884,"lbl":"거싯 200×200 × 12t"},{"id":"P-002-04","m":"M-002","n":"상부 종방향 타이빔","k":"BOX","g":{"h":150,"b":100,"t":6,"L":3880.0},"mat":"SS400","fin":"내열도장 2회","q":2,"fix":"기둥 상단에 필릿 z6","note":"랙 상단 EL 4,550 — 지붕 하중과 기둥 좌굴 구속","st":2,"kg":86.988,"lbl":"□-150×100×6t · L 3,880"},{"id":"P-002-05","m":"M-002","n":"상부 횡방향 타이빔","k":"BOX","g":{"h":150,"b":100,"t":6,"L":2560.0},"mat":"SS400","fin":"내열도장 2회","q":3,"fix":"종방향 빔에 필릿 z6","note":"3열 — 기둥 열과 같은 위치","st":2,"kg":57.394,"lbl":"□-150×100×6t · L 2,560"},{"id":"P-002-06","m":"M-002","n":"데크 프레임 종재","k":"ANG","g":{"a":65,"b":65,"t":6,"L":2880.0},"mat":"SS400","fin":"내열도장 2회","q":10,"fix":"기둥에 M12×4 (단별 높이 조정 장공)","note":"단 EL 1,210 / 1,830 / 2,450 / 3,070 / 3,690","st":3,"kg":16.82,"lbl":"L-65×65×6 · L 2,880"},{"id":"P-002-07","m":"M-002","n":"데크 프레임 횡재","k":"ANG","g":{"a":65,"b":65,"t":6,"L":1550.0},"mat":"SS400","fin":"내열도장 2회","q":15,"fix":"종재에 필릿 z5","note":"단당 3 — 양단 + 중간","st":3,"kg":9.053,"lbl":"L-65×65×6 · L 1,550"},{"id":"P-002-08","m":"M-002","n":"데크 레일","k":"SQB","g":{"a":40,"L":2880.0},"mat":"STS304","fin":"무도장 (고온)","q":10,"fix":"종재 상면에 M8×6 접시머리","note":"패널이 미끄러지는 면 — 도장하면 벗겨져 유리를 긁는다","st":3,"kg":36.541,"lbl":"각봉 40×40 · L 2,880"},{"id":"P-002-09","m":"M-002","n":"외피 측판","k":"PL","g":{"L":1890,"W":3860,"t":3.2,"holes":[]},"mat":"SS400","fin":"내열도장 2회","q":4,"fix":"기둥·타이빔에 M8×@250","note":"장변 2분할 — 3,780 한 장은 운반·취급이 안 된다","st":6,"kg":183.26,"lbl":"PL 3.2t · 1,890×3,860"},{"id":"P-002-10","m":"M-002","n":"외피 단부판","k":"PL","g":{"L":2760.0,"W":1930,"t":3.2,"holes":[]},"mat":"SS400","fin":"내열도장 2회","q":2,"fix":"기둥에 M8×@250 · 이음 겹침 30 + 실링","note":"반출측 — 2분할. 2,560×3,860 한 장은 유통 시트를 넘는다","st":6,"kg":133.809,"lbl":"PL 3.2t · 2,760×1,930"},{"id":"P-002-11","m":"M-002","n":"외피 지붕판","k":"PL","g":{"L":3880.0,"W":1380.0,"t":3.2,"holes":[]},"mat":"SS400","fin":"내열도장 2회","q":2,"fix":"타이빔에 M8×@250 · 이음 겹침 30 + 실링","note":"2분할 (유통 시트 폭). 배기 덕트 관통 Ø600 은 한 장에","st":7,"kg":134.503,"lbl":"PL 3.2t · 3,880×1,380"},{"id":"P-002-12","m":"M-002","n":"내피 측판","k":"PL","g":{"L":945,"W":1930,"t":2.0,"holes":[]},"mat":"STS304","fin":"#400 연마","q":16,"fix":"스페이서 개재 M6 · 이음 어긋 물림 겹침 30","note":"복사면 — 연마면이 안쪽. STS 시트 한계로 4분할","st":5,"kg":28.926,"lbl":"PL 2t · 945×1,930"},{"id":"P-002-13","m":"M-002","n":"내피 단부·지붕판","k":"PL","g":{"L":1293.333,"W":1380.0,"t":2.0,"holes":[]},"mat":"STS304","fin":"#400 연마","q":12,"fix":"스페이서 개재 M6 · 이음 어긋 물림 겹침 30","note":"단부 6 + 지붕 6 — STS 시트 한계로 분할","st":5,"kg":28.307,"lbl":"PL 2t · 1,293.3×1,380"},{"id":"P-002-14","m":"M-002","n":"단열재","k":"SLAB","g":{"L":1000,"W":600,"t":100},"mat":"미네랄울","fin":"—","q":62,"fix":"핀 용접 + 와셔 고정","note":"100t 100 kg/m³ · 이음 어긋 물림 (열교)","st":5,"kg":6.0,"lbl":"100t · 1,000×600"},{"id":"P-002-15","m":"M-002","n":"반사층","k":"SLAB","g":{"L":1000,"W":600,"t":0.5},"mat":"AL반사판","fin":"—","q":62,"fix":"단열재 위 겹침 20","note":"AL 반사판 + 공기층 25 — 공기층이 없으면 반사층이 일한다고 못 한다","st":5,"kg":0.81,"lbl":"0.5t · 1,000×600"},{"id":"P-002-16","m":"M-002","n":"열교 차단 스페이서","k":"SLAB","g":{"L":60,"W":60,"t":12},"mat":"GFRP","fin":"—","q":210,"fix":"내피·외피 사이 개재 M6","note":"@600 격자 — 금속으로 바꾸면 외피 표면이 60 ℃ 를 넘는다","st":5,"kg":0.082,"lbl":"12t · 60×60"},{"id":"P-002-17","m":"M-002","n":"IR 뱅크 캐리어 · 반사판","k":"CH","g":{"h":100,"b":50,"tw":5,"tf":5,"L":2460.0},"mat":"SS400","fin":"내열도장 2회","q":12,"fix":"기둥에 M10×2","note":"뱅크는 단수+1 = 6 이고 뱅크당 2본이다 — 종전 수량 10 은 '단당 2뱅크' 로 세어 한 뱅크를 빠뜨린 값이었다. 램프 교체는 캐리어를 빼지 않고 측벽 밖 소켓에서 한다","st":4,"kg":18.345,"lbl":"C-100×50×5/5 · L 2,460"},{"id":"P-002-18","m":"M-002","n":"IR 램프","k":"BUY","g":{"L":2520.0,"W":25,"H":25,"kg":1.5},"mat":"—","fin":"—","q":48,"fix":"측벽 관통 · 한쪽 고정 · 한쪽 유동 (행정 12)","note":"2.5 kW 단파장 · **발열장 2,400** + 단자 2×60 · 뱅크당 8등 · 총 48등. 발열장은 공동 폭 −100 이다 — 패널 폭 + 끝단 여유 50 mm 짜리 관습 길이(1,500)로는 폭 가장자리 유속이 중앙의 70 % 대라 냉점을 140 ℃ 에 올리면 중앙 백시트가 녹는다 (IR 뱅크 배치 검토 IR1~IR3)","st":4,"kg":1.5,"lbl":"외형 2,520×25×25"},{"id":"P-002-19","m":"M-002","n":"램프 소켓·배선","k":"BUY","g":{"L":60,"W":40,"H":40,"kg":0.15},"mat":"—","fin":"—","q":96,"fix":"측벽 브래킷에 M4×2 (챔버 밖)","note":"세라믹 소켓 · 내열 실리콘 리드 200 ℃. 단자를 고온부 밖에 두는 것이 석영램프 수명을 정한다 — 길이를 벌려고 밖으로 뺀 것이 아니라 원래 밖에 있어야 한다","st":4,"kg":0.15,"lbl":"외형 60×40×40"},{"id":"P-002-20","m":"M-002","n":"에어록 셔터판","k":"PL","g":{"L":1880.0,"W":550.0,"t":4.5,"holes":[]},"mat":"SS400","fin":"내열도장 2회","q":10,"fix":"가이드 레일 + 공압 실린더 · 단별","note":"**단별 셔터 — 선택된 단만 연다.** 개구 1,880 × 350. 종전에는 랙 전고 4,090 짜리 판 2 장이었는데, 포크가 어느 단에나 닿아야 하니 전고를 여는 구조였다 — 그러면 부력 교환유동만으로 604 kW 가 나간다(설치정격의 6 배). 개구는 포크 90 + 패널 5 + 내려놓기 60 + 여유 100 = 255 가 지나갈 것의 전부다. 세라믹 파이버 씰 개재","st":8,"kg":36.526,"lbl":"PL 4.5t · 1,880×550"},{"id":"P-002-25","m":"M-002","n":"램프 관통 실링 부시","k":"BUY","g":{"L":90,"W":45,"H":45,"kg":0.08},"mat":"—","fin":"—","q":96,"fix":"내피·단열·외피 관통 후 압축","note":"**섬유충전 세라믹 k ≤ 0.9 W/(m·K)** + 파이버 로프 패킹. 총 80 개소. 치수가 같아 도면으로는 강재 슬리브와 구분이 안 된다 — 재질을 사양으로 적지 않으면 열교가 18 배가 된다. 실링을 빼면 침기가 5.0 kW 로 벽 손실과 같은 자릿수다 (램프 지지 상세 LM4·LM5)","st":5,"kg":0.08,"lbl":"외형 90×45×45"},{"id":"P-002-21","m":"M-002","n":"셔터 씰","k":"SLAB","g":{"L":1880.0,"W":40,"t":15},"mat":"세라믹파이버","fin":"—","q":40,"fix":"셔터 프레임 홈에 압입","note":"4변 × 셔터 10 장. 장수가 늘어 씰 둘레가 23.1 → 44.6 m 가 되고 침기가 그만큼 오른다 — 그래도 개구를 줄여 얻는 것에 비하면 무시할 수 있다 (열수지 HB6)","st":8,"kg":0.293,"lbl":"15t · 1,880×40"},{"id":"P-002-22","m":"M-002","n":"셔터 실린더","k":"BUY","g":{"L":700,"W":63,"H":63,"kg":3.2},"mat":"—","fin":"—","q":10,"fix":"단별 프레임에 M10×4","note":"복동 공압 Ø50 · **행정 450** · 속도제어. 종전 행정 900 은 전고 판 4,090 의 22 % 밖에 못 비웠다 — 실린더가 이미 단별 개구를 가리키고 있었는데 판만 전고로 남아 있었다","st":8,"kg":3.2,"lbl":"외형 700×63×63"},{"id":"P-002-23","m":"M-002","n":"단별 열전대","k":"BUY","g":{"L":200,"W":6,"H":6,"kg":0.05},"mat":"—","fin":"—","q":10,"fix":"내피 관통 압축피팅 M8","note":"K 형 시스 Ø3 — 단당 2점 (좌·우)","st":9,"kg":0.05,"lbl":"외형 200×6×6"},{"id":"P-002-24","m":"M-002","n":"배기 덕트 노즐","k":"TU","g":{"od":600,"t":3.0,"L":400},"mat":"SS400","fin":"내열도장 2회","q":1,"fix":"지붕판에 플랜지 M12×12","note":"경계 덕트로 나가는 자리 — M-017 이 받는다","st":7,"kg":17.668,"lbl":"Ø600 × 3t · L 400"},{"id":"P-003-01","m":"M-003","n":"포크 문형 기둥","k":"BOX","g":{"h":125,"b":125,"t":6,"L":4510.0},"mat":"SS400","fin":"분체도장","q":8,"fix":"베이스플레이트에 완전용입 + 거싯 4","note":"문형 1기당 2 · 4기분","st":1,"kg":101.112,"lbl":"□-125×125×6t · L 4,510"},{"id":"P-003-02","m":"M-003","n":"포크 기둥 베이스플레이트","k":"PL","g":{"L":400,"W":400,"t":19,"holes":[[60,60,22],[340,60,22],[60,340,22],[340,340,22]]},"mat":"SS400","fin":"분체도장","q":8,"fix":"앵커 M20 ×4 · hef 170","note":"홀 Ø22 · 그라우트 t30","st":1,"kg":23.637,"lbl":"PL 19t · 400×400"},{"id":"P-003-03","m":"M-003","n":"포크 기둥 거싯","k":"GU","g":{"a":150,"b":150,"t":12},"mat":"SS400","fin":"분체도장","q":32,"fix":"기둥·베이스에 양면 필릿 z8","note":"기둥당 4매","st":1,"kg":1.06,"lbl":"거싯 150×150 × 12t"},{"id":"P-003-04","m":"M-003","n":"두상보","k":"BOX","g":{"h":260,"b":180,"t":9,"L":2590.0},"mat":"SS400","fin":"분체도장","q":4,"fix":"기둥 상단에 완전용입 + 거싯","note":"볼스크류 상단 베어링을 받는다 — 여기가 처지면 스크류가 휜다","st":2,"kg":154.438,"lbl":"□-260×180×9t · L 2,590"},{"id":"P-003-05","m":"M-003","n":"기초보","k":"BOX","g":{"h":300,"b":180,"t":9,"L":2590.0},"mat":"SS400","fin":"분체도장","q":4,"fix":"기둥 하단에 완전용입","note":"볼스크류 하단 + 서보 감속기 지지","st":2,"kg":169.077,"lbl":"□-300×180×9t · L 2,590"},{"id":"P-003-06","m":"M-003","n":"보 접합 거싯","k":"GU","g":{"a":180,"b":180,"t":12},"mat":"SS400","fin":"분체도장","q":16,"fix":"기둥·보에 양면 필릿 z8","note":"문형당 4매 (상 2 · 하 2)","st":2,"kg":1.526,"lbl":"거싯 180×180 × 12t"},{"id":"P-003-07","m":"M-003","n":"볼스크류","k":"BUY","g":{"L":3180.0,"W":32,"H":32,"kg":14.2},"mat":"—","fin":"—","q":8,"fix":"상·하단 지지베어링 유닛","note":"Ø32 리드 10 C5급 · 행정 2,480","st":3,"kg":14.2,"lbl":"외형 3,180×32×32"},{"id":"P-003-08","m":"M-003","n":"지지베어링 유닛","k":"BUY","g":{"L":80,"W":80,"H":60,"kg":1.4},"mat":"—","fin":"—","q":16,"fix":"보에 M8×4","note":"상단 지지측 + 하단 고정측","st":3,"kg":1.4,"lbl":"외형 80×80×60"},{"id":"P-003-09","m":"M-003","n":"서보모터·감속기","k":"BUY","g":{"L":280,"W":130,"H":130,"kg":11.5},"mat":"—","fin":"—","q":8,"fix":"기초보에 M10×4 + 커플링","note":"1.5 kW 무여자 브레이크 · 2축 동기","st":3,"kg":11.5,"lbl":"외형 280×130×130"},{"id":"P-003-10","m":"M-003","n":"LM 가이드 레일","k":"BUY","g":{"L":4110.0,"W":23,"H":22,"kg":8.6},"mat":"—","fin":"—","q":8,"fix":"기둥 전면에 M6 @80","note":"HSR25 상당 · 프리로드 C1 · 기준면은 기둥 가공면","st":3,"kg":8.6,"lbl":"외형 4,110×23×22"},{"id":"P-003-11","m":"M-003","n":"LM 블록","k":"BUY","g":{"L":90,"W":70,"H":36,"kg":0.6},"mat":"—","fin":"—","q":16,"fix":"캐리지에 M6×4","note":"레일당 2블록","st":3,"kg":0.6,"lbl":"외형 90×70×36"},{"id":"P-003-12","m":"M-003","n":"포크 캐리지","k":"PL","g":{"L":1800,"W":550,"t":12,"holes":[]},"mat":"SS400","fin":"분체도장","q":4,"fix":"LM 블록 4 + 볼너트 2","note":"용접 조립 후 LM 취부면 연삭 — 여기가 안 평평하면 포크가 흔들린다","st":4,"kg":93.258,"lbl":"PL 12t · 1,800×550"},{"id":"P-003-13","m":"M-003","n":"캐리지 보강 리브","k":"PL","g":{"L":550,"W":120,"t":10,"holes":[]},"mat":"SS400","fin":"분체도장","q":16,"fix":"캐리지에 필릿 z6","note":"캐리지당 4매 · 볼너트 반력 분산","st":4,"kg":5.181,"lbl":"PL 10t · 550×120"},{"id":"P-003-14","m":"M-003","n":"TS-101 텔레스코픽 포크","k":"BUY","g":{"L":1900,"W":200,"H":160,"kg":42.0},"mat":"—","fin":"—","q":4,"fix":"캐리지에 M12×8","note":"2단 · 인출 2,610 · 낙하방지 체크밸브 내장","st":5,"kg":42.0,"lbl":"외형 1,900×200×160"},{"id":"P-003-15","m":"M-003","n":"포크 티인","k":"PL","g":{"L":620,"W":140,"t":14,"holes":[]},"mat":"A6061-T6","fin":"아노다이징","q":8,"fix":"포크 선단에 M10×4","note":"패널이 얹히는 면 — 알루미늄이라 유리를 안 긁는다","st":5,"kg":3.281,"lbl":"PL 14t · 620×140"},{"id":"P-003-16","m":"M-003","n":"절대치 엔코더","k":"BUY","g":{"L":60,"W":60,"H":45,"kg":0.3},"mat":"—","fin":"—","q":4,"fix":"감속기 후단 M4×4","note":"다회전 배터리리스 — 정전 후 원점복귀가 필요 없다","st":6,"kg":0.3,"lbl":"외형 60×60×45"},{"id":"P-003-17","m":"M-003","n":"상하한 리미트","k":"BUY","g":{"L":70,"W":30,"H":35,"kg":0.15},"mat":"—","fin":"—","q":8,"fix":"기둥에 M5×2","note":"안전등급 위치스위치 · 기계식 하드스톱 병설","st":6,"kg":0.15,"lbl":"외형 70×30×35"},{"id":"P-003-18","m":"M-003","n":"기계식 하드스톱","k":"PL","g":{"L":120,"W":80,"t":16,"holes":[]},"mat":"SS400","fin":"분체도장","q":8,"fix":"기둥에 M12×2","note":"리미트가 죽어도 캐리지가 여기서 선다 — 마지막 방벽","st":6,"kg":1.206,"lbl":"PL 16t · 120×80"},{"id":"P-004-01","m":"M-004","n":"VT-101 상판","k":"PL","g":{"L":3000.0,"W":1760.0,"t":20,"holes":[]},"mat":"SS400","fin":"상면 연삭 Ra 3.2","q":1,"fix":"리브에 완전용입 후 상면 연삭","note":"평면도 0.2/3,000 · 흡착홀 24×Ø8","st":3,"kg":828.96,"lbl":"PL 20t · 3,000×1,760"},{"id":"P-004-02","m":"M-004","n":"상판 리브 (종)","k":"PL","g":{"L":3000.0,"W":120,"t":10,"holes":[]},"mat":"SS400","fin":"—","q":4,"fix":"상판에 양면 필릿 z6","note":"@400 — 진공이 아니라 자중 처짐이 정한 간격 (진공은 내력 쌍이다)","st":2,"kg":28.26,"lbl":"PL 10t · 3,000×120"},{"id":"P-004-03","m":"M-004","n":"상판 리브 (횡)","k":"PL","g":{"L":1740.0,"W":120,"t":10,"holes":[]},"mat":"SS400","fin":"—","q":7,"fix":"종리브에 필릿 z6","note":"@400 · 기둥 6본과 함께 평면도 0.2 를 만든다","st":2,"kg":16.391,"lbl":"PL 10t · 1,740×120"},{"id":"P-004-04","m":"M-004","n":"테이블 기둥","k":"BOX","g":{"h":150,"b":150,"t":6,"L":1000.0},"mat":"SM490A","fin":"분체도장","q":6,"fix":"베이스플레이트에 완전용입 + 거싯 4","note":"6본 — 구조해석이 4본에서 상판 자중 처짐 0.378 을 냈다(칼날 깊이 예산 0.15 초과)","st":1,"kg":27.13,"lbl":"□-150×150×6t · L 1,000"},{"id":"P-004-05","m":"M-004","n":"테이블 베이스플레이트","k":"PL","g":{"L":360,"W":360,"t":28,"holes":[[55,55,26],[305,55,26],[55,305,26],[305,305,26]]},"mat":"SM490A","fin":"분체도장","q":6,"fix":"앵커 M24 (A8) ×4 · hef 210","note":"홀 Ø26 · 추력 전단이 지배 — 라이너로 밀착","st":1,"kg":28.019,"lbl":"PL 28t · 360×360"},{"id":"P-004-06","m":"M-004","n":"테이블 기둥 거싯","k":"GU","g":{"a":180,"b":180,"t":12},"mat":"SM490A","fin":"분체도장","q":24,"fix":"기둥·베이스에 양면 필릿 z8","note":"기둥당 4매","st":1,"kg":1.526,"lbl":"거싯 180×180 × 12t"},{"id":"P-004-07","m":"M-004","n":"기둥·상판 접합판","k":"PL","g":{"L":300,"W":300,"t":16,"holes":[]},"mat":"SM490A","fin":"—","q":4,"fix":"기둥에 완전용입 · 상판에 M16×4","note":"볼트 접합 — 상판을 떼어 연삭·수리할 수 있어야 한다","st":3,"kg":11.304,"lbl":"PL 16t · 300×300"},{"id":"P-004-08","m":"M-004","n":"흡착패드","k":"BUY","g":{"L":250.0,"W":250.0,"H":55,"kg":0.35},"mat":"NBR","fin":"—","q":24,"fix":"상판 흡착홀에 G1/4 니플","note":"벨로우즈 Ø250 · 6존 × 4행","st":4,"kg":0.35,"lbl":"외형 250×250×55"},{"id":"P-004-09","m":"M-004","n":"진공 매니폴드","k":"TU","g":{"od":25,"t":2.0,"L":2800.0},"mat":"STS304","fin":"—","q":6,"fix":"상판 하면 클램프 @400","note":"존당 1본 — 존을 나눈 이유는 깨진 패널에서 진공을 잃지 않기 위해서다","st":5,"kg":3.209,"lbl":"Ø25 × 2t · L 2,800"},{"id":"P-004-10","m":"M-004","n":"존 밸브·체크밸브","k":"BUY","g":{"L":90,"W":60,"H":70,"kg":0.8},"mat":"—","fin":"—","q":6,"fix":"매니폴드에 G1/4","note":"존별 차단 + 역류 방지","st":5,"kg":0.8,"lbl":"외형 90×60×70"},{"id":"P-004-11","m":"M-004","n":"진공 압력센서","k":"BUY","g":{"L":45,"W":30,"H":40,"kg":0.12},"mat":"—","fin":"—","q":6,"fix":"매니폴드에 G1/8","note":"존별 1점 · −65 kPa 확인 후 박리 허가","st":5,"kg":0.12,"lbl":"외형 45×30×40"},{"id":"P-004-12","m":"M-004","n":"진공 필터","k":"BUY","g":{"L":80,"W":60,"H":110,"kg":0.5},"mat":"—","fin":"—","q":6,"fix":"매니폴드 입구 G1/4","note":"유리 가루가 펌프로 가면 펌프가 죽는다","st":5,"kg":0.5,"lbl":"외형 80×60×110"},{"id":"P-005-01","m":"M-005","n":"주행레일 문형 기둥","k":"HB","g":{"h":250,"b":250,"tw":9,"tf":14,"L":2100.0},"mat":"SM490A","fin":"분체도장","q":4,"fix":"베이스플레이트에 완전용입 + 거싯 4","note":"행정 밖 x 8,250 / 11,850 · y ±1,420","st":1,"kg":148.332,"lbl":"H-250×250×9/14 · L 2,100"},{"id":"P-005-02","m":"M-005","n":"문형 베이스플레이트","k":"PL","g":{"L":440,"W":440,"t":22,"holes":[[65,65,26],[375,65,26],[65,375,26],[375,375,26]]},"mat":"SM490A","fin":"분체도장","q":4,"fix":"앵커 M24 (A7) ×4 · hef 210","note":"홀 Ø26 · 10.9 등급 · 그라우트 t30","st":1,"kg":33.068,"lbl":"PL 22t · 440×440"},{"id":"P-005-03","m":"M-005","n":"문형 기둥 거싯","k":"GU","g":{"a":220,"b":220,"t":14},"mat":"SM490A","fin":"분체도장","q":16,"fix":"기둥·베이스에 양면 필릿 z10","note":"기둥당 4매","st":1,"kg":2.66,"lbl":"거싯 220×220 × 14t"},{"id":"P-005-04","m":"M-005","n":"주행레일 빔","k":"BOX","g":{"h":220,"b":220,"t":9,"L":4200.0},"mat":"SM490A","fin":"레일면 연삭 Ra 1.6","q":2,"fix":"기둥 상단에 완전용입","note":"이 면의 직진도가 칼끝 간격을 정한다 — 연삭 후 0.1/1,000","st":2,"kg":250.44,"lbl":"□-220×220×9t · L 4,200"},{"id":"P-005-05","m":"M-005","n":"LM 주행레일","k":"BUY","g":{"L":4100.0,"W":45,"H":38,"kg":31.0},"mat":"—","fin":"—","q":2,"fix":"빔 상면에 M12 @105","note":"사이즈 45 프리로드 · 정격 수명 20,000 h","st":3,"kg":31.0,"lbl":"외형 4,100×45×38"},{"id":"P-005-06","m":"M-005","n":"주행 대차 (LM 블록)","k":"BUY","g":{"L":160,"W":120,"H":60,"kg":2.4},"mat":"—","fin":"—","q":4,"fix":"측면 프레임에 M12×4","note":"레일당 2블록 — 마찰접합 (J3)","st":3,"kg":2.4,"lbl":"외형 160×120×60"},{"id":"P-005-07","m":"M-005","n":"갠트리 측면 프레임","k":"PL","g":{"L":900,"W":700,"t":16,"holes":[]},"mat":"SM490A","fin":"분체도장","q":2,"fix":"LM 블록 M12×8 (마찰접합 μ0.50)","note":"접합면 Sa 2½ · 도장 금지 — 도장하면 미끄러진다","st":4,"kg":79.128,"lbl":"PL 16t · 900×700"},{"id":"P-005-08","m":"M-005","n":"크로스빔","k":"BOX","g":{"h":300,"b":200,"t":12,"L":3300.0},"mat":"SM490A","fin":"분체도장","q":1,"fix":"측면 프레임에 M16×8","note":"칼날 2기 자중 + 추력 휨 · 처짐 0.21 < 0.50","st":4,"kg":295.939,"lbl":"□-300×200×12t · L 3,300"},{"id":"P-005-09","m":"M-005","n":"X축 랙","k":"BUY","g":{"L":4000.0,"W":40,"H":40,"kg":12.0},"mat":"—","fin":"—","q":1,"fix":"빔 측면에 M10 @100","note":"모듈 3 경화랙 · 백래시 ≤ 0.05","st":3,"kg":12.0,"lbl":"외형 4,000×40×40"},{"id":"P-005-10","m":"M-005","n":"X축 피니언·감속기","k":"BUY","g":{"L":320,"W":160,"H":160,"kg":18.0},"mat":"—","fin":"—","q":1,"fix":"측면 프레임에 M12×4","note":"서보 + 유성감속 · 백래시 조정 편심 부시","st":4,"kg":18.0,"lbl":"외형 320×160×160"},{"id":"P-005-11","m":"M-005","n":"Z축 서보슬라이드 베이스","k":"PL","g":{"L":700,"W":400,"t":20,"holes":[]},"mat":"SM490A","fin":"취부면 연삭","q":2,"fix":"크로스빔에 M16×6","note":"칼날 반력 편심 — 취부면이 안 평평하면 칼끝이 기운다","st":5,"kg":43.96,"lbl":"PL 20t · 700×400"},{"id":"P-005-12","m":"M-005","n":"Z축 볼스크류","k":"BUY","g":{"L":600,"W":32,"H":32,"kg":4.2},"mat":"—","fin":"—","q":2,"fix":"베이스 지지베어링","note":"Ø32 리드 10 · 무여자 브레이크","st":5,"kg":4.2,"lbl":"외형 600×32×32"},{"id":"P-005-13","m":"M-005","n":"Z축 LM 가이드","k":"BUY","g":{"L":500,"W":23,"H":22,"kg":3.1},"mat":"—","fin":"—","q":4,"fix":"베이스에 M6 @80","note":"슬라이드당 2본","st":5,"kg":3.1,"lbl":"외형 500×23×22"},{"id":"P-005-14","m":"M-005","n":"칼날 빔","k":"PL","g":{"L":1760.0,"W":220,"t":25,"holes":[]},"mat":"SS400","fin":"인서트면 연삭","q":2,"fix":"Z축 슬라이드에 M16×6","note":"카트리지히터 홀 Ø12×6 + SKD11 인서트 볼트 M10×8","st":6,"kg":75.988,"lbl":"PL 25t · 1,760×220"},{"id":"P-005-15","m":"M-005","n":"SKD11 인서트","k":"PL","g":{"L":1640.0,"W":60,"t":8,"holes":[]},"mat":"SKD11","fin":"HRC 58~62 · 연삭","q":2,"fix":"칼날 빔에 M10×8 (접시머리)","note":"이것이 실제로 유리를 떼는 면 — 소모품, 교체 전제","st":6,"kg":6.061,"lbl":"PL 8t · 1,640×60"},{"id":"P-005-16","m":"M-005","n":"카트리지 히터","k":"BUY","g":{"L":200,"W":12,"H":12,"kg":0.2},"mat":"—","fin":"—","q":12,"fix":"칼날 빔 홀에 압입 + 세트스크류","note":"빔당 6본 · HKB 180 ℃ / HKS 200 ℃","st":6,"kg":0.2,"lbl":"외형 200×12×12"},{"id":"P-005-17","m":"M-005","n":"BC-201 카세트 본체","k":"BOX","g":{"h":120.0,"b":90.0,"t":6,"L":1640.0},"mat":"SS400","fin":"분체도장","q":2,"fix":"테이퍼 로케이팅핀 4 + 쐐기 클램프 2","note":"상세 D-501 · 전단은 핀이 받고 클램프는 밀착만 한다","st":7,"kg":30.589,"lbl":"□-120×90×6t · L 1,640"},{"id":"P-005-18","m":"M-005","n":"테이퍼 로케이팅핀","k":"RB","g":{"d":20,"L":60,"steps":[[20,40],[16,20]]},"mat":"SM45C","fin":"침탄 HRC 58 · 연삭","q":8,"fix":"칼날 빔에 압입 H7/p6","note":"카세트당 4 — 이 핀 4개가 전단 26.1 kN 을 받는다","st":6,"kg":0.13,"lbl":"단차축 Ø20×40 / Ø16×20"},{"id":"P-005-19","m":"M-005","n":"쐐기 클램프","k":"BUY","g":{"L":180,"W":90,"H":110,"kg":3.2},"mat":"—","fin":"—","q":4,"fix":"칼날 빔에 M12×4","note":"공압 15 kN ×2 — 밀착·열전달용","st":6,"kg":3.2,"lbl":"외형 180×90×110"},{"id":"P-005-20","m":"M-005","n":"GR-W1 박리 가이드롤","k":"RB","g":{"d":160,"L":1780.0,"steps":[]},"mat":"SM45C","fin":"경질크롬 도금 20 µm","q":1,"fix":"측면 프레임 필로우블록 2","note":"갠트리에 실려 박리점과 같이 간다 — 그래서 웹이 안 늘어난다","st":8,"kg":280.944,"lbl":"Ø160 · L 1,780"},{"id":"P-005-21","m":"M-005","n":"가이드롤 필로우블록","k":"BUY","g":{"L":120,"W":80,"H":90,"kg":2.1},"mat":"—","fin":"—","q":2,"fix":"측면 프레임에 M12×4","note":"자동조심 볼베어링","st":8,"kg":2.1,"lbl":"외형 120×80×90"},{"id":"P-005-22","m":"M-005","n":"칼날 로드셀","k":"BUY","g":{"L":60,"W":60,"H":30,"kg":0.4},"mat":"—","fin":"—","q":4,"fix":"Z축 슬라이드·빔 사이 M12","note":"칼날당 2점 — 박리력 실측 (OI-01)","st":6,"kg":0.4,"lbl":"외형 60×60×30"},{"id":"P-006-01","m":"M-006","n":"권취 문형 기둥","k":"HB","g":{"h":150,"b":150,"tw":7,"tf":10,"L":2600.0},"mat":"SS400","fin":"분체도장","q":2,"fix":"베이스플레이트에 완전용입 + 거싯 4","note":"만권 롤 3.50 kN + 지진","st":1,"kg":79.803,"lbl":"H-150×150×7/10 · L 2,600"},{"id":"P-006-02","m":"M-006","n":"권취 기둥 베이스플레이트","k":"PL","g":{"L":360,"W":360,"t":19,"holes":[[55,55,22],[305,55,22],[55,305,22],[305,305,22]]},"mat":"SS400","fin":"분체도장","q":2,"fix":"앵커 M20 (A9) ×4 · hef 170","note":"홀 Ø22 · 그라우트 t30","st":1,"kg":19.103,"lbl":"PL 19t · 360×360"},{"id":"P-006-03","m":"M-006","n":"권취 기둥 거싯","k":"GU","g":{"a":150,"b":150,"t":12},"mat":"SS400","fin":"분체도장","q":8,"fix":"기둥·베이스에 양면 필릿 z8","note":"기둥당 4매","st":1,"kg":1.06,"lbl":"거싯 150×150 × 12t"},{"id":"P-006-04","m":"M-006","n":"권취 문형 상부보","k":"BOX","g":{"h":220,"b":140,"t":9,"L":2360.0},"mat":"SS400","fin":"분체도장","q":1,"fix":"기둥 상단에 완전용입","note":"드럼 베어링 가로보","st":2,"kg":114.046,"lbl":"□-220×140×9t · L 2,360"},{"id":"P-006-05","m":"M-006","n":"WR-101 권취축","k":"RB","g":{"d":60,"L":2060.0,"steps":[[60,180],[55,1700.0],[60,180]]},"mat":"SM45C","fin":"조질 후 연삭 h6","q":1,"fix":"필로우블록 2 · 키 12×8","note":"Ø55 에서 피로 0.89 였다 — Ø60 으로 올려 0.69 (총괄 결정)","st":3,"kg":39.696,"lbl":"단차축 Ø60×180 / Ø55×1,700 / Ø60×180"},{"id":"P-006-06","m":"M-006","n":"권취 드럼 코어","k":"TU","g":{"od":300.0,"t":8,"L":1660.0},"mat":"SS400","fin":"분체도장","q":1,"fix":"축에 분할클램프 4로 물림","note":"코어 Ø300 · 만권 Ø600","st":3,"kg":95.631,"lbl":"Ø300 × 8t · L 1,660"},{"id":"P-006-07","m":"M-006","n":"코어 분할클램프","k":"PL","g":{"L":160,"W":120,"t":16,"holes":[]},"mat":"SS400","fin":"—","q":4,"fix":"코어·축 사이 M12×2씩","note":"공압 작동 — 만권 롤을 축에서 빼는 유일한 길","st":3,"kg":2.412,"lbl":"PL 16t · 160×120"},{"id":"P-006-08","m":"M-006","n":"드럼 필로우블록","k":"BUY","g":{"L":180,"W":110,"H":140,"kg":5.8},"mat":"—","fin":"—","q":2,"fix":"상부보에 M16×4","note":"SN-510 상당 자동조심 볼베어링","st":3,"kg":5.8,"lbl":"외형 180×110×140"},{"id":"P-006-09","m":"M-006","n":"토크서보·감속기","k":"BUY","g":{"L":340,"W":150,"H":150,"kg":22.0},"mat":"—","fin":"—","q":1,"fix":"상부보 브래킷에 M12×4","note":"2.2 kW 장력제어 · 직경 추종","st":4,"kg":22.0,"lbl":"외형 340×150×150"},{"id":"P-006-10","m":"M-006","n":"직경센서","k":"BUY","g":{"L":80,"W":50,"H":60,"kg":0.3},"mat":"—","fin":"—","q":1,"fix":"브래킷에 M5×2","note":"레이저 거리 — 권경이 커지면 회전수를 줄인다","st":4,"kg":0.3,"lbl":"외형 80×50×60"},{"id":"P-006-11","m":"M-006","n":"DN-101 댄서롤","k":"RB","g":{"d":140,"L":1760.0,"steps":[]},"mat":"SM45C","fin":"경질크롬 도금","q":1,"fix":"댄서암 베어링 2","note":"행정 300 — 가감속 과도만 흡수한다 (박리 중엔 안 감는다)","st":5,"kg":212.681,"lbl":"Ø140 · L 1,760"},{"id":"P-006-12","m":"M-006","n":"댄서암","k":"PL","g":{"L":420,"W":120,"t":12,"holes":[]},"mat":"SS400","fin":"분체도장","q":2,"fix":"기둥 피벗 Ø20 + 공압 실린더","note":"정하중 실린더로 장력을 만든다","st":5,"kg":4.748,"lbl":"PL 12t · 420×120"},{"id":"P-006-13","m":"M-006","n":"고정 아이들러","k":"RB","g":{"d":160,"L":1760.0,"steps":[]},"mat":"SM45C","fin":"경질크롬 도금","q":1,"fix":"기둥 필로우블록 2","note":"박리각 고정 — 이 롤이 움직이면 박리각이 흔들린다","st":5,"kg":277.787,"lbl":"Ø160 · L 1,760"},{"id":"P-006-14","m":"M-006","n":"장력 로드셀","k":"BUY","g":{"L":60,"W":60,"H":30,"kg":0.4},"mat":"—","fin":"—","q":2,"fix":"아이들러 베어링 하우징 M10","note":"0~2 kN · 웹 장력 피드백","st":5,"kg":0.4,"lbl":"외형 60×60×30"},{"id":"P-006-15","m":"M-006","n":"웹 파단 검출센서","k":"BUY","g":{"L":50,"W":20,"H":35,"kg":0.1},"mat":"—","fin":"—","q":1,"fix":"기둥 브래킷 M4×2","note":"투과형 광전 · 즉시 정지","st":5,"kg":0.1,"lbl":"외형 50×20×35"},{"id":"P-006-16","m":"M-006","n":"RH-201 런웨이 빔","k":"HB","g":{"h":200,"b":100,"tw":5.5,"tf":8,"L":7550},"mat":"SS400","fin":"분체도장","q":1,"fix":"런웨이 기둥에 M16×6 (J9)","note":"레일면 EL 5,100 · 처짐 L/500","st":6,"kg":154.807,"lbl":"H-200×100×5.5/8 · L 7,550"},{"id":"P-006-17","m":"M-006","n":"런웨이 기둥","k":"HB","g":{"h":170,"b":170,"tw":7,"tf":10,"L":4900.0},"mat":"SS400","fin":"분체도장","q":2,"fix":"베이스플레이트에 완전용입 + 거싯 4","note":"셀 밖·방책 밖 2개소","st":6,"kg":171.169,"lbl":"H-170×170×7/10 · L 4,900"},{"id":"P-006-18","m":"M-006","n":"런웨이 기둥 베이스플레이트","k":"PL","g":{"L":380,"W":380,"t":19,"holes":[[58,58,22],[322,58,22],[58,322,22],[322,322,22]]},"mat":"SS400","fin":"분체도장","q":2,"fix":"앵커 M20 (A10) ×4 · hef 170","note":"홀 Ø22","st":6,"kg":21.31,"lbl":"PL 19t · 380×380"},{"id":"P-006-19","m":"M-006","n":"런웨이 기둥 두상판","k":"PL","g":{"L":300,"W":220,"t":16,"holes":[[40,40,18],[260,40,18],[40,180,18],[260,180,18]]},"mat":"SS400","fin":"분체도장","q":2,"fix":"기둥에 완전용입 · 빔에 M16×6","note":"빔을 볼트로 받는다 — 반입 후 조립","st":6,"kg":8.162,"lbl":"PL 16t · 300×220"},{"id":"P-006-20","m":"M-006","n":"RH-201 호이스트 트롤리","k":"BUY","g":{"L":420,"W":300,"H":380,"kg":46.0},"mat":"—","fin":"—","q":1,"fix":"런웨이 빔 하부 플랜지에 물림","note":"정격 1 t · 수동 트롤리 + 전동 호이스트","st":7,"kg":46.0,"lbl":"외형 420×300×380"},{"id":"P-006-21","m":"M-006","n":"인양빔","k":"BOX","g":{"h":150,"b":100,"t":6,"L":1780.0},"mat":"SS400","fin":"분체도장","q":1,"fix":"호이스트 후크 + 슬링 2본","note":"롤을 수평으로 든다 — 한 점으로 들면 코어가 휜다","st":7,"kg":39.907,"lbl":"□-150×100×6t · L 1,780"},{"id":"P-006-22","m":"M-006","n":"코어 그리퍼","k":"PL","g":{"L":220,"W":160,"t":12,"holes":[]},"mat":"SS400","fin":"분체도장","q":2,"fix":"인양빔에 M12×4","note":"코어 내경을 물어 든다","st":7,"kg":3.316,"lbl":"PL 12t · 220×160"},{"id":"P-006-23","m":"M-006","n":"BS-301 보관 새들","k":"PL","g":{"L":700,"W":400,"t":10,"holes":[]},"mat":"SS400","fin":"분체도장","q":2,"fix":"바닥 앵커 M12×4","note":"V 크래들 · 방책 밖 — 사람이 여기서 롤을 받는다","st":8,"kg":21.98,"lbl":"PL 10t · 700×400"},{"id":"P-007-01","m":"M-007","n":"냉각 랙 골조 일식","k":"HB","g":{"h":200,"b":200,"tw":8,"tf":12,"L":4550.0},"mat":"SS400","fin":"분체도장","q":6,"fix":"M-002 P-002-01~08 준용","note":"같은 부품도로 만든다 — 지그·검사·예비품 한 벌","st":1,"kg":221.734,"lbl":"H-200×200×8/12 · L 4,550"},{"id":"P-007-02","m":"M-007","n":"냉각 랙 베이스플레이트","k":"PL","g":{"L":400,"W":400,"t":25,"holes":[[60,60,22],[340,60,22],[60,340,22],[340,340,22]]},"mat":"SS400","fin":"분체도장","q":6,"fix":"앵커 M20 (A11) ×4 · hef 170","note":"M-002 와 동일 — 앵커도 같다","st":1,"kg":31.102,"lbl":"PL 25t · 400×400"},{"id":"P-007-03","m":"M-007","n":"냉각 데크 프레임 종재","k":"ANG","g":{"a":65,"b":65,"t":6,"L":2880.0},"mat":"SS400","fin":"분체도장","q":10,"fix":"기둥에 M12×4","note":"M-002 와 같은 부품","st":2,"kg":16.82,"lbl":"L-65×65×6 · L 2,880"},{"id":"P-007-04","m":"M-007","n":"냉각 데크 프레임 횡재","k":"ANG","g":{"a":65,"b":65,"t":6,"L":1550.0},"mat":"SS400","fin":"분체도장","q":15,"fix":"종재에 필릿 z5","note":"M-002 와 같은 부품","st":2,"kg":9.053,"lbl":"L-65×65×6 · L 1,550"},{"id":"P-007-05","m":"M-007","n":"냉각 데크 레일","k":"SQB","g":{"a":40,"L":2880.0},"mat":"STS304","fin":"무도장","q":10,"fix":"종재 상면에 M8×6","note":"M-002 와 같은 부품","st":2,"kg":36.541,"lbl":"각봉 40×40 · L 2,880"},{"id":"P-007-06","m":"M-007","n":"측벽 폴리카보네이트","k":"SLAB","g":{"L":1690,"W":1800,"t":6},"mat":"PC","fin":"—","q":8,"fix":"골조에 M6 @300 (고무 와셔) · 이음 겹침 40","note":"방호·투시 — 단열이 아니다. PC 시트 한계로 2분할","st":3,"kg":21.902,"lbl":"6t · 1,690×1,800"},{"id":"P-007-07","m":"M-007","n":"필터 급기 프레임","k":"ANG","g":{"a":50,"b":50,"t":4,"L":3480.0},"mat":"SS400","fin":"분체도장","q":4,"fix":"골조에 M8 @400","note":"G4 프리필터를 무는 틀","st":3,"kg":10.49,"lbl":"L-50×50×4 · L 3,480"},{"id":"P-007-08","m":"M-007","n":"G4 프리필터","k":"BUY","g":{"L":600,"W":600,"H":48,"kg":1.1},"mat":"—","fin":"—","q":12,"fix":"프레임 홈에 슬라이드 + 클립","note":"급기면 — 유리 위에 먼지가 앉으면 검사에서 걸린다","st":3,"kg":1.1,"lbl":"외형 600×600×48"},{"id":"P-007-09","m":"M-007","n":"냉각 팬","k":"BUY","g":{"L":520,"W":520,"H":180,"kg":12.5},"mat":"—","fin":"—","q":6,"fix":"지붕 프레임에 M10×4 + 방진고무","note":"축류 Ø520 8극 · EL 2,450 한 줄 (자연대류가 위로 흐른다)","st":4,"kg":12.5,"lbl":"외형 520×520×180"},{"id":"P-007-10","m":"M-007","n":"팬 가드 그릴","k":"MESH","g":{"L":560,"W":560,"wire":4,"pitch":40,"frame":3},"mat":"SS400","fin":"아연도금","q":6,"fix":"팬 플랜지에 M6×4","note":"손가락 방호 — ISO 13857","st":4,"kg":3.24,"lbl":"메시 Ø4@40 · 560×560"},{"id":"P-007-11","m":"M-007","n":"표면 IR 센서","k":"BUY","g":{"L":70,"W":40,"H":45,"kg":0.15},"mat":"—","fin":"—","q":5,"fix":"골조 브래킷 M5×2","note":"비접촉 0~200 ℃ · 단별 1점 — 60 ℃ 밑을 확인하고 내보낸다","st":5,"kg":0.15,"lbl":"외형 70×40×45"},{"id":"P-008-01","m":"M-008","n":"횡인출 컨베이어 프레임","k":"BOX","g":{"h":120,"b":60,"t":3.2,"L":2700.0},"mat":"SS400","fin":"분체도장","q":2,"fix":"다리에 M10×4","note":"유리가 옆으로 나가는 길","st":1,"kg":23.548,"lbl":"□-120×60×3.2t · L 2,700"},{"id":"P-008-02","m":"M-008","n":"컨베이어 다리","k":"BOX","g":{"h":80,"b":80,"t":3.2,"L":950.0},"mat":"SS400","fin":"분체도장","q":4,"fix":"베이스에 필릿 z5 · 앵커 M12×2","note":"높이 조정 볼트 M16 내장","st":1,"kg":7.331,"lbl":"□-80×80×3.2t · L 950"},{"id":"P-008-03","m":"M-008","n":"컨베이어 다리 베이스","k":"PL","g":{"L":200,"W":200,"t":12,"holes":[[40,100,14],[160,100,14]]},"mat":"SS400","fin":"분체도장","q":4,"fix":"앵커 M12 (A12) ×2","note":"홀 Ø14","st":1,"kg":3.739,"lbl":"PL 12t · 200×200"},{"id":"P-008-04","m":"M-008","n":"이송 롤러","k":"TU","g":{"od":60,"t":2.0,"L":1600},"mat":"STS304","fin":"—","q":18,"fix":"프레임 베어링 하우징 2","note":"@140 — 유리 2,500 이 최소 3롤에 걸린다","st":2,"kg":4.624,"lbl":"Ø60 × 2t · L 1,600"},{"id":"P-008-05","m":"M-008","n":"롤러 베어링 하우징","k":"BUY","g":{"L":60,"W":40,"H":50,"kg":0.35},"mat":"—","fin":"—","q":36,"fix":"프레임에 M8×2","note":"롤러당 2","st":2,"kg":0.35,"lbl":"외형 60×40×50"},{"id":"P-008-06","m":"M-008","n":"롤러 구동 기어모터","k":"BUY","g":{"L":260,"W":120,"H":120,"kg":8.4},"mat":"—","fin":"—","q":1,"fix":"프레임에 M10×4","note":"0.4 kW · 체인 구동","st":3,"kg":8.4,"lbl":"외형 260×120×120"},{"id":"P-008-07","m":"M-008","n":"구동 체인·스프라켓","k":"BUY","g":{"L":2700.0,"W":40,"H":40,"kg":6.0},"mat":"—","fin":"—","q":1,"fix":"롤러 축단 스프라켓","note":"RS50 · 장력 조정 아이들러 1","st":3,"kg":6.0,"lbl":"외형 2,700×40×40"},{"id":"P-008-08","m":"M-008","n":"CS-201 평적 카트 프레임","k":"BOX","g":{"h":80,"b":40,"t":3.2,"L":2700.0},"mat":"SS400","fin":"분체도장","q":4,"fix":"용접 조립 z5","note":"카트 1대 = 종재 2 + 횡재 2","st":4,"kg":15.41,"lbl":"□-80×40×3.2t · L 2,700"},{"id":"P-008-09","m":"M-008","n":"카트 적재판","k":"PL","g":{"L":2600.0,"W":1600.0,"t":4.5,"holes":[]},"mat":"SS400","fin":"분체도장","q":1,"fix":"프레임에 M8 @300","note":"유리 평적 — 합판 깔개 위에 얹는다","st":4,"kg":146.952,"lbl":"PL 4.5t · 2,600×1,600"},{"id":"P-008-10","m":"M-008","n":"카트 캐스터","k":"BUY","g":{"L":160,"W":60,"H":200,"kg":3.2},"mat":"—","fin":"—","q":4,"fix":"프레임에 M12×4","note":"Ø150 · 브레이크 2 / 자유 2","st":4,"kg":3.2,"lbl":"외형 160×60×200"},{"id":"P-008-11","m":"M-008","n":"유리 두께·존재 센서","k":"BUY","g":{"L":50,"W":20,"H":35,"kg":0.1},"mat":"—","fin":"—","q":2,"fix":"프레임 브래킷 M4×2","note":"반출 확인 · 겹침 검출","st":5,"kg":0.1,"lbl":"외형 50×20×35"},{"id":"P-009-01","m":"M-009","n":"검사 문형 기둥","k":"BOX","g":{"h":100,"b":100,"t":4.5,"L":2900},"mat":"SS400","fin":"분체도장","q":2,"fix":"베이스에 필릿 z6 · 앵커 M12×4","note":"카메라·조명을 다는 틀","st":1,"kg":39.133,"lbl":"□-100×100×4.5t · L 2,900"},{"id":"P-009-02","m":"M-009","n":"검사 문형 상부보","k":"BOX","g":{"h":120,"b":80,"t":4.5,"L":2500.0},"mat":"SS400","fin":"분체도장","q":1,"fix":"기둥에 M12×4","note":"카메라 높이 조정 장공","st":1,"kg":33.735,"lbl":"□-120×80×4.5t · L 2,500"},{"id":"P-009-03","m":"M-009","n":"카메라 브래킷","k":"PL","g":{"L":200,"W":120,"t":6,"holes":[[30,60,11],[170,60,11]]},"mat":"SS400","fin":"분체도장","q":3,"fix":"상부보에 M10×2 (장공)","note":"장공이 시야 조정 방향 — 3대가 2,500 폭을 나눠 본다","st":2,"kg":1.121,"lbl":"PL 6t · 200×120"},{"id":"P-009-04","m":"M-009","n":"라인스캔 카메라","k":"BUY","g":{"L":120,"W":80,"H":80,"kg":1.2},"mat":"—","fin":"—","q":3,"fix":"브래킷에 M4×4","note":"유리 잔막·크랙 검사","st":2,"kg":1.2,"lbl":"외형 120×80×80"},{"id":"P-009-05","m":"M-009","n":"LED 라인 조명","k":"BUY","g":{"L":1500.0,"W":60,"H":70,"kg":3.5},"mat":"—","fin":"—","q":2,"fix":"상부보에 M6×4","note":"투과 + 반사 2조","st":2,"kg":3.5,"lbl":"외형 1,500×60×70"},{"id":"P-009-06","m":"M-009","n":"리젝트 슈트판","k":"PL","g":{"L":1400,"W":900,"t":3.2,"holes":[]},"mat":"STS304","fin":"#400 연마","q":1,"fix":"프레임에 M8 @250","note":"불합격 유리가 미끄러져 내려가는 면 — 연마 안 하면 걸린다","st":3,"kg":31.974,"lbl":"PL 3.2t · 1,400×900"},{"id":"P-009-07","m":"M-009","n":"리젝트 슈트 프레임","k":"ANG","g":{"a":50,"b":50,"t":5,"L":1500},"mat":"SS400","fin":"분체도장","q":4,"fix":"용접 z5 + 앵커 M12×2","note":"경사 35° — 유리가 스스로 내려간다","st":3,"kg":5.593,"lbl":"L-50×50×5 · L 1,500"},{"id":"P-009-08","m":"M-009","n":"리젝트 박스","k":"PL","g":{"L":1200,"W":800,"t":3.2,"holes":[]},"mat":"SS400","fin":"분체도장","q":1,"fix":"캐스터 4 · M10","note":"사람이 끌어낸다 · 만재 센서","st":3,"kg":24.115,"lbl":"PL 3.2t · 1,200×800"},{"id":"P-009-09","m":"M-009","n":"리젝트 만재 센서","k":"BUY","g":{"L":50,"W":20,"H":35,"kg":0.1},"mat":"—","fin":"—","q":1,"fix":"박스 상단 브래킷 M4×2","note":"차면 라인이 선다 — 넘치면 바닥에 유리가 깔린다","st":3,"kg":0.1,"lbl":"외형 50×20×35"},{"id":"P-011-01","m":"M-011","n":"MCC 반","k":"BUY","g":{"L":800,"W":600,"H":2100,"kg":320.0},"mat":"—","fin":"—","q":1,"fix":"베이스 채널에 M12×4","note":"IP54 도장강판 · 주회로 400 AF","st":1,"kg":320.0,"lbl":"외형 800×600×2,100"},{"id":"P-011-02","m":"M-011","n":"PLC-101 제어반","k":"BUY","g":{"L":800,"W":400,"H":2100,"kg":210.0},"mat":"—","fin":"—","q":1,"fix":"베이스 채널에 M12×4","note":"안전 PLC + 원격 I/O · UPS 이중전원","st":1,"kg":210.0,"lbl":"외형 800×400×2,100"},{"id":"P-011-03","m":"M-011","n":"반 베이스 채널","k":"CH","g":{"h":100,"b":50,"tw":5,"tf":5,"L":1700},"mat":"SS400","fin":"분체도장","q":2,"fix":"바닥 앵커 M12 @600","note":"반을 바닥에서 100 띄운다 — 침수·청소 여유","st":1,"kg":12.678,"lbl":"C-100×50×5/5 · L 1,700"},{"id":"P-011-04","m":"M-011","n":"케이블 트레이","k":"BUY","g":{"L":3000,"W":300,"H":100,"kg":9.0},"mat":"—","fin":"—","q":8,"fix":"행거에 M8×2","note":"메인 간선 · 동력/제어 분리 2단","st":2,"kg":9.0,"lbl":"외형 3,000×300×100"},{"id":"P-011-05","m":"M-011","n":"트레이 행거","k":"PL","g":{"L":400,"W":60,"t":6,"holes":[[30,30,11],[370,30,11]]},"mat":"SS400","fin":"아연도금","q":16,"fix":"천장·기둥에 M10×2","note":"@1,500 — 트레이 처짐 기준","st":2,"kg":1.121,"lbl":"PL 6t · 400×60"},{"id":"P-011-06","m":"M-011","n":"접지 부스바","k":"PL","g":{"L":2000,"W":30,"t":5,"holes":[]},"mat":"동","fin":"나동 (도장 금지)","q":1,"fix":"절연 스탠드오프 M8 @500","note":"TN-S 주접지 — 반·기계 프레임이 여기로 모인다","st":3,"kg":2.688,"lbl":"PL 5t · 2,000×30"},{"id":"P-012-01","m":"M-012","n":"스키드 프레임 종재","k":"CH","g":{"h":150,"b":75,"tw":6.5,"tf":10,"L":1500},"mat":"SS400","fin":"분체도장","q":2,"fix":"횡재에 필릿 z6","note":"지게차 포크가 들어가는 높이","st":1,"kg":27.612,"lbl":"C-150×75×6.5/10 · L 1,500"},{"id":"P-012-02","m":"M-012","n":"스키드 프레임 횡재","k":"CH","g":{"h":150,"b":75,"tw":6.5,"tf":10,"L":860},"mat":"SS400","fin":"분체도장","q":3,"fix":"종재에 필릿 z6","note":"양단 + 중간","st":1,"kg":15.831,"lbl":"C-150×75×6.5/10 · L 860"},{"id":"P-012-03","m":"M-012","n":"스키드 상판","k":"PL","g":{"L":1500,"W":860,"t":6,"holes":[]},"mat":"SS400","fin":"분체도장","q":1,"fix":"프레임에 M10 @300","note":"펌프·탱크 취부면","st":1,"kg":60.759,"lbl":"PL 6t · 1,500×860"},{"id":"P-012-04","m":"M-012","n":"진공 펌프","k":"BUY","g":{"L":700,"W":350,"H":400,"kg":88.0},"mat":"—","fin":"—","q":2,"fix":"상판에 M12×4 + 방진고무","note":"드라이 스크류 · 1대 예비 (1대로도 돌아간다)","st":2,"kg":88.0,"lbl":"외형 700×350×400"},{"id":"P-012-05","m":"M-012","n":"진공 탱크","k":"TU","g":{"od":500,"t":6,"L":900},"mat":"SS400","fin":"내면 방청","q":1,"fix":"새들 2 · M12×4","note":"맥동 흡수 — 존 6개가 동시에 물면 펌프가 못 따라간다","st":2,"kg":65.787,"lbl":"Ø500 × 6t · L 900"},{"id":"P-012-06","m":"M-012","n":"탱크 새들","k":"PL","g":{"L":500,"W":200,"t":10,"holes":[]},"mat":"SS400","fin":"분체도장","q":2,"fix":"상판에 M12×4","note":"R250 곡면 절단","st":2,"kg":7.85,"lbl":"PL 10t · 500×200"},{"id":"P-012-07","m":"M-012","n":"진공 배관","k":"TU","g":{"od":50,"t":2.0,"L":2000},"mat":"STS304","fin":"—","q":4,"fix":"플랜지 + 클램프 @1,000","note":"펌프 → 탱크 → 매니폴드","st":3,"kg":4.783,"lbl":"Ø50 × 2t · L 2,000"},{"id":"P-012-08","m":"M-012","n":"배관 플랜지","k":"FL","g":{"od":140,"id":50,"t":12,"pcd":110,"n":4,"dh":14},"mat":"STS304","fin":"—","q":8,"fix":"맞대기 용접 + M12×4","note":"가스켓 NBR t3","st":3,"kg":1.219,"lbl":"플랜지 Ø140/Ø50 × 12t · PCD 110-4×Ø14"},{"id":"P-012-09","m":"M-012","n":"계장공기 필터·레귤레이터","k":"BUY","g":{"L":300,"W":150,"H":400,"kg":6.5},"mat":"—","fin":"—","q":1,"fix":"상판 브래킷에 M8×4","note":"0.6 MPa · 드레인 자동배출","st":3,"kg":6.5,"lbl":"외형 300×150×400"},{"id":"P-012-10","m":"M-012","n":"공기 리시버 탱크","k":"BUY","g":{"L":400,"W":400,"H":1200,"kg":62.0},"mat":"—","fin":"—","q":1,"fix":"상판에 M12×4","note":"압축공기 버퍼 · 안전밸브 부착","st":3,"kg":62.0,"lbl":"외형 400×400×1,200"},{"id":"P-012-11","m":"M-012","n":"스키드 방호 커버","k":"MESH","g":{"L":1500,"W":900,"wire":4,"pitch":40,"frame":3},"mat":"SS400","fin":"아연도금","q":2,"fix":"프레임에 M8×6 (공구 필요)","note":"회전부 방호 — 공구 없이 열리면 안 된다","st":4,"kg":10.168,"lbl":"메시 Ø4@40 · 1,500×900"},{"id":"P-013-01","m":"M-013","n":"방책 기둥","k":"BOX","g":{"h":60,"b":60,"t":3.2,"L":2550.0},"mat":"SS400","fin":"아연도금","q":34,"fix":"베이스플레이트 앵커 M10 (A11)×2","note":"피치 2,000 · ISO 14120 수평 1,000 N","st":1,"kg":14.554,"lbl":"□-60×60×3.2t · L 2,550"},{"id":"P-013-02","m":"M-013","n":"방책 기둥 베이스플레이트","k":"PL","g":{"L":150,"W":150,"t":10,"holes":[[35,75,12],[115,75,12]]},"mat":"SS400","fin":"아연도금","q":34,"fix":"앵커 M10 ×2","note":"홀 Ø12","st":1,"kg":1.748,"lbl":"PL 10t · 150×150"},{"id":"P-013-03","m":"M-013","n":"메시 패널","k":"MESH","g":{"L":1960,"W":2400.0,"wire":4,"pitch":40,"frame":3},"mat":"SS400","fin":"아연도금","q":32,"fix":"기둥에 전용 클램프 M8×4","note":"Ø4 @40×40 — ISO 13857 개구 기준","st":2,"kg":29.792,"lbl":"메시 Ø4@40 · 1,960×2,400"},{"id":"P-013-04","m":"M-013","n":"패널 클램프","k":"PL","g":{"L":80,"W":50,"t":5,"holes":[[25,25,9]]},"mat":"SS400","fin":"아연도금","q":128,"fix":"기둥·패널 사이 M8×1","note":"패널당 4 — 공구 없이 못 푼다","st":2,"kg":0.155,"lbl":"PL 5t · 80×50"},{"id":"P-013-05","m":"M-013","n":"안전문 프레임","k":"BOX","g":{"h":50,"b":50,"t":3.2,"L":1000},"mat":"SS400","fin":"아연도금","q":8,"fix":"용접 z4 + 힌지 2","note":"문 2개소 × 프레임 4변","st":3,"kg":4.702,"lbl":"□-50×50×3.2t · L 1,000"},{"id":"P-013-06","m":"M-013","n":"안전문 인터록 스위치","k":"BUY","g":{"L":120,"W":40,"H":40,"kg":0.3},"mat":"—","fin":"—","q":2,"fix":"기둥·문에 M5×4","note":"ISO 14119 코드화 · 텅 방식 — 속임이 어렵다","st":3,"kg":0.3,"lbl":"외형 120×40×40"},{"id":"P-013-07","m":"M-013","n":"라이트커튼 (투광·수광)","k":"BUY","g":{"L":2000,"W":50,"H":60,"kg":4.2},"mat":"—","fin":"—","q":4,"fix":"기둥에 전용 브래킷 M6×4","note":"개구 2개소 × 2본 · 뮤팅 부","st":4,"kg":4.2,"lbl":"외형 2,000×50×60"},{"id":"P-013-08","m":"M-013","n":"라이트커튼 브래킷","k":"PL","g":{"L":180,"W":80,"t":6,"holes":[[30,40,9],[150,40,9]]},"mat":"SS400","fin":"아연도금","q":8,"fix":"기둥에 M8×2 (장공)","note":"장공이 광축 조정 방향","st":4,"kg":0.672,"lbl":"PL 6t · 180×80"},{"id":"P-013-09","m":"M-013","n":"비상정지 버튼함","k":"BUY","g":{"L":120,"W":120,"H":90,"kg":0.6},"mat":"—","fin":"—","q":4,"fix":"기둥에 M6×4","note":"4개소 — 어디서든 5 m 안에 하나","st":5,"kg":0.6,"lbl":"외형 120×120×90"},{"id":"P-013-10","m":"M-013","n":"신호탑·부저","k":"BUY","g":{"L":90,"W":90,"H":400,"kg":1.1},"mat":"—","fin":"—","q":2,"fix":"기둥 상단에 M6×3","note":"적·황·녹 + 85 dB 부저","st":5,"kg":1.1,"lbl":"외형 90×90×400"},{"id":"P-017-01","m":"M-017","n":"경계 덕트","k":"TU","g":{"od":600,"t":3.0,"L":3000},"mat":"SS400","fin":"내외면 방청","q":8,"fix":"플랜지 M12×12 · 지지 @3,000","note":"부압 — 지지 간격을 넓히면 찌그러진다","st":1,"kg":132.506,"lbl":"Ø600 × 3t · L 3,000"},{"id":"P-017-02","m":"M-017","n":"덕트 플랜지","k":"FL","g":{"od":700,"id":600,"t":12,"pcd":660,"n":12,"dh":14},"mat":"SS400","fin":"방청","q":16,"fix":"덕트에 맞대기 용접 + M12×12","note":"가스켓 논아스베스토 t3","st":1,"kg":9.444,"lbl":"플랜지 Ø700/Ø600 × 12t · PCD 660-12×Ø14"},{"id":"P-017-03","m":"M-017","n":"덕트 지지 행거","k":"PL","g":{"L":500,"W":80,"t":8,"holes":[[40,40,14],[460,40,14]]},"mat":"SS400","fin":"아연도금","q":8,"fix":"천장·기둥에 M12×2","note":"@3,000","st":1,"kg":2.493,"lbl":"PL 8t · 500×80"},{"id":"P-017-04","m":"M-017","n":"BJ-101 경계 단자반","k":"BUY","g":{"L":600,"W":300,"H":800,"kg":48.0},"mat":"—","fin":"—","q":1,"fix":"벽·기둥에 M10×4","note":"발주자 설비 신호가 여기서 끊긴다 — 이 반 밖은 우리 책임이 아니다","st":2,"kg":48.0,"lbl":"외형 600×300×800"},{"id":"P-017-05","m":"M-017","n":"BJ-102 경계 배관반","k":"BUY","g":{"L":600,"W":300,"H":800,"kg":42.0},"mat":"—","fin":"—","q":1,"fix":"벽·기둥에 M10×4","note":"공압·용수 경계 · 각 계통 차단밸브","st":2,"kg":42.0,"lbl":"외형 600×300×800"},{"id":"P-017-06","m":"M-017","n":"경계 표지판","k":"PL","g":{"L":400,"W":300,"t":2.0,"holes":[]},"mat":"SS400","fin":"실크인쇄","q":4,"fix":"반·덕트에 M5×4","note":"'이 선 너머는 발주자 설비' — 글자가 경계를 지킨다","st":3,"kg":1.884,"lbl":"PL 2t · 400×300"}];
+const PART_STEPS={"M-001":[[1,"레일·프레임 지상 조립","셔틀은 가벼워 지상에서 다 짜고 통째로 올려도 된다 — 자리에서 짜면 용접 자세가 나쁘다","프레임 대각선 차 ≤ 2 mm"],[2,"상판 취부","상판을 먼저 덮으면 프레임 내부 용접을 못 한다","상판 단차 ≤ 1 mm"],[3,"정렬 가이드 세팅","접촉면(UHMW-PE)을 먼저 붙이고 패널을 넣어 보고 잡는다 — 도면 치수만으로는 안 맞는다. 프레임 없이 들어오므로 유리 모서리가 강재에 닿으면 안 된다","접촉면 사이 1,400 ± 3 · 유리가 닿는 강재 0"],[4,"대차·레일 맞물림","레일 직진도를 먼저 잡아야 대차가 안 튄다","손으로 밀어 전 행정 무저항"],[5,"실린더 연결","대차가 손으로 자유롭게 구른 뒤에 동력을 건다 — 저항이 남은 채 실린더를 달면 원인을 못 찾는다","행정 500 ± 2 · 양단 완충 작동"],[6,"센서·리더 초점","기구가 다 선 뒤에 광학을 잡는다 — 먼저 잡으면 조립 진동으로 초점이 나간다","코드 판독률 10/10 · 존재 센서 오검출 0"]],"M-002":[[1,"기둥 6본 · 베이스 앵커","가장 무겁고 가장 정확해야 하는 것부터. 나머지는 여기에 붙는다","기둥 수직도 ≤ H/1000 · 상단 레벨 차 ≤ 2 mm"],[2,"상부 타이빔","기둥을 서로 묶기 전에는 사다리를 걸면 안 된다","대각선 차 ≤ 3 mm"],[3,"데크 프레임·레일 5단","아래 단부터. 위부터 달면 아래를 달 자리가 없다","단별 레벨 차 ≤ 2 mm · 레일 상면 동일 평면 ≤ 1 mm"],[4,"IR 뱅크·램프","데크가 선 뒤에 램프를 넣는다 — 반대로 하면 램프를 밟는다","48등 점등 · 절연저항 ≥ 5 MΩ"],[5,"단열·반사·내피","안쪽에서 바깥으로. 내피를 먼저 붙이면 단열재를 넣을 길이 없다","이음 어긋 물림 · 스페이서 @600 누락 0"],[6,"외피 측·단부판","안이 다 끝난 뒤에 덮는다. 덮고 나면 못 고친다","외피 표면 60 ℃ 이하 (열간 시험)"],[7,"지붕판·배기 노즐","지붕은 마지막이다 — 그 전까지 여기가 사람과 자재가 드나드는 유일한 구멍이다","누기 시험 · 노즐 플랜지 밀착"],[8,"에어록 셔터","외피가 선 뒤에 셔터 궤도를 잡는다 — 외피가 없으면 씰이 닿을 상대면이 없다","개폐 시간 ≤ 3 s · 씰 밀착 전주"],[9,"열전대·배선","구조가 더 이상 움직이지 않게 된 뒤에 계장을 건다 — 먼저 걸면 용접열에 열전대가 상한다","10점 지시 편차 ≤ 3 ℃"]],"M-003":[[1,"문형 기둥 2본 · 앵커","4기 전부 같은 순서다. 한 기를 익히면 나머지는 반복이다","기둥 수직도 ≤ H/1000 · 두 기둥 간격 ± 1 mm"],[2,"두상보·기초보","보를 걸어야 기둥 둘이 서로를 잡는다 — 그 전에는 사다리도 걸면 안 된다","보 수평 ≤ 1 mm/m"],[3,"볼스크류·LM·서보","직선 요소를 먼저. 캐리지를 먼저 달면 레일을 못 넣는다","스크류 흔들림 ≤ 0.05 · LM 전 행정 무저항"],[4,"포크 캐리지","LM 블록에 얹는다. 두 스크류 동기를 여기서 맞춘다","좌우 높이 차 ≤ 0.5 mm"],[5,"텔레스코픽 포크·티인","캐리지가 두 스크류에 안정되게 물린 뒤에 무거운 포크를 건다 — 반대로 하면 동기를 못 맞춘다","인출 2,610 ± 3 · 처짐 ≤ 3 mm"],[6,"엔코더·리미트·하드스톱","하드스톱을 마지막에 다는 것이 아니라, 시운전 전에 반드시 단다","리미트 → 정지거리 < 하드스톱까지 거리"]],"M-004":[[1,"기둥 4본 · 앵커","박리 추력이 여기로 내려온다. 라이너로 밀착시켜야 전단이 걸린다","베이스 밀착 — 틈새 게이지 0.1 불통과"],[2,"상판 리브 용접","리브를 먼저 짜고 상판을 덮는다. 반대로 하면 안쪽 용접을 못 한다","용접 변형 확인 — 연삭 전 평면도 ≤ 1 mm"],[3,"상판 취부·연삭","볼트 접합이다. 나중에 떼어 다시 연삭할 수 있어야 한다","평면도 0.2/3,000 · 상면 EL 1,150 ± 1"],[4,"흡착패드 18개","상판을 연삭해 평평해진 뒤에 패드를 심는다 — 먼저 심으면 연삭 부스러기를 패드가 먹는다","패드 상면 동일 평면 ≤ 0.3 mm"],[5,"매니폴드·밸브·센서","배관은 마지막. 먼저 깔면 연삭 부스러기를 먹는다","존별 −65 kPa 도달 · 유지 60 s 누설 ≤ 2 kPa"]],"M-005":[[1,"주행 문형 4기둥 · 앵커","칼끝 간격 300±2 가 여기서 시작한다. 여기가 틀리면 아래가 다 틀린다","4기둥 상단 레벨 차 ≤ 1 mm · 스팬 ± 1 mm"],[2,"주행레일 빔 2본","빔을 걸고 상면을 연삭한다 — 현장 연삭이 원칙이다","레일면 직진도 0.1/1,000 · 두 빔 높이 차 ≤ 0.5 mm"],[3,"LM 레일·랙 취부","빔 상면을 연삭해 기준면이 나온 뒤에 레일을 깐다 — 레일은 자기 밑면을 그대로 베낀다","레일 평행도 ≤ 0.1 · 랙 백래시 ≤ 0.05"],[4,"갠트리 프레임·크로스빔","마찰접합이다 — 접합면에 도장이 있으면 미끄러진다","접합면 Sa 2½ 확인 · 체결력 109.9 kN 마킹"],[5,"Z축 슬라이드 2조","갠트리가 레일 위에 선 뒤에 Z축을 얹는다","Z 수직도 ≤ 0.05/300"],[6,"칼날 빔·인서트·히터·핀","칼날은 마지막에 단다. 먼저 달면 조립 중에 다친다","칼끝 간격 300 ± 2 · 히터 12본 승온 확인"],[7,"BC-201 카세트 장착","핀이 먼저 물리고 클램프는 나중이다 — 순서가 반대면 핀이 상한다","핀 4개 완전 착좌 후 클램프 · 유격 0"],[8,"GR-W1 가이드롤","갠트리가 레일 위에서 다 선 뒤에 롤을 건다 — 먼저 달면 조립 중에 롤 면이 상한다","롤 진원도 ≤ 0.05 · 회전 무저항"]],"M-006":[[1,"권취 문형 2기둥 · 앵커","만권 롤 350 kg 이 이 두 기둥에 걸린다 — 이 모듈에서 가장 먼저·가장 정확해야 하는 부재다","기둥 수직도 ≤ H/1000"],[2,"상부보","베어링 가로보 — 여기가 처지면 권취축이 기운다","수평 ≤ 0.5 mm/m"],[3,"권취축·코어·필로우블록","축을 먼저 넣고 코어를 물린다. 코어를 먼저 끼우면 축이 안 들어간다","축 흔들림 ≤ 0.03 · 코어 진원 ≤ 0.2"],[4,"토크서보·직경센서","손으로 돌려 저항이 없음을 본 뒤에 동력을 건다 — 저항이 남은 채 서보를 달면 원인을 못 찾는다","무부하 회전 · 장력 지령 추종"],[5,"댄서·아이들러·로드셀","웹 경로를 순서대로 — 박리점에서 드럼 쪽으로","웹 경로 단차 ≤ 2 mm · 장력 0점 조정"],[6,"RH-201 런웨이 기둥·빔","롤이 감기기 전에 반출로를 세운다. 나중에 세우면 롤을 못 내린다","레일면 EL 5,100 ± 3 · 처짐 ≤ L/500"],[7,"호이스트·인양빔·그리퍼","런웨이 빔이 선 뒤에 트롤리를 끼운다 — 빔을 나중에 걸면 트롤리를 넣을 단부가 막힌다","정격 1 t 하중시험 · 전 행정 주행"],[8,"BS-301 보관 새들","방책 밖에 놓이므로 방책 공사와 부딪히지 않게 마지막에 앉힌다","롤 안착 안정 — 굴러가지 않는다"]],"M-007":[[1,"골조 6기둥 · 앵커","M-002 와 같은 부품·같은 지그·같은 순서다","M-002 1단계와 동일 기준"],[2,"데크 프레임·레일 5단","아래 단부터 올린다 — M-002 와 같은 이유로, 위부터 달면 아래를 달 자리가 없다","M-002 3단계와 동일 기준"],[3,"측벽 PC·필터 프레임","여기는 단열이 아니라 방호다. 막으면 냉각이 안 된다","PC 고무와셔 개재 — 직접 조이면 깨진다"],[4,"냉각 팬 6대·가드","급기면(필터)이 선 뒤에 팬을 단다 — 팬을 먼저 달면 필터를 끼울 틈이 없다","풍향 확인 · 진동 ≤ 4.5 mm/s"],[5,"표면 IR 센서 5점","골조·팬이 다 선 뒤에 센다 — 팬 진동이 남아 있으면 비접촉 온도가 흔들린다","60 ℃ 판정 편차 ≤ 3 ℃ · 흑체 대조"]],"M-008":[[1,"컨베이어 프레임·다리","높이 조정 볼트로 라인 높이 1,150 을 맞춘다","롤러 상면 EL 1,150 ± 2"],[2,"롤러 18본","가운데부터 양쪽으로 — 끝부터 넣으면 마지막 한 본이 안 들어간다","롤러 상면 동일 평면 ≤ 1 mm"],[3,"구동 기어모터·체인","롤러가 다 자유롭게 구른 뒤에 체인을 건다","체인 처짐 10~15 mm"],[4,"평적 카트 조립","카트는 라인 구조와 무관하므로 따로 짠다 — 1~3단계와 나란히 해도 되는 유일한 자리다","캐스터 4점 접지 · 브레이크 작동"],[5,"센서","롤러가 다 돌고 체인 장력이 잡힌 뒤에 광축을 세운다 — 먼저 잡으면 진동으로 틀어진다","유리 존재·겹침 판정 10/10"]],"M-009":[[1,"검사 문형·상부보","카메라를 달 틀부터 세운다 — 틀이 흔들리면 초점을 몇 번 잡아도 다시 틀어진다","보 수평 ≤ 1 mm/m · 기둥 수직 ≤ H/1000"],[2,"카메라·조명 취부·초점","구조가 더 이상 움직이지 않게 된 뒤에 광학을 잡는다 — 순서를 바꾸면 초점을 두 번 잡는다","전폭 2,500 시야 · 잔막 0.2 mm 판독"],[3,"리젝트 슈트·박스","검사부와 구조가 독립이므로 1·2단계와 나란히 해도 된다 — 공기를 줄일 수 있는 유일한 자리다","경사 35° · 유리 자중 활강 · 만재 센서 작동"]],"M-011":[[1,"베이스 채널·반 설치","반이 서야 배선이 시작된다 — 트레이를 먼저 깔면 반을 넣을 길이 막힌다","반 수직 ≤ 2 mm/m · 문 개폐 간섭 없음"],[2,"케이블 트레이·행거","반에서 기계 쪽으로 깔아 나간다 — 반대로 깔면 마지막 구간에서 여장이 모자란다","동력/제어 분리 2단 유지 · 행거 @1,500"],[3,"접지 부스바·본딩","통전 전에 반드시 끝낸다 — 접지 없이 한 번 넣어 본 회로는 이미 위험한 회로다","접지저항 ≤ 10 Ω · 전 프레임 본딩 도통"]],"M-012":[[1,"스키드 프레임·상판","지상에서 다 짜고 지게차로 들여놓는다 — 자리에서 짜면 포크 진입로가 없다","프레임 대각선 차 ≤ 2 mm"],[2,"펌프·탱크·새들","무거운 것부터 앉힌다 — 가벼운 것을 먼저 놓으면 그것을 넘어 인양해야 한다","방진고무 균등 압축 · 탱크 수평 ≤ 1 mm/m"],[3,"배관·플랜지·계장","기기가 다 앉은 뒤에 배관한다 — 먼저 깔면 기기를 앉힐 때 배관을 밟는다","기밀 시험 0.6 MPa · 누설 0"],[4,"방호 커버","회전부가 처음 도는 순간에는 이미 덮여 있어야 한다 — 시운전 뒤에 덮는 것이 아니다","공구 없이 안 열림 · 개구 기준 충족"]],"M-013":[[1,"기둥 34본 · 앵커","방책은 기계가 다 선 뒤에 세운다 — 먼저 세우면 반입로가 막힌다","기둥 수직 · 피치 2,000 ± 10"],[2,"메시 패널 32매","기둥이 다 서고 피치가 확정된 뒤에 패널을 채운다 — 먼저 달면 마지막 한 장이 안 들어간다","바닥 틈 ≤ 180 · 개구 기준 충족"],[3,"안전문·인터록","문이 제자리에서 여닫힌 뒤에 인터록을 건다 — 문틀이 틀어진 채 걸면 안 잠긴다","문 열림 → 정지 확인 (양쪽 채널)"],[4,"라이트커튼·광축","개구 2개소. 광축이 안 맞으면 뮤팅이 안 걸린다","차광 시험 Ø30 봉 · 응답 ≤ 30 ms"],[5,"비상정지·신호탑","마지막에 다는 것이 아니라 통전 전에 반드시 단다","4개소 전부 정지 · 복귀 요구 확인"]],"M-017":[[1,"덕트·플랜지·행거","우리 쪽 끝까지만 세운다. 그 너머는 발주자 설비다","지지 @3,000 · 부압 시험"],[2,"경계 단자반·배관반","여기서 우리 배선과 배관이 끝난다 — 이 반이 서야 발주자 설비와의 경계가 물리적으로 확정된다","단자 번호 도면 일치 · 차단밸브 작동"],[3,"경계 표지판","표지가 붙어야 경계가 지켜진다 — 도면에만 있는 경계는 현장에서 지워진다","4개소 부착 · 판독 가능"]]};
 /* ⟨/PARTS-DATA⟩ */
 
     /* ═══ 부품도·조립도 ══════════════════════════════════════════════
@@ -7859,7 +7906,7 @@ const PART_STEPS={"M-001":[[1,"레일·프레임 지상 조립","셔틀은 가�
         +`<path d="M${x1} ${y-7}v14M${x2} ${y-7}v14"/></g><text x="${(x1+x2)/2}" y="${y-8}" text-anchor="middle" font-size="11" fill="#0b6268">${t}</text>`;
       const rows=[
         ['위치결정','테이퍼 로케이팅핀 Ø25 h6 · 1:10, 원형 1 + 다이아몬드 1',`반복정밀도 ±${CASS_REPEAT} mm`],
-        ['구속','쐐기 클램프 2점 · 스프링 잠금 / 공압 해제',`${CASS_CLAMP_KN} kN×2 = ${CASS_CLAMP_KN*2} kN (추력 13.37 kN 대비 ${(CASS_CLAMP_KN*2/13.37).toFixed(2)}배)`],
+        ['구속','쐐기 클램프 2점 · 스프링 잠금 / 공압 해제',`${CASS_CLAMP_KN} kN×2 = ${CASS_CLAMP_KN*2} kN (추력 ${F_PEEL.toFixed(2)} kN 대비 ${(CASS_CLAMP_KN*2/F_PEEL).toFixed(2)}배)`],
         ['서비스','블라인드메이트 1블록 — 히터 230V 65A · 열전대 4점 · 접지','접지 선접촉·후차단 (first-make / last-break)'],
         ['열','카세트 냉각 퍼지 · 매거진 예열 포켓 150°C',`질량 ${CASS_MASS} kg · 표면 ${CASS_AREA.toFixed(2)} m²`],
         ['교환 후','300 mm 레이저 간격 재확인 · 로드셀 영점 · 박리력 기준선 재취득','KNIFE_GAP_OK → CASSETTE_READY'],
@@ -7944,7 +7991,7 @@ const PART_STEPS={"M-001":[[1,"레일·프레임 지상 조립","셔틀은 가�
        크기도 같은 자리의 plate 값이다 — 도면에 손으로 적으면 배치를 옮길 때
        3D 만 따라오고 기초도면은 옛 좌표에 구멍을 뚫는다.
 
-       적재하중은 유도되는 것만 적는다. 만권 롤 357kg 은 백시트 두께와 장수에서
+       적재하중은 유도되는 것만 적는다. 만권 롤 416kg 은 백시트 두께와 장수에서
        나오고, 랙 적재는 패널 면적질량 × 단수에서 나온다. 구조 자중은 이 콘솔이
        모르는 값이라 비워 두고 구조계산으로 넘긴다 — 모르는 것을 적는 순간
        도면이 근거를 잃는다. */
@@ -7955,7 +8002,7 @@ const PART_STEPS={"M-001":[[1,"레일·프레임 지상 조립","셔틀은 가�
       const LEV=1000/40;                              // 레벨도 1:40
       const LZ=z=>175-z*LEV;
       const TOT=compactLength(), HALF=FORK_HALF_STD;
-      const PANEL_KG=MASS_AREAL*PANEL_L*PANEL_W;      // 28.2 kg/장
+      const PANEL_KG=MASS_AREAL*PANEL_L*PANEL_W;      // 34.3 kg/장
       const GLASS_KG=MASS_GLASS*PANEL_L*PANEL_W;
       const grid=(xs,ys)=>{const o=[];for(const x of xs)for(const y of ys)o.push([x,y]);return o};
       /* 앵커군 — 3D 가 기둥을 세운 좌표 그대로. plate 는 그 자리의 베이스플레이트. */
@@ -7974,8 +8021,8 @@ const PART_STEPS={"M-001":[[1,"레일·프레임 지상 조립","셔틀은 가�
          live:GLASS_KG,note:'반출 셔틀 인계'},
         {id:'A7',eq:'KG-101 갠트리 주행레일 문형',pts:grid([CRAIL_X0,CRAIL_X1],[-CGY,CGY]),plate:.44,bo:[-7,-9],
          live:null,note:`레일 EL +${fmt(CRAIL_Z)} · 55↔700 mm/s 왕복 관성`},
-        {id:'A8',eq:'VT-101 고정 진공테이블',pts:grid([CTBL_CX-1.25,CTBL_CX+1.25],[-.62,.62]),plate:.32,bo:[3,-10],
-         live:PANEL_KG,note:'박리 추력 13.37 kN 을 이 넷이 받는다'},
+        {id:'A8',eq:'VT-101 고정 진공테이블',pts:grid([CTBL_CX-(CARRIER_L-.40)/2,CTBL_CX+(CARRIER_L-.40)/2],[-(CARRIER_W-.32)/2,(CARRIER_W-.32)/2]),plate:.32,bo:[3,-10],
+         live:PANEL_KG,note:`박리 추력 ${F_PEEL.toFixed(2)} kN 을 이 넷이 받는다`},
         {id:'A9',eq:'WR-101 권취 지지 문형',pts:grid([CWFR_X],[-1.30,1.30]),plate:.32,bo:[-15,-2],
          live:ROLL_MASS,note:`만권 Ø${mm(2*WR_FULL_R)} · 드럼 EL +${fmt(CDRUM.z)}`},
                 /* 내측 단부는 갠트리 레일 문형(A7)과 같은 x·y 에 선다 — 실제로는 한 기둥이
@@ -8152,7 +8199,7 @@ const PART_STEPS={"M-001":[[1,"레일·프레임 지상 조립","셔틀은 가�
           +`<text stroke="none" x="${cx+13}" y="${cy+4.4}" ${FS(2.3)} fill="#5b6d74">${esc(e.d)}</text>`;
       });
       const notes=['앵커볼트 규격·매입깊이·연단거리는 구조계산 후 확정한다 — 이 도면은 위치와 베이스플레이트만 정한다.',
-        '적재하중은 유도치이며 구조 자중은 포함하지 않는다. 진공 추력 13.37 kN 은 A8 이 받는다.',
+        `적재하중은 유도치이며 구조 자중은 포함하지 않는다. 진공 추력 ${F_PEEL.toFixed(2)} kN 은 A8 이 받는다.`,
         '바닥은 전 앵커를 PE 50×6t Cu 로 등전위 본딩한다 (EP-6).',
         'NOT FOR CONSTRUCTION — 상세설계 확정 전 제작·타설 금지.'];
       let note=`<text stroke="none" x="26" y="246" ${FS(2.5)} fill="#5b6d74">`
@@ -8197,7 +8244,7 @@ const PART_STEPS={"M-001":[[1,"레일·프레임 지상 조립","셔틀은 가�
 
          ① 압축 배치 평면 — 다섯 스테이션과 그 길이. 길이는 전부 패널·데크·
             캐리어에서 파생되므로 표와 그림이 갈라질 수 없다.
-         ② 전장 회계 — 53.1 → 29.3 → 18.76 m. 어느 단계가 공급범위이고
+         ② 전장 회계 — 53.1 → 29.3 → 19.26 m. 어느 단계가 공급범위이고
             어느 단계가 기계 설계인지 구분해서 보여 준다.
          ③ 공급범위 경계 — 떼어 낸 설비와, 그 자리에 남는 인터페이스 신호.
             장치는 나가도 인터록은 남는다는 것이 이 도면의 요지다. */
@@ -8244,7 +8291,7 @@ const PART_STEPS={"M-001":[[1,"레일·프레임 지상 조립","셔틀은 가�
             +`<text x="${(PX0+w+9).toFixed(1)}" y="${y+18}" font-size="12" font-weight="700" fill="${st}">${L.toFixed(2)} m</text>`
             +`<text x="${(PX0+8).toFixed(1)}" y="${y+18}" font-size="10.5" fill="${st}">${esc(why)}</text></g>`}).join('');
       /* ── ④ 칼날 인출 포락선 ────────────────────────────────────────
-         1,440mm 소모품이 지나갈 자리를 도면에 예약한다. 바닥에는 그 자리가
+         1,640mm 소모품이 지나갈 자리를 도면에 예약한다. 바닥에는 그 자리가
          없다 — 갠트리가 y ±1,420 을 쓸고 다니고, 스윕 밖으로 나가면 외장을
          뚫는다. 그래서 갠트리 최상단(2,740)과 갓돌(3,680) 사이의 빈 층을
          쓴다. 이 단면이 없으면 현장에서 "칼날은 어디로 빼느냐" 가 나온다. */

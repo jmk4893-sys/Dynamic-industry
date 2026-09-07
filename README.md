@@ -35,12 +35,12 @@ Dynamic industry Development
 | [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 7매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
 | [docs/drawings/pv-preprocess-plant.html](docs/drawings/pv-preprocess-plant.html) | **전처리 플랜트 통합 설계도** — 상류 공정(투입·반전·정션박스 제거·프레임 분리·유리 검사·레시피 버퍼)의 3D 작동 시뮬레이션과 셀별 2D 제작도·3D 분해도·전체 배치도 (브라우저로 열 것) |
-| [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 15종, **부품도 174장 · 모듈 조립도 13장**, 열수지 계산기 (브라우저로 열 것) |
+| [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 15종, **부품도 176장 · 모듈 조립도 13장**, 열수지 계산기 (브라우저로 열 것) |
 | [docs/dg-hk60-rfq.html](docs/dg-hk60-rfq.html) | **DG-HK60 상세설계 기술사양서 (RFQ)** — 상세설계 용역 발주용. 요구성능·설계기준·기계/전기/안전 요구사항·납품물·FAT/SAT·입찰자 확인사항 10건 (브라우저로 열 것, A4 인쇄 가능) |
 | [docs/dg-hk60-fab-spec.html](docs/dg-hk60-fab-spec.html) | **DG-HK60C 제작 지침서 (FAB-001)** — 볼트 등급·체결력·조임토크, 용접 각장, 부재 판두께·재질, 기초 앵커 매입깊이·연단거리를 하중에서 유도한 문서. 접합부 12개소·부재 27종·앵커 7개소·ITP 14단계 (브라우저로 열 것, A4 인쇄 가능) |
 | [docs/dg-hk60-assembly.html](docs/dg-hk60-assembly.html) | **DG-HK60C 조립 지침서 (ASM-001)** — 도면을 처음 보는 사람이 조립도·부품도만으로 세울 수 있게 쓴 문서. 안전·공구·도면 읽는 법·볼트 조이는 법·모듈 사이의 순서·모듈별 74단계 (부품 카탈로그에서 생성) |
 | [docs/dg-hk60-procurement.html](docs/dg-hk60-procurement.html) | **DG-HK60C 조달 지침서 (PRC-001)** — 자재 발주표(1차원 절단 배치를 푼 정척 본수·시트 매수) · 운반 분할(세우는 순서를 따르는 차수표) · 구매품 사양 59종 (부품 카탈로그에서 생성) |
-| [docs/dg-hk60-analysis.html](docs/dg-hk60-analysis.html) | **DG-HK60C 구조·열해석 보고서 (CAL-001)** — 직접강성법 프레임, 1차원 과도 열전도, **IR 뱅크 복사 유속 + 면내 2차원 전도**. 닫힌해 10건으로 해석기를 검증하고 구조 12건·열 13건·IR 8건을 푼 뒤, 해석이 만든 요구 11건과 **해석이 못 보는 것**을 적었다 (세 해석 모듈에서 생성) |
+| [docs/dg-hk60-analysis.html](docs/dg-hk60-analysis.html) | **DG-HK60C 구조·열해석 보고서 (CAL-001)** — 직접강성법 프레임, 1차원 과도 열전도, **IR 뱅크 복사 유속 + 면내 2차원 전도**, **램프 지지·관통 상세**, **정상상태 열수지**. 닫힌해 15건으로 해석기를 검증하고 구조 12건·열 13건·IR 8건·지지 7건·수지 8건·에어록 8건을 푼 뒤, 해석이 만든 요구 26건과 **해석이 못 보는 것**을 적었다 (다섯 해석 모듈에서 생성) |
 | [docs/dg-hk60-pilot.html](docs/dg-hk60-pilot.html) | **DG-HK60C 파일럿 시험 계획서 (PIL-001)** — 온도–박리력 곡선·칼날 수명·유리 수율·면내 온도 균일도·열수지. 시료 수를 요구정밀도에서 거꾸로 풀어(t 분위수·Clopper–Pearson) 총 422장·2단계로 잡았다 (계획 모델에서 생성) |
 | [docs/dg-hk120-twin-cell.html](docs/dg-hk120-twin-cell.html) | **DG-HK120C 트윈 셀 검토서** — 1챔버·2탠덤셀 수평병렬로 처리량을 배로 올리는 안의 배치·전력·인터록 검토 (브라우저로 열 것) |
 
@@ -52,7 +52,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (1,363건)
+python -m unittest discover -s tests -t .                               # 테스트 (1,460건)
 
 # 부품 카탈로그 — 형상·치수·재질에서 질량과 자중을 계산한다
 python3 tools/parts.py                     # 카탈로그 리포트 (품목·질량·자중 검증)
@@ -68,6 +68,8 @@ python3 tools/therm.py                     # 열 해석기 검증 (닫힌해 5�
 python3 tools/analysis_structural.py       # 구조해석 S1~S12
 python3 tools/analysis_thermal.py          # 열해석 T1~T13 + 요구 R1~R6
 python3 tools/analysis_irbank.py           # IR 뱅크 배치 IR1~IR8 + 요구 RIR1~RIR5
+python3 tools/lampmount.py                 # 램프 지지·관통 LM1~LM7 + 요구 RLM1~RLM5
+python3 tools/heatbalance.py               # 정상상태 열수지 HB1~HB8 + 요구 RHB1~RHB5
 python3 tools/gen_analysis_doc.py --write  # 해석 → 보고서 HTML
 python3 tools/pilot_plan.py                # 파일럿 시료 수·규모·일정
 python3 tools/gen_pilot_doc.py --write     # 계획 → 시험 계획서 HTML
@@ -370,6 +372,59 @@ A/B 캐리지와 같은 ±760 으로 좁혀 레일이 기둥에 물린다. **이
 아닌 인계는 `NON_ROLLER_HANDOFF` 에 사유와 함께 적고, 그 밖의 단차는 전부 실패한다
 — 예외 표를 비우면 시험이 깨지는지까지 확인한다
 
+
+#### §59 벤더 콘솔 개정(48등 · 포락선 2,500×1,400)을 받아들이고 관문은 2,400×1,200 에 둔다 (REV.54 C안)
+
+§58 을 닫은 뒤 벤더 브랜치(`claude/dg-hk60-detail-design-rfq`)가 여섯 커밋
+움직였다 — IR 뱅크 40 → **48등**(120 kW), 투입 포락선 2,400×1,200 → **2,500×1,400**,
+무프레임 투입, 계약 순생산 **58 장/h** 를 콘솔 상수 `NET_TARGET` 로, 방책
+19,600×7,600 → **20,100×8,300**(−900…20,100 × +3,700/−4,600), 릴 반출 레인
+−7,600, 카세트 새들 −5,600. 같은 발주처가 두 설계를 보고 있으니 그 커밋을 그대로
+병합했다 — 값은 계속 `hk60c.py` 가 콘솔에서 **읽고**, 플랜트는 거기서 파생한다.
+
+**갈림길 하나 — 라인 상한.** §58 의 "2,400×1,200 통일"은 그때 벤더 상한이 그 값이라
+따라간 것이었다. 벤더가 2,500×1,400 을 받게 됐으니 통일의 근거가 바뀐다:
+`line.LINE_MAX_MM` 은 그대로 (2,400, 1,200) 이되 `line.basis()` 가 **"벤더 상한"
+→ "발주처 선택"** 으로 돌아서고, `line.fits_the_vendor()` 가 라인 상한이 벤더
+투입 범위(1,600×800 … 2,500×1,400) 안임을 확인한다. 상한을 벤더 포락선으로 되돌린
+안(A)은 별도 스냅샷으로 뽑았다 — 이 문단의 나머지는 관문을 둔 안(C)이다.
+
+**처리율은 안 움직였다.** 벤더 식이 패널 길이에 비례하는 탠덤 사이클로 묶여
+있어 2,400 짜리 패널은 48등이든 40등이든 **60.5 장/h · 53.6 s** 다(포락선
+2,500×1,400 에서는 58.5 · 55.4 → 계약 58). IR 열공정은 97.1 장/h 로 남는 여유다.
+그래서 페이싱(보류 6.73 s · 택트 55.08 · 63.8 장/h · 연 −11.6 % · 250,470 장)과
+병목(후단 등가 52.56 s)은 §58 값 그대로다 — `reproduces_the_console()` 은 콘솔이
+이제 `HK60C.rate` 를 상수가 아니라 식(`knifeLineRate × availability`)으로 갖는
+것을 같은 식으로 재현하고, 그 값이 `NET_TARGET` 58 위인지도 본다.
+
+**방책이 8,300 으로 나오면서 밴드가 벤더에서 온다.** 장비 밴드는
+`max(7,100 전처리, hk60c.ENVELOPE_MM[1])` = **8,300** 이라 통로 8,300–9,500, 부지 Y
+11,700, 전장 55,625 → **56,125**. 통로 쪽 것들은 이제 밴드에서 파생한다 — MDB 벽부,
+트레이 **8,900**, LP 전면 8,200, 엣지 캐비닛 z 5.1 → **5.8**, 케이싱 검사 통로 시작
+4.75(`build_literals` 가 `check_casing_fit.mjs` 의 `AISLE_Z` 까지 찍는다).
+크레인 스팬도 `MACHINE_BAND + 2 × 접근` = **9,500** 으로 모델이 낸다. RH-201 릴
+기둥은 새 반출 레인(−7,600)에 서고 카세트 새들은 −5,600 에 앉는다.
+
+**전력·열은 한 단 되돌아왔다.** F9 LP-DGM-IR 100 → **120 kW · 250 AT · 120 mm²**,
+F10 LP-DGM-MC 93 kW · 200 AT · 70 mm² — 둘 다 `hk60c.BRANCHES` 에서 트립·케이블을
+고른다(`_feeder_trip_a`·`_feeder_cable`). 설치 319.4, 수요 209.7 → **223.9 kW**,
+주차단기 400 → **500 AT** · 주회로 240 → **300 mm²**(§58 이 "다음 부하는 다시 한 단
+올린다"고 적어 둔 그 단), 계약은 여전히 동시 최악이 정해 292.6 → **312.6 kW /
+347.3 kVA**, 여유 45.4 kW. IR 평균 83.05 kW 는 라인 패널(2,400×1,200)로 계산하니
+그대로고, 실내 부하 81.5 → **95.7 kW**, 환기 49,000 → **57,500 m³/h**. CL-01
+포락선은 뱅크 **120 kW** · 소성 113.15…185.5 s 로 `ai.envelope_bounds()` 가 낸다.
+
+**RFQ·PLC 병합.** 벤더가 OI-16 을 램프 봉착부로 쓰기에 상류 직결은 **OI-17** 로
+옮겼다(새들 −6,800/−7,600, 통로 Y 8,300–9,500, "발주처 선택 · 본 기계 상한
+2,500×1,400 안") — 확인사항 **17건**. 4.2 투입 표는 벤더의 무프레임 행 위에 "투입
+방식" 행을 얹었고, PLC 모델은 벤더의 신호 추가와 UP_PANEL_OFFER/ACK 가 같이
+들어가 실사용 **DI 128 · DO 47 · AI 30 · AO 6**. 부품도 174 → **176장**.
+
+**검증.** 헤드리스 다섯 종 ✓(하중경로 뜬 덩어리 0 · 케이싱 관통 0 · 셀 격자 ·
+간섭 · 시트 폭), 페이지 로드 JS 오류 0, 시험 **1,460** ✓ (3.10 · 3.11 · 3.12).
+시험 두 개가 고쳐졌다 — 병목 시험은 칼날을 빠르게 흔든 뒤 `bottleneck()` 을 다시
+읽어 JBR 을 집었었다(이름을 먼저 잡는다), 관문 시험은 `SIZE_GATE` 사전을 경로
+문자열과 비교하고 있었다.
 
 #### §58 GRM-401 을 떼고 DG-HK60C 를 잇는다 — 값은 벤더에서, 속도는 후단에서 (REV.54)
 

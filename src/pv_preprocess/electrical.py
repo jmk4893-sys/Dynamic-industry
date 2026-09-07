@@ -36,7 +36,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from . import air
+from . import air, hk60c
 
 #: 저압 배전 전압 (V, 선간). 변압기 2차이자 플랜트 내부 배전 전압이다.
 SUPPLY_VOLTAGE_V = 380
@@ -131,6 +131,23 @@ class Feeder:
         return self.installed_kw * self.diversity
 
 
+def _feeder_trip_a(kw: float) -> int:
+    """피더 차단기 트립 — 부하전류의 90 % 안에 드는 표준 정격 (주차단기와 같은 규칙)."""
+    amps = kw * 1000 / (3 ** 0.5 * SUPPLY_VOLTAGE_V * POWER_FACTOR)
+    return next(t for t in BREAKER_TRIPS_A if t * 0.9 >= amps)
+
+
+def _feeder_cable(trip_a: int) -> str:
+    """트립 전류를 받는 가장 얇은 케이블."""
+    return f"4C×{next(s for s, a in sorted(LV_CABLE_AMPACITY_A.items()) if a >= trip_a)} mm² Cu"
+
+
+# 벤더 분기 — hk60c.BRANCHES (사양서 5.3). IR 뱅크는 한 피더, 나머지 셋은 한 피더로 받는다.
+_DGM_IR = next(b for b in hk60c.BRANCHES if b.tag == "IR-DB1")
+_DGM_MC = [b for b in hk60c.BRANCHES if b.tag != "IR-DB1"]
+_DGM_MC_KW = sum(b.kw for b in _DGM_MC)
+_DGM_MC_DF = round(sum(b.kw * b.df for b in _DGM_MC) / _DGM_MC_KW, 2)
+
 #: 주 분전반(MDB-101) 피더. 순서가 인입도의 위→아래 순서다.
 FEEDERS: tuple[Feeder, ...] = (
     Feeder("F1", "LP-AFU", "LFT-101A/B 유압 승강(HPU-101) · BFC-101A/B 반전 · CD-101 포획빔 · 투입 비전",
@@ -169,11 +186,13 @@ FEEDERS: tuple[Feeder, ...] = (
     # 벤더 자체 300 kVA 변압기는 두지 않는다 — 부지 1,200 kW 인입에 물리는 플랜트
     # 부하의 일부다.
     # 100 kW 는 380 V·역률 0.9 에서 168.8 A — 160 AT 로는 못 받아 200 AT/95 mm² 다.
-    Feeder("F9", "LP-DGM-IR", "DG-HK60C IR-DB1 — IR 램프 40등 × 2.5 kW (6뱅크 SSR)",
-           100.0, 0.83, 200, "4C×95 mm² Cu", "DG-HK60C 사양서 5.3"),
+    Feeder("F9", "LP-DGM-IR", f"DG-HK60C IR-DB1 — IR 램프 {hk60c.LAMPS}등 × {hk60c.LAMP_KW:g} kW ({hk60c.DECKS + 1}뱅크 SSR)",
+           _DGM_IR.kw, _DGM_IR.df, _feeder_trip_a(_DGM_IR.kw), _feeder_cable(_feeder_trip_a(_DGM_IR.kw)),
+           "DG-HK60C 사양서 5.3"),
     Feeder("F10", "LP-DGM-MC",
-           "DG-HK60C HK-DB2 카트리지히터 30 · MCC-1 서보/VFD 45 · AUX-DB 진공/냉각 18 kW",
-           93.0, 0.59, 160, "4C×70 mm² Cu", "DG-HK60C 사양서 5.3 (수요 54.9 kW)"),
+           "DG-HK60C " + " · ".join(f"{b.tag} {b.kw:g}" for b in _DGM_MC) + " kW (히터·MCC·보조)",
+           _DGM_MC_KW, _DGM_MC_DF, _feeder_trip_a(_DGM_MC_KW), _feeder_cable(_feeder_trip_a(_DGM_MC_KW)),
+           f"DG-HK60C 사양서 5.3 (수요 {_DGM_MC_KW * _DGM_MC_DF:.1f} kW)"),
     # ── REV.25 스마트 팩토리 계층 ────────────────────────────────────────
     # 설치 kW 는 `smart.py` 가 랙 탑재물·계측기 목록에서 산정한 값이다.
     # 여기에는 리터럴로 적고 테스트가 둘을 대조한다 — electrical 은 어떤

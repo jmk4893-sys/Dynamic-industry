@@ -47,7 +47,7 @@ from console_consts import const as c  # noqa: E402
 PANEL_L, PANEL_W = c("PANEL_L"), c("PANEL_W")       # 2.40 × 1.20 m
 DECK_L, DECK_W = c("DECK_L"), c("DECK_W")           # 2.78 × 1.48 m
 BANK_GAP = c("CDECK_DZ") / 2                        # 0.31 m 뱅크↔패널
-LAMP_LEN = 1.300                                    # m 카탈로그 P-002-18
+LAMP_LEN = c("LAMP_HEAT")                           # m 발열장 — 콘솔 LAMP_HEAT (카탈로그 P-002-18)
 LAMP_KW = 2.5
 DECKS, LAMPS = int(c("DECKS")), int(c("LAMPS"))
 
@@ -245,8 +245,9 @@ def soak_to_cold(f: Field, target: float = 140.0, dt: float = 2.0,
     cx = KT_PLATE / (dx * dx) / CP_AREAL * dt
     cy = KT_PLATE / (dy * dy) / CP_AREAL * dt
     src = [[f.E[i][j] / CP_AREAL * dt for j in range(ny)] for i in range(nx)]
-    prev_min, t = t0, 0.0
+    prev_min, t, P = t0, 0.0, T
     for _ in range(int(t_max / dt)):
+        P = T
         N = [row[:] for row in T]
         for i in range(nx):
             im, ip = max(i - 1, 0), min(i + 1, nx - 1)
@@ -260,7 +261,10 @@ def soak_to_cold(f: Field, target: float = 140.0, dt: float = 2.0,
         cur = min(min(r) for r in T)
         if cur >= target:
             frac = (target - prev_min) / (cur - prev_min) if cur > prev_min else 1.0
-            return t - dt * (1 - frac), T
+            # 시각만 보간하고 온도장은 한 스텝 뒤의 것을 주면 냉점이 target 을
+            # 넘어 있다 — 유속이 높을수록 더. 장도 같은 비율로 보간한다.
+            Ti = [[P[a][b] + frac * (T[a][b] - P[a][b]) for b in range(ny)] for a in range(nx)]
+            return t - dt * (1 - frac), Ti
         prev_min = cur
     return t, T
 

@@ -188,7 +188,7 @@ W_ROLL = c("MASS_BACK") * PANEL_L * PANEL_W * ROLL_PANELS * G / 1000
 W_CASS = c("CASS_MASS") * G / 1000
 
 # 박리 추력 — 밴드의 상한에 동적계수를 얹어 포락한다 (OI-01).
-F_PEEL_K = 13.37                                   # kN 특성값
+F_PEEL_K = c("F_PEEL")                             # kN 특성값 — OI-01 상한 13.37 @ 폭 1,200 을 포락선 폭으로 환산 (콘솔 F_PEEL)
 F_PEEL_D = F_PEEL_K * PSI_DYN * GAMMA_Q            # kN 설계값
 
 # 자중. **개산이 아니라 부품 카탈로그의 형상에서 계산한 값**이다 —
@@ -223,7 +223,7 @@ def _joints():
     # 박리 추력의 반작용이 흡착패드 → 상판 → 기둥 → 앵커로 내려온다.
     # F-005 는 "테이블은 패널 반력만 받는다" 고 적었지만, 그 패널 반력이
     # 곧 추력이다 — 작용·반작용 쌍이므로 양쪽 기초가 같은 크기를 받는다.
-    tbl_span_x, tbl_span_y, tbl_h = 2.50, 1.24, c("CZ")
+    tbl_span_x, tbl_span_y, tbl_h = c("CARRIER_L") - 0.40, c("CARRIER_W") - 0.32, c("CZ")
     V_tbl = F_PEEL_D / 4                                     # 기둥 4개 분담 전단
     N_tbl = (F_PEEL_D * tbl_h) / tbl_span_x / 2              # 전도 짝힘 → 기둥당 인장
     J.append(dict(id="J1", name="VT-101 기둥 ↔ 베이스플레이트", grade="8.8", n=4,
@@ -324,7 +324,7 @@ JOINTS = _joints()
 # 이 라인은 60 장/h 로 돌아간다. 20 년이면 박리 추력이 1,000 만 번 걸린다 —
 # 정적 강도로는 이용률 0.05 인 접합이 피로로는 지배될 수 있다. 그래서
 # 부재 단면은 정적 강도가 아니라 **응력범위**와 **처짐**이 정한다.
-NET_TARGET = 60             # 계약 순생산 장/h (콘솔 MODEL.netTarget)
+NET_TARGET = int(c("NET_TARGET"))   # 계약 순생산 장/h (콘솔 NET_TARGET)
 OP_HOURS_Y = 8760 * 0.90    # 가동률 90 %
 DESIGN_LIFE_Y = 20
 
@@ -378,7 +378,7 @@ def _critical():
         id="C1", member="KG-101 크로스빔 BOX-300×200×12", mat="SM490A",
         gov="처짐 (칼끝 간격 300±2)",
         value=beam_deflection(F_PEEL_K, span, I_beam), limit=0.50, unit="mm",
-        note=f"스팬 {span:.0f} · 특성 추력 {F_PEEL_K} kN · 한계는 공차의 1/4"))
+        note=f"스팬 {span:.0f} · 특성 추력 {F_PEEL_K:.2f} kN · 한계는 공차의 1/4"))
     C.append(dict(
         id="C2", member="KG-101 크로스빔 (용접 부착부)", mat="SM490A",
         gov="피로 — 필릿 용접 부착물 (등급 71)",
@@ -520,10 +520,10 @@ WELDS = [
     ("테이블 상판 ↔ 리브", F_PEEL_D / 8, 2 * 400, "SS400", 20),
     ("갠트리 문형 기둥 ↔ 베이스플레이트", F_PEEL_D / 4, 4 * 250, "SM490A", 30),
     ("크로스빔 ↔ 대차 브래킷", F_PEEL_D / 2, 2 * 300, "SM490A", 20),
-    ("크로스빔 웨브 ↔ 플랜지 (BOX)", F_PEEL_D / 2, 2 * 2840, "SM490A", 12),
+    ("크로스빔 웨브 ↔ 플랜지 (BOX)", F_PEEL_D / 2, 2 * (2 * c("CGY") * 1000), "SM490A", 12),
     ("권취 문형 기둥 ↔ 베이스플레이트", GAMMA_Q * W_ROLL, 4 * 150, "SS400", 20),
     ("RH-201 런웨이 ↔ 기둥 두상판", GAMMA_Q * W_ROLL * 1.25, 2 * 200, "SS400", 16),
-    ("데크 프레임 ↔ 레일 (가열실 내부)", GAMMA_Q * W_PANEL, 2 * 2780, "STS304", 6),
+    ("데크 프레임 ↔ 레일 (가열실 내부)", GAMMA_Q * W_PANEL, 2 * c("DECK_L") * 1000, "STS304", 6),
     ("방책 기둥 ↔ 베이스", 1.0, 4 * 60, "SS400", 6),
 ]
 
