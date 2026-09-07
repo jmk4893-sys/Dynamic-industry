@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import electrical, handoff, servos
+from . import electrical, handoff, hk60c, servos
 
 #: 유압 입력 대비 발열 비율 — 시스템 효율 70 % 관례
 HPU_LOSS_RATIO = 0.30
@@ -62,9 +62,18 @@ def cabinet_loss_kw(panel: str) -> float:
 
 
 def ir_demand_kw() -> float:
-    """유리제거셀 IR 뱅크의 수요 전력 (kW) — 발열 배분의 분모."""
-    return round(sum(f.demand_kw for f in electrical.FEEDERS
-                     if f.panel.startswith("LP-GRM-IR")), 2)
+    """유리제거기 IR 뱅크의 평균 소비 (kW) — 발열 배분의 분모.
+
+    REV.54: 피더 수요가 아니라 그 기계의 열수지(장당 열량 / 효율 / 라인 사이클 —
+    사양서 5.x 의 83 kW)다. 설치 100 kW 에 수용률을 곱한 IR-DB1 수요 83 kW 와
+    같은 값이 나오지만, 근거는 열수지 쪽이다.
+    """
+    return hk60c.ir_average_kw()
+
+
+def hk_demand_kw() -> float:
+    """핫나이프 히터 수요 (kW) — 그 기계 부하표 HK-DB2 의 kW × 수용률."""
+    return next(b.demand_kw for b in hk60c.BRANCHES if b.tag == "HK-DB2")
 
 
 def ir_useful_kw() -> float:
@@ -101,16 +110,28 @@ def heat_sources() -> tuple[HeatSource, ...]:
                    "배기", "국소집진 기류로 반출 (1,000 m³/h)", "—", 0.0),
         HeatSource("TH-DX", "DX-601 블로워 축동력", 9.7,
                    "배기", "배기 기류로 옥외 반출", "—", 0.0),
-        # REV.23 유리제거셀 — 이 플랜트 최대 발열원이다. 둘 다 반드시 배기로
-        # 빼야 한다. 실내로 들어오면 환기량이 33,000 → 110,000 m³/h 가 된다.
-        HeatSource("TH-GRM-IR", "GRM-401 IR 인클로저 손실 (수요의 35 %)",
+        # REV.54 후단 DG-HK60C — 여전히 이 플랜트 최대 발열원이다. 둘 다 반드시
+        # 배기로 빼야 한다. 실내로 들어오면 환기량이 세 배가 된다.
+        # ① 가열실·탠덤 배기는 그 기계가 경계 덕트 플랜지(Ø600 · EL 5,100)까지만
+        #    가져오고, 팬(2×100 %)·후처리는 발주자 설비다 — 여기서는 플랜트가 받는다.
+        # ② 유리·셀 현열은 GC-101 5단 강제공랭 랙이 140 → 60 ℃ 로 식힌다. 그 냉각
+        #    배기를 **경계 덕트에 합류**시켜야 실내로 안 든다 — 벤더 확인사항 OI-16.
+        HeatSource("TH-DGM-IR", "DG-HK60C 가열실·탠덤 배기 (IR 평균의 35 %)",
                    ir_enclosure_loss_kw(), "배기",
-                   "IR 배기 덕트 · 블로워 3.7 kW (배기유량 감시 인터록)",
-                   "GRM-EX-401", 0.0),
-        HeatSource("TH-GRM-GL", "GRM-401 박리 유리·셀 현열 (수요의 65 %)",
+                   "경계 덕트 Ø600 → 발주자 배기 후처리 (덕트 차압·풍량 감시 인터록)",
+                   "BJ-101 경계 덕트", 0.0),
+        HeatSource("TH-DGM-GL", "DG-HK60C 박리 유리·셀 현열 (IR 평균의 65 %)",
                    ir_useful_kw(), "배기",
-                   "냉각 후드 · 블로워 4.0 kW — 포집 못 하면 그대로 실내 부하",
-                   "GRM-CD-401", 0.0),
+                   "GC-101 강제공랭 배기를 경계 덕트에 합류 — 못 잡으면 그대로 실내 부하",
+                   "GC-101 → 경계 덕트", 0.0),
+        # ③ 핫나이프 카트리지히터(HK-DB2 30 kW · 수용률 0.60)는 탠덤 셀 위 배기
+        #    지선(Ø400)이 받는다 — 칼날 180/200 ℃ 의 열은 웹과 공기로 나가고 탠덤은
+        #    배기 밀폐 구역이다. 서보(MCC-1)·진공 펌프·냉각 팬(AUX-DB)의 손실은 실내
+        #    부하로 남긴다 — GRM-401 계획값(기구 6 kW)보다 크고, 그것이 환기가
+        #    37,000 → 49,000 m³/h 로 오른 이유다 (README §58).
+        HeatSource("TH-DGM-HK", "DG-HK60C HKB/HKS 카트리지히터 (HK-DB2 수요)",
+                   hk_demand_kw(), "배기",
+                   "탠덤 셀 배기 지선 Ø400 → 경계 덕트", "BJ-101 경계 덕트", 0.0),
     )
 
 

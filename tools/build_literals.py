@@ -373,15 +373,158 @@ def main() -> int:
     # ── 열수지 — 반내 발열은 서보 일람에서 나온다 ────────────────────────
     # 이름표도 모델에서 찍는다 — "셀 분전반 7면" 처럼 반 수가 박힌 문구가 있어,
     # 반이 합쳐지면 값만 고쳐서는 도면이 옛 이야기를 계속 한다 (REV.52).
-    for src in thermal.heat_sources():
-        p.one(rf"(\['{re.escape(src.tag)}', ')[^']*(', )[\d.]+(, '[^']*', '[^']*', '[^']*', )[\d.]+\]",
-              lambda m, src=src: f"{m.group(1)}{src.equipment}{m.group(2)}{src.loss_kw}"
-                                 f"{m.group(3)}{src.cooler_kw}]")
+    # REV.54: 발열원 표는 아래에서 통째로 찍는다 (태그가 바뀌면 행 패치로는 못 따라간다).
     loads = thermal.cabinet_loads()
     p.rows("THERMAL_CABINETS",
            [(panel, kw, "열교환기" if thermal.cabinet_needs_exchanger(panel)
              else ("필터팬" if kw > 0 else "— (전동기 없음)"))
             for panel, kw in loads.items()])
+
+    # ── REV.54 — 손으로 적혀 있던 표를 전부 모델에서 찍는다 ──────────────────
+    # GRM-401 을 DG-HK60C 로 바꾸며 피더·서보·계측·부재·안전·지진·예비품 표가
+    # 한꺼번에 움직였다. 시험이 한 줄씩 대조하던 표들이라 손으로 고치면 반드시
+    # 한 줄이 남는다 — 그래서 여기서 찍고, 사람은 모델만 고친다.
+    import dataclasses
+    from pv_preprocess import (acceptance, air, casing, dust, electrical, hk60c, seismic,
+                               servos, handoff)
+
+    def jsv(v: object) -> str:
+        """단따옴표 JS 리터럴 — 문자열·수·불·중첩 배열."""
+        if isinstance(v, bool):
+            return "true" if v else "false"
+        if v is None:
+            return "null"
+        if isinstance(v, str):
+            return "'" + v.replace("'", "’") + "'"
+        if isinstance(v, (list, tuple)):
+            return "[" + ",".join(jsv(x) for x in v) + "]"
+        return q(v)
+
+    def rows_js(name: str, rows, indent: str = "    ") -> None:
+        body = "\n" + ",\n".join(indent + "[" + ", ".join(jsv(c) for c in r) + "]" for r in rows)
+        p.one(rf"(var {name} = \[)(?:.*?)(\n  \];)", lambda m: m.group(1) + body + m.group(2))
+
+    def json_var(name: str, value, *, sep: str = ";") -> None:
+        p.one(rf"var {name} = (?:\[|\{{).*?(?:\]|\}}){re.escape(sep)}",
+              lambda m: f"var {name} = " + json.dumps(value, ensure_ascii=False) + sep)
+
+    def js_dict(name: str, d: dict, *, dq: bool = False) -> None:
+        def v(x):
+            if isinstance(x, bool):
+                return "true" if x else "false"
+            if isinstance(x, str):
+                return json.dumps(x, ensure_ascii=False) if dq else "'" + x + "'"
+            if isinstance(x, (list, tuple)):
+                return json.dumps(list(x), ensure_ascii=False)
+            return q(x)
+        p.one(rf"var {name} = \{{.*?\}};",
+              lambda m: f"var {name} = {{ " + ", ".join(f"{k}: {v(x)}" for k, x in d.items()) + " };")
+
+    # 전기 — 피더 표 · 분전반 위치 · 제어 체인
+    p.one(r"(  var feeders = \[)(?:.*?)(\n  \];)",
+          lambda m: m.group(1) + "\n" + ",\n".join(
+              "        [" + ", ".join(jsv(c) for c in (f.tag, f.panel, f.served, f.installed_kw,
+                                                      f.diversity, f.breaker_at, f.cable, f.source)) + "]"
+              for f in electrical.FEEDERS) + m.group(2))
+    lp_new = ("      // REV.54 DG-HK60C — 벤더 MCC M-011 이 기초 패드 P1(EP-1 · 기계 x 4,200)에 선다.\n"
+              "      // 두 피더(IR · 기구) 다 그 반으로 가므로 자리는 하나다.\n"
+              "      'LP-DGM-IR': zoneByKey('grm')[2] + 4200, 'LP-DGM-MC': zoneByKey('grm')[2] + 4200,\n")
+    if "'LP-DGM-IR': zoneByKey('grm')[2] + 4200" not in p.text:
+        p.one(r"      // REV\.23 유리제거셀 4면\..*?'LP-GRM-EXH': center\('grm'\) \+ 4200,\n", lambda m: lp_new)
+    segments = wiring.control_segments()
+    chain = [segments[0].feeder.split("→")[0]] + [row.panel for row in segments]
+    p.one(r"var EL_CHAIN = \[[^\]]*\];",
+          lambda m: "var EL_CHAIN = [" + ", ".join("'" + k + "'" for k in chain) + "];")
+    c = electrical.incomer_summary()
+    js_dict("INCOMER", {
+        "method": c["method"], "tapsSite": c["taps_site"], "tapLowVoltage": c["tap_low_voltage"],
+        "siteServiceKw": c["site_service_kw"], "siteUtilPct": c["site_utilisation_pct"],
+        "siteHeadroomKw": c["site_headroom_kw"], "worstCaseKw": c["worst_case_kw"],
+        "coincidentWorstCaseKw": c["coincident_worst_case_kw"], "lvTapMaxM": c["lv_tap_max_m"],
+        "highVoltage": c["high_voltage"], "hvV": c["hv_voltage_v"], "contractKw": c["contract_kw"],
+        "contractKva": c["contract_kva"], "apparentKva": c["apparent_kva"],
+        "transformerKva": c["transformer_kva"], "transformerKvaIfHv": c["unit_transformer_kva"],
+        "transformerLoadPct": c["transformer_load_pct"], "capacitorKvar": c["capacitor_kvar"],
+        "hvCurrentA": c["hv_current_a"], "hvCable": c["incoming_cable"], "vcbA": c["vcb_a"],
+        "lvMainMm2": c["lv_main_cable_mm2"], "substationMm": c["substation_room_mm"],
+        "lowVoltageLimitKw": electrical.LOW_VOLTAGE_LIMIT_KW,
+        "incomingKnown": wiring.incoming_cable_m() is not None,
+        "withinLvLimit": bool(c["taps_site"]), "lvTapConfirmed": bool(c["tap_low_voltage"]),
+        "dropPct": electrical.FEEDER_VOLTAGE_DROP_PCT, "breakerHeadroomKw": c["breaker_headroom_kw"]})
+    p.one(r"var MAIN_BREAKER_FRAME_A = \d+;",
+          lambda m: f"var MAIN_BREAKER_FRAME_A = {electrical.MAIN_BREAKER_FRAME_A};")
+
+    # 서보·전동기
+    rows_js("SERVO_AXES", [dataclasses.astuple(a) for a in servos.SERVO_AXES], indent="        ")
+    rows_js("PLANT_MOTORS", [dataclasses.astuple(a) for a in servos.MOTORS], indent="        ")
+
+    # 계측·AI·영상 스트림
+    rows_js("INSTRUMENTS", [dataclasses.astuple(i) for i in smart.INSTRUMENTS])
+    rows_js("AI_CASES", [(c.tag, c.grade, c.name, c.where, c.data, c.label, c.method,
+                          c.benefit, c.caveat, list(c.needs)) for c in ai.CASES])
+    rows_js("IMAGE_STREAMS", [(s.head, s.zone, s.pixels, s.per_hour) for s in smart.image_streams()])
+
+    # 지지·장착
+    rows_js("MOUNTINGS", [(mt.station, [[a.target, a.count, a.bolt, a.units, a.per_unit] for a in mt.anchors],
+                           mt.plate, mt.grout_mm, mt.level, mt.note, mt.total_anchors)
+                          for mt in mounting.MOUNTINGS])
+    rows_js("MOUNT_MEMBERS", [(mm.label, mm.station, mm.support, mm.carries) for mm in mounting.MEMBERS])
+
+    # 열수지 — 발열원 표 전체 (태그가 바뀌면 행 단위 패치로는 못 따라간다)
+    rows_js("THERMAL_SOURCES", [(s.tag, s.equipment, s.loss_kw, s.sink, s.cooling, s.cooler_tag, s.cooler_kw)
+                                for s in thermal.heat_sources()])
+    p.one(r"var THERMAL_SUMMARY = \{[^}]*\};",
+          lambda m: ("var THERMAL_SUMMARY = { "
+                     f"room: {thermal.room_load_kw()}, airflow: {thermal.required_airflow_m3h()}, "
+                     f"exhausted: {thermal.exhausted_kw()}, deltaT: {thermal.ROOM_DELTA_T_C:.0f}, "
+                     f"hpuLossRatio: {thermal.HPU_LOSS_RATIO}, driveLossRatio: {thermal.DRIVE_LOSS_RATIO}, "
+                     f"coolerMargin: {thermal.COOLER_MARGIN} }};"))
+
+    # 신뢰도·예비품·검수·껍질·집진·접근·지진·안전 — JSON 블록
+    json_var("SPARES", [[s.tag, s.name, s.block, s.qty_installed, s.per_year, s.lead_weeks, s.stock(), s.basis]
+                        for s in reliability.SPARES()])
+    json_var("CASING", casing.summary())
+    json_var("ACCEPTANCE", acceptance.summary())
+    json_var("ACCEPTANCE_ITEMS", [[i.tag, i.stage, i.subject, i.method, i.source, f"{i.value()}",
+                                   i.tolerance, i.blocking] for i in acceptance.items()])
+    json_var("DUST", dust.summary())
+    json_var("DUST_STREAMS", [[s.tag, s.source, s.flow_m3h, s.material, s.combustible, s.basis]
+                              for s in dust.STREAMS])
+    json_var("DUST_IGNITION", [list(r) for r in dust.IGNITION_SOURCES])
+    json_var("DUST_VENT_OPTIONS", [list(r) for r in dust.INDOOR_VENT_OPTIONS])
+    json_var("DUST_TESTS", [list(r) for r in dust.REQUIRED_TESTS])
+    json_var("DUST_ST", [list(r) for r in dust.ST_CLASSES])
+    json_var("ACCESS_ANCHORS", [list(r) for r in access.anchor_points()])
+    json_var("SEISMIC", seismic.summary())
+    json_var("SEISMIC_COMPONENTS", [[cp.name, cp.station, cp.mass_kg, cp.height_mm, cp.base_mm, cp.wall_mounted,
+                                     cp.slenderness, cp.is_flexible, seismic.total_anchors(cp),
+                                     seismic.anchor_size(cp), seismic.anchor_tension_kn(cp),
+                                     seismic.anchor_utilisation(cp), cp.basis] for cp in seismic.components()])
+    json_var("SEISMIC_REMEDY", [list(r) for r in seismic.REMEDY_ORDER])
+    json_var("HAZARDS", [[h.tag, h.cell, h.description, h.severity, h.frequency, h.avoidance, h.plr, h.basis]
+                         for h in safety.HAZARDS])
+    json_var("SAFETY_FUNCTIONS", [[f.tag, f.name, list(f.hazards), f.detection, f.logic, f.actuator, f.plr,
+                                   f.category, f.note] for f in safety.SAFETY_FUNCTIONS])
+    json_var("SAFETY_DEVICES", [[d.tag, d.name, d.qty, d.inputs_each, d.outputs_each, d.fsoe_node, d.inputs,
+                                 d.outputs, d.note] for d in safety.SAFETY_DEVICES])
+    json_var("STOP_CHAIN", [list(r) for r in safety.STOP_CHAIN])
+    json_var("SISTEMA_INPUTS", [list(r) for r in safety.SISTEMA_INPUTS])
+    js_dict("CRANE", crane.summary(), dq=True)
+    js_dict("AIR", air.summary())
+
+    # 후단 요약 — 콘솔 명판 등에서 쓰는 후단 이름은 hk60c 가 정한다
+    p.one(r"var DOWNSTREAM = \{[^}]*\};", lambda m: m.group(0)) if "var DOWNSTREAM = {" in p.text else None
+
+    # ── 캠페인 시각표 — 페이싱(REV.54)으로 택트가 움직이면 60장 전부 다시 찍는다 ─────
+    sched = ",".join("[" + ",".join(f"{v:g}" for v in (pl.infeed_start, pl.infeed_end, pl.jbr_start,
+                                                        pl.jbr_end, pl.afr_start, pl.afr_end)) + "]"
+                     for pl in campaign.panels())
+    p.one(r"var pvCamT=\[.*?\];", lambda m: "var pvCamT=[" + sched + "];")
+    for key in ("pvCamTakt", "pvCamWrap"):
+        p.scalar(key, campaign.release_takt_s(), sep="=")
+    p.scalar("pvCamAfr", campaign.AFR_S, sep="=")
+    p.one(r"var MACHINE_BAND_Y = \d+;", lambda m: f"var MACHINE_BAND_Y = {layout.MACHINE_BAND_Y_MM};")
+    p.one(r"var AISLE_WIDTH = \d+;", lambda m: f"var AISLE_WIDTH = {layout.AISLE_WIDTH_MM};")
 
     DRAWING.write_text(p.text, encoding="utf-8")
     print(f"도면 리터럴 재생성 — {p.changed}곳 갱신 "

@@ -96,11 +96,11 @@ def items() -> tuple[Item, ...]:
              "campaign.summary['throughput_per_h']",
              lambda: campaign.summary()["throughput_per_h"],
              f"≥ {campaign.summary()['throughput_per_h']} 장/h", True),
-        Item("S-03", SAT, "유리제거 완료시간", "정상 53장 기준",
+        Item("S-03", SAT, "후단 순생산 (DG-HK60C SAT 와 공동)", "정상 53장 · P95 사이클",
              "handoff.summary['downstream_per_h']",
              lambda: handoff.summary()["downstream_per_h"],
-             f"≥ {handoff.summary()['downstream_per_h']} 장/h — 후단이 전단을 "
-             "못 받으면 버퍼가 찬다", True),
+             f"≥ {handoff.summary()['downstream_per_h']} 장/h — 이 값에서 택트를 "
+             "페이싱했으므로 모자라면 버퍼가 찬다", True),
         Item("S-04", SAT, "버퍼 완충", "후단 강제정지 · 전단 지속시간 측정",
              "handoff.buffer_ride_through_h",
              lambda: handoff.buffer_ride_through_h(),

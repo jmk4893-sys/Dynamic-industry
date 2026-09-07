@@ -50,7 +50,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import kinematics, layout
+from . import hk60c, kinematics, layout
 
 # ── 발주처 확인값 ────────────────────────────────────────────────────────
 #: 설치 현장 천장고 (mm) — 건물 보 하면까지. 발주처 확인.
@@ -109,7 +109,7 @@ def sling_height_mm(spread_mm: int | None = None,
 
 # ── 평면 계통 ────────────────────────────────────────────────────────────
 #: 장비 밴드 폭 (mm) — layout.MACHINE_BAND_Y_MM 와 같아야 한다.
-MACHINE_BAND_MM = 7_100
+MACHINE_BAND_MM = layout.MACHINE_BAND_Y_MM      # REV.54: 7,100 → 7,600 (layout 이 정본)
 
 #: 트롤리 끝단 접근 여유 (mm). 레일 중심에서 후크가 이만큼은 못 간다.
 TROLLEY_APPROACH_MM = 600
@@ -247,8 +247,14 @@ LIFTS: tuple[Lift, ...] = (
          "이었다(엔드링 2 × ⌀180 t10 파이프 237 kg · 포탈기둥 4 × 180×240 t8 · "
          "크로스빔 2 · 조 2 · 서보·감속기 2 · 베어링블록 2). 26 % 낮게 잡았던 "
          "셈이라 확인값을 하한으로 쓴다 — 벤더 GA 가 오면 그 값으로 바꾼다"),
-    Lift("GRM-401 5단 단열랙 M1-101", "grm", 1_700, 3_000,
-         "프레임 800 · 데크 5 × 80 · IR 램프 60등과 반사판 300 · 단열재 200"),
+    # REV.54: DG-HK60C 는 **현장 조립**이다 (조립 지침서 ASM-001 · 모듈별 74단계).
+    # 가열실 일식 5,763 kg 을 통째로 드는 일은 없고, 크레인이 드는 최중량 단품은
+    # 부품 카탈로그가 낸다 — VT-101 상판 710 kg. 서 있는 조립체의 지진은 `seismic`
+    # 이 `STANDING` 으로 따로 본다.
+    Lift(f"DG-HK60C {hk60c.heaviest_part()[1]} (단품 최중량)", "grm",
+         round(hk60c.heaviest_part()[2]), 1_300,
+         f"벤더 부품 카탈로그 {hk60c.heaviest_part()[0]} — 형상·재질에서 계산한 질량. "
+         "가열실 5,763 kg 은 골조·벽체·데크로 나눠 세운다"),
     Lift("AFR-101 셀 베이스 프레임", "afr", 1_290, 450,
          "180×180 t8 각형강관 11.4 m × 2본 985 kg + 횡부재 305 kg"),
     Lift("AFR CL-221 클램프 포탈 1조", "afr", 700, kinematics.AFR_PORTAL_HEIGHT_MM,

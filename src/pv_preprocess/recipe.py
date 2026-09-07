@@ -25,6 +25,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from . import hk60c
+
 
 @dataclass(frozen=True)
 class Structure:
@@ -75,6 +77,47 @@ ENFORCED_AT = {
 }
 
 DEFAULT = "GLASS_BACKSHEET"
+
+# ── 치수 게이트 (REV.54) ──────────────────────────────────────────────────
+# 라인 상한을 후단 DG-HK60C 의 2,400 × 1,200 으로 통일하면서 "받을 수 있는데
+# 안 받기로 한 패널" 이 생겼다 — 210 mm 셀 66셀 모듈(2,384 × 1,303)과 182 mm 78셀
+# (2,465 × 1,134)이 그것이다. 그 패널은 라인에 들어오기 **전**에 걸러야 한다.
+# 구조와 같은 규칙이다: 치수는 반입 등록(제조사 자료)에서 오고, 투입 비전
+# VS-101 의 외형 계측이 등록값을 검증한다. 초과·미달은 양면발전형과 같은
+# 범위 외 리젝트 경로(RB-101 → AFU-RJ-101)로 빠진다 — HOLD 가 아니다. 다시
+# 등록해도 들어갈 수 없기 때문이다.
+
+#: 자동 가공 치수 범위 (mm) — 후단이 갖는 값을 읽는다.
+SIZE_MAX_MM: tuple[int, int] = hk60c.PANEL_MAX_MM
+SIZE_MIN_MM: tuple[int, int] = hk60c.PANEL_MIN_MM
+
+#: 치수 게이트가 걸리는 자리와 검증 수단.
+SIZE_GATE = {
+    "enforced_at": "반입 등록 (제조사 치수) — 투입 전",
+    "verified_by": "VS-101A/B 외형 계측 — 등록값과 ±10 mm 안이어야 투입 허가",
+    "route": "REJECT_OUT_OF_SCOPE",
+}
+
+
+def size_route(length_mm: float, width_mm: float) -> str:
+    """치수만으로 정하는 경로. 범위 안이면 구조 레시피가 이어받는다."""
+    inside = (SIZE_MIN_MM[0] <= length_mm <= SIZE_MAX_MM[0]
+              and SIZE_MIN_MM[1] <= width_mm <= SIZE_MAX_MM[1])
+    return "PROCESS" if inside else SIZE_GATE["route"]
+
+
+def route(code: str, length_mm: float, width_mm: float) -> str:
+    """구조 + 치수를 함께 본 경로. 치수가 먼저다 — 범위 밖은 구조를 볼 이유가 없다."""
+    if size_route(length_mm, width_mm) != "PROCESS":
+        return SIZE_GATE["route"]
+    return by_code(code).route
+
+
+#: 게이트가 걸러 내는 대표 모듈 — 왜 상한 통일이 시장 결정인지를 값으로 남긴다.
+EXCLUDED_MODULES_MM: tuple[tuple[str, int, int], ...] = (
+    ("210 mm 셀 66셀 (2021~)", 2384, 1303),
+    ("182 mm 셀 78셀", 2465, 1134),
+)
 
 
 def by_code(code: str) -> Structure:

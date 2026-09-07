@@ -838,10 +838,13 @@
         <tr><th>패널 폭</th><td class="num">800 – 1,200 mm</td></tr>
         <tr><th>투입 자세</th><td class="num">유리면 아래 · 백시트 위</td></tr>
         <tr><th>백시트 폭 기준</th><td class="num">1,200 mm (권취 유효폭 1,400 – 1,500 mm)</td></tr>
+        <tr><th>투입 상태</th><td class="num">알루미늄 프레임·정션박스·케이블 제거, 장변·단변 엣지 연마 완료 (상류 전처리 플랜트 출력)</td></tr>
+        <tr><th>투입 방식</th><td class="num">상류 버퍼 GBR-301 → BX-101 브리지 직결 (<a href="#c11">OI-16</a>) · 팔레트 투입은 단독 운전·비상 우회</td></tr>
       </tbody>
     </table></div>
-    <p>프레임 제거 여부, EVA 조성, 경년열화 정도는 입찰자가 발주자와 협의해 시험 패널
-      사양을 확정한다. 성능 보증은 합의된 시험 패널 기준으로 한다.</p>
+    <p>프레임·정션박스는 상류 전처리 플랜트가 제거한 상태로 들어온다 — 이 라인은
+      <strong>무프레임 유리 적층체</strong>만 받는다. EVA 조성, 경년열화 정도는 입찰자가 발주자와
+      협의해 시험 패널 사양을 확정한다. 성능 보증은 합의된 시험 패널 기준으로 한다.</p>
   </div></div>
 
   <div class="clause"><div class="n">4.3</div><div class="c">
@@ -1340,7 +1343,7 @@ KG-101 갠트리 스윕   y ±1,420 · x 8,050 ~ 11,550 · 상단 2,740  → 이
     <h3>제어 구성</h3>
     <ul>
       <li>안전 PLC와 표준 PLC 분리, 원격 I/O 3반</li>
-      <li>표준 I/O — <span class="m">DI 176 · DO 96 · AI 40 · AO 16 · TC 56</span>. 실사용 <span class="m">DI 126 · DO 40 · AI 30 · AO 6 · TC 34</span> 에서 예비 20 % 이상을 남기고 카드 배수로 올린 값이다. 후처리·팔레타이징이 <a href="#c11">OI-15</a>에서 공급범위로 되돌아오면 그 점수가 여기로 다시 들어오므로 <strong>예비를 더 깎지 않는다</strong></li>
+      <li>표준 I/O — <span class="m">DI 176 · DO 96 · AI 40 · AO 16 · TC 56</span>. 실사용 <span class="m">DI 128 · DO 41 · AI 30 · AO 6 · TC 34</span> 에서 예비 20 % 이상을 남기고 카드 배수로 올린 값이다. 후처리·팔레타이징이 <a href="#c11">OI-15</a>에서 공급범위로 되돌아오면 그 점수가 여기로 다시 들어오므로 <strong>예비를 더 깎지 않는다</strong></li>
       <li>안전 I/O — <span class="m">F-DI 40 · F-DO 8</span> (실사용 F-DI 26 · F-DO 6)</li>
       <li>24 VDC 이중전원, 산업용 UPS, 관리형 네트워크 링</li>
       <li>HS-101 이력 서버와 OPC UA 서버 — 공정값은 읽기 전용으로 공개하고 레시피 쓰기는 인증서로 제한한다</li>
@@ -1429,13 +1432,14 @@ KNIFE_TRAVERSE_PERMIT = PEEL_PERMIT ∧ KNIFE_X_HOME ∧ KNIFE_X_POS</div>
         <tr><td class="k">CASSETTE_TEMP</td><td>CASSETTE_COOL_OK</td><td>카세트 온도센서 × 2</td><td class="num">TC 2</td></tr>
         <tr><td class="k">HEATER_ISOLATED</td><td>CASSETTE_RELEASE</td><td>히터 차단 확인 접촉기 × 2</td><td class="num">F-DI 2</td></tr>
         <tr><td class="k">KNIFE_GAP_OK</td><td>CASSETTE_READY</td><td>300 mm 레이저 간격센서</td><td class="num">COMM</td></tr>
+        <tr><td class="k">UP_PANEL_OFFER · UP_PANEL_ACK</td><td>UPSTREAM_FEED</td><td>경계 인터페이스반 BJ-101 — 상류 BX-101 브리지 핸드셰이크 (<a href="#c11">OI-16</a>)</td><td class="num">DI 2 · DO 1</td></tr>
       </tbody>
     </table></div>
     <div class="warn"><strong>보완 전 I/O 선언은 실제 점수를 담지 못했다.</strong>
       대조로 확정한 실사용은 <span class="m">DI 105 · TC 32</span>인데 종전 선언은
       <span class="m">DI 96 · TC 16</span>이었다. 위 표의 장치를 더하기 전부터 이미
       초과 상태였다. <a href="#c3">3.3항</a> 고도화 네 축과 <a href="#c3">3.4항</a> 공급범위 경계 인터페이스까지 더한 실사용은
-      <span class="m">DI 126 · DO 40 · AI 30 · AO 6 · TC 34 · F-DI 26 · F-DO 6</span>이며,
+      <span class="m">DI 128 · DO 41 · AI 30 · AO 6 · TC 34 · F-DI 26 · F-DO 6</span>이며,
       <a href="#c7">7.1항</a>의 I/O 수량은 여기서 예비 20 %를 남기고 카드 배수로 올려
       다시 잡은 값이다.</div>
     <p><span class="m">HORN_3S</span>와 <span class="m">BEACON_AMBER</span>는
@@ -1856,6 +1860,28 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
           분리해 제출한다.</p>
       </div>
     </div>
+    <div class="oi">
+      <div class="oi-h"><b>OI-16</b><span>상류 전처리 플랜트 직결 — 디스태커·픽업 스테이션의 대체</span></div>
+      <div class="oi-b">
+        <p><em>현황</em>본 기계는 발주자의 전처리 플랜트(REV.54) 최종 버퍼 GBR-301 뒤에
+          <strong>직결</strong>된다. 플랜트 측 인계 브리지 BX-101 이 버퍼 캐리지 슬롯(이송면 950)에서 유리 한 장을
+          들어 LD-101 데크(공정선 1,150)에 내려놓으므로, 상류 디스태커 PL-101 과 픽업 스테이션은 이 자리에서
+          <strong>플랜트 끝단 케이싱의 브리지 개구</strong>로 대체된다. 팔레트 투입은 단독 운전·비상 우회로만 남는다.
+          라인 상한은 플랜트와 같이 <span class="m">2,400 × 1,200 mm</span> 이고 투입물은 프레임·정션박스가
+          제거된 무프레임 유리 적층체다(<a href="#c4">4.2항</a>).</p>
+        <p><em>왜 미해결인가</em>경계 신호가 하나 늘었다 — 브리지 핸드셰이크
+          <span class="k">UP_PANEL_OFFER</span>(플랜트 → 본 기계, DI 2) · <span class="k">UP_PANEL_ACK</span>(본 기계 → 플랜트, DO 1)
+          가 <span class="k">UPSTREAM_FEED</span> 허가를 만들며, 안전회로 <span class="k">IF_ESTOP_LOOP_OK</span> 는
+          브리지 행정을 포함해 잇는다. 또 방책 −y 쪽 통로가 플랜트 보행 통로(Y 7,600 – 8,800)와 겹치므로
+          BS-301 만권 롤 새들은 기계 좌표 <span class="m">y −6,400</span>, 칼날 카세트 새들은
+          <span class="m">y −7,000</span> 으로 통로 밖에 두고 RH-201 모노레일이 통로 위(EL 5,100)를 넘는다.
+          GC-101 냉각 팬 배기(26 kW)는 실내로 내지 않고 경계 덕트에 합류한다. 셋 다 플랜트 측 값이 확정돼야 닫힌다.</p>
+        <p><em>해소</em>발주자가 브리지 인계면 좌표(존 경계 −475 · EL 1,150)·핸드셰이크 타이밍(방출 피치 44.5 s 이하)·
+          통로 경계 Y 와 경계 덕트 접속점을 확정 도면으로 제시하고, 입찰자는 LD-101 폭조절 가이드 1,200±3 과
+          BJ-101 의 추가 접점, 새들 위치 변경에 따른 RH-201 지주 배치를 반영한 배치도를 제출한다.
+          팔레트 투입 우회 운전은 인수시험 항목에 남긴다.</p>
+      </div>
+    </div>
   </div></div>
 </section>
 
@@ -1981,7 +2007,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
     <p>아래 순서로 작성한다. 순서는 <a href="#c12">12.7항</a> 평가 항목과 같다.</p>
     <ol>
       <li>설계 접근 방법 및 주요 기술적 판단</li>
-      <li><a href="#c11">11항</a> 확인사항 <strong>15건 전부</strong>에 대한 해소 방법·소요·책임 범위
+      <li><a href="#c11">11항</a> 확인사항 <strong>16건 전부</strong>에 대한 해소 방법·소요·책임 범위
         — 항목별로 시험·해석·문헌 중 무엇으로 해소할지, 그 결과가 어느 설계값을 바꾸는지 적는다</li>
       <li>수행 조직 — <a href="#c12">12.4항</a> 인력별 이력과 해당 실적</li>
       <li>일정 — <a href="#c12">12.2항</a> 단계에 맞춘 상세 일정, 실측·DOE 시험 배치 포함</li>
@@ -2035,7 +2061,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
       <thead><tr><th>구분</th><th>항목</th><th class="num">배점</th></tr></thead>
       <tbody>
         <tr><td class="k" rowspan="4">기술</td><td>과업 이해도 및 설계 접근 방법</td><td class="num">20</td></tr>
-        <tr><td><strong>11항 확인사항 15건의 해소 계획</strong></td><td class="num">25</td></tr>
+        <tr><td><strong>11항 확인사항 16건의 해소 계획</strong></td><td class="num">25</td></tr>
         <tr><td>수행 조직 및 실적</td><td class="num">20</td></tr>
         <tr><td>일정 및 품질관리 계획</td><td class="num">15</td></tr>
         <tr><td class="k">가격</td><td>최저 제안가 기준 상대평가</td><td class="num">20</td></tr>
@@ -2046,7 +2072,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
       이 용역의 위험은 도면을 그리는 데 있지 않다. 로드셀 용량이 부족할 수 있고
       (<a href="#c11">OI-01</a>), 열모델 상수가 가정이며(<a href="#c11">OI-05</a>),
       진공 유지력이 마찰계수 가정 위에 서 있다(<a href="#c11">OI-13</a>).
-      이 15건을 어떻게 닫을지가 설계의 질을 결정한다.</div>
+      이 16건을 어떻게 닫을지가 설계의 질을 결정한다.</div>
     <p>기술평가 <span class="m">60점</span> 미만은 협상 대상에서 제외한다.
       최고점 순으로 기술협상하며, 협상 결렬 시 차순위와 협상한다.
       발주자는 필요 시 발표평가를 요구할 수 있다.</p>

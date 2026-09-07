@@ -239,6 +239,14 @@ LEAVES = [
     # ── 무인 연속운전 ───────────────────────────────────────────────────
     Leaf("PL_IN_STACK_PRESENT", DI, 2, "경계 인터페이스반 BJ-101", "발주자 디스태커 픽업 스테이션 접점"),
     Leaf("PL_OUT_SPACE_OK",    DI, 2, "경계 인터페이스반 BJ-101", "발주자 스태커 여유 접점"),
+    # ── 상류 직결 (REV.54 · OI-16) — 전처리 플랜트 버퍼에서 BX-101 브리지가 유리 한 장씩
+    # LD-101 데크에 내려놓는다. 디스태커 PL-101 은 단독 운전·비상 우회에만 남는다.
+    # 핸드셰이크는 두 방향이다: 플랜트가 "놓았다"(OFFER) 를 주고, 우리는 "받을 수
+    # 있다"(ACK · 데크 빈 상태 ∧ 주행로 ∧ 로트 열림) 를 돌려준다.
+    Leaf("UP_PANEL_OFFER",     DI, 2, "경계 인터페이스반 BJ-101",
+         "상류 플랜트 PLC 접점 2채널 — BX-101 브리지가 LD-101 데크에 유리를 내려놓았다 (RF-902 ID 동반)"),
+    Leaf("UP_PANEL_ACK",       DO, 1, "경계 인터페이스반 BJ-101",
+         "우리가 브리지에 돌려주는 수취 허가 — 이 출력이 참일 때만 브리지가 내려놓는다"),
     Leaf("KC_MAGAZINE_READY",  DI, 4, "KC-101 칼날 카세트 매거진"),
     Leaf("KC_ARM_HOME",        DI, 2, "KC-101 칼날 카세트 매거진"),
     Leaf("CARRIER_PARKED",     DI, 1, "나이프 X축 원점·과주행센서×2"),
@@ -369,7 +377,10 @@ DERIVED = [
     Derived("OEE_VALID", ["STOP_REASON_CODED", "TRACE_DB_OK",
                           "PM_METER_OK", "OPC_UA_LINK_OK"]),
     # ── 무인 연속운전 ───────────────────────────────────────────────────
-    Derived("AUTO_FEED", ["PL_IN_STACK_PRESENT", "TRACK_CLEAR", "LOT_OPEN"]),
+    Derived("AUTO_FEED", ["PL_IN_STACK_PRESENT", "TRACK_CLEAR", "LOT_OPEN"],
+            "팔레트 투입 — 단독 운전·비상 우회"),
+    Derived("UPSTREAM_FEED", ["UP_PANEL_OFFER", "UP_PANEL_ACK", "TRACK_CLEAR", "LOT_OPEN"],
+            "상류 직결 투입 — 브리지 핸드셰이크 (REV.54 · OI-16)"),
     Derived("AUTO_STACK", ["PL_OUT_SPACE_OK", "GLASS_CARRIAGE_ACK", "DOCK_LOCKED"]),
     # 칼날 자동교환은 정비허가가 아니라 파킹 상태에서 돈다. LOTO 를 요구하면
     # 무인 운전 중에는 영원히 성립하지 않는다.

@@ -26,6 +26,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from . import hk60c
 from .layout import build_zones
 
 #: 통로 수음점의 기계 밴드 이격 (m) — 기계 밴드 중심 y≈3,500, 통로 y≈7,650
@@ -82,7 +83,7 @@ def noise_sources() -> tuple[NoiseSource, ...]:
     afr0 = next(z.x0_mm for z in build_zones() if z.key == "afr")
     post = _zone_center("post")
     buffer_ = _zone_center("buffer")
-    grm = _zone_center("grm")
+    grm0 = next(z.x0_mm for z in build_zones() if z.key == "grm")
     return (
         # REV.51: 96 dB(A) 는 스핀들 2 기준이다 — 단변 헤드가 더해져 스핀들 수로 파생한다.
         # 세 헤드가 순차 운전이라도 동시 가동을 가정하는 쪽이 보수적이다.
@@ -105,18 +106,20 @@ def noise_sources() -> tuple[NoiseSource, ...]:
                     "— (가감속 저크 제한만)", "정상"),
         NoiseSource("NS-FL", "FL-101 전동 지게차", afu0 + 1_550, 78.0, 0.0,
                     "전동식 채택 (엔진식 88 대비 −10)", "간헐"),
-        # ── REV.23 유리제거셀 ────────────────────────────────────────────
-        # IR 램프와 탠덤 칼날 자체는 조용하다. 새 음원은 배기 블로워 두 대와
-        # 슈레더 정량 투입이다. 블로워는 DX-601 과 같은 대책(인클로저+소음기)을
-        # 그대로 적용한다.
-        NoiseSource("NS-GRM-IRX", "GRM-EX-401 IR 배기 블로워", grm - 2_150, 89.0, 20.0,
-                    "흡음 인클로저 + 배기 소음기 (DX-601 과 동일 사양)", "정상"),
-        NoiseSource("NS-GRM-CD", "GRM-CD-401 냉각 후드 블로워", grm + 4_200, 90.0, 20.0,
-                    "흡음 인클로저 + 배기 소음기", "정상"),
-        NoiseSource("NS-GRM-SH", "CV-301 슈레더 정량 투입", grm + 4_200, 87.0, 14.0,
-                    "투입 슈트 고무 라이닝 + 밀폐 커버", "충격성"),
-        NoiseSource("NS-GRM-TDM", "TDM-201 탠덤 칼날·권취", grm + 1_200, 76.0, 6.0,
-                    "가드 흡음 라이닝", "정상"),
+        # ── REV.54 후단 DG-HK60C ─────────────────────────────────────────
+        # GRM-401 의 배기 블로워 두 대와 슈레더는 그 셀과 함께 나갔다 — DG-HK60C 의
+        # 배기 팬은 경계 밖(발주자)이고 셀/EVA 는 자르지 않고 카트에 평적한다.
+        # 남는 음원은 진공 스키드·냉각 팬·갠트리다. 값은 같은 급 설비의 대표
+        # Lw 이고, 사양서 5.4 가 SAT 실측 ≤ 80 dBA 를 보증 항목으로 갖는다.
+        NoiseSource("NS-DGM-VU", "DG-HK60C VU-101 진공 스키드 (드라이 스크류 2대)",
+                    grm0 + hk60c.STATION["GC"].cx_mm, 85.0, 10.0,
+                    "스키드 방음 커버 · 사양서 5.4 SAT ≤ 80 dBA", "정상"),
+        NoiseSource("NS-DGM-GC", "DG-HK60C GC-101 강제공랭 팬 (5단)",
+                    grm0 + hk60c.STATION["GC"].cx_mm, 84.0, 10.0,
+                    "외장 안 · 냉각 배기를 경계 덕트로", "정상"),
+        NoiseSource("NS-DGM-DL", "DG-HK60C 이동 나이프 갠트리 700 mm/s 복귀·권취",
+                    grm0 + hk60c.STATION["DL"].cx_mm, 80.0, 6.0,
+                    "외장·방책 안 · 가감속 S커브", "정상"),
     )
 
 

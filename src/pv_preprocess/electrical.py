@@ -33,7 +33,10 @@ REV.23 의 판정 자체는 틀리지 않았다 — 그 설비를 **우리가 �
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
+
+from . import air
 
 #: 저압 배전 전압 (V, 선간). 변압기 2차이자 플랜트 내부 배전 전압이다.
 SUPPLY_VOLTAGE_V = 380
@@ -146,28 +149,31 @@ FEEDERS: tuple[Feeder, ...] = (
            "HPU-601 7.5 kW · 장축 LM 캐리지 4축 · 반출롤러 인버터 · "
            "SG-301 3헤드 연마 · CV-102 GI 통과 이송 · GI-301/302 광학검사 · GI-303 하부 라인스캔",
            23.7, 0.70, 63, "4C×16 mm² Cu", "GA 명시(HPU)"),
-    Feeder("F6", "LP-GBR", "GBR-301 수평셔틀 2구동 서보 · 도킹 도크",
-           5.5, 0.50, 20, "4C×4 mm² Cu", "계획"),
+    # REV.54: BX-101 인계 브리지(0.75 kW)가 버퍼 설비로 들어와 5.5 → 6.25 kW.
+    Feeder("F6", "LP-GBR", "GBR-301 수평셔틀 2구동 서보 · 도킹 도크 · BX-101 인계 브리지",
+           6.25, 0.50, 20, "4C×4 mm² Cu", "계획"),
     Feeder("F7", "LP-DX", "DX-601 집진 1,000 m³/h · JBR 국소집진 350 m³/h",
            11.0, 0.90, 32, "4C×6 mm² Cu", "GA 명시(풍량)"),
     Feeder("F8", "LP-CTRL", "안전 PLC · 비전 LAN · 제어반 UPS · 조명",
            5.0, 1.00, 20, "4C×4 mm² Cu", "계획"),
-    # ── REV.23 유리제거셀(GRM-401) 통합 ──────────────────────────────────
-    # IR 뱅크가 이 플랜트에서 가장 큰 부하다. 60등 × 2.92 kW = 175 kW 로 종전
-    # 플랜트 설치 전력 68 kW 의 2.6 배다. 한 피더에 몰면 차단기가 주차단기와
-    # 맞먹으므로 앱의 램프라인 구성대로 3 라인씩 두 뱅크로 나눈다.
-    # 수용률 0.75 는 JIT 순차가열 전제다 — C1 200 °C … C5 160 °C 로 단마다
-    # 온도가 다르므로 60등이 동시에 만출력으로 물리지 않는다. **계획값**이라
-    # 시운전 전류 실측으로 확정해야 하고, 1.0 이면 수요가 43.75 kW 늘어난다.
-    Feeder("F9", "LP-GRM-IRA", "GRM-401 IR 뱅크 A (라인 1–3 · 30등 × 2.92 kW)",
-           87.5, 0.75, 200, "4C×70 mm² Cu", "계획(순차가열 수용률)"),
-    Feeder("F10", "LP-GRM-IRB", "GRM-401 IR 뱅크 B (라인 4–6 · 30등 × 2.92 kW)",
-           87.5, 0.75, 200, "4C×70 mm² Cu", "계획(순차가열 수용률)"),
-    Feeder("F11", "LP-GRM-MEC",
-           "LI-101 승강 2축 · TS-101 포크 · BX-101 인계 브리지 · EX-101/RT-101 · TDM-201 X/Z · WR-101 · GR-201/DS-301",
-           14.0, 0.65, 40, "4C×10 mm² Cu", "계획"),
-    Feeder("F12", "LP-GRM-EXH", "IR 배기 · CV-301 슈레더 투입부 집진",
-           9.0, 0.90, 32, "4C×6 mm² Cu", "계획"),
+    # ── REV.54 후단 DG-HK60C — 벤더 MCC 한 면에 피더 하나 ─────────────────────
+    # REV.23~53 의 GRM-401 피더 4면(IR 뱅크 A/B 87.5 kW 씩 · 기구 14 · 배기 9,
+    # 설치 198 kW)은 그 셀과 함께 나갔다. DG-HK60C 는 자기 전력·MCC·제어반(M-011)에
+    # 분기 4면 — IR-DB1 100 · HK-DB2 30 · MCC-1 45 · AUX-DB 18 kW — 을 갖고 오며
+    # 연결부하 193 kW, 예상 최대수요 138 kW 다 (사양서 5.3). 한 피더에 몰면 400 AT 가
+    # 되어 주차단기(400 AT)와 같아져 선택차단이 안 선다 — GRM-401 때 IR 을 두 뱅크로
+    # 가른 것과 같은 이유로 IR 분기와 나머지 셋을 **피더 둘**로 간다. 수용률은 그
+    # 기계 자신의 부하표(IR-DB1 0.83 · HK-DB2 0.60 · MCC-1 0.50 · AUX-DB 0.80)에서
+    # 나오고 `hk60c.BRANCHES` 와 시험이 대조한다 — electrical 은 내부 모듈을 import
+    # 하지 않는다는 규약 때문에 리터럴로 적는다 (F13·F14 와 같은 취급).
+    # 벤더 자체 300 kVA 변압기는 두지 않는다 — 부지 1,200 kW 인입에 물리는 플랜트
+    # 부하의 일부다.
+    # 100 kW 는 380 V·역률 0.9 에서 168.8 A — 160 AT 로는 못 받아 200 AT/95 mm² 다.
+    Feeder("F9", "LP-DGM-IR", "DG-HK60C IR-DB1 — IR 램프 40등 × 2.5 kW (6뱅크 SSR)",
+           100.0, 0.83, 200, "4C×95 mm² Cu", "DG-HK60C 사양서 5.3"),
+    Feeder("F10", "LP-DGM-MC",
+           "DG-HK60C HK-DB2 카트리지히터 30 · MCC-1 서보/VFD 45 · AUX-DB 진공/냉각 18 kW",
+           93.0, 0.59, 160, "4C×70 mm² Cu", "DG-HK60C 사양서 5.3 (수요 54.9 kW)"),
     # ── REV.25 스마트 팩토리 계층 ────────────────────────────────────────
     # 설치 kW 는 `smart.py` 가 랙 탑재물·계측기 목록에서 산정한 값이다.
     # 여기에는 리터럴로 적고 테스트가 둘을 대조한다 — electrical 은 어떤
@@ -175,9 +181,10 @@ FEEDERS: tuple[Feeder, ...] = (
     Feeder("F13", "LP-IT", "SVR-902 랙 2면(코어망·히스토리안·MES·엣지추론 GPU·UPS) "
            "· 랙실 항온항습 · MCR-901 관제실",
            10.3, 0.85, 32, "4C×6 mm² Cu", "계획(smart.it_installed_kw)"),
-    Feeder("F14", "LP-INST", "존별 엣지 캐비닛 7면 · 무선 AP 5대 · 신규 계측기 46점 "
+    # REV.54: 4.5 → 4.4 — VS-401 12 MP 카메라·PY-901 방사온도계가 벤더(DG-HK60C) 쪽으로 갔다.
+    Feeder("F14", "LP-INST", "존별 엣지 캐비닛 7면 · 무선 AP 5대 · 신규 계측기 42점 "
            "· 라인스캔 조명",
-           4.5, 0.90, 20, "4C×4 mm² Cu", "계획(smart.instrument_installed_kw)"),
+           4.4, 0.90, 20, "4C×4 mm² Cu", "계획(smart.instrument_installed_kw)"),
     # REV.28: 천장크레인. 수용률 0.20 은 **설치·정비 전용**이기 때문이다 —
     # 운전 중 설비 위에서 인양하는 것은 안전상 금지라 공정 부하와 동시에
     # 걸리지 않는다. 값은 crane.py 가 출처이고 테스트가 둘을 대조한다.
@@ -189,13 +196,15 @@ FEEDERS: tuple[Feeder, ...] = (
     # 수용률은 상수가 아니라 air.diversity() 가 낸다(1운전/2대 × 부하율).
     Feeder("F16", "LP-AIR", "CMP-701 압축공기 (스크류 5.5 kW × 2 — 1운전 1예비) "
            "· 냉동식 드라이어 · 리시버 300 L",
-           11.5, 0.37, 30, "4C×6 mm² Cu", "계획(air.installed_kw)"),
+           air.installed_kw(), air.diversity(), 30, "4C×6 mm² Cu", "계획(air.installed_kw)"),
 )
 
 
 def installed_kw() -> float:
     """설치(접속) 전력 합계."""
-    return sum(feeder.installed_kw for feeder in FEEDERS)
+    # math.fsum — 3.12 의 sum() 은 보정 합산이라 299.35 가 판마다 299.3/299.4 로 갈렸다.
+    # 합은 정확히 내고 반올림은 한 번만 한다.
+    return math.fsum(feeder.installed_kw for feeder in FEEDERS)
 
 
 def demand_kw() -> float:
@@ -205,7 +214,7 @@ def demand_kw() -> float:
     217.475 같은 값이 나오는데, 0.1 kW 아래는 이 단계 설계가 아는 정밀도가
     아니다. 계약전력·변압기 용량이 전부 이 값에서 나가므로 여기서 자른다.
     """
-    return round(sum(feeder.demand_kw for feeder in FEEDERS), 1)
+    return round(math.fsum(feeder.demand_kw for feeder in FEEDERS), 1)
 
 
 def demand_current_a() -> float:
@@ -214,8 +223,8 @@ def demand_current_a() -> float:
 
 
 def contract_kva() -> float:
-    """계약 전력 (kVA). 수요 피상전력에 여유율을 곱한다."""
-    return demand_kw() / POWER_FACTOR * CONTRACT_MARGIN
+    """계약 전력 (kVA) — 계약 유효전력을 역률로 나눈다 (REV.54: 동시 최악이 정하면 그쪽)."""
+    return contract_kw() / POWER_FACTOR
 
 
 def main_breaker_at() -> int:
@@ -258,8 +267,19 @@ MAIN_BREAKER_FRAME_A = main_breaker_frame_a()
 
 
 def contract_kw() -> float:
-    """계약 전력 (kW) — 한전 저압/고압 판정의 기준이 되는 값."""
-    return round(demand_kw() * CONTRACT_MARGIN, 1)
+    """계약 전력 (kW) — 한전 저압/고압 판정의 기준이 되는 값.
+
+    수요 × 여유율과 **동시에 걸릴 수 있는 최악** 중 큰 쪽이다. REV.53 까지는 여유율
+    쪽이 늘 컸는데, REV.54 에 벤더 피더의 수용률(HK-DB2/MCC 0.59)이 수요를 낮추며
+    283.2 < 292.6 으로 뒤집혔다 — 계약이 어느 15분에 실제로 나타날 수 있는 값보다
+    작으면 초과 요금이 아니라 차단이다.
+    """
+    return round(max(demand_kw() * CONTRACT_MARGIN, coincident_worst_case_kw()), 1)
+
+
+def contract_basis() -> str:
+    """계약을 정한 쪽 — "수요 × 여유율" 또는 "동시 최악"."""
+    return "동시 최악" if coincident_worst_case_kw() > demand_kw() * CONTRACT_MARGIN else "수요 × 여유율"
 
 
 def needs_high_voltage() -> bool:
@@ -310,8 +330,8 @@ def coincident_worst_case_kw() -> float:
     것은 이쪽이다 — 크레인이 도는 때는 공정이 서 있으므로 287.5 라는 합은
     어느 15분에도 실제로 나타나지 않는다.
     """
-    return round(sum(feeder.installed_kw for feeder in FEEDERS
-                     if feeder.panel not in NON_COINCIDENT_PANELS), 1)
+    return round(math.fsum(feeder.installed_kw for feeder in FEEDERS
+                           if feeder.panel not in NON_COINCIDENT_PANELS), 1)
 
 
 def fits_site_service(service_kw: float | None = None) -> bool:

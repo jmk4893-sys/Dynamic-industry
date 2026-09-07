@@ -146,7 +146,7 @@ def build_block() -> str:
     A(f'var Pu=[];for(let i=0;i<{len(rows)};i+=1)for(let e=0;e<{len(cols)};e+=1){{'
       f'let rz=[{",".join(q(z) for z in rows)}][i],cx=[{",".join(q(x) for x in cols)}][e],'
       f'lab=i===0&&e===0?"AFR SU-211 {a.support_zones()}구역 지지":null,'
-      f'tip="{a.support_zones()}구역이 2,500×1,400 접촉맵을 물리 지지하고 인출 반력을 분산합니다. '
+      f'tip="{a.support_zones()}구역이 {kinematics.PANEL_MM[0]:,}×{kinematics.PANEL_MM[1]:,} 접촉맵을 물리 지지하고 인출 반력을 분산합니다. '
       f'구역마다 긴 홈이 지나가 패드를 앞뒤로 가르고, 그 홈으로 톱니 컨베이어가 올라옵니다.",'
       f'pa=P(ot,[{q(pad_x)},{q(pad_t)},{q(half_pad)}],[cx,{q(pad_y)},rz-{q(pad_off)}],M.dark,lab,tip),'
       f'pb=P(ot,[{q(pad_x)},{q(pad_t)},{q(half_pad)}],[cx,{q(pad_y)},rz+{q(pad_off)}],M.dark);'
@@ -665,8 +665,11 @@ def main() -> int:
     text = text[:b0] + build_block() + text[b1:]
 
     # 시험 훅도 모델값으로 맞춘다.
-    assert text.count(HOOK_OLD) + text.count(build_hook()) == 1, "시험 훅 앵커"
-    text = text.replace(HOOK_OLD, build_hook())
+    # 훅은 이전 빌드가 남긴 값(패널 상한이 바뀌면 숫자가 다르다)이거나 REV.21 의 원형이다.
+    hook_re = re.compile(r"afrSupportZoneCount:Pu\.length(?:/2)?,.*?afrPullTravelMm:\d+,|"
+                         + re.escape(HOOK_OLD))
+    assert len(hook_re.findall(text)) == 1, "시험 훅 앵커"
+    text = hook_re.sub(lambda m: build_hook(), text, count=1)
 
     text = patch_prose(text)
     DRAWING.write_text(text, encoding="utf-8")

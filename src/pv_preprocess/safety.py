@@ -147,10 +147,13 @@ HAZARDS: tuple[Hazard, ...] = (
     Hazard("HZ-10", "buffer", "GBR-301 셔틀 주행·슬롯 로더 승강 — 협착·낙하",
            2, 1, 2,
            "S2 적재 캐리지 낙하. F1 가드 안. P2 주행로 위에서는 피할 방향이 좁다"),
-    Hazard("HZ-11", "grm", "GRM-401 60-IR 뱅크 고온부 — 접촉 화상",
+    # REV.54: DG-HK60C 안의 위험원(IR 고온부·핫나이프·갠트리·만권 롤)은 벤더 방호
+    # (M-013 방책 · LC-001/002 광커튼 · 인터록 게이트)가 맡고 PLr 은 그 사양서 OI-09 다.
+    # 플랜트 위험원으로 남는 것은 경계를 건너는 브리지다.
+    Hazard("HZ-11", "grm", "BX-101 인계 브리지 — GBR 슬롯과 LD-101 사이 왕복 협착·유리 낙하",
            2, 1, 1,
-           "S2 IR 뱅크 표면 화상은 비가역이다. F1 정비 노출. "
-           "P1 열은 접촉 전에 느껴지고 인터록에 냉각 지연이 걸린다"),
+           "S2 유리 28 kg 이 1,150 에서 떨어진다. F1 가드·방책 안. "
+           "P1 행정이 2,275 로 짧고 스캐너가 진입을 막는다"),
     Hazard("HZ-12", "post", "유리 파손 비산 — 눈·피부 열상",
            1, 2, 1,
            "S1 보안경·가드로 막히는 경상이다. F2 파손은 60장 중 5장 몫으로 "
@@ -267,11 +270,11 @@ SAFETY_FUNCTIONS: tuple[SafetyFunction, ...] = (
         "SG-301 회전체는 관성이 커서 STO 만으로는 즉시 서지 않는다 — "
         "SS1(제어감속 후 STO)이 필요하다"),
     SafetyFunction(
-        "SF-07", "버퍼·적재부 방호",
-        ("HZ-10",),
-        "GBR 버퍼 인터록 센서 · GRM 적재부 안전 스캐너",
+        "SF-07", "버퍼·인계 브리지 방호",
+        ("HZ-10", "HZ-11"),
+        "GBR 버퍼 인터록 센서 · BX-101 브리지 안전 스캐너",
         "안전 PLC",
-        "GBR·GRM 축 STO",
+        "GBR·브리지 축 STO",
         "캐리지 교환구역은 뮤팅하지 않는다 — 사람이 캐리지를 직접 다루는 "
         "구역이라 뮤팅 조건 자체가 성립하지 않는다"),
     SafetyFunction(
@@ -284,13 +287,13 @@ SAFETY_FUNCTIONS: tuple[SafetyFunction, ...] = (
         "electrical.NON_COINCIDENT_PANELS 의 비동시 전제가 관리 규칙에 불과해 "
         f"동시 최악 {electrical.coincident_worst_case_kw()} kW 의 근거가 무너진다"),
     SafetyFunction(
-        "SF-09", "고온부 접근 인터록",
+        "SF-09", "경계 안전회로 — DG-HK60C 연동",
         ("HZ-11",),
-        "GRM IR 뱅크 표면온도 · 도어 인터록",
-        "안전 PLC — 냉각 지연 타이머",
-        "IR 전원 차단 · 냉각 완료까지 도어 잠금",
-        "온도가 내려가기 전에는 문이 안 열린다. 지연 타이머가 안전기능의 "
-        "일부라 표준 타이머로는 안 된다"),
+        "BJ-102 경계 안전회로 인터페이스반 (2CH OSSD · IF_ESTOP_LOOP_OK)",
+        "안전 PLC ↔ 벤더 안전 PLC 상호 비상정지",
+        "양측 비상정지 · 브리지 STO · LD-101 투입 허가 철회",
+        "안전회로는 공급범위 경계에서 끊기면 안 된다 (DG-HK60C 사양서). 기계 안의 "
+        "고온부·핫나이프·갠트리는 벤더 방호가 맡고 PLr 은 그 사양서 OI-09 다"),
     SafetyFunction(
         "SF-10", "에너지 격리 — 잔압배출·LOTO",
         ("HZ-13",),
@@ -497,14 +500,14 @@ SAFETY_DEVICES: tuple[SafetyDevice, ...] = (
     SafetyDevice("AFR-SF-701", "AFR 가드·라이트커튼", 1, 4, 0, True,
                  "가드 인터록 2 + 커튼 OSSD 2"),
     SafetyDevice("GBR-SF-301", "버퍼 인터록 센서", 1, 2, 0, False, ""),
-    SafetyDevice("GRM-SF-401", "적재부 안전 스캐너", 1, 2, 0, True, ""),
+    SafetyDevice("BX-SF-301", "BX-101 브리지 안전 스캐너", 1, 2, 0, True, ""),
     SafetyDevice("JBR-SF-011", "리젝트 게이트·버퍼 인터록", 2, 2, 0, False, ""),
     SafetyDevice("UT-SF-012", "안전 잔압배출 밸브·압력스위치", 2, 1, 1, False,
                  "배출 확인 입력 + 덤프 출력"),
     SafetyDevice("CRN-SF-013", "크레인 급전 접촉기 상태·차단", 1, 2, 1, False,
                  "SF-08 상호잠금 — 이 두 점이 계약전력 근거를 떠받친다"),
-    SafetyDevice("GRM-SF-014", "IR 고온부 도어 인터록·온도", 1, 3, 1, False,
-                 "도어 2채널 + 온도 1점, 냉각 완료 잠금 출력"),
+    SafetyDevice("BJ-SF-102", "경계 안전회로 인터페이스반 BJ-102", 1, 2, 1, False,
+                 "양측 비상정지 루프 2채널 + 브리지 정지 출력 1"),
 )
 
 

@@ -149,22 +149,26 @@ INSTRUMENTS: tuple[Instrument, ...] = (
                "LP-INST", 6.0, "휠 마모·불평형 — 유리 흠집의 선행지표", "AI-05"),
     Instrument("VIB-904", "post", "DX-601 집진 블로워 3축 진동", 2, 16, 1.0,
                "LP-INST", 6.0, "임펠러 분진 부착 불평형", "AI-05"),
-    Instrument("VIB-905", "grm", "GRM 배기·냉각 블로워 3축 진동", 2, 16, 1.0,
-               "LP-INST", 6.0, "배기가 서면 실내 열부하가 1.5배가 된다", "AI-05"),
-    Instrument("VIB-906", "grm", "CV-301 슈레더 3축 진동", 1, 16, 1.0,
-               "LP-INST", 6.0, "이물 유입·칼날 결손", "AI-05"),
+    # REV.54: GRM-401 의 블로워·슈레더는 나갔다. DG-HK60C 안의 회전기 가운데 벤더
+    # 진단 밖에 있는 것 — 진공 스키드 펌프 2대와 냉각 팬 — 에만 우리 센서를 단다.
+    Instrument("VIB-905", "grm", "DG-HK60C VU-101 진공펌프 A/B 3축 진동", 2, 16, 1.0,
+               "LP-INST", 6.0, "진공이 서면 박리가 선다 — 1운전 1예비의 예비기 상태", "AI-05"),
+    Instrument("VIB-906", "grm", "DG-HK60C GC-101 냉각 팬 3축 진동", 1, 16, 1.0,
+               "LP-INST", 6.0, "냉각 배기가 서면 실내 열부하가 오른다", "AI-05"),
     # 전력 — 피더별. 부하 분해(load disaggregation)의 입력이자 역률·THD 실측.
     Instrument("PM-901", "plant", "피더별 스마트 전력량계 (V·I·P·Q·PF·THD)",
                12, 8, 1.0, "LP-INST", 10.0,
                "역률 0.90·고조파 가정을 실측으로 대체", "AI-03"),
-    # 온도 — IR 계면. 지금은 체류시간 226 s 를 고정으로 쓰는데,
-    # 계면이 실제로 몇 °C 인지 아무도 모른다. 이 센서가 없으면 AI-06 은 못 한다.
-    Instrument("PY-901", "grm", "5단 랙 데크별 계면 방사온도계", 5, 2, 5.0,
-               "LP-INST", 8.0, "박리 계면 200 °C 도달 판정", "AI-06"),
+    # 온도·공정 태그 — REV.54: DG-HK60C 가 계면 열전대(캐리지별 3점)·표면 IR·칼날
+    # 열전대를 자기 PLC 에 갖고 OPC UA 서버(읽기 전용)로 낸다. 우리가 센서를 또
+    # 달지 않고 **구독**한다. 레시피 쓰기는 인증서 제한이라 AI-06 의 폐루프는 벤더
+    # 협의 항목이다.
+    Instrument("OPC-901", "grm", "DG-HK60C OPC UA 구독 (계면 온도·IR 전력·QI-301 판정·물질수지·정지 사유)",
+               1, 200, 1.0, "LP-INST", 0.0, "벤더 PLC 가 서버 — 센서를 겹쳐 달지 않는다", "AI-06"),
     Instrument("RTD-901", "plant", "존별 실내 온습도", 7, 2, 0.2,
                "LP-INST", 2.0, "열수지 33,000 m³/h 검증", "AI-03"),
     # 배기 — EVA 는 200 °C 에서 초산을 낸다. 그 농도가 계면 연화의 지표다.
-    Instrument("VOC-901", "grm", "IR 배기덕트 VOC (초산·알데하이드)", 1, 3, 1.0,
+    Instrument("VOC-901", "grm", "경계 덕트 VOC (초산·알데하이드) — 발주자 CEMS TOC 와 대조", 1, 3, 1.0,
                "LP-INST", 15.0, "가열 종점 판정 + 배출 관리", "AI-08"),
     Instrument("DP-901", "plant", "집진 필터 차압", 2, 1, 1.0,
                "LP-INST", 3.0, "필터 막힘 — 탈진 주기 최적화", "AI-05"),
@@ -173,15 +177,13 @@ INSTRUMENTS: tuple[Instrument, ...] = (
     # 유량 — 공압. 누설은 스마트 팩토리에서 가장 회수가 빠른 항목이다.
     Instrument("FL-901", "plant", "압축공기 주관 유량·압력", 1, 3, 1.0,
                "LP-INST", 6.0, "무부하 시간대 누설량 산출", "AI-03"),
-    # 품질 — 박리 완전도. GRM 출구에 카메라가 없으면 AI-07 은 못 한다.
-    Instrument("VS-401", "grm", "박리 완전도 검사 카메라 (12 MP · 확산조명)",
-               1, 0, 0.0, "LP-INST", 120.0,
-               "백시트/EVA 잔막 판정 — 데이터량은 비전 항목에서 센다", "AI-07"),
+    # 품질 — 박리 완전도. REV.54: DG-HK60C 의 QI-301 상부 RGB 카메라가 GLASS_CRACK·
+    # QI_FAIL 을 낸다. 영상 원본은 벤더 안에 있고 우리는 판정만 받는다 (OPC-901).
     # 식별 — 패널 ID 는 **JB-VS-005 로 이미 있다**. 새로 다는 것은 캐리지 쪽이다.
     Instrument("RF-901", "buffer", "버퍼 캐리지 RFID 리더", 2, 1, 0.2,
                "LP-INST", 8.0, "패널 ID ↔ 캐리지 슬롯 결속", "AI-01"),
-    Instrument("RF-902", "grm", "GRM 5단 랙 캐리지 RFID 리더", 1, 1, 0.2,
-               "LP-INST", 8.0, "가열 이력을 장 단위로 잇는다", "AI-06"),
+    Instrument("RF-902", "grm", "LD-101 패널 ID 인계 리더 (브리지 핸드셰이크 → LOT_ID_VALID)", 1, 1, 0.2,
+               "LP-INST", 8.0, "플랜트 패널 ID 가 벤더 이력(트레이스 DB)까지 이어진다", "AI-06"),
     Instrument("WI-901", "afu", "투입 리프트 중량계", 2, 1, 5.0,
                "LP-INST", 12.0, "장당 질량 — 유리 두께·구성 추정", "AI-01"),
 )
@@ -224,8 +226,8 @@ class ImageStream:
 #: 라인스캔 해상도 (mm/px). 유리 잔사는 0.1 mm 급을 봐야 판정이 선다.
 LINESCAN_RESOLUTION_MM = 0.1
 
-#: 후단 데크 상한 모듈 (mm) — handoff 의 데크 확장과 같은 값이어야 한다.
-PANEL_MAX_MM = (2_500, 1_400)
+#: 라인 상한 모듈 (mm) — REV.54 에서 후단 DG-HK60C 상한으로 통일했다.
+PANEL_MAX_MM = handoff.UPSTREAM_MAX_MM
 
 
 def panels_per_h() -> float:
@@ -244,13 +246,13 @@ def line_panels_per_h() -> float:
 
 
 def image_streams() -> tuple[ImageStream, ...]:
-    """영상 스트림 — 존치 헤드(`vision.HEADS`)와 신규 VS-401 에서 파생.
+    """영상 스트림 — 존치 헤드(`vision.HEADS`)에서 파생.
 
     통과 물량이 헤드마다 다르다. 세 값을 구분하지 않으면 대역이 틀린다.
 
     * 투입 VS-101A/B — 전손까지 **전량** 찍는다 (판정을 하려면 찍어야 한다).
     * JBR VS-201A — 라인에 들어간 것만. 전손은 여기까지 안 온다.
-    * 유리 검사 GI-302·VS-401 — R-A 정상 유리만. `handoff` 의 정본을 쓴다.
+    * 유리 검사 GI-302·GI-303 — R-A 정상 유리만. `handoff` 의 정본을 쓴다.
     """
     total_per_h = panels_per_h()
     entered_per_h = line_panels_per_h()
@@ -273,8 +275,7 @@ def image_streams() -> tuple[ImageStream, ...]:
     if "GI-303" in kept:
         # REV.51: 하부 유리면 라인스캔 — CV-102 롤러 사이 틈에서 같은 해상도로 밑을 본다.
         rows.append(ImageStream("GI-303", "post", line_px, 1, normal_per_h))
-    # 신규 박리 완전도 — 면적 12 MP, 장당 1프레임. 정상 유리 흐름을 탄다.
-    rows.append(ImageStream("VS-401", "grm", 12_000_000, 1, normal_per_h))
+    # REV.54: 박리 완전도 영상(QI-301)은 벤더 안에서 끝난다 — 백본에 안 오른다.
     return tuple(rows)
 
 

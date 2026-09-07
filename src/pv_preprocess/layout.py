@@ -15,8 +15,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from . import hk60c
+
 #: 장비가 점유할 수 있는 Y 밴드 (mm). 모든 존의 Y 구간은 이 안에 들어와야 한다.
-MACHINE_BAND_Y_MM = 7100
+#:
+#: REV.54: 7,100 → **7,600**. 가장 넓은 셀이 밴드를 정한다 — REV.53 까지는 afu·buffer
+#: 7,100 이었고, DG-HK60C 의 방책(+3,400 / −4,200)이 그보다 500 넓다. 밴드를 안
+#: 넓히면 방책이 통로를 500 먹어 피난 유효폭 900 이 400 이 된다. 통로는 밴드
+#: 바깥에 그대로 1,200 이고, 플랜트 폭은 8,300 → 8,800 이다. `band_is_the_widest_station()`
+#: 이 이 관계를 지킨다.
+MACHINE_BAND_Y_MM = 7600
 
 #: 보행·정비 통로 폭 (mm). 장비 밴드 바깥에 별도로 확보한다.
 AISLE_WIDTH_MM = 1200
@@ -45,8 +53,9 @@ LINE_TRANSFER_MM = 950
 #: 2D flow 1,053 · 3D 680). 이 목록에 없으면 검사를 안 받고, 검사를 안 받으면
 #: 갈라진다. 그래서 **롤러로 유리를 받는 셀은 전부 여기 들어온다.**
 #:
-#: grm 은 들어오지 않는다 — 인계가 롤러가 아니라 진공테이블 적재면이고(M0-101,
-#: 실측 1,050), 캐리지로 옮겨 오므로 이송면 단차라는 개념 자체가 없다.
+#: grm 은 들어오지 않는다 — 인계가 롤러 간 이송이 아니라 BX-101 브리지가 캐리지
+#: 슬롯에서 유리를 들어 LD-101 롤러베드(EL 1,150, 벤더 공정선)에 내려놓는 것이라
+#: 이송면 단차라는 개념 자체가 없다 (REV.54).
 SHARED_LINE: tuple[str, ...] = ("robot", "jbr", "afr", "post", "buffer")
 
 #: 이송 롤러 지름 (mm). 이송면(윗면)에서 롤러 중심을 얻는 데 쓴다 — 3D 는 중심으로
@@ -340,31 +349,18 @@ STATIONS: dict[str, Station] = {
         # 그리고 있던 것도 이 선언을 아무도 대조하지 않았기 때문이다.
         Station("buffer", "PV-GBR-301-GA-5201", "GBR-301 · R-A/R-B/HOLD 레시피 버퍼",
                 (9550, 7100, 2800), LINE_TRANSFER_MM),
-        # REV.23: 유리제거(박리) 라인을 별도 앱이 아니라 플랜트의 한 존으로 들여왔다.
-        # 종전에는 버퍼에서 하이퍼링크만 걸어 뒀는데, 그러면 전처리 플랜트가 유리를
-        # 벗기지 못한 채 끝난다 — 배치·포락선·전력·소음 어디에도 잡히지 않았다.
+        # REV.23 에서 유리제거(박리) 라인을 플랜트의 한 존(GRM-401)으로 들여왔고, 그
+        # 외형은 옛 앱의 하드웨어 목록에서 유도한 **계획값**이었다 (14,050 × 6,100 × 3,600).
         #
-        # X 는 후단 앱의 하드웨어 목록에서 공정 순서대로 이어 붙여 파생한다.
-        #   M0 투입 정렬·6존 진공테이블      2,750 (패널 2,500 + 그립 여유 125×2)
-        #   M1 5단 단열랙 + IR + LI/TS/IDX   3,300 (랙 2,800 + 양주 마스트 250×2)
-        #   TDM-201 2단 탠덤 박리            3,400 (칼날 행정 300+2,500 + 헤드 300×2)
-        #   GR-201 단거리 저충격 롤러          900
-        #   DS-301 하강식 유리 직접적재대     2,750 (패널 2,500 + 125×2)
-        #   장비 합계 13,100 + 가드 여유 475×2 = 14,050
-        # EX-101 방출셔틀과 RT-101 빈 캐리지 복귀는 랙 **하부**를 되돌아가므로 X 를
-        # 늘리지 않는다. WR-101 백시트 권취와 CB-201/CV-301 셀 계통은 측면 배출이라
-        # Y 로 나간다.
-        #
-        # Y 6,100 = 주 흐름 2,100 (패널 1,400 + 베드 구조 350×2)
-        #         + 백시트 격리배출 1,400 + 셀/슈레더 2,000 + 정비 접근 600.
-        # Z 3,600 = 하부 복귀 600 + 5단 랙 2,100 + 상부 IR·배기 500, 마스트 상단까지.
-        #
-        # 이 외형은 **계획값**이다 — 후단 앱은 설치 풋프린트를 공표하지 않아 자기
-        # 하드웨어 목록에서 파생했다. 벤더 GA 가 오면 이 한 줄만 고치면 존·포락선·
-        # 배치도·전력이 전부 따라온다.
-        Station("grm", "PV-GRM-401-GA-6101",
-                "GRM-401 · 5단 적재·60-IR 순차가열·2단 탠덤 유리제거셀",
-                (14050, 6100, 3600), 1050),
+        # REV.54: 그 자리에 **DG-HK60C** 가 선다. 외형은 계획값이 아니라 그 기계의
+        # 콘솔·사양서가 정한 값을 `hk60c` 가 읽어 온다 — X 는 방책 하류선(19,600:
+        # 스테이션 사슬 18,760 + 유리 픽업 840), Y 는 방책 폭 7,600, Z 는 납품 모듈
+        # 최고 높이(M-017 경계 인터페이스·배기 헤더 5,400). 방책 상류의 −900(팔레트
+        # 픽업 스테이션)은 브리지가 그 자리를 대신하므로 존에 넣지 않는다.
+        # 이송 높이는 벤더 공정선 EL 1,150 — 다섯 스테이션이 같다.
+        Station("grm", "PV-DGM-401-GA-6101",
+                f"{hk60c.TAG} · {hk60c.MODEL} {hk60c.DECKS}단 밀폐 IR·이동나이프 탠덤 유리제거기",
+                hk60c.ENVELOPE_MM, hk60c.LINE_EL_MM),
     )
 }
 
@@ -380,8 +376,9 @@ ZONE_SEED: tuple[tuple[str, str, int, str, tuple[int, int, int] | None], ...] = 
     # REV.52: 통합셀 하류 스테이션 — afr 과 사이에 벽이 없다.
     ("post", "CV · GI", 1100, "통과이송·통합검사 (통합셀 하류 스테이션)", None),
     ("buffer", "GBR · BUFFER", 0, "R-A/R-B/HOLD", None),
-    # 통로측(Y 7,100)에 붙여 셀 컨테이너·백시트 회수를 통로에서 빼낸다.
-    ("grm", "GRM-401 유리제거", 1000, "적재·가열·박리·3계통", None),
+    # REV.54: 기계의 −y 면(카트 레인·경계반·인입점·모노레일 반출)을 통로 쪽에 둔다.
+    # +y 방책선이 벽쪽(Y 0)에 붙어 존이 밴드 7,600 을 꽉 채운다 — hk60c.plant_y_mm().
+    ("grm", f"{hk60c.TAG} · {hk60c.MODEL}", 0, "브리지 인계·밀폐 IR 가열·탠덤 박리·3계통 반출", None),
 )
 
 
@@ -407,9 +404,9 @@ NON_ROLLER_HANDOFF: dict[tuple[str, str], str] = {
         "RB-101 이 BFC 반전카세트(1,880)에서 들어 올려 라인 시작점(950)에 놓는다 — "
         "로봇 픽업이라 이송면을 잇지 않는다",
     ("buffer", "grm"):
-        "BX-101 브리지가 GBR 캐리지 슬롯에서 유리 한 장을 뽑아 950 mm 공백을 "
-        "건너 GRM-401 M0-101 진공테이블(1,050)에 놓는다 — 캐리지 자체는 그대로 "
-        "있고, 유리가 롤러로 건너가지도 않는다 (REV.53)",
+        "BX-101 브리지가 GBR 캐리지 슬롯에서 유리 한 장을 뽑아 DG-HK60C 투입 셔틀 "
+        "LD-101 롤러베드(EL 1,150)에 놓는다 — 벤더가 발주자 설비로 넘긴 디스태커 "
+        "PL-101 의 자리다. 캐리지는 그대로 있고, 유리가 롤러로 건너가지도 않는다 (REV.54)",
 }
 
 
@@ -575,12 +572,13 @@ PT_DECK_MM = (2_620, 1_520)
 PT_SEED_TOLERANCE_MM = 1.0
 PT_SEED_YAW_DEG = 0.15
 
-#: 축적·인계 런 JB-201 — 가드 기준 길이와 jbr 존 중심으로부터의 거리 (3D 실측).
-ACCUM_RUN_MM = 2_750
-ACCUM_FROM_JBR_CENTER_MM = 4_645
-
 #: 한 장 축적에 필요한 그립 여유 (편측). 패널 + 이것의 2배가 스테이션 길이다.
 GRIP_CLEARANCE_MM = 125
+
+#: 축적·인계 런 JB-201 — 가드 기준 길이와 jbr 존 중심으로부터의 거리 (3D 실측).
+#: REV.54: 길이는 패널 상한에서 나온다 — 2,500 + 250 = 2,750 이 2,400 + 250 = 2,650 이 됐다.
+ACCUM_RUN_MM = hk60c.PANEL_MAX_MM[0] + 2 * GRIP_CLEARANCE_MM
+ACCUM_FROM_JBR_CENTER_MM = 4_645
 
 
 def _zone_x0_mm(key: str) -> int:
@@ -699,11 +697,11 @@ ZONE_OVERLAP_BY_DESIGN: tuple[ZoneOverlap, ...] = (
         "1,300 을 유지했다 — 로봇이 넣는 팔 길이는 그대로다.",
     ),
     ZoneOverlap(
-        "grm", "buffer", 475,
-        "REV.53: BX-101 브리지가 GBR 캐리지 슬롯 앞(버퍼 존 끝에서 상류로 475)까지 "
-        "닿아야 950 mm 공백을 건널 수 있다. 브리지는 GRM 쪽 mesh(pvGrm 자식)라 "
-        "grm 존이 버퍼 쪽으로 475 물린다. Y·Z 는 캐리지·M0-101 과 같은 통로 폭 "
-        "안이라 간섭 스윕에 새로 걸리지 않는다.",
+        "grm", "buffer", GUARD_CLEARANCE_X_MM,
+        "REV.53/54: BX-101 브리지가 GBR 캐리지 슬롯 앞(버퍼 존 끝에서 상류로 475)까지 "
+        "닿아야 유리를 집을 수 있다. 브리지는 후단 쪽 mesh(pvGrm 자식)라 grm 존이 "
+        "버퍼 쪽으로 475 물린다. Y·Z 는 캐리지·LD-101 과 같은 통로 폭 안이라 "
+        "간섭 스윕에 새로 걸리지 않는다.",
     ),
 )
 
@@ -729,3 +727,72 @@ def plant_envelope_mm() -> tuple[int, int, int]:
 def aisle_band_mm() -> tuple[int, int]:
     """보행·정비 통로의 Y 구간. 어떤 존과도 겹치지 않아야 한다."""
     return MACHINE_BAND_Y_MM, MACHINE_BAND_Y_MM + AISLE_WIDTH_MM
+
+
+# ── REV.54 — 후단 유리제거기 DG-HK60C 를 플랜트 안에 놓는 자리 ─────────────────
+# 기계 자체의 값은 `hk60c` 가 갖는다. 여기 있는 것은 **플랜트가 정하는 것**뿐이다:
+# 브리지가 어디서 어디까지 가는가, 통로 밖 물류 레인이 얼마인가.
+
+
+def band_is_the_widest_station() -> bool:
+    """장비 밴드가 가장 넓은 셀 외형과 같은가 — 밴드는 고른 값이 아니라 파생값이다."""
+    return MACHINE_BAND_Y_MM == max(s.width_mm for s in STATIONS.values())
+
+
+def downstream_zone_x0_mm() -> int:
+    return next(z.x0_mm for z in build_zones() if z.key == "grm")
+
+
+def bridge_pick_x_mm() -> int:
+    """브리지가 유리를 집는 자리 — GBR 마지막 캐리지 슬롯 면 (plant mm).
+
+    버퍼 존 끝에서 상류로 가드 여유 475 만큼이다 (`ZONE_OVERLAP_BY_DESIGN`).
+    """
+    return downstream_zone_x0_mm() - zone_overlap_mm("grm")
+
+
+def bridge_place_x_mm() -> int:
+    """브리지가 유리를 놓는 자리 — LD-101 롤러베드 중심 (plant mm)."""
+    return hk60c.plant_x_mm(downstream_zone_x0_mm(), hk60c.INFEED_CX_MM)
+
+
+def bridge_travel_mm() -> int:
+    """브리지 왕복 행정 (mm). REV.53 의 950 은 M0-101 상류면까지였고, 이제는 LD-101
+    데크 **중심**까지 간다 — 롤러베드는 진공테이블과 달리 끝에 놓고 밀어 넣지 못한다."""
+    return bridge_place_x_mm() - bridge_pick_x_mm()
+
+
+def bridge_lift_mm() -> int:
+    """브리지가 유리를 들어 올리는 높이차 — 버퍼 데크 950 에서 LD-101 공정선 1,150."""
+    return hk60c.LINE_EL_MM - LINE_TRANSFER_MM
+
+
+#: 통로 **밖**의 물류 레인 (mm) — 후단 존에만 있다. 만권 롤(357 kg · 4.9 h 마다)과
+#: 칼날 카세트가 RH-201 모노레일로 통로 위(EL 5,100)를 넘어 여기 새들에 내려앉고
+#: AGV 가 받는다. 기계 좌표로 롤 새들 −5,200 은 플랜트 Y 8,600 — **통로 한가운데**
+#: 다. 그래서 플랜트에서는 새들을 통로 밖 −6,200(Y 9,800)으로 내고 카세트 새들
+#: −7,000(Y 10,400)은 그대로 둔다 — 벤더 확인사항 OI-16.
+DOWNSTREAM_LANE_MM = 2200
+
+
+def roll_saddle_plant_y_mm() -> int:
+    """BS-301 만권 롤 새들의 플랜트 Y — 통로 바깥 1,000."""
+    return MACHINE_BAND_Y_MM + AISLE_WIDTH_MM + 1000
+
+
+def cassette_saddle_plant_y_mm() -> int:
+    """KC-301 카세트 새들의 플랜트 Y — 기계 좌표 그대로."""
+    y0 = next(z.y0_mm for z in build_zones() if z.key == "grm")
+    return hk60c.plant_y_mm(y0, hk60c.CASSETTE_SADDLE_Y_MM)
+
+
+def saddles_clear_the_aisle() -> bool:
+    """두 새들이 통로 밖에 있는가 — 통로 안에 있으면 사람이 롤 밑을 지난다."""
+    a0, a1 = aisle_band_mm()
+    return all(y >= a1 + 500 for y in (roll_saddle_plant_y_mm(), cassette_saddle_plant_y_mm()))
+
+
+def site_envelope_mm() -> tuple[int, int, int]:
+    """물류 레인까지 포함한 부지 포락선 (X, Y, Z) — 건축 확인값이다."""
+    x, y, z = plant_envelope_mm()
+    return (x, y + DOWNSTREAM_LANE_MM, z)

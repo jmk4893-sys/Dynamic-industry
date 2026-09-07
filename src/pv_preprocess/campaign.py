@@ -41,6 +41,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from . import hk60c
+
 #: 투입부 점유 (s) — 픽업·판정·반전·로봇 투입·정렬·인계까지
 INFEED_S = 40.0
 
@@ -62,7 +64,8 @@ SG_PASS_MM_S = 300.0        # 장변 통과 연마 속도 (발주처·벤더 확
 SG_SWEEP_MM_S = 250.0       # 단변 횡행 속도
 SG_HEAD_STROKE_S = 1.0      # 정지마다 헤드 하강+상승
 SG_INDEX_S = 1.5            # 정지 두 번의 감속·정착 합
-PANEL_WIDTH_MM = 1400.0
+#: REV.54 — 라인 상한을 후단(DG-HK60C) 상한으로 통일했다. 값은 후단이 갖는다.
+PANEL_WIDTH_MM = float(hk60c.PANEL_MAX_MM[1])
 
 
 def sg_occupancy_s() -> float:
@@ -83,7 +86,7 @@ JBR_STOPPER_OFFSET_S = 8.0
 #: 축적구간 JB-201 길이 (mm) 와 그것이 함의하는 이송 속도.
 #: 스토퍼까지 4,900 mm 를 8.0 s 에 가므로 612.5 mm/s 다.
 ACCUMULATOR_MM = 4900.0
-PANEL_LENGTH_MM = 2500.0
+PANEL_LENGTH_MM = float(hk60c.PANEL_MAX_MM[0])
 
 
 def transfer_speed_mm_s() -> float:
@@ -115,13 +118,11 @@ HANDOFF_MARGIN_PER_H = 2.4
 def downstream_limited_takt_s() -> float:
     """후단이 받을 수 있는 속도에서 나오는 택트 (s).
 
-    앞단이 아무리 빨라도 유리제거셀이 못 받으면 버퍼가 차고 결국 선다.
-    그래서 페이스의 상한은 후단 능력이지 앞단 기구가 아니다.
+    앞단이 아무리 빨라도 유리제거기가 못 받으면 버퍼가 차고 결국 선다.
+    그래서 페이스의 상한은 후단 능력이지 앞단 기구가 아니다. 후단 능력은
+    `hk60c.RATE_PER_H` (콘솔 순생산) 하나이고 캠페인과 무관하다.
     """
-    # `handoff.summary()` 를 부르면 순환한다 — 그것이 다시 캠페인을 읽기 때문이다.
-    # 필요한 것은 후단 **능력**뿐이고 그 값은 캠페인과 무관하다.
-    from . import handoff
-    allowed_ra = handoff.downstream_rate().line_per_h - HANDOFF_MARGIN_PER_H
+    allowed_ra = hk60c.RATE_PER_H - HANDOFF_MARGIN_PER_H
     return round(3600.0 / (allowed_ra / normal_ratio()), 2)
 
 
@@ -158,9 +159,16 @@ def panels_by_pattern() -> tuple[str, ...]:
     return tuple(out)
 
 
-#: 방출 보류 (s). 0 이면 라인이 제 속도로 돈다. 후단이 못 따라올 때 이 값만
-#: 키워 택트를 늘린다 — 셀 점유시간은 그대로 두고 로봇이 손을 늦게 떼는 것이다.
-RELEASE_HOLD_S = 0.0
+def release_hold_s() -> float:
+    """방출 보류 (s) — 후단 능력에서 **파생**한다 (REV.54 페이싱).
+
+    0 이면 라인이 제 속도로 돈다. REV.53 까지 후단(68.4 장/h)이 유입(66.0)보다
+    빨라 0 이었다. DG-HK60C 는 순생산 60.5 장/h 라 유입이 앞서므로, 후단 제한
+    택트가 투입 주기(투입 40 + 스토퍼 8)를 넘는 만큼 로봇이 손을 늦게 뗀다.
+    셀 점유시간은 그대로다 — 기구가 아니라 인터록 하나가 바뀐다.
+    """
+    return round(max(0.0, downstream_limited_takt_s() - (INFEED_S + JBR_STOPPER_OFFSET_S)), 2)
+
 
 #: 팔레트 한 장당 매수
 PALLET_PANELS = 30
@@ -183,6 +191,10 @@ BUNDLE_PATTERNS: tuple[tuple[str, str, str], ...] = (
     ("1번 번들", "LFT-101A", "UDDUUDuDUDDXUDDUdUDDUUDDUdUDUD"),
     ("2번 번들", "LFT-101B", "DUUDdUDDUUDUDXUUDDUuDUDDUUDDUD"),
 )
+
+#: 방출 보류 (s). 손으로 적지 않는다 — `release_hold_s()` 가 후단 능력에서 낸다.
+#: 번들 패턴 뒤에 오는 이유: 정상 비율이 패턴에서 나오기 때문이다.
+RELEASE_HOLD_S = release_hold_s()
 
 
 @dataclass(frozen=True)
@@ -337,12 +349,11 @@ def peak_wip() -> int:
 def grm_equivalent_s() -> float:
     """유리제거셀의 **장당 환산** 점유 (s).
 
-    GRM 은 R-A(정상 유리)만 받는다. 그 셀의 한 장 주기는 3600/능력 이지만,
+    유리제거기는 R-A(정상 유리)만 받는다. 그 셀의 한 장 주기는 3600/능력 이지만,
     라인 한 장당으로 환산하려면 R-A 로 가는 비율을 곱해야 한다 — 깨진 유리와
     전손은 이 셀을 지나지 않기 때문이다.
     """
-    from . import handoff
-    return round(3600.0 / handoff.downstream_rate().line_per_h * normal_ratio(), 2)
+    return round(3600.0 / hk60c.RATE_PER_H * normal_ratio(), 2)
 
 
 def cell_occupancy_s() -> tuple[tuple[str, float], ...]:
@@ -353,7 +364,7 @@ def cell_occupancy_s() -> tuple[tuple[str, float], ...]:
     무엇인지 가려져 있었다.
     """
     return (("투입부", INFEED_S), ("JBR-201", JBR_S), ("AFR-101 후단", AFR_S),
-            ("GRM-401 유리제거", grm_equivalent_s()))
+            (f"{hk60c.MODEL} 유리제거", grm_equivalent_s()))
 
 
 def ideal_takt_s() -> float:

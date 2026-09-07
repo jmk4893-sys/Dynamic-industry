@@ -127,8 +127,7 @@ MEASURED_FACE_MM: dict[str, int] = {
     "jbr": 5170,      # 가드 방진 풋
     "afr": 6355,      # 리젝트 스퍼 방호터널
     "post": 7100,     # 장비 밴드 끝까지
-    "buffer": 7145,   # 버퍼 안전가드 — 밴드를 45 mm 넘는다
-    "grm": 7180,      # 셀 베이스 빔 — 밴드를 80 mm 넘는다
+    "buffer": 7145,   # 버퍼 안전가드 — REV.53 까지 밴드(7,100)를 45 넘었다. REV.54 밴드 7,600.
 }
 
 #: 도면에 그리는 판 조립 깊이 (mm). 판재는 1.5 t 지만 가장자리를 접고 보강대를
@@ -145,12 +144,16 @@ OPEN_BY_DESIGN: tuple[tuple[str, str], ...] = (
     ("JB/AFR 접합부 (250 mm)", "통합셀 안에서 두 스테이션이 만나는 자리다. "
                             "패널이 지나가므로 덮을 수 없고, 존이 하나로 합쳐져 "
                             "이제 별도 존도 아니다 — 두 존의 껍질이 여기서 끊긴다"),
-    ("어깨선 위", "투입 비전보·로봇 갠트리·유리제거 마스트는 껍질을 뚫고 올라온다 — "
+    ("어깨선 위", "투입 비전보·로봇 갠트리는 껍질을 뚫고 올라온다 — "
                "몸통은 어깨까지고 키 큰 장비는 드러낸다"),
+    ("하류 끝단 브리지 개구", "BX-101 브리지가 버퍼 끝단 판을 지나 DG-HK60C LD-101 로 "
+                      "유리를 건넨다 — 끝단 판이 개구를 액자로 감싼다 (REV.54)"),
+    ("후단 유리제거기 존", "DG-HK60C 는 자기 방책(M-013)·외장·광커튼을 갖고 온다 — "
+                     "벤더 기계 위에 플랜트 껍질을 또 두르지 않는다. 껍질은 버퍼에서 끝난다 (REV.54)"),
 )
 
 #: 껍질을 두르는 존. `gate` 는 위 사유로 빠진다.
-CASED_ZONES: tuple[str, ...] = ("afu", "robot", "jbr", "afr", "post", "buffer", "grm")
+CASED_ZONES: tuple[str, ...] = ("afu", "robot", "jbr", "afr", "post", "buffer")
 
 #: 교환 모듈이 어느 존 뒤에 있는가. 문은 이 표에서 나오고, 개수를 여기서
 #: 세지 않는다 — `maintain.PROFILES` 가 늘면 문도 는다.
@@ -162,7 +165,6 @@ MODULE_ZONE: dict[str, str] = {
     "RB-AFR": "afr",
     "RB-POST": "post",
     "RB-GBR": "buffer",
-    "RB-GRM": "grm",
     "RB-DUST": "post",     # DX-601 은 GI-301 옆(post 존)에 선다 — REV.50: SG-301 은
                            # AFR 반출롤러 위(존 경계 −475)라 연마휠(SP-03)은 post 문에서 닿는다
 }
@@ -171,6 +173,8 @@ MODULE_ZONE: dict[str, str] = {
 #: 정비 모델에 모듈이 늘었는데 문을 안 만들면 그 모듈이 껍질에 갇힌다.
 NOT_CASED: dict[str, str] = {
     "RB-UTIL": "압축공기실은 별도 구획이라 이 껍질이 아니다 — 자기 문이 따로 있다",
+    "RB-GRM": "DG-HK60C 는 벤더 방책 M-013 안이다 — 문은 CS-201 반출 게이트(ISO 14119)·"
+              "양단 광커튼 LC-001/002 이고 정비 접근은 벤더 조립 지침서가 정한다 (REV.54)",
 }
 
 
@@ -223,7 +227,10 @@ MEASURED_END_FRAME_MM = 90
 #: 부재의 바깥면을 경계에 맞췄으므로 하류는 0 이 되었다 — 그 값을 그대로
 #: 45 로 두면 판이 가드에서 45 mm 떠서 하중 경로 검사가 잡는다(실제로 잡았다).
 #: 상류(AFU)는 아직 가드가 경계에 중심을 두고 있어 절반이 나와 있다.
-END_FRAME_OUT_MM: dict[str, int] = {"afu": MEASURED_END_FRAME_MM // 2, "grm": 0}
+#: REV.54: 하류 끝은 GRM 셀이 아니라 **버퍼** 가드다 — 버퍼 가드는 AFU 처럼 경계에
+#: 중심을 두므로 절반(45)이 나와 있다. 후단 DG-HK60C 는 이 껍질 밖이다.
+END_FRAME_OUT_MM: dict[str, int] = {"afu": MEASURED_END_FRAME_MM // 2,
+                                     "buffer": MEASURED_END_FRAME_MM // 2}
 
 #: 상류 끝 기준값 — 격자가 다 등록되면 두 끝이 같아지고 이 구분도 없어진다.
 END_OFFSET_MM = END_FRAME_OUT_MM["afu"] + PANEL_ASSY_MM
@@ -233,8 +240,8 @@ def end_offset_mm(key: str) -> int:
     """끝단 판이 존 경계 밖으로 나가는 양 (mm) — 가드 바깥면 + 판 조립 깊이."""
     return END_FRAME_OUT_MM[key] + PANEL_ASSY_MM
 
-#: 하류 끝 기계의 **실측** X (플랜트 좌표 mm). 3D 에서 GRM 셀의 최하류 부재
-#: (셀 베이스 빔 · 끝단 가드) 까지 잰 값이다.
+#: 껍질 하류 끝 기계의 **실측** X (플랜트 좌표 mm). 3D 에서 껍질이 닫히는 마지막
+#: 셀의 최하류 부재까지 잰 값이다.
 #:
 #: REV.47 까지 **58,845** 였다. GRM 셀 그룹이 씬에 27.025 라는 리터럴로 놓여
 #: 있어 자기 존보다 750 mm 하류에 섰고, 끝단 횡빔·가드가 존 경계에 중심을 둬
@@ -248,7 +255,15 @@ def end_offset_mm(key: str) -> int:
 #: REV.51: 50,750 그대로 (SG 3헤드·GI-303 은 기존 외형 안에 들어갔다).
 #: REV.52: 50,750 → 50,075. 후단 셀이 통합셀 세 번째 스테이션이 되며 afr −350 ·
 #: post −325 이고, 3D 는 존을 따라오므로 하류 끝이 그대로 −675 다.
-MEASURED_END_MM = 50_075
+#: REV.54: 50,075 → **36,025**. 껍질은 버퍼에서 끝난다 — DG-HK60C 는 자기 방책·외장을
+#: 갖고 오는 벤더 기계라 그 위에 플랜트 껍질을 두르지 않는다. 버퍼 가드 하류면 =
+#: 버퍼 존 끝이다 (3D 가 존에서 원점을 내므로 재실측이 그대로 따라온다).
+MEASURED_END_MM = 36_025
+
+
+def cased_end_mm() -> int:
+    """껍질이 닫히는 하류 끝 — 마지막 **껍질 존**의 끝 (plant mm)."""
+    return zone_span_mm(CASED_ZONES[-1])[1]
 
 def scene_end_shim_mm() -> int:
     """3D 끝단 판이 존 경계 밖으로 **더** 물러서야 하는 양 (mm). 등록되면 0.
@@ -263,14 +278,52 @@ def scene_end_shim_mm() -> int:
     설계 수치(전장·판 매수·질량)는 존 표를 따르고, **3D 에 그리는 끝단 판만**
     이 값만큼 물러선다. 격자가 등록되면 0 이 되고 이 함수도 없어진다.
     """
-    return max(0, MEASURED_END_MM - layout.plant_envelope_mm()[0])
+    return max(0, MEASURED_END_MM - cased_end_mm())
 
 #: 끝단 판틀(endpost)이 딛는 셀 베이스 부재의 윗면 (mm). 판틀을 바닥까지 내리면
 #: 셀 골조를 관통한다 — 하류 끝(GRM)에는 x +7,025 자리에 140 mm 높이의 횡베이스
 #: 빔이 이미 서 있고, 판틀이 그 안에 24 mm 박혀 있었다. 판틀은 바닥이 아니라
 #: **그 부재 위에** 서야 하중 경로가 서고 관통이 없어진다. 상류 끝(AFU)에는
 #: 그 자리에 부재가 없어 바닥에서 시작한다.
-ENDPOST_BASE_MM: dict[str, int] = {"afu": 0, "grm": 140}
+#: REV.54: 하류 끝은 버퍼 가드 — 그 자리에 베이스 부재가 없어 바닥에서 시작한다.
+ENDPOST_BASE_MM: dict[str, int] = {"afu": 0, "buffer": 0}
+
+
+#: 하류 끝단 판의 브리지 개구 — 유리 장변 밖 여유 (mm, 한쪽). 브리지 레일이
+#: 유리보다 175 밖(±775)에 있으므로 여유는 레일 밖 125 다.
+BRIDGE_OPENING_CLEAR_MM = 300
+#: 개구 아래·위 — 브리지 캐리어(EL+290)·레일(EL+350 윗면 +375) 을 감싼다.
+BRIDGE_OPENING_BELOW_MM = 250
+BRIDGE_OPENING_ABOVE_MM = 450
+
+
+def end_opening_mm() -> tuple[int, int, int, int]:
+    """하류 끝단 판의 BX-101 브리지 개구 (플랜트 Y 중심, 반폭, EL 아래, EL 위) — mm.
+
+    껍질은 버퍼에서 끝나지만 브리지는 그 끝단 판을 지나 DG-HK60C LD-101 로
+    유리를 건넨다. 판을 통째로 세우면 브리지 레일·캐리어를 관통한다(케이싱
+    간섭 검사가 3곳을 잡았다). 개구 축은 후단 기계의 y 0, 폭은 유리 장변 +
+    여유, 높이는 캐리어·레일 위아래다 — 판이 개구를 액자로 감싼다.
+    """
+    from . import hk60c
+    grm = next(z for z in layout.build_zones() if z.key == "grm")
+    axis = grm.y0_mm + hk60c.FENCE_YP_MM          # 기계 y 0 → 플랜트 Y
+    half = hk60c.PANEL_MAX_MM[1] // 2 + BRIDGE_OPENING_CLEAR_MM
+    el0 = hk60c.LINE_EL_MM - BRIDGE_OPENING_BELOW_MM
+    el1 = hk60c.LINE_EL_MM + layout.bridge_lift_mm() + BRIDGE_OPENING_ABOVE_MM
+    return axis, half, el0, el1
+
+
+def end_opening_frames_the_bridge() -> bool:
+    """개구가 브리지 레일(EL+350 · ±775)·캐리어를 여유 있게 감싸고 존 안에 드는가."""
+    from . import hk60c
+    axis, half, el0, el1 = end_opening_mm()
+    rail_half = hk60c.PANEL_MAX_MM[1] // 2 + 175
+    rail_el = hk60c.LINE_EL_MM + 350 + 25
+    zone = next(z for z in layout.build_zones() if z.key == CASED_ZONES[-1])
+    return (half > rail_half and el0 < hk60c.LINE_EL_MM + 260 and el1 > rail_el
+            and TOE_H_MM < el0 and el1 < SHOULDER_MM
+            and zone.y0_mm < axis - half and axis + half < zone.y1_mm)
 
 
 def endpost_span_mm(key: str) -> tuple[int, int]:
@@ -293,7 +346,7 @@ def clad_length_mm() -> int:
     있었고, 껍질은 그 위에 얹히므로 양 끝에서 조금씩 는다. 존은 하나도 안
     길어졌다 — 늘어난 것은 껍질 두께뿐이고, 그 사실을 값으로 남긴다.
     """
-    return (layout.plant_envelope_mm()[0]
+    return (cased_end_mm() - zone_span_mm(CASED_ZONES[0])[0]
             + sum(end_offset_mm(k) + PANEL_ASSY_MM // 2 for k in END_FRAME_OUT_MM))
 
 
@@ -310,8 +363,9 @@ def zone_face_mm(key: str) -> int:
     그랬다 — 각 셀의 베이스 빔(깊이 160)과 가드 프레임(90)이 이미 장비 밴드
     끝 평면에 서 있는데 껍질을 같은 평면에 세워 106 곳이 겹쳤다.
 
-    그래서 실측 바깥면에 판 조립 깊이를 더한다. 그러면 buffer·grm 처럼 부재가
-    밴드 끝까지 나온 존에서는 껍질이 **통로로 조금 나온다.** 나오는 양은
+    그래서 실측 바깥면에 판 조립 깊이를 더한다. 그러면 buffer 처럼 부재가
+    밴드 끝까지 나온 존에서는 껍질이 **통로로 조금 나온다.** (REV.54: 밴드가
+    7,600 이 되어 실측 7,145 는 밴드 안이다 — 넘치는 존이 없다.) 나오는 양은
     `encroach_mm()` 이 값으로 내고, 피난 유효폭 안에 드는지는 시험이 지킨다.
     """
     return max(nominal_face_mm(key), MEASURED_FACE_MM[key] + PANEL_ASSY_MM)
@@ -422,9 +476,9 @@ def face_area_m2(kind: str | None = None) -> float:
 
 
 def end_area_m2() -> float:
-    """플랜트 양 끝단 (mm) — 상류 AFU 면과 하류 GRM 면."""
+    """껍질 양 끝단 (mm) — 상류 AFU 면과 하류 버퍼 면 (REV.54: 후단은 껍질 밖)."""
     height = (SHOULDER_MM - TOE_H_MM) / 1000.0
-    depth = sum(zone_face_mm(k) for k in ("afu", "grm")) / 1000.0
+    depth = sum(zone_face_mm(k) for k in (CASED_ZONES[0], CASED_ZONES[-1])) / 1000.0
     return round(depth * height, 2)
 
 
@@ -439,7 +493,7 @@ def returns_mm() -> tuple[tuple[str, str, int, int], ...]:
     `gate` 존은 껍질이 없으므로 JBR 하류와 AFR 상류의 리턴이 그 개구를 양쪽에서
     감싼다 — 인계 개구가 액자에 들어간다.
     """
-    order = ("afu", "robot", "jbr", "afr", "post", "buffer", "grm")
+    order = CASED_ZONES
     rows: list[tuple[str, str, int, int]] = []
     for up, down in zip(order, order[1:]):
         step = zone_face_mm(up) - zone_face_mm(down)
@@ -455,7 +509,7 @@ def return_area_m2() -> float:
 
 def the_shell_is_closed() -> bool:
     """면이 물러서는 모든 자리에 리턴이 있는가. 하나라도 없으면 껍질에 구멍이다."""
-    order = ("afu", "robot", "jbr", "afr", "post", "buffer", "grm")
+    order = CASED_ZONES
     steps = {(u, d) for u, d in zip(order, order[1:])
              if zone_face_mm(u) != zone_face_mm(d)}
     return {(u, d) for u, d, _, _ in returns_mm()} == steps

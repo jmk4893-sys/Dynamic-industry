@@ -19,8 +19,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import air, crane, electrical, smart
-from .layout import AISLE_WIDTH_MM, build_zones, plant_envelope_mm
+from . import air, crane, electrical, hk60c, smart
+from .layout import AISLE_WIDTH_MM, MACHINE_BAND_Y_MM, build_zones, plant_envelope_mm
 
 #: 주 분전반 MDB-101 의 벽부 위치 (플랜트 좌표 mm). X 는 피더 수요(kW) 가중
 #: 부하중심(demand_center_x_mm())을 500 단위로 반올림한 값이다.
@@ -55,14 +55,18 @@ from .layout import AISLE_WIDTH_MM, build_zones, plant_envelope_mm
 #: 전부가 675 상류로 왔고 ② LP-GLASS 가 LP-AFR 로 합쳐지며 그 8.54 kW 의 급전점이
 #: post 존 중심에서 afr 존 중심으로(약 4,400 상류) 옮겨졌다. 부하중심 35,733 →
 #: 35,013 이고 500 단위가 35,000 이다.
-MDB_POSITION_MM = (35_000, 8_150)
+#: REV.54: 35,000 → 34,000. 후단 IR 뱅크가 175 → 100 kW 로 줄고 두 피더가 존 시작(EP-1)에
+#: 서면서 부하중심이 33,872 로 상류로 왔다 — 규칙(500 단위 반올림)대로 따라온다.
+#: Y 는 통로 바깥벽 벽부 — 밴드 + 통로폭 − 반 깊이의 절반. REV.54: 밴드 7,100 → 7,600
+#: 이라 통로가 500 바깥으로 갔고, 벽부 반·트레이·LP 전면이 같이 따라온다 (8,150 → 8,650).
+MDB_POSITION_MM = (34_000, MACHINE_BAND_Y_MM + AISLE_WIDTH_MM - 150)
 
 #: 주 트레이 높이와 Y 위치 (mm)
 TRAY_HEIGHT_MM = 2_600
-TRAY_Y_MM = 7_700
+TRAY_Y_MM = MACHINE_BAND_Y_MM + 600      # 통로 상부 (REV.54: 7,700 → 8,200)
 
 #: 셀 분전반 LP 의 통로측 전면 Y (mm), 상단 높이 (mm)
-LP_Y_MM = 7_000
+LP_Y_MM = MACHINE_BAND_Y_MM - 100        # 밴드 끝 안쪽 (REV.54: 7,000 → 7,500)
 LP_TOP_MM = 1_900
 
 #: MDB 인출 높이 (mm) — 상부 인출
@@ -107,15 +111,13 @@ def lp_positions_mm() -> dict[str, int]:
     post = next(z for z in build_zones() if z.key == "post")
     centers["LP-DX"] = post.x0_mm + 4_575
     centers["LP-CTRL"] = 17_400
-    # GRM-401 의 반 4면은 자기 존 안에서 부하 옆에 선다. IR 두 뱅크는 5단 랙
-    # (존 로컬 X −3,800…−500) 앞, 기구반은 탠덤 앞, 배기반은 슈레더 쪽이다.
-    grm = next(z for z in build_zones() if z.key == "grm")
-    grm_center = (grm.x0_mm + grm.x1_mm) // 2
-    # 두 IR 반은 랙 앞에 나란히 선다 — 같은 X 에 겹쳐 세울 수는 없다.
-    centers["LP-GRM-IRA"] = grm_center - 2_750
-    centers["LP-GRM-IRB"] = grm_center - 1_550
-    centers["LP-GRM-MEC"] = grm_center + 1_200
-    centers["LP-GRM-EXH"] = grm_center + 4_200
+    # REV.54: DG-HK60C 는 자기 전력·MCC·제어반 M-011 을 기초 패드 P1 위에 세운다 —
+    # 인입점 EP-1(동력 · 바닥 트렌치)이 기계 x 4,200 이다 (D-602). 두 피더 다 그
+    # 반으로 가지만 반이 1,600 폭 두 섹션(IR-DB1 · HK-DB2/MCC-1)이라 급전점을 800 씩
+    # 나눈다 — 같은 X 에 두 반을 세우면 계통도 라벨이 포개지고 구간 길이가 0 이 된다.
+    grm0 = next(z.x0_mm for z in build_zones() if z.key == "grm")
+    centers["LP-DGM-IR"] = hk60c.plant_x_mm(grm0, 4_200 - 400)
+    centers["LP-DGM-MC"] = hk60c.plant_x_mm(grm0, 4_200 + 400)
     # REV.25 스마트 팩토리. LP-IT 는 자기가 먹이는 랙실 안에 서고, LP-INST 는
     # 존마다 흩어진 엣지 캐비닛의 부하중심에 선다 — MDB 를 부하중심에 두는
     # 규칙과 같은 규칙을 한 단 아래에 적용한 것이다.
@@ -234,8 +236,10 @@ def control_segments() -> list[Cable]:
     positions = lp_positions_mm()
     # REV.52: LP-GLASS 가 LP-AFR 로 합쳐져 체인에서 한 면이 빠진다.
     chain = ["LP-AFU", "LP-RB", "LP-JBR", "LP-CTRL", "LP-AFR", "LP-DX", "LP-GBR",
-             # REV.23: 유리제거셀 4면을 X 순서대로 체인 끝에 잇는다.
-             "LP-GRM-IRA", "LP-GRM-IRB", "LP-GRM-MEC", "LP-GRM-EXH"]
+             # REV.54: DG-HK60C 는 자기 PROFINET 링(EP-2)이라 EtherCAT 체인에 안 든다.
+             # 체인은 **제어 케이블** 경로이고, 벤더 반까지는 안전회로(BJ-102)·OPC UA
+             # 두 케이블이 간다 — 그 두 반이 같은 자리에 서므로 한 구간으로 센다.
+             "LP-DGM-IR"]
     # REV.25 정정 — LP-INST·LP-IT 는 **여기 없다.**
     #
     # 처음엔 스마트 팩토리 반 2면을 이 체인 끝에 붙였다. 틀렸다. 이 체인은

@@ -25,10 +25,9 @@ def num(v):
 
 SUB = {"afu": "LFT-A/B · BFC 투입", "robot": "PT 정렬 · 반전 투입",
        "jbr": "정션박스 제거", "afr": "프레임 분리 · SG 연마",
-       "post": "CV · GI 유리 검사", "buffer": "레시피 버퍼",
-       "grm": "유리 제거"}
+       "post": "CV · GI 유리 검사", "buffer": "레시피 버퍼"}
 TAG = {"afu": "AFU-101", "robot": "RB-101", "jbr": "JBR-201", "afr": "AFR-101",
-       "post": "GI-302", "buffer": "GBR-301", "grm": "GRM-401"}   # REV.50: SG-301 은 afr
+       "post": "GI-302", "buffer": "GBR-301"}   # REV.50: SG-301 은 afr · REV.54: grm 은 벤더 껍질
 
 out = []
 w = out.append
@@ -118,19 +117,44 @@ from pv_preprocess import layout as _L
 # (casing.scene_end_shim_mm 참고. 격자가 등록되면 0 이라 식이 그대로 맞는다).
 for key, at_x, label in (
         ("afu", C.zone_span_mm("afu")[0] - C.end_offset_mm("afu"), "상류"),
-        ("grm", C.zone_span_mm("grm")[1] + C.scene_end_shim_mm() + C.end_offset_mm("grm"),
+        # REV.54: 껍질은 버퍼에서 끝난다 — 후단 DG-HK60C 는 자기 방책·외장을 갖고 온다.
+        ("buffer", C.zone_span_mm("buffer")[1] + C.scene_end_shim_mm() + C.end_offset_mm("buffer"),
          "하류")):
     zone = next(z for z in _L.build_zones() if z.key == key)
     zu, zd = wz(zone.y1_mm), wz(zone.y0_mm)
-    w(f"CN(L([{num(assy)},{num(m(C.SHOULDER_MM - C.TOE_H_MM))},{num(abs(zu - zd))}],"
-      f"[{num(wx(at_x))},{num(m((C.SHOULDER_MM + C.TOE_H_MM)/2))},"
+    inb = -1 if label == "상류" else 1
+    p0, p1 = C.endpost_span_mm(key)
+    h_full = m(C.SHOULDER_MM - C.TOE_H_MM); yc_full = m((C.SHOULDER_MM + C.TOE_H_MM) / 2)
+    tip = f"플랜트 {label} 끝을 닫는 판 — 벽쪽은 발열 때문에 일부러 비워 둔다"
+    if label == "하류":
+        # REV.54: BX-101 브리지가 이 판을 지난다 — 개구를 네 장의 판이 액자로 감싸고,
+        # 판틀 두 본이 개구 양옆에 선다 (한가운데 판틀은 브리지 레일을 관통했다).
+        axis, half, el0, el1 = C.end_opening_mm()
+        zc = wz(axis); zlo, zhi = min(zu, zd), max(zu, zd)
+        za, zb = round(zc - m(half), 4), round(zc + m(half), 4)
+        pieces = [  # (높이, y 중심, z 폭, z 중심)
+            (h_full, yc_full, round(za - zlo, 4), round((zlo + za) / 2, 4)),
+            (h_full, yc_full, round(zhi - zb, 4), round((zb + zhi) / 2, 4)),
+            (m(el0 - C.TOE_H_MM), m((el0 + C.TOE_H_MM) / 2), round(zb - za, 4), zc),
+            (m(C.SHOULDER_MM - el1), m((C.SHOULDER_MM + el1) / 2), round(zb - za, 4), zc),
+        ]
+        tip += f" · BX-101 브리지 개구 ±{half:,} × EL {el0:,}…{el1:,} (Y {axis:,})"
+        for i, (h, yc, zw, zcc) in enumerate(pieces):
+            lab = f"'{label} 끝단 케이싱','{tip}'" if i == 0 else "null"
+            w(f"CN(L([{num(assy)},{num(h)},{num(zw)}],[{num(wx(at_x))},{num(yc)},{num(zcc)}],"
+              f"M.aluminum,{lab}),'case:{key}:end');")
+        for zp in (round(za - m(60), 4), round(zb + m(60), 4)):
+            w(f"CN(L([{num(assy)},{num(m(p1 - p0))},{num(m(120))}],"
+              f"[{num(round(wx(at_x) - inb * assy, 4))},{num(m((p0 + p1) / 2))},{num(zp)}],"
+              f"M.dark,null),'case:{key}:endpost');")
+        continue
+    w(f"CN(L([{num(assy)},{num(h_full)},{num(abs(zu - zd))}],"
+      f"[{num(wx(at_x))},{num(yc_full)},"
       f"{num(round((zu + zd) / 2, 4))}],M.aluminum,"
-      f"'{label} 끝단 케이싱','플랜트 {label} 끝을 닫는 판 — 벽쪽은 발열 때문에 일부러 비워 둔다'),"
+      f"'{label} 끝단 케이싱','{tip}'),"
       f"'case:{key}:end');")
     # 끝단 판도 제 판틀이 있어야 바닥까지 하중 경로가 선다 — 가드 바깥면으로
     # 69 mm 물러나며 셀 끝 골조에서 떨어졌고, 하중경로 검사가 그것을 잡았다.
-    inb = -1 if label == "상류" else 1
-    p0, p1 = C.endpost_span_mm(key)
     w(f"CN(L([{num(assy)},{num(m(p1 - p0))},{num(m(120))}],"
       f"[{num(round(wx(at_x) - inb * assy, 4))},{num(m((p0 + p1) / 2))},"
       f"{num(round((zu + zd) / 2, 4))}],M.dark,null),'case:{key}:endpost');")

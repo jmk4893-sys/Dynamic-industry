@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import air, crane, kinematics, wiring
+from . import air, crane, hk60c, kinematics, wiring
 
 # ── 기준값 ───────────────────────────────────────────────────────────────
 #: 추락 방호가 요구되는 높이 (mm). 산업안전보건기준 규칙과 EN ISO 14122 가
@@ -67,6 +67,7 @@ class Point:
     per_year: int           # 연간 접근 횟수 — 수단 선택의 근거다
     ours: bool              # 우리 공급 범위인가 (아니면 값만 넘긴다)
     basis: str
+    vendor: bool = False    # 벤더 기계 안(DG-HK60C) — 벤더 조립 지침서가 정한다 (REV.54)
 
     @property
     def needs_fall_protection(self) -> bool:
@@ -94,12 +95,17 @@ POINTS: tuple[Point, ...] = (
     Point("AC-01", "VG-101 비전보 상단 헤드·조명", "afu", crane.tallest_lift().height_mm,
           "카메라·조명 청소, 교정 타깃 확인", 12, True,
           "이 플랜트의 최고 고정점이다. 크레인 후크 여유 1,330 을 정한 바로 그 높이"),
-    Point("AC-02", "TDM-201 갠트리 크로스헤드·X축 빔", "grm", 3_100,
-          "핫나이프 교체, LM 가이드 급유", 26, True,
-          "칼날은 마모품이라 접근이 잦다 — 2주에 한 번꼴"),
-    Point("AC-03", "GRM-401 5단 랙 상단 IR 뱅크", "grm", 3_000,
-          "IR 램프 교체, 반사판 청소", 6, True,
-          "램프는 수명품이다. 고온부라 냉각 지연 인터록(SF-09)과 같이 묶인다"),
+    # REV.54: DG-HK60C 안의 고소 접근은 벤더 조립·정비 지침서 소관이다 — 값만 넘긴다.
+    # 칼날 카세트는 KC-101 매거진(EL 3,300)이 자동 교환하므로 사람은 방책 밖 새들에서
+    # 식은 카세트만 만진다. IR 램프는 측벽 밖 소켓이라 챔버를 안 연다.
+    Point("AC-02", "DG-HK60C KC-101 칼날 카세트 매거진 (갠트리 위)", "grm", 3_300,
+          "매거진 카세트 보충·교환암 점검", 26, False,
+          "카세트는 마모품이라 접근이 잦다 — 2주에 한 번꼴. 벤더 방책 안 고소 접근은 "
+          "벤더 지침서가 정한다", vendor=True),
+    Point("AC-03", "DG-HK60C HC-101 상부 뱅크 B5 램프 소켓 (측벽 관통)", "grm",
+          hk60c.MODULES["M-002"][1][2],
+          "IR 램프 교체, 반사면 점검 (ρ ≥ 0.4)", 6, False,
+          "램프는 수명품이다. 단자가 챔버 밖이라 열간 접근이 아니다", vendor=True),
     Point("AC-04", "AFR CL-221 클램프 포탈 크로스헤드", "afr",
           kinematics.AFR_PORTAL_HEIGHT_MM,
           "실린더 점검, 힘 센서 교정", 4, True,
@@ -129,7 +135,12 @@ def ours() -> tuple[Point, ...]:
 
 
 def handed_to_building() -> tuple[Point, ...]:
-    return tuple(p for p in POINTS if not p.ours)
+    return tuple(p for p in POINTS if not p.ours and not p.vendor)
+
+
+def handed_to_vendor() -> tuple[Point, ...]:
+    """벤더 기계 안의 접근점 — 값(높이·빈도)만 넘기고 수단은 벤더 지침서가 정한다."""
+    return tuple(p for p in POINTS if p.vendor)
 
 
 def needing_fall_protection() -> tuple[Point, ...]:
@@ -176,12 +187,15 @@ ANCHOR_POINT_KN = 15.0
 def anchor_points() -> tuple[tuple[str, str], ...]:
     """고정점을 어디에 두는가 — 그리고 그것이 누구 일인가."""
     return (
-        ("장비 프레임 (AC-02·03·04·06)",
-         "갠트리 기둥·포탈 기둥·가드 프레임은 이미 바닥에 앵커돼 있다. "
+        ("장비 프레임 (AC-04·06)",
+         "포탈 기둥·가드 프레임은 이미 바닥에 앵커돼 있다. "
          f"고정점 {ANCHOR_POINT_KN:g} kN 을 그 부재에 얹는다 — **우리 일이다**"),
         ("건물 철골 (AC-01·05·08)",
          "비전보 상단·통로 상부·크레인 레일은 받칠 우리 부재가 없다. "
          "크레인 주행거더·공압 주관과 같은 자리다 — **건물이 받는다**"),
+        ("DG-HK60C 벤더 기계 (AC-02·03)",
+         "칼날 카세트 매거진·가열실 상부 뱅크 단자는 벤더 방책 안이다. 높이·빈도만 "
+         "넘기고 고정점·접근 수단은 **벤더 조립 지침서(D-602)** 가 정한다 — 발주 확인사항"),
         ("DX-601 백 교체구 (AC-07)",
          "집진기 자체 구조에 붙이되, 분진 노출 작업이라 고정점보다 "
          "국소배기·보호구가 먼저다"),
@@ -194,6 +208,7 @@ def summary() -> dict[str, object]:
         "points": len(POINTS),
         "ours": len(ours()),
         "building": len(handed_to_building()),
+        "vendor": len(handed_to_vendor()),
         "fallProtection": len(needing_fall_protection()),
         "highestTag": highest().tag,
         "highestMm": highest().height_mm,

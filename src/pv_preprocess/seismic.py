@@ -26,7 +26,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from . import crane, mounting
+from . import crane, hk60c, mounting
 
 # ── 계수 ─────────────────────────────────────────────────────────────────
 #: 설계스펙트럼 단주기 가속도 (g). **가정값이다** — 부지 지반조사가 대체한다.
@@ -103,8 +103,11 @@ BASE_MM: dict[str, tuple[int, bool, str]] = {
     "BFC 반전 카세트 (Bay 1식)":
         (2_660, False, "3D 실측 — BFC-101A 포탈 기둥·LM가이드 조립체의 Z 폭. "
                        "카세트는 그 안에 있으므로 넘어질 때 버티는 것은 포탈이다"),
-    "GRM-401 5단 단열랙 M1-101":
-        (1_900, False, "3D 실측 — M1-101 5단 단열랙의 Z 폭"),
+    "DG-HK60C VT-101 상판 (단품 최중량)":
+        (1_560, False, "벤더 카탈로그 — VT-101 진공테이블 외형 2,900 × 1,560 의 Y 폭"),
+    "DG-HK60C HC-101 가열실 (현장 조립체)":
+        (2_560, False, "벤더 카탈로그 RACK_W — 가열실 골조 Y 폭. 높이 4,725 에 5.8 t 이라 "
+                       "이 플랜트에서 가장 무거운 서 있는 물건이다"),
     "AFR-101 셀 베이스 프레임":
         (865, False, "3D 실측 — S355 베이스 프레임과 CV-101 가대 다리의 Z 폭. "
                      "X 로는 11.4 m 라 길이 방향 전도는 문제가 아니다"),
@@ -125,13 +128,25 @@ BASE_MM: dict[str, tuple[int, bool, str]] = {
 }
 
 
+#: 크레인이 통째로 들지 않지만 **서 있는** 조립체 — 지진은 이것도 흔든다.
+#: (이름, 존, 질량 kg, 높이 mm). REV.54: DG-HK60C 가열실은 현장 조립이라 인양
+#: 목록에 없지만 5.8 t 이 4.7 m 높이로 서 있다.
+STANDING: tuple[tuple[str, str, int, int], ...] = (
+    ("DG-HK60C HC-101 가열실 (현장 조립체)", "grm",
+     round(hk60c.module_kg()["M-002"]), hk60c.MODULES["M-002"][1][2]),
+)
+
+
 def components() -> tuple[Component, ...]:
-    """crane.LIFTS 에 베이스폭을 얹어 돌려준다."""
+    """crane.LIFTS 와 STANDING 에 베이스폭을 얹어 돌려준다."""
     out = []
     for lift in crane.LIFTS:
         base, wall, basis = BASE_MM[lift.name]
         out.append(Component(lift.name, lift.station, lift.mass_kg,
                              lift.height_mm, base, wall, basis))
+    for name, station, mass, height in STANDING:
+        base, wall, basis = BASE_MM[name]
+        out.append(Component(name, station, mass, height, base, wall, basis))
     return tuple(out)
 
 
@@ -181,7 +196,8 @@ def anchor_tension_kn(component: Component, s_ds: float | None = None) -> float:
 #: **아직 배정된 앵커군이 없다**는 뜻이고, 그것이 이 모듈이 찾아낸 것이다.
 ANCHOR_GROUP: dict[str, tuple[str, str] | None] = {
     "BFC 반전 카세트 (Bay 1식)": ("bfc", "포탈기둥"),
-    "GRM-401 5단 단열랙 M1-101": ("grm", "랙"),
+    "DG-HK60C VT-101 상판 (단품 최중량)": ("grm", "D-602 앵커군 A1~A14"),
+    "DG-HK60C HC-101 가열실 (현장 조립체)": ("grm", "D-602 앵커군 A1~A14"),
     "AFR-101 셀 베이스 프레임": ("afr", "메인셀"),
     "AFR CL-221 클램프 포탈 1조": ("afr", "클램프 포탈"),
     "VG-101 독립 방진 비전보 조립체": None,
