@@ -1042,6 +1042,88 @@ svg.lucide {
 }
 
 html>body{padding:0}</style>
+<style>.pv-infeed-layout {
+  --ground: #EEF1F3; --sheet: #FFFFFF; --ink: #16202A; --muted: #5B6874; --rule: #C8D0D7;
+  --tint: #E4EAEF; --tint-out: #F3F4F5; --red: #B5321F; --blue: #2A6CB0; --amber: #C8850A;
+  --green: #2F7D4F; --blue-fill: rgba(42,108,176,.14); --red-fill: rgba(181,50,31,.10);
+  --amber-fill: rgba(200,133,10,.18); --grey-fill: rgba(22,32,42,.08); --code: #EDF1F4;
+  color-scheme: light;
+}
+:root[data-theme="dark"] .pv-infeed-layout {
+  --ground: #12181E; --sheet: #1A222A; --ink: #E4E9ED; --muted: #98A5B1; --rule: #34414D;
+  --tint: #232D37; --tint-out: #1E252C; --red: #E0604A; --blue: #6FA8E6; --amber: #E6B04C;
+  --green: #6CBF8A; --blue-fill: rgba(111,168,230,.16); --red-fill: rgba(224,96,74,.14);
+  --amber-fill: rgba(230,176,76,.2); --grey-fill: rgba(228,233,237,.08); --code: #232D37;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pv-infeed-layout {
+    --ground: #12181E; --sheet: #1A222A; --ink: #E4E9ED; --muted: #98A5B1; --rule: #34414D;
+    --tint: #232D37; --tint-out: #1E252C; --red: #E0604A; --blue: #6FA8E6; --amber: #E6B04C;
+    --green: #6CBF8A; --blue-fill: rgba(111,168,230,.16); --red-fill: rgba(224,96,74,.14);
+    --amber-fill: rgba(230,176,76,.2); --grey-fill: rgba(228,233,237,.08); --code: #232D37;
+    color-scheme: dark;
+  } }
+.pv-infeed-layout svg.sheet { width: 100%; height: auto; display: block; }
+.pv-infeed-layout svg text { fill: var(--ink); font-size: 11px; }
+.pv-infeed-layout svg .lbl-muted, svg .tick, svg .dimt, svg .lvl { fill: var(--muted); font-size: 10.5px; }
+.pv-infeed-layout svg .lbl-small { font-size: 10px; }
+.pv-infeed-layout svg .lbl-zone { fill: var(--muted); font-size: 11px; letter-spacing: .04em; }
+.pv-infeed-layout svg .lbl-panel { fill: var(--blue); font-weight: 600; }
+.pv-infeed-layout svg .lbl-path { fill: var(--red); font-size: 10px; }
+.pv-infeed-layout svg .band { fill: var(--sheet); stroke: none; }
+.pv-infeed-layout svg .aisle { fill: var(--grey-fill); stroke: none; }
+.pv-infeed-layout svg .zone { fill: var(--tint); stroke: var(--rule); stroke-width: 1; }
+.pv-infeed-layout svg .zone-out { fill: var(--tint-out); stroke-dasharray: 4 3; }
+.pv-infeed-layout svg .overlap { fill: var(--red-fill); stroke: var(--red); stroke-dasharray: 3 2; stroke-width: .8; }
+.pv-infeed-layout svg .lane { fill: none; stroke: var(--muted); stroke-dasharray: 6 4; stroke-width: .8; }
+.pv-infeed-layout svg .ref { fill: none; stroke: var(--muted); stroke-dasharray: 3 3; stroke-width: 1; }
+.pv-infeed-layout svg .base { fill: var(--grey-fill); stroke: var(--ink); stroke-width: .9; }
+.pv-infeed-layout svg .deck { fill: var(--sheet); stroke: var(--ink); stroke-width: .9; }
+.pv-infeed-layout svg .panel { fill: var(--blue-fill); stroke: var(--blue); stroke-width: 1; }
+.pv-infeed-layout svg .panel-ghost { fill: none; stroke: var(--blue); stroke-dasharray: 3 2; stroke-width: .8; }
+.pv-infeed-layout svg .ring { fill: var(--sheet); stroke: var(--ink); stroke-width: 1.4; }
+.pv-infeed-layout svg .column { fill: var(--ink); stroke: none; opacity: .85; }
+.pv-infeed-layout svg .wall { fill: var(--muted); stroke: none; opacity: .7; }
+.pv-infeed-layout svg .beam { fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 8 3; }
+.pv-infeed-layout svg .sensor { fill: var(--green); stroke: none; }
+.pv-infeed-layout svg .util { fill: var(--sheet); stroke: var(--muted); stroke-width: .9; }
+.pv-infeed-layout svg .reach { fill: none; stroke: var(--red); stroke-width: .8; stroke-dasharray: 2 3; }
+.pv-infeed-layout svg .pedestal { fill: var(--grey-fill); stroke: var(--ink); stroke-width: 1.2; }
+.pv-infeed-layout svg .joint { fill: var(--sheet); stroke: var(--ink); stroke-width: 1.2; }
+.pv-infeed-layout svg .rack { fill: var(--sheet); stroke: var(--ink); stroke-dasharray: 5 2; stroke-width: .9; }
+.pv-infeed-layout svg .guard { fill: none; stroke: var(--amber); stroke-width: 1; stroke-dasharray: 4 2; }
+.pv-infeed-layout svg .safety { fill: var(--amber-fill); stroke: var(--amber); stroke-width: 1; }
+.pv-infeed-layout svg .carriage, svg .sep { fill: var(--sheet); stroke: var(--ink); stroke-width: .9; }
+.pv-infeed-layout svg .scissor { fill: none; stroke: var(--ink); stroke-width: 1; }
+.pv-infeed-layout svg .roller { fill: var(--grey-fill); stroke: var(--ink); stroke-width: .8; }
+.pv-infeed-layout svg .floor { fill: var(--grey-fill); stroke: var(--ink); stroke-width: 1; }
+.pv-infeed-layout svg .arm { fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+.pv-infeed-layout svg .arm-pick { stroke-dasharray: 5 3; opacity: .6; }
+.pv-infeed-layout svg .path { fill: none; stroke: var(--red); stroke-width: 1.4; stroke-dasharray: 6 3; }
+.pv-infeed-layout svg .path-reject { stroke-dasharray: 2 3; }
+.pv-infeed-layout svg .dim { stroke: var(--muted); stroke-width: .8; }
+.pv-infeed-layout svg .level { stroke: var(--rule); stroke-width: .7; stroke-dasharray: 2 4; }
+.pv-infeed-layout svg .leader { stroke: var(--muted); stroke-width: .6; }
+.pv-infeed-layout svg .centre { stroke: var(--muted); stroke-width: .7; stroke-dasharray: 14 4 3 4; }
+.pv-infeed-layout svg .boundary { stroke: var(--red); stroke-width: .8; stroke-dasharray: 8 4; }
+.pv-infeed-layout svg.timeline .grid { stroke: var(--rule); stroke-width: .7; }
+.pv-infeed-layout svg.timeline .row { stroke: var(--rule); stroke-width: .7; }
+.pv-infeed-layout svg.timeline .mark { stroke: var(--red); stroke-width: 1; }
+.pv-infeed-layout svg.timeline .markt { fill: var(--red); font-size: 10.5px; }
+.pv-infeed-layout svg.timeline .actor { font-size: 11.5px; }
+.pv-infeed-layout svg.timeline .bart { font-size: 10.5px; fill: var(--ink); }
+.pv-infeed-layout svg.timeline .bar { stroke-width: .8; }
+.pv-infeed-layout svg.timeline .bar-prep { fill: var(--grey-fill); stroke: var(--muted); }
+.pv-infeed-layout svg.timeline .bar-lift, svg.timeline .bar-flip { fill: var(--blue-fill); stroke: var(--blue); }
+.pv-infeed-layout svg.timeline .bar-hold { fill: var(--sheet); stroke: var(--muted); stroke-dasharray: 3 2; }
+.pv-infeed-layout svg.timeline .bar-safe { fill: var(--amber-fill); stroke: var(--amber); }
+.pv-infeed-layout svg.timeline .bar-safe-hold { fill: none; stroke: var(--amber); stroke-dasharray: 3 2; }
+.pv-infeed-layout svg.timeline .bar-robot { fill: var(--red-fill); stroke: var(--red); }
+.pv-infeed-layout svg.timeline .bar-align { fill: var(--sheet); stroke: var(--ink); }
+.pv-infeed-layout svg.timeline .bar-out { fill: var(--tint-out); stroke: var(--rule); }
+.pv-infeed-layout svg.timeline .bar-reject { fill: none; stroke: var(--red); stroke-dasharray: 2 3; }
+.pv-infeed-layout text { font-family: inherit; }
+#pv-panel-layout > :not(.pv-infeed-layout) { display: none; }</style>
 <style>.pv-flow-track > li:nth-child(n+7) { display: none; }</style>
 <style>label[for="jb-box-mode"], label[for="jb-validation-mode"], label[for="afr-route-mode"], #afr-buffer-reset, label.form-switch:has(#pv-case) { display: none; }</style>
 </head>
@@ -1100,7 +1182,7 @@ html>body{padding:0}</style>
         <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="simulation" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h4M12 7h8M4 17h8M16 17h4"/><circle cx="10" cy="7" r="2"/><circle cx="14" cy="17" r="2"/></svg><span>통합 시뮬레이션</span></button>
         <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="drawing" data-pv-drawing-tab="fab" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="8" rx="1"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/></svg><span>2D 제작도</span></button>
         <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="drawing" data-pv-drawing-tab="explode" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 21 7.5v9L12 21 3 16.5v-9z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg><span>3D 분해도</span></button>
-        <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="drawing" data-pv-drawing-tab="layout" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 10h18M10 10v10"/></svg><span>상세 장비배치도</span></button>
+        <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="drawing" data-pv-drawing-tab="layout" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 10h18M10 10v10"/></svg><span>투입 장비 배치·외형</span></button>
         <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="drawing" data-pv-drawing-tab="register" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M11 12h9M11 18h9"/><path d="M4 5v12a1 1 0 0 0 1 1h2M4 11h3"/></svg><span>도면 목록</span></button>
         <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="drawing" data-pv-drawing-tab="electrical" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><span>전기 인입도</span></button>
         <button class="btn btn-block pv-v22-program-button" type="button" data-pv-program="parts" aria-haspopup="dialog" aria-controls="pv-v22-dialog"><svg class="pv-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg><span>부품 2D·3D</span></button>
@@ -1323,7 +1405,7 @@ html>body{padding:0}</style>
   <section class="pv-drawing-suite" aria-labelledby="pv-drawing-title">
     <div class="pv-drawing-head">
       <div>
-        <h3 id="pv-drawing-title">Rev.22 2D·3D 상세 제작도면 및 전체 장비배치</h3>
+        <h3 id="pv-drawing-title">투입 구간 2D·3D 상세 제작도면 및 투입 장비 배치·외형</h3>
         <div class="text-small text-muted" id="pv-drawing-live" aria-live="polite">PV-AFU-101-GA-2101 · 투입·비전·듀얼 리프트 셀</div>
       </div>
       <span class="viz-badge">BASIC DESIGN · mm · NTS</span>
@@ -1332,7 +1414,7 @@ html>body{padding:0}</style>
     <div class="nav nav-pills" role="tablist" aria-label="도면 보기">
       <button class="nav-link active" id="pv-tab-fab" role="tab" aria-controls="pv-panel-fab" aria-selected="true" type="button">2D 제작도</button>
       <button class="nav-link" id="pv-tab-explode" role="tab" aria-controls="pv-panel-explode" aria-selected="false" type="button">3D 분해·조립도</button>
-      <button class="nav-link" id="pv-tab-layout" role="tab" aria-controls="pv-panel-layout" aria-selected="false" type="button">전체 장비배치도</button>
+      <button class="nav-link" id="pv-tab-layout" role="tab" aria-controls="pv-panel-layout" aria-selected="false" type="button">투입 장비 배치·외형</button>
       <button class="nav-link" id="pv-tab-register" role="tab" aria-controls="pv-panel-register" aria-selected="false" type="button">도면 목록</button>
       <button class="nav-link" id="pv-tab-electrical" role="tab" aria-controls="pv-panel-electrical" aria-selected="false" type="button">전기 인입도</button>
       <button class="nav-link" id="pv-tab-smart" role="tab" aria-controls="pv-panel-smart" aria-selected="false" type="button">스마트·AI</button>
@@ -1395,6 +1477,7 @@ html>body{padding:0}</style>
     </div>
 
     <div id="pv-panel-layout" role="tabpanel" aria-labelledby="pv-tab-layout" hidden>
+<div class="pv-infeed-layout"><p class="text-small text-muted">투입 구간 전체 — X 0…10,150 (10,150) × Y 0…7,100 (7,100) × 최대 높이 5,150 mm. 가로 L = X(공정방향) · 세로 W = Y(라인 좌측) · 높이 H = Z(FFL 상향). 하류 셀(JBR·AFR·후단·버퍼·GRM)은 범위 밖이라 싣지 않는다.</p><div class="pv-sheet-surface"><svg class="sheet" viewBox="0 0 1120 699" role="img" aria-label="투입 구간 평면 배치도"><rect class="band" x="286.7" y="62.4" width="809.3" height="504.1" rx="0"></rect><rect class="aisle" x="286.7" y="566.5" width="809.3" height="85.1" rx="0"></rect><text class="lbl-muted" x="1088.9" y="613.0" text-anchor="end">보행·정비 통로 1,200</text><rect class="zone zone-in" x="286.7" y="62.4" width="351.4" height="504.1" rx="0"><title>LFT-A/B · BFC 존 4,950 × 7,100</title></rect><rect class="zone zone-in" x="638.1" y="176.0" width="369.2" height="276.9" rx="0"><title>RB-101 · PT 존 5,200 × 3,900</title></rect><rect class="zone zone-out" x="1007.3" y="206.2" width="88.7" height="216.5" rx="0"><title>JBR-201 존 (범위 밖)</title></rect><text class="lbl-muted" x="1088.9" y="224.6" text-anchor="end">JBR-201 존 · 범위 밖 →</text><text class="lbl-zone" x="295.2" y="550.8" text-anchor="start">afu 존 · LFT-A/B · BFC</text><text class="lbl-zone" x="646.6" y="474.2" text-anchor="start">robot 존 · RB-101 · PT</text><rect class="overlap" x="638.1" y="176.0" width="92.3" height="276.9" rx="0"><title>afu → robot 넘침 1,300 (설계 — 로봇 도달 사슬)</title></rect><rect class="lane" x="31.1" y="136.9" width="465.0" height="127.8" rx="0"><title>지게차 진입 차로 Bay A</title></rect><rect class="lane" x="31.1" y="364.1" width="465.0" height="127.8" rx="0"><title>지게차 진입 차로 Bay B</title></rect><rect class="ref" x="38.2" y="158.2" width="220.1" height="85.2" rx="0"><title>FL-101 2.5 t 전동 지게차 3,100 × 1,200 (반입 위치 참조)</title></rect><text class="lbl" x="41.7" y="204.8" text-anchor="start">FL-101</text><line class="dim" x1="73.7" y1="126.3" x2="286.7" y2="126.3"/><line class="dim" x1="73.7" y1="121.3" x2="73.7" y2="131.3"/><line class="dim" x1="286.7" y1="121.3" x2="286.7" y2="131.3"/><text class="dimt" x="180.2" y="122.3" text-anchor="middle">지게차 진입 3,000 MIN</text><rect class="base" x="496.1" y="136.9" width="205.9" height="127.8" rx="0"><title>LFT-101A 유압 시저 승강대 2,900 × 1,800</title></rect><rect class="panel" x="510.3" y="151.1" width="177.5" height="99.4" rx="0"><title>30장 적층 A 2,500 × 1,400 — 최상단이 픽업면 1,880</title></rect><text class="lbl-panel" x="599.0" y="224.8" text-anchor="middle">LFT-101A · 30장 적층</text><rect class="ring" x="494.7" y="130.6" width="12.8" height="140.5" rx="0"><title>BFC-101A 오픈센터 엔드링 ⌀1,980 (적층 직상, 축 H 3,430)</title></rect><rect class="ring" x="690.6" y="130.6" width="12.8" height="140.5" rx="0"><title>BFC-101A 오픈센터 엔드링 ⌀1,980 (적층 직상, 축 H 3,430)</title></rect><rect class="column" x="479.1" y="100.7" width="12.7" height="17.1" rx="0"><title>BFC-101A 포탈 기둥·LM가이드 180 × 240</title></rect><rect class="column" x="479.1" y="259.8" width="12.7" height="17.0" rx="0"><title>BFC-101A 포탈 기둥·LM가이드 180 × 240</title></rect><rect class="column" x="706.2" y="100.7" width="12.8" height="17.1" rx="0"><title>BFC-101A 포탈 기둥·LM가이드 180 × 240</title></rect><rect class="column" x="706.2" y="259.8" width="12.8" height="17.0" rx="0"><title>BFC-101A 포탈 기둥·LM가이드 180 × 240</title></rect><rect class="base" x="496.1" y="364.1" width="205.9" height="127.8" rx="0"><title>LFT-101B 유압 시저 승강대 2,900 × 1,800</title></rect><rect class="panel" x="510.3" y="378.3" width="177.5" height="99.4" rx="0"><title>30장 적층 B 2,500 × 1,400 — 최상단이 픽업면 1,880</title></rect><text class="lbl-panel" x="599.0" y="452.0" text-anchor="middle">LFT-101B · 30장 적층</text><rect class="ring" x="494.7" y="357.7" width="12.8" height="140.6" rx="0"><title>BFC-101B 오픈센터 엔드링 ⌀1,980 (적층 직상, 축 H 3,430)</title></rect><rect class="ring" x="690.6" y="357.7" width="12.8" height="140.6" rx="0"><title>BFC-101B 오픈센터 엔드링 ⌀1,980 (적층 직상, 축 H 3,430)</title></rect><rect class="column" x="479.1" y="511.1" width="12.7" height="17.0" rx="0"><title>BFC-101B 포탈 기둥·LM가이드 180 × 240</title></rect><rect class="column" x="479.1" y="352.1" width="12.7" height="17.0" rx="0"><title>BFC-101B 포탈 기둥·LM가이드 180 × 240</title></rect><rect class="column" x="706.2" y="511.1" width="12.8" height="17.0" rx="0"><title>BFC-101B 포탈 기둥·LM가이드 180 × 240</title></rect><rect class="column" x="706.2" y="352.1" width="12.8" height="17.0" rx="0"><title>BFC-101B 포탈 기둥·LM가이드 180 × 240</title></rect><rect class="wall" x="478.4" y="85.5" width="188.8" height="10.6" rx="0"><title>BW-101 외측벽 A 2,660 × 150</title></rect><rect class="wall" x="478.4" y="305.5" width="188.8" height="17.8" rx="0"><title>BW-101 중앙 백투백벽 2,660 × 250</title></rect><rect class="wall" x="478.4" y="532.7" width="188.8" height="10.7" rx="0"><title>BW-101 외측벽 B 2,660 × 150</title></rect><text class="lbl" x="572.8" y="305.4" text-anchor="middle">BW-101 중앙벽 · CD-101 포획빔 수납</text><rect class="beam" x="435.8" y="76.6" width="176.0" height="475.7" rx="0"><title>VG-101 독립 방진 비전보 2,480 × 6,700 (상단 5,150)</title></rect><text class="lbl-muted" x="523.8" y="71.6" text-anchor="middle">VG-101 비전보 (천장)</text><circle class="sensor" cx="599.0" cy="200.8" r="13.5"><title>VS-101A 통합 2D＋3D 헤드 (H 4,820)</title></circle><circle class="sensor" cx="599.0" cy="428.0" r="13.5"><title>VS-101B 통합 2D＋3D 헤드 (H 4,820)</title></circle><rect class="util" x="403.8" y="307.3" width="42.6" height="56.8" rx="0"><title>HPU-101 리프트 유압유닛 600 × 800</title></rect><text class="lbl-small" x="425.1" y="338.7" text-anchor="middle">HPU-101</text><rect class="util" x="317.2" y="284.6" width="66.7" height="59.6" rx="0"><title>VAC-101 이중 진공 스키드 940 × 840</title></rect><text class="lbl-small" x="350.6" y="317.4" text-anchor="middle">VAC-101</text><circle class="reach" cx="751.7" cy="314.4" r="198.8"><title>RB-101 도달 반경 2,800</title></circle><circle class="pedestal" cx="751.7" cy="314.4" r="39.0"><title>RB-101 650 mm 페데스털 Ø1,100</title></circle><text class="lbl" x="751.7" y="318.4" text-anchor="middle">RB-101</text><rect class="rack" x="737.5" y="179.5" width="113.6" height="49.7" rx="0"><title>AFU-RJ-101 전손 리젝트 랙 A 1,600 × 700 (도달 1,662.1)</title></rect><text class="lbl-small" x="794.3" y="207.4" text-anchor="middle">RJ-101A</text><rect class="rack" x="737.5" y="399.6" width="113.6" height="49.7" rx="0"><title>AFU-RJ-101 전손 리젝트 랙 B 1,600 × 700 (도달 1,662.1)</title></rect><text class="lbl-small" x="794.3" y="427.5" text-anchor="middle">RJ-101B</text><rect class="base" x="813.1" y="255.9" width="202.3" height="117.1" rx="0"><title>PT-101 3-2-1 정렬정반 2,850 × 1,650 × H900</title></rect><rect class="deck" x="821.3" y="260.5" width="186.0" height="107.9" rx="0"><title>PT-101 출구 정반 2,620 × 1,520 (이송면 950)</title></rect><rect class="guard" x="842.6" y="240.6" width="195.2" height="147.7" rx="0"><title>JB-201 축적·인계 런 2,750 · 가드 ±1,040</title></rect><text class="lbl" x="914.3" y="302.4" text-anchor="middle">PT-101 · JB-201 투입 스테이션</text><text class="lbl-small" x="914.3" y="332.4" text-anchor="middle">정반 7,530…10,150 · 축적런 7,830…10,580 · 겹침 2,320</text><polyline class="path" points="599.0,200.8 751.7,314.4 914.3,314.4"><title>RB-101 픽업 → 놓기 경로</title></polyline><polyline class="path" points="599.0,428.0 751.7,314.4 914.3,314.4"><title>RB-101 픽업 → 놓기 경로</title></polyline><polyline class="path path-reject" points="599.0,200.8 794.3,204.4"><title>전손 리젝트 경로</title></polyline><line class="dim" x1="286.7" y1="53.2" x2="638.1" y2="53.2"/><line class="dim" x1="286.7" y1="48.2" x2="286.7" y2="58.2"/><line class="dim" x1="638.1" y1="48.2" x2="638.1" y2="58.2"/><text class="dimt" x="462.4" y="49.2" text-anchor="middle">afu 4,950</text><line class="dim" x1="638.1" y1="53.2" x2="1007.3" y2="53.2"/><line class="dim" x1="638.1" y1="48.2" x2="638.1" y2="58.2"/><line class="dim" x1="1007.3" y1="48.2" x2="1007.3" y2="58.2"/><text class="dimt" x="822.7" y="49.2" text-anchor="middle">robot 5,200</text><line class="dim" x1="286.7" y1="39.7" x2="599.0" y2="39.7"/><line class="dim" x1="286.7" y1="34.7" x2="286.7" y2="44.7"/><line class="dim" x1="599.0" y1="34.7" x2="599.0" y2="44.7"/><text class="dimt" x="442.9" y="35.7" text-anchor="middle">적층 4,400</text><line class="dim" x1="599.0" y1="39.7" x2="751.7" y2="39.7"/><line class="dim" x1="599.0" y1="34.7" x2="599.0" y2="44.7"/><line class="dim" x1="751.7" y1="34.7" x2="751.7" y2="44.7"/><text class="dimt" x="675.4" y="35.7" text-anchor="middle">픽업→페데스털 2,150</text><line class="dim" x1="751.7" y1="39.7" x2="914.3" y2="39.7"/><line class="dim" x1="751.7" y1="34.7" x2="751.7" y2="44.7"/><line class="dim" x1="914.3" y1="34.7" x2="914.3" y2="44.7"/><text class="dimt" x="833.0" y="35.7" text-anchor="middle">페데스털→PT 2,290</text><line class="dim" x1="914.3" y1="39.7" x2="1088.9" y2="39.7"/><line class="dim" x1="914.3" y1="34.7" x2="914.3" y2="44.7"/><line class="dim" x1="1088.9" y1="34.7" x2="1088.9" y2="44.7"/><text class="dimt" x="1001.6" y="35.7" text-anchor="middle">jbr 존 중심(13,850)까지 5,010 →</text><line class="dim" x1="719.7" y1="314.4" x2="719.7" y2="428.0"/><line class="dim" x1="714.7" y1="314.4" x2="724.7" y2="314.4"/><line class="dim" x1="714.7" y1="428.0" x2="724.7" y2="428.0"/><text class="dimt" x="726.7" y="374.2" text-anchor="start">Z 1,600</text><line class="dim" x1="1085.4" y1="62.4" x2="1085.4" y2="566.5"/><line class="dim" x1="1080.4" y1="62.4" x2="1090.4" y2="62.4"/><line class="dim" x1="1080.4" y1="566.5" x2="1090.4" y2="566.5"/><text class="dimt" x="1078.4" y="317.4" text-anchor="end">장비 밴드 7,100</text><line class="centre" x1="286.7" y1="314.4" x2="1096.0" y2="314.4"/><text class="lbl-muted" x="1014.4" y="310.4" text-anchor="start">라인 중심</text><text class="lbl-muted" x="27.5" y="664.4" text-anchor="start">X = 공정방향 (mm) · Y = 라인 좌측 · 원점 = afu 존 상류면 / 라인 중심 · 축척 NTS</text></svg></div><div class="table-responsive"><table class="table table-sm"><thead><tr><th>품번</th><th>장비</th><th>수량</th><th>가로 L (mm)</th><th>세로 W (mm)</th><th>높이 H (mm)</th><th>구분</th></tr></thead><tbody><tr><td><code>PV-AFU-101-GA-2101</code></td><td>AFU-101 · 투입·비전·듀얼 리프트 셀</td><td>1</td><td>4,950</td><td>7,100</td><td>5,150</td><td>셀 외형 (GA)</td></tr><tr><td><code>PV-BFC-101-ASM-2201</code></td><td>BFC-101A/B · 단장 분리·수직 승강·180° 반전카세트</td><td>1</td><td>3,700</td><td>2,900</td><td>4,500</td><td>셀 외형 (GA)</td></tr><tr><td><code>PV-RBPT-101-GA-2301</code></td><td>RB-101 · EOAT · PT-101 정렬정반</td><td>1</td><td>5,200</td><td>3,900</td><td>4,150</td><td>셀 외형 (GA)</td></tr><tr><td><code>AFU-FL-101</code></td><td>2.5 t급 전동 지게차</td><td>1EA</td><td>3,100</td><td>1,200</td><td>2,200</td><td>assembly</td></tr><tr><td><code>AFU-LFT-101</code></td><td>30장 팔레트 유압 시저 리프트 A/B</td><td>2식</td><td>2,900</td><td>1,800</td><td>1,850</td><td>assembly</td></tr><tr><td><code>AFU-HPU-101</code></td><td>리프트 유압 파워유닛 (A/B 공용)</td><td>1식</td><td>600</td><td>800</td><td>1,100</td><td>cabinet</td></tr><tr><td><code>AFU-AVM-101</code></td><td>HPU-101 방진 마운트 세트</td><td>1식</td><td>700</td><td>900</td><td>70</td><td>assembly</td></tr><tr><td><code>AFU-OC-101</code></td><td>HPU-101 공랭 오일쿨러</td><td>1EA</td><td>500</td><td>250</td><td>400</td><td>assembly</td></tr><tr><td><code>AFU-SE-101</code></td><td>리프트별 이중 상단 높이·기울기 센서</td><td>4EA</td><td>220</td><td>160</td><td>120</td><td>sensor</td></tr><tr><td><code>AFU-SF-101</code></td><td>듀얼 도킹 게이트·독립 Bay 안전구역</td><td>2식</td><td>3,400</td><td>2,300</td><td>4,600</td><td>sensor</td></tr><tr><td><code>AFU-BW-101</code></td><td>A/B 2칸 독립 벽체·반전 하중프레임</td><td>1식</td><td>2,660</td><td>6,500</td><td>4,900</td><td>assembly</td></tr><tr><td><code>AFU-VG-101</code></td><td>벽체 상부 독립 방진 비전보</td><td>1식</td><td>2,480</td><td>6,700</td><td>5,150</td><td>beam</td></tr><tr><td><code>AFU-VS-101</code></td><td>칸별 통합 2D＋3D 천장 비전</td><td>2EA</td><td>380</td><td>260</td><td>230</td><td>camera</td></tr><tr><td><code>AFU-BFC-101</code></td><td>BFC-101A/B 적층 직상 수직 승강·장축 반전카세트</td><td>2식</td><td>3,700</td><td>2,900</td><td>4,500</td><td>assembly</td></tr><tr><td><code>AFU-BLR-101</code></td><td>BFC 수직 승강캐리지·기계식 락</td><td>2식</td><td>2,850</td><td>1,650</td><td>1,540</td><td>assembly</td></tr><tr><td><code>AFU-BER-101</code></td><td>BFC 오픈센터 엔드링·4점 클램프</td><td>4EA</td><td>1,800</td><td>1,800</td><td>180</td><td>assembly</td></tr><tr><td><code>AFU-BGD-101</code></td><td>BFC 독립 서보·감속기·이중브레이크</td><td>2식</td><td>3,300</td><td>520</td><td>520</td><td>motor</td></tr><tr><td><code>AFU-CD-101</code></td><td>Bay별 중앙벽수납 4열 횡슬라이드 프레임 포획빔</td><td>2식</td><td>2,900</td><td>1,540</td><td>90</td><td>plate</td></tr><tr><td><code>AFU-RB-101</code></td><td>650 mm 고상 듀얼 반전카세트 대응 6축 로봇</td><td>1EA</td><td>2,900</td><td>1,700</td><td>4,150</td><td>assembly</td></tr><tr><td><code>AFU-EOAT-101</code></td><td>이중진공·프레임 안전핑거 EOAT</td><td>1식</td><td>2,180</td><td>920</td><td>280</td><td>gripper</td></tr><tr><td><code>AFU-PT-101</code></td><td>최대 패널 3-2-1 정렬정반</td><td>1EA</td><td>2,850</td><td>1,650</td><td>900</td><td>plate</td></tr><tr><td><code>AFU-AL-101</code></td><td>기준 스토퍼·양측 정렬 푸셔</td><td>1식</td><td>2,850</td><td>1,650</td><td>360</td><td>assembly</td></tr><tr><td><code>AFU-RJ-101</code></td><td>전손 패널 리젝트 랙 (Bay별)</td><td>2식</td><td>1,600</td><td>700</td><td>1,200</td><td>assembly</td></tr><tr><td><code>AFU-VAC-101</code></td><td>이중 진공 스키드·리시버</td><td>1식</td><td>1,020</td><td>480</td><td>1,260</td><td>assembly</td></tr><tr><td><code>JB-201</code></td><td>가드형 축적·인계 컨베이어 (JBR 존 경계를 건넌다)</td><td>1식</td><td>2,750</td><td>2,080</td><td>950</td><td>이송면 높이</td></tr></tbody></table></div><p class="text-small text-muted">외형은 통합 설계도 부품표(REV 동일)와 셀 GA 외형 그대로다 · 상세 치수·재질·체결은 상세도와 제작 도면집을 본다.</p></div>
       <div class="pv-layout-toolbar viz-controls" aria-label="배치도 제어">
         <label class="form-label" for="pv-layout-focus">배치 초점
           <select class="form-select" id="pv-layout-focus">
@@ -1642,7 +1725,7 @@ html>body{padding:0}</style>
     <pre id="pv-handoff-packet" class="pv-handoff-packet" aria-label="AFU-101에서 JBR-201로 전달되는 비전 좌표 패킷"></pre>
   </details>
 
-  <details class="jb-engineering">
+  <details class="jb-engineering" hidden>
     <summary>AFR-101–GBR-301 비전통합 상세 2D 평면배치도 <span class="text-small text-muted">19,150 × 7,100 mm</span></summary>
     <div class="table-responsive afr-layout-wrap">
       <svg class="afr-layout-svg" viewBox="0 0 1600 610" role="img" aria-labelledby="afr-layout-title afr-layout-desc">
@@ -3098,7 +3181,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
     'z-': { axis: 2, keep: 1, label: 'Y 뒤쪽 제거' },
     'y+': { axis: 1, keep: -1, label: 'Z 위쪽 제거' }
   };
-  var state = { tab: 'fab', station: 'afu', explode: 65, labels: true, focus: 'upstream', clearance: true, yaw: -0.62, pitch: 0.48, zoom: 1, cutAxis: 'none', cutAt: 50, elView: 'single', elFeeder: 'F1', smView: 'network', mtStation: 'grm', sfView: 'risk', opView: 'uptime' };
+  var state = { tab: 'fab', station: 'afu', explode: 65, labels: true, focus: 'all', clearance: true, yaw: -0.62, pitch: 0.48, zoom: 1, cutAxis: 'none', cutAt: 50, elView: 'single', elFeeder: 'F1', smView: 'network', mtStation: 'grm', sfView: 'risk', opView: 'uptime' };
   var colorCache = {};
   var canvas = document.createElement('canvas');
   canvas.setAttribute('role', 'img');
@@ -11115,7 +11198,7 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
   var drawingTitles = {
     fab: '2D 상세 제작도',
     explode: '3D 분해·조립도',
-    layout: '전체 장비 상세 배치도',
+    layout: '투입 장비 배치 · 외형 (L × W × H)',
     register: '도면 목록',
     electrical: '전기 인입 단선결선도',
     smart: '스마트 팩토리 · 네트워크·계측·AI 검토',

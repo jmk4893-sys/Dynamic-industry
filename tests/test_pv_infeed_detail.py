@@ -211,6 +211,28 @@ class TestInfeedScene(unittest.TestCase):
         self.assertIn("label.form-switch:has(#pv-case)", self.html)
         self.assertIn("getObjectByName('pvCase')", self.html)
 
+    def test_the_layout_tab_shows_only_infeed_equipment(self):
+        """원본의 전체 장비배치도 대신 투입 구간 평면 배치와 투입 장비 L×W×H 표만."""
+        self.assertNotIn(">전체 장비배치도</button>", self.html)
+        self.assertNotIn("<span>상세 장비배치도</span>", self.html)
+        self.assertNotIn("layout: '전체 장비 상세 배치도'", self.html)
+        self.assertIn('<details class="jb-engineering" hidden>\n    <summary>AFR-101–GBR-301', self.html)
+        self.assertIn("#pv-panel-layout > :not(.pv-infeed-layout) { display: none; }", self.html)
+        panel = self.html.split('<div class="pv-infeed-layout">')[1].split("</div>\n")[0]
+        self.assertIn('aria-label="투입 구간 평면 배치도"', panel)
+        detail = _load("build_infeed_detail")
+        rows = self.builder.spec_rows(self.plant)
+        tags = [r[0] for r in rows]
+        for tag in detail.SCOPE_PART_NUMBERS:
+            self.assertIn(tag, tags)
+        self.assertNotIn("AFR", "".join(tags))
+        for key in self.builder.SPEC_CELLS:
+            s = layout.STATIONS[key]
+            self.assertIn(f"<td><code>{s.sheet}</code></td><td>{s.name}</td><td>1</td>"
+                          f"<td>{detail.n(s.length_mm)}</td><td>{detail.n(s.width_mm)}</td><td>{detail.n(s.height_mm)}</td>", panel)
+        self.assertIn(f"<td>{detail.n(layout.ACCUM_RUN_MM)}</td>", panel)
+        self.assertEqual(panel.count("<tr>") - 1, len(rows))
+
     def test_the_artifact_converter_accepts_it(self):
         conv = _load("build_artifact")
         self.assertIn("infeed-scene", conv.TARGETS)
