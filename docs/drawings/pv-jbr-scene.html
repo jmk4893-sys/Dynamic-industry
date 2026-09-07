@@ -1043,6 +1043,7 @@ svg.lucide {
 }
 
 html>body{padding:0}</style>
+<style>#pv-tab-electrical, #pv-tab-smart, #pv-tab-safety, #pv-tab-ops, [data-pv-drawing-tab="electrical"], [data-pv-drawing-tab="smart"], [data-pv-drawing-tab="safety"], [data-pv-drawing-tab="ops"], #pv-panel-mount .table-responsive, #jb-servo-axes, #jb-noise-vibration, #jb-thermal { display: none !important; }</style>
 <style>.pv-flow-track > li:nth-child(-n+5), .pv-flow-track > li:nth-child(n+9) { display: none; }</style>
 <style>label[for="pv-face-in"], label[for="pv-lift-mode"], label[for="afr-route-mode"], label[for="pv-layout-focus"], #afr-buffer-reset { display: none !important; }</style>
 </head>
@@ -3114,7 +3115,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
     'z-': { axis: 2, keep: 1, label: 'Y 뒤쪽 제거' },
     'y+': { axis: 1, keep: -1, label: 'Z 위쪽 제거' }
   };
-  var state = { tab: 'fab', station: 'jbr', explode: 65, labels: true, focus: 'jbr', clearance: true, yaw: -0.62, pitch: 0.48, zoom: 1, cutAxis: 'none', cutAt: 50, elView: 'single', elFeeder: 'F1', smView: 'network', mtStation: 'grm', sfView: 'risk', opView: 'uptime' };
+  var state = { tab: 'fab', station: 'jbr', explode: 65, labels: true, focus: 'jbr', clearance: true, yaw: -0.62, pitch: 0.48, zoom: 1, cutAxis: 'none', cutAt: 50, elView: 'single', elFeeder: 'F1', smView: 'network', mtStation: 'jbr', sfView: 'risk', opView: 'uptime' };
   var colorCache = {};
   var canvas = document.createElement('canvas');
   canvas.setAttribute('role', 'img');
@@ -6064,7 +6065,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
   }
 
   function renderRegister() {
-    registerBody.innerHTML = register.map(function (row) {
+    registerBody.innerHTML = register.filter(function (row) { return row.join(' ').indexOf('JBR') >= 0; }).map(function (row) {
       return '<tr><td><code>' + escapeText(row[0]) + '</code></td><td>' + escapeText(row[1]) + '</td><td>' + escapeText(row[2]) + '</td><td>' + escapeText(row[3]) + '</td><td>' + escapeText(row[4]) + '</td></tr>';
     }).join('');
   }
@@ -6153,7 +6154,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
   bind(sfViewSel, 'change', function () { setSfView(sfViewSel.value); dispatchChange(); });
   bind(opViewSel, 'change', function () { setOpView(opViewSel.value); dispatchChange(); });
   if (mtStationSel && !mtStationSel.options.length) {
-    mtStationSel.innerHTML = MOUNTINGS.map(function (m) {
+    mtStationSel.innerHTML = MOUNTINGS.filter(function (m) { return m[0] === 'jbr'; }).map(function (m) {
       return '<option value="' + m[0] + '">' + m[0] + ' · ' + (stations[m[0]] ? stations[m[0]].sheet : m[0]) + '</option>';
     }).join('');
     mtStationSel.value = state.mtStation;

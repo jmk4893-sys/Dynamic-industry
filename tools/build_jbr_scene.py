@@ -31,6 +31,11 @@
   치수도 셀 값으로 바꾸며, 패널 맨 위에 **장비 전체 스펙(가로·세로·높이)** 을 세운다.
   값은 배치 모델의 존 폭에서 내고 GA 시트의 `envelope` 과 맞는지 확인한다 —
   갈라지면 멈춘다. 원본 통합 설계도의 배치도는 그대로다.
+* **나머지 탭** — 배치도를 좁히고 나면 남은 탭들이 아직 플랜트 전 장비를 나열한다.
+  셀 단위 자료(지지·장착의 셀 선택, 도면 목록)는 이 셀로 좁히고, 합계가 플랜트
+  값이라 행만 걸러 내면 표와 어긋나는 계통 자료(전기 인입·스마트·안전·가동검수와
+  「설계·PLC·검증」의 서보 38축·소음·열수지)는 숨긴다 — 이 셀 것은 JBR-201
+  상세도가 싣는다. 요소는 남긴다: 원본 렌더러가 첫 렌더에서 그 패널들을 채운다.
 
 원본 파일을 **문자열로 고친다.** 앵커가 정확히 한 곳이어야 하고 아니면 멈춘다 —
 원본이 바뀌어 앵커가 사라지면 파생본이 조용히 옛 모습으로 남는 대신 생성이
@@ -77,6 +82,15 @@ FLOW_FIRST, FLOW_LAST = 6, 8
 
 #: 숨기는 상·하류 전용 조작. JBR 자신의 조작(jb-box-mode·jb-validation-mode)과
 #: 반입 등록 레시피(pv-panel-structure)는 이 셀에서 실제로 결과가 달라지므로 남긴다.
+#: 도면 팝업에서 숨기는 탭 — 합계가 플랜트 값이라 이 셀로 좁힐 수 없는 계통 자료다.
+#: 이 셀의 전기·안전·신뢰도·예비품은 JBR-201 상세도가 싣는다.
+PLANT_TABS: tuple[str, ...] = ("electrical", "smart", "safety", "ops")
+
+#: 「설계·PLC·검증」 안의 플랜트 계통 절 — 서보 38축·플랜트 소음·플랜트 열수지다.
+#: 이 셀의 구동 7축·소음·열은 JBR-201 상세도가 싣는다. 나머지 절(힘 검산·사이클
+#: 타임·인계 패킷)은 이 셀 것이라 남긴다.
+PLANT_SECTIONS: tuple[str, ...] = ("jb-servo-axes", "jb-noise-vibration", "jb-thermal")
+
 #: 배치 초점(`pv-layout-focus`)도 여기 든다 — 배치도에 이 셀만 그리므로 다른
 #: 초점은 빈 자리를 확대할 뿐이다. 요소는 남는다 (원본 렌더러가 읽는다).
 HIDDEN_CONTROLS: tuple[str, ...] = ("pv-face-in", "pv-lift-mode", "afr-route-mode",
@@ -386,6 +400,39 @@ def build() -> str:
     # 팝업 머리글도 셀 것으로.
     t = _once(t, "    layout: '전체 장비 상세 배치도',",
               "    layout: 'JBR-201 장비 스펙 · 셀 배치',", "배치도 팝업 제목")
+
+    # ── 도면 팝업의 나머지 탭 ───────────────────────────────────────────────
+    # 배치도를 좁히고 나니 남은 탭들이 아직 플랜트 전 장비를 나열한다. 둘로 갈린다.
+    #
+    #   ① **셀 단위 자료** — 셀을 골라 보는 것이라 이 셀로 좁히면 그대로 맞는다.
+    #      지지·장착(앵커 집계)과 도면 목록이 여기 든다.
+    #   ② **플랜트 계통 자료** — 전기 인입 단선결선도·스마트 네트워크·안전 정지사슬·
+    #      가동 검수는 합계 자체가 플랜트 값이라 행만 걸러 내면 표와 합계가 어긋난다.
+    #      이 셀 것은 JBR-201 상세도가 따로 싣고 있으므로 여기서는 탭을 숨긴다.
+    #
+    # ① 지지·장착 — 셀 선택을 이 셀 하나로 채우고 기본값도 옮긴다.
+    t = _once(t, "mtStationSel.innerHTML = MOUNTINGS.map(function (m) {",
+              "mtStationSel.innerHTML = MOUNTINGS.filter(function (m) "
+              "{ return m[0] === 'jbr'; }).map(function (m) {", "지지·장착 셀 목록")
+    t = _once(t, "mtStation: 'grm',", "mtStation: 'jbr',", "지지·장착 기본 셀")
+    # 같은 탭의 「지지 부재」 표는 플랜트 집계다 — 게다가 jbr 행이 하나도 없다
+    # (이 셀의 지지는 베이스·독립가드 앵커뿐이라 위 상세도가 그대로 싣는다).
+    # 표를 걸러 내면 빈 표에 플랜트 합계만 남으므로 표째 숨긴다.
+    plant_only = ", ".join(["#pv-panel-mount .table-responsive"]
+                           + [f"#{k}" for k in PLANT_SECTIONS])
+    # ① 도면 목록 — 이 셀의 도면만.
+    t = _once(t, "registerBody.innerHTML = register.map(function (row) {",
+              "registerBody.innerHTML = register.filter(function (row) "
+              "{ return row.join(' ').indexOf('JBR') >= 0; }).map(function (row) {",
+              "도면 목록")
+    # ② 플랜트 계통 탭과 그 자리로 가는 사이드바 버튼을 숨긴다. 요소는 남는다 —
+    #    원본 렌더러가 첫 렌더에서 이 패널들을 채우기 때문이다.
+    plant_tabs = ", ".join(f"#pv-tab-{k}" for k in PLANT_TABS)
+    plant_btns = ", ".join(f'[data-pv-drawing-tab="{k}"]' for k in PLANT_TABS)
+    t = _once(t, "</head>",
+              f"<style>{plant_tabs}, {plant_btns}, {plant_only} "
+              f"{{ display: none !important; }}</style>\n</head>",
+              "플랜트 계통 탭 CSS")
 
     # 스펙은 배치도 패널 맨 위에 세운다.
     t = _once(t, '    <div id="pv-panel-layout" role="tabpanel" '

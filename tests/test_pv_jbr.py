@@ -188,6 +188,37 @@ class TestJbrScene(unittest.TestCase):
                 self.assertIn(now, self.html)
         self.assertIn("PV-JBR-201-GA-3101 · JBR-201 셀 배치", self.html)
 
+    def test_the_console_keeps_only_this_cells_tabs(self):
+        """배치도를 좁히고 나니 남은 탭들이 아직 플랜트 전 장비를 나열했다.
+
+        합계가 플랜트 값이라 행만 걸러 내면 표와 합계가 어긋나는 계통 자료는
+        숨긴다 — 이 셀 것은 JBR-201 상세도가 따로 싣는다.
+        """
+        for key in self.builder.PLANT_TABS:
+            with self.subTest(tab=key):
+                self.assertIn(f"#pv-tab-{key}", self.html)
+                self.assertIn(f'[data-pv-drawing-tab="{key}"]', self.html)
+                self.assertIn(f'<button class="nav-link" id="pv-tab-{key}"', self.plant)
+        for key in self.builder.PLANT_SECTIONS:
+            with self.subTest(section=key):
+                self.assertIn(f"#{key}", self.html)
+                self.assertIn(f'id="{key}"', self.plant)
+        self.assertIn("display: none !important;", self.html)
+        # 이 셀 것은 남는다 — 힘 검산·사이클 타임·인계 패킷.
+        for keep in ("jb-test-force", "jb-cycle-time", "pv-handoff-packet"):
+            self.assertNotIn(f"#{keep},", self.html.split("<style>")[-1][:400])
+
+    def test_the_mount_and_register_tabs_show_this_cell(self):
+        # 지지·장착 — 셀 선택은 이 셀 하나, 플랜트 지지부재 표는 숨긴다 (jbr 행이 없다).
+        self.assertIn("MOUNTINGS.filter(function (m) { return m[0] === 'jbr'; })", self.html)
+        self.assertIn("mtStation: 'jbr',", self.html)
+        self.assertIn("mtStation: 'grm',", self.plant)
+        self.assertIn("#pv-panel-mount .table-responsive", self.html)
+        # 도면 목록 — 이 셀의 도면만.
+        self.assertIn("register.filter(function (row) "
+                      "{ return row.join(' ').indexOf('JBR') >= 0; })", self.html)
+        self.assertIn("registerBody.innerHTML = register.map(", self.plant)
+
     def test_the_3d_casts_no_floor_shadow(self):
         """셀 하나를 보는 화면에서 바닥 그림자는 기구 밑을 덮기만 한다."""
         self.assertIn("shadowMap.enabled=!1;", self.html)
