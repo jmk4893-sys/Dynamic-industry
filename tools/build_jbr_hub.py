@@ -16,6 +16,7 @@ base64 로 실어 두고, 고른 것만 `<iframe srcdoc>` 으로 띄운다. 문�
 * **3D 운전 콘솔** — 셀이 움직이는 것
 * **상세도** — 그 움직임이 어떤 값에서 나왔는지
 * **박리·절단·배출** — 잡고·끊고·떨구는 순간
+* **제작 도면집** — 그것을 만드는 법
 
 머리글의 공정시계 띠와 각 탭의 구간은 손으로 쓰지 않는다. 창은
 `src/pv_preprocess/campaign.py` 에서, 클로즈업이 다루는 구간은
@@ -48,6 +49,7 @@ SHEETS: tuple[tuple[str, str, str, str | None], ...] = (
     ("scene", "docs/drawings/pv-jbr-scene.html", "움직이는 것", None),
     ("detail", "docs/drawings/pv-jbr-detail.html", "값이 나온 자리", None),
     ("closeup", "docs/drawings/pv-jbr-closeup.html", "잡고·끊고·떨구는 순간", "closeup"),
+    ("fab", "docs/drawings/pv-jbr-fab.html", "만드는 법", None),
 )
 
 

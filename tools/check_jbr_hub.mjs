@@ -40,6 +40,7 @@ const WANT = {
   scene: ['JBR-201 정션박스 제거장치', true],
   detail: ['상세도', false],
   closeup: ['박리·절단·배출', true],
+  fab: ['제작 도면집', false],
 };
 
 const browser = await chromium.launch({
@@ -94,5 +95,5 @@ if (errors.length) {
   bad += 1;
   console.error('✗ 페이지 오류:\n  ' + [...new Set(errors)].join('\n  '));
 }
-console.log(bad ? `✗ ${bad} 건` : '✓ 세 도면이 한 벌씩만 열린다');
+console.log(bad ? `✗ ${bad} 건` : `✓ ${Object.keys(WANT).length} 도면이 한 벌씩만 열린다`);
 process.exit(bad ? 1 : 0);

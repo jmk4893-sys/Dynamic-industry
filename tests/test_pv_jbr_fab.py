@@ -1,0 +1,206 @@
+"""JBR-201 제작 패키지 — 정본과 부품표의 일치, 그리고 도면집의 멱등.
+
+제작 도면집은 손으로 쓰지 않는다. `tools/build_jbr_fab.py` 가
+`src/pv_preprocess/jbr_fabrication.py` 에서 찍어 내고, 여기서는
+
+1. 커밋된 파일이 그 출력과 같은지,
+2. 정본이 **부품표에 이미 있는 값**(외형·재질·수량·두께 10 품목)과 어긋나지 않는지,
+3. 체결이 공유 표준(토크·구멍·앵커 매입)을 벗어나지 않는지,
+4. 하중 검산이 성립하는지 — 이용률이 1 을 넘으면 볼트가 모자란다,
+5. 스스로 드러낸 소견(중량·승강 실린더)을 도면집이 **여전히 말하고 있는지**
+
+를 본다. (5) 가 있는 이유는, 소견을 조용히 지워 문서를 깔끔하게 만드는 것이
+가장 쉬운 퇴행이기 때문이다.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import pathlib
+import re
+import sys
+import unittest
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "tools"))
+
+from pv_preprocess import fabrication as fab  # noqa: E402
+from pv_preprocess import handoff, jbr_fabrication as jf, mounting  # noqa: E402
+
+PLANT = (ROOT / "docs/drawings/pv-preprocess-plant.html").read_text(encoding="utf-8")
+SHEET = ROOT / "docs/drawings/pv-jbr-fab.html"
+
+
+def _builder():
+    spec = importlib.util.spec_from_file_location("build_jbr_fab", ROOT / "tools/build_jbr_fab.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _bom() -> dict[str, tuple[str, str, str, str]]:
+    """부품표 JB-* 행 → (품명, 수량, 외형, 재질)."""
+    i = PLANT.find("wo=[[")
+    seg = PLANT[i:i + 400_000]
+    out = {}
+    for m in re.finditer(r'\["(JB-[A-Z0-9-]+)","[^"]*","([^"]*)","([^"]*)",\[([^\]]*)\],"([^"]*)"', seg):
+        out[m.group(1)] = (m.group(2), m.group(3), m.group(4), m.group(5))
+    return out
+
+
+def _base(tag: str) -> str:
+    """JB-FR-001A → JB-FR-001. 부품표 1 식을 부재로 편 것이라 접미가 붙는다."""
+    return re.sub(r"^(JB-[A-Z]+-\d+)[A-Z]$", r"\1", tag)
+
+
+class TestJbrFabModel(unittest.TestCase):
+    def test_every_part_traces_to_the_bom_or_the_mounting_model(self):
+        bom = _bom()
+        for p in jf.parts():
+            if _base(p.tag) in bom:
+                continue
+            # 부품표에 없는 것은 하나뿐이고, 그것은 mounting 이 갖고 있다.
+            self.assertEqual(p.tag, "JB-FR-006", f"출처 없는 부품: {p.tag}")
+
+    def test_the_anchor_plate_comes_from_the_mounting_model(self):
+        """부품표에는 앵커 플레이트가 없다 — mounting 이 갖고 있어 거기서 받는다."""
+        m = next(x for x in mounting.MOUNTINGS if x.station == "jbr")
+        plate = next(p for p in jf.parts() if p.tag == "JB-FR-006")
+        self.assertEqual(m.plate, f"{plate.L:g}×{plate.W:g}×{plate.H:g}")
+        base = next(a for a in m.anchors if a.target == "베이스")
+        self.assertEqual(plate.qty, base.count)
+        self.assertEqual(base.bolt, "M16")
+
+    def test_the_thicknesses_the_bom_states_are_not_re_decided(self):
+        """부품표 재질란이 두께를 적어 둔 품목은 정본이 그 값을 그대로 써야 한다."""
+        b = _builder()
+        self.assertEqual(len(b.BOM_THICKNESS), 10)
+        bom = _bom()
+        for tag, t in b.BOM_THICKNESS.items():
+            part = next(p for p in jf.parts() if p.tag == tag)
+            self.assertEqual(part.t, t, f"{tag} 두께가 부품표와 다르다")
+            # 부품표 재질란이 정말 그 두께를 적고 있는지도 본다.
+            self.assertIn(str(t).rstrip("0").rstrip("."), bom[_base(tag)][3].replace(" ", ""))
+
+    def test_quantities_match_the_bom(self):
+        """수량이 갈리면 조달이 갈린다. 부재로 편 것(접미 A–D)은 빼고 본다."""
+        bom = _bom()
+        for p in jf.parts():
+            if p.tag != _base(p.tag) or p.tag not in bom:
+                continue
+            want = re.match(r"(\d+)", bom[p.tag][1])
+            if want and "식" not in bom[p.tag][1]:
+                self.assertEqual(p.qty, int(want.group(1)), f"{p.tag} 수량")
+
+    def test_every_material_is_defined(self):
+        for p in jf.parts():
+            self.assertIn(p.material, jf.MATERIALS, f"{p.tag} 재질 미정의")
+            self.assertGreater(jf.weight_kg(p), 0, f"{p.tag} 중량 0")
+
+    def test_fasteners_stay_inside_the_shared_standard(self):
+        """볼트를 두 셀이 다르게 조이면 현장이 표를 두 개 들고 다닌다."""
+        for j in jf.joints():
+            self.assertIn(j.size, fab.TORQUE_NM, f"{j.name} 토크 미정의")
+            self.assertIn(j.size, fab.HOLE_MM, f"{j.name} 구멍 미정의")
+            if j.kind == "앵커":
+                self.assertIn(j.size, fab.ANCHOR_EMBED_MM, f"{j.name} 앵커 매입 미정의")
+        for p in jf.parts():
+            for h in p.holes:
+                self.assertIn(h.bolt, fab.HOLE_MM, f"{p.tag} 구멍 {h.bolt}")
+
+    def test_edge_and_pitch_follow_the_stated_rule(self):
+        """가장자리 ≥ 1.5 d · 피치 ≥ 3 d — 체결 표준이 스스로 적은 규칙이다."""
+        for p in jf.parts():
+            for h in p.holes:
+                d = h.dia_mm
+                if h.pattern in ("row", "corners") and h.edge:
+                    self.assertGreaterEqual(h.edge, 1.5 * d, f"{p.tag} 가장자리 {h.edge} < 1.5×{d}")
+                if h.pattern == "row" and h.pitch:
+                    self.assertGreaterEqual(h.pitch, 3 * d, f"{p.tag} 피치 {h.pitch} < 3×{d}")
+
+    def test_the_loaded_joints_have_capacity(self):
+        for c in jf.checks():
+            self.assertTrue(c["ok"], f"{c['name']} 이용률 {c['utilisation']}")
+            self.assertLessEqual(c["utilisation"], 1.0)
+
+    def test_strength_is_not_what_sets_the_bolt_counts(self):
+        """이용률이 1 에 가까워지면 그때부터 강도가 지배한다 — 그 경계를 지킨다."""
+        self.assertTrue(jf.LOAD_IS_NOT_BINDING)
+        self.assertLess(max(c["utilisation"] for c in jf.checks()), 0.5)
+
+    def test_the_blade_load_comes_from_the_plant(self):
+        self.assertEqual(jf.BLADE_THRUST_KN, 15.0)
+        self.assertEqual(jf.HEADS, 3)
+        self.assertIn("15 kN", PLANT)
+
+
+class TestJbrFabFindings(unittest.TestCase):
+    """도면집이 스스로 드러낸 것 — 조용히 지워지지 않게 붙든다."""
+
+    def test_the_body_is_heavier_than_the_drawing_says(self):
+        m = jf.mass_check()
+        self.assertFalse(m["ok"])
+        self.assertGreater(m["ratio"], 1.5)
+        self.assertEqual(m["plant_kg"], 2_200.0)
+        self.assertIn("약 2.2 t", PLANT)
+
+    def test_the_lift_cylinders_are_short(self):
+        lc = jf.lift_check()
+        self.assertFalse(lc["ok"])
+        self.assertGreater(lc["utilisation"], 1.0)
+        self.assertGreater(lc["bore_needed_mm"], jf.LIFT_BORE_MM)
+
+    def test_the_sheet_still_says_both(self):
+        html = SHEET.read_text(encoding="utf-8")
+        self.assertIn("본체가 도면의 약 2.2 t 보다", html)
+        self.assertIn("실린더 2 개로는 승강부를 들지 못한다", html)
+        self.assertIn("하중이 볼트를 정하지 않는다", html)
+        self.assertIn("박리 반력은 바닥에 닿지 않는다", html)
+
+    def test_the_notch_capability_item_is_carried_over(self):
+        """하류가 받아들인 절결의 여유 0 은 제작 단계 관리 항목이다."""
+        html = SHEET.read_text(encoding="utf-8")
+        self.assertIn("절입 깊이 공정능력", html)
+        self.assertIn(handoff.BACKSHEET_NOTCH_SOURCE, html)
+
+
+class TestJbrFabSheet(unittest.TestCase):
+    def setUp(self):
+        self.b = _builder()
+        self.html = SHEET.read_text(encoding="utf-8")
+
+    def test_the_committed_file_is_what_the_builder_makes(self):
+        self.assertEqual(self.html, self.b.build(),
+                         "docs/drawings/pv-jbr-fab.html 이 생성기 출력과 다르다 — "
+                         "PYTHONPATH=src python tools/build_jbr_fab.py 를 돌리고 커밋한다")
+
+    def test_every_part_gets_a_sheet(self):
+        for p in jf.parts():
+            self.assertIn(f">{p.tag}", self.html, f"{p.tag} 부품도가 없다")
+
+    def test_it_says_where_each_value_came_from(self):
+        self.assertIn("부품표에서 온 것", self.html)
+        self.assertIn("하중에서 나온 것", self.html)
+        self.assertIn("관례로 고른 것", self.html)
+        self.assertIn("구멍은 부품표에 하나도 없었다", self.html)
+
+    def test_the_borrowed_drawing_code_does_not_leak_into_the_infeed_sheet(self):
+        """이 셀 재질을 얹었다가 되돌리지 않으면 투입 구간 재질표가 오염된다."""
+        spec = importlib.util.spec_from_file_location(
+            "build_infeed_fab_probe", ROOT / "tools/build_infeed_fab.py")
+        bif = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bif)
+        self.b.build()                                   # 먼저 이 셀을 찍고
+        infeed = bif.build()                             # 바로 투입 구간을 찍는다
+        self.assertNotIn("SKD11", infeed)
+        self.assertNotIn("A7075-T6", infeed)
+        self.assertEqual(infeed, (ROOT / "docs/drawings/pv-infeed-fab.html").read_text(encoding="utf-8"))
+
+    def test_it_carries_a_description_for_the_hub(self):
+        head = self.html[:self.html.index("</head>")]
+        self.assertIn('name="description"', head)
+
+
+if __name__ == "__main__":
+    unittest.main()
