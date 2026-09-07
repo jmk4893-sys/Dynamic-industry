@@ -27,7 +27,7 @@ JBR 재질은 여기서 따로 갖는다 — 공구강·고력 알루미늄은 �
 
 from __future__ import annotations
 
-from . import fabrication as fab
+from . import fabrication as fab, fasteners, mounting
 from .fabrication import (  # 자료형과 체결 표준은 투입 구간과 같은 것을 쓴다.
     ANCHOR_EMBED_MM, Assembly, Commercial, HOLE_MM, Hole, Joint, Part, Step,
     TORQUE_NM, corners, row,
@@ -161,6 +161,52 @@ LOAD_IS_NOT_BINDING = True
 FORCE_LOOP_CLOSES_INSIDE = True
 
 
+# ── 앵커 로드 길이 ───────────────────────────────────────────────────────
+# 기준 브랜치의 체결 부품 도면집이 규칙을 세웠다 — 로드 길이는 **매입 + 베이스플레이트
+# + 그라우트 + 평와셔 + 너트 + 나사산 여유**를 넘어야 한다. 기초 위로 나오는 부속을
+# 안 세면 너트가 안 걸린다. 그 검산이 투입 구간에서 10 건을 잡았고, 같은 규칙을
+# 이 셀에 대 보니 5 건 중 4 건이 짧았다.
+#
+# 그래서 여기서는 길이를 **고르지 않고 계산한다.** `fasteners` 의 부속 쌓임과
+# 표준 공급 계열을 그대로 쓰므로 두 셀이 다른 답을 낼 수 없다.
+
+def _grout_mm() -> float:
+    return float(next(m.grout_mm for m in mounting.MOUNTINGS if m.station == "jbr"))
+
+
+def anchor_need_mm(size: str, plate_t: float) -> float:
+    """앵커 로드가 넘어야 하는 길이 mm."""
+    return (fab.ANCHOR_EMBED_MM[size] + plate_t + _grout_mm()
+            + fasteners.stack(size, "앵커").consumed_mm)
+
+
+def anchor(name: str, parts: str, size: str, qty: int, pool: tuple[Part, ...],
+           note: str = "") -> Joint:
+    """앵커 체결 하나 — 길이는 규칙에서 나온다. 기본 판 두께 20 은 기초 직결일 때."""
+    by = {p.tag: p for p in pool}
+    named = [by[w].t for w in parts.replace("↔", " ").split() if w in by]
+    need = anchor_need_mm(size, named[0] if named else 20.0)
+    return Joint(name, parts, f"{size}×{fasteners.anchor_rod_for(size, need)}",
+                 "앵커", qty, "앵커", note)
+
+
+def anchor_check() -> tuple[dict[str, float | str | bool], ...]:
+    """앵커 길이가 규칙을 넘는지. `fasteners.anchor_lengths()` 와 같은 계산이다."""
+    by = {p.tag: p for p in parts()}
+    out = []
+    for a in ASSEMBLIES:
+        for j in a.joints:
+            if j.kind != "앵커":
+                continue
+            size, length, _ = fasteners._split(j.bolt)
+            named = [by[w].t for w in j.parts.replace("↔", " ").split() if w in by]
+            need = anchor_need_mm(size, named[0] if named else 20.0)
+            out.append({"name": j.name, "bolt": j.bolt, "size": size, "length": length,
+                        "need_mm": round(need, 1), "slack_mm": round(length - need, 1),
+                        "ok": length >= need})
+    return tuple(out)
+
+
 # ── A01 베이스 용접 프레임 · 방진 풋 ─────────────────────────────────────
 _fr_parts = (
     # 부품표는 베이스를 「JB-FR-001 1식」한 줄로 적는다. 1식으로는 만들 수 없어
@@ -211,7 +257,7 @@ _fr_commercial = (
     Commercial("JB-GRT-01", "무수축 그라우트", "비수축 · 압축 60 MPa 이상 · 두께 30", 1),
 )
 _fr_joints = (
-    Joint("앵커 플레이트 → 기초", "JB-FR-006 ↔ 기초", "M16×190", "앵커", 10, "앵커", "베이스 10 (mounting 과 같은 수)"),
+    anchor("앵커 플레이트 → 기초", "JB-FR-006 ↔ 기초", "M16", 10, _fr_parts, "베이스 10 (mounting 과 같은 수)"),
     Joint("X축 빔 → 베이스 프레임", "JB-MX-001 ↔ JB-FR-001", "M16×55", "8.8", 20, "관통", "빔 1 본당 10 · 45 kN 전단 이용률 0.07"),
     Joint("컨베이어 프레임 → 메인 빔", "JB-CV-001 ↔ JB-FR-002", "M12×40", "8.8", 22, "관통"),
     Joint("방진 풋 → 프레임", "JB-FR-004 ↔ JB-FR-001C", "M20×90", "8.8", 10, "탭", "높이조절 나사 · 잠금너트 · 레벨 뒤 마킹"),
@@ -656,15 +702,15 @@ _sf_commercial = (
     Commercial("JB-RJ-004", "리젝트 버퍼 존재·만재 센서", "안전센서 · 만재 경보", 2),
 )
 _sf_joints = (
-    Joint("가드 → 독립 기초", "JB-SF-001 ↔ 기초", "M16×190", "앵커", 4, "앵커", "셀 베이스와 분리"),
+    anchor("가드 → 독립 기초", "JB-SF-001 ↔ 기초", "M16", 4, _sf_parts, "셀 베이스와 분리"),
     Joint("PC 패널 → 프로파일", "JB-SF-002 ↔ JB-SF-001", "M6×16", "8.8", 96, "탭", "패널당 8"),
     Joint("정비도어 힌지·가드락", "JB-SF-003 ↔ JB-SF-001", "M8×25", "8.8", 4, "관통"),
     Joint("가드 방진 풋", "JB-SF-007 ↔ JB-SF-001", "M16×50", "8.8", 4, "탭"),
     Joint("차광 터널 → 프레임", "JB-PV-001 ↔ JB-FR-001A", "M8×25", "8.8", 6, "관통"),
     Joint("절연 구속대·지그", "JB-PV-003/006 ↔ JB-FR-001A", "M8×30", "8.8", 12, "관통", "절연 부시"),
-    Joint("리젝트 스퍼 → 기초", "JB-RJ-001 ↔ 기초", "M12×150", "앵커", 8, "앵커"),
+    anchor("리젝트 스퍼 → 기초", "JB-RJ-001 ↔ 기초", "M12", 8, _sf_parts),
     Joint("리젝트 게이트", "JB-RJ-002 ↔ JB-RJ-001", "M10×35", "8.8", 4, "관통"),
-    Joint("리젝트 버퍼", "JB-RJ-003 ↔ 기초", "M12×150", "앵커", 4, "앵커"),
+    anchor("리젝트 버퍼", "JB-RJ-003 ↔ 기초", "M12", 4, _sf_parts),
 )
 _sf_steps = (
     Step(1, "가드 기초", "가드 프레임을 셀 베이스와 **떨어뜨려** 독립 기초에 앵커 4×M16 으로 세운다.",
@@ -714,7 +760,7 @@ _el_commercial = (
 )
 _el_joints = (
     Joint("제어반 → 스탠드", "JB-EL-001 ↔ JB-EL-004", "M8×25", "8.8", 4, "관통"),
-    Joint("HMI 스탠드 → 바닥", "JB-EL-004 ↔ 기초", "M12×150", "앵커", 4, "앵커"),
+    anchor("HMI 스탠드 → 바닥", "JB-EL-004 ↔ 기초", "M12", 4, _el_parts),
 )
 _el_steps = (
     Step(1, "반 제작", "판금·도장 뒤 DIN 레일에 PLC·드라이브·전원을 얹고 배선한다.", "", "IP54 · 절연 시험"),

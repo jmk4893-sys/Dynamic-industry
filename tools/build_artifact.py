@@ -47,6 +47,11 @@ TARGETS: dict[str, tuple[pathlib.Path, pathlib.Path]] = {
                 pathlib.Path("out/pv-jbr-fab-artifact.html")),
     "jbr-hub": (pathlib.Path("docs/drawings/pv-jbr-hub.html"),
                 pathlib.Path("out/pv-jbr-hub-artifact.html")),
+
+    "fasteners": (pathlib.Path("docs/drawings/pv-fastener-book.html"),
+                  pathlib.Path("out/pv-fastener-book-artifact.html")),
+    "assembly-steps": (pathlib.Path("docs/drawings/pv-assembly-steps.html"),
+                       pathlib.Path("out/pv-assembly-steps-artifact.html")),
 }
 
 #: 태그 이름 **뒤에 경계가 와야** 지운다. `[^>]*` 만 쓰면 이름으로 시작하는 다른

@@ -26,7 +26,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tools"))
 
 from pv_preprocess import fabrication as fab  # noqa: E402
-from pv_preprocess import handoff, jbr_fabrication as jf, mounting  # noqa: E402
+from pv_preprocess import fasteners, handoff, jbr_fabrication as jf, mounting  # noqa: E402
 
 PLANT = (ROOT / "docs/drawings/pv-preprocess-plant.html").read_text(encoding="utf-8")
 SHEET = ROOT / "docs/drawings/pv-jbr-fab.html"
@@ -118,6 +118,19 @@ class TestJbrFabModel(unittest.TestCase):
                     self.assertGreaterEqual(h.edge, 1.5 * d, f"{p.tag} 가장자리 {h.edge} < 1.5×{d}")
                 if h.pattern == "row" and h.pitch:
                     self.assertGreaterEqual(h.pitch, 3 * d, f"{p.tag} 피치 {h.pitch} < 3×{d}")
+
+    def test_the_anchor_rods_are_long_enough(self):
+        """기준 브랜치가 세운 규칙 — 매입 + 판 + 그라우트 + 부속을 넘어야 한다.
+
+        손으로 적었을 때 5 건 중 4 건이 짧았다. 지금은 계산해서 고르므로 어긋날 수
+        없지만, `fasteners` 의 부속 쌓임이 바뀌면 여기서 먼저 깨져야 한다.
+        """
+        got = jf.anchor_check()
+        self.assertEqual(len(got), 5)
+        for c in got:
+            self.assertTrue(c["ok"], f"{c['name']} {c['bolt']} < 필요 {c['need_mm']}")
+            self.assertIn(int(c["length"]), fasteners.ANCHOR_ROD_LENGTHS[c["size"]],
+                          f"{c['name']} 길이가 표준 공급 계열에 없다")
 
     def test_the_loaded_joints_have_capacity(self):
         for c in jf.checks():
