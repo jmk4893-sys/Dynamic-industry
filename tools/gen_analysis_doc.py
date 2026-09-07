@@ -17,6 +17,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import analysis_irbank as IRB  # noqa: E402
+import heatbalance as HBAL  # noqa: E402
 import lampmount as LMT  # noqa: E402
 import analysis_structural as ST  # noqa: E402
 import analysis_thermal as TH  # noqa: E402
@@ -414,6 +415,105 @@ def part4c() -> str:
 </div></div>"""
 
 
+# ── 5c. 열수지 ───────────────────────────────────────────────────────
+def part4d() -> str:
+    rs, ex = HBAL.run()
+    b, su = ex["b"], ex["startup"]
+    rows = "".join(
+        f'<tr><td>{esc(n)}</td><td class="num">{b[k]:.2f}</td>'
+        f'<td class="num">{b[k]/b["p_ir"]:.1%}</td></tr>'
+        for n, k in (("패널 엔탈피 — 이 설비가 하는 일", "panel"),
+                     ("에어록 교환", "airlock"), ("벽 전도", "wall"),
+                     ("램프 단자 전도", "terminal"),
+                     ("침기 = 배기 엔탈피", "infil"), ("포크 반출", "fork")))
+    rq = "".join(
+        f'<tr><td class="k">{esc(q.id)}</td><td>{esc(q.what)}</td>'
+        f'<td class="k">{esc(q.value)}</td><td>{esc(q.owner)}</td>'
+        f'<td>{md(q.why)}</td></tr>' for q in HBAL.requirements())
+    return f"""
+<div class="clause" id="p7"><div class="n">7</div><div class="c">
+  <h3>열수지 — 30 kW 는 새지 않았다</h3>
+  <p>열해석이 요구 <span class="k">R5</span> 를 남겼다: 벽 손실은
+    <span class="m">5.5 kW</span> 로 손실 예산 35 kW 의 16 % 뿐인데 나머지
+    30 kW 의 행방을 아무도 세지 않았다. 세어 보니
+    <strong>질문 자체가 틀려 있었다.</strong> 두 군데가 어긋난다.</p>
+
+  <div class="warn"><strong>① 65 kW 는 계약 처리량의 값이 아니다.</strong>
+    콘솔은 <span class="k">유효 = 정격 100 × η 0.65 = 65 kW</span> 를 쓰지만
+    그것은 <strong>열공정 한계 {HBAL.RATE_THERMAL:.1f} 장/h</strong> 에서
+    패널이 받는 값이다. 라인은 탠덤이 정하는
+    <strong>{HBAL.RATE_CONTRACT:.0f} 장/h</strong> 로 돌고, 그때 패널이 가져가는
+    것은 <span class="m">{b['panel']:.1f} kW</span> 다.
+    <span class="k">100 − 65 = 35</span> 은 <strong>서로 다른 두 운전점에서
+    하나씩 가져온 뺄셈</strong>이었다.</div>
+
+  <div class="warn"><strong>② 빗나간 복사는 손실이 아니다.</strong>
+    η 0.65 는 <strong>결합효율</strong>(지금 이 순간 복사 중 얼마가 패널에
+    흡수되는가)이고 그것이 승온 속도를 정한다. 그런데 챔버는 닫힌 공동이고
+    내피는 연마 STS(ρ 0.8)다 — 패널을 빗나간 복사는 되튀어 결국 패널·벽·배기
+    중 하나로 간다. <strong>정상상태에서 계를 실제로 떠나는 것만이
+    손실이다.</strong> 그것을 세면 <span class="m">{b['loss']:.1f} kW</span> 이고
+    남는 항이 없다 — 30 kW 는 새는 것이 아니라 <strong>돌고 있었다.</strong></div>
+
+  <div class="tw"><table>
+    <caption>제어체적 — 챔버 내부 · 정상상태 · {HBAL.RATE_CONTRACT:.0f} 장/h ·
+      IN = IR 전기 {b['p_ir']:.1f} kW (역산)</caption>
+    <thead><tr><th>나가는 곳</th><th class="num">kW</th><th class="num">IN 대비</th></tr></thead>
+    <tbody>{rows}
+      <tr><th>손실 소계</th><th class="num">{b['loss']:.2f}</th>
+        <th class="num">{b['loss']/b['p_ir']:.1%}</th></tr>
+      <tr><th>정상상태 효율</th><th class="num">{b['eta']:.1%}</th>
+        <th class="num">가정 {HBAL.ETA_ASSUMED:.0%}</th></tr>
+    </tbody>
+  </table></div>
+
+  <p><strong>가정 65 % 는 그대로 둔다.</strong> 결합효율로 체류시간을 잡는 것은
+    옳고, 수지가 내는 {b['eta']:.0%} 보다 낮으므로
+    <span class="m">{b['assumed_loss']-b['loss']:.1f} kW</span> 의 여유를 들고 있다.
+    바꾸는 것은 값이 아니라 <strong>손실 예산의 정의</strong>다 —
+    설치정격 100 kW 는 <strong>승온 속도</strong>가 정하지 정상 소비가 정하지
+    않으며, 정상 소비는 <span class="m">{b['p_ir']:.1f} kW</span> 다.</p>
+
+  <div class="tw"><table>
+    <caption>검토 — 값 · 한계 · 이용률</caption>
+    <thead><tr><th>ID</th><th>항목</th><th class="num">값</th><th class="num">단위</th>
+      <th class="num">한계</th><th class="num">이용률</th><th>판정</th></tr></thead>
+    <tbody>{_rows(rs)}</tbody>
+  </table></div>
+
+  <h4>가장 큰 손실 항은 에어록이고, 그 크기는 부피가 정한다</h4>
+  <p>내문이 챔버와 격리실을 섞고 외문이 격리실과 실온을 섞는다.
+    <strong>격리실이 막다른 방이므로 교환량이 그 부피로 막힌다</strong> — 문
+    크기도 여는 시간도 아니다. 지금 격리실이
+    <span class="m">{HBAL.airlock_volume():.2f} m³</span> 인 것은 셔터가 랙 전고
+    <span class="m">{HBAL.SHUT_H:.2f} m</span> 이기 때문인데,
+    <strong>한 번에 한 단만 쓴다.</strong> 한 단 높이로 줄이면
+    <span class="m">{ex['small']:.2f} kW</span> 로
+    <strong>{b['airlock']-ex['small']:.1f} kW</strong> 를 아낀다
+    (<span class="k">RHB2</span>).</p>
+
+  <div class="note"><strong>포크 항에서 200 배 틀렸다.</strong>
+    포크 42 kg 이 매 사이클 통째로 열화한다고 놓아 13 kW 가 나왔고, 그 값이
+    수지를 η 64.3 % 로 <em>너무 잘</em> 닫았다 — 가정 65 % 와 소수점까지 맞은
+    것이 오히려 신호였다. 그 온도변화는 699 kJ 을 5 초에 넣는 것이라
+    <span class="m">140 kW</span> 가 필요한데 설치정격이 100 kW 다. 챔버가 줄 수
+    없는 열이었다. 실제로는 전열률이 정하고
+    <span class="m">{b['fork']:.2f} kW</span> 다.</div>
+
+  <div class="tw"><table>
+    <caption>근거와 읽는 법</caption>
+    <thead><tr><th>ID</th><th>한계의 근거</th><th>무엇을 뜻하는가</th></tr></thead>
+    <tbody>{_basis(rs)}</tbody>
+  </table></div>
+
+  <div class="tw"><table>
+    <caption>이 검토가 만든 요구</caption>
+    <thead><tr><th>ID</th><th>무엇</th><th>값</th><th>받는 곳</th><th>왜</th></tr></thead>
+    <tbody>{rq}</tbody>
+  </table></div>
+</div></div>"""
+
+
 # ── 5. 요구 ──────────────────────────────────────────────────────────
 def part5() -> str:
     rq = "".join(
@@ -421,7 +521,7 @@ def part5() -> str:
         f'<td class="k">{esc(q.value)}</td><td>{esc(q.owner)}</td>'
         f'<td>{md(q.why)}</td></tr>' for q in TH.requirements())
     return f"""
-<div class="clause" id="p7"><div class="n">7</div><div class="c">
+<div class="clause" id="p8"><div class="n">8</div><div class="c">
   <h3>이 해석이 만든 요구</h3>
   <p>결과에는 두 갈래가 있다. <strong>검토</strong>는 한계가 있어 통과·초과가 나오고,
     <strong>요구</strong>는 해석이 새로 만들어 낸 조건이라 아직 지킬 사람이 없다.
@@ -439,7 +539,7 @@ def part5() -> str:
 # ── 6. 경계 ──────────────────────────────────────────────────────────
 def part6() -> str:
     return """
-<div class="clause" id="p8"><div class="n">8</div><div class="c">
+<div class="clause" id="p9"><div class="n">9</div><div class="c">
   <h3>이 해석이 못 보는 것</h3>
   <p>해석의 한계를 적지 않으면 “해석했다”가 해석하지 않은 것까지 덮는다.
     아래는 <strong>이 두 해석기로는 원리적으로 볼 수 없는 것</strong>이며, 상세설계에서
@@ -467,6 +567,9 @@ def part6() -> str:
         가교가 진행되면 그 열이 수지에 들어온다</td><td>DSC · 파일럿 PT-05</td></tr>
       <tr><td>램프의 단파장 복사 분배</td><td>흡수유속을 규정했다 — 실효 열효율
         65 % 가 그 가정을 통째로 담고 있다</td><td>파일럿 PT-05 (열수지)</td></tr>
+      <tr><td>램프의 파장별 흡수율</td><td>백시트는 근적외를 많이 반사한다.
+        그 몫이 공동 안에서 돌다가 어느 항으로 나가는지는 수지가 못 가른다</td>
+        <td>파일럿 PT-05 (열수지 실측)</td></tr>
       <tr><td>석영관의 고온 크리프</td><td>탄성 처짐만 봤다. 관벽이 변형점
         (1,070 ℃) 아래라 무시했지만 수천 시간의 누적은 안 봤다</td>
         <td>램프 제조사 수평 정격 · 초기 운전</td></tr>
@@ -482,6 +585,7 @@ def build() -> str:
     trs, _ = TH.run()
     irs, _ = IRB.run()
     lms, _ = LMT.run()
+    hbs, _ = HBAL.run()
     over = [r.id for r in list(srs) + list(trs) if not r.ok]
     toc = "".join(
         f'<li><a href="#p{i}"><b>{i}</b>{t}</a></li>'
@@ -518,8 +622,9 @@ def build() -> str:
   <p class="subtitle">이 설비를 정하는 것은 강도가 아니라 <strong>변형과 온도</strong>다.
     구조 <strong>{len(srs)} 건</strong> · 열 <strong>{len(trs)} 건</strong> ·
     IR 뱅크 <strong>{len(irs)} 건</strong> · 램프 지지 <strong>{len(lms)} 건</strong> ·
-    닫힌해 검증 <strong>10 건</strong> · 해석이 만든 요구
-    <strong>{6 + len(IRB.requirements()) + len(LMT.requirements())} 건</strong> ·
+    열수지 <strong>{len(hbs)} 건</strong> · 닫힌해 검증 <strong>10 건</strong> ·
+    해석이 만든 요구 <strong>{6 + len(IRB.requirements()) + len(LMT.requirements())
+    + len(HBAL.requirements())} 건</strong> ·
     검토 초과 <strong>{len(over)} 건</strong> ({' · '.join(over) if over else '없음'}).</p>
 
   <dl class="docref">
@@ -542,6 +647,7 @@ def build() -> str:
 {part4()}
 {part4b()}
 {part4c()}
+{part4d()}
 {part5()}
 {part6()}
 
