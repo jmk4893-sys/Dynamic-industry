@@ -189,3 +189,21 @@ class TestThePlanDocumentIsGenerated(unittest.TestCase):
     def test_no_markdown_leaks_into_the_printed_page(self):
         body = re.sub(r"<style>.*?</style>", "", self.html, flags=re.S)
         self.assertNotIn("**", body)
+
+
+class TestTheSpecimenStateReachesTheDocument(unittest.TestCase):
+    """시료의 상태는 계획 모듈에 한 번 적고 문서와 보고서가 그것을 인용한다.
+
+    파일럿은 상류(AFR-101 · JBR-201)가 서기 전에 돌므로, 양산 투입 상태를
+    손으로 만들어야 한다. 그 조건이 계획서에 없으면 시료는 프레임을 단 채
+    들어오고 1 단계 첫 주가 시료 준비로 사라진다.
+    """
+
+    def test_the_document_states_the_input_condition(self):
+        html = (ROOT / "docs" / "dg-hk60-pilot.html").read_text(encoding="utf-8")
+        self.assertIn(P.SPECIMEN_STATE, html)
+        self.assertIn("5 mm 이하로 자르고 눕히지 않는다", html)
+
+    def test_the_report_and_the_budget_carry_it_too(self):
+        self.assertIn(P.SPECIMEN_STATE, P.report())
+        self.assertIn(P.SPECIMEN_STATE, P.panel_budget()[-1][2])

@@ -1,7 +1,7 @@
 """부품 카탈로그와 그것에서 생성되는 부품도·조립도.
 
 이 저장소가 계속 고쳐 온 실패는 하나다 — 같은 값을 두 곳에 적으면 한 곳만
-고쳐진다. 부품도는 그 위험이 가장 큰 문서다: 174 장을 손으로 그리면 그
+고쳐진다. 부품도는 그 위험이 가장 큰 문서다: 170 장 넘게 손으로 그리면 그
 중 한 장은 반드시 옛 치수로 남고, 그 한 장으로 만든 부품은 안 맞는다.
 
 그래서 도면을 그리지 않고 **생성한다**. 이 시험이 지키는 것은 그 사슬이다.
@@ -387,6 +387,73 @@ class TestTheAssemblyManualIsUsableByABeginner(unittest.TestCase):
         """개념설계 유도값을 확정값처럼 내보내면 그 도면으로 물건을 만든다."""
         self.assertIn("상세설계에서 확정한다", self.html)
         self.assertIn("도면을 손으로 고치지 않는다", self.html)
+
+
+class TestHandoverCountsFollowTheCatalog(unittest.TestCase):
+    """사양서와 README 가 적는 인계 수량은 카탈로그의 길이다.
+
+    사양서 12항이 '174 품목 · 구매품 59 · 부품도 115 장' 으로 남아 있었다 —
+    같은 문서의 3항은 175 를 말하고 있었다. 카탈로그가 한 품목 늘 때마다
+    세 곳이 손으로 따라가야 하므로, 세 곳을 카탈로그에 묶는다. 이 시험이
+    처음 잡은 것이 정렬 가이드 접촉면(P-001-12)이 늘어난 176 이다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.total = len(PT.P)
+        cls.buy = sum(1 for p in PT.P if p.shape.kind == "BUY")
+        cls.fab = cls.total - cls.buy
+        cls.rfq = (ROOT / "docs" / "dg-hk60-rfq.html").read_text(encoding="utf-8")
+        cls.readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    def test_every_drawing_count_in_the_rfq_is_the_catalog_length(self):
+        counts = [int(n) for n in re.findall(r"부품도 (\d+) 장", self.rfq)]
+        self.assertGreaterEqual(len(counts), 2, "사양서가 부품도 장수를 적지 않는다")
+        self.assertEqual(set(counts), {self.total}, f"사양서 {counts} vs 카탈로그 {self.total}")
+
+    def test_the_item_split_in_the_rfq_is_the_catalog_split(self):
+        m = re.search(r"(\d+) 품목</strong>\s*\(제작품 (\d+) · 구매품 (\d+)\)", self.rfq)
+        self.assertIsNotNone(m, "사양서 12항의 품목 분할을 못 찾았다")
+        self.assertEqual(tuple(int(x) for x in m.groups()),
+                         (self.total, self.fab, self.buy))
+
+    def test_the_readme_count_is_the_catalog_length(self):
+        m = re.search(r"부품도 (\d+)장", self.readme)
+        self.assertIsNotNone(m)
+        self.assertEqual(int(m.group(1)), self.total)
+
+
+class TestTheAlignmentGuideNeverTouchesGlassWithSteel(unittest.TestCase):
+    """프레임·정션박스가 제거되어 들어온다 (발주자 확정) — 기준면이 유리 모서리다.
+
+    강재 가이드가 유리에 직접 닿으면 모서리가 깨지고, 그 흠이 가열실
+    열응력의 출발점이 된다. 접촉면은 비금속이어야 하고, 사양서 4.2 가 그것을
+    투입 조건과 함께 말해야 입찰자가 안다.
+    """
+
+    def test_the_contact_face_is_a_non_metal_part_on_the_shuttle(self):
+        face = [p for p in PT.P if p.pid == "P-001-12"]
+        self.assertEqual(len(face), 1)
+        face = face[0]
+        self.assertEqual(face.mod, "M-001")
+        self.assertEqual(face.mat, "UHMW-PE")
+        self.assertEqual(face.qty, 2, "고정측·가동측 한 장씩")
+        self.assertEqual(face.shape.d["L"], PT._SH_L, "가이드 전장을 덮는다")
+        self.assertGreater(PT.density("UHMW-PE"), 0)
+
+    def test_both_guides_send_the_contact_to_the_face(self):
+        by = {p.pid: p for p in PT.P}
+        self.assertIn("P-001-12", by["P-001-04"].note)
+        self.assertIn("접촉면", by["P-001-05"].note)
+        step = [s for s in PT.STEPS["M-001"] if s[0] == 3][0]
+        self.assertIn("UHMW-PE", step[1] + step[2])
+
+    def test_the_rfq_states_the_input_condition_and_the_face(self):
+        rfq = (ROOT / "docs" / "dg-hk60-rfq.html").read_text(encoding="utf-8")
+        self.assertIn("프레임 · 정션박스 · 케이블 제거 후 라미네이트", rfq)
+        self.assertIn("P-001-12", rfq)
+        self.assertNotIn("프레임 제거 여부", rfq, "결정된 것을 협의 항목으로 남겼다")
+        self.assertIn("리본 단부 백시트 면 위 돌출 ≤ 5 mm", rfq)
 
 
 if __name__ == "__main__":

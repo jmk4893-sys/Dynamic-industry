@@ -121,6 +121,9 @@ def part2() -> str:
     PVF)가 상한을 주므로 <strong>로드셀 용량과 진공 패드 면적은 이쪽이
     정한다</strong>. 로트 <strong>C</strong> 는 일부러 깨진 것을 넣는다 — 진공 존
     하나가 새는 조건을 만들어 6 존 제어가 버티는지 본다.</p>
+  <p><strong>시료의 상태는 양산 투입과 같아야 한다</strong> — {md(P.SPECIMEN_STATE)}
+    (발주자 확정). {md(P.SPECIMEN_PREP)}. 이 준비 공수가 조달 일정에 들어가지
+    않으면 1 단계 첫 주가 시료 준비로 사라진다.</p>
   <div class="tw"><table>
     <caption>시료 로트 — 매수는 시험표의 신품 소요에서 거꾸로 센다</caption>
     <thead><tr><th>로트</th><th>무엇</th><th class="num">매수</th><th>왜</th></tr></thead>

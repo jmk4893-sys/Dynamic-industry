@@ -55,7 +55,7 @@ KNIFE_PITCH_MM = 300     # HKB 가 HKS 보다 앞서는 거리
 RAPID_DISTANCE_MM = 300  # 장당 급속이송 등가거리
 
 DEFAULTS = dict(
-    panelLength=2500.0, panelWidth=1400.0, lampPower=2.5,   # 포락선 상한 · 프레임 포함
+    panelLength=2500.0, panelWidth=1400.0, lampPower=2.5,   # 포락선 상한 · 투입은 프레임·정션박스 제거 후 라미네이트
     heatEfficiency=65.0, knifeSpeed=55.0, rapidSpeed=200.0, handlingTime=3.0,
 )
 
