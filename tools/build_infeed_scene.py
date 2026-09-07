@@ -16,6 +16,7 @@
 * **화면** — 흐름표는 JB-201 까지, 도면 모듈 선택은 AFU·BFC·RB/PT 세 장, 배치도
   초점은 상류. 결과가 꺼진 셀에서 일어나는 하류 전용 조작(정션박스 검출·JBR 검증·
   AFR 레시피 시나리오·버퍼 초기화)은 숨기고, 40–48 s 단계 이름은 인계 관점으로 적는다.
+  외장 케이싱은 기구를 가리므로 그룹을 끄고 토글도 치운다.
 
 원본 파일을 **문자열로 고친다.** 앵커가 정확히 한 곳이어야 하고 아니면 멈춘다 —
 원본이 바뀌어 앵커가 사라지면 파생본이 조용히 옛 모습으로 남는 대신 생성이
@@ -96,8 +97,10 @@ def scene_script(takt_s: float, boundary_world_x: float, upstream_world_x: float
   // 매 프레임 다시 켠다 — 그래서 주기적으로 다시 훑고 매 프레임 끈다.
   let frame = 0;
   function scan() {{ S.scene.updateMatrixWorld(true); S.scene.traverse(classify); }}
+  const casing = S.scene.getObjectByName('pvCase');   // 외장 케이싱 — 투입 구간 파생본에서는 뺀다 (기구를 가린다)
   function tick() {{
     if (frame++ % 30 === 0) scan();
+    if (casing) casing.visible = false;
     for (const o of hidden) o.visible = false;
     for (const tr of transit) {{ tr.getWorldPosition(v); tr.visible = v.x < BOUNDARY + 1.4; }}
     requestAnimationFrame(tick);
@@ -162,6 +165,9 @@ def build() -> str:
     for key in DOWNSTREAM_CONTROLS:
         if f'<label class="form-label" for="{key}">' not in t:
             raise SystemExit(f"✗ 하류 조작 {key} 의 라벨이 없다")
+    t = _once(t, '<input class="form-check-input" id="pv-case" type="checkbox" checked>',
+              '<input class="form-check-input" id="pv-case" type="checkbox">', "케이싱 토글 기본 off")
+    hidden_controls += ", label.form-switch:has(#pv-case)"
     t = _once(t, '<button class="btn" id="afr-buffer-reset" type="button">',
               '<button class="btn" id="afr-buffer-reset" type="button" hidden>', "버퍼 초기화 버튼")
     t = _once(t, "</head>", f"<style>{hidden_controls} {{ display: none; }}</style>\n</head>", "하류 조작 CSS")

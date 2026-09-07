@@ -205,6 +205,12 @@ class TestInfeedScene(unittest.TestCase):
         self.assertNotIn("ENGINEERING BASE REV.22", self.html)
         self.assertNotIn("Rev.22 · 비전 2헤드", self.html)
 
+    def test_the_casing_is_removed(self):
+        self.assertIn('id="pv-case" type="checkbox">', self.html)
+        self.assertNotIn('id="pv-case" type="checkbox" checked', self.html)
+        self.assertIn("label.form-switch:has(#pv-case)", self.html)
+        self.assertIn("getObjectByName('pvCase')", self.html)
+
     def test_the_artifact_converter_accepts_it(self):
         conv = _load("build_artifact")
         self.assertIn("infeed-scene", conv.TARGETS)

@@ -1043,7 +1043,7 @@ svg.lucide {
 
 html>body{padding:0}</style>
 <style>.pv-flow-track > li:nth-child(n+7) { display: none; }</style>
-<style>label[for="jb-box-mode"], label[for="jb-validation-mode"], label[for="afr-route-mode"], #afr-buffer-reset { display: none; }</style>
+<style>label[for="jb-box-mode"], label[for="jb-validation-mode"], label[for="afr-route-mode"], #afr-buffer-reset, label.form-switch:has(#pv-case) { display: none; }</style>
 </head>
 <body>
 <div id="jb-removal-operation">
@@ -1268,7 +1268,7 @@ html>body{padding:0}</style>
       <span class="form-check-label">공정 자동추적</span>
     </label>
     <label class="form-check form-switch">
-      <input class="form-check-input" id="pv-case" type="checkbox" checked>
+      <input class="form-check-input" id="pv-case" type="checkbox">
       <span class="form-check-label">외장 케이싱</span>
     </label>    <label class="form-check form-switch">
       <input class="form-check-input" id="pv-labels" type="checkbox">
@@ -11648,8 +11648,10 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
   // 매 프레임 다시 켠다 — 그래서 주기적으로 다시 훑고 매 프레임 끈다.
   let frame = 0;
   function scan() { S.scene.updateMatrixWorld(true); S.scene.traverse(classify); }
+  const casing = S.scene.getObjectByName('pvCase');   // 외장 케이싱 — 투입 구간 파생본에서는 뺀다 (기구를 가린다)
   function tick() {
     if (frame++ % 30 === 0) scan();
+    if (casing) casing.visible = false;
     for (const o of hidden) o.visible = false;
     for (const tr of transit) { tr.getWorldPosition(v); tr.visible = v.x < BOUNDARY + 1.4; }
     requestAnimationFrame(tick);
