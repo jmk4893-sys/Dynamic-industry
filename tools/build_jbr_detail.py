@@ -812,6 +812,9 @@ def output_table(text: str) -> str:
 
     # 전단면이 백시트 기준면보다 아래다 — 그 평면을 지나는 것은 그 높이에서 잘린다.
     stub = -(cut - tol)                                   # 최악(얕은 절입)의 돌출
+    deep = cut + tol                                      # 최악(깊은 절입)의 절결 깊이
+    margin = handoff.BACKSHEET_NOTCH_MAX_MM - deep         # 허용치까지 남은 여유
+    gap_word = "같다" if margin == 0 else f"{abs(margin):g} mm 차이다"
     guards = {
         "리본 단부 돌출": (
             f"L칼날이 POM 기준 슈로 백시트 기준면을 잡고 그보다 <b>{cut:g}±{tol:g} mm 아래</b>에서 "
@@ -834,6 +837,13 @@ def output_table(text: str) -> str:
             f"접착층은 백시트 면 <b>위</b>에 있고 전단면은 그보다 {cut:g} mm 아래다. "
             "그래서 접착은 전량 박스와 함께 떨어진다 — 잔여 0 mm.",
             0.0 <= handoff.SILICONE_RESIDUE_MAX_MM, ""),
+        "정션박스 자리 백시트 절결": (
+            f"절결을 내는 것은 절입 그 자체다 — 깊이가 곧 <b>{cut:g}±{tol:g} mm</b>이고 "
+            f"범위는 L칼날이 쓸고 가는 박스 발자국 안이다. 공차 상단 "
+            f"<b>{deep:g} mm</b> 가 허용치 {handoff.BACKSHEET_NOTCH_MAX_MM:g} mm 와 "
+            f"{gap_word}.",
+            deep <= handoff.BACKSHEET_NOTCH_MAX_MM,
+            "여유 0 — 깊은 쪽 공차를 넘기면 곧바로 불합격이다" if margin == 0 else ""),
     }
     rows = []
     for item, spec, why in handoff.jbox_trace_spec():
@@ -845,17 +855,27 @@ def output_table(text: str) -> str:
     body = table(["항목", "사양", "무엇이 보증하는가", "판정", "왜 상류 조건인가"], rows)
 
     pierce = cut - tol > back
+    # 3.10·3.11 은 f-string 안에 줄바꿈 든 식을 못 읽는다 (PEP 701 은 3.12 부터).
+    tight = ("공차 안에 들면 합격이지만 넘기면 곧바로 불합격이라, 이 치수는 공정능력으로 "
+             "지켜야 하지 도면 공차로 지켜지지 않는다") if margin <= 0 else "여유가 있다"
     note = (
-        f'<div class="note warn"><b>두 가지를 같이 올린다.</b> '
+        f'<div class="note"><b>절결은 하류가 받아들였다 — 닫힌 항목.</b> '
+        f'절입 {cut:g}±{tol:g} mm 가 백시트 {back:g} mm 보다 깊어'
+        f'{" (얕은 쪽 공차에서도)" if pierce else ""} 칼날이 박스 발자국마다 백시트를 '
+        f'관통한다는 것을 이 시트가 스스로 올렸고, 하류가 <b>절입을 줄이는 대신 절결을 '
+        f'받는 쪽</b>으로 답했다 — 권취는 폭 1,400 중 국부 구멍이고, 절입을 백시트 두께 '
+        f'안으로 올리는 쪽은 2,500 패널에서 그 공차를 지키기 어렵다. 그래서 '
+        f'<b>기구는 그대로 둔다.</b> 대신 절결이 한도 붙은 허용 조건으로 위 표에 들어왔다 '
+        f'(<code>{esc(handoff.BACKSHEET_NOTCH_SOURCE)}</code>).</div>'
+        f'<div class="note warn"><b>남은 것 둘.</b> '
         f'① <b>리본이 도면에 없다.</b> JB 품번 어디에도 리본·플러시 절단 항목이 없고 3D 에도 '
         f'리본이 없다. 위 계산은 전단면이 백시트 기준면보다 아래라는 데서 나오지만, 잴 대상이 '
         f'도면에 없으므로 <b>검증되지 않았다</b> — 리본 관통 위치를 도면에 넣고 후검증'
         f'(JBR-VS-201A)에 돌출 높이 측정을 더해야 한다. '
-        f'② <b>절입 {cut:g}±{tol:g} mm 가 백시트 {back:g} mm 보다 깊다</b>'
-        f'{" — 얕은 쪽 공차에서도 그렇다" if pierce else ""}. 그래서 칼날이 박스 발자국마다 '
-        f'백시트를 관통한다. 하류는 백시트를 <b>전장 연속 권취</b>하므로 '
-        f'(같은 사양서 4.3 절) 그 구멍을 감당할 수 있는지는 두 셀이 같이 '
-        f'정해야 한다.</div>')
+        f'② <b>절결 여유가 {margin:g} mm 다.</b> 허용치 '
+        f'{handoff.BACKSHEET_NOTCH_MAX_MM:g} mm 는 절입 공차의 깊은 쪽 {deep:g} mm 를 '
+        f'{"딱 그만큼만 담는다" if margin == 0 else "담는다"} — '
+        f'{tight}. 절입 깊이를 run-at-rate 의 관리 항목(Cpk)으로 올릴 것.</div>')
     return body + note
 
 
@@ -883,12 +903,13 @@ def open_items(text: str) -> str:
          "백시트 기준면보다 아래라 계산은 서지만 잴 대상이 없다. 리본 관통 위치·높이를 "
          "도면에 넣고 후검증에 돌출 측정을 더해야 조건이 검증된다.",
          f"{handoff.JBOX_TRACE_SOURCE} vs 부품표 JB-*"),
-        ("절입이 백시트보다 깊다",
-         f"절입 {n(cut_gap_mm(text)[0])}±{n(cut_gap_mm(text)[1])} mm 는 백시트 "
-         f"{handoff.LAMINATE_BACKSHEET_MM:g} mm 보다 깊다. 칼날이 박스 발자국마다 백시트를 "
-         "관통하는데, 하류는 백시트를 전장 연속 권취한다. 구멍을 감당할지 아니면 절입을 "
-         "접착층 안으로 올릴지는 두 셀이 같이 정해야 한다.",
-         "JB-HD-009 공차란 vs DG-HK60 4.2·4.3"),
+        ("절입 깊이 공정능력",
+         f"절결 허용치 {handoff.BACKSHEET_NOTCH_MAX_MM:g} mm 가 절입 공차의 깊은 쪽 "
+         f"{n(sum(cut_gap_mm(text)))} mm 와 <b>같다</b> — 여유 0. 도면 공차 안에 들면 "
+         "합격이지만 넘기면 곧바로 하류 불합격이므로, 이 치수는 공차가 아니라 "
+         "<b>공정능력</b>으로 지켜야 한다. 목표 Cpk 와 관리 방식이 run-at-rate 확정 항목이다. "
+         "(절결 자체는 하류가 받아들여 닫혔다.)",
+         f"JB-HD-009 공차란 vs {handoff.BACKSHEET_NOTCH_SOURCE}"),
         ("2D·3D 원점", f"GA 시트는 장비 중심을, 3D 장면은 존 중심을 부품 좌표 원점으로 쓴다. "
                     f"가드 여유가 상류 {n(layout.station_edges_mm(CELL)[0])} · 하류 "
                     f"{n(layout.station_edges_mm(CELL)[1])} 로 비대칭이라 둘이 "

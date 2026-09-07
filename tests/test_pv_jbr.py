@@ -316,12 +316,32 @@ class TestJbrDetail(unittest.TestCase):
         # 그래서 돌출은 남지 않는다 — 사양 5 mm 대비 여유.
         self.assertLessEqual(-(cut - tol), handoff.RIBBON_STUB_MAX_MM)
 
-    def test_the_cut_depth_pierces_the_backsheet_and_says_so(self):
-        """고쳐지지 않은 채로 있는 충돌 — 표가 조용해지면 여기서 먼저 걸린다."""
+    def test_the_cut_still_pierces_the_backsheet(self):
+        """절입은 그대로 두기로 했다 — 관통한다는 사실 자체는 변하지 않는다."""
         cut, tol = self.builder.cut_gap_mm(self.plant)
         self.assertGreater(cut - tol, handoff.LAMINATE_BACKSHEET_MM)
-        self.assertIn("절입이 백시트보다 깊다", self.html)
-        self.assertIn("리본이 도면에 없다", self.html)
+
+    def test_the_notch_is_closed_not_dropped(self):
+        """하류가 받아들인 것과 그냥 사라진 것은 다르다 — 근거와 출처가 남아야 한다."""
+        self.assertNotIn("절입이 백시트보다 깊다", self.html)   # 미결이 아니다
+        self.assertIn("절결은 하류가 받아들였다", self.html)
+        self.assertIn(handoff.BACKSHEET_NOTCH_SOURCE, self.html)
+        self.assertIn("리본이 도면에 없다", self.html)          # 이쪽은 아직 미결
+
+    def test_the_notch_allowance_leaves_no_margin(self):
+        """허용치가 공차 깊은 쪽과 같다. 여유가 생기면 문구도 같이 바뀌어야 한다."""
+        cut, tol = self.builder.cut_gap_mm(self.plant)
+        deep = cut + tol
+        self.assertLessEqual(deep, handoff.BACKSHEET_NOTCH_MAX_MM)
+        self.assertEqual(deep, handoff.BACKSHEET_NOTCH_MAX_MM)   # 여유 0
+        self.assertIn("공정능력", self.html)
+        self.assertIn("절입 깊이 공정능력", self.html)
+
+    def test_the_plant_acceptance_carries_the_notch_limit(self):
+        """상·하류가 같은 자를 쓴다 — 합격 조건에도 같은 한도가 있어야 한다."""
+        row = self.plant.split("<td>제거 확인</td>")[1].split("</tr>")[0]
+        self.assertIn(f"절결 깊이 ≤{handoff.BACKSHEET_NOTCH_MAX_MM:g} mm", row)
+        self.assertIn("발자국 면적 이내", row)
 
     def test_no_part_handles_the_ribbon(self):
         """미결의 근거 — 있으면 그때 미결에서 내린다."""

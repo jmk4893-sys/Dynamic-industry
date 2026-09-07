@@ -521,6 +521,19 @@ CABLE_RESIDUE_ALLOWED = False
 #: 하류가 전제하는 적층 구성 — 백시트 두께는 JBR 절입 깊이와 직접 부딪친다.
 LAMINATE_BACKSHEET_MM = 0.30
 
+# 그 부딪침의 결말 (9/7 발주자 승인). JBR 절입 0.6±0.2 mm 가 백시트 0.30 mm 보다
+# 깊다는 것을 이 도면이 스스로 올렸고, 하류가 **절결을 받아들이는 쪽**으로 답했다 —
+# 권취는 폭 1,400 중 국부 구멍이고, 반대로 절입을 백시트 두께 안으로 줄이는 쪽은
+# 2,500 패널에서 그 공차를 지키기 어렵다. 그래서 기구는 그대로 두고, 절결이 **허용**
+# 조건으로 출력 사양에 들어온다. 허용에는 한도가 붙으므로 여기가 그 한도의 자리다.
+BACKSHEET_NOTCH_SOURCE = "docs/dg-hk60-rfq.html §4.2 · 발주자 승인 · 9/7"
+
+#: 절결이 있어도 되는 범위 — 정션박스 발자국 밖으로 나가면 안 된다.
+BACKSHEET_NOTCH_FOOTPRINT_ONLY = True
+
+#: 절결 깊이 상한 (mm · 백시트 면 기준). JBR 절입 공차 상단과 **같은 값**이다.
+BACKSHEET_NOTCH_MAX_MM = 0.8
+
 
 def jbox_trace_spec() -> tuple[tuple[str, str, str], ...]:
     """출력 조건 — (항목, 사양, 왜 상류 조건인가).
@@ -541,4 +554,8 @@ def jbox_trace_spec() -> tuple[tuple[str, str, str], ...]:
         ("접착 실리콘 잔여",
          f"백시트 면 위 ≤ {SILICONE_RESIDUE_MAX_MM:g} mm",
          "핫나이프가 계면으로 들어가는 것을 방해한다"),
+        ("정션박스 자리 백시트 절결",
+         f"허용 — {'발자국 면적 이내 · ' if BACKSHEET_NOTCH_FOOTPRINT_ONLY else ''}"
+         f"깊이 ≤ {BACKSHEET_NOTCH_MAX_MM:g} mm",
+         "허용이지 무제한이 아니다 — 발자국 밖 절결과 더 깊은 절입은 권취를 찢는다"),
     )
