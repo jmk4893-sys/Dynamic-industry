@@ -86,7 +86,6 @@ svg.v { width: 100%; height: auto; display: block; }
 svg text { fill: var(--ink); font-size: 11px; font-family: inherit; }
 svg .m { fill: var(--muted); font-size: 10px; }
 svg .zone { fill: var(--tint); stroke: var(--rule); }
-svg .out { fill: var(--tint-out); stroke: var(--rule); stroke-dasharray: 4 3; }
 svg .base { fill: var(--grey-fill); stroke: var(--ink); stroke-width: .9; }
 svg .deck { fill: var(--sheet); stroke: var(--ink); stroke-width: .9; }
 svg .panel { fill: var(--blue-fill); stroke: var(--blue); stroke-width: 1.2; }
@@ -336,8 +335,8 @@ function buildPlan(svg) {
   svg.setAttribute('viewBox', `-3900 -3800 15400 7700`);
   const g = {};
   rect(svg, zA[0], zA[1], -Zc, M.band - Zc, 'zone', 'afu 존'); rect(svg, zR[0], zR[1], zR[2] - Zc, zR[3] - Zc, 'zone', 'robot 존');
-  rect(svg, zJ[0], 11400, zJ[2] - Zc, zJ[3] - Zc, 'out', 'JBR-201 존 (범위 밖)');
-  text(svg, 11300, zJ[2] - Zc + 260, 'JBR-201 · 범위 밖 →', 'm', 'end');
+  // 하류(JBR-201 부터)는 범위 밖이라 존도 장비도 그리지 않는다 — 방향만 적는다.
+  text(svg, 11300, zJ[2] - Zc + 260, '→ JBR-201 (범위 밖)', 'm', 'end');
   text(svg, zA[0] + 120, M.band - Zc - 200, 'afu 존 · LFT-A/B · BFC', 'm'); text(svg, zR[0] + 120, zR[3] - Zc + 300, 'robot 존 · RB-101 · PT', 'm');
   for (const s of [-1, 1]) {
     const zc = s * M.pick.z, bay = s < 0 ? 'A' : 'B';

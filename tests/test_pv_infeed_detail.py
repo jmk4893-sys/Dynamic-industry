@@ -86,6 +86,16 @@ class TestInfeedDetail(unittest.TestCase):
                 self.assertIn(f"<code>{h.tag}</code>", self.html)
                 self.assertIn(f"PL{h.plr}", self.html)
 
+    def test_the_plan_draws_only_infeed_equipment(self):
+        """평면 배치에는 범위 밖 존을 그리지 않는다 — 방향 표기만 남는다."""
+        plan = self.html.split('<section id="plan">')[1].split("</section>")[0]
+        self.assertNotIn("zone-out", plan)
+        self.assertNotIn("JBR-201 존 (범위 밖)", plan)
+        self.assertNotIn("jbr 존 중심", plan)
+        self.assertNotIn('<span class="l-out">', self.html)
+        for tag in ("FL-101", "LFT-101A", "RB-101", "PT-101 · JB-201", "RJ-101A", "VAC-101", "HPU-101"):
+            self.assertIn(tag, plan)
+
     def test_the_artifact_converter_accepts_it(self):
         """외부에서 받아 오는 자리가 없고 골격 태그가 벗겨지는 문서여야 발행할 수 있다."""
         conv = _load("build_artifact")
@@ -132,6 +142,12 @@ class TestInfeedSim(unittest.TestCase):
             with self.subTest(key=key):
                 self.assertEqual(self.model["permits"][key][0], first)
         self.assertEqual(self.model["permits"]["handshake"][-1], "TRANSFER_COMPLETE")
+
+    def test_the_plan_draws_only_infeed_equipment(self):
+        """운전 콘솔 평면에도 범위 밖 존은 그리지 않는다 — 방향 표기만."""
+        self.assertNotIn("'out', 'JBR-201 존 (범위 밖)'", self.html)
+        self.assertNotIn("svg .out {", self.html)
+        self.assertIn("'→ JBR-201 (범위 밖)'", self.html)
 
     def test_the_clock_is_continuous(self):
         b = self.builder
