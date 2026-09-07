@@ -775,6 +775,65 @@ ASSEMBLIES: tuple[Assembly, ...] = (
 
 
 # ── 파생·검사 ────────────────────────────────────────────────────────────
+#: 조립 단계마다 **그 단계에서 자리에 놓이는 제작품**. 도번 → 단계 순서대로.
+#:
+#: 조립 순서는 글로 있었지만 어느 부품이 어느 단계에 들어가는지는 없었다. 그것이
+#: 없으면 단계별 조립도를 그릴 수 없다 — 무엇을 켜고 무엇을 끌지 모르기 때문이다.
+#: 빈 튜플은 그 단계가 부품을 놓지 않는다는 뜻이다 (기초·그라우트·티칭·시운전).
+#: 상용품(서보·LM·볼스크루·베어링)은 여기 넣지 않는다 — 제작품만 센다.
+STEP_PARTS: dict[str, tuple[tuple[str, ...], ...]] = {
+    "PV-FAB-A01": ((), ("BW-COL-01", "BW-BP-01", "BW-RIB-01"),
+                   ("BW-BM-01", "BW-BM-02", "BW-FL-01"), (), ("BW-PNL-01", "BW-CAP-01")),
+    "PV-FAB-A02": (("VG-AVM-01", "VG-BP-01", "VG-COL-01"), ("VG-HB-01", "VG-MB-01"),
+                   ("VG-CB-01", "VG-CM-01")),
+    "PV-FAB-A03": ((), ("BFC-COL-01", "BFC-BP-01"), ("BFC-CB-01",), (),
+                   ("BFC-BB-01", "BFC-RLR-01", "BFC-RLS-01", "BFC-GRL-01", "BFC-GRB-01"),
+                   ("BFC-RNG-01", "BFC-LUG-01"), ("BFC-DRV-01", "BFC-DRS-01", "BFC-DRB-01"), (),
+                   ("BFC-CAR-01", "BFC-CAR-02", "BFC-CAR-03", "BFC-CAR-04", "BFC-CAR-05",
+                    "BFC-SEP-01", "BFC-SEP-02", "BFC-SEP-04"),
+                   ("BFC-CLP-01", "BFC-PAD-01", "BFC-JGP-01", "BFC-JCR-01"), ("BFC-SNB-01",)),
+    "PV-FAB-A04": (("CD-CAS-01",), ("CD-RL-01", "CD-BM-01"), ("CD-LF-01",)),
+    "PV-FAB-A05": (("PED-01", "PED-02", "PED-03", "PED-04", "PED-05"), (), (),
+                   ("EOAT-01", "EOAT-02", "EOAT-03", "EOAT-04", "EOAT-05"), ()),
+    "PV-FAB-A06": (("PT-LEG-01", "PT-BP-01", "PT-FR-01", "PT-FR-02"), ("PT-TOP-01", "PT-LNR-01"),
+                   ("PT-STP-01", "PT-STP-02", "PT-STH-01", "PT-PSH-01", "PT-PBR-01"), ()),
+    "PV-FAB-A07": (("RJ-FR-01", "RJ-FR-02", "RJ-FR-03", "RJ-BP-01"), ("RJ-DIV-01", "RJ-GDE-01"), ()),
+    "PV-FAB-A08": (("JB-SF-01", "JB-CRS-01", "JB-LEG-01", "JB-BP-01"), ("JB-RL-01",),
+                   ("JB-CHG-01",), ("JB-GRD-01",)),
+    "PV-FAB-A09": ((), ("LFT-GR-01", "LFT-STP-01"), ("SE-BR-01",)),
+    "PV-FAB-A10": (("VAC-FR-01", "VAC-FR-02", "VAC-PL-01", "VAC-SD-01"),
+                   ("HPU-FR-01", "HPU-FR-02", "OC-BR-01")),
+    "PV-FAB-A12": (tuple(f"MB-{n:03d}" for n in
+                         (5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                          21, 22, 23, 24, 25, 26, 27, 28)),),
+    "PV-FAB-A11": (("SF-PST-01", "SF-BP-01", "SF-PNL-01"), ("SF-LCB-01", "SF-SCB-01"), ()),
+}
+
+
+def step_parts(sheet: str, step_no: int) -> tuple[str, ...]:
+    """도번과 단계 번호에서 그 단계가 놓는 제작품 태그."""
+    rows = STEP_PARTS[sheet]
+    if not 1 <= step_no <= len(rows):
+        raise KeyError(f"{sheet} 에 {step_no} 단계가 없다")
+    return rows[step_no - 1]
+
+
+def steps_cover_every_part() -> dict[str, list[str]]:
+    """조립체마다 (한 번도 안 놓인 부품 + 두 번 놓인 부품 + 없는 태그)."""
+    out: dict[str, list[str]] = {}
+    for a in ASSEMBLIES:
+        rows = STEP_PARTS.get(a.sheet, ())
+        seen: list[str] = [tag for row in rows for tag in row]
+        have = {p.tag for p in a.parts}
+        problems = [f"미배정 {t}" for t in sorted(have - set(seen))]
+        problems += [f"중복 {t}" for t in sorted({t for t in seen if seen.count(t) > 1})]
+        problems += [f"없는 태그 {t}" for t in sorted(set(seen) - have)]
+        if len(rows) != len(a.steps):
+            problems.append(f"단계 수 {len(rows)} ≠ {len(a.steps)}")
+        out[a.sheet] = problems
+    return out
+
+
 def assembly(sheet: str) -> Assembly:
     """도번으로 조립체를 찾는다. 없으면 KeyError — 오타가 조용히 지나가지 않는다."""
     for a in ASSEMBLIES:
