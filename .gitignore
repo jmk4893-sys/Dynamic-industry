@@ -219,3 +219,6 @@ __marimo__/
 
 # 산출물 — 원본에서 기계로 찍는다 (tools/render_brand_reference.py)
 out/
+
+# 헤드리스 검사용 playwright 로컬 설치 (npm i playwright) — 저장소에 넣지 않는다
+node_modules/
