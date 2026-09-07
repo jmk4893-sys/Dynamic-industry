@@ -249,6 +249,27 @@ def window() -> tuple[float, float]:
     return campaign.INFEED_S, campaign.INFEED_S + campaign.JBR_S
 
 
+def hardware_span_mm() -> tuple[float, float]:
+    """장비가 실제로 차지하는 X (플랜트 mm) — 존에서 가드 여유를 뺀 것."""
+    z = zone()
+    up, _ = layout.station_edges_mm(CELL)
+    x0 = z.x0_mm + up
+    return x0, x0 + layout.STATION_HARDWARE_X_MM[CELL]
+
+
+def origin_offset_mm() -> float:
+    """장비 중심이 존 중심에서 얼마나 하류인가.
+
+    가드 여유가 상류 475 · 하류 125 로 **비대칭**이라 둘이 겹치지 않는다. GA 시트의
+    부품 좌표는 장비 중심이 원점이고(BASE 를 at[0]=0 에 두면 존 여유가 모델의
+    475/125 로 정확히 떨어진다), 3D 장면은 셀 그룹 원점을 존 중심 `gt` 에 둔다.
+    그래서 같은 부품이 3D 에서 이만큼 상류로 읽힌다 — 상세도는 GA 규약을 따른다.
+    """
+    z = zone()
+    x0, x1 = hardware_span_mm()
+    return (x0 + x1) / 2 - (z.x0_mm + z.x1_mm) / 2
+
+
 # ── SVG ─────────────────────────────────────────────────────────────────
 class Sheet:
     """플랜트 mm 을 화면 px 로 옮기는 작은 제도판."""
@@ -319,8 +340,7 @@ def plan_view(ga: dict[str, object]) -> str:
     acc0, acc1 = layout.accumulator_span_mm()
     up, down = layout.station_edges_mm(CELL)
     hw = layout.STATION_HARDWARE_X_MM[CELL]
-    hw0 = jbr.x0_mm + up
-    hw1 = hw0 + hw
+    hw0, hw1 = hardware_span_mm()
     y0, y1 = jbr.y0_mm, jbr.y1_mm
     cy = LINE_CENTER_Y_MM
 
@@ -369,9 +389,8 @@ def plan_view(ga: dict[str, object]) -> str:
 def elevation_view(ga: dict[str, object]) -> str:
     """정면 — 레벨선과 부품 높이. 원점은 하드웨어 중심, 바닥이 0 이다."""
     jbr = zone("jbr")
-    up = layout.station_edges_mm(CELL)[0]
     hw = layout.STATION_HARDWARE_X_MM[CELL]
-    hw0 = jbr.x0_mm + up
+    hw0, _ = hardware_span_mm()
     ox = hw0 + hw / 2
     top = jbr.height_mm
 
@@ -771,6 +790,11 @@ def open_items() -> str:
          "통합 설계도 상업화 사양표"),
         ("차광 조도", "차광 투입 터널의 허용 내부조도는 실물 위험성평가에서 확정한다.",
          "3D 차광 투입 터널 주석"),
+        ("2D·3D 원점", f"GA 시트는 장비 중심을, 3D 장면은 존 중심을 부품 좌표 원점으로 쓴다. "
+                    f"가드 여유가 상류 {n(layout.station_edges_mm(CELL)[0])} · 하류 "
+                    f"{n(layout.station_edges_mm(CELL)[1])} 로 비대칭이라 둘이 "
+                    f"<b>{n(origin_offset_mm())} mm</b> 어긋난다. 어느 쪽을 제작 기준으로 "
+                    "삼을지는 발주처 확정 항목이다.", "layout.station_edges_mm('jbr')"),
         ("허용전압·방전", "JB-PV-002 의 허용전압과 CAT 등급이 위험성평가 확정 항목이다. "
                      "설계에 방전(단락) 회로가 없으므로, 재고도 남는 전압에서 절단을 "
                      "허가할지 아니면 방전 단계를 넣을지가 같은 자리에서 정해진다.",
@@ -890,6 +914,11 @@ def build() -> str:
 <h2>1. 자리와 범위</h2>
 {scope_table(ga)}
 {plan_view(ga)}
+<div class="note warn">이 시트의 부품 좌표 원점은 <b>장비 중심</b>이다 — GA 시트의 BASE 를
+at[0]=0 에 두면 존 여유가 모델의 {n(layout.station_edges_mm(CELL)[0])} / {n(layout.station_edges_mm(CELL)[1])} mm 로
+정확히 떨어진다. 가드 여유가 비대칭이라 장비 중심은 존 중심보다
+<b>{n(origin_offset_mm())} mm 하류</b>이고, 3D 장면은 셀 그룹 원점을 존 중심에 두므로
+같은 부품이 거기서는 그만큼 상류로 읽힌다. 두 값을 견줄 때 이 차이를 먼저 빼야 한다.</div>
 <p class="lead">평면. 파란 띠가 jbr 존, 그 안의 진한 띠가 하드웨어 폭이다. 왼쪽 노란 띠는
 JB-201 축적·인계 런으로, 셀 귀속은 jbr 이지만 자리는 상류 robot 존으로
 {n(layout.pt_accumulator_overlap_mm())} mm 넘어와 PT-101 정반과 겹친다 — 두 물건이 이미 한

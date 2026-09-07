@@ -175,6 +175,21 @@ class TestJbrDetail(unittest.TestCase):
         self.assertIn(f"{z.y0_mm:,} … {z.y1_mm:,} mm", self.html)
         self.assertIn(f"{layout.STATION_HARDWARE_X_MM['jbr']:,} mm", self.html)
 
+    def test_the_part_origin_is_the_equipment_centre_not_the_zone_centre(self):
+        """GA 부품 좌표의 원점은 장비 중심이다 — BASE 를 거기 두어야 모델의 여유가 나온다."""
+        z = next(x for x in layout.build_zones() if x.key == "jbr")
+        up, down = layout.station_edges_mm("jbr")
+        hw = layout.STATION_HARDWARE_X_MM["jbr"]
+        x0, x1 = self.builder.hardware_span_mm()
+        self.assertEqual((x0, x1), (z.x0_mm + up, z.x0_mm + up + hw))
+        self.assertEqual(x0 - z.x0_mm, up)
+        self.assertEqual(z.x1_mm - x1, down)
+        # 존 중심에 두면 여유가 대칭이 되어 모델의 비대칭 분할과 어긋난다.
+        self.assertNotEqual(up, down, "여유가 대칭이면 이 시트의 원점 주의가 필요 없다")
+        offset = self.builder.origin_offset_mm()
+        self.assertEqual(offset, (up - down) / 2)
+        self.assertIn(f"<b>{self.builder.n(offset)} mm 하류</b>", self.html)
+
     def test_the_detection_scenarios_match_the_force_check(self):
         scen = self.builder.box_scenarios(self.plant)
         cap, heads, counts = self.builder.head_force(self.plant)
