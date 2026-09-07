@@ -334,6 +334,11 @@ class Sheet:
                 f'aria-label="{esc(label)}">' + "".join(self.parts) + "</svg>")
 
 
+#: 평면에 이름을 적는 부품과 그 라벨의 세로 보정 (px). PLATEN·BRIDGE 는 둘 다
+#: 라인 중심에 있어 0 으로 두면 글자가 겹쳐 읽힌다.
+MARKED: dict[str, int] = {"PLATEN": -9, "BRIDGE": 15, "BIN": 3, "HD-1": 3, "HD-3": 3}
+
+
 def plan_view(ga: dict[str, object]) -> str:
     """평면 — 존 경계, 가드 여유, 하드웨어 폭, JB-201 축적런 겹침, 부품 자리."""
     jbr, robot, afr = zone("jbr"), zone("robot"), zone("afr")
@@ -344,12 +349,12 @@ def plan_view(ga: dict[str, object]) -> str:
     y0, y1 = jbr.y0_mm, jbr.y1_mm
     cy = LINE_CENTER_Y_MM
 
-    s = Sheet(acc0 - 700, afr.x0_mm + 1_400, y0 - 780, y1 + 420, 1180)
-    # 인접 존
-    s.rect(robot.x0_mm, jbr.x0_mm, y0, y1, "ghost", f"{robot.key} · {robot.label}")
-    s.rect(afr.x0_mm, afr.x0_mm + 1_400, y0, y1, "ghost", f"{afr.key} · {afr.label}")
-    s.text(jbr.x0_mm - 240, y0 + 210, "RB-101 · PT (상류)", "lbl small", "end")
-    s.text(afr.x0_mm + 240, y0 + 210, "AFR-101 (하류)", "lbl small")
+    s = Sheet(acc0 - 700, jbr.x1_mm + 900, y0 - 780, y1 + 420, 1180)
+    # 상·하류는 범위 밖이라 존도 장비도 그리지 않는다 — 방향만 적는다. 이웃 사각형이
+    # 있으면 어디까지가 이 장비인지 그림에서 갈리지 않는다.
+    s.text(jbr.x0_mm - 240, y0 + 210, "← RB-101 · PT (범위 밖)", "lbl small", "end")
+    # 오른쪽 위는 존·하드웨어 치수선이 쓰고 있다 — 하류 표기는 아래로 내린다.
+    s.text(jbr.x1_mm, y1 + 250, "→ AFR-101 (범위 밖)", "lbl small", "end")
     # 존과 가드
     s.rect(jbr.x0_mm, jbr.x1_mm, y0, y1, "zone", f"jbr 존 {n(jbr.x0_mm)} … {n(jbr.x1_mm)}")
     s.rect(hw0, hw1, cy - 1_100, cy + 1_100, "hw", "하드웨어 폭 (베이스 프레임)")
@@ -368,11 +373,12 @@ def plan_view(ga: dict[str, object]) -> str:
         px, pz = ox + at[0], cy + at[2]
         s.rect(px - size[0] / 2, px + size[0] / 2, pz - size[2] / 2, pz + size[2] / 2,
                "part", f"{pid} · {label} · {n(size[0])}×{n(size[2])} mm")
-        if pid in ("PLATEN", "BRIDGE", "BIN", "HD-1", "HD-3"):
+        if pid in MARKED:
             marks.append((px, pz, pid))
     # 라벨은 모든 부품을 그린 **뒤에** 얹는다 — 나중에 그리는 사각형이 앞 라벨을 덮는다.
+    # PLATEN 과 BRIDGE 는 둘 다 라인 중심에 서므로 세로로 갈라 놓지 않으면 겹쳐 읽힌다.
     for px, pz, pid in marks:
-        s.text(px, pz, pid, "lbl tiny", "middle", dy=3)
+        s.text(px, pz, pid, "lbl tiny", "middle", dy=MARKED[pid])
     # 치수
     s.dim_x(jbr.x0_mm, jbr.x1_mm, y0 - 250, f"존 {n(jbr.x1_mm - jbr.x0_mm)}")
     s.dim_x(hw0, hw1, y0 - 100, f"하드웨어 {n(hw)}")
@@ -810,18 +816,18 @@ CSS = """
  --bg:#f2f4f3;--card:#fff;--card2:#f7f9f8;--line:#d3dad8;--line2:#b6c0bd;
  --ink:#16242a;--ink2:#4b5d63;--ink3:#6f8087;--brand:#1b7cb8;--brand-dim:#e2eef8;
  --accent:#fdca4a;--warn:#9a6b0e;--warn-bg:#fdf4de;--ok:#26714a;--red:#a52a30;
- --zone:#dfe9f4;--hw:#cfe0ef;--part:#9fbdd4;--ghost:#e8ecea;--accum:#f2e6c8;
+ --zone:#dfe9f4;--hw:#cfe0ef;--part:#9fbdd4;--accum:#f2e6c8;
  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
  --bg:#131b1f;--card:#1c262b;--card2:#222d33;--line:#33454b;--line2:#465960;
  --ink:#e6eeef;--ink2:#a4b8bd;--ink3:#7a9098;--brand:#4aa8e0;--brand-dim:#10324a;
  --accent:#fdca4a;--warn:#e2a72c;--warn-bg:#3a2f12;--ok:#4fb27c;--red:#e2585f;
- --zone:#1d3448;--hw:#24445c;--part:#3d6584;--ghost:#232f34;--accum:#463b1c;}}
+ --zone:#1d3448;--hw:#24445c;--part:#3d6584;--accum:#463b1c;}}
 :root[data-theme="dark"]{color-scheme:dark;
  --bg:#131b1f;--card:#1c262b;--card2:#222d33;--line:#33454b;--line2:#465960;
  --ink:#e6eeef;--ink2:#a4b8bd;--ink3:#7a9098;--brand:#4aa8e0;--brand-dim:#10324a;
  --accent:#fdca4a;--warn:#e2a72c;--warn-bg:#3a2f12;--ok:#4fb27c;--red:#e2585f;
- --zone:#1d3448;--hw:#24445c;--part:#3d6584;--ghost:#232f34;--accum:#463b1c;}
+ --zone:#1d3448;--hw:#24445c;--part:#3d6584;--accum:#463b1c;}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
  font:15px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;}
@@ -850,7 +856,6 @@ table.kv th{width:180px;white-space:nowrap;color:var(--ink2)}
 svg.sheet{display:block;width:100%;height:auto;background:var(--card);
  border:1px solid var(--line);border-radius:9px;margin:12px 0}
 svg .zone{fill:var(--zone);stroke:var(--line2);stroke-width:1}
-svg .ghost{fill:var(--ghost);stroke:var(--line);stroke-width:1}
 svg .hw{fill:var(--hw);stroke:var(--line2);stroke-width:1}
 svg .accum{fill:var(--accum);stroke:var(--line2);stroke-width:1;fill-opacity:.75}
 svg .part{fill:var(--part);stroke:var(--ink2);stroke-width:.7;fill-opacity:.86}

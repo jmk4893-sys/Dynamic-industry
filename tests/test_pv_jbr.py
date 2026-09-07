@@ -188,6 +188,12 @@ class TestJbrScene(unittest.TestCase):
                 self.assertIn(now, self.html)
         self.assertIn("PV-JBR-201-GA-3101 · JBR-201 셀 배치", self.html)
 
+    def test_the_3d_casts_no_floor_shadow(self):
+        """셀 하나를 보는 화면에서 바닥 그림자는 기구 밑을 덮기만 한다."""
+        self.assertIn("shadowMap.enabled=!1;", self.html)
+        self.assertNotIn("shadowMap.enabled=!0;", self.html)
+        self.assertIn("shadowMap.enabled=!0;", self.plant)   # 원본은 그대로다
+
     def test_the_render_check_exists(self):
         """무엇이 실제로 그려졌는지는 브라우저만 안다 — 그리는 쪽이 던지는 예외도."""
         check = (ROOT / "tools/check_jbr_layout.mjs").read_text(encoding="utf-8")
@@ -251,6 +257,26 @@ class TestJbrDetail(unittest.TestCase):
         self.assertIn(f"{z.x0_mm:,} … {z.x1_mm:,} mm", self.html)
         self.assertIn(f"{z.y0_mm:,} … {z.y1_mm:,} mm", self.html)
         self.assertIn(f"{layout.STATION_HARDWARE_X_MM['jbr']:,} mm", self.html)
+
+    def test_the_plan_draws_this_cell_only(self):
+        """상세도 평면에서도 이웃 존 사각형을 뺐다 — 방향만 남긴다."""
+        self.assertNotIn('class="ghost"', self.html)
+        self.assertNotIn("--ghost", self.html)
+        self.assertNotIn("svg .ghost{", self.html)
+        for label in ("← RB-101 · PT (범위 밖)", "→ AFR-101 (범위 밖)"):
+            with self.subTest(label=label):
+                self.assertIn(label, self.html)
+        # 이웃 존 이름표가 사각형 주기로 남아 있지 않다.
+        for gone in ("robot · RB-101", "afr · AFR-101"):
+            with self.subTest(gone=gone):
+                self.assertNotIn(f'<title>{gone}', self.html)
+
+    def test_the_plan_labels_do_not_collide(self):
+        """PLATEN 과 BRIDGE 는 둘 다 라인 중심이라 보정 없이는 겹쳐 읽힌다."""
+        marked = self.builder.MARKED
+        self.assertIn("PLATEN", marked)
+        self.assertIn("BRIDGE", marked)
+        self.assertGreaterEqual(abs(marked["PLATEN"] - marked["BRIDGE"]), 12)
 
     def test_the_part_origin_is_the_equipment_centre_not_the_zone_centre(self):
         """GA 부품 좌표의 원점은 장비 중심이다 — BASE 를 거기 두어야 모델의 여유가 나온다."""
