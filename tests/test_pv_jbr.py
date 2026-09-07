@@ -22,6 +22,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCENE = ROOT / "docs/drawings/pv-jbr-scene.html"
 DETAIL = ROOT / "docs/drawings/pv-jbr-detail.html"
 CLOSEUP = ROOT / "docs/drawings/pv-jbr-closeup.html"
+HUB = ROOT / "docs/drawings/pv-jbr-hub.html"
 
 
 def _load(name: str):
@@ -562,6 +563,95 @@ class TestJbrCloseup(unittest.TestCase):
             with self.subTest(tag=tag):
                 self.assertEqual(m[key], self.builder.bom_tolerance(self.plant, tag, name))
                 self.assertIn(m[key], self.html)
+
+
+class TestJbrHub(unittest.TestCase):
+    """도면 모음 — 세 벌을 **합치지 않고** 한 장에 담았는가."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.builder = _load("build_jbr_hub")
+        cls.html = HUB.read_text(encoding="utf-8")
+        # base64 로 실린 도면 본문을 걷어 낸 「액자만」의 마크업.
+        cls.frame = re.sub(r'<script type="text/plain" id="doc-[a-z]+">[^<]*</script>',
+                           "", cls.html)
+
+    def test_the_committed_file_is_what_the_builder_makes(self):
+        self.assertEqual(self.html, self.builder.build(),
+                         "docs/drawings/pv-jbr-hub.html 이 생성기 출력과 다르다 — "
+                         "PYTHONPATH=src python tools/build_jbr_hub.py 를 돌리고 커밋한다")
+
+    def test_each_sheet_is_carried_once_and_byte_exact(self):
+        """담은 것이 그 도면 파일 그대로여야 한다 — 한 벌씩, 바이트 하나까지."""
+        import base64
+        for key, rel, _role, _span in self.builder.SHEETS:
+            with self.subTest(sheet=key):
+                marker = f'<script type="text/plain" id="doc-{key}">'
+                self.assertEqual(self.html.count(marker), 1, "같은 도면이 두 번 실렸다")
+                b64 = re.search(re.escape(marker) + r"([^<]*)</script>", self.html).group(1)
+                self.assertEqual(base64.b64decode(b64), (ROOT / rel).read_bytes())
+
+    def test_the_frame_does_not_paste_sheet_markup(self):
+        """도면을 풀어서 붙이면 서식이 섞이고 같은 표가 두 번 나온다."""
+        for tag in ("<table", "<canvas", "<svg", "<h2"):
+            with self.subTest(tag=tag):
+                self.assertNotIn(tag, self.frame)
+
+    def test_the_tab_labels_come_from_the_sheets_themselves(self):
+        for key, rel, _role, _span in self.builder.SHEETS:
+            title, desc = self.builder.sheet_meta(ROOT / rel)
+            with self.subTest(sheet=key):
+                self.assertIn(title, self.frame)
+                self.assertIn(desc, self.frame)
+
+    def test_the_clock_band_comes_from_the_campaign_model(self):
+        infeed, jbr, afr = campaign.INFEED_S, campaign.JBR_S, campaign.AFR_S
+        n = self.builder.num
+        self.assertIn(f'style="flex:{infeed:g}"', self.frame)
+        self.assertIn(f'style="flex:{jbr:g}"', self.frame)
+        self.assertIn(f'style="flex:{afr:g}"', self.frame)
+        # 머리글이 사용자가 부른 그 창을 그대로 적는다.
+        self.assertIn(f"JB-201 인계 <b>{n(infeed)} s</b>", self.frame)
+        self.assertIn(f"AFR-101 인계\n    <b>{n(infeed + jbr)} s</b>", self.frame)
+        self.assertIn(f"종단 체류 <b>{n(infeed + jbr + afr)} s</b>", self.frame)
+
+    def test_the_closeup_span_is_read_from_its_builder(self):
+        closeup = _load("build_jbr_closeup")
+        lo, hi = self.builder.closeup_window()
+        self.assertEqual(lo, closeup.T_FROM + campaign.INFEED_S)
+        self.assertEqual(hi, closeup.T_TO + campaign.INFEED_S)
+        self.assertIn(f'"from":{lo},"to":{hi}', self.html)
+
+    def test_a_sheet_without_its_own_description_fails_the_build(self):
+        """탭 설명을 손으로 쓰지 않으려면 도면이 스스로 적어야 한다."""
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".html", encoding="utf-8",
+                                         delete=False) as fh:
+            fh.write("<html><head><title>이름만 있다</title></head><body></body></html>")
+            bare = pathlib.Path(fh.name)
+        try:
+            with self.assertRaises(SystemExit):
+                self.builder.sheet_meta(bare)
+        finally:
+            bare.unlink()
+
+    def test_the_artifact_converter_accepts_it(self):
+        conv = _load("build_artifact")
+        self.assertIn("jbr-hub", conv.TARGETS)
+        body = conv.convert(self.html, HUB)
+        self.assertIn("<title>JBR-201 정션박스·케이블 제거장치</title>", body)
+        # 담은 도면은 base64 라 변환기의 골격 벗기기에 닿지 않는다.
+        for key, rel, _role, _span in self.builder.SHEETS:
+            self.assertIn(f'id="doc-{key}"', body)
+
+    def test_the_readme_and_render_check_list_the_sheet(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("docs/drawings/pv-jbr-hub.html", readme)
+        self.assertIn("tools/build_jbr_hub.py", readme)
+        check = (ROOT / "tools/check_jbr_hub.mjs").read_text(encoding="utf-8")
+        self.assertIn("docs/drawings/pv-jbr-hub.html", check)
+        for key, _rel, _role, _span in self.builder.SHEETS:
+            self.assertIn(f"{key}:", check)
 
 
 class TestPlantConsoleDefects(unittest.TestCase):

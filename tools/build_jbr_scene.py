@@ -172,7 +172,11 @@ def build() -> str:
     # ── 표제·표식 ────────────────────────────────────────────────────────────
     # 이 제목이 그대로 아티팩트 이름이 된다 (tools/build_artifact.py).
     t = _once(t, "<title>태양광 전처리 통합 플랜트</title>",
-              "<title>JBR-201 정션박스 제거장치</title>", "제목")
+              "<title>JBR-201 정션박스 제거장치</title>\n"
+              '<meta name="description" content="폐 태양광 패널 전처리 라인의 JBR-201 '
+              '정션박스·케이블 제거 셀만 남긴 3D 운전 콘솔 — 차광·2극 전압확인부터 '
+              '도체 A→B 순차절단·L칼날 동시박리·진공 포획·수거함 일괄배출·후검증까지 '
+              '11 단계를 플랜트 40–85 s 창에서 반복 재생한다.">', "제목")
     t = _once(t, '<span class="viz-badge">124.03 s TRACE</span>',
               f'<span class="viz-badge">{campaign.JBR_S:g} s TRACE · JBR-201</span>', "배지")
     t = _once(t, '<h2 id="pv-v22-title">태양광 패널 전처리 통합 플랜트</h2>',
