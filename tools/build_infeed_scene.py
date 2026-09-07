@@ -14,7 +14,8 @@
   다섯 개만 남긴다. 자동추적은 원래 투입 단계마다 stack·turner·robot·handoff 를
   고르므로 그대로 둔다.
 * **화면** — 흐름표는 JB-201 까지, 도면 모듈 선택은 AFU·BFC·RB/PT 세 장, 배치도
-  초점은 상류.
+  초점은 상류. 결과가 꺼진 셀에서 일어나는 하류 전용 조작(정션박스 검출·JBR 검증·
+  AFR 레시피 시나리오·버퍼 초기화)은 숨기고, 40–48 s 단계 이름은 인계 관점으로 적는다.
 
 원본 파일을 **문자열로 고친다.** 앵커가 정확히 한 곳이어야 하고 아니면 멈춘다 —
 원본이 바뀌어 앵커가 사라지면 파생본이 조용히 옛 모습으로 남는 대신 생성이
@@ -45,6 +46,8 @@ KEEP_VIEWS: tuple[str, ...] = ("stack", "afu", "robot", "turner", "handoff")
 KEEP_STATIONS: tuple[str, ...] = ("afu", "bfc", "robot")
 #: 흐름표에서 남기는 단계 수 — FL/LFT · SE/VS · BFC · RB · PT · JB-201.
 KEEP_FLOW_STEPS = 6
+#: 숨기는 하류 전용 조작 — 정션박스 검출 시나리오 · JBR 안전·품질 검증 시나리오 · AFR 레시피 시나리오.
+DOWNSTREAM_CONTROLS: tuple[str, ...] = ("jb-box-mode", "jb-validation-mode", "afr-route-mode")
 
 
 def _once(text: str, old: str, new: str, what: str) -> str:
@@ -83,9 +86,9 @@ def scene_script(takt_s: float, boundary_world_x: float, upstream_world_x: float
       const bb = o.geometry.boundingBox, sx = Math.abs(o.matrixWorld.elements[0]) || 1;
       minX = v.x + bb.min.x * sx; maxX = v.x + bb.max.x * sx;
     }}
-    // 라인 전장을 지나는 부재(바닥·바닥 격자)는 남긴다. 크레인 주행로·공압 주관처럼 하류로 25 m 뻗는
-    // 건물 측 부재는 투입 구간 밖이라 끈다 — 형상은 그대로다.
-    const floor = o.type === 'GridHelper' || (o.geometry && o.geometry.type === 'PlaneGeometry');
+    // 라인 전장을 지나는 부재 중 바닥면만 남긴다. 60 m 바닥 격자와 크레인 주행로·공압 주관처럼
+    // 하류로 25 m 뻗는 건물 측 부재는 투입 구간 밖이라 끈다 — 형상은 그대로다.
+    const floor = o.geometry && o.geometry.type === 'PlaneGeometry';
     const spans = minX < UPSTREAM && maxX > BOUNDARY;
     if (spans ? !floor : v.x > BOUNDARY) hidden.push(o);
   }}
@@ -153,6 +156,26 @@ def build() -> str:
               '<h3 id="pv-flow-title">투입 구간 공정 흐름 <span class="text-small text-muted">JBR-201 부터 범위 밖</span></h3>', "흐름표 제목")
     t = _once(t, "</head>",
               f"<style>.pv-flow-track > li:nth-child(n+{KEEP_FLOW_STEPS + 1}) {{ display: none; }}</style>\n</head>", "흐름표 CSS")
+    # 하류 전용 조작 — 결과가 꺼진 셀에서 일어나 화면에 나타나지 않으므로 숨긴다.
+    # 패널 구조 레시피(pv-panel-structure)는 반입 등록에서 걸리는 투입 쪽 조작이라 남긴다.
+    hidden_controls = ", ".join(f'label[for="{k}"]' for k in DOWNSTREAM_CONTROLS) + ", #afr-buffer-reset"
+    for key in DOWNSTREAM_CONTROLS:
+        if f'<label class="form-label" for="{key}">' not in t:
+            raise SystemExit(f"✗ 하류 조작 {key} 의 라벨이 없다")
+    t = _once(t, '<button class="btn" id="afr-buffer-reset" type="button">',
+              '<button class="btn" id="afr-buffer-reset" type="button" hidden>', "버퍼 초기화 버튼")
+    t = _once(t, "</head>", f"<style>{hidden_controls} {{ display: none; }}</style>\n</head>", "하류 조작 CSS")
+    # 40 – 48 s 단계 이름 — JBR 자가점검 문구 대신 인계 관점으로
+    t = _once(t, '{name:"PANEL_OFFER·DATA_ACK / JBR 자가점검",start:0,end:2},{name:"차광·패널 ID·2극 전압 확인",start:2,end:8}',
+              '{name:"JB-201 → JBR-201 인계 — PANEL_OFFER·DATA_ACK · JBR 투입구 진입 (범위 밖)",start:0,end:2},'
+              f'{{name:"JBR-201 투입 롤러 이송 — {campaign.JBR_STOPPER_OFFSET_S:g} s 뒤 스토퍼 → 다음 장 방출",start:2,end:{campaign.JBR_STOPPER_OFFSET_S:g}}}',
+              "인계 구간 단계 이름")
+    # 표식 — 원본의 REV.22 문구 대신 도면 개정과 범위를 적는다
+    rev = re.search(r"DRAWING_REVISION = '([^']+)'", t).group(1)
+    t = _once(t, "DYNAMIC INDUSTRY · REV.22 VIDEO-FIRST · ENGINEERING BASE REV.22",
+              f"DYNAMIC INDUSTRY · 투입 구간 파생본 · ENGINEERING BASE {rev}", "머리글")
+    t = _once(t, '<div class="text-small"><code>Rev.22 · 비전 2헤드·듀얼 반전카세트·JBR·AFR 통합 시뮬레이션</code></div>',
+              f'<div class="text-small"><code>{rev} · 투입 구간 — 듀얼 리프트·반전카세트·RB-101·PT-101·JB-201 인계</code></div>', "상태 칩")
     # 장면을 좁히는 모듈 — 원본 모듈 뒤에 선다
     t = _once(t, "</body>", scene_script(takt, boundary, upstream) + "</body>", "장면 모듈")
     t = _once(t, "<!doctype html>\n",

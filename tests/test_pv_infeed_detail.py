@@ -195,6 +195,16 @@ class TestInfeedScene(unittest.TestCase):
         robot_end = next(z.x1_mm for z in layout.build_zones() if z.key == "robot")
         self.assertIn(f"const BOUNDARY = {(robot_end - 24_750) / 1000 + 0.5:g};", self.html)
 
+    def test_downstream_controls_are_hidden_and_the_handoff_is_named(self):
+        for key in self.builder.DOWNSTREAM_CONTROLS:
+            self.assertIn(f'label[for="{key}"]', self.html)
+        self.assertIn('id="afr-buffer-reset" type="button" hidden', self.html)
+        self.assertIn('<label class="form-label" for="pv-panel-structure">', self.html, "구조 레시피는 투입 쪽 조작이라 남아야 한다")
+        self.assertNotIn("JBR 자가점검", self.html)
+        self.assertIn("JB-201 → JBR-201 인계", self.html)
+        self.assertNotIn("ENGINEERING BASE REV.22", self.html)
+        self.assertNotIn("Rev.22 · 비전 2헤드", self.html)
+
     def test_the_artifact_converter_accepts_it(self):
         conv = _load("build_artifact")
         self.assertIn("infeed-scene", conv.TARGETS)
