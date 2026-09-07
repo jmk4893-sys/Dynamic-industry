@@ -654,6 +654,29 @@ def stop_table() -> str:
     return table(["항목", "값"], rows, "kv")
 
 
+def by_prefix(parts: list[list[object]], prefix: str) -> list[list[object]]:
+    return [r for r in parts if str(r[0]).startswith(prefix)]
+
+
+def chain_table(parts: list[list[object]], prefix: str, head: str) -> str:
+    """부품표에서 접두어로 사슬을 꺼낸다 — 품번 순서가 곧 공정 순서다."""
+    rows = [[i, f"<code>{esc(r[0])}</code>", esc(r[2]), esc(r[3]), esc(r[7]), esc(r[9])]
+            for i, r in enumerate(by_prefix(parts, prefix), 1)]
+    if not rows:
+        raise SystemExit(f"✗ 부품표에 {prefix}* 가 없다")
+    return table(["#", "품번", head, "수량", "공차·판정", "역할"], rows, num_cols=(0,))
+
+
+def discharge_is_absent(text: str) -> bool:
+    """이 설계에 전기적 방전 회로가 있는가 — 도면 전체에서 그 낱말을 찾는다.
+
+    `잔압`(공압 덤프)과 헷갈리면 안 된다. 여기서 묻는 것은 패널 자체를 단락·방전해
+    전압을 없애는 회로이고, 그런 것은 이 도면에 없다 — 차광으로 발전을 억제하고
+    2채널로 **재어서** 절단을 허가할 뿐이다.
+    """
+    return "방전" not in text and "discharge" not in text.lower()
+
+
 def reliability_table() -> str:
     block = next(b for b in reliability.BLOCKS if b.tag == "RB-JBR")
     budget = reliability.downtime_budget_h()
@@ -748,6 +771,10 @@ def open_items() -> str:
          "통합 설계도 상업화 사양표"),
         ("차광 조도", "차광 투입 터널의 허용 내부조도는 실물 위험성평가에서 확정한다.",
          "3D 차광 투입 터널 주석"),
+        ("허용전압·방전", "JB-PV-002 의 허용전압과 CAT 등급이 위험성평가 확정 항목이다. "
+                     "설계에 방전(단락) 회로가 없으므로, 재고도 남는 전압에서 절단을 "
+                     "허가할지 아니면 방전 단계를 넣을지가 같은 자리에서 정해진다.",
+         "JB-PV-002 공차란"),
     ]
     return table(["항목", "내용", "출처"],
                  [[esc(a), b, f"<code>{esc(c)}</code>"] for a, b, c in items])
@@ -838,6 +865,7 @@ def build() -> str:
     cap, heads, counts = head_force(text)
     parts = catalog(text)
     t0, t1 = window()
+    discharge_absent = discharge_is_absent(text)
     box_labels = dict(select_options(text, BOX_SELECT_ID))
     validations = select_options(text, VALIDATION_SELECT_ID)
     w = block_times(text)
@@ -924,6 +952,16 @@ JB-201 축적·인계 런으로, 셀 귀속은 jbr 이지만 자리는 상류 ro
 <h2>10. 안전</h2>
 {safety_table()}
 {stop_table()}
+<h3>잔류·발전 전압 처리 사슬</h3>
+<p class="lead">폐 패널은 빛을 받으면 발전한다. 이 셀은 그것을 <b>없애지 않고</b> 억제한 뒤
+재서 허가한다 — 차광으로 발전을 낮추고, 외부 스트링 분리와 2극 고임피던스 전압과 프로브
+자기진단·절연감시를 AND 로 묶어 통과할 때만 절단회로를 연다.</p>
+{chain_table(parts, "JB-PV-", "장치")}
+<div class="note warn">도면 전체에 <b>방전(단락) 회로가 없다</b>{'' if discharge_absent else ' — 아래 표와 어긋난다'}.
+설계는 발전을 억제하고 재는 데까지이며, 재고도 남는 전압을 어떻게 다룰지는
+JB-PV-002 의 허용전압·CAT 등급과 함께 실물 위험성평가에서 정한다.</div>
+<h3>리젝트 경로</h3>
+{chain_table(parts, "JB-RJ-", "장치")}
 
 <h2>11. 신뢰도와 정비</h2>
 {reliability_table()}

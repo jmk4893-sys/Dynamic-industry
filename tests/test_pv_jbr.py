@@ -201,6 +201,23 @@ class TestJbrDetail(unittest.TestCase):
             with self.subTest(scenario=key):
                 self.assertIn(f'<td class="num">{num(campaign.INFEED_S + local)}</td>', self.html)
 
+    def test_the_voltage_chain_and_reject_path_come_from_the_bom(self):
+        parts = self.builder.catalog(self.plant)
+        pv = self.builder.by_prefix(parts, "JB-PV-")
+        rj = self.builder.by_prefix(parts, "JB-RJ-")
+        self.assertEqual(len(pv), 6)
+        self.assertEqual(len(rj), 4)
+        for row in pv + rj:
+            self.assertIn(f"<code>{row[0]}</code>", self.html)
+            self.assertIn(f"<td>{row[2]}</td>", self.html)
+
+    def test_the_design_has_no_discharge_circuit(self):
+        """차광하고 재서 허가할 뿐, 패널을 방전시키는 회로는 이 설계에 없다."""
+        self.assertTrue(self.builder.discharge_is_absent(self.plant))
+        self.assertNotIn("방전", self.plant)
+        self.assertIn("방전(단락) 회로가 없다</b>.", self.html,
+                      "없다고 적었는데 도면에 방전이 생기면 문장이 어긋난다")
+
     def test_the_bom_is_every_jb_part(self):
         parts = self.builder.catalog(self.plant)
         self.assertGreaterEqual(len(parts), 100)
