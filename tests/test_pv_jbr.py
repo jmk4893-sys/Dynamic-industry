@@ -20,6 +20,7 @@ from pv_preprocess import campaign, layout, servos
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCENE = ROOT / "docs/drawings/pv-jbr-scene.html"
 DETAIL = ROOT / "docs/drawings/pv-jbr-detail.html"
+CLOSEUP = ROOT / "docs/drawings/pv-jbr-closeup.html"
 
 
 def _load(name: str):
@@ -265,6 +266,83 @@ class TestJbrDetail(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("docs/drawings/pv-jbr-detail.html", readme)
         self.assertIn("tools/build_jbr_detail.py", readme)
+
+
+class TestJbrCloseup(unittest.TestCase):
+    """박리 순간 클로즈업 — 형상과 운동식을 원본에서 읽었는가."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.builder = _load("build_jbr_closeup")
+        cls.html = CLOSEUP.read_text(encoding="utf-8")
+        cls.plant = cls.builder.plant_text()
+
+    def test_the_committed_file_is_what_the_builder_makes(self):
+        self.assertEqual(self.html, self.builder.build(),
+                         "docs/drawings/pv-jbr-closeup.html 이 생성기 출력과 다르다 — "
+                         "PYTHONPATH=src python tools/build_jbr_closeup.py 를 돌리고 커밋한다")
+
+    def test_the_window_sits_inside_the_cell_occupancy(self):
+        self.assertGreaterEqual(self.builder.T_FROM, 0.0)
+        self.assertLessEqual(self.builder.T_TO, campaign.JBR_S)
+        self.assertLess(self.builder.T_FROM, self.builder.T_START)
+        self.assertLess(self.builder.T_START, self.builder.T_TO)
+
+    def test_the_motion_law_is_read_from_the_plant(self):
+        mo = self.builder.motion(self.plant)
+        # 전단은 칼날이 닫히는 구간이고, 그 구간에 Z 플로팅과 계면 표시가 겹친다.
+        self.assertEqual(mo["shear"], mo["float"][:2])
+        self.assertEqual(mo["shear"], mo["interface"])
+        self.assertGreater(mo["openWide"], mo["openShut"])
+        # 하강이 끝나는 시각이 전단 시작이고, 인양 시작이 전단 끝이다.
+        self.assertEqual(mo["descend"][1], mo["shear"][0])
+        self.assertEqual(mo["raise"][0], mo["shear"][1])
+        # 승강 플레이트가 내려간 자리에서 다시 올라간다 — 두 구간이 같은 높이에서 만난다.
+        self.assertEqual(mo["descend"][3], mo["raise"][2])
+        # 박스는 승강 플레이트와 같은 구간에 딸려 올라간다.
+        self.assertEqual(mo["boxLift"], mo["raise"][:2])
+        # 진공 포획은 전단보다 **먼저** 물린다 — 칼날이 닫히기 전에 잡는다는 설계다.
+        self.assertLess(mo["grip"][1], mo["shear"][1])
+        self.assertLessEqual(mo["grip"][1], mo["shear"][0] + 0.2)
+
+    def test_the_blade_tip_and_wedge_come_from_the_spec_sentence(self):
+        spec, tip, wedge = self.builder.blade_spec(self.plant)
+        self.assertIn("SKD11", spec)
+        self.assertGreater(tip, 0)
+        self.assertGreater(wedge, 0)
+        self.assertIn(f'"bladeTipMm":{tip:g}', self.html)
+        self.assertIn(f'"bladeWedgeDeg":{wedge:g}', self.html)
+
+    def test_the_blades_close_past_the_box_edge(self):
+        """두 카세트가 박스 발자국을 지나 가운데서 만나야 접착이 다 끊긴다."""
+        m = self.builder.model(self.plant)
+        p = m["parts"]
+        shut, dx = m["motion"]["openShut"], p["cassette"]["dx"]
+        half_cassette = p["cassette"]["size"][0] / 2
+        inner = -(shut - dx) + half_cassette          # 좌측 카세트의 안쪽 끝
+        self.assertGreater(inner, -p["box"]["size"][0] / 2,
+                           "닫힌 자세에서 칼날이 박스 발자국에 못 미친다")
+        self.assertLess(inner, 0.0, "좌측 칼날이 중심선을 넘어간다")
+
+    def test_the_geometry_is_read_by_label_not_typed_in(self):
+        m = self.builder.model(self.plant)
+        for key in ("cassette", "shoe", "carrier", "lip", "gripper", "cup",
+                    "compliance", "stem", "nozzle", "toolId", "plate", "panel", "box"):
+            with self.subTest(part=key):
+                self.assertIn(key, m["parts"])
+        self.assertEqual(m["parts"]["panel"]["size"][:2],
+                         [campaign.PANEL_LENGTH_MM / 1000, 0.045])
+
+    def test_the_artifact_converter_accepts_it(self):
+        conv = _load("build_artifact")
+        self.assertIn("jbr-closeup", conv.TARGETS)
+        body = conv.convert(self.html, CLOSEUP)
+        self.assertIn("<title>정션박스 박리 순간</title>", body)
+
+    def test_the_readme_lists_the_sheet(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("docs/drawings/pv-jbr-closeup.html", readme)
+        self.assertIn("tools/build_jbr_closeup.py", readme)
 
 
 class TestPlantConsoleDefects(unittest.TestCase):
