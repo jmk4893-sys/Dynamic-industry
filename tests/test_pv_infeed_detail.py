@@ -18,6 +18,7 @@ from pv_preprocess import campaign, kinematics, layout, safety, servos
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DETAIL = ROOT / "docs/drawings/pv-infeed-detail.html"
+SIM = ROOT / "docs/drawings/pv-infeed-sim.html"
 
 
 def _load(name: str):
@@ -95,3 +96,56 @@ class TestInfeedDetail(unittest.TestCase):
     def test_the_readme_lists_the_sheet(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("docs/drawings/pv-infeed-detail.html", readme)
+
+
+class TestInfeedSim(unittest.TestCase):
+    """투입 구간 운전 콘솔 — 리터럴이 모델에서 왔고 커밋본이 생성기 출력과 같은가."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.builder = _load("build_infeed_sim")
+        cls.html = SIM.read_text(encoding="utf-8")
+        cls.model = cls.builder.model()
+
+    def test_the_committed_file_is_what_the_builder_makes(self):
+        self.assertEqual(self.html, self.builder.build(),
+                         "docs/drawings/pv-infeed-sim.html 이 생성기 출력과 다르다 — "
+                         "PYTHONPATH=src python tools/build_infeed_sim.py 를 돌리고 커밋한다")
+
+    def test_the_model_literal_carries_the_design_values(self):
+        m = self.model
+        self.assertEqual(m["levels"]["axis"], kinematics.FLIP_AXIS_MM)
+        self.assertEqual(m["levels"]["dwell"], kinematics.dwell_mm())
+        self.assertEqual(m["pick"]["x"], layout.bfc_pickup_x_mm())
+        self.assertEqual(m["pt"]["x"], layout.pt_place_x_mm())
+        self.assertEqual(m["clock"]["takt"], campaign.release_takt_s())
+        self.assertEqual([r[:3] for r in m["clock"]["path"]], [list(p[:3]) for p in kinematics.PATH])
+        self.assertEqual(len(m["roster"]), campaign.summary()["panels"])
+        # 로봇 도달 사슬은 리터럴에서도 닫혀야 한다
+        self.assertEqual(m["robot"]["l1"] + m["robot"]["l2"], m["robot"]["reach"])
+        self.assertLess(m["robot"]["pickDist"], m["robot"]["reach"])
+
+    def test_permits_come_from_the_plant_interface_table(self):
+        for key, first in (("flip", "single_sheet"), ("robot", "cassette_at_H2100"),
+                           ("index", "source_panel_clear"), ("handshake", "PANEL_OFFER")):
+            with self.subTest(key=key):
+                self.assertEqual(self.model["permits"][key][0], first)
+        self.assertEqual(self.model["permits"]["handshake"][-1], "TRANSFER_COMPLETE")
+
+    def test_the_clock_is_continuous(self):
+        b = self.builder
+        spans = ([(a, c) for a, c, _ in b.PREP_CLOCK] + [(p[0], p[1]) for p in kinematics.PATH]
+                 + [(a, c) for a, c, _ in b.ROBOT_CLOCK])
+        for x, y in zip(spans, spans[1:]):
+            self.assertEqual(x[1], y[0])
+        self.assertEqual(spans[-1][1], campaign.INFEED_S)
+        rej = [(a, c) for a, c, _ in b.REJECT_CLOCK]
+        for x, y in zip(rej, rej[1:]):
+            self.assertEqual(x[1], y[0])
+        self.assertEqual(rej[-1][1], campaign.INFEED_REJECT_S)
+
+    def test_the_artifact_converter_accepts_it(self):
+        conv = _load("build_artifact")
+        self.assertIn("infeed-sim", conv.TARGETS)
+        body = conv.convert(self.html, SIM)
+        self.assertIn("<title>", body)

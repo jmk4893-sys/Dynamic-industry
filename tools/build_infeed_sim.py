@@ -1,0 +1,851 @@
+# -*- coding: utf-8 -*-
+"""투입 구간 운전 콘솔 — FL-101 반입부터 RB-101 이 손을 떼는 JB-201 인계까지 **움직이는** 것.
+
+상세도(`tools/build_infeed_detail.py`)가 자리와 값을 보여 준다면, 이 콘솔은 그 값으로
+투입 무리를 실제로 돌린다. 평면·측면·단면 세 시점이 한 공정시계에 묶여 리프트
+인덱스 → 분리·안전상승 → 포획빔 전개 → 수직 승강 → 조 체결·180° 반전 → 하강 →
+로봇 흡착·이송 → PT-101 안착·진공 해제·3-2-1 정렬 → JB-201 핸드셰이크·반출을
+재생하고, 허가 조건·핸드셰이크·리프트 잔량이 그 순간의 기계 상태에서 켜진다.
+
+시각·높이·자리·허가 조건은 **손으로 적지 않는다.** `kinematics.PATH`, `campaign`,
+`layout`, 그리고 통합 설계도의 인터페이스 표(허가 식·핸드셰이크)에서 읽어 JS 리터럴
+`MODEL` 로 찍는다. 그 뒤의 화면 코드는 리터럴만 본다.
+
+    PYTHONPATH=src python tools/build_infeed_sim.py
+
+멱등이다. `tests/test_pv_infeed_detail.py` 가 커밋된 파일과 생성 결과를 견준다.
+"""
+
+from __future__ import annotations
+
+import json
+import pathlib
+import re
+import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
+
+from pv_preprocess import campaign, kinematics, layout  # noqa: E402
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+PLANT = ROOT / "docs/drawings/pv-preprocess-plant.html"
+OUT = ROOT / "docs/drawings/pv-infeed-sim.html"
+
+#: 3D 공정시계에서 읽은 로봇·정반·인계 구간 (s). 상세도와 같은 값이다.
+ROBOT_CLOCK: tuple[tuple[float, float, str], ...] = (
+    (24.0, 25.4, "RB-101 EOAT 4구역 진공 흡착"),
+    (25.4, 30.5, "인계점 → PT-101 이송"),
+    (30.5, 33.5, "안착 · 진공 순차 해제 · 손목 추종"),
+    (33.5, 37.0, "PT-101 3-2-1 정렬 — 좌표시드"),
+    (37.0, 40.0, "JB-201 인계 핸드셰이크 · 로봇 후퇴"),
+)
+PREP_CLOCK: tuple[tuple[float, float, str], ...] = (
+    (0.0, 5.0, "LFT 도킹 · SE-101 높이 추종 · VS-101 통합 2D＋3D 판정"),
+    (5.0, 7.5, "분리헤드 하강 · 진공 파지"),
+)
+#: 전손 배출 경로 (s) — INFEED_REJECT_S 안에서 나눈다.
+REJECT_CLOCK: tuple[tuple[float, float, str], ...] = (
+    (0.0, 5.0, "VS-101 판정 = 전손"),
+    (5.0, 7.5, "분리헤드 하강 · 진공 파지"),
+    (7.5, 8.8, "안전분리 상승 370 (겹장 확인)"),
+    (8.8, 10.0, "반전 생략 — 인계 높이로 하강"),
+    (10.0, 11.0, "RB-101 흡착"),
+    (11.0, 13.5, "AFU-RJ-101 리젝트 랙으로"),
+    (13.5, 15.0, "랙 적재 · 로봇 복귀"),
+)
+
+
+def _code_list(text: str, row_name: str) -> list[str]:
+    """인터페이스 표의 `<code>a ∧ b ∧ c</code>` 를 조건 목록으로."""
+    m = re.search(r"<tr><th>%s</th><td><code>(.*?)</code>" % re.escape(row_name), text, re.S)
+    if not m:
+        raise SystemExit(f"✗ 인터페이스 표에 '{row_name}' 행이 없다")
+    return [c.strip() for c in re.split(r"\s*(?:∧|→)\s*", m.group(1)) if c.strip()]
+
+
+def model() -> dict:
+    text = PLANT.read_text(encoding="utf-8")
+    k = kinematics
+    Z = {z.key: z for z in layout.build_zones()}
+    rows = campaign.panels()
+    return {
+        "rev": re.search(r"DRAWING_REVISION = '([^']+)'", text).group(1),
+        "zones": {key: [Z[key].x0_mm, Z[key].x1_mm, Z[key].y0_mm, Z[key].y1_mm] for key in ("afu", "robot", "jbr")},
+        "band": layout.MACHINE_BAND_Y_MM,
+        "pick": {"x": layout.bfc_pickup_x_mm(), "z": layout.BFC_PICKUP_Z_MM},
+        "robot": {"x": layout.robot_pedestal_x_mm(), "reach": layout.ROBOT_REACH_MM, "j2": 1570,
+                  "l1": 1450, "l2": 1350, "pedestal": 650, "eoat": 250,
+                  "pickDist": round(layout.robot_pickup_distance_mm()),
+                  "placeDist": layout.robot_place_distance_mm(),
+                  "rejectDist": round(layout.robot_reject_distance_mm())},
+        "pt": {"x": layout.pt_place_x_mm(), "deck": list(layout.pt_deck_span_mm()), "table": list(layout.PT_TABLE_MM),
+               "deckW": layout.PT_DECK_MM[1], "tol": layout.PT_SEED_TOLERANCE_MM, "yaw": layout.PT_SEED_YAW_DEG},
+        "accum": {"span": list(layout.accumulator_span_mm()), "speed": campaign.transfer_speed_mm_s(),
+                  "clear": campaign.accumulator_clear_s(), "guardZ": 1040},
+        "reject": {"dx": layout.REJECT_RACK_DX_MM, "z": layout.REJECT_RACK_Z_MM},
+        "levels": {"pick": k.PICK_FACE_MM, "sep": k.SEPARATION_MM, "dwell": k.dwell_mm(), "axis": k.FLIP_AXIS_MM,
+                   "handover": k.HANDOVER_MM, "line": layout.LINE_TRANSFER_MM, "ptTop": layout.PT_TABLE_MM[2],
+                   "carriage": 1760, "catch": 2020, "forklift": k.FORKLIFT_GUARD_TOP_MM,
+                   "ringR": k.ring_outer_r_mm(), "bore": k.ring_bore_r_mm(), "ringPitch": k.RING_PITCH_MM,
+                   "ringBottom": k.ring_bottom_mm(), "jawClosed": k.JAW_CLOSED_Z_MM, "jawOpen": k.JAW_OPEN_Z_MM,
+                   "carriageRail": k.CARRIAGE_RAIL_Z_MM, "rollerD": layout.ROLLER_D_MM, "vision": 4820},
+        "panel": {"l": k.PANEL_MM[0], "w": k.PANEL_MM[1], "t": 50, "frame": k.PANEL_FRAME_H_MM,
+                  "pitch": 50, "perPallet": campaign.PALLET_PANELS},
+        "clock": {"prep": PREP_CLOCK, "path": [list(p[:3]) for p in k.PATH], "robot": ROBOT_CLOCK,
+                  "reject": REJECT_CLOCK, "infeed": campaign.INFEED_S, "rejectS": campaign.INFEED_REJECT_S,
+                  "takt": campaign.release_takt_s(), "stopper": campaign.JBR_STOPPER_OFFSET_S,
+                  "swap": campaign.PALLET_SWAP_S, "callRemaining": campaign.FORKLIFT_CALL_REMAINING},
+        "permits": {
+            "flip": _code_list(text, "BFC 반전 허가"),
+            "robot": _code_list(text, "로봇 진입 허가"),
+            "index": _code_list(text, "리프트 인덱스"),
+            "handshake": _code_list(text, "핸드셰이크"),
+        },
+        "roster": [[p.index, p.lift[-1], p.face, p.condition, p.action, p.buffer, p.infeed_start, p.infeed_end]
+                   for p in rows],
+        "forklift": [[e.at_s, e.lift[-1], e.kind, e.note] for e in campaign.forklift_events()],
+        "summary": {key: campaign.summary()[key] for key in ("panels", "normal", "cracked", "scrap", "flipped",
+                                                              "bypassed", "run_min", "throughput_per_h", "takt_s")},
+    }
+
+
+CSS = r"""
+:root {
+  --ground: #EEF1F3; --sheet: #FFFFFF; --ink: #16202A; --muted: #5B6874; --rule: #C8D0D7;
+  --tint: #E4EAEF; --tint-out: #F3F4F5; --red: #B5321F; --blue: #2A6CB0; --amber: #C8850A; --green: #2F7D4F;
+  --blue-fill: rgba(42,108,176,.16); --red-fill: rgba(181,50,31,.12); --amber-fill: rgba(200,133,10,.22);
+  --green-fill: rgba(47,125,79,.18); --grey-fill: rgba(22,32,42,.08); --code: #EDF1F4; --on: #2F7D4F; --off: #B8C1C9;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #12181E; --sheet: #1A222A; --ink: #E4E9ED; --muted: #98A5B1; --rule: #34414D;
+    --tint: #232D37; --tint-out: #1E252C; --red: #E0604A; --blue: #6FA8E6; --amber: #E6B04C; --green: #6CBF8A;
+    --blue-fill: rgba(111,168,230,.18); --red-fill: rgba(224,96,74,.16); --amber-fill: rgba(230,176,76,.24);
+    --green-fill: rgba(108,191,138,.2); --grey-fill: rgba(228,233,237,.09); --code: #232D37; --on: #6CBF8A; --off: #4A5661;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #12181E; --sheet: #1A222A; --ink: #E4E9ED; --muted: #98A5B1; --rule: #34414D;
+  --tint: #232D37; --tint-out: #1E252C; --red: #E0604A; --blue: #6FA8E6; --amber: #E6B04C; --green: #6CBF8A;
+  --blue-fill: rgba(111,168,230,.18); --red-fill: rgba(224,96,74,.16); --amber-fill: rgba(230,176,76,.24);
+  --green-fill: rgba(108,191,138,.2); --grey-fill: rgba(228,233,237,.09); --code: #232D37; --on: #6CBF8A; --off: #4A5661;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ground); color: var(--ink);
+  font: 13.5px/1.5 "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums; }
+code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+code { background: var(--code); padding: 0 4px; border-radius: 3px; font-size: .92em; }
+button, select, input { font: inherit; color: inherit; }
+.page { max-width: 1400px; margin: 0 auto; padding: 18px 18px 48px; display: grid; gap: 14px; }
+header.title { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.eyebrow { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 4px 0 0; font-size: 22px; font-weight: 600; line-height: 1.2; }
+.clock { font-size: 30px; font-weight: 600; font-family: ui-monospace, Menlo, Consolas, monospace; line-height: 1; }
+.clock small { font-size: 12px; color: var(--muted); font-weight: 400; display: block; margin-top: 4px; font-family: inherit; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; background: var(--sheet); border: 1px solid var(--rule); padding: 10px 14px; }
+.controls label { display: grid; gap: 3px; font-size: 11.5px; color: var(--muted); }
+.controls select, .controls button { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 5px 9px; min-height: 30px; cursor: pointer; }
+.controls button.primary { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+.controls button:focus-visible, .controls select:focus-visible, input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.scrub { flex: 1 1 260px; }
+.scrub input { width: 100%; accent-color: var(--blue); }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
+.views { display: grid; gap: 14px; min-width: 0; }
+.view { background: var(--sheet); border: 1px solid var(--rule); padding: 8px 10px 10px; display: grid; gap: 4px; min-width: 0; }
+.view h2 { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--muted); display: flex; justify-content: space-between; gap: 10px; }
+.view h2 span { font-weight: 400; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+svg.v { width: 100%; height: auto; display: block; }
+.status { display: grid; gap: 12px; position: sticky; top: 12px; }
+.card { background: var(--sheet); border: 1px solid var(--rule); padding: 10px 12px; display: grid; gap: 6px; }
+.card h3 { margin: 0; font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .04em; }
+.stage { font-size: 15px; font-weight: 600; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 12.5px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; text-align: right; }
+.permit { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 12px; }
+.permit li { display: flex; gap: 8px; align-items: center; }
+.permit li::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--off); flex: none; }
+.permit li.on::before { background: var(--on); }
+.permit li code { background: none; padding: 0; }
+.permit li.on { color: var(--ink); } .permit li { color: var(--muted); }
+.granted { font-size: 11.5px; color: var(--muted); }
+.granted.on { color: var(--green); font-weight: 600; }
+.steps { display: flex; flex-wrap: wrap; gap: 4px; }
+.steps span { font-size: 10.5px; padding: 1px 6px; border: 1px solid var(--rule); border-radius: 3px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+.steps span.on { border-color: var(--green); color: var(--green); background: var(--green-fill); }
+.steps span.done { border-color: var(--ink); color: var(--ink); }
+.lifts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lift { border: 1px solid var(--rule); padding: 6px 8px; font-size: 12px; }
+.lift b { display: block; font-size: 15px; }
+.lift.active { border-color: var(--blue); background: var(--blue-fill); }
+.bar { height: 6px; background: var(--grey-fill); margin-top: 4px; }
+.bar i { display: block; height: 100%; background: var(--blue); }
+.log { margin: 0; padding: 0; list-style: none; font-size: 11.5px; max-height: 180px; overflow: auto; display: grid; gap: 2px; }
+.log li { display: grid; grid-template-columns: 52px 1fr; gap: 8px; }
+.log li span { color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+.note { color: var(--muted); font-size: 12px; margin: 0; max-width: 100ch; }
+svg text { fill: var(--ink); font-size: 11px; font-family: inherit; }
+svg .m { fill: var(--muted); font-size: 10px; }
+svg .zone { fill: var(--tint); stroke: var(--rule); }
+svg .out { fill: var(--tint-out); stroke: var(--rule); stroke-dasharray: 4 3; }
+svg .base { fill: var(--grey-fill); stroke: var(--ink); stroke-width: .9; }
+svg .deck { fill: var(--sheet); stroke: var(--ink); stroke-width: .9; }
+svg .panel { fill: var(--blue-fill); stroke: var(--blue); stroke-width: 1.2; }
+svg .glass { fill: var(--blue); opacity: .9; }
+svg .stack { fill: var(--blue-fill); stroke: var(--blue); stroke-width: .8; }
+svg .ring { fill: none; stroke: var(--ink); stroke-width: 1.6; }
+svg .ringfill { fill: var(--sheet); stroke: var(--ink); stroke-width: 1.4; }
+svg .column { fill: var(--ink); opacity: .85; }
+svg .wall { fill: var(--muted); opacity: .65; }
+svg .beam { fill: none; stroke: var(--muted); stroke-dasharray: 8 3; stroke-width: 1.2; }
+svg .sensor { fill: var(--green); }
+svg .laser { stroke: var(--green); stroke-width: .8; stroke-dasharray: 2 3; opacity: 0; }
+svg .laser.on { opacity: 1; }
+svg .vac { fill: var(--off); }
+svg .vac.on { fill: var(--green); }
+svg .catch { fill: var(--amber-fill); stroke: var(--amber); stroke-width: 1; }
+svg .jaw { fill: var(--ink); }
+svg .carriage, svg .sep { fill: var(--sheet); stroke: var(--ink); stroke-width: 1; }
+svg .arm { fill: none; stroke: var(--ink); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+svg .joint { fill: var(--sheet); stroke: var(--ink); stroke-width: 1.4; }
+svg .eoat { fill: var(--grey-fill); stroke: var(--ink); stroke-width: 1; }
+svg .rack { fill: var(--sheet); stroke: var(--ink); stroke-dasharray: 5 2; stroke-width: .9; }
+svg .guard { fill: none; stroke: var(--amber); stroke-dasharray: 4 2; }
+svg .roller { fill: var(--grey-fill); stroke: var(--ink); stroke-width: .7; }
+svg .roller.on { fill: var(--green-fill); stroke: var(--green); }
+svg .stop { fill: var(--red); }
+svg .pusher { fill: var(--ink); }
+svg .fork { fill: none; stroke: var(--muted); stroke-dasharray: 4 3; stroke-width: 1.2; }
+svg .reach { fill: none; stroke: var(--red); stroke-dasharray: 2 3; stroke-width: .8; }
+svg .lvl { stroke: var(--rule); stroke-dasharray: 2 4; stroke-width: .7; }
+svg .floor { fill: var(--grey-fill); stroke: var(--ink); }
+svg .lbl-panel { fill: var(--blue); font-weight: 600; }
+svg .lbl-red { fill: var(--red); font-weight: 600; }
+svg .tag { fill: var(--sheet); stroke: var(--rule); }
+svg .scissor { fill: none; stroke: var(--ink); stroke-width: 1; }
+@media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } .status { position: static; } .two { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+"""
+
+JS = r"""
+const M = __MODEL__;
+const $ = (id) => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, w) => a + (b - a) * w;
+const ease = (w) => { w = clamp(w, 0, 1); return w * w * (3 - 2 * w); };
+const seg = (t, a, b) => ease((t - a) / (b - a));
+const fmt = (v) => Math.round(v).toLocaleString('en-US');
+
+// ── SVG 도구 — 좌표는 전부 mm ───────────────────────────────────────────
+function el(parent, name, attrs, text) {
+  const e = document.createElementNS(NS, name);
+  for (const k in attrs) if (attrs[k] !== undefined && attrs[k] !== null) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  parent.appendChild(e);
+  return e;
+}
+function rect(p, x0, x1, y0, y1, cls, title) {
+  const r = el(p, 'rect', { x: Math.min(x0, x1), y: Math.min(y0, y1), width: Math.abs(x1 - x0), height: Math.abs(y1 - y0), class: cls });
+  if (title) el(r, 'title', {}, title);
+  return r;
+}
+function setRect(r, x0, x1, y0, y1) {
+  r.setAttribute('x', Math.min(x0, x1)); r.setAttribute('y', Math.min(y0, y1));
+  r.setAttribute('width', Math.abs(x1 - x0)); r.setAttribute('height', Math.abs(y1 - y0));
+}
+function text(p, x, y, s, cls, anchor) { return el(p, 'text', { x, y, class: cls || '', 'text-anchor': anchor || 'start' }, s); }
+function line(p, x1, y1, x2, y2, cls) { return el(p, 'line', { x1, y1, x2, y2, class: cls }); }
+function poly(p, pts, cls) { return el(p, 'polyline', { points: pts.map((q) => q.join(',')).join(' '), class: cls }); }
+function setPoly(e, pts) { e.setAttribute('points', pts.map((q) => q.join(',')).join(' ')); }
+
+const L = M.levels, P = M.panel, C = M.clock;
+const ZTOP = 5700;                       // 측면·단면의 Z 상한 — svg y = ZTOP − z
+const Y = (z) => ZTOP - z;
+const Zc = M.band / 2;                    // 라인 중심의 플랜트 Y
+
+// ── 상태 계산 — 시각에서 기계 자세를 낸다 ───────────────────────────────
+// 한 장의 local t 에서 어디에 무엇이 있는지. holder: stack|sep|ring|robot|pt|jb|rack|gone
+function pose(t, sc) {
+  const bay = sc.bay === 'A' ? -1 : 1;
+  const zc = bay * M.pick.z;
+  const pathT = C.path.map((r) => r[0]).concat([C.path[C.path.length - 1][1]]);
+  const [t0, t1, t2, t3, t4, t5] = pathT;         // 7.5 8.8 10.5 13.3 20.8 24.0
+  const rc = C.robot;                              // 24.0 25.4 30.5 33.5 37.0 40.0
+  const s = { t, bay: sc.bay, zc, x: M.pick.x, z: zc, h: L.pick - P.t / 2, angle: 0, holder: 'stack',
+    sepH: L.pick + P.t + 400, carH: L.carriage, catch: 0, jaw: L.jawOpen, vac: [0, 0, 0, 0],
+    robot: null, eoatVac: 0, ptShift: 0, stopper: 0, roll: 0, flipped: false, laser: t < 7.5, stage: '', outX: null,
+    lifted: 0, released: 0 };
+  const glassUp = sc.face === 'GLASS_UP';
+  if (sc.condition === '전손') return rejectPose(s, t, sc);
+  // 준비: 헤드 하강·파지
+  if (t < 5) { s.stage = C.prep[0][2]; s.sepH = lerp(L.pick + P.t + 400, L.pick + P.t + 400, 0); }
+  else if (t < t0) { s.stage = C.prep[1][2]; s.sepH = lerp(L.pick + P.t + 400, L.pick + P.t, seg(t, 5, t0)); s.vac = t > 6.8 ? [1, 1, 1, 1] : [0, 0, 0, 0]; }
+  if (t >= t0) { s.vac = [1, 1, 1, 1]; s.holder = 'sep'; }
+  if (t >= t0 && t < t1) { s.stage = C.path[0][2]; s.h = L.pick + lerp(0, L.sep, seg(t, t0, t1)) - P.t / 2; s.sepH = s.h + P.t / 2 + P.t; }
+  else if (t >= t1 && t < t2) { s.stage = C.path[1][2]; s.h = L.dwell - P.t / 2; s.sepH = L.dwell + P.t; s.catch = seg(t, t1, t2); }
+  else if (t >= t2 && t < t3) { s.stage = C.path[2][2]; s.h = lerp(L.dwell, L.axis, seg(t, t2, t3)) - P.t / 2; s.sepH = s.h + P.t / 2 + P.t; s.carH = s.h - P.frame; s.catch = 1; }
+  else if (t >= t3 && t < t4) {
+    s.stage = C.path[3][2]; s.h = L.axis; s.catch = 1; s.holder = 'ring';
+    const wj = seg(t, t3, t3 + 1.2);                       // 조 체결
+    s.jaw = lerp(L.jawOpen, L.jawClosed, wj);
+    const wr = seg(t, t3 + 1.2, t3 + 2.7);                 // 캐리지 830 하강 · 헤드 780 상승 후퇴
+    s.carH = lerp(L.axis - P.frame, L.axis - P.frame - 830, wr); s.sepH = lerp(L.axis + P.t, L.axis + P.t + 780, wr);
+    s.vac = wr > 0.05 ? [0, 0, 0, 0] : [1, 1, 1, 1];
+    if (glassUp) { s.angle = 180 * seg(t, t3 + 2.7, t4); s.stage = '4점 조 체결 · 캐리지·헤드 후퇴 · 180° 반전 (GLASS_UP)'; }
+    else s.stage = '4점 조 체결 · 캐리지·헤드 후퇴 · 회전 생략 (GLASS_DOWN)';
+    s.flipped = glassUp && s.angle >= 180;
+  }
+  else if (t >= t4 && t < t5) {
+    s.stage = C.path[4][2]; s.catch = 1; s.angle = glassUp ? 180 : 0; s.flipped = glassUp;
+    const wo = seg(t, t4, t4 + 0.8); s.jaw = lerp(L.jawClosed, L.jawOpen, wo);
+    const wd = seg(t, t4 + 0.8, t5); s.holder = wd > 0 ? 'sep' : 'ring';
+    s.h = lerp(L.axis, L.handover, wd); s.carH = s.h - P.frame; s.sepH = lerp(L.axis + P.t + 780, L.axis + P.t, ease((t - t4) / 0.8)) ; if (wd > 0) s.sepH = s.h + P.t / 2 + P.t;
+    s.vac = wo > 0.9 ? [1, 1, 1, 1] : [0, 0, 0, 0];
+  }
+  else if (t >= t5) {
+    s.angle = glassUp ? 180 : 0; s.flipped = glassUp; s.jaw = L.jawOpen; s.h = L.handover; s.carH = L.handover - P.frame; s.sepH = L.handover + P.t;
+    if (t < rc[0][1]) { s.stage = rc[0][2]; s.holder = 'sep'; s.eoatVac = seg(t, rc[0][0], rc[0][1]); s.catch = 1; s.vac = [1, 1, 1, 1]; s.robot = { x: M.pick.x, z: zc, h: L.handover + P.t / 2 }; }
+    else if (t < rc[1][1]) {
+      s.stage = rc[1][2]; s.holder = 'robot'; s.eoatVac = 1; s.catch = 1 - seg(t, rc[1][0], rc[1][0] + 1.2); s.vac = [0, 0, 0, 0];
+      s.sepH = L.handover + P.t + lerp(0, 600, seg(t, rc[1][0], rc[1][1]));
+      const w = seg(t, rc[1][0], rc[1][1]);
+      s.x = lerp(M.pick.x, M.pt.x, w); s.z = lerp(zc, 0, w);
+      s.h = lerp(L.handover, L.line + P.t / 2, w) + Math.sin(Math.PI * w) * 450;
+      s.robot = { x: s.x, z: s.z, h: s.h + P.t / 2 };
+    }
+    else if (t < rc[2][1]) {
+      s.stage = rc[2][2]; s.holder = 'pt'; s.x = M.pt.x; s.z = 0; s.h = L.line + P.t / 2; s.catch = 0; s.sepH = L.handover + P.t + 600;
+      const w = (t - rc[2][0]) / (rc[2][1] - rc[2][0]); s.eoatVac = 1 - w; s.released = w;
+      s.robot = { x: M.pt.x, z: 0, h: L.line + P.t + lerp(0, 60, w) };
+    }
+    else if (t < rc[3][1]) {
+      s.stage = rc[3][2]; s.holder = 'pt'; s.x = M.pt.x; s.z = 0; s.h = L.line + P.t / 2; s.sepH = L.handover + P.t + 600;
+      const w = seg(t, rc[3][0], rc[3][1]); s.ptShift = w; s.stopper = 1; s.released = 1;
+      s.x = M.pt.x - 40 + 40 * w; s.z = 25 - 25 * w;
+      s.robot = { x: lerp(M.pt.x, M.robot.x + 900, w), z: 0, h: lerp(L.line + P.t + 60, 2600, w) };
+    }
+    else if (t < C.infeed) {
+      s.stage = rc[4][2]; s.holder = 'pt'; s.x = M.pt.x; s.z = 0; s.h = L.line + P.t / 2; s.stopper = 1; s.ptShift = 1; s.released = 1; s.sepH = L.handover + P.t + 600;
+      s.robot = null;
+    }
+    else {
+      s.holder = 'jb'; s.stopper = 0; s.roll = 1; s.released = 1; s.sepH = L.handover + P.t + 600;
+      s.x = M.pt.x + (t - C.infeed) * M.accum.speed; s.z = 0; s.h = L.line + P.t / 2;
+      s.stage = t < C.takt ? `JB-201 반출 ${fmt(M.accum.speed)} mm/s → JBR-201 (범위 밖) · 스토퍼까지 ${C.stopper} s` : 'JBR-201 스토퍼 작동 — 다음 장 방출';
+      if (s.x - P.l / 2 > M.zones.jbr[0] + 1300) s.holder = 'gone';
+      s.robot = null;
+    }
+  }
+  s.lifted = t >= rc[1][0] ? seg(t, rc[1][0], rc[1][0] + 1.0) : 0;  // 리프트 인덱스 50 — cassette_clear 뒤
+  return s;
+}
+function rejectPose(s, t, sc) {
+  const r = C.reject; const bay = s.bay === 'A' ? -1 : 1; const zc = s.zc;
+  s.stage = r[0][2];
+  if (t >= r[1][0] && t < r[1][1]) { s.stage = r[1][2]; s.sepH = lerp(L.pick + P.t + 400, L.pick + P.t, seg(t, r[1][0], r[1][1])); s.vac = t > 6.8 ? [1, 1, 1, 1] : [0, 0, 0, 0]; }
+  if (t >= r[2][0]) { s.holder = 'sep'; s.vac = [1, 1, 1, 1]; }
+  if (t >= r[2][0] && t < r[2][1]) { s.stage = r[2][2]; s.h = L.pick + lerp(0, L.sep, seg(t, r[2][0], r[2][1])) - P.t / 2; s.sepH = s.h + P.t / 2 + P.t; }
+  else if (t >= r[3][0] && t < r[3][1]) { s.stage = r[3][2]; s.h = lerp(L.dwell, L.handover, seg(t, r[3][0], r[3][1])) - P.t / 2; s.sepH = s.h + P.t / 2 + P.t; }
+  else if (t >= r[4][0] && t < r[4][1]) { s.stage = r[4][2]; s.h = L.handover - P.t / 2; s.sepH = L.handover + P.t; s.eoatVac = seg(t, r[4][0], r[4][1]); s.robot = { x: M.pick.x, z: zc, h: L.handover }; }
+  else if (t >= r[5][0] && t < r[5][1]) {
+    s.stage = r[5][2]; s.holder = 'robot'; s.eoatVac = 1; s.vac = [0, 0, 0, 0]; s.sepH = L.handover + P.t + 500;
+    const w = seg(t, r[5][0], r[5][1]); const rx = M.robot.x + M.reject.dx, rz = bay * M.reject.z;
+    s.x = lerp(M.pick.x, rx, w); s.z = lerp(zc, rz, w); s.h = lerp(L.handover - P.t / 2, 1200 + P.t / 2 + 40, w) + Math.sin(Math.PI * w) * 500;
+    s.robot = { x: s.x, z: s.z, h: s.h + P.t / 2 };
+  }
+  else if (t >= r[6][0]) {
+    const w = seg(t, r[6][0], r[6][1]); const rx = M.robot.x + M.reject.dx, rz = bay * M.reject.z;
+    s.stage = r[6][2]; s.holder = 'rack'; s.x = rx; s.z = rz; s.h = 1200 + P.t / 2; s.eoatVac = 1 - w; s.sepH = L.handover + P.t + 500;
+    s.robot = { x: lerp(rx, M.robot.x + 900, w), z: lerp(rz, 0, w), h: lerp(1200 + P.t + 40, 2600, w) };
+    if (t >= C.rejectS) { s.holder = 'gone'; s.robot = null; }
+  }
+  s.lifted = t >= r[5][0] ? seg(t, r[5][0], r[5][0] + 1) : 0;
+  return s;
+}
+
+// 2링크 IK — 어깨(J2)에서 목표까지, 어깨를 지나는 수직면 안에서 푼다.
+function ik(target) {
+  const R = M.robot; const home = { x: R.x + 900, z: 0, h: 2600 };
+  const tg = target || home;
+  const dx = tg.x - R.x, dz = tg.z, r = Math.hypot(dx, dz);
+  const v = tg.h + R.eoat - R.j2; const d = clamp(Math.hypot(r, v), 200, R.l1 + R.l2 - 1);
+  const a = Math.atan2(v, r);
+  const cosE = (R.l1 * R.l1 + d * d - R.l2 * R.l2) / (2 * R.l1 * d);
+  const e = Math.acos(clamp(cosE, -1, 1));
+  const sh = a + e;                                       // 팔꿈치 위 자세
+  const ex = R.l1 * Math.cos(sh), ez = R.l1 * Math.sin(sh);   // 수직면 안 (r, v)
+  const ux = r ? dx / r : 1, uz = r ? dz / r : 0;
+  return { shoulder: { x: R.x, z: 0, h: R.j2 }, elbow: { x: R.x + ex * ux, z: ex * uz, h: R.j2 + ez },
+           wrist: { x: tg.x, z: tg.z, h: tg.h + R.eoat }, home: !target };
+}
+
+// ── 시점 셋 ────────────────────────────────────────────────────────────
+function buildPlan(svg) {
+  const zA = M.zones.afu, zR = M.zones.robot, zJ = M.zones.jbr;
+  svg.setAttribute('viewBox', `-3900 -3800 15400 7700`);
+  const g = {};
+  rect(svg, zA[0], zA[1], -Zc, M.band - Zc, 'zone', 'afu 존'); rect(svg, zR[0], zR[1], zR[2] - Zc, zR[3] - Zc, 'zone', 'robot 존');
+  rect(svg, zJ[0], 11400, zJ[2] - Zc, zJ[3] - Zc, 'out', 'JBR-201 존 (범위 밖)');
+  text(svg, 11300, zJ[2] - Zc + 260, 'JBR-201 · 범위 밖 →', 'm', 'end');
+  text(svg, zA[0] + 120, M.band - Zc - 200, 'afu 존 · LFT-A/B · BFC', 'm'); text(svg, zR[0] + 120, zR[3] - Zc + 300, 'robot 존 · RB-101 · PT', 'm');
+  for (const s of [-1, 1]) {
+    const zc = s * M.pick.z, bay = s < 0 ? 'A' : 'B';
+    rect(svg, -3600, M.pick.x - 1450, zc - 900, zc + 900, 'fork');
+    rect(svg, M.pick.x - 1450, M.pick.x + 1450, zc - 900, zc + 900, 'base', `LFT-101${bay} 유압 시저 승강대`);
+    g['stack' + bay] = rect(svg, M.pick.x - P.l / 2, M.pick.x + P.l / 2, zc - P.w / 2, zc + P.w / 2, 'stack', `30장 적층 ${bay}`);
+    g['stackT' + bay] = text(svg, M.pick.x, zc + 330, `LFT-101${bay}`, 'lbl-panel', 'middle');
+    for (const xr of [M.pick.x - M.levels.ringPitch / 2, M.pick.x + M.levels.ringPitch / 2]) rect(svg, xr - 90, xr + 90, zc - L.ringR, zc + L.ringR, 'ringfill', '엔드링 ⌀1,980');
+    for (const xc of [M.pick.x - 1600, M.pick.x + 1600]) for (const zr of [-1290, 950]) { const zz = s < 0 ? zc + zr : zc - zr; rect(svg, xc - 90, xc + 90, zz - 120, zz + 120, 'column', '포탈 기둥'); }
+    g['catch' + bay] = rect(svg, M.pick.x - 1450, M.pick.x + 1450, s < 0 ? -125 : 125, s < 0 ? -125 : 125, 'catch', 'CD-101 포획빔 4열');
+    g['fork' + bay] = rect(svg, -3500, -400, zc - 600, zc + 600, 'fork', 'FL-101');
+    g['fork' + bay].style.opacity = 0;
+    const rx = M.robot.x + M.reject.dx, rz = s * M.reject.z;
+    rect(svg, rx - 800, rx + 800, rz - 350, rz + 350, 'rack', `AFU-RJ-101 리젝트 랙 ${bay}`); text(svg, rx, rz + 4, `RJ-101${bay}`, 'm', 'middle');
+    g['sens' + bay] = el(svg, 'circle', { cx: M.pick.x, cy: zc, r: 170, class: 'sensor' });
+    el(g['sens' + bay], 'title', {}, `VS-101${bay} 통합 2D＋3D 헤드`);
+  }
+  const wx = 5650 - 1620;
+  for (const [zc, th] of [[-3150, 150], [0, 250], [3150, 150]]) rect(svg, wx - 1330, wx + 1330, zc - th / 2, zc + th / 2, 'wall', 'BW-101 벽체');
+  text(svg, wx, -12, 'BW-101 중앙벽', 'm', 'middle');
+  el(svg, 'circle', { cx: M.robot.x, cy: 0, r: M.robot.reach, class: 'reach' });
+  el(svg, 'circle', { cx: M.robot.x, cy: 0, r: 550, class: 'base' });
+  text(svg, M.robot.x, 4, 'RB-101', '', 'middle');
+  rect(svg, M.pt.x - M.pt.table[0] / 2, M.pt.x + M.pt.table[0] / 2, -M.pt.table[1] / 2, M.pt.table[1] / 2, 'base', 'PT-101 정렬정반');
+  g.rollers = [];
+  for (let x = M.accum.span[0] + 120; x < M.accum.span[1]; x += 240) g.rollers.push(rect(svg, x - 40, x + 40, -740, 740, 'roller'));
+  rect(svg, M.accum.span[0], M.accum.span[1], -M.accum.guardZ, M.accum.guardZ, 'guard', 'JB-201 가드');
+  g.stopX = rect(svg, M.pt.x + P.l / 2 + 30, M.pt.x + P.l / 2 + 90, -600, 600, 'stop'); g.stopX.style.opacity = 0;
+  g.pushA = rect(svg, M.pt.x - 900, M.pt.x + 900, -P.w / 2 - 120, -P.w / 2 - 60, 'pusher'); g.pushB = rect(svg, M.pt.x - 900, M.pt.x + 900, P.w / 2 + 60, P.w / 2 + 120, 'pusher');
+  text(svg, M.pt.x, -M.pt.table[1] / 2 - 90, 'PT-101 · JB-201', 'm', 'middle');
+  g.arm = poly(svg, [[0, 0]], 'arm'); g.elbow = el(svg, 'circle', { r: 110, class: 'joint' });
+  g.panels = [];
+  for (let i = 0; i < 3; i++) { const pg = el(svg, 'g', {}); const r = rect(pg, -P.l / 2, P.l / 2, -P.w / 2, P.w / 2, 'panel'); const gl = rect(pg, -P.l / 2 + 60, P.l / 2 - 60, -P.w / 2 + 60, P.w / 2 - 60, 'glass'); const tx = text(pg, 0, P.w / 2 + 220, '', 'lbl-panel', 'middle'); g.panels.push({ g: pg, r, gl, tx }); pg.style.display = 'none'; }
+  g.eoat = rect(svg, 0, 0, 0, 0, 'eoat'); g.eoat.style.display = 'none'; g.eoat.style.fill = 'none';
+  text(svg, -3800, -3600, 'X = 공정방향 · Y = 라인 좌측 (mm)', 'm');
+  return g;
+}
+
+function buildSide(svg) {
+  const zA = M.zones.afu, zR = M.zones.robot;
+  svg.setAttribute('viewBox', `-3900 0 15400 ${ZTOP + 400}`);
+  const g = {};
+  rect(svg, -3900, 11500, Y(0), Y(-350), 'floor');
+  rect(svg, zA[0], zA[1], Y(0), Y(5150), 'zone'); rect(svg, zR[0], zR[1], Y(0), Y(4150), 'zone');
+  for (const [z, s] of [[L.pick, '픽업면 1,880'], [L.handover, '인계 2,100'], [L.dwell, '대기면 2,250'], [L.axis, '반전축 3,430'], [L.line, '이송면 950']]) { line(svg, -3900, Y(z), 11400, Y(z), 'lvl'); text(svg, -3850, Y(z) - 30, s, 'm'); }
+  g.fork = rect(svg, M.pick.x - 2900, M.pick.x + 200, Y(0), Y(L.forklift), 'fork'); g.fork.style.opacity = 0;
+  rect(svg, M.pick.x - 1450, M.pick.x + 1450, Y(0), Y(130), 'base');
+  g.scissor = poly(svg, [[0, 0]], 'scissor'); g.deck = rect(svg, M.pick.x - 1450, M.pick.x + 1450, Y(480), Y(530), 'base');
+  g.stack = rect(svg, M.pick.x - P.l / 2, M.pick.x + P.l / 2, Y(530), Y(L.pick), 'stack', '적층 (활성 Bay)');
+  g.stackT = text(svg, M.pick.x, Y(1200), '', 'lbl-panel', 'middle');
+  for (const xc of [M.pick.x - 1600, M.pick.x + 1600]) { rect(svg, xc - 90, xc + 90, Y(0), Y(3350), 'column', '포탈 기둥·LM'); rect(svg, xc - 90, xc + 90, Y(3190), Y(3450), 'column'); }
+  for (const xr of [M.pick.x - M.levels.ringPitch / 2, M.pick.x + M.levels.ringPitch / 2]) rect(svg, xr - 90, xr + 90, Y(L.axis - L.ringR), Y(L.axis + L.ringR), 'ringfill', '엔드링');
+  g.catch = rect(svg, M.pick.x - 1450, M.pick.x + 1450, Y(L.catch - 30), Y(L.catch + 30), 'catch');
+  g.car = rect(svg, M.pick.x - 1360, M.pick.x + 1360, Y(L.carriage - 70), Y(L.carriage + 70), 'carriage', '승강캐리지');
+  g.sep = rect(svg, M.pick.x - 1090, M.pick.x + 1090, Y(L.pick + P.t), Y(L.pick + P.t + 80), 'sep', '분리헤드');
+  g.vac = [-820, -270, 270, 820].map((dx) => el(svg, 'circle', { cx: M.pick.x + dx, cy: Y(L.pick), r: 60, class: 'vac' }));
+  const vg = 5650 - 2310; rect(svg, vg - 1240, vg + 1240, Y(4950), Y(5150), 'beam'); rect(svg, M.pick.x - 190, M.pick.x + 190, Y(4600), Y(4840), 'sensor', 'VS-101');
+  g.laser = [[-1000, 0], [1000, 0]].map(([dx]) => line(svg, M.pick.x + dx, Y(4600), M.pick.x + dx, Y(L.pick), 'laser'));
+  rect(svg, M.robot.x - 550, M.robot.x + 550, Y(0), Y(650), 'base', '페데스털'); rect(svg, M.robot.x - 360, M.robot.x + 360, Y(650), Y(1270), 'column');
+  const rx = M.robot.x + M.reject.dx; rect(svg, rx - 800, rx + 800, Y(0), Y(1200), 'rack', '리젝트 랙');
+  rect(svg, M.pt.x - M.pt.table[0] / 2, M.pt.x + M.pt.table[0] / 2, Y(0), Y(L.ptTop), 'base', 'PT-101');
+  rect(svg, M.pt.deck[0], M.pt.deck[1], Y(L.ptTop), Y(L.line), 'deck');
+  g.rollers = [];
+  for (let x = M.accum.span[0] + 120; x < M.accum.span[1]; x += 240) g.rollers.push(el(svg, 'circle', { cx: x, cy: Y(L.line - L.rollerD / 2), r: L.rollerD / 2, class: 'roller' }));
+  rect(svg, M.accum.span[0], M.accum.span[1], Y(L.line), Y(2000), 'guard');
+  g.stopX = rect(svg, M.pt.x + P.l / 2 + 30, M.pt.x + P.l / 2 + 90, Y(L.line), Y(L.line + 160), 'stop'); g.stopX.style.opacity = 0;
+  text(svg, M.pt.x, Y(2120), 'PT-101 · JB-201', 'm', 'middle');
+  line(svg, M.pt.deck[1], Y(0), M.pt.deck[1], Y(5400), 'reach'); text(svg, M.pt.deck[1] - 60, Y(5300), 'JBR-201 부터 범위 밖 →', 'm', 'end');
+  g.arm = poly(svg, [[0, 0]], 'arm'); g.elbow = el(svg, 'circle', { r: 110, class: 'joint' }); el(svg, 'circle', { cx: M.robot.x, cy: Y(M.robot.j2), r: 120, class: 'joint' });
+  g.eoat = rect(svg, 0, 0, 0, 0, 'eoat'); g.eoat.style.display = 'none';
+  g.panels = [];
+  for (let i = 0; i < 3; i++) { const pg = el(svg, 'g', {}); const r = rect(pg, -P.l / 2, P.l / 2, -P.t / 2, P.t / 2, 'panel'); const gl = rect(pg, -P.l / 2, P.l / 2, -P.t / 2, -P.t / 2 + 14, 'glass'); g.panels.push({ g: pg, r, gl }); pg.style.display = 'none'; }
+  text(svg, -3800, Y(5500), '측면 X–Z · Bay A 를 보이고 Bay B 는 뒤에 거울상', 'm');
+  return g;
+}
+
+function buildEnd(svg) {
+  svg.setAttribute('viewBox', `-3800 0 7600 ${ZTOP + 400}`);
+  const g = {};
+  rect(svg, -3800, 3800, Y(0), Y(-350), 'floor');
+  for (const [z, s] of [[L.pick, '1,880'], [L.handover, '2,100'], [L.dwell, '2,250'], [L.axis, '3,430']]) { line(svg, -3700, Y(z), 3700, Y(z), 'lvl'); text(svg, -3680, Y(z) - 30, s, 'm'); }
+  for (const [zc, th, h] of [[-3150, 150, 4900], [0, 250, 4900], [3150, 150, 4900]]) rect(svg, zc - th / 2, zc + th / 2, Y(0), Y(h), 'wall', 'BW-101');
+  rect(svg, -3350, 3350, Y(4950), Y(5150), 'beam'); text(svg, 0, Y(5250), 'VG-101 비전보', 'm', 'middle');
+  g.bay = {};
+  for (const s of [-1, 1]) {
+    const zc = s * M.pick.z, bay = s < 0 ? 'A' : 'B', b = {};
+    rect(svg, zc - 900, zc + 900, Y(0), Y(130), 'base'); b.deck = rect(svg, zc - 900, zc + 900, Y(480), Y(530), 'base');
+    b.scissor = poly(svg, [[0, 0]], 'scissor');
+    b.stack = rect(svg, zc - P.w / 2, zc + P.w / 2, Y(530), Y(L.pick), 'stack'); b.stackT = text(svg, zc, Y(1200), `LFT-101${bay}`, 'lbl-panel', 'middle');
+    b.fork = rect(svg, zc - 600, zc + 600, Y(0), Y(L.forklift), 'fork'); b.fork.style.opacity = 0;
+    for (const zr of [-1290, 950]) { const zz = s < 0 ? zc + zr : zc - zr; rect(svg, zz - 120, zz + 120, Y(0), Y(3350), 'column'); }
+    rect(svg, zc - 1330, zc + 1330, Y(3190), Y(3450), 'column');
+    b.sens = rect(svg, zc - 190, zc + 190, Y(4600), Y(4840), 'sensor', `VS-101${bay}`);
+    b.laser = [[-600], [600]].map(([dz]) => line(svg, zc + dz, Y(4600), zc + dz, Y(L.pick), 'laser'));
+    b.ring = el(svg, 'g', {}); const rg = b.ring;
+    el(rg, 'circle', { cx: 0, cy: 0, r: L.ringR, class: 'ringfill' }); el(rg, 'circle', { cx: 0, cy: 0, r: L.bore, class: 'ringfill' });
+    // 조·가이드 포스트는 링과 같이 돈다
+    b.jawU = rect(rg, -90, 90, -(L.jawClosed) - 45, -(L.jawClosed) + 45, 'jaw'); b.jawL = rect(rg, -90, 90, L.jawClosed - 45, L.jawClosed + 45, 'jaw');
+    b.jawU.setAttribute('transform', ''); rect(rg, -60, 60, -L.ringR + 60, -L.ringR + 200, 'jaw'); rect(rg, -60, 60, L.ringR - 200, L.ringR - 60, 'jaw');
+    rg.setAttribute('transform', `translate(${zc} ${Y(L.axis)})`);
+    b.rails = [-1, 1].map((k) => rect(svg, zc + k * L.carriageRail - 70, zc + k * L.carriageRail + 70, Y(L.carriage - 70), Y(L.carriage + 70), 'carriage'));
+    b.sep = rect(svg, zc - 60, zc + 60, Y(L.pick + P.t), Y(L.pick + P.t + 80), 'sep');
+    b.vac = [-380, 380].map((dz) => el(svg, 'circle', { cx: zc + dz, cy: Y(L.pick), r: 60, class: 'vac' }));
+    b.catch = rect(svg, s < 0 ? -125 : 125, s < 0 ? -125 : 125, Y(L.catch - 30), Y(L.catch + 30), 'catch');
+    const pg = el(svg, 'g', {}); b.panelG = pg; b.panel = rect(pg, -P.w / 2, P.w / 2, -P.t / 2, P.t / 2, 'panel'); b.glass = rect(pg, -P.w / 2, P.w / 2, -P.t / 2, -P.t / 2 + 14, 'glass'); pg.style.display = 'none';
+    b.eoat = rect(svg, zc - 460, zc + 460, 0, 0, 'eoat'); b.eoat.style.display = 'none';
+    text(svg, zc, Y(5450), `Bay ${bay}`, '', 'middle');
+    g.bay[bay] = b;
+  }
+  text(svg, -3700, Y(5550), '단면 Y–Z · 상류에서 본다', 'm');
+  return g;
+}
+
+// ── 그리기 ──────────────────────────────────────────────────────────────
+function panelTransformPlan(s) { return `translate(${s.x} ${s.z})`; }
+function drawPlan(g, st) {
+  for (const bay of ['A', 'B']) {
+    g['stackT' + bay].textContent = `LFT-101${bay} · ${st.lifts[bay].count}장`;
+    g['stack' + bay].style.opacity = st.lifts[bay].count > 0 ? 1 : .25;
+    g['fork' + bay].style.opacity = st.lifts[bay].forklift ? 1 : 0;
+    if (st.lifts[bay].forklift) { const w = st.lifts[bay].forklift; g['fork' + bay].setAttribute('x', lerp(-3500, M.pick.x - 3000, w)); }
+  }
+  let catchA = 0, catchB = 0, sensA = 0, sensB = 0;
+  g.panels.forEach((p) => (p.g.style.display = 'none'));
+  g.eoat.style.display = 'none';
+  let armTarget = null;
+  st.active.forEach((a, i) => {
+    const s = a.s; if (s.holder === 'gone' || i > 2) return;
+    if (s.bay === 'A') { catchA = Math.max(catchA, s.catch); sensA = s.laser ? 1 : sensA; } else { catchB = Math.max(catchB, s.catch); sensB = s.laser ? 1 : sensB; }
+    const p = g.panels[i]; p.g.style.display = '';
+    p.g.setAttribute('transform', `translate(${s.x} ${s.z})`);
+    const glassUp = a.sc.face === 'GLASS_UP' && !s.flipped;
+    p.gl.style.opacity = glassUp ? .9 : 0;
+    p.r.setAttribute('class', a.sc.condition === '전손' ? 'panel' : 'panel');
+    p.tx.textContent = `${a.id} · ${a.sc.condition}${glassUp ? ' · 유리 ↑' : ' · 유리 ↓'}`;
+    p.tx.setAttribute('class', a.sc.condition === '전손' ? 'lbl-red' : 'lbl-panel');
+    if (s.robot) armTarget = s.robot;
+    if (s.holder === 'robot' || (s.robot && s.eoatVac > 0)) { g.eoat.style.display = ''; setRect(g.eoat, s.robot.x - 1090, s.robot.x + 1090, s.robot.z - 460, s.robot.z + 460); }
+  });
+  const k = ik(armTarget);
+  setPoly(g.arm, [[k.shoulder.x, k.shoulder.z], [k.elbow.x, k.elbow.z], [k.wrist.x, k.wrist.z]]);
+  g.elbow.setAttribute('cx', k.elbow.x); g.elbow.setAttribute('cy', k.elbow.z);
+  setRect(g.catchA, M.pick.x - 1450, M.pick.x + 1450, -125, -125 - 1450 * catchA);
+  setRect(g.catchB, M.pick.x - 1450, M.pick.x + 1450, 125, 125 + 1450 * catchB);
+  g.sensA.style.opacity = sensA ? 1 : .35; g.sensB.style.opacity = sensB ? 1 : .35;
+  const top = st.active[0] && st.active[0].s;
+  const rollOn = st.active.some((a) => a.s.roll);
+  g.rollers.forEach((r) => r.setAttribute('class', rollOn ? 'roller on' : 'roller'));
+  const stop = st.active.some((a) => a.s.stopper); g.stopX.style.opacity = stop ? 1 : 0;
+  const shift = Math.max(0, ...st.active.map((a) => a.s.ptShift));
+  g.pushA.setAttribute('y', -P.w / 2 - 120 - 80 * (1 - shift)); g.pushB.setAttribute('y', P.w / 2 + 60 + 80 * (1 - shift));
+}
+
+function drawSide(g, st) {
+  const lift = st.lifts[st.viewBay];
+  const deckZ = 530 + (P.perPallet - lift.count) * P.pitch - lift.raise * P.pitch;
+  const top = L.pick;
+  setRect(g.deck, M.pick.x - 1450, M.pick.x + 1450, Y(deckZ - 50), Y(deckZ));
+  setRect(g.stack, M.pick.x - P.l / 2, M.pick.x + P.l / 2, Y(deckZ), Y(Math.max(deckZ, top - lift.taken * P.pitch)));
+  g.stack.style.opacity = lift.count > 0 ? 1 : 0;
+  const sh = deckZ - 130;
+  setPoly(g.scissor, [[M.pick.x - 1300, Y(130)], [M.pick.x + 1300, Y(130 + sh)], [M.pick.x + 1300, Y(130)], [M.pick.x - 1300, Y(130 + sh)]]);
+  g.stackT.textContent = `LFT-101${st.viewBay} · ${lift.count}장 · 픽업면 ${fmt(L.pick)} 유지`;
+  g.stackT.setAttribute('y', Y(deckZ + 500));
+  g.fork.style.opacity = lift.forklift ? 1 : 0;
+  g.panels.forEach((p) => (p.g.style.display = 'none')); g.eoat.style.display = 'none';
+  let armTarget = null, cat = 0, sepH = L.pick + P.t + 400, carH = L.carriage, vac = [0, 0, 0, 0], laser = false;
+  st.active.forEach((a, i) => {
+    const s = a.s; if (s.holder === 'gone' || i > 2) return;
+    if (s.bay === st.viewBay) { cat = Math.max(cat, s.catch); if (['stack', 'sep', 'ring'].includes(s.holder) || s.t < C.robot[1][0]) { sepH = s.sepH; carH = s.carH; vac = s.vac; } laser = laser || s.laser; }
+    const p = g.panels[i]; p.g.style.display = '';
+    const yaw = s.holder === 'ring' || (s.holder === 'sep' && s.t > C.path[3][0]) ? 0 : 0;
+    p.g.setAttribute('transform', `translate(${s.x} ${Y(s.h)})`);
+    const glassUp = a.sc.face === 'GLASS_UP' && !s.flipped;
+    p.gl.setAttribute('y', glassUp ? -P.t / 2 : P.t / 2 - 14);
+    p.g.style.opacity = s.bay === st.viewBay || s.holder === 'robot' || s.holder === 'pt' || s.holder === 'jb' || s.holder === 'rack' ? 1 : .35;
+    if (s.robot) armTarget = s.robot;
+    if (s.robot && (s.holder === 'robot' || s.eoatVac > 0)) { g.eoat.style.display = ''; setRect(g.eoat, s.robot.x - 1090, s.robot.x + 1090, Y(s.robot.h), Y(s.robot.h + 250)); }
+  });
+  const k = ik(armTarget);
+  setPoly(g.arm, [[k.shoulder.x, Y(k.shoulder.h)], [k.elbow.x, Y(k.elbow.h)], [k.wrist.x, Y(k.wrist.h)]]);
+  g.elbow.setAttribute('cx', k.elbow.x); g.elbow.setAttribute('cy', Y(k.elbow.h));
+  setRect(g.catch, M.pick.x - 1450, M.pick.x + 1450, Y(L.catch - 30), Y(L.catch + 30)); g.catch.style.opacity = cat > 0 ? cat : 0;
+  setRect(g.sep, M.pick.x - 1090, M.pick.x + 1090, Y(sepH), Y(sepH + 80));
+  setRect(g.car, M.pick.x - 1360, M.pick.x + 1360, Y(carH - 70), Y(carH + 70));
+  g.vac.forEach((c, i) => { c.setAttribute('cy', Y(sepH - 40)); c.setAttribute('class', vac[i] ? 'vac on' : 'vac'); });
+  g.laser.forEach((l) => l.setAttribute('class', laser ? 'laser on' : 'laser'));
+  const rollOn = st.active.some((a) => a.s.roll); g.rollers.forEach((r) => r.setAttribute('class', rollOn ? 'roller on' : 'roller'));
+  g.stopX.style.opacity = st.active.some((a) => a.s.stopper) ? 1 : 0;
+}
+
+function drawEnd(g, st) {
+  for (const bay of ['A', 'B']) {
+    const b = g.bay[bay], zc = (bay === 'A' ? -1 : 1) * M.pick.z, lift = st.lifts[bay];
+    const deckZ = 530 + (P.perPallet - lift.count) * P.pitch - lift.raise * P.pitch;
+    setRect(b.deck, zc - 900, zc + 900, Y(deckZ - 50), Y(deckZ));
+    setRect(b.stack, zc - P.w / 2, zc + P.w / 2, Y(deckZ), Y(Math.max(deckZ, L.pick - lift.taken * P.pitch))); b.stack.style.opacity = lift.count > 0 ? 1 : 0;
+    const sh = deckZ - 130; setPoly(b.scissor, [[zc - 800, Y(130)], [zc + 800, Y(130 + sh)], [zc + 800, Y(130)], [zc - 800, Y(130 + sh)]]);
+    b.stackT.textContent = `LFT-101${bay} · ${lift.count}장`; b.stackT.setAttribute('y', Y(deckZ + 500));
+    b.fork.style.opacity = lift.forklift ? 1 : 0;
+    const a = st.active.find((q) => q.sc.bay === bay && q.s.holder !== 'gone');
+    let sepH = L.pick + P.t + 400, carH = L.carriage, vac = [0, 0], catchW = 0, angle = 0, jaw = L.jawOpen, laser = false;
+    b.panelG.style.display = 'none'; b.eoat.style.display = 'none';
+    if (a) {
+      const s = a.s;
+      if (['stack', 'sep', 'ring'].includes(s.holder)) { sepH = s.sepH; carH = s.carH; vac = [s.vac[0], s.vac[2]]; }
+      catchW = s.catch; angle = s.angle; jaw = s.jaw; laser = s.laser;
+      if (['stack', 'sep', 'ring'].includes(s.holder) || (s.holder === 'robot' && Math.abs(s.z - zc) < 700)) {
+        b.panelG.style.display = '';
+        const glassUp = a.sc.face === 'GLASS_UP';
+        b.glass.setAttribute('y', glassUp ? -P.t / 2 : P.t / 2 - 14);
+        b.panelG.setAttribute('transform', `translate(${s.z} ${Y(s.h)}) rotate(${s.holder === 'ring' ? angle : (s.flipped ? 180 : 0)})`);
+        if (s.holder === 'robot' || (s.robot && s.eoatVac > 0)) { b.eoat.style.display = ''; setRect(b.eoat, s.z - 460, s.z + 460, Y(s.h + P.t / 2), Y(s.h + P.t / 2 + 250)); }
+      }
+    }
+    b.ring.setAttribute('transform', `translate(${zc} ${Y(L.axis)}) rotate(${angle})`);
+    setRect(b.jawU, -90, 90, -jaw - 45, -jaw + 45); setRect(b.jawL, -90, 90, jaw - 45, jaw + 45);
+    b.rails.forEach((r, i) => setRect(r, zc + (i ? 1 : -1) * L.carriageRail - 70, zc + (i ? 1 : -1) * L.carriageRail + 70, Y(carH - 70), Y(carH + 70)));
+    setRect(b.sep, zc - 60, zc + 60, Y(sepH), Y(sepH + 80));
+    b.vac.forEach((c, i) => { c.setAttribute('cy', Y(sepH - 40)); c.setAttribute('class', vac[i] ? 'vac on' : 'vac'); });
+    const inner = bay === 'A' ? -125 : 125, outer = bay === 'A' ? -125 - 1450 * catchW : 125 + 1450 * catchW;
+    setRect(b.catch, inner, outer, Y(L.catch - 30), Y(L.catch + 30));
+    b.laser.forEach((l) => l.setAttribute('class', laser ? 'laser on' : 'laser'));
+  }
+}
+
+// ── 운전 ────────────────────────────────────────────────────────────────
+const plan = buildPlan($('v-plan')), side = buildSide($('v-side')), end = buildEnd($('v-end'));
+const state = { mode: 'single', T: 0, playing: true, speed: 1, last: performance.now(), loop: true,
+  single: { bay: 'A', face: 'GLASS_UP', condition: '정상' }, log: [], logged: new Set(), campaignEnd: 0 };
+state.campaignEnd = Math.max(...M.roster.map((r) => r[7])) + C.takt;
+
+function scenarioOf(row) { return { bay: row[1], face: row[2], condition: row[3] }; }
+function activePanels(T) {
+  if (state.mode === 'single') {
+    const sc = state.single; const cyc = sc.condition === '전손' ? C.rejectS + 3 : C.takt;
+    const t = state.loop ? T % cyc : Math.min(T, cyc);
+    return [{ id: 'PV-0001', sc, s: pose(t, sc), start: 0 }];
+  }
+  const out = [];
+  for (const r of M.roster) {
+    const sc = scenarioOf(r); const t = T - r[6];
+    const life = sc.condition === '전손' ? C.rejectS : C.takt + 1;
+    if (t < 0 || t > life) continue;
+    out.push({ id: `PV-${String(r[0]).padStart(4, '0')}`, sc, s: pose(t, sc), start: r[6], row: r });
+  }
+  return out.sort((a, b) => b.start - a.start);
+}
+function liftState(T, active) {
+  const lifts = { A: { count: P.perPallet, taken: 0, raise: 0, forklift: 0 }, B: { count: P.perPallet, taken: 0, raise: 0, forklift: 0 } };
+  if (state.mode === 'single') {
+    const a = active[0]; const l = lifts[a.sc.bay];
+    const took = a.s.t >= C.path[0][0]; l.count = took ? P.perPallet - 1 : P.perPallet; l.taken = took ? 1 : 0; l.raise = a.s.lifted; return lifts;
+  }
+  for (const r of M.roster) {
+    const l = lifts[r[1]]; const t = T - r[6];
+    if (t >= C.path[0][0]) { l.taken += 1; l.count -= 1; }
+    if (t >= C.robot[1][0] && t < C.robot[1][0] + 1) l.raise = seg(t, C.robot[1][0], C.robot[1][0] + 1);
+    if (t >= C.robot[1][0] + 1) { l.taken -= 1; }   // 인덱스가 끝나면 적층은 다시 픽업면에 붙는다
+  }
+  for (const e of M.forklift) {
+    const l = lifts[e[1]];
+    if (e[2] === '팔레트 교환' && T >= e[0] && T < e[0] + C.swap) { const w = (T - e[0]) / C.swap; l.forklift = w < .5 ? seg(w, 0, .35) : 1 - seg(w, .65, 1); if (w > .5) { l.count = P.perPallet; l.taken = 0; } else { l.count = 0; } }
+    if (e[2] === '팔레트 교환' && T >= e[0] + C.swap) { l.count = P.perPallet; l.taken = 0; }
+    if (e[2] === '호출' && T >= e[0] && T < e[0] + 60) l.forklift = Math.max(l.forklift, .35 * seg(T, e[0], e[0] + 20));
+  }
+  for (const b of ['A', 'B']) { lifts[b].count = clamp(lifts[b].count, 0, P.perPallet); lifts[b].taken = clamp(lifts[b].taken, 0, 1); }
+  return lifts;
+}
+
+function permitRows(s, sc) {
+  const t = s.t, p = C.path, r = C.robot;
+  const flipped = sc.face === 'GLASS_DOWN' || s.flipped;
+  const flip = [t >= p[1][0], s.jaw <= L.jawClosed + 1 && s.holder === 'ring', s.holder === 'ring', s.catch >= 1, !s.robot, true];
+  const robot = [t >= p[4][1] && s.holder !== 'robot' && s.h <= L.handover + 1 || s.holder === 'robot', t >= p[3][1] || t >= p[3][0] + 2.7 && sc.face === 'GLASS_DOWN', flipped, t >= p[4][1], true];
+  const index = [t >= p[1][0], t >= r[1][0], t >= p[1][0]];
+  return { flip, robot, index };
+}
+function renderPermits(listEl, names, vals, grantEl) {
+  const lis = listEl.children;
+  for (let i = 0; i < names.length; i++) lis[i].className = vals[i] ? 'on' : '';
+  const all = vals.every(Boolean); grantEl.textContent = all ? '허가' : '대기'; grantEl.className = 'granted' + (all ? ' on' : '');
+}
+function buildPermitList(listEl, names) { names.forEach((n) => { const li = document.createElement('li'); const c = document.createElement('code'); c.textContent = n; li.appendChild(c); listEl.appendChild(li); }); }
+buildPermitList($('p-flip'), M.permits.flip); buildPermitList($('p-robot'), M.permits.robot); buildPermitList($('p-index'), M.permits.index);
+M.permits.handshake.forEach((n) => { const sp = document.createElement('span'); sp.textContent = n; $('p-hs').appendChild(sp); });
+
+function logEvent(key, T, msg) {
+  if (state.logged.has(key)) return; state.logged.add(key);
+  state.log.unshift([T, msg]); if (state.log.length > 40) state.log.pop();
+  const ul = $('log'); const li = document.createElement('li'); const sp = document.createElement('span'); sp.textContent = T.toFixed(1) + ' s'; li.appendChild(sp); li.appendChild(document.createTextNode(msg)); ul.prepend(li);
+  while (ul.children.length > 40) ul.removeChild(ul.lastChild);
+}
+
+function render() {
+  const T = state.T; const active = activePanels(T); const lifts = liftState(T, active);
+  const lead = active[0];
+  const viewBay = lead ? lead.sc.bay : 'A';
+  const st = { active, lifts, viewBay };
+  drawPlan(plan, st); drawSide(side, st); drawEnd(end, st);
+  // 상태판
+  $('clock').textContent = T.toFixed(1);
+  $('clock-sub').textContent = state.mode === 'single' ? `한 장 · Bay ${state.single.bay} · ${state.single.condition} · ${state.single.face === 'GLASS_UP' ? '유리면 위' : '유리면 아래'}` : `60장 캠페인 · ${(T / 60).toFixed(1)} 분 · 택트 ${M.summary.takt_s} s`;
+  if (lead) {
+    const s = lead.s;
+    $('stage').textContent = s.stage; $('pid').textContent = lead.id; $('holder').textContent = { stack: '적층 (LFT)', sep: '분리헤드·캐리지', ring: '엔드링·4점 조', robot: 'RB-101 EOAT', pt: 'PT-101 정반', jb: 'JB-201 롤러', rack: 'RJ-101 랙', gone: 'JBR-201 (범위 밖)' }[s.holder];
+    $('pz').textContent = `${fmt(s.h)} mm`; $('px').textContent = `${fmt(s.x)} / ${fmt(s.z)}`; $('angle').textContent = `${Math.round(s.angle)}°${s.flipped ? ' · 반전 완료' : ''}`;
+    const k = ik(s.robot); $('tcp').textContent = s.robot ? `${fmt(s.robot.x)} / ${fmt(s.robot.z)} / ${fmt(s.robot.h)}` : '홈 (후퇴)';
+    $('lt').textContent = `${s.t.toFixed(1)} s / ${lead.sc.condition === '전손' ? C.rejectS : C.infeed} s`;
+    const pr = permitRows(s, lead.sc);
+    renderPermits($('p-flip'), M.permits.flip, pr.flip, $('g-flip')); renderPermits($('p-robot'), M.permits.robot, pr.robot, $('g-robot')); renderPermits($('p-index'), M.permits.index, pr.index, $('g-index'));
+    const hs = $('p-hs').children; const n = M.permits.handshake.length; const w = clamp((s.t - C.robot[4][0]) / (C.robot[4][1] - C.robot[4][0]), 0, 1);
+    for (let i = 0; i < n; i++) { const idx = Math.floor(w * n); hs[i].className = s.t < C.robot[4][0] ? '' : (i < idx || w >= 1 ? 'done' : (i === idx ? 'on' : '')); }
+    // 이벤트 로그
+    const key = (k2) => `${lead.id}:${k2}`;
+    if (s.t >= 5 && lead.sc.condition !== '전손') logEvent(key('judge'), T, `${lead.id} VS-101${lead.sc.bay} 판정 — ${lead.sc.condition} · ${lead.sc.face === 'GLASS_UP' ? '유리면 위 → 반전' : '유리면 아래 → 회전 생략'}`);
+    if (s.t >= 5 && lead.sc.condition === '전손') logEvent(key('judge'), T, `${lead.id} VS-101${lead.sc.bay} 판정 — 전손 · 리젝트 경로`);
+    if (s.t >= C.path[1][0] && lead.sc.condition !== '전손') logEvent(key('single'), T, `${lead.id} 겹장 없음 — 단장 확인 (진공 A/B·두께·중량·높이)`);
+    if (s.flipped && s.holder === 'ring') logEvent(key('flip'), T, `${lead.id} 180° 반전 완료 — 유리면 ↓`);
+    if (s.holder === 'robot') logEvent(key('grip'), T, `${lead.id} RB-101 흡착 — 인계점 (${fmt(M.pick.x)}, ${fmt(s.zc)}, ${fmt(L.handover)})`);
+    if (s.holder === 'pt') logEvent(key('pt'), T, `${lead.id} PT-101 안착 · 진공 순차 해제`);
+    if (s.ptShift >= 1) logEvent(key('seed'), T, `${lead.id} 3-2-1 정렬 완료 — 좌표시드 ±${M.pt.tol} mm / yaw ±${M.pt.yaw}°`);
+    if (s.holder === 'jb') logEvent(key('jb'), T, `${lead.id} JB-201 인계 완료 — JBR-201 로 반출 (범위 밖)`);
+    if (s.holder === 'rack') logEvent(key('rack'), T, `${lead.id} AFU-RJ-101 랙 적재 — 라인에 들어가지 않는다`);
+    if (s.lifted >= 1) logEvent(key('idx'), T, `LFT-101${lead.sc.bay} 인덱스 +${P.pitch} mm — 잔량 ${lifts[lead.sc.bay].count}장`);
+  }
+  for (const b of ['A', 'B']) { const l = lifts[b]; $('lift' + b).className = 'lift' + (lead && lead.sc.bay === b ? ' active' : ''); $('cnt' + b).textContent = `${l.count} / ${P.perPallet}`; $('bar' + b).style.width = `${(l.count / P.perPallet) * 100}%`; $('fk' + b).textContent = l.forklift ? 'FL-101 진입 중' : (l.count <= C.callRemaining && l.count > 0 ? '지게차 호출' : ''); }
+  if (state.mode === 'campaign') {
+    for (const e of M.forklift) if (T >= e[0]) logEvent(`fl:${e[0]}:${e[1]}`, e[0], `FL-101 · LFT-101${e[1]} ${e[2]} — ${e[3]}`);
+    const done = M.roster.filter((r) => T >= r[7]); const ra = done.filter((r) => r[5] === 'R-A').length, rb = done.filter((r) => r[5] === 'R-B').length, rj = done.filter((r) => r[3] === '전손').length;
+    $('counts').textContent = `투입 ${done.length} / ${M.roster.length} · 정상 ${ra} · 유리 깨짐 ${rb} · 전손 ${rj}`;
+  } else $('counts').textContent = '한 장 모드 — 60장 캠페인으로 바꾸면 리프트 교대·지게차 교환이 보인다';
+  $('scrub').value = state.mode === 'single' ? (state.T % (state.single.condition === '전손' ? C.rejectS + 3 : C.takt)).toFixed(1) : (T / state.campaignEnd * 100).toFixed(2);
+}
+
+function tick(now) {
+  const dt = (now - state.last) / 1000; state.last = now;
+  if (state.playing) {
+    state.T += dt * state.speed;
+    if (state.mode === 'campaign' && state.T > state.campaignEnd) { if (state.loop) { state.T = 0; state.logged.clear(); } else { state.T = state.campaignEnd; state.playing = false; $('play').textContent = '재생'; } }
+  }
+  render(); requestAnimationFrame(tick);
+}
+
+// ── 제어 ────────────────────────────────────────────────────────────────
+$('play').addEventListener('click', () => { state.playing = !state.playing; $('play').textContent = state.playing ? '일시정지' : '재생'; });
+$('speed').addEventListener('change', (e) => { state.speed = parseFloat(e.target.value); });
+$('mode').addEventListener('change', (e) => { state.mode = e.target.value; state.T = 0; state.logged.clear(); $('log').replaceChildren(); $('scrub').max = state.mode === 'single' ? C.takt : 100; $('scrub').step = state.mode === 'single' ? 0.1 : 0.01; $('single-controls').hidden = state.mode !== 'single'; });
+$('bay').addEventListener('change', (e) => { state.single.bay = e.target.value; state.logged.clear(); $('log').replaceChildren(); });
+$('face').addEventListener('change', (e) => { state.single.face = e.target.value; state.logged.clear(); $('log').replaceChildren(); });
+$('cond').addEventListener('change', (e) => { state.single.condition = e.target.value; state.T = 0; state.logged.clear(); $('log').replaceChildren(); $('scrub').max = state.single.condition === '전손' ? C.rejectS + 3 : C.takt; });
+$('loop').addEventListener('change', (e) => { state.loop = e.target.checked; });
+$('scrub').addEventListener('input', (e) => { const v = parseFloat(e.target.value); state.T = state.mode === 'single' ? v : v / 100 * state.campaignEnd; state.playing = false; $('play').textContent = '재생'; render(); });
+document.querySelectorAll('[data-jump]').forEach((b) => b.addEventListener('click', () => { state.T = parseFloat(b.dataset.jump); state.playing = true; $('play').textContent = '일시정지'; }));
+(function () {
+  const rows = [
+    ['픽업면 (고정)', `${fmt(L.pick)} mm`], ['대기면 (안전분리 +' + L.sep + ')', `${fmt(L.dwell)} mm`], ['반전축', `${fmt(L.axis)} mm`],
+    ['링 하단 / 통과 구멍', `${fmt(L.ringBottom)} / ⌀${fmt(L.bore * 2)} mm`], ['로봇 인계 높이', `${fmt(L.handover)} mm`],
+    ['이송면 (PT 출구 · JB-201)', `${fmt(L.line)} mm`], ['조 무는 / 여는 자리', `∓${L.jawClosed} / ∓${L.jawOpen} mm`],
+    ['적층 = 드럼 = 인계점 X', `${fmt(M.pick.x)} (Z ±${fmt(M.pick.z)})`], ['RB-101 페데스털 X', `${fmt(M.robot.x)}`],
+    ['인계점 직선거리 / 도달', `${fmt(M.robot.pickDist)} / ${fmt(M.robot.reach)} mm`], ['PT-101 놓는 자리 X', `${fmt(M.pt.x)} (+${fmt(M.robot.placeDist)})`],
+    ['리젝트 랙 도달', `${fmt(M.robot.rejectDist)} mm`], ['JB-201 축적런', `${fmt(M.accum.span[0])} … ${fmt(M.accum.span[1])}`],
+    ['투입부 점유 / 전손', `${C.infeed} / ${C.rejectS} s`], ['방출 주기 (INFEED + 스토퍼)', `${C.takt} s`],
+    ['JB-201 이송 속도', `${M.accum.speed} mm/s`], ['리프트 인덱스', `+${P.pitch} mm/장 · ${P.perPallet} 장/팔레트`],
+  ];
+  const dl = $('ref');
+  for (const [k, v] of rows) { const dt = document.createElement('dt'); dt.textContent = k; const dd = document.createElement('dd'); dd.textContent = v; dl.appendChild(dt); dl.appendChild(dd); }
+})();
+$('scrub').max = C.takt; $('scrub').step = 0.1;
+const q = new URLSearchParams(location.search); if (q.get('t')) { state.T = parseFloat(q.get('t')) || 0; } if (q.get('pause')) { state.playing = false; $('play').textContent = '재생'; }
+render(); requestAnimationFrame(tick);
+"""
+
+HTML = """<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DG 투입부 운전 콘솔</title>
+<style>__CSS__</style>
+</head>
+<body>
+<main class="page">
+  <header class="title">
+    <div>
+      <div class="eyebrow">DYNAMIC INDUSTRY · 전처리 플랜트 · 투입 구간 운전 콘솔 · ENGINEERING BASE __REV__</div>
+      <h1>투입 구간이 움직이는 것 — FL-101 반입에서 RB-101 이 손을 떼는 JB-201 인계까지</h1>
+      <p class="note">평면·측면·단면이 한 공정시계에 묶여 있다. 리프트 인덱스 → 단장 분리·안전상승 → 포획빔 전개 → 두 링 사이 수직 승강 → 4점 조 체결·180° 반전 → 하강 → 로봇 흡착·이송 → PT-101 안착·진공 해제·3-2-1 정렬 → JB-201 핸드셰이크·반출. 시각·높이·자리·허가 조건은 설계 모델과 통합 설계도에서 그대로 읽었다.</p>
+    </div>
+    <div class="clock"><span id="clock">0.0</span> s<small id="clock-sub"></small></div>
+  </header>
+
+  <div class="controls">
+    <button class="primary" id="play" type="button">일시정지</button>
+    <label>속도<select id="speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option><option value="16">16×</option><option value="32">32× · 60장용</option></select></label>
+    <label>모드<select id="mode"><option value="single" selected>한 장 추적</option><option value="campaign">60장 캠페인 (듀얼 리프트·지게차)</option></select></label>
+    <span id="single-controls" style="display:contents">
+      <label>Bay<select id="bay"><option value="A" selected>LFT-101A</option><option value="B">LFT-101B</option></select></label>
+      <label>상부 비전 판정<select id="face"><option value="GLASS_UP" selected>유리면 위 → 180° 반전</option><option value="GLASS_DOWN">유리면 아래 → 회전 생략</option></select></label>
+      <label>상태<select id="cond"><option value="정상" selected>정상 → R-A</option><option value="유리 깨짐">유리 깨짐 → 그대로 투입 (R-B)</option><option value="전손">전손 → 리젝트 랙</option></select></label>
+    </span>
+    <label class="scrub">시각 스크럽<input id="scrub" type="range" min="0" max="48" step="0.1" value="0"></label>
+    <label><span>반복</span><input id="loop" type="checkbox" checked></label>
+    <label>바로 가기<span style="display:flex;gap:4px;flex-wrap:wrap">
+      <button type="button" data-jump="0">판정</button><button type="button" data-jump="7.5">분리</button><button type="button" data-jump="10.5">승강</button><button type="button" data-jump="13.3">반전</button><button type="button" data-jump="24">로봇</button><button type="button" data-jump="30.5">PT-101</button><button type="button" data-jump="37">인계</button><button type="button" data-jump="40">반출</button></span></label>
+  </div>
+
+  <div class="layout">
+    <div class="views">
+      <div class="view"><h2>평면 <span>X 공정방향 · Y 라인 좌측 · 두 Bay · 로봇 도달 반경 2,800</span></h2><svg class="v" id="v-plan" role="img" aria-label="평면 애니메이션"></svg></div>
+      <div class="view"><h2>측면 X–Z <span>활성 Bay · 리프트 데크가 올라와 픽업면을 유지한다</span></h2><svg class="v" id="v-side" role="img" aria-label="측면 애니메이션"></svg></div>
+      <div class="two">
+        <div class="view"><h2>단면 Y–Z <span>엔드링 회전 · 조 · 포획빔 · 승강 캐리지</span></h2><svg class="v" id="v-end" role="img" aria-label="단면 애니메이션"></svg></div>
+        <div class="card"><h3>레벨 · 자리 · 시각 (모델값)</h3><dl class="kv" id="ref"></dl></div>
+      </div>
+    </div>
+    <aside class="status">
+      <div class="card"><h3>공정 단계</h3><div class="stage" id="stage">—</div>
+        <dl class="kv"><dt>패널</dt><dd id="pid">—</dd><dt>잡고 있는 것</dt><dd id="holder">—</dd><dt>패널 중심 높이</dt><dd id="pz">—</dd><dt>패널 X / Y</dt><dd id="px">—</dd><dt>엔드링 각도</dt><dd id="angle">—</dd><dt>RB-101 TCP X / Y / Z</dt><dd id="tcp">—</dd><dt>장 시각</dt><dd id="lt">—</dd></dl></div>
+      <div class="card"><h3>BFC 반전 허가 <span class="granted" id="g-flip">대기</span></h3><ul class="permit" id="p-flip"></ul></div>
+      <div class="card"><h3>로봇 진입 허가 <span class="granted" id="g-robot">대기</span></h3><ul class="permit" id="p-robot"></ul></div>
+      <div class="card"><h3>리프트 인덱스 <span class="granted" id="g-index">대기</span></h3><ul class="permit" id="p-index"></ul></div>
+      <div class="card"><h3>JB-201 핸드셰이크</h3><div class="steps" id="p-hs"></div></div>
+      <div class="card"><h3>듀얼 리프트</h3><div class="lifts">
+        <div class="lift" id="liftA">LFT-101A<b id="cntA">30 / 30</b><div class="bar"><i id="barA"></i></div><span id="fkA"></span></div>
+        <div class="lift" id="liftB">LFT-101B<b id="cntB">30 / 30</b><div class="bar"><i id="barB"></i></div><span id="fkB"></span></div></div>
+        <div class="note" id="counts"></div></div>
+      <div class="card"><h3>이벤트</h3><ul class="log" id="log"></ul></div>
+    </aside>
+  </div>
+  <p class="note">범위는 afu·robot 두 존이다. 로봇이 손을 뗀 뒤 JB-201 이 패널을 __SPEED__ mm/s 로 밀어 JBR-201 에 넘기고, __STOPPER__ s 뒤 스토퍼가 물리는 순간 다음 장이 방출된다 — 그래서 방출 주기가 __TAKT__ s 다. 60장 캠페인 모드는 캠페인 모델의 로스터(번들 2 · 유리 깨짐 3+2 · 전손 1+1)를 그대로 돌리며, 잔량 2장에서 지게차를 부르고 빈 팔레트를 __SWAP__ s 에 바꾼다. 3D 좌표계의 정확한 형상은 통합 설계도의 3D 영상을 본다 — 여기서는 자리·높이·시각이 정확하고 형상은 도식이다.</p>
+</main>
+<script>__JS__</script>
+</body>
+</html>
+"""
+
+
+def build() -> str:
+    m = model()
+    js = JS.replace("__MODEL__", json.dumps(m, ensure_ascii=False, separators=(",", ":")))
+    return (HTML.replace("__CSS__", CSS).replace("__JS__", js).replace("__REV__", m["rev"])
+            .replace("__SPEED__", f"{m['accum']['speed']:g}").replace("__STOPPER__", f"{m['clock']['stopper']:g}")
+            .replace("__TAKT__", f"{m['clock']['takt']:g}").replace("__SWAP__", f"{m['clock']['swap']:g}"))
+
+
+def main() -> None:
+    out = build()
+    if OUT.exists() and OUT.read_text(encoding="utf-8") == out:
+        print(f"{OUT.relative_to(ROOT)}  변경 없음")
+        return
+    OUT.write_text(out, encoding="utf-8")
+    print(f"{OUT.relative_to(ROOT)}  {len(out.encode('utf-8')) / 1024:.0f} kB")
+
+
+if __name__ == "__main__":
+    main()
