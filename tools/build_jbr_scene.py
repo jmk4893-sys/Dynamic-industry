@@ -455,6 +455,27 @@ def build() -> str:
     # 재질 재컴파일이 필요 없는 자리다.
     t = _once(t, "Dt.shadowMap.enabled=!0;", "Dt.shadowMap.enabled=!1;", "3D 그림자")
 
+    # 부품 2D·3D 검색 — 목록에는 플랜트 전 품번이 그대로 있다. 이 셀 것만 보려면
+    # 매번 "JB-" 를 쳐야 하므로 검색창을 그 값으로 미리 채우고, 프로그램을 열 때
+    # 한 번 거른다 (목록은 module 스크립트가 나중에 채우므로 여는 시점이 맞다).
+    # 목록 자체는 줄이지 않는다 — 지우면 다른 셀 부품을 아예 못 보게 된다.
+    t = _once(t, 'placeholder="예: AFU-LFT, 승강, EOAT"',
+              'value="JB-" placeholder="예: JB-HD, 가위, 칼날"', "부품 검색 기본값")
+    t = _once(t, "    if (name === 'parts' && partsCatalog) partsCatalog.open = true;",
+              "    if (name === 'parts' && partsCatalog) { partsCatalog.open = true; applyPartsFilter(); }",
+              "부품 검색 최초 적용")
+
+    # 품번 접두어로 거를 때는 **품번만** 본다. 원본은 행 전체 글자를 뒤지는데,
+    # 다른 셀 부품의 주기가 이 셀 품번을 인용하고 있어(AFU-PT-101 이 JB-201 을
+    # 가리킨다) 「JB-」 로 걸러도 남의 정렬정반이 딸려 온다. 품명·재질로 찾는 검색은
+    # 그대로 둔다 — 접두어꼴("문자-")일 때만 품번으로 좁힌다.
+    t = _once(t, "      var hit = !needle || row.textContent.toLowerCase().indexOf(needle) >= 0;",
+              "      var byNo = /^[a-z]+-/.test(needle);\n"
+              "      var hit = !needle || (byNo\n"
+              "        ? (row.dataset.partNo || '').toLowerCase().indexOf(needle) >= 0\n"
+              "        : row.textContent.toLowerCase().indexOf(needle) >= 0);",
+              "부품 검색 품번 우선")
+
     # 케이싱은 원본에서 기본으로 켜 있다. 이 파생본은 셀 하나의 **기구를 보는** 화면이고
     # 껍질은 그것을 가리므로 기본을 끈다 — 토글은 남으니 외형이 필요하면 켜면 된다.
     t = _once(t, '<input class="form-check-input" id="pv-case" type="checkbox" checked>',

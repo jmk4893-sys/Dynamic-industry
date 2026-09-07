@@ -243,6 +243,27 @@ class TestJbrScene(unittest.TestCase):
         self.assertIn("docs/drawings/pv-jbr-scene.html", readme)
         self.assertIn("tools/build_jbr_scene.py", readme)
 
+    def test_the_parts_search_opens_on_this_cell(self):
+        """검색창이 이 셀 품번으로 차 있어야 한다 — 매번 손으로 치게 두지 않는다."""
+        self.assertIn('value="JB-"', self.html)
+        self.assertNotIn('placeholder="예: AFU-LFT, 승강, EOAT"', self.html)
+        # 여는 순간 한 번 걸러야 한다. 목록은 module 스크립트가 나중에 채우므로
+        # 파일을 읽는 시점에 거는 것으로는 늦다.
+        self.assertIn("partsCatalog.open = true; applyPartsFilter();", self.html)
+
+    def test_the_parts_search_scopes_a_prefix_to_the_part_number(self):
+        """AFU-PT-101 의 주기가 JB-201 을 인용한다 — 본문까지 뒤지면 딸려 온다."""
+        self.assertIn("var byNo = /^[a-z]+-/.test(needle);", self.html)
+        self.assertIn("(row.dataset.partNo || '').toLowerCase().indexOf(needle) >= 0",
+                      self.html)
+        # 품명·재질 검색은 살아 있어야 한다.
+        self.assertIn("row.textContent.toLowerCase().indexOf(needle) >= 0", self.html)
+
+    def test_the_catalog_still_carries_every_part(self):
+        """거른 것이지 지운 것이 아니다 — 검색창을 비우면 다른 셀도 보여야 한다."""
+        nos = re.findall(r'\["([A-Z][A-Z0-9/-]*-[A-Z0-9-]+)","', self.html)
+        self.assertGreater(len({n for n in nos if not n.startswith("JB-")}), 20)
+
 
 class TestJbrDetail(unittest.TestCase):
     """JBR-201 상세도 — 설계 모델·통합 설계도 리터럴에서 찍은 값이 맞는가."""

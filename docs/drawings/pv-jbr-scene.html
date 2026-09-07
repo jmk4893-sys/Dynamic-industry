@@ -1126,7 +1126,7 @@ html>body{padding:0}</style>
         <section class="pv-v22-dialog-panel" id="pv-v22-panel-parts" data-pv-panel="parts" hidden>
           <div class="pv-parts-search viz-controls" aria-label="부품 검색">
             <label class="form-label" for="pv-parts-filter">부품번호·품명 검색
-              <input class="form-control" id="pv-parts-filter" type="search" autocomplete="off" placeholder="예: AFU-LFT, 승강, EOAT">
+              <input class="form-control" id="pv-parts-filter" type="search" autocomplete="off" value="JB-" placeholder="예: JB-HD, 가위, 칼날">
             </label>
             <span class="text-small text-muted tabular-nums" id="pv-parts-count" aria-live="polite"></span>
           </div>
@@ -11207,7 +11207,7 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
     opener = trigger || document.activeElement;
     activeProgram = name;
     activatePanel(name);
-    if (name === 'parts' && partsCatalog) partsCatalog.open = true;
+    if (name === 'parts' && partsCatalog) { partsCatalog.open = true; applyPartsFilter(); }
     dialogTitle.textContent = drawingTab ? drawingTitles[drawingTab] : titles[name];
     var inline = Boolean(INLINE_PROGRAMS[name]);
     if (dialog.open && dialog.hasAttribute('data-pv-inline') !== inline) dialog.close();
@@ -11266,7 +11266,10 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
     var needle = partsFilter.value.trim().toLowerCase();
     var shown = 0;
     rows.forEach(function (row) {
-      var hit = !needle || row.textContent.toLowerCase().indexOf(needle) >= 0;
+      var byNo = /^[a-z]+-/.test(needle);
+      var hit = !needle || (byNo
+        ? (row.dataset.partNo || '').toLowerCase().indexOf(needle) >= 0
+        : row.textContent.toLowerCase().indexOf(needle) >= 0);
       row.hidden = !hit;
       if (hit) shown += 1;
     });
