@@ -34,11 +34,28 @@ dt 가 0.15 초다. 222 초를 1,500 스텝 밟아야 한다. 음해법은 그 �
 from __future__ import annotations
 
 import math
+import pathlib
+import sys
 from typing import Callable, NamedTuple
 
-import numpy as np
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+from linalg import thomas as _thomas  # noqa: E402
 
 SIGMA = 5.670374419e-8          # W/(m²·K⁴) 슈테판–볼츠만
+
+
+def _interp(x: float, xs: list, ys: list) -> float:
+    """단조 증가 xs 위의 선형 보간. 범위를 벗어나면 끝값을 문다."""
+    if x <= xs[0]:
+        return ys[0]
+    if x >= xs[-1]:
+        return ys[-1]
+    for i in range(1, len(xs)):
+        if x <= xs[i]:
+            f = (x - xs[i - 1]) / (xs[i] - xs[i - 1])
+            return ys[i - 1] + f * (ys[i] - ys[i - 1])
+    return ys[-1]
 
 
 # ── 층과 격자 ────────────────────────────────────────────────────────
@@ -73,11 +90,11 @@ class Stack:
             for _ in range(ly.n):
                 x.append(x[-1] + dx)
                 self.cell.append((ly, dx))
-        self.x = np.array(x)
+        self.x = x
         self.N = len(self.x)
 
         # 절점 열용량 — 양옆 반쪽 셀의 합. 층이 바뀌는 절점은 두 재질이 섞인다.
-        C = np.zeros(self.N)
+        C = [0.0] * self.N
         for i, (ly, dx) in enumerate(self.cell):
             C[i] += ly.rcp * dx / 2
             C[i + 1] += ly.rcp * dx / 2
@@ -90,7 +107,7 @@ class Stack:
     @property
     def areal_cp(self) -> float:
         """면적 열용량 kJ/(m²·K) — 콘솔의 arealCp 와 같은 양."""
-        return float(self.C.sum()) / 1000.0
+        return sum(self.C) / 1000.0
 
     def index(self, name: str, side: str = "front") -> int:
         """층 경계 절점의 번호. side='front' 는 그 층의 입구쪽 면."""
@@ -101,12 +118,10 @@ class Stack:
             i += ly.n
         raise KeyError(name)
 
-    def conductance(self, T: np.ndarray) -> np.ndarray:
+    def conductance(self, T) -> list[float]:
         """셀별 전도 컨덕턴스 W/(m²·K). k(T) 인 층은 셀 평균온도로 잡는다."""
-        G = np.empty(len(self.cell))
-        for i, (ly, dx) in enumerate(self.cell):
-            G[i] = ly.kk((T[i] + T[i + 1]) / 2) / dx
-        return G
+        return [ly.kk((T[i] + T[i + 1]) / 2) / dx
+                for i, (ly, dx) in enumerate(self.cell)]
 
 
 # ── 경계조건 ─────────────────────────────────────────────────────────
@@ -143,34 +158,17 @@ ADIABATIC = BC()
 
 
 # ── 풀이 ─────────────────────────────────────────────────────────────
-def _thomas(a, b, c, d):
-    """삼중대각 연립 — a 하부, b 대각, c 상부, d 우변."""
-    n = len(b)
-    cp, dp = np.empty(n), np.empty(n)
-    cp[0] = c[0] / b[0]
-    dp[0] = d[0] / b[0]
-    for i in range(1, n):
-        m = b[i] - a[i] * cp[i - 1]
-        cp[i] = (c[i] / m) if i < n - 1 else 0.0
-        dp[i] = (d[i] - a[i] * dp[i - 1]) / m
-    x = np.empty(n)
-    x[-1] = dp[-1]
-    for i in range(n - 2, -1, -1):
-        x[i] = dp[i] - cp[i] * x[i + 1]
-    return x
-
-
 class Run(NamedTuple):
-    t: np.ndarray               # s
-    T: np.ndarray               # [스텝, 절점] °C
+    t: list                     # s
+    T: list                     # [스텝][절점] °C
     stack: Stack
 
-    def at(self, node: int) -> np.ndarray:
-        return self.T[:, node]
+    def at(self, node: int) -> list:
+        return [row[node] for row in self.T]
 
     def when(self, node: int, temp: float) -> float | None:
         """그 절점이 temp 에 처음 닿는 시각. 끝까지 못 닿으면 None."""
-        v = self.T[:, node]
+        v = self.at(node)
         for i in range(1, len(v)):
             if (v[i] - temp) * (v[0] - temp) <= 0 and v[i] != v[i - 1]:
                 f = (temp - v[i - 1]) / (v[i] - v[i - 1])
@@ -178,12 +176,21 @@ class Run(NamedTuple):
         return None
 
     @property
-    def final(self) -> np.ndarray:
+    def final(self) -> list:
         return self.T[-1]
+
+    def near(self, when: float) -> list:
+        """그 시각에 가장 가까운 스텝의 온도 분포."""
+        k = min(range(len(self.t)), key=lambda i: abs(self.t[i] - when))
+        return self.T[k]
+
+    def peak(self, node: int, other: int) -> float:
+        """두 절점 온도차의 최대값 — 급냉 열충격을 이렇게 본다."""
+        return max(a[node] - a[other] for a in self.T)
 
 
 def solve(stack: Stack, left: BC, right: BC, t0, dt: float, t_end: float,
-          gen: np.ndarray | None = None, keep: int = 400) -> Run:
+          gen: list | None = None, keep: int = 400) -> Run:
     """후진오일러로 적분한다.
 
     t0  초기온도 — 스칼라 또는 절점 배열
@@ -191,23 +198,28 @@ def solve(stack: Stack, left: BC, right: BC, t0, dt: float, t_end: float,
     keep 저장할 스텝 수 상한 — 그 이상이면 솎아 담는다
     """
     N = stack.N
-    T = np.full(N, float(t0)) if np.isscalar(t0) else np.array(t0, float)
+    T = [float(t0)] * N if isinstance(t0, (int, float)) else [float(v) for v in t0]
     steps = max(1, int(round(t_end / dt)))
     every = max(1, steps // keep)
-    ts, hist = [0.0], [T.copy()]
-    q = np.zeros(N) if gen is None else np.array(gen, float)
+    ts, hist = [0.0], [list(T)]
+    q = [0.0] * N if gen is None else [float(v) for v in gen]
+    cap = [c / dt for c in stack.C]         # 스텝마다 같으므로 한 번만 낸다
 
-    for s in range(steps):
+    for st in range(steps):
         Tn = T
-        Tg = T.copy()                       # 비선형(복사·k(T)) 갱신용 추정치
+        Tg = list(T)                        # 비선형(복사·k(T)) 갱신용 추정치
         for _ in range(2):
             G = stack.conductance(Tg)
-            a = np.zeros(N); b = np.zeros(N); c = np.zeros(N)
-            d = stack.C / dt * Tn + q
-            b += stack.C / dt
+            a = [0.0] * N
+            b = list(cap)
+            c = [0.0] * N
+            d = [cap[i] * Tn[i] + q[i] for i in range(N)]
             for i in range(N - 1):
-                b[i] += G[i]; c[i] = -G[i]
-                b[i + 1] += G[i]; a[i + 1] = -G[i]
+                g = G[i]
+                b[i] += g
+                c[i] = -g
+                b[i + 1] += g
+                a[i + 1] = -g
             for node, bc in ((0, left), (N - 1, right)):
                 if bc.fixed is not None:
                     a[node] = c[node] = 0.0
@@ -219,14 +231,14 @@ def solve(stack: Stack, left: BC, right: BC, t0, dt: float, t_end: float,
                     b[node] += cb
             Tg = _thomas(a, b, c, d)
         T = Tg
-        if (s + 1) % every == 0 or s == steps - 1:
-            ts.append((s + 1) * dt)
-            hist.append(T.copy())
-    return Run(np.array(ts), np.array(hist), stack)
+        if (st + 1) % every == 0 or st == steps - 1:
+            ts.append((st + 1) * dt)
+            hist.append(list(T))
+    return Run(ts, hist, stack)
 
 
 def steady(stack: Stack, left: BC, right: BC, t0=25.0,
-           tol: float = 1e-5, chunks: int = 60) -> np.ndarray:
+           tol: float = 1e-5, chunks: int = 60) -> list:
     """정상상태 — 큰 dt 로 변화가 멎을 때까지 돌린다.
 
     시상수를 미리 어림해 "그 몇 배만 돌리자" 로 짰다가 틀렸다. 전도만
@@ -235,11 +247,12 @@ def steady(stack: Stack, left: BC, right: BC, t0=25.0,
     검증 ⑤ 가 그것을 64 % 오차로 잡았다. 그래서 어림하지 않고 **멎을
     때까지** 돌린다.
     """
-    T = np.full(stack.N, float(t0)) if np.isscalar(t0) else np.array(t0, float)
-    dt = stack.C.sum() / max(stack.conductance(T).min(), 1e-9)
+    T = ([float(t0)] * stack.N if isinstance(t0, (int, float))
+         else [float(v) for v in t0])
+    dt = sum(stack.C) / max(min(stack.conductance(T)), 1e-9)
     for _ in range(chunks):
         r = solve(stack, left, right, T, dt, dt * 20, keep=2)
-        move = float(np.abs(r.final - T).max())
+        move = max(abs(a - b) for a, b in zip(r.final, T))
         T = r.final
         if move < tol:
             break
@@ -289,10 +302,12 @@ def validate() -> list[tuple[str, float, float, float]]:
     # ① 반무한체 표면온도 계단 — T(x,t) = Ts + (Ti−Ts)·erf(x/2√(αt))
     k, rho, cp = 50.0, 7850.0, 460.0
     al = k / (rho * cp)
-    L, x, t = 0.5, 0.020, 100.0
-    st = Stack(Layer("강", L, k, rho, cp, n=500))
+    L, x, t = 0.15, 0.020, 100.0
+    # 침투깊이 √(αt)=37 mm 의 네 배면 반무한이다 — 500 절점짜리 0.5 m 를
+    # 잡을 이유가 없다. 격자 간격(1 mm)은 그대로 두고 영역만 줄인다.
+    st = Stack(Layer("강", L, k, rho, cp, n=150))
     r = solve(st, BC(fixed=400.0), ADIABATIC, 0.0, 0.05, t, keep=2)
-    got = float(np.interp(x, st.x, r.final))
+    got = _interp(x, st.x, r.final)
     want = 400.0 + (0.0 - 400.0) * math.erf(x / (2 * math.sqrt(al * t)))
     out.append(("반무한체 계단응답 (erf)", got, want, abs(got - want) / want))
 
@@ -305,7 +320,7 @@ def validate() -> list[tuple[str, float, float, float]]:
     Tf = steady(st, BC(h=hi, t_inf=ti), BC(h=ho, t_inf=to), t0=100.0)
     R = 1 / hi + sum(ly.t / ly.k for ly in lys) + 1 / ho
     qw = (ti - to) / R
-    got = float(Tf[st.index("B", "back")])              # B/C 계면
+    got = Tf[st.index("B", "back")]                     # B/C 계면
     want = to + qw * (1 / ho + lys[2].t / lys[2].k)
     out.append(("다층벽 정상 계면온도", got, want, abs(got - want) / want))
 
@@ -313,7 +328,7 @@ def validate() -> list[tuple[str, float, float, float]]:
     th, kk, rr, cc, h = 0.004, 200.0, 2700.0, 900.0, 20.0
     st = Stack(Layer("판", th, kk, rr, cc, 4))
     r = solve(st, BC(h=h, t_inf=20.0), BC(h=h, t_inf=20.0), 300.0, 1.0, 600.0)
-    got = float(r.final.mean())
+    got = sum(r.final) / len(r.final)
     want = 20.0 + (300.0 - 20.0) * math.exp(-2 * h * 600.0 / (rr * cc * th))
     out.append(("덩어리 냉각 지수해", got, want, abs(got - want) / want))
 
@@ -326,7 +341,7 @@ def validate() -> list[tuple[str, float, float, float]]:
     tend = fo * half * half / al2
     st = Stack(Layer("판", 2 * half, kk, rr, cc, 40))
     r = solve(st, BC(h=h, t_inf=0.0), BC(h=h, t_inf=0.0), 500.0, tend / 400, tend)
-    got = float(r.final[st.N // 2])
+    got = r.final[st.N // 2]
     want = 500.0 * 1.11913 * math.exp(-0.860334 ** 2 * fo)
     out.append(("평판 급냉 1항 급수해", got, want, abs(got - want) / want))
 
@@ -334,7 +349,7 @@ def validate() -> list[tuple[str, float, float, float]]:
     th, kk, h, qf = 0.02, 15.0, 30.0, 5000.0
     st = Stack(Layer("판", th, kk, 7800, 500, 8))
     Tf = steady(st, BC(q=qf), BC(h=h, t_inf=25.0), t0=25.0)
-    got = float(Tf[0])
+    got = Tf[0]
     want = 25.0 + qf * (1 / h + th / kk)
     out.append(("규정유속 표면온도", got, want, abs(got - want) / want))
 

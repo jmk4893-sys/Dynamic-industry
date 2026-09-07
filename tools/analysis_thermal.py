@@ -37,8 +37,6 @@ import pathlib
 import sys
 from typing import NamedTuple
 
-import numpy as np
-
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import therm as T  # noqa: E402
@@ -159,10 +157,9 @@ def soak(flux: float, split: float = 0.5, t_end: float = 0.0):
                 T_AMB, min(0.25, end / 800), end, keep=900)
     i_face = st.index("EVA하", "front")
     tf = r.when(i_face, T_TARGET)
-    k = int(np.argmin(np.abs(r.t - tf))) if tf else -1
+    at = r.near(tf) if tf else r.final
     return dict(stack=st, run=r, i_face=i_face, t_face=tf,
-                t_back=float(r.T[k, st.N - 1]),
-                dt_glass=float(r.T[k, 0] - r.T[k, i_face]))
+                t_back=at[st.N - 1], dt_glass=at[0] - at[i_face])
 
 
 # ── ① 패널 소킹 ─────────────────────────────────────────────────────
@@ -268,8 +265,7 @@ def glass_stress():
     # 급냉 — 140 ℃ 유리를 25 ℃ 강제공랭에 넣는 순간이 가장 심하다
     q = glass_cool_run()
     st, r = q["stack"], q["run"]
-    mid = st.N // 2
-    dt_q = float(np.max(r.T[:, mid] - r.T[:, 0]))
+    dt_q = r.peak(st.N // 2, 0)
 
     # 단수를 줄이면 같은 열량을 짧은 시간에 넣어야 한다 → 유속이 오른다
     rows = []

@@ -19,9 +19,13 @@
 from __future__ import annotations
 
 import math
+import pathlib
+import sys
 from typing import NamedTuple
 
-import numpy as np
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+import linalg as la  # noqa: E402
 
 
 class Sec(NamedTuple):
@@ -69,56 +73,64 @@ def circsec(d) -> Sec:
     return Sec(math.pi * d ** 2 / 4, I, I, 2 * I)
 
 
-def _local_k(L: float, s: Sec) -> np.ndarray:
+def _local_k(L: float, s: Sec):
     """국부좌표 12×12 강성행렬 (Euler-Bernoulli)."""
     E, G, A, Iy, Iz, J = s.E, s.G, s.A, s.Iy, s.Iz, s.J
-    k = np.zeros((12, 12))
+    k = la.zeros(12, 12)
     # 축력
-    k[0, 0] = k[6, 6] = E * A / L
-    k[0, 6] = k[6, 0] = -E * A / L
+    k[0][0] = k[6][6] = E * A / L
+    k[0][6] = k[6][0] = -E * A / L
     # 비틀림
-    k[3, 3] = k[9, 9] = G * J / L
-    k[3, 9] = k[9, 3] = -G * J / L
+    k[3][3] = k[9][9] = G * J / L
+    k[3][9] = k[9][3] = -G * J / L
     # x-y 평면 휨 (Iz, DOF v=1,5 / 7,11)
     a = 12 * E * Iz / L ** 3
     b = 6 * E * Iz / L ** 2
     c = 4 * E * Iz / L
     d = 2 * E * Iz / L
-    k[1, 1] = k[7, 7] = a
-    k[1, 7] = k[7, 1] = -a
-    k[1, 5] = k[5, 1] = k[1, 11] = k[11, 1] = b
-    k[5, 7] = k[7, 5] = k[7, 11] = k[11, 7] = -b
-    k[5, 5] = k[11, 11] = c
-    k[5, 11] = k[11, 5] = d
+    k[1][1] = k[7][7] = a
+    k[1][7] = k[7][1] = -a
+    k[1][5] = k[5][1] = k[1][11] = k[11][1] = b
+    k[5][7] = k[7][5] = k[7][11] = k[11][7] = -b
+    k[5][5] = k[11][11] = c
+    k[5][11] = k[11][5] = d
     # x-z 평면 휨 (Iy, DOF w=2,4 / 8,10) — 부호가 반대다
     a = 12 * E * Iy / L ** 3
     b = 6 * E * Iy / L ** 2
     c = 4 * E * Iy / L
     d = 2 * E * Iy / L
-    k[2, 2] = k[8, 8] = a
-    k[2, 8] = k[8, 2] = -a
-    k[2, 4] = k[4, 2] = k[2, 10] = k[10, 2] = -b
-    k[4, 8] = k[8, 4] = k[8, 10] = k[10, 8] = b
-    k[4, 4] = k[10, 10] = c
-    k[4, 10] = k[10, 4] = d
+    k[2][2] = k[8][8] = a
+    k[2][8] = k[8][2] = -a
+    k[2][4] = k[4][2] = k[2][10] = k[10][2] = -b
+    k[4][8] = k[8][4] = k[8][10] = k[10][8] = b
+    k[4][4] = k[10][10] = c
+    k[4][10] = k[10][4] = d
     return k
 
 
-def _rot(p1, p2, roll=0.0) -> np.ndarray:
+def _cross(a, b):
+    return [a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0]]
+
+
+def _rot(p1, p2, roll=0.0):
     """국부→전역 방향여현 3×3. roll 은 부재축 둘레 회전(도)."""
-    v = np.array(p2, float) - np.array(p1, float)
-    L = np.linalg.norm(v)
-    ex = v / L
-    up = np.array([0.0, 0.0, 1.0])
-    if abs(np.dot(ex, up)) > 0.999:            # 수직 부재
-        up = np.array([1.0, 0.0, 0.0])
-    ey = np.cross(up, ex)
-    ey /= np.linalg.norm(ey)
-    ez = np.cross(ex, ey)
+    v = [p2[i] - p1[i] for i in range(3)]
+    L = math.sqrt(sum(t * t for t in v))
+    ex = [t / L for t in v]
+    up = [0.0, 0.0, 1.0]
+    if abs(ex[2]) > 0.999:                     # 수직 부재
+        up = [1.0, 0.0, 0.0]
+    ey = _cross(up, ex)
+    n = math.sqrt(sum(t * t for t in ey))
+    ey = [t / n for t in ey]
+    ez = _cross(ex, ey)
     if roll:
         c, s = math.cos(math.radians(roll)), math.sin(math.radians(roll))
-        ey, ez = c * ey + s * ez, -s * ey + c * ez
-    return np.vstack([ex, ey, ez])
+        ey, ez = ([c * ey[i] + s * ez[i] for i in range(3)],
+                  [-s * ey[i] + c * ez[i] for i in range(3)])
+    return [ex, ey, ez]
 
 
 class Frame:
@@ -128,7 +140,7 @@ class Frame:
         self.nodes: list[tuple] = []
         self.elems: list[tuple] = []       # (n1, n2, Sec, roll)
         self.fix: dict[int, tuple] = {}    # node → 6개 불리언 (구속=True)
-        self.load: dict[int, np.ndarray] = {}   # node → 6성분 하중
+        self.load: dict[int, list] = {}    # node → 6성분 하중
 
     def node(self, x, y, z) -> int:
         self.nodes.append((float(x), float(y), float(z)))
@@ -142,26 +154,37 @@ class Frame:
         self.fix[n] = (ux, uy, uz, rx, ry, rz)
 
     def force(self, n, fx=0.0, fy=0.0, fz=0.0, mx=0.0, my=0.0, mz=0.0):
-        self.load[n] = self.load.get(n, np.zeros(6)) + np.array(
-            [fx, fy, fz, mx, my, mz], float)
+        cur = self.load.setdefault(n, [0.0] * 6)
+        for i, v in enumerate((fx, fy, fz, mx, my, mz)):
+            cur[i] += v
 
     # ── 조립 ───────────────────────────────────────────────────────────
     def _dofs(self, n) -> list[int]:
         return list(range(6 * n, 6 * n + 6))
 
+    @staticmethod
+    def _T(R):
+        """12×12 변환 — 3×3 방향여현을 대각으로 넷 쌓는다."""
+        T = la.zeros(12, 12)
+        for i in range(4):
+            for a in range(3):
+                for b in range(3):
+                    T[3 * i + a][3 * i + b] = R[a][b]
+        return T
+
     def _assemble(self):
         N = 6 * len(self.nodes)
-        K = np.zeros((N, N))
+        K = la.zeros(N, N)
         for n1, n2, s, roll in self.elems:
             p1, p2 = self.nodes[n1], self.nodes[n2]
             L = math.dist(p1, p2)
-            R = _rot(p1, p2, roll)
-            T = np.zeros((12, 12))
-            for i in range(4):
-                T[3 * i:3 * i + 3, 3 * i:3 * i + 3] = R
-            ke = T.T @ _local_k(L, s) @ T
+            T = self._T(_rot(p1, p2, roll))
+            ke = la.matmul(la.transpose(T), la.matmul(_local_k(L, s), T))
             d = self._dofs(n1) + self._dofs(n2)
-            K[np.ix_(d, d)] += ke
+            for i, gi in enumerate(d):
+                row, kr = K[gi], ke[i]
+                for j, gj in enumerate(d):
+                    row[gj] += kr[j]
         return K
 
     def _free(self) -> list[int]:
@@ -172,30 +195,31 @@ class Frame:
                     fixed.add(6 * n + i)
         return [i for i in range(6 * len(self.nodes)) if i not in fixed]
 
-    def solve(self) -> np.ndarray:
+    def solve(self) -> list[list[float]]:
         """절점 변위 (N×6). mm · rad."""
         K = self._assemble()
-        F = np.zeros(6 * len(self.nodes))
+        N = 6 * len(self.nodes)
+        F = [0.0] * N
         for n, v in self.load.items():
-            F[self._dofs(n)] += v
+            for i, d in enumerate(self._dofs(n)):
+                F[d] += v[i]
         free = self._free()
-        u = np.zeros(6 * len(self.nodes))
-        u[free] = np.linalg.solve(K[np.ix_(free, free)], F[free])
-        return u.reshape(-1, 6)
+        uf = la.solve(la.sub_matrix(K, free, free), [F[i] for i in free])
+        u = [0.0] * N
+        for i, d in enumerate(free):
+            u[d] = uf[i]
+        return [u[6 * i:6 * i + 6] for i in range(len(self.nodes))]
 
-    def member_forces(self) -> list[np.ndarray]:
+    def member_forces(self) -> list[list[float]]:
         """부재 국부 단면력 12성분 — [N,Vy,Vz,T,My,Mz] × 2단."""
-        u = self.solve().reshape(-1)
+        u = [v for row in self.solve() for v in row]
         out = []
         for n1, n2, s, roll in self.elems:
             p1, p2 = self.nodes[n1], self.nodes[n2]
             L = math.dist(p1, p2)
-            R = _rot(p1, p2, roll)
-            T = np.zeros((12, 12))
-            for i in range(4):
-                T[3 * i:3 * i + 3, 3 * i:3 * i + 3] = R
+            T = self._T(_rot(p1, p2, roll))
             d = self._dofs(n1) + self._dofs(n2)
-            out.append(_local_k(L, s) @ T @ u[d])
+            out.append(la.matvec(_local_k(L, s), la.matvec(T, [u[i] for i in d])))
         return out
 
     # ── 고유진동 ───────────────────────────────────────────────────────
@@ -214,28 +238,32 @@ class Frame:
         """
         K = self._assemble()
         N = 6 * len(self.nodes)
-        M = np.zeros(N)
+        M = [0.0] * N
         for n1, n2, s, _roll in self.elems:
             L = math.dist(self.nodes[n1], self.nodes[n2])
             m = s.A * L * 7.85e-9 / 2          # t (= N·s²/mm)
             for nd in (n1, n2):
-                M[6 * nd:6 * nd + 3] += m
+                for i in range(3):
+                    M[6 * nd + i] += m
         if extra_mass:
             for nd, kg in extra_mass.items():
-                M[6 * nd:6 * nd + 3] += kg / 1000 / 3   # kg → t, 3축 분배
+                for i in range(3):
+                    M[6 * nd + i] += kg / 1000 / 3      # kg → t, 3축 분배
         free = self._free()
         t = [i for i in free if M[i] > 0]      # 질량이 있는 병진 자유도
         r = [i for i in free if M[i] <= 0]     # 질량 없는 자유도 — 축약한다
-        Ktt = K[np.ix_(t, t)]
+        Ktt = la.sub_matrix(K, t, t)
         if r:
-            Krr = K[np.ix_(r, r)]
-            Krt = K[np.ix_(r, t)]
-            Ktt = Ktt - Krt.T @ np.linalg.solve(Krr, Krt)
-        s_ = 1.0 / np.sqrt(M[t])
-        A = (Ktt * s_).T * s_
-        w2 = np.linalg.eigvalsh((A + A.T) / 2)
-        w2 = w2[w2 > 1e-9]
-        return [math.sqrt(v) / (2 * math.pi) for v in np.sort(w2)[:n]]
+            Krr = la.sub_matrix(K, r, r)
+            Krt = la.sub_matrix(K, r, t)
+            corr = la.matmul(la.transpose(Krt), la.solve_mat(Krr, Krt))
+            Ktt = [[Ktt[i][j] - corr[i][j] for j in range(len(t))]
+                   for i in range(len(t))]
+        s_ = [1.0 / math.sqrt(M[i]) for i in t]
+        A = [[(Ktt[i][j] + Ktt[j][i]) / 2 * s_[i] * s_[j]
+              for j in range(len(t))] for i in range(len(t))]
+        w2 = [v for v in la.eig_smallest(A, n) if v > 1e-9]
+        return [math.sqrt(v) / (2 * math.pi) for v in sorted(w2)[:n]]
 
 
 # ── 좌굴 (개별 부재) ───────────────────────────────────────────────────

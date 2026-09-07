@@ -15,9 +15,11 @@
 존재하는 이유다.
 """
 
+import ast
 import math
 import pathlib
 import re
+import sys
 import unittest
 
 from . import _path  # noqa: F401
@@ -30,6 +32,74 @@ import therm
 from console_consts import const as c
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+class TestTheSuiteNeedsNoThirdPartyPackage(unittest.TestCase):
+    """시험은 빈 인터프리터에서 돌아야 한다.
+
+    CI 의 unittest 잡은 **아무것도 설치하지 않는다** — `dependencies = []`
+    이고 numpy 는 `simulation` 부가의존으로 격리돼 전용 잡에서만 돈다.
+    해석기를 numpy 로 짰다가 그 성질을 깼고, 세 파이썬 버전이 전부 import
+    에서 죽었다. 로컬에서는 numpy 가 있어 통과했으므로 **로컬 통과가
+    보증이 아니었다.**
+
+    그래서 numpy 하나가 아니라 **표준 라이브러리 밖 전부**를 막는다.
+    시험이 닿는 모듈을 따라가며 import 를 읽고, 저장소 모듈도 표준
+    라이브러리도 아닌 것이 나오면 실패한다.
+    """
+
+    ROOTS = ("tools", "src")
+
+    def _repo_modules(self):
+        names = {}
+        for d in self.ROOTS:
+            for f in (ROOT / d).rglob("*.py"):
+                names[f.stem] = f
+                names[f.parent.name] = f.parent      # 패키지 이름도 받는다
+        return names
+
+    def _imports(self, path: pathlib.Path):
+        tree = ast.parse(path.read_text(encoding="utf-8"), str(path))
+        out = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                out |= {a.name.split(".")[0] for a in node.names}
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                out.add(node.module.split(".")[0])
+        return out
+
+    def test_no_module_the_tests_reach_imports_a_third_party_package(self):
+        repo = self._repo_modules()
+        seen, queue, offenders = set(), [], []
+        for f in (ROOT / "tests").glob("test_*.py"):
+            queue.append(f)
+        while queue:
+            f = queue.pop()
+            if f in seen:
+                continue
+            seen.add(f)
+            for name in self._imports(f):
+                if name in sys.stdlib_module_names or name in ("tests", "_path"):
+                    continue
+                target = repo.get(name)
+                if target is None:
+                    offenders.append(f"{f.relative_to(ROOT)} → {name}")
+                elif target.is_file():
+                    queue.append(target)
+        self.assertEqual(offenders, [], "표준 라이브러리 밖 의존: " +
+                         " · ".join(offenders))
+
+    def test_the_solvers_are_standard_library_only(self):
+        """해석기는 사무실 아무 노트북에서나 열려야 한다 — 그것이 순수
+        파이썬으로 다시 쓴 이유다."""
+        for name in ("fea.py", "therm.py", "linalg.py",
+                     "analysis_structural.py", "analysis_thermal.py",
+                     "pilot_plan.py"):
+            f = ROOT / "tools" / name
+            for imp in self._imports(f):
+                self.assertTrue(
+                    imp in sys.stdlib_module_names or (ROOT / "tools" / f"{imp}.py").exists(),
+                    f"{name} 이 {imp} 를 import 한다")
 
 
 # ── ① 해석기 ────────────────────────────────────────────────────────
