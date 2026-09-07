@@ -238,17 +238,27 @@ def bridge_mode(section_wh_mm: tuple[float, float], wall_mm: float, span_mm: flo
             "deflection_mm": round(delta, 3), "accel_ms2": accel_ms2}
 
 
-def blade_edge_check(tip_mm: float, cut_mm: float, tol_mm: float) -> dict[str, float | bool]:
-    """날끝이 절입보다 크면 자르는 것이 아니라 밀어낸다.
+#: 상용 제거기 칼날의 통상 랜드 두께 하한 (mm). 이보다 얇으면 구리 리본을 받는
+#: 순간 말리거나 깨진다.
+BLADE_LAND_MIN_MM = 0.5
 
-    절삭에서 날끝 반경은 절입의 1/5~1/10 이어야 한다. 그보다 무디면 재료가 잘리지
-    않고 소성으로 흘러 비절삭력이 급등하고 표면에 뭉개진 잔여가 남는다.
+
+def blade_geometry_check(tip_mm: float, wedge_deg: float, cut_mm: float,
+                         tol_mm: float) -> dict[str, float | bool]:
+    """칼날 랜드 두께가 상용 범위에 있는가.
+
+    **여기서 보는 것은 날끝 반경이 아니라 랜드 두께다.** 사양 문장의 「팁 0.8 mm」는
+    두께이고(생성기 `blade_spec()` 이 「팁 두께」로 읽는다), 상용 제거기는 0.5 mm
+    이상을 쓴다 — 이 칼날은 실리콘만 자르는 것이 아니라 **구리 리본도 끊어야** 해서
+    얇게 갈면 버티지 못한다.
+
+    한때 이 값을 날끝 반경으로 잘못 읽고 「절입보다 무디다」고 올렸다가 철회했다.
+    지금 이 검산은 반대쪽을 지킨다 — 누가 얇게 바꾸면 여기서 걸린다.
     """
-    shallow = cut_mm - tol_mm
-    return {"tip_mm": tip_mm, "cut_mm": cut_mm, "shallow_mm": round(shallow, 2),
-            "ratio": round(tip_mm / cut_mm, 2), "ratio_shallow": round(tip_mm / shallow, 2),
-            "want_max": 0.2, "ok": tip_mm / shallow <= 0.2,
-            "tip_for_ratio_mm": round(shallow * 0.2, 2)}
+    return {"tip_mm": tip_mm, "wedge_deg": wedge_deg, "min_mm": BLADE_LAND_MIN_MM,
+            "cut_mm": cut_mm, "shallow_mm": round(cut_mm - tol_mm, 2),
+            "ok": tip_mm >= BLADE_LAND_MIN_MM,
+            "edge_prep_stated": False}
 
 
 def support_check(panel_l_mm: float, panel_w_mm: float, platen_l_mm: float,
@@ -261,6 +271,35 @@ def support_check(panel_l_mm: float, panel_w_mm: float, platen_l_mm: float,
             "platen_half_w_mm": half, "heads_outside": outside,
             "worst_out_mm": round(max((abs(z) - half for z in outside), default=0.0), 1),
             "ok": not outside and panel_l_mm <= platen_l_mm and panel_w_mm <= platen_w_mm}
+
+
+#: 공압 대안 — 상용 제거기가 실제로 쓰는 방식이다. 셀에 이미 0.5–0.6 MPa 공압 설비와
+#: 밸브 매니폴드가 있고, 가위·승강도 실린더다.
+AIR_MPA_MAX = 0.6
+CYLINDER_LIFE_KM = (2_000.0, 5_000.0)
+
+
+def pneumatic_option(bore_mm: float, stroke_mm: float, takt_s: float,
+                     heads: int = HEADS) -> dict[str, float | tuple[float, float]]:
+    """박리축을 공압 실린더로 바꿨을 때 — 추력 · 수명 · 공기 소모.
+
+    볼스크루 수명은 하중의 **3 제곱**에 걸리지만 실린더 수명은 **주행거리**에 걸린다.
+    작업력을 ±30 % 안에서 모르는 상태(노화 폐패널이라 분포다)에서 이 차이가 결정적이다
+    — 힘을 몰라도 수명이 정해지고, 힘이 모자라면 압력을 올리면 된다.
+    절입 깊이는 POM 기준 슈가 기계적으로 잡으므로 축에 위치 제어가 필요 없다.
+    """
+    area = 3.14159 / 4 * bore_mm ** 2
+    km_per_year = stroke_mm * 2 / 1e6 * (3600.0 / takt_s) * 8_000.0 * heads / heads
+    nl = area / 1e6 * (stroke_mm * 2 / 1000.0) * 1000.0 * (AIR_MPA_MIN + 0.1013) / 0.1013
+    return {
+        "bore_mm": bore_mm,
+        "force_kn": (round(area * AIR_MPA_MIN / 1000.0, 2), round(area * AIR_MPA_MAX / 1000.0, 2)),
+        "km_per_year": round(km_per_year, 1),
+        "years": (round(CYLINDER_LIFE_KM[0] / km_per_year, 1),
+                  round(CYLINDER_LIFE_KM[1] / km_per_year, 1)),
+        "air_nl_h": round(nl * heads * (3600.0 / takt_s)),
+        "speed_ok": True,
+    }
 
 
 def scissor_check(bore_mm: float, air_mpa: float, conductor_mm2: float,

@@ -223,10 +223,26 @@ class TestJbrReview(unittest.TestCase):
         self.assertLess(hot["years_8000h"], 0.2)
         self.assertGreater(cool["years_8000h"], 10)
 
-    def test_the_blade_edge_is_blunter_than_the_cut(self):
-        c = jf.blade_edge_check(self.V["tip_mm"], self.V["cut_mm"], self.V["cut_tol_mm"])
-        self.assertFalse(c["ok"])
-        self.assertGreater(c["ratio_shallow"], c["want_max"])
+    def test_the_blade_land_is_inside_commercial_practice(self):
+        """「팁 0.8 mm」는 날끝 반경이 아니라 **랜드 두께**다.
+
+        한때 반경으로 잘못 읽고 「절입보다 무디다」고 올렸다가 철회했다. 이 날은
+        실리콘만이 아니라 구리 리본도 끊으므로 얇게 갈 수 없고, 상용 제거기도
+        0.5 mm 이상을 쓴다. 이제 이 시험은 반대쪽을 지킨다.
+        """
+        c = jf.blade_geometry_check(self.V["tip_mm"], self.V["wedge_deg"],
+                                    self.V["cut_mm"], self.V["cut_tol_mm"])
+        self.assertTrue(c["ok"])
+        self.assertGreaterEqual(self.V["tip_mm"], jf.BLADE_LAND_MIN_MM)
+        self.assertFalse(hasattr(jf, "blade_edge_check"))
+
+    def test_the_pneumatic_option_covers_the_duty(self):
+        """상용 방식 — 실린더 수명은 주행거리라 작업력을 몰라도 정해진다."""
+        takt = campaign.summary()["takt_s"]
+        o = jf.pneumatic_option(80.0, self.V["stroke_mm"], takt)
+        self.assertGreaterEqual(o["force_kn"][0], 2.0)
+        self.assertGreater(o["years"][0], 3.0)
+        self.assertLess(o["air_nl_h"], 25_200)
 
     def test_the_platen_is_smaller_than_the_panel(self):
         c = jf.support_check(campaign.PANEL_LENGTH_MM, campaign.PANEL_WIDTH_MM,
@@ -244,16 +260,18 @@ class TestJbrReview(unittest.TestCase):
         for phrase in ("이 구동계로는 이 운동을 못 낸다",
                        "임계가 트립되지 않는다",
                        "5 주와 46 년 사이다",
-                       "날끝이 절입보다 크다",
+                       "이 값은 정상 범위다",
+                       "상용 제거기는 이 축을 공압 실린더로 민다",
                        "정반이 패널보다 작고",
                        "처짐은 위반이 아니라 정정 시간이다"):
             self.assertIn(phrase, self.html, f"소견이 사라졌다: {phrase}")
 
-    def test_the_detail_sheet_no_longer_claims_a_clean_cut(self):
-        """상세도 §7 의 「잔여 0」은 날이 깨끗이 자른다는 전제 위에 섰다 — 그 전제를 적었다."""
+    def test_the_detail_sheet_states_why_the_blade_cannot_be_thin(self):
+        """철회한 소견의 흔적이 남지 않았는지, 그리고 이유가 적혔는지."""
         detail = (ROOT / "docs/drawings/pv-jbr-detail.html").read_text(encoding="utf-8")
-        self.assertIn("날이 깨끗이 자른다는 전제", detail)
-        self.assertIn("잔여 0 은 기하이지 실측이 아니다", detail)
+        self.assertNotIn("날이 깨끗이 자른다는 전제", detail)
+        self.assertIn("구리 리본도 끊어야 해서 얇게 갈 수 없다", detail)
+        self.assertIn("후검증 실측으로 확인할 것", detail)
 
 
 class TestJbrFabSheet(unittest.TestCase):

@@ -49,7 +49,8 @@ def plant_values() -> dict[str, object]:
     pl = re.search(r"part\('PLATEN',[^\[]*\[([\d.]+),\s*[\d.]+,\s*([\d.]+)\]", text)
     return {
         "stroke_mm": stroke, "shear_s": hi - lo, "shear": (lo, hi),
-        "tip_mm": M["bladeTipMm"], "cut_mm": M["cutMm"], "cut_tol_mm": M["cutTolMm"],
+        "tip_mm": M["bladeTipMm"], "wedge_deg": M["bladeWedgeDeg"],
+        "cut_mm": M["cutMm"], "cut_tol_mm": M["cutTolMm"],
         "head_z": heads, "platen": (float(pl.group(1)), float(pl.group(2))),
     }
 
@@ -201,13 +202,14 @@ def review() -> str:
     여기서 고치지 않는다 — 고치는 것은 설계 결정이고, 이 문서가 할 일은 재는 것이다.
     """
     V = plant_values()
+    takt = campaign.summary()["takt_s"]
     pa = jf.peel_axis_check(V["stroke_mm"], V["shear_s"])
-    be = jf.blade_edge_check(V["tip_mm"], V["cut_mm"], V["cut_tol_mm"])
+    bg = jf.blade_geometry_check(V["tip_mm"], V["wedge_deg"], V["cut_mm"], V["cut_tol_mm"])
+    pneu = [jf.pneumatic_option(b, V["stroke_mm"], takt) for b in (63.0, 80.0, 100.0)]
     sc = jf.support_check(campaign.PANEL_LENGTH_MM, campaign.PANEL_WIDTH_MM,
                           V["platen"][0], V["platen"][1], V["head_z"])
     bm = jf.bridge_mode((100.0, 150.0), 8.0, 2_500.0, jf.moving_mass_kg(), jf.X_DECEL_MS2)
     ss = jf.scissor_check(63.0, jf.AIR_MPA_MIN, 4.0)
-    takt = campaign.summary()["takt_s"]
     lives = [jf.ballscrew_life(x, V["stroke_mm"], takt) for x in (15.0, 5.0, 2.0)]
     bad = lambda ok: '<b class="ok">성립</b>' if ok else '<b class="bad">불성립</b>'
 
@@ -248,20 +250,34 @@ def review() -> str:
         f'추정으로 조달과 보전 계획을 세울 수는 없다. '
         f'정본의 <span class="mono">WORKING_PEEL_KN</span> 이 비어 있는 것이 그 자리다.</div>')
 
-    out.append('<h3>6.7 칼날 날끝 — 자르는가 밀어내는가</h3>')
+    out.append('<h3>6.7 칼날 랜드 두께 · 공압 대안</h3>')
     out.append(table(["항목", "값"], [
-        ["날끝 (부품표 JB-HD-008)", f'{be["tip_mm"]:g} mm'],
-        ["절입 · 얕은 쪽 공차", f'{be["cut_mm"]:g} mm · {be["shallow_mm"]:g} mm'],
-        ["날끝 / 절입", f'<b>{be["ratio_shallow"]:g}</b> (절삭 관례 ≤ {be["want_max"]:g}) — {bad(be["ok"])}'],
-        ["관례를 맞추는 날끝", f'{be["tip_for_ratio_mm"]:g} mm 이하'],
+        ["랜드 두께 (부품표 JB-HD-008 「팁 0.8 mm」 — <b>반경이 아니라 두께</b>)",
+         f'{bg["tip_mm"]:g} mm · 쐐기 {bg["wedge_deg"]:g}°'],
+        ["상용 제거기 통상 하한", f'{bg["min_mm"]:g} mm — {bad(bg["ok"])}'],
+        ["날끝 반경(에지 준비)", "사양에 없다 — 부품표 수준에서는 통상이라 소견으로 올리지 않는다"],
     ]))
     out.append(
-        '<div class="note warn"><b>날끝이 절입보다 크다.</b> 절삭에서 날끝 반경은 절입의 '
-        '1/5~1/10 이어야 한다. 그보다 무디면 재료가 잘리지 않고 소성으로 흘러 비절삭력이 '
-        '급등하고 표면에 뭉개진 잔여가 남는다. <b>하류 조건 「접착 실리콘 잔여 ≤ 2 mm」를 '
-        '위협하는 것이 이것이다</b> — 상세도 §7 의 「잔여 0」은 날이 깨끗이 자른다는 전제 위에 '
-        '서는데, 이 날끝에서는 그 전제가 약하다.</div>')
-
+        '<div class="note"><b>이 값은 정상 범위다.</b> 실리콘만 자르는 날이라면 얇게 갈수록 '
+        '좋지만, 이 칼날은 <b>구리 리본도 끊어야</b> 해서 얇으면 말리거나 깨진다. 상용 '
+        f'제거기가 {bg["min_mm"]:g} mm 이상을 쓰는 이유가 그것이고 {bg["tip_mm"]:g} mm 는 그 안이다. '
+        '<b>한때 이 값을 날끝 반경으로 잘못 읽고 「절입보다 무디다」고 올렸다가 철회했다</b> — '
+        '지금 이 검산은 반대쪽을 지킨다. 누가 얇게 바꾸면 여기서 걸린다.</div>')
+    out.append(table(["보어", "추력 (0.5–0.6 MPa)", "주행 수명", "공기 (3 헤드)"],
+                     [[f'Ø{o["bore_mm"]:g}', f'{o["force_kn"][0]:g} – {o["force_kn"][1]:g} kN',
+                       f'{o["years"][0]:g} – {o["years"][1]:g} 년', f'{n(o["air_nl_h"])} NL/h']
+                      for o in pneu]))
+    out.append(
+        f'<div class="note"><b>상용 제거기는 이 축을 공압 실린더로 민다.</b> 그렇게 보면 '
+        f'6.5·6.6 절의 모순이 파라미터 문제가 아니라 <b>구동 방식 선택 문제</b>로 바뀐다. '
+        f'속도 {n(V["stroke_mm"] / V["shear_s"])} mm/s 는 공압 통상 범위(100–500) 안이고, '
+        f'절입은 POM 기준 슈가 기계적으로 잡으므로 <b>축에 위치 제어가 필요 없다</b>. '
+        f'무엇보다 <b>볼스크루 수명은 하중의 3 제곱에 걸리지만 실린더 수명은 주행거리에 '
+        f'걸린다</b> — 작업력을 ±30 % 안에서 모르는 상태(노화 폐패널이라 분포다)에서 이 차이가 '
+        f'결정적이다. 힘을 몰라도 수명이 정해지고, 모자라면 압력을 올리면 되고, 과하면 그냥 '
+        f'멈춘다. 공기는 설비 용량 25,200 NL/h 안에 든다. '
+        f'서보가 사 주는 것은 <b>힘 감시와 프로파일</b>뿐이니, 초도기에만 로드셀을 얹고 '
+        f'양산기는 공압으로 가는 쪽을 저울에 올릴 만하다.</div>')
     out.append('<h3>6.8 지지 — 패널이 정반 위에 다 올라가는가</h3>')
     out.append(table(["항목", "값"], [
         ["패널", f'{n(campaign.PANEL_LENGTH_MM)} × {n(campaign.PANEL_WIDTH_MM)} mm'],
@@ -316,9 +332,11 @@ def open_items() -> str:
          f"20×{jf.PEEL_SCREW_LEAD_MM:g} + 1:{jf.PEEL_GEAR_RATIO:g} 로는 모터가 통상 상한의 "
          "2.16 배로 돌아야 한다. 급속 이송과 고추력 절삭을 한 축이 겸하는 것이 뿌리다 — "
          "리드를 올리거나(20×20) 접근·절삭을 나눠야 한다.", "6.5 절"],
-        ["<b>칼날 날끝 0.8 mm</b>",
-         "절입 0.6(얕은 쪽 0.4)보다 날끝이 크다. 자르는 것이 아니라 밀어내는 영역이라 "
-         "하류 「실리콘 잔여 ≤ 2 mm」를 위협한다. 관례를 맞추려면 0.08 mm 이하.", "6.7 절"],
+        ["<b>박리축을 공압으로 가져갈 것인가</b>",
+         "상용 제거기는 이 축을 공압 실린더로 민다. Ø80–100 이면 2.5–4.7 kN 이고 속도·"
+         "공기 모두 여유다. 실린더 수명은 주행거리(4.7–11.7 년)라 <b>작업력을 몰라도 정해진다</b> — "
+         "서보·볼스크루를 쓰면 그 값을 ±30 % 안에서 알아야 한다. 서보가 사 주는 것은 힘 감시와 "
+         "프로파일뿐이니 초도기·양산기를 갈라 볼 만하다.", "6.7 절"],
         ["<b>정반이 패널보다 작다 · 헤드가 정반 밖</b>",
          "정반 1,900×1,200 대 패널 2,500×1,400, 헤드 1·3 이 정반 반폭 600 밖 20 mm. "
          "프레임 지지를 전제로 삼는다면 그 전제를 도면에 적어야 한다.", "6.8 절"],
