@@ -153,6 +153,30 @@ def spec_payload() -> str:
                     f"{g.panels_per_service():,} 장이 요구하는 연삭비 "
                     f"**G ≥ {g.implied_g_ratio():,}** (벤더값 · R-04 에서 실측)"],
         ],
+        "scraper": common[:1] + [
+            ["긁는 힘", f"Gc × 띠 폭 = {g.sealant_gc_n_mm()} × {g.SEALANT_BAND_MM:.0f} = "
+                    f"**{g.scrape_force_n():.0f} N** (+ 슈 마찰 {g.shoe_friction_n():.0f} N) · "
+                    f"동력 {g.scrape_power_w(lf)} W"],
+            ["갈았다면", f"e_c {g.SEALANT_ABRADE_J_MM3:.0f} J/mm³ × 띠 단면 "
+                     f"{g.sealant_area_mm2():.0f} mm²/mm × {lf:.0f} mm/s = "
+                     f"**{g.abrade_power_w(lf) / 1000:,.0f} kW** — "
+                     f"**{g.scrape_beats_abrade_by():,} 배** 차이"],
+            ["날", f"{g.BLADE_MATERIAL} {g.BLADE_HARDNESS_GPA} GPa — 유리 "
+                 f"{g.GLASS_H_GPA} GPa 를 **못 긁고** 실란트 "
+                 f"{g.SEALANT_HARDNESS_GPA} GPa 는 뗀다 · 폭 {g.BLADE_WIDTH_MM:.0f} · "
+                 f"경사 {g.BLADE_RAKE_DEG:.0f}° · 날끝 R{g.BLADE_EDGE_R_MM}"],
+            ["슈 기준", f"압착 {g.SHOE_SPRING_N:.0f} N (허용 {g.safe_face_force_n():.0f} N 의 "
+                    f"{g.SHOE_SPRING_N / g.safe_face_force_n():.0%}) · 접촉압 "
+                    f"{g.shoe_pressure_mpa()} MPa · 남는 깊이 오차 "
+                    f"**{g.blade_assembly_tol_mm()} mm** < 백시트 {g.BACKSHEET_T_MM} mm"],
+            ["순환 비용", f"리드 {g.BLADE_LEAD_MM:.0f} mm → **{g.scraper_lead_cost_s()} s** · "
+                     f"점유 {g.occupancy_s()} → {g.occupancy_with_scraper_s()} s · "
+                     f"AFR 정반 안에 {g.slack_with_scraper_s()} s 여유"],
+            ["집진", "부스러기가 **고체**라 DS-01 에 폴리머가 안 들어간다 — "
+                  "'불연' 선언이 그대로 선다"],
+            ["Gc 여유", f"면 허용 압착력이 감당하는 상한이 **{g.max_gc_the_face_limit_allows()} "
+                    f"N/mm** — 계획값 {g.sealant_gc_n_mm()} 의 {g.gc_margin()} 배"],
+        ],
     }, ensure_ascii=False, separators=(",", ":"))
 
 
@@ -391,6 +415,16 @@ def scene_script() -> str:
                     || k === 'smot' || k === 'shsg' || k === 'sarb' || k === 'swhl');
         if (head) {{ d.x = down * 90; d.z = (cross * 2 - 1) * PANEL_W / 2; }}
         if (k === 'glass') d.x = t < 1 ? (1 - t) * 520 : 0;
+      }} else if (u.key === 'scraper') {{
+        /* ② 날이 면으로 내려앉고 ⑤ 유리가 지나가며 띠가 걷힌다 */
+        var down = Math.max(0, Math.min(1, t - 1));
+        var run = Math.max(0, Math.min(1, (t - 3) / 2));
+        var head = (k === 'srarm' || k === 'srspr' || k === 'srshoe'
+                    || k === 'srbld' || k === 'srchip');
+        if (head) d.y = -down * 42;
+        if (k === 'srglass' || k === 'srband') d.x = -run * 620;
+        /* 걷히고 나면 띠가 없다 — 그것이 이 유닛이 하는 일이다 */
+        if (k === 'srband') m.visible = run < .92;
       }} else {{
         /* 접촉부 — 홈이 다가와 물고, 살이 떨어지고, 아리스가 선다.
            이 유닛은 배율이 걸려 있으므로 이동도 같은 배율로 잰다. */

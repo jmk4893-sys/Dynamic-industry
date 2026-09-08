@@ -27,8 +27,8 @@ import unittest
 
 from tests import _path  # noqa: F401
 
-from pv_preprocess import (afr, campaign, dust, frames, recipe, reliability,
-                           sg_grind)
+from pv_preprocess import (afr, afr_peel, campaign, dust, frames, recipe,
+                           reliability, sg_grind)
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CLOSEUP = ROOT / "docs/drawings/pv-sg-closeup.html"
@@ -318,11 +318,13 @@ class TestWhatTheFrameLeavesBehind(unittest.TestCase):
                         sg_grind.normal_force_n(sg_grind.long_feed_mm_s()))
         self.assertGreater(sg_grind.face_force_ratio(), 1.0)
 
-    def test_no_tool_in_this_cell_can_do_the_face(self):
-        """부품표에 브러시·스크레이퍼·패드가 없다 — 선언과 부품표가 어긋나 있다."""
-        self.assertFalse(sg_grind.face_residue_has_a_tool())
+    def test_the_face_now_has_a_tool(self):
+        """한때 없었다 — 레시피는 백시트 접촉 압력을 선언하는데 부품표에는
+        클램프 패드뿐이었다. SR-302 가 그 자리를 채운다."""
+        self.assertTrue(sg_grind.face_residue_has_a_tool())
         keys = {p.key for u in sg_grind.units() for p in u.parts}
-        self.assertFalse({"brush", "scraper", "pad"} & keys)
+        self.assertIn("srbld", keys)
+        self.assertIn("srshoe", keys)
 
     def test_the_dust_model_now_sizes_for_simultaneous_heads(self):
         """장변 2 대가 동시인지 순차인지 두 모델이 달랐다 — 발주처가 동시로 정했다.
@@ -343,13 +345,16 @@ class TestWhatTheFrameLeavesBehind(unittest.TestCase):
         """미결이 계산에서 나오므로, 조건이 풀리면 항목이 사라져야 한다."""
         titles = [t for t, _ in sg_grind.open_questions()]
         self.assertNotIn("집진이 동시에 도는 헤드 수만큼 잡혀 있지 않다", titles)
-        self.assertEqual(len(titles), 4)
 
     def test_the_open_questions_are_computed_not_declared(self):
-        """미결 목록이 계산에서 나온다 — 조건이 풀리면 항목이 사라져야 한다."""
+        """미결 목록이 계산에서 나온다 — 조건이 풀리면 항목이 사라져야 한다.
+
+        막던 넷은 SR-302 가 들어오면서 닫혔고, 그 자리에 **공구를 정해서 생긴**
+        실측 항목 셋이 들어왔다. 목록이 짧아진 것이 아니라 성격이 바뀌었다.
+        """
         titles = [q[0] for q in sg_grind.open_questions()]
-        self.assertEqual(len(titles), 4)
-        self.assertIn("휠이 유리 모서리에 못 닿는다", titles)
+        self.assertNotIn("휠이 유리 모서리에 못 닿는다", titles)
+        self.assertIn("실란트 Gc 가 실측 전 계획값이다", titles)
         for _, body in sg_grind.open_questions():
             self.assertGreater(len(body), 40)
 
@@ -365,9 +370,9 @@ class TestWhatTheFrameLeavesBehind(unittest.TestCase):
 class TestUnits(unittest.TestCase):
     """확대도가 그리는 세 유닛."""
 
-    def test_there_are_three_units(self):
+    def test_there_are_four_units(self):
         keys = [u.key for u in sg_grind.units()]
-        self.assertEqual(keys, ["long", "short", "contact"])
+        self.assertEqual(keys, ["long", "short", "contact", "scraper"])
 
     def test_every_unit_has_steps_and_parts(self):
         """단계 수를 5 로 못 박지 않는다 — 접촉부는 '못 닿는다' 를 더해 6 이다."""
@@ -375,7 +380,7 @@ class TestUnits(unittest.TestCase):
             with self.subTest(u.key):
                 self.assertGreaterEqual(len(u.principle), 5)
                 self.assertTrue(u.parts)
-                self.assertTrue(u.sheet.startswith("PV-SG-"))
+                self.assertTrue(u.sheet.startswith("PV-SG-") or u.sheet.startswith("PV-SR-"))
                 self.assertIn(u.key, sg_grind.VIEW_DIR)
 
     def test_every_part_carries_a_role_and_a_material(self):
@@ -407,6 +412,95 @@ class TestUnits(unittest.TestCase):
         self.assertEqual(wheels["short"][0].qty, sg_grind.SHORT_HEADS)
 
 
+class TestTheScraperThatClearsTheBand(unittest.TestCase):
+    """SR-302 — 띠를 걷는 공구. **에너지가 공구를 정했다.**
+
+    같은 띠를 갈아내면 부피 일이라 36 kW 가 들고, 긁으면 계면 일이라 20 N 도
+    안 든다. 그 차이가 이 유닛이 스크레이퍼인 이유다. 여기서 그것을 값으로
+    붙들고, 새로 들어온 불확실성이 미결로 나오는지도 본다.
+    """
+
+    def test_scraping_is_interfacial_work_not_volumetric(self):
+        """긁는 힘은 Gc × 폭이다 — 두께에 안 걸린다."""
+        self.assertAlmostEqual(sg_grind.scrape_force_n(),
+                               sg_grind.sealant_gc_n_mm() * sg_grind.SEALANT_BAND_MM,
+                               places=2)
+        # 두께를 두 배로 봐도 힘이 안 변한다는 것이 계면 일의 정의다.
+        self.assertNotIn(str(sg_grind.sealant_left_t_mm()),
+                         str(sg_grind.scrape_force_n()))
+
+    def test_the_gc_is_the_one_the_peel_analysis_uses(self):
+        """같은 실란트다 — 인발 해석과 다른 값을 쓰면 둘 중 하나가 틀린 것이다."""
+        self.assertEqual(sg_grind.sealant_gc_n_mm(), float(afr_peel.SEALANT_GC_N_MM))
+
+    def test_abrading_would_not_fit_but_scraping_does(self):
+        """공구 선택의 근거 — 한쪽은 스핀들 안에 들고 한쪽은 안 든다."""
+        self.assertTrue(sg_grind.scraping_fits_the_spindle())
+        self.assertFalse(sg_grind.abrading_fits_the_spindle())
+        self.assertGreater(sg_grind.scrape_beats_abrade_by(), 1_000)
+
+    def test_the_blade_cannot_scratch_glass_but_shears_the_sealant(self):
+        self.assertTrue(sg_grind.blade_cannot_scratch_glass())
+        self.assertTrue(sg_grind.blade_can_shear_the_sealant())
+        self.assertLess(sg_grind.BLADE_HARDNESS_GPA, sg_grind.GLASS_H_GPA)
+        self.assertGreater(sg_grind.BLADE_HARDNESS_GPA, sg_grind.SEALANT_HARDNESS_GPA)
+
+    def test_the_shoe_takes_the_depth_off_the_panel_not_the_frame(self):
+        """이것이 백시트를 남기는 이유다."""
+        self.assertTrue(sg_grind.depth_is_referenced_to_the_panel())
+        self.assertLess(sg_grind.blade_assembly_tol_mm(), sg_grind.BACKSHEET_T_MM)
+        self.assertGreater(sg_grind.depth_stack_mm(), sg_grind.BACKSHEET_T_MM)
+        self.assertTrue(sg_grind.backsheet_survives_scraping())
+
+    def test_the_shoe_presses_far_below_the_face_limit(self):
+        self.assertTrue(sg_grind.shoe_is_gentle_enough())
+        self.assertLessEqual(sg_grind.SHOE_SPRING_N, sg_grind.safe_face_force_n())
+        self.assertLessEqual(sg_grind.shoe_pressure_mpa(), sg_grind.FACE_SAFE_MPA)
+
+    def test_the_dust_stream_is_untouched(self):
+        """부스러기가 고체라 DS-01 의 '불연' 선언이 그대로 선다."""
+        self.assertTrue(sg_grind.dust_stream_unchanged_by_scraping())
+        ds01 = [s for s in dust.STREAMS if s.tag == "DS-01"][0]
+        self.assertFalse(ds01.combustible)
+
+    def test_the_only_cost_is_the_lead(self):
+        """같은 캐리지에 달므로 장비가 안 늘고 순환만 리드만큼 는다."""
+        self.assertAlmostEqual(
+            sg_grind.occupancy_with_scraper_s(),
+            sg_grind.occupancy_s() + sg_grind.scraper_lead_cost_s(), places=2)
+        self.assertTrue(sg_grind.scraper_still_fits_the_platen())
+        self.assertGreater(sg_grind.slack_with_scraper_s(), 0.0)
+        self.assertGreater(sg_grind.BLADE_LEAD_MM, sg_grind.WHEEL_D_MM / 2)
+
+    def test_the_tool_now_exists_and_the_wheel_can_follow(self):
+        self.assertTrue(sg_grind.face_residue_has_a_tool())
+        self.assertTrue(sg_grind.wheel_can_reach_after_scraping())
+        self.assertGreaterEqual(sg_grind.BLADE_WIDTH_MM, sg_grind.flange_reach_mm())
+
+    def test_the_four_blocking_questions_closed(self):
+        """미결이 계산에서 나오므로 공구가 생기면 스스로 닫힌다."""
+        titles = [t for t, _ in sg_grind.open_questions()]
+        for gone in ("휠이 유리 모서리에 못 닿는다", "면 실란트를 걷을 공구가 없다",
+                     "백시트가 남는다는 보장이 없다", "집진 흐름이 바뀐다"):
+            self.assertNotIn(gone, titles)
+
+    def test_and_new_measurement_questions_took_their_place(self):
+        """공구를 정하면 그 공구의 물성이 새 입력이 된다 — 그것을 숨기지 않는다."""
+        titles = [t for t, _ in sg_grind.open_questions()]
+        self.assertIn("실란트 Gc 가 실측 전 계획값이다", titles)
+        self.assertIn("날 수명이 없다", titles)
+        self.assertEqual(len(titles), 3)
+
+    def test_the_gc_headroom_is_stated_not_assumed(self):
+        """Gc 가 얼마까지 오르면 허용 압착력을 넘는가 — 그 값을 내놓는다."""
+        limit = sg_grind.max_gc_the_face_limit_allows()
+        self.assertGreater(limit, sg_grind.sealant_gc_n_mm())
+        self.assertAlmostEqual(
+            limit * sg_grind.SEALANT_BAND_MM + sg_grind.shoe_friction_n(),
+            sg_grind.safe_face_force_n(), places=2)
+        self.assertGreater(sg_grind.gc_margin(), 1.0)
+
+
 class TestCloseupDrawing(unittest.TestCase):
     """커밋된 확대도가 생성기 출력과 같고, 화면에 손으로 쓴 수가 없는지."""
 
@@ -426,7 +520,8 @@ class TestCloseupDrawing(unittest.TestCase):
 
     def test_the_payload_is_the_model(self):
         units = json.loads(self.builder.unit_payload())
-        self.assertEqual([u["key"] for u in units], ["long", "short", "contact"])
+        self.assertEqual([u["key"] for u in units],
+                         ["long", "short", "contact", "scraper"])
         for got, want in zip(units, sg_grind.units()):
             self.assertEqual(got["sheet"], want.sheet)
             self.assertEqual(len(got["parts"]), len(want.parts))

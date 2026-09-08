@@ -31,7 +31,7 @@ const got = await page.evaluate(() => {
   const A = window.__pvSgCloseup;
   const out = { units: A.units, cycle: A.cycle, mag: A.mag, feed: A.feed, moves: {}, counts: {} };
   const at = (unit, s) => A.positions(unit, s);
-  for (const u of ['long', 'short', 'contact']) {
+  for (const u of ['long', 'short', 'contact', 'scraper']) {
     const a = at(u, 0), b = at(u, 4);
     out.counts[u] = Object.keys(a).length;
     let worst = 0, who = '';
@@ -55,8 +55,8 @@ await browser.close();
 const c = got.cycle;
 const bad = [];
 if (errors.length) bad.push(`페이지 오류 ${errors.length}: ${errors.slice(0, 2).join(' | ')}`);
-if (got.units !== 3) bad.push(`유닛 ${got.units} — 3 이어야 한다`);
-for (const u of ['long', 'short', 'contact']) {
+if (got.units !== 4) bad.push(`유닛 ${got.units} — 4 이어야 한다`);
+for (const u of ['long', 'short', 'contact', 'scraper']) {
   if (!got.counts[u]) bad.push(`${u}: 부품이 하나도 안 섰다`);
   /* 움직였는가만 보면 단위를 틀려도 통과한다 — 한 번 그렇게 당했다: 자리 변화를
      mm 로 셈해 놓고 m 에 그대로 넣어 유리가 1,400 **m** 를 갔는데도 '움직인다'
@@ -75,13 +75,13 @@ if (!got.rows || !got.spec) bad.push('부품표·사양표가 비었다');
 
 console.log(`${bad.length ? '✗' : '✓'} ${FILE}`);
 console.log(`  유닛 ${got.units} · 부품 메시 long ${got.counts.long} / short ${got.counts.short}`
-  + ` / contact ${got.counts.contact} · 접촉부 배율 ${got.mag}배`);
+  + ` / contact ${got.counts.contact} / scraper ${got.counts.scraper} · 접촉부 배율 ${got.mag}배`);
 console.log(`  단계 이동 — long ${got.moves.long.part} ${got.moves.long.m} m ·`
   + ` short ${got.moves.short.part} ${got.moves.short.m} m ·`
-  + ` contact ${got.moves.contact.part} ${got.moves.contact.m} m`);
-console.log(`  순환 ${got.band.join(' → ')}`);
+  + ` contact ${got.moves.contact.part} ${got.moves.contact.m} m ·`
+  + ` scraper ${got.moves.scraper.part} ${got.moves.scraper.m} m`);
 console.log(`  점유 ${c.total} s (동시라면 ${c.simultaneous} s · 순차 비용 ${c.cost} s)`
   + ` · AFR 정반 ${c.afr} s · 여유 ${c.slack} s`);
 console.log(`  이송 장변 ${got.feed.long} mm/s · 단변 ${got.feed.short} mm/s`);
 if (bad.length) { bad.forEach((b) => console.log('   ✗ ' + b)); process.exit(1); }
-console.log('\n✓ 세 유닛이 서고 단계마다 움직이며, 장변과 단변이 겹치지 않는다');
+console.log('\n✓ 네 유닛이 서고 단계마다 움직이며, 장변과 단변이 겹치지 않는다');

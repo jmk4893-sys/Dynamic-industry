@@ -143,6 +143,9 @@ VIEW_DIR = {
     # 접촉부는 스윕 축 쪽에서 봐야 단면이 읽히되, 완전히 축을 따라가면 두 몸이
     # 겹쳐 보인다 — 살짝 틀어 홈과 유리대가 갈리게 한다.
     "contact": (1.45, 0.52, 0.55),
+    # 스크레이퍼는 이송축(x)을 따라 늘어선 순서 — 날 → 리드 → 휠 — 이 보여야
+    # 하므로 옆에서 본다.
+    "scraper": (0.45, 0.70, 1.25),
 }
 
 #: 접촉부 확대도의 배율 — 실제 0.5 mm 아리스는 휠 Ø150 옆에서 안 보인다.
@@ -477,58 +480,82 @@ def dust_stream_stays_inert() -> bool:
     return not wheel_may_touch_the_backsheet()
 
 
-def face_residue_has_a_tool() -> bool:
-    """면 실란트를 걷을 공구가 이 장비에 있는가.
+def max_gc_the_face_limit_allows() -> float:
+    """면 허용 압착력이 감당하는 실란트 Gc 상한 (N/mm).
 
-    통합 설계도의 AFR 스테이션 부품표에는 브러시·스크레이퍼·연마 패드가 없다.
-    레시피는 '백시트 접촉 압력 기본값' 을 선언해 두었는데 그 압력을 걸 것이
-    없다 — 선언과 부품표가 어긋나 있다.
+    긁는 힘은 Gc × 띠 폭이다. 그 힘이 허용 압착력을 넘으면 셀이 먼저 상한다.
     """
+    return round((safe_face_force_n() - shoe_friction_n()) / SEALANT_BAND_MM, 3)
+
+
+def gc_margin() -> float:
+    """계획값 Gc 가 그 상한에서 얼마나 떨어져 있는가 (배)."""
+    return round(max_gc_the_face_limit_allows() / sealant_gc_n_mm(), 2)
+
+
+def blade_life_is_known() -> bool:
+    """날 수명이 정해져 있는가 — 예비품 계획에 들어가려면 필요하다."""
     return False
 
 
 def open_questions() -> tuple[tuple[str, str], ...]:
-    """이 모델이 **못 닫는** 것 — 닫으려면 무엇이 있어야 하는가."""
+    """이 모델이 **못 닫는** 것 — 닫으려면 무엇이 있어야 하는가.
+
+    선언이 아니라 계산이다. SR-302 가 들어오면서 네 항목이 스스로 닫혔고,
+    그 자리에 **새로 생긴 불확실성**이 들어왔다 — 공구를 정하면 그 공구의
+    물성이 새 입력이 되기 때문이다.
+    """
     out: list[tuple[str, str]] = []
-    if not wheel_can_reach_the_glass_edge():
+    if not wheel_can_reach_the_glass_edge() and not face_residue_has_a_tool():
         out.append((
             "휠이 유리 모서리에 못 닿는다",
-            f"어깨가 면 위로 {flange_reach_mm():.0f} mm 걸쳐 나오는데 그 구간이 통째로 "
-            f"실란트 띠(폭 {SEALANT_BAND_MM:.0f}) 안이고, 남은 실란트 "
-            f"{sealant_left_t_mm()} mm 가 홈 여유 {GROOVE_CLEAR_MM} 보다 "
-            f"{sealant_stands_proud_mm()} mm 더 두껍다. 띠에서 최소 "
-            f"{sealant_must_go_first_mm():.0f} mm 를 **먼저** 걷어야 한다. "
-            "여유를 실란트보다 벌리면 어깨가 모서리에서 떨어져 아리스가 안 선다."))
+            f"실란트 띠가 홈 여유보다 {sealant_stands_proud_mm()} mm 두꺼운데 "
+            "그것을 걷을 공구가 없다."))
     if not face_residue_has_a_tool():
         out.append((
             "면 실란트를 걷을 공구가 없다",
-            f"한 장에 면 실란트가 {sealant_volume_per_panel_mm3():,.0f} mm³ 로 유리 "
-            f"제거량의 **{sealant_ratio_to_glass()} 배**다. 레시피는 "
-            "'백시트 접촉 압력 기본값' 을 선언하는데 AFR 스테이션 부품표에는 "
-            "클램프 패드뿐이고 브러시·스크레이퍼가 없다."))
-    if not wheel_may_touch_the_backsheet():
+            f"한 장에 {sealant_volume_per_panel_mm3():,.0f} mm³ 로 유리 제거량의 "
+            f"{sealant_ratio_to_glass()} 배인데 부품표에 걷을 것이 없다."))
+    if not backsheet_survives_scraping():
         out.append((
-            "그 공구는 다이아몬드 휠이 아니다",
-            f"주속 {wheel_speed_m_s()} m/s 는 폴리머 접촉 상한 "
-            f"{POLYMER_RUB_LIMIT_M_S:.0f} m/s 의 **{rubbing_speed_ratio()} 배**다. "
-            f"접촉점이 백시트 융점 {BACKSHEET_MELT_C:.0f} °C 를 넘겨 휠이 막힌다. "
-            f"게다가 폴리머가 섞이면 dust 의 DS-01 이 선언한 '불연' 이 거짓이 된다 — "
-            "같은 파일이 폴리머 절삭분을 혼합물의 가연분으로 적어 두었다."))
-    if not position_control_is_safe():
+            "백시트가 남는다는 보장이 없다",
+            f"깊이 오차 {blade_assembly_tol_mm()} mm 가 백시트 {BACKSHEET_T_MM} mm "
+            "보다 얇아야 한다."))
+    if not dust_stream_unchanged_by_scraping():
         out.append((
-            "위치 제어로는 백시트가 남는다는 보장이 없다",
-            f"프레임 기준 공차합이 {depth_stack_mm()} mm 인데 백시트가 "
-            f"{BACKSHEET_T_MM} mm 다 — {backsheet_margin_mm()} mm 만큼 모자란다. "
-            f"면은 **힘 제어**로, 그것도 {safe_face_force_n():.0f} N 이하로 눌러야 한다 "
-            f"(유리 변을 미는 {normal_force_n(long_feed_mm_s()):.0f} N 의 "
-            f"1/{face_force_ratio():.0f})."))
+            "집진 흐름이 바뀐다",
+            "폴리머가 분진으로 들어오면 DS-01 의 '불연' 선언이 거짓이 된다."))
+    if not scraper_still_fits_the_platen():
+        out.append((
+            "스크레이퍼를 달면 정반 점유를 넘는다",
+            f"점유 {occupancy_with_scraper_s()} s 가 AFR {campaign.AFR_S} s 를 넘는다."))
     if not heads_agree_with_the_dust_model():
         out.append((
             "집진이 동시에 도는 헤드 수만큼 잡혀 있지 않다",
-            f"장변 {LONG_HEADS} 대가 같은 통과에서 함께 가는데 집진은 후드 "
-            f"{__import__('pv_preprocess.dust', fromlist=['dust']).SG_SIMULTANEOUS_HOODS} "
-            f"대 몫만 잡았다. 첨두에서 포집이 모자란다 — 순차로 돌리면 장변을 두 번 "
-            f"지나가 점유가 {two_pass_occupancy_s()} s 로 는다."))
+            f"장변 {LONG_HEADS} 대가 같은 통과에서 함께 가는데 집진이 그만큼을 "
+            "안 잡았다. 첨두에서 포집이 모자란다."))
+
+    # ── 공구를 정하면서 **새로 들어온** 불확실성 ─────────────────────────
+    out.append((
+        "실란트 Gc 가 실측 전 계획값이다",
+        f"긁는 힘은 Gc × 띠 폭이다. 지금 Gc {sealant_gc_n_mm()} N/mm 에서 "
+        f"{scrape_force_n():.0f} N 이고, 면 허용 압착력 {safe_face_force_n():.0f} N 은 "
+        f"Gc **{max_gc_the_face_limit_allows()} N/mm** 까지 감당한다 — 여유 "
+        f"{gc_margin()} 배. 실란트 시험이 그보다 높게 나오면 띠를 나눠 두 번 "
+        "긁거나 슈 압착을 다시 잡아야 한다. 같은 값이 인발 안정비도 정하므로 "
+        "(`afr_peel.stability()`) 시험 하나가 두 곳을 움직인다."))
+    out.append((
+        "인발 뒤 면에 남는 몫이 실측 전 값이다",
+        f"응집파괴가 가운데쯤에서 갈린다고 보고 {SEALANT_RETAINED:.0%} 를 썼다. "
+        f"전량이 남으면 띠 두께가 {SEALANT_FACE_T_MM} mm 로 두 배가 되고 긁는 "
+        f"힘은 그대로지만(계면 일이라 두께와 무관) 부스러기 부피가 두 배다 — "
+        "회수함 용량이 그만큼 든다."))
+    if not blade_life_is_known():
+        out.append((
+            "날 수명이 없다",
+            f"한 장에 둘레 {2 * (campaign.PANEL_LENGTH_MM + campaign.PANEL_WIDTH_MM):,.0f} mm "
+            f"를 긁는다. PEEK 날이 몇 장을 가는지는 벤더값이고, 나오기 전에는 "
+            "예비품(R-04 마모율 실측)에 넣을 수량이 안 나온다."))
     return tuple(out)
 
 
@@ -548,6 +575,189 @@ def heads_agree_with_the_dust_model() -> bool:
     """
     from . import dust
     return dust.SG_SIMULTANEOUS_HOODS >= LONG_HEADS
+
+
+
+# ── SR-302 잔사 스크레이퍼 — 띠를 걷는 공구 ─────────────────────────────
+# 휠은 이 띠를 못 지난다(`wheel_can_reach_the_glass_edge()`). 그러면 무엇으로
+# 걷는가. 후보가 둘이고, **에너지가 답을 정한다.**
+#
+#   갈아낸다 — 부피 일이다. e_c × (띠 단면 × 이송) = 36 kW.
+#   긁어낸다 — 계면 일이다. Gc × 띠 폭 = 16 N, 동력으로는 5 W 도 안 된다.
+#
+# 7,500 배다. 갈아내는 쪽은 스핀들을 열여섯 대 달아도 모자라고, 폴리머를 갈면
+# 휠이 막히고 DS-01 의 '불연' 선언까지 깨진다. 긁어내면 부스러기가 고체로 나와
+# 집진 흐름 자체가 안 바뀐다. 그래서 **긁는다.**
+
+#: 날 재질과 경도 (GPa). 유리(5.5)보다 훨씬 무르므로 유리를 긁을 수 없고,
+#: 경화 실란트(≈0.02)보다는 단단해 그것을 떼어 낸다.
+BLADE_MATERIAL = "PEEK"
+BLADE_HARDNESS_GPA = 0.24
+SEALANT_HARDNESS_GPA = 0.02
+#: 날 폭 (mm) — 띠보다 넓어야 한쪽으로 치우쳐도 다 걷는다.
+BLADE_WIDTH_MM = SEALANT_BAND_MM + 4.0
+#: 날 경사각 (°) 과 날끝 반경 (mm). 무딘 날은 밀고 지나가고, 너무 날카로우면
+#: 라미네이트를 파고든다.
+BLADE_RAKE_DEG = 25.0
+BLADE_EDGE_R_MM = 0.2
+#: 접촉 슈 길이 (mm) — 라미네이트 면에 얹혀 **깊이를 면에서 잡는다.**
+#: 기계 프레임을 기준으로 잡으면 공차합이 백시트보다 두꺼워진다.
+SHOE_LEN_MM = 60.0
+#: 슈를 누르는 스프링 힘 (N) — 면 허용 압착력 안에 들어야 한다.
+SHOE_SPRING_N = 25.0
+#: 슈와 라미네이트 사이 마찰계수 (PEEK-유리, 건식).
+SHOE_FRICTION = 0.2
+#: 날이 휠보다 앞서 가는 거리 (mm) — 휠이 오기 전에 그 자리가 비어 있어야 한다.
+#: 휠 반경보다 커야 하고, 여유를 둔다.
+BLADE_LEAD_MM = 200.0
+#: 띠를 화면에 세울 때의 두께 과장 — 0.75 mm 는 800 mm 옆에서 안 보인다.
+BAND_DISPLAY_MAG = 20.0
+
+#: 걷은 실란트를 갈아내려 했다면 필요했을 비에너지 (J/mm³) — 계획값.
+#: 이 값은 **쓰지 않는다.** 긁는 쪽과 견주려고만 둔다.
+SEALANT_ABRADE_J_MM3 = 8.0
+
+
+def sealant_gc_n_mm() -> float:
+    """실란트 접착 파괴에너지 (N/mm) — `afr_peel` 이 정본. 인발 해석과 같은 값이다."""
+    from . import afr_peel
+    return float(afr_peel.SEALANT_GC_N_MM)
+
+
+def scrape_force_n() -> float:
+    """띠를 계면에서 떼는 힘 (N) = Gc × 띠 폭.
+
+    스크레이핑은 **계면 일**이다 — 부피를 갈아 없애는 것이 아니라 붙어 있는
+    면을 떼어 내는 것이므로, 두께가 아니라 폭에 비례한다.
+    """
+    return round(sealant_gc_n_mm() * SEALANT_BAND_MM, 2)
+
+
+def shoe_friction_n() -> float:
+    """슈가 면 위를 미끄러지며 내는 마찰 (N)."""
+    return round(SHOE_SPRING_N * SHOE_FRICTION, 2)
+
+
+def scrape_total_force_n() -> float:
+    """이송 방향으로 필요한 힘 (N) — 계면 + 슈 마찰."""
+    return round(scrape_force_n() + shoe_friction_n(), 2)
+
+
+def scrape_power_w(feed_mm_s: float) -> float:
+    """긁는 데 드는 동력 (W)."""
+    return round(scrape_total_force_n() * feed_mm_s / 1_000.0, 2)
+
+
+def abrade_power_w(feed_mm_s: float) -> float:
+    """같은 띠를 **갈아냈다면** 들었을 동력 (W) — 쓰지 않는 쪽의 값."""
+    return round(SEALANT_ABRADE_J_MM3 * sealant_area_mm2() * feed_mm_s, 1)
+
+
+def scrape_beats_abrade_by() -> int:
+    """긁는 쪽이 몇 배 싼가 — 공구 선택의 근거."""
+    feed = long_feed_mm_s()
+    return round(abrade_power_w(feed) / scrape_power_w(feed))
+
+
+def scraping_fits_the_spindle() -> bool:
+    """긁는 동력이 연마 스핀들 한 대 안에 드는가 — 별도 동력원이 필요 없다."""
+    return scrape_power_w(long_feed_mm_s()) <= spindle_available_w()
+
+
+def abrading_fits_the_spindle() -> bool:
+    """갈아내는 쪽은 어떤가 — 거짓이어야 이 선택이 설명된다."""
+    return abrade_power_w(long_feed_mm_s()) <= spindle_available_w()
+
+
+def shoe_pressure_mpa() -> float:
+    """슈가 라미네이트에 주는 접촉압 (MPa) — 셀 허용값 안에 있어야 한다."""
+    return round(SHOE_SPRING_N / (BLADE_WIDTH_MM * SHOE_LEN_MM), 4)
+
+
+def shoe_is_gentle_enough() -> bool:
+    """슈 압착이 면 허용 압착력·접촉압 안에 드는가."""
+    return SHOE_SPRING_N <= safe_face_force_n() and shoe_pressure_mpa() <= FACE_SAFE_MPA
+
+
+def blade_cannot_scratch_glass() -> bool:
+    """날이 유리를 긁을 수 있는가 — 무른 것은 단단한 것을 못 긁는다."""
+    return BLADE_HARDNESS_GPA < GLASS_H_GPA
+
+
+def blade_can_shear_the_sealant() -> bool:
+    """그런데 실란트는 뗄 수 있는가."""
+    return BLADE_HARDNESS_GPA > SEALANT_HARDNESS_GPA
+
+
+def depth_is_referenced_to_the_panel() -> bool:
+    """깊이를 기계 프레임이 아니라 **판 면**에서 잡는가.
+
+    슈가 라미네이트에 얹혀 있으므로 두께 편차·롤러 평면도가 깊이에 안 들어온다.
+    남는 것은 슈-날 조립 공차뿐이고 그것은 백시트보다 훨씬 얇다.
+    """
+    return SHOE_LEN_MM > 0.0 and SHOE_SPRING_N > 0.0
+
+
+def blade_assembly_tol_mm() -> float:
+    """슈 기준일 때 남는 깊이 오차 (mm) — 날끝 반경이 사실상의 하한이다."""
+    return round(BLADE_EDGE_R_MM, 4)
+
+
+def backsheet_survives_scraping() -> bool:
+    """긁고 나서 백시트가 남는가 — 슈 기준 오차가 백시트보다 얇아야 한다."""
+    return depth_is_referenced_to_the_panel() and blade_assembly_tol_mm() < BACKSHEET_T_MM
+
+
+def debris_is_solid() -> bool:
+    """부스러기가 분진이 아니라 고체로 나오는가 — 집진 흐름이 안 바뀐다."""
+    return True
+
+
+def dust_stream_unchanged_by_scraping() -> bool:
+    """DS-01 의 '불연' 선언이 그대로 서는가."""
+    return debris_is_solid() and not wheel_may_touch_the_backsheet()
+
+
+def scraper_lead_cost_s() -> float:
+    """날이 휠보다 앞서 가느라 더 드는 시간 (s).
+
+    장변은 통과 한 번에 리드만큼 더 가고, 단변은 횡행 두 번에 각각 더 간다.
+    """
+    long_extra = BLADE_LEAD_MM / long_feed_mm_s()
+    short_extra = 2.0 * BLADE_LEAD_MM / short_feed_mm_s()
+    return round(long_extra + short_extra, 3)
+
+
+def occupancy_with_scraper_s() -> float:
+    """스크레이퍼를 단 뒤의 반출롤러 점유 (s)."""
+    return round(occupancy_s() + scraper_lead_cost_s(), 2)
+
+
+def scraper_still_fits_the_platen() -> bool:
+    """그래도 AFR 정반 점유 안에 드는가."""
+    return occupancy_with_scraper_s() <= float(campaign.AFR_S)
+
+
+def slack_with_scraper_s() -> float:
+    """스크레이퍼를 달고도 남는 시간 (s)."""
+    return round(float(campaign.AFR_S) - occupancy_with_scraper_s(), 2)
+
+
+def face_residue_has_a_tool() -> bool:
+    """면 실란트를 걷을 공구가 있는가 — SR-302 가 그것이다.
+
+    한때 없었다. 레시피는 '백시트 접촉 압력' 을 선언하는데 AFR 스테이션
+    부품표에는 클램프 패드뿐이었다. 이제 조건으로 확인한다 — 걷을 수 있고,
+    유리를 안 긁고, 백시트를 남기고, 동력이 든다면 참이다.
+    """
+    return (blade_can_shear_the_sealant() and blade_cannot_scratch_glass()
+            and backsheet_survives_scraping() and shoe_is_gentle_enough()
+            and scraping_fits_the_spindle())
+
+
+def wheel_can_reach_after_scraping() -> bool:
+    """띠를 걷고 나면 휠이 유리 모서리에 닿는가 — 날 폭이 어깨 길이를 덮으면 된다."""
+    return BLADE_WIDTH_MM >= flange_reach_mm()
 
 
 # ── 순환 — 동시인가 순차인가 ────────────────────────────────────────────
@@ -1072,8 +1282,114 @@ def contact_unit() -> Unit:
         parts=parts)
 
 
+def scraper_unit() -> Unit:
+    """SR-302 잔사 스크레이퍼 — 휠보다 앞서 가며 실란트 띠를 걷는다."""
+    lf = long_feed_mm_s()
+    lead = BLADE_LEAD_MM
+    # 날과 휠이 원점을 사이에 두고 서게 자리를 옮긴다 — 리드가 이 유닛의
+    # 주제이므로 그 간격이 화면 한가운데 와야 한다.
+    hx = lead / 2.0
+    parts = (
+        Part("srarm", "스크레이퍼 아암 (컴플라이언스)", 1, "box", (260.0, 90.0, 150.0),
+             (hx, 168.0, 0.0), "S355 / 평행 링크",
+             role=f"날을 면 쪽으로 {SHOE_SPRING_N:.0f} N 으로 누른다. 위치가 아니라 "
+                  "**힘**으로 누르므로 판 두께가 흔들려도 깊이가 안 바뀐다.",
+             color="frame", explode=(0, 200, 0),
+             spec=f"평행 링크 · 스프링 {SHOE_SPRING_N:.0f} N", catalog="SR-302"),
+        Part("srspr", "압착 스프링", 1, "cyl", (34.0, 90.0, 34.0),
+             (hx, 92.0, 0.0), "SUS 압축 스프링", axis="y",
+             role=f"허용 면 압착력 {safe_face_force_n():.0f} N 의 "
+                  f"{SHOE_SPRING_N / safe_face_force_n():.0%} 만 쓴다. 셀이 먼저 상하면 "
+                  "안 되기 때문이다.",
+             color="chrome", explode=(0, 150, 0),
+             spec=f"{SHOE_SPRING_N:.0f} N · 접촉압 {shoe_pressure_mpa()} MPa",
+             catalog="SR-302"),
+        Part("srshoe", "기준 슈", 1, "box", (SHOE_LEN_MM, 12.0, BLADE_WIDTH_MM),
+             (hx + 18.0, 8.0, 0.0), "PEEK",
+             role="라미네이트 면에 얹혀 **깊이를 판에서 잡는다.** 기계 프레임을 "
+                  f"기준으로 잡으면 공차합 {depth_stack_mm()} mm 가 백시트 "
+                  f"{BACKSHEET_T_MM} mm 를 넘어 뚫는다 — 그래서 슈다.",
+             color="aluminum", explode=(0, -120, 0),
+             spec=f"{SHOE_LEN_MM:.0f} × {BLADE_WIDTH_MM:.0f} · 남는 오차 "
+                  f"{blade_assembly_tol_mm()} mm", catalog="SR-302"),
+        Part("srbld", "PEEK 스크레이퍼 날", 1, "box",
+             (16.0, 22.0, BLADE_WIDTH_MM), (hx - 40.0, 2.0, 0.0), BLADE_MATERIAL,
+             role=f"경도 {BLADE_HARDNESS_GPA} GPa 로 유리({GLASS_H_GPA} GPa)를 **못 긁고** "
+                  f"경화 실란트({SEALANT_HARDNESS_GPA} GPa)는 뗀다. 계면을 떼는 일이라 "
+                  f"필요한 힘이 Gc × 폭 = **{scrape_force_n():.0f} N** 뿐이다.",
+             color="orange", explode=(-140, -60, 0),
+             spec=f"폭 {BLADE_WIDTH_MM:.0f} · 경사 {BLADE_RAKE_DEG:.0f}° · 날끝 R"
+                  f"{BLADE_EDGE_R_MM}", catalog="SR-302"),
+        Part("srchip", "부스러기 슈트", 1, "box", (90.0, 120.0, 90.0),
+             (hx - 78.0, 66.0, 0.0), "SUS304 t1.5",
+             role="걷힌 실란트가 **고체 부스러기**로 떨어진다 — 분진이 아니라서 "
+                  "집진 흐름에 폴리머가 안 들어가고 DS-01 의 '불연' 선언이 그대로 선다.",
+             color="dark", explode=(-90, 140, 0),
+             spec="고체 회수 · 집진 미연결", catalog="SR-302"),
+        Part("srband", "걷어내는 실란트 띠", 1, "box",
+             (300.0, sealant_left_t_mm() * BAND_DISPLAY_MAG, SEALANT_BAND_MM),
+             (hx + 250.0, -sealant_left_t_mm() * BAND_DISPLAY_MAG / 2, 0.0),
+             "실란트 잔사",
+             role=f"폭 {SEALANT_BAND_MM:.0f} × 두께 {sealant_left_t_mm()} 가 유리면에 "
+                  f"남아 있다. 이것이 있으면 휠 어깨가 유리 모서리에 못 닿는다 — "
+                  f"날이 휠보다 {lead:.0f} mm 앞서 가는 이유다. (두께는 보이라고 "
+                  f"{BAND_DISPLAY_MAG:.0f} 배로 그렸다)",
+             color="rubber", explode=(180, -140, 0),
+             spec=f"{SEALANT_BAND_MM:.0f} × {sealant_left_t_mm()} · 표시 두께 "
+                  f"{BAND_DISPLAY_MAG:.0f} 배",
+             catalog="—"),
+        Part("srwhl", "다이아몬드 형상휠 (뒤따라온다)", 1, "cyl",
+             (WHEEL_D_MM, WHEEL_W_MM, WHEEL_D_MM), (-hx, -6.5, 0.0),
+             f"메탈본드 D{GRIT_UM:.0f}", axis="y",
+             role=f"날이 지나간 자리를 {lead:.0f} mm 뒤에서 받는다. 같은 캐리지라 "
+                  f"순환이 리드만큼만 는다 ({scraper_lead_cost_s()} s).",
+             color="ghost", explode=(240, 0, 0),
+             spec=f"Ø{WHEEL_D_MM:.0f} · 리드 {lead:.0f} mm", catalog="SP-03"),
+        Part("srglass", "라미네이트 (유리면이 아래)", 1, "box",
+             (820.0, STACK_T_MM, 240.0), (0.0, -STACK_T_MM / 2 - 8.0, 0.0),
+             f"유리 t{GLASS_T_MM} + EVA·백시트",
+             role=f"{lf:.0f} mm/s 로 지나간다. 유리면이 아래라 걷어야 할 띠도 아래에 "
+                  f"있고, 반출롤러가 변에서 {EDGE_OVERHANG_MM:.0f} mm 물러나 그 자리를 "
+                  "낸다.",
+             color="ghost", explode=(0, -260, 0),
+             spec=f"적층 {STACK_T_MM} · 내밀림 {EDGE_OVERHANG_MM:.0f}", catalog="—"),
+    )
+    return Unit(
+        key="scraper", name="SR-302 잔사 스크레이퍼 (휠보다 앞서 간다)",
+        sheet="PV-SR-302-ASM-5501",
+        envelope_mm=(900.0, 300.0, 300.0), view_r_mm=520.0,
+        principle=(
+            ("① 왜 필요한가", f"프레임이 남기고 간 실란트 띠가 면을 "
+                          f"{SEALANT_BAND_MM:.0f} mm 덮고 두께가 {sealant_left_t_mm()} mm 다. "
+                          f"휠 어깨는 면 위로 {flange_reach_mm():.0f} mm 걸쳐 나오므로 "
+                          "**띠를 먼저 걷지 않으면 휠이 유리 모서리에 닿지도 못한다.**"),
+            ("② 왜 긁는가", f"같은 띠를 **갈아냈다면** "
+                        f"{abrade_power_w(lf) / 1000:,.0f} kW 가 든다 — 부피 일이기 "
+                        f"때문이다. **긁으면** 계면 일이라 Gc × 폭 = "
+                        f"{scrape_force_n():.0f} N, 동력으로는 {scrape_power_w(lf)} W 다. "
+                        f"**{scrape_beats_abrade_by():,} 배** 차이라 선택의 여지가 없다."),
+            ("③ 왜 PEEK 인가", f"경도 {BLADE_HARDNESS_GPA} GPa 는 유리 {GLASS_H_GPA} GPa "
+                          f"보다 무르므로 **유리를 못 긁는다.** 경화 실란트 "
+                          f"{SEALANT_HARDNESS_GPA} GPa 보다는 단단해 그것은 뗀다. "
+                          "금속 날이면 제품 면에 흠을 낸다."),
+            ("④ 왜 슈로 받는가", f"기계 프레임을 기준으로 깊이를 잡으면 공차합이 "
+                            f"{depth_stack_mm()} mm 인데 백시트가 {BACKSHEET_T_MM} mm 다 — "
+                            f"뚫는다. 슈가 라미네이트에 얹혀 **판 면에서** 깊이를 잡으면 "
+                            f"남는 오차가 날끝 반경 {blade_assembly_tol_mm()} mm 뿐이다. "
+                            f"압착도 {SHOE_SPRING_N:.0f} N 으로 허용 "
+                            f"{safe_face_force_n():.0f} N 의 "
+                            f"{SHOE_SPRING_N / safe_face_force_n():.0%} 만 쓴다."),
+            ("⑤ 값은 리드뿐", f"날이 휠보다 {lead:.0f} mm 앞서 간다. 같은 캐리지라 장비가 "
+                         f"안 늘고, 순환만 {scraper_lead_cost_s()} s 는다 — 점유 "
+                         f"{occupancy_s()} → {occupancy_with_scraper_s()} s 로 AFR 정반 "
+                         f"{campaign.AFR_S} s 안에 {slack_with_scraper_s()} s 가 남는다. "
+                         "부스러기는 고체라 집진 흐름도 안 바뀐다."),
+        ),
+        parts=parts)
+
+
 def units() -> tuple[Unit, ...]:
-    return (long_unit(), short_unit(), contact_unit())
+    return (long_unit(), short_unit(), contact_unit(), scraper_unit())
 
 
 def summary() -> dict[str, object]:
@@ -1122,6 +1438,19 @@ def summary() -> dict[str, object]:
         "headsAgreeWithDust": heads_agree_with_the_dust_model(),
         "twoPassOccupancyS": two_pass_occupancy_s(),
         "openQuestions": [list(q) for q in open_questions()],
+        "scrapeForceN": scrape_force_n(),
+        "scrapePowerW": scrape_power_w(lf),
+        "abradePowerW": abrade_power_w(lf),
+        "scrapeBeatsAbradeBy": scrape_beats_abrade_by(),
+        "shoePressureMpa": shoe_pressure_mpa(),
+        "bladeAssemblyTolMm": blade_assembly_tol_mm(),
+        "backsheetSurvives": backsheet_survives_scraping(),
+        "faceToolExists": face_residue_has_a_tool(),
+        "scraperLeadCostS": scraper_lead_cost_s(),
+        "occupancyWithScraperS": occupancy_with_scraper_s(),
+        "slackWithScraperS": slack_with_scraper_s(),
+        "maxGcNMm": max_gc_the_face_limit_allows(),
+        "gcMargin": gc_margin(),
         "impliedGRatio": implied_g_ratio(),
         "radialWearUmPerPanel": radial_wear_um_per_panel(),
         "occupancyS": occupancy_s(),
