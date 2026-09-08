@@ -33,7 +33,9 @@ const file = process.argv[2] || 'docs/drawings/pv-preprocess-plant.html';
  *  있어 이것만으로는 부족하다. 아래 `isMount` 가 **형상으로도** 판정한다. */
 const MOUNTS = [
   '베이스', '프레임', '가대', '기둥', '브래킷', '지지', '스탠션', '빔', '레일',
-  '가드', '바닥', '존', '참조', '투영', '스캔선',
+  // BW-101 안전벽체는 구조체다 — 껍질의 셀간 리턴이 그 판에 붙는 것이 정상이다.
+  // 거울상 두 매가 라벨 없이 서 있어 이름을 못 찾던 자리이기도 하다(도면에서 라벨을 달았다).
+  '가드', '벽체', '바닥', '존', '참조', '투영', '스캔선',
 ];
 /** 판이 앉는 부재로 볼 최대 두께 (m). 이보다 굵으면 구조가 아니라 장비다. */
 const SLENDER_M = 0.20;
@@ -42,7 +44,9 @@ const SKIN_T_M = 0.024;
 
 const T0 = 0, T1 = 130, DT = 0.5;
 const TOL_M = 0.002;          // 이보다 얕으면 수치오차
-const AISLE_Z = 3.55;         // 통로 시작 (월드 z) — layout.MACHINE_BAND_Y_MM
+// 통로 시작 (월드 z) = 장비 밴드 끝. **리터럴로 두지 않는다** — 밴드가 움직이면
+// (반전축 회전으로 7,100 → 8,550) 검사가 옛 자리를 재며 조용히 틀린다.
+const AISLE_Z = PLANES._limits.band;
 const AISLE_W = 1.20;
 
 const browser = await chromium.launch({
