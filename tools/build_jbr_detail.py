@@ -569,7 +569,7 @@ def validation_table(options: list[tuple[str, str]], w: dict[str, float]) -> str
         "probe": ("절단 허가", "선행 리젝트", "프로브 SELF-TEST FAIL — 비전 스캔도 돌지 않는다"),
         "recipe": ("절단 허가", "선행 리젝트",
                    "좌표열·케이블 topology 불일치. 미등록 구조 레시피는 선택과 무관하게 이 경로다"),
-        "coverage": ("헤드 배치", "선행 리젝트", "검출 각도가 패시브 요 ±3° 를 넘는다"),
+        "coverage": ("헤드 배치", "선행 리젝트", "검출 각도가 구동 요축 C ±3° 를 넘는다"),
         "support": ("칼날 접근", "선행 리젝트", "24구역 지지좌표가 제거 좌표를 받치지 못한다"),
         "tool": ("박리 허가", "선행 리젝트", "공구 ID·칼날 상태 FAIL"),
         "postfail": ("정상 반출", "격리 리젝트",
@@ -798,6 +798,22 @@ def stage_span(text: str, needle: str) -> tuple[float, float]:
     return hit[0]
 
 
+def motion_span(text: str, key: str) -> tuple[float, float]:
+    """운동식의 구간 — 클로즈업 생성기의 파서를 빌린다.
+
+    같은 상수를 두 곳에서 뜯으면 한쪽만 고쳐진다. 스테이지 이름 대신 운동식을 보는
+    이유는 REV.57 순차 전환으로 「동시 박리/인양」 스테이지가 없어졌기 때문이고,
+    앞뒤 관계는 원래 운동식이 갖는 것이 맞다.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "_bjc", pathlib.Path(__file__).resolve().parent / "build_jbr_closeup.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    span = mod.model(text)["motion"][key]
+    return float(span[0]), float(span[1])
+
+
 def blade_tip_mm(text: str) -> float:
     """L칼날 날끝 mm — 3D 주기의 「팁 0.8 mm」에서 읽는다. 절입과 견줄 값이다."""
     m = re.search(r"팁\s*([\d.]+)\s*mm", text)
@@ -815,8 +831,10 @@ def output_table(text: str) -> str:
     cut, tol = cut_gap_mm(text)
     tip = blade_tip_mm(text)
     cable = stage_span(text, "순차 절단")
-    shear = stage_span(text, "동시 박리")
-    lift = stage_span(text, "동시 인양")
+    # REV.57 순차 전환으로 「동시 박리/인양」 스테이지가 없어졌다. 박리와 인양의
+    # 앞뒤는 스테이지 이름이 아니라 **운동식**이 갖는다 — 거기가 원래 더 정확하다.
+    shear = motion_span(text, "shear")
+    lift = motion_span(text, "raise")
     back = handoff.LAMINATE_BACKSHEET_MM
 
     # 전단면이 백시트 기준면보다 아래다 — 그 평면을 지나는 것은 그 높이에서 잘린다.
@@ -1034,7 +1052,7 @@ def build() -> str:
   <h1>JBR-201 정션박스·케이블 제거장치 상세도</h1>
   <p class="lead">투입공정(FL-101 → LFT-101A/B → BFC-101A/B → RB-101 → PT-101)이
   JB-201 로 넘긴 패널을 받아, 차광 아래에서 2극 전압을 확인하고 케이블을 순차 절단한 뒤
-  검출된 개수만큼의 헤드가 정션박스를 동시에 박리·포획해 배출하고 후검증까지 마치는
+  헤드 한 기가 검출된 정션박스를 하나씩 박리·포획해 임시 호퍼에 모았다가 일괄 배출하고 후검증까지 마치는
   셀 하나. 플랜트 공정시계로 <b>{n(t0)} s 진입 → {n(t1)} s AFR-101 인계</b>,
   점유 <b>{n(campaign.JBR_S)} s</b>.</p>
 </header>
@@ -1086,14 +1104,14 @@ JB-201 축적·인계 런으로, 셀 귀속은 jbr 이지만 자리는 상류 ro
 <h3>3D 분해도 부품과 분해 벡터</h3>
 {parts_3d_table(ga)}
 
-<h2>5. 검출 시나리오와 헤드 배정</h2>
-<p class="lead">헤드 {heads} 기는 같은 X 열에 있는 박스를 <b>동시에</b> 맡는다 — 헤드 index 가
-박스 index 를 그대로 받는다. 검출 개수는 활성 헤드 수와 화면 문구와 힘 검산만 바꾸고,
-스테이지 시각은 바꾸지 않는다.</p>
+<h2>5. 검출 시나리오와 헤드 순번</h2>
+<p class="lead">헤드 {heads} 기가 같은 X 열의 박스를 <b>차례로</b> 맡는다 — 검출 개수가 곧
+<b>반복 횟수</b>다. 그래서 개수는 화면 문구와 힘 검산만이 아니라 <b>공정 창을 쓰는 방식</b>도
+바꾼다: 박스 하나에 4.0 s 씩, 검출 3 개면 20–32 s 를 다 쓴다.</p>
 {box_table(scen, cap, heads, counts, box_labels)}
-<div class="note">가용 추력 = 헤드 1기 {cap} kN × min(검출, 설치 {heads}). 헤드 수 제한이 없으면
-박스가 헤드보다 많은 시나리오에서 용량을 과대평가한다. 인터록은 동일 X열 편차 ≤15 mm,
-헤드간 간격 ≥260 mm, 각도 |θ|≤3° 를 요구하며, 위 네 시나리오의 최소 간격은 모두 그 위다.</div>
+<div class="note">가용 추력 = 헤드 1기 {cap} kN. <b>동시 구성에서는 개수를 곱했지만 순차에서는
+곱하지 않는다</b> — 한 번에 하나만 민다. 대신 곱해지는 것이 시간과 주행거리다. 인터록은
+동일 X열 편차 ≤15 mm, 각도 |θ|≤3° 를 요구한다.</div>
 
 <h2>6. 차단·리젝트 시나리오</h2>
 {validation_table(validations, w)}

@@ -15,7 +15,7 @@ JBR 재질은 여기서 따로 갖는다 — 공구강·고력 알루미늄은 �
 * **부품표에서 온 것** — 외형 (L·W·H) · 재질 · 수량 · 공차, 그리고 재질란이 두께를
   적어 둔 10 품목(`RHS 100×100×6` · `STS304 t1.5` 꼴). 여기서 다시 정하지 않는다.
   `tests/test_pv_jbr_fab.py` 가 부품표와 글자 단위로 견준다.
-* **하중에서 나온 것** — 칼날 반력 15 kN/헤드(3헤드 45 kN)를 받는 체결부의 볼트
+* **하중에서 나온 것** — 칼날 반력 15 kN 을 받는 체결부의 볼트
   개수. `check()` 가 전단 용량과 견줘 이용률을 돌려주고, 1.0 을 넘으면 시험이 깨진다.
 * **관례로 고른 것** — 나머지 두께와 구멍 배치. 기계 프레임 관례(가장자리 ≥ 1.5 d,
   피치 ≥ 3 d)와 이 셀의 정밀도 요구에서 골랐다. 구조 검증(45 kN 편심·잼 FEA,
@@ -74,10 +74,14 @@ def weight_kg(part: Part) -> float:
 # ── 하중 ────────────────────────────────────────────────────────────────
 #: 칼날 1 헤드가 계면에 거는 박리 반력 kN. 통합 설계도 힘 검산의 상한이다.
 BLADE_THRUST_KN = 15.0
-#: 동시 활성 헤드 상한 (검출 개수가 4 여도 헤드는 3 이다).
-HEADS = 3
-#: 3 헤드 동시 박리 — 승강 플레이트와 브리지가 함께 받는다.
+#: REV.57: 헤드는 하나다. 검출이 몇 개든 한 헤드가 박스를 하나씩 찾아간다 —
+#: 그래서 「3 헤드 동시 45 kN」 하중 조합이 없어지고 잼 임계 15 kN 이 상한이 된다.
+HEADS = 1
+#: 한 헤드가 한 번에 하나를 민다 — 승강 플레이트와 브리지가 받는 조합 하중.
 TOTAL_THRUST_KN = BLADE_THRUST_KN * HEADS
+#: 등록 레시피 최대 정션박스 수. 순차라서 이 값이 곧 **패널당 박리 왕복 횟수**다 —
+#: 동시 구성에서는 1 이었다. 실린더·Y 축 주행거리가 여기에 정비례한다.
+BOXES_PER_PANEL = 3
 #: 브리지＋헤드 가동부 질량 kg 과 X축 최대 감속 m/s² — 앵커 전단의 출처.
 CARRIAGE_MASS_KG = 620.0
 X_DECEL_MS2 = 2.5
@@ -280,24 +284,30 @@ CYLINDER_LIFE_KM = (2_000.0, 5_000.0)
 
 
 def pneumatic_option(bore_mm: float, stroke_mm: float, takt_s: float,
-                     heads: int = HEADS) -> dict[str, float | tuple[float, float]]:
-    """박리축을 공압 실린더로 바꿨을 때 — 추력 · 수명 · 공기 소모.
+                     strokes_per_panel: int = BOXES_PER_PANEL,
+                     ) -> dict[str, float | tuple[float, float]]:
+    """박리축 공압 실린더 — 추력 · 수명 · 공기 소모.
 
     볼스크루 수명은 하중의 **3 제곱**에 걸리지만 실린더 수명은 **주행거리**에 걸린다.
     작업력을 ±30 % 안에서 모르는 상태(노화 폐패널이라 분포다)에서 이 차이가 결정적이다
     — 힘을 몰라도 수명이 정해지고, 힘이 모자라면 압력을 올리면 된다.
     절입 깊이는 POM 기준 슈가 기계적으로 잡으므로 축에 위치 제어가 필요 없다.
+
+    REV.57 부터 `strokes_per_panel` 이 붙었다. 헤드 세 기가 한 번에 밀던 것을 한 기가
+    박스마다 밀기 때문에 **같은 실린더가 패널당 세 번 왕복한다** — 주행거리가 세 배이고
+    수명은 그만큼 짧다. 순차가 공짜가 아닌 자리가 여기다.
     """
     area = 3.14159 / 4 * bore_mm ** 2
-    km_per_year = stroke_mm * 2 / 1e6 * (3600.0 / takt_s) * 8_000.0 * heads / heads
-    nl = area / 1e6 * (stroke_mm * 2 / 1000.0) * 1000.0 * (AIR_MPA_MIN + 0.1013) / 0.1013
+    per_panel = stroke_mm * 2 * strokes_per_panel
+    km_per_year = per_panel / 1e6 * (3600.0 / takt_s) * 8_000.0
+    nl = area / 1e6 * (per_panel / 1000.0) * 1000.0 * (AIR_MPA_MIN + 0.1013) / 0.1013
     return {
-        "bore_mm": bore_mm,
+        "bore_mm": bore_mm, "strokes_per_panel": strokes_per_panel,
         "force_kn": (round(area * AIR_MPA_MIN / 1000.0, 2), round(area * AIR_MPA_MAX / 1000.0, 2)),
         "km_per_year": round(km_per_year, 1),
         "years": (round(CYLINDER_LIFE_KM[0] / km_per_year, 1),
                   round(CYLINDER_LIFE_KM[1] / km_per_year, 1)),
-        "air_nl_h": round(nl * heads * (3600.0 / takt_s)),
+        "air_nl_h": round(nl * (3600.0 / takt_s)),
         "speed_ok": True,
     }
 
@@ -561,25 +571,25 @@ _mx_parts = (
          note="헤드 datum ±0.10 을 지탱하는 면이 이 레일 자리다"),
     Part("JB-MX-004", "X축 엔드베어링·하드스톱", "weldment", (250, 280, 180), "S45C", 12, 4,
          "밀링 · 하드스톱 우레탄 · 조립", (corners("M12", edge=30),), finish=fab.MACHINED),
-    Part("JB-MX-006", "3헤드 공통 X 브리지 (RHS 150×100×8)", "shs", (2_500, 100, 150), "S355", 8, 1,
+    Part("JB-MX-006", "헤드 X 브리지 (RHS 150×100×8)", "shs", (2_500, 100, 150), "S355", 8, 1,
          "각관 용접 · 응력제거 · Y 레일 자리 가공",
          (row(16, "M12", along="L", edge=150, pitch=145, view="top", note="Y 캐리지 레일 · 45 kN 이용률 0.17"),
           corners("M16", edge=40, view="end", note="X 캐리지 체결")),
          tolerance="Y 레일 자리 직진도 0.05 · 비틀림 0.1/2,500",
          note="부품표 재질란이 단면과 두께를 적어 두었다 — 150×100×8"),
-    Part("JB-MY-002", "Y축 리니어 캐리지", "weldment", (1_350, 240, 110), "A6061-T6", 12, 3,
+    Part("JB-MY-002", "Y축 리니어 캐리지", "weldment", (1_350, 240, 110), "A6061-T6", 12, 1,
          "밀링 · 아노다이징",
          (row(6, "M12", along="L", edge=90, pitch=230, view="top", note="헤드 체결 · 15 kN 이용률 0.10"),
           row(8, "M8", along="L", edge=70, pitch=170, view="front", tapped=True, note="LM 블록")),
          finish=fab.ALODINE, tolerance="헤드 체결면 평면도 0.05"),
-    Part("JB-MZ-001", "공통 승강 플레이트", "weldment", (1_820, 2_180, 100), "A7075-T6", 12, 1,
+    Part("JB-MZ-001", "헤드 승강 플레이트", "weldment", (760, 640, 100), "A7075-T6", 12, 1,
          "포켓 밀링 (경량화) · 연삭 · 아노다이징",
          (row(12, "M12", along="L", edge=140, pitch=300, view="top", note="Y 캐리지 · 45 kN 이용률 0.16"),
           corners("M16", edge=60, view="top", note="가이드로드 4"),
           Hole("top", 2, "M12", "row", along="W", edge=420, pitch=980, tapped=True, note="승강 실린더 2")),
          finish=fab.ALODINE, tolerance="평면도 0.08 · 두께 편차 0.05",
-         note="속을 판 리브 구조다 (겉 100 · 살 12). 통판 100 이면 7075 라도 1.1 t 이라 "
-              "Ø63 실린더 2 개로 못 든다 — 그래서 포켓을 판다. 무게가 이 부품의 사양이다"),
+         note="REV.57: 헤드가 하나라 1,820×2,180 공통판이 필요 없다. 헤드 하나를 받는 "
+              "760×640 으로 줄면 가동부가 3 분의 1 이 되고 Ø63 실린더 2 개로 들 수 있게 된다"),
     Part("JB-MZ-003", "승강 가이드로드·하드스톱", "cyl", (36, 0, 500), "SUJ2", 0, 4,
          "연삭 · 경질크롬 도금 20 µm", (Hole("end", 1, "M12", "pcd", pcd=0, tapped=True),),
          finish=fab.MACHINED, tolerance="직진도 0.02/500 · 표면 Ra 0.2"),
@@ -594,8 +604,9 @@ _mx_commercial = (
     Commercial("JB-MX-003", "X축 벨트·풀리", "AT10 · 폭 50 · 장력조정", 2),
     Commercial("JB-MX-005", "X축 서보·기계 동기축", "0.75 kW · 23 bit 절대 · 동기축 2,400 · 정렬 0.08", 1,
                "servos.AXIS-JBR-X 와 같은 정격"),
-    Commercial("JB-MY-001", "헤드별 Y축 LM가이드", "폭 35 · 레일 2,020 · 블록 2", 6, "헤드당 2"),
-    Commercial("JB-MY-003", "Y축 서보벨트 모듈", "0.2 kW · 23 bit 절대", 3, "servos.AXIS-JBR-HY"),
+    Commercial("JB-MY-001", "헤드 Y축 LM가이드", "폭 35 · 레일 2,300 · 블록 2", 2,
+               "순차 배출은 헤드가 박스와 슈트(z −1,050) 사이를 왕복해야 해서 레일이 280 길어졌다"),
+    Commercial("JB-MY-003", "Y축 서보벨트 모듈", "0.2 kW · 23 bit 절대", 1, "servos.AXIS-JBR-HY"),
     Commercial("JB-MZ-002", "Ø63 가이드 승강실린더", "복동 · 행정 420 · 쿠션", 2),
     Commercial("JB-MZ-004", "무전원 승강 로드락", "안전인증 · 스프링 작동 · 공압 해제", 2),
     Commercial("JB-EL-005", "3축 에너지체인·서비스 트레이", "PA12 · 3,200 · 전력/신호/공압 분리", 1),
@@ -631,67 +642,68 @@ _mx_inspection = (
 
 # ── A06 제거 헤드 (3 식) ─────────────────────────────────────────────────
 _hd_parts = (
-    Part("JB-HD-001", "헤드 퀵체인지 플레이트", "plate", (320, 180, 45), "A7075-T6", 45, 3,
+    Part("JB-HD-001", "헤드 퀵체인지 플레이트", "plate", (320, 180, 45), "A7075-T6", 45, 1,
          "밀링 · 경질 아노다이징 · 기준핀 2",
          (row(6, "M12", along="L", edge=40, pitch=48, view="top", note="캐리지 체결 · 15 kN 이용률 0.10"),
           Hole("top", 2, "M10", "row", along="W", edge=45, pitch=90, tapped=True, note="칼날 캐리어 · 기준핀 Ø10 h7 2")),
          finish=fab.ALODINE, tolerance="기준핀 위치도 0.02 · 체결면 평면도 0.03",
          note="헤드를 통째로 갈아 끼우는 자리 — 기준핀 위치도가 곧 재현성이다"),
-    Part("JB-HD-004", "센터링 랙·피니언 세트", "bar", (420, 120, 80), "SCM415", 0, 3,
+    Part("JB-HD-004", "센터링 랙·피니언 세트", "bar", (420, 120, 80), "SCM415", 0, 1,
          "호빙 · 침탄 HRC58 · 연삭", (row(4, "M8", along="L", edge=30, pitch=110, view="top"),),
          finish=fab.MACHINED, tolerance="백래시 ≤ 0.05",
          note="좌우 칼날이 같은 양만큼 들어가게 하는 것 — 한쪽만 깊으면 박스가 기운다"),
-    Part("JB-HD-006", "좌측 L칼날 캐리어", "weldment", (250, 200, 100), "SKD61", 14, 3,
+    Part("JB-HD-006", "좌측 L칼날 캐리어", "weldment", (250, 200, 100), "SKD61", 14, 1,
          "밀링 · 질화 · 칼날 자리 연삭",
          (row(4, "M10", along="L", edge=30, pitch=60, view="top", note="퀵체인지 체결 · 15 kN 이용률 0.23"),
           row(3, "M8", along="W", edge=25, pitch=75, view="front", tapped=True, note="칼날 카세트")),
          finish=fab.MACHINED, tolerance="칼날 자리 평면도 0.02 · 각도 12° ±0.1°"),
-    Part("JB-HD-007", "우측 L칼날 캐리어", "weldment", (250, 200, 100), "SKD61", 14, 3,
+    Part("JB-HD-007", "우측 L칼날 캐리어", "weldment", (250, 200, 100), "SKD61", 14, 1,
          "밀링 · 질화 · 칼날 자리 연삭",
          (row(4, "M10", along="L", edge=30, pitch=60, view="top", note="퀵체인지 체결"),
           row(3, "M8", along="W", edge=25, pitch=75, view="front", tapped=True, note="칼날 카세트")),
          finish=fab.MACHINED, tolerance="칼날 자리 평면도 0.02 · 각도 12° ±0.1°",
          note="좌·우가 거울이다. 두 캐리어 사이 간격이 박스를 떼는 폭을 정한다"),
-    Part("JB-HD-008", "SKD11 L칼날 카세트", "plate", (240, 220, 18), "SKD11", 18, 6,
+    Part("JB-HD-008", "SKD11 L칼날 카세트", "plate", (240, 220, 18), "SKD11", 18, 2,
          "와이어컷 · 열처리 HRC58–60 · 날끝 연삭 0.8 · 쐐기 12°",
          (row(3, "M8", along="L", edge=30, pitch=75, view="top", note="캐리어 체결 · 교체품"),),
          finish=fab.MACHINED, tolerance="날끝 0.8 ±0.05 · 쐐기 12° ±0.1° · 직진도 0.02",
          note="닳는 부품이다. 3 점 체결로 손으로 갈아 끼운다 — 수명은 미결(시운전 마모량)"),
-    Part("JB-HD-009", "스프링 POM 기준 슈", "plate", (250, 240, 30), "POM-C", 30, 6,
+    Part("JB-HD-009", "스프링 POM 기준 슈", "plate", (250, 240, 30), "POM-C", 30, 2,
          "밀링 · 스프링 조립 · 접촉면 R2",
          (Hole("top", 2, "M8", "row", along="L", edge=40, pitch=170, tapped=True, note="캐리어 · 스프링 카트리지"),),
          finish="—", tolerance="접촉면 평면도 0.03 · 절입간격 0.6 ±0.2",
          note="백시트 기준면에 닿는 면. **절입 깊이를 정하는 것이 이 슈다** — 프레임이 처져도 "
               "슈가 패널을 따라가므로 칼날은 슈 밑 0.6 mm 를 지킨다"),
-    Part("JB-HD-010", "진공·스프링 포획그리퍼", "weldment", (300, 220, 160), "A6061-T6", 8, 3,
+    Part("JB-HD-010", "진공·스프링 포획그리퍼", "weldment", (300, 220, 160), "A6061-T6", 8, 1,
          "밀링 · 진공컵·체크밸브 조립",
          (corners("M8", edge=25, note="헤드 체결"),), finish=fab.ALODINE,
          tolerance="포획중심 ±1.0", note="박스가 떨어지는 순간 붙잡는다 — 놓치면 유리 위로 떨어진다"),
-    Part("JB-HD-011", "Z 플로팅 컴플라이언스 모듈", "weldment", (280, 240, 120), "A7075-T6", 10, 3,
+    Part("JB-HD-011", "Z 플로팅 컴플라이언스 모듈", "weldment", (280, 240, 120), "A7075-T6", 10, 1,
          "밀링 · 스프링 조립 · 행정 ±8",
          (corners("M10", edge=28),), finish=fab.ALODINE, tolerance="플로팅 ±8 · 마찰 ≤ 15 N",
          note="패널 워페이지와 프레임 처짐을 함께 먹는 자리. 이것이 있어서 절입이 프레임 강성과 무관해진다"),
-    Part("JB-HD-012", "국소 파편흡입 노즐 (STS304 t1.2)", "plate", (260, 120, 1.2), "STS304", 1.2, 3,
+    Part("JB-HD-012", "국소 파편흡입 노즐 (STS304 t1.2)", "plate", (260, 120, 1.2), "STS304", 1.2, 1,
          "레이저 절단 · 절곡 · TIG 용접",
          (row(2, "M6", along="L", edge=25, pitch=180, view="top"),), finish="—",
          note="칼날 바로 옆에서 유리 가루를 빨아들인다"),
-    Part("JB-HD-015", "패시브 요 컴플라이언스 카세트", "plate", (300, 260, 38), "A7075-T6", 38, 3,
-         "밀링 · 핀 조립 · 스프링 복원",
-         (corners("M10", edge=30),), finish=fab.ALODINE, tolerance="요 ±0.5° · 복원 잔차 ≤ 0.05°"),
-    Part("JB-HD-017", "무전원 포획 유지래치", "weldment", (160, 120, 85), "STS304", 6, 3,
+    Part("JB-HD-015", "구동 요축 C 슬루잉 베어링 하우징", "plate", (300, 260, 38), "A7075-T6", 38, 1,
+         "밀링 · 슬루잉 압입 · 원점 교정",
+         (corners("M10", edge=30),), finish=fab.ALODINE, tolerance="요 ±3° · 복귀 ±0.2°"),
+    Part("JB-HD-017", "무전원 포획 유지래치", "weldment", (160, 120, 85), "STS304", 6, 1,
          "가공 · 스프링 조립 · 근접센서",
          (row(2, "M6", along="L", edge=20, pitch=110, view="side"),), finish="—",
          note="전원이 나가도 잡은 박스를 놓지 않는다 — 놓으면 유리 위로 떨어진다"),
 )
 _hd_commercial = (
-    Commercial("JB-HD-002", "0.75 kW 박리서보·1:10 감속기", "23 bit 절대 · 브레이크 · 안티백드라이브", 3,
-               "servos.AXIS-JBR-PZ · 회전을 직선 추력 15 kN 으로 바꾼다"),
-    Commercial("JB-HD-003", "20×5 볼스크루·너트", "정밀급 C5 · 축 SCM415 침탄 · 너트 예압", 3),
-    Commercial("JB-HD-005", "20 kN 인라인 로드셀", "STS17-4PH · 교정 성적서 · 15 kN 공정창 감시", 3),
-    Commercial("JB-HD-013", "진공컵·체크밸브", "실리콘 벨로즈 Ø90 · 체크밸브", 3),
-    Commercial("JB-HD-014", "Z 변위센서", "±8 범위 · 분해능 0.01", 3),
-    Commercial("JB-HD-016", "공구 ID·칼날 파손/마모 센서", "RFID · 레이저 · 카세트 이력 추적", 3),
-    Commercial("JB-HD-018", "박리축 무전원 유지 브레이크", "스프링 작동 · 최악하중 유지 시험 성적서", 3),
+    Commercial("JB-HD-002", "Ø80 박리 공압 실린더", "복동 · 행정 360 · 쿠션 · 메터아웃 속도제어 225 mm/s", 1,
+               "상용 제거기와 같은 구성 — 0.5–0.6 MPa 에서 2.5–3.0 kN"),
+    Commercial("JB-HD-005", "20 kN 인라인 로드셀", "STS17-4PH · 교정 성적서 · 15 kN 공정창 감시", 1),
+    Commercial("JB-HD-013", "진공컵·체크밸브", "실리콘 벨로즈 Ø90 · 체크밸브", 1),
+    Commercial("JB-HD-014", "Z 변위센서", "±8 범위 · 분해능 0.01", 1),
+    Commercial("JB-HD-016", "공구 ID·칼날 파손/마모 센서", "RFID · 레이저 · 카세트 이력 추적", 1),
+    Commercial("JB-HD-018", "박리 실린더 무전원 후퇴 밸브", "안전인증 · 에어상실 시 후퇴·잠금 시험 성적서", 1),
+    Commercial("JB-HD-019", "요축 C 0.2 kW 브레이크 서보·슬루잉", "23 bit 절대 · 무전원 유지 브레이크", 1,
+               "servos.AXIS-JBR-C · 박스마다 각도가 달라 구동축이어야 한다"),
 )
 _hd_joints = (
     Joint("퀵체인지 → Y 캐리지", "JB-HD-001 ↔ JB-MY-002", "M12×45", "10.9", 18, "관통", "헤드당 6 · 15 kN 이용률 0.10"),
@@ -701,7 +713,7 @@ _hd_joints = (
     Joint("기준 슈 → 캐리어", "JB-HD-009 ↔ JB-HD-006/007", "M8×35", "8.8", 12, "탭", "스프링 카트리지 경유"),
     Joint("그리퍼 → 헤드", "JB-HD-010 ↔ JB-HD-011", "M8×30", "8.8", 12, "관통"),
     Joint("컴플라이언스 → 퀵체인지", "JB-HD-011 ↔ JB-HD-001", "M10×35", "10.9", 12, "관통"),
-    Joint("요 카세트", "JB-HD-015 ↔ JB-HD-011", "M10×30", "8.8", 12, "관통"),
+    Joint("요축 C 하우징", "JB-HD-015 ↔ JB-HD-011", "M10×30", "8.8", 12, "관통"),
     Joint("흡입 노즐·래치", "JB-HD-012/017 ↔ 헤드", "M6×16", "8.8", 12, "탭"),
 )
 _hd_steps = (
@@ -750,14 +762,21 @@ _cb_parts = (
          (row(4, "M8", along="L", edge=35, pitch=130, view="top"),), finish="—",
          tolerance="절연 저항 ≥ 100 MΩ @1 kV",
          note="활전 도체를 구속하는 자리라 금속을 쓰지 않는다. A→B 순차를 강제하는 것도 여기"),
-    Part("JB-WH-001", "정션박스 일괄 낙하슈트 (STS304 t1.5)", "weldment", (1_320, 500, 220), "STS304", 1.5, 1,
+    Part("JB-WH-001", "정션박스 낙하슈트 (STS304 t1.5)", "weldment", (640, 500, 220), "STS304", 1.5, 1,
          "절단 · 절곡 · TIG 용접",
-         (row(6, "M8", along="L", edge=60, pitch=240, view="top"),), finish="—",
-         tolerance="경사 16 ±1°", note="박스 1–3 개가 폭 1,323 안에 나란히 떨어진다"),
-    Part("JB-WH-002", "광폭 정션박스 수거함 (STS304 t1.5)", "weldment", (580, 1_320, 480), "STS304", 1.5, 1,
+         (row(4, "M8", along="L", edge=60, pitch=160, view="top"),), finish="—",
+         tolerance="경사 16 ±1°",
+         note="순차 제거는 박스를 한 줄로 낸다 — 동시 3 열을 받던 1,320 폭이 640 으로 줄었다"),
+    Part("JB-WH-002", "정션박스 수거함 (STS304 t1.5)", "weldment", (580, 640, 480), "STS304", 1.5, 1,
          "절단 · 절곡 · 용접 · 캐스터 4", (), finish="—",
          tolerance="바닥 상면 105 · 정지 자세 수평",
-         note="박스가 눕는 자리. 바닥 상면 105 는 낙하 정지 y 155 에서 박스 반높이 50 을 뺀 값"),
+         note="박스가 눕는 자리. 폭이 줄어 용량이 180 L → 90 L 로 반이 됐다 — 비움 주기는 미결"),
+    Part("JB-WH-008", "브리지 탑재 박스 임시 호퍼 (STS304 t1.5)", "weldment", (620, 120, 600), "STS304", 1.5, 1,
+         "절단 · 절곡 · TIG 용접 · 플랩 조립",
+         (row(4, "M8", along="L", edge=50, pitch=170, view="top"),), finish="—",
+         tolerance="플랩 열림·닫힘 확인 2 점",
+         note="순차 제거가 요구한 부품 — 헤드는 한 번에 하나만 든다. 놓을 자리가 없으면 "
+              "박스마다 브리지를 슈트까지 왕복시켜야 하고 그것은 공정 창에 안 들어간다"),
     Part("JB-WH-003", "칼날 건식 세척·교정 스테이션", "weldment", (820, 520, 480), "STS304", 2, 1,
          "용접 · PBT 브러시 · 에어나이프 조립",
          (corners("M10", edge=30),), finish="—", note="칼날에 붙은 접착을 털어 내는 자리"),
@@ -777,7 +796,8 @@ _cb_joints = (
     Joint("가위 → 브리지", "JB-CB-002 ↔ JB-MX-006", "M8×30", "8.8", 8, "관통"),
     Joint("가위날 (교체)", "JB-CB-003 ↔ JB-CB-002", "M6×20", "10.9", 8, "탭", "겹침 0.3 조정 뒤 마킹"),
     Joint("배출슈트 → 프레임", "JB-CB-004 ↔ JB-FR-001A", "M8×25", "8.8", 4, "관통"),
-    Joint("낙하슈트 → 프레임", "JB-WH-001 ↔ JB-FR-001A", "M8×25", "8.8", 6, "관통"),
+    Joint("낙하슈트 → 프레임", "JB-WH-001 ↔ JB-FR-001A", "M8×25", "8.8", 4, "관통"),
+    Joint("임시 호퍼 → 브리지", "JB-WH-008 ↔ JB-MX-006", "M8×30", "8.8", 4, "관통", "브리지에 매단다"),
     Joint("인터록 구속대", "JB-CB-006 ↔ JB-FR-001A", "M8×30", "8.8", 4, "관통", "절연 부시 · 금속 접촉 없음"),
     Joint("세척 스테이션", "JB-WH-003 ↔ JB-FR-001A", "M10×35", "8.8", 4, "관통"),
     Joint("중량 센서", "JB-WH-005 ↔ JB-FR-001A", "M8×25", "8.8", 8, "관통"),
@@ -1014,9 +1034,9 @@ def moving_mass_kg() -> float:
     return round(z + assembly_weight_kg(ASSEMBLIES[5]), 1)
 
 
-#: 헤드에 실린 구매품의 추정 중량 kg. 부품표에 중량 열이 없어 세지 못하는 몫이다.
-#: 셋을 다 세면 이 값이 0 이 되고, 그때 `moving_mass_kg()` 이 하한이 아니게 된다.
-HEAD_COMMERCIAL_KG = 75.0
+#: 헤드 **한 기**에 실린 구매품의 추정 중량 kg. 부품표에 중량 열이 없어 세지 못하는
+#: 몫이다 — 실린더·로드셀·진공컵·센서·요축. 중량 열이 생기면 0 으로 하고 실제로 센다.
+HEAD_COMMERCIAL_KG = 25.0
 
 #: 수직 승강은 여유가 필요하다 — 실링·가이드 마찰, 가속, 행정 중 압력 강하.
 #: 수평 밀기와 달리 힘이 모자라면 그냥 못 올라간다.
@@ -1037,7 +1057,7 @@ def lift_check(bore_mm: float | None = None, count: int | None = None,
     bore = LIFT_BORE_MM if bore_mm is None else bore_mm
     n = LIFT_COUNT if count is None else count
     mpa = AIR_MPA_MIN if air_mpa is None else air_mpa
-    mass = moving_mass_kg() + (HEAD_COMMERCIAL_KG if include_commercial else 0.0)
+    mass = moving_mass_kg() + (HEAD_COMMERCIAL_KG * HEADS if include_commercial else 0.0)
     force_kn = round(3.14159 / 4 * bore ** 2 * mpa * n / 1000.0, 2)
     need_kn = round(mass * 9.81 / 1000.0, 2)
     volume_l = 3.14159 / 4 * (bore / 1000.0) ** 2 * (LIFT_STROKE_MM / 1000.0) * 2 * 1000.0

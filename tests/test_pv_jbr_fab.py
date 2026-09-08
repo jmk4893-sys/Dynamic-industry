@@ -143,9 +143,12 @@ class TestJbrFabModel(unittest.TestCase):
         self.assertLess(max(c["utilisation"] for c in jf.checks()), 0.5)
 
     def test_the_blade_load_comes_from_the_plant(self):
+        """REV.57: 헤드가 하나라 셀 전체 하중 케이스가 45 kN 에서 15 kN 이 됐다."""
         self.assertEqual(jf.BLADE_THRUST_KN, 15.0)
-        self.assertEqual(jf.HEADS, 3)
+        self.assertEqual(jf.HEADS, 1)
+        self.assertEqual(jf.TOTAL_THRUST_KN, jf.BLADE_THRUST_KN)
         self.assertIn("15 kN", PLANT)
+        self.assertNotIn("45 kN 편심", PLANT)
 
 
 class TestJbrFabFindings(unittest.TestCase):
@@ -158,15 +161,23 @@ class TestJbrFabFindings(unittest.TestCase):
         self.assertEqual(m["plant_kg"], 2_200.0)
         self.assertIn("약 2.2 t", PLANT)
 
-    def test_the_lift_cylinders_are_short(self):
-        lc = jf.lift_check()
-        self.assertFalse(lc["ok"])
-        self.assertGreater(lc["utilisation"], 1.0)
-        self.assertGreater(lc["bore_needed_mm"], jf.LIFT_BORE_MM)
+    def test_the_sequential_change_freed_the_lift_cylinders(self):
+        """**소견이 스스로 풀렸다** — 3 헤드를 1 헤드로 줄이자 승강 질량이 절반 밑으로 내려갔다.
 
-    def test_max_pressure_does_not_rescue_the_stock_bore(self):
-        """0.5 가 아니라 0.6 MPa 로 올려도 모자란다 — 압력으로 해결되지 않는다."""
-        self.assertFalse(jf.lift_check(air_mpa=jf.AIR_MPA_MAX)["ok"])
+        REV.56 까지 이 시험은 「Ø63 두 개로는 못 든다」를 붙들고 있었다. 그것은
+        45 kN 3 헤드 구성의 결과였지 승강축 자체의 문제가 아니었다. 헤드 두 기와
+        그 Y 캐리지·승강 플레이트 여유분이 빠지면서 도면의 재고 보어가 그대로 산다.
+        누가 다시 3 헤드로 되돌리면 여기가 먼저 깨진다.
+        """
+        lc = jf.lift_check()
+        self.assertTrue(lc["ok"], f"이용률 {lc['utilisation']}")
+        self.assertLess(lc["utilisation"], 1 / jf.LIFT_SAFETY)
+        self.assertGreaterEqual(lc["margin"], jf.LIFT_SAFETY)
+        self.assertLessEqual(lc["bore_needed_mm"], jf.LIFT_BORE_MM)
+
+    def test_the_lift_still_passes_at_the_low_end_of_the_air_band(self):
+        """공압은 압력이 흔들린다 — 규정 하한 0.45 MPa 에서도 서야 한다."""
+        self.assertTrue(jf.lift_check(air_mpa=jf.AIR_MPA_MIN)["ok"])
 
     def test_the_moving_mass_is_a_lower_bound(self):
         """제작품만 셀 수 있다 — 헤드 구매품 7 종은 부품표에 중량 열이 없다."""
@@ -184,22 +195,33 @@ class TestJbrFabFindings(unittest.TestCase):
         self.assertLess(four80["air_nl_cycle"], two125["air_nl_cycle"])
         self.assertLess(four80["rod_lock_kn"], two125["rod_lock_kn"])
 
-    def test_the_vertical_lift_wants_margin_not_just_unity(self):
-        """이용률 1.0 은 수직 승강의 합격선이 아니다."""
+    def test_the_vertical_lift_still_asks_for_margin_not_just_unity(self):
+        """합격선은 이용률 1.0 이 아니다 — 여유 1.5 를 유지한다."""
         self.assertGreaterEqual(jf.LIFT_SAFETY, 1.5)
-        four63 = next(o for o in jf.lift_options()
-                      if (o["count"], o["bore_mm"]) == (4, 63.0))
-        self.assertLessEqual(four63["utilisation"], 1.0)
-        self.assertFalse(four63["ok"])
+        for o in jf.lift_options():
+            with self.subTest(cyl=(o["count"], o["bore_mm"])):
+                self.assertEqual(o["ok"], o["margin"] >= jf.LIFT_SAFETY)
 
     def test_the_sheet_still_says_both(self):
         html = SHEET.read_text(encoding="utf-8")
         self.assertIn("본체가 도면의 약 2.2 t 보다", html)
-        self.assertIn("실린더 2 개로는 승강부를 들지 못한다", html)
-        self.assertIn("두 점으로 들면 기울고 휜다", html)
-        self.assertIn("이 중량은 하한이다", html)
+        self.assertIn("다만 이 중량은 여전히 하한이다", html)
         self.assertIn("하중이 볼트를 정하지 않는다", html)
         self.assertIn("박리 반력은 바닥에 닿지 않는다", html)
+        # REV.57: 풀린 소견은 **지웠다가 아니라 뒤집어서** 남긴다 — 왜 풀렸는지가 값이다.
+        self.assertIn("실린더를 키워서가 아니라 매다는 것을 줄여서다", html)
+        self.assertIn("다시 3 헤드로 되돌리면 이 소견이 그대로 돌아온다", html)
+        self.assertNotIn("실린더 2 개로는 승강부를 들지 못한다", html)
+
+    def test_the_sheet_prices_what_the_sequential_change_cost(self):
+        """푼 것만 적고 치른 값을 안 적으면 그것은 기록이 아니다."""
+        html = SHEET.read_text(encoding="utf-8")
+        for phrase in ("순차는 공짜가 아니다",
+                       "박리 실린더 교환 주기",
+                       "수거함 용량이 반이 됐다",
+                       "브리지 임시 호퍼 플랩",
+                       "순차가 닫은 것 — 되돌리면 같이 돌아온다"):
+            self.assertIn(phrase, html, f"치른 값이 안 적혔다: {phrase}")
 
     def test_the_notch_capability_item_is_carried_over(self):
         """하류가 받아들인 절결의 여유 0 은 제작 단계 관리 항목이다."""
@@ -222,11 +244,15 @@ class TestJbrReview(unittest.TestCase):
         self.html = SHEET.read_text(encoding="utf-8")
 
     def test_the_stroke_and_window_come_from_the_plant(self):
-        """검산이 손으로 옮긴 숫자 위에 서면 안 된다."""
+        """검산이 손으로 옮긴 숫자 위에 서면 안 된다.
+
+        REV.57 에서 박리 창이 6.0 → 1.6 s 로 줄었다. 3 기가 한 번에 6 초를 쓰던
+        것을 한 기가 박스마다 쓰기 때문이다 — 같은 45.0 s 안에 세 번 들어가야 한다.
+        """
         self.assertEqual(self.V["stroke_mm"], 360.0)
-        self.assertEqual(self.V["shear_s"], 6.0)
+        self.assertAlmostEqual(self.V["shear_s"], 1.6, places=6)
         self.assertEqual(self.V["tip_mm"], 0.8)
-        self.assertEqual(self.V["head_z"], (-620.0, 0.0, 620.0))
+        self.assertEqual(self.V["head_z"], (0.0,))
         self.assertEqual(self.V["platen"], (1900.0, 1200.0))
 
     def test_the_peel_axis_overruns_the_servo(self):
@@ -267,24 +293,39 @@ class TestJbrReview(unittest.TestCase):
         self.assertFalse(hasattr(jf, "blade_edge_check"))
 
     def test_the_pneumatic_option_covers_the_duty(self):
-        """상용 방식 — 실린더 수명은 주행거리라 작업력을 몰라도 정해진다."""
+        """채택 구동 — 실린더 수명은 주행거리라 작업력을 몰라도 정해진다.
+
+        REV.57 부터 같은 실린더가 패널당 세 번 왕복한다(순차). 수명이 그만큼 짧아지는
+        것이 순차의 대가이고, 그 셈이 빠지면 보전 계획이 세 배 낙관이 된다.
+        """
         takt = campaign.summary()["takt_s"]
         o = jf.pneumatic_option(80.0, self.V["stroke_mm"], takt)
+        self.assertEqual(o["strokes_per_panel"], jf.BOXES_PER_PANEL)
         self.assertGreaterEqual(o["force_kn"][0], 2.0)
-        self.assertGreater(o["years"][0], 3.0)
+        self.assertGreater(o["years"][0], 1.0)
         self.assertLess(o["air_nl_h"], 25_200)
+        once = jf.pneumatic_option(80.0, self.V["stroke_mm"], takt, strokes_per_panel=1)
+        self.assertAlmostEqual(once["km_per_year"] * jf.BOXES_PER_PANEL, o["km_per_year"], places=1)
 
     def test_the_platen_is_smaller_than_the_panel(self):
+        """REV.57 로 헤드는 정반 안(z=0)에 주차하지만, 패널이 정반보다 크다는 것은 남는다."""
         c = jf.support_check(campaign.PANEL_LENGTH_MM, campaign.PANEL_WIDTH_MM,
                              self.V["platen"][0], self.V["platen"][1], self.V["head_z"])
         self.assertFalse(c["ok"])
-        self.assertEqual(len(c["heads_outside"]), 2)
+        self.assertEqual(c["heads_outside"], ())      # 1 헤드는 정반 안에 선다
         self.assertGreater(c["over_l_mm"], 0)
+        self.assertGreater(c["over_w_mm"], 0)
 
-    def test_the_bridge_deflects_past_the_head_tolerance(self):
+    def test_the_sequential_change_brought_the_bridge_inside_tolerance(self):
+        """**이 소견도 스스로 풀렸다** — 움직이는 질량이 줄자 처짐과 고유진동수가 같이 나았다.
+
+        REV.56 까지 브리지는 X 감속에서 0.11 mm 처지고 1 차 모드가 30 Hz 아래였다.
+        그것도 헤드 세 기를 매단 결과였다. 두 기를 덜어 내자 같은 빔이 규격 안으로
+        들어온다 — 빔을 키우는 대신 매다는 것을 줄인 셈이다.
+        """
         c = jf.bridge_mode((100.0, 150.0), 8.0, 2_500.0, jf.moving_mass_kg(), jf.X_DECEL_MS2)
-        self.assertGreater(c["deflection_mm"], 0.10)
-        self.assertLess(c["f_hz"], 30)
+        self.assertLessEqual(c["deflection_mm"], 0.10, "헤드 datum ±0.10 을 넘는다")
+        self.assertGreaterEqual(c["f_hz"], 30)
 
     def test_the_sheet_carries_every_one_of_them(self):
         for phrase in ("이 구동계로는 이 운동을 못 낸다",
@@ -292,8 +333,8 @@ class TestJbrReview(unittest.TestCase):
                        "5 주와 46 년 사이다",
                        "이 값은 정상 범위다",
                        "상용 제거기는 이 축을 공압 실린더로 민다",
-                       "정반이 패널보다 작고",
-                       "처짐은 위반이 아니라 정정 시간이다"):
+                       "정반이 패널보다 작다 — 다만 헤드는 이제 정반 안에 선다",
+                       "브리지 소견도 매다는 것을 줄여서 풀렸다"):
             self.assertIn(phrase, self.html, f"소견이 사라졌다: {phrase}")
 
     def test_the_detail_sheet_states_why_the_blade_cannot_be_thin(self):

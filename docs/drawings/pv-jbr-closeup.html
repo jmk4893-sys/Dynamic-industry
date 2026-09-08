@@ -94,7 +94,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
 <body>
 <div class="wrap">
 <header class="top">
-  <div class="eyebrow">DYNAMIC INDUSTRY · JBR-201 · ENGINEERING BASE REV.56</div>
+  <div class="eyebrow">DYNAMIC INDUSTRY · JBR-201 · ENGINEERING BASE REV.57</div>
   <h1>잡고 · 끊고 · 떨군다 — JBR-201 의 세 순간</h1>
   <p class="lead">JBR-201 의 45 초 가운데 <b>로컬 16–38 s</b>
   (플랜트 56–78 s)만 떼어 낸다. 셀 전체를 담은 시점에서는 몇 픽셀인 자리를
@@ -102,12 +102,13 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
   <ul class="lead">
     <li><b>① 박스 박리</b> — 진공컵이 박스 상면을 물고 스프링 손가락이 옆면을 잡은 뒤
       좌·우 L 칼날이 ±620 에서 ±260 까지 들어와
-      접착 계면을 전단한다 (<b>23–29 s</b>).</li>
+      접착 계면을 전단한다 (<b>1.2–2.8 s</b>).</li>
     <li><b>② 전선 포획·절단</b> — 포획 콤이 케이블을 V홈으로 쓸어 넣고 절연 인터록이 두 도체를
       가른 뒤, 가위 <b>A 17.85 s → B 18.85 s</b> 순으로 끊는다.
       권취는 하지 않는다.</li>
-    <li><b>③ 수거함 배출</b> — 브리지가 패널 밖 광폭 수거함 위로 나가 칼날을 다시 열면
-      1–3 개가 같은 자리에서 일괄 낙하한다 (<b>36.2–37.5 s</b>).</li>
+    <li><b>③ 수거함 배출</b> — 헤드가 박스마다 브리지 임시 호퍼(z −1,050)에 넣어 두었다가,
+      브리지가 패널 밖 수거함 위로 나가면 호퍼 바닥 플랩이 열려
+      1–3 개가 한 번에 낙하한다 (<b>36.2–37.5 s</b>).</li>
   </ul>
 </header>
 
@@ -182,7 +183,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
 <tr><td>가위날 겹침 (완전 닫힘)</td><td class="num">0.31 mm</td><td>JB-CB-003 날 겹침 0.3±0.1 mm</td><td class="good">일치</td><td>닫힘 자세의 조 위치 ±12.34 mm 와 날 반폭 12.5 mm, 닫힘 회전 0.03 rad 이 만드는 값이다. <b>—</b></td></tr>
 <tr><td>수거함 착지 이격</td><td class="num">+0 mm</td><td>바닥 상면 접촉 (0 mm) · 정지 자세 수평</td><td class="good">일치</td><td>낙하 정지 y 155 mm 에서 박스 하면은 105 mm, 수거함 바닥 상면은 105 mm 다. 전복 0.22 rad · 부채 0.12 rad 은 de(1−de)·4 로 낙하 중에만 실려 정지에서 0 이 된다. <b>—</b></td></tr>
 <tr><td>가위 A·B 절단 대상 (1개 · 편심 위치)</td><td class="num">A z +20 · B z -180 mm, 케이블은 z -400 … +240 mm</td><td>두 가위 앞에 각각 자를 도체가 있다</td><td class="good">일치</td><td>1개형은 두 가닥이 같은 쪽(−z)으로 나간다. 그래서 가위 z 오프셋도 -220 · -420 mm 로 둘 다 그쪽에 두고 순차 절단 간격만큼 벌린다. <b>—</b></td></tr>
-<tr><td>일괄 낙하 슈트 경사</td><td class="num">16.0°</td><td>JB-WH-001 경사 16±1°</td><td class="good">일치</td><td>3D 의 회전 0.28 rad 을 도로 옮긴 값이다. <b>—</b></td></tr>
+<tr><td>정션박스 낙하 슈트 경사</td><td class="num">16.0°</td><td>JB-WH-001 경사 16±1°</td><td class="good">일치</td><td>3D 의 회전 0.28 rad 을 도로 옮긴 값이다. <b>—</b></td></tr>
 </tbody></table></div>
 
 <h2>칼날과 기준 슈</h2>
@@ -192,7 +193,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
 이 그림의 절입 치수가 그 값과 어긋나면 붉게 표시된다.</div>
 
 <footer>
-  JBR-201 박리·절단·배출 클로즈업 · REV.56 ·
+  JBR-201 박리·절단·배출 클로즈업 · REV.57 ·
   생성 <code>PYTHONPATH=src python tools/build_jbr_closeup.py</code><br>
   형상·운동 출처 — <code>docs/drawings/pv-preprocess-plant.html</code> 의 3D 생성 호출과
   <code>wt()</code>, 시각 출처 — <code>src/pv_preprocess/campaign.py</code>
@@ -201,7 +202,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
 <script>
 (function () {
   'use strict';
-  var M = {"rev":"REV.56","cellY":-0.075,"boxY":1.12,"from":16.0,"to":38.0,"start":27.0,"infeed":40.0,"parts":{"head":{"parent":"t","size":[1.35,0.11,0.24],"at":[0.0,1.49,0.0]},"carrier":{"parent":"f","size":[0.1,0.2,0.25],"at":[0.0,1.32,0.0]},"lip":{"parent":"f","size":[0.055,0.17,0.22],"at":[0.0,1.3,0.0]},"cassette":{"parent":"f","size":[0.24,0.018,0.22],"dx":0.13,"y":1.2159,"z":0.0},"shoe":{"parent":"f","size":[0.25,0.03,0.24],"dx":0.12,"y":1.2225,"z":0.0},"gripper":{"parent":"l","size":[0.28,0.035,0.18],"at":[0.0,1.46,0.0]},"cup":{"parent":"l","r":0.052,"h":0.08,"at":[0.0,1.36,0.0]},"compliance":{"parent":"a","size":[0.29,0.035,0.2],"at":[0.0,1.535,0.0]},"comb":{"parent":"e","size":[0.42,0.045,0.08],"at":[0.0,1.46,0.0]},"scissor":{"parent":"e","size":[0.18,0.1,0.16],"at":[0.0,1.38,0.0]},"interlock":{"parent":"e","size":[0.34,0.055,0.2],"at":[0.0,1.31,0.12]},"shroud":{"parent":"e","size":[0.26,0.12,0.1],"at":[0.0,1.34,-0.1]},"vgroove":{"parent":"e","size":[0.05,0.1,0.05],"at":[-0.1,1.3,-0.07]},"jaw":{"parent":"e","size":[0.025,0.15,0.055],"at":[-0.035,1.27,0.0]},"handle":{"parent":"s","size":[0.18,0.035,0.06],"at":[-0.3,0.43,0.0]},"stem":{"parent":"a","size":[0.025,0.12,0.025],"at":[0.18,1.51,0.08]},"nozzle":{"parent":"t","size":[0.26,0.055,0.08],"at":[0.0,1.225,0.18]},"toolId":{"parent":"t","size":[0.11,0.055,0.05],"at":[0.31,1.23,0.16]},"yaw":{"parent":"t","size":[0.035,0.03,0.15],"at":[0.0,1.58,-0.09]},"plate":{"parent":"Un","size":[1.82,0.1,2.18],"at":[0.0,1.45,0.0]},"panel":{"parent":"Bt","size":[2.5,0.045,1.4],"at":[0.0,1.055,0.0]},"box":{"parent":"e","size":[0.32,0.1,0.22],"at":[0.0,0.0,0.0]},"finger":{"size":[0.035,0.16,0.16],"dx":0.12,"y":1.34},"connector":{"r":0.022,"h":0.08,"at":[0.0,0.02,0.14]}},"motion":{"shear":[23.0,29.0],"openWide":0.62,"openShut":0.26,"hold":[29.0,35.8,0.26],"reopen":[35.8,37.2],"reopenTo":0.62,"place":[19.4,22.8],"grip":[22.1,23.1,36.0,36.5],"gripDrop":-0.055,"cupSquash":0.72,"finger":[-0.16,0.08],"float":[23.0,29.0,17.0,0.004],"stemGain":18.0,"descend":[20.0,23.0,0.16,-0.13],"raise":[29.0,33.0,-0.13,0.26],"boxTop":1.51,"boxLift":[29.0,33.0],"interface":[23.0,29.0],"interfaceOpacity":[0.34,0.05],"bridge":{"park":[-1.55,0.16],"inFrom":16.0,"inTo":17.2,"inX":-1.55,"dropIn":[16.9,17.8],"dropOut":[19.4,20.0],"dropY":[0.16,-0.12],"outFrom":33.0,"outTo":35.6,"outX":-1.55,"outAt":36.8,"parkFrom":36.8,"parkTo":37.6,"parkX":[-1.55,-2.22],"carryY":0.26,"parkY":[0.26,0.16],"restAt":38.0,"restX":-2.22,"restY":0.16},"scissor":{"cutA":17.85,"cutB":18.85,"close":0.38,"openFrom":0.65,"openTo":1.0,"rot":[-0.32,-0.03],"shift":[-0.035,-0.01234],"single":[-0.22,-0.42],"envelope":[0.18,0.18]},"harness":{"from":19.4,"to":22.2,"x":-0.52,"y":0.38,"z":-1.32,"spin":0.7},"discharge":{"carry":38.0,"from":36.2,"to":37.5,"tumbleGain":4.0,"binX":-1.55,"highY":1.51,"restY":0.155,"tumble":0.22,"fan":0.12,"chuteLight":[36.2,37.6],"cableLight":[19.4,22.2],"binWeigh":37.2,"cableWeigh":22.2}},"stages":[{"name":"절연 구속·도체 A→B 순차 절단","start":16.0,"end":20.0},{"name":"활성 헤드 X·Y 자동배치","start":20.0,"end":23.0},{"name":"패시브 요 추종·L칼날 동시 박리","start":23.0,"end":29.0},{"name":"진공·스프링 포획·동시 인양","start":29.0,"end":33.0},{"name":"수거함 일괄 배출","start":33.0,"end":36.8},{"name":"JBR-VS-201A 후검증·JB/AFR 공유맵 생성 (동일 정반)","start":36.8,"end":38.0}],"scenarios":[{"key":"triple-wide","label":"3개 · 비대칭 위치","plan":"동일 X열 · 3헤드 1회 동시 박리","topology":"dual-split","boxes":[{"x":0.28,"z":-0.5,"sx":0.3,"sz":0.21,"angle":-0.018},{"x":0.28,"z":-0.04,"sx":0.32,"sz":0.22,"angle":0.012},{"x":0.28,"z":0.42,"sx":0.29,"sz":0.21,"angle":-0.009}]},{"key":"triple-compact","label":"3개 · 조밀 위치","plan":"동일 X열 · 소형 카세트 1회 동시 박리","topology":"dual-split","boxes":[{"x":0.12,"z":-0.36,"sx":0.25,"sz":0.18,"angle":0.01},{"x":0.12,"z":0.0,"sx":0.25,"sz":0.18,"angle":-0.012},{"x":0.12,"z":0.36,"sx":0.25,"sz":0.18,"angle":0.008}]},{"key":"double-offset","label":"2개 · 편심 위치","plan":"동일 X열 · 2헤드 1회 동시 박리","topology":"dual-split","boxes":[{"x":-0.05,"z":-0.31,"sx":0.34,"sz":0.23,"angle":-0.016},{"x":-0.05,"z":0.39,"sx":0.34,"sz":0.23,"angle":0.014}]},{"key":"single-offset","label":"1개 · 편심 위치","plan":"편심 좌표 · 1헤드 단독 박리","topology":"single-lead","boxes":[{"x":-0.22,"z":0.24,"sx":0.43,"sz":0.29,"angle":0.018}]}],"bladeSpec":"SKD11 HRC 58–60, 팁 0.8 mm, 12° 쐐기. 두 볼트와 위치결정핀으로 10분 이내 교환합니다.","bladeTipMm":0.8,"bladeWedgeDeg":12.0,"cutSpec":"절입간격 0.6±0.2 mm","cutMm":0.6,"cutTolMm":0.2,"jawSpec":"날 겹침 0.3±0.1 mm","jawMm":0.3,"jawTolMm":0.1,"chuteSpec":"경사 16±1°","chuteDeg":16.0,"chuteTolDeg":1.0,"combSpec":"V홈 위치 ±0.20 mm","bin":{"base":{"size":[0.58,0.05,0.54],"at":[0.0,0.08,0.0]},"wall":{"size":[0.05,0.48,0.54],"at":[-0.29,0.3,0.0]},"back":{"size":[0.58,0.48,0.05],"at":[0.0,0.3,-0.27]},"at":[-1.55,0.0,0.0],"widthScale":2.45,"cableAt":[-0.52,0.0,-1.48],"chute":{"size":[0.5,0.05,1.32],"at":[-1.5,0.72,0.0],"tilt":-0.28},"chuteSide":{"size":[0.5,0.16,0.035],"at":[-1.5,0.78],"z":[-0.66,0.66]},"cableChute":{"size":[0.34,0.05,0.72],"at":[-0.52,0.72,-1.14],"tilt":0.36},"weigh":[{"at":[-1.55,0.035,0.0],"size":[0.78,0.055,1.38]},{"at":[-0.52,0.035,-1.48],"size":[0.68,0.055,0.62]}],"passer":{"size":[0.1,0.06,0.06],"at":[[-1.48,0.92,0.74],[-0.52,0.9,-1.24]]},"coil":{"r0":0.11,"dr":0.012,"tube":0.011,"dx":0.035,"y0":0.19,"dy":0.018,"dz":0.04}},"cable":{"radius":0.012,"split":{"left":{"points":[[-0.06,-0.02,-0.52],[-0.18,0.0,-0.63],[-0.42,0.01,-0.76]],"connector":[-0.45,0.01,-0.8]},"right":{"points":[[0.06,-0.02,0.52],[0.18,0.0,0.63],[0.42,0.01,0.76]],"connector":[0.45,0.01,0.8]}},"single":{"lanes":[-0.09,0.09],"points":[[1.0,-0.02,-0.15],[1.15,0.0,-0.34],[1.3,0.01,-0.59]],"connector":[1.3,0.01,-0.64]}}};
+  var M = {"rev":"REV.57","cellY":-0.075,"boxY":1.12,"from":16.0,"to":38.0,"start":27.0,"infeed":40.0,"parts":{"head":{"parent":"t","size":[1.35,0.11,0.24],"at":[0.0,1.49,0.0]},"carrier":{"parent":"f","size":[0.1,0.2,0.25],"at":[0.0,1.32,0.0]},"lip":{"parent":"f","size":[0.055,0.17,0.22],"at":[0.0,1.3,0.0]},"cassette":{"parent":"f","size":[0.24,0.018,0.22],"dx":0.13,"y":1.2159,"z":0.0},"shoe":{"parent":"f","size":[0.25,0.03,0.24],"dx":0.12,"y":1.2225,"z":0.0},"gripper":{"parent":"l","size":[0.28,0.035,0.18],"at":[0.0,1.46,0.0]},"cup":{"parent":"l","r":0.052,"h":0.08,"at":[0.0,1.36,0.0]},"compliance":{"parent":"a","size":[0.29,0.035,0.2],"at":[0.0,1.535,0.0]},"comb":{"parent":"e","size":[0.42,0.045,0.08],"at":[0.0,1.46,0.0]},"scissor":{"parent":"e","size":[0.18,0.1,0.16],"at":[0.0,1.38,0.0]},"interlock":{"parent":"e","size":[0.34,0.055,0.2],"at":[0.0,1.31,0.12]},"shroud":{"parent":"e","size":[0.26,0.12,0.1],"at":[0.0,1.34,-0.1]},"vgroove":{"parent":"e","size":[0.05,0.1,0.05],"at":[-0.1,1.3,-0.07]},"jaw":{"parent":"e","size":[0.025,0.15,0.055],"at":[-0.035,1.27,0.0]},"handle":{"parent":"s","size":[0.18,0.035,0.06],"at":[-0.3,0.43,0.0]},"stem":{"parent":"a","size":[0.025,0.12,0.025],"at":[0.18,1.51,0.08]},"nozzle":{"parent":"t","size":[0.26,0.055,0.08],"at":[0.0,1.225,0.18]},"toolId":{"parent":"t","size":[0.11,0.055,0.05],"at":[0.31,1.23,0.16]},"yaw":{"parent":"t","size":[0.035,0.03,0.15],"at":[0.0,1.58,-0.09]},"plate":{"parent":"Un","size":[1.82,0.1,2.18],"at":[0.0,1.45,0.0]},"panel":{"parent":"Bt","size":[2.5,0.045,1.4],"at":[0.0,1.055,0.0]},"box":{"parent":"e","size":[0.32,0.1,0.22],"at":[0.0,0.0,0.0]},"finger":{"size":[0.035,0.16,0.16],"dx":0.12,"y":1.34},"connector":{"r":0.022,"h":0.08,"at":[0.0,0.02,0.14]}},"motion":{"slot":4.0,"sinkZ":-1.05,"slotFrom":20.0,"shear":[1.2,2.8],"openWide":0.62,"openShut":0.26,"hold":[2.8,3.0,0.26],"reopen":[3.0,3.4],"reopenTo":0.62,"place":[0.0,0.7],"grip":[0.7,1.2,3.4,3.6],"gripDrop":-0.055,"cupSquash":0.72,"finger":[-0.16,0.08],"float":[1.2,2.8,17.0,0.004],"stemGain":18.0,"descend":[20.0,22.0,0.16,-0.13],"raise":[32.2,33.0,-0.13,0.26],"boxTop":1.175,"boxLift":[3.4,3.6],"boxSlide":[3.6,3.9],"boxTip":[3.9,4.0],"boxFan":0.18,"sinkY":[1.175,1.075],"interface":[1.2,2.8],"interfaceOpacity":[0.34,0.05],"bridge":{"park":[-1.55,0.16],"inFrom":16.0,"inTo":17.2,"inX":-1.55,"dropIn":[16.9,17.8],"dropOut":[19.4,20.0],"dropY":[0.16,-0.12],"outFrom":33.0,"outTo":35.6,"outX":-1.55,"outAt":36.8,"parkFrom":36.8,"parkTo":37.6,"parkX":[-1.55,-2.22],"carryY":0.26,"parkY":[0.26,0.16],"restAt":38.0,"restX":-2.22,"restY":0.16},"scissor":{"cutA":17.85,"cutB":18.85,"close":0.38,"openFrom":0.65,"openTo":1.0,"rot":[-0.32,-0.03],"shift":[-0.035,-0.01234],"single":[-0.22,-0.42],"envelope":[0.18,0.18]},"harness":{"from":19.4,"to":22.2,"x":-0.52,"y":0.38,"z":-1.32,"spin":0.7},"discharge":{"carry":38.0,"from":36.2,"to":37.5,"tumbleGain":4.0,"binX":-1.55,"highY":1.075,"restY":0.155,"tumble":0.22,"fan":0.12,"chuteLight":[36.2,37.6],"cableLight":[19.4,22.2],"binWeigh":37.2,"cableWeigh":22.2}},"stages":[{"name":"절연 구속·도체 A→B 순차 절단","start":16.0,"end":20.0},{"name":"박스 1 — Y·요 배치 → 박리 → 포획·이탈 → 호퍼 투하","start":20.0,"end":24.0},{"name":"박스 2 — 같은 순서 (검출 2 개 이상일 때)","start":24.0,"end":28.0},{"name":"박스 3 — 같은 순서 (검출 3 개일 때)","start":28.0,"end":32.0},{"name":"헤드 원점·승강 상승·브리지 X− 이송·수거함 일괄 낙하","start":32.0,"end":36.8},{"name":"JBR-VS-201A 후검증·JB/AFR 공유맵 생성 (동일 정반)","start":36.8,"end":38.0}],"scenarios":[{"key":"triple-wide","label":"3개 · 비대칭 위치","plan":"동일 X열 · 1헤드 3회 순차 박리","topology":"dual-split","boxes":[{"x":0.28,"z":-0.5,"sx":0.3,"sz":0.21,"angle":-0.018},{"x":0.28,"z":-0.04,"sx":0.32,"sz":0.22,"angle":0.012},{"x":0.28,"z":0.42,"sx":0.29,"sz":0.21,"angle":-0.009}]},{"key":"triple-compact","label":"3개 · 조밀 위치","plan":"동일 X열 · 소형 카세트 3회 순차 박리","topology":"dual-split","boxes":[{"x":0.12,"z":-0.36,"sx":0.25,"sz":0.18,"angle":0.01},{"x":0.12,"z":0.0,"sx":0.25,"sz":0.18,"angle":-0.012},{"x":0.12,"z":0.36,"sx":0.25,"sz":0.18,"angle":0.008}]},{"key":"double-offset","label":"2개 · 편심 위치","plan":"동일 X열 · 1헤드 2회 순차 박리","topology":"dual-split","boxes":[{"x":-0.05,"z":-0.31,"sx":0.34,"sz":0.23,"angle":-0.016},{"x":-0.05,"z":0.39,"sx":0.34,"sz":0.23,"angle":0.014}]},{"key":"single-offset","label":"1개 · 편심 위치","plan":"편심 좌표 · 1헤드 1회 박리","topology":"single-lead","boxes":[{"x":-0.22,"z":0.24,"sx":0.43,"sz":0.29,"angle":0.018}]}],"bladeSpec":"SKD11 HRC 58–60, 팁 0.8 mm, 12° 쐐기. 두 볼트와 위치결정핀으로 10분 이내 교환합니다.","bladeTipMm":0.8,"bladeWedgeDeg":12.0,"cutSpec":"절입간격 0.6±0.2 mm","cutMm":0.6,"cutTolMm":0.2,"jawSpec":"날 겹침 0.3±0.1 mm","jawMm":0.3,"jawTolMm":0.1,"chuteSpec":"경사 16±1°","chuteDeg":16.0,"chuteTolDeg":1.0,"combSpec":"V홈 위치 ±0.20 mm","bin":{"base":{"size":[0.58,0.05,0.54],"at":[0.0,0.08,0.0]},"wall":{"size":[0.05,0.48,0.54],"at":[-0.29,0.3,0.0]},"back":{"size":[0.58,0.48,0.05],"at":[0.0,0.3,-0.27]},"at":[-1.55,0.0,-1.05],"widthScale":1.185,"cableAt":[-0.52,0.0,-1.48],"chute":{"size":[0.5,0.05,0.64],"at":[-1.5,0.72,-1.05],"tilt":-0.28},"chuteSide":{"size":[0.5,0.16,0.035],"at":[-1.5,0.78],"z":[-1.37,-0.73]},"cableChute":{"size":[0.34,0.05,0.72],"at":[-0.52,0.72,-1.14],"tilt":0.36},"weigh":[{"at":[-1.55,0.035,-1.05],"size":[0.78,0.055,0.7]},{"at":[-0.52,0.035,-1.48],"size":[0.68,0.055,0.62]}],"passer":{"size":[0.1,0.06,0.06],"at":[[-1.48,0.92,-0.73],[-0.52,0.9,-1.24]]},"coil":{"r0":0.11,"dr":0.012,"tube":0.011,"dx":0.035,"y0":0.19,"dy":0.018,"dz":0.04}},"cable":{"radius":0.012,"split":{"left":{"points":[[-0.06,-0.02,-0.52],[-0.18,0.0,-0.63],[-0.42,0.01,-0.76]],"connector":[-0.45,0.01,-0.8]},"right":{"points":[[0.06,-0.02,0.52],[0.18,0.0,0.63],[0.42,0.01,0.76]],"connector":[0.45,0.01,0.8]}},"single":{"lanes":[-0.09,0.09],"points":[[1.0,-0.02,-0.15],[1.15,0.0,-0.34],[1.3,0.01,-0.59]],"connector":[1.3,0.01,-0.64]}}};
   var P = M.parts, MO = M.motion;
   var css = getComputedStyle(document.documentElement);
   var cache = {};
@@ -232,10 +233,31 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
   function step(t, a, b) { return ease(span(t, a, b)); }
   function lerp(a, b, u) { return a + (b - a) * u; }
 
+  // REV.57: 헤드가 한 기라 20 s 부터 MO.slot 초씩 박스를 하나씩 맡는다. 운동식의
+  // 시각은 전부 **칸 안의 상대 시각 τ** 이므로, 절대 시각을 그대로 넣으면 안 된다.
+  function slotCount() { return scen.boxes.length; }
+  function slotOn(t) {
+    return t >= MO.slotFrom && t < MO.slotFrom + MO.slot * slotCount();
+  }
+  function slotIndex(t) {
+    var k = Math.floor((t - MO.slotFrom) / MO.slot);
+    return Math.max(0, Math.min(slotCount() - 1, k));
+  }
+  // 칸 밖이면 −1(아직 시작 전) 또는 칸 길이 초과(이미 끝남)를 준다.
+  function slotTau(t) {
+    if (t < MO.slotFrom) return -1;
+    if (!slotOn(t)) return MO.slot + 1;
+    return t - MO.slotFrom - MO.slot * slotIndex(t);
+  }
+  // 박스 i 의 칸이 시작하는 절대 시각.
+  function slotStart(i) { return MO.slotFrom + MO.slot * i; }
+
   function bladeOpen(t) {
-    var h = lerp(MO.openWide, MO.openShut, step(t, MO.shear[0], MO.shear[1]));
-    if (t >= MO.hold[0] && t < MO.hold[1]) h = MO.hold[2];
-    if (t >= MO.reopen[0]) h = lerp(MO.reopenTo, MO.openWide, step(t, MO.reopen[0], MO.reopen[1]));
+    if (!slotOn(t)) return MO.openWide;
+    var q = slotTau(t);
+    var h = lerp(MO.openWide, MO.openShut, step(q, MO.shear[0], MO.shear[1]));
+    if (q >= MO.hold[0] && q < MO.hold[1]) h = MO.hold[2];
+    if (q >= MO.reopen[0]) h = lerp(MO.reopenTo, MO.openWide, step(q, MO.reopen[0], MO.reopen[1]));
     return h;
   }
   // 승강 플레이트 y. 원본 wt() 는 16 s 진입(가위 하강)부터 38 s 세척대 대기까지를
@@ -260,17 +282,24 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
     return B.restX;
   }
   function gripT(t) {
-    return step(t, MO.grip[0], MO.grip[1]) * (1 - step(t, MO.grip[2], MO.grip[3]));
+    if (!slotOn(t)) return 0;
+    var q = slotTau(t);
+    return step(q, MO.grip[0], MO.grip[1]) * (1 - step(q, MO.grip[2], MO.grip[3]));
   }
   function floatY(t, head) {
-    if (t < MO.float[0] || t >= MO.float[1]) return 0;
+    var q = slotTau(t);
+    if (!slotOn(t) || q < MO.float[0] || q >= MO.float[1]) return 0;
     return Math.sin(t * MO.float[2] + head * 1.7) * MO.float[3];
   }
   function boxY(t) {
-    if (t < MO.boxLift[0]) return M.boxY;
-    return lerp(M.boxY, MO.boxTop, step(t, MO.boxLift[0], MO.boxLift[1]));
+    var q = slotTau(t);
+    if (!slotOn(t) || q < MO.boxLift[0]) return M.boxY;
+    return lerp(M.boxY, MO.boxTop, step(q, MO.boxLift[0], MO.boxLift[1]));
   }
-  function shearing(t) { return t >= MO.shear[0] && t < MO.shear[1]; }
+  function shearing(t) {
+    var q = slotTau(t);
+    return slotOn(t) && q >= MO.shear[0] && q < MO.shear[1];
+  }
 
   // ── 검출열 · 가위 · 케이블 ──────────────────────────────────────────
   function rowX() {
@@ -358,19 +387,29 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
   }
   // 배출 자세 — 인양 · 브리지 반출 · 낙하 · 착지.
   function boxPose(t, i) {
-    var D = MO.discharge, b = scen.boxes[i];
-    if (t < MO.boxLift[0]) return { x: b.x, y: M.boxY, z: b.z, tilt: 0, fan: 0 };
-    if (t < MO.boxLift[1]) {
-      return { x: b.x, y: lerp(M.boxY, MO.boxTop, step(t, MO.boxLift[0], MO.boxLift[1])),
-               z: b.z, tilt: 0, fan: 0, held: true };
+    var D = MO.discharge, b = scen.boxes[i], s0 = slotStart(i);
+    var rest = MO.sinkZ + (i - 1) * MO.boxFan;          // 호퍼 안에서 눕는 z
+    if (t < s0 + MO.boxLift[0]) return { x: b.x, y: M.boxY, z: b.z, tilt: 0, fan: 0 };
+    if (t < s0 + MO.boxSlide[1]) {
+      // 그리퍼가 55 mm 들어 백시트에서 떼고, 그대로 슈트 z 로 옮긴다.
+      return { x: b.x, y: lerp(M.boxY, MO.boxTop, step(t, s0 + MO.boxLift[0], s0 + MO.boxLift[1])),
+               z: lerp(b.z, MO.sinkZ, step(t, s0 + MO.boxSlide[0], s0 + MO.boxSlide[1])),
+               tilt: 0, fan: 0, held: true };
+    }
+    if (t < s0 + MO.boxTip[1]) {
+      // 진공 해제 — 브리지에 매단 임시 호퍼로 떨어진다.
+      var v = step(t, s0 + MO.boxTip[0], s0 + MO.boxTip[1]);
+      return { x: bridgeX(t) + (b.x - rowX()), y: lerp(MO.boxTop, MO.sinkY[1], v),
+               z: lerp(MO.sinkZ, rest, v), tilt: 0, fan: 0, hopper: true };
     }
     if (t < D.from) {
-      return { x: bridgeX(t) + (b.x - rowX()), y: MO.boxTop, z: b.z, tilt: 0, fan: 0, held: true };
+      return { x: bridgeX(t) + (b.x - rowX()), y: MO.sinkY[1], z: rest,
+               tilt: 0, fan: 0, hopper: true };
     }
     // 전복·부채는 낙하 **중에만** 준다. u(1−u)·4 는 중간에 1, 양끝에 0 이라
     // 정지 자세가 눕고, 그래서 정지 높이가 상자 크기와 무관해진다.
     var u = step(t, D.from, D.to), tu = u * (1 - u) * D.tumbleGain;
-    return { x: D.binX, y: lerp(D.highY, D.restY, u), z: b.z,
+    return { x: D.binX, y: lerp(D.highY, D.restY, u), z: rest,
              tilt: tu * D.tumble, fan: tu * (i - 1) * D.fan, dropped: true, u: u };
   }
 
@@ -380,9 +419,13 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
   var el = function (id) { return document.getElementById(id); };
   var wide = el('wide'), near = el('near');
 
-  function activeIndex() { return Math.min(1, scen.boxes.length - 1); }
-  function activeBox() { return scen.boxes[activeIndex()]; }
-  function yawRad() { return yawMode === 'fail' ? 5.2 * Math.PI / 180 : activeBox().angle; }
+  // REV.57: 「지금 어느 박스인가」가 시각의 함수다 — 종전에는 늘 가운데 것이었다.
+  function activeIndex(at) {
+    var now = at === undefined ? t : at;
+    return now < MO.slotFrom ? 0 : slotIndex(now);
+  }
+  function activeBox(at) { return scen.boxes[activeIndex(at)]; }
+  function yawRad(at) { return yawMode === 'fail' ? 5.2 * Math.PI / 180 : activeBox(at).angle; }
   // 원본 Jn(box, i) — coverage 리젝트는 0 번 헤드에만 5.2° 를 물린다.
   function yawOf(i) {
     return yawMode === 'fail' && i === 0 ? 5.2 * Math.PI / 180 : scen.boxes[i].angle;
@@ -465,9 +508,10 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
   function pose(t, flat) {
     var ae = plateY(t), H = bladeOpen(t), tt = gripT(t), fl = flat ? 0 : floatY(t, 1);
     var base = M.cellY + ae;                       // 승강 플레이트가 실은 프레임의 y 기준
-    var b = P.box, bx = activeBox();
+    var b = P.box, bx = activeBox(t);
     return {
       ae: ae, H: H, tt: tt, fl: fl, base: base,
+      slotTau: slotTau(t), slotIndex: activeIndex(t),
       panelTop: M.cellY + P.panel.at[1] + P.panel.size[1] / 2,
       panelBot: M.cellY + P.panel.at[1] - P.panel.size[1] / 2,
       boxCy: M.cellY + boxY(t),
@@ -487,7 +531,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
       cupSquash: lerp(1, MO.cupSquash, tt),
       fingerY: base + P.finger.y + lerp(0, MO.gripDrop, tt),
       plateBot: base + P.plate.at[1] - P.plate.size[1] / 2,
-      yaw: shearing(t) ? yawRad() : 0,
+      yaw: shearing(t) ? yawRad(t) : 0,
       angleOver: yawMode === 'fail'
     };
   }
@@ -577,7 +621,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
                 (p.boxW * 1000).toFixed(0) + ' 박스', ink3);
         bd.text(0, p.boxCy, 'JBOX', '#fff', 'center', 12, 0, 4);
         bd.text(-0.72, p.panelTop - 0.026, '패널 (유리면 아래 · 백시트 위)', ink2, 'left', 11);
-        bd.text(-0.72, p.plateBot + P.plate.size[1] / 2, '3헤드 공통 승강 플레이트', ink, 'left', 11, 0, 4);
+        bd.text(-0.72, p.plateBot + P.plate.size[1] / 2, '헤드 승강 플레이트', ink, 'left', 11, 0, 4);
       }
     } else if (showDims) {
       var x0 = (tipX === undefined ? -p.boxW / 2 : tipX);
@@ -909,9 +953,9 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
     if (!showDims) return;
     bd.text(0, panelTop + 0.10, '태양광 패널 (정면 X–Y)', ink2, 'center', 11);
     bd.text(B.at[0], y0 + B.wall.at[1] + B.wall.size[1] / 2 + 0.04,
-            '광폭 정션박스 수거함 180 L', ink2, 'center', 11);
+            '정션박스 수거함 90 L', ink2, 'center', 11);
     bd.text(ch.at[0] + 0.34, y0 + ch.at[1] + 0.12,
-            '일괄 낙하 슈트 ' + (Math.abs(ch.tilt) * 180 / Math.PI).toFixed(1) + '° · 사양 '
+            '정션박스 낙하 슈트 ' + (Math.abs(ch.tilt) * 180 / Math.PI).toFixed(1) + '° · 사양 '
             + M.chuteDeg + '±' + M.chuteTolDeg + '°',
             Math.abs(Math.abs(ch.tilt) * 180 / Math.PI - M.chuteDeg) <= M.chuteTolDeg
               ? C('ok') : C('red'), 'left', 11);
@@ -969,9 +1013,9 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
 
     if (!showDims) return;
     bd.text(0, y0 + B.base.at[1] - 0.055,
-            '광폭 정션박스 수거함 — 폭 ' + (B.base.size[2] * sc * 1000).toFixed(0) + ' (Z–Y 단면)',
+            '정션박스 수거함 — 폭 ' + (B.base.size[2] * sc * 1000).toFixed(0) + ' (Z–Y 단면)',
             ink2, 'center', 11);
-    bd.text(0, y0 + ch.at[1] + 0.075, '일괄 낙하 슈트 폭 ' + (ch.size[2] * 1000).toFixed(0),
+    bd.text(0, y0 + ch.at[1] + 0.075, '정션박스 낙하 슈트 폭 ' + (ch.size[2] * 1000).toFixed(0),
             ink3, 'center', 10.5);
     bd.text(pa[2] - 0.06, y0 + pa[1], '슈트 통과 확인',
             chuteLit(t, 0) ? C('ok') : ink3, 'right', 10.5, 0, 4);
@@ -1017,10 +1061,10 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
     },
     bin: {
       wide: '수거함 배출 전경 — 브리지 반출·칼날 개방·낙하',
-      near: '착지 근접 (Z–Y) — 1–3 개가 폭 방향으로 나란히 떨어진다',
+      near: '착지 근접 (Z–Y) — 호퍼가 모아 둔 1–3 개가 한 줄로 떨어진다',
       jump: MO.discharge.from - 0.5, span: [MO.bridge.outFrom, M.to],
-      note: '브리지가 패널 왼쪽 밖으로 나가 광폭 수거함 위에 서고, 칼날이 다시 열리면 '
-        + '잡고 있던 박스가 같은 자리에서 일괄 낙하한다. 슈트 통과 확인센서가 실제 통과를, '
+      note: '브리지가 패널 왼쪽 밖으로 나가 수거함 위에 서고, 임시 호퍼의 바닥 플랩이 열리면 '
+        + '순차로 모아 둔 박스가 한 줄로 낙하한다. 슈트 통과 확인센서가 실제 통과 개수를, '
         + '수거함 존재·중량 센서가 투입량을 각각 확인한다.'
     }
   };
@@ -1098,7 +1142,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
       chip(jawClose(t, 0) > 0.02 || jawClose(t, 1) > 0.02, '케이블 절단 A→B') +
       chip(p.tt > 0.02, '진공·스프링 그리퍼 포획') +
       chip(sh, '전단 ' + MO.shear[0] + '–' + MO.shear[1] + ' s') +
-      chip(t >= MO.boxLift[0] && t < MO.boxLift[1], '동시 인양') +
+      chip(p.slotTau >= MO.boxLift[0] && p.slotTau < MO.boxTip[1], '이탈·슈트 투하') +
       chip(t >= D.from, '수거함 배출');
     if (tab === 'cable') { el('readout').innerHTML = readCable(); return; }
     if (tab === 'bin') { el('readout').innerHTML = readBin(); return; }
@@ -1117,7 +1161,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
       row('Z 플로팅 (워페이지 추종)', (p.fl * 1000).toFixed(2) + ' mm',
           Math.abs(p.fl) > 0.0001 ? 'hot' : '') +
       row('Z 변위센서 신장', '×' + (1 + Math.abs(p.fl) * MO.stemGain).toFixed(3)) +
-      row('패시브 요', (p.yaw * 180 / Math.PI).toFixed(2) + '°',
+      row('구동 요축 C', (p.yaw * 180 / Math.PI).toFixed(2) + '°',
           p.angleOver && sh ? 'alarm' : '') +
       row('진공컵 압축', ((1 - p.cupSquash) * 100).toFixed(0) + ' %', p.tt > 0.02 ? 'hot' : '') +
       row('남은 접착 폭', bonded(p).toFixed(0) + ' / ' + (p.boxW * 1000).toFixed(0) + ' mm',
@@ -1209,10 +1253,13 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
       ['접착 계면 표시', MO.interface,
        '불투명도 ' + MO.interfaceOpacity[0] + ' → ' + MO.interfaceOpacity[1],
        'Ol.opacity = lerp(' + MO.interfaceOpacity[0] + ', ' + MO.interfaceOpacity[1] + ', He)'],
-      ['동시 인양', MO.boxLift,
-       (MO.raise[2] * 1000).toFixed(0) + ' → ' + (MO.raise[3] * 1000).toFixed(0) + ' mm · 박스 ' +
+      ['박스 이탈 (그리퍼)', MO.boxLift,
        (M.boxY * 1000).toFixed(0) + ' → ' + (MO.boxTop * 1000).toFixed(0) + ' mm',
-       'ae = lerp(' + MO.raise[2] + ', ' + MO.raise[3] + ', smoothstep(t, ' + MO.raise[0] + ', ' + MO.raise[1] + '))'],
+       'y = lerp(Ar.y, ' + MO.boxTop + ', smoothstep(τ, ' + MO.boxLift[0] + ', ' + MO.boxLift[1] + '))'],
+      ['슈트 이송 · 투하', [MO.boxSlide[0], MO.boxTip[1]],
+       'z → ' + (MO.sinkZ * 1000).toFixed(0) + ' · y ' + (MO.sinkY[0] * 1000).toFixed(0)
+        + ' → ' + (MO.sinkY[1] * 1000).toFixed(0) + ' mm · 부채 ±' + (MO.boxFan * 1000).toFixed(0),
+       'z = lerp(se.z, ' + MO.sinkZ + ', smoothstep(τ, ' + MO.boxSlide[0] + ', ' + MO.boxSlide[1] + '))'],
       ['칼날 재개방', MO.reopen,
        '±' + (MO.reopenTo * 1000).toFixed(0) + ' → ±' + (MO.openWide * 1000).toFixed(0) + ' mm',
        'H = lerp(' + MO.reopenTo + ', ' + MO.openWide + ', smoothstep(t, ' + MO.reopen[0] + ', ' + MO.reopen[1] + '))']
@@ -1225,7 +1272,7 @@ footer{margin-top:36px;padding-top:12px;border-top:1px solid var(--line);
 
     var p = pose(MO.shear[0] + 0.5, true);
     var faces = [
-      ['승강 플레이트 하면', p.plateBot, '3헤드가 매달린 기준면'],
+      ['승강 플레이트 하면', p.plateBot, '헤드가 매달린 기준면'],
       ['칼날 캐리어 중심', p.carrierY, 'L 칼날 카세트를 무는 자리'],
       ['칼날 카세트 상면', p.cassetteY + p.cassetteT / 2, ''],
       ['칼날 카세트 하면', p.cassetteY - p.cassetteT / 2,

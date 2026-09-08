@@ -249,7 +249,7 @@ class TestDrawingMatchesModel(unittest.TestCase):
         # README·코드 주석이 적는 품목 수가 실제와 어긋나면 문서가 거짓말을 한다.
         # REV.23 까지 README 161 · 주석 150 · 실제 149 로 셋이 다 달랐다.
         total = sum(len(rows) for rows in parts.values())
-        self.assertEqual(total, 181, "sweep(동작 포락선)은 부품이 아니라 빠진다")
+        self.assertEqual(total, 180, "sweep(동작 포락선)은 부품이 아니라 빠진다")   # REV.57: HD-2·HD-3 빠지고 브리지 호퍼가 든다
         with io.open("README.md", encoding="utf-8") as handle:
             self.assertIn(f"부품 {total}품목", handle.read())
         self.assertIn(f"현재 {total}품목", self.html)
@@ -798,10 +798,12 @@ class TestRemovalHeadCapacity(unittest.TestCase):
         self.assertIn("var HEAD_CAPACITY_KN = 15;", self.html)
         self.assertIn("'PV-JBR-HD-3201', '15 kN L칼날 제거헤드'", self.html)
 
-    def test_head_count_matches_the_three_head_bridge(self):
-        self.assertIn("var HEAD_COUNT = 3;", self.html)
-        for head in ("HD-1", "HD-2", "HD-3"):
-            self.assertIn(f"part('{head}'", self.html, f"{head} 가 JBR-201 부품표에 없다")
+    def test_head_count_matches_the_sequential_single_head(self):
+        """REV.57: 3 기 동시 → 1 기 순차. 헤드가 박스를 하나씩 찾아간다."""
+        self.assertIn("var HEAD_COUNT = 1;", self.html)
+        self.assertIn("part('HD-1'", self.html, "HD-1 이 JBR-201 부품표에 없다")
+        for gone in ("HD-2", "HD-3"):
+            self.assertNotIn(f"part('{gone}'", self.html, f"{gone} 가 남아 있다")
 
 
 class TestInfeedHandoff(unittest.TestCase):

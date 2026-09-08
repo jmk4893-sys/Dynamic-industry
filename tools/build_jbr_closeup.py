@@ -141,28 +141,42 @@ def offset_part(text: str, label: str) -> dict[str, object]:
 
 
 def motion(text: str) -> dict[str, object]:
-    """`wt()` 안의 박리 구간 운동 상수 — 식을 그대로 읽는다."""
-    blade = _one(text, r"let He=v\?me\(Se\(t,([\d.]+),([\d.]+)\)\):0,H=le\(([\d.]+),([\d.]+),He\)",
+    """`wt()` 안의 박리 구간 운동 상수 — 식을 그대로 읽는다.
+
+    REV.57 부터 이 구간은 **한 칸 안의 시각**이다. 헤드가 한 기뿐이라 20 s 부터
+    `jbSpan` 초씩 박스 한 개를 맡고, 칸 안의 시각 `jbTau` 가 0 에서 다시 시작한다.
+    그래서 아래 숫자들은 절대 시각이 아니라 칸 안의 상대 시각이다.
+    """
+    slot = _one(text, r"let jbSpan=([\d.]+),jbSinkZ=(-[\d.]+),jbLast=([\d.]+)\+jbSpan\*o", "순차 칸")
+    blade = _one(text, r"let He=jbRun\?me\(Se\(jbTau,([\d.]+),([\d.]+)\)\):0,H=le\(([\d.]+),([\d.]+),He\)",
                  "칼날 개도")
-    hold = _one(text, r"v&&t>=([\d.]+)&&t<([\d.]+)&&\(H=([\d.]+)\)", "칼날 닫힘 유지")
-    reopen = _one(text, r"v&&t>=([\d.]+)&&\(H=le\(([\d.]+),([\d.]+),me\(Se\(t,[\d.]+,([\d.]+)\)\)\)\)",
+    hold = _one(text, r"jbRun&&jbTau>=([\d.]+)&&jbTau<([\d.]+)&&\(H=([\d.]+)\)", "칼날 닫힘 유지")
+    reopen = _one(text, r"jbRun&&jbTau>=([\d.]+)&&\(H=le\(([\d.]+),([\d.]+),me\(Se\(jbTau,[\d.]+,([\d.]+)\)\)\)\)",
                   "칼날 재개방")
-    place = _one(text, r"let it=me\(Se\(t,([\d.]+),([\d.]+)\)\)", "헤드 Y 배치")
-    grip = _one(text, r"let tt=de&&v\?me\(Se\(t,([\d.]+),([\d.]+)\)\)\*\(1-me\(Se\(t,([\d.]+),([\d.]+)\)\)\):0",
+    place = _one(text, r"let it=jbRun\?me\(Se\(jbTau,([\d.]+),([\d.]+)\)\):0", "헤드 Y 배치")
+    grip = _one(text, r"let tt=de\?me\(Se\(jbTau,([\d.]+),([\d.]+)\)\)\*\(1-me\(Se\(jbTau,([\d.]+),([\d.]+)\)\)\):0",
                 "포획 그리퍼")
     drop = _one(text, r"U\.captureGripper\.position\.y=le\(0,(-[\d.]+),tt\)", "그리퍼 하강")
     cup = _one(text, r"U\.vacuumCup\.scale\.y=le\(1,([\d.]+),tt\)", "진공컵 압축")
     fing = _one(text, r"U\.captureFingers\[0\]\.rotation\.z=le\((-[\d.]+),([\d.]+),tt\)", "포획 손가락")
-    float_ = _one(text, r"let Ue=de&&v&&t>=([\d.]+)&&t<([\d.]+)\?Math\.sin\(t\*([\d.]+)\+ue\*[\d.]+\)\*([\d.]+):0",
+    float_ = _one(text, r"let Ue=de&&jbTau>=([\d.]+)&&jbTau<([\d.]+)\?Math\.sin\(t\*([\d.]+)\+jbIdx\*[\d.]+\)\*([\d.]+):0",
                   "Z 플로팅")
     stem = _one(text, r"U\.displacementStem\.scale\.y=1\+Math\.abs\(Ue\)\*(\d+)", "Z 변위센서 신장")
     lift = _one(text, r"ae=le\(([\d.]+),(-[\d.]+),me\(Se\(t,([\d.]+),([\d.]+)\)\)\),t>=([\d.]+)&&"
                       r"\(ae=le\((-[\d.]+),([\d.]+),me\(Se\(t,[\d.]+,([\d.]+)\)\)\)\)", "승강 플레이트")
-    boxlift = _one(text, r"U\.group\.position\.set\(D\+se\.x,le\(Ar\.y,([\d.]+),Te\),se\.z\)", "박스 인양 높이")
-    te = _one(text, r"let Te=me\(Se\(t,([\d.]+),([\d.]+)\)\)", "인양 구간")
-    interface = _one(text, r"Bl\.visible=v&&t>=([\d.]+)&&t<([\d.]+),Ol\.opacity=le\(([\d.]+),([\d.]+),He\)",
+    boxlift = _one(text, r"U\.group\.position\.set\(D\+se\.x,le\(Ar\.y,([\d.]+),Te\),le\(se\.z,jbSinkZ,jbSlide\)\)",
+                   "박스 이탈 높이")
+    te = _one(text, r"Te=me\(Se\(t,jbFrom\+([\d.]+),jbFrom\+([\d.]+)\)\)", "이탈 구간")
+    slide = _one(text, r"jbSlide=me\(Se\(t,jbFrom\+([\d.]+),jbFrom\+([\d.]+)\)\),"
+                       r"jbTip=me\(Se\(t,jbFrom\+([\d.]+),jbFrom\+([\d.]+)\)\),"
+                       r"jbRest=jbSinkZ\+\(ue-1\)\*([\d.]+)", "슈트 이송·투하")
+    sink = _one(text, r"U\.group\.position\.set\(V,le\(([\d.]+),([\d.]+),jbTip\),le\(jbSinkZ,jbRest,jbTip\)\)",
+                "호퍼 안착")
+    interface = _one(text, r"Bl\.visible=jbRun&&jbTau>=([\d.]+)&&jbTau<([\d.]+),Ol\.opacity=le\(([\d.]+),([\d.]+),He\)",
                      "박리 계면 표시")
     return {
+        "slot": float(slot.group(1)), "sinkZ": float(slot.group(2)),
+        "slotFrom": float(slot.group(3)),
         "shear": [float(blade.group(1)), float(blade.group(2))],
         "openWide": float(blade.group(3)), "openShut": float(blade.group(4)),
         "hold": [float(hold.group(1)), float(hold.group(2)), float(hold.group(3))],
@@ -182,6 +196,10 @@ def motion(text: str) -> dict[str, object]:
                   float(lift.group(6)), float(lift.group(7))],
         "boxTop": float(boxlift.group(1)),
         "boxLift": [float(te.group(1)), float(te.group(2))],
+        "boxSlide": [float(slide.group(1)), float(slide.group(2))],
+        "boxTip": [float(slide.group(3)), float(slide.group(4))],
+        "boxFan": float(slide.group(5)),
+        "sinkY": [float(sink.group(1)), float(sink.group(2))],
         "interface": [float(interface.group(1)), float(interface.group(2))],
         "interfaceOpacity": [float(interface.group(3)), float(interface.group(4))],
     }
@@ -278,7 +296,7 @@ def discharge_motion(text: str) -> dict[str, object]:
     """수거함 배출 — 브리지 추종·낙하·착지."""
     fall = _one(text, r"else if\(t<([\d.]+)\)\{let de=me\(Se\(t,([\d.]+),([\d.]+)\)\),"
                       r"tu=de\*\(1-de\)\*([\d.]+);"
-                      r"U\.group\.position\.set\((-[\d.]+),le\(([\d.]+),([\d.]+),de\),se\.z\),"
+                      r"U\.group\.position\.set\((-[\d.]+),le\(([\d.]+),([\d.]+),de\),jbRest\),"
                       r"U\.group\.rotation\.set\(tu\*([\d.]+),Jn\(se,ue\),tu\*\(ue-1\)\*([\d.]+)\)",
                "박스 낙하")
     lights = _one(text, r"t0\.forEach\(\(\{material:U\},ue\)=>\{let se=v&&\(ue===0\?"
@@ -341,21 +359,21 @@ def bin_parts(text: str) -> dict[str, object]:
                      r"P\(s,\[[^\]]*\],\[[^\]]*\],M\.steel\),"
                      r"P\(s,\[([^\]]*)\],\[0,([\d.]+),(-[\d.]+)\],M\.steel\)",
                "수거함 몸체")
-    place = _one(text, r'var Qv=Qp\((-[\d.]+),([\d.]+),"광폭 정션박스 수거함"', "정션박스 수거함 자리")
+    place = _one(text, r'var Qv=Qp\((-[\d.]+),(-[\d.]+),"정션박스 수거함"', "정션박스 수거함 자리")
     scale = _one(text, r"Qv\.scale\.z=([\d.]+)", "수거함 폭 배율")
     cbin = _one(text, r'var eM=Qp\((-[\d.]+),(-[\d.]+),"케이블 수거함"', "케이블 수거함 자리")
-    chute = _one(text, r'P\(be,\[([^\]]*)\],\[(-[\d.]+),([\d.]+),([\d.]+)\],M\.steel,'
-                       r'"정션박스 일괄 낙하 슈트",[^,]*,\[0,0,(-[\d.]+)\]\)', "낙하 슈트")
-    side = _one(text, r'\[(-[\d.]+),([\d.]+)\]\.forEach\(i=>P\(be,\[([^\]]*)\],'
-                      r'\[(-[\d.]+),([\d.]+),i\],M\.steel,"광폭 슈트 측판"', "슈트 측판")
+    chute = _one(text, r'P\(be,\[([^\]]*)\],\[(-[\d.]+),([\d.]+),(-[\d.]+)\],M\.steel,'
+                       r'"정션박스 낙하 슈트",[^,]*,\[0,0,(-[\d.]+)\]\)', "낙하 슈트")
+    side = _one(text, r'\[(-[\d.]+),(-[\d.]+)\]\.forEach\(i=>P\(be,\[([^\]]*)\],'
+                      r'\[(-[\d.]+),([\d.]+),i\],M\.steel,"정션박스 슈트 측판"', "슈트 측판")
     cchute = _one(text, r"P\(be,\[([^\]]*)\],\[(-[\d.]+),([\d.]+),(-[\d.]+)\],M\.steel,"
                         r"null,null,\[([\d.]+),0,0\]\)", "케이블 배출슈트")
-    sensor = _one(text, r"\[\[(-[\d.]+),(0),([\d.]+),([\d.]+)\],"
+    sensor = _one(text, r"\[\[(-[\d.]+),(-[\d.]+),([\d.]+),([\d.]+)\],"
                         r"\[(-[\d.]+),(-[\d.]+),([\d.]+),([\d.]+)\]\]"
                         r"\.forEach\(\(\[i,e,t,n\],s\)=>", "수거함 중량 센서 자리")
     height = _one(text, r"r\.position\.set\(i,([\d.]+),e\),be\.add\(r\),"
                         r"P\(r,\[t,([\d.]+),n\]", "중량 센서 판 두께")
-    passer = _one(text, r"\[\[(-[\d.]+),([\d.]+),([\d.]+)\],\[(-[\d.]+),([\d.]+),(-[\d.]+)\]\]"
+    passer = _one(text, r"\[\[(-[\d.]+),([\d.]+),(-[\d.]+)\],\[(-[\d.]+),([\d.]+),(-[\d.]+)\]\]"
                         r"\.forEach\(\(i,e\)=>\{let t=M\.sensor\.clone\(\),"
                         r"n=P\(be,\[([^\]]*)\]", "슈트 통과 센서 자리")
     ring = _one(text, r"new vr\(([\d.]+)\+i\*([\d.]+),([\d.]+),8,32\),M\.rubber\);"
@@ -472,8 +490,8 @@ def model(text: str) -> dict[str, object]:
         "stem": box_part(text, "Z 변위센서"),
         "nozzle": box_part(text, "국소 파편흡입 노즐"),
         "toolId": box_part(text, "공구 ID·칼날 상태센서"),
-        "yaw": box_part(text, "패시브 요 상태 포인터"),
-        "plate": box_part(text, "3헤드 공통 승강 플레이트"),
+        "yaw": box_part(text, "요축 C 상태 포인터"),
+        "plate": box_part(text, "헤드 승강 플레이트"),
         "panel": box_part(text, "태양광 패널"),
         "box": box_part(text, "비전 검출 정션박스"),
     }
@@ -487,7 +505,7 @@ def model(text: str) -> dict[str, object]:
     cut_spec, cut, cut_tol = shoe_spec(text)
     jaw_spec = bom_tolerance(text, "JB-CB-003", "교체형 케이블 가위날")
     jaw_mm, jaw_tol = pm(jaw_spec, "가위날 겹침")
-    chute_spec = bom_tolerance(text, "JB-WH-001", "정션박스 일괄 낙하슈트")
+    chute_spec = bom_tolerance(text, "JB-WH-001", "정션박스 낙하슈트")
     chute_deg, chute_tol = pm(chute_spec, "일괄 낙하슈트 경사")
     comb_spec = bom_tolerance(text, "JB-CB-001", "비전 연동 케이블 포획콤")
     return {
@@ -664,7 +682,7 @@ def checks(M: dict) -> list[dict[str, object]]:
     # ⑤ 낙하 슈트 경사 — 이건 맞는다. 맞는 것도 같이 적어야 표가 검산으로 읽힌다.
     tilt = abs(B["chute"]["tilt"]) * 180 / math.pi
     out.append({
-        "item": "일괄 낙하 슈트 경사",
+        "item": "정션박스 낙하 슈트 경사",
         "found": f"{tilt:,.1f}°",
         "spec": f"JB-WH-001 {M['chuteSpec']}",
         "ok": abs(tilt - M["chuteDeg"]) <= M["chuteTolDeg"],
@@ -793,8 +811,9 @@ def build() -> str:
     <li><b>② 전선 포획·절단</b> — 포획 콤이 케이블을 V홈으로 쓸어 넣고 절연 인터록이 두 도체를
       가른 뒤, 가위 <b>A {S['cutA']:g} s → B {S['cutB']:g} s</b> 순으로 끊는다.
       권취는 하지 않는다.</li>
-    <li><b>③ 수거함 배출</b> — 브리지가 패널 밖 광폭 수거함 위로 나가 칼날을 다시 열면
-      1–3 개가 같은 자리에서 일괄 낙하한다 (<b>{D['from']:g}–{D['to']:g} s</b>).</li>
+    <li><b>③ 수거함 배출</b> — 헤드가 박스마다 브리지 임시 호퍼(z −1,050)에 넣어 두었다가,
+      브리지가 패널 밖 수거함 위로 나가면 호퍼 바닥 플랩이 열려
+      1–3 개가 한 번에 낙하한다 (<b>{D['from']:g}–{D['to']:g} s</b>).</li>
   </ul>
 </header>
 
@@ -915,10 +934,31 @@ def build() -> str:
   function step(t, a, b) {{ return ease(span(t, a, b)); }}
   function lerp(a, b, u) {{ return a + (b - a) * u; }}
 
+  // REV.57: 헤드가 한 기라 20 s 부터 MO.slot 초씩 박스를 하나씩 맡는다. 운동식의
+  // 시각은 전부 **칸 안의 상대 시각 τ** 이므로, 절대 시각을 그대로 넣으면 안 된다.
+  function slotCount() {{ return scen.boxes.length; }}
+  function slotOn(t) {{
+    return t >= MO.slotFrom && t < MO.slotFrom + MO.slot * slotCount();
+  }}
+  function slotIndex(t) {{
+    var k = Math.floor((t - MO.slotFrom) / MO.slot);
+    return Math.max(0, Math.min(slotCount() - 1, k));
+  }}
+  // 칸 밖이면 −1(아직 시작 전) 또는 칸 길이 초과(이미 끝남)를 준다.
+  function slotTau(t) {{
+    if (t < MO.slotFrom) return -1;
+    if (!slotOn(t)) return MO.slot + 1;
+    return t - MO.slotFrom - MO.slot * slotIndex(t);
+  }}
+  // 박스 i 의 칸이 시작하는 절대 시각.
+  function slotStart(i) {{ return MO.slotFrom + MO.slot * i; }}
+
   function bladeOpen(t) {{
-    var h = lerp(MO.openWide, MO.openShut, step(t, MO.shear[0], MO.shear[1]));
-    if (t >= MO.hold[0] && t < MO.hold[1]) h = MO.hold[2];
-    if (t >= MO.reopen[0]) h = lerp(MO.reopenTo, MO.openWide, step(t, MO.reopen[0], MO.reopen[1]));
+    if (!slotOn(t)) return MO.openWide;
+    var q = slotTau(t);
+    var h = lerp(MO.openWide, MO.openShut, step(q, MO.shear[0], MO.shear[1]));
+    if (q >= MO.hold[0] && q < MO.hold[1]) h = MO.hold[2];
+    if (q >= MO.reopen[0]) h = lerp(MO.reopenTo, MO.openWide, step(q, MO.reopen[0], MO.reopen[1]));
     return h;
   }}
   // 승강 플레이트 y. 원본 wt() 는 16 s 진입(가위 하강)부터 38 s 세척대 대기까지를
@@ -943,17 +983,24 @@ def build() -> str:
     return B.restX;
   }}
   function gripT(t) {{
-    return step(t, MO.grip[0], MO.grip[1]) * (1 - step(t, MO.grip[2], MO.grip[3]));
+    if (!slotOn(t)) return 0;
+    var q = slotTau(t);
+    return step(q, MO.grip[0], MO.grip[1]) * (1 - step(q, MO.grip[2], MO.grip[3]));
   }}
   function floatY(t, head) {{
-    if (t < MO.float[0] || t >= MO.float[1]) return 0;
+    var q = slotTau(t);
+    if (!slotOn(t) || q < MO.float[0] || q >= MO.float[1]) return 0;
     return Math.sin(t * MO.float[2] + head * 1.7) * MO.float[3];
   }}
   function boxY(t) {{
-    if (t < MO.boxLift[0]) return M.boxY;
-    return lerp(M.boxY, MO.boxTop, step(t, MO.boxLift[0], MO.boxLift[1]));
+    var q = slotTau(t);
+    if (!slotOn(t) || q < MO.boxLift[0]) return M.boxY;
+    return lerp(M.boxY, MO.boxTop, step(q, MO.boxLift[0], MO.boxLift[1]));
   }}
-  function shearing(t) {{ return t >= MO.shear[0] && t < MO.shear[1]; }}
+  function shearing(t) {{
+    var q = slotTau(t);
+    return slotOn(t) && q >= MO.shear[0] && q < MO.shear[1];
+  }}
 
   // ── 검출열 · 가위 · 케이블 ──────────────────────────────────────────
   function rowX() {{
@@ -1041,19 +1088,29 @@ def build() -> str:
   }}
   // 배출 자세 — 인양 · 브리지 반출 · 낙하 · 착지.
   function boxPose(t, i) {{
-    var D = MO.discharge, b = scen.boxes[i];
-    if (t < MO.boxLift[0]) return {{ x: b.x, y: M.boxY, z: b.z, tilt: 0, fan: 0 }};
-    if (t < MO.boxLift[1]) {{
-      return {{ x: b.x, y: lerp(M.boxY, MO.boxTop, step(t, MO.boxLift[0], MO.boxLift[1])),
-               z: b.z, tilt: 0, fan: 0, held: true }};
+    var D = MO.discharge, b = scen.boxes[i], s0 = slotStart(i);
+    var rest = MO.sinkZ + (i - 1) * MO.boxFan;          // 호퍼 안에서 눕는 z
+    if (t < s0 + MO.boxLift[0]) return {{ x: b.x, y: M.boxY, z: b.z, tilt: 0, fan: 0 }};
+    if (t < s0 + MO.boxSlide[1]) {{
+      // 그리퍼가 55 mm 들어 백시트에서 떼고, 그대로 슈트 z 로 옮긴다.
+      return {{ x: b.x, y: lerp(M.boxY, MO.boxTop, step(t, s0 + MO.boxLift[0], s0 + MO.boxLift[1])),
+               z: lerp(b.z, MO.sinkZ, step(t, s0 + MO.boxSlide[0], s0 + MO.boxSlide[1])),
+               tilt: 0, fan: 0, held: true }};
+    }}
+    if (t < s0 + MO.boxTip[1]) {{
+      // 진공 해제 — 브리지에 매단 임시 호퍼로 떨어진다.
+      var v = step(t, s0 + MO.boxTip[0], s0 + MO.boxTip[1]);
+      return {{ x: bridgeX(t) + (b.x - rowX()), y: lerp(MO.boxTop, MO.sinkY[1], v),
+               z: lerp(MO.sinkZ, rest, v), tilt: 0, fan: 0, hopper: true }};
     }}
     if (t < D.from) {{
-      return {{ x: bridgeX(t) + (b.x - rowX()), y: MO.boxTop, z: b.z, tilt: 0, fan: 0, held: true }};
+      return {{ x: bridgeX(t) + (b.x - rowX()), y: MO.sinkY[1], z: rest,
+               tilt: 0, fan: 0, hopper: true }};
     }}
     // 전복·부채는 낙하 **중에만** 준다. u(1−u)·4 는 중간에 1, 양끝에 0 이라
     // 정지 자세가 눕고, 그래서 정지 높이가 상자 크기와 무관해진다.
     var u = step(t, D.from, D.to), tu = u * (1 - u) * D.tumbleGain;
-    return {{ x: D.binX, y: lerp(D.highY, D.restY, u), z: b.z,
+    return {{ x: D.binX, y: lerp(D.highY, D.restY, u), z: rest,
              tilt: tu * D.tumble, fan: tu * (i - 1) * D.fan, dropped: true, u: u }};
   }}
 
@@ -1063,9 +1120,13 @@ def build() -> str:
   var el = function (id) {{ return document.getElementById(id); }};
   var wide = el('wide'), near = el('near');
 
-  function activeIndex() {{ return Math.min(1, scen.boxes.length - 1); }}
-  function activeBox() {{ return scen.boxes[activeIndex()]; }}
-  function yawRad() {{ return yawMode === 'fail' ? 5.2 * Math.PI / 180 : activeBox().angle; }}
+  // REV.57: 「지금 어느 박스인가」가 시각의 함수다 — 종전에는 늘 가운데 것이었다.
+  function activeIndex(at) {{
+    var now = at === undefined ? t : at;
+    return now < MO.slotFrom ? 0 : slotIndex(now);
+  }}
+  function activeBox(at) {{ return scen.boxes[activeIndex(at)]; }}
+  function yawRad(at) {{ return yawMode === 'fail' ? 5.2 * Math.PI / 180 : activeBox(at).angle; }}
   // 원본 Jn(box, i) — coverage 리젝트는 0 번 헤드에만 5.2° 를 물린다.
   function yawOf(i) {{
     return yawMode === 'fail' && i === 0 ? 5.2 * Math.PI / 180 : scen.boxes[i].angle;
@@ -1148,9 +1209,10 @@ def build() -> str:
   function pose(t, flat) {{
     var ae = plateY(t), H = bladeOpen(t), tt = gripT(t), fl = flat ? 0 : floatY(t, 1);
     var base = M.cellY + ae;                       // 승강 플레이트가 실은 프레임의 y 기준
-    var b = P.box, bx = activeBox();
+    var b = P.box, bx = activeBox(t);
     return {{
       ae: ae, H: H, tt: tt, fl: fl, base: base,
+      slotTau: slotTau(t), slotIndex: activeIndex(t),
       panelTop: M.cellY + P.panel.at[1] + P.panel.size[1] / 2,
       panelBot: M.cellY + P.panel.at[1] - P.panel.size[1] / 2,
       boxCy: M.cellY + boxY(t),
@@ -1170,7 +1232,7 @@ def build() -> str:
       cupSquash: lerp(1, MO.cupSquash, tt),
       fingerY: base + P.finger.y + lerp(0, MO.gripDrop, tt),
       plateBot: base + P.plate.at[1] - P.plate.size[1] / 2,
-      yaw: shearing(t) ? yawRad() : 0,
+      yaw: shearing(t) ? yawRad(t) : 0,
       angleOver: yawMode === 'fail'
     }};
   }}
@@ -1260,7 +1322,7 @@ def build() -> str:
                 (p.boxW * 1000).toFixed(0) + ' 박스', ink3);
         bd.text(0, p.boxCy, 'JBOX', '#fff', 'center', 12, 0, 4);
         bd.text(-0.72, p.panelTop - 0.026, '패널 (유리면 아래 · 백시트 위)', ink2, 'left', 11);
-        bd.text(-0.72, p.plateBot + P.plate.size[1] / 2, '3헤드 공통 승강 플레이트', ink, 'left', 11, 0, 4);
+        bd.text(-0.72, p.plateBot + P.plate.size[1] / 2, '헤드 승강 플레이트', ink, 'left', 11, 0, 4);
       }}
     }} else if (showDims) {{
       var x0 = (tipX === undefined ? -p.boxW / 2 : tipX);
@@ -1592,9 +1654,9 @@ def build() -> str:
     if (!showDims) return;
     bd.text(0, panelTop + 0.10, '태양광 패널 (정면 X–Y)', ink2, 'center', 11);
     bd.text(B.at[0], y0 + B.wall.at[1] + B.wall.size[1] / 2 + 0.04,
-            '광폭 정션박스 수거함 180 L', ink2, 'center', 11);
+            '정션박스 수거함 90 L', ink2, 'center', 11);
     bd.text(ch.at[0] + 0.34, y0 + ch.at[1] + 0.12,
-            '일괄 낙하 슈트 ' + (Math.abs(ch.tilt) * 180 / Math.PI).toFixed(1) + '° · 사양 '
+            '정션박스 낙하 슈트 ' + (Math.abs(ch.tilt) * 180 / Math.PI).toFixed(1) + '° · 사양 '
             + M.chuteDeg + '±' + M.chuteTolDeg + '°',
             Math.abs(Math.abs(ch.tilt) * 180 / Math.PI - M.chuteDeg) <= M.chuteTolDeg
               ? C('ok') : C('red'), 'left', 11);
@@ -1652,9 +1714,9 @@ def build() -> str:
 
     if (!showDims) return;
     bd.text(0, y0 + B.base.at[1] - 0.055,
-            '광폭 정션박스 수거함 — 폭 ' + (B.base.size[2] * sc * 1000).toFixed(0) + ' (Z–Y 단면)',
+            '정션박스 수거함 — 폭 ' + (B.base.size[2] * sc * 1000).toFixed(0) + ' (Z–Y 단면)',
             ink2, 'center', 11);
-    bd.text(0, y0 + ch.at[1] + 0.075, '일괄 낙하 슈트 폭 ' + (ch.size[2] * 1000).toFixed(0),
+    bd.text(0, y0 + ch.at[1] + 0.075, '정션박스 낙하 슈트 폭 ' + (ch.size[2] * 1000).toFixed(0),
             ink3, 'center', 10.5);
     bd.text(pa[2] - 0.06, y0 + pa[1], '슈트 통과 확인',
             chuteLit(t, 0) ? C('ok') : ink3, 'right', 10.5, 0, 4);
@@ -1700,10 +1762,10 @@ def build() -> str:
     }},
     bin: {{
       wide: '수거함 배출 전경 — 브리지 반출·칼날 개방·낙하',
-      near: '착지 근접 (Z–Y) — 1–3 개가 폭 방향으로 나란히 떨어진다',
+      near: '착지 근접 (Z–Y) — 호퍼가 모아 둔 1–3 개가 한 줄로 떨어진다',
       jump: MO.discharge.from - 0.5, span: [MO.bridge.outFrom, M.to],
-      note: '브리지가 패널 왼쪽 밖으로 나가 광폭 수거함 위에 서고, 칼날이 다시 열리면 '
-        + '잡고 있던 박스가 같은 자리에서 일괄 낙하한다. 슈트 통과 확인센서가 실제 통과를, '
+      note: '브리지가 패널 왼쪽 밖으로 나가 수거함 위에 서고, 임시 호퍼의 바닥 플랩이 열리면 '
+        + '순차로 모아 둔 박스가 한 줄로 낙하한다. 슈트 통과 확인센서가 실제 통과 개수를, '
         + '수거함 존재·중량 센서가 투입량을 각각 확인한다.'
     }}
   }};
@@ -1777,7 +1839,7 @@ def build() -> str:
       chip(jawClose(t, 0) > 0.02 || jawClose(t, 1) > 0.02, '케이블 절단 A→B') +
       chip(p.tt > 0.02, '진공·스프링 그리퍼 포획') +
       chip(sh, '전단 ' + MO.shear[0] + '–' + MO.shear[1] + ' s') +
-      chip(t >= MO.boxLift[0] && t < MO.boxLift[1], '동시 인양') +
+      chip(p.slotTau >= MO.boxLift[0] && p.slotTau < MO.boxTip[1], '이탈·슈트 투하') +
       chip(t >= D.from, '수거함 배출');
     if (tab === 'cable') {{ el('readout').innerHTML = readCable(); return; }}
     if (tab === 'bin') {{ el('readout').innerHTML = readBin(); return; }}
@@ -1796,7 +1858,7 @@ def build() -> str:
       row('Z 플로팅 (워페이지 추종)', (p.fl * 1000).toFixed(2) + ' mm',
           Math.abs(p.fl) > 0.0001 ? 'hot' : '') +
       row('Z 변위센서 신장', '×' + (1 + Math.abs(p.fl) * MO.stemGain).toFixed(3)) +
-      row('패시브 요', (p.yaw * 180 / Math.PI).toFixed(2) + '°',
+      row('구동 요축 C', (p.yaw * 180 / Math.PI).toFixed(2) + '°',
           p.angleOver && sh ? 'alarm' : '') +
       row('진공컵 압축', ((1 - p.cupSquash) * 100).toFixed(0) + ' %', p.tt > 0.02 ? 'hot' : '') +
       row('남은 접착 폭', bonded(p).toFixed(0) + ' / ' + (p.boxW * 1000).toFixed(0) + ' mm',
@@ -1888,10 +1950,13 @@ def build() -> str:
       ['접착 계면 표시', MO.interface,
        '불투명도 ' + MO.interfaceOpacity[0] + ' → ' + MO.interfaceOpacity[1],
        'Ol.opacity = lerp(' + MO.interfaceOpacity[0] + ', ' + MO.interfaceOpacity[1] + ', He)'],
-      ['동시 인양', MO.boxLift,
-       (MO.raise[2] * 1000).toFixed(0) + ' → ' + (MO.raise[3] * 1000).toFixed(0) + ' mm · 박스 ' +
+      ['박스 이탈 (그리퍼)', MO.boxLift,
        (M.boxY * 1000).toFixed(0) + ' → ' + (MO.boxTop * 1000).toFixed(0) + ' mm',
-       'ae = lerp(' + MO.raise[2] + ', ' + MO.raise[3] + ', smoothstep(t, ' + MO.raise[0] + ', ' + MO.raise[1] + '))'],
+       'y = lerp(Ar.y, ' + MO.boxTop + ', smoothstep(τ, ' + MO.boxLift[0] + ', ' + MO.boxLift[1] + '))'],
+      ['슈트 이송 · 투하', [MO.boxSlide[0], MO.boxTip[1]],
+       'z → ' + (MO.sinkZ * 1000).toFixed(0) + ' · y ' + (MO.sinkY[0] * 1000).toFixed(0)
+        + ' → ' + (MO.sinkY[1] * 1000).toFixed(0) + ' mm · 부채 ±' + (MO.boxFan * 1000).toFixed(0),
+       'z = lerp(se.z, ' + MO.sinkZ + ', smoothstep(τ, ' + MO.boxSlide[0] + ', ' + MO.boxSlide[1] + '))'],
       ['칼날 재개방', MO.reopen,
        '±' + (MO.reopenTo * 1000).toFixed(0) + ' → ±' + (MO.openWide * 1000).toFixed(0) + ' mm',
        'H = lerp(' + MO.reopenTo + ', ' + MO.openWide + ', smoothstep(t, ' + MO.reopen[0] + ', ' + MO.reopen[1] + '))']
@@ -1904,7 +1969,7 @@ def build() -> str:
 
     var p = pose(MO.shear[0] + 0.5, true);
     var faces = [
-      ['승강 플레이트 하면', p.plateBot, '3헤드가 매달린 기준면'],
+      ['승강 플레이트 하면', p.plateBot, '헤드가 매달린 기준면'],
       ['칼날 캐리어 중심', p.carrierY, 'L 칼날 카세트를 무는 자리'],
       ['칼날 카세트 상면', p.cassetteY + p.cassetteT / 2, ''],
       ['칼날 카세트 하면', p.cassetteY - p.cassetteT / 2,

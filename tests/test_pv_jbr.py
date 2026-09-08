@@ -281,7 +281,7 @@ class TestJbrDetail(unittest.TestCase):
 
     def test_the_stage_list_comes_from_the_plant_and_starts_at_infeed_end(self):
         rows = self.builder.stages(self.plant)
-        self.assertEqual(len(rows), 11)
+        self.assertEqual(len(rows), 11)   # REV.57: 동시 2 단계 → 순차 3 단계 + 배출 1 단계
         self.assertEqual(rows[0][1], 0.0)
         self.assertEqual(rows[-1][2], campaign.JBR_S,
                          "스테이지 마지막이 campaign.JBR_S 와 다르다")
@@ -301,7 +301,7 @@ class TestJbrDetail(unittest.TestCase):
         self.assertEqual(ga["transfer"], station.transfer_height_mm)
         self.assertEqual(ga["transfer"], layout.LINE_TRANSFER_MM)
         self.assertEqual(len(ga["flow"]), 7)
-        self.assertEqual(len(ga["parts"]), 13)
+        self.assertEqual(len(ga["parts"]), 12)   # REV.57: HD-2·HD-3 빠지고 브리지 호퍼가 든다
         self.assertIn(f"<code>{station.sheet}</code>", self.html)
 
     def test_the_zone_numbers_are_the_zone_table(self):
@@ -326,8 +326,10 @@ class TestJbrDetail(unittest.TestCase):
 
     def test_the_shear_finishes_before_the_lift(self):
         """붙어 있는 채로 들어 올리면 리본이 눕는다 — 순서가 그 조건을 보증한다."""
-        shear = self.builder.stage_span(self.plant, "동시 박리")
-        lift = self.builder.stage_span(self.plant, "동시 인양")
+        # REV.57 순차 전환으로 「동시 박리/인양」 스테이지가 없어졌다. 앞뒤 관계는
+        # 스테이지 이름이 아니라 운동식이 갖는다 — 원래 거기가 더 정확하다.
+        shear = self.builder.motion_span(self.plant, "shear")
+        lift = self.builder.motion_span(self.plant, "raise")
         self.assertLessEqual(shear[1], lift[0])
 
     def test_the_cut_plane_sits_below_the_backsheet_datum(self):
@@ -408,13 +410,13 @@ class TestJbrDetail(unittest.TestCase):
     def test_the_detection_scenarios_match_the_force_check(self):
         scen = self.builder.box_scenarios(self.plant)
         cap, heads, counts = self.builder.head_force(self.plant)
-        self.assertEqual(heads, 3)
+        self.assertEqual(heads, 1)   # REV.57: 1 헤드 순차
         for s in scen:
             with self.subTest(scenario=s["key"]):
                 self.assertEqual(len(s["boxes"]), counts[s["key"]],
                                  "hp 리터럴의 박스 수와 BOX_COUNT 가 다르다")
                 xs = {round(b["x"], 6) for b in s["boxes"]}
-                self.assertEqual(len(xs), 1, "같은 X 열이어야 3헤드가 한 스트로크로 민다")
+                self.assertEqual(len(xs), 1, "같은 X 열이라 브리지가 한 번만 서면 된다")
                 self.assertIn(f"<td>{s['plan']}</td>", self.html)
         for s in scen:
             available = cap * min(counts[s["key"]], heads)
@@ -507,21 +509,52 @@ class TestJbrCloseup(unittest.TestCase):
         self.assertLess(self.builder.T_START, self.builder.T_TO)
 
     def test_the_motion_law_is_read_from_the_plant(self):
+        """REV.57 부터 이 숫자들은 **한 칸(박스 하나) 안의 상대 시각**이다.
+
+        헤드가 한 기라 20 s 부터 4.0 s 씩 박스를 하나씩 맡는다. 절대 시각을 읽던
+        종전 단언(하강 끝 = 전단 시작 …)은 칸 안의 순서 단언으로 바뀐다.
+        """
         mo = self.builder.motion(self.plant)
         # 전단은 칼날이 닫히는 구간이고, 그 구간에 Z 플로팅과 계면 표시가 겹친다.
         self.assertEqual(mo["shear"], mo["float"][:2])
         self.assertEqual(mo["shear"], mo["interface"])
         self.assertGreater(mo["openWide"], mo["openShut"])
-        # 하강이 끝나는 시각이 전단 시작이고, 인양 시작이 전단 끝이다.
-        self.assertEqual(mo["descend"][1], mo["shear"][0])
-        self.assertEqual(mo["raise"][0], mo["shear"][1])
-        # 승강 플레이트가 내려간 자리에서 다시 올라간다 — 두 구간이 같은 높이에서 만난다.
-        self.assertEqual(mo["descend"][3], mo["raise"][2])
-        # 박스는 승강 플레이트와 같은 구간에 딸려 올라간다.
-        self.assertEqual(mo["boxLift"], mo["raise"][:2])
+        # 한 칸 안에서 Y 배치 → 포획 → 전단 → 유지 → 이탈 → 슈트 이송 → 투하 순이다.
+        order = (mo["place"][1], mo["grip"][1], mo["shear"][1], mo["hold"][1],
+                 mo["boxLift"][1], mo["boxSlide"][1], mo["boxTip"][1])
+        self.assertEqual(list(order), sorted(order), f"칸 안의 순서가 어긋났다: {order}")
+        self.assertEqual(mo["place"][0], 0.0, "칸은 헤드 Y 이송부터 시작한다")
+        self.assertEqual(mo["boxTip"][1], mo["slot"], "투하가 칸의 끝이다")
+        # 전단이 끝나야 유지가 시작되고, 유지가 끝나야 박스가 백시트에서 떨어진다.
+        self.assertEqual(mo["hold"][0], mo["shear"][1])
+        self.assertEqual(mo["reopen"][0], mo["hold"][1])
+        # 칼날이 **다 열린 뒤에** 박스를 든다 — 닫힌 날 사이에서 들어 올릴 수 없다.
+        self.assertGreaterEqual(mo["boxLift"][0], mo["reopen"][1])
         # 진공 포획은 전단보다 **먼저** 물린다 — 칼날이 닫히기 전에 잡는다는 설계다.
         self.assertLess(mo["grip"][1], mo["shear"][1])
         self.assertLessEqual(mo["grip"][1], mo["shear"][0] + 0.2)
+        # 승강 플레이트는 칸 밖이다 — 박스마다 오르내리지 않는다.
+        self.assertLessEqual(mo["raise"][0], mo["slotFrom"] + mo["slot"] * 3 + 0.4)
+
+    def test_the_sequence_visits_one_box_per_slot(self):
+        """순차의 뼈대 — 칸 길이 × 박스 수가 배출 이동보다 먼저 끝나야 한다."""
+        mo = self.builder.motion(self.plant)
+        stages = self.builder.stages(self.plant)
+        boxes = [s for s in stages if str(s["name"]).startswith("박스 ")]
+        self.assertEqual(len(boxes), 3)
+        for k, s in enumerate(boxes):
+            self.assertAlmostEqual(s["start"], mo["slotFrom"] + mo["slot"] * k, places=6)
+            self.assertAlmostEqual(s["end"] - s["start"], mo["slot"], places=6)
+        # 마지막 칸이 끝난 뒤에 브리지가 나간다.
+        out = self.builder.bridge_motion(self.plant)["outFrom"]
+        self.assertGreaterEqual(out, boxes[-1]["end"])
+
+    def test_the_boxes_land_in_the_bridge_hopper_clear_of_the_panel(self):
+        """호퍼는 패널 폭 밖에 있어야 브리지가 정반 위를 지날 수 있다."""
+        mo = self.builder.motion(self.plant)
+        half = campaign.PANEL_WIDTH_MM / 2_000.0
+        self.assertLess(mo["sinkZ"], -half, "투하 z 가 패널 폭 안이다 — 호퍼가 정반에 닿는다")
+        self.assertLess(mo["sinkY"][1], mo["sinkY"][0], "호퍼 안착은 이탈 높이보다 낮다")
 
     def test_the_blade_tip_and_wedge_come_from_the_spec_sentence(self):
         spec, tip, wedge = self.builder.blade_spec(self.plant)
@@ -675,16 +708,18 @@ class TestJbrCloseup(unittest.TestCase):
         m = self.builder.model(self.plant)
         D, B = m["motion"]["discharge"], m["bin"]
         self.assertAlmostEqual(D["binX"], B["at"][0], places=6)
-        self.assertEqual(D["highY"], m["motion"]["boxTop"])
+        # REV.57: 낙하는 브리지 호퍼 안착 높이에서 시작한다 (이탈 높이가 아니다).
+        self.assertEqual(D["highY"], m["motion"]["sinkY"][1])
+        self.assertLess(D["highY"], m["motion"]["boxTop"])
         self.assertLess(D["restY"], D["highY"])
         # 슈트 통과 확인이 먼저, 수거함 중량 확인이 나중이다.
         self.assertLess(D["chuteLight"][0], D["binWeigh"])
         self.assertLess(D["binWeigh"], D["chuteLight"][1])
-        # 광폭 수거함은 검출 3 개가 폭 방향으로 나란히 들어갈 만큼 넓다.
+        # REV.57: 순차 배출은 박스를 한 줄로 낸다 — 수거함은 부채꼴로 눕는 3 개를 덮으면 된다.
         width = B["base"]["size"][2] * B["widthScale"]
-        for scen in m["scenarios"]:
-            zs = [b["z"] for b in scen["boxes"]]
-            self.assertLess(max(zs) - min(zs) + m["parts"]["box"]["size"][2], width)
+        fan = m["motion"]["boxFan"] * 2 + m["parts"]["box"]["size"][2]
+        self.assertLess(fan, width, "부채꼴 폭이 수거함보다 넓다")
+        self.assertAlmostEqual(m["motion"]["sinkZ"], B["at"][2], places=6)
 
     # ── 원본 자체 검산 ─────────────────────────────────────────────────
     def test_the_checks_table_is_computed_not_typed(self):
@@ -767,7 +802,7 @@ class TestJbrCloseup(unittest.TestCase):
     def test_the_bom_tolerances_are_quoted_verbatim(self):
         m = self.builder.model(self.plant)
         for tag, name, key in (("JB-CB-003", "교체형 케이블 가위날", "jawSpec"),
-                               ("JB-WH-001", "정션박스 일괄 낙하슈트", "chuteSpec"),
+                               ("JB-WH-001", "정션박스 낙하슈트", "chuteSpec"),
                                ("JB-CB-001", "비전 연동 케이블 포획콤", "combSpec")):
             with self.subTest(tag=tag):
                 self.assertEqual(m[key], self.builder.bom_tolerance(self.plant, tag, name))

@@ -17,7 +17,7 @@
   매이지 않는 시설·주행로·주관은 끈다. 형상을 지우지 않고 `visible=false` 로
   끈다 — 원본 3D 는 손대지 않는다.
 * **시계** — `ci` 를 85 s 로 자르고 시작·반복·진행률·단계이동을 40 s 창에 묶는다.
-* **시점** — 기본 시점을 JBR 전체로, 시점 버튼은 JBR 것(전체·3헤드·포획·검증·
+* **시점** — 기본 시점을 JBR 전체로, 시점 버튼은 JBR 것(전체·헤드·포획·검증·
   정렬·구동·공압·안전·리젝트)과 인계부·상부·초기화만 남긴다. 자동추적이 JBR
   단계마다 고르는 시점(`handoff·safetyflow·clamp·overall·service·tool·capture`)이
   전부 그 안에 있다.
@@ -242,7 +242,7 @@ def build() -> str:
               "<title>JBR-201 정션박스 제거장치</title>\n"
               '<meta name="description" content="폐 태양광 패널 전처리 라인의 JBR-201 '
               '정션박스·케이블 제거 셀만 남긴 3D 운전 콘솔 — 차광·2극 전압확인부터 '
-              '도체 A→B 순차절단·L칼날 동시박리·진공 포획·수거함 일괄배출·후검증까지 '
+              '도체 A→B 순차절단·L칼날 순차박리·진공 포획·호퍼 경유 일괄배출·후검증까지 '
               '11 단계를 플랜트 40–85 s 창에서 반복 재생한다.">', "제목")
     t = _once(t, '<span class="viz-badge">124.03 s TRACE</span>',
               f'<span class="viz-badge">{campaign.JBR_S:g} s TRACE · JBR-201</span>', "배지")
@@ -254,14 +254,14 @@ def build() -> str:
               f"DYNAMIC INDUSTRY · JBR-201 단독 파생본 · ENGINEERING BASE {rev}", "머리글")
     t = _once(t, '<div class="text-small"><code>Rev.22 · 비전 2헤드·듀얼 반전카세트·JBR·AFR 통합 시뮬레이션</code></div>',
               f'<div class="text-small"><code>{rev} · JBR-201 — 차광·전압확인·순차절단·'
-              '3헤드 L칼날 동시박리·진공포획·일괄배출·후검증</code></div>', "상태 칩")
+              '1헤드 L칼날 순차박리·진공포획·호퍼 일괄배출·후검증</code></div>', "상태 칩")
 
     t = _once(t, '<div class="card jb-detail" id="jb-detail" aria-live="polite">세 벽체 사이의 '
               'BFC-101A/B가 고정 픽업면의 한 장을 상승·반전하고, 650 mm 고상 로봇이 반전 완료품을 '
               '직접 픽업합니다. 적재부·반전기·로봇 사이에는 컨베이어가 없습니다.</div>',
               '<div class="card jb-detail" id="jb-detail" aria-live="polite">JB-201 이 넘긴 패널을 '
               '차광 투입터널에서 받아 2극 전압을 확인하고, 케이블을 A→B 순차 절단한 뒤 검출된 개수만큼의 '
-              '헤드가 같은 X 열의 정션박스를 L 칼날로 동시 박리·진공 포획해 한 번에 배출합니다. '
+              '헤드 한 기가 같은 X 열의 정션박스를 하나씩 L 칼날로 박리·진공 포획해 임시 호퍼에 모읍니다. '
               '형상을 클릭하면 그 부품의 품번과 역할이 여기에 나옵니다.</div>', "기본 설명문")
 
     # ── 시계: [t0, t1] 창 ────────────────────────────────────────────────────
