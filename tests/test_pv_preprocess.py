@@ -250,7 +250,7 @@ class TestDrawingMatchesModel(unittest.TestCase):
         # README·코드 주석이 적는 품목 수가 실제와 어긋나면 문서가 거짓말을 한다.
         # REV.23 까지 README 161 · 주석 150 · 실제 149 로 셋이 다 달랐다.
         total = sum(len(rows) for rows in parts.values())
-        self.assertEqual(total, 180, "sweep(동작 포락선)은 부품이 아니라 빠진다")   # REV.54: DGM 25품목
+        self.assertEqual(total, 179, "sweep(동작 포락선)은 부품이 아니라 빠진다")   # REV.58: JBR 1헤드 −2 · 임시 호퍼 +1
         with io.open("README.md", encoding="utf-8") as handle:
             self.assertIn(f"부품 {total}품목", handle.read())
         self.assertIn(f"현재 {total}품목", self.html)
@@ -799,10 +799,13 @@ class TestRemovalHeadCapacity(unittest.TestCase):
         self.assertIn("var HEAD_CAPACITY_KN = 15;", self.html)
         self.assertIn("'PV-JBR-HD-3201', '15 kN L칼날 제거헤드'", self.html)
 
-    def test_head_count_matches_the_three_head_bridge(self):
-        self.assertIn("var HEAD_COUNT = 3;", self.html)
-        for head in ("HD-1", "HD-2", "HD-3"):
-            self.assertIn(f"part('{head}'", self.html, f"{head} 가 JBR-201 부품표에 없다")
+    def test_head_count_matches_the_sequential_single_head(self):
+        """REV.58: 3기 동시 → 1기 순차. 헤드가 Y 로 박스를 하나씩 찾아간다."""
+        self.assertIn("var HEAD_COUNT = 1;", self.html)
+        self.assertIn("part('HD-1'", self.html, "HD-1 이 JBR-201 부품표에 없다")
+        for gone in ("HD-2", "HD-3"):
+            with self.subTest(head=gone):
+                self.assertNotIn(f"part('{gone}'", self.html, f"{gone} 가 남아 있다 — 순차 1헤드다")
 
 
 class TestInfeedHandoff(unittest.TestCase):
@@ -1425,12 +1428,12 @@ class TestServoAxes(unittest.TestCase):
 
     def test_axis_counts_match_established_wording(self):
         """REV.54: 유리제거셀 8축(벤더 드라이브 24 는 벤더 MCC)이 빠지고 BX-101 1축이 남아 31축."""
-        self.assertEqual(servos.servo_axis_count(), 31)
+        self.assertEqual(servos.servo_axis_count(), 27)   # REV.58: JBR 3헤드→1헤드 순차·박리 공압
         self.assertEqual(servos.servo_axis_count_for("LP-DGM-MC"), 0, "벤더 드라이브는 우리 축이 아니다")
         self.assertEqual(servos.servo_axis_count_for("LP-GBR"), 5)   # 버퍼 4 + BX-101 브리지
         self.assertEqual(hk60c.vendor_drive_count(), 24)
-        self.assertEqual(servos.servo_axis_count_for("LP-JBR"), 7)
-        self.assertIn("EtherCAT 7축 서보", self.html)
+        self.assertEqual(servos.servo_axis_count_for("LP-JBR"), 3)   # X·Y·C — 박리는 공압
+        self.assertIn("EtherCAT 3축 서보", self.html)
         self.assertIn(f"EtherCAT {servos.servo_axis_count()}축", self.html)
 
     def test_gravity_axes_carry_brakes(self):
@@ -3125,8 +3128,8 @@ class TestSmartFactory(unittest.TestCase):
         # REV.50: AFR 반출롤러 구동이 직입 → 인버터(통과 연마 속도 제어)라 인버터 회선 1 이 늘었다.
         # REV.51: 서보 37축 · 인버터 11 (단변 횡행·압력 3·스핀들 3).
         # REV.54: 서보 31축 · 벤더 드라이브 24 는 벤더 MCC 라 우리 회선이 아니다 (OPC-901 로 구독)
-        self.assertAlmostEqual(smart.drive_stream_bytes_per_s(), 75_856.0, places=1)
-        self.assertAlmostEqual(smart.timeseries_bytes_per_s() / 1000, 79.8, places=1)
+        self.assertAlmostEqual(smart.drive_stream_bytes_per_s(), 66_256.0, places=1)   # REV.58: JBR −4축
+        self.assertAlmostEqual(smart.timeseries_bytes_per_s() / 1000, 70.1, places=1)   # REV.58
         # 공정 태그도 축·존에서 나온다
         self.assertEqual(smart.plc_tag_count(),
                          sum(a.qty for a in servos.SERVO_AXES + servos.MOTORS)
@@ -3156,7 +3159,7 @@ class TestSmartFactory(unittest.TestCase):
         self.assertAlmostEqual(smart.vision_retention(), 0.1367, places=4)
         # REV.51: 라인스캔이 둘이 되며 14.18 → 27.22 TB/년, 저장 63.8 → 122.5 TB
         # REV.54: VS-401 이 벤더 카메라로 빠지고 페이싱으로 장수가 줄어 19.56 TB/년, 저장 88.0 TB
-        self.assertAlmostEqual(smart.annual_storage_tb(), 19.56, places=2)
+        self.assertAlmostEqual(smart.annual_storage_tb(), 19.55, places=2)   # REV.58
         self.assertAlmostEqual(smart.storage_capacity_tb(), 88.0, places=1)
         # 저장은 가동시간에 정비례한다 — 2교대 확정으로 2.06배가 됐다
         # (1교대 기준값 9.48 TB, REV.54)
@@ -3189,7 +3192,7 @@ class TestSmartFactory(unittest.TestCase):
                                                         stop_h=0.0), 2_000.0)
 
     def test_backbone_grade_is_chosen_above_the_requirement(self):
-        self.assertAlmostEqual(smart.required_mbps(), 154.3, places=1)   # REV.54: 31축 · VS-401 제외
+        self.assertAlmostEqual(smart.required_mbps(), 154.2, places=1)   # REV.58: 27축 · VS-401 제외
         self.assertEqual(smart.backbone_grade_mbps(), 1_000)
         self.assertIn(smart.backbone_grade_mbps(), smart.ETHERNET_GRADES_MBPS)
         self.assertGreater(smart.backbone_grade_mbps(), smart.required_mbps())
@@ -4600,7 +4603,7 @@ class TestSafety(unittest.TestCase):
         축을 하나 얹어 답이 따라 오는지를 봐야 파생인지 아닌지가 갈린다.
         """
         self.assertEqual(safety.sto_nodes(), sum(a.qty for a in servos.SERVO_AXES))
-        self.assertEqual(safety.sto_nodes(), 31)   # REV.54: 벤더 드라이브 24 는 벤더 안전 PLC
+        self.assertEqual(safety.sto_nodes(), 27)   # REV.58: JBR −4축 · 벤더 드라이브 24 는 벤더 안전 PLC
         grown = servos.SERVO_AXES + (
             dataclasses.replace(servos.SERVO_AXES[0], tag="AXIS-TEST", qty=3),)
         self.assertEqual(safety.sto_nodes(grown), safety.sto_nodes() + 3)

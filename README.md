@@ -38,6 +38,12 @@ Dynamic industry Development
 | [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 15종, **부품도 176장 · 모듈 조립도 13장**, 열수지 계산기 (브라우저로 열 것) |
 | [docs/drawings/hk60c-capture.json](docs/drawings/hk60c-capture.json) | **DG-HK60C 원본 형상 캡처** — 벤더 운전 콘솔의 그리기 호출(압축 배치 · 4단계 정지 자세)을 좌표·치수·도장색 그대로 받아 적은 것. 부품 1,963 · 라벨 59 · 팔레트 26색. `tools/capture_hk60c.mjs` 가 만들고 `tools/build_dgm.py` 가 플랜트 도면에 찍는다 — 손으로 고치지 않는다 |
 | [docs/consoles/pv-preprocess-hour.html](docs/consoles/pv-preprocess-hour.html) | **60분 연속 운전 화면** — 장비별 장당 점유로 병목을 세우고, 한 시간을 흘려 자원마다 일한 시간·막힌 시간·굶은 시간을 보여 준다. 계획 정지(칼날 카세트 자동교환) 하나를 넣어 버퍼가 그것을 덮는지까지 그린다. 값은 `src/pv_preprocess/continuous.py` 가 만들고 `tools/build_hour.py` 가 찍는다 — 손으로 고치지 않는다 |
+| [docs/drawings/pv-jbr-hub.html](docs/drawings/pv-jbr-hub.html) | **JBR-201 도면집 허브** — 이 장치의 네 도면(3D 파생본·상세도·근접도·제작 도면집)을 한 장에서 고른다. `tools/build_jbr_hub.py` 가 만들고 `tools/check_jbr_hub.mjs` 가 지킨다 |
+| [docs/drawings/pv-jbr-scene.html](docs/drawings/pv-jbr-scene.html) | **JBR-201 3D 파생본** — 통합 설계도에서 이 셀만 남기고 시계를 [40, 85] s 창으로 자른 운전 화면. `tools/build_jbr_scene.py` |
+| [docs/drawings/pv-jbr-detail.html](docs/drawings/pv-jbr-detail.html) | **JBR-201 상세도** — 순차 제거의 움직임이 어떤 값에서 나왔는지 한 장에 편다. `tools/build_jbr_detail.py` |
+| [docs/drawings/pv-jbr-closeup.html](docs/drawings/pv-jbr-closeup.html) | **JBR-201 근접도** — 정션박스가 떨어져 나오는 순간을 두 배율로 그린다. `tools/build_jbr_closeup.py` |
+| [docs/drawings/pv-jbr-fab.html](docs/drawings/pv-jbr-fab.html) | **JBR-201 제작 도면집** — 부품도·구멍·체결표. `tools/build_jbr_fab.py` (그리는 코드는 `tools/build_infeed_fab.py` 것을 빌린다) |
+| [docs/drawings/pv-jbr-physics.html](docs/drawings/pv-jbr-physics.html) | **JBR-201 물리 시뮬레이션** — 강성행렬·고유치·레인플로·실린더 충전을 표준 라이브러리로 푼 결과. `tools/build_jbr_physics.py` · 모델 `src/pv_preprocess/jbr_analysis.py` |
 | [docs/dg-hk60-rfq.html](docs/dg-hk60-rfq.html) | **DG-HK60 상세설계 기술사양서 (RFQ)** — 상세설계 용역 발주용. 요구성능·설계기준·기계/전기/안전 요구사항·납품물·FAT/SAT·입찰자 확인사항 10건 (브라우저로 열 것, A4 인쇄 가능) |
 | [docs/dg-hk60-fab-spec.html](docs/dg-hk60-fab-spec.html) | **DG-HK60C 제작 지침서 (FAB-001)** — 볼트 등급·체결력·조임토크, 용접 각장, 부재 판두께·재질, 기초 앵커 매입깊이·연단거리를 하중에서 유도한 문서. 접합부 12개소·부재 27종·앵커 7개소·ITP 14단계 (브라우저로 열 것, A4 인쇄 가능) |
 | [docs/dg-hk60-assembly.html](docs/dg-hk60-assembly.html) | **DG-HK60C 조립 지침서 (ASM-001)** — 도면을 처음 보는 사람이 조립도·부품도만으로 세울 수 있게 쓴 문서. 안전·공구·도면 읽는 법·볼트 조이는 법·모듈 사이의 순서·모듈별 74단계 (부품 카탈로그에서 생성) |
@@ -54,7 +60,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (1,489건)
+python -m unittest discover -s tests -t .                               # 테스트 (1,647건)
 
 # 부품 카탈로그 — 형상·치수·재질에서 질량과 자중을 계산한다
 python3 tools/parts.py                     # 카탈로그 리포트 (품목·질량·자중 검증)
@@ -158,7 +164,7 @@ flux 상사로 스케일업하면 수력학적 조건이 보존되므로 실증 
 - 정션박스 제거(7단계)·프레임 분리(6단계)·슬롯 적재(6단계) 시퀀스를 각 시트 뷰와 표제란에 표시, 3D 적재 애니메이션도 분기→승강→삽입으로 단계화
 - AFR 베드-CV-102 사이 2,950 mm 무지지 공백(패널 2,500 초과)을 반출롤러 2,000 으로 폐쇄
 - 장비 밴드 Y 0–7,100, 보행·정비 통로 Y 7,100–8,300 (장비 포락선 **밖**)
-- 설비 셀 7개(JB/AFR 통합셀은 스테이션 **3개** — JBR·AFR·후단 검사), 부품 180품목 (DG-HK60C 유리제거기 DGM-401 25품목 포함)
+- 설비 셀 7개(JB/AFR 통합셀은 스테이션 **3개** — JBR·AFR·후단 검사), 부품 179품목 (DG-HK60C 유리제거기 DGM-401 25품목 포함)
 - **반전기 투입 간섭** — 패널이 반전 케이지에 **대각으로** 들어가며 오픈센터 엔드링 단면을 최대 88 mm 파고들고 있었다. 못 잡은 이유가 셋이다 — 간섭 스윕이 시점을 11개만 봤고(관통이 가장 깊은 t 11.5 가 표본 사이로 빠졌다), 링을 바운딩박스로 쟀고(가운데가 뚫린 링은 박스로 못 가린다), 3D 패널이 규격보다 컸다(프레임이 유리 바깥에 붙어 2,615 × 1,515 — 케이지 안지름 2,580 보다 **길어서** 애초에 들어가지 않았다)
 - 경로를 **ㄱ자**로 바꿨다 — 링 밑을 수평으로 지난 뒤 두 링 사이에서 수직으로 올린다. 링 평면을 지나는 동안 높이가 변하지 않는 것이 요점이다. 반전축은 3,300 → **3,430** (캐리지 상단과 링 하단 사이 130 → 260 mm), 이송면 **2,290**, 위아래 여유 각각 112 / 116 mm. 패널 프레임은 규격 안으로 넣어 조립체가 2,500 × 1,400 이다
 - **4점 단장 클램프의 조**가 링 림(반경 983)에 붙어 물어야 할 패널에서 660 mm 떨어져 있었고, 반전 뒤 하강 경로를 막고 있었다. 패널 장변 프레임 자리(z ∓672.5)로 옮기고 z 여닫이 행정 187.5 mm 를 줬다 — 여는 자리 ∓860 은 패널 반폭 밖이라 승강 경로를 비운다
@@ -373,6 +379,44 @@ A/B 캐리지와 같은 ±760 으로 좁혀 레일이 기둥에 물린다. **이
 없고, 예외를 시험 코드에 적으면 그 예외가 곧 근거가 되어 버린다.** 그래서 롤러가
 아닌 인계는 `NON_ROLLER_HANDOFF` 에 사유와 함께 적고, 그 밖의 단차는 전부 실패한다
 — 예외 표를 비우면 시험이 깨지는지까지 확인한다
+
+
+#### §64 JBR-201 을 정션박스 워크스페이스의 **1헤드 순차**로 교체한다 (REV.58)
+
+이 저장소의 JBR-201 은 **3헤드 동시** 제거였고, 정션박스 제거장치를 따로 판 워크스페이스
+(`claude/junction-box-removal-device-fotc47`)는 같은 장치를 **1헤드 순차·공압**으로 다시
+설계해 두었다. 발주처가 그 장치를 이 플랜트에 붙이라고 했다. 유리제거기를 벤더 원본에서
+받아 적은 것(§61)과 같은 취급이다 — **그 셀의 정본은 그쪽에 있다.**
+
+**가져온 것과 두고 온 것.** 공통 조상(REV.53) 이후 그쪽은 55커밋을 쌓았는데, 그 안에는
+JBR 말고 **투입 구간을 자기 방식으로 돌린 작업**(반전축을 Z 로 눕히고 셀 폭 8,550)도 있다.
+우리는 REV.56 에서 같은 목적을 **베이 요 90°**로 이미 풀었으므로 둘을 같이 가질 수 없다.
+그래서 장치 하나만 가져왔다 — 모델 네 개(`jbr_fabrication`·`jbr_analysis`·`fabrication`·
+`fasteners`), 도면 여섯 벌과 그 생성기·검사, 그리고 플랜트 3D 안의 JBR 셀. 투입 상세도·
+프로토타입·체결 부품집·조립 순서도는 두고 왔다.
+
+**어떻게 합쳤나 — 줄이 아니라 장치 단위로.** 두 플랜트 도면은 1.4 MB 미니파이라 줄 단위
+3-way 로는 20건이 충돌하고, 그중 두 줄에는 **투입(우리)과 JBR(그쪽)이 같이 들어 있다**.
+그래서 그 줄들을 `;` 토큰으로 쪼개 다시 3-way 로 붙이고, 남는 충돌만 **장치로 판정**했다 —
+JBR 단계표·헤드/조 동작·부품표는 그쪽, 투입 베이·시저·CD-101 포획빔·유리제거기·라인 상한은
+우리. 나머지 충돌은 전부 생성 블록이라 우리 것을 고르고 다시 찍었다.
+
+**바뀐 것.** 헤드 3 → **1**, 박리축이 서보에서 **공압 실린더**로 내려갔다. 그래서 서보가
+31 → **27축**(LP-JBR 7 → 3), STO 노드도 같은 수, 백본 요구 154.3 → 154.2 Mbps,
+부품 180 → **179품목**(HD-2·HD-3 빠지고 브리지 탑재 임시 호퍼 하나 들어옴), 브래킷
+42 → **35본**. **택트는 안 움직인다** — JBR 점유는 여전히 45 s 이고 병목도
+DGM-401 그대로다. 장치 속이 바뀌었지 라인 박자가 바뀐 것이 아니다.
+
+**우리 라인 상한이 소견 하나를 지웠다.** 그쪽 시험은 「패널이 정반보다 크다」를 길이·폭
+양쪽으로 잡았는데, 이 플랜트는 라인 상한이 2,400×1,200 이라 **폭은 정반 안에 들어온다**.
+넘는 것은 길이뿐이다. A안으로 상한을 2,500×1,400 으로 되돌리면 폭이 다시 넘으므로 그
+시험이 먼저 깨지게 적어 두었다.
+
+**검증.** 헤드리스 다섯 종 ✓ · JBR 검사 넷 ✓(근접도·허브·배치·부품) · 발행본 9벌 렌더 ✓ ·
+페이지 로드 JS 오류 0 · 시험 **1,647건** ✓. 붙이는 동안 잡힌 것 셋: 그쪽 8,550 밴드용
+안전벽체 간격(±3,580)이 우리 케이싱을 7곳에서 뚫어 ±3,250 으로 되돌렸고, 그쪽 반전축
+방식의 변수(`dnY`)가 로봇 손에 남아 있었고, 생성기 표식 하나(`@dgm-handoff-begin`)가
+병합에 쓸려 나가 주석 한가운데를 지우고 있었다.
 
 
 #### §63 60분 연속 운전 — 장비 시간을 세워 병목을 찾고, 흐름이 끊기는지 흘려 본다 (REV.57)
@@ -684,7 +728,7 @@ F10 LP-DGM-MC 93 kW · 200 AT · 70 mm² — 둘 다 `hk60c.BRANCHES` 에서 트
 [RFQ](https://claude.ai/code/artifact/377241f9-3731-4e2a-aecc-178adcdb288e) ·
 [조립 지침서](https://claude.ai/code/artifact/613c1af7-8a2b-4868-b75b-360ab1c4591c), 그 밖에
 [REV.54 보고서](https://claude.ai/code/artifact/36475707-d622-4b92-ae46-653e8004b520)와
-[결합 영상](https://claude.ai/code/artifact/30acaf84-816f-45f5-8cc3-79007029e76e) · [60분 연속 운전](https://claude.ai/code/artifact/83585641-115c-4cfd-8d84-6bf9ea3c6ba7).
+[결합 영상](https://claude.ai/code/artifact/30acaf84-816f-45f5-8cc3-79007029e76e) · [60분 연속 운전](https://claude.ai/code/artifact/83585641-115c-4cfd-8d84-6bf9ea3c6ba7) · [JBR-201 도면집](https://claude.ai/code/artifact/f3b1f4b0-009d-4df4-a68d-2f0c13d17589)([3D](https://claude.ai/code/artifact/cfd3f9e8-3f43-47bc-bb05-4a46b4f3e897) · [상세도](https://claude.ai/code/artifact/a14f01c2-7789-4919-ae30-71e5d098b761) · [근접도](https://claude.ai/code/artifact/4559a80a-f13b-49b3-a44d-c954ef1faf82) · [제작](https://claude.ai/code/artifact/66a5be4e-d013-4e5c-858d-da783d09be38) · [물리](https://claude.ai/code/artifact/d5eaa3df-fcc9-4e6f-8a32-dc165b75a707)).
 
 #### §58 GRM-401 을 떼고 DG-HK60C 를 잇는다 — 값은 벤더에서, 속도는 후단에서 (REV.54)
 

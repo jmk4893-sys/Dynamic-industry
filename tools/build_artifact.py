@@ -29,6 +29,19 @@ TARGETS: dict[str, tuple[pathlib.Path, pathlib.Path]] = {
               pathlib.Path("out/pv-preprocess-plant-artifact.html")),
     "hour": (pathlib.Path("docs/consoles/pv-preprocess-hour.html"),
              pathlib.Path("out/pv-preprocess-hour-artifact.html")),
+    # JBR-201 정션박스 제거장치 — 장치 한 대의 도면집. 전부 생성물이다.
+    "jbr-hub": (pathlib.Path("docs/drawings/pv-jbr-hub.html"),
+                pathlib.Path("out/pv-jbr-hub-artifact.html")),
+    "jbr-scene": (pathlib.Path("docs/drawings/pv-jbr-scene.html"),
+                  pathlib.Path("out/pv-jbr-scene-artifact.html")),
+    "jbr-detail": (pathlib.Path("docs/drawings/pv-jbr-detail.html"),
+                   pathlib.Path("out/pv-jbr-detail-artifact.html")),
+    "jbr-closeup": (pathlib.Path("docs/drawings/pv-jbr-closeup.html"),
+                    pathlib.Path("out/pv-jbr-closeup-artifact.html")),
+    "jbr-fab": (pathlib.Path("docs/drawings/pv-jbr-fab.html"),
+                pathlib.Path("out/pv-jbr-fab-artifact.html")),
+    "jbr-physics": (pathlib.Path("docs/drawings/pv-jbr-physics.html"),
+                    pathlib.Path("out/pv-jbr-physics-artifact.html")),
 }
 
 #: 태그 이름 **뒤에 경계가 와야** 지운다. `[^>]*` 만 쓰면 이름으로 시작하는 다른
@@ -74,6 +87,7 @@ LINKS: dict[str, str] = {
     "pv-delamination-3d.html": "https://claude.ai/code/artifact/063a9784-6c8c-4c25-8d85-1035befed92d",   # DG-HK60 3D 운전 콘솔
     "../dg-hk60-rfq.html": "https://claude.ai/code/artifact/377241f9-3731-4e2a-aecc-178adcdb288e",      # DG-HK60 상세설계 기술사양서 · RFQ
     "../dg-hk60-assembly.html": "https://claude.ai/code/artifact/613c1af7-8a2b-4868-b75b-360ab1c4591c", # DG-HK60C 조립 지침서
+    "pv-jbr-scene.html": "https://claude.ai/code/artifact/cfd3f9e8-3f43-47bc-bb05-4a46b4f3e897",        # JBR-201 3D 파생본
 }
 
 

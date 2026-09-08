@@ -154,7 +154,7 @@ FEEDERS: tuple[Feeder, ...] = (
            12.0, 0.70, 40, "4C×10 mm² Cu", "계획"),
     Feeder("F2", "LP-RB", "RB-101 로봇 제어반 · EOAT 진공 · PT-101 정렬정반",
            9.0, 0.60, 32, "4C×6 mm² Cu", "계획"),
-    Feeder("F3", "LP-JBR", "JBR-201 3헤드·X/Y 브리지·비전",
+    Feeder("F3", "LP-JBR", "JBR-201 1헤드·X/Y 브리지·비전",
            6.5, 0.80, 20, "4C×4 mm² Cu", "GA 명시"),
     # REV.52 반 통합 — 종전 F4(LP-AFR 11.5) + F5(LP-GLASS 12.2)다. REV.50 에서
     # SG-301 이 AFR 반출롤러 **위**로 올라갔고 REV.52 에서 후단 검사대까지 같은

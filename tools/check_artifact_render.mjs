@@ -20,6 +20,12 @@ const targets = files.length ? files : [
   'out/pv-preprocess-console-artifact.html',
   'out/pv-preprocess-plant-artifact.html',
   'out/pv-preprocess-hour-artifact.html',
+  'out/pv-jbr-hub-artifact.html',
+  'out/pv-jbr-scene-artifact.html',
+  'out/pv-jbr-detail-artifact.html',
+  'out/pv-jbr-closeup-artifact.html',
+  'out/pv-jbr-fab-artifact.html',
+  'out/pv-jbr-physics-artifact.html',
 ];
 
 const missing = targets.filter((f) => !existsSync(f));
