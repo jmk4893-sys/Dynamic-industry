@@ -381,6 +381,43 @@ A/B 캐리지와 같은 ±760 으로 좁혀 레일이 기둥에 물린다. **이
 — 예외 표를 비우면 시험이 깨지는지까지 확인한다
 
 
+#### §65 JBR-201 도면집을 한 편의 영상으로 걷는다 — 화면 녹화가 아니다 (REV.58)
+
+도면집 다섯 장(3D 운전 · 상세도 · 근접도 · 제작 도면집 · 물리)은 한 장씩 열어 보면
+각각 옳지만, **어느 장이 어느 장의 근거인지**는 링크를 오가야 보인다. 그래서 다섯을
+순서대로 걷는 **66초 한 편**을 찍었다 — 3D 로 무엇이 움직이는지 보고, 상세도로 그
+움직임이 어떤 값에서 나왔는지 보고, 근접도로 계면이 끊기는 순간을 보고, 제작
+도면집으로 그것을 무엇으로 만드는지 보고, 물리로 손을 떠난 뒤를 본다.
+
+**화면 녹화가 아니다.** 녹화는 기계의 속도에 영상이 끌려간다 — 느린 기계에서는
+프레임이 빠지고, 두 번 찍으면 두 편이 나온다. 대신 장마다 **고정 시간각**을 밟는다.
+
+| 장 | 시간을 미는 방법 |
+|---|---|
+| 3D 운전 | 도면의 시계 훅 `__pvInfeedTest.setTime(t)` 을 40 → 85 s 로 민다 |
+| 물리 | `PH.advance(1/15)` 로 적분을 한 걸음씩 진행한다 |
+| 근접도 | `requestAnimationFrame` · `performance.now` · `Date.now` 를 **가상 시계**로 갈아 끼우고 프레임마다 판다 |
+| 상세도 · 제작 | 스크롤 위치를 시간의 함수로 준다 |
+
+그래서 몇 번을 찍어도 같은 영상이 나오고, **도면이 바뀌면 영상이 바뀐다.** 따로 만든
+애니메이션이 아니라 발행된 도면 그 자체를 연 것이기 때문이다.
+
+**찍으며 잡힌 것 셋.** ① 가상 시계를 3D 장에도 걸었더니 `rAF` 를 뺏겨 부팅부터 못
+했다 — 자기 시계를 가진 장(3D·물리)에는 걸지 않는다. ② 3D 장의 페이지 크롬이 프레임의
+40 %를 먹고 있었다. 무대(`#jb-stage`)만 남기고 전부 걷은 뒤 `renderer.setSize(1280,720)`
+로 화면을 채웠는데, 이때 **현재 단계 카드가 사라졌다** — 페이지가 실행 중에 그 카드를
+무대 밖 슬롯으로 옮기기 때문이라 직접 무대 안으로 되돌렸다. ③ 카메라 좌표를 손으로
+찍었더니 여섯 샷 중 셋이 **구조물 안에 박혔다**. 도면의 기본 시점이 z 음의 쪽이고
+케이싱 유리판이 z ＝ +1.6 에 서 있어서다. 셀 경계(x −14.61…−7.19 · y 0…2.8)를 씬에서
+직접 재 그 반대편에 여섯 샷을 다시 놓았다 — 페이지가 스스로 가진 '관찰 시점' 버튼도
+써 봤지만, 그 구도는 페이지 자기 화각에 맞춰 잡혀 있어 16:9 전면으로 늘리면 무너진다
+
+[영상](https://claude.ai/code/artifact/fe206738-5f60-420f-a184-37c59b72534e)은
+`tools/render_jbr_book.mjs` 가 찍고 `tools/build_jbr_book_page.py` 가 발행 페이지로 싼다.
+페이지의 숫자(헤드 수 · 박스당 초)는 **도면에서 다시 읽고** 셀 점유는 `campaign` 에서
+가져온다 — 영상 옆에 적힌 값이 영상과 다른 데서 올 수는 없다.
+
+
 #### §64 JBR-201 을 정션박스 워크스페이스의 **1헤드 순차**로 교체한다 (REV.58)
 
 이 저장소의 JBR-201 은 **3헤드 동시** 제거였고, 정션박스 제거장치를 따로 판 워크스페이스
@@ -728,7 +765,7 @@ F10 LP-DGM-MC 93 kW · 200 AT · 70 mm² — 둘 다 `hk60c.BRANCHES` 에서 트
 [RFQ](https://claude.ai/code/artifact/377241f9-3731-4e2a-aecc-178adcdb288e) ·
 [조립 지침서](https://claude.ai/code/artifact/613c1af7-8a2b-4868-b75b-360ab1c4591c), 그 밖에
 [REV.54 보고서](https://claude.ai/code/artifact/36475707-d622-4b92-ae46-653e8004b520)와
-[결합 영상](https://claude.ai/code/artifact/30acaf84-816f-45f5-8cc3-79007029e76e) · [60분 연속 운전](https://claude.ai/code/artifact/83585641-115c-4cfd-8d84-6bf9ea3c6ba7) · [JBR-201 도면집](https://claude.ai/code/artifact/f3b1f4b0-009d-4df4-a68d-2f0c13d17589)([3D](https://claude.ai/code/artifact/cfd3f9e8-3f43-47bc-bb05-4a46b4f3e897) · [상세도](https://claude.ai/code/artifact/a14f01c2-7789-4919-ae30-71e5d098b761) · [근접도](https://claude.ai/code/artifact/4559a80a-f13b-49b3-a44d-c954ef1faf82) · [제작](https://claude.ai/code/artifact/66a5be4e-d013-4e5c-858d-da783d09be38) · [물리](https://claude.ai/code/artifact/d5eaa3df-fcc9-4e6f-8a32-dc165b75a707)).
+[결합 영상](https://claude.ai/code/artifact/30acaf84-816f-45f5-8cc3-79007029e76e) · [60분 연속 운전](https://claude.ai/code/artifact/83585641-115c-4cfd-8d84-6bf9ea3c6ba7) · [JBR-201 도면집](https://claude.ai/code/artifact/f3b1f4b0-009d-4df4-a68d-2f0c13d17589)([도면집 영상](https://claude.ai/code/artifact/fe206738-5f60-420f-a184-37c59b72534e) · [3D](https://claude.ai/code/artifact/cfd3f9e8-3f43-47bc-bb05-4a46b4f3e897) · [상세도](https://claude.ai/code/artifact/a14f01c2-7789-4919-ae30-71e5d098b761) · [근접도](https://claude.ai/code/artifact/4559a80a-f13b-49b3-a44d-c954ef1faf82) · [제작](https://claude.ai/code/artifact/66a5be4e-d013-4e5c-858d-da783d09be38) · [물리](https://claude.ai/code/artifact/d5eaa3df-fcc9-4e6f-8a32-dc165b75a707)).
 
 #### §58 GRM-401 을 떼고 DG-HK60C 를 잇는다 — 값은 벤더에서, 속도는 후단에서 (REV.54)
 
