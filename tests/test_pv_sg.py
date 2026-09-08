@@ -28,7 +28,7 @@ import unittest
 from tests import _path  # noqa: F401
 
 from pv_preprocess import (afr, afr_peel, campaign, dust, frames, recipe,
-                           reliability, sg_grind)
+                           reliability, sg_grind, vision)
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CLOSEUP = ROOT / "docs/drawings/pv-sg-closeup.html"
@@ -367,6 +367,31 @@ class TestWhatTheFrameLeavesBehind(unittest.TestCase):
                 self.assertAlmostEqual(want, sg_grind.sealant_area_mm2(), places=6)
 
 
+class TestWhatActuallyInspectsTheResidue(unittest.TestCase):
+    """잔사를 무엇이 보는가 — 한 번 틀리게 적었던 자리다.
+
+    접촉부 주기에 "GI-301 이 연마 **전**에 잔사를 센다" 고 썼는데, `vision` 을
+    보니 GI-301 은 REV.50 통합(V-4)에서 **은퇴한 헤드**였다. 남은 것은 연마
+    **뒤**의 GI-302·GI-303 뿐이라 전/후 비교가 없다. 그것이 "연마 공정창 고정"
+    이라는 전제를 만들고, 그 전제는 면에 남는 몫이 실측돼야 선다.
+    """
+
+    def test_the_pre_grind_head_is_retired(self):
+        gi301 = next(h for h in vision.HEADS if h.tag == "GI-301")
+        self.assertFalse(gi301.kept)
+        self.assertIn("연마 전", gi301.role)
+
+    def test_only_post_grind_heads_remain(self):
+        kept = {h.tag for h in vision.HEADS if h.kept and h.tag.startswith("GI-")}
+        self.assertEqual(kept, {"GI-302", "GI-303"})
+
+    def test_the_drawing_does_not_claim_a_pre_grind_check(self):
+        """도면 글이 은퇴한 헤드를 살아 있는 것처럼 말하면 안 된다."""
+        said = " ".join(b for _, b in sg_grind.contact_unit().principle)
+        self.assertNotIn("GI-301 이 연마 **전**에", said)
+        self.assertIn("은퇴", said)
+
+
 class TestUnits(unittest.TestCase):
     """확대도가 그리는 세 유닛."""
 
@@ -466,11 +491,31 @@ class TestTheScraperThatClearsTheBand(unittest.TestCase):
     def test_the_only_cost_is_the_lead(self):
         """같은 캐리지에 달므로 장비가 안 늘고 순환만 리드만큼 는다."""
         self.assertAlmostEqual(
-            sg_grind.occupancy_with_scraper_s(),
-            sg_grind.occupancy_s() + sg_grind.scraper_lead_cost_s(), places=2)
-        self.assertTrue(sg_grind.scraper_still_fits_the_platen())
-        self.assertGreater(sg_grind.slack_with_scraper_s(), 0.0)
+            sg_grind.occupancy_s(),
+            sg_grind.occupancy_without_scraper_s() + sg_grind.scraper_lead_cost_s(),
+            places=2)
+        self.assertTrue(sg_grind.sequential_is_affordable())
+        self.assertGreater(sg_grind.slack_s(), 0.0)
         self.assertGreater(sg_grind.BLADE_LEAD_MM, sg_grind.WHEEL_D_MM / 2)
+
+    def test_the_published_occupancy_already_carries_the_blade(self):
+        """광고하는 점유가 **날을 단 기계**의 점유여야 한다.
+
+        SR-302 는 옵션이 아니라 헤드에 달린 부품이다. 리드를 점유 밖에 빼두면
+        캠페인·리터럴·근접도면이 존재하지 않는 기계의 택트를 광고하게 된다.
+        """
+        self.assertEqual(sg_grind.BLADE_LEAD_MM, campaign.SG_BLADE_LEAD_MM)
+        self.assertAlmostEqual(sg_grind.occupancy_s(),
+                               campaign.sg_occupancy_s(), places=2)
+        # 리드는 순환의 상(相) 안에 있다 — 밖에서 더하는 값이 아니다.
+        lead_free = ((campaign.PANEL_WIDTH_MM / sg_grind.short_feed_mm_s()
+                      + campaign.SG_HEAD_STROKE_S) * 2
+                     + campaign.PANEL_LENGTH_MM / sg_grind.long_feed_mm_s()
+                     + campaign.SG_INDEX_S)
+        self.assertAlmostEqual(sg_grind.occupancy_without_scraper_s(),
+                               lead_free, places=2)
+        self.assertGreater(sg_grind.occupancy_s(), lead_free,
+                           "날을 달고도 점유가 안 늘었다면 리드가 어디에도 없다")
 
     def test_the_tool_now_exists_and_the_wheel_can_follow(self):
         self.assertTrue(sg_grind.face_residue_has_a_tool())
