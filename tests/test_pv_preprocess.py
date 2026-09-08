@@ -535,8 +535,10 @@ class TestOneTransferPlane(unittest.TestCase):
                         for z in layout.build_zones())
         self.assertIn("var pvZone={" + grid + "}", self.html,
                       "존 격자가 모델에서 나오지 않는다")
-        # 격자는 씬 훅으로 나가야 검사기가 읽는다
-        self.assertIn("Vector3:C,zone:pvZone}", self.html)
+        # 격자는 씬 훅으로 나가야 검사기가 읽는다. 훅에는 파생 도면이 쓰는 3D 연장도
+        # 같이 실린다 (부품 확대도가 이것으로 실린더·LM 을 더 그린다).
+        self.assertIn("Vector3:C,zone:pvZone,", self.html)
+        self.assertIn("kit:Object.freeze({P:P,Ee:Ee", self.html)
         # 셀 그룹은 전부 자기 존을 밝힌다
         self.assertIn("function pvCell(g,k){g.userData.cell=k;return g}", self.html)
         for group, key in (("wr", "afu"), ("be", "jbr"), ("Cn", "jbr"),

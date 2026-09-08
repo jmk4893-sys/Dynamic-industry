@@ -19,10 +19,11 @@ import unittest
 
 from tests import _path  # noqa: F401
 
-from pv_preprocess import campaign, layout
+from pv_preprocess import afr, afr_units, campaign, frames, layout
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCENE = ROOT / "docs/drawings/pv-afr-scene.html"
+CLOSEUP = ROOT / "docs/drawings/pv-afr-closeup.html"
 
 
 def _load(name: str):
@@ -269,3 +270,97 @@ class TestAfrScene(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAfrCloseup(unittest.TestCase):
+    """두 핵심 유닛의 부품 확대도 — 형상·사양이 모델에서 나오는가."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.builder = _load("build_afr_closeup")
+        cls.html = CLOSEUP.read_text(encoding="utf-8")
+        cls.plant = cls.builder.PLANT.read_text(encoding="utf-8")
+
+    def test_the_committed_file_is_what_the_builder_makes(self):
+        self.assertEqual(self.html, self.builder.build(),
+                         "docs/drawings/pv-afr-closeup.html 이 생성기 출력과 다르다 — "
+                         "PYTHONPATH=src python tools/build_afr_closeup.py 를 돌리고 커밋한다")
+
+    def test_two_units_with_parts_and_a_principle(self):
+        us = afr_units.units()
+        self.assertEqual([u.key for u in us], ["short", "long"])
+        for u in us:
+            with self.subTest(unit=u.key):
+                self.assertGreaterEqual(len(u.parts), 10, "부품이 너무 적다")
+                self.assertEqual(len(u.principle), 5, "작동원리가 5 단계가 아니다")
+                self.assertTrue(all(p.qty >= 1 for p in u.parts))
+                self.assertTrue(all(p.role for p in u.parts), "역할이 빈 부품이 있다")
+
+    def test_every_part_points_at_a_catalogue_row(self):
+        """부품표에 없는 품번을 지어내지 않는다 — 참고 표시(—)만 예외다."""
+        for u in afr_units.units():
+            for p in u.parts:
+                with self.subTest(part=p.key):
+                    if p.catalog == "—":
+                        continue
+                    self.assertIn(f'["{p.catalog}"', self.plant,
+                                  f"{p.catalog} 이 통합 설계도 부품표에 없다")
+
+    def test_the_roller_actually_sits_in_the_groove(self):
+        """확대도가 그리는 자리가 모델의 물림과 같은가 — 눈이 아니라 수로 본다."""
+        u = afr_units.long_unit()
+        roller = next(p for p in u.parts if p.key == "roller")
+        work = next(p for p in u.parts if p.key == "work")
+        prof = frames.profile()
+        groove_mid_y = (work.pos[1] + frames.GROOVE_V0_MM
+                        + frames.GROOVE_H_MM / 2 - prof["cv_mm"])
+        floor_z = work.pos[2] - prof["cu_mm"] + afr.GROOVE_D_MM
+        self.assertAlmostEqual(groove_mid_y, roller.pos[1], places=6,
+                               msg="롤러 축이 홈 한가운데가 아니다")
+        self.assertAlmostEqual(floor_z, roller.pos[2] + roller.size[0] / 2, places=6,
+                               msg="롤러 바깥면이 홈 바닥에 안 닿는다")
+        # 홈이 롤러 폭을 받아 주는가 (모델의 선정 조건과 같은 판정)
+        self.assertLessEqual(roller.size[1] + 2 * afr.ROLLER_CLEAR_MM, afr.GROOVE_H_MM)
+
+    def test_the_rail_section_is_a_simple_polygon(self):
+        pts = afr_units.rail_outline()
+        self.assertGreaterEqual(len(pts), 12)
+        area2 = sum(pts[i][0] * pts[(i + 1) % len(pts)][1]
+                    - pts[(i + 1) % len(pts)][0] * pts[i][1] for i in range(len(pts)))
+        self.assertGreater(abs(area2) / 2, 0.0)
+        self.assertLessEqual(max(abs(u) for u, _ in pts), afr_units.RAIL_W_MM / 2 + 1e-9)
+        self.assertLessEqual(max(v for _, v in pts), afr_units.RAIL_H_MM + 1e-9)
+
+    def test_the_specs_come_from_the_model(self):
+        for probe in (afr.cylinder_spec(),
+                      f"{afr.working_pressure_bar():.0f} bar",
+                      f"Ø{afr.roller_d_mm()} × {afr.roller_h_mm()}",
+                      f"{afr.roller_contact_mpa()} MPa",
+                      f"{afr.bar_sag_mm()} mm"):
+            with self.subTest(probe=probe):
+                self.assertIn(probe, self.html)
+
+    def test_the_plant_lends_its_3d_kit(self):
+        """확대도는 플랜트와 **같은 재질·같은 조명**으로 그린다."""
+        self.assertIn("kit:Object.freeze({P:P,Ee:Ee", self.plant)
+        self.assertIn("S.kit", self.html)
+        self.assertIn("__pvAfrCloseup", self.html)
+
+    def test_the_console_is_the_closeups_own(self):
+        for token in ('id="afr-cu-tabs"', 'id="afr-cu-explode"', 'id="afr-cu-cut"',
+                      'id="afr-cu-rows"', 'id="afr-cu-principle"', 'id="afr-cu-spec"'):
+            with self.subTest(token=token):
+                self.assertIn(token, self.html)
+        self.assertIn("shadowMap.enabled=!1;", self.html)
+        self.assertNotIn("shadowMap.enabled=!0;", self.html)
+
+    def test_the_artifact_converter_accepts_it(self):
+        conv = _load("build_artifact")
+        self.assertIn("afr-closeup", conv.TARGETS)
+        body = conv.convert(self.html, CLOSEUP)
+        self.assertIn("<title>AFR-101 부품 확대도</title>", body)
+
+    def test_the_readme_lists_it(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("docs/drawings/pv-afr-closeup.html", readme)
+        self.assertIn("tools/build_afr_closeup.py", readme)
