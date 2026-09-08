@@ -6254,6 +6254,22 @@ class TestStructureRecipe(unittest.TestCase):
         # JBR 허가 검사표에 구조 항목이 있어야 미승인 구조가 절단 전에 막힌다
         self.assertIn("structure_recipe_ok:pvStructure().auto", self.html)
 
+    def test_the_recipe_table_reaches_the_3d_module(self):
+        """표는 워크스페이스 IIFE 안에 있고 3D 모듈은 창에서 읽는다 — 이어 줘야 한다.
+
+        REV.51 이 이 한 줄을 빼먹어 `pvStructure()` 가 늘 '미등록'을 읽었다. 그러면
+        `structure_recipe_ok` 가 항상 거짓이라 JBR 허가가 나지 않고, AFR-101 은
+        점유 39.03 s 내내 1 단계에 멈춰 한 번도 움직이지 않는다 (JBR 은 `pvMode()`
+        가 늘 'recipe' 리젝트로 고정된다). 화면은 멀쩡해 보이고 글자에도 흔적이
+        없어서, 이어 준 자리를 여기서 못박는다.
+        """
+        self.assertIn("window.STRUCTURE_RECIPES = STRUCTURE_RECIPES;", self.html)
+        # 읽는 쪽과 쓰는 쪽이 같은 이름을 봐야 한다.
+        self.assertIn("(window.STRUCTURE_RECIPES||[]).find", self.html)
+        # 기본 선택(첫 행)은 자동 허가여야 한다 — 아니면 기본 상태에서 라인이 선다.
+        self.assertTrue(recipe.STRUCTURES[0].auto)
+        self.assertIn(f'<option value="{recipe.STRUCTURES[0].ui}" selected>', self.html)
+
 
 class TestShortEdgeGrinding(unittest.TestCase):
     """REV.51 — 단변 잔사도 플랜트에서 제거한다: SG-301 3헤드, 반출롤러 점유가 정반 점유 안."""
