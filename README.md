@@ -495,7 +495,7 @@ metalness 를 가지므로, 같은 도장이 두 렌더러에서 같게 보이�
 설계 결정이고, 나머지는 그 한 줄에서 파생되거나(존·페이싱·전력·열·시트) 손으로
 그린 도면 리터럴을 §58 이전 값으로 되돌린 것이다(버퍼 슬롯 레일 ±730 · 포스트
 ±760 · 콤포크 ±620 · 선단받이 레일 · JBR 조 672.5 · 축적 런 2,750 · 버퍼 재고
-유리 2.5×1.4 · 콘솔). 시험 39 건이 A 값으로 바뀐다. REV.55(§61)에서 후단 형상이 벤더 원본으로 바뀌며 패치를 **새 머리 위에서 다시 만들었다** — 벤더 기계는 캡처에서 찍히므로 A 안에서도 형상·도장이 같고, 달라지는 것은 라인 상한과 거기서 파생하는 값뿐이다.
+유리 2.5×1.4 · 콘솔). 시험 39 건이 A 값으로 바뀐다. REV.55(§61)에서 후단 형상이 벤더 원본으로 바뀌고 REV.56(§62)에서 투입 베이가 90° 돌아가며 패치를 **그때마다 새 머리 위에서 다시 만들었다** — 벤더 기계는 캡처에서 찍히고 회전은 씬 그래프에서 일어나므로 A 안에서도 형상·도장·베이 방향이 C안과 같고, 달라지는 것은 라인 상한과 거기서 파생하는 값뿐이다. REV.56 재생성분은 머리 `15e19df` 위에서 헤드리스 다섯 종 ✓ · 페이지 로드 JS 오류 0 · 시험 **1,472** ✓ 로 확인했다.
 
 ```
 git apply docs/variants/a-line-2500x1400.patch     # C안 머리(§59) 위에 적용
@@ -606,7 +606,7 @@ F10 LP-DGM-MC 93 kW · 200 AT · 70 mm² — 둘 다 `hk60c.BRANCHES` 에서 트
 [MCR-901 콘솔](https://claude.ai/code/artifact/64d5edab-dbe7-4eb5-b8de-389238ad6359)이고, 세 안의 스냅샷은
 [B안](https://claude.ai/code/artifact/ffb9862d-a721-4a80-8e7e-335becb07443) ·
 [C안](https://claude.ai/code/artifact/45678c2d-8ae8-4e9f-b1b5-4521877e2ceb) ·
-[A안](https://claude.ai/code/artifact/e98bfb00-550b-45b1-9880-2125a04ca7b4)이다. 벤더 쪽은
+[A안](https://claude.ai/code/artifact/e98bfb00-550b-45b1-9880-2125a04ca7b4)([A안 콘솔](https://claude.ai/code/artifact/21aeb4c6-6bd7-4a26-845e-71746786f942))이다. 벤더 쪽은
 [DG-HK60 콘솔](https://claude.ai/code/artifact/063a9784-6c8c-4c25-8d85-1035befed92d) ·
 [RFQ](https://claude.ai/code/artifact/377241f9-3731-4e2a-aecc-178adcdb288e) ·
 [조립 지침서](https://claude.ai/code/artifact/613c1af7-8a2b-4868-b75b-360ab1c4591c), 그 밖에
