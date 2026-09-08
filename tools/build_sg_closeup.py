@@ -170,8 +170,9 @@ def spec_payload() -> str:
                     f"{g.shoe_pressure_mpa()} MPa · 남는 깊이 오차 "
                     f"**{g.blade_assembly_tol_mm()} mm** < 백시트 {g.BACKSHEET_T_MM} mm"],
             ["순환 비용", f"리드 {g.BLADE_LEAD_MM:.0f} mm → **{g.scraper_lead_cost_s()} s** · "
-                     f"점유 {g.occupancy_s()} → {g.occupancy_with_scraper_s()} s · "
-                     f"AFR 정반 안에 {g.slack_with_scraper_s()} s 여유"],
+                     f"점유 {g.occupancy_s()} s (날 없으면 "
+                     f"{g.occupancy_without_scraper_s()} s) · "
+                     f"AFR 정반 안에 {g.slack_s()} s 여유"],
             ["집진", "부스러기가 **고체**라 DS-01 에 폴리머가 안 들어간다 — "
                   "'불연' 선언이 그대로 선다"],
             ["Gc 여유", f"면 허용 압착력이 감당하는 상한이 **{g.max_gc_the_face_limit_allows()} "

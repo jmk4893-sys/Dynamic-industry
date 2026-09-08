@@ -174,15 +174,20 @@ class Foundation:
                    self.break_deflection_mm * 1.0000001)
 
     def damage_stiffness(self, delta_mm: float) -> float:
-        """이중선형 연화의 **할선강성** [N/mm²] — 처짐 δ 에서 유효 지지계수.
+        """이중선형 연화의 **할선강성** [N/mm²] — 벌림 δ 에서 유효 지지계수.
 
         δ ≤ δ₀ 는 손상 전이고, δ₀ 와 δ_f 사이가 연화 구간이다. 이 구간이 있어야
         균열이 한 요소씩 안정하게 나아간다 — 강도만으로 자르면 (요소를 지우면)
         강성이 계단으로 떨어져 균열이 통째로 달아난다.
+
+        δ 는 **벌림**이다: 양수가 접착면이 열리는 쪽이고, 음수는 실란트를 유리
+        쪽으로 누르는 쪽이다. 눌러서는 접착이 뜯기지 않으므로 닫히는 쪽은 손상이
+        없다 — 크기만 보면(abs) 보가 시소처럼 기울 때 **반대쪽 끝이 눌리는 것**을
+        박리로 읽어 접착이 전선과 떨어진 곳에서 끊긴다.
         """
         d0, df = self.break_deflection_mm, self.separation_mm()
-        d = abs(delta_mm)
-        if d <= d0:
+        d = delta_mm
+        if d <= d0:                       # 닫히는 쪽(음수)도 여기로 온다
             return self.k_n_mm2
         if d >= df:
             return 0.0
@@ -306,12 +311,17 @@ class Beam:
             out.append(0.5 * (u[b] + u[b + 2]) + self.le * (u[b + 1] - u[b + 3]) / 8.0)
         return out
 
-    def update_damage(self, u: list[float]) -> bool:
-        """처짐에서 손상을 갱신한다. 강성이 실제로 줄었으면 True."""
+    def update_damage(self, u: list[float], opening_sign: float = 1.0) -> bool:
+        """처짐에서 손상을 갱신한다. 강성이 실제로 줄었으면 True.
+
+        `opening_sign` 은 접착이 **열리는** 처짐의 부호다. 구동단이 음의 방향으로
+        당기면 −1 을 준다 — 그래야 벌림이 양수로 들어가 응집법칙이 제 쪽을 본다.
+        """
         if self.foundation is None:
             return False
         changed = False
-        for e, d in enumerate(self.element_deflection(u)):
+        for e, d in enumerate(o * opening_sign
+                              for o in self.element_deflection(u)):
             if not self.bonded[e]:
                 continue
             k = self.foundation.damage_stiffness(d)
@@ -484,7 +494,7 @@ def peel(beam: Beam, driver_node: int, driver_mm: float,
         # 이중선형 연화 — 강도만으로 자르지 않고 할선강성을 줄여 나간다. 이것이
         # 있어야 균열이 한 요소씩 나아가고, 없으면 강성이 계단으로 떨어져 통째로
         # 달아난다 (응집영역 길이가 β⁻¹ 과 같은 자릿수라 실제로 지배한다).
-        if not beam.update_damage(u):
+        if not beam.update_damage(u, math.copysign(1.0, driver_mm or 1.0)):
             break
     else:                                      # pragma: no cover - 안전망
         raise RuntimeError("접착 손상이 수렴하지 않았다")
@@ -514,7 +524,8 @@ def newmark(beam: Beam, steps: int, dt: float,
             beta: float = 0.25, gamma: float = 0.5) -> list[list[float]]:
     """평균가속도법 (β=¼, γ=½) — 무조건 안정이라 큰 dt 를 쓸 수 있다.
 
-    `force(step, t)` 는 그 시각의 하중벡터를 준다. 감쇠는 Rayleigh 로 두되
+    `force(step, t)` 는 그 시각의 하중벡터를 준다 — `step` 은 0…`steps` 이고
+    돌려주는 이력 `out[step]` 과 같은 시각을 가리킨다. 감쇠는 Rayleigh 로 두되
     1차 모드에서 주어진 감쇠비가 되도록 질량비례 항만 쓴다 (a₀ = 2ζω₁).
     `u0`·`v0` 로 초기 상태를 준다 — 접착이 끊어진 뒤의 **되튐**은 휘어 있던
     자세에서 시작하므로 초기변위가 곧 그 물리다.
@@ -555,7 +566,10 @@ def newmark(beam: Beam, steps: int, dt: float,
     a = lu_solve(*lu_factor(m_bc), resid)
     out = [u[:]]
     for step in range(steps):
-        f = force(step, step * dt)
+        # 이 걸음이 푸는 평형은 **도착 시각** t_{n+1} 의 것이다. 출발 시각의 하중을
+        # 넣으면 하중이 통째로 한 걸음 밀려, t=0 에 0 이고 그 뒤 걸리는 하중은
+        # 첫 걸음 동안 보를 못 움직인다. out[i] 와 force(i, i·dt) 가 같은 시각이다.
+        f = force(step + 1, (step + 1) * dt)
         rhs = [0.0] * n
         for i in range(n):
             mi, ci = m[i], c[i]
