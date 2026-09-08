@@ -387,6 +387,23 @@ class TestFlipAxisOrientation(unittest.TestCase):
         self.assertIn("for (let t = 0; t <= 124; t += 0.5)", tool,
                       "공정시계를 훑지 않는다 — 신축·승강이 빠진 값이 된다")
 
+    def test_the_bay_check_looks_at_all_three_axes(self):
+        """z 투영으로 되돌리면 여기서 걸린다.
+
+        처음에는 두 베이의 z 범위만 봤는데 **그것이 틀렸다.** z 가 겹치는 것과
+        부재가 부딪히는 것은 다르다 — x 나 y 가 다르면 안 겹친다. 그 잣대로 안쪽
+        기둥을 공유하는 다른 설계를 「겹친다」고 잘못 판정했다. 세 축을 다 보는
+        구조와, z 간격이 **참고값**이라는 표시가 남아 있어야 한다.
+        """
+        import pathlib as _p
+        tool = (_p.Path(__file__).resolve().parents[1]
+                / "tools" / "check_bay_clearance.mjs").read_text(encoding="utf-8")
+        self.assertIn("for (let k = 0; k < 3; k++)", tool, "세 축을 돌지 않는다")
+        self.assertIn("z 투영 간격", tool, "z 간격을 판정에 쓰고 있다")
+        self.assertIn("공유하는 설계에서는 음수가 정상", tool,
+                      "공유 기둥 설계를 오판했던 기록이 없다")
+        self.assertNotIn("두 베이 사이 틈", tool, "옛 z 투영 판정 문구가 남아 있다")
+
     def test_the_scene_mesh_is_actually_rotated(self):
         """3D 가 도로 축 X 로 돌아가면 여기서 걸린다.
 
