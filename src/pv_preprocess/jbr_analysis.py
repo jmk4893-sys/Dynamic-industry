@@ -28,6 +28,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
+from . import campaign
+from . import catch as _catch          # 쿠션 가정 — 투입 쪽과 한 벌만 둔다
 from . import jbr_fabrication as jf
 
 # ── 재료 ────────────────────────────────────────────────────────────────
@@ -522,8 +524,15 @@ def _head_frac(box: int, tau: float) -> float:
     return f(z_sink)
 
 
-#: 연간 판 수 — 택트 48.47 s · 연 8,000 h.
-def panels_per_year(takt_s: float = 48.47, hours: float = 8_000.0) -> float:
+def panels_per_year(takt_s: float | None = None, hours: float = 8_000.0) -> float:
+    """연간 판 수 — 택트는 `campaign` 이 잰 값, 연 8,000 h.
+
+    REV.59 까지 여기에 48.47 이 리터럴로 있었다. 택트가 48.59 로 움직였는데 피로
+    수명만 옛 택트 위에 서 있던 것이다 — 값이 작아 결과는 안 변했지만, 손으로 옮긴
+    숫자는 그런 식으로 낡는다. 이제 앞단이 바뀌면 여기도 같이 바뀐다.
+    """
+    if takt_s is None:
+        takt_s = campaign.summary()["takt_s"]
     return 3600.0 / takt_s * hours
 
 
@@ -575,12 +584,19 @@ def _mass_flow(p_up: float, p_down: float, area_mm2: float) -> float:
 def cylinder_dynamics(bore_mm: float, stroke_mm: float, supply_mpa: float,
                       load_kn: float, moving_kg: float = 12.0,
                       dt: float = 2e-4, t_max: float = 6.0,
-                      valve_area_mm2: float = VALVE_AREA_MM2) -> dict[str, object]:
+                      valve_area_mm2: float = VALVE_AREA_MM2,
+                      v_cap_mms: float | None = None) -> dict[str, object]:
     """실린더가 그 행정을 **언제** 내는가 — 챔버 충전을 시간 적분한다.
 
     P·A 는 정상상태 힘이다. 챔버가 차기 전에는 그 힘이 없으므로, 짧은 행정을 빨리
     내야 하는 축에서는 충전시간이 관문이 된다. 순차 배분 4.0 s 안의 박리 1.6 s 가
     바로 그 자리다.
+
+    `v_cap_mms` 는 **미터아웃**(배기 교축)의 1 차 모형이다 — 교축은 속도를 그 값에서
+    붙든다. 부하가 0 이 되는 구간(접근 공주행 · 박리 뒤)에서 실린더는 유량이 허락하는
+    속도까지 그냥 달리므로, 이 상한이 없으면 끝단 에너지가 쿠션 등급을 수십 배 넘는다.
+    상한이 있으면 그 속도가 곧 행정 시간을 정한다 — 그래서 미는 힘이 아니라 **멈추는
+    힘**이 시간을 잡는 자리가 생긴다.
 
     상태: x(피스톤 위치 mm) · v(속도 mm/s) · p(구동측 절대압 Pa).
     """
@@ -593,6 +609,8 @@ def cylinder_dynamics(bore_mm: float, stroke_mm: float, supply_mpa: float,
     t = 0.0
     trace: list[tuple[float, float, float, float]] = [(0.0, 0.0, 0.0, p / 1e6)]
     t_reach: float | None = None
+    t_start: float | None = None
+    v_end = 0.0
 
     def deriv(x_: float, v_: float, p_: float) -> tuple[float, float, float]:
         vol = area_m2 * (x_ + DEAD_LENGTH_MM) * 1e-3
@@ -603,6 +621,10 @@ def cylinder_dynamics(bore_mm: float, stroke_mm: float, supply_mpa: float,
         force = (p_ - p_atm) * area_m2 - load_n - math.copysign(friction, v_ if abs(v_) > 1e-6 else 1.0)
         if x_ <= 0.0 and force < 0.0:
             return 0.0, 0.0, pdot
+        if v_cap_mms is not None and v_ >= v_cap_mms and force > 0.0:
+            # 교축이 남는 힘을 배압으로 받는다 — 속도는 상한에 머물고 가속은 0 이다.
+            # (적분 뒤에만 자르면 매 스텝 상한 위로 재가속했다 잘려 유효 속도가 7 % 빠르다.)
+            return v_cap_mms, 0.0, pdot
         return v_, force / moving_kg * 1000.0, pdot
 
     steps = int(t_max / dt)
@@ -615,22 +637,43 @@ def cylinder_dynamics(bore_mm: float, stroke_mm: float, supply_mpa: float,
         v += dt / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1])
         p += dt / 6 * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2])
         p = min(p, p_sup)
+        if v_cap_mms is not None and v > v_cap_mms:
+            v = v_cap_mms
         if x < 0.0:
             x, v = 0.0, 0.0
         t += dt
+        if t_start is None and x > 0.0:
+            t_start = t
         if len(trace) < 4000 and len(trace) * (t_max / dt / 4000) <= t / dt:
             trace.append((t, x, v, p / 1e6))
         if t_reach is None and x >= stroke_mm:
             t_reach = t
+            v_end = v
             break
     steady_kn = (p_sup - p_atm) * area_m2 / 1000.0
     return {"bore_mm": bore_mm, "stroke_mm": stroke_mm, "supply_mpa": supply_mpa,
             "load_kn": load_kn, "moving_kg": moving_kg,
             "t_stroke_s": t_reach, "reached": t_reach is not None,
+            "t_start_s": t_start, "v_end_mms": v_end, "v_cap_mms": v_cap_mms,
             "steady_force_kn": steady_kn,
             "static_margin": steady_kn / max(load_kn, 1e-9),
             "v_peak_mms": max(r[2] for r in trace) if trace else 0.0,
             "trace": trace}
+
+
+# ── 완충 — 미는 힘이 아니라 멈추는 힘 ──────────────────────────────────
+def cushion_allow_j(bore_mm: float) -> float:
+    """표준 에어쿠션이 먹는 운동에너지 (J).
+
+    투입 쪽 `catch.CUSHION_ALLOW_J`(Ø40 기준 1.0 J — **가정**, 벤더 확인 필요)를 보어
+    면적비로 올린 것이다. 같은 가정을 두 벌 두지 않는다 — 저쪽이 카탈로그 값으로
+    바뀌면 여기도 같이 바뀐다. 작게 잡는 쪽이 보수적이다.
+    """
+    return _catch.CUSHION_ALLOW_J * (bore_mm / 40.0) ** 2
+
+
+#: 유압식 쇼크업소버 한 본이 먹는 에너지 (J) — `catch` 와 같은 소형 등급.
+SHOCK_ABSORBER_J = _catch.SHOCK_ABSORBER_J
 
 
 #: 박리 창 — 운동식의 shear 구간 길이 (s).
@@ -640,15 +683,60 @@ def peel_window_s() -> float:
 
 
 def peel_dynamics(working_kn: float, bore_mm: float = 80.0,
-                  supply_mpa: float = 0.5) -> dict[str, object]:
-    """박리 실린더가 박리 창 안에 행정을 내는가 — 4.0 s 배분의 실제 관문."""
+                  supply_mpa: float = 0.5,
+                  speed_cap_mms: float | None = None) -> dict[str, object]:
+    """박리 실린더가 박리 창 안에 행정을 내는가 — 4.0 s 배분의 실제 관문.
+
+    REV.60 부터 부품표 JB-HD-002 의 **미터아웃 설정**을 그대로 얹는다. REV.59 까지는
+    교축 없이 풀어 「2 kN 에서 0.85 s, 여유 0.75 s」였는데, 그 실린더는 부품표가
+    225 mm/s 로 조여 둔 것이었다 — 해석이 부품표를 안 읽고 있었다. 설정값은 상한이고
+    ±공차가 있으므로 판정은 **공차 하한(느린 쪽)** 에서 한다. 빠른 쪽은 창을 넘길
+    일이 없고 끝단 에너지만 본다.
+    """
     stroke = (SEQUENCE["openWide"] - SEQUENCE["openShut"]) * 1000.0
-    res = cylinder_dynamics(bore_mm, stroke, supply_mpa, working_kn)
+    cap = jf.PEEL_SPEED_MMS if speed_cap_mms is None else speed_cap_mms
+    slow = cap * (1.0 - jf.PEEL_SPEED_TOL)
+    res = cylinder_dynamics(bore_mm, stroke, supply_mpa, working_kn, v_cap_mms=cap)
+    low = cylinder_dynamics(bore_mm, stroke, supply_mpa, working_kn, v_cap_mms=slow)
     win = peel_window_s()
     res["window_s"] = win
-    res["fits"] = bool(res["t_stroke_s"] is not None and res["t_stroke_s"] <= win)
-    res["slack_s"] = None if res["t_stroke_s"] is None else round(win - res["t_stroke_s"], 3)
+    res["speed_cap_mms"] = cap
+    res["speed_low_mms"] = slow
+    res["t_slow_s"] = low["t_stroke_s"]
+    res["fits_nominal"] = bool(res["t_stroke_s"] is not None and res["t_stroke_s"] <= win)
+    res["fits"] = bool(low["t_stroke_s"] is not None and low["t_stroke_s"] <= win)
+    res["slack_s"] = None if low["t_stroke_s"] is None else round(win - low["t_stroke_s"], 3)
+    res["ke_end_j"] = 0.5 * res["moving_kg"] * (res["v_end_mms"] / 1000.0) ** 2
+    res["cushion_j"] = cushion_allow_j(bore_mm)
+    res["cushion_ok"] = res["ke_end_j"] <= res["cushion_j"]
     return res
+
+
+def peel_throttle(working_kn: float = 2.0) -> dict[str, object]:
+    """미터아웃 설정이 창을 지키는가 — **창이 요구하는 평균값에 설정을 맞추면 여유가 0 이다.**
+
+    창 1.6 s 에 360 mm 면 평균 225 mm/s 다. 설정을 거기에 두면 시동 지연(챔버 충전)이
+    그대로 초과분이 되고, 공차 하한(−10 %)에서는 무부하로도 1.78 s 가 나온다. 설정은
+    그 위에 있어야 하고, 위로 올릴수록 끝단 에너지가 오르므로 쿠션이 상한을 정한다.
+    두 상한 사이에 설정값이 있어야 한다 — 그 자리를 이 함수가 낸다.
+    """
+    stroke = (SEQUENCE["openWide"] - SEQUENCE["openShut"]) * 1000.0
+    win = peel_window_s()
+    need = stroke / win
+    at_need = peel_dynamics(working_kn, speed_cap_mms=need)
+    now = peel_dynamics(working_kn)
+    free = cylinder_dynamics(80.0, stroke, 0.5, 0.0)
+    return {"working_kn": working_kn, "stroke_mm": stroke, "window_s": win,
+            "need_mms": round(need, 1),
+            "cap_mms": jf.PEEL_SPEED_MMS, "tol": jf.PEEL_SPEED_TOL,
+            "low_mms": round(now["speed_low_mms"], 1),
+            "t_at_need_s": at_need["t_slow_s"], "fits_at_need": at_need["fits"],
+            "t_s": now["t_stroke_s"], "t_slow_s": now["t_slow_s"],
+            "fits": now["fits"], "slack_s": now["slack_s"],
+            "ke_end_j": round(now["ke_end_j"], 2),
+            "cushion_j": round(now["cushion_j"], 2), "cushion_ok": now["cushion_ok"],
+            "free_run_v_mms": round(free["v_peak_mms"]),
+            "free_run_ke_j": round(0.5 * free["moving_kg"] * (free["v_peak_mms"] / 1000.0) ** 2, 1)}
 
 
 # ── 이송 프로파일 — 운동식이 요구하는 가속도 ────────────────────────────
@@ -734,6 +822,80 @@ def slot_budget(accel_limit: float | None = None) -> dict[str, object]:
             "panel_s": round(need * jf.BOXES_PER_PANEL, 2)}
 
 
+# ── 승강 · 원점 복귀 — 창 1.8 s 를 누가 채우는가 ─────────────────────────
+#: 「헤드 z 원점 복귀·승강 상승」에 배분된 창 (s) — 통합 설계도 스테이지 41–42.8.
+#: 원본은 스테이지 표다. 시험이 대조한다 (`test_the_homing_window_mirror_matches_the_plant`).
+HOME_WINDOW_S = 1.8
+
+
+def homing_time_s() -> float:
+    """헤드 Y 축이 슈트에서 원점으로 — 축 한계 smoothstep 의 최소 시간."""
+    return math.sqrt(SMOOTHSTEP_ACCEL * abs(SEQUENCE["sinkZ"]) / AXIS_ACCEL_LIMIT_MS2)
+
+
+def lift_dynamics(direction: str = "up", speed_cap_mms: float | None = None,
+                  stroke_mm: float | None = None) -> dict[str, object]:
+    """승강 실린더(Ø63 × 2)를 시간 적분한다 — 박리와 같은 모형으로, 양쪽 끝을 본다.
+
+    두 실린더는 등가 보어 √2·Ø63 하나로 놓는다 — 면적·마찰·데드볼륨·밸브 단면이
+    전부 두 배가 되는 것과 같다. 상승은 자중이 부하이고 하강은 자중이 가세한다.
+    """
+    lc = jf.lift_check()
+    count = jf.LIFT_COUNT
+    bore = jf.LIFT_BORE_MM * math.sqrt(count)
+    stroke = jf.LIFT_STROKE_MM if stroke_mm is None else stroke_mm
+    load = lc["need_kn"] * (1.0 if direction == "up" else -1.0)
+    res = cylinder_dynamics(bore, stroke, jf.AIR_MPA_MIN, load, moving_kg=lc["moving_kg"],
+                            valve_area_mm2=VALVE_AREA_MM2 * count,
+                            v_cap_mms=speed_cap_mms, t_max=10.0)
+    ke = 0.5 * lc["moving_kg"] * (res["v_end_mms"] / 1000.0) ** 2
+    res.update({"direction": direction, "count": count,
+                "ke_end_j": ke, "ke_per_cylinder_j": ke / count,
+                "cushion_j": cushion_allow_j(jf.LIFT_BORE_MM),
+                "cushion_ok": ke / count <= cushion_allow_j(jf.LIFT_BORE_MM)})
+    return res
+
+
+def lift_budget() -> dict[str, object]:
+    """승강이 창 안에 드는가 — 미는 힘이 아니라 **멈추는 힘**이 시간을 정한다.
+
+    `jf.lift_check()` 는 이용률 0.59 로 힘이 남는다고 답했고 그것은 맞다. 그런데 부하
+    1.85 kN 에 3.12 kN 을 걸면 남는 힘이 그대로 가속이 되어, 420 행정 끝에 188 kg 이
+    0.5 m/s 로 닿는다 — 실린더당 12 J, 표준 쿠션(Ø63 ≈ 2.5 J, 가정)의 다섯 배다.
+    쿠션이 먹을 수 있는 속도로 조이면 그 속도가 행정 시간을 정하고, 그 시간이 창
+    1.8 s 를 꽉 채운다. 창 안의 다른 일(Y 원점 복귀 1.59 s)과 병행이라도, 이제
+    관문은 승강이다. 손잡이는 힘이 아니라 **행정**(하드스톱 JB-MZ-003)이나
+    **업소버**다 — 여기서 어느 쪽인지 정하지 않는다. 필요한 상승량이 모델에 없다.
+    """
+    lc = jf.lift_check()
+    m = lc["moving_kg"]
+    count = jf.LIFT_COUNT
+    cushion = cushion_allow_j(jf.LIFT_BORE_MM)
+    v_cushion = math.sqrt(2.0 * cushion * count / m) * 1000.0      # mm/s, 실린더당 쿠션 등급
+    v_shock = math.sqrt(2.0 * SHOCK_ABSORBER_J * count / m) * 1000.0
+    free = lift_dynamics("up")
+    cush = lift_dynamics("up", v_cushion)
+    shock = lift_dynamics("up", v_shock)
+    down = lift_dynamics("down", v_cushion)
+    window = HOME_WINDOW_S
+    homing = homing_time_s()
+    t_c = cush["t_stroke_s"]
+    stroke_fit = max(0.0, (window - (cush["t_start_s"] or 0.0)) * v_cushion)
+    return {"window_s": window, "homing_s": round(homing, 2), "homing_fits": homing <= window,
+            "moving_kg": m, "count": count, "stroke_mm": jf.LIFT_STROKE_MM,
+            "cushion_j": round(cushion, 2), "shock_j": SHOCK_ABSORBER_J,
+            "free_t_s": free["t_stroke_s"], "free_v_mms": round(free["v_end_mms"]),
+            "free_ke_per_cylinder_j": round(free["ke_per_cylinder_j"], 1),
+            "free_over_cushion": round(free["ke_per_cylinder_j"] / cushion, 1),
+            "cushion_speed_mms": round(v_cushion), "t_cushion_s": t_c,
+            "fits_cushion": bool(t_c is not None and t_c <= window),
+            "shock_speed_mms": round(v_shock), "t_shock_s": shock["t_stroke_s"],
+            "fits_shock": bool(shock["t_stroke_s"] is not None and shock["t_stroke_s"] <= window),
+            "t_down_cushion_s": down["t_stroke_s"],
+            "stroke_that_fits_mm": round(stroke_fit),
+            "binding": "승강" if (t_c is None or t_c > homing) else "원점 복귀"}
+
+
 # ── 진공 유지력 ─────────────────────────────────────────────────────────
 #: 그리퍼 진공 (kPa, 게이지 음압) 과 컵 유효 면적.
 VACUUM_KPA = 60.0
@@ -746,18 +908,30 @@ VACUUM_SAFETY_V = 2.0
 VACUUM_SAFETY_H = 4.0
 
 
-def box_mass_kg(sx: float = 0.30, sz: float = 0.21, h: float = 0.055) -> float:
+#: 정션박스 외형 (m, x·z·높이) — 물리 화면의 박스와 같은 값이고 질량도 여기서 나온다.
+BOX_SIZE_M = (0.30, 0.21, 0.055)
+
+
+def box_volume_l() -> float:
+    return BOX_SIZE_M[0] * BOX_SIZE_M[1] * BOX_SIZE_M[2] * 1000.0
+
+
+def box_mass_kg(sx: float = BOX_SIZE_M[0], sz: float = BOX_SIZE_M[1],
+                h: float = BOX_SIZE_M[2]) -> float:
     """정션박스 질량 — 폴리머 하우징 + 다이오드·리본. 밀도 1,150 kg/m³ 에 충전율 0.45."""
     return sx * sz * h * 1_150.0 * 0.45
 
 
 def vacuum_hold(accel_ms2: float | None = None) -> dict[str, float | bool]:
-    """헤드가 박스를 슈트까지 옮기는 동안 컵이 놓치지 않는가."""
+    """헤드가 박스를 슈트까지 옮기는 동안 컵이 놓치지 않는가.
+
+    기본값은 이송 여섯 구간 중 **최악**(`traverse_check`)이다. REV.59 까지는 가운데
+    박스(−0.04) 의 슈트 이송 1.5 m/s² 를 손으로 셈해 넣고 있었다 — 바깥 박스는
+    2.2 m/s² 다. 수직 조건이 지배해 판정은 안 변했지만, 최악을 안 보는 검산은
+    조건이 바뀌는 순간 거짓 통과가 된다.
+    """
     if accel_ms2 is None:
-        # boxSlide 구간에서 박스를 z 로 옮기는 가속도 (smoothstep 피크).
-        d = abs(SEQUENCE["sinkZ"] - (-0.04)) * 1000.0
-        t = SEQUENCE["boxSlide"][1] - SEQUENCE["boxSlide"][0]
-        accel_ms2 = 6.0 * d / 1000.0 / t ** 2
+        accel_ms2 = traverse_check()["worst"]["a_peak_ms2"]
     m = box_mass_kg()
     area = CUP_COUNT * math.pi / 4.0 * (CUP_DIAMETER_MM * 1e-3) ** 2
     hold_n = VACUUM_KPA * 1000.0 * area
@@ -837,6 +1011,61 @@ def gripper_drop() -> dict[str, object]:
     return drop_reference(sink[0], sink[1])
 
 
+# ── 수거함 채움 — 「비움 주기 미결」을 숫자로 ──────────────────────────────
+#: 수거함 **명목 용량** (L) — 부품표 JB-WH-002 「용량 90 L」. 외형 580×640×480 의 총부피는
+#: 176 L 라, 부품표의 90 은 절반쯤을 쓸 수 있다고 본 값이다. 시험이 통합 설계도 부품표와 대조한다.
+BIN_CAPACITY_L = 90.0
+
+#: 수거함 **안치수** (m, x·z·테두리 높이) — 물리 화면이 통합 설계도 `part('BIN')` 에서 판 두께를
+#: 빼고 낸 값의 거울. 시험이 `build_jbr_physics.scene()["bin"]` 과 대조한다.
+BIN_INNER_M = (0.577, 0.637, 0.48)
+
+#: **물리엔진이 잰 것** — 같은 수거함에 패널을 계속 넣으면 몇 장째에 차는가 (더미가
+#: 테두리에 닿거나 박스가 밖으로 나가는 장의 **앞 장**). 산술은 상한(완전 충전)만 주고,
+#: 실제 쌓임은 굴러 눕는 자세가 정한다. `node tools/check_jbr_bin.mjs` 가 다시 재서
+#: 여기와 대조한다 — **손으로 고치지 말 것.** 엔진이 결정적이라 값이 재현된다.
+#: 투하 자리가 매번 같은 세 줄이라 실제보다 가지런히 쌓인다 — 이 값은 낙관 쪽이다.
+BIN_ENGINE: dict[str, float | int] = {"panels": 13, "boxes": 39, "fill_m": 0.402}
+
+
+def bin_fill() -> dict[str, object]:
+    """수거함이 몇 분마다 차는가.
+
+    부품표는 폭을 1,320 → 640 으로 줄이며 「비움 주기는 미결」이라 적었다. 미결일 이유가
+    없다 — 박스 부피·패널당 개수·처리량이 다 있다. 명목 90 L 를 완전 충전해도 26 개,
+    패널 8.7 장, **72 장/h 에서 7 분**이다. 물리엔진으로 실제로 쌓아 보면 테두리까지
+    13 장(충전율 91 %) — 11 분. 어느 자로 재도 분 단위다. 스토퍼 해제 조건이 「수거함
+    정상」이므로 찬 수거함은 라인을 세운다 — 시간당 대여섯 번에서 여덟 번.
+    """
+    thr = campaign.summary()["throughput_per_h"]
+    per = jf.BOXES_PER_PANEL
+    box_l = box_volume_l()
+    dense_boxes = BIN_CAPACITY_L / box_l
+    dense_panels = dense_boxes / per
+    gross_l = BIN_INNER_M[0] * BIN_INNER_M[1] * BIN_INNER_M[2] * 1000.0
+    gross_panels = gross_l / box_l / per
+
+    def minutes(panels: float) -> float:
+        return panels / thr * 60.0
+
+    eng = BIN_ENGINE["panels"]
+    fill = BIN_ENGINE["fill_m"]
+    packing = (BIN_ENGINE["boxes"] * box_l / 1000.0
+               / (BIN_INNER_M[0] * BIN_INNER_M[1] * fill)) if fill else 0.0
+    return {"capacity_l": BIN_CAPACITY_L, "box_l": round(box_l, 2),
+            "inner_m": BIN_INNER_M, "gross_l": round(gross_l, 1),
+            "throughput_per_h": thr, "boxes_per_panel": per,
+            "dense_boxes": round(dense_boxes, 1), "dense_panels": round(dense_panels, 1),
+            "dense_minutes": round(minutes(dense_panels), 1),
+            "dense_empties_per_h": round(thr / dense_panels, 1),
+            "gross_panels": round(gross_panels, 1),
+            "gross_minutes": round(minutes(gross_panels), 1),
+            "engine_panels": eng, "engine_boxes": BIN_ENGINE["boxes"],
+            "engine_fill_m": fill, "engine_packing": round(packing, 2),
+            "engine_minutes": round(minutes(eng), 1) if eng else None,
+            "engine_empties_per_h": round(thr / eng, 1) if eng else None}
+
+
 # ── 한 판 ───────────────────────────────────────────────────────────────
 def report(working_kn: float = 5.0) -> dict[str, object]:
     """모든 해석을 한 번에 — 도면집과 시험이 같은 함수를 본다."""
@@ -846,8 +1075,11 @@ def report(working_kn: float = 5.0) -> dict[str, object]:
         "modal": bridge_modal(),
         "fatigue": {kn: fatigue_life(kn) for kn in (2.0, 5.0, 15.0)},
         "peel": {kn: peel_dynamics(kn) for kn in (2.0, 5.0, 15.0)},
+        "peel_throttle": peel_throttle(),
+        "lift": lift_budget(),
         "vacuum": vacuum_hold(),
         "buckling": rod_buckling(25.0, 420.0, jf.BLADE_THRUST_KN),
         "hopper_drop": hopper_drop(),
         "gripper_drop": gripper_drop(),
+        "bin": bin_fill(),
     }

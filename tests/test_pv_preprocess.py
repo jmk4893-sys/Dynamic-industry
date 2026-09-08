@@ -2738,6 +2738,78 @@ class TestBrandMark(unittest.TestCase):
         self.assertIn("var h = w * 168 / 512;", self.html)
 
 
+
+class TestTheCraneIsDrawnAtItsSpan(unittest.TestCase):
+    """3D 크레인이 `crane.SPAN_MM` 으로 그려져 있는가.
+
+    **여기가 이 저장소가 가장 경계하는 자리다** — 값은 9,800 인데 그림은
+    8,800 이었다. 페이지 안의 `CRANE.spanMm` 도 9,800 을 싣고 있어서 표는
+    맞고 형상만 틀린 상태라, 표를 읽는 어떤 검사도 이것을 못 봤다.
+    그림에서 후크가 닿는 곳은 ±3,800 인데 설비는 ±4,275 까지 있었다.
+    """
+
+    HTML = DRAWING.read_text(encoding="utf-8")
+
+    def test_the_runway_rails_sit_at_half_the_span(self):
+        from pv_preprocess import crane
+        half = crane.SPAN_MM / 2_000.0                       # mm → m
+        self.assertIn(f"[{-half:g},{half:g}].forEach", self.HTML,
+                      "주행레일 z 가 스팬의 절반이 아니다")
+
+    def test_the_bridge_girder_is_as_long_as_the_span(self):
+        from pv_preprocess import crane
+        span_m = crane.SPAN_MM / 1_000.0
+        self.assertIn(f",{span_m:.2f}]", self.HTML, "브리지 거더 길이가 스팬과 다르다")
+        self.assertIn(f"스팬 {crane.SPAN_MM:,}", self.HTML)
+
+    def test_the_drawn_crane_reaches_the_equipment(self):
+        """그려진 대로의 후크 도달이 설비 폭을 덮는가 — 숫자가 아니라 형상으로."""
+        from pv_preprocess import crane
+        import re
+        # **크레인 블록 안에서만 찾는다** — 같은 꼴의 리터럴이 앞쪽에도 있어
+        # 처음에는 엉뚱한 부재의 z 를 읽고 도달 310 mm 를 냈다.
+        block = self.HTML[self.HTML.index("var pvCrn=new ce;"):]
+        m = re.search(r"\[(-[\d.]+),([\d.]+)\]\.forEach", block)
+        self.assertIsNotNone(m, "주행레일 z 를 그림에서 못 읽었다")
+        drawn_half_mm = float(m.group(2)) * 1_000.0
+        reach = drawn_half_mm - crane.TROLLEY_APPROACH_MM
+        self.assertGreaterEqual(reach, crane.summary()["haulWidthMm"] / 2.0,
+                                "그려진 크레인이 설비 가장자리에 못 닿는다")
+
+
+class TestTheFoundationStepFollowsTheRotation(unittest.TestCase):
+    """BFC 기초 먹줄 지시가 회전 뒤 좌표인가.
+
+    반전축을 Z 로 돌리면 기둥 자리가 x ∓1,600 · z −1,290/+950 에서
+    x −1,290/+950 · z ∓1,600 으로 바뀌고, 비대칭이 공정방향으로 가면서
+    **두 베이가 거울상이 아니게 된다.** 옛 지시대로 먹줄을 놓으면 포탈이
+    90° 돌아앉는다 — 앵커를 심고 나면 되돌릴 수 없는 종류의 오류다.
+    """
+
+    def _step(self):
+        from pv_preprocess import fabrication
+        a = next(a for a in fabrication.ASSEMBLIES if a.tag == "AFU-BFC-101")
+        return next(s for s in a.steps if s.no == 1)
+
+    def test_the_coordinates_match_the_derived_offsets(self):
+        from pv_preprocess import kinematics
+        text = self._step().text
+        offsets = kinematics.column_offsets_xz_mm(1)
+        xs = sorted({o[0] for o in offsets})
+        zs = sorted({o[1] for o in offsets})
+        self.assertEqual(xs, [-1290, 950])
+        self.assertEqual(zs, [-1600, 1600])
+        self.assertIn("x −1,290 / +950", text)
+        self.assertIn("z ∓1,600", text)
+
+    def test_both_bays_use_the_same_positions(self):
+        from pv_preprocess import kinematics
+        self.assertEqual(kinematics.column_offsets_xz_mm(1),
+                         kinematics.column_offsets_xz_mm(-1),
+                         "축이 Z 인데 베이가 거울상이다")
+        self.assertNotIn("Bay A · Bay B 는 거울상", self._step().text)
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
 

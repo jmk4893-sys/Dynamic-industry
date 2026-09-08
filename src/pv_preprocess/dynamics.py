@@ -39,15 +39,17 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from . import drives, fabrication, kinematics
+from . import afr, drives, fabrication, kinematics
 
 # ── 물성 · 접촉 계수 (여기서 처음 적는 값) ──────────────────────────────
 
 #: 중력 가속도 (m/s²).
 G = 9.80665
 
-#: 강재 탄성계수 (GPa) — 포획빔 RHS 의 처짐에 쓴다. KS D 3568 일반구조용 각형강관.
-STEEL_E_GPA = 200.0
+# 강재 탄성계수는 여기서 다시 적지 않는다 — `afr.STEEL_E_MPA` 가 정본이다.
+# 한때 여기에 200 GPa 를 따로 두었는데, `afr` 은 210,000 MPa 였다. 같은 강재에
+# 값이 둘이면 두 모듈이 5 % 다른 답을 내고, 그 차이가 어느 쪽 탓인지 나중에
+# 아무도 모른다 (`telescope.py` 가 통짜 빔 처짐을 견주다 이것을 잡았다).
 
 #: 공기 점성계수 (Pa·s, 20 ℃). 적층에서 한 장을 떼는 저항이 여기서 나온다.
 #:
@@ -383,7 +385,7 @@ def catch_beam_stiffness_n_per_mm() -> float:
     outer = width * depth ** 3
     inner = (width - 2 * t) * (depth - 2 * t) ** 3
     i_mm4 = (outer - inner) / 12.0
-    e = STEEL_E_GPA * 1_000.0                 # GPa → N/mm²
+    e = afr.STEEL_E_MPA                       # 정본은 `afr` 하나다
     tip = 3.0 * e * i_mm4 / length ** 3       # 선단 점하중 강성
     return tip * (8.0 / 3.0) * part.qty
 

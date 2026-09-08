@@ -109,7 +109,8 @@ def numbers() -> dict[str, object]:
     fat = {kn: ja.fatigue_life(kn) for kn in (5.0, 15.0)}
     drop = ja.hopper_drop()
     return {
-        "rev": "REV.57",
+        "rev": "REV.60",
+        "lift": ja.lift_budget(), "bin": ja.bin_fill(), "throttle": ja.peel_throttle(),
         "modal": modal["modes"], "f1": modal["f1_hz"], "f1kind": modal["f1_kind"],
         "closedHz": modal["closed_form_hz"],
         "defl0": fea0["deflection_mm"], "defl5": fea5["deflection_mm"],
@@ -120,8 +121,9 @@ def numbers() -> dict[str, object]:
         "limit": trav["limit_ms2"], "worstG": trav["worst_g"],
         "failing": trav["failing"], "total": trav["total"],
         "budget": budget,
-        "peel": {str(k): {"t": v["t_stroke_s"], "fits": v["fits"],
-                          "steady": v["steady_force_kn"]} for k, v in peel.items()},
+        "peel": {str(k): {"t": v["t_stroke_s"], "slow": v["t_slow_s"], "fits": v["fits"],
+                          "cap": v["speed_cap_mms"], "steady": v["steady_force_kn"]}
+                 for k, v in peel.items()},
         "fatigue": {str(k): {"range": v["range_mpa"], "years": (None if v["infinite_life"]
                                                                 else v["years"])}
                     for k, v in fat.items()},
@@ -337,9 +339,30 @@ const qmulScale = (wq, q, s) => Q.mul(wq, q).map((x) => x * s);
 """
 
 
+#: 페이지에 박는 부동소수의 자릿수. 화면은 2–4 자리만 쓴다.
+STABLE_DECIMALS = 6
+
+
+def stable(obj):
+    """부동소수를 판 사이에서 같은 값으로 — 마지막 비트를 버린다.
+
+    Jacobi 고유치 반복과 오리피스 유량의 거듭제곱은 libm 을 지나므로 파이썬 3.11 과
+    3.12 가 마지막 자릿수에서 갈린다(f1 10.587260070279267 ↔ …07028012). 그대로
+    박으면 「커밋본 == 생성기 출력」 시험이 CI 의 한 판에서만 깨진다 — 실제로 그렇게
+    깨졌다. 6 자리면 화면이 쓰는 정밀도보다 넉넉히 위이고 libm 잡음보다 넉넉히 아래다.
+    """
+    if isinstance(obj, float):
+        return round(obj, STABLE_DECIMALS)
+    if isinstance(obj, dict):
+        return {k: stable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [stable(v) for v in obj]
+    return obj
+
+
 def build() -> str:
-    sc = scene()
-    num = numbers()
+    sc = stable(scene())
+    num = stable(numbers())
     return TEMPLATE.replace("__SCENE__", json.dumps(sc, ensure_ascii=False)) \
                    .replace("__NUM__", json.dumps(num, ensure_ascii=False)) \
                    .replace("__ENGINE__", ENGINE) \
@@ -381,15 +404,50 @@ function reset() {
       world.add(makeStatic([0.025, B.wallH / 2, B.inner[1] / 2], [B.x + B.inner[0] / 2, B.floorY + B.wallH / 2, B.z])),
     ],
   };
-  boxes = S.boxes.map((b, i) => {
+  boxes = spawnBoxes();
+  state = { t: 0, slot: -1, tau: 0, flap: 0, flapWoke: false, bridgeX: S.boxX, released: [], log: [], panel: 1 };
+}
+
+function spawnBoxes() {
+  return S.boxes.map((b, i) => {
     const body = new Body([b.sx / 2, S.boxH / 2, b.sz / 2], S.boxKg,
       [S.boxX, S.panelY + S.boxH / 2, b.z], Q.fromAxis([0, 1, 0], b.angle));
     body.kinematic = true; body.invM = 0;      // 박리 전에는 패널에 붙어 있다
-    body.tag = i; body.held = false; body.landed = null;
+    body.tag = i; body.held = false; body.landed = null; body.isBox = true;
     world.add(body);
     return body;
   });
-  state = { t: 0, slot: -1, tau: 0, flap: 0, flapWoke: false, bridgeX: S.boxX, released: [], log: [] };
+}
+
+/* 다음 패널 — 수거함은 그대로 두고 박스 셋을 새로 붙인다. 채움은 한 장으로는 안 보인다.
+   지난 패널의 박스는 world 에 일반 강체로 남아 다음 것을 받친다. 그래서 「몇 장째에
+   차는가」가 산술(완전 충전)이 아니라 굴러 눕는 자세에서 나온다. */
+function nextPanel() {
+  for (const b of boxes) b.freed = true;
+  boxes = spawnBoxes();
+  state = { t: 0, slot: -1, tau: 0, flap: 0, flapWoke: false, bridgeX: S.boxX,
+            released: [], log: [], panel: state.panel + 1 };
+  hopper.floor.p[1] = S.hopper.floorY - 0.015;
+  world.wake();
+}
+
+/* 수거함 상태 — 안에 몇 개, 가장 높은 꼭짓점이 바닥에서 얼마, 밖으로 나간 것이 있는가.
+   「찼다」는 더미가 테두리 높이에 닿거나 박스가 밖으로 나간 때다. 사이클 끝에 잰다 —
+   도중에 재면 호퍼에 있는 박스가 「밖」으로 센다. */
+function binState() {
+  const B = S.bin;
+  const all = world.bodies.filter((b) => b.isBox && !b.kinematic);
+  let inside = 0, escaped = 0, top = -Infinity;
+  for (const b of all) {
+    const inX = Math.abs(b.p[0] - B.x) <= B.inner[0] / 2;
+    const inZ = Math.abs(b.p[2] - B.z) <= B.inner[1] / 2;
+    const above = b.p[1] > B.floorY - 0.05;
+    if (inX && inZ && above) { inside++; for (const c of b.corners()) top = Math.max(top, c[1]); }
+    else escaped++;
+  }
+  const fill = inside ? Math.max(0, top - B.floorY) : 0;
+  return { panel: state.panel, boxes: all.length, inside, escaped, fillM: fill, wallM: B.wallH,
+           full: escaped > 0 || fill >= B.wallH };
 }
 
 function release(body) {
@@ -511,7 +569,7 @@ TEMPLATE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>JBR-201 물리 시뮬레이션 — 정션박스는 적분된다</title>
-<meta name="description" content="정션박스를 강체로 적분해 호퍼·수거함 거동을 실제로 묻는다. 수치 해석 결과를 같은 화면에 얹었다.">
+<meta name="description" content="정션박스를 강체로 적분해 호퍼·수거함 거동을 실제로 묻는다 — 수거함이 몇 장째에 차는지까지. 수치 해석 결과를 같은 화면에 얹었다.">
 <!-- 이 파일은 손으로 쓰지 않는다.
      생성  : tools/build_jbr_physics.py
      수치  : src/pv_preprocess/jbr_analysis.py -->
@@ -606,6 +664,14 @@ td.num { text-align:right; }
       <h2>칸 예산</h2>
       <dl class="kv" id="budget"></dl>
     </div>
+    <div class="card">
+      <h2>실린더 — 미는 힘이 아니라 멈추는 힘</h2>
+      <dl class="kv" id="cyl"></dl>
+    </div>
+    <div class="card">
+      <h2>수거함 — 비움 주기</h2>
+      <dl class="kv" id="bin"></dl>
+    </div>
   </div>
 </div>
 
@@ -674,15 +740,17 @@ function draw() {
     drawBody(head, over ? red : css('--sheet'), over ? red : ink, over ? 0.35 : 0.9);
   }
 
-  /* 박스 */
-  boxes.forEach((b, i) => {
+  /* 박스 — 지난 패널 것도 수거함 안에 남아 있다 */
+  for (const b of world.bodies) {
+    if (!b.isBox) continue;
     const held = b.kinematic;
     drawBody(b, held ? blue : (b.sleeping ? green : amber), ink, held ? 0.85 : 1);
-  });
+  }
 
   /* 눈금 */
   cx.fillStyle = muted; cx.font = '12px ui-monospace, monospace';
-  cx.fillText(`t = ${state.t.toFixed(2)} s   ·   칸 ${Math.min(state.slot + 1, SCENE.boxes.length)}/${SCENE.boxes.length}   ·   접촉 ${world.impulses}`, 16, 24);
+  const bs = binState();
+  cx.fillText(`t = ${state.t.toFixed(2)} s   ·   패널 ${state.panel}   ·   칸 ${Math.min(state.slot + 1, SCENE.boxes.length)}/${SCENE.boxes.length}   ·   수거함 ${bs.inside} 개 · 채움 ${(bs.fillM * 1000).toFixed(0)}/${(bs.wallM * 1000).toFixed(0)} mm   ·   접촉 ${world.impulses}`, 16, 24);
   cx.fillText(view === 'iso' ? '아이소메트릭 · 1 눈금 = 100 mm' : (view === 'front' ? '정면 Z–높이' : '측면 X–높이'), 16, 42);
 }
 
@@ -724,15 +792,38 @@ function fillStatic() {
     ['필요', `${b.need_s} s`, 'bad'], ['지금 배분', `${b.slot_now_s} s`],
     ['초과', `+${b.over_s} s`, 'bad'], ['한 판', `${b.panel_s} s`],
   ]);
+  const L = NUM.lift, T = NUM.throttle, Bn = NUM.bin;
+  kv(document.getElementById('cyl'), [
+    ['박리 미터아웃 (부품표)', `${T.cap_mms} mm/s ±${(T.tol * 100).toFixed(0)} %`],
+    ['하한 · 2 kN 행정', `${T.low_mms} mm/s · ${T.t_slow_s.toFixed(2)} s / 창 ${T.window_s.toFixed(1)} s`, T.fits ? 'good' : 'bad'],
+    [`창이 요구하는 평균 ${T.need_mms} 에 맞추면`, `${T.t_at_need_s === null ? '미도달' : T.t_at_need_s.toFixed(2) + ' s'}`, T.fits_at_need ? 'good' : 'bad'],
+    ['박리 끝단 · 쿠션', `${T.ke_end_j.toFixed(2)} J / ${T.cushion_j.toFixed(1)} J`, T.cushion_ok ? 'good' : 'bad'],
+    ['승강 교축 없음', `${L.free_t_s.toFixed(2)} s · ${L.free_v_mms} mm/s · 실린더당 ${L.free_ke_per_cylinder_j} J`, 'bad'],
+    ['승강 쿠션 속도', `${L.cushion_speed_mms} mm/s · ${L.t_cushion_s.toFixed(2)} s / 창 ${L.window_s} s`, L.fits_cushion ? 'good' : 'bad'],
+    ['승강 업소버 ' + L.shock_j + ' J', `${L.shock_speed_mms} mm/s · ${L.t_shock_s.toFixed(2)} s`, L.fits_shock ? 'good' : 'bad'],
+    ['Y 원점 복귀', `${L.homing_s} s`, L.homing_fits ? 'good' : 'bad'],
+  ]);
+  kv(document.getElementById('bin'), [
+    ['용량 (부품표)', `${Bn.capacity_l} L · 박스 ${Bn.box_l} L`],
+    ['명목 용량 완전 충전', `${Bn.dense_boxes} 개 = ${Bn.dense_panels} 장 · ${Bn.dense_minutes} 분`, 'bad'],
+    ['기하 상한 (테두리까지)', `${Bn.gross_l} L · ${Bn.gross_panels} 장 · ${Bn.gross_minutes} 분`],
+    ['엔진 실측', Bn.engine_panels ? `${Bn.engine_panels} 장 · ${Bn.engine_boxes} 개 · 채움 ${(Bn.engine_fill_m * 1000).toFixed(0)} mm · 충전율 ${(Bn.engine_packing * 100).toFixed(0)} %` : '측정 전'],
+    ['비움 주기 (실측)', Bn.engine_panels ? `${Bn.engine_minutes} 분 · 시간당 ${Bn.engine_empties_per_h} 회` : '—', Bn.engine_panels ? 'bad' : ''],
+  ]);
   document.getElementById('closing').innerHTML =
     `물리엔진은 자유낙하 닫힌 해와 대조해 검증한다(<code>PH.check()</code>). ` +
-    `호퍼 낙하 ${NUM.drop.v.toFixed(2)} m/s · 충돌에너지 ${NUM.drop.e.toFixed(2)} J · 안정까지 ${NUM.drop.settle.toFixed(2)} s.`;
+    `호퍼 낙하 ${NUM.drop.v.toFixed(2)} m/s · 충돌에너지 ${NUM.drop.e.toFixed(2)} J · 안정까지 ${NUM.drop.settle.toFixed(2)} s. ` +
+    `한 장이 끝나면 수거함을 비우지 않고 다음 장을 넣는다 — 몇 장째에 차는지는 ` +
+    `<code>node tools/check_jbr_bin.mjs</code> 가 같은 엔진으로 재서 <code>jbr_analysis.BIN_ENGINE</code> 과 대조한다.`;
 }
 function fillLive() {
   const a = state.slot < SCENE.boxes.length ? headAccel(state.slot, state.tau) : 0;
   const free = boxes.filter((b) => !b.kinematic).length;
   const asleep = boxes.filter((b) => b.sleeping).length;
+  const bs = binState();
   kv(document.getElementById('live'), [
+    ['패널', `${state.panel}` + (lastFull ? ` (지난 채움: ${lastFull.panel} 장 · ${lastFull.inside} 개)` : '')],
+    ['수거함 안 · 채움', `${bs.inside} 개 · ${(bs.fillM * 1000).toFixed(0)} / ${(bs.wallM * 1000).toFixed(0)} mm`, bs.full ? 'bad' : ''],
     ['시각', `${state.t.toFixed(2)} s`],
     ['칸 · 상대시각', `${Math.min(state.slot + 1, SCENE.boxes.length)} · ${state.tau.toFixed(2)} s`],
     ['헤드 요구 가속도', `${a.toFixed(1)} m/s² (${(a / 9.80665).toFixed(2)} g)`, a > NUM.limit ? 'bad' : 'good'],
@@ -754,6 +845,9 @@ function fillLive() {
 /* ── 운전 ───────────────────────────────────────────────────────────── */
 let playing = true, speed = 0.5, last = performance.now();
 const TOTAL = SCENE.motion.slot * SCENE.boxes.length + 10.0;
+/* 한 장이 끝나면 비우지 않고 다음 장을 넣는다 — 찰 때까지. 그 뒤 처음부터. */
+const MAX_PANELS = 40;
+let lastFull = null;
 reset(); fillStatic();
 
 function frame(now) {
@@ -761,7 +855,11 @@ function frame(now) {
   if (playing) {
     let step = dt * speed;
     while (step > 0) { const s = Math.min(step, 1 / SCENE.fps); advance(s); step -= s; }
-    if (state.t > TOTAL) reset();
+    if (state.t > TOTAL) {
+      const bs = binState();
+      if (bs.full || state.panel >= MAX_PANELS) { lastFull = { panel: state.panel, inside: bs.inside }; reset(); }
+      else nextPanel();
+    }
   }
   draw(); fillLive();
   requestAnimationFrame(frame);
@@ -775,7 +873,7 @@ document.getElementById('view').addEventListener('change', (e) => { view = e.tar
 
 /* 렌더러(Playwright)가 결정적으로 밟을 수 있게 내놓는다. */
 window.PH = {
-  reset, advance, check, draw,
+  reset, advance, check, draw, nextPanel, binState,
   state: () => state,
   bodies: () => boxes.map((b) => ({ p: b.p.slice(), q: b.q.slice(), v: b.v.slice(), w: b.w.slice(), free: !b.kinematic, sleeping: !!b.sleeping })),
   setView: (v) => { view = v; },

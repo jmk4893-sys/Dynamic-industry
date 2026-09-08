@@ -98,7 +98,7 @@ def numbers() -> dict[str, object]:
     depth_lo, depth_hi = gd.fork_depth_window_mm()
     droop_lo, droop_hi = gd.fork_droop_span_mm()
     return {
-        "rev": "REV.60",
+        "rev": "REV.61",
         "forkFree": fork.free_mm, "forkDroop": fork.droop_mm,
         "forkStress": fork.stress_mpa, "forkKg": fork.self_kg, "forkHz": fork.hz,
         "forkDepth": gl.FORK_H_MM, "depthWindow": [depth_lo, depth_hi],

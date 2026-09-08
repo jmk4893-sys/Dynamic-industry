@@ -241,7 +241,7 @@ def main() -> int:
     zones = {z.key: z for z in layout.build_zones()}
     tail = layout.plant_envelope_mm()[0] - zones["afr"].x0_mm
     p.one(r"상세 배치 포락선은 [\d,]+ × [\d,]+ mm",
-          lambda m: f"상세 배치 포락선은 {tail:,} × {layout.MACHINE_BAND_Y_MM:,} mm")
+          lambda m: f"상세 배치 포락선은 {tail:,} × {crane.MACHINE_BAND_MM:,} mm")
 
     # ── AFR CL-221 클램프 포탈 ───────────────────────────────────────────
     # 크로스헤드 하면은 이송면 위에 쌓인 것들의 합이다 (kinematics). 이송면이
@@ -325,6 +325,49 @@ def main() -> int:
     p.one(r'installOrder: \[[^\]]*\]',
           lambda m: "installOrder: ["
           + ", ".join('"' + k + '"' for k in crane.install_order()) + "]")
+
+    # 브리지 스팬 — `crane.SPAN_MM` 이 정본이다.
+    #
+    # 베이스가 8,800 → 9,800 으로 옮길 때 3D 형상과 주행거더 문구는 따라왔는데
+    # **카탈로그 넷은 8,800 에 남았다** (`grep 스팬` 이 6 대 2 로 갈려 있었다).
+    # 값 하나가 여덟 곳에 손으로 적혀 있으면 언제든 다시 갈린다 — 여기서 찍는다.
+    # 후크 도달거리도 같은 값에서 나온다 (스팬/2 − 트롤리 접근).
+    _span, _reach = crane.SPAN_MM, crane.hook_reach_z_mm()
+    _tor = crane.summary()["railTopMm"]
+    p.one(r"\[-[\d.]+,[\d.]+\]\.forEach\(function \(z, i\) \{\n  L\(\[[\d.]+,\.40,\.20\]",
+          lambda m: f"[-{_span / 2000:g},{_span / 2000:g}].forEach(function (z, i) {{\n"
+                    f"  L([{crane.RUNWAY_MM / 1000:.2f},.40,.20]")
+    p.one(r"L\(\[\.30,\.70,[\d.]+\],\[BX,11\.10,0\],M\.frame,'CRN-901 브리지 거더 \(스팬 [\d,]+\)'",
+          lambda m: f"L([.30,.70,{_span / 1000:.2f}],[BX,11.10,0],M.frame,"
+                    f"'CRN-901 브리지 거더 (스팬 {_span:,})'")
+    p.one(r"요구값\(TOR·스팬 [\d,]+·주행 반력\)",
+          lambda m: f"요구값(TOR·스팬 {_span:,}·주행 반력)")
+    p.one(r"건물 측 요구값은 주행레일 상면 [\d,]+ · 스팬 [\d,]+ 이다\.",
+          lambda m: f"건물 측 요구값은 주행레일 상면 {_tor:,} · 스팬 {_span:,} 이다.")
+    p.one(r'"브리지 거더·주행 엔드트럭 \(스팬 [\d,]+\)","1식",\[\d+,700,300\]',
+          lambda m: f'"브리지 거더·주행 엔드트럭 (스팬 {_span:,})","1식",[{_span},700,300]')
+    p.one(r"스팬 [\d,]+ 은 장비 밴드 [\d,]+ 을 후크가 끝까지 덮는 값이다 — "
+          r"트롤리 끝단 접근 [\d,]+ 을 빼면 후크가 ±[\d,]+ 까지 간다\.",
+          lambda m: f"스팬 {_span:,} 은 장비 밴드 {crane.MACHINE_BAND_MM:,} 을 후크가 "
+                    f"끝까지 덮는 값이다 — 트롤리 끝단 접근 "
+                    f"{crane.TROLLEY_APPROACH_MM:,} 을 빼면 후크가 ±{_reach:,} 까지 간다.")
+    p.one(r'\["CRN-901 브리지 거더 \(스팬 [\d,]+\)"',
+          lambda m: f'["CRN-901 브리지 거더 (스팬 {_span:,})"')
+    # 도면 본문 서술도 같은 값에서 낸다 — 여기가 마지막 8,800 두 곳이었다.
+    p.one(r"스팬 [\d,]+ 은 장비 밴드\([\d,]+\)를 후크가 끝까지 덮어야 나오는 값이다",
+          lambda m: f"스팬 {_span:,} 은 장비 밴드({crane.MACHINE_BAND_MM:,})를 "
+                    f"후크가 끝까지 덮어야 나오는 값이다")
+    p.one(r"요구하는 값\(TOR [\d,]+ · 스팬 [\d,]+\)",
+          lambda m: f"요구하는 값(TOR {_tor:,} · 스팬 {_span:,})")
+
+    # ── JBR 박리 실린더 속도 — `jbr_fabrication` 이 정본이다 ─────────────
+    # `tests/test_pv_jbr_analysis` 가 "부품표가 원본" 이라며 도면을 읽어 모델과
+    # 견주는데, 정작 도면 쪽 숫자는 손으로 적혀 있었다. 시험이 갈림을 **잡기는**
+    # 했지만 잡히는 것과 따라오는 것은 다른 일이다 — 여기서 찍는다.
+    from pv_preprocess import jbr_fabrication as _jf
+    p.one(r'("JB-HD-002".{0,300}?"속도 )\d+( mm/s ±)\d+(%")',
+          lambda m: f"{m.group(1)}{_jf.PEEL_SPEED_MMS:g}{m.group(2)}"
+                    f"{_jf.PEEL_SPEED_TOL * 100:g}{m.group(3)}")
 
     # ── 스마트 시설 — 위치는 배선 모델이 존에서 파생한다 ───────────────
     # 데이터량·태그 수는 서보 축 수의 함수다 (REV.49 에서 셔틀 X 축 2 가 빠지며

@@ -27,6 +27,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from pv_preprocess import fabrication as fab  # noqa: E402
 from pv_preprocess import campaign, fasteners, handoff, jbr_fabrication as jf, mounting  # noqa: E402
+from pv_preprocess import jbr_analysis as ja  # noqa: E402
 
 PLANT = (ROOT / "docs/drawings/pv-preprocess-plant.html").read_text(encoding="utf-8")
 SHEET = ROOT / "docs/drawings/pv-jbr-fab.html"
@@ -355,8 +356,27 @@ class TestJbrReview(unittest.TestCase):
                        "이 값은 정상 범위다",
                        "상용 제거기는 이 축을 공압 실린더로 민다",
                        "정반이 패널보다 작다 — 다만 헤드는 이제 정반 안에 선다",
-                       "브리지 소견도 매다는 것을 줄여서 풀렸다"):
+                       "브리지 소견도 매다는 것을 줄여서 풀렸다",
+                       # REV.60 — 다시 풀어서 나온 것
+                       "미터아웃을 창이 요구하는 값에 맞추면 여유가 0 이다",
+                       "승강은 미는 힘이 아니라 멈추는 힘에 걸린다",
+                       "미결일 이유가 없었다"):
             self.assertIn(phrase, self.html, f"소견이 사라졌다: {phrase}")
+
+    def test_the_sheet_no_longer_says_the_bin_overflows(self):
+        """9.4 의 「540 을 30 mm 넘는다」는 REV.59 에서 뒤집힌 소견이었다 — 도면집이 낡아 있었다."""
+        self.assertNotIn("540 을 30 mm 넘는다</b>", self.html)
+        self.assertIn("mm 여유</b>", self.html)
+        self.assertNotIn("패널당 4.0 s 순차 창", self.html)
+        self.assertIn("패널당 7.0 s 순차 칸", self.html)
+
+    def test_the_sheet_states_the_throttle_and_the_bin_period_in_numbers(self):
+        pt = ja.peel_throttle()
+        self.assertIn(f'{pt["cap_mms"]:g} mm/s ±{pt["tol"]:.0%}', self.html)
+        self.assertIn(f'{pt["t_at_need_s"]:.2f} s</b> — 창을 넘는다', self.html)
+        b = ja.bin_fill()
+        self.assertIn(f'{b["engine_panels"]} 장 · {b["engine_boxes"]} 개', self.html)
+        self.assertIn(f'<b>{b["dense_minutes"]:g} 분</b>', self.html)
 
     def test_the_detail_sheet_states_why_the_blade_cannot_be_thin(self):
         """철회한 소견의 흔적이 남지 않았는지, 그리고 이유가 적혔는지."""
