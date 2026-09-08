@@ -22,6 +22,7 @@
 import { chromium } from 'playwright';
 import { resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
+import { browserPath } from './pw_browser.mjs';
 
 /* 판이 앉는 평면 — `tools/build_casing.py` 가 casing.py 에서 찍는다.
  * 검사기가 자기 값을 따로 들면 모델과 갈라진다. */
@@ -46,6 +47,7 @@ const AISLE_Z = 3.55;         // 통로 시작 (월드 z) — layout.MACHINE_BAN
 const AISLE_W = 1.20;
 
 const browser = await chromium.launch({
+  executablePath: browserPath(),
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
