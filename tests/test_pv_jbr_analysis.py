@@ -254,20 +254,29 @@ class TestWhatTheAnalysisFound(unittest.TestCase):
         self.assertTrue(ja.peel_dynamics(2.0)["fits"])
         self.assertFalse(ja.peel_dynamics(5.0)["fits"])
 
-    def test_three_boxes_fanned_at_the_design_pitch_overflow_the_narrowed_bin(self):
-        """**수거함을 1,320 → 640 으로 줄인 대가가 여기서 나온다.**
+    def test_three_boxes_fanned_at_the_design_pitch_fit_the_bin_read_from_the_plant(self):
+        """**소견이 뒤집혔다 — 그리고 이 시험이 그것을 못 잡았었다.**
 
-        설계는 호퍼 안에서 박스를 z 로 180 mm 씩 벌려 눕힌다. 세 개가 차지하는 폭은
-        180×2 + 박스 깊이라 수거함 안폭 540 을 넘는다. 물리 시뮬레이션에서 바깥
-        두 개가 테두리를 물었고, 그 원인이 이 산술이다.
+        REV.57 물리 화면은 수거함 안깊이를 손으로 540 이라 적었고, 부채꼴 570 이 그것을
+        30 mm 넘어 바깥 두 박스가 테두리를 물었다. REV.59 에서 원본 `part('BIN')`(640)
+        에서 읽게 고치자 3/3 이 들어갔다. 그런데 이 시험은 REV.60 까지 `inner = 0.54`
+        리터럴을 스스로 들고 「넘는다」를 계속 단언하고 있었다 — 거울이 아니라
+        리터럴을 든 시험은 원본이 바뀌어도 초록이다. 이제 물리 화면이 원본에서 낸
+        값을 그대로 쓴다.
         """
-        fan, inner = 0.18, 0.54
-        depths = (0.21, 0.22, 0.21)
-        zs = [(i - 1) * fan for i in range(3)]
+        import sys
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "tools"))
+        import build_jbr_physics as bjp
+        sc = bjp.scene()
+        fan = bjp.REST_FAN_M
+        depths = [b["sz"] for b in sc["boxes"]]
+        zs = [(i - 1) * fan for i in range(len(depths))]
         span = max(z + d / 2 for z, d in zip(zs, depths)) \
             - min(z - d / 2 for z, d in zip(zs, depths))
-        self.assertGreater(span, inner)
-        self.assertAlmostEqual((span - inner) * 1000.0, 30.0, places=6)
+        inner = sc["bin"]["inner"][1]
+        self.assertLess(span, inner)
+        self.assertAlmostEqual((inner - span) * 1000.0, 67.0, places=6)
+        self.assertGreater(inner, 0.54, "540 은 손으로 옮긴 값이었다 — 부품표는 640 이다")
 
     def test_the_vacuum_cups_hold_now_that_the_motion_is_feasible(self):
         """진공은 애초에 문제가 아니었다 — 운동식이 6.9 g 를 부르던 것이 문제였다.
@@ -279,6 +288,143 @@ class TestWhatTheAnalysisFound(unittest.TestCase):
         self.assertTrue(v["ok"], f"여유 {v['margin']}")
         self.assertGreater(v["margin"], 1.0)
         self.assertLessEqual(v["accel_ms2"], ja.AXIS_ACCEL_LIMIT_MS2 + 1e-9)
+
+
+class TestWhatTheSecondPassFound(unittest.TestCase):
+    """REV.60 — 같은 해석을 현재 판에 다시 걸었더니 나온 것.
+
+    베이스의 OI-05 가 투입 쪽에서 「미는 힘이 아니라 멈추는 힘」을 냈다. 같은 물음을
+    이 셀의 실린더 둘에 던졌고, 「비움 주기 미결」은 물리엔진으로 쌓아 숫자로 만들었다.
+    """
+
+    def test_the_speed_cap_holds_the_piston(self):
+        """미터아웃의 1 차 모형 — 속도를 그 값에서 붙들고, 시간은 행정÷속도 + 시동이다."""
+        r = ja.cylinder_dynamics(80.0, 360.0, 0.5, 0.0, v_cap_mms=300.0)
+        self.assertAlmostEqual(r["v_peak_mms"], 300.0, places=6)
+        self.assertAlmostEqual(r["v_end_mms"], 300.0, places=6)
+        self.assertAlmostEqual(r["t_stroke_s"], 360.0 / 300.0, delta=0.05)
+        free = ja.cylinder_dynamics(80.0, 360.0, 0.5, 0.0)
+        self.assertGreater(free["v_peak_mms"], 3_000.0, "교축 없는 Ø80 은 무부하에서 3 m/s 를 넘는다")
+
+    def test_the_throttle_the_bom_chose_could_not_meet_its_own_window(self):
+        """**부품표가 스스로 정한 225 mm/s 는 창이 요구하는 평균값이었다 — 여유 0.**
+
+        REV.59 까지 JB-HD-002 는 「메터아웃 225 mm/s」였고, 해석은 교축을 안 읽고 풀어
+        「0.85 s · 여유 0.75 s」라 답했다. 설정을 창이 요구하는 값에 그대로 두면 시동
+        지연이 초과분이 되고, 공차 하한 −10 % 에서는 창을 넘는다. 300 ±10 % 는 하한
+        270 에서 2 kN 부하로 1.35 s 에 끝나고 끝단 0.54 J 로 쿠션 안이다.
+        """
+        pt = ja.peel_throttle()
+        self.assertAlmostEqual(pt["need_mms"], 225.0, places=6)
+        self.assertFalse(pt["fits_at_need"], "창이 요구하는 평균에 설정을 맞추면 하한에서 넘쳐야 한다")
+        self.assertGreater(pt["t_at_need_s"], pt["window_s"])
+        self.assertEqual(pt["cap_mms"], jf.PEEL_SPEED_MMS)
+        self.assertTrue(pt["fits"])
+        self.assertGreater(pt["slack_s"], 0.2)
+        self.assertTrue(pt["cushion_ok"])
+        self.assertLess(pt["ke_end_j"], pt["cushion_j"])
+        # 옛 설정 그대로 넣으면 지금도 같은 답이다 — 되돌리면 여기서 걸린다.
+        old = ja.peel_dynamics(2.0, speed_cap_mms=225.0)
+        self.assertFalse(old["fits"])
+        self.assertTrue(old["fits_nominal"] is False or old["t_stroke_s"] > 1.6 - 1e-9)
+
+    def test_the_peel_verdict_is_taken_at_the_slow_end_of_the_tolerance(self):
+        d = ja.peel_dynamics(2.0)
+        self.assertGreater(d["t_slow_s"], d["t_stroke_s"])
+        self.assertAlmostEqual(d["speed_low_mms"], jf.PEEL_SPEED_MMS * (1 - jf.PEEL_SPEED_TOL), places=6)
+        self.assertEqual(d["fits"], d["t_slow_s"] <= d["window_s"])
+
+    def test_the_lift_is_limited_by_stopping_not_pushing(self):
+        """**힘이 남는다는 답은 맞지만, 남는 힘은 가속이 된다.**
+
+        `lift_check` 이용률 0.59 — 그 여유가 420 행정 끝에 188 kg 을 1 m/s 넘게 밀어
+        보낸다. 실린더당 에너지가 표준 쿠션(Ø63 ≈ 2.5 J, 가정)의 수십 배다. 쿠션이
+        먹는 속도로 조이면 상승이 창 1.8 s 를 넘고, 업소버면 든다. 손잡이는 힘이 아니라
+        행정이나 완충이다 — 상승량이 모델에 없어 여기서 정하지 않는다.
+        """
+        lb = ja.lift_budget()
+        self.assertGreater(lb["free_over_cushion"], 10.0)
+        self.assertLess(lb["free_t_s"], lb["window_s"], "힘으로는 창 안이다 — 문제는 힘이 아니다")
+        self.assertFalse(lb["fits_cushion"], "쿠션 속도로 조이면 창을 넘어야 한다 — 든다면 소견이 닫힌 것이다")
+        self.assertGreater(lb["t_cushion_s"], lb["homing_s"])
+        self.assertEqual(lb["binding"], "승강")
+        self.assertTrue(lb["fits_shock"])
+        self.assertLess(lb["stroke_that_fits_mm"], jf.LIFT_STROKE_MM)
+        self.assertTrue(lb["homing_fits"])
+        self.assertAlmostEqual(lb["homing_s"], 1.59, places=2)
+
+    def test_the_cushion_assumption_is_shared_with_the_infeed_side(self):
+        """같은 가정을 두 벌 두지 않는다 — 저쪽이 카탈로그 값으로 바뀌면 여기도 바뀐다."""
+        from pv_preprocess import catch
+        self.assertAlmostEqual(ja.cushion_allow_j(40.0), catch.CUSHION_ALLOW_J, places=9)
+        self.assertAlmostEqual(ja.cushion_allow_j(80.0), 4.0 * catch.CUSHION_ALLOW_J, places=9)
+        self.assertEqual(ja.SHOCK_ABSORBER_J, catch.SHOCK_ABSORBER_J)
+
+    def test_the_bin_fills_in_minutes_not_shifts(self):
+        """**「비움 주기 미결」은 미결일 이유가 없었다.**
+
+        명목 90 L 를 완전 충전해도 8.7 장 · 7 분이고, 물리엔진으로 쌓으면 13 장 · 11 분이다.
+        스토퍼 해제 조건이 「수거함 정상」이라 찬 수거함은 라인을 세운다 — 시간당
+        대여섯 번에서 여덟 번. 어느 자로 재도 손잡이로 인출하는 수거함의 주기가 아니다.
+        """
+        b = ja.bin_fill()
+        self.assertLess(b["dense_minutes"], 10.0)
+        self.assertGreater(b["dense_empties_per_h"], 6.0)
+        self.assertGreater(b["engine_panels"], 0, "물리엔진 실측이 비어 있다 — node tools/check_jbr_bin.mjs")
+        self.assertLess(b["engine_minutes"], 15.0)
+        self.assertGreaterEqual(b["engine_panels"], b["dense_panels"], "명목 90 L 는 보수적인 값이어야 한다")
+        self.assertLessEqual(b["engine_panels"], b["gross_panels"], "기하 상한을 넘으면 박스가 관통한 것이다")
+        self.assertGreater(b["engine_packing"], 0.5)
+        self.assertLess(b["engine_packing"], 1.0)
+
+    def test_the_bin_capacity_mirror_matches_the_plant(self):
+        import re
+        text = PLANT.read_text(encoding="utf-8")
+        m = re.search(r'"JB-WH-002".{0,300}?"용량 (\d+) L"', text)
+        self.assertIsNotNone(m, "통합 설계도 부품표에서 JB-WH-002 용량을 못 찾았다")
+        self.assertEqual(float(m.group(1)), ja.BIN_CAPACITY_L)
+
+    def test_the_bin_inner_mirror_matches_the_physics_scene(self):
+        import sys
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "tools"))
+        import build_jbr_physics as bjp
+        sc = bjp.scene()["bin"]
+        self.assertAlmostEqual(ja.BIN_INNER_M[0], sc["inner"][0], places=4)
+        self.assertAlmostEqual(ja.BIN_INNER_M[1], sc["inner"][1], places=4)
+        self.assertAlmostEqual(ja.BIN_INNER_M[2], sc["wallH"], places=4)
+
+    def test_the_speed_mirror_matches_the_plant(self):
+        """부품표 JB-HD-002 의 미터아웃 설정은 통합 설계도 부품표가 원본이다."""
+        import re
+        text = PLANT.read_text(encoding="utf-8")
+        m = re.search(r'"JB-HD-002".{0,300}?"속도 (\d+) mm/s ±(\d+)%"', text)
+        self.assertIsNotNone(m, "통합 설계도 부품표에서 JB-HD-002 속도를 못 찾았다")
+        self.assertEqual(float(m.group(1)), jf.PEEL_SPEED_MMS)
+        self.assertAlmostEqual(float(m.group(2)) / 100.0, jf.PEEL_SPEED_TOL, places=9)
+        spec = next(c for c in jf.commercial() if c.tag == "JB-HD-002").spec
+        self.assertIn(f"{jf.PEEL_SPEED_MMS:g} mm/s", spec)
+
+    def test_the_homing_window_mirror_matches_the_plant(self):
+        import re
+        text = PLANT.read_text(encoding="utf-8")
+        m = re.search(r'\{name:"헤드 z 원점 복귀·승강 상승[^}]*?start:([\d.]+),end:([\d.]+)\}', text)
+        self.assertIsNotNone(m, "스테이지 표에서 원점 복귀·승강 상승 구간을 못 찾았다")
+        self.assertAlmostEqual(float(m.group(2)) - float(m.group(1)), ja.HOME_WINDOW_S, places=6)
+
+    def test_fatigue_counts_panels_at_the_campaign_takt(self):
+        """48.47 리터럴이 REV.59 의 택트 48.59 위에서 낡아 있었다 — 이제 같이 움직인다."""
+        from pv_preprocess import campaign
+        takt = campaign.summary()["takt_s"]
+        self.assertAlmostEqual(ja.panels_per_year(), 3600.0 / takt * 8_000.0, places=6)
+        self.assertEqual(ja.fatigue_life(5.0)["panels_per_year"], ja.panels_per_year())
+
+    def test_vacuum_is_checked_at_the_worst_move(self):
+        """가운데 박스 1.5 m/s² 가 아니라 바깥 박스 2.2 m/s² 다 — 최악을 안 보는 검산은 거짓 통과다."""
+        v = ja.vacuum_hold()
+        worst = ja.traverse_check()["worst"]["a_peak_ms2"]
+        self.assertAlmostEqual(v["accel_ms2"], round(worst, 2), places=2)
+        self.assertGreater(v["accel_ms2"], 2.0)
+        self.assertTrue(v["ok"])
 
 
 if __name__ == "__main__":

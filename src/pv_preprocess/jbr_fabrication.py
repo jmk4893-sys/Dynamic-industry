@@ -194,6 +194,14 @@ JAM_TRIP_KN = BLADE_THRUST_KN
 #: 전부 이 값에 매달리는데 비어 있다. 채워지면 여기만 고치면 된다.
 WORKING_PEEL_KN: float | None = None
 
+#: 박리 실린더 **미터아웃 설정** (mm/s) 과 공차 — 부품표 JB-HD-002 · 통합 설계도 부품표.
+#: 창 1.6 s 에 행정 360 은 평균 225 mm/s 를 요구한다. REV.59 까지 설정이 바로 그 225 였다
+#: — 여유가 0 이고, 공차 하한(−10 %)에서는 무부하로도 창을 넘는다
+#: (`jbr_analysis.peel_throttle`). 300 은 하한 270 에서 2 kN 부하로 1.36 s 에 끝나고
+#: 끝단 0.54 J 로 Ø80 쿠션 안이다. 위로 올릴수록 끝단 에너지가 오르므로 쿠션이 상한이다.
+PEEL_SPEED_MMS = 300.0
+PEEL_SPEED_TOL = 0.10
+
 
 def peel_axis_check(stroke_mm: float, seconds: float) -> dict[str, float | bool]:
     """박리축이 그 행정을 그 시간에 낼 수 있는가 — 힘을 빼고 회전수만 본다."""
@@ -695,8 +703,9 @@ _hd_parts = (
          note="전원이 나가도 잡은 박스를 놓지 않는다 — 놓으면 유리 위로 떨어진다"),
 )
 _hd_commercial = (
-    Commercial("JB-HD-002", "Ø80 박리 공압 실린더", "복동 · 행정 360 · 쿠션 · 메터아웃 속도제어 225 mm/s", 1,
-               "상용 제거기와 같은 구성 — 0.5–0.6 MPa 에서 2.5–3.0 kN"),
+    Commercial("JB-HD-002", "Ø80 박리 공압 실린더",
+               f"복동 · 행정 360 · 쿠션 · 메터아웃 속도제어 {PEEL_SPEED_MMS:g} mm/s ±{PEEL_SPEED_TOL:.0%}", 1,
+               "상용 제거기와 같은 구성 — 0.5–0.6 MPa 에서 2.5–3.0 kN. 설정은 창이 요구하는 평균 225 위에 둔다"),
     Commercial("JB-HD-005", "20 kN 인라인 로드셀", "STS17-4PH · 교정 성적서 · 15 kN 공정창 감시", 1),
     Commercial("JB-HD-013", "진공컵·체크밸브", "실리콘 벨로즈 Ø90 · 체크밸브", 1),
     Commercial("JB-HD-014", "Z 변위센서", "±8 범위 · 분해능 0.01", 1),
