@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>JBR-201 물리 시뮬레이션 — 정션박스는 적분된다</title>
-<meta name="description" content="정션박스를 강체로 적분해 호퍼·수거함 거동을 실제로 묻는다. 수치 해석 결과를 같은 화면에 얹었다.">
+<meta name="description" content="정션박스를 강체로 적분해 호퍼·수거함 거동을 실제로 묻는다 — 수거함이 몇 장째에 차는지까지. 수치 해석 결과를 같은 화면에 얹었다.">
 <!-- 이 파일은 손으로 쓰지 않는다.
      생성  : tools/build_jbr_physics.py
      수치  : src/pv_preprocess/jbr_analysis.py -->
@@ -57,7 +57,7 @@ td.num { text-align:right; }
 <body>
 <main class="page">
 <header>
-  <div class="eyebrow">DYNAMIC INDUSTRY · JBR-201 · 물리 시뮬레이션 · ENGINEERING BASE REV.57</div>
+  <div class="eyebrow">DYNAMIC INDUSTRY · JBR-201 · 물리 시뮬레이션 · ENGINEERING BASE REV.60</div>
   <h1>정션박스는 적분된다 — 운전 영상이 못 묻는 것을 묻는다</h1>
   <p class="lede">3D 운전 영상은 시각을 주면 자세를 돌려주는 <b>보간</b>이다. 그래서 어떤 가속도든 부드럽게 재생된다.
   이 화면에서 기구(헤드·그리퍼·브리지·호퍼)는 여전히 운동식이 정하지만, <b>정션박스는 중력·접촉·마찰·반발을 받는 강체</b>다.
@@ -99,6 +99,14 @@ td.num { text-align:right; }
       <h2>칸 예산</h2>
       <dl class="kv" id="budget"></dl>
     </div>
+    <div class="card">
+      <h2>실린더 — 미는 힘이 아니라 멈추는 힘</h2>
+      <dl class="kv" id="cyl"></dl>
+    </div>
+    <div class="card">
+      <h2>수거함 — 비움 주기</h2>
+      <dl class="kv" id="bin"></dl>
+    </div>
   </div>
 </div>
 
@@ -107,7 +115,7 @@ td.num { text-align:right; }
 
 <script>
 const SCENE = {"fps": 60, "substeps": 4, "motion": {"slot": 7.0, "slotFrom": 20.0, "sinkZ": -1.05, "shear": [2.5, 4.1], "openWide": 0.62, "openShut": 0.26, "place": [0.0, 2.0], "boxLift": [4.7, 4.9], "boxSlide": [4.9, 6.9], "sinkY": [1.175, 1.075]}, "discharge": {"highY": 1.075, "restY": 0.155}, "boxes": [{"z": -0.5, "sx": 0.3, "sz": 0.21, "angle": -0.018}, {"z": -0.04, "sx": 0.32, "sz": 0.22, "angle": 0.012}, {"z": 0.42, "sx": 0.29, "sz": 0.21, "angle": -0.009}], "boxH": 0.05499999999999994, "boxX": 0.28, "restFanM": 0.18, "panelY": 1.12, "hopper": {"z": -1.05, "floorY": 1.0474999999999999, "inner": [0.62, 0.6], "wallH": 0.1}, "bin": {"x": -1.55, "z": -1.05, "floorY": 0.105, "inner": [0.577, 0.637], "wallH": 0.48}, "boxKg": 1.7931375, "restitution": 0.28, "friction": 0.45, "g": 9.80665};
-const NUM = {"rev": "REV.57", "modal": [{"mode": 1, "f_hz": 10.59, "kind": "sway"}, {"mode": 2, "f_hz": 35.09, "kind": "bending"}, {"mode": 3, "f_hz": 229.28, "kind": "bending"}, {"mode": 4, "f_hz": 291.83, "kind": "sway"}], "f1": 10.587260070279267, "f1kind": "sway", "closedHz": 33.3, "defl0": 0.16267034448200787, "defl5": 0.6699412546930418, "datum": 0.1, "traverse": [{"kind": "배치", "box": 1, "d": 500.0, "t": 2.0, "a": 0.75, "g": 0.07647871597334462, "over": 0.3, "ok": true}, {"kind": "슈트 이송", "box": 1, "d": 550.0, "t": 2.0, "a": 0.8250000000000001, "g": 0.08412658757067909, "over": 0.33, "ok": true}, {"kind": "배치", "box": 2, "d": 1010.0, "t": 2.0, "a": 1.5150000000000001, "g": 0.15448700626615616, "over": 0.6060000000000001, "ok": true}, {"kind": "슈트 이송", "box": 2, "d": 1010.0, "t": 2.0, "a": 1.5150000000000001, "g": 0.15448700626615616, "over": 0.6060000000000001, "ok": true}, {"kind": "배치", "box": 3, "d": 1470.0, "t": 2.0, "a": 2.205, "g": 0.2248474249616332, "over": 0.882, "ok": true}, {"kind": "슈트 이송", "box": 3, "d": 1470.0, "t": 2.0, "a": 2.205, "g": 0.2248474249616332, "over": 0.882, "ok": true}], "limit": 2.5, "worstG": 0.2248474249616332, "failing": 0, "total": 6, "budget": {"limit_ms2": 2.5, "slot_now_s": 7.0, "t_place_s": 1.88, "t_grip_s": 0.5, "t_fixed_s": 2.7, "t_slide_s": 1.88, "need_s": 6.96, "over_s": -0.04, "fits": true, "panel_s": 20.87}, "peel": {"2.0": {"t": 0.8531999999999387, "fits": true, "steady": 2.5132741228718345}, "5.0": {"t": null, "fits": false, "steady": 2.5132741228718345}}, "fatigue": {"5.0": {"range": 17.93868908293766, "years": null}, "15.0": {"range": 51.53940586640755, "years": 29.709461580509664}}, "drop": {"v": 4.247850750673804, "t": 0.43316022807725413, "e": 16.177898115225, "settle": 0.7700626276928962}, "slot": 7.0, "boxes": 3};
+const NUM = {"rev": "REV.60", "lift": {"window_s": 1.8, "homing_s": 1.59, "homing_fits": true, "moving_kg": 188.5, "count": 2, "stroke_mm": 420.0, "cushion_j": 2.48, "shock_j": 20.0, "free_t_s": 0.4877999999999789, "free_v_mms": 1215, "free_ke_per_cylinder_j": 69.6, "free_over_cushion": 28.1, "cushion_speed_mms": 229, "t_cushion_s": 1.8617999999998276, "fits_cushion": false, "shock_speed_mms": 651, "t_shock_s": 0.7111999999999543, "fits_shock": true, "t_down_cushion_s": 1.8385999999998301, "stroke_that_fits_mm": 411, "binding": "승강"}, "bin": {"capacity_l": 90.0, "box_l": 3.47, "inner_m": [0.577, 0.637, 0.48], "gross_l": 176.4, "throughput_per_h": 72.0, "boxes_per_panel": 3, "dense_boxes": 26.0, "dense_panels": 8.7, "dense_minutes": 7.2, "dense_empties_per_h": 8.3, "gross_panels": 17.0, "gross_minutes": 14.1, "engine_panels": 13, "engine_boxes": 39, "engine_fill_m": 0.471, "engine_packing": 0.78, "engine_minutes": 10.8, "engine_empties_per_h": 5.5}, "throttle": {"working_kn": 2.0, "stroke_mm": 360.0, "window_s": 1.5999999999999996, "need_mms": 225.0, "cap_mms": 300.0, "tol": 0.1, "low_mms": 270.0, "t_at_need_s": 1.8057999999998338, "fits_at_need": false, "t_s": 1.2295999999998972, "t_slow_s": 1.3625999999998826, "fits": true, "slack_s": 0.237, "ke_end_j": 0.54, "cushion_j": 4.0, "cushion_ok": true, "free_run_v_mms": 3742, "free_run_ke_j": 84.0}, "modal": [{"mode": 1, "f_hz": 10.59, "kind": "sway"}, {"mode": 2, "f_hz": 35.09, "kind": "bending"}, {"mode": 3, "f_hz": 229.28, "kind": "bending"}, {"mode": 4, "f_hz": 291.83, "kind": "sway"}], "f1": 10.587260070279267, "f1kind": "sway", "closedHz": 33.3, "defl0": 0.16267034448200787, "defl5": 0.6699412546930418, "datum": 0.1, "traverse": [{"kind": "배치", "box": 1, "d": 500.0, "t": 2.0, "a": 0.75, "g": 0.07647871597334462, "over": 0.3, "ok": true}, {"kind": "슈트 이송", "box": 1, "d": 550.0, "t": 2.0, "a": 0.8250000000000001, "g": 0.08412658757067909, "over": 0.33, "ok": true}, {"kind": "배치", "box": 2, "d": 1010.0, "t": 2.0, "a": 1.5150000000000001, "g": 0.15448700626615616, "over": 0.6060000000000001, "ok": true}, {"kind": "슈트 이송", "box": 2, "d": 1010.0, "t": 2.0, "a": 1.5150000000000001, "g": 0.15448700626615616, "over": 0.6060000000000001, "ok": true}, {"kind": "배치", "box": 3, "d": 1470.0, "t": 2.0, "a": 2.205, "g": 0.2248474249616332, "over": 0.882, "ok": true}, {"kind": "슈트 이송", "box": 3, "d": 1470.0, "t": 2.0, "a": 2.205, "g": 0.2248474249616332, "over": 0.882, "ok": true}], "limit": 2.5, "worstG": 0.2248474249616332, "failing": 0, "total": 6, "budget": {"limit_ms2": 2.5, "slot_now_s": 7.0, "t_place_s": 1.88, "t_grip_s": 0.5, "t_fixed_s": 2.7, "t_slide_s": 1.88, "need_s": 6.96, "over_s": -0.04, "fits": true, "panel_s": 20.87}, "peel": {"2.0": {"t": 1.2295999999998972, "slow": 1.3625999999998826, "fits": true, "cap": 300.0, "steady": 2.5132741228718345}, "5.0": {"t": null, "slow": null, "fits": false, "cap": 300.0, "steady": 2.5132741228718345}}, "fatigue": {"5.0": {"range": 17.93868908293766, "years": null}, "15.0": {"range": 51.53940586640755, "years": 29.783015023663392}}, "drop": {"v": 4.247850750673804, "t": 0.43316022807725413, "e": 16.177898115225, "settle": 0.7700626276928962}, "slot": 7.0, "boxes": 3};
 
 /* ── 강체 물리 — 임펄스 기반, 고정 시간각, 결정적 ─────────────────────────
  *
@@ -347,15 +355,50 @@ function reset() {
       world.add(makeStatic([0.025, B.wallH / 2, B.inner[1] / 2], [B.x + B.inner[0] / 2, B.floorY + B.wallH / 2, B.z])),
     ],
   };
-  boxes = S.boxes.map((b, i) => {
+  boxes = spawnBoxes();
+  state = { t: 0, slot: -1, tau: 0, flap: 0, flapWoke: false, bridgeX: S.boxX, released: [], log: [], panel: 1 };
+}
+
+function spawnBoxes() {
+  return S.boxes.map((b, i) => {
     const body = new Body([b.sx / 2, S.boxH / 2, b.sz / 2], S.boxKg,
       [S.boxX, S.panelY + S.boxH / 2, b.z], Q.fromAxis([0, 1, 0], b.angle));
     body.kinematic = true; body.invM = 0;      // 박리 전에는 패널에 붙어 있다
-    body.tag = i; body.held = false; body.landed = null;
+    body.tag = i; body.held = false; body.landed = null; body.isBox = true;
     world.add(body);
     return body;
   });
-  state = { t: 0, slot: -1, tau: 0, flap: 0, flapWoke: false, bridgeX: S.boxX, released: [], log: [] };
+}
+
+/* 다음 패널 — 수거함은 그대로 두고 박스 셋을 새로 붙인다. 채움은 한 장으로는 안 보인다.
+   지난 패널의 박스는 world 에 일반 강체로 남아 다음 것을 받친다. 그래서 「몇 장째에
+   차는가」가 산술(완전 충전)이 아니라 굴러 눕는 자세에서 나온다. */
+function nextPanel() {
+  for (const b of boxes) b.freed = true;
+  boxes = spawnBoxes();
+  state = { t: 0, slot: -1, tau: 0, flap: 0, flapWoke: false, bridgeX: S.boxX,
+            released: [], log: [], panel: state.panel + 1 };
+  hopper.floor.p[1] = S.hopper.floorY - 0.015;
+  world.wake();
+}
+
+/* 수거함 상태 — 안에 몇 개, 가장 높은 꼭짓점이 바닥에서 얼마, 밖으로 나간 것이 있는가.
+   「찼다」는 더미가 테두리 높이에 닿거나 박스가 밖으로 나간 때다. 사이클 끝에 잰다 —
+   도중에 재면 호퍼에 있는 박스가 「밖」으로 센다. */
+function binState() {
+  const B = S.bin;
+  const all = world.bodies.filter((b) => b.isBox && !b.kinematic);
+  let inside = 0, escaped = 0, top = -Infinity;
+  for (const b of all) {
+    const inX = Math.abs(b.p[0] - B.x) <= B.inner[0] / 2;
+    const inZ = Math.abs(b.p[2] - B.z) <= B.inner[1] / 2;
+    const above = b.p[1] > B.floorY - 0.05;
+    if (inX && inZ && above) { inside++; for (const c of b.corners()) top = Math.max(top, c[1]); }
+    else escaped++;
+  }
+  const fill = inside ? Math.max(0, top - B.floorY) : 0;
+  return { panel: state.panel, boxes: all.length, inside, escaped, fillM: fill, wallM: B.wallH,
+           full: escaped > 0 || fill >= B.wallH };
 }
 
 function release(body) {
@@ -526,15 +569,17 @@ function draw() {
     drawBody(head, over ? red : css('--sheet'), over ? red : ink, over ? 0.35 : 0.9);
   }
 
-  /* 박스 */
-  boxes.forEach((b, i) => {
+  /* 박스 — 지난 패널 것도 수거함 안에 남아 있다 */
+  for (const b of world.bodies) {
+    if (!b.isBox) continue;
     const held = b.kinematic;
     drawBody(b, held ? blue : (b.sleeping ? green : amber), ink, held ? 0.85 : 1);
-  });
+  }
 
   /* 눈금 */
   cx.fillStyle = muted; cx.font = '12px ui-monospace, monospace';
-  cx.fillText(`t = ${state.t.toFixed(2)} s   ·   칸 ${Math.min(state.slot + 1, SCENE.boxes.length)}/${SCENE.boxes.length}   ·   접촉 ${world.impulses}`, 16, 24);
+  const bs = binState();
+  cx.fillText(`t = ${state.t.toFixed(2)} s   ·   패널 ${state.panel}   ·   칸 ${Math.min(state.slot + 1, SCENE.boxes.length)}/${SCENE.boxes.length}   ·   수거함 ${bs.inside} 개 · 채움 ${(bs.fillM * 1000).toFixed(0)}/${(bs.wallM * 1000).toFixed(0)} mm   ·   접촉 ${world.impulses}`, 16, 24);
   cx.fillText(view === 'iso' ? '아이소메트릭 · 1 눈금 = 100 mm' : (view === 'front' ? '정면 Z–높이' : '측면 X–높이'), 16, 42);
 }
 
@@ -576,15 +621,38 @@ function fillStatic() {
     ['필요', `${b.need_s} s`, 'bad'], ['지금 배분', `${b.slot_now_s} s`],
     ['초과', `+${b.over_s} s`, 'bad'], ['한 판', `${b.panel_s} s`],
   ]);
+  const L = NUM.lift, T = NUM.throttle, Bn = NUM.bin;
+  kv(document.getElementById('cyl'), [
+    ['박리 미터아웃 (부품표)', `${T.cap_mms} mm/s ±${(T.tol * 100).toFixed(0)} %`],
+    ['하한 · 2 kN 행정', `${T.low_mms} mm/s · ${T.t_slow_s.toFixed(2)} s / 창 ${T.window_s.toFixed(1)} s`, T.fits ? 'good' : 'bad'],
+    [`창이 요구하는 평균 ${T.need_mms} 에 맞추면`, `${T.t_at_need_s === null ? '미도달' : T.t_at_need_s.toFixed(2) + ' s'}`, T.fits_at_need ? 'good' : 'bad'],
+    ['박리 끝단 · 쿠션', `${T.ke_end_j.toFixed(2)} J / ${T.cushion_j.toFixed(1)} J`, T.cushion_ok ? 'good' : 'bad'],
+    ['승강 교축 없음', `${L.free_t_s.toFixed(2)} s · ${L.free_v_mms} mm/s · 실린더당 ${L.free_ke_per_cylinder_j} J`, 'bad'],
+    ['승강 쿠션 속도', `${L.cushion_speed_mms} mm/s · ${L.t_cushion_s.toFixed(2)} s / 창 ${L.window_s} s`, L.fits_cushion ? 'good' : 'bad'],
+    ['승강 업소버 ' + L.shock_j + ' J', `${L.shock_speed_mms} mm/s · ${L.t_shock_s.toFixed(2)} s`, L.fits_shock ? 'good' : 'bad'],
+    ['Y 원점 복귀', `${L.homing_s} s`, L.homing_fits ? 'good' : 'bad'],
+  ]);
+  kv(document.getElementById('bin'), [
+    ['용량 (부품표)', `${Bn.capacity_l} L · 박스 ${Bn.box_l} L`],
+    ['명목 용량 완전 충전', `${Bn.dense_boxes} 개 = ${Bn.dense_panels} 장 · ${Bn.dense_minutes} 분`, 'bad'],
+    ['기하 상한 (테두리까지)', `${Bn.gross_l} L · ${Bn.gross_panels} 장 · ${Bn.gross_minutes} 분`],
+    ['엔진 실측', Bn.engine_panels ? `${Bn.engine_panels} 장 · ${Bn.engine_boxes} 개 · 채움 ${(Bn.engine_fill_m * 1000).toFixed(0)} mm · 충전율 ${(Bn.engine_packing * 100).toFixed(0)} %` : '측정 전'],
+    ['비움 주기 (실측)', Bn.engine_panels ? `${Bn.engine_minutes} 분 · 시간당 ${Bn.engine_empties_per_h} 회` : '—', Bn.engine_panels ? 'bad' : ''],
+  ]);
   document.getElementById('closing').innerHTML =
     `물리엔진은 자유낙하 닫힌 해와 대조해 검증한다(<code>PH.check()</code>). ` +
-    `호퍼 낙하 ${NUM.drop.v.toFixed(2)} m/s · 충돌에너지 ${NUM.drop.e.toFixed(2)} J · 안정까지 ${NUM.drop.settle.toFixed(2)} s.`;
+    `호퍼 낙하 ${NUM.drop.v.toFixed(2)} m/s · 충돌에너지 ${NUM.drop.e.toFixed(2)} J · 안정까지 ${NUM.drop.settle.toFixed(2)} s. ` +
+    `한 장이 끝나면 수거함을 비우지 않고 다음 장을 넣는다 — 몇 장째에 차는지는 ` +
+    `<code>node tools/check_jbr_bin.mjs</code> 가 같은 엔진으로 재서 <code>jbr_analysis.BIN_ENGINE</code> 과 대조한다.`;
 }
 function fillLive() {
   const a = state.slot < SCENE.boxes.length ? headAccel(state.slot, state.tau) : 0;
   const free = boxes.filter((b) => !b.kinematic).length;
   const asleep = boxes.filter((b) => b.sleeping).length;
+  const bs = binState();
   kv(document.getElementById('live'), [
+    ['패널', `${state.panel}` + (lastFull ? ` (지난 채움: ${lastFull.panel} 장 · ${lastFull.inside} 개)` : '')],
+    ['수거함 안 · 채움', `${bs.inside} 개 · ${(bs.fillM * 1000).toFixed(0)} / ${(bs.wallM * 1000).toFixed(0)} mm`, bs.full ? 'bad' : ''],
     ['시각', `${state.t.toFixed(2)} s`],
     ['칸 · 상대시각', `${Math.min(state.slot + 1, SCENE.boxes.length)} · ${state.tau.toFixed(2)} s`],
     ['헤드 요구 가속도', `${a.toFixed(1)} m/s² (${(a / 9.80665).toFixed(2)} g)`, a > NUM.limit ? 'bad' : 'good'],
@@ -606,6 +674,9 @@ function fillLive() {
 /* ── 운전 ───────────────────────────────────────────────────────────── */
 let playing = true, speed = 0.5, last = performance.now();
 const TOTAL = SCENE.motion.slot * SCENE.boxes.length + 10.0;
+/* 한 장이 끝나면 비우지 않고 다음 장을 넣는다 — 찰 때까지. 그 뒤 처음부터. */
+const MAX_PANELS = 40;
+let lastFull = null;
 reset(); fillStatic();
 
 function frame(now) {
@@ -613,7 +684,11 @@ function frame(now) {
   if (playing) {
     let step = dt * speed;
     while (step > 0) { const s = Math.min(step, 1 / SCENE.fps); advance(s); step -= s; }
-    if (state.t > TOTAL) reset();
+    if (state.t > TOTAL) {
+      const bs = binState();
+      if (bs.full || state.panel >= MAX_PANELS) { lastFull = { panel: state.panel, inside: bs.inside }; reset(); }
+      else nextPanel();
+    }
   }
   draw(); fillLive();
   requestAnimationFrame(frame);
@@ -627,7 +702,7 @@ document.getElementById('view').addEventListener('change', (e) => { view = e.tar
 
 /* 렌더러(Playwright)가 결정적으로 밟을 수 있게 내놓는다. */
 window.PH = {
-  reset, advance, check, draw,
+  reset, advance, check, draw, nextPanel, binState,
   state: () => state,
   bodies: () => boxes.map((b) => ({ p: b.p.slice(), q: b.q.slice(), v: b.v.slice(), w: b.w.slice(), free: !b.kinematic, sleeping: !!b.sleeping })),
   setView: (v) => { view = v; },

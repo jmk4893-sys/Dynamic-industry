@@ -29,6 +29,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import build_infeed_fab as bif  # noqa: E402  — 그리는 코드를 빌려 온다
 import build_jbr_closeup as bjc  # noqa: E402  — 운동식·칼날 사양 파서를 빌려 온다
+import build_jbr_physics as bjp  # noqa: E402  — 수거함 안치수·부채꼴은 물리 화면과 같은 값이어야 한다
 from pv_preprocess import campaign, fabrication as fab, handoff  # noqa: E402
 from pv_preprocess import jbr_analysis as ja
 from pv_preprocess import jbr_fabrication as jf  # noqa: E402
@@ -154,6 +155,7 @@ def findings() -> str:
     takt = campaign.summary()["takt_s"]
     mass_mark = '<b class="ok">안</b>' if m["ok"] else '<b class="bad">초과</b>'
     lift_mark = '<b class="ok">가능</b>' if lc["ok"] else '<b class="bad">부족</b>'
+    lb = ja.lift_budget()
     rows = [[esc(c["name"]), esc(c["bolt"]), f'{c["need_mm"]:g} mm', f'{c["slack_mm"]:+g} mm',
              '<b class="ok">넘음</b>' if c["ok"] else '<b class="bad">짧다</b>']
             for c in jf.anchor_check()]
@@ -221,6 +223,19 @@ def findings() -> str:
           '일</b>이라, 로드락 용량은 위 표의 「로드락 1 개당」으로 따로 확인해야 한다. '
           '부품표에 카운터밸런스(스프링·평형추·압력 회로)가 없다 — 있었다면 실린더가 동적 몫만 '
           '맡으면 되므로 이 표가 통째로 달라진다. <b>의도에 있었는지가 미결이다.</b></div>'
+        + f'<div class="note warn"><b>승강은 미는 힘이 아니라 멈추는 힘에 걸린다 (REV.60).</b> '
+          f'이용률 {lc["utilisation"]:g} 은 힘이 남는다는 뜻이고, 남는 힘은 그대로 가속이 된다. 챔버 충전을 '
+          f'시간 적분하면(9.5 절) {jf.LIFT_STROKE_MM:g} 행정 끝에 {n(lb["moving_kg"])} kg 이 '
+          f'{lb["free_v_mms"] / 1000:.2f} m/s 로 닿는다 — 실린더당 <b>{lb["free_ke_per_cylinder_j"]:g} J</b>, '
+          f'부품표가 적은 표준 쿠션(Ø{jf.LIFT_BORE_MM:g} ≈ {lb["cushion_j"]:g} J, 가정)의 '
+          f'<b>{lb["free_over_cushion"]:g} 배</b>다. 쿠션이 먹는 속도 {lb["cushion_speed_mms"]} mm/s 로 '
+          f'조이면 상승이 <b>{lb["t_cushion_s"]:.2f} s</b> — 스테이지가 원점 복귀와 함께 준 창 '
+          f'{lb["window_s"]:g} s 를 넘는다(Y 원점 복귀 {lb["homing_s"]:g} s 와 병행이라도 이제 관문은 '
+          f'승강이다). 하강도 같다 — 자중이 가세하므로 조이지 않으면 더 빠르고, 조이면 '
+          f'{lb["t_down_cushion_s"]:.2f} s 다. 손잡이는 힘이 아니라 <b>행정</b>(하드스톱 JB-MZ-003 으로 '
+          f'{lb["stroke_that_fits_mm"]} mm 이하)이거나 <b>업소버</b>({lb["shock_j"]:g} J 급 두 본이면 '
+          f'{lb["shock_speed_mms"]} mm/s 까지 허용돼 {lb["t_shock_s"]:.2f} s)다. '
+          f'<b>여기서 어느 쪽인지 정하지 않는다</b> — 필요한 상승량이 모델에 없다.</div>'
     )
 
 
@@ -264,7 +279,8 @@ def review() -> str:
         f'급속 이송과 고추력 절삭은 최적점이 반대라 한 드라이브로 둘 다 못 한다. '
         f'REV.57 에서 순차로 바뀌며 박리 창이 6.0 → {n(V["shear_s"])} s 로 줄어 <b>모순이 더 '
         f'커졌다</b> — 같은 45.0 s 안에 세 번 밀어야 하기 때문이다. 공압은 이 자리에서 '
-        f'문제가 되지 않는다: {n(V["stroke_mm"] / V["shear_s"])} mm/s 는 실린더 통상 범위 안이다.</div>')
+        f'문제가 되지 않는다: 창이 요구하는 평균 {n(V["stroke_mm"] / V["shear_s"])} mm/s 는 실린더 통상 범위 '
+        f'안이다 — 다만 미터아웃 설정은 그 위에 있어야 한다(6.7 절).</div>')
     out.append(
         f'<div class="note warn"><b>움직이는 동안에는 {jf.JAM_TRIP_KN:g} kN 임계가 트립되지 않는다.</b> '
         f'{pa["v_mean_mms"]:g} mm/s 에서 이 구동계가 낼 수 있는 최대 힘은 '
@@ -311,7 +327,7 @@ def review() -> str:
     out.append(
         f'<div class="note"><b>상용 제거기는 이 축을 공압 실린더로 민다.</b> 그렇게 보면 '
         f'6.5·6.6 절의 모순이 파라미터 문제가 아니라 <b>구동 방식 선택 문제</b>로 바뀐다. '
-        f'속도 {n(V["stroke_mm"] / V["shear_s"])} mm/s 는 공압 통상 범위(100–500) 안이고, '
+        f'창이 요구하는 평균 {n(V["stroke_mm"] / V["shear_s"])} mm/s 는 공압 통상 범위(100–500) 안이고, '
         f'절입은 POM 기준 슈가 기계적으로 잡으므로 <b>축에 위치 제어가 필요 없다</b>. '
         f'무엇보다 <b>볼스크루 수명은 하중의 3 제곱에 걸리지만 실린더 수명은 주행거리에 '
         f'걸린다</b> — 작업력을 ±30 % 안에서 모르는 상태(노화 폐패널이라 분포다)에서 이 차이가 '
@@ -326,6 +342,18 @@ def review() -> str:
         f'짧아졌고, 공기도 {n(pneu[1]["air_nl_h"])} NL/h 로 세 배다. 실린더는 소모품이므로 '
         f'교환 주기가 <b>보전 계획에 들어가야 하는 값</b>이 됐다 — 헤드 Y 축도 같은 이유로 '
         f'주행거리가 늘었다(레일 2,020 → 2,300, JB-MY-001).</div>')
+    pt = ja.peel_throttle()
+    out.append(
+        f'<div class="note warn"><b>미터아웃을 창이 요구하는 값에 맞추면 여유가 0 이다 (REV.60).</b> '
+        f'REV.59 까지 부품표 JB-HD-002 는 {pt["need_mms"]:g} mm/s 로 조여 두었다 — 그 값은 '
+        f'{n(pt["stroke_mm"])} mm ÷ {pt["window_s"]:.1f} s, 곧 창이 요구하는 <b>평균</b>이다. 설정은 상한이라 '
+        f'시동 지연(챔버 충전)이 그대로 초과분이 되고, 공차 하한 −{pt["tol"]:.0%} 에서는 2 kN 부하로 '
+        f'<b>{pt["t_at_need_s"]:.2f} s</b> — 창을 넘는다. 교축을 풀면 반대쪽이 터진다: 무부하 자유주행은 '
+        f'{pt["free_run_v_mms"] / 1000:.1f} m/s · {pt["free_run_ke_j"]:g} J 로 접착 가장자리를 때리고 끝단에 '
+        f'닿는다(9.4 절). 그래서 설정을 <b>{pt["cap_mms"]:g} mm/s ±{pt["tol"]:.0%}</b> 로 올렸다 — 하한 '
+        f'{pt["low_mms"]:g} 에서 2 kN 부하로 {pt["t_slow_s"]:.2f} s(여유 {pt["slack_s"]:.2f} s), 끝단 '
+        f'{pt["ke_end_j"]:g} J 로 Ø80 쿠션(≈{pt["cushion_j"]:g} J, 가정) 안이다. <b>이 값은 두 상한 사이에 '
+        f'있어야 한다</b> — 창이 아래를, 쿠션이 위를 정한다.</div>')
     out.append('<h3>6.8 지지 — 패널이 정반 위에 다 올라가는가</h3>')
     out.append(table(["항목", "값"], [
         ["패널", f'{n(campaign.PANEL_LENGTH_MM)} × {n(campaign.PANEL_WIDTH_MM)} mm'],
@@ -480,28 +508,77 @@ def numerical() -> str:
                f'예측이 아니다.</div>')
 
     out.append("<h3>9.4 실린더·로드·낙하</h3>")
+    sc = bjp.scene()
+    lb = ja.lift_budget()
+    fan_mm = (2 * bjp.REST_FAN_M + max(b["sz"] for b in sc["boxes"])) * 1000.0
+    bin_in_mm = sc["bin"]["inner"][1] * 1000.0
     rows = []
     for kn in (2.0, 5.0):
         d = ja.peel_dynamics(kn)
         rows.append([f"박리 {kn:g} kN", f'{d["steady_force_kn"]:.2f} kN',
                      "미도달" if d["t_stroke_s"] is None else f'{d["t_stroke_s"]:.2f} s',
-                     f'{d["window_s"]:.1f} s', "든다" if d["fits"] else "<b>안 든다</b>"])
-    out.append(table(["케이스", "정상힘", "행정 시간", "박리 창", "창 안"], rows))
+                     "미도달" if d["t_slow_s"] is None else f'{d["t_slow_s"]:.2f} s',
+                     f'{d["window_s"]:.1f} s', "든다" if d["fits"] else "<b>안 든다</b>",
+                     "—" if d["t_stroke_s"] is None else f'{d["ke_end_j"]:.2f} J'])
+    out.append(table(["케이스", "정상힘", f'행정 시간 (미터아웃 {jf.PEEL_SPEED_MMS:g})',
+                      f'하한 {jf.PEEL_SPEED_MMS * (1 - jf.PEEL_SPEED_TOL):g}', "박리 창", "창 안 (하한)", "끝단"], rows))
     out.append(f'<div class="note">P·A 는 정상상태 힘이다. 챔버가 차기 전에는 그 힘이 없으므로 '
                f'짧은 행정을 빨리 내야 하는 축에서는 <b>충전시간이 관문</b>이 된다. '
                f'Ø80·0.5 MPa 는 {rows[0][1]} 이라 그보다 큰 작업력에서는 행정을 아예 못 낸다 — '
                f'보어 선정이 「작업력 &lt; 2.5 kN」을 전제하고 있다는 뜻이고, 그 전제는 아직 '
-               f'실측되지 않았다.</div>')
+               f'실측되지 않았다. REV.60 부터 이 표는 부품표의 미터아웃을 얹고 <b>공차 하한에서</b> '
+               f'판정한다 — 교축 없이 풀던 REV.59 의 「0.85 s · 여유 0.75 s」는 부품표가 조여 둔 '
+               f'실린더의 값이 아니었다(6.7 절).</div>')
     out.append(table(["항목", "값"],
                      [["로드 좌굴 (Ø25 · 자유장 420)",
                        f'{buck["mode"]} · P<sub>cr</sub> {buck["p_cr_kn"]} kN · 안전율 {buck["safety"]}'],
                       ["호퍼 → 수거함 낙하", f'{drop["drop_m"]:.2f} m · 충돌 {drop["impact_v_ms"]:.2f} m/s · '
                                        f'{drop["impact_energy_j"]:.2f} J · 안정 {drop["t_settle_s"]:.2f} s'],
-                      ["부채꼴 3 개가 차지하는 폭", "570 mm · <b>수거함 안폭 540 을 30 mm 넘는다</b>"]]))
-    out.append('<div class="note">마지막 줄은 물리 시뮬레이션이 먼저 드러냈다 — 바깥 두 박스가 '
-               '수거함 테두리를 물었고, 원인을 되짚으니 180 mm 부채꼴 × 3 + 박스 깊이가 '
-               '<b>수거함을 1,320 → 640 으로 줄인 폭</b>을 넘는 산술이었다. '
+                      ["부채꼴 3 개가 차지하는 폭",
+                       f'{fan_mm:.0f} mm · 수거함 안깊이 {bin_in_mm:.0f} 에 <b>{bin_in_mm - fan_mm:.0f} mm 여유</b>']]))
+    out.append('<div class="note">마지막 줄은 한때 「540 을 30 mm 넘는다」였다 — 물리 화면이 수거함 '
+               '안깊이를 손으로 540 이라 적어 둔 값이었고 부품표는 640 이다(REV.59 에서 원본 '
+               '<span class="mono">part(\'BIN\')</span> 에서 읽게 고쳤다). 물리 시뮬레이션이 그 40 mm 를 먼저 '
+               '잡았다 — 바깥 두 박스가 테두리를 물었다. 지금은 3/3 이 들어간다. '
                '<span class="mono">docs/drawings/pv-jbr-physics.html</span> 에서 돌려 볼 수 있다.</div>')
+
+    out.append("<h3>9.5 승강 — 미는 힘이 아니라 멈추는 힘</h3>")
+    out.append(table(["구성", "상승 시간", "끝단 속도", "실린더당 에너지", f'창 {lb["window_s"]:g} s'], [
+        ["교축 없음 (부품표 그대로)", f'{lb["free_t_s"]:.2f} s', f'{lb["free_v_mms"]} mm/s',
+         f'<b>{lb["free_ke_per_cylinder_j"]:g} J</b> — 쿠션 {lb["cushion_j"]:g} J 의 {lb["free_over_cushion"]:g} 배', "든다"],
+        [f'쿠션 등급에 맞춘 미터아웃 {lb["cushion_speed_mms"]} mm/s', f'<b>{lb["t_cushion_s"]:.2f} s</b>',
+         f'{lb["cushion_speed_mms"]} mm/s', f'{lb["cushion_j"]:g} J', "든다" if lb["fits_cushion"] else "<b>안 든다</b>"],
+        [f'업소버 {lb["shock_j"]:g} J 두 본 · {lb["shock_speed_mms"]} mm/s', f'{lb["t_shock_s"]:.2f} s',
+         f'{lb["shock_speed_mms"]} mm/s', f'{lb["shock_j"]:g} J', "든다" if lb["fits_shock"] else "<b>안 든다</b>"],
+        [f'쿠션 속도로 {lb["stroke_that_fits_mm"]} mm 행정 (하드스톱)', f'{lb["window_s"]:g} s', "—", f'{lb["cushion_j"]:g} J', "꽉 찬다"],
+    ]))
+    out.append(f'<div class="note">Y 원점 복귀는 축 한계 smoothstep 으로 {lb["homing_s"]:g} s 다 — 같은 창 안에서 '
+               f'병행하지만, 쿠션에 맞춰 조이면 승강이 더 길어 <b>관문이 {lb["binding"]}</b>이다. '
+               f'REV.59 가 「실측 하나」로 남긴 원점 복귀 1.8 s 의 공압 몫은 이렇게 갈린다: 힘으로는 '
+               f'{lb["free_t_s"]:.2f} s 면 되지만 그 속도로는 닿을 수 없다. 6.4 절과 같은 자리다.</div>')
+
+    bf = ja.bin_fill()
+    out.append("<h3>9.6 수거함 — 「비움 주기 미결」을 숫자로</h3>")
+    eng = (f'{bf["engine_panels"]} 장 · {bf["engine_boxes"]} 개 · 채움 {bf["engine_fill_m"] * 1000:.0f} mm '
+           f'(충전율 {bf["engine_packing"]:.0%}) — <b>{bf["engine_minutes"]:g} 분</b> 마다 · '
+           f'시간당 {bf["engine_empties_per_h"]:g} 회'
+           if bf["engine_panels"] else "측정 전 (<span class='mono'>node tools/check_jbr_bin.mjs</span>)")
+    out.append(table(["항목", "값"], [
+        ["수거함 명목 용량 (부품표 JB-WH-002)", f'{bf["capacity_l"]:g} L — 안치수 총부피 {bf["gross_l"]:g} L 의 절반쯤'],
+        ["박스 한 개", f'{bf["box_l"]:g} L · 패널당 {bf["boxes_per_panel"]} 개'],
+        ["처리량", f'{bf["throughput_per_h"]:g} 장/h'],
+        ["명목 용량 완전 충전", f'{bf["dense_boxes"]:g} 개 = {bf["dense_panels"]:g} 장 = <b>{bf["dense_minutes"]:g} 분</b> 마다 · '
+                          f'시간당 {bf["dense_empties_per_h"]:g} 회'],
+        ["기하 상한 (테두리까지 완전 충전)", f'{bf["gross_panels"]:g} 장 = {bf["gross_minutes"]:g} 분'],
+        ["물리엔진 실측 (굴러 눕는 자세 그대로)", eng],
+    ]))
+    out.append('<div class="note warn"><b>미결일 이유가 없었다.</b> 박스 부피·패널당 개수·처리량이 다 있다. '
+               f'명목 용량을 완전 충전한다는 낙관으로 {bf["dense_minutes"]:g} 분, 물리엔진으로 실제로 쌓아 '
+               f'{bf["engine_minutes"]:g} 분 — 어느 자로 재도 <b>분 단위</b>다(엔진은 투하 자리가 매번 같아 '
+               '실제보다 가지런히 쌓이므로 낙관 쪽이다). 스토퍼 해제 조건이 「수거함 정상」이라 찬 수거함은 '
+               '라인을 세운다 — 시간당 대여섯 번에서 여덟 번. 손잡이·캐스터로 전면 인출하는 수거함이 이 주기를 '
+               '받을 수는 없다. 답은 운영이 아니라 <b>기구</b>다: 반출 컨베이어, 큰 수거함(폭을 줄인 자리에 '
+               '깊이를 더 준다), 또는 두 개를 번갈아 쓰는 자리. 어느 쪽인지는 여기서 정하지 않는다.</div>')
     return "".join(out)
 
 
@@ -537,19 +614,28 @@ def open_items() -> str:
          "Ø80 주행 수명이 1.6–3.9 년으로 <b>소모품이 됐다</b>. 교환 주기와 예비품 수량이 "
          "보전 계획에 들어가야 하고, 헤드 Y 축(레일 2,300)도 같은 이유로 주행거리가 늘었다.",
          "6.7 절"],
-        ["<b>패널당 4.0 s 순차 창이 가정이다</b>",
-         "박스 하나에 Y 이송 0.7 → 포획 0.5 → 박리 1.6 → 유지 0.2 → 재개방 0.4 → 이탈 0.2 → "
-         "슈트 이송 0.3 → 투하 0.1 로 잡아 45.0 s 안에 세 번을 넣었다. 이 배분은 "
-         "<b>실측이 아니라 배정</b>이다 — 벤치에서 박리 시간이 1.6 s 를 넘으면 셀 사이클타임이 "
-         "먼저 깨진다.", "6.5 절 · 3D 운동식"],
+        ["<b>패널당 7.0 s 순차 칸이 배정이다</b>",
+         "박스 하나에 Y 이송 2.0 → 포획 0.5 → 박리 1.6 → 유지·재개방 0.6 → 상승 0.2 → "
+         "슈트 이송 2.0 → 투하 0.1 로 잡아 20–41 s 안에 세 번을 넣었다(REV.58 에서 4.0 → 7.0 — "
+         "이송이 축 한계를 넘고 있었다). 이 배분은 <b>실측이 아니라 배정</b>이다 — 벤치에서 박리 "
+         "시간이 1.6 s 를 넘으면 셀 사이클타임이 먼저 깨진다. 미터아웃 하한에서 2 kN 이 1.35 s 라 "
+         "여유는 0.25 s 뿐이다(6.7 절).", "6.5 절 · 3D 운동식"],
         ["<b>정반이 패널보다 작다</b>",
          "정반 1,900×1,200 대 패널 2,500×1,400 — X 300 · Z 100 mm/측이 받쳐지지 않는다. "
          "헤드가 정반 밖에서 누르던 절반은 1 헤드로 없어졌다. 프레임 지지를 전제로 삼는다면 "
          "그 전제를 도면에 적어야 한다.", "6.8 절"],
-        ["<b>수거함 용량이 반이 됐다</b>",
+        ["<b>수거함 용량이 반이 됐다 — 7 분마다 찬다</b>",
          "순차 배출은 박스를 한 줄로 내므로 광폭이 필요 없어져 1,320 → 640 mm 로 줄였다. "
-         "용량이 180 → 90 L 라 <b>비움 주기가 두 배로 잦아진다</b> — 무인 운전 시간과 "
-         "맞는지는 운영 계획이 정할 값이다.", "JB-WH-002"],
+         f"용량 90 L 는 완전 충전으로도 {ja.bin_fill()['dense_panels']:g} 장, 72 장/h 에서 "
+         f"<b>{ja.bin_fill()['dense_minutes']:g} 분</b>이다(9.6 절). 찬 수거함은 인터록이 라인을 세우므로 "
+         "「운영 계획」으로 받을 주기가 아니다 — 반출 컨베이어·큰 수거함·교대 자리 중 하나가 기구로 "
+         "들어와야 한다.", "JB-WH-002 · 9.6 절"],
+        ["<b>승강 완충</b>",
+         f"Ø{jf.LIFT_BORE_MM:g} 두 개는 힘이 남고, 남는 힘은 가속이 된다 — 교축 없이는 실린더당 "
+         f"{ja.lift_budget()['free_ke_per_cylinder_j']:g} J 로 닿아 표준 쿠션의 "
+         f"{ja.lift_budget()['free_over_cushion']:g} 배다. 쿠션 속도로 조이면 창 1.8 s 를 넘는다. 행정을 "
+         "하드스톱으로 줄일지 업소버를 달지는 필요한 상승량이 정한다 — 그 값이 모델에 없다.",
+         "6.4 절 · 9.5 절"],
         ["<b>브리지 임시 호퍼 플랩</b>",
          "순차가 새로 요구한 부품(JB-WH-008). 헤드는 한 번에 하나만 들므로 놓을 자리가 있어야 "
          "하고, 없으면 박스마다 브리지를 슈트까지 왕복시켜야 한다. 플랩 구동·열림 확인 2 점과 "
