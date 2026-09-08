@@ -47,6 +47,8 @@ TARGETS: dict[str, tuple[pathlib.Path, pathlib.Path]] = {
                 pathlib.Path("out/pv-jbr-fab-artifact.html")),
     "jbr-hub": (pathlib.Path("docs/drawings/pv-jbr-hub.html"),
                 pathlib.Path("out/pv-jbr-hub-artifact.html")),
+    "jbr-physics": (pathlib.Path("docs/drawings/pv-jbr-physics.html"),
+                    pathlib.Path("out/pv-jbr-physics-artifact.html")),
     "afr-scene": (pathlib.Path("docs/drawings/pv-afr-scene.html"),
                   pathlib.Path("out/pv-afr-scene-artifact.html")),
     "afr-closeup": (pathlib.Path("docs/drawings/pv-afr-closeup.html"),
