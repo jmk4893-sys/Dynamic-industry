@@ -220,5 +220,5 @@ __marimo__/
 # 산출물 — 원본에서 기계로 찍는다 (tools/render_brand_reference.py)
 out/
 
-# 렌더 검사용 npm 설치본 — tools/*.mjs 가 playwright 를 쓴다 (npm install playwright)
+# Node — 3D 검사 도구(playwright)를 저장소 루트에서 풀기 위한 링크뿐이다.
 node_modules/
