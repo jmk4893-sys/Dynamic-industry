@@ -339,7 +339,10 @@ class TestJbrReview(unittest.TestCase):
         self.assertFalse(c["ok"])
         self.assertEqual(c["heads_outside"], ())      # 1 헤드는 정반 안에 선다
         self.assertGreater(c["over_l_mm"], 0)
-        self.assertEqual(c["over_w_mm"], 0, "폭이 정반을 넘는다 — 라인 상한을 다시 보라")
+        # 폭은 라인 상한이 정한다 — 값을 박지 않고 상한에서 낸다. C안(1,200)은 정반
+        # 안에 들고, A안(1,400)은 다시 넘는다. 두 안에서 같은 시험이 서 있어야 한다.
+        over_w = max(0.0, (campaign.PANEL_WIDTH_MM - self.V["platen"][1]) / 2)   # 한쪽 몫
+        self.assertAlmostEqual(c["over_w_mm"], over_w, places=1)
 
     def test_the_sequential_change_brought_the_bridge_inside_tolerance(self):
         """**이 소견도 스스로 풀렸다** — 움직이는 질량이 줄자 처짐과 고유진동수가 같이 나았다.
