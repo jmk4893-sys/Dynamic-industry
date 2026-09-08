@@ -28,6 +28,7 @@
  */
 import { chromium } from 'playwright';
 import { resolve } from 'node:path';
+import { browserPath } from './pw_browser.mjs';
 
 const file = process.argv[2] || 'docs/drawings/pv-preprocess-plant.html';
 
@@ -38,6 +39,7 @@ const SHEET_W = 1400;
 const TABS = ['fab', 'explode', 'layout', 'register', 'electrical', 'smart', 'mount', 'safety', 'ops'];
 
 const browser = await chromium.launch({
+  executablePath: browserPath(),
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const page = await browser.newPage({ viewport: { width: 1600, height: 1100 } });

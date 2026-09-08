@@ -14,6 +14,7 @@
 import { chromium } from 'playwright';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { browserPath } from './pw_browser.mjs';
 
 const files = process.argv.slice(2);
 const targets = files.length ? files : [
@@ -28,6 +29,7 @@ if (missing.length) {
 }
 
 const browser = await chromium.launch({
+  executablePath: browserPath(),
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 let bad = 0;

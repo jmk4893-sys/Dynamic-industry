@@ -15,19 +15,9 @@
  *        (인자를 안 주면 docs/drawings/pv-afr-scene.html 을 본다)
  */
 import { chromium } from 'playwright';
-import { existsSync, readdirSync } from 'node:fs';
-import { resolve, join } from 'node:path';
-
-function browserPath() {
-  if (process.env.PW_CHROMIUM) return process.env.PW_CHROMIUM;
-  const root = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';
-  if (!existsSync(root)) return undefined;
-  for (const d of readdirSync(root).filter((n) => n.startsWith('chromium-')).sort().reverse()) {
-    const exe = join(root, d, 'chrome-linux', 'chrome');
-    if (existsSync(exe)) return exe;
-  }
-  return undefined;
-}
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { browserPath } from './pw_browser.mjs';
 
 const file = process.argv[2] || 'docs/drawings/pv-afr-scene.html';
 if (!existsSync(file)) {

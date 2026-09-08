@@ -91,6 +91,34 @@ def model() -> dict:
                    "carriageRail": k.CARRIAGE_RAIL_Z_MM, "rollerD": layout.ROLLER_D_MM, "vision": 4820},
         "panel": {"l": k.PANEL_MM[0], "w": k.PANEL_MM[1], "t": 50, "frame": k.PANEL_FRAME_H_MM,
                   "pitch": 50, "perPallet": campaign.PALLET_PANELS},
+        # 반전축 방향에서 파생한 평면 반치수 — 그림이 리터럴 대신 이것을 읽는다.
+        # 값은 전부 (X 반치수, Z 반치수) 쌍이고 `kinematics.plan_xz` 가 축을 읽어 돌린다.
+        "geom": {
+            "axis": k.FLIP_AXIS_ALONG,
+            "panel": list(k.panel_half_xz_mm()),
+            "deck": list(k.plan_xz(1_450, 900)),
+            "scissor": list(k.plan_xz(1_300, 800)),
+            "ringHalf": list(k.ring_half_xz_mm()),
+            "rings": [list(k.plan_xz(a, 0)) for a in k.ring_plane_offsets_mm()],
+            "colHalf": list(k.column_half_xz_mm()),
+            "colA": [list(c) for c in k.column_offsets_xz_mm(-1)],
+            "colB": [list(c) for c in k.column_offsets_xz_mm(1)],
+            "colX": sorted({c[0] for c in k.column_offsets_xz_mm(-1)}),
+            "colZ": sorted({c[1] for c in k.column_offsets_xz_mm(-1)}),
+            "beam": list(k.crossbeam_cross_extent_mm()),
+            "beamSpan": k.CROSSBEAM_SPAN_MM,
+            "carriage": list(k.plan_xz(k.CARRIAGE_MM / 2, k.CARRIAGE_RAIL_Z_MM + 40)),
+            "sep": list(k.plan_xz(1_090, 540)),
+            "catch": list(k.plan_xz(k.CATCH_BEAM_MM / 2, k.catch_beam_row_half_mm())),
+            "eoat": list(k.plan_xz(1_090, 460)),
+            "walls": [[-k.outer_wall_z_mm(), k.OUTER_WALL_T_MM], [0, k.CENTRE_WALL_T_MM],
+                      [k.outer_wall_z_mm(), k.OUTER_WALL_T_MM]],
+            # 포획빔은 중앙벽 안면에서 제 길이만큼 나간다 — 패널 끝단까지 40 모자란다
+            # (`kinematics.catch_beam_covers_the_panel_mm`).
+            "catchReach": k.CATCH_BEAM_MM,
+            "vacAxial": [-820, -270, 270, 820],
+            "vacCross": [-380, 380],
+        },
         "clock": {"prep": PREP_CLOCK, "path": [list(p[:3]) for p in k.PATH], "robot": ROBOT_CLOCK,
                   "reject": REJECT_CLOCK, "infeed": campaign.INFEED_S, "rejectS": campaign.INFEED_REJECT_S,
                   "takt": campaign.release_takt_s(), "stopper": campaign.JBR_STOPPER_OFFSET_S,
@@ -262,7 +290,7 @@ function line(p, x1, y1, x2, y2, cls) { return el(p, 'line', { x1, y1, x2, y2, c
 function poly(p, pts, cls) { return el(p, 'polyline', { points: pts.map((q) => q.join(',')).join(' '), class: cls }); }
 function setPoly(e, pts) { e.setAttribute('points', pts.map((q) => q.join(',')).join(' ')); }
 
-const L = M.levels, P = M.panel, C = M.clock;
+const L = M.levels, P = M.panel, C = M.clock, G = M.geom;
 const ZTOP = 5700;                       // 측면·단면의 Z 상한 — svg y = ZTOP − z
 const Y = (z) => ZTOP - z;
 const Zc = M.band / 2;                    // 라인 중심의 플랜트 Y
@@ -278,7 +306,7 @@ function pose(t, sc) {
   const s = { t, bay: sc.bay, zc, x: M.pick.x, z: zc, h: L.pick - P.t / 2, angle: 0, holder: 'stack',
     sepH: L.pick + P.t + 400, carH: L.carriage, catch: 0, jaw: L.jawOpen, vac: [0, 0, 0, 0],
     robot: null, eoatVac: 0, ptShift: 0, stopper: 0, roll: 0, flipped: false, laser: t < 7.5, stage: '', outX: null,
-    lifted: 0, released: 0 };
+    lifted: 0, released: 0, yaw: 90 };   // yaw 90 = 장변이 라인 가로(Z) — 지게차가 넣은 방향
   const glassUp = sc.face === 'GLASS_UP';
   if (sc.condition === '전손') return rejectPose(s, t, sc);
   // 준비: 헤드 하강·파지
@@ -315,25 +343,26 @@ function pose(t, sc) {
       const w = seg(t, rc[1][0], rc[1][1]);
       s.x = lerp(M.pick.x, M.pt.x, w); s.z = lerp(zc, 0, w);
       s.h = lerp(L.handover, L.line + P.t / 2, w) + Math.sin(Math.PI * w) * 450;
+      s.yaw = lerp(90, 0, w);            // 이송 중 J6 가 되돌린다 — PT 이후 하류는 장변이 X
       s.robot = { x: s.x, z: s.z, h: s.h + P.t / 2 };
     }
     else if (t < rc[2][1]) {
-      s.stage = rc[2][2]; s.holder = 'pt'; s.x = M.pt.x; s.z = 0; s.h = L.line + P.t / 2; s.catch = 0; s.sepH = L.handover + P.t + 600;
+      s.stage = rc[2][2]; s.holder = 'pt'; s.x = M.pt.x; s.z = 0; s.h = L.line + P.t / 2; s.catch = 0; s.sepH = L.handover + P.t + 600; s.yaw = 0;
       const w = (t - rc[2][0]) / (rc[2][1] - rc[2][0]); s.eoatVac = 1 - w; s.released = w;
       s.robot = { x: M.pt.x, z: 0, h: L.line + P.t + lerp(0, 60, w) };
     }
     else if (t < rc[3][1]) {
-      s.stage = rc[3][2]; s.holder = 'pt'; s.x = M.pt.x; s.z = 0; s.h = L.line + P.t / 2; s.sepH = L.handover + P.t + 600;
+      s.stage = rc[3][2]; s.holder = 'pt'; s.x = M.pt.x; s.z = 0; s.h = L.line + P.t / 2; s.sepH = L.handover + P.t + 600; s.yaw = 0;
       const w = seg(t, rc[3][0], rc[3][1]); s.ptShift = w; s.stopper = 1; s.released = 1;
       s.x = M.pt.x - 40 + 40 * w; s.z = 25 - 25 * w;
       s.robot = { x: lerp(M.pt.x, M.robot.x + 900, w), z: 0, h: lerp(L.line + P.t + 60, 2600, w) };
     }
     else if (t < C.infeed) {
-      s.stage = rc[4][2]; s.holder = 'pt'; s.x = M.pt.x; s.z = 0; s.h = L.line + P.t / 2; s.stopper = 1; s.ptShift = 1; s.released = 1; s.sepH = L.handover + P.t + 600;
+      s.stage = rc[4][2]; s.holder = 'pt'; s.x = M.pt.x; s.z = 0; s.h = L.line + P.t / 2; s.stopper = 1; s.ptShift = 1; s.released = 1; s.sepH = L.handover + P.t + 600; s.yaw = 0;
       s.robot = null;
     }
     else {
-      s.holder = 'jb'; s.stopper = 0; s.roll = 1; s.released = 1; s.sepH = L.handover + P.t + 600;
+      s.holder = 'jb'; s.stopper = 0; s.roll = 1; s.released = 1; s.sepH = L.handover + P.t + 600; s.yaw = 0;
       s.x = M.pt.x + (t - C.infeed) * M.accum.speed; s.z = 0; s.h = L.line + P.t / 2;
       s.stage = t < C.takt ? `JB-201 반출 ${fmt(M.accum.speed)} mm/s → JBR-201 (범위 밖) · 스토퍼까지 ${C.stopper} s` : 'JBR-201 스토퍼 작동 — 다음 장 방출';
       if (s.x - P.l / 2 > M.zones.jbr[0] + 1300) s.holder = 'gone';
@@ -355,11 +384,12 @@ function rejectPose(s, t, sc) {
     s.stage = r[5][2]; s.holder = 'robot'; s.eoatVac = 1; s.vac = [0, 0, 0, 0]; s.sepH = L.handover + P.t + 500;
     const w = seg(t, r[5][0], r[5][1]); const rx = M.robot.x + M.reject.dx, rz = bay * M.reject.z;
     s.x = lerp(M.pick.x, rx, w); s.z = lerp(zc, rz, w); s.h = lerp(L.handover - P.t / 2, 1200 + P.t / 2 + 40, w) + Math.sin(Math.PI * w) * 500;
+    s.yaw = lerp(90, 0, w);              // 리젝트 랙 1,600 × 700 도 장변이 X
     s.robot = { x: s.x, z: s.z, h: s.h + P.t / 2 };
   }
   else if (t >= r[6][0]) {
     const w = seg(t, r[6][0], r[6][1]); const rx = M.robot.x + M.reject.dx, rz = bay * M.reject.z;
-    s.stage = r[6][2]; s.holder = 'rack'; s.x = rx; s.z = rz; s.h = 1200 + P.t / 2; s.eoatVac = 1 - w; s.sepH = L.handover + P.t + 500;
+    s.stage = r[6][2]; s.holder = 'rack'; s.x = rx; s.z = rz; s.h = 1200 + P.t / 2; s.eoatVac = 1 - w; s.sepH = L.handover + P.t + 500; s.yaw = 0;
     s.robot = { x: lerp(rx, M.robot.x + 900, w), z: lerp(rz, 0, w), h: lerp(1200 + P.t + 40, 2600, w) };
     if (t >= C.rejectS) { s.holder = 'gone'; s.robot = null; }
   }
@@ -394,13 +424,13 @@ function buildPlan(svg) {
   text(svg, zA[0] + 120, M.band - Zc - 200, 'afu 존 · LFT-A/B · BFC', 'm'); text(svg, zR[0] + 120, zR[3] - Zc + 300, 'robot 존 · RB-101 · PT', 'm');
   for (const s of [-1, 1]) {
     const zc = s * M.pick.z, bay = s < 0 ? 'A' : 'B';
-    rect(svg, -3600, M.pick.x - 1450, zc - 900, zc + 900, 'fork');
-    rect(svg, M.pick.x - 1450, M.pick.x + 1450, zc - 900, zc + 900, 'base', `LFT-101${bay} 유압 시저 승강대`);
-    g['stack' + bay] = rect(svg, M.pick.x - P.l / 2, M.pick.x + P.l / 2, zc - P.w / 2, zc + P.w / 2, 'stack', `30장 적층 ${bay}`);
-    g['stackT' + bay] = text(svg, M.pick.x, zc + 330, `LFT-101${bay}`, 'lbl-panel', 'middle');
-    for (const xr of [M.pick.x - M.levels.ringPitch / 2, M.pick.x + M.levels.ringPitch / 2]) rect(svg, xr - 90, xr + 90, zc - L.ringR, zc + L.ringR, 'ringfill', '엔드링 ⌀1,980');
-    for (const xc of [M.pick.x - 1600, M.pick.x + 1600]) for (const zr of [-1290, 950]) { const zz = s < 0 ? zc + zr : zc - zr; rect(svg, xc - 90, xc + 90, zz - 120, zz + 120, 'column', '포탈 기둥'); }
-    g['catch' + bay] = rect(svg, M.pick.x - 1450, M.pick.x + 1450, s < 0 ? -125 : 125, s < 0 ? -125 : 125, 'catch', 'CD-101 포획빔 4열');
+    rect(svg, -3600, M.pick.x - G.deck[0], zc - G.deck[1], zc + G.deck[1], 'fork');
+    rect(svg, M.pick.x - G.deck[0], M.pick.x + G.deck[0], zc - G.deck[1], zc + G.deck[1], 'base', `LFT-101${bay} 유압 시저 승강대`);
+    g['stack' + bay] = rect(svg, M.pick.x - G.panel[0], M.pick.x + G.panel[0], zc - G.panel[1], zc + G.panel[1], 'stack', `30장 적층 ${bay} — 장변 ${fmt(P.l)} 이 라인 가로(Z)`);
+    g['stackT' + bay] = text(svg, M.pick.x, zc + G.panel[1] + 220, `LFT-101${bay}`, 'lbl-panel', 'middle');
+    for (const [dx, dz] of G.rings) rect(svg, M.pick.x + dx - G.ringHalf[0], M.pick.x + dx + G.ringHalf[0], zc + dz - G.ringHalf[1], zc + dz + G.ringHalf[1], 'ringfill', '엔드링 ⌀1,980');
+    for (const [dx, dz] of (s < 0 ? G.colA : G.colB)) rect(svg, M.pick.x + dx - G.colHalf[0], M.pick.x + dx + G.colHalf[0], zc + dz - G.colHalf[1], zc + dz + G.colHalf[1], 'column', '포탈 기둥');
+    g['catch' + bay] = rect(svg, M.pick.x - G.catch[0], M.pick.x + G.catch[0], s < 0 ? -125 : 125, s < 0 ? -125 : 125, 'catch', 'CD-101 포획빔 4열');
     g['fork' + bay] = rect(svg, -3500, -400, zc - 600, zc + 600, 'fork', 'FL-101');
     g['fork' + bay].style.opacity = 0;
     const rx = M.robot.x + M.reject.dx, rz = s * M.reject.z;
@@ -409,7 +439,7 @@ function buildPlan(svg) {
     el(g['sens' + bay], 'title', {}, `VS-101${bay} 통합 2D＋3D 헤드`);
   }
   const wx = 5650 - 1620;
-  for (const [zc, th] of [[-3150, 150], [0, 250], [3150, 150]]) rect(svg, wx - 1330, wx + 1330, zc - th / 2, zc + th / 2, 'wall', 'BW-101 벽체');
+  for (const [zc, th] of G.walls) rect(svg, wx - G.beamSpan / 2, wx + G.beamSpan / 2, zc - th / 2, zc + th / 2, 'wall', 'BW-101 벽체');
   text(svg, wx, -12, 'BW-101 중앙벽', 'm', 'middle');
   el(svg, 'circle', { cx: M.robot.x, cy: 0, r: M.robot.reach, class: 'reach' });
   el(svg, 'circle', { cx: M.robot.x, cy: 0, r: 550, class: 'base' });
@@ -423,9 +453,9 @@ function buildPlan(svg) {
   text(svg, M.pt.x, -M.pt.table[1] / 2 - 90, 'PT-101 · JB-201', 'm', 'middle');
   g.arm = poly(svg, [[0, 0]], 'arm'); g.elbow = el(svg, 'circle', { r: 110, class: 'joint' });
   g.panels = [];
-  for (let i = 0; i < 3; i++) { const pg = el(svg, 'g', {}); const r = rect(pg, -P.l / 2, P.l / 2, -P.w / 2, P.w / 2, 'panel'); const gl = rect(pg, -P.l / 2 + 60, P.l / 2 - 60, -P.w / 2 + 60, P.w / 2 - 60, 'glass'); const tx = text(pg, 0, P.w / 2 + 220, '', 'lbl-panel', 'middle'); g.panels.push({ g: pg, r, gl, tx }); pg.style.display = 'none'; }
+  for (let i = 0; i < 3; i++) { const pg = el(svg, 'g', {}); const rg = el(pg, 'g', {}); const r = rect(rg, -P.l / 2, P.l / 2, -P.w / 2, P.w / 2, 'panel'); const gl = rect(rg, -P.l / 2 + 60, P.l / 2 - 60, -P.w / 2 + 60, P.w / 2 - 60, 'glass'); const tx = text(pg, 0, P.w / 2 + 220, '', 'lbl-panel', 'middle'); g.panels.push({ g: pg, rg, r, gl, tx }); pg.style.display = 'none'; }
   g.eoat = rect(svg, 0, 0, 0, 0, 'eoat'); g.eoat.style.display = 'none'; g.eoat.style.fill = 'none';
-  text(svg, -3800, -3600, 'X = 공정방향 · Y = 라인 좌측 (mm)', 'm');
+  text(svg, -3800, -3600, `X = 공정방향 · Y = 라인 좌측 (mm) · 반전축은 ${G.axis} — 투입 구간 패널은 장변 ${fmt(P.l)} 이 가로로 눕는다`, 'm');
   return g;
 }
 
@@ -437,16 +467,24 @@ function buildSide(svg) {
   rect(svg, zA[0], zA[1], Y(0), Y(5150), 'zone'); rect(svg, zR[0], zR[1], Y(0), Y(4150), 'zone');
   for (const [z, s] of [[L.pick, '픽업면 1,880'], [L.handover, '인계 2,100'], [L.dwell, '대기면 2,250'], [L.axis, '반전축 3,430'], [L.line, '이송면 950']]) { line(svg, -3900, Y(z), 11400, Y(z), 'lvl'); text(svg, -3850, Y(z) - 30, s, 'm'); }
   g.fork = rect(svg, M.pick.x - 2900, M.pick.x + 200, Y(0), Y(L.forklift), 'fork'); g.fork.style.opacity = 0;
-  rect(svg, M.pick.x - 1450, M.pick.x + 1450, Y(0), Y(130), 'base');
-  g.scissor = poly(svg, [[0, 0]], 'scissor'); g.deck = rect(svg, M.pick.x - 1450, M.pick.x + 1450, Y(480), Y(530), 'base');
-  g.stack = rect(svg, M.pick.x - P.l / 2, M.pick.x + P.l / 2, Y(530), Y(L.pick), 'stack', '적층 (활성 Bay)');
+  rect(svg, M.pick.x - G.deck[0], M.pick.x + G.deck[0], Y(0), Y(130), 'base');
+  g.scissor = poly(svg, [[0, 0]], 'scissor'); g.deck = rect(svg, M.pick.x - G.deck[0], M.pick.x + G.deck[0], Y(480), Y(530), 'base');
+  g.stack = rect(svg, M.pick.x - G.panel[0], M.pick.x + G.panel[0], Y(530), Y(L.pick), 'stack', `적층 (활성 Bay) — 이 방향으로는 단변 ${fmt(P.w)} 가 보인다`);
   g.stackT = text(svg, M.pick.x, Y(1200), '', 'lbl-panel', 'middle');
-  for (const xc of [M.pick.x - 1600, M.pick.x + 1600]) { rect(svg, xc - 90, xc + 90, Y(0), Y(3350), 'column', '포탈 기둥·LM'); rect(svg, xc - 90, xc + 90, Y(3190), Y(3450), 'column'); }
-  for (const xr of [M.pick.x - M.levels.ringPitch / 2, M.pick.x + M.levels.ringPitch / 2]) rect(svg, xr - 90, xr + 90, Y(L.axis - L.ringR), Y(L.axis + L.ringR), 'ringfill', '엔드링');
-  g.catch = rect(svg, M.pick.x - 1450, M.pick.x + 1450, Y(L.catch - 30), Y(L.catch + 30), 'catch');
-  g.car = rect(svg, M.pick.x - 1360, M.pick.x + 1360, Y(L.carriage - 70), Y(L.carriage + 70), 'carriage', '승강캐리지');
-  g.sep = rect(svg, M.pick.x - 1090, M.pick.x + 1090, Y(L.pick + P.t), Y(L.pick + P.t + 80), 'sep', '분리헤드');
-  g.vac = [-820, -270, 270, 820].map((dx) => el(svg, 'circle', { cx: M.pick.x + dx, cy: Y(L.pick), r: 60, class: 'vac' }));
+  for (const cx of G.colX) rect(svg, M.pick.x + cx - G.colHalf[0], M.pick.x + cx + G.colHalf[0], Y(0), Y(3350), 'column', `포탈 기둥·LM (축직각 ${fmt(cx)} · 반전축 평면 두 본이 겹친다)`);
+  rect(svg, M.pick.x + G.beam[0], M.pick.x + G.beam[1], Y(3190), Y(3450), 'column', `포탈 크로스빔 스팬 ${fmt(G.beamSpan)}`);
+  g.catch = rect(svg, M.pick.x - G.catch[0], M.pick.x + G.catch[0], Y(L.catch - 30), Y(L.catch + 30), 'catch');
+  g.car = rect(svg, M.pick.x - G.carriage[0], M.pick.x + G.carriage[0], Y(L.carriage - 70), Y(L.carriage + 70), 'carriage', '승강캐리지 레일쌍');
+  g.sep = rect(svg, M.pick.x - G.sep[0], M.pick.x + G.sep[0], Y(L.pick + P.t), Y(L.pick + P.t + 80), 'sep', '분리헤드');
+  g.vac = G.vacCross.map((dx) => el(svg, 'circle', { cx: M.pick.x + dx, cy: Y(L.pick), r: 60, class: 'vac' }));
+  // 엔드링 — 반전축이 Z 로 누우므로 이 시점에서 정면으로 보이고, 반전이 여기서 돈다.
+  g.ring = el(svg, 'g', {});
+  el(g.ring, 'circle', { cx: 0, cy: 0, r: L.ringR, class: 'ringfill' }); el(g.ring, 'circle', { cx: 0, cy: 0, r: L.bore, class: 'ringfill' });
+  g.jawU = rect(g.ring, -90, 90, -L.jawClosed - 45, -L.jawClosed + 45, 'jaw');
+  g.jawL = rect(g.ring, -90, 90, L.jawClosed - 45, L.jawClosed + 45, 'jaw');
+  rect(g.ring, -60, 60, -L.ringR + 60, -L.ringR + 200, 'jaw'); rect(g.ring, -60, 60, L.ringR - 200, L.ringR - 60, 'jaw');
+  g.ring.setAttribute('transform', `translate(${M.pick.x} ${Y(L.axis)})`);
+  el(g.ring, 'title', {}, `오픈센터 엔드링 2매 (평면 ∓${fmt(L.ringPitch / 2)} — 이 방향에서 겹친다)`);
   const vg = 5650 - 2310; rect(svg, vg - 1240, vg + 1240, Y(4950), Y(5150), 'beam'); rect(svg, M.pick.x - 190, M.pick.x + 190, Y(4600), Y(4840), 'sensor', 'VS-101');
   g.laser = [[-1000, 0], [1000, 0]].map(([dx]) => line(svg, M.pick.x + dx, Y(4600), M.pick.x + dx, Y(L.pick), 'laser'));
   rect(svg, M.robot.x - 550, M.robot.x + 550, Y(0), Y(650), 'base', '페데스털'); rect(svg, M.robot.x - 360, M.robot.x + 360, Y(650), Y(1270), 'column');
@@ -462,8 +500,8 @@ function buildSide(svg) {
   g.arm = poly(svg, [[0, 0]], 'arm'); g.elbow = el(svg, 'circle', { r: 110, class: 'joint' }); el(svg, 'circle', { cx: M.robot.x, cy: Y(M.robot.j2), r: 120, class: 'joint' });
   g.eoat = rect(svg, 0, 0, 0, 0, 'eoat'); g.eoat.style.display = 'none';
   g.panels = [];
-  for (let i = 0; i < 3; i++) { const pg = el(svg, 'g', {}); const r = rect(pg, -P.l / 2, P.l / 2, -P.t / 2, P.t / 2, 'panel'); const gl = rect(pg, -P.l / 2, P.l / 2, -P.t / 2, -P.t / 2 + 14, 'glass'); g.panels.push({ g: pg, r, gl }); pg.style.display = 'none'; }
-  text(svg, -3800, Y(5500), '측면 X–Z · Bay A 를 보이고 Bay B 는 뒤에 거울상', 'm');
+  for (let i = 0; i < 3; i++) { const pg = el(svg, 'g', {}); const rg = el(pg, 'g', {}); const r = rect(rg, -P.w / 2, P.w / 2, -P.t / 2, P.t / 2, 'panel'); const gl = rect(rg, -P.w / 2, P.w / 2, -P.t / 2, -P.t / 2 + 14, 'glass'); g.panels.push({ g: pg, rg, r, gl }); pg.style.display = 'none'; }
+  text(svg, -3800, Y(5500), `측면 (X–높이) · Bay A 를 보이고 Bay B 는 뒤에 거울상 · 반전축이 지면 안쪽(Z)이라 반전이 이 시점에서 돈다`, 'm');
   return g;
 }
 
@@ -472,35 +510,31 @@ function buildEnd(svg) {
   const g = {};
   rect(svg, -3800, 3800, Y(0), Y(-350), 'floor');
   for (const [z, s] of [[L.pick, '1,880'], [L.handover, '2,100'], [L.dwell, '2,250'], [L.axis, '3,430']]) { line(svg, -3700, Y(z), 3700, Y(z), 'lvl'); text(svg, -3680, Y(z) - 30, s, 'm'); }
-  for (const [zc, th, h] of [[-3150, 150, 4900], [0, 250, 4900], [3150, 150, 4900]]) rect(svg, zc - th / 2, zc + th / 2, Y(0), Y(h), 'wall', 'BW-101');
-  rect(svg, -3350, 3350, Y(4950), Y(5150), 'beam'); text(svg, 0, Y(5250), 'VG-101 비전보', 'm', 'middle');
+  for (const [zc, th] of G.walls) rect(svg, zc - th / 2, zc + th / 2, Y(0), Y(4900), 'wall', 'BW-101');
+  const vw = G.walls[2][0] - 230; rect(svg, -vw, vw, Y(4950), Y(5150), 'beam'); text(svg, 0, Y(5250), 'VG-101 비전보', 'm', 'middle');
   g.bay = {};
   for (const s of [-1, 1]) {
     const zc = s * M.pick.z, bay = s < 0 ? 'A' : 'B', b = {};
-    rect(svg, zc - 900, zc + 900, Y(0), Y(130), 'base'); b.deck = rect(svg, zc - 900, zc + 900, Y(480), Y(530), 'base');
+    rect(svg, zc - G.deck[1], zc + G.deck[1], Y(0), Y(130), 'base'); b.deck = rect(svg, zc - G.deck[1], zc + G.deck[1], Y(480), Y(530), 'base');
     b.scissor = poly(svg, [[0, 0]], 'scissor');
-    b.stack = rect(svg, zc - P.w / 2, zc + P.w / 2, Y(530), Y(L.pick), 'stack'); b.stackT = text(svg, zc, Y(1200), `LFT-101${bay}`, 'lbl-panel', 'middle');
+    b.stack = rect(svg, zc - G.panel[1], zc + G.panel[1], Y(530), Y(L.pick), 'stack', `적층 ${bay} — 이 방향으로 장변 ${fmt(P.l)}`);
+    b.stackT = text(svg, zc, Y(1200), `LFT-101${bay}`, 'lbl-panel', 'middle');
     b.fork = rect(svg, zc - 600, zc + 600, Y(0), Y(L.forklift), 'fork'); b.fork.style.opacity = 0;
-    for (const zr of [-1290, 950]) { const zz = s < 0 ? zc + zr : zc - zr; rect(svg, zz - 120, zz + 120, Y(0), Y(3350), 'column'); }
-    rect(svg, zc - 1330, zc + 1330, Y(3190), Y(3450), 'column');
+    for (const cz of G.colZ) { rect(svg, zc + cz - G.colHalf[1], zc + cz + G.colHalf[1], Y(0), Y(3350), 'column', '포탈 기둥 (축직각 두 본이 겹친다)'); rect(svg, zc + cz - 150, zc + cz + 150, Y(3190), Y(3450), 'column', '포탈 크로스빔 — 이 시점에서는 마구리'); }
+    // 엔드링은 반전축이 이 시점의 가로(Z)라 마구리로 두 매가 따로 선다 — 반전은 측면에서 돈다.
+    for (const [dx, dz] of G.rings) rect(svg, zc + dz - G.ringHalf[1], zc + dz + G.ringHalf[1], Y(L.axis - L.ringR), Y(L.axis + L.ringR), 'ringfill', `엔드링 (평면 ∓${fmt(L.ringPitch / 2)})`);
     b.sens = rect(svg, zc - 190, zc + 190, Y(4600), Y(4840), 'sensor', `VS-101${bay}`);
     b.laser = [[-600], [600]].map(([dz]) => line(svg, zc + dz, Y(4600), zc + dz, Y(L.pick), 'laser'));
-    b.ring = el(svg, 'g', {}); const rg = b.ring;
-    el(rg, 'circle', { cx: 0, cy: 0, r: L.ringR, class: 'ringfill' }); el(rg, 'circle', { cx: 0, cy: 0, r: L.bore, class: 'ringfill' });
-    // 조·가이드 포스트는 링과 같이 돈다
-    b.jawU = rect(rg, -90, 90, -(L.jawClosed) - 45, -(L.jawClosed) + 45, 'jaw'); b.jawL = rect(rg, -90, 90, L.jawClosed - 45, L.jawClosed + 45, 'jaw');
-    b.jawU.setAttribute('transform', ''); rect(rg, -60, 60, -L.ringR + 60, -L.ringR + 200, 'jaw'); rect(rg, -60, 60, L.ringR - 200, L.ringR - 60, 'jaw');
-    rg.setAttribute('transform', `translate(${zc} ${Y(L.axis)})`);
-    b.rails = [-1, 1].map((k) => rect(svg, zc + k * L.carriageRail - 70, zc + k * L.carriageRail + 70, Y(L.carriage - 70), Y(L.carriage + 70), 'carriage'));
-    b.sep = rect(svg, zc - 60, zc + 60, Y(L.pick + P.t), Y(L.pick + P.t + 80), 'sep');
-    b.vac = [-380, 380].map((dz) => el(svg, 'circle', { cx: zc + dz, cy: Y(L.pick), r: 60, class: 'vac' }));
+    b.rails = [rect(svg, zc - G.carriage[1], zc + G.carriage[1], Y(L.carriage - 70), Y(L.carriage + 70), 'carriage', `승강캐리지 ${fmt(2 * G.carriage[1])} — 링 구멍 안으로 지난다`)];
+    b.sep = rect(svg, zc - G.sep[1], zc + G.sep[1], Y(L.pick + P.t), Y(L.pick + P.t + 80), 'sep');
+    b.vac = G.vacAxial.map((dz) => el(svg, 'circle', { cx: zc + dz, cy: Y(L.pick), r: 60, class: 'vac' }));
     b.catch = rect(svg, s < 0 ? -125 : 125, s < 0 ? -125 : 125, Y(L.catch - 30), Y(L.catch + 30), 'catch');
-    const pg = el(svg, 'g', {}); b.panelG = pg; b.panel = rect(pg, -P.w / 2, P.w / 2, -P.t / 2, P.t / 2, 'panel'); b.glass = rect(pg, -P.w / 2, P.w / 2, -P.t / 2, -P.t / 2 + 14, 'glass'); pg.style.display = 'none';
-    b.eoat = rect(svg, zc - 460, zc + 460, 0, 0, 'eoat'); b.eoat.style.display = 'none';
+    const pg = el(svg, 'g', {}); b.panelG = pg; b.panel = rect(pg, -P.l / 2, P.l / 2, -P.t / 2, P.t / 2, 'panel'); b.glass = rect(pg, -P.l / 2, P.l / 2, -P.t / 2, -P.t / 2 + 14, 'glass'); pg.style.display = 'none';
+    b.eoat = rect(svg, zc - G.eoat[1], zc + G.eoat[1], 0, 0, 'eoat'); b.eoat.style.display = 'none';
     text(svg, zc, Y(5450), `Bay ${bay}`, '', 'middle');
     g.bay[bay] = b;
   }
-  text(svg, -3700, Y(5550), '단면 Y–Z · 상류에서 본다', 'm');
+  text(svg, -3700, Y(5550), `단면 (Z–높이) · 상류에서 본다 · 반전축이 이 시점의 가로라 패널은 장변 ${fmt(P.l)} 을 보이고 반전은 돌지 않는다`, 'm');
   return g;
 }
 
@@ -522,19 +556,24 @@ function drawPlan(g, st) {
     if (s.bay === 'A') { catchA = Math.max(catchA, s.catch); sensA = s.laser ? 1 : sensA; } else { catchB = Math.max(catchB, s.catch); sensB = s.laser ? 1 : sensB; }
     const p = g.panels[i]; p.g.style.display = '';
     p.g.setAttribute('transform', `translate(${s.x} ${s.z})`);
+    p.rg.setAttribute('transform', `rotate(${s.yaw})`);        // 90 = 장변이 Z (투입) · 0 = 장변이 X (하류)
     const glassUp = a.sc.face === 'GLASS_UP' && !s.flipped;
     p.gl.style.opacity = glassUp ? .9 : 0;
     p.r.setAttribute('class', a.sc.condition === '전손' ? 'panel' : 'panel');
     p.tx.textContent = `${a.id} · ${a.sc.condition}${glassUp ? ' · 유리 ↑' : ' · 유리 ↓'}`;
     p.tx.setAttribute('class', a.sc.condition === '전손' ? 'lbl-red' : 'lbl-panel');
+    p.tx.setAttribute('y', (s.yaw > 45 ? P.l / 2 : P.w / 2) + 220);
     if (s.robot) armTarget = s.robot;
-    if (s.holder === 'robot' || (s.robot && s.eoatVac > 0)) { g.eoat.style.display = ''; setRect(g.eoat, s.robot.x - 1090, s.robot.x + 1090, s.robot.z - 460, s.robot.z + 460); }
+    if (s.holder === 'robot' || (s.robot && s.eoatVac > 0)) {
+      const ex = s.yaw > 45 ? G.eoat[0] : G.eoat[1], ez = s.yaw > 45 ? G.eoat[1] : G.eoat[0];
+      g.eoat.style.display = ''; setRect(g.eoat, s.robot.x - ex, s.robot.x + ex, s.robot.z - ez, s.robot.z + ez);
+    }
   });
   const k = ik(armTarget);
   setPoly(g.arm, [[k.shoulder.x, k.shoulder.z], [k.elbow.x, k.elbow.z], [k.wrist.x, k.wrist.z]]);
   g.elbow.setAttribute('cx', k.elbow.x); g.elbow.setAttribute('cy', k.elbow.z);
-  setRect(g.catchA, M.pick.x - 1450, M.pick.x + 1450, -125, -125 - 1450 * catchA);
-  setRect(g.catchB, M.pick.x - 1450, M.pick.x + 1450, 125, 125 + 1450 * catchB);
+  setRect(g.catchA, M.pick.x - G.catch[0], M.pick.x + G.catch[0], -125, -125 - G.catchReach * catchA);
+  setRect(g.catchB, M.pick.x - G.catch[0], M.pick.x + G.catch[0], 125, 125 + G.catchReach * catchB);
   g.sensA.style.opacity = sensA ? 1 : .35; g.sensB.style.opacity = sensB ? 1 : .35;
   const top = st.active[0] && st.active[0].s;
   const rollOn = st.active.some((a) => a.s.roll);
@@ -548,34 +587,40 @@ function drawSide(g, st) {
   const lift = st.lifts[st.viewBay];
   const deckZ = 530 + (P.perPallet - lift.count) * P.pitch - lift.raise * P.pitch;
   const top = L.pick;
-  setRect(g.deck, M.pick.x - 1450, M.pick.x + 1450, Y(deckZ - 50), Y(deckZ));
-  setRect(g.stack, M.pick.x - P.l / 2, M.pick.x + P.l / 2, Y(deckZ), Y(Math.max(deckZ, top - lift.taken * P.pitch)));
+  setRect(g.deck, M.pick.x - G.deck[0], M.pick.x + G.deck[0], Y(deckZ - 50), Y(deckZ));
+  setRect(g.stack, M.pick.x - G.panel[0], M.pick.x + G.panel[0], Y(deckZ), Y(Math.max(deckZ, top - lift.taken * P.pitch)));
   g.stack.style.opacity = lift.count > 0 ? 1 : 0;
   const sh = deckZ - 130;
-  setPoly(g.scissor, [[M.pick.x - 1300, Y(130)], [M.pick.x + 1300, Y(130 + sh)], [M.pick.x + 1300, Y(130)], [M.pick.x - 1300, Y(130 + sh)]]);
+  setPoly(g.scissor, [[M.pick.x - G.scissor[0], Y(130)], [M.pick.x + G.scissor[0], Y(130 + sh)], [M.pick.x + G.scissor[0], Y(130)], [M.pick.x - G.scissor[0], Y(130 + sh)]]);
   g.stackT.textContent = `LFT-101${st.viewBay} · ${lift.count}장 · 픽업면 ${fmt(L.pick)} 유지`;
   g.stackT.setAttribute('y', Y(deckZ + 500));
   g.fork.style.opacity = lift.forklift ? 1 : 0;
   g.panels.forEach((p) => (p.g.style.display = 'none')); g.eoat.style.display = 'none';
   let armTarget = null, cat = 0, sepH = L.pick + P.t + 400, carH = L.carriage, vac = [0, 0, 0, 0], laser = false;
+  let angle = 0, jaw = L.jawOpen;
   st.active.forEach((a, i) => {
     const s = a.s; if (s.holder === 'gone' || i > 2) return;
-    if (s.bay === st.viewBay) { cat = Math.max(cat, s.catch); if (['stack', 'sep', 'ring'].includes(s.holder) || s.t < C.robot[1][0]) { sepH = s.sepH; carH = s.carH; vac = s.vac; } laser = laser || s.laser; }
+    if (s.bay === st.viewBay) { cat = Math.max(cat, s.catch); if (['stack', 'sep', 'ring'].includes(s.holder) || s.t < C.robot[1][0]) { sepH = s.sepH; carH = s.carH; vac = s.vac; angle = s.angle; jaw = s.jaw; } laser = laser || s.laser; }
     const p = g.panels[i]; p.g.style.display = '';
-    const yaw = s.holder === 'ring' || (s.holder === 'sep' && s.t > C.path[3][0]) ? 0 : 0;
+    // 반전축이 Z 라 반전이 이 시점에서 보인다. 폭은 yaw 를 따른다 — 투입은 단변, 하류는 장변.
+    const half = s.yaw > 45 ? P.w / 2 : P.l / 2;
+    setRect(p.r, -half, half, -P.t / 2, P.t / 2);
     p.g.setAttribute('transform', `translate(${s.x} ${Y(s.h)})`);
-    const glassUp = a.sc.face === 'GLASS_UP' && !s.flipped;
-    p.gl.setAttribute('y', glassUp ? -P.t / 2 : P.t / 2 - 14);
+    p.rg.setAttribute('transform', `rotate(${s.holder === 'ring' ? s.angle : (s.flipped ? 180 : 0)})`);
+    const glassUp = a.sc.face === 'GLASS_UP';
+    setRect(p.gl, -half, half, glassUp ? -P.t / 2 : P.t / 2 - 14, glassUp ? -P.t / 2 + 14 : P.t / 2);
     p.g.style.opacity = s.bay === st.viewBay || s.holder === 'robot' || s.holder === 'pt' || s.holder === 'jb' || s.holder === 'rack' ? 1 : .35;
     if (s.robot) armTarget = s.robot;
-    if (s.robot && (s.holder === 'robot' || s.eoatVac > 0)) { g.eoat.style.display = ''; setRect(g.eoat, s.robot.x - 1090, s.robot.x + 1090, Y(s.robot.h), Y(s.robot.h + 250)); }
+    if (s.robot && (s.holder === 'robot' || s.eoatVac > 0)) { const ex = s.yaw > 45 ? G.eoat[0] : G.eoat[1]; g.eoat.style.display = ''; setRect(g.eoat, s.robot.x - ex, s.robot.x + ex, Y(s.robot.h), Y(s.robot.h + 250)); }
   });
   const k = ik(armTarget);
   setPoly(g.arm, [[k.shoulder.x, Y(k.shoulder.h)], [k.elbow.x, Y(k.elbow.h)], [k.wrist.x, Y(k.wrist.h)]]);
   g.elbow.setAttribute('cx', k.elbow.x); g.elbow.setAttribute('cy', Y(k.elbow.h));
-  setRect(g.catch, M.pick.x - 1450, M.pick.x + 1450, Y(L.catch - 30), Y(L.catch + 30)); g.catch.style.opacity = cat > 0 ? cat : 0;
-  setRect(g.sep, M.pick.x - 1090, M.pick.x + 1090, Y(sepH), Y(sepH + 80));
-  setRect(g.car, M.pick.x - 1360, M.pick.x + 1360, Y(carH - 70), Y(carH + 70));
+  setRect(g.catch, M.pick.x - G.catch[0], M.pick.x + G.catch[0], Y(L.catch - 30), Y(L.catch + 30)); g.catch.style.opacity = cat > 0 ? cat : 0;
+  setRect(g.sep, M.pick.x - G.sep[0], M.pick.x + G.sep[0], Y(sepH), Y(sepH + 80));
+  setRect(g.car, M.pick.x - G.carriage[0], M.pick.x + G.carriage[0], Y(carH - 70), Y(carH + 70));
+  g.ring.setAttribute('transform', `translate(${M.pick.x} ${Y(L.axis)}) rotate(${angle})`);
+  setRect(g.jawU, -90, 90, -jaw - 45, -jaw + 45); setRect(g.jawL, -90, 90, jaw - 45, jaw + 45);
   g.vac.forEach((c, i) => { c.setAttribute('cy', Y(sepH - 40)); c.setAttribute('class', vac[i] ? 'vac on' : 'vac'); });
   g.laser.forEach((l) => l.setAttribute('class', laser ? 'laser on' : 'laser'));
   const rollOn = st.active.some((a) => a.s.roll); g.rollers.forEach((r) => r.setAttribute('class', rollOn ? 'roller on' : 'roller'));
@@ -586,32 +631,33 @@ function drawEnd(g, st) {
   for (const bay of ['A', 'B']) {
     const b = g.bay[bay], zc = (bay === 'A' ? -1 : 1) * M.pick.z, lift = st.lifts[bay];
     const deckZ = 530 + (P.perPallet - lift.count) * P.pitch - lift.raise * P.pitch;
-    setRect(b.deck, zc - 900, zc + 900, Y(deckZ - 50), Y(deckZ));
-    setRect(b.stack, zc - P.w / 2, zc + P.w / 2, Y(deckZ), Y(Math.max(deckZ, L.pick - lift.taken * P.pitch))); b.stack.style.opacity = lift.count > 0 ? 1 : 0;
-    const sh = deckZ - 130; setPoly(b.scissor, [[zc - 800, Y(130)], [zc + 800, Y(130 + sh)], [zc + 800, Y(130)], [zc - 800, Y(130 + sh)]]);
+    setRect(b.deck, zc - G.deck[1], zc + G.deck[1], Y(deckZ - 50), Y(deckZ));
+    setRect(b.stack, zc - G.panel[1], zc + G.panel[1], Y(deckZ), Y(Math.max(deckZ, L.pick - lift.taken * P.pitch))); b.stack.style.opacity = lift.count > 0 ? 1 : 0;
+    const sh = deckZ - 130; setPoly(b.scissor, [[zc - G.scissor[1], Y(130)], [zc + G.scissor[1], Y(130 + sh)], [zc + G.scissor[1], Y(130)], [zc - G.scissor[1], Y(130 + sh)]]);
     b.stackT.textContent = `LFT-101${bay} · ${lift.count}장`; b.stackT.setAttribute('y', Y(deckZ + 500));
     b.fork.style.opacity = lift.forklift ? 1 : 0;
     const a = st.active.find((q) => q.sc.bay === bay && q.s.holder !== 'gone');
-    let sepH = L.pick + P.t + 400, carH = L.carriage, vac = [0, 0], catchW = 0, angle = 0, jaw = L.jawOpen, laser = false;
+    let sepH = L.pick + P.t + 400, carH = L.carriage, vac = [0, 0, 0, 0], catchW = 0, laser = false;
     b.panelG.style.display = 'none'; b.eoat.style.display = 'none';
     if (a) {
       const s = a.s;
-      if (['stack', 'sep', 'ring'].includes(s.holder)) { sepH = s.sepH; carH = s.carH; vac = [s.vac[0], s.vac[2]]; }
-      catchW = s.catch; angle = s.angle; jaw = s.jaw; laser = s.laser;
+      if (['stack', 'sep', 'ring'].includes(s.holder)) { sepH = s.sepH; carH = s.carH; vac = s.vac; }
+      catchW = s.catch; laser = s.laser;
       if (['stack', 'sep', 'ring'].includes(s.holder) || (s.holder === 'robot' && Math.abs(s.z - zc) < 700)) {
         b.panelG.style.display = '';
-        const glassUp = a.sc.face === 'GLASS_UP';
-        b.glass.setAttribute('y', glassUp ? -P.t / 2 : P.t / 2 - 14);
-        b.panelG.setAttribute('transform', `translate(${s.z} ${Y(s.h)}) rotate(${s.holder === 'ring' ? angle : (s.flipped ? 180 : 0)})`);
-        if (s.holder === 'robot' || (s.robot && s.eoatVac > 0)) { b.eoat.style.display = ''; setRect(b.eoat, s.z - 460, s.z + 460, Y(s.h + P.t / 2), Y(s.h + P.t / 2 + 250)); }
+        // 반전축이 이 시점의 가로라 180° 반전은 여기서 안 보인다 — 유리면만 위아래로 바뀐다.
+        const glassUp = a.sc.face === 'GLASS_UP' && !s.flipped;
+        const half = s.yaw > 45 ? P.l / 2 : P.w / 2;
+        setRect(b.panel, -half, half, -P.t / 2, P.t / 2);
+        setRect(b.glass, -half, half, glassUp ? -P.t / 2 : P.t / 2 - 14, glassUp ? -P.t / 2 + 14 : P.t / 2);
+        b.panelG.setAttribute('transform', `translate(${s.z} ${Y(s.h)})`);
+        if (s.holder === 'robot' || (s.robot && s.eoatVac > 0)) { const ez = s.yaw > 45 ? G.eoat[1] : G.eoat[0]; b.eoat.style.display = ''; setRect(b.eoat, s.z - ez, s.z + ez, Y(s.h + P.t / 2), Y(s.h + P.t / 2 + 250)); }
       }
     }
-    b.ring.setAttribute('transform', `translate(${zc} ${Y(L.axis)}) rotate(${angle})`);
-    setRect(b.jawU, -90, 90, -jaw - 45, -jaw + 45); setRect(b.jawL, -90, 90, jaw - 45, jaw + 45);
-    b.rails.forEach((r, i) => setRect(r, zc + (i ? 1 : -1) * L.carriageRail - 70, zc + (i ? 1 : -1) * L.carriageRail + 70, Y(carH - 70), Y(carH + 70)));
-    setRect(b.sep, zc - 60, zc + 60, Y(sepH), Y(sepH + 80));
+    b.rails.forEach((r) => setRect(r, zc - G.carriage[1], zc + G.carriage[1], Y(carH - 70), Y(carH + 70)));
+    setRect(b.sep, zc - G.sep[1], zc + G.sep[1], Y(sepH), Y(sepH + 80));
     b.vac.forEach((c, i) => { c.setAttribute('cy', Y(sepH - 40)); c.setAttribute('class', vac[i] ? 'vac on' : 'vac'); });
-    const inner = bay === 'A' ? -125 : 125, outer = bay === 'A' ? -125 - 1450 * catchW : 125 + 1450 * catchW;
+    const inner = bay === 'A' ? -125 : 125, outer = bay === 'A' ? -125 - G.catchReach * catchW : 125 + G.catchReach * catchW;
     setRect(b.catch, inner, outer, Y(L.catch - 30), Y(L.catch + 30));
     b.laser.forEach((l) => l.setAttribute('class', laser ? 'laser on' : 'laser'));
   }
@@ -801,9 +847,9 @@ HTML = """<!DOCTYPE html>
   <div class="layout">
     <div class="views">
       <div class="view"><h2>평면 <span>X 공정방향 · Y 라인 좌측 · 두 Bay · 로봇 도달 반경 2,800</span></h2><svg class="v" id="v-plan" role="img" aria-label="평면 애니메이션"></svg></div>
-      <div class="view"><h2>측면 X–Z <span>활성 Bay · 리프트 데크가 올라와 픽업면을 유지한다</span></h2><svg class="v" id="v-side" role="img" aria-label="측면 애니메이션"></svg></div>
+      <div class="view"><h2>측면 X–높이 <span>활성 Bay · 반전축이 지면 안쪽이라 엔드링 회전·조·180° 반전이 여기서 보인다</span></h2><svg class="v" id="v-side" role="img" aria-label="측면 애니메이션"></svg></div>
       <div class="two">
-        <div class="view"><h2>단면 Y–Z <span>엔드링 회전 · 조 · 포획빔 · 승강 캐리지</span></h2><svg class="v" id="v-end" role="img" aria-label="단면 애니메이션"></svg></div>
+        <div class="view"><h2>단면 Z–높이 <span>두 베이 · 패널 장변 2,500 · 엔드링 마구리 · 포획빔 전개</span></h2><svg class="v" id="v-end" role="img" aria-label="단면 애니메이션"></svg></div>
         <div class="card"><h3>레벨 · 자리 · 시각 (모델값)</h3><dl class="kv" id="ref"></dl></div>
       </div>
     </div>
@@ -830,6 +876,10 @@ HTML = """<!DOCTYPE html>
 
 
 def build() -> str:
+    # 시점 배분이 반전축에 달려 있다 — 축이 Z 라야 반전이 측면에서 돌고 단면이
+    # 장변을 보인다. 축이 바뀌면 숫자만으로는 못 돌리므로 그림을 내지 않는다.
+    if not kinematics.axis_is_z():
+        raise SystemExit(f"✗ 반전축이 {kinematics.FLIP_AXIS_ALONG} 다 — 이 콘솔은 축 Z 를 전제로 시점을 나눈다")
     m = model()
     js = JS.replace("__MODEL__", json.dumps(m, ensure_ascii=False, separators=(",", ":")))
     return (HTML.replace("__CSS__", CSS).replace("__JS__", js).replace("__REV__", m["rev"])

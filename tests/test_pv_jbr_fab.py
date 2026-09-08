@@ -150,6 +150,22 @@ class TestJbrFabModel(unittest.TestCase):
         self.assertIn("15 kN", PLANT)
         self.assertNotIn("45 kN 편심", PLANT)
 
+    def test_the_module_table_counts_one_of_each_per_head_module(self):
+        """제작·조달 모듈표는 헤드마다 한 벌씩 사는 것을 센다 — 헤드가 하나면 1식이다.
+
+        REV.57 에서 헤드를 줄일 때 3D·부품표·시험계획은 따라왔는데 이 표만
+        「3식」으로 남아 있었다. 견적이 여기서 나가면 헤드 값을 세 배로 부른다.
+        """
+        per_head = ("Y 자동배치축", "L칼날 제거 헤드", "포획·컴플라이언스")
+        want = f'{jf.HEADS}식'
+        for name in per_head:
+            row = next(
+                line for line in PLANT.splitlines() if f"<td>{name}</td>" in line
+            )
+            self.assertIn(
+                f'class="text-end">{want}</td>', row, f"{name} 수량이 {want} 이 아니다"
+            )
+
 
 class TestJbrFabFindings(unittest.TestCase):
     """도면집이 스스로 드러낸 것 — 조용히 지워지지 않게 붙든다."""
