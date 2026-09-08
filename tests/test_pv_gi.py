@@ -15,12 +15,25 @@
 
 from __future__ import annotations
 
+import importlib.util
+import json
 import math
+import pathlib
 import unittest
 
 from tests import _path  # noqa: F401
 
 from pv_preprocess import ai, campaign, gi_optics, handoff, sg_grind, smart, vision
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+CLOSEUP = ROOT / "docs/drawings/pv-gi-closeup.html"
+
+
+def _load(name: str):
+    spec = importlib.util.spec_from_file_location(name, ROOT / "tools" / f"{name}.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 class TestTheChainFromSpeedToLight(unittest.TestCase):
@@ -188,6 +201,208 @@ class TestTimeAndData(unittest.TestCase):
         self.assertAlmostEqual(
             gi_optics.pixel_rate_mpx_s(),
             gi_optics.pixels_needed() * gi_optics.line_rate_hz() / 1e6, places=1)
+
+
+class TestTheSeatsAcrossTheWidth(unittest.TestCase):
+    """자리표 — 나눈 시야가 폭을 빈틈없이 덮는가."""
+
+    def test_the_seats_cover_the_width_with_no_gap(self):
+        self.assertTrue(gi_optics.seam_map_covers_the_width())
+        m = gi_optics.seam_map()
+        self.assertEqual(len(m), gi_optics.cameras_below())
+        self.assertAlmostEqual(m[0]["from"], -gi_optics.PANEL_W_MM / 2.0, places=6)
+        self.assertAlmostEqual(m[-1]["to"], gi_optics.PANEL_W_MM / 2.0, places=6)
+
+    def test_neighbours_overlap_by_exactly_the_seam(self):
+        """이음매마다 정확히 그만큼 겹친다 — 비면 거기 균열을 못 본다."""
+        m = gi_optics.seam_map()
+        each = gi_optics.seam_overlap_each_mm(len(m))
+        for i in range(len(m) - 1):
+            with self.subTest(seam=i):
+                self.assertAlmostEqual(m[i]["to"] - m[i + 1]["from"], each, places=3)
+
+    def test_the_seams_add_up_to_the_declared_total(self):
+        n = gi_optics.cameras_below()
+        self.assertAlmostEqual(gi_optics.seam_overlap_each_mm(n) * (n - 1),
+                               gi_optics.seam_overlap_mm(n), places=3)
+
+    def test_one_camera_has_no_seam(self):
+        self.assertEqual(gi_optics.seam_overlap_each_mm(1), 0.0)
+        self.assertEqual(len(gi_optics.seam_map(1)), 1)
+
+    def test_the_rounded_tile_never_runs_past_the_panel(self):
+        """반올림한 몫을 n 번 더하면 폭을 넘는다 — 경계는 반올림 전에 잡는다."""
+        for n in (2, 3, 4, 6, 7):
+            with self.subTest(cameras=n):
+                m = gi_optics.seam_map(n)
+                self.assertLessEqual(m[-1]["to"], gi_optics.PANEL_W_MM / 2.0 + 1e-9)
+                self.assertGreaterEqual(m[0]["from"],
+                                        -gi_optics.PANEL_W_MM / 2.0 - 1e-9)
+
+
+class TestTheDrawnGeometryIsTheModel(unittest.TestCase):
+    """형상이 광학에서 나오는가 — 화면에 손으로 놓은 자리가 없어야 한다."""
+
+    def test_three_units_stand(self):
+        keys = [u.key for u in gi_optics.units()]
+        self.assertEqual(keys, ["below", "above", "window"])
+        for u in gi_optics.units():
+            with self.subTest(u.key):
+                self.assertGreater(len(u.parts), 3)
+                self.assertGreater(len(u.principle), 2)
+                self.assertIn(u.key, gi_optics.VIEW_DIR)
+
+    def test_the_camera_count_in_the_drawing_is_the_computed_one(self):
+        """밑에 그린 카메라 수가 계산이 낸 대수와 같아야 한다."""
+        below = gi_optics.below_unit()
+        cams = [p for p in below.parts if p.key.startswith("locam")]
+        self.assertEqual(len(cams), gi_optics.cameras_below())
+        above = gi_optics.above_unit()
+        self.assertEqual(len([p for p in above.parts if p.key.startswith("upcam")]),
+                         gi_optics.cameras_above())
+
+    def test_the_optics_stand_at_the_working_distance(self):
+        """렌즈가 작동거리에, 카메라가 그 뒤에 선다 — 눈대중이 아니다."""
+        n = gi_optics.cameras_below()
+        wd = gi_optics.working_distance_mm(n)
+        below = {p.key: p for p in gi_optics.below_unit().parts}
+        lens = below["lolens0"]
+        self.assertAlmostEqual(lens.pos[1], -(wd + gi_optics.LENS_BODY_MM / 2.0),
+                               places=3)
+        cam = below["locam0"]
+        # 카메라 **바깥** 끝이 곧 스택 높이다.
+        far = abs(cam.pos[1]) + gi_optics.lens_housing_mm() / 2.0
+        self.assertAlmostEqual(far, gi_optics.stack_height_mm(n), places=3)
+
+    def test_the_drawn_stack_fits_the_allotted_room(self):
+        """그린 것이 배정 공간 안에 있어야 한다 — 포락선이 그것을 말한다."""
+        below = gi_optics.below_unit()
+        self.assertAlmostEqual(below.envelope_mm[1], gi_optics.BELOW_DECK_MM,
+                               places=3)
+        self.assertLessEqual(gi_optics.stack_height_mm(gi_optics.cameras_below()),
+                             below.envelope_mm[1])
+
+    def test_the_lenses_sit_on_the_seat_centres(self):
+        below = {p.key: p for p in gi_optics.below_unit().parts}
+        for seat in gi_optics.seam_map():
+            with self.subTest(seat=seat["index"]):
+                self.assertAlmostEqual(below[f"lolens{seat['index']}"].pos[0],
+                                       seat["centre"], places=3)
+
+    def test_the_rollers_make_the_window_they_claim(self):
+        """그린 롤러 사이 간격이 창 값과 같아야 한다."""
+        rollers = [p for p in gi_optics.below_unit().parts
+                   if p.key.startswith("lorl")]
+        self.assertGreaterEqual(len(rollers), 2)
+        zs = sorted(p.pos[2] for p in rollers)
+        pitch = zs[1] - zs[0]
+        self.assertAlmostEqual(pitch, gi_optics.ROLLER_PITCH_MM, places=3)
+        self.assertAlmostEqual(pitch - rollers[0].size[0],
+                               gi_optics.roller_window_mm(), places=3)
+
+    def test_the_cover_glass_fits_inside_the_window(self):
+        below = {p.key: p for p in gi_optics.below_unit().parts}
+        self.assertLess(below["locover"].size[2], gi_optics.roller_window_mm())
+
+    def test_the_window_close_up_is_the_real_section_only_magnified(self):
+        """확대도는 배율만 다르고 값은 실제 그대로여야 한다."""
+        mag = gi_optics.WINDOW_MAG
+        w = {p.key: p for p in gi_optics.window_unit().parts}
+        self.assertAlmostEqual(w["wnline"].size[2],
+                               gi_optics.RESOLUTION_MM * mag, places=6)
+        self.assertAlmostEqual(w["wndof"].size[1],
+                               gi_optics.depth_of_field_mm(
+                                   gi_optics.cameras_below()) * mag, places=6)
+        rollers = sorted((p for p in gi_optics.window_unit().parts
+                          if p.key.startswith("wnrl")), key=lambda p: p.pos[2])
+        self.assertAlmostEqual(rollers[1].pos[2] - rollers[0].pos[2],
+                               gi_optics.ROLLER_PITCH_MM * mag, places=6)
+
+    def test_the_scan_line_is_a_sliver_of_the_window(self):
+        """막는 것은 창의 폭이 아니라 밑의 높이다 — 그 대비가 형상에 있다."""
+        self.assertLess(gi_optics.RESOLUTION_MM,
+                        gi_optics.roller_window_mm() / 100.0)
+        self.assertTrue(gi_optics.scan_line_fits_the_window())
+
+    def test_every_part_says_what_it_does(self):
+        for u in gi_optics.units():
+            for p in u.parts:
+                with self.subTest(f"{u.key}/{p.key}"):
+                    self.assertGreater(len(p.role), 20)
+                    self.assertTrue(p.material)
+
+
+class TestCloseupDrawing(unittest.TestCase):
+    """커밋된 확대도가 생성기 출력과 같고, 화면에 손으로 쓴 수가 없는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.builder = _load("build_gi_closeup")
+        cls.html = CLOSEUP.read_text(encoding="utf-8")
+
+    def test_the_committed_file_is_what_the_builder_makes(self):
+        self.assertEqual(self.html, self.builder.build(),
+                         "PYTHONPATH=src python tools/build_gi_closeup.py 를 다시 돌릴 것")
+
+    def test_it_is_derived_from_the_plant(self):
+        self.assertIn("tools/build_gi_closeup.py", self.html)
+        self.assertIn("<title>GI-302 · GI-303 검사 작동 확대도</title>", self.html)
+        self.assertNotIn("<title>태양광 전처리 통합 플랜트</title>", self.html)
+
+    def test_the_payload_is_the_model(self):
+        units = json.loads(self.builder.unit_payload())
+        self.assertEqual([u["key"] for u in units], ["below", "above", "window"])
+        for got, want in zip(units, gi_optics.units()):
+            with self.subTest(want.key):
+                self.assertEqual(got["sheet"], want.sheet)
+                self.assertEqual(len(got["parts"]), len(want.parts))
+                self.assertEqual(got["view"], list(gi_optics.VIEW_DIR[want.key]))
+        self.assertEqual(units[2]["mag"], gi_optics.WINDOW_MAG)
+        self.assertEqual(units[0]["mag"], 1.0)
+
+    def test_the_seam_payload_is_the_model_seat_map(self):
+        seam = json.loads(self.builder.seam_payload())
+        self.assertEqual(seam["seats"], [dict(x) for x in gi_optics.seam_map()])
+        self.assertEqual(seam["cameras"], gi_optics.cameras_below())
+        self.assertTrue(seam["covers"])
+        self.assertEqual(seam["oneNeeds"], gi_optics.one_camera_would_need_mm())
+        self.assertEqual(seam["allotted"], gi_optics.BELOW_DECK_MM)
+
+    def test_the_page_carries_the_finding_not_just_the_numbers(self):
+        """이 셀의 결론은 '한 대로는 자리가 모자란다' 다 — 그것이 화면에 있어야 한다."""
+        self.assertIn(f"{gi_optics.one_camera_would_need_mm():.0f} mm", self.html)
+        self.assertIn(f"{gi_optics.single_camera_shortfall_mm():.0f} mm 초과", self.html)
+        self.assertIn("화소 때문이 아니다", self.html)
+
+    def test_the_headline_numbers_reach_the_page(self):
+        n = gi_optics.cameras_below()
+        for text in (f"{gi_optics.line_rate_hz():,.0f} line/s",
+                     f"{gi_optics.exposure_us():.0f} µs",
+                     f"{gi_optics.working_distance_mm(n):.0f} mm",
+                     f"{gi_optics.depth_of_field_mm(n)} mm",
+                     f"{gi_optics.roller_window_mm():.0f} mm",
+                     f"{gi_optics.mb_per_panel():.0f} MB"):
+            with self.subTest(text):
+                self.assertIn(text, self.html)
+
+    def test_no_number_is_typed_by_hand(self):
+        """생성기가 모델을 부르지 않고 수를 적어 두면 모델이 바뀌어도 안 따라온다."""
+        source = (ROOT / "tools/build_gi_closeup.py").read_text(encoding="utf-8")
+        for typed in ("1,065", "1064.7", "498.2", "3,000 line", "466.67"):
+            with self.subTest(typed):
+                self.assertNotIn(typed, source)
+
+    def test_the_console_is_wired(self):
+        for ident in ("gi-cu-tabs", "gi-cu-band", "gi-cu-rows", "gi-cu-spec",
+                      "gi-cu-principle", "gi-cu-open", "__pvGiCloseup"):
+            with self.subTest(ident):
+                self.assertIn(ident, self.html)
+
+    def test_the_open_questions_reach_the_page(self):
+        payload = json.loads(self.builder.open_payload())
+        self.assertEqual([q[0] for q in payload],
+                         [t for t, _ in gi_optics.open_questions()])
+        self.assertGreater(len(payload), 0)
 
 
 class TestOpenQuestions(unittest.TestCase):

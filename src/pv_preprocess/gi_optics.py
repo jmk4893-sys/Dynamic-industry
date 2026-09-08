@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import math
 
+from .afr_units import Part, Unit
 from . import campaign, handoff, smart, vision
 
 # ── 다른 모듈이 정한 것 ─────────────────────────────────────────────────
@@ -315,6 +316,320 @@ def open_questions() -> tuple[tuple[str, str], ...]:
     return tuple(out)
 
 
+# ── 형상 ───────────────────────────────────────────────────────────────
+#: 렌즈 경통이 광축으로 먹는 길이 (mm). 나머지가 카메라 몸통이다 —
+#: 둘의 합이 `CAMERA_BODY_MM` 이라 스택 높이는 여기서 새로 안 생긴다.
+LENS_BODY_MM = 60.0
+#: 카메라·조명을 다는 브래킷 판 두께 (mm).
+BRACKET_T_MM = 12.0
+#: 라인조명 바 단면 (mm) — 폭 × 높이. 길이는 시야에서 나온다.
+LIGHT_BAR_MM = (70.0, 45.0)
+#: 광학을 유리가루에서 막는 보호창 두께 (mm). 창은 스캔 창 안에 들어가야 한다.
+COVER_GLASS_T_MM = 6.0
+#: GI-302 갠트리 보 단면 (mm).
+GANTRY_MM = (200.0, 160.0)
+#: 롤러 창 접촉부를 세울 때의 배율 — 창 150 mm 는 셀 전체 옆에서 안 보인다.
+WINDOW_MAG = 6.0
+#: 접촉부 확대도가 잘라 보는 이송방향 길이 (mm).
+WINDOW_SPAN_MM = 3.0 * ROLLER_PITCH_MM
+
+
+def lens_housing_mm() -> float:
+    """카메라 몸통에서 렌즈를 뺀 길이 (mm) — 센서와 전자부가 있는 쪽."""
+    return round(CAMERA_BODY_MM - LENS_BODY_MM, 3)
+
+
+def field_width_mm(cameras: int) -> float:
+    """대당 담당 폭 (mm) — 겹침 전의 몫."""
+    return round(PANEL_W_MM / cameras, 3)
+
+
+def seam_overlap_each_mm(cameras: int, overlap_px: int = 64) -> float:
+    """이음매 **하나당** 겹침 (mm). 이음매는 대수보다 하나 적다."""
+    if cameras < 2:
+        return 0.0
+    return round(seam_overlap_mm(cameras, overlap_px) / (cameras - 1), 3)
+
+
+def seam_map(cameras: int | None = None) -> tuple[dict[str, float], ...]:
+    """폭을 대수로 나눈 자리표 — 어느 카메라가 어디를 보는가.
+
+    폭을 같은 크기의 몫으로 자르고, 안쪽 이음매마다 겹침의 절반씩을 양쪽이
+    더 본다. 그래야 이웃끼리 정확히 `seam_overlap_each_mm` 만큼 겹치고,
+    합집합이 폭을 빈틈없이 덮는다 — 이음매가 비면 거기 있는 균열을 못 본다.
+    """
+    n = cameras or cameras_below()
+    half = seam_overlap_each_mm(n) / 2.0
+    # 몫의 경계는 **반올림 전** 값으로 잡는다 — 반올림한 몫을 n 번 더하면
+    # 폭을 넘겨(1,400.001) 자리표가 판 밖을 가리킨다.
+    edge = lambda i: -PANEL_W_MM / 2.0 + PANEL_W_MM * i / n
+    out = []
+    for i in range(n):
+        lo = edge(i) - (half if i else 0.0)
+        hi = edge(i + 1) + (half if i < n - 1 else 0.0)
+        out.append({"index": i, "from": round(lo, 3), "to": round(hi, 3),
+                    "centre": round((lo + hi) / 2.0, 3),
+                    "width": round(hi - lo, 3)})
+    return tuple(out)
+
+
+def seam_map_covers_the_width() -> bool:
+    """자리표가 폭을 빈틈없이 덮는가 — 그림이 아니라 수가 답한다."""
+    m = seam_map()
+    return (abs(m[0]["from"] + PANEL_W_MM / 2.0) < 1e-6
+            and abs(m[-1]["to"] - PANEL_W_MM / 2.0) < 1e-6
+            and all(m[i + 1]["from"] < m[i]["to"] for i in range(len(m) - 1)))
+
+
+def _camera_parts(prefix: str, sign: int, cameras: int,
+                  catalog: str) -> list[Part]:
+    """라인스캔 한 벌 — 보호창·조명·렌즈·카메라. 위아래가 같은 것을 쓴다.
+
+    `sign` 이 +1 이면 유리 **위**, −1 이면 **밑**이다. 유리면이 y = 0 이고
+    광축이 그 부호 방향으로 뻗는다 — 작동거리와 몸통 길이가 모두 모델값이라
+    화면의 높이가 곧 스택 높이다.
+    """
+    wd = working_distance_mm(cameras)
+    fov = field_width_mm(cameras) + seam_overlap_each_mm(cameras)
+    lens_y = sign * (wd + LENS_BODY_MM / 2.0)
+    body_y = sign * (wd + LENS_BODY_MM + lens_housing_mm() / 2.0)
+    out: list[Part] = []
+    for i, seat in enumerate(seam_map(cameras)):
+        cx = float(seat["centre"])
+        out.append(Part(
+            f"{prefix}lens{i}", "라인스캔 렌즈", 1, "cyl",
+            (72.0, LENS_BODY_MM, 72.0), (cx, lens_y, 0.0),
+            f"f{LENS_F_MM:.0f} · F{F_NUMBER}", axis="y",
+            role=f"작동거리 {wd:.0f} mm 에서 폭 {fov:.0f} mm 를 센서 "
+                 f"{sensor_width_mm():.1f} mm 에 맺는다 — 배율 "
+                 f"{magnification(cameras):.4f}. 심도가 "
+                 f"{depth_of_field_mm(cameras)} mm 라 통과 중 판 휨 "
+                 f"{PANEL_BOW_MM} mm 를 덮는다.",
+            color="chrome", explode=(0.0, sign * 90.0, 0.0),
+            spec=f"f{LENS_F_MM:.0f} · F{F_NUMBER} · WD {wd:.0f} mm",
+            catalog=f"{catalog}-LN"))
+        out.append(Part(
+            f"{prefix}cam{i}", "라인스캔 카메라", 1, "box",
+            (96.0, lens_housing_mm(), 96.0), (cx, body_y, 0.0),
+            f"{SENSOR_PX // 1024}k × {SENSOR_PITCH_UM} µm", axis="y",
+            role=f"{line_rate_hz():,.0f} line/s 로 읽는다. 노광 "
+                 f"{exposure_us():.0f} µs 는 면적 카메라의 "
+                 f"1/{exposure_vs_area_camera():,} 이다 — 라인스캔에서 먼저 "
+                 f"막히는 것은 렌즈가 아니라 조명이다.",
+            color="dark", explode=(0.0, sign * 200.0, 0.0),
+            spec=f"{SENSOR_PX:,} px · {line_rate_hz():,.0f} line/s · "
+                 f"{pixel_rate_mpx_s() / cameras:.0f} Mpx/s",
+            catalog=f"{catalog}-CAM"))
+    out.append(Part(
+        f"{prefix}light", "라인조명 바", 2, "box",
+        (PANEL_W_MM, LIGHT_BAR_MM[1], LIGHT_BAR_MM[0]),
+        (0.0, sign * (LIGHT_BAR_MM[1] / 2.0 + COVER_GLASS_T_MM + 20.0),
+         float(roller_window_mm()) / 4.0),
+        "고휘도 LED 라인", mirror=("z",),
+        role=f"스캔선 한 줄만 밝히면 된다. 밝기는 **아직 값이 아니다** — "
+             f"노광 {exposure_us():.0f} µs 에 맞추려면 대상 반사율과 조리개가 "
+             f"먼저 정해져야 한다.",
+        color="amber", explode=(0.0, sign * 40.0, 0.0),
+        spec=f"길이 {PANEL_W_MM:.0f} · 단면 {LIGHT_BAR_MM[0]:.0f}×"
+             f"{LIGHT_BAR_MM[1]:.0f}",
+        catalog=f"{catalog}-LT"))
+    out.append(Part(
+        f"{prefix}cover", "보호창", 1, "box",
+        (PANEL_W_MM, COVER_GLASS_T_MM, float(roller_window_mm()) - 20.0),
+        (0.0, sign * (COVER_GLASS_T_MM / 2.0 + 8.0), 0.0),
+        "강화유리 / 반사방지",
+        role=f"유리가루에서 광학을 막는다. 폭 "
+             f"{roller_window_mm() - 20.0:.0f} mm 라 스캔 창 "
+             f"{roller_window_mm():.0f} mm 안에 든다.",
+        color="glass", explode=(0.0, sign * 20.0, 0.0),
+        spec=f"t{COVER_GLASS_T_MM:.0f} · 창 {roller_window_mm():.0f} 안",
+        catalog=f"{catalog}-WD"))
+    out.append(Part(
+        f"{prefix}brk", "광학 브래킷", cameras, "box",
+        (140.0, BRACKET_T_MM, 260.0),
+        (0.0, sign * (wd + CAMERA_BODY_MM - BRACKET_T_MM), 0.0),
+        "SS275 판재", mirror=(),
+        role=f"카메라 {cameras} 대를 같은 평면에 세운다. 대수가 화소가 아니라 "
+             f"**자리** 때문임을 여기가 보여 준다.",
+        color="frame", explode=(0.0, sign * 260.0, 0.0),
+        spec=f"t{BRACKET_T_MM:.0f} · {cameras} 자리",
+        catalog=f"{catalog}-BR"))
+    return out
+
+
+def _roller_parts(prefix: str, count: int, mag: float = 1.0) -> list[Part]:
+    """CV-102 롤러 — 그 사이가 곧 스캔 창이다."""
+    pitch, d = ROLLER_PITCH_MM * mag, ROLLER_D_MM * mag
+    out = []
+    for i in range(count):
+        z = (i - (count - 1) / 2.0) * pitch
+        out.append(Part(
+            f"{prefix}rl{i}", "CV-102 이송롤러", 1, "cyl",
+            (d, PANEL_W_MM, d), (0.0, -d / 2.0, z),
+            "우레탄 피복 강관", axis="x",
+            role=f"피치 {ROLLER_PITCH_MM:.0f} − 외경 {ROLLER_D_MM:.0f} = 창 "
+                 f"**{roller_window_mm():.0f} mm**. `vision` 이 GI-303 주기에 "
+                 f"적어 둔 값과 같다.",
+            color="dark", explode=(0.0, -140.0, 0.0),
+            spec=f"Ø{ROLLER_D_MM:.0f} · 피치 {ROLLER_PITCH_MM:.0f}",
+            catalog="CV-102-RL"))
+    return out
+
+
+def below_unit() -> Unit:
+    """GI-303 하부 라인스캔 — **자리가 모자라 여러 대**인 유닛."""
+    n = cameras_below()
+    parts = _camera_parts("lo", -1, n, "GI-303") + _roller_parts("lo", 4)
+    parts.append(Part(
+        "loglass", "패널 (통과 중)", 1, "box",
+        (PANEL_W_MM, float(smart.LINESCAN_RESOLUTION_MM) * 32.0, 900.0),
+        (0.0, 3.0, 0.0), "유리 + EVA + 백시트",
+        role=f"{TRANSPORT_MM_S:.0f} mm/s 로 지나간다. 길이 {PANEL_L_MM:.0f} mm 를 "
+             f"{scan_time_s()} s 에 훑는다.",
+        color="glass", explode=(0.0, 260.0, 0.0),
+        spec=f"{PANEL_L_MM:.0f} × {PANEL_W_MM:.0f} · {TRANSPORT_MM_S:.0f} mm/s"))
+    return Unit(
+        key="below", name="GI-303 하부 라인스캔",
+        sheet="PV-GI-303-OPT-5101",
+        envelope_mm=(PANEL_W_MM + 200.0, BELOW_DECK_MM, 900.0),
+        view_r_mm=900.0,
+        principle=(
+            ("① 창은 롤러가 만든다",
+             f"피치 {ROLLER_PITCH_MM:.0f} 에서 외경 {ROLLER_D_MM:.0f} 을 빼면 "
+             f"**{roller_window_mm():.0f} mm** 가 남는다. 스캔선은 폭이 화소 "
+             f"하나({RESOLUTION_MM} mm)라 그 안에 넉넉히 든다."),
+            ("② 폭을 보려면 자리가 든다",
+             f"폭 {PANEL_W_MM:.0f} 을 {RESOLUTION_MM} mm/px 로 보려면 한 대짜리 "
+             f"광학계가 **{one_camera_would_need_mm():.0f} mm** 를 먹는다. "
+             f"배정된 것은 {BELOW_DECK_MM:.0f} mm — "
+             f"**{single_camera_shortfall_mm():.0f} mm 초과**다."),
+            ("③ 그래서 여러 대다 — 화소 때문이 아니다",
+             f"센서 한 장이면 화소는 {SENSOR_PX:,} 로 필요한 "
+             f"{pixels_needed():,} 에 대해 남는다. **{n} 대**로 나눠야 스택이 "
+             f"{stack_height_mm(n):.0f} mm 로 줄어 {BELOW_DECK_MM:.0f} 안에 든다."),
+            ("④ 나눈 자리는 겹쳐야 한다",
+             f"대당 시야 {field_width_mm(n):.0f} mm 에 이음매마다 "
+             f"{seam_overlap_each_mm(n)} mm 씩 겹친다. 비면 거기 있는 균열을 "
+             f"못 본다."),
+            ("⑤ 판이 떠도 초점은 산다",
+             f"심도 {depth_of_field_mm(n)} mm 가 통과 중 휨 {PANEL_BOW_MM} mm 를 "
+             f"덮는다. 받쳐지지 않는 거리가 창 "
+             f"{unsupported_span_mm():.0f} mm 뿐이라 그 안에서 처진다."),
+        ),
+        parts=tuple(parts))
+
+
+def above_unit() -> Unit:
+    """GI-302 상부 라인스캔 — 위는 자리가 넉넉해 한 대로 끝난다."""
+    n = cameras_above()
+    parts = _camera_parts("up", +1, n, "GI-302") + _roller_parts("up", 4)
+    parts.append(Part(
+        "upgantry", "검사대 갠트리 보", 2, "box",
+        (PANEL_W_MM + 400.0, GANTRY_MM[1], GANTRY_MM[0]),
+        (0.0, stack_height_mm(n) + GANTRY_MM[1] / 2.0, 0.0),
+        "SS275 각관", mirror=("z",),
+        role=f"위쪽 배정 {ABOVE_DECK_MM:.0f} mm 안에서 광학을 매단다. "
+             f"스택이 {stack_height_mm(n):.0f} mm 라 한 대로 끝난다 — "
+             f"밑과 같은 광학인데 답이 다른 이유는 **자리뿐**이다.",
+        color="frame", explode=(0.0, 260.0, 0.0),
+        spec=f"{GANTRY_MM[0]:.0f}×{GANTRY_MM[1]:.0f} 각관",
+        catalog="GI-302-GT"))
+    parts.append(Part(
+        "upglass", "패널 (통과 중)", 1, "box",
+        (PANEL_W_MM, float(smart.LINESCAN_RESOLUTION_MM) * 32.0, 900.0),
+        (0.0, -3.0, 0.0), "유리 + EVA + 백시트",
+        role=f"윗면을 본다 — SG-301 이 지나간 유리면이다. 밑과 같은 판인데 "
+             f"위에서는 롤러가 안 가리므로 창이 필요 없다.",
+        color="glass", explode=(0.0, -260.0, 0.0),
+        spec=f"{PANEL_L_MM:.0f} × {PANEL_W_MM:.0f}"))
+    return Unit(
+        key="above", name="GI-302 상부 라인스캔",
+        sheet="PV-GI-302-OPT-5201",
+        envelope_mm=(PANEL_W_MM + 400.0, ABOVE_DECK_MM, 900.0),
+        view_r_mm=900.0,
+        principle=(
+            ("① 같은 광학, 다른 답",
+             f"밑과 똑같은 f{LENS_F_MM:.0f} · {SENSOR_PX:,} px 인데 여기는 "
+             f"**{n} 대**로 끝난다. 스택 {stack_height_mm(n):.0f} mm 가 위쪽 배정 "
+             f"{ABOVE_DECK_MM:.0f} mm 안에 들기 때문이다."),
+            ("② 위는 창이 필요 없다",
+             "롤러가 밑에 있으므로 윗면은 통째로 보인다 — 밑을 어렵게 만든 것은 "
+             "광학이 아니라 이송이었다."),
+            ("③ 보는 것은 연마면이다",
+             f"SG-301 이 지난 유리 변과 면이다. 아리스 {arris_in_pixels():.0f} 화소, "
+             f"남은 실란트 띠 {sealant_band_in_pixels():,} 화소 — "
+             f"둘 다 {PIXELS_PER_FEATURE} 화소 기준 위다."),
+        ),
+        parts=tuple(parts))
+
+
+def window_unit() -> Unit:
+    """롤러 창 · 스캔선 — 실제 단면 그대로, 배율만 키운다."""
+    mag = WINDOW_MAG
+    parts = _roller_parts("wn", 3, mag)
+    win = roller_window_mm() * mag
+    parts.append(Part(
+        "wnglass", "패널 하면", 1, "box",
+        (PANEL_W_MM / 3.0, 3.2 * mag, WINDOW_SPAN_MM * mag),
+        (0.0, 3.2 * mag / 2.0, 0.0), "유리 3.2 + EVA + 백시트",
+        role=f"롤러 두 개 위에 걸쳐 있고 그 사이 {roller_window_mm():.0f} mm 는 "
+             f"받쳐지지 않는다.",
+        color="glass", explode=(0.0, 400.0, 0.0),
+        spec=f"받침 없는 거리 {unsupported_span_mm():.0f} mm"))
+    parts.append(Part(
+        "wnline", "스캔선", 1, "box",
+        (PANEL_W_MM / 3.0, 2.0, RESOLUTION_MM * mag),
+        (0.0, -1.0, 0.0), "—",
+        role=f"폭이 화소 하나 {RESOLUTION_MM} mm 다. 창 "
+             f"{roller_window_mm():.0f} mm 의 "
+             f"{RESOLUTION_MM / roller_window_mm() * 100:.2f} % 라 "
+             f"자리를 다투지 않는다 — 창이 좁아서 막히는 것이 아니다.",
+        color="amber", explode=(0.0, -120.0, 0.0),
+        spec=f"폭 {RESOLUTION_MM} mm ({RESOLUTION_MM * 1000:.0f} µm)"))
+    parts.append(Part(
+        "wndof", "심도 포락선", 1, "box",
+        (PANEL_W_MM / 3.0, depth_of_field_mm(cameras_below()) * mag,
+         RESOLUTION_MM * mag * 8.0),
+        (0.0, -depth_of_field_mm(cameras_below()) * mag / 2.0, 0.0), "—",
+        role=f"이 두께 안이면 초점이 산다 — "
+             f"{depth_of_field_mm(cameras_below())} mm. 통과 중 판이 뜨고 처지는 "
+             f"{PANEL_BOW_MM} mm 가 그 안이다.",
+        color="cyan", explode=(0.0, -260.0, 0.0),
+        spec=f"DOF {depth_of_field_mm(cameras_below())} mm ≥ 휨 {PANEL_BOW_MM} mm"))
+    return Unit(
+        key="window", name=f"롤러 창 · 스캔선 ({mag:.0f} 배)",
+        sheet="PV-GI-303-DTL-5301",
+        envelope_mm=(PANEL_W_MM / 3.0, 400.0 * mag, WINDOW_SPAN_MM * mag),
+        view_r_mm=WINDOW_SPAN_MM * mag,
+        principle=(
+            ("① 창 150 은 넉넉하다",
+             f"스캔선 폭이 {RESOLUTION_MM} mm 라 창의 "
+             f"{RESOLUTION_MM / roller_window_mm() * 100:.2f} % 다. "
+             f"**막는 것은 창의 폭이 아니라 밑의 높이다.**"),
+            ("② 받침이 없는 구간이 곧 창이다",
+             f"유리가 롤러 두 개에 걸쳐 있고 그 사이 "
+             f"{unsupported_span_mm():.0f} mm 가 뜬다. 그 처짐이 심도 안이라 "
+             f"초점이 산다."),
+            ("③ 배율은 그림에만 있다",
+             f"단면은 실제 값 그대로이고 화면에서만 {mag:.0f} 배로 세운다 — "
+             f"창 {roller_window_mm():.0f} mm 와 화소 {RESOLUTION_MM} mm 는 "
+             f"{PANEL_W_MM:.0f} 옆에서 안 보이기 때문이다."),
+        ),
+        parts=tuple(parts))
+
+
+def units() -> tuple[Unit, ...]:
+    return (below_unit(), above_unit(), window_unit())
+
+
+#: 유닛별 기본 시점 — 무엇을 보여 주려는 그림인가가 정한다.
+VIEW_DIR: dict[str, tuple[float, float, float]] = {
+    "below": (0.55, -0.45, 1.0),     # 밑에서 올려다본다 — 스택이 보여야 한다
+    "above": (0.55, 0.42, 1.0),
+    "window": (0.25, 0.16, 1.0),     # 창을 옆에서 — 스캔선이 선으로 보이게
+}
+
+
 def summary() -> dict[str, object]:
     n = cameras_below()
     return {
@@ -338,6 +653,9 @@ def summary() -> dict[str, object]:
         "depthOfFieldMm": depth_of_field_mm(n),
         "coversBow": depth_covers_the_bow(n),
         "rollerWindowMm": roller_window_mm(),
+        "fieldWidthMm": field_width_mm(n),
+        "seamOverlapEachMm": seam_overlap_each_mm(n),
+        "seamOverlapTotalMm": seam_overlap_mm(n),
         "smallestFeatureMm": smallest_reliable_feature_mm(),
         "sealantBandPx": sealant_band_in_pixels(),
         "arrisPx": arris_in_pixels(),
