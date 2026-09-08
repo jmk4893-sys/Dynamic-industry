@@ -41,6 +41,10 @@ const MOUNTS = [
 const SLENDER_M = 0.20;
 /** 판 조립 깊이 (m) — casing.PANEL_ASSY_MM. 이 안쪽 접촉은 판이 얹힌 것이다. */
 const SKIN_T_M = 0.024;
+/** 형상 버퍼가 float32 라 **딱 판 두께만큼** 지나가는 부재의 깊이가 0.2 nm 쯤
+ *  넘친다. 그 0.2 nm 때문에 "판을 그대로 통과하는 부재" 가 관통으로 잡히면
+ *  검사가 설계를 못 보고 부동소수점을 본다. 실제 관통과는 자릿수가 다르다. */
+const SKIN_EPS_M = 1e-6;
 
 const T0 = 0, T1 = 130, DT = 0.5;
 const TOL_M = 0.002;          // 이보다 얕으면 수치오차
@@ -58,7 +62,7 @@ page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
 await page.goto('file://' + resolve(file), { waitUntil: 'load' });
 await page.waitForTimeout(3400);
 
-const out = await page.evaluate(([t0, t1, dt, tol, mounts, aisleZ, aisleW, planes, slender, skinT]) => {
+const out = await page.evaluate(([t0, t1, dt, tol, mounts, aisleZ, aisleW, planes, slender, skinT, skinEps]) => {
   const host = document.getElementById('jb-removal-operation');
   if (!host || !host.__pvScene) return { error: '3D 장면 훅(__pvScene)을 찾지 못했다' };
   if (!host.__pvInfeedTest) return { error: '영상 훅(__pvInfeedTest)을 찾지 못했다' };
@@ -135,7 +139,7 @@ const out = await page.evaluate(([t0, t1, dt, tol, mounts, aisleZ, aisleW, plane
     // 둘 다 "판이 프레임에 얹혔다" 는 뜻이다. 프레임을 가르고 지나가면
     // 겹침이 판 두께를 넘으므로 여기서 안 걸러진다.
     const spans = box.mn[2] <= pl.mount + 1e-6 && box.mx[2] >= pl.mount - 1e-6;
-    return spans || depth <= skinT;
+    return spans || depth <= skinT + skinEps;
   };
 
   // ── ③ 통로 침범 — 시간과 무관하다 ────────────────────────────────────
@@ -201,7 +205,7 @@ const out = await page.evaluate(([t0, t1, dt, tol, mounts, aisleZ, aisleW, plane
     rows: rows.sort((a, b) => b.maxMm - a.maxMm),
     worstOver: +worstOver.toFixed(1),
   };
-}, [T0, T1, DT, TOL_M, MOUNTS, AISLE_Z, AISLE_W, PLANES, SLENDER_M, SKIN_T_M]);
+}, [T0, T1, DT, TOL_M, MOUNTS, AISLE_Z, AISLE_W, PLANES, SLENDER_M, SKIN_T_M, SKIN_EPS_M]);
 
 await browser.close();
 
