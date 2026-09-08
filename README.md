@@ -35,10 +35,10 @@ Dynamic industry Development
 | [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 7매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
 | [docs/drawings/pv-preprocess-plant.html](docs/drawings/pv-preprocess-plant.html) | **전처리 플랜트 통합 설계도** — 상류 공정(투입·반전·정션박스 제거·프레임 분리·유리 검사·레시피 버퍼)의 3D 작동 시뮬레이션과 셀별 2D 제작도·3D 분해도·전체 배치도 (브라우저로 열 것) |
-| [docs/drawings/pv-infeed-detail.html](docs/drawings/pv-infeed-detail.html) | **투입 구간 상세도** — FL-101 반입 → LFT-101A/B → SE/VS-101 판정 → BFC-101A/B 분리·승강·반전 → RB-101 직접 픽업 → PT-101 3-2-1 정렬 → JB-201 인계까지만 떼어 낸 상세. 평면·입면·시각표·기구학 여유·도달 사슬·부품표·구동·안전·장착·미결 항목을 모델에서 생성 (`PYTHONPATH=src python tools/build_infeed_detail.py`) |
+| [docs/drawings/pv-infeed-detail.html](docs/drawings/pv-infeed-detail.html) | **투입 구간 상세도** — FL-101 반입 → LFT-101A/B → SE/VS-101 판정 → BFC-101A/B 분리·승강·반전 → RB-101 직접 픽업 → PT-101 3-2-1 정렬 → JB-201 인계까지만 떼어 낸 상세. 평면·입면·시각표·기구학 여유·도달 사슬·부품표·구동(전동–기구 검산: 리드·감속비·마찰 압착력)·안전·장착·미결 항목을 모델에서 생성 (`PYTHONPATH=src python tools/build_infeed_detail.py`) |
 | [docs/drawings/pv-infeed-sim.html](docs/drawings/pv-infeed-sim.html) | **투입 구간 운전 콘솔** — 같은 구간이 실제로 움직이는 것. 평면·측면·단면이 한 공정시계에 묶여 리프트 인덱스·분리·승강·180° 반전·로봇 이송·PT-101 정렬·JB-201 인계를 재생하고, 허가 조건·핸드셰이크·리프트 잔량이 기계 상태에서 켜진다. 한 장 추적 / 60장 캠페인(듀얼 리프트·지게차 교환) 모드 (`PYTHONPATH=src python tools/build_infeed_sim.py`, 브라우저로 열 것) |
 | [docs/drawings/pv-infeed-scene.html](docs/drawings/pv-infeed-scene.html) | **통합 설계도 · 투입 구간 파생본** — 통합 설계도의 3D 영상 콘솔에서 afu·robot 존(JB-201 인계 롤러까지)만 남기고 하류 셀을 끈 것. 공정시계는 방출 주기 48 s, 기본 시점은 투입셀, 흐름표·도면 모듈도 투입 구간만, 외장 케이싱은 뺀다. 배치도 탭은 전체 장비배치도 대신 투입 구간 평면 배치와 투입 장비 가로·세로·높이 외형 표다. 원본 형상은 그대로이고 문자열 패치로 만든다 (`PYTHONPATH=src python tools/build_infeed_scene.py`, 브라우저로 열 것) |
-| [docs/drawings/pv-infeed-fab.html](docs/drawings/pv-infeed-fab.html) | **투입 구간 제작 도면집** — 조립체 12벌 · 제작품 117종의 부품도(3면·치수·두께·구멍·재질) · 등각 분해도 · 부품표 · 상용품 규격 · 체결표(볼트 호칭·등급·토크·앵커) · 조립 순서 · 검사 항목 · 총괄 사양(재질·체결 표준·용접·도장·공차) · 플랜트 설치 순서. 정본은 `src/pv_preprocess/fabrication.py` (`PYTHONPATH=src python tools/build_infeed_fab.py`, 브라우저로 열 것) |
+| [docs/drawings/pv-infeed-fab.html](docs/drawings/pv-infeed-fab.html) | **투입 구간 제작 도면집** — 조립체 12벌 · 제작품 117종의 부품도(3면·치수·두께·구멍·재질) · 등각 분해도 · 부품표 · 상용품 규격 · 체결표(볼트 호칭·등급·토크·앵커) · 조립 순서 · 검사 항목 · 총괄 사양(재질·체결 표준·용접·도장·공차) · 플랜트 설치 순서 · 미결 항목(도면으로 못 닫는 것 — 왜 못 닫는가, 무엇이 있어야 닫히는가, 닫히기 전에 하면 안 되는 것). 정본은 `src/pv_preprocess/fabrication.py` (`PYTHONPATH=src python tools/build_infeed_fab.py`, 브라우저로 열 것) |
 | [docs/drawings/pv-fastener-book.html](docs/drawings/pv-fastener-book.html) | **체결 부품 도면집** — 볼트·너트·평와셔·스프링와셔의 형상도(대변·머리 두께·피치·나사부·와셔 규격) 7종, 관통·탭·앵커 체결 상세 단면, 재질·표면처리·풀림 방지, 나사 물림과 탭 깊이, 체결 71건 적용표, 앵커 로드 길이 검산, 소요량(예비 10 %). 정본은 `src/pv_preprocess/fasteners.py` (`PYTHONPATH=src python tools/build_fasteners.py`, 브라우저로 열 것) |
 | [docs/drawings/pv-assembly-steps.html](docs/drawings/pv-assembly-steps.html) | **조립 순서도** — 조립체 12벌 · 47단계마다 등각 조립도 한 장. 이미 놓인 부품은 흐리게, 그 단계에서 놓는 부품은 진하게 그리고 풍선 번호·부품도 링크·수량·그 단계의 체결(볼트 호칭·등급·토크)을 붙인다. 부품↔단계 배정은 `fabrication.STEP_PARTS` 가 정본이고 117종이 한 번씩 배정됐는지 검사가 본다 (`PYTHONPATH=src python tools/build_assembly_steps.py`, 브라우저로 열 것) |
 | [docs/drawings/pv-bfc-prototype.html](docs/drawings/pv-bfc-prototype.html) | **BFC 반전 카세트 시작품 계획** — 라인을 짓기 전에 한 Bay 만 만들어 공정 가정을 시험한다. 닫는 질문 7 · 범위와 대체품 · 리그 입면 · 관문 G0–G6 20주 · 시험 12건(합격 기준은 설계 모델에서) · 시료 100장 · 리그 안전 · 수량 산출(단가는 견적) · 위험 · 모델 반영. 정본은 `src/pv_preprocess/prototype.py` (`PYTHONPATH=src python tools/build_prototype.py`, 브라우저로 열 것) |
@@ -105,6 +105,7 @@ src/pv_preprocess/
   mounting.py       지지·장착 — 앵커 계획·지지 부재·하중 경로 예외
   wiring.py         분전반 위치·트레이 경로·실제 케이블 길이 산정
   servos.py         전동기·서보 축 일람 — 피더 예산·브레이크 불변식
+  drives.py         전동–기구 검산 — 리드·감속비·마찰 압착력이 회전수·토크 안에 드는가
   acoustics.py      소음·진동 예측 모델과 저감 설계 근거
   thermal.py        열수지·냉각 계통 — 오일쿨러·반내 냉각·환기 사이징
   materials.py      내구 재질 기준 — 환경별 규칙과 부품 단위 적용

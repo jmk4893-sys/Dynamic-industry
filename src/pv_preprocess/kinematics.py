@@ -73,6 +73,109 @@ RING_TUBE_MM = 90
 #: 두 엔드링의 축방향 간격 (mm). 케이지 안지름 = 이 값 − 단면 2배.
 RING_PITCH_MM = 2760
 
+#: 반전축이 플랜트 어느 축에 눕는가 — **설계의 현재 값**이다.
+#:
+#: "Z" (라인 가로) 다. 지게차가 패널을 장변 방향으로 넣으므로 장변이 Z 에 눕고,
+#: 반전축은 그 장변과 나란해야 한다 (`PANEL_LONG_ALONG` 참조). 그림은 이 값을
+#: `axis_is_z()` · `plan_xz()` 로 읽어서 스스로 돈다 — 리터럴로 다시 적지 않는다.
+FLIP_AXIS_ALONG = "Z"
+
+#: 통합 설계도 3D 의 **메시**가 아직 옛 방향(축 X)으로 그려져 있으면 그 사유.
+#: 닫히면 None 이다.
+#:
+#: 리터럴은 전부 맞췄고(밴드·셀 외형·크레인·소음·케이블·케이싱) 시험도 통과하지만,
+#: 3D 는 손으로 짠 형상이라 리터럴만으로는 안 돈다. **파이썬은 통과하는데 그림은
+#: 옛 설계인 상태**가 이 저장소가 가장 경계하는 것이라(REV.26·§24) 값으로 남긴다.
+#:
+#: 생성 뷰(상세도 평면·입면, 운전 콘솔 평면·측면·단면)는 **돌았다** — `plan_xz`
+#: 계열을 읽어 스스로 회전한다. 남은 것은 손으로 짠 3D 하나다.
+#:
+#: 돌릴 때 손대야 하는 자리 (docs/drawings/pv-preprocess-plant.html):
+#:   • 베이 원점  `var yn=[new C(...,-1.6), new C(...,1.6)]` → ∓1.815
+#:   • 페데스털   `It=jn.x+2.15` → `+2`
+#:   • 포탈 `s` 4건 — 절대좌표라 회전식을 직접 먹인다:
+#:       크기 (sx,sy,sz) → (sz,sy,sx),  자리 [i.x+I, y, i.z+zc] → [i.x−zc, y, i.z+I]
+#:   • 베이 원점에 놓인 그룹 `n`·`d`·`f`·`m` — `rotation.y = Math.PI/2` 하나면 자식이 따라온다
+#:   • `wr`(리프트)·`Is`(비전보) 는 절대좌표라 포탈과 같은 식으로 옮긴다
+SCENE_AXIS_OPEN: str | None = (
+    "통합 설계도의 3D 메시가 아직 축 X 를 가정한다 — 손으로 짠 형상이라 리터럴만으로는 "
+    "안 돈다. 수치(밴드·셀 외형·베이 중심·페데스털·크레인·소음·케이블·케이싱)는 전부 "
+    "축 Z 로 맞췄고 시험이 지킨다. 생성 뷰(상세도 평면·입면, 운전 콘솔 평면·측면·단면)도 "
+    "모델 상수를 읽어 이미 돌았다. 제작 도면집이 부품 좌표를 이 3D 에서 받으므로, "
+    "3D 를 돌리기 전에는 카세트 부품 좌표를 옮기지 않는다."
+)
+
+
+def scene_axis_is_registered() -> bool:
+    """3D 메시가 모델 방향을 따라왔는가."""
+    return SCENE_AXIS_OPEN is None
+
+#: 패널 장변이 놓이는 플랜트 축. **"Z" 다 — 발주처 확인값이다.**
+#:
+#: 지게차가 패널을 **장변 방향으로** 투입한다. 팔레트 위 패널의 장변 2,500 이
+#: 라인 진행방향(X)이 아니라 가로(Z)에 놓인다는 뜻이다.
+#:
+#: 반전축은 **패널 장변과 나란해야** 한다 — 축이 단변과 나란하면 링 통과 구멍이
+#: 2,500 을 삼켜야 해서 반경이 810 → 1,250 이 되고 링이 통째로 커진다. 둘이 같이
+#: 돌면 카세트 기준 기하는 **하나도 안 바뀐다**: 케이지 안지름 2,580 이 여전히
+#: 장변을 받고(`cage_axial_clearance_mm`), 구멍 Ø1,620 이 여전히 단변을 받는다
+#: (`bore_clearance_mm`). 바뀌는 것은 플랜트 안에서 카세트가 놓이는 방향뿐이고,
+#: 그 대가는 **셀 폭**으로 나온다 (`afu_width_from_bays_mm`).
+PANEL_LONG_ALONG = "Z"
+
+
+# ── 포탈 발자국 ─────────────────────────────────────────────────────────
+#: 포탈 기둥 중심의 **축방향** 위치 (mm, ∓). 링 바깥면(∓1,470)보다 밖이어야
+#: 크로스빔이 링을 타고 넘지 않는다. 이 값이 카세트의 축방향 폭을 정하고,
+#: 축을 돌리면 그 폭이 곧 셀 폭 소요가 된다 — OI-06 의 두 안이 갈리는 자리다.
+PORTAL_COLUMN_AXIS_MM = 1600
+
+#: 기둥 단면 (축방향, 축직각) mm — 제작 패키지 BFC-COL-01 (박스빔 240×180).
+PORTAL_COLUMN_SECTION_MM = (180, 240)
+
+#: 기둥 중심의 **축직각** 위치 (mm). 대칭이 아니다 — 카세트가 도킹면 쪽으로
+#: 물러나 있다. **바닥 레벨 발자국**은 이 값이 정한다: 페데스털이 카세트를
+#: 비켜설 수 있는지는 여기로 재야 하고, 크로스빔(높이 3,320)으로 재면 460 을
+#: 헛되이 밀어내 그만큼 로봇 도달이 모자라진다.
+PORTAL_COLUMN_CROSS_MM = (-1290, 950)
+
+#: 크로스빔 스팬 (mm, 축직각). 기둥보다 길어 양쪽으로 내민다 — 지지롤러·구동·
+#: 볼스크루가 여기 매달린다. 머리 위 발자국은 이 값이 정한다.
+CROSSBEAM_SPAN_MM = 2660
+
+#: 중앙 백투백벽 두께 · 외측 안전벽 두께 · 그 바깥 정비통로 (mm).
+CENTRE_WALL_T_MM = 250
+OUTER_WALL_T_MM = 150
+MAINTENANCE_AISLE_MM = 600
+
+# ── CD-101 4열 프레임 포획빔 ────────────────────────────────────────────
+#: 빔 한 본의 길이 (mm). 통합 설계도 3D 의 실측 형상 `[2.9, .06, .1]` 이다.
+CATCH_BEAM_MM = 2900
+
+#: 전개했을 때 네 본이 서는 자리 (mm). 패널 **장변 프레임**(∓672.5) 을 두 본씩
+#: 짝으로 낀다 — 프레임 밑을 받아야 낙하를 포획한다.
+CATCH_BEAM_ROWS_MM = (-720, -580, 580, 720)
+
+#: 수납 자리 (mm). 네 본이 중앙벽 옆 카세트에 차례로 겹쳐 든다.
+CATCH_BEAM_STOWED_MM = (800, 970, 1140, 1310)
+
+
+def catch_beam_row_half_mm() -> float:
+    """전개한 네 본이 벌어지는 반폭 (mm) — 그림의 행 방향 치수다."""
+    return max(abs(z) for z in CATCH_BEAM_ROWS_MM)
+
+
+def catch_beam_covers_the_panel_mm() -> float:
+    """중앙벽 안면에서 빔 끝까지 나갔을 때 패널 끝단과의 차 (mm).
+
+    음수면 패널 바깥끝이 빔 밖으로 남는다. 반전축을 돌리면 빔이 패널 **장변**을
+    따라 뻗어야 하므로 이 값이 처음으로 문제가 된다.
+    """
+    wall_face = CENTRE_WALL_T_MM / 2
+    panel_far = layout.BFC_PICKUP_Z_MM + PANEL_MM[0] / 2
+    return (wall_face + CATCH_BEAM_MM) - panel_far
+
+
 #: 반전축 높이 (mm). REV.26 은 3,300 이었다 — 링 하단이 이송면에 22 mm 까지
 #: 붙어 있었다. 130 올려 캐리지 상단과의 틈을 130 → 260 mm 로 벌린다.
 FLIP_AXIS_MM = 3430
@@ -123,6 +226,34 @@ JAW_OPEN_Z_MM = 860.0
 
 #: 조의 패드 폭 (mm). 여는 자리에서 이 절반만큼 패널 쪽으로 나온다.
 JAW_PAD_W_MM = 180
+
+#: 패드 길이 (mm, 패널 장변 방향). 제작 패키지 BFC-PAD-01 의 L 과 같아야 한다 —
+#: `fabrication.geometry_checks()` 가 그것을 본다.
+JAW_PAD_L_MM = 180
+
+#: 패드가 프레임 플랜지에 무는 폭 (mm). **발주처 확정값이다.**
+#:
+#: 이 값이 없으면 접촉 면적이 안 나오고, 면적이 없으면 면압이 안 나오고, 면압이
+#: 없으면 패드 경도를 못 고른다 — 그래서 이것이 패드 발주를 막고 있었다.
+#:
+#: 값이 정해지자 **패드 면이 평면이면 안 된다**는 것이 따라 나왔다. 패드는 폭
+#: 180 이라 무는 자리에서 z 582.5…762.5 를 덮는데, 프레임은 패널 가장자리
+#: (반폭 700)에서 안쪽으로 이 값만큼뿐이다. 나머지 92 는 **유리 위**고 62.5 는
+#: 패널 밖 허공이다. 그래서 접촉면을 이 폭만큼만 남기고 파낸다.
+JAW_PAD_CONTACT_MM = 25.0
+
+#: 프레임 상면이 유리면보다 솟은 높이 (mm). **가정이다** — 프레임 단면표가 오면
+#: 확인한다. 릴리프 깊이는 이 값과 패드 압축량의 합보다 커야 유리에 안 닿는다.
+PANEL_FRAME_GLASS_STEP_MM = 4.0
+
+#: 패드 접촉면을 뺀 나머지를 파내는 깊이 (mm). 단차 4 + 압축량 약 3 위에
+#: 여유를 둔 값이다 — 이보다 얕으면 눌린 패드가 유리에 닿는다.
+JAW_PAD_RELIEF_MM = 8.0
+
+#: 조 개폐 실린더 (BFC-JCY-01) 안지름 (mm) 과 공압 작동 압력 (MPa).
+#: 조 1대에 2본이 붙고 패드도 2매다.
+JAW_CYLINDER_BORE_MM = 63.0
+JAW_AIR_MPA = 0.5
 
 
 # ── AFR 상부 클램프 포탈 ─────────────────────────────────────────────────
@@ -224,6 +355,160 @@ def ring_over_forklift_mm() -> float:
     return ring_bottom_mm() - FORKLIFT_GUARD_TOP_MM
 
 
+# ── 카세트 발자국과 베이 배치 ───────────────────────────────────────────
+def cassette_axis_extent_mm() -> float:
+    """반전축 방향 카세트 폭 (mm) — 기둥 바깥면에서 바깥면까지.
+
+    회전 뒤 이 값이 **플랜트 Z** 로 눕고, 베이 두 개가 이 폭을 하나씩 먹는다.
+    폭이 모자라는 이유가 전부 여기 있다.
+    """
+    return 2 * (PORTAL_COLUMN_AXIS_MM + PORTAL_COLUMN_SECTION_MM[0] / 2)
+
+
+def cassette_cross_extent_mm() -> float:
+    """반전축 직각 방향 카세트 폭 (mm) — 크로스빔이 정한다 (높이 3,320)."""
+    return float(CROSSBEAM_SPAN_MM)
+
+
+def crossbeam_cross_extent_mm() -> tuple[float, float]:
+    """크로스빔의 축직각 범위 (mm) — 기둥 두 본의 **가운데**에 걸린다.
+
+    기둥이 대칭이 아니므로(∓ 가 아니라 −1,290/+950) 빔도 대칭이 아니다. 빔은
+    기둥 중심의 중점에 걸리고 스팬 `CROSSBEAM_SPAN_MM` 을 좌우로 반씩 내민다 —
+    기둥 바깥면(`cassette_floor_extent_mm`)보다 양쪽으로 90 씩 더 나온다.
+    """
+    mid = sum(PORTAL_COLUMN_CROSS_MM) / 2
+    half = CROSSBEAM_SPAN_MM / 2
+    return (mid - half, mid + half)
+
+
+def crossbeam_overhang_mm() -> float:
+    """크로스빔이 기둥 바깥면 밖으로 내미는 길이 (mm) — 지지롤러·구동이 앉는다."""
+    lo, hi = cassette_floor_extent_mm()
+    b0, b1 = crossbeam_cross_extent_mm()
+    return min(lo - b0, b1 - hi)
+
+
+def cassette_floor_extent_mm() -> tuple[float, float]:
+    """바닥 레벨 발자국의 축직각 범위 (mm) — 기둥만. 크로스빔은 머리 위다.
+
+    페데스털이 카세트를 비켜설 수 있는지는 **이 값**으로 본다. 크로스빔으로
+    재면 460 을 헛되이 밀어내고, 그만큼 로봇 도달이 모자라진다.
+    """
+    lo, hi = PORTAL_COLUMN_CROSS_MM
+    half = PORTAL_COLUMN_SECTION_MM[1] / 2
+    return (lo - half, hi + half)
+
+
+def axis_is_z() -> bool:
+    """반전축이 라인 가로(Z)에 눕는가 — 그림이 이 한 줄로 갈린다."""
+    return FLIP_AXIS_ALONG == "Z"
+
+
+def plan_xz(axial: float, cross: float) -> tuple[float, float]:
+    """(축방향, 축직각) 오프셋을 평면의 (X, Z) 로 옮긴다.
+
+    카세트 기준 치수는 방향과 무관하다 — 어느 축에 눕느냐만 다르다. 도면 코드가
+    `pick ∓1,600` 같은 리터럴을 쓰면 축을 돌려도 그림이 안 돈다. 그래서 축을
+    읽는 자리를 여기 하나로 모은다.
+    """
+    return (cross, axial) if axis_is_z() else (axial, cross)
+
+
+def panel_half_xz_mm() -> tuple[float, float]:
+    """평면에서 패널의 반폭 (X, Z). 장변은 언제나 반전축과 나란하다."""
+    return plan_xz(PANEL_MM[0] / 2, PANEL_MM[1] / 2)
+
+
+def ring_half_xz_mm() -> tuple[float, float]:
+    """평면에서 엔드링 하나의 반폭 (X, Z) — 축방향은 관 두께, 직각은 외경."""
+    return plan_xz(RING_TUBE_MM, ring_outer_r_mm())
+
+
+def ring_plane_offsets_mm() -> tuple[float, float]:
+    """두 링 평면의 축방향 위치 (∓)."""
+    return (-RING_PITCH_MM / 2, RING_PITCH_MM / 2)
+
+
+def column_half_xz_mm() -> tuple[float, float]:
+    """평면에서 포탈 기둥 하나의 반폭 (X, Z)."""
+    a, c = PORTAL_COLUMN_SECTION_MM
+    return plan_xz(a / 2, c / 2)
+
+
+def column_offsets_xz_mm(bay_sign: int) -> tuple[tuple[float, float], ...]:
+    """기둥 4본의 평면 오프셋 (X, Z) — 베이 부호를 받는다.
+
+    축직각 자리는 대칭이 아니다(−1,290 / +950). 그 비대칭이 **베이를 가르는
+    방향**에 있을 때만 베이마다 거울상이 된다 — 축이 Z 면 비대칭이 X(공정방향)로
+    가므로 두 베이가 같은 자리를 쓴다. 하류면이 `cassette_floor_extent_mm()[1]`
+    이고 페데스털 여유가 거기서 나온다.
+    """
+    out = []
+    for a in (-PORTAL_COLUMN_AXIS_MM, PORTAL_COLUMN_AXIS_MM):
+        for c in PORTAL_COLUMN_CROSS_MM:
+            cc = c if axis_is_z() else (c if bay_sign < 0 else -c)
+            out.append(plan_xz(a, cc))
+    return tuple(out)
+
+
+def cell_span_extent_mm() -> float:
+    """셀 **폭(Z)** 방향에 놓이는 카세트 치수 (mm) — 반전축 방향이 정한다.
+
+    축이 X 면 좁은 쪽(크로스빔 2,660)이 폭에 눕고, Z 면 넓은 쪽(기둥 3,380)이
+    눕는다. 회전의 대가가 전부 이 한 줄에서 갈린다.
+    """
+    return (cassette_axis_extent_mm() if FLIP_AXIS_ALONG == "Z"
+            else cassette_cross_extent_mm())
+
+
+def bay_pitch_mm() -> float:
+    """두 베이 중심 사이 최소 거리 (mm) — 폭에 눕는 카세트 치수 + 중앙벽."""
+    return cell_span_extent_mm() + CENTRE_WALL_T_MM
+
+
+def min_bay_centre_z_mm() -> float:
+    """베이 중심 z 의 하한 (mm, ∓). `layout.BFC_PICKUP_Z_MM` 이 이보다 밖이어야
+    두 카세트가 중앙벽을 사이에 두고 겹치지 않는다."""
+    return bay_pitch_mm() / 2
+
+
+def bays_clear_each_other() -> bool:
+    return layout.BFC_PICKUP_Z_MM >= min_bay_centre_z_mm()
+
+
+def afu_width_from_bays_mm() -> float:
+    """베이 배치가 요구하는 afu 셀 폭 (mm).
+
+    중앙벽 절반 + 카세트 + 외측벽 + 정비통로, 그 2배다. 회전 전에는 카세트의
+    **좁은 쪽**(2,660)이 폭에 놓여 7,100 으로 됐다. 회전하면 넓은 쪽(3,380)이
+    폭에 놓이므로 이만큼 필요하다 — 이것이 회전의 대가다.
+    """
+    return 2 * (CENTRE_WALL_T_MM / 2 + cell_span_extent_mm()
+                + OUTER_WALL_T_MM + MAINTENANCE_AISLE_MM)
+
+
+def outer_wall_z_mm() -> float:
+    """외측 안전벽 중심의 z (mm, ∓) — 카세트 바깥면에 붙는다."""
+    return CENTRE_WALL_T_MM / 2 + cell_span_extent_mm() + OUTER_WALL_T_MM / 2
+
+
+def maintenance_aisle_mm() -> float:
+    """실제로 남는 정비통로 (mm) — 셀 폭에서 역산한다."""
+    half = layout.STATIONS["afu"].envelope[1] / 2
+    return half - (CENTRE_WALL_T_MM / 2 + cell_span_extent_mm() + OUTER_WALL_T_MM)
+
+
+def bays_fit_the_cell() -> bool:
+    """두 베이 + 벽 + 정비통로가 afu 셀 폭 안에 드는가."""
+    return maintenance_aisle_mm() >= MAINTENANCE_AISLE_MM
+
+
+def flip_axis_matches_the_panel() -> bool:
+    """반전축이 패널 장변과 나란한가 — 어긋나면 링 구멍이 장변을 삼켜야 한다."""
+    return FLIP_AXIS_ALONG == PANEL_LONG_ALONG
+
+
 def carriage_crosses_the_rings() -> bool:
     """캐리지가 케이지보다 길어 링 평면을 지나는가."""
     return CARRIAGE_MM > cage_clear_span_mm()
@@ -268,6 +553,71 @@ def jaw_open_clearance_mm() -> float:
 
 def jaw_stroke_mm() -> float:
     return JAW_OPEN_Z_MM - JAW_CLOSED_Z_MM
+
+
+def jaw_pad_land_z_mm() -> tuple[float, float]:
+    """패드 접촉면(랜드)의 안쪽·바깥쪽 z (mm, 패널 중심 기준).
+
+    랜드는 프레임 위에만 앉아야 한다. 프레임의 바깥면이 곧 패널 가장자리이므로
+    랜드를 **가장자리에 맞춰** 안쪽으로 접촉폭만큼 낸다 — 이보다 안쪽으로
+    옮기면 유리에 올라탄다. 이 배치는 플랜지가 접촉폭 이상이라는 뜻이고,
+    발주처가 접촉폭을 25 로 준 것이 그 전제다.
+    """
+    outer = PANEL_MM[1] / 2
+    return (outer - JAW_PAD_CONTACT_MM, outer)
+
+
+def jaw_pad_land_offset_mm() -> float:
+    """랜드 중심이 패드 중심에서 바깥으로 밀린 양 (mm).
+
+    조가 무는 자리(패드 중심)는 672.5 인데 랜드 중심은 687.5 다. 랜드를 패드
+    한가운데 두면 유리 위로 15 밀려 앉는다 — **패드는 편심 랜드로 만든다.**
+    조 행정과 캐리어는 그대로 두고 패드 하나만 바꾸면 되기 때문이다.
+    """
+    lo, hi = jaw_pad_land_z_mm()
+    return (lo + hi) / 2 - JAW_CLOSED_Z_MM
+
+
+def jaw_pad_land_is_inside_the_pad() -> bool:
+    """랜드가 패드 면 안에 들어오는가 — 벗어나면 패드를 키워야 한다."""
+    lo, hi = jaw_pad_land_z_mm()
+    return (JAW_CLOSED_Z_MM - JAW_PAD_W_MM / 2 <= lo
+            and hi <= JAW_CLOSED_Z_MM + JAW_PAD_W_MM / 2)
+
+
+def jaw_pad_contact_area_mm2() -> float:
+    """패드 1매의 접촉 면적 (mm²)."""
+    return JAW_PAD_CONTACT_MM * JAW_PAD_L_MM
+
+
+def jaw_clamp_force_n() -> float:
+    """패드 1매가 받는 압착력 (N).
+
+    조 1대에 실린더 2본·패드 2매라 지레비가 1:1 이면 실린더 1본이 패드 1매를
+    맡는다. **지레비는 아직 안 정해졌다** (실린더 장착 위치 = 미결 OI-03) —
+    1:1 은 그 결정 전의 기준값이고, 실린더를 조의 안쪽에 달면 면압이 이보다
+    커진다.
+    """
+    return 3.141592653589793 / 4 * JAW_CYLINDER_BORE_MM ** 2 * JAW_AIR_MPA
+
+
+def jaw_pad_pressure_mpa() -> float:
+    """패드 접촉면의 면압 (MPa) — 압착력 ÷ 접촉 면적."""
+    return jaw_clamp_force_n() / jaw_pad_contact_area_mm2()
+
+
+def jaw_pad_compression_mm() -> float:
+    """면압에서 나오는 패드 압축량 (mm).
+
+    PU 70A 의 압축 탄성률을 6 MPa 로 잡는다 (쇼어 A 70 의 통상 범위 5–8).
+    두께 50 이 이 변형률만큼 준다.
+    """
+    return 50.0 * (jaw_pad_pressure_mpa() / 6.0)
+
+
+def jaw_pad_clears_the_glass() -> bool:
+    """눌린 패드가 유리에 안 닿는가 — 릴리프 > 단차 + 압축량."""
+    return JAW_PAD_RELIEF_MM > PANEL_FRAME_GLASS_STEP_MM + jaw_pad_compression_mm()
 
 
 def lift_is_vertical(path: tuple[tuple[float, float, str, bool, bool], ...] | None = None) -> bool:

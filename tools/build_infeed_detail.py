@@ -28,7 +28,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
 
-from pv_preprocess import (campaign, electrical, kinematics, layout,  # noqa: E402
+from pv_preprocess import (campaign, drives, electrical, kinematics, layout,  # noqa: E402
                            maintain, mounting, reliability, safety, servos, vision)
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -186,6 +186,14 @@ class Sheet:
         self.parts.append(f'<circle class="{cls}" cx="{self.X(x)}" cy="{self.Y(y)}" '
                           f'r="{round(r_mm * self.scale, 1)}">{t}</circle>')
 
+    def ellipse(self, x: float, y: float, rx_mm: float, ry_mm: float, cls: str,
+                title: str | None = None) -> None:
+        """두 축 반경이 다른 형상 — 링을 어느 쪽에서 보든 한 식으로 그린다."""
+        t = f"<title>{esc(title)}</title>" if title else ""
+        self.parts.append(f'<ellipse class="{cls}" cx="{self.X(x)}" cy="{self.Y(y)}" '
+                          f'rx="{round(rx_mm * self.scale, 1)}" '
+                          f'ry="{round(ry_mm * self.scale, 1)}">{t}</ellipse>')
+
     def line(self, x0: float, y0: float, x1: float, y1: float, cls: str) -> None:
         self.parts.append(f'<line class="{cls}" x1="{self.X(x0)}" y1="{self.Y(y0)}" '
                           f'x2="{self.X(x1)}" y2="{self.Y(y1)}"/>')
@@ -253,10 +261,11 @@ def plan_view() -> str:
            f"afu → robot 넘침 {n(over)} (설계 — 로봇 도달 사슬)")
 
     # 지게차 진입 차로 (Bay A/B) 와 FL-101 참조 외형
+    phx, phz = kinematics.panel_half_xz_mm()
     for sign, bay in ((-1, "A"), (1, "B")):
         zc = sign * layout.BFC_PICKUP_Z_MM
-        s.rect(-3_600, pick - 1_250 - 200, plant_y(zc - 900), plant_y(zc + 900), "lane",
-               f"지게차 진입 차로 Bay {bay}")
+        s.rect(-3_600, pick - phx - 200, plant_y(zc - phz - 100), plant_y(zc + phz + 100), "lane",
+               f"지게차 진입 차로 Bay {bay} — 팔레트 폭 {n(phz * 2)} + 여유")
     s.rect(-3_500, -400, plant_y(-layout.BFC_PICKUP_Z_MM - 600), plant_y(-layout.BFC_PICKUP_Z_MM + 600),
            "ref", "FL-101 2.5 t 전동 지게차 3,100 × 1,200 (반입 위치 참조)")
     s.text(-3_450, plant_y(-layout.BFC_PICKUP_Z_MM), "FL-101", "lbl", dy=4)
@@ -265,22 +274,27 @@ def plan_view() -> str:
     # 리프트·적층·벽체·비전보
     for sign, bay in ((-1, "A"), (1, "B")):
         zc = sign * layout.BFC_PICKUP_Z_MM
-        s.rect(pick - 1_450, pick + 1_450, plant_y(zc - 900), plant_y(zc + 900), "base",
-               f"LFT-101{bay} 유압 시저 승강대 2,900 × 1,800")
-        s.rect(pick - 1_250, pick + 1_250, plant_y(zc - 700), plant_y(zc + 700), "panel",
-               f"30장 적층 {bay} 2,500 × 1,400 — 최상단이 픽업면 1,880")
+        dkx, dkz = kinematics.plan_xz(1_450, 900)
+        s.rect(pick - dkx, pick + dkx, plant_y(zc - dkz), plant_y(zc + dkz), "base",
+               f"LFT-101{bay} 유압 시저 승강대 {n(dkx * 2)} × {n(dkz * 2)}")
+        s.rect(pick - phx, pick + phx, plant_y(zc - phz), plant_y(zc + phz), "panel",
+               f"30장 적층 {bay} {n(phx * 2)} × {n(phz * 2)} — 장변이 반전축과 나란 · 최상단이 픽업면 1,880")
         s.text(pick, plant_y(zc), f"LFT-101{bay} · 30장 적층", "lbl-panel", "middle", dy=24)
         # 반전 드럼(엔드링) 은 적층 바로 위 — 평면에서는 두 링의 자취
-        for xr in (pick - 1_380, pick + 1_380):
-            s.rect(xr - 90, xr + 90, plant_y(zc - 990), plant_y(zc + 990), "ring",
+        rhx, rhz = kinematics.ring_half_xz_mm()
+        for a in kinematics.ring_plane_offsets_mm():
+            rx, rz = kinematics.plan_xz(a, 0)
+            s.rect(pick + rx - rhx, pick + rx + rhx, plant_y(zc + rz - rhz), plant_y(zc + rz + rhz), "ring",
                    f"BFC-101{bay} 오픈센터 엔드링 ⌀1,980 (적층 직상, 축 H {n(kinematics.FLIP_AXIS_MM)})")
-        # 포탈 기둥 4본 — 통과대역 밖 (Bay A 시트값, Bay B 는 거울상)
-        for xc in (pick - 1_600, pick + 1_600):
-            for zr in (-1_290, 950):
-                zz = zc + zr if sign < 0 else zc - zr
-                s.rect(xc - 90, xc + 90, plant_y(zz - 120), plant_y(zz + 120), "column",
-                       f"BFC-101{bay} 포탈 기둥·LM가이드 180 × 240")
-    walls = ((-3_150, 150, "외측벽 A"), (0, 250, "중앙 백투백벽"), (3_150, 150, "외측벽 B"))
+        # 포탈 기둥 4본 — 통과대역 밖
+        chx, chz = kinematics.column_half_xz_mm()
+        for cx, cz in kinematics.column_offsets_xz_mm(sign):
+            s.rect(pick + cx - chx, pick + cx + chx, plant_y(zc + cz - chz), plant_y(zc + cz + chz),
+                   "column", f"BFC-101{bay} 포탈 기둥·LM가이드 180 × 240")
+    ow = kinematics.outer_wall_z_mm()
+    walls = ((-ow, kinematics.OUTER_WALL_T_MM, "외측벽 A"),
+             (0, kinematics.CENTRE_WALL_T_MM, "중앙 백투백벽"),
+             (ow, kinematics.OUTER_WALL_T_MM, "외측벽 B"))
     for zc, th, name in walls:
         s.rect(AFU_SHEET_ORIGIN_MM - 1_620 - 1_330, AFU_SHEET_ORIGIN_MM - 1_620 + 1_330,
                plant_y(zc - th / 2), plant_y(zc + th / 2), "wall", f"BW-101 {name} 2,660 × {th}")
@@ -362,31 +376,49 @@ def elevation_view() -> str:
     # 지게차 — 링 밑으로 팔레트를 밀어 넣는다
     s.rect(pick - 2_900, pick + 200, 0, k.FORKLIFT_GUARD_TOP_MM, "ref",
            f"FL-101 헤드가드 상단 {n(k.FORKLIFT_GUARD_TOP_MM)} — 링 밑 팔레트 교환 위치")
-    s.text(pick - 2_850, k.FORKLIFT_GUARD_TOP_MM, f"FL-101 헤드가드 {n(k.FORKLIFT_GUARD_TOP_MM)} (팔레트 교환 위치)", "lbl-muted", dy=-5)
+    s.text(pick - 2_900, 1_450, f"FL-101 헤드가드 {n(k.FORKLIFT_GUARD_TOP_MM)} (팔레트 교환)", "lbl-muted", "end", dy=-6)
 
-    # 리프트·적층
-    s.rect(pick - 1_450, pick + 1_450, 0, 130, "base", "LFT-101 유압 시저 베이스")
-    s.poly([(pick - 1_300, 130), (pick + 1_300, 480), (pick + 1_300, 130), (pick - 1_300, 480)], "scissor",
-           "유압 시저 암 (픽업면 유지 — 한 장마다 상승)")
-    s.rect(pick - 1_450, pick + 1_450, 480, 530, "base", "승강대 데크")
-    s.rect(pick - 1_250, pick + 1_250, 530, k.PICK_FACE_MM, "panel", "30장 적층 — 최상단 = 픽업면 1,880")
+    # 리프트·적층 — 입면의 가로는 X 이므로 축직각(단변) 쪽이 보인다
+    dkx, _dkz = k.plan_xz(1_450, 900)
+    phx, phz = k.panel_half_xz_mm()
+    s.rect(pick - dkx, pick + dkx, 0, 130, "base", f"LFT-101 유압 시저 베이스 (X 폭 {n(dkx * 2)})")
+    s.poly([(pick - dkx + 150, 130), (pick + dkx - 150, 480), (pick + dkx - 150, 130), (pick - dkx + 150, 480)],
+           "scissor", "유압 시저 암 (픽업면 유지 — 한 장마다 상승)")
+    s.rect(pick - dkx, pick + dkx, 480, 530, "base", "승강대 데크")
+    s.rect(pick - phx, pick + phx, 530, k.PICK_FACE_MM, "panel",
+           f"30장 적층 — 이 방향으로는 단변 {n(phx * 2)} 가 보인다 (장변 {n(phz * 2)} 는 지면 안쪽) · 최상단 = 픽업면 1,880")
     s.text(pick, 1_150, "적층 30장", "lbl-panel", "middle", dy=4)
 
     # 반전 카세트 — 포탈·크로스빔·엔드링·캐리지·분리헤드·포획빔
-    for xc in (pick - 1_600, pick + 1_600):
-        s.rect(xc - 90, xc + 90, 0, 3_350, "column", "포탈 기둥·LM가이드 (통과대역 밖)")
-        s.rect(xc - 90, xc + 90, 3_190, 3_450, "column", "포탈 크로스빔 — 반전축 베어링을 매단다")
+    chx, _chz = k.column_half_xz_mm()
+    col_x = sorted({cx for cx, _ in k.column_offsets_xz_mm(-1)})
+    for cx in col_x:
+        xc = pick + cx
+        s.rect(xc - chx, xc + chx, 0, 3_350, "column",
+               f"포탈 기둥·LM가이드 (축직각 {n(cx)}) — 반전축 평면 ∓{n(k.PORTAL_COLUMN_AXIS_MM)} 두 본이 겹쳐 보인다")
+    cb0, cb1 = k.crossbeam_cross_extent_mm()
+    s.rect(pick + cb0, pick + cb1, 3_190, 3_450, "column",
+           f"포탈 크로스빔 스팬 {n(k.CROSSBEAM_SPAN_MM)} — 기둥 밖으로 {n(k.crossbeam_overhang_mm())} 내밈 · 반전축 베어링을 매단다")
+    # 엔드링 — 반전축이 지면 안쪽(Z)으로 누우므로 두 링이 한 자리에 겹쳐 정면으로 보인다
     ring_r = k.ring_outer_r_mm()
-    for xr in (pick - 1_380, pick + 1_380):
-        s.rect(xr - 90, xr + 90, k.FLIP_AXIS_MM - ring_r, k.FLIP_AXIS_MM + ring_r, "ring",
-               f"오픈센터 엔드링 ⌀{n(ring_r * 2)} · 통과 구멍 ⌀{n(k.ring_bore_r_mm() * 2)}")
-    s.rect(pick - 1_360, pick + 1_360, 1_690, 1_830, "carriage", "BLR-101 승강캐리지 레일 (홈 1,760)")
-    s.rect(pick - 1_090, pick + 1_090, 2_020, 2_100, "sep", "SEP 이중진공 분리헤드 (홈 2,060)")
-    s.rect(pick - 1_450, pick + 1_450, 1_990, 2_050, "safety", "CD-101 4열 포획빔 (전개 2,020)")
-    s.rect(pick - 1_250, pick + 1_250, k.FLIP_AXIS_MM - 25, k.FLIP_AXIS_MM + 25, "panel-ghost",
-           "반전축 위의 패널 (참조)")
-    s.rect(pick - 1_250, pick + 1_250, k.HANDOVER_MM - 25, k.HANDOVER_MM + 25, "panel-ghost",
-           "인계 높이의 패널 (참조)")
+    rhx, _rhz = k.ring_half_xz_mm()
+    bore_x, _ = k.plan_xz(k.RING_TUBE_MM, k.ring_bore_r_mm())
+    bore_r = k.ring_bore_r_mm()
+    s.ellipse(pick, k.FLIP_AXIS_MM, rhx, ring_r, "ring",
+              f"오픈센터 엔드링 ⌀{n(ring_r * 2)} 2매 (평면 ∓{n(k.RING_PITCH_MM / 2)} — 이 방향에서 겹친다)")
+    s.ellipse(pick, k.FLIP_AXIS_MM, bore_x, bore_r, "ring",
+              f"링 통과 구멍 ⌀{n(k.ring_bore_r_mm() * 2)} — 패널이 이 구멍을 지난다")
+    cgx, _cgz = k.plan_xz(k.CARRIAGE_MM / 2, k.CARRIAGE_RAIL_Z_MM + 40)
+    s.rect(pick - cgx, pick + cgx, 1_690, 1_830, "carriage",
+           f"BLR-101 승강캐리지 (홈 1,760) — 레일쌍 축직각 ∓{n(k.CARRIAGE_RAIL_Z_MM)}, 레일 길이 {n(k.CARRIAGE_MM)} 는 반전축 방향")
+    spx, _spz = k.plan_xz(1_090, 540)
+    s.rect(pick - spx, pick + spx, 2_020, 2_100, "sep", "SEP 이중진공 분리헤드 (홈 2,060) — 패널 테두리 160 안쪽")
+    cdx, _cdz = k.plan_xz(k.CATCH_BEAM_MM / 2, k.catch_beam_row_half_mm())
+    s.rect(pick - cdx, pick + cdx, 1_990, 2_050, "safety",
+           f"CD-101 4열 포획빔 (전개 2,020) — 네 본이 축직각으로 ∓{n(cdx)} 벌어져 장변 프레임 ∓672.5 를 짝으로 끼고, "
+           f"빔 {n(k.CATCH_BEAM_MM)} 는 반전축 방향(지면 안쪽)으로 뻗는다")
+    for h, name in ((k.FLIP_AXIS_MM, "반전축 위의 패널"), (k.HANDOVER_MM, "인계 높이의 패널")):
+        s.rect(pick - phx, pick + phx, h - 25, h + 25, "panel-ghost", f"{name} (참조 — 단변 {n(phx * 2)})")
     # 승강 경로
     s.line(pick, k.PICK_FACE_MM, pick, k.FLIP_AXIS_MM, "path")
     s.line(pick, k.FLIP_AXIS_MM, pick, k.HANDOVER_MM, "path")
@@ -403,10 +435,12 @@ def elevation_view() -> str:
     s.rect(ped - 550, ped + 550, 0, 650, "pedestal", "RB-101 페데스털 650")
     s.rect(ped - 360, ped + 360, 650, 1_270, "column", "RB-101 J1")
     s.circle(ped, 1_570, 120, "joint", "J2 1,570")
-    for xt, zt, cls, name in ((pick, k.HANDOVER_MM, "arm arm-pick", "픽업 자세 (인계점 2,100)"),
-                              (pt, 1_000, "arm", "놓기 자세 (PT-101 위)")):
+    eox, eoz = k.plan_xz(1_090, 540)
+    for xt, zt, ex, cls, name in (
+            (pick, k.HANDOVER_MM, eox, "arm arm-pick", f"픽업 자세 (인계점 2,100) — 장변이 Z, X 로는 {n(eox * 2)}"),
+            (pt, 1_000, eoz, "arm", f"놓기 자세 (PT-101 위) — J6 가 90° 되돌려 장변이 X, {n(eoz * 2)}")):
         s.poly([(ped, 1_570), ((ped + xt) / 2, 3_050), (xt, zt + 250)], cls, name)
-        s.rect(xt - 1_090, xt + 1_090, zt + 20, zt + 250, "sep", f"EOAT 4구역 진공 — {name}")
+        s.rect(xt - ex, xt + ex, zt + 20, zt + 250, "sep", f"EOAT 4구역 진공 — {name}")
     xr = ped + layout.REJECT_RACK_DX_MM
     s.rect(xr - 800, xr + 800, 0, 1_200, "rack", "AFU-RJ-101 전손 리젝트 랙 (페데스털 양옆 z ±1,550)")
     s.rect(pt - layout.PT_TABLE_MM[0] / 2, pt + layout.PT_TABLE_MM[0] / 2, 0, layout.PT_TABLE_MM[2], "base",
@@ -415,7 +449,7 @@ def elevation_view() -> str:
     s.rect(ac0, ac1, layout.roller_axis_mm() - 45, layout.LINE_TRANSFER_MM, "roller",
            f"JB-201 축적·인계 런 — 롤러 축 {n(layout.roller_axis_mm())} + Ø{layout.ROLLER_D_MM}")
     s.rect(ac0, ac1, layout.LINE_TRANSFER_MM, 2_000, "guard", "JB-201 가드")
-    s.text(pt, 2_120, "PT-101 · JB-201", "lbl", "middle")
+    s.text(pt, 2_420, "PT-101 · JB-201", "lbl", "middle")
     s.line(pt1, 0, pt1, 5_600, "boundary")
     s.text(pt1 - 80, 5_500, "robot 존 끝 · JBR-201 부터 범위 밖 →", "lbl-muted", "end")
 
@@ -450,12 +484,12 @@ def elevation_view() -> str:
         s.parts.append(f'<line class="leader" x1="{px0}" y1="{s.Y(z_mm)}" x2="{px1}" y2="{py}"/>')
         s.parts.append(f'<text class="lvl" x="{px1 + 4}" y="{py + 3}">{esc(label)}</text>')
 
-    s.dim_y(k.PICK_FACE_MM, k.dwell_mm(), pick - 1_750, f"안전분리 {k.SEPARATION_MM}", right=False)
+    s.dim_y(k.PICK_FACE_MM, k.dwell_mm(), pick - 1_050, f"안전분리 {k.SEPARATION_MM}", right=False)
     s.dim_y(k.dwell_mm(), k.FLIP_AXIS_MM, pick + 1_850, f"승강 {n(k.FLIP_AXIS_MM - k.dwell_mm())}")
-    s.dim_y(k.FLIP_AXIS_MM, k.HANDOVER_MM, pick + 2_150, f"하강 {n(k.FLIP_AXIS_MM - k.HANDOVER_MM)}")
-    s.dim_y(k.FORKLIFT_GUARD_TOP_MM, k.ring_bottom_mm(), pick - 2_500, f"링–헤드가드 {n(k.ring_over_forklift_mm())}", right=False)
-    s.dim_y(k.PICK_FACE_MM + k.PANEL_TOP_OFFSET_MM, k.ring_bottom_mm(), pick + 2_450, f"링–적층 {n(k.ring_over_stack_mm())}")
-    s.text(-3_650, 5_600, "입면 X–Z · 단위 mm · FFL = 0 · Bay A 를 보이고 Bay B 는 뒤에 거울상으로 선다", "lbl-muted")
+    s.dim_y(k.FLIP_AXIS_MM, k.HANDOVER_MM, pick - 1_700, f"하강 {n(k.FLIP_AXIS_MM - k.HANDOVER_MM)}", right=False)
+    s.dim_y(k.FORKLIFT_GUARD_TOP_MM, k.ring_bottom_mm(), pick - 2_400, f"링–헤드가드 {n(k.ring_over_forklift_mm())}", right=False)
+    s.dim_y(k.PICK_FACE_MM + k.PANEL_TOP_OFFSET_MM, k.ring_bottom_mm(), pick + 3_150, f"링–적층 {n(k.ring_over_stack_mm())}")
+    s.text(-3_650, 5_600, "입면 (X–높이) · 단위 mm · FFL = 0 · 반전축은 지면 안쪽(Z)으로 눕는다 — 패널 장변 2,500 은 이 그림에서 보이지 않는다", "lbl-muted")
     return s.svg("투입 구간 입면도")
 
 
@@ -556,6 +590,15 @@ def kinematics_table() -> str:
          f"캐리지 {n(k.CARRIAGE_MM)} 은 케이지보다 길어 링 구멍 **안으로** 오르내린다 (레일 z ∓{k.CARRIAGE_RAIL_Z_MM:g} · y −{k.CARRIAGE_RAIL_DROP_MM})"],
         ["조 행정 (무는 자리 → 여는 자리)", f"{k.jaw_stroke_mm():g}", f"z ∓{k.JAW_CLOSED_Z_MM:g} → ∓{k.JAW_OPEN_Z_MM:g}"],
         ["조를 열었을 때 패드–패널 옆면 여유", n(k.jaw_open_clearance_mm()), "양수여야 반전 뒤 패널이 두 링 사이로 내려간다"],
+        ["패드 접촉폭 (프레임 플랜지)", f"{k.JAW_PAD_CONTACT_MM:g}", "**발주처 확정값.** 접촉 면적 "
+         f"{n(k.jaw_pad_contact_area_mm2())} mm²/매 — 면압 {k.jaw_pad_pressure_mpa():.2f} MPa "
+         f"(Ø{k.JAW_CYLINDER_BORE_MM:g} 실린더 {k.JAW_AIR_MPA:g} MPa · 지레비 1:1 기준, 실린더 자리는 미결)"],
+        ["패드 랜드 z 구간 · 편심", f"{n(k.jaw_pad_land_z_mm()[0])}…{n(k.jaw_pad_land_z_mm()[1])} · "
+         f"+{k.jaw_pad_land_offset_mm():g}", "랜드는 프레임 위에만 앉는다. 패드 중심 "
+         f"{k.JAW_CLOSED_Z_MM:g} 에 가운데를 두면 유리 위로 {k.jaw_pad_land_offset_mm():g} 밀린다 — "
+         "**패드를 편심 랜드로 만든다**"],
+        ["패드 릴리프 깊이", f"{k.JAW_PAD_RELIEF_MM:g}", f"프레임–유리 단차 {k.PANEL_FRAME_GLASS_STEP_MM:g}"
+         f"(가정) + 압축 {k.jaw_pad_compression_mm():.1f} 보다 깊다 — 평면 패드면 폭 92 가 유리에 얹힌다"],
         ["링 하단–적층 최상단 유리면", n(k.ring_over_stack_mm()), "드럼이 적층 위에 서는 조건 (≥ 500)"],
         ["링 하단–지게차 헤드가드", n(k.ring_over_forklift_mm()), "팔레트 교환이 링 밑에서 일어난다 (≥ 250)"],
         ["대기면", n(k.dwell_mm()), f"픽업면 {n(k.PICK_FACE_MM)} + 안전분리 {k.SEPARATION_MM}"],
@@ -604,7 +647,13 @@ def station_table() -> str:
         ["겸용으로 더 걷을 수 있는 길이", n(layout.infeed_merge_residue_mm()),
          "합집합 − 한 장 축적 소요 — 그 대가가 좌표시드라 **발주처 결정으로 후보를 닫았다** (§56)"],
         ["좌표시드 공차", f"±{layout.PT_SEED_TOLERANCE_MM:g} mm / yaw ±{layout.PT_SEED_YAW_DEG:g}°",
-         "이 라인의 유일한 기계 기준. 브리지 동기오차 0.08 mm 와 **다른 값**이다"],
+         "이 라인의 유일한 기계 기준. **기준 모서리**(장변 스토퍼 2 + 단변 스토퍼 1 이 "
+         "만나는 점)의 위치 공차와 그 점을 중심으로 한 회전 공차다. "
+         "브리지 동기오차 0.08 mm 와 **다른 값**이다"],
+        ["반대편 모서리 흔들림", f"±{layout.seed_far_corner_mm():g} mm",
+         f"±{layout.PT_SEED_TOLERANCE_MM:g} + {n(campaign.PANEL_LENGTH_MM)}·tan{layout.PT_SEED_YAW_DEG:g}° — "
+         f"하류가 패널 전체 ±1 mm 를 기대하면 yaw 를 ±{layout.seed_yaw_for(1.0):g}° 로 조여야 하고, "
+         "그것은 3-2-1 스토퍼로 성립하지 않는다. **하류 공차는 기준 모서리 기준으로 읽는다**"],
         ["축적구간 입구 비움", f"{campaign.accumulator_clear_s():g} s",
          f"패널 {n(campaign.PANEL_LENGTH_MM)} ÷ 이송 {campaign.transfer_speed_mm_s():g} mm/s — 지금은 스토퍼 확인 {campaign.JBR_STOPPER_OFFSET_S:g} s 로 다음 장을 놓는다"],
     ]
@@ -667,6 +716,39 @@ def drives_table() -> str:
                          "있음" if a.brake else "—", esc(a.note)])
     return table(["축", "분전반", "장비", "동작", "수", "정격 kW", "합 kW", "구동", "피드백", "브레이크", "비고"],
                  rows, "", (4, 5, 6))
+
+
+def transmission_table() -> str:
+    """전동기와 기구 사이 — 그 속도로 돌 수 있는가, 그 토크가 전달되는가.
+
+    정격만 적어 두면 검산이 안 된다. 행정 ÷ 시각으로 속도를 내고 리드·감속비로
+    회전수를 환산해 정격 안에 드는지 본다 (`drives.py`).
+    """
+    spd, trq = drives.speed_checks(), drives.torque_checks()
+    pre = drives.preload_is_specified()
+    rows = []
+    for b in drives.ballscrews():
+        rms, peak, rated, ok = trq[b.axis]
+        rows.append([f"<code>{esc(b.axis)}</code>", "볼스크루 직결",
+                     f"리드 {b.lead_mm:g} × {b.screws}본 · i={b.ratio:g}",
+                     f"{b.mean_mm_s:.0f} mm/s (최고 {b.peak_mm_s:.0f})",
+                     f"{spd[b.axis][0]:,} / {drives.SERVO_MAX_RPM:,}",
+                     f"{rms:g} / {rated:g}", f"{peak:g} / {rated * drives.SERVO_PEAK_FACTOR:g}",
+                     "—", "만족" if ok and spd[b.axis][1] else "**미달**"])
+    for f in drives.friction_drives():
+        need, _peak, rated, ok = trq[f.axis]
+        have, want, pok = pre[f.axis]
+        rows.append([f"<code>{esc(f.axis)}</code>", "마찰 롤러",
+                     f"링 Ø{n(f.ring_od_mm)} ← 롤러 Ø{n(f.roller_od_mm)} · i={f.ratio:g}",
+                     f"{f.ring_rpm:.1f} rpm (링)",
+                     f"{spd[f.axis][0]:,} / {drives.SERVO_MAX_RPM:,}",
+                     f"{need:g} / {rated:g}",
+                     f"링 {f.torque_nm:.0f} / 전달 상한 {f.torque_limit_nm():.0f}",
+                     f"{have:g} / {want:g}",
+                     "만족" if ok and pok and spd[f.axis][1] else "**미달**"])
+    return table(["축", "전동", "감속·리드", "기구 속도", "모터 rpm / 최대",
+                  "실효 N·m / 정격", "피크 N·m / 한계", "압착 N / 필요", "판정"],
+                 rows, "", (3, 4, 5, 6, 7))
 
 
 def feeders_table() -> str:
@@ -1017,6 +1099,11 @@ def build() -> str:
         '<section id="drives">',
         "<h2>구동·전기</h2>",
         drives_table(),
+        "<h3>전동–기구 검산</h3>",
+        transmission_table(),
+        f"<p class=\"note\">반전축이 돌리는 것은 링·조·패드·패널 <strong>{drives.flip_rotating_kg():.0f} kg</strong> "
+        f"(관성 {drives.flip_inertia_kgm2():.0f} kg·m²)이지 포탈을 포함한 인양 무게가 아니다. "
+        "승강축은 감속기 없이 직결한다 — 리드 10 에 i=10 을 물리면 모터가 25,000 rpm 이어야 했다.</p>",
         "<h3>급전</h3>",
         feeders_table(),
         "<p class=\"note\">서보는 EtherCAT CoE(CSP) · FSoE STO 계층에 올라간다. 중력·자세 유지 축(승강·반전·포획빔 승강·로봇 관절)은 전부 브레이크가 있다.</p>",

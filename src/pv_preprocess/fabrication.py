@@ -388,8 +388,12 @@ _bfc_parts = (
          "각관 절단 · 패드 자리 PL8 용접 · 가이드 포스트 부싱 하우징 용접 · 실린더 클레비스",
          (row(4, "M8", along="L", edge=245, view="top", tapped=True, note="패드 백킹 4×M8 (패드 2/조)"),),
          note="무는 자리 z ∓672.5 · 여는 자리 ∓860 (행정 187.5)"),
-    Part("BFC-PAD-01", "클램프 패드 (PU 70A + PL8 백킹)", "plate", (180, 180, 50), "PU-70A", 50, 4,
-         "PL8 백킹에 PU 70A 접착 성형 · M8 접시 4", (corners("M8", edge=25),), finish="—", tolerance="±1"),
+    Part("BFC-PAD-01", "클램프 패드 (PU 70A + PL8 백킹 · 편심 랜드)", "plate", (180, 180, 50), "PU-70A", 50, 4,
+         "PL8 백킹에 PU 70A 접착 성형 · 접촉 랜드 폭 25 만 남기고 나머지 면 8 파냄 "
+         "(랜드는 패드 중심에서 패널 바깥으로 15 편심) · M8 접시 4",
+         (corners("M8", edge=25),), finish="—", tolerance="±1",
+         note="랜드가 프레임 플랜지에만 앉는다 — 평면으로 만들면 92 가 유리 위에 얹힌다. "
+              "접촉 25 × 180 = 4,500 mm² · 면압 0.35 MPa · 압축 2.9 (릴리프 8 이 단차 4 를 덮는다)"),
     Part("BFC-JGP-01", "조 가이드 포스트 Ø40", "cyl", (40, 0, 400), "SCM440", 0, 4,
          "선삭 · 조질 · 경질크롬 20 µm · 연삭 f7", (), finish=MACHINED, note="선형 부싱 LM40UU 와 조합"),
     Part("BFC-JCR-01", "조 캐리어 브래킷", "plate", (220, 160, 12), "SS400", 12, 4,
@@ -397,9 +401,15 @@ _bfc_parts = (
     Part("BFC-SNB-01", "센서 브래킷", "plate", (90, 60, 4.5), "STS304", 4.5, 4, "레이저 절단 · 절곡", (row(2, "M6", along="L", edge=15),), finish="—"),
 )
 _bfc_commercial = (
-    Commercial("BGD-101", "반전 서보 · 감속기 · 이중 브레이크", "서보 1.5 kW 23 bit 절대 · 유성감속기 i=100 · 정격 700 N·m/피크 1.6 kN·m · 이중 브레이크 (AXIS-BFC-R)", 1),
-    Commercial("BLZ-101", "캐리지 승강 서보 · 감속기", "서보 1.1 kW 23 bit 절대 · i=10 · 브레이크 (AXIS-BFC-Z)", 1),
-    Commercial("BFC-BS-01", "볼스크루 Ø40 × 리드 10", "C5 · L=2,000 · 지지 유닛 FK30/FF30 · 볼너트 플랜지형", 2, "좌우 1 · 라인샤프트 동기"),
+    Commercial("BGD-101", "반전 서보 · 감속기 · 이중 브레이크",
+               "서보 1.5 kW 23 bit 절대 · 유성감속기 i=50 · 이중 브레이크 (AXIS-BFC-R) — "
+               "정격 근거는 회전 관성 436 kg·m² 에서 낸 97 N·m (drives.py). 종전 700 N·m 는 "
+               "인양 무게 2,500 kg 에서 잘못 잡은 값이고, 마찰 구동으로 전달되지도 않는다", 1),
+    Commercial("BFC-DPL-01", "구동 롤러 압착 유닛",
+               "스프링 또는 공압 실린더 · 압착력 400 N ±10 % · 압착력 확인 게이지 · 링 접선 배치", 1,
+               "이 값이 없으면 마찰 구동의 전달 토크가 정해지지 않는다 — 필요 328 N (μ 0.6 · 안전율 2)"),
+    Commercial("BLZ-101", "캐리지 승강 서보 (직결)", "서보 1.1 kW 23 bit 절대 · 감속기 없음 (직결) · 브레이크 (AXIS-BFC-Z) — drives.py 검산: 2,371 rpm · 실효 2.72 / 피크 8.51 N·m", 1),
+    Commercial("BFC-BS-01", "볼스크루 Ø40 × 리드 16", "C5 · L=2,000 · 지지 유닛 FK30/FF30 · 볼너트 플랜지형", 2, "좌우 1 · 라인샤프트 동기 · 리드는 drives.LIFT_LEAD_MM 이 정한다 (10 이면 회전수 초과, 20 이면 피크 토크 초과)"),
     Commercial("BFC-LS-01", "라인샤프트 · 베벨 기어박스", "Ø30 축 L=2,700 · 베벨 1:1 기어박스 2 · 커플링 4", 1),
     Commercial("BFC-LM-01", "LM 가이드 HGH35 레일", "L=3,000 · 정밀 H · 4본 (기둥당 1)", 4),
     Commercial("BFC-LMB-01", "LM 블록 HGH35CA", "플랜지형 · 예압 Z0", 8, "레일당 2"),
@@ -443,7 +453,8 @@ _bfc_steps = (
     Step(7, "구동·락핀", "구동 롤러 유닛과 감속기·서보를 구동 베이스에 올려 PU 롤러가 링 하부에 밀착하도록 장공으로 눌러 고정한다. 0°·180° 락핀 유닛을 러그 자리에 맞춘다.", "", "락핀 삽입 여유 0.2 · 브레이크 이중 확인"),
     Step(8, "LM 레일·볼스크루", "기둥 기준면에 LM 레일을 밀착시켜 M10 을 순차로 조이고, 볼스크루·지지 유닛·라인샤프트·베벨박스를 크로스빔 아래에 단다.", "레일 밀착 지그", "레일 직진도 0.05/1,000 · 좌우 스크루 위상 동기"),
     Step(9, "캐리지·분리헤드", "레일빔 2 + 엔드빔 2 로 캐리지를 조립하고(M12) LM 블록·볼너트를 체결한다. 분리헤드 빔을 슬라이드로 엔드빔에 달고 진공컵 4 개를 컵 중심 x ±820 · z ±380 에 맞춘다.", "", "캐리지 상면 레벨 0.5 · 픽업면 1,880 홈 위치 확인"),
-    Step(10, "조·패드", "조 캐리어를 링에 용접(용접 뒤 런아웃 재측정)하고 가이드 포스트·부싱·실린더를 달아 조가 z ∓672.5 ↔ ∓860 을 오가는지 본다. 패드를 붙인다.", "", "조 여닫이 행정 187.5 ±1 · 패드 면 동일 평면 0.5"),
+    Step(10, "조·패드", "조 캐리어를 링에 용접(용접 뒤 런아웃 재측정)하고 가이드 포스트·부싱·실린더를 달아 조가 z ∓672.5 ↔ ∓860 을 오가는지 본다. 패드를 붙인다.", "", "조 여닫이 행정 187.5 ±1 · 패드 면 동일 평면 0.5 · "
+         "랜드가 패널 바깥쪽을 향하는지 4매 전부 확인 (뒤집어 붙이면 유리에 앉는다)"),
     Step(11, "시운전", "수동으로 승강 1,880 → 2,250 → 3,430 → 2,100 을 저속으로 돌리고, 링 0°/180° 락, 겹장 판정 센서, 포획빔 인터록을 확인한다.", "", "간섭 없음 · 반전 위상차 ≤ 0.3°"),
 )
 
@@ -907,6 +918,11 @@ def geometry_checks() -> dict[str, bool]:
         "포탈 기둥 높이 < 반전축": col.L < kinematics.FLIP_AXIS_MM,
         "캐리지 레일 길이 = CARRIAGE": car.L == kinematics.CARRIAGE_MM,
         "조 길이 < 케이지 안지름": jaw.L < kinematics.cage_clear_span_mm(),
+        "패드 외형 = JAW_PAD_L × JAW_PAD_W": (
+            next(p for a in ASSEMBLIES for p in a.parts if p.tag == "BFC-PAD-01").size[:2]
+            == (float(kinematics.JAW_PAD_L_MM), float(kinematics.JAW_PAD_W_MM))),
+        "패드 접촉 랜드가 패드 면 안": kinematics.jaw_pad_land_is_inside_the_pad(),
+        "눌린 패드가 유리에 안 닿음": kinematics.jaw_pad_clears_the_glass(),
         "PT 상판 = PT_DECK": next(p for a in ASSEMBLIES for p in a.parts if p.tag == "PT-TOP-01").size[:2] == (float(layout.PT_DECK_MM[0]), float(layout.PT_DECK_MM[1])),
         "JB-201 사이드 프레임 = ACCUM_RUN": next(p for a in ASSEMBLIES for p in a.parts if p.tag == "JB-SF-01").L == layout.ACCUM_RUN_MM,
     }
@@ -932,6 +948,80 @@ def joint_checks() -> list[str]:
     return problems
 
 
+@dataclass(frozen=True)
+class OpenItem:
+    """제작 도면으로 못 닫는 것 하나.
+
+    설계 검토에서 나온 지적 중에는 **자료가 없어서 못 닫는 것**이 섞인다.
+    그것을 도면에 그럴듯한 값으로 채워 넣으면 검산이 통과한 것처럼 보이고,
+    현장에서 그 값이 틀렸다는 걸 안다. 그래서 여기 남긴다 — 무엇이 열려
+    있고, 왜 계산으로 안 닫히고, 무엇이 오면 닫히고, 닫히기 전에 무엇을
+    하면 안 되는가.
+    """
+
+    tag: str
+    title: str
+    why_open: str          # 왜 지금 못 정하는가
+    closes_with: str       # 무엇이 있어야 정해지는가
+    blocks: str            # 닫히기 전에 하면 안 되는 것
+    question: str = ""     # 시작품이 답하는 질문이면 그 번호 (`prototype.QUESTIONS`)
+
+
+#: 제작 도면집이 못 닫는 것 — 값을 지어내지 않고 남긴 자리.
+#:
+#: 전부 **발주처·벤더 자료나 실물 시험**을 기다리는 항목이다. 계산으로 닫을
+#: 수 있는 것은 이미 닫혀 모델 안에 있다 (`drives.py`·`fasteners.py`·
+#: `frames.py`). 여기 있는 것을 도면에 임의값으로 채우면 검산이 거짓으로
+#: 통과한다.
+OPEN_ITEMS: tuple[OpenItem, ...] = (
+    OpenItem("OI-02", "엔드링 단면 축소 여지",
+             "링은 Ø1,980 각관 두 개다. 지금 단면은 인양·정지 하중을 여유 있게 "
+             "받지만 회전 관성의 대부분이기도 하다 (436 kg·m² 중 링이 지배적). "
+             "줄일 수 있는지는 링 자중 처짐·용접부 응력을 봐야 하고 그건 FEA다.",
+             "링 조립체 FEA (자중 처짐 · 조 반력 · 용접부 피로)",
+             "링 단면 변경 — 지금 값으로 만들면 무겁되 안전한 쪽이다",
+             "Q7"),
+    OpenItem("OI-03", "조 실린더 장착 위치",
+             "조 행정 187.5 mm 와 클레비스 자리는 있지만, 실린더를 조의 어느 "
+             "지점에 다느냐는 모멘트 암과 간섭의 맞바꿈이다. 도면 한 장이 "
+             "아니라 설계 결정이라 계산이 답을 하나로 좁히지 않는다.",
+             "설계 검토회의 결정 (모멘트 암 · 케이지 내 간섭 · 배관 경로)",
+             "조 캐리어(BFC-JCR-01) 상세 — 실린더 자리가 정해져야 브래킷이 나온다",
+             ""),
+    OpenItem("OI-04", "링 평면과 기둥의 220 mm 편심",
+             "링 회전 평면이 포탈 기둥 중심에서 220 mm 떨어져 있다. 그만큼 "
+             "기둥에 비틀림이 걸리는데, 그 하중을 베어링 하우징으로 받을지 "
+             "가새로 받을지가 도면에 없다. 둘 다 성립하고 무게·정비성이 다르다.",
+             "하중 경로 결정 후 기둥·하우징 상세 (가새를 넣으면 정비 통로가 준다)",
+             "포탈 기둥(BFC-COL-01) 상세 — 하중 경로가 정해져야 보강이 나온다",
+             ""),
+    OpenItem("OI-05", "포획빔 전개 전 겹장 낙하 에너지",
+             "겹장 두 장이 분리되기 전에 떨어지면 낙하 에너지가 163 J 이다. "
+             "포획빔은 그 아래에 있지만 전개에 걸리는 시간 안에 떨어지면 "
+             "못 받는다. 전개 시간은 실물 공압에서만 나온다.",
+             "시작품 T-시험의 포획빔 전개 시간 실측 · 판정 기준 확정",
+             "겹장 검출 문턱값 확정 — 검출이 늦으면 포획빔이 의미가 없다",
+             "Q2"),
+    OpenItem("OI-07", "돌린 방향에서 CD-101 포획빔이 나오는 자리와 행정",
+             "지금 설계는 빔 2,900 이 패널 장변과 나란히 놓이고, 중앙벽 옆 "
+             "카세트에서 장변 직각으로 미끄러져 나온다. 반전축을 장변 방향으로 "
+             "돌리면 장변이 라인 가로에 눕고 빔도 그쪽으로 뻗어야 하는데, "
+             "그러면 나오는 방향이 벽면과 나란해져 지금 자리에서 옆으로 밀 수 "
+             "없다. 빔이 제 길이 방향으로 벽에서 신축하는 것이 가장 작은 "
+             "변경으로 보이나 이것은 도면 편집이 아니라 설계 결정이다.",
+             "설계 검토회의 결정 — 수납 자리와 행정 방향 확정",
+             "CD-101 포획빔 조립체(BFC-CD-01) 상세와 통합 설계도 3D 메시 회전",
+             ""),
+)
+
+
+def open_items_point_at_questions() -> dict[str, bool]:
+    """시작품 질문을 가리키는 항목이 실제 질문을 가리키는가 (오타 방지)."""
+    from . import prototype
+    known = {q.no for q in prototype.QUESTIONS}
+    return {o.tag: (o.question in known) for o in OPEN_ITEMS if o.question}
+
+
 def summary() -> dict[str, object]:
     return {
         "assemblies": len(ASSEMBLIES),
@@ -941,4 +1031,5 @@ def summary() -> dict[str, object]:
         "bolts": sum(j.qty * a.qty for a in ASSEMBLIES for j in a.joints if j.kind in ("관통", "탭")),
         "anchors": sum(j.qty * a.qty for a in ASSEMBLIES for j in a.joints if j.kind == "앵커"),
         "weight_kg": plant_weight_kg(),
+        "open_items": len(OPEN_ITEMS),
     }
