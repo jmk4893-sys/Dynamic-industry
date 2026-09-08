@@ -28,7 +28,7 @@ import unittest
 from tests import _path  # noqa: F401
 
 from pv_preprocess import (afr, afr_peel, campaign, dust, frames, recipe,
-                           reliability, sg_grind)
+                           reliability, sg_grind, vision)
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CLOSEUP = ROOT / "docs/drawings/pv-sg-closeup.html"
@@ -365,6 +365,31 @@ class TestWhatTheFrameLeavesBehind(unittest.TestCase):
             with self.subTest(fn.__name__):
                 self.assertAlmostEqual(sg_grind.polygon_area_mm2(fn()), want, places=6)
                 self.assertAlmostEqual(want, sg_grind.sealant_area_mm2(), places=6)
+
+
+class TestWhatActuallyInspectsTheResidue(unittest.TestCase):
+    """잔사를 무엇이 보는가 — 한 번 틀리게 적었던 자리다.
+
+    접촉부 주기에 "GI-301 이 연마 **전**에 잔사를 센다" 고 썼는데, `vision` 을
+    보니 GI-301 은 REV.50 통합(V-4)에서 **은퇴한 헤드**였다. 남은 것은 연마
+    **뒤**의 GI-302·GI-303 뿐이라 전/후 비교가 없다. 그것이 "연마 공정창 고정"
+    이라는 전제를 만들고, 그 전제는 면에 남는 몫이 실측돼야 선다.
+    """
+
+    def test_the_pre_grind_head_is_retired(self):
+        gi301 = next(h for h in vision.HEADS if h.tag == "GI-301")
+        self.assertFalse(gi301.kept)
+        self.assertIn("연마 전", gi301.role)
+
+    def test_only_post_grind_heads_remain(self):
+        kept = {h.tag for h in vision.HEADS if h.kept and h.tag.startswith("GI-")}
+        self.assertEqual(kept, {"GI-302", "GI-303"})
+
+    def test_the_drawing_does_not_claim_a_pre_grind_check(self):
+        """도면 글이 은퇴한 헤드를 살아 있는 것처럼 말하면 안 된다."""
+        said = " ".join(b for _, b in sg_grind.contact_unit().principle)
+        self.assertNotIn("GI-301 이 연마 **전**에", said)
+        self.assertIn("은퇴", said)
 
 
 class TestUnits(unittest.TestCase):
