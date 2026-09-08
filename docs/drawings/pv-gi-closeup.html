@@ -1078,6 +1078,11 @@ html>body{padding:0}</style>
     flex-direction: column; gap: 6px; font-size: var(--font-size-small); }
   .gi-cu-steps li.is-on { font-weight: var(--font-weight-medium); color: var(--primary); }
   .gi-cu-h2 { margin-top: 12px; }
+  .gi-cu-plate { border-left: 3px solid var(--primary); }
+  .gi-cu-plate-read { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 6px 0;
+    font-size: var(--font-size-small); }
+  .gi-cu-plate-read b.is-bad { color: var(--destructive); }
+  .gi-cu-plate-read b.is-ok { color: var(--primary); }
   .gi-cu-open { border-left: 3px solid var(--destructive); }
   .gi-cu-open-list { margin: 8px 0 0; display: flex; flex-direction: column; gap: 8px;
     font-size: var(--font-size-small); }
@@ -1153,6 +1158,18 @@ html>body{padding:0}</style>
       <button class="btn" id="gi-cu-fit" type="button">시점 맞춤</button>
     </div>
     <div class="gi-cu-step" id="gi-cu-step" aria-live="polite"></div>
+    <div class="card gi-cu-plate" id="gi-cu-plate" hidden>
+      <div class="viz-controls gi-cu-controls">
+        <label class="form-label" for="gi-cu-glass">유리 강성 잔존 κ <span class="tabular-nums" id="gi-cu-glass-value">100 %</span>
+          <input class="form-range" id="gi-cu-glass" type="range" min="0" max="100" step="1" value="100"></label>
+        <label class="form-check form-switch"><input class="form-check-input" id="gi-cu-runout" type="checkbox" checked>
+          <span class="form-check-label">롤러 흔들림</span></label>
+        <label class="form-check form-switch"><input class="form-check-input" id="gi-cu-convey" type="checkbox" checked>
+          <span class="form-check-label">이송</span></label>
+      </div>
+      <div class="gi-cu-plate-read tabular-nums" id="gi-cu-plate-read" aria-live="polite"></div>
+      <p class="text-small text-muted">띠는 화면이 <b>XPBD</b> 로 매 프레임 적분한다 — 굽힘 컴플라이언스 L³/EI, 질량 ρA·L, 롤러 접촉은 원호 위 단방향 투영. 상수는 전부 <code>gi_plate.physics_si()</code> 에서 온다. 기준해는 같은 모듈의 유한요소이고, 브라우저 검사가 둘을 견준다.</p>
+    </div>
     <div class="card gi-cu-cycle">
       <div class="gi-cu-cycle-head">
         <h3 class="text-small">폭 1,400 을 나눠 보는 자리 — 이음매는 <b>겹친다</b></h3>
@@ -11770,8 +11787,8 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
     if (tries++ < 600) requestAnimationFrame(wait);
   })();
   function start(S) {
-  var K = S.kit, UNITS = [{"key":"below","name":"GI-303 하부 라인스캔","sheet":"PV-GI-303-OPT-5101","envelope":[1600.0,550.0,900.0],"viewR":900.0,"mag":1.0,"view":[0.55,-0.45,1.0],"principle":[["① 창은 롤러가 만든다","피치 240 에서 외경 90 을 빼면 **150 mm** 가 남는다. 스캔선은 폭이 화소 하나(0.1 mm)라 그 안에 넉넉히 든다."],["② 폭을 보려면 자리가 든다","폭 1400 을 0.1 mm/px 로 보려면 한 대짜리 광학계가 **1065 mm** 를 먹는다. 배정된 것은 550 mm — **515 mm 초과**다."],["③ 그래서 여러 대다 — 화소 때문이 아니다","센서 한 장이면 화소는 16,384 로 필요한 14,000 에 대해 남는다. **3 대**로 나눠야 스택이 498 mm 로 줄어 550 안에 든다."],["④ 나눈 자리는 겹쳐야 한다","대당 시야 467 mm 에 이음매마다 6.4 mm 씩 겹친다. 비면 거기 있는 균열을 못 본다."],["⑤ 판이 떠도 초점은 산다","심도 5.8 mm 가 통과 중 휨 3.0 mm 를 덮는다. 받쳐지지 않는 거리가 창 150 mm 뿐이라 그 안에서 처진다."]],"parts":[{"key":"lolens0","name":"라인스캔 렌즈","qty":1,"shape":"cyl","size":[72.0,60.0,72.0],"pos":[-465.067,-348.2,0.0],"axis":"y","mirror":[],"color":"chrome","material":"f35 · F5.6","role":"작동거리 318 mm 에서 폭 473 mm 를 센서 57.7 mm 에 맺는다 — 배율 0.1236. 심도가 5.8 mm 라 통과 중 판 휨 3.0 mm 를 덮는다.","spec":"f35 · F5.6 · WD 318 mm","catalog":"GI-303-LN","explode":[0.0,-90.0,0.0]},{"key":"locam0","name":"라인스캔 카메라","qty":1,"shape":"box","size":[96.0,120.0,96.0],"pos":[-465.067,-438.2,0.0],"axis":"y","mirror":[],"color":"dark","material":"16k × 3.52 µm","role":"3,000 line/s 로 읽는다. 노광 267 µs 는 면적 카메라의 1/63 이다 — 라인스캔에서 먼저 막히는 것은 렌즈가 아니라 조명이다.","spec":"16,384 px · 3,000 line/s · 14 Mpx/s","catalog":"GI-303-CAM","explode":[0.0,-200.0,0.0]},{"key":"lolens1","name":"라인스캔 렌즈","qty":1,"shape":"cyl","size":[72.0,60.0,72.0],"pos":[0.0,-348.2,0.0],"axis":"y","mirror":[],"color":"chrome","material":"f35 · F5.6","role":"작동거리 318 mm 에서 폭 473 mm 를 센서 57.7 mm 에 맺는다 — 배율 0.1236. 심도가 5.8 mm 라 통과 중 판 휨 3.0 mm 를 덮는다.","spec":"f35 · F5.6 · WD 318 mm","catalog":"GI-303-LN","explode":[0.0,-90.0,0.0]},{"key":"locam1","name":"라인스캔 카메라","qty":1,"shape":"box","size":[96.0,120.0,96.0],"pos":[0.0,-438.2,0.0],"axis":"y","mirror":[],"color":"dark","material":"16k × 3.52 µm","role":"3,000 line/s 로 읽는다. 노광 267 µs 는 면적 카메라의 1/63 이다 — 라인스캔에서 먼저 막히는 것은 렌즈가 아니라 조명이다.","spec":"16,384 px · 3,000 line/s · 14 Mpx/s","catalog":"GI-303-CAM","explode":[0.0,-200.0,0.0]},{"key":"lolens2","name":"라인스캔 렌즈","qty":1,"shape":"cyl","size":[72.0,60.0,72.0],"pos":[465.067,-348.2,0.0],"axis":"y","mirror":[],"color":"chrome","material":"f35 · F5.6","role":"작동거리 318 mm 에서 폭 473 mm 를 센서 57.7 mm 에 맺는다 — 배율 0.1236. 심도가 5.8 mm 라 통과 중 판 휨 3.0 mm 를 덮는다.","spec":"f35 · F5.6 · WD 318 mm","catalog":"GI-303-LN","explode":[0.0,-90.0,0.0]},{"key":"locam2","name":"라인스캔 카메라","qty":1,"shape":"box","size":[96.0,120.0,96.0],"pos":[465.067,-438.2,0.0],"axis":"y","mirror":[],"color":"dark","material":"16k × 3.52 µm","role":"3,000 line/s 로 읽는다. 노광 267 µs 는 면적 카메라의 1/63 이다 — 라인스캔에서 먼저 막히는 것은 렌즈가 아니라 조명이다.","spec":"16,384 px · 3,000 line/s · 14 Mpx/s","catalog":"GI-303-CAM","explode":[0.0,-200.0,0.0]},{"key":"lolight","name":"라인조명 바","qty":2,"shape":"box","size":[1400.0,45.0,70.0],"pos":[0.0,-48.5,37.5],"axis":"x","mirror":["z"],"color":"amber","material":"고휘도 LED 라인","role":"스캔선 한 줄만 밝히면 된다. 밝기는 **아직 값이 아니다** — 노광 267 µs 에 맞추려면 대상 반사율과 조리개가 먼저 정해져야 한다.","spec":"길이 1400 · 단면 70×45","catalog":"GI-303-LT","explode":[0.0,-40.0,0.0]},{"key":"locover","name":"보호창","qty":1,"shape":"box","size":[1400.0,6.0,130.0],"pos":[0.0,-11.0,0.0],"axis":"x","mirror":[],"color":"glass","material":"강화유리 / 반사방지","role":"유리가루에서 광학을 막는다. 폭 130 mm 라 스캔 창 150 mm 안에 든다.","spec":"t6 · 창 150 안","catalog":"GI-303-WD","explode":[0.0,-20.0,0.0]},{"key":"lobrk","name":"광학 브래킷","qty":3,"shape":"box","size":[140.0,12.0,260.0],"pos":[0.0,-486.2,0.0],"axis":"x","mirror":[],"color":"frame","material":"SS275 판재","role":"카메라 3 대를 같은 평면에 세운다. 대수가 화소가 아니라 **자리** 때문임을 여기가 보여 준다.","spec":"t12 · 3 자리","catalog":"GI-303-BR","explode":[0.0,-260.0,0.0]},{"key":"lorl0","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,-360.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"lorl1","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,-120.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"lorl2","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,120.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"lorl3","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,360.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"loglass","name":"패널 (통과 중)","qty":1,"shape":"box","size":[1400.0,3.2,900.0],"pos":[0.0,3.0,0.0],"axis":"x","mirror":[],"color":"glass","material":"유리 + EVA + 백시트","role":"300 mm/s 로 지나간다. 길이 2500 mm 를 8.333 s 에 훑는다.","spec":"2500 × 1400 · 300 mm/s","catalog":"","explode":[0.0,260.0,0.0]}]},{"key":"above","name":"GI-302 상부 라인스캔","sheet":"PV-GI-302-OPT-5201","envelope":[1800.0,1100.0,900.0],"viewR":900.0,"mag":1.0,"view":[0.55,0.42,1.0],"principle":[["① 같은 광학, 다른 답","밑과 똑같은 f35 · 16,384 px 인데 여기는 **1 대**로 끝난다. 스택 1065 mm 가 위쪽 배정 1100 mm 안에 들기 때문이다."],["② 위는 창이 필요 없다","롤러가 밑에 있으므로 윗면은 통째로 보인다 — 밑을 어렵게 만든 것은 광학이 아니라 이송이었다."],["③ 보는 것은 연마면이다","SG-301 이 지난 유리 변과 면이다. 아리스 5 화소, 남은 실란트 띠 200 화소 — 둘 다 3 화소 기준 위다."]],"parts":[{"key":"uplens0","name":"라인스캔 렌즈","qty":1,"shape":"cyl","size":[72.0,60.0,72.0],"pos":[0.0,914.7,0.0],"axis":"y","mirror":[],"color":"chrome","material":"f35 · F5.6","role":"작동거리 885 mm 에서 폭 1400 mm 를 센서 57.7 mm 에 맺는다 — 배율 0.0412. 심도가 48.39 mm 라 통과 중 판 휨 3.0 mm 를 덮는다.","spec":"f35 · F5.6 · WD 885 mm","catalog":"GI-302-LN","explode":[0.0,90.0,0.0]},{"key":"upcam0","name":"라인스캔 카메라","qty":1,"shape":"box","size":[96.0,120.0,96.0],"pos":[0.0,1004.7,0.0],"axis":"y","mirror":[],"color":"dark","material":"16k × 3.52 µm","role":"3,000 line/s 로 읽는다. 노광 267 µs 는 면적 카메라의 1/63 이다 — 라인스캔에서 먼저 막히는 것은 렌즈가 아니라 조명이다.","spec":"16,384 px · 3,000 line/s · 42 Mpx/s","catalog":"GI-302-CAM","explode":[0.0,200.0,0.0]},{"key":"uplight","name":"라인조명 바","qty":2,"shape":"box","size":[1400.0,45.0,70.0],"pos":[0.0,48.5,37.5],"axis":"x","mirror":["z"],"color":"amber","material":"고휘도 LED 라인","role":"스캔선 한 줄만 밝히면 된다. 밝기는 **아직 값이 아니다** — 노광 267 µs 에 맞추려면 대상 반사율과 조리개가 먼저 정해져야 한다.","spec":"길이 1400 · 단면 70×45","catalog":"GI-302-LT","explode":[0.0,40.0,0.0]},{"key":"upcover","name":"보호창","qty":1,"shape":"box","size":[1400.0,6.0,130.0],"pos":[0.0,11.0,0.0],"axis":"x","mirror":[],"color":"glass","material":"강화유리 / 반사방지","role":"유리가루에서 광학을 막는다. 폭 130 mm 라 스캔 창 150 mm 안에 든다.","spec":"t6 · 창 150 안","catalog":"GI-302-WD","explode":[0.0,20.0,0.0]},{"key":"upbrk","name":"광학 브래킷","qty":1,"shape":"box","size":[140.0,12.0,260.0],"pos":[0.0,1052.7,0.0],"axis":"x","mirror":[],"color":"frame","material":"SS275 판재","role":"카메라 1 대를 같은 평면에 세운다. 대수가 화소가 아니라 **자리** 때문임을 여기가 보여 준다.","spec":"t12 · 1 자리","catalog":"GI-302-BR","explode":[0.0,260.0,0.0]},{"key":"uprl0","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,-360.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"uprl1","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,-120.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"uprl2","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,120.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"uprl3","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,360.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"upgantry","name":"검사대 갠트리 보","qty":2,"shape":"box","size":[1800.0,160.0,200.0],"pos":[0.0,1144.7,0.0],"axis":"x","mirror":["z"],"color":"frame","material":"SS275 각관","role":"위쪽 배정 1100 mm 안에서 광학을 매단다. 스택이 1065 mm 라 한 대로 끝난다 — 밑과 같은 광학인데 답이 다른 이유는 **자리뿐**이다.","spec":"200×160 각관","catalog":"GI-302-GT","explode":[0.0,260.0,0.0]},{"key":"upglass","name":"패널 (통과 중)","qty":1,"shape":"box","size":[1400.0,3.2,900.0],"pos":[0.0,-3.0,0.0],"axis":"x","mirror":[],"color":"glass","material":"유리 + EVA + 백시트","role":"윗면을 본다 — SG-301 이 지나간 유리면이다. 밑과 같은 판인데 위에서는 롤러가 안 가리므로 창이 필요 없다.","spec":"2500 × 1400","catalog":"","explode":[0.0,-260.0,0.0]}]},{"key":"window","name":"롤러 창 · 스캔선 (6 배)","sheet":"PV-GI-303-DTL-5301","envelope":[466.6666666666667,2400.0,4320.0],"viewR":4320.0,"mag":6.0,"view":[0.25,0.16,1.0],"principle":[["① 창 150 은 넉넉하다","스캔선 폭이 0.1 mm 라 창의 0.07 % 다. **막는 것은 창의 폭이 아니라 밑의 높이다.**"],["② 받침이 없는 구간이 곧 창이다","유리가 롤러 두 개에 걸쳐 있고 그 사이 150 mm 가 뜬다. 그 처짐이 심도 안이라 초점이 산다."],["③ 배율은 그림에만 있다","단면은 실제 값 그대로이고 화면에서만 6 배로 세운다 — 창 150 mm 와 화소 0.1 mm 는 1400 옆에서 안 보이기 때문이다."]],"parts":[{"key":"wnrl0","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[540.0,1400.0,540.0],"pos":[0.0,-270.0,-1440.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"wnrl1","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[540.0,1400.0,540.0],"pos":[0.0,-270.0,0.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"wnrl2","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[540.0,1400.0,540.0],"pos":[0.0,-270.0,1440.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"wnglass","name":"패널 하면","qty":1,"shape":"box","size":[466.6666666666667,19.200000000000003,4320.0],"pos":[0.0,9.600000000000001,0.0],"axis":"x","mirror":[],"color":"glass","material":"유리 3.2 + EVA + 백시트","role":"롤러 두 개 위에 걸쳐 있고 그 사이 150 mm 는 받쳐지지 않는다.","spec":"받침 없는 거리 150 mm","catalog":"","explode":[0.0,400.0,0.0]},{"key":"wnline","name":"스캔선","qty":1,"shape":"box","size":[466.6666666666667,2.0,0.6000000000000001],"pos":[0.0,-1.0,0.0],"axis":"x","mirror":[],"color":"amber","material":"—","role":"폭이 화소 하나 0.1 mm 다. 창 150 mm 의 0.07 % 라 자리를 다투지 않는다 — 창이 좁아서 막히는 것이 아니다.","spec":"폭 0.1 mm (100 µm)","catalog":"","explode":[0.0,-120.0,0.0]},{"key":"wndof","name":"심도 포락선","qty":1,"shape":"box","size":[466.6666666666667,34.8,4.800000000000001],"pos":[0.0,-17.4,0.0],"axis":"x","mirror":[],"color":"cyan","material":"—","role":"이 두께 안이면 초점이 산다 — 5.8 mm. 통과 중 판이 뜨고 처지는 3.0 mm 가 그 안이다.","spec":"DOF 5.8 mm ≥ 휨 3.0 mm","catalog":"","explode":[0.0,-260.0,0.0]}]}], SEAM = {"seats":[{"index":0,"from":-700.0,"to":-230.133,"centre":-465.067,"width":469.867},{"index":1,"from":-236.533,"to":236.533,"centre":0.0,"width":473.067},{"index":2,"from":230.133,"to":700.0,"centre":465.067,"width":469.867}],"cameras":3,"panelW":1400.0,"field":466.667,"overlapEach":6.4,"overlapTotal":12.8,"covers":true,"sensorPx":16384,"pixelsNeeded":14000,"oneNeeds":1064.7,"allotted":550.0,"shortfall":514.7,"stack":498.2},
-      SPEC = {"below":[["이송 → 라인레이트","300 mm/s ÷ 0.1 mm/px = **3,000 line/s** (화소가 정사각이려면)"],["라인주기 · 노광","333 µs × 듀티 80% = **267 µs** — 면적 카메라(1/60 s)의 **1/63**"],["필요 화소 / 센서","폭 1,400 ÷ 0.1 = **14,000 px** · 센서 16,384 px × 3.52 µm = 상 57.7 mm"],["대수 — 자리가 정한다","한 대면 스택 **1065 mm**, 배정 550 mm → **515 mm 초과.** **3 대**면 498 mm 로 든다"],["화소는 남는다","센서 한 장 16,384 px 가 필요한 14,000 px 를 이미 넘는다 — **여러 대인 것은 화소 때문이 아니다**"],["배율 / 작동거리","m = 57.7 ÷ 467 = **0.1236** · WD = f(1+1/m) = **318 mm** (f35)"],["시야 / 이음매","대당 467 mm · 이음매마다 **6.4 mm** 겹침 (합 12.8 mm)"],["심도","2Nc(1+m)/m² = **5.8 mm** ≥ 통과 중 휨 3.0 mm (F5.6 · c 7.0 µm)"],["창","피치 240 − 외경 90 = **150 mm** · `vision` 주기와 같다 · 스캔선 폭은 그 0.07%"]],"above":[["이송 → 라인레이트","300 mm/s ÷ 0.1 mm/px = **3,000 line/s** (화소가 정사각이려면)"],["라인주기 · 노광","333 µs × 듀티 80% = **267 µs** — 면적 카메라(1/60 s)의 **1/63**"],["필요 화소 / 센서","폭 1,400 ÷ 0.1 = **14,000 px** · 센서 16,384 px × 3.52 µm = 상 57.7 mm"],["대수 — 위는 넉넉하다","스택 1065 mm 가 배정 1,100 mm 안이라 **1 대**로 끝난다. 밑과 **같은 광학인데 답이 다르다**"],["배율 / 작동거리","m = **0.0412** · WD = **885 mm**"],["심도","**48.39 mm** — 배율이 낮아 밑보다 깊다"],["보는 것","연마된 유리면. 아리스 **5 화소**, 남은 실란트 띠 **200 화소** — 둘 다 확실판정 기준 3 화소 위"],["존치 헤드","GI-302 · GI-303 — GI-301 은 은퇴했다. 그래서 **연마 전 검사가 없다**"]],"window":[["이송 → 라인레이트","300 mm/s ÷ 0.1 mm/px = **3,000 line/s** (화소가 정사각이려면)"],["창 대 스캔선","창 **150 mm** 안에서 스캔선 폭은 화소 하나 **0.1 mm** — 0.07% 다. **막는 것은 창의 폭이 아니라 밑의 높이다**"],["받침 없는 거리","롤러 두 개 사이 **150 mm** 가 뜬다. 그 처짐이 심도 5.8 mm 안이라 초점이 산다"],["최소 결함","3 화소 × 0.1 = **0.3 mm** 부터 확실히 잡는다"],["자료량","장당 350,000,000 화소 = **350 MB** — `ai` 가 적어 둔 값과 **다시 세어도 같다** · 42 Mpx/s"],["시간","길이 2,500 ÷ 300 = **8.333 s** · 가동률 15.2% — 택트 안에 든다"],["배율","단면은 실제 값 그대로이고 화면에서만 **6 배**로 세운다 — 창 150 와 화소 0.1 는 1,400 옆에서 안 보인다"]]}, OPEN = [["GI-303 은 한 대로 안 된다","폭 1,400 을 0.1 mm/px 로 보려면 한 대짜리 광학계가 **1,065 mm** 를 먹는데 롤러 밑에 배정된 것은 550 mm 다 — **515 mm 초과.** f35 렌즈로는 **3 대**를 나란히 놓아야 들어가고(대당 시야 467 mm · WD 318 mm), 이음매마다 겹침이 필요하다. 접이 거울로 광로를 접는 대안이 있지만 그것은 배치가 정할 일이다."],["연마 전 검사가 없다","GI-301 이 V-4 에서 은퇴해 전/후 비교가 없다. `vision` 이 적어 둔 대로 **연마 공정창 고정이 전제**이고, 그 전제는 인발 뒤 면에 남는 실란트 몫이 실측돼야 선다 (`sg_grind` 미결 2)."],["조명 밝기가 아직 값이 아니다","노광이 267 µs 로 면적 카메라(1/60 s)의 **1/63** 이다. 그만큼 밝은 라인조명이 필요하고, 그 값은 대상 반사율과 조리개가 정해져야 나온다 — 유리 하부는 정반사라 명시야로 볼지 암시야로 볼지가 먼저다."]];
+  var K = S.kit, UNITS = [{"key":"below","name":"GI-303 하부 라인스캔","sheet":"PV-GI-303-OPT-5101","envelope":[1600.0,550.0,900.0],"viewR":900.0,"mag":1.0,"view":[0.55,-0.45,1.0],"principle":[["① 창은 롤러가 만든다","피치 240 에서 외경 90 을 빼면 **150 mm** 가 남는다. 스캔선은 폭이 화소 하나(0.1 mm)라 그 안에 넉넉히 든다."],["② 폭을 보려면 자리가 든다","폭 1400 을 0.1 mm/px 로 보려면 한 대짜리 광학계가 **1065 mm** 를 먹는다. 배정된 것은 550 mm — **515 mm 초과**다."],["③ 그래서 여러 대다 — 화소 때문이 아니다","센서 한 장이면 화소는 16,384 로 필요한 14,000 에 대해 남는다. **3 대**로 나눠야 스택이 498 mm 로 줄어 550 안에 든다."],["④ 나눈 자리는 겹쳐야 한다","대당 시야 467 mm 에 이음매마다 6.4 mm 씩 겹친다. 비면 거기 있는 균열을 못 본다."],["⑤ 판이 떠도 초점은 산다","심도 5.8 mm 가 통과 중 휨 3.0 mm 를 덮는다. 받침은 롤러 꼭대기 한 줄씩이라 받쳐지지 않는 거리는 피치 240 mm 다 — 그 처짐은 `gi_plate` 가 푼다."]],"parts":[{"key":"lolens0","name":"라인스캔 렌즈","qty":1,"shape":"cyl","size":[72.0,60.0,72.0],"pos":[-465.067,-348.2,0.0],"axis":"y","mirror":[],"color":"chrome","material":"f35 · F5.6","role":"작동거리 318 mm 에서 폭 473 mm 를 센서 57.7 mm 에 맺는다 — 배율 0.1236. 심도가 5.8 mm 라 통과 중 판 휨 3.0 mm 를 덮는다.","spec":"f35 · F5.6 · WD 318 mm","catalog":"GI-303-LN","explode":[0.0,-90.0,0.0]},{"key":"locam0","name":"라인스캔 카메라","qty":1,"shape":"box","size":[96.0,120.0,96.0],"pos":[-465.067,-438.2,0.0],"axis":"y","mirror":[],"color":"dark","material":"16k × 3.52 µm","role":"3,000 line/s 로 읽는다. 노광 267 µs 는 면적 카메라의 1/63 이다 — 라인스캔에서 먼저 막히는 것은 렌즈가 아니라 조명이다.","spec":"16,384 px · 3,000 line/s · 14 Mpx/s","catalog":"GI-303-CAM","explode":[0.0,-200.0,0.0]},{"key":"lolens1","name":"라인스캔 렌즈","qty":1,"shape":"cyl","size":[72.0,60.0,72.0],"pos":[0.0,-348.2,0.0],"axis":"y","mirror":[],"color":"chrome","material":"f35 · F5.6","role":"작동거리 318 mm 에서 폭 473 mm 를 센서 57.7 mm 에 맺는다 — 배율 0.1236. 심도가 5.8 mm 라 통과 중 판 휨 3.0 mm 를 덮는다.","spec":"f35 · F5.6 · WD 318 mm","catalog":"GI-303-LN","explode":[0.0,-90.0,0.0]},{"key":"locam1","name":"라인스캔 카메라","qty":1,"shape":"box","size":[96.0,120.0,96.0],"pos":[0.0,-438.2,0.0],"axis":"y","mirror":[],"color":"dark","material":"16k × 3.52 µm","role":"3,000 line/s 로 읽는다. 노광 267 µs 는 면적 카메라의 1/63 이다 — 라인스캔에서 먼저 막히는 것은 렌즈가 아니라 조명이다.","spec":"16,384 px · 3,000 line/s · 14 Mpx/s","catalog":"GI-303-CAM","explode":[0.0,-200.0,0.0]},{"key":"lolens2","name":"라인스캔 렌즈","qty":1,"shape":"cyl","size":[72.0,60.0,72.0],"pos":[465.067,-348.2,0.0],"axis":"y","mirror":[],"color":"chrome","material":"f35 · F5.6","role":"작동거리 318 mm 에서 폭 473 mm 를 센서 57.7 mm 에 맺는다 — 배율 0.1236. 심도가 5.8 mm 라 통과 중 판 휨 3.0 mm 를 덮는다.","spec":"f35 · F5.6 · WD 318 mm","catalog":"GI-303-LN","explode":[0.0,-90.0,0.0]},{"key":"locam2","name":"라인스캔 카메라","qty":1,"shape":"box","size":[96.0,120.0,96.0],"pos":[465.067,-438.2,0.0],"axis":"y","mirror":[],"color":"dark","material":"16k × 3.52 µm","role":"3,000 line/s 로 읽는다. 노광 267 µs 는 면적 카메라의 1/63 이다 — 라인스캔에서 먼저 막히는 것은 렌즈가 아니라 조명이다.","spec":"16,384 px · 3,000 line/s · 14 Mpx/s","catalog":"GI-303-CAM","explode":[0.0,-200.0,0.0]},{"key":"lolight","name":"라인조명 바","qty":2,"shape":"box","size":[1400.0,45.0,70.0],"pos":[0.0,-48.5,37.5],"axis":"x","mirror":["z"],"color":"amber","material":"고휘도 LED 라인","role":"스캔선 한 줄만 밝히면 된다. 밝기는 **아직 값이 아니다** — 노광 267 µs 에 맞추려면 대상 반사율과 조리개가 먼저 정해져야 한다.","spec":"길이 1400 · 단면 70×45","catalog":"GI-303-LT","explode":[0.0,-40.0,0.0]},{"key":"locover","name":"보호창","qty":1,"shape":"box","size":[1400.0,6.0,130.0],"pos":[0.0,-11.0,0.0],"axis":"x","mirror":[],"color":"glass","material":"강화유리 / 반사방지","role":"유리가루에서 광학을 막는다. 폭 130 mm 라 스캔 창 150 mm 안에 든다.","spec":"t6 · 창 150 안","catalog":"GI-303-WD","explode":[0.0,-20.0,0.0]},{"key":"lobrk","name":"광학 브래킷","qty":3,"shape":"box","size":[140.0,12.0,260.0],"pos":[0.0,-486.2,0.0],"axis":"x","mirror":[],"color":"frame","material":"SS275 판재","role":"카메라 3 대를 같은 평면에 세운다. 대수가 화소가 아니라 **자리** 때문임을 여기가 보여 준다.","spec":"t12 · 3 자리","catalog":"GI-303-BR","explode":[0.0,-260.0,0.0]},{"key":"lorl0","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,-360.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"lorl1","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,-120.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"lorl2","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,120.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"lorl3","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,360.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"loglass","name":"패널 (통과 중)","qty":1,"shape":"box","size":[1400.0,3.2,900.0],"pos":[0.0,3.0,0.0],"axis":"x","mirror":[],"color":"glass","material":"유리 + EVA + 백시트","role":"300 mm/s 로 지나간다. 길이 2500 mm 를 8.333 s 에 훑는다.","spec":"2500 × 1400 · 300 mm/s","catalog":"","explode":[0.0,260.0,0.0]}]},{"key":"above","name":"GI-302 상부 라인스캔","sheet":"PV-GI-302-OPT-5201","envelope":[1800.0,1100.0,900.0],"viewR":900.0,"mag":1.0,"view":[0.55,0.42,1.0],"principle":[["① 같은 광학, 다른 답","밑과 똑같은 f35 · 16,384 px 인데 여기는 **1 대**로 끝난다. 스택 1065 mm 가 위쪽 배정 1100 mm 안에 들기 때문이다."],["② 위는 창이 필요 없다","롤러가 밑에 있으므로 윗면은 통째로 보인다 — 밑을 어렵게 만든 것은 광학이 아니라 이송이었다."],["③ 보는 것은 연마면이다","SG-301 이 지난 유리 변과 면이다. 아리스 5 화소, 남은 실란트 띠 200 화소 — 둘 다 3 화소 기준 위다."]],"parts":[{"key":"uplens0","name":"라인스캔 렌즈","qty":1,"shape":"cyl","size":[72.0,60.0,72.0],"pos":[0.0,914.7,0.0],"axis":"y","mirror":[],"color":"chrome","material":"f35 · F5.6","role":"작동거리 885 mm 에서 폭 1400 mm 를 센서 57.7 mm 에 맺는다 — 배율 0.0412. 심도가 48.39 mm 라 통과 중 판 휨 3.0 mm 를 덮는다.","spec":"f35 · F5.6 · WD 885 mm","catalog":"GI-302-LN","explode":[0.0,90.0,0.0]},{"key":"upcam0","name":"라인스캔 카메라","qty":1,"shape":"box","size":[96.0,120.0,96.0],"pos":[0.0,1004.7,0.0],"axis":"y","mirror":[],"color":"dark","material":"16k × 3.52 µm","role":"3,000 line/s 로 읽는다. 노광 267 µs 는 면적 카메라의 1/63 이다 — 라인스캔에서 먼저 막히는 것은 렌즈가 아니라 조명이다.","spec":"16,384 px · 3,000 line/s · 42 Mpx/s","catalog":"GI-302-CAM","explode":[0.0,200.0,0.0]},{"key":"uplight","name":"라인조명 바","qty":2,"shape":"box","size":[1400.0,45.0,70.0],"pos":[0.0,48.5,37.5],"axis":"x","mirror":["z"],"color":"amber","material":"고휘도 LED 라인","role":"스캔선 한 줄만 밝히면 된다. 밝기는 **아직 값이 아니다** — 노광 267 µs 에 맞추려면 대상 반사율과 조리개가 먼저 정해져야 한다.","spec":"길이 1400 · 단면 70×45","catalog":"GI-302-LT","explode":[0.0,40.0,0.0]},{"key":"upcover","name":"보호창","qty":1,"shape":"box","size":[1400.0,6.0,130.0],"pos":[0.0,11.0,0.0],"axis":"x","mirror":[],"color":"glass","material":"강화유리 / 반사방지","role":"유리가루에서 광학을 막는다. 폭 130 mm 라 스캔 창 150 mm 안에 든다.","spec":"t6 · 창 150 안","catalog":"GI-302-WD","explode":[0.0,20.0,0.0]},{"key":"upbrk","name":"광학 브래킷","qty":1,"shape":"box","size":[140.0,12.0,260.0],"pos":[0.0,1052.7,0.0],"axis":"x","mirror":[],"color":"frame","material":"SS275 판재","role":"카메라 1 대를 같은 평면에 세운다. 대수가 화소가 아니라 **자리** 때문임을 여기가 보여 준다.","spec":"t12 · 1 자리","catalog":"GI-302-BR","explode":[0.0,260.0,0.0]},{"key":"uprl0","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,-360.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"uprl1","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,-120.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"uprl2","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,120.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"uprl3","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[90.0,1400.0,90.0],"pos":[0.0,-45.0,360.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"upgantry","name":"검사대 갠트리 보","qty":2,"shape":"box","size":[1800.0,160.0,200.0],"pos":[0.0,1144.7,0.0],"axis":"x","mirror":["z"],"color":"frame","material":"SS275 각관","role":"위쪽 배정 1100 mm 안에서 광학을 매단다. 스택이 1065 mm 라 한 대로 끝난다 — 밑과 같은 광학인데 답이 다른 이유는 **자리뿐**이다.","spec":"200×160 각관","catalog":"GI-302-GT","explode":[0.0,260.0,0.0]},{"key":"upglass","name":"패널 (통과 중)","qty":1,"shape":"box","size":[1400.0,3.2,900.0],"pos":[0.0,-3.0,0.0],"axis":"x","mirror":[],"color":"glass","material":"유리 + EVA + 백시트","role":"윗면을 본다 — SG-301 이 지나간 유리면이다. 밑과 같은 판인데 위에서는 롤러가 안 가리므로 창이 필요 없다.","spec":"2500 × 1400","catalog":"","explode":[0.0,-260.0,0.0]}]},{"key":"window","name":"롤러 창 · 스캔선 (6 배)","sheet":"PV-GI-303-DTL-5301","envelope":[466.6666666666667,2400.0,4320.0],"viewR":4320.0,"mag":6.0,"view":[0.25,0.16,1.0],"principle":[["① 창 150 은 넉넉하다","스캔선 폭이 0.1 mm 라 창의 0.07 % 다. **막는 것은 창의 폭이 아니라 밑의 높이다.**"],["② 받침 사이는 창보다 넓다","판은 롤러 꼭대기 한 줄에만 닿으므로 받침 사이가 피치 240 mm 다 — 창 150 보다 넓다. 그 처짐이 심도 안인지는 `gi_plate` 가 답한다."],["③ 배율은 그림에만 있다","단면은 실제 값 그대로이고 화면에서만 6 배로 세운다 — 창 150 mm 와 화소 0.1 mm 는 1400 옆에서 안 보이기 때문이다."]],"parts":[{"key":"wnrl0","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[540.0,1400.0,540.0],"pos":[0.0,-270.0,-1440.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"wnrl1","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[540.0,1400.0,540.0],"pos":[0.0,-270.0,0.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"wnrl2","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[540.0,1400.0,540.0],"pos":[0.0,-270.0,1440.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 − 외경 90 = 창 **150 mm**. `vision` 이 GI-303 주기에 적어 둔 값과 같다.","spec":"Ø90 · 피치 240","catalog":"CV-102-RL","explode":[0.0,-140.0,0.0]},{"key":"wnglass","name":"패널 하면","qty":1,"shape":"box","size":[466.6666666666667,19.200000000000003,4320.0],"pos":[0.0,9.600000000000001,0.0],"axis":"x","mirror":[],"color":"glass","material":"유리 3.2 + EVA + 백시트","role":"롤러 두 개의 꼭대기에 걸쳐 있다 — 받침 사이는 피치 240 mm 이고, 그중 창으로 보이는 것이 150 mm 다.","spec":"받침 없는 거리 240 mm","catalog":"","explode":[0.0,400.0,0.0]},{"key":"wnline","name":"스캔선","qty":1,"shape":"box","size":[466.6666666666667,2.0,0.6000000000000001],"pos":[0.0,-1.0,0.0],"axis":"x","mirror":[],"color":"amber","material":"—","role":"폭이 화소 하나 0.1 mm 다. 창 150 mm 의 0.07 % 라 자리를 다투지 않는다 — 창이 좁아서 막히는 것이 아니다.","spec":"폭 0.1 mm (100 µm)","catalog":"","explode":[0.0,-120.0,0.0]},{"key":"wndof","name":"심도 포락선","qty":1,"shape":"box","size":[466.6666666666667,34.8,4.800000000000001],"pos":[0.0,-17.4,0.0],"axis":"x","mirror":[],"color":"cyan","material":"—","role":"이 두께 안이면 초점이 산다 — 5.8 mm. 통과 중 판이 뜨고 처지는 3.0 mm 가 그 안이다.","spec":"DOF 5.8 mm ≥ 휨 3.0 mm","catalog":"","explode":[0.0,-260.0,0.0]}]},{"key":"plate","name":"롤러 위의 판 · 물리엔진 (6 배)","sheet":"PV-GI-303-DYN-5401","envelope":[2200.0,296.0,9180.0],"viewR":9180.0,"mag":6.0,"view":[0.32,0.2,1.0],"principle":[["① 성한 판은 평평하다","자중 처짐이 창에서 **5.5 µm** — 심도 5.8 mm 의 0.10 % 다. 유리가 있는 한 가라앉을 이유가 없다."],["② 앞끝이 창을 건넌다","앞끝이 스캔선을 지나 다음 롤러에 닿기까지 외팔로 처진다 — 스캔선이 보는 최대가 **0.182 mm**. 끝은 롤러 꼭대기가 아니라 옆면에 6.2 mm 앞서 닿고 램프로 들려 올라간다."],["③ 얹히는 되튐은 작다","램프가 1차 주기의 2.43 배라 되튐이 **7.4 µm** 뿐이고 36 ms 안에 잦아든다. 계단으로 잡았다면 앞끝 처짐보다 컸을 값이다."],["④ 유리가 깨지면 문턱이 있다","유리 강성이 **0.011 %** 아래면 심도를 벗어나고 **0.003 %** 아래면 보호창을 친다. 슬라이더로 κ 를 내려 보라 — 균열 몇 줄은 괜찮고 잘게 쪼개진 판이 문제다."],["⑤ 남는 예산이 반입 조건이다","3.0 mm 중 자중·앞끝·되튐의 포락선 0.184 과 흔들림 0.1 을 빼면 **2.716 mm** 가 남는다 — 중고 판이 이보다 평평해야 한다."]],"parts":[{"key":"phrl0","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[540.0,2000.0,540.0],"pos":[0.0,-270.0,-3600.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 로 판을 꼭대기 한 줄씩 받친다. 흔들림 0.1 mm 가 자전 1.06 Hz 로 판을 든다 — 판의 1차 118 Hz 가 그 94 배라 판은 롤러를 준정적으로 따라간다.","spec":"Ø90 · 피치 240 · TIR 0.1","catalog":"CV-102-RL","explode":[0.0,-160.0,0.0]},{"key":"phrl1","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[540.0,2000.0,540.0],"pos":[0.0,-270.0,-2160.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 로 판을 꼭대기 한 줄씩 받친다. 흔들림 0.1 mm 가 자전 1.06 Hz 로 판을 든다 — 판의 1차 118 Hz 가 그 94 배라 판은 롤러를 준정적으로 따라간다.","spec":"Ø90 · 피치 240 · TIR 0.1","catalog":"CV-102-RL","explode":[0.0,-160.0,0.0]},{"key":"phrl2","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[540.0,2000.0,540.0],"pos":[0.0,-270.0,-720.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 로 판을 꼭대기 한 줄씩 받친다. 흔들림 0.1 mm 가 자전 1.06 Hz 로 판을 든다 — 판의 1차 118 Hz 가 그 94 배라 판은 롤러를 준정적으로 따라간다.","spec":"Ø90 · 피치 240 · TIR 0.1","catalog":"CV-102-RL","explode":[0.0,-160.0,0.0]},{"key":"phrl3","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[540.0,2000.0,540.0],"pos":[0.0,-270.0,720.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 로 판을 꼭대기 한 줄씩 받친다. 흔들림 0.1 mm 가 자전 1.06 Hz 로 판을 든다 — 판의 1차 118 Hz 가 그 94 배라 판은 롤러를 준정적으로 따라간다.","spec":"Ø90 · 피치 240 · TIR 0.1","catalog":"CV-102-RL","explode":[0.0,-160.0,0.0]},{"key":"phrl4","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[540.0,2000.0,540.0],"pos":[0.0,-270.0,2160.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 로 판을 꼭대기 한 줄씩 받친다. 흔들림 0.1 mm 가 자전 1.06 Hz 로 판을 든다 — 판의 1차 118 Hz 가 그 94 배라 판은 롤러를 준정적으로 따라간다.","spec":"Ø90 · 피치 240 · TIR 0.1","catalog":"CV-102-RL","explode":[0.0,-160.0,0.0]},{"key":"phrl5","name":"CV-102 이송롤러","qty":1,"shape":"cyl","size":[540.0,2000.0,540.0],"pos":[0.0,-270.0,3600.0],"axis":"x","mirror":[],"color":"dark","material":"우레탄 피복 강관","role":"피치 240 로 판을 꼭대기 한 줄씩 받친다. 흔들림 0.1 mm 가 자전 1.06 Hz 로 판을 든다 — 판의 1차 118 Hz 가 그 94 배라 판은 롤러를 준정적으로 따라간다.","spec":"Ø90 · 피치 240 · TIR 0.1","catalog":"CV-102-RL","explode":[0.0,-160.0,0.0]},{"key":"phdof","name":"심도 포락선","qty":1,"shape":"box","size":[2200.0,34.8,48.0],"pos":[0.0,0.0,0.0],"axis":"x","mirror":[],"color":"cyan","material":"—","role":"초점면 ±2.9 mm — 판 밑면이 이 안에 있으면 흐림이 화소 두 개 아래다. 성한 판은 6 µm 밖에 안 처져 한가운데 있다.","spec":"DOF 5.8 mm · 자중 처짐 0.0055 mm","catalog":"","explode":[0.0,0.0,0.0]},{"key":"phline","name":"스캔선","qty":1,"shape":"box","size":[2200.0,2.0,0.6000000000000001],"pos":[0.0,-1.0,0.0],"axis":"x","mirror":[],"color":"amber","material":"—","role":"여기서 밑면 높이를 읽어 흐림을 낸다 — 초점흐림 c(Δz) 에 이송 흐림 80 µm 를 제곱합한다.","spec":"폭 0.1 mm","catalog":"","explode":[0.0,-40.0,0.0]},{"key":"phcover","name":"보호창","qty":1,"shape":"box","size":[2200.0,36.0,780.0],"pos":[0.0,-66.0,0.0],"axis":"x","mirror":[],"color":"glass","material":"강화유리 / 반사방지","role":"판 밑면에서 8 mm 아래. 유리 강성이 0.003 % 아래로 떨어진 판은 여기를 친다 — 폴리머만 남으면 28 mm 처진다.","spec":"틈 8 mm · t6","catalog":"GI-303-WD","explode":[0.0,-120.0,0.0]}]}], SEAM = {"seats":[{"index":0,"from":-700.0,"to":-230.133,"centre":-465.067,"width":469.867},{"index":1,"from":-236.533,"to":236.533,"centre":0.0,"width":473.067},{"index":2,"from":230.133,"to":700.0,"centre":465.067,"width":469.867}],"cameras":3,"panelW":1400.0,"field":466.667,"overlapEach":6.4,"overlapTotal":12.8,"covers":true,"sensorPx":16384,"pixelsNeeded":14000,"oneNeeds":1064.7,"allotted":550.0,"shortfall":514.7,"stack":498.2},
+      SPEC = {"below":[["이송 → 라인레이트","300 mm/s ÷ 0.1 mm/px = **3,000 line/s** (화소가 정사각이려면)"],["라인주기 · 노광","333 µs × 듀티 80% = **267 µs** — 면적 카메라(1/60 s)의 **1/63**"],["필요 화소 / 센서","폭 1,400 ÷ 0.1 = **14,000 px** · 센서 16,384 px × 3.52 µm = 상 57.7 mm"],["대수 — 자리가 정한다","한 대면 스택 **1065 mm**, 배정 550 mm → **515 mm 초과.** **3 대**면 498 mm 로 든다"],["화소는 남는다","센서 한 장 16,384 px 가 필요한 14,000 px 를 이미 넘는다 — **여러 대인 것은 화소 때문이 아니다**"],["배율 / 작동거리","m = 57.7 ÷ 467 = **0.1236** · WD = f(1+1/m) = **318 mm** (f35)"],["시야 / 이음매","대당 467 mm · 이음매마다 **6.4 mm** 겹침 (합 12.8 mm)"],["심도","2Nc(1+m)/m² = **5.8 mm** ≥ 통과 중 휨 3.0 mm (F5.6 · c 7.0 µm)"],["창","피치 240 − 외경 90 = **150 mm** · `vision` 주기와 같다 · 스캔선 폭은 그 0.07%"]],"above":[["이송 → 라인레이트","300 mm/s ÷ 0.1 mm/px = **3,000 line/s** (화소가 정사각이려면)"],["라인주기 · 노광","333 µs × 듀티 80% = **267 µs** — 면적 카메라(1/60 s)의 **1/63**"],["필요 화소 / 센서","폭 1,400 ÷ 0.1 = **14,000 px** · 센서 16,384 px × 3.52 µm = 상 57.7 mm"],["대수 — 위는 넉넉하다","스택 1065 mm 가 배정 1,100 mm 안이라 **1 대**로 끝난다. 밑과 **같은 광학인데 답이 다르다**"],["배율 / 작동거리","m = **0.0412** · WD = **885 mm**"],["심도","**48.39 mm** — 배율이 낮아 밑보다 깊다"],["보는 것","연마된 유리면. 아리스 **5 화소**, 남은 실란트 띠 **200 화소** — 둘 다 확실판정 기준 3 화소 위"],["존치 헤드","GI-302 · GI-303 — GI-301 은 은퇴했다. 그래서 **연마 전 검사가 없다**"]],"window":[["이송 → 라인레이트","300 mm/s ÷ 0.1 mm/px = **3,000 line/s** (화소가 정사각이려면)"],["창 대 스캔선","창 **150 mm** 안에서 스캔선 폭은 화소 하나 **0.1 mm** — 0.07% 다. **막는 것은 창의 폭이 아니라 밑의 높이다**"],["받침 없는 거리","롤러 꼭대기 사이 **240 mm** (피치) 가 뜬다 — 창 150 보다 넓다"],["최소 결함","3 화소 × 0.1 = **0.3 mm** 부터 확실히 잡는다"],["자료량","장당 350,000,000 화소 = **350 MB** — `ai` 가 적어 둔 값과 **다시 세어도 같다** · 42 Mpx/s"],["시간","길이 2,500 ÷ 300 = **8.333 s** · 가동률 15.2% — 택트 안에 든다"],["배율","단면은 실제 값 그대로이고 화면에서만 **6 배**로 세운다 — 창 150 와 화소 0.1 는 1,400 옆에서 안 보인다"]],"plate":[["단면","유리 3.2 / 봉지층 1.98 / 백시트 0.32 의 변환단면 — EI **204,663 N·mm²/mm** · 중립축 1.62 mm · 폴리머 몫 0.02%"],["받침 사이 / 자중 처짐","피치 **240 mm** · 연속보 **5.5 µm** (단순지지면 22.8 · 연속계수 0.2421) · 유리 응력 0.2623 MPa"],["앞끝 외팔","끝 0.428 mm · **스캔선이 보는 최대 0.182 mm** — 뒤가 롤러 위에서 회전하므로 고정단 닫힌해 0.219 보다 크다"],["1차 / 가진","**118 Hz** (단순지지 한 스팬 닫힌해 118) 대 롤러 통과 1.25 · 자전 1.06 Hz — 비 **94** · 흔들림 배율 1.0001 → 준정적"],["얹힘 (Newmark-β)","끝이 옆면에 6.2 mm 앞서 닿아 21 ms (**2.43 주기**) 램프로 오른다 → 되튐 **7.4 µm** · 36 ms 에 잦아듦 (감쇠비 0.05)"],["예산 3 mm","포락선 0.1843 + 흔들림 0.1 → **판 휨 허용 2.716 mm** — 가정이 아니라 반입 조건"],["이송 흐림","267 µs × 300 mm/s = **80 µm** (화소의 80%) · 아리스 이송 3.9 / 교차 5.0 화소"],["유리 깨짐 문턱","심도 안: κ ≥ **0.011%** · 보호창 안 침: κ ≥ **0.003%** · 폴리머만 남으면 28 mm (평면유지 전제)"],["XPBD","마디 41 (간격 30 = 유한요소 요소 길이) · 서브스텝 128 × 반복 4 · 굽힘 컴플라이언스 L³/EI · 롤러 접촉은 원호 위 단방향 투영"]]}, OPEN = [["GI-303 은 한 대로 안 된다","폭 1,400 을 0.1 mm/px 로 보려면 한 대짜리 광학계가 **1,065 mm** 를 먹는데 롤러 밑에 배정된 것은 550 mm 다 — **515 mm 초과.** f35 렌즈로는 **3 대**를 나란히 놓아야 들어가고(대당 시야 467 mm · WD 318 mm), 이음매마다 겹침이 필요하다. 접이 거울로 광로를 접는 대안이 있지만 그것은 배치가 정할 일이다."],["연마 전 검사가 없다","GI-301 이 V-4 에서 은퇴해 전/후 비교가 없다. `vision` 이 적어 둔 대로 **연마 공정창 고정이 전제**이고, 그 전제는 인발 뒤 면에 남는 실란트 몫이 실측돼야 선다 (`sg_grind` 미결 2)."],["조명 밝기가 아직 값이 아니다","노광이 267 µs 로 면적 카메라(1/60 s)의 **1/63** 이다. 그만큼 밝은 라인조명이 필요하고, 그 값은 대상 반사율과 조리개가 정해져야 나온다 — 유리 하부는 정반사라 명시야로 볼지 암시야로 볼지가 먼저다."],["중고 패널의 휨이 반입 조건 안인지 실측 전이다","심도가 덮는 3.0 mm 중 자중·앞끝·되튐의 포락선 0.1843 과 롤러 흔들림 0.1 이 쓰는 것은 0.28 mm 뿐이라 **2.716 mm** 가 판 자체의 휨에 남는다. 이것은 가정이 아니라 **반입 조건**이다 — 25 년 옥외에 있던 판이 이보다 평평한지는 표본을 재야 안다."],["깨진 유리에 남는 강성이 어디쯤인지 실측 전이다","처짐이 심도 안에 들려면 유리 강성이 **0.01 %** 만 남아도 되고, 보호창을 안 치려면 **0.00 %** 면 된다. 균열 몇 줄은 괜찮다는 뜻이지만, 이 문턱은 조각난 유리가 봉지층을 통해 전단을 전한다는 전제(평면유지) 위의 값이다. 폴리머만 남는 비관 한계에서는 창 처짐이 **28 mm** 로 보호창 8 mm 를 친다 — 잘게 쪼개진 판이 두 한계 사이 어디인지는 실물을 롤러에 올려 봐야 안다."],["화질을 정하는 것은 처짐이 아니라 이송 흐림이다","노광 267 µs 동안 판이 80 µm 를 가서 이송 방향 흐림이 화소의 **80 %** 다. 자중 처짐의 초점흐림은 그 자릿수 아래다. 줄이려면 노광을 줄여야 하고, 그러면 조명이 그만큼 밝아야 한다 — `gi_optics` 미결 3 과 같은 수 하나에 걸린다."]], PHY = {"ei":204.6633,"eiPolymer":0.040317,"rhoA":11.0,"pitchM":0.24,"rollerRM":0.045,"windowM":0.15,"coverGapM":0.008,"dofM":0.0058,"bowM":0.003,"transportMS":0.3,"runoutM":0.0001,"spinHz":1.061,"magnification":0.12358,"fNumber":5.6,"lensFM":0.035,"exposureS":0.00026666,"pixelM":0.0001,"sagIntactM":5.515e-06,"sagFocusM":0.0028691,"entryScanSagM":0.0001819,"shareFocus":0.00011,"shareCover":3e-05,"f1Hz":117.63,"damping":0.05,"nodes":41,"segM":0.03,"stripLenM":1.2,"drawnWM":0.3,"stackM":0.0055,"rollerZM":[-0.6,-0.36,-0.12,0.12,0.36,0.6],"mag":6.0,"substeps":128,"iterations":4,"eiTable":[[0.0,0.040317],[1e-05,0.073102],[3e-05,0.138251],[0.0001,0.361956],[0.0003,0.9664],[0.001,2.75007],[0.003,6.120292],[0.01,11.368202],[0.03,17.587614],[0.1,32.123008],[0.3,70.725064],[1.0,204.663297]]};
   var MM = 0.001;                                   // 모델은 mm, 씬은 m
   var TRANSPORT = 300.0, LINE_HZ = 3000.0,
       PANEL_W = 1400.0, PANEL_L = 2500.0,
@@ -11805,6 +11822,7 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
 
   function build(u) {
     var grp = new S.Group(); grp.visible = false; group.add(grp);
+    if (u.key === 'plate') plateBuild(grp);
     u.parts.forEach(function (p) {
       placements(p).forEach(function (at, idx) {
         var mesh, mat = MAT[p.color] || K.M.steel;
@@ -11832,6 +11850,175 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
     return grp;
   }
 
+  /* ── 롤러 위의 판 — XPBD ──────────────────────────────────────────────
+     폭 1 m 띠다. 수평은 이송이 정하므로(운동학) 자유도는 높이 하나뿐이다.
+     굽힘 구속은 이웃 셋의 2차 차분, 컴플라이언스 L³/EI (AFR 과 같은 식).
+     롤러는 원호 위 단방향 투영이라 앞끝은 다음 롤러 **옆면**에 먼저 닿아 램프로
+     들려 올라간다 — 유한요소의 얹힘 램프와 같은 물리가 따로 나온다. */
+  var plate = null;
+  function plateEI(share) {
+    /* 변환단면은 κ 에 선형이 아니다(중립축이 움직인다) — 모델이 낸 표를 로그로 보간 */
+    var t = PHY.eiTable, i;
+    if (share <= t[0][0]) return t[0][1];
+    for (i = 1; i < t.length; i += 1) if (share <= t[i][0]) {
+      var a = t[i - 1], b = t[i];
+      if (a[0] <= 0) return a[1] + (b[1] - a[1]) * (share - a[0]) / (b[0] - a[0]);
+      var f = (Math.log(share) - Math.log(a[0])) / (Math.log(b[0]) - Math.log(a[0]));
+      return Math.exp(Math.log(a[1]) + f * (Math.log(b[1]) - Math.log(a[1])));
+    }
+    return t[t.length - 1][1];
+  }
+  function plateBuild(grp) {
+    var n = PHY.nodes, pos = new Float32Array(n * 4 * 3), ix = [], i;
+    for (i = 0; i < n - 1; i += 1) {
+      var b0 = 4 * i, b1 = b0 + 1, t0 = b0 + 2, t1 = b0 + 3,
+          c0 = b0 + 4, c1 = c0 + 1, d0 = c0 + 2, d1 = c0 + 3;
+      ix.push(b0, c0, c1, b0, c1, b1, t0, t1, d1, t0, d1, d0,
+              b0, t0, d0, b0, d0, c0, b1, c1, d1, b1, d1, t1);
+    }
+    ix.push(0, 1, 3, 0, 3, 2);
+    var e = 4 * (n - 1); ix.push(e, e + 2, e + 3, e, e + 3, e + 1);
+    var geo = new K.Geo();
+    geo.setAttribute('position', new K.Attr(pos, 3)); geo.setIndex(ix);
+    var mat = MAT.glass.clone(); mat.opacity = .55; mat.side = 2;
+    var mesh = new K.Mesh(geo, mat); mesh.castShadow = !0; mesh.receiveShadow = !0;
+    mesh.userData.part = 'phstrip';
+    mesh.userData.home = new S.Vector3(); mesh.userData.blow = new S.Vector3();
+    mesh.userData.label = '패널 (라미네이트 띠)';
+    mesh.userData.note = '유리 ' + (PHY.stackM * 1000).toFixed(1) + ' mm 적층 · ρA ' + PHY.rhoA
+      + ' kg/m² · EI ' + PHY.ei + ' N·m²/m — XPBD 가 매 프레임 적분한다';
+    grp.add(mesh); K.pick.push(mesh);
+    /* 접촉 롤러는 그린 것보다 위·아래로 더 있다 — 컨베이어는 화면 밖으로 이어지고
+       판은 그리지 않은 롤러도 탄다. 그린 것까지만 두면 앞이 마지막 접촉 롤러를
+       축으로 시소처럼 넘어간다 (처음 그렇게 됐다 — 창에서 판이 134 mm 떠올랐다). */
+    var rz = [], z, first = PHY.rollerZM[0], last = PHY.rollerZM[PHY.rollerZM.length - 1];
+    for (z = first - 12 * PHY.pitchM; z <= last + 8 * PHY.pitchM + 1e-9; z += PHY.pitchM) rz.push(z);
+    plate = { n: n, y: new Float64Array(n), v: new Float64Array(n), q: new Float64Array(n),
+      lam: new Float64Array(n), zFront: 0, t: 0, share: 1, ei: PHY.ei, rz: rz,
+      first: first, last: last, mesh: mesh, pos: pos, geo: geo, runout: true, convey: true,
+      touching: false, sag: null, blur: null, inDof: null };
+    plateReset(first);
+    return mesh;
+  }
+  function plateReset(zFront) {
+    var i; plate.zFront = zFront; plate.t = 0;
+    for (i = 0; i < plate.n; i += 1) { plate.y[i] = 0; plate.v[i] = 0; }
+  }
+  function plateZ(i) { return plate.zFront - (plate.n - 1 - i) * PHY.segM; }
+  function plateSurface(z, t) {
+    /* 이 z 아래에 롤러가 있으면 그 원호 높이 (m), 없으면 -Infinity */
+    var R = PHY.rollerRM, best = -Infinity, k;
+    for (k = 0; k < plate.rz.length; k += 1) {
+      var d = z - plate.rz[k]; if (d < -R || d > R) continue;
+      var ys = -R + Math.sqrt(R * R - d * d);
+      if (plate.runout) ys += PHY.runoutM * Math.sin(2 * Math.PI * PHY.spinHz * t + k * 2.399963);
+      if (ys > best) best = ys;
+    }
+    return best;
+  }
+  function plateApex(t) {
+    var y = plate.y, n = plate.n, k, i, zk, z0, s, ya, ys, den, d;
+    for (k = 0; k < plate.rz.length; k += 1) {
+      zk = plate.rz[k];
+      i = Math.floor((zk - plateZ(0)) / PHY.segM);
+      if (i < 0 || i >= n - 1) continue;
+      z0 = plateZ(i); s = (zk - z0) / PHY.segM;
+      ys = plate.runout ? PHY.runoutM * Math.sin(2 * Math.PI * PHY.spinHz * t + k * 2.399963) : 0;
+      ya = (1 - s) * y[i] + s * y[i + 1];
+      if (ya >= ys) continue;
+      den = (1 - s) * (1 - s) + s * s; d = (ys - ya) / den;
+      y[i] += d * (1 - s); y[i + 1] += d * s;
+    }
+  }
+  function plateStep(dt) {
+    var sub = PHY.substeps, h = dt / sub, n = plate.n, y = plate.y, v = plate.v, q = plate.q,
+        lam = plate.lam, m = PHY.rhoA * PHY.segM, w = 1 / m, L = PHY.segM,
+        aT = (L * L * L / plate.ei) / (h * h), W = 6 * w,
+        damp = Math.exp(-2 * Math.PI * PHY.damping * PHY.f1Hz * h),
+        s, it, i, C, dl, ys, half = PHY.windowM / 2;
+    plate.touching = false;
+    for (s = 0; s < sub; s += 1) {
+      if (plate.convey) plate.zFront += PHY.transportMS * h;
+      plate.t += h;
+      for (i = 0; i < n; i += 1) { q[i] = y[i]; v[i] -= 9.81 * h; y[i] += v[i] * h; lam[i] = 0; }
+      for (it = 0; it < PHY.iterations; it += 1) {
+        for (i = 1; i < n - 1; i += 1) {
+          C = y[i - 1] - 2 * y[i] + y[i + 1];
+          dl = (-C - aT * lam[i]) / (W + aT); lam[i] += dl;
+          y[i - 1] += dl * w; y[i] -= 2 * dl * w; y[i + 1] += dl * w;
+        }
+        for (i = 0; i < n; i += 1) {
+          var z = plateZ(i); ys = plateSurface(z, plate.t);
+          if (y[i] < ys) y[i] = ys;
+          /* 창 안에서는 보호창이 바닥이다 — 여기 닿으면 판이 유리에 얹힌다 */
+          if (z > -half && z < half && y[i] < -PHY.coverGapM) { y[i] = -PHY.coverGapM; plate.touching = true; }
+        }
+        /* 롤러 꼭대기는 마디가 아니라 **마디 사이 선분**에 닿는다. 마디만 보면 꼭대기를
+           사이에 둔 두 마디가 원호 위 2.6 mm 아래에 앉아 판 전체가 그만큼 내려간다 —
+           처음 그렇게 됐다. 꼭대기 z 에서 선분 높이를 보간해 두 마디에 무게로 나눠 민다. */
+        plateApex(plate.t);
+      }
+      for (i = 0; i < n; i += 1) v[i] = (y[i] - q[i]) / h * damp;
+    }
+    if (plate.zFront - (n - 1) * L > plate.last + PHY.pitchM) plateReset(plate.first);
+    plateRead();
+  }
+  function plateDefocus(dz) {
+    var f = PHY.lensFM, N = PHY.fNumber, mg = PHY.magnification,
+        u = f * (1 + 1 / mg), vI = f * (1 + mg), uu = u + dz;
+    if (uu <= f) return Infinity;
+    var vv = 1 / (1 / f - 1 / uu);
+    return (f / N) * Math.abs(vI - vv) / vv / mg;
+  }
+  function plateRead() {
+    var n = plate.n, i, sag = null;
+    for (i = 0; i < n - 1; i += 1) {
+      var z0 = plateZ(i), z1 = plateZ(i + 1);
+      if (z0 <= 0 && 0 < z1) { var f = -z0 / (z1 - z0); sag = -(plate.y[i] + f * (plate.y[i + 1] - plate.y[i])); }
+    }
+    plate.sag = sag;
+    if (sag === null) { plate.blur = null; plate.inDof = null; }
+    else {
+      var c = plateDefocus(Math.abs(sag)), mo = PHY.transportMS * PHY.exposureS, px = PHY.pixelM;
+      plate.blur = Math.sqrt(px * px + c * c + mo * mo) / px;
+      plate.inDof = Math.abs(sag) <= PHY.dofM / 2;
+    }
+  }
+  function plateSkin() {
+    var n = plate.n, pos = plate.pos, mg = PHY.mag, hw = PHY.drawnWM / 2 * mg, tk = PHY.stackM * mg, i;
+    for (i = 0; i < n; i += 1) {
+      var z = plateZ(i) * mg, yb = plate.y[i] * mg, o = 12 * i;
+      pos[o] = -hw; pos[o + 1] = yb; pos[o + 2] = z;
+      pos[o + 3] = hw; pos[o + 4] = yb; pos[o + 5] = z;
+      pos[o + 6] = -hw; pos[o + 7] = yb + tk; pos[o + 8] = z;
+      pos[o + 9] = hw; pos[o + 10] = yb + tk; pos[o + 11] = z;
+    }
+    plate.geo.attributes.position.needsUpdate = !0;
+    plate.geo.computeVertexNormals(); plate.geo.computeBoundingSphere();
+  }
+  function plateShareFromSlider() {
+    var v = Number(el('gi-cu-glass').value);        // 100 → κ=1, 0 → κ=1e-5 (로그)
+    return Math.pow(10, -5 * (100 - v) / 100);
+  }
+  function plateSetShare(k) {
+    plate.share = k; plate.ei = plateEI(k);
+    el('gi-cu-glass-value').textContent = (k * 100).toFixed(k >= .01 ? 0 : 3) + ' %';
+  }
+  function plateReadout() {
+    var r = el('gi-cu-plate-read'), p = plate, s = [];
+    s.push('κ <b>' + (p.share * 100).toFixed(p.share >= .01 ? 0 : 3) + ' %</b> · EI ' + p.ei.toFixed(2) + ' N·m²/m');
+    if (p.sag === null) s.push('스캔선 위에 판이 없다');
+    else {
+      s.push('창 처짐 <b>' + (p.sag * 1000).toFixed(3) + ' mm</b>');
+      s.push('유효 화소 <b>' + p.blur.toFixed(2) + ' px</b>');
+      s.push('심도 ' + (p.inDof ? '<b class="is-ok">안</b>' : '<b class="is-bad">밖</b>')
+        + ' (±' + (PHY.dofM * 500).toFixed(1) + ' mm)');
+      s.push(p.touching ? '<b class="is-bad">보호창을 친다</b>' : '보호창 ' + (PHY.coverGapM * 1000).toFixed(0) + ' mm 여유');
+    }
+    s.push('앞끝 z ' + (p.zFront * 1000).toFixed(0) + ' mm');
+    r.innerHTML = s.join(' <span class="text-muted">·</span> ');
+  }
+
   /* 작동원리 — 단계마다 부품이 실제로 움직인다.
      도는 것은 이송롤러뿐이고 그 속도는 **이송이 정한다** (ω = v / r) —
      연마휠처럼 따로 rpm 을 갖는 물건이 이 셀에는 없다. */
@@ -11843,7 +12030,9 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
       var k = m.userData.part, h = m.userData.home, d = new S.Vector3();
       m.visible = true;
       /* 자리 변화는 전부 **mm 로 셈해서 마지막에 m 로 바꾼다** — 씬은 m 다. */
-      if (u.key === 'below' || u.key === 'above') {
+      if (u.key === 'plate') {
+        /* 띠는 tick 이 적분한다 — 여기서는 서 있는 부품의 분해만 */
+      } else if (u.key === 'below' || u.key === 'above') {
         /* 판이 300 mm/s 로 창 위를 지나간다. 광학은 서 있다 —
            라인스캔은 **이송이 곧 두 번째 축**이라 카메라가 움직일 이유가 없다. */
         var run = Math.max(0, Math.min(1, (t - 1) / 2));
@@ -11939,7 +12128,18 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
       b.classList.toggle('btn-primary', b.dataset.unit === key);
       b.setAttribute('aria-selected', String(b.dataset.unit === key));
     });
-    step = 0; focus = null; fit(active); render();
+    el('gi-cu-plate').hidden = key !== 'plate';
+    step = 0; focus = null; lastStep = -1; fit(active); render();
+  }
+  var lastStep = -1;
+  /* 단계가 κ 를 정한다 — ④ 만 문턱으로 내리고 나머지는 성한 판이다 */
+  var PLATE_PRESET = [1, 1, 1, PHY.shareFocus, 1];
+  function plateStepPreset() {
+    var sIdx = Math.floor(step);
+    if (sIdx === lastStep) return; lastStep = sIdx;
+    var k = PLATE_PRESET[Math.min(PLATE_PRESET.length - 1, sIdx)];
+    el('gi-cu-glass').value = String(100 + 20 * Math.log10(k));
+    plateSetShare(k);
   }
 
   function render() {
@@ -11956,6 +12156,7 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
     if (focus) built[active.key].children.forEach(function (m) {
       m.visible = m.userData.part === focus;
     });
+    if (active.key === 'plate') plateStepPreset();
     el('gi-cu-explode-value').textContent = Math.round(exVal() * 100) + '%';
     el('gi-cu-cut-value').textContent = el('gi-cu-cut-at').value + '%';
     bandMark();
@@ -11997,6 +12198,9 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
     playing = !playing; if (playing && step >= active.principle.length - 1) step = 0;
     el('gi-cu-play').textContent = playing ? '일시정지' : '작동 재생'; });
   el('gi-cu-fit').addEventListener('click', function () { if (active) fit(active); });
+  el('gi-cu-glass').addEventListener('input', function () { plateSetShare(plateShareFromSlider()); });
+  el('gi-cu-runout').addEventListener('change', function () { plate.runout = el('gi-cu-runout').checked; });
+  el('gi-cu-convey').addEventListener('change', function () { plate.convey = el('gi-cu-convey').checked; });
 
   /* 플랜트 형상은 매 프레임 끈다 — 원본 애니메이션이 계속 켜기 때문이다. */
   var last = performance.now();
@@ -12018,6 +12222,7 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
       }
     }
     if (playing || el('gi-cu-spin').checked) render();
+    if (active && active.key === 'plate') { plateStep(dt); plateSkin(); plateReadout(); }
     requestAnimationFrame(tick);
   }
   /* 원본 공정시계와 자동추적은 이 화면에서 방해만 된다. */
@@ -12037,6 +12242,20 @@ Ae.__pvFlyTest={press(i){pvFlySet(!0),pvFlyK.add(i)},release(i){pvFlyK.delete(i)
     get meshes() { return group.children.reduce(function (a, g) {
       return a + g.children.length; }, 0); },
     get active() { return active && active.key; },
+    phy: PHY,
+    plate: {
+      get sagM() { return plate.sag; }, get share() { return plate.share; },
+      get inDof() { return plate.inDof; }, get touching() { return plate.touching; },
+      get blurPx() { return plate.blur; },
+      get finite() { var i; for (i = 0; i < plate.n; i += 1) if (!isFinite(plate.y[i]) || Math.abs(plate.y[i]) > 1) return false; return true; },
+      get ys() { return Array.prototype.slice.call(plate.y); },
+      setShare: function (k) { plateSetShare(k); return plate.ei; },
+      runout: function (on) { plate.runout = !!on; el('gi-cu-runout').checked = !!on; },
+      convey: function (on) { plate.convey = !!on; el('gi-cu-convey').checked = !!on; },
+      place: function (zFront) { plateReset(zFront); },
+      settle: function (frames) { var i; for (i = 0; i < frames; i += 1) plateStep(1 / 60); plateSkin(); plateReadout(); return plate.sag; },
+      tune: function (substeps, iterations) { PHY.substeps = substeps; PHY.iterations = iterations; }
+    },
     get step() { return step; },
     go: function (k, s) { show(k); step = s; render(); return true; },
     /* 검사가 부품 자리를 직접 읽는 길 — 씬을 훑으면 플랜트 형상과 섞인다.

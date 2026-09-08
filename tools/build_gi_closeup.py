@@ -38,7 +38,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
 
-from pv_preprocess import campaign, gi_optics, vision  # noqa: E402
+from pv_preprocess import campaign, gi_optics, gi_plate, vision  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PLANT = ROOT / "docs/drawings/pv-preprocess-plant.html"
@@ -62,15 +62,24 @@ def _once(text: str, old: str, new: str, what: str) -> str:
     return text.replace(old, new)
 
 
+#: 유닛 넷 — 광학 셋은 `gi_optics`, 물리 하나는 `gi_plate` 가 세운다.
+def units():
+    return gi_optics.units() + (gi_plate.physics_unit(),)
+
+
+VIEWS = {**gi_optics.VIEW_DIR, "plate": gi_plate.VIEW_DIR}
+MAGS = {"window": gi_optics.WINDOW_MAG, "plate": gi_plate.PHYSICS_MAG}
+
+
 def unit_payload() -> str:
     """3D 가 읽는 부품 자료 — 모델에서 그대로 나온다."""
     out = []
-    for u in gi_optics.units():
+    for u in units():
         out.append({
             "key": u.key, "name": u.name, "sheet": u.sheet,
             "envelope": list(u.envelope_mm), "viewR": u.view_r_mm,
-            "mag": gi_optics.WINDOW_MAG if u.key == "window" else 1.0,
-            "view": list(gi_optics.VIEW_DIR[u.key]),
+            "mag": MAGS.get(u.key, 1.0),
+            "view": list(VIEWS[u.key]),
             "principle": [list(s) for s in u.principle],
             "parts": [{
                 "key": p.key, "name": p.name, "qty": p.qty, "shape": p.shape,
@@ -103,10 +112,16 @@ def seam_payload() -> str:
     }, ensure_ascii=False, separators=(",", ":"))
 
 
+def physics_payload() -> str:
+    """XPBD 가 받는 SI 상수 — `gi_plate.physics_si()` 그대로."""
+    return json.dumps(gi_plate.physics_si(), ensure_ascii=False, separators=(",", ":"))
+
+
 def spec_payload() -> str:
-    """유닛별 사양표 — 값은 전부 광학이 푼 것이다."""
-    g = gi_optics
+    """유닛별 사양표 — 값은 전부 광학·구조가 푼 것이다."""
+    g, pl = gi_optics, gi_plate
     n, up = g.cameras_below(), g.cameras_above()
+    b = pl.sag_budget_mm()
     chain = [
         ["이송 → 라인레이트", f"{g.TRANSPORT_MM_S:.0f} mm/s ÷ {g.RESOLUTION_MM} mm/px = "
                         f"**{g.line_rate_hz():,.0f} line/s** (화소가 정사각이려면)"],
@@ -158,8 +173,8 @@ def spec_payload() -> str:
                        f"화소 하나 **{g.RESOLUTION_MM} mm** — "
                        f"{g.RESOLUTION_MM / g.roller_window_mm():.2%} 다. "
                        f"**막는 것은 창의 폭이 아니라 밑의 높이다**"],
-            ["받침 없는 거리", f"롤러 두 개 사이 **{g.unsupported_span_mm():.0f} mm** 가 뜬다. "
-                        f"그 처짐이 심도 {g.depth_of_field_mm(n)} mm 안이라 초점이 산다"],
+            ["받침 없는 거리", f"롤러 꼭대기 사이 **{g.unsupported_span_mm():.0f} mm** (피치) 가 "
+                        f"뜬다 — 창 {g.roller_window_mm():.0f} 보다 넓다"],
             ["최소 결함", f"{g.PIXELS_PER_FEATURE} 화소 × {g.RESOLUTION_MM} = "
                     f"**{g.smallest_reliable_feature_mm()} mm** 부터 확실히 잡는다"],
             ["자료량", f"장당 {g.pixels_per_panel():,} 화소 = **{g.mb_per_panel():.0f} MB** — "
@@ -171,12 +186,47 @@ def spec_payload() -> str:
                   f"세운다 — 창 {g.roller_window_mm():.0f} 와 화소 "
                   f"{g.RESOLUTION_MM} 는 {g.PANEL_W_MM:,.0f} 옆에서 안 보인다"],
         ],
+        "plate": [
+            ["단면", f"유리 {pl.GLASS_T_MM} / 봉지층 {pl.encap_t_mm()} / 백시트 "
+                  f"{pl.BACKSHEET_T_MM} 의 변환단면 — EI **{pl.ei_n_mm2():,.0f} N·mm²/mm** · "
+                  f"중립축 {pl.transformed_section()['na_mm']:.2f} mm · 폴리머 몫 "
+                  f"{pl.polymer_share_of_stiffness():.2%}"],
+            ["받침 사이 / 자중 처짐", f"피치 **{pl.support_span_mm():.0f} mm** · 연속보 "
+                             f"**{pl.window_sag_mm() * 1000:.1f} µm** (단순지지면 "
+                             f"{pl.simply_supported_sag_mm() * 1000:.1f} · 연속계수 "
+                             f"{pl.continuity_factor()}) · 유리 응력 {pl.window_stress_mpa()} MPa"],
+            ["앞끝 외팔", f"끝 {pl.entry_sag_mm():.3f} mm · **스캔선이 보는 최대 "
+                     f"{pl.entry_scan_sag_mm():.3f} mm** — 뒤가 롤러 위에서 회전하므로 고정단 "
+                     f"닫힌해 {pl.cantilever_closed_form_mm(pl.entry_reach_mm()):.3f} 보다 크다"],
+            ["1차 / 가진", f"**{pl.fundamental_hz():.0f} Hz** (단순지지 한 스팬 닫힌해 "
+                       f"{pl.pinned_span_closed_form_hz():.0f}) 대 롤러 통과 "
+                       f"{pl.roller_pass_hz():.2f} · 자전 {pl.roller_spin_hz():.2f} Hz — 비 "
+                       f"**{pl.frequency_ratio():.0f}** · 흔들림 배율 "
+                       f"{pl.runout_amplification():.4f} → 준정적"],
+            ["얹힘 (Newmark-β)", f"끝이 옆면에 {pl.landing_approach_mm():.1f} mm 앞서 닿아 "
+                            f"{pl.landing_ramp_s() * 1000:.0f} ms (**{pl.landing_ramp_in_periods()} "
+                            f"주기**) 램프로 오른다 → 되튐 "
+                            f"**{pl.landing_overshoot_mm() * 1000:.1f} µm** · "
+                            f"{pl.landing_settles_within_s() * 1000:.0f} ms 에 잦아듦 (감쇠비 "
+                            f"{pl.DAMPING_RATIO})"],
+            ["예산 3 mm", f"포락선 {b['envelope']} + 흔들림 {b['runout']} → **판 휨 허용 "
+                     f"{b['warp']} mm** — 가정이 아니라 반입 조건"],
+            ["이송 흐림", f"{g.exposure_us():.0f} µs × {pl.TRANSPORT_MM_S:.0f} mm/s = "
+                     f"**{pl.motion_blur_mm() * 1000:.0f} µm** (화소의 {pl.motion_blur_px():.0%}) · "
+                     f"아리스 이송 {pl.arris_px(0, True)} / 교차 {pl.arris_px(0, False)} 화소"],
+            ["유리 깨짐 문턱", f"심도 안: κ ≥ **{pl.glass_share_for_focus():.3%}** · 보호창 안 침: "
+                        f"κ ≥ **{pl.glass_share_for_cover():.3%}** · 폴리머만 남으면 "
+                        f"{pl.window_sag_mm(0.0):.0f} mm (평면유지 전제)"],
+            ["XPBD", f"마디 {pl.STRIP_NODES} (간격 {pl.EL_MM:.0f} = 유한요소 요소 길이) · "
+                   f"서브스텝 {pl.SUBSTEPS} × 반복 {pl.ITERATIONS} · 굽힘 컴플라이언스 L³/EI · "
+                   f"롤러 접촉은 원호 위 단방향 투영"],
+        ],
     }, ensure_ascii=False, separators=(",", ":"))
 
 
 def open_payload() -> str:
     """모델이 **못 닫는** 것 — 선언이 아니라 계산에서 나온 목록이다."""
-    return json.dumps([list(q) for q in gi_optics.open_questions()],
+    return json.dumps([list(q) for q in gi_optics.open_questions() + gi_plate.open_questions()],
                       ensure_ascii=False, separators=(",", ":"))
 
 
@@ -205,6 +255,18 @@ def console_html() -> str:
       <button class="btn" id="gi-cu-fit" type="button">시점 맞춤</button>
     </div>
     <div class="gi-cu-step" id="gi-cu-step" aria-live="polite"></div>
+    <div class="card gi-cu-plate" id="gi-cu-plate" hidden>
+      <div class="viz-controls gi-cu-controls">
+        <label class="form-label" for="gi-cu-glass">유리 강성 잔존 κ <span class="tabular-nums" id="gi-cu-glass-value">100 %</span>
+          <input class="form-range" id="gi-cu-glass" type="range" min="0" max="100" step="1" value="100"></label>
+        <label class="form-check form-switch"><input class="form-check-input" id="gi-cu-runout" type="checkbox" checked>
+          <span class="form-check-label">롤러 흔들림</span></label>
+        <label class="form-check form-switch"><input class="form-check-input" id="gi-cu-convey" type="checkbox" checked>
+          <span class="form-check-label">이송</span></label>
+      </div>
+      <div class="gi-cu-plate-read tabular-nums" id="gi-cu-plate-read" aria-live="polite"></div>
+      <p class="text-small text-muted">띠는 화면이 <b>XPBD</b> 로 매 프레임 적분한다 — 굽힘 컴플라이언스 L³/EI, 질량 ρA·L, 롤러 접촉은 원호 위 단방향 투영. 상수는 전부 <code>gi_plate.physics_si()</code> 에서 온다. 기준해는 같은 모듈의 유한요소이고, 브라우저 검사가 둘을 견준다.</p>
+    </div>
     <div class="card gi-cu-cycle">
       <div class="gi-cu-cycle-head">
         <h3 class="text-small">폭 1,400 을 나눠 보는 자리 — 이음매는 <b>겹친다</b></h3>
@@ -272,6 +334,11 @@ def console_css() -> str:
     flex-direction: column; gap: 6px; font-size: var(--font-size-small); }
   .gi-cu-steps li.is-on { font-weight: var(--font-weight-medium); color: var(--primary); }
   .gi-cu-h2 { margin-top: 12px; }
+  .gi-cu-plate { border-left: 3px solid var(--primary); }
+  .gi-cu-plate-read { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 6px 0;
+    font-size: var(--font-size-small); }
+  .gi-cu-plate-read b.is-bad { color: var(--destructive); }
+  .gi-cu-plate-read b.is-ok { color: var(--primary); }
   .gi-cu-open { border-left: 3px solid var(--destructive); }
   .gi-cu-open-list { margin: 8px 0 0; display: flex; flex-direction: column; gap: 8px;
     font-size: var(--font-size-small); }
@@ -298,7 +365,7 @@ def scene_script() -> str:
   }})();
   function start(S) {{
   var K = S.kit, UNITS = {unit_payload()}, SEAM = {seam_payload()},
-      SPEC = {spec_payload()}, OPEN = {open_payload()};
+      SPEC = {spec_payload()}, OPEN = {open_payload()}, PHY = {physics_payload()};
   var MM = 0.001;                                   // 모델은 mm, 씬은 m
   var TRANSPORT = {g.TRANSPORT_MM_S}, LINE_HZ = {g.line_rate_hz()},
       PANEL_W = {g.PANEL_W_MM}, PANEL_L = {g.PANEL_L_MM},
@@ -332,6 +399,7 @@ def scene_script() -> str:
 
   function build(u) {{
     var grp = new S.Group(); grp.visible = false; group.add(grp);
+    if (u.key === 'plate') plateBuild(grp);
     u.parts.forEach(function (p) {{
       placements(p).forEach(function (at, idx) {{
         var mesh, mat = MAT[p.color] || K.M.steel;
@@ -359,6 +427,175 @@ def scene_script() -> str:
     return grp;
   }}
 
+  /* ── 롤러 위의 판 — XPBD ──────────────────────────────────────────────
+     폭 1 m 띠다. 수평은 이송이 정하므로(운동학) 자유도는 높이 하나뿐이다.
+     굽힘 구속은 이웃 셋의 2차 차분, 컴플라이언스 L³/EI (AFR 과 같은 식).
+     롤러는 원호 위 단방향 투영이라 앞끝은 다음 롤러 **옆면**에 먼저 닿아 램프로
+     들려 올라간다 — 유한요소의 얹힘 램프와 같은 물리가 따로 나온다. */
+  var plate = null;
+  function plateEI(share) {{
+    /* 변환단면은 κ 에 선형이 아니다(중립축이 움직인다) — 모델이 낸 표를 로그로 보간 */
+    var t = PHY.eiTable, i;
+    if (share <= t[0][0]) return t[0][1];
+    for (i = 1; i < t.length; i += 1) if (share <= t[i][0]) {{
+      var a = t[i - 1], b = t[i];
+      if (a[0] <= 0) return a[1] + (b[1] - a[1]) * (share - a[0]) / (b[0] - a[0]);
+      var f = (Math.log(share) - Math.log(a[0])) / (Math.log(b[0]) - Math.log(a[0]));
+      return Math.exp(Math.log(a[1]) + f * (Math.log(b[1]) - Math.log(a[1])));
+    }}
+    return t[t.length - 1][1];
+  }}
+  function plateBuild(grp) {{
+    var n = PHY.nodes, pos = new Float32Array(n * 4 * 3), ix = [], i;
+    for (i = 0; i < n - 1; i += 1) {{
+      var b0 = 4 * i, b1 = b0 + 1, t0 = b0 + 2, t1 = b0 + 3,
+          c0 = b0 + 4, c1 = c0 + 1, d0 = c0 + 2, d1 = c0 + 3;
+      ix.push(b0, c0, c1, b0, c1, b1, t0, t1, d1, t0, d1, d0,
+              b0, t0, d0, b0, d0, c0, b1, c1, d1, b1, d1, t1);
+    }}
+    ix.push(0, 1, 3, 0, 3, 2);
+    var e = 4 * (n - 1); ix.push(e, e + 2, e + 3, e, e + 3, e + 1);
+    var geo = new K.Geo();
+    geo.setAttribute('position', new K.Attr(pos, 3)); geo.setIndex(ix);
+    var mat = MAT.glass.clone(); mat.opacity = .55; mat.side = 2;
+    var mesh = new K.Mesh(geo, mat); mesh.castShadow = !0; mesh.receiveShadow = !0;
+    mesh.userData.part = 'phstrip';
+    mesh.userData.home = new S.Vector3(); mesh.userData.blow = new S.Vector3();
+    mesh.userData.label = '패널 (라미네이트 띠)';
+    mesh.userData.note = '유리 ' + (PHY.stackM * 1000).toFixed(1) + ' mm 적층 · ρA ' + PHY.rhoA
+      + ' kg/m² · EI ' + PHY.ei + ' N·m²/m — XPBD 가 매 프레임 적분한다';
+    grp.add(mesh); K.pick.push(mesh);
+    /* 접촉 롤러는 그린 것보다 위·아래로 더 있다 — 컨베이어는 화면 밖으로 이어지고
+       판은 그리지 않은 롤러도 탄다. 그린 것까지만 두면 앞이 마지막 접촉 롤러를
+       축으로 시소처럼 넘어간다 (처음 그렇게 됐다 — 창에서 판이 134 mm 떠올랐다). */
+    var rz = [], z, first = PHY.rollerZM[0], last = PHY.rollerZM[PHY.rollerZM.length - 1];
+    for (z = first - 12 * PHY.pitchM; z <= last + 8 * PHY.pitchM + 1e-9; z += PHY.pitchM) rz.push(z);
+    plate = {{ n: n, y: new Float64Array(n), v: new Float64Array(n), q: new Float64Array(n),
+      lam: new Float64Array(n), zFront: 0, t: 0, share: 1, ei: PHY.ei, rz: rz,
+      first: first, last: last, mesh: mesh, pos: pos, geo: geo, runout: true, convey: true,
+      touching: false, sag: null, blur: null, inDof: null }};
+    plateReset(first);
+    return mesh;
+  }}
+  function plateReset(zFront) {{
+    var i; plate.zFront = zFront; plate.t = 0;
+    for (i = 0; i < plate.n; i += 1) {{ plate.y[i] = 0; plate.v[i] = 0; }}
+  }}
+  function plateZ(i) {{ return plate.zFront - (plate.n - 1 - i) * PHY.segM; }}
+  function plateSurface(z, t) {{
+    /* 이 z 아래에 롤러가 있으면 그 원호 높이 (m), 없으면 -Infinity */
+    var R = PHY.rollerRM, best = -Infinity, k;
+    for (k = 0; k < plate.rz.length; k += 1) {{
+      var d = z - plate.rz[k]; if (d < -R || d > R) continue;
+      var ys = -R + Math.sqrt(R * R - d * d);
+      if (plate.runout) ys += PHY.runoutM * Math.sin(2 * Math.PI * PHY.spinHz * t + k * 2.399963);
+      if (ys > best) best = ys;
+    }}
+    return best;
+  }}
+  function plateApex(t) {{
+    var y = plate.y, n = plate.n, k, i, zk, z0, s, ya, ys, den, d;
+    for (k = 0; k < plate.rz.length; k += 1) {{
+      zk = plate.rz[k];
+      i = Math.floor((zk - plateZ(0)) / PHY.segM);
+      if (i < 0 || i >= n - 1) continue;
+      z0 = plateZ(i); s = (zk - z0) / PHY.segM;
+      ys = plate.runout ? PHY.runoutM * Math.sin(2 * Math.PI * PHY.spinHz * t + k * 2.399963) : 0;
+      ya = (1 - s) * y[i] + s * y[i + 1];
+      if (ya >= ys) continue;
+      den = (1 - s) * (1 - s) + s * s; d = (ys - ya) / den;
+      y[i] += d * (1 - s); y[i + 1] += d * s;
+    }}
+  }}
+  function plateStep(dt) {{
+    var sub = PHY.substeps, h = dt / sub, n = plate.n, y = plate.y, v = plate.v, q = plate.q,
+        lam = plate.lam, m = PHY.rhoA * PHY.segM, w = 1 / m, L = PHY.segM,
+        aT = (L * L * L / plate.ei) / (h * h), W = 6 * w,
+        damp = Math.exp(-2 * Math.PI * PHY.damping * PHY.f1Hz * h),
+        s, it, i, C, dl, ys, half = PHY.windowM / 2;
+    plate.touching = false;
+    for (s = 0; s < sub; s += 1) {{
+      if (plate.convey) plate.zFront += PHY.transportMS * h;
+      plate.t += h;
+      for (i = 0; i < n; i += 1) {{ q[i] = y[i]; v[i] -= 9.81 * h; y[i] += v[i] * h; lam[i] = 0; }}
+      for (it = 0; it < PHY.iterations; it += 1) {{
+        for (i = 1; i < n - 1; i += 1) {{
+          C = y[i - 1] - 2 * y[i] + y[i + 1];
+          dl = (-C - aT * lam[i]) / (W + aT); lam[i] += dl;
+          y[i - 1] += dl * w; y[i] -= 2 * dl * w; y[i + 1] += dl * w;
+        }}
+        for (i = 0; i < n; i += 1) {{
+          var z = plateZ(i); ys = plateSurface(z, plate.t);
+          if (y[i] < ys) y[i] = ys;
+          /* 창 안에서는 보호창이 바닥이다 — 여기 닿으면 판이 유리에 얹힌다 */
+          if (z > -half && z < half && y[i] < -PHY.coverGapM) {{ y[i] = -PHY.coverGapM; plate.touching = true; }}
+        }}
+        /* 롤러 꼭대기는 마디가 아니라 **마디 사이 선분**에 닿는다. 마디만 보면 꼭대기를
+           사이에 둔 두 마디가 원호 위 2.6 mm 아래에 앉아 판 전체가 그만큼 내려간다 —
+           처음 그렇게 됐다. 꼭대기 z 에서 선분 높이를 보간해 두 마디에 무게로 나눠 민다. */
+        plateApex(plate.t);
+      }}
+      for (i = 0; i < n; i += 1) v[i] = (y[i] - q[i]) / h * damp;
+    }}
+    if (plate.zFront - (n - 1) * L > plate.last + PHY.pitchM) plateReset(plate.first);
+    plateRead();
+  }}
+  function plateDefocus(dz) {{
+    var f = PHY.lensFM, N = PHY.fNumber, mg = PHY.magnification,
+        u = f * (1 + 1 / mg), vI = f * (1 + mg), uu = u + dz;
+    if (uu <= f) return Infinity;
+    var vv = 1 / (1 / f - 1 / uu);
+    return (f / N) * Math.abs(vI - vv) / vv / mg;
+  }}
+  function plateRead() {{
+    var n = plate.n, i, sag = null;
+    for (i = 0; i < n - 1; i += 1) {{
+      var z0 = plateZ(i), z1 = plateZ(i + 1);
+      if (z0 <= 0 && 0 < z1) {{ var f = -z0 / (z1 - z0); sag = -(plate.y[i] + f * (plate.y[i + 1] - plate.y[i])); }}
+    }}
+    plate.sag = sag;
+    if (sag === null) {{ plate.blur = null; plate.inDof = null; }}
+    else {{
+      var c = plateDefocus(Math.abs(sag)), mo = PHY.transportMS * PHY.exposureS, px = PHY.pixelM;
+      plate.blur = Math.sqrt(px * px + c * c + mo * mo) / px;
+      plate.inDof = Math.abs(sag) <= PHY.dofM / 2;
+    }}
+  }}
+  function plateSkin() {{
+    var n = plate.n, pos = plate.pos, mg = PHY.mag, hw = PHY.drawnWM / 2 * mg, tk = PHY.stackM * mg, i;
+    for (i = 0; i < n; i += 1) {{
+      var z = plateZ(i) * mg, yb = plate.y[i] * mg, o = 12 * i;
+      pos[o] = -hw; pos[o + 1] = yb; pos[o + 2] = z;
+      pos[o + 3] = hw; pos[o + 4] = yb; pos[o + 5] = z;
+      pos[o + 6] = -hw; pos[o + 7] = yb + tk; pos[o + 8] = z;
+      pos[o + 9] = hw; pos[o + 10] = yb + tk; pos[o + 11] = z;
+    }}
+    plate.geo.attributes.position.needsUpdate = !0;
+    plate.geo.computeVertexNormals(); plate.geo.computeBoundingSphere();
+  }}
+  function plateShareFromSlider() {{
+    var v = Number(el('gi-cu-glass').value);        // 100 → κ=1, 0 → κ=1e-5 (로그)
+    return Math.pow(10, -5 * (100 - v) / 100);
+  }}
+  function plateSetShare(k) {{
+    plate.share = k; plate.ei = plateEI(k);
+    el('gi-cu-glass-value').textContent = (k * 100).toFixed(k >= .01 ? 0 : 3) + ' %';
+  }}
+  function plateReadout() {{
+    var r = el('gi-cu-plate-read'), p = plate, s = [];
+    s.push('κ <b>' + (p.share * 100).toFixed(p.share >= .01 ? 0 : 3) + ' %</b> · EI ' + p.ei.toFixed(2) + ' N·m²/m');
+    if (p.sag === null) s.push('스캔선 위에 판이 없다');
+    else {{
+      s.push('창 처짐 <b>' + (p.sag * 1000).toFixed(3) + ' mm</b>');
+      s.push('유효 화소 <b>' + p.blur.toFixed(2) + ' px</b>');
+      s.push('심도 ' + (p.inDof ? '<b class="is-ok">안</b>' : '<b class="is-bad">밖</b>')
+        + ' (±' + (PHY.dofM * 500).toFixed(1) + ' mm)');
+      s.push(p.touching ? '<b class="is-bad">보호창을 친다</b>' : '보호창 ' + (PHY.coverGapM * 1000).toFixed(0) + ' mm 여유');
+    }}
+    s.push('앞끝 z ' + (p.zFront * 1000).toFixed(0) + ' mm');
+    r.innerHTML = s.join(' <span class="text-muted">·</span> ');
+  }}
+
   /* 작동원리 — 단계마다 부품이 실제로 움직인다.
      도는 것은 이송롤러뿐이고 그 속도는 **이송이 정한다** (ω = v / r) —
      연마휠처럼 따로 rpm 을 갖는 물건이 이 셀에는 없다. */
@@ -370,7 +607,9 @@ def scene_script() -> str:
       var k = m.userData.part, h = m.userData.home, d = new S.Vector3();
       m.visible = true;
       /* 자리 변화는 전부 **mm 로 셈해서 마지막에 m 로 바꾼다** — 씬은 m 다. */
-      if (u.key === 'below' || u.key === 'above') {{
+      if (u.key === 'plate') {{
+        /* 띠는 tick 이 적분한다 — 여기서는 서 있는 부품의 분해만 */
+      }} else if (u.key === 'below' || u.key === 'above') {{
         /* 판이 {g.TRANSPORT_MM_S:.0f} mm/s 로 창 위를 지나간다. 광학은 서 있다 —
            라인스캔은 **이송이 곧 두 번째 축**이라 카메라가 움직일 이유가 없다. */
         var run = Math.max(0, Math.min(1, (t - 1) / 2));
@@ -466,7 +705,18 @@ def scene_script() -> str:
       b.classList.toggle('btn-primary', b.dataset.unit === key);
       b.setAttribute('aria-selected', String(b.dataset.unit === key));
     }});
-    step = 0; focus = null; fit(active); render();
+    el('gi-cu-plate').hidden = key !== 'plate';
+    step = 0; focus = null; lastStep = -1; fit(active); render();
+  }}
+  var lastStep = -1;
+  /* 단계가 κ 를 정한다 — ④ 만 문턱으로 내리고 나머지는 성한 판이다 */
+  var PLATE_PRESET = [1, 1, 1, PHY.shareFocus, 1];
+  function plateStepPreset() {{
+    var sIdx = Math.floor(step);
+    if (sIdx === lastStep) return; lastStep = sIdx;
+    var k = PLATE_PRESET[Math.min(PLATE_PRESET.length - 1, sIdx)];
+    el('gi-cu-glass').value = String(100 + 20 * Math.log10(k));
+    plateSetShare(k);
   }}
 
   function render() {{
@@ -483,6 +733,7 @@ def scene_script() -> str:
     if (focus) built[active.key].children.forEach(function (m) {{
       m.visible = m.userData.part === focus;
     }});
+    if (active.key === 'plate') plateStepPreset();
     el('gi-cu-explode-value').textContent = Math.round(exVal() * 100) + '%';
     el('gi-cu-cut-value').textContent = el('gi-cu-cut-at').value + '%';
     bandMark();
@@ -524,6 +775,9 @@ def scene_script() -> str:
     playing = !playing; if (playing && step >= active.principle.length - 1) step = 0;
     el('gi-cu-play').textContent = playing ? '일시정지' : '작동 재생'; }});
   el('gi-cu-fit').addEventListener('click', function () {{ if (active) fit(active); }});
+  el('gi-cu-glass').addEventListener('input', function () {{ plateSetShare(plateShareFromSlider()); }});
+  el('gi-cu-runout').addEventListener('change', function () {{ plate.runout = el('gi-cu-runout').checked; }});
+  el('gi-cu-convey').addEventListener('change', function () {{ plate.convey = el('gi-cu-convey').checked; }});
 
   /* 플랜트 형상은 매 프레임 끈다 — 원본 애니메이션이 계속 켜기 때문이다. */
   var last = performance.now();
@@ -545,6 +799,7 @@ def scene_script() -> str:
       }}
     }}
     if (playing || el('gi-cu-spin').checked) render();
+    if (active && active.key === 'plate') {{ plateStep(dt); plateSkin(); plateReadout(); }}
     requestAnimationFrame(tick);
   }}
   /* 원본 공정시계와 자동추적은 이 화면에서 방해만 된다. */
@@ -564,6 +819,20 @@ def scene_script() -> str:
     get meshes() {{ return group.children.reduce(function (a, g) {{
       return a + g.children.length; }}, 0); }},
     get active() {{ return active && active.key; }},
+    phy: PHY,
+    plate: {{
+      get sagM() {{ return plate.sag; }}, get share() {{ return plate.share; }},
+      get inDof() {{ return plate.inDof; }}, get touching() {{ return plate.touching; }},
+      get blurPx() {{ return plate.blur; }},
+      get finite() {{ var i; for (i = 0; i < plate.n; i += 1) if (!isFinite(plate.y[i]) || Math.abs(plate.y[i]) > 1) return false; return true; }},
+      get ys() {{ return Array.prototype.slice.call(plate.y); }},
+      setShare: function (k) {{ plateSetShare(k); return plate.ei; }},
+      runout: function (on) {{ plate.runout = !!on; el('gi-cu-runout').checked = !!on; }},
+      convey: function (on) {{ plate.convey = !!on; el('gi-cu-convey').checked = !!on; }},
+      place: function (zFront) {{ plateReset(zFront); }},
+      settle: function (frames) {{ var i; for (i = 0; i < frames; i += 1) plateStep(1 / 60); plateSkin(); plateReadout(); return plate.sag; }},
+      tune: function (substeps, iterations) {{ PHY.substeps = substeps; PHY.iterations = iterations; }}
+    }},
     get step() {{ return step; }},
     go: function (k, s) {{ show(k); step = s; render(); return true; }},
     /* 검사가 부품 자리를 직접 읽는 길 — 씬을 훑으면 플랜트 형상과 섞인다.

@@ -23,7 +23,7 @@ import unittest
 
 from tests import _path  # noqa: F401
 
-from pv_preprocess import ai, campaign, gi_optics, handoff, sg_grind, smart, vision
+from pv_preprocess import ai, campaign, gi_optics, gi_plate, handoff, sg_grind, smart, vision
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CLOSEUP = ROOT / "docs/drawings/pv-gi-closeup.html"
@@ -351,14 +351,30 @@ class TestCloseupDrawing(unittest.TestCase):
 
     def test_the_payload_is_the_model(self):
         units = json.loads(self.builder.unit_payload())
-        self.assertEqual([u["key"] for u in units], ["below", "above", "window"])
-        for got, want in zip(units, gi_optics.units()):
+        self.assertEqual([u["key"] for u in units], ["below", "above", "window", "plate"])
+        for got, want in zip(units, gi_optics.units() + (gi_plate.physics_unit(),)):
             with self.subTest(want.key):
                 self.assertEqual(got["sheet"], want.sheet)
                 self.assertEqual(len(got["parts"]), len(want.parts))
-                self.assertEqual(got["view"], list(gi_optics.VIEW_DIR[want.key]))
         self.assertEqual(units[2]["mag"], gi_optics.WINDOW_MAG)
+        self.assertEqual(units[3]["mag"], gi_plate.PHYSICS_MAG)
+        self.assertEqual(units[3]["view"], list(gi_plate.VIEW_DIR))
         self.assertEqual(units[0]["mag"], 1.0)
+
+    def test_the_physics_payload_is_the_model(self):
+        """XPBD 상수가 `gi_plate.physics_si()` 그대로인가 — 화면에 손으로 쓴 물리가 없다."""
+        phy = json.loads(self.builder.physics_payload())
+        self.assertEqual(phy, json.loads(json.dumps(gi_plate.physics_si())))
+        self.assertIn("eiTable", phy)
+        self.assertEqual(phy["nodes"], gi_plate.STRIP_NODES)
+        self.assertNotIn("9.81", self.builder.spec_payload())        # 중력은 씬이 안다
+
+    def test_the_open_questions_include_the_plate(self):
+        payload = json.loads(self.builder.open_payload())
+        titles = [q[0] for q in payload]
+        for t, _ in gi_plate.open_questions():
+            with self.subTest(t):
+                self.assertIn(t, titles)
 
     def test_the_seam_payload_is_the_model_seat_map(self):
         seam = json.loads(self.builder.seam_payload())
@@ -401,8 +417,8 @@ class TestCloseupDrawing(unittest.TestCase):
     def test_the_open_questions_reach_the_page(self):
         payload = json.loads(self.builder.open_payload())
         self.assertEqual([q[0] for q in payload],
-                         [t for t, _ in gi_optics.open_questions()])
-        self.assertGreater(len(payload), 0)
+                         [t for t, _ in gi_optics.open_questions() + gi_plate.open_questions()])
+        self.assertGreater(len(payload), 3)
 
 
 class TestOpenQuestions(unittest.TestCase):

@@ -191,8 +191,14 @@ def scan_line_fits_the_window() -> bool:
 
 
 def unsupported_span_mm() -> float:
-    """스캔 창 위에서 유리가 받쳐지지 않는 거리 (mm)."""
-    return roller_window_mm()
+    """유리가 받쳐지지 않는 거리 (mm) — 창이 아니라 **피치**다.
+
+    평평한 판은 롤러 **꼭대기 한 줄**에만 닿는다. 그러니 받침과 받침 사이는
+    롤러 표면 사이 틈(창 150)이 아니라 접촉선 사이, 곧 피치 240 이다. 카메라가
+    보는 것은 창이고 구조가 버티는 것은 피치다 — 처음에 창으로 적었다가
+    `gi_plate` 가 처짐을 풀면서 잡았다.
+    """
+    return float(ROLLER_PITCH_MM)
 
 
 # ── 사슬 ④ 무엇이 보이는가 ─────────────────────────────────────────────
@@ -326,6 +332,8 @@ BRACKET_T_MM = 12.0
 LIGHT_BAR_MM = (70.0, 45.0)
 #: 광학을 유리가루에서 막는 보호창 두께 (mm). 창은 스캔 창 안에 들어가야 한다.
 COVER_GLASS_T_MM = 6.0
+#: 판 밑면에서 보호창 윗면까지 (mm) — 판이 이보다 처지면 보호창을 친다.
+COVER_GAP_MM = 8.0
 #: GI-302 갠트리 보 단면 (mm).
 GANTRY_MM = (200.0, 160.0)
 #: 롤러 창 접촉부를 세울 때의 배율 — 창 150 mm 는 셀 전체 옆에서 안 보인다.
@@ -436,7 +444,7 @@ def _camera_parts(prefix: str, sign: int, cameras: int,
     out.append(Part(
         f"{prefix}cover", "보호창", 1, "box",
         (PANEL_W_MM, COVER_GLASS_T_MM, float(roller_window_mm()) - 20.0),
-        (0.0, sign * (COVER_GLASS_T_MM / 2.0 + 8.0), 0.0),
+        (0.0, sign * (COVER_GLASS_T_MM / 2.0 + COVER_GAP_MM), 0.0),
         "강화유리 / 반사방지",
         role=f"유리가루에서 광학을 막는다. 폭 "
              f"{roller_window_mm() - 20.0:.0f} mm 라 스캔 창 "
@@ -513,8 +521,8 @@ def below_unit() -> Unit:
              f"못 본다."),
             ("⑤ 판이 떠도 초점은 산다",
              f"심도 {depth_of_field_mm(n)} mm 가 통과 중 휨 {PANEL_BOW_MM} mm 를 "
-             f"덮는다. 받쳐지지 않는 거리가 창 "
-             f"{unsupported_span_mm():.0f} mm 뿐이라 그 안에서 처진다."),
+             f"덮는다. 받침은 롤러 꼭대기 한 줄씩이라 받쳐지지 않는 거리는 "
+             f"피치 {unsupported_span_mm():.0f} mm 다 — 그 처짐은 `gi_plate` 가 푼다."),
         ),
         parts=tuple(parts))
 
@@ -572,8 +580,9 @@ def window_unit() -> Unit:
         "wnglass", "패널 하면", 1, "box",
         (PANEL_W_MM / 3.0, 3.2 * mag, WINDOW_SPAN_MM * mag),
         (0.0, 3.2 * mag / 2.0, 0.0), "유리 3.2 + EVA + 백시트",
-        role=f"롤러 두 개 위에 걸쳐 있고 그 사이 {roller_window_mm():.0f} mm 는 "
-             f"받쳐지지 않는다.",
+        role=f"롤러 두 개의 꼭대기에 걸쳐 있다 — 받침 사이는 피치 "
+             f"{unsupported_span_mm():.0f} mm 이고, 그중 창으로 보이는 것이 "
+             f"{roller_window_mm():.0f} mm 다.",
         color="glass", explode=(0.0, 400.0, 0.0),
         spec=f"받침 없는 거리 {unsupported_span_mm():.0f} mm"))
     parts.append(Part(
@@ -606,10 +615,10 @@ def window_unit() -> Unit:
              f"스캔선 폭이 {RESOLUTION_MM} mm 라 창의 "
              f"{RESOLUTION_MM / roller_window_mm() * 100:.2f} % 다. "
              f"**막는 것은 창의 폭이 아니라 밑의 높이다.**"),
-            ("② 받침이 없는 구간이 곧 창이다",
-             f"유리가 롤러 두 개에 걸쳐 있고 그 사이 "
-             f"{unsupported_span_mm():.0f} mm 가 뜬다. 그 처짐이 심도 안이라 "
-             f"초점이 산다."),
+            ("② 받침 사이는 창보다 넓다",
+             f"판은 롤러 꼭대기 한 줄에만 닿으므로 받침 사이가 피치 "
+             f"{unsupported_span_mm():.0f} mm 다 — 창 {roller_window_mm():.0f} 보다 "
+             f"넓다. 그 처짐이 심도 안인지는 `gi_plate` 가 답한다."),
             ("③ 배율은 그림에만 있다",
              f"단면은 실제 값 그대로이고 화면에서만 {mag:.0f} 배로 세운다 — "
              f"창 {roller_window_mm():.0f} mm 와 화소 {RESOLUTION_MM} mm 는 "
