@@ -219,3 +219,6 @@ __marimo__/
 
 # 산출물 — 원본에서 기계로 찍는다 (tools/render_brand_reference.py)
 out/
+
+# Node — 3D 검사 도구(playwright)를 저장소 루트에서 풀기 위한 링크뿐이다.
+node_modules/

@@ -1284,7 +1284,10 @@ class TestFlipPortalAndLift(unittest.TestCase):
     def test_deck_scissor_and_cylinder_are_animated_together(self):
         """플랫폼·시저 각·실린더가 같은 데크 높이에서 파생돼야 한다 — 팔레트만 떠오르면 안 된다."""
         self.assertIn("du[K].position.y=Gdy", self.html)
-        self.assertIn("ga.rotation.z=ga.userData.gs*Gth", self.html)
+        # 반전축이 Z 로 누우며 시저 암도 같이 돌았다 — 암이 Z 로 길어졌으니
+        # 기울기는 x 축으로 준다. z 로 남아 있으면 암이 옆으로 눕는다.
+        self.assertIn("ga.rotation.x=-ga.userData.gs*Gth", self.html)
+        self.assertNotIn("ga.rotation.z=ga.userData.gs*Gth", self.html)
         self.assertIn("cp(gc.b,g0,g1)", self.html)
 
     def test_portal_labels_replace_the_old_posts_in_3d(self):
@@ -2137,11 +2140,17 @@ class TestCarriageClearance(unittest.TestCase):
         cls.stations = station_blocks(cls.html)
 
     def test_carriage_rails_sit_under_the_long_frame(self):
-        """레일은 유리 밑이 아니라 장변 프레임(패널 반폭 700 − 프레임 27.5) 아래여야 한다."""
-        self.assertIn("P(d,[2.72,.1,.14],[0,0,-.672]", self.html)
-        self.assertIn("P(d,[2.72,.1,.14],[0,0,.672]", self.html)
-        self.assertNotIn("P(d,[2.72,.1,.14],[0,0,-.54]", self.html,
+        """레일은 유리 밑이 아니라 장변 프레임(패널 반폭 700 − 프레임 27.5) 아래여야 한다.
+
+        반전축이 장변 방향(Z)으로 누우면서 레일도 같이 돌았다 — 길이 2,720 이
+        Z 로 가고, 프레임을 받치는 ∓672.5 가 X 로 온다. 받치는 자리는 그대로다.
+        """
+        self.assertIn("P(d,[.14,.1,2.72],[-.672,0,0]", self.html)
+        self.assertIn("P(d,[.14,.1,2.72],[.672,0,0]", self.html)
+        self.assertNotIn("P(d,[.14,.1,2.72],[-.54,0,0]", self.html,
                          "레일이 다시 유리 밑으로 들어가 정션박스를 누른다")
+        self.assertNotIn("P(d,[2.72,.1,.14]", self.html,
+                         "레일이 옛 축(X)으로 돌아갔다")
 
     def test_sheet_shows_twin_rails_not_a_slab(self):
         """시트가 통판이면 정션박스가 지나갈 개구부가 도면에서 보이지 않는다."""
@@ -2540,7 +2549,7 @@ class TestBrandMark(unittest.TestCase):
                 self.assertIn(f"pt.add(pvCell({var},'afu'))", html)
         # 공정 중인 물건 — 팔레트와 로봇이 들고 가는 패널
         self.assertIn("pt.add(pvTransit(dn))", html, "이송 중 패널이 셀에 매여 있다")
-        self.assertIn("pt.add(pvTransit(n)),P(n,[2.76,.15,1.62]", html, "팔레트가 셀에 매여 있다")
+        self.assertIn("pt.add(pvTransit(n)),P(n,[1.62,.15,2.76]", html, "팔레트가 셀에 매여 있다")
         # 지지 부재는 자기가 받치는 셀의 것 — 생성기와 손으로 쓴 것 모두
         self.assertIn("var pvMountFor=function(k){g=pvCell(new ce,k);pvMount.add(g);return g;};", html)
         for key in ("post", "afu", "afr", "buffer"):
@@ -2572,7 +2581,7 @@ class TestBrandMark(unittest.TestCase):
                 self.assertGreater(len(over.reason), 60, "넘침에는 사유가 있어야 한다")
         # 로봇이 실제로 닿는가 — 그리고 존 안으로 물리면 못 닿는가
         self.assertTrue(layout.robot_can_reach(), "지금 자리에서 로봇이 인계점에 닿아야 한다")
-        self.assertAlmostEqual(layout.robot_pickup_distance_mm(), 2680.0, places=1)
+        self.assertAlmostEqual(layout.robot_pickup_distance_mm(), 2700.8, places=1)
         pulled_in = layout.bfc_pickup_x_mm() - layout.zone_overlap_mm("afu")
         self.assertFalse(layout.robot_can_reach(pulled_in),
                          "존 안으로 물려도 닿는다면 넘침을 허용할 근거가 없다")
@@ -2622,6 +2631,78 @@ class TestBrandMark(unittest.TestCase):
             self.assertNotIn(shape.d, body)
         # 판 비율은 캔버스 비율에서 나와야 글자가 늘어나지 않는다
         self.assertIn("var h = w * 168 / 512;", self.html)
+
+
+
+class TestTheCraneIsDrawnAtItsSpan(unittest.TestCase):
+    """3D 크레인이 `crane.SPAN_MM` 으로 그려져 있는가.
+
+    **여기가 이 저장소가 가장 경계하는 자리다** — 값은 9,800 인데 그림은
+    8,800 이었다. 페이지 안의 `CRANE.spanMm` 도 9,800 을 싣고 있어서 표는
+    맞고 형상만 틀린 상태라, 표를 읽는 어떤 검사도 이것을 못 봤다.
+    그림에서 후크가 닿는 곳은 ±3,800 인데 설비는 ±4,275 까지 있었다.
+    """
+
+    HTML = DRAWING.read_text(encoding="utf-8")
+
+    def test_the_runway_rails_sit_at_half_the_span(self):
+        from pv_preprocess import crane
+        half = crane.SPAN_MM / 2_000.0                       # mm → m
+        self.assertIn(f"[{-half:g},{half:g}].forEach", self.HTML,
+                      "주행레일 z 가 스팬의 절반이 아니다")
+
+    def test_the_bridge_girder_is_as_long_as_the_span(self):
+        from pv_preprocess import crane
+        span_m = crane.SPAN_MM / 1_000.0
+        self.assertIn(f",{span_m:.2f}]", self.HTML, "브리지 거더 길이가 스팬과 다르다")
+        self.assertIn(f"스팬 {crane.SPAN_MM:,}", self.HTML)
+
+    def test_the_drawn_crane_reaches_the_equipment(self):
+        """그려진 대로의 후크 도달이 설비 폭을 덮는가 — 숫자가 아니라 형상으로."""
+        from pv_preprocess import crane
+        import re
+        # **크레인 블록 안에서만 찾는다** — 같은 꼴의 리터럴이 앞쪽에도 있어
+        # 처음에는 엉뚱한 부재의 z 를 읽고 도달 310 mm 를 냈다.
+        block = self.HTML[self.HTML.index("var pvCrn=new ce;"):]
+        m = re.search(r"\[(-[\d.]+),([\d.]+)\]\.forEach", block)
+        self.assertIsNotNone(m, "주행레일 z 를 그림에서 못 읽었다")
+        drawn_half_mm = float(m.group(2)) * 1_000.0
+        reach = drawn_half_mm - crane.TROLLEY_APPROACH_MM
+        self.assertGreaterEqual(reach, crane.summary()["haulWidthMm"] / 2.0,
+                                "그려진 크레인이 설비 가장자리에 못 닿는다")
+
+
+class TestTheFoundationStepFollowsTheRotation(unittest.TestCase):
+    """BFC 기초 먹줄 지시가 회전 뒤 좌표인가.
+
+    반전축을 Z 로 돌리면 기둥 자리가 x ∓1,600 · z −1,290/+950 에서
+    x −1,290/+950 · z ∓1,600 으로 바뀌고, 비대칭이 공정방향으로 가면서
+    **두 베이가 거울상이 아니게 된다.** 옛 지시대로 먹줄을 놓으면 포탈이
+    90° 돌아앉는다 — 앵커를 심고 나면 되돌릴 수 없는 종류의 오류다.
+    """
+
+    def _step(self):
+        from pv_preprocess import fabrication
+        a = next(a for a in fabrication.ASSEMBLIES if a.tag == "AFU-BFC-101")
+        return next(s for s in a.steps if s.no == 1)
+
+    def test_the_coordinates_match_the_derived_offsets(self):
+        from pv_preprocess import kinematics
+        text = self._step().text
+        offsets = kinematics.column_offsets_xz_mm(1)
+        xs = sorted({o[0] for o in offsets})
+        zs = sorted({o[1] for o in offsets})
+        self.assertEqual(xs, [-1290, 950])
+        self.assertEqual(zs, [-1600, 1600])
+        self.assertIn("x −1,290 / +950", text)
+        self.assertIn("z ∓1,600", text)
+
+    def test_both_bays_use_the_same_positions(self):
+        from pv_preprocess import kinematics
+        self.assertEqual(kinematics.column_offsets_xz_mm(1),
+                         kinematics.column_offsets_xz_mm(-1),
+                         "축이 Z 인데 베이가 거울상이다")
+        self.assertNotIn("Bay A · Bay B 는 거울상", self._step().text)
 
 
 if __name__ == "__main__":  # pragma: no cover
@@ -3519,8 +3600,8 @@ class TestGlassRemovalIntegration(unittest.TestCase):
         self.assertIn(grm.sheet, self.html, "도면 목록에 GA 시트가 없다")
         # 존은 장비 밴드 안에 들어와야 하고 통로를 잠식하면 안 된다
         self.assertLessEqual(zones[-1].y1_mm, layout.MACHINE_BAND_Y_MM)
-        self.assertEqual(layout.plant_envelope_mm()[0], 50075,
-                         "36,025(전처리) + 14,050(유리제거) = 50,075")
+        self.assertEqual(layout.plant_envelope_mm()[0], 49925,
+                         "35,875(전처리) + 14,050(유리제거) = 49,925")
 
     def test_the_3d_scene_actually_carries_the_cell(self):
         """도면에만 있고 영상에 없으면 '연결'이 아니다."""
@@ -3716,6 +3797,41 @@ class TestBalancePlans(unittest.TestCase):
                       f'value="{handoff.KNIFE_SPEED_MM_S:g}"', delam)
         self.assertIn(f'id="handlingTime" type="number" min="5" max="25" step="1" '
                       f'value="{handoff.HANDLING_S:g}"', delam)
+        # C안은 공정시계만이 아니라 **화면 콘솔 카드**도 옮긴다. 앵커가 사라지면
+        # 한 화면에서 택트가 두 값으로 보인다 — 비교 문서에서 그것이 가장 나쁘다.
+        base = campaign.summary()
+        self.assertIn(f'"taktS": {base["takt_s"]:g}', self.html)
+        self.assertIn(f'"throughputPerH": {base["throughput_per_h"]:g}', self.html)
+
+    def test_plan_c_moves_the_console_card_with_the_clock(self):
+        """C안 미니앱에서 카드와 시계가 같은 택트를 말해야 한다."""
+        tool = (pathlib.Path(__file__).resolve().parents[1]
+                / "tools" / "build_handoff_variants.py").read_text(encoding="utf-8")
+        self.assertIn('_CONSOLE_KEY = {"taktS": "takt_s", "throughputPerH": "throughput_per_h"}', tool)
+        self.assertIn('for key, name in (("taktS", "택트"), ("throughputPerH", "처리량")):', tool)
+        held = campaign.summary(handoff.plan_c_hold_s())
+        self.assertGreater(held["takt_s"], campaign.summary()["takt_s"],
+                           "C안이 택트를 늘리지 않으면 카드를 옮길 것도 없다")
+
+    def test_each_variant_carries_its_own_name(self):
+        """아티팩트 이름은 파일의 `<title>` 에서 나온다.
+
+        원본 제목을 그대로 두고 재발행하면 갤러리에서 원본과 이름이 겹쳐 둘을
+        구별할 수 없다 — C안이 실제로 「태양광 전처리 통합 플랜트」로 덮여
+        원본과 같은 이름이 됐다. 이름도 생성물로 둔다.
+        """
+        tool = (pathlib.Path(__file__).resolve().parents[1]
+                / "tools" / "build_handoff_variants.py").read_text(encoding="utf-8")
+        for key in ("B-plant", "B-delam", "C-plant", "C-delam"):
+            with self.subTest(variant=key):
+                self.assertIn(f'"{key}": "', tool, "변형안 이름이 없다")
+                self.assertIn(f'_retitle(', tool)
+        self.assertIn("전처리 통합 플랜트 · C안 벤더 개정 반영", tool)
+        # 원본 제목과 같으면 이름이 겹친다
+        base = re.search(r"<title>(.*?)</title>", self.html, re.S).group(1).strip()
+        for line in tool.splitlines():
+            if line.strip().startswith(('"B-', '"C-')):
+                self.assertNotIn(base, line, f"변형안 이름이 원본과 같다: {line.strip()}")
 
     def test_blank_field_falls_back_to_the_connected_configuration(self):
         """칸을 비우면 계산기가 업로드 당시 값으로 조용히 되돌아가면 안 된다."""
@@ -3873,7 +3989,9 @@ class TestKinematics(unittest.TestCase):
         self.assertIn("xn=yn.map(i=>new C(i.x,At,i.z))", self.html,
                       "반전 드럼이 적층과 동심이 아니다 (REV.49)")
         # 조는 반전 구간에만 물고, 진입·하강 구간에는 열려 있어야 한다.
-        self.assertIn(f"jg.position.set(0,0,sg*{js(kinematics.JAW_OPEN_Z_MM)})", self.html)
+        # 반전축이 Z 라 링 평면은 XY 다 — 조는 그 평면 안에서 x 로 여닫는다.
+        self.assertIn(f"jg.position.set(sg*{js(kinematics.JAW_OPEN_Z_MM)},0,0)", self.html)
+        self.assertNotIn(f"jg.position.set(0,0,sg*{js(kinematics.JAW_OPEN_Z_MM)})", self.html)
         self.assertIn(f"le({js(kinematics.JAW_OPEN_Z_MM)},"
                       f"{js(kinematics.JAW_CLOSED_Z_MM)},cj)", self.html,
                       "조가 여닫이 없이 한 자리에 고정돼 있다")
@@ -4070,12 +4188,14 @@ class TestCrane(unittest.TestCase):
     def test_the_span_is_set_by_the_machine_band(self):
         """스팬은 고른 값이 아니라 밴드를 덮어야 나오는 값이다."""
         self.assertEqual(crane.MACHINE_BAND_MM, layout.MACHINE_BAND_Y_MM)
-        self.assertEqual(crane.hook_reach_z_mm(), 3_800)
+        self.assertEqual(crane.hook_reach_z_mm(), 4_300)
         self.assertTrue(crane.covers_machine_band())
         # 인자를 열어 둔 뜻 — 지금 값이 마침 맞아서 검사가 죽어도 모르는 일을 막는다
+        # 밴드 8,550 을 덮으려면 스팬 ≥ 8,550 + 2×600 = 9,750 이어야 한다
         self.assertFalse(crane.covers_machine_band(7_000))
-        self.assertFalse(crane.covers_machine_band(8_200))
-        self.assertTrue(crane.covers_machine_band(8_400))
+        self.assertFalse(crane.covers_machine_band(8_800))
+        self.assertFalse(crane.covers_machine_band(9_700))
+        self.assertTrue(crane.covers_machine_band(9_800))
 
     def test_the_crane_fits_under_the_confirmed_ceiling(self):
         self.assertTrue(crane.fits_under_ceiling())
@@ -5222,7 +5342,7 @@ class TestWorldClassGrade(unittest.TestCase):
         # D-03 도 닫혔다 — 전장을 안 늘리고 닫았다는 것이 요점이다
         self.assertNotIn("D-03", gaps, "단일고장 정리가 풀렸다")
         self.assertEqual(grade.single_point_blocks(), ())
-        self.assertEqual(layout.plant_envelope_mm()[0], 50075,
+        self.assertEqual(layout.plant_envelope_mm()[0], 49925,
                          "단일고장을 전장으로 산 것이라면 정리가 아니다")
         # 남아 있는 격차는 전부 **바깥에서 값이 와야** 닫히는 것들이다
         # 남은 격차 넷은 전부 **바깥에서 값이 와야** 닫힌다 — 설계를 더 고쳐서
@@ -5346,16 +5466,19 @@ class TestCasing(unittest.TestCase):
                 self.assertEqual(casing.encroach_mm(key) > 0,
                                  casing.MEASURED_FACE_MM[key] + casing.PANEL_ASSY_MM
                                  > layout.MACHINE_BAND_Y_MM)
-        self.assertEqual(set(casing.encroaching_zones()), {"post", "buffer", "grm"})
+        # REV.57: 밴드가 7,100 → 8,550 이 되자 셋 다 밴드 안으로 들어왔다 —
+        # 케이싱이 더는 통로를 잠식하지 않는다. 회전이 가져온 덤이다.
+        self.assertEqual(set(casing.encroaching_zones()), set())
+        self.assertEqual(casing.aisle_clear_mm(), layout.AISLE_WIDTH_MM)
         # 허용치는 고른 값이 아니라 접근 모델이 정한다
         self.assertEqual(casing.MAX_ENCROACH_MM,
                          layout.AISLE_WIDTH_MM - access.AISLE_CLEAR_MM)
         # 피난폭을 좁히면 판정이 뒤집혀야 한다 — 안 뒤집히면 재는 자가 없는 것이다
         keep = access.AISLE_CLEAR_MM
         try:
-            access.AISLE_CLEAR_MM = layout.AISLE_WIDTH_MM
+            access.AISLE_CLEAR_MM = layout.AISLE_WIDTH_MM + 1
             self.assertFalse(casing.aisle_still_clears(),
-                             "피난폭을 통로 전폭으로 올려도 통과한다")
+                             "피난폭을 통로 전폭보다 넓게 잡아도 통과한다")
         finally:
             access.AISLE_CLEAR_MM = keep
         self.assertTrue(casing.aisle_still_clears())
@@ -5404,7 +5527,7 @@ class TestCasing(unittest.TestCase):
                            "실측이 공칭보다 얕으면 이 정정의 근거가 사라진다")
         self.assertEqual(casing.nominal_face_mm("robot"), 5500)
         # 껍질을 둘러도 **존은 하나도 안 길어졌다** — 늘어난 것은 판 두께뿐
-        self.assertEqual(layout.plant_envelope_mm()[0], 50075)
+        self.assertEqual(layout.plant_envelope_mm()[0], 49925)
         self.assertGreater(casing.clad_length_mm(), layout.plant_envelope_mm()[0],
                            "껍질을 둘렀는데 전장이 그대로면 판 두께가 어디로 갔나")
         self.assertLess(casing.clad_length_mm() - layout.plant_envelope_mm()[0], 200)
@@ -5613,7 +5736,7 @@ class TestBufferHasTwoDirections(unittest.TestCase):
                          handoff.BUFFER_CARRIAGES[0] * handoff.SLOTS_PER_CARRIAGE)
         self.assertEqual(handoff.BUFFER_RB_SLOTS,
                          handoff.BUFFER_CARRIAGES[1] * handoff.SLOTS_PER_CARRIAGE)
-        self.assertEqual(layout.plant_envelope_mm()[0], 50075, "존이 길어졌다")
+        self.assertEqual(layout.plant_envelope_mm()[0], 49925, "존이 길어졌다")
         # 3D 의 캐리지 수가 배분과 같아야 한다 — 모듈만 고치면 도면이 거짓말한다
         for prefix, count in (("A-501", handoff.BUFFER_CARRIAGES[0]),
                               ("B-501", handoff.BUFFER_CARRIAGES[1])):
@@ -6305,13 +6428,13 @@ class TestInfeedStation(unittest.TestCase):
         cls.html = read_drawing()
 
     def test_the_table_and_the_accumulator_are_one_station(self):
-        self.assertEqual(layout.pt_deck_span_mm(), (7530, 10150))
-        self.assertEqual(layout.accumulator_span_mm(), (7830, 10580))
+        self.assertEqual(layout.pt_deck_span_mm(), (7380, 10000))
+        self.assertEqual(layout.accumulator_span_mm(), (7680, 10430))
         # 겹친다는 것이 "둘이 아니라 하나" 라는 근거다 — 패널 한 장에 가까운 길이가 겹친다
         self.assertEqual(layout.pt_accumulator_overlap_mm(), 2320)
         self.assertGreater(layout.pt_accumulator_overlap_mm(),
                            layout.one_panel_station_mm() * 0.8)
-        self.assertEqual(layout.infeed_station_span_mm(), (7530, 10580))
+        self.assertEqual(layout.infeed_station_span_mm(), (7380, 10430))
 
     def test_the_merge_prize_was_already_taken_in_rev48(self):
         """REV.48 이 축적런을 4,630 → 2,750 으로 줄이며 −1,500…2,750 을 가져갔다."""
