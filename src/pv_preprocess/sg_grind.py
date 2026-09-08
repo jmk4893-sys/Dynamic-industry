@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import math
 
-from . import afr, campaign
+from . import afr, campaign, frames, recipe
 from .afr_units import Part, Unit
 
 # ── 스핀들·휠 — 카탈로그 계획값 ─────────────────────────────────────────
@@ -52,11 +52,40 @@ SHORT_HEADS = 1
 #: 인버터 구동 스핀들에서 실제로 절삭에 쓰이는 몫 — 기계손실·여유.
 SPINDLE_EFFICIENCY = 0.80
 
+#: SG-301 국소집진 풍량 (m³/h) — `dust` 의 DS-01 이 정본.
+DUST_FLOW_M3H = 1_000.0
+
+#: 연마재가 폴리머에 닿아도 되는 주속의 통상 상한 (m/s). 폴리머는 마찰열을
+#: 못 흘려 이 위에서는 접촉점이 융점을 넘고 녹은 살이 결합제를 메운다.
+POLYMER_RUB_LIMIT_M_S = 5.0
+
+#: 라미네이트 두께 편차 (mm) — 반입물 공차, 계획값.
+LAMINATE_TOL_MM = 0.20
+#: 롤러 상면 평면도 + 판 휨 (mm) — 계획값.
+ROLLER_PLANE_TOL_MM = 0.30
+#: 면을 누를 때 셀이 견디는 접촉압 (MPa) 과 패드 접촉 길이 (mm) — 계획값.
+FACE_SAFE_MPA = 0.05
+FACE_PAD_LEN_MM = 40.0
+
 # ── 갈아내는 형상 — 계획값 ──────────────────────────────────────────────
 #: 유리 두께 (mm) — `afr.LAMINATE_T_MM` 이 정본이다.
 GLASS_T_MM = float(afr.LAMINATE_T_MM)
-#: 라미네이트 적층 두께 (mm) — 유리 + EVA/셀 + 백시트.
-STACK_T_MM = 5.5
+#: 라미네이트 적층 두께 (mm) — 유리 + EVA/셀 + 백시트. `frames` 가 정본이다.
+STACK_T_MM = float(frames.LAMINATE_STACK_MM)
+#: 백시트 두께 (mm) — PVF/PET/PVF 3층의 계획값. 저장소에 값이 없어 여기서 정한다.
+BACKSHEET_T_MM = 0.32
+#: 백시트 폴리머의 낮은 쪽 융점 (°C) — PVF. 이 위로 문지르면 녹아 휠에 먹는다.
+BACKSHEET_MELT_C = 200.0
+
+# ── 프레임이 남기고 간 실란트 — `frames` 의 슬롯 치수가 정본 ───────────
+#: 프레임 슬롯이 라미네이트 **면**을 덮는 폭 (mm). 인발은 응집파괴라 이 폭만큼
+#: 실란트가 면에 남는다 — 변에만 남는 것이 아니다.
+SEALANT_BAND_MM = float(frames.SLOT_LIP_MM)
+#: 면당 실란트 두께 (mm) — 슬롯이 적층보다 이만큼씩 높다.
+SEALANT_FACE_T_MM = float(frames.SEALANT_T_MM)
+#: 인발 뒤 라미네이트 쪽에 남는 몫 — 응집파괴면이 가운데 근처에서 갈린다는 계획값.
+#: 실측 전 값이라 1.0(전량 잔류)까지 커질 수 있다.
+SEALANT_RETAINED = 0.5
 #: 아리스(모따기) 다리 길이 (mm) · 각도 (°). 45° 한 곳 — 유리의 **바깥면 쪽**
 #: 모서리만 죽인다. 반대쪽 모서리는 EVA 와 만나므로 거기까지 파면 폴리머가
 #: 휠에 먹는다. 연마 높이 공차 ±0.10 mm 가 있는 이유가 이것이다.
@@ -98,7 +127,7 @@ WHEEL_SERVICE_MONTHS = 4
 ANNUAL_PANELS = 283_487
 
 #: 접촉 단면에 세우는 판 안쪽 길이 (mm) — 림 단면과 눈에 비슷하게 잡는다.
-SECTION_DEPTH_MM = 12.0
+SECTION_DEPTH_MM = 26.0
 
 #: 횡행 레일 두 줄의 중심 거리 (mm) — 캐리지가 모멘트를 받으려면 갈라져야 한다.
 RAIL_SPAN_MM = 220.0
@@ -328,6 +357,184 @@ def radial_wear_um_per_panel() -> float:
     return round(worn / (math.pi * d_mean * contact_width_mm()) * 1_000.0, 4)
 
 
+# ── 프레임이 남기고 간 것 — 실란트 띠와 백시트 ──────────────────────────
+def panel_is_glass_down() -> bool:
+    """기본 레시피에서 위를 향하는 면이 백시트인가 — 유리는 아래다."""
+    base = [s for s in recipe.STRUCTURES if s.code == "GLASS_BACKSHEET"][0]
+    return base.top == "백시트"
+
+
+def sealant_left_t_mm() -> float:
+    """인발 뒤 면에 남는 실란트 두께 (mm)."""
+    return round(SEALANT_FACE_T_MM * SEALANT_RETAINED, 4)
+
+
+def sealant_area_mm2() -> float:
+    """한 면·한 변 1 mm 당 남는 실란트 단면적 (mm²) — 띠 폭 × 남은 두께."""
+    return round(SEALANT_BAND_MM * sealant_left_t_mm(), 4)
+
+
+def sealant_volume_per_panel_mm3(faces: int = 2) -> float:
+    """한 장에서 면에 남는 실란트 부피 (mm³) — 네 변 둘레 × 면 수."""
+    perimeter = 2.0 * (float(campaign.PANEL_LENGTH_MM) + float(campaign.PANEL_WIDTH_MM))
+    return round(sealant_area_mm2() * perimeter * faces, 1)
+
+
+def sealant_ratio_to_glass() -> float:
+    """면 실란트가 유리 제거량의 몇 배인가 — 무엇이 진짜 작업량인지의 답."""
+    glass = removal_area_mm2() * 2.0 * (float(campaign.PANEL_LENGTH_MM)
+                                        + float(campaign.PANEL_WIDTH_MM))
+    return round(sealant_volume_per_panel_mm3() / glass, 1)
+
+
+def flange_reach_mm() -> float:
+    """휠 어깨(플랜지)가 라미네이트 **면** 위로 걸쳐 나오는 길이 (mm)."""
+    return float(GROOVE_ROOT_MM)
+
+
+def sealant_stands_proud_mm() -> float:
+    """실란트가 홈 여유보다 얼마나 더 두꺼운가 (mm) — 양수면 부딪친다."""
+    return round(sealant_left_t_mm() - GROOVE_CLEAR_MM, 4)
+
+
+def wheel_can_reach_the_glass_edge() -> bool:
+    """실란트 띠가 있는 채로 휠이 유리 모서리에 닿을 수 있는가.
+
+    아리스는 어깨가 **유리 모서리에 닿아야** 만들어진다. 그런데 어깨는 면 위로
+    `flange_reach_mm()` 만큼 걸쳐 나오고, 그 구간은 통째로 실란트 띠
+    (`SEALANT_BAND_MM` 폭) 안이다. 실란트가 홈 여유보다 두꺼우면 어깨가 모서리에
+    닿기 전에 실란트에 먼저 얹힌다.
+
+    여유를 실란트보다 크게 벌리면 실란트는 피하지만 그때는 어깨가 모서리에서
+    떨어져 **아리스가 안 만들어진다** — 둘 다는 성립하지 않는다.
+    """
+    if flange_reach_mm() > SEALANT_BAND_MM:
+        return True                                 # 띠보다 어깨가 길면 바깥에서 닿는다
+    return sealant_stands_proud_mm() <= 0.0
+
+
+def sealant_must_go_first_mm() -> float:
+    """휠이 들어가려면 띠에서 최소한 걷어내야 하는 폭 (mm)."""
+    return 0.0 if wheel_can_reach_the_glass_edge() else round(flange_reach_mm(), 3)
+
+
+# ── 백시트를 건드리면 무엇이 깨지는가 ───────────────────────────────────
+def rubbing_speed_ratio() -> float:
+    """휠 주속이 폴리머 접촉의 통상 상한(5 m/s)의 몇 배인가.
+
+    폴리머는 마찰열을 못 흘린다 — 이 배수만큼 빠르면 접촉점이 융점을 넘어
+    녹은 폴리머가 결합제 사이를 메운다(loading). 그러면 유리도 못 깎는다.
+    """
+    return round(wheel_speed_m_s() / POLYMER_RUB_LIMIT_M_S, 1)
+
+
+def wheel_may_touch_the_backsheet() -> bool:
+    """다이아몬드 휠로 백시트를 긁어도 되는가."""
+    return rubbing_speed_ratio() <= 1.0
+
+
+def depth_stack_mm() -> float:
+    """기계 프레임을 기준으로 깊이를 잡을 때 쌓이는 공차 (mm, 최악합).
+
+    라미네이트 두께 편차 + 롤러 상면·판 휨 + 헤드 세팅. 힘 제어가 아니라
+    **위치 제어**로 면을 깎으면 이만큼이 그대로 깊이 오차가 된다.
+    """
+    return round(LAMINATE_TOL_MM + ROLLER_PLANE_TOL_MM + HEIGHT_TOL_MM, 4)
+
+
+def position_control_is_safe() -> bool:
+    """위치 제어로 면을 깎아도 백시트가 남는가 — 공차합이 백시트보다 얇아야 한다."""
+    return depth_stack_mm() < BACKSHEET_T_MM
+
+
+def backsheet_margin_mm() -> float:
+    """공차합에서 백시트 두께를 뺀 값 (mm) — 양수면 그만큼 파고든다."""
+    return round(depth_stack_mm() - BACKSHEET_T_MM, 4)
+
+
+def safe_face_force_n() -> float:
+    """면을 누를 수 있는 힘 (N) — 셀이 견디는 접촉압 × 패드 면적."""
+    area = SEALANT_BAND_MM * FACE_PAD_LEN_MM
+    return round(FACE_SAFE_MPA * area, 1)
+
+
+def face_force_ratio() -> float:
+    """유리 변을 미는 힘이 면에 허용된 힘의 몇 배인가."""
+    return round(normal_force_n(long_feed_mm_s()) / safe_face_force_n(), 1)
+
+
+def dust_stream_stays_inert() -> bool:
+    """DS-01 이 '불연' 인 채로 있어도 되는가 — 폴리머를 안 깎아야 참이다."""
+    return not wheel_may_touch_the_backsheet()
+
+
+def face_residue_has_a_tool() -> bool:
+    """면 실란트를 걷을 공구가 이 장비에 있는가.
+
+    통합 설계도의 AFR 스테이션 부품표에는 브러시·스크레이퍼·연마 패드가 없다.
+    레시피는 '백시트 접촉 압력 기본값' 을 선언해 두었는데 그 압력을 걸 것이
+    없다 — 선언과 부품표가 어긋나 있다.
+    """
+    return False
+
+
+def open_questions() -> tuple[tuple[str, str], ...]:
+    """이 모델이 **못 닫는** 것 — 닫으려면 무엇이 있어야 하는가."""
+    out: list[tuple[str, str]] = []
+    if not wheel_can_reach_the_glass_edge():
+        out.append((
+            "휠이 유리 모서리에 못 닿는다",
+            f"어깨가 면 위로 {flange_reach_mm():.0f} mm 걸쳐 나오는데 그 구간이 통째로 "
+            f"실란트 띠(폭 {SEALANT_BAND_MM:.0f}) 안이고, 남은 실란트 "
+            f"{sealant_left_t_mm()} mm 가 홈 여유 {GROOVE_CLEAR_MM} 보다 "
+            f"{sealant_stands_proud_mm()} mm 더 두껍다. 띠에서 최소 "
+            f"{sealant_must_go_first_mm():.0f} mm 를 **먼저** 걷어야 한다. "
+            "여유를 실란트보다 벌리면 어깨가 모서리에서 떨어져 아리스가 안 선다."))
+    if not face_residue_has_a_tool():
+        out.append((
+            "면 실란트를 걷을 공구가 없다",
+            f"한 장에 면 실란트가 {sealant_volume_per_panel_mm3():,.0f} mm³ 로 유리 "
+            f"제거량의 **{sealant_ratio_to_glass()} 배**다. 레시피는 "
+            "'백시트 접촉 압력 기본값' 을 선언하는데 AFR 스테이션 부품표에는 "
+            "클램프 패드뿐이고 브러시·스크레이퍼가 없다."))
+    if not wheel_may_touch_the_backsheet():
+        out.append((
+            "그 공구는 다이아몬드 휠이 아니다",
+            f"주속 {wheel_speed_m_s()} m/s 는 폴리머 접촉 상한 "
+            f"{POLYMER_RUB_LIMIT_M_S:.0f} m/s 의 **{rubbing_speed_ratio()} 배**다. "
+            f"접촉점이 백시트 융점 {BACKSHEET_MELT_C:.0f} °C 를 넘겨 휠이 막힌다. "
+            f"게다가 폴리머가 섞이면 dust 의 DS-01 이 선언한 '불연' 이 거짓이 된다 — "
+            "같은 파일이 폴리머 절삭분을 혼합물의 가연분으로 적어 두었다."))
+    if not position_control_is_safe():
+        out.append((
+            "위치 제어로는 백시트가 남는다는 보장이 없다",
+            f"프레임 기준 공차합이 {depth_stack_mm()} mm 인데 백시트가 "
+            f"{BACKSHEET_T_MM} mm 다 — {backsheet_margin_mm()} mm 만큼 모자란다. "
+            f"면은 **힘 제어**로, 그것도 {safe_face_force_n():.0f} N 이하로 눌러야 한다 "
+            f"(유리 변을 미는 {normal_force_n(long_feed_mm_s()):.0f} N 의 "
+            f"1/{face_force_ratio():.0f})."))
+    if not heads_agree_with_the_dust_model():
+        out.append((
+            "장변 2 대가 동시인지 순차인지 두 모델이 다르다",
+            f"campaign 은 두 장변을 **한 번의 통과**로 세어 점유가 {occupancy_s()} s 다 — "
+            "그러려면 두 대가 동시다. dust 의 DS-01 은 후드 댐퍼를 절환해 "
+            f"'동시에 도는 헤드가 없다' 며 풍량 {DUST_FLOW_M3H:,.0f} m³/h 를 한 대 몫으로 "
+            f"잡았다. 순차라면 장변을 두 번 지나가 점유가 "
+            f"{two_pass_occupancy_s()} s 로 늘고, 동시라면 풍량이 두 후드 몫이어야 한다."))
+    return tuple(out)
+
+
+def two_pass_occupancy_s() -> float:
+    """장변을 한 변씩 두 번 지나갈 때의 점유 (s)."""
+    extra = float(campaign.PANEL_LENGTH_MM) / long_feed_mm_s()
+    return round(occupancy_s() + extra, 2)
+
+
+def heads_agree_with_the_dust_model() -> bool:
+    """캠페인의 '한 번 통과' 와 집진의 '동시에 도는 헤드 없음' 이 양립하는가."""
+    return LONG_HEADS <= 1
+
+
 # ── 순환 — 동시인가 순차인가 ────────────────────────────────────────────
 def cycle() -> tuple[dict[str, object], ...]:
     """한 장의 연마 순환 (s) — 유리의 운동 상태가 상(相)을 가른다.
@@ -470,6 +677,32 @@ def flange_clears_laminate() -> bool:
     u 가 하나도 음수가 아니어야 한다 — 음수면 판 안쪽으로 살이 뻗은 것이다.
     """
     return all(u >= 0.0 for u, v in wheel_groove_outline() if v < 0.0)
+
+
+def sealant_outline_glass_face() -> tuple[tuple[float, float], ...]:
+    """유리면에 남은 실란트 띠의 단면 (mm) — 면 위로 솟아 있다.
+
+    이 띠가 휠 어깨가 들어갈 자리를 차지한다. 어깨는 면 위로
+    `flange_reach_mm()` 만큼 걸쳐 나오는데 그 구간이 통째로 이 띠 안이다.
+    """
+    band, th = SEALANT_BAND_MM, sealant_left_t_mm()
+    return ((0.0, GLASS_T_MM), (0.0, GLASS_T_MM + th),
+            (-band, GLASS_T_MM + th), (-band, GLASS_T_MM))
+
+
+def sealant_outline_back_face() -> tuple[tuple[float, float], ...]:
+    """백시트면에 남은 실란트 띠의 단면 (mm) — 반대 면에도 같은 폭으로 남는다."""
+    band, th = SEALANT_BAND_MM, sealant_left_t_mm()
+    eva = STACK_T_MM - GLASS_T_MM
+    return ((0.0, -eva), (0.0, -eva - th), (-band, -eva - th), (-band, -eva))
+
+
+def flange_band_overlap_mm2() -> float:
+    """휠 어깨와 유리면 실란트 띠가 겹치는 단면적 (mm²) — 0 이 아니면 부딪친다."""
+    over = sealant_stands_proud_mm()
+    if over <= 0.0:
+        return 0.0
+    return round(min(flange_reach_mm(), SEALANT_BAND_MM) * over, 6)
 
 
 def polygon_area_mm2(points: tuple[tuple[float, float], ...]) -> float:
@@ -743,6 +976,27 @@ def contact_unit() -> Unit:
              color="aluminum", explode=(0, 0, 260),
              spec=f"아리스 {ARRIS_MM} × {ARRIS_DEG:.0f}° × {ARRIS_COUNT} 곳",
              catalog="—"),
+        Part("sealG", "유리면 잔사 실란트 띠", 1, "polySealG",
+             (length, sealant_left_t_mm() * mag, SEALANT_BAND_MM * mag),
+             (0.0, 0.0, 0.0), f"실란트 (프레임 접착 잔사)",
+             role=f"프레임 슬롯이 면을 {SEALANT_BAND_MM:.0f} mm 덮고 있었고, 인발이 "
+                  f"응집파괴라 {sealant_left_t_mm()} mm 가 면에 남는다. **이 띠가 휠 "
+                  f"어깨가 들어갈 자리를 차지한다** — 어깨는 면 위로 "
+                  f"{flange_reach_mm():.0f} mm 걸쳐 나오는데 그 구간이 통째로 띠 안이다.",
+             color="orange", explode=(0, 300, -180),
+             spec=f"폭 {SEALANT_BAND_MM:.0f} × 두께 {sealant_left_t_mm()} · "
+                  f"홈 여유보다 **{sealant_stands_proud_mm()} mm 두껍다**",
+             catalog="—"),
+        Part("sealB", "백시트면 잔사 실란트 띠", 1, "polySealB",
+             (length, sealant_left_t_mm() * mag, SEALANT_BAND_MM * mag),
+             (0.0, 0.0, 0.0), "실란트 (프레임 접착 잔사)",
+             role=f"반대 면에도 같은 폭으로 남는다. 한 장에 두 면 합쳐 "
+                  f"**{sealant_volume_per_panel_mm3():,.0f} mm³** — 유리에서 걷는 양의 "
+                  f"**{sealant_ratio_to_glass()} 배**다. 이쪽을 걷을 공구가 이 장비에 없다.",
+             color="rubber", explode=(0, -300, -180),
+             spec=f"폭 {SEALANT_BAND_MM:.0f} × 두께 {sealant_left_t_mm()} · "
+                  f"허용 압착력 {safe_face_force_n():.0f} N (변의 1/{face_force_ratio():.0f})",
+             catalog="—"),
         Part("rim", "휠 림 단면 (홈)", 1, "polyWheel",
              (length, 0.0, 0.0), (0.0, 0.0, 0.0), f"메탈본드 D{GRIT_UM:.0f}",
              role=f"홈이 변을 감싼다. 위 어깨 {ARRIS_DEG:.0f}° 가 아리스를 만들고 "
@@ -790,6 +1044,15 @@ def contact_unit() -> Unit:
                           "균열이 응력 집중을 받아 자란다. 모따기는 장식이 아니라 "
                           "**균열 끝을 응력이 낮은 자리로 옮기는 일**이다 — 취성으로 갈 수밖에 "
                           "없으니 모서리를 죽여야 한다."),
+            ("⑥ 그런데 못 닿는다", f"프레임이 남기고 간 실란트 띠가 면을 "
+                            f"{SEALANT_BAND_MM:.0f} mm 덮고 있고 두께가 "
+                            f"{sealant_left_t_mm()} mm 다. 홈 여유 {GROOVE_CLEAR_MM} 보다 "
+                            f"**{sealant_stands_proud_mm()} mm 두꺼워** 어깨가 유리 모서리에 "
+                            f"닿기 전에 실란트에 먼저 얹힌다 (겹침 단면 "
+                            f"{flange_band_overlap_mm2()} mm²). 여유를 실란트보다 벌리면 "
+                            "어깨가 모서리에서 떨어져 아리스가 안 선다 — **둘 다는 안 된다.** "
+                            f"띠에서 최소 {sealant_must_go_first_mm():.0f} mm 를 먼저 걷어야 "
+                            "하고, 그 공구는 이 장비에 없다."),
         ),
         parts=parts)
 
@@ -824,6 +1087,26 @@ def summary() -> dict[str, object]:
         "contactPressureMpa": contact_pressure_mpa(lf),
         "reliefCoversTolerance": relief_covers_tolerance(),
         "evaSkimMm": eva_skim_mm(),
+        "glassDown": panel_is_glass_down(),
+        "sealantBandMm": SEALANT_BAND_MM,
+        "sealantLeftMm": sealant_left_t_mm(),
+        "sealantPerPanelMm3": sealant_volume_per_panel_mm3(),
+        "sealantVsGlass": sealant_ratio_to_glass(),
+        "wheelReachesEdge": wheel_can_reach_the_glass_edge(),
+        "sealantProudMm": sealant_stands_proud_mm(),
+        "flangeOverlapMm2": flange_band_overlap_mm2(),
+        "mustClearFirstMm": sealant_must_go_first_mm(),
+        "rubbingRatio": rubbing_speed_ratio(),
+        "wheelMayTouchBacksheet": wheel_may_touch_the_backsheet(),
+        "dustStaysInert": dust_stream_stays_inert(),
+        "depthStackMm": depth_stack_mm(),
+        "positionControlSafe": position_control_is_safe(),
+        "backsheetMarginMm": backsheet_margin_mm(),
+        "safeFaceForceN": safe_face_force_n(),
+        "faceForceRatio": face_force_ratio(),
+        "headsAgreeWithDust": heads_agree_with_the_dust_model(),
+        "twoPassOccupancyS": two_pass_occupancy_s(),
+        "openQuestions": [list(q) for q in open_questions()],
         "impliedGRatio": implied_g_ratio(),
         "radialWearUmPerPanel": radial_wear_um_per_panel(),
         "occupancyS": occupancy_s(),

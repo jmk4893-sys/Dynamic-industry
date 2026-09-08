@@ -156,6 +156,12 @@ def spec_payload() -> str:
     }, ensure_ascii=False, separators=(",", ":"))
 
 
+def open_payload() -> str:
+    """모델이 **못 닫는** 것 — 선언이 아니라 계산에서 나온 목록이다."""
+    return json.dumps([list(q) for q in sg_grind.open_questions()],
+                      ensure_ascii=False, separators=(",", ":"))
+
+
 def console_html() -> str:
     """3D 밑에 서는 확대도 콘솔 — 유닛 선택·분해·단면·단계·순환 띠·부품표."""
     return """
@@ -188,6 +194,10 @@ def console_html() -> str:
       </div>
       <div class="sg-cu-band" id="sg-cu-band" role="img" aria-label="연마 순환 상 배치"></div>
       <p class="text-small text-muted" id="sg-cu-cycle-note"></p>
+    </div>
+    <div class="card sg-cu-open">
+      <h3 class="text-small">이 해석이 못 닫는 것 <span class="text-muted tabular-nums" id="sg-cu-open-count"></span></h3>
+      <dl class="sg-cu-open-list" id="sg-cu-open"></dl>
     </div>
     <div class="card jb-detail" id="jb-detail" aria-live="polite">형상을 누르면 그 부품의 품번과 역할이 여기에 나옵니다.</div>
     <div class="sg-cu-grid">
@@ -242,6 +252,11 @@ def console_css() -> str:
     flex-direction: column; gap: 6px; font-size: var(--font-size-small); }
   .sg-cu-steps li.is-on { font-weight: var(--font-weight-medium); color: var(--primary); }
   .sg-cu-h2 { margin-top: 12px; }
+  .sg-cu-open { border-left: 3px solid var(--destructive); }
+  .sg-cu-open-list { margin: 8px 0 0; display: flex; flex-direction: column; gap: 8px;
+    font-size: var(--font-size-small); }
+  .sg-cu-open-list dt { font-weight: var(--font-weight-medium); color: var(--destructive); }
+  .sg-cu-open-list dd { margin: 2px 0 0; color: var(--muted-foreground); }
 """
 
 
@@ -253,6 +268,8 @@ def scene_script() -> str:
         "polyAfter": [list(p) for p in g.edge_outline_after()],
         "polyRemoved": [list(p) for p in g.removed_outline()],
         "polyWheel": [list(p) for p in g.wheel_groove_outline()],
+        "polySealG": [list(p) for p in g.sealant_outline_glass_face()],
+        "polySealB": [list(p) for p in g.sealant_outline_back_face()],
     }, separators=(",", ":"))
     return f"""<script>
 /* SG-301 연마 작동 확대도 — tools/build_sg_closeup.py 가 붙인다.
@@ -268,7 +285,7 @@ def scene_script() -> str:
   }})();
   function start(S) {{
   var K = S.kit, UNITS = {unit_payload()}, CYCLE = {cycle_payload()},
-      SPEC = {spec_payload()}, POLY = {poly},
+      SPEC = {spec_payload()}, POLY = {poly}, OPEN = {open_payload()},
       PITCH = {json.dumps(sg_grind.ROW_PITCH_MM, separators=(",", ":"))};
   var MM = 0.001;                                   // 모델은 mm, 씬은 m
   var LONG_FEED = {g.long_feed_mm_s()}, SHORT_FEED = {g.short_feed_mm_s()},
@@ -548,6 +565,10 @@ def scene_script() -> str:
   if (auto && auto.checked) {{ auto.checked = !1; auto.dispatchEvent(new Event('change')); }}
   var play = document.getElementById('jb-play');
   if (play && /일시정지/.test(play.textContent)) play.click();
+  el('sg-cu-open-count').textContent = '· ' + OPEN.length + ' 건';
+  el('sg-cu-open').innerHTML = OPEN.map(function (q) {{
+    return '<dt>' + md(q[0]) + '</dt><dd>' + md(q[1]) + '</dd>';
+  }}).join('');
   band(); show(UNITS[0].key); cutUpdate(); requestAnimationFrame(tick);
   window.__pvSgCloseup = {{ units: UNITS.length, cycle: CYCLE,
     feed: {{ long: LONG_FEED, short: SHORT_FEED }},

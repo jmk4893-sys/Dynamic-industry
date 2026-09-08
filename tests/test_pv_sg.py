@@ -27,7 +27,7 @@ import unittest
 
 from tests import _path  # noqa: F401
 
-from pv_preprocess import afr, campaign, sg_grind
+from pv_preprocess import afr, campaign, dust, frames, recipe, sg_grind
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CLOSEUP = ROOT / "docs/drawings/pv-sg-closeup.html"
@@ -233,6 +233,108 @@ class TestTheDrawnSectionIsTheCalculatedSection(unittest.TestCase):
                 self.assertGreater(sg_grind.polygon_area_mm2(pts), 0.0)
 
 
+class TestWhatTheFrameLeavesBehind(unittest.TestCase):
+    """프레임을 뜯어내면 실란트 띠가 남는다 — 그것이 이 장비의 진짜 작업량이다.
+
+    처음 이 모듈은 유리 끝면만 보고 실란트를 살 0.03 mm 로 접어 넣었다.
+    `recipe` 는 처음부터 '백시트 접촉 압력' 을 선언하고 있었고, 무프레임 항목은
+    '**실란트 대신** 라미네이트 가장자리 정리' 라고 적어 두었다 — 프레임형에서는
+    실란트가 대상이라는 뜻이다. 여기서 그 범위를 값으로 붙든다.
+    """
+
+    def test_the_band_comes_from_the_frame_slot(self):
+        """띠의 폭과 두께를 이 모듈이 새로 정하지 않는다."""
+        self.assertEqual(sg_grind.SEALANT_BAND_MM, float(frames.SLOT_LIP_MM))
+        self.assertEqual(sg_grind.SEALANT_FACE_T_MM, float(frames.SEALANT_T_MM))
+        self.assertEqual(sg_grind.STACK_T_MM, float(frames.LAMINATE_STACK_MM))
+
+    def test_the_panel_runs_glass_down(self):
+        """기본 레시피가 위를 향하는 면을 백시트로 적어 두었다."""
+        self.assertTrue(sg_grind.panel_is_glass_down())
+        base = [s for s in recipe.STRUCTURES if s.code == "GLASS_BACKSHEET"][0]
+        self.assertEqual(base.top, "백시트")
+
+    def test_the_recipe_declares_a_backsheet_contact(self):
+        """모델이 백시트 접촉을 선언한다 — 이 장비가 유리 변만 보는 것이 아니다."""
+        base = [s for s in recipe.STRUCTURES if s.code == "GLASS_BACKSHEET"][0]
+        self.assertIn("백시트", base.sg)
+        frameless = [s for s in recipe.STRUCTURES if s.code == "FRAMELESS"][0]
+        self.assertIn("실란트", frameless.sg)      # 무프레임은 '실란트 대신'
+
+    def test_the_face_sealant_dwarfs_the_glass_removal(self):
+        """면 실란트가 유리에서 걷는 양보다 두 자리 크다 — 무엇이 작업량인가."""
+        self.assertGreater(sg_grind.sealant_ratio_to_glass(), 50.0)
+        self.assertGreater(sg_grind.sealant_volume_per_panel_mm3(), 1e5)
+
+    def test_the_wheel_cannot_reach_the_edge_through_the_band(self):
+        """이 도면의 결론 — 띠를 먼저 걷지 않으면 휠이 모서리에 못 닿는다."""
+        self.assertFalse(sg_grind.wheel_can_reach_the_glass_edge())
+        self.assertGreater(sg_grind.sealant_stands_proud_mm(), 0.0)
+        self.assertGreater(sg_grind.flange_band_overlap_mm2(), 0.0)
+        self.assertEqual(sg_grind.sealant_must_go_first_mm(), sg_grind.flange_reach_mm())
+        # 어깨가 걸쳐 나오는 구간이 통째로 띠 안이어야 이 결론이 선다.
+        self.assertLessEqual(sg_grind.flange_reach_mm(), sg_grind.SEALANT_BAND_MM)
+
+    def test_widening_the_clearance_does_not_rescue_it(self):
+        """여유를 실란트보다 벌리면 어깨가 모서리에서 떨어진다 — 둘 다는 안 된다."""
+        need = sg_grind.sealant_left_t_mm()
+        self.assertGreater(need, sg_grind.ARRIS_MM * 0.5,
+                           "실란트가 아리스 다리보다 훨씬 얇으면 이 논증이 약해진다")
+
+    def test_the_diamond_wheel_must_not_touch_polymer(self):
+        """주속이 폴리머 접촉 상한을 크게 넘는다 — 휠이 막히고 집진 전제가 깨진다."""
+        self.assertFalse(sg_grind.wheel_may_touch_the_backsheet())
+        self.assertGreater(sg_grind.rubbing_speed_ratio(), 1.0)
+        # 폴리머를 안 깎아야 DS-01 의 '불연' 선언이 유지된다.
+        self.assertTrue(sg_grind.dust_stream_stays_inert())
+        ds01 = [s for s in dust.STREAMS if s.tag == "DS-01"][0]
+        self.assertFalse(ds01.combustible)
+        self.assertNotIn("백시트", ds01.material)
+        self.assertEqual(sg_grind.DUST_FLOW_M3H, float(ds01.flow_m3h))
+
+    def test_position_control_would_cut_into_the_backsheet(self):
+        """프레임 기준 공차합이 백시트보다 두껍다 — 힘 제어여야 하는 이유."""
+        self.assertFalse(sg_grind.position_control_is_safe())
+        self.assertGreater(sg_grind.backsheet_margin_mm(), 0.0)
+        self.assertAlmostEqual(sg_grind.depth_stack_mm(),
+                               sg_grind.LAMINATE_TOL_MM + sg_grind.ROLLER_PLANE_TOL_MM
+                               + sg_grind.HEIGHT_TOL_MM, places=4)
+
+    def test_the_face_may_only_be_pressed_far_more_gently_than_the_edge(self):
+        self.assertLess(sg_grind.safe_face_force_n(),
+                        sg_grind.normal_force_n(sg_grind.long_feed_mm_s()))
+        self.assertGreater(sg_grind.face_force_ratio(), 1.0)
+
+    def test_no_tool_in_this_cell_can_do_the_face(self):
+        """부품표에 브러시·스크레이퍼·패드가 없다 — 선언과 부품표가 어긋나 있다."""
+        self.assertFalse(sg_grind.face_residue_has_a_tool())
+        keys = {p.key for u in sg_grind.units() for p in u.parts}
+        self.assertFalse({"brush", "scraper", "pad"} & keys)
+
+    def test_the_dust_model_and_the_campaign_disagree_about_the_heads(self):
+        """장변 2 대가 동시인지 순차인지 — 두 모델이 다르다. 숨기지 않는다."""
+        self.assertFalse(sg_grind.heads_agree_with_the_dust_model())
+        self.assertGreater(sg_grind.two_pass_occupancy_s(), sg_grind.occupancy_s())
+        # 순차로 풀어도 AFR 정반 안에는 여전히 든다 — 그래서 결정 가능한 문제다.
+        self.assertLess(sg_grind.two_pass_occupancy_s(), float(campaign.AFR_S))
+
+    def test_the_open_questions_are_computed_not_declared(self):
+        """미결 목록이 계산에서 나온다 — 조건이 풀리면 항목이 사라져야 한다."""
+        titles = [q[0] for q in sg_grind.open_questions()]
+        self.assertEqual(len(titles), 5)
+        self.assertIn("휠이 유리 모서리에 못 닿는다", titles)
+        for _, body in sg_grind.open_questions():
+            self.assertGreater(len(body), 40)
+
+    def test_the_band_polygons_have_the_band_area(self):
+        want = sg_grind.SEALANT_BAND_MM * sg_grind.sealant_left_t_mm()
+        for fn in (sg_grind.sealant_outline_glass_face,
+                   sg_grind.sealant_outline_back_face):
+            with self.subTest(fn.__name__):
+                self.assertAlmostEqual(sg_grind.polygon_area_mm2(fn()), want, places=6)
+                self.assertAlmostEqual(want, sg_grind.sealant_area_mm2(), places=6)
+
+
 class TestUnits(unittest.TestCase):
     """확대도가 그리는 세 유닛."""
 
@@ -240,10 +342,11 @@ class TestUnits(unittest.TestCase):
         keys = [u.key for u in sg_grind.units()]
         self.assertEqual(keys, ["long", "short", "contact"])
 
-    def test_every_unit_has_five_steps_and_parts(self):
+    def test_every_unit_has_steps_and_parts(self):
+        """단계 수를 5 로 못 박지 않는다 — 접촉부는 '못 닿는다' 를 더해 6 이다."""
         for u in sg_grind.units():
             with self.subTest(u.key):
-                self.assertEqual(len(u.principle), 5)
+                self.assertGreaterEqual(len(u.principle), 5)
                 self.assertTrue(u.parts)
                 self.assertTrue(u.sheet.startswith("PV-SG-"))
                 self.assertIn(u.key, sg_grind.VIEW_DIR)
