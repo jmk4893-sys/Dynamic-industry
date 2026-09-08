@@ -59,6 +59,9 @@ TARGETS: dict[str, tuple[pathlib.Path, pathlib.Path]] = {
                    pathlib.Path("out/pv-sg-closeup-artifact.html")),
     "gi-closeup": (pathlib.Path("docs/drawings/pv-gi-closeup.html"),
                    pathlib.Path("out/pv-gi-closeup-artifact.html")),
+    # 위 넷을 한 장에 담은 후단 도면집 — 링크 하나·판번 하나로 묶는다.
+    "afr-hub": (pathlib.Path("docs/drawings/pv-afr-hub.html"),
+                pathlib.Path("out/pv-afr-hub-artifact.html")),
 
     "fasteners": (pathlib.Path("docs/drawings/pv-fastener-book.html"),
                   pathlib.Path("out/pv-fastener-book-artifact.html")),
