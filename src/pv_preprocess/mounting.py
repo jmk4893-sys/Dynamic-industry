@@ -150,7 +150,8 @@ MEMBERS: tuple[Member, ...] = (
     Member("AFR 클램프 포탈 종방향 타이빔 2본", "afr", "floor",
            "두 포탈을 한 틀로 묶어 인출 반력의 X 성분을 받는다"),
     Member("AFR TG-813 도크 선단받이 가이드레일 2본", "buffer", "frame",
-           "신장한 텔레스코픽 콤포크의 선단 — 2.9 m 외팔보를 단순지지로 바꾼다"),
+           "신장한 콤포크의 과대처짐 걸림쇠 — 2 단 겹침이 이미 선단을 받아 "
+           "평상시에는 닿지 않는다 (gbr_dynamics.tg_gap_window_mm)"),
     Member("VAC-101 진공 스키드 베이스", "afu", "floor",
            "진공 리시버 2기 · 진공발생기·필터 유닛"),
     Member("VG-101 천장보 독립 기둥 2본", "afu", "floor",

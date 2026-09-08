@@ -503,13 +503,29 @@ def main() -> int:
     p.one(r"\[-[\d.]+, [\d.]+\]\.forEach\(function \(z, i\) \{",
           lambda m: f"[-{_tg:g}, {_tg:g}].forEach(function (z, i) {{")
     # GA 시트의 행 부재도 같은 값에서 찍는다 — 행 중심 ± 정해진 오프셋이다.
+    _fk = gbr_load.FORK_OFFSET_MM
     _off = {"MSO": 1000, "MSI": -1000, "TIE": 0, "LFO": 770, "LFI": -770,
-            "FKO": 620, "FKI": -620, "TGO": 620, "TGI": -620}
+            "FKO": _fk, "FKI": -_fk, "TGO": _fk, "TGI": -_fk}
     for tag, off in _off.items():
         for row, sign in (("A", -1), ("B", 1)):
             z = int(sign * (gbr_load.ROW_Z_MM + off))
             p.one(rf"(part\('{tag}-{row}', '[^']*', \[[\d, ]+\], \[-?[\d.]+, -?[\d.]+, )-?\d+(\])",
                   lambda m, z=z: f"{m.group(1)}{z}{m.group(2)}")
+    # HOLD 행은 중심이 0 이라 위 루프가 안 돌지만 콤포크·선단받이는 같이 옮겨야
+    # 한다 (승강캐리지는 폭이 달라 아래에서 따로 잡는다).
+    for tag in ("FKO", "FKI", "TGO", "TGI"):
+        z = int(-_off[tag])
+        p.one(rf"(part\('{tag}-H', '[^']*', \[[\d, ]+\], \[-?[\d.]+, -?[\d.]+, )-?\d+(\])",
+              lambda m, z=z: f"{m.group(1)}{z}{m.group(2)}")
+    # HOLD 승강캐리지는 마스트 안쪽 면부터 콤포크 안쪽 모서리까지를 덮어야 한다 —
+    # 콤포크가 안으로 오면 캐리지도 따라와야 포크가 제 캐리지 밑에 남는다.
+    _lf_out = gbr_load.MAST_OFFSET_MM + gbr_load.MAST_SECTION_MM / 2
+    _lf_in = gbr_load.FORK_OFFSET_MM - gbr_load.FORK_W_MM / 2
+    _lf_w, _lf_z = int(_lf_out - _lf_in), int((_lf_out + _lf_in) / 2)
+    for tag, sign in (("LFO", -1), ("LFI", 1)):
+        p.one(rf"(part\('{tag}-H', '[^']*', \[170, 300, )\d+(\], \[205, 985, )-?\d+(\])",
+              lambda m, sign=sign: f"{m.group(1)}{_lf_w}{m.group(2)}{sign * _lf_z}{m.group(3)}")
+
     for code, sign in (("A-501A", -1), ("A-501B", -1), ("B-501A", 1), ("A-501C", 1)):
         z = int(sign * gbr_load.ROW_Z_MM)
         p.one(rf"(part\('{code}', '[^']*', \[[\d, ]+\], \[-?[\d.]+, -?[\d.]+, )-?\d+(\])",
@@ -522,12 +538,71 @@ def main() -> int:
     # 나머지 흐름은 그 행 위에서 일어난다 — 문구로 집는다 (`step('3', …)` 만으로는
     # 다른 GA 시트의 3번 단계까지 걸린다).
     for head in ("콤포크 +15 픽업", "포크 X+ 3,200 신장",
-                 "소하강 12 레일 안착", "만재 시 도킹 해제"):
+                 "소하강", "만재 시 도킹 해제"):
         p.one(rf"(step\('\d', '{re.escape(head)}[^']*', \[-?\d+, \d+, )-?\d+(\], \[-?\d+, \d+, )-?\d+(\]\))",
               lambda m, z=-int(gbr_load.ROW_Z_MM): f"{m.group(1)}{z}{m.group(2)}{z}{m.group(3)}")
     # 셔틀 데크 폭 — GA 시트는 7,100(존 폭)을 적었는데 그 자리에는 가드가 선다.
     p.one(r"(part\('GBR-301', '수평셔틀', \[\d+, \d+, )\d+(\])",
           lambda m: f"{m.group(1)}6600{m.group(2)}")
+
+    # ── 적재 인터페이스 — `gbr_dynamics` 가 푼 것을 형상에 옮긴다 ─────────
+    #
+    # 세 값이 서로 물려 있어 한 곳에서 찍는다.
+    #
+    #   · 선반 레일 — 종전 z ±730 · 폭 55 는 ±702.5…757.5 라 **유리(±700)에
+    #     닿지 않았다.** 하중 경로가 통째로 비어 있었고 강체 적분이 그것을
+    #     잡아냈다 (`pv-gbr-physics.html`). 이제 기둥과 유리가 레일 양 끝을 정한다.
+    #   · 콤포크 — 넓어진 레일을 비켜 안쪽으로 온다 (z ±620 → ±540).
+    #   · 콤포크 깊이 — 슬롯 피치 79 가 정한다. GA 의 95 는 피치보다 커서 한 칸
+    #     아래 유리를 긁었다. 60 에서 처짐 2.9 mm 로 창 안에 든다.
+    from pv_preprocess import gbr_dynamics
+    assert gbr_load.fork_offset_ok(), "콤포크가 슬롯 레일과 겹친다"
+    assert gbr_dynamics.fork_depth_ok(), "콤포크 깊이가 슬롯 피치에 안 들어간다"
+    assert gbr_dynamics.set_down_releases_the_fork(), "소하강이 포크를 안 놓는다"
+    assert gbr_dynamics.tg_gap_ok(), "TG-813 이 소하강을 막는다"
+    _sz, _sw = gbr_load.SHELF_Z_MM / 1000.0, gbr_load.SHELF_W_MM / 1000.0
+    _fh, _fo = gbr_load.FORK_H_MM / 1000.0, gbr_load.FORK_OFFSET_MM / 1000.0
+    #: 콤포크 상면(유리가 얹히는 면)은 3D 의 자세 그대로 둔다 — 깊이만 바뀐다.
+    _fork_top = 1.1075
+    _fork_y = round(_fork_top - _fh / 2, 6)
+    #: TG-813 은 포크 밑면에서 `TG_GAP_MM` 만큼 떨어져 매달린다 (레일 높이 50).
+    _tg_y = round(_fork_top - _fh - gbr_load.TG_GAP_MM / 1000.0 - 0.025, 6)
+    #: 유리는 레일 상면에 **얹힌다** — 종전에는 2.5 mm 떠 있었다 (판 두께 20·25).
+    _rail_top = gbr_load.SHELF_T_MM / 2000.0
+
+    p.one(r"P\(ft,\[2\.6,[\d.]+,\.12\],\[Ri,[\d.]+,gz\+gs\*[\d.]+\],M\.aluminum,",
+          lambda m: f"P(ft,[2.6,{_fh:g},.12],[Ri,{_fork_y:g},gz+gs*{_fo:g}],M.aluminum,")
+    p.one(r"\[-[\d.]+,[\d.]+\]\.forEach\(c=>P\(ft,\[2\.58,\.025,[\d.]+\]",
+          lambda m: f"[-{_sz:g},{_sz:g}].forEach(c=>P(ft,[2.58,.025,{_sw:g}]")
+    p.one(r"\[-[\d.]+,[\d.]+\]\.forEach\(n=>P\(ft,\[2\.58,\.025,[\d.]+\]",
+          lambda m: f"[-{_sz:g},{_sz:g}].forEach(n=>P(ft,[2.58,.025,{_sw:g}]")
+    p.one(r"let l=P\(ft,\[2\.5,\.02,1\.4\],\[s,o\+[\d.]+,e\]",
+          lambda m: f"let l=P(ft,[2.5,.02,1.4],[s,o+{_rail_top + 0.01:g},e]")
+    p.one(r"let t=P\(ft,\[2\.5,\.025,1\.4\],\[Fo,e\+[\d.]+,Kn\.H\]",
+          lambda m: f"let t=P(ft,[2.5,.025,1.4],[Fo,e+{_rail_top + 0.0125:g},Kn.H]")
+    p.one(r"L\(\[2\.60, \.05, \.10\], \[pvZone\.buffer\[0\]\+5\.65, [\d.]+, z\]",
+          lambda m: f"L([2.60, .05, .10], [pvZone.buffer[0]+5.65, {_tg_y:g}, z]")
+    # GA 시트의 콤포크 단면과 카탈로그 치수도 같은 깊이에서 찍는다.
+    for tag in ("FKO", "FKI"):
+        for row in ("A", "B", "H"):
+            p.one(rf"(part\('{tag}-{row}', '[^']*', \[2600, )\d+(, 120\])",
+                  lambda m: f"{m.group(1)}{gbr_load.FORK_H_MM:g}{m.group(2)}")
+    p.one(r'(AFR-TF-810","레시피 버퍼","[^"]*","\d+EA",\[2600,120,)\d+',
+          lambda m: f"{m.group(1)}{gbr_load.FORK_H_MM:g}")
+    # 문구 안의 숫자도 같은 모델에서 찍는다 — 값만 고치면 도면이 옛 이야기를 한다.
+    _edge = gbr_load.GLASS_W_MM / 2 - gbr_load.FORK_OFFSET_MM
+    p.one(r"step\('5', '소하강 [\d.]+ 레일 안착·포크 복귀 −[\d,]+'",
+          lambda m: f"step('5', '소하강 {gbr_load.SET_DOWN_MM:g} 레일 안착"
+                    f"·포크 복귀 −{gbr_load.FORK_STROKE_MM:,.0f}'")
+    p.one(r"2단 텔레스코픽 콤포크 쌍이 패널 장변 [\d.]+ mm 안쪽\(z ±[\d]+\)을 전장 지지해 "
+          r"X [\d,]+ 신장·[\d.]+ 소하강으로 도크 슬롯에 안착시키고, [^\"]*\.",
+          lambda m: f"2단 텔레스코픽 콤포크 쌍이 패널 장변 {_edge:,.0f} mm 안쪽"
+                    f"(z ±{gbr_load.FORK_OFFSET_MM:,.0f})을 전장 지지해 "
+                    f"X {gbr_load.FORK_STROKE_MM:,.0f} 신장·"
+                    f"{gbr_load.SET_DOWN_MM:g} 소하강으로 도크 슬롯에 안착시키고, "
+                    f"선단은 겹침 두 점에 받쳐져 실제 외팔은 "
+                    f"{gbr_dynamics.fork_static().free_mm:,.0f} mm 입니다 "
+                    f"(선단 처짐 {gbr_dynamics.fork_droop_mm():.1f} mm).")
 
     # AFR 셀이 패널을 받는 시각 — 3D 애니메이션의 `nt` 다. 리터럴로 박혀 있었고,
     # REV.58 이 JBR 칸을 4 → 7 s 로 늘려 인계가 85 → 94 s 로 밀렸는데도 85 로
