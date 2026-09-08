@@ -383,6 +383,66 @@ A/B 캐리지와 같은 ±760 으로 좁혀 레일이 기둥에 물린다. **이
 — 예외 표를 비우면 시험이 깨지는지까지 확인한다
 
 
+#### §62 발행처를 저장소에 적는다 — 같은 도면의 아티팩트가 두 벌이 돼 있었다 (REV.62)
+
+「여기 있는 아티팩트 어디로 통합된 거냐」는 물음에 세어 보니 **JBR 도면 6 종에
+아티팩트가 12 개** 있었다. 여섯씩 두 벌이다. 어디로도 통합된 적이 없다.
+
+**원인은 브랜치 핑퐁이 아니었다.** 처음엔 유리제거기 브랜치와 같은 URL 을 나눠
+쓴 탓이라고 봤는데, 발행본 안의 각인을 읽어 보니 아니었다. 물리 시뮬레이션은
+head `447269f`(칸 4.0 s · 수거함 안치수 540, REV.57 판)에서 한 번, head
+`3ee9f4a`(REV.59)에서 또 한 번 찍혔고 **둘 다 이 브랜치 커밋**이다. 우리가 우리
+것을 두 벌 만들었다.
+
+**왜 그랬는가 — 발행처가 저장소에 없었다.** `build_artifact` 의 독스트링은 처음부터
+「저장소 파일을 고치고 다시 돌린 뒤 **같은 URL 로 재발행**한다」고 적어 두었는데,
+그 URL 이 어디에도 없었다. 코드·문서를 통틀어 `claude.ai/code/artifact` 문자열이
+**0 건**이었다. 대응표가 PR 본문과 대화 기억에만 있었으니, 다시 찍을 때마다 새
+아티팩트가 하나씩 생기는 것이 당연했다.
+
+**적었다.** `build_artifact.PUBLISHED` 가 대상 → 발행처를 들고, 변환기가 그것을
+발행본 머리에 각인한다 — 이제 발행본을 열면 자기가 어디 것인지 스스로 말한다.
+
+| 대상 | 원본 | 발행처 | 잘못 생긴 것 |
+|---|---|---|---|
+| `console` | `pv-preprocess-console.html` | [64d5edab](https://claude.ai/code/artifact/64d5edab-dbe7-4eb5-b8de-389238ad6359) | — |
+| `plant` | `pv-preprocess-plant.html` | [9e171853](https://claude.ai/code/artifact/9e171853-6137-4428-bf65-7009b5eccf7f) | — |
+| `infeed` | `pv-infeed-detail.html` | [7db8926e](https://claude.ai/code/artifact/7db8926e-2083-4517-bd5d-ee8b10440120) | — |
+| `infeed-sim` | `pv-infeed-sim.html` | [68a7cfcc](https://claude.ai/code/artifact/68a7cfcc-5afc-44bb-9033-6195a7cba5a4) | — |
+| `infeed-scene` | `pv-infeed-scene.html` | [f0afbe44](https://claude.ai/code/artifact/f0afbe44-63c8-4a11-8685-d69383b08c92) | — |
+| `infeed-fab` | `pv-infeed-fab.html` | [e370a09a](https://claude.ai/code/artifact/e370a09a-d139-40f6-b292-9d94c98ae336) | — |
+| `infeed-dyn` | `pv-infeed-dyn.html` | [7c6b28f4](https://claude.ai/code/artifact/7c6b28f4-06f4-46c5-b054-4d696c57e30d) | — |
+| `prototype` | `pv-bfc-prototype.html` | [64149cde](https://claude.ai/code/artifact/64149cde-3fd4-4b2c-b320-ae56ec09bb58) | — |
+| `fasteners` | `pv-fastener-book.html` | [f292d899](https://claude.ai/code/artifact/f292d899-c846-4556-8424-526eb321ad2f) | — |
+| `assembly-steps` | `pv-assembly-steps.html` | [cf0ea732](https://claude.ai/code/artifact/cf0ea732-b99a-48fa-abb4-e788fe4819f9) | — |
+| `jbr-scene` | `pv-jbr-scene.html` | [12f62610](https://claude.ai/code/artifact/12f62610-f43e-4a74-992d-8ed6d5c1c98b) | `cfd3f9e8` |
+| `jbr-detail` | `pv-jbr-detail.html` | [02bf159f](https://claude.ai/code/artifact/02bf159f-d015-49e4-8b45-c647f3238f95) | `a14f01c2` |
+| `jbr-closeup` | `pv-jbr-closeup.html` | [200fb6bc](https://claude.ai/code/artifact/200fb6bc-69b8-45c9-9552-5d8dbcc0f532) | `4559a80a` |
+| `jbr-fab` | `pv-jbr-fab.html` | [90ac72e3](https://claude.ai/code/artifact/90ac72e3-34cf-4602-a3ff-207fd4644997) | `66a5be4e` |
+| `jbr-hub` | `pv-jbr-hub.html` | [4b703023](https://claude.ai/code/artifact/4b703023-c217-4d60-a07f-a7bd36e962c9) | `f3b1f4b0` |
+| `jbr-physics` | `pv-jbr-physics.html` | [d5eaa3df](https://claude.ai/code/artifact/d5eaa3df-fcc9-4e6f-8a32-dc165b75a707) | `037cf13c` |
+| `plan-b` | — | **미기록** | 제목이 본 플랜트와 같아 발행 목록에서 못 가른다 (out/ 전용 변형안) |
+| `plan-b-delam` | — | **미기록** | 제목이 C안과 같아 못 가른다 (out/ 전용 변형안) |
+| `plan-c` | — | **미기록** | 제목이 본 플랜트와 같아 발행 목록에서 못 가른다 (out/ 전용 변형안) |
+| `plan-c-delam` | — | **미기록** | 제목이 B안과 같아 못 가른다 (out/ 전용 변형안) |
+
+**중복은 지우지 않고 적어 뒀다**(`SUPERSEDED`). 지우면 다음에 목록에서 보고
+「이게 그건가」 하며 같은 자리를 다시 밟는다. 어느 쪽이 정본인지는 표가 정한다.
+
+**값은 확인하고 적었다.** 변환기 규약이 「저장소 파일의 `<title>` 이 그대로
+아티팩트 이름」이라, 발행 목록에서 그 이름으로 찾으면 대응이 나온다. 이름이 하나뿐인
+열 종은 그것으로 갈렸고, 두 벌씩 있는 JBR 여섯은 발행본 안의 `head` 각인으로 갈랐다.
+
+`tests/test_pv_artifact_registry.py` 가 표의 성립 조건을 지킨다 — 모든 대상이
+발행처나 **미기록 사유**를 갖는가(빈칸을 「발행본 없음」으로 읽는 것이 이 일의
+시작이었다), UUID 가 겹치지 않는가(겹치면 다음 발행이 남의 것을 덮는다), 변환기가
+각인하는가, 그리고 **저장소 안에 발행처가 0 건이 아닌가**. 살아 있는 발행 서비스에는
+묻지 않는다 — 시험은 망 없이 CI 에서 돌아야 한다.
+
+**아무것도 재발행하지 않았다.** 안 ㉯ 결정대로 아티팩트는 main 에서 정리한다. 지금
+발행본은 REV.59 시점(head `3ee9f4a`)이고 저장소는 REV.62 다. 이 판이 고친 것은
+**다음에 찍을 때 어디로 갈지**뿐이다.
+
 #### §61 밖에서 온 3 헤드 제안 — 세 번째다, 이번엔 모델이 답하게 했다 (REV.61)
 
 「기존 공통 갠트리 + 보강 크로스빔 + 좌·중·우 헤드(간격 서보 · 승강 서보) + 공압
