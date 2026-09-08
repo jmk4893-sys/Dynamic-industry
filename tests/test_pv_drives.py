@@ -290,6 +290,23 @@ class TestFlipAxisOrientation(unittest.TestCase):
         self.assertIn("축 X", kinematics.SCENE_AXIS_OPEN)
         self.assertIn("제작 도면집", kinematics.SCENE_AXIS_OPEN,
                       "왜 지금 좌표를 못 옮기는지가 사유에 있어야 한다")
+        # 범위가 통합 3D 하나로 좁으면 생성 뷰가 조용히 옛 방향으로 남는다
+        for view in ("상세도", "운전 콘솔"):
+            self.assertIn(view, kinematics.SCENE_AXIS_OPEN,
+                          f"{view} 도 축 X 로 그린다 — 사유가 그것을 담아야 한다")
+
+    def test_the_generated_views_still_hardcode_the_old_axis(self):
+        """②③ 이 실제로 리터럴을 쓰는가 — 사유가 사실인지 코드에서 확인한다.
+
+        생성 코드가 모델 상수를 읽게 바뀌면 이 시험이 깨진다. 그때가 사유에서
+        ②③ 을 지울 때다.
+        """
+        import pathlib
+        root = pathlib.Path(__file__).resolve().parents[1]
+        for name in ("build_infeed_detail.py", "build_infeed_sim.py"):
+            src = (root / "tools" / name).read_text(encoding="utf-8")
+            self.assertIn("1_600" if name.endswith("detail.py") else "1600", src,
+                          f"{name} 이 포탈을 모델 상수로 그린다면 사유를 고친다")
 
     def test_the_open_scene_note_names_where_to_edit(self):
         """무엇을 고쳐야 하는지가 값에 붙어 있어야 다음 사람이 찾는다."""
