@@ -318,6 +318,8 @@ def scene_script() -> str:
     }});
   }}
 
+  /* 모델 글은 **강조** 를 마크다운으로 쓴다 — 화면에서는 태그로 바꾼다. */
+  function md(s) {{ return String(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); }}
   function exVal() {{ return Number(el('afr-cu-explode').value) / 100; }}
   function el(id) {{ return document.getElementById(id); }}
 
@@ -336,11 +338,11 @@ def scene_script() -> str:
       + active.parts.reduce(function (a, p) {{ return a + p.qty; }}, 0) + ' 개';
     el('afr-cu-rows').innerHTML = active.parts.map(function (p) {{
       return '<tr data-part="' + p.key + '"><td>' + p.name + '</td><td class="tabular-nums">'
-        + p.qty + '</td><td class="tabular-nums">' + (p.spec || '—') + '</td><td>'
+        + p.qty + '</td><td class="tabular-nums">' + md(p.spec || '—') + '</td><td>'
         + p.material + '</td></tr>';
     }}).join('');
     el('afr-cu-principle').innerHTML = active.principle.map(function (s) {{
-      return '<li><b>' + s[0] + '</b> ' + s[1] + '</li>';
+      return '<li><b>' + s[0] + '</b> ' + md(s[1]) + '</li>';
     }}).join('');
     el('afr-cu-spec').innerHTML = (SPEC[key] || []).map(function (r) {{
       return '<tr><th scope="row">' + r[0] + '</th><td>' + r[1] + '</td></tr>';
@@ -356,7 +358,7 @@ def scene_script() -> str:
     if (!active) return;
     pose(active, step);
     var p = active.principle[Math.min(active.principle.length - 1, Math.floor(step))];
-    el('afr-cu-step').innerHTML = '<b>' + p[0] + '</b> ' + p[1];
+    el('afr-cu-step').innerHTML = '<b>' + p[0] + '</b> ' + md(p[1]);
     [].forEach.call(el('afr-cu-principle').children, function (li, i) {{
       li.classList.toggle('is-on', i === Math.floor(step));
     }});
