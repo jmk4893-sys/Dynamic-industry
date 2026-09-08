@@ -1003,23 +1003,61 @@ AIR_MPA_MIN = 0.5
 
 
 def moving_mass_kg() -> float:
-    """Z 로 함께 오르내리는 것 — 승강 플레이트 + Y 캐리지 3 + 헤드 3 기 + 가이드로드."""
+    """Z 로 함께 오르내리는 것 — 승강 플레이트 + Y 캐리지 3 + 헤드 3 기 + 가이드로드.
+
+    **이 값은 하한이다.** 제작품만 센다 — 헤드에 실려 같이 오르내리는 구매품(서보·
+    감속기·볼스크루·로드셀·진공컵·센서, 헤드당 7 종)은 부품표에 중량 열이 없어 셀
+    수가 없다. 헤드당 20–30 kg 로 보면 60–90 kg 이 빠져 있다.
+    """
     z_tags = {"JB-MZ-001", "JB-MZ-003", "JB-MY-002"}
     z = sum(weight_kg(p) * p.qty for p in _mx_parts if p.tag in z_tags)
     return round(z + assembly_weight_kg(ASSEMBLIES[5]), 1)
 
 
-def lift_check() -> dict[str, float | bool]:
-    """실린더가 승강부를 들 수 있는가. 부품표 값끼리 견주는 것이라 새로 정한 값이 없다."""
-    area = 3.14159 / 4 * LIFT_BORE_MM ** 2
-    force_kn = round(area * AIR_MPA_MIN * LIFT_COUNT / 1000.0, 2)
-    need_kn = round(moving_mass_kg() * 9.81 / 1000.0, 2)
-    bore = (need_kn * 1000.0 / (AIR_MPA_MIN * LIFT_COUNT) * 4 / 3.14159) ** 0.5
+#: 헤드에 실린 구매품의 추정 중량 kg. 부품표에 중량 열이 없어 세지 못하는 몫이다.
+#: 셋을 다 세면 이 값이 0 이 되고, 그때 `moving_mass_kg()` 이 하한이 아니게 된다.
+HEAD_COMMERCIAL_KG = 75.0
+
+#: 수직 승강은 여유가 필요하다 — 실링·가이드 마찰, 가속, 행정 중 압력 강하.
+#: 수평 밀기와 달리 힘이 모자라면 그냥 못 올라간다.
+LIFT_SAFETY = 1.5
+
+#: 승강 실린더 행정 mm (부품표 JB-MZ-002 Ø63 [420, 126, 126]).
+LIFT_STROKE_MM = 420.0
+
+
+def lift_check(bore_mm: float | None = None, count: int | None = None,
+               air_mpa: float | None = None, include_commercial: bool = True,
+               ) -> dict[str, float | bool]:
+    """실린더가 승강부를 들 수 있는가.
+
+    기본값은 부품표 그대로(Ø63 × 2)다. 보어·개수를 주면 대안을 잰다.
+    수직 승강이라 이용률 1.0 이 아니라 **1/LIFT_SAFETY 가 목표선**이다.
+    """
+    bore = LIFT_BORE_MM if bore_mm is None else bore_mm
+    n = LIFT_COUNT if count is None else count
+    mpa = AIR_MPA_MIN if air_mpa is None else air_mpa
+    mass = moving_mass_kg() + (HEAD_COMMERCIAL_KG if include_commercial else 0.0)
+    force_kn = round(3.14159 / 4 * bore ** 2 * mpa * n / 1000.0, 2)
+    need_kn = round(mass * 9.81 / 1000.0, 2)
+    volume_l = 3.14159 / 4 * (bore / 1000.0) ** 2 * (LIFT_STROKE_MM / 1000.0) * 2 * 1000.0
     return {
-        "moving_kg": moving_mass_kg(), "force_kn": force_kn, "need_kn": need_kn,
-        "utilisation": round(need_kn / force_kn, 2), "ok": need_kn <= force_kn,
-        "bore_needed_mm": round(bore, 0),
+        "bore_mm": bore, "count": n, "air_mpa": mpa,
+        "moving_kg": round(mass, 1), "lower_bound": not include_commercial,
+        "force_kn": force_kn, "need_kn": need_kn,
+        "utilisation": round(need_kn / force_kn, 2),
+        "margin": round(force_kn / need_kn, 2),
+        "ok": force_kn >= need_kn * LIFT_SAFETY,
+        "air_nl_cycle": round(volume_l * (mpa + 0.1013) / 0.1013 * n, 1),
+        "rod_lock_kn": round(need_kn / n, 2),
+        "bore_needed_mm": round((need_kn * LIFT_SAFETY * 1000.0 / (mpa * n) * 4 / 3.14159) ** 0.5),
     }
+
+
+def lift_options() -> tuple[dict[str, float | bool], ...]:
+    """부품표 구성과 대안들. 큰 판을 두 점으로 드는 것 자체가 힘과 별개의 문제다."""
+    return tuple(lift_check(b, n) for n, b in
+                 ((2, 63.0), (2, 100.0), (2, 125.0), (4, 63.0), (4, 80.0), (4, 100.0)))
 
 
 def mass_check() -> dict[str, float | bool]:

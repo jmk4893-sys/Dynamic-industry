@@ -150,6 +150,7 @@ def findings() -> str:
     """도면집을 찍으면서 스스로 드러난 것. 고치지 않고 올린다."""
     m = jf.mass_check()
     lc = jf.lift_check()
+    takt = campaign.summary()["takt_s"]
     mass_mark = '<b class="ok">안</b>' if m["ok"] else '<b class="bad">초과</b>'
     lift_mark = '<b class="ok">가능</b>' if lc["ok"] else '<b class="bad">부족</b>'
     rows = [[esc(c["name"]), esc(c["bolt"]), f'{c["need_mm"]:g} mm', f'{c["slack_mm"]:+g} mm',
@@ -179,19 +180,37 @@ def findings() -> str:
         + '<h3>6.4 Z 승강 실린더 — 부품표 값끼리 견준다</h3>'
         + table(["항목", "값"], [
             ["함께 오르내리는 것 (승강 플레이트 · Y 캐리지 3 · 헤드 3 기 · 가이드로드)",
-             f'{n(lc["moving_kg"])} kg = {lc["need_kn"]:g} kN'],
-            [f'부품표 JB-MZ-002 Ø{jf.LIFT_BORE_MM:g} × {jf.LIFT_COUNT} · 공급 {jf.AIR_MPA_MIN:g} MPa',
-             f'{lc["force_kn"]:g} kN'],
-            ["이용률", f'{lc["utilisation"]:g} — {lift_mark}'],
-            ["필요 보어 (여유 0)", f'Ø{lc["bore_needed_mm"]:.0f} 이상'],
+             f'제작품 {n(jf.moving_mass_kg())} kg + 헤드 구매품 추정 {jf.HEAD_COMMERCIAL_KG:g} kg '
+             f'= <b>{n(lc["moving_kg"])} kg = {lc["need_kn"]:g} kN</b>'],
+            [f'부품표 JB-MZ-002 Ø{jf.LIFT_BORE_MM:g} × {jf.LIFT_COUNT} · {jf.AIR_MPA_MIN:g} MPa',
+             f'{lc["force_kn"]:g} kN — 이용률 <b>{lc["utilisation"]:g}</b> {lift_mark}'],
+            ["수직 승강 목표 여유", f'≥ {jf.LIFT_SAFETY:g} (실링·가이드 마찰 · 가속 · 행정 중 압력 강하)'],
+            ["그 여유를 만족하는 보어 (2 개 기준)", f'Ø{lc["bore_needed_mm"]:.0f} → 표준 Ø125'],
         ])
-        + f'<p class="note warn"><b>Ø{jf.LIFT_BORE_MM:g} 실린더 2 개로는 승강부를 들지 못한다.</b> '
-          f'{lc["need_kn"]:g} kN 이 필요한데 {jf.AIR_MPA_MIN:g} MPa 에서 {lc["force_kn"]:g} kN 밖에 '
-          f'안 나온다 (이용률 {lc["utilisation"]:g}). 여유 없이도 Ø{lc["bore_needed_mm"]:.0f} 가 필요하니 '
-          '표준 보어로는 Ø100 이 든다. 셋 중 하나다 — 실린더를 키우거나, 승강부를 가볍게 하거나, '
-          '부품표에 없는 카운터밸런스(스프링·평형추)가 설계 의도에 있었거나. '
-          '<b>어느 쪽인지는 이 도면집이 정할 일이 아니라 기구 설계가 답할 일이라 올려만 둔다.</b> '
-          '무전원 로드락(JB-MZ-004)은 유지용이라 드는 힘에 보태지 않는다.</p>'
+        + f'<div class="note warn"><b>Ø{jf.LIFT_BORE_MM:g} 실린더 2 개로는 승강부를 들지 못한다.</b> '
+          f'{lc["need_kn"]:g} kN 이 필요한데 {jf.AIR_MPA_MIN:g} MPa 에서 {lc["force_kn"]:g} kN 이다 '
+          f'(이용률 {lc["utilisation"]:g}). 최대 압력 {jf.AIR_MPA_MAX:g} MPa 로 올려도 모자란다. '
+          f'게다가 <b>이 중량은 하한이다</b> — 제작품만 셀 수 있어서, 헤드에 실려 같이 오르내리는 '
+          f'구매품 7 종(서보·감속기·볼스크루·로드셀·진공컵·센서)은 부품표에 중량 열이 없다. '
+          f'여기서는 헤드당 25 kg 로 잡아 {jf.HEAD_COMMERCIAL_KG:g} kg 를 얹었다.</div>'
+        + '<h3>6.4.1 공압으로 다시 보면 — 보어보다 개수가 먼저다</h3>'
+        + table(["구성", f"추력 @{jf.AIR_MPA_MIN:g} MPa", "이용률", "여유", "공기", "로드락 1 개당", "판정"],
+                [[f'{o["count"]}×Ø{o["bore_mm"]:.0f}', f'{o["force_kn"]:g} kN',
+                  f'{o["utilisation"]:g}', f'{o["margin"]:g}',
+                  f'{n(o["air_nl_cycle"] * 3600 / takt)} NL/h', f'{o["rod_lock_kn"]:g} kN',
+                  '<b class="ok">OK</b>' if o["ok"] else '<b class="bad">부족</b>']
+                 for o in jf.lift_options()])
+        + '<div class="note"><b>힘만 보면 2×Ø125 지만, 그것이 답이 아닐 수 있다.</b> '
+          '승강 플레이트는 <b>1,820 × 2,180 mm</b> 다. 그만한 판을 <b>두 점으로 들면 기울고 휜다</b> — '
+          '힘과 무관한 기구 문제다. 네 점으로 받으면 판 하중이 갈리고 로드락 1 개가 받는 힘도 절반이 '
+          '된다(3.11 → 1.55 kN). <b>4×Ø80</b> 이면 여유 1.62 로 목표선을 넘고 공기도 2×Ø125 보다 '
+          '적다. 보어를 키우기 전에 <b>지지점 수를 먼저 정할 일</b>이다.</div>'
+        + '<div class="note"><b>내려올 때는 중력이 같은 편이다.</b> 하강에서는 자중 '
+          f'{lc["need_kn"]:g} kN 이 더해지므로 배기를 조여 속도를 잡아야 하고, 보어가 클수록 조일 '
+          '공기가 많다. 정지 유지는 무전원 로드락(JB-MZ-004)이 하지만 <b>드는 것과 잡는 것은 다른 '
+          '일</b>이라, 로드락 용량은 위 표의 「로드락 1 개당」으로 따로 확인해야 한다. '
+          '부품표에 카운터밸런스(스프링·평형추·압력 회로)가 없다 — 있었다면 실린더가 동적 몫만 '
+          '맡으면 되므로 이 표가 통째로 달라진다. <b>의도에 있었는지가 미결이다.</b></div>'
     )
 
 
@@ -353,9 +372,19 @@ def open_items() -> str:
         ["본체 중량이 도면과 다르다",
          f"부품에서 합산한 본체 {n(jf.mass_check()['body_kg'])} kg 대 도면 어림 2,200 kg. "
          "구매품은 아직 안 들어갔다.", "6.3 절"],
-        ["Z 승강 실린더가 모자란다",
-         f"Ø{jf.LIFT_BORE_MM:g}×{jf.LIFT_COUNT} 로 이용률 {jf.lift_check()['utilisation']:g}. "
-         "실린더·중량·카운터밸런스 중 무엇을 고칠지 미정.", "6.4 절"],
+        ["<b>Z 승강 — 보어보다 지지점 수를 먼저 정할 것</b>",
+         f"Ø{jf.LIFT_BORE_MM:g}×{jf.LIFT_COUNT} 로 이용률 "
+         f"{jf.lift_check()['utilisation']:g}(최대 압력에서도 모자란다). 승강 플레이트가 "
+         "1,820×2,180 이라 <b>두 점으로 들면 기울고 휜다</b> — 힘과 무관한 문제다. "
+         "4×Ø80 이면 여유 1.62 에 로드락 부담도 절반이고 공기도 2×Ø125 보다 적다.",
+         "6.4.1 절"],
+        ["승강 카운터밸런스가 의도에 있었는가",
+         "부품표에 스프링·평형추·압력 회로가 없다. 있었다면 실린더가 동적 몫만 맡으면 되므로 "
+         "보어 표가 통째로 달라진다.", "6.4.1 절"],
+        ["헤드 구매품 중량이 없다",
+         f"승강 가동부를 {jf.HEAD_COMMERCIAL_KG:g} kg 추정으로 얹었다. 부품표에 중량 열이 "
+         "생기면 <span class='mono'>HEAD_COMMERCIAL_KG</span> 를 0 으로 하고 실제 값을 센다.",
+         "6.4 절"],
         ["<b>정격 작업 박리력이 없다</b>",
          f"{jf.JAM_TRIP_KN:g} kN 은 자동 후퇴 임계이지 작업 조건이 아니다. 서보 선정·볼스크루 "
          "수명(5 주~46 년)·FEA·앵커가 전부 그 값에 매달려 있다. <b>이 셀에서 가장 먼저 "

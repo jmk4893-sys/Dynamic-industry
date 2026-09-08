@@ -164,10 +164,40 @@ class TestJbrFabFindings(unittest.TestCase):
         self.assertGreater(lc["utilisation"], 1.0)
         self.assertGreater(lc["bore_needed_mm"], jf.LIFT_BORE_MM)
 
+    def test_max_pressure_does_not_rescue_the_stock_bore(self):
+        """0.5 가 아니라 0.6 MPa 로 올려도 모자란다 — 압력으로 해결되지 않는다."""
+        self.assertFalse(jf.lift_check(air_mpa=jf.AIR_MPA_MAX)["ok"])
+
+    def test_the_moving_mass_is_a_lower_bound(self):
+        """제작품만 셀 수 있다 — 헤드 구매품 7 종은 부품표에 중량 열이 없다."""
+        bare = jf.lift_check(include_commercial=False)
+        full = jf.lift_check()
+        self.assertTrue(bare["lower_bound"])
+        self.assertEqual(round(full["moving_kg"] - bare["moving_kg"], 1),
+                         jf.HEAD_COMMERCIAL_KG)
+
+    def test_four_points_beat_two_on_air_and_rod_lock(self):
+        """큰 판을 두 점으로 드는 것은 힘과 별개의 문제다 — 4×Ø80 이 2×Ø125 를 이긴다."""
+        by = {(o["count"], o["bore_mm"]): o for o in jf.lift_options()}
+        four80, two125 = by[(4, 80.0)], by[(2, 125.0)]
+        self.assertTrue(four80["ok"] and two125["ok"])
+        self.assertLess(four80["air_nl_cycle"], two125["air_nl_cycle"])
+        self.assertLess(four80["rod_lock_kn"], two125["rod_lock_kn"])
+
+    def test_the_vertical_lift_wants_margin_not_just_unity(self):
+        """이용률 1.0 은 수직 승강의 합격선이 아니다."""
+        self.assertGreaterEqual(jf.LIFT_SAFETY, 1.5)
+        four63 = next(o for o in jf.lift_options()
+                      if (o["count"], o["bore_mm"]) == (4, 63.0))
+        self.assertLessEqual(four63["utilisation"], 1.0)
+        self.assertFalse(four63["ok"])
+
     def test_the_sheet_still_says_both(self):
         html = SHEET.read_text(encoding="utf-8")
         self.assertIn("본체가 도면의 약 2.2 t 보다", html)
         self.assertIn("실린더 2 개로는 승강부를 들지 못한다", html)
+        self.assertIn("두 점으로 들면 기울고 휜다", html)
+        self.assertIn("이 중량은 하한이다", html)
         self.assertIn("하중이 볼트를 정하지 않는다", html)
         self.assertIn("박리 반력은 바닥에 닿지 않는다", html)
 
