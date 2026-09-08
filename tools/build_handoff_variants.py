@@ -73,12 +73,23 @@ def build_plan_c(out: pathlib.Path) -> list[pathlib.Path]:
                              f"{name}={campaign.release_takt_s():g}",
                              f"{name}={campaign.release_takt_s(hold):g}",
                              f"C안 {name}")
+    # 화면의 운전 콘솔 카드도 같이 옮긴다. 공정시계만 늦추고 카드를 두면 한
+    # 화면에서 택트가 두 값으로 보인다 — 비교 문서에서 그것이 가장 나쁘다.
+    for key, name in (("taktS", "택트"), ("throughputPerH", "처리량")):
+        text = _replace_once(text,
+                             f'"{key}": {base[_CONSOLE_KEY[key]]:g}',
+                             f'"{key}": {held[_CONSOLE_KEY[key]]:g}',
+                             f"C안 콘솔 {name}")
 
     plant = out / "DI_Sol_Rec_C안_전처리.html"
     plant.write_text(text, encoding="utf-8")
     delam = out / "DI_Sol_Rec_C안_박리라인.html"
     shutil.copyfile(DELAM, delam)          # 박리 라인은 C안에서 바뀌지 않는다
     return [plant, delam]
+
+
+#: 화면 콘솔 카드의 키 → `campaign.summary()` 의 키.
+_CONSOLE_KEY = {"taktS": "takt_s", "throughputPerH": "throughput_per_h"}
 
 
 def _schedule_literal(rows) -> str:

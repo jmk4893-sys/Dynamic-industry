@@ -3725,6 +3725,21 @@ class TestBalancePlans(unittest.TestCase):
                       f'value="{handoff.KNIFE_SPEED_MM_S:g}"', delam)
         self.assertIn(f'id="handlingTime" type="number" min="5" max="25" step="1" '
                       f'value="{handoff.HANDLING_S:g}"', delam)
+        # C안은 공정시계만이 아니라 **화면 콘솔 카드**도 옮긴다. 앵커가 사라지면
+        # 한 화면에서 택트가 두 값으로 보인다 — 비교 문서에서 그것이 가장 나쁘다.
+        base = campaign.summary()
+        self.assertIn(f'"taktS": {base["takt_s"]:g}', self.html)
+        self.assertIn(f'"throughputPerH": {base["throughput_per_h"]:g}', self.html)
+
+    def test_plan_c_moves_the_console_card_with_the_clock(self):
+        """C안 미니앱에서 카드와 시계가 같은 택트를 말해야 한다."""
+        tool = (pathlib.Path(__file__).resolve().parents[1]
+                / "tools" / "build_handoff_variants.py").read_text(encoding="utf-8")
+        self.assertIn('_CONSOLE_KEY = {"taktS": "takt_s", "throughputPerH": "throughput_per_h"}', tool)
+        self.assertIn('for key, name in (("taktS", "택트"), ("throughputPerH", "처리량")):', tool)
+        held = campaign.summary(handoff.plan_c_hold_s())
+        self.assertGreater(held["takt_s"], campaign.summary()["takt_s"],
+                           "C안이 택트를 늘리지 않으면 카드를 옮길 것도 없다")
 
     def test_blank_field_falls_back_to_the_connected_configuration(self):
         """칸을 비우면 계산기가 업로드 당시 값으로 조용히 되돌아가면 안 된다."""
