@@ -394,6 +394,29 @@ def bottleneck() -> str:
     return max(cell_occupancy_s(), key=lambda row: row[1])[0]
 
 
+def takt_floor_s(hold_s: float = RELEASE_HOLD_S) -> float:
+    """JBR 이 아무리 빨라져도 택트가 못 내려가는 값 (s).
+
+    방출 인터록(투입 + 스토퍼 + hold)과 **JBR 이 아닌** 셀 중 느린 쪽이다.
+    「헤드를 늘리면 얼마를 버는가」·「박리를 반으로 줄이면」 같은 물음은 전부
+    이 값이 답한다 — JBR 을 0 초로 만들어도 라인은 이보다 빨라지지 않는다.
+
+    이 함수가 없던 동안 그 답을 매번 손으로 스윕해 냈다(REV.59 의 3 헤드,
+    REV.61 의 크로스빔 안). 손으로 재면 재는 사람마다 답이 달라진다.
+    """
+    others = [v for name, v in cell_occupancy_s() if name != "JBR-201"]
+    return round(max(INFEED_S + JBR_STOPPER_OFFSET_S + hold_s, *others), 2)
+
+
+def jbr_headroom_s(hold_s: float = RELEASE_HOLD_S) -> float:
+    """JBR 을 0 초로 만들어 되찾을 수 있는 시간 (s) — **헤드 증설의 상금**.
+
+    지금 정반 점유 48.08 에서 바닥 48.00 을 빼면 0.08 s 다. 기구를 얼마나
+    보태든 이 이상은 없다.
+    """
+    return round(max(0.0, jbr_block_s() - takt_floor_s(hold_s)), 2)
+
+
 def release_takt_s(hold_s: float = RELEASE_HOLD_S) -> float:
     """다음 장 투입 주기 — 앞 장이 JBR 에 들어가 스토퍼가 작동하기까지.
 
