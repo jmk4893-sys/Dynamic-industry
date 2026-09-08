@@ -223,11 +223,17 @@ class TestFlipAxisOrientation(unittest.TestCase):
     def test_the_panel_long_side_is_the_confirmed_axis(self):
         self.assertEqual(kinematics.PANEL_LONG_ALONG, "Z")
 
-    def test_the_drawing_axis_and_the_panel_do_not_agree_yet(self):
-        """일치하면 OI-06 이 닫힌 것이다 — 그때는 이 시험과 OI-06 을 같이 지운다."""
-        self.assertFalse(kinematics.flip_axis_matches_the_panel(),
-                         "반전축이 장변과 나란해졌다면 OI-06 을 닫고 이 시험을 고친다")
-        self.assertIn("OI-06", {o.tag for o in fabrication.OPEN_ITEMS})
+    def test_the_axis_lies_along_the_panel_long_side(self):
+        """반전축은 장변과 나란해야 한다 — 어긋나면 링 구멍이 장변을 삼켜야 한다."""
+        self.assertTrue(kinematics.flip_axis_matches_the_panel())
+        self.assertEqual(kinematics.FLIP_AXIS_ALONG, "Z",
+                         "지게차가 장변 방향으로 투입하므로 축은 라인 가로다")
+
+    def test_a_short_side_axis_would_need_a_far_bigger_ring(self):
+        """축이 단변과 나란하면 통과 구멍이 장변을 삼켜야 한다 — 그래서 못 쓴다."""
+        need_r = (kinematics.PANEL_MM[0] / 2 ** 0.5) * 0 + kinematics.PANEL_MM[0] / 2
+        self.assertGreater(need_r, kinematics.ring_bore_r_mm(),
+                           "장변 반값이 지금 구멍에 들어가면 이 논거가 무너진다")
 
     def test_the_cassette_footprint_matches_the_fabrication_parts(self):
         """발자국은 지어낸 값이 아니라 제작 부품에서 나온다."""
@@ -255,23 +261,65 @@ class TestFlipAxisOrientation(unittest.TestCase):
         self.assertGreaterEqual(kinematics.maintenance_aisle_mm(),
                                 kinematics.MAINTENANCE_AISLE_MM)
 
-    def test_turning_the_axis_needs_a_wider_cell(self):
-        """회전의 대가가 계산으로 나오는가 — OI-06 이 서 있는 값이다."""
-        now = kinematics.afu_width_from_bays_mm()
-        turned = 2 * (kinematics.CENTRE_WALL_T_MM / 2
-                      + kinematics.cassette_axis_extent_mm()
-                      + kinematics.OUTER_WALL_T_MM + kinematics.MAINTENANCE_AISLE_MM)
-        self.assertGreater(turned, layout.STATIONS["afu"].envelope[1],
-                           "돌려도 지금 셀에 들어간다면 OI-06 은 미결이 아니다")
-        self.assertGreater(turned - now, 1_000)
+    def test_the_wider_cell_is_what_the_rotation_cost(self):
+        """회전의 대가가 계산으로 나오는가 — 셀이 소요를 담고, 좁혔던 값은 못 담는다."""
+        need = kinematics.afu_width_from_bays_mm()
+        self.assertGreaterEqual(layout.STATIONS["afu"].envelope[1], need,
+                                "셀이 베이 소요를 못 담는다")
+        self.assertLess(7_100, need,
+                        "종전 폭 7,100 으로 담긴다면 회전에 대가가 없었다는 뜻이다")
+        self.assertGreaterEqual(kinematics.maintenance_aisle_mm(),
+                                kinematics.MAINTENANCE_AISLE_MM)
 
-    def test_the_open_item_carries_both_options(self):
-        oi = next(o for o in fabrication.OPEN_ITEMS if o.tag == "OI-06")
-        text = oi.why_open + oi.closes_with
-        for token in ("8,510", "2,814", "3,380", "40"):
-            self.assertIn(token, text, f"OI-06 이 {token} 를 안 싣는다")
-        self.assertNotIn("7,990", text,
-                         "기둥을 링 평면으로 옮기는 안은 성립하지 않는다 — 링을 친다")
+    def test_the_narrow_side_used_to_lie_in_the_cell_width(self):
+        """돌기 전에는 좁은 쪽이 폭에 누웠다 — 그 차이가 곧 홀 증가분이다."""
+        wide, narrow = (kinematics.cassette_axis_extent_mm(),
+                        kinematics.cassette_cross_extent_mm())
+        self.assertGreater(wide, narrow)
+        self.assertAlmostEqual(kinematics.cell_span_extent_mm(), wide)
+
+    def test_the_scene_mesh_divergence_is_declared(self):
+        """리터럴만 맞추고 3D 를 안 돌리면 **그림만** 옛 설계로 남는다.
+
+        시험이 리터럴을 보기 때문에 이 상태는 초록으로 지나간다 — 그래서 값으로
+        적어 둔다. 3D 를 돌리면 `SCENE_AXIS_OPEN` 을 None 으로 하고 이 시험이
+        반대편(등록됨)을 보게 된다.
+        """
+        if kinematics.scene_axis_is_registered():
+            self.skipTest("3D 가 등록됐다 — 아래 등록 시험이 대신 지킨다")
+        self.assertIn("축 X", kinematics.SCENE_AXIS_OPEN)
+        self.assertIn("제작 도면집", kinematics.SCENE_AXIS_OPEN,
+                      "왜 지금 좌표를 못 옮기는지가 사유에 있어야 한다")
+
+    def test_the_open_scene_note_names_where_to_edit(self):
+        """무엇을 고쳐야 하는지가 값에 붙어 있어야 다음 사람이 찾는다."""
+        import inspect
+        src = inspect.getsource(kinematics)
+        i = src.find("SCENE_AXIS_OPEN")
+        note = src[max(0, i - 1400):i]
+        for token in ("yn", "It=jn.x+2.15", "rotation.y", "(sz,sy,sx)"):
+            self.assertIn(token, note, f"고칠 자리 안내에 {token} 이 없다")
+
+    def test_the_rotation_is_closed_not_open(self):
+        """발주처가 정비통로 600 을 확정해 OI-06 이 닫혔다 — 미결에 남아 있으면 안 된다."""
+        self.assertNotIn("OI-06", {o.tag for o in fabrication.OPEN_ITEMS})
+        self.assertEqual(kinematics.MAINTENANCE_AISLE_MM, 600)
+
+    def test_the_pedestal_moved_because_the_bay_did(self):
+        """베이가 밖으로 나가 도달이 모자랐다 — 페데스털을 당겨 푼 것이 기록돼야 한다."""
+        import math
+        self.assertGreater(math.hypot(2_150, layout.BFC_PICKUP_Z_MM),
+                           layout.ROBOT_REACH_MM,
+                           "종전 2,150 으로도 닿는다면 페데스털을 옮길 이유가 없었다")
+        self.assertLessEqual(layout.robot_pickup_distance_mm(), layout.ROBOT_REACH_MM)
+        self.assertGreater(layout.ROBOT_REACH_MM - layout.robot_pickup_distance_mm(), 50,
+                           "도달 여유가 50 도 안 되면 페데스털을 더 당겨야 한다")
+
+    def test_the_pedestal_still_clears_the_cassette_at_floor_level(self):
+        """여유는 바닥의 기둥 발자국으로 잰다 — 크로스빔으로 재면 460 을 헛되이 민다."""
+        _lo, hi = kinematics.cassette_floor_extent_mm()
+        gap = layout.ROBOT_PICK_DX_MM - hi - 1_280 / 2
+        self.assertGreater(gap, 200, f"페데스털이 카세트에 붙는다 (틈 {gap:g})")
 
     def test_the_columns_cannot_move_inboard(self):
         """기둥은 회전하는 링에서 40 밖에 안 떨어져 있다 — 폭을 줄일 여지가 없다."""

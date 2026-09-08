@@ -2572,7 +2572,7 @@ class TestBrandMark(unittest.TestCase):
                 self.assertGreater(len(over.reason), 60, "넘침에는 사유가 있어야 한다")
         # 로봇이 실제로 닿는가 — 그리고 존 안으로 물리면 못 닿는가
         self.assertTrue(layout.robot_can_reach(), "지금 자리에서 로봇이 인계점에 닿아야 한다")
-        self.assertAlmostEqual(layout.robot_pickup_distance_mm(), 2680.0, places=1)
+        self.assertAlmostEqual(layout.robot_pickup_distance_mm(), 2700.8, places=1)
         pulled_in = layout.bfc_pickup_x_mm() - layout.zone_overlap_mm("afu")
         self.assertFalse(layout.robot_can_reach(pulled_in),
                          "존 안으로 물려도 닿는다면 넘침을 허용할 근거가 없다")
@@ -3519,8 +3519,8 @@ class TestGlassRemovalIntegration(unittest.TestCase):
         self.assertIn(grm.sheet, self.html, "도면 목록에 GA 시트가 없다")
         # 존은 장비 밴드 안에 들어와야 하고 통로를 잠식하면 안 된다
         self.assertLessEqual(zones[-1].y1_mm, layout.MACHINE_BAND_Y_MM)
-        self.assertEqual(layout.plant_envelope_mm()[0], 50075,
-                         "36,025(전처리) + 14,050(유리제거) = 50,075")
+        self.assertEqual(layout.plant_envelope_mm()[0], 49925,
+                         "35,875(전처리) + 14,050(유리제거) = 49,925")
 
     def test_the_3d_scene_actually_carries_the_cell(self):
         """도면에만 있고 영상에 없으면 '연결'이 아니다."""
@@ -4070,12 +4070,14 @@ class TestCrane(unittest.TestCase):
     def test_the_span_is_set_by_the_machine_band(self):
         """스팬은 고른 값이 아니라 밴드를 덮어야 나오는 값이다."""
         self.assertEqual(crane.MACHINE_BAND_MM, layout.MACHINE_BAND_Y_MM)
-        self.assertEqual(crane.hook_reach_z_mm(), 3_800)
+        self.assertEqual(crane.hook_reach_z_mm(), 4_300)
         self.assertTrue(crane.covers_machine_band())
         # 인자를 열어 둔 뜻 — 지금 값이 마침 맞아서 검사가 죽어도 모르는 일을 막는다
+        # 밴드 8,550 을 덮으려면 스팬 ≥ 8,550 + 2×600 = 9,750 이어야 한다
         self.assertFalse(crane.covers_machine_band(7_000))
-        self.assertFalse(crane.covers_machine_band(8_200))
-        self.assertTrue(crane.covers_machine_band(8_400))
+        self.assertFalse(crane.covers_machine_band(8_800))
+        self.assertFalse(crane.covers_machine_band(9_700))
+        self.assertTrue(crane.covers_machine_band(9_800))
 
     def test_the_crane_fits_under_the_confirmed_ceiling(self):
         self.assertTrue(crane.fits_under_ceiling())
@@ -5222,7 +5224,7 @@ class TestWorldClassGrade(unittest.TestCase):
         # D-03 도 닫혔다 — 전장을 안 늘리고 닫았다는 것이 요점이다
         self.assertNotIn("D-03", gaps, "단일고장 정리가 풀렸다")
         self.assertEqual(grade.single_point_blocks(), ())
-        self.assertEqual(layout.plant_envelope_mm()[0], 50075,
+        self.assertEqual(layout.plant_envelope_mm()[0], 49925,
                          "단일고장을 전장으로 산 것이라면 정리가 아니다")
         # 남아 있는 격차는 전부 **바깥에서 값이 와야** 닫히는 것들이다
         # 남은 격차 넷은 전부 **바깥에서 값이 와야** 닫힌다 — 설계를 더 고쳐서
@@ -5346,16 +5348,19 @@ class TestCasing(unittest.TestCase):
                 self.assertEqual(casing.encroach_mm(key) > 0,
                                  casing.MEASURED_FACE_MM[key] + casing.PANEL_ASSY_MM
                                  > layout.MACHINE_BAND_Y_MM)
-        self.assertEqual(set(casing.encroaching_zones()), {"post", "buffer", "grm"})
+        # REV.57: 밴드가 7,100 → 8,550 이 되자 셋 다 밴드 안으로 들어왔다 —
+        # 케이싱이 더는 통로를 잠식하지 않는다. 회전이 가져온 덤이다.
+        self.assertEqual(set(casing.encroaching_zones()), set())
+        self.assertEqual(casing.aisle_clear_mm(), layout.AISLE_WIDTH_MM)
         # 허용치는 고른 값이 아니라 접근 모델이 정한다
         self.assertEqual(casing.MAX_ENCROACH_MM,
                          layout.AISLE_WIDTH_MM - access.AISLE_CLEAR_MM)
         # 피난폭을 좁히면 판정이 뒤집혀야 한다 — 안 뒤집히면 재는 자가 없는 것이다
         keep = access.AISLE_CLEAR_MM
         try:
-            access.AISLE_CLEAR_MM = layout.AISLE_WIDTH_MM
+            access.AISLE_CLEAR_MM = layout.AISLE_WIDTH_MM + 1
             self.assertFalse(casing.aisle_still_clears(),
-                             "피난폭을 통로 전폭으로 올려도 통과한다")
+                             "피난폭을 통로 전폭보다 넓게 잡아도 통과한다")
         finally:
             access.AISLE_CLEAR_MM = keep
         self.assertTrue(casing.aisle_still_clears())
@@ -5404,7 +5409,7 @@ class TestCasing(unittest.TestCase):
                            "실측이 공칭보다 얕으면 이 정정의 근거가 사라진다")
         self.assertEqual(casing.nominal_face_mm("robot"), 5500)
         # 껍질을 둘러도 **존은 하나도 안 길어졌다** — 늘어난 것은 판 두께뿐
-        self.assertEqual(layout.plant_envelope_mm()[0], 50075)
+        self.assertEqual(layout.plant_envelope_mm()[0], 49925)
         self.assertGreater(casing.clad_length_mm(), layout.plant_envelope_mm()[0],
                            "껍질을 둘렀는데 전장이 그대로면 판 두께가 어디로 갔나")
         self.assertLess(casing.clad_length_mm() - layout.plant_envelope_mm()[0], 200)
@@ -5613,7 +5618,7 @@ class TestBufferHasTwoDirections(unittest.TestCase):
                          handoff.BUFFER_CARRIAGES[0] * handoff.SLOTS_PER_CARRIAGE)
         self.assertEqual(handoff.BUFFER_RB_SLOTS,
                          handoff.BUFFER_CARRIAGES[1] * handoff.SLOTS_PER_CARRIAGE)
-        self.assertEqual(layout.plant_envelope_mm()[0], 50075, "존이 길어졌다")
+        self.assertEqual(layout.plant_envelope_mm()[0], 49925, "존이 길어졌다")
         # 3D 의 캐리지 수가 배분과 같아야 한다 — 모듈만 고치면 도면이 거짓말한다
         for prefix, count in (("A-501", handoff.BUFFER_CARRIAGES[0]),
                               ("B-501", handoff.BUFFER_CARRIAGES[1])):
@@ -6305,13 +6310,13 @@ class TestInfeedStation(unittest.TestCase):
         cls.html = read_drawing()
 
     def test_the_table_and_the_accumulator_are_one_station(self):
-        self.assertEqual(layout.pt_deck_span_mm(), (7530, 10150))
-        self.assertEqual(layout.accumulator_span_mm(), (7830, 10580))
+        self.assertEqual(layout.pt_deck_span_mm(), (7380, 10000))
+        self.assertEqual(layout.accumulator_span_mm(), (7680, 10430))
         # 겹친다는 것이 "둘이 아니라 하나" 라는 근거다 — 패널 한 장에 가까운 길이가 겹친다
         self.assertEqual(layout.pt_accumulator_overlap_mm(), 2320)
         self.assertGreater(layout.pt_accumulator_overlap_mm(),
                            layout.one_panel_station_mm() * 0.8)
-        self.assertEqual(layout.infeed_station_span_mm(), (7530, 10580))
+        self.assertEqual(layout.infeed_station_span_mm(), (7380, 10430))
 
     def test_the_merge_prize_was_already_taken_in_rev48(self):
         """REV.48 이 축적런을 4,630 → 2,750 으로 줄이며 −1,500…2,750 을 가져갔다."""

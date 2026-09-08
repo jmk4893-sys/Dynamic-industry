@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 #: 장비가 점유할 수 있는 Y 밴드 (mm). 모든 존의 Y 구간은 이 안에 들어와야 한다.
-MACHINE_BAND_Y_MM = 7100
+MACHINE_BAND_Y_MM = 8550
 
 #: 보행·정비 통로 폭 (mm). 장비 밴드 바깥에 별도로 확보한다.
 AISLE_WIDTH_MM = 1200
@@ -260,7 +260,7 @@ STATIONS: dict[str, Station] = {
                 # REV.49: 6,800 → 4,950. 반전 드럼을 적층 **바로 위**에 세우자 수평셔틀
                 # 1,850 이 없어졌고, 로봇과 그 하류 전부가 같은 1,850 을 상류로 왔다.
                 # 이 값은 임의가 아니라 도달거리에서 나온다 — afu_length_from_reach_mm().
-                (4950, 7100, 5150), 1880),
+                (4800, 8550, 5150), 1880),
         # REV.22-P01: 3D 모델 실측으로 상세 전개하면서 분리헤드·셔틀·포획빔이 들어왔다.
         # 부품 실측 span X 4,940 · Y(깊이) 2,360 · Z(상하) 4,290 — 셔틀이 픽업면까지 나가고
         # 포획빔 수납 카세트가 중앙벽 쪽으로 물리므로 (3,600, 2,900, 3,500) 으로는 못 담는다.
@@ -534,8 +534,8 @@ ROBOT_REACH_MM = 2800
 #: 딱 하나로 정해진다 — afu_length_from_reach_mm(). STATIONS['afu'] 는 그 값이어야
 #: 하고 시험이 둘을 견준다. REV.48 까지는 8,400 / 6,250 리터럴이었다.
 BFC_PICKUP_OFFSET_MM = 4_400
-BFC_PICKUP_Z_MM = 1_600
-ROBOT_PICK_DX_MM = 2_150
+BFC_PICKUP_Z_MM = 1_815
+ROBOT_PICK_DX_MM = 2_000
 ROBOT_PLACE_DX_MM = 2_290
 PT_FROM_JBR_CENTER_MM = 5_010
 
