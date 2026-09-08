@@ -29,13 +29,75 @@ from dataclasses import dataclass
 
 # ── 행정 (mm) — GA 시트와 3D 형상에서 온다 ───────────────────────────────
 
-#: 데크 롤러 Z 분기 — 행 중심까지. 3D 의 행 좌표(`Kn={A:-2.1,B:2.1}`) 다.
-#:
-#: **GA 시트는 이 값을 2,350 으로 적는다** (흐름 2번 「데크 롤러 Z 분기 2,350」,
-#: 캐리지 배치도 z ∓2,350). 3D 는 ∓2,100 이고 둘 다 가드 ∓3,550 안에 들어와
-#: 어느 검사도 잡지 않는다 — 250 mm 갈린 채로 남아 있다. 사이클은 **영상과
-#: 견주는 값**이므로 3D 쪽을 쓰고, 갈린 것은 시험이 기록한다.
-BRANCH_MM = 2100.0
+# ── 행 중심 — 두 문서가 250 mm 갈려 있던 자리 ────────────────────────────
+#
+# GA 시트는 ∓2,350(캐리지·마스트·포크 배치와 흐름 2번 문구), 3D 는 ∓2,100 이었다.
+# 어느 검사도 안 잡았는데, **재 보니 둘 다 무언가를 깨고 있었다.**
+#
+#   R=2,350  외측 마스트 ↔ 가드 기둥 여유 0 mm · 유리가 데크 롤러 밖으로 170 mm
+#   R=2,100  내측 마스트가 HOLD 마스트를 100 mm 파고든다 (3D 실측)
+#
+# 그래서 값을 고르는 대신 **창을 낸다.** 세 제약이 R 을 양쪽에서 조인다.
+#
+#   ① 내측 마스트가 HOLD 마스트를 비켜야 한다     R ≥ 2,250
+#   ② 외측 마스트가 가드 기둥을 비켜야 한다        R ≤ 2,300
+#   ③ 분기 끝에서 유리가 데크 롤러 위에 다 있어야   롤러가 R+700 까지 와야 한다
+#
+# ①②가 [2,250, 2,300] 을 남기고, ③은 그 값에 맞춰 **데크 롤러를 늘리라고**
+# 말한다 (종전 ∓2,880 은 R ≤ 2,180 만 받쳐 창과 겹치지 않는다). 상한을 잡는다.
+
+#: 가드 기둥 중심·단면 (mm) — 3D 실측. afr·post 와 같은 ∓3,500 포락선 선이다.
+GUARD_Z_MM, GUARD_POST_MM = 3500.0, 100.0
+#: HOLD 행 마스트 중심 (mm) 과 마스트 z 단면 — GA 시트 MSO-H/MSI-H.
+HOLD_MAST_Z_MM, MAST_SECTION_MM = 1000.0, 200.0
+#: 행 중심에서 트윈마스트까지 (mm) — GA 시트가 두 문서에서 같게 쓰는 값이다.
+MAST_OFFSET_MM = 1000.0
+#: 행 중심에서 콤포크까지 (mm) — 유리 장변 80 안쪽.
+FORK_OFFSET_MM = 620.0
+#: 유리 폭 (mm).
+GLASS_W_MM = 1400.0
+#: 부재 사이 최소 여유 (mm). 0 을 쓰면 «닿아 있다»가 설계값이 된다.
+MIN_CLEARANCE_MM = 50.0
+
+
+def row_z_window_mm() -> tuple[float, float]:
+    """행 중심이 들어갈 수 있는 구간 (mm) — 마스트 두 제약이 낸다."""
+    lo = HOLD_MAST_Z_MM + MAST_SECTION_MM + MIN_CLEARANCE_MM + MAST_OFFSET_MM
+    hi = (GUARD_Z_MM - GUARD_POST_MM / 2 - MIN_CLEARANCE_MM
+          - MAST_SECTION_MM / 2 - MAST_OFFSET_MM)
+    return lo, hi
+
+
+#: 채택한 행 중심 (mm) — 창의 상한이다. 위로 갈수록 HOLD 쪽이 넉넉해지고
+#: 아래로 갈수록 가드 쪽이 넉넉해지는데, HOLD 행은 5장짜리라 사람이 드나드는
+#: 쪽(가드)의 최소치를 지키는 편을 골랐다. `row_z_ok()` 가 창 안인지 본다.
+ROW_Z_MM = 2300.0
+
+
+def row_z_ok() -> bool:
+    lo, hi = row_z_window_mm()
+    return lo <= ROW_Z_MM <= hi
+
+
+def deck_roller_reach_mm() -> float:
+    """데크 Z 분기 롤러가 닿아야 하는 z (mm) — 분기 끝의 유리 바깥 모서리."""
+    return ROW_Z_MM + GLASS_W_MM / 2
+
+
+def clearances_mm() -> dict[str, float]:
+    """채택값에서 남는 여유 (mm). 음수는 파고든 것이다."""
+    return {
+        "내측 마스트↔HOLD 마스트":
+            (ROW_Z_MM - MAST_OFFSET_MM - MAST_SECTION_MM / 2)
+            - (HOLD_MAST_Z_MM + MAST_SECTION_MM / 2),
+        "외측 마스트↔가드 기둥":
+            (GUARD_Z_MM - GUARD_POST_MM / 2)
+            - (ROW_Z_MM + MAST_OFFSET_MM + MAST_SECTION_MM / 2),
+    }
+
+
+#: 데크 롤러 Z 분기 행정 — 행 중심까지.
+BRANCH_MM = ROW_Z_MM
 
 #: 픽업면 (mm) — 셔틀 데크 이송면. `layout.LINE_TRANSFER_MM` 위 3 mm 가 유리 상면.
 PICKUP_MM = 953.0

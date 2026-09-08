@@ -403,17 +403,55 @@ class TestLoaderCycle(unittest.TestCase):
         self.assertAlmostEqual(gbr_load.lift_mm(25),
                                gbr_load.SLOT_LAST_MM - gbr_load.PICKUP_MM, places=6)
 
-    def test_the_row_pitch_is_still_split_between_2d_and_3d(self):
-        """GA 시트는 행을 ∓2,350 으로, 3D 는 ∓2,100 으로 적는다 — 250 mm 갈렸다.
+    def test_the_row_centre_is_inside_the_window_the_constraints_leave(self):
+        """행 중심은 고른 값이 아니라 **창 안의 값**이다.
 
-        둘 다 가드 ∓3,550 안이라 기하 검사가 안 잡는다. 사이클은 영상과 견주는
-        값이라 3D 쪽을 쓰고, **갈렸다는 사실을 여기 남긴다.** 닫히면 이 시험이
-        먼저 실패해 알려 준다.
+        GA 시트 ∓2,350 과 3D ∓2,100 이 갈려 있었는데 재 보니 둘 다 무언가를
+        깨고 있었다 — 2,350 은 외측 마스트가 가드에 여유 0 이고 유리가 데크
+        롤러 밖으로 170 나가며, 2,100 은 내측 마스트가 HOLD 마스트를 100 파고든다.
         """
+        lo, hi = gbr_load.row_z_window_mm()
+        self.assertLess(lo, hi, "제약 둘이 창을 안 남긴다")
+        self.assertTrue(gbr_load.row_z_ok(), f"{gbr_load.ROW_Z_MM} 이 [{lo}, {hi}] 밖이다")
+        self.assertFalse(lo <= 2100 <= hi, "옛 3D 값이 창 안이면 이 시험이 뜻을 잃는다")
+        self.assertFalse(lo <= 2350 <= hi, "옛 GA 값이 창 안이면 이 시험이 뜻을 잃는다")
+        for name, mm in gbr_load.clearances_mm().items():
+            with self.subTest(pair=name):
+                self.assertGreaterEqual(mm, gbr_load.MIN_CLEARANCE_MM)
+        self.assertEqual(gbr_load.BRANCH_MM, gbr_load.ROW_Z_MM)
+
+    def test_both_documents_read_the_row_from_that_one_value(self):
+        """3D · GA 시트 · 브라우저 검사가 같은 값을 본다."""
         plant = (ROOT / "docs/drawings/pv-preprocess-plant.html").read_text(encoding="utf-8")
-        self.assertIn("Kn={A:-2.1,B:2.1,H:0}", plant, "3D 행 좌표")
-        self.assertIn("'데크 롤러 Z 분기 2,350 (R-A 행)'", plant, "GA 시트 행 좌표")
-        self.assertEqual(gbr_load.BRANCH_MM, 2100.0, "사이클은 3D 값을 쓴다")
+        z = gbr_load.ROW_Z_MM
+        self.assertIn(f"Kn={{A:-{z / 1000:g},B:{z / 1000:g},H:0}}", plant, "3D 행 좌표")
+        # 마스트·콤포크 행 목록은 그 좌표에서 파생해야 한다 — 따로 박혀 있었고,
+        # 그래서 행을 옮겨도 마스트만 제자리에 남아 겹쳤다.
+        self.assertIn('var Gm=[[Kn.A,"A"],[Kn.H,"H"],[Kn.B,"B"]];', plant)
+        self.assertIn(f"'데크 롤러 Z 분기 {z:,.0f} (R-A 행)'", plant, "GA 시트 흐름")
+        self.assertIn(f"part('B-501A', 'R-B 도크 캐리지', [2750, 2450, 1600], "
+                      f"[1700, 1230, {int(z)}]", plant, "GA 시트 캐리지")
+        self.assertIn(f"part('MSO-B', 'R-B 마스트(외)', [160, 2650, 200], "
+                      f"[205, 1325, {int(z + gbr_load.MAST_OFFSET_MM)}]", plant, "GA 시트 마스트")
+        check = (ROOT / "tools/check_gbr_scene.mjs").read_text(encoding="utf-8")
+        self.assertIn(f"'R-A': -{z / 1000:g}, 'R-B1': {z / 1000:g}", check, "브라우저 검사")
+
+    def test_the_deck_rollers_reach_the_row(self):
+        """분기 끝에서 유리가 롤러 위에 다 있어야 한다 — 종전 ∓2,880 은 짧았다."""
+        plant = (ROOT / "docs/drawings/pv-preprocess-plant.html").read_text(encoding="utf-8")
+        m = re.search(r"for\(let i=-([\d.]+);i<=[\d.]+;i\+=\.32\)", plant)
+        self.assertIsNotNone(m, "데크 Z 분기 롤러 루프를 못 찾았다")
+        self.assertGreaterEqual(float(m.group(1)) * 1000, gbr_load.deck_roller_reach_mm())
+        self.assertLess(2880, gbr_load.deck_roller_reach_mm(), "옛 롤러 끝이 모자랐다는 근거")
+        # 데크 판(±3,300) 안에 있어야 한다.
+        self.assertLessEqual(float(m.group(1)) + 0.045, 3.3)
+
+    def test_the_scene_check_looks_for_equipment_collisions(self):
+        """설비끼리의 겹침은 기하 검사 다섯이 안 본다 — 여기서 본다."""
+        check = (ROOT / "tools/check_gbr_scene.mjs").read_text(encoding="utf-8")
+        self.assertIn("마스트가 서로", check)
+        self.assertIn("외측 마스트가 가드 기둥 안쪽 면을", check)
+        self.assertIn("scene.masts.length !== 6", check)
 
     def test_a_short_move_never_reaches_full_speed(self):
         """12 mm 안착은 삼각형, 3,200 mm 신장은 사다리꼴이다."""

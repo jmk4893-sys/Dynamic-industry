@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import json
+import math
 import pathlib
 import re
 import sys
@@ -480,6 +481,53 @@ def main() -> int:
           lambda m: f"BUF_SLOT={handoff.SLOTS_PER_CARRIAGE},"
                     + "BUF_CAP={" + ",".join(f"{k}:{v}" for k, v in _cap.items()) + "},"
                     + "BUF_MOD={" + ",".join(f"{k}:{v}" for k, v in _mod.items()) + "}")
+
+    # ── 버퍼 캐리지 행 중심 — gbr_load.py 가 제약에서 낸다 ────────────────
+    # GA 시트는 ∓2,350, 3D 는 ∓2,100 으로 250 mm 갈려 있었고 **둘 다 무언가를
+    # 깨고 있었다** (2,350 은 외측 마스트가 가드에 여유 0 이고 유리가 데크 롤러
+    # 밖으로 170 나간다 · 2,100 은 내측 마스트가 HOLD 마스트를 100 파고든다).
+    # 마스트 두 제약이 [2,250, 2,300] 을 남기므로 상한을 쓰고, 세 번째 제약은
+    # 데크 Z 분기 롤러를 R+700 까지 늘리라고 말한다.
+    from pv_preprocess import gbr_load
+    assert gbr_load.row_z_ok(), "행 중심이 제약 창 밖이다"
+    _row = gbr_load.ROW_Z_MM / 1000.0
+    _reach = gbr_load.deck_roller_reach_mm() / 1000.0
+    p.one(r"Kn=\{A:-[\d.]+,B:[\d.]+,H:0\}",
+          lambda m: f"Kn={{A:-{_row:g},B:{_row:g},H:0}}")
+    # 분기 끝에서 유리가 롤러 위에 다 있어야 한다 — 피치 0.32 의 다음 눈금까지.
+    _last = round(math.ceil(_reach / 0.32) * 0.32, 2)
+    p.one(r"for\(let i=-[\d.]+;i<=[\d.]+;i\+=\.32\)",
+          lambda m: f"for(let i=-{_last:g};i<={_last:g};i+=.32)")
+    # TG-813 선단받이는 바깥 콤포크 밑을 받는다 — 행 중심 + 포크 오프셋.
+    _tg = round((gbr_load.ROW_Z_MM + gbr_load.FORK_OFFSET_MM) / 1000.0, 3)
+    p.one(r"\[-[\d.]+, [\d.]+\]\.forEach\(function \(z, i\) \{",
+          lambda m: f"[-{_tg:g}, {_tg:g}].forEach(function (z, i) {{")
+    # GA 시트의 행 부재도 같은 값에서 찍는다 — 행 중심 ± 정해진 오프셋이다.
+    _off = {"MSO": 1000, "MSI": -1000, "TIE": 0, "LFO": 770, "LFI": -770,
+            "FKO": 620, "FKI": -620, "TGO": 620, "TGI": -620}
+    for tag, off in _off.items():
+        for row, sign in (("A", -1), ("B", 1)):
+            z = int(sign * (gbr_load.ROW_Z_MM + off))
+            p.one(rf"(part\('{tag}-{row}', '[^']*', \[[\d, ]+\], \[-?[\d.]+, -?[\d.]+, )-?\d+(\])",
+                  lambda m, z=z: f"{m.group(1)}{z}{m.group(2)}")
+    for code, sign in (("A-501A", -1), ("A-501B", -1), ("B-501A", 1), ("A-501C", 1)):
+        z = int(sign * gbr_load.ROW_Z_MM)
+        p.one(rf"(part\('{code}', '[^']*', \[[\d, ]+\], \[-?[\d.]+, -?[\d.]+, )-?\d+(\])",
+              lambda m, z=z: f"{m.group(1)}{z}{m.group(2)}")
+    # 흐름 2번 문구와 그 좌표, 그리고 3·4·5 번의 행 좌표.
+    p.one(r"step\('2', '데크 롤러 Z 분기 [\d,]+ \(R-A 행\)', \[(-?\d+), (\d+), 0\], \[-?\d+, \d+, -?\d+\]\)",
+          lambda m: f"step('2', '데크 롤러 Z 분기 {gbr_load.ROW_Z_MM:,.0f} (R-A 행)', "
+                    f"[{m.group(1)}, {m.group(2)}, 0], "
+                    f"[{m.group(1)}, {m.group(2)}, {-int(gbr_load.ROW_Z_MM)}])")
+    # 나머지 흐름은 그 행 위에서 일어난다 — 문구로 집는다 (`step('3', …)` 만으로는
+    # 다른 GA 시트의 3번 단계까지 걸린다).
+    for head in ("콤포크 +15 픽업", "포크 X+ 3,200 신장",
+                 "소하강 12 레일 안착", "만재 시 도킹 해제"):
+        p.one(rf"(step\('\d', '{re.escape(head)}[^']*', \[-?\d+, \d+, )-?\d+(\], \[-?\d+, \d+, )-?\d+(\]\))",
+              lambda m, z=-int(gbr_load.ROW_Z_MM): f"{m.group(1)}{z}{m.group(2)}{z}{m.group(3)}")
+    # 셔틀 데크 폭 — GA 시트는 7,100(존 폭)을 적었는데 그 자리에는 가드가 선다.
+    p.one(r"(part\('GBR-301', '수평셔틀', \[\d+, \d+, )\d+(\])",
+          lambda m: f"{m.group(1)}6600{m.group(2)}")
 
     # AFR 셀이 패널을 받는 시각 — 3D 애니메이션의 `nt` 다. 리터럴로 박혀 있었고,
     # REV.58 이 JBR 칸을 4 → 7 s 로 늘려 인계가 85 → 94 s 로 밀렸는데도 85 로

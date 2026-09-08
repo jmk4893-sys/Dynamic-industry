@@ -22,7 +22,7 @@ from . import _path  # noqa: F401
 
 from pv_preprocess import (acceptance, access, acoustics, afr, afr_peel, ai, air, brand, campaign, casing, crane, dust,
                            electrical,
-                           frames, grade, handoff, kinematics, layout, maintain, materials, mounting,
+                           frames, gbr_load, grade, handoff, kinematics, layout, maintain, materials, mounting,
                            recipe, reliability, safety, seismic, sg_grind, smart, servos, thermal,
                            vision, wiring)
 
@@ -1070,7 +1070,9 @@ class TestCarriageLoader(unittest.TestCase):
     심사 지적 4건(픽업 후퇴·선단받이·기계 동기·제어반 위치)이 반영돼 있어야 한다.
     """
 
-    ROWS = {"A": -2350, "H": 0, "B": 2350}
+    # 행 중심은 `gbr_load` 가 제약에서 낸다 — 여기 리터럴로 두면 이 시험이
+    # 옛 자리를 고집해, 행을 옮기는 순간 «맞는 값»을 틀렸다고 잡는다.
+    ROWS = {"A": -gbr_load.ROW_Z_MM, "H": 0, "B": gbr_load.ROW_Z_MM}
 
     @classmethod
     def setUpClass(cls):

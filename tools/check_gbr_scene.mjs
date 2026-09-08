@@ -11,7 +11,8 @@
  *   ④ 창을 훑으면 유리가 GI 에서 데크로 건너와 목표 행으로 횡분기하고 슬롯에 들어갈 것
  *      (`bufferTransfer` 0 → 1, z 가 목표 행으로, x 가 캐리지로)
  *   ⑤ 목표 캐리지를 바꾸면 유리가 **다른 행**에 들어갈 것 — 이 셀의 유일한 조작이다
- *   ⑥ 목표가 만재면 **적재를 승인하지 않을 것** — 유리는 상류 잠금 게이트에 남고
+ *   ⑥ 설비끼리 파고들지 않을 것 — 마스트 여섯이 서로도 가드도 안 건드릴 것
+ *   ⑦ 목표가 만재면 **적재를 승인하지 않을 것** — 유리는 상류 잠금 게이트에 남고
  *      그 행의 인터록 센서만 붉게 서며, 수량을 초기화하면 다시 들어갈 것
  *
  * 실행:  node tools/check_gbr_scene.mjs [문서.html]
@@ -32,8 +33,9 @@ if (!existsSync(file)) {
 //: 바뀌어 창이 밀렸을 때 엉뚱한 데를 찍고도 "안 움직인다" 로만 보인다.
 //: 창은 페이지가 스스로 말해 주므로(파생본 모듈) 거기서 잡는다.
 const FRACTIONS = [0.0, 0.15, 0.35, 0.55, 0.75, 0.9, 1.0];
-//: 설계값 — 데크 롤러 Z 분기 2,100 (행 중심) · 도크 캐리지 x · 데크 중심 x (world m).
-const ROW_Z = { 'R-A': -2.1, 'R-B1': 2.1, 'R-B2': 2.1, HOLD: 0 };
+//: 행 중심 (m) — `gbr_load.ROW_Z_MM` 이 제약에서 낸 값이다. 두 곳이 갈리면
+//: `tests/test_pv_gbr.py` 가 먼저 실패한다.
+const ROW_Z = { 'R-A': -2.3, 'R-B1': 2.3, 'R-B2': 2.3, HOLD: 0 };
 const DECK_X = 3.175, DOCK_X = 6.375, ROW_TOL = 0.25;
 //: 인터록 센서(BS-801)가 선 자리 — 셔틀 중심에서 하류로 1,480 (셀 로컬 x).
 //: 색은 팔레트에서 오므로 **어느 행이 밝은가**로만 본다 — 팔레트 값을 박지 않는다.
@@ -71,7 +73,22 @@ const scene = await page.evaluate(() => {
     cells[k] = (cells[k] || 0) + 1;
     if (!cellOf(o)) stray.push((o.userData && o.userData.label) || (o.geometry && o.geometry.type));
   });
-  return { has3d: true, meshes, visible, cells, stray: [...new Set(stray)],
+  // ML-811 트윈마스트 여섯의 z 구간 — 설비끼리의 겹침은 기하 검사 다섯 중
+  // 어느 것도 안 본다 (그것들은 «공정물 ↔ 설비» 와 «껍질 ↔ 기계» 를 묻는다).
+  // 행을 옮기면서 마스트만 제자리에 남아 100 mm 파고든 적이 있어 여기서 잰다.
+  const masts = [];
+  S.scene.traverse((o) => {
+    if (!o.isMesh || !o.geometry || o.geometry.type !== 'BoxGeometry') return;
+    const q = o.geometry.parameters;
+    if (Math.abs(q.width - 0.16) > 1e-6 || Math.abs(q.height - 2.65) > 1e-6) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    const bb = o.geometry.boundingBox, m = o.matrixWorld;
+    const a = new S.Vector3(bb.min.x, bb.min.y, bb.min.z).applyMatrix4(m);
+    const c = new S.Vector3(bb.max.x, bb.max.y, bb.max.z).applyMatrix4(m);
+    masts.push([Math.min(a.z, c.z), Math.max(a.z, c.z)]);
+  });
+  masts.sort((a, b) => a[0] - b[0]);
+  return { has3d: true, meshes, visible, cells, stray: [...new Set(stray)], masts,
            shadows: S.renderer.shadowMap.enabled,
            crane: crane ? crane.visible : 'no pvCrn',
            casing: casing ? casing.visible : 'no pvCase',
@@ -89,7 +106,8 @@ const sample = async (t) => {
     s.value = String(t); s.dispatchEvent(new Event('input', { bubbles: true }));
   }, t);
   await page.waitForTimeout(600);
-  return page.evaluate((SENSOR_X) => {
+  // page.evaluate 는 인자를 **하나만** 넘긴다 — 묶어서 준다.
+  return page.evaluate(({ SENSOR_X, ROW }) => {
     const host = document.getElementById('jb-removal-operation');
     const S = host.__pvScene, a = host.__pvInfeedTest.getAfrState();
     const v = new S.Vector3();
@@ -107,7 +125,7 @@ const sample = async (t) => {
       if (o.geometry.type !== 'SphereGeometry') return;
       if (Math.abs(o.position.x - SENSOR_X) > 0.6) return;
       o.getWorldPosition(v);
-      const row = Math.abs(v.z + 2.1) < 0.3 ? 'R-A' : Math.abs(v.z - 2.1) < 0.3 ? 'R-B'
+      const row = Math.abs(v.z - ROW.A) < 0.3 ? 'R-A' : Math.abs(v.z - ROW.B) < 0.3 ? 'R-B'
                 : Math.abs(v.z) < 0.3 ? 'HOLD' : null;
       if (row) sensors[row] = { hex: '#' + o.material.emissive.getHexString(),
                                 lit: +o.material.emissiveIntensity.toFixed(2) };
@@ -117,7 +135,7 @@ const sample = async (t) => {
              module: a.targetModule, full: a.bufferFull, counts: a.bufferCounts,
              glass: g, sensors: sensors,
              status: status ? status.textContent.trim().replace(/\s+/g, ' ') : null };
-  }, SENSOR_LOCAL_X);
+  }, { SENSOR_X: SENSOR_LOCAL_X, ROW: { A: ROW_Z['R-A'], B: ROW_Z['R-B1'] } });
 };
 
 const setRoute = async (mode) => {
@@ -172,6 +190,17 @@ else {
   if (scene.shadows !== false) why.push('섀도맵이 아직 켜져 있다');
   if (scene.casing !== false) why.push(`외장 케이싱이 꺼지지 않았다 (${scene.casing})`);
   if (scene.crane !== false) why.push(`천장크레인이 꺼지지 않았다 (${scene.crane})`);
+  // 마스트 여섯 — 서로 겹치지 않고, 가드 기둥 안쪽 면(±3.45)을 넘지 않을 것.
+  if (scene.masts.length !== 6) why.push(`ML-811 마스트가 ${scene.masts.length}본이다 (6본이어야 한다)`);
+  for (let i = 1; i < scene.masts.length; i += 1) {
+    const gap = scene.masts[i][0] - scene.masts[i - 1][1];
+    if (gap < 0) why.push(`마스트가 서로 ${Math.round(-gap * 1000)} mm 파고든다`
+      + ` (${scene.masts[i - 1].join('…')} ↔ ${scene.masts[i].join('…')})`);
+  }
+  const outer = scene.masts.length
+    ? Math.max(-scene.masts[0][0], scene.masts[scene.masts.length - 1][1]) : 0;
+  if (outer > 3.45 + 1e-6)
+    why.push(`외측 마스트가 가드 기둥 안쪽 면을 ${Math.round((outer - 3.45) * 1000)} mm 넘는다`);
 }
 // 창 안에서 유리가 GI → 데크 → 목표 행 → 슬롯으로 실제로 간다.
 if (frames.length) {
@@ -226,6 +255,7 @@ if (scene.has3d) {
   console.log(`  메시 ${scene.visible} / ${scene.meshes} 보임 · 셀 ${JSON.stringify(scene.cells)}`
     + `\n  그림자 ${scene.shadows} · 케이싱 ${scene.casing} · 크레인 ${scene.crane}`
     + (scene.solo ? ` · 창 [${scene.solo.from}, ${scene.solo.to}] s · x [${scene.solo.low}, ${scene.solo.high}] m` : ''));
+  console.log('  마스트 z ' + scene.masts.map((a) => a.map((n) => n.toFixed(2)).join('…')).join(' · '));
   for (const f of frames) {
     console.log(`  ${String(f.t).padStart(7)} s  적재 ${(f.transfer * 100).toFixed(0).padStart(3)} %  `
       + `유리 (${String(f.glass.x).padStart(5)}, ${String(f.glass.y).padStart(4)}, ${String(f.glass.z).padStart(5)})  `
