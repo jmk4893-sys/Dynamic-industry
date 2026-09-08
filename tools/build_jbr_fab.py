@@ -30,6 +30,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_infeed_fab as bif  # noqa: E402  — 그리는 코드를 빌려 온다
 import build_jbr_closeup as bjc  # noqa: E402  — 운동식·칼날 사양 파서를 빌려 온다
 from pv_preprocess import campaign, fabrication as fab, handoff  # noqa: E402
+from pv_preprocess import jbr_analysis as ja
 from pv_preprocess import jbr_fabrication as jf  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -397,6 +398,113 @@ def bench() -> str:
     )
 
 
+def numerical() -> str:
+    """§9 수치 해석 — 곱해 보는 것에서 푸는 것으로.
+
+    §6 은 값을 곱해 본다. 여기 있는 것은 강성행렬을 세워 풀고, 고유치를 뽑고,
+    하중 이력을 세고, 실린더 충전을 적분한 결과다. 세 가지가 새로 나왔다.
+    """
+    modal = ja.bridge_modal()
+    trav = ja.traverse_check()
+    budget = ja.slot_budget()
+    fea0, fea5 = ja.bridge_fea(0.5, 0.0), ja.bridge_fea(0.5, 5.0)
+    closed = jf.bridge_mode((100.0, 150.0), 8.0, ja.BRIDGE_SPAN_MM,
+                            jf.moving_mass_kg(), jf.X_DECEL_MS2)
+    fat = {kn: ja.fatigue_life(kn) for kn in (2.0, 5.0, jf.JAM_TRIP_KN)}
+    buck = ja.rod_buckling(25.0, 420.0, jf.JAM_TRIP_KN)
+    drop = ja.hopper_drop()
+
+    out = ['<div class="note">§6 의 검산은 부품표 값을 <b>곱해 본다</b>. 이 절은 <b>푼다</b> — '
+           '평면 뼈대 강성행렬을 Gauss 소거로, 일반화 고유치를 Cholesky + Jacobi 로, '
+           '하중 이력을 ASTM E1049 레인플로 + Miner 로, 공압 충전을 RK4 로. '
+           '표준 라이브러리만 쓰고, 풀이마다 닫힌 해 대조를 시험에 붙였다 '
+           '(<span class="mono">tests/test_pv_jbr_analysis.py</span>).</div>']
+
+    out.append("<h3>9.1 브리지 — 닫힌 해가 모드를 잘못 짚었다</h3>")
+    out.append(table(["모드", "주파수", "형태"],
+                     [[f"{m['mode']} 차", f"{m['f_hz']:g} Hz",
+                       "프레임 흔들림" if m["kind"] == "sway" else "보 굽힘"]
+                      for m in modal["modes"]]))
+    out.append(f'<div class="note"><b>1 차가 {modal["f1_hz"]:.1f} Hz 흔들림이다.</b> '
+               f'닫힌 해는 {closed["f_hz"]:g} Hz 굽힘을 1 차로 봤는데, 그것은 이 해석에서 '
+               f'<b>2 차</b>다 — 굽힘 값 자체는 잘 맞으므로 요소가 틀린 것이 아니라 '
+               f'<b>모델이 기둥을 빠뜨린 것</b>이다. 브리지를 양단 단순지지로 놓으면 '
+               f'지점이 안 움직인다고 가정하는 셈이고, 실제로는 X 캐리지가 기둥 위에 있다. '
+               f'브리지가 X 로 서는 순간 가진되는 방향이 바로 이 흔들림이다.</div>')
+    out.append(table(["하중", "헤드 처짐", "최대 응력", "항복 이용률"],
+                     [["관성 + 자중만", f'{fea0["deflection_mm"]:.3f} mm',
+                       f'{fea0["max_stress_mpa"]:.1f} MPa', f'{fea0["utilisation"]:.3f}'],
+                      ["+ 박리 5 kN", f'{fea5["deflection_mm"]:.3f} mm',
+                       f'{fea5["max_stress_mpa"]:.1f} MPa', f'{fea5["utilisation"]:.3f}'],
+                      ["닫힌 해 (참고)", f'{closed["deflection_mm"]:.3f} mm', "—", "—"]]))
+    out.append(f'<div class="note">박리력이 0 이어도 유한요소 처짐이 닫힌 해보다 크다 — '
+               f'닫힌 해가 <b>헤드 자중을 안 넣었기</b> 때문이다. 그리고 박리 반력은 앵커로 '
+               f'새지 않지만(닫힌 고리) <b>그 고리가 브리지를 지난다</b>. 5 kN 이면 처짐이 '
+               f'헤드 datum ±{ja.DATUM_TOL_MM} mm 를 넘는다. 응력 이용률은 여전히 낮으므로 '
+               f'이것은 강도가 아니라 <b>정밀도</b> 문제다.</div>')
+
+    out.append("<h3>9.2 순차 운동식이 요구하는 가속도</h3>")
+    out.append(table(["구간", "거리", "시간", "필요 가속도", "한계비"],
+                     [[f'{r["kind"]} {r["box"]}', f'{r["distance_mm"]:.0f} mm',
+                       f'{r["seconds"]:.2f} s',
+                       f'{r["a_peak_ms2"]:.1f} m/s² ({r["g"]:.2f} g)',
+                       ("<b>" + f'{r["over"]:.1f} 배' + "</b>") if not r["ok"] else "—"]
+                      for r in trav["moves"]]))
+    out.append(f'<div class="note"><b>이 도면집에서 가장 무거운 소견이다.</b> 축 한계 '
+               f'{trav["limit_ms2"]:g} m/s² (이 저장소가 X 축에 쓰는 값) 기준으로 '
+               f'{trav["failing"]}/{trav["total"]} 구간이 넘고, 최악이 '
+               f'<b>{trav["worst_g"]:.1f} g</b> 다. 3D 운전 영상은 시각을 주면 자세를 돌려주는 '
+               f'보간이라 10 g 짜리 이송도 부드럽게 재생된다 — 화면이 말이 되는 것과 기계가 '
+               f'되는 것은 다르다. 한계를 지키면 칸 하나가 '
+               f'<b>{budget["need_s"]} s</b> 필요하다 (지금 배분 {budget["slot_now_s"]:g} s · '
+               f'+{budget["over_s"]} s). 한 판이면 {budget["panel_s"]} s 다.</div>')
+    out.append(table(["칸 예산 항목", "초"],
+                     [["배치 이송 (한계 준수)", f'{budget["t_place_s"]}'],
+                      ["그리퍼 하강·흡착", f'{budget["t_grip_s"]}'],
+                      ["박리·유지·재개방·상승", f'{budget["t_fixed_s"]}'],
+                      ["슈트 이송 (한계 준수)", f'{budget["t_slide_s"]}'],
+                      ["합계", f'<b>{budget["need_s"]}</b>']]))
+
+    out.append("<h3>9.3 피로 — 도면집이 「없다」고 적어 둔 하중 케이스</h3>")
+    out.append(table(["작업 박리력", "응력 범위", "연간 손상", "수명"],
+                     [[f"{kn:g} kN", f'{v["range_mpa"]:.1f} MPa',
+                       "0 (절단한계 아래)" if v["infinite_life"] else f'{v["damage_per_year"]:.3f}',
+                       "무한" if v["infinite_life"] else f'{v["years"]:.0f} 년']
+                      for kn, v in fat.items()]))
+    out.append(f'<div class="note">운동식에서 낸 이력을 EC3 FAT{ja.FAT_CLASS_MPA:g} 상세에 '
+               f'걸었다 (브리지 하부 플랜지 횡방향 필릿 — 상세 확정 전 관례 선택이고, '
+               f'등급이 바뀌면 수명이 세제곱으로 움직인다). 연 '
+               f'{ja.panels_per_year():,.0f} 판 기준. <b>작업력을 모르는 것이 왜 급한지가 '
+               f'여기서 보인다</b> — 2·5 kN 이면 무한수명이고, 잼 임계 {jf.JAM_TRIP_KN:g} kN 이 '
+               f'상시 작업력이면 유한이다. 임계는 작업 조건이 아니므로 이것은 상한이지 '
+               f'예측이 아니다.</div>')
+
+    out.append("<h3>9.4 실린더·로드·낙하</h3>")
+    rows = []
+    for kn in (2.0, 5.0):
+        d = ja.peel_dynamics(kn)
+        rows.append([f"박리 {kn:g} kN", f'{d["steady_force_kn"]:.2f} kN',
+                     "미도달" if d["t_stroke_s"] is None else f'{d["t_stroke_s"]:.2f} s',
+                     f'{d["window_s"]:.1f} s', "든다" if d["fits"] else "<b>안 든다</b>"])
+    out.append(table(["케이스", "정상힘", "행정 시간", "박리 창", "창 안"], rows))
+    out.append(f'<div class="note">P·A 는 정상상태 힘이다. 챔버가 차기 전에는 그 힘이 없으므로 '
+               f'짧은 행정을 빨리 내야 하는 축에서는 <b>충전시간이 관문</b>이 된다. '
+               f'Ø80·0.5 MPa 는 {rows[0][1]} 이라 그보다 큰 작업력에서는 행정을 아예 못 낸다 — '
+               f'보어 선정이 「작업력 &lt; 2.5 kN」을 전제하고 있다는 뜻이고, 그 전제는 아직 '
+               f'실측되지 않았다.</div>')
+    out.append(table(["항목", "값"],
+                     [["로드 좌굴 (Ø25 · 자유장 420)",
+                       f'{buck["mode"]} · P<sub>cr</sub> {buck["p_cr_kn"]} kN · 안전율 {buck["safety"]}'],
+                      ["호퍼 → 수거함 낙하", f'{drop["drop_m"]:.2f} m · 충돌 {drop["impact_v_ms"]:.2f} m/s · '
+                                       f'{drop["impact_energy_j"]:.2f} J · 안정 {drop["t_settle_s"]:.2f} s'],
+                      ["부채꼴 3 개가 차지하는 폭", "570 mm · <b>수거함 안폭 540 을 30 mm 넘는다</b>"]]))
+    out.append('<div class="note">마지막 줄은 물리 시뮬레이션이 먼저 드러냈다 — 바깥 두 박스가 '
+               '수거함 테두리를 물었고, 원인을 되짚으니 180 mm 부채꼴 × 3 + 박스 깊이가 '
+               '<b>수거함을 1,320 → 640 으로 줄인 폭</b>을 넘는 산술이었다. '
+               '<span class="mono">docs/drawings/pv-jbr-physics.html</span> 에서 돌려 볼 수 있다.</div>')
+    return "".join(out)
+
+
 def open_items() -> str:
     rows = [
         ["구조 검증이 없다",
@@ -598,6 +706,9 @@ def build() -> str:
 <section class="card"><h2>8. 미결</h2>
 <p class="note">이 도면집이 답하지 못한 것들. 답이 오면 정본(<span class="mono">src/pv_preprocess/jbr_fabrication.py</span>)만 고치고 다시 찍는다.</p>
 {open_items()}
+</section>
+<section class="card"><h2>9. 수치 해석 — 푼 것</h2>
+{numerical()}
 </section>
 <footer class="foot">생성 <span class="mono">tools/build_jbr_fab.py</span> · 정본 <span class="mono">src/pv_preprocess/jbr_fabrication.py</span> · 손으로 고치지 말 것</footer>
 </main>
