@@ -381,6 +381,37 @@ A/B 캐리지와 같은 ±760 으로 좁혀 레일이 기둥에 물린다. **이
 — 예외 표를 비우면 시험이 깨지는지까지 확인한다
 
 
+#### §66 발행 아티팩트 열넷을 한 편으로 걷는다 — 성질이 다르면 걷는 법도 다르다 (REV.58)
+
+발행본이 마흔 벌을 넘겼다. 목록만으로는 **무엇이 무엇인지**가 안 보여서, 줄기가 되는
+열넷을 순서대로 걷는 **82초 한 편**을 찍었다 — 통합 플랜트 3D → 전체 운전 영상 →
+세 안(C·B·A) → MCR-901 콘솔 → 60분 연속 운전 → JBR-201 도면집 허브 → 도면집 영상 →
+벤더 DG-HK60 3D 콘솔·RFQ·파일럿·조립 지침서. 띠에 제목과 `artifact/앞8자` 를 적어
+영상만 보고도 발행본을 찾아갈 수 있게 했다.
+
+**아티팩트마다 성질이 달라 걷는 방법이 넷이다.**
+
+| 방법 | 어디에 | 왜 |
+|---|---|---|
+| 정지컷(`stills`) | 플랜트 3D 네 벌 · 벤더 콘솔 | 프레임마다 3D 를 다시 그리면 한 장에 **4초**가 든다. 멈춰 선 화면은 한 장 찍어 물린다 |
+| 스크롤(`scroll`) | 콘솔 · 60분 · 허브 · 벤더 문서 셋 | 스크롤을 시간의 함수로 줘 매번 같은 영상이 나온다 |
+| 필름(`film`) | 전체 운전 · 도면집 영상 | **이미 영상인 아티팩트**는 그 mp4 에서 프레임을 떠 오고 띠만 얹는다 |
+| 카드(`card`) | 표지 · 맺음 | 도구가 직접 그린다 |
+
+셋째가 선택이 아니라 제약이다. **영상 아티팩트는 브라우저로 다시 찍을 수 없다** — 이
+크로미움에는 H.264 디코더가 없어서(`DEMUXER_ERROR_NO_SUPPORTED_STREAMS`) 영상이 든
+페이지를 열어도 검은 화면만 나온다. 그래서 그 두 장만 페이지가 아니라 mp4 에서 뜨고,
+띠는 투명 PNG 로 만들어 ffmpeg `overlay` 로 얹었다(이 ffmpeg 빌드에는 `drawtext` 가 없다).
+
+정지컷이 값싼 만큼 길이도 값싸다 — 1,230프레임 가운데 **실제로 찍은 것은 800장 남짓**이고
+나머지는 물린 것이라, 82초가 6.3 MB 로 떨어진다(정지 구간은 인코더가 거의 공짜로 넘긴다).
+
+장 표는 `tools/build_artifact_book_page.py` 가 갖고 있고, **그 합계를 mp4 헤더(`mvhd`)의
+재생시간과 맞춰 확인한다** — 장 하나를 늘리고 표를 안 고치면 발행 페이지가 안 만들어진다.
+`tools/render_artifact_book.mjs` 가 찍고,
+[영상](https://claude.ai/code/artifact/b727f031-7b98-4197-a674-9195b1a6f0b2)은 여기 있다.
+
+
 #### §65 JBR-201 도면집을 한 편의 영상으로 걷는다 — 화면 녹화가 아니다 (REV.58)
 
 도면집 다섯 장(3D 운전 · 상세도 · 근접도 · 제작 도면집 · 물리)은 한 장씩 열어 보면
@@ -765,7 +796,7 @@ F10 LP-DGM-MC 93 kW · 200 AT · 70 mm² — 둘 다 `hk60c.BRANCHES` 에서 트
 [RFQ](https://claude.ai/code/artifact/377241f9-3731-4e2a-aecc-178adcdb288e) ·
 [조립 지침서](https://claude.ai/code/artifact/613c1af7-8a2b-4868-b75b-360ab1c4591c), 그 밖에
 [REV.54 보고서](https://claude.ai/code/artifact/36475707-d622-4b92-ae46-653e8004b520)와
-[결합 영상](https://claude.ai/code/artifact/30acaf84-816f-45f5-8cc3-79007029e76e) · [60분 연속 운전](https://claude.ai/code/artifact/83585641-115c-4cfd-8d84-6bf9ea3c6ba7) · [JBR-201 도면집](https://claude.ai/code/artifact/f3b1f4b0-009d-4df4-a68d-2f0c13d17589)([도면집 영상](https://claude.ai/code/artifact/fe206738-5f60-420f-a184-37c59b72534e) · [3D](https://claude.ai/code/artifact/cfd3f9e8-3f43-47bc-bb05-4a46b4f3e897) · [상세도](https://claude.ai/code/artifact/a14f01c2-7789-4919-ae30-71e5d098b761) · [근접도](https://claude.ai/code/artifact/4559a80a-f13b-49b3-a44d-c954ef1faf82) · [제작](https://claude.ai/code/artifact/66a5be4e-d013-4e5c-858d-da783d09be38) · [물리](https://claude.ai/code/artifact/d5eaa3df-fcc9-4e6f-8a32-dc165b75a707)).
+[아티팩트 순회 영상](https://claude.ai/code/artifact/b727f031-7b98-4197-a674-9195b1a6f0b2) · [결합 영상](https://claude.ai/code/artifact/30acaf84-816f-45f5-8cc3-79007029e76e) · [60분 연속 운전](https://claude.ai/code/artifact/83585641-115c-4cfd-8d84-6bf9ea3c6ba7) · [JBR-201 도면집](https://claude.ai/code/artifact/f3b1f4b0-009d-4df4-a68d-2f0c13d17589)([도면집 영상](https://claude.ai/code/artifact/fe206738-5f60-420f-a184-37c59b72534e) · [3D](https://claude.ai/code/artifact/cfd3f9e8-3f43-47bc-bb05-4a46b4f3e897) · [상세도](https://claude.ai/code/artifact/a14f01c2-7789-4919-ae30-71e5d098b761) · [근접도](https://claude.ai/code/artifact/4559a80a-f13b-49b3-a44d-c954ef1faf82) · [제작](https://claude.ai/code/artifact/66a5be4e-d013-4e5c-858d-da783d09be38) · [물리](https://claude.ai/code/artifact/d5eaa3df-fcc9-4e6f-8a32-dc165b75a707)).
 
 #### §58 GRM-401 을 떼고 DG-HK60C 를 잇는다 — 값은 벤더에서, 속도는 후단에서 (REV.54)
 
