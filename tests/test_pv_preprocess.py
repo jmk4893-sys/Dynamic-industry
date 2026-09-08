@@ -23,7 +23,8 @@ from . import _path  # noqa: F401
 from pv_preprocess import (acceptance, access, acoustics, afr, afr_peel, ai, air, brand, campaign, casing, crane, dust,
                            electrical,
                            frames, grade, handoff, kinematics, layout, maintain, materials, mounting,
-                           recipe, reliability, safety, seismic, smart, servos, thermal, vision, wiring)
+                           recipe, reliability, safety, seismic, sg_grind, smart, servos, thermal,
+                           vision, wiring)
 
 DRAWING = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "pv-preprocess-plant.html"
 
@@ -2914,7 +2915,7 @@ class TestIncomingService(unittest.TestCase):
 
     def test_contract_power_crosses_the_low_voltage_limit(self):
         """자체 수전을 세운다면 고압이어야 한다 — 부지 인입이 없어졌을 때의 근거."""
-        self.assertAlmostEqual(electrical.contract_kw(), 297.1, places=1)   # REV.59: 소비가 되돌아와 297.0 → 297.1
+        self.assertAlmostEqual(electrical.contract_kw(), 297.3, places=1)   # REV.59: SG 후드 두 몫
         self.assertGreater(electrical.contract_kw(), electrical.LOW_VOLTAGE_LIMIT_KW)
         self.assertTrue(electrical.needs_high_voltage())
         self.assertEqual(electrical.HV_SUPPLY_VOLTAGE_V, 22_900)
@@ -2932,7 +2933,7 @@ class TestIncomingService(unittest.TestCase):
         self.assertTrue(electrical.taps_existing_service())
         self.assertIn("기존 부지 인입", electrical.supply_method())
         self.assertAlmostEqual(electrical.site_utilisation_pct(), 24.8, places=1)   # REV.51: F5 +3.2 kW
-        self.assertAlmostEqual(electrical.site_headroom_kw(), 902.9, places=1)
+        self.assertAlmostEqual(electrical.site_headroom_kw(), 902.7, places=1)   # REV.59: SG 후드 두 몫
         # 수용률이 전부 1.0 이 되는 최악에도 들어가야 '여유가 있다'고 말할 수 있다
         self.assertAlmostEqual(electrical.worst_case_kw(), 303.7, places=1)
         self.assertTrue(electrical.fits_site_service())
@@ -2955,14 +2956,16 @@ class TestIncomingService(unittest.TestCase):
         # 동시 최악(명판 합 297.0)은 안 움직이므로 둘이 같아졌다. 셀 점유를
         # 48.08 s 로 되돌리자 다시 297.1 이다.
         #
-        # **여유가 0.1 kW 라는 사실 자체가 소견이다.** 부하가 줄어서 계약이
+        # **여유가 한 자리 kW 라는 사실 자체가 소견이다.** 부하가 줄어서 계약이
         # 못 덮게 되는, 방향이 거꾸로인 자리다 — 어느 회차든 소비가 조금만
         # 내려가면 부등호가 뒤집힌다. 발주처 협의 항목으로 남긴다.
+        # REV.59: SG 후드가 두 몫이 되며 0.1 → 0.3 kW 로 조금 넓어졌지만,
+        # 297 kW 계약에서 0.3 kW 는 여전히 소수점 자리다.
         self.assertGreater(electrical.contract_kw(),
                            electrical.coincident_worst_case_kw())
         self.assertLess(electrical.contract_kw()
-                        - electrical.coincident_worst_case_kw(), 0.2,
-                        "여유가 0.1 kW 뿐이라는 사실을 값으로 남긴다")
+                        - electrical.coincident_worst_case_kw(), 0.5,
+                        "여유가 한 자리 kW 뿐이라는 사실을 값으로 남긴다")
         self.assertLess(electrical.contract_kw(), electrical.worst_case_kw(),
                         "상한이 계약을 넘는다 — 넘는 몫이 비동시 부하뿐인지가 관건이다")
         self.assertAlmostEqual(
@@ -3031,7 +3034,7 @@ class TestIncomingService(unittest.TestCase):
 
     def test_transformer_is_sized_from_demand_not_guessed(self):
         """변압기는 목표 부하율과 계약 피상전력 중 큰 쪽이 지배한다."""
-        self.assertAlmostEqual(electrical.apparent_demand_kva(), 244.6, places=1)   # REV.59
+        self.assertAlmostEqual(electrical.apparent_demand_kva(), 244.7, places=1)   # REV.59: SG 후드 두 몫
         self.assertEqual(electrical.transformer_kva(), 500)
         self.assertIn(electrical.transformer_kva(), electrical.TRANSFORMER_RATINGS_KVA)
         self.assertGreaterEqual(electrical.transformer_kva(), electrical.contract_kva())
@@ -3042,7 +3045,7 @@ class TestIncomingService(unittest.TestCase):
         # 여기서는 계약 피상전력이 지배한다 — 부하율 기준은 301.4 > 276.0 에 가려진다.
         # 어느 쪽이 정했는지가 바뀌면 설계 근거가 바뀐 것이므로 못 박아 둔다.
         self.assertEqual(electrical.transformer_sizing_basis(), "계약 피상전력")
-        self.assertAlmostEqual(electrical.transformer_required_kva(), 330.15, places=1)   # REV.59
+        self.assertAlmostEqual(electrical.transformer_required_kva(), 330.3, places=1)   # REV.59: SG 후드 두 몫
         # 계약이 지배하지 않는 지점에서 부하율 기준이 실제로 작동하는지 — 0.80 이
         # 아니면 170 kVA 는 300 이 아니라 200 으로 떨어진다.
         self.assertEqual(electrical.transformer_sizing_basis(apparent_kva=170, contract=0),
@@ -3062,7 +3065,7 @@ class TestIncomingService(unittest.TestCase):
 
     def test_high_voltage_would_move_the_copper_off_the_long_run(self):
         """저압 분기 한계를 넘으면 고압 분기로 간다 — 그때의 근거를 남긴다."""
-        self.assertAlmostEqual(electrical.hv_incoming_current_a(), 8.32, places=2)   # REV.51
+        self.assertAlmostEqual(electrical.hv_incoming_current_a(), 8.33, places=2)   # REV.59: SG 후드 두 몫
         self.assertLess(electrical.hv_incoming_current_a(),
                         electrical.demand_current_a() / 40,
                         "같은 전력을 고압으로 나르면 전류가 40배 이상 작아진다")
@@ -3080,7 +3083,7 @@ class TestIncomingService(unittest.TestCase):
             math.tan(math.acos(electrical.BASE_POWER_FACTOR))
             - math.tan(math.acos(electrical.TARGET_POWER_FACTOR)))
         self.assertGreaterEqual(kvar, need)
-        self.assertAlmostEqual(need, 34.26, places=2)   # REV.59: 수요 220.1 kW
+        self.assertAlmostEqual(need, 34.27, places=2)   # REV.59: SG 후드 두 몫
 
     def test_no_electrical_room_is_needed_now(self):
         """부지 저압 배전반에서 따면 세울 반도 방도 없다."""
@@ -3752,10 +3755,10 @@ class TestGlassRemovalIntegration(unittest.TestCase):
     def test_the_ir_bank_forces_a_bigger_service(self):
         """IR 175 kW 는 이 플랜트 최대 부하다 — 100 AT 로는 못 받는다."""
         self.assertAlmostEqual(electrical.installed_kw(), 303.7, places=1)   # REV.51: F5 +3.2
-        self.assertAlmostEqual(electrical.demand_kw(), 220.1, places=1)
+        self.assertAlmostEqual(electrical.demand_kw(), 220.2, places=1)
         self.assertEqual(electrical.main_breaker_at(), 500)
         self.assertEqual(electrical.main_breaker_frame_a(), 630)
-        self.assertAlmostEqual(electrical.contract_kva(), 330.15, places=1)   # REV.59
+        self.assertAlmostEqual(electrical.contract_kva(), 330.3, places=1)   # REV.59: SG 후드 두 몫
         # **예고한 대로 됐다.** REV.25 에서 "다음에 F14 만한 부하를 하나 더
         # 붙이면 차단기가 한 단 올라간다" 고 적었고, REV.28 크레인이 여유를
         # 2.6 kW 까지 줄였고, REV.34 압축공기 4.25 kW 가 그것을 넘겼다.
@@ -3764,7 +3767,7 @@ class TestGlassRemovalIntegration(unittest.TestCase):
         # 여유가 열렸다 — 다음 부하는 이 안에서 받는다. REV.41 통과 레인이
         # 0.4 kW 를 먹어 52.2 → 51.8 kW. REV.51 SG-301 3헤드·GI-303(F5 +3.2 kW,
         # 수요 +2.24)이 51.5 → 49.2 kW. (REV.58 에서 0.36 으로 49.3 이었다가 REV.59 에 복귀.)
-        self.assertAlmostEqual(electrical.breaker_headroom_kw(), 49.2, places=1)
+        self.assertAlmostEqual(electrical.breaker_headroom_kw(), 49.1, places=1)
         air_feeder = next(f for f in electrical.FEEDERS if f.tag == "F16")
         self.assertGreater(electrical.breaker_headroom_kw(), air_feeder.demand_kw,
                            "한 단 올린 뒤에는 같은 크기 부하를 또 받을 수 있어야 한다")
@@ -3805,7 +3808,7 @@ class TestGlassRemovalIntegration(unittest.TestCase):
                 self.assertEqual(source.sink, "배기", "실내로 가면 환기가 감당 못 한다")
         self.assertEqual(thermal.required_airflow_m3h(), 37000)   # REV.51: 실내 부하 59.3 → 61.6 kW
         # 랙실은 구획실이라 그 발열은 공정실 환기에 들어오지 않는다
-        self.assertAlmostEqual(thermal.off_room_kw(), 13.01, places=2)   # REV.59
+        self.assertAlmostEqual(thermal.off_room_kw(), 13.12, places=2)   # REV.59: SG 후드 두 몫
         self.assertEqual(thermal.OFF_ROOM_PANELS, ("LP-IT", "LP-AIR"))
         # 배기가 실패하면 어떻게 되는지를 값으로 남긴다 — 후드가 전제라는 근거
         def airflow(room_kw):
@@ -4468,8 +4471,8 @@ class TestCompressedAir(unittest.TestCase):
         같은 동작 수를 나누는 시간을 바꾸기 때문이다 — 값이 아니라 규칙을
         적어 둔 덕에 두 번 다 저절로 따라왔다.
         """
-        self.assertAlmostEqual(air.average_nl_min(), 392.8, places=1)
-        self.assertAlmostEqual(air.required_fad_nl_min(), 542.1, places=1)
+        self.assertAlmostEqual(air.average_nl_min(), 412.8, places=1)
+        self.assertAlmostEqual(air.required_fad_nl_min(), 569.7, places=1)
         # 여유는 곱셈으로 들어간다 — 숨기지 않고 이름으로 드러낸다
         self.assertAlmostEqual(
             air.required_fad_nl_min(),
@@ -4484,19 +4487,22 @@ class TestCompressedAir(unittest.TestCase):
 
     def test_the_dust_collector_pulse_is_derived_not_guessed(self):
         """탈진 공기는 집진 풍량에서 여과면적을 거쳐 나온다."""
-        self.assertEqual(air.DUST_FLOW_M3H, 1_350)
+        self.assertEqual(air.DUST_FLOW_M3H, 2_350)
         f7 = next(f for f in electrical.FEEDERS if f.tag == "F7")
-        self.assertIn("1,000 m³/h", f7.served)
+        # 급전 문구의 풍량은 집진 모델에서 나와야 한다 — 여기에 수를 적어 두면
+        # 후드가 늘 때 시험만 옛 수를 고집한다 (REV.59 에서 그랬다).
+        sg = [x.flow_m3h for x in dust.STREAMS if x.tag == "DS-01"][0]
+        self.assertIn(f"{sg:,} m³/h", f7.served)
         self.assertIn("350 m³/h", f7.served)
-        self.assertAlmostEqual(air.filter_area_m2(), 18.8, places=1)
-        self.assertEqual(air.pulse_valves(), 7)
-        self.assertAlmostEqual(air.pulse_average_nl_min(), 35.0, places=1)
+        self.assertAlmostEqual(air.filter_area_m2(), 32.6, places=1)
+        self.assertEqual(air.pulse_valves(), 11)
+        self.assertAlmostEqual(air.pulse_average_nl_min(), 55.0, places=1)   # REV.59: SG 후드 두 몫
 
     def test_the_receiver_exists_for_the_pulse_but_is_sized_by_cycling(self):
         """리시버가 있는 이유와 크기를 정하는 것이 다르다 — 그 구분이 근거다."""
         self.assertAlmostEqual(air.receiver_for_pulse_l(), 101.3, places=1)
         # REV.58 에 263.9 L 로 내려갔다가 REV.59 에 271.1 L 로 되돌아왔다.
-        self.assertAlmostEqual(air.receiver_for_cycling_l(), 271.1, places=1)
+        self.assertAlmostEqual(air.receiver_for_cycling_l(), 284.9, places=1)
         self.assertEqual(air.receiver_l(), 300)
         self.assertEqual(air.receiver_governed_by(), "기동 횟수")
         self.assertGreaterEqual(air.receiver_l(),
@@ -4532,7 +4538,7 @@ class TestCompressedAir(unittest.TestCase):
         # 수용률은 상수가 아니라 운전대수비 × 부하율에서 나온다. REV.58 에서
         # 소비가 줄자 0.37 → 0.36 으로 내려갔고, REV.59 에서 사이클이 짧아지며
         # 되돌아왔다 — 두 번 다 아무도 이 값을 손대지 않았다.
-        self.assertAlmostEqual(air.diversity(), 0.37, places=2)
+        self.assertAlmostEqual(air.diversity(), 0.38, places=2)
         feeder = next(f for f in electrical.FEEDERS if f.panel == "LP-AIR")
         self.assertEqual(feeder.tag, "F16")
         self.assertAlmostEqual(feeder.installed_kw, air.installed_kw(), places=2)
@@ -4586,6 +4592,37 @@ class TestCompressedAir(unittest.TestCase):
         self.assertIn("var pvAir=new ce;", self.html, "3D 형상이 있어야 한다")
         self.assertIn("'PV-PLANT-UT-1003', '전기·공압·진공·집진', '2D Utility', '앱 반영'",
                       self.html, "도면목록에서 '기본설계' 를 벗어나야 한다")
+
+
+class TestDustBlowerAfterSimultaneousHeads(unittest.TestCase):
+    """장변 2 대를 동시에 돌리기로 한 결정이 집진에 남긴 것.
+
+    집진은 "동시에 도는 헤드가 없다" 는 전제로 한 대 몫만 잡고 있었다. 동시로
+    정해지자 첨두가 두 몫이 됐고, 그 값이 GA 가 적어 둔 블로워를 넘어섰다.
+    **넘어섰다는 것을 값으로 남긴다** — 조용히 통과하면 선정이 안 바뀐다.
+    """
+
+    def test_the_flow_is_hoods_times_the_simultaneous_count(self):
+        ds01 = next(s for s in dust.STREAMS if s.tag == "DS-01")
+        self.assertEqual(ds01.flow_m3h,
+                         dust.SG_HOOD_M3H * dust.SG_SIMULTANEOUS_HOODS)
+        self.assertEqual(dust.SG_SIMULTANEOUS_HOODS, sg_grind.LONG_HEADS)
+
+    def test_the_two_models_now_agree(self):
+        self.assertTrue(sg_grind.heads_agree_with_the_dust_model())
+        self.assertTrue(dust.flow_is_consistent())
+
+    def test_the_ga_blower_no_longer_covers_it(self):
+        self.assertTrue(dust.blower_is_undersized())
+        self.assertAlmostEqual(dust.blower_shortfall_ratio(),
+                               dust.counted_flow_m3h() / dust.BLOWER_GA_M3H, places=2)
+        # 비례는 **하한**이다 — 정압이 풍량의 제곱으로 커지므로 실제는 그 위다.
+        self.assertGreater(dust.blower_kw_at_counted_flow(), dust.BLOWER_GA_KW)
+
+    def test_the_consequence_list_names_the_blower(self):
+        said = " ".join(dust.what_the_simultaneous_heads_cost())
+        self.assertIn("블로워", said)
+        self.assertIn(f"{dust.counted_flow_m3h():,}", said)
 
 
 class TestSafety(unittest.TestCase):
@@ -5253,10 +5290,10 @@ class TestReliability(unittest.TestCase):
         """소요는 손으로 적는 것이 아니라 사용량에서 나온다."""
         bags = next(s for s in reliability.SPARES() if s.tag == "SP-04")
         self.assertEqual(bags.qty_installed, reliability.filter_bags())
-        self.assertEqual(reliability.filter_bags(), 19)
+        self.assertEqual(reliability.filter_bags(), 33)
         self.assertEqual(reliability.filter_bags(),
                          max(1, round(air.filter_area_m2() / reliability.BAG_AREA_M2)))
-        self.assertAlmostEqual(bags.per_year, 9.5, places=1)
+        self.assertAlmostEqual(bags.per_year, 16.5, places=1)
         self.assertAlmostEqual(bags.per_year,
                                round(reliability.filter_bags() / reliability.BAG_LIFE_YEARS, 1),
                                places=1)

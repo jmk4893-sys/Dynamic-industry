@@ -363,6 +363,101 @@ def main() -> int:
         return body
     p.one(r"var SMART = \{[^}]*\}", _smart)
 
+    # ── 공압·집진 — 두 블록이 모델 요약을 그대로 받는다 ─────────────────
+    # 이 둘은 손으로 넣은 리터럴이었다. REV.59 에서 SG 후드가 한 대 몫에서 두 대
+    # 몫으로 늘자 여과면적·펄스밸브·압축공기가 다 움직였는데 도면은 옛 수를 계속
+    # 말했다 — 시험이 잡았지만, 잡히는 것과 따라오는 것은 다른 일이다.
+    def _block(name: str, values: dict):
+        """도면 블록이 들고 있는 키를 모델 요약으로 갈아 끼운다.
+
+        키가 `key:` 인 블록과 `"key":` 인 블록이 섞여 있다 — 둘 다 받는다.
+        처음에 홑따옴표 꼴만 보게 만들었더니 DUST 블록에서 **한 키도 못 찾고
+        조용히 지나갔다.** 그래서 한 키도 못 찾으면 멈춘다.
+
+        블록에 있는 키만 다룬다 — 요약이 더 많은 것을 들고 있어도 도면이 다 보여
+        줄 이유는 없다. 반대로 **블록에 있는데 요약에 없는 키**는 정본이 사라진
+        것이므로 멈춘다.
+        """
+        val = r"(?:-?[\d.]+|'[^']*'|\"[^\"]*\"|true|false)"
+
+        def build(m: re.Match) -> str:
+            body = m.group(0)
+            keys = re.findall(rf'"?(\w+)"?: {val}', body)
+            assert keys, f"{name} 블록에서 키를 하나도 못 찾았다"
+            missing = [k for k in keys if k not in values]
+            assert not missing, f"{name} 블록의 {missing} 가 모델 요약에 없다"
+            for key in keys:
+                value = values[key]
+                if isinstance(value, (list, tuple, dict)):
+                    continue                      # 구조는 이 자리에서 안 다룬다
+                for quoted in (f'"{key}"', key):  # 블록의 표기를 그대로 지킨다
+                    pat = rf"{re.escape(quoted)}: {val}"
+                    body, n = re.subn(pat, f"{quoted}: {q(value)}", body, count=1)
+                    if n:
+                        break
+                else:
+                    raise AssertionError(f"{name} 키 {key} 를 못 갈아 끼웠다")
+            # 모델이 키를 새로 내놓으면 블록에 **넣는다** — 갈아 끼우기만 하면
+            # 새 값이 도면에 영영 안 나타난다 (시험이 잡지만 손으로 넣어야 했다).
+            quoted = '"' in body.split("{", 1)[1].split(":", 1)[0]
+            for key, value in values.items():
+                if key in keys or isinstance(value, (list, tuple, dict)):
+                    continue
+                label = f'"{key}"' if quoted else key
+                body = body.rstrip().rstrip("}").rstrip()
+                sep = "" if body.endswith("{") else ","
+                body = f"{body}{sep} {label}: {q(value)} }}"
+            return body
+        p.one(rf"var {name} = \{{[^}}]*\}}", build)
+
+    from pv_preprocess import acceptance, air as _air, dust as _dust, electrical
+    _block("AIR", _air.summary())
+    _block("DUST", _dust.summary())
+    _block("THERMAL_SUMMARY", {
+        "room": thermal.room_load_kw(), "airflow": thermal.required_airflow_m3h(),
+        "exhausted": thermal.exhausted_kw(),
+        # 도면이 정수로 적어 온 자리다 — 5.0 으로 찍으면 시험이 잡는다.
+        "deltaT": int(thermal.ROOM_DELTA_T_C),
+        "hpuLossRatio": thermal.HPU_LOSS_RATIO,
+        "driveLossRatio": thermal.DRIVE_LOSS_RATIO,
+        "coolerMargin": thermal.COOLER_MARGIN})
+    _block("ACCEPTANCE", acceptance.summary())
+    # INCOMER 블록은 모델의 snake_case 를 camelCase 로 옮겨 적은 것이라 이름이
+    # 1:1 이 아니다 (hv_voltage_v → hvV). 그 대응을 여기에 명시로 둔다 —
+    # 시험(test_drawing_carries_the_confirmed_incomer)이 쓰는 것과 같은 표다.
+    # 급전 표도 손으로 유지되고 있었다 — F7 의 풍량 문구와 F16 의 다이버시티가
+    # 모델에서 움직였는데 도면은 옛 값을 계속 말했다.
+    p.rows("feeders",
+           [[f.tag, f.panel, f.served, f.installed_kw, f.diversity, f.breaker_at,
+             f.cable, f.source] for f in electrical.FEEDERS], indent="    ")
+
+    _inc = electrical.incomer_summary()
+    _block("INCOMER", {
+        "tapsSite": _inc["taps_site"], "tapLowVoltage": _inc["tap_low_voltage"],
+        "siteServiceKw": _inc["site_service_kw"],
+        "siteUtilPct": _inc["site_utilisation_pct"],
+        "siteHeadroomKw": _inc["site_headroom_kw"],
+        "worstCaseKw": _inc["worst_case_kw"],
+        "coincidentWorstCaseKw": _inc["coincident_worst_case_kw"],
+        "lvTapMaxM": _inc["lv_tap_max_m"], "highVoltage": _inc["high_voltage"],
+        "hvV": _inc["hv_voltage_v"], "contractKw": _inc["contract_kw"],
+        "contractKva": _inc["contract_kva"], "apparentKva": _inc["apparent_kva"],
+        "transformerKva": _inc["transformer_kva"],
+        "transformerKvaIfHv": _inc["unit_transformer_kva"],
+        "transformerLoadPct": _inc["transformer_load_pct"],
+        "capacitorKvar": _inc["capacitor_kvar"], "hvCurrentA": _inc["hv_current_a"],
+        "hvCable": _inc["incoming_cable"], "vcbA": _inc["vcb_a"],
+        "lvMainMm2": _inc["lv_main_cable_mm2"],
+        "breakerHeadroomKw": _inc["breaker_headroom_kw"],
+        # 아래 넷은 요약에 없고 상수·판정이다. 값이 안 움직이는 것들이지만
+        # 블록의 모든 키를 덮어야 "조용히 안 갈아 끼움" 이 안 생긴다.
+        "lowVoltageLimitKw": electrical.LOW_VOLTAGE_LIMIT_KW,
+        "dropPct": electrical.FEEDER_VOLTAGE_DROP_PCT,
+        "incomingKnown": not _inc["taps_site"],
+        "withinLvLimit": _inc["contract_kw"] <= _inc["site_service_kw"],
+        "lvTapConfirmed": _inc["tap_low_voltage"],
+        "method": _inc["method"], "substationMm": _inc["substation_room_mm"]})
+
     # ── 패널 구조 레시피 (REV.51) — recipe.py 가 정본이다 ──────────────────
     from pv_preprocess import recipe, campaign
     p.rows("STRUCTURE_RECIPES", recipe.literal_rows(), indent="    ")

@@ -52,9 +52,6 @@ SHORT_HEADS = 1
 #: 인버터 구동 스핀들에서 실제로 절삭에 쓰이는 몫 — 기계손실·여유.
 SPINDLE_EFFICIENCY = 0.80
 
-#: SG-301 국소집진 풍량 (m³/h) — `dust` 의 DS-01 이 정본.
-DUST_FLOW_M3H = 1_000.0
-
 #: 연마재가 폴리머에 닿아도 되는 주속의 통상 상한 (m/s). 폴리머는 마찰열을
 #: 못 흘려 이 위에서는 접촉점이 융점을 넘고 녹은 살이 결합제를 메운다.
 POLYMER_RUB_LIMIT_M_S = 5.0
@@ -151,6 +148,17 @@ VIEW_DIR = {
 #: 접촉부 확대도의 배율 — 실제 0.5 mm 아리스는 휠 Ø150 옆에서 안 보인다.
 #: `afr_peel` 의 표시 과장과 같은 성격이고, 형상은 실제 그대로다.
 CONTACT_MAG = 20.0
+
+
+# ── 집진 — `dust` 가 정본이라 부른다 ────────────────────────────────────
+def dust_flow_m3h() -> int:
+    """SG-301 국소집진 풍량 (m³/h).
+
+    여기에 1,000 을 베껴 두었더니 후드가 한 대 몫에서 두 대 몫으로 늘 때
+    이 상수만 옛 수로 남았다. `dust` 의 DS-01 이 정본이므로 부른다.
+    """
+    from . import dust
+    return [s.flow_m3h for s in dust.STREAMS if s.tag == "DS-01"][0]
 
 
 # ── 운동학 ──────────────────────────────────────────────────────────────
@@ -516,12 +524,11 @@ def open_questions() -> tuple[tuple[str, str], ...]:
             f"1/{face_force_ratio():.0f})."))
     if not heads_agree_with_the_dust_model():
         out.append((
-            "장변 2 대가 동시인지 순차인지 두 모델이 다르다",
-            f"campaign 은 두 장변을 **한 번의 통과**로 세어 점유가 {occupancy_s()} s 다 — "
-            "그러려면 두 대가 동시다. dust 의 DS-01 은 후드 댐퍼를 절환해 "
-            f"'동시에 도는 헤드가 없다' 며 풍량 {DUST_FLOW_M3H:,.0f} m³/h 를 한 대 몫으로 "
-            f"잡았다. 순차라면 장변을 두 번 지나가 점유가 "
-            f"{two_pass_occupancy_s()} s 로 늘고, 동시라면 풍량이 두 후드 몫이어야 한다."))
+            "집진이 동시에 도는 헤드 수만큼 잡혀 있지 않다",
+            f"장변 {LONG_HEADS} 대가 같은 통과에서 함께 가는데 집진은 후드 "
+            f"{__import__('pv_preprocess.dust', fromlist=['dust']).SG_SIMULTANEOUS_HOODS} "
+            f"대 몫만 잡았다. 첨두에서 포집이 모자란다 — 순차로 돌리면 장변을 두 번 "
+            f"지나가 점유가 {two_pass_occupancy_s()} s 로 는다."))
     return tuple(out)
 
 
@@ -532,8 +539,15 @@ def two_pass_occupancy_s() -> float:
 
 
 def heads_agree_with_the_dust_model() -> bool:
-    """캠페인의 '한 번 통과' 와 집진의 '동시에 도는 헤드 없음' 이 양립하는가."""
-    return LONG_HEADS <= 1
+    """집진이 **동시에 도는 헤드 수**만큼 풍량을 잡고 있는가.
+
+    한때 두 모델이 서로 다른 말을 했다 — 캠페인은 두 장변을 한 번의 통과로
+    세어 동시를 전제했고, 집진은 '동시에 도는 헤드가 없다' 며 한 대 몫만
+    잡았다. 발주처가 동시로 정해 집진 쪽을 고쳤고, 이제 이 술어가 그것을
+    **확인한다** — 선언이 아니라 계산이라 다시 갈라지면 미결로 되살아난다.
+    """
+    from . import dust
+    return dust.SG_SIMULTANEOUS_HOODS >= LONG_HEADS
 
 
 # ── 순환 — 동시인가 순차인가 ────────────────────────────────────────────

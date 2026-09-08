@@ -155,7 +155,7 @@ class TestValuesComeFromOtherModules(unittest.TestCase):
 
     def test_the_dust_flow_is_the_dust_model(self):
         ds01 = [s for s in dust.STREAMS if s.tag == "DS-01"][0]
-        self.assertEqual(sg_grind.DUST_FLOW_M3H, float(ds01.flow_m3h))
+        self.assertEqual(sg_grind.dust_flow_m3h(), ds01.flow_m3h)
 
     def test_the_glass_thickness_is_the_afr_laminate(self):
         self.assertEqual(sg_grind.GLASS_T_MM, float(afr.LAMINATE_T_MM))
@@ -303,7 +303,7 @@ class TestWhatTheFrameLeavesBehind(unittest.TestCase):
         ds01 = [s for s in dust.STREAMS if s.tag == "DS-01"][0]
         self.assertFalse(ds01.combustible)
         self.assertNotIn("백시트", ds01.material)
-        self.assertEqual(sg_grind.DUST_FLOW_M3H, float(ds01.flow_m3h))
+        self.assertEqual(sg_grind.dust_flow_m3h(), ds01.flow_m3h)
 
     def test_position_control_would_cut_into_the_backsheet(self):
         """프레임 기준 공차합이 백시트보다 두껍다 — 힘 제어여야 하는 이유."""
@@ -324,17 +324,31 @@ class TestWhatTheFrameLeavesBehind(unittest.TestCase):
         keys = {p.key for u in sg_grind.units() for p in u.parts}
         self.assertFalse({"brush", "scraper", "pad"} & keys)
 
-    def test_the_dust_model_and_the_campaign_disagree_about_the_heads(self):
-        """장변 2 대가 동시인지 순차인지 — 두 모델이 다르다. 숨기지 않는다."""
-        self.assertFalse(sg_grind.heads_agree_with_the_dust_model())
+    def test_the_dust_model_now_sizes_for_simultaneous_heads(self):
+        """장변 2 대가 동시인지 순차인지 두 모델이 달랐다 — 발주처가 동시로 정했다.
+
+        집진은 "동시에 도는 헤드가 없다" 며 한 대 몫만 잡고 있었다. 이제 후드
+        수를 `LONG_HEADS` 에서 받으므로 둘이 다시 갈라지면 여기서 걸린다.
+        """
+        self.assertTrue(sg_grind.heads_agree_with_the_dust_model())
+        self.assertGreaterEqual(dust.SG_SIMULTANEOUS_HOODS, sg_grind.LONG_HEADS)
+        self.assertEqual(sg_grind.dust_flow_m3h(),
+                         dust.SG_HOOD_M3H * dust.SG_SIMULTANEOUS_HOODS)
+        # 순차로 돌렸다면 장변을 두 번 지나가 점유가 늘지만 AFR 정반 안에는 든다 —
+        # 그래서 애초에 **결정 가능한** 문제였다.
         self.assertGreater(sg_grind.two_pass_occupancy_s(), sg_grind.occupancy_s())
-        # 순차로 풀어도 AFR 정반 안에는 여전히 든다 — 그래서 결정 가능한 문제다.
         self.assertLess(sg_grind.two_pass_occupancy_s(), float(campaign.AFR_S))
+
+    def test_the_open_list_lost_the_head_question(self):
+        """미결이 계산에서 나오므로, 조건이 풀리면 항목이 사라져야 한다."""
+        titles = [t for t, _ in sg_grind.open_questions()]
+        self.assertNotIn("집진이 동시에 도는 헤드 수만큼 잡혀 있지 않다", titles)
+        self.assertEqual(len(titles), 4)
 
     def test_the_open_questions_are_computed_not_declared(self):
         """미결 목록이 계산에서 나온다 — 조건이 풀리면 항목이 사라져야 한다."""
         titles = [q[0] for q in sg_grind.open_questions()]
-        self.assertEqual(len(titles), 5)
+        self.assertEqual(len(titles), 4)
         self.assertIn("휠이 유리 모서리에 못 닿는다", titles)
         for _, body in sg_grind.open_questions():
             self.assertGreater(len(body), 40)
