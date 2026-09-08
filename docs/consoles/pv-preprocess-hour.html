@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>전처리 60분 연속 운전</title>
+<!--
+  60분 연속 운전 화면 — 장비마다 한 장을 붙잡는 시간을 세워 병목을 찾고,
+  그 병목이 흐름을 끊는지 한 시간을 흘려 본다.
+
+  **값은 사람이 쓰지 않는다.** 화면 구성만 여기서 쓰고, 장비 시간표·60분 궤적·
+  재고 곡선은 `src/pv_preprocess/continuous.py` 가 만들어 `tools/build_hour.py` 가
+  아래 @data 블록에 찍는다. 마크는 `src/pv_preprocess/brand.py` 에서 온다.
+  화면의 병목이 모델의 병목과 다를 수 없도록 시험이 두 값을 대조한다.
+-->
+<style>
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; } }
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#eef1f4, #0d1116);
+  --panel: light-dark(#ffffff, #161b22);
+  --panel-2: light-dark(#f6f8fa, #1b222b);
+  --line: light-dark(#d5dbe1, #2a323c);
+  --ink: light-dark(#1a1c1f, #e9edf1);
+  --dim: light-dark(#5d6874, #9aa6b1);
+  --brand: #228CC9;
+  --amber: #FECA4A;
+  /* 상태 3색 — 밝은 바탕과 어두운 바탕에서 각각 검증한 값이다(둘 다 CVD 통과).
+     '굶음'은 색이 아니라 **빈 트랙**이다: 일이 없는 것을 색으로 칠하지 않는다. */
+  --busy: light-dark(#228CC9, #3d95cc);
+  --blocked: light-dark(#a4342b, #d55850);
+  --stopped: light-dark(#7a5cc4, #9578dd);
+  --track: light-dark(#e3e8ed, #222a33);
+  --ok: light-dark(#177245, #3fbf7f);
+  --warn: light-dark(#9a6700, #e3b341);
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.55 system-ui, -apple-system, "Segoe UI", "Noto Sans KR", sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 18px 16px 56px; display: flex;
+  flex-direction: column; gap: 22px; }
+
+header.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 14px 18px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 12px; }
+header.top .mark { display: block; flex: none; }
+header.top h1 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -.01em; }
+header.top .sub { margin: 3px 0 0; font-size: 12.5px; color: var(--dim); }
+header.top .spacer { flex: 1 1 auto; min-width: 12px; }
+.verdict { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px;
+  border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2);
+  font-size: 13px; font-weight: 550; }
+.verdict .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ok) 22%, transparent); }
+.verdict.bad .dot { background: var(--blocked);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--blocked) 22%, transparent); }
+
+h2 { margin: 0 0 4px; font-size: 13px; font-weight: 650; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--dim); }
+h2 + .lede { margin: 0 0 12px; font-size: 13px; color: var(--dim); max-width: 68ch; }
+section { display: flex; flex-direction: column; }
+
+.tiles { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 13px; }
+.tile .k { font-size: 11.5px; color: var(--dim); }
+.tile .v { margin-top: 3px; font: 650 25px/1.12 var(--mono); letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums; }
+.tile .v em { font: inherit; font-style: normal; font-size: 13px; color: var(--dim); }
+.tile .n { margin-top: 5px; font-size: 11.5px; color: var(--dim); }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px 16px 16px; }
+.card.scroll { overflow-x: auto; }
+figure { margin: 0; }
+figcaption { margin-top: 10px; font-size: 12px; color: var(--dim); }
+svg { display: block; max-width: 100%; height: auto; }
+svg text { font-family: system-ui, -apple-system, "Noto Sans KR", sans-serif; }
+svg text.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 12px;
+  font-size: 12px; color: var(--dim); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 11px; height: 11px; border-radius: 3px; display: block; }
+
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  margin-bottom: 12px; }
+button { font: inherit; min-height: 30px; padding: 0 12px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--ink);
+  cursor: pointer; }
+button:hover { background: color-mix(in oklab, var(--ink) 6%, var(--panel-2)); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+button.primary { background: var(--brand); border-color: transparent; color: #fff; }
+input[type="range"] { flex: 1 1 220px; min-width: 160px; accent-color: var(--brand); }
+.clock { font: 650 15px/1 var(--mono); font-variant-numeric: tabular-nums; min-width: 76px; }
+
+.flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; margin-bottom: 14px; }
+.node { flex: 1 1 116px; border: 1px solid var(--line); border-radius: 9px;
+  background: var(--panel-2); padding: 8px 10px; min-width: 0; }
+.node .t { font: 650 12.5px/1.2 var(--mono); }
+.node .s { margin-top: 3px; font-size: 11.5px; color: var(--dim); }
+.node[data-state="일"] { border-color: var(--busy);
+  background: color-mix(in oklab, var(--busy) 14%, var(--panel)); }
+.node[data-state="막힘"] { border-color: var(--blocked);
+  background: color-mix(in oklab, var(--blocked) 16%, var(--panel)); }
+.node[data-state="정지"] { border-color: var(--stopped);
+  background: color-mix(in oklab, var(--stopped) 16%, var(--panel)); }
+.node .arrow { color: var(--dim); }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line);
+  vertical-align: top; }
+th { font-size: 11.5px; letter-spacing: .03em; text-transform: uppercase; color: var(--dim);
+  background: var(--panel-2); white-space: nowrap; }
+td.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums;
+  white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+tr.sub td:first-child { padding-left: 26px; color: var(--dim); }
+tr.peak td { font-weight: 650; }
+td .src { display: block; font-size: 11px; color: var(--dim); font-family: var(--mono); }
+
+.reasons { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.reason { border: 1px solid var(--line); border-radius: 10px; padding: 12px 13px;
+  background: var(--panel); }
+.reason b { display: block; font-size: 12.5px; margin-bottom: 4px; }
+.reason p { margin: 0; font-size: 12.5px; color: var(--dim); }
+.reason .q { font: 650 19px/1.2 var(--mono); font-variant-numeric: tabular-nums;
+  margin-bottom: 4px; display: block; }
+
+#tip { position: fixed; z-index: 40; pointer-events: none; opacity: 0;
+  transition: opacity .1s; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 9px; font-size: 12px; box-shadow: 0 2px 10px rgb(0 0 0 / 12%);
+  max-width: 260px; }
+#tip b { font-family: var(--mono); }
+
+footer { font-size: 12px; color: var(--dim); border-top: 1px solid var(--line);
+  padding-top: 14px; }
+footer code { font-family: var(--mono); font-size: 11.5px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <span class="mark" id="mark"></span>
+    <div>
+      <h1>60분 연속 운전 — 투입에서 유리·셀 반출까지</h1>
+      <p class="sub">장비마다 한 장을 붙잡는 시간을 세우고, 가장 긴 자리를 병목으로
+        잡고, 그 병목이 한 시간 동안 흐름을 끊는지 본다 ·
+        값은 <code>src/pv_preprocess/continuous.py</code> 에서 온다</p>
+    </div>
+    <span class="spacer"></span>
+    <span class="verdict" id="verdict"><i class="dot"></i><span id="verdict-text">판정</span></span>
+  </header>
+
+  <section>
+    <h2>한 시간에 나오는 것</h2>
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <section>
+    <h2>병목 — 장비별 장당 점유</h2>
+    <p class="lede">비교가 성립하려면 두 가지를 맞춰야 한다. 모든 장을 보지 않는
+      장비는 <b>라인 한 장당</b>으로 환산하고(유리제거기는 정상 유리만, JBR·AFR 은
+      전손을 제외), 라인을 붙잡는 <b>직렬 자원</b>만 후보로 둔다. 들여쓴 줄은 위
+      자원의 점유 안에서 도는 것이라 병목이 될 수 없다.</p>
+    <div class="card scroll">
+      <figure>
+        <div id="bars"></div>
+        <figcaption id="bars-cap"></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>60분을 흘린다</h2>
+    <p class="lede">이미 돌고 있는 라인의 한 토막이다 — 버퍼는 정상 재고에서
+      시작한다. 재생을 누르면 1분이 1초로 지나간다.</p>
+    <div class="card">
+      <div class="flow" id="flow"></div>
+      <div class="controls">
+        <button class="primary" id="play" type="button">재생</button>
+        <button id="restart" type="button">처음으로</button>
+        <span class="clock" id="clock">00:00</span>
+        <input id="scrub" type="range" min="0" max="3600" step="1" value="0"
+               aria-label="60분 중 시각">
+      </div>
+      <div class="legend" id="legend"></div>
+      <figure>
+        <div id="gantt"></div>
+        <figcaption id="gantt-cap"></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>R-A 재고 — 계획 정지를 무엇이 덮는가</h2>
+    <div class="card scroll">
+      <figure>
+        <div id="stock"></div>
+        <figcaption id="stock-cap"></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>왜 끊기지 않는가</h2>
+    <div class="reasons" id="reasons"></div>
+  </section>
+
+  <section>
+    <h2>장비 시간표</h2>
+    <div class="card scroll" style="padding:0">
+      <table>
+        <thead><tr>
+          <th>장비</th><th class="num">보유 s</th><th class="num">몫</th>
+          <th class="num">장당 s</th><th class="num">택트 여유 s</th><th>출처</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p><strong>이 화면은 운전 데이터를 받지 않는다.</strong> 설계 모델을 흘려 본
+      결과이고, 시간은 하나도 이 화면에서 정하지 않는다 — 투입·JBR·AFR 은
+      <code>campaign</code>, 후단은 <code>line.downstream_rate()</code>,
+      칼날 카세트 교환은 벤더 콘솔 상수 <code>CASS_SWAP_AUTO</code> 다.</p>
+    <p>저장소 원본 <code>docs/consoles/pv-preprocess-hour.html</code> ·
+      값 생성 <code>tools/build_hour.py</code> · 모델
+      <code>src/pv_preprocess/continuous.py</code> · 마크 원본 <code id="src"></code></p>
+  </footer>
+</div>
+<div id="tip" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* @brand-begin */
+  window.PV_BRAND = Object.freeze({
+    source: "symbol_100x100mm.ai",
+    viewW: 100.0, viewH: 88.9718,
+    blue: "#228CC9", amber: "#FECA4A",
+    shapes: Object.freeze([["blue-1", "#228CC9", "M8.8425 30.8125L1.1848 44.0762C-0.3946 46.812 -0.3946 50.1824 1.1852 52.9182L15.6497 77.9721L25.8598 60.2874Z"], ["blue-2", "#228CC9", "M36.0704 42.6023L19.0532 13.1274L12.2463 24.9173L29.2636 54.3921Z"], ["blue-3", "#228CC9", "M46.2807 24.9174L38.7016 11.7898L25.088 11.7898L39.4739 36.7072Z"], ["blue-4", "#228CC9", "M19.053 83.8666L19.4482 84.551C21.0279 87.2868 23.9468 88.972 27.1055 88.972L72.8953 88.972C76.0541 88.972 78.9733 87.2868 80.5527 84.551L95.0173 59.4971L33.1204 59.4971Z"], ["amber-1", "#FECA4A", "M98.8154 44.076L75.9206 4.421C74.3412 1.6852 71.4219 0.0 68.2632 0.0L50.001 0.0004L50.001 0.0L33.8946 0.0L42.0532 4.7103L70.2821 53.6045L98.4203 53.6024L98.8154 52.918C100.3948 50.1822 100.3948 46.8118 98.8154 44.076Z"]].map(Object.freeze))
+  });
+  /* @brand-end */
+
+  /* @data-begin */
+  var HOUR = {
+    "windowMin": 60.0,
+    "taktS": 54.73,
+    "bottleneck": "DGM-401",
+    "bottleneckName": "DG-HK60C 유리제거 (가동률 0.9 포함)",
+    "bottleneckS": 52.56,
+    "bottleneckUse": 0.9604,
+    "unbroken": true,
+    "breaks": [],
+    "released": 68,
+    "scrapped": 2,
+    "toBuffer": 63,
+    "glassOut": 58,
+    "glassOutNoStop": 60,
+    "glassPerH": 58.0,
+    "cellEvaKg": 279.0,
+    "cellEvaKgPerSheet": 4.81,
+    "glassKgPerSheet": 28.0,
+    "bufferPeak": 38,
+    "bufferEnd": 38,
+    "bufferSlots": 75,
+    "bufferSetpoint": 38,
+    "swapS": 90,
+    "swapAbsorbMin": 41.3,
+    "swapCover10Min": 11.3,
+    "machineIdleSPerH": 130.9,
+    "machineCycleS": 59.5,
+    "capacityPerH": 60.5,
+    "fedPerH": 58.3,
+    "panelMm": [
+      2400,
+      1200
+    ],
+    "normalRatio": 0.8833,
+    "headroom": [
+      [
+        "AFU-101",
+        14.73
+      ],
+      [
+        "JBR-201",
+        11.23
+      ],
+      [
+        "AFR-101",
+        17.0
+      ],
+      [
+        "DGM-401",
+        2.17
+      ]
+    ]
+  };
+  var EQUIPMENT = [{"tag": "FL-101", "name": "지게차 팔레트 급전", "hold": 6.0, "share": 1.0, "perPanel": 6.0, "serial": false, "parent": "AFU-101", "source": "campaign.PALLET_SWAP_S / PALLET_PANELS"}, {"tag": "AFU-101", "name": "투입부 — 리프트·비전·반전·로봇·정렬", "hold": 40.0, "share": 1.0, "perPanel": 40.0, "serial": true, "parent": "", "source": "campaign.INFEED_S"}, {"tag": "JB-201", "name": "축적 컨베이어 통과", "hold": 3.92, "share": 0.9667, "perPanel": 3.79, "serial": false, "parent": "JBR-201", "source": "campaign.accumulator_clear_s()"}, {"tag": "JBR-201", "name": "정션박스·케이블 제거", "hold": 45.0, "share": 0.9667, "perPanel": 43.5, "serial": true, "parent": "", "source": "campaign.JBR_S"}, {"tag": "AFR-101", "name": "프레임 분리 이후 후단 — 연마·검사·버퍼 적재", "hold": 39.03, "share": 0.9667, "perPanel": 37.73, "serial": true, "parent": "", "source": "campaign.AFR_S"}, {"tag": "SG-301", "name": "반출롤러 위 3헤드 연마", "hold": 21.1, "share": 0.9667, "perPanel": 20.4, "serial": false, "parent": "AFR-101", "source": "campaign.sg_occupancy_s()"}, {"tag": "HC-101", "name": "IR 밀폐 가열 — 방출 피치", "hold": 37.1, "share": 0.8833, "perPanel": 32.77, "serial": false, "parent": "DGM-401", "source": "line.downstream_rate().release_pitch_s"}, {"tag": "DL-101", "name": "탠덤 박리 — 칼날 왕복", "hold": 53.6, "share": 0.8833, "perPanel": 47.35, "serial": false, "parent": "DGM-401", "source": "line.downstream_rate().tandem_cycle_s"}, {"tag": "DGM-401", "name": "DG-HK60C 유리제거 (가동률 0.9 포함)", "hold": 59.5, "share": 0.8833, "perPanel": 52.56, "serial": true, "parent": "", "source": "3600 / line.downstream_rate().line_per_h"}];
+  var SLICES = [{"tag": "AFU-101", "name": "투입부", "panels": 68, "busy": 2642.5, "blocked": 0.0, "starved": 957.5, "use": 0.734}, {"tag": "JBR-201", "name": "정션박스 제거", "panels": 66, "busy": 2907.3, "blocked": 0.0, "starved": 692.7, "use": 0.8076}, {"tag": "AFR-101", "name": "프레임 분리 후단", "panels": 66, "busy": 2495.9, "blocked": 0.0, "starved": 1104.1, "use": 0.6933}, {"tag": "DGM-401", "name": "DG-HK60C 유리제거", "panels": 58, "busy": 3510.0, "blocked": 90.0, "starved": 0.0, "use": 0.975}];
+  var SPANS = [["AFU-101", 0.0, 40.0, 1, "일"], ["JBR-201", 40.0, 85.0, 1, "일"], ["AFR-101", 85.0, 124.0, 1, "일"], ["AFU-101", 54.7, 94.7, 2, "일"], ["JBR-201", 94.7, 139.7, 2, "일"], ["AFR-101", 139.7, 178.8, 2, "일"], ["AFU-101", 109.5, 149.5, 3, "일"], ["JBR-201", 149.5, 194.5, 3, "일"], ["AFR-101", 194.5, 233.5, 3, "일"], ["AFU-101", 164.2, 204.2, 4, "일"], ["JBR-201", 204.2, 249.2, 4, "일"], ["AFR-101", 249.2, 288.2, 4, "일"], ["AFU-101", 218.9, 258.9, 5, "일"], ["JBR-201", 258.9, 303.9, 5, "일"], ["AFR-101", 303.9, 342.9, 5, "일"], ["AFU-101", 273.6, 313.6, 6, "일"], ["JBR-201", 313.6, 358.6, 6, "일"], ["AFR-101", 358.6, 397.7, 6, "일"], ["AFU-101", 328.4, 368.4, 7, "일"], ["JBR-201", 368.4, 413.4, 7, "일"], ["AFR-101", 413.4, 452.4, 7, "일"], ["AFU-101", 383.1, 423.1, 8, "일"], ["JBR-201", 423.1, 468.1, 8, "일"], ["AFR-101", 468.1, 507.1, 8, "일"], ["AFU-101", 437.8, 477.8, 9, "일"], ["JBR-201", 477.8, 522.8, 9, "일"], ["AFR-101", 522.8, 561.9, 9, "일"], ["AFU-101", 492.6, 532.6, 10, "일"], ["JBR-201", 532.6, 577.6, 10, "일"], ["AFR-101", 577.6, 616.6, 10, "일"], ["AFU-101", 547.3, 587.3, 11, "일"], ["JBR-201", 587.3, 632.3, 11, "일"], ["AFR-101", 632.3, 671.3, 11, "일"], ["AFU-101", 602.0, 617.0, 12, "전손 배출"], ["AFU-101", 617.0, 657.0, 13, "일"], ["JBR-201", 657.0, 702.0, 13, "일"], ["AFR-101", 702.0, 741.1, 13, "일"], ["AFU-101", 671.8, 711.8, 14, "일"], ["JBR-201", 711.8, 756.8, 14, "일"], ["AFR-101", 756.8, 795.8, 14, "일"], ["AFU-101", 726.5, 766.5, 15, "일"], ["JBR-201", 766.5, 811.5, 15, "일"], ["AFR-101", 811.5, 850.5, 15, "일"], ["AFU-101", 781.2, 821.2, 16, "일"], ["JBR-201", 821.2, 866.2, 16, "일"], ["AFR-101", 866.2, 905.3, 16, "일"], ["AFU-101", 836.0, 876.0, 17, "일"], ["JBR-201", 876.0, 921.0, 17, "일"], ["AFR-101", 921.0, 960.0, 17, "일"], ["AFU-101", 890.7, 930.7, 18, "일"], ["JBR-201", 930.7, 975.7, 18, "일"], ["AFR-101", 975.7, 1014.7, 18, "일"], ["AFU-101", 945.4, 985.4, 19, "일"], ["JBR-201", 985.4, 1030.4, 19, "일"], ["AFR-101", 1030.4, 1069.4, 19, "일"], ["AFU-101", 1000.1, 1040.1, 20, "일"], ["JBR-201", 1040.1, 1085.1, 20, "일"], ["AFR-101", 1085.1, 1124.2, 20, "일"], ["AFU-101", 1054.9, 1094.9, 21, "일"], ["JBR-201", 1094.9, 1139.9, 21, "일"], ["AFR-101", 1139.9, 1178.9, 21, "일"], ["AFU-101", 1109.6, 1149.6, 22, "일"], ["JBR-201", 1149.6, 1194.6, 22, "일"], ["AFR-101", 1194.6, 1233.6, 22, "일"], ["AFU-101", 1164.3, 1204.3, 23, "일"], ["JBR-201", 1204.3, 1249.3, 23, "일"], ["AFR-101", 1249.3, 1288.4, 23, "일"], ["AFU-101", 1219.1, 1259.1, 24, "일"], ["JBR-201", 1259.1, 1304.1, 24, "일"], ["AFR-101", 1304.1, 1343.1, 24, "일"], ["AFU-101", 1273.8, 1313.8, 25, "일"], ["JBR-201", 1313.8, 1358.8, 25, "일"], ["AFR-101", 1358.8, 1397.8, 25, "일"], ["AFU-101", 1328.5, 1368.5, 26, "일"], ["JBR-201", 1368.5, 1413.5, 26, "일"], ["AFR-101", 1413.5, 1452.6, 26, "일"], ["AFU-101", 1383.3, 1423.3, 27, "일"], ["JBR-201", 1423.3, 1468.3, 27, "일"], ["AFR-101", 1468.3, 1507.3, 27, "일"], ["AFU-101", 1438.0, 1478.0, 28, "일"], ["JBR-201", 1478.0, 1523.0, 28, "일"], ["AFR-101", 1523.0, 1562.0, 28, "일"], ["AFU-101", 1492.7, 1532.7, 29, "일"], ["JBR-201", 1532.7, 1577.7, 29, "일"], ["AFR-101", 1577.7, 1616.7, 29, "일"], ["AFU-101", 1547.4, 1587.4, 30, "일"], ["JBR-201", 1587.4, 1632.4, 30, "일"], ["AFR-101", 1632.4, 1671.5, 30, "일"], ["AFU-101", 1602.2, 1642.2, 31, "일"], ["JBR-201", 1642.2, 1687.2, 31, "일"], ["AFR-101", 1687.2, 1726.2, 31, "일"], ["AFU-101", 1656.9, 1696.9, 32, "일"], ["JBR-201", 1696.9, 1741.9, 32, "일"], ["AFR-101", 1741.9, 1780.9, 32, "일"], ["AFU-101", 1711.6, 1751.6, 33, "일"], ["JBR-201", 1751.6, 1796.6, 33, "일"], ["AFR-101", 1796.6, 1835.7, 33, "일"], ["AFU-101", 1766.4, 1806.4, 34, "일"], ["JBR-201", 1806.4, 1851.4, 34, "일"], ["AFR-101", 1851.4, 1890.4, 34, "일"], ["AFU-101", 1821.1, 1861.1, 35, "일"], ["JBR-201", 1861.1, 1906.1, 35, "일"], ["AFR-101", 1906.1, 1945.1, 35, "일"], ["AFU-101", 1875.8, 1915.8, 36, "일"], ["JBR-201", 1915.8, 1960.8, 36, "일"], ["AFR-101", 1960.8, 1999.9, 36, "일"], ["AFU-101", 1930.6, 1970.6, 37, "일"], ["JBR-201", 1970.6, 2015.6, 37, "일"], ["AFR-101", 2015.6, 2054.6, 37, "일"], ["AFU-101", 1985.3, 2025.3, 38, "일"], ["JBR-201", 2025.3, 2070.3, 38, "일"], ["AFR-101", 2070.3, 2109.3, 38, "일"], ["AFU-101", 2040.0, 2080.0, 39, "일"], ["JBR-201", 2080.0, 2125.0, 39, "일"], ["AFR-101", 2125.0, 2164.0, 39, "일"], ["AFU-101", 2094.7, 2134.7, 40, "일"], ["JBR-201", 2134.7, 2179.7, 40, "일"], ["AFR-101", 2179.7, 2218.8, 40, "일"], ["AFU-101", 2149.5, 2189.5, 41, "일"], ["JBR-201", 2189.5, 2234.5, 41, "일"], ["AFR-101", 2234.5, 2273.5, 41, "일"], ["AFU-101", 2204.2, 2244.2, 42, "일"], ["JBR-201", 2244.2, 2289.2, 42, "일"], ["AFR-101", 2289.2, 2328.2, 42, "일"], ["AFU-101", 2258.9, 2298.9, 43, "일"], ["JBR-201", 2298.9, 2343.9, 43, "일"], ["AFR-101", 2343.9, 2383.0, 43, "일"], ["AFU-101", 2313.7, 2328.7, 44, "전손 배출"], ["AFU-101", 2328.7, 2368.7, 45, "일"], ["JBR-201", 2368.7, 2413.7, 45, "일"], ["AFR-101", 2413.7, 2452.7, 45, "일"], ["AFU-101", 2383.4, 2423.4, 46, "일"], ["JBR-201", 2423.4, 2468.4, 46, "일"], ["AFR-101", 2468.4, 2507.4, 46, "일"], ["AFU-101", 2438.1, 2478.1, 47, "일"], ["JBR-201", 2478.1, 2523.1, 47, "일"], ["AFR-101", 2523.1, 2562.2, 47, "일"], ["AFU-101", 2492.9, 2532.9, 48, "일"], ["JBR-201", 2532.9, 2577.9, 48, "일"], ["AFR-101", 2577.9, 2616.9, 48, "일"], ["AFU-101", 2547.6, 2587.6, 49, "일"], ["JBR-201", 2587.6, 2632.6, 49, "일"], ["AFR-101", 2632.6, 2671.6, 49, "일"], ["AFU-101", 2602.3, 2642.3, 50, "일"], ["JBR-201", 2642.3, 2687.3, 50, "일"], ["AFR-101", 2687.3, 2726.3, 50, "일"], ["AFU-101", 2657.0, 2697.0, 51, "일"], ["JBR-201", 2697.0, 2742.0, 51, "일"], ["AFR-101", 2742.0, 2781.1, 51, "일"], ["AFU-101", 2711.8, 2751.8, 52, "일"], ["JBR-201", 2751.8, 2796.8, 52, "일"], ["AFR-101", 2796.8, 2835.8, 52, "일"], ["AFU-101", 2766.5, 2806.5, 53, "일"], ["JBR-201", 2806.5, 2851.5, 53, "일"], ["AFR-101", 2851.5, 2890.5, 53, "일"], ["AFU-101", 2821.2, 2861.2, 54, "일"], ["JBR-201", 2861.2, 2906.2, 54, "일"], ["AFR-101", 2906.2, 2945.3, 54, "일"], ["AFU-101", 2876.0, 2916.0, 55, "일"], ["JBR-201", 2916.0, 2961.0, 55, "일"], ["AFR-101", 2961.0, 3000.0, 55, "일"], ["AFU-101", 2930.7, 2970.7, 56, "일"], ["JBR-201", 2970.7, 3015.7, 56, "일"], ["AFR-101", 3015.7, 3054.7, 56, "일"], ["AFU-101", 2985.4, 3025.4, 57, "일"], ["JBR-201", 3025.4, 3070.4, 57, "일"], ["AFR-101", 3070.4, 3109.5, 57, "일"], ["AFU-101", 3040.2, 3080.2, 58, "일"], ["JBR-201", 3080.2, 3125.2, 58, "일"], ["AFR-101", 3125.2, 3164.2, 58, "일"], ["AFU-101", 3094.9, 3134.9, 59, "일"], ["JBR-201", 3134.9, 3179.9, 59, "일"], ["AFR-101", 3179.9, 3218.9, 59, "일"], ["AFU-101", 3149.6, 3189.6, 60, "일"], ["JBR-201", 3189.6, 3234.6, 60, "일"], ["AFR-101", 3234.6, 3273.6, 60, "일"], ["AFU-101", 3204.3, 3244.3, 61, "일"], ["JBR-201", 3244.3, 3289.3, 61, "일"], ["AFR-101", 3289.3, 3328.4, 61, "일"], ["AFU-101", 3259.1, 3299.1, 62, "일"], ["JBR-201", 3299.1, 3344.1, 62, "일"], ["AFR-101", 3344.1, 3383.1, 62, "일"], ["AFU-101", 3313.8, 3353.8, 63, "일"], ["JBR-201", 3353.8, 3398.8, 63, "일"], ["AFR-101", 3398.8, 3437.8, 63, "일"], ["AFU-101", 3368.5, 3408.5, 64, "일"], ["JBR-201", 3408.5, 3453.5, 64, "일"], ["AFR-101", 3453.5, 3492.6, 64, "일"], ["AFU-101", 3423.3, 3463.3, 65, "일"], ["JBR-201", 3463.3, 3508.3, 65, "일"], ["AFR-101", 3508.3, 3547.3, 65, "일"], ["AFU-101", 3478.0, 3518.0, 66, "일"], ["JBR-201", 3518.0, 3563.0, 66, "일"], ["AFR-101", 3563.0, 3602.0, 66, "일"], ["AFU-101", 3532.7, 3572.7, 67, "일"], ["JBR-201", 3572.7, 3617.7, 67, "일"], ["AFR-101", 3617.7, 3656.8, 67, "일"], ["AFU-101", 3587.5, 3627.5, 68, "일"], ["JBR-201", 3627.5, 3672.5, 68, "일"], ["AFR-101", 3672.5, 3711.5, 68, "일"], ["DGM-401", 0.0, 59.5, 1, "일"], ["DGM-401", 59.5, 119.0, 2, "일"], ["DGM-401", 119.0, 178.5, 3, "일"], ["DGM-401", 178.5, 238.0, 4, "일"], ["DGM-401", 238.0, 297.5, 5, "일"], ["DGM-401", 297.5, 357.0, 6, "일"], ["DGM-401", 357.0, 416.5, 7, "일"], ["DGM-401", 416.5, 476.0, 8, "일"], ["DGM-401", 476.0, 535.5, 9, "일"], ["DGM-401", 535.5, 595.0, 10, "일"], ["DGM-401", 595.0, 654.5, 11, "일"], ["DGM-401", 654.5, 714.0, 12, "일"], ["DGM-401", 714.0, 773.6, 13, "일"], ["DGM-401", 773.6, 833.1, 14, "일"], ["DGM-401", 833.1, 892.6, 15, "일"], ["DGM-401", 892.6, 952.1, 16, "일"], ["DGM-401", 952.1, 1011.6, 17, "일"], ["DGM-401", 1011.6, 1071.1, 18, "일"], ["DGM-401", 1071.1, 1130.6, 19, "일"], ["DGM-401", 1130.6, 1190.1, 20, "일"], ["DGM-401", 1190.1, 1249.6, 21, "일"], ["DGM-401", 1249.6, 1309.1, 22, "일"], ["DGM-401", 1309.1, 1368.6, 23, "일"], ["DGM-401", 1368.6, 1428.1, 24, "일"], ["DGM-401", 1428.1, 1487.6, 25, "일"], ["DGM-401", 1487.6, 1547.1, 26, "일"], ["DGM-401", 1547.1, 1606.6, 27, "일"], ["DGM-401", 1606.6, 1666.1, 28, "일"], ["DGM-401", 1666.1, 1725.6, 29, "일"], ["DGM-401", 1725.6, 1785.1, 30, "일"], ["DGM-401", 1785.1, 1844.6, 31, "일"], ["DGM-401", 1844.6, 1934.6, 0, "정지"], ["DGM-401", 1934.6, 1994.1, 32, "일"], ["DGM-401", 1994.1, 2053.6, 33, "일"], ["DGM-401", 2053.6, 2113.1, 34, "일"], ["DGM-401", 2113.1, 2172.6, 35, "일"], ["DGM-401", 2172.6, 2232.1, 36, "일"], ["DGM-401", 2232.1, 2291.7, 37, "일"], ["DGM-401", 2291.7, 2351.2, 38, "일"], ["DGM-401", 2351.2, 2410.7, 39, "일"], ["DGM-401", 2410.7, 2470.2, 40, "일"], ["DGM-401", 2470.2, 2529.7, 41, "일"], ["DGM-401", 2529.7, 2589.2, 42, "일"], ["DGM-401", 2589.2, 2648.7, 43, "일"], ["DGM-401", 2648.7, 2708.2, 44, "일"], ["DGM-401", 2708.2, 2767.7, 45, "일"], ["DGM-401", 2767.7, 2827.2, 46, "일"], ["DGM-401", 2827.2, 2886.7, 47, "일"], ["DGM-401", 2886.7, 2946.2, 48, "일"], ["DGM-401", 2946.2, 3005.7, 49, "일"], ["DGM-401", 3005.7, 3065.2, 50, "일"], ["DGM-401", 3065.2, 3124.7, 51, "일"], ["DGM-401", 3124.7, 3184.2, 52, "일"], ["DGM-401", 3184.2, 3243.7, 53, "일"], ["DGM-401", 3243.7, 3303.2, 54, "일"], ["DGM-401", 3303.2, 3362.7, 55, "일"], ["DGM-401", 3362.7, 3422.2, 56, "일"], ["DGM-401", 3422.2, 3481.7, 57, "일"], ["DGM-401", 3481.7, 3541.2, 58, "일"], ["DGM-401", 3541.2, 3600.0, 59, "일"]];
+  var STOCK = [[0.0, 38], [0.0, 38], [59.5, 37], [119.0, 36], [178.5, 36], [238.0, 37], [297.5, 37], [357.0, 37], [416.5, 37], [476.0, 36], [535.5, 36], [595.0, 36], [654.5, 36], [714.0, 36], [773.6, 36], [833.1, 36], [892.6, 36], [952.1, 36], [1011.6, 35], [1071.1, 36], [1130.6, 36], [1190.1, 36], [1249.6, 36], [1309.1, 36], [1368.6, 36], [1428.1, 36], [1487.6, 35], [1547.1, 35], [1606.6, 35], [1666.1, 35], [1725.6, 35], [1785.1, 36], [1934.6, 37], [1994.1, 36], [2053.6, 36], [2113.1, 37], [2172.6, 37], [2232.1, 37], [2291.7, 37], [2351.2, 37], [2410.7, 37], [2470.2, 37], [2529.7, 37], [2589.2, 37], [2648.7, 37], [2708.2, 37], [2767.7, 36], [2827.2, 36], [2886.7, 36], [2946.2, 37], [3005.7, 37], [3065.2, 37], [3124.7, 37], [3184.2, 37], [3243.7, 37], [3303.2, 37], [3362.7, 37], [3422.2, 37], [3481.7, 37], [3541.2, 37], [3600.0, 38]];
+  /* @data-end */
+
+  var $ = function (id) { return document.getElementById(id); };
+  var n1 = function (v) { return Number(v).toFixed(1); };
+  var esc = function (s) { return String(s).replace(/[&<>]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); };
+  var clock = function (s) {
+    var m = Math.floor(s / 60), r = Math.floor(s % 60);
+    return String(m).padStart(2, '0') + ':' + String(r).padStart(2, '0');
+  };
+  var STATE_VAR = { '일': '--busy', '막힘': '--blocked', '정지': '--stopped',
+                    '전손 배출': '--busy' };
+
+  /* 마크 — 도면·콘솔과 같은 경로 문자열을 그대로 그린다. */
+  function markSvg(size) {
+    var b = window.PV_BRAND, h = Math.round(size * b.viewH / b.viewW);
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + h
+      + '" viewBox="0 0 ' + b.viewW + ' ' + b.viewH + '" role="img" aria-label="회사 마크">'
+      + b.shapes.map(function (s) { return '<path fill="' + s[1] + '" d="' + s[2] + '"/>'; }).join('')
+      + '</svg>';
+  }
+
+  /* ── 툴팁 — 막대·구간·재고점이 함께 쓴다 ─────────────────────────────── */
+  var tip = $('tip');
+  function showTip(evt, html) {
+    tip.innerHTML = html;
+    tip.style.opacity = '1';
+    var r = tip.getBoundingClientRect();
+    var x = Math.min(evt.clientX + 14, window.innerWidth - r.width - 8);
+    var y = Math.max(8, evt.clientY - r.height - 12);
+    tip.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+  }
+  function hideTip() { tip.style.opacity = '0'; }
+  function hoverable(el, html) {
+    el.addEventListener('mousemove', function (e) { showTip(e, html); });
+    el.addEventListener('mouseleave', hideTip);
+    el.setAttribute('tabindex', '0');
+    el.addEventListener('focus', function (e) {
+      var b = el.getBoundingClientRect();
+      showTip({ clientX: b.left + b.width / 2, clientY: b.top }, html);
+    });
+    el.addEventListener('blur', hideTip);
+  }
+
+  /* ── 판정 · 타일 ─────────────────────────────────────────────────────── */
+  function head() {
+    $('mark').innerHTML = markSvg(44);
+    $('src').textContent = window.PV_BRAND.source;
+    var v = $('verdict');
+    if (!HOUR.unbroken) { v.classList.add('bad'); }
+    $('verdict-text').textContent = HOUR.unbroken
+      ? '흐름 안 끊김 — 직렬 자원 전부 택트 안, 병목 굶음 0'
+      : '끊김: ' + HOUR.breaks.join(' · ');
+
+    var tiles = [
+      ['투입', HOUR.released, '장/h', '전손 리젝트 ' + HOUR.scrapped + '장 포함'],
+      ['유리 반출', HOUR.glassOut, '장/h',
+       '정지 없는 시간이면 ' + HOUR.glassOutNoStop + '장 · ' + HOUR.glassKgPerSheet + ' kg/장'],
+      ['셀·EVA 반출', n1(HOUR.cellEvaKg), 'kg/h', HOUR.cellEvaKgPerSheet + ' kg/장 × 반출 장수'],
+      ['택트', HOUR.taktS, 's', '병목 ' + HOUR.bottleneckS + ' s + 인계 여유'],
+      ['병목 점유', Math.round(HOUR.bottleneckUse * 1000) / 10, '%',
+       HOUR.bottleneck + ' — 택트 대비'],
+      ['R-A 재고', HOUR.bufferEnd, '/ ' + HOUR.bufferSlots,
+       '설정점 ' + HOUR.bufferSetpoint + ' · 최고 ' + HOUR.bufferPeak]
+    ];
+    $('tiles').innerHTML = tiles.map(function (t) {
+      return '<div class="tile"><div class="k">' + t[0] + '</div>'
+        + '<div class="v">' + t[1] + ' <em>' + t[2] + '</em></div>'
+        + '<div class="n">' + t[3] + '</div></div>';
+    }).join('');
+  }
+
+  /* ── 장비별 장당 점유 막대 ───────────────────────────────────────────
+     한 축이다. 기준선은 택트 하나이고, 병목만 진하게 둔다 — 나머지는 같은 색의
+     옅은 단계다. 값은 막대 끝에 직접 적어 색만으로 읽지 않게 한다. */
+  function bars() {
+    var rows = EQUIPMENT.slice();
+    var W = 720, PADL = 132, PADR = 96, ROW = 26, TOP = 26;
+    var H = TOP + rows.length * ROW + 12;
+    var max = Math.max(HOUR.taktS, ...rows.map(function (e) { return e.perPanel; })) * 1.06;
+    var x = function (v) { return PADL + (W - PADL - PADR) * v / max; };
+    var svg = ['<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H
+      + '" role="img" aria-label="장비별 장당 점유와 택트">'];
+    // 택트 기준선
+    svg.push('<line x1="' + x(HOUR.taktS) + '" y1="' + (TOP - 14) + '" x2="' + x(HOUR.taktS)
+      + '" y2="' + (H - 8) + '" stroke="currentColor" stroke-width="1"'
+      + ' stroke-dasharray="4 3" opacity=".55"/>');
+    svg.push('<text class="num" x="' + (x(HOUR.taktS) + 5) + '" y="' + (TOP - 16)
+      + '" font-size="11" fill="currentColor" opacity=".75">택트 ' + HOUR.taktS + ' s</text>');
+    rows.forEach(function (e, i) {
+      var y = TOP + i * ROW, h = e.serial ? 13 : 7;
+      var fill = e.tag === HOUR.bottleneck ? 'var(--busy)'
+        : (e.serial ? 'color-mix(in oklab, var(--busy) 55%, var(--track))'
+                    : 'color-mix(in oklab, var(--busy) 28%, var(--track))');
+      svg.push('<rect x="' + PADL + '" y="' + (y + (13 - h) / 2) + '" width="'
+        + (W - PADL - PADR) + '" height="' + h + '" rx="3" fill="var(--track)"/>');
+      svg.push('<rect class="mark" data-i="' + i + '" x="' + PADL + '" y="'
+        + (y + (13 - h) / 2) + '" width="' + Math.max(2, x(e.perPanel) - PADL)
+        + '" height="' + h + '" rx="3" fill="' + fill + '"/>');
+      svg.push('<text x="' + (PADL - 8) + '" y="' + (y + 10) + '" font-size="'
+        + (e.serial ? 11.5 : 10.5) + '" text-anchor="end" fill="currentColor" opacity="'
+        + (e.serial ? 1 : .62) + '">' + esc(e.tag) + '</text>');
+      svg.push('<text class="num" x="' + (x(e.perPanel) + 6) + '" y="' + (y + 10)
+        + '" font-size="11" fill="currentColor" opacity="' + (e.serial ? .95 : .6) + '">'
+        + e.perPanel.toFixed(2) + ' s' + (e.tag === HOUR.bottleneck ? '  ← 병목' : '')
+        + '</text>');
+    });
+    svg.push('</svg>');
+    $('bars').innerHTML = svg.join('');
+    $('bars').querySelectorAll('rect.mark').forEach(function (r) {
+      var e = rows[+r.dataset.i];
+      hoverable(r, '<b>' + esc(e.tag) + '</b> ' + esc(e.name) + '<br>'
+        + '자기 장 보유 <b>' + e.hold.toFixed(2) + ' s</b> × 몫 <b>'
+        + (e.share * 100).toFixed(1) + ' %</b> = 장당 <b>' + e.perPanel.toFixed(2) + ' s</b><br>'
+        + (e.serial ? '직렬 — 택트 여유 <b>' + (HOUR.taktS - e.perPanel).toFixed(2) + ' s</b>'
+                    : '병렬 — ' + esc(e.parent) + ' 점유 안에서 돈다'));
+    });
+    $('bars-cap').textContent = '진한 막대가 병목이다. 직렬 자원(굵은 줄)은 모두 택트 '
+      + HOUR.taktS + ' s 왼쪽에 있고, 가장 가까운 것이 ' + HOUR.bottleneck + ' 로 여유 '
+      + (HOUR.taktS - HOUR.bottleneckS).toFixed(2) + ' s 다.';
+  }
+
+  /* ── 60분 간트 ───────────────────────────────────────────────────────── */
+  var TAGS = SLICES.map(function (s) { return s.tag; });
+  var GW = 900, GPADL = 92, GPADR = 12, GROW = 30, GTOP = 22;
+  var GH = GTOP + TAGS.length * GROW + 24;
+  var gx = function (t) { return GPADL + (GW - GPADL - GPADR) * t / (HOUR.windowMin * 60); };
+
+  function gantt() {
+    $('legend').innerHTML = [['일', '--busy', '장을 붙잡고 일한다'],
+      ['막힘', '--blocked', '끝냈는데 다음 자원이 안 비었다'],
+      ['정지', '--stopped', '계획 정지 — 칼날 카세트 자동교환'],
+      ['굶음', null, '받을 장이 없다 (빈 트랙)']]
+      .map(function (l) {
+        return '<span><i style="background:' + (l[1] ? 'var(' + l[1] + ')' : 'var(--track)')
+          + (l[1] ? '' : ';border:1px solid var(--line)') + '"></i>' + l[0]
+          + ' — ' + l[2] + '</span>';
+      }).join('');
+
+    var svg = ['<svg viewBox="0 0 ' + GW + ' ' + GH + '" width="' + GW + '" height="' + GH
+      + '" role="img" aria-label="자원별 60분 점유 띠">'];
+    for (var m = 0; m <= HOUR.windowMin; m += 10) {
+      svg.push('<line x1="' + gx(m * 60) + '" y1="' + (GTOP - 6) + '" x2="' + gx(m * 60)
+        + '" y2="' + (GTOP + TAGS.length * GROW - 8) + '" stroke="currentColor"'
+        + ' stroke-width="1" opacity=".14"/>');
+      svg.push('<text class="num" x="' + gx(m * 60) + '" y="' + (GH - 8)
+        + '" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".6">'
+        + m + '분</text>');
+    }
+    TAGS.forEach(function (tag, i) {
+      var y = GTOP + i * GROW;
+      svg.push('<rect x="' + GPADL + '" y="' + y + '" width="' + (GW - GPADL - GPADR)
+        + '" height="16" rx="3" fill="var(--track)"/>');
+      var s = SLICES[i];
+      svg.push('<text x="' + (GPADL - 8) + '" y="' + (y + 8) + '" font-size="11.5"'
+        + ' text-anchor="end" fill="currentColor">' + esc(tag) + '</text>');
+      svg.push('<text x="' + (GPADL - 8) + '" y="' + (y + 20) + '" font-size="10"'
+        + ' text-anchor="end" fill="currentColor" opacity=".6">'
+        + '가동 ' + Math.round(s.use * 100) + ' % · ' + s.panels + '장</text>');
+    });
+    SPANS.forEach(function (sp, k) {
+      var i = TAGS.indexOf(sp[0]);
+      if (i < 0) { return; }
+      var y = GTOP + i * GROW, w = Math.max(1.2, gx(sp[2]) - gx(sp[1]) - 1);
+      svg.push('<rect class="span" data-k="' + k + '" x="' + (gx(sp[1]) + .5) + '" y="' + y
+        + '" width="' + w + '" height="16" rx="2" fill="var(' + STATE_VAR[sp[4]] + ')"'
+        + (sp[4] === '전손 배출' ? ' opacity=".45"' : '') + '/>');
+    });
+    svg.push('<line id="head" x1="' + GPADL + '" y1="' + (GTOP - 10) + '" x2="' + GPADL
+      + '" y2="' + (GTOP + TAGS.length * GROW - 8)
+      + '" stroke="var(--brand)" stroke-width="1.5"/>');
+    svg.push('</svg>');
+    $('gantt').innerHTML = svg.join('');
+    $('gantt').querySelectorAll('rect.span').forEach(function (r) {
+      var sp = SPANS[+r.dataset.k];
+      hoverable(r, '<b>' + esc(sp[0]) + '</b> · ' + esc(sp[4]) + '<br>'
+        + clock(sp[1]) + ' → ' + clock(sp[2]) + ' (' + (sp[2] - sp[1]).toFixed(1) + ' s)'
+        + (sp[3] ? '<br>' + (sp[0] === 'DGM-401' ? '유리 ' : '패널 ') + sp[3] + '번' : ''));
+    });
+    var stopped = SLICES.find(function (s) { return s.tag === 'DGM-401'; });
+    $('gantt-cap').textContent = '막힌 띠(붉은색)가 한 칸도 없다 — 어느 자원도 다음 자원을'
+      + ' 기다리며 장을 안고 서 있지 않는다. ' + HOUR.bottleneck + ' 는 '
+      + Math.round(stopped.use * 100) + ' % 를 일하고, 나머지는 계획 정지 '
+      + stopped.blocked + ' s 다.';
+  }
+
+  /* ── R-A 재고 곡선 ───────────────────────────────────────────────────── */
+  function stock() {
+    var W = 900, PADL = 52, PADR = 14, TOP = 16, H = 190, BOT = H - 26;
+    var maxY = Math.max(HOUR.bufferSlots, HOUR.bufferPeak + 4);
+    var x = function (t) { return PADL + (W - PADL - PADR) * t / (HOUR.windowMin * 60); };
+    var y = function (v) { return BOT - (BOT - TOP) * v / maxY; };
+    var svg = ['<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H
+      + '" role="img" aria-label="R-A 재고 60분 궤적">'];
+    [0, HOUR.bufferSetpoint, HOUR.bufferSlots].forEach(function (v) {
+      svg.push('<line x1="' + PADL + '" y1="' + y(v) + '" x2="' + (W - PADR) + '" y2="' + y(v)
+        + '" stroke="currentColor" stroke-width="1" opacity="' + (v ? '.16' : '.32') + '"/>');
+      svg.push('<text class="num" x="' + (PADL - 7) + '" y="' + (y(v) + 3.5)
+        + '" font-size="10.5" text-anchor="end" fill="currentColor" opacity=".6">' + v + '</text>');
+    });
+    svg.push('<text x="' + (W - PADR) + '" y="' + (y(HOUR.bufferSetpoint) - 5)
+      + '" font-size="10.5" text-anchor="end" fill="currentColor" opacity=".6">설정점</text>');
+    var d = STOCK.map(function (p, i) {
+      return (i ? 'L' : 'M') + x(p[0]).toFixed(1) + ' ' + y(p[1]).toFixed(1);
+    }).join(' ');
+    svg.push('<path d="' + d + '" fill="none" stroke="var(--busy)" stroke-width="2"'
+      + ' stroke-linejoin="round"/>');
+    SPANS.filter(function (s) { return s[4] === '정지'; }).forEach(function (s) {
+      svg.push('<rect x="' + x(s[1]) + '" y="' + TOP + '" width="'
+        + Math.max(2, x(s[2]) - x(s[1])) + '" height="' + (BOT - TOP)
+        + '" fill="var(--stopped)" opacity=".18"/>');
+      svg.push('<text x="' + (x(s[2]) + 6) + '" y="' + (TOP + 12) + '" font-size="10.5"'
+        + ' fill="currentColor" opacity=".7">계획 정지 ' + HOUR.swapS + ' s</text>');
+    });
+    for (var m = 0; m <= HOUR.windowMin; m += 10) {
+      svg.push('<text class="num" x="' + x(m * 60) + '" y="' + (H - 8) + '" font-size="10.5"'
+        + ' text-anchor="middle" fill="currentColor" opacity=".6">' + m + '분</text>');
+    }
+    svg.push('</svg>');
+    $('stock').innerHTML = svg.join('');
+    $('stock-cap').textContent = '재고는 ' + HOUR.bufferSetpoint + '장에서 시작해 '
+      + HOUR.bufferEnd + '장으로 끝난다. 정지 동안 유입이 계속되므로 재고가 오히려 오르고,'
+      + ' 정지가 끝나면 기계가 그것을 도로 먹는다 — ' + HOUR.bufferSlots
+      + '슬롯 중 쓴 폭은 몇 장뿐이다.';
+  }
+
+  /* ── 왜 끊기지 않는가 ────────────────────────────────────────────────── */
+  function reasons() {
+    var worst = HOUR.headroom.reduce(function (a, b) { return b[1] < a[1] ? b : a; });
+    var rows = [
+      ['직렬 자원이 전부 택트 안', worst[1].toFixed(2) + ' s',
+       '가장 빠듯한 자리가 ' + worst[0] + ' 이고 그만큼 남는다. 하나라도 음수면 그 자리에서'
+       + ' 앞 장이 안 빠져 상류가 선다.'],
+      ['병목이 굶지 않는다', Math.round(HOUR.bottleneckUse * 1000) / 10 + ' %',
+       HOUR.bottleneck + ' 가 택트의 그만큼을 실제로 쓴다. 남는 '
+       + HOUR.machineIdleSPerH + ' s/h 가 인계 안전여유(2.4 장/h)의 다른 얼굴이다.'],
+      ['계획 정지를 스스로 삼킨다', HOUR.swapAbsorbMin + ' 분',
+       '칼날 카세트 자동교환 ' + HOUR.swapS + ' s 가 그보다 뜸하면 재고가 줄지도 않는다.'
+       + ' ' + (HOUR.swapCover10Min === null ? '' : '10분마다 들어와도 R-A 재고가 '
+       + HOUR.swapCover10Min + ' h 를 버틴다.')],
+      ['유입 자체가 후단에 맞춰져 있다', HOUR.fedPerH + ' / ' + HOUR.capacityPerH + ' 장/h',
+       '전처리를 후단 능력 아래로 페이싱했기 때문에 버퍼가 한 방향으로만 쌓이지 않는다.'
+       + ' 이것이 라인을 끊기지 않게 만든 설계 결정이다.']
+    ];
+    $('reasons').innerHTML = rows.map(function (r) {
+      return '<div class="reason"><b>' + r[0] + '</b><span class="q">' + r[1] + '</span>'
+        + '<p>' + r[2] + '</p></div>';
+    }).join('');
+  }
+
+  /* ── 장비 시간표 ─────────────────────────────────────────────────────── */
+  function table() {
+    var gap = {};
+    HOUR.headroom.forEach(function (h) { gap[h[0]] = h[1]; });
+    $('rows').innerHTML = EQUIPMENT.map(function (e) {
+      return '<tr class="' + (e.serial ? '' : 'sub ') + (e.tag === HOUR.bottleneck ? 'peak' : '')
+        + '"><td><b>' + esc(e.tag) + '</b> ' + esc(e.name)
+        + (e.tag === HOUR.bottleneck ? ' — 병목' : '') + '</td>'
+        + '<td class="num">' + e.hold.toFixed(2) + '</td>'
+        + '<td class="num">' + (e.share * 100).toFixed(1) + ' %</td>'
+        + '<td class="num">' + e.perPanel.toFixed(2) + '</td>'
+        + '<td class="num">' + (e.serial ? gap[e.tag].toFixed(2) : '—') + '</td>'
+        + '<td><span class="src">' + esc(e.source) + '</span></td></tr>';
+    }).join('');
+  }
+
+  /* ── 재생 — 1분이 1초 ────────────────────────────────────────────────── */
+  var WINDOW = HOUR.windowMin * 60, playing = false, at = 0, last = 0, raf = 0;
+  function stateAt(tag, t) {
+    for (var i = 0; i < SPANS.length; i++) {
+      var s = SPANS[i];
+      if (s[0] === tag && s[1] <= t && t < s[2]) { return s; }
+    }
+    return null;
+  }
+  function frame() {
+    var head = document.getElementById('head');
+    if (head) { head.setAttribute('x1', gx(at)); head.setAttribute('x2', gx(at)); }
+    $('clock').textContent = clock(at);
+    $('scrub').value = String(Math.round(at));
+    var served = SPANS.filter(function (s) {
+      return s[0] === 'DGM-401' && s[4] === '일' && s[2] <= at; }).length;
+    var fed = SPANS.filter(function (s) {
+      return s[0] === 'AFU-101' && s[1] <= at; }).length;
+    var stockNow = STOCK.reduce(function (acc, p) { return p[0] <= at ? p[1] : acc; },
+                                HOUR.bufferSetpoint);
+    var nodes = [
+      ['FL-101', '지게차 급전', null],
+      ['AFU-101', '투입 ' + fed + '장', 'AFU-101'],
+      ['JBR-201', '정션박스 제거', 'JBR-201'],
+      ['AFR-101', '프레임·연마·검사', 'AFR-101'],
+      ['R-A', '재고 ' + stockNow + '장', null],
+      ['DGM-401', '유리 ' + served + '장', 'DGM-401'],
+      ['반출', n1(served * HOUR.cellEvaKgPerSheet) + ' kg 셀·EVA', null]
+    ];
+    $('flow').innerHTML = nodes.map(function (nd) {
+      var sp = nd[2] ? stateAt(nd[2], at) : null;
+      return '<div class="node"' + (sp ? ' data-state="' + sp[4] + '"' : '') + '>'
+        + '<div class="t">' + esc(nd[0]) + '</div><div class="s">' + esc(nd[1])
+        + (sp ? ' · ' + sp[4] : '') + '</div></div>';
+    }).join('');
+  }
+  function tick(ts) {
+    if (!playing) { return; }
+    if (!last) { last = ts; }
+    at = Math.min(WINDOW, at + (ts - last) * 60 / 1000);   // 1 s = 1 분
+    last = ts;
+    frame();
+    if (at >= WINDOW) { pause(); return; }
+    raf = requestAnimationFrame(tick);
+  }
+  function play() { playing = true; last = 0; $('play').textContent = '일시정지';
+    raf = requestAnimationFrame(tick); }
+  function pause() { playing = false; cancelAnimationFrame(raf);
+    $('play').textContent = '재생'; }
+  $('play').addEventListener('click', function () { playing ? pause() : play(); });
+  $('restart').addEventListener('click', function () { at = 0; frame(); });
+  $('scrub').addEventListener('input', function (e) {
+    pause(); at = +e.target.value; frame();
+  });
+  $('scrub').max = String(WINDOW);
+
+  head(); bars(); gantt(); stock(); reasons(); table(); frame();
+})();
+</script>
+</body>
+</html>

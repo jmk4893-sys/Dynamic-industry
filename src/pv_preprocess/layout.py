@@ -1,0 +1,864 @@
+"""전처리 플랜트 배치 — 셀 외형에서 존과 전체 포락선을 파생한다.
+
+좌표 규약: X=공정방향, Y=진행방향 좌측, Z=FFL 상향 (단위 mm).
+`Station.envelope` 는 도면 관례대로 ``(L, W, H) = (X, Y, Z)`` 다.
+
+REV.21 에서는 배치표의 X 스팬을 손으로 적어 넣어 afu(−1,800)·robot(−1,200)·
+afr(−4,400)·post(−2,600), 합계 10,000 mm 만큼 존이 자기 장비보다 짧았다. Y·H 는
+외형에서 옮겨 적어 전부 일치했으므로, 여기서는 셋 다 외형에서 파생한다.
+
+보행·정비 통로도 REV.21 에서는 Y 5,900–7,100 에 그렸는데 afu·post·buffer 존이
+그 위를 덮어 전장의 절반 가까이에서 통로가 사라졌다. 통로는 장비 밴드 **밖**에 둔다.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from . import hk60c, line
+
+#: 장비가 점유할 수 있는 Y 밴드 (mm). 모든 존의 Y 구간은 이 안에 들어와야 한다.
+#:
+#: REV.54: 7,100 → **7,600**. 가장 넓은 셀이 밴드를 정한다 — REV.53 까지는 afu·buffer
+#: 7,100 이었고, DG-HK60C 의 방책(+3,400 / −4,200)이 그보다 500 넓다. 밴드를 안
+#: 넓히면 방책이 통로를 500 먹어 피난 유효폭 900 이 400 이 된다. 통로는 밴드
+#: 바깥에 그대로 1,200 이고, 플랜트 폭은 8,300 → 8,800 이다. `band_is_the_widest_station()`
+#: 이 이 관계를 지킨다.
+#: 전처리 셀들의 밴드 — REV.53 까지의 값. 후단 벤더 방책이 이보다 넓으면 밴드가 그만큼 는다.
+PREPROCESS_BAND_Y_MM = 7100
+#: 가장 넓은 셀이 밴드다 — 벤더 포락선 개정(방책 +3,700/−4,600 = 8,300)이 그대로 따라온다.
+MACHINE_BAND_Y_MM = max(PREPROCESS_BAND_Y_MM, hk60c.ENVELOPE_MM[1])
+
+#: 보행·정비 통로 폭 (mm). 장비 밴드 바깥에 별도로 확보한다.
+AISLE_WIDTH_MM = 1200
+
+# ── 이송 높이 ────────────────────────────────────────────────────────────
+#: 라인 이송 높이 (mm) — **이송면(롤러 윗면)** 기준이다.
+#:
+#: REV.44 까지 이 값이 셀마다 달랐다: robot·jbr 900 / afr·post 950 / buffer·grm 1,050.
+#: 그런데 도면은 JBR 저마킹 롤러와 AFR 베드를 잇는 1,800 mm 를 "공용 인계롤러"라고
+#: 적고 있었다 — **롤러 하나가 두 높이를 동시에 가질 수 없으므로 성립하지 않는다.**
+#: 3D 는 그 단차를 더 크게(1,025 → 1,100, 75 mm) 그리면서 완충 램프도 두지 않았다.
+#: 같은 문제를 상류에서는 `JB-201 높이보정 인계 롤러` 13본으로 풀어 놓았는데,
+#: 그 램프는 애초에 이 단차가 없었으면 필요 없는 물건이다.
+#:
+#: 발주처 확정: **robot·jbr·afr·post 네 셀을 950 으로 통일**한다. PT-101 정렬정반
+#: 출구부터 GI-302 까지 약 22 m 가 한 높이가 되어 인계롤러 공용이 실제로 성립하고,
+#: 높이보정 램프가 필요 없어진다. 남는 단차는 post→buffer 100 mm 하나인데 버퍼는
+#: 슬롯 승강(340…2,236)으로 그것을 흡수한다.
+LINE_TRANSFER_MM = 950
+
+#: 한 이송면을 나눠 쓰는 셀 — 이 셀들은 전부 LINE_TRANSFER_MM 여야 한다.
+#:
+#: REV.47 에서 **buffer 가 들어왔다.** REV.45 는 네 셀만 950 으로 맞추고 버퍼는
+#: 1,050 선언을 그대로 뒀는데, 그 선언을 아무도 확인하지 않는 사이 3D 는 같은
+#: 자리를 **680** 으로 그리고 있었다 — 한 인계부에 값이 셋이었다(모델 1,050 ·
+#: 2D flow 1,053 · 3D 680). 이 목록에 없으면 검사를 안 받고, 검사를 안 받으면
+#: 갈라진다. 그래서 **롤러로 유리를 받는 셀은 전부 여기 들어온다.**
+#:
+#: grm 은 들어오지 않는다 — 인계가 롤러 간 이송이 아니라 BX-101 브리지가 캐리지
+#: 슬롯에서 유리를 들어 LD-101 롤러베드(EL 1,150, 벤더 공정선)에 내려놓는 것이라
+#: 이송면 단차라는 개념 자체가 없다 (REV.54).
+SHARED_LINE: tuple[str, ...] = ("robot", "jbr", "afr", "post", "buffer")
+
+#: 이송 롤러 지름 (mm). 이송면(윗면)에서 롤러 중심을 얻는 데 쓴다 — 3D 는 중심으로
+#: 그리고 GA 는 윗면으로 적으므로, 둘을 잇는 값이 하나 있어야 어긋나지 않는다.
+#:
+#: REV.47: 이 값을 **안 쓰던 롤러가 하나 있었다.** 횡이송 리젝트 스퍼가 씬에
+#: 반지름 .042(Ø84)로 직접 박혀 있어 상면이 947 이었다 — 축은 905 로 같으니
+#: 도면상 티가 안 나고, 불량 패널이 횡이송으로 넘어갈 때만 3 mm 를 떨어진다.
+#: 지름도 높이만큼이나 파생이어야 한다.
+ROLLER_D_MM = 90
+
+#: GBR 데크(셔틀) 하류면과 도크 캐리지 상류면 사이의 순틈 (mm).
+#:
+#: ML-811 적재기 트윈마스트가 이 틈에 기립한다(X 125…285) — 마스트가 설 자리가
+#: 곧 이 값이다. REV.47 까지 3D 는 셔틀과 캐리지를 **1,360 mm 겹쳐** 그리고
+#: 있었고, 그래서 마스트가 설 틈이 형상으로는 존재하지 않았다.
+BUFFER_DOCK_GAP_MM = 225
+
+#: 고정 컨베이어 끝과 **움직이는 인계면** 사이의 나이프 간극 (mm).
+#:
+#: 0 으로 붙일 수 없다 — 레벨 공차 ±0.30 과 열팽창이 있고, 상대가 GBR-301
+#: 셔틀처럼 스스로 움직이는 데크면 더욱 그렇다. 반대로 벌리면 유리가 그만큼
+#: 캔틸레버로 나간다. REV.46 까지 이 자리는 **485 mm** 였고, 그 끝에서 유리가
+#: 270 mm 를 떨어지고 있었다(3D 셔틀 데크 680). 두 면을 같은 950 에 놓고
+#: 간극만 이 값으로 남긴다.
+BUFFER_NIP_MM = 30
+
+
+def roller_axis_mm(transfer_mm: int | None = None) -> float:
+    """이송면 높이에서 롤러 중심 높이 (mm)."""
+    return (LINE_TRANSFER_MM if transfer_mm is None else transfer_mm) - ROLLER_D_MM / 2
+
+
+#: JBR–AFR 인계 게이트 길이 (mm).
+#:
+#: REV.21 은 1,250 mm 로 잡혀 있었는데 그 구간에 자기 하드웨어가 하나도 없었다.
+#: 3D 모델 실측으로 확인한 것:
+#:
+#: * JBR 셀 구조 하류 끝(가드 상부 횡빔)  x = −25 mm
+#: * AFR 셀 구조 상류 시작(SF-701 가드)   x = +300 mm  → 가드-가드 이격 325 mm
+#: * JB/AFR-301 인계 롤러(+641…+731)와 데이터 게이트(+1,220…+1,320)는
+#:   둘 다 AFR 베이스(550…11,950) **안쪽**에 붙어 있다.
+#: * 제거한 VS-301 검증헤드(−2,832…−2,548)는 JBR 셀 **안쪽**이었다 —
+#:   즉 비전 감축으로 라인 길이가 줄어든 것은 아니다.
+#:
+#: 그래서 게이트는 실측 이격 325 mm 에 앵커·심 여유를 얹은 값으로 잡는다.
+#: **REV.45 에서 이 게이트는 없어졌다** — 아래 INTEGRATED_CELL 참조. 값은 통합 전
+#: 이격의 근거로 남긴다.
+HANDOFF_CLEARANCE_MM = 350
+
+
+# ── 통합 제거셀 — JBR 과 AFR 을 한 기계로 ────────────────────────────────
+#: 베이스·가드·안전존·이송면을 공유하는 스테이션. **택트는 잃지 않는다** — 두
+#: 스테이션이 한 베드 위에 5 m 넘게 떨어져 있어 지금처럼 파이프라인으로 돈다
+#: (JBR 이 다음 장을 무는 동안 AFR 이 앞 장을 벗긴다).
+#:
+#: 공유하는 것은 넷이다. ① 한 베이스 프레임 ② 한 가드 인클로저·한 안전존
+#: ③ 한 이송면(LINE_TRANSFER_MM) ④ JB/AFR-301 인계 인터페이스가 셀 간 핸드셰이크가
+#: 아니라 기계 내부 스텝이 된다 — 데이터 게이트 하드웨어·ACK·CRC 재검증이 없어진다.
+#:
+#: **공유할 수 없는 것**: 지지 정반과 클램프 포탈. 두 스테이션이 5,375 mm 떨어져
+#: 각자 자기 패널을 물고 있으므로 판을 하나로 만들 수 없다. (검토 단계에서 이것을
+#: 공유 항목으로 적었던 것은 두 공정이 같은 자리에서 일어난다고 잘못 본 것이다 —
+#: 같은 자리에서 하면 직렬 84 s 가 되어 처리량이 41 % 떨어진다.)
+#: **REV.52 — 후단 유리검사(post)가 세 번째 스테이션이 된다.** REV.50 에서
+#: SG-301 연마 헤드가 AFR 반출롤러 위로 올라가며 이 셋은 이미 한 이송 흐름이
+#: 됐다: AFR 정반 → 반출롤러(SG 가 그 위) → CV-102 통과 런(GI 가 그 위에 선다).
+#: 그런데 afr 과 post 사이에는 아직 가드 벽 둘과 케이싱 칸막이가 서 있어, 한
+#: 흐름을 두 인클로저가 끊고 있었다 — 그 자리에 950 mm(475+475)가 들어가 있다.
+#: 벽을 없애고 접합부 250 만 두면 **−675 mm** 다 (틈은 925 → 250).
+INTEGRATED_CELL: tuple[str, ...] = ("jbr", "afr", "post")
+
+#: 가드-장비 X 여유 (mm) — 플랜트 표준. AFR 이 REV.22-P01 에서 이 값으로 균등화
+#: 했고, JBR 은 125 mm 뿐이었다. 통합하면서 양 끝에 같은 기준을 적용한다.
+GUARD_CLEARANCE_X_MM = 475
+
+#: 통합셀 안에서 두 스테이션 구조가 마주보는 최소 이격 (mm). 사이에 가드 벽이
+#: 없으므로 앵커 베이스플레이트와 배선 트레이만 지나가면 된다. 250 은 그 둘이
+#: 지나는 최소치이면서, 반씩 나눠 가져도 두 스테이션 외형이 정수로 떨어진다 —
+#: 200 으로 잡으면 외형이 홀수(7,375·6,125)가 되어 2D 부재 중심이 0.5 mm 로 나온다.
+STATION_JUNCTION_MM = 250
+
+#: 통합셀 **하류 끝**의 여유 (mm). 여기는 가드 벽이 아니라 GBR-301 인계면이라
+#: 바깥 기준 475 를 쓸 수 없다 — 나이프 롤러가 셔틀 데크에 닿아야 유리가 건너간다.
+#: 그 간극은 이미 `BUFFER_NIP_MM` 으로 근거가 적혀 있으므로 그 값을 그대로 쓴다.
+#: (REV.51 까지 post 는 자기 셀이라 하류에도 475 를 적어 뒀는데, 3D 는 그 자리에
+#: 30 을 그리고 있었다 — 선언과 형상이 다른 자리였고 이번에 하나가 된다.)
+CELL_DOWNSTREAM_EDGE_MM = BUFFER_NIP_MM
+
+#: 각 스테이션의 장비 X 실측 스팬 (mm) — 도면 부품표 실측(가드 제외).
+#: jbr −3,400…3,400 · afr −2,325…3,325 (REV.44 에서 단축 실린더가 정반 안으로
+#: 들어가며 상류 −2,725 → −2,325 로 400 mm 물러났다. REV.50: SG-301 연마 헤드가
+#: 반출롤러 위로 오며 하류 끝이 롤러 끝 3,225 에서 SG 몸체 끝 3,325 로 100 나갔다 —
+#: 몸체 2,200 을 롤러 런 1,225…3,225 의 중심 2,225 에 둔다).
+#: REV.52 post 2,870 — CV-102 통과 롤러 런의 3D 실측(사이드 프레임 2,850 +
+#: GBR 인계 나이프 롤러가 하류로 20 더)이다. REV.51 까지 이 자리는 GI 검사대
+#: 2,400 만 세고 있었는데, 그 선언대로면 존 안에서 롤러 런이 상류로 25 ·
+#: 하류로 425 삐져나간다 — 우연히 존 길이(475+2,400+475)가 실물을 담고 있었을 뿐이다.
+STATION_HARDWARE_X_MM: dict[str, int] = {"jbr": 6800, "afr": 5650, "post": 2870}
+
+#: 후단 스테이션 하드웨어(CV-102 런) 상류 끝에서 GI-301/302 검사대 **중심**까지 (mm).
+#: 2D 시트 로컬 원점이자 3D 그룹 원점이 이 점이다 — 존 중심이 아니다. REV.51
+#: 까지는 둘이 같았는데(GI 가 존 한가운데 있었다), 통합으로 상류 여유가 475 →
+#: 125 가 되며 갈라졌다. 원점은 형상(검사대 중심)에 붙는 쪽이 옳다.
+POST_GI_FROM_HARDWARE_MM = 1225
+
+
+def integrated_cell_length_mm() -> int:
+    """통합 제거셀 전장 (mm) — 바깥 여유 + 스테이션 장비 + 접합부."""
+    hardware = sum(STATION_HARDWARE_X_MM[k] for k in INTEGRATED_CELL)
+    return (GUARD_CLEARANCE_X_MM + CELL_DOWNSTREAM_EDGE_MM + hardware
+            + STATION_JUNCTION_MM * (len(INTEGRATED_CELL) - 1))
+
+
+def integrated_saving_mm() -> int:
+    """통합으로 줄어든 길이 (mm) — 스테이션마다 자기 셀이던 때 대비.
+
+    통합 전 실적값이다: JBR 7,050 · 게이트 350 · AFR 6,900 (REV.44) 에
+    REV.52 에서 들어온 후단 셀 3,350 (REV.51) 을 더한다.
+    """
+    before = 7050 + HANDOFF_CLEARANCE_MM + 6900 + 3350
+    return before - integrated_cell_length_mm()
+
+
+def station_edges_mm(key: str) -> tuple[int, int]:
+    """한 스테이션의 (상류, 하류) 여유 (mm).
+
+    바깥 끝만 여유고 안쪽은 여유가 아니라 이격이다 — 그 자리엔 벽이 없다.
+    셀 상류 끝은 가드 벽(475), 하류 끝은 GBR 인계면(30)이다.
+    """
+    if key not in INTEGRATED_CELL:
+        raise KeyError(key)
+    index, last = INTEGRATED_CELL.index(key), len(INTEGRATED_CELL) - 1
+    half_junction = STATION_JUNCTION_MM // 2
+    return (GUARD_CLEARANCE_X_MM if index == 0 else half_junction,
+            CELL_DOWNSTREAM_EDGE_MM if index == last else half_junction)
+
+
+def station_span_mm(key: str) -> int:
+    """통합셀 안에서 한 스테이션이 갖는 X (mm). 접합부를 반씩 나눠 갖는다."""
+    up, down = station_edges_mm(key)
+    return STATION_HARDWARE_X_MM[key] + up + down
+
+
+def post_origin_offset_mm() -> int:
+    """후단 스테이션 로컬 원점이 자기 존 시작에서 떨어진 거리 (mm).
+
+    2D 시트(PV-GLASS-301-GA-5101) 로컬 원점 = 3D 그룹 원점 = GI 검사대 중심.
+    """
+    return station_edges_mm("post")[0] + POST_GI_FROM_HARDWARE_MM
+
+
+def stations_are_one_machine() -> bool:
+    """두 스테이션 외형의 합이 통합셀 전장과 같은가."""
+    return (sum(station_span_mm(k) for k in INTEGRATED_CELL)
+            == integrated_cell_length_mm())
+
+
+@dataclass(frozen=True)
+class Station:
+    """설비 셀 하나. `envelope` 는 (X, Y, Z) 외형 mm."""
+
+    key: str
+    sheet: str
+    name: str
+    envelope: tuple[int, int, int]
+    transfer_height_mm: int
+
+    @property
+    def length_mm(self) -> int:
+        return self.envelope[0]
+
+    @property
+    def width_mm(self) -> int:
+        return self.envelope[1]
+
+    @property
+    def height_mm(self) -> int:
+        return self.envelope[2]
+
+
+@dataclass(frozen=True)
+class Zone:
+    """배치도 위의 한 구간. X 는 상류부터 이어 붙이고, Y·H 는 셀 외형에서 온다."""
+
+    key: str
+    label: str
+    x0_mm: int
+    x1_mm: int
+    y0_mm: int
+    y1_mm: int
+    height_mm: int
+    note: str
+
+    @property
+    def length_mm(self) -> int:
+        return self.x1_mm - self.x0_mm
+
+    @property
+    def width_mm(self) -> int:
+        return self.y1_mm - self.y0_mm
+
+
+#: 셀별 GA 외형. 도면의 `stations` 객체와 같은 값이어야 한다.
+STATIONS: dict[str, Station] = {
+    s.key: s
+    for s in (
+        Station("afu", "PV-AFU-101-GA-2101", "AFU-101 · 투입·비전·듀얼 리프트 셀",
+                # REV.27: 선언 5,050 이 3D 실측(VG-101 비전보 상단 5,150)보다 100 낮았다.
+                # 기둥 0…4,950 + 보 200 이라 조립체가 5,150 이다 — 형상을 따라간다.
+                # REV.49: 6,800 → 4,950. 반전 드럼을 적층 **바로 위**에 세우자 수평셔틀
+                # 1,850 이 없어졌고, 로봇과 그 하류 전부가 같은 1,850 을 상류로 왔다.
+                # 이 값은 임의가 아니라 도달거리에서 나온다 — afu_length_from_reach_mm().
+                (4950, 7100, 5150), 1880),
+        # REV.22-P01: 3D 모델 실측으로 상세 전개하면서 분리헤드·셔틀·포획빔이 들어왔다.
+        # 부품 실측 span X 4,940 · Y(깊이) 2,360 · Z(상하) 4,290 — 셔틀이 픽업면까지 나가고
+        # 포획빔 수납 카세트가 중앙벽 쪽으로 물리므로 (3,600, 2,900, 3,500) 으로는 못 담는다.
+        # bfc 는 ZONE_SEED 에 없는 부품 조립도라 전장에는 영향이 없다.
+        # REV.22-P02: 승강기둥을 포탈(문형)로 재배치 — 종전 기둥·LM가이드가 반전축 선상에
+        # 서서 셔틀·승강 패널을 관통했다(3D 스윕 실측 t 7.5–12.4 s). 기둥이 통과대역 밖
+        # (z −1,290/+950)으로 나가며 외형 (5,000, 2,400) → (5,100, 2,900).
+        # REV.27: 반전축을 3,300 → 3,430 으로 올렸다. 캐리지 상단(2,180)과 링 하단
+        # 사이가 130 mm 뿐이라 이송면이 링에 22 mm 까지 붙어 있었고, 그 대각 진입이
+        # 엔드링 단면을 88 mm 파고들었다(실측). 링 상단이 4,290 → 4,420 이 되어
+        # 외형 높이도 4,350 → 4,500 으로 따라 올라간다 (여유 80).
+        # REV.49: 드럼이 적층 바로 위로 오며 셔틀이 없어졌다. X 는 서보 상류면
+        # (−1,840)부터 포탈 기둥 하류면(+1,690)까지 3,530 — 외형은 반전축(0)에 대칭이라
+        # 서보 쪽이 정하며 ±1,850 = 3,700 으로 담는다 (5,100 → 3,700).
+        Station("bfc", "PV-BFC-101-ASM-2201", "BFC-101A/B · 단장 분리·수직 승강·180° 반전카세트",
+                (3700, 2900, 4500), 2100),
+        Station("robot", "PV-RBPT-101-GA-2301", "RB-101 · EOAT · PT-101 정렬정반",
+                (5200, 3900, 4150), LINE_TRANSFER_MM),
+        # REV.45 통합 제거셀 — AFR 과 한 베이스·한 가드다. 외형이 7,050 → 7,375 로
+        # **늘어난다**: 종전 가드 여유가 상·하류 125 mm 뿐이라 플랜트 표준 475 에
+        # 한참 못 미쳤고, 통합하면서 상류에 그 기준을 적용했기 때문이다. 하류는
+        # 가드 벽이 없어져 접합부 125 만 갖는다 (475 + 6,800 + 125).
+        Station("jbr", "PV-JBR-201-GA-3101", "JBR-201 · 케이블·정션박스 제거 스테이션",
+                (7400, 3050, 2800), LINE_TRANSFER_MM),
+        # REV.22-P01 장비 단축 3건. 근거는 전부 도면 부품표 실측이다.
+        #
+        # 1. 가드 여유 균등화. 가드는 ±5,750 대칭인데 장비는 −5,550…+4,300 이라 상류 200 ·
+        #    하류 1,450 이었다 — 하류 1,450 을 설명하는 정비 치수가 없다. 플랜트에서 가장
+        #    넉넉한 X 가드 여유(유리 후단 475)를 양쪽에 적용해 상류는 오히려 넓어진다.
+        # 2. B안 — 인계롤러 공용. AFR 이 자기 투입롤러(3,700)를 따로 갖는 대신, JBR 저마킹
+        #    롤러 끝단과 AFR 12구역 베드를 1,800 짜리 공용 인계롤러로 직결한다. JBR 롤러는
+        #    정반 하류로 이미 2,175 남아 있어 늘릴 필요가 없다. 셀 상류면이 −4,650 → −2,725
+        #    (SA-L)로 올라와 −1,925.
+        # 3. A안 — 프레임 회수함 횡배치. 3,200×2,100 을 90° 돌려 2,100×3,200 으로 놓으면
+        #    셀 길이가 1,100 줄고 대신 폭이 4,700 → 5,600 늘어난다 (회수함 Z ±1,600 +
+        #    프레임함 횡인출 1,200 MIN). 장비 밴드 7,100 안이라 존은 y 1,200…6,800 이다.
+        #
+        # 장비 −2,725…+3,225 (5,950) + 475×2 = 6,900.
+        #
+        # REV.44: 단축 유압을 정반 **안**에 넣으면서 상류면이 −2,725 → −2,325 로
+        # 400 mm 물러났다 (장비 5,550).
+        # REV.45 통합 제거셀 — JBR 과 한 베이스·한 가드다. 상류는 가드 벽이
+        # 없어져 접합부 125 만 갖고, 하류만 표준 475 를 쓴다 (125 + 5,550 + 475).
+        # REV.50: SG-301 양측 연마 헤드를 **반출롤러(CV-103) 위**에 세웠다 — 발주처 질문
+        # "프레임 제거기 안에서 잔사도 제거하면?" 의 답이다. 정반 위가 아니라 반출 통과
+        # 중에 갈므로 택트는 그대로이고, 분진은 정반에서 1.3 m 하류 후드 안이다. SG 몸체
+        # 끝이 3,325 라(몸체 2,200 을 롤러 런 중심 2,225 에) 하드웨어 5,650 → 125 + 5,650 + 475 = 6,250.
+        # REV.52: 후단 스테이션이 통합셀에 들어오며 AFR 은 **가운데** 스테이션이
+        # 됐다 — 하류에도 가드 벽이 없어 여유 475 가 접합부 125 가 된다
+        # (125 + 5,650 + 125 = 5,900). 기계는 1 mm 도 안 움직인다: 존 시작이
+        # 그대로라 정반·클램프·반출롤러의 플랜트 좌표가 전부 같다.
+        Station("afr", "PV-AFR-101-GA-4101", "AFR-101 · 프레임 분리 · SG-301 반출 연마 스테이션",
+                (5900, 5600, 2800), LINE_TRANSFER_MM),
+        # V-4 적용: 잔사 검사와 레시피 판정을 연마 후 한 광학 스테이션으로 통합.
+        # CV-102 는 광학을 떼고 이송만 3,700→2,800, 통합 검사대는 2,000→2,400. 순 −500 mm.
+        # REV.50: 연마가 AFR 반출롤러 위로 가면서 별도 이송 스테이션이 없어졌다. 남는 것은
+        # GI-301/302 검사대(2,400)와 그 밑을 지나는 CV-102 통과 롤러 런뿐이라
+        # 475 + 2,400 + 475 = 3,350 (8,900 → 3,350). DX-601 은 여기 남고 덕트로 SG 후드와 잇는다.
+        # REV.52: 통합셀의 **세 번째 스테이션**이 된다. 상류는 접합부 125,
+        # 하류는 GBR 인계 나이프 간극 30 — 125 + 2,870 + 30 = 3,025.
+        # 3,350 → 3,025 (−325) 이고, 상류 여유가 475 → 125 로 줄며 셀 내용물
+        # 전체가 675 상류로 온다. 하류 전부(버퍼·GRM)가 같은 675 를 따라온다.
+        Station("post", "PV-GLASS-301-GA-5101", "CV-102 · GI-301/302 통합 유리 후단",
+                (3025, 4900, 2800), LINE_TRANSFER_MM),
+        # X 7,000 → 8,700: R-A/R-B 캐리지 2열의 부품 실측 span 이 8,675 라 외형을 넘었다.
+        # REV.22-P01 에서 두 가지가 더 나왔다. 이건 단축이 아니라 결함 수정이라 +850 이다.
+        #  * 2열 캐리지가 같은 Z(−2,350 / +2,350)에서 X 로 250 mm 겹쳐 있었다. 피치 2,500 이
+        #    모듈 길이 2,750 보다 짧다 — 3D 실측 피치 2,900 으로 맞췄다.
+        #  * 안전가드(−2,000…5,000)가 캐리지 뒤끝(5,975)보다 975 앞에서 끝나 위험원을 감싸지
+        #    못했다. 다른 셀과 같은 X 여유 475 로 6,450 까지 늘렸다.
+        # 결과 X: GBR 셔틀 −3,100 … 가드 6,450 = 9,550.
+        # REV.47: 인계면 1,050 → LINE_TRANSFER_MM. 종전 값의 근거는 "버퍼가
+        # 슬롯 승강(340…2,236)으로 단차를 흡수한다" 였는데, 흡수할 수 있다는 것이
+        # 단차를 둘 이유는 못 된다 — 콤포크는 어차피 픽업 높이에서 뜨므로 100 을
+        # 내려도 행정 안이고(953 은 340…2,236 한참 안쪽), 대신 라인 전체가 한
+        # 평면이 되어 이송면 단차가 **0** 이 된다. 3D 가 이 자리를 680 으로
+        # 그리고 있던 것도 이 선언을 아무도 대조하지 않았기 때문이다.
+        Station("buffer", "PV-GBR-301-GA-5201", "GBR-301 · R-A/R-B/HOLD 레시피 버퍼",
+                (9550, 7100, 2800), LINE_TRANSFER_MM),
+        # REV.23 에서 유리제거(박리) 라인을 플랜트의 한 존(GRM-401)으로 들여왔고, 그
+        # 외형은 옛 앱의 하드웨어 목록에서 유도한 **계획값**이었다 (14,050 × 6,100 × 3,600).
+        #
+        # REV.54: 그 자리에 **DG-HK60C** 가 선다. 외형은 계획값이 아니라 그 기계의
+        # 콘솔·사양서가 정한 값을 `hk60c` 가 읽어 온다 — X 는 방책 하류선(19,600:
+        # 스테이션 사슬 18,760 + 유리 픽업 840), Y 는 방책 폭 7,600, Z 는 납품 모듈
+        # 최고 높이(M-017 경계 인터페이스·배기 헤더 5,400). 방책 상류의 −900(팔레트
+        # 픽업 스테이션)은 브리지가 그 자리를 대신하므로 존에 넣지 않는다.
+        # 이송 높이는 벤더 공정선 EL 1,150 — 다섯 스테이션이 같다.
+        Station("grm", "PV-DGM-401-GA-6101",
+                f"{hk60c.TAG} · {hk60c.MODEL} {hk60c.DECKS}단 밀폐 IR·이동나이프 탠덤 유리제거기",
+                hk60c.ENVELOPE_MM, hk60c.LINE_EL_MM),
+    )
+}
+
+#: 존 시드 — (키, 표기, Y 시작, 주기, 장비 없는 존의 (X, Y, H) 폴백).
+#: 'gate' 는 JB/AFR 인계 맵 구간이라 대응하는 설비 셀이 없다.
+ZONE_SEED: tuple[tuple[str, str, int, str, tuple[int, int, int] | None], ...] = (
+    ("afu", "LFT-A/B · BFC", 0, "2 Bay·비전·반전", None),
+    ("robot", "RB-101 · PT", 1600, "직접픽업·정렬", None),
+    # REV.45 — jbr·afr 은 한 기계의 두 스테이션이다 (INTEGRATED_CELL). 사이에 있던
+    # 'gate' 존 350 은 두 가드 벽 사이의 이격이었는데, 벽이 하나로 합쳐지며 없어졌다.
+    ("jbr", "JBR-201", 2025, "케이블·JBOX (통합셀 상류 스테이션)", None),
+    ("afr", "AFR-101", 1200, "단축→장축 (통합셀 하류 스테이션)", None),
+    # REV.52: 통합셀 하류 스테이션 — afr 과 사이에 벽이 없다.
+    ("post", "CV · GI", 1100, "통과이송·통합검사 (통합셀 하류 스테이션)", None),
+    ("buffer", "GBR · BUFFER", 0, "R-A/R-B/HOLD", None),
+    # REV.54: 기계의 −y 면(카트 레인·경계반·인입점·모노레일 반출)을 통로 쪽에 둔다.
+    # +y 방책선이 벽쪽(Y 0)에 붙어 존이 밴드 7,600 을 꽉 채운다 — hk60c.plant_y_mm().
+    ("grm", f"{hk60c.TAG} · {hk60c.MODEL}", 0, "브리지 인계·밀폐 IR 가열·탠덤 박리·3계통 반출", None),
+)
+
+
+def transfer_steps_mm() -> tuple[tuple[str, str, int], ...]:
+    """이웃한 존 사이의 이송면 단차 (상류, 하류, mm). 0 이면 롤러를 공용할 수 있다."""
+    zones = [z for z in build_zones() if z.key in STATIONS]
+    out = []
+    for up, down in zip(zones, zones[1:]):
+        step = (STATIONS[down.key].transfer_height_mm
+                - STATIONS[up.key].transfer_height_mm)
+        out.append((up.key, down.key, step))
+    return tuple(out)
+
+
+#: 롤러로 잇지 **않는** 인계 — 왜 이송면 단차를 물어도 되는지가 값으로 있어야 한다.
+#:
+#: 이 표가 없으면 "단차 0" 검사는 둘 중 하나가 된다. 전부 0 이어야 한다고 하면
+#: 로봇 픽업까지 걸려 통과할 수 없고, 예외를 코드에 적으면 그 예외가 곧 근거가
+#: 되어 버린다. 롤러가 아닌 인계는 여기 사유와 함께 적고, 그 밖의 단차는 전부
+#: 실패한다.
+NON_ROLLER_HANDOFF: dict[tuple[str, str], str] = {
+    ("afu", "robot"):
+        "RB-101 이 BFC 반전카세트(1,880)에서 들어 올려 라인 시작점(950)에 놓는다 — "
+        "로봇 픽업이라 이송면을 잇지 않는다",
+    ("buffer", "grm"):
+        "BX-101 브리지가 GBR 캐리지 슬롯에서 유리 한 장을 뽑아 DG-HK60C 투입 셔틀 "
+        "LD-101 롤러베드(EL 1,150)에 놓는다 — 벤더가 발주자 설비로 넘긴 디스태커 "
+        "PL-101 의 자리다. 캐리지는 그대로 있고, 유리가 롤러로 건너가지도 않는다 (REV.54)",
+}
+
+
+def roller_steps_mm() -> tuple[tuple[str, str, int], ...]:
+    """**롤러로 이어지는** 이웃 쌍의 이송면 단차. 전부 0 이어야 한다."""
+    return tuple((a, b, step) for a, b, step in transfer_steps_mm()
+                 if (a, b) not in NON_ROLLER_HANDOFF)
+
+
+def the_line_has_no_step() -> bool:
+    """롤러로 이어진 구간에 단차가 하나도 없는가."""
+    return all(step == 0 for _, _, step in roller_steps_mm())
+
+
+def shared_conveyor_pairs() -> tuple[tuple[str, str], ...]:
+    """롤러를 공용할 수 있는 이웃 쌍 — 이송면이 같은 곳만."""
+    return tuple((a, b) for a, b, step in transfer_steps_mm() if step == 0)
+
+
+def the_shared_line_is_one_height() -> bool:
+    """한 이송면을 쓰기로 한 셀들이 실제로 같은 높이인가."""
+    return all(STATIONS[k].transfer_height_mm == LINE_TRANSFER_MM
+               for k in SHARED_LINE)
+
+
+def build_zones() -> list[Zone]:
+    """존을 상류부터 이어 붙인다. 폭·높이는 대응하는 셀 외형에서 파생한다."""
+    zones: list[Zone] = []
+    cursor = 0
+    for key, label, y0, note, fallback in ZONE_SEED:
+        station = STATIONS.get(key)
+        if station is not None:
+            span_x, span_y, height = station.envelope
+        elif fallback is not None:
+            span_x, span_y, height = fallback
+        else:  # pragma: no cover - 시드 자체가 잘못된 경우
+            raise ValueError(f"{key} 존에 설비도 폴백 치수도 없다")
+        zones.append(Zone(key, label, cursor, cursor + span_x, y0, y0 + span_y, height, note))
+        cursor += span_x
+    return zones
+
+
+# ── 미해결 — 3D 씬 격자와 존 표가 어긋난다 ──────────────────────────────
+#: 존 표는 셀 GA 포락선을 상류부터 이어 붙여 만든다. 3D 씬은 한동안 그와 **별도로**
+#: 각 셀 그룹의 x 를 직접 박아 두었고, 나중에 붙인 것들(GRM-401 셀·외장 케이싱·
+#: EC 명판)만 이 표를 따랐다. 헤드리스 실측이 잡아낸 어긋남 (world m 기준):
+#:
+#:   셀       존 표              3D 실측 (REV.47)             넘침
+#:   afu     -24.75 …-17.95    -19.45 …-14.98              하류 2,975
+#:   robot   -17.95 …-12.75    (셀 그룹 없음)                 —
+#:   jbr     -12.75 … -5.35    -11.91 …  0.07              하류 5,420
+#:   afr      -5.35 …  0.80     0.35 … 11.85               하류 11,050
+#:   post      0.80 …  9.70     0.80 …  9.70               맞음
+#:   buffer    9.70 … 19.25     9.70 … 18.79               맞음
+#:   grm      19.25 … 33.30    19.25 … 33.30               맞음
+#:
+#: **REV.48 에서 해소되었다.** 세 갈래(3D 를 옮긴다 / 존 표를 줄인다 / 빠진 설비를
+#: 채운다) 중 ①을 골랐다 — 존 표는 셀 GA 포락선의 합이라 그것을 줄이면 전장·케이싱·
+#: 배선이 다 따라 흔들리고, 3D 는 옛 좌표를 손으로 박아 둔 것뿐이라 근거가 없었다.
+#:
+#: 옮기면서 **네 가지가 드러났다** — 어느 것도 격자를 맞추기 전에는 보이지 않았다.
+#:
+#:   1. AFR 기계가 유리 후단 셀(post) 위에 9 m 겹쳐 서 있었다. CV-102 포탈이
+#:      AFR 그룹 안에 있어 같이 끌려다닌 탓이다 — 그 스테이션은 post 소속이다.
+#:   2. JB-201 축적 컨베이어가 4,630 이라 상류 사슬(VS-101…JBR 가드)이 존
+#:      합계보다 1,555 길었다. 한 장 축적에 필요한 것은 패널 2,500 + 여유 125×2
+#:      뿐이라 2,750 으로 줄였고, 그 1,880 이 사슬을 존 안으로 되돌렸다.
+#:   3. FH-501 회수함 상류함이 자기 2D 발자국(1,525…3,625) 밖 −1,110 에 있었다.
+#:   4. 인계 애니메이션의 행정이 옛 셀 간격으로 잡혀 있어, 셀이 붙자 JBR 패널이
+#:      AFR 정반 쇠막대를 1,000 mm 뚫고 들어갔다.
+#:
+#: 지금은 `tools/check_cell_grid.mjs` 가 일곱 셀 전부 "존을 넘는 셀 0 · 최대 0 mm"
+#: 를 낸다. 남은 것은 미귀속 메시(셀 태그가 없는 것)이고, 그건 격자 문제가 아니라
+#: 귀속 문제라 검사가 따로 센다.
+SCENE_GRID_OPEN: str | None = None
+
+#: 존 표가 AFR→버퍼에 주는 길이와 3D 가 실제로 그리는 길이의 차 (mm). 0 이면 등록.
+SCENE_GRID_GAP_MM = 0
+
+#: 3D 가 그 구간을 실제로 그리는 길이 (mm) — 실측. 격자를 맞춘 뒤로는 존 값과 같다.
+#: REV.50: 24,600 → 19,150. afr 6,250 + post 3,350 + buffer 9,550 — 셀 원점이 존 식이라
+#: 3D 가 그대로 따라왔다 (tools/check_cell_grid.mjs 재실측 · 넘침 0).
+#: REV.52: 19,150 → 18,475. 후단 검사가 통합셀 세 번째 스테이션이 되며 afr −350 ·
+#: post −325 다. 3D 는 존에서 원점을 내므로 실측이 그대로 따라온다.
+SCENE_AFR_TO_BUFFER_MM = 18_475
+
+
+def afr_to_buffer_zone_mm() -> int:
+    """존 표가 AFR 상류면부터 버퍼 하류면까지 주는 길이 (mm)."""
+    zones = {z.key: z for z in build_zones()}
+    return zones["buffer"].x1_mm - zones["afr"].x0_mm
+
+
+def scene_grid_gap_mm() -> int:
+    """존 표와 3D 실측의 차 — 이 값이 0 이 되면 격자가 맞은 것이다."""
+    return afr_to_buffer_zone_mm() - SCENE_AFR_TO_BUFFER_MM
+
+
+def scene_grid_is_registered() -> bool:
+    """3D 셀 원점이 존 격자 위에 올라왔는가."""
+    return SCENE_GRID_OPEN is None and scene_grid_gap_mm() == 0
+
+
+# ── 존 경계를 넘는 것이 설계인 자리 ──────────────────────────────────────
+# 존은 **X 를 잘라** 나눈 것이라, 두 기계가 X 로 겹치되 Y·Z 로 비켜 서는 관계를
+# 표현하지 못한다. 그런 자리가 하나 있고, 숨기면 다음 사람이 "격자가 틀렸다" 며
+# 되돌리려 들 것이므로 여기에 **숫자와 사유로** 적는다. 적힌 값을 넘으면
+# `tools/check_cell_grid.mjs` 가 잡는다.
+
+#: RB-101 도달거리 (mm). 부품표 AFU-RB-101 — 110–130 kg급 6축 로봇.
+ROBOT_REACH_MM = 2800
+
+#: 투입 무리의 자리 (plant mm). 사슬은 **상류에서 하류로** 한 방향이다.
+#:
+#:   적층 (BFC_PICKUP_X_MM)  = afu 존 시작 + 4,400  — 지게차 도킹·주차 여유가 정한다
+#:   반전 드럼               = 적층 바로 위 (REV.49 — 셔틀 없음)
+#:   RB-101 페데스털         = 적층 + 2,150         — 인계점 수평거리 2,680 (Z 1,600)
+#:   PT-101 놓는 자리        = 페데스털 + 2,290     — 그리고 그 자리는 jbr 존 중심 − 5,010
+#:
+#: 마지막 줄이 요점이다. PT 정반은 JBR 축적런에 매달려 jbr 존에서 자리를 받는데,
+#: 로봇은 그 정반에 2,290 으로 닿아야 한다. 두 조건이 동시에 서려면 afu 존 길이가
+#: 딱 하나로 정해진다 — afu_length_from_reach_mm(). STATIONS['afu'] 는 그 값이어야
+#: 하고 시험이 둘을 견준다. REV.48 까지는 8,400 / 6,250 리터럴이었다.
+#: 투입 베이 방위 (도). 지게차 도킹·적층대 LFT-101A/B·듀얼 반전 카세트 BFC-101A/B 가
+#: 평면에서 이만큼 돌아 선다. 0 이면 패널 장변이 라인 방향, 90 이면 라인을 가로지른다.
+#:
+#: REV.56 에서 90 으로 돌렸다. 돌리는 것은 **베이 하나 통째**라 패널에 대한 반전축은
+#: 그대로 장변이다 — 링 지름(보어 1,620)이 안 바뀐다. 바뀌는 것은 그 축이 놓인
+#: 방향뿐이고, 그래서 베이는 라인 방향으로 짧아지고(링 외경 1,980) 라인을 가로질러
+#: 길어진다(링 피치 2,760). RB-101 이 PT-101 에 놓을 때 라인 방향으로 되돌리므로
+#: **하류(JBR·AFR·버퍼·유리제거기)는 이 값을 보지 않는다.**
+INFEED_BAY_YAW_DEG = 90
+
+BFC_PICKUP_OFFSET_MM = 4_400
+BFC_PICKUP_Z_MM = 1_600
+ROBOT_PICK_DX_MM = 2_150
+ROBOT_PLACE_DX_MM = 2_290
+PT_FROM_JBR_CENTER_MM = 5_010
+
+#: 전손 리젝트 랙 — 페데스털 양옆. 셔틀이 없어져 분리헤드가 랙까지 갈 수 없으므로
+#: 로봇이 반전 생략 픽업 뒤 PT-101 대신 여기 놓는다. 자리는 로봇 도달 안이면서
+#: 포탈 하류 기둥 발판(적층 + 1,850)·페데스털(Ø1,280)·PT-101 정반(z ±760)·JB-201
+#: 가드(±1,040)를 비켜 서고, 로봇 셀 외형 Y 3,900(±1,950) 안에 드는 값이다.
+REJECT_RACK_DX_MM = 600
+REJECT_RACK_Z_MM = 1_550
+
+# ── 투입 스테이션 (PT-101 + JB-201) — 통합 후보를 닫으며 값으로 올린 자리 ──────
+#
+# "PT-101 정렬 정반을 JBR 축적런과 겸용하면 2,620 을 걷는다" 가 REV.51 부터 마지막
+# 통합 후보로 남아 있었다. README §56 에서 3D 좌표를 재 보니 **둘은 이미 2,320 겹친 한
+# 스테이션**이었다 — 3-2-1 기준 스톱도 축적런 안에 서 있고 이송면도 같은 950 이다.
+# 걷을 수 있는 것은 2,620 이 아니라 합집합(3,050)과 한 장 축적 소요(2,750)의 차이
+# **300** 뿐이고, −1,500…2,750 은 REV.48 이 축적런을 4,630 → 2,750 으로 줄이며 이미
+# 가져간 몫이었다. 그 300 의 대가는 좌표시드이므로 **발주처 결정으로 후보를 닫았다.**
+#
+# 근거가 3D 리터럴과 2D 규격표 문자열에만 있으면 다음 회차에 조용히 갈라진다.
+# REV.52 가 post 존에서 같은 종류의 갈라짐 둘을 닫았고, 여기도 같게 한다.
+
+#: PT-101 정렬 정반 외형 (X, Y, H) — 2D 규격표 "정렬 정반" 행과 같아야 한다.
+PT_TABLE_MM = (2_850, 1_650, 900)
+
+#: 3D 출구 정반 (X, Z) — 패널 2,500 에 60 씩 물린다.
+PT_DECK_MM = (2_620, 1_520)
+
+#: 3-2-1 스토퍼·양측 푸셔가 만드는 좌표시드. **이 라인의 유일한 기계 기준이다.**
+#: 로봇이 놓은 뒤 진공을 순차 해제하며 손목이 패널을 추종하는 동안 스톱과 푸셔가
+#: 패널을 기준면으로 끌어당긴다 — 로봇 자세오차를 흡수하는 자리가 여기 하나다.
+#: `vision.py` 의 영상 헤드 감축과 `ai.py` AI-10("파지 자세 비전 추정 권고하지
+#: 않음")이 둘 다 이 값 위에 서 있다. 정반을 빼면 카메라를 되사야 한다.
+#:
+#: 브리지 동기오차 0.08 mm(AXIS-JBR-X · JB-MX-005)와 **다른 값이다.** REV.51·52
+#: 기록이 둘을 바꿔 적었고 §56 에서 고쳤다 — 시험이 둘의 자리를 지킨다.
+PT_SEED_TOLERANCE_MM = 1.0
+PT_SEED_YAW_DEG = 0.15
+
+#: 한 장 축적에 필요한 그립 여유 (편측). 패널 + 이것의 2배가 스테이션 길이다.
+GRIP_CLEARANCE_MM = 125
+
+#: 축적·인계 런 JB-201 — 가드 기준 길이와 jbr 존 중심으로부터의 거리 (3D 실측).
+#: REV.54: 길이는 패널 상한에서 나온다 — 2,500 + 250 = 2,750 이 2,400 + 250 = 2,650 이 됐다.
+ACCUM_RUN_MM = line.LINE_MAX_MM[0] + 2 * GRIP_CLEARANCE_MM
+ACCUM_FROM_JBR_CENTER_MM = 4_645
+
+
+def _zone_x0_mm(key: str) -> int:
+    return next(z.x0_mm for z in build_zones() if z.key == key)
+
+
+def bfc_pickup_x_mm() -> int:
+    """적층 = 반전 드럼 = 로봇 인계점의 X (plant mm)."""
+    return _zone_x0_mm("afu") + BFC_PICKUP_OFFSET_MM
+
+
+def robot_pedestal_x_mm() -> int:
+    return bfc_pickup_x_mm() + ROBOT_PICK_DX_MM
+
+
+def pt_place_x_mm() -> int:
+    """PT-101 놓는 자리 — jbr 존 중심에서 상류로 5,010 (3D 의 Ti)."""
+    jbr = next(z for z in build_zones() if z.key == "jbr")
+    return (jbr.x0_mm + jbr.x1_mm) // 2 - PT_FROM_JBR_CENTER_MM
+
+
+def robot_pickup_distance_mm(pickup_x_mm: int | None = None) -> float:
+    """RB-101 J2 축에서 BFC 인계점까지의 수평 직선거리 (mm)."""
+    x = bfc_pickup_x_mm() if pickup_x_mm is None else pickup_x_mm
+    return ((robot_pedestal_x_mm() - x) ** 2 + BFC_PICKUP_Z_MM ** 2) ** 0.5
+
+
+def robot_place_distance_mm() -> int:
+    """RB-101 J2 축에서 PT-101 놓는 자리까지 (mm). ROBOT_PLACE_DX_MM 이어야 한다."""
+    return pt_place_x_mm() - robot_pedestal_x_mm()
+
+
+def pt_deck_span_mm() -> tuple[int, int]:
+    """PT-101 출구 정반이 차지하는 X 구간 (plant mm)."""
+    half = PT_DECK_MM[0] // 2
+    return (pt_place_x_mm() - half, pt_place_x_mm() + half)
+
+
+def accumulator_span_mm() -> tuple[int, int]:
+    """JB-201 축적·인계 런이 차지하는 X 구간 (plant mm). 존 경계를 건넌다."""
+    jbr = next(z for z in build_zones() if z.key == "jbr")
+    centre = (jbr.x0_mm + jbr.x1_mm) // 2 - ACCUM_FROM_JBR_CENTER_MM
+    half = ACCUM_RUN_MM // 2
+    return (centre - half, centre + half)
+
+
+def pt_accumulator_overlap_mm() -> int:
+    """정반과 축적런이 겹치는 길이 (mm). 둘이 한 스테이션이라는 근거다."""
+    a0, a1 = pt_deck_span_mm()
+    b0, b1 = accumulator_span_mm()
+    return max(0, min(a1, b1) - max(a0, b0))
+
+
+def infeed_station_span_mm() -> tuple[int, int]:
+    """정반과 축적런을 한 스테이션으로 본 X 구간 (plant mm)."""
+    a0, a1 = pt_deck_span_mm()
+    b0, b1 = accumulator_span_mm()
+    return (min(a0, b0), max(a1, b1))
+
+
+def one_panel_station_mm() -> int:
+    """한 장 축적에 필요한 길이 (mm) — 패널 + 그립 여유 양측. REV.48 의 규칙."""
+    from . import campaign
+    return int(campaign.PANEL_LENGTH_MM) + 2 * GRIP_CLEARANCE_MM
+
+
+def infeed_merge_residue_mm() -> int:
+    """겸용으로 더 걷을 수 있는 길이 (mm).
+
+    합집합에서 한 장 축적 소요를 뺀 나머지다. 이 값이 패널 한 장보다 한참
+    작다는 것이 **통합 후보가 소진됐다**는 뜻이고, §56 이 후보를 닫은 근거다.
+    """
+    lo, hi = infeed_station_span_mm()
+    return (hi - lo) - one_panel_station_mm()
+
+
+def robot_reject_distance_mm() -> float:
+    return (REJECT_RACK_DX_MM ** 2 + REJECT_RACK_Z_MM ** 2) ** 0.5
+
+
+def robot_can_reach(pickup_x_mm: int | None = None) -> bool:
+    return robot_pickup_distance_mm(pickup_x_mm) <= ROBOT_REACH_MM
+
+
+def afu_length_from_reach_mm() -> int:
+    """도달 사슬이 요구하는 afu 존 길이 (mm).
+
+    페데스털 + 2,290 = jbr 존 중심 − 5,010 을 afu 길이로 풀면
+    afu = 4,400 + 2,150 + 2,290 + 5,010 − robot − jbr/2 다.
+    """
+    robot, jbr = STATIONS["robot"].length_mm, STATIONS["jbr"].length_mm
+    return (BFC_PICKUP_OFFSET_MM + ROBOT_PICK_DX_MM + ROBOT_PLACE_DX_MM
+            + PT_FROM_JBR_CENTER_MM - robot - jbr // 2)
+
+
+@dataclass(frozen=True)
+class ZoneOverlap:
+    """한 셀이 이웃 존으로 넘어가는 것을 허용한 자리."""
+
+    cell: str
+    into: str
+    mm: int
+    reason: str
+
+
+#: 넘침이 **설계**인 자리. 여기 없는 넘침은 결함이다.
+ZONE_OVERLAP_BY_DESIGN: tuple[ZoneOverlap, ...] = (
+    ZoneOverlap(
+        "afu", "robot", 1300,
+        "RB-101 이 BFC 반전 베이 **안으로** 팔을 넣어 픽업하므로 베이가 로봇 쪽으로 "
+        "물려 있어야 한다. 페데스털 J2 축(6,550)에서 인계점(4,400, Z 1,600)까지가 "
+        "2,680 mm 로 도달 2,800 의 120 mm 안쪽이다 — 베이를 존 안(넘침 0)으로 "
+        "1,300 물리면 그 거리가 3,803 이 되어 로봇이 닿지 못한다. 넘치는 것은 포탈 "
+        "하류 기둥 발판(적층 + 1,850)·리프트 하류끝이고 X 뿐이라, Y·Z 로는 비켜 서 "
+        "있어 간섭 스윕에 걸리지 않는다. REV.49 에서 드럼이 적층 위로 오며 같은 "
+        "1,300 을 유지했다 — 로봇이 넣는 팔 길이는 그대로다.",
+    ),
+    ZoneOverlap(
+        "grm", "buffer", GUARD_CLEARANCE_X_MM,
+        "REV.53/54: BX-101 브리지가 GBR 캐리지 슬롯 앞(버퍼 존 끝에서 상류로 475)까지 "
+        "닿아야 유리를 집을 수 있다. 브리지는 후단 쪽 mesh(pvGrm 자식)라 grm 존이 "
+        "버퍼 쪽으로 475 물린다. Y·Z 는 캐리지·LD-101 과 같은 통로 폭 안이라 "
+        "간섭 스윕에 새로 걸리지 않는다.",
+    ),
+)
+
+
+def zone_overlap_mm(key: str) -> int:
+    """그 셀이 이웃 존으로 넘어가도 되는 양 (mm). 없으면 0."""
+    for over in ZONE_OVERLAP_BY_DESIGN:
+        if over.cell == key:
+            return over.mm
+    return 0
+
+
+def plant_envelope_mm() -> tuple[int, int, int]:
+    """영구설비 전체 포락선 (X, Y, Z). Y 는 장비 밴드 + 통로."""
+    zones = build_zones()
+    return (
+        zones[-1].x1_mm,
+        MACHINE_BAND_Y_MM + AISLE_WIDTH_MM,
+        max(zone.height_mm for zone in zones),
+    )
+
+
+def aisle_band_mm() -> tuple[int, int]:
+    """보행·정비 통로의 Y 구간. 어떤 존과도 겹치지 않아야 한다."""
+    return MACHINE_BAND_Y_MM, MACHINE_BAND_Y_MM + AISLE_WIDTH_MM
+
+
+# ── REV.54 — 후단 유리제거기 DG-HK60C 를 플랜트 안에 놓는 자리 ─────────────────
+# 기계 자체의 값은 `hk60c` 가 갖는다. 여기 있는 것은 **플랜트가 정하는 것**뿐이다:
+# 브리지가 어디서 어디까지 가는가, 통로 밖 물류 레인이 얼마인가.
+
+
+def band_is_the_widest_station() -> bool:
+    """장비 밴드가 가장 넓은 셀 외형과 같은가 — 밴드는 고른 값이 아니라 파생값이다."""
+    return MACHINE_BAND_Y_MM == max(s.width_mm for s in STATIONS.values())
+
+
+def downstream_zone_x0_mm() -> int:
+    return next(z.x0_mm for z in build_zones() if z.key == "grm")
+
+
+def bridge_pick_x_mm() -> int:
+    """브리지가 유리를 집는 자리 — GBR 마지막 캐리지 슬롯 면 (plant mm).
+
+    버퍼 존 끝에서 상류로 가드 여유 475 만큼이다 (`ZONE_OVERLAP_BY_DESIGN`).
+    """
+    return downstream_zone_x0_mm() - zone_overlap_mm("grm")
+
+
+def bridge_place_x_mm() -> int:
+    """브리지가 유리를 놓는 자리 — LD-101 롤러베드 중심 (plant mm)."""
+    return hk60c.plant_x_mm(downstream_zone_x0_mm(), hk60c.INFEED_CX_MM)
+
+
+def bridge_travel_mm() -> int:
+    """브리지 왕복 행정 (mm). REV.53 의 950 은 M0-101 상류면까지였고, 이제는 LD-101
+    데크 **중심**까지 간다 — 롤러베드는 진공테이블과 달리 끝에 놓고 밀어 넣지 못한다."""
+    return bridge_place_x_mm() - bridge_pick_x_mm()
+
+
+def bridge_lift_mm() -> int:
+    """브리지가 유리를 들어 올리는 높이차 — 버퍼 데크 950 에서 LD-101 공정선 1,150."""
+    return hk60c.LINE_EL_MM - LINE_TRANSFER_MM
+
+
+#: 통로 **밖**의 물류 레인 (mm) — 후단 존에만 있다. 만권 롤(357 kg · 4.9 h 마다)과
+#: 칼날 카세트가 RH-201 모노레일로 통로 위(EL 5,100)를 넘어 여기 새들에 내려앉고
+#: AGV 가 받는다. 기계 좌표로 롤 새들 −5,200 은 플랜트 Y 8,600 — **통로 한가운데**
+#: 다. 그래서 플랜트에서는 새들을 통로 밖 −6,200(Y 9,800)으로 내고 카세트 새들
+#: −7,000(Y 10,400)은 그대로 둔다 — 벤더 확인사항 OI-16.
+DOWNSTREAM_LANE_MM = 2200
+
+
+def roll_saddle_plant_y_mm() -> int:
+    """BS-301 만권 롤 새들의 플랜트 Y — 통로 바깥 1,000."""
+    return MACHINE_BAND_Y_MM + AISLE_WIDTH_MM + 1000
+
+
+def cassette_saddle_plant_y_mm() -> int:
+    """KC-301 카세트 새들의 플랜트 Y — 기계 좌표 그대로."""
+    y0 = next(z.y0_mm for z in build_zones() if z.key == "grm")
+    return hk60c.plant_y_mm(y0, hk60c.CASSETTE_SADDLE_Y_MM)
+
+
+def saddles_clear_the_aisle() -> bool:
+    """두 새들이 통로 밖에 있는가 — 통로 안에 있으면 사람이 롤 밑을 지난다."""
+    a0, a1 = aisle_band_mm()
+    return all(y >= a1 + 500 for y in (roll_saddle_plant_y_mm(), cassette_saddle_plant_y_mm()))
+
+
+def site_envelope_mm() -> tuple[int, int, int]:
+    """물류 레인까지 포함한 부지 포락선 (X, Y, Z) — 건축 확인값이다."""
+    x, y, z = plant_envelope_mm()
+    return (x, y + DOWNSTREAM_LANE_MM, z)
+
+
+def infeed_bay_is_rotated() -> bool:
+    """투입 베이가 라인을 가로질러 서는가."""
+    return INFEED_BAY_YAW_DEG % 180 == 90
+
+
+def infeed_bay_span_mm() -> int:
+    """베이 한 짝이 **라인을 가로질러** 차지하는 폭 (mm).
+
+    돌리면 반전 링 피치가 이 방향으로 눕는다 — 링 두 짝의 바깥면까지가 폭이다.
+    안 돌리면 적층 데크 폭이 정한다.
+    """
+    from . import kinematics
+    if infeed_bay_is_rotated():
+        return kinematics.RING_PITCH_MM + kinematics.RING_TUBE_MM
+    return PT_DECK_MM[1] + 200
+
+
+def infeed_bay_fits_the_band() -> bool:
+    """두 베이가 장비 밴드 안에 서는가 — 바깥 링이 afu 존 폭을 넘으면 안 된다."""
+    outer = BFC_PICKUP_Z_MM + infeed_bay_span_mm() // 2
+    return outer * 2 <= STATIONS["afu"].width_mm
+
+
+def infeed_shared_column_gap_mm() -> int:
+    """두 베이의 **안쪽 포탈 기둥이 중앙에서 만나** 백투백 공용 기둥이 되는데,
+    그 기둥과 안쪽 반전 링 사이에 남는 틈 (mm).
+
+    돌리기 전에는 기둥 네 본이 패널 통과대역 밖 사각형으로 서고 링은 그 안쪽
+    라인 방향에 있었다. 돌리면 그 사각형도 같이 돌아 기둥 줄이 라인을 가로지르는데,
+    베이 간격(±1,600)과 기둥 오프셋(±1,600)이 같아 **두 베이의 안쪽 기둥 줄이
+    중앙 z 0 에서 겹친다** — 종전 중앙 백투백 하중기둥이 서 있던 자리다.
+    이 틈이 0 이하면 링이 기둥을 문다.
+    """
+    from . import kinematics
+    ring_outer = (kinematics.RING_PITCH_MM + kinematics.RING_TUBE_MM) // 2
+    return INFEED_PORTAL_HALF_MM - INFEED_PORTAL_SECTION_MM[0] // 2 - ring_outer
+
+
+#: 포탈 기둥 줄의 반간격 (mm) — 씬의 ±1.6 과 같아야 한다. 기둥 단면은 180 × 240.
+INFEED_PORTAL_HALF_MM = 1_600
+INFEED_PORTAL_SECTION_MM = (180, 240)
+
+
+def infeed_columns_meet_at_the_centre() -> bool:
+    """돌린 뒤 두 베이의 안쪽 포탈 기둥 줄이 중앙(z 0)에서 만나는가.
+
+    만나야 그 자리가 종전 **중앙 백투백 반전 하중기둥**의 자리를 그대로 잇는다.
+    베이 간격과 기둥 오프셋이 같을 때만 성립하고, 하나가 움직이면 기둥이 둘로
+    갈라져 중앙에 쓸모없는 틈이 생긴다.
+    """
+    return infeed_bay_is_rotated() and BFC_PICKUP_Z_MM == INFEED_PORTAL_HALF_MM
