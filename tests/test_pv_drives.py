@@ -290,23 +290,38 @@ class TestFlipAxisOrientation(unittest.TestCase):
         self.assertIn("축 X", kinematics.SCENE_AXIS_OPEN)
         self.assertIn("제작 도면집", kinematics.SCENE_AXIS_OPEN,
                       "왜 지금 좌표를 못 옮기는지가 사유에 있어야 한다")
-        # 범위가 통합 3D 하나로 좁으면 생성 뷰가 조용히 옛 방향으로 남는다
-        for view in ("상세도", "운전 콘솔"):
-            self.assertIn(view, kinematics.SCENE_AXIS_OPEN,
-                          f"{view} 도 축 X 로 그린다 — 사유가 그것을 담아야 한다")
+        # 범위는 손으로 짠 3D 하나다 — 생성 뷰가 돌았다는 사실이 사유에 있어야
+        # 다음 사람이 이미 끝난 일을 다시 하지 않는다.
+        self.assertIn("3D 메시", kinematics.SCENE_AXIS_OPEN)
+        self.assertIn("이미 돌았다", kinematics.SCENE_AXIS_OPEN,
+                      "생성 뷰가 끝났다는 사실이 사유에 남아 있어야 한다")
 
-    def test_the_generated_views_still_hardcode_the_old_axis(self):
-        """②③ 이 실제로 리터럴을 쓰는가 — 사유가 사실인지 코드에서 확인한다.
+    def test_the_generated_views_read_the_axis_from_the_model(self):
+        """②③ 은 돌았다 — 리터럴이 아니라 축 매핑 도우미를 읽는지 코드로 지킨다.
 
-        생성 코드가 모델 상수를 읽게 바뀌면 이 시험이 깨진다. 그때가 사유에서
-        ②③ 을 지울 때다.
+        누가 다시 리터럴로 그리면 여기서 걸린다. 축을 되돌리면 그림도 같이 돌아야
+        하고, 그 조건이 이 시험이다.
         """
         import pathlib
         root = pathlib.Path(__file__).resolve().parents[1]
+        helpers = ("panel_half_xz_mm", "ring_half_xz_mm", "ring_plane_offsets_mm",
+                   "column_half_xz_mm", "column_offsets_xz_mm", "crossbeam_cross_extent_mm",
+                   "plan_xz")
         for name in ("build_infeed_detail.py", "build_infeed_sim.py"):
             src = (root / "tools" / name).read_text(encoding="utf-8")
-            self.assertIn("1_600" if name.endswith("detail.py") else "1600", src,
-                          f"{name} 이 포탈을 모델 상수로 그린다면 사유를 고친다")
+            for helper in helpers:
+                self.assertIn(helper, src, f"{name} 이 {helper} 을 안 읽는다 — 축이 바뀌면 안 따라온다")
+            for stale in ("1_600", "1600", "1_290", "1290", "1_380", "1380"):
+                self.assertNotIn(stale, src, f"{name} 에 옛 포탈 리터럴 {stale} 이 남았다")
+
+    def test_the_console_refuses_to_draw_a_wrong_axis(self):
+        """운전 콘솔은 시점 배분이 축에 달렸다 — 축이 X 면 그림을 내면 안 된다."""
+        import pathlib
+        root = pathlib.Path(__file__).resolve().parents[1]
+        src = (root / "tools" / "build_infeed_sim.py").read_text(encoding="utf-8")
+        self.assertIn("axis_is_z()", src)
+        self.assertIn("raise SystemExit", src,
+                      "축이 틀리면 조용히 옛 그림을 내는 대신 멈춰야 한다")
 
     def test_the_open_scene_note_names_where_to_edit(self):
         """무엇을 고쳐야 하는지가 값에 붙어 있어야 다음 사람이 찾는다."""

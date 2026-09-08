@@ -73,11 +73,11 @@ RING_TUBE_MM = 90
 #: 두 엔드링의 축방향 간격 (mm). 케이지 안지름 = 이 값 − 단면 2배.
 RING_PITCH_MM = 2760
 
-#: 반전축이 플랜트 어느 축에 눕는가 — **도면의 현재 상태**다.
+#: 반전축이 플랜트 어느 축에 눕는가 — **설계의 현재 값**이다.
 #:
-#: 지금은 "X" (라인 진행방향)이고, 그래서 `flip_axis_matches_the_panel()` 이
-#: False 다. 이것은 오타가 아니라 **알려진 불일치**이고 미결 OI-06 이 그 값과
-#: 대가를 적고 있다. 결정이 나면 이 값을 "Z" 로 바꾸는 것이 변경의 시작점이다.
+#: "Z" (라인 가로) 다. 지게차가 패널을 장변 방향으로 넣으므로 장변이 Z 에 눕고,
+#: 반전축은 그 장변과 나란해야 한다 (`PANEL_LONG_ALONG` 참조). 그림은 이 값을
+#: `axis_is_z()` · `plan_xz()` 로 읽어서 스스로 돈다 — 리터럴로 다시 적지 않는다.
 FLIP_AXIS_ALONG = "Z"
 
 #: 통합 설계도 3D 의 **메시**가 아직 옛 방향(축 X)으로 그려져 있으면 그 사유.
@@ -87,6 +87,9 @@ FLIP_AXIS_ALONG = "Z"
 #: 3D 는 손으로 짠 형상이라 리터럴만으로는 안 돈다. **파이썬은 통과하는데 그림은
 #: 옛 설계인 상태**가 이 저장소가 가장 경계하는 것이라(REV.26·§24) 값으로 남긴다.
 #:
+#: 생성 뷰(상세도 평면·입면, 운전 콘솔 평면·측면·단면)는 **돌았다** — `plan_xz`
+#: 계열을 읽어 스스로 회전한다. 남은 것은 손으로 짠 3D 하나다.
+#:
 #: 돌릴 때 손대야 하는 자리 (docs/drawings/pv-preprocess-plant.html):
 #:   • 베이 원점  `var yn=[new C(...,-1.6), new C(...,1.6)]` → ∓1.815
 #:   • 페데스털   `It=jn.x+2.15` → `+2`
@@ -95,13 +98,11 @@ FLIP_AXIS_ALONG = "Z"
 #:   • 베이 원점에 놓인 그룹 `n`·`d`·`f`·`m` — `rotation.y = Math.PI/2` 하나면 자식이 따라온다
 #:   • `wr`(리프트)·`Is`(비전보) 는 절대좌표라 포탈과 같은 식으로 옮긴다
 SCENE_AXIS_OPEN: str | None = (
-    "형상을 그리는 코드가 아직 축 X 를 가정한다 — 수치(밴드·셀 외형·베이 중심·"
-    "페데스털·크레인·소음·케이블·케이싱)는 전부 축 Z 로 맞췄고 시험이 지킨다. "
-    "남은 것은 그림 셋이다: ① 통합 설계도 3D 메시(손으로 짠 형상) ② 상세도의 "
-    "평면·입면 ③ 운전 콘솔의 평면·측면·단면. ②③ 은 생성 코드가 포탈을 "
-    "pick ∓1,600(X) 리터럴로 그려서 그렇다 — 모델 상수를 안 읽는다. "
-    "제작 도면집이 부품 좌표를 ① 에서 받으므로 ① 을 돌리기 전에는 카세트 좌표를 "
-    "옮기지 않는다."
+    "통합 설계도의 3D 메시가 아직 축 X 를 가정한다 — 손으로 짠 형상이라 리터럴만으로는 "
+    "안 돈다. 수치(밴드·셀 외형·베이 중심·페데스털·크레인·소음·케이블·케이싱)는 전부 "
+    "축 Z 로 맞췄고 시험이 지킨다. 생성 뷰(상세도 평면·입면, 운전 콘솔 평면·측면·단면)도 "
+    "모델 상수를 읽어 이미 돌았다. 제작 도면집이 부품 좌표를 이 3D 에서 받으므로, "
+    "3D 를 돌리기 전에는 카세트 부품 좌표를 옮기지 않는다."
 )
 
 
@@ -341,6 +342,25 @@ def cassette_cross_extent_mm() -> float:
     return float(CROSSBEAM_SPAN_MM)
 
 
+def crossbeam_cross_extent_mm() -> tuple[float, float]:
+    """크로스빔의 축직각 범위 (mm) — 기둥 두 본의 **가운데**에 걸린다.
+
+    기둥이 대칭이 아니므로(∓ 가 아니라 −1,290/+950) 빔도 대칭이 아니다. 빔은
+    기둥 중심의 중점에 걸리고 스팬 `CROSSBEAM_SPAN_MM` 을 좌우로 반씩 내민다 —
+    기둥 바깥면(`cassette_floor_extent_mm`)보다 양쪽으로 90 씩 더 나온다.
+    """
+    mid = sum(PORTAL_COLUMN_CROSS_MM) / 2
+    half = CROSSBEAM_SPAN_MM / 2
+    return (mid - half, mid + half)
+
+
+def crossbeam_overhang_mm() -> float:
+    """크로스빔이 기둥 바깥면 밖으로 내미는 길이 (mm) — 지지롤러·구동이 앉는다."""
+    lo, hi = cassette_floor_extent_mm()
+    b0, b1 = crossbeam_cross_extent_mm()
+    return min(lo - b0, b1 - hi)
+
+
 def cassette_floor_extent_mm() -> tuple[float, float]:
     """바닥 레벨 발자국의 축직각 범위 (mm) — 기둥만. 크로스빔은 머리 위다.
 
@@ -350,6 +370,58 @@ def cassette_floor_extent_mm() -> tuple[float, float]:
     lo, hi = PORTAL_COLUMN_CROSS_MM
     half = PORTAL_COLUMN_SECTION_MM[1] / 2
     return (lo - half, hi + half)
+
+
+def axis_is_z() -> bool:
+    """반전축이 라인 가로(Z)에 눕는가 — 그림이 이 한 줄로 갈린다."""
+    return FLIP_AXIS_ALONG == "Z"
+
+
+def plan_xz(axial: float, cross: float) -> tuple[float, float]:
+    """(축방향, 축직각) 오프셋을 평면의 (X, Z) 로 옮긴다.
+
+    카세트 기준 치수는 방향과 무관하다 — 어느 축에 눕느냐만 다르다. 도면 코드가
+    `pick ∓1,600` 같은 리터럴을 쓰면 축을 돌려도 그림이 안 돈다. 그래서 축을
+    읽는 자리를 여기 하나로 모은다.
+    """
+    return (cross, axial) if axis_is_z() else (axial, cross)
+
+
+def panel_half_xz_mm() -> tuple[float, float]:
+    """평면에서 패널의 반폭 (X, Z). 장변은 언제나 반전축과 나란하다."""
+    return plan_xz(PANEL_MM[0] / 2, PANEL_MM[1] / 2)
+
+
+def ring_half_xz_mm() -> tuple[float, float]:
+    """평면에서 엔드링 하나의 반폭 (X, Z) — 축방향은 관 두께, 직각은 외경."""
+    return plan_xz(RING_TUBE_MM, ring_outer_r_mm())
+
+
+def ring_plane_offsets_mm() -> tuple[float, float]:
+    """두 링 평면의 축방향 위치 (∓)."""
+    return (-RING_PITCH_MM / 2, RING_PITCH_MM / 2)
+
+
+def column_half_xz_mm() -> tuple[float, float]:
+    """평면에서 포탈 기둥 하나의 반폭 (X, Z)."""
+    a, c = PORTAL_COLUMN_SECTION_MM
+    return plan_xz(a / 2, c / 2)
+
+
+def column_offsets_xz_mm(bay_sign: int) -> tuple[tuple[float, float], ...]:
+    """기둥 4본의 평면 오프셋 (X, Z) — 베이 부호를 받는다.
+
+    축직각 자리는 대칭이 아니다(−1,290 / +950). 그 비대칭이 **베이를 가르는
+    방향**에 있을 때만 베이마다 거울상이 된다 — 축이 Z 면 비대칭이 X(공정방향)로
+    가므로 두 베이가 같은 자리를 쓴다. 하류면이 `cassette_floor_extent_mm()[1]`
+    이고 페데스털 여유가 거기서 나온다.
+    """
+    out = []
+    for a in (-PORTAL_COLUMN_AXIS_MM, PORTAL_COLUMN_AXIS_MM):
+        for c in PORTAL_COLUMN_CROSS_MM:
+            cc = c if axis_is_z() else (c if bay_sign < 0 else -c)
+            out.append(plan_xz(a, cc))
+    return tuple(out)
 
 
 def cell_span_extent_mm() -> float:
