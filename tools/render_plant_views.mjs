@@ -20,6 +20,7 @@
  */
 import { chromium } from 'playwright';
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { browserPath } from './pw_browser.mjs';
 
 const src = process.argv[2] ?? 'docs/drawings/pv-preprocess-plant.html';
 const outDir = process.argv[3] ?? 'docs/renders';
@@ -39,7 +40,8 @@ const VIEWS = [
   { f: 'plant-06-iso',       ko: '조감도 · 3/4 부감',                     dir: [0.55, 0.62, 0.56], up: [0, 1, 0],  long: 2800, padH: 1.05, padV: 1.05, fov: 26 },
 ];
 
-const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+const browser = await chromium.launch({
+  executablePath: browserPath(), args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 1600, height: 950 } });
 const errs = [];
 page.on('pageerror', e => errs.push(String(e).slice(0, 200)));

@@ -13,17 +13,8 @@
 import { chromium } from 'playwright';
 import { existsSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { browserPath } from './pw_browser.mjs';
 
-function browserPath() {
-  if (process.env.PW_CHROMIUM) return process.env.PW_CHROMIUM;
-  const root = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';
-  if (!existsSync(root)) return undefined;
-  for (const d of readdirSync(root).filter((n) => n.startsWith('chromium-')).sort().reverse()) {
-    const exe = join(root, d, 'chrome-linux', 'chrome');
-    if (existsSync(exe)) return exe;
-  }
-  return undefined;
-}
 
 const file = process.argv[2] || 'docs/drawings/pv-jbr-scene.html';
 if (!existsSync(file)) {
