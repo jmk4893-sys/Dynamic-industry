@@ -98,10 +98,14 @@ def scarcest_label() -> str:
 def scrap_miss_cost_s() -> float:
     """전손을 정상으로 오판했을 때 잃는 병목 시간 (s).
 
-    전손은 투입부에서 15 s 만 쓰고 빠져야 하는데, 통과시키면 병목 JBR 을
-    통째로 점유한다(REV.58 기준 54 s). 병목 시간은 곧 라인 처리량이다.
+    전손은 투입부에서 15 s 만 쓰고 빠져야 하는데, 통과시키면 병목 JBR 이
+    다음 장을 못 받는 시간을 통째로 먹는다. 병목 시간은 곧 라인 처리량이다.
+
+    **REV.59 정정.** 종전에는 `JBR_S`(AFR 인계 시각)로 쟀다. 잃는 것은 인계까지의
+    시간이 아니라 **정반이 막혀 있는 시간**이다 — 앞 장이 롤러 위로 나간 뒤에는
+    이미 다음 장이 들어와 있으므로 그만큼은 안 잃는다.
     """
-    return round(campaign.JBR_S, 1)
+    return round(campaign.jbr_block_s(), 1)
 
 
 def cracked_miss_cost_s() -> float:

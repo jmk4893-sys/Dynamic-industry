@@ -320,8 +320,13 @@ class TestJbrReview(unittest.TestCase):
         self.assertGreaterEqual(o["force_kn"][0], 2.0)
         self.assertGreater(o["years"][0], 1.0)
         self.assertLess(o["air_nl_h"], 25_200)
+        # 패널당 3 행정이면 주행거리도 3 배다 — 그것이 여기서 재는 성질이다.
+        # 양쪽 모두 반올림된 값이라 소수 첫째 자리까지 맞는 것은 성질이 아니라
+        # 우연이다(REV.59 에서 택트가 48.64 → 48.59 로 바뀌자 0.1 이 어긋났다).
+        # 반올림 폭만큼 여유를 두고 비율 자체를 확인한다.
         once = jf.pneumatic_option(80.0, self.V["stroke_mm"], takt, strokes_per_panel=1)
-        self.assertAlmostEqual(once["km_per_year"] * jf.BOXES_PER_PANEL, o["km_per_year"], places=1)
+        self.assertAlmostEqual(once["km_per_year"] * jf.BOXES_PER_PANEL, o["km_per_year"],
+                               delta=0.5)
 
     def test_the_platen_is_smaller_than_the_panel(self):
         """REV.57 로 헤드는 정반 안(z=0)에 주차하지만, 패널이 정반보다 크다는 것은 남는다."""

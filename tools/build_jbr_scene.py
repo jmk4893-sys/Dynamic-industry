@@ -7,7 +7,7 @@
 움직이는 것을 처음부터 끝까지 보는 화면이다.
 
 투입 파생본과 다른 점은 **시계가 0 에서 시작하지 않는다**는 것이다. JBR-201 은
-종단 체류 124.03 s 중 `INFEED_S` = 40 s 에 패널을 받아 `JBR_S` = 45 s 를 쓴다.
+종단 체류 130.03 s 중 `INFEED_S` = 40 s 에 패널을 받아 `JBR_S` = 51 s 를 쓴다.
 그래서 이 파생본은 시계를 [40, 85] 구간으로 **창(window)** 을 내고 그 안에서만
 재생·반복·스크럽하게 만든다. 시각 자체는 원본 그대로라 통합 설계도와 같은
 숫자를 읽는다 — 40 s 가 진입, 85 s 가 AFR-101 인계다.
@@ -98,6 +98,16 @@ HIDDEN_CONTROLS: tuple[str, ...] = ("pv-face-in", "pv-lift-mode", "afr-route-mod
 
 #: 꺼진 셀에 속하는 셀 키.
 DOWN_CELLS: tuple[str, ...] = ("afu", "robot", "afr", "post", "buffer", "grm")
+
+
+def _lead() -> float:
+    """통합 설계도의 종단 체류 (s) — 배지·시각·스크럽의 앵커다.
+
+    리터럴 124.03 을 박아 두었더니 REV.59 에서 원본이 130.03 으로
+    바뀌자 앵커가 0 곳이 되어 생성이 멈췄다. 멈춘 것은 옳았지만
+    고칠 곳이 여기여야 할 이유는 없다 — 모델에서 낸다.
+    """
+    return campaign.INFEED_S + campaign.JBR_S + campaign.AFR_S
 
 
 def _once(text: str, old: str, new: str, what: str) -> str:
@@ -244,7 +254,7 @@ def build() -> str:
               '정션박스·케이블 제거 셀만 남긴 3D 운전 콘솔 — 차광·2극 전압확인부터 '
               '도체 A→B 순차절단·L칼날 순차박리·진공 포획·호퍼 경유 일괄배출·후검증까지 '
               '11 단계를 플랜트 40–85 s 창에서 반복 재생한다.">', "제목")
-    t = _once(t, '<span class="viz-badge">124.03 s TRACE</span>',
+    t = _once(t, f'<span class="viz-badge">{_lead():g} s TRACE</span>',
               f'<span class="viz-badge">{campaign.JBR_S:g} s TRACE · JBR-201</span>', "배지")
     t = _once(t, '<h2 id="pv-v22-title">태양광 패널 전처리 통합 플랜트</h2>',
               '<h2 id="pv-v22-title">JBR-201 정션박스·케이블 제거장치 '
@@ -265,11 +275,11 @@ def build() -> str:
               '형상을 클릭하면 그 부품의 품번과 역할이 여기에 나옵니다.</div>', "기본 설명문")
 
     # ── 시계: [t0, t1] 창 ────────────────────────────────────────────────────
-    t = _once(t, '<div class="text-small tabular-nums" id="jb-time">0.00 / 124.03 s</div>',
+    t = _once(t, f'<div class="text-small tabular-nums" id="jb-time">0.00 / {_lead():g} s</div>',
               f'<div class="text-small tabular-nums" id="jb-time">{t0:.2f} / {t1:.2f} s</div>', "시계 표시")
     t = _once(t, '<span class="tabular-nums" id="jb-scrub-value">0.0 s</span>',
               f'<span class="tabular-nums" id="jb-scrub-value">{t0:.1f} s</span>', "스크럽 표시")
-    t = _once(t, 'id="jb-scrub" type="range" min="0" max="124.03" step="0.05" value="0"',
+    t = _once(t, f'id="jb-scrub" type="range" min="0" max="{_lead():g}" step="0.05" value="0"',
               f'id="jb-scrub" type="range" min="{t0:g}" max="{t1:g}" step="0.05" value="{t0:g}"', "스크럽")
     t = _once(t, ",ci=nt+Lr", f",ci={t1:g}", "종단 시각 → JBR 인계 시각")
     t = _once(t, ",Ve=0,ai=0", f",Ve={t0:g},ai=0", "시작 시각")
