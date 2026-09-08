@@ -323,14 +323,77 @@ class TestFlipAxisOrientation(unittest.TestCase):
         self.assertIn("raise SystemExit", src,
                       "축이 틀리면 조용히 옛 그림을 내는 대신 멈춰야 한다")
 
-    def test_the_open_scene_note_names_where_to_edit(self):
-        """무엇을 고쳐야 하는지가 값에 붙어 있어야 다음 사람이 찾는다."""
+    def test_the_closed_scene_note_says_what_moved(self):
+        """닫을 때는 **무엇을 돌렸는지**가 값에 남아야 한다.
+
+        열려 있을 때는 「어디를 고쳐라」가 붙어 있었다. 닫은 뒤에 그 안내만
+        지우면 기록이 사라진다 — 다음 사람이 3D 를 만질 때 무엇이 이미 돌아
+        있는지 알아야 하고, 무엇이 그것을 지키는지도 알아야 한다.
+        """
         import inspect
+        if not kinematics.scene_axis_is_registered():
+            self.skipTest("3D 가 아직 안 돌았다 — 위 미등록 시험이 지킨다")
         src = inspect.getsource(kinematics)
         i = src.find("SCENE_AXIS_OPEN")
-        note = src[max(0, i - 1400):i]
-        for token in ("yn", "It=jn.x+2.15", "rotation.y", "(sz,sy,sx)"):
-            self.assertIn(token, note, f"고칠 자리 안내에 {token} 이 없다")
+        note = src[max(0, i - 2200):i]
+        for token in ("∓1.815", "포탈 기둥", "엔드링", "포획빔", "YXZ"):
+            self.assertIn(token, note, f"돌린 자리 기록에 {token} 이 없다")
+        for tool in ("check_cell_grid", "check_clearance", "check_load_path", "check_casing_fit"):
+            self.assertIn(tool, note, f"지키는 검사 {tool} 이 기록에 없다")
+
+    def test_the_scene_mesh_is_actually_rotated(self):
+        """3D 가 도로 축 X 로 돌아가면 여기서 걸린다.
+
+        기하 검사 넷은 playwright 가 있어야 돌고 CI 에는 없다. 그래서 **도면
+        원문에서** 돌아간 형상 몇 자리를 못 박는다 — 값은 모델에서 낸다.
+        """
+        import pathlib as _p
+        if not kinematics.scene_axis_is_registered():
+            self.skipTest("3D 가 아직 안 돌았다")
+        html = (_p.Path(__file__).resolve().parents[1]
+                / "docs" / "drawings" / "pv-preprocess-plant.html").read_text(encoding="utf-8")
+        bay = layout.BFC_PICKUP_Z_MM / 1000
+        ped = layout.ROBOT_PICK_DX_MM / 1000
+        self.assertIn(f"new C(pvZone.afu[0]+4.4,.2,-{bay:g}),new C(pvZone.afu[0]+4.4,.2,{bay:g})", html,
+                      "베이 중심이 모델과 다르다")
+        self.assertIn(f"It=jn.x+{ped:g},", html, "페데스털이 모델과 다르다")
+        # 포탈 기둥 — 축방향 ∓1.6 이 Z 로, 축직각 −1.29/+0.95 가 X 로 갔다
+        self.assertIn("[-1.6,1.6].forEach((I,R)=>{[-1.29,.95].forEach((zc,zi)=>{"
+                      "P(s,[.24,3.35,.18],[i.x+zc,1.675,i.z+I]", html)
+        # 엔드링 — 반전축이 Z 면 토러스는 기본 평면 그대로다 (rotation.y 를 주면 눕는다)
+        self.assertIn("A.position.z=I,A.castShadow=!0", html)
+        self.assertNotIn("A.position.x=I,A.rotation.y=Math.PI/2", html,
+                         "엔드링이 다시 축 X 로 누웠다")
+        # 반전은 Z 축을 돈다
+        self.assertIn("Cl[K].rotation.z=he&&e?Math.PI*", html)
+        self.assertNotIn("Cl[K].rotation.x=he&&e?Math.PI*", html)
+        # 이송 중 패널은 yaw 로 되돌아온다 — 회전 순서가 없으면 반전축이 어긋난다
+        self.assertIn('dn.rotation.order="YXZ"', html)
+        self.assertIn("dn.rotation.set(h,dnY,0)", html)
+
+    def test_the_catch_beam_telescopes_out_of_the_wall(self):
+        """돌린 방향에서 포획빔은 **제 길이 방향으로** 벽에서 나온다 (OI-07).
+
+        종전 횡슬라이드는 성립하지 않는다 — 빔이 장변 프레임과 나란해지면
+        나오는 방향이 벽면과 나란해져 옆으로 밀 수가 없다. 도면이 어떤 안을
+        그리고 있는지가 값과 함께 보여야 설계 검토가 그것을 볼 수 있다.
+        """
+        import pathlib as _p
+        html = (_p.Path(__file__).resolve().parents[1]
+                / "docs" / "drawings" / "pv-preprocess-plant.html").read_text(encoding="utf-8")
+        def js(mm: float) -> str:
+            """미니파이 소스 표기 — 0.72 는 .72, −0.72 는 −.72 로 적힌다."""
+            s = f"{mm / 1000:g}"
+            return s.replace("0.", ".", 1) if s.lstrip("-").startswith("0.") else s
+
+        rows = ",".join(js(z) for z in kinematics.CATCH_BEAM_ROWS_MM)
+        self.assertIn(f"_=[{rows}]", html, "포획빔 행이 모델과 다르다")
+        self.assertIn(f"Cdl={js(kinematics.CATCH_BEAM_MM)},", html, "빔 길이가 모델과 다르다")
+        self.assertIn("Te.scale.z=cw,Te.position.z=Te.userData.wallDir*Cdz(cw)", html,
+                      "빔이 신축하지 않고 통째로 미끄러진다")
+        self.assertIn("OI-07", html, "도면이 이 안을 미결로 밝히지 않는다")
+        self.assertIn("OI-07", {o.tag for o in fabrication.OPEN_ITEMS},
+                      "도면은 그렸는데 미결 대장에 없다")
 
     def test_the_catch_beam_rows_straddle_the_long_frames(self):
         """포획빔은 장변 프레임 밑을 받아야 낙하를 잡는다 — 행이 프레임을 끼는가."""

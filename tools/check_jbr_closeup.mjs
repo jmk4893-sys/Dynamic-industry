@@ -14,19 +14,10 @@
 import { chromium } from 'playwright';
 import { existsSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { browserPath } from './pw_browser.mjs';
 
 /* 환경에 미리 깔린 크로미움을 쓴다. playwright 가 기대하는 빌드 번호와 설치본이
  * 어긋나 있는 컨테이너가 있어서, 있으면 그것을 직접 가리킨다. */
-function browserPath() {
-  if (process.env.PW_CHROMIUM) return process.env.PW_CHROMIUM;
-  const root = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';
-  if (!existsSync(root)) return undefined;
-  for (const d of readdirSync(root).filter((n) => n.startsWith('chromium-')).sort().reverse()) {
-    const exe = join(root, d, 'chrome-linux', 'chrome');
-    if (existsSync(exe)) return exe;
-  }
-  return undefined;
-}
 
 const file = process.argv[2] || 'docs/drawings/pv-jbr-closeup.html';
 if (!existsSync(file)) {

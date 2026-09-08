@@ -1286,7 +1286,10 @@ class TestFlipPortalAndLift(unittest.TestCase):
     def test_deck_scissor_and_cylinder_are_animated_together(self):
         """플랫폼·시저 각·실린더가 같은 데크 높이에서 파생돼야 한다 — 팔레트만 떠오르면 안 된다."""
         self.assertIn("du[K].position.y=Gdy", self.html)
-        self.assertIn("ga.rotation.z=ga.userData.gs*Gth", self.html)
+        # 반전축이 Z 로 누우며 시저 암도 같이 돌았다 — 암이 Z 로 길어졌으니
+        # 기울기는 x 축으로 준다. z 로 남아 있으면 암이 옆으로 눕는다.
+        self.assertIn("ga.rotation.x=-ga.userData.gs*Gth", self.html)
+        self.assertNotIn("ga.rotation.z=ga.userData.gs*Gth", self.html)
         self.assertIn("cp(gc.b,g0,g1)", self.html)
 
     def test_portal_labels_replace_the_old_posts_in_3d(self):
@@ -2160,11 +2163,17 @@ class TestCarriageClearance(unittest.TestCase):
         cls.stations = station_blocks(cls.html)
 
     def test_carriage_rails_sit_under_the_long_frame(self):
-        """레일은 유리 밑이 아니라 장변 프레임(패널 반폭 700 − 프레임 27.5) 아래여야 한다."""
-        self.assertIn("P(d,[2.72,.1,.14],[0,0,-.672]", self.html)
-        self.assertIn("P(d,[2.72,.1,.14],[0,0,.672]", self.html)
-        self.assertNotIn("P(d,[2.72,.1,.14],[0,0,-.54]", self.html,
+        """레일은 유리 밑이 아니라 장변 프레임(패널 반폭 700 − 프레임 27.5) 아래여야 한다.
+
+        반전축이 장변 방향(Z)으로 누우면서 레일도 같이 돌았다 — 길이 2,720 이
+        Z 로 가고, 프레임을 받치는 ∓672.5 가 X 로 온다. 받치는 자리는 그대로다.
+        """
+        self.assertIn("P(d,[.14,.1,2.72],[-.672,0,0]", self.html)
+        self.assertIn("P(d,[.14,.1,2.72],[.672,0,0]", self.html)
+        self.assertNotIn("P(d,[.14,.1,2.72],[-.54,0,0]", self.html,
                          "레일이 다시 유리 밑으로 들어가 정션박스를 누른다")
+        self.assertNotIn("P(d,[2.72,.1,.14]", self.html,
+                         "레일이 옛 축(X)으로 돌아갔다")
 
     def test_sheet_shows_twin_rails_not_a_slab(self):
         """시트가 통판이면 정션박스가 지나갈 개구부가 도면에서 보이지 않는다."""
@@ -2563,7 +2572,7 @@ class TestBrandMark(unittest.TestCase):
                 self.assertIn(f"pt.add(pvCell({var},'afu'))", html)
         # 공정 중인 물건 — 팔레트와 로봇이 들고 가는 패널
         self.assertIn("pt.add(pvTransit(dn))", html, "이송 중 패널이 셀에 매여 있다")
-        self.assertIn("pt.add(pvTransit(n)),P(n,[2.76,.15,1.62]", html, "팔레트가 셀에 매여 있다")
+        self.assertIn("pt.add(pvTransit(n)),P(n,[1.62,.15,2.76]", html, "팔레트가 셀에 매여 있다")
         # 지지 부재는 자기가 받치는 셀의 것 — 생성기와 손으로 쓴 것 모두
         self.assertIn("var pvMountFor=function(k){g=pvCell(new ce,k);pvMount.add(g);return g;};", html)
         for key in ("post", "afu", "afr", "buffer"):
@@ -3896,7 +3905,9 @@ class TestKinematics(unittest.TestCase):
         self.assertIn("xn=yn.map(i=>new C(i.x,At,i.z))", self.html,
                       "반전 드럼이 적층과 동심이 아니다 (REV.49)")
         # 조는 반전 구간에만 물고, 진입·하강 구간에는 열려 있어야 한다.
-        self.assertIn(f"jg.position.set(0,0,sg*{js(kinematics.JAW_OPEN_Z_MM)})", self.html)
+        # 반전축이 Z 라 링 평면은 XY 다 — 조는 그 평면 안에서 x 로 여닫는다.
+        self.assertIn(f"jg.position.set(sg*{js(kinematics.JAW_OPEN_Z_MM)},0,0)", self.html)
+        self.assertNotIn(f"jg.position.set(0,0,sg*{js(kinematics.JAW_OPEN_Z_MM)})", self.html)
         self.assertIn(f"le({js(kinematics.JAW_OPEN_Z_MM)},"
                       f"{js(kinematics.JAW_CLOSED_Z_MM)},cj)", self.html,
                       "조가 여닫이 없이 한 자리에 고정돼 있다")
