@@ -73,6 +73,51 @@ RING_TUBE_MM = 90
 #: 두 엔드링의 축방향 간격 (mm). 케이지 안지름 = 이 값 − 단면 2배.
 RING_PITCH_MM = 2760
 
+#: 반전축이 플랜트 어느 축에 눕는가 — **도면의 현재 상태**다.
+#:
+#: 지금은 "X" (라인 진행방향)이고, 그래서 `flip_axis_matches_the_panel()` 이
+#: False 다. 이것은 오타가 아니라 **알려진 불일치**이고 미결 OI-06 이 그 값과
+#: 대가를 적고 있다. 결정이 나면 이 값을 "Z" 로 바꾸는 것이 변경의 시작점이다.
+FLIP_AXIS_ALONG = "X"
+
+#: 패널 장변이 놓이는 플랜트 축. **"Z" 다 — 발주처 확인값이다.**
+#:
+#: 지게차가 패널을 **장변 방향으로** 투입한다. 팔레트 위 패널의 장변 2,500 이
+#: 라인 진행방향(X)이 아니라 가로(Z)에 놓인다는 뜻이다.
+#:
+#: 반전축은 **패널 장변과 나란해야** 한다 — 축이 단변과 나란하면 링 통과 구멍이
+#: 2,500 을 삼켜야 해서 반경이 810 → 1,250 이 되고 링이 통째로 커진다. 둘이 같이
+#: 돌면 카세트 기준 기하는 **하나도 안 바뀐다**: 케이지 안지름 2,580 이 여전히
+#: 장변을 받고(`cage_axial_clearance_mm`), 구멍 Ø1,620 이 여전히 단변을 받는다
+#: (`bore_clearance_mm`). 바뀌는 것은 플랜트 안에서 카세트가 놓이는 방향뿐이고,
+#: 그 대가는 **셀 폭**으로 나온다 (`afu_width_from_bays_mm`).
+PANEL_LONG_ALONG = "Z"
+
+
+# ── 포탈 발자국 ─────────────────────────────────────────────────────────
+#: 포탈 기둥 중심의 **축방향** 위치 (mm, ∓). 링 바깥면(∓1,470)보다 밖이어야
+#: 크로스빔이 링을 타고 넘지 않는다. 이 값이 카세트의 축방향 폭을 정하고,
+#: 축을 돌리면 그 폭이 곧 셀 폭 소요가 된다 — OI-06 의 두 안이 갈리는 자리다.
+PORTAL_COLUMN_AXIS_MM = 1600
+
+#: 기둥 단면 (축방향, 축직각) mm — 제작 패키지 BFC-COL-01 (박스빔 240×180).
+PORTAL_COLUMN_SECTION_MM = (180, 240)
+
+#: 기둥 중심의 **축직각** 위치 (mm). 대칭이 아니다 — 카세트가 도킹면 쪽으로
+#: 물러나 있다. **바닥 레벨 발자국**은 이 값이 정한다: 페데스털이 카세트를
+#: 비켜설 수 있는지는 여기로 재야 하고, 크로스빔(높이 3,320)으로 재면 460 을
+#: 헛되이 밀어내 그만큼 로봇 도달이 모자라진다.
+PORTAL_COLUMN_CROSS_MM = (-1290, 950)
+
+#: 크로스빔 스팬 (mm, 축직각). 기둥보다 길어 양쪽으로 내민다 — 지지롤러·구동·
+#: 볼스크루가 여기 매달린다. 머리 위 발자국은 이 값이 정한다.
+CROSSBEAM_SPAN_MM = 2660
+
+#: 중앙 백투백벽 두께 · 외측 안전벽 두께 · 그 바깥 정비통로 (mm).
+CENTRE_WALL_T_MM = 250
+OUTER_WALL_T_MM = 150
+MAINTENANCE_AISLE_MM = 600
+
 #: 반전축 높이 (mm). REV.26 은 3,300 이었다 — 링 하단이 이송면에 22 mm 까지
 #: 붙어 있었다. 130 올려 캐리지 상단과의 틈을 130 → 260 mm 로 벌린다.
 FLIP_AXIS_MM = 3430
@@ -250,6 +295,89 @@ def ring_over_stack_mm() -> float:
 def ring_over_forklift_mm() -> float:
     """지게차 헤드가드와 링 하단 사이 여유 — 팔레트 교환은 링 밑에서 일어난다."""
     return ring_bottom_mm() - FORKLIFT_GUARD_TOP_MM
+
+
+# ── 카세트 발자국과 베이 배치 ───────────────────────────────────────────
+def cassette_axis_extent_mm() -> float:
+    """반전축 방향 카세트 폭 (mm) — 기둥 바깥면에서 바깥면까지.
+
+    회전 뒤 이 값이 **플랜트 Z** 로 눕고, 베이 두 개가 이 폭을 하나씩 먹는다.
+    폭이 모자라는 이유가 전부 여기 있다.
+    """
+    return 2 * (PORTAL_COLUMN_AXIS_MM + PORTAL_COLUMN_SECTION_MM[0] / 2)
+
+
+def cassette_cross_extent_mm() -> float:
+    """반전축 직각 방향 카세트 폭 (mm) — 크로스빔이 정한다 (높이 3,320)."""
+    return float(CROSSBEAM_SPAN_MM)
+
+
+def cassette_floor_extent_mm() -> tuple[float, float]:
+    """바닥 레벨 발자국의 축직각 범위 (mm) — 기둥만. 크로스빔은 머리 위다.
+
+    페데스털이 카세트를 비켜설 수 있는지는 **이 값**으로 본다. 크로스빔으로
+    재면 460 을 헛되이 밀어내고, 그만큼 로봇 도달이 모자라진다.
+    """
+    lo, hi = PORTAL_COLUMN_CROSS_MM
+    half = PORTAL_COLUMN_SECTION_MM[1] / 2
+    return (lo - half, hi + half)
+
+
+def cell_span_extent_mm() -> float:
+    """셀 **폭(Z)** 방향에 놓이는 카세트 치수 (mm) — 반전축 방향이 정한다.
+
+    축이 X 면 좁은 쪽(크로스빔 2,660)이 폭에 눕고, Z 면 넓은 쪽(기둥 3,380)이
+    눕는다. 회전의 대가가 전부 이 한 줄에서 갈린다.
+    """
+    return (cassette_axis_extent_mm() if FLIP_AXIS_ALONG == "Z"
+            else cassette_cross_extent_mm())
+
+
+def bay_pitch_mm() -> float:
+    """두 베이 중심 사이 최소 거리 (mm) — 폭에 눕는 카세트 치수 + 중앙벽."""
+    return cell_span_extent_mm() + CENTRE_WALL_T_MM
+
+
+def min_bay_centre_z_mm() -> float:
+    """베이 중심 z 의 하한 (mm, ∓). `layout.BFC_PICKUP_Z_MM` 이 이보다 밖이어야
+    두 카세트가 중앙벽을 사이에 두고 겹치지 않는다."""
+    return bay_pitch_mm() / 2
+
+
+def bays_clear_each_other() -> bool:
+    return layout.BFC_PICKUP_Z_MM >= min_bay_centre_z_mm()
+
+
+def afu_width_from_bays_mm() -> float:
+    """베이 배치가 요구하는 afu 셀 폭 (mm).
+
+    중앙벽 절반 + 카세트 + 외측벽 + 정비통로, 그 2배다. 회전 전에는 카세트의
+    **좁은 쪽**(2,660)이 폭에 놓여 7,100 으로 됐다. 회전하면 넓은 쪽(3,380)이
+    폭에 놓이므로 이만큼 필요하다 — 이것이 회전의 대가다.
+    """
+    return 2 * (CENTRE_WALL_T_MM / 2 + cell_span_extent_mm()
+                + OUTER_WALL_T_MM + MAINTENANCE_AISLE_MM)
+
+
+def outer_wall_z_mm() -> float:
+    """외측 안전벽 중심의 z (mm, ∓) — 카세트 바깥면에 붙는다."""
+    return CENTRE_WALL_T_MM / 2 + cell_span_extent_mm() + OUTER_WALL_T_MM / 2
+
+
+def maintenance_aisle_mm() -> float:
+    """실제로 남는 정비통로 (mm) — 셀 폭에서 역산한다."""
+    half = layout.STATIONS["afu"].envelope[1] / 2
+    return half - (CENTRE_WALL_T_MM / 2 + cell_span_extent_mm() + OUTER_WALL_T_MM)
+
+
+def bays_fit_the_cell() -> bool:
+    """두 베이 + 벽 + 정비통로가 afu 셀 폭 안에 드는가."""
+    return maintenance_aisle_mm() >= MAINTENANCE_AISLE_MM
+
+
+def flip_axis_matches_the_panel() -> bool:
+    """반전축이 패널 장변과 나란한가 — 어긋나면 링 구멍이 장변을 삼켜야 한다."""
+    return FLIP_AXIS_ALONG == PANEL_LONG_ALONG
 
 
 def carriage_crosses_the_rings() -> bool:

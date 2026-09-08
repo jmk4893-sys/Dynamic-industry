@@ -212,6 +212,66 @@ class TestClampPad(unittest.TestCase):
         self.assertNotIn("접촉폭", text)
 
 
+class TestFlipAxisOrientation(unittest.TestCase):
+    """반전축 방향 — 패널 장변과 나란한가, 아니면 얼마를 물어야 나란해지는가.
+
+    발주처가 지게차 투입이 **장변 방향**이라고 확인했다. 반전축은 장변과 나란해야
+    하는데 도면은 아직 X 다. 여기서 지키는 것은 그 불일치가 **소리 없이 사라지지
+    않는 것**과, 대가가 계산으로 나오는 것이다.
+    """
+
+    def test_the_panel_long_side_is_the_confirmed_axis(self):
+        self.assertEqual(kinematics.PANEL_LONG_ALONG, "Z")
+
+    def test_the_drawing_axis_and_the_panel_do_not_agree_yet(self):
+        """일치하면 OI-06 이 닫힌 것이다 — 그때는 이 시험과 OI-06 을 같이 지운다."""
+        self.assertFalse(kinematics.flip_axis_matches_the_panel(),
+                         "반전축이 장변과 나란해졌다면 OI-06 을 닫고 이 시험을 고친다")
+        self.assertIn("OI-06", {o.tag for o in fabrication.OPEN_ITEMS})
+
+    def test_the_cassette_footprint_matches_the_fabrication_parts(self):
+        """발자국은 지어낸 값이 아니라 제작 부품에서 나온다."""
+        a = fabrication.assembly("PV-FAB-A03")
+        col = next(p for p in a.parts if p.tag == "BFC-COL-01")
+        cb = next(p for p in a.parts if p.tag == "BFC-CB-01")
+        self.assertEqual(tuple(col.size[1:]), kinematics.PORTAL_COLUMN_SECTION_MM)
+        self.assertEqual(cb.L, kinematics.CROSSBEAM_SPAN_MM)
+
+    def test_the_columns_stand_outside_the_rings(self):
+        ring_face = kinematics.RING_PITCH_MM / 2 + kinematics.RING_TUBE_MM
+        self.assertGreater(kinematics.PORTAL_COLUMN_AXIS_MM, ring_face - 1e-9,
+                           "기둥이 링 안쪽이면 크로스빔이 링을 타고 넘는다")
+
+    def test_the_floor_footprint_is_narrower_than_the_crossbeam(self):
+        """페데스털 여유는 바닥 발자국으로 잰다 — 크로스빔은 머리 위다."""
+        lo, hi = kinematics.cassette_floor_extent_mm()
+        self.assertLess(hi - lo, kinematics.cassette_cross_extent_mm())
+
+    def test_the_bays_clear_each_other_today(self):
+        self.assertTrue(kinematics.bays_clear_each_other())
+
+    def test_the_cell_holds_the_bays_today(self):
+        self.assertTrue(kinematics.bays_fit_the_cell())
+        self.assertGreaterEqual(kinematics.maintenance_aisle_mm(),
+                                kinematics.MAINTENANCE_AISLE_MM)
+
+    def test_turning_the_axis_needs_a_wider_cell(self):
+        """회전의 대가가 계산으로 나오는가 — OI-06 이 서 있는 값이다."""
+        now = kinematics.afu_width_from_bays_mm()
+        turned = 2 * (kinematics.CENTRE_WALL_T_MM / 2
+                      + kinematics.cassette_axis_extent_mm()
+                      + kinematics.OUTER_WALL_T_MM + kinematics.MAINTENANCE_AISLE_MM)
+        self.assertGreater(turned, layout.STATIONS["afu"].envelope[1],
+                           "돌려도 지금 셀에 들어간다면 OI-06 은 미결이 아니다")
+        self.assertGreater(turned - now, 1_000)
+
+    def test_the_open_item_carries_both_options(self):
+        oi = next(o for o in fabrication.OPEN_ITEMS if o.tag == "OI-06")
+        for token in ("8,510", "7,990", "2,814", "OI-04"):
+            self.assertIn(token, oi.why_open + oi.closes_with,
+                          f"OI-06 이 {token} 를 안 싣는다")
+
+
 class TestOpenItems(unittest.TestCase):
     """못 닫은 것을 못 닫았다고 적었는가 — 임의값으로 채우면 검산이 거짓으로 통과한다."""
 
