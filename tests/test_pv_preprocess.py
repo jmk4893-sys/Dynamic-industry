@@ -3741,6 +3741,26 @@ class TestBalancePlans(unittest.TestCase):
         self.assertGreater(held["takt_s"], campaign.summary()["takt_s"],
                            "C안이 택트를 늘리지 않으면 카드를 옮길 것도 없다")
 
+    def test_each_variant_carries_its_own_name(self):
+        """아티팩트 이름은 파일의 `<title>` 에서 나온다.
+
+        원본 제목을 그대로 두고 재발행하면 갤러리에서 원본과 이름이 겹쳐 둘을
+        구별할 수 없다 — C안이 실제로 「태양광 전처리 통합 플랜트」로 덮여
+        원본과 같은 이름이 됐다. 이름도 생성물로 둔다.
+        """
+        tool = (pathlib.Path(__file__).resolve().parents[1]
+                / "tools" / "build_handoff_variants.py").read_text(encoding="utf-8")
+        for key in ("B-plant", "B-delam", "C-plant", "C-delam"):
+            with self.subTest(variant=key):
+                self.assertIn(f'"{key}": "', tool, "변형안 이름이 없다")
+                self.assertIn(f'_retitle(', tool)
+        self.assertIn("전처리 통합 플랜트 · C안 벤더 개정 반영", tool)
+        # 원본 제목과 같으면 이름이 겹친다
+        base = re.search(r"<title>(.*?)</title>", self.html, re.S).group(1).strip()
+        for line in tool.splitlines():
+            if line.strip().startswith(('"B-', '"C-')):
+                self.assertNotIn(base, line, f"변형안 이름이 원본과 같다: {line.strip()}")
+
     def test_blank_field_falls_back_to_the_connected_configuration(self):
         """칸을 비우면 계산기가 업로드 당시 값으로 조용히 되돌아가면 안 된다."""
         delam = (pathlib.Path(__file__).resolve().parents[1]

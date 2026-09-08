@@ -18,7 +18,6 @@
 from __future__ import annotations
 
 import pathlib
-import shutil
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
@@ -50,9 +49,10 @@ def build_plan_b(out: pathlib.Path) -> list[pathlib.Path]:
         f'id="handlingTime" type="number" min="5" max="25" step="1" value="{handoff.PLAN_B_HANDLING_S:g}"',
         "B안 인계시간")
     delam = out / "DI_Sol_Rec_B안_박리라인.html"
-    delam.write_text(text, encoding="utf-8")
+    delam.write_text(_retitle(text, "B-delam"), encoding="utf-8")
     plant = out / "DI_Sol_Rec_B안_전처리.html"
-    shutil.copyfile(PLANT, plant)          # 전처리는 B안에서 바뀌지 않는다
+    # 전처리는 B안에서 바뀌지 않는다 — 이름만 이 안의 것으로 단다.
+    plant.write_text(_retitle(PLANT.read_text(encoding="utf-8"), "B-plant"), encoding="utf-8")
     return [plant, delam]
 
 
@@ -82,14 +82,35 @@ def build_plan_c(out: pathlib.Path) -> list[pathlib.Path]:
                              f"C안 콘솔 {name}")
 
     plant = out / "DI_Sol_Rec_C안_전처리.html"
-    plant.write_text(text, encoding="utf-8")
+    plant.write_text(_retitle(text, "C-plant"), encoding="utf-8")
     delam = out / "DI_Sol_Rec_C안_박리라인.html"
-    shutil.copyfile(DELAM, delam)          # 박리 라인은 C안에서 바뀌지 않는다
+    # 박리 라인은 C안에서 바뀌지 않는다 — 이름만 이 안의 것으로 단다.
+    delam.write_text(_retitle(DELAM.read_text(encoding="utf-8"), "C-delam"), encoding="utf-8")
     return [plant, delam]
 
 
 #: 화면 콘솔 카드의 키 → `campaign.summary()` 의 키.
 _CONSOLE_KEY = {"taktS": "takt_s", "throughputPerH": "throughput_per_h"}
+
+#: 변형안마다 제 이름을 단다. **아티팩트 이름이 파일의 `<title>` 에서 나오므로**
+#: 원본 제목을 그대로 두면 재발행할 때 원본과 같은 이름이 되어 갤러리에서 둘을
+#: 구별할 수 없다 — 실제로 C안이 「태양광 전처리 통합 플랜트」로 덮여 원본과
+#: 이름이 겹쳤다. 이름도 생성물로 둔다.
+_TITLES = {
+    "B-plant": "전처리 통합 플랜트 · B안 후단 개선",
+    "B-delam": "박리 라인 · B안 후단 개선 (칼날·인계 상한)",
+    "C-plant": "전처리 통합 플랜트 · C안 벤더 개정 반영",
+    "C-delam": "박리 라인 · C안 (전처리 감속 — 라인 무변경)",
+}
+
+
+def _retitle(text: str, key: str) -> str:
+    """문서 제목을 변형안 이름으로 바꾼다."""
+    import re
+    m = re.search(r"<title>(.*?)</title>", text, re.S)
+    if not m:
+        raise SystemExit(f"{key}: <title> 이 없다")
+    return text[:m.start(1)] + _TITLES[key] + text[m.end(1):]
 
 
 def _schedule_literal(rows) -> str:
