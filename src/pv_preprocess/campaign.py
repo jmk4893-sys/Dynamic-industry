@@ -389,8 +389,15 @@ def cell_occupancy_s() -> tuple[tuple[str, float], ...]:
     JBR 은 `JBR_S`(AFR 이 받는 시각)가 아니라 `jbr_block_s()`(정반이 비는
     시각)로 센다. 점유란 **다음 장을 못 받는 시간**이고, 패널이 롤러 위로
     나가고 나면 정반은 이미 비어 있다.
+
+    REV.60 에서 **버퍼도 빠져 있던 것**이 드러났다. GBR-301 은 서보 세 축으로 한
+    장을 슬롯에 넣는데 그 사이클을 내는 모델이 없어 후보에 들지 못했고, 그래서
+    "버퍼가 택트를 못 따라오면 라인이 선다"를 확인할 자리가 없었다 — §21 의 GRM
+    누락과 같은 종류다. `gbr_load.line_equivalent_s()` 가 그 값을 낸다.
     """
+    from . import gbr_load
     return (("투입부", INFEED_S), ("JBR-201", jbr_block_s()), ("AFR-101 후단", AFR_S),
+            ("GBR-301 버퍼", gbr_load.line_equivalent_s()),
             ("GRM-401 유리제거", grm_equivalent_s()))
 
 

@@ -20,7 +20,7 @@ import unittest
 
 from tests import _path  # noqa: F401
 
-from pv_preprocess import campaign, layout
+from pv_preprocess import campaign, gbr_load, handoff, layout
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCENE = ROOT / "docs/drawings/pv-gbr-scene.html"
@@ -335,6 +335,119 @@ class TestGbrScene(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("docs/drawings/pv-gbr-scene.html", readme)
         self.assertIn("tools/build_gbr_scene.py", readme)
+
+
+class TestBufferCapacity(unittest.TestCase):
+    """R-A/R-B 용량 — 파이썬 모델과 3D 가 한 값이어야 한다.
+
+    두 문서가 갈려 있었다. 3D 는 캐리지를 **물리 행**으로 세어 50/50, 완충시간을
+    내는 `handoff.py` 는 **레시피 배분**으로 세어 75/25. 화면은 50 을 띄우는데
+    사양서의 완충시간(재고 설정점·버팀시간)은 75 에서 나왔다. GA 시트가 B 열
+    스테이지 자리를 A-501C = 「R-A 스테이지 캐리지 (B열 · 레시피 재배분)」로
+    못박고 있으므로 배분 쪽이 설계 의도다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.plant = (ROOT / "docs/drawings/pv-preprocess-plant.html").read_text(encoding="utf-8")
+
+    def _lit(self, name: str) -> dict[str, int]:
+        m = re.search(rf"{name}=\{{([^}}]*)\}}", self.plant)
+        self.assertIsNotNone(m, f"{name} 리터럴이 도면에 없다")
+        return {k: int(v) for k, v in
+                (p.split(":") for p in m.group(1).split(","))}
+
+    def test_the_drawing_capacity_comes_from_the_model(self):
+        cap, mod = self._lit("BUF_CAP"), self._lit("BUF_MOD")
+        self.assertEqual(cap, {"A": handoff.BUFFER_RA_SLOTS,
+                               "B": handoff.BUFFER_RB_SLOTS,
+                               "H": handoff.BUFFER_HOLD_SLOTS})
+        self.assertEqual(mod, {"A": handoff.BUFFER_CARRIAGES[0],
+                               "B": handoff.BUFFER_CARRIAGES[1], "H": 1})
+        self.assertIn(f"BUF_SLOT={handoff.SLOTS_PER_CARRIAGE},", self.plant)
+        # 갈라져 있던 옛 값이 어디에도 남아 있지 않아야 한다.
+        self.assertNotIn("recipeBufferCapacity:{A:50,B:50,H:5}", self.plant)
+        self.assertNotIn('ji("A")}/50', self.plant)
+
+    def test_every_module_has_a_place_to_stand(self):
+        """R-A 가 3 모듈이면 자리도 셋이어야 한다 — 하나만 늘리면 조용히 터진다."""
+        mod = self._lit("BUF_MOD")
+        m = re.search(r"BUF_POS=\{(.*?)\},Yo=", self.plant, re.S)
+        self.assertIsNotNone(m)
+        pos = {k: v.count("[zl[") + v.count("[Fo") for k, v in
+               re.findall(r"([ABH]):\[(.*?)\]\]", m.group(1))}
+        for key, count in mod.items():
+            with self.subTest(route=key):
+                self.assertEqual(pos[key], count,
+                                 f"{key} 는 모듈 {count}개인데 자리가 {pos[key]}개다")
+
+    def test_the_reallocated_carriage_belongs_to_r_a(self):
+        """B 열 스테이지 자리의 A-501C 는 R-A 캐리지다 — 색도 슬롯도 그쪽이다."""
+        self.assertIn('M0(["B","A"],Kn.B,', self.plant)
+        self.assertIn("A-501C 스테이지 캐리지 (R-A · B열 레시피 재배분)", self.plant)
+        # 밀폐형은 R-B 도크 하나뿐이다.
+        self.assertIn("n[r]&&[-.82,.82].forEach", self.plant)
+        self.assertIn('M0(["A","A"],Kn.A,', self.plant)
+
+
+class TestLoaderCycle(unittest.TestCase):
+    """적재 사이클 — 버퍼가 라인을 따라오는가, 영상은 얼마나 압축했는가."""
+
+    def test_the_strokes_come_from_the_ga_sheet(self):
+        self.assertEqual(gbr_load.SLOT_FIRST_MM, 340.0)
+        self.assertEqual(gbr_load.SLOT_LAST_MM, 2236.0)
+        self.assertEqual(gbr_load.FORK_STROKE_MM, 3200.0)
+        self.assertEqual(gbr_load.PICKUP_MM, float(layout.LINE_TRANSFER_MM) + 3)
+        # 가장 먼 슬롯이 25 번이고, 1 번보다 행정이 길다.
+        self.assertGreater(gbr_load.lift_mm(25), gbr_load.lift_mm(1))
+        self.assertAlmostEqual(gbr_load.lift_mm(25),
+                               gbr_load.SLOT_LAST_MM - gbr_load.PICKUP_MM, places=6)
+
+    def test_the_row_pitch_is_still_split_between_2d_and_3d(self):
+        """GA 시트는 행을 ∓2,350 으로, 3D 는 ∓2,100 으로 적는다 — 250 mm 갈렸다.
+
+        둘 다 가드 ∓3,550 안이라 기하 검사가 안 잡는다. 사이클은 영상과 견주는
+        값이라 3D 쪽을 쓰고, **갈렸다는 사실을 여기 남긴다.** 닫히면 이 시험이
+        먼저 실패해 알려 준다.
+        """
+        plant = (ROOT / "docs/drawings/pv-preprocess-plant.html").read_text(encoding="utf-8")
+        self.assertIn("Kn={A:-2.1,B:2.1,H:0}", plant, "3D 행 좌표")
+        self.assertIn("'데크 롤러 Z 분기 2,350 (R-A 행)'", plant, "GA 시트 행 좌표")
+        self.assertEqual(gbr_load.BRANCH_MM, 2100.0, "사이클은 3D 값을 쓴다")
+
+    def test_a_short_move_never_reaches_full_speed(self):
+        """12 mm 안착은 삼각형, 3,200 mm 신장은 사다리꼴이다."""
+        short = gbr_load.SERVO_V_MM_S ** 2 / gbr_load.SERVO_A_MM_S2
+        self.assertLess(gbr_load.SET_DOWN_MM, short)
+        self.assertGreater(gbr_load.FORK_STROKE_MM, short)
+        self.assertAlmostEqual(gbr_load.move_s(short),
+                               2 * (short / gbr_load.SERVO_A_MM_S2) ** 0.5, places=3)
+        self.assertEqual(gbr_load.move_s(0), 0.0)
+
+    def test_the_buffer_keeps_up_with_the_line(self):
+        """따라오지 못하면 라인이 선다 — 이 확인이 없어서 버퍼가 병목 후보에 없었다."""
+        self.assertTrue(gbr_load.keeps_up(),
+                        f"버퍼 사이클 {gbr_load.line_equivalent_s()} s 가 택트 "
+                        f"{campaign.release_takt_s()} s 를 넘는다")
+        self.assertGreater(gbr_load.takt_margin_s(), 0)
+        # 최악 슬롯으로도 여유가 있어야 한다 — 25 번 슬롯이 그것이다.
+        self.assertGreater(gbr_load.cycle_s(25), gbr_load.cycle_s(1))
+
+    def test_the_buffer_is_now_a_bottleneck_candidate(self):
+        cells = dict(campaign.cell_occupancy_s())
+        self.assertIn("GBR-301 버퍼", cells)
+        self.assertAlmostEqual(cells["GBR-301 버퍼"], gbr_load.line_equivalent_s())
+        # 후보에 들어와도 택트를 정하는 것은 여전히 JBR 이다.
+        self.assertEqual(campaign.bottleneck(), max(cells, key=cells.get))
+        self.assertEqual(campaign.bottleneck(), "JBR-201")
+
+    def test_the_film_compresses_the_load_and_says_so(self):
+        """영상은 여기 맞춰 고치지 않는다 — 격차를 드러내고 기록만 한다."""
+        self.assertLess(gbr_load.film_load_s(), 1.0, "영상이 적재에 준 시간")
+        self.assertGreater(gbr_load.compression(), 10,
+                           "압축이 사라졌다면 필름 시각표가 바뀐 것이다 — 확인할 것")
+        self.assertAlmostEqual(
+            gbr_load.compression(), gbr_load.cycle_s() / gbr_load.film_load_s(), places=1)
 
 
 if __name__ == "__main__":

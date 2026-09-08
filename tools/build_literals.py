@@ -465,12 +465,36 @@ def main() -> int:
     p.one(r"SG-301 반출롤러 점유 [\d.]+ s",
           lambda m: f"SG-301 반출롤러 점유 {campaign.sg_occupancy_s():g} s")
 
+    # ── 레시피 버퍼 용량 — handoff.py 가 정본이다 ─────────────────────────
+    # 3D 는 캐리지를 **물리 행**으로 세어 R-A 50 / R-B 50 이었고, 완충시간을 내는
+    # `handoff.py` 는 **레시피 배분**으로 세어 75 / 25 였다. 같은 하드웨어를 두
+    # 문서가 다르게 읽고 있었던 것이고, 화면은 50 을 띄우는데 사양서의 완충시간은
+    # 75 에서 나왔다. GA 시트가 B 열 스테이지 자리를 「R-A 스테이지 캐리지
+    # (B열 · 레시피 재배분)」 = A-501C 로 못박고 있으므로 배분 쪽이 설계 의도다.
+    # 두 곳이 갈리지 않게 여기서 찍는다.
+    from pv_preprocess import handoff
+    _mod = {"A": handoff.BUFFER_CARRIAGES[0], "B": handoff.BUFFER_CARRIAGES[1], "H": 1}
+    _cap = {"A": handoff.BUFFER_RA_SLOTS, "B": handoff.BUFFER_RB_SLOTS,
+            "H": handoff.BUFFER_HOLD_SLOTS}
+    p.one(r"BUF_SLOT=\d+,BUF_CAP=\{[^}]*\},BUF_MOD=\{[^}]*\}",
+          lambda m: f"BUF_SLOT={handoff.SLOTS_PER_CARRIAGE},"
+                    + "BUF_CAP={" + ",".join(f"{k}:{v}" for k, v in _cap.items()) + "},"
+                    + "BUF_MOD={" + ",".join(f"{k}:{v}" for k, v in _mod.items()) + "}")
+
     # AFR 셀이 패널을 받는 시각 — 3D 애니메이션의 `nt` 다. 리터럴로 박혀 있었고,
     # REV.58 이 JBR 칸을 4 → 7 s 로 늘려 인계가 85 → 94 s 로 밀렸는데도 85 로
     # 남아 있었다 — 그 9 s 동안 AFR 이 아직 오지 않은 패널을 잡고 움직였다.
     # 이제 모델이 정한다: 투입 구간 + JBR 점유가 곧 이 셀의 시작이다.
     p.one(r"\bvar nt=[\d.]+,",
           lambda m: f"var nt={campaign.INFEED_S + campaign.JBR_S:g},")
+
+    # 종단 체류 — 화면 두 곳이 아직 124 를 말하고 있었다. `ci`(=nt+Lr)는 3D 가
+    # 계산해 쓰는데, 통합 헤더 배지와 서보 패널의 분모는 **글자로 박혀** 있어
+    # REV.58·59 가 JBR 칸을 옮길 때 따라오지 못했다. 여기서 찍어 다시 갈라지지 않게 한다.
+    p.one(r"ONE PLANT · [\d.]+ s TRACE",
+          lambda m: f"ONE PLANT · {campaign.total_dwell_s():g} s TRACE")
+    p.one(r"stage\.time\.toFixed\(1\) \+ ' / [\d.]+ s'",
+          lambda m: f"stage.time.toFixed(1) + ' / {campaign.total_dwell_s():.1f} s'")
 
     # ── 열수지 — 반내 발열은 서보 일람에서 나온다 ────────────────────────
     # 이름표도 모델에서 찍는다 — "셀 분전반 7면" 처럼 반 수가 박힌 문구가 있어,
