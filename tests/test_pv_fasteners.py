@@ -88,6 +88,53 @@ class TestFastenerFit(unittest.TestCase):
         bad = [k for k, v in F.threads_reach_the_nuts().items() if not v]
         self.assertEqual(bad, [], f"반나사로는 너트에 안 닿는다 — 온나사 필요: {bad}")
 
+    def test_the_declared_bolt_grade_survives_into_the_book(self):
+        """10.9 로 지정한 체결이 체결서에서도 10.9 인가.
+
+        볼트 문자열("M20×70")에는 치수만 있다. 거기서 등급을 읽으면 **지정
+        10.9 가 전부 8.8 로 떨어지는데**, 토크는 `Joint.torque_nm` 이 `cls` 를
+        보고 10.9 용 550 N·m 를 그대로 낸다 — 강도는 모자라고 토크는 넘친다.
+        """
+        declared = {(a.tag, j.name): j.cls for a in fabrication.ASSEMBLIES
+                    for j in a.joints if j.cls in F.BOLT_GRADES}
+        self.assertTrue(declared, "10.9 로 지정한 체결이 하나도 없다")
+        got = {(u.assembly, u.joint): u.cls for u in F.uses()}
+        for key, cls in declared.items():
+            with self.subTest(key):
+                self.assertEqual(got.get(key), cls)
+
+    def test_at_least_one_joint_is_ten_nine(self):
+        """위 시험이 빈 집합을 도는 것으로 통과하지 않게 못 박는다."""
+        self.assertIn("10.9", {u.cls for u in F.uses()})
+
+    def test_anchors_are_eight_eight_hardware(self):
+        """앵커의 `cls` 는 등급이 아니라 종류다 — 하드웨어는 8.8 이다."""
+        for u in F.uses():
+            if u.kind == "앵커":
+                self.assertEqual(u.cls, "8.8")
+
+    def test_no_bolt_is_shorter_than_the_parts_it_must_clamp(self):
+        """볼트가 **물어야 할 판**을 실제로 무는가.
+
+        남는 그립만 보면 96 개짜리 BW-FL-01 ↔ BW-COL-01 이 「여유」를 받는다 —
+        PL10 플랜지에 기둥 벽 6 을 더한 16 을 한 번도 안 보기 때문이다.
+        """
+        short = [f"{u.sheet} {u.joint} {u.size}×{u.length:g} "
+                 f"(그립 {g:g} < 필요 {need:g})"
+                 for u, g, need in F.short_bolts()]
+        self.assertEqual(short, [], f"볼트가 짧다: {short}")
+
+    def test_the_grip_check_actually_looks_at_something(self):
+        """좁게 걸어 둔 검사가 **아무것도 안 보는** 상태로 통과하지 않게 한다."""
+        looked = [u for u in F.uses() if F.joint_grip_mm(u) is not None]
+        self.assertGreaterEqual(len(looked), 8, "그립을 푼 체결이 너무 적다")
+
+    def test_the_flange_bolt_carries_why_it_grew(self):
+        j = next(j for a in fabrication.ASSEMBLIES for j in a.joints
+                 if j.parts == "BW-FL-01 ↔ BW-COL-01")
+        self.assertEqual(j.bolt, "M12×40")
+        self.assertIn("13.2", j.note, "길이를 왜 키웠는지가 안 적혀 있다")
+
     def test_no_bolt_is_eaten_by_its_own_hardware(self):
         """부속(와셔·너트·나사산)이 볼트 길이를 다 먹으면 그 체결은 성립하지 않는다."""
         short = [f"{u.sheet} {u.joint} {u.size}×{u.length:g}"
