@@ -832,9 +832,22 @@ class TestInfeedHandoff(unittest.TestCase):
         cls.html = read_drawing()
         cls.stations = station_blocks(cls.html)
 
+    #: 베이 원점의 스테이션 X (mm) — 적층 픽업 자리다. AFU_CHAIN 은 **실측값**(회전 전)이고,
+    #: 도면 값은 투입 베이 방위를 먹인 결과여야 한다. 방위를 0 으로 되돌리면 둘이 같아진다.
+    BAY_ORIGIN_X_MM = -1250
+
+    def _turned(self, size, at):
+        """투입 베이가 돌면 그 위 부품도 통째로 돈다 — 실측값에서 도면 값을 낸다."""
+        if not layout.infeed_bay_is_rotated():
+            return size, at
+        bz = layout.BFC_PICKUP_Z_MM if at[2] > 0 else -layout.BFC_PICKUP_Z_MM
+        dx, dz = at[0] - self.BAY_ORIGIN_X_MM, at[2] - bz
+        return [size[2], size[1], size[0]], [self.BAY_ORIGIN_X_MM + dz, at[1], bz - dx]
+
     def test_afu_carries_the_measured_handoff_chain(self):
         block = self.stations["afu"]
-        for tag, (size, at) in self.AFU_CHAIN.items():
+        for tag, (measured, placed) in self.AFU_CHAIN.items():
+            size, at = self._turned(measured, placed)
             with self.subTest(part=tag):
                 found = re.search(
                     r"part\('%s', '[^']*', \[([-\d, ]+)\], \[([-\d, ]+)\]" % re.escape(tag), block)
@@ -6562,3 +6575,65 @@ class TestVendorOriginal(unittest.TestCase):
         self.assertGreater(hk60c.DRAWN_TOP_MM, hk60c.HEIGHT_MM)
         self.assertEqual(hk60c.ENVELOPE_MM[2], hk60c.DRAWN_TOP_MM)
         self.assertEqual(layout.STATIONS["grm"].height_mm, hk60c.DRAWN_TOP_MM)
+
+
+class TestInfeedBayYaw(unittest.TestCase):
+    """투입 베이를 90° 돌린다 — 적층대·듀얼 반전 카세트·지게차 도킹만.
+
+    REV.56 에서 발주처가 투입 방향을 바꿨다. 지게차가 놓는 팔레트도, 그 위 한 장을
+    받아 뒤집는 듀얼 반전 카세트도 평면에서 90° 돌아, 패널 **장변이 라인을 가로지른다.**
+    돌리는 것은 베이 하나 통째라 패널에 대한 반전축은 그대로 장변이고, 그래서 링
+    지름은 안 바뀐다 — 바뀌는 것은 그 축이 놓인 방향뿐이다. RB-101 이 PT-101 에
+    놓을 때 라인 방향으로 되돌리므로 **하류는 이 변경을 보지 않는다.**
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = read_drawing()
+
+    def test_the_bay_is_turned_across_the_line(self):
+        self.assertEqual(layout.INFEED_BAY_YAW_DEG, 90)
+        self.assertTrue(layout.infeed_bay_is_rotated())
+        # 돌린 뒤 베이가 라인을 가로질러 차지하는 폭은 반전 링 피치가 정한다
+        self.assertEqual(layout.infeed_bay_span_mm(),
+                         kinematics.RING_PITCH_MM + kinematics.RING_TUBE_MM)
+        self.assertTrue(layout.infeed_bay_fits_the_band(), "두 베이가 장비 밴드를 넘는다")
+
+    def test_the_inner_portal_columns_become_the_centre_pier(self):
+        """돌리면 두 베이의 안쪽 기둥 줄이 중앙에서 만난다 — 종전 백투백 하중기둥 자리다."""
+        self.assertTrue(layout.infeed_columns_meet_at_the_centre())
+        gap = layout.infeed_shared_column_gap_mm()
+        self.assertGreater(gap, 0, "안쪽 반전 링이 공용 기둥을 문다")
+        self.assertEqual(gap, 85)
+
+    def test_turning_the_bay_did_not_move_the_robot(self):
+        """베이 간격을 안 건드렸으므로 로봇 인계거리·존 사슬이 그대로여야 한다.
+
+        간격을 벌렸다면 인계거리가 도달을 넘어 페데스털이 따라 움직이고, 그러면
+        afu 존 길이와 플랜트 전장까지 끌려간다. 이 시험이 그 사슬을 잡아 둔다.
+        """
+        self.assertEqual(layout.BFC_PICKUP_Z_MM, 1_600)
+        self.assertAlmostEqual(layout.robot_pickup_distance_mm(), 2_680.0, places=1)
+        self.assertLessEqual(layout.robot_pickup_distance_mm(), layout.ROBOT_REACH_MM)
+        self.assertEqual(layout.afu_length_from_reach_mm(), layout.STATIONS["afu"].length_mm)
+        self.assertEqual(layout.plant_envelope_mm()[0], 56_125)
+
+    def test_the_drawing_turns_the_bay_from_the_model(self):
+        """씬은 각도를 손으로 안 적는다 — 모델 값 하나로 베이 조각을 통째로 돌린다."""
+        self.assertIn(f"var pvBayYaw={layout.INFEED_BAY_YAW_DEG}*Math.PI/180,", self.html)
+        self.assertIn("pvBay=yn.map(", self.html)
+        # 베이 조각은 베이 로컬 좌표여야 회전이 먹는다 — 월드 리터럴이 남으면 안 돈다
+        block = self.html.split("xn.forEach((i,e)=>{")[1].split("Xh.push(x)")[0]
+        for stray in ("i.x+", "i.z+", "i.x-", "i.z-"):
+            with self.subTest(stray=stray):
+                self.assertNotIn(stray, block, "베이 블록에 월드 좌표가 남아 있다")
+
+    def test_the_robot_turns_the_panel_back_for_the_line(self):
+        """베이 안에서는 돌아 있고 PT-101 에 놓을 때 라인 방향으로 돌아온다."""
+        self.assertIn('dn.rotation.order="YXZ"', self.html)
+        self.assertIn("le(pvBayYaw,0,me(Se(i,28,33)))", self.html)
+
+    def test_the_flow_note_no_longer_claims_one_orientation(self):
+        """'장변 X방향' 한 줄로 끝나던 설명이 두 자세를 말해야 한다."""
+        self.assertNotIn("JBR-201</code>, 장변 X방향", self.html)
+        self.assertIn("투입 베이는 장변이 라인을 가로지르고", self.html)

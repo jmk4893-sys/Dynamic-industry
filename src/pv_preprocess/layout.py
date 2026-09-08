@@ -533,6 +533,16 @@ ROBOT_REACH_MM = 2800
 #: 로봇은 그 정반에 2,290 으로 닿아야 한다. 두 조건이 동시에 서려면 afu 존 길이가
 #: 딱 하나로 정해진다 — afu_length_from_reach_mm(). STATIONS['afu'] 는 그 값이어야
 #: 하고 시험이 둘을 견준다. REV.48 까지는 8,400 / 6,250 리터럴이었다.
+#: 투입 베이 방위 (도). 지게차 도킹·적층대 LFT-101A/B·듀얼 반전 카세트 BFC-101A/B 가
+#: 평면에서 이만큼 돌아 선다. 0 이면 패널 장변이 라인 방향, 90 이면 라인을 가로지른다.
+#:
+#: REV.56 에서 90 으로 돌렸다. 돌리는 것은 **베이 하나 통째**라 패널에 대한 반전축은
+#: 그대로 장변이다 — 링 지름(보어 1,620)이 안 바뀐다. 바뀌는 것은 그 축이 놓인
+#: 방향뿐이고, 그래서 베이는 라인 방향으로 짧아지고(링 외경 1,980) 라인을 가로질러
+#: 길어진다(링 피치 2,760). RB-101 이 PT-101 에 놓을 때 라인 방향으로 되돌리므로
+#: **하류(JBR·AFR·버퍼·유리제거기)는 이 값을 보지 않는다.**
+INFEED_BAY_YAW_DEG = 90
+
 BFC_PICKUP_OFFSET_MM = 4_400
 BFC_PICKUP_Z_MM = 1_600
 ROBOT_PICK_DX_MM = 2_150
@@ -799,3 +809,56 @@ def site_envelope_mm() -> tuple[int, int, int]:
     """물류 레인까지 포함한 부지 포락선 (X, Y, Z) — 건축 확인값이다."""
     x, y, z = plant_envelope_mm()
     return (x, y + DOWNSTREAM_LANE_MM, z)
+
+
+def infeed_bay_is_rotated() -> bool:
+    """투입 베이가 라인을 가로질러 서는가."""
+    return INFEED_BAY_YAW_DEG % 180 == 90
+
+
+def infeed_bay_span_mm() -> int:
+    """베이 한 짝이 **라인을 가로질러** 차지하는 폭 (mm).
+
+    돌리면 반전 링 피치가 이 방향으로 눕는다 — 링 두 짝의 바깥면까지가 폭이다.
+    안 돌리면 적층 데크 폭이 정한다.
+    """
+    from . import kinematics
+    if infeed_bay_is_rotated():
+        return kinematics.RING_PITCH_MM + kinematics.RING_TUBE_MM
+    return PT_DECK_MM[1] + 200
+
+
+def infeed_bay_fits_the_band() -> bool:
+    """두 베이가 장비 밴드 안에 서는가 — 바깥 링이 afu 존 폭을 넘으면 안 된다."""
+    outer = BFC_PICKUP_Z_MM + infeed_bay_span_mm() // 2
+    return outer * 2 <= STATIONS["afu"].width_mm
+
+
+def infeed_shared_column_gap_mm() -> int:
+    """두 베이의 **안쪽 포탈 기둥이 중앙에서 만나** 백투백 공용 기둥이 되는데,
+    그 기둥과 안쪽 반전 링 사이에 남는 틈 (mm).
+
+    돌리기 전에는 기둥 네 본이 패널 통과대역 밖 사각형으로 서고 링은 그 안쪽
+    라인 방향에 있었다. 돌리면 그 사각형도 같이 돌아 기둥 줄이 라인을 가로지르는데,
+    베이 간격(±1,600)과 기둥 오프셋(±1,600)이 같아 **두 베이의 안쪽 기둥 줄이
+    중앙 z 0 에서 겹친다** — 종전 중앙 백투백 하중기둥이 서 있던 자리다.
+    이 틈이 0 이하면 링이 기둥을 문다.
+    """
+    from . import kinematics
+    ring_outer = (kinematics.RING_PITCH_MM + kinematics.RING_TUBE_MM) // 2
+    return INFEED_PORTAL_HALF_MM - INFEED_PORTAL_SECTION_MM[0] // 2 - ring_outer
+
+
+#: 포탈 기둥 줄의 반간격 (mm) — 씬의 ±1.6 과 같아야 한다. 기둥 단면은 180 × 240.
+INFEED_PORTAL_HALF_MM = 1_600
+INFEED_PORTAL_SECTION_MM = (180, 240)
+
+
+def infeed_columns_meet_at_the_centre() -> bool:
+    """돌린 뒤 두 베이의 안쪽 포탈 기둥 줄이 중앙(z 0)에서 만나는가.
+
+    만나야 그 자리가 종전 **중앙 백투백 반전 하중기둥**의 자리를 그대로 잇는다.
+    베이 간격과 기둥 오프셋이 같을 때만 성립하고, 하나가 움직이면 기둥이 둘로
+    갈라져 중앙에 쓸모없는 틈이 생긴다.
+    """
+    return infeed_bay_is_rotated() and BFC_PICKUP_Z_MM == INFEED_PORTAL_HALF_MM

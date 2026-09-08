@@ -129,6 +129,10 @@ def main() -> int:
     # 종단면 주기 — 라인의 최저·최고 이송면에서 파생한다
     levels = sorted({st.transfer_height_mm for k, st in layout.STATIONS.items()
                      if k not in ("afu", "bfc")})
+    # REV.56 — 투입 베이 방위. 씬은 이 값 하나로 적층대·반전 카세트·지게차 도킹을 돌린다.
+    p.one(r"var pvBayYaw=[^,]+,",
+          lambda m: f"var pvBayYaw={layout.INFEED_BAY_YAW_DEG}*Math.PI/180,")
+
     p.one(r"'기준 이송면 H=[\d,~]+ · BFC 로봇 인계 H=[\d,]+'",
           lambda m: f"'기준 이송면 H={levels[0]:,}~{levels[-1]:,} · "
           f"BFC 로봇 인계 H={layout.STATIONS['bfc'].transfer_height_mm:,}'")
