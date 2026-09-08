@@ -37,6 +37,7 @@ Dynamic industry Development
 | [docs/drawings/pv-preprocess-plant.html](docs/drawings/pv-preprocess-plant.html) | **전처리 플랜트 통합 설계도** — 상류 공정(투입·반전·정션박스 제거·프레임 분리·유리 검사·레시피 버퍼)의 3D 작동 시뮬레이션과 셀별 2D 제작도·3D 분해도·전체 배치도 (브라우저로 열 것) |
 | [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 15종, **부품도 176장 · 모듈 조립도 13장**, 열수지 계산기 (브라우저로 열 것) |
 | [docs/drawings/hk60c-capture.json](docs/drawings/hk60c-capture.json) | **DG-HK60C 원본 형상 캡처** — 벤더 운전 콘솔의 그리기 호출(압축 배치 · 4단계 정지 자세)을 좌표·치수·도장색 그대로 받아 적은 것. 부품 1,963 · 라벨 59 · 팔레트 26색. `tools/capture_hk60c.mjs` 가 만들고 `tools/build_dgm.py` 가 플랜트 도면에 찍는다 — 손으로 고치지 않는다 |
+| [docs/consoles/pv-preprocess-hour.html](docs/consoles/pv-preprocess-hour.html) | **60분 연속 운전 화면** — 장비별 장당 점유로 병목을 세우고, 한 시간을 흘려 자원마다 일한 시간·막힌 시간·굶은 시간을 보여 준다. 계획 정지(칼날 카세트 자동교환) 하나를 넣어 버퍼가 그것을 덮는지까지 그린다. 값은 `src/pv_preprocess/continuous.py` 가 만들고 `tools/build_hour.py` 가 찍는다 — 손으로 고치지 않는다 |
 | [docs/dg-hk60-rfq.html](docs/dg-hk60-rfq.html) | **DG-HK60 상세설계 기술사양서 (RFQ)** — 상세설계 용역 발주용. 요구성능·설계기준·기계/전기/안전 요구사항·납품물·FAT/SAT·입찰자 확인사항 10건 (브라우저로 열 것, A4 인쇄 가능) |
 | [docs/dg-hk60-fab-spec.html](docs/dg-hk60-fab-spec.html) | **DG-HK60C 제작 지침서 (FAB-001)** — 볼트 등급·체결력·조임토크, 용접 각장, 부재 판두께·재질, 기초 앵커 매입깊이·연단거리를 하중에서 유도한 문서. 접합부 12개소·부재 27종·앵커 7개소·ITP 14단계 (브라우저로 열 것, A4 인쇄 가능) |
 | [docs/dg-hk60-assembly.html](docs/dg-hk60-assembly.html) | **DG-HK60C 조립 지침서 (ASM-001)** — 도면을 처음 보는 사람이 조립도·부품도만으로 세울 수 있게 쓴 문서. 안전·공구·도면 읽는 법·볼트 조이는 법·모듈 사이의 순서·모듈별 74단계 (부품 카탈로그에서 생성) |
@@ -53,7 +54,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (1,472건)
+python -m unittest discover -s tests -t .                               # 테스트 (1,489건)
 
 # 부품 카탈로그 — 형상·치수·재질에서 질량과 자중을 계산한다
 python3 tools/parts.py                     # 카탈로그 리포트 (품목·질량·자중 검증)
@@ -374,6 +375,75 @@ A/B 캐리지와 같은 ±760 으로 좁혀 레일이 기둥에 물린다. **이
 — 예외 표를 비우면 시험이 깨지는지까지 확인한다
 
 
+#### §63 60분 연속 운전 — 장비 시간을 세워 병목을 찾고, 흐름이 끊기는지 흘려 본다 (REV.57)
+
+발주처가 물은 것은 둘이다. **각 장비의 시간을 계산해 가장 긴 자리를 병목으로 잡을 것**,
+그리고 **PLC 셋값대로 60분을 연속으로 돌려 흐름이 끊기지 않게 만들 것**. 답은
+`src/pv_preprocess/continuous.py` 이고, 화면은
+[60분 연속 운전](https://claude.ai/code/artifact/83585641-115c-4cfd-8d84-6bf9ea3c6ba7)이다.
+
+**비교가 성립하려면 두 가지를 먼저 맞춰야 한다.** 장비 사이클을 그대로 견주면 틀린
+답이 나온다.
+
+- **환산.** 어떤 장비는 모든 장을 보지 않는다. 유리제거기는 정상 유리(R-A)만 받고
+  (88.3 %), JBR·AFR 은 전손(3.3 %)을 안 본다. 그래서
+  **라인 한 장당**으로 환산한다 — 그 몫이 `Equipment.share` 다.
+- **직렬·병렬.** 라인을 붙잡는 것은 직렬 자원뿐이다. 지게차는 대기 리프트가 받아
+  택트에 안 들고, SG-301·HC-101·DL-101 은 상위 자원의 점유 **안에서** 돈다. 이것들을
+  병목 후보에 넣으면 라인이 아니라 부품을 본 것이 된다.
+
+| 장비 | 하는 일 | 보유 s | 몫 | 장당 s | 택트 여유 s |
+|---|---|---:|---:|---:|---:|
+| FL-101 | 지게차 팔레트 급전 | 6.00 | 100.0 % | **6.00** | — (병렬) |
+| AFU-101 | 투입부 — 리프트·비전·반전·로봇·정렬 | 40.00 | 100.0 % | **40.00** | 14.73 |
+| JB-201 | 축적 컨베이어 통과 | 3.92 | 96.7 % | **3.79** | — (병렬) |
+| JBR-201 | 정션박스·케이블 제거 | 45.00 | 96.7 % | **43.50** | 11.23 |
+| AFR-101 | 프레임 분리 이후 후단 — 연마·검사·버퍼 적재 | 39.03 | 96.7 % | **37.73** | 17.00 |
+| SG-301 | 반출롤러 위 3헤드 연마 | 21.10 | 96.7 % | **20.40** | — (병렬) |
+| HC-101 | IR 밀폐 가열 — 방출 피치 | 37.10 | 88.3 % | **32.77** | — (병렬) |
+| DL-101 | 탠덤 박리 — 칼날 왕복 | 53.60 | 88.3 % | **47.35** | — (병렬) |
+| DGM-401 | DG-HK60C 유리제거 (가동률 0.9 포함) | 59.50 | 88.3 % | **52.56** | 2.17 |
+
+**병목은 DGM-401 — 장당 52.56 s 다.** 택트 54.73 s 안에 모든 직렬 자원이
+들어가고, 가장 빠듯한 자리가 그 자신이라 여유가 2.17 s 다. 두 번째로 빠듯한
+곳은 JBR-201 이다. **어느 장비도 택트를 넘지 않으므로 상류가 막히는 자리는 없다** —
+`continuous.flow_is_unbroken()` 이 그 판정이고, 시험이 자원마다 여유가 음수가 아닌지 본다.
+
+**60분을 흘린다.** 창은 기동이 아니라 **이미 돌고 있는 라인의 한 토막**이다 — R-A
+재고를 정상 설정점 38장에서 시작한다. 빈 버퍼로 시작하면 후단이 첫 장을
+기다리며 굶고, 그 굶음이 정상 운전의 여유로 잘못 읽힌다.
+
+| | 60분 결과 |
+|---|---|
+| 투입 | 68장 (전손 리젝트 2장 포함) |
+| 유리 반출 | 58장 · 계획 정지 없으면 60장 |
+| 셀·EVA 반출 | 279.0 kg |
+| 막힌 자원 | **0** — 어느 자원도 다음 자원을 기다리며 장을 안고 서 있지 않는다 |
+| R-A 재고 | 38 → 38 슬롯 (용량 75) |
+
+**끊기지 않는 이유는 넷이고, 넷 다 값으로 답한다.** ① 직렬 자원이 전부 택트 안이다
+(가장 빠듯한 여유 2.17 s). ② 병목이 굶지 않는다 — 택트의
+96.0 %를 실제로 쓰고, 남는 130.9 s/h 가
+인계 안전여유(60.5 − 58.3 장/h)의 다른 얼굴이다. ③ 계획 정지를
+스스로 삼킨다 — KC-101 칼날 카세트 자동교환 90 s 는 **41.3분보다 뜸하면
+재고를 줄이지도 않고**, 10분마다 들어와도 R-A 재고가 11.3 h 를 버틴다
+(교환 **주기**는 칼날 수명이라 벤더 확인사항 OI-12 다 — 그래서 상수로 안 박고 인자로 받는다).
+④ 애초에 유입을 후단 능력 아래로 페이싱해 두었다.
+
+**시간은 이 모듈이 하나도 정하지 않는다.** 투입·JBR·AFR 은 `campaign`, 후단은
+`line.downstream_rate()`(벤더 식에 라인 패널 크기를 넣은 값), 카세트 교환은 벤더 콘솔
+상수 `CASS_SWAP_AUTO` 에서 온다. 화면도 손으로 안 쓴다 — `tools/build_hour.py` 가
+모델에서 찍고, 시험이 화면의 병목과 모델의 병목이 같은지 대조한다.
+
+**B안에도 투입 베이 회전을 넣었다.** A안은 §62 머리 위에서 패치를 다시 만들었으므로
+이미 돌아 있었고(형상·도장·베이 방향이 C안과 같다), B안은 §58 스냅샷이라 따로 돌렸다 —
+`docs/variants/b-rev54-bay-yaw.patch` 가 그것이다(B 머리 `6d6497b` 위에 적용). B 쪽에서
+하나 더 걸렸다: 애니메이션이 BFC 승강·헤드·조를 **월드 좌표**로 쓰고 있어 베이만 돌리자
+15덩어리가 떠 버렸다. C안에서 이미 베이 지역좌표로 바꿔 둔 네 줄을 B에도 옮기자
+브래킷이 45 → **42본**이 되고 하중 경로가 다시 닫혔다. 검증: 헤드리스 5종 ✓ · 페이지
+로드 JS 오류 0 · 시험 **1,369** ✓
+
+
 #### §62 지게차 투입과 듀얼 반전 카세트를 90° 돌린다 — 투입 베이만 (REV.56)
 
 발주처가 투입 방향을 바꿨다. **지게차가 놓는 팔레트도, 그 위 한 장을 받아 뒤집는
@@ -500,7 +570,8 @@ metalness 를 가지므로, 같은 도장이 두 렌더러에서 같게 보이�
 ```
 git apply docs/variants/a-line-2500x1400.patch     # C안 머리(§59) 위에 적용
 python tools/build_dgm.py && python tools/build_literals.py && python tools/build_casing.py \
-  && python tools/build_afr.py && node tools/build_brackets.mjs && python tools/build_console.py
+  && python tools/build_afr.py && node tools/build_brackets.mjs && python tools/build_console.py \
+  && PYTHONPATH=src python tools/build_hour.py
 ```
 
 **무엇이 달라지나 — 후단이 2.0 장/h 느려지고 그만큼 전처리를 더 붙든다.** 벤더 식은
@@ -611,7 +682,7 @@ F10 LP-DGM-MC 93 kW · 200 AT · 70 mm² — 둘 다 `hk60c.BRANCHES` 에서 트
 [RFQ](https://claude.ai/code/artifact/377241f9-3731-4e2a-aecc-178adcdb288e) ·
 [조립 지침서](https://claude.ai/code/artifact/613c1af7-8a2b-4868-b75b-360ab1c4591c), 그 밖에
 [REV.54 보고서](https://claude.ai/code/artifact/36475707-d622-4b92-ae46-653e8004b520)와
-[결합 영상](https://claude.ai/code/artifact/30acaf84-816f-45f5-8cc3-79007029e76e).
+[결합 영상](https://claude.ai/code/artifact/30acaf84-816f-45f5-8cc3-79007029e76e) · [60분 연속 운전](https://claude.ai/code/artifact/83585641-115c-4cfd-8d84-6bf9ea3c6ba7).
 
 #### §58 GRM-401 을 떼고 DG-HK60C 를 잇는다 — 값은 벤더에서, 속도는 후단에서 (REV.54)
 

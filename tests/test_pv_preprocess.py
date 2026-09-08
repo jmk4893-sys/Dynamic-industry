@@ -21,8 +21,8 @@ from unittest import mock
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import (acceptance, access, acoustics, afr, ai, air, brand, campaign, casing, crane, dust,
-                           electrical,
+from pv_preprocess import (acceptance, access, acoustics, afr, ai, air, brand, campaign, casing, continuous,
+                           crane, dust, electrical,
                            frames, grade, handoff, hk60c, kinematics, layout, line, maintain, materials, mounting,
                            recipe, reliability, safety, seismic, smart, servos, thermal, vision, wiring)
 
@@ -6637,3 +6637,146 @@ class TestInfeedBayYaw(unittest.TestCase):
         """'장변 X방향' 한 줄로 끝나던 설명이 두 자세를 말해야 한다."""
         self.assertNotIn("JBR-201</code>, 장변 X방향", self.html)
         self.assertIn("투입 베이는 장변이 라인을 가로지르고", self.html)
+
+
+class TestContinuousRun(unittest.TestCase):
+    """60분 연속 운전 — 장비별 시간에서 병목을 뽑고, 흐름이 끊기는지 본다."""
+
+    def test_every_equipment_time_comes_from_a_model_value(self):
+        """이 모듈은 시간을 새로 정하지 않는다 — 출처가 빈 줄이 있으면 안 된다."""
+        for e in continuous.equipment():
+            with self.subTest(tag=e.tag):
+                self.assertTrue(e.source, f"{e.tag} 시간의 출처가 없다")
+                self.assertGreater(e.hold_s, 0)
+                self.assertTrue(0 < e.share <= 1)
+
+    def test_the_bottleneck_is_the_longest_serial_equipment(self):
+        """병목은 계산이 아니라 비교다 — 직렬 자원 중 장당 점유가 가장 긴 것."""
+        rows = continuous.serial_equipment()
+        longest = max(rows, key=lambda e: e.per_panel_s)
+        self.assertEqual(continuous.bottleneck().tag, longest.tag)
+        self.assertEqual(longest.tag, "DGM-401", "병목이 유리제거기가 아니다")
+
+    def test_parallel_resources_stay_out_of_the_bottleneck_race(self):
+        """지게차·SG·HC·DL 은 상위 자원 안에서 도므로 병목 후보가 아니다."""
+        parallel = {e.tag: e for e in continuous.equipment() if not e.serial}
+        self.assertEqual(set(parallel), {"FL-101", "JB-201", "SG-301", "HC-101", "DL-101"})
+        serial = {e.tag for e in continuous.serial_equipment()}
+        for tag, e in parallel.items():
+            with self.subTest(tag=tag):
+                self.assertIn(e.parent, serial, "병렬 자원이 어느 직렬 자원 안인지 없다")
+
+    def test_the_machine_sub_cycles_fit_inside_the_machine(self):
+        """가열 피치·탠덤 사이클은 기계 장당 점유 안에 들어야 한다."""
+        machine = {e.tag: e.per_panel_s for e in continuous.equipment()}
+        for tag in ("HC-101", "DL-101"):
+            with self.subTest(tag=tag):
+                self.assertLess(machine[tag], machine["DGM-401"])
+
+    def test_no_serial_equipment_exceeds_the_takt(self):
+        """흐름이 끊기지 않는 조건 — 직렬 자원이 전부 택트 안이다."""
+        self.assertTrue(continuous.flow_is_unbroken())
+        for tag, gap in continuous.headroom_s():
+            with self.subTest(tag=tag):
+                self.assertGreaterEqual(gap, 0, f"{tag} 가 택트를 넘어 상류를 막는다")
+
+    def test_the_hour_runs_without_a_block(self):
+        """60분을 흘려도 어느 자원도 막히지 않는다 — 막힘은 상류 정지를 뜻한다."""
+        run = continuous.run()
+        self.assertTrue(run.unbroken, run.breaks)
+        for row in run.slices:
+            with self.subTest(tag=row.tag):
+                self.assertEqual(row.blocked_s, 0.0, f"{row.tag} 가 막혔다")
+
+    def test_the_hour_ships_glass_and_cells(self):
+        """투입에서 유리·셀 반출까지 60분 안에 실제로 나온다."""
+        run = continuous.run()
+        self.assertGreaterEqual(run.released, 60)
+        self.assertGreaterEqual(run.glass_out, 55)
+        self.assertAlmostEqual(run.cell_eva_kg, round(run.glass_out * hk60c.CELL_EVA_KG, 1),
+                               places=1)
+
+    def test_a_warm_window_is_a_slice_not_a_start_up(self):
+        """빈 버퍼로 시작하면 후단이 굶는다 — 그 굶음을 정상 여유로 읽으면 안 된다."""
+        cold = continuous.run(warm=False)
+        warm = continuous.run(warm=True)
+        machine = lambda r: next(s for s in r.slices if s.tag == "DGM-401")
+        self.assertGreater(machine(cold).starved_s, 0)
+        self.assertEqual(machine(warm).starved_s, 0.0)
+        self.assertEqual(warm.buffer_peak, handoff.buffer_stock_target_slots())
+
+    def test_the_planned_stop_waits_for_the_sheet_in_the_knife(self):
+        """칼날 카세트는 박리 중에 못 바꾼다 — 정지는 돌던 장을 끝낸 뒤 시작한다."""
+        run = continuous.run(swap_at_min=20.0)
+        self.assertEqual(len(run.stops), 1)
+        at, span, _ = run.stops[0]
+        self.assertGreaterEqual(at, 20.0 * 60.0)
+        self.assertEqual(span, continuous.KNIFE_SWAP_S)
+        self.assertTrue(run.unbroken, "90 s 정지 하나에 흐름이 끊겼다")
+
+    def test_the_swap_the_machine_absorbs_by_itself(self):
+        """페이싱 여유 안에 드는 교환 주기면 재고가 줄지 않는다."""
+        absorbs = continuous.swap_interval_the_machine_absorbs_min()
+        self.assertGreater(absorbs, 0)
+        self.assertEqual(continuous.buffer_covers_swaps_h(absorbs + 1), float("inf"))
+        self.assertGreater(continuous.buffer_covers_swaps_h(absorbs / 4), 1.0)
+
+    def test_the_idle_and_the_drain_are_the_same_margin(self):
+        """기계가 노는 시간(s/h)과 재고가 주는 양은 같은 여유의 두 얼굴이다."""
+        idle_s = continuous.steady_state_machine_idle_s_per_h()
+        drained = continuous.run().buffer_peak - continuous.run().buffer_end
+        cycle = 3600.0 / line.downstream_rate().line_per_h
+        self.assertAlmostEqual(idle_s / cycle, drained, delta=1.0)
+
+    def test_the_knife_swap_time_is_the_vendors_own_constant(self):
+        """교환 정지는 우리가 정한 값이 아니라 벤더 콘솔 상수다."""
+        self.assertEqual(continuous.KNIFE_SWAP_S, hk60c.const("CASS_SWAP_AUTO"))
+        self.assertLess(continuous.KNIFE_SWAP_S, hk60c.const("CASS_SWAP_MANUAL"))
+
+
+class TestHourPage(unittest.TestCase):
+    """60분 화면 — 화면의 병목이 모델의 병목과 다를 수 없다."""
+
+    PAGE = pathlib.Path(__file__).resolve().parents[1] / "docs" / "consoles" / "pv-preprocess-hour.html"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = cls.PAGE.read_text(encoding="utf-8")
+        block = cls.html.split("/* @data-begin */")[1].split("/* @data-end */")[0]
+        cls.hour = json.loads(block.split("var HOUR = ")[1].split(";\n")[0])
+        cls.equipment = json.loads(block.split("var EQUIPMENT = ")[1].split(";\n")[0])
+        cls.slices = json.loads(block.split("var SLICES = ")[1].split(";\n")[0])
+        cls.spans = json.loads(block.split("var SPANS = ")[1].split(";\n")[0])
+
+    def test_the_page_names_the_models_bottleneck(self):
+        self.assertEqual(self.hour["bottleneck"], continuous.bottleneck().tag)
+        self.assertEqual(self.hour["bottleneckS"], continuous.bottleneck().per_panel_s)
+        self.assertEqual(self.hour["taktS"], continuous.takt_s())
+
+    def test_the_equipment_table_is_the_model_table(self):
+        model = {e.tag: e.per_panel_s for e in continuous.equipment()}
+        page = {e["tag"]: e["perPanel"] for e in self.equipment}
+        self.assertEqual(page, model)
+
+    def test_the_page_shows_a_planned_stop_and_still_holds(self):
+        """정지 하나를 넣은 운전을 그린다 — 그러고도 끊기지 않아야 화면이 맞다."""
+        self.assertTrue(self.hour["unbroken"])
+        self.assertEqual(self.hour["breaks"], [])
+        self.assertTrue(any(row[4] == "정지" for row in self.spans), "계획 정지가 안 그려졌다")
+
+    def test_no_resource_is_drawn_blocked(self):
+        """막힘 띠가 그려지면 설계가 끊긴 것이다 — 그림과 판정이 같이 가야 한다."""
+        for row in self.slices:
+            with self.subTest(tag=row["tag"]):
+                if row["tag"] == "DGM-401":
+                    continue          # 이 칸은 계획 정지를 담는다
+                self.assertEqual(row["blocked"], 0.0)
+        self.assertFalse(any(row[4] == "막힘" for row in self.spans))
+
+    def test_the_page_is_generated_not_typed(self):
+        """값 블록은 사람이 안 쓴다 — 생성기를 다시 돌려도 같은 파일이어야 한다."""
+        self.assertIn("tools/build_hour.py", self.html)
+        self.assertIn("/* @brand-begin */", self.html)
+        for shape in brand.SHAPES:
+            with self.subTest(shape=shape.tag):
+                self.assertIn(shape.d, self.html, "마크 경로가 도면과 다르다")

@@ -19,6 +19,7 @@ const files = process.argv.slice(2);
 const targets = files.length ? files : [
   'out/pv-preprocess-console-artifact.html',
   'out/pv-preprocess-plant-artifact.html',
+  'out/pv-preprocess-hour-artifact.html',
 ];
 
 const missing = targets.filter((f) => !existsSync(f));
