@@ -608,7 +608,7 @@ def build() -> str:
     t = _once(t, '<h2 id="pv-v22-title">태양광 패널 전처리 통합 플랜트</h2>',
               '<h2 id="pv-v22-title">SG-301 연마 작동 확대도 — 장변 통과 · 단변 횡행 · '
               '휠–유리 접촉부</h2>', "표제")
-    t = _once(t, '<span class="viz-badge">124.03 s TRACE</span>',
+    t = _once(t, f'<span class="viz-badge">{campaign.total_dwell_s():g} s TRACE</span>',
               f'<span class="viz-badge">EDGE GRINDING · {g.occupancy_s()} s</span>', "배지")
     rev = t.split("DRAWING_REVISION = '")[1].split("'")[0]
     t = _once(t, "DYNAMIC INDUSTRY · REV.22 VIDEO-FIRST · ENGINEERING BASE REV.22",

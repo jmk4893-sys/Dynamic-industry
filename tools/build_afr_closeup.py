@@ -33,7 +33,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
 
-from pv_preprocess import afr, afr_units, frames  # noqa: E402
+from pv_preprocess import afr, afr_units, campaign, frames  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PLANT = ROOT / "docs/drawings/pv-preprocess-plant.html"
@@ -459,7 +459,7 @@ def build() -> str:
     t = _once(t, '<h2 id="pv-v22-title">태양광 패널 전처리 통합 플랜트</h2>',
               '<h2 id="pv-v22-title">AFR-101 부품 확대도 — 단축 인출 유닛 · 장축 인발 LM 유닛</h2>',
               "표제")
-    t = _once(t, '<span class="viz-badge">124.03 s TRACE</span>',
+    t = _once(t, f'<span class="viz-badge">{campaign.total_dwell_s():g} s TRACE</span>',
               '<span class="viz-badge">ASSEMBLY DETAIL</span>', "배지")
     rev = t.split("DRAWING_REVISION = '")[1].split("'")[0]
     t = _once(t, "DYNAMIC INDUSTRY · REV.22 VIDEO-FIRST · ENGINEERING BASE REV.22",

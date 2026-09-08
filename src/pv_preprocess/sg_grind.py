@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import math
 
-from . import afr, campaign, frames, recipe
+from . import afr, campaign, frames, recipe, reliability
 from .afr_units import Part, Unit
 
 # ── 스핀들·휠 — 카탈로그 계획값 ─────────────────────────────────────────
@@ -123,8 +123,9 @@ FORCE_RATIO = 0.35
 
 #: 휠 교체 주기 (개월) — `reliability` SP-03 예비품 계획.
 WHEEL_SERVICE_MONTHS = 4
-#: 연간 처리 장수 — `reliability.annual_panels()` 와 같아야 한다.
-ANNUAL_PANELS = 283_487
+#: 휠 교체 주기 안에 지나가는 장수는 `reliability` 가 정한다. 여기에 수를 베껴
+#: 두었더니 REV.59 가 가용률을 고쳐 283,487 → 282,727 로 움직였는데 이 상수만
+#: 옛 수로 남았다 — 그래서 베끼지 않고 부른다.
 
 #: 접촉 단면에 세우는 판 안쪽 길이 (mm) — 림 단면과 눈에 비슷하게 잡는다.
 SECTION_DEPTH_MM = 26.0
@@ -320,7 +321,7 @@ def wheel_wear_volume_mm3() -> float:
 
 def panels_per_service() -> int:
     """교체 주기 안에 지나가는 장수."""
-    return round(ANNUAL_PANELS * WHEEL_SERVICE_MONTHS / 12.0)
+    return round(reliability.annual_panels() * WHEEL_SERVICE_MONTHS / 12.0)
 
 
 def glass_volume_per_panel_mm3(edge_mm: float) -> float:

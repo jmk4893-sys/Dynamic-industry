@@ -268,7 +268,7 @@ def build() -> str:
               'LM 1,300 mm 주행, 톱니 컨베이어 반출까지 6 단계를 플랜트 '
               f'{t0:g}–{t1:g} s 창에서 반복 재생한다. 그림자·외장 케이싱·천장크레인은 뺐다.">',
               "제목")
-    t = _once(t, '<span class="viz-badge">124.03 s TRACE</span>',
+    t = _once(t, f'<span class="viz-badge">{campaign.total_dwell_s():g} s TRACE</span>',
               f'<span class="viz-badge">{campaign.AFR_S:g} s TRACE · AFR-101</span>', "배지")
     t = _once(t, '<h2 id="pv-v22-title">태양광 패널 전처리 통합 플랜트</h2>',
               '<h2 id="pv-v22-title">AFR-101 알루미늄 프레임 제거장치 '
@@ -294,11 +294,11 @@ def build() -> str:
     # ── 시계: [t0, t1] 창 ────────────────────────────────────────────────────
     # 창의 **끝**은 원본 필름의 끝(`ci=nt+Lr`)이다 — 이 셀이 패널을 놓는 순간이 곧
     # 영상의 끝이라 자를 것이 없다. 시작만 셀 진입 시각으로 올린다.
-    t = _once(t, '<div class="text-small tabular-nums" id="jb-time">0.00 / 124.03 s</div>',
+    t = _once(t, f'<div class="text-small tabular-nums" id="jb-time">0.00 / {campaign.total_dwell_s():g} s</div>',
               f'<div class="text-small tabular-nums" id="jb-time">{t0:.2f} / {t1:.2f} s</div>', "시계 표시")
     t = _once(t, '<span class="tabular-nums" id="jb-scrub-value">0.0 s</span>',
               f'<span class="tabular-nums" id="jb-scrub-value">{t0:.1f} s</span>', "스크럽 표시")
-    t = _once(t, 'id="jb-scrub" type="range" min="0" max="124.03" step="0.05" value="0"',
+    t = _once(t, f'id="jb-scrub" type="range" min="0" max="{campaign.total_dwell_s():g}" step="0.05" value="0"',
               f'id="jb-scrub" type="range" min="{t0:g}" max="{t1:g}" step="0.05" value="{t0:g}"', "스크럽")
     t = _once(t, ",Ve=0,ai=0", f",Ve={t0:g},ai=0", "시작 시각")
     t = _once(t, "Ve%=ci", f"Ve={t0:g}+(Ve-{t0:g})%(ci-{t0:g})", "반복 구간")

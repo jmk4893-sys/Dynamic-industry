@@ -33,6 +33,41 @@ def _load(name: str):
     return mod
 
 
+class TestPlantHandPatches(unittest.TestCase):
+    """통합 설계도에 손으로 넣은 두 곳이 살아 있는가.
+
+    베이스 브랜치에는 없는 자리라 병합에서 생성물 충돌을 `--theirs` 로 받으면
+    **매번 같이 지워진다.** 한 번이라도 잊으면 AFR 이 통째로 안 움직이거나
+    부품 확대도가 형상을 못 그리는데, 둘 다 글자에는 흔적이 없다.
+    `tools/patch_plant.py` 가 다시 얹고, 여기서 얹혀 있는지 본다.
+    """
+
+    def test_both_patches_are_on(self):
+        mod = _load("patch_plant")
+        text = mod.PLANT.read_text(encoding="utf-8")
+        _, done = mod.apply(text)
+        missing = [d for d in done if d.endswith("얹음")]
+        self.assertFalse(missing,
+                         "손패치가 빠졌다 — python tools/patch_plant.py 를 돌릴 것: "
+                         + ", ".join(missing))
+
+    def test_the_tool_is_idempotent(self):
+        mod = _load("patch_plant")
+        text = mod.PLANT.read_text(encoding="utf-8")
+        once, _ = mod.apply(text)
+        twice, _ = mod.apply(once)
+        self.assertEqual(once, twice)
+
+    def test_the_zone_field_survives_the_kit_patch(self):
+        """`kit` 을 얹으면서 `zone:pvZone` 을 지우면 파생 도면이 존을 못 읽는다."""
+        mod = _load("patch_plant")
+        text = mod.PLANT.read_text(encoding="utf-8")
+        hook = text[text.index("__pvScene=Object.freeze("):]
+        hook = hook[:hook.index(")});") + 4]
+        self.assertIn("zone:pvZone", hook)
+        self.assertIn("kit:Object.freeze", hook)
+
+
 class TestAfrScene(unittest.TestCase):
     """통합 설계도에서 AFR-101 셀만 남긴 파생본."""
 

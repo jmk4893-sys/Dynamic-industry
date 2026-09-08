@@ -44,8 +44,30 @@ from dataclasses import dataclass
 #: 투입부 점유 (s) — 픽업·판정·반전·로봇 투입·정렬·인계까지
 INFEED_S = 40.0
 
-#: JBR-201 점유 (s) — 라인 병목
-JBR_S = 54.0
+#: JBR-201 인계 점유 (s) — 패널이 정반에 올라 **AFR 이 받을 때까지**.
+#:
+#: REV.59 에서 이 한 값이 두 가지를 겸하고 있었다는 것이 드러났다. 도면의 시각표는
+#: 셀 안의 일을 전부 직렬로 적어 두었고(칸 21 s + 고정 33 s = 54 s), `panels()` 는
+#: 그 54 s 를 **정반이 비는 시각**으로도 **AFR 이 받는 시각**으로도 썼다. 반출이
+#: 픽앤플레이스라면 맞지만, 이 셀은 `CV 저마킹 롤러` 6,550 mm(패널 2.6 장) 위에
+#: 있어 **패널이 나가는 동안 다음 장이 들어온다.** 두 시각을 갈랐다.
+JBR_S = 51.0
+
+#: 반출이 시작되는 시각 (s, 칸 안). 이때부터 패널이 정반을 떠난다.
+#: 도면 시각표의 「PASS 반출 또는 잠금 리젝트 격리」 시작점이다.
+JBR_EXIT_START_S = 44.0
+
+
+def jbr_block_s() -> float:
+    """정반이 다음 장을 받을 수 있게 되는 시각 (s) — **병목을 정하는 값**.
+
+    반출이 시작되고 패널 꼬리가 정반을 벗어나면 다음 장이 내려앉을 수 있다.
+    `JBR_S`(AFR 이 받는 시각)보다 이 값이 먼저 온다 — 그 사이 패널은 롤러 위에
+    있고 정반은 비어 있다. 셀 점유·병목·방출 주기는 전부 이쪽을 봐야 한다.
+
+    리터럴로 박지 않는다. 이송 속도가 바뀌면 꼬리가 빠지는 시간도 바뀐다.
+    """
+    return round(JBR_EXIT_START_S + accumulator_clear_s(), 2)
 
 #: AFR-101 이후 후단 점유 (s) — 프레임 분리·이송·연마·검사·버퍼 적재
 AFR_S = 39.03
@@ -63,6 +85,16 @@ SG_SWEEP_MM_S = 250.0       # 단변 횡행 속도
 SG_HEAD_STROKE_S = 1.0      # 정지마다 헤드 하강+상승
 SG_INDEX_S = 1.5            # 정지 두 번의 감속·정착 합
 PANEL_WIDTH_MM = 1400.0
+
+
+def total_dwell_s() -> float:
+    """한 장의 종단 체류 (s) — 투입 + JBR + AFR 이후.
+
+    도면 여러 벌이 이 값을 배지·시계·스크럽 범위에 쓴다. 각자 더하면 REV 가
+    한 칸을 고칠 때마다 어긋난 곳이 생긴다 — REV.59 가 JBR 을 54 → 51 s 로
+    되찾자 파생본 생성기 셋이 124.03 을 앵커로 물고 있어 한꺼번에 멈췄다.
+    """
+    return round(INFEED_S + JBR_S + AFR_S, 2)
 
 
 def sg_occupancy_s() -> float:
@@ -138,7 +170,7 @@ def pace_offset_s() -> float:
     얼마까지 당길 수 있는지 말해 준다.
     """
     return round(max(accumulator_clear_s(),
-                     JBR_S - INFEED_S,
+                     jbr_block_s() - INFEED_S,
                      downstream_limited_takt_s() - INFEED_S), 2)
 
 
@@ -263,8 +295,10 @@ def panels(hold_s: float = RELEASE_HOLD_S) -> tuple[Panel, ...]:
             end = start + INFEED_S
             infeed_free = end
             jbr_start = max(end, jbr_free)
+            # 정반은 반출 꼬리가 빠지면 비고(jbr_free), AFR 은 그보다 늦게
+            # 받는다(jbr_end). 그 사이 패널은 CV 저마킹 롤러 위에 있다.
             jbr_end = jbr_start + JBR_S
-            jbr_free = jbr_end
+            jbr_free = jbr_start + jbr_block_s()
             release_gate = jbr_start + JBR_STOPPER_OFFSET_S + hold_s
             afr_start = max(jbr_end, afr_free)
             afr_end = afr_start + AFR_S
@@ -351,8 +385,12 @@ def cell_occupancy_s() -> tuple[tuple[str, float], ...]:
     §21 에서 GRM-401 을 플랜트 안으로 들여왔는데 병목 후보에는 안 들어가
     있었다. 그래서 이상 택트가 JBR 45.0 s 로 잡혔고, 실제로 라인을 묶는 것이
     무엇인지 가려져 있었다.
+
+    JBR 은 `JBR_S`(AFR 이 받는 시각)가 아니라 `jbr_block_s()`(정반이 비는
+    시각)로 센다. 점유란 **다음 장을 못 받는 시간**이고, 패널이 롤러 위로
+    나가고 나면 정반은 이미 비어 있다.
     """
-    return (("투입부", INFEED_S), ("JBR-201", JBR_S), ("AFR-101 후단", AFR_S),
+    return (("투입부", INFEED_S), ("JBR-201", jbr_block_s()), ("AFR-101 후단", AFR_S),
             ("GRM-401 유리제거", grm_equivalent_s()))
 
 
@@ -382,8 +420,12 @@ def release_takt_s(hold_s: float = RELEASE_HOLD_S) -> float:
     방출은 인터록과 병목 중 **늦은 쪽**을 따른다. `panels()` 의 이산사건은
     이미 그렇게 돌고 있었으므로(`jbr_start = max(end, jbr_free)`) 이 정정은
     시뮬레이션을 바꾸지 않는다 — 어긋나 있던 요약값을 맞춘 것이다.
+
+    **REV.59.** 여기서 보는 것은 `JBR_S`(AFR 인계)가 아니라 `jbr_block_s()`
+    (정반 비움)다. 다음 장을 놓을 수 있느냐는 정반이 비었느냐이지 앞 장이
+    후단에 닿았느냐가 아니다.
     """
-    return max(INFEED_S + JBR_STOPPER_OFFSET_S + hold_s, JBR_S)
+    return max(INFEED_S + JBR_STOPPER_OFFSET_S + hold_s, jbr_block_s())
 
 
 def summary(hold_s: float = RELEASE_HOLD_S) -> dict[str, float]:
@@ -401,7 +443,10 @@ def summary(hold_s: float = RELEASE_HOLD_S) -> dict[str, float]:
         "run_s": round(run_s, 2),
         "run_min": round(run_s / 60.0, 1),
         "throughput_per_h": round(len(processed) / (run_s / 3600.0), 1),
-        "takt_s": round((max(p.jbr_end for p in processed)
+        # 택트는 **셀이 새 장을 얼마나 자주 받느냐**다. `jbr_end`(AFR 인계)로
+        # 재면 인계가 늦어지는 것만으로 택트가 늘어난 것처럼 보인다 — REV.59 에서
+        # 두 시각을 가르며 드러났다. 정반이 비는 시각으로 잰다.
+        "takt_s": round((max(p.jbr_start + jbr_block_s() for p in processed)
                          - min(p.jbr_start for p in processed)) / len(processed), 2),
         "peak_wip": peak_wip(),
         "forklift_loads": sum(1 for e in forklift_events()

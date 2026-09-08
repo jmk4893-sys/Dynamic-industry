@@ -484,11 +484,16 @@ def plan_c() -> Plan:
         f"방출 보류 +{hold:g} s · 택트 {campaign.summary()['takt_s']:g} → {s['takt_s']:g} s",
         feed, capacity, round(capacity - feed, 1),
         f"전체 처리량 {campaign.summary()['throughput_per_h']:g} → {s['throughput_per_h']:g} 장/h, "
-        f"병목 JBR 가동률 {JBR_UTILISATION_BASE:.0%} → {campaign.JBR_S / s['takt_s']:.0%} 로 놀게 된다")
+        f"병목 JBR 가동률 {JBR_UTILISATION_BASE:.0%} → "
+        f"{campaign.jbr_block_s() / s['takt_s']:.0%} 로 놀게 된다")
 
 
 #: 기준 상태에서 병목(JBR)이 실제로 물려 있는 비율 — C안의 손실을 재는 기준.
-JBR_UTILISATION_BASE = campaign.JBR_S / campaign.summary()["takt_s"]
+#:
+#: **정반 점유**(`jbr_block_s()`)로 잰다. REV.59 에서 `JBR_S` 가 AFR 인계 시각이
+#: 되면서 이것으로 재면 105 % 가 나왔다 — 셀이 자기 택트보다 오래 물고 있다는
+#: 뜻이 되어 버린다. 가동률은 「다음 장을 못 받는 시간 ÷ 택트」다.
+JBR_UTILISATION_BASE = campaign.jbr_block_s() / campaign.summary()["takt_s"]
 
 
 def plans() -> tuple[Plan, Plan]:

@@ -27,7 +27,8 @@ import unittest
 
 from tests import _path  # noqa: F401
 
-from pv_preprocess import afr, campaign, dust, frames, recipe, sg_grind
+from pv_preprocess import (afr, campaign, dust, frames, recipe, reliability,
+                           sg_grind)
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CLOSEUP = ROOT / "docs/drawings/pv-sg-closeup.html"
@@ -143,6 +144,18 @@ class TestValuesComeFromOtherModules(unittest.TestCase):
     def test_the_feeds_are_the_campaign_feeds(self):
         self.assertEqual(sg_grind.long_feed_mm_s(), float(campaign.SG_PASS_MM_S))
         self.assertEqual(sg_grind.short_feed_mm_s(), float(campaign.SG_SWEEP_MM_S))
+
+    def test_the_annual_throughput_is_not_copied(self):
+        """연간 장수를 베껴 두지 않는다 — REV.59 가 그것을 움직였는데 안 따라왔다."""
+        self.assertEqual(sg_grind.panels_per_service(),
+                         round(reliability.annual_panels()
+                               * sg_grind.WHEEL_SERVICE_MONTHS / 12.0))
+        self.assertFalse(hasattr(sg_grind, "ANNUAL_PANELS"),
+                         "연간 장수는 reliability 가 정한다 — 상수로 두면 갈라진다")
+
+    def test_the_dust_flow_is_the_dust_model(self):
+        ds01 = [s for s in dust.STREAMS if s.tag == "DS-01"][0]
+        self.assertEqual(sg_grind.DUST_FLOW_M3H, float(ds01.flow_m3h))
 
     def test_the_glass_thickness_is_the_afr_laminate(self):
         self.assertEqual(sg_grind.GLASS_T_MM, float(afr.LAMINATE_T_MM))

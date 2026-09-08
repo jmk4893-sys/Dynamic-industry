@@ -1932,25 +1932,40 @@ class TestCampaign(unittest.TestCase):
         self.assertIn("GRM-401 유리제거", cells, "유리제거셀이 병목 후보에 없다")
         self.assertEqual(campaign.bottleneck(), max(cells, key=cells.get))
         self.assertEqual(campaign.bottleneck(), "JBR-201")
-        self.assertGreater(campaign.JBR_S, cells["GRM-401 유리제거"],
+        self.assertGreater(campaign.jbr_block_s(), cells["GRM-401 유리제거"],
                            "칸을 7 s 로 늘린 뒤 JBR 이 다시 가장 느리다")
-        self.assertAlmostEqual(campaign.ideal_takt_s(), campaign.JBR_S, places=6)
+        self.assertAlmostEqual(campaign.ideal_takt_s(), campaign.jbr_block_s(), places=6)
         summary = campaign.summary()
         # 방출 규칙(투입 40 + 스토퍼 8 = 48 s)은 이제 **하한**일 뿐이다. 앞 장이
         # JBR 을 54 s 물고 있으면 스토퍼까지 갈 수가 없으므로 48 s 마다 놓지
         # 못한다. `release_takt_s()` 가 그 둘 중 늦은 쪽을 돌려주도록 REV.58 에서
         # 고쳤다 — 종전 식은 JBR < 48 을 말없이 전제하고 있었다.
-        self.assertAlmostEqual(campaign.release_takt_s(), campaign.JBR_S, places=6,
+        self.assertAlmostEqual(campaign.release_takt_s(), campaign.jbr_block_s(), places=6,
                                msg="REV.58 부터는 인터록이 아니라 병목 셀이 페이스를 정한다")
+        # REV.59: 「병목 셀」은 AFR 이 받는 시각(JBR_S)이 아니라 정반이 비는
+        # 시각이다. 다음 장을 놓을 수 있느냐는 정반이 비었느냐이지 앞 장이
+        # 후단에 닿았느냐가 아니다.
+        self.assertLess(campaign.jbr_block_s(), campaign.JBR_S,
+                        "정반은 AFR 인계보다 먼저 빈다 — 그 사이 패널은 롤러 위에 있다")
         self.assertGreater(campaign.release_takt_s(),
                            campaign.INFEED_S + campaign.JBR_STOPPER_OFFSET_S)
         self.assertAlmostEqual(summary["takt_s"], campaign.ideal_takt_s(), delta=1.0)
         self.assertAlmostEqual(summary["takt_s"], campaign.release_takt_s(), delta=1.0)
+        # 택트는 정반이 비는 주기다 — AFR 인계를 늦춰도 안 움직여야 한다.
+        keep = campaign.JBR_S
+        try:
+            campaign.JBR_S = keep + 20.0
+            self.assertAlmostEqual(campaign.summary()["takt_s"], summary["takt_s"],
+                                   places=6, msg="택트를 인계 시각으로 재고 있다")
+        finally:
+            campaign.JBR_S = keep
         # 그래도 재공은 안 쌓인다 — 방출 게이트가 앞 장 jbr_start 에 물려 있어서다.
         self.assertEqual(summary["peak_wip"], 3)
         first = campaign.panels()[0]
-        self.assertAlmostEqual(first.afr_end, 133.03, places=2)
-        self.assertAlmostEqual(campaign.INFEED_S + campaign.JBR_S + campaign.AFR_S, 133.03, places=2)
+        # 종단 체류는 **인계** 사슬이다 — 투입 40 + JBR 인계 51 + AFR 39.03.
+        # 정반이 비는 48.08 로 재면 안 된다: 그 시점 패널은 아직 롤러 위다.
+        self.assertAlmostEqual(first.afr_end, 130.03, places=2)
+        self.assertAlmostEqual(campaign.INFEED_S + campaign.JBR_S + campaign.AFR_S, 130.03, places=2)
 
     def test_glass_cell_occupancy_is_per_line_panel_not_per_glass_panel(self):
         """GRM 은 정상 유리만 받는다 — 그 비율을 곱하지 않으면 병목을 과대평가한다."""
@@ -1992,6 +2007,21 @@ class TestCampaign(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(f"{token}={value:g}", self.html)
         self.assertIn(f"pvCamAfr={campaign.AFR_S:g}", self.html)
+
+    def test_the_playback_length_is_the_lead_time(self):
+        """재생 UI 의 길이가 실제 궤적보다 짧으면 끝을 못 본다.
+
+        REV.58 까지 배지·시각 표시·스크럽 슬라이더가 **124.03 s** 를 들고 있었다.
+        그때 `pvCamT` 의 1 장차는 이미 133.03 s 에 끝나고 있었으므로 슬라이더로
+        마지막 9 초를 끌 수 없었다 — 세 자리 다 어느 시험도 안 보고 있었다.
+        """
+        lead = campaign.INFEED_S + campaign.JBR_S + campaign.AFR_S
+        self.assertAlmostEqual(campaign.panels()[0].afr_end, lead, places=2)
+        for token in (f'<span class="viz-badge">{lead:g} s TRACE</span>',
+                      f'id="jb-time">0.00 / {lead:g} s<',
+                      f'id="jb-scrub" type="range" min="0" max="{lead:g}"'):
+            with self.subTest(token=token):
+                self.assertIn(token, self.html)
 
     def test_drawing_schedule_matches_the_model(self):
         """도면의 스케줄 리터럴은 파이프라인 계산 결과 그대로여야 한다."""
@@ -2147,9 +2177,12 @@ class TestContinuousPlayback(unittest.TestCase):
         """
         self.assertEqual(campaign.release_takt_s(),
                          max(campaign.INFEED_S + campaign.JBR_STOPPER_OFFSET_S,
-                             campaign.JBR_S))
-        self.assertEqual(campaign.release_takt_s(), campaign.JBR_S,
+                             campaign.jbr_block_s()))
+        self.assertEqual(campaign.release_takt_s(), campaign.jbr_block_s(),
                          "REV.58: 지금 늦은 쪽은 병목 셀이다")
+        # REV.59: 재는 것은 정반이 비는 시각이다. AFR 인계(51.0)로 재면
+        # 3 s 를 더 기다리는 셈이고, 그 3 s 동안 정반은 이미 비어 있다.
+        self.assertGreater(campaign.JBR_S, campaign.release_takt_s())
         rows = [p for p in campaign.panels() if p.condition != "전손"]
         for previous, panel in zip(rows, rows[1:]):
             stopper = previous.jbr_start + campaign.JBR_STOPPER_OFFSET_S
@@ -2747,14 +2780,14 @@ class TestHandoff(unittest.TestCase):
         self.assertEqual(starved.bottleneck, "IR 열공정")
         self.assertLess(starved.line_per_h, handoff.downstream_rate().line_per_h,
                         "관 정격을 안 올리면 후단이 느려진다")
-        # REV.57 까지는 여기서 `starved.line_per_h < sheet_glass_per_h()` 도 참이었다.
-        # 유입이 66.0 장/h 였기 때문이다. REV.58 에서 JBR 칸을 7 s 로 늘리며 유입이
-        # 59.1 장/h 로 떨어져, 관 정격을 안 올려도(65.6 장/h) 유입은 받힌다.
-        # **관 증설이 불필요해진 것이 아니라 앞단이 느려진 것이다** — 앞단을 되돌리는
-        # 순간 다시 필요해지므로 정격은 그대로 175 kW 로 둔다.
-        self.assertGreater(starved.line_per_h, handoff.sheet_glass_per_h())
-        self.assertLess(starved.line_per_h, 66.0,
-                        "REV.57 유입(66.0)으로는 여전히 못 받는다 — 여유는 앞단 감속의 산물이다")
+        # 이 부등호가 두 회차에 걸쳐 뒤집혔다 되돌아왔다. REV.58 에서 JBR 칸을
+        # 7 s 로 늘리자 유입이 66.0 → 59.1 장/h 로 떨어져 관 정격을 안 올려도
+        # (65.6 장/h) 유입이 받혔고, 그때 「앞단을 되돌리는 순간 다시 필요해진다」
+        # 고 적어 두었다. REV.59 에서 정반 점유를 48.08 s 로 되돌리자 유입이
+        # 65.8 장/h 가 되며 **정확히 그렇게 됐다.** 적어 둔 대로 정격은 175 kW
+        # 그대로였으므로 고칠 것이 없다 — 이것이 소견을 지우지 않는 이유다.
+        self.assertLess(starved.line_per_h, handoff.sheet_glass_per_h(),
+                        "관 정격을 안 올리면 유입을 못 받는다")
 
     def test_downstream_rate_mirrors_the_uploaded_model(self):
         """DG-HK 2400 Rev.10 앱의 계산을 그대로 옮긴 값 — 재유도하지 않았다."""
@@ -2782,54 +2815,50 @@ class TestHandoff(unittest.TestCase):
     def test_feed_no_longer_outruns_the_adopted_line(self):
         """개선 전에는 유입이 빨라 버퍼가 2.56 h 만에 찼다 — 채택 후에는 차지 않는다.
 
-        REV.58 에서 유입이 66.0 → 59.1 장/h 로 떨어졌다(JBR 칸 4 → 7 s). 여유가
-        −2.4 에서 −9.3 장/h 로 벌어졌지만 이는 후단이 좋아져서가 아니라 앞단이
-        느려져서다. 소견 — "채택 구성은 유입을 받는다" — 는 그대로다.
+유입은 두 회차에 걸쳐 66.0 → 59.1 → 65.8 장/h 로 오갔다(REV.58 칸 7 s,
+        REV.59 정반 점유 48.08 s). 여유도 −2.4 → −9.3 → −2.6 으로 따라 움직였다.
+        소견 — "채택 구성은 유입을 받는다" — 는 세 값 모두에서 그대로다.
         """
         feed = handoff.sheet_glass_per_h()
-        self.assertAlmostEqual(feed, 59.1, places=1)
+        self.assertAlmostEqual(feed, 65.8, places=1)
         self.assertGreater(feed, handoff.as_uploaded_rate().line_per_h,
                            "개선 전에는 밀렸다는 사실이 기록으로 남아야 한다")
         self.assertLess(handoff.rate_gap_per_h(), 0, "채택 후에는 여유가 있어야 한다")
         self.assertEqual(handoff.buffer_autonomy_h(), float("inf"))
         # 버퍼의 역할이 '밀린 것 쌓기' 에서 '정지 버티기' 로 바뀐다. 그리고
         # 버티는 방향이 둘이다 — 재고는 상류 정지를, 여유공간은 후단 정지를 받는다.
-        self.assertAlmostEqual(handoff.buffer_ride_through_h(), 0.59, places=2)
-        self.assertAlmostEqual(handoff.buffer_drain_ride_through_h(), 0.58, places=2)
+        self.assertAlmostEqual(handoff.buffer_ride_through_h(), 0.56, places=2)
+        self.assertAlmostEqual(handoff.buffer_drain_ride_through_h(), 0.56, places=2)
 
-    def test_the_handling_cut_is_no_longer_forced_but_is_still_the_cheap_margin(self):
-        """인계 단축이 '전제' 에서 '여유' 로 바뀌었다 — 앞단이 느려진 결과다.
+    def test_knife_speed_alone_cannot_close_the_gap(self):
+        """인계 10 s 를 그대로 두면 필요 칼날이 상한을 넘는다 — 인계 단축이 전제다.
 
-        REV.57 까지 이 시험은 인계 10 s(업로드 원안)를 그대로 두면 필요 칼날이
-        62.9 mm/s 로 상한 60 을 넘어 **성립하지 않는다**고 기록했다. 그것이
-        인계를 6 s 로 줄인 이유였다.
+        REV.58 에서 이 소견이 한 회차 뒤집혔다. JBR 칸을 7 s 로 늘려 유입이
+        66.0 → 59.1 장/h 로 떨어지자 필요 칼날이 55.0 mm/s 로 내려와 인계
+        10 s 로도 균형이 잡혔다. 그때 「제약이 풀린 것이 아니라 앞단을 늦춰서
+        산 것이므로 인계 6 s 는 유지한다」고 적었다.
 
-        REV.58 에서 유입이 66.0 → 59.1 장/h 로 떨어지며 필요 칼날이 55.0 mm/s
-        로 내려왔고, 인계 10 s 로도 상한 안에서 균형이 잡힌다. 제약이 풀린 것이
-        아니라 **앞단을 늦춰서 산 것**이므로, 인계 6 s 는 그대로 유지한다 —
-        앞단을 되돌리는 개선이 들어오면 다시 62.9 mm/s 가 필요해진다.
+        REV.59 에서 정반 점유를 48.08 s 로 되돌리자 유입이 65.8 장/h 가 되며
+        필요 칼날이 62.6 mm/s 로 다시 상한 위로 올라갔다 — **적어 둔 그대로다.**
+        인계 6 s 를 그때 되돌렸다면 지금 성립하지 않는다.
         """
         need = handoff.knife_speed_for_balance(handoff.AS_UPLOADED_HANDLING_S)
-        self.assertAlmostEqual(need, 55.0, places=1)
-        self.assertLess(need, handoff.KNIFE_SPEED_MAX_MM_S)
-        self.assertTrue(handoff.balances_at_max_knife_speed(handoff.AS_UPLOADED_HANDLING_S))
+        self.assertAlmostEqual(need, 62.6, places=1)
+        self.assertGreater(need, handoff.KNIFE_SPEED_MAX_MM_S,
+                           "인계를 그대로 두면 칼날 상한으로도 못 따라간다")
+        self.assertFalse(handoff.balances_at_max_knife_speed(handoff.AS_UPLOADED_HANDLING_S))
         at_max = handoff.downstream_rate(knife_speed_mm_s=handoff.KNIFE_SPEED_MAX_MM_S,
                                          handling_s=handoff.AS_UPLOADED_HANDLING_S)
-        self.assertGreater(at_max.line_per_h, handoff.sheet_glass_per_h())
-        # 예전 유입(66.0 장/h)으로는 여전히 못 따라간다 — 소견이 지워진 것이 아니다.
-        self.assertLess(at_max.line_per_h, 66.0)
-        # 그리고 인계를 줄이면 여유가 더 붙는다 — 채택안을 유지하는 근거다.
-        self.assertLess(handoff.knife_speed_for_balance(), need,
-                        "인계 6 s 가 10 s 보다 낮은 칼날 속도로 균형을 잡는다")
+        self.assertLess(at_max.line_per_h, handoff.sheet_glass_per_h())
 
     def test_adopted_handling_brings_the_required_knife_under_the_limit(self):
         """인계를 6 s 로 줄이면 필요 칼날이 상한 아래로 내려온다 — 그래서 성립한다.
 
-        REV.58 에서 유입이 59.1 장/h 로 내려가며 필요치도 57.7 → 51.0 mm/s 가
-        됐다. 여유가 늘었지만 그것은 앞단 감속의 산물이다.
+필요치는 유입을 따라 57.7 → 51.0 → 57.5 mm/s 로 오갔다(REV.58 칸 7 s,
+        REV.59 정반 점유 48.08 s). 어느 값에서도 상한 60 아래다.
         """
         need = handoff.knife_speed_for_balance()
-        self.assertAlmostEqual(need, 51.0, places=1)
+        self.assertAlmostEqual(need, 57.5, places=1)
         self.assertLess(need, handoff.KNIFE_SPEED_MAX_MM_S)
         self.assertLessEqual(need, handoff.KNIFE_SPEED_MM_S,
                              "채택한 칼날 속도가 필요치를 이미 넘어서야 한다")
@@ -2885,7 +2914,7 @@ class TestIncomingService(unittest.TestCase):
 
     def test_contract_power_crosses_the_low_voltage_limit(self):
         """자체 수전을 세운다면 고압이어야 한다 — 부지 인입이 없어졌을 때의 근거."""
-        self.assertAlmostEqual(electrical.contract_kw(), 297.0, places=1)   # REV.58: 공압 수용률 0.37 → 0.36
+        self.assertAlmostEqual(electrical.contract_kw(), 297.1, places=1)   # REV.59: 소비가 되돌아와 297.0 → 297.1
         self.assertGreater(electrical.contract_kw(), electrical.LOW_VOLTAGE_LIMIT_KW)
         self.assertTrue(electrical.needs_high_voltage())
         self.assertEqual(electrical.HV_SUPPLY_VOLTAGE_V, 22_900)
@@ -2903,14 +2932,14 @@ class TestIncomingService(unittest.TestCase):
         self.assertTrue(electrical.taps_existing_service())
         self.assertIn("기존 부지 인입", electrical.supply_method())
         self.assertAlmostEqual(electrical.site_utilisation_pct(), 24.8, places=1)   # REV.51: F5 +3.2 kW
-        self.assertAlmostEqual(electrical.site_headroom_kw(), 903.0, places=1)
+        self.assertAlmostEqual(electrical.site_headroom_kw(), 902.9, places=1)
         # 수용률이 전부 1.0 이 되는 최악에도 들어가야 '여유가 있다'고 말할 수 있다
         self.assertAlmostEqual(electrical.worst_case_kw(), 303.7, places=1)
         self.assertTrue(electrical.fits_site_service())
         # REV.41 에서 이 비율이 25 % 를 넘었다 (0.2492 → 0.2504). 셔틀 주행
         # 이중구동 1.5 kW 가 마지막 0.1 % 를 밀었다. 여유는 여전히 906 kW 지만,
         # "부지 인입의 1/4 안" 이라는 문장은 이제 참이 아니다 — 고쳐 적는다.
-        # (REV.58 공압 수용률이 0.36 으로 내려와 여유 903.0 kW. 문장은 그대로다.)
+        # (REV.59 공압 수용률이 0.37 로 되돌아와 여유 902.9 kW. 문장은 그대로다.)
         self.assertLess(electrical.worst_case_kw() / electrical.SITE_SERVICE_KW, 0.26)
         self.assertGreater(electrical.worst_case_kw() / electrical.SITE_SERVICE_KW, 0.25)
         # 재는 자가 설치(266.0)인지 계약(268.2)인지 — 둘 사이 값에서 갈린다.
@@ -2921,17 +2950,19 @@ class TestIncomingService(unittest.TestCase):
         # 인양은 안전상 금지라 일어나지 않는 경우다. 계약이 덮어야 하는 것은
         # 상한이 아니라 **동시에 걸릴 수 있는** 최악이므로, 재는 자를 바꾼다.
         #
-        # **REV.58 에서 그 여유가 0 이 됐다.** JBR 칸이 4 → 7 s 로 늘며 공압
-        # 소비가 줄었고, 수용률 0.37 → 0.36 → 수요 220.1 → 220.0 kW →
-        # 계약 297.1 → 297.0 kW 다. 동시 최악은 명판 합이라 안 움직였으므로
-        # 둘이 정확히 같아졌다. 부등호가 아직 안 뒤집혔지만 **다음에 부하가
-        # 조금이라도 줄면 뒤집힌다** — 부하가 줄어서 계약이 못 덮게 되는,
-        # 방향이 거꾸로인 자리다. 발주처 협의 항목으로 남긴다.
-        self.assertGreaterEqual(electrical.contract_kw(),
-                                electrical.coincident_worst_case_kw())
-        self.assertAlmostEqual(electrical.contract_kw()
-                               - electrical.coincident_worst_case_kw(), 0.0, places=1,
-                               msg="여유가 0 이라는 사실을 값으로 남긴다")
+        # **REV.58 에서 그 여유가 0 이 됐다가 REV.59 에 0.1 kW 로 돌아왔다.**
+        # 칸을 7 s 로 늘리자 공압 소비가 줄어 계약이 297.1 → 297.0 이 됐고,
+        # 동시 최악(명판 합 297.0)은 안 움직이므로 둘이 같아졌다. 셀 점유를
+        # 48.08 s 로 되돌리자 다시 297.1 이다.
+        #
+        # **여유가 0.1 kW 라는 사실 자체가 소견이다.** 부하가 줄어서 계약이
+        # 못 덮게 되는, 방향이 거꾸로인 자리다 — 어느 회차든 소비가 조금만
+        # 내려가면 부등호가 뒤집힌다. 발주처 협의 항목으로 남긴다.
+        self.assertGreater(electrical.contract_kw(),
+                           electrical.coincident_worst_case_kw())
+        self.assertLess(electrical.contract_kw()
+                        - electrical.coincident_worst_case_kw(), 0.2,
+                        "여유가 0.1 kW 뿐이라는 사실을 값으로 남긴다")
         self.assertLess(electrical.contract_kw(), electrical.worst_case_kw(),
                         "상한이 계약을 넘는다 — 넘는 몫이 비동시 부하뿐인지가 관건이다")
         self.assertAlmostEqual(
@@ -2956,13 +2987,13 @@ class TestIncomingService(unittest.TestCase):
     def test_low_voltage_tap_is_bounded_by_voltage_drop_not_ampacity(self):
         """저압으로 끌면 거리를 묶는 것은 허용전류가 아니라 전압강하다."""
         self.assertTrue(electrical.TAP_AT_LOW_VOLTAGE)
-        self.assertAlmostEqual(electrical.lv_tap_max_length_m(), 170.5, places=1)   # REV.58
+        self.assertAlmostEqual(electrical.lv_tap_max_length_m(), 170.4, places=1)   # REV.59
         # 굵게 할수록 멀리 가지만 비례하지는 않는다 (리액턴스는 거의 안 줄어든다)
         self.assertLess(electrical.lv_tap_max_length_m(150),
                         electrical.lv_tap_max_length_m(240))
         self.assertLess(electrical.lv_tap_max_length_m(240),
                         electrical.lv_tap_max_length_m(300))
-        self.assertAlmostEqual(electrical.lv_tap_max_length_m(300), 170.5, places=1)   # REV.58
+        self.assertAlmostEqual(electrical.lv_tap_max_length_m(300), 170.4, places=1)   # REV.59
         # REV.34 에서 주회로가 300 mm² 로 올라가 기본값과 300 이 같아졌다 —
         # 240 이 여전히 더 짧은지가 "굵을수록 멀리 간다" 를 지키는 확인이다.
         self.assertLess(electrical.lv_tap_max_length_m(240),
@@ -3000,7 +3031,7 @@ class TestIncomingService(unittest.TestCase):
 
     def test_transformer_is_sized_from_demand_not_guessed(self):
         """변압기는 목표 부하율과 계약 피상전력 중 큰 쪽이 지배한다."""
-        self.assertAlmostEqual(electrical.apparent_demand_kva(), 244.4, places=1)   # REV.58
+        self.assertAlmostEqual(electrical.apparent_demand_kva(), 244.6, places=1)   # REV.59
         self.assertEqual(electrical.transformer_kva(), 500)
         self.assertIn(electrical.transformer_kva(), electrical.TRANSFORMER_RATINGS_KVA)
         self.assertGreaterEqual(electrical.transformer_kva(), electrical.contract_kva())
@@ -3011,7 +3042,7 @@ class TestIncomingService(unittest.TestCase):
         # 여기서는 계약 피상전력이 지배한다 — 부하율 기준은 301.4 > 276.0 에 가려진다.
         # 어느 쪽이 정했는지가 바뀌면 설계 근거가 바뀐 것이므로 못 박아 둔다.
         self.assertEqual(electrical.transformer_sizing_basis(), "계약 피상전력")
-        self.assertAlmostEqual(electrical.transformer_required_kva(), 330.0, places=1)   # REV.58
+        self.assertAlmostEqual(electrical.transformer_required_kva(), 330.15, places=1)   # REV.59
         # 계약이 지배하지 않는 지점에서 부하율 기준이 실제로 작동하는지 — 0.80 이
         # 아니면 170 kVA 는 300 이 아니라 200 으로 떨어진다.
         self.assertEqual(electrical.transformer_sizing_basis(apparent_kva=170, contract=0),
@@ -3049,7 +3080,7 @@ class TestIncomingService(unittest.TestCase):
             math.tan(math.acos(electrical.BASE_POWER_FACTOR))
             - math.tan(math.acos(electrical.TARGET_POWER_FACTOR)))
         self.assertGreaterEqual(kvar, need)
-        self.assertAlmostEqual(need, 34.24, places=2)   # REV.58: 수요 220.0 kW
+        self.assertAlmostEqual(need, 34.26, places=2)   # REV.59: 수요 220.1 kW
 
     def test_no_electrical_room_is_needed_now(self):
         """부지 저압 배전반에서 따면 세울 반도 방도 없다."""
@@ -3173,28 +3204,28 @@ class TestSmartFactory(unittest.TestCase):
         # JBR 은 라인에 들어온 것만
         self.assertAlmostEqual(streams["VS-201A"].per_hour,
                                campaign.summary()["throughput_per_h"], places=1)
-        self.assertAlmostEqual(streams["VS-201A"].per_hour, 64.7, places=1)   # REV.58
+        self.assertAlmostEqual(streams["VS-201A"].per_hour, 72.0, places=1)   # REV.59
         # 유리 검사는 R-A 정상만 — handoff 의 정본을 쓴다
         self.assertAlmostEqual(streams["GI-302"].per_hour, handoff.sheet_glass_per_h(), places=1)
         self.assertAlmostEqual(streams["VS-401"].per_hour, handoff.sheet_glass_per_h(), places=1)
         # 라인스캔 한 대가 드라이브 전체를 압도한다 — 이것이 설계의 지배항이다
         self.assertGreater(streams["GI-302"].bytes_per_s, smart.timeseries_bytes_per_s() * 60)
         # REV.51: GI-303 하부 라인스캔이 GI-302 와 같은 화소율로 하나 더 붙어 두 배다
-        self.assertAlmostEqual(smart.vision_raw_bytes_per_s() / 1e6, 11.93, places=2)   # REV.58
+        self.assertAlmostEqual(smart.vision_raw_bytes_per_s() / 1e6, 13.28, places=2)   # REV.59
 
     def test_retention_policy_is_what_makes_storage_affordable(self):
         """장당 350 MB 를 전량 보존하면 성립하지 않는다."""
         self.assertAlmostEqual(smart.flagged_ratio(), 0.1167, places=4)
         self.assertAlmostEqual(smart.vision_retention(), 0.1367, places=4)
         # REV.51: 라인스캔이 둘이 되며 14.18 → 27.22 TB/년, 저장 63.8 → 122.5 TB.
-        # REV.58: 앞단이 느려져 장수가 줄자 27.20 → 24.38 TB/년으로 따라 내려왔다 —
-        # 보존 정책이 아니라 처리량이 줄어든 결과다.
-        self.assertAlmostEqual(smart.annual_storage_tb(), 24.38, places=2)   # REV.58
-        self.assertAlmostEqual(smart.storage_capacity_tb(), 109.7, places=1)   # REV.58
+        # 저장은 처리량을 따라간다 — REV.58 칸 7 s 로 27.20 → 24.38,
+        # REV.59 정반 점유 48.08 s 로 27.12 TB/년. 보존 정책은 안 건드렸다.
+        self.assertAlmostEqual(smart.annual_storage_tb(), 27.12, places=2)   # REV.59
+        self.assertAlmostEqual(smart.storage_capacity_tb(), 122.0, places=1)   # REV.59
         # 저장은 가동시간에 정비례한다 — 2교대 확정으로 2.06배가 됐다
-        # (1교대 기준값 6.88 → 13.20 → REV.58 11.82 TB)
+        # (1교대 기준값 6.88 → 13.20 → REV.58 11.82 → REV.59 13.15 TB)
         self.assertAlmostEqual(
-            smart.annual_storage_tb() / 11.82,
+            smart.annual_storage_tb() / 13.15,
             smart.OPERATING_HOURS_PER_YEAR / 2_000.0, places=2)
         # 전량 보존하면 같은 3년이 200 TB 를 넘는다
         seconds = smart.OPERATING_HOURS_PER_YEAR * 3600.0
@@ -3222,8 +3253,9 @@ class TestSmartFactory(unittest.TestCase):
                                                         stop_h=0.0), 2_000.0)
 
     def test_backbone_grade_is_chosen_above_the_requirement(self):
-        # REV.58: JBR 칸 4 → 7 s 로 장당 속도가 내려가며 영상 스트림이 줄었다.
-        self.assertAlmostEqual(smart.required_mbps(), 192.3, places=1)
+        # 대역은 장당 속도를 따라간다 — REV.58 칸 7 s 로 214.5 → 192.3,
+        # REV.59 정반 점유 48.08 s 로 213.9. 아무도 이 값을 손대지 않았다.
+        self.assertAlmostEqual(smart.required_mbps(), 213.9, places=1)
         self.assertEqual(smart.backbone_grade_mbps(), 1_000)
         self.assertIn(smart.backbone_grade_mbps(), smart.ETHERNET_GRADES_MBPS)
         self.assertGreater(smart.backbone_grade_mbps(), smart.required_mbps())
@@ -3290,7 +3322,7 @@ class TestSmartFactory(unittest.TestCase):
 
     def test_the_smart_layer_shortens_the_allowable_tap_distance(self):
         """전류가 늘면 전압강하 한계가 줄어든다 — 공짜가 아니다."""
-        self.assertAlmostEqual(electrical.lv_tap_max_length_m(), 170.5, places=1)   # REV.58
+        self.assertAlmostEqual(electrical.lv_tap_max_length_m(), 170.4, places=1)   # REV.59
         # 스마트 부하가 없었다면 얼마였는지를 같은 식으로 되짚는다
         without = electrical.demand_kw() - sum(
             f.demand_kw for f in electrical.FEEDERS if f.panel in ("LP-IT", "LP-INST"))
@@ -3400,15 +3432,15 @@ class TestAiFeasibility(unittest.TestCase):
         # 이제 신뢰도 모델의 장수(가용률 반영)를 쓴다.
         self.assertEqual(ai.annual_panels(), reliability.annual_panels())
         self.assertLess(ai.annual_panels(), reliability.nominal_annual_panels())
-        # REV.58: JBR 칸 4 → 7 s 로 처리량이 72.2 → 64.7 장/h 가 되며 표본
-        # 공급도 283,487 → 253,885 장/년으로 줄었다. 착수가 그만큼 늦어진다 —
-        # 라벨 공급이 처리량에 매달려 있다는 것이 이 시험의 요점이다.
-        self.assertEqual(ai.annual_panels(), 253_885)
-        self.assertEqual(labels["정상"], 224_265)
-        self.assertEqual(labels["유리 깨짐"], 21_157)
-        self.assertEqual(labels["전손"], 8_463)
+        # 라벨 공급이 처리량에 매달려 있다는 것이 이 시험의 요점이고, 두 회차가
+        # 그것을 양쪽으로 보여 줬다 — REV.58 칸 7 s 로 283,487 → 253,885,
+        # REV.59 정반 점유 48.08 s 로 282,727 로 복귀. 아무도 이 값을 손대지 않았다.
+        self.assertEqual(ai.annual_panels(), 282_727)
+        self.assertEqual(labels["정상"], 249_742)
+        self.assertEqual(labels["유리 깨짐"], 23_561)
+        self.assertEqual(labels["전손"], 9_424)
         self.assertEqual(ai.scarcest_label(), "전손")
-        self.assertAlmostEqual(ai.cold_start_months(), 1.4, places=1)
+        self.assertAlmostEqual(ai.cold_start_months(), 1.3, places=1)
         # 처음부터 학습을 물리치는 근거가 **바뀌었다.** 1교대 가정에서는
         # 전손 기준 24개월이라 "비현실적" 이었는데, 2교대 확정으로 11.7개월이
         # 됐다 — 절대 개월수로는 더 이상 그 말을 못 한다.
@@ -3417,7 +3449,7 @@ class TestAiFeasibility(unittest.TestCase):
         # 처음부터 학습은 표본이 10배 필요하므로 언제나 착수가 10배 늦다.
         # 가동시간이 어떻게 바뀌어도 이 비는 변하지 않는다.
         scratch = ai.months_to_threshold("전손", ai.SCRATCH_MIN_SAMPLES)
-        self.assertAlmostEqual(scratch, 14.2, places=1)   # REV.58
+        self.assertAlmostEqual(scratch, 12.7, places=1)   # REV.59
         # 개월수는 0.1 로 반올림돼 나오므로 비는 반올림
         # 전의 값으로 잰다 — 재는 자가 반올림에 흔들리면 안 된다.
         self.assertAlmostEqual(
@@ -3432,13 +3464,16 @@ class TestAiFeasibility(unittest.TestCase):
     def test_misclassification_is_priced_in_seconds_not_percent(self):
         """정확도 % 는 공정에서 뜻이 없다.
 
-        REV.58 에서 병목 점유가 45 → 54 s 가 되며 전손 오통과의 대가도 같이
-        올랐다. 값을 리터럴로 두지 않고 `campaign.JBR_S` 와 묶어 둔 덕에
-        모델만 고쳐도 따라온다.
+        대가는 리터럴이 아니라 병목 모델에 묶여 있어 회차마다 저절로 따라왔다 —
+        REV.58 에 45 → 54 s, REV.59 에 54 → 48.08 s. **REV.59 에서 재는 자도
+        바꿨다**: 잃는 것은 AFR 인계까지의 시간이 아니라 정반이 막혀 있는
+        시간이다.
         """
-        self.assertAlmostEqual(ai.scrap_miss_cost_s(), 54.0, places=1)
+        self.assertAlmostEqual(ai.scrap_miss_cost_s(), 48.1, places=1)
         self.assertAlmostEqual(ai.cracked_miss_cost_s(), 47.04, places=2)
-        self.assertEqual(ai.scrap_miss_cost_s(), campaign.JBR_S)
+        self.assertEqual(ai.scrap_miss_cost_s(), round(campaign.jbr_block_s(), 1))
+        self.assertLess(ai.scrap_miss_cost_s(), campaign.JBR_S,
+                        "인계 시각으로 재면 안 잃는 3 s 까지 대가로 센다")
         self.assertGreater(ai.scrap_miss_cost_s(), campaign.INFEED_REJECT_S,
                            "전손은 투입부 15 s 로 끝나야 하는데 통과하면 병목을 먹는다")
 
@@ -3664,45 +3699,43 @@ class TestGlassRemovalIntegration(unittest.TestCase):
     def test_campaign_now_ends_at_glass_not_at_the_buffer(self):
         """캠페인이 버퍼에서 끝나면 유리가 벗겨졌는지 알 수 없다.
 
-        REV.58 에서 JBR 칸이 4 → 7 s 로 늘며 앞단이 3,229.03 s 로 느려졌고,
-        꼬리(버퍼 종료 뒤에도 남는 유리제거)는 454.3 → 287.9 s 로 **줄었다** —
-        후단이 빨라진 것이 아니라 앞단이 늦게 밀어 넣어서다.
+        REV.58 에서 JBR 칸이 4 → 7 s 로 늘며 앞단이 3,229.03 s 로 느려졌고 꼬리가
+        454.3 → 287.9 s 로 줄었다. REV.59 에서 정반 점유를 48.08 s 로 되돌리자
+        2,900.43 s · 꼬리 450.2 s 로 돌아왔다 — 꼬리 길이는 후단 능력이 아니라
+        **앞단이 얼마나 빨리 밀어 넣느냐**가 정한다는 것이 두 번 다 확인됐다.
         """
         rows = handoff.glass_removal_timeline()
         summary = handoff.glass_removal_summary()
         self.assertEqual(len(rows), 53, "R-A 정상 유리만 후단으로 간다")
         self.assertEqual({r.panel_index for r in rows},
                          {p.index for p in campaign.panels() if p.buffer == "R-A"})
-        self.assertAlmostEqual(summary["buffer_run_s"], 3229.03, places=1)
-        self.assertAlmostEqual(summary["glass_finish_s"], 3516.93, places=1)
-        self.assertAlmostEqual(summary["glass_finish_min"], 58.6, places=1)
+        self.assertAlmostEqual(summary["buffer_run_s"], 2900.43, places=1)
+        self.assertAlmostEqual(summary["glass_finish_s"], 3350.65, places=1)
+        self.assertAlmostEqual(summary["glass_finish_min"], 55.8, places=1)
         self.assertGreater(summary["glass_finish_s"], summary["buffer_run_s"],
                            "유리제거는 버퍼 이후에도 이어진다")
-        self.assertAlmostEqual(summary["tail_s"], 287.9, places=1)
-        # 꼬리가 짧아진 것은 앞단이 느려진 결과다 — 개선으로 읽으면 안 된다.
+        self.assertAlmostEqual(summary["tail_s"], 450.22, places=1)
+        # 꼬리 길이는 앞단 속도의 함수다 — 그 자체로는 개선도 악화도 아니다.
         self.assertAlmostEqual(summary["buffer_run_s"], campaign.summary()["run_s"],
                                places=2)
 
-    def test_the_cell_now_starves_because_the_front_end_slowed_down(self):
-        """유리제거셀이 굶기 시작했다 — 그것이 칸을 7 s 로 늘린 값이다.
+    def test_the_cell_never_starves_once_it_starts(self):
+        """첫 배치 가열 대기(FULL_LOAD_ACK) 동안 쌓인 재고로 끝까지 물린다.
 
-        REV.57 까지 이 시험은 `grm_utilisation == 1.0` 을 확인했다. 첫 배치
-        가열 대기(FULL_LOAD_ACK) 동안 쌓인 재고로 셀이 끝까지 물렸기 때문이다.
-        REV.58 에서 JBR 칸이 4 → 7 s 가 되며 앞단 택트가 48.47 → 54.31 s 로
-        늘었고, GRM 등가 점유(46.49 s)보다 느려졌다. 그래서 셀이 4.8 % 를
-        비운다.
-
-        이것은 고칠 결함이 아니라 **맞바꾼 값**이다 — 축 가속 한계를 지키려고
-        앞단을 늦췄고, 그만큼 후단에 여유가 생겼다. 다만 이 여유를 "후단 능력이
-        충분해졌다"로 읽으면 안 된다. 후단은 그대로고 앞단이 느려졌을 뿐이다.
+        이 소견은 REV.58 에서 한 회차 뒤집혔다. 칸이 4 → 7 s 가 되며 앞단 택트가
+        48.47 → 54.31 s 로 GRM 등가 점유(46.49 s)보다 느려져 셀이 4.8 % 를
+        비웠다. 그때 「후단 능력이 충분해진 것이 아니라 앞단이 느려진 것」이라
+        적었고, REV.59 에서 정반 점유를 48.08 s 로 되돌리자 가동률이 1.000 으로
+        돌아왔다 — 후단은 두 회차 내내 한 줄도 안 바뀌었다.
         """
         summary = handoff.glass_removal_summary()
-        self.assertAlmostEqual(summary["grm_utilisation"], 0.952, places=3)
-        self.assertLess(summary["grm_utilisation"], 1.0,
-                        "앞단이 병목이면 후단은 반드시 논다")
-        # 그리고 그 굶주림의 크기는 두 점유의 비로 설명된다.
+        self.assertAlmostEqual(summary["grm_utilisation"], 1.0, places=3)
+        # 굶느냐 마느냐는 두 점유의 비가 정한다. 지금은 앞단이 다시 빠르다.
         cells = dict(campaign.cell_occupancy_s())
-        self.assertGreater(campaign.ideal_takt_s(), cells["GRM-401 유리제거"])
+        self.assertGreater(campaign.ideal_takt_s(), cells["GRM-401 유리제거"],
+                           "JBR 이 여전히 병목이다 — GRM 은 그보다 빠르다")
+        self.assertLess(campaign.ideal_takt_s() - cells["GRM-401 유리제거"], 2.0,
+                        "둘의 차가 2 s 안이라 GRM 이 언제든 병목을 되받을 수 있다")
         rows = handoff.glass_removal_timeline()
         # 데크는 롤링이다 — n 번째는 n−5 번째가 박리로 빠져야 들어간다
         for n in range(handoff.DOWNSTREAM_LOAD_PANELS, len(rows)):
@@ -3710,19 +3743,19 @@ class TestGlassRemovalIntegration(unittest.TestCase):
                 self.assertGreaterEqual(
                     rows[n].load_s, rows[n - handoff.DOWNSTREAM_LOAD_PANELS].peel_start_s,
                     "데크가 비기 전에 다음 장을 실었다")
-        # 버퍼 체류도 같이 줄었다 — 앞단이 늦게 밀어 넣으니 쌓일 새가 없다.
-        self.assertAlmostEqual(summary["max_buffer_wait_s"], 181.2, places=1)
-        self.assertEqual(summary["peak_buffer_sheets"], 3.0)
+        # 데크가 빌 때까지 기다리는 것이지 후단이 놀아서 밀리는 것이 아니다
+        self.assertAlmostEqual(summary["max_buffer_wait_s"], 187.12, places=1)
+        self.assertEqual(summary["peak_buffer_sheets"], 4.0)
         self.assertLess(summary["peak_buffer_sheets"], handoff.BUFFER_RA_SLOTS,
                         "동시 체류가 R-A 50 슬롯을 넘으면 버퍼 설계부터 다시 세워야 한다")
 
     def test_the_ir_bank_forces_a_bigger_service(self):
         """IR 175 kW 는 이 플랜트 최대 부하다 — 100 AT 로는 못 받는다."""
         self.assertAlmostEqual(electrical.installed_kw(), 303.7, places=1)   # REV.51: F5 +3.2
-        self.assertAlmostEqual(electrical.demand_kw(), 220.0, places=1)
+        self.assertAlmostEqual(electrical.demand_kw(), 220.1, places=1)
         self.assertEqual(electrical.main_breaker_at(), 500)
         self.assertEqual(electrical.main_breaker_frame_a(), 630)
-        self.assertAlmostEqual(electrical.contract_kva(), 330.0, places=1)   # REV.58
+        self.assertAlmostEqual(electrical.contract_kva(), 330.15, places=1)   # REV.59
         # **예고한 대로 됐다.** REV.25 에서 "다음에 F14 만한 부하를 하나 더
         # 붙이면 차단기가 한 단 올라간다" 고 적었고, REV.28 크레인이 여유를
         # 2.6 kW 까지 줄였고, REV.34 압축공기 4.25 kW 가 그것을 넘겼다.
@@ -3730,8 +3763,8 @@ class TestGlassRemovalIntegration(unittest.TestCase):
         # 400 → 500 AT 로 올라가며 주회로도 240 → 300 mm² 가 됐다. 그 대신
         # 여유가 열렸다 — 다음 부하는 이 안에서 받는다. REV.41 통과 레인이
         # 0.4 kW 를 먹어 52.2 → 51.8 kW. REV.51 SG-301 3헤드·GI-303(F5 +3.2 kW,
-        # 수요 +2.24)이 51.5 → 49.2 kW. REV.58 공압 수용률 0.36 으로 49.3 kW.
-        self.assertAlmostEqual(electrical.breaker_headroom_kw(), 49.3, places=1)
+        # 수요 +2.24)이 51.5 → 49.2 kW. (REV.58 에서 0.36 으로 49.3 이었다가 REV.59 에 복귀.)
+        self.assertAlmostEqual(electrical.breaker_headroom_kw(), 49.2, places=1)
         air_feeder = next(f for f in electrical.FEEDERS if f.tag == "F16")
         self.assertGreater(electrical.breaker_headroom_kw(), air_feeder.demand_kw,
                            "한 단 올린 뒤에는 같은 크기 부하를 또 받을 수 있어야 한다")
@@ -3772,7 +3805,7 @@ class TestGlassRemovalIntegration(unittest.TestCase):
                 self.assertEqual(source.sink, "배기", "실내로 가면 환기가 감당 못 한다")
         self.assertEqual(thermal.required_airflow_m3h(), 37000)   # REV.51: 실내 부하 59.3 → 61.6 kW
         # 랙실은 구획실이라 그 발열은 공정실 환기에 들어오지 않는다
-        self.assertAlmostEqual(thermal.off_room_kw(), 12.89, places=2)   # REV.58
+        self.assertAlmostEqual(thermal.off_room_kw(), 13.01, places=2)   # REV.59
         self.assertEqual(thermal.OFF_ROOM_PANELS, ("LP-IT", "LP-AIR"))
         # 배기가 실패하면 어떻게 되는지를 값으로 남긴다 — 후드가 전제라는 근거
         def airflow(room_kw):
@@ -3818,13 +3851,20 @@ class TestBalancePlans(unittest.TestCase):
                 self.assertAlmostEqual(
                     campaign.release_takt_s(hold),
                     max(campaign.INFEED_S + campaign.JBR_STOPPER_OFFSET_S + hold,
-                        campaign.JBR_S), places=6)
+                        campaign.jbr_block_s()), places=6)
                 self.assertGreaterEqual(campaign.release_takt_s(hold),
                                         campaign.release_takt_s(),
                                         "보류가 주기를 줄이면 보류가 아니다")
         self.assertAlmostEqual(campaign.release_takt_s(20.0), 68.0, places=6)
-        self.assertAlmostEqual(campaign.release_takt_s(6.0), campaign.JBR_S, places=6,
-                               msg="6 s 는 아직 병목 안이라 주기를 못 늘린다")
+        # REV.59 에서 그 교차점이 거의 0 이 됐다. 정반 점유 48.08 이 인터록 하한
+        # 48.0 을 0.08 s 밖에 안 넘으므로, 보류가 0.08 s 를 넘는 순간부터 1:1 이다.
+        crossover = campaign.jbr_block_s() - (campaign.INFEED_S + campaign.JBR_STOPPER_OFFSET_S)
+        self.assertAlmostEqual(crossover, 0.08, places=2)
+        self.assertAlmostEqual(campaign.release_takt_s(0.0), campaign.jbr_block_s(), places=6,
+                               msg="보류 0 에서는 아직 병목이 늦다")
+        self.assertAlmostEqual(campaign.release_takt_s(6.0),
+                               campaign.INFEED_S + campaign.JBR_STOPPER_OFFSET_S + 6.0, places=6,
+                               msg="교차점을 넘으면 보류가 그대로 주기에 더해진다")
 
     def test_plan_b_lifts_the_downstream_within_its_limits(self):
         """B안은 칼날 상한과 인계 단축만으로 유입을 받아낸다 — 증설이 아니다."""
@@ -4423,12 +4463,13 @@ class TestCompressedAir(unittest.TestCase):
         """용량을 고르지 않고 소비처에서 파생시킨다.
 
         그래서 REV.58 에서 JBR 칸이 4 → 7 s 로 늘자 아무도 손대지 않았는데
-        평균 소비가 393.1 → 382.5 Nl/min 으로 따라 내려왔다. 사이클이 길어지면
-        같은 동작 수를 더 긴 시간에 나눠 쓰기 때문이다 — 이것이 값이 아니라
-        규칙을 적어 둔 값이다.
+        평균 소비가 393.1 → 382.5 Nl/min 으로 따라 내려왔고, REV.59 에서
+        셀 점유가 54 → 48.08 s 로 줄자 392.7 로 되돌아왔다. 사이클 길이가
+        같은 동작 수를 나누는 시간을 바꾸기 때문이다 — 값이 아니라 규칙을
+        적어 둔 덕에 두 번 다 저절로 따라왔다.
         """
-        self.assertAlmostEqual(air.average_nl_min(), 382.5, places=1)
-        self.assertAlmostEqual(air.required_fad_nl_min(), 527.8, places=1)
+        self.assertAlmostEqual(air.average_nl_min(), 392.8, places=1)
+        self.assertAlmostEqual(air.required_fad_nl_min(), 542.1, places=1)
         # 여유는 곱셈으로 들어간다 — 숨기지 않고 이름으로 드러낸다
         self.assertAlmostEqual(
             air.required_fad_nl_min(),
@@ -4454,8 +4495,8 @@ class TestCompressedAir(unittest.TestCase):
     def test_the_receiver_exists_for_the_pulse_but_is_sized_by_cycling(self):
         """리시버가 있는 이유와 크기를 정하는 것이 다르다 — 그 구분이 근거다."""
         self.assertAlmostEqual(air.receiver_for_pulse_l(), 101.3, places=1)
-        # REV.58: 소비가 내려가며 기동 횟수 요구도 271.2 → 263.9 L 로 따라 내려왔다.
-        self.assertAlmostEqual(air.receiver_for_cycling_l(), 263.9, places=1)
+        # REV.58 에 263.9 L 로 내려갔다가 REV.59 에 271.1 L 로 되돌아왔다.
+        self.assertAlmostEqual(air.receiver_for_cycling_l(), 271.1, places=1)
         self.assertEqual(air.receiver_l(), 300)
         self.assertEqual(air.receiver_governed_by(), "기동 횟수")
         self.assertGreaterEqual(air.receiver_l(),
@@ -4488,9 +4529,10 @@ class TestCompressedAir(unittest.TestCase):
         """공기가 끊기면 클램프가 풀린다 — VAC-101 과 같은 근거다."""
         self.assertEqual((air.COMPRESSOR_UNITS, air.COMPRESSOR_DUTY), (2, 1))
         self.assertAlmostEqual(air.installed_kw(), 11.5, places=1)
-        # 수용률은 상수가 아니라 운전대수비 × 부하율에서 나온다. REV.58 의
-        # 소비 감소가 부하율을 통해 0.37 → 0.36 으로 내려온 것이 그 증거다.
-        self.assertAlmostEqual(air.diversity(), 0.36, places=2)
+        # 수용률은 상수가 아니라 운전대수비 × 부하율에서 나온다. REV.58 에서
+        # 소비가 줄자 0.37 → 0.36 으로 내려갔고, REV.59 에서 사이클이 짧아지며
+        # 되돌아왔다 — 두 번 다 아무도 이 값을 손대지 않았다.
+        self.assertAlmostEqual(air.diversity(), 0.37, places=2)
         feeder = next(f for f in electrical.FEEDERS if f.panel == "LP-AIR")
         self.assertEqual(feeder.tag, "F16")
         self.assertAlmostEqual(feeder.installed_kw, air.installed_kw(), places=2)
@@ -4523,7 +4565,7 @@ class TestCompressedAir(unittest.TestCase):
         self.assertLess(air.compressor_kw(False), air.compressor_kw())
         self.assertGreater(without + air.demand_kw(False), limit_kw)
         # 굵어진 주회로가 저압 분기 한계를 늘렸다 — 확인값 151 m 는 그대로 유효
-        self.assertAlmostEqual(electrical.lv_tap_max_length_m(), 170.5, places=1)   # REV.58
+        self.assertAlmostEqual(electrical.lv_tap_max_length_m(), 170.4, places=1)   # REV.59
         self.assertTrue(wiring.SITE_BOARD_WITHIN_LV_LIMIT)
 
     def test_the_header_is_carried_by_the_building(self):
@@ -5378,12 +5420,16 @@ class TestWorldClassGrade(unittest.TestCase):
                                / campaign.summary()["takt_s"], places=6)
         # 이상 택트는 셀 점유표에서 나온다. 표를 흔들면 성능률과 병목 **이름**이
         # 둘 다 따라와야 한다 — 이름이 안 따라오면 어딘가에 박아 둔 것이다.
-        # REV.58 에서 병목이 GRM-401(46.49 s) 에서 JBR-201(54.0 s) 로 넘어왔다.
-        # 그래서 GRM 을 +4 s 흔들어서는 최댓값이 안 바뀐다 — 흔드는 폭이 두 셀의
-        # 간격보다 커야 흔드는 것이 된다. 흔들 폭을 값에서 낸다.
+        # REV.58 에서 병목이 GRM-401(46.49 s) 에서 JBR-201 로 넘어왔다. 그래서
+        # GRM 을 +4 s 흔들어서는 최댓값이 안 바뀐다 — 흔드는 폭이 두 셀의 간격보다
+        # 커야 흔드는 것이 된다. 흔들 폭을 값에서 낸다.
+        #
+        # REV.59 에서 **흔들 자리도 바뀌었다.** 병목을 정하는 것은 `JBR_S`(AFR
+        # 인계)가 아니라 `jbr_block_s()`(정반 비움)이고, 그것을 움직이는 상수는
+        # `JBR_EXIT_START_S` 다. JBR_S 를 흔들면 아무 일도 안 일어난다.
         keep = campaign.grm_equivalent_s
-        span = campaign.JBR_S - keep() + 4.0
-        keep_jbr = campaign.JBR_S
+        span = campaign.jbr_block_s() - keep() + 4.0
+        keep_exit = campaign.JBR_EXIT_START_S
         try:
             campaign.grm_equivalent_s = lambda: keep() + span
             self.assertGreater(grade.performance_rate(), base, "성능률이 리터럴이다")
@@ -5396,10 +5442,19 @@ class TestWorldClassGrade(unittest.TestCase):
         # 줄여서는 성능률이 안 내려간다 — 내려가는 것을 보려면 병목 자체를 줄여
         # 병목이 GRM 으로 되넘어가게 해야 한다.
         try:
-            campaign.JBR_S = 30.0
+            campaign.JBR_EXIT_START_S = 30.0
             self.assertEqual(campaign.bottleneck(), "GRM-401 유리제거",
                              "병목 이름이 박혀 있다")
             self.assertLess(grade.performance_rate(), base)
+        finally:
+            campaign.JBR_EXIT_START_S = keep_exit
+        # AFR 인계 시각을 흔들어도 병목은 안 움직인다 — 재는 자가 맞는지 확인한다.
+        keep_jbr = campaign.JBR_S
+        try:
+            campaign.JBR_S = 200.0
+            self.assertEqual(campaign.bottleneck(), "JBR-201")
+            self.assertAlmostEqual(grade.performance_rate(), base, places=9,
+                                   msg="인계 시각으로 병목을 재고 있다")
         finally:
             campaign.JBR_S = keep_jbr
         self.assertAlmostEqual(grade.performance_rate(), base, places=9)
@@ -5440,13 +5495,11 @@ class TestWorldClassGrade(unittest.TestCase):
         # 좋아졌다고 읽지 못하도록 **처리량을 같이 못 박는다.** 성능률이
         # 올랐는데 처리량이 떨어졌다면 그것은 개선이 아니다.
         self.assertNotIn("T-03", gaps, "병목 정정이 풀렸다")
-        self.assertAlmostEqual(campaign.summary()["takt_s"], 54.31, places=2)
+        self.assertAlmostEqual(campaign.summary()["takt_s"], 48.59, places=2)
         self.assertGreaterEqual(grade.performance_rate(), 0.95)
-        self.assertAlmostEqual(campaign.summary()["throughput_per_h"], 64.7, places=1)
-        self.assertLess(campaign.summary()["throughput_per_h"], 72.2,
-                        "REV.58 은 성능률이 올랐지만 라인은 느려졌다 — 정정이 아니라 대가다")
-        self.assertGreater(campaign.summary()["takt_s"], 48.47,
-                           "택트가 느려진 사실이 점수 뒤에 숨으면 안 된다")
+        self.assertAlmostEqual(campaign.summary()["throughput_per_h"], 72.0, places=1)
+        self.assertGreater(campaign.summary()["throughput_per_h"], 64.7,
+                           "REV.59 는 REV.58 이 잃은 처리량을 되찾은 회차다")
         # D-01 은 닫혔다 — 정비성 설계(교환 모듈·도킹 레일·온보드 진단·자동
         # 복귀)가 최악 MTTR 을 3.0 h 에서 0.5 h 안으로 끌어내렸다.
         self.assertNotIn("D-01", gaps, "정비성 개선이 풀렸다")
@@ -5477,31 +5530,33 @@ class TestWorldClassGrade(unittest.TestCase):
         """OEE 는 품질률 가정 위에 있다 — 그 가정의 크기를 값으로 남긴다."""
         base_rate = grade.performance_rate()
         optimistic = grade.oee_if_quality(1.0)
-        # REV.58: 택트가 느려지며 성능률이 0.925 → 0.994 가 됐고 OEE 가정치도
-        # 0.8824 → 0.9147 로 올랐다. 라인은 느려졌는데 점수는 올라간다 —
-        # `test_the_gaps_are_the_ones_we_actually_have` 가 그 대가를 못 박는다.
-        self.assertAlmostEqual(optimistic, 0.9147, places=3)
+        # 점수가 두 회차에 걸쳐 0.8824 → 0.9147 → 0.9094 로 움직였다. 앞의
+        # 상승은 라인이 −10.4 % 느려진 결과였고(REV.58), 이번 하락은 라인이
+        # +11.3 % 빨라진 결과다(REV.59) — **점수의 방향이 라인의 방향과 반대다.**
+        # 그래서 이 시험은 점수만 보지 않고 처리량을 같이 못 박는다.
+        self.assertAlmostEqual(optimistic, 0.9103, places=3)
         self.assertGreater(optimistic, grade.WORLD_CLASS_OEE,
                            "가정 아래서만 기준을 넘는다")
         # 얼마나 모자라도 되는지를 낸다 — "0.88" 보다 이 값이 협의에 쓰인다
         breakeven = grade.quality_break_even()
-        self.assertAlmostEqual(breakeven, 0.9292, places=3)   # REV.58
+        self.assertAlmostEqual(breakeven, 0.9337, places=3)   # REV.59
         self.assertLess(grade.oee_if_quality(breakeven - 0.01),
                         grade.WORLD_CLASS_OEE)
         self.assertGreaterEqual(grade.oee_if_quality(breakeven + 0.01),
                                 grade.WORLD_CLASS_OEE)
         # 손익분기도 파생이어야 한다 — 성능률이 움직이면 같이 움직인다.
         # REV.58 부터 병목이 JBR 이라 GRM 을 줄여서는 성능률이 안 움직인다.
-        # 흔들 자리는 최댓값을 쥔 셀이다.
-        keep_jbr = campaign.JBR_S
+        # 흔들 자리는 최댓값을 쥔 셀이고, 그 셀을 움직이는 상수는 REV.59 부터
+        # `JBR_EXIT_START_S` 다 — 정반이 언제 비느냐가 병목이기 때문이다.
+        keep_exit = campaign.JBR_EXIT_START_S
         try:
-            campaign.JBR_S = 30.0
+            campaign.JBR_EXIT_START_S = 30.0
             self.assertLess(grade.performance_rate(), base_rate,
                             "흔든 결과 성능률이 안 내려가면 흔든 것이 아니다")
             self.assertGreater(grade.quality_break_even(), breakeven,
                                "성능률이 내려가면 요구 품질률은 올라가야 한다")
         finally:
-            campaign.JBR_S = keep_jbr
+            campaign.JBR_EXIT_START_S = keep_exit
         # 그리고 이 모든 값이 가용률 **목표** 0.92 위에 서 있다는 것도 남긴다
         self.assertEqual(reliability.TARGET_AVAILABILITY, 0.92)
         self.assertIsNone(grade.oee(), "품질률이 없으면 OEE 는 여전히 없다")
