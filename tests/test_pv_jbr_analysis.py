@@ -213,22 +213,32 @@ class TestWhatTheAnalysisFound(unittest.TestCase):
         self.assertGreater(ja.bridge_fea(0.5, 5.0)["deflection_mm"],
                            2.0 * ja.bridge_fea(0.5, 0.0)["deflection_mm"])
 
-    def test_the_sequential_motion_law_asks_for_accelerations_no_axis_can_give(self):
-        """**가장 무거운 소견.** 순차 운동식의 이송 구간이 전부 축 한계를 넘는다.
+    def test_the_motion_law_now_stays_inside_what_the_axis_can_give(self):
+        """**소견이 닫혔다 — 칸을 4.0 → 7.0 s 로 늘려서다.**
 
-        3D 는 시각을 주면 자세를 돌려주는 보간이라 10 g 짜리 이송도 부드럽게
-        재생된다. 화면이 말이 되는 것과 기계가 되는 것은 다르다.
+        REV.57 까지 이 시험은 반대를 붙들고 있었다: 이송 6 구간이 전부 축 한계를
+        넘고 최악이 10.0 g 였다. 3D 가 보간이라 그 가속도로도 부드럽게 재생됐고,
+        그래서 아무도 못 봤다.
+
+        고친 방법은 구동을 키우는 것이 아니라 **시간을 준 것**이다. 축을 4 배로
+        올려도(10 m/s²) 점 호퍼 구성은 병목을 못 피했다 — 왕복 거리 자체가
+        문제였기 때문이다. 되돌려 칸을 줄이면 여기가 먼저 깨진다.
         """
         t = ja.traverse_check()
-        self.assertFalse(t["feasible"])
-        self.assertEqual(t["failing"], t["total"])
-        self.assertGreater(t["worst_g"], 5.0)
+        self.assertTrue(t["feasible"], f"{t['failing']}/{t['total']} 구간 초과")
+        self.assertEqual(t["failing"], 0)
+        self.assertLessEqual(t["worst_over"], 1.0)
 
-    def test_the_four_second_slot_does_not_hold_the_sequence(self):
-        """축 한계를 지키면 칸이 4.0 s 로 안 끝난다 — 얼마나 모자라는지 적어 둔다."""
+    def test_the_slot_holds_the_sequence_with_no_room_to_spare(self):
+        """칸 7.0 s 가 필요분 6.96 s 를 겨우 담는다 — 여유가 0.04 s 다.
+
+        이 여백이 얼마나 얇은지가 이 시험의 요점이다. 박스가 조금만 더 멀리
+        있어도(시나리오가 바뀌어도) 다시 넘친다.
+        """
         b = ja.slot_budget()
-        self.assertFalse(b["fits"])
-        self.assertGreater(b["need_s"], b["slot_now_s"])
+        self.assertTrue(b["fits"])
+        self.assertLessEqual(b["need_s"], b["slot_now_s"])
+        self.assertLess(b["slot_now_s"] - b["need_s"], 0.1)
         self.assertEqual(b["slot_now_s"], ja.SEQUENCE["slot"])
 
     def test_fatigue_is_infinite_below_the_cutoff_and_finite_at_the_trip_force(self):
@@ -259,10 +269,16 @@ class TestWhatTheAnalysisFound(unittest.TestCase):
         self.assertGreater(span, inner)
         self.assertAlmostEqual((span - inner) * 1000.0, 30.0, places=6)
 
-    def test_the_vacuum_cups_hold_once_the_motion_is_feasible(self):
-        """진공은 문제가 아니다 — 지금 모자란 것은 운동식이 6.9 g 를 부르기 때문이다."""
-        self.assertFalse(ja.vacuum_hold()["ok"])
-        self.assertTrue(ja.vacuum_hold(accel_ms2=ja.AXIS_ACCEL_LIMIT_MS2)["ok"])
+    def test_the_vacuum_cups_hold_now_that_the_motion_is_feasible(self):
+        """진공은 애초에 문제가 아니었다 — 운동식이 6.9 g 를 부르던 것이 문제였다.
+
+        칸이 길어지자 요구 가속도가 축 한계 안으로 들어왔고, 같은 컵이 그대로
+        여유를 갖는다. 진공을 키워서 푼 것이 아니다.
+        """
+        v = ja.vacuum_hold()
+        self.assertTrue(v["ok"], f"여유 {v['margin']}")
+        self.assertGreater(v["margin"], 1.0)
+        self.assertLessEqual(v["accel_ms2"], ja.AXIS_ACCEL_LIMIT_MS2 + 1e-9)
 
 
 if __name__ == "__main__":

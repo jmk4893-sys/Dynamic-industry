@@ -472,9 +472,19 @@ class TestJbrDetail(unittest.TestCase):
         self.assertIn(f"<b>{shown}</b>", self.html)
 
     def test_the_bottleneck_is_named_from_the_model_not_asserted(self):
-        """JBR 45 s 는 두 번째다 — 병목을 도면이 아니라 모델에서 읽는다."""
+        """병목을 도면이 아니라 모델에서 읽는다 — 그래서 병목이 바뀌면 시트도 바뀐다.
+
+        REV.57 까지 이 시험은 `bottleneck() != "JBR-201"` 을 확인했다. 그때 JBR 은
+        45 s 로 GRM-401(50.49 s) 다음이었기 때문이다. REV.58 에서 축 가속 한계를
+        지키려고 칸을 4 → 7 s 로 늘리면서 JBR 이 54 s 가 됐고, 병목이 JBR-201 로
+        넘어왔다. 소견 자체는 그대로다 — 시트가 병목을 **모델에서** 읽으므로
+        도면을 손대지 않고도 이름이 따라 바뀌었다.
+        """
         self.assertIn(campaign.bottleneck(), self.html)
-        self.assertNotEqual(campaign.bottleneck(), "JBR-201")
+        self.assertEqual(campaign.bottleneck(), "JBR-201")
+        # 그리고 그 이름은 리터럴이 아니라 계산 결과여야 한다.
+        cells = campaign.cell_occupancy_s()
+        self.assertEqual(campaign.bottleneck(), max(cells, key=lambda r: r[1])[0])
 
     def test_the_artifact_converter_accepts_it(self):
         conv = _load("build_artifact")

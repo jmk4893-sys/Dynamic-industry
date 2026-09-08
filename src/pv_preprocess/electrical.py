@@ -189,7 +189,7 @@ FEEDERS: tuple[Feeder, ...] = (
     # 수용률은 상수가 아니라 air.diversity() 가 낸다(1운전/2대 × 부하율).
     Feeder("F16", "LP-AIR", "CMP-701 압축공기 (스크류 5.5 kW × 2 — 1운전 1예비) "
            "· 냉동식 드라이어 · 리시버 300 L",
-           11.5, 0.37, 30, "4C×6 mm² Cu", "계획(air.installed_kw)"),
+           11.5, 0.36, 30, "4C×6 mm² Cu", "계획(air.installed_kw)"),
 )
 
 
