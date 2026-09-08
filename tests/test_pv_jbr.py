@@ -463,7 +463,11 @@ class TestJbrDetail(unittest.TestCase):
             self.assertIn(f"<td>{a.tag}</td>", self.html)
         total = sum(a.rated_kw * a.qty for a in axes + motors)
         self.assertEqual(total, servos.motion_kw_by_panel()["LP-JBR"])
-        self.assertIn(f"<b>{total:,.2f}</b>".rstrip("0").rstrip("."), self.html)
+        # 시트는 소수 뒤 0 을 지우고 적는다. 여기서 `f"<b>{…}</b>".rstrip("0")` 로
+        # 흉내 냈는데 문자열이 `</b>` 로 끝나 rstrip 이 아무것도 안 했다 — 값이
+        # 1.90 처럼 0 으로 끝나기 전까지 드러나지 않던 버그다. 숫자만 다듬는다.
+        shown = f"{total:,.2f}".rstrip("0").rstrip(".")
+        self.assertIn(f"<b>{shown}</b>", self.html)
 
     def test_the_bottleneck_is_named_from_the_model_not_asserted(self):
         """JBR 45 s 는 두 번째다 — 병목을 도면이 아니라 모델에서 읽는다."""

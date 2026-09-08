@@ -1407,11 +1407,12 @@ class TestServoAxes(unittest.TestCase):
                                      "전동기 예산이 피더 설치 용량을 넘는다 — 피더부터 다시 세워라")
 
     def test_axis_counts_match_established_wording(self):
-        """유리제거셀 7축이 더해져 29 → 36축. JBR 7축은 제어반 문구가 근거다."""
-        self.assertEqual(servos.servo_axis_count(), 38)   # REV.53: AXIS-GRM-BX +1
+        """유리제거셀 7축이 더해져 29 → 36축. REV.57 에서 JBR 이 7 → 3축이 됐다 —
+        3헤드 동시를 1헤드 순차로 바꾸고 박리축을 공압으로 내렸다."""
+        self.assertEqual(servos.servo_axis_count(), 34)   # REV.57: JBR 3헤드→1헤드 순차·공압 −4축
         self.assertEqual(servos.servo_axis_count_for("LP-GRM-MEC"), 8)
-        self.assertEqual(servos.servo_axis_count_for("LP-JBR"), 7)
-        self.assertIn("EtherCAT 7축 서보", self.html)
+        self.assertEqual(servos.servo_axis_count_for("LP-JBR"), 3)   # REV.57: X·Y·C — 박리는 공압
+        self.assertIn("EtherCAT 3축 서보", self.html)
         self.assertIn(f"EtherCAT {servos.servo_axis_count()}축", self.html)
 
     def test_gravity_axes_carry_brakes(self):
@@ -3055,8 +3056,8 @@ class TestSmartFactory(unittest.TestCase):
         # 서보 35축 × 6신호 × 100 Hz × 4 B 가 드라이브 대역의 지배항이다 (REV.49 셔틀 X 축 2 삭제)
         # REV.50: AFR 반출롤러 구동이 직입 → 인버터(통과 연마 속도 제어)라 인버터 회선 1 이 늘었다.
         # REV.51: 서보 37축 · 인버터 11 (단변 횡행·압력 3·스핀들 3).
-        self.assertAlmostEqual(smart.drive_stream_bytes_per_s(), 93_168.0, places=1)   # REV.53
-        self.assertAlmostEqual(smart.timeseries_bytes_per_s() / 1000, 96.9, places=1)
+        self.assertAlmostEqual(smart.drive_stream_bytes_per_s(), 83_568.0, places=1)   # REV.57: JBR −4축
+        self.assertAlmostEqual(smart.timeseries_bytes_per_s() / 1000, 87.2, places=1)   # REV.57
         # 공정 태그도 축·존에서 나온다
         self.assertEqual(smart.plc_tag_count(),
                          sum(a.qty for a in servos.SERVO_AXES + servos.MOTORS)
@@ -3084,8 +3085,8 @@ class TestSmartFactory(unittest.TestCase):
         self.assertAlmostEqual(smart.flagged_ratio(), 0.1167, places=4)
         self.assertAlmostEqual(smart.vision_retention(), 0.1367, places=4)
         # REV.51: 라인스캔이 둘이 되며 14.18 → 27.22 TB/년, 저장 63.8 → 122.5 TB
-        self.assertAlmostEqual(smart.annual_storage_tb(), 27.22, places=2)
-        self.assertAlmostEqual(smart.storage_capacity_tb(), 122.5, places=1)
+        self.assertAlmostEqual(smart.annual_storage_tb(), 27.20, places=2)   # REV.57
+        self.assertAlmostEqual(smart.storage_capacity_tb(), 122.4, places=1)   # REV.57
         # 저장은 가동시간에 정비례한다 — 2교대 확정으로 2.06배가 됐다
         # (1교대 기준값 6.88 → 13.20 TB, REV.51 라인스캔 2대)
         self.assertAlmostEqual(
@@ -3117,7 +3118,7 @@ class TestSmartFactory(unittest.TestCase):
                                                         stop_h=0.0), 2_000.0)
 
     def test_backbone_grade_is_chosen_above_the_requirement(self):
-        self.assertAlmostEqual(smart.required_mbps(), 214.7, places=1)   # REV.53: AXIS-GRM-BX +1축
+        self.assertAlmostEqual(smart.required_mbps(), 214.5, places=1)   # REV.57: JBR −4축
         self.assertEqual(smart.backbone_grade_mbps(), 1_000)
         self.assertIn(smart.backbone_grade_mbps(), smart.ETHERNET_GRADES_MBPS)
         self.assertGreater(smart.backbone_grade_mbps(), smart.required_mbps())
@@ -4490,7 +4491,7 @@ class TestSafety(unittest.TestCase):
         축을 하나 얹어 답이 따라 오는지를 봐야 파생인지 아닌지가 갈린다.
         """
         self.assertEqual(safety.sto_nodes(), sum(a.qty for a in servos.SERVO_AXES))
-        self.assertEqual(safety.sto_nodes(), 38)   # REV.53: AXIS-GRM-BX +1
+        self.assertEqual(safety.sto_nodes(), 34)   # REV.57: JBR 3헤드→1헤드 순차·공압 −4축
         grown = servos.SERVO_AXES + (
             dataclasses.replace(servos.SERVO_AXES[0], tag="AXIS-TEST", qty=3),)
         self.assertEqual(safety.sto_nodes(grown), safety.sto_nodes() + 3)
