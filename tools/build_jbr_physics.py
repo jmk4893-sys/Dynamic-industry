@@ -339,9 +339,30 @@ const qmulScale = (wq, q, s) => Q.mul(wq, q).map((x) => x * s);
 """
 
 
+#: 페이지에 박는 부동소수의 자릿수. 화면은 2–4 자리만 쓴다.
+STABLE_DECIMALS = 6
+
+
+def stable(obj):
+    """부동소수를 판 사이에서 같은 값으로 — 마지막 비트를 버린다.
+
+    Jacobi 고유치 반복과 오리피스 유량의 거듭제곱은 libm 을 지나므로 파이썬 3.11 과
+    3.12 가 마지막 자릿수에서 갈린다(f1 10.587260070279267 ↔ …07028012). 그대로
+    박으면 「커밋본 == 생성기 출력」 시험이 CI 의 한 판에서만 깨진다 — 실제로 그렇게
+    깨졌다. 6 자리면 화면이 쓰는 정밀도보다 넉넉히 위이고 libm 잡음보다 넉넉히 아래다.
+    """
+    if isinstance(obj, float):
+        return round(obj, STABLE_DECIMALS)
+    if isinstance(obj, dict):
+        return {k: stable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [stable(v) for v in obj]
+    return obj
+
+
 def build() -> str:
-    sc = scene()
-    num = numbers()
+    sc = stable(scene())
+    num = stable(numbers())
     return TEMPLATE.replace("__SCENE__", json.dumps(sc, ensure_ascii=False)) \
                    .replace("__NUM__", json.dumps(num, ensure_ascii=False)) \
                    .replace("__ENGINE__", ENGINE) \

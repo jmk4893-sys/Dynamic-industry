@@ -57,6 +57,18 @@ class TestJbrPhysicsPage(unittest.TestCase):
         self.assertEqual(num["throttle"]["cap_mms"], ja.peel_throttle()["cap_mms"])
         self.assertEqual(num["slot"], ja.SEQUENCE["slot"])
 
+    def test_the_numbers_on_the_page_are_rounded_for_every_python(self):
+        """f1 이 3.11 과 3.12 에서 마지막 자릿수가 달랐다 — libm 을 지난 값은 판마다 다르다.
+
+        생성기가 6 자리로 안정화해 박는다. 그보다 긴 부동소수가 페이지에 있으면 이
+        시험이 어느 판에서든 깨진다 — CI 의 한 판에서만 깨지는 것보다 낫다.
+        """
+        for name in ("NUM", "SCENE"):
+            m = re.search(r"const %s = (\{.*?\});\n" % name, self.html, re.S)
+            self.assertIsNotNone(m, name)
+            longest = max((len(x.split(".")[1]) for x in re.findall(r"\d+\.\d+", m.group(1))), default=0)
+            self.assertLessEqual(longest, self.b.STABLE_DECIMALS, f"{name} 에 {longest} 자리 부동소수가 있다")
+
     def test_the_scene_reads_the_bin_from_the_plant(self):
         sc = self.b.scene()
         self.assertAlmostEqual(sc["bin"]["inner"][1], (640 - 2 * self.b.BIN_WALL_MM) / 1000.0, places=6)
