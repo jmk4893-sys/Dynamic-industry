@@ -25,8 +25,11 @@ if (!existsSync(file)) {
   process.exit(2);
 }
 
-//: 창을 훑는 시각 (s) — 6 단계가 모두 한 번씩 잡히도록 고른다.
-const SAMPLES = [86, 93, 97, 104, 110, 116, 122];
+//: 창을 훑는 자리 — 창 길이에 대한 **비율**이다. 초로 박아 두었더니 베이스가
+//: JBR 칸을 4 → 7 s 로 늘려 창이 [85,124.03] → [94,133.03] 으로 밀린 뒤
+//: 앞머리만 찍고 있었고, 그런데도 "안 움직인다" 로만 보여 원인이 안 보였다.
+//: 창은 페이지가 스스로 말해 주므로(스크럽 min/max) 거기서 잡는다.
+const FRACTIONS = [0.03, 0.21, 0.31, 0.49, 0.65, 0.80, 0.95];
 //: 설계값 — 단축 밀어내기 120 mm(진행률 1.0) · 장축 LM 주행 1,300 mm · 끝단 벌림 55 mm.
 const LONG_TRAVEL_MM = 1300, END_GAP_MM = 55;
 
@@ -69,6 +72,10 @@ const scene = await page.evaluate(() => {
                                          from: window.__pvAfrScene.from, to: window.__pvAfrScene.to } : null };
 });
 
+// 창은 페이지가 스스로 말한다 — 모델이 시계를 옮기면 검사도 따라간다.
+if (!scene.solo) { console.error('✗ 파생본 모듈이 없어 창을 읽을 수 없다'); process.exit(1); }
+const window0 = Number(scene.solo.from), window1 = Number(scene.solo.to);
+
 // 연속체 프레임 — 스윕 단면이 실물 치수이고, 접착 중에는 곧고, 박리 중에 휘는가.
 const beamProbe = scene.has3d ? await (async () => {
   const at = async (t) => {
@@ -98,12 +105,14 @@ const beamProbe = scene.has3d ? await (async () => {
       return r;
     });
   };
-  return { bonded: await at(96), peeling: await at(108), carried: await at(110) };
+  const f = (x) => window0 + x * (window1 - window0);
+  return { bonded: await at(f(.28)), peeling: await at(f(.60)),
+           carried: await at(f(.70)) };
 })() : null;
 
 const frames = [];
 if (scene.has3d) {
-  for (const t of SAMPLES) {
+  for (const t of FRACTIONS.map((x) => +(window0 + x * (window1 - window0)).toFixed(2))) {
     await page.evaluate((t) => {
       const s = document.getElementById('jb-scrub');
       s.value = String(t); s.dispatchEvent(new Event('input', { bubbles: true }));

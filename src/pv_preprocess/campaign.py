@@ -45,7 +45,7 @@ from dataclasses import dataclass
 INFEED_S = 40.0
 
 #: JBR-201 점유 (s) — 라인 병목
-JBR_S = 45.0
+JBR_S = 54.0
 
 #: AFR-101 이후 후단 점유 (s) — 프레임 분리·이송·연마·검사·버퍼 적재
 AFR_S = 39.03
@@ -370,8 +370,20 @@ def release_takt_s(hold_s: float = RELEASE_HOLD_S) -> float:
     """다음 장 투입 주기 — 앞 장이 JBR 에 들어가 스토퍼가 작동하기까지.
 
     영상의 반복 주기와 같은 값이라 화면과 계산이 어긋나지 않는다.
+
+    **REV.58 정정.** 종전에는 `INFEED_S + JBR_STOPPER_OFFSET_S + hold_s` 만
+    돌려줬다. 그 식은 JBR 점유가 그 합보다 짧다는 것을 말없이 전제하고 있었고,
+    REV.57 까지는 참이었다(45.0 < 48.0). REV.58 에서 축 가속 한계를 지키려고
+    칸을 4 → 7 s 로 늘리며 JBR 이 54.0 s 가 되자 전제가 깨졌다 — 앞 장이 아직
+    JBR 을 물고 있으면 스토퍼까지 갈 수가 없으므로 48 s 마다 놓는 것이
+    불가능한데도 그렇게 적고 있었고, 그 값이 그대로 영상 반복 주기(pvCamWrap)로
+    나가 **화면이 라인보다 빠르게 도는** 상태였다.
+
+    방출은 인터록과 병목 중 **늦은 쪽**을 따른다. `panels()` 의 이산사건은
+    이미 그렇게 돌고 있었으므로(`jbr_start = max(end, jbr_free)`) 이 정정은
+    시뮬레이션을 바꾸지 않는다 — 어긋나 있던 요약값을 맞춘 것이다.
     """
-    return INFEED_S + JBR_STOPPER_OFFSET_S + hold_s
+    return max(INFEED_S + JBR_STOPPER_OFFSET_S + hold_s, JBR_S)
 
 
 def summary(hold_s: float = RELEASE_HOLD_S) -> dict[str, float]:

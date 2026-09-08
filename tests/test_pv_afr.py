@@ -58,10 +58,16 @@ class TestAfrScene(unittest.TestCase):
         self.assertIn(f'id="jb-time">{t0:.2f} / {t1:.2f} s</div>', self.html)
 
     def test_the_window_end_is_the_films_own_end(self):
-        """이 셀이 패널을 놓는 순간이 곧 영상의 끝이라 `ci` 는 자를 것이 없다."""
+        """이 셀이 패널을 놓는 순간이 곧 영상의 끝이라 `ci` 는 자를 것이 없다.
+
+        창의 시작은 **모델이 정한다** — 여기 85 라고 적어 두었다가 베이스가
+        JBR 칸을 4 → 7 s 로 늘리자 이 시험만 옛 수를 고집했다. 창은 언제나
+        `INFEED_S + JBR_S` 이므로 그렇게 견준다.
+        """
+        start = float(campaign.INFEED_S + campaign.JBR_S)
         self.assertIn(",ci=nt+Lr", self.html)
-        self.assertIn("var nt=85,", self.html)
-        self.assertEqual(self.builder.window()[0], 85.0)
+        self.assertIn(f"var nt={start:g},", self.html)
+        self.assertEqual(self.builder.window()[0], start)
 
     def test_every_rewind_lands_inside_the_window(self):
         """조작을 바꿔도 시계가 창 밖(0 s)으로 되감기면 안 된다."""

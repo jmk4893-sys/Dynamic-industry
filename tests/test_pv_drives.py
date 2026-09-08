@@ -338,8 +338,71 @@ class TestFlipAxisOrientation(unittest.TestCase):
         note = src[max(0, i - 2200):i]
         for token in ("∓1.815", "포탈 기둥", "엔드링", "포획빔", "YXZ"):
             self.assertIn(token, note, f"돌린 자리 기록에 {token} 이 없다")
-        for tool in ("check_cell_grid", "check_clearance", "check_load_path", "check_casing_fit"):
+        for tool in ("check_cell_grid", "check_clearance", "check_load_path",
+                     "check_casing_fit", "check_bay_clearance"):
             self.assertIn(tool, note, f"지키는 검사 {tool} 이 기록에 없다")
+
+    def test_the_bay_pitch_is_derived_not_left_behind(self):
+        """축을 돌렸으면 **베이 피치도 같이 유도돼야** 한다.
+
+        씬 그래프의 베이 내용만 돌리고 `layout.BFC_PICKUP_Z_MM` 을 옛 ∓1,600 에
+        두면 파이썬도 기하 검사 넷도 통과하는 채로 두 카세트가 겹친다 — 실제로
+        같은 회전을 따로 한 도면을 실측하니 −90 mm 였다. 여기서 잡는다.
+        """
+        self.assertTrue(kinematics.axis_is_z(), "이 시험은 축 Z 를 전제한다")
+        self.assertEqual(kinematics.bay_pitch_mm(),
+                         kinematics.cell_span_extent_mm() + kinematics.CENTRE_WALL_T_MM,
+                         "피치가 카세트 폭 + 중앙벽에서 나오지 않는다")
+        self.assertTrue(kinematics.bays_clear_each_other(),
+                        f"베이 중심 {layout.BFC_PICKUP_Z_MM} 이 하한 "
+                        f"{kinematics.min_bay_centre_z_mm()} 안쪽이다 — 카세트가 겹친다")
+        self.assertGreaterEqual(kinematics.bay_gap_beyond_wall_mm(), 0,
+                                "중앙벽 말고 남는 틈이 음수다")
+
+    def test_the_rejected_narrow_bay_is_written_down(self):
+        """기각된 좁은 배치가 **왜** 기각됐는지가 값 옆에 남아야 한다.
+
+        폭을 안 넓히는 안은 매번 다시 떠오른다 — 건물이 좁아지고 크레인도
+        작아지니까. 근거(지게차가 A/B 를 반대쪽에서 도킹한다)와 발주처 결정이
+        기록에 없으면 다음 사람이 같은 제안을 다시 하고, 그때는 실측이 없다.
+        """
+        import inspect
+        src = inspect.getsource(kinematics)
+        i = src.find("def bay_gap_beyond_wall_mm")
+        note = src[max(0, i - 1800):i]
+        for token in ("거울상", "도킹", "발주처", "check_bay_clearance", "−90", "3,630"):
+            self.assertIn(token, note, f"기각 기록에 {token} 이 없다")
+
+    def test_the_bay_clearance_check_cannot_pass_silently(self):
+        """검사가 **아무것도 못 찾았을 때 통과하면** 없는 것만 못하다.
+
+        베이 조립체 이름이 바뀌면 정규식이 빈 목록을 내는데, 그때 초록이 뜨면
+        검사가 꺼진 줄 모른 채 지나간다. 못 찾으면 실패하도록 돼 있는지 본다.
+        """
+        import pathlib as _p
+        tool = (_p.Path(__file__).resolve().parents[1]
+                / "tools" / "check_bay_clearance.mjs").read_text(encoding="utf-8")
+        self.assertIn("베이를 못 찾았다", tool, "빈 결과를 실패로 다루지 않는다")
+        self.assertIn("정지 프레임만 쟀다", tool, "공정시계를 못 훑은 것을 실패로 다루지 않는다")
+        self.assertIn("for (let t = 0; t <= 124; t += 0.5)", tool,
+                      "공정시계를 훑지 않는다 — 신축·승강이 빠진 값이 된다")
+
+    def test_the_bay_check_looks_at_all_three_axes(self):
+        """z 투영으로 되돌리면 여기서 걸린다.
+
+        처음에는 두 베이의 z 범위만 봤는데 **그것이 틀렸다.** z 가 겹치는 것과
+        부재가 부딪히는 것은 다르다 — x 나 y 가 다르면 안 겹친다. 그 잣대로 안쪽
+        기둥을 공유하는 다른 설계를 「겹친다」고 잘못 판정했다. 세 축을 다 보는
+        구조와, z 간격이 **참고값**이라는 표시가 남아 있어야 한다.
+        """
+        import pathlib as _p
+        tool = (_p.Path(__file__).resolve().parents[1]
+                / "tools" / "check_bay_clearance.mjs").read_text(encoding="utf-8")
+        self.assertIn("for (let k = 0; k < 3; k++)", tool, "세 축을 돌지 않는다")
+        self.assertIn("z 투영 간격", tool, "z 간격을 판정에 쓰고 있다")
+        self.assertIn("공유하는 설계에서는 음수가 정상", tool,
+                      "공유 기둥 설계를 오판했던 기록이 없다")
+        self.assertNotIn("두 베이 사이 틈", tool, "옛 z 투영 판정 문구가 남아 있다")
 
     def test_the_scene_mesh_is_actually_rotated(self):
         """3D 가 도로 축 X 로 돌아가면 여기서 걸린다.

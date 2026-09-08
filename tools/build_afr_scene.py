@@ -265,8 +265,9 @@ def build() -> str:
               '<meta name="description" content="폐 태양광 패널 전처리 라인의 AFR-101 '
               '알루미늄 프레임 분리 셀만 남긴 3D 운전 콘솔 — 12구역 지지·정반 하강·4점 '
               '클램프부터 정반 내장 실린더의 쇠막대 단축 밀어내기, 장축 홈 롤러 인발과 '
-              'LM 1,300 mm 주행, 톱니 컨베이어 반출까지 6 단계를 플랜트 85–124.03 s '
-              '창에서 반복 재생한다. 그림자·외장 케이싱·천장크레인은 뺐다.">', "제목")
+              'LM 1,300 mm 주행, 톱니 컨베이어 반출까지 6 단계를 플랜트 '
+              f'{t0:g}–{t1:g} s 창에서 반복 재생한다. 그림자·외장 케이싱·천장크레인은 뺐다.">',
+              "제목")
     t = _once(t, '<span class="viz-badge">124.03 s TRACE</span>',
               f'<span class="viz-badge">{campaign.AFR_S:g} s TRACE · AFR-101</span>', "배지")
     t = _once(t, '<h2 id="pv-v22-title">태양광 패널 전처리 통합 플랜트</h2>',

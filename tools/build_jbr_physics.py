@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -27,10 +28,36 @@ from pv_preprocess import jbr_analysis as ja      # noqa: E402
 from pv_preprocess import jbr_fabrication as jf   # noqa: E402
 
 OUT = ROOT / "docs" / "drawings" / "pv-jbr-physics.html"
+PLANT = ROOT / "docs" / "drawings" / "pv-preprocess-plant.html"
+
+#: 수거함 판 두께 (mm) — 통합 설계도 재질표의 STS304 t1.5.
+BIN_WALL_MM = 1.5
+
+
+def bin_outer_mm() -> tuple[float, float, float]:
+    """수거함 외형 (x, y, z, mm) — 통합 설계도의 `part('BIN', …)` 에서 읽는다.
+
+    처음 이 파일을 쓸 때 여기를 손으로 적었고 z 를 640 이 아니라 540 으로
+    옮겨 놨다. 물리가 그 40 mm 를 바로 잡아냈다 — 세 개를 z 로 180 씩 벌려
+    떨구면 바깥 것이 테두리에 걸린다. 손으로 옮기지 않으면 안 생길 일이라
+    원본에서 읽는다.
+    """
+    text = PLANT.read_text(encoding="utf-8")
+    hit = re.search(r"part\('BIN',\s*'[^']*',\s*\[([^\]]*)\]", text)
+    if not hit:
+        raise SystemExit("✗ 통합 설계도에서 part('BIN', …) 을 못 찾았다")
+    size = [float(v) for v in hit.group(1).split(",")]
+    if len(size) != 3:
+        raise SystemExit(f"✗ BIN 외형이 3 값이 아니다: {size}")
+    return tuple(size)
 
 #: 물리 적분 시간각. 60 fps 프레임마다 4 번 나눠 밟는다 — 접촉이 튀지 않는 하한이다.
 SUBSTEPS = 4
 FPS = 60
+
+#: 호퍼 안에서 박스를 z 로 벌려 눕히는 간격 (m). 통합 설계도의 `jbRest` 와 같다.
+#: 엔진 쪽 `REST_FAN` 이 이 값을 받아 간다 — 한 곳에서만 정한다.
+REST_FAN_M = 0.18
 
 
 def scene() -> dict[str, object]:
@@ -42,17 +69,28 @@ def scene() -> dict[str, object]:
         {"z": 0.42, "sx": 0.29, "sz": 0.21, "angle": -0.009},
     ]
     box_h = mo["sinkY"][0] - 1.12                      # boxTop − 패널 상면
+    bin_x, _bin_y, bin_z = bin_outer_mm()
+    # 세 개를 z 로 REST_FAN 씩 벌려 눕히므로 필요한 안폭은 부채꼴 + 박스 깊이다.
+    # 안 맞으면 바깥 것이 테두리에 걸린다 — 찍기 전에 여기서 잡는다.
+    need_z = 2 * REST_FAN_M + max(b["sz"] for b in boxes)
+    free_z = (bin_z - 2 * BIN_WALL_MM) / 1000.0
+    if need_z > free_z:
+        raise SystemExit(
+            f"✗ 수거함 안깊이 {free_z * 1000:.0f} 가 부채꼴 소요 {need_z * 1000:.0f} 보다 "
+            f"좁다 — 부채꼴 {REST_FAN_M * 1000:.0f} 을 줄이거나 수거함을 넓혀야 한다")
     return {
         "fps": FPS, "substeps": SUBSTEPS,
         "motion": {k: (list(v) if isinstance(v, tuple) else v)
                    for k, v in mo.items() if k != "discharge"},
         "discharge": mo["discharge"],
-        "boxes": boxes, "boxH": box_h, "boxX": 0.28,
+        "boxes": boxes, "boxH": box_h, "boxX": 0.28, "restFanM": REST_FAN_M,
         "panelY": 1.12,
         "hopper": {"z": mo["sinkZ"], "floorY": mo["sinkY"][1] - box_h / 2.0,
                    "inner": [0.62, 0.60], "wallH": 0.10},
         "bin": {"x": -1.55, "z": mo["sinkZ"], "floorY": 0.105,
-                "inner": [0.58, 0.54], "wallH": 0.48},
+                "inner": [round((bin_x - 2 * BIN_WALL_MM) / 1000.0, 4),
+                          round((bin_z - 2 * BIN_WALL_MM) / 1000.0, 4)],
+                "wallH": 0.48},
         "boxKg": ja.box_mass_kg(),
         "restitution": ja.RESTITUTION,
         "friction": 0.45,
@@ -364,7 +402,7 @@ const segw = (t, a, b) => smooth((t - a) / (b - a));
 
 /* 투하 자리 — 설계는 호퍼 안에서 z 로 180 mm 씩 벌려 눕힌다(3D 의 jbRest 와 같다).
    같은 자리에 세 개를 떨구면 쌓이므로, 그 부채꼴이 실제로 필요한지 물리가 답한다. */
-const REST_FAN = 0.18;
+const REST_FAN = S.restFanM;
 function sinkZOf(slot) { return MO.sinkZ + (slot - 1) * REST_FAN; }
 function headZ(slot, tau) {
   const zs = S.boxes.map((b) => b.z), sink = sinkZOf(slot);

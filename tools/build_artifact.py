@@ -35,6 +35,8 @@ TARGETS: dict[str, tuple[pathlib.Path, pathlib.Path]] = {
                      pathlib.Path("out/pv-infeed-scene-artifact.html")),
     "infeed-fab": (pathlib.Path("docs/drawings/pv-infeed-fab.html"),
                    pathlib.Path("out/pv-infeed-fab-artifact.html")),
+    "infeed-dyn": (pathlib.Path("docs/drawings/pv-infeed-dyn.html"),
+                   pathlib.Path("out/pv-infeed-dyn-artifact.html")),
     "prototype": (pathlib.Path("docs/drawings/pv-bfc-prototype.html"),
                   pathlib.Path("out/pv-bfc-prototype-artifact.html")),
     "jbr-scene": (pathlib.Path("docs/drawings/pv-jbr-scene.html"),
@@ -60,7 +62,22 @@ TARGETS: dict[str, tuple[pathlib.Path, pathlib.Path]] = {
                   pathlib.Path("out/pv-fastener-book-artifact.html")),
     "assembly-steps": (pathlib.Path("docs/drawings/pv-assembly-steps.html"),
                        pathlib.Path("out/pv-assembly-steps-artifact.html")),
+    # 후단 인계 균형 두 안 — `tools/build_handoff_variants.py` 가 원본을 복사해
+    # 고친 것이라 저장소에 커밋되지 않는다(out/ 은 무시된다). 그래도 **아티팩트를
+    # 손으로 만들지 않는다**는 규약은 같으므로 여기서 같이 찍는다. 원본이 없으면
+    # 조용히 건너뛴다 — 갓 받은 저장소에서는 변형안을 아직 안 돌렸을 뿐이다.
+    "plan-b": (pathlib.Path("out/DI_Sol_Rec_B안_전처리.html"),
+               pathlib.Path("out/plan-b-plant-artifact.html")),
+    "plan-b-delam": (pathlib.Path("out/DI_Sol_Rec_B안_박리라인.html"),
+                     pathlib.Path("out/plan-b-delam-artifact.html")),
+    "plan-c": (pathlib.Path("out/DI_Sol_Rec_C안_전처리.html"),
+               pathlib.Path("out/plan-c-plant-artifact.html")),
+    "plan-c-delam": (pathlib.Path("out/DI_Sol_Rec_C안_박리라인.html"),
+                     pathlib.Path("out/plan-c-delam-artifact.html")),
 }
+
+#: 원본이 없으면 건너뛰는 대상 — 커밋되지 않는 생성물이다.
+OPTIONAL = ("plan-b", "plan-b-delam", "plan-c", "plan-c-delam")
 
 #: 태그 이름 **뒤에 경계가 와야** 지운다. `[^>]*` 만 쓰면 이름으로 시작하는 다른
 #: 것까지 먹는다 — 실제로 three.js 셰이더의 `#include <metalnessmap_fragment>` 두
@@ -161,6 +178,10 @@ def main() -> None:
     if unknown:
         raise SystemExit(f"✗ 모르는 대상: {unknown} — 아는 것은 {list(TARGETS)}")
     for name in names:
+        if name in OPTIONAL and not TARGETS[name][0].exists():
+            print(f"{TARGETS[name][0]}  없음 — 건너뛴다 "
+                  f"(PYTHONPATH=src python tools/build_handoff_variants.py out/ 을 먼저 돌린다)")
+            continue
         build(name)
 
 
