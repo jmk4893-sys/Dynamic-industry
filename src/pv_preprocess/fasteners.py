@@ -225,8 +225,33 @@ class Use:
         return grip_max_mm(self.size, self.length, self.kind)
 
 
+#: 등급으로 인정하는 문자열. `Joint.cls` 에는 "앵커" 도 들어오는데 그것은
+#: 등급이 아니라 체결 종류다 — 앵커의 하드웨어 등급은 8.8 이다
+#: (`fabrication.Joint.hardware` 가 그렇게 적는다).
+BOLT_GRADES = ("8.8", "10.9", "12.9")
+
+
+def grade_of(joint) -> str:
+    """이 체결의 볼트 등급 — **`Joint.cls` 가 정본이다.**
+
+    한때 여기서 볼트 문자열("M20×70")을 갈라 등급을 읽었는데, 그 문자열에는
+    치수만 있어서 **10.9 로 지정된 체결이 전부 8.8 로 떨어졌다.** 부품표와
+    체결서가 BFC 크로스빔의 10.9 볼트를 8.8 로 적으면서 토크는 10.9 용
+    550 N·m 를 그대로 들고 있었다 — 강도는 모자라고 토크는 넘치는 조합이다.
+    `Joint.torque_nm` 은 처음부터 `cls` 를 보고 있었으므로 어긋난 것은
+    이쪽뿐이었다.
+    """
+    if joint.kind == "앵커":
+        return "8.8"
+    return joint.cls if joint.cls in BOLT_GRADES else "8.8"
+
+
 def _split(bolt: str) -> tuple[str, float, str] | None:
-    """'M20×70 10.9' · 'M20×250 앵커' → (호칭, 길이, 등급). 용접이면 None."""
+    """'M20×70 10.9' · 'M20×250 앵커' → (호칭, 길이, 등급). 용접이면 None.
+
+    등급은 이제 `grade_of()` 가 정한다 — 여기서 돌려주는 세 번째 값은 볼트
+    문자열이 등급까지 적고 있을 때만 뜻이 있고, `uses()` 는 쓰지 않는다.
+    """
     text = bolt.replace("×", "x")
     if "x" not in text:
         return None
@@ -250,9 +275,10 @@ def uses() -> list[Use]:
             got = _split(j.bolt)
             if got is None:
                 continue
-            size, length, cls = got
+            size, length, _parsed = got
             torque = j.torque_nm or 0
-            out.append(Use(a.sheet, a.tag, j.name, j.parts, size, length, cls, j.kind,
+            out.append(Use(a.sheet, a.tag, j.name, j.parts, size, length,
+                           grade_of(j), j.kind,
                            j.qty * a.qty, torque, fabrication.HOLE_MM.get(size, 0.0), j.note))
     return out
 
@@ -309,24 +335,87 @@ def threads_reach_the_nuts() -> dict[str, bool]:
     return {s: thread_reaches(s, 0) for s in sizes_used()}
 
 
-def lengths_are_long_enough() -> list[tuple[Use, float, str]]:
-    """**길이 검산.** 그립이 음수이거나 너무 얇으면 그 볼트는 성립하지 않는다.
+def _parts_by_tag() -> dict[str, fabrication.Part]:
+    return {p.tag: p for a in fabrication.ASSEMBLIES for p in a.parts}
 
-    돌려주는 것은 (체결, 남는 그립, 판정). 그립이 0 이하면 부속만으로 볼트를
-    다 먹는다는 뜻이라 조여지지 않는다.
+
+#: `t` 가 「볼트가 지나는 두께」로 읽히는 부재 종류. 나머지는 이 검사에서 뺀다.
+WALL_KINDS = ("plate", "shs", "channel", "angle", "box", "hbeam", "bar")
+
+
+def joint_grip_mm(u: Use) -> float | None:
+    """이 체결이 **실제로 물어야 하는** 판 두께 (mm). 모르면 None.
+
+    부재 태그를 부품표에서 찾아 두께를 더한다.
+
+    **모르는 것을 잡지 않도록 좁게 건다.** 관통이고 두 부재가 다 판·벽일
+    때만 낸다. 처음에는 탭과 관 부재까지 넣었다가 없는 결함을 둘 지어냈다:
+
+      · BFC-PAD-01 ↔ BFC-CLP-01 — 패드의 `t` 50 은 「PU 70A + PL8 백킹」의
+        **전체 높이**지 볼트가 지나는 두께가 아니다. 접시볼트는 백킹 8 만
+        지나고 PU 는 자리파기로 비운다.
+      · JB-RL-01 ↔ JB-SF-01 — 여기서 나사를 내는 것은 볼트가 아니라 **롤러
+        육각축 끝**이고, 지나는 것은 사이드 프레임 6.5 뿐이다. 관 벽 3 은
+        경로에 없다.
+
+    둘 다 부품표만 보고는 알 수 없는 사정이라, 그런 형상은 「확인 못 함」으로
+    둔다. **통과했다고 충분한 것은 아니고, 걸리면 확실히 모자란 것이다.**
+
+    닫힌 단면에 관통이면 벽 두 장을 지날 수도 있지만 그 구조는 부품표에
+    없다 — 어떤 구조로 짜도 최소한 이만큼은 필요하다는 값만 낸다.
+    """
+    if u.kind != "관통":
+        return None
+    tags = [t.strip() for t in u.parts.split("↔")]
+    if len(tags) != 2:
+        return None
+    table = _parts_by_tag()
+    a, b = table.get(tags[0]), table.get(tags[1])
+    if a is None or b is None or not a.t or not b.t:
+        return None
+    if a.kind not in WALL_KINDS or b.kind not in WALL_KINDS:
+        return None
+    return float(a.t) + float(b.t)
+
+
+def lengths_are_long_enough() -> list[tuple[Use, float, str]]:
+    """**길이 검산.** 볼트가 부속과 판을 다 감당하는가.
+
+    돌려주는 것은 (체결, 남는 그립, 판정).
+
+    한때 여기서 **남는 그립만 보고** 「여유」를 냈다. 그러면 볼트가 물어야 할
+    판이 얼마나 두꺼운지를 한 번도 안 보는 것이라, 96 개짜리
+    BW-FL-01 ↔ BW-COL-01(M12×35) 이 그립 13.2 mm 로 「여유」를 받았다 —
+    PL10 플랜지에 기둥 벽 6 만 더해도 16 mm 라 조립 자체가 안 된다.
+    이제 `joint_grip_mm()` 과 견준다.
     """
     out = []
     for u in uses():
         g = u.grip_max_mm
         if g is None:
             continue
+        need = joint_grip_mm(u)
         if g <= 0:
             verdict = "불가 — 부속이 볼트를 다 먹는다"
-        elif g < HEX_BOLT[u.size].d * 0.5:
-            verdict = "빠듯 — 실측 확인"
+        elif need is None:
+            verdict = "확인 못 함 — 부재 두께를 부품표에서 못 찾는다"
+        elif g < need:
+            verdict = f"불가 — {need:.0f} 을 물어야 하는데 {g:.1f} 뿐이다"
+        elif g < need + HEX_BOLT[u.size].pitch * 2:
+            verdict = f"빠듯 — 필요 {need:.0f} · 남는 {g:.1f}"
         else:
             verdict = "여유"
         out.append((u, g, verdict))
+    return out
+
+
+def short_bolts() -> list[tuple[Use, float, float]]:
+    """확실히 모자란 볼트만 — (체결, 남는 그립, 필요 그립)."""
+    out = []
+    for u in uses():
+        g, need = u.grip_max_mm, joint_grip_mm(u)
+        if g is not None and need is not None and g < need:
+            out.append((u, g, need))
     return out
 
 
