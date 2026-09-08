@@ -267,9 +267,30 @@ class TestFlipAxisOrientation(unittest.TestCase):
 
     def test_the_open_item_carries_both_options(self):
         oi = next(o for o in fabrication.OPEN_ITEMS if o.tag == "OI-06")
-        for token in ("8,510", "7,990", "2,814", "OI-04"):
-            self.assertIn(token, oi.why_open + oi.closes_with,
-                          f"OI-06 이 {token} 를 안 싣는다")
+        text = oi.why_open + oi.closes_with
+        for token in ("8,510", "2,814", "3,380", "40"):
+            self.assertIn(token, text, f"OI-06 이 {token} 를 안 싣는다")
+        self.assertNotIn("7,990", text,
+                         "기둥을 링 평면으로 옮기는 안은 성립하지 않는다 — 링을 친다")
+
+    def test_the_columns_cannot_move_inboard(self):
+        """기둥은 회전하는 링에서 40 밖에 안 떨어져 있다 — 폭을 줄일 여지가 없다."""
+        ring_face = kinematics.RING_PITCH_MM / 2 + kinematics.RING_TUBE_MM
+        col_in = (kinematics.PORTAL_COLUMN_AXIS_MM
+                  - kinematics.PORTAL_COLUMN_SECTION_MM[0] / 2)
+        self.assertGreater(col_in, ring_face, "기둥이 링 안에 있다")
+        self.assertLess(col_in - ring_face, 100,
+                        "틈이 이보다 크면 기둥을 당겨 폭을 줄일 수 있다는 뜻이다")
+
+    def test_the_axis_extent_decomposes_into_minimal_terms(self):
+        """3,380 이 어디서 오는지 — 항이 맞아야 '줄일 수 없다'가 주장이 아니라 계산이다."""
+        k = kinematics
+        ring_face = k.RING_PITCH_MM / 2 + k.RING_TUBE_MM
+        col_in = k.PORTAL_COLUMN_AXIS_MM - k.PORTAL_COLUMN_SECTION_MM[0] / 2
+        total = (k.PANEL_MM[0] + 2 * k.cage_axial_clearance_mm()
+                 + 2 * 2 * k.RING_TUBE_MM + 2 * (col_in - ring_face)
+                 + 2 * k.PORTAL_COLUMN_SECTION_MM[0])
+        self.assertAlmostEqual(total, k.cassette_axis_extent_mm(), places=6)
 
 
 class TestOpenItems(unittest.TestCase):
