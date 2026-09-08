@@ -11,6 +11,8 @@
  *   ④ 창을 훑으면 유리가 GI 에서 데크로 건너와 목표 행으로 횡분기하고 슬롯에 들어갈 것
  *      (`bufferTransfer` 0 → 1, z 가 목표 행으로, x 가 캐리지로)
  *   ⑤ 목표 캐리지를 바꾸면 유리가 **다른 행**에 들어갈 것 — 이 셀의 유일한 조작이다
+ *   ⑥ 목표가 만재면 **적재를 승인하지 않을 것** — 유리는 상류 잠금 게이트에 남고
+ *      그 행의 인터록 센서만 붉게 서며, 수량을 초기화하면 다시 들어갈 것
  *
  * 실행:  node tools/check_gbr_scene.mjs [문서.html]
  *        (인자를 안 주면 docs/drawings/pv-gbr-scene.html 을 본다)
@@ -33,6 +35,9 @@ const FRACTIONS = [0.0, 0.15, 0.35, 0.55, 0.75, 0.9, 1.0];
 //: 설계값 — 데크 롤러 Z 분기 2,100 (행 중심) · 도크 캐리지 x · 데크 중심 x (world m).
 const ROW_Z = { 'R-A': -2.1, 'R-B1': 2.1, 'R-B2': 2.1, HOLD: 0 };
 const DECK_X = 3.175, DOCK_X = 6.375, ROW_TOL = 0.25;
+//: 인터록 센서(BS-801)가 선 자리 — 셔틀 중심에서 하류로 1,480 (셀 로컬 x).
+//: 색은 팔레트에서 오므로 **어느 행이 밝은가**로만 본다 — 팔레트 값을 박지 않는다.
+const SENSOR_LOCAL_X = 9.955, SENSOR_ON = 1.0, SENSOR_OFF = 0.5;
 
 const browser = await chromium.launch({
   executablePath: browserPath(),
@@ -84,7 +89,7 @@ const sample = async (t) => {
     s.value = String(t); s.dispatchEvent(new Event('input', { bubbles: true }));
   }, t);
   await page.waitForTimeout(600);
-  return page.evaluate(() => {
+  return page.evaluate((SENSOR_X) => {
     const host = document.getElementById('jb-removal-operation');
     const S = host.__pvScene, a = host.__pvInfeedTest.getAfrState();
     const v = new S.Vector3();
@@ -95,9 +100,33 @@ const sample = async (t) => {
       o.getWorldPosition(v);
       g = { x: +v.x.toFixed(2), y: +v.y.toFixed(2), z: +v.z.toFixed(2), vis: vis };
     });
+    // 행별 인터록 센서 — 만재면 목표 행만 밝게 선다.
+    const sensors = {};
+    S.scene.traverse((o) => {
+      if (!o.isMesh || !o.material || !o.material.emissive || !o.geometry) return;
+      if (o.geometry.type !== 'SphereGeometry') return;
+      if (Math.abs(o.position.x - SENSOR_X) > 0.6) return;
+      o.getWorldPosition(v);
+      const row = Math.abs(v.z + 2.1) < 0.3 ? 'R-A' : Math.abs(v.z - 2.1) < 0.3 ? 'R-B'
+                : Math.abs(v.z) < 0.3 ? 'HOLD' : null;
+      if (row) sensors[row] = { hex: '#' + o.material.emissive.getHexString(),
+                                lit: +o.material.emissiveIntensity.toFixed(2) };
+    });
+    const status = document.getElementById('afr-buffer-status');
     return { transfer: a.bufferTransfer, recipe: a.recipe, slot: a.targetSlot,
-             module: a.targetModule, full: a.bufferFull, glass: g };
-  });
+             module: a.targetModule, full: a.bufferFull, counts: a.bufferCounts,
+             glass: g, sensors: sensors,
+             status: status ? status.textContent.trim().replace(/\s+/g, ' ') : null };
+  }, SENSOR_LOCAL_X);
+};
+
+const setRoute = async (mode) => {
+  // 조작은 「통합 시뮬레이션」 팝업 안에 있다 — 열지 않고 값만 바꿔 이벤트를 흘린다.
+  await page.evaluate((m) => {
+    const s = document.getElementById('afr-route-mode');
+    s.value = m; s.dispatchEvent(new Event('change', { bubbles: true }));
+  }, mode);
+  await page.waitForTimeout(400);
 };
 
 const frames = [];
@@ -111,13 +140,21 @@ if (scene.has3d) {
 const routes = [];
 if (scene.has3d) {
   for (const [mode, code] of [['r-a', 'R-A'], ['r-b1', 'R-B1'], ['hold', 'HOLD']]) {
-    await page.evaluate((m) => {
-      const s = document.getElementById('afr-route-mode');
-      s.value = m; s.dispatchEvent(new Event('change', { bubbles: true }));
-    }, mode);
+    await setRoute(mode);
     const end = await sample(window1);
     routes.push({ mode: mode, want: code, ...end });
   }
+}
+
+// 만재 — 적재를 승인하지 않고 유리를 상류 잠금 게이트에 남긴다. 이 셀에서 화면이
+// **아무 일도 안 일어나는 것처럼 보이는** 유일한 경우라, 그 대신 무엇이 서는지를 잰다.
+let full = null, recovered = null;
+if (scene.has3d) {
+  await setRoute('buffer-full');
+  full = await sample(window1);
+  await page.evaluate(() => document.getElementById('afr-buffer-reset').click());
+  await page.waitForTimeout(400);
+  recovered = await sample(window1);
 }
 await browser.close();
 
@@ -159,6 +196,29 @@ for (const r of routes) {
   if (r.glass && Math.abs(r.glass.z - wantZ) > ROW_TOL)
     why.push(`${r.want} 를 골랐는데 유리가 z=${r.glass.z} 에 들어갔다 (${wantZ} 이어야 한다)`);
 }
+// 만재는 **적재를 안 하는 것**이 정답이다 — 안 움직이는 것과 구분해서 잰다.
+if (full) {
+  if (!full.full) why.push('만재를 골랐는데 bufferFull 이 서지 않는다');
+  if (full.transfer > 0) why.push(`만재인데 적재가 돌았다 (transfer=${full.transfer})`);
+  if (full.glass && full.glass.vis)
+    why.push(`만재인데 유리가 셀 안에 보인다 (x=${full.glass.x}) — 상류 게이트에 남아야 한다`);
+  if (!/FULL/.test(full.status || '')) why.push(`버퍼 표시가 만재를 안 알린다: ${full.status}`);
+  const target = full.recipe === 'HOLD' ? 'HOLD' : full.recipe.slice(0, 3);
+  const lit = full.sensors[target];
+  if (!lit) why.push(`${target} 행의 인터록 센서를 못 찾았다`);
+  else {
+    if (lit.lit < SENSOR_ON) why.push(`만재인데 ${target} 인터록이 안 켜졌다 (${lit.lit})`);
+    for (const [row, s] of Object.entries(full.sensors)) {
+      if (row !== target && s.lit >= SENSOR_OFF)
+        why.push(`만재가 아닌 ${row} 행 인터록까지 켜졌다 (${s.lit})`);
+    }
+  }
+}
+if (recovered) {
+  if (recovered.full) why.push('수량을 초기화했는데 만재가 안 풀렸다');
+  if (recovered.transfer < 0.999) why.push(`초기화 뒤에도 적재가 안 돈다 (transfer=${recovered.transfer})`);
+  if (!recovered.glass || !recovered.glass.vis) why.push('초기화 뒤에도 유리가 안 보인다');
+}
 if (errors.length) why.push('페이지 오류: ' + [...new Set(errors)].slice(0, 3).join(' | '));
 
 console.log(`${why.length ? '✗' : '✓'} ${file}`);
@@ -174,7 +234,18 @@ if (scene.has3d) {
   for (const r of routes) {
     console.log(`  경로 ${r.mode.padEnd(5)} → ${String(r.recipe).padEnd(5)} · 유리 z ${r.glass.z}`);
   }
+  if (full) {
+    const lamps = Object.entries(full.sensors)
+      .map(([row, s]) => `${row} ${s.hex}@${s.lit}`).join(' · ');
+    console.log(`  만재     → 적재 ${full.transfer * 100} % · 유리 ${full.glass.vis ? '보임' : '상류 게이트'}`
+      + ` (x ${full.glass.x}) · ${full.status}\n           램프 ${lamps}`);
+  }
+  if (recovered) {
+    console.log(`  초기화   → 적재 ${(recovered.transfer * 100).toFixed(0)} % · 유리 `
+      + `(${recovered.glass.x}, ${recovered.glass.z}) · ${recovered.status}`);
+  }
 }
 if (why.length) console.error('  — ' + why.join('\n  — '));
-console.log(why.length ? `✗ ${why.length} 건` : '✓ GBR-301 만 서서 인계·분기·적재를 다 돈다');
+console.log(why.length ? `✗ ${why.length} 건`
+  : '✓ GBR-301 만 서서 인계·분기·적재를 다 돌고, 만재면 승인하지 않는다');
 process.exit(why.length ? 1 : 0);

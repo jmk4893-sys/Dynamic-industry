@@ -325,6 +325,11 @@ class TestGbrScene(unittest.TestCase):
         self.assertIn("pvCrn", check)
         self.assertIn("shadowMap", check)
         self.assertIn("afr-route-mode", check)
+        # 만재는 **적재를 안 하는 것**이 정답이라 "안 움직인다" 와 겉모습이 같다.
+        # 그 둘을 가르는 것(상류 게이트의 유리·행별 인터록·버퍼 표시)까지 잰다.
+        self.assertIn("buffer-full", check)
+        self.assertIn("afr-buffer-reset", check)
+        self.assertIn("만재인데 적재가 돌았다", check)
 
     def test_the_readme_lists_it(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
