@@ -525,10 +525,11 @@ def open_questions() -> tuple[tuple[str, str], ...]:
         out.append((
             "집진 흐름이 바뀐다",
             "폴리머가 분진으로 들어오면 DS-01 의 '불연' 선언이 거짓이 된다."))
-    if not scraper_still_fits_the_platen():
+    if not sequential_is_affordable():
         out.append((
-            "스크레이퍼를 달면 정반 점유를 넘는다",
-            f"점유 {occupancy_with_scraper_s()} s 가 AFR {campaign.AFR_S} s 를 넘는다."))
+            "순차 연마가 정반 점유를 넘는다",
+            f"점유 {occupancy_s()} s (날 리드 {scraper_lead_cost_s()} s 포함) 가 "
+            f"AFR {campaign.AFR_S} s 를 넘는다."))
     if not heads_agree_with_the_dust_model():
         out.append((
             "집진이 동시에 도는 헤드 수만큼 잡혀 있지 않다",
@@ -608,8 +609,9 @@ SHOE_SPRING_N = 25.0
 #: 슈와 라미네이트 사이 마찰계수 (PEEK-유리, 건식).
 SHOE_FRICTION = 0.2
 #: 날이 휠보다 앞서 가는 거리 (mm) — 휠이 오기 전에 그 자리가 비어 있어야 한다.
-#: 휠 반경보다 커야 하고, 여유를 둔다.
-BLADE_LEAD_MM = 200.0
+#: 휠 반경보다 커야 하고, 여유를 둔다. 이 리드가 통과 거리를 늘려 라인 점유에
+#: 그대로 실리므로 값은 `campaign` 이 쥔다 — 두 곳에 적으면 갈라진다.
+BLADE_LEAD_MM = campaign.SG_BLADE_LEAD_MM
 #: 띠를 화면에 세울 때의 두께 과장 — 0.75 mm 는 800 mm 옆에서 안 보인다.
 BAND_DISPLAY_MAG = 20.0
 
@@ -728,19 +730,14 @@ def scraper_lead_cost_s() -> float:
     return round(long_extra + short_extra, 3)
 
 
-def occupancy_with_scraper_s() -> float:
-    """스크레이퍼를 단 뒤의 반출롤러 점유 (s)."""
-    return round(occupancy_s() + scraper_lead_cost_s(), 2)
+def occupancy_without_scraper_s() -> float:
+    """날을 떼었다면 걸렸을 점유 (s) — **쓰지 않는 쪽의 값**.
 
-
-def scraper_still_fits_the_platen() -> bool:
-    """그래도 AFR 정반 점유 안에 드는가."""
-    return occupancy_with_scraper_s() <= float(campaign.AFR_S)
-
-
-def slack_with_scraper_s() -> float:
-    """스크레이퍼를 달고도 남는 시간 (s)."""
-    return round(float(campaign.AFR_S) - occupancy_with_scraper_s(), 2)
+    SR-302 는 헤드에 달린 부품이지 옵션이 아니다. 그래서 리드는 `cycle()` 안에
+    있고 `occupancy_s()` 가 이미 그것을 물고 있다. 이 함수는 날이 얼마를
+    가져갔는지 보여줄 때만 쓴다 — 광고하는 점유는 이쪽이 아니다.
+    """
+    return round(occupancy_s() - scraper_lead_cost_s(), 2)
 
 
 def face_residue_has_a_tool() -> bool:
@@ -767,9 +764,11 @@ def cycle() -> tuple[dict[str, object], ...]:
     장변은 유리가 **움직여야** 갈리고 단변은 유리가 **서 있어야** 훑을 수 있다.
     두 상태는 배타적이라 동시가 성립하지 않는다 — 그래서 점유가 더해진다.
     """
-    sweep = float(campaign.PANEL_WIDTH_MM) / short_feed_mm_s()
+    # 날이 휠보다 앞서 달리므로 통과 거리는 판 치수가 아니라 판 + 리드다.
+    lead = float(campaign.SG_BLADE_LEAD_MM)
+    sweep = (float(campaign.PANEL_WIDTH_MM) + lead) / short_feed_mm_s()
     stroke = float(campaign.SG_HEAD_STROKE_S)
-    passing = float(campaign.PANEL_LENGTH_MM) / long_feed_mm_s()
+    passing = (float(campaign.PANEL_LENGTH_MM) + lead) / long_feed_mm_s()
     index = float(campaign.SG_INDEX_S) / 2.0
     phases = (
         ("앞단변", "정지", SHORT_HEADS, round(sweep + stroke, 3)),
@@ -1383,9 +1382,10 @@ def scraper_unit() -> Unit:
                             f"{safe_face_force_n():.0f} N 의 "
                             f"{SHOE_SPRING_N / safe_face_force_n():.0%} 만 쓴다."),
             ("⑤ 값은 리드뿐", f"날이 휠보다 {lead:.0f} mm 앞서 간다. 같은 캐리지라 장비가 "
-                         f"안 늘고, 순환만 {scraper_lead_cost_s()} s 는다 — 점유 "
-                         f"{occupancy_s()} → {occupancy_with_scraper_s()} s 로 AFR 정반 "
-                         f"{campaign.AFR_S} s 안에 {slack_with_scraper_s()} s 가 남는다. "
+                         f"안 늘고, 통과 거리만 그만큼 길어져 {scraper_lead_cost_s()} s "
+                         f"가 든다 — 날이 없다면 {occupancy_without_scraper_s()} s 일 "
+                         f"점유가 {occupancy_s()} s 이고, AFR 정반 {campaign.AFR_S} s "
+                         f"안에 {slack_s()} s 가 남는다. "
                          "부스러기는 고체라 집진 흐름도 안 바뀐다."),
         ),
         parts=parts)
@@ -1450,8 +1450,7 @@ def summary() -> dict[str, object]:
         "backsheetSurvives": backsheet_survives_scraping(),
         "faceToolExists": face_residue_has_a_tool(),
         "scraperLeadCostS": scraper_lead_cost_s(),
-        "occupancyWithScraperS": occupancy_with_scraper_s(),
-        "slackWithScraperS": slack_with_scraper_s(),
+        "occupancyWithoutScraperS": occupancy_without_scraper_s(),
         "maxGcNMm": max_gc_the_face_limit_allows(),
         "gcMargin": gc_margin(),
         "impliedGRatio": implied_g_ratio(),

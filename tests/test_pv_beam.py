@@ -120,6 +120,31 @@ class TestTransient(unittest.TestCase):
         self.assertAlmostEqual(min(tip) / tip[0], 1.0, delta=0.002)
 
 
+    def test_the_load_is_read_at_the_step_it_arrives_at(self):
+        """한 걸음이 푸는 평형은 **도착 시각**의 것이다.
+
+        출발 시각의 하중을 넣으면 하중이 통째로 한 걸음 밀린다. t=0 에 0 이고
+        그 뒤 걸리는 하중(충격이 t=0+ 에 시작하는 경우)이면 보가 첫 걸음 동안
+        가만히 있어, 되튐·충격 같은 과도응답이 dt 만큼 늦게 나온다.
+        """
+        b = beam.Beam(SECTION, 1000.0, 4)
+        fixed, tip, dt = {0: 0.0, 1: 0.0}, b.ndof - 2, 1.0e-4
+        seen = []
+
+        def force(step, t):
+            seen.append(step)
+            f = [0.0] * b.ndof
+            if t > 0.0:
+                f[tip] = -100.0
+            return f
+
+        hist = beam.newmark(b, 3, dt, force, prescribed=fixed, damping_ratio=0.0)
+        self.assertNotEqual(hist[1][tip], 0.0,
+                            "하중이 걸린 첫 걸음에 보가 안 움직였다")
+        # out[i] 와 force(i, i·dt) 가 같은 시각을 가리킨다.
+        self.assertEqual(sorted(set(seen)), list(range(len(hist))))
+
+
 class TestCohesiveBond(unittest.TestCase):
     """접착은 이중선형 응집영역이다 — 강도로 자르기만 하면 균열이 달아난다."""
 
@@ -143,6 +168,29 @@ class TestCohesiveBond(unittest.TestCase):
         self.assertLess(min(damaged), min(before) + 1e-9)
         b.update_damage([0.0] * b.ndof)          # 되돌려도 강성은 안 돌아온다
         self.assertEqual(b.k_eff, damaged)
+
+    def test_pushing_the_bead_does_not_peel_it(self):
+        """눌러서는 안 뜯긴다 — 응집법칙은 **벌림** 쪽만 본다.
+
+        크기(abs)만 보면 보가 시소처럼 기울 때 눌리는 반대쪽 끝을 박리로 읽어,
+        접착이 전선에서 멀리 떨어진 곳에서 끊긴다.
+        """
+        f = beam.Foundation(2.0, 8.0, 3.0, 0.6, gc_n_mm2=0.8)
+        df = f.separation_mm()
+        self.assertEqual(f.damage_stiffness(-df * 10.0), f.k_n_mm2)
+        self.assertEqual(f.damage_stiffness(df * 10.0), 0.0)
+
+        b = beam.Beam(SECTION, 1000.0, 20, f)
+        squash = [-10.0 if i % 2 == 0 else 0.0 for i in range(b.ndof)]
+        self.assertFalse(b.update_damage(squash), "누르기만 했는데 손상이 생겼다")
+        self.assertTrue(all(b.bonded))
+
+    def test_the_opening_sign_follows_the_driver(self):
+        """구동단이 음의 방향으로 당겨도 벌림은 벌림이다."""
+        f = beam.Foundation(2.0, 8.0, 3.0, 0.6, gc_n_mm2=0.8)
+        b = beam.Beam(SECTION, 1000.0, 20, f)
+        pull_down = [-10.0 if i % 2 == 0 else 0.0 for i in range(b.ndof)]
+        self.assertTrue(b.update_damage(pull_down, opening_sign=-1.0))
 
 
 class TestAfrPeelModel(unittest.TestCase):
@@ -177,6 +225,39 @@ class TestAfrPeelModel(unittest.TestCase):
     def test_the_frame_springs_back(self):
         self.assertFalse(afr_peel.long_edge_yields())
         self.assertLess(afr_peel.long_edge_peak_stress_mpa(), frames.YIELD_MPA)
+
+    def test_the_fem_and_the_browser_peel_the_same_sealant(self):
+        """유한요소의 접착과 화면에 넘기는 상수가 **같은 실란트**여야 한다.
+
+        `bond()` 에 Gc 를 안 넘기면 `Foundation` 이 삼각형 넓이에서 되짚어
+        δ_f = δ₀ 로 만든다 — 브라우저는 선언값 0.8 N/mm 로 무른 실란트를 벗기고,
+        유한요소는 꼬리가 없는 취성 접착을 자르는 서로 다른 물건이 된다.
+        """
+        b, si = afr_peel.bond(), afr_peel.physics_si()
+        self.assertEqual(b.gc_n_mm2, afr_peel.SEALANT_GC_N_MM)
+        # physics_si 는 m 로 7 자리에서 반올림한다 — µm 이면 같은 실란트다.
+        self.assertAlmostEqual(b.separation_mm(), si["bondSep"] * 1000.0, places=3)
+        self.assertAlmostEqual(b.break_deflection_mm, si["bondBreak"] * 1000.0, places=3)
+        self.assertGreater(b.separation_mm(), b.break_deflection_mm * 1.5,
+                           "연화 구간이 없으면 균열이 한 요소씩 나아가지 않는다")
+
+    def test_the_release_never_skips_ahead_of_the_front(self):
+        """해방은 전선에서 이어진다 — 멀리 떨어진 요소가 혼자 끊기면 안 된다.
+
+        시소처럼 기운 보의 **눌리는** 끝을 박리로 읽으면 접착이 전선과 상관없는
+        자리에서 끊기고, 전선 좌표가 남지도 않은 접착을 가리킨다.
+        """
+        b = afr_peel.new_long_beam(afr_peel.LONG_ELEMENTS)
+        from pv_preprocess import afr
+        pull = float(afr.pull_travel_mm())
+        for i in range(1, 13):
+            beam.peel(b, 0, pull * i / 12.0, force_cap_n=frames.PEEL_FORCE_N)
+            lead = 0
+            while lead < b.n_el and not b.bonded[lead]:
+                lead += 1
+            islands = [e for e in range(lead, b.n_el) if not b.bonded[e]]
+            self.assertEqual(islands, [], f"벌림 {pull * i / 12.0:.1f} mm 에서 전선"
+                                          f" 0..{lead - 1} 앞쪽 접착이 끊겼다")
 
     def test_the_browser_gets_si_constants(self):
         si = afr_peel.physics_si()

@@ -491,11 +491,31 @@ class TestTheScraperThatClearsTheBand(unittest.TestCase):
     def test_the_only_cost_is_the_lead(self):
         """같은 캐리지에 달므로 장비가 안 늘고 순환만 리드만큼 는다."""
         self.assertAlmostEqual(
-            sg_grind.occupancy_with_scraper_s(),
-            sg_grind.occupancy_s() + sg_grind.scraper_lead_cost_s(), places=2)
-        self.assertTrue(sg_grind.scraper_still_fits_the_platen())
-        self.assertGreater(sg_grind.slack_with_scraper_s(), 0.0)
+            sg_grind.occupancy_s(),
+            sg_grind.occupancy_without_scraper_s() + sg_grind.scraper_lead_cost_s(),
+            places=2)
+        self.assertTrue(sg_grind.sequential_is_affordable())
+        self.assertGreater(sg_grind.slack_s(), 0.0)
         self.assertGreater(sg_grind.BLADE_LEAD_MM, sg_grind.WHEEL_D_MM / 2)
+
+    def test_the_published_occupancy_already_carries_the_blade(self):
+        """광고하는 점유가 **날을 단 기계**의 점유여야 한다.
+
+        SR-302 는 옵션이 아니라 헤드에 달린 부품이다. 리드를 점유 밖에 빼두면
+        캠페인·리터럴·근접도면이 존재하지 않는 기계의 택트를 광고하게 된다.
+        """
+        self.assertEqual(sg_grind.BLADE_LEAD_MM, campaign.SG_BLADE_LEAD_MM)
+        self.assertAlmostEqual(sg_grind.occupancy_s(),
+                               campaign.sg_occupancy_s(), places=2)
+        # 리드는 순환의 상(相) 안에 있다 — 밖에서 더하는 값이 아니다.
+        lead_free = ((campaign.PANEL_WIDTH_MM / sg_grind.short_feed_mm_s()
+                      + campaign.SG_HEAD_STROKE_S) * 2
+                     + campaign.PANEL_LENGTH_MM / sg_grind.long_feed_mm_s()
+                     + campaign.SG_INDEX_S)
+        self.assertAlmostEqual(sg_grind.occupancy_without_scraper_s(),
+                               lead_free, places=2)
+        self.assertGreater(sg_grind.occupancy_s(), lead_free,
+                           "날을 달고도 점유가 안 늘었다면 리드가 어디에도 없다")
 
     def test_the_tool_now_exists_and_the_wheel_can_follow(self):
         self.assertTrue(sg_grind.face_residue_has_a_tool())

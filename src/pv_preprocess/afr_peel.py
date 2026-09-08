@@ -75,8 +75,15 @@ def gravity_section() -> beam.Section:
 
 
 def bond() -> beam.Foundation:
+    """접착층 — 선언한 파괴에너지까지 넘긴다.
+
+    Gc 를 빼면 `Foundation` 이 삼각형 넓이에서 되짚어 δ_f = δ₀ 로 만든다.
+    연화 구간이 0 이면 응집영역이 취성절단이 되어 균열이 한 요소씩이 아니라
+    통째로 달아난다 — 그리고 화면에 넘기는 `physics_si()["bondSep"]` 와도
+    다른 실란트를 쓰게 된다.
+    """
     return beam.Foundation(SEALANT_E_MPA, SEALANT_BEAD_MM, SEALANT_T_MM,
-                           SEALANT_STRENGTH_MPA)
+                           SEALANT_STRENGTH_MPA, SEALANT_GC_N_MM)
 
 
 def decay_length_mm() -> float:
