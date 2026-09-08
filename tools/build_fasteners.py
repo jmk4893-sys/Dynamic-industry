@@ -297,9 +297,15 @@ def check_table() -> str:
         rows.append([esc(name), esc(" · ".join(result)),
                      '<b class="ok">전부 통과</b>' if not bad else f'<b class="bad">{esc(", ".join(bad))}</b>'])
     lengths = F.lengths_are_long_enough()
-    short = [f"{u.sheet} {u.joint}" for u, _, v in lengths if not v.startswith("여유")]
-    rows.append(["볼트 길이가 부속을 넘는가", f"{len(lengths)} 건",
-                 '<b class="ok">전부 통과</b>' if not short else f'<b class="bad">{esc(", ".join(short))}</b>'])
+    # 「여유가 아니면 빨강」으로 두면 안 된다 — 판정이 셋이다. 성립 안 하는 것만
+    # 빨강이고, 빠듯한 것과 부품표로 못 푸는 것은 **세어서 옆에 적는다.**
+    short = [f"{u.sheet} {u.joint}" for u, _, v in lengths if v.startswith("불가")]
+    tight = sum(1 for _, _, v in lengths if v.startswith("빠듯"))
+    unknown = sum(1 for _, _, v in lengths if v.startswith("확인"))
+    rows.append(["볼트가 부속과 판을 다 감당하는가",
+                 f"{len(lengths)} 건 (빠듯 {tight} · 부품표로 못 푸는 것 {unknown})",
+                 '<b class="ok">전부 통과</b>' if not short
+                 else f'<b class="bad">{esc(", ".join(short))}</b>'])
     anchors = F.anchor_lengths()
     bad_anchor = [r[0] for r in anchors if not r[5]]
     rows.append(["앵커 로드가 너트까지 닿는가", f"{len(anchors)} 건",
