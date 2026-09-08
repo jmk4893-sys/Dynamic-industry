@@ -207,8 +207,13 @@ def build_vendor() -> str:
     메시로 세워 집기·검색이 되게 한다.
     """
     cap = json.loads(CAPTURE.read_text(encoding="utf-8"))
-    parts = [r for r in (_clip_x(q) for q in cap["base"] + cap["dynamic"] if _delivered(q))
-             if r is not None]
+    base = [r for r in (_clip_x(q) for q in cap["base"] if _delivered(q)) if r is not None]
+    pose = [r for r in (_clip_x(q) for q in cap["dynamic"] if _delivered(q)) if r is not None]
+    parts = base + pose
+    #: 정지 자세(4단계)에서 **움직이는 것들** — 캐리지·나이프·박리 중 유리·셀/EVA 적층체.
+    #: 이것만은 합치지 않고 낱개 메시로 세운다. 영상이 이 자세에서 공정을 이어 돌리려면
+    #: 조각을 하나씩 잡아 옮겨야 하고, 합쳐 버리면 그 순간 잡을 것이 없어진다.
+    moving = {i for i in range(len(base), len(parts)) if parts[i]["t"] in ("b", "c")}
     labels = [l for l in cap["labels"]
               if 0.0 <= l["p"][0] <= H.FENCE_X1_MM / 1000.0
               and -H.FENCE_YN_MM / 1000.0 <= l["p"][1] <= H.FENCE_YP_MM / 1000.0]
@@ -264,7 +269,7 @@ def build_vendor() -> str:
 
     box, boxr, cyl, poly = [], [], [], []
     for i, q in enumerate(parts):
-        if i in named:
+        if i in named or i in moving:
             continue
         k = ci[(q["k"], q["a"])]
         if q["t"] == "b":
@@ -286,7 +291,7 @@ def build_vendor() -> str:
     w("// ── 벤더 원본 형상 — tools/capture_hk60c.mjs 가 벤더 콘솔에서 받아 적은 그리기")
     w("//    호출 그대로다(압축 배치 · 4단계 정지 자세). 좌표·치수·도장색을 여기서 고치지")
     w(f"//    않는다. 인도 범위(방책 x 0…{H.FENCE_X1_MM:,} · y {-H.FENCE_YN_MM:,}…{H.FENCE_YP_MM:,}) 안 {len(parts):,}덩어리,")
-    w(f"//    그중 이름 붙은 {len(named)}개는 낱개 메시로 세워 집기·검색이 된다.")
+    w(f"//    그중 이름 붙은 {len(named)}개와 움직이는 {len(moving)}개는 낱개 메시로 세운다.")
     w("var VC=[" + ",".join(s(c) for c, _ in colors) + "];")
     w("var VF=[" + ",".join("[%s,%s,%s]" % (n(_finish(c, a, table)[0]), n(_finish(c, a, table)[1]), n(a))
                             for c, a in colors) + "];")
@@ -330,13 +335,44 @@ def build_vendor() -> str:
     w("gm.computeBoundingBox();gm.computeBoundingSphere();")
     w("var me=new et(gm,VM[i]);me.castShadow=!0;me.receiveShadow=!0;")
     w("me.userData.label='DG-HK60C 유리제거기 (벤더 도면 원본)';")
+    # 도장색을 남긴다 — 절개 뷰가 외장만 골라 숨길 수 있어야 안이 보인다
+    w("me.userData.livery=VC[i];")
     w("me.userData.note='벤더 콘솔 pv-delamination-3d.html 의 그리기 호출을 그대로 옮긴 형상·도장이다. 이름 붙은 부품은 따로 집힌다.';")
     w("Ns.push(me);g.add(me)})})();")
-    # 이름 붙은 덩어리 — 낱개 메시
-    for i, tag in sorted(named.items(), key=lambda kv: kv[0]):
+    # 이름 붙은 덩어리와 **움직이는 조각** — 낱개 메시
+    #: 움직이는 조각에 **역할 이름**을 붙인다 — 도장색과 자리가 역할을 말한다.
+    #: 영상이 이 이름으로 조각을 잡아 공정을 이어 돌린다(유리는 냉각·반출로, 셀/EVA 는
+    #: 옆으로, 백시트는 권취로). 이름이 없으면 합쳐진 덩어리와 구분할 길이 없다.
+    pal = {v: k for k, v in cap["palette"].items()}
+    knife_x = [parts[i]["c"][0] for i in bars] if len(bars) >= 2 else []
+
+    def _role(q: dict) -> str | None:
+        role = pal.get(q["k"])
+        if role == "glass":
+            return "DG-HK60C 박리 중 유리"
+        if role == "sheet":
+            return "DG-HK60C 벗겨지는 백시트"
+        if role in ("cell", "cell2"):
+            y = q["c"][1]
+            if y < -3.0:
+                return "DG-HK60C 셀/EVA 카트 적재"
+            if y < -1.5:
+                return "DG-HK60C 셀/EVA 반출 적층체"
+            return "DG-HK60C 유리 위 셀/EVA 층"
+        if knife_x and q["t"] == "b" and q["c"][2] > m(H.LINE_EL_MM) \
+                and min(abs(q["c"][0] - x) for x in knife_x) < .6:
+            return "DG-HK60C 나이프 캐리지"
+        return None
+
+    solo = dict(named)
+    for i in sorted(moving):
+        solo.setdefault(i, _role(parts[i]) or "DG-HK60C 4단계 정지 자세")
+    for i, tag in sorted(solo.items(), key=lambda kv: kv[0]):
         q = parts[i]
         k = ci[(q["k"], q["a"])]
-        tip = s(note[i]) if i in note else s("벤더 원본 · 도장 " + q["k"])
+        tip = s(note[i]) if i in note else s(
+            "탠덤 박리 중 — 영상이 이 조각을 이어 돌린다" if i in moving
+            else "벤더 원본 · 도장 " + q["k"])
         if q["t"] == "b":
             r = q.get("r") or [0, 0, 0]
             rot = (f",[{n(r[0])},{n(r[2])},{n(-r[1])}]" if any(r) else "")
