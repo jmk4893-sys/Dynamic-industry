@@ -413,9 +413,10 @@ def elevation_view() -> str:
            f"BLR-101 승강캐리지 (홈 1,760) — 레일쌍 축직각 ∓{n(k.CARRIAGE_RAIL_Z_MM)}, 레일 길이 {n(k.CARRIAGE_MM)} 는 반전축 방향")
     spx, _spz = k.plan_xz(1_090, 540)
     s.rect(pick - spx, pick + spx, 2_020, 2_100, "sep", "SEP 이중진공 분리헤드 (홈 2,060) — 패널 테두리 160 안쪽")
-    cdx, _cdz = k.plan_xz(1_450, 900)
+    cdx, _cdz = k.plan_xz(k.CATCH_BEAM_MM / 2, k.catch_beam_row_half_mm())
     s.rect(pick - cdx, pick + cdx, 1_990, 2_050, "safety",
-           "CD-101 포획빔 (전개 2,020) — 4열은 반전축 방향으로 벌어지고, 빔 자체는 축직각으로 뻗는다")
+           f"CD-101 4열 포획빔 (전개 2,020) — 네 본이 축직각으로 ∓{n(cdx)} 벌어져 장변 프레임 ∓672.5 를 짝으로 끼고, "
+           f"빔 {n(k.CATCH_BEAM_MM)} 는 반전축 방향(지면 안쪽)으로 뻗는다")
     for h, name in ((k.FLIP_AXIS_MM, "반전축 위의 패널"), (k.HANDOVER_MM, "인계 높이의 패널")):
         s.rect(pick - phx, pick + phx, h - 25, h + 25, "panel-ghost", f"{name} (참조 — 단변 {n(phx * 2)})")
     # 승강 경로

@@ -109,12 +109,13 @@ def model() -> dict:
             "beamSpan": k.CROSSBEAM_SPAN_MM,
             "carriage": list(k.plan_xz(k.CARRIAGE_MM / 2, k.CARRIAGE_RAIL_Z_MM + 40)),
             "sep": list(k.plan_xz(1_090, 540)),
-            "catch": list(k.plan_xz(1_450, 900)),
+            "catch": list(k.plan_xz(k.CATCH_BEAM_MM / 2, k.catch_beam_row_half_mm())),
             "eoat": list(k.plan_xz(1_090, 460)),
             "walls": [[-k.outer_wall_z_mm(), k.OUTER_WALL_T_MM], [0, k.CENTRE_WALL_T_MM],
                       [k.outer_wall_z_mm(), k.OUTER_WALL_T_MM]],
-            # 포획빔은 중앙벽 안면에서 베이 중심까지 나간다 — 베이가 움직이면 같이 움직인다.
-            "catchReach": layout.BFC_PICKUP_Z_MM - k.CENTRE_WALL_T_MM / 2,
+            # 포획빔은 중앙벽 안면에서 제 길이만큼 나간다 — 패널 끝단까지 40 모자란다
+            # (`kinematics.catch_beam_covers_the_panel_mm`).
+            "catchReach": k.CATCH_BEAM_MM,
             "vacAxial": [-820, -270, 270, 820],
             "vacCross": [-380, 380],
         },

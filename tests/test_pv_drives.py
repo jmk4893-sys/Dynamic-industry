@@ -332,6 +332,27 @@ class TestFlipAxisOrientation(unittest.TestCase):
         for token in ("yn", "It=jn.x+2.15", "rotation.y", "(sz,sy,sx)"):
             self.assertIn(token, note, f"고칠 자리 안내에 {token} 이 없다")
 
+    def test_the_catch_beam_rows_straddle_the_long_frames(self):
+        """포획빔은 장변 프레임 밑을 받아야 낙하를 잡는다 — 행이 프레임을 끼는가."""
+        frame = kinematics.CARRIAGE_RAIL_Z_MM        # 장변 프레임 중심 672.5
+        rows = kinematics.CATCH_BEAM_ROWS_MM
+        for sign in (-1, 1):
+            pair = sorted((z for z in rows if z * sign > 0), key=abs)
+            self.assertLess(abs(pair[0]), frame, "안쪽 빔이 프레임 밖에 있다")
+            self.assertGreater(abs(pair[1]), frame, "바깥쪽 빔이 프레임 안에 있다")
+
+    def test_the_catch_beam_falls_short_of_the_panel_end(self):
+        """반전축을 돌리면 빔이 패널 **장변**을 따라 뻗는다 — 그때 처음 모자란다.
+
+        2,900 짜리 빔이 중앙벽 안면에서 나가 장변 끝(베이 중심 + 1,250)까지
+        40 mm 못 미친다. 작은 값이라 설계를 막지 않지만 **그림이 이것을 숨기면
+        안 된다** — 값으로 두고 시험이 지킨다. 빔을 늘리거나 수납을 옮기면
+        이 시험이 그 사실을 먼저 알린다.
+        """
+        short = kinematics.catch_beam_covers_the_panel_mm()
+        self.assertLess(short, 0, "모자라지 않게 됐으면 사유와 함께 이 시험을 고친다")
+        self.assertGreater(short, -100, "100 mm 넘게 모자라면 빔 길이를 다시 본다")
+
     def test_the_rotation_is_closed_not_open(self):
         """발주처가 정비통로 600 을 확정해 OI-06 이 닫혔다 — 미결에 남아 있으면 안 된다."""
         self.assertNotIn("OI-06", {o.tag for o in fabrication.OPEN_ITEMS})

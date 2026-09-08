@@ -148,6 +148,34 @@ CENTRE_WALL_T_MM = 250
 OUTER_WALL_T_MM = 150
 MAINTENANCE_AISLE_MM = 600
 
+# ── CD-101 4열 프레임 포획빔 ────────────────────────────────────────────
+#: 빔 한 본의 길이 (mm). 통합 설계도 3D 의 실측 형상 `[2.9, .06, .1]` 이다.
+CATCH_BEAM_MM = 2900
+
+#: 전개했을 때 네 본이 서는 자리 (mm). 패널 **장변 프레임**(∓672.5) 을 두 본씩
+#: 짝으로 낀다 — 프레임 밑을 받아야 낙하를 포획한다.
+CATCH_BEAM_ROWS_MM = (-720, -580, 580, 720)
+
+#: 수납 자리 (mm). 네 본이 중앙벽 옆 카세트에 차례로 겹쳐 든다.
+CATCH_BEAM_STOWED_MM = (800, 970, 1140, 1310)
+
+
+def catch_beam_row_half_mm() -> float:
+    """전개한 네 본이 벌어지는 반폭 (mm) — 그림의 행 방향 치수다."""
+    return max(abs(z) for z in CATCH_BEAM_ROWS_MM)
+
+
+def catch_beam_covers_the_panel_mm() -> float:
+    """중앙벽 안면에서 빔 끝까지 나갔을 때 패널 끝단과의 차 (mm).
+
+    음수면 패널 바깥끝이 빔 밖으로 남는다. 반전축을 돌리면 빔이 패널 **장변**을
+    따라 뻗어야 하므로 이 값이 처음으로 문제가 된다.
+    """
+    wall_face = CENTRE_WALL_T_MM / 2
+    panel_far = layout.BFC_PICKUP_Z_MM + PANEL_MM[0] / 2
+    return (wall_face + CATCH_BEAM_MM) - panel_far
+
+
 #: 반전축 높이 (mm). REV.26 은 3,300 이었다 — 링 하단이 이송면에 22 mm 까지
 #: 붙어 있었다. 130 올려 캐리지 상단과의 틈을 130 → 260 mm 로 벌린다.
 FLIP_AXIS_MM = 3430
