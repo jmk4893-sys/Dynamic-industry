@@ -20,7 +20,7 @@ from unittest import mock
 
 from . import _path  # noqa: F401
 
-from pv_preprocess import (acceptance, access, acoustics, afr, ai, air, brand, campaign, casing, crane, dust,
+from pv_preprocess import (acceptance, access, acoustics, afr, afr_peel, ai, air, brand, campaign, casing, crane, dust,
                            electrical,
                            frames, grade, handoff, kinematics, layout, maintain, materials, mounting,
                            recipe, reliability, safety, seismic, smart, servos, thermal, vision, wiring)
@@ -2064,30 +2064,50 @@ class TestFrameElasticity(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(f"{token}: {value:g}", self.html)
 
-    def test_frames_bend_in_the_3d_scene(self):
-        """휨이 애니메이션에 들어가되, **이제는 기구가 정한 크기**로 들어간다.
+    def test_frames_are_a_continuum_solved_by_physics(self):
+        """휨이 애니메이션에 들어가되, **이제는 연속체 해석**에서 들어간다.
 
-        REV.43 까지 3D 는 단축·장축 모두 frames.display_bow_mm()(59 mm) 한 값으로
-        휘었다. 그 값은 "롤러가 접착 전선보다 220 mm 앞서 달린다"는 그림에서 나온
-        것이라, 발주처가 설명한 기구 — 롤러가 홈에 걸려 전선과 **같이** 간다 — 와
-        맞지 않았다. 이제 두 변의 휨은 서로 다른 출처에서 나온다.
+        REV.43 까지 3D 는 단축·장축 모두 한 상수로 휘었다. REV.57 까지는 그 상수가
+        기구별로 갈렸을 뿐 여전히 강체 토막(장변 10 · 단변 6)의 평행이동이었다.
+        REV.58 부터 프레임은 **하나의 연속체**다 — 실물 압출재 단면을 스윕하고,
+        화면에서 XPBD 로 늘어남(EA)·굽힘(EI)·접착(응집영역) 구속을 적분한다.
 
-        * 단축: 쇠막대가 실린더 두 지점 사이에서 처지는 만큼 가운데가 뒤처진다.
-        * 장축: 롤러가 전선과 같이 가므로 이미 떨어진 부분의 자중 처짐만 남는다.
+        * 단면은 `frames.outline()` 다각형 하나에서 면적·2차 모멘트가 나오고,
+          3D 가 **그 다각형을 그대로** 스윕한다 — 그린 단면과 계산한 단면이 같다.
+        * 접착 전선의 이력은 유한요소(`afr_peel.front_curve()`)가 정한다.
+        * 크기만 과장하고 배율을 화면에 적는다 — 모양은 물리가 낸다.
         """
-        seg_z = kinematics.PANEL_MM[1] / 2000 - (kinematics.PANEL_MM[1] / 1000) / 12
-        self.assertIn("e.userData.bowT=1-Math.pow(z/%s,2)" % _js(seg_z), self.html,
-                      "단축 프레임이 분할되지 않았다")
-        self.assertIn("%s*V.userData.bowT*4*PS*(1-PS)" % _js(afr.short_edge_display_bow_mm() / 1000),
-                      self.html, "단축 휨이 쇠막대 처짐에서 안 나온다")
-        self.assertIn("bw=%s*4*ae*(1-ae)" % _js(afr.display_bow_mm() / 1000),
-                      self.html, "장축 휨이 자중 처짐에서 안 나온다")
+        self.assertNotIn("userData.bowT", self.html, "옛 토막 휨 근사가 남아 있다")
         self.assertNotIn("pvBow", self.html, "옛 단일 휨 상수가 남아 있다")
-        self.assertIn("%d배 과장" % frames.DISPLAY_EXAGGERATION, self.html,
+        # 단면 다각형과 그 마구리 삼각분할이 도면에 있다
+        self.assertIn("var pvAfrSec=[", self.html)
+        self.assertIn("var pvAfrCap=[", self.html)
+        self.assertEqual(len(afr_peel.section_outline_m()), len(frames.outline()))
+        self.assertEqual(len(afr_peel.section_cap_indices()) % 3, 0)
+        # 물리 상수는 전부 모델에서 온다 — 화면에 손으로 적은 값이 없다
+        for key, value in afr_peel.physics_si().items():
+            with self.subTest(key=key):
+                self.assertIn(f"{key}:{value:g}", self.html)
+        # XPBD 구속 셋이 실제로 있다
+        for token in ("pvAfrSolve", "pvAfrSkin", "pvAfrStep", "e.bond[i]", "pvAfrFront"):
+            with self.subTest(token=token):
+                self.assertIn(token, self.html)
+        self.assertIn("%d배" % frames.DISPLAY_EXAGGERATION, self.html,
                       "과장 배율을 화면에 밝히지 않았다")
-        # 그리고 그 두 값은 서로 달라야 한다 — 같으면 기구가 반영 안 된 것이다
-        self.assertNotEqual(afr.display_bow_mm(), afr.short_edge_display_bow_mm())
 
+    def test_the_swept_section_is_the_section_that_was_calculated(self):
+        """면적·2차 모멘트가 3D 가 스윕하는 그 다각형에서 나오는가."""
+        prof = frames.profile()
+        self.assertAlmostEqual(prof["area_mm2"],
+                               frames.WALL_T_MM * frames.wall_developed_mm(), places=3)
+        self.assertGreater(prof["i_lateral_mm4"], 0)
+        self.assertGreater(prof["i_vertical_mm4"], 0)
+        # 도심이 외형 안에 있다 (다각형이 뒤집히지 않았다)
+        self.assertTrue(0 < prof["cu_mm"] < prof["u_max_mm"])
+        self.assertTrue(0 < prof["cv_mm"] < prof["v_max_mm"])
+        # 3D 가 받는 것은 도심 기준 좌표다
+        pts = afr_peel.section_outline_m()
+        self.assertAlmostEqual(min(u for u, _ in pts) * 1000 + prof["cu_mm"], 0, places=3)
 
 class TestContinuousPlayback(unittest.TestCase):
     """60장이 실제로 연속 투입되는지 — 한 장 돌고 멈추면 안 된다."""
@@ -6196,7 +6216,7 @@ class TestAfrMechanism(unittest.TestCase):
             "AFR PB-261 쇠막대",
             "AFR ST-241 프레임 스토퍼",
             "AFR TC-231 톱니 컨베이어 스프로킷",
-            "AFR 장축 압출재 인발 홈",
+            "AFR 장축 알루미늄 프레임",
         ):
             self.assertIn(probe, text, f"도면에 {probe} 가 없다")
         # 100 mm 정반에 안 들어가는 옛 보어는 사라져야 한다

@@ -69,6 +69,38 @@ const scene = await page.evaluate(() => {
                                          from: window.__pvAfrScene.from, to: window.__pvAfrScene.to } : null };
 });
 
+// 연속체 프레임 — 스윕 단면이 실물 치수이고, 접착 중에는 곧고, 박리 중에 휘는가.
+const beamProbe = scene.has3d ? await (async () => {
+  const at = async (t) => {
+    await page.evaluate((t) => {
+      const s = document.getElementById('jb-scrub');
+      s.value = String(t); s.dispatchEvent(new Event('input', { bubbles: true }));
+    }, t);
+    await page.waitForTimeout(700);
+    return page.evaluate(() => {
+      const S = document.getElementById('jb-removal-operation').__pvScene;
+      let r = null;
+      S.scene.traverse((o) => {
+        if (r || !o.isMesh || !o.userData || o.userData.label !== 'AFR 장축 알루미늄 프레임') return;
+        const a = o.geometry.attributes.position.array, SS = 22, n = 33, lat = [];
+        let du = 0, dv = 0;
+        for (let i = 0; i < n; i += 1) {
+          let ys = [], zs = [];
+          for (let j = 0; j < SS; j += 1) { const k = (i * SS + j) * 3; ys.push(a[k + 1]); zs.push(a[k + 2]); }
+          du = Math.max(du, Math.max(...zs) - Math.min(...zs));
+          dv = Math.max(dv, Math.max(...ys) - Math.min(...ys));
+          lat.push((Math.max(...zs) + Math.min(...zs)) / 2);
+        }
+        const mn = Math.min(...lat), mx = Math.max(...lat);
+        r = { du: +du.toFixed(4), dv: +dv.toFixed(4), bow: +(mx - mn).toFixed(4),
+              mid: +lat[16].toFixed(4), finite: lat.every((v) => Math.abs(v) < 5) };
+      });
+      return r;
+    });
+  };
+  return { bonded: await at(96), peeling: await at(108), carried: await at(110) };
+})() : null;
+
 const frames = [];
 if (scene.has3d) {
   for (const t of SAMPLES) {
@@ -110,6 +142,20 @@ if (frames.length) {
   if (Math.abs(last.gap - END_GAP_MM) > 1) why.push(`끝단 벌림이 ${last.gap} mm (${END_GAP_MM} 여야 한다)`);
   if (Math.abs(last.short - 1) > 0.01) why.push(`단축 밀어내기 진행률이 ${last.short}`);
 }
+// 프레임이 **연속체**로 서 있고 물리가 도는가 — 여기가 REV.58 의 회귀 자리다.
+if (beamProbe) {
+  const b = beamProbe;
+  for (const [k, v] of Object.entries(b)) {
+    if (!v) { why.push(`${k}: 장축 프레임 메시를 못 찾았다`); continue; }
+    if (!v.finite) why.push(`${k}: 파티클이 발산했다 (|z| ≥ 5 m)`);
+    if (Math.abs(v.du - 0.075) > 0.002 || Math.abs(v.dv - 0.075) > 0.002)
+      why.push(`${k}: 스윕 단면이 ${v.du}×${v.dv} m — 75×75 mm 여야 한다`);
+  }
+  if (b.bonded && b.bonded.bow > 0.002) why.push(`접착 중인데 휘어 있다 (${b.bonded.bow} m)`);
+  if (b.peeling && b.peeling.bow < 0.02) why.push(`박리 중에 안 휜다 (${b.peeling.bow} m)`);
+  if (b.peeling && b.carried && !(b.carried.mid > b.bonded.mid + 0.05))
+    why.push('인발 뒤에도 프레임이 제자리다');
+}
 if (errors.length) why.push('페이지 오류: ' + [...new Set(errors)].slice(0, 3).join(' | '));
 
 console.log(`${why.length ? '✗' : '✓'} ${file}`);
@@ -117,6 +163,10 @@ if (scene.has3d) {
   console.log(`  메시 ${scene.visible} / ${scene.meshes} 보임 · 셀 ${JSON.stringify(scene.cells)}`
     + `\n  그림자 ${scene.shadows} · 케이싱 ${scene.casing} · 크레인 ${scene.crane}`
     + (scene.solo ? ` · 창 [${scene.solo.from}, ${scene.solo.to}] s · x [${scene.solo.low}, ${scene.solo.high}] m` : ''));
+  if (beamProbe) console.log('  연속체 프레임 — 단면 '
+    + `${beamProbe.bonded.du}×${beamProbe.bonded.dv} m · 접착중 휨 ${beamProbe.bonded.bow} m · `
+    + `박리중 휨 ${beamProbe.peeling.bow} m · 인발후 옆이동 `
+    + `${(beamProbe.carried.mid - beamProbe.bonded.mid).toFixed(3)} m`);
   for (const f of frames) {
     console.log(`  ${String(f.t).padStart(3)} s  단계 ${f.phase}  단축 ${(f.short * 120).toFixed(0)} mm  `
       + `장축 ${String(f.long).padStart(6)} mm  벌림 ${f.gap} mm  ${f.done ? '제거완료' : ''}  ${f.name}`);
