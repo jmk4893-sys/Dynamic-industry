@@ -39,6 +39,8 @@ TARGETS: dict[str, tuple[pathlib.Path, pathlib.Path]] = {
                    pathlib.Path("out/pv-infeed-dyn-artifact.html")),
     "prototype": (pathlib.Path("docs/drawings/pv-bfc-prototype.html"),
                   pathlib.Path("out/pv-bfc-prototype-artifact.html")),
+    "decisions": (pathlib.Path("docs/drawings/pv-infeed-decisions.html"),
+                  pathlib.Path("out/pv-infeed-decisions-artifact.html")),
     "jbr-scene": (pathlib.Path("docs/drawings/pv-jbr-scene.html"),
                   pathlib.Path("out/pv-jbr-scene-artifact.html")),
     "jbr-detail": (pathlib.Path("docs/drawings/pv-jbr-detail.html"),
@@ -103,6 +105,10 @@ PUBLISHED: dict[str, str] = {
     "infeed-fab": "e370a09a-d139-40f6-b292-9d94c98ae336",
     "infeed-dyn": "7c6b28f4-06f4-46c5-b054-4d696c57e30d",
     "prototype": "64149cde-3fd4-4b2c-b320-ae56ec09bb58",
+    # 베이스가 REV.62 와 같은 시각에 들여온 도면이다. 발행본은 이미 있는데
+    # 변환기 표에는 없었다 — 이 표가 막으려는 바로 그 자리라 같이 채운다.
+    # 제목 「투입 구간 결정 등록부」가 발행 목록에 하나뿐이라 대응이 갈렸다.
+    "decisions": "2fcf5025-73ba-42c2-bd21-ef1d381e0ada",
     "fasteners": "f292d899-c846-4556-8424-526eb321ad2f",
     "assembly-steps": "cf0ea732-b99a-48fa-abb4-e788fe4819f9",
     "jbr-scene": "12f62610-f43e-4a74-992d-8ed6d5c1c98b",
