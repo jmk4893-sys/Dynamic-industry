@@ -35,6 +35,7 @@
 
 from __future__ import annotations
 
+import functools
 import math
 
 from . import afr, catch, dynamics, kinematics, layout
@@ -229,6 +230,7 @@ def stage_speed_ratio(n: int) -> float:
     return float(n)
 
 
+@functools.lru_cache(maxsize=32)
 def arrival_energy_j(n: int, speed_ms: float | None = None) -> float:
     """끝단에서 완충이 먹어야 하는 운동에너지 (J).
 
@@ -243,6 +245,7 @@ def arrival_energy_j(n: int, speed_ms: float | None = None) -> float:
                   + sum(m_stage * (k * v) ** 2 for k in range(1, n + 1)))
 
 
+@functools.lru_cache(maxsize=32)
 def pneumatic_still_works(n: int) -> bool:
     """공압으로도 멈출 수 있는가 — 쇼크업소버 등급과 견준다."""
     return arrival_energy_j(n) <= catch.SHOCK_ABSORBER_J
@@ -259,6 +262,7 @@ def belt_removes_the_problem() -> bool:
 
 
 # ── 판정 ────────────────────────────────────────────────────────────────
+@functools.lru_cache(maxsize=8)
 def options(max_n: int = 8) -> list[dict[str, object]]:
     """단수별로 무엇이 되고 무엇이 안 되는지."""
     rows = []
@@ -291,6 +295,7 @@ def options(max_n: int = 8) -> list[dict[str, object]]:
     return rows
 
 
+@functools.lru_cache(maxsize=8)
 def smallest_workable_stages() -> int | None:
     """수납·처짐·유격을 다 지나는 **가장 적은** 단수 (뿌리를 키우는 것은 허용)."""
     ok = [r["n"] for r in options() if r["ok"]]
@@ -307,6 +312,7 @@ def drive_must_be_servo() -> bool:
     return n is not None and not pneumatic_still_works(n)
 
 
+@functools.lru_cache(maxsize=1)
 def summary() -> dict[str, object]:
     n_depth = stages_for_depth()
     cap = max_stages_for_section()
