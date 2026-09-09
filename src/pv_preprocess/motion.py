@@ -35,6 +35,7 @@ T-10 이 이미 그 시험이다 — 여기서는 자세를 쓸어 보며 「자
 
 from __future__ import annotations
 
+import functools
 import math
 
 from . import afr, catch, drives, dynamics, kinematics, rigid
@@ -222,6 +223,7 @@ def panel_inertia_kgm2() -> float:
     return drives.PANEL_KG * (kinematics.PANEL_MM[1] / 1_000.0) ** 2 / 12.0
 
 
+@functools.lru_cache(maxsize=256)
 def drop(rows: tuple[float, ...] | None = None, tilt_deg: float = 0.0,
          hybrid: bool = True, dt: float = 5e-5, span: bool = True,
          mu: float = 0.0, until: float = 0.15) -> dict[str, float]:
@@ -331,18 +333,20 @@ def hybrid_relief() -> dict[str, float]:
             "hz": beam_hz()}
 
 
+@functools.lru_cache(maxsize=8)
 def tilt_sweep(limit_deg: float = 2.0, step: float = 0.25
-               ) -> list[dict[str, float]]:
+               ) -> tuple[dict[str, float], ...]:
     """기울어 도착하면 빔당 힘이 어떻게 가는가."""
     out, a = [], 0.0
     while a <= limit_deg + 1e-9:
-        d = drop(tilt_deg=a)
+        d = dict(drop(tilt_deg=a))          # 캐시가 돌려준 것을 고치지 않는다
         d["arrivalDeg"] = a
         out.append(d)
         a += step
-    return out
+    return tuple(out)
 
 
+@functools.lru_cache(maxsize=32)
 def worst_tilt() -> dict[str, float]:
     return max(tilt_sweep(), key=lambda d: d["peakBeamN"])
 
@@ -360,6 +364,7 @@ def tilt_is_not_what_binds(limit: float = 1.25) -> bool:
 
 
 # ── 3. 잡은 뒤 — 선반 위에 남는가 ───────────────────────────────────────
+@functools.lru_cache(maxsize=32)
 def matrix() -> dict[str, dict[str, float]]:
     """네 갈래를 한 표로 — 본수(4/2) × 지지(무질량/모달).
 
@@ -425,15 +430,18 @@ def damping_cuts_both_ways() -> dict[str, float]:
     try:
         for z in (0.05, 0.10, 0.30):
             dynamics.CONTACT_DAMPING = z
+            clear_caches()                  # 감쇠를 바꿨으니 캐시는 남의 답이다
             d = drop()
             out[f"zeta{z:g}"] = d["peakBeamN"]
             out[f"rebound{z:g}"] = d["reboundMs"]
     finally:
         dynamics.CONTACT_DAMPING = keep
+        clear_caches()
     return out
 
 
 # ── 4. 반전 — 미끄러진 뒤 몇 도를 잃는가 ────────────────────────────────
+@functools.lru_cache(maxsize=32)
 def flip_stick_slip(takt_scale: float = 1.0, dt: float = 2e-4,
                     eccentric_mm: float = 0.0) -> dict[str, float]:
     """마찰 롤러 구동을 쿨롱 접촉으로 감는다 — 링이 명령을 따라가는가.
@@ -508,9 +516,11 @@ def slip_is_not_a_numerical_artifact() -> bool:
     try:
         for w in (0.02, 0.05, 0.15):
             MICROSLIP_MM = w
+            clear_caches()
             out.append(flip_stick_slip(1.8)["lostDeg"])
     finally:
         MICROSLIP_MM = keep
+        clear_caches()
     lo, hi = min(out), max(out)
     return (hi - lo) / hi < 0.05 if hi else True
 
@@ -520,6 +530,7 @@ def phase_loss_table() -> list[dict[str, float]]:
     return [flip_stick_slip(x) for x in (1.0, 1.2, 1.4, 1.6, 1.8, 2.0)]
 
 
+@functools.lru_cache(maxsize=32)
 def slip_onset_scale(lo: float = 1.0, hi: float = 2.0,
                      tol: float = 0.01) -> float:
     """위상을 잃기 시작하는 택트 배수 — 이분법."""
@@ -534,6 +545,7 @@ def slip_onset_scale(lo: float = 1.0, hi: float = 2.0,
     return hi
 
 
+@functools.lru_cache(maxsize=32)
 def eccentricity_allow_mm(hi: float = 400.0, tol: float = 1.0) -> float:
     """무게중심이 축에서 얼마나 벗어나도 위상을 안 잃는가 (mm) — 이분법."""
     lo = 0.0
@@ -569,7 +581,21 @@ def tipping_is_not_the_limit() -> bool:
     return eoat_tip_ms2() > dynamics.eoat_limit_ms2()["limitMs2"]
 
 
+def clear_caches() -> None:
+    """모든 캐시를 비운다.
+
+    **상수를 흔드는 쪽이 반드시 부른다.** `FRAME_BEARING_MM`·`MICROSLIP_MM`·
+    `CATCH_BEAM_ROWS_MM`·`dynamics.CONTACT_DAMPING` 은 캐시 키에 안 들어가므로,
+    안 비우면 바꾸기 전 답을 그대로 돌려준다 — 시험이 「값을 흔들어도 안
+    움직인다」로 잘못 걸린다.
+    """
+    for fn in (drop, matrix, tilt_sweep, worst_tilt, flip_stick_slip,
+               slip_onset_scale, eccentricity_allow_mm, summary):
+        fn.cache_clear()
+
+
 # ── 정리 ────────────────────────────────────────────────────────────────
+@functools.lru_cache(maxsize=32)
 def summary() -> dict[str, object]:
     grid = matrix()
     drawn = grid["4본 무질량"]
