@@ -87,10 +87,30 @@ SG_INDEX_S = 1.5            # 정지 두 번의 감속·정착 합
 PANEL_WIDTH_MM = 1400.0
 
 
+def total_dwell_s() -> float:
+    """한 장의 종단 체류 (s) — 투입 + JBR + AFR 이후.
+
+    도면 여러 벌이 이 값을 배지·시계·스크럽 범위에 쓴다. 각자 더하면 REV 가
+    한 칸을 고칠 때마다 어긋난 곳이 생긴다 — REV.59 가 JBR 을 54 → 51 s 로
+    되찾자 파생본 생성기 셋이 124.03 을 앵커로 물고 있어 한꺼번에 멈췄다.
+    """
+    return round(INFEED_S + JBR_S + AFR_S, 2)
+
+
+#: SR-302 날이 휠보다 앞서 가는 거리 (mm) — 휠이 오기 전에 그 자리가 비어 있어야
+#: 한다. 날이 앞서면 통과마다 그만큼 **더 가야** 하므로 점유에 그대로 실린다.
+SG_BLADE_LEAD_MM = 200.0
+
+
 def sg_occupancy_s() -> float:
-    """SG-301 반출롤러 점유 (s) — 앞단변 + 장변 통과 + 뒷단변 + 정지·헤드 행정."""
-    short = PANEL_WIDTH_MM / SG_SWEEP_MM_S + SG_HEAD_STROKE_S
-    long = PANEL_LENGTH_MM / SG_PASS_MM_S
+    """SG-301 반출롤러 점유 (s) — 앞단변 + 장변 통과 + 뒷단변 + 정지·헤드 행정.
+
+    날이 휠보다 `SG_BLADE_LEAD_MM` 앞서 달리므로 통과 거리가 판 치수가 아니라
+    판 + 리드다. 스크레이퍼는 붙였다 뗐다 하는 물건이 아니라 헤드에 달린
+    부품이라, 그 값을 밖에 빼두면 도면이 없는 기계의 택트를 광고하게 된다.
+    """
+    short = (PANEL_WIDTH_MM + SG_BLADE_LEAD_MM) / SG_SWEEP_MM_S + SG_HEAD_STROKE_S
+    long = (PANEL_LENGTH_MM + SG_BLADE_LEAD_MM) / SG_PASS_MM_S
     return round(2 * short + long + SG_INDEX_S, 2)
 
 
