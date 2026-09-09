@@ -127,6 +127,9 @@ PUBLISHED: dict[str, str] = {
     "afr-scene": "6e68bee7-a1f1-495b-a84f-3942f6105c90",
     "afr-closeup": "2070e91e-1012-41db-be9e-9148c2512fd3",
     "sg-closeup": "6bfcba30-c0f3-44e6-b923-c56496c20aa6",
+    # 이 브랜치가 더한 둘 — GI 확대도와 그 넷을 담은 후단 도면집.
+    "gi-closeup": "43f2ae42-5267-48eb-b83a-52c362ed7650",
+    "afr-hub": "4b9ff34d-5236-4a37-b881-991db9774dcf",
 }
 
 #: 같은 도면으로 **잘못 하나 더 생긴** 아티팩트 — 재발행하지 말 것.
