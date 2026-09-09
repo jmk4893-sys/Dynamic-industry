@@ -762,6 +762,144 @@ def move_profile(distance_mm: float, seconds: float) -> dict[str, float]:
 #: 기본 시나리오(triple-wide)의 박스 z (m) — 통합 설계도 `scenarios` 에서 온다.
 BOX_Z_M = (-0.5, -0.04, 0.42)
 
+# ── 검출 시나리오 · 헤드 발자국 ──────────────────────────────────────────
+#: 통합 설계도 `var hp={…}` 의 검출 시나리오 거울 — key → (이름, 박스 z (m)).
+#:
+#: **원본은 통합 설계도다.** `SEQUENCE` 와 같은 이유로 여기 값을 두고 시험이
+#: 원본 파서와 한 자리씩 대조한다 (`test_the_scenario_mirror_matches_the_plant`).
+#:
+#: REV.61 까지 이 해석은 `BOX_Z_M`(triple-wide) 하나만 보고 있었다. 그런데
+#: 헤드를 몇 기 세울 수 있는가를 정하는 것은 **가장 조밀한 시나리오**다.
+SCENARIOS: dict[str, tuple[str, tuple[float, ...]]] = {
+    "triple-wide": ("3개 · 비대칭 위치", (-0.5, -0.04, 0.42)),
+    "triple-compact": ("3개 · 조밀 위치", (-0.36, 0.0, 0.36)),
+    "double-offset": ("2개 · 편심 위치", (-0.31, 0.39)),
+    "single-offset": ("1개 · 편심 위치", (0.24,)),
+}
+
+#: 제거헤드의 z 발자국 (mm) — 통합 설계도 `part('HD-1', …, [420, 860, 420])`.
+#:
+#: **칼날은 x 로 벌어진다**(원본 `left.position.x = -H`, H: 0.62 → 0.26). 그래서
+#: 헤드가 z 로 차지하는 폭은 칼날 개도와 무관하게 이 값이다. 헤드를 여러 기
+#: 나란히 세울 수 있는가는 전부 여기서 갈린다.
+HEAD_Z_MM = 420.0
+
+
+def simultaneous_heads(zs: tuple[float, ...] | list[float],
+                       head_z_mm: float | None = None) -> dict[str, object]:
+    """박스 위치가 주어졌을 때 헤드를 **동시에 몇 기** 세울 수 있는가.
+
+    헤드는 자기 박스 위에 서야 하고 z 로 `HEAD_Z_MM` 를 차지한다. 그러므로
+    동시에 맡을 수 있는 박스는 **서로 헤드 폭 이상 떨어진 것**들뿐이다. 위치
+    순으로 훑으며 들어가는 대로 집으면 그 최대 개수가 나온다.
+
+    간격 서보를 달아도 이 판정은 안 바뀐다 — 서보는 헤드를 **옮기지**, 좁게
+    만들지 않는다.
+    """
+    w = HEAD_Z_MM if head_z_mm is None else head_z_mm
+    order = sorted(zs)
+    taken: list[float] = []
+    for z in order:
+        if not taken or (z - taken[-1]) * 1000.0 >= w:
+            taken.append(z)
+    gaps = [round((order[i + 1] - order[i]) * 1000.0, 1) for i in range(len(order) - 1)]
+    return {"boxes": len(order), "heads": len(taken), "head_z_mm": w,
+            "gaps_mm": gaps, "min_gap_mm": min(gaps) if gaps else None,
+            "clearance_mm": round(min(gaps) - w, 1) if gaps else None,
+            "all_at_once": len(taken) == len(order),
+            "sequential_passes": len(order) - len(taken) + 1}
+
+
+def head_fit() -> dict[str, object]:
+    """검출 시나리오 전부에서 헤드를 몇 기까지 쓸 수 있는가.
+
+    **헤드 수를 정하는 것은 가장 조밀한 시나리오다.** 넉넉한 시나리오에서 세 기가
+    선다고 세 기를 다는 것은, 조밀한 시나리오에서 그 셋 중 하나가 못 들어간다는
+    뜻이다 — 그때 순차로 내려앉고, 그 시나리오가 곧 최악 사이클이 된다.
+    """
+    rows = []
+    for key, (label, zs) in SCENARIOS.items():
+        r = simultaneous_heads(zs)
+        r.update({"key": key, "label": label, "z": zs})
+        rows.append(r)
+    usable = min(r["heads"] for r in rows if r["boxes"] > 1) if any(
+        r["boxes"] > 1 for r in rows) else 1
+    worst = min((r for r in rows if r["boxes"] > 1), key=lambda r: r["heads"])
+    return {"rows": rows, "usable_heads": usable, "worst": worst,
+            "installed_heads": jf.HEADS,
+            "three_heads_land_everywhere": all(r["heads"] >= min(3, r["boxes"]) for r in rows)}
+
+
+# ── 헤드를 늘려 버는 값 ─────────────────────────────────────────────────
+def head_prize() -> dict[str, object]:
+    """헤드를 늘리면 얼마를 버는가 — **늘 이 함수가 답한다.**
+
+    JBR 을 0 초로 만들어도 라인은 `campaign.takt_floor_s()` 아래로 못 내려간다.
+    방출 인터록(투입 40 + 스토퍼 8)과 유리제거셀이 앞뒤로 막고 있어서다. 그래서
+    헤드 증설의 상금은 처리량 몇 장/h 이 아니라 **정반 점유 0.08 s** 다.
+
+    이 물음이 세 번 왔다 — REV.59 「유압 + 3 헤드 동시 + 정반 3 분할」, REV.61
+    「공통 갠트리 + 간격 서보 3 헤드 + 보강 크로스빔」. 세 번 다 같은 벽에
+    부딪혔고, 세 번 다 손으로 스윕해 답했다. 이제 모델이 답한다.
+    """
+    s = campaign.summary()
+    floor = campaign.takt_floor_s()
+    head = campaign.jbr_headroom_s()
+    others = [(n, v) for n, v in campaign.cell_occupancy_s() if n != "JBR-201"]
+    interlock = campaign.INFEED_S + campaign.JBR_STOPPER_OFFSET_S
+    binding = ("방출 인터록 (투입 + 스토퍼)" if interlock >= max(v for _n, v in others)
+               else max(others, key=lambda r: r[1])[0])
+    gain = round(s["throughput_per_h"] * head / s["takt_s"], 2)
+    return {"jbr_block_s": campaign.jbr_block_s(), "takt_floor_s": floor,
+            "headroom_s": head, "binding": binding,
+            "interlock_s": interlock, "others": others,
+            "takt_s": s["takt_s"], "throughput_per_h": s["throughput_per_h"],
+            "throughput_gain_per_h": gain,
+            "worth_more_heads": head > 1.0}
+
+
+# ── 「보강 크로스빔」에 모델이 답한다 ────────────────────────────────────
+def stiffening_sweep(head_kg: float | None = None) -> dict[str, object]:
+    """브리지를 키우면 1 차 모드가 어떻게 되는가 — **내려간다.**
+
+    1 차가 굽힘이면 단면을 키우는 것이 정답이다. 그런데 이 프레임의 1 차는
+    **흔들림**이고, 흔들림은 기둥 강성 대 기둥 위 질량이 정한다. 브리지를 키우면
+    그 질량이 늘어 오히려 내려간다.
+
+    「보강 크로스빔」 제안이 오면 이 표를 보여 주면 된다 — 고칠 곳은 기둥이다.
+    """
+    if head_kg is None:
+        head_kg = jf.moving_mass_kg() + jf.HEAD_COMMERCIAL_KG
+
+    def f1(bridge_wh, bridge_t, col_wh, col_t) -> tuple[float, str]:
+        keep_b, keep_c = BRIDGE_SECTION, COLUMN_SECTION
+        globals()["BRIDGE_SECTION"] = rhs_section(*bridge_wh, bridge_t)
+        globals()["COLUMN_SECTION"] = rhs_section(*col_wh, col_t)
+        try:
+            m = frame_modes(bridge_frame(0.5, head_kg=head_kg), count=1)[0]
+            return round(m["f_hz"], 2), m["kind"]
+        finally:
+            globals()["BRIDGE_SECTION"] = keep_b
+            globals()["COLUMN_SECTION"] = keep_c
+
+    bridges = (((100.0, 150.0), 8.0, "현행 100×150×8"),
+               ((150.0, 250.0), 10.0, "보강 150×250×10"),
+               ((200.0, 300.0), 12.0, "대보강 200×300×12"))
+    columns = (((100.0, 100.0), 6.0, "현행 100×100×6"),
+               ((150.0, 150.0), 9.0, "150×150×9"),
+               ((200.0, 200.0), 10.0, "200×200×10"))
+    base_f, base_kind = f1(bridges[0][0], bridges[0][1], columns[0][0], columns[0][1])
+    bridge_rows = [{"label": lab, "f_hz": (r := f1(wh, t, columns[0][0], columns[0][1]))[0],
+                    "kind": r[1], "delta_hz": round(r[0] - base_f, 2)}
+                   for wh, t, lab in bridges]
+    column_rows = [{"label": lab, "f_hz": (r := f1(bridges[0][0], bridges[0][1], wh, t))[0],
+                    "kind": r[1], "delta_hz": round(r[0] - base_f, 2)}
+                   for wh, t, lab in columns]
+    return {"head_kg": round(head_kg, 1), "base_f_hz": base_f, "base_kind": base_kind,
+            "bridge": bridge_rows, "column": column_rows,
+            "stiffening_the_bridge_helps": bridge_rows[-1]["f_hz"] > base_f,
+            "stiffening_the_column_helps": column_rows[-1]["f_hz"] > base_f}
+
 
 def traverse_check(accel_limit: float | None = None) -> dict[str, object]:
     """순차 운동식의 이송 구간이 **실제로 낼 수 있는 가속도인가.**
@@ -864,8 +1002,14 @@ def lift_budget() -> dict[str, object]:
     0.5 m/s 로 닿는다 — 실린더당 12 J, 표준 쿠션(Ø63 ≈ 2.5 J, 가정)의 다섯 배다.
     쿠션이 먹을 수 있는 속도로 조이면 그 속도가 행정 시간을 정하고, 그 시간이 창
     1.8 s 를 꽉 채운다. 창 안의 다른 일(Y 원점 복귀 1.59 s)과 병행이라도, 이제
-    관문은 승강이다. 손잡이는 힘이 아니라 **행정**(하드스톱 JB-MZ-003)이나
-    **업소버**다 — 여기서 어느 쪽인지 정하지 않는다. 필요한 상승량이 모델에 없다.
+    관문은 승강이다.
+
+    손잡이는 셋이다 — **행정**(하드스톱 JB-MZ-003 으로 짧게), **업소버**(에너지를
+    더 먹는 완충), 그리고 **서보**(공압을 버리고 위치 제어로). 셋째는 REV.61 에서
+    밖에서 들어온 제안이고, 재 보니 창을 가장 넉넉하게 지킨다 — 서보는 감속을
+    스스로 하므로 애초에 완충에 부딪칠 일이 없다. 대신 축이 하나 늘고, 계약전력
+    여유가 0 인 자리에 얹힌다. **여기서 어느 쪽인지 정하지 않는다** — 필요한
+    상승량이 모델에 없고, 축 증설은 설계 결정이다. 셋을 나란히 재 둘 뿐이다.
     """
     lc = jf.lift_check()
     m = lc["moving_kg"]
@@ -881,6 +1025,9 @@ def lift_budget() -> dict[str, object]:
     homing = homing_time_s()
     t_c = cush["t_stroke_s"]
     stroke_fit = max(0.0, (window - (cush["t_start_s"] or 0.0)) * v_cushion)
+    # 서보로 가면 감속이 프로파일 안에 있다 — 완충 등급이 속도를 안 정한다.
+    t_servo = math.sqrt(SMOOTHSTEP_ACCEL * (jf.LIFT_STROKE_MM / 1000.0)
+                        / AXIS_ACCEL_LIMIT_MS2)
     return {"window_s": window, "homing_s": round(homing, 2), "homing_fits": homing <= window,
             "moving_kg": m, "count": count, "stroke_mm": jf.LIFT_STROKE_MM,
             "cushion_j": round(cushion, 2), "shock_j": SHOCK_ABSORBER_J,
@@ -893,6 +1040,12 @@ def lift_budget() -> dict[str, object]:
             "fits_shock": bool(shock["t_stroke_s"] is not None and shock["t_stroke_s"] <= window),
             "t_down_cushion_s": down["t_stroke_s"],
             "stroke_that_fits_mm": round(stroke_fit),
+            "servo_t_s": round(t_servo, 2),
+            "servo_accel_ms2": AXIS_ACCEL_LIMIT_MS2,
+            "fits_servo": t_servo <= window,
+            "options": (("행정 (하드스톱)", f"{round(stroke_fit)} mm 이하로 줄이면 든다"),
+                        ("업소버", f"{SHOCK_ABSORBER_J:g} J 급 · {shock['t_stroke_s']:.2f} s"),
+                        ("서보", f"위치 제어 · {t_servo:.2f} s · 축 +1")),
             "binding": "승강" if (t_c is None or t_c > homing) else "원점 복귀"}
 
 
