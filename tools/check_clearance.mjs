@@ -31,6 +31,7 @@
  */
 import { chromium } from 'playwright';
 import { resolve } from 'node:path';
+import { browserPath } from './pw_browser.mjs';
 
 const file = process.argv[2] || 'docs/drawings/pv-preprocess-plant.html';
 
@@ -59,6 +60,7 @@ const T0 = 0, T1 = 130, DT = 0.5;
 const TOL_M = 0.002;      // 이보다 얕은 겹침은 수치오차로 본다
 
 const browser = await chromium.launch({
+  executablePath: browserPath(),
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });

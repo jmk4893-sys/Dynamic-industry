@@ -15,6 +15,7 @@
  *     node tools/check_dynamics.mjs [도면.html]
  */
 import { chromium } from 'playwright';
+import { browserPath } from './pw_browser.mjs';
 import { resolve } from 'node:path';
 
 const file = process.argv[2] || 'docs/drawings/pv-infeed-dyn.html';
@@ -27,6 +28,7 @@ const TOL = {
 };
 
 const browser = await chromium.launch({
+  executablePath: browserPath(),
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });

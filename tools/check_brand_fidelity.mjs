@@ -54,6 +54,7 @@ if (!existsSync(REF)) {
 /** brand.py 에서 경로와 색을 그대로 읽어 온다 — 여기서 다시 적지 않는다. */
 const brand = JSON.parse(execFileSync('python3', ['-c', `
 import json, sys
+import { browserPath } from './pw_browser.mjs';
 sys.path.insert(0, 'src')
 from pv_preprocess import brand
 print(json.dumps({
@@ -62,7 +63,8 @@ print(json.dumps({
 }))`], { encoding: 'utf8' }));
 
 const png = readFileSync(resolve(REF));
-const browser = await chromium.launch({ args: ['--force-device-scale-factor=1'] });
+const browser = await chromium.launch({
+  executablePath: browserPath(), args: ['--force-device-scale-factor=1'] });
 const page = await browser.newPage();
 
 // 원본 크기를 브라우저에서 읽고, 같은 크기로 SVG 를 그린다.

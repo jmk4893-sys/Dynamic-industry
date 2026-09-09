@@ -16,6 +16,7 @@
  */
 import { chromium } from 'playwright';
 import { resolve } from 'node:path';
+import { browserPath } from './pw_browser.mjs';
 
 const file = process.argv[2] || 'docs/drawings/pv-preprocess-plant.html';
 
@@ -36,6 +37,7 @@ const OVERLAP_BY_DESIGN = {
 };
 
 const browser = await chromium.launch({
+  executablePath: browserPath(),
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
