@@ -70,16 +70,39 @@ class TestTheValuesComeFromTheDrawingBook(unittest.TestCase):
         self.assertEqual(catch.cylinder_stroke_mm(), 1_450.0)
 
     def test_changing_the_cylinder_changes_the_answer(self):
-        """부품표를 바꿨는데 답이 그대로면 어딘가 리터럴이 남아 있다."""
+        """부품표를 바꿨는데 답이 그대로면 어딘가 리터럴이 남아 있다.
+
+        **부품표에서 읽는 값은 캐시가 걸려 있다** — 적분 안쪽에서 도면집을
+        수만 번 다시 뒤지지 않으려는 것이다. 그래서 흔든 뒤에는 반드시
+        `catch.clear_caches()` 를 부른다. 안 부르면 이 시험이 캐시된 옛 답을
+        보고 「리터럴이 남았다」로 잘못 걸린다.
+        """
         item = dynamics._commercial(catch.SHEET, "CD-RC-01")
         keep = item.name
         try:
             object.__setattr__(item, "name", "로드리스 실린더 Ø63 × 1,450")
+            catch.clear_caches()
             self.assertEqual(catch.cylinder_bore_mm(), 63.0)
             self.assertGreater(catch.hold_force_n(), 1_500.0)
         finally:
             object.__setattr__(item, "name", keep)
+            catch.clear_caches()
         self.assertEqual(catch.cylinder_bore_mm(), 40.0)
+
+    def test_the_cache_is_what_makes_that_shake_need_clearing(self):
+        """캐시가 실제로 걸려 있는지 — 위 시험의 전제를 못 박는다."""
+        item = dynamics._commercial(catch.SHEET, "CD-RC-01")
+        keep = item.name
+        try:
+            catch.clear_caches()
+            before = catch.hold_force_n()
+            object.__setattr__(item, "name", "로드리스 실린더 Ø63 × 1,450")
+            self.assertEqual(catch.hold_force_n(), before, "캐시가 안 걸려 있다")
+            catch.clear_caches()
+            self.assertGreater(catch.hold_force_n(), before)
+        finally:
+            object.__setattr__(item, "name", keep)
+            catch.clear_caches()
 
     def test_the_beam_mass_comes_from_the_section(self):
         """RHS 100×60×3.2 × 2,900 을 손으로 풀면 같은 값이 나와야 한다."""

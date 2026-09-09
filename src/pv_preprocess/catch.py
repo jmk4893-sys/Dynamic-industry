@@ -38,6 +38,7 @@
 
 from __future__ import annotations
 
+import functools
 import math
 import re
 
@@ -118,6 +119,7 @@ def cylinder_stroke_mm() -> float:
 
 
 # ── 움직이는 것 ─────────────────────────────────────────────────────────
+@functools.lru_cache(maxsize=1)
 def beam_mass_kg() -> float:
     """빔 한 본의 질량 (kg) — RHS 단면을 도면집에서 읽어 강재 밀도로 낸다."""
     part = _beam()
@@ -128,12 +130,14 @@ def beam_mass_kg() -> float:
     return volume_m3 * afr.STEEL_DENSITY_KG_M3
 
 
+@functools.lru_cache(maxsize=1)
 def moving_mass_kg() -> float:
     """실린더 한 본이 미는 질량 (kg) — 빔 한 본 + 캐리지."""
     return beam_mass_kg() + CARRIAGE_KG
 
 
 # ── 실린더가 낼 수 있는 힘 ───────────────────────────────────────────────
+@functools.lru_cache(maxsize=8)
 def thrust_n(pressure_mpa: float | None = None) -> float:
     """이론 추력 (N). 압력은 `air.USE_BAR` 사용단에서 온다."""
     if pressure_mpa is None:
@@ -142,6 +146,7 @@ def thrust_n(pressure_mpa: float | None = None) -> float:
     return pressure_mpa * area_mm2                    # MPa·mm² = N
 
 
+@functools.lru_cache(maxsize=1)
 def hold_force_n() -> float:
     """자석 결합이 캐리지에 전할 수 있는 최대 힘 (N).
 
@@ -151,6 +156,7 @@ def hold_force_n() -> float:
     return thrust_n(RODLESS_HOLD_MPA)
 
 
+@functools.lru_cache(maxsize=1)
 def friction_n() -> float:
     """가이드 마찰 (N) — 빔이 수평으로 누워 있으므로 자중이 그대로 수직하중이다."""
     return moving_mass_kg() * dynamics.G * SLIDE_MU
@@ -384,6 +390,19 @@ def two_stage_is_worth_it() -> bool:
     """
     plane, v = design_plane_mm(), design_speed_ms()
     return two_stage()["exposureS"] < round(exposure_s(plane, v), 3)
+
+
+def clear_caches() -> None:
+    """부품표에서 읽는 값들의 캐시를 비운다.
+
+    **적분 안쪽에서 부품표를 다시 읽지 않으려고 캐운 것이다.** 전개 한 번이
+    수만 걸음이고 걸음마다 `friction_n()` 이 불리는데 그때마다 도면집을
+    뒤지면 `telescope.summary()` 한 번이 16 초가 된다 (결정 등록부 생성기를
+    붙이다 잡았다). 부품표를 흔드는 시험은 흔든 뒤 이것을 부른다 — 안 부르면
+    캐시된 옛 답을 보고 「리터럴이 남았다」로 잘못 걸린다.
+    """
+    for fn in (beam_mass_kg, moving_mass_kg, friction_n, hold_force_n, thrust_n):
+        fn.cache_clear()
 
 
 # ── 판정 ────────────────────────────────────────────────────────────────
