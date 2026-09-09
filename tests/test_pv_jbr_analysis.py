@@ -13,6 +13,7 @@ import math
 import pathlib
 import unittest
 
+from pv_preprocess import campaign
 from pv_preprocess import jbr_analysis as ja
 from pv_preprocess import jbr_fabrication as jf
 
@@ -425,6 +426,117 @@ class TestWhatTheSecondPassFound(unittest.TestCase):
         self.assertAlmostEqual(v["accel_ms2"], round(worst, 2), places=2)
         self.assertGreater(v["accel_ms2"], 2.0)
         self.assertTrue(v["ok"])
+
+
+class TestWhatTheThirdPassFound(unittest.TestCase):
+    """REV.61 — 밖에서 온 3 헤드 제안을 재면서 나온 것.
+
+    같은 물음이 세 번째 왔다(REV.59 유압 + 3 헤드, REV.61 공통 갠트리 + 간격 서보
+    + 보강 크로스빔). 두 번은 손으로 스윕해 답했다. 손으로 재면 재는 사람마다
+    답이 달라지므로, 이번에는 **모델이 답하게** 만들고 그 자리를 시험이 지킨다.
+    """
+
+    def test_the_prize_for_more_heads_is_less_than_a_tenth_of_a_second(self):
+        """**헤드를 늘려 버는 것은 정반 점유 0.08 s 다.**
+
+        JBR 을 0 초로 만들어도 라인은 방출 인터록(투입 40 + 스토퍼 8)과 유리제거셀
+        아래로 못 내려간다. 처리량으로는 72.0 → 72.1 장/h 다. 앞단이 빨라져 이
+        상금이 1 초를 넘으면 이 시험이 깨지고, 그때는 헤드 증설을 다시 재야 한다.
+        """
+        p = ja.head_prize()
+        self.assertLess(p["headroom_s"], 1.0)
+        self.assertFalse(p["worth_more_heads"])
+        self.assertLess(p["throughput_gain_per_h"], 1.0)
+        self.assertEqual(p["binding"], "방출 인터록 (투입 + 스토퍼)")
+        self.assertAlmostEqual(p["takt_floor_s"],
+                               campaign.INFEED_S + campaign.JBR_STOPPER_OFFSET_S
+                               + campaign.RELEASE_HOLD_S, places=2)
+
+    def test_the_densest_scenario_caps_the_head_count_at_two(self):
+        """**헤드 수를 정하는 것은 가장 조밀한 시나리오다.**
+
+        도면이 스스로 「3개 · 조밀 위치」(간격 360)를 들고 있다. 헤드 z 발자국이
+        420 이라 그 사이에 셋째가 못 들어간다 — 바깥 둘을 세우면 남는 틈이 300 이다.
+        간격 서보를 달아도 안 바뀐다: 서보는 헤드를 옮기지 좁게 만들지 않는다.
+
+        REV.61 까지 이 해석은 `BOX_Z_M`(비대칭, 간격 460) 하나만 보고 있었고,
+        그 시나리오만 보면 세 기가 선다.
+        """
+        fit = ja.head_fit()
+        self.assertEqual(fit["usable_heads"], 2)
+        self.assertFalse(fit["three_heads_land_everywhere"])
+        worst = fit["worst"]
+        self.assertEqual(worst["key"], "triple-compact")
+        self.assertEqual(worst["boxes"], 3)
+        self.assertEqual(worst["heads"], 2)
+        self.assertLess(worst["clearance_mm"], 0.0)
+        self.assertEqual(worst["sequential_passes"], 2)
+        # 기본 시나리오만 보면 셋이 선다 — 그것이 이 소견이 안 보이던 이유다.
+        wide = next(r for r in fit["rows"] if r["key"] == "triple-wide")
+        self.assertEqual(wide["heads"], 3)
+        self.assertGreater(wide["clearance_mm"], 0.0)
+
+    def test_a_spacing_servo_does_not_make_the_head_narrower(self):
+        """간격 서보를 어디에 두든 판정은 헤드 폭이 정한다."""
+        zs = ja.SCENARIOS["triple-compact"][1]
+        self.assertEqual(ja.simultaneous_heads(zs)["heads"], 2)
+        # 헤드가 좁아져야만 셋이 선다 — 그것은 서보가 사 주는 것이 아니다.
+        self.assertEqual(ja.simultaneous_heads(zs, head_z_mm=340.0)["heads"], 3)
+
+    def test_stiffening_the_bridge_lowers_the_first_mode(self):
+        """**「보강 크로스빔」은 정확히 안 도와주는 부재다.**
+
+        1 차가 굽힘이면 단면을 키우는 것이 정답이지만 이 프레임의 1 차는 흔들림이고,
+        브리지를 키우면 기둥 위 질량이 늘어 오히려 내려간다. 고칠 곳은 기둥이다.
+        """
+        sw = ja.stiffening_sweep()
+        self.assertEqual(sw["base_kind"], "sway")
+        self.assertFalse(sw["stiffening_the_bridge_helps"])
+        self.assertTrue(sw["stiffening_the_column_helps"])
+        self.assertLess(sw["bridge"][-1]["f_hz"], sw["base_f_hz"])
+        self.assertGreater(sw["column"][-1]["f_hz"], 2.0 * sw["base_f_hz"])
+        for row in sw["bridge"] + sw["column"]:
+            self.assertEqual(row["kind"], "sway", "1 차가 굽힘이 되면 이 표의 뜻이 바뀐다")
+
+    def test_the_lift_now_carries_three_answers_and_picks_none(self):
+        """서보가 셋째 답이다 — 창을 가장 넉넉히 지키지만 축이 하나 는다.
+
+        고르는 것은 사람이다. 모델은 셋을 나란히 재 두기만 한다.
+        """
+        lb = ja.lift_budget()
+        self.assertEqual(len(lb["options"]), 3)
+        self.assertIn("서보", [name for name, _note in lb["options"]])
+        self.assertTrue(lb["fits_servo"])
+        self.assertLess(lb["servo_t_s"], lb["t_cushion_s"])
+        self.assertFalse(lb["fits_cushion"], "공압 그대로면 여전히 창을 넘는다")
+        self.assertIsNone(jf.WORKING_PEEL_KN, "서보 이야기가 작업력을 정해 주지는 않는다")
+
+    def test_the_scenario_mirror_matches_the_plant(self):
+        """시나리오 거울은 통합 설계도가 원본이다."""
+        import sys
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "tools"))
+        import build_jbr_closeup as bjc
+        got = {s["key"]: (s["label"], tuple(round(b["z"], 3) for b in s["boxes"]))
+               for s in bjc.scenarios(PLANT.read_text(encoding="utf-8"))}
+        self.assertEqual(set(got), set(ja.SCENARIOS))
+        for key, (label, zs) in ja.SCENARIOS.items():
+            self.assertEqual(got[key][0], label, key)
+            self.assertEqual(got[key][1], tuple(round(z, 3) for z in zs), key)
+        # 기본 시나리오는 거울 안에 있어야 한다 — 두 곳이 갈라지면 안 된다.
+        self.assertEqual(tuple(round(z, 3) for z in ja.BOX_Z_M),
+                         ja.SCENARIOS["triple-wide"][1])
+
+    def test_the_head_footprint_mirror_matches_the_plant(self):
+        """헤드 z 발자국은 부품표가 원본이고, 칼날 개도와 무관하다."""
+        import re
+        text = PLANT.read_text(encoding="utf-8")
+        m = re.search(r"part\('HD-1',[^\[]*\[([\d.]+),\s*([\d.]+),\s*([\d.]+)\]", text)
+        self.assertIsNotNone(m, "통합 설계도에서 part('HD-1', …) 을 못 찾았다")
+        self.assertEqual(float(m.group(3)), ja.HEAD_Z_MM)
+        # 칼날은 x 로 벌어진다 — z 발자국이 개도를 따라가면 이 전제가 깨진다.
+        self.assertIn("left.position.x", text)
+        self.assertGreater(ja.SEQUENCE["openWide"] * 1000.0, ja.HEAD_Z_MM,
+                           "칼날이 z 로 벌어진다면 발자국을 다시 정의해야 한다")
 
 
 if __name__ == "__main__":

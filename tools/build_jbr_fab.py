@@ -551,13 +551,75 @@ def numerical() -> str:
         [f'업소버 {lb["shock_j"]:g} J 두 본 · {lb["shock_speed_mms"]} mm/s', f'{lb["t_shock_s"]:.2f} s',
          f'{lb["shock_speed_mms"]} mm/s', f'{lb["shock_j"]:g} J', "든다" if lb["fits_shock"] else "<b>안 든다</b>"],
         [f'쿠션 속도로 {lb["stroke_that_fits_mm"]} mm 행정 (하드스톱)', f'{lb["window_s"]:g} s', "—", f'{lb["cushion_j"]:g} J', "꽉 찬다"],
+        [f'<b>서보로 교체</b> (공압을 버린다 · 축 +1)', f'<b>{lb["servo_t_s"]:.2f} s</b>',
+         f'감속을 스스로 한다', "완충 불필요",
+         "<b class='ok'>든다</b>" if lb["fits_servo"] else "<b>안 든다</b>"],
     ]))
     out.append(f'<div class="note">Y 원점 복귀는 축 한계 smoothstep 으로 {lb["homing_s"]:g} s 다 — 같은 창 안에서 '
                f'병행하지만, 쿠션에 맞춰 조이면 승강이 더 길어 <b>관문이 {lb["binding"]}</b>이다. '
                f'REV.59 가 「실측 하나」로 남긴 원점 복귀 1.8 s 의 공압 몫은 이렇게 갈린다: 힘으로는 '
                f'{lb["free_t_s"]:.2f} s 면 되지만 그 속도로는 닿을 수 없다. 6.4 절과 같은 자리다.</div>')
+    out.append(
+        f'<div class="note"><b>손잡이가 셋이고 여기서 고르지 않는다.</b> '
+        + " · ".join(f"<b>{esc(name)}</b> {esc(note)}" for name, note in lb["options"])
+        + f'. 서보는 위치 제어라 감속이 프로파일 안에 있어 애초에 완충에 부딪칠 일이 없고 '
+          f'{lb["servo_t_s"]:.2f} s 로 창을 가장 넉넉히 지킨다 — REV.61 에 밖에서 들어온 제안이다. '
+          f'대신 축이 하나 늘고, 계약전력 동시 최악 여유가 0 인 자리에 얹힌다. '
+          f'<b>필요한 상승량이 모델에 없어 고를 수 없다</b> — 셋을 나란히 재 두는 데까지가 '
+          f'이 도면집의 몫이다.</div>')
 
     bf = ja.bin_fill()
+    hf = ja.head_fit()
+    hp = ja.head_prize()
+    sw = ja.stiffening_sweep()
+    out.append("<h3>9.5.1 헤드를 몇 기 세울 수 있는가 — 조밀 시나리오가 정한다</h3>")
+    out.append(table(["검출 시나리오", "박스 z (mm)", "최소 간격", f'헤드 폭 {ja.HEAD_Z_MM:g} 대비 틈',
+                      "동시 헤드", "순차 회차"],
+                     [[esc(r["label"]),
+                       " · ".join(f"{z * 1000:+.0f}" for z in r["z"]),
+                       "—" if r["min_gap_mm"] is None else f'{r["min_gap_mm"]:.0f} mm',
+                       "—" if r["clearance_mm"] is None else
+                       (f'{r["clearance_mm"]:+.0f} mm' if r["clearance_mm"] > 0
+                        else f'<b class="bad">{r["clearance_mm"]:+.0f} mm</b>'),
+                       f'<b>{r["heads"]}</b> 기', f'{r["sequential_passes"]} 회']
+                      for r in hf["rows"]]))
+    out.append(
+        f'<div class="note warn"><b>헤드 수를 정하는 것은 가장 조밀한 시나리오다.</b> '
+        f'도면이 스스로 「{esc(hf["worst"]["label"])}」(간격 {hf["worst"]["min_gap_mm"]:.0f})를 들고 있고, '
+        f'헤드 z 발자국이 {ja.HEAD_Z_MM:g} 이라 그 사이에 셋째가 못 들어간다 — 바깥 둘을 세우면 '
+        f'남는 틈이 {hf["worst"]["min_gap_mm"] - ja.HEAD_Z_MM:.0f} 다. 그래서 세 기를 달아도 '
+        f'<b>쓸 수 있는 것은 {hf["usable_heads"]} 기</b>이고, 그 시나리오에서 순차로 내려앉는다. '
+        f'<b>간격 서보로는 안 풀린다</b> — 서보는 헤드를 옮기지 좁게 만들지 않는다. '
+        f'칼날은 x 로 벌어지므로(원본 <span class="mono">left.position.x</span>) 이 발자국은 '
+        f'개도와 무관하다.</div>')
+    out.append(table(["항목", "값"], [
+        ["JBR 정반 점유 (지금)", f'{hp["jbr_block_s"]:.2f} s'],
+        ["택트 바닥 — JBR 이 0 초여도", f'<b>{hp["takt_floor_s"]:.2f} s</b> · {esc(hp["binding"])}'],
+        ["헤드 증설의 상금", f'<b>{hp["headroom_s"]:.2f} s</b> = {hp["throughput_gain_per_h"]:.2f} 장/h'],
+        ["지금 처리량", f'{hp["throughput_per_h"]:g} 장/h · 택트 {hp["takt_s"]:.2f} s'],
+    ]))
+    out.append(
+        f'<div class="note warn"><b>헤드를 늘려도 라인은 안 빨라진다.</b> 방출 인터록'
+        f'(투입 {campaign.INFEED_S:g} + 스토퍼 {campaign.JBR_STOPPER_OFFSET_S:g} = '
+        f'{hp["interlock_s"]:g} s)과 유리제거셀이 앞뒤로 막는다. 같은 제안이 세 번 왔고'
+        f'(REV.59 유압 + 3 헤드 동시, REV.61 공통 갠트리 + 간격 서보 3 헤드) 세 번 다 같은 벽이라, '
+        f'이제 <span class="mono">campaign.jbr_headroom_s()</span> 가 답한다 — 앞단이 빨라져 이 '
+        f'상금이 1 초를 넘으면 시험이 깨지고 그때 다시 잰다.</div>')
+    out.append("<h3>9.5.2 「보강 크로스빔」은 안 도와주는 부재다</h3>")
+    out.append(table(["키우는 곳", "단면", "1 차", "기준 대비"],
+                     [["브리지"] + [esc(r["label"]), f'{r["f_hz"]:.2f} Hz ({r["kind"]})',
+                       f'<b class="bad">{r["delta_hz"]:+.2f}</b>' if r["delta_hz"] < 0
+                       else f'{r["delta_hz"]:+.2f}'] for r in sw["bridge"]]
+                     + [["기둥"] + [esc(r["label"]), f'{r["f_hz"]:.2f} Hz ({r["kind"]})',
+                        f'<b class="ok">{r["delta_hz"]:+.2f}</b>' if r["delta_hz"] > 0
+                        else f'{r["delta_hz"]:+.2f}'] for r in sw["column"]]))
+    out.append(
+        f'<div class="note"><b>1 차가 굽힘이 아니라 흔들림이라 그렇다.</b> 굽힘이면 단면을 키우는 '
+        f'것이 정답이지만, 흔들림은 기둥 강성 대 <b>기둥 위 질량</b>이 정한다 — 브리지를 키우면 '
+        f'그 질량이 늘어 {sw["base_f_hz"]:.2f} → {sw["bridge"][-1]["f_hz"]:.2f} Hz 로 내려간다. '
+        f'기둥을 {esc(sw["column"][1]["label"])} 로 바꾸면 {sw["column"][1]["f_hz"]:.2f} Hz 다. '
+        f'<b>고칠 곳은 기둥이고, 그것은 이 판 밖이다</b>(현행 1 헤드에서도 datum 을 못 지킨다는 '
+        f'사실은 남는다).</div>')
     out.append("<h3>9.6 수거함 — 「비움 주기 미결」을 숫자로</h3>")
     eng = (f'{bf["engine_panels"]} 장 · {bf["engine_boxes"]} 개 · 채움 {bf["engine_fill_m"] * 1000:.0f} mm '
            f'(충전율 {bf["engine_packing"]:.0%}) — <b>{bf["engine_minutes"]:g} 분</b> 마다 · '
@@ -636,6 +698,11 @@ def open_items() -> str:
          f"{ja.lift_budget()['free_over_cushion']:g} 배다. 쿠션 속도로 조이면 창 1.8 s 를 넘는다. 행정을 "
          "하드스톱으로 줄일지 업소버를 달지는 필요한 상승량이 정한다 — 그 값이 모델에 없다.",
          "6.4 절 · 9.5 절"],
+        ["<b>승강을 서보로 바꿀 것인가</b>",
+         "REV.61 에 밖에서 들어온 제안이다. 위치 제어라 감속이 프로파일 안에 있어 완충 등급이 "
+         f"속도를 안 정하고, {ja.lift_budget()['servo_t_s']:.2f} s 로 창을 가장 넉넉히 지킨다. "
+         "대신 축이 하나 늘고 계약전력 동시 최악 여유가 0 이다. 행정·업소버와 나란히 재 뒀을 뿐 "
+         "고르지 않았다 — 셋 다 상승량이 정해져야 값이 선다.", "9.5 절"],
         ["<b>브리지 임시 호퍼 플랩</b>",
          "순차가 새로 요구한 부품(JB-WH-008). 헤드는 한 번에 하나만 들므로 놓을 자리가 있어야 "
          "하고, 없으면 박스마다 브리지를 슈트까지 왕복시켜야 한다. 플랩 구동·열림 확인 2 점과 "
