@@ -22,7 +22,7 @@ from . import _path  # noqa: F401
 
 from pv_preprocess import (acceptance, access, acoustics, afr, afr_peel, ai, air, brand, campaign, casing, crane, dust,
                            electrical,
-                           frames, grade, handoff, kinematics, layout, maintain, materials, mounting,
+                           frames, gbr_load, grade, handoff, kinematics, layout, maintain, materials, mounting,
                            recipe, reliability, safety, seismic, sg_grind, smart, servos, thermal,
                            vision, wiring)
 
@@ -1070,7 +1070,9 @@ class TestCarriageLoader(unittest.TestCase):
     심사 지적 4건(픽업 후퇴·선단받이·기계 동기·제어반 위치)이 반영돼 있어야 한다.
     """
 
-    ROWS = {"A": -2350, "H": 0, "B": 2350}
+    # 행 중심은 `gbr_load` 가 제약에서 낸다 — 여기 리터럴로 두면 이 시험이
+    # 옛 자리를 고집해, 행을 옮기는 순간 «맞는 값»을 틀렸다고 잡는다.
+    ROWS = {"A": -gbr_load.ROW_Z_MM, "H": 0, "B": gbr_load.ROW_Z_MM}
 
     @classmethod
     def setUpClass(cls):
@@ -1117,13 +1119,31 @@ class TestCarriageLoader(unittest.TestCase):
         self.assertLessEqual(stroke, 1.6 * length, "2단 텔레스코픽 범위를 넘는 스트로크다")
 
     def test_fork_lanes_clear_the_slot_rails(self):
-        """포크(z 행중심 ±620±60)와 슬롯 레일 내측(±702.5)의 z 분리 — 관문 값 22.5."""
+        """포크와 슬롯 선반 레일 안쪽 모서리의 z 분리.
+
+        종전에는 레일이 ±702.5…757.5 라 **유리(±700)에 닿지 않았고**, 시험은 그
+        닿지 않는 레일을 기준으로 포크를 재고 있었다. 이제 레일이 유리를 물도록
+        안으로 왔고(`gbr_load.shelf_edges_mm()`), 포크는 그 안쪽으로 최소 여유만큼
+        물러난다 — 두 값 다 모델에서 온다.
+        """
+        inner = gbr_load.shelf_edges_mm()[0]
         for row, center in self.ROWS.items():
-            for tag, sign in ((f"FKO-{row}", -1), (f"FKI-{row}", 1)):
+            for tag in (f"FKO-{row}", f"FKI-{row}"):
                 z_lo, z_hi = part_span(self.buffer, tag, axis=2)
                 edge = max(abs(z_lo - center), abs(z_hi - center))
                 with self.subTest(part=tag):
-                    self.assertLessEqual(edge, 702.5 - 20, "포크가 슬롯 레일 공간을 침범한다")
+                    self.assertLessEqual(edge, inner - gbr_load.MIN_CLEARANCE_MM,
+                                         "포크가 슬롯 레일 공간을 침범한다")
+
+    def test_slot_rails_actually_carry_the_glass(self):
+        """레일이 유리 밑으로 들어와 있어야 한다 — 강체 적분이 잡아낸 자리다."""
+        inner, outer = gbr_load.shelf_edges_mm()
+        self.assertLess(inner, gbr_load.GLASS_W_MM / 2,
+                        "선반 레일이 유리 가장자리 밖이라 유리가 안 얹힌다")
+        self.assertGreaterEqual(gbr_load.GLASS_W_MM / 2 - inner,
+                                gbr_load.SHELF_BEARING_MM)
+        self.assertGreaterEqual(outer, gbr_load.POST_Z_MM - gbr_load.POST_MM / 2,
+                                "레일 바깥이 기둥에 안 물려 하중 경로가 없다")
 
     def test_tip_guides_ride_with_the_carriage(self):
         """심사 지적 2: 선단받이 레일은 캐리지 X 구간 안(볼트온)이어야 교환을 막지 않는다."""
@@ -1140,7 +1160,8 @@ class TestCarriageLoader(unittest.TestCase):
         self.assertLessEqual(hi, 325, "제어반이 캐리지 교환 회랑 바닥에 서 있다")
 
     def test_catalog_matches_the_sheet(self):
-        self.assertEqual(catalog_size(self.html, "AFR-TF-810"), [2600, 120, 95])
+        self.assertEqual(catalog_size(self.html, "AFR-TF-810"),
+                         [2600, 120, int(gbr_load.FORK_H_MM)])
         self.assertEqual(catalog_size(self.html, "AFR-ML-811"), [170, 2770, 2200])
         self.assertEqual(catalog_size(self.html, "AFR-TG-813"), [60, 50, 2100])
         fork_lo, fork_hi = part_span(self.buffer, "FKO-A")
