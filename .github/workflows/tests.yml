@@ -20,6 +20,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: 의존성 설치
+        # tests/ 는 flotation_design(의존성 없음)과 blastsim(numpy · matplotlib ·
+        # scipy) 두 묶음을 함께 담고 있다. 설치하지 않으면 blastsim 테스트가
+        # import 단계에서 죽는다.
+        run: python -m pip install -r requirements.txt
+
       - name: 테스트 실행
         run: python -m unittest discover -s tests -t . --verbose
 
