@@ -6,7 +6,9 @@ Dynamic industry Development
 
 폐 태양광 모듈(c-Si)에서 박리한 셀 분획으로부터 **은(Ag)** 을 부유선별로 농축하는
 설비의 설계와 계산 코드. 셀 분획을 공급하는 상류 분리설비(DG-HK60)는
-[3D 운전 콘솔](docs/drawings/pv-delamination-3d.html)로 별도 정리했다.
+[3D 운전 콘솔](docs/drawings/pv-delamination-3d.html)로, 미세입자(≈75 µm) EVA·백시트
+분리를 검증할 50 L 파일럿(MP-50)은 [3D 조립 분해도](docs/drawings/mp-50-3d.html)로
+별도 정리했다.
 
 - 평균 **0.30 t/h**, 최대 **0.50 t/h** (건조 고체 기준)
 - **세척수 bias 연속 부선조 1단, Ø350 mm × 라이저 2.4 m** (대안: 기계식 러퍼·스캐빈저·클리너 3단)
@@ -35,6 +37,7 @@ Dynamic industry Development
 | [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 7매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
 | [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 13종, 열수지 계산기 (브라우저로 열 것) |
+| [docs/drawings/mp-50-3d.html](docs/drawings/mp-50-3d.html) | **MP-50 3D 조립 분해도** — 미세입자(≈75 µm)용 EVA·백시트 분리기 50 L 파일럿. 제작도 MP-50-P0-001 Rev P0 의 부품 34점을 3D 로 옮겼다. 분해·컷어웨이·충수 운전 표시, 도면 검토 지적 7건 (브라우저로 열 것) |
 
 ### 사용법
 
@@ -44,7 +47,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (286건)
+python -m unittest discover -s tests -t .                               # 테스트 (371건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
