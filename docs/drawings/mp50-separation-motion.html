@@ -1,0 +1,950 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="MP-50 염수 자연 밀도분리조의 층분리 거동을 시간축으로 재생한다. 분산 정지 t=0 이후 EVA·백시트는 떠오르고 실리콘은 콘으로 가라앉는 과정을 도면 MP-50-P0-004 의 Stokes / Schiller-Naumann 모델 그대로 입자 단위로 계산해 보인다.">
+<title>MP-50 층분리 거동 시뮬레이터</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap">
+
+<style>
+  :root{
+    --bg:#EBEFF1; --surface:#FFFFFF; --surface-2:#F4F7F8; --surface-3:#E7ECEE;
+    --ink:#151D22; --ink-2:#54626B; --ink-3:#7C8A93;
+    --line:#C3CCD1; --line-2:#98A5AC; --rule:#D8DFE2;
+    --stage-1:#E9EEEF; --stage-2:#CFD9DC;
+    --steel:#7E8C94; --steel-2:#AFBBC1;
+    --brine:#4E8E96; --brine-ink:#0F6E7A;
+    --eva:#C07C10; --bs:#B03060; --si:#2A6FD6;
+    --air:#2F8E9B; --warn:#A8442C; --good:#2C6B52;
+    --focus:#0F6E7A;
+    --sans:"IBM Plex Sans KR",system-ui,-apple-system,"Malgun Gothic",sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0D1216; --surface:#141B20; --surface-2:#192228; --surface-3:#202B32;
+      --ink:#E3E9ED; --ink-2:#9BA9B2; --ink-3:#78868F;
+      --line:#2D3941; --line-2:#4E5D66; --rule:#263138;
+      --stage-1:#131A1F; --stage-2:#070B0D;
+      --steel:#7B8992; --steel-2:#3D4A52;
+      --brine:#3E7C86; --brine-ink:#59B3BF;
+      --eva:#C6862B; --bs:#CC5E7E; --si:#4A90DC;
+      --air:#5CB3BE; --warn:#DD8468; --good:#63B58C;
+      --focus:#59B3BF;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0D1216; --surface:#141B20; --surface-2:#192228; --surface-3:#202B32;
+    --ink:#E3E9ED; --ink-2:#9BA9B2; --ink-3:#78868F;
+    --line:#2D3941; --line-2:#4E5D66; --rule:#263138;
+    --stage-1:#131A1F; --stage-2:#070B0D;
+    --steel:#7B8992; --steel-2:#3D4A52;
+    --brine:#3E7C86; --brine-ink:#59B3BF;
+    --eva:#C6862B; --bs:#CC5E7E; --si:#4A90DC;
+    --air:#5CB3BE; --warn:#DD8468; --good:#63B58C;
+    --focus:#59B3BF;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+       line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1200px;margin:0 auto;padding-block:40px 80px;padding-left:20px;padding-right:20px;
+        display:flex;flex-direction:column;gap:30px}
+  :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+  .eyebrow{font-family:var(--mono);font-size:11.5px;font-weight:500;letter-spacing:.15em;
+           text-transform:uppercase;color:var(--ink-3);margin:0}
+  h1{margin:10px 0 0;font-size:clamp(25px,3.9vw,38px);font-weight:600;letter-spacing:-.02em;
+     line-height:1.18;text-wrap:balance}
+  .lede{margin:13px 0 0;max-width:64ch;color:var(--ink-2);font-size:15.5px;font-weight:300}
+  header{border-bottom:2px solid var(--line-2);padding-bottom:22px}
+  header .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+  .theme-btn{flex:none;font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink-2);
+             background:var(--surface);border:1px solid var(--line);padding:6px 10px;cursor:pointer}
+  .theme-btn:hover{color:var(--ink);border-color:var(--line-2)}
+
+  /* ── 플레이어 ───────────────────────────────────────────── */
+  .player{border:1px solid var(--line);background:var(--surface);display:grid;
+          grid-template-columns:minmax(0,1fr) 316px}
+  .stage{position:relative;grid-column:1;min-height:560px;
+         background:radial-gradient(ellipse 90% 80% at 46% 42%,var(--stage-1) 0%,var(--stage-2) 100%);
+         overflow:hidden}
+  .stage canvas{display:block;width:100%;height:100%}
+  .badge{position:absolute;left:14px;top:12px;display:flex;gap:6px;align-items:center;
+         font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--ink-2);
+         background:color-mix(in srgb,var(--surface) 78%,transparent);
+         border:1px solid var(--line);padding:4px 8px;pointer-events:none}
+  .badge b{color:var(--ink);font-weight:600}
+  .dotlive{width:6px;height:6px;border-radius:50%;background:var(--warn)}
+  .dotlive.settle{background:var(--brine-ink)}
+  .dotlive.done{background:var(--good)}
+
+  .rail{grid-column:2;border-left:1px solid var(--line);background:var(--surface-2);
+        display:flex;flex-direction:column;min-width:0}
+  .rail section{padding:14px 16px;border-bottom:1px solid var(--rule)}
+  .rail h2{margin:0 0 10px;font-family:var(--mono);font-size:10.5px;font-weight:600;
+           letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+
+  .clock{display:flex;align-items:baseline;gap:8px;font-family:var(--mono)}
+  .clock .t{font-size:31px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .clock .u{font-size:12px;color:var(--ink-3)}
+  .phase{margin-top:4px;font-size:12.5px;color:var(--ink-2)}
+
+  .kpis{display:flex;flex-direction:column;gap:11px}
+  .kpi{display:grid;grid-template-columns:9px minmax(0,1fr) auto;gap:9px;align-items:baseline}
+  .swatch{width:9px;height:9px;margin-top:5px}
+  .swatch.eva{background:var(--eva);border-radius:50%}
+  .swatch.bs{background:var(--bs)}
+  .swatch.si{background:var(--si);clip-path:polygon(50% 0,100% 100%,0 100%)}
+  .kpi .nm{font-size:12.5px;color:var(--ink-2);min-width:0}
+  .kpi .nm small{display:block;font-size:10.5px;color:var(--ink-3);font-family:var(--mono)}
+  .kpi .v{font-family:var(--mono);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;
+          white-space:nowrap}
+  .kpi.miss .v{color:var(--warn)}
+  .kpi.hit .v{color:var(--good)}
+
+  .gate{margin-top:12px;padding-top:11px;border-top:1px solid var(--rule);
+        font-size:12px;color:var(--ink-2);display:flex;justify-content:space-between;
+        align-items:baseline;gap:10px}
+  .gate .gl small{display:block;font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+  .gate .gv{display:flex;align-items:baseline;gap:7px;white-space:nowrap}
+  .gate b{font-family:var(--mono);font-weight:600}
+  .gate .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;padding:1px 6px;
+             border:1px solid currentColor}
+  .tag.miss{color:var(--warn)}
+  .tag.hit{color:var(--good)}
+
+  .chartbox{position:relative}
+  .chartbox canvas{display:block;width:100%;height:150px}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 13px;margin-top:8px;font-size:11.5px;color:var(--ink-2)}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .legend i{width:9px;height:9px;display:inline-block}
+  .legend i.eva{background:var(--eva);border-radius:50%}
+  .legend i.bs{background:var(--bs)}
+  .legend i.si{background:var(--si);clip-path:polygon(50% 0,100% 100%,0 100%)}
+
+  .ctl{display:flex;flex-direction:column;gap:12px}
+  .ctl .row{display:flex;flex-direction:column;gap:5px}
+  .ctl label{font-size:12px;color:var(--ink-2);display:flex;justify-content:space-between;gap:8px}
+  .ctl label b{font-family:var(--mono);font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+  .seg{display:flex;border:1px solid var(--line)}
+  .seg button{flex:1;font-family:var(--mono);font-size:11.5px;padding:5px 0;background:var(--surface);
+              color:var(--ink-2);border:0;border-right:1px solid var(--line);cursor:pointer}
+  .seg button:last-child{border-right:0}
+  .seg button[aria-pressed="true"]{background:var(--brine-ink);color:#fff}
+  .seg button:hover:not([aria-pressed="true"]){color:var(--ink);background:var(--surface-3)}
+  input[type=range]{width:100%;accent-color:var(--brine-ink);margin:0}
+  .presets{display:flex;gap:8px}
+  .presets button{flex:1;font-size:12px;padding:7px 4px;background:var(--surface);color:var(--ink);
+                  border:1px solid var(--line-2);cursor:pointer;font-family:var(--sans)}
+  .presets button:hover{border-color:var(--brine-ink);color:var(--brine-ink)}
+  .note-s{font-size:11.5px;color:var(--ink-3);margin:8px 0 0}
+
+  /* ── 트랜스포트 ─────────────────────────────────────────── */
+  .transport{grid-column:1 / -1;border-top:1px solid var(--line);background:var(--surface);
+             display:flex;align-items:center;gap:14px;padding:11px 16px;flex-wrap:wrap}
+  .play{width:40px;height:40px;flex:none;border:1px solid var(--line-2);background:var(--surface);
+        color:var(--ink);cursor:pointer;display:grid;place-items:center}
+  .play:hover{border-color:var(--brine-ink);color:var(--brine-ink)}
+  .play svg{width:15px;height:15px;fill:currentColor}
+  .scrubwrap{flex:1 1 260px;min-width:200px;display:flex;flex-direction:column;gap:5px}
+  .track{position:relative;height:24px;display:flex;align-items:center}
+  .track .segs{position:absolute;inset:9px 0 auto;height:6px;display:flex;pointer-events:none}
+  .track .segs div{height:100%;border-right:1px solid var(--surface)}
+  .track input[type=range]{position:relative;background:transparent}
+  .marks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;
+         color:var(--ink-3);font-variant-numeric:tabular-nums}
+  .speed{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2)}
+  .speed .seg{width:168px}
+
+  /* ── 본문 ───────────────────────────────────────────────── */
+  .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:26px}
+  h3{margin:0 0 8px;font-size:15.5px;font-weight:600;letter-spacing:-.01em}
+  p{margin:0 0 11px;font-size:14px;color:var(--ink-2);font-weight:300;max-width:64ch}
+  p b,li b{color:var(--ink);font-weight:500}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  .chapters{display:flex;flex-direction:column;border-top:1px solid var(--line-2)}
+  .chapters button{display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;text-align:left;
+                   padding:12px 8px;background:none;border:0;border-bottom:1px solid var(--rule);
+                   cursor:pointer;color:inherit;font-family:var(--sans);align-items:baseline}
+  .chapters button:hover{background:var(--surface-2)}
+  .chapters .tc{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--brine-ink);
+                font-variant-numeric:tabular-nums}
+  .chapters .tx{font-size:13.5px;color:var(--ink-2);font-weight:300}
+  .chapters .tx b{display:block;color:var(--ink);font-weight:500;font-size:14px;margin-bottom:1px}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;min-width:520px;font-size:12.5px}
+  caption{caption-side:top;text-align:left;padding:10px 12px;font-family:var(--mono);font-size:10.5px;
+          letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);
+          border-bottom:1px solid var(--rule)}
+  th,td{padding:7px 12px;text-align:left;border-bottom:1px solid var(--rule)}
+  thead th{font-weight:500;color:var(--ink-3);font-size:11.5px;background:var(--surface-2)}
+  td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  tbody tr:last-child td{border-bottom:0}
+  td.up{color:var(--eva)} td.dn{color:var(--si)} td.neu{color:var(--ink-3)}
+
+  .callout{border-left:3px solid var(--warn);background:var(--surface);padding:13px 15px}
+  .callout p:last-child{margin-bottom:0}
+  footer{border-top:1px solid var(--rule);padding-top:16px;font-size:12px;color:var(--ink-3);
+         display:flex;flex-wrap:wrap;gap:6px 20px;font-family:var(--mono)}
+
+  @media (max-width:940px){
+    .player{grid-template-columns:minmax(0,1fr)}
+    .stage{grid-column:1;min-height:400px;height:58vh}
+    .rail{grid-column:1;border-left:0;border-top:1px solid var(--line)}
+    .transport{order:3}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="top">
+    <div>
+      <p class="eyebrow">MP-50-P0-004 · 층분리 운동학 · Rev.A</p>
+      <h1>정지한 뒤 600 초 동안 무슨 일이 일어나는가</h1>
+    </div>
+    <button class="theme-btn" id="theme" type="button">테마</button>
+  </div>
+  <p class="lede">임펠러와 공기를 <b>동시에</b> 끊은 순간이 t&nbsp;=&nbsp;0 이다. 그 뒤로는 중력과 부력만 남는다.
+    EVA 와 백시트는 액면 Z720 으로 올라가 FLOAT 층을 만들고, 실리콘은 60° 콘으로 내려가 SINK 층이 된다.
+    아래 재생 화면은 그 과정을 도면이 쓴 식 그대로 입자 1,000 개에 적용해 계산한 것이다.</p>
+</header>
+
+<div class="player">
+  <div class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="badge"><span class="dotlive" id="dot"></span><span id="phaseTag">분산</span> · <b id="tagRun">MP-50</b></div>
+  </div>
+
+  <div class="rail">
+    <section>
+      <h2>경과 시간</h2>
+      <div class="clock"><span class="t" id="clock">+000</span><span class="u">s · 정지 기준</span></div>
+      <div class="phase" id="phaseLine">임펠러 90 rpm · 공기 5 L/min</div>
+    </section>
+
+    <section>
+      <h2>층 도달률 (질량 기준)</h2>
+      <div class="kpis">
+        <div class="kpi" id="kEva"><i class="swatch eva"></i>
+          <span class="nm">EVA → FLOAT<small>ρ 920–980</small></span><span class="v">0.0 %</span></div>
+        <div class="kpi" id="kBs"><i class="swatch bs"></i>
+          <span class="nm">백시트 → FLOAT<small>ρ 1010–1110</small></span><span class="v">0.0 %</span></div>
+        <div class="kpi" id="kSi"><i class="swatch si"></i>
+          <span class="nm">실리콘 → SINK<small>ρ 2330</small></span><span class="v">0.0 %</span></div>
+      </div>
+      <div class="gate">
+        <span class="gl">P10 Top polymer recovery<small>목표 ≥ 80 %</small></span>
+        <span class="gv"><b id="polyv">0.0 %</b><span class="tag miss" id="polytag">미달</span></span>
+      </div>
+    </section>
+
+    <section>
+      <h2>도달률 곡선</h2>
+      <div class="chartbox"><canvas id="chart"></canvas></div>
+      <div class="legend">
+        <span><i class="eva"></i>EVA</span><span><i class="bs"></i>백시트</span><span><i class="si"></i>실리콘</span>
+        <span>―― 판정 창 600 s</span>
+      </div>
+    </section>
+
+    <section>
+      <h2>운전 조건</h2>
+      <div class="ctl">
+        <div class="row">
+          <label for="salt">염수 농도 <b><span id="saltv">15</span> wt% · ρ <span id="rhov">1111</span></b></label>
+          <div class="seg" id="salt" role="group" aria-label="염수 농도">
+            <button type="button" data-w="12">12 %</button>
+            <button type="button" data-w="15" aria-pressed="true">15 %</button>
+            <button type="button" data-w="18">18 %</button>
+          </div>
+        </div>
+        <div class="row">
+          <label for="att">잔류 기포 부착률 <b><span id="attv">80</span> %</b></label>
+          <input type="range" id="att" min="0" max="100" step="10" value="80">
+        </div>
+        <div class="presets">
+          <button type="button" id="pAir">공기 ON · 부착 80 %</button>
+          <button type="button" id="pNoAir">공기 OFF · 밀도차만</button>
+        </div>
+        <p class="note-s">부착률은 분산 중 붙은 Ø200 µm 기포가 정지 후에도 남아 있는 폴리머 입자의 비율이다.
+          0 % 로 두면 순수 밀도차만 남는다.</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="transport">
+    <button class="play" id="play" type="button" aria-label="재생">
+      <svg id="playIcon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5 14 8 3 14.5z"></path></svg>
+    </button>
+    <div class="scrubwrap">
+      <div class="track">
+        <div class="segs" id="segs"></div>
+        <input type="range" id="scrub" min="-60" max="660" step="1" value="660" aria-label="시간 이동">
+      </div>
+      <div class="marks"><span>−60 s 분산</span><span>0 정지</span><span>+300</span><span>+600 판정</span></div>
+    </div>
+    <div class="speed"><span>배속</span>
+      <div class="seg" id="speed" role="group" aria-label="배속">
+        <button type="button" data-s="10">10×</button>
+        <button type="button" data-s="30" aria-pressed="true">30×</button>
+        <button type="button" data-s="60">60×</button>
+        <button type="button" data-s="120">120×</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cols">
+  <div>
+    <h3>화면에서 확인할 것</h3>
+    <p>시간을 눌러 그 장면으로 바로 이동한다. 시각은 설계 조건(15 wt%, 부착률 80 %)에서 계산된 값이다.</p>
+    <div class="chapters" id="chapters"></div>
+  </div>
+  <div>
+    <h3>왜 공기가 회수율을 정하는가</h3>
+    <p>「공기 OFF」 를 눌러 보면 폴리머 무리가 거의 제자리에 머문다. 31–45 µm 백시트는 15 % 염수에서
+      밀도차가 사실상 0 이라 <b>영원히 뜨지 않는다</b> — 화면 중앙에 떠 있는 입자들이 그것이다.</p>
+    <p>Ø200 µm 기포 하나가 붙으면 등가밀도가 <span class="mono">7.9 kg/m³</span> 로 떨어져 통과시간이
+      <span class="mono">4,593 s → 25 s</span> 로 바뀐다. 그래서 공기는 분산 수단이 아니라
+      <b>회수율 변수</b>이고, DOE 의 Air 0/3/5/8/10 이 KPI 를 크게 흔든다.</p>
+    <div class="callout">
+      <p><b>부착률은 아직 측정값이 아니다.</b> KPI 80 % 를 채우려면 정치 종료까지 기포를 유지한 비율이
+        EVA ≥ 69 %, 백시트 ≥ 77 % 여야 한다. T3 에서 기포경·잔류 부착률·부착 지속시간을 실제로 재기 전까지
+        이 슬라이더는 <span class="mono">ASSUMED</span> 다.</p>
+    </div>
+  </div>
+</div>
+
+<div class="tablewrap">
+  <table>
+    <caption>종말속도와 373.6 mm 통과시간 — 15 wt% 염수 (ρ 1111.3 · µ 1.27 mPa·s), 기포 없음</caption>
+    <thead><tr><th>재질</th><th>유효밀도 ρ ± σ (kg/m³)</th><th class="n">31–45 µm</th><th class="n">45–60 µm</th><th class="n">60–75 µm</th><th>거동</th></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<div class="cols">
+  <div>
+    <h3>모델</h3>
+    <p>입자마다 유효밀도를 <span class="mono">N(µ, σ)</span> 에서 뽑고, Stokes 로 초기값을 잡은 뒤
+      Schiller-Naumann 항력으로 종말속도를 수렴시킨다. 기포가 붙은 입자는 등가밀도·등가경으로 바꿔 다시 푼다.
+      정지 직후의 잔류 난류는 <span class="mono">exp(−t/τ), τ = 20 s</span> 로 감쇠시킨다.</p>
+    <p>초기 위치는 액면 Z720 아래 전 용적에 체적비로 뿌린다. 도면 004 는 같은 조건(기포 없음)에서
+      도달률을 <span class="mono">EVA 34.5 %, 백시트 13.8 %</span> 로 적는데, 이 화면은 그보다 낮게 나온다.
+      도면은 <span class="mono">min(1, v·t/L)</span> 로 이동거리를 <span class="mono">L = 373.6 mm</span> 균등
+      가정하지만, 여기서는 콘 안에서 출발한 입자가 실제로 더 먼 거리를 올라가기 때문이다.</p>
+  </div>
+  <div>
+    <h3>한계</h3>
+    <p>여기 나오는 속도·시간은 <b>설계 참고값이며 성능 보증값이 아니다.</b> 응집·간섭침강·벽면 효과·형상계수를
+      넣지 않은 단일 입자 모델이고, 유효밀도 분포와 난류 감쇠 τ 는 아직 가정이다.</p>
+    <p>실측 데이터로 유효밀도 µ·σ, 항력 보정계수, τ, 형상계수를 역추정한 뒤에야
+      <span class="mono">ASSUMED → CALIBRATED</span> 로 바꿀 수 있다.</p>
+  </div>
+</div>
+
+<footer>
+  <span>MP-50 염수 자연 밀도분리조 (50 L 파일럿)</span>
+  <span>기준 도면 MP-50-P0-001 ~ 011 Rev.A</span>
+  <span>콘 정점 Z0 · 액면 Z720 · 전 용적 89.9 L</span>
+</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ══ 1. 설계 기준 (도면 Rev.A 와 같은 값) ══════════════════════════ */
+var ID=400, R=200, CONE=60, TAN30=Math.tan(Math.PI/6);
+var APEX=R/TAN30;                    // 346.41  콘 이론높이
+var Z_TAN=APEX, Z_TOP=APEX+600, Z_COVER=Z_TOP+5;
+var Z_LEVEL=720, Z_RING=300, Z_IMP_LO=430, Z_IMP_UP=610;
+var Z_BAF_LO=390, Z_BAF_UP=690, Z_SKIM=725, Z_CUT=(34.8/2)/TAN30;
+var R_IMP=150, R_RING=125, R_BAF_IN=167, R_BAF_OUT=192, R_SHAFT=15;
+var TRAVEL=Z_LEVEL-Z_TAN;            // 373.59
+var WIN=600, T0=-60, T_END=660;
+var G=9.81, D_BUB=200e-6, RHO_AIR=1.2, TAU=20;
+
+var BINS=[[31,45],[45,60],[60,75]], BINW=[0.33,0.34,0.33];
+var MATS=[
+  {id:"EVA",  ko:"EVA",   rho:[[980,70],[950,60],[920,50]],   wt:0.0625, n:150, poly:true},
+  {id:"BS",   ko:"백시트", rho:[[1110,100],[1060,90],[1010,80]],wt:0.0625, n:150, poly:true},
+  {id:"Si",   ko:"실리콘", rho:[[2330,25],[2330,22],[2330,20]], wt:0.8750, n:620, poly:false}
+];
+function rhoBr(w){return 998+7.55*w;}
+function muBr(w){return 0.001*(1+0.018*w);}
+
+/* 종말속도 — Schiller-Naumann (부호 +: 침강) */
+function terminalV(rho_p,d,w){
+  var rho=rhoBr(w), mu=muBr(w), dr=rho_p-rho;
+  if(Math.abs(dr)<1e-9) return 0;
+  var v=dr*G*d*d/(18*mu);
+  for(var i=0;i<200;i++){
+    var re=Math.max(Math.abs(rho*v*d/mu),1e-9);
+    var cd=re<1000?24/re*(1+0.15*Math.pow(re,0.687)):0.44;
+    var vn=Math.sqrt(Math.abs(4*dr*G*d/(3*cd*rho)))*(dr<0?-1:1);
+    if(Math.abs(vn-v)<1e-10){v=vn;break;}
+    v=0.5*(v+vn);
+  }
+  return v;
+}
+function aggregate(rho_p,dp,db){
+  var vp=Math.PI/6*dp*dp*dp, vb=Math.PI/6*db*db*db;
+  return [(rho_p*vp+RHO_AIR*vb)/(vp+vb), Math.pow(6*(vp+vb)/Math.PI,1/3)];
+}
+function stokesV(rho_p,d,w){return (rho_p-rhoBr(w))*G*d*d/(18*muBr(w));}
+
+/* ══ 2. 결정론적 난수 ══════════════════════════════════════════════ */
+function rng(seed){var a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;
+  var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;
+  return ((t^t>>>14)>>>0)/4294967296;};}
+function gauss(rand){var u=1-rand(),v=rand();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+
+/* 액면 아래 전 용적에서 체적비로 z 를 뽑는다 */
+var V_CONE=Math.PI/3*R*R*APEX, V_LIQ=V_CONE+Math.PI*R*R*(Z_LEVEL-APEX);
+function zFromVol(f){
+  var v=f*V_LIQ;
+  if(v<=V_CONE) return Math.pow(v*3/(Math.PI*TAN30*TAN30),1/3);
+  return APEX+(v-V_CONE)/(Math.PI*R*R);
+}
+function rAt(z){return z<APEX?z*TAN30:R;}
+
+/* ══ 3. 입자 생성 ══════════════════════════════════════════════════ */
+var P=[], curves=null, state={w:15, att:0.80};
+
+function build(){
+  var rand=rng(20260910);
+  P=[];
+  MATS.forEach(function(M){
+    var per=Math.round(M.n/3);
+    for(var b=0;b<3;b++){
+      for(var k=0;k<per;k++){
+        var f=(k+0.5)/per, jit=rand();
+        var z0=zFromVol(Math.min(0.999,f*0.97+jit*0.03));
+        var rr=rAt(z0)*Math.sqrt(rand())*0.94;
+        var d=(BINS[b][0]+(BINS[b][1]-BINS[b][0])*rand())*1e-6;
+        P.push({
+          m:M.id, poly:M.poly, b:b, d:d,
+          rho0:M.rho[b][0], sig:M.rho[b][1], g:gauss(rand),
+          x0:rr*(rand()<0.5?-1:1), z0:z0,
+          mass:M.wt*BINW[b]/per,
+          bub:rand(), ph:rand()*Math.PI*2, ph2:rand()*Math.PI*2,
+          aw:8+rand()*22, ax:5+rand()*14, w1:0.5+rand()*1.4,
+          rot:rand()*Math.PI, sp:0.6+rand()*0.8, u:rand(), u2:rand()
+        });
+      }
+    }
+  });
+  solve();
+}
+
+/* 조건이 바뀌면 속도·도착시간·정착 자리를 다시 푼다 */
+function solve(){
+  var w=state.w, att=state.att, i, p;
+  for(i=0;i<P.length;i++){
+    p=P[i];
+    p.rho=Math.max(300,p.rho0+p.sig*p.g);
+    p.hasBub = p.poly && (p.bub<att);
+    var rho=p.rho, d=p.d;
+    if(p.hasBub){var ag=aggregate(p.rho,p.d,D_BUB); rho=ag[0]; d=ag[1];}
+    p.v=terminalV(rho,d,w)*1000;                 // mm/s, +침강
+  }
+  // 상승 입자 — 도착순으로 FLOAT 층에 쌓는다
+  var up=P.filter(function(q){return q.v<-1e-4;})
+          .sort(function(a,b){return (a.z0-Z_LEVEL)/a.v-(b.z0-Z_LEVEL)/b.v;});
+  var PERROW=52, ROWH=3.4;
+  up.forEach(function(q,k){
+    var row=Math.floor(k/PERROW);
+    q.zEnd=Z_LEVEL-2.2-row*ROWH;
+    q.xEnd=(q.u2*2-1)*(R-10);              // 자리를 입자 고유값으로 잡아 재질이 섞이게 한다
+    q.tA=(q.z0-q.zEnd)/q.v;                // v<0 (상승) → tA>0
+    q.dir=-1;
+  });
+  // 침강 입자 — 콘 바닥부터 원뿔로 채운다
+  var dn=P.filter(function(q){return q.v>1e-4;})
+          .sort(function(a,b){return a.z0/a.v-b.z0/b.v;});
+  var K=Math.max(1,dn.length), H_BED=214;         // Feed 5 kg 침전 상단 Z214
+  dn.forEach(function(q,k){
+    var h=Math.max(Z_CUT+4,H_BED*Math.pow((k+1)/K,1/3));
+    q.zEnd=h-2*q.u;
+    q.xEnd=rAt(q.zEnd)*Math.pow(q.u2,1.5)*0.92*(q.u<0.5?-1:1);
+    q.tA=(q.z0-q.zEnd)/q.v;
+    q.dir=1;
+  });
+  P.forEach(function(q){ if(q.dir===undefined){q.dir=0;q.tA=Infinity;q.zEnd=q.z0;q.xEnd=q.x0;} });
+  buildCurves();
+}
+
+/* 도달률 곡선 — 전부 결정론이라 미리 계산해 둔다 */
+function buildCurves(){
+  var N=61, out={EVA:[],BS:[],Si:[]}, tot={EVA:0,BS:0,Si:0};
+  P.forEach(function(p){tot[p.m]+=p.mass;});
+  for(var i=0;i<N;i++){
+    var t=i*WIN/(N-1), acc={EVA:0,BS:0,Si:0};
+    for(var j=0;j<P.length;j++){
+      var p=P[j];
+      if(p.tA<=t && ((p.poly && p.dir===-1)||(!p.poly && p.dir===1))) acc[p.m]+=p.mass;
+    }
+    out.EVA.push(acc.EVA/tot.EVA); out.BS.push(acc.BS/tot.BS); out.Si.push(acc.Si/tot.Si);
+  }
+  curves={t:out, n:N, tot:tot};
+}
+
+function arrivedFrac(t){
+  var acc={EVA:0,BS:0,Si:0};
+  for(var j=0;j<P.length;j++){
+    var p=P[j];
+    if(p.tA<=t && ((p.poly&&p.dir===-1)||(!p.poly&&p.dir===1))) acc[p.m]+=p.mass;
+  }
+  return {EVA:acc.EVA/curves.tot.EVA, BS:acc.BS/curves.tot.BS, Si:acc.Si/curves.tot.Si};
+}
+
+/* ══ 4. 시간 → 위치 ════════════════════════════════════════════════ */
+function posOf(p,t){
+  var x,z,amp;
+  if(t<0){
+    var s=Math.min(1,-t/8);                     // 정지 직전 8 s 에 걸쳐 잦아든다
+    amp=1;
+    x=p.x0+s*p.ax*2.2*Math.sin(p.w1*t*0.8+p.ph);
+    z=p.z0+s*p.aw*2.0*Math.cos(p.w1*t*0.6+p.ph2);
+  }else{
+    amp=Math.exp(-t/TAU);
+    if(t>=p.tA){ x=p.xEnd; z=p.zEnd; amp*=0.25; }
+    else { z=p.z0-p.v*t; x=p.x0; }
+    x+=amp*p.ax*Math.sin(p.w1*t+p.ph);
+    z+=amp*p.aw*0.55*Math.cos(p.w1*t*0.8+p.ph2);
+  }
+  var lim=rAt(Math.max(Z_CUT,z))-4;
+  if(x>lim)x=lim; if(x<-lim)x=-lim;
+  if(z>Z_LEVEL-1.5)z=Z_LEVEL-1.5;
+  if(z<Z_CUT+2)z=Z_CUT+2;
+  return [x,z];
+}
+
+/* ══ 5. 무대 렌더링 ════════════════════════════════════════════════ */
+var cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+var CS={}, S=1, OX=0, OY=0, COMPACT=false;
+function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function readTokens(){
+  ["--ink","--ink-2","--ink-3","--line","--steel","--steel-2","--brine","--brine-ink",
+   "--eva","--bs","--si","--air","--surface","--warn","--good"].forEach(function(k){CS[k]=css(k);});
+}
+function mix(hex,a){
+  var h=hex.replace("#","");
+  if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  var n=parseInt(h,16);
+  return "rgba("+(n>>16&255)+","+(n>>8&255)+","+(n&255)+","+a+")";
+}
+function resize(){
+  var st=document.getElementById("stage"), r=st.getBoundingClientRect();
+  var dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=Math.max(320,r.width*dpr); cv.height=Math.max(320,r.height*dpr);
+  var W=cv.width/dpr, H=cv.height/dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  COMPACT = W < 560;
+  S=Math.min(H*0.90/1010, W*0.62/470);
+  OX=W*0.47; OY=H*0.955;
+  draw(now);
+}
+function X(mm){return OX+mm*S;}
+function Y(mm){return OY-mm*S;}
+
+function tank(t){
+  var ln=CS["--steel"], lw=Math.max(1,1.4*S*4);
+  ctx.lineJoin="round";
+  // 염수
+  ctx.beginPath();
+  ctx.moveTo(X(-rAt(Z_CUT)),Y(Z_CUT)); ctx.lineTo(X(-R),Y(APEX));
+  ctx.lineTo(X(-R),Y(Z_LEVEL)); ctx.lineTo(X(R),Y(Z_LEVEL));
+  ctx.lineTo(X(R),Y(APEX)); ctx.lineTo(X(rAt(Z_CUT)),Y(Z_CUT)); ctx.closePath();
+  var g=ctx.createLinearGradient(0,Y(Z_LEVEL),0,Y(0));
+  g.addColorStop(0,mix(CS["--brine"],0.26)); g.addColorStop(1,mix(CS["--brine"],0.40));
+  ctx.fillStyle=g; ctx.fill();
+  // 액면
+  ctx.strokeStyle=mix(CS["--brine-ink"],0.85); ctx.lineWidth=1.6;
+  ctx.beginPath();
+  var wob=t<0?1:Math.exp(-t/9);
+  for(var i=0;i<=40;i++){
+    var xx=-R+i*(2*R/40), yy=Z_LEVEL+wob*2.4*Math.sin(i*0.55+(t<0?-t*2.2:t*1.6));
+    i?ctx.lineTo(X(xx),Y(yy)):ctx.moveTo(X(xx),Y(yy));
+  }
+  ctx.stroke();
+  // 동체·콘 외곽
+  ctx.strokeStyle=ln; ctx.lineWidth=Math.max(1.4,2.2*S*3);
+  ctx.beginPath();
+  ctx.moveTo(X(-R),Y(Z_TOP)); ctx.lineTo(X(-R),Y(APEX)); ctx.lineTo(X(-rAt(Z_CUT)),Y(Z_CUT));
+  ctx.moveTo(X(R),Y(Z_TOP)); ctx.lineTo(X(R),Y(APEX)); ctx.lineTo(X(rAt(Z_CUT)),Y(Z_CUT));
+  ctx.stroke();
+  // 커버·플랜지
+  ctx.lineWidth=Math.max(1.2,1.8*S*3);
+  ctx.beginPath();
+  ctx.moveTo(X(-230),Y(Z_TOP)); ctx.lineTo(X(230),Y(Z_TOP));
+  ctx.moveTo(X(-215),Y(Z_COVER)); ctx.lineTo(X(215),Y(Z_COVER));
+  ctx.stroke();
+  // 배출관
+  ctx.beginPath();
+  ctx.moveTo(X(-rAt(Z_CUT)),Y(Z_CUT)); ctx.lineTo(X(-rAt(Z_CUT)),Y(Z_CUT-46));
+  ctx.moveTo(X(rAt(Z_CUT)),Y(Z_CUT)); ctx.lineTo(X(rAt(Z_CUT)),Y(Z_CUT-46));
+  ctx.moveTo(X(-rAt(Z_CUT)),Y(Z_CUT-46)); ctx.lineTo(X(rAt(Z_CUT)),Y(Z_CUT-46));
+  ctx.stroke();
+  // 배플
+  ctx.fillStyle=mix(CS["--steel"],0.42);
+  [-1,1].forEach(function(s){
+    ctx.fillRect(X(s*R_BAF_IN)-(s<0?(R_BAF_OUT-R_BAF_IN)*S:0),Y(Z_BAF_UP),
+                 (R_BAF_OUT-R_BAF_IN)*S,(Z_BAF_UP-Z_BAF_LO)*S);
+  });
+  // 축·임펠러
+  ctx.fillStyle=mix(CS["--steel"],0.75);
+  ctx.fillRect(X(-R_SHAFT),Y(1050),2*R_SHAFT*S,(1050-Z_IMP_LO+40)*S);
+  var spin=t<0?1:Math.max(0,1-t/6);
+  [Z_IMP_LO,Z_IMP_UP].forEach(function(zz){
+    var wsc=t<0?Math.abs(Math.cos(t*3.2+zz)):1;
+    var half=R_IMP*(0.35+0.65*(spin>0?wsc:1));
+    ctx.fillStyle=mix(CS["--steel"],0.9);
+    ctx.fillRect(X(-half),Y(zz)-3.2*S*3,2*half*S,6.4*S*3);
+  });
+  // 분산 링
+  ctx.fillStyle=mix(CS["--air"],0.95);
+  [-1,1].forEach(function(s){
+    ctx.beginPath(); ctx.arc(X(s*R_RING),Y(Z_RING),Math.max(2.6,6.35*S),0,6.284); ctx.fill();
+  });
+  // 스키머
+  ctx.strokeStyle=mix(CS["--steel"],0.9); ctx.lineWidth=Math.max(1.2,2*S*3);
+  ctx.beginPath(); ctx.moveTo(X(-120),Y(Z_SKIM)); ctx.lineTo(X(120),Y(Z_SKIM)); ctx.stroke();
+}
+
+function zscale(){
+  var marks=COMPACT
+    ? [[0,"Z0"],[Z_RING,"Z300"],[Z_TAN,"Z346"],[Z_IMP_UP,"Z610"],[Z_LEVEL,"Z720"],[Z_TOP,"Z946"]]
+    : [[0,"Z0 콘 정점"],[Z_RING,"Z300 분산 링"],[Z_TAN,"Z346 콘 접선"],
+       [Z_IMP_LO,"Z430 하부 임펠러"],[Z_IMP_UP,"Z610 상부 임펠러"],
+       [Z_LEVEL,"Z720 액면"],[Z_TOP,"Z946 동체 상단"]];
+  ctx.font="500 10.5px "+"'IBM Plex Mono',monospace";
+  ctx.textAlign="right"; ctx.textBaseline="middle";
+  var xr=X(-R)-10;
+  ctx.strokeStyle=mix(CS["--line"],0.9); ctx.lineWidth=1;
+  marks.forEach(function(m){
+    ctx.beginPath(); ctx.moveTo(xr,Y(m[0])); ctx.lineTo(xr+7,Y(m[0])); ctx.stroke();
+    ctx.fillStyle=CS["--ink-3"]; ctx.fillText(m[1],xr-3,Y(m[0]));
+  });
+}
+
+function bubbles(t){
+  if(t>10) return;
+  var n=64, life=6;
+  ctx.strokeStyle=mix(CS["--air"],t<0?0.75:0.75*Math.max(0,1-t/10));
+  ctx.lineWidth=1.1;
+  for(var i=0;i<n;i++){
+    var seed=i*0.618, tt=(t+120+seed*life)%life;
+    var z=Z_RING+ (Z_LEVEL-Z_RING)*(tt/life);
+    if(t>=0 && z<Z_RING+ (Z_LEVEL-Z_RING)*(t/life)) continue;
+    var x=(i%2?1:-1)*R_RING*(0.15+0.85*((i*7)%10)/10)+8*Math.sin(z*0.05+seed*9);
+    var r=Math.max(1.3,(2.2+1.6*Math.sin(seed*13))*S*3);
+    ctx.beginPath(); ctx.arc(X(x),Y(z),r,0,6.284); ctx.stroke();
+  }
+}
+
+function drawParticle(p,x,z,t){
+  var col = p.m==="EVA"?CS["--eva"]:p.m==="BS"?CS["--bs"]:CS["--si"];
+  var px=X(x), py=Y(z), s=Math.max(1.5,(p.d*1e6)*0.052*S*3.2);
+  ctx.fillStyle=col;
+  if(p.m==="EVA"){
+    ctx.beginPath(); ctx.arc(px,py,s,0,6.284); ctx.fill();
+  }else if(p.m==="BS"){
+    var a=p.rot+(t<0?t*p.sp*0.5:0);
+    ctx.save(); ctx.translate(px,py); ctx.rotate(a);
+    ctx.fillRect(-s*1.5,-s*0.55,s*3,s*1.1); ctx.restore();
+  }else{
+    ctx.beginPath();
+    ctx.moveTo(px,py-s*1.15); ctx.lineTo(px+s*1.05,py+s*0.8); ctx.lineTo(px-s*1.05,py+s*0.8);
+    ctx.closePath(); ctx.fill();
+  }
+  if(p.hasBub && t>-999){
+    ctx.strokeStyle=mix(CS["--air"],0.9); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(px+s*1.1,py-s*1.1,Math.max(1.2,s*0.85),0,6.284); ctx.stroke();
+  }
+}
+
+function layerBands(t,fr){
+  if(t<20) return;
+  var a=Math.min(0.5,(t-20)/240);
+  // FLOAT
+  ctx.fillStyle=mix(CS["--eva"],a*0.20);
+  ctx.fillRect(X(-R),Y(Z_LEVEL),2*R*S,30*S);
+  ctx.font="600 10.5px 'IBM Plex Mono',monospace"; ctx.textAlign="left"; ctx.textBaseline="middle";
+  var Wc=cv.width/(window.devicePixelRatio||1);
+  function put(txt,y,col){
+    var x=Math.min(X(R)+12, Wc-8-ctx.measureText(txt).width);
+    ctx.fillStyle=col; ctx.fillText(txt,x,y);
+  }
+  put((COMPACT?"FLOAT ":"FLOAT  폴리머 ")+(fr.poly*100).toFixed(0)+" %",Y(Z_LEVEL-14),CS["--eva"]);
+  put((COMPACT?"SINK ":"SINK  실리콘 ")+(fr.Si*100).toFixed(0)+" %",Y(120),CS["--si"]);
+  ctx.strokeStyle=mix(CS["--si"],0.5); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(X(rAt(120))+2,Y(120)); ctx.lineTo(X(R)+8,Y(120)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(X(R),Y(Z_LEVEL-14)); ctx.lineTo(X(R)+8,Y(Z_LEVEL-14)); ctx.stroke();
+}
+
+function draw(t){
+  var W=cv.width/(window.devicePixelRatio||1);
+  ctx.clearRect(0,0,cv.width,cv.height);
+  tank(t);
+  zscale();
+  bubbles(t);
+  var i,p,q;
+  for(i=0;i<P.length;i++){ p=P[i]; if(!p.poly){ q=posOf(p,t); drawParticle(p,q[0],q[1],t);} }
+  for(i=0;i<P.length;i++){ p=P[i]; if(p.poly){ q=posOf(p,t); drawParticle(p,q[0],q[1],t);} }
+  var fr=arrivedFrac(Math.max(0,t));
+  fr.poly=(fr.EVA*0.0625+fr.BS*0.0625)/0.125;
+  layerBands(t,fr);
+  return fr;
+}
+
+/* ══ 6. 곡선 차트 ══════════════════════════════════════════════════ */
+var ch=document.getElementById("chart"), cx=ch.getContext("2d");
+function chartResize(){
+  var r=ch.getBoundingClientRect(), dpr=Math.min(2,window.devicePixelRatio||1);
+  ch.width=r.width*dpr; ch.height=150*dpr; cx.setTransform(dpr,0,0,dpr,0,0);
+  drawChart(now);
+}
+function drawChart(t){
+  var W=ch.width/(window.devicePixelRatio||1), H=150;
+  var L=30, Rr=50, Tp=10, B=20, pw=W-L-Rr, phh=H-Tp-B;
+  cx.clearRect(0,0,W,H);
+  cx.font="10px 'IBM Plex Mono',monospace"; cx.textBaseline="middle";
+  // 눈금
+  [0,50,100].forEach(function(v){
+    var y=Tp+phh*(1-v/100);
+    cx.strokeStyle=mix(CS["--line"],0.8); cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(L,y); cx.lineTo(L+pw,y); cx.stroke();
+    cx.fillStyle=CS["--ink-3"]; cx.textAlign="right"; cx.fillText(v+"%",L-5,y);
+  });
+  // KPI 80 %
+  var y80=Tp+phh*0.2;
+  cx.strokeStyle=mix(CS["--ink-3"],0.9); cx.setLineDash([3,3]); cx.lineWidth=1;
+  cx.beginPath(); cx.moveTo(L,y80); cx.lineTo(L+pw,y80); cx.stroke(); cx.setLineDash([]);
+  cx.fillStyle=CS["--ink-3"]; cx.textAlign="left"; cx.fillText("KPI 80",L+3,y80-7);
+  // x 축
+  cx.textAlign="center";
+  [0,300,600].forEach(function(v){
+    var x=L+pw*v/WIN;
+    cx.fillStyle=CS["--ink-3"]; cx.fillText(v+(v===600?" s":""),x,H-8);
+  });
+  // 곡선
+  var series=[["Si",CS["--si"],"실리콘"],["EVA",CS["--eva"],"EVA"],["BS",CS["--bs"],"백시트"]];
+  var ends=[];
+  series.forEach(function(sr){
+    var arr=curves.t[sr[0]];
+    cx.strokeStyle=sr[1]; cx.lineWidth=2; cx.lineJoin="round";
+    cx.beginPath();
+    for(var i=0;i<arr.length;i++){
+      var x=L+pw*(i/(arr.length-1)), y=Tp+phh*(1-arr[i]);
+      i?cx.lineTo(x,y):cx.moveTo(x,y);
+    }
+    cx.stroke();
+    ends.push({y:Tp+phh*(1-arr[arr.length-1]), c:sr[1], k:sr[0], t:sr[2]});
+  });
+  ends.sort(function(a,b){return a.y-b.y;});
+  for(var e=1;e<ends.length;e++){ if(ends[e].y-ends[e-1].y<11) ends[e].y=ends[e-1].y+11; }
+  ends.forEach(function(o){
+    var x=L+pw;
+    cx.fillStyle=o.c;
+    if(o.k==="EVA"){ cx.beginPath(); cx.arc(x,o.y,3,0,6.284); cx.fill(); }
+    else if(o.k==="BS"){ cx.fillRect(x-2.8,o.y-2.8,5.6,5.6); }
+    else { cx.beginPath(); cx.moveTo(x,o.y-3.4); cx.lineTo(x+3,o.y+2.6);
+           cx.lineTo(x-3,o.y+2.6); cx.closePath(); cx.fill(); }
+    cx.fillStyle=CS["--ink-2"]; cx.textAlign="left";
+    cx.fillText(o.t,x+7,o.y);
+  });
+  // 재생 위치
+  if(t>0){
+    var xp=L+pw*Math.min(1,t/WIN);
+    cx.strokeStyle=mix(CS["--ink"],0.55); cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(xp,Tp-4); cx.lineTo(xp,Tp+phh); cx.stroke();
+  }
+}
+
+/* ══ 7. 트랜스포트 ═════════════════════════════════════════════════ */
+var now=WIN, playing=false, speed=30, last=0, booted=false;
+var el={
+  clock:document.getElementById("clock"), phaseTag:document.getElementById("phaseTag"),
+  phaseLine:document.getElementById("phaseLine"), dot:document.getElementById("dot"),
+  scrub:document.getElementById("scrub"), play:document.getElementById("play"),
+  icon:document.getElementById("playIcon"),
+  kEva:document.getElementById("kEva"), kBs:document.getElementById("kBs"),
+  kSi:document.getElementById("kSi"), polyv:document.getElementById("polyv"),
+  polytag:document.getElementById("polytag")
+};
+var PLAY_D="M3 1.5 14 8 3 14.5z", PAUSE_D="M3 2h3.6v12H3zM9.4 2H13v12H9.4z";
+
+function phaseOf(t){
+  if(t<0) return ["분산","임펠러 90 rpm · 공기 5 L/min · 완전 현탁",""];
+  if(t<1) return ["정지","임펠러·공기 동시 OFF — 여기서부터 중력만 남는다","settle"];
+  if(t<WIN) return ["정치","잔류 난류 감쇠 후 자유 침강·부상","settle"];
+  return ["판정","FLOAT 스키밍 · SINK 배출 · 질량수지 측정","done"];
+}
+function setKpi(node,val,target){
+  node.querySelector(".v").textContent=(val*100).toFixed(1)+" %";
+  node.classList.toggle("hit",val>=target);
+  node.classList.toggle("miss",val<target);
+}
+function frame(ts){
+  if(playing){
+    if(!last) last=ts;
+    var dt=Math.min(0.25,(ts-last)/1000); last=ts;
+    now+=dt*speed;
+    if(now>=T_END){ now=T0; }
+    el.scrub.value=Math.round(now);
+  }
+  var fr=draw(now);
+  drawChart(now);
+  el.clock.textContent=(now<0?"−":"+")+Math.abs(Math.round(now)).toString().padStart(3,"0");
+  var ph=phaseOf(now);
+  el.phaseTag.textContent=ph[0]; el.phaseLine.textContent=ph[1];
+  el.dot.className="dotlive "+ph[2];
+  setKpi(el.kEva,fr.EVA,0.8); setKpi(el.kBs,fr.BS,0.8); setKpi(el.kSi,fr.Si,0.95);
+  var poly=fr.poly;
+  el.polyv.textContent=(poly*100).toFixed(1)+" %";
+  el.polytag.textContent=poly>=0.8?"충족":"미달";
+  el.polytag.className="tag "+(poly>=0.8?"hit":"miss");
+  requestAnimationFrame(frame);
+}
+function setPlay(on){
+  playing=on; last=0;
+  el.icon.querySelector("path").setAttribute("d",on?PAUSE_D:PLAY_D);
+  el.play.setAttribute("aria-label",on?"일시정지":"재생");
+}
+el.play.addEventListener("click",function(){
+  if(!playing && now>=T_END-1) now=T0;
+  setPlay(!playing);
+});
+el.scrub.addEventListener("input",function(){ now=+this.value; setPlay(false); });
+
+document.getElementById("speed").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b)return;
+  speed=+b.dataset.s;
+  [].forEach.call(this.children,function(c){c.setAttribute("aria-pressed",c===b?"true":"false");});
+});
+document.getElementById("salt").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b)return;
+  state.w=+b.dataset.w;
+  [].forEach.call(this.children,function(c){c.setAttribute("aria-pressed",c===b?"true":"false");});
+  document.getElementById("saltv").textContent=state.w;
+  document.getElementById("rhov").textContent=Math.round(rhoBr(state.w));
+  solve(); fillTable();
+});
+var att=document.getElementById("att");
+att.addEventListener("input",function(){
+  state.att=+this.value/100;
+  document.getElementById("attv").textContent=this.value;
+  solve();
+});
+function preset(w,a){
+  state.w=w; state.att=a/100;
+  att.value=a; document.getElementById("attv").textContent=a;
+  document.getElementById("saltv").textContent=w;
+  document.getElementById("rhov").textContent=Math.round(rhoBr(w));
+  [].forEach.call(document.getElementById("salt").children,function(c){
+    c.setAttribute("aria-pressed",+c.dataset.w===w?"true":"false");});
+  solve(); fillTable(); now=T0; el.scrub.value=T0; setPlay(true);
+}
+document.getElementById("pAir").addEventListener("click",function(){preset(15,80);});
+document.getElementById("pNoAir").addEventListener("click",function(){preset(15,0);});
+
+/* 트랙 구간 표시 */
+(function(){
+  var segs=document.getElementById("segs"), span=T_END-T0;
+  [[T0,0,"var(--steel-2)"],[0,WIN,"var(--brine)"],[WIN,T_END,"var(--good)"]].forEach(function(s){
+    var d=document.createElement("div");
+    d.style.width=((s[1]-s[0])/span*100)+"%"; d.style.background=s[2]; d.style.opacity=".5";
+    segs.appendChild(d);
+  });
+})();
+
+/* ══ 8. 챕터 · 표 ══════════════════════════════════════════════════ */
+var CHAPTERS=[
+  [-45,"분산 — 전부 섞여 있다","임펠러 Ø300 이 90 rpm 으로 돌고 링에서 기포가 오른다. 이 상태에서는 밀도가 달라도 층이 생기지 않는다."],
+  [0,"동시 정지","임펠러와 공기를 같은 순간에 끊는다. 이후 화면의 모든 움직임은 중력·부력·항력뿐이다."],
+  [25,"기포 붙은 폴리머가 먼저 뜬다","Ø200 µm 기포가 붙은 입자는 등가밀도 7.9 kg/m³ 로 25 초 만에 373.6 mm 를 지난다."],
+  [157,"실리콘이 콘에 닿기 시작","60–75 µm 실리콘의 통과시간이 157 초다. 콘 벽을 따라 정점으로 모인다."],
+  [400,"중립 입자가 남는다","31–45 µm 백시트는 15 % 염수에서 밀도차가 거의 0 이라 그 자리에 떠 있다. 기포가 없으면 끝까지 그대로다."],
+  [600,"판정","FLOAT 을 스키밍하고 SINK 를 배출해 Top polymer recovery · Top Si loss · Bottom Si recovery 를 잰다."]
+];
+(function(){
+  var box=document.getElementById("chapters");
+  CHAPTERS.forEach(function(c){
+    var b=document.createElement("button"); b.type="button";
+    b.innerHTML='<span class="tc">'+(c[0]<0?"−":"+")+Math.abs(c[0])+' s</span>'+
+                '<span class="tx"><b>'+c[1]+'</b>'+c[2]+'</span>';
+    b.addEventListener("click",function(){
+      now=c[0]; el.scrub.value=c[0]; setPlay(false);
+      document.getElementById("stage").scrollIntoView({block:"center",
+        behavior:matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth"});
+    });
+    box.appendChild(b);
+  });
+})();
+
+function fillTable(){
+  var tb=document.getElementById("tbody"), w=15, html="";
+  MATS.forEach(function(M){
+    var cells="";
+    for(var b=0;b<3;b++){
+      var d=(BINS[b][0]+BINS[b][1])/2*1e-6;
+      var v=stokesV(M.rho[b][0],d,w)*1000;              // mm/s
+      var sec=Math.abs(v)<1e-9?Infinity:TRAVEL/Math.abs(v);
+      var ts=sec>86400?"∞ 중립":Math.round(sec).toLocaleString("en-US")+" s";
+      var cls=sec>86400?"neu":(v<0?"up":"dn");
+      cells+='<td class="n '+cls+'">'+ts+'</td>';
+    }
+    var rng2=M.rho.map(function(r){return r[0];});
+    var lo=Math.min.apply(null,rng2), hi=Math.max.apply(null,rng2);
+    var sg=M.rho.map(function(r){return r[1];});
+    var sgl=Math.min.apply(null,sg), sgh=Math.max.apply(null,sg);
+    var dens=(lo===hi?String(lo):lo+"–"+hi)+" ± "+(sgl===sgh?sgl:sgl+"–"+sgh);
+    html+='<tr><td>'+M.ko+'</td><td class="mono">'+dens+'</td>'+cells+
+          '<td>'+(M.poly?"부상 FLOAT":"침강 SINK")+'</td></tr>';
+  });
+  tb.innerHTML=html;
+}
+
+/* ══ 9. 부팅 ═══════════════════════════════════════════════════════ */
+document.getElementById("theme").addEventListener("click",function(){
+  var cur=document.documentElement.getAttribute("data-theme");
+  var dark=cur?cur==="dark":matchMedia("(prefers-color-scheme:dark)").matches;
+  document.documentElement.setAttribute("data-theme",dark?"light":"dark");
+  readTokens(); draw(now); drawChart(now);
+});
+window.addEventListener("resize",function(){resize();chartResize();});
+matchMedia("(prefers-color-scheme:dark)").addEventListener("change",function(){
+  readTokens(); draw(now); drawChart(now);
+});
+
+readTokens();
+build();
+fillTable();
+resize(); chartResize();
+requestAnimationFrame(frame);
+
+var reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;
+if(!reduce){
+  setTimeout(function(){ now=T0; el.scrub.value=T0; setPlay(true); },1100);
+}else{
+  now=WIN; el.scrub.value=WIN;
+}
+})();
+</script>
+</body>
+</html>
