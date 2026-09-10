@@ -259,13 +259,13 @@ class TestReviewFindings(unittest.TestCase):
         cls.html = MODEL.read_text(encoding="utf-8")
         cls.review = cls.html.split('class="notes review"')[1]
 
-    def test_seven_findings_are_recorded(self):
-        self.assertEqual(len(re.findall(r"<li>", self.review)), 7)
+    def test_all_findings_are_recorded(self):
+        self.assertEqual(len(re.findall(r"<li>", self.review)), 8)
 
     def test_each_finding_is_present(self):
         for probe in ("배플 폭 200 mm", "하부 콘 각도 60°", "지지 다리 200 mm",
                       "전고 750", "직경비 D/T", "스탠드가 도면에 없다",
-                      "재질표가 두 개"):
+                      "배플 높이 치수선에 두께값", "재질표가 두 개"):
             self.assertIn(probe, self.review, probe)
 
     def test_model_states_where_it_departs_from_the_drawing(self):
