@@ -14,20 +14,30 @@ Dynamic industry Development
 - 기액 체류시간 **1 분**, 설치 전력 **6.52 kW** (탈수 보조설비 포함)
 - 황화제·pH 조정제·억제제 없음 — 약제는 포수제·촉진제·기포제 3종뿐
 
-### 파일럿 검증 설비 (MP-50)
+### 파일럿 검증 설비 — MP-50 염수 밀도분리조 (Rev.A)
 
-상업 설비를 짓기 전에 **≈75 µm 분획**에서 부선이 실제로 갈라지는지 확인하는
-회분식 50 L 파일럿이다. 축소 기준은 체적이 아니라 **임펠러 주속(4.40 m/s)과
-표면 기체속도(Jg 0.59 cm/s)** 로, 상업 셀 FC-201 과 같은 수력학적 조건을 만든다.
+31~75 µm 블랙파우더에서 **EVA·백시트** 를 **Silicon-rich 분말** 로부터 갈라내는 회분식
+파일럿이다. 부선기가 아니라 **염수 자연 밀도분리조** — 임펠러와 공기는 분산 수단이고,
+분산이 끝나면 **동시에 정지**해 중력·부력만으로 FLOAT / SINK 를 진행시킨다.
+세 재질의 입경대가 겹치므로 입도가 아니라 **유효밀도** 로 가른다.
 
-- 동체 **Ø400 × t3 × 600** · 하부 콘 60° × 300 · 전 용량 87 L · 운전 50 L (액면 +297)
-- 임펠러 Ø140 2장 (D/T 0.355) — 하부 6엽 디스크 터빈, 상부 45° 경사날개 · 0.75 kW VFD
-- 미세기포 분산기 Ø250 링 · **60-Ø1.0 하향 45°** (홀 유속 15.3 m/s · We 4.6)
-- 설계압력 0.05 MPa(G) · 시험 0.075 MPa 공기 누설시험
+- 동체 **ID Ø400 × t3 × 600** · 콘 60° 이론높이 346.4 · 전 용적 89.91 L
+- 설계 액면 Z720 → **61.5 L** · 모든 좌표는 **콘 이론 정점 Z0** 기준
+- 임펠러 **Ø300 4PBT45° × 2** (Z430 / Z610) · 30~90 rpm VFD · Njs ≈ 80 rpm
+- 염도 12 / 15 / 18 wt% NaCl · 분산 링 Ø250 @ Z300 · 60-Ø1.0
 
-원 스케치의 치수 **14건이 서로 성립하지 않아** 계산으로 다시 잡았고, 바꾼 항목과
-이유는 제작도 부속-A 에 전부 남겼다. 그중 압력시험 0.2 MPa 는 t5 평판 커버에
-384 MPa 를 걸어 SUS304 항복강도(205 MPa)를 넘으므로 **시행해서는 안 된다.**
+기준좌표·공차·릴리즈 판정은 `MP50 염수밀도분리 전체연구문서 Rev.0` 을 승계했고,
+문서에 없던 **운동학 검산과 간섭 검사**를 더했다. 그 결과 두 가지가 드러났다.
+
+1. **연구문서의 배플 80 과 임펠러 Ø300 은 같은 탱크에 들어가지 않는다** — 38 mm 간섭.
+   임펠러를 유지하고 배플 폭을 25 mm 로 줄여 간극 17 mm 를 확보했다 (재승인 대상).
+2. **밀도차만으로는 Top polymer recovery KPI 를 만족할 수 없다** — 600 s 안에 상부에
+   닿는 비율이 EVA 34.5 %, Backsheet 13.8 % 뿐이다 (KPI 는 ≥ 80 %). 이를 채우는 것은 분산 중에
+   붙어 정지 후에도 남는 **잔류 미세기포**이며, Ø200 µm 기포 1개가 붙으면 통과시간이
+   4,593 s → 25 s 가 된다. **공기는 분산 변수가 아니라 회수율 변수**다.
+
+씰은 여전히 **CRITICAL HOLD** 이고, Vendor GA 전에는 mounting PCD · output shaft/key ·
+seal gland/sleeve · frame height 를 확정하지 않는다.
 
 ### 설계 근거
 
@@ -49,8 +59,8 @@ Dynamic industry Development
 | [docs/design-calculation.md](docs/design-calculation.md) | 설계 계산서 (코드에서 자동 생성) |
 | [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 7매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
-| [docs/drawings/mp50-pilot-drawings.html](docs/drawings/mp50-pilot-drawings.html) | **MP-50 파일럿 제작도 8매** — 미세입자(≈75 µm) EVA·백시트 분리기 50 L 파일럿. 전체 조립도·부품표(34점), 탱크 셀·하부 콘, 상부 커버·맨홀·스키머, 교반계, 미세기포 분산기·공기 공급계, 배출·지지부, 체결부품·가스켓·제어반, 재질·검사 기준 (브라우저로 열 것) |
-| [docs/drawings/mp50-pilot-3d.html](docs/drawings/mp50-pilot-3d.html) | **MP-50 3D 조립·분해도** — 26개 부품 분해, 동체 컷어웨이, 슬러리·거품층 표시, 보기별 제원 (브라우저로 열 것) |
+| [docs/drawings/mp50-pilot-drawings.html](docs/drawings/mp50-pilot-drawings.html) | **MP-50 제작도 11매 (Rev.A)** — 기준좌표·부품표(34점), 분리 원리·운전 시퀀스, 3×3 유효밀도·밀도컷, 층분리 운동학, 탱크 셀·콘, 커버·맨홀·스키머, 교반계·간섭 검사, 분산 링·공기 공급계, 배출·프레임, Release/HOLD·공차, FAT·KPI·DOE·재질 (브라우저로 열 것) |
+| [docs/drawings/mp50-pilot-3d.html](docs/drawings/mp50-pilot-3d.html) | **MP-50 3D 조립·분해도 (Rev.A)** — 26개 부품 분해, 동체 컷어웨이, FLOAT/SINK 층을 보이는 「분리 결과」 보기, 보기별 제원 (브라우저로 열 것) |
 | [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 13종, 열수지 계산기 (브라우저로 열 것) |
 
 ### 사용법
@@ -61,7 +71,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (376건)
+python -m unittest discover -s tests -t .                               # 테스트 (385건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.

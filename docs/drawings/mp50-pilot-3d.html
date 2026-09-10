@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="미세입자(약 75 µm) EVA·백시트 분리기 소형 파일럿 MP-50 의 3D 조립·분해도. 동체·콘·커버, 교반계, 미세기포 분산기, 배플 케이지, 배출·지지부를 26개 부품으로 분해한다.">
-<title>MP-50 파일럿 분리기 분해 조립도</title>
+<meta name="description" content="폐태양광 블랙파우더 염수 자연 밀도분리 파일럿 MP-50 의 3D 조립·분해도 Rev.A. 콘 이론 정점 Z0 기준좌표, FLOAT/SINK 층, 교반계, 분산 링, 배출·프레임을 26개 부품으로 분해한다.">
+<title>MP-50 염수 밀도분리 파일럿 분해 조립도</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap">
@@ -131,14 +131,16 @@
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">MP-50-P0 · 3D 조립·분해도 · REV P0</div>
-    <h1>미세입자 EVA·백시트 분리기 파일럿 (50 L)</h1>
+    <div class="eyebrow">MP-50-P0 · 3D 조립·분해도 · REV A</div>
+    <h1>염수 자연 밀도분리 파일럿 (MP-50)</h1>
     <p class="lede">
-      폐 태양광 모듈 잔사의 <b>≈75 µm</b> 분획에서 소수성 폴리머를 거품으로 띄우고
-      유리·실리콘을 콘 저부로 가라앉히는 회분식 부선조다. <b>분해</b> 슬라이더를 올리면
-      모터에서 방진패드까지 26개 부품이 하나씩 떨어져 나오고, <b>컷어웨이</b> 를 올리면
-      동체를 갈라 슬러리·거품층과 내부 부품을 볼 수 있다.
-      평면 제작도는 <code>mp50-pilot-drawings.html</code> 이 정본이다.
+      폐태양광 블랙파우더(31~75 µm)에서 <b>EVA · 백시트</b> 를 <b>Silicon-rich 분말</b> 로부터
+      갈라내는 회분식 장비다. 임펠러와 공기는 <b>분산 수단</b>일 뿐이고, 분산이 끝나면
+      <b>동시에 정지</b>해 중력·부력만으로 FLOAT / SINK 를 진행시킨다.
+      <b>분리 결과</b> 보기를 누르면 액면 위 FLOAT 층과 콘 저부 SINK 층만 남고,
+      <b>분해</b> 슬라이더를 올리면 26개 부품이 하나씩 떨어져 나온다.
+      모든 좌표는 <b>콘 이론 정점 Z0</b> 기준이며, 평면 제작도 11매는
+      <code>mp50-pilot-drawings.html</code> 이 정본이다.
     </p>
   </header>
 
@@ -154,6 +156,7 @@
     <div class="bar">
       <div class="seg" role="group" aria-label="보기 대상">
         <button id="vAll" aria-pressed="true">전체</button>
+        <button id="vSep" aria-pressed="false">분리 결과</button>
         <button id="vInt" aria-pressed="false">동체 내부</button>
         <button id="vAgi" aria-pressed="false">교반계</button>
         <button id="vBot" aria-pressed="false">배출·지지</button>
@@ -175,26 +178,36 @@
   <section class="notes">
     <h2>모델 주기</h2>
     <ol>
-      <li>기준선은 <strong>동체와 콘의 접선선(±0)</strong>이다. 콘은 60° 포함각을 지켜
-        높이 300 mm 가 되고, 직관부 600 mm 와 합쳐 동체 높이는 900 mm 다.</li>
-      <li><strong>운전 용량 50 L 는 액면 +297 mm</strong> 에 대응한다. 전 용량 87 L 의 57 %
-        이며 그 위 75 mm 가 거품층이다. 모델에서는 슬러리와 거품층을 반투명으로 그렸다.</li>
-      <li>임펠러 두 장은 <strong>한 축·한 회전수</strong>이며 역할로 나뉜다 — 하부는 분산기
-        링 바로 위(+60)에서 기포를 부수는 6엽 디스크 터빈, 상부는(+220) 가라앉는
-        유리·실리콘 미분을 되올리는 45° 경사날개 터빈이다. 세기는 VFD 가 조절한다.</li>
-      <li><strong>배플은 동체에 용접하지 않는다.</strong> 상부 링에 매단 케이지 한 덩어리라
-        분해 슬라이더를 올리면 4장이 함께 빠진다. 연마한 내면에 용접 자국을 남기지 않고
-        청소 때 통째로 인출하기 위한 구성이다.</li>
-      <li>미세기포 분산기는 <strong>평균 Ø250 링에 Ø1.0 홀 60개</strong>를 하향 45° 로 뚫었다.
-        설계 유량 2.6 m³/h 에서 홀 유속 15.3 m/s · Weber 수 4.6 으로 제트가 서고,
-        홀 압력손실이 링 내부 손실의 141 배라 60 홀이 고르게 분다.</li>
-      <li>배출은 트라이클램프 뒤에서 <strong>90° 엘보로 측방 전환</strong>한다. 수직으로
-        매달면 밸브 끝이 바닥 위 40 mm 대에 놓여 호스를 끼울 수 없다.</li>
-      <li class="bad">설계압력은 <strong>0.05 MPa(G)</strong> 이고 시험은 0.075 MPa 공기
-        누설시험이다. 원 스케치의 0.2 MPa 시험은 t5 평판 커버에 384 MPa 를 걸어
-        SUS304 항복강도를 넘으므로 시행하지 말 것.</li>
+      <li>이 장비는 <strong>부선기가 아니라 염수 자연 밀도분리조</strong>다. 세 재질의 입경대가
+        31~75 µm 로 겹치므로 입도가 아니라 <strong>유효밀도</strong> 로 가른다 —
+        Silicon 2330, Backsheet 1010~1110, EVA 920~980 kg/m³ 이고 염수는 12~18 wt% 에서
+        1089~1134 kg/m³ 다.</li>
+      <li>기준은 <strong>콘 이론 정점 Z0</strong> 이다. 콘 60° 를 지키면 이론높이가
+        346.41 mm 로 정해지고, 직관 600 을 더한 동체 상단 Z946 ·
+        커버 상면 Z951 가 연구문서 Rev.0 과 일치한다. 실제 콘은 배출 내경에서
+        잘라 Z30 에서 시작한다.</li>
+      <li>전 용적 89.91 L · 설계 액면 Z720 에서 <strong>61.46 L</strong> 이다.
+        모델의 반투명 층은 위가 FLOAT (Polymer-rich), 콘 저부가 SINK (Si-rich) 이며
+        SINK 층 높이는 Feed 5 kg 배치 기준 Z214 로 잡았다 — 분산 링(Z300)보다 낮아
+        링이 침전물에 묻히지 않는다.</li>
+      <li class="bad"><strong>연구문서 §2 의 배플 80 과 임펠러 Ø300 은 같은 탱크에 들어가지
+        않는다</strong> (38 mm 간섭). 임펠러를 유지하고 배플 폭을 25 mm 로 줄여
+        간극 17 mm 를 확보했으며, 이 항목은 재승인 대상이다.</li>
+      <li><strong>배플은 커버 하면에서 행어 로드 3본으로 매단다.</strong> 커버를 들면 함께
+        빠지고, 액면 근처에 수평 장애물이 남지 않아 떠오르는 폴리머를 가두지 않는다.</li>
+      <li class="bad"><strong>밀도차만으로는 Top polymer recovery KPI 를 만족할 수 없다.</strong>
+        600 s 안에 상부에 닿는 비율이 EVA 34.5 % 뿐이다. 이를 채우는 것은 분산 중에 붙어
+        정지 후에도 남는 <strong>잔류 미세기포</strong>이며, Ø200 µm 기포 1개가 붙으면
+        통과시간이 4,593 s → 25 s 가 된다. 공기는 분산 변수가 아니라
+        <strong>회수율 변수</strong>다.</li>
+      <li><strong>Zwietering Njs 는 약 80 rpm</strong> 이다. DOE 의 30 / 45 / 60 rpm 조건은
+        완전 현탁이 아니므로 결과 해석에서 '분산 부족'과 '분리 실패'를 구분해야 한다.</li>
+      <li><strong>씰은 CRITICAL HOLD</strong> 다. Vendor GA 전에는 mounting PCD ·
+        output shaft/key · seal gland/sleeve · frame height 를 확정하지 않는다 —
+        모델의 구동부·프레임 형상은 잠정이다.</li>
       <li>본 모델은 <strong>조립 관계를 보는 개략 형상</strong>이다. 제작용 CAD 가 아니며
-        용접 개선, 나사부, 베어링 내부, 계장 배선은 표현하지 않았다.</li>
+        용접 개선, 나사부, 베어링 내부, 계장 배선은 표현하지 않았다.
+        실측 calibration 전 수치는 설계 참고값이지 성능 보증값이 아니다.</li>
     </ol>
   </section>
 
@@ -325,16 +338,18 @@ function sphere(m,cx,cy,cz,r,seg){
   for(i=0;i<seg;i++)for(j=0;j<seg*2;j++)m.quad(g[i][j],g[i+1][j],g[i+1][j+1],g[i][j+1]);
 }
 
-/* ===== 치수 (m · 기준선 y=0 은 동체/콘 접선선) ===== */
+/* ===== 치수 (m · 기준 y = 0 은 콘 이론 정점 Z0) ===== */
 var G={
-  rOD:0.200, rID:0.197, th:0.003, straight:0.600, coneH:0.300, rOut:0.0238,
-  rFlange:0.230, yFlange:0.600, yCover:0.608, tCover:0.005,
-  level:0.297, froth:0.372,
-  rImp:0.070, c1:0.060, c2:0.220, rHub:0.024, rShaft:0.0125,
-  rRing:0.125, yRing:0.020, rRingTube:0.00635,
-  rBaffle:0.169, wBaffle:0.040, hBaffle:0.560, yBaffle:0.320,
-  legR:0.240, legTop:0.320, legBot:-0.500, rLeg:0.0243,
-  yPad:-0.538, yFloor:-0.538, yOutlet:-0.390
+  rID:0.200, th:0.003, rOD:0.203, rFlange:0.230,
+  zCut:0.03014, rCut:0.01740,
+  zTan:0.34641, zShellTop:0.94641, zCoverTop:0.95141,
+  level:0.720, floatTop:0.744, zSkim:0.725,
+  rImp:0.150, zImpLo:0.430, zImpUp:0.610,
+  rRing:0.125, zRing:0.300, rRingTube:0.00635,
+  rBafIn:0.167, rBafOut:0.192,
+  zBafLo:0.390, zBafUp:0.690,
+  rShaft:0.015, zShaftTop:1.050,
+  frameR:0.280, frameTop:0.560, frameBot:-0.400, padBot:-0.430
 };
 /* 방위 θ(도) → 모델 좌표. 0° = +x, 90° = −z (평면도와 같은 반시계) */
 function AX(r,deg){return r*Math.cos(deg*Math.PI/180);}
@@ -343,220 +358,229 @@ function RY(deg){return deg*Math.PI/180;}
 
 /* ===== 재질 ===== */
 var MAT={
-  sus304:{c:[0.72,0.76,0.80],a:1,m:0.82,k:"SUS304"},
-  sus316:{c:[0.82,0.86,0.89],a:1,m:0.90,k:"SUS316L"},
+  sus316:{c:[0.80,0.84,0.87],a:1,m:0.88,k:"SUS316L"},
+  sus304:{c:[0.68,0.72,0.76],a:1,m:0.78,k:"SUS304"},
   gear  :{c:[0.36,0.41,0.46],a:1,m:0.40,k:"구동부"},
   motor :{c:[0.25,0.30,0.35],a:1,m:0.34,k:"모터"},
-  frame :{c:[0.46,0.51,0.56],a:1,m:0.45,k:"구조재"},
+  frame :{c:[0.44,0.49,0.54],a:1,m:0.42,k:"프레임"},
   gasket:{c:[0.17,0.18,0.20],a:1,m:0.14,k:"가스켓"},
   rubber:{c:[0.13,0.14,0.16],a:1,m:0.12,k:"방진고무"},
-  pulp  :{c:[0.47,0.58,0.66],a:0.30,m:0.15,k:"슬러리"},
-  froth :{c:[0.80,0.62,0.28],a:0.52,m:0.20,k:"거품층"},
+  brine :{c:[0.42,0.55,0.66],a:0.26,m:0.16,k:"염수"},
+  floatl:{c:[0.86,0.60,0.16],a:0.82,m:0.20,k:"FLOAT 층 (Polymer-rich)"},
+  sink  :{c:[0.18,0.36,0.60],a:0.90,m:0.22,k:"SINK 층 (Si-rich)"},
   air   :{c:[0.16,0.50,0.55],a:1,m:0.42,k:"급기 계통"},
   glass :{c:[0.62,0.74,0.78],a:0.34,m:0.62,k:"유리"},
   inst  :{c:[0.58,0.44,0.16],a:1,m:0.45,k:"계장"},
   panel :{c:[0.40,0.45,0.50],a:1,m:0.38,k:"제어반"}
 };
-
 /* ===== 부품 정의 =====
    part(번호, 이름, 재질, 분해벡터, 라벨 앵커, 형상, 컷어웨이 대상, 소속 보기) */
 function buildModel(){
   var m=new Mesh(), parts=[], S=48;
   function part(id,name,mat,ex,anchor,fn,cut,grp){
-    var s=m.i.length; fn();
+    var st=m.i.length; fn();
     parts.push({id:id,name:name,mat:mat,ex:ex,anchor:anchor,
-                start:s,count:m.i.length-s,cut:!!cut,grp:grp||[]});
+                start:st,count:m.i.length-st,cut:!!cut,grp:grp||[]});
   }
 
-  /* ---- 구동부 ---- */
-  part("01","교반 모터","motor",[0,0.70,0],[0.09,0.912,0],function(){
-    disc(m,0,0.080,0.862,0.963,28);
-    disc(m,0,0.052,0.963,0.998,20);              // 팬 커버
-    box(m,0.05,0.05,0.09,0.086,0.900,0,0);        // 단자함
+  /* ---- 구동 ---- */
+  part("01","구동 기어모터 0.4 kW","motor",[0,0.70,0],[0.10,1.40,0],function(){
+    disc(m,0,0.080,1.340,1.465,26);
+    disc(m,0,0.052,1.465,1.498,20);
+    box(m,0.05,0.05,0.09,0.086,1.380,0,0);
   },false,["agi"]);
 
-  part("02","감속기 (i = 2.4)","gear",[0,0.56,0],[0.08,0.810,0],function(){
-    disc(m,0,0.075,0.757,0.862,26);
-    disc(m,0,0.086,0.757,0.771,26);               // 취부 플랜지
+  part("02","감속기 i = 19","gear",[0,0.56,0],[0.10,1.20,0],function(){
+    disc(m,0,0.095,1.051,1.340,26);
+    disc(m,0,0.106,1.051,1.066,26);
   },false,["agi"]);
 
-  part("03","커플링","sus316",[0,0.46,0],[0.045,0.730,0],function(){
-    disc(m,0,0.035,0.708,0.752,20);
-  },false,["agi"]);
+  part("03","씰 하우징 (double cartridge · HOLD)","gear",[0,0.42,0],[0.07,1.00,0],function(){
+    disc(m,0.017,0.058,G.zCoverTop,1.051,24);
+    disc(m,0.058,0.074,G.zCoverTop,G.zCoverTop+0.014,24);
+  },false,["agi","int"]);
 
-  part("05","씰 하우징 · 베어링","gear",[0,0.38,0],[0.055,0.658,0],function(){
-    disc(m,0.014,0.045,0.613,0.703,24);
-    disc(m,0.045,0.060,0.613,0.625,24);           // 커버 취부 플랜지
-  },false,["agi"]);
-
-  /* ---- 커버 계통 ---- */
-  part("04","상부 커버","sus304",[0,0.30,0],[0.20,0.611,0],function(){
-    disc(m,0.014,G.rFlange,G.yCover,G.yCover+G.tCover,S);
+  /* ---- 커버 ---- */
+  part("04","상부 커버 Ø460 × t5","sus316",[0,0.32,0],[0.20,G.zCoverTop,0],function(){
+    disc(m,0.017,G.rFlange,G.zShellTop,G.zCoverTop,S);
     var mx=AX(0.130,270), mz=AZ(0.130,270);
-    disc(m,0.0488,0.0595,G.yCover+G.tCover,G.yCover+0.030,26,mx,mz);   // 맨홀 페럴
+    disc(m,0.0488,0.0595,G.zCoverTop,G.zCoverTop+0.030,26,mx,mz);
     var sx=AX(0.130,90), sz=AZ(0.130,90);
-    disc(m,0.0275,0.0330,G.yCover+G.tCover,G.yCover+0.020,18,sx,sz);   // 스키머 보스
+    disc(m,0.0275,0.0330,G.zCoverTop,G.zCoverTop+0.020,18,sx,sz);
   },false,["int"]);
 
-  part("06","맨홀 (4″ 트라이클램프)","sus304",[0,0.24,0.16],[0,0.648,0.13],function(){
+  part("06","맨홀 4″ 트라이클램프","sus316",[0,0.26,0.17],[0,0.99,0.13],function(){
     var mx=AX(0.130,270), mz=AZ(0.130,270);
-    disc(m,0,0.0595,0.646,0.660,26,mx,mz);        // 뚜껑
-    disc(m,0,0.0500,0.638,0.646,22,mx,mz);
-    box(m,0.056,0.008,0.014,mx,0.667,mz,0);       // 손잡이
-    pipe(m,[mx-0.062,0.640,mz],[mx-0.062,0.662,mz],0.004,10,true);  // 힌지 핀
+    disc(m,0,0.0595,0.988,1.002,26,mx,mz);
+    disc(m,0,0.0500,0.980,0.988,22,mx,mz);
+    box(m,0.056,0.008,0.014,mx,1.009,mz,0);
   },false,["int"]);
 
-  part("07","스키머 (수동 패들)","sus316",[0,0.20,-0.17],[0,0.700,-0.13],function(){
+  part("07","스키머 (FLOAT 층 수동 패들)","sus316",[0,0.22,-0.18],[0,1.02,-0.13],function(){
     var sx=AX(0.130,90), sz=AZ(0.130,90);
-    pipe(m,[sx,0.290,sz],[sx,0.740,sz],0.010,14,true);
-    box(m,0.150,0.002,0.060,sx,0.290,sz,RY(90));
-    box(m,0.070,0.010,0.014,sx,0.748,sz,RY(90));
+    pipe(m,[sx,G.zSkim,sz],[sx,1.075,sz],0.010,14,true);
+    box(m,0.150,0.002,0.060,sx,G.zSkim,sz,RY(90));
+    box(m,0.070,0.010,0.014,sx,1.083,sz,RY(90));
   },false,["int"]);
 
-  part("26","커버 가스켓 (EPDM)","gasket",[0,0.17,0],[0.21,0.6065,0],function(){
-    disc(m,0.197,0.210,0.6050,0.6080,S);
-    disc(m,0.197,0.210,0.5955,0.5985,S);
+  part("26","커버 가스켓 (EPDM × 2)","gasket",[0,0.19,0],[0.21,G.zShellTop,0],function(){
+    disc(m,0.200,0.213,G.zShellTop,G.zShellTop+0.003,S);
+    disc(m,0.200,0.213,G.zShellTop-0.011,G.zShellTop-0.008,S);
   },false,["int"]);
-
-  part("13","배플 케이지 (4장)","sus304",[0,0.13,0],[0.19,0.400,0],function(){
-    disc(m,0.197,G.rFlange,0.5985,0.6025,S);       // 상부 링
-    [45,135,225,315].forEach(function(a){
-      box(m,0.050,0.004,0.040,AX(0.172,a),0.594,AZ(0.172,a),RY(a));   // 내향 탭
-      box(m,G.wBaffle,G.hBaffle,G.th,AX(G.rBaffle,a),G.yBaffle,AZ(G.rBaffle,a),RY(a));
-    });
-  },true,["int"]);
 
   /* ---- 교반계 ---- */
-  part("11","교반축 Ø25 × 740","sus316",[0,0.50,0],[0.03,0.440,0],function(){
-    pipe(m,[0,0.025,0],[0,0.765,0],G.rShaft,20,true);
+  part("11","교반축 Ø30 × 700","sus316",[0,0.50,0],[0.03,0.80,0],function(){
+    pipe(m,[0,0.400,0],[0,G.zShaftTop,0],G.rShaft,20,true);
   },false,["int","agi"]);
 
-  part("12-2","상부 임펠러 (45° 경사날개)","sus316",[0,0.38,0],[0.09,G.c2,0],function(){
-    disc(m,G.rShaft,G.rHub,G.c2-0.0225,G.c2+0.0225,20);
+  function pbt(zc){
+    disc(m,G.rShaft,0.030,zc-0.028,zc+0.028,20);
     [0,90,180,270].forEach(function(a){
-      box(m,0.028,0.003,0.046,AX(0.0475,a),G.c2,AZ(0.0475,a),RY(a+90),Math.PI/4);
+      box(m,0.030,0.003,0.120,AX(0.090,a),zc,AZ(0.090,a),RY(a+90),Math.PI/4);
     });
+  }
+  part("12-2","상부 임펠러 Ø300 4PBT45°","sus316",[0,0.38,0],[0.16,G.zImpUp,0],function(){
+    pbt(G.zImpUp);
+  },false,["int","agi"]);
+  part("12-1","하부 임펠러 Ø300 4PBT45°","sus316",[0,0.30,0],[0.16,G.zImpLo,0],function(){
+    pbt(G.zImpLo);
   },false,["int","agi"]);
 
-  part("12-1","하부 임펠러 (6엽 디스크 터빈)","sus316",[0,0.30,0],[0.09,G.c1,0],function(){
-    disc(m,G.rShaft,G.rHub,G.c1-0.0225,G.c1+0.0225,20);
-    disc(m,G.rHub,0.0525,G.c1-0.0015,G.c1+0.0015,32);      // 디스크
-    [0,60,120,180,240,300].forEach(function(a){
-      box(m,0.035,0.028,0.003,AX(0.0525,a),G.c1,AZ(0.0525,a),RY(a));
+  part("13","배플 케이지 (25 × 4 · 행어)","sus316",[0,0.24,0],[0.18,0.54,0],function(){
+    [45,135,225,315].forEach(function(a){
+      var rm=(G.rBafIn+G.rBafOut)/2;
+      box(m,G.rBafOut-G.rBafIn,G.zBafUp-G.zBafLo,0.003,
+          AX(rm,a),(G.zBafLo+G.zBafUp)/2,AZ(rm,a),RY(a));
+      box(m,0.040,0.004,0.030,AX(rm,a),G.zBafUp+0.004,AZ(rm,a),RY(a));
     });
-  },false,["int","agi"]);
+    [30,150,270].forEach(function(a){
+      pipe(m,[AX(0.178,a),G.zBafUp,AZ(0.178,a)],[AX(0.178,a),G.zShellTop,AZ(0.178,a)],0.005,10,true);
+    });
+  },true,["int","agi"]);
 
-  part("14","미세기포 분산기 (Ø250 · 60-Ø1.0)","air",[0,0.23,0],[0.13,G.yRing,0],function(){
-    torus(m,G.rRing,G.rRingTube,G.yRing,S,10);
-    pipe(m,[AX(G.rRing,200),G.yRing,AZ(G.rRing,200)],
-           [AX(0.196,200),G.yRing,AZ(0.196,200)],0.0064,12,true);
-    for(var k=0;k<30;k++){                                  // 하향 45° 분사홀 (표시용)
+  part("14","미세기포 분산 링 Ø250 · 60-Ø1.0","air",[0,0.20,0],[0.13,G.zRing,0],function(){
+    torus(m,G.rRing,G.rRingTube,G.zRing,S,10);
+    pipe(m,[AX(G.rRing,200),G.zRing,AZ(G.rRing,200)],
+           [AX(0.196,200),0.520,AZ(0.196,200)],0.0064,12,true);
+    for(var k=0;k<30;k++){
       var a=k*12, r0=G.rRing+G.rRingTube*0.4;
-      pipe(m,[AX(r0,a),G.yRing-0.004,AZ(r0,a)],
-             [AX(r0+0.011,a),G.yRing-0.015,AZ(r0+0.011,a)],0.0011,5,false);
+      pipe(m,[AX(r0,a),G.zRing-0.004,AZ(r0,a)],
+             [AX(r0+0.011,a),G.zRing-0.015,AZ(r0+0.011,a)],0.0011,5,false);
     }
   },false,["int","agi"]);
 
-  /* ---- 내용물 ---- */
-  part("70","거품층 (75 mm)","froth",[0,0.10,0],[0.10,0.335,0],function(){
-    disc(m,0,0.194,G.level,G.froth,S);
-  },true,["int"]);
+  /* ---- 내용물 : 이 장비의 산출물 ---- */
+  part("F","FLOAT 층 (Polymer-rich)","floatl",[0,0.14,0],[0.12,G.level,0],function(){
+    disc(m,0,0.199,G.level,G.floatTop,S);
+  },true,["int","sep"]);
 
-  part("60","슬러리 50 L","pulp",[0,0.05,0],[0.10,0.140,0],function(){
-    revolve(m,[[G.rOut,-G.coneH],[0.194,0],[0.194,G.level]],S,false);
-    ring(m,0,0.194,G.level,true,S);
-    ring(m,0,G.rOut,-G.coneH,false,S);
-  },true,["int"]);
+  part("B","염수 (12~18 wt% NaCl)","brine",[0,0.07,0],[0.12,0.55,0],function(){
+    revolve(m,[[G.rCut,G.zCut],[0.199,G.zTan],[0.199,G.level]],S,false);
+    ring(m,0,0.199,G.level,true,S);
+    ring(m,0,G.rCut,G.zCut,false,S);
+  },true,["int","sep"]);
+
+  part("S","SINK 층 (Si-rich · 5 kg 배치 Z214)","sink",[0,-0.16,0],[0.10,0.12,0],function(){
+    revolve(m,[[G.rCut,G.zCut],[0.1236,0.214]],S,false);
+    ring(m,0,0.1236,0.214,true,S);
+    ring(m,0,G.rCut,G.zCut,false,S);
+  },true,["int","sep"]);
 
   /* ---- 용기 ---- */
-  part("08","탱크 셀 Ø400 × t3 × 600","sus304",[0,0,0],[0.205,0.400,0],function(){
-    shellOf(m,[[G.rOD,0],[G.rOD,G.straight]],G.th,S);
-    disc(m,0.197,G.rFlange,G.yFlange,G.yCover,S);           // 상부 플랜지
-  },true,["int"]);
+  part("08","탱크 셀 ID Ø400 × t3 × 600","sus316",[0,0,0],[0.205,0.65,0],function(){
+    shellOf(m,[[G.rOD,G.zTan],[G.rOD,G.zShellTop]],G.th,S);
+    disc(m,0.200,G.rFlange,G.zShellTop-0.008,G.zShellTop,S);
+  },true,["int","sep"]);
 
-  part("09","사이드 노즐 N1~N7","sus304",[0.34,0,0],[0.25,0.470,0],function(){
-    [[180,0.520,0.0140],[0,0.395,0.0270],[200,0.020,0.0120],[160,0.150,0.0120],
-     [20,0.500,0.0120],[20,0.040,0.0120],[250,0.120,0.0120]].forEach(function(n){
-      pipe(m,[AX(0.190,n[0]),n[1],AZ(0.190,n[0])],
-             [AX(0.258,n[0]),n[1],AZ(0.258,n[0])],n[2],14,true);
-      disc(m,n[2],n[2]+0.009,0,0.006,14,AX(0.262,n[0]),AZ(0.262,n[0]));   // 페럴
+  part("09","사이드 노즐 N1~N4","sus316",[0.34,0,0],[0.25,0.76,0],function(){
+    [[0,0.760,0.0110],[90,0.735,0.0254],[180,0.520,0.0087],[270,0.560,0.0087]].forEach(function(n){
+      pipe(m,[AX(0.193,n[0]),n[1],AZ(0.193,n[0])],
+             [AX(0.262,n[0]),n[1],AZ(0.262,n[0])],n[2],14,true);
+      disc(m,n[2],n[2]+0.009,0,0.006,14,AX(0.266,n[0]),AZ(0.266,n[0]));
     });
   },false,["int"]);
 
-  part("15","하부 콘 (60° · h 300)","sus304",[0,-0.30,0],[0.10,-0.150,0],function(){
-    shellOf(m,[[G.rOD,0],[G.rOut+G.th,-G.coneH]],G.th,S);
-  },true,["int","bot"]);
+  part("15","하부 콘 60° · 이론높이 346.4","sus316",[0,-0.34,0],[0.10,0.18,0],function(){
+    shellOf(m,[[G.rOD,G.zTan],[G.rCut+G.th,G.zCut]],G.th,S);
+  },true,["int","bot","sep"]);
 
-  part("16","하부 배출구 (2″ 클램프 + 볼밸브)","sus304",[0,-0.46,0],[0.12,G.yOutlet,0],function(){
-    pipe(m,[0,-G.coneH,0],[0,-0.366,0],0.0254,20,true);
-    disc(m,0.0254,0.0320,-0.370,-0.354,20);                 // 페럴 + 클램프
-    sphere(m,0,G.yOutlet,0,0.028,12);
-    pipe(m,[0,G.yOutlet,0],[0.220,G.yOutlet,0],0.0254,18,true);
-    box(m,0.070,0.070,0.070,0.105,G.yOutlet,0,0);           // 밸브 몸통
-    pipe(m,[0.105,G.yOutlet+0.035,0],[0.105,G.yOutlet+0.095,0],0.008,10,true);
-    box(m,0.014,0.012,0.100,0.105,G.yOutlet+0.100,0,0);     // 핸들
+  part("16","하부 배출 (1.5″ 기본 / 2″ TEST)","sus316",[0,-0.50,0],[0.12,-0.07,0],function(){
+    pipe(m,[0,G.zCut,0],[0,-0.020,0],0.0191,20,true);
+    disc(m,0.0191,0.0252,-0.036,-0.020,20);
+    sphere(m,0,-0.070,0,0.024,12);
+    pipe(m,[0,-0.070,0],[0.200,-0.070,0],0.0191,18,true);
+    box(m,0.060,0.060,0.060,0.095,-0.070,0,0);
+    pipe(m,[0.095,-0.040,0],[0.095,0.016,0],0.008,10,true);
+    box(m,0.014,0.012,0.100,0.095,0.020,0,0);
   },false,["bot"]);
 
   /* ---- 지지 ---- */
-  part("17","지지 다리 (40A × 820 · 3개소)","frame",[0,-0.62,0],[0.24,-0.100,0],function(){
-    [60,180,300].forEach(function(a){
-      var x=AX(G.legR,a), z=AZ(G.legR,a);
-      pipe(m,[x,G.legBot,z],[x,G.legTop,z],G.rLeg,16,true);
-      disc(m,0,0.050,G.legBot-0.008,G.legBot,20,x,z);        // 바닥판
-      box(m,0.048,0.008,0.006,AX(0.218,a),0.318,AZ(0.218,a),RY(a));   // 상부 브라켓
-      box(m,0.048,0.008,0.006,AX(0.218,a),0.080,AZ(0.218,a),RY(a));   // 하부 브라켓
+  part("17","프레임 40 × 40 각관 (HOLD)","frame",[0,-0.70,0],[0.28,0.10,0],function(){
+    [45,135,225,315].forEach(function(a){
+      var x=AX(G.frameR,a), z=AZ(G.frameR,a);
+      box(m,0.040,G.frameTop-G.frameBot,0.040,x,(G.frameTop+G.frameBot)/2,z,RY(a));
+      disc(m,0,0.050,G.frameBot-0.008,G.frameBot,16,x,z);
+    });
+    [[0.400],[0.540],[-0.370]].forEach(function(zz){
+      [45,135,225,315].forEach(function(a,i){
+        var a2=[135,225,315,45][i];
+        pipe(m,[AX(G.frameR,a),zz[0],AZ(G.frameR,a)],
+               [AX(G.frameR,a2),zz[0],AZ(G.frameR,a2)],0.016,8,true);
+      });
     });
   },false,["bot"]);
 
-  part("30","방진패드 (Ø100 × t30)","rubber",[0,-0.78,0],[0.24,-0.523,0],function(){
-    [60,180,300].forEach(function(a){
-      disc(m,0,0.050,G.yPad,G.yPad+0.030,20,AX(G.legR,a),AZ(G.legR,a));
+  part("30","방진패드 100 × 100 × t30","rubber",[0,-0.88,0],[0.28,-0.415,0],function(){
+    [45,135,225,315].forEach(function(a){
+      box(m,0.100,0.030,0.100,AX(G.frameR,a),G.padBot+0.015,AZ(G.frameR,a),RY(a));
     });
   },false,["bot"]);
 
-  part("31","배수 트레이 (600 × 600)","frame",[0,-0.94,0],[0,-0.530,0.30],function(){
-    box(m,0.600,0.0015,0.600,0,G.yFloor+0.001,0,0);
-    box(m,0.600,0.030,0.0015,0,G.yFloor+0.015,0.300,0);
-    box(m,0.600,0.030,0.0015,0,G.yFloor+0.015,-0.300,0);
-    box(m,0.0015,0.030,0.600,0.300,G.yFloor+0.015,0,0);
-    box(m,0.0015,0.030,0.600,-0.300,G.yFloor+0.015,0,0);
+  part("31","배수 트레이 700 × 700","frame",[0,-1.02,0],[0,-0.425,0.35],function(){
+    box(m,0.700,0.0015,0.700,0,G.padBot+0.001,0,0);
+    box(m,0.700,0.030,0.0015,0,G.padBot+0.015,0.350,0);
+    box(m,0.700,0.030,0.0015,0,G.padBot+0.015,-0.350,0);
+    box(m,0.0015,0.030,0.700,0.350,G.padBot+0.015,0,0);
+    box(m,0.0015,0.030,0.700,-0.350,G.padBot+0.015,0,0);
   },false,["bot"]);
 
   /* ---- 계장 · 부속 ---- */
-  part("10","사이트글라스 (레벨 게이지)","glass",[0.30,0,-0.12],[0.28,0.270,-0.10],function(){
-    var x=AX(0.268,20), z=AZ(0.268,20);
-    pipe(m,[x,0.040,z],[x,0.500,z],0.0125,14,true);
-    pipe(m,[AX(0.200,20),0.040,AZ(0.200,20)],[x,0.040,z],0.008,10,true);
-    pipe(m,[AX(0.200,20),0.500,AZ(0.200,20)],[x,0.500,z],0.008,10,true);
+  part("10","사이트글라스 (레벨 게이지)","glass",[0.30,0,-0.12],[0.28,0.64,-0.10],function(){
+    var x=AX(0.272,20), z=AZ(0.272,20);
+    pipe(m,[x,0.380,z],[x,0.900,z],0.0125,14,true);
+    pipe(m,[AX(0.203,20),0.380,AZ(0.203,20)],[x,0.380,z],0.008,10,true);
+    pipe(m,[AX(0.203,20),0.900,AZ(0.203,20)],[x,0.900,z],0.008,10,true);
   },false,["int"]);
 
-  part("18·19·20","레벨센서 · 압력계 · 온도센서","inst",[0,0.28,0],[0.17,0.640,0],function(){
-    pipe(m,[AX(0.165,0),0.420,AZ(0.165,0)],[AX(0.165,0),0.640,AZ(0.165,0)],0.005,10,true);
-    disc(m,0,0.018,0.640,0.668,14,AX(0.165,0),AZ(0.165,0));
-    pipe(m,[AX(0.165,180),0.150,AZ(0.165,180)],[AX(0.165,180),0.640,AZ(0.165,180)],0.005,10,true);
-    disc(m,0,0.018,0.640,0.668,14,AX(0.165,180),AZ(0.165,180));
-    disc(m,0,0.032,0.618,0.646,16,AX(0.100,45),AZ(0.100,45));     // 압력계
-    disc(m,0,0.012,0.613,0.648,12,AX(0.100,225),AZ(0.100,225));   // 벤트
-    pipe(m,[AX(0.258,250),0.120,AZ(0.258,250)],[AX(0.300,250),0.150,AZ(0.300,250)],0.009,10,true);
+  part("18·19·20","레벨센서 · 압력계 · 온도센서","inst",[0,0.30,0],[0.17,0.98,0],function(){
+    pipe(m,[AX(0.165,0),0.760,AZ(0.165,0)],[AX(0.165,0),0.978,AZ(0.165,0)],0.005,10,true);
+    disc(m,0,0.018,0.978,1.006,14,AX(0.165,0),AZ(0.165,0));
+    pipe(m,[AX(0.165,180),0.420,AZ(0.165,180)],[AX(0.165,180),0.978,AZ(0.165,180)],0.005,10,true);
+    disc(m,0,0.018,0.978,1.006,14,AX(0.165,180),AZ(0.165,180));
+    disc(m,0,0.032,0.956,0.984,16,AX(0.100,45),AZ(0.100,45));
+    disc(m,0,0.012,G.zCoverTop,0.986,12,AX(0.100,225),AZ(0.100,225));
+    pipe(m,[AX(0.262,270),0.560,AZ(0.262,270)],[AX(0.305,270),0.590,AZ(0.305,270)],0.009,10,true);
   },false,["int"]);
 
-  part("21","공기 공급계 (필터·레귤레이터·로타미터)","air",[-0.40,0,0],[-0.34,0.230,0.10],function(){
-    box(m,0.055,0.120,0.055,-0.400,0.320,0.120,0);          // 필터+레귤레이터
-    box(m,0.036,0.150,0.036,-0.310,0.330,0.120,0);          // 로타미터
-    pipe(m,[-0.400,0.260,0.120],[-0.400,0.150,0.120],0.007,10,true);
-    pipe(m,[-0.400,0.150,0.120],[-0.310,0.150,0.120],0.007,10,true);
-    pipe(m,[-0.310,0.150,0.120],[-0.310,0.255,0.120],0.007,10,true);
-    pipe(m,[-0.310,0.405,0.120],[-0.310,0.430,0.120],0.007,10,true);
-    pipe(m,[-0.310,0.430,0.120],[-0.230,0.430,0.048],0.007,10,true);
-    pipe(m,[-0.230,0.430,0.048],[-0.230,0.020,0.048],0.007,10,true);
-    pipe(m,[-0.230,0.020,0.048],[AX(0.258,200),0.020,AZ(0.258,200)],0.007,10,true);
+  part("21","공기 공급계 (SV-1 동시 OFF)","air",[-0.40,0,0],[-0.34,0.62,0.10],function(){
+    box(m,0.055,0.120,0.055,-0.400,0.720,0.120,0);
+    box(m,0.036,0.150,0.036,-0.310,0.730,0.120,0);
+    box(m,0.048,0.060,0.048,-0.220,0.640,0.120,0);
+    pipe(m,[-0.400,0.660,0.120],[-0.400,0.560,0.120],0.007,10,true);
+    pipe(m,[-0.400,0.560,0.120],[-0.310,0.560,0.120],0.007,10,true);
+    pipe(m,[-0.310,0.560,0.120],[-0.310,0.655,0.120],0.007,10,true);
+    pipe(m,[-0.310,0.805,0.120],[-0.310,0.840,0.120],0.007,10,true);
+    pipe(m,[-0.310,0.840,0.120],[-0.220,0.840,0.120],0.007,10,true);
+    pipe(m,[-0.220,0.840,0.120],[-0.220,0.670,0.120],0.007,10,true);
+    pipe(m,[-0.220,0.610,0.120],[-0.220,0.520,0.048],0.007,10,true);
+    pipe(m,[-0.220,0.520,0.048],[AX(0.266,180),0.520,AZ(0.266,180)],0.007,10,true);
   },false,["int","agi"]);
 
-  part("22","제어반 (300 × 200 × 150)","panel",[-0.56,0,0],[-0.52,0.470,0],function(){
-    box(m,0.150,0.200,0.300,-0.520,0.470,0,0);
-    box(m,0.012,0.160,0.260,-0.596,0.470,0,0);              // 도어면
-    pipe(m,[-0.520,0.370,0],[-0.520,G.yFloor+0.010,0],0.020,12,true);
-    disc(m,0,0.070,G.yFloor,G.yFloor+0.010,16,-0.520,0);
+  part("22","제어반 (IL-1 동시 OFF 인터록)","panel",[-0.56,0,0],[-0.52,0.78,0],function(){
+    box(m,0.150,0.200,0.300,-0.520,0.780,0,0);
+    box(m,0.012,0.160,0.260,-0.596,0.780,0,0);
+    pipe(m,[-0.520,0.680,0],[-0.520,G.padBot+0.010,0],0.020,12,true);
+    disc(m,0,0.070,G.padBot,G.padBot+0.010,16,-0.520,0);
   },false,["agi","bot"]);
 
   return {mesh:m,parts:parts};
@@ -614,15 +638,21 @@ var ITYPE=big?gl.UNSIGNED_INT:gl.UNSIGNED_SHORT, ISIZE=big?4:2;
 
 /* ===== 상태 ===== */
 var VIEWS={
-  all:{t:[0,0.20,0],d:2.60,label:"전체",grp:null},
-  int:{t:[0,0.26,0],d:1.42,label:"동체 내부",grp:"int"},
-  agi:{t:[0,0.38,0],d:1.50,label:"교반계",grp:"agi"},
-  bot:{t:[0,-0.26,0],d:1.30,label:"배출·지지",grp:"bot"}
+  all:{t:[0,0.55,0],d:3.00,label:"전체",grp:null},
+  sep:{t:[0,0.52,0],d:1.70,label:"분리 결과",grp:"sep"},
+  int:{t:[0,0.62,0],d:1.85,label:"동체 내부",grp:"int"},
+  agi:{t:[0,0.82,0],d:2.05,label:"교반계",grp:"agi"},
+  bot:{t:[0,0.06,0],d:1.55,label:"배출·지지",grp:"bot"}
 };
-var view="all", az=-0.68, el=0.26, dist=VIEWS.all.d;
+var view="all", az=-0.68, el=0.22, dist=VIEWS.all.d;
 var expAmt=0, cutAmt=0, spin=true, hi=null;
 var stage=document.getElementById("stage");
 function visible(p){var g=VIEWS[view].grp; return g===null || p.grp.indexOf(g)>=0;}
+/* 분리 결과 보기에서는 동체·콘을 비쳐 보이게 해야 FLOAT / SINK 층이 드러난다 */
+var SEE_THROUGH={"08":1,"15":1,"13":1};
+function alphaOf(p){
+  return (view==="sep" && SEE_THROUGH[p.id]) ? 0.16 : MAT[p.mat].a;
+}
 
 /* ===== 부품 목록 ===== */
 function hex(c){return "#"+c.map(function(v){var h=Math.round(Math.min(1,v*1.06)*255)
@@ -647,32 +677,67 @@ function refreshList(){
 }
 
 var SPEC={
-  all:[["용도","≈75 µm EVA·백시트 부선 분리"],["운전 / 전 용량","50 L / 87 L"],
-       ["동체","Ø400 × t3 × 600 (ID Ø394)"],["하부 콘","60° 포함각 · h 300"],
-       ["정지 액면","+297 mm"],["거품층","75 mm"],
-       ["임펠러","Ø140 × 2 · D/T 0.355"],["설계 회전수","600 rpm"],
-       ["임펠러 주속","4.40 m/s"],["최대 회전수","717 rpm"],["최소 회전수","179 rpm"],
-       ["공기","2.6 m³/h · Jg 0.59 cm/s"],["분산기","Ø250 링 · 60-Ø1.0"],
-       ["모터","0.75 kW · 380 V 3φ"],["설계 / 시험 압력","0.05 / 0.075 MPa"],
-       ["건조 / 운전 중량","85 / 138 kg"],["전체 높이","1,501 mm"]],
-  int:[["동체 내경","Ø394 (t3)"],["직관부 / 콘","600 / 300 mm"],
-       ["전 용량","87.0 L"],["운전 용량","50.1 L @ +297"],
-       ["거품 위어","+372 (N2 하단)"],["여유공간","228 mm"],
-       ["배플","40 × 560 × t3 × 4장"],["벽면 간극","8 mm"],
-       ["배플 고정","케이지 — 내면 용접 없음"],["내면 마감","Ra ≤ 0.8 µm"],
-       ["커버","Ø460 × t5 · 8-M8"],["맨홀","4\" 트라이클램프"]],
-  agi:[["구성","한 축 · 두 임펠러"],["하부 (+60)","Ø140 6엽 디스크 터빈"],
-       ["상부 (+220)","Ø140 4엽 45° 경사날개"],["임펠러 간격","160 mm = 1.14 D"],
-       ["상부 잠김","77 mm = 0.55 D"],["교반축","Ø25 × 740 · SUS316L"],
-       ["설계 회전수","600 rpm"],["임펠러 주속","4.40 m/s"],
-       ["최대 / 최소","717 rpm / 179 rpm"],["축동력","357 W (최대 610 W)"],["축 토크","5.69 → 8.12 N·m"],
-       ["1차 위험속도","1,746 rpm"],["모터 / 감속기","0.75 kW / i = 2.4"],
-       ["분산기 홀 유속","15.3 m/s (We 4.6)"]],
-  bot:[["하부 콘","60° · Ø394 → Ø47.6 · h 300"],["배출","2\" 트라이클램프 + 볼밸브"],
-       ["배출 최하단","−416 (바닥에서 122)"],["지지 다리","40A × 820 · 3개소"],
-       ["다리 P.C.D","480"],["다리 1개당 하중","451 N (운전)"],
-       ["방진패드","Ø100 × t30 × 3"],["앵커","M10 케미컬 × 3"],
-       ["배수 트레이","600 × 600 × t1.5"],["바닥~커버 상면","1,151 mm"]]
+  all:[["원리","염수 자연 밀도분리 (부선 아님)"],
+       ["대상","31~75 µm 블랙파우더"],
+       ["전 용적 / 운전","89.91 L / 61.46 L"],
+       ["동체","ID Ø400 × t3 × 600"],
+       ["콘","60° · 이론높이 346.4 · 절단 Z30"],
+       ["설계 액면","Z720"],
+       ["임펠러","Ø300 4PBT45° × 2"],
+       ["회전수","30 ~ 90 rpm (VFD)"],
+       ["Njs (Si 75 µm, 3 kg)","80 rpm"],
+       ["분산 링","Ø250 @ Z300 · 60-Ø1.0"],
+       ["공기","0 ~ 10 L/min (회수율 변수)"],
+       ["염도","12 / 15 / 18 wt% NaCl"],
+       ["구동","0.4 kW · i = 19 (HOLD)"],
+       ["전 높이","약 1,895 mm"]],
+  sep:[["t = 0","임펠러·공기 동시 OFF"],
+       ["FLOAT 층","Polymer-rich · 액면 위"],
+       ["SINK 층","Si-rich · 콘 저부"],
+       ["층분리 거리","374 mm (액면 → 콘 접선)"],
+       ["Si 60-75 µm","157 s"],
+       ["Si 31-45 µm","495 s"],
+       ["EVA 60-75 µm","999 s"],
+       ["EVA 31-45 µm","4,593 s"],
+       ["DOE 관찰창","600 s"],
+       ["밀도차만 EVA 도달","34.5 %"],
+       ["Ø200 µm 기포 부착 시","약 25 s"],
+       ["5 kg 배치 침전 상단","Z214"]],
+  int:[["동체 내경","ID Ø400 (t3)"],
+       ["직관부","600 · Z346 → Z946"],
+       ["콘","60° · 이론 Z0 · 절단 Z30"],
+       ["전 용적","89.91 L"],
+       ["설계 액면","Z720 → 61.46 L"],
+       ["호칭 50 L","Z629"],
+       ["배플","25 × t3 × 4 · Z390~690"],
+       ["배플 고정","커버 행어 로드 3본"],
+       ["임펠러 간극","17 mm"],
+       ["커버","Ø460 × t5 · 12-M8"],
+       ["맨홀","4″ 트라이클램프 R130 @270°"],
+       ["내면","Ra ≤ 0.8 µm · 부동태화"]],
+  agi:[["구성","한 축 · 임펠러 2장"],
+       ["하부 (Z430)","Ø300 4PBT45°"],
+       ["상부 (Z610)","Ø300 4PBT45°"],
+       ["간격","180 mm"],
+       ["D/T","0.750"],
+       ["설계 회전수","30 ~ 90 rpm"],
+       ["주속 @90 rpm","1.414 m/s"],
+       ["축동력 @90 rpm","23.1 W"],
+       ["토크 @90 rpm","2.46 N·m"],
+       ["Njs (3 kg)","80 rpm"],
+       ["교반축","Ø30 × 700 · 편심 ≤0.5"],
+       ["임펠러 TIR","≤ 1.0 mm"],
+       ["씰","double cartridge · CRITICAL HOLD"]],
+  bot:[["콘","60° · Ø400 → Ø34.8"],
+       ["절단면","Z30 (1.5″) / Z41 (2″)"],
+       ["배출","트라이클램프 + 90° 엘보 + 볼밸브"],
+       ["최하단","Z −95 · 바닥에서 305 mm"],
+       ["프레임","40 × 40 각관 4각 · HOLD"],
+       ["베이스","600 × 600 · Z−400"],
+       ["방진패드","100 × 100 × t30 × 4"],
+       ["앵커","M10 케미컬 × 4"],
+       ["배수 트레이","700 × 700 × t1.5"],
+       ["운전 중량","약 130 kg"]]
 };
 function refreshSpec(){
   var tb=document.getElementById("spec"); tb.innerHTML="";
@@ -683,10 +748,10 @@ function refreshSpec(){
 }
 
 /* ===== 라벨 ===== */
-var ZONES=[{t:"구동",v:"모터 · 감속기",p:[0.09,0.90,0]},
-           {t:"커버",v:"맨홀 · 계장",p:[0,0.70,0.20]},
-           {t:"동체",v:"Ø400 × 600",p:[0.26,0.34,0]},
-           {t:"저부",v:"콘 · 배출 · 지지",p:[0.26,-0.34,0]}];
+var ZONES=[{t:"구동",v:"기어모터 · 씰 (HOLD)",p:[0.10,1.30,0]},
+           {t:"커버",v:"맨홀 · 스키머 · 계장",p:[0,1.02,0.18]},
+           {t:"동체",v:"ID Ø400 × 600",p:[0.26,0.66,0]},
+           {t:"저부",v:"콘 60° · 배출 · 프레임",p:[0.26,0.06,0]}];
 var labelEls=[];
 function labelSet(){
   labelEls.forEach(function(e){e.remove();}); labelEls=[];
@@ -726,11 +791,12 @@ document.getElementById("reset").addEventListener("click",function(){
   az=-0.68;el=0.26;dist=VIEWS[view].d;});
 function pick(v,btn){
   view=v; dist=VIEWS[v].d; az=-0.68; el=0.26;
-  ["vAll","vInt","vAgi","vBot"].forEach(function(id){
+  ["vAll","vSep","vInt","vAgi","vBot"].forEach(function(id){
     document.getElementById(id).setAttribute("aria-pressed", id===btn?"true":"false");});
   refreshList(); refreshSpec(); labelSet();
 }
 document.getElementById("vAll").addEventListener("click",function(){pick("all","vAll");});
+document.getElementById("vSep").addEventListener("click",function(){pick("sep","vSep");});
 document.getElementById("vInt").addEventListener("click",function(){pick("int","vInt");});
 document.getElementById("vAgi").addEventListener("click",function(){pick("agi","vAgi");});
 document.getElementById("vBot").addEventListener("click",function(){pick("bot","vBot");});
@@ -774,16 +840,19 @@ function frame(t){
     var mt=MAT[p.mat], e=p.ex, s=expAmt*0.80;
     gl.uniformMatrix4fv(U.uModel,false,m4t(e[0]*s,e[1]*s,e[2]*s));
     gl.uniform3fv(U.uColor,new Float32Array(mt.c));
-    gl.uniform1f(U.uAlpha,mt.a); gl.uniform1f(U.uMetal,mt.m);
+    gl.uniform1f(U.uAlpha,alphaOf(p)); gl.uniform1f(U.uMetal,mt.m);
     gl.uniform1f(U.uCuttable,(cutOn&&p.cut)?1:0);
     gl.uniform1f(U.uDim, (hi===null||hi===p.id)?1.0:0.34);
     gl.drawElements(gl.TRIANGLES,p.count,ITYPE,p.start*ISIZE);
   }
   gl.disable(gl.BLEND); gl.depthMask(true);
-  PARTS.forEach(function(p){ if(visible(p)&&MAT[p.mat].a>=1) draw(p); });
+  PARTS.forEach(function(p){ if(visible(p)&&alphaOf(p)>=1) draw(p); });
   gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
   gl.depthMask(false);
-  PARTS.forEach(function(p){ if(visible(p)&&MAT[p.mat].a<1) draw(p); });
+  // 반투명은 카메라에서 먼 것부터 그려야 겹침이 맞는다 (FLOAT 위 · SINK 아래)
+  PARTS.filter(function(p){ return visible(p)&&alphaOf(p)<1; })
+       .sort(function(a2,b2){ return a2.anchor[1]-b2.anchor[1]; })
+       .forEach(draw);
   gl.depthMask(true);
 
   // 라벨
