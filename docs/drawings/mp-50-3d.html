@@ -1,0 +1,1153 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="미세입자(약 75 µm)용 EVA·백시트 분리기 MP-50 소형 파일럿(50 L) 제작도 P0 의 3D 조립·분해 모델. 부품 34점, 컷어웨이·분해·운전 표시와 도면 검토 지적.">
+<title>MP-50 EVA·백시트 분리기 조립 분해도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap">
+
+<style>
+  :root {
+    --bg:#E7ECEF; --surface:#FFFFFF; --surface-2:#F5F8FA;
+    --ink:#152229; --ink-2:#4E5F68; --ink-3:#788892;
+    --line:#A9B5BE; --line-2:#69777F; --rule:#D2DAE0;
+    --brand:#1B7CB8; --brand-2:#268CCA; --brand-ink:#125D8C; --accent:#B07A10;
+    --red:#A52A30; --ok:#26714A;
+    --stage:#E2E8EC; --stage-2:#C3CED6;
+    --mark:#FFFFFF;
+    --sans:"IBM Plex Sans KR",system-ui,-apple-system,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#101820; --surface:#18222A; --surface-2:#1E2A33;
+      --ink:#E4EBF0; --ink-2:#9FAFBA; --ink-3:#7C8C97;
+      --line:#3E4E58; --line-2:#7E8E99; --rule:#28343D;
+      --brand:#4AA8E0; --brand-2:#268CCA; --brand-ink:#8ED2F5; --accent:#DCA847;
+      --red:#E2585F; --ok:#4FB27C;
+      --stage:#151E25; --stage-2:#080D11;
+      --mark:#0E161C;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#101820; --surface:#18222A; --surface-2:#1E2A33;
+    --ink:#E4EBF0; --ink-2:#9FAFBA; --ink-3:#7C8C97;
+    --line:#3E4E58; --line-2:#7E8E99; --rule:#28343D;
+    --brand:#4AA8E0; --brand-2:#268CCA; --brand-ink:#8ED2F5; --accent:#DCA847;
+    --red:#E2585F; --ok:#4FB27C;
+    --stage:#151E25; --stage-2:#080D11;
+    --mark:#0E161C;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+       line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:40px 20px 80px;
+        display:flex;flex-direction:column;gap:26px}
+
+  header{border-bottom:2px solid var(--line-2);padding-bottom:22px}
+  .np{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .np-mark{flex:none;display:grid;place-items:center;width:44px;height:44px;
+           background:var(--mark);border:1px solid var(--line-2)}
+  .np-mark svg{width:30px;height:30px;display:block}
+  .np-word{display:grid;gap:3px}
+  .np-word i{font:600 8.5px/1 var(--mono);font-style:normal;letter-spacing:.16em;color:var(--ink-3)}
+  .np-word b{font:700 14px/1 system-ui,sans-serif;letter-spacing:.06em;color:var(--brand-ink)}
+  .np-dwg{margin-left:auto;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+          color:var(--ink-3);text-align:right;line-height:1.7}
+  .eyebrow{margin-top:18px;font-family:var(--mono);font-size:12px;font-weight:500;
+           letter-spacing:.14em;text-transform:uppercase;color:var(--brand-ink)}
+  h1{margin:8px 0 0;font-size:clamp(25px,4vw,38px);font-weight:600;
+     letter-spacing:-.015em;line-height:1.18;text-wrap:balance}
+  .lede{margin:14px 0 0;max-width:66ch;color:var(--ink-2);font-size:16px;font-weight:300}
+  .lede b{color:var(--ink);font-weight:500}
+
+  .viewer{border:1px solid var(--line);background:var(--surface)}
+  .stage{position:relative;height:min(76vh,700px);min-height:440px;
+         background:radial-gradient(ellipse 85% 75% at 50% 42%,var(--stage) 0%,var(--stage-2) 100%);
+         overflow:hidden;cursor:grab;touch-action:none}
+  .stage.dragging{cursor:grabbing}
+  .stage canvas{display:block;width:100%;height:100%}
+
+  .lbl{position:absolute;transform:translate(0,-50%);font-family:var(--mono);font-size:10.5px;
+       font-weight:500;color:var(--ink);background:var(--surface);border:1px solid var(--line);
+       border-left:2px solid var(--brand);padding:2px 6px;white-space:nowrap;pointer-events:none;
+       opacity:0;transition:opacity .16s}
+  .lbl.on{opacity:1}
+  .lbl b{color:var(--brand-ink);font-weight:600}
+  .lbl i{font-style:normal;color:var(--ink-3)}
+
+  .hud{position:absolute;left:14px;bottom:12px;font-family:var(--mono);font-size:10.5px;
+       color:var(--ink-3);pointer-events:none;letter-spacing:.04em}
+  .scalebar{position:absolute;right:14px;bottom:12px;font-family:var(--mono);font-size:10px;
+            color:var(--ink-3);pointer-events:none;text-align:right;letter-spacing:.04em}
+  .fallback{display:none;padding:28px;text-align:center;color:var(--ink-2);font-size:14px}
+
+  .bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px 16px;
+       border-top:1px solid var(--rule);background:var(--surface-2)}
+  .seg{display:flex;border:1px solid var(--line)}
+  .seg button{font-family:var(--mono);font-size:11px;font-weight:500;padding:7px 11px;
+              border:none;background:transparent;color:var(--ink-2);cursor:pointer;
+              border-right:1px solid var(--line)}
+  .seg button:last-child{border-right:none}
+  .seg button[aria-pressed="true"]{background:var(--brand);color:#fff}
+  .seg button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+  .ctl{display:flex;align-items:center;gap:9px}
+  .ctl label{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;
+             text-transform:uppercase;color:var(--ink-3)}
+  input[type=range]{width:112px;accent-color:var(--brand)}
+  .toggle{font-family:var(--mono);font-size:11px;padding:7px 12px;border:1px solid var(--line);
+          background:transparent;color:var(--ink-2);cursor:pointer}
+  .toggle[aria-pressed="true"]{border-color:var(--brand);color:var(--brand-ink);
+          background:var(--surface)}
+  .toggle:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+  .cols{display:grid;grid-template-columns:1.3fr 1fr;border-top:1px solid var(--rule)}
+  .cols>div{padding:18px 18px 20px}
+  .cols>div:first-child{border-right:1px solid var(--rule)}
+  h2{margin:0 0 12px;font-family:var(--mono);font-size:11px;font-weight:600;
+     letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+
+  .plist{display:grid;grid-template-columns:1fr 1fr;gap:3px 14px}
+  .plist button{display:flex;align-items:center;gap:8px;font-size:12.5px;font-family:var(--sans);
+       background:none;border:none;padding:3px 4px;color:var(--ink-2);cursor:pointer;text-align:left;
+       border-left:2px solid transparent;width:100%}
+  .plist button:hover,.plist button[aria-pressed="true"]{color:var(--ink);
+       border-left-color:var(--brand);background:var(--surface-2)}
+  .plist .n{font-family:var(--mono);font-size:10px;color:var(--brand-ink);flex:none;width:20px}
+  .plist .sw{width:11px;height:11px;border:1px solid var(--line-2);flex:none}
+  .plist .q{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--ink-3);flex:none}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+  td{padding:5px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+  td:last-child{text-align:right;font-family:var(--mono);white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+
+  .notes{background:var(--surface);border:1px solid var(--line);padding:20px 22px 24px}
+  .notes ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;
+            counter-reset:n}
+  .notes li{position:relative;padding-left:32px;font-size:14px;font-weight:300;
+            color:var(--ink-2);max-width:86ch}
+  .notes li::before{counter-increment:n;content:counter(n,decimal-leading-zero);position:absolute;
+    left:0;top:1px;font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--brand-ink)}
+  .notes strong{color:var(--ink);font-weight:500}
+  .notes.review{border-left:3px solid var(--red)}
+  .notes.review li::before{color:var(--red)}
+  .foot{font-size:12.5px;color:var(--ink-3);font-weight:300;border-top:1px solid var(--rule);
+        padding-top:16px}
+  .foot code{font-family:var(--mono);font-size:11.5px}
+
+  @media (max-width:760px){
+    .cols{grid-template-columns:1fr}
+    .cols>div:first-child{border-right:none;border-bottom:1px solid var(--rule)}
+    .plist{grid-template-columns:1fr}
+    .wrap{padding:28px 13px 60px}
+    .np-dwg{margin-left:0;text-align:left;width:100%}
+  }
+  @media (prefers-reduced-motion:reduce){.lbl{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="np">
+      <div class="np-mark" aria-hidden="true">
+        <svg viewBox="-3 -3 105 95" focusable="false"><polygon points='34.2,0 69.9,0 76.7,5.5 99,44.2 98.4,53.6 70.5,53.6' fill='var(--accent)'/><polygon points='19.5,83.1 33.1,59.5 95,59.5 80.4,84.9 74.1,88.9 25.9,88.9' fill='var(--brand-2)'/><polygon points='0,47.2 1.4,43.5 8.8,30.8 25.6,59.8 15.8,77.7 14.3,75.9 0.9,52.4' fill='var(--brand-2)'/><polygon points='12.5,24.3 18.8,13.5 35.4,41.3 35.9,42.8 29.3,54.3 12.8,25.9' fill='var(--brand-2)'/><polygon points='25.3,11.8 38.6,11.8 45.7,23.9 45.9,25.6 39.8,36.1 26.6,14.3' fill='var(--brand-2)'/></svg>
+      </div>
+      <div class="np-word">
+        <i>FOR NET ZERO PROJECTION</i>
+        <b>DYNAMIC INDUSTRY</b>
+      </div>
+      <div class="np-dwg">DWG. MP-50-P0-001 · REV P0<br>2026-09-09 · 단위 mm · 척도 NTS</div>
+    </div>
+    <div class="eyebrow">소형 파일럿 50 L · 부품 34점 · 3D 조립 분해도</div>
+    <h1>미세입자(≈75 µm)용 EVA · 백시트 분리기 MP-50</h1>
+    <p class="lede">
+      제작도 P0 <b>13개 상세 패널</b>을 하나의 3D 조립체로 옮긴 것이다. 급기는 <b>Ø250 링
+      분산기의 Ø2 분사홀 60개</b>로 넣고, 떠오른 EVA·백시트는 상부 <b>스키머</b>로,
+      가라앉은 유리·셀 분획은 <b>하부 콘</b>으로 뺀다. <b>분해</b> 슬라이더를 올리면
+      부품이 조립 순서대로 떨어져 나오고, <b>컷어웨이</b>는 동체를 잘라 내부를 보여준다.
+    </p>
+  </header>
+
+  <section class="viewer">
+    <div class="stage" id="stage">
+      <canvas id="gl"></canvas>
+      <div class="hud">드래그 회전 · 휠 확대 · 부품 클릭</div>
+      <div class="scalebar" id="scalebar">전고 1,885 mm</div>
+      <div class="fallback" id="fallback">
+        이 브라우저에서 WebGL 을 쓸 수 없어 3D 모델을 표시하지 못한다.
+        제작도 원본(MP-50-P0-001)을 참조할 것.
+      </div>
+    </div>
+
+    <div class="bar">
+      <div class="seg" role="group" aria-label="보기 대상">
+        <button id="vAll" aria-pressed="true">전체</button>
+        <button id="vG1" aria-pressed="false">탱크 · 구조</button>
+        <button id="vG2" aria-pressed="false">구동부</button>
+        <button id="vG3" aria-pressed="false">급기 · 계장</button>
+        <button id="vG4" aria-pressed="false">전장</button>
+      </div>
+      <div class="ctl"><label for="exp">분해</label>
+        <input type="range" id="exp" min="0" max="100" value="0" aria-label="분해 정도"></div>
+      <div class="ctl"><label for="cut">컷어웨이</label>
+        <input type="range" id="cut" min="0" max="100" value="0" aria-label="컷어웨이 정도"></div>
+      <button class="toggle" id="num" aria-pressed="false">부품번호</button>
+      <button class="toggle" id="run" aria-pressed="false">충수 · 운전</button>
+      <button class="toggle" id="spin" aria-pressed="true">자동 회전</button>
+      <button class="toggle" id="reset">시점 초기화</button>
+    </div>
+
+    <div class="cols">
+      <div><h2 id="plistTitle">구성 부품</h2><div class="plist" id="plist"></div></div>
+      <div><h2 id="specTitle">제원</h2><table><tbody id="spec"></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <h2>도면 주기</h2>
+    <ol>
+      <li><strong>체적은 기하 79.9 L, 정격 작업 50 L 이다.</strong> 동체 내경 Ø394 × 직동부
+        600 이 73.2 L, 하부 콘(Ø394→Ø38 × 150)이 6.7 L 다. 명판의 50 L 는 작업 체적으로,
+        충수율 62.6 % · 액면은 동체 하단에서 <strong>355 mm</strong>, 여유고 245 mm 다.
+        분리기는 부유물을 걷어내는 장치라 이 여유고가 거품·부유층과 스키머 작업 공간이 된다.</li>
+      <li><strong>급기는 링 분산기 한 곳뿐이다.</strong> Ø250 링(관 Ø20)에 Ø2 분사홀 60개,
+        홀 피치 13.1 mm, 총 홀 면적 188.5 mm². 공기 1 / 3 / 5 m³/h 에서 홀 유속은
+        1.5 / 4.4 / 7.4 m/s 이고, 링은 하부 임펠러 바로 아래(동체 하단 +34 mm)에 놓여
+        올라온 기포를 임펠러가 한 번 더 잘게 부순다.</li>
+      <li><strong>임펠러는 상·하 두 단이고 역할이 다르다.</strong> 상부(고속용)는 날개높이
+        80 mm 로 기포 분산·부착을, 하부(저속용)는 날개높이 13 mm 로 침강분획 재부유를
+        맡는다. 둘 다 Ø300 · 6매 · t3, 허브는 Ø25 H7 에 키홈 6×6 과 M8 세트스크류다.</li>
+      <li><strong>상부 커버는 6-Ø9 / P.C.D 360 으로 조인다.</strong> 커버 t5, 동체 플랜지
+        t12, 관통구는 맨홀 Ø120 과 스키머 Ø55 이며 중앙에 교반축 Ø25 용 베어링·씰 보스
+        (높이 20)가 선다. 조립 토크는 M8 20 N·m, M10 40 N·m 다.</li>
+      <li><strong>재질은 접액부와 비접액부를 나눈다.</strong> 탱크·커버 SUS304 2B(내부 Ra
+        ≤0.8 µm), 교반축·임펠러 SUS316L 연마(Ra ≤0.4 µm), 배관·밸브 SUS304 2B,
+        가스켓 EPDM / SILICONE 식품용, 볼트·너트·와셔 SUS304 다.</li>
+      <li><strong>본 모델은 공정·조립 이해용 개략 형상이다.</strong> 제작용 CAD 가 아니며
+        용접 상세·베어링 내부·나사부·전장 결선은 표현하지 않았다. 치수는 제작도
+        MP-50-P0-001 의 표기값을 따랐고, 아래 지적 항목만 모델에서 달리 그렸다.</li>
+    </ol>
+  </section>
+
+  <section class="notes review">
+    <h2>도면 검토 지적 (P0 → P1 반영 필요)</h2>
+    <ol>
+      <li><strong>배플 폭 200 mm 는 들어가지 않는다.</strong> 동체 내경 Ø394 의 반경이
+        197 mm 이고 Ø300 임펠러까지 벽면 간극이 <strong>47 mm</strong> 뿐이라, 폭 200 배플
+        4장은 임펠러와 간섭한다. 통상값은 T/10 = 39.4 mm 이므로 모델은 이를 반올림한
+        <strong>폭 40 mm</strong> 로 그렸다. P1 에서 폭을 확정할 것.</li>
+      <li><strong>하부 콘 각도 60° 가 치수와 맞지 않는다.</strong> Ø400→Ø38 을 높이 150 으로
+        잇는 치수열은 축 기준 반각 <strong>50.4°</strong>(내각 100.7°)다. 표기대로
+        내각 60° 면 높이 314, 반각 60° 면 높이 105 이 되어야 한다. 모델은 치수열
+        (Ø400 / Ø38 / 150)을 따랐다.</li>
+      <li><strong>지지 다리 200 mm 로는 하부 배출구가 바닥에 닿는다.</strong> 콘 하부
+        플랜지 t8 + 40A 볼밸브 120 + 캠락·플러그 80 = <strong>208 mm</strong> 가 콘 출구
+        아래로 내려온다. 모델은 다리 파이프를 <strong>420 mm</strong> 로 세워 바닥 여유
+        108 mm 를 확보했다.</li>
+      <li><strong>전고 750 은 장비 전고가 아니다.</strong> 750 = 직동부 600 + 콘 150 으로
+        탱크 본체만의 높이다. 방진패드 30 · 다리 · 커버 · 구동부를 더한 이 모델의
+        조립 전고는 <strong>약 1,885 mm</strong> 다. P1 에서 전고 치수를 따로 넣을 것.</li>
+      <li><strong>임펠러 직경비 D/T = 0.76 은 통상 범위를 벗어난다.</strong> 교반조 표준은
+        0.3–0.5 다. 0.76 은 벽면 간극이 좁아 축동력과 전단이 급증하므로, 미세입자
+        (≈75 µm) 부유선별 목적에는 과대할 수 있다. 여파도 있다 — 액면 355 mm 안에
+        Ø300 두 단을 넣으면 단 간격이 <strong>0.50 D</strong>(통상 1.0 D), 상부 임펠러
+        잠김이 <strong>0.35 D</strong> 밖에 안 나온다. 잠김이 얕으면 상부 임펠러가
+        부유층을 다시 깨뜨려 스키밍을 방해한다. 임펠러를 Ø200 안팎으로 줄이거나
+        상부 단을 없애는 쪽이 목적에 맞는다.</li>
+      <li><strong>구동부를 받칠 스탠드가 도면에 없다.</strong> 커플링(03)이 별도 품목인
+        이상 감속기 출력축과 교반축 사이에는 축방향 간격이 생기고, 커버 중앙 보스
+        (높이 20)만으로는 모터·감속기 하중과 전도 모멘트를 받을 수 없다. 모델은
+        커버 보스 위에 <strong>4주 스탠드(높이 약 250)</strong>를 세워 감속기를 올렸다.
+        P1 에서 품번을 부여하고 하중을 검산할 것.</li>
+      <li><strong>배플 높이 치수선에 두께값이 들어가 있다.</strong> 상세 패널 G 의
+        세로 치수선이 판 높이(400)를 가리키는데 값은 <strong>t2</strong> 로 적혀 있다.
+        두께 t2 는 판 모서리 지시선에 이미 있으므로 중복이고, 그 결과 높이 치수가
+        도면에 없다. P1 에서 높이 치수를 넣을 것.</li>
+      <li><strong>재질표가 두 개이고 한 칸이 어긋나 있다.</strong> 「재질 및 표면처리」와
+        「재질 및 조립 기준」이 같은 6행을 중복 기재하고, 후자의 <strong>가스켓 행에
+        조립 토크 M8 (20 N·m)</strong> 이 들어가 있다. 표를 하나로 합치고 토크는
+        제작·검사 기준으로 옮길 것.</li>
+    </ol>
+  </section>
+
+  <p class="foot">
+    원도 <code>MP-50-P0-001 Rev P0</code> · 상류 분리설비는
+    <code>docs/drawings/pv-delamination-3d.html</code>,
+    하류 Ag 회수 부선 설비는 <code>docs/drawings/ag-flotation-3d.html</code> 참조.
+  </p>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ===== 행렬 ===== */
+function m4id(){return new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);}
+function m4mul(a,b,o){o=o||new Float32Array(16);
+  for(var i=0;i<4;i++){var a0=a[i],a1=a[i+4],a2=a[i+8],a3=a[i+12];
+    o[i]=a0*b[0]+a1*b[1]+a2*b[2]+a3*b[3];
+    o[i+4]=a0*b[4]+a1*b[5]+a2*b[6]+a3*b[7];
+    o[i+8]=a0*b[8]+a1*b[9]+a2*b[10]+a3*b[11];
+    o[i+12]=a0*b[12]+a1*b[13]+a2*b[14]+a3*b[15];}
+  return o;}
+function m4persp(f,a,n,fa){var t=1/Math.tan(f/2),o=new Float32Array(16);
+  o[0]=t/a;o[5]=t;o[10]=(fa+n)/(n-fa);o[11]=-1;o[14]=2*fa*n/(n-fa);return o;}
+function m4look(e,c,up){
+  var zx=e[0]-c[0],zy=e[1]-c[1],zz=e[2]-c[2],zl=Math.hypot(zx,zy,zz);zx/=zl;zy/=zl;zz/=zl;
+  var xx=up[1]*zz-up[2]*zy,xy=up[2]*zx-up[0]*zz,xz=up[0]*zy-up[1]*zx;
+  var xl=Math.hypot(xx,xy,xz)||1;xx/=xl;xy/=xl;xz/=xl;
+  var yx=zy*xz-zz*xy,yy=zz*xx-zx*xz,yz=zx*xy-zy*xx;
+  return new Float32Array([xx,yx,zx,0,xy,yy,zy,0,xz,yz,zz,0,
+    -(xx*e[0]+xy*e[1]+xz*e[2]),-(yx*e[0]+yy*e[1]+yz*e[2]),-(zx*e[0]+zy*e[1]+zz*e[2]),1]);}
+function m4t(x,y,z){var o=m4id();o[12]=x;o[13]=y;o[14]=z;return o;}
+/* Y축 회전 후 평행이동 — 교반축·임펠러는 탱크 축(x=0,z=0) 둘레로 돈다 */
+function m4ty(x,y,z,a){var c=Math.cos(a),s=Math.sin(a),o=m4id();
+  o[0]=c;o[2]=-s;o[8]=s;o[10]=c;o[12]=x;o[13]=y;o[14]=z;return o;}
+
+/* ===== 메시 ===== */
+function Mesh(){this.p=[];this.n=[];this.i=[];}
+Mesh.prototype.vert=function(x,y,z,nx,ny,nz){this.p.push(x,y,z);this.n.push(nx,ny,nz);
+  return this.p.length/3-1;};
+Mesh.prototype.quad=function(a,b,c,d){this.i.push(a,b,c,a,c,d);};
+Mesh.prototype.mark=function(){return this.i.length;};
+
+function revolve(m,prof,segs,flip,cx,cz){
+  cx=cx||0;cz=cz||0;var rings=[],i,j;
+  for(i=0;i<prof.length;i++){
+    var pv=prof[Math.max(0,i-1)],nx2=prof[Math.min(prof.length-1,i+1)];
+    var dr=nx2[0]-pv[0],dy=nx2[1]-pv[1],nl=Math.hypot(dr,dy)||1;
+    var nr=dy/nl,ny=-dr/nl; if(flip){nr=-nr;ny=-ny;}
+    var rg=[];
+    for(j=0;j<=segs;j++){var a=j/segs*Math.PI*2,ca=Math.cos(a),sa=Math.sin(a);
+      rg.push(m.vert(cx+prof[i][0]*ca,prof[i][1],cz+prof[i][0]*sa,nr*ca,ny,nr*sa));}
+    rings.push(rg);}
+  for(i=0;i<rings.length-1;i++)for(j=0;j<segs;j++)
+    if(flip)m.quad(rings[i][j],rings[i][j+1],rings[i+1][j+1],rings[i+1][j]);
+    else     m.quad(rings[i][j],rings[i+1][j],rings[i+1][j+1],rings[i][j+1]);
+}
+function ring(m,ri,ro,y,up,segs,cx,cz){
+  cx=cx||0;cz=cz||0;var ny=up?1:-1,A=[],B=[],j;
+  for(j=0;j<=segs;j++){var t=j/segs*Math.PI*2,c=Math.cos(t),s=Math.sin(t);
+    A.push(m.vert(cx+ri*c,y,cz+ri*s,0,ny,0));B.push(m.vert(cx+ro*c,y,cz+ro*s,0,ny,0));}
+  for(j=0;j<segs;j++) if(up)m.quad(A[j],B[j],B[j+1],A[j+1]); else m.quad(A[j],A[j+1],B[j+1],B[j]);
+}
+function shellOf(m,prof,th,segs,cx,cz){
+  var inner=prof.map(function(p){return [Math.max(0.002,p[0]-th),p[1]];});
+  revolve(m,prof,segs,false,cx,cz); revolve(m,inner,segs,true,cx,cz);
+  var L=prof.length-1;
+  ring(m,inner[L][0],prof[L][0],prof[L][1],true,segs,cx,cz);
+  ring(m,inner[0][0],prof[0][0],prof[0][1],false,segs,cx,cz);
+}
+function box(m,w,h,d,x,y,z,ry,rz){
+  var hx=w/2,hy=h/2,hz=d/2,c=Math.cos(ry||0),s=Math.sin(ry||0),
+      cz2=Math.cos(rz||0),sz2=Math.sin(rz||0);
+  function V(px,py,pz,nx,ny,nz){
+    var ax=px*cz2-py*sz2,ay=px*sz2+py*cz2,az=pz;
+    var bx=nx*cz2-ny*sz2,by=nx*sz2+ny*cz2,bz=nz;
+    return m.vert(x+ax*c+az*s,y+ay,z-ax*s+az*c,bx*c+bz*s,by,-bx*s+bz*c);}
+  var F=[[[-hx,-hy,hz],[hx,-hy,hz],[hx,hy,hz],[-hx,hy,hz],[0,0,1]],
+         [[hx,-hy,-hz],[-hx,-hy,-hz],[-hx,hy,-hz],[hx,hy,-hz],[0,0,-1]],
+         [[hx,-hy,hz],[hx,-hy,-hz],[hx,hy,-hz],[hx,hy,hz],[1,0,0]],
+         [[-hx,-hy,-hz],[-hx,-hy,hz],[-hx,hy,hz],[-hx,hy,-hz],[-1,0,0]],
+         [[-hx,hy,hz],[hx,hy,hz],[hx,hy,-hz],[-hx,hy,-hz],[0,1,0]],
+         [[-hx,-hy,-hz],[hx,-hy,-hz],[hx,-hy,hz],[-hx,-hy,hz],[0,-1,0]]];
+  for(var k=0;k<6;k++){var q=F[k],n=q[4];
+    m.quad(V(q[0][0],q[0][1],q[0][2],n[0],n[1],n[2]),V(q[1][0],q[1][1],q[1][2],n[0],n[1],n[2]),
+           V(q[2][0],q[2][1],q[2][2],n[0],n[1],n[2]),V(q[3][0],q[3][1],q[3][2],n[0],n[1],n[2]));}
+}
+function pipe(m,p0,p1,r,segs,cap){
+  var ax=p1[0]-p0[0],ay=p1[1]-p0[1],az=p1[2]-p0[2],L=Math.hypot(ax,ay,az);
+  if(L<1e-9)return; ax/=L;ay/=L;az/=L;
+  var ux=0,uy=1,uz=0; if(Math.abs(ay)>0.95){ux=1;uy=0;}
+  var sx=uy*az-uz*ay,sy=uz*ax-ux*az,sz=ux*ay-uy*ax,sl=Math.hypot(sx,sy,sz);
+  sx/=sl;sy/=sl;sz/=sl;
+  var tx=ay*sz-az*sy,ty=az*sx-ax*sz,tz=ax*sy-ay*sx,A=[],B=[],j;
+  for(j=0;j<=segs;j++){var a=j/segs*Math.PI*2,c=Math.cos(a),s2=Math.sin(a);
+    var nx=sx*c+tx*s2,ny=sy*c+ty*s2,nz=sz*c+tz*s2;
+    A.push(m.vert(p0[0]+nx*r,p0[1]+ny*r,p0[2]+nz*r,nx,ny,nz));
+    B.push(m.vert(p1[0]+nx*r,p1[1]+ny*r,p1[2]+nz*r,nx,ny,nz));}
+  for(j=0;j<segs;j++)m.quad(A[j],B[j],B[j+1],A[j+1]);
+  if(cap){var c0=m.vert(p0[0],p0[1],p0[2],-ax,-ay,-az),c1=m.vert(p1[0],p1[1],p1[2],ax,ay,az);
+    var A2=[],B2=[],k;
+    for(j=0;j<=segs;j++){var a2=j/segs*Math.PI*2,cc=Math.cos(a2),ss=Math.sin(a2);
+      var mx=sx*cc+tx*ss,my=sy*cc+ty*ss,mz=sz*cc+tz*ss;
+      A2.push(m.vert(p0[0]+mx*r,p0[1]+my*r,p0[2]+mz*r,-ax,-ay,-az));
+      B2.push(m.vert(p1[0]+mx*r,p1[1]+my*r,p1[2]+mz*r,ax,ay,az));}
+    for(k=0;k<segs;k++){m.i.push(c0,A2[k+1],A2[k]);m.i.push(c1,B2[k],B2[k+1]);}}
+}
+function torus(m,R,r,y,segs,ts,cx,cz){
+  cx=cx||0;cz=cz||0;var g=[],i,j;
+  for(i=0;i<=segs;i++){var a=i/segs*Math.PI*2,ca=Math.cos(a),sa=Math.sin(a),row=[];
+    for(j=0;j<=ts;j++){var b=j/ts*Math.PI*2,cb=Math.cos(b),sb=Math.sin(b);
+      row.push(m.vert(cx+(R+r*cb)*ca,y+r*sb,cz+(R+r*cb)*sa,cb*ca,sb,cb*sa));}
+    g.push(row);}
+  for(i=0;i<segs;i++)for(j=0;j<ts;j++)m.quad(g[i][j],g[i+1][j],g[i+1][j+1],g[i][j+1]);
+}
+function sphere(m,cx,cy,cz,r,seg){
+  var g=[],i,j;
+  for(i=0;i<=seg;i++){var ph=i/seg*Math.PI,sp=Math.sin(ph),cp=Math.cos(ph),row=[];
+    for(j=0;j<=seg*2;j++){var th=j/(seg*2)*Math.PI*2;
+      var nx=sp*Math.cos(th),ny=cp,nz=sp*Math.sin(th);
+      row.push(m.vert(cx+nx*r,cy+ny*r,cz+nz*r,nx,ny,nz));}
+    g.push(row);}
+  for(i=0;i<seg;i++)for(j=0;j<seg*2;j++)m.quad(g[i][j],g[i+1][j],g[i+1][j+1],g[i][j+1]);
+}
+/* 육각머리 볼트 — 볼트/너트/와셔 상세(M)의 M8·M10 을 형상으로만 표현 */
+function hexHead(m,x,y,z,af,h){
+  var r=af/Math.sqrt(3),i,A=[],B=[];
+  for(i=0;i<=6;i++){var a=i/6*Math.PI*2,c=Math.cos(a),s=Math.sin(a);
+    A.push(m.vert(x+r*c,y,z+r*s,c,0,s)); B.push(m.vert(x+r*c,y+h,z+r*s,c,0,s));}
+  for(i=0;i<6;i++)m.quad(A[i],B[i],B[i+1],A[i+1]);
+  var t0=m.vert(x,y+h,z,0,1,0),b0=m.vert(x,y,z,0,-1,0),T=[],Bo=[];
+  for(i=0;i<=6;i++){var a2=i/6*Math.PI*2,c2=Math.cos(a2),s2=Math.sin(a2);
+    T.push(m.vert(x+r*c2,y+h,z+r*s2,0,1,0)); Bo.push(m.vert(x+r*c2,y,z+r*s2,0,-1,0));}
+  for(i=0;i<6;i++){m.i.push(t0,T[i],T[i+1]); m.i.push(b0,Bo[i+1],Bo[i]);}
+}
+function bolt(m,x,y,z,af,head,shank){
+  hexHead(m,x,y,z,af,head);
+  pipe(m,[x,y-shank,z],[x,y,z],af*0.30,10,true);
+}
+
+/* ===== 재질 ===== */
+var MAT={
+  sus  :{c:[0.74,0.78,0.82],a:1,   m:0.86,k:"SUS304 2B — 탱크·커버"},
+  poli :{c:[0.84,0.87,0.90],a:1,   m:0.94,k:"SUS316L 연마 — 접액 회전부"},
+  pipe :{c:[0.68,0.72,0.76],a:1,   m:0.80,k:"SUS304 배관·노즐"},
+  motor:{c:[0.30,0.35,0.41],a:1,   m:0.36,k:"구동부 (모터)"},
+  gear :{c:[0.42,0.47,0.52],a:1,   m:0.44,k:"감속기 · 커플링"},
+  bolt :{c:[0.58,0.62,0.66],a:1,   m:0.72,k:"볼트 · 너트 · 와셔"},
+  seal :{c:[0.24,0.24,0.26],a:1,   m:0.16,k:"가스켓 (EPDM/실리콘)"},
+  pad  :{c:[0.15,0.16,0.18],a:1,   m:0.12,k:"방진패드 · 호스"},
+  air  :{c:[0.16,0.52,0.60],a:1,   m:0.44,k:"공기 공급계"},
+  elec :{c:[0.23,0.29,0.35],a:1,   m:0.30,k:"제어반 · 전장"},
+  inst :{c:[0.69,0.54,0.16],a:1,   m:0.60,k:"계장 (센서·계기)"},
+  glass:{c:[0.62,0.74,0.78],a:0.30,m:0.90,k:"사이트글라스"},
+  slur :{c:[0.36,0.52,0.62],a:0.30,m:0.14,k:"슬러리 (공정액)"},
+  flt  :{c:[0.80,0.72,0.52],a:0.82,m:0.18,k:"부유물 — EVA·백시트"},
+  sink :{c:[0.30,0.34,0.30],a:0.86,m:0.22,k:"침강물 — 유리·셀"},
+  bub  :{c:[0.93,0.98,1.00],a:0.78,m:0.72,k:"미세기포"},
+  floor:{c:[0.46,0.50,0.54],a:1,   m:0.10,k:"바닥 · 기초"}
+};
+
+/* ===== 치수 (제작도 MP-50-P0-001, mm → m) ===== */
+var OD=0.400, TH=0.003, ID=0.394, R=OD/2, Ri=ID/2;
+var yPad=0.030,  yBase=0.038, yLeg=0.458, yTan=0.466;
+var yTop=1.066,  yFlg=1.078,  yCov=1.083, yBoss=1.103;
+var yCone=0.316, yCflg=0.308, yVlv=0.188, yCam=0.108;
+var yLvl=0.821,  yFlt=0.841;
+var ySh0=0.526,  ySh1=1.326;   // 800 (제작도 E)
+var yImpL=0.566, yImpU=0.716;
+var yRing=0.500, ringR=0.125;
+var impR=0.150,  legR=0.175;
+var S=44;
+
+var PARTS=[], FX={};
+function P(no,name,qty,grp,mat,ex,anchor,fn,opt){
+  opt=opt||{};
+  var s=MESH.mark(); fn();
+  PARTS.push({id:no,no:no,name:name,qty:qty,grp:grp,mat:mat,ex:ex,anchor:anchor,
+              start:s,count:MESH.mark()-s,cut:opt.cut!==false,rot:!!opt.rot,
+              env:!!opt.env});
+}
+function fx(key,mat,fn){var s=MESH.mark(); fn();
+  FX[key]={mat:mat,start:s,count:MESH.mark()-s};}
+
+var MESH=new Mesh();
+var m=MESH;
+
+/* --- 바닥 (부품 아님) --- */
+fx("floor","floor",function(){
+  revolve(m,[[0.98,-0.012],[0.98,0.0]],56,false,0,0);
+  ring(m,0,0.98,0.0,true,56,0,0);
+});
+
+/* 01 교반 모터 ------------------------------------------------------------ */
+P("01","교반 모터",1,"g2","motor",[0,1.02,0],[0.10,1.72,0],function(){
+  pipe(m,[0,1.570,0],[0,1.830,0],0.078,26,true);              // 본체
+  for(var k=0;k<14;k++){var a=k/14*Math.PI*2;                  // 냉각핀
+    box(m,0.012,0.230,0.026,Math.cos(a)*0.081,1.700,Math.sin(a)*0.081,-a);}
+  pipe(m,[0,1.830,0],[0,1.885,0],0.062,22,true);              // 팬 커버
+  ring(m,0,0.062,1.885,true,22,0,0);
+  box(m,0.180,0.016,0.180,0,1.562,0);                          // 플랜지
+  box(m,0.088,0.070,0.066,0.104,1.700,0);                      // 단자함
+},{cut:false});
+
+/* 02 감속기 -------------------------------------------------------------- */
+P("02","감속기",1,"g2","gear",[0,0.84,0],[0.10,1.48,0],function(){
+  box(m,0.170,0.150,0.170,0,1.475,0);                          // 기어박스
+  box(m,0.190,0.014,0.190,0,1.393,0);                          // 하부 플랜지
+  pipe(m,[0,1.550,0],[0,1.572,0],0.056,20,true);               // 입력측 보스
+  pipe(m,[0,1.380,0],[0,1.400,0],0.044,20,true);               // 출력측 보스
+  box(m,0.040,0.030,0.030,0.098,1.520,0);                      // 급유구
+  for(var k=0;k<4;k++){var a=Math.PI/4+k*Math.PI/2;            // 구동부 스탠드 (도면 누락)
+    box(m,0.016,0.253,0.016,Math.cos(a)*0.064,1.260,Math.sin(a)*0.064,-a);}
+  ring(m,0.036,0.086,1.386,true,24,0,0);                       // 스탠드 상부 플랜지
+  ring(m,0.036,0.086,1.379,false,24,0,0);
+  ring(m,0.036,0.086,1.140,true,24,0,0);                       // 스탠드 하부 플랜지
+  ring(m,0.036,0.086,1.133,false,24,0,0);
+  for(var j=0;j<4;j++){var b=j/4*Math.PI*2;
+    bolt(m,Math.cos(b)*0.072,1.140,Math.sin(b)*0.072,0.013,0.006,0.014);}
+},{cut:false});
+
+/* 03 커플링 -------------------------------------------------------------- */
+P("03","커플링",1,"g2","gear",[0,0.66,0],[0.07,1.345,0],function(){
+  pipe(m,[0,1.306,0],[0,1.346,0],0.037,22,true);               // 하부 허브
+  pipe(m,[0,1.346,0],[0,1.386,0],0.037,22,true);               // 상부 허브
+  torus(m,0.037,0.006,1.346,22,8,0,0);                         // 결합 슬리브
+  for(var k=0;k<4;k++){var a=k/4*Math.PI*2;
+    bolt(m,Math.cos(a)*0.028,1.386,Math.sin(a)*0.028,0.013,0.008,0.078);}
+},{cut:false});
+
+/* 04 상부 커버 (Ø400 t5 · P.C.D 360 6-Ø9 · Ø120 맨홀 · Ø55 스키머) ------- */
+P("04","상부 커버",1,"g1","sus",[0,0.46,0],[-R-0.05,yCov,0],function(){ /* env */
+  ring(m,0,R,yCov,true,S,0,0);                                 // 상면
+  ring(m,0,R,yCov-0.005,false,S,0,0);                          // 하면
+  revolve(m,[[R,yCov-0.005],[R,yCov]],S,false,0,0);            // 외주
+  pipe(m,[0,yCov,0],[0,yBoss,0],0.055,26,true);                // 중앙 보스 (h 20)
+  torus(m,0.055,0.006,yBoss,26,8,0,0);
+  for(var k=0;k<8;k++){var a=k/8*Math.PI*2;                    // 베어링 하우징 볼트
+    bolt(m,Math.cos(a)*0.044,yBoss,Math.sin(a)*0.044,0.010,0.006,0.020);}
+  pipe(m,[0,yBoss,0],[0,yBoss+0.030,0],0.030,20,true);         // 축 씰
+  for(var j=0;j<6;j++){var b=j/6*Math.PI*2;                    // P.C.D 360 볼트 자리
+    pipe(m,[Math.cos(b)*0.180,yCov,Math.sin(b)*0.180],
+           [Math.cos(b)*0.180,yCov+0.004,Math.sin(b)*0.180],0.011,10,true);}
+},{env:true});
+
+/* 05 고정볼트 세트 (M8×25 · 평와셔 t1.5 · 스프링와셔 · 육각너트) --------- */
+P("05","고정볼트 세트",1,"g2","bolt",[0.06,0.56,0.06],[0.180,yCov+0.03,0],function(){
+  for(var k=0;k<6;k++){var a=k/6*Math.PI*2,x=Math.cos(a)*0.180,z=Math.sin(a)*0.180;
+    bolt(m,x,yCov+0.006,z,0.013,0.0055,0.034);                 // M8×25 육각볼트
+    torus(m,0.0068,0.0016,yCov+0.004,12,6,x,z);                // 평와셔 t1.5
+    hexHead(m,x,yFlg-0.019,z,0.013,0.0065);                    // 육각너트 M8
+  }
+},{cut:false});
+
+/* 06 맨홀 (Ø120 · 클램프 · EPDM 가스켓 · 06-01~06-05) -------------------- */
+P("06","맨홀",1,"g1","sus",[0.30,0.58,0],[0.125,yCov+0.10,0],function(){
+  var x=0.125;
+  pipe(m,[x,yCov,0],[x,yCov+0.030,0],0.060,26,true);           // Ø120 넥
+  torus(m,0.060,0.005,yCov+0.030,26,8,x,0);                    // 페럴
+  ring(m,0.052,0.062,yCov+0.036,true,26,x,0);                  // 06-01 뚜껑
+  revolve(m,[[0.062,yCov+0.036],[0.058,yCov+0.048]],26,false,x,0);
+  ring(m,0,0.058,yCov+0.048,true,26,x,0);
+  torus(m,0.020,0.007,yCov+0.056,16,8,x-0.018,0);              // 06-02 손잡이
+  pipe(m,[x+0.058,yCov+0.030,0.004],[x+0.058,yCov+0.048,0.004],0.005,10,true); // 06-03 힌지핀
+  for(var k=0;k<2;k++){var a=Math.PI/2+k*Math.PI;              // 06-04 클램프 체결
+    box(m,0.026,0.020,0.012,x+Math.cos(a)*0.064,yCov+0.033,Math.sin(a)*0.064,-a);
+    bolt(m,x+Math.cos(a)*0.074,yCov+0.043,Math.sin(a)*0.074,0.012,0.006,0.018);}
+});
+
+/* 07 스키머 (Ø55 관통 · 부유물 배출) ------------------------------------- */
+P("07","스키머",1,"g1","pipe",[-0.26,0.58,0],[-0.105,yLvl+0.06,0],function(){
+  var x=-0.105;
+  pipe(m,[x,yCov,0],[x,yCov+0.026,0],0.0275,20,true);          // Ø55 넥
+  torus(m,0.0275,0.005,yCov+0.026,20,8,x,0);
+  pipe(m,[x,yFlt-0.010,0],[x,yCov,0],0.024,18,true);           // 흡입 라이저
+  box(m,0.120,0.026,0.050,x-0.052,yFlt-0.004,0);               // 스킴 블레이드
+  box(m,0.006,0.030,0.052,x-0.112,yFlt+0.004,0);               // 위어 립
+  pipe(m,[x,yCov+0.026,0],[x,yCov+0.070,0],0.020,16,true);     // 상부 엘보
+  pipe(m,[x,yCov+0.070,0],[x-0.150,yCov+0.070,0],0.020,16,true);
+  pipe(m,[x-0.150,yCov+0.070,0],[x-0.150,yCov-0.020,0],0.020,16,true);
+},{cut:false});
+
+/* 08 탱크 쉘 (Ø400 t3 · 직동부 600 · 상부 플랜지 t12 P.C.D 360) ---------- */
+P("08","탱크 쉘",1,"g1","sus",[0,0,0],[R+0.03,yTan+0.30,0],function(){
+  shellOf(m,[[R,yTan],[R,yTop]],TH,S,0,0);                     // 동체
+  revolve(m,[[R,yTop],[R+0.010,yTop+0.002],[R+0.010,yFlg]],S,false,0,0);
+  revolve(m,[[Ri,yTop],[Ri,yFlg]],S,true,0,0);
+  ring(m,Ri,R+0.010,yFlg,true,S,0,0);                          // 플랜지 상면
+  ring(m,R,R+0.010,yTop,false,S,0,0);
+  for(var k=0;k<6;k++){var a=k/6*Math.PI*2;                    // 6-Ø9 볼트홀 보스
+    pipe(m,[Math.cos(a)*0.180,yFlg-0.002,Math.sin(a)*0.180],
+           [Math.cos(a)*0.180,yFlg+0.002,Math.sin(a)*0.180],0.012,10,true);}
+  for(var j=0;j<3;j++){var b=Math.PI/6+j*Math.PI*2/3;          // 다리 브라켓
+    box(m,0.008,0.090,0.070,Math.cos(b)*(R+0.006),yTan+0.045,Math.sin(b)*(R+0.006),-b);}
+},{env:true});
+
+/* 09 사이드 노즐 (Tri-clamp Ø50 · 급광/시료/예비) ------------------------ */
+P("09","사이드 노즐",1,"g1","pipe",[0,0,0.42],[R+0.09,0.990,0.06],function(){
+  var N=[[Math.PI/2,1.000],[Math.PI*7/6,0.620],[Math.PI*11/6,0.860]],k;
+  for(k=0;k<3;k++){var a=N[k][0],y=N[k][1],c=Math.cos(a),s=Math.sin(a);
+    pipe(m,[c*(R-0.004),y,s*(R-0.004)],[c*(R+0.058),y,s*(R+0.058)],0.025,18,true);
+    pipe(m,[c*(R+0.048),y,s*(R+0.048)],[c*(R+0.060),y,s*(R+0.060)],0.031,18,true);}  // 페럴
+});
+
+/* 10 사이트글라스 (Ø34 · 상하 Tri-clamp) --------------------------------- */
+P("10","사이트글라스",1,"g1","glass",[0,0,-0.46],[-0.02,0.750,-R-0.12],function(){
+  var a=-Math.PI/2,c=Math.cos(a),s=Math.sin(a),xr=R+0.070;
+  pipe(m,[c*xr,0.640,s*xr],[c*xr,0.860,s*xr],0.017,18,false);  // 유리관
+  pipe(m,[c*(R-0.004),0.640,s*(R-0.004)],[c*xr,0.640,s*xr],0.014,14,true);
+  pipe(m,[c*(R-0.004),0.860,s*(R-0.004)],[c*xr,0.860,s*xr],0.014,14,true);
+  box(m,0.010,0.230,0.010,c*(xr+0.022),0.750,s*(xr+0.022));    // 보호 가드
+});
+
+/* 11 교반축 (Ø25 × 800 · 키홈 6×6 · M20) -------------------------------- */
+P("11","교반축",1,"g2","poli",[0,1.20,0],[0.03,1.180,0],function(){
+  pipe(m,[0,ySh0,0],[0,ySh1,0],0.0125,22,true);
+  box(m,0.006,0.060,0.006,0.0125,ySh1-0.055,0);                // 상단 키홈 5×5
+  hexHead(m,0,ySh0-0.014,0,0.028,0.014);                       // 하단 M20 고정너트
+  torus(m,0.0125,0.003,ySh0+0.006,18,8,0,0);
+},{rot:true,cut:false});
+
+/* 12 임펠러 상/하 (Ø300 · 6매 · t3) ------------------------------------- */
+P("12","임펠러 (상/하)",2,"g2","poli",[0,0.92,0],[impR*0.72,yImpU,0],function(){
+  var k,a,rc=(0.025+impR)/2,w=impR-0.025;
+  pipe(m,[0,yImpU-0.040,0],[0,yImpU+0.040,0],0.025,20,true);   // 상부 허브
+  for(k=0;k<6;k++){a=k/6*Math.PI*2;
+    box(m,w,0.080,0.003,Math.cos(a)*rc,yImpU,Math.sin(a)*rc,-a);}
+  bolt(m,0.026,yImpU+0.030,0,0.013,0.006,0.012);               // M8 세트스크류
+  pipe(m,[0,yImpL-0.030,0],[0,yImpL+0.030,0],0.025,20,true);   // 하부 허브
+  for(k=0;k<6;k++){a=k/6*Math.PI*2+Math.PI/6;
+    box(m,w,0.013,0.003,Math.cos(a)*rc,yImpL,Math.sin(a)*rc,-a);}
+  bolt(m,0.026,yImpL+0.022,0,0.013,0.006,0.012);
+},{rot:true,cut:false});
+
+/* 13 배플 4장 (t2 · 모델 폭 40 — 도면 200 은 간섭, 검토 지적 01) --------- */
+P("13","배플",4,"g2","poli",[0,0.74,0],[Ri*0.80,0.860,Ri*0.80],function(){
+  for(var k=0;k<4;k++){var a=Math.PI/4+k*Math.PI/2,rc=Ri-0.024;
+    box(m,0.040,0.400,0.002,Math.cos(a)*rc,0.720,Math.sin(a)*rc,-a);
+    box(m,0.040,0.008,0.020,Math.cos(a)*rc,0.924,Math.sin(a)*rc,-a);}  // 상부 브라켓
+},{cut:false});
+
+/* 14 미세기포 분산기 (Ø250 링 · Ø2 분사홀 60개 · 1/2" 공기 공급구) ------ */
+P("14","미세기포 분산기",1,"g3","air",[0,0.62,0],[ringR+0.05,yRing,0],function(){
+  torus(m,ringR,0.010,yRing,52,10,0,0);                        // Ø250 링 (관 Ø20)
+  for(var k=0;k<60;k++){var a=k/60*Math.PI*2;                  // Ø2 분사홀 60개
+    sphere(m,Math.cos(a)*ringR,yRing+0.010,Math.sin(a)*ringR,0.0022,4);}
+  var c=Math.cos(Math.PI*4/3),s=Math.sin(Math.PI*4/3);
+  pipe(m,[c*ringR,yRing,s*ringR],[c*(R+0.040),yRing,s*(R+0.040)],0.008,14,true); // 1/2"
+  pipe(m,[c*(R+0.022),yRing,s*(R+0.022)],[c*(R+0.036),yRing,s*(R+0.036)],0.013,12,true);
+},{cut:false});
+
+/* 15 하부 콘 (Ø400→Ø38 · h150 · 하부 플랜지 Ø110 t8 P.C.D 70 4-Ø11) ---- */
+P("15","하부 콘",1,"g1","sus",[0,-0.40,0],[R*0.55,yTan-0.075,R*0.30],function(){
+  shellOf(m,[[0.019,yCone],[R,yTan]],TH,S,0,0);
+  revolve(m,[[0.055,yCflg],[0.055,yCone]],22,false,0,0);       // 40A 넥
+  ring(m,0.019,0.055,yCone,false,22,0,0);
+  ring(m,0.019,0.055,yCflg,true,22,0,0);
+  revolve(m,[[0.055,yCflg-0.008],[0.055,yCflg]],22,false,0,0);
+  ring(m,0.019,0.055,yCflg-0.008,false,22,0,0);
+  for(var k=0;k<4;k++){var a=Math.PI/4+k*Math.PI/2;            // 4-Ø11
+    pipe(m,[Math.cos(a)*0.035,yCflg-0.010,Math.sin(a)*0.035],
+           [Math.cos(a)*0.035,yCflg+0.002,Math.sin(a)*0.035],0.0055,10,true);}
+},{env:true});
+
+/* 16 하부 배출구 (40A 볼밸브 · 캠락 · 플러그) ---------------------------- */
+P("16","하부 배출구",1,"g1","pipe",[0,-0.72,0],[0.07,yVlv+0.06,0],function(){
+  pipe(m,[0,yVlv,0],[0,yCflg-0.008,0],0.0245,20,true);         // 40A 배관
+  box(m,0.088,0.084,0.088,0,yVlv+0.052,0);                     // 볼밸브 동체
+  pipe(m,[0,yVlv+0.094,0],[0,yVlv+0.112,0],0.014,14,true);     // 스템
+  box(m,0.130,0.014,0.026,0.048,yVlv+0.118,0);                 // 레버 핸들
+  pipe(m,[0,yCam,0],[0,yVlv,0],0.0245,20,true);                // 캠락 어댑터
+  torus(m,0.0290,0.008,yCam+0.026,20,8,0,0);
+  for(var k=0;k<2;k++){var a=Math.PI/2+k*Math.PI;              // 캠 레버 2개
+    box(m,0.052,0.009,0.014,Math.cos(a)*0.040,yCam+0.030,Math.sin(a)*0.040,-a);}
+  ring(m,0,0.0245,yCam,false,20,0,0);                          // 플러그
+});
+
+/* 17 지지 다리 3본 (Ø38 × 420 · 상부 체결판 P.C.D 70 · 베이스 Ø100 t8) -- */
+P("17","지지 다리",3,"g1","pipe",[0,-0.30,0.55],[legR+0.05,0.240,0.02],function(){
+  for(var k=0;k<3;k++){var a=Math.PI/6+k*Math.PI*2/3,x=Math.cos(a)*legR,z=Math.sin(a)*legR;
+    pipe(m,[x,yLeg,z],[x,yBase,z],0.019,20,true);              // Ø38 파이프
+    pipe(m,[x,yPad,z],[x,yBase,z],0.050,24,true);              // 베이스 Ø100 t8
+    box(m,0.100,0.008,0.100,x,yLeg+0.004,z,-a);                // 상부 체결판
+    box(m,0.008,0.070,0.060,Math.cos(a)*(R+0.008),yTan+0.030,Math.sin(a)*(R+0.008),-a);
+    for(var j=0;j<2;j++){var b=a+(j?0.28:-0.28);               // 체결판 볼트 (P.C.D 70)
+      bolt(m,Math.cos(b)*(legR+0.028),yLeg+0.008,Math.sin(b)*(legR+0.028),0.016,0.008,0.016);}}
+});
+
+/* 18 레벨센서 2개 (고/저) ----------------------------------------------- */
+P("18","레벨센서",2,"g3","inst",[0.60,0.10,0],[R+0.11,0.900,0],function(){
+  var Y=[0.700,0.900],k;
+  for(k=0;k<2;k++){var y=Y[k];
+    pipe(m,[R-0.004,y,0],[R+0.046,y,0],0.018,16,true);
+    pipe(m,[R+0.034,y,0],[R+0.046,y,0],0.025,16,true);         // 페럴
+    pipe(m,[R+0.046,y,0],[R+0.098,y,0],0.022,16,true);         // 변환기
+    box(m,0.030,0.034,0.034,R+0.116,y,0);                      // 케이블 글랜드
+    pipe(m,[0.060,y,0],[R-0.004,y,0],0.006,10,true);}          // 감지봉
+});
+
+/* 19 압력계 -------------------------------------------------------------- */
+P("19","압력계",1,"g3","inst",[0.28,0.50,0.28],[0.150,yCov+0.08,0.09],function(){
+  var a=Math.PI/3,x=Math.cos(a)*0.150,z=Math.sin(a)*0.150;
+  pipe(m,[x,yCov,z],[x,yCov+0.052,z],0.012,14,true);
+  pipe(m,[x,yCov+0.052,z],[x,yCov+0.062,z],0.032,20,true);     // 게이지 Ø63
+  ring(m,0,0.032,yCov+0.062,true,20,x,z);
+  torus(m,0.032,0.004,yCov+0.062,20,8,x,z);
+});
+
+/* 20 온도센서 ----------------------------------------------------------- */
+P("20","온도센서",1,"g3","inst",[0.58,-0.06,0.22],[R+0.09,0.560,0.13],function(){
+  var a=Math.PI/9,c=Math.cos(a),s=Math.sin(a);
+  pipe(m,[c*(R-0.004),0.560,s*(R-0.004)],[c*(R+0.040),0.560,s*(R+0.040)],0.014,14,true);
+  pipe(m,[c*(R+0.030),0.560,s*(R+0.030)],[c*(R+0.042),0.560,s*(R+0.042)],0.021,16,true);
+  pipe(m,[c*(R+0.040),0.560,s*(R+0.040)],[c*(R+0.086),0.560,s*(R+0.086)],0.019,16,true);
+  pipe(m,[c*0.090,0.560,s*0.090],[c*(R-0.004),0.560,s*(R-0.004)],0.005,10,true); // 보호관
+});
+
+/* 21 공기 공급계 (필터+레귤레이터 Ø68×150 · 로타미터 Ø34×200) ----------- */
+P("21","공기 공급계",1,"g3","air",[-0.62,0.10,0.20],[-0.330,0.860,0.150],function(){
+  var x=-0.330,z=0.150;
+  box(m,0.012,0.700,0.070,x,0.500,z);                          // 지지 포스트
+  box(m,0.070,0.010,0.070,x,0.150,z);
+  pipe(m,[x+0.034,0.800,z],[x+0.034,0.950,z],0.034,22,true);   // 필터+레귤레이터
+  ring(m,0,0.034,0.950,true,22,x+0.034,z);
+  ring(m,0,0.034,0.800,false,22,x+0.034,z);
+  torus(m,0.034,0.006,0.868,22,8,x+0.034,z);
+  pipe(m,[x+0.034,0.950,z],[x+0.034,0.972,z],0.014,14,true);   // 조정 노브
+  pipe(m,[x-0.030,0.760,z],[x-0.030,0.960,z],0.017,20,false);  // 로타미터 Ø34
+  pipe(m,[x-0.030,0.744,z],[x-0.030,0.760,z],0.011,14,true);
+  pipe(m,[x-0.030,0.960,z],[x-0.030,0.976,z],0.011,14,true);
+},{cut:false});
+
+/* 22 제어반 (300 × 400 × 200 · VFD · 타이머 · 공기유량 지시) ------------- */
+P("22","제어반",1,"g4","elec",[-0.85,0,0],[-0.620,1.150,0],function(){
+  var x=-0.620;
+  box(m,0.200,0.400,0.300,x,0.950,0);                          // 함체
+  box(m,0.008,0.360,0.270,x-0.100,0.950,0);                    // 도어면
+  box(m,0.030,0.020,0.052,x-0.108,1.090,-0.070);               // 전원 스위치
+  var k;
+  for(k=0;k<2;k++) pipe(m,[x-0.104,1.030,-0.030+k*0.070],
+                          [x-0.116,1.030,-0.030+k*0.070],0.016,14,true); // 운전/정지
+  box(m,0.010,0.055,0.090,x-0.106,0.930,0.020);                // VFD 표시
+  box(m,0.010,0.040,0.070,x-0.106,0.850,-0.040);               // 타이머
+  for(k=0;k<2;k++) box(m,0.036,0.036,0.036,x,0.740,-0.090+k*0.180); // 하부 지지
+  for(k=0;k<2;k++) box(m,0.030,0.710,0.030,x,0.385,-0.110+k*0.220); // 스탠드
+  box(m,0.180,0.010,0.300,x,0.032,0);
+},{cut:false});
+
+/* 23 배관 (1/2" 급기 · 스키머 배출 · 드레인) ---------------------------- */
+P("23","배관",1,"g3","air",[-0.36,0.18,0.50],[-0.230,0.620,0.180],function(){
+  var x=-0.330,z=0.150,c=Math.cos(Math.PI*4/3),s=Math.sin(Math.PI*4/3);
+  pipe(m,[x-0.030,0.744,z],[x-0.030,0.560,z],0.008,12,true);   // 로타미터 → 분산기
+  pipe(m,[x-0.030,0.560,z],[c*(R+0.036),0.560,s*(R+0.036)],0.008,12,true);
+  pipe(m,[c*(R+0.036),0.560,s*(R+0.036)],[c*(R+0.036),yRing,s*(R+0.036)],0.008,12,true);
+  pipe(m,[c*(R+0.036),yRing,s*(R+0.036)],[c*(R+0.030),yRing,s*(R+0.030)],0.008,12,true);
+  pipe(m,[x+0.034,0.800,z],[x+0.034,0.640,z],0.008,12,true);   // 급기 인입
+  pipe(m,[x+0.034,0.640,z],[x+0.034,0.640,z+0.220],0.008,12,true);
+},{cut:false});
+
+/* 24 밸브류 (1/2" 볼밸브) ----------------------------------------------- */
+P("24","밸브류",1,"g3","pipe",[-0.28,0.30,0.58],[-0.360,0.660,0.150],function(){
+  var x=-0.330,z=0.150;
+  box(m,0.036,0.034,0.036,x-0.030,0.660,z);                    // 급기 볼밸브
+  box(m,0.062,0.008,0.014,x-0.030,0.684,z+0.010,Math.PI/2);
+  var a=Math.PI*7/6,c=Math.cos(a),s=Math.sin(a);
+  box(m,0.030,0.028,0.030,c*(R+0.072),0.620,s*(R+0.072));      // 시료 밸브
+  box(m,0.052,0.007,0.012,c*(R+0.072),0.640,s*(R+0.072),-a);
+},{cut:false});
+
+/* 25 클램프 (Tri-clamp 밴드) -------------------------------------------- */
+P("25","클램프",1,"g1","bolt",[0.18,0.64,-0.32],[0.125,yCov+0.045,0.05],function(){
+  torus(m,0.064,0.008,yCov+0.032,24,8,0.125,0);                // 맨홀 Ø120
+  torus(m,0.059,0.007,yCflg-0.004,22,8,0,0);                   // 콘 하부
+  var N=[[Math.PI/2,1.000],[Math.PI*7/6,0.620],[Math.PI*11/6,0.860]],k;
+  for(k=0;k<3;k++){var a=N[k][0],y=N[k][1],c=Math.cos(a),s=Math.sin(a);  // 사이드 노즐
+    pipe(m,[c*(R+0.046),y,s*(R+0.046)],[c*(R+0.062),y,s*(R+0.062)],0.036,18,true);}
+  var b=-Math.PI/2,xr=R+0.070;                                 // 사이트글라스
+  torus(m,0.020,0.005,0.640,16,8,Math.cos(b)*xr,Math.sin(b)*xr);
+  torus(m,0.020,0.005,0.860,16,8,Math.cos(b)*xr,Math.sin(b)*xr);
+});
+
+/* 26 가스켓 (EPDM Ø120/Ø104 · SILICONE) --------------------------------- */
+P("26","가스켓",1,"g1","seal",[0.08,0.70,-0.18],[0.125,yCov+0.034,-0.05],function(){
+  ring(m,0.052,0.060,yCov+0.033,true,26,0.125,0);              // 맨홀 Ø120/Ø104
+  ring(m,0.052,0.060,yCov+0.031,false,26,0.125,0);
+  ring(m,Ri,R+0.008,yFlg+0.0015,true,S,0,0);                   // 커버 가스켓
+  ring(m,Ri,R+0.008,yFlg,false,S,0,0);
+  ring(m,0.019,0.052,yCflg-0.0085,true,22,0,0);                // 콘 하부
+  ring(m,0.019,0.052,yCflg-0.010,false,22,0,0);
+});
+
+/* 27 전선 / 케이블 ------------------------------------------------------- */
+P("27","전선/케이블",1,"g4","pad",[-0.70,0.26,-0.28],[-0.430,1.320,-0.060],function(){
+  var x=-0.620;
+  pipe(m,[x+0.100,1.140,-0.020],[-0.330,1.320,-0.020],0.009,10,true);  // 모터 동력선
+  pipe(m,[-0.330,1.320,-0.020],[-0.104,1.700,-0.020],0.009,10,true);
+  pipe(m,[x+0.100,0.900,0.040],[R+0.128,0.900,0.020],0.006,8,true);    // 레벨 신호선
+  pipe(m,[x+0.100,0.880,0.040],[R+0.128,0.700,0.020],0.006,8,true);
+},{cut:false});
+
+/* 28 앵커볼트 3본 (M10 케미컬/확장 앵커) --------------------------------- */
+P("28","앵커볼트",3,"g1","bolt",[0,-0.05,1.15],[legR+0.06,0.010,-0.05],function(){
+  for(var k=0;k<3;k++){var a=Math.PI/6+k*Math.PI*2/3,x=Math.cos(a)*(legR),z=Math.sin(a)*(legR);
+    var bx=x+Math.cos(a)*0.034,bz=z+Math.sin(a)*0.034;
+    bolt(m,bx,yBase,bz,0.017,0.009,0.118);                     // M10 × 110
+    torus(m,0.010,0.002,yBase-0.001,12,6,bx,bz);}
+},{cut:false});
+
+/* 29 명판 -------------------------------------------------------------- */
+P("29","명판",1,"g1","bolt",[0,0.10,-0.60],[0.06,0.950,-R-0.05],function(){
+  var a=-Math.PI/2+0.42,c=Math.cos(a),s=Math.sin(a);
+  box(m,0.120,0.070,0.002,c*(R+0.003),0.950,s*(R+0.003),-a);
+  for(var k=0;k<4;k++){var dx=(k%2?1:-1)*0.052,dy=(k<2?1:-1)*0.026;
+    pipe(m,[c*(R+0.003)-s*dx,0.950+dy,s*(R+0.003)+c*dx],
+           [c*(R+0.006)-s*dx,0.950+dy,s*(R+0.006)+c*dx],0.002,6,true);}
+});
+
+/* 30 방진패드 3개 (Ø100 × 30) ------------------------------------------- */
+P("30","방진패드",3,"g1","pad",[0,-0.12,0.88],[legR+0.05,0.015,0.04],function(){
+  for(var k=0;k<3;k++){var a=Math.PI/6+k*Math.PI*2/3;
+    pipe(m,[Math.cos(a)*legR,0,Math.sin(a)*legR],
+           [Math.cos(a)*legR,yPad,Math.sin(a)*legR],0.050,24,true);}
+},{cut:false});
+
+/* 31 배선트레이 --------------------------------------------------------- */
+P("31","배선트레이",1,"g4","elec",[-0.52,0.30,-0.40],[-0.430,1.330,-0.060],function(){
+  var k;
+  for(k=0;k<2;k++) box(m,0.300,0.026,0.004,-0.400,1.330,-0.040+k*0.048);
+  box(m,0.300,0.003,0.048,-0.400,1.318,-0.016);
+  for(k=0;k<2;k++) box(m,0.012,0.190,0.030,-0.520+k*0.240,1.230,-0.016);
+},{cut:false});
+
+/* 32 접지단자 ----------------------------------------------------------- */
+P("32","접지단자",1,"g4","bolt",[0.32,-0.22,-0.48],[legR+0.04,0.150,-0.10],function(){
+  var a=Math.PI/6+Math.PI*4/3,x=Math.cos(a)*legR,z=Math.sin(a)*legR;
+  box(m,0.030,0.026,0.004,x+Math.cos(a)*0.020,0.150,z+Math.sin(a)*0.020,-a);
+  bolt(m,x+Math.cos(a)*0.020,0.158,z+Math.sin(a)*0.020,0.013,0.007,0.014);
+  pipe(m,[x+Math.cos(a)*0.020,0.150,z+Math.sin(a)*0.020],[-0.560,0.100,-0.060],0.005,8,true);
+},{cut:false});
+
+/* 33 배수호스 ----------------------------------------------------------- */
+P("33","배수호스",1,"g3","pad",[0.18,-0.52,0.60],[0.150,0.080,0.130],function(){
+  var pts=[[0,yCam-0.006,0],[0.030,0.070,0.050],[0.110,0.048,0.130],
+           [0.230,0.030,0.210],[0.360,0.022,0.250]],k;
+  for(k=0;k<pts.length-1;k++) pipe(m,pts[k],pts[k+1],0.013,12,true);
+  torus(m,0.013,0.004,yCam-0.004,12,6,0,0);
+},{cut:false});
+
+/* 34 기타 부품 (키 5×5 · 6×6 · 세트스크류 · 캠락 플러그) ---------------- */
+P("34","기타 부품",1,"g2","bolt",[0.52,-0.28,-0.52],[0.045,1.300,0.02],function(){
+  box(m,0.005,0.050,0.005,0.0125,1.300,0);                     // 축 상단 키 5×5
+  box(m,0.006,0.030,0.006,0.0125,yImpU,0);                     // 임펠러 키 6×6
+  box(m,0.006,0.030,0.006,0.0125,yImpL,0);
+  pipe(m,[0,yCam-0.020,0],[0,yCam-0.004,0],0.026,20,true);     // 캠락 플러그
+  torus(m,0.026,0.005,yCam-0.014,20,8,0,0);
+},{cut:false});
+
+/* ===== 공정 유체 (부품표 외 — 충수·운전 표시) ===== */
+fx("slur","slur",function(){
+  revolve(m,[[0.020,yCone+0.004],[Ri-0.002,yTan+0.002],[Ri-0.002,yLvl]],S,false,0,0);
+  ring(m,0,Ri-0.002,yLvl,true,S,0,0);
+});
+fx("flt","flt",function(){
+  revolve(m,[[Ri-0.002,yLvl],[Ri-0.002,yFlt]],S,false,0,0);
+  ring(m,0,Ri-0.002,yFlt,true,S,0,0);
+  var sx=8123,sz=4517;
+  for(var k=0;k<26;k++){                                        // 걷히는 EVA·백시트 조각
+    sx=(sx*9301+49297)%233280; sz=(sz*7621+31337)%233280;
+    var rr=Math.sqrt(sx/233280)*(Ri-0.030),th=(sz/233280)*Math.PI*2;
+    box(m,0.020+((sx%7)/7)*0.016,0.004,0.014+((sz%5)/5)*0.012,
+        Math.cos(th)*rr,yFlt+0.004,Math.sin(th)*rr,th);}
+});
+fx("sink","sink",function(){
+  revolve(m,[[0.020,yCone+0.004],[0.118,yTan-0.040]],28,false,0,0);
+  ring(m,0,0.118,yTan-0.040,true,28,0,0);
+});
+var BUB_H=yLvl-yRing-0.012, BUB=[];
+for(var bi=0;bi<3;bi++){
+  (function(band){
+    fx("bub"+band,"bub",function(){
+      var sx=1237+band*911,sz=7717+band*533;
+      for(var k=0;k<48;k++){
+        sx=(sx*9301+49297)%233280; sz=(sz*7621+31337)%233280;
+        var rr=0.045+Math.sqrt(sx/233280)*(ringR-0.030),th=(sz/233280)*Math.PI*2;
+        var yy=yRing+0.014+((sx%97)/97)*BUB_H;
+        sphere(m,Math.cos(th)*rr,yy,Math.sin(th)*rr,0.0042+((sz%9)/9)*0.0050,4);}
+    });
+  })(bi);
+  BUB.push("bub"+bi);
+}
+
+/* ===== WebGL ===== */
+var canvas=document.getElementById("gl");
+var gl=canvas.getContext("webgl",{antialias:true,alpha:true,premultipliedAlpha:false});
+if(!gl){canvas.style.display="none";
+  document.getElementById("fallback").style.display="block";return;}
+
+var VS=["attribute vec3 aPos; attribute vec3 aNor;",
+ "uniform mat4 uProj,uView,uModel; varying vec3 vW; varying vec3 vN;",
+ "void main(){vec4 w=uModel*vec4(aPos,1.0);vW=w.xyz;vN=mat3(uModel)*aNor;",
+ "gl_Position=uProj*uView*w;}"].join("\n");
+var FS=["precision highp float;","varying vec3 vW; varying vec3 vN;",
+ "uniform vec3 uColor,uEye; uniform float uAlpha,uMetal,uCut,uCuttable,uDim;",
+ "uniform vec2 uFwd;",
+ "void main(){",
+ " if(uCuttable>0.5 && dot(vW.xz,uFwd) > uCut) discard;",
+ " vec3 N=normalize(vN); if(!gl_FrontFacing) N=-N;",
+ " vec3 V=normalize(uEye-vW);",
+ " vec3 L1=normalize(vec3(0.50,0.94,0.62)), L2=normalize(vec3(-0.72,0.30,-0.50));",
+ " float d=max(dot(N,L1),0.0)*0.82+max(dot(N,L2),0.0)*0.24;",
+ " vec3 H=normalize(L1+V);",
+ " float sp=pow(max(dot(N,H),0.0),mix(18.0,92.0,uMetal))*mix(0.10,0.52,uMetal);",
+ " float amb=0.32+0.15*(N.y*0.5+0.5);",
+ " float fr=pow(1.0-max(dot(N,V),0.0),3.0);",
+ " vec3 c=uColor*(amb+d)+vec3(sp)+uColor*fr*0.22;",
+ " c=mix(vec3(dot(c,vec3(0.33))),c,uDim);",
+ " c*=mix(0.45,1.0,uDim);",
+ " gl_FragColor=vec4(c,uAlpha+(1.0-uAlpha)*fr*0.5);}"].join("\n");
+function sh(t,s){var o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);
+  if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o;}
+var prog=gl.createProgram();
+gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS));gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS));
+gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+var A={pos:gl.getAttribLocation(prog,"aPos"),nor:gl.getAttribLocation(prog,"aNor")},U={};
+["uProj","uView","uModel","uColor","uEye","uAlpha","uMetal","uCut","uCuttable","uFwd","uDim"]
+  .forEach(function(n){U[n]=gl.getUniformLocation(prog,n);});
+
+var vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);
+gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(m.p),gl.STATIC_DRAW);
+var nbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,nbo);
+gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(m.n),gl.STATIC_DRAW);
+var big=m.p.length/3>65535;
+if(big && !gl.getExtension("OES_element_index_uint")) big=false;
+var ibo=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ibo);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,big?new Uint32Array(m.i):new Uint16Array(m.i),
+  gl.STATIC_DRAW);
+var ITYPE=big?gl.UNSIGNED_INT:gl.UNSIGNED_SHORT, ISIZE=big?4:2;
+
+/* ===== 상태 ===== */
+var VIEWS={
+  all:{t:[-0.16,0.95,0],d:3.80,label:"전체 조립",grp:null},
+  g1 :{t:[0,0.66,0],d:2.70,label:"탱크 · 구조",grp:"g1"},
+  g2 :{t:[0,1.20,0],d:2.95,label:"구동부",grp:"g2"},
+  g3 :{t:[0,0.74,0],d:2.70,label:"급기 · 계장",grp:"g3"},
+  g4 :{t:[-0.38,1.00,0],d:2.30,label:"전장",grp:"g4"}
+};
+var view="all", az=-0.70, el=0.24, dist=VIEWS.all.d;
+var expAmt=0, cutAmt=0, spin=true, run=false, num=false, hi=null, runT=0, rotA=0;
+var stage=document.getElementById("stage");
+function visible(p){var g=VIEWS[view].grp; return g===null||p.grp===g;}
+
+/* ===== 부품 목록 ===== */
+function hex(c){return "#"+c.map(function(v){var h=Math.round(Math.min(1,v*1.06)*255)
+  .toString(16);return h.length<2?"0"+h:h;}).join("");}
+function refreshList(){
+  var el2=document.getElementById("plist"); el2.innerHTML=""; var n=0;
+  PARTS.forEach(function(p){
+    if(!visible(p)) return; n++;
+    var b=document.createElement("button");
+    b.setAttribute("aria-pressed", hi===p.id ? "true":"false");
+    b.innerHTML='<span class="n">'+p.no+'</span>'+
+      '<span class="sw" style="background:'+hex(MAT[p.mat].c)+'"></span>'+p.name+
+      '<span class="q">'+(p.qty>1?p.qty:"1식")+'</span>';
+    b.addEventListener("click",function(){hi=(hi===p.id?null:p.id);refreshList();});
+    b.addEventListener("mouseenter",function(){hi=p.id;});
+    b.addEventListener("mouseleave",function(){hi=null;});
+    el2.appendChild(b);
+  });
+  document.getElementById("plistTitle").textContent="구성 부품 · "+n+"점"+
+    (VIEWS[view].grp===null?" (전 품목)":"");
+}
+var SPEC={
+  all:[["도면번호","MP-50-P0-001 Rev P0"],["형식","연속 교반 · 급기 부유 분리조"],
+       ["대상","EVA · 백시트 미세입자 ≈75 µm"],["동체","Ø400 × t3 · 직동부 600"],
+       ["하부 콘","Ø400 → Ø38 · h150"],["기하 체적","79.9 L"],["정격 작업 체적","50 L"],
+       ["충수율 · 액면","62.6 % · 355 mm"],["조립 전고","약 1,885 mm"],
+       ["부품","34 품목"],["재질 (접액)","SUS304 / SUS316L"],
+       ["압력시험","0.2 MPa × 30 min"],["전기","220 V 1Ø 또는 380 V 3Ø"]],
+  g1 :[["탱크 쉘","Ø400 × t3 · 600 (SUS304 2B)"],["상부 플랜지","t12 · P.C.D 360 (6-Ø9)"],
+       ["상부 커버","Ø400 × t5 · 보스 h20"],["맨홀","Ø120 / Ø104 · 부품 5점"],
+       ["스키머","Ø55 관통 · 부유물 배출"],["하부 콘","h150 · 플랜지 Ø110 t8"],
+       ["콘 각도","치수열 반각 50.4° (도면 60° 표기)"],["하부 배출구","40A 볼밸브 + 캠락"],
+       ["지지 다리","Ø38 × 420 · 3본"],["방진패드","Ø100 × 30 · 3개"],
+       ["내면 조도","Ra ≤0.8 µm"]],
+  g2 :[["교반축","Ø25 × 800 (SUS316L 연마)"],["축 조도","Ra ≤0.4 µm"],
+       ["상부 임펠러","Ø300 · 6매 · 날개 80 · t3"],["하부 임펠러","Ø300 · 6매 · 날개 13 · t3"],
+       ["허브","Ø25 H7 · 키홈 6×6 · M8 세트스크류"],["직경비 D/T","0.76 (통상 0.3–0.5)"],
+       ["벽면 간극","47 mm"],["단 간격","150 mm = 0.50 D (통상 1.0 D)"],
+       ["상부 임펠러 잠김","105 mm = 0.35 D"],["배플","4장 · t2 · 모델 폭 40"],
+       ["구동","모터 + 감속기 + 커플링 · VFD"],["고정볼트","M8×25 · 6조 (20 N·m)"]],
+  g3 :[["분산기","Ø250 링 · 관 Ø20"],["분사홀","Ø2 × 60개 · 피치 13.1 mm"],
+       ["총 홀 면적","188.5 mm²"],["홀 유속 @3 m³/h","4.4 m/s"],
+       ["설치 위치","하부 임펠러 아래 (동체 하단 +34)"],["공기 인입","1/2\" (15A)"],
+       ["필터+레귤레이터","Ø68 × 150"],["로타미터","Ø34 × 200"],
+       ["레벨센서","2개 (고 / 저)"],["압력계 · 온도센서","각 1"],
+       ["사이트글라스","Ø34 · Tri-clamp 2조"]],
+  g4 :[["제어반","300 × 400 × 200"],["표시·조작","전원 · 운전/정지 · VFD · 타이머"],
+       ["계기 표시","공기 유량 · 온도 · 압력"],["전원","220 V 1Ø / 380 V 3Ø (옵션)"],
+       ["배선","전선·케이블 1식 + 배선트레이"],["접지","접지단자 1식 (SUS304)"]]
+};
+function refreshSpec(){
+  var tb=document.getElementById("spec"); tb.innerHTML="";
+  SPEC[view].forEach(function(r){var tr=document.createElement("tr");
+    tr.innerHTML="<td>"+r[0]+"</td><td>"+r[1]+"</td>";tb.appendChild(tr);});
+  document.getElementById("specTitle").textContent=VIEWS[view].label+" 제원";
+}
+
+/* ===== 라벨 ===== */
+var labelEls=[];
+function labelSet(){
+  labelEls.forEach(function(e){e.remove();}); labelEls=[];
+  labelEls=PARTS.filter(visible).map(function(p){
+    var d=document.createElement("div"); d.className="lbl";
+    d.innerHTML="<b>"+p.no+"</b> <i>"+p.name+"</i>";
+    stage.appendChild(d); d._src=p; return d;});
+}
+
+/* ===== 입력 ===== */
+var drag=false,lx=0,ly=0;
+function down(e){drag=true;spin=false;syncSpin();stage.classList.add("dragging");
+  lx=(e.touches?e.touches[0].clientX:e.clientX);ly=(e.touches?e.touches[0].clientY:e.clientY);}
+function move(e){if(!drag)return;
+  var X=(e.touches?e.touches[0].clientX:e.clientX),Y=(e.touches?e.touches[0].clientY:e.clientY);
+  az-=(X-lx)*0.008; el+=(Y-ly)*0.006; el=Math.max(-0.30,Math.min(1.20,el));
+  lx=X;ly=Y; if(e.cancelable)e.preventDefault();}
+function up(){drag=false;stage.classList.remove("dragging");}
+stage.addEventListener("mousedown",down);
+window.addEventListener("mousemove",move); window.addEventListener("mouseup",up);
+stage.addEventListener("touchstart",down,{passive:true});
+stage.addEventListener("touchmove",move,{passive:false});
+window.addEventListener("touchend",up);
+stage.addEventListener("wheel",function(e){
+  dist*=(1+Math.sign(e.deltaY)*0.09);
+  dist=Math.max(VIEWS[view].d*0.38,Math.min(VIEWS[view].d*2.4,dist)); e.preventDefault();
+},{passive:false});
+function syncSpin(){document.getElementById("spin")
+  .setAttribute("aria-pressed",spin?"true":"false");}
+function syncRun(){document.getElementById("run")
+  .setAttribute("aria-pressed",run?"true":"false");}
+function syncNum(){document.getElementById("num")
+  .setAttribute("aria-pressed",num?"true":"false");}
+document.getElementById("exp").addEventListener("input",function(e){expAmt=e.target.value/100;});
+document.getElementById("cut").addEventListener("input",function(e){cutAmt=e.target.value/100;});
+document.getElementById("spin").addEventListener("click",function(){spin=!spin;syncSpin();});
+document.getElementById("run").addEventListener("click",function(){run=!run;syncRun();});
+document.getElementById("num").addEventListener("click",function(){num=!num;syncNum();});
+document.getElementById("reset").addEventListener("click",function(){
+  az=-0.70;el=0.24;dist=VIEWS[view].d;});
+var VBTN={all:"vAll",g1:"vG1",g2:"vG2",g3:"vG3",g4:"vG4"};
+function pick(v){
+  view=v; dist=VIEWS[v].d; az=-0.70; el=0.24;
+  Object.keys(VBTN).forEach(function(k){
+    document.getElementById(VBTN[k]).setAttribute("aria-pressed",k===v?"true":"false");});
+  refreshList(); refreshSpec(); labelSet();
+}
+Object.keys(VBTN).forEach(function(k){
+  document.getElementById(VBTN[k]).addEventListener("click",function(){pick(k);});});
+
+/* ===== 렌더 ===== */
+function resize(){
+  var dpr=Math.min(window.devicePixelRatio||1,2),w=stage.clientWidth,h=stage.clientHeight;
+  if(canvas.width!==Math.floor(w*dpr)||canvas.height!==Math.floor(h*dpr)){
+    canvas.width=Math.floor(w*dpr);canvas.height=Math.floor(h*dpr);}
+  gl.viewport(0,0,canvas.width,canvas.height); return w/h;
+}
+var reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+if(reduce) spin=false;
+var last=0;
+function frame(t){
+  var dt=Math.min(0.05,(t-last)/1000)||0; last=t;
+  if(spin) az+=dt*0.19;
+  if(run && !reduce){ runT+=dt; rotA+=dt*3.4; }
+  var asp=resize(), V=VIEWS[view], tgt=V.t.slice();
+  if(expAmt>0){ tgt[0]*=(1-expAmt*0.7); tgt[1]=tgt[1]*(1-expAmt)+1.02*expAmt; }
+  var dEff=dist*(1+expAmt*1.10);
+  var ce=Math.cos(el);
+  var eye=[tgt[0]+Math.sin(az)*ce*dEff, tgt[1]+Math.sin(el)*dEff, tgt[2]+Math.cos(az)*ce*dEff];
+  var proj=m4persp(0.60,asp,0.04,90), viewM=m4look(eye,tgt,[0,1,0]);
+
+  gl.clearColor(0,0,0,0); gl.enable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE);
+  gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  gl.uniformMatrix4fv(U.uProj,false,proj);
+  gl.uniformMatrix4fv(U.uView,false,viewM);
+  gl.uniform3fv(U.uEye,new Float32Array(eye));
+  gl.uniform2f(U.uFwd,Math.sin(az),Math.cos(az));
+  var cutOn=cutAmt>0.01 && expAmt<0.05;
+  gl.uniform1f(U.uCut, R*1.15*(1-cutAmt)+0.020*cutAmt);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER,vbo);
+  gl.enableVertexAttribArray(A.pos);gl.vertexAttribPointer(A.pos,3,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,nbo);
+  gl.enableVertexAttribArray(A.nor);gl.vertexAttribPointer(A.nor,3,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ibo);
+
+  function emit(rangeStart,count,mat,mdl,cut,dim,alpha){
+    gl.uniformMatrix4fv(U.uModel,false,mdl);
+    gl.uniform3fv(U.uColor,new Float32Array(mat.c));
+    gl.uniform1f(U.uAlpha,alpha===undefined?mat.a:alpha);
+    gl.uniform1f(U.uMetal,mat.m);
+    gl.uniform1f(U.uCuttable,cut?1:0);
+    gl.uniform1f(U.uDim,dim);
+    gl.drawElements(gl.TRIANGLES,count,ITYPE,rangeStart*ISIZE);
+  }
+  function drawPart(p){
+    var e=p.ex,s=expAmt;
+    var mdl=p.rot? m4ty(e[0]*s,e[1]*s,e[2]*s,rotA) : m4t(e[0]*s,e[1]*s,e[2]*s);
+    emit(p.start,p.count,MAT[p.mat],mdl,cutOn&&p.cut,(hi===null||hi===p.id)?1.0:0.30);
+  }
+  var ID4=m4id();
+  var ghost = run && expAmt<0.05;
+  gl.disable(gl.BLEND); gl.depthMask(true);
+  emit(FX.floor.start,FX.floor.count,MAT.floor,ID4,false,expAmt>0.02?0.34:0.62);
+  PARTS.forEach(function(p){
+    if(visible(p)&&MAT[p.mat].a>=1&&!(ghost&&p.env)) drawPart(p); });
+
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  gl.depthMask(false);
+  if(run && expAmt<0.05){
+    var fade=Math.min(1,runT*0.8);
+    emit(FX.slur.start,FX.slur.count,MAT.slur,ID4,cutOn,1.0,MAT.slur.a*fade);
+    emit(FX.sink.start,FX.sink.count,MAT.sink,ID4,cutOn,1.0,MAT.sink.a*fade);
+    emit(FX.flt.start ,FX.flt.count ,MAT.flt ,ID4,cutOn,1.0,MAT.flt.a*fade);
+    for(var b=0;b<BUB.length;b++){
+      var f=FX[BUB[b]];
+      var off=((runT*0.16+b*BUB_H/3)%BUB_H);
+      emit(f.start,f.count,MAT.bub,m4t(0,off,0),cutOn,1.0,MAT.bub.a*fade);
+    }
+  }
+  PARTS.forEach(function(p){ if(visible(p)&&MAT[p.mat].a<1) drawPart(p); });
+  if(ghost) PARTS.forEach(function(p){
+    if(!visible(p)||!p.env) return;
+    emit(p.start,p.count,MAT[p.mat],m4t(0,0,0),cutOn&&p.cut,
+         (hi===null||hi===p.id)?1.0:0.30, 0.20); });
+  gl.depthMask(true);
+
+  /* 라벨 */
+  var vp=m4mul(proj,viewM), placed=[];
+  labelEls.forEach(function(el2){
+    var q=el2._src,e=q.ex,s=expAmt,an=q.anchor;
+    var p=[an[0]+e[0]*s, an[1]+e[1]*s, an[2]+e[2]*s];
+    var X=vp[0]*p[0]+vp[4]*p[1]+vp[8]*p[2]+vp[12];
+    var Y=vp[1]*p[0]+vp[5]*p[1]+vp[9]*p[2]+vp[13];
+    var W=vp[3]*p[0]+vp[7]*p[1]+vp[11]*p[2]+vp[15];
+    if(W<=0){el2.classList.remove("on");return;}
+    var sx=(X/W*0.5+0.5)*stage.clientWidth, sy=(-Y/W*0.5+0.5)*stage.clientHeight;
+    if(sx<-30||sy<-16||sx>stage.clientWidth+30||sy>stage.clientHeight+16){
+      el2.classList.remove("on");return;}
+    var show = hi===q.id || (hi===null && (num || expAmt>0.04));
+    if(!show){el2.classList.remove("on");return;}
+    placed.push({el:el2,sx:sx,sy:sy,right:sx>=stage.clientWidth*0.5});
+    el2.classList.add("on");
+  });
+  [true,false].forEach(function(side){
+    var g=placed.filter(function(o){return o.right===side;})
+                .sort(function(a,b){return a.sy-b.sy;});
+    for(var i=1;i<g.length;i++) if(g[i].sy-g[i-1].sy<23) g[i].sy=g[i-1].sy+23;
+    if(!g.length) return;
+    var over=g[g.length-1].sy-(stage.clientHeight-14);
+    if(over>0){var lift=Math.min(over,g[0].sy-14);
+      if(lift>0) for(var j=0;j<g.length;j++) g[j].sy-=lift;}
+  });
+  placed.forEach(function(o){
+    o.el.style.left = o.right ? (o.sx+13)+"px" : "";
+    o.el.style.right= o.right ? "" : (stage.clientWidth-o.sx+13)+"px";
+    o.el.style.top  = o.sy+"px";
+  });
+  requestAnimationFrame(frame);
+}
+
+refreshList(); refreshSpec(); labelSet(); syncSpin(); syncRun(); syncNum();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

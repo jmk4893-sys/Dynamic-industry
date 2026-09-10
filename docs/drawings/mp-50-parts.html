@@ -1,0 +1,1734 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="미세입자용 EVA·백시트 분리기 MP-50 의 부품 상세 도면집. 제작도 상세 패널 16매를 치수 기입 2D 정투상도와 3D 모델로 나란히 그렸다.">
+<title>MP-50 부품 상세 도면집</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap">
+
+<style>
+  :root {
+    --bg:#E7ECEF; --surface:#FFFFFF; --surface-2:#F5F8FA;
+    --ink:#152229; --ink-2:#4E5F68; --ink-3:#788892;
+    --line:#A9B5BE; --line-2:#69777F; --rule:#D2DAE0;
+    --brand:#1B7CB8; --brand-2:#268CCA; --brand-ink:#125D8C; --accent:#B07A10;
+    --red:#A52A30; --red-bg:#FBEEEE;
+    --stage:#E2E8EC; --stage-2:#C3CED6;
+    --mark:#FFFFFF; --paper:#FFFFFF;
+    --draw:#1B2830; --draw-2:#5B6B75; --draw-thin:#8C9AA3;
+    --sans:"IBM Plex Sans KR",system-ui,-apple-system,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#101820; --surface:#18222A; --surface-2:#1E2A33;
+      --ink:#E4EBF0; --ink-2:#9FAFBA; --ink-3:#7C8C97;
+      --line:#3E4E58; --line-2:#7E8E99; --rule:#28343D;
+      --brand:#4AA8E0; --brand-2:#268CCA; --brand-ink:#8ED2F5; --accent:#DCA847;
+      --red:#E2585F; --red-bg:#2E1A1C;
+      --stage:#151E25; --stage-2:#080D11;
+      --mark:#0E161C; --paper:#141D24;
+      --draw:#D6E0E6; --draw-2:#93A5AF; --draw-thin:#6C7C87;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#101820; --surface:#18222A; --surface-2:#1E2A33;
+    --ink:#E4EBF0; --ink-2:#9FAFBA; --ink-3:#7C8C97;
+    --line:#3E4E58; --line-2:#7E8E99; --rule:#28343D;
+    --brand:#4AA8E0; --brand-2:#268CCA; --brand-ink:#8ED2F5; --accent:#DCA847;
+    --red:#E2585F; --red-bg:#2E1A1C;
+    --stage:#151E25; --stage-2:#080D11;
+    --mark:#0E161C; --paper:#141D24;
+    --draw:#D6E0E6; --draw-2:#93A5AF; --draw-thin:#6C7C87;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+       line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1240px;margin:0 auto;padding:40px 20px 80px;
+        display:flex;flex-direction:column;gap:24px}
+
+  header{border-bottom:2px solid var(--line-2);padding-bottom:22px}
+  .np{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .np-mark{flex:none;display:grid;place-items:center;width:44px;height:44px;
+           background:var(--mark);border:1px solid var(--line-2)}
+  .np-mark svg{width:30px;height:30px;display:block}
+  .np-word{display:grid;gap:3px}
+  .np-word i{font:600 8.5px/1 var(--mono);font-style:normal;letter-spacing:.16em;color:var(--ink-3)}
+  .np-word b{font:700 14px/1 system-ui,sans-serif;letter-spacing:.06em;color:var(--brand-ink)}
+  .np-dwg{margin-left:auto;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+          color:var(--ink-3);text-align:right;line-height:1.7}
+  .eyebrow{margin-top:18px;font-family:var(--mono);font-size:12px;font-weight:500;
+           letter-spacing:.14em;text-transform:uppercase;color:var(--brand-ink)}
+  h1{margin:8px 0 0;font-size:clamp(25px,4vw,38px);font-weight:600;
+     letter-spacing:-.015em;line-height:1.18;text-wrap:balance}
+  .lede{margin:14px 0 0;max-width:66ch;color:var(--ink-2);font-size:16px;font-weight:300}
+  .lede b{color:var(--ink);font-weight:500}
+
+  /* 시트 색인 */
+  .index{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:6px}
+  .index button{display:flex;align-items:baseline;gap:8px;text-align:left;font-family:var(--sans);
+    font-size:12.5px;padding:7px 9px;border:1px solid var(--line);background:var(--surface);
+    color:var(--ink-2);cursor:pointer}
+  .index button:hover{border-color:var(--brand);color:var(--ink)}
+  .index button[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+  .index button[aria-pressed="true"] .c,.index button[aria-pressed="true"] .n{color:#fff}
+  .index .c{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--brand-ink);flex:none}
+  .index .n{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--ink-3);flex:none}
+  .index button.warn .c{color:var(--red)}
+  .index button[aria-pressed="true"].warn .c{color:#FFD9D9}
+
+  /* 시트 */
+  .sheet{border:1px solid var(--line);background:var(--surface)}
+  .sheet-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;
+    padding:14px 18px;border-bottom:1px solid var(--rule);background:var(--surface-2)}
+  .sheet-head .code{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.14em;
+    color:#fff;background:var(--brand);padding:3px 8px}
+  .sheet-head h2{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em}
+  .sheet-head .meta{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+
+  .views{display:grid;grid-template-columns:1.15fr 1fr}
+  .views>*{min-width:0}
+  .pane{padding:14px 16px 16px}
+  .pane+.pane{border-left:1px solid var(--rule)}
+  .pane h3{margin:0 0 10px;font-family:var(--mono);font-size:10.5px;font-weight:600;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+  .paper{background:var(--paper);border:1px solid var(--rule);overflow:hidden;height:460px}
+  .paper svg{display:block;width:100%;height:100%}
+
+  /* 2D 도면 선 종류 — KS A ISO 128 선 굵기 비 1 : 0.5 : 0.25 */
+  svg .ol{fill:none;stroke:var(--draw);stroke-width:1.7;vector-effect:non-scaling-stroke;
+    stroke-linejoin:round;stroke-linecap:round}
+  svg .ol2{fill:none;stroke:var(--draw);stroke-width:1.1;vector-effect:non-scaling-stroke}
+  svg .hd{fill:none;stroke:var(--draw-2);stroke-width:.9;vector-effect:non-scaling-stroke;
+    stroke-dasharray:5 3}
+  svg .cn{fill:none;stroke:var(--draw-thin);stroke-width:.8;vector-effect:non-scaling-stroke;
+    stroke-dasharray:14 3 2 3}
+  svg .dm{fill:none;stroke:var(--draw-thin);stroke-width:.8;vector-effect:non-scaling-stroke}
+  svg .fill{fill:var(--draw);stroke:none}
+  svg .face{fill:var(--surface-2);stroke:var(--draw);stroke-width:1.7;
+    vector-effect:non-scaling-stroke;stroke-linejoin:round}
+  svg text{fill:var(--draw);font-family:var(--mono);text-anchor:middle;
+    dominant-baseline:middle}
+  svg text.vt{fill:var(--ink-3);font-family:var(--sans);font-weight:500}
+  svg text.lf{text-anchor:start}
+  svg text.rt{text-anchor:end}
+
+  /* 3D */
+  .stage{position:relative;height:460px;background:radial-gradient(ellipse 84% 76% at 50% 44%,
+    var(--stage) 0%,var(--stage-2) 100%);overflow:hidden;cursor:grab;touch-action:none;
+    border:1px solid var(--rule)}
+  .stage.dragging{cursor:grabbing}
+  .stage canvas{display:block;width:100%;height:100%}
+  .lbl{position:absolute;transform:translate(-50%,-50%);font-family:var(--mono);font-size:10px;
+    font-weight:500;color:var(--ink);background:var(--surface);padding:1px 4px;
+    white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .16s;
+    border:1px solid var(--line)}
+  .lbl.on{opacity:1}
+  .hud{position:absolute;left:10px;bottom:8px;font-family:var(--mono);font-size:10px;
+    color:var(--ink-3);pointer-events:none;letter-spacing:.04em}
+  .fallback{display:none;padding:22px;text-align:center;color:var(--ink-2);font-size:13px}
+
+  .bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 16px;
+    border-top:1px solid var(--rule);background:var(--surface-2)}
+  .toggle{font-family:var(--mono);font-size:11px;padding:6px 11px;border:1px solid var(--line);
+    background:transparent;color:var(--ink-2);cursor:pointer}
+  .toggle[aria-pressed="true"]{border-color:var(--brand);color:var(--brand-ink);
+    background:var(--surface)}
+  .toggle:focus-visible,.index button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+  .nav{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .nav span{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+
+  .info{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--rule)}
+  .info>div{padding:14px 18px 16px}
+  .info>div+div{border-left:1px solid var(--rule)}
+  .info h3{margin:0 0 10px;font-family:var(--mono);font-size:10.5px;font-weight:600;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+  td{padding:4px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+  td:last-child{text-align:right;font-family:var(--mono)}
+  tr:last-child td{border-bottom:none}
+  .note{font-size:13px;font-weight:300;color:var(--ink-2);margin:0}
+  .note strong{color:var(--ink);font-weight:500}
+  .flag{margin:12px 0 0;padding:10px 12px;background:var(--red-bg);
+    border-left:3px solid var(--red);font-size:12.5px;font-weight:300;color:var(--ink-2)}
+  .flag b{color:var(--red);font-weight:600;font-family:var(--mono);font-size:11px;
+    letter-spacing:.08em;display:block;margin-bottom:3px}
+
+  .notes{background:var(--surface);border:1px solid var(--line);padding:20px 22px 24px}
+  .notes ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;
+    counter-reset:n}
+  .notes li{position:relative;padding-left:32px;font-size:14px;font-weight:300;
+    color:var(--ink-2);max-width:86ch}
+  .notes li::before{counter-increment:n;content:counter(n,decimal-leading-zero);position:absolute;
+    left:0;top:1px;font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--brand-ink)}
+  .notes strong{color:var(--ink);font-weight:500}
+  h2.sec{margin:0 0 12px;font-family:var(--mono);font-size:11px;font-weight:600;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+  .foot{font-size:12.5px;color:var(--ink-3);font-weight:300;border-top:1px solid var(--rule);
+    padding-top:16px}
+  .foot code{font-family:var(--mono);font-size:11.5px}
+
+  @media (max-width:900px){
+    .views{grid-template-columns:1fr}
+    .pane+.pane{border-left:none;border-top:1px solid var(--rule)}
+    .info{grid-template-columns:1fr}
+    .info>div+div{border-left:none;border-top:1px solid var(--rule)}
+  }
+  @media (max-width:760px){
+    .wrap{padding:28px 13px 60px}
+    .np-dwg{margin-left:0;text-align:left;width:100%}
+    .sheet-head .meta{margin-left:0;width:100%}
+  }
+  @media (prefers-reduced-motion:reduce){.lbl{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="np">
+      <div class="np-mark" aria-hidden="true">
+        <svg viewBox="-3 -3 105 95" focusable="false"><polygon points='34.2,0 69.9,0 76.7,5.5 99,44.2 98.4,53.6 70.5,53.6' fill='var(--accent)'/><polygon points='19.5,83.1 33.1,59.5 95,59.5 80.4,84.9 74.1,88.9 25.9,88.9' fill='var(--brand-2)'/><polygon points='0,47.2 1.4,43.5 8.8,30.8 25.6,59.8 15.8,77.7 14.3,75.9 0.9,52.4' fill='var(--brand-2)'/><polygon points='12.5,24.3 18.8,13.5 35.4,41.3 35.9,42.8 29.3,54.3 12.8,25.9' fill='var(--brand-2)'/><polygon points='25.3,11.8 38.6,11.8 45.7,23.9 45.9,25.6 39.8,36.1 26.6,14.3' fill='var(--brand-2)'/></svg>
+      </div>
+      <div class="np-word">
+        <i>FOR NET ZERO PROJECTION</i>
+        <b>DYNAMIC INDUSTRY</b>
+      </div>
+      <div class="np-dwg">DWG. MP-50-P0-001 · REV P0<br>단위 mm · 상세도 16매</div>
+    </div>
+    <div class="eyebrow">부품 상세 · 2D 정투상 + 3D · 16매</div>
+    <h1>MP-50 부품 상세 도면집</h1>
+    <p class="lede">
+      제작도의 상세 패널 <b>B–Q 16매</b>를 한 장씩 펼친 것이다. 왼쪽은 치수를 기입한
+      <b>2D 정투상도</b>, 오른쪽은 같은 부품을 돌려 볼 수 있는 <b>3D</b> 다. 3D 는
+      <b>단면</b>으로 살두께를, <b>치수</b>로 도면값을 그대로 보여준다. 조립도는
+      <code>mp-50-3d.html</code> 를 볼 것.
+    </p>
+  </header>
+
+  <section>
+    <h2 class="sec">시트 색인</h2>
+    <div class="index" id="index" role="group" aria-label="상세 시트 선택"></div>
+  </section>
+
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="code" id="shCode">B</span>
+      <h2 id="shName">탱크 쉘</h2>
+      <span class="meta" id="shMeta"></span>
+    </div>
+
+    <div class="views">
+      <div class="pane">
+        <h3>2D 상세도 — 치수 기입</h3>
+        <div class="paper" id="paper"></div>
+      </div>
+      <div class="pane">
+        <h3>3D — 드래그 회전 · 휠 확대</h3>
+        <div class="stage" id="stage">
+          <canvas id="gl"></canvas>
+          <div class="hud" id="hud"></div>
+          <div class="fallback" id="fallback">
+            이 브라우저에서 WebGL 을 쓸 수 없다. 왼쪽 2D 상세도를 참조할 것.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bar">
+      <button class="toggle" id="tDim" aria-pressed="true">3D 치수</button>
+      <button class="toggle" id="tCut" aria-pressed="false">3D 단면</button>
+      <button class="toggle" id="tSpin" aria-pressed="true">자동 회전</button>
+      <button class="toggle" id="tReset">시점 초기화</button>
+      <div class="nav">
+        <button class="toggle" id="prev" aria-label="이전 시트">◀ 이전</button>
+        <span id="pos"></span>
+        <button class="toggle" id="next" aria-label="다음 시트">다음 ▶</button>
+      </div>
+    </div>
+
+    <div class="info">
+      <div><h3>제원</h3><table><tbody id="spec"></tbody></table></div>
+      <div><h3>주기</h3><p class="note" id="note"></p><div id="flag"></div></div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <h2 class="sec">도면집 주기</h2>
+    <ol>
+      <li><strong>2D 와 3D 는 같은 치수에서 나온다.</strong> 두 그림 모두 제작도
+        MP-50-P0-001 의 표기값을 코드 상수로 두고 그린 것이라, 상수를 고치면 2D 치수선과
+        3D 형상이 함께 움직인다. 눈으로 맞춘 그림이 아니다.</li>
+      <li><strong>상세 시트는 도면 표기값을 그대로 그린다.</strong> 조립도
+        (<code>mp-50-3d.html</code>)는 조립이 성립하도록 일부 치수를 바꿔 그렸지만,
+        이 도면집은 상세 패널에 적힌 값을 그대로 쓴다. 두 값이 다른 시트에는
+        <strong>지적</strong> 표시를 붙이고 조립도에서 쓴 값을 함께 적었다.</li>
+      <li><strong>3D 단면은 부품 축을 지나는 평면으로 자른다.</strong> 살두께(동체 t3,
+        커버 t5, 콘 t3, 배플 t2)와 보어·나사부를 보기 위한 것이며, 2D 의 A-A 단면과
+        같은 위치다.</li>
+      <li><strong>선 굵기는 KS A ISO 128 을 따랐다.</strong> 외형선 : 숨은선 : 치수·중심선
+        = 1 : 0.5 : 0.25. 중심선은 일점쇄선, 숨은선은 파선이다.</li>
+      <li><strong>제작·검사 기준은 조립도와 같다.</strong> 치수 공차 ±0.5 ~ ±2 mm,
+        용접 TIG(내부 연마·비드 제거), 압력시험 0.2 MPa × 30 min, 탱크 내면 Ra ≤0.8 µm,
+        조립 토크 M8 20 N·m / M10 40 N·m.</li>
+    </ol>
+  </section>
+
+  <p class="foot">
+    조립·분해도는 <code>docs/drawings/mp-50-3d.html</code>,
+    상류 분리설비는 <code>docs/drawings/pv-delamination-3d.html</code>,
+    하류 Ag 회수 부선 설비는 <code>docs/drawings/ag-flotation-3d.html</code> 참조.
+  </p>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ======================================================================
+   1. 2D 정투상 도면 — SVG 생성기
+   선 굵기는 CSS 클래스(.ol/.hd/.cn/.dm)가 정하고, vector-effect 로
+   viewBox 배율과 무관하게 일정하다. 좌표는 mm, y 는 아래가 +.
+   ====================================================================== */
+function n(v){return (Math.round(v*1000)/1000);}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
+
+function Sheet(x0,y0,w,h){
+  this.o=[]; this.x0=x0; this.y0=y0; this.w=w; this.h=h;
+  var k=Math.max(w,h);
+  this.fs=k/44;          // 치수 문자 크기
+  this.aw=k/150;         // 화살표 길이
+  this.ext=k/90;         // 연장선 여유
+}
+var S=Sheet.prototype;
+S.el=function(s){this.o.push(s);};
+S.line=function(x1,y1,x2,y2,c){
+  this.el('<line x1="'+n(x1)+'" y1="'+n(y1)+'" x2="'+n(x2)+'" y2="'+n(y2)+
+          '" class="'+(c||"ol")+'"/>');};
+S.poly=function(pts,c,close){
+  this.el('<path d="M'+pts.map(function(p){return n(p[0])+" "+n(p[1]);}).join("L")+
+          (close?"Z":"")+'" class="'+(c||"ol")+'"/>');};
+S.rect=function(x,y,w,h,c){
+  this.el('<rect x="'+n(x)+'" y="'+n(y)+'" width="'+n(w)+'" height="'+n(h)+
+          '" class="'+(c||"ol")+'"/>');};
+S.circle=function(cx,cy,r,c){
+  this.el('<circle cx="'+n(cx)+'" cy="'+n(cy)+'" r="'+n(r)+'" class="'+(c||"ol")+'"/>');};
+S.path=function(d,c){this.el('<path d="'+d+'" class="'+(c||"ol")+'"/>');};
+S.hatch=function(d){this.el('<path d="'+d+'" fill="url(#htch)" stroke="none"/>');};
+S.txt=function(x,y,t,c,size){
+  this.el('<text x="'+n(x)+'" y="'+n(y)+'" font-size="'+n(size||this.fs)+'"'+
+          (c?' class="'+c+'"':"")+'>'+esc(t)+'</text>');};
+/* 중심선 — 양끝을 조금 넘겨 뺀다 */
+S.cl=function(x1,y1,x2,y2){
+  var dx=x2-x1,dy=y2-y1,l=Math.hypot(dx,dy)||1,e=this.ext*1.4;
+  this.line(x1-dx/l*e,y1-dy/l*e,x2+dx/l*e,y2+dy/l*e,"cn");};
+/* 화살표 (채운 삼각형) */
+S.arw=function(x,y,ax,ay){
+  var l=Math.hypot(ax,ay)||1,ux=ax/l,uy=ay/l,px=-uy,py=ux,a=this.aw,w=a*0.30;
+  this.el('<path d="M'+n(x)+' '+n(y)+'L'+n(x+ux*a+px*w)+' '+n(y+uy*a+py*w)+
+          'L'+n(x+ux*a-px*w)+' '+n(y+uy*a-py*w)+'Z" class="fill"/>');};
+
+/* 수평 치수 — 피처는 fy, 치수선은 fy+off */
+S.dimH=function(x1,x2,fy,off,t,opt){
+  opt=opt||{}; var y=fy+off, s=off>0?1:-1;
+  if(!opt.noext){
+    this.line(x1,fy+s*this.ext*0.35,x1,y+s*this.ext,"dm");
+    this.line(x2,fy+s*this.ext*0.35,x2,y+s*this.ext,"dm");}
+  this.line(x1,y,x2,y,"dm");
+  var out=Math.abs(x2-x1)<this.fs*(String(t).length*0.62+1.2);
+  if(out){ this.line(x1,y,x1-this.aw*2.6,y,"dm");
+           this.arw(x1,y,-1,0); this.arw(x2,y,1,0);
+           this.txt(x1-this.aw*3.0,y,t,"rt"); }
+  else { this.arw(x1,y,1,0); this.arw(x2,y,-1,0);
+         this.txtBg((x1+x2)/2,y,t); }
+};
+/* 수직 치수 — 피처는 fx, 치수선은 fx+off */
+S.dimV=function(y1,y2,fx,off,t,opt){
+  opt=opt||{}; var x=fx+off, s=off>0?1:-1;
+  if(!opt.noext){
+    this.line(fx+s*this.ext*0.35,y1,x+s*this.ext,y1,"dm");
+    this.line(fx+s*this.ext*0.35,y2,x+s*this.ext,y2,"dm");}
+  this.line(x,y1,x,y2,"dm");
+  var out=Math.abs(y2-y1)<this.fs*2.2;
+  if(out){ this.arw(x,y1,0,-1); this.arw(x,y2,0,1);
+           this.line(x,y2,x,y2+this.aw*2.0,"dm");
+           this.txt(x,y2+this.aw*2.0+this.fs*0.75,t); }
+  else { this.arw(x,y1,0,1); this.arw(x,y2,0,-1);
+         this.txtRot(x,(y1+y2)/2,t); }
+};
+/* 지름 치수 — 원을 가로지른다 */
+S.dimD=function(cx,cy,r,t,ang,tf){
+  ang=(ang===undefined?0:ang); tf=(tf===undefined?0:tf);
+  var c=Math.cos(ang),s=Math.sin(ang);
+  var x1=cx-c*r,y1=cy-s*r,x2=cx+c*r,y2=cy+s*r;
+  this.line(x1,y1,x2,y2,"dm");
+  this.arw(x1,y1,c,s); this.arw(x2,y2,-c,-s);
+  this.txtBg(cx+c*r*tf,cy+s*r*tf,t);
+};
+/* 지시선 — 피처에서 꺾어 문자로 */
+S.lead=function(x,y,tx,ty,t,align){
+  var land=(tx>=x?1:-1)*this.fs*0.8;
+  this.line(x,y,tx,ty,"dm"); this.line(tx,ty,tx+land,ty,"dm");
+  this.arw(x,y,x-tx,y-ty);
+  this.txt(tx+land+(tx>=x?this.fs*0.4:-this.fs*0.4),ty,t,
+           align||(tx>=x?"lf":"rt"));
+};
+/* 문자 배경을 비워 치수선 위에 얹는다 */
+S.txtBg=function(x,y,t){
+  var w=this.fs*(String(t).length*0.60+0.5),h=this.fs*1.05;
+  this.el('<rect x="'+n(x-w/2)+'" y="'+n(y-h/2)+'" width="'+n(w)+'" height="'+n(h)+
+          '" fill="var(--paper)" stroke="none"/>');
+  this.txt(x,y,t);
+};
+S.txtRot=function(x,y,t){
+  var w=this.fs*(String(t).length*0.60+0.5),h=this.fs*1.05;
+  this.el('<g transform="rotate(-90 '+n(x)+' '+n(y)+')">'+
+          '<rect x="'+n(x-w/2)+'" y="'+n(y-h/2)+'" width="'+n(w)+'" height="'+n(h)+
+          '" fill="var(--paper)" stroke="none"/>'+
+          '<text x="'+n(x)+'" y="'+n(y)+'" font-size="'+n(this.fs)+'">'+esc(t)+'</text></g>');
+};
+/* 뷰 제목 */
+S.view=function(x,y,t){ this.txt(x,y,t,"vt",this.fs*1.05); };
+/* 볼트 구멍 원 배열 */
+S.holes=function(cx,cy,pcd,cnt,d,start){
+  start=start||0;
+  this.circle(cx,cy,pcd/2,"cn");
+  for(var i=0;i<cnt;i++){var a=start+i/cnt*Math.PI*2;
+    var x=cx+Math.cos(a)*pcd/2,y=cy+Math.sin(a)*pcd/2;
+    this.circle(x,y,d/2,"ol2");
+    this.line(x-d*0.95,y,x+d*0.95,y,"cn"); this.line(x,y-d*0.95,x,y+d*0.95,"cn");}
+};
+S.svg=function(label){
+  var p=Math.max(this.w,this.h)*0.06;
+  return '<svg viewBox="'+n(this.x0-p)+' '+n(this.y0-p)+' '+n(this.w+p*2)+' '+
+    n(this.h+p*2)+'" preserveAspectRatio="xMidYMid meet" '+
+    'role="img" aria-label="'+esc(label)+'">'+
+    '<defs><pattern id="htch" width="7" height="7" patternUnits="userSpaceOnUse" '+
+    'patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" '+
+    'stroke="var(--draw-thin)" stroke-width="0.9"/></pattern></defs>'+
+    this.o.join("")+'</svg>';
+};
+
+/* ======================================================================
+   2. 3D — 행렬 · 메시 · 프리미티브 (조립도 mp-50-3d.html 과 같은 엔진)
+   ====================================================================== */
+function m4id(){return new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);}
+function m4mul(a,b,o){o=o||new Float32Array(16);
+  for(var i=0;i<4;i++){var a0=a[i],a1=a[i+4],a2=a[i+8],a3=a[i+12];
+    o[i]=a0*b[0]+a1*b[1]+a2*b[2]+a3*b[3];
+    o[i+4]=a0*b[4]+a1*b[5]+a2*b[6]+a3*b[7];
+    o[i+8]=a0*b[8]+a1*b[9]+a2*b[10]+a3*b[11];
+    o[i+12]=a0*b[12]+a1*b[13]+a2*b[14]+a3*b[15];}
+  return o;}
+function m4persp(f,a,nr,fa){var t=1/Math.tan(f/2),o=new Float32Array(16);
+  o[0]=t/a;o[5]=t;o[10]=(fa+nr)/(nr-fa);o[11]=-1;o[14]=2*fa*nr/(nr-fa);return o;}
+function m4look(e,c,up){
+  var zx=e[0]-c[0],zy=e[1]-c[1],zz=e[2]-c[2],zl=Math.hypot(zx,zy,zz);zx/=zl;zy/=zl;zz/=zl;
+  var xx=up[1]*zz-up[2]*zy,xy=up[2]*zx-up[0]*zz,xz=up[0]*zy-up[1]*zx;
+  var xl=Math.hypot(xx,xy,xz)||1;xx/=xl;xy/=xl;xz/=xl;
+  var yx=zy*xz-zz*xy,yy=zz*xx-zx*xz,yz=zx*xy-zy*xx;
+  return new Float32Array([xx,yx,zx,0,xy,yy,zy,0,xz,yz,zz,0,
+    -(xx*e[0]+xy*e[1]+xz*e[2]),-(yx*e[0]+yy*e[1]+yz*e[2]),-(zx*e[0]+zy*e[1]+zz*e[2]),1]);}
+
+function Mesh(){this.p=[];this.n=[];this.i=[];}
+Mesh.prototype.vert=function(x,y,z,nx,ny,nz){this.p.push(x,y,z);this.n.push(nx,ny,nz);
+  return this.p.length/3-1;};
+Mesh.prototype.quad=function(a,b,c,d){this.i.push(a,b,c,a,c,d);};
+Mesh.prototype.mark=function(){return this.i.length;};
+
+var M=new Mesh();
+function revolve(prof,segs,flip,cx,cz){
+  cx=cx||0;cz=cz||0;var rings=[],i,j;
+  for(i=0;i<prof.length;i++){
+    var pv=prof[Math.max(0,i-1)],nx2=prof[Math.min(prof.length-1,i+1)];
+    var dr=nx2[0]-pv[0],dy=nx2[1]-pv[1],nl=Math.hypot(dr,dy)||1;
+    var nr=dy/nl,ny=-dr/nl; if(flip){nr=-nr;ny=-ny;}
+    var rg=[];
+    for(j=0;j<=segs;j++){var a=j/segs*Math.PI*2,ca=Math.cos(a),sa=Math.sin(a);
+      rg.push(M.vert(cx+prof[i][0]*ca,prof[i][1],cz+prof[i][0]*sa,nr*ca,ny,nr*sa));}
+    rings.push(rg);}
+  for(i=0;i<rings.length-1;i++)for(j=0;j<segs;j++)
+    if(flip)M.quad(rings[i][j],rings[i][j+1],rings[i+1][j+1],rings[i+1][j]);
+    else     M.quad(rings[i][j],rings[i+1][j],rings[i+1][j+1],rings[i][j+1]);
+}
+function ring(ri,ro,y,up,segs,cx,cz){
+  cx=cx||0;cz=cz||0;var ny=up?1:-1,A=[],B=[],j;
+  for(j=0;j<=segs;j++){var t=j/segs*Math.PI*2,c=Math.cos(t),s=Math.sin(t);
+    A.push(M.vert(cx+ri*c,y,cz+ri*s,0,ny,0));B.push(M.vert(cx+ro*c,y,cz+ro*s,0,ny,0));}
+  for(j=0;j<segs;j++) if(up)M.quad(A[j],B[j],B[j+1],A[j+1]); else M.quad(A[j],A[j+1],B[j+1],B[j]);
+}
+function shellOf(prof,th,segs,cx,cz){
+  var inner=prof.map(function(p){return [Math.max(0.05,p[0]-th),p[1]];});
+  revolve(prof,segs,false,cx,cz); revolve(inner,segs,true,cx,cz);
+  var L=prof.length-1;
+  ring(inner[L][0],prof[L][0],prof[L][1],true,segs,cx,cz);
+  ring(inner[0][0],prof[0][0],prof[0][1],false,segs,cx,cz);
+}
+function box(w,h,d,x,y,z,ry){
+  var hx=w/2,hy=h/2,hz=d/2,c=Math.cos(ry||0),s=Math.sin(ry||0);
+  function V(px,py,pz,nx,ny,nz){
+    return M.vert(x+px*c+pz*s,y+py,z-px*s+pz*c,nx*c+nz*s,ny,-nx*s+nz*c);}
+  var F=[[[-hx,-hy,hz],[hx,-hy,hz],[hx,hy,hz],[-hx,hy,hz],[0,0,1]],
+         [[hx,-hy,-hz],[-hx,-hy,-hz],[-hx,hy,-hz],[hx,hy,-hz],[0,0,-1]],
+         [[hx,-hy,hz],[hx,-hy,-hz],[hx,hy,-hz],[hx,hy,hz],[1,0,0]],
+         [[-hx,-hy,-hz],[-hx,-hy,hz],[-hx,hy,hz],[-hx,hy,-hz],[-1,0,0]],
+         [[-hx,hy,hz],[hx,hy,hz],[hx,hy,-hz],[-hx,hy,-hz],[0,1,0]],
+         [[-hx,-hy,-hz],[hx,-hy,-hz],[hx,-hy,hz],[-hx,-hy,hz],[0,-1,0]]];
+  for(var k=0;k<6;k++){var q=F[k],nv=q[4];
+    M.quad(V(q[0][0],q[0][1],q[0][2],nv[0],nv[1],nv[2]),
+           V(q[1][0],q[1][1],q[1][2],nv[0],nv[1],nv[2]),
+           V(q[2][0],q[2][1],q[2][2],nv[0],nv[1],nv[2]),
+           V(q[3][0],q[3][1],q[3][2],nv[0],nv[1],nv[2]));}
+}
+function pipe(p0,p1,r,segs,cap,inward){
+  var ax=p1[0]-p0[0],ay=p1[1]-p0[1],az=p1[2]-p0[2],L=Math.hypot(ax,ay,az);
+  if(L<1e-9)return; ax/=L;ay/=L;az/=L;
+  var ux=0,uy=1,uz=0; if(Math.abs(ay)>0.95){ux=1;uy=0;}
+  var sx=uy*az-uz*ay,sy=uz*ax-ux*az,sz=ux*ay-uy*ax,sl=Math.hypot(sx,sy,sz);
+  sx/=sl;sy/=sl;sz/=sl;
+  var tx=ay*sz-az*sy,ty=az*sx-ax*sz,tz=ax*sy-ay*sx,A=[],B=[],j,g=inward?-1:1;
+  for(j=0;j<=segs;j++){var a=j/segs*Math.PI*2,c=Math.cos(a),s2=Math.sin(a);
+    var nx=sx*c+tx*s2,ny=sy*c+ty*s2,nz=sz*c+tz*s2;
+    A.push(M.vert(p0[0]+nx*r,p0[1]+ny*r,p0[2]+nz*r,nx*g,ny*g,nz*g));
+    B.push(M.vert(p1[0]+nx*r,p1[1]+ny*r,p1[2]+nz*r,nx*g,ny*g,nz*g));}
+  for(j=0;j<segs;j++){ if(inward) M.quad(A[j],A[j+1],B[j+1],B[j]);
+                       else       M.quad(A[j],B[j],B[j+1],A[j+1]); }
+  if(cap){var c0=M.vert(p0[0],p0[1],p0[2],-ax,-ay,-az),c1=M.vert(p1[0],p1[1],p1[2],ax,ay,az);
+    var A2=[],B2=[],k;
+    for(j=0;j<=segs;j++){var a2=j/segs*Math.PI*2,cc=Math.cos(a2),ss=Math.sin(a2);
+      var mx=sx*cc+tx*ss,my=sy*cc+ty*ss,mz=sz*cc+tz*ss;
+      A2.push(M.vert(p0[0]+mx*r,p0[1]+my*r,p0[2]+mz*r,-ax,-ay,-az));
+      B2.push(M.vert(p1[0]+mx*r,p1[1]+my*r,p1[2]+mz*r,ax,ay,az));}
+    for(k=0;k<segs;k++){M.i.push(c0,A2[k+1],A2[k]);M.i.push(c1,B2[k],B2[k+1]);}}
+}
+function torus(R,r,y,segs,ts,cx,cz){
+  cx=cx||0;cz=cz||0;var g=[],i,j;
+  for(i=0;i<=segs;i++){var a=i/segs*Math.PI*2,ca=Math.cos(a),sa=Math.sin(a),row=[];
+    for(j=0;j<=ts;j++){var b=j/ts*Math.PI*2,cb=Math.cos(b),sb=Math.sin(b);
+      row.push(M.vert(cx+(R+r*cb)*ca,y+r*sb,cz+(R+r*cb)*sa,cb*ca,sb,cb*sa));}
+    g.push(row);}
+  for(i=0;i<segs;i++)for(j=0;j<ts;j++)M.quad(g[i][j],g[i+1][j],g[i+1][j+1],g[i][j+1]);
+}
+function sphere(cx,cy,cz,r,seg){
+  var g=[],i,j;
+  for(i=0;i<=seg;i++){var ph=i/seg*Math.PI,sp=Math.sin(ph),cp=Math.cos(ph),row=[];
+    for(j=0;j<=seg*2;j++){var th=j/(seg*2)*Math.PI*2;
+      var nx=sp*Math.cos(th),ny=cp,nz=sp*Math.sin(th);
+      row.push(M.vert(cx+nx*r,cy+ny*r,cz+nz*r,nx,ny,nz));}
+    g.push(row);}
+  for(i=0;i<seg;i++)for(j=0;j<seg*2;j++)M.quad(g[i][j],g[i+1][j],g[i+1][j+1],g[i][j+1]);
+}
+/* 육각 머리 — 대변 af */
+function hexPrism(x,y,z,af,h){
+  var r=af/Math.sqrt(3),i,A=[],B=[];
+  for(i=0;i<=6;i++){var a=i/6*Math.PI*2+Math.PI/6,c=Math.cos(a),s=Math.sin(a);
+    A.push(M.vert(x+r*c,y,z+r*s,c,0,s)); B.push(M.vert(x+r*c,y+h,z+r*s,c,0,s));}
+  for(i=0;i<6;i++)M.quad(A[i],B[i],B[i+1],A[i+1]);
+  var t0=M.vert(x,y+h,z,0,1,0),b0=M.vert(x,y,z,0,-1,0),T=[],Bo=[];
+  for(i=0;i<=6;i++){var a2=i/6*Math.PI*2+Math.PI/6,c2=Math.cos(a2),s2=Math.sin(a2);
+    T.push(M.vert(x+r*c2,y+h,z+r*s2,0,1,0)); Bo.push(M.vert(x+r*c2,y,z+r*s2,0,-1,0));}
+  for(i=0;i<6;i++){M.i.push(t0,T[i],T[i+1]); M.i.push(b0,Bo[i+1],Bo[i]);}
+}
+/* 나사부 — 산을 표현하지 않고 홈만 감아 나사임을 알린다 */
+function thread(x,y0,y1,r,pitch){
+  var turns=Math.max(2,Math.floor((y1-y0)/pitch));
+  pipe([x,y0,0],[x,y1,0],r,20,true);
+  for(var t=0;t<turns;t++){
+    var yy=y0+(t+0.5)*(y1-y0)/turns;
+    torus(r,pitch*0.16,yy,20,6,x,0);}
+}
+/* 판재 구멍 — 셰이더로 뚫고 보어 벽만 그린다 */
+var HOLES=[];
+function drill(cx,cz,d,y0,y1){
+  HOLES.push([cx,cz,d/2*0.97]);
+  pipe([cx,y0-0.01,cz],[cx,y1+0.01,cz],d/2,14,false,true);
+}
+
+/* ======================================================================
+   3. 3D 치수 — 선은 GL_LINES, 문자는 화면에 투영한 HTML 라벨
+   ====================================================================== */
+var LP=[], LB=[], AS=6;              // AS: 부품 크기에 맞춘 화살표 길이
+function ln(a,b){LP.push(a[0],a[1],a[2],b[0],b[1],b[2]);}
+function ad(a,b,s){s=(s===undefined)?1:s;return [a[0]+b[0]*s,a[1]+b[1]*s,a[2]+b[2]*s];}
+function sb(a,b){return [a[0]-b[0],a[1]-b[1],a[2]-b[2]];}
+function nz(a){var l=Math.hypot(a[0],a[1],a[2])||1;return [a[0]/l,a[1]/l,a[2]/l];}
+function arw3(p,d,q){
+  var L=AS,W=AS*0.30;
+  ln(p,ad(ad(p,d,L),q, W)); ln(p,ad(ad(p,d,L),q,-W));
+}
+/* 두 점 사이 치수 — off 만큼 띄운 치수선에 화살표와 문자 */
+function dim3(a,b,off,t){
+  var A=ad(a,off),B=ad(b,off),u=nz(off);
+  ln(a,ad(A,u,AS*0.9)); ln(b,ad(B,u,AS*0.9));
+  ln(A,B);
+  var d=nz(sb(B,A));
+  arw3(A,d,u); arw3(B,[-d[0],-d[1],-d[2]],u);
+  LB.push({p:[(A[0]+B[0])/2,(A[1]+B[1])/2,(A[2]+B[2])/2],t:t});
+}
+/* 지름 치수 — 높이 y 의 원을 가로지른다 */
+function dia3(y,r,t,ang){
+  ang=ang||0; var c=Math.cos(ang),s=Math.sin(ang);
+  var a=[-c*r,y,-s*r],b=[c*r,y,s*r],d=[c,0,s],q=[0,1,0];
+  ln(a,b); arw3(a,d,q); arw3(b,[-c,0,-s],q);
+  LB.push({p:[0,y,0],t:t});
+}
+/* 지시선 */
+function lead3(p,q,t){ ln(p,q); LB.push({p:q,t:t}); }
+
+/* ======================================================================
+   4. 상세 시트 — 제작도 MP-50-P0-001 의 상세 패널 B~Q
+   2D 와 3D 가 같은 치수 상수에서 나온다.
+   ====================================================================== */
+var SHEETS=[];
+function sheet(o){SHEETS.push(o);}
+
+/* ---- B. 탱크 본체 (08) ------------------------------------------------ */
+var TK_OD=400, TK_T=3, TK_H=600, CN_H=150, CN_OUT=38, FL_T=12, PCD=360, PCD_D=9;
+sheet({
+ code:"B", no:"08", name:"탱크 쉘", qty:"1", panel:"탱크 본체 상세",
+ mat:"SUS304 2B", fin:"내부 연마 Ra ≤0.8 µm",
+ spec:[["동체 외경 · 두께","Ø400 × t3"],["직동부 높이","600"],["하부 콘 높이","150"],
+       ["콘 출구","Ø38"],["본체 전고","750"],["상부 플랜지","t12"],
+       ["플랜지 볼트","P.C.D 360 · 6-Ø9"],["측면 노즐","Tri-clamp Ø50 · 3"],
+       ["기하 체적","79.9 L"]],
+ note:"직동부와 하부 콘을 TIG 로 이어 붙인 용접 구조다. 상부 플랜지는 t12 로 세우고 "+
+      "P.C.D 360 에 6-Ø9 를 뚫어 커버를 M8 로 조인다. 내면 비드는 갈아 없애고 "+
+      "Ra ≤0.8 µm 까지 연마한다 — 미세입자가 걸리면 부유 분리가 흐트러진다.",
+ d2:function(){
+   var s=new Sheet(-330,-96,660,950);
+   var R=TK_OD/2, r=R-TK_T, y0=0, y1=TK_H, y2=TK_H+CN_H;
+   var ro=CN_OUT/2, ri=CN_OUT/2-TK_T;
+   /* 좌: A-A 단면 · 우: 외형 */
+   s.hatch("M"+(-R)+" "+y0+"V"+y1+"L"+(-ro)+" "+y2+"H"+(-ri)+"L"+(-r)+" "+y1+"V"+y0+"Z");
+   s.hatch("M"+(-R)+" "+(-FL_T)+"H0V"+y0+"H"+(-R)+"Z");
+   s.path("M"+(-R)+" "+y0+"V"+y1+"L"+(-ro)+" "+y2+"H"+ro+"L"+R+" "+y1+"V"+y0+"Z");
+   s.path("M"+(-r)+" "+y0+"V"+y1+"L"+(-ri)+" "+y2,"ol");
+   s.line(0,y0,0,-FL_T,"ol2");
+   /* 상부 플랜지 t12 */
+   s.rect(-R,-FL_T,TK_OD,FL_T);
+   s.line(-PCD/2,-FL_T,-PCD/2,y0,"hd"); s.line(PCD/2,-FL_T,PCD/2,y0,"hd");
+   s.cl(0,-FL_T-46,0,y2+56);
+   /* 콘 출구 목 (40A) */
+   s.rect(-ro-6,y2,CN_OUT+12,26);
+   /* 측면 노즐 Tri-clamp Ø50 */
+   s.rect(R,352,52,50); s.rect(R+46,346,10,62);
+   /* 치수 */
+   s.dimH(-R,R,-FL_T,-62,"Ø400");
+   s.dimV(y0,y1,R+62,44,"600");
+   s.dimV(y1,y2,R+62,44,"150");
+   s.dimV(-FL_T,y2,R+62,124,"750");
+   s.dimH(-ro,ro,y2+26,54,"Ø38");
+   s.dimH(-PCD/2,PCD/2,-FL_T,-120,"P.C.D 360");
+   s.lead(-R+TK_T/2,300,-R-78,268,"t3");
+   s.lead(PCD/2,-FL_T/2,196,-92,"6-Ø9");
+   s.lead(R-1,-FL_T/2,196,-46,"t12");
+   s.lead(R+26,377,R+44,470,"Tri-clamp Ø50");
+   /* 콘 각도 */
+   s.line(-ro,y2,-ro,y2-74,"cn");
+   s.txt(-96,y2-40,"60°");
+   s.view(0,y2+112,"정면 반단면도 — 좌 A-A 단면 / 우 외형");
+   return s.svg("탱크 본체 정면 반단면도 — Ø400 × t3, 직동부 600, 하부 콘 150, 상부 플랜지 t12");
+ },
+ fit:1150,
+ d3:function(){
+   var R=TK_OD/2, S=48;
+   shellOf([[R,0],[R,TK_H]],TK_T,S,0,0);                       // 직동부
+   shellOf([[CN_OUT/2,-CN_H],[R,0]],TK_T,S,0,0);               // 하부 콘
+   revolve([[R,TK_H],[R,TK_H+FL_T]],S,false,0,0);              // 상부 플랜지
+   revolve([[R-TK_T,TK_H],[R-TK_T,TK_H+FL_T]],S,true,0,0);
+   ring(R-TK_T,R,TK_H+FL_T,true,S,0,0);
+   for(var k=0;k<6;k++){var a=k/6*Math.PI*2;
+     drill(Math.cos(a)*PCD/2,Math.sin(a)*PCD/2,PCD_D,TK_H,TK_H+FL_T);}
+   pipe([0,-CN_H-26,0],[0,-CN_H,0],CN_OUT/2+6,24,true);        // 출구 목
+   for(var j=0;j<3;j++){var b=Math.PI/2+j*Math.PI*2/3;         // 측면 노즐
+     pipe([Math.cos(b)*(R-2),TK_H*0.62,Math.sin(b)*(R-2)],
+          [Math.cos(b)*(R+58),TK_H*0.62,Math.sin(b)*(R+58)],25,18,true);}
+   AS=14;
+   dia3(TK_H+FL_T+70,R,"Ø400");
+   dim3([R+40,0,0],[R+40,TK_H,0],[70,0,0],"600");
+   dim3([R+40,-CN_H,0],[R+40,0,0],[70,0,0],"150");
+   lead3([R,TK_H*0.30,0],[R+150,TK_H*0.30,0],"t3");
+   lead3([PCD/2,TK_H+FL_T,0],[PCD/2+120,TK_H+FL_T+90,0],"6-Ø9 / P.C.D 360");
+   dim3([0,-CN_H,-CN_OUT/2],[0,-CN_H,CN_OUT/2],[0,-60,0],"Ø38");
+ }
+});
+
+/* ---- C. 상부 커버 (04) ------------------------------------------------ */
+var CV_T=5, MH_OD=120, SK_OD=55, BOSS_D=110, BOSS_H=20, MH_R=125, SK_R=105;
+sheet({
+ code:"C", no:"04", name:"상부 커버", qty:"1", panel:"상부 커버 상세",
+ mat:"SUS304 2B", fin:"내부 연마 Ra ≤0.8 µm",
+ spec:[["외경 · 두께","Ø400 × t5"],["플랜지 볼트","P.C.D 360 · 6-Ø9"],
+       ["맨홀 관통","Ø120"],["스키머 관통","Ø55"],["중앙 보스","Ø110 × h20"],
+       ["축 관통","Ø55"],["조립 토크","M8 20 N·m"]],
+ note:"t5 판에 관통구 셋을 뚫는다 — 중앙은 교반축 Ø25 용 베어링·씰 보스(높이 20), "+
+      "그 밖으로 맨홀 Ø120 과 스키머 Ø55 다. 동체 플랜지와는 P.C.D 360 의 6-Ø9 로 "+
+      "M8×25 六角볼트 6조를 20 N·m 로 조인다.",
+ d2:function(){
+   var s=new Sheet(-260,-300,520,660), R=TK_OD/2;
+   /* 평면도 */
+   s.circle(0,0,R); s.holes(0,0,PCD,6,PCD_D,Math.PI/6);
+   s.circle(0,0,BOSS_D/2); s.circle(0,0,SK_OD/2);
+   s.circle(MH_R,0,MH_OD/2,"ol"); s.circle(-SK_R,0,SK_OD/2,"ol");
+   s.cl(-R,0,R,0); s.cl(0,-R,0,R);
+   s.dimD(0,0,R,"Ø400",-Math.PI*0.72,0.55);
+   s.lead(MH_R+MH_OD/2*0.7,-MH_OD/2*0.7,205,-150,"Ø120 (맨홀)");
+   s.lead(-SK_R-SK_OD/2*0.7,SK_OD/2*0.7,-205,150,"Ø55 (스키머)");
+   s.lead(Math.cos(Math.PI/6)*PCD/2,Math.sin(Math.PI/6)*PCD/2,190,150,"P.C.D 360 (6-Ø9)");
+   s.lead(0,-SK_OD/2,-150,-150,"Ø55 (축)");
+   s.view(0,R+52,"평면도");
+   /* 정면 단면도 */
+   var yb=R+120;
+   s.hatch("M"+(-R)+" "+yb+"h"+TK_OD+"v"+CV_T+"h"+(-TK_OD)+"Z");
+   s.hatch("M"+(-BOSS_D/2)+" "+(yb-BOSS_H)+"H"+(-SK_OD/2)+"V"+yb+"H"+(-BOSS_D/2)+"Z");
+   s.hatch("M"+(SK_OD/2)+" "+(yb-BOSS_H)+"H"+(BOSS_D/2)+"V"+yb+"H"+(SK_OD/2)+"Z");
+   s.rect(-R,yb,TK_OD,CV_T);
+   s.path("M"+(-BOSS_D/2)+" "+yb+"V"+(yb-BOSS_H)+"H"+(-SK_OD/2)+"V"+yb);
+   s.path("M"+(BOSS_D/2)+" "+yb+"V"+(yb-BOSS_H)+"H"+(SK_OD/2)+"V"+yb);
+   s.line(-MH_R-MH_OD/2,yb,-MH_R-MH_OD/2,yb+CV_T,"ol2");
+   s.line(MH_R-MH_OD/2,yb,MH_R-MH_OD/2,yb+CV_T,"ol2");
+   s.line(MH_R+MH_OD/2,yb,MH_R+MH_OD/2,yb+CV_T,"ol2");
+   s.cl(0,yb-BOSS_H-30,0,yb+CV_T+30);
+   s.dimV(yb-BOSS_H,yb,-R,-46,"20");
+   s.lead(R-1,yb+CV_T/2,R+70,yb+52,"t5");
+   s.view(0,yb+96,"정면 단면도");
+   return s.svg("상부 커버 평면도와 정면 단면도 — Ø400 × t5, P.C.D 360 6-Ø9");
+ },
+ fit:470,
+ d3:function(){
+   var R=TK_OD/2,S=48;
+   ring(0,R,CV_T,true,S,0,0); ring(0,R,0,false,S,0,0);
+   revolve([[R,0],[R,CV_T]],S,false,0,0);
+   revolve([[BOSS_D/2,CV_T],[BOSS_D/2,CV_T+BOSS_H]],S,false,0,0);
+   revolve([[SK_OD/2,CV_T],[SK_OD/2,CV_T+BOSS_H]],S,true,0,0);
+   ring(SK_OD/2,BOSS_D/2,CV_T+BOSS_H,true,S,0,0);
+   drill(0,0,SK_OD,0,CV_T+BOSS_H);
+   drill(MH_R,0,MH_OD,0,CV_T); drill(-SK_R,0,SK_OD,0,CV_T);
+   for(var k=0;k<6;k++){var a=Math.PI/6+k/6*Math.PI*2;
+     drill(Math.cos(a)*PCD/2,Math.sin(a)*PCD/2,PCD_D,0,CV_T);}
+   AS=9;
+   dia3(-46,R,"Ø400");
+   lead3([R,CV_T,0],[R+96,CV_T+58,0],"t5");
+   lead3([MH_R+MH_OD/2,CV_T,0],[MH_R+120,CV_T+96,0],"Ø120 맨홀");
+   lead3([-SK_R-SK_OD/2,CV_T,0],[-SK_R-118,CV_T+96,0],"Ø55 스키머");
+   dim3([BOSS_D/2,CV_T,0],[BOSS_D/2,CV_T+BOSS_H,0],[62,0,0],"20");
+   lead3([Math.cos(Math.PI/6)*PCD/2,CV_T,Math.sin(Math.PI/6)*PCD/2],
+         [Math.cos(Math.PI/6)*(PCD/2+96),CV_T+70,Math.sin(Math.PI/6)*(PCD/2+96)],
+         "6-Ø9 / P.C.D 360");
+ }
+});
+
+/* ---- D. 맨홀 (06) ----------------------------------------------------- */
+var MH_ID=104, MH_H=38, MH_PIN=8;
+sheet({
+ code:"D", no:"06", name:"맨홀", qty:"1", panel:"맨홀 상세 · 부품 분해",
+ mat:"SUS304 / 가스켓 실리콘", fin:"2B",
+ spec:[["넥 외경 · 내경","Ø120 / Ø104"],["넥 두께","t3"],["넥 높이","38"],
+       ["뚜껑 열림 반경","118"],["클램프 폭","115"],["힌지 핀","Ø8 × 40"],
+       ["하위 부품","06-01 뚜껑 · 06-02 손잡이 · 06-03 힌지핀 · 06-04 클램프 · 06-05 가스켓"]],
+ note:"Tri-clamp 방식이다. 넥 Ø120 페럴에 실리콘 가스켓(Ø120/Ø104)을 얹고 뚜껑을 "+
+      "덮은 뒤 클램프 2조로 조인다. 힌지 핀 Ø8×40 으로 뚜껑이 넘어가지 않게 잡아 "+
+      "한 손으로 열 수 있다.",
+ d2:function(){
+   var s=new Sheet(-150,-120,300,300), R=MH_OD/2, r=MH_ID/2, t=3;
+   /* 정면 단면 */
+   s.hatch("M"+(-R)+" 0h"+(R-r)+"v"+MH_H+"h"+(-(R-r))+"Z");
+   s.hatch("M"+r+" 0h"+(R-r)+"v"+MH_H+"h"+(-(R-r))+"Z");
+   s.rect(-R,0,MH_OD,MH_H);
+   s.line(-r,0,-r,MH_H,"ol"); s.line(r,0,r,MH_H,"ol");
+   s.rect(-R-4,-7,MH_OD+8,7);                       /* 페럴 */
+   s.rect(-R-4,-11,MH_OD+8,4,"face");               /* 06-05 가스켓 */
+   s.path("M"+(-R-4)+" -11v-9h"+(MH_OD+8)+"v9");    /* 06-01 뚜껑 */
+   s.rect(-13,-30,26,10);                           /* 06-02 손잡이 */
+   s.circle(R+12,-14,MH_PIN/2,"ol2");               /* 06-03 힌지핀 */
+   s.path("M"+(-R-12)+" -18l-9 9 9 9");             /* 06-04 클램프 */
+   s.path("M"+(R+12)+" -18l9 9-9 9");
+   s.cl(0,-44,0,MH_H+22);
+   s.dimH(-R,R,MH_H,40,"Ø120");
+   s.dimH(-r,r,MH_H,18,"Ø104");
+   s.dimV(0,MH_H,-R,-42,"38");
+   s.lead(-R+t/2,MH_H*0.6,-118,MH_H*0.6,"t3");
+   s.lead(R+12,-14,110,-64,"Ø8×40 힌지핀");
+   s.lead(0,-11+2,-118,-54,"가스켓 (실리콘)");
+   s.view(0,MH_H+76,"정면 단면도");
+   return s.svg("맨홀 정면 단면도 — Ø120/Ø104, 넥 t3, 클램프·가스켓·힌지핀");
+ },
+ fit:270,
+ d3:function(){
+   var R=MH_OD/2,r=MH_ID/2,S=40;
+   shellOf([[R,0],[R,MH_H]],R-r,S,0,0);
+   revolve([[R+4,MH_H],[R+4,MH_H+7]],S,false,0,0);            /* 페럴 */
+   ring(r,R+4,MH_H+7,true,S,0,0);
+   torus((r+R)/2,3.5,MH_H+9.5,S,10,0,0);                       /* 06-05 가스켓 */
+   ring(0,R+4,MH_H+13,true,S,0,0);                             /* 06-01 뚜껑 */
+   revolve([[R+4,MH_H+13],[R+2,MH_H+22]],S,false,0,0);
+   ring(0,R+2,MH_H+22,true,S,0,0);
+   torus(13,4,MH_H+29,18,8,0,0);                               /* 06-02 손잡이 */
+   pipe([9,MH_H+22,0],[9,MH_H+29,0],3,10,true);
+   pipe([-9,MH_H+22,0],[-9,MH_H+29,0],3,10,true);
+   pipe([R+8,MH_H+9,-20],[R+8,MH_H+9,20],MH_PIN/2,10,true);    /* 06-03 힌지핀 */
+   for(var k=0;k<2;k++){var a=Math.PI/2+k*Math.PI;             /* 06-04 클램프 */
+     box(14,16,10,Math.cos(a)*(R+9),MH_H+10,Math.sin(a)*(R+9),-a);}
+   AS=5;
+   dia3(-32,R,"Ø120"); dia3(-14,r,"Ø104",Math.PI/2);
+   dim3([R+18,0,0],[R+18,MH_H,0],[26,0,0],"38");
+   lead3([R,MH_H*0.5,0],[R+72,MH_H*0.5-26,0],"t3");
+ }
+});
+
+/* ---- E. 교반축 (11) --------------------------------------------------- */
+var SH_D=25, SH_L=800, KEY_T=5, KEY_I=6, SH_M=20;
+sheet({
+ code:"E", no:"11", name:"교반축", qty:"1", panel:"교반축 상세",
+ mat:"SUS316L", fin:"연마 Ra ≤0.4 µm",
+ spec:[["외경 · 길이","Ø25 × 800"],["상단 가공홈 (키)","5 × 5 · 길이 25"],
+       ["임펠러 키홈","6 × 6 · 2 개소"],["하단 나사","M20 · 길이 20"],
+       ["허브 끼워맞춤","Ø25 H7"]],
+ note:"접액 회전부라 SUS316L 을 쓰고 Ra ≤0.4 µm 까지 연마한다. 상단 5×5 가공홈은 "+
+      "커플링용, 중간 6×6 키홈 두 곳은 상·하 임펠러용이다. 하단 M20 에 고정너트를 "+
+      "물려 임펠러가 축방향으로 밀리지 않게 잡는다.",
+ d2:function(){
+   var s=new Sheet(-60,-150,920,300), R=SH_D/2, L=SH_L;
+   s.rect(0,-R,L,SH_D);
+   s.rect(10,-R,25,KEY_T,"face");                    /* 상단 가공홈 5×5 */
+   s.rect(250,-R,60,KEY_I,"face");                   /* 키홈 6×6 */
+   s.rect(470,-R,60,KEY_I,"face");
+   s.line(L-SH_M,-R,L-SH_M,R,"ol2");                 /* M20 나사부 */
+   for(var i=0;i<5;i++) s.line(L-SH_M+3+i*4,-R,L-SH_M+3+i*4,R,"dm");
+   s.cl(-24,0,L+24,0);
+   s.dimV(-R,R,0,-46,"Ø25");
+   s.dimH(0,L,R,70,"800");
+   s.lead(22,-R+KEY_T/2,60,-96,"가공홈 5×5 (키)");
+   s.lead(280,-R+KEY_I/2,320,-96,"키홈 6×6 (2 개소)");
+   s.lead(L-SH_M/2,R,L-40,96,"M20");
+   s.dimH(L-SH_M,L,-R,-40,"20");
+   s.dimH(10,35,-R-52,-16,"25");
+   s.view(L/2,150,"정면도");
+   return s.svg("교반축 정면도 — Ø25 × 800, 키홈 5×5 및 6×6 2개소, 하단 M20");
+ },
+ fit:880,
+ d3:function(){
+   var R=SH_D/2;
+   pipe([0,0,0],[0,SH_L-SH_M,0],R,28,true);
+   thread(0,SH_L-SH_M,SH_L,R*0.80,3.2);
+   box(KEY_T,25,KEY_T,R-KEY_T/2+0.4,22,0);
+   box(KEY_I,60,KEY_I,R-KEY_I/2+0.4,280,0);
+   box(KEY_I,60,KEY_I,R-KEY_I/2+0.4,500,0);
+   AS=15;
+   dia3(-52,R,"Ø25");
+   dim3([R+40,0,0],[R+40,SH_L,0],[76,0,0],"800");
+   lead3([R,22,0],[R+150,60,0],"5×5 키홈");
+   lead3([R,280,0],[R+150,320,0],"6×6 키홈");
+   lead3([R,SH_L-SH_M/2,0],[R+150,SH_L-40,0],"M20");
+ }
+});
+
+/* ---- F. 임펠러 (12) --------------------------------------------------- */
+var IM_D=300, IM_T=3, IM_UPH=80, IM_LOH=13, HUB_OD=50, HUB_H=60, HUB_L=40;
+sheet({
+ code:"F", no:"12", name:"임펠러 (상/하)", qty:"2", panel:"임펠러 상세",
+ mat:"SUS316L", fin:"연마 Ra ≤0.4 µm",
+ spec:[["직경","Ø300 (상 · 하 공통)"],["날개","6매 · t3"],
+       ["상부 날개높이 (고속용)","80"],["하부 날개높이 (저속용)","13"],
+       ["허브","Ø50 × h60 · 보스길이 40"],["보어","Ø25 H7"],
+       ["키홈","6 × 6"],["고정","M8 세트스크류"]],
+ note:"상부는 고속용이라 날개높이 80 으로 기포를 잘게 부수고, 하부는 저속용으로 "+
+      "날개높이 13 의 얇은 평판을 써 침강분획만 들어 올린다. 허브는 Ø25 H7 로 축에 "+
+      "끼우고 키 6×6 으로 회전을 잡은 뒤 M8 세트스크류로 축방향을 고정한다.",
+ d2:function(){
+   var s=new Sheet(-230,-230,460,700), R=IM_D/2, hr=HUB_OD/2, br=SH_D/2;
+   /* 평면도 — 6매 */
+   s.circle(0,0,hr); s.circle(0,0,br,"ol2");
+   for(var k=0;k<6;k++){var a=k/6*Math.PI*2,c=Math.cos(a),sn=Math.sin(a);
+     var w=IM_T*2.6;
+     s.poly([[c*br-(-sn)*w,sn*br-c*w],[c*R-(-sn)*w,sn*R-c*w],
+             [c*R+(-sn)*w,sn*R+c*w],[c*br+(-sn)*w,sn*br+c*w]],"ol",true);}
+   s.circle(0,0,R,"cn"); s.cl(-R,0,R,0); s.cl(0,-R,0,R);
+   s.dimD(0,0,R,"Ø300",-Math.PI*0.70,0.55);
+   s.lead(hr*0.7,-hr*0.7,150,-136,"Ø50 허브");
+   s.view(0,R+40,"평면도 (상·하 공통)");
+   /* 정면도 — 상부 / 하부 */
+   var yb=R+96;
+   s.rect(-hr,yb-HUB_H/2,HUB_OD,HUB_H);
+   s.rect(-R,yb-IM_UPH/2,IM_D,IM_UPH);
+   s.line(-br,yb-HUB_H/2,-br,yb+HUB_H/2,"hd"); s.line(br,yb-HUB_H/2,br,yb+HUB_H/2,"hd");
+   s.cl(0,yb-HUB_H/2-24,0,yb+HUB_H/2+24); s.cl(-R-20,yb,R+20,yb);
+   s.dimV(yb-IM_UPH/2,yb+IM_UPH/2,R,40,"80");
+   s.lead(-R+18,yb-IM_UPH/2,-R-70,yb-72,"t3");
+   s.txt(0,yb+HUB_H/2+34,"상부 임펠러 (고속용)",null,s.fs*0.95);
+   var yc=yb+HUB_H/2+80;
+   s.rect(-hr,yc-HUB_H/2,HUB_OD,HUB_H);
+   s.rect(-R,yc-IM_LOH/2,IM_D,IM_LOH);
+   s.cl(0,yc-HUB_H/2-24,0,yc+HUB_H/2+24); s.cl(-R-20,yc,R+20,yc);
+   s.dimV(yc-IM_LOH/2,yc+IM_LOH/2,R,40,"13");
+   s.txt(0,yc+HUB_H/2+34,"하부 임펠러 (저속용)",null,s.fs*0.95);
+   /* 허브 상세 */
+   var xh=R+140,yh=yb-HUB_H/2;
+   s.hatch("M"+(xh-hr)+" "+yh+"h"+(hr-br)+"v"+HUB_L+"h"+(-(hr-br))+"Z");
+   s.hatch("M"+(xh+br)+" "+yh+"h"+(hr-br)+"v"+HUB_L+"h"+(-(hr-br))+"Z");
+   s.rect(xh-hr,yh,HUB_OD,HUB_L);
+   s.line(xh-br,yh,xh-br,yh+HUB_L,"ol"); s.line(xh+br,yh,xh+br,yh+HUB_L,"ol");
+   s.rect(xh+br-KEY_I,yh+HUB_L*0.3,KEY_I,KEY_I,"face");
+   s.rect(xh-4,yh-12,8,12);
+   s.dimH(xh-br,xh+br,yh+HUB_L,26,"Ø25 H7");
+   s.lead(xh+br-KEY_I/2,yh+HUB_L*0.3+KEY_I,xh+80,yh+HUB_L*0.92,"키홈 6×6");
+   s.lead(xh,yh-8,xh+80,yh-34,"M8 세트스크류");
+   s.dimV(yh,yh+HUB_L,xh-hr,-30,"40");
+   s.view(xh,yh+HUB_L+62,"허브 상세");
+   return s.svg("임펠러 평면도·정면도·허브 상세 — Ø300 6매 t3, 날개높이 80 / 13");
+ },
+ fit:400,
+ d3:function(){
+   var R=IM_D/2,hr=HUB_OD/2,rc=(SH_D/2+R)/2,w=R-SH_D/2,k;
+   pipe([0,120-HUB_H/2,0],[0,120+HUB_H/2,0],hr,28,true);       /* 상부 */
+   for(k=0;k<6;k++){var a=k/6*Math.PI*2;
+     box(w,IM_UPH,IM_T,Math.cos(a)*rc,120,Math.sin(a)*rc,-a);}
+   drill(0,0,SH_D,120-HUB_H/2,120+HUB_H/2);
+   pipe([0,-HUB_H/2,0],[0,HUB_H/2,0],hr,28,true);              /* 하부 */
+   for(k=0;k<6;k++){var b=k/6*Math.PI*2+Math.PI/6;
+     box(w,IM_LOH,IM_T,Math.cos(b)*rc,0,Math.sin(b)*rc,-b);}
+   hexPrism(hr,120+HUB_H/2-14,0,13,7);                          /* M8 세트스크류 */
+   AS=8;
+   dia3(120+HUB_H/2+52,R,"Ø300");
+   dim3([R+20,120-IM_UPH/2,0],[R+20,120+IM_UPH/2,0],[44,0,0],"80");
+   dim3([R+20,-IM_LOH/2,0],[R+20,IM_LOH/2,0],[44,0,0],"13");
+   lead3([hr,120,0],[hr+120,152,0],"Ø50 허브 / Ø25 H7");
+   lead3([rc,-IM_LOH/2,0],[rc+40,-72,0],"t3");
+ }
+});
+
+/* ---- G. 배플 (13) ----------------------------------------------------- */
+var BF_W=200, BF_H=400, BF_T=2, BK_T=8, BK_W=23;
+sheet({
+ code:"G", no:"13", name:"배플", qty:"4", panel:"배플 상세",
+ mat:"SUS316L", fin:"2B",
+ spec:[["판 폭 × 높이","200 × 400"],["판 두께","t2"],["상부 브라켓","t8 · 폭 23"],
+       ["수량","4 장 (90° 등분)"]],
+ note:"동체 벽에 90° 간격으로 네 장을 세워 선회류를 깨뜨린다. 상·하단의 노치는 "+
+      "용접 비드를 피하려고 낸 것이다. 상부 브라켓 t8 로 동체에 물린다.",
+ warn:{t:"도면 지적 01 · 08",
+       s:"폭 200 은 동체 Ø394(반경 197)에 들어가지 않는다 — Ø300 임펠러까지 벽면 "+
+         "간극이 47 mm 뿐이다. 조립도는 통상값 T/10 = 39.4 를 반올림한 폭 40 으로 "+
+         "그렸다. 또 원도의 높이 치수선에 두께값 t2 가 들어가 있어 높이 치수가 없다."},
+ d2:function(){
+   var s=new Sheet(-160,-70,320,560), w=BF_W, h=BF_H, nx=w*0.22, ny=h*0.10;
+   var x0=-w/2, y0=0;
+   s.poly([[x0+nx,y0],[x0+w,y0],[x0+w,y0+h],[x0+nx,y0+h],
+           [x0+nx,y0+h-ny],[x0,y0+h-ny],[x0,y0+ny],[x0+nx,y0+ny]],"ol",true);
+   s.rect(x0+w*0.30,-BK_T-10,BK_W,BK_T+10);          /* 상부 브라켓 */
+   s.cl(x0-16,y0+h/2,x0+w+16,y0+h/2);
+   s.dimH(x0,x0+w,y0,-40,"200");
+   s.dimV(y0,y0+h,x0+w,46,"400");
+   s.dimH(x0+w*0.30,x0+w*0.30+BK_W,-BK_T-10,-30,"23");
+   s.lead(x0+w*0.30,-BK_T/2,x0-70,-46,"t8");
+   s.view(0,h+62,"정면도");
+   /* 측면도 */
+   var xs=x0+w+96;
+   s.rect(xs,y0,BF_T*3,h);
+   s.rect(xs-4,-BK_T-10,BK_T+8,BK_T+10);
+   s.dimH(xs,xs+BF_T*3,y0+h,34,"t2");
+   s.view(xs+BF_T*1.5,h+62,"측면도");
+   return s.svg("배플 정면도·측면도 — 200 × 400 × t2, 상부 브라켓 t8");
+ },
+ fit:520,
+ d3:function(){
+   box(BF_W,BF_H,BF_T,0,BF_H/2,0);
+   box(BF_W*0.22,BF_H*0.10,BF_T+1,-BF_W/2+BF_W*0.11,BF_H*0.05,0);
+   box(BF_W*0.22,BF_H*0.10,BF_T+1,-BF_W/2+BF_W*0.11,BF_H*0.95,0);
+   box(BK_W,BK_T,42,-BF_W*0.20,BF_H+BK_T/2,0);
+   AS=10;
+   dim3([-BF_W/2,0,0],[BF_W/2,0,0],[0,-56,0],"200");
+   dim3([BF_W/2,0,0],[BF_W/2,BF_H,0],[62,0,0],"400");
+   lead3([0,BF_H*0.55,BF_T/2],[130,BF_H*0.55,90],"t2");
+   lead3([-BF_W*0.20,BF_H+BK_T,0],[-BF_W*0.20-110,BF_H+80,0],"브라켓 t8 · 23");
+ }
+});
+
+/* ---- H. 미세기포 분산기 (14) ------------------------------------------ */
+var RG_D=250, RG_TUBE=20, RG_HOLE=2, RG_N=60, RG_CB=3;
+sheet({
+ code:"H", no:"14", name:"미세기포 분산기", qty:"1", panel:"미세기포 분산기 상세",
+ mat:"SUS304", fin:"2B",
+ spec:[["링 직경","Ø250"],["관 외경","Ø20"],["분사홀","Ø2 × 60 개"],
+       ["카운터보어","Ø3"],["홀 피치","13.1"],["총 홀 면적","188.5 mm²"],
+       ["공기 공급구","1/2\" (15A)"]],
+ note:"링 상면에 Ø2 를 60개 뚫고 Ø3 카운터보어로 입구를 다듬어 기포가 갈라지지 "+
+      "않게 한다. 홀 피치 13.1, 총 홀 면적 188.5 mm² 로 공기 3 m³/h 에서 홀 유속은 "+
+      "4.4 m/s 다. 하부 임펠러 바로 아래에 놓아 올라온 기포를 한 번 더 잘게 부순다.",
+ d2:function(){
+   var s=new Sheet(-190,-190,380,560), R=RG_D/2, tr=RG_TUBE/2;
+   /* 평면도 */
+   s.circle(0,0,R+tr); s.circle(0,0,R-tr);
+   for(var k=0;k<RG_N;k++){var a=k/RG_N*Math.PI*2;
+     s.circle(Math.cos(a)*R,Math.sin(a)*R,RG_HOLE/2*1.5,"ol2");}
+   s.circle(0,0,R,"cn"); s.cl(-R-tr-18,0,R+tr+18,0); s.cl(0,-R-tr-18,0,R+tr+18);
+   s.rect(-R-tr-46,-8,46,16);                       /* 1/2" 공기 공급구 */
+   s.dimD(0,0,R+tr,"Ø250",-Math.PI*0.72);
+   s.lead(Math.cos(0.5)*R,Math.sin(0.5)*R,168,-118,"Ø2 (분사홀, 60개)");
+   s.lead(-R-tr-30,0,-176,-118,"1/2\" 공기 공급구");
+   s.view(0,R+tr+44,"평면도");
+   /* 관 단면 + 분사홀 상세 */
+   var yb=R+tr+96;
+   s.hatch("M-90 "+yb+"h180v"+RG_TUBE+"h-180Z");
+   s.rect(-90,yb,180,RG_TUBE);
+   s.line(-90,yb+3,90,yb+3,"ol2");
+   s.dimV(yb,yb+RG_TUBE,-90,-32,"Ø20");
+   s.view(0,yb+RG_TUBE+40,"관 단면");
+   /* 분사홀 상세 S=2:1 */
+   var xd=0,yd=yb+RG_TUBE+86,k2=14;
+   s.hatch("M"+(xd-70)+" "+yd+"h140v"+(k2*3)+"h-140Z");
+   s.rect(xd-70,yd,140,k2*3);
+   s.path("M"+(xd-RG_CB*k2/2)+" "+yd+"L"+(xd-RG_HOLE*k2/2)+" "+(yd+k2*0.8)+
+          "V"+(yd+k2*3)+"M"+(xd+RG_CB*k2/2)+" "+yd+"L"+(xd+RG_HOLE*k2/2)+" "+(yd+k2*0.8)+
+          "V"+(yd+k2*3),"ol");
+   s.cl(xd,yd-16,xd,yd+k2*3+16);
+   s.dimH(xd-RG_HOLE*k2/2,xd+RG_HOLE*k2/2,yd+k2*3,26,"Ø2");
+   s.dimH(xd-RG_CB*k2/2,xd+RG_CB*k2/2,yd,-26,"Ø3");
+   s.view(xd,yd+k2*3+58,"분사홀 상세 (S = 2:1)");
+   return s.svg("미세기포 분산기 평면도·관 단면·분사홀 상세 — Ø250 링, Ø2 60개");
+ },
+ fit:330,
+ d3:function(){
+   var R=RG_D/2,tr=RG_TUBE/2;
+   torus(R,tr,0,72,14,0,0);
+   for(var k=0;k<RG_N;k++){var a=k/RG_N*Math.PI*2;
+     sphere(Math.cos(a)*R,tr,Math.sin(a)*R,RG_CB/2,5);}
+   pipe([-R,0,0],[-R-52,0,0],7,16,true);
+   pipe([-R-46,0,0],[-R-34,0,0],11,16,true);
+   AS=7;
+   dia3(-42,R+tr,"Ø250");
+   lead3([R,tr,0],[R+92,72,0],"Ø2 × 60 (피치 13.1)");
+   lead3([-R-52,0,0],[-R-120,64,0],"1/2\" 공기 공급구");
+   dim3([0,-tr,R],[0,tr,R],[0,0,52],"Ø20");
+ }
+});
+
+/* ---- I. 하부 콘 (15) -------------------------------------------------- */
+var CF_OD=110, CF_T=8, CF_PCD=70, CF_HD=11, CF_N=4;
+sheet({
+ code:"I", no:"15", name:"하부 콘", qty:"1", panel:"하부 콘 상세",
+ mat:"SUS304 2B", fin:"내부 연마 Ra ≤0.8 µm",
+ spec:[["상단 · 하단","Ø400 → Ø38"],["높이","150"],["두께","t3"],
+       ["도면 표기 각도","60°"],["출구 접속","1.5\" (40A)"],
+       ["하부 플랜지","Ø110 × t8"],["플랜지 볼트","P.C.D 70 · 4-Ø11"],
+       ["체적","6.7 L"]],
+ note:"침강한 유리·셀 분획을 한 점으로 모으는 원추다. 출구는 1.5\"(40A) 로 받아 "+
+      "볼밸브와 캠락을 단다. 하부 플랜지는 Ø110 × t8 에 P.C.D 70 의 4-Ø11 이다.",
+ warn:{t:"도면 지적 02",
+       s:"각도 60° 표기가 치수열과 맞지 않는다. Ø400→Ø38 을 높이 150 으로 잇는 "+
+         "치수열은 축 기준 반각 50.4°(내각 100.7°)다. 내각 60° 라면 높이 314, "+
+         "반각 60° 라면 높이 105 여야 한다. 이 시트는 치수열대로 그렸다."},
+ d2:function(){
+   var s=new Sheet(-260,-70,520,420), R=TK_OD/2, ro=CN_OUT/2, ri=ro-TK_T, h=CN_H;
+   s.hatch("M"+(-R)+" 0L"+(-ro)+" "+h+"H"+(-ri)+"L"+(-R+TK_T)+" 0Z");
+   s.path("M"+(-R)+" 0L"+(-ro)+" "+h+"H"+ro+"L"+R+" 0");
+   s.path("M"+(-R+TK_T)+" 0L"+(-ri)+" "+h,"ol");
+   s.rect(-CF_OD/2,h,CF_OD,CF_T);
+   s.line(-CF_PCD/2,h,-CF_PCD/2,h+CF_T,"hd"); s.line(CF_PCD/2,h,CF_PCD/2,h+CF_T,"hd");
+   s.cl(0,-24,0,h+CF_T+30);
+   s.dimH(-R,R,0,-42,"Ø400");
+   s.dimV(0,h,R,36,"150");
+   s.dimH(-ro,ro,h,32,"Ø38");
+   s.dimH(-CF_OD/2,CF_OD/2,h+CF_T,60,"Ø110");
+   s.lead(-R+TK_T*1.4,44,-190,66,"t3");
+   s.lead(CF_OD/2,h+CF_T/2,196,h+34,"t8");
+   s.line(-ro,h,-ro,h-64,"cn");
+   s.txt(-72,h-36,"60°");
+   /* 플랜지 평면도 */
+   var cx=R+120,cy=h*0.5;
+   s.circle(cx,cy,CF_OD/2); s.holes(cx,cy,CF_PCD,CF_N,CF_HD,Math.PI/4);
+   s.circle(cx,cy,ri,"ol2");
+   s.cl(cx-CF_OD/2-12,cy,cx+CF_OD/2+12,cy); s.cl(cx,cy-CF_OD/2-12,cx,cy+CF_OD/2+12);
+   s.lead(cx+Math.cos(Math.PI/4)*CF_PCD/2,cy+Math.sin(Math.PI/4)*CF_PCD/2,
+          cx+72,cy+78,"4-Ø11 / P.C.D 70");
+   s.view(cx,cy+CF_OD/2+36,"하부 플랜지");
+   return s.svg("하부 콘 정면 단면도와 플랜지 평면도 — Ø400→Ø38, 150, 플랜지 Ø110 t8");
+ },
+ fit:440,
+ d3:function(){
+   var R=TK_OD/2,S=48;
+   shellOf([[CN_OUT/2,-CN_H],[R,0]],TK_T,S,0,0);
+   revolve([[CF_OD/2,-CN_H-CF_T],[CF_OD/2,-CN_H]],S,false,0,0);
+   ring(CN_OUT/2-TK_T,CF_OD/2,-CN_H-CF_T,false,S,0,0);
+   ring(CN_OUT/2-TK_T,CF_OD/2,-CN_H,true,S,0,0);
+   for(var k=0;k<CF_N;k++){var a=Math.PI/4+k/CF_N*Math.PI*2;
+     drill(Math.cos(a)*CF_PCD/2,Math.sin(a)*CF_PCD/2,CF_HD,-CN_H-CF_T,-CN_H);}
+   AS=9;
+   dia3(46,R,"Ø400");
+   dim3([R+30,-CN_H,0],[R+30,0,0],[54,0,0],"150");
+   dia3(-CN_H-CF_T-40,CF_OD/2,"Ø110");
+   lead3([R-TK_T,-CN_H*0.35,0],[R+110,-CN_H*0.35+40,0],"t3");
+   lead3([CF_PCD/2,-CN_H-CF_T,0],[CF_PCD/2+110,-CN_H-CF_T-70,0],"4-Ø11 / P.C.D 70");
+ }
+});
+
+/* ---- J. 하부 배출구 (16) ---------------------------------------------- */
+var VB_H=120, VB_OD=49, CAM_H=113, CAM_ID=15, PLG_D=10;
+sheet({
+ code:"J", no:"16", name:"하부 배출구", qty:"1식", panel:"하부 배출구 상세",
+ mat:"SUS304", fin:"2B",
+ spec:[["구경","1.5\" (40A)"],["볼밸브 높이","120"],["배관 외경","Ø49"],
+       ["캠락 길이","113"],["캠락 내경","Ø15"],["플러그","Ø10"],
+       ["레버 길이","80 / 70"],["스택 전체","208 (플랜지 t8 + 밸브 120 + 캠락 80)"]],
+ note:"콘 하부 플랜지에 40A 볼밸브를 매달고 그 아래에 캠락 커플러를 단다. 레버가 "+
+      "수평이면 열림이다. 비운 뒤에는 플러그를 물려 이물이 들어가지 않게 한다.",
+ warn:{t:"도면 지적 03",
+       s:"이 스택은 콘 출구 아래로 208 mm 내려온다. 지지 다리 200 으로는 바닥에 "+
+         "닿으므로 조립도는 다리 파이프를 420 으로 세워 바닥 여유 108 을 두었다."},
+ d2:function(){
+   var s=new Sheet(-150,-40,300,330), r=VB_OD/2;
+   s.rect(-r,0,VB_OD,18);                              /* 상부 플랜지 접속 */
+   s.rect(-44,18,88,84);                               /* 볼밸브 동체 */
+   s.circle(0,60,26,"hd");
+   s.rect(-7,102,14,10);
+   s.rect(-r,112,VB_OD,8);
+   s.rect(-r-5,120,VB_OD+10,26);                       /* 캠락 어댑터 */
+   s.rect(-CAM_ID/2,146,CAM_ID,22);
+   s.rect(-PLG_D/2-8,168,PLG_D+16,12,"face");          /* 플러그 */
+   s.rect(-52,6,80,9);                                 /* 레버 */
+   s.circle(-52,10.5,7,"ol2");
+   s.cl(0,-18,0,196);
+   s.dimV(0,VB_H,r+44,26,"120");
+   s.dimH(-r,r,0,-28,"Ø49");
+   s.dimV(120,CAM_H+80,-r-44,-26,"113");
+   s.dimH(-CAM_ID/2,CAM_ID/2,168,26,"Ø15");
+   s.lead(-52,10.5,-136,-22,"레버 80 / 70");
+   s.lead(0,174,120,196,"플러그 Ø10");
+   s.view(0,236,"정면도");
+   return s.svg("하부 배출구 정면도 — 40A 볼밸브 120, 캠락 113, 플러그 Ø10");
+ },
+ fit:380,
+ d3:function(){
+   var r=VB_OD/2;
+   pipe([0,VB_H,0],[0,VB_H+18,0],r,22,true);
+   box(88,84,88,0,VB_H-42,0);
+   pipe([0,VB_H-42,0],[0,VB_H-4,0],14,14,true);
+   box(80,9,20,-30,VB_H+4,0);
+   pipe([0,26,0],[0,VB_H-84,0],r,22,true);
+   pipe([0,0,0],[0,30,0],r+5,22,true);
+   torus(r+9,7,26,22,10,0,0);
+   for(var k=0;k<2;k++){var a=Math.PI/2+k*Math.PI;
+     box(46,9,13,Math.cos(a)*(r+13),32,Math.sin(a)*(r+13),-a);}
+   pipe([0,-12,0],[0,2,0],CAM_ID/2+6,16,true);
+   AS=6;
+   dim3([r+30,VB_H-84,0],[r+30,VB_H+18,0],[40,0,0],"120");
+   dia3(VB_H+40,r,"Ø49");
+   dim3([-r-30,0,0],[-r-30,VB_H-84,0],[-40,0,0],"113");
+   lead3([0,-12,CAM_ID/2],[86,-42,0],"플러그 Ø10");
+ }
+});
+
+/* ---- K. 지지 다리 (17) ------------------------------------------------ */
+var LG_D=38, LG_L=200, LG_BASE=100, LG_BT=8, LG_PCD=70, LG_TOP=76;
+sheet({
+ code:"K", no:"17", name:"지지 다리", qty:"3", panel:"지지 다리 상세",
+ mat:"SUS304", fin:"—",
+ spec:[["파이프","Ø38 × 200"],["베이스 플레이트","Ø100 × t8"],
+       ["베이스 볼트","P.C.D 70"],["상부 체결판","76 × 76 × t8 · 4 홀"],
+       ["수량","3 본 (120° 등분)"]],
+ note:"Ø38 파이프 위아래에 판을 붙인 단순 구조다. 아래는 Ø100 원판으로 방진패드를 "+
+      "받고 앵커볼트로 바닥에 고정하며, 위는 사각 체결판으로 동체 브라켓에 물린다.",
+ warn:{t:"도면 지적 03",
+       s:"길이 200 으로는 하부 배출구 스택 208 이 바닥에 닿는다. 조립도는 파이프를 "+
+         "420 으로 세워 바닥 여유 108 을 확보했다."},
+ d2:function(){
+   var s=new Sheet(-140,-70,280,360), r=LG_D/2, br=LG_BASE/2;
+   s.rect(-r,0,LG_D,LG_L);
+   s.line(-r+3,0,-r+3,LG_L,"hd"); s.line(r-3,0,r-3,LG_L,"hd");
+   s.rect(-LG_TOP/2,-LG_BT,LG_TOP,LG_BT);
+   s.rect(-br,LG_L,LG_BASE,LG_BT);
+   s.line(-LG_PCD/2,LG_L,-LG_PCD/2,LG_L+LG_BT,"hd");
+   s.line(LG_PCD/2,LG_L,LG_PCD/2,LG_L+LG_BT,"hd");
+   s.cl(0,-LG_BT-22,0,LG_L+LG_BT+22);
+   s.dimV(0,LG_L,br,34,"200");
+   s.dimH(-r,r,0,-38,"Ø38");
+   s.dimH(-br,br,LG_L+LG_BT,38,"Ø100");
+   s.lead(br,LG_L+LG_BT/2,br+92,LG_L+52,"t8");
+   s.view(0,LG_L+LG_BT+76,"정면도");
+   /* 베이스 평면도 */
+   var cx=br+120,cy=LG_L*0.32;
+   s.circle(cx,cy,br); s.holes(cx,cy,LG_PCD,6,9,0);
+   s.circle(cx,cy,r,"cn");
+   s.cl(cx-br-12,cy,cx+br+12,cy); s.cl(cx,cy-br-12,cx,cy+br+12);
+   s.lead(cx+LG_PCD/2,cy,cx+80,cy-64,"P.C.D 70");
+   s.view(cx,cy+br+30,"베이스 평면도");
+   /* 상부 체결판 */
+   var tx=br+120,ty=LG_L*0.90;
+   s.rect(tx-LG_TOP/2,ty-LG_TOP/2,LG_TOP,LG_TOP);
+   for(var q=0;q<4;q++){var sx=(q%2?1:-1)*LG_PCD/2*0.72,sy=(q<2?-1:1)*LG_PCD/2*0.72;
+     s.circle(tx+sx,ty+sy,4.5,"ol2");}
+   s.cl(tx-LG_TOP/2-10,ty,tx+LG_TOP/2+10,ty); s.cl(tx,ty-LG_TOP/2-10,tx,ty+LG_TOP/2+10);
+   s.view(tx,ty+LG_TOP/2+26,"상부 체결판");
+   return s.svg("지지 다리 정면도·베이스 평면도·상부 체결판 — Ø38 × 200, Ø100 t8");
+ },
+ fit:300,
+ d3:function(){
+   var r=LG_D/2;
+   pipe([0,0,0],[0,LG_L,0],r,24,true);
+   pipe([0,0,0],[0,LG_L,0],r-3,24,false,true);
+   revolve([[r-3,-LG_BT],[r-3,0]],24,true,0,0);
+   pipe([0,-LG_BT,0],[0,0,0],LG_BASE/2,28,true);
+   box(LG_TOP,LG_BT,LG_TOP,0,LG_L+LG_BT/2,0);
+   for(var k=0;k<6;k++){var a=k/6*Math.PI*2;
+     drill(Math.cos(a)*LG_PCD/2,Math.sin(a)*LG_PCD/2,9,-LG_BT,0);}
+   AS=7;
+   dim3([r+24,0,0],[r+24,LG_L,0],[40,0,0],"200");
+   dia3(LG_L+LG_BT+40,r,"Ø38");
+   dia3(-LG_BT-40,LG_BASE/2,"Ø100");
+   lead3([LG_BASE/2,-LG_BT/2,0],[LG_BASE/2+80,-64,0],"t8 / P.C.D 70");
+ }
+});
+
+/* ---- L. 앵커볼트 (28) ------------------------------------------------- */
+var AN_M=10, AN_L=110, AN_EMB=100, AN_SL=12, AN_PRJ=23;
+sheet({
+ code:"L", no:"28", name:"앵커볼트", qty:"3", panel:"앵커볼트 상세",
+ mat:"SUS304", fin:"—",
+ spec:[["규격","M10 × 110"],["매입 길이","100"],["슬리브 외경","Ø12"],
+       ["돌출 길이","23"],["형식","케미컬 앵커 또는 확장 앵커"],["조립 토크","40 N·m"]],
+ note:"콘크리트 바닥에 Ø12 로 천공하고 케미컬 앵커 또는 확장 앵커로 M10 을 심는다. "+
+      "매입 100, 돌출 23 이며 40 N·m 로 조인다. 다리 3 본에 각 1 개소다.",
+ d2:function(){
+   var s=new Sheet(-110,-60,220,220), r=AN_M/2, sr=AN_SL/2;
+   s.rect(-sr,0,AN_SL,AN_EMB);
+   for(var i=0;i<9;i++) s.line(-sr,10+i*10,sr,10+i*10,"dm");
+   s.rect(-r,-AN_PRJ,AN_M,AN_PRJ);
+   s.el('<path d="M-9 '+(-AN_PRJ)+'h18v7h-18Z" class="ol"/>');
+   s.rect(-8,-AN_PRJ-14,16,7);
+   s.line(-40,0,40,0,"ol2");
+   s.el('<path d="M-40 0h80v9h-80Z" fill="url(#htch)" stroke="none"/>');
+   s.cl(0,-AN_PRJ-28,0,AN_EMB+22);
+   s.dimV(-AN_PRJ,AN_EMB,sr,42,"110");
+   s.dimV(0,AN_EMB,-sr,-38,"100");
+   s.dimV(-AN_PRJ,0,-sr,-90,"23");
+   s.dimH(-sr,sr,AN_EMB,30,"Ø12");
+   s.lead(r,-AN_PRJ*0.5,72,-56,"M10");
+   s.view(0,AN_EMB+62,"정면도 (바닥 매입)");
+   return s.svg("앵커볼트 정면도 — M10 × 110, 매입 100, 슬리브 Ø12, 돌출 23");
+ },
+ fit:200,
+ d3:function(){
+   thread(0,-AN_PRJ,AN_EMB,AN_M/2,2.2);
+   pipe([0,0,0],[0,AN_EMB,0],AN_SL/2,18,false,true);
+   hexPrism(0,-AN_PRJ,0,17,8);
+   torus(9,1.2,-AN_PRJ+8.6,16,8,0,0);
+   AS=5;
+   dim3([AN_SL/2+16,-AN_PRJ,0],[AN_SL/2+16,AN_EMB,0],[26,0,0],"110");
+   dim3([-AN_SL/2-16,0,0],[-AN_SL/2-16,AN_EMB,0],[-26,0,0],"100");
+   lead3([AN_M/2,-AN_PRJ*0.5,0],[54,-46,0],"M10");
+ }
+});
+
+/* ---- M. 볼트 · 너트 · 와셔 (05) --------------------------------------- */
+var HW=[
+  {t:"육각볼트 M8×25",af:13,len:25,k:"bolt",m:8},
+  {t:"육각볼트 M8×20",af:13,len:20,k:"bolt",m:8},
+  {t:"육각볼트 M10×30",af:17,len:30,k:"bolt",m:10},
+  {t:"육각너트 M8",af:13,len:6.5,k:"nut",m:8},
+  {t:"육각너트 M10",af:17,len:8,k:"nut",m:10},
+  {t:"평와셔 M8 t1.5",af:16,len:1.5,k:"wash",m:8},
+  {t:"평와셔 M10 t2.0",af:20,len:2.0,k:"wash",m:10},
+  {t:"스프링와셔 M8",af:15,len:2.0,k:"spr",m:8},
+  {t:"스프링와셔 M10",af:19,len:2.5,k:"spr",m:10},
+  {t:"세트스크류 M8×8",af:0,len:8,k:"set",m:8}
+];
+sheet({
+ code:"M", no:"05", name:"볼트 · 너트 · 와셔", qty:"1식", panel:"볼트/너트/와셔 상세 규격",
+ mat:"SUS304", fin:"—",
+ spec:[["육각볼트","M8×25 · M8×20 · M10×30"],["육각너트","M8 · M10"],
+       ["평와셔","M8 t1.5 · M10 t2.0"],["스프링와셔","M8 · M10"],
+       ["세트스크류","M8×8 (육각홀)"],["대변 거리","M8 = 13 · M10 = 17"],
+       ["조립 토크","M8 20 N·m · M10 40 N·m"]],
+ note:"체결류는 전부 SUS304 다. 커버 플랜지는 M8×25 6조, 다리·앵커는 M10 이다. "+
+      "평와셔와 스프링와셔를 함께 끼우고 규정 토크로 조인다 — M8 20 N·m, M10 40 N·m.",
+ d2:function(){
+   var s=new Sheet(-30,-46,700,420),i;
+   var COL=5, x=0, row=0;
+   for(i=0;i<HW.length;i++){
+     if(i===COL){ row=1; x=0; }
+     var h=HW[i],w=Math.max(h.af,14),y=60+row*180;
+     if(h.k==="bolt"){
+       s.rect(x,y-h.af/2,6,h.af); s.rect(x+6,y-h.m/2,h.len,h.m);
+       for(var j=0;j<Math.floor(h.len/2.6);j++)
+         s.line(x+8+j*2.6,y-h.m/2,x+8+j*2.6,y+h.m/2,"dm");
+       s.dimH(x+6,x+6+h.len,y+h.af/2,20,String(h.len));
+     } else if(h.k==="nut"){
+       s.rect(x,y-h.af/2,h.len,h.af); s.line(x,y-h.m/2,x+h.len,y-h.m/2,"hd");
+       s.line(x,y+h.m/2,x+h.len,y+h.m/2,"hd");
+     } else if(h.k==="wash"||h.k==="spr"){
+       s.rect(x,y-h.af/2,Math.max(h.len,1.6),h.af);
+       s.line(x,y-h.m/2,x+Math.max(h.len,1.6),y-h.m/2,"hd");
+       s.line(x,y+h.m/2,x+Math.max(h.len,1.6),y+h.m/2,"hd");
+     } else {
+       s.rect(x,y-h.m/2,h.len,h.m); s.rect(x,y-2,2.5,4,"face");
+     }
+     s.txt(x+w*0.5,y-h.af/2-26,h.t.split(" ")[0],null,s.fs*0.80);
+     s.txt(x+w*0.5,y-h.af/2-12,h.t.split(" ").slice(1).join(" "),null,s.fs*0.80);
+     x+=Math.max(h.len+18,62)+54;
+   }
+   s.view(x/2,330,"체결류 10 종 — 대변 M8 = 13 / M10 = 17");
+   return s.svg("볼트·너트·와셔 상세 — M8/M10 육각볼트, 너트, 평·스프링와셔, 세트스크류");
+ },
+ fit:340,
+ d3:function(){
+   var x=-140,i;
+   for(i=0;i<HW.length;i++){
+     var h=HW[i];
+     if(h.k==="bolt"){ hexPrism(x,0,0,h.af,6);
+       thread(x,-h.len,0,h.m*0.45,1.25); }
+     else if(h.k==="nut"){ hexPrism(x,0,0,h.af,h.len);
+       pipe([x,-0.4,0],[x,h.len+0.4,0],h.m*0.45,12,false,true); }
+     else if(h.k==="wash"){ revolve([[h.af/2,0],[h.af/2,h.len]],20,false,x,0);
+       revolve([[h.m*0.55,0],[h.m*0.55,h.len]],20,true,x,0);
+       ring(h.m*0.55,h.af/2,h.len,true,20,x,0); ring(h.m*0.55,h.af/2,0,false,20,x,0); }
+     else if(h.k==="spr"){ torus(h.af/2*0.86,h.len*0.72,h.len,20,8,x,0); }
+     else { pipe([x,0,0],[x,h.len,0],h.m*0.45,12,true);
+            pipe([x,h.len-3,0],[x,h.len+0.3,0],2.6,6,false,true); }
+     x+=31;
+   }
+   AS=4.2;
+   lead3([-140,8,0],[-168,46,0],"M8×25");
+   lead3([x-22,10,0],[x-2,44,0],"M8×8 세트스크류");
+ }
+});
+
+/* ---- N. 가스켓 · 씰 (26) ---------------------------------------------- */
+sheet({
+ code:"N", no:"26", name:"가스켓 · 씰", qty:"1식", panel:"가스켓/씰 상세",
+ mat:"EPDM / SILICONE (식품용)", fin:"—",
+ spec:[["커버 가스켓","EPDM · Ø120 / Ø104"],["클램프 가스켓","SILICONE · Ø120 / Ø104"],
+       ["단면 두께","3"],["용도","커버 플랜지 · 맨홀 Tri-clamp"]],
+ note:"접액 실은 전부 식품용이다. 커버 플랜지에는 EPDM, 맨홀 Tri-clamp 에는 실리콘을 "+
+      "쓴다. 두 규격 모두 Ø120/Ø104 로 같아 예비품을 한 종으로 묶을 수 있다.",
+ d2:function(){
+   var s=new Sheet(-90,-90,420,240), R=MH_OD/2, r=MH_ID/2, i;
+   for(i=0;i<2;i++){
+     var cx=i*250, nm=i?"클램프 가스켓 (SILICONE)":"커버 가스켓 (EPDM)";
+     s.circle(cx,0,R); s.circle(cx,0,r);
+     s.el('<path d="M'+(cx+R)+' 0A'+R+' '+R+' 0 1 1 '+(cx-R)+' 0A'+R+' '+R+
+          ' 0 1 1 '+(cx+R)+' 0ZM'+(cx+r)+' 0A'+r+' '+r+' 0 1 0 '+(cx-r)+' 0A'+r+' '+r+
+          ' 0 1 0 '+(cx+r)+' 0Z" fill="url(#htch)" fill-rule="evenodd" stroke="none"/>');
+     s.cl(cx-R-12,0,cx+R+12,0); s.cl(cx,-R-12,cx,R+12);
+     s.dimD(cx,0,R,"Ø120",-Math.PI*0.72);
+     s.dimD(cx,0,r,"Ø104",Math.PI*0.28);
+     s.txt(cx,R+30,nm,null,s.fs*0.92);
+     /* 단면 */
+     s.rect(cx-R,R+46,R-r,3,"face"); s.rect(cx+r,R+46,R-r,3,"face");
+     s.txt(cx,R+66,"단면 t3",null,s.fs*0.86);
+   }
+   s.view(125,-R-34,"가스켓 2 종 — 규격 동일");
+   return s.svg("가스켓 상세 — 커버 EPDM 및 클램프 실리콘, 모두 Ø120/Ø104");
+ },
+ fit:170,
+ d3:function(){
+   torus((MH_OD/2+MH_ID/2)/2,(MH_OD-MH_ID)/4,0,52,14,-70,0);
+   torus((MH_OD/2+MH_ID/2)/2,(MH_OD-MH_ID)/4,0,52,14,70,0);
+   AS=4;
+   dia3(28,MH_OD/2,"Ø120"); dia3(-28,MH_ID/2,"Ø104",Math.PI/2);
+ }
+});
+
+/* ---- O. 배관 및 밸브 (23 · 24) ---------------------------------------- */
+var BV_L=65, RM_D=34, RM_L=200, FR_D=68, FR_L=150, HB_D=10, HB_L=30, HB_HEX=24, TC_D=120;
+sheet({
+ code:"O", no:"23", name:"배관 및 밸브", qty:"1식", panel:"배관 및 밸브 상세",
+ mat:"SUS304 2B", fin:"2B",
+ spec:[["볼밸브","1/2\" (15A) · 길이 65 · t8"],["유량계 (로타미터)","Ø34 × 200"],
+       ["필터 + 레귤레이터","Ø68 × 150"],["호스 바브","Ø10 × 30 · 육각 24"],
+       ["클램프","Tri-clamp Ø120"]],
+ note:"급기 라인은 필터+레귤레이터 → 로타미터 → 볼밸브 → 분산기 순이다. 로타미터로 "+
+      "공기량을 읽고 레귤레이터로 압력을 잡는다. 접액 접속부는 모두 Tri-clamp 라 "+
+      "공구 없이 분해·세척된다.",
+ d2:function(){
+   var s=new Sheet(-40,-96,860,360), x=0;
+   /* 볼밸브 */
+   s.rect(x,-22,BV_L,44); s.circle(x+BV_L/2,0,15,"hd");
+   s.rect(x+BV_L/2-5,-40,10,18); s.rect(x+BV_L/2-26,-52,56,12);
+   s.dimH(x,x+BV_L,22,26,"65"); s.txt(x+BV_L/2,72,"볼밸브 1/2\"",null,s.fs*0.9);
+   x+=BV_L+96;
+   /* 로타미터 */
+   s.rect(x,-RM_L/2,RM_D,RM_L); s.line(x+4,-RM_L/2,x+4,RM_L/2,"hd");
+   s.line(x+RM_D-4,-RM_L/2,x+RM_D-4,RM_L/2,"hd");
+   s.el('<path d="M'+(x+RM_D/2-6)+' 10l6-11 6 11Z" class="fill"/>');
+   s.dimV(-RM_L/2,RM_L/2,x+RM_D,26,"200"); s.dimH(x,x+RM_D,-RM_L/2,-24,"Ø34");
+   s.txt(x+RM_D/2,RM_L/2+42,"로타미터",null,s.fs*0.9);
+   x+=RM_D+120;
+   /* 필터 + 레귤레이터 */
+   s.rect(x,-FR_L/2,FR_D,FR_L); s.line(x,-FR_L/2+38,x+FR_D,-FR_L/2+38,"ol2");
+   s.circle(x+FR_D/2,FR_L/2-42,20,"hd");
+   s.rect(x+FR_D/2-9,-FR_L/2-16,18,16);
+   s.dimV(-FR_L/2,FR_L/2,x+FR_D,26,"150"); s.dimH(x,x+FR_D,-FR_L/2,-40,"Ø68");
+   s.txt(x+FR_D/2,FR_L/2+42,"필터 + 레귤레이터",null,s.fs*0.9);
+   x+=FR_D+120;
+   /* 호스 바브 */
+   s.rect(x,-HB_HEX/2,12,HB_HEX);
+   s.path("M"+(x+12)+" -5h"+HB_L+"v10h"+(-HB_L)+"Z");
+   for(var i=0;i<4;i++) s.line(x+16+i*7,-7,x+16+i*7,7,"ol2");
+   s.dimH(x+12,x+12+HB_L,5,26,"30"); s.dimH(x,x+12,-HB_HEX/2,-22,"육각 24");
+   s.txt(x+24,60,"호스 바브 Ø10",null,s.fs*0.9);
+   x+=HB_L+92;
+   /* Tri-clamp */
+   s.circle(x+TC_D/2,0,TC_D/2); s.circle(x+TC_D/2,0,MH_ID/2,"ol2");
+   s.path("M"+(x+TC_D/2-8)+" "+(-TC_D/2-10)+"h16v10h-16Z");
+   s.dimD(x+TC_D/2,0,TC_D/2,"Ø120",-Math.PI*0.72);
+   s.txt(x+TC_D/2,TC_D/2+30,"Tri-clamp",null,s.fs*0.9);
+   return s.svg("배관 및 밸브 상세 — 볼밸브 65, 로타미터 Ø34×200, 필터+레귤레이터 Ø68×150");
+ },
+ fit:640,
+ d3:function(){
+   box(BV_L,44,44,-190,0,0);
+   pipe([-190,22,0],[-190,40,0],7,12,true); box(56,10,14,-190,44,0);
+   pipe([-96,-RM_L/2,0],[-96,RM_L/2,0],RM_D/2,22,true);
+   pipe([-96,-RM_L/2-10,0],[-96,-RM_L/2,0],9,12,true);
+   pipe([-96,RM_L/2,0],[-96,RM_L/2+10,0],9,12,true);
+   pipe([10,-FR_L/2,0],[10,FR_L/2,0],FR_D/2,24,true);
+   torus(FR_D/2,4,-FR_L/2+38,24,10,10,0);
+   pipe([10,FR_L/2,0],[10,FR_L/2+16,0],9,12,true);
+   hexPrism(112,-HB_HEX/2,0,HB_HEX,12);
+   pipe([112,HB_HEX/2-12,0],[112,HB_HEX/2-12+HB_L,0],HB_D/2,12,true);
+   torus(TC_D/2*0.92,7,0,40,12,220,0);
+   AS=6;
+   lead3([-190,22,0],[-250,66,0],"볼밸브 1/2\"");
+   dim3([-96+RM_D/2,-RM_L/2,0],[-96+RM_D/2,RM_L/2,0],[34,0,0],"200");
+   dim3([10+FR_D/2,-FR_L/2,0],[10+FR_D/2,FR_L/2,0],[40,0,0],"150");
+   lead3([220+TC_D/2*0.92,0,0],[300,70,0],"Tri-clamp Ø120");
+ }
+});
+
+/* ---- P. 제어반 (22) --------------------------------------------------- */
+var CP_W=300, CP_H=400, CP_D=200;
+sheet({
+ code:"P", no:"22", name:"제어반", qty:"1", panel:"제어반 상세",
+ mat:"SUS304 함체", fin:"—",
+ spec:[["함체","300 (W) × 400 (H) × 200 (D)"],["전원","220 V 1Ø 또는 380 V 3Ø"],
+       ["조작","전원 스위치 · 운전/정지 버튼"],["속도","VFD 속도 조절기"],
+       ["표시","타이머 · 공기 유량 · 온도 · 압력"],["접지","접지단자 1식"]],
+ note:"교반 모터는 VFD 로 무단 변속한다. 도어면에 전원 스위치, 운전·정지 버튼, "+
+      "속도 조절기, 타이머를 올리고 공기 유량·온도·압력을 함께 지시한다. "+
+      "전원은 220 V 단상 기본, 380 V 삼상은 옵션이다.",
+ d2:function(){
+   var s=new Sheet(-60,-70,560,520);
+   /* 정면도 */
+   s.rect(0,0,CP_W,CP_H); s.rect(10,10,CP_W-20,CP_H-20,"ol2");
+   s.circle(70,70,16); s.txt(70,104,"전원",null,s.fs*0.8);
+   s.circle(150,70,16); s.txt(150,104,"운전",null,s.fs*0.8);
+   s.circle(230,70,16); s.txt(230,104,"정지",null,s.fs*0.8);
+   s.rect(50,150,200,70); s.txt(150,185,"VFD 속도",null,s.fs*0.86);
+   s.rect(50,250,90,50); s.txt(95,275,"타이머",null,s.fs*0.8);
+   s.rect(160,250,90,50); s.txt(205,275,"유량·온도",null,s.fs*0.8);
+   s.dimH(0,CP_W,CP_H,42,"300"); s.dimV(0,CP_H,CP_W,42,"400");
+   s.view(CP_W/2,CP_H+82,"정면도 (도어)");
+   /* 측면도 */
+   var xs=CP_W+110;
+   s.rect(xs,0,CP_D,CP_H); s.line(xs+8,0,xs+8,CP_H,"hd");
+   s.dimH(xs,xs+CP_D,CP_H,42,"200");
+   s.view(xs+CP_D/2,CP_H+82,"측면도");
+   return s.svg("제어반 정면도·측면도 — 300 × 400 × 200, VFD·타이머·계기 표시");
+ },
+ fit:760,
+ d3:function(){
+   box(CP_W,CP_H,CP_D,0,CP_H/2,0);
+   box(CP_W-20,CP_H-20,6,0,CP_H/2,CP_D/2+2);
+   var b=[[-80,330],[0,330],[80,330]],i;
+   for(i=0;i<3;i++) pipe([b[i][0],b[i][1],CP_D/2+4],[b[i][0],b[i][1],CP_D/2+14],14,14,true);
+   box(200,70,5,0,CP_H-190,CP_D/2+5);
+   box(90,50,5,-55,CP_H-290,CP_D/2+5);
+   box(90,50,5,55,CP_H-290,CP_D/2+5);
+   AS=11;
+   dim3([-CP_W/2,0,CP_D/2],[CP_W/2,0,CP_D/2],[0,-60,0],"300");
+   dim3([CP_W/2,0,CP_D/2],[CP_W/2,CP_H,CP_D/2],[64,0,0],"400");
+   dim3([CP_W/2,0,-CP_D/2],[CP_W/2,0,CP_D/2],[70,-40,0],"200");
+ }
+});
+
+/* ---- Q. 방진패드 (30) ------------------------------------------------- */
+var PD_D=100, PD_H=30;
+sheet({
+ code:"Q", no:"30", name:"방진패드", qty:"3", panel:"방진패드 상세",
+ mat:"방진고무 + SUS304 인서트", fin:"—",
+ spec:[["외경 × 높이","Ø100 × 30"],["상부 인서트","M10"],["수량","3 개"],
+       ["설치","지지 다리 베이스와 바닥 사이"]],
+ note:"다리 베이스와 바닥 사이에 끼워 교반 진동을 끊는다. 상면 M10 인서트로 "+
+      "앵커볼트와 함께 조인다. 3 본 모두 같은 규격이다.",
+ d2:function(){
+   var s=new Sheet(-90,-60,320,200), r=PD_D/2;
+   /* 정면도 */
+   s.rect(-r,0,PD_D,PD_H);
+   s.line(-r,6,r,6,"ol2"); s.line(-r,PD_H-6,r,PD_H-6,"ol2");
+   s.rect(-9,-12,18,12);
+   s.cl(0,-26,0,PD_H+22);
+   s.dimH(-r,r,PD_H,32,"Ø100"); s.dimV(0,PD_H,-r,-32,"30");
+   s.lead(0,-6,-108,-32,"M10 인서트");
+   s.view(0,PD_H+72,"정면도");
+   /* 평면도 */
+   var cx=r+120;
+   s.circle(cx,0,r); s.circle(cx,0,10,"ol2");
+   s.cl(cx-r-12,0,cx+r+12,0); s.cl(cx,-r-12,cx,r+12);
+   s.view(cx,r+30,"평면도");
+   return s.svg("방진패드 정면도·평면도 — Ø100 × 30, 상부 M10 인서트");
+ },
+ fit:150,
+ d3:function(){
+   pipe([0,0,0],[0,PD_H,0],PD_D/2,32,true);
+   torus(PD_D/2,2.4,6,32,10,0,0); torus(PD_D/2,2.4,PD_H-6,32,10,0,0);
+   pipe([0,PD_H,0],[0,PD_H+12,0],9,14,true);
+   AS=4;
+   dia3(-26,PD_D/2,"Ø100");
+   dim3([PD_D/2+14,0,0],[PD_D/2+14,PD_H,0],[26,0,0],"30");
+   lead3([0,PD_H+12,0],[74,PD_H+44,0],"M10 인서트");
+ }
+});
+
+/* ======================================================================
+   5. 시트 조립 — 각 시트의 형상·치수선·구멍을 한 버퍼에 모으고 범위를 기억한다
+   ====================================================================== */
+var HOLEY=[1e9,-1e9];
+var _drill=drill;
+drill=function(cx,cz,d,y0,y1){
+  _drill(cx,cz,d,y0,y1);
+  if(y0<HOLEY[0])HOLEY[0]=y0; if(y1>HOLEY[1])HOLEY[1]=y1;
+};
+SHEETS.forEach(function(sh){
+  var i0=M.mark(), v0=M.p.length/3, l0=LP.length, b0=LB.length;
+  HOLES=[]; HOLEY=[1e9,-1e9]; AS=6;
+  sh.d3();
+  sh.iStart=i0; sh.iCount=M.mark()-i0;
+  sh.lStart=l0; sh.lCount=LP.length-l0;
+  sh.bStart=b0; sh.bCount=LB.length-b0;
+  sh.holes=HOLES.slice(); sh.holeY=(HOLES.length?HOLEY:[0,0]);
+  var mn=[1e9,1e9,1e9], mx=[-1e9,-1e9,-1e9];
+  for(var k=v0*3;k<M.p.length;k+=3)for(var a=0;a<3;a++){
+    var vv=M.p[k+a]; if(vv<mn[a])mn[a]=vv; if(vv>mx[a])mx[a]=vv;}
+  sh.mid=[(mn[0]+mx[0])/2,(mn[1]+mx[1])/2,(mn[2]+mx[2])/2];
+  sh.svg=sh.d2();
+});
+
+/* ======================================================================
+   6. WebGL
+   ====================================================================== */
+var canvas=document.getElementById("gl"), stage=document.getElementById("stage");
+var gl=canvas.getContext("webgl",{antialias:true,alpha:true,premultipliedAlpha:false});
+var ok=!!gl;
+if(!ok){canvas.style.display="none";document.getElementById("fallback").style.display="block";}
+
+var A={},U={},prog=null,vbo,nbo,ibo,lbo,ITYPE,ISIZE;
+if(ok){
+  var VS=["attribute vec3 aPos; attribute vec3 aNor;",
+   "uniform mat4 uProj,uView; varying vec3 vW; varying vec3 vN;",
+   "void main(){vW=aPos;vN=aNor;gl_Position=uProj*uView*vec4(aPos,1.0);}"].join("\n");
+  var FS=["precision highp float;","varying vec3 vW; varying vec3 vN;",
+   "uniform vec3 uColor,uEye; uniform float uMetal,uCut,uCuttable,uFlat,uHoleN;",
+   "uniform vec2 uFwd,uHoleY; uniform vec3 uHole[10];",
+   "void main(){",
+   " if(uFlat>0.5){ gl_FragColor=vec4(uColor,1.0); return; }",
+   " if(uCuttable>0.5 && dot(vW.xz,uFwd) > uCut) discard;",
+   " if(vW.y>uHoleY.x && vW.y<uHoleY.y){",
+   "   for(int i=0;i<10;i++){ if(float(i)<uHoleN){",
+   "     if(distance(vW.xz,uHole[i].xy) < uHole[i].z) discard; } }",
+   " }",
+   " vec3 N=normalize(vN); if(!gl_FrontFacing) N=-N;",
+   " vec3 V=normalize(uEye-vW);",
+   " vec3 L1=normalize(vec3(0.50,0.94,0.62)), L2=normalize(vec3(-0.72,0.30,-0.50));",
+   " float d=max(dot(N,L1),0.0)*0.82+max(dot(N,L2),0.0)*0.24;",
+   " vec3 H=normalize(L1+V);",
+   " float sp=pow(max(dot(N,H),0.0),mix(18.0,92.0,uMetal))*mix(0.10,0.52,uMetal);",
+   " float amb=0.34+0.15*(N.y*0.5+0.5);",
+   " float fr=pow(1.0-max(dot(N,V),0.0),3.0);",
+   " gl_FragColor=vec4(uColor*(amb+d)+vec3(sp)+uColor*fr*0.22,1.0);}"].join("\n");
+  function sh(t,s){var o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);
+    if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));
+    return o;}
+  prog=gl.createProgram();
+  gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS));gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS));
+  gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+  A.pos=gl.getAttribLocation(prog,"aPos"); A.nor=gl.getAttribLocation(prog,"aNor");
+  ["uProj","uView","uColor","uEye","uMetal","uCut","uCuttable","uFwd","uFlat",
+   "uHoleN","uHoleY"].forEach(function(nm){U[nm]=gl.getUniformLocation(prog,nm);});
+  U.uHole=[]; for(var q=0;q<10;q++) U.uHole.push(gl.getUniformLocation(prog,"uHole["+q+"]"));
+  vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(M.p),gl.STATIC_DRAW);
+  nbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,nbo);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(M.n),gl.STATIC_DRAW);
+  var big=M.p.length/3>65535;
+  if(big && !gl.getExtension("OES_element_index_uint")) big=false;
+  ibo=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ibo);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,big?new Uint32Array(M.i):new Uint16Array(M.i),
+    gl.STATIC_DRAW);
+  ITYPE=big?gl.UNSIGNED_INT:gl.UNSIGNED_SHORT; ISIZE=big?4:2;
+  lbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,lbo);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(LP),gl.STATIC_DRAW);
+}
+var STEEL=[0.78,0.81,0.85], LINEC=[0.36,0.45,0.52];
+
+/* ======================================================================
+   7. UI
+   ====================================================================== */
+var cur=0, az=-0.72, el=0.26, dist=1, showDim=true, showCut=false, spin=true;
+var labelEls=[];
+function $(id){return document.getElementById(id);}
+
+function buildIndex(){
+  var w=$("index"); w.innerHTML="";
+  SHEETS.forEach(function(s,i){
+    var b=document.createElement("button");
+    b.setAttribute("aria-pressed", i===cur?"true":"false");
+    if(s.warn) b.className="warn";
+    b.innerHTML='<span class="c">'+s.code+'</span>'+s.name+'<span class="n">'+s.no+'</span>';
+    b.addEventListener("click",function(){go(i);});
+    w.appendChild(b);
+  });
+}
+/* 손으로 잡은 뷰박스는 치수 문자 길이를 못 맞춘다 — 실제 경계를 재서 다시 잡는다 */
+function fitSvg(){
+  var el=$("paper").querySelector("svg"); if(!el) return;
+  var b; try{ b=el.getBBox(); }catch(e){ return; }
+  if(!b || !b.width || !b.height) return;
+  var m=Math.max(b.width,b.height)*0.035+3;
+  el.setAttribute("viewBox",(b.x-m)+" "+(b.y-m)+" "+(b.width+2*m)+" "+(b.height+2*m));
+}
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(fitSvg);
+window.addEventListener("resize",fitSvg);
+function setLabels(){
+  labelEls.forEach(function(e){e.remove();}); labelEls=[];
+  if(!ok) return;
+  var s=SHEETS[cur];
+  for(var i=s.bStart;i<s.bStart+s.bCount;i++){
+    var d=document.createElement("div"); d.className="lbl";
+    d.textContent=LB[i].t; stage.appendChild(d); d._i=i; labelEls.push(d);
+  }
+}
+function go(i){
+  cur=(i+SHEETS.length)%SHEETS.length;
+  var s=SHEETS[cur];
+  $("paper").innerHTML=s.svg; fitSvg();
+  $("shCode").textContent=s.code;
+  $("shName").textContent=s.name;
+  $("shMeta").textContent="품번 "+s.no+" · 수량 "+s.qty+" · "+s.panel;
+  $("pos").textContent=(cur+1)+" / "+SHEETS.length;
+  var tb=$("spec"); tb.innerHTML="";
+  s.spec.forEach(function(r){var tr=document.createElement("tr");
+    tr.innerHTML="<td>"+r[0]+"</td><td>"+r[1]+"</td>";tb.appendChild(tr);});
+  var tr2=document.createElement("tr");
+  tr2.innerHTML="<td>재질 · 표면처리</td><td>"+s.mat+(s.fin&&s.fin!=="—"?" · "+s.fin:"")+"</td>";
+  tb.appendChild(tr2);
+  $("note").textContent=s.note;
+  $("flag").innerHTML = s.warn
+    ? '<p class="flag"><b>'+s.warn.t+'</b>'+s.warn.s+'</p>' : "";
+  $("hud").textContent=ok?(s.code+" · "+s.name):"";
+  dist=s.fit*1.55; az=-0.72; el=0.26;
+  Array.prototype.forEach.call($("index").children,function(b,k){
+    b.setAttribute("aria-pressed",k===cur?"true":"false");});
+  setLabels();
+}
+function syncT(id,v){$(id).setAttribute("aria-pressed",v?"true":"false");}
+$("tDim").addEventListener("click",function(){showDim=!showDim;syncT("tDim",showDim);});
+$("tCut").addEventListener("click",function(){showCut=!showCut;syncT("tCut",showCut);});
+$("tSpin").addEventListener("click",function(){spin=!spin;syncT("tSpin",spin);});
+$("tReset").addEventListener("click",function(){az=-0.72;el=0.26;dist=SHEETS[cur].fit*1.55;});
+$("prev").addEventListener("click",function(){go(cur-1);});
+$("next").addEventListener("click",function(){go(cur+1);});
+
+var drag=false,lx=0,ly=0;
+function down(e){drag=true;spin=false;syncT("tSpin",false);stage.classList.add("dragging");
+  lx=(e.touches?e.touches[0].clientX:e.clientX);ly=(e.touches?e.touches[0].clientY:e.clientY);}
+function mv(e){if(!drag)return;
+  var X=(e.touches?e.touches[0].clientX:e.clientX),Y=(e.touches?e.touches[0].clientY:e.clientY);
+  az-=(X-lx)*0.009; el+=(Y-ly)*0.007; el=Math.max(-0.9,Math.min(1.25,el));
+  lx=X;ly=Y; if(e.cancelable)e.preventDefault();}
+function up(){drag=false;stage.classList.remove("dragging");}
+stage.addEventListener("mousedown",down);
+window.addEventListener("mousemove",mv); window.addEventListener("mouseup",up);
+stage.addEventListener("touchstart",down,{passive:true});
+stage.addEventListener("touchmove",mv,{passive:false});
+window.addEventListener("touchend",up);
+stage.addEventListener("wheel",function(e){
+  var f=SHEETS[cur].fit;
+  dist*=(1+Math.sign(e.deltaY)*0.09);
+  dist=Math.max(f*0.55,Math.min(f*3.4,dist)); e.preventDefault();
+},{passive:false});
+
+/* ======================================================================
+   8. 렌더
+   ====================================================================== */
+function resize(){
+  var dpr=Math.min(window.devicePixelRatio||1,2),w=stage.clientWidth,h=stage.clientHeight;
+  if(canvas.width!==Math.floor(w*dpr)||canvas.height!==Math.floor(h*dpr)){
+    canvas.width=Math.floor(w*dpr);canvas.height=Math.floor(h*dpr);}
+  gl.viewport(0,0,canvas.width,canvas.height); return w/h;
+}
+if(window.matchMedia("(prefers-reduced-motion: reduce)").matches) spin=false;
+var last=0;
+function frame(t){
+  var dt=Math.min(0.05,(t-last)/1000)||0; last=t;
+  if(spin) az+=dt*0.22;
+  var s=SHEETS[cur], asp=resize(), tgt=s.mid;
+  var ce=Math.cos(el);
+  var eye=[tgt[0]+Math.sin(az)*ce*dist, tgt[1]+Math.sin(el)*dist, tgt[2]+Math.cos(az)*ce*dist];
+  var proj=m4persp(0.58,asp,s.fit*0.04,s.fit*14), viewM=m4look(eye,tgt,[0,1,0]);
+
+  gl.clearColor(0,0,0,0); gl.enable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE);
+  gl.disable(gl.BLEND); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  gl.uniformMatrix4fv(U.uProj,false,proj);
+  gl.uniformMatrix4fv(U.uView,false,viewM);
+  gl.uniform3fv(U.uEye,new Float32Array(eye));
+  gl.uniform2f(U.uFwd,Math.sin(az),Math.cos(az));
+  gl.uniform1f(U.uCut, 0.0);
+  gl.uniform1f(U.uCuttable, showCut?1:0);
+  gl.uniform1f(U.uHoleN, s.holes.length);
+  gl.uniform2f(U.uHoleY, s.holeY[0]-0.5, s.holeY[1]+0.5);
+  for(var k=0;k<10;k++){var h=s.holes[k]||[0,0,-1];
+    gl.uniform3f(U.uHole[k],h[0],h[1],h[2]);}
+
+  /* 형상 */
+  gl.uniform1f(U.uFlat,0); gl.uniform1f(U.uMetal,0.88);
+  gl.uniform3fv(U.uColor,new Float32Array(STEEL));
+  gl.bindBuffer(gl.ARRAY_BUFFER,vbo);
+  gl.enableVertexAttribArray(A.pos);gl.vertexAttribPointer(A.pos,3,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,nbo);
+  gl.enableVertexAttribArray(A.nor);gl.vertexAttribPointer(A.nor,3,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ibo);
+  gl.drawElements(gl.TRIANGLES,s.iCount,ITYPE,s.iStart*ISIZE);
+
+  /* 치수선 */
+  if(showDim && s.lCount){
+    gl.uniform1f(U.uFlat,1); gl.uniform1f(U.uCuttable,0);
+    gl.uniform1f(U.uHoleN,0);
+    gl.uniform3fv(U.uColor,new Float32Array(LINEC));
+    gl.bindBuffer(gl.ARRAY_BUFFER,lbo);
+    gl.vertexAttribPointer(A.pos,3,gl.FLOAT,false,0,0);
+    gl.vertexAttribPointer(A.nor,3,gl.FLOAT,false,0,0);
+    gl.disable(gl.DEPTH_TEST);
+    gl.drawArrays(gl.LINES,s.lStart/3,s.lCount/3);
+    gl.enable(gl.DEPTH_TEST);
+  }
+
+  /* 치수 문자 */
+  var vp=m4mul(proj,viewM);
+  labelEls.forEach(function(e){
+    if(!showDim){e.classList.remove("on");return;}
+    var p=LB[e._i].p;
+    var X=vp[0]*p[0]+vp[4]*p[1]+vp[8]*p[2]+vp[12];
+    var Y=vp[1]*p[0]+vp[5]*p[1]+vp[9]*p[2]+vp[13];
+    var W=vp[3]*p[0]+vp[7]*p[1]+vp[11]*p[2]+vp[15];
+    if(W<=0){e.classList.remove("on");return;}
+    var sx=(X/W*0.5+0.5)*stage.clientWidth, sy=(-Y/W*0.5+0.5)*stage.clientHeight;
+    if(sx<-40||sy<-14||sx>stage.clientWidth+40||sy>stage.clientHeight+14){
+      e.classList.remove("on");return;}
+    e.style.left=sx+"px"; e.style.top=sy+"px"; e.classList.add("on");
+  });
+  requestAnimationFrame(frame);
+}
+
+buildIndex(); go(0);
+syncT("tDim",showDim); syncT("tCut",showCut); syncT("tSpin",spin);
+if(ok) requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
