@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="MP-50 염수 자연 밀도분리조의 운전조건 콘솔. 염도·온도·정치시간·분산시간·rpm·공기량·스키밍 깊이·Feed 조성을 움직이면 밀도컷, 기포경, 부착률, 4개 KPI 가 Monte Carlo P10/P90 과 함께 다시 계산된다.">
+<title>MP-50 운전조건 콘솔</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap">
+
+<style>
+  /* 다크 우선 계기판 — 라이트도 같은 토큰 세트로 완결시킨다 */
+  :root{
+    --bg:#0B1117; --panel:#121A22; --panel-2:#17212B; --panel-3:#1D2937;
+    --line:#26364A; --line-2:#374A61;
+    --ink:#E7EFF5; --ink-2:#9FB2C1; --ink-3:#71879A;
+    --brine:#3E7C86; --brine-ink:#5FBECB;
+    --eva:#C6862B; --bs:#CC5E7E; --si:#4A90DC;
+    --good:#57B98A; --warn:#E0A24A; --bad:#E0715F;
+    --sans:"IBM Plex Sans KR",system-ui,-apple-system,"Malgun Gothic",sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#E9EDF0; --panel:#FFFFFF; --panel-2:#F3F6F8; --panel-3:#E8EEF2;
+      --line:#CBD5DD; --line-2:#A9B7C3;
+      --ink:#141C23; --ink-2:#53626D; --ink-3:#7A8894;
+      --brine:#2E7A85; --brine-ink:#0F6E7A;
+      --eva:#C07C10; --bs:#B03060; --si:#2A6FD6;
+      --good:#2C6B52; --warn:#8A5A12; --bad:#A8442C;
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#E9EDF0; --panel:#FFFFFF; --panel-2:#F3F6F8; --panel-3:#E8EEF2;
+    --line:#CBD5DD; --line-2:#A9B7C3;
+    --ink:#141C23; --ink-2:#53626D; --ink-3:#7A8894;
+    --brine:#2E7A85; --brine-ink:#0F6E7A;
+    --eva:#C07C10; --bs:#B03060; --si:#2A6FD6;
+    --good:#2C6B52; --warn:#8A5A12; --bad:#A8442C;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;
+       -webkit-font-smoothing:antialiased}
+  :focus-visible{outline:2px solid var(--brine-ink);outline-offset:2px}
+
+  header{padding:13px 18px;border-bottom:1px solid var(--line);background:var(--panel);
+         display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  h1{font-size:16px;margin:0;font-weight:600;letter-spacing:-.01em}
+  .sub{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+  .pills{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .badge{padding:4px 10px;border:1px solid var(--line);border-radius:999px;font-size:11px;
+         color:var(--ink-2);font-family:var(--mono);white-space:nowrap}
+  .badge.on{border-color:var(--good);color:var(--good)}
+  .badge.off{border-color:var(--bad);color:var(--bad)}
+  .theme-btn{padding:4px 10px;border:1px solid var(--line);border-radius:999px;font-size:11px;
+             font-family:var(--mono);color:var(--ink-2);background:transparent;cursor:pointer}
+  .theme-btn:hover{color:var(--ink);border-color:var(--line-2)}
+
+  main{display:grid;grid-template-columns:308px minmax(420px,1fr) 336px;gap:12px;
+       padding:12px 18px 40px;align-items:start;max-width:1560px;margin:0 auto}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 13px}
+  .panel h2,.chart h2{font-size:11px;margin:0 0 9px;font-family:var(--mono);letter-spacing:.12em;
+            text-transform:uppercase;color:var(--ink-3);font-weight:600;
+            display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .panel h2 .u,.chart h2 .u{text-transform:none;letter-spacing:0;color:var(--ink-3);
+            font-weight:400;white-space:nowrap}
+  .stack{display:flex;flex-direction:column;gap:12px;min-width:0}
+  .small{font-size:11px;color:var(--ink-3);line-height:1.5}
+  hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+
+  .control{margin:9px 0}
+  .control label{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;
+                 color:var(--ink-2);margin-bottom:3px}
+  .control label b{font-family:var(--mono);color:var(--ink);font-weight:600;
+                   font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--brine-ink);margin:0;height:20px}
+  .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{flex:1;font-family:var(--mono);font-size:11px;padding:6px 2px;background:transparent;
+              color:var(--ink-2);border:0;border-right:1px solid var(--line);cursor:pointer}
+  .seg button:last-child{border-right:0}
+  .seg button[aria-pressed="true"]{background:var(--brine-ink);color:#fff}
+  .seg button:hover:not([aria-pressed="true"]){background:var(--panel-3);color:var(--ink)}
+  .row{display:flex;gap:7px}.row>*{flex:1}
+  .btn{padding:8px 10px;border-radius:8px;border:1px solid var(--line-2);background:var(--panel-2);
+       color:var(--ink);font-family:var(--sans);font-size:12px;font-weight:500;cursor:pointer}
+  .btn:hover{border-color:var(--brine-ink);color:var(--brine-ink)}
+  .btn.primary{background:var(--brine-ink);border-color:var(--brine-ink);color:#fff}
+  .btn.primary:hover{filter:brightness(1.1);color:#fff}
+
+  .verdict{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .verdict .txt{font-size:13px;color:var(--ink-2)}
+  .verdict .txt b{color:var(--ink);font-weight:600}
+  .stamp{font-family:var(--mono);font-size:13px;font-weight:600;padding:5px 14px;border-radius:8px;
+         border:1px solid currentColor;white-space:nowrap}
+  .stamp.pass{color:var(--good)} .stamp.fail{color:var(--bad)}
+
+  .chart{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 13px}
+  .chart canvas{display:block;width:100%}
+  #cutC{height:186px} #kinC{height:196px}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-size:11px;color:var(--ink-2)}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .legend i{width:9px;height:9px;display:inline-block}
+  .legend i.eva{background:var(--eva);border-radius:50%}
+  .legend i.bs{background:var(--bs)}
+  .legend i.si{background:var(--si);clip-path:polygon(50% 0,100% 100%,0 100%)}
+  .legend i.cut{background:var(--brine-ink);width:2px;height:12px}
+
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .kpi{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+  .kpi small{display:block;font-size:10.5px;color:var(--ink-3);line-height:1.35}
+  .kpi b{display:block;font-family:var(--mono);font-size:19px;font-weight:600;margin:2px 0 1px;
+         font-variant-numeric:tabular-nums}
+  .kpi .band{font-family:var(--mono);font-size:10px;color:var(--ink-3)}
+  .kpi.pass{border-color:color-mix(in srgb,var(--good) 55%,var(--line))}
+  .kpi.fail{border-color:color-mix(in srgb,var(--bad) 55%,var(--line))}
+  .kpi.pass b{color:var(--good)} .kpi.fail b{color:var(--bad)}
+
+  table{width:100%;border-collapse:collapse;font-size:11px}
+  th,td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;
+        font-variant-numeric:tabular-nums}
+  th{font-weight:500;color:var(--ink-3);font-size:10.5px;white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  td{font-family:var(--mono)}
+  td.name{font-family:var(--sans);color:var(--ink-2)}
+  tbody tr:last-child td{border-bottom:0}
+  .tw{overflow-x:auto}
+  .up{color:var(--eva)} .dn{color:var(--si)} .neu{color:var(--ink-3)}
+
+  .out{display:grid;grid-template-columns:1fr auto;gap:3px 10px;font-size:11.5px;
+       color:var(--ink-2);align-items:baseline}
+  .out b{font-family:var(--mono);color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
+  .out .w{color:var(--warn)} .out .d{color:var(--bad)} .out .g{color:var(--good)}
+
+  .alerts{display:flex;flex-direction:column;gap:7px}
+  .alert{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;font-size:11.5px;
+         line-height:1.45;padding:8px 9px;border-radius:8px;background:var(--panel-2);
+         border-left:3px solid var(--warn);color:var(--ink-2)}
+  .alert.bad{border-left-color:var(--bad)}
+  .alert.ok{border-left-color:var(--good)}
+  .alert .k{font-family:var(--mono);font-size:10px;color:var(--ink-3);white-space:nowrap;padding-top:1px}
+  .alert b{color:var(--ink);font-weight:500}
+
+  footer{padding:0 18px 44px;max-width:1560px;margin:0 auto;color:var(--ink-3);font-size:11.5px}
+  footer p{max-width:78ch;margin:0 0 8px}
+  footer code{font-family:var(--mono);color:var(--ink-2)}
+
+  @media (max-width:1180px){
+    main{grid-template-columns:1fr}
+    .stack.center{order:-1}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>MP-50 운전조건 콘솔</h1>
+    <div class="sub">염수 자연 밀도분리조 · 50 L 파일럿 · 기준 도면 MP-50-P0-001~011 Rev.A</div>
+  </div>
+  <div class="pills">
+    <span class="badge" id="pillCut">밀도컷 —</span>
+    <span class="badge" id="pillBub">기포 —</span>
+    <span class="badge" id="pillSus">현탁 —</span>
+    <button class="theme-btn" id="theme" type="button">테마</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ══ 좌: 요인 ══════════════════════════════════════════════════════ -->
+<div class="stack">
+  <section class="panel">
+    <h2>공정 조건</h2>
+    <div class="control"><label for="w">염수 NaCl <b><span id="wV">15.0</span> wt%</b></label>
+      <input type="range" id="w" min="8" max="26" step="0.5" value="15"></div>
+    <div class="control"><label for="T">온도 <b><span id="TV">20</span> °C</b></label>
+      <input type="range" id="T" min="5" max="45" step="1" value="20"></div>
+    <div class="control"><label for="mix">분산 시간 <b><span id="mixV">10</span> min</b></label>
+      <input type="range" id="mix" min="0.5" max="60" step="0.5" value="10"></div>
+    <div class="control"><label for="set">정치 시간 <b><span id="setV">600</span> s</b></label>
+      <input type="range" id="set" min="60" max="2400" step="30" value="600"></div>
+    <div class="control"><label for="rpm">임펠러 <b><span id="rpmV">90</span> rpm</b></label>
+      <input type="range" id="rpm" min="20" max="140" step="5" value="90"></div>
+    <div class="control"><label for="air">공기량 <b><span id="airV">5.0</span> L/min</b></label>
+      <input type="range" id="air" min="0" max="15" step="0.5" value="5"></div>
+    <div class="control"><label for="skim">스키밍 깊이 <b><span id="skimV">30</span> mm</b></label>
+      <input type="range" id="skim" min="5" max="80" step="5" value="30"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Feed<span class="u" id="feedNote"></span></h2>
+    <div class="control"><label for="kg">투입량 <b><span id="kgV">5.0</span> kg</b></label>
+      <input type="range" id="kg" min="0.5" max="10" step="0.5" value="5"></div>
+    <div class="control"><label for="si">Si 비율 <b><span id="siV">87.5</span> wt%</b></label>
+      <input type="range" id="si" min="80" max="95" step="0.5" value="87.5"></div>
+    <div class="control"><label for="eva">폴리머 중 EVA <b><span id="evaV">50</span> %</b></label>
+      <input type="range" id="eva" min="0" max="100" step="5" value="50"></div>
+  </section>
+
+  <section class="panel">
+    <h2>기포 모델 <span class="u">ASSUMED</span></h2>
+    <div class="seg" id="bubMode" role="group" aria-label="기포경 결정 방식">
+      <button type="button" data-m="auto" aria-pressed="true">장치에서 계산</button>
+      <button type="button" data-m="man">직접 지정</button>
+    </div>
+    <div class="control" id="bubManual" hidden><label for="db">기포경 <b><span id="dbV">200</span> µm</b></label>
+      <input type="range" id="db" min="50" max="4000" step="50" value="200"></div>
+    <div class="control"><label for="ret">정치 중 부착 유지율 <b><span id="retV">70</span> %</b></label>
+      <input type="range" id="ret" min="0" max="100" step="5" value="70"></div>
+    <div class="control"><label for="kf">부착속도 보정계수 <b>×<span id="kfV">1.0</span></b></label>
+      <input type="range" id="kf" min="-1" max="1" step="0.05" value="0"></div>
+    <div class="control"><label for="sel">소수성 선택도 (폴리머 : 실리콘) <b><span id="selV">100</span> : 1</b></label>
+      <input type="range" id="sel" min="0" max="3" step="0.1" value="2"></div>
+    <div class="control"><label for="mc">Monte Carlo 표본 <b><span id="mcV">300</span></b></label>
+      <input type="range" id="mc" min="100" max="1500" step="100" value="300"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary" id="snap" type="button">조건 저장</button>
+      <button class="btn" id="reset" type="button">기본값</button>
+    </div>
+  </section>
+</div>
+
+<!-- ══ 중앙: 판정 · 차트 · 비교 ═══════════════════════════════════════ -->
+<div class="stack center">
+  <section class="panel verdict">
+    <div class="txt" id="verdictTxt">계산 중…</div>
+    <div class="stamp fail" id="verdictStamp">—</div>
+  </section>
+
+  <section class="chart">
+    <h2>밀도컷과 유효밀도 분포 <span class="u" id="cutNote"></span></h2>
+    <canvas id="cutC"></canvas>
+    <div class="legend">
+      <span><i class="eva"></i>EVA</span><span><i class="bs"></i>백시트</span>
+      <span><i class="si"></i>실리콘</span><span><i class="cut"></i>염수 밀도컷</span>
+      <span class="small">막대는 ±1σ · 컷 왼쪽이면 부상</span>
+    </div>
+  </section>
+
+  <section class="chart">
+    <h2>층 도달률 vs 정치시간 <span class="u" id="kinNote"></span></h2>
+    <canvas id="kinC"></canvas>
+    <div class="legend">
+      <span><i class="eva"></i>EVA → FLOAT</span><span><i class="bs"></i>백시트 → FLOAT</span>
+      <span><i class="si"></i>실리콘 → SINK</span><span class="small">세로선 = 현재 정치시간</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>조건 비교 <span class="u"><button class="theme-btn" id="clearSnap" type="button">지우기</button></span></h2>
+    <div class="tw"><table id="snapT">
+      <thead><tr><th>#</th><th>wt%</th><th>°C</th><th>rpm</th><th>Air</th><th>분산</th><th>정치</th>
+        <th>Top 폴리머</th><th>Top Si</th><th>Bottom Si</th><th>판정</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <p class="small" id="snapHint" style="margin:9px 0 0">「조건 저장」 을 누르면 지금 설정이 이 표에 쌓인다. 브라우저에만 남는다.</p>
+  </section>
+</div>
+
+<!-- ══ 우: KPI · 계산 결과 ════════════════════════════════════════════ -->
+<div class="stack">
+  <section class="panel">
+    <h2>KPI <span class="u">P10 / P90 · MC</span></h2>
+    <div class="kpis">
+      <div class="kpi" id="k1"><small>Top polymer recovery<br>P10 ≥ 80 %</small><b>—</b><span class="band"></span></div>
+      <div class="kpi" id="k2"><small>Top Si loss<br>P90 ≤ 3 %</small><b>—</b><span class="band"></span></div>
+      <div class="kpi" id="k3"><small>Bottom Si recovery<br>P10 ≥ 90 %</small><b>—</b><span class="band"></span></div>
+      <div class="kpi" id="k4"><small>Bottom polymer<br>P90 ≤ 12 %</small><b>—</b><span class="band"></span></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>장치가 만드는 기포</h2>
+    <div class="out" id="outBub"></div>
+  </section>
+
+  <section class="panel">
+    <h2>교반 · 염수 · 침전</h2>
+    <div class="out" id="outMix"></div>
+  </section>
+
+  <section class="panel">
+    <h2>3×3 셀 <span class="u">부착률 · 통과시간</span></h2>
+    <div class="tw"><table id="cellT">
+      <thead><tr><th>셀</th><th>ρ eff</th><th>부착</th><th>통과</th><th>도달</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <section class="panel">
+    <h2>경고</h2>
+    <div class="alerts" id="alerts"></div>
+  </section>
+</div>
+</main>
+
+<footer>
+  <p><b>모델.</b> 염수 <code>ρ=998+7.55w</code>, <code>µ₂₀=0.001(1+0.018w)</code> 에 물의 온도의존성을 곱한다.
+    종말속도는 Stokes 초기값을 Schiller-Naumann 항력으로 수렴시킨다. 기포경은 Ø1.0 홀의 Tate 이탈경과
+    임펠러 난류의 Hinze 파쇄한계 <code>d=0.725(σ/ρ)^0.6 ε^−0.4</code> 중 작은 쪽이다.
+    부착은 1차 부선속도 <code>k=1.5·U_g·E/d_b</code>, 차단 포집 <code>E=(d_p/d_b)²</code> 에 소수성 계수(실리콘은 선택도의 역수)를 곱해
+    <code>1−exp(−k·t_mix)</code>. Njs 는 Zwietering 이고 S 는 D/T 로 보정했다.</p>
+  <p><b>Monte Carlo.</b> 3×3 유효밀도의 평균을 <code>N(µ,σ)</code> 에서 표본하여 배치 간 산포를 만들고,
+    그 분포의 10 / 90 백분위로 KPI 를 판정한다. 표본 수는 왼쪽에서 조정한다.</p>
+  <p><b>한계.</b> 여기 나오는 값은 <b>설계 참고값이며 성능 보증값이 아니다.</b> 응집·간섭침강·벽면 효과·형상계수를
+    넣지 않은 단일 입자 모델이고, 유효밀도 µ·σ, 부착 유지율, 부착속도 보정계수, 연행 계수는 모두 가정이다.
+    실측으로 역추정한 뒤에야 <code>ASSUMED → CALIBRATED</code> 로 바꿀 수 있다.</p>
+</footer>
+
+<script>
+(function(){
+"use strict";
+
+/* ══ 설계 상수 (도면 Rev.A) ═══════════════════════════════════════════ */
+var ID=0.400, R=0.200, HALF=Math.PI/6, TAN=Math.tan(HALF);
+var APEX=R/TAN, Z_TAN=APEX*1000, Z_LEVEL=720, Z_RING=300;
+var TRAVEL=(Z_LEVEL-Z_TAN)/1000;          // 0.37359 m
+var AREA=Math.PI/4*ID*ID, V_LIQ=61.46e-3; // m2, m3
+var D_IMP=0.300, NP=1.27, G=9.81, SIG=0.076, RHO_AIR=1.2, RHO_SI=2330, PACK=0.55;
+var D_HOLE=1.0e-3, N_HOLE=60;
+var BINS=[[31,45],[45,60],[60,75]], BINW=[0.33,0.34,0.33];
+var MATS=[
+  {id:"EVA", ko:"EVA",   rho:[[980,70],[950,60],[920,50]],    poly:true,  phob:1.0},
+  {id:"BS",  ko:"백시트", rho:[[1110,100],[1060,90],[1010,80]], poly:true,  phob:0.85},
+  {id:"Si",  ko:"실리콘", rho:[[2330,25],[2330,22],[2330,20]],  poly:false, phob:0}
+];
+var LIM={poly:80, siLoss:3, siRec:90, botPoly:12};
+
+/* ══ 물성 ═════════════════════════════════════════════════════════════ */
+function rhoBr(w){ return 998+7.55*w; }
+function muW(T){ return Math.exp(-3.7188+578.919/(T+273.15-137.546)); }
+function muBr(w,T){ return 0.001*(1+0.018*w)*muW(T)/muW(20); }
+function dp(i){ return (BINS[i][0]+BINS[i][1])/2*1e-6; }
+
+function terminal(rho_p,d,w,T){            // + 침강 (m/s)
+  var rho=rhoBr(w), mu=muBr(w,T), dr=rho_p-rho;
+  if(Math.abs(dr)<1e-9) return 0;
+  var v=dr*G*d*d/(18*mu);
+  for(var i=0;i<160;i++){
+    var re=Math.max(Math.abs(rho*v*d/mu),1e-9);
+    var cd=re<1000?24/re*(1+0.15*Math.pow(re,0.687)):0.44;
+    var vn=Math.sqrt(Math.abs(4*dr*G*d/(3*cd*rho)))*(dr<0?-1:1);
+    if(Math.abs(vn-v)<1e-11) return vn;
+    v=0.5*(v+vn);
+  }
+  return v;
+}
+function aggregate(rho_p,d_p,d_b){
+  var vp=Math.PI/6*d_p*d_p*d_p, vb=Math.PI/6*d_b*d_b*d_b;
+  return [(rho_p*vp+RHO_AIR*vb)/(vp+vb), Math.pow(6*(vp+vb)/Math.PI,1/3)];
+}
+
+/* ══ 장치가 만드는 기포 ═══════════════════════════════════════════════ */
+function bubbles(s){
+  var rho=rhoBr(s.w), n=s.rpm/60;
+  var P=2*NP*rho*n*n*n*Math.pow(D_IMP,5);          // 2단 PBT
+  var eps=P/(V_LIQ*rho);
+  var dDet=Math.pow(6*D_HOLE*SIG/(G*(rho-RHO_AIR)),1/3);
+  var dHin=eps>1e-9 ? 0.725*Math.pow(SIG/rho,0.6)*Math.pow(eps,-0.4) : Infinity;
+  var dAuto=Math.min(dDet,dHin);
+  var epsNeed=Math.pow(0.725*Math.pow(SIG/rho,0.6)/200e-6,2.5);
+  return {P:P, eps:eps, dDet:dDet, dHin:dHin,
+          d_b:(s.bubMode==="man"? s.db*1e-6 : dAuto), auto:dAuto,
+          tip:Math.PI*D_IMP*n, epsNeed:epsNeed};
+}
+function njs(s){
+  var rho=rhoBr(s.w), mu=muBr(s.w,s.T);
+  var X=s.kg/(V_LIQ*rho)*100;
+  var S=6.0*Math.pow(0.5/(D_IMP/ID),1.3);
+  return S*Math.pow(mu/rho,0.1)*Math.pow(G*(RHO_SI-rho)/rho,0.45)*
+         Math.pow(X,0.13)*Math.pow(50e-6,0.2)/Math.pow(D_IMP,0.85)*60;
+}
+/* 부착 — 1차 부선속도. E 는 차단 포집에 소수성 계수를 곱한다 */
+function attachFrac(s,B,i,mat){
+  if(s.air<=0) return 0;
+  var Ug=s.air/1000/60/AREA;
+  var ph=mat.poly ? mat.phob : 1/s.sel;      // 실리콘은 친수성 — 선택도로 낮춘다
+  var E=Math.pow(dp(i)/B.d_b,2)*ph*s.kf;
+  var k=1.5*Ug*E/B.d_b;
+  return 1-Math.exp(-k*s.mix*60);
+}
+
+/* ══ 결정론 계산 (한 세트의 유효밀도에 대해) ═════════════════════════ */
+function evaluate(s,B,rhoOf){
+  var polyMass=0, polyTop=0, siMass=0, siSunk=0, siTop=0, botPoly=0;
+  var cells=[];
+  for(var m=0;m<MATS.length;m++){
+    var M=MATS[m];
+    var share=M.poly ? (1-s.si/100)*(M.id==="EVA"? s.eva/100 : 1-s.eva/100) : s.si/100;
+    for(var i=0;i<3;i++){
+      var mass=share*BINW[i];
+      var rp=rhoOf(m,i);
+      var att=attachFrac(s,B,i,M)*s.ret;
+      // 기포가 붙은 입자
+      var ag=aggregate(rp,dp(i),B.d_b), vB=terminal(ag[0],ag[1],s.w,s.T);
+      var tB=vB<0 ? TRAVEL/Math.abs(vB) : Infinity;
+      var fAtt=att*(s.set>=tB?1:0);
+      // 붙지 않은 입자
+      var v=terminal(rp,dp(i),s.w,s.T);
+      var t=Math.abs(v)<1e-12 ? Infinity : TRAVEL/Math.abs(v);
+      var reach=Math.min(1,s.set/t);
+      var fUp=(1-att)*(v<0?reach:0), fDn=(1-att)*(v>0?reach:0);
+      var top=fAtt+fUp, sunk=fDn, susp=1-top-sunk;
+      // 스키밍은 액면 아래 skim 두께만 걷는다 → 부유 중인 것의 일부가 함께 딸려 온다
+      var ent=susp*Math.min(1,s.skim/1000/TRAVEL);
+      top=Math.min(1,top+ent);
+      if(M.poly){ polyMass+=mass; polyTop+=mass*top; botPoly+=mass*sunk; }
+      else      { siMass+=mass;  siSunk+=mass*sunk; siTop+=mass*top; }
+      cells.push({m:m,i:i,rho:rp,att:att,t:t,reach:top,v:v});
+    }
+  }
+  var bottom=siSunk+botPoly;
+  return {
+    poly: polyMass>0 ? polyTop/polyMass*100 : 0,
+    siLoss: siMass>0 ? siTop/siMass*100 : 0,
+    siRec: siMass>0 ? siSunk/siMass*100 : 0,
+    botPoly: bottom>0 ? botPoly/bottom*100 : 0,
+    cells: cells
+  };
+}
+
+/* ══ Monte Carlo — 배치 간 유효밀도 산포 ═════════════════════════════ */
+var seed=1;
+function rnd(){ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; }
+function gauss(){ var u=1-rnd(), v=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function pct(a,p){ var b=a.slice().sort(function(x,y){return x-y;});
+  return b[Math.min(b.length-1,Math.max(0,Math.round((b.length-1)*p)))]; }
+
+function run(s){
+  var B=bubbles(s);
+  var base=evaluate(s,B,function(m,i){ return MATS[m].rho[i][0]; });
+  seed=20260911;
+  var P={poly:[],siLoss:[],siRec:[],botPoly:[]};
+  for(var n=0;n<s.mc;n++){
+    var draw=[];
+    for(var m=0;m<3;m++){ draw.push([]);
+      for(var i=0;i<3;i++) draw[m].push(Math.max(300,MATS[m].rho[i][0]+MATS[m].rho[i][1]*gauss())); }
+    var r=evaluate(s,B,function(m,i){ return draw[m][i]; });
+    P.poly.push(r.poly); P.siLoss.push(r.siLoss); P.siRec.push(r.siRec); P.botPoly.push(r.botPoly);
+  }
+  return {B:B, base:base, njs:njs(s),
+    kpi:{
+      poly:{v:base.poly, p10:pct(P.poly,0.10), p90:pct(P.poly,0.90), ok:pct(P.poly,0.10)>=LIM.poly},
+      siLoss:{v:base.siLoss, p10:pct(P.siLoss,0.10), p90:pct(P.siLoss,0.90), ok:pct(P.siLoss,0.90)<=LIM.siLoss},
+      siRec:{v:base.siRec, p10:pct(P.siRec,0.10), p90:pct(P.siRec,0.90), ok:pct(P.siRec,0.10)>=LIM.siRec},
+      botPoly:{v:base.botPoly, p10:pct(P.botPoly,0.10), p90:pct(P.botPoly,0.90), ok:pct(P.botPoly,0.90)<=LIM.botPoly}
+    }};
+}
+
+/* ══ 상태 ═════════════════════════════════════════════════════════════ */
+var S={w:15,T:20,mix:10,set:600,rpm:90,air:5,skim:30,kg:5,si:87.5,eva:50,
+       bubMode:"auto",db:200,ret:0.70,kf:1,sel:100,mc:300};
+var IDS=["w","T","mix","set","rpm","air","skim","kg","si","eva","db","ret","kf","sel","mc"];
+var DEC={w:1,T:0,mix:1,set:0,rpm:0,air:1,skim:0,kg:1,si:1,eva:0,db:0,ret:0,kf:2,sel:0,mc:0};
+function $(id){ return document.getElementById(id); }
+
+function readInputs(){
+  S.w=+$("w").value; S.T=+$("T").value; S.mix=+$("mix").value; S.set=+$("set").value;
+  S.rpm=+$("rpm").value; S.air=+$("air").value; S.skim=+$("skim").value;
+  S.kg=+$("kg").value; S.si=+$("si").value; S.eva=+$("eva").value;
+  S.db=+$("db").value; S.ret=+$("ret").value/100; S.kf=Math.pow(10,+$("kf").value);
+  S.sel=Math.pow(10,+$("sel").value); S.mc=+$("mc").value;
+  IDS.forEach(function(k){
+    var el=$(k+"V"); if(!el) return;
+    var raw=+$(k).value;
+    el.textContent = k==="kf" ? Math.pow(10,raw).toFixed(2)
+                   : k==="sel" ? Math.round(Math.pow(10,raw)).toLocaleString("en-US")
+                   : raw.toFixed(DEC[k]);
+  });
+}
+
+/* ══ 그리기 ═══════════════════════════════════════════════════════════ */
+var CS={};
+function tok(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function readTokens(){ ["--ink","--ink-2","--ink-3","--line","--line-2","--brine-ink","--eva","--bs",
+  "--si","--good","--warn","--bad","--panel","--panel-2"].forEach(function(k){CS[k]=tok(k);}); }
+function mix(hex,a){ var h=hex.replace("#","");
+  if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  var n=parseInt(h,16); return "rgba("+(n>>16&255)+","+(n>>8&255)+","+(n&255)+","+a+")"; }
+function fit(cv,h){ var r=cv.getBoundingClientRect(), d=Math.min(2,window.devicePixelRatio||1);
+  cv.width=Math.max(240,r.width*d); cv.height=h*d;
+  var c=cv.getContext("2d"); c.setTransform(d,0,0,d,0,0); return [c,r.width||360,h]; }
+function matColor(m){ return m===0?CS["--eva"]:m===1?CS["--bs"]:CS["--si"]; }
+function marker(c,m,x,y,s){
+  c.beginPath();
+  if(m===0){ c.arc(x,y,s,0,6.284); }
+  else if(m===1){ c.rect(x-s,y-s,2*s,2*s); }
+  else { c.moveTo(x,y-s*1.2); c.lineTo(x+s*1.1,y+s*0.85); c.lineTo(x-s*1.1,y+s*0.85); c.closePath(); }
+  c.fill();
+}
+
+function drawCut(res){
+  var f=fit($("cutC"),186), c=f[0], W=f[1], H=f[2];
+  var L=42, Rr=18, Tp=16, B=26, pw=W-L-Rr, ph=H-Tp-B;
+  var lo=880, hi=1260;                       // 실리콘은 축 밖 — 오른쪽에 따로 표시
+  var X=function(r){ return L+pw*Math.min(1,Math.max(0,(r-lo)/(hi-lo))); };
+  c.clearRect(0,0,W,H);
+  c.font="10px "+"'IBM Plex Mono',monospace"; c.textBaseline="middle";
+  // 축
+  c.strokeStyle=mix(CS["--line"],1); c.lineWidth=1;
+  for(var r=900;r<=1200;r+=50){
+    c.beginPath(); c.moveTo(X(r),Tp); c.lineTo(X(r),Tp+ph); c.stroke();
+    c.fillStyle=CS["--ink-3"]; c.textAlign="center"; c.fillText(String(r),X(r),H-10);
+  }
+  c.textAlign="left"; c.fillStyle=CS["--ink-3"]; c.fillText("kg/m³",L-38,H-10);
+  // 밀도컷
+  var cut=rhoBr(S.w), xc=X(cut);
+  c.strokeStyle=CS["--brine-ink"]; c.lineWidth=2;
+  c.beginPath(); c.moveTo(xc,Tp-6); c.lineTo(xc,Tp+ph+2); c.stroke();
+  c.fillStyle=CS["--brine-ink"]; c.textAlign=xc>W-90?"right":"left";
+  c.fillText("염수 "+cut.toFixed(0),xc+(xc>W-90?-5:5),Tp-8);
+  // 셀
+  var rows=9, gap=ph/rows;
+  res.base.cells.forEach(function(cell,k){
+    var y=Tp+gap*(k+0.5), col=matColor(cell.m), sg=MATS[cell.m].rho[cell.i][1];
+    if(cell.m===2){                            // 축 밖 — 오른쪽 끝에 화살표로
+      if(cell.i===1){ c.fillStyle=mix(col,0.9); c.textAlign="right";
+        c.fillText("실리콘 2330 →",W-18,y); }
+      c.fillStyle=col; marker(c,2,W-8,y,3.4);
+      return;
+    }
+    c.strokeStyle=mix(col,0.55); c.lineWidth=5; c.lineCap="butt";
+    c.beginPath(); c.moveTo(X(cell.rho-sg),y); c.lineTo(X(cell.rho+sg),y); c.stroke();
+    c.fillStyle=col; marker(c,cell.m,X(cell.rho),y,3.8);
+    c.fillStyle=CS["--ink-3"]; c.textAlign="left"; c.font="9.5px 'IBM Plex Mono',monospace";
+    c.fillText(BINS[cell.i][0]+"–"+BINS[cell.i][1],L-40,y);
+    c.font="10px 'IBM Plex Mono',monospace";
+  });
+}
+
+function drawKin(res){
+  var f=fit($("kinC"),196), c=f[0], W=f[1], H=f[2];
+  var L=34, Rr=82, Tp=12, B=24, pw=W-L-Rr, ph=H-Tp-B;
+  var TMAX=Math.max(1200,S.set);
+  c.clearRect(0,0,W,H);
+  c.font="10px 'IBM Plex Mono',monospace"; c.textBaseline="middle";
+  [0,50,100].forEach(function(v){
+    var y=Tp+ph*(1-v/100);
+    c.strokeStyle=mix(CS["--line"],1); c.lineWidth=1;
+    c.beginPath(); c.moveTo(L,y); c.lineTo(L+pw,y); c.stroke();
+    c.fillStyle=CS["--ink-3"]; c.textAlign="right"; c.fillText(v+"%",L-5,y);
+  });
+  var y80=Tp+ph*0.2;
+  c.strokeStyle=mix(CS["--ink-3"],0.9); c.setLineDash([3,3]);
+  c.beginPath(); c.moveTo(L,y80); c.lineTo(L+pw,y80); c.stroke(); c.setLineDash([]);
+  c.fillStyle=CS["--ink-3"]; c.textAlign="left"; c.fillText("KPI 80",L+3,y80-8);
+  c.textAlign="center";
+  [0,TMAX/2,TMAX].forEach(function(v){
+    c.fillStyle=CS["--ink-3"]; c.fillText(Math.round(v)+(v===TMAX?" s":""),L+pw*v/TMAX,H-9); });
+
+  var N=44, keep=S.set, ends=[], series=[[],[],[]];
+  for(var i=0;i<=N;i++){
+    S.set=TMAX*i/N;
+    var r=evaluate(S,res.B,function(mm,ii){ return MATS[mm].rho[ii][0]; });
+    var acc=[[0,0],[0,0],[0,0]];
+    r.cells.forEach(function(cl){ acc[cl.m][0]+=BINW[cl.i]*cl.reach; acc[cl.m][1]+=BINW[cl.i]; });
+    for(var m=0;m<3;m++) series[m].push((m===2? r.siRec : acc[m][0]/acc[m][1]*100));
+  }
+  S.set=keep;
+  [0,1,2].forEach(function(m){
+    var col=matColor(m); c.strokeStyle=col; c.lineWidth=2; c.lineJoin="round"; c.beginPath();
+    for(var i=0;i<=N;i++){
+      var x=L+pw*(i/N), y=Tp+ph*(1-series[m][i]/100);
+      i?c.lineTo(x,y):c.moveTo(x,y);
+    }
+    c.stroke();
+    ends.push({y:Tp+ph*(1-series[m][N]/100), c:col, m:m,
+      t:["EVA","백시트","실리콘"][m], v:series[m][N]});
+  });
+  ends.sort(function(a,b){return a.y-b.y;});
+  for(var e=1;e<ends.length;e++){ if(ends[e].y-ends[e-1].y<12) ends[e].y=ends[e-1].y+12; }
+  ends.forEach(function(o){
+    c.fillStyle=o.c; marker(c,o.m,L+pw,o.y,3.4);
+    c.fillStyle=CS["--ink-2"]; c.textAlign="left";
+    c.fillText(o.t+" "+o.v.toFixed(0)+"%",L+pw+7,o.y);
+  });
+  var xs=L+pw*Math.min(1,S.set/TMAX);
+  c.strokeStyle=mix(CS["--ink"],0.5); c.lineWidth=1;
+  c.beginPath(); c.moveTo(xs,Tp-4); c.lineTo(xs,Tp+ph); c.stroke();
+}
+
+/* ══ 출력 ═════════════════════════════════════════════════════════════ */
+function um(m){ return m*1e6>=1000 ? (m*1000).toFixed(2)+" mm" : (m*1e6).toFixed(0)+" µm"; }
+function setKpi(el,k,val,band,ok,unit){
+  el.className="kpi "+(ok?"pass":"fail");
+  el.querySelector("b").textContent=val.toFixed(1)+" "+unit;
+  el.querySelector(".band").textContent=band;
+}
+function render(){
+  readInputs();
+  var res=run(S), B=res.B, K=res.kpi;
+  var rho=rhoBr(S.w), mu=muBr(S.w,S.T);
+
+  // 판정
+  var pass=K.poly.ok&&K.siLoss.ok&&K.siRec.ok&&K.botPoly.ok;
+  var fails=[]; if(!K.poly.ok)fails.push("Top polymer"); if(!K.siLoss.ok)fails.push("Top Si loss");
+  if(!K.siRec.ok)fails.push("Bottom Si"); if(!K.botPoly.ok)fails.push("Bottom polymer");
+  $("verdictStamp").className="stamp "+(pass?"pass":"fail");
+  $("verdictStamp").textContent=pass?"PASS":"FAIL";
+  $("verdictTxt").innerHTML = pass
+    ? "네 KPI 모두 <b>P10/P90 기준</b>을 통과한다. 조건을 저장해 두고 다른 설정과 비교해 보라."
+    : "<b>"+fails.join(" · ")+"</b> 가 기준 밖이다. 오른쪽 경고를 먼저 보라.";
+
+  setKpi($("k1"),"poly",K.poly.v,"P10 "+K.poly.p10.toFixed(1)+" / P90 "+K.poly.p90.toFixed(1),K.poly.ok,"%");
+  setKpi($("k2"),"siLoss",K.siLoss.v,"P90 "+K.siLoss.p90.toFixed(2),K.siLoss.ok,"%");
+  setKpi($("k3"),"siRec",K.siRec.v,"P10 "+K.siRec.p10.toFixed(1),K.siRec.ok,"%");
+  setKpi($("k4"),"botPoly",K.botPoly.v,"P90 "+K.botPoly.p90.toFixed(1),K.botPoly.ok,"%");
+
+  // 기포
+  var Ug=S.air/1000/60/AREA;
+  var E50=Math.pow(50e-6/B.d_b,2)*S.kf, k50=1.5*Ug*E50/B.d_b;
+  var t70=k50>0? -Math.log(0.3)/k50/60 : Infinity;
+  $("outBub").innerHTML=[
+    ["Ø1.0 홀 이탈경 (Tate)", um(B.dDet)],
+    ["Hinze 파쇄한계 @"+S.rpm+" rpm", B.dHin===Infinity?"—":um(B.dHin)],
+    ["실제 기포경 d_b", "<span class='"+(B.d_b>4e-4?"w":"g")+"'>"+um(B.d_b)+"</span>"],
+    ["차단 포집 E (50 µm)", (E50*100).toFixed(3)+" %"],
+    ["부착 1차속도 k", k50.toExponential(2)+" 1/s"],
+    ["70 % 부착까지", t70===Infinity?"∞":(t70>=60?(t70/60).toFixed(1)+" h":t70.toFixed(1)+" min")],
+    ["표면 기체속도", (Ug*1000).toFixed(4)+" mm/s"]
+  ].map(function(r){ return "<span>"+r[0]+"</span><b>"+r[1]+"</b>"; }).join("");
+
+  // 교반·염수·침전
+  var bed=Math.pow(S.kg*S.si/100/RHO_SI/PACK*1e9*3/(Math.PI*TAN*TAN),1/3);
+  var nacl=V_LIQ*1000*rho/1000*S.w/100;
+  var batch=S.mix*60+S.set;
+  $("outMix").innerHTML=[
+    ["염수 밀도 ρ", rho.toFixed(1)+" kg/m³"],
+    ["점도 µ @"+S.T+" °C", (mu*1000).toFixed(3)+" mPa·s"],
+    ["Cl⁻", (S.w*10000*35.45/58.44).toLocaleString("en-US",{maximumFractionDigits:0})+" mg/kg"],
+    ["NaCl 소요", nacl.toFixed(1)+" kg / 배치"],
+    ["Njs (완전 현탁)", njs(S).toFixed(0)+" rpm"],
+    ["축동력", B.P.toFixed(1)+" W · 팁 "+B.tip.toFixed(2)+" m/s"],
+    ["침전 상단", "Z"+bed.toFixed(0)+(bed>Z_RING?" <span class='d'>링 매몰</span>":"")],
+    ["배치 시간", (batch/60).toFixed(0)+" min (분산+정치)"]
+  ].map(function(r){ return "<span>"+r[0]+"</span><b>"+r[1]+"</b>"; }).join("");
+
+  // 3×3
+  $("cellT").querySelector("tbody").innerHTML=res.base.cells.map(function(cl){
+    var M=MATS[cl.m], cls=cl.t>86400?"neu":(cl.v<0?"up":"dn");
+    var ts=cl.t>86400?"∞":(cl.t>=1000?(cl.t/1000).toFixed(1)+"k":cl.t.toFixed(0));
+    return "<tr><td class='name'>"+M.ko+" "+BINS[cl.i][0]+"–"+BINS[cl.i][1]+"</td>"+
+      "<td>"+cl.rho.toFixed(0)+"</td><td>"+(cl.att*100).toFixed(0)+"%</td>"+
+      "<td class='"+cls+"'>"+ts+"</td><td>"+(cl.reach*100).toFixed(0)+"%</td></tr>";
+  }).join("");
+
+  // 배지
+  $("pillCut").textContent="밀도컷 "+rho.toFixed(0);
+  $("pillBub").textContent="기포 "+um(B.d_b);
+  $("pillBub").className="badge "+(B.d_b<=4e-4?"on":"off");
+  var sus=S.rpm>=njs(S);
+  $("pillSus").textContent=sus?"현탁 OK":"현탁 부족";
+  $("pillSus").className="badge "+(sus?"on":"off");
+  $("cutNote").textContent="ρ "+rho.toFixed(1)+" · "+S.w.toFixed(1)+" wt%";
+  $("kinNote").textContent="정치 "+S.set+" s";
+  $("feedNote").textContent=(S.kg*(1-S.si/100)).toFixed(2)+" kg 폴리머";
+
+  // 경고
+  var A=[];
+  if(B.d_b>4e-4 && S.air>0) A.push(["bad","기포",
+    "장치가 만드는 기포는 <b>"+um(B.d_b)+"</b> 다. 회수 모델이 기대는 Ø200 µm 를 교반으로 만들려면 "+
+    B.epsNeed.toFixed(0)+" W/kg — 지금의 <b>"+(B.epsNeed/Math.max(B.eps,1e-9)).toFixed(0)+
+    "배</b>가 필요하다. 미세기포는 벤투리·이젝터나 다공막 스파저 같은 별도 장치로 만들어야 한다."]);
+  if(S.rpm<njs(S)) A.push(["","현탁",
+    "rpm "+S.rpm+" 이 Njs "+njs(S).toFixed(0)+" 보다 낮다. 바닥에 가라앉은 채로 도는 입자가 있어 "+
+    "'분리 실패'와 '분산 부족'이 섞인다."]);
+  if(bed>Z_RING) A.push(["bad","침전",
+    "침전 상단 Z"+bed.toFixed(0)+" 이 분산 링 Z300 을 덮는다. Feed 를 줄이거나 중간 배출이 필요하다."]);
+  if(S.w>20) A.push(["bad","염수",
+    "NaCl "+S.w.toFixed(1)+" wt% 는 포화(26.4)에 가깝다. 온도가 내려가거나 증발하면 결정이 나와 "+
+    "Ø1.0 분사홀 60 개가 먼저 막힌다. Cl⁻ 도 316L 의 안전역을 넘는다."]);
+  else if(S.w>18) A.push(["","재질",
+    "Cl⁻ 가 316L(PREN≈25)의 상용 한계에 접근한다. 장기 시험이면 습부 재질을 다시 보라."]);
+  var wCut=(1110-998)/7.55;
+  if(Math.abs(S.w-wCut)<0.6) A.push(["","밀도컷",
+    "설계점이 백시트 31–45 µm 의 중립점("+wCut.toFixed(2)+" wt%)에서 "+
+    Math.abs(S.w-wCut).toFixed(2)+" %p 안에 있다. 염도 관리 오차만으로 그 셀의 부호가 뒤집힌다."]);
+  var tSiMax=0;
+  res.base.cells.forEach(function(cl){ if(cl.m===2&&cl.t<1e6) tSiMax=Math.max(tSiMax,cl.t); });
+  if(S.set<tSiMax) A.push(["","정치",
+    "가장 느린 실리콘 셀의 통과시간이 "+tSiMax.toFixed(0)+" s 인데 정치시간은 "+S.set+" s 다. "+
+    "미세 실리콘이 상부에 남아 Top Si loss 로 계상된다."]);
+  if(S.air===0) A.push(["","공기",
+    "공기 0 — 순수 밀도차만 남는다. 폴리머 도달률이 KPI 아래로 내려가는 조건이다."]);
+  if(!A.length) A.push(["ok","상태","걸리는 항목이 없다."]);
+  $("alerts").innerHTML=A.map(function(a){
+    return "<div class='alert "+a[0]+"'><span class='k'>"+a[1]+"</span><span>"+a[2]+"</span></div>"; }).join("");
+
+  readTokens(); drawCut(res); drawKin(res);
+  return {res:res, pass:pass};
+}
+
+/* ══ 스냅샷 ═══════════════════════════════════════════════════════════ */
+var SNAPS=[];
+try{ SNAPS=JSON.parse(localStorage.getItem("mp50snap")||"[]"); }catch(e){ SNAPS=[]; }
+function saveSnaps(){ try{ localStorage.setItem("mp50snap",JSON.stringify(SNAPS)); }catch(e){} }
+function drawSnaps(){
+  $("snapT").querySelector("tbody").innerHTML=SNAPS.map(function(r,i){
+    return "<tr><td>"+(i+1)+"</td><td>"+r.w.toFixed(1)+"</td><td>"+r.T+"</td><td>"+r.rpm+"</td>"+
+      "<td>"+r.air.toFixed(1)+"</td><td>"+r.mix.toFixed(1)+"m</td><td>"+r.set+"s</td>"+
+      "<td>"+r.poly.toFixed(1)+"</td><td>"+r.siLoss.toFixed(2)+"</td><td>"+r.siRec.toFixed(1)+"</td>"+
+      "<td class='"+(r.pass?"up":"dn")+"'>"+(r.pass?"PASS":"FAIL")+"</td></tr>";
+  }).join("");
+  $("snapHint").hidden=SNAPS.length>0;
+}
+$("snap").addEventListener("click",function(){
+  var o=render();
+  SNAPS.push({w:S.w,T:S.T,rpm:S.rpm,air:S.air,mix:S.mix,set:S.set,
+    poly:o.res.kpi.poly.v, siLoss:o.res.kpi.siLoss.v, siRec:o.res.kpi.siRec.v, pass:o.pass});
+  if(SNAPS.length>14) SNAPS.shift();
+  saveSnaps(); drawSnaps();
+});
+$("clearSnap").addEventListener("click",function(){ SNAPS=[]; saveSnaps(); drawSnaps(); });
+
+/* ══ 이벤트 ═══════════════════════════════════════════════════════════ */
+IDS.forEach(function(k){ var el=$(k); if(el) el.addEventListener("input",render); });
+$("bubMode").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  S.bubMode=b.dataset.m;
+  [].forEach.call(this.children,function(c){ c.setAttribute("aria-pressed",c===b?"true":"false"); });
+  $("bubManual").hidden = S.bubMode!=="man";
+  render();
+});
+$("reset").addEventListener("click",function(){
+  var D={w:15,T:20,mix:10,set:600,rpm:90,air:5,skim:30,kg:5,si:87.5,eva:50,db:200,ret:70,kf:0,sel:2,mc:300};
+  Object.keys(D).forEach(function(k){ if($(k)) $(k).value=D[k]; });
+  S.bubMode="auto"; $("bubManual").hidden=true;
+  [].forEach.call($("bubMode").children,function(c){
+    c.setAttribute("aria-pressed",c.dataset.m==="auto"?"true":"false"); });
+  render();
+});
+$("theme").addEventListener("click",function(){
+  var cur=document.documentElement.getAttribute("data-theme");
+  var dark=cur?cur==="dark":!matchMedia("(prefers-color-scheme: light)").matches;
+  document.documentElement.setAttribute("data-theme",dark?"light":"dark");
+  render();
+});
+window.addEventListener("resize",render);
+matchMedia("(prefers-color-scheme: light)").addEventListener("change",render);
+
+readTokens(); drawSnaps(); render();
+})();
+</script>
+</body>
+</html>

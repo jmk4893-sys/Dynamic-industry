@@ -36,6 +36,12 @@ Dynamic industry Development
    붙어 정지 후에도 남는 **잔류 미세기포**이며, Ø200 µm 기포 1개가 붙으면 통과시간이
    4,593 s → 25 s 가 된다. **공기는 분산 변수가 아니라 회수율 변수**다.
 
+운전 조건을 직접 돌려 볼 수 있는 콘솔(`docs/drawings/mp50-process-console.html`)도 함께 둔다.
+여기서 기포 모델을 장치 제원으로 풀면 **현 스파저·교반으로는 Ø200 µm 기포가 나오지 않는다**는 것이
+드러난다 — Ø1.0 홀의 이탈경이 3.47 mm 이고, 90 rpm 의 난류(0.34 W/kg)로는 그보다 잘게 부술 수 없다.
+Ø200 µm 를 교반만으로 만들려면 447 W/kg, 지금의 1,300 배가 필요하다. 미세기포는 벤투리·이젝터나
+다공막 스파저 같은 **별도 장치**로 만들어야 한다.
+
 이 두 번째 결론은 정지 시각 t=0 부터 판정 600 s 까지를 그대로 재생해 볼 수 있다
 (`docs/drawings/mp50-separation-motion.html`). 입자 1,000 개에 같은 식을 걸어
 EVA·백시트가 액면 Z720 으로 올라가고 실리콘이 콘으로 내려가는 과정을 보이며,
@@ -67,6 +73,7 @@ seal gland/sleeve · frame height 를 확정하지 않는다.
 | [docs/drawings/mp50-pilot-drawings.html](docs/drawings/mp50-pilot-drawings.html) | **MP-50 제작도 11매 (Rev.A)** — 기준좌표·부품표(34점), 분리 원리·운전 시퀀스, 3×3 유효밀도·밀도컷, 층분리 운동학, 탱크 셀·콘, 커버·맨홀·스키머, 교반계·간섭 검사, 분산 링·공기 공급계, 배출·프레임, Release/HOLD·공차, FAT·KPI·DOE·재질 (브라우저로 열 것) |
 | [docs/drawings/mp50-pilot-3d.html](docs/drawings/mp50-pilot-3d.html) | **MP-50 3D 조립·분해도 (Rev.A)** — 26개 부품 분해, 동체 컷어웨이, FLOAT/SINK 층을 보이는 「분리 결과」 보기, 보기별 제원 (브라우저로 열 것) |
 | [docs/drawings/mp50-separation-motion.html](docs/drawings/mp50-separation-motion.html) | **MP-50 층분리 거동 시뮬레이터** — 분산 정지 t=0 부터 판정 600 s 까지를 입자 1,000 개로 재생한다. 재생·스크럽·배속, 층 도달률과 KPI 판정, 염도·기포 부착률 조작 (브라우저로 열 것) |
+| [docs/drawings/mp50-process-console.html](docs/drawings/mp50-process-console.html) | **MP-50 운전조건 콘솔** — 염도·온도·분산/정치시간·rpm·공기량·스키밍 깊이·Feed 조성을 움직이면 밀도컷·기포경·부착률·4개 KPI 가 Monte Carlo P10/P90 으로 다시 계산된다 (브라우저로 열 것) |
 | [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 13종, 열수지 계산기 (브라우저로 열 것) |
 
 ### 사용법
@@ -77,7 +84,7 @@ seal gland/sleeve · frame height 를 확정하지 않는다.
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (410건)
+python -m unittest discover -s tests -t .                               # 테스트 (432건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
