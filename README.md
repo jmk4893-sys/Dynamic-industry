@@ -14,6 +14,21 @@ Dynamic industry Development
 - 기액 체류시간 **1 분**, 설치 전력 **6.52 kW** (탈수 보조설비 포함)
 - 황화제·pH 조정제·억제제 없음 — 약제는 포수제·촉진제·기포제 3종뿐
 
+### 파일럿 검증 설비 (MP-50)
+
+상업 설비를 짓기 전에 **≈75 µm 분획**에서 부선이 실제로 갈라지는지 확인하는
+회분식 50 L 파일럿이다. 축소 기준은 체적이 아니라 **임펠러 주속(4.40 m/s)과
+표면 기체속도(Jg 0.59 cm/s)** 로, 상업 셀 FC-201 과 같은 수력학적 조건을 만든다.
+
+- 동체 **Ø400 × t3 × 600** · 하부 콘 60° × 300 · 전 용량 87 L · 운전 50 L (액면 +297)
+- 임펠러 Ø140 2장 (D/T 0.355) — 하부 6엽 디스크 터빈, 상부 45° 경사날개 · 0.75 kW VFD
+- 미세기포 분산기 Ø250 링 · **60-Ø1.0 하향 45°** (홀 유속 15.3 m/s · We 4.6)
+- 설계압력 0.05 MPa(G) · 시험 0.075 MPa 공기 누설시험
+
+원 스케치의 치수 **14건이 서로 성립하지 않아** 계산으로 다시 잡았고, 바꾼 항목과
+이유는 제작도 부속-A 에 전부 남겼다. 그중 압력시험 0.2 MPa 는 t5 평판 커버에
+384 MPa 를 걸어 SUS304 항복강도(205 MPa)를 넘으므로 **시행해서는 안 된다.**
+
 ### 설계 근거
 
 실증 논문 두 편의 데이터를 1차 근거로 삼고, 모델이 그 실험값을 재현하도록 보정했다.
@@ -34,6 +49,8 @@ Dynamic industry Development
 | [docs/design-calculation.md](docs/design-calculation.md) | 설계 계산서 (코드에서 자동 생성) |
 | [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 7매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
+| [docs/drawings/mp50-pilot-drawings.html](docs/drawings/mp50-pilot-drawings.html) | **MP-50 파일럿 제작도 8매** — 미세입자(≈75 µm) EVA·백시트 분리기 50 L 파일럿. 전체 조립도·부품표(34점), 탱크 셀·하부 콘, 상부 커버·맨홀·스키머, 교반계, 미세기포 분산기·공기 공급계, 배출·지지부, 체결부품·가스켓·제어반, 재질·검사 기준 (브라우저로 열 것) |
+| [docs/drawings/mp50-pilot-3d.html](docs/drawings/mp50-pilot-3d.html) | **MP-50 3D 조립·분해도** — 26개 부품 분해, 동체 컷어웨이, 슬러리·거품층 표시, 보기별 제원 (브라우저로 열 것) |
 | [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 13종, 열수지 계산기 (브라우저로 열 것) |
 
 ### 사용법
@@ -44,7 +61,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (286건)
+python -m unittest discover -s tests -t .                               # 테스트 (376건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.

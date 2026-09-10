@@ -1,0 +1,2144 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="미세입자(약 75 µm) EVA·백시트 분리기 소형 파일럿 MP-50 의 제작도면집 — 전체 조립도, 탱크 셀·하부 콘, 상부 커버·맨홀, 교반계, 미세기포 분산기, 배출·지지부, 표준품·제어반, 재질·검사 기준 8매.">
+<title>MP-50 파일럿 분리기 제작도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
+
+<style>
+  :root {
+    --bg: #EDF0F3;
+    --surface: #FFFFFF;
+    --surface-2: #F6F8FA;
+    --ink: #171F26;
+    --ink-2: #57646F;
+    --ink-3: #7E8B96;
+    --line: #A8B3BE;
+    --line-2: #6B7883;
+    --rule: #D3DAE1;
+    --acc: #1D6A8C;
+    --acc-fill: rgba(29, 106, 140, 0.13);
+    --air: #276D77;
+    --air-fill: rgba(39, 109, 119, 0.13);
+    --pulp: rgba(120, 133, 146, 0.13);
+    --froth: #9C6B15;
+    --froth-fill: rgba(156, 107, 21, 0.16);
+    --warn: #9E3623;
+    --warn-bg: rgba(158, 54, 35, 0.08);
+    --sans: "IBM Plex Sans KR", system-ui, -apple-system, "Malgun Gothic", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0E1317;
+      --surface: #151B21;
+      --surface-2: #1B2329;
+      --ink: #E2E8EE;
+      --ink-2: #9DAAB6;
+      --ink-3: #7A8894;
+      --line: #4E5A65;
+      --line-2: #86939F;
+      --rule: #2A343C;
+      --acc: #58AFD4;
+      --acc-fill: rgba(88, 175, 212, 0.16);
+      --air: #63ADB7;
+      --air-fill: rgba(99, 173, 183, 0.16);
+      --pulp: rgba(157, 170, 182, 0.14);
+      --froth: #DCA847;
+      --froth-fill: rgba(220, 168, 71, 0.18);
+      --warn: #E08770;
+      --warn-bg: rgba(224, 135, 112, 0.11);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0E1317;
+    --surface: #151B21;
+    --surface-2: #1B2329;
+    --ink: #E2E8EE;
+    --ink-2: #9DAAB6;
+    --ink-3: #7A8894;
+    --line: #4E5A65;
+    --line-2: #86939F;
+    --rule: #2A343C;
+    --acc: #58AFD4;
+    --acc-fill: rgba(88, 175, 212, 0.16);
+    --air: #63ADB7;
+    --air-fill: rgba(99, 173, 183, 0.16);
+    --pulp: rgba(157, 170, 182, 0.14);
+    --froth: #DCA847;
+    --froth-fill: rgba(220, 168, 71, 0.18);
+    --warn: #E08770;
+    --warn-bg: rgba(224, 135, 112, 0.11);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-weight: 400;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-bottom: 28px;
+    border-bottom: 2px solid var(--line-2);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(28px, 4.4vw, 44px);
+    font-weight: 600;
+    line-height: 1.18;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .lede {
+    margin: 0;
+    max-width: 68ch;
+    color: var(--ink-2);
+    font-size: 16px;
+    font-weight: 300;
+  }
+
+  .keyfacts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    margin: 0;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .keyfacts div {
+    background: var(--surface);
+    padding: 12px 14px;
+  }
+
+  .keyfacts dt {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .keyfacts dd {
+    margin: 3px 0 0;
+    font-size: 16px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .keyfacts dd.hi { color: var(--acc); }
+
+  /* ---------- sheets ---------- */
+  .sheet {
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+
+  .sheet-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 15px 20px 13px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sheet-no {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--acc);
+  }
+
+  .sheet-title { font-size: 17px; font-weight: 600; }
+
+  .sheet-sub {
+    font-size: 12.5px;
+    color: var(--ink-3);
+    font-weight: 300;
+    margin-left: auto;
+  }
+
+  figure { margin: 0; }
+
+  .canvas {
+    overflow-x: auto;
+    padding: 24px 20px 8px;
+    background: var(--surface-2);
+  }
+
+  .canvas svg {
+    display: block;
+    min-width: 680px;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+    color: var(--line-2);
+  }
+
+  figcaption {
+    padding: 4px 20px 18px;
+    background: var(--surface-2);
+    color: var(--ink-2);
+    font-size: 13.5px;
+    font-weight: 300;
+    max-width: 78ch;
+  }
+
+  /* ---------- title block ---------- */
+  .titleblock {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    border-top: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11.5px;
+  }
+
+  .titleblock div {
+    padding: 8px 14px;
+    border-right: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .titleblock div:last-child { border-right: none; }
+
+  .titleblock span {
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .titleblock b {
+    font-weight: 500;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- tables ---------- */
+  .tablewrap { overflow-x: auto; padding: 0 20px 22px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  caption {
+    text-align: left;
+    padding: 18px 0 10px;
+    font-size: 12px;
+    font-family: var(--mono);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  th, td {
+    padding: 7px 12px 7px 0;
+    text-align: left;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+
+  thead th {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom: 1px solid var(--line-2);
+  }
+
+  td.num, th.num { text-align: right; font-family: var(--mono); }
+  td.tag { font-family: var(--mono); color: var(--acc); font-weight: 500; }
+  td.wrapcell { white-space: normal; min-width: 20ch; }
+  tbody tr:last-child td { border-bottom: none; }
+  tr.total td { font-weight: 600; border-top: 1px solid var(--line-2); }
+  tr.flag td { background: var(--warn-bg); }
+  td.was { color: var(--warn); font-family: var(--mono); font-size: 12px; }
+
+  /* ---------- notes ---------- */
+  .notes {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 22px 24px 26px;
+  }
+
+  .notes h2 {
+    margin: 0 0 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .notes ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    counter-reset: note;
+  }
+
+  .notes li {
+    position: relative;
+    padding-left: 34px;
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--ink-2);
+    max-width: 84ch;
+  }
+
+  .notes li::before {
+    counter-increment: note;
+    content: counter(note, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 1px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--acc);
+  }
+
+  .notes strong { color: var(--ink); font-weight: 500; }
+  .notes .bad { color: var(--warn); font-weight: 500; }
+
+  .footer {
+    font-size: 12.5px;
+    color: var(--ink-3);
+    font-weight: 300;
+    border-top: 1px solid var(--rule);
+    padding-top: 18px;
+    max-width: 80ch;
+  }
+
+  .footer code {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+  }
+
+  /* ---------- svg drawing classes ---------- */
+  .ln    { fill: none; stroke: currentColor; stroke-width: 1.5; }
+  .ln-h  { fill: none; stroke: currentColor; stroke-width: 2.3; }
+  .ln-t  { fill: none; stroke: currentColor; stroke-width: 0.9; opacity: 0.7; }
+  .hid   { fill: none; stroke: currentColor; stroke-width: 1; stroke-dasharray: 6 3; opacity: 0.6; }
+  .cl    { fill: none; stroke: var(--acc); stroke-width: 0.9; stroke-dasharray: 14 3 2 3; opacity: 0.75; }
+  .dim   { fill: none; stroke: var(--ink-3); stroke-width: 0.8; }
+  .ext   { fill: none; stroke: var(--ink-3); stroke-width: 0.7; opacity: 0.8; }
+  .lead  { fill: none; stroke: var(--ink-3); stroke-width: 0.8; }
+  .box   { fill: var(--surface); stroke: var(--line-2); stroke-width: 1.5; }
+  .box-d { fill: none; stroke: var(--line); stroke-width: 1.3; stroke-dasharray: 6 4; }
+  .steel { fill: var(--acc-fill); stroke: var(--line-2); stroke-width: 1.5; }
+  .mach  { fill: var(--acc-fill); stroke: var(--acc); stroke-width: 1.5; }
+  .pulp  { fill: var(--pulp); stroke: none; }
+  .froth { fill: var(--froth-fill); stroke: var(--froth); stroke-width: 1.2; }
+  .air-l { fill: none; stroke: var(--air); stroke-width: 1.8; }
+  .air-f { fill: var(--air-fill); stroke: var(--air); stroke-width: 1.4; }
+  .bad-l { fill: none; stroke: var(--warn); stroke-width: 1.6; }
+
+  text {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 400;
+    fill: var(--ink);
+  }
+
+  .t-sm  { font-size: 11.5px; fill: var(--ink-2); font-weight: 300; }
+  .t-hd  { font-size: 13px; font-weight: 600; fill: var(--ink); }
+  .t-mono{ font-family: var(--mono); font-size: 11.5px; fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .t-dim { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .t-acc { fill: var(--acc); font-weight: 500; }
+  .t-air { fill: var(--air); font-weight: 500; }
+  .t-fro { fill: var(--froth); font-weight: 500; }
+  .t-bad { fill: var(--warn); font-weight: 500; font-size: 11.5px; }
+
+  .bal   { fill: var(--surface); stroke: var(--line-2); stroke-width: 1.2; }
+  .bal-t { font-family: var(--mono); font-size: 10.5px; font-weight: 600; fill: var(--ink); }
+  .noz   { fill: var(--surface); stroke: var(--acc); stroke-width: 1.4; }
+  .noz-t { font-family: var(--mono); font-size: 9.5px; font-weight: 600; fill: var(--acc); }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 32px 14px 72px; gap: 28px; }
+    .canvas { padding: 16px 12px 6px; }
+    figcaption, .tablewrap { padding-left: 14px; padding-right: 14px; }
+    .sheet-sub { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">제작도면집 · MP-50-P0 · REV P0</div>
+    <h1>미세입자(≈75 µm) EVA·백시트 분리기<br>소형 파일럿 MP-50 (50 L)</h1>
+    <p class="lede">
+      폐 태양광 모듈 박리 잔사를 습식 분쇄한 미세 분획에서 <b>소수성 폴리머(EVA·백시트)</b> 를
+      거품으로 띄우고 <b>친수성 유리·실리콘</b> 을 콘 저부로 가라앉혀 가르는 회분식 부선조다.
+      상업 설비(FC-201, Ø1,000)의 임펠러 주속과 표면 기체속도를 그대로 물려받은 축소기이며,
+      본 도면집은 그 P0 파일럿 1대의 제작도 8매다. 원 스케치의 치수 12건이 서로 성립하지
+      않아 계산으로 다시 잡았고, 바꾼 항목은 마지막 표에 전부 남겼다.
+    </p>
+    <dl class="keyfacts">
+      <div><dt>운전 용량 / 전 용량</dt><dd>50 L / 87 L</dd></div>
+      <div><dt>동체</dt><dd>Ø400 × t3 × 600</dd></div>
+      <div><dt>임펠러 주속</dt><dd class="hi">4.40 m/s</dd></div>
+      <div><dt>표면 기체속도 Jg</dt><dd>0.59 cm/s</dd></div>
+      <div><dt>교반 모터</dt><dd>0.75 kW · VFD</dd></div>
+      <div><dt>운전 중량</dt><dd>138 kg</dd></div>
+    </dl>
+  </header>
+
+  <!-- ================= SHEET 1 : GENERAL ASSEMBLY ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-P0-001</span>
+      <span class="sheet-title">전체 조립도</span>
+      <span class="sheet-sub">종단면 + 커버 평면 · 기준선 = 동체/콘 접선선 (±0)</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1040 742" role="img"
+             aria-label="MP-50 파일럿 분리기의 종단면도와 커버 평면도. 왼쪽 종단면은 바닥 방진패드에서 교반 모터까지 총높이 1,501 밀리미터를 보이며 하부 콘 300, 직관부 600, 정지 액면 297, 거품층 75 밀리미터를 표시한다. 하부에 미세기포 분산기 링과 6엽 디스크 터빈, 중간에 45도 경사날개 터빈, 벽면에 배플 4장이 들어간다. 오른쪽 커버 평면도는 볼트 8개소와 맨홀, 스키머, 레벨센서 2개, 압력계, 벤트의 방위와 동체 노즐 N1 에서 N7 및 지지 다리 3개소의 방위를 보인다.">
+          <defs>
+            <marker id="da" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="7" markerHeight="6" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--ink-3)"></polygon>
+            </marker>
+            <marker id="aair" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="7" markerHeight="6" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--air)"></polygon>
+            </marker>
+            <marker id="afro" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="7" markerHeight="6" orient="auto-start-reverse">
+              <polygon points="0,0 10,4 0,8" fill="var(--froth)"></polygon>
+            </marker>
+          </defs>
+
+          <!-- ============ ELEVATION (full section, cx=280, 0.40 px/mm, y0=470) ============ -->
+          <text class="t-hd" x="280" y="42" text-anchor="middle">종단면도 (A-A)</text>
+          <text class="t-dim" x="280" y="58" text-anchor="middle">척도 NTS · 플랜지부는 판독을 위해 두께 과장</text>
+
+          <!-- pulp + froth zones -->
+          <polygon class="pulp" points="201,351 359,351 359,470 289,592 271,592 201,470"></polygon>
+          <rect class="froth" x="201" y="321" width="158" height="30"></rect>
+
+          <!-- shell straight side -->
+          <line class="ln" x1="200" y1="230" x2="200" y2="470"></line>
+          <line class="ln" x1="360" y1="230" x2="360" y2="470"></line>
+          <!-- cone -->
+          <line class="ln" x1="200" y1="470" x2="271" y2="592"></line>
+          <line class="ln" x1="360" y1="470" x2="289" y2="592"></line>
+          <line class="ln-t" x1="200" y1="470" x2="360" y2="470"></line>
+          <text class="t-dim" x="392" y="462">±0 접선선</text>
+
+          <!-- outlet stub + tri-clamp + ball valve -->
+          <rect class="steel" x="270" y="592" width="20" height="20"></rect>
+          <rect class="mach" x="265" y="612" width="30" height="6"></rect>
+          <path class="steel" d="M270 618 v10 a10 10 0 0 0 10 10 h16 v-20 h-16 v-10 z"></path>
+          <rect class="mach" x="296" y="622" width="30" height="12"></rect>
+          <path class="steel" d="M326 623 h14 l6 3 v6 l-6 3 h-14 z"></path>
+          <line class="ln" x1="311" y1="622" x2="311" y2="610"></line>
+          <rect class="box" x="300" y="604" width="22" height="6"></rect>
+
+          <!-- top flange stack : shell flange / baffle-cage ring / cover -->
+          <rect class="steel" x="188" y="227" width="184" height="5"></rect>
+          <rect class="mach" x="188" y="222" width="184" height="5"></rect>
+          <line class="ln-t" x1="188" y1="226" x2="372" y2="226"></line>
+          <circle class="ln-t" cx="196" cy="227" r="2"></circle>
+          <circle class="ln-t" cx="364" cy="227" r="2"></circle>
+
+          <!-- manhole ferrule + cap (drafted position; true azimuth on plan) -->
+          <rect class="mach" x="306" y="208" width="24" height="14"></rect>
+          <rect class="mach" x="302" y="203" width="32" height="5"></rect>
+          <!-- skimmer boss + handle -->
+          <rect class="mach" x="240" y="211" width="12" height="11"></rect>
+          <line class="ln" x1="246" y1="211" x2="246" y2="186"></line>
+          <line class="ln" x1="236" y1="186" x2="256" y2="186"></line>
+          <line class="hid" x1="246" y1="222" x2="246" y2="330"></line>
+          <rect class="froth" x="228" y="326" width="36" height="7"></rect>
+
+          <!-- drive stack -->
+          <rect class="box" x="262" y="189" width="36" height="33"></rect>
+          <rect class="box" x="267" y="166" width="26" height="23"></rect>
+          <rect class="box" x="250" y="124" width="60" height="42"></rect>
+          <rect class="box" x="246" y="84" width="68" height="40"></rect>
+          <line class="ln-t" x1="252" y1="90" x2="252" y2="118"></line>
+          <line class="ln-t" x1="308" y1="90" x2="308" y2="118"></line>
+
+          <!-- agitator shaft -->
+          <rect class="mach" x="275" y="166" width="10" height="294"></rect>
+          <line class="cl" x1="280" y1="76" x2="280" y2="700"></line>
+
+          <!-- upper impeller : 4-blade 45 degrees pitched, down-pumping -->
+          <rect class="mach" x="271" y="373" width="18" height="18"></rect>
+          <line class="ln-h" x1="252" y1="388" x2="271" y2="376"></line>
+          <line class="ln-h" x1="308" y1="388" x2="289" y2="376"></line>
+          <!-- lower impeller : 6-blade disc turbine -->
+          <rect class="mach" x="271" y="437" width="18" height="18"></rect>
+          <line class="ln-h" x1="259" y1="446" x2="301" y2="446"></line>
+          <rect class="mach" x="252" y="442" width="56" height="8"></rect>
+
+          <!-- sparger ring (section: two cut tubes) -->
+          <circle class="air-f" cx="230" cy="462" r="3"></circle>
+          <circle class="air-f" cx="330" cy="462" r="3"></circle>
+          <line class="air-l" x1="233" y1="462" x2="327" y2="462" stroke-dasharray="3 4"></line>
+          <line class="air-l" x1="201" y1="462" x2="227" y2="462"></line>
+          <path class="air-l" d="M228 466 l-3 6 M232 466 l3 6 M328 466 l-3 6 M332 466 l3 6"></path>
+
+          <!-- baffles (hidden : 45 degrees out of section plane) -->
+          <rect class="hid" x="204" y="230" width="11" height="224"></rect>
+          <rect class="hid" x="345" y="230" width="11" height="224"></rect>
+
+          <!-- liquid level + froth weir -->
+          <line class="dim" x1="196" y1="351" x2="364" y2="351" stroke-dasharray="7 3"></line>
+          <path class="lead" d="M280 351 l0 0"></path>
+          <polygon points="273,345 287,345 280,351" fill="var(--acc)"></polygon>
+          <text class="t-dim t-acc" x="390" y="356">+297 · 50 L</text>
+          <text class="t-dim t-fro" x="390" y="296">+372 거품 위어</text>
+
+          <!-- shell nozzles -->
+          <rect class="mach" x="176" y="258" width="25" height="9"></rect>
+          <circle class="noz" cx="166" cy="262" r="9"></circle><text class="noz-t" x="166" y="265" text-anchor="middle">N1</text>
+          <rect class="mach" x="359" y="308" width="28" height="10"></rect>
+          <line class="air-l" x1="387" y1="313" x2="402" y2="313" stroke="var(--froth)" marker-end="url(#afro)"></line>
+          <circle class="noz" cx="414" cy="313" r="9"></circle><text class="noz-t" x="414" y="316" text-anchor="middle">N2</text>
+          <rect class="air-f" x="180" y="459" width="21" height="7"></rect>
+          <line class="air-l" x1="180" y1="462" x2="164" y2="462" marker-start="url(#aair)"></line>
+          <circle class="noz" cx="155" cy="462" r="9"></circle><text class="noz-t" x="155" y="465" text-anchor="middle">N3</text>
+          <rect class="mach" x="180" y="406" width="21" height="8"></rect>
+          <circle class="noz" cx="170" cy="410" r="9"></circle><text class="noz-t" x="170" y="413" text-anchor="middle">N4</text>
+          <rect class="mach" x="180" y="418" width="21" height="8"></rect>
+          <circle class="noz" cx="170" cy="432" r="9"></circle><text class="noz-t" x="170" y="435" text-anchor="middle">N7</text>
+
+          <!-- sight glass (in front of section plane) -->
+          <rect class="mach" x="359" y="266" width="18" height="8"></rect>
+          <rect class="mach" x="359" y="450" width="18" height="8"></rect>
+          <rect class="box" x="372" y="262" width="14" height="12"></rect>
+          <rect class="box" x="372" y="450" width="14" height="12"></rect>
+          <rect class="mach" x="374" y="274" width="10" height="176"></rect>
+          <line class="lead" x1="386" y1="470" x2="396" y2="632"></line>
+          <text class="t-dim" x="392" y="646">사이트글라스 (10)</text>
+          <text class="t-dim" x="392" y="659">단면 앞쪽 부착품</text>
+
+          <!-- legs (3 places, rotated into view plane) -->
+          <rect class="box" x="174" y="342" width="20" height="328"></rect>
+          <rect class="box" x="366" y="342" width="20" height="328"></rect>
+          <polygon class="steel" points="194,342 200,342 200,356 194,352"></polygon>
+          <polygon class="steel" points="194,438 200,438 200,452 194,448"></polygon>
+          <polygon class="steel" points="366,342 360,342 360,356 366,352"></polygon>
+          <polygon class="steel" points="366,438 360,438 360,452 366,448"></polygon>
+          <rect class="steel" x="164" y="670" width="40" height="3"></rect>
+          <rect class="steel" x="356" y="670" width="40" height="3"></rect>
+          <rect class="box" x="164" y="673" width="40" height="12"></rect>
+          <rect class="box" x="356" y="673" width="40" height="12"></rect>
+          <line class="ln-h" x1="140" y1="685" x2="420" y2="685"></line>
+          <path class="ln-t" d="M148 685 l-8 8 M168 685 l-8 8 M188 685 l-8 8 M208 685 l-8 8 M228 685 l-8 8 M248 685 l-8 8 M268 685 l-8 8 M288 685 l-8 8 M308 685 l-8 8 M328 685 l-8 8 M348 685 l-8 8 M368 685 l-8 8 M388 685 l-8 8 M408 685 l-8 8"></path>
+          <text class="t-dim" x="424" y="683">기초 바닥</text>
+          <text class="t-dim" x="404" y="660">3개소</text>
+
+          <!-- vertical dimension chains -->
+          <line class="ext" x1="200" y1="230" x2="112" y2="230"></line>
+          <line class="ext" x1="200" y1="470" x2="112" y2="470"></line>
+          <line class="ext" x1="271" y1="592" x2="112" y2="592"></line>
+          <line class="ext" x1="188" y1="222" x2="80" y2="222"></line>
+          <line class="ext" x1="164" y1="685" x2="80" y2="685"></line>
+          <line class="ext" x1="201" y1="351" x2="140" y2="351"></line>
+          <line class="ext" x1="201" y1="321" x2="140" y2="321"></line>
+
+          <line class="dim" x1="118" y1="230" x2="118" y2="470" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="114" y="352" text-anchor="end" transform="rotate(-90 114 352)">600 직관부</text>
+          <line class="dim" x1="118" y1="470" x2="118" y2="592" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="114" y="535" text-anchor="end" transform="rotate(-90 114 535)">300 콘</text>
+          <line class="dim" x1="86" y1="222" x2="86" y2="685" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="82" y="452" text-anchor="end" transform="rotate(-90 82 452)">1,151 바닥~커버 상면</text>
+          <line class="dim" x1="146" y1="351" x2="146" y2="470" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="142" y="412" text-anchor="end" transform="rotate(-90 142 412)">297</text>
+          <line class="dim" x1="146" y1="321" x2="146" y2="351" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="152" y="336">75 거품층</text>
+
+          <!-- horizontal dimension -->
+          <line class="ext" x1="200" y1="470" x2="200" y2="716"></line>
+          <line class="ext" x1="360" y1="470" x2="360" y2="716"></line>
+          <line class="dim" x1="200" y1="710" x2="360" y2="710" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="280" y="706" text-anchor="middle">Ø400 (ID Ø394)</text>
+          <line class="ext" x1="164" y1="685" x2="164" y2="730"></line>
+          <line class="ext" x1="396" y1="685" x2="396" y2="730"></line>
+          <line class="dim" x1="164" y1="726" x2="396" y2="726" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="280" y="722" text-anchor="middle">P.C.D 480 (다리)</text>
+
+          <!-- balloons -->
+          <line class="lead" x1="314" y1="104" x2="522" y2="96"></line>
+          <circle class="bal" cx="530" cy="95" r="9"></circle><text class="bal-t" x="530" y="99" text-anchor="middle">01</text>
+          <line class="lead" x1="310" y1="145" x2="522" y2="126"></line>
+          <circle class="bal" cx="530" cy="125" r="9"></circle><text class="bal-t" x="530" y="129" text-anchor="middle">02</text>
+          <line class="lead" x1="293" y1="177" x2="522" y2="156"></line>
+          <circle class="bal" cx="530" cy="155" r="9"></circle><text class="bal-t" x="530" y="159" text-anchor="middle">03</text>
+          <line class="lead" x1="340" y1="224" x2="522" y2="186"></line>
+          <circle class="bal" cx="530" cy="185" r="9"></circle><text class="bal-t" x="530" y="189" text-anchor="middle">04</text>
+          <line class="lead" x1="330" y1="206" x2="522" y2="216"></line>
+          <circle class="bal" cx="530" cy="215" r="9"></circle><text class="bal-t" x="530" y="219" text-anchor="middle">06</text>
+          <line class="lead" x1="252" y1="188" x2="120" y2="176"></line>
+          <circle class="bal" cx="110" cy="175" r="9"></circle><text class="bal-t" x="110" y="179" text-anchor="middle">07</text>
+          <line class="lead" x1="360" y1="250" x2="522" y2="246"></line>
+          <circle class="bal" cx="530" cy="245" r="9"></circle><text class="bal-t" x="530" y="249" text-anchor="middle">08</text>
+          <line class="lead" x1="386" y1="313" x2="522" y2="276"></line>
+          <circle class="bal" cx="530" cy="275" r="9"></circle><text class="bal-t" x="530" y="279" text-anchor="middle">09</text>
+          <line class="lead" x1="384" y1="360" x2="522" y2="306"></line>
+          <circle class="bal" cx="530" cy="305" r="9"></circle><text class="bal-t" x="530" y="309" text-anchor="middle">10</text>
+          <line class="lead" x1="285" y1="300" x2="522" y2="336"></line>
+          <circle class="bal" cx="530" cy="335" r="9"></circle><text class="bal-t" x="530" y="339" text-anchor="middle">11</text>
+          <line class="lead" x1="306" y1="382" x2="522" y2="366"></line>
+          <circle class="bal" cx="530" cy="365" r="9"></circle><text class="bal-t" x="530" y="369" text-anchor="middle">12</text>
+          <line class="lead" x1="350" y1="270" x2="522" y2="396"></line>
+          <circle class="bal" cx="530" cy="395" r="9"></circle><text class="bal-t" x="530" y="399" text-anchor="middle">13</text>
+          <line class="lead" x1="330" y1="462" x2="522" y2="440"></line>
+          <circle class="bal" cx="530" cy="439" r="9"></circle><text class="bal-t" x="530" y="443" text-anchor="middle">14</text>
+          <line class="lead" x1="300" y1="530" x2="522" y2="500"></line>
+          <circle class="bal" cx="530" cy="499" r="9"></circle><text class="bal-t" x="530" y="503" text-anchor="middle">15</text>
+          <line class="lead" x1="326" y1="628" x2="522" y2="560"></line>
+          <circle class="bal" cx="530" cy="559" r="9"></circle><text class="bal-t" x="530" y="563" text-anchor="middle">16</text>
+          <line class="lead" x1="386" y1="580" x2="522" y2="590"></line>
+          <circle class="bal" cx="530" cy="589" r="9"></circle><text class="bal-t" x="530" y="593" text-anchor="middle">17</text>
+          <line class="lead" x1="174" y1="679" x2="140" y2="706"></line>
+          <circle class="bal" cx="130" cy="708" r="9"></circle><text class="bal-t" x="130" y="712" text-anchor="middle">30</text>
+
+          <!-- ============ PLAN VIEW (cx=760, cy=252) ============ -->
+          <text class="t-hd" x="760" y="42" text-anchor="middle">커버 평면도 · 노즐 방위</text>
+          <text class="t-dim" x="760" y="58" text-anchor="middle">0° = 도면 오른쪽 · 반시계 방향</text>
+
+          <circle class="steel" cx="760" cy="252" r="92"></circle>
+          <circle class="ln-t" cx="760" cy="252" r="80"></circle>
+          <circle class="ln" cx="760" cy="252" r="78.8" fill="none"></circle>
+          <circle class="cl" cx="760" cy="252" r="86" fill="none"></circle>
+          <line class="cl" x1="640" y1="252" x2="880" y2="252"></line>
+          <line class="cl" x1="760" y1="132" x2="760" y2="372"></line>
+
+          <!-- cover bolts 8-Ø9 @ PCD430 -->
+          <circle class="mach" cx="839.5" cy="219.1" r="3.4"></circle>
+          <circle class="mach" cx="792.9" cy="172.5" r="3.4"></circle>
+          <circle class="mach" cx="727.1" cy="172.5" r="3.4"></circle>
+          <circle class="mach" cx="680.5" cy="219.1" r="3.4"></circle>
+          <circle class="mach" cx="680.5" cy="284.9" r="3.4"></circle>
+          <circle class="mach" cx="727.1" cy="331.5" r="3.4"></circle>
+          <circle class="mach" cx="792.9" cy="331.5" r="3.4"></circle>
+          <circle class="mach" cx="839.5" cy="284.9" r="3.4"></circle>
+
+          <!-- baffles 4 @ 45/135/225/315, R149-189 -->
+          <g class="hid">
+            <rect x="801.9" y="179.4" width="16" height="40" transform="rotate(45 809.9 199.4)"></rect>
+            <rect x="702.1" y="179.4" width="16" height="40" transform="rotate(-45 710.1 199.4)"></rect>
+            <rect x="702.1" y="284.6" width="16" height="40" transform="rotate(45 710.1 304.6)"></rect>
+            <rect x="801.9" y="284.6" width="16" height="40" transform="rotate(-45 809.9 304.6)"></rect>
+          </g>
+
+          <!-- manhole R130 @270, skimmer R130 @90 -->
+          <circle class="mach" cx="760" cy="304" r="23.8"></circle>
+          <circle class="ln-t" cx="760" cy="304" r="19.5"></circle>
+          <circle class="mach" cx="760" cy="200" r="11"></circle>
+          <!-- level switches R165 @0/180, gauge R100 @45, vent R100 @225 -->
+          <circle class="mach" cx="826" cy="252" r="5.4"></circle>
+          <circle class="mach" cx="694" cy="252" r="5.4"></circle>
+          <circle class="mach" cx="788.3" cy="223.7" r="5.4"></circle>
+          <circle class="mach" cx="731.7" cy="280.3" r="5.4"></circle>
+          <!-- seal housing + shaft -->
+          <circle class="box" cx="760" cy="252" r="18"></circle>
+          <circle class="mach" cx="760" cy="252" r="5"></circle>
+
+          <!-- shell nozzles -->
+          <rect class="mach" x="840" y="247" width="24" height="10"></rect>
+          <circle class="noz" cx="878" cy="252" r="10"></circle><text class="noz-t" x="878" y="255" text-anchor="middle">N2</text>
+          <rect class="mach" x="656" y="247" width="24" height="10"></rect>
+          <circle class="noz" cx="642" cy="252" r="10"></circle><text class="noz-t" x="642" y="255" text-anchor="middle">N1</text>
+          <line class="ln-h" x1="686" y1="279" x2="666" y2="286"></line>
+          <circle class="noz" cx="654" cy="290" r="10"></circle><text class="noz-t" x="654" y="293" text-anchor="middle">N3</text>
+          <line class="ln-h" x1="686" y1="225" x2="666" y2="218"></line>
+          <circle class="noz" cx="654" cy="214" r="10"></circle><text class="noz-t" x="654" y="217" text-anchor="middle">N4</text>
+          <line class="ln-h" x1="834" y1="225" x2="854" y2="218"></line>
+          <circle class="noz" cx="866" cy="214" r="10"></circle><text class="noz-t" x="866" y="217" text-anchor="middle">N5·N6</text>
+          <line class="ln-h" x1="733" y1="326" x2="723" y2="344"></line>
+          <circle class="noz" cx="717" cy="354" r="10"></circle><text class="noz-t" x="717" y="357" text-anchor="middle">N7</text>
+
+          <!-- legs 3 @ 60/180/300, PCD480 -->
+          <circle class="box" cx="808" cy="169" r="9.7"></circle>
+          <circle class="box" cx="664" cy="252" r="9.7"></circle>
+          <circle class="box" cx="808" cy="335" r="9.7"></circle>
+          <text class="t-dim" x="822" y="163">다리 60°</text>
+          <text class="t-dim" x="822" y="349">다리 300°</text>
+          <text class="t-dim" x="650" y="236" text-anchor="end">다리 180°</text>
+
+          <!-- plan callouts -->
+          <line class="lead" x1="760" y1="328" x2="760" y2="392"></line>
+          <text class="t-dim" x="760" y="405" text-anchor="middle">맨홀 (06) 4&quot; 트라이클램프 · R130 @270°</text>
+          <line class="lead" x1="760" y1="189" x2="760" y2="118"></line>
+          <text class="t-dim" x="760" y="112" text-anchor="middle">스키머 (07) Ø55 보스 · R130 @90°</text>
+          <line class="lead" x1="826" y1="259" x2="888" y2="266"></line>
+          <text class="t-dim" x="892" y="264">LSH · R165 @0°</text>
+          <line class="lead" x1="793" y1="219" x2="880" y2="196"></line>
+          <text class="t-dim" x="884" y="194">압력계 R100 @45°</text>
+          <line class="lead" x1="727" y1="285" x2="640" y2="320"></line>
+          <text class="t-dim" x="636" y="322" text-anchor="end">벤트 · R100 @225°</text>
+          <line class="lead" x1="839.5" y1="284.9" x2="880" y2="300"></line>
+          <text class="t-dim" x="884" y="298">볼트 8-Ø9 · P.C.D 430</text>
+          <line class="lead" x1="812" y1="203" x2="880" y2="228"></line>
+          <text class="t-dim" x="884" y="226">배플 4장 @45°+90°n</text>
+        </svg>
+      </div>
+      <figcaption>
+        기준선은 <b>동체와 콘이 만나는 접선선</b>이고 위가 (+)다. 콘 저부는 60° 를 지켜
+        300 mm 가 되며(원 스케치의 150 mm 로는 Ø394→Ø47.6 을 60° 로 잇지 못한다),
+        직관부 600 mm 와 합쳐 동체 높이는 900 mm 다. 50 L 를 채우면 액면은 접선선
+        +297 mm 에 서고 그 위 75 mm 가 거품층, 나머지 228 mm 가 여유공간이다.
+        임펠러 두 장은 <b>한 축·한 회전수</b>이며 역할로 나뉜다 — 하부는 분산기 링 바로
+        위에서 기포를 부수는 6엽 디스크 터빈, 상부는 고형물을 순환시키는 45° 경사날개
+        터빈이다. 노즐 방위와 커버 관통부는 오른쪽 평면도가 정본이고, 종단면의 맨홀·
+        스키머·다리는 판독을 위해 도면 평면으로 돌려 그렸다.
+      </figcaption>
+    </figure>
+
+    <div class="tablewrap">
+      <table>
+        <caption>부품표 (BOM) — MP-50-P0 1대분</caption>
+        <thead>
+          <tr><th>No.</th><th>품명</th><th class="num">수량</th><th>사양</th><th>재질</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="tag">01</td><td>교반 모터</td><td class="num">1</td><td class="wrapcell">0.75 kW · 4극 · 380 V 3φ 60 Hz · 인버터 대응 · IP55</td><td>—</td></tr>
+          <tr><td class="tag">02</td><td>감속기</td><td class="num">1</td><td class="wrapcell">1단 헬리컬 인라인 i = 2.4 · 출력 717 rpm @60 Hz</td><td>—</td></tr>
+          <tr><td class="tag">03</td><td>커플링</td><td class="num">1</td><td class="wrapcell">플렉시블 조 커플링 Ø25 / Ø25 · 키 8×7</td><td>AL / NBR</td></tr>
+          <tr><td class="tag">04</td><td>상부 커버</td><td class="num">1</td><td class="wrapcell">Ø460 × t5 · 8-Ø9 @P.C.D 430</td><td>SUS304</td></tr>
+          <tr><td class="tag">05</td><td>고정볼트 세트</td><td class="num">1식</td><td class="wrapcell">M8 × 40 육각볼트 8조 + 너트 · 평·스프링와셔</td><td>SUS304</td></tr>
+          <tr><td class="tag">06</td><td>맨홀</td><td class="num">1</td><td class="wrapcell">4&quot; 트라이클램프 페럴 Ø119 + 힌지 캡 (06-01~05)</td><td>SUS304</td></tr>
+          <tr><td class="tag">07</td><td>스키머</td><td class="num">1</td><td class="wrapcell">수동 거품 패들 150 × 60 × t2 · Ø20 조작축</td><td>SUS316L</td></tr>
+          <tr><td class="tag">08</td><td>탱크 셀</td><td class="num">1</td><td class="wrapcell">Ø400 OD × t3 × 직관 600 (ID Ø394)</td><td>SUS304</td></tr>
+          <tr><td class="tag">09</td><td>사이드 노즐</td><td class="num">1식</td><td class="wrapcell">N1 1&quot; · N2 2&quot; 위생관 · N3~N7 1/2&quot; 나사 (노즐표 참조)</td><td>SUS304</td></tr>
+          <tr><td class="tag">10</td><td>사이트글라스</td><td class="num">1</td><td class="wrapcell">붕규산 Ø25 × 460 · 상하 1/2&quot; 차단밸브 · 눈금 0~60 L</td><td>SUS304 / 유리</td></tr>
+          <tr><td class="tag">11</td><td>교반축</td><td class="num">1</td><td class="wrapcell">Ø25 × 740 · 키홈 8×7 (2개소)</td><td>SUS316L</td></tr>
+          <tr><td class="tag">12</td><td>임펠러 (상/하)</td><td class="num">2</td><td class="wrapcell">하 Ø140 6엽 디스크 터빈 / 상 Ø140 4엽 45° 경사날개</td><td>SUS316L</td></tr>
+          <tr><td class="tag">13</td><td>배플</td><td class="num">4</td><td class="wrapcell">40 × 560 × t3 · 벽면 간극 8 · 상부 링 일체 (케이지)</td><td>SUS304</td></tr>
+          <tr><td class="tag">14</td><td>미세기포 분산기</td><td class="num">1</td><td class="wrapcell">평균 Ø250 링 · Ø12.7 × t1.0 · 60-Ø1.0 하향 45°</td><td>SUS316L</td></tr>
+          <tr><td class="tag">15</td><td>하부 콘</td><td class="num">1</td><td class="wrapcell">60° 포함각 · Ø394 → Ø47.6 · h 300 · t3</td><td>SUS304</td></tr>
+          <tr><td class="tag">16</td><td>하부 배출구</td><td class="num">1식</td><td class="wrapcell">2&quot; 위생관 스터브 + 트라이클램프 + 90° 엘보 + 볼밸브</td><td>SUS304</td></tr>
+          <tr><td class="tag">17</td><td>지지 다리</td><td class="num">3</td><td class="wrapcell">40A (Ø48.6 × t2.8) × 820 · 바닥판 Ø100 × t8 · P.C.D 480</td><td>SUS304</td></tr>
+          <tr><td class="tag">18</td><td>레벨센서</td><td class="num">2</td><td class="wrapcell">정전용량식 LSH (+420) / LSL (+150) · 커버 관통</td><td>SUS316L</td></tr>
+          <tr><td class="tag">19</td><td>압력계</td><td class="num">1</td><td class="wrapcell">다이어프램식 Ø63 · 0~1 bar · 커버 R100 @45°</td><td>SUS316L</td></tr>
+          <tr><td class="tag">20</td><td>온도센서</td><td class="num">1</td><td class="wrapcell">PT100 Ø6 × 100 + 서모웰 · N7</td><td>SUS316L</td></tr>
+          <tr><td class="tag">21</td><td>공기 공급계</td><td class="num">1식</td><td class="wrapcell">필터+레귤레이터 · 로타미터 1~4 m³/h · 체크밸브 · 볼밸브</td><td>SUS304 / PC</td></tr>
+          <tr><td class="tag">22</td><td>제어반</td><td class="num">1</td><td class="wrapcell">300 × 200 × 150 · IP54 · VFD · 타이머 · 비상정지</td><td>SUS304</td></tr>
+          <tr><td class="tag">23</td><td>배관</td><td class="num">1식</td><td class="wrapcell">1&quot; · 2&quot; 위생관 + 1/2&quot; 나사 배관 · 트라이클램프 접속</td><td>SUS304</td></tr>
+          <tr><td class="tag">24</td><td>밸브류</td><td class="num">1식</td><td class="wrapcell">볼밸브 1/2&quot; × 4 · 1&quot; × 1 · 2&quot; × 1</td><td>SUS304</td></tr>
+          <tr><td class="tag">25</td><td>클램프</td><td class="num">1식</td><td class="wrapcell">트라이클램프 4&quot; × 1 · 2&quot; × 3 · 1.5&quot; × 2</td><td>SUS304</td></tr>
+          <tr><td class="tag">26</td><td>가스켓</td><td class="num">1식</td><td class="wrapcell">커버 EPDM Ø420/Ø394 × t3 × 2장 · 클램프 실리콘</td><td>EPDM / 실리콘</td></tr>
+          <tr><td class="tag">27</td><td>전선/케이블</td><td class="num">1식</td><td class="wrapcell">동력 4C × 1.5 sq · 계장 다심 실드 · 가요전선관</td><td>—</td></tr>
+          <tr><td class="tag">28</td><td>앵커볼트</td><td class="num">1식</td><td class="wrapcell">M10 × 100 케미컬 앵커 3조 (매입 80)</td><td>SUS304</td></tr>
+          <tr><td class="tag">29</td><td>명판</td><td class="num">1</td><td class="wrapcell">100 × 60 에칭 · 형식·제번·용량·전기사양·제작일</td><td>SUS304</td></tr>
+          <tr><td class="tag">30</td><td>방진패드</td><td class="num">3</td><td class="wrapcell">Ø100 × t30 · 천연고무 방진 · 중앙 Ø12 관통</td><td>NR</td></tr>
+          <tr><td class="tag">31</td><td>배수 트레이</td><td class="num">1</td><td class="wrapcell">600 × 600 × t1.5 · 테두리 30 · 1&quot; 배수구 (원 도면 &quot;베셀트레이&quot;)</td><td>SUS304</td></tr>
+          <tr><td class="tag">32</td><td>접지단자</td><td class="num">1식</td><td class="wrapcell">M8 접지 보스 2개소 + 접지 라벨 · 저항 ≤ 100 Ω</td><td>SUS304</td></tr>
+          <tr><td class="tag">33</td><td>배수호스</td><td class="num">1식</td><td class="wrapcell">1&quot; 보강 호스 3 m + 호스 바브 · 클램프</td><td>PVC / SUS304</td></tr>
+          <tr><td class="tag">34</td><td>기타 부품</td><td class="num">1식</td><td class="wrapcell">O링·부싱 예비, 공구, 시운전 소모품</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>MP-50-P0-001</b></div>
+      <div><span>도면명</span><b>전체 조립도</b></div>
+      <div><span>축척</span><b>NTS</b></div>
+      <div><span>단위</span><b>mm</b></div>
+      <div><span>REV</span><b>P0</b></div>
+      <div><span>기준선</span><b>접선선 ±0</b></div>
+    </div>
+  </section>
+
+  <!-- ================= SHEET 2 : SHELL + CONE ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-P0-002</span>
+      <span class="sheet-title">탱크 셀 (08) · 하부 콘 (15)</span>
+      <span class="sheet-sub">종단면 · A-A 수평단면 · 상세 B 플랜지 체결부 · 콘 전개도</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1040 696" role="img"
+             aria-label="탱크 셀과 하부 콘의 제작 상세. 왼쪽 종단면은 직관부 600, 콘 304, 상부 플랜지 Ø460 과 노즐 N1 에서 N7 의 높이를 표시한다. 가운데 위는 A-A 수평단면으로 배플 4장과 벽면 간극 8 밀리미터, 오른쪽 위는 축척 2대1 의 플랜지 체결부 상세로 동체 플랜지, 하부 가스켓, 배플 케이지 링, 상부 가스켓, 커버가 M8 볼트로 겹쳐지는 순서를 보인다. 아래는 용접 상세와 콘 전개도로 전개 각도가 정확히 180도인 반원 고리임을 보인다.">
+          <!-- ============ SHELL SECTION (cx=190, 0.50 px/mm, y0=400) ============ -->
+          <text class="t-hd" x="190" y="40" text-anchor="middle">동체·콘 종단면</text>
+
+          <!-- flange + cover stack -->
+          <rect class="steel" x="75" y="96" width="230" height="4"></rect>
+          <rect class="mach" x="75" y="92" width="230" height="4"></rect>
+          <!-- shell -->
+          <rect class="steel" x="90" y="100" width="1.5" height="300"></rect>
+          <rect class="steel" x="288.5" y="100" width="1.5" height="300"></rect>
+          <!-- cone -->
+          <polygon class="steel" points="90,400 91.5,400 180.5,552 179,552"></polygon>
+          <polygon class="steel" points="290,400 288.5,400 199.5,552 201,552"></polygon>
+          <line class="ln-t" x1="91.5" y1="400" x2="288.5" y2="400"></line>
+          <line class="cl" x1="190" y1="70" x2="190" y2="600"></line>
+          <!-- outlet stub -->
+          <rect class="steel" x="179" y="552" width="1.5" height="26"></rect>
+          <rect class="steel" x="199.5" y="552" width="1.5" height="26"></rect>
+          <rect class="mach" x="174" y="578" width="32" height="6"></rect>
+
+          <!-- cone angle -->
+          <line class="ext" x1="190" y1="400" x2="190" y2="552"></line>
+          <path class="dim" d="M190 470 A 70 70 0 0 0 148 483"></path>
+          <text class="t-dim" x="196" y="492">60°</text>
+
+          <!-- nozzles -->
+          <rect class="mach" x="60" y="136" width="30" height="8"></rect>
+          <text class="t-dim" x="56" y="142" text-anchor="end">N1</text>
+          <rect class="mach" x="290" y="198" width="32" height="9"></rect>
+          <text class="t-dim" x="326" y="205">N2</text>
+          <rect class="mach" x="290" y="146" width="26" height="7"></rect>
+          <text class="t-dim" x="320" y="152">N5</text>
+          <rect class="mach" x="290" y="376" width="26" height="7"></rect>
+          <text class="t-dim" x="320" y="382">N6</text>
+          <rect class="air-f" x="64" y="386" width="26" height="7"></rect>
+          <text class="t-dim t-air" x="60" y="392" text-anchor="end">N3</text>
+          <rect class="mach" x="64" y="321" width="26" height="7"></rect>
+          <text class="t-dim" x="60" y="327" text-anchor="end">N4</text>
+          <rect class="mach" x="64" y="336" width="26" height="7"></rect>
+          <text class="t-dim" x="60" y="349" text-anchor="end">N7</text>
+
+          <!-- level marks -->
+          <line class="dim" x1="91.5" y1="251.5" x2="288.5" y2="251.5" stroke-dasharray="7 3"></line>
+          <text class="t-dim t-acc" x="294" y="249">+297</text>
+          <line class="dim" x1="91.5" y1="214" x2="288.5" y2="214" stroke-dasharray="4 3"></line>
+          <text class="t-dim t-fro" x="326" y="224">+372</text>
+
+          <!-- dimension chain -->
+          <line class="ext" x1="90" y1="100" x2="42" y2="100"></line>
+          <line class="ext" x1="90" y1="400" x2="42" y2="400"></line>
+          <line class="ext" x1="179" y1="552" x2="42" y2="552"></line>
+          <line class="dim" x1="48" y1="100" x2="48" y2="400" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="44" y="250" text-anchor="end" transform="rotate(-90 44 250)">600</text>
+          <line class="dim" x1="48" y1="400" x2="48" y2="552" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="44" y="476" text-anchor="end" transform="rotate(-90 44 476)">300</text>
+          <line class="dim" x1="26" y1="92" x2="26" y2="584" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="22" y="338" text-anchor="end" transform="rotate(-90 22 338)">908 전장</text>
+          <line class="ext" x1="90" y1="400" x2="90" y2="620"></line>
+          <line class="ext" x1="290" y1="400" x2="290" y2="620"></line>
+          <line class="dim" x1="90" y1="614" x2="290" y2="614" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="190" y="610" text-anchor="middle">Ø400 (t3 · ID Ø394)</text>
+          <line class="ext" x1="75" y1="92" x2="75" y2="82"></line>
+          <line class="ext" x1="305" y1="92" x2="305" y2="82"></line>
+          <line class="dim" x1="75" y1="76" x2="305" y2="76" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="190" y="72" text-anchor="middle">Ø460 플랜지</text>
+          <line class="ext" x1="179" y1="584" x2="179" y2="644"></line>
+          <line class="ext" x1="201" y1="584" x2="201" y2="644"></line>
+          <line class="dim" x1="150" y1="638" x2="179" y2="638" marker-end="url(#da)"></line>
+          <line class="dim" x1="230" y1="638" x2="201" y2="638" marker-end="url(#da)"></line>
+          <text class="t-dim" x="190" y="656" text-anchor="middle">Ø47.6 (2&quot; 위생관 내경)</text>
+
+          <!-- ============ A-A SECTION (cx=450, cy=180, r=95) ============ -->
+          <text class="t-hd" x="450" y="42" text-anchor="middle">A-A 수평단면 (+300)</text>
+          <circle class="steel" cx="450" cy="180" r="95"></circle>
+          <circle class="pulp" cx="450" cy="180" r="93.6"></circle>
+          <circle class="ln" cx="450" cy="180" r="93.6" fill="none"></circle>
+          <line class="cl" x1="341" y1="180" x2="559" y2="180"></line>
+          <line class="cl" x1="450" y1="71" x2="450" y2="289"></line>
+          <g class="mach" stroke-linecap="butt">
+            <line x1="500.1" y1="129.9" x2="513.5" y2="116.5" stroke-width="6"></line>
+            <line x1="399.9" y1="129.9" x2="386.5" y2="116.5" stroke-width="6"></line>
+            <line x1="399.9" y1="230.1" x2="386.5" y2="243.5" stroke-width="6"></line>
+            <line x1="500.1" y1="230.1" x2="513.5" y2="243.5" stroke-width="6"></line>
+          </g>
+          <circle class="box" cx="450" cy="180" r="5.9"></circle>
+          <text class="t-dim" x="450" y="300" text-anchor="middle">배플 40 × 560 × t3 · 4장 · 90° 등배</text>
+          <text class="t-dim" x="450" y="316" text-anchor="middle">벽면 간극 8 — 침전물이 배플 뒤에 쌓이지 않게</text>
+          <text class="t-dim" x="450" y="332" text-anchor="middle">중앙은 교반축 Ø25 · 임펠러는 이 단면 아래</text>
+
+          <!-- ============ CONE DEVELOPMENT (cx=800, cy=300, R=150) ============ -->
+          <text class="t-hd" x="800" y="42" text-anchor="middle">콘 전개도 (15) — 절단 원판</text>
+          <path class="steel" d="M650 300 A 150 150 0 0 1 950 300 L 818.1 300 A 18.1 18.1 0 0 0 781.9 300 Z"></path>
+          <line class="cl" x1="628" y1="300" x2="972" y2="300"></line>
+          <line class="cl" x1="800" y1="132" x2="800" y2="326"></line>
+          <line class="dim" x1="800" y1="300" x2="950" y2="300" marker-end="url(#da)"></line>
+          <text class="t-dim" x="884" y="294" text-anchor="middle">R394</text>
+          <line class="dim" x1="800" y1="314" x2="781.9" y2="314" marker-end="url(#da)"></line>
+          <text class="t-dim" x="800" y="328" text-anchor="middle">R47.6</text>
+          <text class="t-dim" x="800" y="240" text-anchor="middle">전개각 180.0°</text>
+          <text class="t-dim" x="800" y="256" text-anchor="middle">(360° × sin 30° = 180°)</text>
+          <text class="t-dim" x="800" y="350" text-anchor="middle">Ø394 → Ø47.6 · 60° 포함각 · 경사길이 346</text>
+          <text class="t-dim" x="800" y="366" text-anchor="middle">SUS304 t3 · 세로 맞대기 이음 1개소</text>
+          <text class="t-dim" x="800" y="382" text-anchor="middle">60° 를 지키면 전개 블랭크가 정확히 반원 고리가 된다</text>
+
+          <!-- ============ DETAIL B : FLANGE JOINT (S=2:1) ============ -->
+          <text class="t-hd" x="520" y="426" text-anchor="middle">상세 B — 커버 체결부 (S = 2:1)</text>
+          <rect class="box-d" x="348" y="438" width="344" height="222"></rect>
+          <rect class="mach" x="430" y="460" width="180" height="10"></rect>
+          <rect class="air-f" x="470" y="470" width="52" height="6"></rect>
+          <rect class="mach" x="430" y="476" width="180" height="8"></rect>
+          <rect class="mach" x="470" y="484" width="6" height="80"></rect>
+          <rect class="air-f" x="470" y="484" width="52" height="6"></rect>
+          <rect class="steel" x="430" y="490" width="180" height="16"></rect>
+          <rect class="steel" x="470" y="506" width="6" height="118"></rect>
+          <line class="cl" x1="452" y1="452" x2="452" y2="636"></line>
+          <rect class="box" x="568" y="446" width="26" height="14"></rect>
+          <rect class="box" x="575" y="460" width="12" height="62"></rect>
+          <rect class="box" x="566" y="506" width="30" height="16"></rect>
+          <text class="t-dim" x="602" y="452">M8 × 40</text>
+          <text class="t-dim" x="602" y="518">20 N·m</text>
+          <line class="lead" x1="430" y1="465" x2="426" y2="465"></line>
+          <text class="t-dim" x="422" y="467" text-anchor="end">커버 t5</text>
+          <line class="lead" x1="470" y1="473" x2="426" y2="481"></line>
+          <text class="t-dim" x="422" y="483" text-anchor="end">가스켓 t3</text>
+          <line class="lead" x1="430" y1="480" x2="426" y2="497"></line>
+          <text class="t-dim" x="422" y="499" text-anchor="end">케이지 링 t4</text>
+          <line class="lead" x1="470" y1="487" x2="426" y2="513"></line>
+          <text class="t-dim" x="422" y="515" text-anchor="end">가스켓 t3</text>
+          <line class="lead" x1="430" y1="498" x2="426" y2="529"></line>
+          <text class="t-dim" x="422" y="531" text-anchor="end">동체 플랜지 t8</text>
+          <line class="lead" x1="476" y1="560" x2="426" y2="561"></line>
+          <text class="t-dim" x="422" y="563" text-anchor="end">동체 t3 · 필렛 a3</text>
+          <line class="lead" x1="476" y1="540" x2="530" y2="560"></line>
+          <text class="t-dim" x="534" y="562">배플 (케이지에 매달림)</text>
+          <line class="dim" x1="470" y1="600" x2="522" y2="600" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="520" y="620" text-anchor="middle">가스켓 착좌폭 13 (Ø394 → Ø420)</text>
+          <text class="t-dim" x="520" y="638" text-anchor="middle">볼트는 가스켓 바깥 P.C.D 430 을 지난다 (8개소)</text>
+
+          <!-- ============ WELD DETAILS ============ -->
+          <text class="t-hd" x="870" y="426" text-anchor="middle">용접 상세 (S = 4:1)</text>
+          <rect class="box-d" x="712" y="438" width="316" height="112"></rect>
+          <text class="t-dim" x="870" y="458" text-anchor="middle">상세 C — 동체 / 콘 맞대기</text>
+          <polygon class="steel" points="760,472 980,472 980,482 760,482"></polygon>
+          <polygon class="steel" points="760,496 980,496 980,506 760,506"></polygon>
+          <polygon class="froth" points="858,482 882,482 876,496 864,496"></polygon>
+          <line class="ln" x1="858" y1="482" x2="864" y2="496"></line>
+          <line class="ln" x1="882" y1="482" x2="876" y2="496"></line>
+          <path class="dim" d="M870 486 A 16 16 0 0 0 886 490"></path>
+          <text class="t-dim" x="892" y="492">60°</text>
+          <text class="t-dim" x="722" y="522">루트 간극 1.5 · 루트면 1.0 · 이면 Ar 백실드</text>
+          <text class="t-dim" x="722" y="536">100 % 침투 · 내면 비드 평활 연마 → Ra ≤ 0.8 µm</text>
+
+          <rect class="box-d" x="712" y="562" width="316" height="118"></rect>
+          <text class="t-dim" x="870" y="582" text-anchor="middle">상세 D — 노즐 취부 (셋스루)</text>
+          <polygon class="steel" points="760,616 980,616 980,626 760,626"></polygon>
+          <rect class="steel" x="858" y="590" width="6" height="26"></rect>
+          <rect class="steel" x="882" y="590" width="6" height="26"></rect>
+          <polygon class="froth" points="858,616 848,616 858,606"></polygon>
+          <polygon class="froth" points="888,616 898,616 888,606"></polygon>
+          <polygon class="froth" points="864,626 858,626 864,632"></polygon>
+          <polygon class="froth" points="882,626 888,626 882,632"></polygon>
+          <text class="t-dim" x="722" y="652">외면 전둘레 필렛 a3 · 내면 전둘레 필렛 a2</text>
+          <text class="t-dim" x="722" y="666">내면 단차 0.5 이하 · 노즐 보강판 없음 (저압)</text>
+        </svg>
+      </div>
+      <figcaption>
+        동체는 SUS304 t3 판을 말아 세로 이음 1개소를 맞대기 용접하고, 상부에 Ø460 × t8
+        플랜지 링을, 하부에 콘을 맞대기로 잇는다. 콘은 60° 를 지키므로 전개 블랭크가
+        <b>정확히 반원 고리</b>(외반경 394 · 내반경 43 · 전개각 180.0°)가 되어 판재 배치와
+        마킹이 단순하다 — 원 스케치의 150 mm 콘으로는 이 관계가 성립하지 않는다.
+        상세 B 는 커버 체결부의 겹침 순서다. <b>배플은 동체 내면에 용접하지 않고</b>,
+        상부 링에 매단 케이지로 만들어 가스켓 두 장 사이에 끼워 볼트로 함께 조인다.
+        분해 청소 때 배플 4장이 한 덩어리로 빠지고, 연마한 내면에 용접 자국이 남지 않는다.
+      </figcaption>
+    </figure>
+
+    <div class="tablewrap">
+      <table>
+        <caption>노즐표 — 높이는 접선선 기준 · 방위는 0° 우측 반시계</caption>
+        <thead>
+          <tr><th>기호</th><th>용도</th><th>규격</th><th class="num">높이</th><th class="num">방위</th><th>접속</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="tag">N1</td><td>급광 (슬러리 투입)</td><td>1&quot; 위생관 Ø25.4 × t1.65</td><td class="num">+520</td><td class="num">180°</td><td>1&quot; 트라이클램프</td></tr>
+          <tr><td class="tag">N2</td><td>거품 (정광) 배출</td><td>2&quot; 위생관 Ø50.8 × t1.65</td><td class="num">+395</td><td class="num">0°</td><td>2&quot; 트라이클램프</td></tr>
+          <tr><td class="tag">N3</td><td>공기 공급 → 분산기 (14)</td><td>15A · Ø21.7 × t2.0</td><td class="num">+20</td><td class="num">200°</td><td>1/2&quot; 나사</td></tr>
+          <tr><td class="tag">N4</td><td>시료 채취</td><td>15A · Ø21.7 × t2.0</td><td class="num">+150</td><td class="num">160°</td><td>1/2&quot; 볼밸브</td></tr>
+          <tr><td class="tag">N5</td><td>사이트글라스 (상)</td><td>15A · Ø21.7 × t2.0</td><td class="num">+500</td><td class="num">20°</td><td>1/2&quot; 볼밸브</td></tr>
+          <tr><td class="tag">N6</td><td>사이트글라스 (하)</td><td>15A · Ø21.7 × t2.0</td><td class="num">+40</td><td class="num">20°</td><td>1/2&quot; 볼밸브 (플러싱 티)</td></tr>
+          <tr><td class="tag">N7</td><td>온도센서 (20)</td><td>15A · 서모웰 Ø10</td><td class="num">+120</td><td class="num">250°</td><td>1/2&quot; 나사</td></tr>
+          <tr><td class="tag">N11</td><td>하부 배출 (16)</td><td>2&quot; 위생관 Ø50.8 × t1.65</td><td class="num">−300</td><td class="num">중심</td><td>2&quot; 트라이클램프</td></tr>
+          <tr><td class="tag">M1</td><td>맨홀 (06)</td><td>4&quot; 페럴 Ø119</td><td class="num">커버</td><td class="num">R130 @270°</td><td>4&quot; 트라이클램프</td></tr>
+          <tr><td class="tag">M2</td><td>스키머 (07) 삽입구</td><td>Ø55 보스 + 실리콘 부싱</td><td class="num">커버</td><td class="num">R130 @90°</td><td>—</td></tr>
+          <tr><td class="tag">M3</td><td>레벨센서 LSH / LSL (18)</td><td>1/2&quot; 보스 × 2</td><td class="num">커버</td><td class="num">R165 @0° / 180°</td><td>1/2&quot; 나사</td></tr>
+          <tr><td class="tag">M4</td><td>압력계 (19)</td><td>1/2&quot; 보스</td><td class="num">커버</td><td class="num">R100 @45°</td><td>1/2&quot; 나사</td></tr>
+          <tr><td class="tag">M5</td><td>벤트 (상시 개방)</td><td>1/2&quot; 보스 + 방적 캡</td><td class="num">커버</td><td class="num">R100 @225°</td><td>1/2&quot; 나사</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>MP-50-P0-002</b></div>
+      <div><span>도면명</span><b>탱크 셀 · 하부 콘</b></div>
+      <div><span>축척</span><b>NTS (상세 B 2:1)</b></div>
+      <div><span>단위</span><b>mm</b></div>
+      <div><span>REV</span><b>P0</b></div>
+      <div><span>재질</span><b>SUS304 t3</b></div>
+    </div>
+  </section>
+
+  <!-- ================= SHEET 3 : COVER + MANHOLE + SKIMMER ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-P0-003</span>
+      <span class="sheet-title">상부 커버 (04) · 맨홀 (06) · 스키머 (07)</span>
+      <span class="sheet-sub">커버 평면·단면 · 맨홀 부품 분해 · 스키머 상세</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1040 600" role="img"
+             aria-label="상부 커버와 맨홀, 스키머의 제작 상세. 왼쪽은 커버 평면도로 Ø460 외경, P.C.D 430 의 볼트 8개, 중앙 씰 하우징, 맨홀과 스키머 보스, 레벨센서 2개, 압력계, 벤트의 위치를 표시하고 그 아래는 E-E 단면이다. 가운데는 맨홀을 뚜껑, 손잡이, 힌지핀, 클램프, 가스켓 다섯 부품으로 분해한 도면이며, 오른쪽은 수동 거품 스키머의 측면도와 패들 회전 궤적 평면도다.">
+          <!-- ============ COVER PLAN (cx=200, cy=232) ============ -->
+          <text class="t-hd" x="200" y="42" text-anchor="middle">커버 평면도 (04)</text>
+          <circle class="mach" cx="200" cy="232" r="115"></circle>
+          <circle class="cl" cx="200" cy="232" r="107.5" fill="none"></circle>
+          <circle class="ln-t" cx="200" cy="232" r="105"></circle>
+          <circle class="ln-t" cx="200" cy="232" r="98.5"></circle>
+          <line class="cl" x1="70" y1="232" x2="330" y2="232"></line>
+          <line class="cl" x1="200" y1="102" x2="200" y2="362"></line>
+          <circle class="box" cx="299.3" cy="190.9" r="2.25"></circle>
+          <circle class="box" cx="241.1" cy="132.7" r="2.25"></circle>
+          <circle class="box" cx="158.9" cy="132.7" r="2.25"></circle>
+          <circle class="box" cx="100.7" cy="190.9" r="2.25"></circle>
+          <circle class="box" cx="100.7" cy="273.1" r="2.25"></circle>
+          <circle class="box" cx="158.9" cy="331.3" r="2.25"></circle>
+          <circle class="box" cx="241.1" cy="331.3" r="2.25"></circle>
+          <circle class="box" cx="299.3" cy="273.1" r="2.25"></circle>
+          <circle class="steel" cx="200" cy="297" r="29.75"></circle>
+          <circle class="ln-t" cx="200" cy="297" r="24.35"></circle>
+          <circle class="steel" cx="200" cy="167" r="13.75"></circle>
+          <circle class="steel" cx="282.5" cy="232" r="6.75"></circle>
+          <circle class="steel" cx="117.5" cy="232" r="6.75"></circle>
+          <circle class="steel" cx="235.4" cy="196.6" r="6.75"></circle>
+          <circle class="steel" cx="164.6" cy="267.4" r="6.75"></circle>
+          <circle class="box" cx="200" cy="232" r="22.5"></circle>
+          <circle class="mach" cx="200" cy="232" r="6.25"></circle>
+
+          <line class="lead" x1="200" y1="153" x2="318" y2="120"></line>
+          <text class="t-dim" x="322" y="122">Ø55 스키머 보스 · R130 @90°</text>
+          <line class="lead" x1="242" y1="196" x2="318" y2="166"></line>
+          <text class="t-dim" x="322" y="168">Ø27 압력계 보스 · R100 @45°</text>
+          <line class="lead" x1="289" y1="232" x2="318" y2="212"></line>
+          <text class="t-dim" x="322" y="214">Ø27 LSH 보스 · R165 @0°</text>
+          <line class="lead" x1="222" y1="240" x2="318" y2="258"></line>
+          <text class="t-dim" x="322" y="260">Ø90 씰 하우징 · 축 Ø25 관통</text>
+          <line class="lead" x1="299.3" y1="273.1" x2="318" y2="304"></line>
+          <text class="t-dim" x="322" y="306">8-Ø9 @ P.C.D 430</text>
+          <line class="lead" x1="200" y1="327" x2="318" y2="350"></line>
+          <text class="t-dim" x="322" y="352">Ø119 맨홀 페럴 · R130 @270°</text>
+          <line class="lead" x1="111" y1="232" x2="84" y2="232"></line>
+          <text class="t-dim" x="80" y="234" text-anchor="end">LSL</text>
+          <line class="lead" x1="158" y1="272" x2="84" y2="296"></line>
+          <text class="t-dim" x="80" y="298" text-anchor="end">벤트</text>
+          <line class="ext" x1="85" y1="232" x2="85" y2="392"></line>
+          <line class="ext" x1="315" y1="232" x2="315" y2="392"></line>
+          <line class="dim" x1="85" y1="386" x2="315" y2="386" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="200" y="382" text-anchor="middle">Ø460</text>
+
+          <!-- E-E section -->
+          <text class="t-hd" x="200" y="440" text-anchor="middle">E-E 단면</text>
+          <rect class="mach" x="85" y="498" width="230" height="8"></rect>
+          <rect class="steel" x="176" y="478" width="48" height="20"></rect>
+          <rect class="steel" x="186" y="472" width="28" height="6"></rect>
+          <rect class="steel" x="186" y="506" width="28" height="10"></rect>
+          <rect class="steel" x="113" y="486" width="14" height="12"></rect>
+          <rect class="steel" x="273" y="486" width="14" height="12"></rect>
+          <line class="cl" x1="200" y1="462" x2="200" y2="528"></line>
+          <text class="t-dim" x="320" y="504">t5</text>
+          <text class="t-dim" x="200" y="466" text-anchor="middle">Ø90 씰 하우징</text>
+          <text class="t-dim" x="109" y="482" text-anchor="end">보스 h20</text>
+          <text class="t-dim" x="291" y="482">보스 h20</text>
+          <text class="t-dim" x="200" y="540" text-anchor="middle">페럴은 커버 하면으로 12 돌출 — 거품 걸림 방지</text>
+
+          <!-- ============ MANHOLE EXPLODED (cx=580) ============ -->
+          <text class="t-hd" x="580" y="42" text-anchor="middle">맨홀 (06) 부품 분해</text>
+          <rect class="box" x="554" y="70" width="52" height="9"></rect>
+          <line class="ln" x1="566" y1="79" x2="566" y2="92"></line>
+          <line class="ln" x1="594" y1="79" x2="594" y2="92"></line>
+          <circle class="bal" cx="662" cy="74" r="11"></circle><text class="bal-t" x="662" y="78" text-anchor="middle">06-02</text>
+          <line class="lead" x1="610" y1="74" x2="650" y2="74"></line>
+          <text class="t-dim" x="678" y="78">손잡이</text>
+
+          <rect class="mach" x="538" y="92" width="84" height="14"></rect>
+          <rect class="mach" x="546" y="106" width="68" height="8"></rect>
+          <circle class="bal" cx="662" cy="102" r="11"></circle><text class="bal-t" x="662" y="106" text-anchor="middle">06-01</text>
+          <line class="lead" x1="626" y1="100" x2="650" y2="102"></line>
+          <text class="t-dim" x="678" y="106">뚜껑 (엔드 캡)</text>
+
+          <rect class="air-f" x="546" y="132" width="68" height="8"></rect>
+          <circle class="bal" cx="662" cy="136" r="11"></circle><text class="bal-t" x="662" y="140" text-anchor="middle">06-05</text>
+          <line class="lead" x1="618" y1="136" x2="650" y2="136"></line>
+          <text class="t-dim" x="678" y="140">가스켓 (실리콘)</text>
+
+          <path class="box" d="M528 158 h30 v10 h-14 v14 h14 v10 h-30 a17 17 0 0 1 0 -34 z"></path>
+          <path class="box" d="M632 158 h-30 v10 h14 v14 h-14 v10 h30 a17 17 0 0 0 0 -34 z"></path>
+          <circle class="bal" cx="662" cy="192" r="11"></circle><text class="bal-t" x="662" y="196" text-anchor="middle">06-04</text>
+          <line class="lead" x1="640" y1="186" x2="652" y2="192"></line>
+          <text class="t-dim" x="678" y="196">클램프</text>
+
+          <rect class="steel" x="546" y="210" width="68" height="8"></rect>
+          <rect class="steel" x="538" y="218" width="84" height="14"></rect>
+          <rect class="mach" x="500" y="232" width="160" height="8"></rect>
+          <line class="lead" x1="622" y1="224" x2="674" y2="228"></line>
+          <text class="t-dim" x="678" y="230">페럴 (커버 일체)</text>
+          <line class="lead" x1="660" y1="236" x2="674" y2="246"></line>
+          <text class="t-dim" x="678" y="248">커버 (04)</text>
+
+          <line class="ln" x1="510" y1="96" x2="510" y2="228"></line>
+          <circle class="mach" cx="510" cy="96" r="4"></circle>
+          <circle class="bal" cx="476" cy="96" r="11"></circle><text class="bal-t" x="476" y="100" text-anchor="middle">06-03</text>
+          <line class="lead" x1="488" y1="96" x2="500" y2="96"></line>
+
+          <line class="cl" x1="580" y1="60" x2="580" y2="250"></line>
+          <line class="dim" x1="538" y1="272" x2="622" y2="272" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="580" y="268" text-anchor="middle">Ø119</text>
+          <line class="dim" x1="546" y1="292" x2="614" y2="292" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="580" y="288" text-anchor="middle">Ø97.4 (가스켓 내경)</text>
+          <text class="t-dim" x="580" y="320" text-anchor="middle">4&quot; 트라이클램프 규격품 조합</text>
+          <text class="t-dim" x="580" y="336" text-anchor="middle">가스켓 실리콘 Ø106.4 / Ø97.4</text>
+          <text class="t-dim" x="580" y="352" text-anchor="middle">클램프 손조임 후 12 N·m</text>
+          <text class="t-dim" x="580" y="368" text-anchor="middle">공구 없이 개방 — 투입·청소·육안 점검</text>
+          <text class="t-dim" x="580" y="384" text-anchor="middle">힌지 핀 Ø8 × 40 · 개방각 110° · 개방 상태 유지</text>
+
+          <!-- ============ SKIMMER (cx=880) ============ -->
+          <text class="t-hd" x="880" y="42" text-anchor="middle">스키머 (07) 상세</text>
+          <rect class="box" x="846" y="62" width="68" height="8"></rect>
+          <rect class="mach" x="876" y="70" width="8" height="28"></rect>
+          <text class="t-dim" x="924" y="70">손잡이 Ø20 × 180</text>
+          <rect class="box" x="862" y="98" width="36" height="14"></rect>
+          <text class="t-dim" x="924" y="108">클램프 칼라 (±40)</text>
+          <rect class="air-f" x="858" y="112" width="44" height="12"></rect>
+          <text class="t-dim" x="924" y="122">Ø55 보스 + 부싱</text>
+          <rect class="mach" x="876" y="124" width="8" height="126"></rect>
+          <text class="t-dim" x="924" y="190">조작축 Ø20 × 400</text>
+          <text class="t-dim" x="924" y="206">SUS316L</text>
+          <rect class="mach" x="820" y="250" width="120" height="10"></rect>
+          <text class="t-dim" x="948" y="258">패들 150×60×t2</text>
+          <line class="cl" x1="880" y1="56" x2="880" y2="286"></line>
+          <line class="dim" x1="820" y1="292" x2="940" y2="292" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="880" y="288" text-anchor="middle">150</text>
+
+          <text class="t-hd" x="880" y="340" text-anchor="middle">패들 회전 궤적 (평면)</text>
+          <circle class="ln-t" cx="880" cy="440" r="59"></circle>
+          <circle class="pulp" cx="880" cy="440" r="58"></circle>
+          <circle class="cl" cx="880" cy="440" r="39" fill="none"></circle>
+          <circle class="mach" cx="880" cy="401" r="4"></circle>
+          <rect class="froth" x="835" y="397" width="45" height="8" transform="rotate(-25 880 401)"></rect>
+          <rect class="froth" x="880" y="397" width="45" height="8" transform="rotate(25 880 401)"></rect>
+          <path class="dim" d="M848 388 A 40 40 0 0 1 912 388"></path>
+          <text class="t-dim" x="880" y="372" text-anchor="middle">±60° 왕복</text>
+          <circle class="noz" cx="939" cy="440" r="10"></circle><text class="noz-t" x="939" y="443" text-anchor="middle">N2</text>
+          <line class="lead" x1="880" y1="499" x2="880" y2="514"></line>
+          <text class="t-dim" x="880" y="528" text-anchor="middle">거품을 N2 (0°) 쪽으로 밀어낸다</text>
+          <text class="t-dim" x="880" y="544" text-anchor="middle">교반축과 간섭 없음 (R130 선회)</text>
+          <text class="t-dim" x="880" y="560" text-anchor="middle">전동 구동 없음 — 수동 조작 부품</text>
+        </svg>
+      </div>
+      <figcaption>
+        커버는 Ø460 × t5 한 장이고 관통부는 여섯 곳이다 — 중앙 씰 하우징, 맨홀,
+        스키머 보스, 레벨센서 둘, 압력계, 벤트. 방위는 배플(45°·135°·225°·315°)과
+        겹치지 않게 잡았고, 압력계·벤트는 배플을 피해 R100 으로 당겼다.
+        맨홀은 특수 제작 대신 <b>4&quot; 트라이클램프 규격품</b>으로 짰다 — 원 스케치의
+        Ø120 / Ø104 가 4&quot; 페럴(Ø119)과 가스켓(Ø106.4 / Ø97.4)에 그대로 대응한다.
+        스키머는 모터가 하나뿐인 BOM 과 맞추어 <b>수동 패들</b>로 확정했다.
+        거품은 액면을 N2 높이까지 올리면 스스로 넘치고, 거품이 무거워 넘지 못할 때만
+        패들로 밀어낸다.
+      </figcaption>
+    </figure>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>MP-50-P0-003</b></div>
+      <div><span>도면명</span><b>상부 커버 · 맨홀 · 스키머</b></div>
+      <div><span>축척</span><b>NTS</b></div>
+      <div><span>단위</span><b>mm</b></div>
+      <div><span>REV</span><b>P0</b></div>
+      <div><span>설계압력</span><b>0.05 MPa(G)</b></div>
+    </div>
+  </section>
+
+  <!-- ================= SHEET 4 : AGITATOR TRAIN ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-P0-004</span>
+      <span class="sheet-title">교반계 — 교반축 (11) · 임펠러 (12) · 배플 (13)</span>
+      <span class="sheet-sub">한 축 · 한 회전수 · 임펠러는 역할로 구분</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1040 700" role="img"
+             aria-label="교반계 제작 상세. 위쪽은 Ø25 × 740 교반축을 눕혀 그린 것으로 키홈 세 곳과 하단 M20 탭, 임펠러와 씰 관통부 위치를 표시한다. 가운데 왼쪽은 하부 6엽 디스크 터빈 Ø140 의 평면과 정면, 가운데는 상부 4엽 45도 경사날개 터빈, 오른쪽은 허브 단면 상세다. 아래 왼쪽은 배플 케이지 조립도, 아래 오른쪽은 임펠러 두 장의 설치 높이와 간격, 잠김 깊이를 보이는 배치 단면이다.">
+          <!-- ============ SHAFT (horizontal, 0.90 px/mm, x0=60 at +25) ============ -->
+          <text class="t-hd" x="60" y="42">교반축 (11) — SUS316L Ø25 × 740</text>
+          <rect class="mach" x="60" y="119" width="666" height="22"></rect>
+          <line class="cl" x1="44" y1="130" x2="742" y2="130"></line>
+          <!-- keyways -->
+          <rect class="box" x="74" y="119" width="36" height="6"></rect>
+          <rect class="box" x="218" y="119" width="36" height="6"></rect>
+          <rect class="box" x="698" y="119" width="24" height="6"></rect>
+          <!-- impeller hub footprints -->
+          <rect class="hid" x="71" y="108" width="41" height="44"></rect>
+          <rect class="hid" x="215" y="108" width="41" height="44"></rect>
+          <!-- seal / bearing span -->
+          <rect class="box-d" x="589" y="104" width="81" height="52"></rect>
+          <text class="t-dim" x="630" y="100" text-anchor="middle">씰 하우징 구간</text>
+          <rect class="box-d" x="694" y="110" width="32" height="40"></rect>
+          <text class="t-dim" x="726" y="106" text-anchor="middle">커플링</text>
+          <!-- bottom tapped hole -->
+          <rect class="steel" x="60" y="124" width="27" height="12"></rect>
+          <line class="lead" x1="70" y1="119" x2="118" y2="80"></line>
+          <text class="t-dim" x="122" y="76">M20 × 30 탭 (이탈방지 와셔)</text>
+          <line class="lead" x1="92" y1="141" x2="92" y2="172"></line>
+          <text class="t-dim" x="92" y="186" text-anchor="middle">키홈 8×7 × 40</text>
+          <line class="lead" x1="236" y1="141" x2="236" y2="172"></line>
+          <text class="t-dim" x="236" y="186" text-anchor="middle">키홈 8×7 × 40</text>
+          <line class="lead" x1="710" y1="141" x2="710" y2="172"></line>
+          <text class="t-dim" x="710" y="186" text-anchor="middle">키홈 8×7 × 25</text>
+
+          <line class="ext" x1="60" y1="119" x2="60" y2="216"></line>
+          <line class="ext" x1="92" y1="108" x2="92" y2="216"></line>
+          <line class="ext" x1="236" y1="108" x2="236" y2="216"></line>
+          <line class="ext" x1="726" y1="119" x2="726" y2="216"></line>
+          <line class="dim" x1="60" y1="210" x2="92" y2="210" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="76" y="206" text-anchor="middle">35</text>
+          <line class="dim" x1="92" y1="210" x2="236" y2="210" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="164" y="206" text-anchor="middle">160 (임펠러 간격 = 1.14 D)</text>
+          <line class="dim" x1="236" y1="210" x2="726" y2="210" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="481" y="206" text-anchor="middle">545</text>
+          <line class="dim" x1="60" y1="230" x2="726" y2="230" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="393" y="244" text-anchor="middle">740 전장 · 진직도 0.3/1000 · 동적 밸런스 G6.3</text>
+
+          <!-- spec block -->
+          <rect class="box-d" x="766" y="56" width="252" height="182"></rect>
+          <text class="t-hd" x="778" y="78">교반계 제원</text>
+          <text class="t-mono" x="778" y="100">설계 회전수   600 rpm (VFD 50 Hz)</text>
+          <text class="t-mono" x="778" y="118">최대 회전수   717 rpm (60 Hz)</text>
+          <text class="t-mono" x="778" y="136">최소 회전수   179 rpm (15 Hz)</text>
+          <text class="t-mono" x="778" y="154">임펠러 주속   4.40 m/s (설계)</text>
+          <text class="t-mono" x="778" y="172">축동력       357 W → 최대 610 W</text>
+          <text class="t-mono" x="778" y="190">축 토크      5.69 → 8.12 N·m</text>
+          <text class="t-mono" x="778" y="208">1차 위험속도  1,746 rpm (최대의 41 %)</text>
+          <text class="t-mono" x="778" y="226">하부 임펠러 처짐  0.30 mm</text>
+
+          <!-- ============ F1 : LOWER DISC TURBINE (cx=150) ============ -->
+          <text class="t-hd" x="150" y="290" text-anchor="middle">하부 임펠러 (12-1)</text>
+          <text class="t-dim" x="150" y="306" text-anchor="middle">6엽 디스크 터빈 Ø140 · 기포 분산</text>
+          <circle class="ln-t" cx="150" cy="390" r="70"></circle>
+          <circle class="mach" cx="150" cy="390" r="52.5"></circle>
+          <g class="steel">
+            <rect x="185" y="387.9" width="35" height="4.2" transform="rotate(0 150 390)"></rect>
+            <rect x="185" y="387.9" width="35" height="4.2" transform="rotate(60 150 390)"></rect>
+            <rect x="185" y="387.9" width="35" height="4.2" transform="rotate(120 150 390)"></rect>
+            <rect x="185" y="387.9" width="35" height="4.2" transform="rotate(180 150 390)"></rect>
+            <rect x="185" y="387.9" width="35" height="4.2" transform="rotate(240 150 390)"></rect>
+            <rect x="185" y="387.9" width="35" height="4.2" transform="rotate(300 150 390)"></rect>
+          </g>
+          <circle class="box" cx="150" cy="390" r="24"></circle>
+          <circle class="mach" cx="150" cy="390" r="12.5"></circle>
+          <line class="cl" x1="66" y1="390" x2="234" y2="390"></line>
+          <line class="cl" x1="150" y1="306" x2="150" y2="474"></line>
+          <text class="t-dim" x="150" y="486" text-anchor="middle">Ø140 · 디스크 Ø105 · 날개 35 × 28 × t3</text>
+          <text class="t-dim" x="150" y="502" text-anchor="middle">허브 Ø48 × 45 · 보어 Ø25 H7</text>
+
+          <!-- ============ F2 : UPPER PITCHED BLADE (cx=430) ============ -->
+          <text class="t-hd" x="430" y="290" text-anchor="middle">상부 임펠러 (12-2)</text>
+          <text class="t-dim" x="430" y="306" text-anchor="middle">4엽 45° 경사날개 · 하향 토출 · 순환</text>
+          <circle class="ln-t" cx="430" cy="390" r="70"></circle>
+          <g class="steel">
+            <rect x="454" y="380" width="46" height="20" transform="rotate(0 430 390)"></rect>
+            <rect x="454" y="380" width="46" height="20" transform="rotate(90 430 390)"></rect>
+            <rect x="454" y="380" width="46" height="20" transform="rotate(180 430 390)"></rect>
+            <rect x="454" y="380" width="46" height="20" transform="rotate(270 430 390)"></rect>
+          </g>
+          <circle class="box" cx="430" cy="390" r="24"></circle>
+          <circle class="mach" cx="430" cy="390" r="12.5"></circle>
+          <line class="cl" x1="346" y1="390" x2="514" y2="390"></line>
+          <line class="cl" x1="430" y1="306" x2="430" y2="474"></line>
+          <text class="t-dim" x="430" y="486" text-anchor="middle">Ø140 · 날개 46 × 28 × t3 · 45° ± 1°</text>
+          <text class="t-dim" x="430" y="502" text-anchor="middle">허브 Ø48 × 45 · 보어 Ø25 H7</text>
+          <text class="t-dim" x="430" y="518" text-anchor="middle">하향 토출 방향 확인 — 역방향이면 액면이 파인다</text>
+
+          <!-- ============ HUB DETAIL (cx=760) ============ -->
+          <text class="t-hd" x="760" y="290" text-anchor="middle">허브 상세 (S = 2:1)</text>
+          <rect class="mach" x="712" y="330" width="96" height="90"></rect>
+          <rect class="pulp" x="735" y="330" width="50" height="90"></rect>
+          <rect class="box" x="735" y="330" width="50" height="90"></rect>
+          <rect class="steel" x="746" y="330" width="16" height="14"></rect>
+          <line class="cl" x1="760" y1="316" x2="760" y2="434"></line>
+          <circle class="box" cx="712" cy="352" r="7"></circle>
+          <circle class="box" cx="808" cy="398" r="7"></circle>
+          <line class="lead" x1="705" y1="352" x2="666" y2="340"></line>
+          <text class="t-dim" x="662" y="342" text-anchor="end">M8 세트스크루 (육각홀)</text>
+          <text class="t-dim" x="662" y="356" text-anchor="end">90° 2개소 · 록타이트 243</text>
+          <line class="lead" x1="754" y1="336" x2="666" y2="392"></line>
+          <text class="t-dim" x="662" y="394" text-anchor="end">키홈 8 × 3.3 (허브측)</text>
+          <line class="lead" x1="738" y1="410" x2="666" y2="424"></line>
+          <text class="t-dim" x="662" y="426" text-anchor="end">보어 Ø25 H7 / 축 h6</text>
+          <line class="dim" x1="712" y1="440" x2="808" y2="440" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="760" y="456" text-anchor="middle">Ø48 × L45</text>
+          <text class="t-dim" x="760" y="486" text-anchor="middle">축 방향 위치는 키 + 세트스크루로 고정하고,</text>
+          <text class="t-dim" x="760" y="500" text-anchor="middle">하부 임펠러는 축단 M20 와셔로 이중 구속한다.</text>
+
+          <!-- ============ BAFFLE CAGE (x 40..520) ============ -->
+          <text class="t-hd" x="230" y="546" text-anchor="middle">배플 케이지 (13) — 조립체</text>
+          <rect class="mach" x="120" y="566" width="220" height="7"></rect>
+          <rect class="steel" x="140" y="573" width="10" height="15"></rect>
+          <rect class="steel" x="310" y="573" width="10" height="15"></rect>
+          <rect class="steel" x="142" y="588" width="6" height="112"></rect>
+          <rect class="steel" x="312" y="588" width="6" height="112"></rect>
+          <rect class="hid" x="196" y="573" width="10" height="127"></rect>
+          <rect class="hid" x="254" y="573" width="10" height="127"></rect>
+          <line class="cl" x1="230" y1="556" x2="230" y2="640"></line>
+          <line class="lead" x1="340" y1="569" x2="392" y2="558"></line>
+          <text class="t-dim" x="396" y="556">상부 링 Ø460 / Ø394 × t4</text>
+          <text class="t-dim" x="396" y="570">8-Ø9 @ P.C.D 430 (커버와 공통)</text>
+          <line class="lead" x1="320" y1="580" x2="392" y2="592"></line>
+          <text class="t-dim" x="396" y="594">내향 탭 40 × 50 × t4 (4개소)</text>
+          <line class="lead" x1="318" y1="650" x2="392" y2="626"></line>
+          <text class="t-dim" x="396" y="628">배플 40 × 560 × t3 · 4장</text>
+          <text class="t-dim" x="396" y="642">벽면 간극 8 (침전물 정체 방지)</text>
+          <text class="t-dim" x="396" y="656">동체 내면 용접 없음 — 통째로 인출</text>
+          <line class="dim" x1="142" y1="666" x2="318" y2="666" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="230" y="662" text-anchor="middle">Ø378 (배플 외측)</text>
+
+          <!-- ============ IMPELLER LAYOUT (x 600..1010) ============ -->
+          <text class="t-hd" x="800" y="546" text-anchor="middle">임펠러 배치 (기준선 기준)</text>
+          <rect class="ln-t" x="660" y="560" width="280" height="100" fill="none"></rect>
+          <rect class="pulp" x="661" y="576" width="278" height="84"></rect>
+          <line class="dim" x1="661" y1="576" x2="939" y2="576" stroke-dasharray="7 3"></line>
+          <text class="t-dim t-acc" x="944" y="574">+297 액면</text>
+          <rect class="mach" x="796" y="560" width="8" height="96"></rect>
+          <line class="ln-h" x1="766" y1="608" x2="834" y2="608"></line>
+          <rect class="mach" x="766" y="605" width="68" height="6"></rect>
+          <text class="t-dim" x="944" y="612">+220 상부</text>
+          <line class="ln-h" x1="766" y1="644" x2="834" y2="644"></line>
+          <rect class="mach" x="778" y="641" width="44" height="6"></rect>
+          <text class="t-dim" x="944" y="648">+60 하부</text>
+          <line class="ext" x1="939" y1="608" x2="948" y2="608"></line>
+          <line class="ext" x1="939" y1="644" x2="948" y2="644"></line>
+          <text class="t-dim" x="800" y="594" text-anchor="middle">잠김 77 = 0.55 D</text>
+          <text class="t-dim" x="800" y="630" text-anchor="middle">간격 160 = 1.14 D</text>
+          <text class="t-dim" x="660" y="678">D/T = 140 / 394 = 0.355 — 상업 셀 FC-201 (Ø350 / Ø1,000) 과 같은 비</text>
+        </svg>
+      </div>
+      <figcaption>
+        원 스케치는 임펠러를 <span class="t-bad">상부 고속용 / 하부 저속용</span>으로 적었지만
+        <b>한 축에 달린 두 장에 서로 다른 회전수를 줄 수는 없다.</b> 실제로 나뉘는 것은
+        회전수가 아니라 <b>역할</b>이다 — 하부는 분산기 링 바로 위에서 기포를 부수는
+        6엽 디스크 터빈, 상부는 가라앉는 유리·실리콘 미분을 되올리는 45° 경사날개
+        터빈이다. 운전 중 세기 조절은 제어반의 VFD 가 맡아 179~717 rpm 을 덮는다.
+        지름도 Ø300(D/T 0.76)에서 <b>Ø140(D/T 0.355)</b> 으로 고쳤다 — Ø300 이면 배플과
+        8 mm 밖에 남지 않아 조립도, 유동도 성립하지 않는다.
+      </figcaption>
+    </figure>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>MP-50-P0-004</b></div>
+      <div><span>도면명</span><b>교반축 · 임펠러 · 배플</b></div>
+      <div><span>축척</span><b>NTS (허브 2:1)</b></div>
+      <div><span>단위</span><b>mm</b></div>
+      <div><span>REV</span><b>P0</b></div>
+      <div><span>재질</span><b>SUS316L</b></div>
+    </div>
+  </section>
+
+  <!-- ================= SHEET 5 : SPARGER + AIR TRAIN ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-P0-005</span>
+      <span class="sheet-title">미세기포 분산기 (14) · 공기 공급계 (21)</span>
+      <span class="sheet-sub">Ø250 링 · 60-Ø1.0 하향 45° · 설계 2.6 m³/h</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1040 582" role="img"
+             aria-label="미세기포 분산기와 공기 공급계. 왼쪽은 평균 지름 250 밀리미터 링의 평면도로 분사홀 60개가 두 줄로 배치되고 200도 방위에서 공기가 들어와 티로 좌우로 갈라진다. 가운데는 축척 10대1 분사홀 상세로 지름 1.0 밀리미터 구멍이 아래로 45도 기울어 뚫린 모습이다. 오른쪽은 급기 설계 계산 블록이며, 아래는 공장 공기에서 볼밸브, 필터 레귤레이터, 로타미터, 체크밸브를 거쳐 N3 노즐로 들어가는 계통도다.">
+          <!-- ============ RING PLAN (cx=205, cy=246, 0.78 px/mm) ============ -->
+          <text class="t-hd" x="205" y="42" text-anchor="middle">분산기 링 평면도 (14)</text>
+          <circle class="ln-t" cx="205" cy="246" r="153.7"></circle>
+          <text class="t-dim" x="205" y="76" text-anchor="middle">동체 내경 Ø394 (참고)</text>
+          <circle class="air-l" cx="205" cy="246" r="102.5" fill="none"></circle>
+          <circle class="air-l" cx="205" cy="246" r="92.5" fill="none"></circle>
+          <circle class="cl" cx="205" cy="246" r="97.5" fill="none"></circle>
+          <line class="cl" x1="37" y1="246" x2="373" y2="246"></line>
+          <line class="cl" x1="205" y1="78" x2="205" y2="414"></line>
+          <circle class="ln-t" cx="205" cy="246" r="54.6"></circle>
+          <text class="t-dim" x="205" y="238" text-anchor="middle">임펠러 Ø140</text>
+          <text class="t-dim" x="205" y="254" text-anchor="middle">(투영 · 참고)</text>
+          <g class="air-l"><path d="M307.5 246.0 L316.5 246.0 M304.0 219.5 L312.7 217.2 M293.7 194.8 L301.5 190.3 M277.4 173.6 L283.8 167.2 M256.2 157.3 L260.7 149.5 M231.5 147.0 L233.8 138.3 M205.0 143.5 L205.0 134.5 M178.5 147.0 L176.2 138.3 M153.8 157.3 L149.3 149.5 M132.6 173.6 L126.2 167.2 M116.3 194.8 L108.5 190.3 M106.0 219.5 L97.3 217.2 M102.5 246.0 L93.5 246.0 M106.0 272.5 L97.3 274.8 M116.3 297.2 L108.5 301.7 M132.6 318.4 L126.2 324.8 M153.8 334.7 L149.3 342.5 M178.5 345.0 L176.2 353.7 M205.0 348.5 L205.0 357.5 M231.5 345.0 L233.8 353.7 M256.2 334.7 L260.7 342.5 M277.4 318.4 L283.8 324.8 M293.7 297.2 L301.5 301.7 M304.0 272.5 L312.7 274.8"></path></g>
+          <line class="air-l" x1="113.4" y1="279.3" x2="22.6" y2="312.6" stroke-width="4"></line>
+          <circle class="air-f" cx="113.4" cy="279.3" r="6"></circle>
+          <circle class="noz" cx="12.6" cy="316.6" r="10"></circle>
+          <text class="noz-t" x="12.6" y="319.6" text-anchor="middle">N3</text>
+          <line class="lead" x1="113.4" y1="279.3" x2="107.4" y2="391.7"></line>
+          <text class="t-dim" x="103.4" y="405.7" text-anchor="middle">티 — 좌우 분기</text>
+          <line class="dim" x1="205" y1="246" x2="273.9" y2="177.1" marker-end="url(#da)"></line>
+          <text class="t-dim" x="255" y="208">R125</text>
+          <line class="ext" x1="107.5" y1="246" x2="107.5" y2="440"></line>
+          <line class="ext" x1="302.5" y1="246" x2="302.5" y2="440"></line>
+          <line class="dim" x1="107.5" y1="434" x2="302.5" y2="434" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="205" y="430" text-anchor="middle">평균 Ø250 · 관 Ø12.7 × t1.0</text>
+          <text class="t-dim" x="205" y="456" text-anchor="middle">분사홀 60개 = 2열 × 30 · 홀 피치 13.1</text>
+          <text class="t-dim" x="205" y="472" text-anchor="middle">설치 높이 +20 · 하부 임펠러(+60) 바로 아래</text>
+
+          <!-- ============ HOLE DETAIL (S=10:1) ============ -->
+          <text class="t-hd" x="530" y="42" text-anchor="middle">분사홀 상세 (S = 10:1)</text>
+          <rect class="box-d" x="410" y="56" width="240" height="240"></rect>
+          <path class="air-f" d="M450 120 h160 a48 48 0 0 1 0 96 h-160 a48 48 0 0 1 0 -96 z"></path>
+          <path class="ln" d="M450 130 h160 a38 38 0 0 1 0 76 h-160 a38 38 0 0 1 0 -76 z" fill="none"></path>
+          <line class="air-l" x1="486" y1="203" x2="500" y2="230" stroke-width="3"></line>
+          <line class="air-l" x1="566" y1="203" x2="580" y2="230" stroke-width="3"></line>
+          <path class="air-l" d="M500 234 l-5 10 M500 234 l7 9 M580 234 l-5 10 M580 234 l7 9"></path>
+          <line class="ln-t" x1="486" y1="203" x2="486" y2="250"></line>
+          <path class="dim" d="M486 232 A 30 30 0 0 0 502 236"></path>
+          <text class="t-dim" x="510" y="252">45°</text>
+          <line class="dim" x1="450" y1="106" x2="610" y2="106" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="530" y="100" text-anchor="middle">Ø12.7 (ID Ø10.7)</text>
+          <text class="t-dim" x="424" y="274">Ø1.0 관통 · 드릴 후 버 제거 · 하향 45°</text>
+          <text class="t-dim" x="424" y="288">정지 시 슬러리 역류를 막는 방향</text>
+
+          <!-- ============ AIR DESIGN BLOCK ============ -->
+          <rect class="box-d" x="690" y="56" width="330" height="240"></rect>
+          <text class="t-hd" x="704" y="80">급기 설계</text>
+          <text class="t-mono" x="704" y="104">설계 공기량      2.6 m³/h  (1.0~4.0)</text>
+          <text class="t-mono" x="704" y="122">표면 기체속도 Jg  0.59 cm/s (0.23~0.91)</text>
+          <text class="t-mono" x="704" y="140">홀 유속         15.3 m/s</text>
+          <text class="t-mono" x="704" y="158">홀 압력손실      0.43 kPa</text>
+          <text class="t-mono" x="704" y="176">Weber 수        4.6  &gt; 2 → 제트 영역</text>
+          <text class="t-mono" x="704" y="194">링 정수두 (잠김 277)  2.88 kPa</text>
+          <text class="t-mono" x="704" y="212">배관·계기 손실    약 0.5 kPa</text>
+          <text class="t-mono t-acc" x="704" y="230">소요 공급압      3.8 kPa (0.04 bar)</text>
+          <text class="t-mono" x="704" y="248">레귤레이터 설정   0.5 bar (여유 포함)</text>
+          <text class="t-dim" x="704" y="272">홀 손실 / 링 손실 = 141 배 → 60 홀 균등 분배</text>
+          <text class="t-bad" x="704" y="288">원 도면 Ø2.0 은 3.8 m/s · We 0.57 — 제트 미형성</text>
+
+          <!-- ============ AIR TRAIN SCHEMATIC ============ -->
+          <text class="t-hd" x="60" y="512">공기 공급 계통도 (21)</text>
+          <text class="t-dim" x="60" y="526">공장 공기 5~7 bar</text>
+          <line class="air-l" x1="60" y1="546" x2="120" y2="546" marker-end="url(#aair)"></line>
+          <rect class="box" x="124" y="532" width="72" height="28"></rect>
+          <text class="t-dim" x="160" y="550" text-anchor="middle">볼밸브 1/2&quot;</text>
+          <line class="air-l" x1="196" y1="546" x2="228" y2="546" marker-end="url(#aair)"></line>
+          <rect class="box" x="232" y="532" width="118" height="28"></rect>
+          <text class="t-dim" x="291" y="550" text-anchor="middle">필터 + 레귤레이터</text>
+          <line class="air-l" x1="350" y1="546" x2="382" y2="546" marker-end="url(#aair)"></line>
+          <rect class="box" x="386" y="532" width="132" height="28"></rect>
+          <text class="t-dim" x="452" y="550" text-anchor="middle">로타미터 1~4 m³/h</text>
+          <line class="air-l" x1="518" y1="546" x2="550" y2="546" marker-end="url(#aair)"></line>
+          <rect class="box" x="554" y="532" width="82" height="28"></rect>
+          <text class="t-dim" x="595" y="550" text-anchor="middle">체크밸브</text>
+          <line class="air-l" x1="636" y1="546" x2="668" y2="546" marker-end="url(#aair)"></line>
+          <circle class="noz" cx="682" cy="546" r="13"></circle><text class="noz-t" x="682" y="549" text-anchor="middle">N3</text>
+          <line class="air-l" x1="695" y1="546" x2="727" y2="546" marker-end="url(#aair)"></line>
+          <rect class="air-f" x="731" y="532" width="118" height="28"></rect>
+          <text class="t-dim" x="790" y="550" text-anchor="middle">분산기 링 (14)</text>
+          <text class="t-dim" x="864" y="542">체크밸브는 정지 시 슬러리가</text>
+          <text class="t-dim" x="864" y="556">로타미터로 역류하는 것을 막는다</text>
+        </svg>
+      </div>
+      <figcaption>
+        링은 평균 Ø250 이라 임펠러(Ø140) 바깥에 서고, 하부 임펠러보다 40 mm 아래에
+        놓여 나온 기포가 바로 임펠러 전단을 받는다. 분사홀은 Ø2.0 에서 <b>Ø1.0</b> 으로
+        줄였다 — 설계 유량에서 Ø2.0 은 홀 유속이 3.8 m/s 밖에 안 되어 Weber 수가 0.57 로
+        기포가 방울방울 맺히는 영역에 머문다(기포 4 mm 급). Ø1.0 이면 15.3 m/s · We 4.6 으로
+        제트가 서고, 홀 압력손실이 링 내부 손실의 141 배가 되어 60 홀이 고르게 분다.
+        홀은 <b>아래로 45°</b> 뚫어 정지 시 슬러리가 역류해 막히는 것을 줄이고,
+        체크밸브로 계기 쪽 역류를 막는다.
+      </figcaption>
+    </figure>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>MP-50-P0-005</b></div>
+      <div><span>도면명</span><b>미세기포 분산기 · 공기 공급계</b></div>
+      <div><span>축척</span><b>NTS (홀 10:1)</b></div>
+      <div><span>단위</span><b>mm</b></div>
+      <div><span>REV</span><b>P0</b></div>
+      <div><span>설계 Jg</span><b>0.59 cm/s</b></div>
+    </div>
+  </section>
+
+  <!-- ================= SHEET 6 : DISCHARGE + SUPPORT ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-P0-006</span>
+      <span class="sheet-title">하부 배출구 (16) · 지지 다리 (17) · 앵커 (28) · 방진패드 (30)</span>
+      <span class="sheet-sub">배출은 측방 전환 · 다리 3개소 P.C.D 480</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1040 604" role="img"
+             aria-label="하부 배출부와 지지 구조의 제작 상세. 왼쪽 위는 하부 콘 끝에서 2인치 위생관 스터브, 트라이클램프, 90도 엘보를 거쳐 볼밸브가 수평으로 붙고 호스 바브로 나가는 배출부 단면이다. 가운데 위는 40A 관 길이 820 밀리미터의 지지 다리, 오른쪽 위는 M10 케미컬 앵커와 방진패드 단면이다. 아래는 바닥판 평면도와 다리 한 개당 하중 표, 기초 요구 사항이다.">
+          <!-- ============ DISCHARGE ASSEMBLY (cx=200, 1 px/mm) ============ -->
+          <text class="t-hd" x="200" y="42" text-anchor="middle">하부 배출부 (16) 조립</text>
+          <line class="ln" x1="130" y1="88" x2="250" y2="88"></line>
+          <text class="t-dim" x="126" y="86" text-anchor="end">콘 하단 −300</text>
+          <rect class="steel" x="155.7" y="88" width="48.6" height="50"></rect>
+          <rect class="pulp" x="158.5" y="88" width="43" height="50"></rect>
+          <rect class="mach" x="152" y="138" width="56" height="16"></rect>
+          <path class="box" d="M144 134 h20 v6 h-8 v8 h8 v6 h-20 a10 10 0 0 1 0 -20 z"></path>
+          <path class="box" d="M216 134 h-20 v6 h8 v8 h-8 v6 h20 a10 10 0 0 1 0 -20 z"></path>
+          <path class="steel" d="M155.7 154 v34 a24 24 0 0 0 24 24 h28 v-48 h-28 a2 2 0 0 1 -2 -2 v-8 z"></path>
+          <rect class="mach" x="208" y="158" width="14" height="52"></rect>
+          <rect class="box" x="222" y="154" width="62" height="60"></rect>
+          <circle class="mach" cx="253" cy="184" r="18"></circle>
+          <rect class="mach" x="284" y="166" width="14" height="36"></rect>
+          <path class="steel" d="M298 170 h34 l10 6 v16 l-10 6 h-34 z"></path>
+          <line class="ln-h" x1="253" y1="154" x2="253" y2="120"></line>
+          <rect class="box" x="228" y="108" width="50" height="12"></rect>
+
+          <line class="lead" x1="155.7" y1="106" x2="108" y2="106"></line>
+          <text class="t-dim" x="106" y="108" text-anchor="end">2&quot; 스터브 L50</text>
+          <line class="lead" x1="144" y1="144" x2="108" y2="146"></line>
+          <text class="t-dim" x="106" y="148" text-anchor="end">2&quot; 트라이클램프</text>
+          <line class="lead" x1="160" y1="196" x2="108" y2="196"></line>
+          <text class="t-dim" x="106" y="198" text-anchor="end">90° 엘보 (측방)</text>
+          <line class="lead" x1="230" y1="212" x2="150" y2="242"></line>
+          <text class="t-dim" x="146" y="244" text-anchor="end">2&quot; 볼밸브 (SUS304)</text>
+          <line class="lead" x1="278" y1="112" x2="306" y2="102"></line>
+          <text class="t-dim" x="310" y="104">핸들 (개방 = 관축 방향)</text>
+          <line class="lead" x1="342" y1="184" x2="366" y2="212"></line>
+          <text class="t-dim" x="310" y="228">호스 바브 → 배수호스 (33)</text>
+
+          <line class="ext" x1="155.7" y1="212" x2="124" y2="212"></line>
+          <line class="dim" x1="130" y1="88" x2="130" y2="212" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="126" y="150" text-anchor="end" transform="rotate(-90 126 150)">116</text>
+          <text class="t-dim" x="200" y="286" text-anchor="middle">최하단 −416 · 바닥에서 122 mm</text>
+          <text class="t-dim" x="200" y="302" text-anchor="middle">수직으로 세우면 밸브가 바닥에 닿아</text>
+          <text class="t-dim" x="200" y="318" text-anchor="middle">호스를 끼울 수 없다 — 그래서 측방 전환</text>
+          <text class="t-dim" x="200" y="342" text-anchor="middle">잔류액 배출 구배는 콘 60° 로 확보</text>
+
+          <!-- ============ LEG (cx=530) ============ -->
+          <text class="t-hd" x="530" y="42" text-anchor="middle">지지 다리 (17) — 3개소</text>
+          <rect class="box" x="521.5" y="94" width="17" height="287"></rect>
+          <polygon class="steel" points="521.5,94 484,94 484,102 521.5,116"></polygon>
+          <polygon class="steel" points="521.5,178 484,192 484,200 521.5,200"></polygon>
+          <rect class="steel" x="510" y="381" width="40" height="3"></rect>
+          <rect class="box" x="510" y="384" width="40" height="8"></rect>
+          <rect class="air-f" x="510" y="392" width="40" height="12"></rect>
+          <line class="cl" x1="530" y1="84" x2="530" y2="420"></line>
+          <line class="ext" x1="484" y1="94" x2="466" y2="94"></line>
+          <line class="ext" x1="510" y1="381" x2="466" y2="381"></line>
+          <line class="dim" x1="472" y1="94" x2="472" y2="381" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="468" y="238" text-anchor="end" transform="rotate(-90 468 238)">820</text>
+          <line class="lead" x1="538" y1="100" x2="566" y2="96"></line>
+          <text class="t-dim" x="570" y="98">상부 브라켓 (+320)</text>
+          <line class="lead" x1="538" y1="192" x2="566" y2="190"></line>
+          <text class="t-dim" x="570" y="192">하부 브라켓 (+80)</text>
+          <text class="t-dim" x="570" y="208">t6 거싯 · 동체에 필렛 a4</text>
+          <line class="lead" x1="538" y1="280" x2="566" y2="284"></line>
+          <text class="t-dim" x="570" y="286">40A · Ø48.6 × t2.8</text>
+          <text class="t-dim" x="570" y="302">SUS304</text>
+          <line class="lead" x1="550" y1="388" x2="566" y2="386"></line>
+          <text class="t-dim" x="570" y="388">바닥판 Ø100 × t8</text>
+          <line class="lead" x1="550" y1="398" x2="566" y2="404"></line>
+          <text class="t-dim" x="570" y="406">방진패드 Ø100 × t30</text>
+
+          <!-- ============ ANCHOR + PAD (cx=870) ============ -->
+          <text class="t-hd" x="870" y="42" text-anchor="middle">앵커 (28) · 방진패드 (30)</text>
+          <rect class="box-d" x="736" y="56" width="288" height="216"></rect>
+          <rect class="box" x="820" y="96" width="100" height="8"></rect>
+          <rect class="air-f" x="820" y="104" width="100" height="30"></rect>
+          <rect class="ln-h" x="768" y="134" width="200" height="4"></rect>
+          <path class="ln-t" d="M774 138 l-6 8 M794 138 l-6 8 M814 138 l-6 8 M834 138 l-6 8 M854 138 l-6 8 M874 138 l-6 8 M894 138 l-6 8 M914 138 l-6 8 M934 138 l-6 8 M954 138 l-6 8"></path>
+          <rect class="mach" x="865" y="82" width="10" height="52"></rect>
+          <rect class="steel" x="862" y="134" width="16" height="80"></rect>
+          <rect class="mach" x="866" y="134" width="8" height="80"></rect>
+          <rect class="box" x="858" y="82" width="24" height="8"></rect>
+          <rect class="box" x="860" y="90" width="20" height="6"></rect>
+          <line class="lead" x1="882" y1="86" x2="938" y2="76"></line>
+          <text class="t-dim" x="942" y="78">M10 너트</text>
+          <line class="lead" x1="878" y1="180" x2="938" y2="178"></line>
+          <text class="t-dim" x="942" y="180">케미컬 앵커</text>
+          <text class="t-dim" x="942" y="196">매입 80 · Ø12</text>
+          <line class="lead" x1="820" y1="118" x2="792" y2="118"></line>
+          <text class="t-dim" x="788" y="120" text-anchor="end">방진패드 t30</text>
+          <line class="lead" x1="820" y1="100" x2="792" y2="92"></line>
+          <text class="t-dim" x="788" y="94" text-anchor="end">바닥판 t8</text>
+          <text class="t-dim" x="750" y="240">패드는 앵커 조임 후 두께 24~26 으로 압축된다</text>
+          <text class="t-dim" x="750" y="256">— 3개 다리의 압축량이 같도록 수평 확인</text>
+
+          <!-- ============ BASE PLATE PLAN ============ -->
+          <text class="t-hd" x="180" y="400" text-anchor="middle">바닥판 평면</text>
+          <circle class="box" cx="180" cy="470" r="40"></circle>
+          <circle class="mach" cx="180" cy="470" r="6"></circle>
+          <circle class="ln-t" cx="180" cy="470" r="19.4"></circle>
+          <line class="cl" x1="128" y1="470" x2="232" y2="470"></line>
+          <line class="cl" x1="180" y1="418" x2="180" y2="522"></line>
+          <line class="dim" x1="140" y1="536" x2="220" y2="536" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="180" y="552" text-anchor="middle">Ø100 · 중앙 Ø12 관통</text>
+          <text class="t-dim" x="180" y="568" text-anchor="middle">40A 자리 전둘레 필렛 a4</text>
+
+          <!-- ============ LOAD BLOCK ============ -->
+          <rect class="box-d" x="284" y="392" width="330" height="188"></rect>
+          <text class="t-hd" x="298" y="416">지지 하중</text>
+          <text class="t-mono" x="298" y="440">건조 중량        약  85 kg</text>
+          <text class="t-mono" x="298" y="458">운전 중량 (50 L)  약 138 kg</text>
+          <text class="t-mono" x="298" y="476">만수 시험 중량    약 172 kg</text>
+          <text class="t-mono t-acc" x="298" y="494">다리 1개당       451 N (운전)</text>
+          <text class="t-mono" x="298" y="512">           562 N (만수)</text>
+          <text class="t-dim" x="298" y="536">40A 관 좌굴·앵커 인발 모두 여유가 크다.</text>
+          <text class="t-dim" x="298" y="552">지배 조건은 강도가 아니라 <tspan class="t-acc">수평도</tspan> 다 — 액면·거품</text>
+          <text class="t-dim" x="298" y="568">위어가 기울면 거품 배출이 한쪽으로 편중된다.</text>
+
+          <!-- ============ FOUNDATION NOTES ============ -->
+          <rect class="box-d" x="640" y="392" width="384" height="188"></rect>
+          <text class="t-hd" x="654" y="416">기초 · 부속</text>
+          <text class="t-dim" x="654" y="440">평탄도 ±2 mm/m · 콘크리트 두께 100 mm 이상</text>
+          <text class="t-dim" x="654" y="458">앵커 이격 100 mm 이상 · 헛돌면 재천공</text>
+          <text class="t-dim" x="654" y="476">설치 후 수평기로 동체 상면 ±0.5°/m 이내 확인</text>
+          <text class="t-dim" x="654" y="502">배수 트레이 (31) 600 × 600 × t1.5 · 테두리 30</text>
+          <text class="t-dim" x="654" y="520">다리 3개 아래에 깔고 1&quot; 배수구를 배수호스 (33)</text>
+          <text class="t-dim" x="654" y="538">로 연결 — 시료 채취·배출 시 흘림 방지</text>
+          <text class="t-dim" x="654" y="564">접지단자 (32) 다리 1개소 + 제어반 · 100 Ω 이하</text>
+        </svg>
+      </div>
+      <figcaption>
+        원 스케치는 배출 밸브를 콘 바로 아래에 수직으로 매달았는데, 그러면 밸브 끝이
+        바닥 위 40 mm 대에 놓여 호스를 끼울 수 없다. 여기서는 트라이클램프 뒤에
+        <b>90° 엘보로 측방 전환</b>해 밸브를 수평으로 눕혔다 — 최하단이 −416 이 되어
+        바닥에서 122 mm 가 뜨고, 핸들 조작 공간도 확보된다. 다리는 동체에 상·하 두
+        브라켓으로 붙여 굽힘을 나누고, 앵커는 케미컬 M10 3조다. 이 크기에서 강도는
+        문제가 되지 않으며, 실제로 지배하는 것은 <b>수평도</b>다.
+      </figcaption>
+    </figure>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>MP-50-P0-006</b></div>
+      <div><span>도면명</span><b>배출부 · 지지 구조</b></div>
+      <div><span>축척</span><b>NTS</b></div>
+      <div><span>단위</span><b>mm</b></div>
+      <div><span>REV</span><b>P0</b></div>
+      <div><span>운전 중량</span><b>138 kg</b></div>
+    </div>
+  </section>
+
+  <!-- ================= SHEET 7 : FASTENERS + GASKETS + PANEL ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-P0-007</span>
+      <span class="sheet-title">체결부품 (05·25) · 가스켓 (26) · 제어반 (22)</span>
+      <span class="sheet-sub">표준품 조합 · 특수 제작 부품 없음</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1040 636" role="img"
+             aria-label="체결부품과 가스켓, 제어반 도면. 왼쪽 위는 M8 육각볼트 두 종류와 M10 케미컬 앵커, 너트, 평와셔, 스프링와셔, 세트스크루의 형상과 치수다. 왼쪽 아래는 커버용 EPDM 가스켓과 트라이클램프용 실리콘 가스켓 세 종류의 내외경이다. 오른쪽은 가로 300 세로 200 밀리미터 제어반의 정면 배치로 주차단기, 전원등, 운전 정지 버튼, 비상정지, 속도 조절 노브와 회전수 표시, 타이머, 온도 압력 표시가 놓이고 그 아래에 전기 사양과 인터록 조건이 적혀 있다.">
+          <!-- ============ FASTENERS ============ -->
+          <text class="t-hd" x="40" y="42">체결부품 (05) — 전량 SUS304 A2-70</text>
+
+          <!-- M8 x 40 -->
+          <polygon class="box" points="60,96 74,88 88,96 88,120 74,128 60,120"></polygon>
+          <rect class="mach" x="88" y="101" width="80" height="14"></rect>
+          <path class="ln-t" d="M92 101 v14 M98 101 v14 M104 101 v14 M110 101 v14 M116 101 v14 M122 101 v14 M128 101 v14 M134 101 v14 M140 101 v14 M146 101 v14 M152 101 v14 M158 101 v14 M164 101 v14"></path>
+          <line class="dim" x1="88" y1="140" x2="168" y2="140" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="128" y="156" text-anchor="middle">M8 × 40 (커버 8조)</text>
+          <text class="t-dim" x="74" y="84" text-anchor="middle">13</text>
+
+          <!-- M8 x 25 -->
+          <polygon class="box" points="220,96 234,88 248,96 248,120 234,128 220,120"></polygon>
+          <rect class="mach" x="248" y="101" width="50" height="14"></rect>
+          <path class="ln-t" d="M252 101 v14 M258 101 v14 M264 101 v14 M270 101 v14 M276 101 v14 M282 101 v14 M288 101 v14 M294 101 v14"></path>
+          <line class="dim" x1="248" y1="140" x2="298" y2="140" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="273" y="156" text-anchor="middle">M8 × 25 (브라켓)</text>
+
+          <!-- M10 x 100 anchor -->
+          <polygon class="box" points="350,96 364,88 378,96 378,120 364,128 350,120"></polygon>
+          <rect class="mach" x="378" y="100" width="120" height="16"></rect>
+          <path class="ln-t" d="M382 100 v16 M390 100 v16 M398 100 v16 M406 100 v16 M414 100 v16 M422 100 v16 M430 100 v16 M438 100 v16 M446 100 v16 M454 100 v16 M462 100 v16 M470 100 v16 M478 100 v16 M486 100 v16 M494 100 v16"></path>
+          <line class="dim" x1="378" y1="140" x2="498" y2="140" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="438" y="156" text-anchor="middle">M10 × 100 케미컬 앵커 (3조)</text>
+
+          <!-- nuts / washers / set screw -->
+          <polygon class="box" points="70,196 84,188 98,196 98,212 84,220 70,212"></polygon>
+          <circle class="mach" cx="84" cy="204" r="7"></circle>
+          <text class="t-dim" x="84" y="238" text-anchor="middle">육각너트</text>
+          <text class="t-dim" x="84" y="252" text-anchor="middle">M8 · M10</text>
+
+          <circle class="box" cx="188" cy="204" r="18"></circle>
+          <circle class="mach" cx="188" cy="204" r="7"></circle>
+          <text class="t-dim" x="188" y="238" text-anchor="middle">평와셔</text>
+          <text class="t-dim" x="188" y="252" text-anchor="middle">t1.5 / t2.0</text>
+
+          <path class="box" d="M274 204 a18 18 0 1 1 6 13 l-4 -6 a11 11 0 1 0 -3 -7 z"></path>
+          <text class="t-dim" x="292" y="238" text-anchor="middle">스프링와셔</text>
+          <text class="t-dim" x="292" y="252" text-anchor="middle">M8 · M10</text>
+
+          <rect class="box" x="378" y="188" width="40" height="32"></rect>
+          <path class="ln-t" d="M378 192 v28 M384 188 v32 M390 188 v32 M396 188 v32 M402 188 v32 M408 188 v32 M414 188 v32"></path>
+          <polygon class="mach" points="392,196 404,196 408,204 404,212 392,212 388,204"></polygon>
+          <text class="t-dim" x="398" y="238" text-anchor="middle">세트스크루</text>
+          <text class="t-dim" x="398" y="252" text-anchor="middle">M8 × 8 (육각홀 4)</text>
+
+          <text class="t-dim" x="40" y="282">조임 토크 — M8 20 N·m · M10 40 N·m · 트라이클램프 12 N·m</text>
+          <text class="t-dim" x="40" y="298">세트스크루 8 N·m + 록타이트 243</text>
+          <text class="t-dim" x="40" y="316">스테인리스 볼트는 소부(galling)를 일으키므로 나사부에</text>
+          <text class="t-dim" x="40" y="332">이형제(니켈계 안티시즈)를 도포한 뒤 규정 토크로 조인다</text>
+
+          <!-- ============ GASKETS ============ -->
+          <text class="t-hd" x="40" y="352">가스켓 · 씰 (26) — 전량 식품용</text>
+          <circle class="air-f" cx="130" cy="452" r="66"></circle>
+          <circle cx="130" cy="452" r="62" fill="var(--surface-2)" stroke="var(--air)" stroke-width="1.4"></circle>
+          <line class="cl" x1="52" y1="452" x2="208" y2="452"></line>
+          <line class="cl" x1="130" y1="374" x2="130" y2="530"></line>
+          <line class="dim" x1="130" y1="452" x2="196" y2="452" marker-end="url(#da)"></line>
+          <text class="t-dim" x="130" y="546" text-anchor="middle">커버 가스켓 (EPDM)</text>
+          <text class="t-dim" x="130" y="562" text-anchor="middle">Ø420 / Ø394 × t3 · 2장</text>
+          <text class="t-dim" x="130" y="578" text-anchor="middle">착좌폭 13 · 착좌하중 23.3 kN</text>
+          <text class="t-dim" x="130" y="594" text-anchor="middle">볼트 1개당 2.9 kN ≪ 예압 12.5 kN</text>
+
+          <circle class="air-f" cx="300" cy="452" r="54"></circle>
+          <circle cx="300" cy="452" r="49" fill="var(--surface-2)" stroke="var(--air)" stroke-width="1.4"></circle>
+          <text class="t-dim" x="300" y="546" text-anchor="middle">4&quot; 클램프 (실리콘)</text>
+          <text class="t-dim" x="300" y="562" text-anchor="middle">Ø106.4 / Ø97.4</text>
+          <text class="t-dim" x="300" y="578" text-anchor="middle">맨홀 (06)</text>
+
+          <circle class="air-f" cx="430" cy="452" r="29"></circle>
+          <circle cx="430" cy="452" r="24" fill="var(--surface-2)" stroke="var(--air)" stroke-width="1.4"></circle>
+          <text class="t-dim" x="430" y="546" text-anchor="middle">2&quot; 클램프 (실리콘)</text>
+          <text class="t-dim" x="430" y="562" text-anchor="middle">Ø56.6 / Ø47.6</text>
+          <text class="t-dim" x="430" y="578" text-anchor="middle">N2 · N11</text>
+
+          <!-- ============ CONTROL PANEL ============ -->
+          <text class="t-hd" x="790" y="42" text-anchor="middle">제어반 (22) 정면 배치</text>
+          <rect class="box" x="580" y="62" width="420" height="280"></rect>
+          <rect class="ln-t" x="588" y="70" width="404" height="264" fill="none"></rect>
+
+          <rect class="mach" x="610" y="94" width="76" height="44"></rect>
+          <text class="t-dim" x="648" y="120" text-anchor="middle">주 차단기</text>
+          <text class="t-dim" x="648" y="152" text-anchor="middle">MCCB 3P 10 A</text>
+
+          <circle class="steel" cx="740" cy="112" r="15"></circle>
+          <text class="t-dim" x="740" y="152" text-anchor="middle">전원 표시등</text>
+
+          <circle class="box" cx="812" cy="112" r="17"></circle>
+          <text class="t-dim" x="812" y="152" text-anchor="middle">운전 (녹)</text>
+          <circle class="box" cx="878" cy="112" r="17"></circle>
+          <text class="t-dim" x="878" y="152" text-anchor="middle">정지 (흑)</text>
+
+          <circle class="bad-l" cx="948" cy="112" r="22" fill="var(--warn-bg)"></circle>
+          <circle class="bad-l" cx="948" cy="112" r="14" fill="none"></circle>
+          <text class="t-bad" x="948" y="152" text-anchor="middle">비상정지</text>
+
+          <rect class="mach" x="610" y="196" width="120" height="52"></rect>
+          <text class="t-dim" x="670" y="220" text-anchor="middle">회전수 표시</text>
+          <text class="t-mono t-acc" x="670" y="240" text-anchor="middle">179 ~ 717 rpm</text>
+          <circle class="box" cx="790" cy="222" r="26"></circle>
+          <line class="ln-h" x1="790" y1="222" x2="806" y2="204"></line>
+          <text class="t-dim" x="790" y="262" text-anchor="middle">속도 조절 (VFD)</text>
+          <rect class="mach" x="856" y="196" width="120" height="52"></rect>
+          <text class="t-dim" x="916" y="220" text-anchor="middle">배치 타이머</text>
+          <text class="t-mono" x="916" y="240" text-anchor="middle">0 ~ 60 min</text>
+
+          <rect class="mach" x="610" y="278" width="112" height="40"></rect>
+          <text class="t-dim" x="666" y="303" text-anchor="middle">온도 (20)</text>
+          <rect class="mach" x="740" y="278" width="112" height="40"></rect>
+          <text class="t-dim" x="796" y="303" text-anchor="middle">압력 (19)</text>
+          <rect class="mach" x="870" y="278" width="106" height="40"></rect>
+          <text class="t-dim" x="923" y="303" text-anchor="middle">레벨 LSH/LSL</text>
+
+          <line class="ext" x1="580" y1="342" x2="580" y2="376"></line>
+          <line class="ext" x1="1000" y1="342" x2="1000" y2="376"></line>
+          <line class="dim" x1="580" y1="370" x2="1000" y2="370" marker-start="url(#da)" marker-end="url(#da)"></line>
+          <text class="t-dim" x="790" y="366" text-anchor="middle">300 (깊이 150 · IP54 · SUS304)</text>
+
+          <rect class="box-d" x="580" y="396" width="420" height="216"></rect>
+          <text class="t-hd" x="594" y="420">전기 사양 · 인터록</text>
+          <text class="t-mono" x="594" y="444">전원        380 V 3φ 60 Hz (220 V 1φ 옵션)</text>
+          <text class="t-mono" x="594" y="462">총 부하      약 1.0 kW → 2.3 A (1φ 6.9 A)</text>
+          <text class="t-mono" x="594" y="480">모터        0.75 kW · VFD 15~60 Hz</text>
+          <text class="t-mono" x="594" y="498">보호        MCCB 10 A + 모터 전자식 과부하</text>
+          <text class="t-mono" x="594" y="516">접지        저항 ≤ 100 Ω · 동체·반 각 1개소</text>
+          <text class="t-dim" x="594" y="544">인터록 1 — LSL 미달 시 교반 기동 금지 (공회전 방지)</text>
+          <text class="t-dim" x="594" y="562">인터록 2 — LSH 도달 시 급광 정지 · 경보</text>
+          <text class="t-dim" x="594" y="580">인터록 3 — 비상정지는 모터만 차단, 급기는 유지 (거품층 붕괴 방지)</text>
+          <text class="t-dim" x="594" y="598">인터록 4 — 맨홀 개방 상태에서는 VFD 최대 30 Hz 로 제한</text>
+        </svg>
+      </div>
+      <figcaption>
+        체결부품은 전부 규격품이고 특수 제작품이 없다. 스테인리스 볼트는 조이는 중에
+        나사산이 눌어붙는 소부가 잘 나므로 이형제 도포를 도면 주기에 넣었다.
+        커버 가스켓은 착좌폭을 13 mm 로 좁혀 볼트 8개로 충분히 눌리게 했다 —
+        전면 가스켓이면 착좌하중이 82 kN 이 되어 M8 8개로는 눌리지 않는다.
+        제어반은 <b>비상정지가 모터만 끊고 급기는 살려 둔다</b>. 급기까지 끊으면
+        분산기 홀로 슬러리가 역류하고 떠 있던 거품층이 그대로 주저앉는다.
+      </figcaption>
+    </figure>
+
+    <div class="tablewrap">
+      <table>
+        <caption>체결부품 소요표</caption>
+        <thead>
+          <tr><th>구분</th><th>규격</th><th class="num">수량</th><th>적용부</th><th class="num">토크</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="tag">육각볼트</td><td>M8 × 40</td><td class="num">8</td><td>커버 + 배플 케이지 + 동체 플랜지</td><td class="num">20 N·m</td></tr>
+          <tr><td class="tag">육각볼트</td><td>M8 × 25</td><td class="num">12</td><td>다리 브라켓 · 제어반 · 명판</td><td class="num">20 N·m</td></tr>
+          <tr><td class="tag">육각볼트</td><td>M10 × 30</td><td class="num">6</td><td>감속기 취부</td><td class="num">40 N·m</td></tr>
+          <tr><td class="tag">육각너트</td><td>M8 / M10</td><td class="num">20 / 9</td><td>상동</td><td class="num">—</td></tr>
+          <tr><td class="tag">평와셔</td><td>M8 t1.5 / M10 t2.0</td><td class="num">40 / 18</td><td>볼트·너트 양측</td><td class="num">—</td></tr>
+          <tr><td class="tag">스프링와셔</td><td>M8 / M10</td><td class="num">20 / 9</td><td>너트측</td><td class="num">—</td></tr>
+          <tr><td class="tag">세트스크루</td><td>M8 × 8 (육각홀)</td><td class="num">4</td><td>임펠러 허브 2개소 × 2</td><td class="num">8 N·m</td></tr>
+          <tr><td class="tag">케미컬 앵커</td><td>M10 × 100</td><td class="num">3</td><td>다리 바닥판 (매입 80)</td><td class="num">40 N·m</td></tr>
+          <tr><td class="tag">키</td><td>8 × 7 × 40 / × 25</td><td class="num">2 / 1</td><td>임펠러 2 · 커플링 1</td><td class="num">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>MP-50-P0-007</b></div>
+      <div><span>도면명</span><b>체결부품 · 가스켓 · 제어반</b></div>
+      <div><span>축척</span><b>NTS</b></div>
+      <div><span>단위</span><b>mm</b></div>
+      <div><span>REV</span><b>P0</b></div>
+      <div><span>전기</span><b>380 V 3φ · 1.0 kW</b></div>
+    </div>
+  </section>
+
+  <!-- ================= SHEET 8 : MATERIAL / INSPECTION ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">DWG-P0-008</span>
+      <span class="sheet-title">재질 · 표면처리 · 제작 및 검사 기준</span>
+      <span class="sheet-sub">설계압력 0.05 MPa(G) · 시험압력 0.075 MPa</span>
+    </div>
+
+    <figure>
+      <div class="canvas">
+        <svg viewBox="0 0 1040 620" role="img"
+             aria-label="재질과 검사 기준. 왼쪽은 표면 마감 구역도로 내면은 Ra 0.8 마이크로미터 이하, 교반축과 임펠러 등 회전 습부는 SUS316L Ra 0.4 이하, 외면은 400번 헤어라인으로 구분한다. 가운데는 커버 응력 막대그래프로 설계압력 0.05 MPa 에서는 96 MPa 로 허용치 137 MPa 안에 들지만 원 도면의 시험압력 0.2 MPa 에서는 384 MPa 가 되어 항복강도 205 MPa 를 넘는다는 것을 보인다. 오른쪽은 청수, 청수와 공기, 실분말 세 단계 시운전 순서다.">
+          <!-- ============ FINISH ZONES (cx=150) ============ -->
+          <text class="t-hd" x="150" y="42" text-anchor="middle">표면 마감 구역</text>
+          <rect class="mach" x="70" y="82" width="160" height="6"></rect>
+          <line class="ln" x1="80" y1="88" x2="80" y2="268"></line>
+          <line class="ln" x1="220" y1="88" x2="220" y2="268"></line>
+          <line class="ln" x1="80" y1="268" x2="142" y2="374"></line>
+          <line class="ln" x1="220" y1="268" x2="158" y2="374"></line>
+          <rect class="pulp" x="81" y="150" width="138" height="118"></rect>
+          <polygon class="pulp" points="81,268 219,268 158,374 142,374"></polygon>
+          <rect class="mach" x="146" y="88" width="8" height="240"></rect>
+          <rect class="mach" x="120" y="300" width="60" height="7"></rect>
+          <rect class="mach" x="126" y="240" width="48" height="7"></rect>
+          <line class="cl" x1="150" y1="70" x2="150" y2="390"></line>
+
+          <line class="lead" x1="222" y1="110" x2="228" y2="106"></line>
+          <text class="t-dim" x="232" y="100">외면</text>
+          <text class="t-dim" x="232" y="114">#400 헤어라인</text>
+          <line class="lead" x1="90" y1="200" x2="228" y2="156"></line>
+          <text class="t-dim t-acc" x="232" y="150">내면 (습부) SUS304 2B + 버프</text>
+          <text class="t-dim t-acc" x="232" y="164">Ra ≤ 0.8 µm</text>
+          <line class="lead" x1="180" y1="303" x2="228" y2="246"></line>
+          <text class="t-dim t-acc" x="232" y="240">회전 습부 SUS316L · Ra ≤ 0.4 µm</text>
+          <text class="t-dim" x="232" y="254">축 · 임펠러 · 분산기 · 스키머</text>
+          <line class="lead" x1="150" y1="374" x2="228" y2="330"></line>
+          <text class="t-dim" x="232" y="324">콘 내면 용접 비드 평활 연마</text>
+          <text class="t-dim" x="232" y="338">— 잔류 고형물 정체 방지</text>
+
+          <!-- ============ COVER STRESS BAR (x 400..700) ============ -->
+          <text class="t-hd" x="545" y="42" text-anchor="middle">커버 (t5 평판) 응력 검증</text>
+          <line class="ln-t" x1="430" y1="290" x2="670" y2="290"></line>
+          <line class="ln-t" x1="430" y1="290" x2="430" y2="96"></line>
+          <text class="t-dim" x="424" y="294" text-anchor="end">0</text>
+          <text class="t-dim" x="424" y="196" text-anchor="end">200</text>
+          <text class="t-dim" x="424" y="102" text-anchor="end">400 MPa</text>
+          <line class="ln-t" x1="426" y1="196" x2="430" y2="196"></line>
+          <rect class="mach" x="470" y="244" width="50" height="46"></rect>
+          <text class="t-mono t-acc" x="495" y="238" text-anchor="middle">96</text>
+          <text class="t-dim" x="495" y="308" text-anchor="middle">설계 0.05 MPa</text>
+          <text class="t-dim" x="495" y="322" text-anchor="middle">(본 도면)</text>
+          <rect x="580" y="108" width="50" height="182" fill="var(--warn-bg)" stroke="var(--warn)" stroke-width="1.6"></rect>
+          <text class="t-mono t-bad" x="605" y="102" text-anchor="middle">384</text>
+          <text class="t-bad" x="605" y="308" text-anchor="middle">원 도면 0.2 MPa</text>
+          <text class="t-bad" x="605" y="322" text-anchor="middle">(성립하지 않음)</text>
+          <line class="dim" x1="430" y1="225" x2="656" y2="225" stroke-dasharray="7 3" stroke="var(--acc)"></line>
+          <text class="t-dim t-acc" x="660" y="223">허용 137</text>
+          <line class="bad-l" x1="430" y1="193" x2="656" y2="193" stroke-dasharray="7 3"></line>
+          <text class="t-dim t-bad" x="660" y="191">항복 205</text>
+          <text class="t-dim" x="400" y="356">σ = 3(3+ν)·p·a² / (8·t²)</text>
+          <text class="t-dim" x="400" y="372">단순지지 원판 · a = 197 · t = 5 · ν = 0.3</text>
+          <text class="t-dim" x="400" y="394">0.2 MPa 로 시험하려면 커버를 t8.4 이상으로</text>
+          <text class="t-dim" x="400" y="410">키워야 한다. 이 장비는 벤트 상시 개방형이라</text>
+          <text class="t-dim" x="400" y="426">그럴 이유가 없다 — 설계압력을 0.05 MPa 로</text>
+          <text class="t-dim" x="400" y="442">낮추고 0.075 MPa 공기 누설시험으로 바꿨다.</text>
+          <text class="t-dim" x="400" y="464">같은 압력에서 동체 후프응력은 3.3 MPa 뿐 —</text>
+          <text class="t-dim" x="400" y="480">지배 부재는 동체가 아니라 <tspan class="t-acc">평판 커버</tspan> 다.</text>
+
+          <!-- ============ COMMISSIONING (x 730..1030) ============ -->
+          <text class="t-hd" x="880" y="42" text-anchor="middle">시운전 3단계</text>
+          <rect class="box" x="742" y="62" width="288" height="88"></rect>
+          <text class="t-hd" x="756" y="84">① 청수 단독</text>
+          <text class="t-dim" x="756" y="104">50 L 청수 · 179→717 rpm 승속</text>
+          <text class="t-dim" x="756" y="120">진동·이음·씰 누설·소비전류 기록</text>
+          <text class="t-dim" x="756" y="136">액면 파임 확인 (경사날개 방향)</text>
+          <line class="ln-h" x1="886" y1="150" x2="886" y2="172" marker-end="url(#da)"></line>
+          <rect class="box" x="742" y="174" width="288" height="88"></rect>
+          <text class="t-hd" x="756" y="196">② 청수 + 공기</text>
+          <text class="t-dim" x="756" y="216">1.0 → 2.6 → 4.0 m³/h 단계 상승</text>
+          <text class="t-dim" x="756" y="232">60 홀 균등 분사 육안 확인</text>
+          <text class="t-dim" x="756" y="248">거품층 형성 · N2 월류 높이 조정</text>
+          <line class="ln-h" x1="886" y1="262" x2="886" y2="284" marker-end="url(#da)"></line>
+          <rect class="box" x="742" y="286" width="288" height="104"></rect>
+          <text class="t-hd" x="756" y="308">③ 실 분말 배치</text>
+          <text class="t-dim" x="756" y="328">≈75 µm 분획 · 고체 5 → 10 wt%</text>
+          <text class="t-dim" x="756" y="344">회전수 · 공기량 · 거품층 DOE</text>
+          <text class="t-dim" x="756" y="360">거품/미광 시료 분석 → 회수율·품위</text>
+          <text class="t-dim" x="756" y="376">콘 저부 침전 배출성 확인</text>
+          <text class="t-dim" x="742" y="416">각 단계 합격 판정 전에는 다음 단계로 넘어가지</text>
+          <text class="t-dim" x="742" y="432">않는다. ③ 의 결과가 상업 설비 스케일업의</text>
+          <text class="t-dim" x="742" y="448">유일한 근거다.</text>
+
+          <!-- ============ GENERAL WELD / FINISH NOTES ============ -->
+          <line class="ln-t" x1="40" y1="520" x2="1000" y2="520"></line>
+          <text class="t-dim" x="40" y="544">용접부는 전둘레 100 % 침투 · 이면 Ar 백실드 · 용접 후 부동태화 처리 (질산 15 % · 상온 30 분) 후 중화·수세</text>
+          <text class="t-dim" x="40" y="564">이종금속 접촉부(SUS304 / SUS316L)는 같은 계열이라 갈바닉 문제가 없다. 다만 탄소강 공구로 긁으면 오염 발청이</text>
+          <text class="t-dim" x="40" y="584">생기므로 스테인리스 전용 공구를 쓰고, 작업대에도 탄소강 분진이 남지 않게 한다.</text>
+        </svg>
+      </div>
+      <figcaption>
+        원 도면의 <span class="t-bad">압력시험 0.2 MPa · 30 분</span>은 그대로 시행하면
+        <b>커버가 항복한다</b>. t5 평판 Ø394 에 2 bar 를 걸면 굽힘응력이 384 MPa 로
+        SUS304 의 항복강도 205 MPa 를 넘는다. 이 장비는 벤트를 상시 개방한 대기압
+        개방형이라 2 bar 를 견딜 이유가 없으므로, 설계압력을 0.05 MPa(G) 로 정하고
+        시험을 <b>0.075 MPa 공기 누설시험 30 분 + 만수 시험</b>으로 바꿨다.
+        같은 압력에서 동체 후프응력은 3.3 MPa 에 불과하다 — 이 용기에서 압력을
+        지배하는 부재는 동체가 아니라 평판 커버다.
+      </figcaption>
+    </figure>
+
+    <div class="tablewrap">
+      <table>
+        <caption>재질 및 표면처리</caption>
+        <thead>
+          <tr><th>부위</th><th>재질</th><th>표면처리</th><th>비고</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="tag">08·15</td><td>탱크 셀 · 하부 콘 — SUS304</td><td>내면 2B + 버프 Ra ≤ 0.8 µm</td><td>외면 #400 헤어라인</td></tr>
+          <tr><td class="tag">04</td><td>상부 커버 — SUS304</td><td>내면 Ra ≤ 0.8 µm</td><td>t5 · 설계 0.05 MPa</td></tr>
+          <tr><td class="tag">11·12</td><td>교반축 · 임펠러 — SUS316L</td><td>Ra ≤ 0.4 µm</td><td>회전 습부 — 부착 방지</td></tr>
+          <tr><td class="tag">14</td><td>미세기포 분산기 — SUS316L</td><td>Ra ≤ 0.4 µm</td><td>홀 버 완전 제거</td></tr>
+          <tr><td class="tag">07</td><td>스키머 — SUS316L</td><td>Ra ≤ 0.4 µm</td><td>거품 접촉면</td></tr>
+          <tr><td class="tag">13</td><td>배플 케이지 — SUS304</td><td>Ra ≤ 0.8 µm</td><td>탈착식</td></tr>
+          <tr><td class="tag">09·23·24</td><td>노즐 · 배관 · 밸브 — SUS304</td><td>2B</td><td>위생 접속</td></tr>
+          <tr><td class="tag">26</td><td>가스켓 — EPDM / 실리콘</td><td>—</td><td>식품용 · 상시 0~60 °C</td></tr>
+          <tr><td class="tag">05·25·28</td><td>볼트 · 클램프 · 앵커 — SUS304</td><td>A2-70</td><td>이형제 도포</td></tr>
+          <tr><td class="tag">17·22</td><td>지지 다리 · 제어반 — SUS304</td><td>#400</td><td>구조·외장</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <caption>제작 및 검사 기준</caption>
+        <thead>
+          <tr><th>항목</th><th>기준</th><th>검사 방법</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="tag">치수 공차</td><td>일반 ±1 · 기계가공 ±0.2 · 동체 진원도 ±2</td><td>실측 · 성적서 첨부</td></tr>
+          <tr><td class="tag">용접</td><td>GTAW (TIG) · 100 % 침투 · 이면 Ar 백실드</td><td>육안 + 침투탐상 (PT)</td></tr>
+          <tr><td class="tag">내면 마감</td><td>Ra ≤ 0.8 µm (용접 비드 평활 연마 후)</td><td>조도계 5개소</td></tr>
+          <tr><td class="tag">설계 압력</td><td>0.05 MPa(G) / −0.005 MPa(G)</td><td>계산서 (커버 96 MPa &lt; 허용 137 MPa)</td></tr>
+          <tr><td class="tag">누설 시험</td><td>0.075 MPa 공기 30 분 · 압력강하 없음</td><td>발포액 전 용접선·플랜지</td></tr>
+          <tr><td class="tag">만수 시험</td><td>87 L 청수 24 시간 · 누설·처짐 없음</td><td>육안 + 다리 수평 재확인</td></tr>
+          <tr><td class="tag">부동태화</td><td>질산 15 % 상온 30 분 → 중화 → 수세</td><td>페리시안화칼륨 시험 음성</td></tr>
+          <tr><td class="tag">조임 토크</td><td>M8 20 N·m · M10 40 N·m · 클램프 12 N·m</td><td>토크렌치 · 체크마킹</td></tr>
+          <tr><td class="tag">회전 밸런스</td><td>축·임펠러 조립 상태 G6.3 @ 717 rpm</td><td>동적 밸런싱 성적서</td></tr>
+          <tr><td class="tag">진동</td><td>씰 하우징 상단 RMS ≤ 4.5 mm/s</td><td>717 rpm 청수 운전 중 측정</td></tr>
+          <tr><td class="tag">전기</td><td>380 V 3φ 60 Hz · IP54 · 접지 ≤ 100 Ω</td><td>절연저항 ≥ 1 MΩ · 접지저항계</td></tr>
+          <tr><td class="tag">분산 확인</td><td>공기 2.6 m³/h 에서 60 홀 전량 분사</td><td>청수 중 육안 · 사진 기록</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>MP-50-P0-008</b></div>
+      <div><span>도면명</span><b>재질 · 제작 및 검사 기준</b></div>
+      <div><span>축척</span><b>NTS</b></div>
+      <div><span>단위</span><b>mm / MPa</b></div>
+      <div><span>REV</span><b>P0</b></div>
+      <div><span>시험압력</span><b>0.075 MPa</b></div>
+    </div>
+  </section>
+
+  <!-- ================= DEVIATION RECORD ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-no">부속-A</span>
+      <span class="sheet-title">원 스케치 대비 수정 사항</span>
+      <span class="sheet-sub">14건 — 전부 계산으로 재산정</span>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <caption>수정 이력 — 원 스케치의 치수를 그대로 쓰지 못한 이유</caption>
+        <thead>
+          <tr><th>항목</th><th>원 스케치</th><th>본 도면</th><th>사유</th></tr>
+        </thead>
+        <tbody>
+          <tr class="flag">
+            <td class="tag">압력 시험</td><td class="was">0.2 MPa · 30 분</td>
+            <td>설계 0.05 MPa / 시험 0.075 MPa 공기</td>
+            <td class="wrapcell">t5 평판 커버에 2 bar 를 걸면 굽힘응력 384 MPa — 항복 205 MPa 초과. <strong>그대로 시행하면 커버가 변형·파단한다.</strong></td>
+          </tr>
+          <tr class="flag">
+            <td class="tag">하부 콘</td><td class="was">60° · 높이 150</td>
+            <td>60° · 높이 300</td>
+            <td class="wrapcell">Ø394 → Ø47.6 을 60° 로 이으면 높이가 300 mm 로 정해진다. 150 mm 로는 39.6° 밖에 안 되어 75 µm 침전물이 빠지지 않는다.</td>
+          </tr>
+          <tr class="flag">
+            <td class="tag">임펠러 지름</td><td class="was">Ø300 (D/T 0.76)</td>
+            <td>Ø140 (D/T 0.355)</td>
+            <td class="wrapcell">Ø300 이면 배플까지 8 mm 밖에 남지 않아 조립도 유동도 성립하지 않는다. 0.355 는 상업 셀 FC-201 과 같은 비다.</td>
+          </tr>
+          <tr class="flag">
+            <td class="tag">임펠러 구분</td><td class="was">상부 고속용 / 하부 저속용</td>
+            <td>한 축 · 한 회전수 · 역할로 구분</td>
+            <td class="wrapcell">같은 축의 두 임펠러에 다른 회전수를 줄 수 없다. 하부는 기포 분산(디스크 터빈), 상부는 고형물 순환(45° 경사날개)이며 세기는 VFD 로 조절한다.</td>
+          </tr>
+          <tr class="flag">
+            <td class="tag">분사홀</td><td class="was">60 - Ø2.0</td>
+            <td>60 - Ø1.0 (하향 45°)</td>
+            <td class="wrapcell">설계 유량에서 Ø2.0 은 홀 유속 3.8 m/s · We 0.57 로 제트가 서지 않아 4 mm 급 기포가 된다. Ø1.0 이면 15.3 m/s · We 4.6.</td>
+          </tr>
+          <tr>
+            <td class="tag">커버 체결</td><td class="was">커버 Ø400 · P.C.D 360 · 6-Ø9</td>
+            <td>플랜지 Ø460 · P.C.D 430 · 8-Ø9</td>
+            <td class="wrapcell">동체가 Ø400 이면 P.C.D 360 볼트원이 동체 안쪽에 놓여 볼트를 꽂을 자리가 없다.</td>
+          </tr>
+          <tr>
+            <td class="tag">콘 출구</td><td class="was">Ø38</td>
+            <td>Ø47.6 (2&quot; 위생관 내경)</td>
+            <td class="wrapcell">클램프 접속을 쓰므로 배관 계열을 위생관으로 통일했다. 슬러리 배출 단면도 넓어진다.</td>
+          </tr>
+          <tr>
+            <td class="tag">하부 플랜지</td><td class="was">P.C.D 70 · 4-Ø11</td>
+            <td>2&quot; 트라이클램프</td>
+            <td class="wrapcell">40A 에 P.C.D 70 볼트 4개는 규격에 없다. BOM 에 이미 클램프 항목이 있어 그쪽으로 통일했다.</td>
+          </tr>
+          <tr>
+            <td class="tag">배출 밸브</td><td class="was">콘 직하 수직 배치</td>
+            <td>90° 엘보로 측방 전환</td>
+            <td class="wrapcell">수직으로 매달면 밸브 끝이 바닥 위 40 mm 대에 놓여 호스를 끼울 수 없고 핸들도 돌아가지 않는다.</td>
+          </tr>
+          <tr>
+            <td class="tag">배플</td><td class="was">폭 200 · 상부 브라켓</td>
+            <td>폭 40 × 560 · 케이지 일체</td>
+            <td class="wrapcell">폭 200 은 T/2 로 배플이 아니라 격벽이 된다. T/10 = 40 이 표준이고, 케이지로 만들면 내면 용접 없이 통째로 빠진다.</td>
+          </tr>
+          <tr>
+            <td class="tag">키홈</td><td class="was">6 × 6</td>
+            <td>8 × 7</td>
+            <td class="wrapcell">KS B 1311 에서 Ø22 초과 Ø30 이하 축의 키는 8 × 7 이다. 6 × 6 은 Ø17~22 용.</td>
+          </tr>
+          <tr>
+            <td class="tag">동체 높이</td><td class="was">750 (600 + 150)</td>
+            <td>900 (600 + 300)</td>
+            <td class="wrapcell">콘 높이 수정에 따른 결과값.</td>
+          </tr>
+          <tr>
+            <td class="tag">교반축 길이</td><td class="was">800</td>
+            <td>740</td>
+            <td class="wrapcell">임펠러 위치(+60 / +220), 씰 하우징, 커플링을 배치한 결과값.</td>
+          </tr>
+          <tr>
+            <td class="tag">지지 다리</td><td class="was">Ø38 × 200 · P.C.D 70</td>
+            <td>40A × 820 · P.C.D 480</td>
+            <td class="wrapcell">P.C.D 70 은 동체(Ø400) 안쪽이라 다리를 세울 수 없다. 길이는 배출 밸브 아래 작업 공간에서 정해진다.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="titleblock">
+      <div><span>도면번호</span><b>MP-50-P0-A</b></div>
+      <div><span>도면명</span><b>수정 이력</b></div>
+      <div><span>건수</span><b>14</b></div>
+      <div><span>안전 관련</span><b>5</b></div>
+      <div><span>REV</span><b>P0</b></div>
+      <div><span>기준일</span><b>2026-09-10</b></div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <h2>도면 주기</h2>
+    <ol>
+      <li>본 도면집은 <strong>P0 파일럿 1대</strong>의 제작도다. 공정 성능(회수율·품위)은
+        아직 확정된 값이 아니며, DWG-P0-008 의 <strong>시운전 3단계</strong>가 끝나야
+        상업 설비 스케일업의 근거가 선다.</li>
+      <li>기준선은 <strong>동체와 콘의 접선선(±0)</strong>이고 위가 (+)다. 모든 노즐 높이,
+        임펠러 위치, 액면은 이 한 기준선으로 적었다. 바닥면은 −538 이다.</li>
+      <li><strong>운전 용량 50 L 는 액면 +297 mm 에 대응한다.</strong> 전 용량 87 L 의 57 %
+        이며, 남는 높이 303 mm 중 75 mm 가 거품층, 228 mm 가 여유공간이다.
+        거품은 N2 (+395) 로 넘긴다.</li>
+      <li>축소 기준은 <strong>임펠러 주속과 표면 기체속도</strong>다 — 주속 4.40 m/s,
+        Jg 0.59 cm/s 로 상업 셀 FC-201 (Ø1,000) 과 같은 수력학적 조건을 만든다.
+        체적으로 축소하면(50 L / 850 L = 1/17) 기포 크기와 전단이 전혀 달라진다.</li>
+      <li><strong>배플은 동체에 용접하지 않는다.</strong> 상부 링에 매단 케이지로 만들어
+        가스켓 두 장 사이에 끼우므로, 청소 때 4장이 한 덩어리로 빠지고 연마한 내면에
+        용접 자국이 남지 않는다.</li>
+      <li><strong>비상정지는 교반 모터만 끊고 급기는 유지한다.</strong> 급기까지 끊으면
+        분산기 홀로 슬러리가 역류해 Ø1.0 홀이 막히고, 떠 있던 거품층이 그대로
+        주저앉아 시험 배치가 무효가 된다.</li>
+      <li class="bad"><strong>원 스케치의 압력시험 0.2 MPa 는 시행하지 말 것.</strong>
+        t5 평판 커버의 굽힘응력이 384 MPa 로 SUS304 항복강도를 넘는다.
+        시험은 0.075 MPa 공기 누설시험 + 만수 시험으로 대체했다 (DWG-P0-008).</li>
+      <li>스테인리스 볼트는 조이는 중 나사산이 눌어붙는 <strong>소부(galling)</strong> 가
+        흔하다. 전 체결부에 니켈계 안티시즈를 바른 뒤 규정 토크로 조인다.</li>
+      <li>본 도면은 <strong>제작 발주용 치수 도면</strong>이며 3D CAD 모델의 대체물이 아니다.
+        용접 개선 상세, 노즐 보강, 공차 누적 검토는 제작사 상세설계에서 확정한다.</li>
+    </ol>
+  </section>
+
+  <p class="footer">
+    3D 조립·분해도는 <code>docs/drawings/mp50-pilot-3d.html</code>,
+    상업 설비(FC-201 계열) 도면은 <code>docs/drawings/ag-flotation-drawings.html</code>,
+    상류 박리설비는 <code>docs/drawings/pv-delamination-3d.html</code> 참조.
+    본 도면의 수치는 <code>tests/test_mp50_pilot.py</code> 가 계산 모델과 대조한다 —
+    치수를 고치면 테스트가 먼저 실패한다.
+  </p>
+
+</div>
+</body>
+</html>
