@@ -36,6 +36,76 @@ Dynamic industry Development
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
 | [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 13종, 열수지 계산기 (브라우저로 열 것) |
 
+## MP-50 염수 밀도분리 파일럿 장치
+
+폐태양광 후처리 블랙파우더에서 **EVA·백시트를 실리콘 분말로부터 걷어내는** 소형
+파일럿. 세 재질의 입경이 31~75 µm 로 겹쳐 체로는 나눌 수 없으므로, 염수(NaCl
+0~18 wt%)의 밀도를 세 재질의 유효밀도 사이에 놓고 나눈다. 임펠러와 급기는
+**분산 수단이지 분리 수단이 아니다** — 둘을 동시에 정지시킨 뒤의 자연 부상·침강이
+분리다.
+
+- 동체 **Ø400 ID × H600**, 원뿔 60° · 전용적 **89.86 L**, 운전 장입 **61.4 L**
+- 아세이 A~K **11계통 · 부품 220개**, 건조질량 **146 kg**
+- 교반축 Ø25 SUS316L, Ø300 4PBT45° 임펠러 2단, 배플 4매, 콘 급기 분산링
+
+### 원본 도면 그대로는 제작이 되지 않는다
+
+치수가 세 문서에 흩어져 있고 셋이 서로 다르다 — 연구문서 Rev.0, 도면
+MP-50-P0-001, 도면 MP50-DR-000. 충돌 8건을 정리했고 그중 **2건은 그대로 두면
+조립 자체가 불가능**하다.
+
+| 번호 | 항목 | 원본 | 문제 |
+|---|---|---|---|
+| **C1** | 원뿔 높이 | H150 + 60° | Ø400 에서 Ø38 로 닫히지 않는다 (313.5 필요) |
+| **C2** | 배플 폭 | 80 × 4매 | 안쪽 모서리 R114 가 Ø300 임펠러 팁 R150 과 **36 mm 겹쳐 축이 돌지 않는다** |
+
+해결 근거는 [`conflicts.py`](src/mp50_separator/conflicts.py) 와 제작도면의
+'원본 치수 충돌과 해결 근거' 절에 남겼다. C1 은 연구문서의 H346 을 **가상 정점높이**로
+읽으면 동체 상단 Z946 · 커버 상면 Z951 · 전용적 89.9 L 가 한 원점에서 동시에
+맞아떨어지므로 확정했고, C2 는 임펠러 Ø300 이 세 문서에 모두 같고 DOE·동력·Njs
+모델이 그 위에 서 있으므로 배플 쪽을 35 mm 로 줄였다.
+
+### 문서
+
+| 문서 | 내용 |
+|---|---|
+| [docs/drawings/mp50-fabrication-drawings.html](docs/drawings/mp50-fabrication-drawings.html) | **제작도면 A3 15매** — 기준좌표·공차, 전체 조립도, 아세이 A~K, 동체·원뿔 전개도, 노즐표, 용접·검사 기준. 손으로 적은 치수가 없다 (브라우저로 열 것) |
+| [docs/drawings/mp50-3d.html](docs/drawings/mp50-3d.html) | **3D 분해 · 컷어웨이 콘솔** — 아세이별 분해, 단면 컷어웨이, 분산→동시 정지→자연 층분리 재생. 입자는 검증 모듈과 같은 Stokes 식으로 움직인다 (브라우저로 열 것) |
+| [docs/mp50-fabrication-spec.md](docs/mp50-fabrication-spec.md) | 제작 기준 요약 (코드에서 자동 생성) |
+
+### 설계 검증에서 나온 것
+
+검증 14건 중 조립 항목은 전부 통과했고, 기능 항목 2건이 WARN 이다. 둘 다
+**장치가 아니라 시험계획을 고치라**는 뜻이다.
+
+- **CHK-05** Zwietering Njs 가 135 rpm 인데 감속기 상한이 90 rpm 이라 여유가 없다 →
+  최고속도 150 rpm 확보 권고 (축·동력·위험속도는 150 rpm 으로 검증했다)
+- **CHK-10** 정치 600 s 로는 31 µm 백시트가 1 % 만 부상한다. Stokes 는 지름의
+  제곱으로 가므로 미세분은 시간이 제곱으로 든다 → 정치시간 격자를 600~3600 s 로
+  넓히고, 염도 격자에 22/26 wt% 를 넣을 것 (포화까지 올리면 상승속도 2.7 배).
+  단 포화 염수까지 갈 경우 동체는 SUS304 가 아니라 SUS316L 이어야 한다.
+
+### 사용법
+
+```bash
+PYTHONPATH=src python -m mp50_separator                          # 제작 기준 출력
+PYTHONPATH=src python -m mp50_separator -o docs/mp50-fabrication-spec.md
+python tools/mp50_drawings.py                                    # 제작도면 15매 생성
+```
+
+### 구조
+
+```
+src/mp50_separator/
+  geometry.py    Z 기준좌표계 · 원뿔 폐합 · 용적 · 노즐 (여기만 고치면 된다)
+  components.py  아세이 A~K 부품표 — 질량은 기하에서 계산한다
+  conflicts.py   원본 3종의 치수 충돌 8건과 해결 근거
+  checks.py      제작성·기능성 검증 14건 (조립 / 기능)
+tools/
+  mp50_drawings.py   기하에서 제작도면 HTML 을 생성
+  _mp50_draft.py     ISO 128 제도 프리미티브
+```
+
 ### 사용법
 
 패키지가 `src/` 레이아웃이므로 설치 없이 실행할 때는 `PYTHONPATH=src` 를 붙인다.
@@ -44,7 +114,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (286건)
+python -m unittest discover -s tests -t .                               # 테스트 (428건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.

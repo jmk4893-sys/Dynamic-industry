@@ -1,0 +1,1355 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101820">
+<meta name="description" content="MP-50 염수 밀도분리 파일럿 장치의 3D 콘솔 — 아세이별 분해도, 단면 컷어웨이, 분산에서 동시 정지·자연 층분리까지의 운전 시퀀스 애니메이션.">
+<title>MP-50 3D 분해 · 컷어웨이 콘솔</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&amp;display=swap">
+<style>
+:root{
+  color-scheme:light dark;
+  --bg:#E7ECEF;--bg2:#EFF3F5;--surface:#FFFFFF;--surface-2:#F5F8FA;--surface-3:#E9EFF2;
+  --line:#CBD5DB;--line-2:#AEBBC3;
+  --ink:#12191F;--ink-2:#4C5A64;--ink-3:#7B8993;--ink-4:#9AA7B0;
+  --brand:#17789E;--brand-2:#1E92C0;--brand-dim:#DCEDF5;--brand-ink:#0E5A78;
+  --accent:#C88A1E;--warn:#A2381F;--ok:#1D6E48;--hold:#8A5A0B;
+  --stage:#DDE4E8;--stage-2:#C9D3D9;
+  --btn:linear-gradient(180deg,#FFFFFF,#EDF2F4);
+  --btn-hover:linear-gradient(180deg,#FFFFFF,#E2EAEE);
+  --btn-on:linear-gradient(180deg,#D6EBF5,#BCDFEF);
+  --sh1:0 1px 2px rgba(16,28,36,.10);
+  --sh2:0 8px 26px rgba(16,28,36,.14);
+  --r1:6px;--r2:10px;
+  --sans:"IBM Plex Sans KR",system-ui,-apple-system,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0C1218;--bg2:#111921;--surface:#141D25;--surface-2:#1A242D;--surface-3:#22303A;
+    --line:#2B3A45;--line-2:#3D5060;
+    --ink:#E3EAEF;--ink-2:#A2B2BD;--ink-3:#788893;--ink-4:#5D6D78;
+    --brand:#3FA9D6;--brand-2:#5EBEE5;--brand-dim:#0E2E3E;--brand-ink:#8FD6F2;
+    --accent:#E2A93B;--warn:#E07A5F;--ok:#4FB98A;--hold:#DDA83B;
+    --stage:#0A1016;--stage-2:#060B0F;
+    --btn:linear-gradient(180deg,#1E2A34,#17212A);
+    --btn-hover:linear-gradient(180deg,#26343F,#1B2630);
+    --btn-on:linear-gradient(180deg,#12506E,#0D3C55);
+    --sh1:0 1px 2px rgba(0,0,0,.34);
+    --sh2:0 10px 30px rgba(0,0,0,.46);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0C1218;--bg2:#111921;--surface:#141D25;--surface-2:#1A242D;--surface-3:#22303A;
+  --line:#2B3A45;--line-2:#3D5060;
+  --ink:#E3EAEF;--ink-2:#A2B2BD;--ink-3:#788893;--ink-4:#5D6D78;
+  --brand:#3FA9D6;--brand-2:#5EBEE5;--brand-dim:#0E2E3E;--brand-ink:#8FD6F2;
+  --accent:#E2A93B;--warn:#E07A5F;--ok:#4FB98A;--hold:#DDA83B;
+  --stage:#0A1016;--stage-2:#060B0F;
+  --btn:linear-gradient(180deg,#1E2A34,#17212A);
+  --btn-hover:linear-gradient(180deg,#26343F,#1B2630);
+  --btn-on:linear-gradient(180deg,#12506E,#0D3C55);
+  --sh1:0 1px 2px rgba(0,0,0,.34);
+  --sh2:0 10px 30px rgba(0,0,0,.46);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;
+  -webkit-text-size-adjust:100%}
+.wrap{max-width:1500px;margin:0 auto;padding:22px 16px 60px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 20px;
+  padding-bottom:14px;border-bottom:2px solid var(--ink);margin-bottom:16px}
+header.top h1{margin:0;font-size:clamp(19px,2.6vw,26px);letter-spacing:-.01em;line-height:1.2}
+header.top p{margin:2px 0 0;color:var(--ink-2);font-size:13px;max-width:64ch}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.badge{font-family:var(--mono);font-size:11.5px;padding:3px 9px;border-radius:99px;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink-2);white-space:nowrap}
+.badge b{color:var(--ink);font-weight:600}
+.console{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px;align-items:start}
+.stagewrap{position:relative;background:var(--stage);border:1px solid var(--line);
+  border-radius:var(--r2);overflow:hidden;box-shadow:var(--sh1)}
+canvas{display:block;width:100%;height:auto;aspect-ratio:16/10.5;min-height:340px;
+  touch-action:none;cursor:grab;background:transparent}
+canvas.dragging{cursor:grabbing}
+.hud{position:absolute;pointer-events:none;font-family:var(--mono);font-size:11.5px}
+.hud.tl{left:12px;top:12px}
+.hud.br{right:12px;bottom:12px;text-align:right}
+.hud .chip{display:inline-block;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r1);padding:4px 9px;margin:0 0 5px;color:var(--ink-2);
+  box-shadow:var(--sh1);opacity:.94}
+.hud .chip b{color:var(--ink);font-weight:600}
+.hud .chip.live{color:var(--brand-ink);border-color:var(--brand)}
+.labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.labels .lbl{position:absolute;transform:translate(-50%,-50%);font-family:var(--mono);
+  font-size:10.5px;font-weight:600;color:var(--ink);background:var(--surface);
+  border:1px solid var(--line);border-radius:99px;padding:1px 6px;white-space:nowrap;
+  box-shadow:var(--sh1);opacity:.95}
+.labels .lbl.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.seqbar{position:absolute;left:12px;right:12px;bottom:12px;pointer-events:none;
+  display:flex;gap:2px;align-items:stretch;height:26px;opacity:.96}
+.seqbar span{flex:1;background:var(--surface);border:1px solid var(--line);
+  font-family:var(--mono);font-size:10.5px;color:var(--ink-3);display:flex;
+  align-items:center;justify-content:center;overflow:hidden;white-space:nowrap}
+.seqbar span:first-child{border-radius:var(--r1) 0 0 var(--r1)}
+.seqbar span:last-child{border-radius:0 var(--r1) var(--r1) 0}
+.seqbar[hidden]{display:none}
+.seqbar span.on{background:var(--brand-dim);border-color:var(--brand);color:var(--brand-ink);font-weight:600}
+aside{display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);
+  padding:12px 13px;box-shadow:var(--sh1)}
+.panel h2{margin:0 0 9px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:600}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.row:last-child{margin-bottom:0}
+button{font-family:var(--sans);font-size:12.5px;color:var(--ink);background:var(--btn);
+  border:1px solid var(--line);border-radius:var(--r1);padding:6px 10px;cursor:pointer;
+  transition:background .12s,border-color .12s}
+button:hover{background:var(--btn-hover);border-color:var(--line-2)}
+button[aria-pressed="true"]{background:var(--btn-on);border-color:var(--brand);
+  color:var(--brand-ink);font-weight:600}
+button.wide{flex:1}
+button.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+button.primary:hover{background:var(--brand-2);border-color:var(--brand-2)}
+label.slider{display:block;font-size:12px;color:var(--ink-2);margin-bottom:9px}
+label.slider:last-child{margin-bottom:0}
+label.slider span{display:flex;justify-content:space-between;margin-bottom:3px}
+label.slider b{font-family:var(--mono);color:var(--ink);font-weight:600}
+input[type=range]{width:100%;accent-color:var(--brand);height:20px}
+.parts{max-height:290px;overflow:auto;margin:0;padding:0;list-style:none;
+  border:1px solid var(--line);border-radius:var(--r1)}
+.parts li{display:flex;gap:8px;align-items:center;padding:5px 8px;font-size:12px;
+  border-bottom:1px solid var(--line);cursor:pointer}
+.parts li:last-child{border-bottom:none}
+.parts li:hover{background:var(--surface-2)}
+.parts li.on{background:var(--brand-dim)}
+.parts .sw{width:11px;height:11px;border-radius:2px;flex:none;border:1px solid rgba(0,0,0,.22)}
+.parts .no{font-family:var(--mono);font-size:11px;color:var(--ink-3);flex:none;width:34px}
+.parts .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.parts .tag{font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:99px;
+  border:1px solid currentColor;flex:none}
+.tag.hold{color:var(--hold)}.tag.prop{color:var(--brand)}.tag.rel{color:var(--ink-4)}
+.tag.vend{color:var(--ink-4)}
+.spec{font-size:12px;color:var(--ink-2);margin:9px 0 0;min-height:52px}
+.spec b{color:var(--ink);font-weight:600;display:block;font-size:13px;margin-bottom:2px}
+.spec code{font-family:var(--mono);font-size:11.5px;color:var(--brand-ink)}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:11.5px;color:var(--ink-2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;
+  vertical-align:-1px;border:1px solid rgba(0,0,0,.2)}
+section.notes{margin-top:26px}
+section.notes h2{font-size:17px;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+section.notes p{font-size:13.5px;color:var(--ink-2);margin:0 0 10px;max-width:88ch}
+section.notes ul{font-size:13.5px;color:var(--ink-2);margin:0 0 12px;padding-left:20px;max-width:88ch}
+section.notes b{color:var(--ink)}
+table.k{width:100%;border-collapse:collapse;font-size:12.5px;margin:4px 0 16px}
+table.k th,table.k td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+table.k th{background:var(--surface-3);font-weight:600;color:var(--ink)}
+table.k td{color:var(--ink-2)}
+table.k td.k{font-family:var(--mono);white-space:nowrap;color:var(--ink);font-weight:600}
+.fallback{padding:26px;text-align:center;color:var(--ink-2);font-size:13.5px}
+button:focus-visible,input:focus-visible,.parts li:focus-visible,a:focus-visible{
+  outline:2px solid var(--brand);outline-offset:2px;border-radius:var(--r1)}
+@media (prefers-reduced-motion: reduce){
+  /* 자동 회전은 켜지지 않는다 (아래 JS). 전환도 멈춘다. */
+  *{transition-duration:0.01ms !important}
+}
+@media (max-width:1080px){
+  .console{grid-template-columns:1fr}
+  aside{flex-direction:row;flex-wrap:wrap}
+  .panel{flex:1 1 260px}
+  .parts{max-height:220px}
+}
+@media (max-width:560px){
+  .wrap{padding:14px 10px 40px}
+  canvas{aspect-ratio:4/3.4}
+  .badges{margin-left:0}
+  .seqbar span{font-size:9px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1>MP-50 3D 분해 · 컷어웨이 콘솔</h1>
+    <p>폐태양광 블랙파우더(31~75&nbsp;µm)에서 EVA·백시트를 염수 밀도차로 걷어내는
+       파일럿 장치. 아세이별로 분해하고, 단면을 열어 안을 들여다보고,
+       분산에서 <b>동시 정지</b>·자연 층분리까지의 운전을 재생한다.</p>
+  </div>
+  <div class="badges">
+    <span class="badge">전용적 <b>89.86 L</b></span>
+    <span class="badge">운전 장입 <b>61.4 L</b></span>
+    <span class="badge">동체 <b>Ø400 × H600</b></span>
+    <span class="badge">건조질량 <b>146 kg</b></span>
+    <span class="badge">부품 <b>220 개</b></span>
+  </div>
+</header>
+
+<div class="console">
+  <div class="stagewrap">
+    <canvas id="stage" role="img" aria-label="MP-50 염수 밀도분리 장치의 3D 모델 — 프레임 위에 놓인 Ø400 원통 동체와 60도 원뿔, 두 단의 4엽 경사 임펠러와 4매 배플, 콘 안의 급기 분산링, 상부 커버와 구동부. 아세이별 분해와 단면 컷어웨이, 분산 후 동시 정지에 따른 폴리머 부상과 실리콘 침강을 재생한다."></canvas>
+    <div class="hud tl" id="hudLeft"></div>
+    <div class="hud br" id="hudRight"></div>
+    <div class="labels" id="labels"></div>
+    <div class="seqbar" id="seqbar" hidden></div>
+  </div>
+
+  <aside>
+    <div class="panel">
+      <h2>보기</h2>
+      <div class="row">
+        <button class="wide" id="btnExplode" aria-pressed="false">분해도</button>
+        <button class="wide" id="btnCut" aria-pressed="false">컷어웨이</button>
+      </div>
+      <div class="row">
+        <button class="wide" id="btnRun" aria-pressed="false">운전 재생</button>
+        <button class="wide" id="btnSpin" aria-pressed="true">자동 회전</button>
+      </div>
+      <div class="row">
+        <button id="viewIso">등각</button>
+        <button id="viewFront">정면</button>
+        <button id="viewTop">평면</button>
+        <button id="viewSect">단면</button>
+      </div>
+      <label class="slider"><span>분해 <b id="valExplode">0 %</b></span>
+        <input type="range" id="rngExplode" min="0" max="100" value="0" aria-label="분해 정도"></label>
+      <label class="slider"><span>절단면 <b id="valCut">중심</b></span>
+        <input type="range" id="rngCut" min="-100" max="100" value="0" aria-label="절단면 위치"></label>
+      <label class="slider"><span>염수 NaCl <b id="valSalt">18 wt%</b></span>
+        <input type="range" id="rngSalt" min="0" max="26" value="18" step="1" aria-label="염수 NaCl 농도"></label>
+      <div class="row" style="margin-top:8px">
+        <button class="wide" id="btnLabels" aria-pressed="true">부품 라벨</button>
+        <button class="wide" id="btnTheme">테마</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>아세이</h2>
+      <div class="row" id="asmRow"></div>
+      <p class="spec" id="spec"><b>전체 조립</b>아세이 버튼으로 한 계통만 남길 수 있다. 목록에서 부품을 고르면 그 부품만 강조된다.</p>
+    </div>
+
+    <div class="panel">
+      <h2>부품 <span id="partCount" style="font-family:var(--mono);color:var(--ink-3)"></span></h2>
+      <ul class="parts" id="partList"></ul>
+    </div>
+
+    <div class="panel">
+      <h2>재질 · 상태</h2>
+      <div class="legend">
+        <div><i style="background:#B9C4CC"></i>SUS304</div>
+        <div><i style="background:#9AA9B4"></i>SUS316L</div>
+        <div><i style="background:#3E6E86"></i>구동부</div>
+        <div><i style="background:#C8862A"></i>HOLD</div>
+        <div><i style="background:#6FA8C0"></i>염수</div>
+        <div><i style="background:#7E8B96"></i>프레임</div>
+      </div>
+    </div>
+  </aside>
+</div>
+<script>
+"use strict";
+/* ===========================================================================
+   MP-50 3D 분해 · 컷어웨이 콘솔
+   ---------------------------------------------------------------------------
+   외부 라이브러리 없이 WebGL 로 직접 그린다. 형상 치수는 전부
+   src/mp50_separator/geometry.py 의 확정값이며, tests/test_mp50_console.py 가
+   이 파일의 숫자가 그 모듈과 어긋나지 않는지 검사한다.
+
+   Z 는 원뿔의 가상 정점을 0 으로 하는 장치 좌표(mm)다. 화면에서는 바닥을
+   0 으로 두므로 world_z = (Z + FLOOR_OFFSET) / 1000 [m] 로 옮긴다.
+   =========================================================================== */
+
+/* ---- 확정 기하 (mm) — geometry.py 와 같은 값 ---- */
+const G = {
+  tankId: 400, shellT: 3, shellH: 600, coneDeg: 60, coneOutId: 59.5,
+  apexH: 346.41, coneH: 294.88, coneOutZ: 51.53, shellBotZ: 346.41,
+  shellTopZ: 946.41, coverTopZ: 951.41, coverT: 5, hubOd: 220, hubT: 10,
+  flangeOd: 480, flangePcd: 450, flangeT: 10, bolts: 12,
+  shaftOd: 25, shaftTop: 1155, shaftBot: 395,
+  impOd: 300, impBlades: 4, impPitch: 45, impW: 60, impT: 3, hubD: 60, hubL: 60,
+  impLoZ: 430, impHiZ: 610,
+  bafW: 35, bafT: 3, bafN: 4, bafZ0: 390, bafZ1: 690, bafGap: 6,
+  spPcd: 250, spTube: 12, spZ: 300, spHoles: 12,
+  skimOd: 300, skimH: 50, skimZ: 725,
+  frameW: 550, frameH: 750, frameTube: 40,
+  ringOd: 480, ringT: 8, ringZ: 400,
+  levelZ: 720, minLevelZ: 629.2, volL: 61.4, totalL: 89.86,
+  floorOffset: 358, driveTopZ: 1420
+};
+const NOZZLES = [
+  { tag:"N1",  th:0,   z:760, od:25.4, svc:"급광 투입" },
+  { tag:"N2",  th:90,  z:735, od:38.1, svc:"부상물 배출" },
+  { tag:"N3",  th:180, z:520, od:12.7, svc:"급기" },
+  { tag:"N4A", th:270, z:400, od:12.7, svc:"시료 채취" },
+  { tag:"N4B", th:270, z:480, od:12.7, svc:"시료 채취" },
+  { tag:"N4C", th:270, z:560, od:12.7, svc:"시료 채취" },
+  { tag:"N4D", th:270, z:640, od:12.7, svc:"시료 채취" },
+  { tag:"N4E", th:270, z:720, od:12.7, svc:"시료 채취" },
+  { tag:"N5",  th:315, z:690, od:104,  svc:"사이트글라스" }
+];
+
+/* ---- 입자 물성 — checks.py 와 같은 상관식 ---- */
+const SI_RHO = 2330;
+const EVA_RHO = [980, 950, 920];        // 31-45 / 45-60 / 60-75 µm
+const BS_RHO  = [1110, 1060, 1010];
+const BINS = [[31,45],[45,60],[60,75]];
+function brineDensity(w, tC){ return 998 + 7.15*w + 0.026*w*w - 0.35*((tC||20)-20); }
+function brineViscosity(w){ return 1.002e-3 * (1 + 0.0123*w + 0.00126*w*w); }
+/** Stokes 종말속도 (m/s). 양수 침강 · 음수 부상. */
+function stokes(rhoP, dpUm, saltWt){
+  return (rhoP - brineDensity(saltWt)) * 9.81 * Math.pow(dpUm*1e-6, 2)
+         / (18 * brineViscosity(saltWt));
+}
+
+/* ---- 색 ---- */
+const MAT = {
+  sus304:[0.800,0.836,0.862], sus316:[0.686,0.735,0.772], drive:[0.286,0.478,0.573],
+  hold:[0.784,0.525,0.165], frame:[0.494,0.545,0.588], glass:[0.545,0.706,0.780],
+  epdm:[0.176,0.196,0.212], valve:[0.278,0.478,0.573], dark:[0.180,0.220,0.255]
+};
+
+/* ---- 행렬 ---- */
+function m4(){ const o=new Float32Array(16); o[0]=o[5]=o[10]=o[15]=1; return o; }
+function m4mul(a,b,o){ o=o||new Float32Array(16);
+  for(let i=0;i<4;i++)for(let j=0;j<4;j++){ let s=0;
+    for(let k=0;k<4;k++) s+=a[k*4+j]*b[i*4+k]; o[i*4+j]=s; } return o; }
+function m4persp(fov,asp,n,f){ const t=1/Math.tan(fov/2),o=new Float32Array(16);
+  o[0]=t/asp; o[5]=t; o[10]=(f+n)/(n-f); o[11]=-1; o[14]=2*f*n/(n-f); return o; }
+function m4look(e,c,up){
+  let z=[e[0]-c[0],e[1]-c[1],e[2]-c[2]];
+  let l=Math.hypot(z[0],z[1],z[2])||1; z=[z[0]/l,z[1]/l,z[2]/l];
+  let x=[up[1]*z[2]-up[2]*z[1], up[2]*z[0]-up[0]*z[2], up[0]*z[1]-up[1]*z[0]];
+  l=Math.hypot(x[0],x[1],x[2])||1; x=[x[0]/l,x[1]/l,x[2]/l];
+  const y=[z[1]*x[2]-z[2]*x[1], z[2]*x[0]-z[0]*x[2], z[0]*x[1]-z[1]*x[0]];
+  const o=new Float32Array(16);
+  o[0]=x[0];o[1]=y[0];o[2]=z[0];o[4]=x[1];o[5]=y[1];o[6]=z[1];
+  o[8]=x[2];o[9]=y[2];o[10]=z[2];o[15]=1;
+  o[12]=-(x[0]*e[0]+x[1]*e[1]+x[2]*e[2]);
+  o[13]=-(y[0]*e[0]+y[1]*e[1]+y[2]*e[2]);
+  o[14]=-(z[0]*e[0]+z[1]*e[1]+z[2]*e[2]);
+  return o;
+}
+
+/* ---- 메시 누적기 ---- */
+const M = 0.001;                       // mm → m
+function wz(z){ return (z + G.floorOffset) * M; }   // 장치 Z → 바닥 기준 높이
+class Mesh {
+  constructor(){ this.p=[]; this.n=[]; this.i=[]; }
+  get count(){ return this.p.length/3; }
+  vert(x,y,z,nx,ny,nz){ this.p.push(x,y,z); this.n.push(nx,ny,nz); return this.count-1; }
+  quad(a,b,c,d){ this.i.push(a,b,c, a,c,d); }
+  tri(a,b,c){ this.i.push(a,b,c); }
+  /** 회전체. prof 는 [[r_mm, z_mm], ...] 를 잇는 열린 프로파일.
+   *  법선은 프로파일 진행방향의 왼쪽(= (r,z) 평면에서 반시계 바깥)으로 잡는다.
+   *  ``flip`` 은 껍질의 **안쪽** 면처럼 법선과 와인딩을 모두 뒤집을 때 쓴다 —
+   *  이것을 빼면 바깥 면이 뒷면으로 판정돼 컷어웨이 단면색으로 칠해진다. */
+  revolve(prof, seg, closed, flip){
+    const rings=[];
+    for(const [r,z] of prof){
+      const ring=[];
+      for(let s=0;s<seg;s++){
+        const a=s/seg*Math.PI*2, x=Math.cos(a)*r*M, y=Math.sin(a)*r*M;
+        ring.push([x, y, wz(z), Math.cos(a), Math.sin(a)]);
+      }
+      rings.push(ring);
+    }
+    for(let k=0;k<rings.length-1;k++){
+      const A=rings[k], B=rings[k+1];
+      const dr=(prof[k+1][0]-prof[k][0])*M, dz=(prof[k+1][1]-prof[k][1])*M;
+      const L=Math.hypot(dr,dz)||1;
+      const f=flip?-1:1, nr=dz/L*f, nz=-dr/L*f;       // 프로파일 법선
+      for(let s=0;s<seg;s++){
+        const t=(s+1)%seg;
+        const a=this.vert(A[s][0],A[s][1],A[s][2], A[s][3]*nr, A[s][4]*nr, nz);
+        const b=this.vert(A[t][0],A[t][1],A[t][2], A[t][3]*nr, A[t][4]*nr, nz);
+        const c=this.vert(B[t][0],B[t][1],B[t][2], B[t][3]*nr, B[t][4]*nr, nz);
+        const d=this.vert(B[s][0],B[s][1],B[s][2], B[s][3]*nr, B[s][4]*nr, nz);
+        if(flip) this.quad(d,c,b,a); else this.quad(a,b,c,d);
+      }
+    }
+    if(closed && rings.length>1){
+      const A=rings[rings.length-1], B=rings[0];
+      const dr=(prof[0][0]-prof[prof.length-1][0])*M, dz=(prof[0][1]-prof[prof.length-1][1])*M;
+      const L=Math.hypot(dr,dz)||1, nr=dz/L, nz=-dr/L;
+      for(let s=0;s<seg;s++){
+        const t=(s+1)%seg;
+        const a=this.vert(A[s][0],A[s][1],A[s][2], A[s][3]*nr, A[s][4]*nr, nz);
+        const b=this.vert(A[t][0],A[t][1],A[t][2], A[t][3]*nr, A[t][4]*nr, nz);
+        const c=this.vert(B[t][0],B[t][1],B[t][2], B[t][3]*nr, B[t][4]*nr, nz);
+        const d=this.vert(B[s][0],B[s][1],B[s][2], B[s][3]*nr, B[s][4]*nr, nz);
+        this.quad(a,b,c,d);
+      }
+    }
+  }
+  /** 고리 평면 (위/아래 뚜껑). */
+  ring(ri, ro, z, up, seg){
+    const nz = up ? 1 : -1;
+    for(let s=0;s<seg;s++){
+      const a0=s/seg*Math.PI*2, a1=(s+1)/seg*Math.PI*2;
+      const P=(r,a)=>[Math.cos(a)*r*M, Math.sin(a)*r*M, wz(z)];
+      const v=[P(ri,a0),P(ro,a0),P(ro,a1),P(ri,a1)].map(q=>this.vert(q[0],q[1],q[2],0,0,nz));
+      if(up) this.quad(v[0],v[1],v[2],v[3]); else this.quad(v[0],v[3],v[2],v[1]);
+    }
+  }
+  /** 두께가 있는 회전 껍질 — 안·바깥 면과 양 끝 고리를 한 번에. */
+  shell(prof, t, seg){
+    const out = prof.map(([r,z])=>[r+t, z]);
+    this.revolve(prof, seg, false, true);      // 안쪽 — 법선이 축을 향한다
+    this.revolve(out, seg, false, false);      // 바깥
+    this.ring(prof[0][0], out[0][0], prof[0][1], false, seg);
+    const n = prof.length-1;
+    this.ring(prof[n][0], out[n][0], prof[n][1], true, seg);
+  }
+  /** 축 정렬 직육면체 (mm). rz 는 Z 축 회전(도). */
+  box(w,d,h, cx,cy,cz, rz){
+    const a=(rz||0)*Math.PI/180, ca=Math.cos(a), sa=Math.sin(a);
+    const hw=w/2*M, hd=d/2*M, hh=h/2*M;
+    const X=cx*M, Y=cy*M, Z=wz(cz);
+    const R=(x,y)=>[X + x*ca - y*sa, Y + x*sa + y*ca];
+    const faces=[
+      [[ hw,-hd,-hh],[ hw, hd,-hh],[ hw, hd, hh],[ hw,-hd, hh],[ 1,0,0]],
+      [[-hw, hd,-hh],[-hw,-hd,-hh],[-hw,-hd, hh],[-hw, hd, hh],[-1,0,0]],
+      [[-hw, hd,-hh],[-hw, hd, hh],[ hw, hd, hh],[ hw, hd,-hh],[0, 1,0]],
+      [[ hw,-hd,-hh],[ hw,-hd, hh],[-hw,-hd, hh],[-hw,-hd,-hh],[0,-1,0]],
+      [[-hw,-hd, hh],[ hw,-hd, hh],[ hw, hd, hh],[-hw, hd, hh],[0,0, 1]],
+      [[-hw, hd,-hh],[ hw, hd,-hh],[ hw,-hd,-hh],[-hw,-hd,-hh],[0,0,-1]]
+    ];
+    for(const f of faces){
+      const n=f[4], nn=R(n[0],n[1]);
+      const nx=nn[0]-X, ny=nn[1]-Y;
+      const idx=f.slice(0,4).map(v=>{ const p=R(v[0],v[1]);
+        return this.vert(p[0], p[1], Z+v[2], nx, ny, n[2]); });
+      this.quad(idx[0],idx[1],idx[2],idx[3]);
+    }
+  }
+  /** 두 점을 잇는 원통 (mm 좌표, z 는 장치 Z). */
+  pipe(p0, p1, r, seg, cap){
+    const A=[p0[0]*M,p0[1]*M,wz(p0[2])], B=[p1[0]*M,p1[1]*M,wz(p1[2])];
+    let d=[B[0]-A[0],B[1]-A[1],B[2]-A[2]];
+    const L=Math.hypot(d[0],d[1],d[2])||1; d=[d[0]/L,d[1]/L,d[2]/L];
+    let u=Math.abs(d[2])<0.9?[0,0,1]:[1,0,0];
+    let e1=[u[1]*d[2]-u[2]*d[1], u[2]*d[0]-u[0]*d[2], u[0]*d[1]-u[1]*d[0]];
+    let l=Math.hypot(e1[0],e1[1],e1[2])||1; e1=[e1[0]/l,e1[1]/l,e1[2]/l];
+    const e2=[d[1]*e1[2]-d[2]*e1[1], d[2]*e1[0]-d[0]*e1[2], d[0]*e1[1]-d[1]*e1[0]];
+    const R=r*M, a0=[],b0=[];
+    for(let s=0;s<seg;s++){
+      const a=s/seg*Math.PI*2, c=Math.cos(a), si=Math.sin(a);
+      const n=[e1[0]*c+e2[0]*si, e1[1]*c+e2[1]*si, e1[2]*c+e2[2]*si];
+      a0.push(this.vert(A[0]+n[0]*R, A[1]+n[1]*R, A[2]+n[2]*R, n[0],n[1],n[2]));
+      b0.push(this.vert(B[0]+n[0]*R, B[1]+n[1]*R, B[2]+n[2]*R, n[0],n[1],n[2]));
+    }
+    for(let s=0;s<seg;s++){ const t=(s+1)%seg; this.quad(a0[s],a0[t],b0[t],b0[s]); }
+    if(cap!==false){
+      const ca=this.vert(A[0],A[1],A[2],-d[0],-d[1],-d[2]);
+      const cb=this.vert(B[0],B[1],B[2], d[0], d[1], d[2]);
+      for(let s=0;s<seg;s++){ const t=(s+1)%seg;
+        this.tri(ca,a0[t],a0[s]); this.tri(cb,b0[s],b0[t]); }
+    }
+  }
+  torus(R, r, z, seg, tseg){
+    const rings=[];
+    for(let s=0;s<seg;s++){
+      const a=s/seg*Math.PI*2, ca=Math.cos(a), sa=Math.sin(a), row=[];
+      for(let t=0;t<tseg;t++){
+        const b=t/tseg*Math.PI*2, cb=Math.cos(b), sb=Math.sin(b);
+        const nx=ca*cb, ny=sa*cb, nz=sb;
+        row.push(this.vert((R+r*cb)*ca*M, (R+r*cb)*sa*M, wz(z)+r*sb*M, nx,ny,nz));
+      }
+      rings.push(row);
+    }
+    for(let s=0;s<seg;s++){ const s2=(s+1)%seg;
+      for(let t=0;t<tseg;t++){ const t2=(t+1)%tseg;
+        this.quad(rings[s][t], rings[s2][t], rings[s2][t2], rings[s][t2]); } }
+  }
+}
+
+/* 네 모서리로 정의한 판을 두께만큼 밀어 만든 슬래브. 경사 임펠러 날개용. */
+Mesh.prototype.slab = function(c, t){
+  const P = c.map(q=>[q[0]*M, q[1]*M, wz(q[2])]);
+  const u=[P[1][0]-P[0][0],P[1][1]-P[0][1],P[1][2]-P[0][2]];
+  const v=[P[3][0]-P[0][0],P[3][1]-P[0][1],P[3][2]-P[0][2]];
+  let n=[u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]];
+  const L=Math.hypot(n[0],n[1],n[2])||1; n=[n[0]/L,n[1]/L,n[2]/L];
+  const h=t*M/2;
+  const A=P.map(q=>[q[0]+n[0]*h, q[1]+n[1]*h, q[2]+n[2]*h]);
+  const B=P.map(q=>[q[0]-n[0]*h, q[1]-n[1]*h, q[2]-n[2]*h]);
+  const ai=A.map(q=>this.vert(q[0],q[1],q[2], n[0],n[1],n[2]));
+  const bi=B.map(q=>this.vert(q[0],q[1],q[2],-n[0],-n[1],-n[2]));
+  this.quad(ai[0],ai[1],ai[2],ai[3]);
+  this.quad(bi[3],bi[2],bi[1],bi[0]);
+  for(let k=0;k<4;k++){
+    const k2=(k+1)%4;
+    let e=[A[k2][0]-A[k][0], A[k2][1]-A[k][1], A[k2][2]-A[k][2]];
+    let sn=[e[1]*n[2]-e[2]*n[1], e[2]*n[0]-e[0]*n[2], e[0]*n[1]-e[1]*n[0]];
+    const l2=Math.hypot(sn[0],sn[1],sn[2])||1; sn=[sn[0]/l2,sn[1]/l2,sn[2]/l2];
+    const q=[A[k],A[k2],B[k2],B[k]].map(p=>this.vert(p[0],p[1],p[2], sn[0],sn[1],sn[2]));
+    this.quad(q[0],q[1],q[2],q[3]);
+  }
+};
+
+/* ---- 부품 정의 ------------------------------------------------------------
+   ex : 분해 방향 (m). 분해 슬라이더가 이 벡터를 배수한다.
+   at : 라벨이 붙는 점 (mm, 장치 Z).
+   cut: 컷어웨이에서 잘리는지 — 프레임·구동부는 자르지 않아야 형태가 읽힌다.
+   -------------------------------------------------------------------------- */
+const SEG = 48;
+function rad(d){ return d*Math.PI/180; }
+function radial(thDeg, m){ return [Math.cos(rad(thDeg))*m, Math.sin(rad(thDeg))*m, 0]; }
+
+const PARTS = [];
+function part(o){ PARTS.push(o); }
+
+/* --- A 탱크 --- */
+part({ no:"A-01", asm:"A", name:"동체 (Shell)", spec:`Ø${G.tankId} ID × H${G.shellH} × t${G.shellT} · SUS304`,
+  st:"RELEASE", col:MAT.sus304, ex:[0,0,0], at:[-200,0,780], cut:true,
+  draw:m=>m.shell([[G.tankId/2, G.shellBotZ],[G.tankId/2, G.shellTopZ]], G.shellT, SEG) });
+part({ no:"A-02", asm:"A", name:"원뿔 (Cone)", spec:`Ø${G.tankId} → Ø${G.coneOutId}, 60°, H${G.coneH} · SUS304`,
+  st:"PROPOSED", col:MAT.sus304, ex:[0,0,-0.26], at:[-140,0,200], cut:true,
+  draw:m=>m.shell([[G.coneOutId/2, G.coneOutZ],[G.tankId/2, G.shellBotZ]], G.shellT/Math.cos(rad(30)), SEG) });
+part({ no:"A-03", asm:"A", name:"배출 스터브", spec:'Ø63.5 × t2.0 × L40 + 2" 페룰 · SUS316L',
+  st:"PROPOSED", col:MAT.sus316, ex:[0,0,-0.44], at:[0,0,20], cut:true,
+  draw:m=>{ m.shell([[G.coneOutId/2, G.coneOutZ-40],[G.coneOutId/2, G.coneOutZ]], 2, 28);
+            m.revolve([[G.coneOutId/2, G.coneOutZ-46],[38.75, G.coneOutZ-46],
+                       [38.75, G.coneOutZ-40],[G.coneOutId/2, G.coneOutZ-40]], 28, true); } });
+part({ no:"A-05", asm:"A", name:"상단 플랜지", spec:`OD Ø${G.flangeOd} × ID Ø406 × t${G.flangeT} · PCD Ø${G.flangePcd} · ${G.bolts}-Ø14`,
+  st:"PROPOSED", col:MAT.sus304, ex:[0,0,0], at:[240,0,941], cut:true,
+  draw:m=>{ m.revolve([[203, G.shellTopZ-G.flangeT],[G.flangeOd/2, G.shellTopZ-G.flangeT],
+                       [G.flangeOd/2, G.shellTopZ],[203, G.shellTopZ]], SEG, true);
+            for(let i=0;i<G.bolts;i++){ const a=rad(360/G.bolts*i+15), r=G.flangePcd/2;
+              m.pipe([Math.cos(a)*r, Math.sin(a)*r, G.shellTopZ-G.flangeT-2],
+                     [Math.cos(a)*r, Math.sin(a)*r, G.coverTopZ+12], 7, 10); } } });
+part({ no:"A-06", asm:"A", name:"지지링", spec:`OD Ø${G.ringOd} × ID Ø406 × t${G.ringT} · Z${G.ringZ}`,
+  st:"RELEASE", col:MAT.sus304, ex:[0,0,0], at:[240,0,396], cut:true,
+  draw:m=>m.revolve([[203, G.ringZ-G.ringT],[G.ringOd/2, G.ringZ-G.ringT],
+                     [G.ringOd/2, G.ringZ],[203, G.ringZ]], SEG, true) });
+part({ no:"A-08", asm:"A", name:"양중 러그", spec:"t6, Ø20 홀 · 3 개소 120° 등분 · Z900",
+  st:"RELEASE", col:MAT.sus304, ex:[0,0,0], at:[203,0,900], cut:true,
+  draw:m=>{ for(let i=0;i<3;i++){ const a=360/3*i+30;
+    m.box(60, 6, 44, Math.cos(rad(a))*232, Math.sin(rad(a))*232, 900, a); } } });
+NOZZLES.forEach((n,idx)=>{
+  const r0 = G.tankId/2 - 6, r1 = G.tankId/2 + G.shellT + 75;
+  part({ no:"A-04"+String.fromCharCode(97+idx), asm:"A", name:`노즐 ${n.tag}`,
+    spec:`${n.svc} · θ${n.th}° · Z${n.z} · Ø${n.od}`,
+    st:"RELEASE", col:MAT.sus316, ex:radial(n.th, 0.20 + idx*0.035),
+    at:[Math.cos(rad(n.th))*(r1+34), Math.sin(rad(n.th))*(r1+34), n.z],
+    cut:true, nozzle:n,
+    draw:m=>{ const c=Math.cos(rad(n.th)), s=Math.sin(rad(n.th));
+      m.pipe([c*r0, s*r0, n.z], [c*r1, s*r1, n.z], n.od/2+2, 18);
+      m.pipe([c*r1, s*r1, n.z], [c*(r1+12), s*(r1+12), n.z], n.od/2+9, 18); } });
+});
+
+/* --- B 커버 --- */
+part({ no:"B-01", asm:"B", name:"커버판", spec:`Ø${G.flangeOd} × t${G.coverT} · 평면도 0.5`,
+  st:"PROPOSED", col:MAT.sus304, ex:[0,0,0.46], at:[-180,0,949], cut:true,
+  draw:m=>m.revolve([[30, G.shellTopZ],[G.flangeOd/2, G.shellTopZ],
+                     [G.flangeOd/2, G.coverTopZ],[30, G.coverTopZ]], SEG, true) });
+part({ no:"B-02", asm:"B", name:"중앙 보강 허브", spec:`Ø${G.hubOd} × t${G.hubT}, 보어 Ø60 — 벤더 GA 전 가공 금지`,
+  st:"HOLD", col:MAT.hold, ex:[0,0,0.46], at:[0,110,958], cut:true,
+  draw:m=>{ m.revolve([[30, G.coverTopZ],[G.hubOd/2, G.coverTopZ],
+                       [G.hubOd/2, G.coverTopZ+G.hubT],[30, G.coverTopZ+G.hubT]], SEG, true);
+            for(let i=0;i<4;i++) m.box(70, 5, 22, Math.cos(rad(90*i))*76, Math.sin(rad(90*i))*76,
+                                       G.coverTopZ+G.hubT+11, 90*i); } });
+part({ no:"B-04", asm:"B", name:"커버 노즐", spec:"B2 전도도 · B3 온도 · B4 배기 · PCD Ø330",
+  st:"RELEASE", col:MAT.sus316, ex:[0,0,0.46], at:[-165,0,975], cut:true,
+  draw:m=>{ for(const th of [60,180,300]){ const r=165;
+    m.pipe([Math.cos(rad(th))*r, Math.sin(rad(th))*r, G.shellTopZ],
+           [Math.cos(rad(th))*r, Math.sin(rad(th))*r, G.coverTopZ+44], 9, 14); } } });
+part({ no:"B-05", asm:"B", name:"가스켓 O-링", spec:"Ø430 코드 Ø5 · EPDM · 플랜지 면 홈",
+  st:"RELEASE", col:MAT.epdm, ex:[0,0,0.24], at:[215,0,944], cut:true,
+  draw:m=>m.torus(215, 2.5, G.shellTopZ-1.5, SEG, 8) });
+
+/* --- C 구동부 (전량 HOLD) --- */
+part({ no:"C-03", asm:"C", name:"축 씰", spec:"고형분용 더블 카트리지 메커니컬 씰 — CRITICAL HOLD",
+  st:"HOLD", col:MAT.hold, ex:[0,0,0.40], at:[80,0,1010], cut:false,
+  draw:m=>m.revolve([[16, 961],[80, 961],[80, 1061],[16, 1061]], 32, true) });
+part({ no:"C-05", asm:"C", name:"구동 램턴 · 어댑터", spec:"커버 허브 ↔ 씰 ↔ 감속기 플랜지",
+  st:"HOLD", col:MAT.drive, ex:[0,0,0.52], at:[90,0,1081], cut:false,
+  draw:m=>m.revolve([[16, 1061],[90, 1061],[90, 1101],[16, 1101]], 32, true) });
+part({ no:"C-04", asm:"C", name:"커플링", spec:"Ø25 × 벤더 출력축 — GA 확정 후",
+  st:"HOLD", col:MAT.drive, ex:[0,0,0.64], at:[45,0,1131], cut:false,
+  draw:m=>m.revolve([[16, 1101],[45, 1101],[45, 1161],[16, 1161]], 28, true) });
+part({ no:"C-02", asm:"C", name:"감속기", spec:"출력 30~150 rpm · 정토크 VFD (CHK-05)",
+  st:"PROPOSED", col:MAT.drive, ex:[0,0,0.78], at:[100,0,1221], cut:false,
+  draw:m=>m.box(200, 200, 120, 0, 0, 1221, 0) });
+part({ no:"C-01", asm:"C", name:"기어드 모터", spec:"0.55 kW · 3φ · IP55 · VFD (CHK-06)",
+  st:"PROPOSED", col:MAT.drive, ex:[0,0,0.94], at:[70,0,1360], cut:false,
+  draw:m=>{ m.revolve([[0,1281],[70,1281],[70,1400],[0,1400]], 28, true);
+            m.revolve([[0,1400],[42,1400],[42,G.driveTopZ],[0,G.driveTopZ]], 20, true); } });
+part({ no:"C-06", asm:"C", name:"보호 커버", spec:"커플링 노출부 차폐 · t1.5 절곡",
+  st:"RELEASE", col:MAT.sus304, ex:[-0.26,0,0.64], at:[-96,0,1131], cut:false,
+  draw:m=>m.shell([[94, 1096],[94, 1166]], 1.5, 28) });
+
+/* --- D 교반축 · 임펠러 --- */
+part({ no:"D-01", asm:"D", name:"교반축", spec:`Ø${G.shaftOd} h7 × L760 · SUS316L · 직진도 0.5/600`,
+  st:"PROPOSED", col:MAT.sus316, ex:[0,0,0.66], at:[14,0,880], cut:true,
+  draw:m=>m.pipe([0,0,G.shaftBot],[0,0,G.shaftTop], G.shaftOd/2, 20) });
+[["D-02","하부",G.impLoZ],["D-03","상부",G.impHiZ]].forEach(([no,nm,z])=>{
+  part({ no, asm:"D", name:`임펠러 (${nm})`,
+    spec:`Ø${G.impOd} ${G.impBlades}PBT${G.impPitch}° W${G.impW} t${G.impT} · Z${z}±30 · TIR ≤1.0`,
+    st:"RELEASE", col:MAT.sus316, ex:[0,0,0.66], at:[0,150,z], cut:true,
+    draw:m=>{
+      m.revolve([[G.shaftOd/2, z-G.hubL/2],[G.hubD/2, z-G.hubL/2],
+                 [G.hubD/2, z+G.hubL/2],[G.shaftOd/2, z+G.hubL/2]], 24, true);
+      const c45=Math.cos(rad(G.impPitch)), s45=Math.sin(rad(G.impPitch)), hw=G.impW/2;
+      for(let b=0;b<G.impBlades;b++){
+        // 반지름 u 를 따라 뻗고, 접선 v 와 수직 w 사이로 45° 기운 평판.
+        const a=rad(360/G.impBlades*b+45), ca=Math.cos(a), sa=Math.sin(a);
+        const P=(r,t)=>[r*ca - t*c45*sa, r*sa + t*c45*ca, z + t*s45];
+        m.slab([P(G.hubD/2,-hw), P(G.impOd/2,-hw), P(G.impOd/2, hw), P(G.hubD/2, hw)], G.impT);
+      } } });
+});
+part({ no:"D-06", asm:"D", name:"스러스터 칼라", spec:"Ø50 × L25, 보어 Ø25 · 2 개",
+  st:"RELEASE", col:MAT.sus316, ex:[0,0,0.66], at:[26,0,470], cut:true,
+  draw:m=>{ for(const z of [G.impLoZ+44, G.impHiZ+44])
+    m.revolve([[G.shaftOd/2, z-12.5],[25, z-12.5],[25, z+12.5],[G.shaftOd/2, z+12.5]], 20, true); } });
+
+/* --- E 배플 --- */
+for(let b=0;b<G.bafN;b++){
+  const a = 45 + 90*b;
+  const rc = G.tankId/2 - G.bafGap - G.bafW/2;
+  part({ no:"E-01"+String.fromCharCode(97+b), asm:"E", name:`배플 ${b+1}`,
+    spec:`W${G.bafW} × L${G.bafZ1-G.bafZ0} × t${G.bafT} · 벽 이격 ${G.bafGap} · 팁 간극 9 (C2)`,
+    st:"PROPOSED", col:MAT.sus316, ex:radial(a, 0.42),
+    at:[Math.cos(rad(a))*rc, Math.sin(rad(a))*rc, (G.bafZ0+G.bafZ1)/2], cut:true,
+    draw:m=>{ m.box(G.bafW, G.bafT, G.bafZ1-G.bafZ0,
+                    Math.cos(rad(a))*rc, Math.sin(rad(a))*rc, (G.bafZ0+G.bafZ1)/2, a);
+      for(let k=0;k<3;k++){ const z=G.bafZ0+35+k*(G.bafZ1-G.bafZ0-70)/2;
+        m.box(G.bafGap, G.bafT, 25, Math.cos(rad(a))*(G.tankId/2-G.bafGap/2),
+              Math.sin(rad(a))*(G.tankId/2-G.bafGap/2), z, a); } } });
+}
+
+/* --- F 급기 분산링 --- */
+part({ no:"F-01", asm:"F", name:"급기 분산링", spec:`PCD Ø${G.spPcd} · Ø${G.spTube} × t1.5 · Ø1.5 홀 ${G.spHoles} 하향`,
+  st:"PROPOSED", col:MAT.sus316, ex:[0.30,0,-0.10], at:[125,0,G.spZ], cut:true,
+  draw:m=>{ m.torus(G.spPcd/2, G.spTube/2, G.spZ, 40, 10);
+    for(let i=0;i<G.spHoles;i++){ const a=rad(360/G.spHoles*i), r=G.spPcd/2;
+      m.pipe([Math.cos(a)*r, Math.sin(a)*r, G.spZ-5],
+             [Math.cos(a)*r, Math.sin(a)*r, G.spZ-11], 2.2, 8); } } });
+part({ no:"F-03", asm:"F", name:"강하관", spec:`Ø${G.spTube} × t1.5 × L220 · N3(Z520) → 링(Z300)`,
+  st:"RELEASE", col:MAT.sus316, ex:[-0.34,0,-0.10], at:[-160,0,420], cut:true,
+  draw:m=>{ m.pipe([-125,0,G.spZ], [-172,0,430], 6, 12);
+            m.pipe([-172,0,430], [-172,0,520], 6, 12);
+            m.pipe([-172,0,520], [-198,0,520], 6, 12); } });
+
+/* --- G 스키머 --- */
+part({ no:"G-01", asm:"G", name:"스키머 바스켓", spec:`Ø${G.skimOd} × H${G.skimH} × t2 + 타공 바닥 · Z${G.skimZ}±20`,
+  st:"RELEASE", col:MAT.sus316, ex:[0,0,0.30], at:[150,0,G.skimZ], cut:true,
+  draw:m=>{ m.shell([[G.skimOd/2-2, G.skimZ-G.skimH],[G.skimOd/2-2, G.skimZ]], 2, 36);
+            m.revolve([[0, G.skimZ-G.skimH],[G.skimOd/2, G.skimZ-G.skimH],
+                       [G.skimOd/2, G.skimZ-G.skimH+1.5],[0, G.skimZ-G.skimH+1.5]], 36, true);
+            for(let i=0;i<3;i++){ const a=rad(90+120*i), r=140;
+              m.pipe([Math.cos(a)*r, Math.sin(a)*r, G.skimZ],
+                     [Math.cos(a)*r, Math.sin(a)*r, G.coverTopZ+30], 4, 8); } } });
+
+/* --- H 프레임 --- */
+part({ no:"H-01", asm:"H", name:"프레임", spec:`□40 × t2 · ${G.frameW} × ${G.frameW} × H${G.frameH} · SUS304`,
+  st:"RELEASE", col:MAT.frame, ex:[0,0,-0.62], at:[-255,-255,375], cut:false,
+  draw:m=>{
+    const o=G.frameW/2-G.frameTube/2, T=G.frameTube, L=G.frameW-2*T, Zf=-G.floorOffset;
+    for(const sx of [-1,1]) for(const sy of [-1,1])
+      m.box(T,T,G.frameH, sx*o, sy*o, Zf+G.frameH/2, 0);
+    for(const z of [G.frameH-T/2, G.frameH/2, T/2])
+      for(const s of [-1,1]){ m.box(L,T,T, 0, s*o, Zf+z, 0); m.box(T,L,T, s*o, 0, Zf+z, 0); }
+    for(const sy of [-1,1]) m.box(L,T,T, 0, sy*150, Zf+G.frameH-T/2, 0);
+    for(const sx of [-1,1]) for(const sy of [-1,1]){
+      m.box(100,100,8, sx*o, sy*o, Zf+4, 0);
+      m.box(24,24,52, sx*o, sy*o, Zf-26, 0); }
+  } });
+
+/* --- I 배관 · 밸브 --- */
+part({ no:"I-01", asm:"I", name:"배출 볼밸브", spec:'2" 위생 3-pc · 기본형은 2→1½ 리듀싱 클램프 (C3)',
+  st:"PROPOSED", col:MAT.valve, ex:[0,0,-0.92], at:[46,0,-40], cut:false,
+  draw:m=>{ const z=G.coneOutZ-46;
+    m.revolve([[0,z-30],[36,z-30],[36,z],[0,z]], 24, true);
+    m.revolve([[0,z-92],[26,z-92],[26,z-30],[0,z-30]], 24, true);
+    m.box(90,18,18, 46,0,z-58, 0);
+    m.revolve([[0,z-140],[9,z-140],[9,z-92],[0,z-92]], 16, true); } });
+part({ no:"I-03", asm:"I", name:"시료 밸브 5 단", spec:'½" 위생 볼밸브 × 5 · N4A~N4E (C7)',
+  st:"PROPOSED", col:MAT.valve, ex:radial(270, 0.30), at:[0,-300,560], cut:false,
+  draw:m=>{ for(const n of NOZZLES.filter(x=>x.tag[1]==="4")){
+    const r=G.tankId/2+G.shellT+92;
+    m.box(46,16,16, 0, -r, n.z, 90);
+    m.box(14,44,14, 0, -r-4, n.z+22, 0); } } });
+
+/* --- J 계측 --- */
+part({ no:"J-01", asm:"J", name:"전도도 / 염도 센서", spec:"0~200 mS/cm · 삽입장 425 · 선단 Z526 (C7)",
+  st:"PROPOSED", col:MAT.drive, ex:[0,0,0.46], at:[-90,0,700], cut:true,
+  draw:m=>{ const a=rad(60), r=165;
+    m.pipe([Math.cos(a)*r, Math.sin(a)*r, G.coverTopZ+44],
+           [Math.cos(a)*r, Math.sin(a)*r, 526], 8, 12); } });
+part({ no:"J-02", asm:"J", name:"온도센서 Pt100", spec:"3-wire · 삽입장 225 · 선단 Z726",
+  st:"RELEASE", col:MAT.drive, ex:[0,0,0.46], at:[90,0,800], cut:true,
+  draw:m=>{ const a=rad(180), r=165;
+    m.pipe([Math.cos(a)*r, Math.sin(a)*r, G.coverTopZ+44],
+           [Math.cos(a)*r, Math.sin(a)*r, 726], 8, 12); } });
+part({ no:"J-04", asm:"J", name:"사이트글라스", spec:"Ø100 위생형 · 붕규산유리 · N5 (Z690)",
+  st:"PROPOSED", col:MAT.glass, ex:radial(315, 0.17),
+  at:[Math.cos(rad(315))*330, Math.sin(rad(315))*330, 690], cut:true, glass:true,
+  draw:m=>{ const a=rad(315), r=G.tankId/2+G.shellT+62;
+    m.pipe([Math.cos(a)*(r-10), Math.sin(a)*(r-10), 690],
+           [Math.cos(a)*(r-4), Math.sin(a)*(r-4), 690], 50, 28); } });
+
+/* --- 염수 (반투명) --- */
+part({ no:"LIQ", asm:"L", name:"염수", spec:`NaCl 0~26 wt% · 운전 액면 Z${G.levelZ} = ${G.volL} L`,
+  st:"-", col:[0.35,0.62,0.72], ex:[0,0,0], at:[0,0,0], cut:true, liquid:true,
+  draw:m=>m.revolve([[0, G.coneOutZ+2],[G.coneOutId/2-2, G.coneOutZ+2],
+                     [G.tankId/2-2.5, G.shellBotZ],[G.tankId/2-2.5, G.levelZ],[0, G.levelZ]], SEG, true) });
+
+/* ---- 모델 조립 ---- */
+const mesh = new Mesh();
+for(const p of PARTS){
+  p.start = mesh.i.length;
+  p.draw(mesh);
+  p.len = mesh.i.length - p.start;
+}
+const ASM = [
+  ["A","탱크"],["B","커버"],["C","구동부"],["D","교반축"],["E","배플"],
+  ["F","분산링"],["G","스키머"],["H","프레임"],["I","배관"],["J","계측"]
+];
+
+/* ---- WebGL ---- */
+const canvas = document.getElementById("stage");
+let gl = null;
+try { gl = canvas.getContext("webgl", {antialias:true, alpha:true}); } catch(e){ gl = null; }
+if(!gl){
+  canvas.remove();
+  const d = document.createElement("div");
+  d.className = "fallback";
+  d.textContent = "이 브라우저에서는 WebGL 을 쓸 수 없어 3D 를 그리지 못한다. "
+                + "치수와 부품 구성은 MP50-000~K 제작도면에서 모두 확인할 수 있다.";
+  document.querySelector(".stagewrap").appendChild(d);
+}
+
+const VS = `
+attribute vec3 aPos; attribute vec3 aNor;
+uniform mat4 uMVP; uniform vec3 uOff;
+varying vec3 vN; varying vec3 vW;
+void main(){ vec3 p = aPos + uOff; vW = p; vN = aNor; gl_Position = uMVP * vec4(p, 1.0); }`;
+const FS = `
+precision mediump float;
+varying vec3 vN; varying vec3 vW;
+uniform vec3 uCol; uniform vec3 uCut; uniform vec3 uEye; uniform vec3 uLight;
+uniform float uClipX; uniform float uCutOn; uniform float uAlpha; uniform float uHi;
+void main(){
+  if(uCutOn > 0.5 && vW.x > uClipX) discard;
+  vec3 n = normalize(vN);
+  vec3 base = uCol;
+  if(!gl_FrontFacing){ n = -n; base = mix(uCol, uCut, 0.74); }
+  float d = max(dot(n, normalize(uLight)), 0.0);
+  float d2 = max(dot(n, normalize(vec3(-0.4, 0.7, 0.3))), 0.0);
+  vec3 c = base * (0.42 + 0.64 * d + 0.18 * d2);
+  vec3 v = normalize(uEye - vW);
+  c += pow(1.0 - max(dot(n, v), 0.0), 2.6) * 0.17;
+  c = mix(c, vec3(1.0, 0.83, 0.40), uHi * 0.42);
+  gl_FragColor = vec4(c, uAlpha);
+}`;
+const PVS = `
+attribute vec3 aP; attribute vec2 aM;
+uniform mat4 uMVP; uniform float uScale;
+varying float vK; varying vec3 vW;
+void main(){ vK = aM.x; vW = aP; vec4 q = uMVP * vec4(aP, 1.0);
+  gl_Position = q; gl_PointSize = max(1.5, aM.y * uScale / max(q.w, 0.15)); }`;
+const PFS = `
+precision mediump float;
+varying float vK; varying vec3 vW;
+uniform float uClipX; uniform float uCutOn;
+void main(){
+  if(uCutOn > 0.5 && vW.x > uClipX) discard;
+  vec2 d = gl_PointCoord - vec2(0.5);
+  float r = dot(d, d);
+  if(r > 0.25) discard;
+  vec3 c = vK < 0.5 ? vec3(0.26, 0.30, 0.36)
+         : (vK < 1.5 ? vec3(1.00, 0.72, 0.16) : vec3(0.92, 0.32, 0.24));
+  gl_FragColor = vec4(c * (1.25 - r * 1.4), 1.0);
+}`;
+
+let prog, pprog, uni = {}, puni = {}, vbo, nbo, ibo, pbo, pmbo;
+function shader(type, src){
+  const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function program(vs, fs){
+  const p = gl.createProgram();
+  gl.attachShader(p, shader(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, shader(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if(!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+
+/* ---- 입자 (운전 시퀀스) ---------------------------------------------------
+   질량분율 Si 87.5 / EVA 6.25 / BS 6.25 로 개수를 나누고, 각 입자에
+   [R] §7 의 3×3 유효밀도표에서 밀도를, 입도구간에서 지름을 준다. 정지 후
+   속도는 checks.py 와 같은 Stokes 식으로 매 프레임 계산하므로, 이 영상은
+   보기 좋으라고 만든 애니메이션이 아니라 축약차수 모델 그 자체다.
+   -------------------------------------------------------------------------- */
+const NP = 640;
+const PS = { x:new Float32Array(NP), y:new Float32Array(NP), z:new Float32Array(NP),
+             kind:new Int8Array(NP), rho:new Float32Array(NP), dp:new Float32Array(NP),
+             mass:new Float32Array(NP), ph:new Float32Array(NP), r0:new Float32Array(NP) };
+const pData = new Float32Array(NP*3), pMeta = new Float32Array(NP*2);
+function innerR(z){
+  if(z <= G.shellBotZ) return Math.max(G.coneOutId/2, G.tankId/2 * z / G.apexH);
+  return G.tankId/2;
+}
+function seedParticles(){
+  let n = 0;
+  const mk = (kind, count, rhoTab) => {
+    for(let k=0;k<count;k++,n++){
+      const b = Math.floor(Math.random()*3);
+      const dp = BINS[b][0] + Math.random()*(BINS[b][1]-BINS[b][0]);
+      const rho = (kind===0) ? SI_RHO : rhoTab[b] + (Math.random()-0.5)*(kind===1?60:120);
+      PS.kind[n]=kind; PS.dp[n]=dp; PS.rho[n]=rho;
+      PS.mass[n]=rho*Math.pow(dp,3);
+      PS.ph[n]=Math.random()*Math.PI*2;
+      let z, r;
+      do { z = G.coneOutZ + Math.random()*(G.levelZ-G.coneOutZ);
+           r = Math.sqrt(Math.random())*innerR(z); } while(false);
+      const a = Math.random()*Math.PI*2;
+      PS.x[n]=Math.cos(a)*r; PS.y[n]=Math.sin(a)*r; PS.z[n]=z; PS.r0[n]=r;
+      pMeta[n*2] = kind;
+      pMeta[n*2+1] = kind===0 ? 3.0 : 5.4;
+    }
+  };
+  mk(0, Math.round(NP*0.875), null);
+  mk(1, Math.round(NP*0.0625), EVA_RHO);
+  mk(2, NP - n, BS_RHO);
+}
+seedParticles();
+
+/* 운전 시퀀스 — 실제 초 단위 */
+const SEQ = [
+  { t:0,   name:"분산", note:"임펠러 + 급기 ON" },
+  { t:24,  name:"동시 OFF", note:"잔류와류 감쇠" },
+  { t:36,  name:"층분리", note:"자연 부상 · 침강" },
+  { t:600, name:"준정상", note:"층 고정 · 회수" },
+  { t:1200, name:"", note:"" }
+];
+const T_OFF = 24, TAU = 5.0;
+let simT = 0, running = false, salt = 18;
+
+function simSpeed(t){ return t < T_OFF ? 2 : (t < T_OFF+8 ? 2 + (t-T_OFF)*7 : 60); }
+function phaseIndex(t){
+  for(let i=SEQ.length-2;i>=0;i--) if(t >= SEQ[i].t) return i;
+  return 0;
+}
+function stepSim(dtReal){
+  const mixing = simT < T_OFF;
+  const decay = mixing ? 1 : Math.exp(-(simT - T_OFF)/TAU);
+  const rpm = mixing ? 150 : 150*decay;
+  for(let i=0;i<NP;i++){
+    let z = PS.z[i], x = PS.x[i], y = PS.y[i];
+    const vTerm = stokes(PS.rho[i], PS.dp[i], salt) * 1000;   // mm/s
+    z -= vTerm * dtReal;                                      // 양수 = 침강
+    if(mixing || decay > 0.02){
+      const w = (rpm/60) * Math.PI*2 * dtReal * 0.55;
+      const c = Math.cos(w), s = Math.sin(w);
+      const nx = x*c - y*s, ny = x*s + y*c;
+      x = nx; y = ny;
+      const amp = 26 * decay * dtReal;
+      x += (Math.random()-0.5)*amp*2; y += (Math.random()-0.5)*amp*2;
+      z += (Math.random()-0.5)*amp*3.4;
+      if(mixing){                                             // 급기 상승류
+        const lift = 34*dtReal*Math.max(0, 1 - Math.hypot(x,y)/150);
+        z += lift;
+      }
+    }
+    const top = G.levelZ - 3, bot = G.coneOutZ + 4;
+    if(z > top) z = top - Math.random()*2;
+    if(z < bot) z = bot + Math.random()*2;
+    const rr = Math.hypot(x,y), lim = innerR(z) - 5;
+    if(rr > lim){ const k = lim/rr; x *= k; y *= k; }
+    PS.x[i]=x; PS.y[i]=y; PS.z[i]=z;
+    pData[i*3]   = x*M;
+    pData[i*3+1] = y*M;
+    pData[i*3+2] = wz(z);
+  }
+}
+function kpi(){
+  const topZ = G.levelZ - 80, botZ = G.shellBotZ;
+  let pm=0, pmTop=0, sm=0, smTop=0, smBot=0, pmBot=0;
+  for(let i=0;i<NP;i++){
+    const m = PS.mass[i], inTop = PS.z[i] >= topZ, inBot = PS.z[i] <= botZ;
+    if(PS.kind[i]===0){ sm+=m; if(inTop) smTop+=m; if(inBot) smBot+=m; }
+    else { pm+=m; if(inTop) pmTop+=m; if(inBot) pmBot+=m; }
+  }
+  return { polyTop: pm? pmTop/pm : 0, siTop: sm? smTop/sm : 0,
+           siBot: sm? smBot/sm : 0, polyBot: (smBot+pmBot)? pmBot/(smBot+pmBot) : 0 };
+}
+
+/* ---- 카메라 · 상태 ---- */
+const cam = { az: -0.72, el: 0.30, r: 2.55, target:[0, 0, 0.90] };
+const VIEWS = {
+  iso:   { az:-0.72, el:0.30, r:2.55, cut:false },
+  front: { az:-Math.PI/2, el:0.06, r:2.45, cut:false },
+  top:   { az:-Math.PI/2, el:1.40, r:2.30, cut:false },
+  sect:  { az:-Math.PI/2 + 0.42, el:0.16, r:1.95, cut:true }
+};
+// 움직임을 줄여 달라고 한 사용자에게는 자동 회전을 켜지 않는다.
+const REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+const state = { explode:0, cut:false, clip:0, spin:!REDUCED, labels:true,
+                asm:null, pick:null, run:false };
+
+let W=1, H=1, dpr=1;
+function resize(){
+  if(!gl) return;
+  const rect = canvas.getBoundingClientRect();
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = Math.max(320, Math.round(rect.width));
+  H = Math.max(300, Math.round(rect.height || rect.width*0.65));
+  canvas.width = Math.round(W*dpr); canvas.height = Math.round(H*dpr);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+}
+
+function initGL(){
+  prog = program(VS, FS); pprog = program(PVS, PFS);
+  for(const k of ["uMVP","uOff","uCol","uCut","uEye","uLight","uClipX","uCutOn","uAlpha","uHi"])
+    uni[k] = gl.getUniformLocation(prog, k);
+  for(const k of ["uMVP","uScale","uClipX","uCutOn"])
+    puni[k] = gl.getUniformLocation(pprog, k);
+  vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.p), gl.STATIC_DRAW);
+  nbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, nbo);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.n), gl.STATIC_DRAW);
+  ibo = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+  const big = mesh.count > 65535;
+  if(big && !gl.getExtension("OES_element_index_uint")) console.warn("uint index 미지원");
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
+    big ? new Uint32Array(mesh.i) : new Uint16Array(mesh.i), gl.STATIC_DRAW);
+  window.__MP50_INDEX_TYPE = big ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
+  pbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, pbo);
+  gl.bufferData(gl.ARRAY_BUFFER, pData, gl.DYNAMIC_DRAW);
+  pmbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, pmbo);
+  gl.bufferData(gl.ARRAY_BUFFER, pMeta, gl.STATIC_DRAW);
+  gl.enable(gl.DEPTH_TEST);
+  gl.disable(gl.CULL_FACE);          // 컷어웨이 단면을 보려면 뒷면도 그려야 한다
+  resize();
+}
+if(gl){ try { initGL(); } catch(e){ console.error(e); gl = null; } }
+
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function hex2rgb(h){
+  h = h.replace("#","").trim();
+  if(h.length===3) h = h.split("").map(c=>c+c).join("");
+  const n = parseInt(h,16);
+  return [((n>>16)&255)/255, ((n>>8)&255)/255, (n&255)/255];
+}
+
+function explodeOffset(p){
+  const t = state.explode;
+  return [p.ex[0]*t, p.ex[1]*t, p.ex[2]*t];
+}
+
+let bg=[0,0,0], cutCol=[0,0,0];
+function readTheme(){
+  bg = hex2rgb(css("--stage") || "#DDE4E8");
+  cutCol = hex2rgb(css("--brand") || "#17789E");
+}
+readTheme();
+
+const labelBox = document.getElementById("labels");
+function project(p, mvp){
+  const x=p[0],y=p[1],z=p[2];
+  const w = mvp[3]*x + mvp[7]*y + mvp[11]*z + mvp[15];
+  if(w <= 0.02) return null;
+  return { x:(( mvp[0]*x+mvp[4]*y+mvp[8]*z+mvp[12])/w*0.5+0.5)*W,
+           y:((-(mvp[1]*x+mvp[5]*y+mvp[9]*z+mvp[13])/w)*0.5+0.5)*H, w:w };
+}
+
+function draw(){
+  if(!gl) return;
+  const asp = W/H;
+  // 분해하면 모델이 위로 길어진다 — 사용자의 줌은 그대로 두고 거리와 목표만 보정한다.
+  const t = state.explode;
+  const tgt = [cam.target[0], cam.target[1], cam.target[2] + t*0.46];
+  const rr = cam.r * (1 + t*0.46);
+  const ex = tgt[0] + Math.cos(cam.az)*Math.cos(cam.el)*rr;
+  const ey = tgt[1] + Math.sin(cam.az)*Math.cos(cam.el)*rr;
+  const ez = tgt[2] + Math.sin(cam.el)*rr;
+  const eye = [ex, ey, ez];
+  const mvp = m4mul(m4persp(0.82, asp, 0.05, 30), m4look(eye, tgt, [0,0,1]));
+
+  gl.clearColor(bg[0], bg[1], bg[2], 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(prog);
+  const aPos = gl.getAttribLocation(prog,"aPos"), aNor = gl.getAttribLocation(prog,"aNor");
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo); gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, nbo); gl.enableVertexAttribArray(aNor);
+  gl.vertexAttribPointer(aNor, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+  gl.uniformMatrix4fv(uni.uMVP, false, mvp);
+  gl.uniform3fv(uni.uEye, eye);
+  gl.uniform3fv(uni.uLight, [0.55, -0.75, 0.85]);
+  gl.uniform3fv(uni.uCut, cutCol);
+  gl.uniform1f(uni.uClipX, state.clip);
+  const ITYPE = window.__MP50_INDEX_TYPE;
+
+  const solid = [], clear = [];
+  for(const p of PARTS){
+    if(state.asm && p.asm !== state.asm && p.asm !== "L") continue;
+    if(p.liquid && state.explode > 0.12) continue;   // 껍질이 떠난 자리에 액체만 남으면 읽히지 않는다
+    if(p.liquid || p.glass) clear.push(p); else solid.push(p);
+  }
+  const drawPart = (p, alpha) => {
+    gl.uniform3fv(uni.uOff, explodeOffset(p));
+    gl.uniform3fv(uni.uCol, p.col);
+    gl.uniform1f(uni.uAlpha, alpha);
+    gl.uniform1f(uni.uCutOn, (state.cut && p.cut) ? 1 : 0);
+    gl.uniform1f(uni.uHi, state.pick === p.no ? 1 : 0);
+    gl.drawElements(gl.TRIANGLES, p.len, ITYPE, p.start * (ITYPE === gl.UNSIGNED_INT ? 4 : 2));
+  };
+  gl.disable(gl.BLEND);
+  for(const p of solid) drawPart(p, 1);
+
+  // 입자 — 운전 재생 중에만
+  if(state.run){
+    gl.bindBuffer(gl.ARRAY_BUFFER, pbo);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, pData);
+    gl.useProgram(pprog);
+    const aP = gl.getAttribLocation(pprog,"aP"), aM = gl.getAttribLocation(pprog,"aM");
+    gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, pmbo);
+    gl.enableVertexAttribArray(aM); gl.vertexAttribPointer(aM, 2, gl.FLOAT, false, 0, 0);
+    gl.uniformMatrix4fv(puni.uMVP, false, mvp);
+    gl.uniform1f(puni.uScale, 0.46*dpr*H/700*2.4);
+    gl.uniform1f(puni.uClipX, state.clip);
+    gl.uniform1f(puni.uCutOn, state.cut ? 1 : 0);
+    gl.drawArrays(gl.POINTS, 0, NP);
+    gl.disableVertexAttribArray(aP); gl.disableVertexAttribArray(aM);
+    gl.useProgram(prog);
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo); gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, nbo); gl.enableVertexAttribArray(aNor);
+    gl.vertexAttribPointer(aNor, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+  }
+
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.depthMask(false);
+  for(const p of clear) drawPart(p, p.liquid ? (state.run ? 0.12 : (state.cut ? 0.10 : 0.17)) : 0.30);
+  gl.depthMask(true);
+  gl.disable(gl.BLEND);
+
+  drawLabels(mvp);
+}
+
+function drawLabels(mvp){
+  if(!labelBox) return;
+  if(!state.labels || state.explode < 0.04){ labelBox.innerHTML = ""; return; }
+  const shown = PARTS.filter(p => !p.liquid && (!state.asm || p.asm === state.asm)
+                                 && (p.ex[0] || p.ex[1] || p.ex[2]));
+  const put = [];
+  for(const p of shown){
+    const o = explodeOffset(p);
+    const q = project([p.at[0]*M + o[0], p.at[1]*M + o[1], wz(p.at[2]) + o[2]], mvp);
+    if(!q || q.x < 6 || q.x > W-6 || q.y < 6 || q.y > H-6) continue;
+    put.push({ no:p.no, x:q.x, y:q.y, w:q.w });
+  }
+  // 겹친 라벨은 가까운 것부터 자리를 잡고 나중 것을 위아래로 민다.
+  // 밀 자리가 끝내 없을 수도 있으므로 시도 횟수를 묶는다 — 안 묶으면 무한 루프다.
+  put.sort((a, b) => a.w - b.w);
+  for(let i = 1; i < put.length; i++){
+    for(let pass = 0; pass < 8; pass++){
+      let hit = false;
+      for(let k = 0; k < i; k++){
+        if(Math.abs(put[i].x - put[k].x) < 34 && Math.abs(put[i].y - put[k].y) < 13){
+          put[i].y += (put[i].y >= put[k].y ? 13 : -13);
+          hit = true;
+        }
+      }
+      if(!hit) break;
+    }
+  }
+  labelBox.innerHTML = put.map(q =>
+    `<span class="lbl${state.pick===q.no?" on":""}" style="left:${q.x.toFixed(1)}px;top:${q.y.toFixed(1)}px">${q.no}</span>`
+  ).join("");
+}
+
+/* ---- UI ---- */
+const $ = id => document.getElementById(id);
+function toggle(btn, on){ btn.setAttribute("aria-pressed", on ? "true" : "false"); }
+
+const STATUS_CLS = { HOLD:"hold", PROPOSED:"prop", RELEASE:"rel", VENDOR:"vend" };
+function rgbCss(c){ return `rgb(${c.map(v=>Math.round(v*255)).join(",")})`; }
+
+function buildPartList(){
+  const ul = $("partList");
+  const list = PARTS.filter(p => !p.liquid && (!state.asm || p.asm === state.asm));
+  ul.innerHTML = list.map(p =>
+    `<li data-no="${p.no}" tabindex="0" role="button" aria-pressed="${state.pick===p.no}" class="${state.pick===p.no?"on":""}">
+       <span class="sw" style="background:${rgbCss(p.col)}"></span>
+       <span class="no">${p.no}</span>
+       <span class="nm">${p.name}</span>
+       ${p.st === "-" ? "" : `<span class="tag ${STATUS_CLS[p.st]||"rel"}">${p.st}</span>`}
+     </li>`).join("");
+  $("partCount").textContent = `${list.length}`;
+  const choose = li => {
+    state.pick = state.pick === li.dataset.no ? null : li.dataset.no;
+    showSpec(); buildPartList();
+  };
+  ul.querySelectorAll("li").forEach(li => {
+    li.addEventListener("click", () => choose(li));
+    li.addEventListener("keydown", e => {
+      if(e.key === "Enter" || e.key === " "){ e.preventDefault(); choose(li); }
+    });
+  });
+}
+function showSpec(){
+  const p = PARTS.find(x => x.no === state.pick);
+  const el = $("spec");
+  if(!p){
+    el.innerHTML = state.asm
+      ? `<b>아세이 ${state.asm}</b>목록에서 부품을 고르면 강조된다. 다시 누르면 해제.`
+      : `<b>전체 조립</b>아세이 버튼으로 한 계통만 남길 수 있다. 목록에서 부품을 고르면 그 부품만 강조된다.`;
+    return;
+  }
+  el.innerHTML = `<b>${p.no} · ${p.name}</b><code>${p.spec}</code>`;
+}
+function buildAsmRow(){
+  const row = $("asmRow");
+  row.innerHTML = `<button data-asm="" aria-pressed="true">전체</button>` +
+    ASM.map(([c,n]) => `<button data-asm="${c}" aria-pressed="false">${c} ${n}</button>`).join("");
+  row.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    state.asm = b.dataset.asm || null;
+    state.pick = null;
+    row.querySelectorAll("button").forEach(o => toggle(o, o === b));
+    buildPartList(); showSpec();
+  }));
+}
+buildAsmRow(); buildPartList(); showSpec();
+toggle($("btnSpin"), state.spin);
+
+/* 시퀀스 막대 */
+function buildSeqBar(){
+  const bar = $("seqbar");
+  bar.innerHTML = SEQ.slice(0,4).map((s,i) =>
+    `<span data-i="${i}">${s.name} · ${s.note}</span>`).join("");
+}
+buildSeqBar();
+
+function setExplode(v){
+  state.explode = v/100;
+  $("valExplode").textContent = `${v} %`;
+  $("rngExplode").value = v;
+  toggle($("btnExplode"), v > 0);
+}
+function setCut(on){
+  state.cut = on; toggle($("btnCut"), on);
+}
+function setClip(v){
+  state.clip = v/100 * 0.30;
+  $("valCut").textContent = v === 0 ? "중심" : `${(state.clip*1000).toFixed(0)} mm`;
+  $("rngCut").value = v;
+}
+function setRun(on){
+  state.run = on; toggle($("btnRun"), on);
+  $("seqbar").hidden = !on;
+  if(on){ simT = 0; seedParticles(); }
+}
+function applyView(v){
+  cam.az = v.az; cam.el = v.el; cam.r = v.r;
+  setCut(v.cut);
+  state.spin = false; toggle($("btnSpin"), false);
+}
+
+$("btnExplode").addEventListener("click", () => setExplode(state.explode > 0 ? 0 : 100));
+$("rngExplode").addEventListener("input", e => setExplode(+e.target.value));
+$("btnCut").addEventListener("click", () => setCut(!state.cut));
+$("rngCut").addEventListener("input", e => { setClip(+e.target.value); if(!state.cut) setCut(true); });
+$("btnRun").addEventListener("click", () => setRun(!state.run));
+$("btnSpin").addEventListener("click", () => { state.spin = !state.spin; toggle($("btnSpin"), state.spin); });
+$("btnLabels").addEventListener("click", () => { state.labels = !state.labels; toggle($("btnLabels"), state.labels); });
+$("viewIso").addEventListener("click", () => applyView(VIEWS.iso));
+$("viewFront").addEventListener("click", () => applyView(VIEWS.front));
+$("viewTop").addEventListener("click", () => applyView(VIEWS.top));
+$("viewSect").addEventListener("click", () => applyView(VIEWS.sect));
+$("rngSalt").addEventListener("input", e => {
+  salt = +e.target.value;
+  $("valSalt").textContent = `${salt} wt%`;
+});
+$("btnTheme").addEventListener("click", () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const sysDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const next = cur ? (cur === "dark" ? "light" : null) : (sysDark ? "light" : "dark");
+  if(next) document.documentElement.setAttribute("data-theme", next);
+  else document.documentElement.removeAttribute("data-theme");
+  readTheme();
+});
+if(window.matchMedia){
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  if(mq.addEventListener) mq.addEventListener("change", readTheme);
+}
+
+/* 포인터 */
+let drag = false, lastX = 0, lastY = 0, pinch = 0;
+if(gl){
+  canvas.addEventListener("pointerdown", e => {
+    drag = true; lastX = e.clientX; lastY = e.clientY;
+    canvas.setPointerCapture(e.pointerId); canvas.classList.add("dragging");
+    state.spin = false; toggle($("btnSpin"), false);
+  });
+  canvas.addEventListener("pointermove", e => {
+    if(!drag) return;
+    cam.az -= (e.clientX - lastX) * 0.0072;
+    cam.el = Math.max(-0.28, Math.min(1.46, cam.el + (e.clientY - lastY) * 0.0055));
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  const stop = () => { drag = false; canvas.classList.remove("dragging"); };
+  canvas.addEventListener("pointerup", stop);
+  canvas.addEventListener("pointercancel", stop);
+  canvas.addEventListener("wheel", e => {
+    e.preventDefault();
+    cam.r = Math.max(1.1, Math.min(6.5, cam.r + e.deltaY*0.0016));
+  }, { passive:false });
+  canvas.addEventListener("dblclick", () => applyView(VIEWS.iso));
+  canvas.addEventListener("touchmove", e => { if(e.touches.length>1) e.preventDefault(); }, { passive:false });
+}
+
+/* HUD */
+function fmt1(v){ return v.toFixed(1); }
+function updateHud(){
+  const rho = brineDensity(salt);
+  const left = [
+    `<div class="chip">NaCl <b>${salt} wt%</b> · 염수 <b>${rho.toFixed(0)} kg/m³</b></div>`,
+    `<div class="chip">장입 <b>${G.volL} L</b> @ Z${G.levelZ}</div>`
+  ];
+  if(state.run){
+    const ph = SEQ[phaseIndex(simT)];
+    const k = kpi();
+    left.push(`<div class="chip live">t = <b>${simT < 120 ? fmt1(simT) : Math.round(simT)} s</b> · ${ph.name}</div>`);
+    left.push(`<div class="chip">Top 폴리머 <b>${(k.polyTop*100).toFixed(0)} %</b> · Top Si loss <b>${(k.siTop*100).toFixed(1)} %</b></div>`);
+    left.push(`<div class="chip">Bottom Si <b>${(k.siBot*100).toFixed(0)} %</b></div>`);
+  }
+  $("hudLeft").innerHTML = left.join("");
+  const right = [];
+  if(state.explode > 0) right.push(`<div class="chip">분해 <b>${Math.round(state.explode*100)} %</b></div>`);
+  if(state.cut) right.push(`<div class="chip">컷어웨이 <b>${state.clip === 0 ? "중심" : (state.clip*1000).toFixed(0)+" mm"}</b></div>`);
+  if(state.asm) right.push(`<div class="chip">아세이 <b>${state.asm}</b></div>`);
+  $("hudRight").innerHTML = right.join("");
+  if(state.run){
+    const idx = phaseIndex(simT);
+    $("seqbar").querySelectorAll("span").forEach((s,i) => s.classList.toggle("on", i === idx));
+  }
+}
+
+/* 해시 딥링크 — #explode=100&cut=1&clip=0&run=1&asm=E&salt=26&spin=0 */
+function applyHash(){
+  const h = (location.hash || "").replace(/^#/, "");
+  if(!h) return;
+  const q = {};
+  for(const kv of h.split("&")){ const [k, v] = kv.split("="); if(k) q[k] = v; }
+  if(q.explode !== undefined) setExplode(Math.max(0, Math.min(100, +q.explode || 0)));
+  if(q.clip !== undefined) setClip(Math.max(-100, Math.min(100, +q.clip || 0)));
+  if(q.cut !== undefined) setCut(q.cut === "1");
+  if(q.salt !== undefined){ salt = Math.max(0, Math.min(26, +q.salt));
+    $("rngSalt").value = salt; $("valSalt").textContent = salt + " wt%"; }
+  if(q.asm !== undefined){
+    const b = $("asmRow").querySelector(`[data-asm="${q.asm}"]`);
+    if(b) b.click();
+  }
+  if(q.view && VIEWS[q.view]) applyView(VIEWS[q.view]);
+  if(q.spin !== undefined){ state.spin = q.spin === "1"; toggle($("btnSpin"), state.spin); }
+  if(q.run === "1") setRun(true);
+  if(q.t !== undefined && state.run){ simT = Math.max(0, +q.t || 0); }
+}
+applyHash();
+window.addEventListener("hashchange", applyHash);
+
+/* 루프 */
+let last = 0;
+function frame(ts){
+  const dt = Math.min(0.05, (ts - last)/1000 || 0.016);
+  last = ts;
+  if(state.spin) cam.az += dt * 0.16;
+  if(state.run){
+    const step = dt * simSpeed(simT);
+    simT += step;
+    stepSim(step);
+    if(simT > SEQ[SEQ.length-1].t){ simT = 0; seedParticles(); }
+  }
+  draw();
+  updateHud();
+  requestAnimationFrame(frame);
+}
+if(gl){
+  if("ResizeObserver" in window) new ResizeObserver(resize).observe(canvas);
+  else window.addEventListener("resize", resize);
+  requestAnimationFrame(frame);
+} else {
+  updateHud();
+}
+</script>
+
+<section class="notes">
+  <h2>이 화면이 보여주는 것</h2>
+  <p><b>분해도</b>는 아세이를 발주 단위로 떼어 놓는다. 탱크(A)는 판금 업체, 구동부(C)는
+     교반기 벤더, 프레임(H)은 파이프 업체로 각각 나가므로 그 경계가 그대로 견적 경계다.
+     <b>컷어웨이</b>는 동체를 반으로 잘라 배플·임펠러·분산링의 상대 위치를 보여준다 —
+     이 세 가지가 서로 부딪히지 않는다는 것이 이 장치 설계의 핵심이었다.
+     <b>운전 재생</b>은 분산부터 <b>동시 정지</b>·자연 층분리까지를 재생한다.</p>
+
+  <p>운전 재생의 입자는 장식이 아니다. 640 개 입자에 [R] §7 의 3×3 유효밀도표에서
+     밀도를, 31~75 µm 구간에서 지름을 주고, 매 프레임 <code>src/mp50_separator/checks.py</code>
+     와 <b>같은 Stokes 식</b>으로 종말속도를 계산해 움직인다. 화면 왼쪽 위의
+     Top 폴리머 회수 · Top Si loss · Bottom Si 회수는 그 입자들의 질량 기준 집계다.
+     염도 슬라이더를 움직이면 염수 밀도가 바뀌고 부상/침강이 즉시 뒤집힌다 —
+     이것이 연구문서가 말하는 density cut 이다.</p>
+
+  <h2>재생하면 바로 보이는 두 가지</h2>
+  <ul>
+    <li><b>18 wt% 에서 백시트는 거의 움직이지 않는다.</b> 31~45 µm 백시트의 유효밀도는
+        1110 kg/m³ 로 18 wt% 염수(1135)와 25 kg/m³ 밖에 차이가 없다. 슬라이더를
+        <b>24~26 wt%</b> 로 올리면 차이가 90 kg/m³ 로 벌어지며 눈에 띄게 떠오른다.</li>
+    <li><b>600 s 로는 미세 폴리머가 다 뜨지 않는다.</b> Stokes 속도는 지름의 제곱으로
+        가므로 31 µm 입자는 75 µm 의 1/6 속도다. 시퀀스를 끝까지 두면 600 s 지점과
+        1200 s 지점의 Top 회수율이 확연히 다르다.</li>
+  </ul>
+  <p>둘 다 장치를 고치라는 뜻이 아니라 <b>DOE 의 격자를 넓히라</b>는 뜻이다 —
+     정치시간 상한을 600 s 에서 늘리고, 염도 격자에 22/26 wt% 를 넣는 것.
+     다만 포화 염도까지 갈 경우 동체 재질은 SUS304 가 아니라 SUS316L 이어야 한다.</p>
+
+  <h2>원본과 달라진 곳</h2>
+  <p>ChatGPT 가 만든 도면 2매와 연구문서 Rev.0 의 치수가 서로 어긋나 그대로는 제작이
+     되지 않는다. 조립 자체가 불가능한 2건을 포함해 8건을 정리했고, 해결 근거는
+     <a href="mp50-fabrication-drawings.html">MP-50 아세이별 제작도면</a>의
+     '원본 치수 충돌과 해결 근거' 절에 있다.</p>
+  <table class="k">
+    <thead><tr><th>번호</th><th>항목</th><th>원본</th><th>채택값</th><th>이유</th></tr></thead>
+    <tbody>
+      <tr><td class="k">C1</td><td>원뿔 높이</td><td>H150 + 60°</td>
+          <td class="k">가상 정점높이 346.41 · 원뿔대 294.88</td>
+          <td>H150 으로는 Ø400 에서 Ø38 로 닫히지 않는다. 346.41 을 Z 원점으로 잡아야
+              동체 상단 Z946 · 커버 상면 Z951 · 전용적 89.9 L 가 동시에 맞는다.</td></tr>
+      <tr><td class="k">C2</td><td>배플 폭</td><td>80 × 4 매</td>
+          <td class="k">35 × 4 매 · 벽 이격 6</td>
+          <td>폭 80 이면 배플 안쪽이 R114 에 와서 Ø300 임펠러의 팁 R150 과 36 mm
+              겹친다 — 축이 돌지 않는다. 컷어웨이로 확인할 수 있다.</td></tr>
+      <tr><td class="k">C3</td><td>배출 스터브</td><td>Ø50.8 (1.5 in)</td>
+          <td class="k">Ø63.5 (2 in) + 리듀싱 클램프</td>
+          <td>작은 쪽으로 붙이면 연구문서가 요구한 1.5 in / 2 in 배출시험을 한 대에서
+              둘 다 돌릴 수 없다.</td></tr>
+      <tr><td class="k">C6</td><td>운전 장입량</td><td>명판 50 L</td>
+          <td class="k">61.4 L (Z720)</td>
+          <td>스키머(Z725)와 오버플로(Z735) 표고가 액면을 Z720 으로 묶는다.
+              50 L 로 잡으면 고체농도가 23 % 틀린다.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>조작</h2>
+  <ul>
+    <li>끌기 — 회전 · 휠 — 확대 · 더블클릭 — 등각 복귀</li>
+    <li>분해 · 절단면 슬라이더는 서로 겹쳐 쓸 수 있다. 절단면을 움직이면 컷어웨이가 자동으로 켜진다.</li>
+    <li>아세이 버튼으로 한 계통만 남기고, 부품 목록에서 고르면 그 부품이 강조된다.</li>
+    <li>치수·공차·용접·부품표는 <a href="mp50-fabrication-drawings.html">제작도면 15매</a>에 있다.</li>
+  </ul>
+</section>
+</div>
+</body>
+</html>
