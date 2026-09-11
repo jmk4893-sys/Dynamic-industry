@@ -1460,10 +1460,11 @@ def sheet_k() -> None:
         c.poly(dv.pts([(sx * 6.35, -3), (sx * 4.2, -3), (sx * 6.35, -1.2)]), THIN, "ln",
                close=True, fill="var(--ink)")
     c.dim_h(dv.x(-6.35), dv.x(6.35), dv.y(27), "노즐 ID", ext_from=dv.y(20))
-    c.leader(dv.x(11.4), dv.y(-1.5), dv.x(20), dv.y(12), "바깥 필릿 a2 연속")
-    c.leader(dv.x(-4.2), dv.y(-2.4), dv.x(-2), dv.y(-24), "안쪽 평활 연삭", anchor="end",
-             lines=("set-on 은 링 모양 크레비스를 남긴다",))
-    c.text(16.0, 124.0, "관통부는 관을 판 안쪽면까지 넣고 양면 용접한다.", T_DIM - 0.2, "start", "tx2")
+    c.leader(dv.x(11.4), dv.y(-1.5), dv.x(14), dv.y(14), "바깥 필릿 a2 연속")
+    c.leader(dv.x(-4.2), dv.y(-2.4), dv.x(-13), dv.y(-13), "안쪽 평활 연삭", anchor="end")
+    for i, line in enumerate(("관통부는 관을 판 안쪽면까지 넣고 양면 용접한다.",
+                              "set-on 은 안쪽에 링 모양 크레비스를 남겨 배치마다 분말이 낀다.")):
+        c.text(16.0, 122.0 + i * 4.2, line, T_DIM - 0.2, "start", "tx2")
 
     # --- 좌하 : 용접 지도 ---
     v = View(64.0, 254.0, 10.0)
