@@ -47,6 +47,14 @@ t=0 부터 배출까지를 입자 1,000 개로 재생하며 분할면을 파선�
 `docs/drawings/mp50-process-console.html` 은 염도·온도·정치시간·배출량·Feed 를 슬라이더로 두고
 네 KPI 를 Monte Carlo P10/P90 으로 다시 계산한다.
 
+> **유효밀도 ≠ 실밀도.** 문헌 실밀도는 EVA 봉지재 948, PET 1,380, PVF 1,440~1,700, PVDF 1,760,
+> 실리콘 2,329 kg/m³ 다. 백시트 실밀도는 **포화 NaCl 염수의 상한 1,197 로도 뜨지 않는다.**
+> 연구문서가 쓴 백시트 1,010~1,110 은 EVA 가 붙은 복합 파편이거나 공기를 문 미습윤 파편의
+> **유효밀도**이며 — 복합 파편이 1,200 이라면 공기 **8.3 vol%** 만 물고 있어도 15 % 염수에서 뜬다 —
+> 아직 측정된 적이 없다. **T3 의 1순위 측정 항목**이고, 값에 따라 상부 제품이 EVA 뿐인지
+> EVA+백시트인지가 갈린다. 백시트를 확실히 회수하려면 **2단 밀도컷**(CaCl₂ ~1,400 ·
+> ZnCl₂ ~2,000 kg/m³)이 필요하다.
+
 씰은 여전히 **CRITICAL HOLD** 이고, Vendor GA 전에는 mounting PCD · output shaft/key ·
 seal gland/sleeve · frame height 를 확정하지 않는다.
 
@@ -73,7 +81,7 @@ seal gland/sleeve · frame height 를 확정하지 않는다.
 | [docs/drawings/mp50-pilot-drawings.html](docs/drawings/mp50-pilot-drawings.html) | **MP-50 제작도 11매 (Rev.B)** — 기준좌표·부품표(34점), 분리 원리·운전 시퀀스, 3×3 유효밀도·밀도컷, 층분리 운동학, 탱크 셀·콘, 커버·맨홀·스키머, 교반계·간섭 검사, 분산 링·공기 공급계, 배출·프레임, Release/HOLD·공차, FAT·KPI·DOE·재질 (브라우저로 열 것) |
 | [docs/drawings/mp50-pilot-3d.html](docs/drawings/mp50-pilot-3d.html) | **MP-50 3D 조립·분해도 (Rev.A)** — 26개 부품 분해, 동체 컷어웨이, FLOAT/SINK 층을 보이는 「분리 결과」 보기, 보기별 제원 (브라우저로 열 것) |
 | [docs/drawings/mp50-separation-motion.html](docs/drawings/mp50-separation-motion.html) | **MP-50 층분리 거동 시뮬레이터** — 분산 정지 t=0 부터 배출까지를 입자 1,000 개로 재생한다. 재생·스크럽·배속, 분할면 기준 배분과 KPI 판정, 염도·배출량 조작 (브라우저로 열 것) |
-| [docs/drawings/mp50-process-console.html](docs/drawings/mp50-process-console.html) | **MP-50 운전조건 콘솔** — 염도·온도·분산/정치시간·배출량·Feed 조성을 움직이면 분할면·필요 정치시간·4개 KPI 가 Monte Carlo P10/P90 으로 다시 계산된다 (브라우저로 열 것) |
+| [docs/drawings/mp50-process-console.html](docs/drawings/mp50-process-console.html) | **MP-50 운전조건 콘솔** — 염도·온도·분산/정치시간·배출량·Feed 조성을 움직이면 분할면·필요 정치시간·4개 KPI 가 Monte Carlo P10/P90 으로 다시 계산된다. **재질 밀도를 「연구문서 유효밀도 / 문헌 실밀도 / 복합 파편」 으로 바꿔 가며** 비교할 수 있다 (브라우저로 열 것) |
 | [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 13종, 열수지 계산기 (브라우저로 열 것) |
 
 ### 사용법
@@ -84,7 +92,7 @@ seal gland/sleeve · frame height 를 확정하지 않는다.
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (437건)
+python -m unittest discover -s tests -t .                               # 테스트 (442건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
