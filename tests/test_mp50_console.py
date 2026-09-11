@@ -377,5 +377,79 @@ class TestMaterialDensity(unittest.TestCase):
         self.assertIn("2단 밀도컷", self.html)
 
 
+class TestLiberation(unittest.TestCase):
+    """밀도는 재질 상수가 아니라 입도 × 해리도의 결과다."""
+
+    T_EVA, T_BS, T_CELL = 0.50, 0.25, 0.17
+    RHO_EVA = 948.0
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = CONSOLE.read_text(encoding="utf-8")
+
+    def cut(self, d_mm, t1, t2, rbs, n=240):
+        """적층을 두께 d 로 무작위 절단 — 화면의 cutStats 와 같은 모델."""
+        T = t1 + t2
+        pure_eva = pure_bs = 0
+        rs = []
+        for k in range(n):
+            x, ov, rem = T * k / n, 0.0, d_mm
+            while rem > 1e-9:
+                pos = x % T
+                seg = min(rem, T - pos)
+                a, b = pos, pos + seg
+                ov += max(0.0, min(b, t1) - min(a, t1))
+                x += seg
+                rem -= seg
+            f = ov / d_mm
+            if f > 0.999:
+                pure_eva += 1
+            else:
+                if f < 0.001:
+                    pure_bs += 1
+                rs.append(f * self.RHO_EVA + (1 - f) * rbs)
+        mean = sum(rs) / len(rs) if rs else rbs
+        return dict(mean=mean, pure_bs=pure_bs / n, pure_eva=pure_eva / n)
+
+    def test_full_attachment_reproduces_the_document_range(self):
+        """EVA 가 다 붙은 복합 파편은 1,092~1,149 — 문서의 1,010~1,110 과 같은 자리다."""
+        for t1, t2, rbs, want in ((0.50, 0.25, 1450, 1115), (0.45, 0.30, 1450, 1149),
+                                  (0.50, 0.25, 1380, 1092)):
+            f = t1 / (t1 + t2)
+            self.assertAlmostEqual(f * self.RHO_EVA + (1 - f) * rbs, want, delta=2)
+
+    def test_fine_grinding_destroys_the_composite(self):
+        """31~75 µm 에서는 조각이 단일 재질이 된다 — 순수 백시트가 25 % 이상."""
+        fine = self.cut(0.075, self.T_EVA, self.T_BS, 1450)
+        coarse = self.cut(0.75, self.T_EVA, self.T_BS, 1450)
+        self.assertGreater(fine["pure_bs"], 0.2, "미분쇄면 순수 백시트 조각이 생긴다")
+        self.assertLess(coarse["pure_bs"], 0.01, "굵으면 전부 복합이다")
+        self.assertGreater(fine["mean"], rho_br(26.4), "미분쇄 조각은 포화 염수로도 못 띄운다")
+        self.assertLess(coarse["mean"], rho_br(22), "굵은 복합 파편은 22 wt% 면 뜬다")
+
+    def test_separability_window_needs_coarse_fragments(self):
+        """백시트 하한 < 실리콘 상한 이어야 분리가 성립한다."""
+        def window(d):
+            bs = self.cut(d, self.T_EVA, self.T_BS, 1450)["mean"]
+            si = self.cut(d, 2 * self.T_EVA, self.T_CELL, 2329)["mean"]
+            return (bs - 998) / 7.55, (si - 998) / 7.55
+        lo_f, hi_f = window(0.075)
+        self.assertLess(lo_f, hi_f)
+        self.assertGreater(lo_f, 26.4, "미분쇄에서는 창의 하한이 포화 염수 밖이라 도달할 수 없다")
+        lo_c, hi_c = window(0.65)
+        self.assertLess(lo_c, hi_c, "굵으면 창이 열린다")
+        self.assertLess(lo_c, 18.0)
+        self.assertGreater(hi_c, 18.0)
+        self.assertLess(lo_c, 26.4, "그리고 그 창은 포화 염수 안에 있다")
+
+    def test_console_carries_the_liberation_mode(self):
+        self.assertIn('data-k="lib"', self.html)
+        self.assertIn("function cutStats(", self.html)
+        self.assertIn('id="psd"', self.html)
+        self.assertIn("T_CELL=0.17", self.html.replace(" ", ""))
+        self.assertIn("분리 가능 염도 창", self.html)
+        self.assertIn("분쇄를 세게 할수록", self.html)
+
+
 if __name__ == "__main__":
     unittest.main()

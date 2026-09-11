@@ -55,6 +55,14 @@ t=0 부터 배출까지를 입자 1,000 개로 재생하며 분할면을 파선�
 > EVA+백시트인지가 갈린다. 백시트를 확실히 회수하려면 **2단 밀도컷**(CaCl₂ ~1,400 ·
 > ZnCl₂ ~2,000 kg/m³)이 필요하다.
 
+> **그 유효밀도는 입도가 정한다.** 후면 EVA(0.50 mm)와 백시트(0.25 mm) 적층을 조각 두께 d 로
+> 자르면, d 가 층 두께보다 작을수록 조각이 단일 재질이 된다. **31~75 µm 에서는 순수 백시트
+> 조각이 25 % 나 생기고 백시트를 품은 조각의 평균이 1,346 kg/m³ 라, 띄우려면 46 wt% 가 필요해
+> 포화 NaCl 밖이다** — 분리 가능한 염도 창이 존재하지 않는다. 반대로 **0.4~0.9 mm 로 굵게
+> 남기면** 전부 EVA 를 달고 나와 1,115 로 모이고, 실리콘 쪽 복합(1,189)과의 사이에
+> **15.5~25.3 wt% 의 창**이 열린다. 그 안의 **18 wt%** 에서 네 KPI 가 모두 통과한다.
+> 즉 **분쇄를 세게 할수록 밀도분리가 어려워진다** — 실리콘 해리도와 맞바꾸는 설계 변수다.
+
 씰은 여전히 **CRITICAL HOLD** 이고, Vendor GA 전에는 mounting PCD · output shaft/key ·
 seal gland/sleeve · frame height 를 확정하지 않는다.
 
@@ -92,7 +100,7 @@ seal gland/sleeve · frame height 를 확정하지 않는다.
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (442건)
+python -m unittest discover -s tests -t .                               # 테스트 (446건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
