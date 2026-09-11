@@ -201,6 +201,21 @@
   </section>
 
   <section class="panel">
+    <h2>재질 밀도 <span class="u" id="rhoNote"></span></h2>
+    <div class="seg" id="rhoSet" role="group" aria-label="밀도 출처">
+      <button type="button" data-k="doc" aria-pressed="true">연구문서</button>
+      <button type="button" data-k="lit">문헌 실밀도</button>
+      <button type="button" data-k="cmp">복합 파편</button>
+    </div>
+    <div class="control" style="margin-top:10px">
+      <label for="airv">파편이 물고 있는 공기 <b><span id="airvV">0</span> vol%</b></label>
+      <input type="range" id="airv" min="0" max="20" step="1" value="0"></div>
+    <p class="small">문헌값: EVA 948 · PET 1,380 · PVF 1,440~1,700 · PVDF 1,760 · Si 2,329 kg/m³.
+      백시트 실밀도는 포화 NaCl(1,197)로도 뜨지 않는다 — 실제로 뜨는 것은 EVA 가 붙은
+      복합 파편이거나 미습윤 상태로 공기를 문 파편이다.</p>
+  </section>
+
+  <section class="panel">
     <h2>모델 <span class="u">ASSUMED</span></h2>
     <div class="seg" id="hindMode" role="group" aria-label="간섭침강 보정">
       <button type="button" data-m="on" aria-pressed="true">간섭침강 보정</button>
@@ -305,6 +320,12 @@
     Njs 는 Zwietering 이고 S 는 D/T 로 보정했다 — 분산이 성립하는지 보는 데만 쓴다.</p>
   <p><b>Monte Carlo.</b> 3×3 유효밀도의 평균을 <code>N(µ,σ)</code> 에서 표본하여 배치 간 산포를 만들고,
     그 분포의 10 / 90 백분위로 KPI 를 판정한다. 표본 수는 왼쪽에서 조정한다.</p>
+  <p><b>재질 밀도의 출처.</b> 「문헌 실밀도」는 EVA 봉지재 0.948 g/cm³ (VA 28 %, ASTM D1505),
+    PET 1.38, PVF(Tedlar) 1.44~1.7, PVDF(Kynar) 1.76, 실리콘 2.329 g/cm³ 다. 백시트는
+    PVF/PET/PVF 또는 Kynar/PET/Kynar 라미네이트라 <b>1.38~1.76</b> 이고, 포화 NaCl 염수의 상한
+    1.197 g/cm³ 로는 어떤 농도에서도 뜨지 않는다. 연구문서가 쓴 1,010~1,110 은 <b>유효밀도</b> —
+    EVA 가 붙은 복합 파편이거나 미습윤 상태로 공기를 문 파편의 값이며, 아직 측정된 적이 없다.
+    복합 파편이 1,200 이라면 공기 <b>8.3 vol%</b> 만 물고 있어도 15 % 염수에서 뜬다.</p>
   <p><b>한계.</b> 여기 나오는 값은 <b>설계 참고값이며 성능 보증값이 아니다.</b> 응집·간섭침강·벽면 효과·형상계수를
     넣지 않은 단일 입자 모델이고, 유효밀도 µ·σ, 부착 유지율, 부착속도 보정계수, 연행 계수는 모두 가정이다.
     실측으로 역추정한 뒤에야 <code>ASSUMED → CALIBRATED</code> 로 바꿀 수 있다.</p>
@@ -326,6 +347,31 @@ var MATS=[
   {id:"BS",  ko:"백시트", rho:[[1110,100],[1060,90],[1010,80]], poly:true},
   {id:"Si",  ko:"실리콘", rho:[[2330,25],[2330,22],[2330,20]],  poly:false}
 ];
+/* 밀도 출처 — 연구문서의 '유효밀도'와 문헌의 '실밀도'는 같은 값이 아니다.
+   EVA 봉지재 0.948 (VA28, ASTM D1505) · PET 1.38 · PVF 1.44~1.7 · PVDF 1.76 ·
+   Si 2.329 g/cm³. 백시트는 라미네이트라 1.38~1.76 이고, 포화 NaCl(1.197)로는
+   어떤 농도에서도 뜨지 않는다. 실제로 뜨는 것은 EVA 가 붙은 복합 파편이거나
+   미습윤 상태로 공기를 물고 있는 파편이다.                                   */
+var RHO_SETS={
+  doc:{ko:"연구문서 유효밀도",
+       EVA:[[980,70],[950,60],[920,50]], BS:[[1110,100],[1060,90],[1010,80]],
+       Si:[[2330,25],[2330,22],[2330,20]]},
+  lit:{ko:"문헌 실밀도",
+       EVA:[[948,15],[948,15],[948,15]], BS:[[1450,150],[1450,150],[1450,150]],
+       Si:[[2329,5],[2329,5],[2329,5]]},
+  cmp:{ko:"복합 파편 (EVA+백시트)",
+       EVA:[[948,15],[948,15],[948,15]], BS:[[1200,120],[1200,120],[1200,120]],
+       Si:[[2329,5],[2329,5],[2329,5]]}
+};
+function applyRhoSet(key){
+  var R=RHO_SETS[key]||RHO_SETS.doc;
+  MATS[0].rho=R.EVA; MATS[1].rho=R.BS; MATS[2].rho=R.Si;
+}
+/* 미습윤 파편이 물고 있는 공기 — 밀도 효과로만 다룬다 (부선이 아니다) */
+function withAir(rho_p, poly, a){
+  return poly ? rho_p*(1-a)+1.2*a : rho_p;
+}
+function wNeutral(rho_p){ return (rho_p-998)/7.55; }   // 그 밀도가 중립이 되는 염도
 var LIM={poly:80, siLoss:3, siRec:90, botPoly:12};
 
 /* 콘+동체의 누적 체적 — 배출량을 분할면 높이로 옮기는 데 쓴다 */
@@ -393,7 +439,7 @@ function evaluate(s,rhoOf){
     var M=MATS[m];
     var share=M.poly ? (1-s.si/100)*(M.id==="EVA"? s.eva/100 : 1-s.eva/100) : s.si/100;
     for(var i=0;i<3;i++){
-      var mass=share*BINW[i], rp=rhoOf(m,i);
+      var mass=share*BINW[i], rp=withAir(rhoOf(m,i),M.poly,s.airv);
       var v=terminal(rp,dp(i),s.w,s.T)*1000*f;      // mm/s, + 침강
       var shift=v*s.set;                            // 정치 동안의 이동 (mm, + 아래)
       // 초기분포는 체적비. 분할면 아래에 남는 것은 z0 < zd+shift 인 것들이다.
@@ -438,16 +484,16 @@ function run(s){
 
 /* ══ 상태 ═════════════════════════════════════════════════════════════ */
 var S={w:15,T:20,mix:10,set:600,rpm:90,air:5,draw:8,kg:5,si:87.5,eva:50,
-       hind:true,shape:1,mc:300};
-var IDS=["w","T","mix","set","rpm","air","draw","kg","si","eva","shape","mc"];
-var DEC={w:1,T:0,mix:1,set:0,rpm:0,air:1,draw:1,kg:1,si:1,eva:0,shape:2,mc:0};
+       hind:true,shape:1,mc:300,rhoSet:"doc",airv:0};
+var IDS=["w","T","mix","set","rpm","air","draw","kg","si","eva","shape","mc","airv"];
+var DEC={w:1,T:0,mix:1,set:0,rpm:0,air:1,draw:1,kg:1,si:1,eva:0,shape:2,mc:0,airv:0};
 function $(id){ return document.getElementById(id); }
 
 function readInputs(){
   S.w=+$("w").value; S.T=+$("T").value; S.mix=+$("mix").value; S.set=+$("set").value;
   S.rpm=+$("rpm").value; S.air=+$("air").value; S.draw=+$("draw").value;
   S.kg=+$("kg").value; S.si=+$("si").value; S.eva=+$("eva").value;
-  S.shape=+$("shape").value; S.mc=+$("mc").value;
+  S.shape=+$("shape").value; S.mc=+$("mc").value; S.airv=+$("airv").value/100;
   IDS.forEach(function(k){
     var el=$(k+"V"); if(!el) return;
     var raw=+$(k).value;
@@ -594,6 +640,13 @@ function render(){
 
   // 분할면과 필요 정치시간 — 가장 느린 실리콘이 액면에서 분할면까지 내려와야 한다
   var f=slowdown(S);
+  // 그 재질이 중립이 되는 염도 — 26.4 wt% 를 넘으면 NaCl 로는 띄울 수 없다
+  function nw(m){
+    var r=withAir(MATS[m].rho[1][0],MATS[m].poly,S.airv), x=wNeutral(r);
+    if(x<0) return "0 % 에서도 부상";
+    return x>26.4 ? "<span class='d'>"+x.toFixed(1)+" % — NaCl 불가</span>"
+                  : x.toFixed(1)+" %";
+  }
   var vSiMin=1e9;
   base.cells.forEach(function(cl){ if(cl.m===2) vSiMin=Math.min(vSiMin,cl.v); });
   var tReq=(Z_LEVEL-base.zd)/vSiMin;
@@ -607,7 +660,9 @@ function render(){
     ["여유", "<span class='"+(marg<0?"d":marg<15?"w":"g")+"'>"+
              (marg>=0?"+":"")+marg.toFixed(0)+" %</span>"],
     ["간섭침강·형상 보정", "×"+f.toFixed(2)+" (고형분 "+(phiSolids(S)*100).toFixed(1)+" vol%)"],
-    ["중립 셀 하부 유입", (S.draw/V_LIQ*100).toFixed(1)+" % (체적비)"]
+    ["중립 셀 하부 유입", (S.draw/V_LIQ*100).toFixed(1)+" % (체적비)"],
+    ["EVA 중립 염도", nw(0)],
+    ["백시트 중립 염도", nw(1)]
   ].map(function(r){ return "<span>"+r[0]+"</span><b>"+r[1]+"</b>"; }).join("");
 
   // 분산 판정 · 염수 · 침전
@@ -647,6 +702,7 @@ function render(){
   $("pillSus").textContent=sus?"분산 OK":"분산 부족";
   $("pillSus").className="badge "+(sus?"on":"off");
   $("cutNote").textContent="ρ "+rho.toFixed(1)+" · "+S.w.toFixed(1)+" wt%";
+  $("rhoNote").textContent=RHO_SETS[S.rhoSet].ko+(S.airv>0?" · 공기 "+(S.airv*100).toFixed(0)+"%":"");
   $("kinNote").textContent="정치 "+S.set+" s · 배출 "+S.draw.toFixed(1)+" L";
   $("feedNote").textContent=(S.kg*(1-S.si/100)).toFixed(2)+" kg 폴리머";
 
@@ -659,6 +715,14 @@ function render(){
   else if(marg<15) A.push(["","정치",
     "여유가 "+marg.toFixed(0)+" % 뿐이다. 온도가 낮거나 Feed 가 늘면 바로 넘어간다 — "+
     "필요 "+tReq.toFixed(0)+" s, 설정 "+S.set+" s."]);
+  var wBs=wNeutral(withAir(MATS[1].rho[1][0],true,S.airv));
+  if(wBs>26.4) A.push(["bad","밀도",
+    "이 밀도에서는 백시트가 <b>포화 NaCl(26.4 wt%, 1,197 kg/m³)로도 뜨지 않는다</b> — 중립까지 "+
+    wBs.toFixed(0)+" wt% 가 필요하다. 상부 제품은 결국 EVA 뿐이며, 백시트를 회수하려면 파편이 "+
+    "공기를 물고 있거나(미습윤), EVA 가 충분히 붙어 있거나, <b>2단 밀도컷</b>"+
+    "(CaCl₂ ~1,400 · ZnCl₂ ~2,000 kg/m³)이 필요하다."]);
+  else if(wBs>18) A.push(["","밀도",
+    "백시트가 뜨려면 "+wBs.toFixed(1)+" wt% 이상이 필요하다 — DOE 상한 18 % 밖이다."]);
   var wCut=(1110-998)/7.55;
   if(Math.abs(S.w-wCut)<0.6) A.push(["","밀도컷",
     "설계점이 백시트 31–45 µm 의 중립점("+wCut.toFixed(2)+" wt%)에서 "+
@@ -712,6 +776,12 @@ $("clearSnap").addEventListener("click",function(){ SNAPS=[]; saveSnaps(); drawS
 
 /* ══ 이벤트 ═══════════════════════════════════════════════════════════ */
 IDS.forEach(function(k){ var el=$(k); if(el) el.addEventListener("input",render); });
+$("rhoSet").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  S.rhoSet=b.dataset.k; applyRhoSet(S.rhoSet);
+  [].forEach.call(this.children,function(c){ c.setAttribute("aria-pressed",c===b?"true":"false"); });
+  render();
+});
 $("hindMode").addEventListener("click",function(e){
   var b=e.target.closest("button"); if(!b) return;
   S.hind=(b.dataset.m==="on");
@@ -719,9 +789,11 @@ $("hindMode").addEventListener("click",function(e){
   render();
 });
 $("reset").addEventListener("click",function(){
-  var D={w:15,T:20,mix:10,set:600,rpm:90,air:5,draw:8,kg:5,si:87.5,eva:50,shape:1,mc:300};
+  var D={w:15,T:20,mix:10,set:600,rpm:90,air:5,draw:8,kg:5,si:87.5,eva:50,shape:1,mc:300,airv:0};
   Object.keys(D).forEach(function(k){ if($(k)) $(k).value=D[k]; });
-  S.hind=true;
+  S.hind=true; S.rhoSet="doc"; applyRhoSet("doc");
+  [].forEach.call($("rhoSet").children,function(c){
+    c.setAttribute("aria-pressed",c.dataset.k==="doc"?"true":"false"); });
   [].forEach.call($("hindMode").children,function(c){
     c.setAttribute("aria-pressed",c.dataset.m==="on"?"true":"false"); });
   render();

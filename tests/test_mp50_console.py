@@ -196,7 +196,9 @@ class TestSplitCriterion(unittest.TestCase):
         """공기·rpm 은 분산 판정에만 쓰인다 — KPI 식에 들어가면 안 된다."""
         body = self.html[self.html.index("function evaluate("):self.html.index("function run(")]
         for token in ("air", "rpm", "mix"):
-            self.assertNotIn("s." + token, body, f"분리 계산에 s.{token} 이 들어갔다")
+            # s.airv (파편이 문 공기, 밀도 효과) 는 허용 — 교반·급기 변수만 막는다
+            self.assertIsNone(re.search(r"s\.%s\b" % token, body),
+                              f"분리 계산에 s.{token} 이 들어갔다")
         self.assertIn("분산 수단이지 분리 수단이 아니다", self.html)
 
     def test_settle_time_is_the_binding_variable(self):
@@ -317,6 +319,62 @@ class TestReadability(unittest.TestCase):
 
     def test_curves_are_direct_labelled(self):
         self.assertIn('c.fillText(o.t+" "+o.v.toFixed(0)+"%"', self.html)
+
+
+class TestMaterialDensity(unittest.TestCase):
+    """유효밀도와 실밀도는 같은 값이 아니다 — 콘솔이 둘을 구분해 내놓는가."""
+
+    # 문헌값 (kg/m³) — EVA 봉지재는 ASTM D1505, 나머지는 수지 문헌값
+    LIT = {"EVA": 948, "PET": 1380, "PVF": 1440, "PVDF": 1760, "Si": 2329}
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = CONSOLE.read_text(encoding="utf-8")
+
+    def test_saturated_brine_cannot_float_a_real_backsheet(self):
+        """포화 NaCl 상한 1,197 < 백시트 실밀도 1,380~1,760 — 이 장비의 하드 리밋이다."""
+        sat = rho_br(26.4)
+        self.assertAlmostEqual(sat, 1197.3, delta=0.5)
+        for k in ("PET", "PVF", "PVDF"):
+            self.assertGreater(self.LIT[k], sat, f"{k} 가 포화 염수보다 가볍다면 결론이 바뀐다")
+        self.assertLess(self.LIT["EVA"], 998, "EVA 는 청수에서도 뜬다")
+        self.assertIn("어떤 농도에서도 뜨지 않는다", self.html)
+
+    def test_console_offers_three_density_sources(self):
+        for key in ("doc", "lit", "cmp"):
+            self.assertIn('data-k="%s"' % key, self.html)
+        packed = self.html.replace(" ", "")
+        self.assertIn("EVA:[[948,15],[948,15],[948,15]]", packed)
+        self.assertIn("BS:[[1450,150],[1450,150],[1450,150]]", packed)
+
+    def test_entrapped_air_is_modelled_as_density_not_flotation(self):
+        """미습윤 파편이 문 공기는 밀도 효과로만 다룬다 — 부착 속도식이 아니다."""
+        self.assertIn("function withAir(", self.html)
+        self.assertIn("rho_p*(1-a)+1.2*a", self.html.replace(" ", ""))
+        self.assertLess(1200 * (1 - 0.083) + 1.2 * 0.083, rho_br(15))
+        self.assertGreater(1200 * (1 - 0.05) + 1.2 * 0.05, rho_br(15))
+        self.assertIn("8.3", self.html)
+
+    def test_composite_fragment_sits_at_the_saturation_boundary(self):
+        """EVA 50 vol% + 백시트 50 vol% ≈ 1,200 — 포화 NaCl 경계다."""
+        comp = 0.5 * self.LIT["EVA"] + 0.5 * 1450
+        self.assertAlmostEqual(comp, 1199, delta=5)
+        self.assertAlmostEqual((comp - 998) / 7.55, 26.6, delta=0.3)
+
+    def test_literature_densities_cost_polymer_recovery(self):
+        """실밀도를 쓰면 상부 폴리머가 무너진다 — 그것이 이 전환의 요점이다."""
+        doc = split_kpi(15, 600)["top_poly"]
+        zd, pm, pb = z_draw(), 0.0, 0.0
+        for rho_p in (948, 1450):
+            for i, (lo, hi) in enumerate(BINS):
+                m = 0.0625 * PSD_W[i]
+                v = v_mm(rho_p, (lo + hi) / 2 * 1e-6, 15)
+                zb = min(Z_LEVEL, max(Z_OUT, zd + v * 600))
+                pm += m
+                pb += m * (vol_at(zb) - vol_at(Z_OUT)) / V_LIQ
+        lit = (pm - pb) / pm * 100
+        self.assertLess(lit, doc - 15, "실밀도에서 회수율이 크게 떨어져야 한다")
+        self.assertIn("2단 밀도컷", self.html)
 
 
 if __name__ == "__main__":
