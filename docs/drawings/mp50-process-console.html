@@ -186,8 +186,8 @@
       <input type="range" id="rpm" min="20" max="140" step="5" value="90"></div>
     <div class="control"><label for="air">공기량 <b><span id="airV">5.0</span> L/min</b></label>
       <input type="range" id="air" min="0" max="15" step="0.5" value="5"></div>
-    <div class="control"><label for="skim">스키밍 깊이 <b><span id="skimV">30</span> mm</b></label>
-      <input type="range" id="skim" min="5" max="80" step="5" value="30"></div>
+    <div class="control"><label for="draw">하부 배출량 <b><span id="drawV">8.0</span> L</b></label>
+      <input type="range" id="draw" min="1" max="25" step="0.5" value="8"></div>
   </section>
 
   <section class="panel">
@@ -201,21 +201,17 @@
   </section>
 
   <section class="panel">
-    <h2>기포 모델 <span class="u">ASSUMED</span></h2>
-    <div class="seg" id="bubMode" role="group" aria-label="기포경 결정 방식">
-      <button type="button" data-m="auto" aria-pressed="true">장치에서 계산</button>
-      <button type="button" data-m="man">직접 지정</button>
+    <h2>모델 <span class="u">ASSUMED</span></h2>
+    <div class="seg" id="hindMode" role="group" aria-label="간섭침강 보정">
+      <button type="button" data-m="on" aria-pressed="true">간섭침강 보정</button>
+      <button type="button" data-m="off">단일 입자</button>
     </div>
-    <div class="control" id="bubManual" hidden><label for="db">기포경 <b><span id="dbV">200</span> µm</b></label>
-      <input type="range" id="db" min="50" max="4000" step="50" value="200"></div>
-    <div class="control"><label for="ret">정치 중 부착 유지율 <b><span id="retV">70</span> %</b></label>
-      <input type="range" id="ret" min="0" max="100" step="5" value="70"></div>
-    <div class="control"><label for="kf">부착속도 보정계수 <b>×<span id="kfV">1.0</span></b></label>
-      <input type="range" id="kf" min="-1" max="1" step="0.05" value="0"></div>
-    <div class="control"><label for="sel">소수성 선택도 (폴리머 : 실리콘) <b><span id="selV">100</span> : 1</b></label>
-      <input type="range" id="sel" min="0" max="3" step="0.1" value="2"></div>
+    <div class="control" style="margin-top:10px"><label for="shape">형상계수 (속도 배율) <b>×<span id="shapeV">1.00</span></b></label>
+      <input type="range" id="shape" min="0.3" max="1" step="0.05" value="1"></div>
     <div class="control"><label for="mc">Monte Carlo 표본 <b><span id="mcV">300</span></b></label>
       <input type="range" id="mc" min="100" max="1500" step="100" value="300"></div>
+    <p class="small">임펠러와 공기는 <b>분산 수단이지 분리 수단이 아니다</b>(연구문서 §1).
+      그래서 rpm·공기량은 KPI 식에 들어가지 않고, 아래 「분산 판정」 에서만 평가한다.</p>
     <div class="row" style="margin-top:10px">
       <button class="btn primary" id="snap" type="button">조건 저장</button>
       <button class="btn" id="reset" type="button">기본값</button>
@@ -241,18 +237,18 @@
   </section>
 
   <section class="chart">
-    <h2>층 도달률 vs 정치시간 <span class="u" id="kinNote"></span></h2>
+    <h2>상부 잔류·하부 회수 vs 정치시간 <span class="u" id="kinNote"></span></h2>
     <canvas id="kinC"></canvas>
     <div class="legend">
-      <span><i class="eva"></i>EVA → FLOAT</span><span><i class="bs"></i>백시트 → FLOAT</span>
-      <span><i class="si"></i>실리콘 → SINK</span><span class="small">세로선 = 현재 정치시간</span>
+      <span><i class="eva"></i>EVA 상부 잔류</span><span><i class="bs"></i>백시트 상부 잔류</span>
+      <span><i class="si"></i>실리콘 하부 회수</span><span class="small">세로선 = 현재 정치시간</span>
     </div>
   </section>
 
   <section class="panel">
     <h2>조건 비교 <span class="u"><button class="theme-btn" id="clearSnap" type="button">지우기</button></span></h2>
     <div class="tw"><table id="snapT">
-      <thead><tr><th>#</th><th>wt%</th><th>°C</th><th>rpm</th><th>Air</th><th>분산</th><th>정치</th>
+      <thead><tr><th>#</th><th>wt%</th><th>°C</th><th>rpm</th><th>배출</th><th>분산</th><th>정치</th>
         <th>Top 폴리머</th><th>Top Si</th><th>Bottom Si</th><th>판정</th></tr></thead>
       <tbody></tbody>
     </table></div>
@@ -273,19 +269,19 @@
   </section>
 
   <section class="panel">
-    <h2>장치가 만드는 기포</h2>
+    <h2>분할면과 필요 정치시간</h2>
     <div class="out" id="outBub"></div>
   </section>
 
   <section class="panel">
-    <h2>교반 · 염수 · 침전</h2>
+    <h2>분산 판정 · 염수 · 침전</h2>
     <div class="out" id="outMix"></div>
   </section>
 
   <section class="panel">
-    <h2>3×3 셀 <span class="u">부착률 · 통과시간</span></h2>
+    <h2>3×3 셀 <span class="u">속도 · 이동 · 하부비율</span></h2>
     <div class="tw"><table id="cellT">
-      <thead><tr><th>셀</th><th>ρ eff</th><th>부착</th><th>통과</th><th>도달</th></tr></thead>
+      <thead><tr><th>셀</th><th>ρ eff</th><th>mm/s</th><th>이동</th><th>하부</th></tr></thead>
       <tbody></tbody>
     </table></div>
   </section>
@@ -298,11 +294,15 @@
 </main>
 
 <footer>
+  <p><b>판정 기준.</b> 이 장비는 부선기가 아니다. 제품은 <b>하부 배출과 상부 잔류의 벌크 분할</b>이고,
+    연구문서 §1 이 못박은 대로 <b>임펠러와 공기는 분산 수단이지 분리 수단이 아니다</b>.
+    그래서 KPI 는 「폴리머가 액면까지 올라왔는가」가 아니라 <b>「분할면의 어느 쪽에 있는가」</b> 로 센다.
+    실리콘은 분할면 아래로 내려가야 하고, 폴리머는 그 위에 남기만 하면 된다.</p>
   <p><b>모델.</b> 염수 <code>ρ=998+7.55w</code>, <code>µ₂₀=0.001(1+0.018w)</code> 에 물의 온도의존성을 곱한다.
-    종말속도는 Stokes 초기값을 Schiller-Naumann 항력으로 수렴시킨다. 기포경은 Ø1.0 홀의 Tate 이탈경과
-    임펠러 난류의 Hinze 파쇄한계 <code>d=0.725(σ/ρ)^0.6 ε^−0.4</code> 중 작은 쪽이다.
-    부착은 1차 부선속도 <code>k=1.5·U_g·E/d_b</code>, 차단 포집 <code>E=(d_p/d_b)²</code> 에 소수성 계수(실리콘은 선택도의 역수)를 곱해
-    <code>1−exp(−k·t_mix)</code>. Njs 는 Zwietering 이고 S 는 D/T 로 보정했다.</p>
+    종말속도는 Stokes 초기값을 Schiller-Naumann 항력으로 수렴시키고, 간섭침강은 Richardson-Zaki
+    <code>(1−φ)^4.65</code> 로, 비구형은 형상계수로 늦춘다. 초기분포는 체적비이므로 정치 <code>t</code> 뒤
+    분할면 <code>z_d</code> 아래에 남는 질량비는 <code>V(z_d + v·t)/V_liq</code> 이다.
+    Njs 는 Zwietering 이고 S 는 D/T 로 보정했다 — 분산이 성립하는지 보는 데만 쓴다.</p>
   <p><b>Monte Carlo.</b> 3×3 유효밀도의 평균을 <code>N(µ,σ)</code> 에서 표본하여 배치 간 산포를 만들고,
     그 분포의 10 / 90 백분위로 KPI 를 판정한다. 표본 수는 왼쪽에서 조정한다.</p>
   <p><b>한계.</b> 여기 나오는 값은 <b>설계 참고값이며 성능 보증값이 아니다.</b> 응집·간섭침강·벽면 효과·형상계수를
@@ -316,18 +316,30 @@
 
 /* ══ 설계 상수 (도면 Rev.A) ═══════════════════════════════════════════ */
 var ID=0.400, R=0.200, HALF=Math.PI/6, TAN=Math.tan(HALF);
-var APEX=R/TAN, Z_TAN=APEX*1000, Z_LEVEL=720, Z_RING=300;
-var TRAVEL=(Z_LEVEL-Z_TAN)/1000;          // 0.37359 m
-var AREA=Math.PI/4*ID*ID, V_LIQ=61.46e-3; // m2, m3
-var D_IMP=0.300, NP=1.27, G=9.81, SIG=0.076, RHO_AIR=1.2, RHO_SI=2330, PACK=0.55;
-var D_HOLE=1.0e-3, N_HOLE=60;
+var Z_TAN=(R/TAN)*1000, Z_LEVEL=720, Z_RING=300;
+var Z_OUT=(34.8/2)/TAN;                        // 1.5" 배출 내경에서 자른 콘 시작 Z30.1
+var AREA=Math.PI/4*ID*ID;
+var D_IMP=0.300, NP=1.27, G=9.81, RHO_SI=2330, PACK=0.55;
 var BINS=[[31,45],[45,60],[60,75]], BINW=[0.33,0.34,0.33];
 var MATS=[
-  {id:"EVA", ko:"EVA",   rho:[[980,70],[950,60],[920,50]],    poly:true,  phob:1.0},
-  {id:"BS",  ko:"백시트", rho:[[1110,100],[1060,90],[1010,80]], poly:true,  phob:0.85},
-  {id:"Si",  ko:"실리콘", rho:[[2330,25],[2330,22],[2330,20]],  poly:false, phob:0}
+  {id:"EVA", ko:"EVA",   rho:[[980,70],[950,60],[920,50]],    poly:true},
+  {id:"BS",  ko:"백시트", rho:[[1110,100],[1060,90],[1010,80]], poly:true},
+  {id:"Si",  ko:"실리콘", rho:[[2330,25],[2330,22],[2330,20]],  poly:false}
 ];
 var LIM={poly:80, siLoss:3, siRec:90, botPoly:12};
+
+/* 콘+동체의 누적 체적 — 배출량을 분할면 높이로 옮기는 데 쓴다 */
+var V_CONE=Math.PI/3*Math.pow(Z_TAN*TAN,2)*Z_TAN/1e6;      // 14.50 L
+function volAt(z){
+  return z<=Z_TAN ? Math.PI/3*Math.pow(z*TAN,2)*z/1e6
+                  : V_CONE+Math.PI*200*200*(z-Z_TAN)/1e6;
+}
+function zForVol(V){
+  var lo=0, hi=946, m;
+  for(var i=0;i<70;i++){ m=(lo+hi)/2; if(volAt(m)<V) lo=m; else hi=m; }
+  return (lo+hi)/2;
+}
+var V_OUT=volAt(Z_OUT), V_LIQ=volAt(Z_LEVEL)-V_OUT;        // 61.45 L
 
 /* ══ 물성 ═════════════════════════════════════════════════════════════ */
 function rhoBr(w){ return 998+7.55*w; }
@@ -348,78 +360,53 @@ function terminal(rho_p,d,w,T){            // + 침강 (m/s)
   }
   return v;
 }
-function aggregate(rho_p,d_p,d_b){
-  var vp=Math.PI/6*d_p*d_p*d_p, vb=Math.PI/6*d_b*d_b*d_b;
-  return [(rho_p*vp+RHO_AIR*vb)/(vp+vb), Math.pow(6*(vp+vb)/Math.PI,1/3)];
+/* 간섭침강 — Richardson-Zaki. Feed 를 늘리면 전 입자가 함께 느려진다 */
+function phiSolids(s){
+  var vol=(s.kg*s.si/100)/RHO_SI + (s.kg*(1-s.si/100))/1000;   // m³
+  return vol/(V_LIQ/1000);
+}
+function slowdown(s){
+  return (s.hind ? Math.pow(1-Math.min(0.45,phiSolids(s)),4.65) : 1) * s.shape;
 }
 
-/* ══ 장치가 만드는 기포 ═══════════════════════════════════════════════ */
-function bubbles(s){
-  var rho=rhoBr(s.w), n=s.rpm/60;
-  var P=2*NP*rho*n*n*n*Math.pow(D_IMP,5);          // 2단 PBT
-  var eps=P/(V_LIQ*rho);
-  var dDet=Math.pow(6*D_HOLE*SIG/(G*(rho-RHO_AIR)),1/3);
-  var dHin=eps>1e-9 ? 0.725*Math.pow(SIG/rho,0.6)*Math.pow(eps,-0.4) : Infinity;
-  var dAuto=Math.min(dDet,dHin);
-  var epsNeed=Math.pow(0.725*Math.pow(SIG/rho,0.6)/200e-6,2.5);
-  return {P:P, eps:eps, dDet:dDet, dHin:dHin,
-          d_b:(s.bubMode==="man"? s.db*1e-6 : dAuto), auto:dAuto,
-          tip:Math.PI*D_IMP*n, epsNeed:epsNeed};
+/* ══ 교반은 분산 판정에만 쓴다 ═══════════════════════════════════════ */
+function shaftPower(s){
+  var n=s.rpm/60;
+  return 2*NP*rhoBr(s.w)*n*n*n*Math.pow(D_IMP,5);
 }
 function njs(s){
   var rho=rhoBr(s.w), mu=muBr(s.w,s.T);
-  var X=s.kg/(V_LIQ*rho)*100;
+  var X=s.kg/(V_LIQ/1000*rho)*100;
   var S=6.0*Math.pow(0.5/(D_IMP/ID),1.3);
   return S*Math.pow(mu/rho,0.1)*Math.pow(G*(RHO_SI-rho)/rho,0.45)*
          Math.pow(X,0.13)*Math.pow(50e-6,0.2)/Math.pow(D_IMP,0.85)*60;
 }
-/* 부착 — 1차 부선속도. E 는 차단 포집에 소수성 계수를 곱한다 */
-function attachFrac(s,B,i,mat){
-  if(s.air<=0) return 0;
-  var Ug=s.air/1000/60/AREA;
-  var ph=mat.poly ? mat.phob : 1/s.sel;      // 실리콘은 친수성 — 선택도로 낮춘다
-  var E=Math.pow(dp(i)/B.d_b,2)*ph*s.kf;
-  var k=1.5*Ug*E/B.d_b;
-  return 1-Math.exp(-k*s.mix*60);
-}
 
-/* ══ 결정론 계산 (한 세트의 유효밀도에 대해) ═════════════════════════ */
-function evaluate(s,B,rhoOf){
-  var polyMass=0, polyTop=0, siMass=0, siSunk=0, siTop=0, botPoly=0;
-  var cells=[];
+/* ══ 분할 계산 ════════════════════════════════════════════════════════
+   판정 기준은 「액면까지 올라왔는가」가 아니라 「하부 배출 분할면의
+   어느 쪽에 있는가」다. 실리콘은 분할면 아래로 내려가야 하고, 폴리머는
+   그 위에 남기만 하면 된다 — 액면까지 갈 필요가 없다.                */
+function evaluate(s,rhoOf){
+  var zd=zForVol(V_OUT+s.draw), f=slowdown(s);
+  var pm=0, pb=0, sm=0, sb=0, cells=[];
   for(var m=0;m<MATS.length;m++){
     var M=MATS[m];
     var share=M.poly ? (1-s.si/100)*(M.id==="EVA"? s.eva/100 : 1-s.eva/100) : s.si/100;
     for(var i=0;i<3;i++){
-      var mass=share*BINW[i];
-      var rp=rhoOf(m,i);
-      var att=attachFrac(s,B,i,M)*s.ret;
-      // 기포가 붙은 입자
-      var ag=aggregate(rp,dp(i),B.d_b), vB=terminal(ag[0],ag[1],s.w,s.T);
-      var tB=vB<0 ? TRAVEL/Math.abs(vB) : Infinity;
-      var fAtt=att*(s.set>=tB?1:0);
-      // 붙지 않은 입자
-      var v=terminal(rp,dp(i),s.w,s.T);
-      var t=Math.abs(v)<1e-12 ? Infinity : TRAVEL/Math.abs(v);
-      var reach=Math.min(1,s.set/t);
-      var fUp=(1-att)*(v<0?reach:0), fDn=(1-att)*(v>0?reach:0);
-      var top=fAtt+fUp, sunk=fDn, susp=1-top-sunk;
-      // 스키밍은 액면 아래 skim 두께만 걷는다 → 부유 중인 것의 일부가 함께 딸려 온다
-      var ent=susp*Math.min(1,s.skim/1000/TRAVEL);
-      top=Math.min(1,top+ent);
-      if(M.poly){ polyMass+=mass; polyTop+=mass*top; botPoly+=mass*sunk; }
-      else      { siMass+=mass;  siSunk+=mass*sunk; siTop+=mass*top; }
-      cells.push({m:m,i:i,rho:rp,att:att,t:t,reach:top,v:v});
+      var mass=share*BINW[i], rp=rhoOf(m,i);
+      var v=terminal(rp,dp(i),s.w,s.T)*1000*f;      // mm/s, + 침강
+      var shift=v*s.set;                            // 정치 동안의 이동 (mm, + 아래)
+      // 초기분포는 체적비. 분할면 아래에 남는 것은 z0 < zd+shift 인 것들이다.
+      var zb=Math.min(Z_LEVEL,Math.max(Z_OUT,zd+shift));
+      var below=(volAt(zb)-V_OUT)/V_LIQ;
+      if(M.poly){ pm+=mass; pb+=mass*below; }
+      else      { sm+=mass; sb+=mass*below; }
+      cells.push({m:m,i:i,rho:rp,v:v,shift:shift,below:below});
     }
   }
-  var bottom=siSunk+botPoly;
-  return {
-    poly: polyMass>0 ? polyTop/polyMass*100 : 0,
-    siLoss: siMass>0 ? siTop/siMass*100 : 0,
-    siRec: siMass>0 ? siSunk/siMass*100 : 0,
-    botPoly: bottom>0 ? botPoly/bottom*100 : 0,
-    cells: cells
-  };
+  var bottom=sb+pb;
+  return { poly:(pm-pb)/pm*100, siRec:sb/sm*100, siLoss:(sm-sb)/sm*100,
+           botPoly: bottom>0 ? pb/bottom*100 : 0, zd:zd, cells:cells };
 }
 
 /* ══ Monte Carlo — 배치 간 유효밀도 산포 ═════════════════════════════ */
@@ -430,18 +417,17 @@ function pct(a,p){ var b=a.slice().sort(function(x,y){return x-y;});
   return b[Math.min(b.length-1,Math.max(0,Math.round((b.length-1)*p)))]; }
 
 function run(s){
-  var B=bubbles(s);
-  var base=evaluate(s,B,function(m,i){ return MATS[m].rho[i][0]; });
+  var base=evaluate(s,function(m,i){ return MATS[m].rho[i][0]; });
   seed=20260911;
   var P={poly:[],siLoss:[],siRec:[],botPoly:[]};
   for(var n=0;n<s.mc;n++){
     var draw=[];
     for(var m=0;m<3;m++){ draw.push([]);
       for(var i=0;i<3;i++) draw[m].push(Math.max(300,MATS[m].rho[i][0]+MATS[m].rho[i][1]*gauss())); }
-    var r=evaluate(s,B,function(m,i){ return draw[m][i]; });
+    var r=evaluate(s,function(m,i){ return draw[m][i]; });
     P.poly.push(r.poly); P.siLoss.push(r.siLoss); P.siRec.push(r.siRec); P.botPoly.push(r.botPoly);
   }
-  return {B:B, base:base, njs:njs(s),
+  return {base:base, njs:njs(s),
     kpi:{
       poly:{v:base.poly, p10:pct(P.poly,0.10), p90:pct(P.poly,0.90), ok:pct(P.poly,0.10)>=LIM.poly},
       siLoss:{v:base.siLoss, p10:pct(P.siLoss,0.10), p90:pct(P.siLoss,0.90), ok:pct(P.siLoss,0.90)<=LIM.siLoss},
@@ -451,24 +437,21 @@ function run(s){
 }
 
 /* ══ 상태 ═════════════════════════════════════════════════════════════ */
-var S={w:15,T:20,mix:10,set:600,rpm:90,air:5,skim:30,kg:5,si:87.5,eva:50,
-       bubMode:"auto",db:200,ret:0.70,kf:1,sel:100,mc:300};
-var IDS=["w","T","mix","set","rpm","air","skim","kg","si","eva","db","ret","kf","sel","mc"];
-var DEC={w:1,T:0,mix:1,set:0,rpm:0,air:1,skim:0,kg:1,si:1,eva:0,db:0,ret:0,kf:2,sel:0,mc:0};
+var S={w:15,T:20,mix:10,set:600,rpm:90,air:5,draw:8,kg:5,si:87.5,eva:50,
+       hind:true,shape:1,mc:300};
+var IDS=["w","T","mix","set","rpm","air","draw","kg","si","eva","shape","mc"];
+var DEC={w:1,T:0,mix:1,set:0,rpm:0,air:1,draw:1,kg:1,si:1,eva:0,shape:2,mc:0};
 function $(id){ return document.getElementById(id); }
 
 function readInputs(){
   S.w=+$("w").value; S.T=+$("T").value; S.mix=+$("mix").value; S.set=+$("set").value;
-  S.rpm=+$("rpm").value; S.air=+$("air").value; S.skim=+$("skim").value;
+  S.rpm=+$("rpm").value; S.air=+$("air").value; S.draw=+$("draw").value;
   S.kg=+$("kg").value; S.si=+$("si").value; S.eva=+$("eva").value;
-  S.db=+$("db").value; S.ret=+$("ret").value/100; S.kf=Math.pow(10,+$("kf").value);
-  S.sel=Math.pow(10,+$("sel").value); S.mc=+$("mc").value;
+  S.shape=+$("shape").value; S.mc=+$("mc").value;
   IDS.forEach(function(k){
     var el=$(k+"V"); if(!el) return;
     var raw=+$(k).value;
-    el.textContent = k==="kf" ? Math.pow(10,raw).toFixed(2)
-                   : k==="sel" ? Math.round(Math.pow(10,raw)).toLocaleString("en-US")
-                   : raw.toFixed(DEC[k]);
+    el.textContent = raw.toFixed(DEC[k]);
   });
 }
 
@@ -554,10 +537,11 @@ function drawKin(res){
   var N=44, keep=S.set, ends=[], series=[[],[],[]];
   for(var i=0;i<=N;i++){
     S.set=TMAX*i/N;
-    var r=evaluate(S,res.B,function(mm,ii){ return MATS[mm].rho[ii][0]; });
+    var r=evaluate(S,function(mm,ii){ return MATS[mm].rho[ii][0]; });
     var acc=[[0,0],[0,0],[0,0]];
-    r.cells.forEach(function(cl){ acc[cl.m][0]+=BINW[cl.i]*cl.reach; acc[cl.m][1]+=BINW[cl.i]; });
-    for(var m=0;m<3;m++) series[m].push((m===2? r.siRec : acc[m][0]/acc[m][1]*100));
+    r.cells.forEach(function(cl){ acc[cl.m][0]+=BINW[cl.i]*cl.below; acc[cl.m][1]+=BINW[cl.i]; });
+    for(var m=0;m<3;m++)
+      series[m].push(m===2 ? r.siRec : (1-acc[m][0]/acc[m][1])*100);
   }
   S.set=keep;
   [0,1,2].forEach(function(m){
@@ -583,7 +567,6 @@ function drawKin(res){
 }
 
 /* ══ 출력 ═════════════════════════════════════════════════════════════ */
-function um(m){ return m*1e6>=1000 ? (m*1000).toFixed(2)+" mm" : (m*1e6).toFixed(0)+" µm"; }
 function setKpi(el,k,val,band,ok,unit){
   el.className="kpi "+(ok?"pass":"fail");
   el.querySelector("b").textContent=val.toFixed(1)+" "+unit;
@@ -591,7 +574,7 @@ function setKpi(el,k,val,band,ok,unit){
 }
 function render(){
   readInputs();
-  var res=run(S), B=res.B, K=res.kpi;
+  var res=run(S), K=res.kpi, base=res.base;
   var rho=rhoBr(S.w), mu=muBr(S.w,S.T);
 
   // 판정
@@ -609,82 +592,94 @@ function render(){
   setKpi($("k3"),"siRec",K.siRec.v,"P10 "+K.siRec.p10.toFixed(1),K.siRec.ok,"%");
   setKpi($("k4"),"botPoly",K.botPoly.v,"P90 "+K.botPoly.p90.toFixed(1),K.botPoly.ok,"%");
 
-  // 기포
-  var Ug=S.air/1000/60/AREA;
-  var E50=Math.pow(50e-6/B.d_b,2)*S.kf, k50=1.5*Ug*E50/B.d_b;
-  var t70=k50>0? -Math.log(0.3)/k50/60 : Infinity;
+  // 분할면과 필요 정치시간 — 가장 느린 실리콘이 액면에서 분할면까지 내려와야 한다
+  var f=slowdown(S);
+  var vSiMin=1e9;
+  base.cells.forEach(function(cl){ if(cl.m===2) vSiMin=Math.min(vSiMin,cl.v); });
+  var tReq=(Z_LEVEL-base.zd)/vSiMin;
+  var marg=(S.set-tReq)/tReq*100;
   $("outBub").innerHTML=[
-    ["Ø1.0 홀 이탈경 (Tate)", um(B.dDet)],
-    ["Hinze 파쇄한계 @"+S.rpm+" rpm", B.dHin===Infinity?"—":um(B.dHin)],
-    ["실제 기포경 d_b", "<span class='"+(B.d_b>4e-4?"w":"g")+"'>"+um(B.d_b)+"</span>"],
-    ["차단 포집 E (50 µm)", (E50*100).toFixed(3)+" %"],
-    ["부착 1차속도 k", k50.toExponential(2)+" 1/s"],
-    ["70 % 부착까지", t70===Infinity?"∞":(t70>=60?(t70/60).toFixed(1)+" h":t70.toFixed(1)+" min")],
-    ["표면 기체속도", (Ug*1000).toFixed(4)+" mm/s"]
+    ["하부 배출량", S.draw.toFixed(1)+" L / "+V_LIQ.toFixed(1)+" L"],
+    ["분할면", "Z"+base.zd.toFixed(0)],
+    ["상부 회수 액량", (V_LIQ-S.draw).toFixed(1)+" L"],
+    ["가장 느린 실리콘", vSiMin.toFixed(3)+" mm/s"],
+    ["필요 정치시간", tReq.toFixed(0)+" s"],
+    ["여유", "<span class='"+(marg<0?"d":marg<15?"w":"g")+"'>"+
+             (marg>=0?"+":"")+marg.toFixed(0)+" %</span>"],
+    ["간섭침강·형상 보정", "×"+f.toFixed(2)+" (고형분 "+(phiSolids(S)*100).toFixed(1)+" vol%)"],
+    ["중립 셀 하부 유입", (S.draw/V_LIQ*100).toFixed(1)+" % (체적비)"]
   ].map(function(r){ return "<span>"+r[0]+"</span><b>"+r[1]+"</b>"; }).join("");
 
-  // 교반·염수·침전
+  // 분산 판정 · 염수 · 침전
   var bed=Math.pow(S.kg*S.si/100/RHO_SI/PACK*1e9*3/(Math.PI*TAN*TAN),1/3);
-  var nacl=V_LIQ*1000*rho/1000*S.w/100;
+  var nacl=V_LIQ*rho/1000*S.w/100;
   var batch=S.mix*60+S.set;
+  var nj=njs(S), P=shaftPower(S);
   $("outMix").innerHTML=[
+    ["Njs (완전 현탁)", nj.toFixed(0)+" rpm → <span class='"+(S.rpm>=nj?"g":"d")+"'>"+
+      (S.rpm>=nj?"현탁 OK":"부족")+"</span>"],
+    ["축동력", P.toFixed(1)+" W · 팁 "+(Math.PI*D_IMP*S.rpm/60).toFixed(2)+" m/s"],
+    ["공기 (습윤·해쇄 보조)", S.air.toFixed(1)+" L/min · 표면 "+
+      (S.air/1000/60/AREA*1000).toFixed(3)+" mm/s"],
     ["염수 밀도 ρ", rho.toFixed(1)+" kg/m³"],
     ["점도 µ @"+S.T+" °C", (mu*1000).toFixed(3)+" mPa·s"],
-    ["Cl⁻", (S.w*10000*35.45/58.44).toLocaleString("en-US",{maximumFractionDigits:0})+" mg/kg"],
-    ["NaCl 소요", nacl.toFixed(1)+" kg / 배치"],
-    ["Njs (완전 현탁)", njs(S).toFixed(0)+" rpm"],
-    ["축동력", B.P.toFixed(1)+" W · 팁 "+B.tip.toFixed(2)+" m/s"],
+    ["Cl⁻ · NaCl", (S.w*10000*35.45/58.44).toLocaleString("en-US",{maximumFractionDigits:0})+
+      " mg/kg · "+nacl.toFixed(1)+" kg"],
     ["침전 상단", "Z"+bed.toFixed(0)+(bed>Z_RING?" <span class='d'>링 매몰</span>":"")],
     ["배치 시간", (batch/60).toFixed(0)+" min (분산+정치)"]
   ].map(function(r){ return "<span>"+r[0]+"</span><b>"+r[1]+"</b>"; }).join("");
 
-  // 3×3
-  $("cellT").querySelector("tbody").innerHTML=res.base.cells.map(function(cl){
-    var M=MATS[cl.m], cls=cl.t>86400?"neu":(cl.v<0?"up":"dn");
-    var ts=cl.t>86400?"∞":(cl.t>=1000?(cl.t/1000).toFixed(1)+"k":cl.t.toFixed(0));
+  // 3×3 — 속도 · 정치 동안의 이동 · 분할면 아래에 남는 비율
+  $("cellT").querySelector("tbody").innerHTML=base.cells.map(function(cl){
+    var M=MATS[cl.m], cls=Math.abs(cl.v)<2e-3?"neu":(cl.v<0?"up":"dn");
+    var mv=Math.abs(cl.shift)>=1000 ? (cl.shift/1000).toFixed(1)+"m"
+                                    : cl.shift.toFixed(0);
     return "<tr><td class='name'>"+M.ko+" "+BINS[cl.i][0]+"–"+BINS[cl.i][1]+"</td>"+
-      "<td>"+cl.rho.toFixed(0)+"</td><td>"+(cl.att*100).toFixed(0)+"%</td>"+
-      "<td class='"+cls+"'>"+ts+"</td><td>"+(cl.reach*100).toFixed(0)+"%</td></tr>";
+      "<td>"+cl.rho.toFixed(0)+"</td><td class='"+cls+"'>"+cl.v.toFixed(2)+"</td>"+
+      "<td>"+mv+"</td><td>"+(cl.below*100).toFixed(0)+"%</td></tr>";
   }).join("");
 
   // 배지
   $("pillCut").textContent="밀도컷 "+rho.toFixed(0);
-  $("pillBub").textContent="기포 "+um(B.d_b);
-  $("pillBub").className="badge "+(B.d_b<=4e-4?"on":"off");
-  var sus=S.rpm>=njs(S);
-  $("pillSus").textContent=sus?"현탁 OK":"현탁 부족";
+  $("pillBub").textContent="분할면 Z"+base.zd.toFixed(0);
+  $("pillBub").className="badge "+(marg>=0?"on":"off");
+  var sus=S.rpm>=nj;
+  $("pillSus").textContent=sus?"분산 OK":"분산 부족";
   $("pillSus").className="badge "+(sus?"on":"off");
   $("cutNote").textContent="ρ "+rho.toFixed(1)+" · "+S.w.toFixed(1)+" wt%";
-  $("kinNote").textContent="정치 "+S.set+" s";
+  $("kinNote").textContent="정치 "+S.set+" s · 배출 "+S.draw.toFixed(1)+" L";
   $("feedNote").textContent=(S.kg*(1-S.si/100)).toFixed(2)+" kg 폴리머";
 
   // 경고
   var A=[];
-  if(B.d_b>4e-4 && S.air>0) A.push(["bad","기포",
-    "장치가 만드는 기포는 <b>"+um(B.d_b)+"</b> 다. 회수 모델이 기대는 Ø200 µm 를 교반으로 만들려면 "+
-    B.epsNeed.toFixed(0)+" W/kg — 지금의 <b>"+(B.epsNeed/Math.max(B.eps,1e-9)).toFixed(0)+
-    "배</b>가 필요하다. 미세기포는 벤투리·이젝터나 다공막 스파저 같은 별도 장치로 만들어야 한다."]);
-  if(S.rpm<njs(S)) A.push(["","현탁",
-    "rpm "+S.rpm+" 이 Njs "+njs(S).toFixed(0)+" 보다 낮다. 바닥에 가라앉은 채로 도는 입자가 있어 "+
-    "'분리 실패'와 '분산 부족'이 섞인다."]);
-  if(bed>Z_RING) A.push(["bad","침전",
-    "침전 상단 Z"+bed.toFixed(0)+" 이 분산 링 Z300 을 덮는다. Feed 를 줄이거나 중간 배출이 필요하다."]);
-  if(S.w>20) A.push(["bad","염수",
-    "NaCl "+S.w.toFixed(1)+" wt% 는 포화(26.4)에 가깝다. 온도가 내려가거나 증발하면 결정이 나와 "+
-    "Ø1.0 분사홀 60 개가 먼저 막힌다. Cl⁻ 도 316L 의 안전역을 넘는다."]);
-  else if(S.w>18) A.push(["","재질",
-    "Cl⁻ 가 316L(PREN≈25)의 상용 한계에 접근한다. 장기 시험이면 습부 재질을 다시 보라."]);
+  if(marg<0) A.push(["bad","정치",
+    "가장 느린 실리콘(31–45 µm)이 액면에서 분할면 Z"+base.zd.toFixed(0)+" 까지 내려오는 데 "+
+    tReq.toFixed(0)+" s 가 걸리는데 정치시간은 "+S.set+" s 다. <b>덜 내려온 실리콘이 상부 제품으로 간다.</b> "+
+    "정치시간을 늘리거나 배출량을 키워 분할면을 올려라."]);
+  else if(marg<15) A.push(["","정치",
+    "여유가 "+marg.toFixed(0)+" % 뿐이다. 온도가 낮거나 Feed 가 늘면 바로 넘어간다 — "+
+    "필요 "+tReq.toFixed(0)+" s, 설정 "+S.set+" s."]);
   var wCut=(1110-998)/7.55;
   if(Math.abs(S.w-wCut)<0.6) A.push(["","밀도컷",
     "설계점이 백시트 31–45 µm 의 중립점("+wCut.toFixed(2)+" wt%)에서 "+
-    Math.abs(S.w-wCut).toFixed(2)+" %p 안에 있다. 염도 관리 오차만으로 그 셀의 부호가 뒤집힌다."]);
-  var tSiMax=0;
-  res.base.cells.forEach(function(cl){ if(cl.m===2&&cl.t<1e6) tSiMax=Math.max(tSiMax,cl.t); });
-  if(S.set<tSiMax) A.push(["","정치",
-    "가장 느린 실리콘 셀의 통과시간이 "+tSiMax.toFixed(0)+" s 인데 정치시간은 "+S.set+" s 다. "+
-    "미세 실리콘이 상부에 남아 Top Si loss 로 계상된다."]);
+    Math.abs(S.w-wCut).toFixed(2)+" %p 안에 있다. 이 셀은 제자리에 머물러 <b>배출 체적비 "+
+    (S.draw/V_LIQ*100).toFixed(0)+" % 만큼 그대로 하부로 끌려간다.</b> 폴리머 손실의 주 경로다."]);
+  if(S.rpm<nj) A.push(["","분산",
+    "rpm "+S.rpm+" 이 Njs "+nj.toFixed(0)+" 보다 낮다. 바닥에 가라앉은 채로 도는 입자가 있어 "+
+    "'분산 부족'과 '분리 실패'가 섞인다 — 분리 성능이 아니라 <b>초기 조건</b>이 무너지는 경우다."]);
+  if(bed>Z_RING) A.push(["bad","침전",
+    "침전 상단 Z"+bed.toFixed(0)+" 이 분산 링 Z300 을 덮는다. Feed 를 줄이거나 중간 배출이 필요하다."]);
+  if(S.draw>=V_CONE+6) A.push(["","배출",
+    "배출량 "+S.draw.toFixed(1)+" L 는 콘 용적("+V_CONE.toFixed(1)+" L)을 크게 넘는다. "+
+    "실리콘 확보에는 안전하지만 상부 폴리머를 그만큼 함께 버린다."]);
+  if(S.w>20) A.push(["bad","염수",
+    "NaCl "+S.w.toFixed(1)+" wt% 는 포화(26.4)에 가깝다. 결정 석출로 Ø1.0 분사홀이 먼저 막히고, "+
+    "Cl⁻ 도 316L 안전역을 넘는다."]);
+  else if(S.w>18) A.push(["","재질",
+    "Cl⁻ 가 316L(PREN≈25)의 상용 한계에 접근한다. 장기 시험이면 습부 재질을 다시 보라."]);
   if(S.air===0) A.push(["","공기",
-    "공기 0 — 순수 밀도차만 남는다. 폴리머 도달률이 KPI 아래로 내려가는 조건이다."]);
+    "공기 0 — 분리 자체는 밀도차로 진행되므로 KPI 는 거의 변하지 않는다. 다만 소수성 폴리머의 "+
+    "습윤·해쇄가 나빠져 <b>초기 분산</b>이 균질하지 않을 수 있다."]);
   if(!A.length) A.push(["ok","상태","걸리는 항목이 없다."]);
   $("alerts").innerHTML=A.map(function(a){
     return "<div class='alert "+a[0]+"'><span class='k'>"+a[1]+"</span><span>"+a[2]+"</span></div>"; }).join("");
@@ -700,7 +695,7 @@ function saveSnaps(){ try{ localStorage.setItem("mp50snap",JSON.stringify(SNAPS)
 function drawSnaps(){
   $("snapT").querySelector("tbody").innerHTML=SNAPS.map(function(r,i){
     return "<tr><td>"+(i+1)+"</td><td>"+r.w.toFixed(1)+"</td><td>"+r.T+"</td><td>"+r.rpm+"</td>"+
-      "<td>"+r.air.toFixed(1)+"</td><td>"+r.mix.toFixed(1)+"m</td><td>"+r.set+"s</td>"+
+      "<td>"+r.draw.toFixed(1)+"L</td><td>"+r.mix.toFixed(1)+"m</td><td>"+r.set+"s</td>"+
       "<td>"+r.poly.toFixed(1)+"</td><td>"+r.siLoss.toFixed(2)+"</td><td>"+r.siRec.toFixed(1)+"</td>"+
       "<td class='"+(r.pass?"up":"dn")+"'>"+(r.pass?"PASS":"FAIL")+"</td></tr>";
   }).join("");
@@ -708,7 +703,7 @@ function drawSnaps(){
 }
 $("snap").addEventListener("click",function(){
   var o=render();
-  SNAPS.push({w:S.w,T:S.T,rpm:S.rpm,air:S.air,mix:S.mix,set:S.set,
+  SNAPS.push({w:S.w,T:S.T,rpm:S.rpm,draw:S.draw,mix:S.mix,set:S.set,
     poly:o.res.kpi.poly.v, siLoss:o.res.kpi.siLoss.v, siRec:o.res.kpi.siRec.v, pass:o.pass});
   if(SNAPS.length>14) SNAPS.shift();
   saveSnaps(); drawSnaps();
@@ -717,19 +712,18 @@ $("clearSnap").addEventListener("click",function(){ SNAPS=[]; saveSnaps(); drawS
 
 /* ══ 이벤트 ═══════════════════════════════════════════════════════════ */
 IDS.forEach(function(k){ var el=$(k); if(el) el.addEventListener("input",render); });
-$("bubMode").addEventListener("click",function(e){
+$("hindMode").addEventListener("click",function(e){
   var b=e.target.closest("button"); if(!b) return;
-  S.bubMode=b.dataset.m;
+  S.hind=(b.dataset.m==="on");
   [].forEach.call(this.children,function(c){ c.setAttribute("aria-pressed",c===b?"true":"false"); });
-  $("bubManual").hidden = S.bubMode!=="man";
   render();
 });
 $("reset").addEventListener("click",function(){
-  var D={w:15,T:20,mix:10,set:600,rpm:90,air:5,skim:30,kg:5,si:87.5,eva:50,db:200,ret:70,kf:0,sel:2,mc:300};
+  var D={w:15,T:20,mix:10,set:600,rpm:90,air:5,draw:8,kg:5,si:87.5,eva:50,shape:1,mc:300};
   Object.keys(D).forEach(function(k){ if($(k)) $(k).value=D[k]; });
-  S.bubMode="auto"; $("bubManual").hidden=true;
-  [].forEach.call($("bubMode").children,function(c){
-    c.setAttribute("aria-pressed",c.dataset.m==="auto"?"true":"false"); });
+  S.hind=true;
+  [].forEach.call($("hindMode").children,function(c){
+    c.setAttribute("aria-pressed",c.dataset.m==="on"?"true":"false"); });
   render();
 });
 $("theme").addEventListener("click",function(){

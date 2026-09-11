@@ -1,14 +1,18 @@
 """MP-50 운전조건 콘솔 검증 — 요인을 움직였을 때 나오는 수가 실제 식에서 나오는가.
 
-콘솔은 도면 Rev.A 의 물성·기하 위에 세 가지 모델을 더 얹었다. 셋 다 여기서 다시
-세워 HTML 이 품은 상수·식과 대조한다.
+이 장비는 부선기가 아니다. 연구문서 §1 이 못박은 대로 **임펠러와 공기는 분산 수단이며
+분리 수단이 아니다.** 제품은 하부 배출과 상부 잔류의 **벌크 분할**이므로, 판정 기준은
+「폴리머가 액면까지 올라왔는가」가 아니라 **「분할면의 어느 쪽에 있는가」** 다.
 
-  · 기포경   — Ø1.0 홀의 Tate 이탈경과 임펠러 난류의 Hinze 파쇄한계 중 작은 쪽
-  · 부착     — 1차 부선속도 k = 1.5·U_g·E/d_b, 차단 포집 E = (d_p/d_b)²
+콘솔은 도면 Rev.B 의 물성·기하 위에 세 가지를 더 얹었다. 셋 다 여기서 다시 세워
+HTML 이 품은 상수·식과 대조한다.
+
+  · 분할면   — 하부 배출량 → 누적 체적 → 분할면 높이 z_d
+  · 간섭침강 — Richardson-Zaki (1−φ)^4.65 로 Feed 량이 KPI 에 실제로 걸리게 한다
   · 온도     — 20 °C 상관식에 물의 점도 온도의존성을 곱한다
 
-이 모듈이 특히 잠그는 것은 **콘솔이 스스로 내놓는 결론**이다. 현 스파저·교반으로는
-Ø200 µm 기포가 나오지 않는다는 것, 그리고 그 사실이 회수율 KPI 를 좌우한다는 것.
+이 모듈이 특히 잠그는 것은 **지배 변수가 정치시간이라는 결론**이다 — 가장 느린
+실리콘이 분할면까지 내려오는 시간이 DOE 의 최대 600 s 를 넘는다.
 """
 
 import math
@@ -26,12 +30,17 @@ CONSOLE = pathlib.Path(__file__).resolve().parents[1] / "docs" / "drawings" / "m
 ID, R = 0.400, 0.200
 HALF = math.radians(30)
 AREA = math.pi / 4 * ID ** 2
-V_LIQ = 61.46e-3                     # 액면 Z720 의 액량 m³
+V_LIQ_M3 = 61.46e-3                  # 액면 Z720 의 액량 m³ (교반 계산용)
 D_IMP, NP = 0.300, 1.27
-G, SIG, RHO_AIR, RHO_SI, PACK = 9.81, 0.076, 1.2, 2330.0, 0.55
-D_HOLE = 1.0e-3
-Z_RING = 300.0
+G, RHO_SI, PACK = 9.81, 2330.0, 0.55
+Z_RING, Z_LEVEL = 300.0, 720.0
+Z_TAN = 200.0 / math.tan(HALF)                   # 346.41 mm
+Z_OUT = (34.8 / 2) / math.tan(HALF)              # 30.14
 BINS = [(31, 45), (45, 60), (60, 75)]
+PSD_W = [0.33, 0.34, 0.33]
+RHO_EFF = {"EVA": [980, 950, 920], "BS": [1110, 1060, 1010], "Si": [2330, 2330, 2330]}
+FEED_WT = {"EVA": 0.0625, "BS": 0.0625, "Si": 0.875}
+DRAW_L = 8.0
 LIMITS = {"poly": 80, "siLoss": 3, "siRec": 90, "botPoly": 12}
 
 
@@ -54,32 +63,72 @@ def shaft_power(rpm, w=15):
 
 
 def epsilon(rpm, w=15):
-    return shaft_power(rpm, w) / (V_LIQ * rho_br(w))
+    return shaft_power(rpm, w) / (V_LIQ_M3 * rho_br(w))
 
 
-def d_tate(w=15):
-    """오리피스에서 부력으로 떨어져 나올 때의 기포경."""
-    return (6 * D_HOLE * SIG / (G * (rho_br(w) - RHO_AIR))) ** (1 / 3)
+def vol_at(z):
+    """콘 정점 Z0 에서 z 까지의 누적 체적 (L)."""
+    if z <= Z_TAN:
+        return math.pi / 3 * (z * math.tan(HALF)) ** 2 * z / 1e6
+    return (math.pi / 3 * (Z_TAN * math.tan(HALF)) ** 2 * Z_TAN / 1e6
+            + math.pi * 200 * 200 * (z - Z_TAN) / 1e6)
 
 
-def d_hinze(rpm, w=15):
-    return 0.725 * (SIG / rho_br(w)) ** 0.6 * epsilon(rpm, w) ** -0.4
+def z_for_vol(v):
+    lo, hi = 0.0, 946.0
+    for _ in range(80):
+        m = (lo + hi) / 2
+        if vol_at(m) < v:
+            lo = m
+        else:
+            hi = m
+    return (lo + hi) / 2
 
 
-def eps_for(d, w=15):
-    """그 기포경을 난류로 유지하려면 필요한 소산율."""
-    return (0.725 * (SIG / rho_br(w)) ** 0.6 / d) ** 2.5
+V_LIQ = vol_at(Z_LEVEL) - vol_at(Z_OUT)          # 61.45 L
+PHI = ((5 * 0.875) / RHO_SI + (5 * 0.125) / 1000) / (V_LIQ / 1000)
+HIND = (1 - PHI) ** 4.65                          # Richardson-Zaki
 
 
-def k_float(air_lpm, d_b, d_p, phob=1.0):
-    """1차 부선속도 (1/s)."""
-    ug = air_lpm / 1000 / 60 / AREA
-    return 1.5 * ug * (d_p / d_b) ** 2 * phob / d_b
+def v_mm(rho_p, d, w, T=20, hind=True):
+    """mm/s, + 침강."""
+    return (rho_p - rho_br(w)) * G * d * d / (18 * mu_br(w, T)) * 1000 * (HIND if hind else 1.0)
+
+
+def z_draw(draw_l=DRAW_L):
+    return z_for_vol(vol_at(Z_OUT) + draw_l)
+
+
+def t_need(w=15, draw_l=DRAW_L, T=20):
+    """가장 느린 실리콘이 액면에서 분할면까지 내려오는 시간 (구간 중앙값 기준)."""
+    zd = z_draw(draw_l)
+    slow = min(v_mm(2330, (lo + hi) / 2 * 1e-6, w, T) for lo, hi in BINS)
+    return (Z_LEVEL - zd) / slow
+
+
+def split_kpi(w=15, t=600.0, draw_l=DRAW_L, T=20):
+    zd = z_draw(draw_l)
+    pm = pb = sm = sb = 0.0
+    for mat, fr in FEED_WT.items():
+        for i, (lo, hi) in enumerate(BINS):
+            m = fr * PSD_W[i]
+            v = v_mm(RHO_EFF[mat][i], (lo + hi) / 2 * 1e-6, w, T)
+            zb = min(Z_LEVEL, max(Z_OUT, zd + v * t))
+            below = (vol_at(zb) - vol_at(Z_OUT)) / V_LIQ
+            if mat == "Si":
+                sm += m
+                sb += m * below
+            else:
+                pm += m
+                pb += m * below
+    bot = sb + pb
+    return dict(top_poly=(pm - pb) / pm * 100, bot_si=sb / sm * 100,
+                si_loss=(sm - sb) / sm * 100, bot_poly=pb / bot * 100 if bot else 0.0)
 
 
 def njs(w=15, T=20, kg=5.0, dp=50e-6):
     rho, mu = rho_br(w), mu_br(w, T)
-    X = kg / (V_LIQ * rho) * 100
+    X = kg / (V_LIQ_M3 * rho) * 100
     S = 6.0 * (0.5 / (D_IMP / ID)) ** 1.3
     return (S * (mu / rho) ** 0.1 * (G * (RHO_SI - rho) / rho) ** 0.45
             * X ** 0.13 * dp ** 0.2 / D_IMP ** 0.85 * 60)
@@ -105,8 +154,8 @@ class TestConsoleDocument(unittest.TestCase):
 
     def test_every_factor_has_a_control(self):
         """요인을 하나 지우면 콘솔이 아니라 그림이 된다."""
-        for fid in ("w", "T", "mix", "set", "rpm", "air", "skim",
-                    "kg", "si", "eva", "db", "ret", "kf", "sel", "mc"):
+        for fid in ("w", "T", "mix", "set", "rpm", "air", "draw",
+                    "kg", "si", "eva", "shape", "mc"):
             self.assertRegex(self.html, r'id="%s"[^>]*type="range"|type="range"[^>]*id="%s"' % (fid, fid),
                              f"요인 {fid} 슬라이더가 없다")
 
@@ -121,47 +170,55 @@ class TestConsoleDocument(unittest.TestCase):
         self.assertGreaterEqual(int(m.group(2)), 18)
 
 
-class TestBubbleModel(unittest.TestCase):
-    """콘솔의 핵심 결론 — 현 장치는 미세기포를 못 만든다."""
+class TestSplitCriterion(unittest.TestCase):
+    """판정 기준 — 부선이 아니라 벌크 분할이다."""
 
     @classmethod
     def setUpClass(cls):
         cls.html = CONSOLE.read_text(encoding="utf-8")
 
-    def test_tate_detachment_from_the_1mm_hole(self):
-        self.assertAlmostEqual(d_tate() * 1000, 3.47, delta=0.02)
-        self.assertIn("6*D_HOLE*SIG/(G*(rho-RHO_AIR))", self.html.replace(" ", ""))
-        self.assertIn("D_HOLE=1.0e-3", self.html.replace(" ", ""))
+    def test_draw_volume_sets_the_plane(self):
+        """배출 8 L 를 빼면 분할면은 Z284 다 — 콘(14.5 L)보다 얕은 컷이다."""
+        self.assertAlmostEqual(V_LIQ, 61.45, delta=0.05)
+        self.assertAlmostEqual(z_draw(8.0), 284, delta=1)
+        self.assertLess(z_draw(8.0), Z_TAN, "분할면이 콘 접선보다 위면 배출이 과하다")
+        self.assertIn("zForVol(V_OUT+s.draw)", self.html.replace(" ", ""))
 
-    def test_hinze_limit_at_the_doe_ceiling(self):
-        """DOE 상한 90 rpm 에서도 파쇄한계가 mm 급이다."""
-        self.assertAlmostEqual(epsilon(90), 0.339, delta=0.01)
-        self.assertAlmostEqual(shaft_power(90), 23.1, delta=0.2)
-        self.assertAlmostEqual(d_hinze(90) * 1000, 3.54, delta=0.05)
-        self.assertGreater(min(d_tate(), d_hinze(90)), 1e-3, "교반으로 mm 아래로 못 내려간다")
-        self.assertIn("0.725*Math.pow(SIG/rho,0.6)*Math.pow(eps,-0.4)", self.html.replace(" ", ""))
+    def test_polymer_need_not_reach_the_surface(self):
+        """정치 600 s 에 EVA 는 40~185 mm 올라갈 뿐인데도 회수율이 90 % 를 넘는다."""
+        rise = [abs(v_mm(RHO_EFF["EVA"][i], (lo + hi) / 2 * 1e-6, 15)) * 600
+                for i, (lo, hi) in enumerate(BINS)]
+        self.assertLess(max(rise), 200, "액면까지 가지 못한다")
+        self.assertGreater(split_kpi(15, 600)["top_poly"], 90, "그래도 상부에 남는다")
+        self.assertIn("분할면의 어느 쪽에 있는가", self.html)
 
-    def test_200um_by_stirring_is_out_of_reach(self):
-        """Ø200 µm 를 교반으로 만들려면 지금의 세 자릿수 배가 필요하다."""
-        need = eps_for(200e-6)
-        self.assertAlmostEqual(need, 447, delta=5)
-        self.assertGreater(need / epsilon(90), 1000)
-        self.assertIn("미세기포는 벤투리·이젝터나 다공막 스파저 같은 별도 장치로", self.html)
+    def test_air_and_impeller_are_not_in_the_kpi(self):
+        """공기·rpm 은 분산 판정에만 쓰인다 — KPI 식에 들어가면 안 된다."""
+        body = self.html[self.html.index("function evaluate("):self.html.index("function run(")]
+        for token in ("air", "rpm", "mix"):
+            self.assertNotIn("s." + token, body, f"분리 계산에 s.{token} 이 들어갔다")
+        self.assertIn("분산 수단이지 분리 수단이 아니다", self.html)
 
-    def test_attachment_rate_collapses_with_bubble_size(self):
-        """3.5 mm 기포로는 몇 시간, 200 µm 면 몇 초 — 이 대비가 설계의 전부다."""
-        k_big = k_float(5, d_tate(), 50e-6)
-        k_fine = k_float(5, 200e-6, 50e-6)
-        t70_big = -math.log(0.3) / k_big
-        t70_fine = -math.log(0.3) / k_fine
-        self.assertGreater(t70_big / 3600, 5, "현 스파저로 70 % 부착에 5시간 이상")
-        self.assertLess(t70_fine, 10, "미세기포면 10초 안")
-        self.assertGreater(k_fine / k_big, 1000)
-        self.assertIn("k=1.5*Ug*E/B.d_b", self.html.replace(" ", ""))
+    def test_settle_time_is_the_binding_variable(self):
+        """가장 느린 실리콘이 분할면까지 내려오는 시간이 DOE 상한 600 s 를 넘는다."""
+        self.assertAlmostEqual(t_need(15), 700, delta=10)
+        self.assertGreater(t_need(15), 600, "600 s 로 충분하면 이 도면의 결론이 무너진다")
+        self.assertGreater(t_need(18), t_need(12), "염도를 올리면 더 오래 걸린다")
+        self.assertGreater(split_kpi(15, 600)["si_loss"], 3, "600 s 에서는 기준을 넘는다")
+        self.assertLess(split_kpi(18, 900)["si_loss"], 3, "900 s 면 들어온다")
 
-    def test_interception_efficiency_form(self):
-        self.assertIn("Math.pow(dp(i)/B.d_b,2)", self.html.replace(" ", ""))
-        self.assertIn("E=(d_p/d_b)²", self.html)
+    def test_hindered_settling_makes_feed_matter(self):
+        """Feed 5 kg 의 간섭침강은 18 % 만큼 느리게 만든다."""
+        self.assertAlmostEqual(HIND, 0.82, delta=0.02)
+        self.assertAlmostEqual(PHI * 100, 4.1, delta=0.2)
+        self.assertIn("Math.pow(1-Math.min(0.45,phiSolids(s)),4.65)", self.html.replace(" ", ""))
+
+    def test_neutral_cell_is_the_polymer_loss_path(self):
+        """중립 셀은 제자리에 있으므로 배출 체적비만큼 그대로 하부로 간다."""
+        v = v_mm(RHO_EFF["BS"][0], 38e-6, 15)
+        self.assertLess(abs(v) * 600, 3, "15 % 에서 31–45 µm 백시트는 사실상 중립")
+        self.assertAlmostEqual(DRAW_L / V_LIQ * 100, 13.0, delta=0.3)
+        self.assertIn("중립 셀 하부 유입", self.html)
 
 
 class TestPhysicsCarriedFromTheDrawings(unittest.TestCase):
@@ -229,10 +286,12 @@ class TestVerdictLogic(unittest.TestCase):
         """같은 조건이면 같은 답이 나와야 조건 비교가 의미를 갖는다."""
         self.assertIn("seed=20260911", self.html.replace(" ", ""))
 
-    def test_silicon_selectivity_is_a_factor_not_a_constant(self):
-        """미세기포를 쓰면 실리콘도 뜬다 — 선택도를 손잡이로 내놓아야 한다."""
-        self.assertIn('id="sel"', self.html)
-        self.assertIn("ph=mat.poly?mat.phob:1/s.sel", self.html.replace(" ", ""))
+    def test_draw_volume_is_a_factor(self):
+        """배출량은 Top polymer 와 Bottom Si 를 맞바꾸는 손잡이다."""
+        self.assertIn('id="draw"', self.html)
+        small, big = split_kpi(15, 600, 3.0), split_kpi(15, 600, 16.0)
+        self.assertGreater(small["top_poly"], big["top_poly"])
+        self.assertLess(small["bot_si"], big["bot_si"])
 
     def test_assumptions_are_labelled(self):
         self.assertIn("ASSUMED", self.html)

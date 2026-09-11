@@ -211,14 +211,14 @@
 <header>
   <div class="top">
     <div>
-      <p class="eyebrow">MP-50-P0-004 · 층분리 운동학 · Rev.A</p>
-      <h1>정지한 뒤 600 초 동안 무슨 일이 일어나는가</h1>
+      <p class="eyebrow">MP-50-P0-004 · 층분리 운동학 · Rev.B</p>
+      <h1>정지한 뒤 실리콘이 분할면을 넘는다</h1>
     </div>
     <button class="theme-btn" id="theme" type="button">테마</button>
   </div>
   <p class="lede">임펠러와 공기를 <b>동시에</b> 끊은 순간이 t&nbsp;=&nbsp;0 이다. 그 뒤로는 중력과 부력만 남는다.
-    EVA 와 백시트는 액면 Z720 으로 올라가 FLOAT 층을 만들고, 실리콘은 60° 콘으로 내려가 SINK 층이 된다.
-    아래 재생 화면은 그 과정을 도면이 쓴 식 그대로 입자 1,000 개에 적용해 계산한 것이다.</p>
+    실리콘은 60° 콘으로 내려가 하부 배출 체적 안으로 들어가고, EVA 와 백시트는 그 위에 남는다.
+    폴리머는 <b>액면까지 갈 필요가 없다</b> — 파선으로 그린 <b>분할면</b> 위에 남기만 하면 상부 제품이다.</p>
 </header>
 
 <div class="player">
@@ -235,27 +235,27 @@
     </section>
 
     <section>
-      <h2>층 도달률 (질량 기준)</h2>
+      <h2>분할면 배분 (질량 기준)</h2>
       <div class="kpis">
         <div class="kpi" id="kEva"><i class="swatch eva"></i>
-          <span class="nm">EVA → FLOAT<small>ρ 920–980</small></span><span class="v">0.0 %</span></div>
+          <span class="nm">EVA 상부 잔류<small>ρ 920–980</small></span><span class="v">0.0 %</span></div>
         <div class="kpi" id="kBs"><i class="swatch bs"></i>
-          <span class="nm">백시트 → FLOAT<small>ρ 1010–1110</small></span><span class="v">0.0 %</span></div>
+          <span class="nm">백시트 상부 잔류<small>ρ 1010–1110</small></span><span class="v">0.0 %</span></div>
         <div class="kpi" id="kSi"><i class="swatch si"></i>
-          <span class="nm">실리콘 → SINK<small>ρ 2330</small></span><span class="v">0.0 %</span></div>
+          <span class="nm">실리콘 하부 회수<small>ρ 2330</small></span><span class="v">0.0 %</span></div>
       </div>
       <div class="gate">
-        <span class="gl">P10 Top polymer recovery<small>목표 ≥ 80 %</small></span>
+        <span class="gl">Top polymer recovery<small>분할면 위 · 목표 ≥ 80 %</small></span>
         <span class="gv"><b id="polyv">0.0 %</b><span class="tag miss" id="polytag">미달</span></span>
       </div>
     </section>
 
     <section>
-      <h2>도달률 곡선</h2>
+      <h2>배분 곡선</h2>
       <div class="chartbox"><canvas id="chart"></canvas></div>
       <div class="legend">
         <span><i class="eva"></i>EVA</span><span><i class="bs"></i>백시트</span><span><i class="si"></i>실리콘</span>
-        <span>―― 판정 창 600 s</span>
+        <span>┊ 배출 시각</span>
       </div>
     </section>
 
@@ -271,15 +271,15 @@
           </div>
         </div>
         <div class="row">
-          <label for="att">잔류 기포 부착률 <b><span id="attv">80</span> %</b></label>
-          <input type="range" id="att" min="0" max="100" step="10" value="80">
+          <label for="att">하부 배출량 <b><span id="attv">8.0</span> L</b></label>
+          <input type="range" id="att" min="1" max="25" step="0.5" value="8">
         </div>
         <div class="presets">
-          <button type="button" id="pAir">공기 ON · 부착 80 %</button>
-          <button type="button" id="pNoAir">공기 OFF · 밀도차만</button>
+          <button type="button" id="pAir">정치 900 s · 권고</button>
+          <button type="button" id="pNoAir">정치 600 s · DOE 상한</button>
         </div>
-        <p class="note-s">부착률은 분산 중 붙은 Ø200 µm 기포가 정지 후에도 남아 있는 폴리머 입자의 비율이다.
-          0 % 로 두면 순수 밀도차만 남는다.</p>
+        <p class="note-s">제품은 하부 배출과 상부 잔류의 벌크 분할이다. 배출량을 키우면 실리콘 확보는
+          안전해지지만 상부 폴리머를 그만큼 함께 버린다.</p>
       </div>
     </section>
   </div>
@@ -309,27 +309,28 @@
 <div class="cols">
   <div>
     <h3>화면에서 확인할 것</h3>
-    <p>시간을 눌러 그 장면으로 바로 이동한다. 시각은 설계 조건(15 wt%, 부착률 80 %)에서 계산된 값이다.</p>
+    <p>시간을 눌러 그 장면으로 바로 이동한다. 시각은 설계 조건(15 wt%, 배출 8 L, Feed 5 kg)에서 계산된 값이다.</p>
     <div class="chapters" id="chapters"></div>
   </div>
   <div>
-    <h3>왜 공기가 회수율을 정하는가</h3>
-    <p>「공기 OFF」 를 눌러 보면 폴리머 무리가 거의 제자리에 머문다. 31–45 µm 백시트는 15 % 염수에서
-      밀도차가 사실상 0 이라 <b>영원히 뜨지 않는다</b> — 화면 중앙에 떠 있는 입자들이 그것이다.</p>
-    <p>Ø200 µm 기포 하나가 붙으면 등가밀도가 <span class="mono">7.9 kg/m³</span> 로 떨어져 통과시간이
-      <span class="mono">4,593 s → 25 s</span> 로 바뀐다. 그래서 공기는 분산 수단이 아니라
-      <b>회수율 변수</b>이고, DOE 의 Air 0/3/5/8/10 이 KPI 를 크게 흔든다.</p>
+    <h3>왜 폴리머는 거의 움직이지 않아도 되는가</h3>
+    <p>정치 600 초 동안 EVA 는 <span class="mono">40~185 mm</span> 밖에 올라가지 않는다. 그런데 그것으로
+      충분하다. 제품은 <b>하부 배출과 상부 잔류의 벌크 분할</b>이라, 폴리머는 배출되는 체적 밖에 남기만
+      하면 상부 제품이 된다. 실제로 움직여야 하는 쪽은 <b>실리콘</b>이다.</p>
+    <p>그래서 지배 변수는 <b>정치시간</b>이다. 가장 느린 31–45 µm 실리콘이 액면에서 분할면까지 436 mm 를
+      내려오는 데 <span class="mono">700 s</span> 가 걸린다(Feed 5 kg 의 간섭침강 포함). DOE 의 최대
+      정치시간 600 s 로는 <b>100 초가 모자라</b> Top Si loss 가 기준을 넘는다. 구간 중앙값이 아니라 구간 내 <b>최소 입경 31 µm</b> 까지 보면 <span class="mono">1,050 s</span> 가 필요하다 — 이 화면은 입자마다 입경을 뽑아 쓰므로 900 초에서도 실리콘 3 % 가 아직 분할면 위에 남는다.</p>
     <div class="callout">
-      <p><b>부착률은 아직 측정값이 아니다.</b> KPI 80 % 를 채우려면 정치 종료까지 기포를 유지한 비율이
-        EVA ≥ 69 %, 백시트 ≥ 77 % 여야 한다. T3 에서 기포경·잔류 부착률·부착 지속시간을 실제로 재기 전까지
-        이 슬라이더는 <span class="mono">ASSUMED</span> 다.</p>
+      <p><b>중립 셀이 유일한 폴리머 손실 경로다.</b> 31–45 µm 백시트는 15 % 염수에서 밀도차가 사실상 0 이라
+        제자리에 머문다. 그러면 배출 체적비만큼 — 8 L 배출이면 <span class="mono">13 %</span> — 그대로
+        하부로 끌려간다. 염도를 올려 이 셀을 부상 쪽으로 밀어내는 것이 정공법이다.</p>
     </div>
   </div>
 </div>
 
 <div class="tablewrap">
   <table>
-    <caption>종말속도와 373.6 mm 통과시간 — 15 wt% 염수 (ρ 1111.3 · µ 1.27 mPa·s), 기포 없음</caption>
+    <caption>정치 600 s 동안의 이동거리 (mm · + 침강 / − 부상) — 15 wt% 염수 (ρ 1111.3 · µ 1.27 mPa·s) · 간섭침강 ×0.82 포함</caption>
     <thead><tr><th>재질</th><th>유효밀도 ρ ± σ (kg/m³)</th><th class="n">31–45 µm</th><th class="n">45–60 µm</th><th class="n">60–75 µm</th><th>거동</th></tr></thead>
     <tbody id="tbody"></tbody>
   </table>
@@ -338,13 +339,15 @@
 <div class="cols">
   <div>
     <h3>모델</h3>
+    <p>측정 KPI 는 문서와 같다 — <span class="mono">Top polymer recovery · Top Si loss · Bottom Si recovery · Bottom polymer contamination</span>.</p>
     <p>입자마다 유효밀도를 <span class="mono">N(µ, σ)</span> 에서 뽑고, Stokes 로 초기값을 잡은 뒤
-      Schiller-Naumann 항력으로 종말속도를 수렴시킨다. 기포가 붙은 입자는 등가밀도·등가경으로 바꿔 다시 푼다.
-      정지 직후의 잔류 난류는 <span class="mono">exp(−t/τ), τ = 20 s</span> 로 감쇠시킨다.</p>
-    <p>초기 위치는 액면 Z720 아래 전 용적에 체적비로 뿌린다. 도면 004 는 같은 조건(기포 없음)에서
-      도달률을 <span class="mono">EVA 34.5 %, 백시트 13.8 %</span> 로 적는데, 이 화면은 그보다 낮게 나온다.
-      도면은 <span class="mono">min(1, v·t/L)</span> 로 이동거리를 <span class="mono">L = 373.6 mm</span> 균등
-      가정하지만, 여기서는 콘 안에서 출발한 입자가 실제로 더 먼 거리를 올라가기 때문이다.</p>
+      Schiller-Naumann 항력으로 종말속도를 수렴시킨다. Feed 5 kg 의 간섭침강은 Richardson-Zaki
+      <span class="mono">(1−φ)^4.65 = ×0.82</span> 로 반영했다. 정지 직후의 잔류 난류는
+      <span class="mono">exp(−t/τ), τ = 20 s</span> 로 감쇠시킨다.</p>
+    <p>초기 위치는 액면 Z720 아래 전 용적에 체적비로 뿌린다. 판정은 <b>분할면 기준</b>이다 —
+      하부 배출량을 정하면 <span class="mono">V(z) </span> 누적 체적에서 분할면 높이가 나오고,
+      그 위에 있는 질량이 상부 제품이다. Rev.A 까지는 이것을 '액면 도달'로 잘못 잡아
+      회수율을 크게 낮게 보았다 (부속-A 참조).</p>
   </div>
   <div>
     <h3>한계</h3>
@@ -374,8 +377,8 @@ var Z_LEVEL=720, Z_RING=300, Z_IMP_LO=430, Z_IMP_UP=610;
 var Z_BAF_LO=390, Z_BAF_UP=690, Z_SKIM=725, Z_CUT=(34.8/2)/TAN30;
 var R_IMP=150, R_RING=125, R_BAF_IN=167, R_BAF_OUT=192, R_SHAFT=15;
 var TRAVEL=Z_LEVEL-Z_TAN;            // 373.59
-var WIN=600, T0=-60, T_END=660;
-var G=9.81, D_BUB=200e-6, RHO_AIR=1.2, TAU=20;
+var WIN=600, T0=-60, T_END=1260;
+var G=9.81, TAU=20;
 
 var BINS=[[31,45],[45,60],[60,75]], BINW=[0.33,0.34,0.33];
 var MATS=[
@@ -400,10 +403,6 @@ function terminalV(rho_p,d,w){
   }
   return v;
 }
-function aggregate(rho_p,dp,db){
-  var vp=Math.PI/6*dp*dp*dp, vb=Math.PI/6*db*db*db;
-  return [(rho_p*vp+RHO_AIR*vb)/(vp+vb), Math.pow(6*(vp+vb)/Math.PI,1/3)];
-}
 function stokesV(rho_p,d,w){return (rho_p-rhoBr(w))*G*d*d/(18*muBr(w));}
 
 /* ══ 2. 결정론적 난수 ══════════════════════════════════════════════ */
@@ -415,6 +414,8 @@ function gauss(rand){var u=1-rand(),v=rand();
 
 /* 액면 아래 전 용적에서 체적비로 z 를 뽑는다 */
 var V_CONE=Math.PI/3*R*R*APEX, V_LIQ=V_CONE+Math.PI*R*R*(Z_LEVEL-APEX);
+var V_CONE_L=Math.PI/3*Math.pow(APEX*TAN30,2)*APEX/1e6;   // 14.50 L
+var V_LIQ_L=0;   // solve() 에서 채운다
 function zFromVol(f){
   var v=f*V_LIQ;
   if(v<=V_CONE) return Math.pow(v*3/(Math.PI*TAN30*TAN30),1/3);
@@ -423,7 +424,13 @@ function zFromVol(f){
 function rAt(z){return z<APEX?z*TAN30:R;}
 
 /* ══ 3. 입자 생성 ══════════════════════════════════════════════════ */
-var P=[], curves=null, state={w:15, att:0.80};
+var P=[], curves=null, ZD=284, state={w:15, draw:8.0};
+// Richardson-Zaki 간섭침강 — Feed 5 kg (Si 87.5 / 폴리머 12.5 wt%)
+var PHI=((5*0.875)/2330+(5*0.125)/1000)/0.06146, HIND=Math.pow(1-PHI,4.65);
+function volAt(z){ return z<=APEX ? Math.PI/3*Math.pow(z*TAN30,2)*z/1e6
+                                  : V_CONE_L+Math.PI*R*R*(z-APEX)/1e6; }
+function zForVol(v){ var lo=0,hi=946,m; for(var i=0;i<70;i++){ m=(lo+hi)/2;
+  if(volAt(m)<v) lo=m; else hi=m; } return (lo+hi)/2; }
 
 function build(){
   var rand=rng(20260910);
@@ -453,14 +460,13 @@ function build(){
 
 /* 조건이 바뀌면 속도·도착시간·정착 자리를 다시 푼다 */
 function solve(){
-  var w=state.w, att=state.att, i, p;
+  var w=state.w, i, p;
+  V_LIQ_L=volAt(Z_LEVEL)-volAt(Z_CUT);
+  ZD=zForVol(volAt(Z_CUT)+state.draw);           // 하부 배출 분할면
   for(i=0;i<P.length;i++){
     p=P[i];
     p.rho=Math.max(300,p.rho0+p.sig*p.g);
-    p.hasBub = p.poly && (p.bub<att);
-    var rho=p.rho, d=p.d;
-    if(p.hasBub){var ag=aggregate(p.rho,p.d,D_BUB); rho=ag[0]; d=ag[1];}
-    p.v=terminalV(rho,d,w)*1000;                 // mm/s, +침강
+    p.v=terminalV(p.rho,p.d,w)*1000*HIND;        // mm/s, +침강 (간섭침강 포함)
   }
   // 상승 입자 — 도착순으로 FLOAT 층에 쌓는다
   var up=P.filter(function(q){return q.v<-1e-4;})
@@ -489,27 +495,26 @@ function solve(){
 }
 
 /* 도달률 곡선 — 전부 결정론이라 미리 계산해 둔다 */
-function buildCurves(){
-  var N=61, out={EVA:[],BS:[],Si:[]}, tot={EVA:0,BS:0,Si:0};
-  P.forEach(function(p){tot[p.m]+=p.mass;});
-  for(var i=0;i<N;i++){
-    var t=i*WIN/(N-1), acc={EVA:0,BS:0,Si:0};
-    for(var j=0;j<P.length;j++){
-      var p=P[j];
-      if(p.tA<=t && ((p.poly && p.dir===-1)||(!p.poly && p.dir===1))) acc[p.m]+=p.mass;
-    }
-    out.EVA.push(acc.EVA/tot.EVA); out.BS.push(acc.BS/tot.BS); out.Si.push(acc.Si/tot.Si);
-  }
-  curves={t:out, n:N, tot:tot};
-}
-
-function arrivedFrac(t){
-  var acc={EVA:0,BS:0,Si:0};
+/* 분할면 기준 배분 — 제품은 하부 배출과 상부 잔류의 벌크 분할이다.
+   폴리머는 액면까지 갈 필요가 없고, 분할면 위에 남기만 하면 된다.       */
+function splitFrac(t){
+  var acc={EVA:0,BS:0,Si:0}, tot={EVA:0,BS:0,Si:0};
   for(var j=0;j<P.length;j++){
-    var p=P[j];
-    if(p.tA<=t && ((p.poly&&p.dir===-1)||(!p.poly&&p.dir===1))) acc[p.m]+=p.mass;
+    var p=P[j], z=posOf(p,Math.max(0,t))[1];
+    tot[p.m]+=p.mass;
+    if(z>=ZD) acc[p.m]+=p.mass;                 // 분할면 위 = 상부 제품
   }
-  return {EVA:acc.EVA/curves.tot.EVA, BS:acc.BS/curves.tot.BS, Si:acc.Si/curves.tot.Si};
+  return {EVA:acc.EVA/tot.EVA, BS:acc.BS/tot.BS,
+          Si:1-acc.Si/tot.Si,                    // 실리콘은 '하부 회수'로 센다
+          tot:tot};
+}
+function buildCurves(){
+  var N=51, out={EVA:[],BS:[],Si:[]};
+  for(var i=0;i<N;i++){
+    var f=splitFrac(i*1200/(N-1));
+    out.EVA.push(f.EVA); out.BS.push(f.BS); out.Si.push(f.Si);
+  }
+  curves={t:out, n:N};
 }
 
 /* ══ 4. 시간 → 위치 ════════════════════════════════════════════════ */
@@ -672,26 +677,27 @@ function drawParticle(p,x,z,t){
     ctx.moveTo(px,py-s*1.15); ctx.lineTo(px+s*1.05,py+s*0.8); ctx.lineTo(px-s*1.05,py+s*0.8);
     ctx.closePath(); ctx.fill();
   }
-  if(p.hasBub && t>-999){
-    ctx.strokeStyle=mix(CS["--air"],0.9); ctx.lineWidth=1;
-    ctx.beginPath(); ctx.arc(px+s*1.1,py-s*1.1,Math.max(1.2,s*0.85),0,6.284); ctx.stroke();
-  }
 }
 
 function layerBands(t,fr){
-  if(t<20) return;
-  var a=Math.min(0.5,(t-20)/240);
-  // FLOAT
-  ctx.fillStyle=mix(CS["--eva"],a*0.20);
-  ctx.fillRect(X(-R),Y(Z_LEVEL),2*R*S,30*S);
+  // 분할면 — 이 선 아래가 하부 배출 제품이다
+  ctx.save();
+  ctx.fillStyle=mix(CS["--si"],0.10);
+  ctx.beginPath();
+  ctx.moveTo(X(-rAt(Z_CUT)),Y(Z_CUT)); ctx.lineTo(X(-rAt(ZD)),Y(ZD));
+  ctx.lineTo(X(rAt(ZD)),Y(ZD)); ctx.lineTo(X(rAt(Z_CUT)),Y(Z_CUT)); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle=mix(CS["--si"],0.85); ctx.lineWidth=1.4; ctx.setLineDash([5,3]);
+  ctx.beginPath(); ctx.moveTo(X(-R),Y(ZD)); ctx.lineTo(X(R),Y(ZD)); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
   ctx.font="600 10.5px 'IBM Plex Mono',monospace"; ctx.textAlign="left"; ctx.textBaseline="middle";
+  if(t<20) return;
   var Wc=cv.width/(window.devicePixelRatio||1);
   function put(txt,y,col){
     var x=Math.min(X(R)+12, Wc-8-ctx.measureText(txt).width);
     ctx.fillStyle=col; ctx.fillText(txt,x,y);
   }
-  put((COMPACT?"FLOAT ":"FLOAT  폴리머 ")+(fr.poly*100).toFixed(0)+" %",Y(Z_LEVEL-14),CS["--eva"]);
-  put((COMPACT?"SINK ":"SINK  실리콘 ")+(fr.Si*100).toFixed(0)+" %",Y(120),CS["--si"]);
+  put((COMPACT?"상부 ":"상부 폴리머 ")+(fr.poly*100).toFixed(0)+" %",Y(Z_LEVEL-40),CS["--eva"]);
+  put((COMPACT?"하부 ":"하부 실리콘 ")+(fr.Si*100).toFixed(0)+" %",Y(ZD-30),CS["--si"]);
   ctx.strokeStyle=mix(CS["--si"],0.5); ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(X(rAt(120))+2,Y(120)); ctx.lineTo(X(R)+8,Y(120)); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(X(R),Y(Z_LEVEL-14)); ctx.lineTo(X(R)+8,Y(Z_LEVEL-14)); ctx.stroke();
@@ -706,7 +712,7 @@ function draw(t){
   var i,p,q;
   for(i=0;i<P.length;i++){ p=P[i]; if(!p.poly){ q=posOf(p,t); drawParticle(p,q[0],q[1],t);} }
   for(i=0;i<P.length;i++){ p=P[i]; if(p.poly){ q=posOf(p,t); drawParticle(p,q[0],q[1],t);} }
-  var fr=arrivedFrac(Math.max(0,t));
+  var fr=splitFrac(Math.max(0,t));
   fr.poly=(fr.EVA*0.0625+fr.BS*0.0625)/0.125;
   layerBands(t,fr);
   return fr;
@@ -738,10 +744,12 @@ function drawChart(t){
   cx.fillStyle=CS["--ink-3"]; cx.textAlign="left"; cx.fillText("KPI 80",L+3,y80-7);
   // x 축
   cx.textAlign="center";
-  [0,300,600].forEach(function(v){
-    var x=L+pw*v/WIN;
-    cx.fillStyle=CS["--ink-3"]; cx.fillText(v+(v===600?" s":""),x,H-8);
+  [0,600,1200].forEach(function(v){
+    cx.fillStyle=CS["--ink-3"]; cx.fillText(v+(v===1200?" s":""),L+pw*v/1200,H-8);
   });
+  var xg=L+pw*Math.min(1,SETTLE/1200);
+  cx.strokeStyle=mix(CS["--good"],0.9); cx.lineWidth=1; cx.setLineDash([4,3]);
+  cx.beginPath(); cx.moveTo(xg,Tp); cx.lineTo(xg,Tp+phh); cx.stroke(); cx.setLineDash([]);
   // 곡선
   var series=[["Si",CS["--si"],"실리콘"],["EVA",CS["--eva"],"EVA"],["BS",CS["--bs"],"백시트"]];
   var ends=[];
@@ -770,14 +778,14 @@ function drawChart(t){
   });
   // 재생 위치
   if(t>0){
-    var xp=L+pw*Math.min(1,t/WIN);
+    var xp=L+pw*Math.min(1,t/1200);
     cx.strokeStyle=mix(CS["--ink"],0.55); cx.lineWidth=1;
     cx.beginPath(); cx.moveTo(xp,Tp-4); cx.lineTo(xp,Tp+phh); cx.stroke();
   }
 }
 
 /* ══ 7. 트랜스포트 ═════════════════════════════════════════════════ */
-var now=WIN, playing=false, speed=30, last=0, booted=false;
+var now=WIN, playing=false, speed=30, last=0, SETTLE=600;
 var el={
   clock:document.getElementById("clock"), phaseTag:document.getElementById("phaseTag"),
   phaseLine:document.getElementById("phaseLine"), dot:document.getElementById("dot"),
@@ -790,10 +798,10 @@ var el={
 var PLAY_D="M3 1.5 14 8 3 14.5z", PAUSE_D="M3 2h3.6v12H3zM9.4 2H13v12H9.4z";
 
 function phaseOf(t){
-  if(t<0) return ["분산","임펠러 90 rpm · 공기 5 L/min · 완전 현탁",""];
+  if(t<0) return ["분산","임펠러 90 rpm · 공기 5 L/min — 분산 수단이지 분리 수단이 아니다",""];
   if(t<1) return ["정지","임펠러·공기 동시 OFF — 여기서부터 중력만 남는다","settle"];
-  if(t<WIN) return ["정치","잔류 난류 감쇠 후 자유 침강·부상","settle"];
-  return ["판정","FLOAT 스키밍 · SINK 배출 · 질량수지 측정","done"];
+  if(t<SETTLE) return ["정치","실리콘이 분할면 아래로 내려가는 중","settle"];
+  return ["배출","하부 "+state.draw.toFixed(1)+" L 배출 · 상부 잔류 회수 · 질량수지","done"];
 }
 function setKpi(node,val,target){
   node.querySelector(".v").textContent=(val*100).toFixed(1)+" %";
@@ -847,21 +855,21 @@ document.getElementById("salt").addEventListener("click",function(e){
 });
 var att=document.getElementById("att");
 att.addEventListener("input",function(){
-  state.att=+this.value/100;
-  document.getElementById("attv").textContent=this.value;
+  state.draw=+this.value;
+  document.getElementById("attv").textContent=state.draw.toFixed(1);
   solve();
 });
-function preset(w,a){
-  state.w=w; state.att=a/100;
-  att.value=a; document.getElementById("attv").textContent=a;
+function preset(w,sec){
+  state.w=w; now=T0; el.scrub.value=T0;
+  SETTLE=sec;
   document.getElementById("saltv").textContent=w;
   document.getElementById("rhov").textContent=Math.round(rhoBr(w));
   [].forEach.call(document.getElementById("salt").children,function(c){
     c.setAttribute("aria-pressed",+c.dataset.w===w?"true":"false");});
   solve(); fillTable(); now=T0; el.scrub.value=T0; setPlay(true);
 }
-document.getElementById("pAir").addEventListener("click",function(){preset(15,80);});
-document.getElementById("pNoAir").addEventListener("click",function(){preset(15,0);});
+document.getElementById("pAir").addEventListener("click",function(){preset(15,900);});
+document.getElementById("pNoAir").addEventListener("click",function(){preset(15,600);});
 
 /* 트랙 구간 표시 */
 (function(){
@@ -875,12 +883,12 @@ document.getElementById("pNoAir").addEventListener("click",function(){preset(15,
 
 /* ══ 8. 챕터 · 표 ══════════════════════════════════════════════════ */
 var CHAPTERS=[
-  [-45,"분산 — 전부 섞여 있다","임펠러 Ø300 이 90 rpm 으로 돌고 링에서 기포가 오른다. 이 상태에서는 밀도가 달라도 층이 생기지 않는다."],
+  [-45,"분산 — 전부 섞여 있다","임펠러 Ø300 이 90 rpm 으로 돌고 링에서 공기가 오른다. 둘 다 분산 수단이지 분리 수단이 아니다."],
   [0,"동시 정지","임펠러와 공기를 같은 순간에 끊는다. 이후 화면의 모든 움직임은 중력·부력·항력뿐이다."],
-  [25,"기포 붙은 폴리머가 먼저 뜬다","Ø200 µm 기포가 붙은 입자는 등가밀도 7.9 kg/m³ 로 25 초 만에 373.6 mm 를 지난다."],
-  [157,"실리콘이 콘에 닿기 시작","60–75 µm 실리콘의 통과시간이 157 초다. 콘 벽을 따라 정점으로 모인다."],
-  [400,"중립 입자가 남는다","31–45 µm 백시트는 15 % 염수에서 밀도차가 거의 0 이라 그 자리에 떠 있다. 기포가 없으면 끝까지 그대로다."],
-  [600,"판정","FLOAT 을 스키밍하고 SINK 를 배출해 Top polymer recovery · Top Si loss · Bottom Si recovery 를 잰다."]
+  [230,"굵은 실리콘이 먼저 분할면을 넘는다","60–75 µm 실리콘은 1.89 mm/s 로 내려가 액면에서 분할면까지 436 mm 를 230 초에 지난다."],
+  [600,"DOE 상한 — 아직 모자란다","가장 느린 31–45 µm 실리콘은 0.62 mm/s 다. 700 초가 필요한데 DOE 의 최대 정치시간은 600 초다."],
+  [700,"미세 실리콘까지 내려온다","여기서부터 Top Si loss 가 기준 3 % 아래로 들어간다. 정치 900 초 권고의 근거다."],
+  [900,"배출","하부 8 L 를 빼면 그 안이 Si-rich, 위에 남은 53 L 가 Polymer-rich 다."]
 ];
 (function(){
   var box=document.getElementById("chapters");
@@ -903,10 +911,10 @@ function fillTable(){
     var cells="";
     for(var b=0;b<3;b++){
       var d=(BINS[b][0]+BINS[b][1])/2*1e-6;
-      var v=stokesV(M.rho[b][0],d,w)*1000;              // mm/s
-      var sec=Math.abs(v)<1e-9?Infinity:TRAVEL/Math.abs(v);
-      var ts=sec>86400?"∞ 중립":Math.round(sec).toLocaleString("en-US")+" s";
-      var cls=sec>86400?"neu":(v<0?"up":"dn");
+      var v=stokesV(M.rho[b][0],d,w)*1000*HIND;          // mm/s, 간섭침강 포함
+      var mv=v*600;
+      var ts=Math.abs(mv)<3?"≈0 중립":(mv>0?"+":"")+Math.round(mv).toLocaleString("en-US");
+      var cls=Math.abs(mv)<3?"neu":(v<0?"up":"dn");
       cells+='<td class="n '+cls+'">'+ts+'</td>';
     }
     var rng2=M.rho.map(function(r){return r[0];});
@@ -915,7 +923,7 @@ function fillTable(){
     var sgl=Math.min.apply(null,sg), sgh=Math.max.apply(null,sg);
     var dens=(lo===hi?String(lo):lo+"–"+hi)+" ± "+(sgl===sgh?sgl:sgl+"–"+sgh);
     html+='<tr><td>'+M.ko+'</td><td class="mono">'+dens+'</td>'+cells+
-          '<td>'+(M.poly?"부상 FLOAT":"침강 SINK")+'</td></tr>';
+          '<td>'+(M.poly?"부상 · 상부 잔류":"침강 · 하부 회수")+'</td></tr>';
   });
   tb.innerHTML=html;
 }

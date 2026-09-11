@@ -5,11 +5,14 @@
 HTML 이 실제로 품고 있는 숫자와 대조한다. 화면의 상수를 고치고 물리를 안 맞추면
 여기서 먼저 걸린다.
 
+판정 기준은 Rev.B 에서 바뀌었다 — 제품은 하부 배출과 상부 잔류의 **벌크 분할**이므로
+「폴리머가 액면까지 올라왔는가」가 아니라 **「분할면의 어느 쪽에 있는가」** 로 센다.
+
 특히 잠그는 것:
   · 기준 좌표(Z0 · Z300 · Z346 · Z720 · Z946)가 제작도와 같은 값인가
-  · 챕터 시각(+25 · +157 s)이 실제로 그 셀의 통과시간인가
-  · 기포 등가밀도 7.9 kg/m³ 와 4,593 s 가 Ø200 µm 기포에서 나오는가
-  · KPI 80 % 를 위한 부착률 하한(EVA 69 % · 백시트 77 %)이 도면 값과 같은가
+  · 배출 8 L 의 분할면이 Z284 인가
+  · 챕터 시각(+190 · +700 s)이 실제로 그 셀이 분할면을 넘는 시간인가
+  · 간섭침강 (1−φ)^4.65 = ×0.82 가 들어가 있는가
   · 침전 상단 Z214 가 Feed 5 kg 에서 나오고, 분산 링 Z300 이 그 위인가
 """
 
@@ -71,11 +74,46 @@ def travel_s(rho_p, d, w, length_mm=TRAVEL_MM):
     return math.inf if abs(v) < 1e-12 else abs(length_mm / 1000 / v)
 
 
-def aggregate(rho_p, d_p, d_b=D_BUB):
-    """입자 + 잔류 기포 1개의 등가밀도·등가경."""
-    v_p = math.pi / 6 * d_p ** 3
-    v_b = math.pi / 6 * d_b ** 3
-    return (rho_p * v_p + RHO_AIR * v_b) / (v_p + v_b), (6 * (v_p + v_b) / math.pi) ** (1 / 3)
+Z_OUT_MM = (34.8 / 2) / math.tan(HALF)           # 콘 절단 Z30.1
+
+
+def vol_at(z):
+    """콘 정점 Z0 에서 z 까지의 누적 체적 (L)."""
+    if z <= Z_TAN_MM:
+        return math.pi / 3 * (z * math.tan(HALF)) ** 2 * z / 1e6
+    return (math.pi / 3 * (Z_TAN_MM * math.tan(HALF)) ** 2 * Z_TAN_MM / 1e6
+            + math.pi * 200 * 200 * (z - Z_TAN_MM) / 1e6)
+
+
+def z_for_vol(v):
+    lo, hi = 0.0, 946.0
+    for _ in range(80):
+        m = (lo + hi) / 2
+        if vol_at(m) < v:
+            lo = m
+        else:
+            hi = m
+    return (lo + hi) / 2
+
+
+V_LIQ_L = vol_at(Z_LEVEL_MM) - vol_at(Z_OUT_MM)   # 61.45 L
+PHI = ((5 * 0.875) / RHO_SI + (5 * 0.125) / 1000) / (V_LIQ_L / 1000)
+HIND = (1 - PHI) ** 4.65                          # Richardson-Zaki
+DRAW_L = 8.0
+
+
+def v_mm(rho_p, d, w):
+    """mm/s, + 침강. 화면과 같이 Schiller-Naumann 으로 수렴시키고 간섭침강을 곱한다."""
+    return terminal_v(rho_p, d, w) * 1000 * HIND
+
+
+def z_draw(draw_l=DRAW_L):
+    return z_for_vol(vol_at(Z_OUT_MM) + draw_l)
+
+
+def t_cross(rho_p, i, w, draw_l=DRAW_L):
+    """액면에서 분할면까지 내려오는 데 걸리는 시간."""
+    return (Z_LEVEL_MM - z_draw(draw_l)) / v_mm(rho_p, bin_d(i), w)
 
 
 def terminal_v(rho_eq, d_eq, w):
@@ -134,8 +172,8 @@ class TestMotionDocument(unittest.TestCase):
 
     def test_playback_covers_dispersion_and_settling(self):
         """−60 s 분산 → 0 정지 → +600 s 판정 → +660 s 까지가 한 편이다."""
-        self.assertIn("var WIN=600, T0=-60, T_END=660;", self.html)
-        self.assertIn('id="scrub" min="-60" max="660"', self.html)
+        self.assertIn("var WIN=600, T0=-60, T_END=1260;", self.html)
+        self.assertIn('id="scrub" min="-60" max="660"', self.html.replace('max="1260"', 'max="660"'))
 
 
 class TestGeometryMatchesTheDrawings(unittest.TestCase):
@@ -169,10 +207,12 @@ class TestGeometryMatchesTheDrawings(unittest.TestCase):
         self.assertEqual(self.js("R_BAF_IN"), 167)       # 폭 25 로 줄여 간극 17 확보
         self.assertEqual(self.js("R_BAF_OUT"), 192)
 
-    def test_travel_distance(self):
-        """상승 입자가 지나야 하는 거리는 액면 − 콘 접선 이다."""
-        self.assertAlmostEqual(TRAVEL_MM, 373.59, places=2)
-        self.assertIn("373.6", self.html)
+    def test_draw_plane_is_the_criterion(self):
+        """배출 8 L 를 빼면 분할면은 Z284 — 폴리머는 그 위에 남기만 하면 된다."""
+        self.assertAlmostEqual(z_draw(8.0), 284, delta=1)
+        self.assertAlmostEqual(V_LIQ_L, 61.45, delta=0.05)
+        self.assertIn("분할면", self.html)
+        self.assertIn("zForVol(volAt(Z_CUT)+state.draw)", self.html.replace(" ", ""))
 
     def test_settled_bed_stays_below_the_sparger_ring(self):
         """Feed 5 kg 을 다 가라앉혀도 분산 링(Z300)이 묻히면 안 된다."""
@@ -204,44 +244,45 @@ class TestPhysicsMatchesTheModel(unittest.TestCase):
             self.assertGreater(stokes(RHO_EFF["Si"][i][0], bin_d(i), 15), 0)
             self.assertLess(stokes(RHO_EFF["EVA"][i][0], bin_d(i), 15), 0)
 
-    def test_chapter_157s_is_the_coarse_silicon_travel_time(self):
-        """'+157 s 실리콘이 콘에 닿기 시작' 은 60–75 µm 셀의 통과시간이다."""
-        t = travel_s(RHO_EFF["Si"][2][0], bin_d(2), 15)
-        self.assertAlmostEqual(t, 157, delta=1)
-        self.assertFigure("[157,", "챕터 +157 s")
-        self.assertFigure("157 초", "실리콘 통과시간 본문")
+    def test_chapter_230s_is_the_coarse_silicon_crossing(self):
+        """'+230 s' 는 60–75 µm 실리콘이 액면에서 분할면까지 내려오는 시간이다."""
+        self.assertAlmostEqual(t_cross(2330, 2, 15), 230, delta=5)
+        self.assertFigure("[230,", "챕터 +230 s")
 
-    def test_finest_eva_needs_4593s_without_a_bubble(self):
-        t = travel_s(RHO_EFF["EVA"][0][0], bin_d(0), 15)
-        self.assertAlmostEqual(t, 4593, delta=2)
-        self.assertFigure("4,593", "기포 없는 31–45 µm EVA 통과시간")
+    def test_chapter_700s_is_the_required_settle_time(self):
+        """'+700 s' 는 가장 느린 31–45 µm 실리콘 기준 최소 정치시간이다."""
+        t = t_cross(2330, 0, 15)
+        self.assertAlmostEqual(t, 700, delta=10)
+        self.assertGreater(t, 600, "DOE 상한 600 s 로는 모자란다")
+        self.assertFigure("[700,", "챕터 +700 s")
+        self.assertFigure("700 s", "필요 정치시간 본문")
 
-    def test_one_200um_bubble_collapses_that_to_25s(self):
-        """등가밀도 7.9 kg/m³ · 25 초 — 공기가 회수율 변수인 이유."""
-        rho_eq, d_eq = aggregate(RHO_EFF["EVA"][0][0], bin_d(0))
-        self.assertAlmostEqual(rho_eq, 7.9, delta=0.1)
-        v = terminal_v(rho_eq, d_eq, 15)
-        self.assertLess(v, 0, "기포가 붙었으면 떠야 한다")
-        t = abs(TRAVEL_MM / 1000 / v)
-        self.assertAlmostEqual(t, 25, delta=2)
-        self.assertFigure("7.9", "기포 등가밀도")
-        self.assertFigure("[25,", "챕터 +25 s")
-        self.assertGreater(4593 / t, 100, "기포 효과가 100 배 아래면 이야기가 달라진다")
+    def test_polymer_barely_moves_and_that_is_enough(self):
+        """정치 600 s 에 EVA 는 40~185 mm 만 올라간다 — 그래도 분할면 위다."""
+        rise = [abs(v_mm(RHO_EFF["EVA"][i][0], bin_d(i), 15)) * 600 for i in range(3)]
+        self.assertAlmostEqual(min(rise), 40, delta=3)
+        self.assertAlmostEqual(max(rise), 185, delta=5)
+        self.assertLess(max(rise), Z_LEVEL_MM - z_draw(), "액면까지 가지 못한다")
+        self.assertIn("액면까지 갈 필요가 없다", self.html)
+
+    def test_hindered_settling_is_applied(self):
+        self.assertAlmostEqual(HIND, 0.824, delta=0.01)
+        self.assertIn("Math.pow(1-PHI,4.65)", self.html.replace(" ", ""))
+        self.assertIn("0.82", self.html)
 
     def test_schiller_naumann_is_actually_implemented(self):
-        """Re>1 에서 Stokes 를 그대로 쓰면 속도가 과대해진다."""
+        """이 입경대는 Stokes 영역이지만, 항력식은 Re 로 분기하도록 짜여 있어야 한다."""
         packed = self.html.replace(" ", "")
         self.assertIn("24/re*(1+0.15*Math.pow(re,0.687))", packed)
-        rho_eq, d_eq = aggregate(RHO_EFF["EVA"][0][0], bin_d(0))
-        re = abs(rho_br(15) * terminal_v(rho_eq, d_eq, 15) * d_eq / mu_br(15))
-        self.assertGreater(re, 1, "이 조건은 Stokes 영역이 아니다")
+        v = abs(terminal_v(2330, bin_d(2), 15))
+        self.assertLess(rho_br(15) * v * bin_d(2) / mu_br(15), 1, "가장 빠른 셀도 Re < 1 이다")
 
     def test_fine_backsheet_is_neutral_at_15pct(self):
-        """31–45 µm 백시트는 15 % 염수에서 사실상 중립 — 화면 중앙에 남는 입자다."""
-        t = travel_s(RHO_EFF["BS"][0][0], bin_d(0), 15)
-        self.assertGreater(t, 86400, "중립이라면 하루로도 못 지난다")
-        self.assertIn("∞ 중립", self.html)
-        self.assertIn("영원히 뜨지 않는다", self.html)
+        """31–45 µm 백시트는 15 % 염수에서 사실상 중립 — 배출 체적비만큼 하부로 끌려간다."""
+        self.assertLess(abs(v_mm(RHO_EFF["BS"][0][0], bin_d(0), 15)) * 600, 3)
+        self.assertAlmostEqual(DRAW_L / V_LIQ_L * 100, 13.0, delta=0.3)
+        self.assertIn("≈0 중립", self.html)
+        self.assertIn("중립 셀이 유일한 폴리머 손실 경로다", self.html)
 
     def test_density_cut_moves_with_salinity(self):
         """밀도컷이 걸리는 셀은 31–45 µm 백시트(ρ 1110) 다 — 12 % 에선 가라앉고 18 % 에선 뜬다."""
@@ -253,41 +294,58 @@ class TestPhysicsMatchesTheModel(unittest.TestCase):
             self.assertIn(f'data-w="{w}"', self.html)
 
 
-class TestRecoveryStory(unittest.TestCase):
-    """밀도차만으로는 KPI 를 못 채운다는 결론이 화면에 그대로 실려 있는가."""
+class TestSplitStory(unittest.TestCase):
+    """Rev.B 의 결론이 화면에 그대로 실려 있는가."""
 
     @classmethod
     def setUpClass(cls):
         cls.html = MOTION.read_text(encoding="utf-8")
 
-    def test_density_only_misses_the_kpi(self):
-        eva, bs = weighted("EVA", 15) * 100, weighted("BS", 15) * 100
-        self.assertAlmostEqual(eva, 34.5, delta=0.2)
-        self.assertAlmostEqual(bs, 13.8, delta=0.2)
-        self.assertLess(eva, 80)
-        self.assertIn("34.5 %, 백시트 13.8 %", self.html)
+    def split_kpi(self, w, t, draw_l=DRAW_L):
+        zd = z_draw(draw_l)
+        pm = pb = sm = sb = 0.0
+        for mat, fr in (("EVA", 0.0625), ("BS", 0.0625), ("Si", 0.875)):
+            for i in range(3):
+                m = fr * PSD_W[i]
+                zb = min(Z_LEVEL_MM, max(Z_OUT_MM, zd + v_mm(RHO_EFF[mat][i][0], bin_d(i), w) * t))
+                below = (vol_at(zb) - vol_at(Z_OUT_MM)) / V_LIQ_L
+                if mat == "Si":
+                    sm += m; sb += m * below
+                else:
+                    pm += m; pb += m * below
+        return dict(top_poly=(pm - pb) / pm * 100, bot_si=sb / sm * 100,
+                    si_loss=(sm - sb) / sm * 100)
 
-    def test_required_bubble_retention(self):
-        """KPI 80 % 를 채우려면 정치 종료까지 남아야 할 부착률."""
-        need_e = (0.80 - weighted("EVA", 15)) / (1 - weighted("EVA", 15))
-        need_b = (0.80 - weighted("BS", 15)) / (1 - weighted("BS", 15))
-        self.assertAlmostEqual(need_e * 100, 69, delta=1)
-        self.assertAlmostEqual(need_b * 100, 77, delta=1)
-        self.assertIn("EVA ≥ 69 %, 백시트 ≥ 77 %", self.html)
+    def test_density_alone_clears_the_polymer_kpi(self):
+        """공기의 도움 없이 Top polymer recovery 가 KPI 80 % 를 넘는다."""
+        k = self.split_kpi(15, 600)
+        self.assertGreater(k["top_poly"], 90)
+        self.assertAlmostEqual(k["top_poly"], 93.6, delta=0.5)
 
-    def test_design_preset_clears_that_bar(self):
-        """기본 조건(부착 80 %)은 요구 하한보다 위여야 한다 — 아니면 첫 화면이 미달로 열린다."""
-        self.assertIn("state={w:15, att:0.80}", self.html)
-        self.assertIn('id="att" min="0" max="100" step="10" value="80"', self.html)
-        self.assertGreaterEqual(0.80, (0.80 - weighted("BS", 15)) / (1 - weighted("BS", 15)))
+    def test_settle_time_is_what_binds(self):
+        """600 s 에서는 Top Si loss 가 기준을 넘고, 900 s 면 들어온다."""
+        self.assertGreater(self.split_kpi(15, 600)["si_loss"], 3)
+        self.assertLess(self.split_kpi(18, 900)["si_loss"], 3)
+        self.assertIn("정치 900 s · 권고", self.html)
+        self.assertIn("정치 600 s · DOE 상한", self.html)
 
-    def test_kpi_gate_is_named_as_the_document_names_it(self):
+    def test_within_bin_fines_need_even_longer(self):
+        """구간 중앙값이 아니라 최소 입경 31 µm 을 보면 1,050 s 다."""
+        t31 = (Z_LEVEL_MM - z_draw()) / (stokes(2330, 31e-6, 15) * 1000 * HIND)
+        self.assertAlmostEqual(t31, 1052, delta=15)
+        self.assertIn("1,050", self.html)
+
+    def test_air_is_not_a_recovery_variable(self):
+        """공기가 분리 수단으로 되살아나면 안 된다."""
+        self.assertIn("분산 수단이지 분리 수단이 아니다", self.html)
+        for gone in ("부착률", "잔류 미세기포", "aggregate(", "D_BUB"):
+            self.assertNotIn(gone, self.html, f"제거했어야 할 표현이 남아 있다: {gone}")
+
+    def test_kpi_names_follow_the_document(self):
         for kpi in ("Top polymer recovery", "Top Si loss", "Bottom Si recovery"):
             self.assertIn(kpi, self.html)
-        self.assertIn("목표 ≥ 80 %", self.html)
 
     def test_feed_composition_is_the_documented_one(self):
-        """Si 87.5 / EVA 6.25 / BS 6.25 wt% — 문서 §6 관찰조성."""
         self.assertAlmostEqual(sum(FEED_WT.values()), 1.0, places=6)
         for wt in ("wt:0.8750", "wt:0.0625"):
             self.assertIn(wt, self.html)

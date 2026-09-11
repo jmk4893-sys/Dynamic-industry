@@ -168,6 +168,65 @@ V_LEVEL_L = vol_at(Z_LEVEL_MM)
 BAFFLE_INNER_R = 200 - BAFFLE_GAP_MM - BAFFLE_W_MM
 
 
+# ── Rev.B 분할 판정 — 제품은 하부 배출과 상부 잔류의 벌크 분할이다 ──────
+Z_TAN_MM = (ID_MM / 2) / math.tan(HALF)               # 346.41 — 콘 이론높이
+Z_OUT_MM = OUTLET_BORE["1.5"] / 2 / math.tan(HALF)
+DRAW_L = 8.0
+
+
+def vol_at_mm(z):
+    """콘 정점 Z0 에서 z 까지의 누적 체적 (L)."""
+    if z <= Z_TAN_MM:
+        return math.pi / 3 * (z * math.tan(HALF)) ** 2 * z / 1e6
+    return (math.pi / 3 * (Z_TAN_MM * math.tan(HALF)) ** 2 * Z_TAN_MM / 1e6
+            + math.pi * 200 * 200 * (z - Z_TAN_MM) / 1e6)
+
+
+def z_for_vol_mm(v):
+    lo, hi = 0.0, 946.0
+    for _ in range(80):
+        m = (lo + hi) / 2
+        if vol_at_mm(m) < v:
+            lo = m
+        else:
+            hi = m
+    return (lo + hi) / 2
+
+
+V_LIQ_L = vol_at_mm(Z_LEVEL_MM) - vol_at_mm(Z_OUT_MM)
+PHI_SOLID = ((5 * 0.875) / 2330 + (5 * 0.125) / 1000) / (V_LIQ_L / 1000)
+HIND = (1 - PHI_SOLID) ** 4.65
+
+
+def v_split(mat, i, w):
+    """mm/s, + 침강 (간섭침강 포함)."""
+    return stokes(RHO_EFF[mat][i][0], bin_d(i), w) * 1000 * HIND
+
+
+def z_draw_mm(draw_l=DRAW_L):
+    return z_for_vol_mm(vol_at_mm(Z_OUT_MM) + draw_l)
+
+
+def t_need_s(w=15, draw_l=DRAW_L):
+    return (Z_LEVEL_MM - z_draw_mm(draw_l)) / min(v_split("Silicon", i, w) for i in range(3))
+
+
+def split_kpi(w=15, t=600.0, draw_l=DRAW_L):
+    zd = z_draw_mm(draw_l)
+    pm = pb = sm = sb = 0.0
+    for mat, fr in (("EVA", 0.0625), ("Backsheet", 0.0625), ("Silicon", 0.875)):
+        for i in range(3):
+            m = fr * PSD_W[i]
+            zb = min(Z_LEVEL_MM, max(Z_OUT_MM, zd + v_split(mat, i, w) * t))
+            below = (vol_at_mm(zb) - vol_at_mm(Z_OUT_MM)) / V_LIQ_L
+            if mat == "Silicon":
+                sm += m; sb += m * below
+            else:
+                pm += m; pb += m * below
+    return dict(top_poly=(pm - pb) / pm * 100, bot_si=sb / sm * 100,
+                si_loss=(sm - sb) / sm * 100)
+
+
 class TestSheetDocument(unittest.TestCase):
     """제작도 11매 — 단독 HTML 문서로서 성립하는지."""
 
@@ -386,28 +445,44 @@ class TestFiguresMatchTheModel(unittest.TestCase):
             for i in range(3):
                 self.assertGreater(travel_s(mat, i, 15), SETTLE_WINDOW_S)
 
-    def test_density_alone_misses_the_polymer_recovery_kpi(self):
-        """KPI P10 ≥ 80 % 인데 밀도차만으로는 EVA 34.5 % · BS 13.8 % 다."""
-        for mat, expect in (("EVA", 34.5), ("Backsheet", 13.8)):
-            got = arrived(mat, 15) * 100
-            self.assertAlmostEqual(got, expect, delta=0.3)
-            self.assertLess(got, 80.0)
-            self.assertFigure(f"{got:.1f} %", f"{mat} 600 s 도달률", "sheets")
+    def test_density_alone_clears_the_polymer_kpi(self):
+        """Rev.B — 판정은 분할면 기준이므로 밀도차만으로 KPI 80 % 를 넘는다."""
+        k = split_kpi(15, 600)
+        self.assertAlmostEqual(k["top_poly"], 93.6, delta=0.5)
+        self.assertGreater(k["top_poly"], 80.0)
+        self.assertFigure(f"{k['top_poly']:.1f} %", "600 s Top polymer recovery", "sheets")
+        self.assertFigure("액면 도달", "판정 기준 정정", "sheets")
 
-    def test_a_single_residual_bubble_closes_the_gap(self):
-        bare = travel_s("EVA", 0, 15)
-        with_bubble = bubble_travel_s("EVA", 0, 15)
-        self.assertGreater(bare / with_bubble, 100, "기포 효과가 100배 미만이면 결론이 바뀐다")
-        self.assertFigure(f"{with_bubble:.0f} s", "기포 부착 통과시간", "sheets")
-        self.assertFigure(f"{bare:,.0f} s", "기포 없는 통과시간", "sheets")
+    def test_settle_time_is_the_binding_variable(self):
+        """가장 느린 실리콘이 분할면까지 내려오는 시간이 DOE 상한 600 s 를 넘는다."""
+        self.assertAlmostEqual(t_need_s(15), 700, delta=10)
+        self.assertGreater(t_need_s(15), 600)
+        self.assertGreater(split_kpi(15, 600)["si_loss"], 3, "600 s 에서는 기준 밖")
+        self.assertLess(split_kpi(18, 900)["si_loss"], 3, "900 s 면 들어온다")
+        for w in SALTS:
+            self.assertFigure(f"{t_need_s(w):.0f} s", f"{w}% 필요 정치시간", "sheets")
 
-    def test_travel_time_table_matches(self):
+    def test_draw_plane_and_hindered_settling(self):
+        self.assertAlmostEqual(z_draw_mm(8.0), 284, delta=1)
+        self.assertAlmostEqual(HIND, 0.824, delta=0.01)
+        self.assertFigure(f"Z{z_draw_mm():.0f}", "분할면", "sheets")
+        self.assertFigure("0.82", "간섭침강 보정", "sheets")
+
+    def test_displacement_table_matches(self):
+        """표의 값은 정치 600 s 동안의 이동거리다."""
         for mat in RHO_EFF:
             for i in range(3):
                 for w in SALTS:
-                    t = travel_s(mat, i, w)
-                    want = "중립" if t > 1e5 else f"{t:,.0f}"
-                    self.assertFigure(want, f"{mat} {BINS[i]} {w}% 통과시간", "sheets")
+                    self.assertFigure(f"{v_split(mat, i, w):+.3f}",
+                                      f"{mat} {BINS[i]} {w}% 속도", "sheets")
+
+    def test_air_is_not_a_separation_means(self):
+        """연구문서 §1 의 문장이 도면에 그대로 살아 있어야 한다."""
+        self.assertFigure("분산 수단이며 분리 수단이 아니다", "공기의 역할", "sheets")
+        # 부속-A 의 정정 이력에는 Rev.A 의 표현이 남아야 하지만, 본문 결론에는 남으면 안 된다
+        body = self.sheets[:self.sheets.index("Rev.A → Rev.B")]
+        for gone in ("잔류 미세기포", "기포 부착률", "부착 지속시간", "4,593"):
+            self.assertNotIn(gone, body, f"Rev.A 의 부선 논리가 본문에 남아 있다: {gone}")
 
     # ── 침전 · 링 ──
     def test_sparger_ring_stays_above_the_settled_bed(self):
