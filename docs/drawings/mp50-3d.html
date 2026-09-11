@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#101820">
-<meta name="description" content="MP-50 염수 밀도분리 파일럿 장치의 3D 콘솔 — 아세이별 분해도, 단면 컷어웨이, 분산에서 동시 정지·자연 층분리까지의 운전 시퀀스 애니메이션.">
+<meta name="description" content="MP-50 염수 밀도분리 파일럿 장치의 3D 콘솔 — 아세이별 분해도, 단면 컷어웨이, 부품 단독 보기, 분산에서 동시 정지·자연 층분리까지의 운전 시퀀스 애니메이션.">
 <title>MP-50 3D 분해 · 컷어웨이 콘솔</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -136,6 +136,18 @@ input[type=range]{width:100%;accent-color:var(--brand);height:20px}
 .spec{font-size:12px;color:var(--ink-2);margin:9px 0 0;min-height:52px}
 .spec b{color:var(--ink);font-weight:600;display:block;font-size:13px;margin-bottom:2px}
 .spec code{font-family:var(--mono);font-size:11.5px;color:var(--brand-ink)}
+.soloinfo{margin-top:9px;padding-top:9px;border-top:1px solid var(--line);font-size:12px}
+.soloinfo[hidden]{display:none}
+.soloinfo dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;margin:0 0 8px}
+.soloinfo dt{font-size:11px;color:var(--ink-3)}
+.soloinfo dd{margin:0;font-family:var(--mono);font-size:11.5px;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis}
+.soloinfo .dwg{display:flex;flex-wrap:wrap;gap:5px}
+.soloinfo .dwg a{font-family:var(--mono);font-size:10.5px;text-decoration:none;
+  border:1px solid var(--line);border-radius:99px;padding:2px 8px;
+  background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.soloinfo .dwg a:hover{border-color:var(--brand);color:var(--brand-ink)}
+.step{flex:none;font-family:var(--mono);min-width:34px}
 .legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:11.5px;color:var(--ink-2)}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;
   vertical-align:-1px;border:1px solid rgba(0,0,0,.2)}
@@ -235,6 +247,12 @@ button:focus-visible,input:focus-visible,.parts li:focus-visible,a:focus-visible
     <div class="panel">
       <h2>부품 <span id="partCount" style="font-family:var(--mono);color:var(--ink-3)"></span></h2>
       <ul class="parts" id="partList"></ul>
+      <div class="row" style="margin-top:8px">
+        <button class="wide" id="btnSolo" aria-pressed="false">단독 보기</button>
+        <button class="step" id="btnPrev" aria-label="이전 부품" title="이전 부품 (←)">◀</button>
+        <button class="step" id="btnNext" aria-label="다음 부품" title="다음 부품 (→)">▶</button>
+      </div>
+      <div class="soloinfo" id="soloInfo" hidden></div>
     </div>
 
     <div class="panel">
@@ -527,7 +545,7 @@ part({ no:"A-06", asm:"A", name:"지지링", spec:`OD Ø${G.ringOd} × ID Ø406 
   draw:m=>m.revolve([[203, G.ringZ-G.ringT],[G.ringOd/2, G.ringZ-G.ringT],
                      [G.ringOd/2, G.ringZ],[203, G.ringZ]], SEG, true) });
 part({ no:"A-08", asm:"A", name:"양중 러그", spec:"t6, Ø20 홀 · 3 개소 120° 등분 · Z900",
-  st:"RELEASE", col:MAT.sus304, ex:[0,0,0], at:[203,0,900], cut:true,
+  st:"RELEASE", col:MAT.sus304, ex:[0,0,0], at:[203,0,900], cut:true, qty:3,
   draw:m=>{ for(let i=0;i<3;i++){ const a=360/3*i+30;
     m.box(60, 6, 44, Math.cos(rad(a))*232, Math.sin(rad(a))*232, 900, a); } } });
 NOZZLES.forEach((n,idx)=>{
@@ -554,7 +572,7 @@ part({ no:"B-02", asm:"B", name:"중앙 보강 허브", spec:`Ø${G.hubOd} × t$
             for(let i=0;i<4;i++) m.box(70, 5, 22, Math.cos(rad(90*i))*76, Math.sin(rad(90*i))*76,
                                        G.coverTopZ+G.hubT+11, 90*i); } });
 part({ no:"B-04", asm:"B", name:"커버 노즐", spec:"B2 전도도 · B3 온도 · B4 배기 · PCD Ø330",
-  st:"RELEASE", col:MAT.sus316, ex:[0,0,0.46], at:[-165,0,975], cut:true,
+  st:"RELEASE", col:MAT.sus316, ex:[0,0,0.46], at:[-165,0,975], cut:true, qty:3,
   draw:m=>{ for(const th of [60,180,300]){ const r=165;
     m.pipe([Math.cos(rad(th))*r, Math.sin(rad(th))*r, G.shellTopZ],
            [Math.cos(rad(th))*r, Math.sin(rad(th))*r, G.coverTopZ+44], 9, 14); } } });
@@ -603,7 +621,7 @@ part({ no:"D-01", asm:"D", name:"교반축", spec:`Ø${G.shaftOd} h7 × L760 · 
       } } });
 });
 part({ no:"D-06", asm:"D", name:"스러스터 칼라", spec:"Ø50 × L25, 보어 Ø25 · 2 개",
-  st:"RELEASE", col:MAT.sus316, ex:[0,0,0.66], at:[26,0,470], cut:true,
+  st:"RELEASE", col:MAT.sus316, ex:[0,0,0.66], at:[26,0,470], cut:true, qty:2,
   draw:m=>{ for(const z of [G.impLoZ+44, G.impHiZ+44])
     m.revolve([[G.shaftOd/2, z-12.5],[25, z-12.5],[25, z+12.5],[G.shaftOd/2, z+12.5]], 20, true); } });
 
@@ -700,16 +718,57 @@ part({ no:"LIQ", asm:"L", name:"염수", spec:`NaCl 0~26 wt% · 운전 액면 Z$
                      [G.tankId/2-2.5, G.shellBotZ],[G.tankId/2-2.5, G.levelZ],[0, G.levelZ]], SEG, true) });
 
 /* ---- 모델 조립 ---- */
+/** 부품이 방금 쌓은 정점들의 경계상자 (m, 바닥 기준). 단독 보기의 카메라 맞춤과
+ *  외형치수 표시가 이 값을 쓴다 — 부품마다 눈대중 치수를 적어 두면 형상이
+ *  바뀔 때 표시만 남아 어긋난다. */
+function bbox(m, v0, v1){
+  if(v1 <= v0) return null;
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for(let v = v0; v < v1; v++){
+    for(let k = 0; k < 3; k++){
+      const q = m.p[v*3 + k];
+      if(q < lo[k]) lo[k] = q;
+      if(q > hi[k]) hi[k] = q;
+    }
+  }
+  const c = [0,1,2].map(k => (lo[k] + hi[k]) / 2);
+  const r = Math.max(2e-4, Math.hypot(hi[0]-lo[0], hi[1]-lo[1], hi[2]-lo[2]) / 2);
+  return { lo, hi, c, r };
+}
+
 const mesh = new Mesh();
 for(const p of PARTS){
   p.start = mesh.i.length;
+  p.v0 = mesh.count;
   p.draw(mesh);
   p.len = mesh.i.length - p.start;
+  p.v1 = mesh.count;
+  p.bb = bbox(mesh, p.v0, p.v1);
 }
 const ASM = [
   ["A","탱크"],["B","커버"],["C","구동부"],["D","교반축"],["E","배플"],
   ["F","분산링"],["G","스키머"],["H","프레임"],["I","배관"],["J","계측"]
 ];
+
+/* 부품번호 → 부품도 시트. 같은 도면에 묶인 번호(D-03 은 임펠러 도면 D02)와
+   접미 문자(A-04a, E-01b …)는 대표 시트로 모은다. 제작품이 아닌 것은
+   규격·구매품 명세 시트로 보낸다. tests/test_mp50_parts.py 가 이 표의
+   모든 시트가 부품도 문서에 실제로 있는지 검사한다. */
+const DWG = {
+  "A-01":"A01","A-02":"A02","A-03":"A03","A-04":"A04","A-05":"A05","A-06":"A06","A-08":"A08",
+  "B-01":"B01","B-02":"B02","B-04":"B04",
+  "C-05":"C05","C-06":"C06",
+  "D-01":"D01","D-02":"D02","D-03":"D02","D-06":"D06",
+  "E-01":"E01","F-01":"F01","F-03":"F03","G-01":"G01","H-01":"H01"
+};
+const BOUGHT = ["B-05","C-01","C-02","C-03","C-04","I-01","I-03","J-01","J-02","J-04"];
+function partSheet(no){
+  const base = no.replace(/[a-z]$/, "");
+  if(DWG[base]) return { id:"MP50-P-" + DWG[base], text:"부품도 MP50-P-" + DWG[base] };
+  if(BOUGHT.indexOf(base) >= 0) return { id:"MP50-P-999", text:"규격·구매품 명세 999" };
+  return null;
+}
+function asmSheet(asm){ return asm === "A" ? "MP50-A1" : "MP50-" + asm; }
 
 /* ---- WebGL ---- */
 const canvas = document.getElementById("stage");
@@ -883,7 +942,7 @@ function kpi(){
 }
 
 /* ---- 카메라 · 상태 ---- */
-const cam = { az: -0.72, el: 0.30, r: 2.55, target:[0, 0, 0.90] };
+const cam = { az: -0.72, el: 0.30, r: 2.55, target:[0, 0, 0.90], lo: 1.1, hi: 6.5 };
 const VIEWS = {
   iso:   { az:-0.72, el:0.30, r:2.55, cut:false },
   front: { az:-Math.PI/2, el:0.06, r:2.45, cut:false },
@@ -893,7 +952,7 @@ const VIEWS = {
 // 움직임을 줄여 달라고 한 사용자에게는 자동 회전을 켜지 않는다.
 const REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 const state = { explode:0, cut:false, clip:0, spin:!REDUCED, labels:true,
-                asm:null, pick:null, run:false };
+                asm:null, pick:null, run:false, solo:false };
 
 let W=1, H=1, dpr=1;
 function resize(){
@@ -904,6 +963,7 @@ function resize(){
   H = Math.max(300, Math.round(rect.height || rect.width*0.65));
   canvas.width = Math.round(W*dpr); canvas.height = Math.round(H*dpr);
   gl.viewport(0, 0, canvas.width, canvas.height);
+  if(state.solo) fitCam(picked());       // 화면비가 바뀌면 맞춤 거리도 바뀐다
 }
 
 function initGL(){
@@ -964,15 +1024,19 @@ function project(p, mvp){
 function draw(){
   if(!gl) return;
   const asp = W/H;
+  const solo = state.solo ? picked() : null;
   // 분해하면 모델이 위로 길어진다 — 사용자의 줌은 그대로 두고 거리와 목표만 보정한다.
-  const t = state.explode;
+  // 단독 보기에서는 부품 하나뿐이라 보정할 것이 없다.
+  const t = solo ? 0 : state.explode;
   const tgt = [cam.target[0], cam.target[1], cam.target[2] + t*0.46];
   const rr = cam.r * (1 + t*0.46);
   const ex = tgt[0] + Math.cos(cam.az)*Math.cos(cam.el)*rr;
   const ey = tgt[1] + Math.sin(cam.az)*Math.cos(cam.el)*rr;
   const ez = tgt[2] + Math.sin(cam.el)*rr;
   const eye = [ex, ey, ez];
-  const mvp = m4mul(m4persp(0.82, asp, 0.05, 30), m4look(eye, tgt, [0,0,1]));
+  // Ø60 칼라부터 전체 조립까지 400 배 차이가 난다 — 근·원 평면을 거리에 매단다.
+  const mvp = m4mul(m4persp(0.82, asp, Math.max(0.002, rr*0.02), rr*12),
+                    m4look(eye, tgt, [0,0,1]));
 
   gl.clearColor(bg[0], bg[1], bg[2], 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -987,28 +1051,34 @@ function draw(){
   gl.uniform3fv(uni.uEye, eye);
   gl.uniform3fv(uni.uLight, [0.55, -0.75, 0.85]);
   gl.uniform3fv(uni.uCut, cutCol);
-  gl.uniform1f(uni.uClipX, state.clip);
+  // 단독 보기의 절단면은 부품 자신의 중심을 지난다 — 장치 중심을 쓰면
+  // 축에서 벗어난 부품은 통째로 잘리거나 통째로 남는다.
+  gl.uniform1f(uni.uClipX, state.clip + (solo ? solo.bb.c[0] : 0));
   const ITYPE = window.__MP50_INDEX_TYPE;
 
   const solid = [], clear = [];
-  for(const p of PARTS){
-    if(state.asm && p.asm !== state.asm && p.asm !== "L") continue;
-    if(p.liquid && state.explode > 0.12) continue;   // 껍질이 떠난 자리에 액체만 남으면 읽히지 않는다
-    if(p.liquid || p.glass) clear.push(p); else solid.push(p);
+  if(solo){
+    solid.push(solo);
+  } else {
+    for(const p of PARTS){
+      if(state.asm && p.asm !== state.asm && p.asm !== "L") continue;
+      if(p.liquid && state.explode > 0.12) continue; // 껍질이 떠난 자리에 액체만 남으면 읽히지 않는다
+      if(p.liquid || p.glass) clear.push(p); else solid.push(p);
+    }
   }
   const drawPart = (p, alpha) => {
-    gl.uniform3fv(uni.uOff, explodeOffset(p));
+    gl.uniform3fv(uni.uOff, solo ? [0,0,0] : explodeOffset(p));
     gl.uniform3fv(uni.uCol, p.col);
     gl.uniform1f(uni.uAlpha, alpha);
     gl.uniform1f(uni.uCutOn, (state.cut && p.cut) ? 1 : 0);
-    gl.uniform1f(uni.uHi, state.pick === p.no ? 1 : 0);
+    gl.uniform1f(uni.uHi, (!solo && state.pick === p.no) ? 1 : 0);
     gl.drawElements(gl.TRIANGLES, p.len, ITYPE, p.start * (ITYPE === gl.UNSIGNED_INT ? 4 : 2));
   };
   gl.disable(gl.BLEND);
   for(const p of solid) drawPart(p, 1);
 
   // 입자 — 운전 재생 중에만
-  if(state.run){
+  if(state.run && !solo){
     gl.bindBuffer(gl.ARRAY_BUFFER, pbo);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, pData);
     gl.useProgram(pprog);
@@ -1042,7 +1112,7 @@ function draw(){
 
 function drawLabels(mvp){
   if(!labelBox) return;
-  if(!state.labels || state.explode < 0.04){ labelBox.innerHTML = ""; return; }
+  if(state.solo || !state.labels || state.explode < 0.04){ labelBox.innerHTML = ""; return; }
   const shown = PARTS.filter(p => !p.liquid && (!state.asm || p.asm === state.asm)
                                  && (p.ex[0] || p.ex[1] || p.ex[2]));
   const put = [];
@@ -1079,9 +1149,15 @@ function toggle(btn, on){ btn.setAttribute("aria-pressed", on ? "true" : "false"
 const STATUS_CLS = { HOLD:"hold", PROPOSED:"prop", RELEASE:"rel", VENDOR:"vend" };
 function rgbCss(c){ return `rgb(${c.map(v=>Math.round(v*255)).join(",")})`; }
 
+/** 지금 목록에 보이는 부품들 — 이전/다음 이동과 단독 보기가 같은 순서를 쓴다. */
+function visibleParts(){
+  return PARTS.filter(p => !p.liquid && (!state.asm || p.asm === state.asm));
+}
+function picked(){ return PARTS.find(p => p.no === state.pick) || null; }
+
 function buildPartList(){
   const ul = $("partList");
-  const list = PARTS.filter(p => !p.liquid && (!state.asm || p.asm === state.asm));
+  const list = visibleParts();
   ul.innerHTML = list.map(p =>
     `<li data-no="${p.no}" tabindex="0" role="button" aria-pressed="${state.pick===p.no}" class="${state.pick===p.no?"on":""}">
        <span class="sw" style="background:${rgbCss(p.col)}"></span>
@@ -1091,32 +1167,125 @@ function buildPartList(){
      </li>`).join("");
   $("partCount").textContent = `${list.length}`;
   const choose = li => {
-    state.pick = state.pick === li.dataset.no ? null : li.dataset.no;
+    // 단독 보기 중에는 같은 항목을 다시 눌러도 해제하지 않는다 — 해제하면 볼 것이 없다.
+    state.pick = (state.pick === li.dataset.no && !state.solo) ? null : li.dataset.no;
+    if(state.solo){
+      const p = picked();
+      if(p) fitCam(p); else setSolo(false);
+    }
     showSpec(); buildPartList();
   };
   ul.querySelectorAll("li").forEach(li => {
     li.addEventListener("click", () => choose(li));
+    li.addEventListener("dblclick", () => { state.pick = li.dataset.no; setSolo(true); });
     li.addEventListener("keydown", e => {
       if(e.key === "Enter" || e.key === " "){ e.preventDefault(); choose(li); }
     });
   });
 }
+
+/* ---- 단독 보기 ------------------------------------------------------------
+   부품 하나만 남기고 그 부품의 경계상자에 카메라를 맞춘다. 절단면은 부품
+   중심을 지나고, 회전·확대는 그대로 쓴다. 빠져나오면 원래 카메라로 돌아온다.
+   -------------------------------------------------------------------------- */
+let camSaved = null;
+/** 지금 시선에서 부품이 화면을 꽉 채우는 거리. 경계구(球)로 잡으면 회전체가
+ *  한참 작게 나오므로 정점을 화면축에 직접 투영해 실루엣을 잰다. CAD 의
+ *  '화면 맞춤'과 같이 맞춘 뒤에는 돌려도 거리를 다시 잡지 않는다. */
+function fitCam(p){
+  if(!p || !p.bb) return;
+  const b = p.bb;
+  cam.target = b.c.slice();
+  const ca = Math.cos(cam.az), sa = Math.sin(cam.az);
+  const ce = Math.cos(cam.el), se = Math.sin(cam.el);
+  const fwd = [ca*ce, sa*ce, se];          // 목표 → 눈
+  const rt  = [-sa, ca, 0];                // 화면 가로축
+  const up  = [-ca*se, -sa*se, ce];        // 화면 세로축
+  let hr = 0, hu = 0, hd = 0;
+  for(let v = p.v0; v < p.v1; v++){
+    const x = mesh.p[v*3] - b.c[0], y = mesh.p[v*3+1] - b.c[1], z = mesh.p[v*3+2] - b.c[2];
+    hr = Math.max(hr, Math.abs(x*rt[0]  + y*rt[1]  + z*rt[2]));
+    hu = Math.max(hu, Math.abs(x*up[0]  + y*up[1]  + z*up[2]));
+    hd = Math.max(hd, Math.abs(x*fwd[0] + y*fwd[1] + z*fwd[2]));
+  }
+  const tv = Math.tan(0.82/2), asp = Math.max(0.55, W/H);
+  const need = Math.max(hu / tv, hr / (tv*asp));
+  cam.r = Math.max(2e-3, need*1.06 + hd);   // hd 를 더해야 가까운 쪽이 근평면을 뚫지 않는다
+  cam.lo = cam.r * 0.22; cam.hi = cam.r * 4.5;
+}
+function setSolo(on){
+  const p = picked();
+  on = !!on && !!p;
+  if(on && !state.solo){
+    camSaved = { az:cam.az, el:cam.el, r:cam.r, target:cam.target.slice(), lo:cam.lo, hi:cam.hi };
+  } else if(!on && state.solo && camSaved){
+    cam.az = camSaved.az; cam.el = camSaved.el; cam.r = camSaved.r;
+    cam.target = camSaved.target.slice(); cam.lo = camSaved.lo; cam.hi = camSaved.hi;
+    camSaved = null;
+  }
+  state.solo = on;
+  toggle($("btnSolo"), on);
+  if(on){
+    fitCam(p);
+    if(state.spin){ state.spin = false; toggle($("btnSpin"), false); }
+    if(state.run) setRun(false);          // 입자는 장치 전체를 전제로 움직인다
+  }
+  buildPartList(); showSpec();
+}
+/** 목록에서 d 칸 이동. 고른 것이 없으면 양 끝에서 시작한다. */
+function stepPart(d){
+  const list = visibleParts();
+  if(!list.length) return;
+  let i = list.findIndex(p => p.no === state.pick);
+  i = i < 0 ? (d > 0 ? 0 : list.length - 1) : (i + d + list.length) % list.length;
+  state.pick = list[i].no;
+  if(state.solo) fitCam(list[i]);
+  buildPartList(); showSpec();
+  const li = $("partList").querySelector('[data-no="' + state.pick + '"]');
+  if(li && li.scrollIntoView) li.scrollIntoView({ block:"nearest" });
+}
+/** 경계상자에서 읽은 외형치수 (mm) 와 장치 Z 구간. */
+function envelope(p){
+  const b = p && p.bb;
+  if(!b) return null;
+  const mm = v => Math.round(v / M);
+  return { x:mm(b.hi[0]-b.lo[0]), y:mm(b.hi[1]-b.lo[1]), z:mm(b.hi[2]-b.lo[2]),
+           z0:mm(b.lo[2]) - G.floorOffset, z1:mm(b.hi[2]) - G.floorOffset };
+}
 function showSpec(){
-  const p = PARTS.find(x => x.no === state.pick);
-  const el = $("spec");
+  const p = picked();
+  const el = $("spec"), info = $("soloInfo");
   if(!p){
+    info.hidden = true; info.innerHTML = "";
     el.innerHTML = state.asm
       ? `<b>아세이 ${state.asm}</b>목록에서 부품을 고르면 강조된다. 다시 누르면 해제.`
       : `<b>전체 조립</b>아세이 버튼으로 한 계통만 남길 수 있다. 목록에서 부품을 고르면 그 부품만 강조된다.`;
     return;
   }
   el.innerHTML = `<b>${p.no} · ${p.name}</b><code>${p.spec}</code>`;
+  if(!state.solo){ info.hidden = true; info.innerHTML = ""; return; }
+  const e = envelope(p), sh = partSheet(p.no);
+  const asmName = (ASM.find(a => a[0] === p.asm) || [p.asm, ""])[1];
+  const rows = [`<dt>아세이</dt><dd>${p.asm} ${asmName}</dd>`];
+  if(p.qty > 1) rows.push(`<dt>개수</dt><dd>${p.qty}</dd>`);
+  if(e){
+    // 한 번호로 여러 개를 그리는 부품(러그 3, 칼라 2 …)은 낱개가 아니라 배치 범위다.
+    rows.push(`<dt>${p.qty > 1 ? "배치 범위" : "외형"}</dt><dd>${e.x} × ${e.y} × ${e.z}</dd>`);
+    rows.push(`<dt>장치 Z</dt><dd>${e.z0} ~ ${e.z1}</dd>`);
+  }
+  rows.push(`<dt>상태</dt><dd>${p.st === "-" ? "—" : p.st}</dd>`);
+  const links = [];
+  if(sh) links.push(`<a href="mp50-part-drawings.html#${sh.id}">${sh.text}</a>`);
+  links.push(`<a href="mp50-fabrication-drawings.html#${asmSheet(p.asm)}">아세이도 ${asmSheet(p.asm)}</a>`);
+  info.hidden = false;
+  info.innerHTML = `<dl>${rows.join("")}</dl><div class="dwg">${links.join("")}</div>`;
 }
 function buildAsmRow(){
   const row = $("asmRow");
   row.innerHTML = `<button data-asm="" aria-pressed="true">전체</button>` +
     ASM.map(([c,n]) => `<button data-asm="${c}" aria-pressed="false">${c} ${n}</button>`).join("");
   row.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    if(state.solo) setSolo(false);
     state.asm = b.dataset.asm || null;
     state.pick = null;
     row.querySelectorAll("button").forEach(o => toggle(o, o === b));
@@ -1154,7 +1323,10 @@ function setRun(on){
   if(on){ simT = 0; seedParticles(); }
 }
 function applyView(v){
-  cam.az = v.az; cam.el = v.el; cam.r = v.r;
+  cam.az = v.az; cam.el = v.el;
+  // 단독 보기에서는 방향만 바꾸고 거리는 부품 크기에 맞춘 값을 지킨다.
+  if(state.solo) fitCam(picked());
+  else { cam.r = v.r; cam.target = [0, 0, 0.90]; cam.lo = 1.1; cam.hi = 6.5; }
   setCut(v.cut);
   state.spin = false; toggle($("btnSpin"), false);
 }
@@ -1166,6 +1338,23 @@ $("rngCut").addEventListener("input", e => { setClip(+e.target.value); if(!state
 $("btnRun").addEventListener("click", () => setRun(!state.run));
 $("btnSpin").addEventListener("click", () => { state.spin = !state.spin; toggle($("btnSpin"), state.spin); });
 $("btnLabels").addEventListener("click", () => { state.labels = !state.labels; toggle($("btnLabels"), state.labels); });
+$("btnSolo").addEventListener("click", () => {
+  if(!state.solo && !state.pick) stepPart(1);   // 고른 것이 없으면 목록 첫 부품부터
+  setSolo(!state.solo);
+});
+$("btnPrev").addEventListener("click", () => stepPart(-1));
+$("btnNext").addEventListener("click", () => stepPart(1));
+window.addEventListener("keydown", e => {
+  if(e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target;
+  if(t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+  if(e.key === "Escape" && state.solo){ setSolo(false); e.preventDefault(); return; }
+  if(e.key === "ArrowLeft" || e.key === "ArrowRight"){
+    if(!state.pick && !state.solo) return;
+    stepPart(e.key === "ArrowRight" ? 1 : -1);
+    e.preventDefault();
+  }
+});
 $("viewIso").addEventListener("click", () => applyView(VIEWS.iso));
 $("viewFront").addEventListener("click", () => applyView(VIEWS.front));
 $("viewTop").addEventListener("click", () => applyView(VIEWS.top));
@@ -1206,7 +1395,8 @@ if(gl){
   canvas.addEventListener("pointercancel", stop);
   canvas.addEventListener("wheel", e => {
     e.preventDefault();
-    cam.r = Math.max(1.1, Math.min(6.5, cam.r + e.deltaY*0.0016));
+    // 크기가 400 배 차이 나므로 더하기가 아니라 배율로 줌해야 손맛이 같다.
+    cam.r = Math.max(cam.lo, Math.min(cam.hi, cam.r * (1 + e.deltaY*0.0014)));
   }, { passive:false });
   canvas.addEventListener("dblclick", () => applyView(VIEWS.iso));
   canvas.addEventListener("touchmove", e => { if(e.touches.length>1) e.preventDefault(); }, { passive:false });
@@ -1232,6 +1422,10 @@ function updateHud(){
   if(state.explode > 0) right.push(`<div class="chip">분해 <b>${Math.round(state.explode*100)} %</b></div>`);
   if(state.cut) right.push(`<div class="chip">컷어웨이 <b>${state.clip === 0 ? "중심" : (state.clip*1000).toFixed(0)+" mm"}</b></div>`);
   if(state.asm) right.push(`<div class="chip">아세이 <b>${state.asm}</b></div>`);
+  if(state.solo){
+    const p = picked(), e = envelope(p);
+    if(p) right.push(`<div class="chip live">단독 <b>${p.no}</b>${e ? ` · ${e.x}×${e.y}×${e.z}` : ""}</div>`);
+  }
   $("hudRight").innerHTML = right.join("");
   if(state.run){
     const idx = phaseIndex(simT);
@@ -1239,7 +1433,7 @@ function updateHud(){
   }
 }
 
-/* 해시 딥링크 — #explode=100&cut=1&clip=0&run=1&asm=E&salt=26&spin=0 */
+/* 해시 딥링크 — #explode=100&cut=1&clip=0&run=1&asm=E&salt=26&spin=0&solo=D-02 */
 function applyHash(){
   const h = (location.hash || "").replace(/^#/, "");
   if(!h) return;
@@ -1254,9 +1448,13 @@ function applyHash(){
     const b = $("asmRow").querySelector(`[data-asm="${q.asm}"]`);
     if(b) b.click();
   }
+  if(q.solo !== undefined){
+    const no = decodeURIComponent(q.solo);
+    if(PARTS.some(p => p.no === no && !p.liquid)){ state.pick = no; setSolo(true); }
+  }
   if(q.view && VIEWS[q.view]) applyView(VIEWS[q.view]);
   if(q.spin !== undefined){ state.spin = q.spin === "1"; toggle($("btnSpin"), state.spin); }
-  if(q.run === "1") setRun(true);
+  if(q.run === "1" && !state.solo) setRun(true);
   if(q.t !== undefined && state.run){ simT = Math.max(0, +q.t || 0); }
 }
 applyHash();
@@ -1293,7 +1491,8 @@ if(gl){
      교반기 벤더, 프레임(H)은 파이프 업체로 각각 나가므로 그 경계가 그대로 견적 경계다.
      <b>컷어웨이</b>는 동체를 반으로 잘라 배플·임펠러·분산링의 상대 위치를 보여준다 —
      이 세 가지가 서로 부딪히지 않는다는 것이 이 장치 설계의 핵심이었다.
-     <b>운전 재생</b>은 분산부터 <b>동시 정지</b>·자연 층분리까지를 재생한다.</p>
+     <b>운전 재생</b>은 분산부터 <b>동시 정지</b>·자연 층분리까지를 재생한다.
+     <b>단독 보기</b>는 부품 하나만 떼어 내고 그 부품에 카메라를 맞춘다.</p>
 
   <p>운전 재생의 입자는 장식이 아니다. 640 개 입자에 [R] §7 의 3×3 유효밀도표에서
      밀도를, 31~75 µm 구간에서 지름을 주고, 매 프레임 <code>src/mp50_separator/checks.py</code>
@@ -1342,12 +1541,28 @@ if(gl){
     </tbody>
   </table>
 
+  <h2>부품 하나만 떼어 보기</h2>
+  <p>부품 목록에서 하나를 고르고 <b>단독 보기</b>를 누르면 그 부품만 남고 카메라가
+     부품 크기에 맞춰진다. Ø50 스러스터 칼라부터 610 × 610 × 802 프레임까지
+     400 배 차이가 나므로, 맞춤은 경계상자가 아니라 <b>지금 시선에서의 실루엣</b>을
+     정점째로 재서 거리를 잡는다 — 회전체를 경계구로 맞추면 한참 작게 나온다.
+     절단면도 장치 중심이 아니라 <b>그 부품의 중심</b>을 지나므로, 축에서 벗어난
+     노즐이나 배플도 반으로 갈라 벽 두께를 볼 수 있다.</p>
+  <p>옆 패널에 그 부품의 <b>외형치수와 장치 Z 구간</b>이 뜬다. 이 값은 따로 적어 둔
+     것이 아니라 방금 그린 정점에서 읽은 것이라, 형상이 바뀌면 표시도 같이 바뀐다.
+     아래 두 칩은 각각 <a href="mp50-part-drawings.html">부품 상세도면 29매</a>의 해당
+     시트와 <a href="mp50-fabrication-drawings.html">아세이 제작도면</a>으로 간다.
+     <code>#solo=D-02</code> 처럼 주소에 붙여 바로 열 수도 있다.</p>
+
   <h2>조작</h2>
   <ul>
     <li>끌기 — 회전 · 휠 — 확대 · 더블클릭 — 등각 복귀</li>
     <li>분해 · 절단면 슬라이더는 서로 겹쳐 쓸 수 있다. 절단면을 움직이면 컷어웨이가 자동으로 켜진다.</li>
     <li>아세이 버튼으로 한 계통만 남기고, 부품 목록에서 고르면 그 부품이 강조된다.</li>
-    <li>치수·공차·용접·부품표는 <a href="mp50-fabrication-drawings.html">제작도면 15매</a>에 있다.</li>
+    <li>단독 보기 — 목록에서 더블클릭하거나 <b>단독 보기</b> 버튼. <b>← →</b> 로 앞뒤 부품,
+        <b>Esc</b> 로 빠져나온다. 빠져나오면 들어가기 전 시점으로 돌아온다.</li>
+    <li>치수·공차·용접·부품표는 <a href="mp50-fabrication-drawings.html">제작도면 15매</a>와
+        <a href="mp50-part-drawings.html">부품 상세도면 29매</a>에 있다.</li>
   </ul>
 </section>
 </div>

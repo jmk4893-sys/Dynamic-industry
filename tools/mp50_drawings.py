@@ -21,8 +21,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
 from _mp50_draft import (  # noqa: E402
-    FRAME, GAP, HIDDEN_W, T_DIM, T_LABEL, T_NOTE, T_TITLE, T_VIEW, THICK, THIN,
-    Canvas, View, esc, fmt, text_width,
+    FRAME, GAP, HIDDEN_W, STYLE, T_DIM, T_LABEL, T_NOTE, T_TITLE, T_VIEW, THICK, THIN,
+    Canvas, View, document, esc, fmt, text_width, wrap,
 )
 
 from mp50_separator import ASSEMBLIES, CONFLICTS, GEOMETRY as G, run_checks  # noqa: E402
@@ -679,7 +679,7 @@ def sheet_a2() -> None:
     ]
     c.view_title(16.0, 176.0, "판금 지시")
     for i, t in enumerate(notes):
-        for j, line in enumerate(_wrap(t, 96)):
+        for j, line in enumerate(wrap(t, 96)):
             c.text(16.0 + (0 if j == 0 else 4.0), 183.0 + i * 6.6 + j * 3.8, line,
                    T_DIM, "start", "tx" if j == 0 and i < 3 else "tx2")
 
@@ -1495,7 +1495,7 @@ def sheet_k() -> None:
     c.view_title(126.0, 30.0, "용접표")
     end = c.table(126.0, 34.0, [9.0, 38.0, 30.0, 52.0, 22.0], rows, row_h=5.4,
                   size=T_DIM - 0.3, aligns=["middle", "start", "start", "start", "start"])
-    for i, line in enumerate(_wrap("오스테나이트계는 이면 백퍼지 없이 용접하면 산화막이 남고, "
+    for i, line in enumerate(wrap("오스테나이트계는 이면 백퍼지 없이 용접하면 산화막이 남고, "
                                    "그 자리가 염수에서 먼저 공식(pitting)이 된다. 용접 후 전 표면을 "
                                    "산세하고 부동태화한다.", 60)):
         c.text(126.0, end + 5.0 + i * 4.0, line, T_DIM - 0.2, "start", "tx2")
@@ -1537,7 +1537,7 @@ def sheet_k() -> None:
     e4 = c.table(292.0, e3 + 13.0, [14.0, 40.0, 64.0], fat, row_h=5.4, size=T_DIM - 0.3,
                  aligns=["middle", "start", "start"])
     c.text(292.0, e4 + 5.0, "출처 — [R] 연구문서 Rev.0 §4 FAT 표.", T_DIM - 0.2, "start", "tx2")
-    for i, line in enumerate(_wrap("T3 부터는 실제 염수를 쓴다. NaCl 은 SUS304 에 공식을 일으키므로 "
+    for i, line in enumerate(wrap("T3 부터는 실제 염수를 쓴다. NaCl 은 SUS304 에 공식을 일으키므로 "
                                    "매 시험 뒤 청수로 씻어 내고 물기를 말린다. DOE 를 포화 염도까지 "
                                    "넓힐 경우 동체 재질을 SUS316L 로 올려야 한다 (CHK-10).", 48)):
         c.text(292.0, e4 + 12.0 + i * 4.0, line, T_DIM - 0.2, "start", "tx2")
@@ -1577,27 +1577,11 @@ def bom_block(c: Canvas, code: str, x: float, y: float, title: str = "부품표"
         if not prt.note or prt.note == "-":
             continue
         c.text(x, yy, prt.no, T_DIM - 0.2, "start", "tx", weight="600", mono=True)
-        for line in _wrap(prt.note, 88):
+        for line in wrap(prt.note, 88):
             c.text(x + 14.0, yy, line, T_DIM - 0.2, "start", "tx2")
             yy += 3.9
         yy += 0.7
     return yy
-
-
-def _wrap(text: str, width: int) -> list[str]:
-    """한글 폭을 2 로 세어 줄바꿈."""
-    out, line, w = [], "", 0
-    for word in str(text).split(" "):
-        ww = sum(2 if ord(ch) > 0x2E80 else 1 for ch in word) + 1
-        if w + ww > width and line:
-            out.append(line)
-            line, w = word, ww
-        else:
-            line = f"{line} {word}".strip()
-            w += ww
-    if line:
-        out.append(line)
-    return out
 
 
 def check_note(c: Canvas, x: float, y: float, refs: tuple[str, ...], width: int = 92) -> float:
@@ -1612,7 +1596,7 @@ def check_note(c: Canvas, x: float, y: float, refs: tuple[str, ...], width: int 
         yy += 4.0
         c.text(x, yy, chk.value, T_DIM - 0.2, "start", "tx", mono=True)
         yy += 4.0
-        for line in _wrap(chk.detail, width):
+        for line in wrap(chk.detail, width):
             c.text(x, yy, line, T_DIM - 0.3, "start", "tx2")
             yy += 3.7
         yy += 2.6
@@ -1634,7 +1618,7 @@ def conflict_note(c: Canvas, x: float, y: float, refs: tuple[str, ...], width: i
             yy += 3.7
         c.text(x, yy, f"→ {cf.resolution}", T_DIM - 0.1, "start", "tx", weight="600")
         yy += 4.2
-        for line in _wrap(cf.rationale, width):
+        for line in wrap(cf.rationale, width):
             c.text(x, yy, line, T_DIM - 0.3, "start", "tx2")
             yy += 3.7
         yy += 2.6
@@ -1644,101 +1628,6 @@ def conflict_note(c: Canvas, x: float, y: float, refs: tuple[str, ...], width: i
 # ==========================================================================
 # HTML 출력
 # ==========================================================================
-STYLE = """
-:root{
-  color-scheme:light dark;
-  --bg:#E8ECEF;--surface:#FFFFFF;--surface-2:#F4F7F9;
-  --paper:#FFFFFF;--band:#EDF1F4;
-  --ink:#141B21;--ink-2:#4E5C67;--ink-3:#7C8A95;
-  --line:#9AA6B1;--rule:#D2D9DF;
-  --dl:#5C6A75;--cl:#8C6BA8;
-  --brine:#1F6E8C;--wl:#12607C;
-  --warn:#9C3A22;--ok:#1F6B45;--hold:#8A5A0B;
-  --sans:"IBM Plex Sans KR",system-ui,-apple-system,"Malgun Gothic",sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#0D1216;--surface:#141B21;--surface-2:#1A232A;
-    --paper:#171F26;--band:#202A32;
-    --ink:#E4EAEF;--ink-2:#A2B0BB;--ink-3:#78868F;
-    --line:#6B7A85;--rule:#2A353D;
-    --dl:#93A3AE;--cl:#B394D0;
-    --brine:#57B6D8;--wl:#6FC6E4;
-    --warn:#E8836A;--ok:#5FBF8E;--hold:#DDA83B;
-  }
-}
-:root[data-theme="dark"]{
-  color-scheme:dark;
-  --bg:#0D1216;--surface:#141B21;--surface-2:#1A232A;
-  --paper:#171F26;--band:#202A32;
-  --ink:#E4EAEF;--ink-2:#A2B0BB;--ink-3:#78868F;
-  --line:#6B7A85;--rule:#2A353D;
-  --dl:#93A3AE;--cl:#B394D0;
-  --brine:#57B6D8;--wl:#6FC6E4;
-  --warn:#E8836A;--ok:#5FBF8E;--hold:#DDA83B;
-}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
-  font-weight:400;line-height:1.65;-webkit-text-size-adjust:100%}
-.wrap{max-width:1360px;margin:0 auto;padding:32px 16px 72px}
-header.doc{padding:28px 0 20px;border-bottom:2px solid var(--ink);margin-bottom:8px}
-header.doc h1{font-size:clamp(21px,3.4vw,30px);line-height:1.25;margin:0 0 6px;letter-spacing:-.01em}
-header.doc p{margin:0;color:var(--ink-2);font-size:14px;max-width:76ch}
-.meta{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font-size:12.5px;
-  color:var(--ink-2);font-family:var(--mono)}
-.meta b{color:var(--ink);font-weight:600}
-.toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;
-  margin:22px 0 8px;padding:0;list-style:none}
-.toc a{display:block;padding:8px 10px;background:var(--surface);border:1px solid var(--rule);
-  border-radius:5px;text-decoration:none;color:var(--ink);font-size:12.5px}
-.toc a:hover{border-color:var(--line);background:var(--surface-2)}
-.toc code{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);display:block}
-figure.sheet{margin:34px 0 0;background:var(--surface);border:1px solid var(--rule);
-  border-radius:6px;overflow:hidden}
-figure.sheet svg{display:block;width:100%;height:auto;background:var(--paper)}
-figcaption{padding:13px 16px;border-top:1px solid var(--rule);background:var(--surface-2);
-  font-size:13px;color:var(--ink-2)}
-figcaption b{color:var(--ink);font-weight:600}
-section.prose{margin:44px 0 0}
-section.prose h2{font-size:19px;margin:0 0 10px;padding-bottom:7px;border-bottom:1px solid var(--rule)}
-section.prose h3{font-size:14.5px;margin:22px 0 5px}
-section.prose p{margin:0 0 10px;font-size:13.5px;color:var(--ink-2);max-width:88ch}
-section.prose ul{margin:0 0 12px;padding-left:20px;font-size:13.5px;color:var(--ink-2);max-width:88ch}
-table.reg{width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0 18px}
-table.reg th,table.reg td{border:1px solid var(--rule);padding:7px 9px;text-align:left;vertical-align:top}
-table.reg th{background:var(--band);font-weight:600;color:var(--ink)}
-table.reg td{color:var(--ink-2)}
-table.reg td.k{font-family:var(--mono);white-space:nowrap;color:var(--ink);font-weight:600}
-.tag{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11px;
-  font-family:var(--mono);font-weight:600;border:1px solid currentColor}
-.tag.b{color:var(--warn)}.tag.m{color:var(--hold)}.tag.n{color:var(--ink-3)}
-.tag.pass{color:var(--ok)}.tag.warn{color:var(--hold)}.tag.fail{color:var(--warn)}
-/* --- SVG 도면 --- */
-svg .ln{stroke:var(--ink);fill:none;stroke-linecap:round;stroke-linejoin:round}
-svg .dl{stroke:var(--dl);fill:none;stroke-linecap:round}
-svg .cl{stroke:var(--cl);fill:none;stroke-linecap:round}
-svg .wl{stroke:var(--wl);fill:none}
-svg .fill-ink{fill:var(--ink);stroke:none;color:var(--ink)}
-svg text{font-family:var(--sans);fill:var(--ink)}
-svg .tx{fill:var(--ink)}
-svg .tx2{fill:var(--ink-2)}
-svg .wl-tx{fill:var(--wl);font-weight:600}
-svg .warn{fill:var(--warn);font-weight:600}
-svg .warn-ln{stroke:var(--warn);fill:none}
-svg .mono{font-family:var(--mono)}
-@media (max-width:720px){
-  .wrap{padding:20px 10px 48px}
-  figure.sheet{border-radius:4px}
-}
-@media print{
-  body{background:#fff}
-  .wrap{max-width:none;padding:0}
-  header.doc,.toc,section.prose{display:none}
-  figure.sheet{border:none;margin:0;page-break-after:always}
-  figcaption{display:none}
-}
-"""
 
 
 def _severity_tag(sev: str) -> str:
@@ -1831,6 +1720,13 @@ def build_html() -> str:
     <thead><tr><th>번호</th><th>구분</th><th>항목</th><th>기준</th><th>결과</th><th>판정</th><th>내용</th></tr></thead>
     <tbody>{checks_rows}</tbody>
   </table>
+
+  <h2>같이 보는 문서</h2>
+  <p>이 도면은 <b>어디에 어떻게 붙는가</b>를 보여준다. 부품 하나를 어떻게 깎고 말고
+     뚫는가는 <a href="mp50-part-drawings.html">부품 상세도면 29매</a>에 있고, 부품이
+     실제로 어떻게 생겼는지와 서로 부딪히지 않는지는
+     <a href="mp50-3d.html">3D 분해 · 컷어웨이 콘솔</a>에서 돌려 볼 수 있다 —
+     콘솔의 부품 단독 보기는 여기 각 아세이도로 되돌아오는 연결을 갖고 있다.</p>
 </section>
 </div>
 </body>

@@ -53,10 +53,21 @@ def text_width(s: str, size: float) -> float:
 
     한글·한자는 전각이라 글자당 폭이 글자높이와 거의 같고, 라틴은 그 절반쯤이다.
     둘을 같게 보면 한글 제목마다 밑줄과 옆 글자가 어긋난다.
+
+    라틴을 한 값으로 뭉뚱그리면 ``ISO 2768-mK`` 처럼 대문자와 숫자만 있는
+    문자열이 3 mm 쯤 좁게 나와 옆 칸을 침범한다. 대문자·숫자는 소문자보다
+    확실히 넓으므로 셋을 나눈다.
     """
     units = 0.0
     for ch in str(s):
-        units += 1.0 if ord(ch) > 0x2E80 else 0.54
+        if ord(ch) > 0x2E80:
+            units += 1.0                       # 전각
+        elif ch.isupper() or ch.isdigit():
+            units += 0.62
+        elif ch in " .,:;'|!\u00b7":
+            units += 0.30
+        else:
+            units += 0.52
     return units * size
 
 
@@ -260,6 +271,99 @@ class Canvas:
         self.text(x - 3.4 * math.cos(a), y + 3.4 * math.sin(a) + 1.2, label,
                   T_VIEW, "middle", "tx", weight="700")
 
+    # -- 기하공차 (ISO 1101) --
+    def gdt_symbol(self, kind: str, x: float, y: float, h: float = 2.6) -> None:
+        """기하특성 기호를 선으로 그린다.
+
+        ⏥ ⌭ ⌖ 같은 유니코드 기호는 본문 폰트에 없을 때가 많아 조용히 네모로
+        떨어진다. 도면에서 기호가 사라지면 공차가 사라지는 것이므로 직접 그린다.
+        """
+        r = h / 2
+        cx, cy = x + r, y - r
+        if kind == "flat":            # 평면도 — 기운 평행사변형
+            self.poly([(x + h * .18, y), (x + h, y), (x + h * .82, y - h), (x, y - h)],
+                      THIN, "ln", close=True)
+        elif kind == "round":         # 진원도
+            self.circle(cx, cy, r * .92, THIN, "ln")
+        elif kind == "cyl":           # 원통도
+            self.circle(cx, cy, r * .92, THIN, "ln")
+            self.line(x - r * .3, y, x + r * .5, y - h, THIN, "ln")
+            self.line(x + h - r * .5, y, x + h + r * .3, y - h, THIN, "ln")
+        elif kind == "perp":          # 직각도
+            self.line(x + r, y, x + r, y - h, THIN, "ln")
+            self.line(x, y - h, x + h, y - h, THIN, "ln")
+        elif kind == "para":          # 평행도
+            self.line(x + h * .18, y, x, y - h, THIN, "ln")
+            self.line(x + h, y, x + h * .82, y - h, THIN, "ln")
+        elif kind == "straight":      # 진직도
+            self.line(x, y - r, x + h, y - r, THIN, "ln")
+        elif kind == "conc":          # 동축도
+            self.circle(cx, cy, r * .95, THIN, "ln")
+            self.circle(cx, cy, r * .45, THIN, "ln")
+        elif kind == "pos":           # 위치도
+            self.circle(cx, cy, r * .72, THIN, "ln")
+            self.line(cx - r, cy, cx + r, cy, THIN, "ln")
+            self.line(cx, cy - r, cx, cy + r, THIN, "ln")
+        elif kind == "runout":        # 원주 흔들림
+            self.line(x + h * .2, y - h, x + h * .8, y, THIN, "ln")
+            self.poly([(x + h * .8, y), (x + h * .44, y + h * .06),
+                       (x + h * .72, y - h * .34)], THIN, "ln", close=True, fill="currentColor")
+        elif kind == "profile":       # 면의 윤곽도
+            self.arc(cx, cy - r * .4, r, 20, 160, THIN, "ln")
+        else:
+            self.text(cx, cy + h * .38, kind, h, "middle", "tx")
+
+    def fcf(self, x: float, y: float, kind: str, tol: str, datums: str = "",
+            h: float = 5.2) -> float:
+        """기하공차 기입틀 (feature control frame). 반환값은 폭."""
+        cells = [h, text_width(tol, T_DIM) + 3.4]
+        if datums:
+            cells.append(text_width(datums, T_DIM) + 3.4)
+        total = sum(cells)
+        self.rect(x, y, total, h, THIN, "ln", fill="var(--paper)")
+        cx = x
+        for w in cells[:-1]:
+            cx += w
+            self.line(cx, y, cx, y + h, THIN, "ln")
+        self.gdt_symbol(kind, x + (h - 2.6) / 2, y + h - (h - 2.6) / 2, 2.6)
+        self.text(x + cells[0] + cells[1] / 2, y + h - 1.6, tol, T_DIM, "middle", "tx", mono=True)
+        if datums:
+            self.text(x + cells[0] + cells[1] + cells[2] / 2, y + h - 1.6, datums,
+                      T_DIM, "middle", "tx", mono=True)
+        return total
+
+    def datum(self, x: float, y: float, letter: str, tx: float, ty: float) -> None:
+        """데이텀 기호 — 채운 삼각형 + 네모 안 글자."""
+        self.line(tx, ty, x, y, THIN, "dl")
+        s = 2.2
+        self.poly([(tx, ty), (tx - s, ty + s * 1.5), (tx + s, ty + s * 1.5)],
+                  THIN, "ln", close=True, fill="currentColor")
+        self.rect(x - 2.6, y - 2.6, 5.2, 5.2, THIN, "ln", fill="var(--paper)")
+        self.text(x, y + 1.2, letter, T_NOTE, "middle", "tx", weight="700")
+
+    def surface(self, x: float, y: float, ra: str, note: str = "") -> None:
+        """표면거칠기 기호 (ISO 1302) — 체크표 위에 Ra 값."""
+        h = 4.0
+        self.poly([(x, y), (x + h * .5, y - h), (x + h * 1.2, y + h * .6)], THIN, "ln")
+        self.line(x + h * 1.2, y + h * .6, x + h * 3.0, y + h * .6, THIN, "ln")
+        self.text(x + h * 1.4, y - 0.4, ra, T_DIM - 0.2, "start", "tx", mono=True)
+        if note:
+            self.text(x + h * 1.4, y + h * .6 + 3.2, note, T_DIM - 0.4, "start", "tx2")
+
+    def section_mark(self, x0: float, y0: float, x1: float, y1: float, label: str,
+                     flip: bool = False) -> None:
+        """절단선 — 양 끝을 굵게 하고 보는 방향 화살표와 기호를 단다."""
+        self.line(x0, y0, x1, y1, THIN, "cl", dash="9 2 2 2")
+        import math as _m
+
+        ang = _m.degrees(_m.atan2(-(y1 - y0), x1 - x0))
+        view = ang + (90 if flip else -90)
+        for (px, py) in ((x0, y0), (x1, y1)):
+            dx, dy = _m.cos(_m.radians(ang)) * 5, -_m.sin(_m.radians(ang)) * 5
+            sx = -1 if (px, py) == (x0, y0) else 1
+            self.line(px - dx * sx, py - dy * sx, px, py, FRAME, "ln")
+            self.section_arrow(px, py, view, label)
+
     # -- 표 --
     def table(self, x: float, y: float, widths: list[float], rows: list[list[str]],
               header: bool = True, row_h: float = 4.4, size: float = T_DIM,
@@ -342,6 +446,143 @@ class Canvas:
             f'aria-label="{esc(self.aria)}" xmlns="http://www.w3.org/2000/svg">'
             f"{defs}" + "".join(self.body) + "</svg>"
         )
+
+
+STYLE = """
+:root{
+  color-scheme:light dark;
+  --bg:#E8ECEF;--surface:#FFFFFF;--surface-2:#F4F7F9;
+  --paper:#FFFFFF;--band:#EDF1F4;
+  --ink:#141B21;--ink-2:#4E5C67;--ink-3:#7C8A95;
+  --line:#9AA6B1;--rule:#D2D9DF;
+  --dl:#5C6A75;--cl:#8C6BA8;
+  --brine:#1F6E8C;--wl:#12607C;
+  --warn:#9C3A22;--ok:#1F6B45;--hold:#8A5A0B;
+  --sans:"IBM Plex Sans KR",system-ui,-apple-system,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1216;--surface:#141B21;--surface-2:#1A232A;
+    --paper:#171F26;--band:#202A32;
+    --ink:#E4EAEF;--ink-2:#A2B0BB;--ink-3:#78868F;
+    --line:#6B7A85;--rule:#2A353D;
+    --dl:#93A3AE;--cl:#B394D0;
+    --brine:#57B6D8;--wl:#6FC6E4;
+    --warn:#E8836A;--ok:#5FBF8E;--hold:#DDA83B;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0D1216;--surface:#141B21;--surface-2:#1A232A;
+  --paper:#171F26;--band:#202A32;
+  --ink:#E4EAEF;--ink-2:#A2B0BB;--ink-3:#78868F;
+  --line:#6B7A85;--rule:#2A353D;
+  --dl:#93A3AE;--cl:#B394D0;
+  --brine:#57B6D8;--wl:#6FC6E4;
+  --warn:#E8836A;--ok:#5FBF8E;--hold:#DDA83B;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+  font-weight:400;line-height:1.65;-webkit-text-size-adjust:100%}
+.wrap{max-width:1360px;margin:0 auto;padding:32px 16px 72px}
+header.doc{padding:28px 0 20px;border-bottom:2px solid var(--ink);margin-bottom:8px}
+header.doc h1{font-size:clamp(21px,3.4vw,30px);line-height:1.25;margin:0 0 6px;letter-spacing:-.01em}
+header.doc p{margin:0;color:var(--ink-2);font-size:14px;max-width:76ch}
+.meta{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font-size:12.5px;
+  color:var(--ink-2);font-family:var(--mono)}
+.meta b{color:var(--ink);font-weight:600}
+.toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;
+  margin:22px 0 8px;padding:0;list-style:none}
+.toc a{display:block;padding:8px 10px;background:var(--surface);border:1px solid var(--rule);
+  border-radius:5px;text-decoration:none;color:var(--ink);font-size:12.5px}
+.toc a:hover{border-color:var(--line);background:var(--surface-2)}
+.toc code{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);display:block}
+figure.sheet{margin:34px 0 0;background:var(--surface);border:1px solid var(--rule);
+  border-radius:6px;overflow:hidden}
+figure.sheet svg{display:block;width:100%;height:auto;background:var(--paper)}
+figcaption{padding:13px 16px;border-top:1px solid var(--rule);background:var(--surface-2);
+  font-size:13px;color:var(--ink-2)}
+figcaption b{color:var(--ink);font-weight:600}
+section.prose{margin:44px 0 0}
+section.prose h2{font-size:19px;margin:0 0 10px;padding-bottom:7px;border-bottom:1px solid var(--rule)}
+section.prose h3{font-size:14.5px;margin:22px 0 5px}
+section.prose p{margin:0 0 10px;font-size:13.5px;color:var(--ink-2);max-width:88ch}
+section.prose ul{margin:0 0 12px;padding-left:20px;font-size:13.5px;color:var(--ink-2);max-width:88ch}
+table.reg{width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0 18px}
+table.reg th,table.reg td{border:1px solid var(--rule);padding:7px 9px;text-align:left;vertical-align:top}
+table.reg th{background:var(--band);font-weight:600;color:var(--ink)}
+table.reg td{color:var(--ink-2)}
+table.reg td.k{font-family:var(--mono);white-space:nowrap;color:var(--ink);font-weight:600}
+.tag{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11px;
+  font-family:var(--mono);font-weight:600;border:1px solid currentColor}
+.tag.b{color:var(--warn)}.tag.m{color:var(--hold)}.tag.n{color:var(--ink-3)}
+.tag.pass{color:var(--ok)}.tag.warn{color:var(--hold)}.tag.fail{color:var(--warn)}
+/* --- SVG 도면 --- */
+svg .ln{stroke:var(--ink);fill:none;stroke-linecap:round;stroke-linejoin:round}
+svg .dl{stroke:var(--dl);fill:none;stroke-linecap:round}
+svg .cl{stroke:var(--cl);fill:none;stroke-linecap:round}
+svg .wl{stroke:var(--wl);fill:none}
+svg .fill-ink{fill:var(--ink);stroke:none;color:var(--ink)}
+svg text{font-family:var(--sans);fill:var(--ink)}
+svg .tx{fill:var(--ink)}
+svg .tx2{fill:var(--ink-2)}
+svg .wl-tx{fill:var(--wl);font-weight:600}
+svg .warn{fill:var(--warn);font-weight:600}
+svg .warn-ln{stroke:var(--warn);fill:none}
+svg .mono{font-family:var(--mono)}
+@media (max-width:720px){
+  .wrap{padding:20px 10px 48px}
+  figure.sheet{border-radius:4px}
+}
+@media print{
+  body{background:#fff}
+  .wrap{max-width:none;padding:0}
+  header.doc,.toc,section.prose{display:none}
+  figure.sheet{border:none;margin:0;page-break-after:always}
+  figcaption{display:none}
+}
+"""
+
+
+def wrap(text: str, width: int) -> list[str]:
+    """한글 폭을 2 로 세어 줄바꿈. ``width`` 는 반각 기준 글자수."""
+    out, line, w = [], "", 0
+    for word in str(text).split(" "):
+        ww = sum(2 if ord(ch) > 0x2E80 else 1 for ch in word) + 1
+        if w + ww > width and line:
+            out.append(line)
+            line, w = word, ww
+        else:
+            line = f"{line} {word}".strip()
+            w += ww
+    if line:
+        out.append(line)
+    return out
+
+
+def document(title: str, description: str, header: str, body: str) -> str:
+    """도면 문서 한 벌 — 두 생성기가 같은 껍데기를 쓴다."""
+    return f"""<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="{esc(description)}">
+<title>{title}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&amp;display=swap">
+<style>{STYLE}</style>
+</head>
+<body>
+<div class="wrap">
+{header}
+{body}
+</div>
+</body>
+</html>
+"""
 
 
 @dataclass

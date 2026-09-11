@@ -70,7 +70,8 @@ MP-50-P0-001, 도면 MP50-DR-000. 충돌 8건을 정리했고 그중 **2건은 �
 | 문서 | 내용 |
 |---|---|
 | [docs/drawings/mp50-fabrication-drawings.html](docs/drawings/mp50-fabrication-drawings.html) | **제작도면 A3 15매** — 기준좌표·공차, 전체 조립도, 아세이 A~K, 동체·원뿔 전개도, 노즐표, 용접·검사 기준. 손으로 적은 치수가 없다 (브라우저로 열 것) |
-| [docs/drawings/mp50-3d.html](docs/drawings/mp50-3d.html) | **3D 분해 · 컷어웨이 콘솔** — 아세이별 분해, 단면 컷어웨이, 분산→동시 정지→자연 층분리 재생. 입자는 검증 모듈과 같은 Stokes 식으로 움직인다 (브라우저로 열 것) |
+| [docs/drawings/mp50-part-drawings.html](docs/drawings/mp50-part-drawings.html) | **부품 상세도면 A3 29매** — 제작품 33종을 27장에 담았다 (소물은 합본). 장마다 소재 규격, 완성 치수, 기하공차, 표면, 가공 순서, 검사. 규격·구매품은 도면 대신 명세 한 장 (브라우저로 열 것) |
+| [docs/drawings/mp50-3d.html](docs/drawings/mp50-3d.html) | **3D 분해 · 컷어웨이 · 부품 단독 보기 콘솔** — 아세이별 분해, 단면 컷어웨이, 부품 하나만 떼어 보기, 분산→동시 정지→자연 층분리 재생. 입자는 검증 모듈과 같은 Stokes 식으로 움직인다 (브라우저로 열 것) |
 | [docs/mp50-fabrication-spec.md](docs/mp50-fabrication-spec.md) | 제작 기준 요약 (코드에서 자동 생성) |
 
 ### 설계 검증에서 나온 것
@@ -90,7 +91,8 @@ MP-50-P0-001, 도면 MP50-DR-000. 충돌 8건을 정리했고 그중 **2건은 �
 ```bash
 PYTHONPATH=src python -m mp50_separator                          # 제작 기준 출력
 PYTHONPATH=src python -m mp50_separator -o docs/mp50-fabrication-spec.md
-python tools/mp50_drawings.py                                    # 제작도면 15매 생성
+python tools/mp50_drawings.py                                    # 아세이 제작도면 15매
+python tools/mp50_parts.py                                       # 부품 상세도면 29매
 ```
 
 ### 구조
@@ -102,9 +104,15 @@ src/mp50_separator/
   conflicts.py   원본 3종의 치수 충돌 8건과 해결 근거
   checks.py      제작성·기능성 검증 14건 (조립 / 기능)
 tools/
-  mp50_drawings.py   기하에서 제작도면 HTML 을 생성
-  _mp50_draft.py     ISO 128 제도 프리미티브
+  mp50_drawings.py   기하에서 아세이 제작도면 HTML 을 생성
+  mp50_parts.py      제작품마다 부품 상세도면 HTML 을 생성
+  _mp50_draft.py     ISO 128 제도 프리미티브 (두 생성기 공용)
 ```
+
+도면은 둘 다 **코드에서 생성**한다. 손으로 고치면 `tests/test_mp50_drawings.py`
+와 `tests/test_mp50_parts.py` 의 재생성 검사가 깨진다. 부품도는 `components.py`
+의 조달 구분(제작/규격/구매/가공)을 그대로 따르므로, 제작품을 하나 추가하고
+도면을 잊으면 생성 자체가 실패한다.
 
 ### 사용법
 

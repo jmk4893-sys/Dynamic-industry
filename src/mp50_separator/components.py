@@ -8,15 +8,24 @@
 유도하므로 치수를 고치면 질량도 따라 움직인다. 손으로 적은 표는 치수가 바뀐
 뒤에도 옛 숫자로 남아 있다가 운반·양중 계획을 틀리게 만든다.
 
+``status`` 는 **설계가 얼마나 확정됐는지**를, ``made`` 는 **어떻게 조달하는지**를
+나타낸다. 둘은 다른 축이다 — 승인이 필요한 구매품도 있고 확정된 제작품도 있다.
+
 ``status``
     ``RELEASE``      제작 착수 가능.
     ``PROPOSED``     충돌 해결안이 들어간 부품 — 발주 전 승인 필요.
     ``HOLD``         벤더 GA 전에는 치수를 확정하지 않는다.
-    ``VENDOR``       구매품 — 치수는 벤더 표준을 따른다.
+    ``VENDOR``       치수를 벤더 표준에 맡긴다.
+
+``made``
+    ``제작``   우리 도면이 있어야 만들 수 있다 — 부품도 1 매가 붙는다.
+    ``규격``   표준 규격품. 규격을 적어 주문한다 (볼트·키·O-링 …).
+    ``구매``   벤더 공급품. 사양으로 주문한다 (모터·밸브·센서 …).
 """
 
 from __future__ import annotations
 
+import dataclasses
 import math
 from dataclasses import dataclass, field
 
@@ -64,8 +73,11 @@ class Part:
         material: 재질. 구매품은 '-'.
         qty: 수량.
         unit_kg: 1개 질량. 0 이면 도면에 '-' 로 적는다 (미확정 구매품).
-        status: RELEASE / PROPOSED / HOLD / VENDOR.
+        status: RELEASE / PROPOSED / HOLD / VENDOR — 설계 확정도.
+        made: 제작 / 규격 / 구매 — 조달 방식. ``제작`` 만 부품도가 붙는다.
         note: 가공·검사 지시.
+        stock: 소재 규격 (제작품만). 판재·봉재·관재를 어떻게 사 오는지.
+        drawing: 부품도 번호 (제작품만, 자동 부여).
     """
 
     no: str
@@ -76,6 +88,13 @@ class Part:
     unit_kg: float = 0.0
     status: str = "RELEASE"
     note: str = ""
+    made: str = "제작"
+    stock: str = ""
+
+    @property
+    def fabricated(self) -> bool:
+        """부품도가 필요한가."""
+        return self.made == "제작"
 
     @property
     def total_kg(self) -> float:
@@ -414,7 +433,88 @@ def _fasteners(g: Geometry) -> Assembly:
     )
 
 
-ASSEMBLIES: tuple[Assembly, ...] = (
+#: 조달 구분과 소재 규격. 부품번호로 건다.
+#:
+#: ``제작`` 만 부품도가 붙는다. ``가공`` 은 별도 부품이 아니라 다른 부품에 넣는
+#: 가공 특징이므로 그 부품의 도면에서 다룬다 (분사홀은 분산링에, 액면 눈금은
+#: 동체에 새긴다). 소재 규격은 **사 오는 형태**다 — 완성 치수가 아니라
+#: 판재·봉재·관재를 어떤 크기로 주문하는지를 적는다.
+PROCUREMENT: dict[str, tuple[str, str]] = {
+    # A 탱크
+    "A-01": ("제작", "SUS304 2B t3 판재 1300 × 620"),
+    "A-02": ("제작", "SUS304 2B t3 판재 820 × 420"),
+    "A-03": ("제작", 'SUS316L Ø63.5 × t2.0 위생튜브 L60 + 2" 페룰'),
+    "A-04": ("제작", "SUS316L 위생튜브 (호칭별) + 페룰"),
+    "A-05": ("제작", "SUS304 t10 판재 Ø500"),
+    "A-06": ("제작", "SUS304 t8 판재 Ø500"),
+    "A-07": ("제작", "SUS304 t5 판재 110 × 110"),
+    "A-08": ("제작", "SUS304 t6 판재 80 × 60"),
+    # B 커버
+    "B-01": ("제작", "SUS304 t5 판재 Ø500"),
+    "B-02": ("제작", "SUS304 t10 판재 Ø240"),
+    "B-03": ("제작", "SUS304 t5 판재 90 × 70"),
+    "B-04": ("제작", "SUS316L Ø12.7 × t1.65 위생튜브 + 페룰"),
+    "B-05": ("규격", "EPDM O-링 코드 Ø5 · 내경 Ø430"),
+    "B-06": ("규격", "M12 × 35 A2-70 + 너트 + 와셔"),
+    "B-07": ("제작", "SUS304 Ø20 환봉 L30"),
+    # C 구동부
+    "C-01": ("구매", "-"), "C-02": ("구매", "-"), "C-03": ("구매", "-"), "C-04": ("구매", "-"),
+    "C-05": ("제작", "SUS304 t6 판재 + Ø180 × t5 관재 (HOLD)"),
+    "C-06": ("제작", "SUS304 t1.5 판재 600 × 90"),
+    # D 교반축
+    "D-01": ("제작", "SUS316L Ø28 환봉 L780 (가공 여유 포함)"),
+    "D-02": ("제작", "허브 Ø65 환봉 L70 + 날개 t3 판재 130 × 70 × 4"),
+    "D-03": ("제작", "D-02 와 동일 — 같은 도면으로 2 개 제작"),
+    "D-04": ("규격", "평행키 6 × 6 × L50 (JIS B 1301)"),
+    "D-05": ("규격", "M8 × 8 컵포인트 세트스크류"),
+    "D-06": ("제작", "SUS316L Ø55 환봉 L30"),
+    # E 배플
+    "E-01": ("제작", "SUS316L t3 판재 45 × 310"),
+    "E-02": ("제작", "SUS316L t3 판재 30 × 30"),
+    # F 분산링
+    "F-01": ("제작", "SUS316L Ø12 × t1.5 관재 L840"),
+    "F-02": ("가공", "F-01 에 드릴 가공 — 별도 부품 아님"),
+    "F-03": ("제작", "SUS316L Ø12 × t1.5 관재 L300"),
+    "F-04": ("제작", "SUS316L t3 판재 70 × 40"),
+    "F-05": ("구매", "-"),
+    # G 스키머
+    "G-01": ("제작", "SUS316L t2 판재 960 × 60"),
+    "G-02": ("제작", "SUS316L t1.5 타공판 Ø310 (Ø2 · 개공률 30 %)"),
+    "G-03": ("규격", "M8 전산볼트 L250 (A2-70)"),
+    "G-04": ("제작", "SUS316L Ø8 환봉 L340"),
+    # H 프레임
+    "H-01": ("제작", "SUS304 □40 × 40 × t2 각관"),
+    "H-02": ("제작", "SUS304 □40 × 40 × t2 각관"),
+    "H-03": ("제작", "SUS304 □40 × 40 × t2 각관"),
+    "H-04": ("제작", "SUS304 □40 × 40 × t2 각관"),
+    "H-05": ("구매", "-"),
+    "H-06": ("제작", "SUS304 t6 판재 110 × 110"),
+    "H-07": ("제작", "SUS304 t6 판재 90 × 70"),
+    # I 배관 · J 계측 · K 체결 — 전량 구매 또는 규격
+    "I-01": ("구매", "-"), "I-02": ("구매", "-"), "I-03": ("구매", "-"),
+    "I-04": ("구매", "-"), "I-05": ("구매", "-"), "I-06": ("구매", "-"), "I-07": ("구매", "-"),
+    "J-01": ("구매", "-"), "J-02": ("구매", "-"), "J-03": ("구매", "-"), "J-04": ("구매", "-"),
+    "J-05": ("가공", "A-01 외면에 각인 — 별도 부품 아님"),
+    "J-06": ("구매", "-"), "J-07": ("구매", "-"),
+    "K-01": ("규격", "M12 × 35 육각 A2-70"), "K-02": ("규격", "M12 × 40 육각 A2-70"),
+    "K-03": ("구매", "-"), "K-04": ("규격", "M12 너트 · 평 · 스프링와셔 A2-70"),
+    "K-05": ("규격", "M8 × 8 컵포인트 세트스크류"),
+    "K-06": ("규격", "M8 너트 + 평와셔 A2-70"),
+}
+
+
+def _classify(assembly: Assembly) -> Assembly:
+    """부품마다 조달 구분과 소재 규격을 건다. 표에 없으면 곧바로 알 수 있게 실패한다."""
+    parts = []
+    for prt in assembly.parts:
+        if prt.no not in PROCUREMENT:
+            raise KeyError(f"PROCUREMENT 에 {prt.no} 가 없다 — 조달 구분을 정해야 한다")
+        made, stock = PROCUREMENT[prt.no]
+        parts.append(dataclasses.replace(prt, made=made, stock=stock))
+    return dataclasses.replace(assembly, parts=tuple(parts))
+
+
+ASSEMBLIES: tuple[Assembly, ...] = tuple(_classify(a) for a in (
     _tank(GEOMETRY),
     _cover(GEOMETRY),
     _drive(GEOMETRY),
@@ -426,9 +526,14 @@ ASSEMBLIES: tuple[Assembly, ...] = (
     _piping(GEOMETRY),
     _instruments(GEOMETRY),
     _fasteners(GEOMETRY),
-)
+))
 
 BY_CODE = {a.code: a for a in ASSEMBLIES}
+
+#: 부품도가 붙는 부품 — 우리 도면이 없으면 만들 수 없는 것들.
+FABRICATED: tuple[Part, ...] = tuple(
+    p for a in ASSEMBLIES for p in a.parts if p.fabricated
+)
 
 
 def bill_of_materials() -> tuple[Part, ...]:
