@@ -196,6 +196,17 @@ class TestTheSpecificationSaysWhatTheCalculatorComputed(unittest.TestCase):
             self.assertAlmostEqual(dry, j["T_dry"], delta=1.0, msg=f"{j['id']} 건조 토크")
             self.assertAlmostEqual(lub, j["T_lub"], delta=1.0, msg=f"{j['id']} 윤활 토크")
 
+    def test_the_joint_basis_rows_match(self):
+        """근거 행은 계산기의 문장이다 — 추력이 오르던 날 J1·J2 는 "26.1 kN" 을,
+        J4 는 "분담 13.0 kN" 을, J5 는 "클램프 15 kN×2" 를 옛값 그대로 들고 있었다.
+        값 열만 대조하고 문장은 안 봤기 때문이다."""
+        html = SPEC.read_text(encoding="utf-8")
+        for j in F.JOINTS:
+            m = re.search(r'<tr><td class="k">' + re.escape(j["id"]) + r'</td>.*?</tr>\n'
+                          r'<tr class="sub"><td></td><td colspan="9">(.*?)</td></tr>', html, re.S)
+            self.assertIsNotNone(m, f"{j['id']} 근거 행이 없다")
+            self.assertEqual(m.group(1), j["note"], f"{j['id']} 근거 행이 계산기와 다르다")
+
     def test_the_weld_table_matches(self):
         rows = _cells(self.html, "주요 용접 접합")
         self.assertEqual(len(rows), len(F.WELDS), "용접 접합 수가 다르다")

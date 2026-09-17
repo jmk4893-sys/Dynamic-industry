@@ -72,6 +72,14 @@ def sync(text: str) -> tuple[str, list[str]]:
                 parts_[tds[idx]] = parts_[tds[idx]].replace(">" + cur + "<", ">" + val + "<")
                 log.append(f"{j['id']} 열{idx} {cur} → {val}")
         lines[i] = "".join(parts_)
+        # 근거 행도 계산기의 문장이다. 추력이 13.37 → 15.60 으로 오르던 날 J1·J2 의
+        # "추력 26.1 kN", J4 의 "분담 13.0 kN", J5 의 "클램프 15 kN×2" 가 그대로
+        # 남았다 — 값 열만 맞추고 문장은 안 봤기 때문이다.
+        nxt = lines[i + 1] if i + 1 < len(lines) else ""
+        sm = re.match(r'(<tr class="sub"><td></td><td colspan="9">)(.*?)(</td></tr>)$', nxt)
+        if sm and sm.group(2) != j["note"]:
+            lines[i + 1] = sm.group(1) + j["note"] + sm.group(3)
+            log.append(f"{j['id']} 근거 {sm.group(2)[:30]}… → {j['note'][:30]}…")
 
     # ── 부재 표: 단면·재질·지배 검토
     # 형상이 바뀌면 지배 검토가 바뀐다 — VT-101 상판이 그랬다. 진공이
