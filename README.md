@@ -73,6 +73,7 @@ python3 tools/gen_analysis_doc.py --write  # 해석 → 보고서 HTML
 python3 tools/pilot_plan.py                # 파일럿 시료 수·규모·일정
 python3 tools/gen_pilot_doc.py --write     # 계획 → 시험 계획서 HTML
 python3 tools/sync_fab_doc.py --write      # 제작 지침서의 파생 숫자를 계산기와 맞춤
+python3 tools/knife_chevron.py             # 단일 셰브론 핫나이프 — 150 mm 분절 하나가 받는 힘 (설계 검토)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.

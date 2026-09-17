@@ -31,10 +31,15 @@ DEFAULT = obj("MODEL_DEFAULT")
 RANGE = obj("MODEL_RANGE")
 
 
-def model(v: dict | None = None, **over) -> dict:
-    """콘솔 thermalModel(v) — 입력 한 벌에서 열수지·탠덤·나이프 사이클을 낸다."""
+def model(v: dict | None = None, knife_pitch: float | None = None, **over) -> dict:
+    """콘솔 thermalModel(v) — 입력 한 벌에서 열수지·탠덤·나이프 사이클을 낸다.
+
+    knife_pitch 는 칼끝 간격(mm)을 콘솔 MODEL 의 300 대신 넣을 때 쓴다 —
+    단일 셰브론 칼날(knife_chevron.py)은 칼끝 간격 대신 셰브론 깊이가 그 자리에
+    들어간다. 안 주면 콘솔과 같은 식·같은 값이다 (tests/test_cycle.py 가 대조).
+    """
     v = {**DEFAULT, **(v or {}), **over}
-    m = MODEL
+    m = MODEL if knife_pitch is None else {**MODEL, "knifePitch": knife_pitch}
     q = v["panelLength"] * v["panelWidth"] / 1e6 * m["arealCp"] * m["dT"]     # kJ/장
     rated = m["lamps"] * v["lampPower"]
     eta = v["heatEfficiency"] / 100
