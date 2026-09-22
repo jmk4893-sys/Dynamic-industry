@@ -37,6 +37,7 @@ Dynamic industry Development
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-rfc-reference.html](docs/drawings/ag-flotation-rfc-reference.html) | **RFC 계열 기준 구조 검증 도면 4매** — 외부 생성 개념도의 정정 대비표 포함, 시트별 PNG·SVG 저장 버튼 (브라우저로 열 것) |
 | [docs/rfc-diagram-correction-brief.md](docs/rfc-diagram-correction-brief.md) | 외부 생성 개념도 검증 결과·재작도 지시서 (외부 작도 도구에 전달용) |
+| [docs/rfc-rev-c-response.md](docs/rfc-rev-c-response.md) | 외부 기술검토(REV B) 회신 — Q1~Q5 답변, 카세트 스코핑, REV C 반영표 |
 
 ### 사용법
 

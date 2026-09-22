@@ -441,24 +441,33 @@
 <div class="wrap">
 
   <header class="masthead">
-    <div class="eyebrow">검증 도면집 · REV A</div>
+    <div class="eyebrow">설계 검토 도면집 · REV C</div>
     <h1>세척수 bias 연속 부선조 — RFC 계열 기준 구조</h1>
     <p class="lede">
-      외부 생성 개념도(2025-09 ChatGPT 작도)를 문헌과 계산서 §5 확정값으로 검증·정정한
-      기준 구조 도면집이다. 전체 단면, 상부 다운커머·세척수 분배기 상세, 경사채널 상세,
-      그리고 항목별 정정 대비표 4매로 구성한다. 계장과 물질수지는 DWG-002 를 따른다.
+      외부 생성 개념도의 구조 정정(REV A)과 외부 기술검토의 상태등급 체계(REV B)를 통합한
+      개념설계 도면집이다. 모든 수치를 [문헌]·[설계기준]·[파일럿 변수]·[성능 참고]로 구분하고,
+      경사채널 간격은 확정하지 않은 채 6–20 mm 교체형 카세트로 시험한다. 계장·물질수지는 DWG-002.
     </p>
     <dl class="keyfacts">
       <div><dt>동체 / 라이저</dt><dd>Ø350 × 2.40 m</dd></div>
       <div><dt>급광·기체 flux</dt><dd>Jf = Jg = 2.0 cm/s</dd></div>
       <div><dt>세척수 / bias</dt><dd class="hi">0.81 / 0.25 cm/s</dd></div>
       <div><dt>기포 크기</dt><dd>0.5 – 1.0 mm</dd></div>
-      <div><dt>경사판</dt><dd>70° · 12 mm</dd></div>
-      <div><dt>Ag 회수 / 품위</dt><dd class="hi">99.7 % / 46.3 wt%</dd></div>
+      <div><dt>경사판 (문헌/파일럿)</dt><dd>70° · 6–20 mm 카세트</dd></div>
+      <div><dt>PV Ag 성능</dt><dd class="hi">파일럿 검증 필요</dd></div>
     </dl>
     <div class="printbar">
       <button type="button" id="printbtn" class="dl">전체 인쇄 · PDF 저장</button>
       <span class="hint">각 도면 우측 상단의 PNG · SVG 버튼으로 시트를 개별 저장할 수 있다.</span>
+    </div>
+    <div class="notes" style="margin-top:6px">
+      <h2>REV C 설계 상태 구분</h2>
+      <ol>
+        <li><strong>[LITERATURE]</strong> RFC 문헌으로 직접 지지: 상부 sparger/downcomer, flooded concentrated bubbly zone, 하향 wash-water bias, inclined-channel bubble reflux, 상부 concentrate 배출, 하부 tailings.</li>
+        <li><strong>[DESIGN BASIS]</strong> Ø350, riser 2.40 m, Jf/Jg 2.0 cm/s, Jb 0.25 cm/s 등은 현재 내부 scaling/계산 기준이며 PV-RFC 실증 확정값이 아니다.</li>
+        <li><strong>[PILOT VARIABLE]</strong> 경사채널 간격은 6/10/12/15/20 mm 교체형 cassette로 시험한다. 20 mm는 RFC 문헌 기준점이며 12 mm 또는 3–6 mm를 PV 최적값으로 선확정하지 않는다.</li>
+        <li><strong>[PERFORMANCE]</strong> Ag 회수율·품위는 본 장치 파일럿에서 확정한다. 문헌 [2](연속 세척수 bias 부선 실증 — 본 설계의 1차 근거)의 값은 "참고 · 본 장치 미검증"으로만 표기하고 보증성능으로 쓰지 않는다.</li>
+      </ol>
     </div>
   </header>
 
@@ -584,7 +593,7 @@
           <text class="t-mono" x="144" y="80" text-anchor="end">공기 Jg 2.0 cm/s</text>
           <text class="t-mono" x="144" y="96" text-anchor="end">6.93 m³/h · 0.37 kW @ 60 kPa</text>
           <text class="t-mono t-ag" x="144" y="182" text-anchor="end">정광 Jo 0.56 cm/s · 1.94 m³/h</text>
-          <text class="t-mono" x="144" y="198" text-anchor="end">46.3 wt% Ag · 6.36 kg/h</text>
+          <text class="t-mono" x="144" y="198" text-anchor="end">품위 목표 46.3 wt% (계산) — 파일럿 확정</text>
 
           <!-- 세척수 유입 -->
           <text class="t-mono t-wt" x="1012" y="14" text-anchor="end">세척수 Jw 0.81 cm/s · 2.81 m³/h</text>
@@ -623,7 +632,7 @@
           <text class="t-mono" x="700" y="201" text-anchor="start">Jo 0.56 cm/s · 1.94 m³/h</text>
 
           <line class="ln-t" x1="443" y1="250" x2="692" y2="250"></line>
-          <text class="t-sm" x="700" y="246" text-anchor="start">다운커머 — 급광·공기 2상 하강</text>
+          <text class="t-sm" x="700" y="246" text-anchor="start">다운커머 — 급광·공기 2상 하강 · 중앙 배치는 프로토타입 선택</text>
           <text class="t-mono" x="700" y="262" text-anchor="start">Ø65–80 (추정) · 기포 0.5–1.0 mm</text>
 
           <line class="ln-t" x1="500" y1="306" x2="692" y2="306"></line>
@@ -635,8 +644,8 @@
           <text class="t-sm t-warn" x="700" y="376" text-anchor="start">✗ 채널 관통·전 높이 연장은 오류</text>
 
           <line class="ln-t" x1="498" y1="530" x2="692" y2="530"></line>
-          <text class="t-sm" x="700" y="526" text-anchor="start">경사채널 모듈 70° / 12 mm · ≈ 27 채널</text>
-          <text class="t-sm" x="700" y="542" text-anchor="start">기포 리플럭스 → 라이저 복귀 (DWG-103)</text>
+          <text class="t-sm" x="700" y="526" text-anchor="start">경사채널 모듈 70° / 교체형 6·10·12·15·20 mm</text>
+          <text class="t-sm" x="700" y="542" text-anchor="start">기포 리플럭스 ↑ 라이저 복귀 · 액체+맥석 ↓ 미광 (DWG-103)</text>
         </svg>
       </div>
       <figcaption>
@@ -654,12 +663,12 @@
           <tr><th>요소</th><th>위치</th><th>사양</th><th>근거</th></tr>
         </thead>
         <tbody>
-          <tr><td>다운커머</td><td>최상부, 중심 관입</td><td>Ø65–80 · 토출단은 라이저 상부</td><td>문헌 [3] · 관경은 추정(상세설계 확정)</td></tr>
+          <tr><td>다운커머</td><td>최상부, 중심 관입 (프로토타입 배치)</td><td>Ø65–80 · 토출단은 라이저 상부</td><td>상부 도입은 [문헌] · 중앙 배치·관경은 설계 선택</td></tr>
           <tr><td>고전단 스파저</td><td>다운커머 상단</td><td>기포 0.5–1.0 mm · 공기 6.93 m³/h</td><td>실증 [2] · 계산서 §5.2</td></tr>
           <tr><td>세척수 분배기</td><td>동체 상단 밀폐</td><td>Jw 0.81 cm/s · 2.81 m³/h</td><td>실증 [2] · 문헌 [3]</td></tr>
           <tr><td>정광 런더</td><td>분배기 직하 둘레</td><td>환형 월류 · Jo 0.56 cm/s</td><td>문헌 [3]</td></tr>
-          <tr><td>라이저</td><td>동체 본체</td><td>Ø350 × 2.40 m · 기액 체류 1 min</td><td>계산서 §5.2 (flux 상사)</td></tr>
-          <tr><td>경사채널 모듈</td><td>라이저 하부</td><td>70° · 간격 12 mm · 판 1.0 m · ≈27 채널</td><td>계산서 §5.2 · 문헌 [3]</td></tr>
+          <tr><td>라이저</td><td>동체 본체</td><td>Ø350 × 2.40 m · 기액 체류 1 min</td><td>[설계기준] flux 상사 — 실증 치수 아님</td></tr>
+          <tr><td>경사채널 모듈</td><td>라이저 하부</td><td>70° [문헌] · 간격 6–20 mm 카세트 [파일럿] · 판 ≈1.0 m</td><td>문헌 기준 ≈20 mm · 계산서 후보 12 mm</td></tr>
           <tr><td>원추부·미광</td><td>최하부</td><td>배출 제어밸브 — bias 협조(FFIC-106)</td><td>DWG-002 계장</td></tr>
         </tbody>
       </table>
@@ -670,7 +679,7 @@
       <div><span>도면명</span><b>전체 단면 (기준 구조)</b></div>
       <div><span>축척</span><b>NTS</b></div>
       <div><span>단위</span><b>mm / cm·s⁻¹</b></div>
-      <div><span>REV</span><b>A</b></div>
+      <div><span>REV</span><b>C</b></div>
       <div><span>근거</span><b>계산서 §5.2 · 문헌 [2][3]</b></div>
     </div>
   </section>
@@ -724,7 +733,7 @@
           <line class="ag-l" x1="564" y1="330" x2="596" y2="320" marker-end="url(#m2ag)"></line>
           <polyline class="ag-l" points="223,338 223,368 156,368" marker-end="url(#m2ag)"></polyline>
           <text class="t-mono t-ag" x="144" y="363" text-anchor="end">정광 1.94 m³/h</text>
-          <text class="t-mono" x="144" y="379" text-anchor="end">46.3 wt% Ag</text>
+          <text class="t-mono" x="144" y="379" text-anchor="end">품위 목표 46.3 wt% (계산)</text>
 
           <!-- 다운커머 + 스파저 -->
           <rect class="box" x="384" y="36" width="52" height="504"></rect>
@@ -781,7 +790,7 @@
           <text class="t-sm" x="640" y="176" text-anchor="start">급광·공기 모두 최상부 다운커머로 들어간다</text>
 
           <line class="ln-t" x1="436" y1="212" x2="632" y2="212"></line>
-          <text class="t-sm" x="640" y="216" text-anchor="start">다운커머 관경 Ø65–80 (추정)</text>
+          <text class="t-sm" x="640" y="216" text-anchor="start">다운커머 Ø65–80 (추정) — 중앙 원형은 프로토타입 배치</text>
 
           <line class="ln-t" x1="566" y1="318" x2="632" y2="300"></line>
           <text class="t-sm" x="640" y="296" text-anchor="start">세척수 분배기 — 상단 밀폐</text>
@@ -808,7 +817,7 @@
       <div><span>도면명</span><b>상부 상세</b></div>
       <div><span>축척</span><b>NTS</b></div>
       <div><span>단위</span><b>mm / cm·s⁻¹</b></div>
-      <div><span>REV</span><b>A</b></div>
+      <div><span>REV</span><b>C</b></div>
       <div><span>근거</span><b>계산서 §5.2 · 문헌 [2][3]</b></div>
     </div>
   </section>
@@ -818,7 +827,7 @@
     <div class="sheet-head">
       <span class="sheet-no">DWG-103</span>
       <span class="sheet-title">경사채널 상세 — 리플럭스 원리</span>
-      <span class="sheet-sub">70° 경사판 · 수직간격 12 mm · 기포 회수와 미광 세정의 핵심</span>
+      <span class="sheet-sub">70° 기준 · 교체형 채널 간격 · 기포 회수와 미광 세정 검증</span>
       <span class="sheet-actions"><button type="button" class="dl" data-fmt="png">PNG</button><button type="button" class="dl" data-fmt="svg">SVG</button></span>
     </div>
 
@@ -858,7 +867,7 @@
           <!-- 판 간격 치수 (수직거리) -->
           <line x1="360" y1="240" x2="410" y2="258" stroke="var(--ink-3)" stroke-width="1"
                 marker-start="url(#d3)" marker-end="url(#d3)"></line>
-          <text class="t-dim" x="422" y="264" text-anchor="start">간격 12 mm (판에 수직)</text>
+          <text class="t-dim" x="422" y="264" text-anchor="start">간격 s = 6–20 mm 카세트 (판에 수직)</text>
 
           <!-- 기포 — 판 하향면 -->
           <g class="ln-t">
@@ -885,11 +894,11 @@
           <line class="ln-t" x1="266" y1="130" x2="414" y2="200"></line>
 
           <!-- 우측 주석 -->
-          <text class="t-sm" x="560" y="130" text-anchor="start">판 길이 1.0 m — 유효 분리면적 증대 (보이콧 효과)</text>
-          <text class="t-mono" x="560" y="148" text-anchor="start">Ø350 동체 기준 ≈ 27 채널</text>
-          <text class="t-sm" x="560" y="188" text-anchor="start">슬러리·맥석은 채널을 따라 하강 → 미광</text>
-          <text class="t-sm" x="560" y="208" text-anchor="start">미세기포의 미광 유실을 차단해 회수율 유지</text>
-          <text class="t-mono" x="560" y="248" text-anchor="start">수평 피치 12.77 mm = 12 / sin 70°</text>
+          <text class="t-sm" x="560" y="130" text-anchor="start">판 길이 ≈1.0 m [문헌 0.925–1.0] — 보이콧 효과</text>
+          <text class="t-mono" x="560" y="148" text-anchor="start">채널 수 N ≈ 329/s (Ø350): 6→55 · 12→27 · 20→16</text>
+          <text class="t-sm t-ag" x="560" y="188" text-anchor="start">기포 리플럭스 ↑ — 판 하향면 따라 라이저 복귀</text>
+          <text class="t-sm" x="560" y="208" text-anchor="start">액체 + 친수·맥석 ↓ — 채널 따라 하강 → 미광</text>
+          <text class="t-mono" x="560" y="248" text-anchor="start">수평 피치 = s / sin 70° — 카세트별 재산정 [파일럿 변수]</text>
         </svg>
       </div>
       <figcaption>
@@ -897,16 +906,32 @@
         슬러리와 맥석만 채널을 따라 내려가 미광으로 나간다. 경사판이 유효 분리면적을 크게
         늘려 미세기포까지 회수하므로, 미광으로의 기포·부착입자 유실이 차단된다.
         외부 개념도의 각도(60–75°)·간격(10–30 mm)·길이(0.5–1.0 m) 범위 표기는 타당하며,
-        본 설계 채택값은 70° · 12 mm · 1.0 m 이다.
+        70°·약 1.0 m는 문헌 기준점으로 두고, 채널 간격은 6/10/12/15/20 mm 교체형 cassette로 PV feed에서 검증한다.
       </figcaption>
     </figure>
+
+    <div class="tablewrap">
+      <table>
+        <caption>교체형 카세트 계획 (REV B 외부 검토 채택)</caption>
+        <thead>
+          <tr><th>카세트</th><th class="num">수직간격 s</th><th class="num">수평 피치</th><th class="num">채널 수 (Ø350)</th><th>비고</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="tag">C-06</td><td class="num">6 mm</td><td class="num">6.4 mm</td><td class="num">≈ 55</td><td>막힘 위험 최대 — cold-flow 선행</td></tr>
+          <tr><td class="tag">C-10</td><td class="num">10 mm</td><td class="num">10.6 mm</td><td class="num">≈ 33</td><td></td></tr>
+          <tr><td class="tag">C-12</td><td class="num">12 mm</td><td class="num">12.8 mm</td><td class="num">≈ 27</td><td>계산서 §5.2 내부 후보값</td></tr>
+          <tr><td class="tag">C-15</td><td class="num">15 mm</td><td class="num">16.0 mm</td><td class="num">≈ 22</td><td></td></tr>
+          <tr><td class="tag">C-20</td><td class="num">20 mm</td><td class="num">21.3 mm</td><td class="num">≈ 16</td><td><strong>기준 카세트 — 문헌 RFC ≈ 20 mm</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
 
     <div class="titleblock">
       <div><span>도면번호</span><b>DWG-103</b></div>
       <div><span>도면명</span><b>경사채널 상세</b></div>
       <div><span>축척</span><b>NTS</b></div>
       <div><span>단위</span><b>mm</b></div>
-      <div><span>REV</span><b>A</b></div>
+      <div><span>REV</span><b>C</b></div>
       <div><span>근거</span><b>계산서 §5.2 · 문헌 [3]</b></div>
     </div>
   </section>
@@ -938,8 +963,8 @@
           <tr><td>다운커머 직경</td><td>100–200 mm</td><td class="verdict v-mid">△</td><td>본 규모에서는 Ø65–80 추정 — 상세설계 확정</td></tr>
           <tr><td>세정 길이</td><td>"처리량의 0.5–2배"</td><td class="verdict v-no">✗</td><td>항목 자체가 무의미 — 설계변수는 Jw/Jf = 0.405 와 bias</td></tr>
           <tr><td>경사각</td><td>60–75° (일반 70°)</td><td class="verdict v-ok">✓</td><td>70° 채택</td></tr>
-          <tr><td>채널 간격</td><td>10–30 mm</td><td class="verdict v-ok">✓</td><td>12 mm 채택 (문헌 실증 ≈ 20 mm)</td></tr>
-          <tr><td>채널 길이</td><td>0.5–1.0 m</td><td class="verdict v-ok">✓</td><td>판 1.0 m</td></tr>
+          <tr><td>채널 간격</td><td>10–30 mm</td><td class="verdict v-ok">✓</td><td>문헌 RFC 기준 ≈20 mm; PV용 6/10/12/15/20 mm 비교시험 후 동결</td></tr>
+          <tr><td>채널 길이</td><td>0.5–1.0 m</td><td class="verdict v-ok">✓</td><td>판 ≈1.0 m (문헌 0.925–1.0 m)</td></tr>
           <tr><td>기포 크기</td><td>0.2–1.0 mm</td><td class="verdict v-mid">△</td><td>실증 범위 0.5–1.0 mm (문헌 [2])</td></tr>
           <tr><td>정광 배출</td><td>상부 환형 월류</td><td class="verdict v-ok">✓</td><td>동일 — 분배기 직하 둘레 런더</td></tr>
           <tr><td>역유동 기포층 용어</td><td>Reverse Fluidized Bubbly Bed</td><td class="verdict v-ok">✓</td><td>문헌 용어와 일치</td></tr>
@@ -956,16 +981,17 @@
           <tr><th>항목</th><th class="num">값</th><th>비고</th></tr>
         </thead>
         <tbody>
-          <tr><td>동체 내경</td><td class="num">Ø350 mm (0.0962 m²)</td><td>표준 동체 계열</td></tr>
-          <tr><td>라이저 높이 / 체적</td><td class="num">2.40 m / 0.231 m³</td><td>기액 체류 1.0 min 유지</td></tr>
+          <tr><td>동체 내경 [설계기준]</td><td class="num">Ø350 mm (0.0962 m²)</td><td>flux 상사 산정 — 문헌 실증 단면은 100×80 mm</td></tr>
+          <tr><td>라이저 높이 / 체적 [설계기준]</td><td class="num">2.40 m / 0.231 m³</td><td>기액 체류 1.0 min 유지</td></tr>
           <tr><td>급광 Jf</td><td class="num">2.00 cm/s · 6.93 m³/h</td><td>7 wt% 고체 (설계점)</td></tr>
           <tr><td>공기 Jg</td><td class="num">2.00 cm/s · 6.93 m³/h</td><td>송풍기 0.37 kW @ 60 kPa</td></tr>
           <tr><td>세척수 Jw</td><td class="num">0.81 cm/s · 2.81 m³/h</td><td>Jw/Jf = 0.405</td></tr>
           <tr><td>월류수 Jo / bias Jb</td><td class="num">0.56 / 0.25 cm/s</td><td>Jb 하한 0.20 — FFIC-106</td></tr>
           <tr><td>기포 크기</td><td class="num">0.5 – 1.0 mm</td><td>고전단 스파저</td></tr>
-          <tr><td>경사판</td><td class="num">70° · 12 mm · 판 1.0 m</td><td>≈ 27 채널</td></tr>
+          <tr><td>경사판</td><td class="num">70° [문헌] · 6–20 mm 카세트 [파일럿] · 판 ≈1.0 m</td><td>기준 C-20 (문헌 ≈20 mm) · 채널 수는 카세트별</td></tr>
           <tr><td>처리능력</td><td class="num">0.51 t/h @ 7 wt%</td><td>평균 0.30 t/h 는 4.22 wt% 운전</td></tr>
-          <tr><td>성능 (실증 이월)</td><td class="num">Ag 99.7 % · 46.3 wt%</td><td>질량수율 1.27 % — 계산서 §5.4</td></tr>
+          <tr><td>성능 [PERFORMANCE]</td><td class="num">파일럿 검증 필요</td><td>보증성능 아님 — 본 장치 시험 후 확정</td></tr>
+          <tr><td>성능 참고값 (본 장치 미검증)</td><td class="num">문헌 [2]: Ag 99.7 % · 48.8 wt%</td><td>타 장치 연속 실증값 · 계산 목표 품위 46.3 wt% (계산서 §5.4)</td></tr>
         </tbody>
       </table>
     </div>
@@ -975,7 +1001,7 @@
       <div><span>도면명</span><b>정정 대비표</b></div>
       <div><span>축척</span><b>—</b></div>
       <div><span>단위</span><b>mm / cm·s⁻¹</b></div>
-      <div><span>REV</span><b>A</b></div>
+      <div><span>REV</span><b>C</b></div>
       <div><span>근거</span><b>계산서 §5 · 문헌 [2][3]</b></div>
     </div>
   </section>
@@ -983,14 +1009,17 @@
   <section class="notes">
     <h2>도면 주기 (General Notes)</h2>
     <ol>
-      <li>본 도면집은 외부 생성 개념도의 <strong>검증·정정을 위한 기준 구조 도면</strong>이며 제작도가 아니다. '추정' 표기 항목(다운커머 관경 등)과 재질·배관·지지 구조는 상세설계에서 확정한다.</li>
+      <li>본 도면집은 외부 생성 개념도의 <strong>문헌검증값과 설계가정을 분리한 REV B 개념설계 도면</strong>이며 제작도가 아니다. '추정' 표기 항목(다운커머 관경 등)과 재질·배관·지지 구조는 상세설계에서 확정한다.</li>
       <li>장치 형식 — 문헌 [2] 의 연속 실증 장치는 인용 문헌과 운전 변수로 볼 때 <strong>RFC(Reflux Flotation Cell) 계열</strong>로 판단된다(계산서 §5.1). 내부 구조는 RFC 계열 문헌 기하를 따른다: 급광+공기 → 상부 다운커머, 라이저(역유동 기포층), 하부 경사채널 모듈, 상단 세척수 분배기.</li>
       <li><strong>flooded 운전</strong> — 자유표면과 거품층(froth)이 없고 기포 체적분율 약 0.5 의 농후 기포혼합체가 상단까지 찬다. 세정은 froth washing 이 아니라 기포층을 관통하는 하향 bias 로 이루어진다.</li>
       <li>bias 제어(FFIC-106)와 물질수지·계장은 <strong>DWG-002 와 동일</strong>하다. 본 도면집은 내부 구조와 모듈 구성을 문헌 기하로 상세화한 것이며, 전고는 배치에 따라 3.6 m(경사판 내장) – 4.2 m(모듈 적층)이다.</li>
-      <li>경사채널 — 문헌 실증은 판 길이 약 1 m · 간격 약 20 mm · 70° 이고, 본 설계 채택값은 12 mm 간격이다. 기포 리플럭스가 미광으로의 기포 유실을 차단해 고 flux 에서도 회수율을 유지한다.</li>
+      <li>경사채널 — 문헌 RFC 기준점은 판 길이 약 1 m · 간격 약 20 mm · 70°이다. PV용 채널 간격은 아직 확정하지 않고 6/10/12/15/20 mm 교체형 cassette로 비교 검증한다. 기포 리플럭스가 미광으로의 기포 유실을 차단해 고 flux 에서도 회수율을 유지한다.</li>
       <li><strong>명칭·권리</strong> — REFLUX™ 는 FLSmidth 의 등록상표(뉴캐슬대 원천기술)이므로 사내 도면·자료에는 "세척수 bias 연속 부선조" 를 쓴다. 문헌 [2] 공정은 호주 가출원 AU 2025902821 대상으로, 상업화 전 실시권 검토가 필요하다(README·계산서 명기).</li>
       <li>도면의 확정 수치는 <code>src/flotation_design/rfc.py</code> 의 flux 상사 계산에서 나온 계산서 §5.2 값이다. 설계 기준 변경 시 수치가 달라질 수 있다.</li>
       <li><strong>저장</strong> — 각 도면 머리의 PNG · SVG 버튼으로 시트를 개별 저장하고, 상단 '전체 인쇄' 버튼으로 PDF 로 저장한다. PNG/SVG 는 현재 화면 테마(라이트/다크) 색상으로 내보내진다.</li>
+      <li>급광 기준 입도는 <strong>P80 66 µm</strong>(습식 로드밀, 계산서 §2)이다. 외부 검토문서의 "25–75 µm"는 주 분포 구간의 표현으로 이해하며 설계 기준값을 대체하지 않는다.</li>
+      <li><strong>엔지니어링 게이트</strong> — B1: C-20 기준 카세트 수리학(cold-flow) 기준선 → B2: 6–20 mm 카세트 비교(CFD + cold-flow) → B3: 실제 PV 급광(P80 66 µm) 부선 시험 → B4: 형상 동결 후 제작도/FEED. 동결 전에는 어떤 간격도 최적값으로 단정하지 않는다.</li>
+      <li><strong>개정 이력</strong> — REV A: 외부 개념도 구조 정정. REV B: 외부 기술검토 반영 — 상태등급 도입, 간격 카세트화, 성능 비보증화. REV C: REV B 잔존 성능 표기 정리(정광 라벨 2곳·채널 수), 기포 리플럭스/하강류 화살표 라벨, 중앙 다운커머의 프로토타입 배치 명시, 카세트·게이트 표 추가.</li>
       <li>모든 도면은 축척 없음(NTS) — 실물은 도면보다 가늘고 길다.</li>
     </ol>
   </section>
