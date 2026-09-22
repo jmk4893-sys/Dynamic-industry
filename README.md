@@ -38,6 +38,7 @@ Dynamic industry Development
 | [docs/drawings/ag-flotation-rfc-reference.html](docs/drawings/ag-flotation-rfc-reference.html) | **RFC 계열 기준 구조 검증 도면 4매** — 외부 생성 개념도의 정정 대비표 포함, 시트별 PNG·SVG 저장 버튼 (브라우저로 열 것) |
 | [docs/rfc-diagram-correction-brief.md](docs/rfc-diagram-correction-brief.md) | 외부 생성 개념도 검증 결과·재작도 지시서 (외부 작도 도구에 전달용) |
 | [docs/rfc-rev-c-response.md](docs/rfc-rev-c-response.md) | 외부 기술검토(REV B) 회신 — Q1~Q5 답변, 카세트 스코핑, REV C 반영표 |
+| [docs/rfc-rev-d-response.md](docs/rfc-rev-d-response.md) | 외부 재검토(REV D) 회신 — 문헌 검증 결과, [2] 추적성 복원 근거 |
 
 ### 사용법
 
