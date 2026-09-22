@@ -5,7 +5,8 @@ Dynamic industry Development
 ## 태양광 셀 은(Ag) 회수 부유선별 설비
 
 폐 태양광 모듈(c-Si)에서 박리한 셀 분획으로부터 **은(Ag)** 을 부유선별로 농축하는
-설비의 설계와 계산 코드.
+설비의 설계와 계산 코드. 셀 분획을 공급하는 상류 분리설비(DG-HK60)는
+[3D 운전 콘솔](docs/drawings/pv-delamination-3d.html)로 별도 정리했다.
 
 - 평균 **0.30 t/h**, 최대 **0.50 t/h** (건조 고체 기준)
 - 현재 제작 기본안: **기계식 러퍼·스캐빈저·클리너 3단** (R/S 공용 규격)
@@ -35,6 +36,7 @@ Dynamic industry Development
 | [docs/claude-adoption-review.md](docs/claude-adoption-review.md) | 클로드 설계 중 채택·보완·보류 항목과 현재 공장 원료 적용 경계 |
 | [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 7매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
+| [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 13종, 열수지 계산기 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-rfc-reference.html](docs/drawings/ag-flotation-rfc-reference.html) | **RFC 계열 기준 구조 검증 도면 4매** — 외부 생성 개념도의 정정 대비표 포함, 시트별 PNG·SVG 저장 버튼 (브라우저로 열 것) |
 | [docs/rfc-diagram-correction-brief.md](docs/rfc-diagram-correction-brief.md) | 외부 생성 개념도 검증 결과·재작도 지시서 (외부 작도 도구에 전달용) |
 | [docs/rfc-rev-c-response.md](docs/rfc-rev-c-response.md) | 외부 기술검토(REV B) 회신 — Q1~Q5 답변, 카세트 스코핑, REV C 반영표 |
