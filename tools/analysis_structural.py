@@ -385,9 +385,65 @@ def knife():
             vr_max=vr_max, step=step, zs=zs, ends=ends)
 
 
+# ── ⑤ 칼날 모듈 추종 — 유리면이 곧지 않다 ─────────────────────────────
+def follow():
+    """S10 은 칼 쪽만 셌다. 유리 쪽을 더하면 곧은 칼날 한 자루는 예산을 넘는다.
+
+    패널은 흡착패드 위에 앉고 패드 상면은 동일 평면 0.3 mm 안에서 흩어진다. 유리는
+    패드를 따라가므로 폭 방향으로 곧지 않다 (tools/glass_follow.py 가 테이블
+    수천 대를 추첨해 잰다). 가장 좋게 교정한 곧은 칼날도 그 굴곡의 반폭만큼
+    벗어나고, 그것이 칼 쪽 S10 에 더해진다.
+
+    그래서 일곱 조각을 판스프링에 매달아 조각마다 들림과 롤을 풀었다. 추종 중에는
+    랜드가 유리를 타므로 칼 쪽의 기울기·휨은 유리가 대신 정하고, 남는 것은 모듈
+    폭 안의 굴곡(얹힌 틈)과 연삭이다.
+
+    대가는 유리가 받는 힘이다. 두 운전에서 칼날의 수직 반력이 가는 길이 다르다.
+      · 잠금 — Z축이 칼날을 잡는다. 층이 박리 전선에서 유리를 V 로 들어 올리고 그
+        힘이 패드 열 사이를 건넌다. V/H 1 이면 유리가 수백 MPa 를 받는다.
+      · 추종 — 칼날이 유리를 타며 V 로 누르고 층이 전선에서 V 로 든다. 둘이
+        전선에서 닫혀 경간을 건너는 것은 모듈 예압뿐이다(S13). 남는 것은 랜드 폭만큼
+        떨어진 두 힘의 우력이다(S14).
+    """
+    from glass_follow import (KM_NET, LAND, PAD_FLAT, SIG_GL, SPAN_X, TRIALS,
+                              band_for, summary)
+    _, k = knife()
+    g = summary()
+    mc = g["mc"]
+    knife_side = k["total"]                           # S10 — 연삭 + 기울기 + 휨
+    glass_allow = 0.15 - knife_side                   # 곧은 칼날에 남는 유리 쪽 몫
+    straight = knife_side + mc["straight"]["p95"]
+    depth = TIP_GRIND + mc["modules"]["p95"]
+    return [
+        Result("S12", "칼끝 깊이 — 일곱 모듈 추종 (패드 평면도가 만드는 유리 굴곡)", depth, "mm", 0.15,
+               "S1 과 같은 예산 — EVA 0.45 의 1/3. 추종하면 칼 쪽 기울기·휨은 유리가 정한다",
+               f"모듈 안 얹힌 틈 P95 {mc['modules']['p95']:.3f} + 연삭 ±{TIP_GRIND:.2f} · 패드 밴드 "
+               f"{PAD_FLAT:.1f} · 테이블 {TRIALS:,} 대 · 곧은 한 자루(잠금)면 칼 쪽 {knife_side:.3f} + "
+               f"유리 쪽 ±{mc['straight']['p95']:.3f} = {straight:.3f} 로 초과 (패드 밴드가 "
+               f"{band_for(glass_allow):.3f} 이하여야 든다) · 들림만 주면 {mc['heave']['p95']:.3f} · "
+               f"세 조각이면 {mc['thirds']['p95']:.3f}"),
+        Result("S13", "추종 중 패드 사이 유리 굽힘 (모듈 순 예압 + 누름판)", g["follow_span"], "MPa", SIG_GL,
+               "사양서 5.5 유리 설계허용 7 MPa — 열응력과 같은 값을 쓴다",
+               f"예압 {KM_NET:.2f} + 누름판 {g['q_hd']:.3f} N/mm 가 패드 열 사이 {SPAN_X:.0f} 을 건넌다 "
+               f"(단순지지 상한 · 누름판은 포스트당 {g['hd_post_max']:.0f} N 까지) · 칼날의 수직 반력은 "
+               f"전선에서 닫혀 이 경간을 건너지 않는다 · 잠금이면 V 가 전선에서 유리를 들어 V/H 1 에서 "
+               f"{g['lock_span_per_vh']:.0f} MPa — 허용에 드는 V/H 는 {g['lock_vh_max']:.3f} 뿐이다"),
+        Result("S14", "추종 중 박리 전선의 국부 우력 (V/H 1 · 랜드 폭)", g["couple_per_vh"] * V_RATIO,
+               "MPa", SIG_GL,
+               "같은 허용 7 MPa — 칼날이 누르는 힘과 층이 드는 힘이 랜드 폭만큼 떨어져 선다",
+               f"폭당 V = {KS.F_W:.2f} N/mm × V/H {V_RATIO:.1f} · 팔 = 랜드 {LAND:.1f} mm · 모멘트가 양쪽에 "
+               f"절반씩 · 허용에 드는 V/H {g['follow_vh_max']:.2f} (V/H × 랜드 ≤ {g['vh_arm_max']:.2f} mm) — "
+               f"파일럿 PT-10 이 조각별로 잰다"),
+    ], dict(depth=depth, straight=straight, knife_side=knife_side, glass_allow=glass_allow,
+            band_needed=band_for(glass_allow), mc=mc, **{k2: g[k2] for k2 in (
+                "follow_span", "lock_span_per_vh", "lock_vh_max", "couple_per_vh",
+                "follow_vh_max", "vh_arm_max", "trials", "band", "span", "t", "modules",
+                "q_net", "q_hd", "q_follow", "hd_post_max")})
+
+
 def run():
     rs, extra = [], {}
-    for fn in (gantry, chamber, table, knife):
+    for fn in (gantry, chamber, table, knife, follow):
         r, e = fn()
         rs += r
         extra[fn.__name__] = e

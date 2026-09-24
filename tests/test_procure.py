@@ -249,16 +249,21 @@ class TestTheCatalogueStaysConsistentWithTheSpecification(unittest.TestCase):
 
         지침서는 이 질량으로 J5(테이퍼 핀)와 갠트리 이동부 자중을 잡는다.
         카탈로그가 다시 무거워지면 그 계산이 조용히 틀어진다. 계단 카세트 한 벌은
-        본체(일곱 홀더) + 인서트 7 + 카트리지 히터 7 + 테이퍼 핀 4 다.
+        등판 + 일곱 홀더 + 인서트 7 + 카트리지 히터 7 + 테이퍼 핀 4 이고, 칼날 모듈
+        추종(9/24)으로 판스프링 14 · 상한 스톱 7 · 무게 보상 스프링 7 이 카세트에
+        더해졌다. 잠금쐐기와 변위계는 캐리어 빔에 남으므로 세지 않는다.
         """
         import console_consts
         import fab_spec as F
 
         kg = {p.pid: p.kg for p in PT.P}
-        one_set = (kg["P-005-19"]                                     # BC-201 계단 카세트 본체
+        one_set = (kg["P-005-19"]                                     # BC-201 카세트 본체 (계단 등판)
+                   + kg["P-005-25"] + 6 * kg["P-005-26"]              # 카세트 홀더 중앙 1 · 계단 6
                    + kg["P-005-15"] + 6 * kg["P-005-16"]              # SKD11 인서트 중앙 1 · 계단 6
                    + kg["P-005-17"] + 6 * kg["P-005-18"]              # 카트리지 히터 중앙 1 · 계단 6
-                   + 4 * kg["P-005-20"])                              # 테이퍼 로케이팅핀 4
+                   + 4 * kg["P-005-20"]                               # 테이퍼 로케이팅핀 4
+                   + 14 * kg["P-005-27"] + 7 * kg["P-005-28"]         # 모듈 판스프링 14 · 상한 스톱 7
+                   + 7 * kg["P-005-29"])                              # 무게 보상 스프링 7
         want = console_consts.const("CASS_MASS")
         self.assertLess(abs(one_set - want) / want, 0.30,
                         f"카세트 1벌 {one_set:.1f} kg 이 사양 {want} kg 과 30 % 넘게 다르다")

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#eceff1">
 <title>DG-HK60C 구조·열해석 보고서</title>
-<meta name="description" content="DG-HK60C 폐태양광 패널 분리설비의 구조·열해석 보고서 — 직접강성법 프레임 해석 · 1차원 과도 열전도 · 복사 유속과 면내 전도 · 부력 교환유동, 닫힌해 검증 15건, 검토 55건과 해석이 만든 요구 26건.">
+<meta name="description" content="DG-HK60C 폐태양광 패널 분리설비의 구조·열해석 보고서 — 직접강성법 프레임 해석 · 1차원 과도 열전도 · 복사 유속과 면내 전도 · 부력 교환유동, 닫힌해 검증 15건, 검토 58건과 해석이 만든 요구 26건.">
 <style>
   /* ===========================================================================
      DG-HK60 상세설계 발주 기술사양서.
@@ -209,7 +209,7 @@
   <div class="doc-kind">해석 보고서 · Structural &amp; Thermal Analysis</div>
   <h1>DG-HK60C 태양광 패널 분리설비<br>구조 · 열해석 보고서</h1>
   <p class="subtitle">이 설비를 정하는 것은 강도가 아니라 <strong>변형과 온도</strong>다.
-    구조 <strong>11 건</strong> · 열 <strong>13 건</strong> ·
+    구조 <strong>14 건</strong> · 열 <strong>13 건</strong> ·
     IR 뱅크 <strong>8 건</strong> · 램프 지지 <strong>7 건</strong> ·
     열수지 <strong>8 건</strong> · 에어록 <strong>8 건</strong> ·
     닫힌해 검증 <strong>15 건</strong> ·
@@ -302,15 +302,16 @@
 
 <div class="clause" id="p3"><div class="n">3</div><div class="c">
   <h3>구조해석</h3>
-  <p>네 가지를 푼다 — <strong>KG-101 갠트리</strong>(칼끝 처짐과 고유진동),
+  <p>다섯 가지를 푼다 — <strong>KG-101 갠트리</strong>(칼끝 처짐과 고유진동),
     <strong>HC-101 가열실</strong>(기둥 좌굴 · 지진 층간변위 · 세장비),
     <strong>VT-101 상판</strong>(추력 변위와 자중 처짐),
-    <strong>계단 칼날 캐리어 빔</strong>(일곱 칼끝의 깊이 예산과 계단).</p>
+    <strong>계단 칼날 캐리어 빔</strong>(일곱 칼끝의 깊이 예산과 계단),
+    <strong>칼날 모듈 추종</strong>(유리면이 곧지 않을 때 누가 따라가는가 · 그때 유리가 받는 힘).</p>
   <div class="tw"><table>
     <caption>구조 검토 — 값 · 한계 · 이용률</caption>
     <thead><tr><th>ID</th><th>항목</th><th class="num">값</th><th class="num">단위</th>
       <th class="num">한계</th><th class="num">이용률</th><th>판정</th></tr></thead>
-    <tbody><tr><td class="k">S1</td><td>갠트리 칼끝 깊이 변화 (추력 30.42 kN)</td><td class="num">0.000</td><td class="num">mm</td><td class="num">0.150</td><td class="num">0%</td><td>OK</td></tr><tr><td class="k">S2</td><td>갠트리 칼끝 추력방향 처짐</td><td class="num">3.616</td><td class="num">mm</td><td class="num">7.000</td><td class="num">52%</td><td>OK</td></tr><tr><td class="k">S3</td><td>갠트리 1차 고유진동수 (역수 기준)</td><td class="num">0.388</td><td class="num">—</td><td class="num">1.000</td><td class="num">39%</td><td>OK</td></tr><tr><td class="k">S4</td><td>가열실 기둥 최대 축력 / 오일러 좌굴하중</td><td class="num">13.705</td><td class="num">kN</td><td class="num">3,192.703</td><td class="num">0%</td><td>OK</td></tr><tr><td class="k">S5</td><td>가열실 지진 층간변위 (0.30W)</td><td class="num">10.325</td><td class="num">mm</td><td class="num">22.750</td><td class="num">45%</td><td>OK</td></tr><tr><td class="k">S6</td><td>가열실 기둥 세장비</td><td class="num">62.723</td><td class="num">—</td><td class="num">120.000</td><td class="num">52%</td><td>OK</td></tr><tr><td class="k">S7</td><td>상판 수평 변위 (박리 추력 30.42 kN)</td><td class="num">0.731</td><td class="num">mm</td><td class="num">2.000</td><td class="num">37%</td><td>OK</td></tr><tr><td class="k">S8</td><td>상판 연직 처짐 (자중)</td><td class="num">0.052</td><td class="num">mm</td><td class="num">0.150</td><td class="num">35%</td><td>OK</td></tr><tr><td class="k">S9</td><td>패드 주변 판 국부 처짐</td><td class="num">0.004</td><td class="num">mm</td><td class="num">0.100</td><td class="num">4%</td><td>OK</td></tr><tr><td class="k">S10</td><td>일곱 칼끝 깊이 예산 (연삭 + 좌우 기울기 + 캐리어 휨)</td><td class="num">0.105</td><td class="num">mm</td><td class="num">0.150</td><td class="num">70%</td><td>OK</td></tr><tr><td class="k">S11</td><td>계단 변화 — 조각 사이 추력방향 처짐 차</td><td class="num">0.016</td><td class="num">mm</td><td class="num">0.500</td><td class="num">3%</td><td>OK</td></tr></tbody>
+    <tbody><tr><td class="k">S1</td><td>갠트리 칼끝 깊이 변화 (추력 30.42 kN)</td><td class="num">0.000</td><td class="num">mm</td><td class="num">0.150</td><td class="num">0%</td><td>OK</td></tr><tr><td class="k">S2</td><td>갠트리 칼끝 추력방향 처짐</td><td class="num">3.616</td><td class="num">mm</td><td class="num">7.000</td><td class="num">52%</td><td>OK</td></tr><tr><td class="k">S3</td><td>갠트리 1차 고유진동수 (역수 기준)</td><td class="num">0.387</td><td class="num">—</td><td class="num">1.000</td><td class="num">39%</td><td>OK</td></tr><tr><td class="k">S4</td><td>가열실 기둥 최대 축력 / 오일러 좌굴하중</td><td class="num">13.705</td><td class="num">kN</td><td class="num">3,192.703</td><td class="num">0%</td><td>OK</td></tr><tr><td class="k">S5</td><td>가열실 지진 층간변위 (0.30W)</td><td class="num">10.325</td><td class="num">mm</td><td class="num">22.750</td><td class="num">45%</td><td>OK</td></tr><tr><td class="k">S6</td><td>가열실 기둥 세장비</td><td class="num">62.723</td><td class="num">—</td><td class="num">120.000</td><td class="num">52%</td><td>OK</td></tr><tr><td class="k">S7</td><td>상판 수평 변위 (박리 추력 30.42 kN)</td><td class="num">0.731</td><td class="num">mm</td><td class="num">2.000</td><td class="num">37%</td><td>OK</td></tr><tr><td class="k">S8</td><td>상판 연직 처짐 (자중)</td><td class="num">0.052</td><td class="num">mm</td><td class="num">0.150</td><td class="num">35%</td><td>OK</td></tr><tr><td class="k">S9</td><td>패드 주변 판 국부 처짐</td><td class="num">0.004</td><td class="num">mm</td><td class="num">0.100</td><td class="num">4%</td><td>OK</td></tr><tr><td class="k">S10</td><td>일곱 칼끝 깊이 예산 (연삭 + 좌우 기울기 + 캐리어 휨)</td><td class="num">0.105</td><td class="num">mm</td><td class="num">0.150</td><td class="num">70%</td><td>OK</td></tr><tr><td class="k">S11</td><td>계단 변화 — 조각 사이 추력방향 처짐 차</td><td class="num">0.016</td><td class="num">mm</td><td class="num">0.500</td><td class="num">3%</td><td>OK</td></tr><tr><td class="k">S12</td><td>칼끝 깊이 — 일곱 모듈 추종 (패드 평면도가 만드는 유리 굴곡)</td><td class="num">0.083</td><td class="num">mm</td><td class="num">0.150</td><td class="num">55%</td><td>OK</td></tr><tr><td class="k">S13</td><td>추종 중 패드 사이 유리 굽힘 (모듈 순 예압 + 누름판)</td><td class="num">5.086</td><td class="num">MPa</td><td class="num">7.000</td><td class="num">73%</td><td>OK</td></tr><tr><td class="k">S14</td><td>추종 중 박리 전선의 국부 우력 (V/H 1 · 랜드 폭)</td><td class="num">4.896</td><td class="num">MPa</td><td class="num">7.000</td><td class="num">70%</td><td>OK</td></tr></tbody>
   </table></div>
 
   <div class="warn"><strong>세 번 틀린 뒤에야 상판이 풀렸다.</strong>
@@ -324,7 +325,7 @@
 
   <div class="decide"><strong>전 항목 만족
     — 총괄 결정 · S10: Z축 두 조를 폭의 베셀점에 둔다.</strong>
-    계단 칼날은 <strong>한 자루</strong>다. 일곱 칼끝을 카세트째 한 평면으로 연삭해도
+    잠긴 계단 칼날은 <strong>한 자루</strong>다. 일곱 칼끝을 카세트째 한 평면으로 연삭해도
     하중에서 그 평면이 셋에서 흐트러진다 — 연삭 공차, Z축 좌·우 높이차의 기울기,
     캐리어 빔의 휨. 수직 반력은 아직 아무도 재지 않았으므로(OI-01 은 추력만 쟀다)
     추력과 같게 포락했다. Z축을 칼날 양끝(<span class="m">±570</span>)에 두면
@@ -337,10 +338,44 @@
     예산 안이다. 예산을 다 쓰는 수직 반력비는 <span class="m">5.4</span> —
     파일럿 <span class="k">PT-10</span> 이 조각별로 재서 이 선과 댄다.</div>
 
+  <div class="decide"><strong>총괄 결정 · S12 ~ S14: 일곱 조각을 풀어 유리를 따라가게 한다.</strong>
+    S10 은 칼 쪽만 셌다. 유리는 흡착패드 위에 앉고 패드 상면은 동일 평면
+    <span class="m">0.3 mm</span> 안에서 흩어진다 — 곧은 칼날 한 자루에 남는 유리 쪽 몫
+    <span class="m">0.045 mm</span> 의 여섯 배가 넘는 밴드다. 패드 높이를 그 밴드 안에서
+    고르게 흩뜨린 테이블 <span class="m">4,000</span> 대를 추첨하고(<span class="k">tools/glass_follow.py</span>),
+    유리가 패드 사이를 매끄럽게 잇는 단면에 칼날을 대 봤다.</div>
+  <div class="tw"><table>
+    <caption>패드 평면도 0.3 mm 가 칼끝에 남기는 어긋남 (mm)</caption>
+    <thead><tr><th>칼날</th><th class="num">P50</th><th class="num">P95</th><th class="num">최대</th><th>읽는 법</th></tr></thead>
+    <tbody><tr><td>곧은 한 자루 — 테이블마다 가장 좋게 교정 (± 반폭)</td><td class="num">0.097</td><td class="num">0.174</td><td class="num">0.217</td><td>칼 쪽 S10 에 더해진다</td></tr><tr><td>일곱 모듈 — 들림만</td><td class="num">0.129</td><td class="num">0.221</td><td class="num">0.268</td><td>모듈 폭 안의 기울기를 못 따라간다</td></tr><tr><td>세 조각 — 들림 + 롤</td><td class="num">0.036</td><td class="num">0.071</td><td class="num">0.098</td><td>조각이 넓어 그 안의 굴곡이 남는다</td></tr><tr class="pick"><td>일곱 모듈 — 들림 + 롤 (채택)</td><td class="num">0.016</td><td class="num">0.033</td><td class="num">0.046</td><td>계단 조각 경계 그대로</td></tr></tbody>
+  </table></div>
+  <div class="warn"><strong>곧은 칼날은 교정으로 못 구한다.</strong>
+    가장 좋은 높이·기울기로 맞춰도 P95 <span class="m">±0.174</span> 가 남고,
+    칼 쪽 <span class="m">0.105</span> 와 합해 <span class="m">0.280 mm</span> 다.
+    한 자루로 들려면 패드 평면도를 <span class="m">0.077 mm</span> 아래로 조여야 하는데
+    벨로우즈 패드로는 못 하고, 폐패널 유리 자체의 굴곡은 거기에 따로 더해진다. 들림만 주면
+    모듈 폭 안의 기울기를 못 따라가고(<span class="m">0.221</span>), 세 조각은
+    넓어서 그 안의 굴곡이 남는다(<span class="m">0.071</span>). 계단 칼날의 일곱
+    조각이 각자 들리고 기울 때 <span class="m">0.033</span> 로 들어온다 —
+    칼날 형상은 그대로이고, 조각 경계가 곧 모듈 경계다.</div>
+  <div class="note"><strong>칼날의 수직 반력이 어디로 가는가 — 두 운전에서 반대다.</strong>
+    칼날이 층을 들어 올리면 층은 박리 전선에서 유리를 같은 힘 V 로 들어 올린다.
+    <strong>잠금</strong>이면 칼날이 유리에 닿지 않으니 그 V 가 패드 열 사이
+    <span class="m">417 mm</span> 를 건너며 유리를 휜다 — V/H 1 에서
+    <span class="m">680 MPa</span>(단순지지 상한), 허용 7 MPa 에 드는 V/H 는
+    <span class="m">0.010</span> 뿐이다. <strong>추종</strong>이면 칼날이 랜드로 유리를 V 로
+    누르고 층이 전선에서 V 로 들어 둘이 전선에서 닫힌다. 경간을 건너는 것은 모듈이 남기는 예압
+    <span class="m">0.03</span> 과 누름판 <span class="m">0.053 N/mm</span> 뿐이고
+    (<span class="m">5.09 MPa</span> · S13), 전선에는 랜드 폭만큼 떨어진 두 힘의
+    우력이 남는다(<span class="m">4.90 MPa</span> @ V/H 1 · S14).
+    그래서 박리는 추종으로 한다. 잠금은 들어갈 때 모듈마다 칼끝이 층 밑에 들 때까지와 복귀·교환
+    중에만 쓴다. 파일럿 <span class="k">PT-10</span> 이 잠금·추종을 같은 칼날로 대조하고
+    V/H × 랜드 폭 <span class="m">≤ 2.14 mm</span> 를 조각마다 확인한다.</div>
+
   <div class="tw"><table>
     <caption>근거와 읽는 법</caption>
     <thead><tr><th>ID</th><th>한계의 근거</th><th>무엇을 뜻하는가</th></tr></thead>
-    <tbody><tr><td class="k">S1</td><td>EVA 층 0.45 mm 의 1/3 — 깊이가 흔들리면 유리를 긁거나 셀을 남긴다</td><td>일곱 칼끝 중 최대 z 0.000 · 행정 중앙 · 기둥 H-250×250 4본 · Z축 2조 y ±390</td></tr><tr><td class="k">S2</td><td>행정 3,500 의 0.2 % — 일정 오프셋이라 서보가 흡수한다</td><td>물림·해제 과도구간에서만 문제가 된다 — 계단 칼날은 그 과도를 네 번에 나눈다</td></tr><tr><td class="k">S3</td><td>fn ≥ 6 Hz — 칼날 가감속 기본주파수의 3배 이상</td><td>fn = 15.5 Hz · 2차 18.6 · 3차 26.8</td></tr><tr><td class="k">S4</td><td>탄성 좌굴하중 (유효길이계수 0.7)</td><td>λ = 63 · 한계 120 · 기둥 H-200×200 6본</td></tr><tr><td class="k">S5</td><td>H/200 — 외피 이음과 셔터 궤도가 견디는 한계</td><td>H = 4,550 mm · 자중 5.83 t</td></tr><tr><td class="k">S6</td><td>KDS 압축재 세장비 상한 120</td><td>좌굴이 강도보다 먼저 온다 — 그래서 단면이 이 크기다</td></tr><tr><td class="k">S7</td><td>갠트리 처짐과 합해 추력 경로 강성을 정한다 — 합계로 루프 고유진동수를 본다</td><td>기둥 □-150×150×6 6본 · 상판 T단면 I=6.8×10⁶ mm⁴</td></tr><tr><td class="k">S8</td><td>칼날 깊이 예산 0.15 — 진공에 붙은 패널이 상판을 따라 처진다</td><td>자중 7.72 kN (그중 패널 0.34 kN) · 진공은 내력이라 외력이 아니다 · 기둥 6본</td></tr><tr><td class="k">S9</td><td>전체 평면도의 절반 — 패드 자국과 립 원의 어긋남에서 온다</td><td>패드당 3.19 kN · 판 t20 · 리브 격자 400×400</td></tr><tr><td class="k">S10</td><td>S1 과 같은 예산 — EVA 0.45 의 1/3. 한 칼끝에 셋이 겹친다</td><td>연삭 ±0.05 + 기울기 0.045 (좌우차 0.05 × 700/780) + 휨 0.010 (수직 반력 = 추력 × 1.0 포락 · 단순지지 y ±390) · 양끝 ±570 에서 들면 휨 0.170 로 합 0.251 · 예산을 다 쓰는 수직 반력비 5.4</td></tr><tr><td class="k">S11</td><td>계단 공차 80 ± 0.5 — 휨이 계단을 바꾸면 물림 순서가 흐트러진다</td><td>설계 추력 30.42 kN · 캐리어 빔 BOX-160×120×8 · 약한 120 을 추력 방향으로 · 단순지지 y ±390</td></tr></tbody>
+    <tbody><tr><td class="k">S1</td><td>EVA 층 0.45 mm 의 1/3 — 깊이가 흔들리면 유리를 긁거나 셀을 남긴다</td><td>일곱 칼끝 중 최대 z 0.000 · 행정 중앙 · 기둥 H-250×250 4본 · Z축 2조 y ±390</td></tr><tr><td class="k">S2</td><td>행정 3,500 의 0.2 % — 일정 오프셋이라 서보가 흡수한다</td><td>물림·해제 과도구간에서만 문제가 된다 — 계단 칼날은 그 과도를 네 번에 나눈다</td></tr><tr><td class="k">S3</td><td>fn ≥ 6 Hz — 칼날 가감속 기본주파수의 3배 이상</td><td>fn = 15.5 Hz · 2차 18.7 · 3차 26.9</td></tr><tr><td class="k">S4</td><td>탄성 좌굴하중 (유효길이계수 0.7)</td><td>λ = 63 · 한계 120 · 기둥 H-200×200 6본</td></tr><tr><td class="k">S5</td><td>H/200 — 외피 이음과 셔터 궤도가 견디는 한계</td><td>H = 4,550 mm · 자중 5.83 t</td></tr><tr><td class="k">S6</td><td>KDS 압축재 세장비 상한 120</td><td>좌굴이 강도보다 먼저 온다 — 그래서 단면이 이 크기다</td></tr><tr><td class="k">S7</td><td>갠트리 처짐과 합해 추력 경로 강성을 정한다 — 합계로 루프 고유진동수를 본다</td><td>기둥 □-150×150×6 6본 · 상판 T단면 I=6.8×10⁶ mm⁴</td></tr><tr><td class="k">S8</td><td>칼날 깊이 예산 0.15 — 진공에 붙은 패널이 상판을 따라 처진다</td><td>자중 7.72 kN (그중 패널 0.34 kN) · 진공은 내력이라 외력이 아니다 · 기둥 6본</td></tr><tr><td class="k">S9</td><td>전체 평면도의 절반 — 패드 자국과 립 원의 어긋남에서 온다</td><td>패드당 3.19 kN · 판 t20 · 리브 격자 400×400</td></tr><tr><td class="k">S10</td><td>S1 과 같은 예산 — EVA 0.45 의 1/3. 한 칼끝에 셋이 겹친다</td><td>연삭 ±0.05 + 기울기 0.045 (좌우차 0.05 × 700/780) + 휨 0.010 (수직 반력 = 추력 × 1.0 포락 · 단순지지 y ±390) · 양끝 ±570 에서 들면 휨 0.170 로 합 0.251 · 예산을 다 쓰는 수직 반력비 5.4</td></tr><tr><td class="k">S11</td><td>계단 공차 80 ± 0.5 — 휨이 계단을 바꾸면 물림 순서가 흐트러진다</td><td>설계 추력 30.42 kN · 캐리어 빔 BOX-160×120×8 · 약한 120 을 추력 방향으로 · 단순지지 y ±390</td></tr><tr><td class="k">S12</td><td>S1 과 같은 예산 — EVA 0.45 의 1/3. 추종하면 칼 쪽 기울기·휨은 유리가 정한다</td><td>모듈 안 얹힌 틈 P95 0.033 + 연삭 ±0.05 · 패드 밴드 0.3 · 테이블 4,000 대 · 곧은 한 자루(잠금)면 칼 쪽 0.105 + 유리 쪽 ±0.174 = 0.280 로 초과 (패드 밴드가 0.077 이하여야 든다) · 들림만 주면 0.221 · 세 조각이면 0.071</td></tr><tr><td class="k">S13</td><td>사양서 5.5 유리 설계허용 7 MPa — 열응력과 같은 값을 쓴다</td><td>예압 0.03 + 누름판 0.053 N/mm 가 패드 열 사이 417 을 건넌다 (단순지지 상한 · 누름판은 포스트당 32 N 까지) · 칼날의 수직 반력은 전선에서 닫혀 이 경간을 건너지 않는다 · 잠금이면 V 가 전선에서 유리를 들어 V/H 1 에서 680 MPa — 허용에 드는 V/H 는 0.010 뿐이다</td></tr><tr><td class="k">S14</td><td>같은 허용 7 MPa — 칼날이 누르는 힘과 층이 드는 힘이 랜드 폭만큼 떨어져 선다</td><td>폭당 V = 11.14 N/mm × V/H 1.0 · 팔 = 랜드 1.5 mm · 모멘트가 양쪽에 절반씩 · 허용에 드는 V/H 1.43 (V/H × 랜드 ≤ 2.14 mm) — 파일럿 PT-10 이 조각별로 잰다</td></tr></tbody>
   </table></div>
 </div></div>
 
@@ -765,9 +800,13 @@
         <td>램프 제조사 수평 정격 · 초기 운전</td></tr>
       <tr><td>박리력 그 자체</td><td>재료가 답한다. 어떤 해석기도 폐패널 EVA 의
         박리강도를 지어낼 수 없다</td><td>파일럿 PT-01</td></tr>
-      <tr><td>칼날의 수직 반력</td><td>OI-01 은 추력만 쟀다. S10 은 수직 반력을
+      <tr><td>칼날의 수직 반력</td><td>OI-01 은 추력만 쟀다. S10 · S14 는 수직 반력을
         추력과 같게 포락했을 뿐 그 값을 모른다 — 쐐기각과 EVA 전단의 몫이 정한다</td>
         <td>파일럿 PT-10 (조각별 스트레인게이지)</td></tr>
+      <tr><td>폐패널 유리 자체의 굴곡</td><td>S12 는 패드 평면도만 흩뜨렸다. 강화 유리의
+        롤러 웨이브 · 휨 · 판 안 두께 편차는 넣지 않았다 — 추종은 그것까지 따라가지만
+        잠금 진입 구간은 못 따라간다</td>
+        <td>파일럿 PT-10 (모듈 변위계 기록)</td></tr>
     </tbody>
   </table></div>
 </div></div>

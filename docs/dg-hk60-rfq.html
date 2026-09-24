@@ -265,7 +265,7 @@
       포락선 폭 1,400 으로 환산한 <span class="m">15.60 kN</span> 에
       동적계수를 얹은 <strong>포락값</strong>으로 설계했다 — 실측 곡선이 낮게 나오면 그것은
       여유이지 재설계가 아니다. <span class="k">F-901</span> 은 그 지침서의 부속 도면이다.</div>
-    <div class="note"><strong>부품도 162 장과 모듈 조립도 13 장을 함께 인계한다.</strong>
+    <div class="note"><strong>부품도 169 장과 모듈 조립도 13 장을 함께 인계한다.</strong>
       콘솔의 <span class="k">부품도</span> · <span class="k">조립도</span> 탭이 그것이다.
       부품마다 형상·치수·두께·재질·질량·수량과 <strong>어떻게 붙는가</strong>가 있고,
       모듈마다 <strong>분해 등각도 · 단계별 순서 · 왜 이 순서인가 · 끝내고 무엇을 재는가</strong>가 있다.
@@ -1039,18 +1039,35 @@ t_열   = max( 5Q / (48 × 2.5 kW × η 0.65),  113.15 s )  = 225.4 s
 
   <div class="clause"><div class="n">6.2</div><div class="c">
     <h3>계단 칼날 셀 (DL-101 · SHK-101)</h3>
-    <p>칼날은 <strong>한 자루</strong>다. 유리 계면 하나에서 셀모듈과 백시트를 한 장으로
+    <p>칼날은 <strong>카세트 한 벌</strong>이다. 유리 계면 하나에서 셀모듈과 백시트를 한 장으로
       떼어 내며, 칼끝은 한 줄이 아니라 계단이다 — 형상은 발주자 확정값이고 콘솔의 뿌리
       상수(<span class="k">KNIFE_*</span>)가 든다. 입찰자는 형상을 바꾸지 않고 그 형상을
-      만드는 구조·가공·제어를 설계한다.</p>
+      만드는 구조·가공·제어를 설계한다. 계단의 일곱 조각은 <strong>따로 떠서 유리를
+      따라간다</strong> (칼날 모듈 추종 · 발주자 승인 2026-09-24).</p>
     <ul>
       <li>칼날 형상 — 중앙 <span class="m">300 mm</span> + 계단 칼날 <span class="m">200 mm × 3</span>/측,
         계단 높이 <span class="m">80 mm</span>(발주자 확정), 전폭 <span class="m">1,500 mm</span>,
         깊이 <span class="m">240 mm</span>, 계단 이음 겹침 <span class="m">15 mm</span>. 이음에서 칼끝이
         끊기면 그 줄만 안 떨어져 층이 찢어지므로 <strong>전폭에 칼끝 틈이 없어야 한다</strong></li>
-      <li>공차 — 일곱 칼끝 높이 <span class="m">± 0.05 mm</span>(동일면), 계단 높이
-        <span class="m">80 ± 0.5 mm</span>. 칼끝은 <strong>카세트째 한 평면으로 연삭</strong>하고
+      <li>공차 — 잠근 상태의 일곱 칼끝 높이 <span class="m">± 0.05 mm</span>(동일면), 계단 높이
+        <span class="m">80 ± 0.5 mm</span>. 칼끝은 <strong>카세트째 잠근 채 한 평면으로 연삭</strong>하고
         교환마다 레이저 변위센서로 재확인한다 (<span class="k">KNIFE_TIP_OK</span>)</li>
+      <li><strong>칼날 모듈 추종</strong> — 홀더 7 을 판스프링으로 매달아 조각마다 들림
+        <span class="m">±1.5 mm</span> · 롤 <span class="m">±0.5°</span> 만 푼다. 박리 중에는 밑면 랜드
+        (<span class="m">1.5 mm</span> · 경면 연마)가 유리를 타며 제 폭의 유리면을 따라간다.
+        흡착패드 평면도 <span class="m">0.3 mm</span> 가 만드는 유리 굴곡을 곧은 칼날은 못 따라간다 —
+        가장 좋게 교정해도 칼끝 깊이 예산 <span class="m">0.15 mm</span> 를 넘는다 (CAL-001 S12).
+        무게 보상 스프링이 유리에 폭당 <span class="m">0.03 N/mm</span> 만 남기고, 누름판 예압과 합한
+        패드 사이 유리 굽힘이 설계허용 <span class="m">7 MPa</span> 안이다 (S13)</li>
+      <li><strong>잠금</strong> — 캐리어 빔의 잠금쐐기 7(스프링 잠금 · 공압 해제)이 홀더를 상한
+        스톱에 붙이면 곧은 칼날이다. 들어갈 때 모듈마다 제 칼끝이 층 밑에 <span class="m">10 mm</span>
+        들 때까지와 복귀·교환 중에만 잠근다 — 잠긴 칼날은 수직 반력으로 패드 사이 유리를 들어
+        올리고, 허용에 드는 V/H 는 <span class="m">0.010</span> 뿐이다 (S13). 공압이 빠지면 잠겨
+        칼날이 유리에서 뜬다</li>
+      <li>변위계 7 이 모듈 들림을 기록한다 — 유리면 굴곡의 실측이고, 모듈이 행정 끝에 닿으면
+        <span class="k">KM_TRAVEL_END</span> 로 멈춘다. 추종 중에는 칼날이 누르는 힘과 층이 드는 힘이
+        박리 전선에서 닫히고, 남는 국부 우력의 한계가 V/H × 랜드 폭 <span class="m">≤ 2.14 mm</span>
+        다 (S14). 파일럿 <span class="k">PT-10</span> 이 잠금·추종을 같은 칼날로 대조한다</li>
       <li>Z축 좌·우 2조 서보슬라이드를 전자 동기로 묶어 칼날 하나를 든다. 두 축은 패널 폭의
         <strong>베셀점 y ±390 mm</strong>에 둔다 — 양끝(±570)에서 들면 칼날 캐리어 빔이 가운데서
         처져 일곱 칼끝의 깊이 예산 0.15 mm 를 넘는다(CAL-001 S10). 좌우 높이차
@@ -1181,7 +1198,7 @@ t_열   = max( 5Q / (48 × 2.5 kW × η 0.65),  113.15 s )  = 225.4 s
     </table></div>
     <div class="logic">UNMANNED_PERMIT  = AUTO_FEED ∧ AUTO_STACK ∧ KC_MAGAZINE_READY ∧ BIN_LEVEL_OK ∧ THERMAL_CAM_OK ∧ FIRE_OK ∧ REMOTE_ACK ∧ OEE_VALID
 KNIFE_AUTOCHANGE = KNIFE_CHANGE_DUE ∧ KC_MAGAZINE_READY ∧ KC_ARM_HOME ∧ CASSETTE_RELEASE
-CASSETTE_RELEASE = KNIVES_CLEAR ∧ CARRIER_PARKED ∧ HEATER_ISOLATED ∧ CASSETTE_PRESENT</div>
+CASSETTE_RELEASE = KNIVES_CLEAR ∧ CARRIER_PARKED ∧ HEATER_ISOLATED ∧ CASSETTE_PRESENT ∧ KM_ALL_LOCKED</div>
     <div class="warn"><strong>칼날 자동교환은 정비허가(LOTO)가 아니라 캐리어 파킹 상태에서 돈다.</strong>
       무인 운전 중에 LOTO 를 요구하면 그 허가는 영원히 성립하지 않고, 결국 사람이
       들어가야 한다. 대신 파킹 위치·칼날 Z 상한·매거진 위치를 모두 읽어 등가의
@@ -1281,6 +1298,8 @@ HEAT_RECOVERY = RTO_READY ∧ HX_OUTLET_TEMP ∧ DP_OK</div>
       <tbody>
         <tr><th>교체 단위</th><td>계단 칼날 SKD11 인서트 7 + 카트리지히터 7 존 + 열전대 7 점, <span class="m">39 kg</span></td>
           <td>닳는 부품과 열원이 같은 덩어리에 있어야 배선 해체가 없다</td></tr>
+        <tr><th>모듈 현가</th><td>홀더 7 이 판스프링 2 장씩으로 등판에 매달린다 — 들림 <span class="m">±1.5 mm</span> · 롤 <span class="m">±0.5°</span> · 상한 스톱 7</td>
+          <td>잠금쐐기·변위계는 캐리어 빔(잔류부)에 둔다 — 교환품에 공압과 신호를 싣지 않는다 (<a href="#c6">6.2</a>)</td></tr>
         <tr><th>위치결정</th><td>테이퍼 로케이팅핀 <span class="m">Ø25 h6 · 1:10</span>, 원형 1 + 다이아몬드 1</td>
           <td>반복정밀도 <span class="m">±0.05 mm</span> — 칼끝 높이는 연삭한 착좌면이 정하고 핀은 수평 위치만 잡는다.
             교환마다 레이저로 일곱 칼끝을 다시 잰다</td></tr>
@@ -1379,7 +1398,9 @@ KG-101 갠트리 스윕   y ±1,520 · x 8,250 ~ 11,850 · 상단 2,740  → 이
     <h3>제어 구성</h3>
     <ul>
       <li>안전 PLC와 표준 PLC 분리, 원격 I/O 3반</li>
-      <li>표준 I/O — <span class="m">DI 176 · DO 96 · AI 40 · AO 16 · TC 56</span>. 실사용 <span class="m">DI 112 · DO 39 · AI 28 · AO 6 · TC 33</span> 에서 예비 20 % 이상을 남기고 카드 배수로 올린 값이다.
+      <li>표준 I/O — <span class="m">DI 176 · DO 96 · AI 48 · AO 16 · TC 56</span>. 실사용 <span class="m">DI 119 · DO 46 · AI 35 · AO 6 · TC 33</span> 에서 예비 20 % 이상을 남기고 카드 배수로 올린 값이다.
+      칼날 모듈 추종이 모듈마다 잠금 확인 DI · 변위계 AI · 잠금쐐기 DO 를 하나씩 더해 AI 예비가 12.5 % 로
+      떨어졌으므로 <strong>AI 카드 한 장(8 점)을 더했다</strong>.
       권취부 철거로 실사용이 DI 14 · DO 7 · AI 2 · TC 1 점 줄었지만 <strong>카드는 그대로 둔다</strong> —
       파일럿이 조각별 분력 계측을 양산으로 가져오면 그 자리가 된다. 후처리·팔레타이징이 <a href="#c11">OI-15</a>에서 공급범위로 되돌아오면 그 점수가 여기로 다시 들어오므로 <strong>예비를 더 깎지 않는다</strong></li>
       <li>안전 I/O — <span class="m">F-DI 48 · F-DO 8</span> (실사용 F-DI 38 · F-DO 6).
@@ -1400,7 +1421,9 @@ IR_ENABLE      = SEALED_FULL_LOAD_ACK ∧ EXHAUST_OK ∧ FIRE_OK ∧ PM_METER_OK
 DECK_SHUTTER_MUTEX = IN_SHUTTER_MUTEX ∧ OUT_SHUTTER_MUTEX
 PEEL_PERMIT    = EVA_TARGET_ACK ∧ KNIFE_TEMP_OK ∧ VAC_6ZONE_OK
 KNIFE_LEVEL_OK = |Z좌 − Z우| ≤ 0.05mm — 일곱 칼끝이 한 평면에 있다
-KNIFE_Z_PERMIT = EVA_TARGET_ACK ∧ VAC_6ZONE_OK ∧ CASSETTE_READY ∧ KNIFE_TEMP_OK ∧ KNIFE_LEVEL_OK ∧ CELL_PATH_CLEAR
+KNIFE_Z_PERMIT = EVA_TARGET_ACK ∧ VAC_6ZONE_OK ∧ CASSETTE_READY ∧ KNIFE_TEMP_OK ∧ KNIFE_LEVEL_OK ∧ CELL_PATH_CLEAR ∧ KM_ALL_LOCKED
+KM_ALL_LOCKED  = KM_LOCKED — 일곱 쐐기가 홀더를 상한 스톱에 붙였다 · 곧은 칼날
+KM_FOLLOW_PERMIT = KNIFE_X_POS ∧ PEEL_FORCE ∧ VAC_6ZONE_OK — 모듈마다 제 칼끝이 층 밑에 10mm 든 뒤 푼다
 MOTION_SYNC    = |X_LEFT − X_RIGHT| ≤ 0.3 mm ∧ FOLLOWING_ERROR_OK
 MOTION_TRIP    = SYNC_ERROR ∨ VAC_LOW ∨ KNIFE_OVERLOAD ∨ KNIFE_TILT ∨ GLASS_CRACK
 OPENING_SAFE   = LC_OSSD_CLEAR ∨ MUTE_VALID
@@ -1476,8 +1499,8 @@ KNIFE_TRAVERSE_PERMIT = PEEL_PERMIT ∧ KNIFE_X_HOME ∧ KNIFE_X_POS</div>
     <div class="warn"><strong>보완 전 I/O 선언은 실제 점수를 담지 못했다.</strong>
       대조로 확정한 실사용은 <span class="m">DI 105 · TC 32</span>인데 종전 선언은
       <span class="m">DI 96 · TC 16</span>이었다. 위 표의 장치를 더하기 전부터 이미
-      초과 상태였다. <a href="#c3">3.3항</a> 고도화 네 축과 <a href="#c3">3.4항</a> 공급범위 경계 인터페이스까지 더한 실사용은
-      <span class="m">DI 112 · DO 39 · AI 28 · AO 6 · TC 33 · F-DI 38 · F-DO 6</span>이며,
+      초과 상태였다. <a href="#c3">3.3항</a> 고도화 네 축과 <a href="#c3">3.4항</a> 공급범위 경계 인터페이스, 칼날 모듈 추종까지 더한 실사용은
+      <span class="m">DI 119 · DO 46 · AI 35 · AO 6 · TC 33 · F-DI 38 · F-DO 6</span>이며,
       <a href="#c7">7.1항</a>의 I/O 수량은 여기서 예비 20 %를 남기고 카드 배수로 올려
       다시 잡은 값이다.</div>
     <p><span class="m">HORN_3S</span>와 <span class="m">BEACON_AMBER</span>는
@@ -1663,6 +1686,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
         <tr><td class="k">FAT</td><td>카세트 교환 10회 반복</td><td>일곱 칼끝 높이 ± 0.05 mm · 계단 80 ± 0.5 mm 재현, 로드셀 영점 재현</td></tr>
         <tr><td class="k">FAT</td><td>계단 이음 박리 품질</td><td>이음 6 줄의 잔류 EVA 가 판 전체 판정과 구별되지 않을 것 · 층 찢김 없음</td></tr>
         <tr><td class="k">FAT</td><td>Z축 좌·우 동기</td><td>전 행정 높이차 ≤ 0.05 mm (<span class="m">KNIFE_LEVEL_OK</span>) · 초과 시 <span class="m">KNIFE_TILT</span> 트립</td></tr>
+        <tr><td class="k">FAT</td><td>칼날 모듈 잠금·추종</td><td>쐐기 7 개 잠금·해제 · 공압 차단 시 잠김 · 변위계 7 점 영점 · 행정 끝에서 <span class="m">KM_TRAVEL_END</span> 트립 · 추종 중 Z축 로드셀에서 수직 반력이 사라질 것</td></tr>
         <tr><td class="k">FAT</td><td>카세트 자동교환 정지시간</td><td>≤ 4.2 분 (무부하 계측, <a href="#c6">6.9</a>)</td></tr>
         <tr><td class="k">FAT</td><td>활선 분리 방지</td><td>히터 접촉기 투입 상태에서 잠금해제 불성립</td></tr>
         <tr><td class="k">FAT</td><td>카세트 강제공랭 실측</td><td>200 → 60 °C 시간으로 h 가정 확정</td></tr>
@@ -1989,10 +2013,10 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
       참고도가 있는 것은 여덟 장뿐이고(<a href="#c1">1.2항</a> — F-002 · F-003 · F-005 ·
       F-006 · F-007 · F-901 · D-501 · D-602), 그것도 해석으로
       검증되지 않은 가정값이다. 선행 개정의 R- 계열 일곱 장은 폐기 배치의 도면이므로
-      납품 부품도 물량에 들어가지 않는다. 납품 13개 모듈 <strong class="m">162 품목</strong>
-      (제작품 106 · 구매품 56)의 부품도를 판두께·공차·용접기호·가공기준면까지
+      납품 부품도 물량에 들어가지 않는다. 납품 13개 모듈 <strong class="m">169 품목</strong>
+      (제작품 109 · 구매품 60)의 부품도를 판두께·공차·용접기호·가공기준면까지
       확정해 그리는 것이 이 단계다 — <strong>백지에서 시작하지 않는다.</strong>
-      개념설계가 유도한 부품도 162 장과 모듈 조립도 13 장을 함께 인계하므로,
+      개념설계가 유도한 부품도 169 장과 모듈 조립도 13 장을 함께 인계하므로,
       입찰자의 일은 <strong>작성</strong>이 아니라 <strong>검증·확정</strong>이다.
       입찰자가 이보다 짧은 일정을 제안하려면 도면 매수 산정 근거를 함께 제시한다.</div>
     <p>확인사항(<a href="#c11">11항</a>) 중 실측·DOE가 필요한 항목은 시험 일정이

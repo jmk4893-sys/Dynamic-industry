@@ -33,6 +33,7 @@ CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
 # 단수와 램프 수는 도면이 정한다. 여기 값을 따로 적어 두면 도면만 고쳐지는
 # 날이 오고, 그때 이 모델은 없는 센서를 세게 된다.
 DECKS = int(console_consts.const("DECKS"))     # 가열 캐리지 단수
+BLADES = int(console_consts.const("KNIFE_BLADES"))   # 칼날 모듈 수 — 계단 조각과 같다
 LAMPS = int(console_consts.const("LAMPS"))     # IR 램프 수
 BANKS = DECKS + 1                      # IR 뱅크 — 하부 B0 + 단간 + 상부
 
@@ -50,9 +51,11 @@ FDI, FDO, COMM = "F-DI", "F-DO", "COMM"
 # 예비가 5 % 밖에 안 남는다. **안전 카드 한 장(8점)을 더 사는 것이
 # 개구를 다시 키우는 것보다 싸다** — 개구를 전고로 되돌리면 에어록 손실이 설치정격의 다섯 배를 넘는다.
 # 계단 칼날로 권취부가 빠지며 DI 14 · DO 7 · AI 2 · TC 1 점이 줄었다. 카드는 그대로
-# 둔다 — 예비가 늘 뿐이고, 줄여 봐야 DI 카드 두 장 값이다. 그 여유는 파일럿이
-# 칼날 단별 분력 계측(스트레인게이지)을 양산으로 가져올 때 쓸 자리다.
-BUDGET = {DI: 176, DO: 96, AI: 40, AO: 16, TC: 56, FDI: 48, FDO: 8}
+# 둔다 — 예비가 늘 뿐이고, 줄여 봐야 DI 카드 두 장 값이다.
+# 칼날 모듈 추종(9/24)이 모듈마다 잠금 확인 DI · 변위계 AI · 잠금쐐기 DO 를 하나씩
+# 더했다. AI 는 28 → 35 로 예비가 12.5 % 가 되어 카드 한 장(8점)을 더 산다 — 40 → 48.
+# 그 여유는 파일럿이 칼날 단별 분력 계측(스트레인게이지)을 양산으로 가져올 때 쓸 자리다.
+BUDGET = {DI: 176, DO: 96, AI: 48, AO: 16, TC: 56, FDI: 48, FDO: 8}
 SPARE_MIN = 0.20                       # 사양서 7.1 이 요구하는 최소 예비율
 
 
@@ -134,6 +137,12 @@ LEAVES = [
     Leaf("KNIFE_OVERLOAD",     AI, 4, "로드셀×4", "Z축 좌·우 각 2점"),
     Leaf("KNIFE_LEVEL_OK",     COMM, 0, "Z축 좌·우 절대치 엔코더",
          "|Z좌 − Z우| ≤ 0.05 mm — 넘으면 바깥 칼날 한쪽이 유리를 긁거나 셀을 남긴다"),
+    # 칼날 모듈 추종 — 일곱 홀더가 판스프링에 매달려 유리를 탄다. 잠그면(쐐기가 상한
+    # 스톱에 붙인다) 곧은 칼날이고, 들어갈 때와 복귀·교환 중에만 잠근다.
+    Leaf("KM_LOCKED",          DI, BLADES, f"칼날 모듈 잠금쐐기×{BLADES}",
+         "모듈마다 잠금 위치 1점 — 복귀·교환 전에 일곱이 다 잠겨야 한다"),
+    Leaf("KM_TRACK",           AI, BLADES, f"칼날 모듈 변위계×{BLADES}",
+         "모듈마다 들림 1점 — 추종 기록(유리면 굴곡) · 행정 끝 경보"),
     Leaf("AE_OK",              AI, 2, "AE 센서×4"),
     Leaf("AE_CRACK",           AI, 0, "AE 센서×4"),
     # ── BC-201 퀵체인지 칼날 카세트 ─────────────────────────────────────
@@ -303,7 +312,7 @@ DERIVED = [
     Derived("CASSETTE_COOL_OK", ["CASSETTE_TEMP"]),
     # 기계가 뽑는 조건 — 뜨거워도 된다.
     Derived("CASSETTE_RELEASE", ["KNIVES_CLEAR", "CARRIER_PARKED",
-                                 "HEATER_ISOLATED", "CASSETTE_PRESENT"]),
+                                 "HEATER_ISOLATED", "CASSETTE_PRESENT", "KM_ALL_LOCKED"]),
     # 사람이 만지는 조건 — 식어야 하고 LOTO 가 걸려야 한다.
     Derived("CASSETTE_HANDLING_SAFE", ["CASSETTE_RELEASE", "CASSETTE_COOL_OK",
                                        "MAINT_PERMIT"]),
@@ -311,12 +320,22 @@ DERIVED = [
     # 종전의 HKB 선행 300 · 권취 장력 · HKS 뒤따름 조건은 계단이 대신한다:
     # 중앙이 먼저 물고 바깥이 80 마다 따라오는 순서가 형상에 들어 있다.
     Derived("KNIFE_Z_PERMIT", ["EVA_TARGET_ACK", "VAC_6ZONE_OK", "CASSETTE_READY",
-                               "KNIFE_TEMP_OK", "KNIFE_LEVEL_OK", "CELL_PATH_CLEAR"]),
-    Derived("RAPID_PERMIT", ["KNIVES_CLEAR", "PANEL_VAC_OK", "CARRIER_SQUARE", "TRACK_CLEAR"]),
+                               "KNIFE_TEMP_OK", "KNIFE_LEVEL_OK", "CELL_PATH_CLEAR",
+                               "KM_ALL_LOCKED"]),
+    # 칼날 모듈 — 들어갈 때는 곧은 칼날이어야 유리 앞면에 걸리지 않는다. 모듈마다 제
+    # 칼끝이 층 밑에 들면(진입 거리 KM_ENTRY) 풀어 추종하고, 복귀·교환 전에 다시 잠근다.
+    Derived("KM_ALL_LOCKED", ["KM_LOCKED"], "일곱 쐐기가 홀더를 상한 스톱에 붙였다 — 곧은 칼날"),
+    Derived("KM_FOLLOW_PERMIT", ["KNIFE_X_POS", "PEEL_FORCE", "VAC_6ZONE_OK"],
+            "모듈마다 제 칼끝이 층 밑에 든 뒤 푼다"),
+    Derived("KM_FOLLOW_OK", ["KM_TRACK"], "일곱 모듈이 들림 행정 안에 있다"),
+    Derived("KM_TRAVEL_END", ["KM_FOLLOW_OK"],
+            "KM_FOLLOW_OK 의 부정 — 모듈 하나가 행정 끝에 닿아 유리를 놓쳤다"),
+    Derived("RAPID_PERMIT", ["KNIVES_CLEAR", "PANEL_VAC_OK", "CARRIER_SQUARE", "TRACK_CLEAR",
+                             "KM_ALL_LOCKED"]),
     Derived("KNIFE_TILT", ["KNIFE_LEVEL_OK"], "KNIFE_LEVEL_OK 의 부정 — 두 Z축이 0.05 넘게 벌어졌다"),
     Derived("LOAD_HIGH", ["KNIFE_OVERLOAD"]),
     Derived("MOTION_TRIP", ["SYNC_ERROR", "VAC_LOW", "KNIFE_OVERLOAD", "KNIFE_TILT", "GLASS_CRACK"]),
-    Derived("KNIFE_SAFE_STOP", ["LOAD_HIGH", "AE_CRACK", "VAC_LOW", "KNIFE_TILT"]),
+    Derived("KNIFE_SAFE_STOP", ["LOAD_HIGH", "AE_CRACK", "VAC_LOW", "KNIFE_TILT", "KM_TRAVEL_END"]),
     Derived("CELL_TRANSFER", ["CVC_CLEAR", "SHREDDER_READY", "CELL_TAKEAWAY_READY",
                               "CELL_BIN_SPACE_OK"]),
     Derived("SHREDDER_FEED", ["CELL_BUFFERED", "CV_CLEAR", "SHREDDER_READY"]),
@@ -423,6 +442,9 @@ DRIVES = [
     # 스프링으로 잠기고 공압으로 풀린다 — 공압이 빠지면 카세트가 물린 채 남는다.
     Drive("CY-405", "카세트 쐐기클램프",     DO, 2, "스프링 잠금", "카세트 쐐기 클램프×2"),
     Drive("CY-406", "카세트 냉각 퍼지밸브",  DO, 1, "덤프밸브", "카세트 냉각 퍼지밸브"),
+    # 칼날 모듈 잠금쐐기 — 모듈마다 따로 푼다. 스프링으로 잠기므로 공압이 빠지면
+    # 홀더가 상한 스톱에 붙어 칼날이 유리에서 뜬다.
+    Drive("CY-407", "칼날 모듈 잠금쐐기",   DO, BLADES, "스프링 잠금", f"칼날 모듈 잠금쐐기×{BLADES}"),
     # 환경·인증
     Drive("CY-702", "질소 퍼지 밸브",        FDO, 2, "F-DO 직결", "NP-101 질소 퍼지 유닛"),
     # 계량
