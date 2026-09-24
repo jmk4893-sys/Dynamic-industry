@@ -701,14 +701,28 @@ class TestProcurementTerms(unittest.TestCase):
             "기술 항목 배점 합이 선언한 기술 배점과 다르다")
 
     def test_open_item_count_matches_the_register(self):
-        """'13건' 은 11항을 세어 나온 수다. 항목이 늘면 여기도 틀린다."""
-        registered = len(re.findall(r"<b>(OI-\d+)</b>", self.html))
-        stated = re.findall(r"확인사항\s*(\d+)건", self.c12)
-        self.assertTrue(stated, "12항이 확인사항 건수를 적지 않았다")
+        """12항의 'N건' 은 11항에서 아직 열린 항목을 센 수다.
+
+        항목이 늘어도, 하나가 닫혀도 여기가 따라 틀린다. 닫힌 항목은 번호를
+        당기지 않고 제목에 '해소' 를 달아 남기므로(OI-11) 등록 수에서 그만큼 뺀다.
+        태그를 걷어 내고 세는 것은 '<strong>15건</strong>' 처럼 강조가 끼어도
+        검사에서 빠지지 않게 하려는 것이다 — 세 곳 중 한 곳만 보던 때가 있었다.
+        """
+        titles = re.findall(
+            r'<div class="oi-h"><b>OI-\d+</b><span>(.*?)</span>', self.html)
+        self.assertEqual(len(titles), len(re.findall(r"<b>(OI-\d+)</b>", self.html)))
+        closed = sum("해소" in t for t in titles)
+        self.assertGreaterEqual(closed, 1, "OI-11 이 닫힌 항목으로 표시되지 않았다")
+        open_items = len(titles) - closed
+        text = re.sub(r"<[^>]+>", "", self.c12)
+        stated = re.findall(r"(\d+)\s*건", text)
+        self.assertGreaterEqual(
+            len(stated), 3, "12항이 확인사항 건수를 적는 세 곳(12.5 · 배점표 · 주석) 중 일부가 없다")
         for n in stated:
             self.assertEqual(
-                int(n), registered,
-                f"12항이 확인사항을 {n}건이라 하는데 11항에는 {registered}건이 있다")
+                int(n), open_items,
+                f"12항이 확인사항을 {n}건이라 하는데 11항에 열린 항목은 {open_items}건이다 "
+                f"(등록 {len(titles)} · 해소 {closed})")
 
     def test_required_experience_covers_what_this_machine_needs(self):
         """실적 요구는 이 설비가 실제로 요구하는 기술에서 나와야 한다."""
