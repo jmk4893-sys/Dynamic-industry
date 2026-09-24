@@ -6,7 +6,8 @@
            아무 표시가 나지 않는다 — 숫자를 적어 넣으면 그만이다.
   공정지능 고정 레시피는 쉬운 패널에서 시간을 버리고 어려운 패널에서 유리를
            깬다. 둘 다 사이클 평균에는 안 나타난다.
-  무인화   사람 개입 넷 중 하나만 자동화가 빠져도 무인 시간은 그 주기로 끊긴다.
+  무인화   사람 개입 셋(만권 롤은 권취부와 함께 빠졌다) 중 하나만 자동화가 빠져도
+           무인 시간은 그 주기로 끊긴다.
   환경     배출을 계측하지 못하는 동안의 가열은 기록도 처리도 되지 않는다.
 
 그래서 네 축을 수치와 인터록 항으로 묶어 확인한다. 질량 가정은 독립적으로
@@ -67,13 +68,23 @@ class TestMassBalanceBasis(_Base):
         self.assertAlmostEqual(sum(shares), 1.0, places=9)
         self.assertGreater(shares[0], 0.75, "유리가 회수 질량의 대부분이어야 한다")
 
-    def test_cell_eva_mass_matches_the_shredder_assumption(self):
-        """OI-08 슈레더 부하는 패널당 셀/EVA 4.8 kg(포락선 3.50 m²) 가정 위에 서 있다."""
-        per = (self.c("MASS_EVA") + self.c("MASS_CELL")) * self.c("PANEL_L") * self.c("PANEL_W")
-        self.assertTrue(3.9 <= per <= 4.9,
-                        f"패널당 셀/EVA {per:.2f} kg 가 사양서의 3.9~4.9 범위 밖이다")
+    def test_cell_module_mass_sets_the_shredder_load(self):
+        """OI-08 슈레더 부하는 이제 셀모듈(백시트 포함) 한 장이다.
+
+        계단 칼날이 백시트를 셀모듈에 붙인 채 떼므로, 종전 셀/EVA 4.8 kg 가정에
+        백시트가 더해진다. 부하가 계약 처리량에서 400 kg/h 권장 정격 안에 들어야 한다.
+        """
+        area = self.c("PANEL_L") * self.c("PANEL_W")
+        cell = (self.c("MASS_EVA") + self.c("MASS_CELL")) * area
+        module = cell + self.c("MASS_BACK") * area
+        self.assertTrue(3.9 <= cell <= 4.9, f"패널당 셀/EVA {cell:.2f} kg 가 3.9~4.9 범위 밖이다")
+        rate = module * self.c("NET_TARGET")
+        self.assertLess(rate, 400, f"셀모듈 {rate:.0f} kg/h 가 권장 정격 400 kg/h 를 넘는다")
         if self.rfq is not None:
-            self.assertIn(f"셀/EVA {per:.1f} kg 기준", self.rfq, "OI-08 의 장당 셀/EVA 가정이 계산과 다르다")
+            self.assertIn(f"{module:.2f} kg</span>(셀/EVA {cell:.2f}", self.rfq,
+                          "OI-08 의 장당 셀모듈 가정이 계산과 다르다")
+            self.assertIn(f"{rate:.0f} kg/h", self.rfq, "OI-08 의 시간당 부하가 계산과 다르다")
+            self.assertIn("400 kg/h", self.rfq, "OI-08 권장 정격이 올라가지 않았다")
 
     def test_balance_tolerance_is_declared(self):
         self.assertAlmostEqual(self.c("BALANCE_TOL"), 0.02, places=6)
@@ -86,15 +97,15 @@ class TestMassBalanceBasis(_Base):
         panel = total * self.c("PANEL_L") * self.c("PANEL_W")
         self.assertIn(f"{total:.3f}", self.rfq, "사양서 5.5 의 면적질량 합이 콘솔과 다르다")
         self.assertIn(f"{panel:.1f} kg/장", self.rfq, "사양서 5.5 의 패널 질량이 콘솔과 다르다")
+        # 반출은 두 계통이다 — 백시트는 셀모듈에 붙어 나간다
         for share, label in ((m["GLASS"] / total, "유리"),
-                             ((m["EVA"] + m["CELL"]) / total, "셀/EVA"),
-                             (m["BACK"] / total, "백시트")):
+                             ((m["EVA"] + m["CELL"] + m["BACK"]) / total, "셀모듈")):
             self.assertIn(f"{share * 100:.1f} %", self.rfq,
                           f"사양서 5.5 의 {label} 회수 비율이 콘솔과 다르다")
 
 
 class TestUnmannedOperation(_Base):
-    """사람 개입 넷을 모두 덮어야 무인 시간이 그 주기로 끊기지 않는다."""
+    """사람 개입 셋을 모두 덮어야 무인 시간이 그 주기로 끊기지 않는다."""
 
     def setUp(self):
         self.m = _model()
@@ -120,9 +131,10 @@ class TestUnmannedOperation(_Base):
                           ("BIN_LEVEL_OK", "반출함 만재")):
             self.assertIn(term, p, f"무인 허가가 {why} 를 보지 않는다")
 
-    def test_roll_handoff_is_modelled(self):
-        self.assertIn("ROLL_HANDOFF", self.derived, "만권 롤 무인 반출이 모델에 없다")
-        self.assertIn("AGV_DOCKED", self.derived["ROLL_HANDOFF"].terms)
+    def test_the_roll_handoff_left_with_the_winder(self):
+        """만권 롤이 가장 잦은 사람 개입이었다 — 권취부 철거로 그 주기와 AGV 도킹이 함께 빠졌다."""
+        self.assertNotIn("ROLL_HANDOFF", self.derived, "철거한 권취부의 롤 무인 반출이 남아 있다")
+        self.assertNotIn("AGV_DOCKED", {l.name for l in self.m.LEAVES})
 
     def test_knife_autochange_does_not_require_loto(self):
         """무인 운전 중 LOTO 를 요구하면 그 허가는 영원히 성립하지 않는다."""
@@ -238,9 +250,11 @@ class TestWeighingIsDrawn(_Base):
             self.assertIn(token, drawn, f"{token} 가 도면에 그려지지 않았다")
         self.assertIn("weighingStations();", self.console, "계량 설비가 배치에 놓이지 않았다")
 
-    def test_balance_closes_over_all_three_streams(self):
+    def test_balance_closes_over_both_streams(self):
+        """반출은 셀모듈과 유리 두 계통이다 — 백시트 롤(ROLL_MASS)은 권취부와 함께 빠졌다."""
         d = {x.name: x for x in _model().DERIVED}
-        for term in ("ROLL_MASS", "CELL_MASS_RATE", "GLASS_MASS"):
+        self.assertNotIn("ROLL_MASS", d["MASS_BALANCE_OK"].terms, "없는 롤 계통을 수지에 넣는다")
+        for term in ("CELL_MASS_RATE", "GLASS_MASS"):
             self.assertIn(term, d["MASS_BALANCE_OK"].terms,
                           f"물질수지가 {term} 계통을 빼고 닫힌다")
         self.assertIn("PANEL_MASS_IN", d["MASS_BALANCE_OK"].terms,

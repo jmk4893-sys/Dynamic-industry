@@ -199,14 +199,15 @@ class TestEveryResultCarriesItsBasis(unittest.TestCase):
             self.assertGreaterEqual(len(r.note), 20, f"{r.id} 읽는 법이 없다")
             self.assertTrue(r.unit, f"{r.id} 단위가 없다")
 
-    def test_only_the_two_intended_cases_exceed(self):
+    def test_only_the_intended_case_exceeds(self):
         """넘는 것이 늘어나면 설계가 바뀐 것이다 — 조용히 지나가면 안 된다.
 
-        S11 권취축 클램프 중앙집중 · T13 카세트 냉각 두 건만 의도한
-        경계 사례다. 둘 다 실패가 아니라 **요구가 되는 초과**다.
+        T13 카세트 냉각 한 건만 의도한 경계 사례다 — 실패가 아니라
+        **요구가 되는 초과**다. 권취축 클램프 중앙집중(옛 S11)은 계단 칼날
+        전환으로 권취부가 철거되며 검토째 없어졌다.
         """
         over = sorted(r.id for r in list(self.srs) + list(self.trs) if not r.ok)
-        self.assertEqual(over, ["S11", "T13"], f"초과 항목이 바뀌었다: {over}")
+        self.assertEqual(over, ["T13"], f"초과 항목이 바뀌었다: {over}")
 
     def test_the_analysis_creates_requirements_with_owners(self):
         rq = TH.requirements()
@@ -237,11 +238,33 @@ class TestTheStructuralResultsFollowTheDesign(unittest.TestCase):
         self.assertLess(s8.value, s8.limit,
                         "상판 자중 처짐이 칼날 깊이 예산을 넘는다")
 
-    def test_the_winding_shaft_answer_depends_on_clamp_position(self):
-        """양단 배치는 통과하고 중앙 집중은 넘는다 — 그래서 도면에 못 박는다."""
+    def test_the_bessel_supports_keep_the_tip_line_straight(self):
+        """Z축을 양끝에 두면 예산을 넘고 베셀점에 두면 넘지 않는다 — 그래서 위치를 못 박는다.
+
+        같은 캐리어 빔, 같은 질량이다. 달라진 것은 지점뿐이다.
+        """
         _, ex = ST.run()
-        self.assertLess(ex["shaft"]["d_wide"], ex["shaft"]["d_bare"],
-                        "클램프를 벌리면 처짐이 줄어야 한다")
+        k = ex["knife"]
+        self.assertLess(k["bend"], k["bend_ends"] / 5, "베셀점이 휨을 충분히 줄이지 못한다")
+        self.assertGreater(k["total_ends"], 0.15, "양끝 지지가 예산 안이면 베셀점을 고집할 이유가 없다")
+        self.assertLessEqual(k["total"], 0.15)
+        self.assertAlmostEqual(k["zs"], round((0.5 - 0.2203) * c("PANEL_W") * 100) / 100 * 1000,
+                               places=6, msg="Z축이 패널 폭의 베셀점에 있지 않다")
+
+    def test_the_tip_budget_uses_the_console_tolerances(self):
+        """연삭 ±0.05 · 좌우차 0.05 는 콘솔과 지침서가 든 값이다 — 해석이 따로 들면 갈라진다."""
+        console = (ROOT / "docs" / "drawings" / "pv-delamination-3d.html").read_text(encoding="utf-8")
+        spec = (ROOT / "docs" / "dg-hk60-fab-spec.html").read_text(encoding="utf-8")
+        self.assertIn(f"|Z좌 − Z우| ≤ {ST.LEVEL_TOL:.2f}mm", console, "KNIFE_LEVEL_OK 한계가 해석과 다르다")
+        self.assertIn(f"± {ST.TIP_GRIND:.2f} mm", spec, "칼끝 높이 공차가 해석과 다르다")
+
+    def test_the_vertical_reaction_is_handed_to_the_pilot(self):
+        """포락으로 둔 수직 반력비는 파일럿이 재야 닫힌다 — 합격선이 S10 에서 와야 한다."""
+        import pilot_plan as PP
+        _, ex = ST.run()
+        pt10 = next(t for t in PP.tests() if t.id == "PT-10")
+        self.assertIn(f"{ex['knife']['vr_max']:.1f}", pt10.accept)
+        self.assertIn("S10", pt10.closes)
 
 
 class TestTheThermalResultsFollowThePhysics(unittest.TestCase):

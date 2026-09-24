@@ -22,7 +22,7 @@ CONSOLE = (
 )
 # 단수는 바뀌는 값이라 제목에서 뺐다 — 제목이 바뀌면 아티팩트 갤러리에서
 # 같은 문서가 다른 문서로 보인다.
-TITLE = "DG-HK60 · IR 탠덤 PV 분리설비 · 3D 운전 콘솔"
+TITLE = "DG-HK60 · IR 계단 칼날 PV 분리설비 · 3D 운전 콘솔"
 
 # `$('foo')` 와 `document.getElementById('foo')` 로 참조하는 정적 id
 ID_REF = re.compile(r"""(?:\$|document\.getElementById)\(\s*['"]([A-Za-z][\w-]*)['"]\s*\)""")
@@ -495,7 +495,8 @@ class TestDeliverableEquipment(unittest.TestCase):
 
         모듈표가 'M-005 고정 HKB/HKS 탠덤' 을 부르는 동안 표제도 '고정 탠덤'
         이었다. 표를 고치고 표제를 두면 같은 오류가 화면으로 되돌아온다.
-        Rev.20 만 고정 탠덤이고 압축·트윈은 이동 나이프다.
+        Rev.20 만 고정 탠덤이고 압축·트윈은 이동 나이프다 — 그 나이프가 9/24 부터
+        계단 칼날 한 자루다.
         """
         block = re.search(r"\$\('npPlan'\)\.textContent=(.*?);", self.html, re.S)
         self.assertIsNotNone(block, "표제를 정하는 코드를 찾지 못했다")
@@ -504,12 +505,13 @@ class TestDeliverableEquipment(unittest.TestCase):
         self.assertIn("고정 탠덤", rev20, "Rev.20 은 고정 탠덤이 맞다")
         self.assertNotIn("고정 탠덤", rest,
                          "압축·트윈 표제가 아직 '고정 탠덤' 이다 — 칼날이 움직인다")
-        self.assertIn("이동 나이프", rest, "무엇이 움직이는지가 표제에 없다")
+        self.assertIn("이동 계단 칼날", rest, "무엇이 움직이는지가 표제에 없다")
+        self.assertNotIn("탠덤", rest, "압축·트윈 표제가 아직 탠덤을 부른다")
         # 정적 마크업과 meta 도 같은 말을 해야 한다
-        self.assertIn("이동 나이프 탠덤 · 수평 분리반출", self.html,
-                      "초기 표제가 아직 고정 탠덤이다")
+        self.assertIn("이동 계단 칼날 · 수평 분리반출", self.html,
+                      "초기 표제가 아직 탠덤이다")
         meta = re.search(r'name="description" content="([^"]+)"', self.html)
-        self.assertIn("이동 나이프", meta.group(1), "카드 요약이 아직 고정 탠덤이다")
+        self.assertIn("이동 계단형 핫나이프", meta.group(1), "카드 요약이 아직 탠덤이다")
 
     def test_exhaust_permit_rests_on_what_we_can_actually_measure(self):
         """배기팬이 경계 너머로 넘어가면서 이 허가의 근거가 바뀌었다.
@@ -844,19 +846,22 @@ class TestTenPanelTrial(unittest.TestCase):
                 flow = re.search(r"flow:(.*?),cam:", row)
                 self.assertIsNotNone(flow, f"{ident} 에 자재흐름 문구가 없다")
                 # 배치마다 문구가 다른 단계는 삼항으로 갈라진다 — 갈래마다 센다.
+                # 계통 수는 배치가 정한다: REV.20(S)은 백시트·셀/EVA·유리 셋, 압축(C)은
+                # 계단 칼날이 셀모듈과 백시트를 한 장으로 떼므로 셀모듈·유리 둘이다.
+                want = 3 if tag == "S" else 2
                 lists = re.findall(r"\[(.*?)\]", flow.group(1))
                 self.assertTrue(lists, f"{ident} 에 자재흐름 목록이 없다")
                 for lst in lists:
                     streams = re.findall(r"'[^']*'|`[^`]*`", lst)
-                    self.assertEqual(len(streams), 3,
-                                     f"{ident} 자재흐름이 3계통이 아니다")
+                    self.assertEqual(len(streams), want,
+                                     f"{ident} 자재흐름이 {want}계통이 아니다")
                 cam = re.search(r"cam:\[(\d),\s*([^\]]+)\]", row)
                 self.assertIsNotNone(cam, f"{ident} 에 카메라가 없다")
                 self.assertLess(int(cam.group(1)), 4, f"{ident} 카메라 프리셋 번호가 범위를 넘는다")
         self.assertIn("const cam=steps[index].cam", self.html,
                       "카메라가 단계 객체에서 나오지 않는다")
-        self.assertIn("const flowStates=s.flow;", self.html,
-                      "자재흐름이 단계 객체에서 나오지 않는다")
+        self.assertRegex(self.html, r"const flowStates=s\.flow[,;]",
+                         "자재흐름이 단계 객체에서 나오지 않는다")
 
     def test_all_three_material_paths_accumulate(self):
         body = re.search(r"function tenPanelTestActivity\(.*?\n    \}", self.html, re.S)

@@ -48,7 +48,10 @@ FDI, FDO, COMM = "F-DI", "F-DO", "COMM"
 # F-DI 는 40 → 48 로 올렸다. 에어록 검토가 전고 셔터 2 장을 단별 셔터
 # 10 장으로 바꾸면서 안전 위치센서가 8 → 20 점이 됐고, 40 점 예산으로는
 # 예비가 5 % 밖에 안 남는다. **안전 카드 한 장(8점)을 더 사는 것이
-# 개구를 다시 키우는 것보다 싸다** — 개구를 전고로 되돌리면 604 kW 다.
+# 개구를 다시 키우는 것보다 싸다** — 개구를 전고로 되돌리면 에어록 손실이 설치정격의 다섯 배를 넘는다.
+# 계단 칼날로 권취부가 빠지며 DI 14 · DO 7 · AI 2 · TC 1 점이 줄었다. 카드는 그대로
+# 둔다 — 예비가 늘 뿐이고, 줄여 봐야 DI 카드 두 장 값이다. 그 여유는 파일럿이
+# 칼날 단별 분력 계측(스트레인게이지)을 양산으로 가져올 때 쓸 자리다.
 BUDGET = {DI: 176, DO: 96, AI: 40, AO: 16, TC: 56, FDI: 48, FDO: 8}
 SPARE_MIN = 0.20                       # 사양서 7.1 이 요구하는 최소 예비율
 
@@ -114,7 +117,7 @@ LEAVES = [
     # 격리실이 없어졌으므로 '격리실이 비었는가' 도 없다. 대신 물어야 하는 것은
     # **받을 자리가 비었는가** 다 — 뜨거운 패널을 점유된 테이블에 밀어 넣지
     # 않는다.
-    Leaf("TANDEM_SEAT_EMPTY",  DI, 2, "탠덤 착좌 존재센서×2"),
+    Leaf("PEEL_SEAT_EMPTY",    DI, 2, "VT-101 착좌 존재센서×2"),
     # 진공 캐리어·이송축
     Leaf("VAC_6ZONE_OK",       AI, 6, "진공압센서×6"),
     Leaf("PANEL_VAC_OK",       AI, 1, "진공압센서×6"),
@@ -125,11 +128,12 @@ LEAVES = [
     # 압축 배치에는 캐리어 주행로가 없다 — 비워 두어야 하는 것은 갠트리 스윕이고,
     # 그 자리를 읽는 것은 나이프 X축 과주행센서다.
     Leaf("TRACK_CLEAR",        DI, 2, "나이프 X축 원점·과주행센서×2"),
-    # 탠덤
-    Leaf("HKB_TEMP_OK",        TC, 4, "칼날 열전대×8"),
-    Leaf("HKS_TEMP_OK",        TC, 4, "칼날 열전대×8"),
-    Leaf("KNIFE_OVERLOAD",     AI, 4, "로드셀×4"),
-    Leaf("HKB_LOAD_OK",        AI, 0, "로드셀×4"),
+    # 계단 칼날 — 한 자루 · 일곱 조각 · 히터 일곱 존. 칼끝이 한 평면에 있어야
+    # 일곱 조각이 같은 계면을 문다: 두 Z축의 높이차가 그 평면의 기울기다.
+    Leaf("KNIFE_TEMP_OK",      TC, 7, "칼날 열전대×7", "조각마다 1점 — 히터 존과 같은 수"),
+    Leaf("KNIFE_OVERLOAD",     AI, 4, "로드셀×4", "Z축 좌·우 각 2점"),
+    Leaf("KNIFE_LEVEL_OK",     COMM, 0, "Z축 좌·우 절대치 엔코더",
+         "|Z좌 − Z우| ≤ 0.05 mm — 넘으면 바깥 칼날 한쪽이 유리를 긁거나 셀을 남긴다"),
     Leaf("AE_OK",              AI, 2, "AE 센서×4"),
     Leaf("AE_CRACK",           AI, 0, "AE 센서×4"),
     # ── BC-201 퀵체인지 칼날 카세트 ─────────────────────────────────────
@@ -139,27 +143,17 @@ LEAVES = [
     Leaf("CASSETTE_LOCKED",    DI, 2, "카세트 잠금·존재센서×4"),
     Leaf("CASSETTE_PRESENT",   DI, 2, "카세트 잠금·존재센서×4"),
     Leaf("CASSETTE_TEMP",      TC, 2, "카세트 온도센서×2"),
-    Leaf("CONNECTOR_MATED",    DI, 2, "카세트 블라인드메이트 커넥터×2"),
+    Leaf("CONNECTOR_MATED",    DI, 2, "카세트 블라인드메이트 커넥터 (체결확인 접점×2)",
+         "카세트가 한 벌이라 커넥터도 한 블록 — 접점 둘로 2채널 확인"),
     Leaf("HEATER_ISOLATED",    FDI, 2, "히터 차단 확인 접촉기×2",
          "활선 상태로 커넥터가 뽑히면 안 된다 — 잠금해제보다 앞선다"),
-    Leaf("KNIFE_GAP_OK",       COMM, 0, "300mm 레이저 간격센서",
-         "교환 뒤 칼끝 간격 300±2mm 재확인"),
-    Leaf("KNIVES_CLEAR",       DI, 4, "칼날 Z축 상하한센서×4"),
-    Leaf("LEAD_300_ACK",       COMM, 0, "백시트 끝단 비전"),
+    Leaf("KNIFE_TIP_OK",       COMM, 0, "칼끝 높이 레이저 변위센서",
+         "교환 뒤 일곱 칼끝 높이 ±0.05 · 계단 80±0.5 재확인"),
+    Leaf("KNIVES_CLEAR",       DI, 4, "칼날 Z축 상하한센서×4", "Z축 좌·우 × 상·하한"),
     Leaf("CELL_PATH_CLEAR",    DI, 2, "셀 존재센서×4"),
-    # 권취·반출
-    Leaf("CLAMP_CLOSED",       DI, 4, "분할클램프×4"),
-    Leaf("WEB_TENSION_OK",     AI, 1, "장력 로드셀"),
-    Leaf("WEB_BREAK",          DI, 1, "웹 파단 검출센서"),
-    Leaf("BACKSHEET_FULL_ACK", DI, 1, "백시트 끝단 비전"),
-    # 단일 고정 드럼이라 절단·이관·격리셔터가 없다. 롤이 분리되었다는 근거는
-    # 모노레일이 롤을 들어 올린 위치이지 셔터의 닫힘이 아니다.
-    Leaf("ROLL_ISOLATED",      DI, 2, "롤 반출 위치센서×2"),
-    Leaf("SHUTTER_CLOSED",     DI, 2, "롤 반출 위치센서×2"),
-    Leaf("CARRIAGE_OUT",       DI, 2, "롤 반출 위치센서×2"),
-    Leaf("BIN_READY",          DI, 2, "BS-301 새들 존재센서×2"),
-    Leaf("T2_READY",           TC, 0, "칼날 열전대×8", "HKS 온도에서 파생"),
-    # 셀/EVA 반출
+    # 권취부는 없다. 계단 칼날이 셀모듈과 백시트를 한 장으로 떼므로 백시트
+    # 선단 비전·권취 장력·웹 파단·롤 반출·롤 새들 신호가 통째로 빠졌다.
+    # 셀모듈 반출
     Leaf("CELL_BUFFERED",      DI, 4, "셀 존재센서×4"),
     Leaf("CV_CLEAR",           DI, 2, "셀 존재센서×4"),
     Leaf("CVC_CLEAR",          DI, 2, "셀 존재센서×4"),
@@ -176,7 +170,7 @@ LEAVES = [
     Leaf("DUCT_DP_OK",         AI, 1, "경계 덕트 차압센서",
          "원격 접점만 믿지 않는다 — 덕트가 실제로 빨고 있는지는 우리가 잰다"),
     Leaf("GLASS_TAKEAWAY_READY", DI, 2, "경계 인터페이스반 BJ-101"),
-    Leaf("CELL_BIN_SPACE_OK",  DI, 2, "셀/EVA 배출슈트 레벨센서×2"),
+    Leaf("CELL_BIN_SPACE_OK",  DI, 2, "셀모듈 배출슈트 레벨센서×2"),
     Leaf("IF_ESTOP_LOOP_OK",   FDI, 2, "경계 안전회로 인터페이스반 BJ-102",
          "안전회로는 공급범위 경계에서 끊기면 안 된다 — 양쪽 비상정지를 잇는다"),
     # ── 이동 나이프 X축 (Rev.21C) ───────────────────────────────────────
@@ -215,7 +209,7 @@ LEAVES = [
     Leaf("FIRE_OK",            FDI, 1, "불꽃센서"),
     # 안전
     Leaf("LC_OSSD_CLEAR",      FDI, 6, "안전 광커튼 LC-001/002",
-         "LC-001/002 양단 개구 + LC-003 셀/EVA 반출 터널, 각 OSSD 2채널"),
+         "LC-001/002 양단 개구 + LC-003 셀모듈 반출 터널, 각 OSSD 2채널"),
     Leaf("MUTE_SENSORS",       DI, 8, "뮤팅 센서 M1~M4×2조", "개구부 2곳 × M1~M4"),
     # 압축 배치에는 Rev.20 의 정비 베이가 없다. 잠그는 자리는 주차단기가 있는
     # 제어반이고, LOTO 스테이션도 거기 선다.
@@ -231,7 +225,6 @@ LEAVES = [
     Leaf("LOT_ID_VALID",       COMM, 0, "바코드 리더"),
     Leaf("PANEL_MASS_IN",      AI, 1, "WI-101 투입 계량 컨베이어", "로드셀 4점 합산"),
     Leaf("WI_TARE_OK",         DI, 1, "WI-101 투입 계량 컨베이어"),
-    Leaf("ROLL_MASS",          AI, 1, "WO-301 권취롤 계량 새들"),
     Leaf("CELL_MASS_RATE",     AI, 1, "WO-302 셀 벨트 계량기"),
     Leaf("BELT_SPEED_OK",      COMM, 0, "WO-302 셀 벨트 계량기"),
     Leaf("GLASS_MASS",         AI, 2, "WO-303 유리 캐리지 계량대"),
@@ -254,10 +247,9 @@ LEAVES = [
     Leaf("KC_MAGAZINE_READY",  DI, 4, "KC-101 칼날 카세트 매거진"),
     Leaf("KC_ARM_HOME",        DI, 2, "KC-101 칼날 카세트 매거진"),
     Leaf("CARRIER_PARKED",     DI, 1, "나이프 X축 원점·과주행센서×2"),
-    Leaf("AGV_DOCKED",         COMM, 0, "경계 인터페이스반 BJ-101", "AGV 귀속 미정 (OI) — 경계에서 도킹 확인만 받는다"),
     Leaf("THERMAL_CAM_OK",     COMM, 0, "경계 인터페이스반 BJ-101", "발주자 무인 감시 카메라 상태"),
     Leaf("REMOTE_ACK",         COMM, 0, "PLC-101반", "원격 콘솔 RC-101 은 옵션 — 확인 접점은 HMI 망에서 받는다"),
-    Leaf("BIN_LEVEL_OK",       AI, 3, "셀/EVA 배출슈트 레벨센서×2"),
+    Leaf("BIN_LEVEL_OK",       AI, 3, "셀모듈 배출슈트 레벨센서×2"),
     # ── 환경·인증 ───────────────────────────────────────────────────────
     # 200 kW 배기열을 그대로 버리고 있었다. RTO 로 태우고 그 열로 급기를
     # 예열하면 같은 배기 처리가 에너지 회수가 된다.
@@ -297,17 +289,17 @@ DERIVED = [
                            "ALL_DOORS_CLOSED", "DP_OK"]),
     Derived("LIFT_MOVE", ["ALL_DECK_LOCKED", "FORK_RETRACTED", "EXTRACTOR_HOME", "DOOR_LOCKED"]),
     Derived("EVA_TARGET_ACK", ["EVA_INTERFACE_ACK"]),
-    Derived("TANDEM_READY", ["HKB_TEMP_OK", "HKS_TEMP_OK", "KNIVES_CLEAR"]),
-    Derived("RELEASE_PERMIT", ["EVA_INTERFACE_ACK", "TANDEM_READY",
-                               "TANDEM_SEAT_EMPTY", "DECK_SHUTTER_MUTEX"]),
+    Derived("KNIFE_READY", ["KNIFE_TEMP_OK", "KNIVES_CLEAR", "KNIFE_LEVEL_OK"]),
+    Derived("RELEASE_PERMIT", ["EVA_INTERFACE_ACK", "KNIFE_READY",
+                               "PEEL_SEAT_EMPTY", "DECK_SHUTTER_MUTEX"]),
     Derived("VAC_OK", ["VAC_6ZONE_OK"]),
     Derived("VAC_LOW", ["VAC_6ZONE_OK"]),
     Derived("MOTION_SYNC", ["X_LEFT", "X_RIGHT", "FOLLOWING_ERROR_OK"]),
     Derived("SYNC_ERROR", ["MOTION_SYNC"]),
-    Derived("PEEL_PERMIT", ["EVA_TARGET_ACK", "HKB_TEMP_OK", "HKS_TEMP_OK", "VAC_6ZONE_OK"]),
-    # 잠긴 것만으로는 모자란다. 서비스가 물리고 칼끝 간격이 다시 확인돼야
+    Derived("PEEL_PERMIT", ["EVA_TARGET_ACK", "KNIFE_TEMP_OK", "VAC_6ZONE_OK"]),
+    # 잠긴 것만으로는 모자란다. 서비스가 물리고 일곱 칼끝 높이가 다시 확인돼야
     # 교환한 카세트로 절입할 수 있다.
-    Derived("CASSETTE_READY", ["CASSETTE_LOCKED", "CONNECTOR_MATED", "KNIFE_GAP_OK"]),
+    Derived("CASSETTE_READY", ["CASSETTE_LOCKED", "CONNECTOR_MATED", "KNIFE_TIP_OK"]),
     Derived("CASSETTE_COOL_OK", ["CASSETTE_TEMP"]),
     # 기계가 뽑는 조건 — 뜨거워도 된다.
     Derived("CASSETTE_RELEASE", ["KNIVES_CLEAR", "CARRIER_PARKED",
@@ -315,19 +307,16 @@ DERIVED = [
     # 사람이 만지는 조건 — 식어야 하고 LOTO 가 걸려야 한다.
     Derived("CASSETTE_HANDLING_SAFE", ["CASSETTE_RELEASE", "CASSETTE_COOL_OK",
                                        "MAINT_PERMIT"]),
-    Derived("HKB_Z_PERMIT", ["EVA_TARGET_ACK", "VAC_6ZONE_OK", "CASSETTE_READY", "HKB_TEMP_OK"]),
-    Derived("HKS_Z_PERMIT", ["LEAD_300_ACK", "WEB_TENSION_OK", "HKB_LOAD_OK", "CELL_PATH_CLEAR"]),
+    # Z 절입 허가는 하나다 — 칼날이 한 자루이고 Z축 두 조가 한 축처럼 움직인다.
+    # 종전의 HKB 선행 300 · 권취 장력 · HKS 뒤따름 조건은 계단이 대신한다:
+    # 중앙이 먼저 물고 바깥이 80 마다 따라오는 순서가 형상에 들어 있다.
+    Derived("KNIFE_Z_PERMIT", ["EVA_TARGET_ACK", "VAC_6ZONE_OK", "CASSETTE_READY",
+                               "KNIFE_TEMP_OK", "KNIFE_LEVEL_OK", "CELL_PATH_CLEAR"]),
     Derived("RAPID_PERMIT", ["KNIVES_CLEAR", "PANEL_VAC_OK", "CARRIER_SQUARE", "TRACK_CLEAR"]),
-    Derived("WEB_TENSION_HIGH", ["WEB_TENSION_OK"]),
+    Derived("KNIFE_TILT", ["KNIFE_LEVEL_OK"], "KNIFE_LEVEL_OK 의 부정 — 두 Z축이 0.05 넘게 벌어졌다"),
     Derived("LOAD_HIGH", ["KNIFE_OVERLOAD"]),
-    Derived("MOTION_TRIP", ["SYNC_ERROR", "VAC_LOW", "KNIFE_OVERLOAD", "WEB_TENSION_HIGH", "GLASS_CRACK"]),
-    Derived("TANDEM_SAFE_STOP", ["LOAD_HIGH", "AE_CRACK", "VAC_LOW", "WEB_BREAK"]),
-    Derived("OPEN_300_ACK", ["LEAD_300_ACK"]),
-    Derived("WR_PERMIT", ["OPEN_300_ACK", "CLAMP_CLOSED", "VAC_OK", "DOOR_LOCKED"]),
-    Derived("HKS_PERMIT", ["BACKSHEET_FULL_ACK", "ROLL_ISOLATED", "VAC_OK", "T2_READY", "AE_OK"]),
-    Derived("EJECT_PERMIT", ["SHUTTER_CLOSED", "CARRIAGE_OUT", "BIN_READY"]),
-    Derived("BACKSHEET_BIN_ACK", ["EJECT_PERMIT", "BIN_READY"]),
-    Derived("ROLL_EJECT_ACK", ["BACKSHEET_BIN_ACK"]),
+    Derived("MOTION_TRIP", ["SYNC_ERROR", "VAC_LOW", "KNIFE_OVERLOAD", "KNIFE_TILT", "GLASS_CRACK"]),
+    Derived("KNIFE_SAFE_STOP", ["LOAD_HIGH", "AE_CRACK", "VAC_LOW", "KNIFE_TILT"]),
     Derived("CELL_TRANSFER", ["CVC_CLEAR", "SHREDDER_READY", "CELL_TAKEAWAY_READY",
                               "CELL_BIN_SPACE_OK"]),
     Derived("SHREDDER_FEED", ["CELL_BUFFERED", "CV_CLEAR", "SHREDDER_READY"]),
@@ -347,8 +336,7 @@ DERIVED = [
     # 그것은 DOOR_LOCKED 가 이미 보고 있다.
     Derived("REJECT_PERMIT", ["QI_FAIL", "RJ_CARRIAGE_PRESENT", "DOOR_LOCKED", "GLASS_PATH_CLEAR"]),
     Derived("EMPTY_CARRIER_RELOADED", ["REFILL_ACK"]),
-    Derived("NEXT_PANEL", ["BACKSHEET_BIN_ACK", "SHREDDER_FEED_ACK",
-                           "GLASS_CARRIAGE_ACK", "EMPTY_CARRIER_RELOADED"]),
+    Derived("NEXT_PANEL", ["SHREDDER_FEED_ACK", "GLASS_CARRIAGE_ACK", "EMPTY_CARRIER_RELOADED"]),
     Derived("MUTE_VALID", ["MUTE_SENSORS"]),
     Derived("OPENING_SAFE", ["LC_OSSD_CLEAR", "MUTE_VALID"]),
     # START_WARN 은 읽는 허가가 아니라 내보내는 경보다. 기동 허가가 선 뒤
@@ -358,22 +346,20 @@ DERIVED = [
     Derived("START_PERMIT", ["FULL_LOAD_ACK", "ALL_LOCKED", "ALL_TEMP_OK",
                              "ALL_DOORS_CLOSED", "EXHAUST_OK"]),
     # ── 계량·물질수지 ───────────────────────────────────────────────────
-    Derived("SCALES_HEALTHY", ["PANEL_MASS_IN", "ROLL_MASS",
-                               "CELL_MASS_RATE", "GLASS_MASS", "BELT_SPEED_OK"]),
+    Derived("SCALES_HEALTHY", ["PANEL_MASS_IN", "CELL_MASS_RATE", "GLASS_MASS", "BELT_SPEED_OK"]),
     Derived("LOT_OPEN", ["LOT_ID_VALID", "WI_TARE_OK", "SCALES_HEALTHY"]),
-    Derived("STREAMS_DRAINED", ["BACKSHEET_BIN_ACK", "SHREDDER_FEED_ACK",
-                                "GLASS_CARRIAGE_ACK"]),
-    # 투입 질량과 3계통 반출 질량의 차가 허용 오차 안에 들어야 로트가 닫힌다.
-    Derived("MASS_BALANCE_OK", ["PANEL_MASS_IN", "ROLL_MASS",
-                                "CELL_MASS_RATE", "GLASS_MASS"]),
+    Derived("STREAMS_DRAINED", ["SHREDDER_FEED_ACK", "GLASS_CARRIAGE_ACK"]),
+    # 투입 질량과 2계통 반출 질량의 차가 허용 오차 안에 들어야 로트가 닫힌다.
+    # 셀모듈 계통이 백시트까지 싣고 나가므로 롤 계량이 따로 없다.
+    Derived("MASS_BALANCE_OK", ["PANEL_MASS_IN", "CELL_MASS_RATE", "GLASS_MASS"]),
     Derived("RESIDUAL_EVA_OK", ["RESIDUAL_EVA"]),
     Derived("LOT_CLOSE", ["LOT_COUNT_REACHED", "STREAMS_DRAINED", "MASS_BALANCE_OK"]),
     Derived("RECOVERY_CERT", ["LOT_CLOSE", "RESIDUAL_EVA_OK", "TRACE_WRITE_OK"]),
     # ── 공정 지능 ───────────────────────────────────────────────────────
     Derived("ADAPT_ENABLE", ["PEEL_PERMIT", "LOAD_CELL_HEALTH_OK",
                              "AE_OK", "RECIPE_VALIDATED"]),
-    Derived("SPEED_SETPOINT", ["ADAPT_ENABLE", "PEEL_FORCE", "HKB_LOAD_OK"]),
-    Derived("KNIFE_WEAR_WARN", ["PEEL_FORCE", "CUT_LENGTH_TOTAL", "HKS_TEMP_OK"]),
+    Derived("SPEED_SETPOINT", ["ADAPT_ENABLE", "PEEL_FORCE", "KNIFE_LEVEL_OK"]),
+    Derived("KNIFE_WEAR_WARN", ["PEEL_FORCE", "CUT_LENGTH_TOTAL", "KNIFE_TEMP_OK"]),
     Derived("KNIFE_CHANGE_DUE", ["KNIFE_WEAR_WARN", "KNIVES_CLEAR"]),
     Derived("TRACE_WRITE_OK", ["TRACE_DB_OK", "LOT_ID_VALID"]),
     # 기록이 남지 않은 패널은 내보내지 않는다 — 이력은 사후에 못 만든다.
@@ -387,7 +373,6 @@ DERIVED = [
     # 무인 운전 중에는 영원히 성립하지 않는다.
     Derived("KNIFE_AUTOCHANGE", ["KNIFE_CHANGE_DUE", "KC_MAGAZINE_READY",
                                  "KC_ARM_HOME", "CASSETTE_RELEASE"]),
-    Derived("ROLL_HANDOFF", ["BACKSHEET_BIN_ACK", "AGV_DOCKED", "SHUTTER_CLOSED"]),
     Derived("UNMANNED_PERMIT", ["AUTO_FEED", "AUTO_STACK", "KC_MAGAZINE_READY",
                                 "BIN_LEVEL_OK", "THERMAL_CAM_OK", "FIRE_OK",
                                 "REMOTE_ACK", "OEE_VALID"]),
@@ -413,9 +398,10 @@ DRIVES = [
     Drive("MT-101", "투입 롤러 구동",       DO, 2, "접촉기",  "IE4 기어모터"),
     Drive("SV-301", "LI-101 승강 서보",     COMM, 0, "STO 2CH", "서보모터·감속기"),
     Drive("SV-302", "TS-101 포크 서보",     COMM, 0, "STO 2CH", "TS-101 2단 포크"),
-    Drive("SV-401", "HKB Z축 서보",         COMM, 0, "STO 2CH", "HKB Z축 서보슬라이드"),
-    Drive("SV-402", "HKS Z축 서보",         COMM, 0, "STO 2CH", "HKS Z축 서보슬라이드"),
-    Drive("SV-501", "WR-101 권취 토크서보", COMM, 0, "STO 2CH", "토크서보·직경센서"),
+    # 칼날은 한 자루인데 Z축은 두 조다 — 1,500 폭을 베셀점(±390)에서 들어 처지지도 기울지도 않게 한다.
+    # 두 서보는 전자 동기이고 KNIFE_LEVEL_OK 가 그 동기를 감시한다.
+    Drive("SV-401", "Z축 서보 (좌)",        COMM, 0, "STO 2CH", "Z축 서보슬라이드 좌·우 (전자 동기)"),
+    Drive("SV-402", "Z축 서보 (우)",        COMM, 0, "STO 2CH", "Z축 서보슬라이드 좌·우 (전자 동기)"),
     # 캐리어 이송축 2기·CVC 벨트 2기·GC 캐리지 주행·배기팬 2기·슈레더·롤 포트 해치·
     # 역화게이트는 압축 배치에 없거나 발주자 설비다. 없는 기계에 STO 를 걸어 둘 수는
     # 없으므로 목록에서 뺀다 — 남기면 안전회로 시험이 걸 데 없는 축을 찾는다.
@@ -428,7 +414,6 @@ DRIVES = [
     Drive("CY-202", "에어록 단별 셔터",     DO, DECKS * 2, "덤프밸브",
           f"에어록 단별 셔터 {DECKS*2}매 (양단 각 {DECKS}단)"),
     Drive("CY-301", "패널 스토퍼",          DO, 1, "덤프밸브", "패널 스토퍼"),
-    Drive("CY-401", "분할클램프",           DO, 4, "덤프밸브", "분할클램프×4"),
     Drive("VV-101", "6존 진공밸브",         DO, 6, "덤프밸브", "체크밸브×6"),
     Drive("SSR-B",  "IR 뱅크 SSR",          AO, BANKS, "주접촉기", f"SSR 분기모듈×{LAMPS}"),
     Drive("ST-101", "적층 신호등·부저",     FDO, 4, "F-DO 직결", "적층 신호등·부저 ST-101/102"),
@@ -436,8 +421,8 @@ DRIVES = [
     Drive("SV-405", "나이프 X축 이송",        COMM, 0, "STO 2CH", "나이프 X축 절대치 엔코더"),
     Drive("SV-801", "KC-101 카세트 교환암",  COMM, 0, "STO 2CH", "KC-101 카세트 교환암"),
     # 스프링으로 잠기고 공압으로 풀린다 — 공압이 빠지면 카세트가 물린 채 남는다.
-    Drive("CY-405", "카세트 쐐기클램프",     DO, 4, "스프링 잠금", "카세트 쐐기 클램프×4"),
-    Drive("CY-406", "카세트 냉각 퍼지밸브",  DO, 2, "덤프밸브", "카세트 냉각 퍼지밸브×2"),
+    Drive("CY-405", "카세트 쐐기클램프",     DO, 2, "스프링 잠금", "카세트 쐐기 클램프×2"),
+    Drive("CY-406", "카세트 냉각 퍼지밸브",  DO, 1, "덤프밸브", "카세트 냉각 퍼지밸브"),
     # 환경·인증
     Drive("CY-702", "질소 퍼지 밸브",        FDO, 2, "F-DO 직결", "NP-101 질소 퍼지 유닛"),
     # 계량

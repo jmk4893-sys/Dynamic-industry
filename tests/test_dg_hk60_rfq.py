@@ -286,8 +286,8 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
             msg="사양서의 면적열용량이 콘솔과 다르다",
         )
 
-    def test_tandem_cycle_terms_add_up(self):
-        """사양서에 적힌 항별 값이 실제로 합계가 되는지."""
+    def test_knife_cycle_terms_add_up(self):
+        """사양서에 적힌 항별 값이 실제로 합계가 되는지 — 첫 항은 (계단 깊이 + 패널) / 속도."""
         a = self._num(r"= ([\d.]+) \+ 1\.50 \+ 3\.00")
         total = self._num(r"= [\d.]+ \+ 1\.50 \+ 3\.00 = ([\d.]+) s/장")
         self.assertAlmostEqual(a + 1.50 + 3.00, total, delta=0.02)
@@ -407,84 +407,62 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
                      "size:dim(CFENCE_X1-CFENCE_X0,"):
             self.assertIn(expr, flat, f"콘솔 모듈표가 {expr} 를 쓰지 않는다")
 
-    # ── 권취 롤 ──────────────────────────────────────────────────
-    def test_roll_change_interval_follows_the_console_model(self):
-        """롤당 장수·교체 주기는 검산 가능한 수치다."""
-        thick = float(re.search(r"BACKSHEET_T=([\d.e-]+)", self.console).group(1))
-        core = float(re.search(r"WR_CORE_R=([\d.]+)", self.console).group(1))
-        full = float(re.search(r"WR_FULL_R=([\d.]+)", self.console).group(1))
-        length = float(re.search(r"PANEL_L=([\d.]+)", self.console).group(1))
-        panels = round((full ** 2 - core ** 2) / (length * thick / math.pi))
-
-        self.assertAlmostEqual(self._num(r"코어 직경</th><td class=\"num\">Ø(\d+) mm"),
-                               core * 2000, delta=0.5)
-        self.assertAlmostEqual(self._num(r"만권 직경</th><td class=\"num\">Ø(\d+) mm"),
-                               full * 2000, delta=0.5)
-        self.assertAlmostEqual(self._num(r"백시트 두께</th><td class=\"num\">([\d.]+) mm"),
-                               thick * 1000, places=3)
-        self.assertAlmostEqual(self._num(r"롤당 처리 장수</th><td class=\"num\">(\d+) 장"),
-                               panels, delta=0.5)
-        self.assertAlmostEqual(
-            self._num(r"롤 교체 주기</th><td class=\"num\">약 ([\d.]+) h"),
-            panels / (self.m["line_rate"] * 0.9), delta=0.1,
-            msg="롤 교체 주기가 보증 처리량(90% 가동률)과 맞지 않는다",
-        )
-        self.assertAlmostEqual(
-            self._num(r"1장당 직경 증가</th><td class=\"num\">\+([\d.]+) mm"),
-            (math.sqrt(core ** 2 + length * thick / math.pi) - core) * 2000, delta=0.1,
-        )
-
-    def test_winder_is_specified_downstream_with_a_guide_roll(self):
-        """권취부 위치와 박리각 고정은 입찰자가 임의로 정할 사항이 아니다.
-
-        모듈 표의 이름에만 '탠덤 하류' 가 남아 있어도 요구사항이 되지는 않으므로
-        6.4항 본문에서 확인한다.
-        """
-        clause = re.search(
-            r'<h3>백시트 권취부</h3>(.*?)</div></div>', self.html, re.S
-        )
-        self.assertIsNotNone(clause, "백시트 권취부 조항이 없다")
+    # ── 권취부 철거 ──────────────────────────────────────────────
+    def test_the_winder_is_retired_not_left_half_specified(self):
+        """권취부가 빠졌는데 롤 설계값 표가 남아 있으면 입찰자가 그것을 견적한다."""
+        clause = re.search(r'<h3>셀모듈 인출 — 권취부는 없다</h3>(.*?)</div></div>', self.html, re.S)
+        self.assertIsNotNone(clause, "6.4 가 권취부 철거를 말하지 않는다")
         body = clause.group(1)
-        self.assertIn("탠덤 하류", body, "권취부 위치가 규정되지 않았다")
-        self.assertIn("가이드롤", body, "박리 가이드롤이 규정되지 않았다")
-        self.assertIn("안전펜스 밖", body, "롤 보관대 위치가 규정되지 않았다")
-        self.assertRegex(body, r"박리각을 <span class=\"m\">\d+ – \d+°",
-                         "박리각 범위가 규정되지 않았다")
-        self.assertIn("2축", body, "권취축 이중화가 규정되지 않았다")
-        # 콘솔의 실제 배치와 방향이 같은지
-        hks = float(re.search(r"HKS_X=([\d.]+)", self.console).group(1))
-        drum = float(re.search(r"WR_DRUM_X=([\d.]+)", self.console).group(1))
-        self.assertGreater(drum, hks,
-                           "사양서는 하류라고 적었는데 콘솔의 권취부는 상류에 있다")
+        self.assertIn("철거", body)
+        self.assertIn("설계·견적하지 않는다", body, "빠진 설비를 견적하지 말라는 말이 없다")
+        for gone in ("권취 롤 설계값", "만권 롤 반출 경로", "반출 통로 검토", "롤 교체 주기</th>"):
+            self.assertNotIn(gone, self.html, f"철거한 권취부의 '{gone}' 가 사양서에 남아 있다")
 
-    def test_backsheet_thickness_assumption_is_an_open_item(self):
-        """0.30mm 가정이 틀리면 교체 주기가 바뀐다. 가정으로 남겨야 한다."""
+    def test_the_press_plate_is_specified(self):
+        """권취가 하던 일 — 떼어 낸 층을 붙드는 일 — 은 누름판이 맡는다."""
+        clause = re.search(r'<h3>셀모듈 인출 — 권취부는 없다</h3>(.*?)</div></div>', self.html, re.S)
+        body = clause.group(1)
+        self.assertIn("HD-101", body)
+        self.assertIn("가열하지 않는다", body, "누름판이 비가열이라는 요구가 없다 — 백시트가 닿는 유일한 면이다")
+        self.assertIn("계단 이음", body, "이음 줄의 박리 품질이 요구되지 않았다")
+        self.assertIn("PT-10", body, "누름판 예압을 닫을 시험을 대지 않았다")
+        c = console_consts.const
+        self.assertIn(f"{c('CHD_L')*1000:,.0f} mm", body, "누름판 길이가 콘솔 CHD_L 과 다르다")
+
+    def test_the_roll_item_is_closed_not_deleted(self):
+        """OI-11 을 지우면 번호가 당겨지고, 제안서의 답이 엉뚱한 항목을 가리킨다."""
         block = re.search(r"<b>OI-11</b>(.*?)</div>\s*</div>", self.html, re.S)
-        self.assertIsNotNone(block, "백시트 두께 확인사항이 없다")
-        self.assertIn("0.40", block.group(1), "두께 상한에서의 영향이 없다")
-        thick = 0.40e-3
-        panels = round((0.30 ** 2 - 0.15 ** 2) / (2.4 * thick / math.pi))
-        self.assertEqual(panels, 221)
-        self.assertIn("221", block.group(1), "두께 0.40mm 일 때의 롤당 장수가 틀렸다")
-    # ── 탠덤 동시부하 ────────────────────────────────────────────
-    def test_dual_engagement_fraction_is_arithmetic(self):
-        """두 칼날이 동시에 물리는 구간은 패널 길이와 칼끝 간격에서 나온다."""
-        length = console_consts.const("PANEL_L") * 1000
-        gap = float(re.search(r"칼끝 간격 <span class=\"m\">(\d+) ± 2 mm", self.html).group(1))
-        self.assertAlmostEqual(gap, 300.0, delta=0.5)
-        self.assertAlmostEqual(
-            self._num(r"행정의 <span class=\"m\">([\d.]+) %</span>\s*가?\s*\n?\s*동시부하"),
-            (length - gap) / length * 100, delta=0.1,
-            msg="동시부하 구간 비율이 패널 길이·칼끝 간격과 맞지 않는다",
-        )
+        self.assertIsNotNone(block, "OI-11 자리가 사라졌다")
+        body = block.group(1)
+        self.assertIn("닫혔다", body)
+        self.assertIn("번호는 당기지 않는다", body)
+
+    # ── 계단 칼날의 물림 ──────────────────────────────────────────
+    def test_the_bite_ramp_is_arithmetic(self):
+        """물린 폭은 중앙 + 80 mm 마다 한 단 — 콘솔 형상에서 나온다."""
+        import knife_stepped as KS
+        s = KS.summary()
+        widths = " → ".join(f"{w:,.0f}" for w in s["ramp_widths"])
+        self.assertIn(widths, self.html, f"사양서의 물림 램프가 형상과 다르다 ({widths})")
+        self.assertIn(f"{s['ramp_time']:.2f} s", self.html, "네 계단이 끝나는 시간이 계산과 다르다")
+        c = console_consts.const
+        self.assertIn(f"깊이 <span class=\"m\">{c('KNIFE_DEPTH')*1000:.0f} mm</span>", self.html)
+        self.assertIn(f"전폭 <span class=\"m\">{c('KNIFE_W')*1000:,.0f} mm</span>", self.html)
+
+    def test_the_z_axes_sit_where_the_analysis_put_them(self):
+        """베셀점은 해석의 결론이다 — 사양서가 다른 자리를 적으면 해석이 무효가 된다."""
+        y = console_consts.const("CZS_Y") * 1000
+        self.assertIn(f"y ±{y:.0f} mm", self.html, "Z축 위치가 콘솔 CZS_Y 와 다르다")
+        self.assertIn("S10", self.html, "Z축 위치의 근거(CAL-001 S10)를 대지 않았다")
 
     def test_vacuum_hold_requirement_is_computed_from_the_thrust_range(self):
-        """A ≥ 2F/(μ·Δp) — 두 칼날 합으로 잡아야 한다. 한 칼날로 잡으면 절반이 나온다."""
+        """A ≥ 2F/(μ·Δp) — 탠덤 시절의 2 는 두 칼날의 합이었고, 계단 칼날에서는
+        같은 식의 2 가 흡착 안전율이다. 식을 바꾸면 패드 배치가 절반으로 줄어든다."""
         block = re.search(r"<b>OI-13</b>(.*?)</div>\s*</div>", self.html, re.S)
         self.assertIsNotNone(block, "진공 유지력 확인사항이 없다")
         body = block.group(1)
         self.assertIn("A ≥ 2F / (μ·Δp)", body,
-                      "필요 패드 면적 식이 두 칼날 합(2F)이 아니다")
+                      "필요 패드 면적 식이 2F 가 아니다 — 안전율 2 가 빠졌다")
         mu = float(re.search(r"μ = ([\d.]+)", body).group(1))
         dp = float(re.search(r"Δp = (\d+) kPa", body).group(1)) * 1000
         L, W = console_consts.const("PANEL_L"), console_consts.const("PANEL_W")
@@ -515,106 +493,67 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
         got = float(re.search(r"시간당\s*<span class=\"m\">(\d+) m</span>", body).group(1))
         self.assertAlmostEqual(got, rate * cut, delta=0.5,
                                msg="시간당 절단 연장이 본문의 처리량 × 패널 길이와 다르다")
-        # 본문이 근거로 든 처리량이 실제 라인 성능과 동떨어져 있으면 안 된다
-        self.assertAlmostEqual(rate, self.m["line_rate"] * 0.9, delta=1.0,
-                               msg="칼날 수명 근거의 처리량이 보증 처리량과 다르다")
+        # 본문이 근거로 든 처리량은 계약 처리량이다 — 모델 순생산(59.6)이 그 위에 있어야 한다
+        self.assertAlmostEqual(rate, console_consts.const("NET_TARGET"), delta=0.5,
+                               msg="칼날 수명 근거의 처리량이 계약 처리량과 다르다")
+        self.assertGreaterEqual(self.m["line_rate"] * 0.9, rate,
+                                "모델 순생산이 수명 근거의 처리량보다 낮다")
         shift = float(re.search(r"8 h 교대당 <span class=\"m\">([\d,]+) m</span>", body)
                       .group(1).replace(",", ""))
         self.assertAlmostEqual(shift, got * 8, delta=1)
 
 
-class TestRollDischargeRoute(unittest.TestCase):
-    """만권 롤 반출 경로 — 사양서의 높이들은 모두 콘솔 상수에서 나온 값이다.
+class TestCassetteDischargeRoute(unittest.TestCase):
+    """카세트 인출 포락선 — 사양서의 치수는 모두 콘솔 상수에서 나온 값이다.
 
-    이 절은 '이렇게 하면 좋겠다' 가 아니라 '이 길밖에 없다' 를 적은 것이다.
-    콘솔에서 스키드 높이 하나만 바꿔도 여기 적힌 940/1,240/320/620 이 전부
-    틀어지는데, 사양서는 손으로 적은 문서라 화면상으로는 아무 표시가 없다.
+    권취부가 빠지기 전에는 이 자리에 만권 롤 반출 경로(스키드 · 롤 포트 · 코너
+    승강대)가 있었다. 계단 칼날이 칼날 폭을 1,640 → 1,500 으로 줄이자 외장과
+    방책이 140 안으로 들어왔다 — 콘솔은 식이라 따라왔고, 손으로 적은 사양서는
+    여기서 대조하지 않으면 옛 값으로 남는다.
     """
 
     @classmethod
     def setUpClass(cls):
         cls.html = RFQ.read_text(encoding="utf-8")
-        cls.console = CONSOLE.read_text(encoding="utf-8")
+        cls.c = staticmethod(console_consts.const)
 
-    def _num(self, pattern):
-        m = re.search(pattern, self.html)
-        self.assertIsNotNone(m, f"사양서에서 수치를 찾지 못했다: {pattern}")
-        return float(m.group(1).replace(",", ""))
+    def _block(self):
+        m = re.search(r'<div class="logic">카세트 BC-201(.*?)</div>', self.html, re.S)
+        self.assertIsNotNone(m, "6.9 인출 포락선 논리 블록이 없다")
+        return m.group(1)
 
-    def _const(self, name):
-        m = re.search(rf"(?:const|,)\s*{name}\s*=\s*(-?[\d.]+(?:e-?\d+)?)[,;]", self.console)
-        self.assertIsNotNone(m, f"콘솔 상수 {name} 을 찾지 못했다")
-        return float(m.group(1))
+    def test_the_cassette_is_the_knife_width(self):
+        c = console_consts.const
+        blk = self._block()
+        self.assertIn(f"{c('KNIFE_W')*1000:,.0f} mm (y축)", blk)
+        self.assertIn(f"깊이 {c('CASS_ENV_X')*1000:.0f}", blk)
+        self.assertIn(f"{c('CASS_MASS'):.0f} kg", blk)
 
-    def test_skid_height_matches_the_console(self):
-        """스키드 상면과 롤 축높이는 콘솔이 그리는 그 높이여야 한다."""
-        rail = self._const("RH_RAIL_Z")
-        r = self._const("WR_FULL_R")
-        self.assertAlmostEqual(self._num(r"상면 (\d+) mm</span> 스키드 레일"),
-                               rail * 1000, delta=1)
-        self.assertAlmostEqual(self._num(r"<span class=\"m\">940 \+ 300 = ([\d,]+) mm</span>"),
-                               (rail + r) * 1000, delta=1)
+    def test_the_blocked_floor_route_is_computed(self):
+        """스윕 밖으로 빼면 외장을 뚫고, 남는 통로에 사람이 못 선다 — 값은 콘솔에서."""
+        c = console_consts.const
+        half = c("KNIFE_W") / 2
+        centre = c("CGY") + half + .085
+        outer = centre + half
+        blk = self._block()
+        self.assertIn(f"{centre*1000:,.0f}", blk, "스윕 밖 카세트 중심이 계산과 다르다")
+        self.assertIn(f"{outer*1000:,.0f}", blk, "카세트 바깥 끝이 계산과 다르다")
+        self.assertIn(f"외장 {c('CSKIN_Y')*1000:,.0f} 을 {(outer-c('CSKIN_Y'))*1000:.0f} 뚫는다", blk)
+        gap = c("CFENCE_Y") - outer
+        self.assertIn(f"방책 {c('CFENCE_Y')*1000:,.0f} = {gap*1000:.0f} mm", blk)
+        self.assertLess(gap, .60, "통로가 600 을 넘으면 사람이 선다 — 전제가 바뀌었다")
 
-    def test_the_roll_clears_the_carrier_rail(self):
-        """캐리어 주행레일 상단 770mm — 이 한 줄이 바닥 대차를 배제한 근거다."""
-        top = self._num(r"주행레일 상단 <span class=\"m\">(\d+) mm</span>")
-        self.assertLess(top, self._const("RH_RAIL_Z") * 1000,
-                        "스키드 상면이 주행레일보다 낮다 — 롤이 레일을 뚫는다")
-        self.assertAlmostEqual(self._num(r"롤 하단\s*<span class=\"m\">(\d+) mm</span>"),
-                               self._const("RH_RAIL_Z") * 1000, delta=1)
+    def test_the_magazine_and_envelope_match_the_console(self):
+        c = console_consts.const
+        y = c("CKC_Y") * 1000
+        self.assertIn(f"Y −{abs(y):,.0f} · Z {c('CKC_Z')*1000:,.0f}", self.html, "매거진 위치가 콘솔과 다르다")
+        half = c("KNIFE_W") / 2 * 1000
+        self.assertIn(f"(Y −{abs(y)+half:,.0f} ~ +{half:,.0f})", self.html, "인출 포락선 범위가 콘솔과 다르다")
+        self.assertIn(f"KC-301 (Y −{abs(c('CKC_RACK_Y'))*1000:,.0f})", self.html, "KC-301 위치가 콘솔과 다르다")
 
-    def test_roll_port_opening_matches_the_console(self):
-        """포트가 롤보다 작으면 그림에서만 지나간다."""
-        w = self._num(r"<span class=\"m\">([\d,]+)\(W\) × 1,350\(H\) mm</span>")
-        h = self._num(r"<span class=\"m\">1,900\(W\) × ([\d,]+)\(H\) mm</span>")
-        self.assertAlmostEqual(w, self._const("ROLL_PORT_W") * 1000, delta=1)
-        self.assertAlmostEqual(
-            h, (self._const("ROLL_PORT_Z1") - self._const("ROLL_PORT_Z0")) * 1000, delta=1)
-        self.assertGreater(w, self._const("WR_FULL_R") * 2000 + 100,
-                           "포트 폭이 롤 직경에 여유를 주지 못한다")
-
-    def test_corner_lift_travel_is_the_height_difference(self):
-        """승강 행정은 스키드 높이와 보관 축높이의 차 그 자체다."""
-        rail, r = self._const("RH_RAIL_Z"), self._const("WR_FULL_R")
-        store = self._const("BS_ROLL_Z")
-        self.assertAlmostEqual(self._num(r"차 <span class=\"m\">(\d+) mm</span> 를 받는다"),
-                               (rail + r - store) * 1000, delta=1)
-
-    def test_rolling_rail_sets_the_stored_axis_height(self):
-        """굴림 레일 상면 + 롤 반경 = 보관 축높이. 셋 중 하나만 틀려도 롤이 뜬다."""
-        store, r = self._const("BS_ROLL_Z"), self._const("WR_FULL_R")
-        self.assertAlmostEqual(self._num(r"레일 상면 <span class=\"m\">(\d+) mm</span>"),
-                               (store - r) * 1000, delta=1)
-        self.assertAlmostEqual(self._num(r"= 보관 축높이 <span class=\"m\">(\d+) mm</span>"),
-                               store * 1000, delta=1)
-
-    def test_tie_rail_clears_the_passing_roll(self):
-        """타이레일이 지나가는 롤보다 낮으면 롤이 레일을 관통한다."""
-        rail, r = self._const("RH_RAIL_Z"), self._const("WR_FULL_R")
-        tie = self._const("BS_TIE_Z")
-        self.assertAlmostEqual(self._num(r"롤 상단\(<span class=\"m\">([\d,]+) mm</span>\)"),
-                               (rail + r + r) * 1000, delta=1)
-        self.assertAlmostEqual(self._num(r"<span class=\"m\">([\d,]+) mm</span> 에 둔다"),
-                               tie * 1000, delta=1)
-        self.assertGreater(tie, rail + 2 * r, "타이레일이 지나가는 롤과 겹친다")
-
-    def test_the_blocked_routes_are_recorded_with_their_interference(self):
-        """'이 길밖에 없다' 는 주장은 막힌 길을 같이 적어야 성립한다."""
-        m = re.search(r"<caption>반출 통로 검토</caption>(.*?)</table>", self.html, re.S)
-        self.assertIsNotNone(m, "반출 통로 검토표가 없다")
-        table = m.group(1)
-        for route in ("상부 인양", "바닥 대차", "+X 굴림"):
-            self.assertIn(route, table, f"{route} 검토 결과가 빠졌다")
-        self.assertEqual(table.count("불가"), 3, "막힌 통로 판정이 세 개가 아니다")
-        self.assertIn("롤 포트로 해소", table, "채택한 통로의 조건이 적혀 있지 않다")
-
-    def test_the_port_shutter_shares_the_hatch_interlock(self):
-        """포트만 열리고 해치가 잠겨 있으면 롤이 갈 곳이 없다 — 같은 신호여야 한다."""
-        self.assertIn("SHUTTER_CLOSED ∧ 권취축 정지 ∧ CARRIAGE_OUT", self.html)
-        self.assertRegex(
-            self.console, r"ROLL_PORT_Z1-ROLL_PORT_Z0\)\*\.94\*w\.pose\.inHatch",
-            "콘솔의 롤 포트 셔터가 해치와 같은 신호를 쓰지 않는다",
-        )
+    def test_the_monorail_carries_only_the_cassette(self):
+        self.assertIn("카세트 전용", self.html)
+        self.assertNotIn("만권 롤과 같은 모노레일", self.html)
 
 
 class TestVacuumPadLayout(unittest.TestCase):

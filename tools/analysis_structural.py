@@ -1,16 +1,18 @@
 """구조해석 — 이 설비가 실제로 견디는가, 그리고 얼마나 움직이는가.
 
 제작 지침서는 **강도**를 봤다 (볼트가 끊어지는가, 용접이 터지는가).
-이용률이 전부 0.1 미만이라는 결론이 나왔고, 그것은 이 설비를 강도가
+이용률이 전부 0.2 미만이라는 결론이 나왔고, 그것은 이 설비를 강도가
 정하지 않는다는 뜻이다. **그러면 무엇이 정하는가** — 그 답이 여기 있다.
 
-네 가지를 푼다:
+다섯 가지를 푼다:
 
   ① KG-101 갠트리   설계 박리 추력(fab_spec F_PEEL_D)에서 칼끝이 얼마나 밀리는가.
-                    칼끝 간격 300±2 가 이 값 하나에 달려 있다.
+                    칼날 깊이 예산 0.15 가 이 경로의 강성에 달려 있다.
   ② 갠트리 고유진동  1차 모드가 칼날 가감속과 겹치면 채터가 난다.
   ③ HC-101 가열실   자중 + 지진에서 기둥이 좌굴하는가, 베이스가 뜨는가.
   ④ VT-101 상판     진공 −65 kPa 의 면외 압력에서 리브 사이가 얼마나 처지는가.
+  ⑤ 계단 칼날       한 자루 칼날의 일곱 칼끝이 하중에서 한 줄로 남는가 — Z축 두
+                    조를 어디에 두느냐가 답을 정한다 (베셀점).
 
 해석기는 tools/fea.py — 닫힌해 다섯 건으로 검증했다 (정적 오차 0.00 %,
 1차 진동수 0.46 %).
@@ -31,6 +33,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import fab_spec as F  # noqa: E402
 import fea  # noqa: E402
+import knife_stepped as KS  # noqa: E402
 from console_consts import const as c  # noqa: E402
 
 
@@ -54,24 +57,46 @@ class Result(NamedTuple):
 
 M = lambda n: c(n) * 1000.0        # m → mm
 
+# 칼날 캐리어 빔 BOX-160×120×8 (parts P-005-14). fea.boxsec(h, b) 의 h 는 y 방향
+# 부재에서 전역 x 로 선다 — 약한 120 을 추력 방향에, 160 을 연직에 둔다.
+CARRIER = fea.boxsec(120, 160, 8)
+
 
 # ── ① KG-101 갠트리 — 칼끝 처짐 ────────────────────────────────────────
-def gantry():
-    """주행 문형 4기둥 + 주행레일 빔 2본 + 갠트리 프레임 + 크로스빔.
+def _blade_loads():
+    """계단 칼날 일곱 조각의 (y, 설계 추력 N) — 패널 안에 든 폭의 가운데에 건다.
 
-    박리 추력은 칼날에서 x 방향으로 들어와 크로스빔 → 측면 프레임 →
-    주행대차 → 레일 빔 → 기둥 → 기초로 내려간다. 칼끝이 밀리는 양은
-    이 경로 전체의 강성이 정한다 — 크로스빔만 봐서는 답이 안 나온다.
+    박리 저항은 폭당 힘이므로 조각 몫은 패널 안 폭에 비례한다
+    (knife_stepped.segments). 합은 설계 추력 F_PEEL_D 다.
+    """
+    out = []
+    for s in KS.segments():
+        lo, hi = max(-KS.PANEL_HALF, s["y0n"]), min(KS.PANEL_HALF, s["y1n"])
+        if hi > lo:
+            out.append(((lo + hi) / 2, s["R_design"] * 1000))
+    return sorted(out)
+
+
+def gantry():
+    """주행 문형 4기둥 + 주행레일 빔 2본 + 갠트리 프레임 + 크로스빔
+    + Z축 서보슬라이드 좌·우 2조 + 칼날 캐리어 빔.
+
+    박리 추력은 일곱 칼날 조각에서 x 방향으로 들어와 캐리어 빔 → Z축 좌·우 →
+    크로스빔 → 측면 프레임 → 주행대차 → 레일 빔 → 기둥 → 기초로 내려간다.
+    칼끝이 밀리는 양은 이 경로 전체의 강성이 정한다 — 크로스빔만 봐서는 답이
+    안 나온다.
 
     모델: 기둥 4 (H-250×250×9/14, 바닥 고정) · 레일 빔 2 (□-220×220×9) ·
-    크로스빔 1 (□-300×200×12) · 측면 프레임은 강체 연결로 본다(PL 16t
-    용접 조립이라 빔보다 훨씬 뻣뻣하다).
+    크로스빔 1 (□-300×200×12) · 측면 프레임은 강체에 가까운 상자(PL 16t 용접
+    조립) · Z축 2조 (y = ±CZS_Y, 베셀점) · 캐리어 빔 BOX-160×120×8 (약한 120 을
+    추력 방향으로 — 보수). 추력은 조각 몫을 각 조각 가운데에 건다.
     """
     x0, x1 = M("CRAIL_X0"), M("CRAIL_X1")
     zr = M("CRAIL_Z")                     # 레일 높이 EL 1,950
     y = 1420.0                            # 문형 반폭
     zc = 1150.0                           # 칼끝 높이 (테이블 상면 EL)
     cx = (x0 + x1) / 2                    # 갠트리가 행정 중앙에 있을 때 — 최악
+    zs = M("CZS_Y")                       # Z축 좌·우 y ±390
 
     col = fea.hsec(250, 250, 9, 14)
     rail = fea.boxsec(220, 220, 9)
@@ -93,29 +118,39 @@ def gantry():
         mid[yy] = f.node(cx, yy, zr)
         f.beam(top[(x0, yy)], mid[yy], rail)
         f.beam(mid[yy], top[(x1, yy)], rail)
-    # 갠트리 — 측면 프레임 2 + 크로스빔 1
-    cb = {}
+    # 갠트리 — 측면 프레임 2 + 크로스빔 (Z축 두 조가 붙는 자리에 절점)
     zb = zr + 350.0                       # 크로스빔 중심
+    cb = {}
     for yy in (-y, y):
         cb[yy] = f.node(cx, yy, zb)
         f.beam(mid[yy], cb[yy], side)
-    knife_up = f.node(cx, 0, zb)
-    f.beam(cb[-y], knife_up, cross)
-    f.beam(knife_up, cb[y], cross)
-    # 칼날 Z축 슬라이드 — 크로스빔에서 칼끝까지 내려온다
+    for yy in (-zs, 0.0, zs):
+        cb[yy] = f.node(cx, yy, zb)
+    ys_cb = sorted(cb)
+    for a, b in zip(ys_cb, ys_cb[1:]):
+        f.beam(cb[a], cb[b], cross)
+    # 칼날 캐리어 빔 — Z축 좌·우 아래, 칼끝 높이. 조각 가운데마다 절점
+    loads = _blade_loads()
+    ys_k = sorted({yy for yy, _ in loads} | {-zs, zs})
+    kn = {yy: f.node(cx, yy, zc) for yy in ys_k}
+    for a, b in zip(ys_k, ys_k[1:]):
+        f.beam(kn[a], kn[b], CARRIER)
+    # Z축 서보슬라이드 좌·우 — 크로스빔에서 캐리어 빔까지 내려온다
     zslide = fea.boxsec(400, 300, 20)
-    tip = f.node(cx, 0, zc)
-    f.beam(knife_up, tip, zslide)
+    for yy in (-zs, zs):
+        f.beam(cb[yy], kn[yy], zslide)
 
-    # 하중: 박리 추력 (설계값) 을 칼끝에 x 방향으로
-    P = F.F_PEEL_D * 1000                 # kN → N
-    f.force(tip, fx=P)
+    # 하중: 박리 추력 (설계값) 을 조각마다 x 방향으로
+    for yy, p in loads:
+        f.force(kn[yy], fx=p)
     u = f.solve()
-    dx, dz = abs(u[tip][0]), abs(u[tip][2])
+    tips = [kn[yy] for yy, _ in loads]
+    dx = max(abs(u[t][0]) for t in tips)
+    dz = max(abs(u[t][2]) for t in tips)
 
-    # 고유진동 — 갠트리 이동부 질량을 크로스빔·칼끝에 얹는다
-    fr = f.modes(extra_mass={knife_up: F.M_GANTRY * 0.6,
-                             tip: F.M_GANTRY * 0.4}, n=3)
+    # 고유진동 — 갠트리 이동부 질량을 크로스빔 가운데와 Z축 두 조 아래에 얹는다
+    fr = f.modes(extra_mass={cb[0.0]: F.M_GANTRY * 0.6,
+                             kn[-zs]: F.M_GANTRY * 0.2, kn[zs]: F.M_GANTRY * 0.2}, n=3)
 
     # 두 방향은 성격이 전혀 다르다.
     #
@@ -130,15 +165,15 @@ def gantry():
     return [
         Result("S1", f"갠트리 칼끝 깊이 변화 (추력 {F.F_PEEL_D:.2f} kN)", dz, "mm", 0.15,
                "EVA 층 0.45 mm 의 1/3 — 깊이가 흔들리면 유리를 긁거나 셀을 남긴다",
-               f"z 처짐 {dz:.3f} · 행정 중앙 · 기둥 H-250×250 4본"),
+               f"일곱 칼끝 중 최대 z {dz:.3f} · 행정 중앙 · 기둥 H-250×250 4본 · Z축 2조 y ±{zs:.0f}"),
         Result("S2", "갠트리 칼끝 추력방향 처짐", dx, "mm", 7.0,
                "행정 3,500 의 0.2 % — 일정 오프셋이라 서보가 흡수한다",
-               "물림·해제 과도구간에서만 문제가 된다"),
+               "물림·해제 과도구간에서만 문제가 된다 — 계단 칼날은 그 과도를 네 번에 나눈다"),
         Result("S3", "갠트리 1차 고유진동수 (역수 기준)", 6.0 / max(fr[0], 1e-9),
                "—", 1.0,
                "fn ≥ 6 Hz — 칼날 가감속 기본주파수의 3배 이상",
                f"fn = {fr[0]:.1f} Hz · 2차 {fr[1]:.1f} · 3차 {fr[2]:.1f}"),
-    ], dict(dx=dx, dz=dz, fn=fr, knife=tip, span=(x1 - x0))
+    ], dict(dx=dx, dz=dz, fn=fr, knife=tips, span=(x1 - x0))
 
 
 # ── ② HC-101 가열실 — 기둥 좌굴과 베이스 인장 ──────────────────────────
@@ -276,68 +311,83 @@ def table():
             w_panel=m_panel * 9.80665 / 1000)
 
 
-# ── ④ WR-101 권취축 — 클램프 위치가 답을 정한다 ──────────────────────
-def shaft():
-    """권취축 Ø60 + 코어 Ø300×8t. 만권 롤 3.50 kN.
+# ── ④ 계단 칼날 캐리어 빔 — 일곱 칼끝이 한 줄로 남는가 ─────────────────
+# 칼날은 한 자루이고 Z축 두 조가 그 캐리어 빔을 든다. 캐리어 빔은 Z축 좌·우의
+# 스프링 컴플라이언스·로드셀 위에 얹혀 있어 모멘트를 전하지 않는다 — 그래서
+# 두 점 **단순지지**로 푼다 (LM 블록의 모멘트 강성을 믿지 않는 보수).
+TIP_GRIND = 0.05     # mm 일곱 칼끝 연삭·착좌 공차 ± (지침서 12항 · MC-401 한 평면 연삭)
+LEVEL_TOL = 0.05     # mm KNIFE_LEVEL_OK — Z축 좌·우 높이차 한계
+V_RATIO = 1.0        # 칼날 수직 반력 / 추력 — 실측 전 포락 (파일럿 PT-10 이 대체)
 
-    코어의 단면2차모멘트는 축의 **123 배**다. 그래서 답은 하중이 아니라
-    **분할클램프를 어디에 두는가**가 정한다.
 
-      클램프가 가운데 모여 있으면 → 코어가 일을 못 하고 축이 면폭을 건넌다
-      클램프가 양단 가까이 있으면 → 코어가 면폭을 건너고 축은 짧게만 휜다
+def _carrier(zs, fz_ratio=0.0, fx_ratio=0.0):
+    """캐리어 빔만 떼어 두 Z축 위 단순지지로 푼다 → 조각 가운데의 (dx, dz)."""
+    loads = _blade_loads()
+    f = fea.Frame()
+    ys = sorted({yy for yy, _ in loads} | {-zs, zs})
+    n = {yy: f.node(0.0, yy, 0.0) for yy in ys}
+    for a, b in zip(ys, ys[1:]):
+        f.beam(n[a], n[b], CARRIER)
+    f.support(n[-zs], ux=True, uy=True, uz=True, rx=False, ry=True, rz=False)
+    f.support(n[zs], ux=True, uy=False, uz=True, rx=False, ry=False, rz=False)
+    for yy, p in loads:
+        f.force(n[yy], fx=p * fx_ratio, fz=-p * fz_ratio)
+    u = f.solve()
+    return [u[n[yy]][0] for yy, _ in loads], [u[n[yy]][2] for yy, _ in loads]
 
-    두 경우를 다 풀어 보고, 되는 쪽을 **요구사항으로 확정한다**.
-    도면이 클램프 위치를 안 정하면 제작사가 편한 데 붙이고, 그러면 이
-    설계는 운에 맡겨진다.
+
+def knife():
+    """계단 칼날 SHK-101 — 한 자루 칼날의 칼끝 줄이 하중에서 곧게 남는가.
+
+    일곱 칼끝은 카세트째 한 평면으로 연삭한다(±0.05). 하중이 걸리면 그 평면이
+    셋에서 흐트러진다 — 연삭 공차, Z축 좌·우 높이차에서 오는 기울기, 캐리어 빔의
+    휨. 셋이 한 칼끝에 겹쳐도 칼날 깊이 예산(S1 과 같은 0.15)에 들어야 한다.
+
+    휨은 **어디서 드느냐**가 정한다. 수직 반력은 패널 폭에 고르게 걸리므로
+    양끝(±570)에서 들면 가운데가 처진다. 폭의 베셀점(0.2203 안쪽)에서 들면 두
+    지점 사이의 처짐과 바깥 캔틸레버의 처짐이 같아져 칼끝 줄이 곧다. 대신
+    지점이 가까울수록 좌·우 높이차가 바깥 칼끝에서 커진다 — 그 몫까지 더해서 본다.
+
+    수직 반력의 크기는 아직 모른다 (OI-01 은 추력만 쟀다). 추력과 같게 포락하고,
+    예산을 다 쓰는 수직 반력비를 거꾸로 풀어 파일럿의 합격선으로 넘긴다.
     """
-    d, span, face = 60.0, M("ROLL_FACE") + 300, M("ROLL_FACE")
-    sh, core = fea.circsec(d), fea.Sec(
-        math.pi / 4 * (300 ** 2 - 284 ** 2),
-        math.pi * (300 ** 4 - 284 ** 4) / 64,
-        math.pi * (300 ** 4 - 284 ** 4) / 64,
-        math.pi * (300 ** 4 - 284 ** 4) / 32)
-    Wr = 3.499e3
+    zs = M("CZS_Y")
+    ends = M("KNIFE_W") / 2 - 180.0                   # 양끝 지지 (종전안 ±570)
+    edge = KS.PANEL_HALF                               # 가장 바깥 물린 칼끝 700
 
-    def solve(clamp_span):
-        """clamp_span: 양 끝 클램프 사이 거리. 그 밖은 축만 있다."""
-        f = fea.Frame()
-        n = 24
-        ns = [f.node(span * i / n, 0, 0) for i in range(n + 1)]
-        c0, c1 = (span - clamp_span) / 2, (span + clamp_span) / 2
-        for i in range(n):
-            xm = span * (i + 0.5) / n
-            f.beam(ns[i], ns[i + 1], core if c0 <= xm <= c1 else sh)
-        f.support(ns[0], ux=True, uy=True, uz=True, rx=True, ry=False, rz=False)
-        f.support(ns[-1], ux=False, uy=True, uz=True, rx=True, ry=False, rz=False)
-        x0, x1 = (span - face) / 2, (span + face) / 2
-        ins = [i for i in range(n + 1) if x0 <= span * i / n <= x1]
-        for i in ins:
-            f.force(ns[i], fz=-Wr / len(ins))
-        u = f.solve()
-        return max(abs(u[nd][2]) for nd in ns), f
+    def budget(z_sup, vr):
+        _, dz = _carrier(z_sup, fz_ratio=vr)
+        bend = max(dz) - min(dz)
+        tilt = LEVEL_TOL * edge / (2 * z_sup)
+        return TIP_GRIND + tilt + bend, bend, tilt
 
-    d_bare, _ = solve(0.0)                    # 코어가 일을 안 할 때 (보수)
-    d_wide, fw = solve(face - 100)            # 클램프를 면폭 끝에 둘 때
-    mf = fw.member_forces()
-    sigma = max(abs(m[10]) for m in mf) / (math.pi * d ** 3 / 32)
+    total, bend, tilt = budget(zs, V_RATIO)
+    total_ends, bend_ends, _ = budget(ends, V_RATIO)
+    per_vr = budget(zs, 1.0)[1]                        # 휨은 반력에 비례
+    vr_max = (0.15 - TIP_GRIND - tilt) / per_vr
+
+    dx, _ = _carrier(zs, fx_ratio=1.0)
+    step = max(dx) - min(dx)
+    rise = M("KNIFE_RISE")
 
     return [
-        Result("S10", "권취축 처짐 — 클램프 양단 배치", d_wide, "mm", span / 1000,
-               "스팬/1,000 — 베어링 정렬과 권취 균일도",
-               f"클램프 간격 {face-100:,.0f} · 코어 Ø300×8t 가 면폭을 건넌다"),
-        Result("S11", "권취축 처짐 — 클램프 중앙 집중 (되는가 확인)",
-               d_bare, "mm", span / 1000,
-               "같은 한계. 이 경우가 넘으면 **클램프 위치를 도면에 못 박아야 한다**",
-               f"코어가 일을 못 하고 축 Ø{d:.0f} 이 스팬 {span:,.0f} 을 홀로 건넌다"),
-        Result("S12", "권취축 휨응력", sigma, "MPa", F.f_allow("SM45C"),
-               "SM45C 설계강도",
-               "피로는 지침서가 따로 본다 (이용률 0.69 · Ø55 → Ø60 결정 근거)"),
-    ], dict(d_bare=d_bare, d_wide=d_wide, sigma=sigma)
+        Result("S10", "일곱 칼끝 깊이 예산 (연삭 + 좌우 기울기 + 캐리어 휨)", total, "mm", 0.15,
+               "S1 과 같은 예산 — EVA 0.45 의 1/3. 한 칼끝에 셋이 겹친다",
+               f"연삭 ±{TIP_GRIND:.2f} + 기울기 {tilt:.3f} (좌우차 {LEVEL_TOL:.2f} × {edge:.0f}/{2*zs:.0f}) "
+               f"+ 휨 {bend:.3f} (수직 반력 = 추력 × {V_RATIO:.1f} 포락 · 단순지지 y ±{zs:.0f}) · "
+               f"양끝 ±{ends:.0f} 에서 들면 휨 {bend_ends:.3f} 로 합 {total_ends:.3f} · "
+               f"예산을 다 쓰는 수직 반력비 {vr_max:.1f}"),
+        Result("S11", "계단 변화 — 조각 사이 추력방향 처짐 차", step, "mm", 0.5,
+               f"계단 공차 {rise:.0f} ± 0.5 — 휨이 계단을 바꾸면 물림 순서가 흐트러진다",
+               f"설계 추력 {F.F_PEEL_D:.2f} kN · 캐리어 빔 BOX-160×120×8 · 약한 120 을 추력 방향으로 · "
+               f"단순지지 y ±{zs:.0f}"),
+    ], dict(total=total, bend=bend, tilt=tilt, total_ends=total_ends, bend_ends=bend_ends,
+            vr_max=vr_max, step=step, zs=zs, ends=ends)
 
 
 def run():
     rs, extra = [], {}
-    for fn in (gantry, chamber, table, shaft):
+    for fn in (gantry, chamber, table, knife):
         r, e = fn()
         rs += r
         extra[fn.__name__] = e

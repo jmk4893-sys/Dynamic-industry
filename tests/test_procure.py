@@ -248,15 +248,17 @@ class TestTheCatalogueStaysConsistentWithTheSpecification(unittest.TestCase):
         """카세트를 통판으로 적었더니 128 kg 이 되어 35 kg/벌 과 3.7 배 어긋났다.
 
         지침서는 이 질량으로 J5(테이퍼 핀)와 갠트리 이동부 자중을 잡는다.
-        카탈로그가 다시 무거워지면 그 계산이 조용히 틀어진다.
+        카탈로그가 다시 무거워지면 그 계산이 조용히 틀어진다. 계단 카세트 한 벌은
+        본체(일곱 홀더) + 인서트 7 + 카트리지 히터 7 + 테이퍼 핀 4 다.
         """
         import console_consts
         import fab_spec as F
 
-        body = [p for p in PT.P if p.pid == "P-005-17"][0]
-        insert = [p for p in PT.P if p.pid == "P-005-15"][0]
-        pin = [p for p in PT.P if p.pid == "P-005-18"][0]
-        one_set = body.kg + insert.kg + 4 * pin.kg
+        kg = {p.pid: p.kg for p in PT.P}
+        one_set = (kg["P-005-19"]                                     # BC-201 계단 카세트 본체
+                   + kg["P-005-15"] + 6 * kg["P-005-16"]              # SKD11 인서트 중앙 1 · 계단 6
+                   + kg["P-005-17"] + 6 * kg["P-005-18"]              # 카트리지 히터 중앙 1 · 계단 6
+                   + 4 * kg["P-005-20"])                              # 테이퍼 로케이팅핀 4
         want = console_consts.const("CASS_MASS")
         self.assertLess(abs(one_set - want) / want, 0.30,
                         f"카세트 1벌 {one_set:.1f} kg 이 사양 {want} kg 과 30 % 넘게 다르다")

@@ -50,15 +50,19 @@ REV20_M = 49.7 - (-3.4)          # 디스태커 방책 앞 ~ 굴뚝 뒤
 SCOPED_M = 29.3 - 0.0            # 환경·후속·팔레타이징을 뗀 나머지
 
 # ── 사이클 (s) ───────────────────────────────────────────────────────────
-KNIFE_PITCH, RAPID_DISTANCE = 300.0, 300.0      # mm
+# 선행은 계단 깊이다 — 중앙 칼끝이 문 뒤 바깥 칼끝이 패널 끝을 벗어날 때까지
+# 더 가는 거리. 한쪽 3단 × 단 높이 80. 탠덤이던 때는 두 칼끝 간격 300 이었다.
+KNIFE_STEPS, KNIFE_RISE = 3, 80.0               # 단 · mm
+KNIFE_DEPTH = KNIFE_STEPS * KNIFE_RISE          # 240 mm
+RAPID_DISTANCE = 300.0                          # mm
 PEEL_SPEED, RAPID_SPEED, HANDLING_FIX = 55.0, 200.0, 3.0
 RETURN_SPEED = 700.0
 NET_TARGET, AVAILABILITY = 58.0, 0.90
 
-LEAD_S = KNIFE_PITCH / PEEL_SPEED
+LEAD_S = KNIFE_DEPTH / PEEL_SPEED
 PEEL_S = PANEL_L * 1000 / PEEL_SPEED
 HANDLING_S = RAPID_DISTANCE / RAPID_SPEED + HANDLING_FIX
-RETURN_DISTANCE = KNIFE_PITCH + PANEL_L * 1000
+RETURN_DISTANCE = KNIFE_DEPTH + PANEL_L * 1000
 TARGET_CYCLE = 3600 / (NET_TARGET / AVAILABILITY)
 
 
@@ -209,7 +213,20 @@ class TestThroughputSurvivesTheMovingKnife(unittest.TestCase):
 
     def test_the_peel_stroke_and_time_do_not_change(self):
         self.assertAlmostEqual(PEEL_S, 2500 / 55, places=9)
-        self.assertAlmostEqual(RETURN_DISTANCE, 2800.0, places=9)
+        self.assertAlmostEqual(RETURN_DISTANCE, 2740.0, places=9)
+
+    def test_the_lead_is_the_step_depth(self):
+        """선행 거리는 계단 깊이다 — 콘솔도 단 수 × 단 높이에서 내야 한다.
+
+        손으로 240 을 적어 두면 단 높이를 바꾸는 날 사이클만 옛 값으로 남는다."""
+        src = console()
+        env = console_consts.env(src)
+        self.assertEqual(env["KNIFE_STEPS"], KNIFE_STEPS)
+        self.assertAlmostEqual(env["KNIFE_RISE"] * 1000, KNIFE_RISE, places=6)
+        self.assertAlmostEqual(env["KNIFE_DEPTH"] * 1000, KNIFE_DEPTH, places=6)
+        self.assertIn("const KNIFE_DEPTH=KNIFE_STEPS*KNIFE_RISE;", src)
+        self.assertIn("knifeDepth:KNIFE_DEPTH*1000", src,
+                      "사이클 모델의 선행 거리가 칼날 형상에서 나오지 않는다")
 
     def test_at_the_specified_return_speed_the_cycle_is_unchanged(self):
         self.assertAlmostEqual(knife_cycle(), carrier_cycle(), places=9)
@@ -218,10 +235,11 @@ class TestThroughputSurvivesTheMovingKnife(unittest.TestCase):
         net = 3600 / knife_cycle() * AVAILABILITY
         self.assertGreaterEqual(net, NET_TARGET)
 
-    def test_the_floor_is_five_hundred_and_sixty_five(self):
-        """2,400 × 1,200 · 60 장/h 에서 550 이었다 — 행정 100 늘고 계약이 58 이 되며 565."""
-        self.assertAlmostEqual(return_speed_floor(), 2800 / (3600 / (58 / .9) - 300 / 55 - 2500 / 55), places=6)
-        self.assertAlmostEqual(return_speed_floor(), 565.3, delta=0.1)
+    def test_the_floor_is_four_hundred_and_fifty_three(self):
+        """탠덤(칼끝 간격 300)에서 565 였다. 계단 깊이 240 은 선행이 1.1 s 짧아
+        복귀창이 넓어지고 복귀 거리도 60 줄어 453 이 된다."""
+        self.assertAlmostEqual(return_speed_floor(), 2740 / (3600 / (58 / .9) - 240 / 55 - 2500 / 55), places=6)
+        self.assertAlmostEqual(return_speed_floor(), 453.3, delta=0.1)
         at_floor = 3600 / knife_cycle(return_speed_floor()) * AVAILABILITY
         self.assertAlmostEqual(at_floor, NET_TARGET, places=6)
 
@@ -239,7 +257,8 @@ class TestThroughputSurvivesTheMovingKnife(unittest.TestCase):
         m = re.search(r"const returnSpeedFloor=(.*?);", src)
         self.assertIsNotNone(m, "복귀속도 하한이 계산되지 않는다")
         self.assertIn("returnDistance", m.group(1))
-        self.assertNotIn("550", m.group(1), "하한이 손으로 적혀 있다")
+        for typed in ("550", "565", "453"):
+            self.assertNotIn(typed, m.group(1), "하한이 손으로 적혀 있다")
 
     def test_the_console_declares_the_same_return_speed(self):
         src = console()
@@ -432,9 +451,11 @@ class TestTheCompactHall(unittest.TestCase):
         """주석 처리된 호출은 부르는 것이 아니다 — 주석을 걷고 본다."""
         scene = re.sub(r"//[^\n]*|/\*.*?\*/", "",
                        fn_body("compactMachine") + fn_body("compactCells"), flags=re.S)
-        for name in ("cInfeed", "cChamber", "cTandem", "cGlassRack", "cOutfeed"):
+        for name in ("cInfeed", "cChamber", "cPeelCell", "cGlassRack", "cOutfeed"):
             self.assertIn(f"function {name}(", self.src, f"{name} 이 없다")
             self.assertIn(name, scene, f"{name} 이 장면에 불리지 않는다")
+        self.assertNotIn("function cTandem(", self.src,
+                         "탠덤 셀 코드가 남아 있다 — 계단 칼날 한 자루로 바뀌었다")
 
     def test_the_station_origins_come_from_the_same_table(self):
         """홀 좌표가 도면의 스테이션 표에서 파생돼야 둘이 갈라지지 않는다."""
@@ -458,31 +479,55 @@ class TestTheCompactHall(unittest.TestCase):
                          "박리 중 패널 x 가 고정이 아니다")
         knife = fn_body("cKnifeX")
         self.assertIn("CHKB0", knife)
-        self.assertIn("CHKB1", knife)
+        self.assertIn("CHKB_END", knife)
         self.assertIn("CHKB_PARK", knife)
 
-    def test_the_knife_stroke_is_the_panel_length(self):
-        """행정이 패널 길이가 아니면 상대운동이 같다는 주장이 깨진다."""
+    def test_the_knife_stroke_is_the_panel_plus_the_step_depth(self):
+        """박리 행정은 패널 길이 + 계단 깊이다 — 중앙 칼끝이 뒤끝에 닿아도 바깥
+        칼끝은 아직 240 뒤에 있다. 거기서 멈추면 가장자리 띠가 붙은 채로 남는다."""
         self.assertIn("const CHKB0=CPNL_CX-PANEL_HL,CHKB1=CPNL_CX+PANEL_HL;", self.src)
-        self.assertIn("const CHKB_PARK=CHKB0-LEAD_OPEN;", self.src)
+        self.assertIn("const CHKB_END=CHKB1+KNIFE_DEPTH;", self.src)
+        self.assertIn("const CHKB_PARK=CHKB0-KNIFE_APPROACH;", self.src)
+        stroke = (self._num("CHKB_END") - self._num("CHKB0")) * 1000
+        self.assertAlmostEqual(stroke, RETURN_DISTANCE, places=6,
+                               msg="3D 박리 행정이 사이클의 복귀 거리와 다르다")
 
-    def test_the_heavy_roll_stays_off_the_moving_axis(self):
-        """357 kg 만권 롤을 갠트리에 얹으면 700mm/s 복귀가 성립하지 않는다."""
+    def test_the_gantry_lifts_one_knife_at_two_points(self):
+        """칼날 한 자루를 Z축 두 조가 든다. 한 축으로 가운데를 들면 1,500 폭의
+        끝에서 칼날이 처지고 기운다 — 드는 자리는 베셀점(폭의 0.2203)이다."""
         gantry = fn_body("cGantry")
-        self.assertIn("CWEB_Z", gantry, "가이드롤 GR-W1 이 갠트리에 없다")
-        self.assertNotIn("CDRUM", gantry, "만권 롤이 이동축에 실려 있다")
-        self.assertIn("CDRUM", fn_body("cTandem"), "만권 롤이 고정부에 없다")
+        self.assertIn("stepCassette(kx", gantry, "갠트리에 계단 칼날이 없다")
+        self.assertIn("for(const y of [-CZS_Y,CZS_Y])", gantry, "Z축이 좌·우 두 조가 아니다")
+        self.assertIn("const CZS_Y=Math.round((.5-.2203)*PANEL_W*100)/100", self.src,
+                      "Z축 자리가 베셀점에서 나오지 않는다")
+        self.assertAlmostEqual(self._num("CZS_Y"), round((.5 - .2203) * PANEL_W_M * 100) / 100,
+                               places=6)
 
-    def test_the_web_self_compensation_is_recorded(self):
-        """박리 중 권취가 0 인 이유가 코드 옆에 남아 있어야 한다 — 다음 사람이 큰 댄서를 다시 넣는다."""
+    def test_the_winder_is_gone_from_the_hall(self):
+        """계단 칼날은 셀모듈과 백시트를 한 장으로 뗀다 — 감을 백시트가 없다.
+
+        권취 계통을 이름만 지우고 도형을 남기면 홀에 쓸모없는 드럼이 서 있고,
+        도형만 지우고 상수를 남기면 다음 사람이 그 상수를 보고 되살린다."""
+        scene = "".join(fn_body(f) for f in
+                        ("compactMachine", "cPeelCell", "cGantry", "cTwinShared", "cEnclosure"))
+        bare = re.sub(r"//[^\n]*|/\*.*?\*/", "", scene, flags=re.S)
+        for gone in ("WR-101", "GR-W1", "DN-101", "BS-301", "BS_SADDLE", "CWEB_Z", "CDRUM",
+                     "winderState", "woundCount"):
+            self.assertNotIn(gone, bare, f"{gone} 이 압축 배치에 남아 있다")
+        for const in ("CWEB_Z", "CDRUM", "CWFR_X"):
+            self.assertNotRegex(self.src, rf"\b{const}\s*=", f"{const} 상수가 남아 있다")
+
+    def test_why_the_winder_left_is_recorded(self):
+        """권취부를 뺀 이유가 코드 옆에 남아 있어야 한다 — 다음 사람이 롤을 다시 단다."""
         head = self.src[self.src.index("Rev.21C 압축 배치 3D"):][:1600]
-        self.assertIn("상쇄", head)
-        self.assertIn(f"{PANEL_L*1000+300:,.0f}mm", head)
+        self.assertIn("한 장으로", head)
+        self.assertIn("통째로 없다", head)
+        self.assertIn(f"{RETURN_DISTANCE:,.0f}mm", head)
 
     def test_the_descoped_equipment_is_not_in_the_hall(self):
         body = fn_body("compactMachine")
         tree = "".join(fn_body(f) for f in
-                       ("cInfeed", "cChamber", "cTandem", "cGlassRack",
+                       ("cInfeed", "cChamber", "cPeelCell", "cGlassRack",
                         "cOutfeed", "cBoundary", "cUtilities", "cEnclosure"))
         for gone in ("thermalOxidiser", "scrubberUnit", "autonomyStations",
                      "cellHandlingStation", "cellConveyorDevices"):
@@ -490,11 +535,11 @@ class TestTheCompactHall(unittest.TestCase):
 
     def test_the_boundary_hardware_is_in_the_hall(self):
         """이름만 라벨에 적혀 있으면 안 된다 — 실제로 그려진 것에 붙어 있어야 한다."""
-        drawn = [ln for ln in (fn_body("cBoundary") + fn_body("cTandem")).split("\n")
+        drawn = [ln for ln in (fn_body("cBoundary") + fn_body("cPeelCell")).split("\n")
                  if re.search(r"\b(box|cylinder|poly|plinth|column)\(", ln) and "//" in ln]
         joined = "\n".join(drawn)
         for dev in ("경계 인터페이스반 BJ-101", "경계 안전회로 인터페이스반 BJ-102",
-                    "경계 덕트 차압센서", "셀/EVA 배출슈트 레벨센서×2"):
+                    "경계 덕트 차압센서", "셀모듈 배출슈트 레벨센서×2"):
             self.assertIn(dev, joined, f"경계 납품품 {dev} 이 홀에 서 있지 않다")
 
     def test_the_cooling_rack_reuses_the_heating_rack(self):
@@ -514,22 +559,26 @@ def fn_body(name):
     return fn(name)
 
 
-# ── 반출 3계통 ──────────────────────────────────────────────────────────
-CELL_KG = (0.855 + 0.520) * PANEL_L * PANEL_W_M      # 3.96 kg/장
-BACK_KG = 0.420 * PANEL_L * PANEL_W_M                # 1.21 kg/장
-CE_PITCH, CS_STACK = 0.003, 1.00
+# ── 반출 2계통 ──────────────────────────────────────────────────────────
+# 계단 칼날은 셀·EVA·백시트를 한 장으로 뗀다 — 셀모듈이 백시트를 달고 나간다.
+CELL_KG = (0.855 + 0.520 + 0.420) * PANEL_L * PANEL_W_M   # 6.28 kg/장
+BACKSHEET_PITCH = 0.0003                                  # 백시트 두께 0.30 mm
+CE_PITCH, CS_STACK = 0.003 + BACKSHEET_PITCH, 1.00        # 평적 피치 3.3 · 적재높이
 
 
 class TestWhereTheStreamsGo(unittest.TestCase):
-    """분리한 세 가지가 실제로 기계 밖으로 나가는지.
+    """분리한 두 가지가 실제로 기계 밖으로 나가는지.
 
-    분리는 절반이다. 나머지 절반은 유리·셀/EVA·백시트가 서로 섞이지 않고
-    각자 밖으로 나가는 것이고, 압축 배치에서는 이쪽이 오히려 어렵다 —
+    분리는 절반이다. 나머지 절반은 유리와 셀모듈(백시트 포함)이 서로 섞이지
+    않고 각자 밖으로 나가는 것이고, 압축 배치에서는 이쪽이 오히려 어렵다 —
     라인이 짧아진 만큼 옆으로 나갈 자리도 좁아지기 때문이다.
 
     처음 그린 배치는 여기서 틀렸다. 갠트리 주행레일을 바닥에 깔아 y=±1,420
     선이 z730~2,510 까지 막혔고, 셀/EVA 배출 슈트가 그 프레임을 20 mm 관통했다.
     2,400 × 1,200 적층체를 폭 440 트로프로 빼려 한 것도 치수가 맞지 않았다.
+
+    탠덤이던 때는 백시트가 셋째 계통으로 위(권취 롤 → RH-201 → BS-301)로
+    나갔다. 계단 칼날은 백시트를 셀모듈과 함께 떼므로 그 계통이 없다.
     """
 
     def setUp(self):
@@ -566,8 +615,8 @@ class TestWhereTheStreamsGo(unittest.TestCase):
 
     def test_the_cell_stream_leaves_through_a_guarded_opening(self):
         """주석만 남기고 도형을 지우면 개구가 무방비로 열린다 — 주석을 걷고 본다."""
-        tree = fn_body("cEnclosure") + fn_body("cTandem")
-        self.assertIn("셀/EVA 반출 터널", tree, "외장에 반출 개구가 없다")
+        tree = fn_body("cEnclosure") + fn_body("cPeelCell")
+        self.assertIn("셀모듈 반출 터널", tree, "외장에 반출 개구가 없다")
         self.assertIn("CS-201 반출 인터록 게이트", tree, "카트가 나갈 게이트가 없다")
         bare = re.sub(r"//[^\n]*|/\*.*?\*/", "", tree, flags=re.S)
         self.assertRegex(bare, r"for\(const x of \[CE_X0[^\]]+\]\)\{[\s\S]{0,400}?box\(",
@@ -576,37 +625,45 @@ class TestWhereTheStreamsGo(unittest.TestCase):
                          "반출 개구를 가로지르는 광축이 없다")
 
     def test_the_cart_interval_is_derived(self):
+        """한 장이 백시트까지 달고 오므로 피치가 백시트 두께만큼 늘었다 —
+        그래도 카트 한 대가 다섯 시간을 넘게 받아야 교대당 한 번이면 된다."""
         panels = round(CS_STACK / CE_PITCH)
-        self.assertGreaterEqual(panels / NET_TARGET, 4.0, "카트 교체가 4시간을 못 간다")
+        self.assertEqual(panels, 303)
+        self.assertGreaterEqual(panels / NET_TARGET, 5.0, "카트 교체가 5시간을 못 간다")
         self.assertIn("const csCartPanels=()=>Math.round(CS_STACK/CE_PITCH)", self.src,
                       "적재 장수가 계산이 아니라 적어 둔 값이다")
+        self.assertIn("const CE_PITCH=.003+BACKSHEET_T,", self.src,
+                      "평적 피치가 백시트 두께에서 나오지 않는다")
+        self.assertAlmostEqual(self._num("CE_PITCH"), CE_PITCH, places=9)
 
-    # ── 백시트
-    def test_the_full_roll_leaves_without_entering_the_guard(self):
-        """416 kg 롤이 4.9시간마다 나온다 — 보관대가 방책 안이면 무인 시간이 그 주기로 끊긴다."""
-        self.assertIn("const BS_SADDLE=V(CRAIL_X0,BS_SADDLE_Y,.92)", self.src,
-                      "BS-301 새들 좌표가 방책에서 파생되지 않는다")
-        self.assertLess(self._num("BS_SADDLE_Y"), -self._num("CFENCE_YN"),
-                        "BS-301 이 방책 안에 있다")
-        self.assertIn("RH-201", fn_body("cTandem"), "롤을 옮길 수단이 없다")
+    def test_the_cell_module_carries_the_backsheet_mass(self):
+        """셀모듈 한 장의 질량에 백시트가 들어가야 카트·컨베이어 하중이 맞다."""
+        self.assertAlmostEqual(CELL_KG, 6.28, places=2)
+        self.assertAlmostEqual(CELL_KG * CS_STACK / CE_PITCH, 1903.8, delta=1.0)
 
-    def test_the_roll_mass_and_interval_are_derived(self):
-        self.assertIn("const ROLL_MASS=MASS_BACK*PANEL_L*PANEL_W*ROLL_FULL_PANELS", self.src)
-        self.assertAlmostEqual(BACK_KG * 283, 416.0, places=0)
-
-    # ── 세 방향이 서로 다른가
-    def test_the_three_streams_leave_in_three_directions(self):
-        tandem = fn_body("cTandem")
-        self.assertIn("RH_Z", tandem, "백시트는 위로 넘어간다")
-        self.assertIn("CE_Y1", tandem, "셀/EVA 는 옆으로 나간다")
+    # ── 두 방향이 서로 다른가
+    def test_the_two_streams_leave_in_two_directions(self):
+        cell = fn_body("cPeelCell")
+        self.assertIn("CE_Y1", cell, "셀모듈은 옆으로 나간다")
         self.assertIn("GC-101", fn_body("cGlassRack"), "유리는 앞으로 나간다")
-        self.assertNotAlmostEqual(self._num("CSCART_Y"), self._num("BS_SADDLE_Y"), places=1,
-                                  msg="셀/EVA 카트와 백시트 새들이 같은 자리에 있다")
+        self.assertLess(self._num("CSCART_Y"), -self._num("CSKIN_Y"),
+                        "셀모듈 카트가 외장 안에 있다 — 반출이 아니다")
+
+    def test_the_monorail_now_carries_only_the_cassette(self):
+        """RH-201 은 남는다 — 200°C 를 지난 카세트를 방책 밖으로 넘기는 일이다.
+        롤을 옮기던 일은 없어졌으니 라벨도 그렇게 말해야 한다."""
+        body = fn_body("cPeelCell")
+        m = re.search(r"label3\(`RH-201 · ([^`]*)`", body)
+        self.assertIsNotNone(m, "RH-201 라벨이 없다")
+        self.assertIn("카세트", m.group(1))
+        self.assertNotIn("롤", m.group(1), "RH-201 이 아직 롤을 옮긴다고 말한다")
 
     def test_the_streams_are_named_in_the_step_that_hands_them_over(self):
         row = re.search(r"\{id:'C9',.*?\n", self.src).group(0)
-        for token in ("RH-201", "CS-201", "픽업 스테이션"):
+        for token in ("CS-201", "픽업 스테이션"):
             self.assertIn(token, row, f"경계 인계 단계가 {token} 를 말하지 않는다")
+        for gone in ("BS-301", "만권"):
+            self.assertNotIn(gone, row, f"경계 인계 단계가 없어진 {gone} 를 말한다")
 
 
 class TestTheRackInteriorFollowsTheRoof(unittest.TestCase):

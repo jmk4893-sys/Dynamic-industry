@@ -24,11 +24,11 @@ from .test_pv_console_calculator import (AREAL_CP_KJ_M2K, DEFAULTS, FDM_DWELL_S,
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 STUDY = ROOT / "docs" / "dg-hk120-twin-cell.html"
 CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
-TITLE = "DG-HK120C 검토서 · 1챔버 2탠덤셀"
+TITLE = "DG-HK120C 검토서 · 1챔버 2분리셀"
 
 CELLS = 2
 GLASS_ALLOW_MPA = 7.0
-REF_MARGIN = 18.6          # DG-HK60C 열공정 여유 — 포락선 2,500 × 1,400 · 48등
+REF_MARGIN = 17.0          # DG-HK60C 열공정 여유 — 포락선 2,500 × 1,400 · 48등 · 계단 칼날 사이클 54.3 s
 
 
 def study():
@@ -122,14 +122,18 @@ class TestTheChamberSizingIsBounded(unittest.TestCase):
     def test_the_reference_cycle_matches_the_console(self):
         """셀 하나의 사이클은 콘솔이 정한다 — 검토서가 새로 정하지 않는다.
 
-        콘솔의 이동 나이프 사이클은 선행 + 박리 + max(교환창, 복귀) 다.
-        검토서는 그 값을 그대로 받아 쓴다.
+        콘솔의 이동 나이프 사이클은 선행 + 박리 + max(교환창, 복귀) 다. 선행은
+        계단 깊이(단 80 × 3)를 박리속도로 가는 시간이다 — 탠덤 시절에는 칼끝 간격
+        300 이 그 자리였다. 검토서는 그 값을 그대로 받아 쓴다.
         """
         m = thermal_model()
-        lead = 300 / DEFAULTS["knifeSpeed"]
+        depth = console_consts.const("KNIFE_DEPTH") * 1000
+        self.assertAlmostEqual(const("knifeDepth", self.s), depth, delta=1e-9,
+                               msg="검토서의 계단 깊이가 콘솔 KNIFE_DEPTH 와 다르다")
+        lead = depth / DEFAULTS["knifeSpeed"]
         peel = DEFAULTS["panelLength"] / DEFAULTS["knifeSpeed"]
         handling = 300 / DEFAULTS["rapidSpeed"] + DEFAULTS["handlingTime"]
-        ret = (300 + DEFAULTS["panelLength"]) / 700
+        ret = (depth + DEFAULTS["panelLength"]) / 700
         knife_cycle = lead + peel + max(handling, ret)
         self.assertAlmostEqual(const("cellCycle", self.s), knife_cycle, delta=.01)
         self.assertGreater(knife_cycle, m["cycle_s"] - 1,

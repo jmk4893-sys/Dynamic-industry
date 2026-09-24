@@ -124,8 +124,8 @@ def run():
         Result("IR2", "현행 배치 · 냉점 140 ℃ 시점의 백시트", a["back"], "℃",
                T_BACK_MAX, "PVDF 백시트 융점 165 ℃",
                f"냉점을 목표에 올리는 순간 중앙은 {a['centre']:.0f} ℃ 다. "
-               f"**감아서 팔 물건이 그 자리에서 없어진다** — 이 설비가 파는 "
-               f"세 가지 중 하나가 공정 안에서 사라진다"),
+               f"**녹은 백시트가 HD-101 누름판과 평적 카트에 눌어붙는다** — "
+               f"셀모듈을 한 장씩 떼어 넘길 수 없게 된다"),
         Result("IR3", "현행 배치의 소요 체류시간", a["dwell"], "s", DWELL_MAX,
                f"택트 {TAKT} s × {IR.DECKS} 단 = {DWELL_MAX:.0f} s",
                f"평균이 아니라 **냉점**이 140 에 닿아야 하므로 설계 {DWELL_1D} s "
@@ -144,7 +144,7 @@ def run():
         Result("IR6", "개선 배치의 소요 체류시간", b["dwell"], "s", DWELL_MAX,
                f"택트 {TAKT} s × {IR.DECKS} 단",
                f"피치 {b['pitch']:.0f} s < 택트 {TAKT} s 이므로 **처리량을 "
-               f"탠덤이 정한다** — {b['rate']:.1f} 장/h 로 계약이 유지된다. "
+               f"계단 칼날이 정한다** — {b['rate']:.1f} 장/h 로 계약이 유지된다. "
                f"설계 {DWELL_1D} s 보다 {b['dwell']-DWELL_1D:.0f} s 길어진 것은 "
                f"평균이 아니라 냉점을 목표에 올리기 때문이다"),
         Result("IR7", "내피 반사율 요구 하한", RHO_SPEC, "—", RHO_POLISHED,

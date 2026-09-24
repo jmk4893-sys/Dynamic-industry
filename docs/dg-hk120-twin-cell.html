@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>DG-HK120C 검토서 · 1챔버 2탠덤셀</title>
-  <meta name="description" content="단일 탠덤 셀의 79장/h 천장을 넘기 위한 병렬 구성 검토. 병목만 두 벌 놓고 가열실은 한 벌로 두는 근거, 7단 96등 240kW 사이징, 유리 열응력 한계, 배치도와 정면도, DG-HK60C 및 2라인 복제와의 비교.">
+  <title>DG-HK120C 검토서 · 1챔버 2분리셀</title>
+  <meta name="description" content="단일 분리 셀(계단 칼날)의 79장/h 천장을 넘기 위한 병렬 구성 검토. 병목만 두 벌 놓고 가열실은 한 벌로 두는 근거, 7단 96등 240kW 사이징, 유리 열응력 한계, 배치도와 정면도, DG-HK60C 및 2라인 복제와의 비교.">
   <style>
   /* ===========================================================================
      DG-HK120C 병렬 구성 검토서.
@@ -215,8 +215,8 @@
   </div>
 
   <div class="doc-kind">설계 검토서 · 처리량 확장<em>CONCEPT · 발주 문서 아님</em></div>
-  <h1>DG-HK120C<br>1 챔버 · 2 탠덤 셀 병렬 구성 검토</h1>
-  <p class="subtitle">단일 탠덤 셀에는 넘을 수 없는 처리량 천장이 있다. 그 천장을 넘으려면
+  <h1>DG-HK120C<br>1 챔버 · 2 분리 셀 병렬 구성 검토</h1>
+  <p class="subtitle">단일 분리 셀에는 넘을 수 없는 처리량 천장이 있다. 그 천장을 넘으려면
     박리 스테이션을 하나 더 놓아야 한다 — 그런데 <strong>라인 전체를 두 벌 놓을 필요는 없다</strong>.
     이 검토서는 무엇을 두 벌 놓고 무엇을 한 벌로 두어야 하는지, 그 근거와 대가를 적는다.</p>
 
@@ -256,7 +256,7 @@
       <span class="m" id="panelLText">—</span> 를 <span class="m">55 mm/s</span> 로 지나는
       <span class="m" id="peelOnlyText">—</span> 는 남는다.</p>
     <div class="logic" id="ceilingLogic"></div>
-    <p>곧 <strong>탠덤 셀 하나의 절대 상한은 <span id="ceilRate" class="m">—</span> 장/h</strong> 이다.
+    <p>곧 <strong>분리 셀 하나의 절대 상한은 <span id="ceilRate" class="m">—</span> 장/h</strong> 이다.
       캐리어를 더 가속해도, 고정동작을 없애도, 복귀를 더 빠르게 해도 넘지 못한다.
       박리속도를 올리는 것만이 남는데 그것은
       <a href="dg-hk60-rfq.html#c11">OI-01 · OI-06</a> 이 닫히기 전에는 쓸 수 없다.</p>
@@ -264,8 +264,8 @@
       계약 보증은 <span class="m" id="contractText">—</span> 이고 DG-HK60C 가
       <span class="m" id="hk60RateText">—</span> 를 낸다. 발주처 요구가 <strong>두 배</strong>로
       바뀌는 경우에만 의미가 있는 별건 검토다.</div>
-    <div class="good"><strong>채택 방침 — 표준은 단일 탠덤이다.</strong>
-      Dynamic Industry 의 납품 표준안은 <strong>DG-HK60C 단일 탠덤</strong>이고,
+    <div class="good"><strong>채택 방침 — 표준은 단일 셀이다.</strong>
+      Dynamic Industry 의 납품 표준안은 <strong>DG-HK60C 단일 셀</strong>(계단 칼날 한 자루)이고,
       이 병렬 구성은 <strong>확장 옵션으로 설계에 나란히 보존</strong>한다.
       두 구조는 스테이션 사슬·전장·상태머신을 공유하므로 한 벌의 설계로
       둘 다 유지된다 — 3D 콘솔에서 같은 화면의 배치 버튼으로 오간다.
@@ -275,7 +275,7 @@
 
   <div class="clause"><div class="n">1.2</div><div class="c">
     <h3>열은 병목이 아니다</h3>
-    <p>가열실은 <span class="m" id="hk60ThermalText">—</span> 를 내므로 이미 탠덤보다 위다
+    <p>가열실은 <span class="m" id="hk60ThermalText">—</span> 를 내므로 이미 칼날 셀보다 위다
       (여유 <span class="m" data-ref-margin>—</span>). 그러므로 <strong>천장을 만드는 것은
       가열이 아니라 박리 하나</strong>이고, 병렬로 놓아야 하는 것도 그 하나다.</p>
   </div></div>
@@ -430,7 +430,7 @@
       위 칸은 <strong>추락 위험작업</strong>으로 분류가 바뀐다. 아래 셀의 정비 중
       위 셀을 돌릴 수 있는가 하는 문제도 새로 생긴다.</p>
     <p>수평은 그 전부를 만들지 않는다. 두 셀이 <strong>같은 바닥기준면</strong>에
-      서므로 VT-101·KG-101·KC 교환점의 높이가 단일 탠덤과 한 치도 다르지 않고,
+      서므로 VT-101·KG-101·KC 교환점의 높이가 단일 셀과 한 치도 다르지 않고,
       DG-HK60C 를 다룬 손이 그대로 이 라인을 다룬다. 중앙 통로 하나로 두 셀의
       진공테이블과 나이프 슬라이드를 함께 본다 (<a href="#c4">4.3</a>).</p>
     <div class="good"><strong>대가는 면적이고, 그 대가를 치른다.</strong>
@@ -463,7 +463,7 @@
 
   <div class="clause"><div class="n">6.1</div><div class="c">
     <h3>셀 하나가 서도 계약 처리량이 나온다</h3>
-    <p>단일 라인은 탠덤이 서면 라인이 선다. 칼날 교환·클램프 고장·서보 알람 —
+    <p>단일 라인은 칼날 셀이 서면 라인이 선다. 칼날 교환·클램프 고장·서보 알람 —
       원인이 무엇이든 그 시간은 생산이 0 이다. 두 셀이면 <strong>남은 한 셀이
       <span id="degraded" class="m">—</span> 장/h 를 낸다</strong>.</p>
     <div class="logic" id="redundancyLogic"></div>
@@ -533,8 +533,8 @@
     arealCp:8.7358962,             // kJ/(m²·K)
     panelL:2.500,panelW:1.400,     // m — 포락선 (상류 프레임 포함 외형 상한 · 투입은 라미네이트)
     peelSpeed:55,                  // mm/s — 생산보증
-    knifePitch:300,rapid:300,rapidSpeed:200,handling:3,
-    cellCycle:55.4091,             // s — 이동 나이프 1셀 (콘솔 knifeCycle)
+    knifeDepth:240,rapid:300,rapidSpeed:200,handling:3,   // 계단 깊이 240 = 단 80 × 3 (콘솔 KNIFE_DEPTH)
+    cellCycle:54.3182,             // s — 이동 계단 칼날 1셀 (콘솔 knifeCycle)
     cells:2,
     lampKW:2.5,eta:.65,
     fdm:113.15,                    // s — 1D-FDM 계면 도달 하한
@@ -543,8 +543,8 @@
     glass:{massCp:8.0*0.75,k:1.0,t:3.2e-3,E:73e9,alpha:9e-6,nu:.23,allow:7.0},
     cool:{tin:140,tout:60,tamb:25,h:25,mass:8.0,cp:0.75},
     deckZ0:.82,deckDz:.62,roofUp:1.03,          // 챔버 껍데기 — 콘솔 HC_Z0/HC_DZ
-    hk60:{decks:5,lamps:48,margin:18.6,roof:.82+.62*5+1.03,rate:58.5,thermal:79.9,
-          length:19.26,width:8.30,cells:1}
+    hk60:{decks:5,lamps:48,margin:17.0,roof:.82+.62*5+1.03,rate:59.6,thermal:79.9,
+          length:19.26,width:8.16,cells:1}
   };
   const takt=M.cellCycle/M.cells;
   const nominal=3600/takt, net=nominal*M.availability;
@@ -594,10 +594,10 @@
      통로는 둘 중 큰 쪽이다. ② 를 빠뜨리면 방출 문형과 셀 기둥이 겹친 채
      도면이 나가고, 그 겹침은 제작 단계에서야 드러난다.
      값은 콘솔 압축 배치의 파생치와 같다 — 갠트리 y = 캐리어 반폭 + 640,
-     카세트 = 패널 폭 + 240, 문형 반폭 = 캐리어 반폭 + 340, 카트 = 패널 + 여유. */
-  const GEO={len:M.hk60.length,gantryY:1.52,cassette:1.64,aisle:0,celly:0,
+     카세트 = 계단 칼날 전폭 1,500, 문형 반폭 = 캐리어 반폭 + 340, 카트 = 패널 + 여유. */
+  const GEO={len:M.hk60.length,gantryY:1.52,cassette:1.50,aisle:0,celly:0,
     forkY:1.22,forkS:.15,gantryS:.17,gap:.10,
-    trough:[1.00,3.20],cartY:3.50,cartW:1.50,skin:2.65,fenceD:4.60,dlLen:3.90};
+    trough:[1.00,3.20],cartY:3.50,cartW:1.50,skin:2.51,fenceD:4.60,dlLen:3.90};
   GEO.aisleCass=GEO.cassette+2*.18;
   GEO.aisleFork=2*(GEO.forkY+GEO.forkS/2+GEO.gantryS/2+GEO.gap);
   GEO.aisle=Math.max(GEO.aisleCass,GEO.aisleFork);
@@ -634,7 +634,7 @@
   setHTML('dupRows',[
     ['LD-101 투입 셔틀','1','택트 '+n1(takt)+' s 에 1장 — 셔틀 하나로 충분하다'],
     ['HC-101 가열실','1','피치는 Q÷유효출력이라 대수와 무관하다 (2.1)'],
-    ['DL-101 탠덤 셀','2','<strong>여기가 병목이다</strong> — 셀 하나의 상한 '+n1(ceilRate)+' 장/h'],
+    ['DL-101 분리 셀','2','<strong>여기가 병목이다</strong> — 셀 하나의 상한 '+n1(ceilRate)+' 장/h'],
     ['GC-101 냉각 랙','1','필요 '+coolDecks+'단 · 가열실과 공용 '+pick.decks+'단 — 길이는 그대로'],
     ['UL-101 반출 셔틀','1','검사·반출은 택트에 여유가 있다'],
     ['WR 권취 · KC 매거진','2','셀마다 웹과 칼날이 따로 생긴다'],
@@ -702,7 +702,7 @@
   const rows=[
     ['명목 처리량',n1(M.hk60.rate/M.availability)+' 장/h',n1(nominal)+' 장/h',n1(nominal)+' 장/h'],
     ['90 % 순생산',n1(M.hk60.rate)+' 장/h',n1(net)+' 장/h',n1(net)+' 장/h'],
-    ['탠덤 셀','1','2','2'],
+    ['분리 셀 (계단 칼날)','1','2','2'],
     ['가열실','1기 · '+M.hk60.decks+'단','2기 · '+M.hk60.decks+'단','<strong>1기 · '+pick.decks+'단</strong>'],
     ['IR 설치',n1(M.hk60.lamps*M.lampKW)+' kW',n1(2*M.hk60.lamps*M.lampKW)+' kW',n1(pick.kW)+' kW'],
     ['챔버 지붕',mm(M.hk60.roof)+' mm',mm(M.hk60.roof)+' mm',mm(pick.roof)+' mm'],

@@ -55,7 +55,7 @@ class TestTheCalculatorClosesTheDesign(unittest.TestCase):
                                  f"{x['id']} {x['gov']} 이용률 {x['util']:.2f}")
 
     def test_the_slip_critical_joint_does_not_slip(self):
-        """J3 이 미끄러지면 칼끝 간격 300±2 가 깨진다."""
+        """J3 이 미끄러지면 칼날이 수평면에서 돌아 좌·우 계단의 선후가 어긋난다."""
         slip = [j for j in F.JOINTS if j["slip"]]
         self.assertTrue(slip, "마찰접합으로 잡은 접합이 하나도 없다")
         for j in slip:
@@ -76,9 +76,14 @@ class TestTheCalculatorClosesTheDesign(unittest.TestCase):
             F.W_PANEL, c("MASS_AREAL") * c("PANEL_L") * c("PANEL_W") * F.G / 1000, places=9)
         self.assertAlmostEqual(
             F.W_GLASS, c("MASS_GLASS") * c("PANEL_L") * c("PANEL_W") * F.G / 1000, places=9)
-        turn = F.PANEL_L * F.c("BACKSHEET_T") / math.pi
-        self.assertEqual(F.ROLL_PANELS, round((0.30 ** 2 - 0.15 ** 2) / turn),
-                         "롤당 장수가 면적보존에서 나오지 않는다")
+        # 카세트는 계단 칼날의 홀더 길이 합에서 나온다 — 전폭(1,500)이 아니라 1,590
+        self.assertAlmostEqual(F.W_CASS, c("CASS_MASS") * F.G / 1000, places=9)
+        self.assertAlmostEqual(c("CASS_L"), c("KNIFE_BLADE_L"), places=9,
+                               msg="카세트 길이가 계단 칼날 홀더 합이 아니다")
+        # RH-201 이 드는 것은 카세트 + 인양 프레임뿐이다 — 권취부가 철거돼 만권 롤이 없다
+        self.assertAlmostEqual(F.W_LIFT, (c("CASS_MASS") + F.LIFT_FRAME_KG) * F.G / 1000, places=9)
+        for gone in ("ROLL_PANELS", "W_ROLL", "M_WINDER", "WR_TURN"):
+            self.assertFalse(hasattr(F, gone), f"철거한 권취부의 {gone} 가 계산기에 남아 있다")
         src = (ROOT / "tools" / "fab_spec.py").read_text(encoding="utf-8")
         self.assertIn("import console_consts", src, "계산기가 콘솔 상수를 읽지 않는다")
 
@@ -181,7 +186,7 @@ class TestTheSpecificationSaysWhatTheCalculatorComputed(unittest.TestCase):
             self.assertAlmostEqual(lub, F.torque(size, grade, F.K_LUB), delta=1.0)
 
     def test_the_joint_table_matches(self):
-        rows = [r for r in _cells(self.html, "접합부 12개소") if len(r) >= 10]
+        rows = [r for r in _cells(self.html, "접합부 11개소") if len(r) >= 10]
         self.assertEqual(len(rows), len(F.JOINTS), "접합부 수가 계산기와 다르다")
         by_id = {j["id"]: j for j in F.JOINTS}
         for r in rows:
@@ -213,6 +218,7 @@ class TestTheSpecificationSaysWhatTheCalculatorComputed(unittest.TestCase):
         for r, (name, force, length, mat, t) in zip(rows, F.WELDS):
             self.assertEqual(r[0], name)
             self.assertAlmostEqual(float(r[1]), force, delta=0.05, msg=name)
+            self.assertEqual(r[2], f"{length:,.0f}", f"{name} 용접장")
             z, why = F.fillet_leg(force, length, mat if mat in F.MATERIALS else "SS400", t_mm=t)
             self.assertEqual(r[5], f"z{z:.0f}", f"{name} 각장")
             self.assertEqual(r[6], why, f"{name} 각장 근거")
@@ -295,19 +301,24 @@ class TestTheSpecificationCarriesTheDecisions(unittest.TestCase):
         쓴다. 이 시험이 지키는 것은 그 연결이다: 계산기가 카탈로그에서
         자중을 가져오고, 문서의 하중표가 그 값을 그대로 적어야 한다.
 
-        누가 다시 상수로 되돌려 적으면 (예: M_WINDER = 620) 여기서 걸린다.
+        권취 문형은 계단 칼날 전환(9/24)으로 철거돼 이제 셋이다. 철거한
+        권취부의 자중 행이 하중표에 남아 있으면 앵커가 없는 기초를 설계한다.
+
+        누가 다시 상수로 되돌려 적으면 (예: M_TABLE = 900) 여기서 걸린다.
         """
         import parts
 
-        for sym in ("M_CHAMBER", "M_GANTRY", "M_TABLE", "M_WINDER"):
+        for sym in ("M_CHAMBER", "M_GANTRY", "M_TABLE"):
             self.assertAlmostEqual(
                 getattr(F, sym), parts.mass(sym), delta=0.5,
                 msg=f"{sym} 가 부품 카탈로그의 계산값이 아니다 — 상수로 되돌아갔다")
 
         load = self.html[self.html.index("설계하중 — 특성값과 설계값"):
                          self.html.index("피로 하중 반복수")]
+        self.assertNotIn("권취부 자중", load, "철거한 권취부의 자중 행이 하중표에 남아 있다")
+        self.assertIn("M_WINDER", parts.MASS_CONCEPT_RETIRED, "권취 문형 개산이 빗나간 기록이 사라졌다")
         for sym, th in (("M_CHAMBER", "HC-101 가열실 자중"), ("M_GANTRY", "KG-101 갠트리 자중"),
-                        ("M_TABLE", "VT-101 테이블 자중"), ("M_WINDER", "WR-101 권취부 자중")):
+                        ("M_TABLE", "VT-101 테이블 자중")):
             m = getattr(F, sym)
             self.assertIn(th, load, f"하중표에 {th} 행이 없다")
             self.assertIn(f"{F.kn(m):.1f} kN", load, f"{th} 특성값이 계산과 다르다")
@@ -343,10 +354,30 @@ class TestTheSpecificationCarriesTheDecisions(unittest.TestCase):
         self.assertIn("최소 규격", self.html)
 
     def test_it_names_the_stiffness_number_that_sets_the_crossbeam(self):
+        """크로스빔은 계단을 지킨다 — 휨 전부가 좌우 차이로 나타나도 계단 공차 안.
+
+        탠덤 시절에는 칼끝 간격 300 ± 2 의 1/4 이었다. 계단 칼날은 한 자루라
+        간격이 없고, 휨이 칼날을 돌리면 좌·우 거울 계단의 선후가 어긋난다.
+        """
         c1 = next(x for x in F.CRITICAL if x["id"] == "C1")
-        self.assertIn("300 ± 2 mm", self.html, "칼끝 간격 공차가 문서에 없다")
+        rise = F.c("KNIFE_RISE") * 1000
+        self.assertIn(f"{rise:.0f} ± 0.5 mm", self.html, "계단 높이 공차가 문서에 없다")
+        self.assertIn(f"계단 {rise:.0f}±0.5", c1["gov"], "C1 이 계단 공차를 대지 않는다")
         self.assertAlmostEqual(c1["limit"], 0.50, places=9,
-                               msg="처짐 한계가 공차의 1/4 이 아니다")
+                               msg="처짐 한계가 계단 공차 ±0.5 가 아니다")
+        self.assertIn("± 0.05 mm", self.html, "일곱 칼끝 높이 공차가 문서에 없다")
+        self.assertNotIn("300 ± 2 mm", self.html, "탠덤의 칼끝 간격 공차가 남아 있다")
+
+    def test_the_retired_ids_stay_retired(self):
+        """권취부와 함께 없어진 번호는 당기지 않는다 — 견적·도면이 뒤 번호를 그 이름으로 부른다."""
+        self.assertNotIn("J8", [j["id"] for j in F.JOINTS])
+        self.assertNotIn("C5", [x["id"] for x in F.CRITICAL])
+        ids = [a["id"] for a in F.ANCHORS]
+        for gone in ("A9", "A12"):
+            self.assertNotIn(gone, ids)
+        self.assertIn("A13", ids, "KC-301 카세트 새들 기초가 없다")
+        for no in ("J8 은 결번", "C5 는 결번"):
+            self.assertIn(no, self.html, f"'{no}' — 빠진 번호의 사유가 문서에 없다")
 
     def test_it_gives_the_assembly_order_and_says_why(self):
         self.assertIn("주행레일 문형(4)을 테이블(5)보다 먼저 세운다", self.html)

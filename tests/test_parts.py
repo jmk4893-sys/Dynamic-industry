@@ -181,7 +181,13 @@ class TestTheCatalogueFeedsTheSpecification(unittest.TestCase):
         self.assertEqual(set(PT.MASS_CONCEPT), {s for s, _w, _p in PT.MASS_GROUPS})
         off = [s for s, _w, _a, _g, _d, ok in PT.mass_check() if not ok]
         self.assertTrue(off, "개산이 전부 맞았다면 이 기록을 둘 이유가 없다")
-        self.assertIn("M_WINDER", off, "권취 문형 개산이 빗나간 기록이 사라졌다")
+        # 권취 문형(+61 %)은 가장 크게 빗나간 개산이었다. 계단 칼날 전환으로 권취부가
+        # 철거돼 대조 그룹에서는 빠졌지만 기록은 남는다 — 지우면 '왜 형상이 필요한가' 의
+        # 가장 좋은 예가 사라진다.
+        self.assertIn("M_WINDER", PT.MASS_CONCEPT_RETIRED, "권취 문형 개산이 빗나간 기록이 사라졌다")
+        est, got, why = PT.MASS_CONCEPT_RETIRED["M_WINDER"]
+        self.assertGreater(abs(got - est) / est, 0.30, "철거 기록이 빗나간 크기를 잃었다")
+        self.assertIn("철거", why)
 
     def test_the_mass_groups_do_not_double_count(self):
         """같은 부품을 두 그룹이 세면 자중이 부풀고 앵커가 과대해진다."""

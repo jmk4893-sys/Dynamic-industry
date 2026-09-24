@@ -31,15 +31,16 @@ DEFAULT = obj("MODEL_DEFAULT")
 RANGE = obj("MODEL_RANGE")
 
 
-def model(v: dict | None = None, knife_pitch: float | None = None, **over) -> dict:
-    """콘솔 thermalModel(v) — 입력 한 벌에서 열수지·탠덤·나이프 사이클을 낸다.
+def model(v: dict | None = None, knife_depth: float | None = None, **over) -> dict:
+    """콘솔 thermalModel(v) — 입력 한 벌에서 열수지·칼날·라인 사이클을 낸다.
 
-    knife_pitch 는 칼끝 간격(mm)을 콘솔 MODEL 의 300 대신 넣을 때 쓴다 —
-    단일 셰브론 칼날(knife_chevron.py)은 칼끝 간격 대신 셰브론 깊이가 그 자리에
-    들어간다. 안 주면 콘솔과 같은 식·같은 값이다 (tests/test_cycle.py 가 대조).
+    knife_depth 는 계단 깊이(mm, 첫 칼끝에서 마지막 칼끝까지)를 콘솔 MODEL 의
+    값(KNIFE_DEPTH · 240) 대신 넣을 때 쓴다 — 단높이·단수를 바꿔 보는 계산기
+    (knife_stepped.py)가 쓴다. 안 주면 콘솔과 같은 식·같은 값이다
+    (tests/test_cycle.py 가 대조).
     """
     v = {**DEFAULT, **(v or {}), **over}
-    m = MODEL if knife_pitch is None else {**MODEL, "knifePitch": knife_pitch}
+    m = MODEL if knife_depth is None else {**MODEL, "knifeDepth": knife_depth}
     q = v["panelLength"] * v["panelWidth"] / 1e6 * m["arealCp"] * m["dT"]     # kJ/장
     rated = m["lamps"] * v["lampPower"]
     eta = v["heatEfficiency"] / 100
@@ -48,10 +49,10 @@ def model(v: dict | None = None, knife_pitch: float | None = None, **over) -> di
     pitch = dwell / m["decks"]
     thermal_rate = 3600 / pitch
     handling = m["rapidDistance"] / v["rapidSpeed"] + v["handlingTime"]
-    lead = m["knifePitch"] / v["knifeSpeed"]
-    tandem = lead + v["panelLength"] / v["knifeSpeed"] + handling
-    line_cycle = max(pitch, tandem)
-    ret_dist = m["knifePitch"] + v["panelLength"]
+    lead = m["knifeDepth"] / v["knifeSpeed"]
+    carrier = lead + v["panelLength"] / v["knifeSpeed"] + handling
+    line_cycle = max(pitch, carrier)
+    ret_dist = m["knifeDepth"] + v["panelLength"]
     ret_time = ret_dist / v["knifeReturnSpeed"]
     peel = v["panelLength"] / v["knifeSpeed"]
     knife = lead + peel + max(handling, ret_time)
@@ -63,15 +64,15 @@ def model(v: dict | None = None, knife_pitch: float | None = None, **over) -> di
     return dict(
         q=q, rated=rated, eta=eta, useful=useful, dwell=dwell, pitch=pitch,
         thermalRate=thermal_rate, handling=handling, leadTime=lead, peelTime=peel,
-        tandemCycle=tandem, tandemRate=3600 / tandem,
+        carrierCycle=carrier, carrierRate=3600 / carrier,
         lineCycle=line_cycle, lineRate=3600 / line_cycle,
         energyPerPanel=energy, returnDistance=ret_dist, returnTime=ret_time,
         knifeCycle=knife, knifeRate=3600 / knife,
         targetCycle=target_cycle, returnSpeedFloor=floor,
         knifeLineCycle=kl_cycle, knifeLineRate=3600 / kl_cycle,
         averagePower=energy * 3600 / line_cycle,
-        bottleneck=(f"{m['decks']}단 IR 열공정" if thermal_rate < 3600 / tandem
-                    else "고정 탠덤·캐리어 이송"),
+        bottleneck=(f"{m['decks']}단 IR 열공정" if thermal_rate < 3600 / carrier
+                    else "계단 칼날 박리·이송"),
     )
 
 

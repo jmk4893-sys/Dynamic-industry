@@ -27,7 +27,7 @@ import cycle as CY  # noqa: E402
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
 KEYS = ("q", "rated", "eta", "useful", "dwell", "pitch", "thermalRate", "handling",
-        "leadTime", "peelTime", "tandemCycle", "tandemRate", "lineCycle", "lineRate",
+        "leadTime", "peelTime", "carrierCycle", "carrierRate", "lineCycle", "lineRate",
         "energyPerPanel", "returnDistance", "returnTime", "knifeCycle", "knifeRate",
         "targetCycle", "returnSpeedFloor", "knifeLineCycle", "knifeLineRate", "averagePower")
 
@@ -83,9 +83,19 @@ class TestTheMirrorIsTheConsole(unittest.TestCase):
 
     def test_the_contract_sits_just_under_the_model(self):
         """계약 58 장/h 는 기준 패널에서 모델이 내는 순생산 바로 아래여야 한다 —
-        위면 지킬 수 없고, 한참 아래면 팔 수 있는 것을 안 판 것이다."""
+        위면 지킬 수 없고, 한참 아래면 팔 수 있는 것을 안 판 것이다.
+
+        계단 칼날로 순생산이 59.6 이 되었지만 계약은 58 로 둔다. 셀모듈과 백시트를
+        유리 계면 하나에서 함께 드는 박리력(OI-01)을 아직 재지 않았고, 그 여유
+        1.6 장/h 는 박리속도를 53.4 mm/s 까지 내려도 계약을 지키는 몫이다. 여유가
+        2 장/h 를 넘으면 그때는 계약을 다시 보자는 신호다."""
         self.assertLessEqual(CY.NET_TARGET, CY.RATE_NET)
-        self.assertGreater(CY.NET_TARGET, CY.RATE_NET - 1.0)
+        self.assertGreater(CY.NET_TARGET, CY.RATE_NET - 2.0)
+
+    def test_the_contract_survives_a_slower_knife(self):
+        """계약을 지키는 가장 느린 박리속도 — 박리력이 높게 나와 속도를 내려야 할 때의 바닥."""
+        slow = CY.model(knifeSpeed=53.4)
+        self.assertGreaterEqual(slow["knifeLineRate"] * CY.AVAILABILITY, CY.NET_TARGET)
 
     def test_the_tools_read_the_mirror_not_typed_numbers(self):
         """도구가 택트를 값으로 들면 다음 패널 변경에서 또 갈라진다."""

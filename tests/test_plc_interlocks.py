@@ -70,11 +70,11 @@ class TestInterlockModelRuns(unittest.TestCase):
             bom |= set(re.findall(r"[`']([^`']+)[`']", m.group(1)))
         # 백시트 끝단 비전은 여기 있었다. 폐기된 REV.05 문장에만 이름이 남아
         # 장치 대조를 통과하고 있었고, 그래서 구매 품목 요구도 면제돼 있었다.
-        # 이제 GR-W1 상부에 실제로 세웠으므로 예외가 아니다.
+        # 그 뒤 GR-W1 상부에 세웠다가, 계단 칼날 전환(9/24)으로 권취부와 함께
+        # 없어졌다 — HKB/HKS Z축 · 분할클램프 · 토크서보도 같은 날 면제에서 빠졌다.
         soft = {"전력품질계", "PLC-101반", "접지바", "SPD Type1+2",
                 "UPS-101", "24VDC PSU A/B",
-                "절대치 엔코더", "HKB Z축 서보슬라이드", "HKS Z축 서보슬라이드",
-                "분할클램프×4", "체크밸브×6", "토크서보·직경센서",
+                "절대치 엔코더", "체크밸브×6",
                 "TS-101 2단 포크", "서보모터·감속기", "IE4 기어모터", "VFD 기어모터",
                 "RJ 횡셔틀", "진공펌프 A/B"}
         need = {l.device for l in self.m.LEAVES} | {d.device for d in self.m.DRIVES}
@@ -141,8 +141,11 @@ class TestInterlockModelRuns(unittest.TestCase):
         """구동부에 안전정지 수단이 없으면 트립이 걸려도 축은 돈다."""
         no_stop = [d.tag for d in self.m.DRIVES if not d.stop]
         self.assertEqual(no_stop, [], f"안전정지 수단 없는 구동부: {no_stop}")
+        # 권취 토크서보(SV-501)는 계단 칼날 전환으로 권취부와 함께 빠졌다 — 7 → 6.
+        # Z축은 칼날 한 자루를 좌·우 두 조가 들어 수가 그대로다.
         servos = [d for d in self.m.DRIVES if d.tag.startswith("SV-")]
-        self.assertGreaterEqual(len(servos), 7, "서보축 수가 줄었다")
+        self.assertGreaterEqual(len(servos), 6, "서보축 수가 줄었다")
+        self.assertNotIn("SV-501", [d.tag for d in servos], "철거한 권취 토크서보가 남아 있다")
         for d in servos:
             self.assertIn("STO", d.stop, f"{d.tag} 서보에 STO 가 없다")
 
@@ -239,10 +242,19 @@ class TestSignalsFoundByRunningIt(unittest.TestCase):
             bom |= set(re.findall(r"[`']([^`']+)[`']", m.group(1)))
         return bom
 
-    def test_web_tension_load_cell_is_back(self):
-        """MOTION_TRIP 의 WEB_TENSION_HIGH 를 만드는 장치. 개정 중에 목록에서 빠졌었다."""
-        self.assertIn("장력 로드셀", self._bom(),
-                      "권취부 장력 로드셀이 제작도 목록에서 빠졌다 — WEB_TENSION_HIGH 가 죽는다")
+    def test_the_knife_tip_is_measured_by_a_purchasable_sensor(self):
+        """CASSETTE_READY 의 KNIFE_TIP_OK 를 만드는 장치 — 종전 KNIFE_GAP_OK 의 레이저 자리.
+
+        계단 칼날은 간격이 아니라 일곱 칼끝의 높이와 계단을 잰다. 장치가 목록에
+        없으면 교환 뒤 확인 없이 절입한다.
+        """
+        self.assertIn("칼끝 높이 레이저 변위센서", self._bom(),
+                      "칼끝 높이 레이저가 제작도 목록에 없다 — KNIFE_TIP_OK 가 죽는다")
+        d = {x.name: x for x in self.m.DERIVED}
+        self.assertIn("KNIFE_TIP_OK", d["CASSETTE_READY"].terms)
+        for gone in ("WEB_TENSION_HIGH", "WEB_TENSION_OK", "ROLL_HANDOFF", "KNIFE_GAP_OK"):
+            self.assertNotIn(gone, {l.name for l in self.m.LEAVES} | set(d),
+                             f"철거한 권취·탠덤 신호 {gone} 가 모델에 남아 있다")
 
     def test_hard_trip_inputs_exist(self):
         """IR_HARD_TRIP 은 소프트웨어와 무관한 하드와이어 경로다."""
@@ -264,10 +276,11 @@ class TestSignalsFoundByRunningIt(unittest.TestCase):
                                              "_HOME", "OUT", "READY"))}
         missing = sorted(d for d in want if d not in bom)
         self.assertEqual(missing, [], f"위치확인 장치가 목록에 없다: {missing}")
-        # 그 가운데 이 넷은 압축 배치에서도 반드시 살아 있어야 한다
+        # 그 가운데 이 셋은 압축 배치에서도 반드시 살아 있어야 한다 (롤 반출·BS-301 새들은
+        # 권취부와 함께 빠졌다)
         decks = int(self.m.DECKS)
-        for part in (f"에어록 단별 셔터 위치센서×{decks*4}", "롤 반출 위치센서×2",
-                     "BS-301 새들 존재센서×2", "칼날 Z축 상하한센서×4"):
+        for part in (f"에어록 단별 셔터 위치센서×{decks*4}", "VT-101 착좌 존재센서×2",
+                     "칼날 Z축 상하한센서×4"):
             self.assertIn(part, bom, f"위치확인 장치 {part} 가 없다")
 
     def test_path_clear_photocells_exist(self):

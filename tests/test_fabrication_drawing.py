@@ -276,13 +276,14 @@ class TestTheCoolerSheetDefinesOnlyTheDifference(unittest.TestCase):
             self.assertNotIn(bad, self.body, f"F-007 이 활성 배치({bad})를 읽는다")
 
 
-class TestTheWinderSheetShowsBothJourneys(unittest.TestCase):
-    """M-006 은 도면이 두 장면을 함께 담아야 한다.
+class TestTheCassetteSheetShowsTheJourneyThatIsLeft(unittest.TestCase):
+    """M-006 은 권취부가 빠진 뒤 모노레일에 남은 일 하나를 그린다.
 
-    하나는 필름이 지나가는 길(박리점 → GR-W1 → 아이들러 → DN-101 → 드럼)이고,
-    다른 하나는 다 감긴 357 kg 롤이 나가는 길(RH-201 → 방책 밖 BS-301)이다.
-    둘째가 없으면 무인 운전이 4.9시간마다 끊긴다 — 보관대가 방책 안이면
-    사람이 그 주기로 들어가야 하기 때문이다.
+    종전 이 시트는 두 장면을 함께 담았다 — 필름이 지나가는 길(박리점 → GR-W1
+    → 아이들러 → DN-101 → 드럼)과 다 감긴 롤이 나가는 길(RH-201 → 방책 밖
+    BS-301). 계단 칼날이 셀모듈과 백시트를 한 장으로 떼면서 첫째는 통째로
+    없어졌다. 둘째는 남는다 — 짐이 롤에서 200°C 를 지난 칼날 카세트로 바뀌었을
+    뿐이다. 그 길이 도면에 없으면 사람이 방책 안에서 뜨거운 카세트를 만진다.
     """
 
     @classmethod
@@ -290,9 +291,10 @@ class TestTheWinderSheetShowsBothJourneys(unittest.TestCase):
         cls.src = CONSOLE.read_text(encoding="utf-8")
         cls.body = _fn(cls.src, "winderFabDrawing")
         cls.flat = cls.body.replace(" ", "")
+        cls.bare = re.sub(r"//[^\n]*|/\*.*?\*/", "", cls.body, flags=re.S)
 
     def test_the_sheet_is_reachable(self):
-        self.assertIn('data-drawing="winder"', self.src, "탭이 없다")
+        self.assertIn('data-drawing="winder">카세트 반출 제작도', self.src, "탭이 없다")
         self.assertIn("drawingTab==='winder')drawingContent.innerHTML=winderFabDrawing()",
                       self.src, "탭이 시트를 그리지 않는다")
 
@@ -303,47 +305,51 @@ class TestTheWinderSheetShowsBothJourneys(unittest.TestCase):
                            ("no:'F-006'", "도면번호가 없다")):
             self.assertTrue(token in self.body, why)
 
-    def test_both_journeys_are_drawn(self):
-        """웹 경로만 그리면 롤이 어떻게 나가는지가 도면에 없다."""
-        for part in ("CID_X", "CDN_X", "CDRUM", "WR_CORE_R", "WR_FULL_R"):
-            self.assertIn(part, self.body, f"웹 경로에 {part} 가 없다")
-        for part in ("RH_Y0", "CKC_RACK_Y", "BS_SADDLE", "CFENCE_YN"):
-            self.assertIn(part, self.body, f"반출 경로에 {part} 가 없다")
-        self.assertIn("롤 반출 단면 B-B", self.body, "반출 단면이 없다")
+    def test_the_cassette_route_is_drawn(self):
+        """매거진에서 방책 위를 넘어 KC-301 까지 — 좌표가 배치 상수에서 나와야 한다."""
+        for part in ("RH_Y0", "RH_Y1", "CKC_Y", "CKC_Z", "CKC_RACK_Y", "CKC_SADDLE", "CFENCE_YN"):
+            self.assertIn(part, self.bare, f"반출 경로에 {part} 가 없다")
+        self.assertIn("카세트 반출 단면 B-B", self.body, "반출 단면이 없다")
         # 그리기만 하고 시트에 붙이지 않으면 도면에는 없는 것과 같다
         self.assertIn("+ route + seq + tbl", self.body,
                       "반출 단면이 시트에 조립되지 않는다")
 
-    def test_the_roll_mass_and_interval_are_derived(self):
-        """357 kg 도 4.9시간도 백시트 두께와 순생산에서 나온다."""
-        self.assertIn("ROLL_MASS", self.body, "롤 질량이 유도되지 않는다")
-        self.assertIn("ROLL_FULL_PANELS", self.body, "롤당 장수가 유도되지 않는다")
-        self.assertIn("HRS=ROLL_FULL_PANELS/MODEL.netTarget", self.flat,
-                      "교체 주기가 롤당 장수 ÷ 순생산에서 나오지 않는다")
-        self.assertIn("ROLLKG=ROLL_MASS", self.flat,
-                      "롤 질량이 모델값에서 나오지 않는다")
-        self.assertIn("BACKSHEET_T", self.body, "백시트 두께가 근거로 적히지 않는다")
+    def test_the_winder_journey_is_gone(self):
+        """주석을 걷고 본다 — 이력으로 적힌 이름은 되지만 그려지는 형상은 안 된다."""
+        for gone in ("CID_X", "CDN_X", "CDRUM", "WR_CORE_R", "WR_FULL_R",
+                     "ROLL_MASS", "BS_SADDLE", "CDN_Z1"):
+            self.assertNotIn(gone, self.bare, f"철거한 권취 계통의 {gone} 가 시트에 남아 있다")
 
-    def test_the_sheet_says_the_drum_does_not_wind_during_peel(self):
-        """이 계통의 요지 — GR-W1 이 같이 가므로 웹 길이가 상쇄된다."""
-        self.assertIn("박리 중 드럼", self.body, "박리 중 권취 0 이 도면에 없다")
-        self.assertIn("상쇄", self.body)
-        self.assertIn("CDN_Z1-CDN_Z0", self.flat, "댄서 행정이 유도되지 않는다")
+    def test_the_lift_is_the_cassette_not_a_roll(self):
+        """인양 하중은 카세트 질량에서 나온다 — 롤을 지던 호이스트를 그대로 적으면 과대다."""
+        self.assertIn("LIFT=CASS_MASS+15", self.flat, "인양 하중이 카세트 질량에서 나오지 않는다")
+        self.assertIn("mass:`인양${LIFT}kg`", self.flat, "표제란 질량이 인양 하중이 아니다")
+        self.assertIn("정격 250 kg · 인양 ${LIFT} kg", self.body)
+        self.assertLessEqual(console_consts.const("CASS_MASS") + 15, 250,
+                             "카세트가 호이스트 정격을 넘는다")
 
-    def test_the_ejection_sequence_is_on_the_sheet(self):
-        """인터록이 잠그는 순서가 도면에 없으면 안전회로 시험에 근거가 없다."""
-        self.assertIn("const SEQ=[", self.body, "반출 순서가 없다")
-        self.assertIn("반출 순서", self.body)
-        self.assertGreaterEqual(self.body.count("','"), 6, "순서 단계가 모자란다")
+    def test_the_exchange_sequence_names_only_plc_signals(self):
+        """도면의 순서가 PLC 에 없는 신호를 부르면 안전회로 시험에 근거가 없다."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("plc_model_f006", ROOT / "tools" / "plc_model.py")
+        plc = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(plc)
+        names = {l.name for l in plc.LEAVES} | {d.name for d in plc.DERIVED}
+        seq = re.search(r"const SEQ=\[(.*?)\];", self.body, re.S)
+        self.assertIsNotNone(seq, "교환 순서가 없다")
+        sigs = re.findall(r"'([A-Z][A-Z0-9_]+)'\]", seq.group(1))
+        self.assertGreaterEqual(len(sigs), 6, "순서 단계가 모자란다")
+        for sig in sigs:
+            self.assertIn(sig, names, f"F-006 이 PLC 모델에 없는 {sig} 를 부른다")
 
-    def test_it_records_what_rev20_had_that_this_does_not(self):
-        """예비축·절단암·격리셔터·롤 포트·코너 승강대는 압축 배치에 없다."""
-        self.assertIn("예비 권취축", self.body, "Rev.20 과의 차이가 도면에 없다")
-        self.assertIn("단일 고정 드럼", self.body)
-        self.assertIn("단일 고정 드럼", self.src[self.src.index("no:'F-006'") - 4000:],
-                      "개정란·표제가 정정을 담지 않는다")
+    def test_it_records_what_was_removed(self):
+        """무엇을 뺐는지가 도면에 남아야 입찰자가 옛 도면을 들고 오지 않는다."""
+        self.assertIn("WR-101 · GR-W1 · DN-101", self.body, "철거 품목이 주기에 없다")
+        self.assertIn("A9 · A12", self.body, "결번이 된 기초가 주기에 없다")
+        self.assertIn("권취부 철거", self.body, "개정란이 철거를 기록하지 않는다")
+        self.assertIn("단일 고정 드럼", self.body, "개정 이력이 지워졌다")
 
-    def test_it_does_not_pretend_to_know_the_shaft(self):
+    def test_it_does_not_pretend_to_know_the_hoist(self):
         self.assertIn("정하지 않는 것", self.body)
         self.assertIn("Not For Construction", self.body)
 
@@ -422,14 +428,15 @@ class TestTheForkSheetIsOneDrawingForFour(unittest.TestCase):
             self.assertNotIn(bad, self.body, f"F-003 이 활성 배치({bad})를 읽는다")
 
 
-class TestTheTandemSheetSaysWhatMoves(unittest.TestCase):
+class TestTheKnifeCellSheetSaysWhatMoves(unittest.TestCase):
     """M-005 는 Rev.20 과 가장 크게 달라진 모듈이다.
 
     종전에는 칼날이 고정이고 패널이 11,200 mm 를 지나갔는데, 압축 배치는
     반대다 — 패널이 서고 칼날이 왕복한다. 모듈표가 오래도록 '고정 HKB/HKS
     탠덤 10,200 × 4,200' 을 부르고 있었으므로, 그 위에 제작도를 그렸다면
     반대로 움직이는 기계가 도면으로 굳었을 것이다. 이 시험이 보는 것은
-    그 방향이다.
+    그 방향이고, Rev.2 부터는 칼끝이 어떻게 서는가 — 칼날 한 자루의 계단 —
+    도 함께 본다.
     """
 
     @classmethod
@@ -455,23 +462,36 @@ class TestTheTandemSheetSaysWhatMoves(unittest.TestCase):
         self.assertIn("TRAV=mm(CRAIL_X1-CRAIL_X0)", self.flat,
                       "행정이 주행레일 좌표에서 나오지 않는다")
         self.assertIn("L=mm(g.w)", self.flat, "셀 길이가 스테이션 폭에서 나오지 않는다")
-        self.assertIn("GAP=mm(TANDEM_GAP)", self.flat, "칼끝 간격이 상수에서 나오지 않는다")
+        self.assertIn("STROKE=mm(CHKB_END-CHKB0)", self.flat,
+                      "박리 행정이 패널 앞끝·박리 종점에서 나오지 않는다")
         self.assertIn("constg=CST.DL", self.flat, "셀이 배치의 DL 스테이션이 아니다")
+
+    def test_the_tip_detail_is_drawn_from_the_knife_constants(self):
+        """계단 하나가 이 셀의 정밀치수다 — 단 높이·칼날 폭·깊이가 상수에서 나와야 한다."""
+        self.assertIn("for(const[y0,y1,d]ofKNIFE_SEGS)", self.flat,
+                      "칼끝 상세가 칼날 조각 표에서 그려지지 않는다")
+        for name in ("KNIFE_CENTER", "KNIFE_STEP_W", "KNIFE_RISE", "KNIFE_DEPTH", "KNIFE_W", "KNIFE_LAP"):
+            self.assertIn(name, self.body, f"칼끝 상세에 {name} 가 없다")
+        self.assertIn("String(mm(KNIFE_RISE)),'±0.5'", self.flat, "계단 높이에 공차가 없다")
+        self.assertNotIn("TANDEM_GAP", self.body, "탠덤 칼끝 간격이 남아 있다")
 
     def test_the_sheet_says_the_panel_stands_and_the_knife_moves(self):
         """도면이 방향을 밝히지 않으면 Rev.20 과 구별되지 않는다."""
         self.assertIn("칼날이 움직이고 패널은 선다", self.body,
                       "무엇이 움직이는지가 도면에 없다")
-        self.assertIn("이동 나이프 탠덤 셀", self.body, "표제가 아직 '고정 탠덤' 이다")
+        self.assertIn("title:'DL-101 이동 계단 칼날 셀'", self.body, "표제가 계단 칼날 셀이 아니다")
         self.assertNotIn("고정 HKB/HKS 탠덤", self.body,
                          "Rev.20 의 이름이 시트에 남아 있다")
-        # 개정란이 그 정정을 기록해야 한다
+        self.assertNotIn("나이프 탠덤 셀", self.body, "Rev.1 의 이름이 시트에 남아 있다")
+        # 개정란이 두 정정을 다 기록해야 한다
         self.assertIn("이동 나이프로 정정", self.body, "개정 이력에 정정이 없다")
+        self.assertIn("계단 칼날 한 자루 — 탠덤·GR-W1 철거", self.body,
+                      "개정 이력에 계단 칼날 전환이 없다")
 
     def test_the_thrust_path_is_written_down(self):
         """박리 추력이 어디로 흐르는지가 이 셀의 구조 요건 전부다."""
-        self.assertIn("${F_PEEL.toFixed(2)} kN 은 칼날 → 갠트리 → 주행레일 문형 → 기초", self.body,
-                      "추력 경로가 도면에 없거나 추력이 상수에서 오지 않는다")
+        self.assertIn("${F_PEEL.toFixed(2)} kN 은 계단 칼날 한 자루 → Z축 좌·우 → 갠트리 → 주행레일 문형 → 기초",
+                      self.body, "추력 경로가 도면에 없거나 추력이 상수에서 오지 않는다")
         self.assertIn("A7", self.body, "기초 도면(D-602)의 앵커군과 이어지지 않는다")
         self.assertIn("A8", self.body, "테이블 기초가 구분되지 않는다")
 
@@ -482,8 +502,10 @@ class TestTheTandemSheetSaysWhatMoves(unittest.TestCase):
         self.assertIn("A ≥ 2F/(μ·Δp)", self.body, "필요면적 식이 도면에 없다")
         # 값만 보면 안 된다 — PAD_AREA/0.686 안에도 같은 숫자가 있어
         # 요구값 문장을 지워도 통과한다. 근거(μ·Δp)까지 함께 본다.
-        self.assertIn("${PAD_NEED.toFixed(3)} m² (F ${F_PEEL.toFixed(2)} kN · μ ${PAD_MU} · Δp ${PAD_DP} kPa)", self.body,
-                      "필요면적 상한과 그 근거가 도면에 없다")
+        # 2 는 한때 칼날 둘(HKB·HKS)이었다. 계단 칼날은 한 자루라 그 2 는 유지
+        # 안전율로 남는다 — 근거가 바뀌었으면 도면이 그렇게 말해야 한다.
+        self.assertIn("${PAD_NEED.toFixed(3)} m² (F ${F_PEEL.toFixed(2)} kN · μ ${PAD_MU} · Δp ${PAD_DP} kPa · 유지 안전율 2)",
+                      self.body, "필요면적과 그 근거가 도면에 없다")
         self.assertIn("PAD_AREA/PAD_NEED", self.body.replace(" ", ""),
                       "실제 면적이 상한의 몇 배인지 도면이 밝히지 않는다")
         self.assertIn("PAD_COLS", self.body)
@@ -543,13 +565,25 @@ class TestTheArrangementSheetIsFabricationLevel(unittest.TestCase):
     def test_every_anchor_coordinate_comes_from_the_layout(self):
         """좌표를 손으로 적으면 배치를 옮길 때 3D 만 따라오고 기초는 옛 자리에 뚫는다."""
         for name in ("CST.HC.x0", "CST.GC.x1", "CMAST_IN", "CMAST_OUT",
-                     "CRAIL_X0", "CRAIL_X1", "CGY", "CTBL_CX", "CWFR_X",
-                     "CE_X0", "BS_SADDLE", "CKC_SADDLE", "CKC_RACK_Y",
+                     "CRAIL_X0", "CRAIL_X1", "CGY", "CTBL_CX",
+                     "CE_X0", "CKC_SADDLE", "CKC_RACK_Y",
                      "CFENCE_YN", "FORK_HALF_STD"):
             self.assertIn(name, self.body, f"앵커 좌표가 {name} 에서 나오지 않는다")
         # 평면 좌표계 자체도 방책선에서 나온다
         self.assertIn("PX=x=>33+(x-CFENCE_X0)*S", self.flat.replace(" ", ""))
         self.assertIn("PY=y=>32+(CFENCE_Y-y)*S", self.flat.replace(" ", ""))
+
+    def test_the_retired_anchor_groups_stay_retired(self):
+        """권취 문형(A9)과 롤 새들(A12)은 권취부와 함께 없어졌다. 번호를 당기면
+        견적·제작 지침서가 부르는 A10·A11·A13 이 엉뚱한 기초를 가리킨다."""
+        for gone in ("{id:'A9'", "{id:'A12'"):
+            self.assertNotIn(gone, self.body, f"결번 {gone[5:]} 이 다시 앵커군으로 섰다")
+        for kept in ("{id:'A10'", "{id:'A11'", "{id:'A13'"):
+            self.assertIn(kept, self.body, f"{kept[5:]} 번호가 당겨졌다")
+        self.assertIn("A9 (WR-101 권취 문형) · A12 (BS-301 롤 새들) 는 결번이다", self.body,
+                      "결번의 이유가 도면 코드에 없다")
+        for gone in ("CWFR_X", "BS_SADDLE", "ROLL_MASS"):
+            self.assertNotIn(gone, self.body, f"철거한 권취부의 {gone} 가 기초도에 남아 있다")
 
     def test_the_levels_are_the_derivation_not_a_list_of_numbers(self):
         """레벨은 단수의 함수다 — 단수를 바꾸면 EL 이 통째로 따라와야 한다."""
@@ -600,8 +634,11 @@ class TestTheArrangementSheetIsFabricationLevel(unittest.TestCase):
 
     def test_the_live_loads_are_derived_from_the_material_model(self):
         """적재하중은 유도되는 것만 적는다 — 그것이 '유도치' 라는 말의 뜻이다."""
-        for name in ("ROLL_MASS", "MASS_AREAL", "MASS_GLASS", "CASS_MASS"):
+        for name in ("MASS_AREAL", "MASS_GLASS", "CASS_MASS", "CE_KG"):
             self.assertIn(name, self.body, f"적재하중이 {name} 에서 나오지 않는다")
+        # 셀모듈은 백시트를 달고 나간다 — 컨베이어 하중에 백시트가 빠지면 과소다
+        self.assertIn("const CE_KG=(MASS_EVA+MASS_CELL+MASS_BACK)*PANEL_L*PANEL_W;", self.src,
+                      "셀모듈 질량에 백시트가 들어 있지 않다")
         self.assertNotRegex(self.body, r"live:\s*\d+\s*[,}]",
                             "적재하중에 손으로 적은 숫자가 있다")
 

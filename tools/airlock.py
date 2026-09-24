@@ -72,7 +72,7 @@ RHO_AIR = lambda t: 353.0 / (273.15 + t)     # kg/m³ 대기압 건공기
 
 T_HOT, T_AMB = c("T_TARGET"), c("T_AMB")     # 140 · 25 ℃
 DECKS = int(c("DECKS"))
-TAKT = CY.TAKT                               # s 라인 사이클 (탠덤이 정한다 — 콘솔 thermalModel)
+TAKT = CY.TAKT                               # s 라인 사이클 (계단 칼날이 정한다 — 콘솔 thermalModel)
 N_DOOR = 2                                   # 사이클당 문 통과 — 방출 1 · 투입 1
 RATED_KW = int(c("LAMPS")) * 2.5              # 120 kW 설치정격
 
@@ -399,7 +399,7 @@ def run(other_loss_kw: float = None, panel_kw: float = None):
                f"**한 푼도 안 준다.** 한 번 여닫는 동안 지나가는 것이 "
                f"{C['V']:.2f} m³ 뿐이라 **격리실을 채우지도 못하기** 때문이다 — "
                f"개구를 줄이는 순간 상한이 부피에서 유동으로 넘어갔다. 그런데 "
-               f"출력측은 탠덤과 붙어 있어 {VEST_ADD*1e3:,.0f} mm 가 새로 든다 "
+               f"출력측은 분리 셀과 붙어 있어 {VEST_ADD*1e3:,.0f} mm 가 새로 든다 "
                f"— **사지 않는다** (RAL3)"),
         Result("AL5", "확정안이 허용하는 최대 개구 높이", OPEN_H, "m", h_max,
                f"예산 {allow:.1f} kW 를 다 쓰는 높이 {h_max*1e3:.0f} mm",
@@ -458,7 +458,7 @@ def requirements() -> list[Req]:
         Req("RAL3", "격리실은 두지 않는다", "이중문 격리실 미채용 — 근거를 남긴다",
             "상세설계 · 도면 주기",
             f"개구를 포락선까지 줄이고 나면 격리실이 아끼는 것은 "
-            f"{C['kw']-ex['opts']['D']['kw']:.2f} kW 뿐이고, 출력측은 탠덤과 붙어 "
+            f"{C['kw']-ex['opts']['D']['kw']:.2f} kW 뿐이고, 출력측은 분리 셀과 붙어 "
             f"있어 {VEST_ADD*1e3:,.0f} mm 가 새로 든다. **안 사는 것이 결론이지만 "
             f"'검토하지 않았다' 와 '검토하고 안 샀다' 는 다르다** — 도면 주기에 "
             f"이 숫자를 남긴다. 전고 개구로 되돌아가는 순간 격리실은 다시 "

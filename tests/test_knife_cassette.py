@@ -8,7 +8,7 @@
 
   경계     닳는 것(칼날·히터·열전대)과 남는 것(슬라이드·로드셀)이 갈라져
            있는가. 갈라져 있지 않으면 '카세트' 는 이름일 뿐이다.
-  구속     클램프 여유가 두 칼날 합성추력을 이기는가. 스프링 잠금인가 —
+  구속     클램프 여유가 계단 칼날 추력을 이기는가. 스프링 잠금인가 —
            공압으로 잠그면 공압이 빠질 때 카세트가 풀린다.
   분리     활선 상태로 커넥터를 뽑을 수 있는가. 히터 차단 확인이 잠금해제보다
            앞에 서 있어야 한다.
@@ -32,8 +32,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
 RFQ = ROOT / "docs" / "dg-hk60-rfq.html"
 
-#: 두 칼날 합성추력 — OI-01 상한 13.37 kN(폭 1,200)을 포락선 폭으로 환산한 콘솔 F_PEEL.
-TANDEM_THRUST_KN = console_consts.const("F_PEEL")
+#: 계단 칼날 추력 — OI-01 상한 13.37 kN(폭 1,200)을 포락선 폭으로 환산한 콘솔 F_PEEL.
+#: 칼날이 한 자루라 카세트 하나가 추력 전부를 받는다.
+KNIFE_THRUST_KN = console_consts.const("F_PEEL")
 
 
 def _model():
@@ -59,7 +60,7 @@ class _Base(unittest.TestCase):
     def c(self, name, _depth=0):
         """콘솔 상수 하나. 다른 상수를 가리키면 한 단계 따라간다.
 
-        카세트 온도는 칼날 온도 그 자체다(CASS_T_HOT = T_HKS). 값을 두 번
+        카세트 온도는 칼날 온도 그 자체다(CASS_T_HOT = T_KNIFE). 값을 두 번
         적으면 칼날만 내리고 카세트는 그대로인 날이 온다 — 그래서 별칭으로
         두었고, 시험은 별칭을 풀어서 본다.
         """
@@ -84,46 +85,50 @@ class TestReplaceableUnit(_Base):
     """교체 단위의 경계가 실제로 그어져 있는가."""
 
     def test_the_cassette_carries_the_wearing_parts_and_their_heat(self):
-        body = self.fn("knifeCassette")
+        body = self.fn("stepCassette")
+        self.assertIn("of KNIFE_SEGS", body, "카세트가 칼날 조각 표를 읽지 않고 따로 그린다")
         drawn = "\n".join(ln for ln in re.sub(r"/\*.*?\*/", "", body, flags=re.S).split("\n")
                           if re.search(r"\b(?:box|cylinder|column|plinth)\(", ln))
-        for token in ("카세트 프레임", "테이퍼 로케이팅핀", "쐐기 클램프",
+        for token in ("홀더", "SKD11 인서트", "카트리지 히터", "테이퍼 로케이팅핀", "쐐기 클램프",
                       "잠금·존재센서", "블라인드메이트 커넥터",
                       "냉각 퍼지밸브", "온도센서", "취급 핸들"):
             self.assertIn(token, drawn, f"{token} 가 도면에 그려지지 않았다")
 
-    def test_the_cassette_is_drawn_on_both_knives(self):
-        self.assertGreaterEqual(
-            self.fn("knifeBar").count("knifeCassette("), 1,
-            "카세트가 칼날바에서 그려지지 않는다")
-        calls = re.findall(r"knifeBar\([^)]*'(HK[BS])'\)", self.console)
-        self.assertEqual(sorted(set(calls)), ["HKB", "HKS"],
-                         "카세트를 그리는 knifeBar 가 두 칼날 모두에 쓰이지 않는다")
+    def test_the_cassette_is_drawn_where_it_works_and_where_it_waits(self):
+        """칼날 머리에 물린 한 벌과 매거진·새들에서 기다리는 벌이 같은 함수로 그려진다."""
+        self.assertIn("stepCassette(kx,zk,", self.fn("cGantry"), "칼날 머리에 카세트가 없다")
+        self.assertGreaterEqual(self.console.count("stepCassette("), 4,
+                                "매거진·새들의 카세트가 다른 그림으로 그려진다")
 
-    def test_the_cassette_spans_the_knife_width(self):
+    def test_the_cassette_length_is_the_holder_sum(self):
+        """질량과 표면적은 일곱 홀더 길이 합에서 나온다 — 전폭이 아니다 (겹침 15 × 6)."""
         self.assertEqual(
-            re.search(r"CASS_L\s*=\s*(\w+)", self.console).group(1), "KNIFE_W",
-            "카세트 길이가 칼날 폭과 따로 논다 — 둘이 갈라지면 도면이 거짓말한다")
+            re.search(r"CASS_L\s*=\s*(\w+)", self.console).group(1), "KNIFE_BLADE_L",
+            "카세트 길이가 칼날 홀더 합과 따로 논다 — 둘이 갈라지면 질량이 거짓말한다")
+        self.assertAlmostEqual(
+            self.c("KNIFE_BLADE_L"),
+            self.c("KNIFE_W") + 2 * self.c("KNIFE_STEPS") * self.c("KNIFE_LAP"), places=9)
 
 
 class TestRestraint(_Base):
     """구속은 추력을 이겨야 하고, 에너지가 빠질 때 풀리면 안 된다."""
 
-    def test_clamps_beat_the_combined_thrust(self):
+    def test_clamps_beat_the_knife_thrust(self):
         total = self.c("CASS_CLAMP_KN") * 2
         self.assertGreaterEqual(
-            total / TANDEM_THRUST_KN, 2.0,
-            f"클램프 {total} kN 이 두 칼날 합성추력 {TANDEM_THRUST_KN} kN 의 2배에 못 미친다")
+            total / KNIFE_THRUST_KN, 2.0,
+            f"클램프 {total} kN 이 계단 칼날 추력 {KNIFE_THRUST_KN} kN 의 2배에 못 미친다")
 
     def test_the_clamp_is_spring_locked_not_air_locked(self):
         drive = next(d for d in _model().DRIVES if d.tag == "CY-405")
         self.assertIn("스프링", drive.stop,
                       "클램프가 공압으로 잠기면 공압이 빠질 때 카세트가 풀린다")
 
-    def test_locating_repeatability_is_far_inside_the_gap_tolerance(self):
+    def test_locating_repeatability_is_inside_the_step_tolerance(self):
+        """핀은 수평 위치를 잡는다 — 계단 공차 ±0.5 의 1/10 안이어야 교환이 계단을 안 먹는다."""
         self.assertLessEqual(
-            self.c("CASS_REPEAT"), 2.0 / 10,
-            "반복정밀도가 칼끝 간격 공차 ±2mm 대비 여유가 없다")
+            self.c("CASS_REPEAT"), 0.5 / 10 + 1e-12,
+            "반복정밀도가 계단 공차 ±0.5mm 대비 여유가 없다")
 
 
 class TestServiceDisconnect(_Base):
@@ -141,8 +146,8 @@ class TestServiceDisconnect(_Base):
 
     def test_a_fitted_cassette_is_verified_before_it_cuts(self):
         d = {x.name: x for x in _model().DERIVED}
-        self.assertIn("CASSETTE_READY", d["HKB_Z_PERMIT"].terms)
-        for term in ("CASSETTE_LOCKED", "CONNECTOR_MATED", "KNIFE_GAP_OK"):
+        self.assertIn("CASSETTE_READY", d["KNIFE_Z_PERMIT"].terms)
+        for term in ("CASSETTE_LOCKED", "CONNECTOR_MATED", "KNIFE_TIP_OK"):
             self.assertIn(term, d["CASSETTE_READY"].terms,
                           f"교환 뒤 {term} 확인 없이 절입한다")
 
@@ -176,7 +181,7 @@ class TestChangeoverTime(_Base):
         self.cp = self.c("CASS_CP")
 
     def _area(self):
-        L, W, H = self.c("KNIFE_W"), self.c("CASS_W"), self.c("CASS_H")
+        L, W, H = self.c("CASS_L"), self.c("CASS_W"), self.c("CASS_H")
         return 2 * (L * W + L * H + W * H)
 
     def _cool(self):
@@ -257,7 +262,7 @@ class TestTheDrawingSheet(_Base):
     def test_the_sheet_shows_both_the_boundary_and_the_restraint(self):
         body = self.fn("cassetteDrawing")
         self.assertIn("잔류부", body, "도면에 남는 쪽이 표시되지 않는다")
-        self.assertIn("KNIFE_GAP_OK", body, "교환 후 확인 신호가 도면에 없다")
+        self.assertIn("KNIFE_TIP_OK", body, "교환 후 확인 신호가 도면에 없다")
         self.assertIn("HEATER_ISOLATED", body + self.console)
 
 
@@ -326,19 +331,20 @@ class TestTheWithdrawalEnvelopeIsReserved(unittest.TestCase):
 
     def test_the_envelope_is_at_least_the_cassette(self):
         """포락선이 카세트보다 좁으면 예약한 뜻이 없다."""
-        cass = self.c("KNIFE_W")                             # CASS_L = KNIFE_W
+        cass = self.c("KNIFE_W")                             # 계단 카세트의 y 폭 = 칼날 전폭
         depth = self.c("CKC_ENV_Z1") - self.c("CKC_ENV_Z0")
         self.assertGreaterEqual(depth, .20, "포락선 높이가 카세트 두께에 못 미친다")
         span = abs(self.c("CKC_Y")) + cass / 2 + self.c("PANEL_W") / 2
         self.assertGreaterEqual(
             span, cass, f"인출 통로 {span:.3f} m 가 카세트 {cass:.3f} m 보다 짧다")
 
-    def test_the_magazine_is_clear_of_the_full_roll(self):
-        """만권 롤과 같은 x 선을 쓰므로 y 로 비켜 있어야 한다."""
-        roll_edge = 1.46 / 2                                  # ROLL_FACE/2
-        cass_edge = self.c("CKC_Y") + self.c("KNIFE_W") / 2
-        self.assertLess(cass_edge, -roll_edge,
-                        f"카세트 끝 {cass_edge:.3f} m 가 만권 롤 {-roll_edge:.3f} m 와 겹친다")
+    def test_the_magazine_is_clear_of_the_column_line(self):
+        """X 8,250 선에는 레일 기둥·모노레일 기둥이 서 있다 — 매거진은 그 선을 비켜야 한다.
+
+        종전에는 만권 롤·아이들러도 같은 선에 있어 y 로도 비켜야 했지만, 권취부가
+        빠진 지금은 기둥 선만 남았다."""
+        self.assertGreaterEqual(self.c("CKC_X") - self.c("CRAIL_X0"), .60,
+                                "매거진이 기둥 선에 너무 가깝다")
 
     def test_the_consumable_path_ends_outside_the_fence(self):
         """소모품은 사람이 만지는 날이 온다 — 그때 방책 안이면 무인이 끊긴다."""
@@ -346,13 +352,6 @@ class TestTheWithdrawalEnvelopeIsReserved(unittest.TestCase):
                         "KC-301 이 방책 안에 있다")
         self.assertLessEqual(self.c("RH_Y1"), self.c("CKC_RACK_Y") + 1e-9,
                              "모노레일이 KC-301 까지 닿지 않는다")
-
-    def test_the_saddle_is_clear_of_the_roll_saddle(self):
-        """같은 열에 두면서 겹치면 롤을 내려놓을 자리가 없어진다."""
-        roll_far = self.c("BS_SADDLE_Y") - self.c("ROLL_FACE") / 2   # BS_SADDLE.y − ROLL_FACE/2
-        cass_near = self.c("CKC_RACK_Y") + self.c("KNIFE_W") / 2
-        self.assertLess(cass_near, roll_far,
-                        f"KC-301 끝 {cass_near:.3f} m 가 만권 롤 끝 {roll_far:.3f} m 와 겹친다")
 
     def test_the_drawing_reserves_the_envelope(self):
         """도면에 없으면 현장에서 배관이 그 자리를 먹는다."""

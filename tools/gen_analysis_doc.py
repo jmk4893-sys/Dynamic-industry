@@ -163,7 +163,7 @@ def part3() -> str:
   <p>네 가지를 푼다 — <strong>KG-101 갠트리</strong>(칼끝 처짐과 고유진동),
     <strong>HC-101 가열실</strong>(기둥 좌굴 · 지진 층간변위 · 세장비),
     <strong>VT-101 상판</strong>(추력 변위와 자중 처짐),
-    <strong>WR-101 권취축</strong>(처짐과 휨응력).</p>
+    <strong>계단 칼날 캐리어 빔</strong>(일곱 칼끝의 깊이 예산과 계단).</p>
   <div class="tw"><table>
     <caption>구조 검토 — 값 · 한계 · 이용률</caption>
     <thead><tr><th>ID</th><th>항목</th><th class="num">값</th><th class="num">단위</th>
@@ -180,13 +180,20 @@ def part3() -> str:
     잡으면 남는 외력은 <strong>패널 자중 {ex['table']['w_panel']:.2f} kN</strong> 뿐이다.
     한계까지 늘려 통과시키는 대신 물리를 다시 유도해서 얻은 답이다.</div>
 
-  <div class="warn"><strong>{"초과 항목 " + " · ".join(r.id for r in bad) if bad else "전 항목 만족"}
-    — 그것이 요구가 된다.</strong>
-    <span class="k">S11</span> 은 실패가 아니라 <strong>의도한 경계 사례</strong>다.
-    권취 클램프를 축 중앙에 몰면 처짐이 한계를 넘고, 양단에 두면 넘지 않는다.
-    코어 <span class="m">Ø300×8t</span> 가 축 <span class="m">Ø60</span> 보다
-    <span class="m">123 배</span> 뻣뻣해서 <strong>클램프 위치가 답을 정한다</strong> —
-    그러므로 그 위치는 도면에 고정되어야 하고, 그것이 이 해석의 결론이다.</div>
+  <div class="decide"><strong>{"초과 항목 " + " · ".join(r.id for r in bad) if bad else "전 항목 만족"}
+    — 총괄 결정 · S10: Z축 두 조를 폭의 베셀점에 둔다.</strong>
+    계단 칼날은 <strong>한 자루</strong>다. 일곱 칼끝을 카세트째 한 평면으로 연삭해도
+    하중에서 그 평면이 셋에서 흐트러진다 — 연삭 공차, Z축 좌·우 높이차의 기울기,
+    캐리어 빔의 휨. 수직 반력은 아직 아무도 재지 않았으므로(OI-01 은 추력만 쟀다)
+    추력과 같게 포락했다. Z축을 칼날 양끝(<span class="m">±{ex['knife']['ends']:.0f}</span>)에 두면
+    캐리어 빔이 가운데서 처져 휨만 <span class="m">{ex['knife']['bend_ends']:.3f} mm</span>,
+    합 <span class="m">{ex['knife']['total_ends']:.3f} mm</span> 로 칼날 깊이 예산 0.15 를 넘는다.
+    폭의 베셀점(<span class="m">±{ex['knife']['zs']:.0f}</span>)으로 옮기면 두 지점 사이의 처짐과
+    바깥 캔틸레버의 처짐이 같아져 휨이 <span class="m">{ex['knife']['bend']:.3f} mm</span> 로 준다 —
+    <strong>같은 빔, 같은 질량으로</strong>. 지점이 가까워 기울기 몫
+    (<span class="m">{ex['knife']['tilt']:.3f}</span>)이 늘지만 합 <span class="m">{ex['knife']['total']:.3f} mm</span> 로
+    예산 안이다. 예산을 다 쓰는 수직 반력비는 <span class="m">{ex['knife']['vr_max']:.1f}</span> —
+    파일럿 <span class="k">PT-10</span> 이 조각별로 재서 이 선과 댄다.</div>
 
   <div class="tw"><table>
     <caption>근거와 읽는 법</caption>
@@ -457,7 +464,7 @@ def part4d() -> str:
   <div class="warn"><strong>① 65 kW 는 계약 처리량의 값이 아니다.</strong>
     콘솔은 <span class="k">유효 = 정격 100 × η 0.65 = 65 kW</span> 를 쓰지만
     그것은 <strong>열공정 한계 {HBAL.RATE_THERMAL:.1f} 장/h</strong> 에서
-    패널이 받는 값이다. 라인은 탠덤이 정하는
+    패널이 받는 값이다. 라인은 계단 칼날이 정하는
     <strong>{HBAL.RATE_CONTRACT:.0f} 장/h</strong> 로 돌고, 그때 패널이 가져가는
     것은 <span class="m">{b['panel']:.1f} kW</span> 다.
     <span class="k">100 − 65 = 35</span> 은 <strong>서로 다른 두 운전점에서
@@ -603,7 +610,7 @@ def part4e() -> str:
     개구를 포락선까지 줄이고 나면 한 번 여닫는 동안 지나가는 양이
     <span class="m">{o['C']['V']:.2f} m³</span> 뿐이라 격리실
     (<span class="m">{AIR.vestibule(AIR.OPEN_H):.2f} m³</span>)을 채우지도 못한다 —
-    <strong>부피 상한이 걸리지 않는다.</strong> 그런데 출력측은 탠덤과 붙어 있어
+    <strong>부피 상한이 걸리지 않는다.</strong> 그런데 출력측은 분리 셀과 붙어 있어
     격리실을 두면 <span class="m">{AIR.VEST_ADD*1e3:,.0f} mm</span> 가 새로 든다.
     <strong>안 사는 것이 결론이지만, “검토하지 않았다”와 “검토하고 안 샀다”는
     다르다</strong> — 도면 주기에 이 숫자를 남긴다 (<span class="k">RAL3</span>).</div>
@@ -701,6 +708,9 @@ def part6() -> str:
         <td>램프 제조사 수평 정격 · 초기 운전</td></tr>
       <tr><td>박리력 그 자체</td><td>재료가 답한다. 어떤 해석기도 폐패널 EVA 의
         박리강도를 지어낼 수 없다</td><td>파일럿 PT-01</td></tr>
+      <tr><td>칼날의 수직 반력</td><td>OI-01 은 추력만 쟀다. S10 은 수직 반력을
+        추력과 같게 포락했을 뿐 그 값을 모른다 — 쐐기각과 EVA 전단의 몫이 정한다</td>
+        <td>파일럿 PT-10 (조각별 스트레인게이지)</td></tr>
     </tbody>
   </table></div>
 </div></div>"""
