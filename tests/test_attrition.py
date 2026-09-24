@@ -1,10 +1,10 @@
 """어트리션 스크러버 설계 검증.
 
-이 설비의 핵심 주장은 세 가지다.
+이 설비는 EVA 박리만 맡는다 (은을 띄우는 것은 부선조 몫). 핵심 주장은 세 가지다.
 
 1. **고체 농도가 전부다** — 체적분율이 50 vol% 부근이어야 입자끼리 닿는다.
-2. **성능 크레딧이 없다** — 어트리션을 넣어도 계산서의 회수율·품위·약제
-   투입량은 하나도 달라지지 않아야 한다. 문헌 근거가 없기 때문이다.
+2. **부선 성능 크레딧이 없다** — 어트리션을 넣어도 계산서의 회수율·품위·약제
+   투입량은 하나도 달라지지 않아야 한다. 부선 계산은 문헌 원료 기준이다.
 3. **물수지를 바꾸지 않는다** — 희석수는 부선 농도를 맞추려고 어차피 들어가던
    물이므로, 신수 보충량은 그대로여야 한다.
 
@@ -20,7 +20,6 @@ from flotation_design import design_basis as db
 from flotation_design.attrition import (
     STANDARD_CELL_M3,
     AttritionCellGeometry,
-    concentrate_grade_ceiling,
     dilution_box,
     octagon_area_m2,
     short_circuit_fraction,
@@ -95,26 +94,6 @@ class TestResidenceDistribution(unittest.TestCase):
             short_circuit_fraction(0)
         with self.assertRaises(ValueError):
             short_circuit_fraction(2, -0.1)
-
-
-class TestGradeCeiling(unittest.TestCase):
-    def test_design_carry_ratio_reproduces_the_literature_ceiling(self):
-        """r = 1.1 → 47.6 wt% — 문헌의 두 최고 품위(48.8 / 46.7)가 멈춘 자리."""
-        self.assertAlmostEqual(
-            concentrate_grade_ceiling(db.COMPOSITE_CARRY_RATIO), 1.0 / 2.1, places=12
-        )
-
-    def test_lower_carry_ratio_raises_the_ceiling(self):
-        ceilings = [concentrate_grade_ceiling(r) for r in db.ATTRITION_CARRY_RATIO_CASES]
-        self.assertEqual(ceilings, sorted(ceilings))
-        self.assertGreater(ceilings[-1], ceilings[0])
-
-    def test_fully_liberated_silver_has_no_ceiling(self):
-        self.assertAlmostEqual(concentrate_grade_ceiling(0.0), 1.0, places=12)
-
-    def test_rejects_negative(self):
-        with self.assertRaises(ValueError):
-            concentrate_grade_ceiling(-0.1)
 
 
 class TestSolidsFractionConversion(unittest.TestCase):
@@ -452,7 +431,7 @@ class TestPlantIntegration(unittest.TestCase):
                 )
 
     def test_pretreatment_is_a_large_share_of_plant_power(self):
-        """성능 크레딧이 0 인 설비가 전력의 상당 부분을 쓴다 — 바이패스의 근거."""
+        """박리가 시험으로 확인되기 전인 설비가 전력의 상당 부분을 쓴다 — 바이패스의 근거."""
         pre = self.plant.pretreatment
         share = pre.installed_kw / self.plant.total_installed_kw(self.plant.rfc)
         self.assertGreater(share, 0.30)
@@ -475,7 +454,7 @@ class TestPlantIntegration(unittest.TestCase):
                 self.assertTrue(pre.water_supply_ok(option))
 
     def test_attrition_takes_no_performance_credit(self):
-        """문헌 근거가 없으므로 성능·약제에 어떤 이득도 반영하지 않는다."""
+        """EVA 박리 설비이므로 부선 성적·약제에 어떤 이득도 반영하지 않는다."""
         self.assertEqual(db.ATTRITION_PERFORMANCE_CREDIT, 1.0)
         self.assertAlmostEqual(
             self.plant.rfc.performance_peak.recovery("Ag"), db.RFC_AG_RECOVERY
@@ -521,6 +500,13 @@ class TestReportSection(unittest.TestCase):
     def test_discloses_that_there_is_no_performance_credit(self):
         self.assertIn("성능 크레딧 없음", self.text)
         self.assertIn("ATTRITION_PERFORMANCE_CREDIT", self.text)
+
+    def test_judges_the_scrubber_on_eva_not_on_flotation(self):
+        section = self.text[self.text.index("## 2. 전처리"):self.text.index("## 3. 1안")]
+        self.assertIn("역할의 경계", section)
+        self.assertIn("부착 EVA 제거율", section)
+        for flotation_goal in ("동반비 r", "정광 품위 상한", "약제 절감", "슬라임 코팅", "선부선"):
+            self.assertNotIn(flotation_goal, section)
 
     def test_states_the_bypass(self):
         self.assertIn("바이패스", self.text)

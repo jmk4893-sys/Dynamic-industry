@@ -398,8 +398,9 @@ class TestAttritionSheetsMatchDesign(unittest.TestCase):
         for probe in ("AT", "008", "EF-1", "덮개 국소배기"):
             self.assertFigure(probe, probe)
 
-    def test_no_performance_credit_is_stated_on_the_drawings(self):
-        self.assertIn("성능 크레딧을 주지 않았다", self.html)
+    def test_eva_only_purpose_is_stated_on_the_drawings(self):
+        self.assertIn("EVA 박리 설비다", self.html)
+        self.assertIn("EVA 를 뗀 효과를 넣지 않았다", self.html)
 
 
 class TestPilotSheetMatchesDesign(unittest.TestCase):

@@ -270,6 +270,18 @@ def float_unit(
     )
 
 
+def concentrate_grade_ceiling(carry_ratio: float) -> float:
+    """복합입자 동반비 r 에서 정광 품위의 물리적 상한 (질량분율).
+
+    부상 Ag 1 kg 이 같은 입자의 일부로 맥석 r kg 을 달고 오면 품위는
+    1/(1+r) 을 넘을 수 없다. 이 동반분은 세척수로 씻기지 않으므로
+    클리너를 더 붙여도 넘을 수 없다.
+    """
+    if carry_ratio < 0:
+        raise ValueError("carry_ratio 는 0 이상")
+    return 1.0 / (1.0 + carry_ratio)
+
+
 def _add_composite_carry(
     feed: Stream,
     kinetics: dict[str, ComponentKinetics],

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from . import design_basis as db
 from . import references as ref
-from .attrition import concentrate_grade_ceiling, short_circuit_fraction
+from .attrition import short_circuit_fraction
 from .attrition_pilot import (
     continuous_energy_factor,
     hydrogen_from_aluminium_nm3,
@@ -13,7 +13,7 @@ from .attrition_pilot import (
 )
 from .hydrodynamics import analyse_cell
 from .kinetics import perfect_mixer_recovery
-from .circuit import solve_circuit
+from .circuit import concentrate_grade_ceiling, solve_circuit
 from .transient import simulate_startup
 from .plant import (
     PlantDesign,
@@ -87,15 +87,6 @@ def render(design: PlantDesign | None = None) -> str:
     g, dr, sh = sc.geometry, sc.drive, sc.shaft
     pc, ms = build_pilot(f), build_mechanism_screen(f)
     su = pilot_scale_up(sc, f.peak_tph, f.average_tph, db.PILOT_EVA_REMOVAL_TARGET)
-    ag_peak_tph = f.component_tph(f.peak_tph)["Ag"]
-    solids_dose_g_t = sum(r.dose for r in db.REAGENTS if r.basis == "solids")
-    reagent_saving_kg_y = (
-        solids_dose_g_t
-        * (1.0 - 1.0 / ref.WET_FEED_REAGENT_FACTOR)
-        * f.average_tph
-        * db.ANNUAL_OPERATING_HOURS
-        / 1000.0
-    )
     trial = ref.CONTINUOUS_TRIAL
     batch = ref.BATCH_TAP_WATER
     peak_label = f"최대 {f.peak_tph:.2f} t/h"
@@ -209,30 +200,28 @@ def render(design: PlantDesign | None = None) -> str:
     # 2. 전처리 -----------------------------------------------------------
     add("## 2. 전처리 — 어트리션 스크러버 (공통 설비)")
     add("")
-    add("로드밀 배출 슬러리를 **묽히기 전에** 고농도 그대로 받아 입자끼리 문질러 "
-        "표면을 벗기고, 희석박스에서 부선 농도로 묽혀 조건조로 보낸다. 두 안이 "
-        "함께 쓰는 공통 설비이므로 1안·2안 어느 쪽 설치 전력에도 포함하지 않고 "
-        "따로 계상한다. 분쇄기가 아니라는 점이 중요하다 — 입자를 깨는 것이 아니라 "
-        "**표면에 붙은 것을 떼는 것**이 목적이다.")
+    add("로드밀 배출 슬러리를 **묽히기 전에** 고농도 그대로 받아 입자끼리 문질러, 셀 분획 "
+        "입자 표면에 붙은 **EVA(봉지재)를 떼어낸다.** 그 뒤 희석박스에서 부선 농도로 묽혀 "
+        "조건조로 보낸다. 두 안이 함께 쓰는 공통 설비이므로 1안·2안 어느 쪽 설치 전력에도 "
+        "포함하지 않고 따로 계상한다. 분쇄기가 아니라는 점이 중요하다 — 입자를 깨는 것이 "
+        "아니라 **표면에 붙은 EVA 를 떼는 것**이 목적이다.")
     add("")
-    add("무엇을 떼려는가:")
+    add("**역할의 경계.** 이 설비가 하는 일은 EVA 박리 하나다. 은(Ag)을 띄우는 것은 뒤의 "
+        "부선조(§3·§4)가 한다. 그래서 이 설비의 성능은 부선 성적이 아니라 두 가지로만 판정한다.")
     add("")
-    add("1. **박리 잔막** — EVA 봉지재·접착층을 벗겨낸 표면에 남은 유기 잔막. "
-        "포수제가 Ag 전극에 닿는 것을 막고, 그 자체가 소수성이라 무차별 부상해 정광을 희석한다.")
-    add(f"2. **슬라임 코팅** — 습식 분쇄면에 붙은 미립 Si. [2] 가 관측한 "
-        f"\"습식 분쇄물은 건조 원료의 {ref.WET_FEED_REAGENT_FACTOR:.0f}배를 써야 거품이 선다\" "
-        f"(150 → {db.REAGENTS[0].dose:.0f} g/t)의 유력한 원인 후보다.")
-    add(f"3. **Ag 전극 박편** — Ag 는 Si 표면에 소결된 층이라 벌크 Si 보다 약하다. "
-        f"표면 마모로 일부가 떨어지면 복합입자 동반비 r 이 내려가고 정광 품위 상한 "
-        f"1/(1+r) 이 올라간다 (아래 상방 시나리오).")
+    add(f"- **부착 EVA 제거율** — 스크럽 전후, 물에 가라앉은 분획의 EVA(TGA) 비교. "
+        f"목표 ≥ {db.PILOT_EVA_REMOVAL_TARGET * 100:.0f} % (잠정)")
+    add(f"- **미립 생성** — 스크럽 전후 −10 µm 질량분율 증가 ≤ "
+        f"{db.ATTRITION_FINES_ACCEPTANCE_PP:.0f} %p. 넘으면 EVA 를 떼는 것이 아니라 "
+        f"Si 를 갈고 있다는 뜻이다.")
     add("")
     add("> [!IMPORTANT]")
-    add("> **성능 크레딧 없음.** [1][2] 어디에도 어트리션 시험이 없다. 위 셋은 전부 "
-        "가설이므로 이 계산서의 회수율·품위·약제 투입량은 **어트리션이 없는 것과 같은 "
-        f"값**이다 (`ATTRITION_PERFORMANCE_CREDIT = {db.ATTRITION_PERFORMANCE_CREDIT:.1f}`). "
-        f"대신 전량 바이패스({pre.bypass})를 두어 없는 것처럼 운전할 수 있게 하고, "
-        "이득을 정량화할 시험(§2.4)과 합격 기준을 설계에 넣었다. "
-        "시험에서 이득이 확인되지 않으면 바이패스로 두거나 철거하는 편이 낫다.")
+    add("> **부선 성능 크레딧 없음.** 이 원료(31~75 µm 미분)에서 EVA 가 기계적으로 "
+        "떨어진다는 시험 근거는 아직 없다. 박리 성능은 시험 셀 PAS-1(§2.6)에서 확정한다. "
+        "부선 계산은 문헌 원료 기준이며 EVA 를 뗀 효과를 회수율·품위·약제에 반영하지 "
+        f"않는다 (`ATTRITION_PERFORMANCE_CREDIT = {db.ATTRITION_PERFORMANCE_CREDIT:.1f}`). "
+        f"대신 전량 바이패스({pre.bypass})를 두어 없는 것처럼 운전할 수 있게 했다. "
+        "박리가 확인되지 않으면 바이패스로 두거나 열분해로 간다.")
     add("")
     add("### 2.1 운전 기준 — 고체 농도가 전부다")
     add("")
@@ -376,58 +365,33 @@ def render(design: PlantDesign | None = None) -> str:
         f"않는다. 따라서 처리량이 **{sc.minimum_dry_tph:.2f} t/h** 아래로 내려가면 최저 "
         f"주속에서도 과다 스크러빙이 된다. 그 아래에서는 캠페인 운전하거나 바이패스한다.")
     add("")
-    add("### 2.4 상방 시나리오와 시험 계획")
+    add("### 2.4 시험 계획과 합격 기준")
     add("")
-    add("이 설비가 값을 하는 경로는 두 가지이고, 둘 다 **시험으로만 확인된다.**")
-    add("")
-    add(f"**(가) 정광 품위 상한.** Ag 박편이 Si 에서 떨어지면 동반비 r 이 내려간다. "
-        f"현재 r = {db.COMPOSITE_CARRY_RATIO:.1f} 에서 상한은 "
-        f"{concentrate_grade_ceiling(db.COMPOSITE_CARRY_RATIO) * 100:.1f} wt% 이고, "
-        f"실제 정광이 {d.rfc.performance_peak.concentrate_grade('Ag') * 100:.1f} wt% 로 "
-        f"거기 붙어 있다. **클리너를 더 붙여도 못 넘는 벽을 넘는 유일한 수단**이다.")
-    add("")
-    add(_table(
-        ["동반비 r", "정광 품위 상한", "Ag + 결합 맥석 (최대 처리량)", "급광 대비"],
-        [
-            [
-                f"{r:.1f}" + (" (현재 설계)" if r == db.COMPOSITE_CARRY_RATIO else ""),
-                f"{concentrate_grade_ceiling(r) * 100:.1f} wt% Ag",
-                f"{ag_peak_tph * (1.0 + r) * 1000:.2f} kg/h",
-                f"급광의 {ag_peak_tph * (1.0 + r) / f.peak_tph * 100:.2f} %",
-            ]
-            for r in db.ATTRITION_CARRY_RATIO_CASES
-        ],
-    ))
-    add("")
-    add(f"**(나) 약제 절감.** [2] 는 습식 분쇄물에 건조 원료의 "
-        f"{ref.WET_FEED_REAGENT_FACTOR:.0f}배 약제가 필요했다고 보고했다. 그 원인이 "
-        f"슬라임 코팅이라면 어트리션으로 되돌릴 수 있다. 전량 회복 시 고체 기준 약제 "
-        f"{solids_dose_g_t:.0f} → {solids_dose_g_t / ref.WET_FEED_REAGENT_FACTOR:.0f} g/t, "
-        f"{avg_label} · 연 {db.ANNUAL_OPERATING_HOURS:,.0f} 시간 기준 **연 "
-        f"{reagent_saving_kg_y:,.0f} kg** 의 포수제·촉진제 절감이다.")
+    add("판정은 전부 EVA 기준이다. 은을 띄우는 부선 시험은 이 설비의 시험에 넣지 않는다.")
     add("")
     add("| 시험 | 방법 | 판정 |")
     add("|---|---|---|")
-    add(f"| T-1 스크럽 강도 스윕 | 시험 셀 {db.PILOT_TAG}(§2.6)에서 "
+    add(f"| T-1 비에너지-박리 곡선 | 시험 셀 {db.PILOT_TAG}(§2.6)에서 "
         + " / ".join(f"{e:g}" for e in db.PILOT_ENERGY_POINTS_KWH_T)
-        + " kWh/t 시료로 동일 조건 부선 | "
-        f"회수율·정광 품위·소요 약제량의 kWh/t 응답 곡선 |")
-    add("| T-2 동반비 r 측정 | 세척수 bias 를 올려 수분 동반을 0 에 가깝게 만든 상태의 "
-        "정광 품위 g 에서 r = (1-g)/g 를 역산, 스크럽 전후 비교 | r 이 유의하게 "
-        "내려가면 (가) 성립 |")
-    add(f"| T-3 실기 A/B | 바이패스를 8 시간씩 교대 개폐하며 미광 Ag·정광 품위·"
-        f"약제 소요량 비교 | 실기 조건에서의 최종 확인 |")
-    add(f"| T-4 미립 생성 | 스크럽 전후 -10 um 질량분율 | 증가 "
-        f"**{db.ATTRITION_FINES_ACCEPTANCE_PP:.0f} %p 이하** — 넘으면 표면 정정이 아니라 "
-        f"분쇄를 하고 있다는 뜻 |")
+        + " kWh/t 시료의 부착 EVA(TGA) | "
+        f"1차 적합 → E90. §2.6 판정선과 비교해 AS-1 을 그대로 쓸지 정한다 |")
+    add(f"| T-2 운전 변수 | {db.PILOT_TAG} 에서 주속 · 온도 · 농도를 바꿔 같은 채취 | "
+        f"곡선이 비에너지 하나로 겹치는가 — 겹치면 비에너지만으로 운전한다 |")
+    add("| T-3 실기 확인 | AS-1 시운전에서 급광·배출 시료의 부착 EVA 비교, 바이패스와 "
+        "교대 운전 | 실기 비에너지 설정값 확정 · 존치 여부 결정 |")
+    add(f"| T-4 미립 생성 | 스크럽 전후 −10 µm 질량분율 | 증가 "
+        f"**{db.ATTRITION_FINES_ACCEPTANCE_PP:.0f} %p 이하** — 넘으면 EVA 를 떼는 것이 아니라 "
+        f"Si 를 갈고 있다는 뜻 |")
     add("")
-    add(f"**미립 생성이 이 설비의 진짜 위험이다.** 문헌 공정을 그대로 따라 "
-        f"탈니(desliming)를 하지 않으므로, 떨어져 나온 슬라임은 걸러지지 않고 회로에 "
-        f"그대로 남는다. 1안은 세척수 bias 가 거품층에서 그것을 씻어내리므로 "
-        f"(맥석 회수율 {db.RFC_GANGUE_RECOVERY * 100:.2f} %) 상대적으로 안전하지만, "
-        f"2안은 수분 동반 계수가 "
-        f"{db.FLOAT_MODELS['Si'].entrainment_factor:.2f} 이라 미립이 늘면 정광이 그만큼 "
-        f"희석된다. **어트리션은 1안과 더 잘 맞는다.**")
+    add("**미립 생성이 이 설비의 진짜 위험이다.** 문헌 공정을 따라 탈니(desliming)를 하지 "
+        "않으므로, 스크러버에서 깨져 나온 Si 미립은 걸러지지 않고 그대로 부선으로 넘어간다. "
+        "그래서 미립은 걸러내는 것이 아니라 **애초에 만들지 않는 것**으로 관리한다 — 주속에 "
+        "상한을 두고 비에너지를 VFD 로 잡는다.")
+    add("")
+    add(f"**떨어진 EVA 의 행방.** AS-1 은 EVA 를 입자에서 떼는 데까지 맡는다. 떨어진 EVA "
+        f"(비중 {db.EVA_SG:.2f})는 배출 슬러리에 섞여 나가므로, 흐름에서 걷어내는 방법은 "
+        f"AS-1 뒤 단계에서 정할 인터페이스 조건이다. {db.PILOT_TAG} 은 그 판단에 필요한 "
+        f"떨어진 EVA 의 양과 크기를 함께 잰다 (§2.6 P-0 · P-1).")
     add("")
     add(f"**미분 한계.** 급광 P80 은 {f.p80_micron:.0f} µm 로, 어트리션 실적이 쌓인 "
         f"실리카사({db.REFERENCE_SAND_UM:.0f} µm)보다 한 자릿수 작다. 입자 하나가 "
@@ -478,8 +442,8 @@ def render(design: PlantDesign | None = None) -> str:
         f"(어트리션 {sc.installed_kw:.2f} + 희석박스 교반 {dil.agitator_kw:.2f}). "
         f"1안과 합치면 {d.total_installed_kw(rfc):.2f} kW 로, 전처리가 계통 전체의 "
         f"**{pre.installed_kw / d.total_installed_kw(rfc) * 100:.0f} %** 를 쓴다. "
-        f"성능 크레딧이 0 인 설비로서는 결코 작지 않은 비용이며, 바이패스와 시험 계획을 "
-        f"설계에 넣은 이유가 이것이다.")
+        f"박리가 시험으로 확인되기 전인 설비로서는 결코 작지 않은 비용이며, 바이패스와 "
+        f"시험 계획을 설계에 넣은 이유가 이것이다.")
     add("")
 
     # 2.6 파일럿 시험 셀 ---------------------------------------------------
@@ -494,14 +458,13 @@ def render(design: PlantDesign | None = None) -> str:
     lel_pct = db.H2_LEL_VOL * 100.0
     design_vol_pct = lel_pct * db.H2_DESIGN_LEL_FRACTION
     tolerable_kg_h = pc.tolerable_aluminium_reaction_per_h * pc.aluminium_in_batch_kg
-    ag_loss = 1.0 - db.RFC_AG_RECOVERY
     add(f"### 2.6 파일럿 시험 셀 {pc.tag} — 블랙파우더 EVA 박리")
     add("")
-    add(f"AS-1 의 성능 크레딧이 0 인 것은 시험이 없어서다. {pc.tag} 은 그 시험을 하는 "
-        f"장비다 — PV 블랙파우더({size_lo:.0f}~{size_hi:.0f} µm)의 Si 표면에 붙은 EVA 를 "
-        f"**기계적으로** 뗄 수 있는지, 뗀다면 **몇 kWh/t 에서, Si 를 얼마나 깨뜨리면서** "
-        f"떼는지 잰다. 같은 셀이 §2.4 의 T-1 을 맡는다. 제작해서 시험하는 장비이므로 "
-        f"설치 전력·물수지에 넣지 않는다.")
+    add(f"AS-1 이 이 원료에서 EVA 를 뗄 수 있는지는 아직 시험 근거가 없다. {pc.tag} 은 그 "
+        f"시험을 하는 장비다 — PV 블랙파우더({size_lo:.0f}~{size_hi:.0f} µm)의 Si 표면에 "
+        f"붙은 EVA 를 **기계적으로** 뗄 수 있는지, 뗀다면 **몇 kWh/t 에서, Si 를 얼마나 "
+        f"깨뜨리면서** 떼는지 잰다. 같은 셀이 §2.4 의 T-1 · T-2 를 맡는다. 은을 띄우는 부선 "
+        f"시험은 하지 않는다. 제작해서 시험하는 장비이므로 설치 전력·물수지에 넣지 않는다.")
     add("")
     add("**방식 선정.** 박리는 표면에 힘을 거는 문제다. 무엇이 그 힘을 거는지로 가른다.")
     add("")
@@ -640,11 +603,11 @@ def render(design: PlantDesign | None = None) -> str:
     add("| 단계 | 조건 | 측정 | 산출물 |")
     add("|---|---|---|---|")
     add("| **P-0** 원료 특성 | 교반 전 | TGA(N2) 유기물, **수중 부침 분리**(뜬 EVA = 유리 / "
-        "가라앉은 분획 TGA = 부착), 입도(−10 µm), Ag·Al·Si assay, **밀폐 용기 H2 발생률** "
-        "(70 wt%, 24 h) | 부착 EVA 가 없으면 스크러빙 불필요 → P-5 만. H2 가 배기 한계를 "
+        "가라앉은 분획 TGA = 부착), 입도(−10 µm), 성분 분석(Al·Si), **밀폐 용기 H2 발생률** "
+        "(70 wt%, 24 h) | 부착 EVA 가 없으면 스크러빙은 필요 없다. H2 가 배기 한계를 "
         "넘으면 배기부터 키운다 |")
     add(f"| **P-1** 비에너지 곡선 | {base_tip:.0f} m/s, {pc.solids_mass_fraction * 100:.0f} wt%, "
-        f"{base_temp:.0f} °C | 채취 {energies} kWh/t — 부착 EVA, −10 µm, 1 L 부선(T-1) | "
+        f"{base_temp:.0f} °C | 채취 {energies} kWh/t — 부착 EVA, 뜬 EVA 양·크기, −10 µm | "
         f"1차 적합 1−X = exp(−kE) → **E90 = ln 10 / k** |")
     add(f"| **P-2** 주속 | {low_tip:.0f} · {top_tip:.0f} m/s | P-1 과 같은 채취점 | 곡선이 E "
         f"하나로 겹치는가 — 겹치면 E 만으로 스케일업, 아니면 주속 상한 |")
@@ -652,12 +615,10 @@ def render(design: PlantDesign | None = None) -> str:
     add(f"| **P-4** 농도 | {pc.low_solids_mass_fraction * 100:.0f} wt% "
         f"({pc.minimum_solids_volume_fraction * 100:.0f} vol% 하한) | 〃 | 로드밀 배출 농도 "
         f"요구(≥ {db.ATTRITION_MILL_DISCHARGE_MIN_SOLIDS_WT * 100:.0f} wt%) 확인 |")
-    add(f"| **P-5** EVA 부상 제거 | 기포제만 (포수제 없음), 1 L 부선 | 거품 EVA·거품 Ag | "
-        f"거품으로 가는 Ag ≤ 설계 미광 손실 {ag_loss * 100:.1f} % 이면 선부선 성립 |")
-    add("| **P-6** 재현성 | P-1 조건 3회 | E90 편차, 질량·Ag 수지 폐합 | 판정의 신뢰구간 |")
+    add("| **P-5** 재현성 | P-1 조건 3회 | E90 편차, 질량 수지 폐합 | 판정의 신뢰구간 |")
     add("")
     add(f"**판정 기준.** 부착 EVA 제거율 **≥ {db.PILOT_EVA_REMOVAL_TARGET * 100:.0f} %** "
-        f"(잠정 — Ag 정광 품위나 Si 제품 규격이 정해지면 거기서 역산) 이고, 그 비에너지에서 "
+        f"(잠정 — 부선 급광이 받아들일 수 있는 잔류 EVA 가 정해지면 그 값으로) 이고, 그 비에너지에서 "
         f"−10 µm 증가가 **{db.ATTRITION_FINES_ACCEPTANCE_PP:.0f} %p 이하** (AS-1 T-4 와 같은 "
         f"기준) 일 것.")
     add("")
@@ -694,12 +655,6 @@ def render(design: PlantDesign | None = None) -> str:
         f"성립한다 — P-2 가 그것을 본다. 판정의 전제인 1차 거동은 P-1 곡선의 적합도로 "
         f"확인하고, 벗어나면 환산 배수를 곡선에서 직접 다시 계산한다.")
     add("")
-    add(f"**플랜트에 주는 영향.** 떨어진 EVA 는 비중 {db.EVA_SG:.2f} 로 물에 뜨고 "
-        f"소수성이라, 그대로 두면 부선에서 정광으로 가 품위를 깎는다. 박리가 되면 떼는 "
-        f"것만큼 **걷어내는 것**이 필요하다 — P-5 가 성립하면 DB-1 과 CT-1 사이에 "
-        f"기포제만 쓰는 EVA 선부선을 둔다.")
-    add("")
-
     # 2.7 수소 -------------------------------------------------------------
     al_frac = f.component_tph(1.0)["Al"]
     al_peak_kg_h = f.component_tph(f.peak_tph)["Al"] * 1000.0

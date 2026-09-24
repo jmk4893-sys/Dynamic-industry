@@ -6,6 +6,7 @@ from flotation_design import design_basis as db
 from flotation_design.circuit import (
     FlotationUnit,
     Stream,
+    concentrate_grade_ceiling,
     dilute,
     float_unit,
     solve_circuit,
@@ -343,6 +344,26 @@ class TestMechanicalCircuit(unittest.TestCase):
                 db.FEED.component_tph(0.5), K, SG, r, sc, c,
                 max_iterations=2, tolerance_tph=1e-18,
             )
+
+
+
+class TestGradeCeiling(unittest.TestCase):
+    def test_design_carry_ratio_reproduces_the_literature_ceiling(self):
+        """r = 1.1 → 47.6 wt% — 문헌의 두 최고 품위(48.8 / 46.7)가 멈춘 자리."""
+        self.assertAlmostEqual(
+            concentrate_grade_ceiling(db.COMPOSITE_CARRY_RATIO), 1.0 / 2.1, places=12
+        )
+
+    def test_lower_carry_ratio_raises_the_ceiling(self):
+        ceilings = [concentrate_grade_ceiling(r) for r in (1.1, 0.8, 0.6, 0.4)]
+        self.assertEqual(ceilings, sorted(ceilings))
+
+    def test_fully_liberated_silver_has_no_ceiling(self):
+        self.assertAlmostEqual(concentrate_grade_ceiling(0.0), 1.0, places=12)
+
+    def test_rejects_negative(self):
+        with self.assertRaises(ValueError):
+            concentrate_grade_ceiling(-0.1)
 
 
 if __name__ == "__main__":

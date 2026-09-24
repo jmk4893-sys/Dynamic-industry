@@ -7,7 +7,7 @@
 두 안이 공용하는 전처리(:mod:`flotation_design.attrition`)를 앞에 두고,
 부선 본체는 두 가지 안을 함께 계산한다.
 
-* **전처리** — 어트리션 스크러버 + 희석박스 (:mod:`flotation_design.attrition`)
+* **전처리** — 어트리션 스크러버(EVA 박리) + 희석박스 (:mod:`flotation_design.attrition`)
 * **1안** — 세척수 bias 를 쓰는 연속 부선조 1단 (:mod:`flotation_design.rfc`)
 * **2안** — 기계식 러퍼 뱅크 + 클리너 (:mod:`flotation_design.circuit`)
 
@@ -22,7 +22,6 @@ from .attrition import (
     AttritionScrubber,
     AttritionShaft,
     DilutionBox,
-    concentrate_grade_ceiling,
     dilution_box,
     octagon_area_m2,
     short_circuit_fraction,
@@ -34,6 +33,7 @@ from .circuit import (
     FlotationUnit,
     Stream,
     UnitResult,
+    concentrate_grade_ceiling,
     float_unit,
     solve_circuit,
 )
