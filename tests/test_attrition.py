@@ -29,7 +29,7 @@ from flotation_design.attrition import (
 )
 from flotation_design.feed import PulpProperties
 from flotation_design.plant import build_plant, build_pretreatment
-from flotation_design.sizing import torsional_section_modulus_m3
+from flotation_design.sizing import cantilever_rotor_dynamics, torsional_section_modulus_m3
 
 SG = db.FEED.solids_specific_gravity
 
@@ -290,10 +290,14 @@ class TestScrubberSizing(unittest.TestCase):
         )
 
     def test_shaft_torque_carries_the_startup_service_factor(self):
+        """토크는 VFD 상한(최대 운전 토크)에서 기동 서비스계수를 실어 잡는다."""
         sh, d = self.sc.shaft, self.sc.drive
+        top = d.tip_speed_ceiling_m_s
         self.assertAlmostEqual(
             sh.torque_nm,
-            d.absorbed_power_w / (2.0 * math.pi * d.speed_rpm / 60.0) * sh.service_factor,
+            d.power_w_at_tip_speed(top)
+            / (2.0 * math.pi * d.speed_rpm_at_tip_speed(top) / 60.0)
+            * sh.service_factor,
             places=9,
         )
         self.assertGreaterEqual(sh.service_factor, 2.0)
@@ -302,6 +306,23 @@ class TestScrubberSizing(unittest.TestCase):
         sh = self.sc.shaft
         self.assertGreaterEqual(sh.critical_speed_ratio, sh.minimum_critical_speed_ratio)
         self.assertGreater(sh.critical_speed_rpm, self.sc.drive.speed_rpm)
+
+    def test_critical_speed_margin_holds_at_the_vfd_ceiling(self):
+        """여유는 설계점이 아니라 운전 범위 전체에서 지켜져야 한다.
+
+        설계점(670 rpm)에서만 검산하던 이전 판은 Ø50 mm 로 1.60배를 얻었지만,
+        VFD 상한(733 rpm)에서는 1.46배로 기준 1.5배 아래였다.
+        """
+        sh, d = self.sc.shaft, self.sc.drive
+        top_rpm = d.speed_rpm_at_tip_speed(d.tip_speed_ceiling_m_s)
+        self.assertAlmostEqual(sh.check_speed_rpm, top_rpm, places=9)
+        self.assertGreaterEqual(
+            sh.critical_speed_rpm / top_rpm, sh.minimum_critical_speed_ratio
+        )
+        old_design = cantilever_rotor_dynamics(
+            50.0, 0.0, sh.length_m, top_rpm, sh.overhung_mass_kg
+        )
+        self.assertLess(old_design.critical_speed_ratio, sh.minimum_critical_speed_ratio)
 
     # -- 종합 -------------------------------------------------------------
     def test_design_is_adequate(self):

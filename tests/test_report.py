@@ -6,6 +6,7 @@ import unittest
 
 from . import _path  # noqa: F401
 
+from flotation_design import design_basis as db
 from flotation_design.plant import build_plant
 from flotation_design.report import render
 
@@ -88,6 +89,11 @@ class TestRender(unittest.TestCase):
             "## 8. 수치해석",
         ):
             self.assertIn(heading, self.text)
+
+    def test_pilot_cell_and_hydrogen_are_reported(self):
+        self.assertIn(f"### 2.6 파일럿 시험 셀 {db.PILOT_TAG}", self.text)
+        self.assertIn("### 2.7 수소", self.text)
+        self.assertIn("E90", self.text)
 
     def test_cites_both_papers(self):
         self.assertIn("Minerals Engineering", self.text)

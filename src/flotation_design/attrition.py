@@ -39,6 +39,8 @@
    아니라 **비에너지**이므로, VFD 로 주속을 조정해 처리량 변동을 흡수한다.
 6. 축은 비틀림과 예비 로터동역학 중 큰 쪽으로 정한다. 짧고 굵어 보여도
    고농도 슬러리의 정지 토크와 외팔보 길이 때문에 대개 **로터동역학이 지배**한다.
+   검산 회전수는 설계점이 아니라 **VFD 상한**이다 — 임계회전수 여유는 운전
+   범위 전체에서 지켜져야 한다.
 """
 
 from __future__ import annotations
@@ -221,7 +223,13 @@ class AttritionDrive:
 # --------------------------------------------------------------------------
 @dataclass(frozen=True)
 class AttritionShaft:
-    """어트리션 셀의 중실 교반축 (상부 베어링 외팔보)."""
+    """어트리션 셀의 중실 교반축 (상부 베어링 외팔보).
+
+    Attributes:
+        check_speed_rpm: 토크와 임계회전수 여유를 검산한 회전수 — 운전 범위의
+            최댓값(VFD 상한)이다. 설계점에서만 보면 VFD 를 올렸을 때 여유가
+            기준 아래로 떨어질 수 있다.
+    """
 
     outer_diameter_mm: float
     length_m: float
@@ -236,6 +244,7 @@ class AttritionShaft:
     static_deflection_mm: float
     allowable_deflection_mm: float
     overhung_mass_kg: float
+    check_speed_rpm: float
 
     @property
     def is_safe(self) -> bool:
@@ -246,7 +255,7 @@ class AttritionShaft:
         )
 
 
-def _size_shaft(
+def solid_shaft(
     absorbed_power_w: float,
     speed_rpm: float,
     length_m: float,
@@ -258,6 +267,8 @@ def _size_shaft(
 ) -> AttritionShaft:
     """비틀림과 예비 로터동역학 중 큰 쪽으로 중실축 외경을 정한다.
 
+    ``absorbed_power_w`` 와 ``speed_rpm`` 은 **운전 범위의 최댓값**으로 넣는다
+    (토크는 N^2, 임계회전수 여유는 N 에 반비례하므로 최고 속도가 지배한다).
     비틀림 서비스계수 2.0 은 고농도 슬러리가 굳은 상태에서 기동할 때의
     정지 토크를 감안한 값이다. 로터동역학은 임펠러 조립체 전체를 자유단
     집중질량으로 놓은 보수적 외팔보 모델이다 (실제로는 위쪽 임펠러가
@@ -306,6 +317,72 @@ def _size_shaft(
         static_deflection_mm=dynamics.static_deflection_mm,
         allowable_deflection_mm=allowable_deflection_mm,
         overhung_mass_kg=overhung_mass_kg,
+        check_speed_rpm=speed_rpm,
+    )
+
+
+def octagon_width_m(volume_m3: float, depth_to_width: float, round_to_m: float = 0.005) -> float:
+    """유효 체적과 깊이/폭 비에서 팔각조 폭(AF)을 구해 제작 치수로 올린다.
+
+    A*W^2 * (r*W) = V 에서 W = (V / (A*r))^(1/3).
+    """
+    if volume_m3 <= 0 or depth_to_width <= 0 or round_to_m <= 0:
+        raise ValueError("체적·깊이비·반올림 단위는 양수여야 함")
+    width = (volume_m3 / (OCTAGON_AREA_COEFF * depth_to_width)) ** (1.0 / 3.0)
+    return math.ceil(round(width / round_to_m, 9)) * round_to_m
+
+
+def attrition_drive(
+    across_flats_m: float,
+    pulp_density_kg_m3: float,
+    design_tip_speed_m_s: float,
+    tip_speed_range_m_s: tuple[float, float],
+    impeller_ratio: float = 0.50,
+    impellers_per_shaft: int = 2,
+    power_number: float = 0.80,
+    impeller_mass_coeff_kg_m3: float = 500.0,
+    motor_service_factor: float = 1.4,
+    speed_round_to_rpm: float = 10.0,
+    motor_sizing_tip_speed_m_s: float | None = None,
+) -> AttritionDrive:
+    """대향 피치 임펠러 2단/축의 지름·회전수·동력·모터.
+
+    지름은 조 폭 비율, 회전수는 설계 주속에서 정하고, 흡수동력은
+    ``P = n x Np x rho x N^3 x D^5`` 로 계산한다.
+
+    Args:
+        motor_sizing_tip_speed_m_s: 모터를 고르는 주속. 생략하면 설계점.
+            시험 셀처럼 **주속 범위 전체를 돌려야 하는** 설비는 상한 주속을
+            넣는다 — 그래야 VFD 상한이 모터에 막히지 않는다.
+    """
+    tip_min, tip_max = tip_speed_range_m_s
+    if not tip_min <= design_tip_speed_m_s <= tip_max:
+        raise ValueError("설계 주속이 허용 범위를 벗어남")
+    diameter = round(across_flats_m * impeller_ratio, 2)
+    rev_s = design_tip_speed_m_s / (math.pi * diameter)
+    rpm = round(rev_s * 60.0 / speed_round_to_rpm) * speed_round_to_rpm
+    rev_s = rpm / 60.0
+    tip_speed = math.pi * diameter * rev_s
+    absorbed_w = (
+        impellers_per_shaft * power_number * pulp_density_kg_m3 * rev_s**3 * diameter**5
+    )
+    sizing_tip = design_tip_speed_m_s if motor_sizing_tip_speed_m_s is None else motor_sizing_tip_speed_m_s
+    if not tip_min <= sizing_tip <= tip_max:
+        raise ValueError("모터 선정 주속이 허용 범위를 벗어남")
+    sizing_w = absorbed_w * (sizing_tip / tip_speed) ** 3
+    return AttritionDrive(
+        diameter_m=diameter,
+        speed_rpm=rpm,
+        tip_speed_m_s=tip_speed,
+        impellers_per_shaft=impellers_per_shaft,
+        power_number=power_number,
+        pulp_density_kg_m3=pulp_density_kg_m3,
+        absorbed_power_w=absorbed_w,
+        motor_rating_kw=select_motor_kw(sizing_w, motor_service_factor),
+        service_factor=motor_service_factor,
+        tip_speed_min_m_s=tip_min,
+        tip_speed_max_m_s=tip_max,
+        assembly_mass_kg=impeller_mass_coeff_kg_m3 * impellers_per_shaft * diameter**3,
     )
 
 
@@ -532,48 +609,33 @@ def size_attrition(
     )
 
     # 2. 팔각조 형상 — A*W^2 * (r*W) = V 에서 W 를 풀고 제작 치수로 올림
-    width = (nominal / (OCTAGON_AREA_COEFF * depth_to_width)) ** (1.0 / 3.0)
-    width = math.ceil(width / round_to_m) * round_to_m
-    depth = math.ceil(depth_to_width * width / round_to_m) * round_to_m
+    width = octagon_width_m(nominal, depth_to_width, round_to_m)
+    depth = math.ceil(round(depth_to_width * width / round_to_m, 9)) * round_to_m
     geometry = AttritionCellGeometry(
         across_flats_m=width, depth_m=depth, freeboard_m=freeboard_m
     )
 
-    # 3. 임펠러 — 지름은 조 폭 비율, 회전수는 설계 주속에서
-    diameter = round(width * impeller_ratio, 2)
-    rev_s = design_tip_speed_m_s / (math.pi * diameter)
-    rpm = round(rev_s * 60.0 / speed_round_to_rpm) * speed_round_to_rpm
-    rev_s = rpm / 60.0
-    tip_speed = math.pi * diameter * rev_s
-    absorbed_w = (
-        impellers_per_shaft
-        * power_number
-        * pulp.pulp_density_kg_m3
-        * rev_s**3
-        * diameter**5
-    )
-    assembly_mass = impeller_mass_coeff_kg_m3 * impellers_per_shaft * diameter**3
-    drive = AttritionDrive(
-        diameter_m=diameter,
-        speed_rpm=rpm,
-        tip_speed_m_s=tip_speed,
+    # 3. 임펠러 — 지름은 조 폭 비율, 회전수는 설계 주속에서, 모터는 설계점에서
+    drive = attrition_drive(
+        width,
+        pulp.pulp_density_kg_m3,
+        design_tip_speed_m_s,
+        tip_speed_range_m_s,
+        impeller_ratio=impeller_ratio,
         impellers_per_shaft=impellers_per_shaft,
         power_number=power_number,
-        pulp_density_kg_m3=pulp.pulp_density_kg_m3,
-        absorbed_power_w=absorbed_w,
-        motor_rating_kw=select_motor_kw(absorbed_w, motor_service_factor),
-        service_factor=motor_service_factor,
-        tip_speed_min_m_s=tip_min,
-        tip_speed_max_m_s=tip_max,
-        assembly_mass_kg=assembly_mass,
+        impeller_mass_coeff_kg_m3=impeller_mass_coeff_kg_m3,
+        motor_service_factor=motor_service_factor,
+        speed_round_to_rpm=speed_round_to_rpm,
     )
 
-    # 4. 축 — 액면 위 구동 데크까지 올라가는 외팔보
-    shaft = _size_shaft(
-        absorbed_power_w=absorbed_w,
-        speed_rpm=rpm,
+    # 4. 축 — 액면 위 구동 데크까지 올라가는 외팔보. VFD 상한에서 검산한다.
+    ceiling = drive.tip_speed_ceiling_m_s
+    shaft = solid_shaft(
+        absorbed_power_w=drive.power_w_at_tip_speed(ceiling),
+        speed_rpm=drive.speed_rpm_at_tip_speed(ceiling),
         length_m=geometry.shell_height_m + shaft_length_margin_m,
-        overhung_mass_kg=assembly_mass,
+        overhung_mass_kg=drive.assembly_mass_kg,
         allowable_shear_mpa=allowable_shear_mpa,
         torque_service_factor=torque_service_factor,
         critical_speed_ratio_min=critical_speed_ratio_min,

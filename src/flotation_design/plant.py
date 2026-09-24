@@ -11,6 +11,13 @@ from dataclasses import dataclass
 
 from . import design_basis as db
 from .attrition import AttritionScrubber, DilutionBox, dilution_box, size_attrition
+from .attrition_pilot import (
+    MechanismScreen,
+    PilotCell,
+    PilotScaleUp,
+    pilot_scale_up,
+    size_pilot_cell,
+)
 from .circuit import CircuitResult, FlotationUnit, solve_circuit
 from .conditioning import ConditionerDesign, conditioner_train
 from .feed import FeedSpec
@@ -578,6 +585,69 @@ def build_pretreatment(feed: FeedSpec = db.FEED) -> Pretreatment:
             residence_min=db.DILUTION_BOX_RESIDENCE_MIN,
         ),
         bypass=f"{db.ATTRITION_TAG} 전량 바이패스 → {db.DILUTION_BOX_TAG}",
+    )
+
+
+# --------------------------------------------------------------------------
+# 파일럿 시험 셀 — 플랜트 설비가 아니다 (설치 전력·물수지 제외)
+# --------------------------------------------------------------------------
+def build_pilot(feed: FeedSpec = db.FEED) -> PilotCell:
+    """PAS-1 — AS-1 과 기하 상사인 회분식 EVA 박리 시험 셀."""
+    return size_pilot_cell(
+        db.PILOT_TAG,
+        db.PILOT_DUTY,
+        feed.solids_specific_gravity,
+        aluminium_mass_fraction=feed.component_tph(1.0)["Al"],
+        energy_points_kwh_t=db.PILOT_ENERGY_POINTS_KWH_T,
+        test_tip_speeds_m_s=db.PILOT_TIP_SPEEDS_M_S,
+        reference_tip_speed_m_s=db.ATTRITION_DESIGN_TIP_SPEED_M_S,
+        temperatures_c=db.PILOT_TEMPERATURES_C,
+        sample_dry_kg=db.PILOT_SAMPLE_DRY_KG,
+        max_withdrawal=db.PILOT_MAX_WITHDRAWAL,
+        batch_round_kg=db.PILOT_BATCH_ROUND_KG,
+        solids_mass_fraction=db.ATTRITION_SOLIDS_WT,
+        minimum_solids_volume_fraction=db.ATTRITION_MIN_SOLIDS_VOLUME_FRACTION,
+        depth_to_width=db.ATTRITION_DEPTH_TO_WIDTH,
+        freeboard_m=db.ATTRITION_FREEBOARD_M,
+        impeller_ratio=db.ATTRITION_IMPELLER_RATIO,
+        impellers_per_shaft=db.ATTRITION_IMPELLERS_PER_SHAFT,
+        power_number=db.ATTRITION_POWER_NUMBER,
+        impeller_mass_coeff_kg_m3=db.ATTRITION_IMPELLER_MASS_COEFF_KG_M3,
+        impeller_clearance_ratio=db.PILOT_IMPELLER_CLEARANCE_RATIO,
+        min_submergence_ratio=db.PILOT_MIN_SUBMERGENCE_RATIO,
+        shaft_length_margin_m=db.PILOT_SHAFT_LENGTH_MARGIN_M,
+        jacket_u_w_m2k=db.PILOT_JACKET_U_W_M2K,
+        tcu_min_supply_c=db.PILOT_TCU_MIN_SUPPLY_C,
+        solids_cp_kj_kgk=db.SOLIDS_CP_KJ_KGK,
+        torque_sensor_series_nm=db.PILOT_TORQUE_SENSOR_SERIES_NM,
+        vent_m3h=db.PILOT_VENT_M3H,
+        h2_lel_vol=db.H2_LEL_VOL,
+        h2_design_lel_fraction=db.H2_DESIGN_LEL_FRACTION,
+        wetted_material=db.PILOT_WETTED_MATERIAL,
+    )
+
+
+def build_mechanism_screen(feed: FeedSpec = db.FEED) -> MechanismScreen:
+    """PAS-1 방식 선정 근거 — 유체 전단 상한과 t 당 표면적."""
+    pilot = build_pilot(feed)
+    return MechanismScreen(
+        shear_rate_s=db.ROTOR_STATOR_SHEAR_RATE_S,
+        volume_fraction=pilot.solids_volume_fraction,
+        eva_strength_mpa=db.EVA_STRENGTH_MPA,
+        feed_size_um=db.PILOT_FEED_SIZE_UM,
+        solids_sg=pilot.solids_sg,
+        sand_um=db.REFERENCE_SAND_UM,
+        sand_sg=db.REFERENCE_SAND_SG,
+    )
+
+
+def build_pilot_scale_up(feed: FeedSpec = db.FEED) -> PilotScaleUp:
+    """파일럿 회분 결과를 AS-1 로 옮기는 판정 한계."""
+    return pilot_scale_up(
+        build_pretreatment(feed).scrubber,
+        feed.peak_tph,
+        feed.average_tph,
+        db.PILOT_EVA_REMOVAL_TARGET,
     )
 
 

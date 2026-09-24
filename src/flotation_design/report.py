@@ -5,11 +5,24 @@ from __future__ import annotations
 from . import design_basis as db
 from . import references as ref
 from .attrition import concentrate_grade_ceiling, short_circuit_fraction
+from .attrition_pilot import (
+    continuous_energy_factor,
+    hydrogen_from_aluminium_nm3,
+    pilot_scale_up,
+    ventilation_for_hydrogen_m3h,
+)
 from .hydrodynamics import analyse_cell
 from .kinetics import perfect_mixer_recovery
 from .circuit import solve_circuit
 from .transient import simulate_startup
-from .plant import PlantDesign, build_plant, mechanical_sizing_check
+from .plant import (
+    PlantDesign,
+    build_mechanism_screen,
+    build_pilot,
+    build_plant,
+    mechanical_sizing_check,
+)
+from .sizing import SHAFT_OD_SERIES_MM, cantilever_rotor_dynamics
 from .reagents import reagent_schedule
 
 
@@ -72,6 +85,8 @@ def render(design: PlantDesign | None = None) -> str:
     pre = d.pretreatment
     sc, dil = pre.scrubber, pre.dilution
     g, dr, sh = sc.geometry, sc.drive, sc.shaft
+    pc, ms = build_pilot(f), build_mechanism_screen(f)
+    su = pilot_scale_up(sc, f.peak_tph, f.average_tph, db.PILOT_EVA_REMOVAL_TARGET)
     ag_peak_tph = f.component_tph(f.peak_tph)["Ag"]
     solids_dose_g_t = sum(r.dose for r in db.REAGENTS if r.basis == "solids")
     reagent_saving_kg_y = (
@@ -261,6 +276,13 @@ def render(design: PlantDesign | None = None) -> str:
         f"아니라 **비에너지(kWh/t)** 이기 때문이다 (§2.3). 필터프레스 정광 라인이 "
         f"같은 이유로 상용 최소 기종에 걸린 것과 같은 상황이다.")
     add("")
+    smaller_od = max(od for od in SHAFT_OD_SERIES_MM if od < sh.outer_diameter_mm)
+    smaller_at_design = cantilever_rotor_dynamics(
+        smaller_od, 0.0, sh.length_m, dr.speed_rpm, sh.overhung_mass_kg
+    )
+    smaller_at_ceiling = cantilever_rotor_dynamics(
+        smaller_od, 0.0, sh.length_m, sh.check_speed_rpm, sh.overhung_mass_kg
+    )
     add("### 2.2 기계 사양")
     add("")
     add(_table(
@@ -299,12 +321,13 @@ def render(design: PlantDesign | None = None) -> str:
             ["**교반축 외경**", f"**Ø{sh.outer_diameter_mm:.0f} mm** (중실)",
              f"길이 {sh.length_m:.2f} m, 결정 기준 **{sh.governed_by}**"],
             ["축 토크 / 전단응력",
-             f"{sh.torque_nm:.1f} N·m / {sh.shear_stress_mpa:.1f} MPa",
-             f"서비스계수 {sh.service_factor:.1f} (굳은 슬러리 기동 토크), "
+             f"{sh.torque_nm:.1f} N·m / {sh.shear_stress_mpa:.2f} MPa",
+             f"VFD 상한 기준, 서비스계수 {sh.service_factor:.1f} (굳은 슬러리 기동 토크), "
              f"허용 {sh.allowable_shear_mpa:.0f} MPa"],
             ["1차 임계회전수 / 운전비",
-             f"{sh.critical_speed_rpm:.0f} rpm / {sh.critical_speed_ratio:.2f}x",
-             f"하한 {sh.minimum_critical_speed_ratio:.1f}x — "
+             f"{sh.critical_speed_rpm:,.0f} rpm / {sh.critical_speed_ratio:.2f}x",
+             f"**VFD 상한 {sh.check_speed_rpm:.0f} rpm** 기준, 하한 "
+             f"{sh.minimum_critical_speed_ratio:.1f}x — "
              + ("OK" if sh.critical_speed_ratio >= sh.minimum_critical_speed_ratio else "**NG**")],
             ["예비 정적 처짐", f"{sh.static_deflection_mm:.2f} mm",
              f"허용 {sh.allowable_deflection_mm:.0f} mm"],
@@ -317,9 +340,13 @@ def render(design: PlantDesign | None = None) -> str:
     add(f"**축은 비틀림이 아니라 {sh.governed_by}이 지배한다.** 전단응력은 허용치의 "
         f"{sh.shear_stress_mpa / sh.allowable_shear_mpa * 100:.0f} % 에 불과하지만, "
         f"{sh.length_m:.2f} m 외팔보 끝에 임펠러 조립체 {sh.overhung_mass_kg:.0f} kg 이 "
-        f"매달리므로 1차 굽힘 임계회전수가 운전 회전수에 가까워진다. 임펠러 질량은 "
-        f"D^3 비례 예비값이므로 제작도 확정 후 실측 질량과 실제 베어링 스팬으로 "
-        f"재검증해야 한다.")
+        f"매달리므로 1차 굽힘 임계회전수가 운전 회전수에 가까워진다. 검산 회전수는 "
+        f"설계점({dr.speed_rpm:.0f} rpm)이 아니라 **VFD 상한({sh.check_speed_rpm:.0f} rpm)** "
+        f"이다 — 여유는 운전 범위 전체에서 지켜져야 한다. 한 치수 작은 "
+        f"Ø{smaller_od:.0f} mm 는 설계점에서 {smaller_at_design.critical_speed_ratio:.2f}배로 "
+        f"통과하지만 VFD 상한에서 {smaller_at_ceiling.critical_speed_ratio:.2f}배로 기준 "
+        f"아래다. 임펠러 질량은 D^3 비례 예비값이므로 제작도 확정 후 실측 질량과 실제 "
+        f"베어링 스팬으로 재검증해야 한다.")
     add("")
     add("### 2.3 비에너지 — 실제 제어변수")
     add("")
@@ -381,8 +408,9 @@ def render(design: PlantDesign | None = None) -> str:
     add("")
     add("| 시험 | 방법 | 판정 |")
     add("|---|---|---|")
-    add(f"| T-1 스크럽 강도 스윕 | 실험실 어트리션 셀에서 0 / 1 / 3 / "
-        f"{sc.specific_energy_range_kwh_t[1]:.0f} kWh/t 처리 후 동일 조건 부선 | "
+    add(f"| T-1 스크럽 강도 스윕 | 시험 셀 {db.PILOT_TAG}(§2.6)에서 "
+        + " / ".join(f"{e:g}" for e in db.PILOT_ENERGY_POINTS_KWH_T)
+        + " kWh/t 시료로 동일 조건 부선 | "
         f"회수율·정광 품위·소요 약제량의 kWh/t 응답 곡선 |")
     add("| T-2 동반비 r 측정 | 세척수 bias 를 올려 수분 동반을 0 에 가깝게 만든 상태의 "
         "정광 품위 g 에서 r = (1-g)/g 를 역산, 스크럽 전후 비교 | r 이 유의하게 "
@@ -400,6 +428,14 @@ def render(design: PlantDesign | None = None) -> str:
         f"2안은 수분 동반 계수가 "
         f"{db.FLOAT_MODELS['Si'].entrainment_factor:.2f} 이라 미립이 늘면 정광이 그만큼 "
         f"희석된다. **어트리션은 1안과 더 잘 맞는다.**")
+    add("")
+    add(f"**미분 한계.** 급광 P80 은 {f.p80_micron:.0f} µm 로, 어트리션 실적이 쌓인 "
+        f"실리카사({db.REFERENCE_SAND_UM:.0f} µm)보다 한 자릿수 작다. 입자 하나가 "
+        f"싣고 부딪히는 운동에너지는 d^3 로 줄고, t 당 벗겨야 할 표면은 "
+        f"{ms.surface_ratio_to_sand:.0f}배로 는다. 목표 범위 "
+        f"{sc.specific_energy_range_kwh_t[0]:.0f}~{sc.specific_energy_range_kwh_t[1]:.0f} kWh/t "
+        f"는 모래의 통상값이라 **출발점일 뿐이다.** 이 원료에서 무엇을 얼마나 떼는지는 "
+        f"{db.PILOT_TAG}(§2.6)이 정한다.")
     add("")
     add("### 2.5 희석박스와 물수지")
     add("")
@@ -444,6 +480,259 @@ def render(design: PlantDesign | None = None) -> str:
         f"**{pre.installed_kw / d.total_installed_kw(rfc) * 100:.0f} %** 를 쓴다. "
         f"성능 크레딧이 0 인 설비로서는 결코 작지 않은 비용이며, 바이패스와 시험 계획을 "
         f"설계에 넣은 이유가 이것이다.")
+    add("")
+
+    # 2.6 파일럿 시험 셀 ---------------------------------------------------
+    pg, pd, ps = pc.geometry, pc.drive, pc.shaft
+    size_lo, size_hi = db.PILOT_FEED_SIZE_UM
+    tips = pc.test_tip_speeds_m_s
+    top_tip, low_tip = max(tips), min(tips)
+    base_tip = db.ATTRITION_DESIGN_TIP_SPEED_M_S
+    base_temp = sorted(pc.temperatures_c)[len(pc.temperatures_c) // 2]
+    side_temps = " · ".join(f"{t:.0f}" for t in pc.temperatures_c if t != base_temp)
+    energies = " / ".join(f"{e:g}" for e in pc.energy_points_kwh_t)
+    lel_pct = db.H2_LEL_VOL * 100.0
+    design_vol_pct = lel_pct * db.H2_DESIGN_LEL_FRACTION
+    tolerable_kg_h = pc.tolerable_aluminium_reaction_per_h * pc.aluminium_in_batch_kg
+    ag_loss = 1.0 - db.RFC_AG_RECOVERY
+    add(f"### 2.6 파일럿 시험 셀 {pc.tag} — 블랙파우더 EVA 박리")
+    add("")
+    add(f"AS-1 의 성능 크레딧이 0 인 것은 시험이 없어서다. {pc.tag} 은 그 시험을 하는 "
+        f"장비다 — PV 블랙파우더({size_lo:.0f}~{size_hi:.0f} µm)의 Si 표면에 붙은 EVA 를 "
+        f"**기계적으로** 뗄 수 있는지, 뗀다면 **몇 kWh/t 에서, Si 를 얼마나 깨뜨리면서** "
+        f"떼는지 잰다. 같은 셀이 §2.4 의 T-1 을 맡는다. 제작해서 시험하는 장비이므로 "
+        f"설치 전력·물수지에 넣지 않는다.")
+    add("")
+    add("**방식 선정.** 박리는 표면에 힘을 거는 문제다. 무엇이 그 힘을 거는지로 가른다.")
+    add("")
+    add(_table(
+        ["방식", "박리 기구", "판정"],
+        [
+            ["로터-스테이터 고전단", "유체 전단 τ = μ_eff x γ̇",
+             f"γ̇ {ms.shear_rate_s:,.0f} /s · {ms.volume_fraction * 100:.1f} vol% 에서도 "
+             f"τ ≈ {ms.fluid_shear_pa / 1000:.1f} kPa — EVA 강도(≥ {ms.eva_strength_mpa:.0f} MPa)의 "
+             f"**1/{ms.shear_shortfall:,.0f}**. 서브mm 간극은 고농도 연마성 슬러리에서 못 버틴다 — "
+             f"**기각**"],
+            ["비드밀", "비드 충격·압축",
+             "취성 Si 가 무른 EVA 보다 먼저 깨지고 비드 마모분이 섞인다. 미분을 "
+             "**만드는** 방법 — **기각**"],
+            ["**어트리션**", f"입자-입자 마찰 ({pc.solids_volume_fraction * 100:.0f} vol% 층)",
+             "각진 Si 모서리가 EVA 막을 긁는다. 접촉점 응력은 유체 전단과 차원이 다르다 — "
+             "**채택**. 단 미분에서의 효율 근거가 없다 → 이 시험"],
+            ["열분해 450~550 °C", "EVA 분해·휘발",
+             "확실하지만 로와 배가스 처리가 붙는다 — 기계식이 탈락하면 가는 **대안**"],
+        ],
+    ))
+    add("")
+    add(f"어트리션을 골라도 근거가 약하다. 체 범위의 기하평균 "
+        f"{ms.representative_size_um:.0f} µm 의 t 당 표면적은 {ms.feed_surface_m2_kg:.0f} m2/kg "
+        f"로, 어트리션 실적이 쌓인 실리카사({db.REFERENCE_SAND_UM:.0f} µm, "
+        f"{ms.sand_surface_m2_kg:.1f} m2/kg)의 **{ms.surface_ratio_to_sand:.0f}배**다. "
+        f"**그래서 시험 셀이 먼저다.**")
+    add("")
+    add(f"**셀 사양.** AS-1 과 기하 상사다 — 흐름 구조가 같으므로 **주속과 비에너지**만 "
+        f"맞추면 결과가 AS-1 로 넘어간다.")
+    add("")
+    add(_table(
+        ["항목", f"{pc.tag}", "AS-1 (참고)", "근거"],
+        [
+            ["형식", "회분식 팔각조 1기 · 뚜껑 · 재킷", f"연속 팔각조 {sc.cells}기 직렬",
+             "회분 1회로 비에너지 곡선 전체 — 연속식은 체류시간 분포로 곡선이 흐려진다"],
+            ["**회분**",
+             f"**건조 {pc.batch_dry_kg:.0f} kg** + 물 {pc.water_kg:.2f} kg = "
+             f"{pc.slurry_kg:.1f} kg ({pc.slurry_volume_m3 * 1000:.1f} L)",
+             "—",
+             f"채취 {pc.samples_per_batch}점 x {pc.sample_dry_kg:.2f} kg = "
+             f"{pc.withdrawal_fraction * 100:.0f} % ≤ {pc.max_withdrawal * 100:.0f} % 인 최소량"],
+            ["고체 농도",
+             f"{pc.solids_mass_fraction * 100:.0f} wt% ({pc.solids_volume_fraction * 100:.1f} vol%)",
+             f"{sc.solids_mass_fraction * 100:.0f} wt% ({sc.solids_volume_fraction * 100:.1f} vol%)",
+             "같은 슬러리"],
+            ["**내부 치수**",
+             f"**AF {pg.across_flats_m * 1000:.0f} x 액면 {pc.fill_level_m * 1000:.0f} mm**",
+             f"AF {g.across_flats_m * 1000:.0f} x {g.depth_m * 1000:.0f} mm",
+             f"액면/폭 {pc.depth_to_width:.2f} (AS-1 {g.depth_m / g.across_flats_m:.2f}), "
+             f"전고 {pg.shell_height_m * 1000:.0f} mm, 대각 {pg.circumscribed_diameter_m * 1000:.0f} mm"],
+            ["임펠러",
+             f"대향 피치 {pd.impellers_per_shaft}단 Ø{pd.diameter_m * 1000:.0f} mm, "
+             f"간격 {pd.spacing_m * 1000:.0f} · 하단 간극 {pc.impeller_clearance_m * 1000:.0f} mm",
+             f"Ø{dr.diameter_m * 1000:.0f} mm",
+             f"폭 대비 {pd.diameter_m / pg.across_flats_m:.2f}, Np {pd.power_number:.1f} — 같음"],
+            ["**기준 회전수 / 주속**",
+             f"**{pd.speed_rpm:,.0f} rpm / {pd.tip_speed_m_s:.2f} m/s**",
+             f"{dr.speed_rpm:.0f} rpm / {dr.tip_speed_m_s:.2f} m/s", "주속을 맞춘다"],
+            ["시험 주속",
+             " / ".join(f"{t:.1f}" for t in tips) + " m/s "
+             f"({pc.speed_rpm(low_tip):,.0f}~{pc.speed_rpm(top_tip):,.0f} rpm)",
+             f"VFD {dr.tip_speed_min_m_s:.1f}~{dr.tip_speed_ceiling_m_s:.2f} m/s",
+             f"VFD 상한 {pd.tip_speed_ceiling_m_s:.2f} m/s — 모터가 시험 범위를 막지 않는다"],
+            ["흡수동력 / 모터",
+             f"{pc.power_w(base_tip):,.0f} W ({base_tip:.0f} m/s) · "
+             f"{pc.power_w(top_tip):,.0f} W ({top_tip:.0f} m/s) / **{pd.motor_rating_kw:.1f} kW**",
+             f"{dr.absorbed_power_w / 1000:.2f} / {dr.motor_rating_kw:.1f} kW",
+             "모터는 상한 주속에서 고른다"],
+            ["체적당 동력",
+             f"{pc.specific_power_kw_m3(base_tip):.1f} kW/m3 ({base_tip:.0f} m/s)",
+             f"{sc.specific_power_kw_m3:.1f} kW/m3",
+             "같은 주속에서 v^3/D 로 작은 셀이 크다 — **스케일업 변수가 아니다**"],
+            ["**교반축**",
+             f"**Ø{ps.outer_diameter_mm:.0f} mm** 중실, 길이 {ps.length_m:.2f} m",
+             f"Ø{sh.outer_diameter_mm:.0f} mm, {sh.length_m:.2f} m",
+             f"{ps.governed_by} 지배 — 임계 {ps.critical_speed_rpm:,.0f} rpm, "
+             f"{ps.check_speed_rpm:,.0f} rpm({top_tip:.0f} m/s)에서 {ps.critical_speed_ratio:.2f}배"],
+            ["**토크센서**", f"**{pc.torque_sensor_nm:.0f} N·m** 회전형 + 엔코더", "—",
+             f"기동 토크 {ps.torque_nm:.1f} N·m 수용, {low_tip:.0f} m/s 운전 토크 "
+             f"{pc.torque_nm(low_tip):.2f} N·m = {pc.lowest_torque_fraction * 100:.0f} % FS"],
+            ["접액부", pc.wetted_material, sc.liner,
+             "**고무·우레탄 금지** — 마모분이 TGA 잔류 EVA 에 섞인다"],
+            ["재킷 / TCU",
+             f"전열면 {pc.jacket_area_m2:.3f} m2, U {pc.jacket_u_w_m2k:.0f} W/m2K",
+             "—",
+             f"{min(pc.temperatures_c):.0f} °C 를 {top_tip:.0f} m/s 에서 지키려면 냉매 "
+             f"{pc.worst_coolant_supply_c:.1f} °C (TCU 하한 {pc.tcu_min_supply_c:.0f} °C) — "
+             + ("OK" if pc.temperature_control_ok else "**NG**")],
+            ["헤드스페이스 배기", f"{pc.vent_m3h:.0f} m3/h + H2 검지", "덮개 배기 (§2.7)",
+             f"LEL {db.H2_ALARM_LEL_FRACTION * 100:.0f} % 경보, "
+             f"{db.H2_DESIGN_LEL_FRACTION * 100:.0f} % 교반 정지"],
+            ["판정", "성립" if pc.is_adequate else "**NG**", "", "형상·잠김·축·센서·온도·주속"],
+        ],
+    ))
+    add("")
+    add(f"**채취 일정.** 비에너지는 조 안에 **남은** 고체 기준으로 쌓인다 — 시료를 뜰 "
+        f"때마다 고체가 줄어 같은 동력에서 t 당 에너지가 빨리 오른다. 시료를 다 떠도 "
+        f"상단 임펠러 위에 {pc.minimum_submergence_m * 1000:.0f} mm "
+        f"({pc.minimum_submergence_m / pd.diameter_m:.2f} D)가 남는다.")
+    add("")
+    first = pc.schedule(tips[0])
+    schedules = [pc.schedule(t) for t in tips]
+    add(_table(
+        ["누적 비에너지"] + [f"{t:.1f} m/s 경과 (min)" for t in tips]
+        + ["채취 직전 고체", "액면"],
+        [
+            [f"{point.energy_kwh_t:g} kWh/t"]
+            + [f"{sched[i].elapsed_min:.1f}" for sched in schedules]
+            + [f"{point.dry_kg_before:.1f} kg", f"{point.fill_level_m * 1000:.0f} mm"]
+            for i, point in enumerate(first)
+        ],
+    ))
+    add("")
+    add("경과 시간은 계획값이다. 실제 비에너지는 **축 토크 x 각속도를 적분**해 채취 "
+        "순간의 값을 기록한다. 1 kW 급에서는 모터·VFD 손실이 입력의 수십 % 라 전력계로 "
+        "재면 kWh/t 가 부풀고 스케일업이 틀어진다. 빈 조(공기 중)에서 같은 회전수로 잰 "
+        "베어링 마찰 토크만 빼고, 물만 넣은 토크는 빼지 않는다 — 액체 교반 손실도 AS-1 "
+        "비에너지(슬러리 흡수동력 / 건조 고체)에 들어 있는 몫이다.")
+    add("")
+    add(f"**온도.** 교반 동력은 전부 열이 된다. 단열이면 1 kWh/t 에 "
+        f"{pc.adiabatic_rise_k_per_kwh_t:.2f} K, {max(pc.energy_points_kwh_t):g} kWh/t 에서 "
+        f"**{pc.adiabatic_rise_at_max_energy_k:.0f} K** 오른다 — 시험 온도 간격"
+        f"({min(pc.temperatures_c):.0f}~{max(pc.temperatures_c):.0f} °C)보다 크다. 재킷 없이 "
+        f"돌리면 온도 효과와 비에너지 효과를 가를 수 없다.")
+    add("")
+    add(f"**수소.** 회분에 Al 이 {pc.aluminium_in_batch_kg:.1f} kg 들어 있다. 배기 "
+        f"{pc.vent_m3h:.0f} m3/h 는 헤드스페이스를 {design_vol_pct:.1f} vol% (LEL "
+        f"{lel_pct:.0f} % 의 {db.H2_DESIGN_LEL_FRACTION * 100:.0f} %) 아래로 묶으면서 Al 반응 "
+        f"{tolerable_kg_h:.2f} kg/h — 회분 Al 의 **{pc.tolerable_aluminium_reaction_per_h * 100:.0f} %/h** "
+        f"까지 견딘다. 실제 발생률은 첫 회분 전에 P-0 밀폐 용기 시험으로 잰다. 알칼리성 "
+        f"분산제는 Al 반응을 빠르게 하므로 쓰지 않는다.")
+    add("")
+    add("**시험 계획.**")
+    add("")
+    add("| 단계 | 조건 | 측정 | 산출물 |")
+    add("|---|---|---|---|")
+    add("| **P-0** 원료 특성 | 교반 전 | TGA(N2) 유기물, **수중 부침 분리**(뜬 EVA = 유리 / "
+        "가라앉은 분획 TGA = 부착), 입도(−10 µm), Ag·Al·Si assay, **밀폐 용기 H2 발생률** "
+        "(70 wt%, 24 h) | 부착 EVA 가 없으면 스크러빙 불필요 → P-5 만. H2 가 배기 한계를 "
+        "넘으면 배기부터 키운다 |")
+    add(f"| **P-1** 비에너지 곡선 | {base_tip:.0f} m/s, {pc.solids_mass_fraction * 100:.0f} wt%, "
+        f"{base_temp:.0f} °C | 채취 {energies} kWh/t — 부착 EVA, −10 µm, 1 L 부선(T-1) | "
+        f"1차 적합 1−X = exp(−kE) → **E90 = ln 10 / k** |")
+    add(f"| **P-2** 주속 | {low_tip:.0f} · {top_tip:.0f} m/s | P-1 과 같은 채취점 | 곡선이 E "
+        f"하나로 겹치는가 — 겹치면 E 만으로 스케일업, 아니면 주속 상한 |")
+    add(f"| **P-3** 온도 | {side_temps} °C | 〃 | 겨울·여름 공정수 온도 영향 |")
+    add(f"| **P-4** 농도 | {pc.low_solids_mass_fraction * 100:.0f} wt% "
+        f"({pc.minimum_solids_volume_fraction * 100:.0f} vol% 하한) | 〃 | 로드밀 배출 농도 "
+        f"요구(≥ {db.ATTRITION_MILL_DISCHARGE_MIN_SOLIDS_WT * 100:.0f} wt%) 확인 |")
+    add(f"| **P-5** EVA 부상 제거 | 기포제만 (포수제 없음), 1 L 부선 | 거품 EVA·거품 Ag | "
+        f"거품으로 가는 Ag ≤ 설계 미광 손실 {ag_loss * 100:.1f} % 이면 선부선 성립 |")
+    add("| **P-6** 재현성 | P-1 조건 3회 | E90 편차, 질량·Ag 수지 폐합 | 판정의 신뢰구간 |")
+    add("")
+    add(f"**판정 기준.** 부착 EVA 제거율 **≥ {db.PILOT_EVA_REMOVAL_TARGET * 100:.0f} %** "
+        f"(잠정 — Ag 정광 품위나 Si 제품 규격이 정해지면 거기서 역산) 이고, 그 비에너지에서 "
+        f"−10 µm 증가가 **{db.ATTRITION_FINES_ACCEPTANCE_PP:.0f} %p 이하** (AS-1 T-4 와 같은 "
+        f"기준) 일 것.")
+    add("")
+    add(f"**AS-1 로 옮기기.** 회분에서는 모든 입자가 같은 에너지를 받지만, 완전혼합조 "
+        f"직렬에서는 적게 받는 입자가 생긴다. 1차 거동이면 같은 제거율에 필요한 연속 "
+        f"비에너지는 회분의 {su.cells}기 기준 **{su.energy_factor:.2f}배**다 "
+        f"(1기 {continuous_energy_factor(su.target_removal, 1):.2f}배, "
+        f"3기 {continuous_energy_factor(su.target_removal, 3):.2f}배). AS-1 이 낼 수 있는 "
+        f"비에너지를 이 배수로 나누면 **P-1 의 E90 이 얼마 이하여야 하는지**가 나온다.")
+    add("")
+    add(_table(
+        ["P-1 의 E90 (회분)", "AS-1 연속 비에너지 능력", "판정"],
+        [
+            [f"≤ **{su.batch_limit_peak_kwh_t:.2f} kWh/t**",
+             f"{su.as1_peak_kwh_t:.2f} kWh/t ({peak_label}, VFD 상한 "
+             f"{su.ceiling_tip_speed_m_s:.2f} m/s)",
+             "**AS-1 그대로** — 최대 처리량에서도 목표"],
+            [f"≤ {su.batch_limit_peak_upsized_kwh_t:.2f} kWh/t",
+             f"{su.as1_peak_upsized_kwh_t:.2f} kWh/t ({peak_label}, "
+             f"{su.practical_max_tip_speed_m_s:.1f} m/s)",
+             f"모터만 {dr.motor_rating_kw:.1f} → **{su.upsized_motor_kw:.1f} kW** — 축 "
+             f"Ø{sh.outer_diameter_mm:.0f} 은 {su.upsized_critical_speed_ratio:.2f}배로 "
+             + ("유지" if su.upsized_shaft_ok else "**교체**")],
+            [f"≤ {su.batch_limit_average_upsized_kwh_t:.2f} kWh/t",
+             f"{su.as1_average_upsized_kwh_t:.2f} kWh/t ({avg_label}, "
+             f"{su.practical_max_tip_speed_m_s:.1f} m/s)",
+             "모터 교체 + 평균 처리량 상한 — 최대 처리량에는 셀 추가"],
+            [f"> {su.batch_limit_average_upsized_kwh_t:.2f} kWh/t",
+             "—", "**AS-1 로는 안 된다** — 셀 추가 또는 열분해"],
+        ],
+    ))
+    add("")
+    add(f"2·3행은 {su.practical_max_tip_speed_m_s:.0f} m/s 에서 미립 기준을 지킬 때만 "
+        f"성립한다 — P-2 가 그것을 본다. 판정의 전제인 1차 거동은 P-1 곡선의 적합도로 "
+        f"확인하고, 벗어나면 환산 배수를 곡선에서 직접 다시 계산한다.")
+    add("")
+    add(f"**플랜트에 주는 영향.** 떨어진 EVA 는 비중 {db.EVA_SG:.2f} 로 물에 뜨고 "
+        f"소수성이라, 그대로 두면 부선에서 정광으로 가 품위를 깎는다. 박리가 되면 떼는 "
+        f"것만큼 **걷어내는 것**이 필요하다 — P-5 가 성립하면 DB-1 과 CT-1 사이에 "
+        f"기포제만 쓰는 EVA 선부선을 둔다.")
+    add("")
+
+    # 2.7 수소 -------------------------------------------------------------
+    al_frac = f.component_tph(1.0)["Al"]
+    al_peak_kg_h = f.component_tph(f.peak_tph)["Al"] * 1000.0
+    h2_example = hydrogen_from_aluminium_nm3(al_peak_kg_h * db.PLANT_AL_REACTION_EXAMPLE)
+    vent_example = ventilation_for_hydrogen_m3h(
+        h2_example, db.H2_LEL_VOL, db.H2_DESIGN_LEL_FRACTION
+    )
+    add("### 2.7 수소 — Al 이 물과 반응한다")
+    add("")
+    add(f"급광의 {al_frac * 100:.0f} wt% 가 후면 전극 Al 이다. 중성의 물에서 Al 은 "
+        f"산화막으로 보호되지만, **어트리션은 바로 그 막을 긁어내는 장치**다. "
+        f"2Al + 6H2O → 2Al(OH)3 + 3H2 로 Al 1 kg 이 H2 "
+        f"{hydrogen_from_aluminium_nm3(1.0):.2f} Nm3 를 낸다. 반응 속도는 입도·온도·pH·"
+        f"표면 상태에 따라 자릿수가 달라 문헌값으로 정할 수 없다 — "
+        f"{pc.tag} P-0 에서 잰다.")
+    add("")
+    add(_table(
+        ["항목", "값", "비고"],
+        [
+            ["급광 Al (최대 처리량)", f"{al_peak_kg_h:.0f} kg/h", ""],
+            [f"예시 — 그 {db.PLANT_AL_REACTION_EXAMPLE * 100:.0f} % 가 반응",
+             f"H2 {h2_example:.2f} Nm3/h", "**설계값이 아니다** — 규모 감 잡기용"],
+            ["그때 필요한 배기", f"{vent_example:.0f} m3/h",
+             f"헤드스페이스 ≤ {design_vol_pct:.1f} vol% (LEL {lel_pct:.0f} % 의 "
+             f"{db.H2_DESIGN_LEL_FRACTION * 100:.0f} %)"],
+        ],
+    ))
+    add("")
+    add(f"대책: AS-1·DB-1 에 덮개를 씌우고 비스파크 팬으로 국소배기한다. 배기 덕트의 "
+        f"수소 검지기가 LEL {db.H2_ALARM_LEL_FRACTION * 100:.0f} % 에서 경보, "
+        f"{db.H2_DESIGN_LEL_FRACTION * 100:.0f} % 에서 AS-1 급광을 바이패스하고 플러싱을 "
+        f"시작한다 — 배기는 멈추지 않는다. 배기량은 P-0 발생률로 확정한다. 예시 규모면 "
+        f"소형 팬 한 대이므로 비용이 아니라 **빠뜨리지 않는 것**이 문제다.")
     add("")
 
     # 3. 1안 --------------------------------------------------------------
