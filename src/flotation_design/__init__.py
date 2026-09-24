@@ -7,7 +7,8 @@
 두 안이 공용하는 전처리(:mod:`flotation_design.attrition`)를 앞에 두고,
 부선 본체는 두 가지 안을 함께 계산한다.
 
-* **전처리** — 어트리션 스크러버(EVA 박리) + 희석박스 (:mod:`flotation_design.attrition`)
+* **전처리** — 어트리션 스크러버(EVA 박리) + 희석박스 (:mod:`flotation_design.attrition`),
+  떨어진 EVA 분리 — 기포제만 쓰는 EVA 부선 (:mod:`flotation_design.eva_separation`)
 * **1안** — 세척수 bias 를 쓰는 연속 부선조 1단 (:mod:`flotation_design.rfc`)
 * **2안** — 기계식 러퍼 뱅크 + 클리너 (:mod:`flotation_design.circuit`)
 
@@ -38,6 +39,17 @@ from .circuit import (
     solve_circuit,
 )
 from .conditioning import ConditionerDesign, conditioner_train
+from .eva_separation import (
+    DewateringBag,
+    EvaBatchLimits,
+    EvaDesignParticle,
+    EvaFilmCase,
+    EvaMethodScreen,
+    EvaRequirement,
+    eva_content_from_film,
+    eva_rate_constant_1_min,
+    flake_equivalent_diameter_um,
+)
 from .feed import Component, FeedSpec, PulpProperties, pulp_at
 from .kinetics import (
     ComponentKinetics,
@@ -49,14 +61,17 @@ from .kinetics import (
     simulate,
 )
 from .plant import (
+    EvaSeparation,
     MechanicalCell,
     MechanicalOption,
     PlantDesign,
     Pretreatment,
     RfcOption,
     Thickener,
+    build_eva_separation,
     build_plant,
     build_pretreatment,
+    solve_eva_circuit,
     solve_mechanical,
 )
 from .reagents import Reagent, ReagentDose, reagent_schedule
@@ -149,6 +164,18 @@ __all__ = [
     "short_circuit_fraction",
     "size_attrition",
     "solids_mass_fraction_for_volume_fraction",
+    "DewateringBag",
+    "EvaBatchLimits",
+    "EvaDesignParticle",
+    "EvaFilmCase",
+    "EvaMethodScreen",
+    "EvaRequirement",
+    "EvaSeparation",
+    "build_eva_separation",
+    "eva_content_from_film",
+    "eva_rate_constant_1_min",
+    "flake_equivalent_diameter_um",
+    "solve_eva_circuit",
 ]
 
 __version__ = "0.2.0"

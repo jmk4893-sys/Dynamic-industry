@@ -398,6 +398,84 @@ REFERENCE_SAND_SG = 2.65
 PILOT_EVA_REMOVAL_TARGET = 0.90
 
 # --------------------------------------------------------------------------
+# 전처리 — 떨어진 EVA 분리 (공통 설비, DB-1 뒤 · CT-1 앞)
+# --------------------------------------------------------------------------
+#: AS-1 이 떼어 낸 EVA 를 슬러리에서 걷어내는 설비. 은은 건드리지 않고
+#: 부선조로 보낸다 — 그래서 포수제(CT-1) 앞에 두고 기포제만 쓴다.
+#: 상세 근거와 계산 논리는 ``eva_separation.py`` 모듈 도크스트링 참조.
+EVA_ROUGHER_TAG = "ES-1"
+EVA_ROUGHER_DUTY = "EVA 러퍼 (기포제만) — 2셀 직렬"
+EVA_CLEANER_TAG = "ES-2"
+EVA_CLEANER_DUTY = "EVA 클리너 (세척수) — 미광은 ES-1 급광으로"
+EVA_BLOWER_TAG = "B-001"
+EVA_PUMP_TAG = "P-001"
+EVA_BAG_TAG = "FB-1"
+
+#: 설계 EVA — 셀 한 면에 남은 EVA 잔막 두께 하나로 함량과 박편 크기를 함께
+#: 정한다. **잠정값.** P-0 의 TGA(함량)와 P-1 의 뜬 EVA 크기로 바꾼다.
+EVA_RESIDUAL_FILM_UM = 5.0
+#: 웨이퍼 두께 — 셀 면적당 Si 질량을 정한다. c-Si 셀의 통상값.
+CELL_WAFER_THICKNESS_UM = 180.0
+#: 떨어진 박편의 폭은 원 입자의 면을 넘지 못한다. 시험 분획의 하한을 쓴다 —
+#: 작게 잡을수록 박편이 작아 느리게 떠 보수적이다.
+EVA_FLAKE_WIDTH_UM = PILOT_FEED_SIZE_UM[0]
+#: 잔막 두께 민감도 (µm) — 얇으면 EVA 는 적지만 박편이 작아 잘 안 뜬다.
+EVA_FILM_CASES_UM = (1.0, 2.5, 5.0, 12.5)
+#: 크기별 회수율 표의 EVA 등체적 지름 (µm).
+EVA_SIZE_TABLE_UM = (5.0, 10.0, 15.0, 20.0, 30.0, 45.0, 75.0)
+
+#: 인터페이스 조건 — 부선 급광(CT-1)으로 넘어가도 되는 자유 EVA (고체 질량분율).
+#: 떨어진 EVA 는 소수성이라 부선에서 거의 전량 정광으로 간다고 본다. 0.1 wt% 는
+#: 1안 정광 품위의 보증 여유(설계 → ``CONCENTRATE_GRADE_GUARANTEE``)의 약 절반이다.
+#: 나머지 절반은 AS-1 이 남기는 부착 EVA 몫으로 둔다. **잠정값** — 정광 인수처
+#: 규격이 정해지면 바꾼다.
+EVA_FLOTATION_FEED_LIMIT = 0.001
+#: 정광 Ag 품위 보증값 (설계서 §11 성능 보증 제안).
+CONCENTRATE_GRADE_GUARANTEE = 0.40
+#: EVA 산물로 새는 Ag 의 상한 — 부선조 자신의 미광 손실(1안)만큼.
+EVA_AG_LOSS_LIMIT = 1.0 - RFC_AG_RECOVERY
+
+#: 셀 — ES-1 은 2안 스캐빈저 FC-202 와 같은 동체·로터·구동부(얕은 50 mm
+#: 거품층, 회수 위주), ES-2 는 클리너 FC-203 과 같은 동체(깊은 150 mm 거품층 +
+#: 세척수, 배수 위주). 새로 설계할 회전체가 없다.
+EVA_ROUGHER_CELL = SCAVENGER_CELL
+EVA_ROUGHER_CELLS = 2
+EVA_CLEANER_CELL = CLEANER_CELL
+#: 급기 (cm/s). ES-1 은 미립 부선의 기포 표면적 플럭스 목표 상단(Sb 약 70 1/s)
+#: 에 맞춘다. Ag 셀이 급기를 낮게 두는 것은 동반 혼입 때문인데, ES 에서는
+#: 클리너가 그 몫을 맡는다.
+EVA_JG_CM_S = {"ES-1": 0.9, "ES-2": 0.6}
+EVA_JG_RANGE_CM_S = {"ES-1": (0.6, 1.2), "ES-2": (0.3, 0.9)}
+EVA_TIP_SPEED_M_S = {
+    "ES-1": MECHANICAL_TIP_SPEED_M_S["FC-202"],
+    "ES-2": MECHANICAL_TIP_SPEED_M_S["FC-203"],
+}
+#: 급광 물 중 거품으로 가는 비율. ES-1 은 같은 동체·거품층인 FC-202 값,
+#: ES-2 는 세척수를 쓰는 소형 셀로 급광 물의 10 %.
+EVA_WATER_RECOVERY = {"ES-1": MECHANICAL_WATER_RECOVERY["FC-202"], "ES-2": 0.10}
+EVA_CLEANER_WASH_WATER_M3H = 0.05
+EVA_IMPELLER_MASS_KG = {
+    "ES-1": IMPELLER_ASSEMBLY_MASS_KG["FC-202"],
+    "ES-2": IMPELLER_ASSEMBLY_MASS_KG["FC-203"],
+}
+#: EVA 는 비중 0.95 라 물과 같이 움직인다 — 동반 계수 1.
+EVA_ENTRAINMENT_FACTOR = 1.0
+#: 순환 펌프 (ES-2 미광 + FB-1 여액 → ES-1 급광) — 1 m3/h 미만 소형.
+EVA_PUMP_KW = 0.37
+
+#: FB-1 탈수 백 — 1 m3 백 2기 교대 (하나는 받고 하나는 물을 뺀다).
+EVA_BAG_VOLUME_M3 = 1.0
+EVA_BAG_FILL = 0.8
+EVA_BAG_UNITS = 2
+#: EVA 박편 케이크의 고체 체적분율 — 납작하고 무른 박편이 느슨하게 쌓인다.
+EVA_CAKE_SOLIDS_VOLUME_FRACTION = 0.35
+
+#: 전력 절감 대안 — ES 를 이 농도에서 돌리고 부선 농도까지는 CT-1 앞에서 묽힌다.
+#: 슬러리 체적이 줄어 셀이 작아지지만, 같은 거품 물에 실려 가는 광물이 는다.
+#: S-1 에서 두 농도의 Ag 손실을 비교한 뒤에만 택한다.
+EVA_ALTERNATIVE_SOLIDS_WT = 0.20
+
+# --------------------------------------------------------------------------
 # 약제 — pH 조정제·황화제·억제제 없음
 # --------------------------------------------------------------------------
 #: [2] 에 따라 **습식 분쇄 원료 기준 300 g/t** 를 쓴다. 건조 원료의 최적
@@ -432,12 +510,14 @@ REAGENTS = (
         dose=30.0,
         solution_strength=1.00,
         solution_sg=0.81,
-        addition_point="급광박스",
+        addition_point="ES-1 급광 (ES 바이패스 시 급광박스)",
         basis="water",
         note="연속 운전에서 거품 안정화를 위해 별도 기포제로 투입. "
         "물 기준 30 ppm 이므로 고체 농도를 올리면 t 당 소요량이 줄어든다. "
         "수용해도가 약 17 g/L 라 희석하면 정량펌프 유량이 20 L/h 까지 커지므로 "
-        "**원액 투입**하고, 소용량 정량펌프에 검량통(calibration column)을 단다.",
+        "**원액 투입**하고, 소용량 정량펌프에 검량통(calibration column)을 단다. "
+        "떨어진 EVA 분리(ES-1)의 기포제를 겸한다 — ES-1 급광에서 넣으면 물을 따라 "
+        "부선조까지 가므로 따로 더 넣지 않는다.",
     ),
 )
 

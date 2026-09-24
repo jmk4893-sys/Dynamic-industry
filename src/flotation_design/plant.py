@@ -17,10 +17,24 @@ from .attrition_pilot import (
     PilotScaleUp,
     pilot_scale_up,
     size_pilot_cell,
+    tolerable_aluminium_reaction_kg_h,
 )
 from .circuit import CircuitResult, FlotationUnit, solve_circuit
 from .conditioning import ConditionerDesign, conditioner_train
+from .eva_separation import (
+    DewateringBag,
+    EvaBatchLimits,
+    EvaDesignParticle,
+    EvaFilmCase,
+    EvaMethodScreen,
+    EvaRequirement,
+    batch_t90_limit,
+    eva_design_particle,
+    eva_rate_constant_1_min,
+)
 from .feed import FeedSpec
+from .hydrodynamics import analyse_cell
+from .kinetics import ComponentKinetics
 from .rfc import RfcDesign, RfcOperatingPoint, RfcPerformance, rfc_separation, size_rfc
 from .sizing import (
     HollowShaftDesign,
@@ -266,12 +280,104 @@ class MechanicalOption:
         return cake_water + self.bleed_m3h
 
 
+#: 떨어진 EVA 를 회로 계산에서 부르는 성분명.
+EVA = "EVA"
+
+
+@dataclass(frozen=True)
+class EvaSeparation:
+    """떨어진 EVA 분리 — 기포제만 쓰는 EVA 러퍼 + 클리너 (공통 설비).
+
+    AS-1 이 떼어 낸 EVA 를 부선 급광에서 걷어낸다. 셀은 2안 동체를 그대로
+    쓴다 (ES-1 = FC-202, ES-2 = FC-203). 클리너 미광은 ES-1 급광으로 되돌린다
+    — 러퍼 거품에 동반된 광물이 부선조로 돌아가는 길이다. 상세 근거는
+    ``eva_separation.py`` 모듈 도크스트링 참조.
+
+    Attributes:
+        rate_constant_1_min: 설계 박편의 실기 속도상수 (ES-1 급기 기준).
+        size_recovery: (EVA 등체적 지름 µm, 회로 회수율) — 최대 처리량.
+    """
+
+    particle: EvaDesignParticle
+    screen: EvaMethodScreen
+    requirement: EvaRequirement
+    attachment_efficiency: float
+    rate_constant_1_min: float
+    rougher: MechanicalCell
+    cleaner: MechanicalCell
+    blower_flow_m3h: float
+    blower_pressure_kpa: float
+    blower_rating_kw: float
+    pump_kw: float
+    pump_flow_m3h: float
+    bag: DewateringBag
+    result_peak: CircuitResult
+    result_avg: CircuitResult
+    size_recovery: tuple[tuple[float, float], ...]
+    film_cases: tuple[EvaFilmCase, ...]
+    limits: EvaBatchLimits
+    bypass: str
+
+    @property
+    def installed_kw(self) -> float:
+        return (
+            self.rougher.installed_kw
+            + self.cleaner.installed_kw
+            + self.blower_rating_kw
+            + self.pump_kw
+        )
+
+    @property
+    def design_air_m3h(self) -> float:
+        """설계 Jg 에서 세 셀로 들어가는 공기 — 거품 위 수소를 쓸어내는 양이기도 하다."""
+        return (
+            self.rougher.aeration.air_flow_m3h * self.rougher.cells_in_series
+            + self.cleaner.aeration.air_flow_m3h
+        )
+
+    @property
+    def tolerable_al_reaction_kg_h(self) -> float:
+        """ES 셀은 덮개가 없다 — 부선 공기가 거품 위 수소를 설계 상한 아래로
+        희석할 수 있는 Al 반응 속도."""
+        return tolerable_aluminium_reaction_kg_h(
+            self.design_air_m3h, db.H2_LEL_VOL, db.H2_DESIGN_LEL_FRACTION
+        )
+
+    @staticmethod
+    def eva_recovery(result: CircuitResult) -> float:
+        return result.recovery(EVA)
+
+    @staticmethod
+    def residual_eva_tph(result: CircuitResult) -> float:
+        """부선 급광(CT-1)으로 넘어가는 자유 EVA."""
+        return result.tailings.component_tph(EVA)
+
+    @staticmethod
+    def product_minerals_tph(result: CircuitResult) -> float:
+        """EVA 산물에 섞여 나가는 광물 (동반 혼입)."""
+        return result.concentrate.dry_tph - result.concentrate.component_tph(EVA)
+
+    @staticmethod
+    def ag_loss(result: CircuitResult) -> float:
+        """EVA 산물로 새는 Ag / 급광 Ag."""
+        return result.recovery("Ag")
+
+    @property
+    def meets_requirement(self) -> bool:
+        return self.eva_recovery(self.result_peak) >= self.requirement.required_recovery
+
+    @property
+    def ag_loss_ok(self) -> bool:
+        return self.ag_loss(self.result_peak) <= db.EVA_AG_LOSS_LIMIT
+
+
 @dataclass(frozen=True)
 class Pretreatment:
     """전처리 계통 — 두 안이 공용하는 공통 설비.
 
     로드밀 배출을 고농도 그대로 어트리션 스크러버에 넣어 EVA 를 떼고,
-    희석박스에서 부선 농도로 묽혀 조건조로 보낸다.
+    희석박스에서 부선 농도로 묽힌 뒤, 떨어진 EVA 를 ES 에서 걷어내고
+    조건조로 보낸다.
 
     희석수는 어차피 부선 농도를 맞추려고 들어가던 물이라 **설비 전체 물수지는
     달라지지 않는다** — 투입 지점이 정해질 뿐이다. 다만 그 물을 공정수 회수로
@@ -281,10 +387,16 @@ class Pretreatment:
     scrubber: AttritionScrubber
     dilution: DilutionBox
     bypass: str
+    eva: EvaSeparation
+
+    @property
+    def attrition_kw(self) -> float:
+        """EVA 를 떼는 몫 — 어트리션 + 희석박스 교반."""
+        return self.scrubber.installed_kw + self.dilution.agitator_kw
 
     @property
     def installed_kw(self) -> float:
-        return self.scrubber.installed_kw + self.dilution.agitator_kw
+        return self.attrition_kw + self.eva.installed_kw
 
     @property
     def dilution_water_m3h(self) -> float:
@@ -585,6 +697,265 @@ def build_pretreatment(feed: FeedSpec = db.FEED) -> Pretreatment:
             residence_min=db.DILUTION_BOX_RESIDENCE_MIN,
         ),
         bypass=f"{db.ATTRITION_TAG} 전량 바이패스 → {db.DILUTION_BOX_TAG}",
+        eva=build_eva_separation(feed),
+    )
+
+
+# --------------------------------------------------------------------------
+# 떨어진 EVA 분리 — ES-1 러퍼 + ES-2 클리너 (공통 설비)
+# --------------------------------------------------------------------------
+def _eva_flotation_cell(
+    tag: str,
+    duty: str,
+    geometry: CellGeometry,
+    cells_in_series: int,
+    density: float,
+) -> MechanicalCell:
+    """2안과 같은 방식(로터 + 중공축 급기)으로 ES 셀의 기계 사양을 낸다."""
+    impeller = impeller_design(
+        geometry,
+        density,
+        diameter_ratio=db.IMPELLER_DIAMETER_RATIO,
+        tip_speed_m_s=db.EVA_TIP_SPEED_M_S[tag],
+        power_number=db.IMPELLER_POWER_NUMBER,
+    )
+    jg_min, jg_max = db.EVA_JG_RANGE_CM_S[tag]
+    aeration = aeration_design(
+        geometry,
+        density,
+        sparger_clearance_m=impeller.bottom_clearance_m,
+        jg_cm_s=db.EVA_JG_CM_S[tag],
+        jg_min_cm_s=jg_min,
+        jg_max_cm_s=jg_max,
+        bubble_d32_mm=db.BUBBLE_D32_MM,
+        sparger_loss_kpa=0.0,
+    )
+    shaft = hollow_shaft(
+        tag,
+        shaft_power_kw=impeller.motor_rating_kw,
+        speed_rpm=impeller.speed_rpm,
+        air_m3h=aeration.air_flow_max_m3h,
+        length_m=geometry.shell_height_m + db.SHAFT_LENGTH_MARGIN_M,
+        target_air_velocity_m_s=db.SHAFT_AIR_VELOCITY_M_S,
+        joint_loss_kpa=db.SHAFT_JOINT_LOSS_KPA,
+        discharge_ports=db.SHAFT_DISCHARGE_PORTS,
+        impeller_mass_kg=db.EVA_IMPELLER_MASS_KG[tag],
+    )
+    return MechanicalCell(
+        tag, duty, geometry, cells_in_series, impeller, aeration, shaft, density
+    )
+
+
+def solve_eva_circuit(
+    feed: FeedSpec,
+    dry_tph: float,
+    eva_tph: float,
+    rate_constant_1_min: float,
+    rougher_cells: int = db.EVA_ROUGHER_CELLS,
+) -> CircuitResult:
+    """ES-1(러퍼 n 셀) + ES-2(클리너, 미광은 러퍼 급광으로) 물질수지.
+
+    포수제가 없으므로 광물은 진부선 없이 수분 동반으로만 거품에 간다. EVA 는
+    한 가지 속도상수로 뜬다. 클리너 급기가 러퍼와 다른 만큼 속도상수를 Jg 비로
+    줄인다 (k 는 Jg 에 비례).
+    """
+    kinetics = {
+        c.name: ComponentKinetics(
+            c.name, entrainment_factor=db.FLOAT_MODELS[c.name].entrainment_factor
+        )
+        for c in feed.components
+    }
+    kinetics[EVA] = ComponentKinetics(
+        EVA,
+        fast_fraction=1.0,
+        k_fast=rate_constant_1_min,
+        entrainment_factor=db.EVA_ENTRAINMENT_FACTOR,
+    )
+    specific_gravity = {c.name: c.specific_gravity for c in feed.components}
+    specific_gravity[EVA] = db.EVA_SG
+    component_tph = feed.component_tph(dry_tph)
+    component_tph[EVA] = eva_tph
+    rougher = FlotationUnit(
+        db.EVA_ROUGHER_TAG,
+        db.EVA_ROUGHER_DUTY,
+        db.EVA_WATER_RECOVERY[db.EVA_ROUGHER_TAG],
+        effective_volume_m3=db.EVA_ROUGHER_CELL.effective_slurry_volume_m3 * rougher_cells,
+        cells_in_series=rougher_cells,
+    )
+    cleaner = FlotationUnit(
+        db.EVA_CLEANER_TAG,
+        db.EVA_CLEANER_DUTY,
+        db.EVA_WATER_RECOVERY[db.EVA_CLEANER_TAG],
+        effective_volume_m3=db.EVA_CLEANER_CELL.effective_slurry_volume_m3,
+        wash_water_m3h=db.EVA_CLEANER_WASH_WATER_M3H,
+        rate_scale_factor=db.EVA_JG_CM_S[db.EVA_CLEANER_TAG]
+        / db.EVA_JG_CM_S[db.EVA_ROUGHER_TAG],
+    )
+    return solve_circuit(
+        component_tph,
+        kinetics,
+        specific_gravity,
+        rougher,
+        None,
+        cleaner,
+        rougher_feed_solids=feed.solids_mass_fraction,
+    )
+
+
+def eva_attachment_efficiency() -> float:
+    """Ag 러퍼(FC-201)의 설계 속도상수를 재현하는 부착 효율 — ES 에 그대로 쓴다."""
+    return analyse_cell(
+        "FC-201",
+        db.MECHANICAL_JG_CM_S["FC-201"],
+        db.BUBBLE_D32_MM,
+        db.GAS_HOLDUP,
+        db.ROUGHER_CELL.pulp_zone_height_m,
+        db.FLOAT_MODELS["Ag"].k_fast * db.PLANT_SCALE_FACTOR,
+    ).implied_attachment_efficiency
+
+
+def build_eva_separation(feed: FeedSpec = db.FEED) -> EvaSeparation:
+    """ES-1 · ES-2 · B-001 · P-001 · FB-1 — 떨어진 EVA 를 걷어내는 계통."""
+    rougher_tag, cleaner_tag = db.EVA_ROUGHER_TAG, db.EVA_CLEANER_TAG
+    wafer_fraction = sum(
+        c.mass_fraction for c in feed.components if c.name in ("Si", "Ag_locked_gangue")
+    )
+    wafer_sg = next(c.specific_gravity for c in feed.components if c.name == "Si")
+
+    def particle_for(film_um: float) -> EvaDesignParticle:
+        return eva_design_particle(
+            film_um,
+            db.EVA_FLAKE_WIDTH_UM,
+            db.CELL_WAFER_THICKNESS_UM,
+            wafer_fraction,
+            db.EVA_SG,
+            wafer_sg,
+        )
+
+    ea = eva_attachment_efficiency()
+    jg = db.EVA_JG_CM_S[rougher_tag]
+
+    def rate(diameter_um: float) -> float:
+        return eva_rate_constant_1_min(diameter_um, jg, ea, db.BUBBLE_D32_MM)
+
+    def freed(particle: EvaDesignParticle, dry_tph: float) -> float:
+        # AS-1 이 목표대로 뗀 몫이 ES 로 온다.
+        return particle.content * dry_tph * db.PILOT_EVA_REMOVAL_TARGET
+
+    particle = particle_for(db.EVA_RESIDUAL_FILM_UM)
+    k_design = rate(particle.equivalent_diameter_um)
+    eva_peak = freed(particle, feed.peak_tph)
+    result_peak = solve_eva_circuit(feed, feed.peak_tph, eva_peak, k_design)
+    result_avg = solve_eva_circuit(
+        feed, feed.average_tph, freed(particle, feed.average_tph), k_design
+    )
+    requirement = EvaRequirement(feed.peak_tph, db.EVA_FLOTATION_FEED_LIMIT, eva_peak)
+
+    solids_sg = feed.solids_specific_gravity
+    rougher = _eva_flotation_cell(
+        rougher_tag,
+        db.EVA_ROUGHER_DUTY,
+        db.EVA_ROUGHER_CELL,
+        db.EVA_ROUGHER_CELLS,
+        _slurry_density(result_peak.rougher.feed.solids_mass_fraction, solids_sg),
+    )
+    cleaner = _eva_flotation_cell(
+        cleaner_tag,
+        db.EVA_CLEANER_DUTY,
+        db.EVA_CLEANER_CELL,
+        1,
+        _slurry_density(result_peak.cleaner.feed.solids_mass_fraction, solids_sg),
+    )
+    cells = (rougher, cleaner)
+    blower_flow = sum(c.aeration.air_flow_max_m3h * c.cells_in_series for c in cells)
+    blower_pressure = (
+        math.ceil(max(c.air_supply_pressure_kpa for c in cells) * 1.3 / 5.0) * 5.0
+    )
+    blower_shaft = (blower_flow / 3600.0) * (blower_pressure * 1000.0) / 0.55
+
+    size_recovery = tuple(
+        (d, EvaSeparation.eva_recovery(
+            solve_eva_circuit(feed, feed.peak_tph, eva_peak, rate(d))
+        ))
+        for d in db.EVA_SIZE_TABLE_UM
+    )
+    film_cases = []
+    for film in db.EVA_FILM_CASES_UM:
+        p = particle_for(film)
+        f_eva = freed(p, feed.peak_tph)
+        r = solve_eva_circuit(feed, feed.peak_tph, f_eva, rate(p.equivalent_diameter_um))
+        film_cases.append(EvaFilmCase(
+            film_um=film,
+            content=p.content,
+            diameter_um=p.equivalent_diameter_um,
+            freed_eva_tph=f_eva,
+            required_recovery=EvaRequirement(
+                feed.peak_tph, db.EVA_FLOTATION_FEED_LIMIT, f_eva
+            ).required_recovery,
+            recovery=EvaSeparation.eva_recovery(r),
+        ))
+
+    required = requirement.required_recovery
+
+    def limit(dry_tph: float, cells_: int) -> float:
+        if required <= 0.0:
+            return math.inf  # 떨어진 EVA 가 한도보다 적다 — 걷어낼 필요가 없다
+        return batch_t90_limit(
+            lambda k_batch: EvaSeparation.eva_recovery(solve_eva_circuit(
+                feed, dry_tph, freed(particle, dry_tph),
+                k_batch * db.PLANT_SCALE_FACTOR, cells_,
+            )),
+            required,
+        )
+
+    limits = EvaBatchLimits(
+        required_recovery=required,
+        peak_min=limit(feed.peak_tph, db.EVA_ROUGHER_CELLS),
+        average_min=limit(feed.average_tph, db.EVA_ROUGHER_CELLS),
+        extra_cell_min=limit(feed.peak_tph, db.EVA_ROUGHER_CELLS + 1),
+    )
+
+    bag = DewateringBag(
+        tag=db.EVA_BAG_TAG,
+        volume_m3=db.EVA_BAG_VOLUME_M3,
+        fill=db.EVA_BAG_FILL,
+        units=db.EVA_BAG_UNITS,
+        cake_solids_volume_fraction=db.EVA_CAKE_SOLIDS_VOLUME_FRACTION,
+        eva_sg=db.EVA_SG,
+        # 백은 떨어진 EVA 가 전부일 때(AS-1 이 전량을 뗐을 때)로 잡는다.
+        eva_tph=particle.content * feed.peak_tph * EvaSeparation.eva_recovery(result_peak),
+        minerals_tph=EvaSeparation.product_minerals_tph(result_peak),
+    )
+    return EvaSeparation(
+        particle=particle,
+        screen=EvaMethodScreen(
+            flow_m3h=result_peak.rougher.feed_volume_m3h,
+            eva_diameter_um=particle.equivalent_diameter_um,
+            eva_sg=db.EVA_SG,
+            bubble_d32_mm=db.BUBBLE_D32_MM,
+        ),
+        requirement=requirement,
+        attachment_efficiency=ea,
+        rate_constant_1_min=k_design,
+        rougher=rougher,
+        cleaner=cleaner,
+        blower_flow_m3h=blower_flow,
+        blower_pressure_kpa=blower_pressure,
+        blower_rating_kw=select_motor_kw(blower_shaft, service_factor=1.5),
+        pump_kw=db.EVA_PUMP_KW,
+        # ES-2 미광 + FB-1 여액(EVA 산물의 물 중 케이크에 남지 않는 몫).
+        pump_flow_m3h=(
+            result_peak.recycle.water_tph
+            + result_peak.recycle.dry_tph / solids_sg
+            + result_peak.concentrate.water_tph - bag.cake_water_tph
+        ),
+        bag=bag,
+        result_peak=result_peak,
+        result_avg=result_avg,
+        size_recovery=size_recovery,
+        film_cases=tuple(film_cases),
+        limits=limits,
+        bypass=f"{rougher_tag} 바이패스 ({db.DILUTION_BOX_TAG} → CT-1)",
     )
 
 

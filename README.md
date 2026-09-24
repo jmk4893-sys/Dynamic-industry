@@ -11,10 +11,13 @@ Dynamic industry Development
 - **세척수 bias 연속 부선조 1단, Ø350 mm × 라이저 2.4 m** (대안: 기계식 러퍼·스캐빈저·클리너 3단)
 - 전처리로 **어트리션 스크러버 팔각조 AF 390 mm × 2단** — 두 안 공통, **EVA 박리 전용**
   (은을 띄우는 것은 뒤의 부선조 몫)
+- 떨어진 EVA 는 **ES-1 · ES-2 EVA 부선**(기포제만, 포수제 앞)이 걷어낸다 — 2안 동체
+  Ø1.0 m × 2셀 + Ø0.4 m 를 그대로 써서, 부선 급광의 자유 EVA ≤ 0.1 wt%, 은 손실 ≤ 0.3 %
 - 박리 성능을 시험으로 정할 **파일럿 시험 셀 PAS-1** — 회분 20 kg, AF 260 mm, AS-1 과 기하 상사,
   블랙파우더(31~75 µm) EVA 박리 비에너지 곡선 → AS-1 판정 (플랜트 설비 아님)
 - Ag 회수율 **99.7 %**, 정광 **6.36 kg/h @ 46.3 wt% Ag** (농축비 78배)
-- 기액 체류시간 **1 분**, 설치 전력 **6.52 kW** (탈수 보조설비 포함) + 전처리 **4.77 kW**
+- 기액 체류시간 **1 분**, 설치 전력 **6.52 kW** (탈수 보조설비 포함) + 전처리 **15.01 kW**
+  (어트리션 4.77 + 떨어진 EVA 분리 10.24)
 - 황화제·pH 조정제·억제제 없음 — 약제는 포수제·촉진제·기포제 3종뿐
 
 ### 설계 근거
@@ -35,7 +38,7 @@ Dynamic industry Development
 |---|---|
 | [docs/flotation-separator-design.md](docs/flotation-separator-design.md) | 설계 사양서 — 근거, 두 안, 계장·안전, 시운전 계획 |
 | [docs/design-calculation.md](docs/design-calculation.md) | 설계 계산서 (코드에서 자동 생성) |
-| [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 10매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매, 전처리 계통도, 어트리션 셀 상세, 파일럿 시험 셀 PAS-1 (브라우저로 열 것) |
+| [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 11매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매, 전처리 계통도, 어트리션 셀 상세, 파일럿 시험 셀 PAS-1, 떨어진 EVA 분리 계통도 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
 
 ### 사용법
@@ -46,7 +49,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (418건)
+python -m unittest discover -s tests -t .                               # 테스트 (466건)
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
@@ -77,6 +80,7 @@ src/flotation_design/
   feed.py           급광 조성 · 슬러리 물성
   attrition.py      어트리션 스크러버 · 희석박스 (EVA 박리, 공통 전처리)
   attrition_pilot.py 파일럿 시험 셀 PAS-1 · 방식 선정 · 회분→연속 환산 · 수소 배기
+  eva_separation.py 떨어진 EVA 분리 — 잔막 모델 · 기포 충돌 속도상수 · 요구 제거율 · S-1 판정선
   kinetics.py       2속도(Kelsall) 반응속도 — 속부선/지연부선/비부선, 회분식·연속
   circuit.py        흐름 추적 · 복합입자 동반 · 순환부하 수렴 (2안)
   rfc.py            flux 상사 스케일업 · bias · 연속 부선조 성능 (1안)
@@ -100,7 +104,13 @@ Si 코어를 달고 온다. 부상 Ag 1 kg 당 맥석 1.1 kg 이면 상한은 1/
 EVA 가 떨어진다는 시험 근거가 아직 없어서, **전량 바이패스 배관과 시험 계획(T-1~T-4)**
 을 설계에 넣었다. 시험은 파일럿 셀 PAS-1 이 맡는다 — 회분에서 얻은 90 % 제거
 비에너지(E90)가 3.35 kWh/t 이하면 AS-1 그대로, 5.39 이하면 모터만 교체한다. 박리가
-확인되지 않으면 바이패스로 두거나 열분해로 간다 — 이 설비는 계통 전력의 42 % 를 쓴다.
+확인되지 않으면 바이패스로 두거나 열분해로 간다 — 이 설비는 계통 전력의 22 % 를 쓴다.
+
+**떨어진 EVA 는 따로 걷어낸다.** EVA 는 비중 0.95 의 소수성 박편이라 그대로 두면
+부선조에서 정광으로 간다. 중력으로는 수면적이 173 m² 나 들어 못 가르고, 포수제 앞에서
+**기포제만 쓰는 EVA 부선(ES-1 · ES-2)** 으로 걷어낸다 — 포수제가 없으면 은은 젖어서
+펄프에 남는다. 성능은 떨어진 박편의 **크기**가 정한다 (20 µm 95 %, 10 µm 60 %). 대가는
+전력이다 — ES 가 10.24 kW 로 계통의 48 % 를 쓴다.
 
 **연속 부선조에는 반응속도 모델을 쓰지 않는다.** 완전혼합조가 아니므로 기액 체류시간
 1분을 CSTR 식에 넣으면 Ag 회수율이 63 % 로 나와 실측(~100 %)과 맞지 않는다.

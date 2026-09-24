@@ -418,8 +418,9 @@ class TestPlantIntegration(unittest.TestCase):
         """공용 설비이므로 어느 안의 설치 전력에도 들어가지 않는다."""
         pre = self.plant.pretreatment
         self.assertAlmostEqual(
-            pre.installed_kw, pre.scrubber.installed_kw + pre.dilution.agitator_kw
+            pre.attrition_kw, pre.scrubber.installed_kw + pre.dilution.agitator_kw
         )
+        self.assertAlmostEqual(pre.installed_kw, pre.attrition_kw + pre.eva.installed_kw)
         for option in (self.plant.rfc, self.plant.mechanical):
             with self.subTest(option=type(option).__name__):
                 self.assertAlmostEqual(

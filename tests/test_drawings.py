@@ -55,17 +55,22 @@ class TestDrawingDocument(unittest.TestCase):
             closed = len(re.findall(rf"</{tag}>", self.html))
             self.assertEqual(opened, closed, f"<{tag}> 태그 불균형")
 
-    def test_ten_sheets_present(self):
+    def test_eleven_sheets_present(self):
         for no in ("DWG-001", "DWG-002", "DWG-003", "DWG-004", "DWG-005",
-                   "DWG-006", "DWG-007", "DWG-008", "DWG-009", "DWG-010"):
+                   "DWG-006", "DWG-007", "DWG-008", "DWG-009", "DWG-010", "DWG-011"):
             self.assertIn(no, self.html, no)
-        self.assertEqual(len(re.findall(r"<svg", self.html)), 10)
-        self.assertIn("10매로 구성한다", self.html)
+        self.assertEqual(len(re.findall(r"<svg", self.html)), 11)
+        self.assertIn("11매로 구성한다", self.html)
 
     def test_every_figure_is_labelled_for_screen_readers(self):
-        self.assertEqual(len(re.findall(r'role="img"', self.html)), 10)
-        self.assertEqual(len(re.findall(r"aria-label=", self.html)), 10)
-        self.assertEqual(len(re.findall(r"<figcaption>", self.html)), 10)
+        self.assertEqual(len(re.findall(r'role="img"', self.html)), 11)
+        self.assertEqual(len(re.findall(r"aria-label=", self.html)), 11)
+        self.assertEqual(len(re.findall(r"<figcaption>", self.html)), 11)
+
+    def test_micro_sign_never_sits_in_an_uppercased_label(self):
+        # caption·thead 는 CSS 로 대문자가 되어 µm 이 'MM'(mm 로 읽힌다)으로 보인다
+        for block in re.findall(r"<caption>.*?</caption>|<thead>.*?</thead>", self.html, re.S):
+            self.assertNotIn("µ", block, block)
 
 
 class TestDrawingMatchesDesign(unittest.TestCase):
@@ -383,6 +388,7 @@ class TestAttritionSheetsMatchDesign(unittest.TestCase):
             "희석박스 농도",
         )
         self.assertFigure(f"{self.pre.installed_kw:.2f} kW", "전처리 설치 전력")
+        self.assertFigure(f"{self.pre.attrition_kw:.2f} kW", "어트리션 계 설치 전력")
         self.assertFigure(f"{db.FEED.peak_tph * 1000:.1f} kg/h", "전처리 고체 유량")
 
     def test_tags_and_bypass_are_drawn(self):
@@ -665,3 +671,154 @@ class TestModel3dMatchesDesign(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestEvaSeparationSheetMatchesDesign(unittest.TestCase):
+    """DWG-011 — 떨어진 EVA 분리 계통도의 수치가 코드 산출값과 같은지."""
+
+    @classmethod
+    def setUpClass(cls):
+        from flotation_design.plant import EVA, build_pretreatment
+
+        html = DRAWING.read_text(encoding="utf-8")
+        start = html.index('<span class="sheet-no">DWG-011</span>')
+        cls.sheet = html[start : html.index("</section>", start)]
+        cls.pre = build_pretreatment()
+        cls.es = cls.pre.eva
+        cls.EVA = EVA
+
+    def assertFigure(self, text: str, label: str):
+        self.assertTrue(
+            text in self.sheet,
+            f"{label} 이(가) DWG-011 과 불일치 — 도면에 '{text}' 가 없음. "
+            f"design_basis.py 를 고쳤다면 도면도 갱신할 것.",
+        )
+
+    def test_cells_reuse_the_mechanical_shells(self):
+        ro, cl = self.es.rougher, self.es.cleaner
+        self.assertFigure(
+            f"Ø{ro.geometry.width_m * 1000:,.0f} × {ro.geometry.shell_height_m * 1000:,.0f} mm "
+            f"· Ø{ro.impeller.diameter_m * 1000:.0f} 로터 {ro.impeller.speed_rpm:.0f} rpm "
+            f"· {ro.impeller.motor_rating_kw:.1f} kW × {ro.cells_in_series}",
+            "ES-1 동체·로터",
+        )
+        self.assertFigure(
+            f"Ø{cl.geometry.width_m * 1000:.0f} × {cl.geometry.shell_height_m * 1000:.0f} mm "
+            f"· Ø{cl.impeller.diameter_m * 1000:.0f} 로터 {cl.impeller.speed_rpm:.0f} rpm "
+            f"· {cl.impeller.motor_rating_kw:.2f} kW",
+            "ES-2 동체·로터",
+        )
+        self.assertFigure(
+            f"거품층 {ro.geometry.froth_depth_m * 1000:.0f} mm", "ES-1 거품층"
+        )
+        self.assertFigure(
+            f"거품층 {cl.geometry.froth_depth_m * 1000:.0f} mm", "ES-2 거품층"
+        )
+        for twin in ("FC-202", "FC-203"):
+            self.assertFigure(twin, f"{twin} 과 같은 동체")
+
+    def test_aeration_and_shaft(self):
+        ro, cl = self.es.rougher, self.es.cleaner
+        self.assertFigure(
+            f"Jg {ro.aeration.superficial_gas_velocity_cm_s:.2f} cm/s "
+            f"(Sb {ro.aeration.bubble_surface_area_flux_1_s:.1f} 1/s) "
+            f"· 셀당 {ro.aeration.air_flow_m3h:.1f} m³/h "
+            f"· 보어 Ø{ro.shaft.bore_mm:.0f} / 외경 Ø{ro.shaft.outer_diameter_mm:.0f}",
+            "ES-1 급기·중공축",
+        )
+        self.assertFigure(
+            f"임계회전수비 {ro.shaft.critical_speed_ratio:.2f} · "
+            f"처짐 {ro.shaft.static_deflection_mm:.2f} mm",
+            "ES-1 로터동역학",
+        )
+        self.assertFigure(
+            f"Jg {cl.aeration.superficial_gas_velocity_cm_s:.2f} cm/s · "
+            f"{cl.aeration.air_flow_m3h:.1f} m³/h · 세척수 {db.EVA_CLEANER_WASH_WATER_M3H:.2f} m³/h",
+            "ES-2 급기·세척수",
+        )
+        self.assertFigure(
+            f"{self.es.blower_flow_m3h:.1f} m³/h @ {self.es.blower_pressure_kpa:.0f} kPa "
+            f"· {self.es.blower_rating_kw:.2f} kW",
+            "B-001",
+        )
+        self.assertFigure(
+            f"{self.es.pump_flow_m3h:.2f} m³/h · {self.es.pump_kw:.2f} kW", "P-001"
+        )
+
+    def test_streams(self):
+        es, EVA = self.es, self.EVA
+        r = es.result_peak
+        self.assertFigure(f"{r.rougher.feed_volume_m3h:.2f} m³/h", "ES-1 급광 유량")
+        self.assertFigure(
+            f"{r.rougher.feed.dry_tph * 1000:.1f} kg/h "
+            f"({r.rougher.feed.component_tph(EVA) * 1000:.1f})",
+            "ES-1 급광 고체",
+        )
+        self.assertFigure(
+            f"{r.rougher.concentrate.dry_tph * 1000:.1f} kg/h "
+            f"({r.rougher.concentrate.component_tph(EVA) * 1000:.1f})",
+            "ES-1 거품",
+        )
+        self.assertFigure(
+            f"{r.concentrate.dry_tph * 1000:.1f} kg/h "
+            f"({r.concentrate.component_tph(EVA) * 1000:.1f})",
+            "EVA 산물",
+        )
+        self.assertFigure(
+            f"자유 EVA {es.residual_eva_tph(r) * 1000:.2f} kg/h", "부선 급광 자유 EVA"
+        )
+        self.assertFigure(
+            f"{r.tailings.dry_tph * 1000:.1f} kg/h ({es.residual_eva_tph(r) * 1000:.2f})",
+            "ES-1 미광 고체",
+        )
+        self.assertFigure(f"Ag 손실 {es.ag_loss(r) * 100:.3f} %", "Ag 손실")
+        self.assertFigure(
+            f"ES 로 오는 EVA {es.requirement.freed_eva_tph * 1000:.2f} kg/h", "ES 부하"
+        )
+        self.assertFigure(
+            f"한도 {es.requirement.allowance_tph * 1000:.2f} kg/h "
+            f"({db.EVA_FLOTATION_FEED_LIMIT * 100:.1f} wt%)",
+            "부선 급광 한도",
+        )
+
+    def test_power(self):
+        self.assertFigure(f"{self.es.installed_kw:.2f} kW", "EVA 분리 설치 전력")
+        self.assertFigure(f"{self.pre.installed_kw:.2f} kW", "전처리 계 설치 전력")
+        self.assertFigure(
+            f"어트리션 {self.pre.attrition_kw:.2f} + EVA 분리 {self.es.installed_kw:.2f}",
+            "전처리 전력 내역",
+        )
+
+    def test_bag(self):
+        bag = self.es.bag
+        self.assertFigure(
+            f"{bag.volume_m3:.0f} m³ · 건조 EVA {bag.dry_capacity_kg:.0f} kg/백", "FB-1 용량"
+        )
+        self.assertFigure(f"{bag.change_interval_h:.0f} 시간마다 교체", "FB-1 교체 주기")
+        self.assertFigure(f"케이크 함수 {bag.cake_moisture * 100:.0f} %", "케이크 함수")
+
+    def test_decision_band_matches_limits(self):
+        lim = self.es.limits
+        self.assertFigure(f"요구 제거율 {lim.required_recovery * 100:.1f} %", "요구 제거율")
+        for t90 in (lim.peak_min, lim.average_min, lim.extra_cell_min):
+            self.assertFigure(f"≤ {t90:.2f} min", "S-1 판정선")
+        self.assertFigure(f"&gt; {lim.extra_cell_min:.2f} min", "S-1 판정선 상한")
+
+    def test_size_table_matches_model(self):
+        for d, rec in self.es.size_recovery:
+            if d > 45.0:
+                continue
+            with self.subTest(d=d):
+                self.assertFigure(f"{d:g} µm", "박편 지름")
+                self.assertFigure(f"{rec * 100:.1f} %", f"{d:g} µm 회수율")
+
+    def test_method_rejection_is_quantified(self):
+        sc = self.es.screen
+        self.assertFigure(f"{sc.eva_rise_m_h:.3f} m/h", "EVA 부상 속도")
+        self.assertFigure(f"{sc.skim_area_m2:.0f} m²", "중력 분리 수면적")
+
+    def test_tags_frother_bypass_and_hydrogen(self):
+        for probe in (db.EVA_ROUGHER_TAG, db.EVA_CLEANER_TAG, db.EVA_BLOWER_TAG,
+                      db.EVA_PUMP_TAG, db.EVA_BAG_TAG, "MIBC 30 ppm", "포수제 앞",
+                      "바이패스", "AT", "017", "LIC", "009", "010", "015"):
+            self.assertFigure(probe, probe)
