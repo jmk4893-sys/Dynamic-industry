@@ -429,6 +429,29 @@ class TestHandoverCountsFollowTheCatalog(unittest.TestCase):
         self.assertEqual(int(m.group(1)), self.total)
 
 
+class TestAssemblyStepsCountWhatTheCatalogHolds(unittest.TestCase):
+    """조립 단계가 세는 수량은 그 부품의 수량이다.
+
+    VT-101 의 조립 순서가 '기둥 4본' · '흡착패드 18개' 로 남아 있었다 — 구조해석이
+    기둥을 6본으로, 포락선 2,500 × 1,400 이 패드를 6 × 4 = 24 개로 올린 뒤에도.
+    조달 규격의 검사 항목도 '18점 동일 평면' 이었다. 부품표는 맞는데 단계표가
+    틀리면 현장은 단계표를 따른다.
+    """
+
+    def test_the_table_steps_count_the_catalog_quantities(self):
+        by = {p.pid: p for p in PT.P}
+        texts = " ".join(s[1] for s in PT.STEPS["M-004"])
+        self.assertIn(f"기둥 {by['P-004-04'].qty}본", texts)
+        self.assertIn(f"흡착패드 {by['P-004-08'].qty}개", texts)
+        self.assertEqual(by["P-004-05"].qty, by["P-004-04"].qty, "베이스플레이트는 기둥마다 한 장")
+        self.assertEqual(by["P-004-06"].qty, 4 * by["P-004-04"].qty, "거싯은 기둥마다 네 장")
+
+    def test_the_pad_inspection_counts_every_pad(self):
+        import procure as PR
+        n = next(p.qty for p in PT.P if p.pid == "P-004-08")
+        self.assertIn(f"{n}점 동일 평면", PR.BUY_SPEC["P-004-08"][3])
+
+
 class TestTheAlignmentGuideNeverTouchesGlassWithSteel(unittest.TestCase):
     """프레임·정션박스가 제거되어 들어온다 (발주자 확정) — 기준면이 유리 모서리다.
 

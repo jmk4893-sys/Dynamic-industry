@@ -299,6 +299,38 @@ class TestTheLayoutKeepsWhatWasEarned(unittest.TestCase):
         self.assertIn("방책은 계단형이다", s)
 
 
+class TestTheStudyFollowsTheSteppedKnife(unittest.TestCase):
+    """계단 칼날로 바뀐 날 콘솔과 사양서는 따라왔는데 검토서 산문이 남았다.
+
+    '권취 2벌' · '만권 롤 2벌과 카세트 4벌' · '반출 6계통' · '롤이 2.5 h 마다' 가
+    권취기를 철거한 뒤에도 두 셀 구성의 대가로 적혀 있었다. 시험이 숫자만 보고
+    말을 보지 않았기 때문이다.
+    """
+
+    def test_the_winder_appears_only_as_removed(self):
+        """권취·만권 롤은 '없다'·'철거' 와 함께가 아니면 나오면 안 된다."""
+        text = re.sub(r"<[^>]+>", "", study())
+        for line in text.splitlines():
+            if re.search(r"권취|만권|WR-?\d*\b|웹", line):
+                self.assertRegex(line, r"없|철거|사라졌",
+                                 f"권취기가 설비처럼 남아 있다: {line.strip()[:80]}")
+        self.assertNotRegex(text, r"6\s*계통|여섯", "반출 계통 수가 권취 시절 값이다")
+
+    def test_the_single_cell_rate_comes_from_the_cycle(self):
+        """비교표의 명목 처리량이 순생산을 가동률로 되나눈 값이면 1.1항(3600 ÷ 사이클)과
+        소수 첫째 자리가 어긋난다 — 66.2 대 66.3 으로 한 문서 안에서 갈라졌다."""
+        s = study().replace(" ", "")
+        self.assertIn("['명목처리량',n1(3600/M.cellCycle)", s)
+        self.assertNotIn("M.hk60.rate/M.availability", s)
+
+    def test_the_deck_change_is_read_from_the_model(self):
+        """'단수가 3 → 7' 은 3단 시절의 글자였다 — 단수는 모델 두 값에서 쓴다."""
+        s = study()
+        self.assertIn('id="deckDelta"', s)
+        self.assertIn("setText('deckDelta',`${M.hk60.decks} → ${pick.decks}`)", s)
+        self.assertNotRegex(re.sub(r"<[^>]+>", "", s), r"단수가\s*\d+\s*→")
+
+
 class TestTheBrandMarkIsTheOneDefinition(unittest.TestCase):
     def test_the_study_copy_matches_the_console(self):
         """마크 사본이 셋이 됐다 — 눈으로 옮겨 그리면 다른 도형이 된다."""

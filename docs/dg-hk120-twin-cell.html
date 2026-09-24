@@ -384,7 +384,7 @@
   <div class="clause"><div class="n">4.2</div><div class="c">
     <h3>높이로 사는 대가</h3>
     <p>DG-HK60C 가 바닥을 아끼려고 시간을 높이로 샀다면, 이 구성은 그 높이를
-      한 번 더 쓴다. 단수가 <span class="m">3 → 7</span> 로 늘면서 챔버 지붕이
+      한 번 더 쓴다. 단수가 <span id="deckDelta" class="m">—</span> 로 늘면서 챔버 지붕이
       <span id="roofDelta" class="m">—</span> 올라간다.</p>
     <figure>
       <div class="plate" id="elevPlate"></div>
@@ -401,7 +401,8 @@
       이 통로가 그 층을 공유한다.</p>
     <ul>
       <li>KC 매거진 2조 — 셀당 1조, x 로 엇갈려 배치해 통로 폭을 카세트 하나로 끝낸다</li>
-      <li>RH 모노레일 1선 — 만권 롤 2벌과 카세트 4벌을 같은 길로 방책 밖까지 낸다</li>
+      <li>RH 모노레일 1선 — 두 셀의 다 쓴 카세트를 같은 길로 방책 밖까지 낸다. 백시트
+        롤은 없다 — 계단 칼날이 백시트를 셀모듈과 함께 떼어 권취기가 철거됐다 (DG-HK60C 와 같다)</li>
       <li>EX-101 방출 문형 — 패널 <span id="panelWText">—</span> 이 지나가야 하므로 마스트가 ±<span id="forkYText">—</span> 이다</li>
       <li>정비 접근 — 두 셀의 진공테이블·나이프 슬라이드를 한 통로에서 본다</li>
     </ul>
@@ -413,8 +414,8 @@
       방출 문형과 셀 기둥이 겹친 도면이 나가고, 그 겹침은 제작에서야
       드러난다. 채택값은 <span id="aisleW2" class="m">—</span> 이고
       셀 중심간격 <span id="cellyW" class="m">—</span> 이 여기서 나온다.</p>
-    <div class="warn" id="railWarn"><strong>모노레일 1선에 반출이 여섯이다.</strong>
-      만권 롤 2 · 카세트 4 가 한 레일을 쓰므로 동시에 일어날 수 없다.
+    <div class="warn" id="railWarn"><strong>모노레일 1선을 두 셀이 함께 쓴다.</strong>
+      두 KC 매거진의 카세트 반출이 한 레일을 쓰므로 동시에 일어날 수 없다.
       배타 인터록(<span class="k">RH_TASK_EXCLUSIVE</span>)과 대기열을 상세설계에서
       세우고, 최악 위상에서 무인 운전이 끊기지 않는지 확인한다.</div>
   </div></div>
@@ -489,11 +490,12 @@
       <tbody id="costRows"></tbody>
     </table></div>
     <div class="warn"><strong>소모품 관리가 두 배가 된다.</strong>
-      카세트 4벌 · 권취 롤 2벌이고, 롤은 셀당
-      <span class="m">4.9 h</span> 마다 나오므로 라인 전체로는
-      <span class="m">2.5 h</span> 마다 한 벌씩 나온다.
-      <a href="dg-hk60-rfq.html#c6">RFQ 6.6</a> 의 8시간 무인 목표를 지키려면
-      보관 새들 수량과 AGV 주기를 다시 잡아야 한다.</div>
+      칼날 카세트가 4벌이고 교환은 셀마다 따로 온다. 자동교환은 셀마다 제 KC 매거진에서
+      끝나지만, 다 쓴 카세트를 방책 밖으로 내는 RH 모노레일은 한 선이라 두 셀의 반출이
+      줄을 선다. 백시트 만권 롤은 없다 — 계단 칼날이 셀모듈과 함께 떼므로 셀당 4.9 h 마다
+      사람을 부르던 롤 교체가 사라졌다.
+      <a href="dg-hk60-rfq.html#c6">RFQ 6.6</a> 의 8시간 무인 목표는 카세트 반출 대기열과
+      평적 카트 주기로 다시 확인한다.</div>
   </div></div>
 </section>
 
@@ -637,8 +639,8 @@
     ['DL-101 분리 셀','2','<strong>여기가 병목이다</strong> — 셀 하나의 상한 '+n1(ceilRate)+' 장/h'],
     ['GC-101 냉각 랙','1','필요 '+coolDecks+'단 · 가열실과 공용 '+pick.decks+'단 — 길이는 그대로'],
     ['UL-101 반출 셔틀','1','검사·반출은 택트에 여유가 있다'],
-    ['WR 권취 · KC 매거진','2','셀마다 웹과 칼날이 따로 생긴다'],
-    ['RH 모노레일','1','반출 여섯을 한 레일이 순차로 낸다 (4.3)'],
+    ['KC 매거진','2','셀마다 칼날이 따로 닳는다 — 백시트 권취는 없다 (계단 칼날)'],
+    ['RH 모노레일','1','두 셀의 카세트 반출을 한 레일이 순차로 낸다 (4.3)'],
   ].map(([a,b,c])=>`<tr><th>${a}</th><td class="num">${b}</td><td>${c}</td></tr>`).join(''));
 
   // ── 3장
@@ -690,6 +692,7 @@
   setText('forkYText2',mm(GEO.forkY));
   setText('gantryYText',mm(GEO.gantryY));
   setText('altDecks',alt?alt.decks+'단':'저층안');
+  setText('deckDelta',`${M.hk60.decks} → ${pick.decks}`);
   setText('roofDelta',`${mm(M.hk60.roof)} → ${mm(pick.roof)} mm (+${mm(pick.roof-M.hk60.roof)})`);
   setText('aisleW',mm(GEO.aisle)+' mm');
   setText('orientArea',n1(occupied)+' m² (건물 외곽 '+n1(bounding)+' m²)');
@@ -700,7 +703,7 @@
 
   // ── 5장 비교
   const rows=[
-    ['명목 처리량',n1(M.hk60.rate/M.availability)+' 장/h',n1(nominal)+' 장/h',n1(nominal)+' 장/h'],
+    ['명목 처리량',n1(3600/M.cellCycle)+' 장/h',n1(nominal)+' 장/h',n1(nominal)+' 장/h'],
     ['90 % 순생산',n1(M.hk60.rate)+' 장/h',n1(net)+' 장/h',n1(net)+' 장/h'],
     ['분리 셀 (계단 칼날)','1','2','2'],
     ['가열실','1기 · '+M.hk60.decks+'단','2기 · '+M.hk60.decks+'단','<strong>1기 · '+pick.decks+'단</strong>'],
@@ -710,7 +713,7 @@
     ['점유면적',n1(M.hk60.length*M.hk60.width)+' m²',n1(2*M.hk60.length*M.hk60.width)+' m²','<strong>'+n1(occupied)+' m²</strong>'],
     ['건물 외곽',n1(M.hk60.length*M.hk60.width)+' m²',n1(2*M.hk60.length*M.hk60.width)+' m²',n1(bounding)+' m²'],
     ['1 셀 정지 시','0 장/h',n1(degraded)+' 장/h','<strong>'+n1(degraded)+' 장/h</strong>'],
-    ['카세트 · 권취','2 · 1','4 · 2','4 · 2'],
+    ['칼날 카세트','2','4','4'],
   ];
   setHTML('compareRows',rows.map(([a,b,c,d])=>
     `<tr><th>${a}</th><td class="num">${b}</td><td class="num">${c}</td><td class="num">${d}</td></tr>`).join(''));
@@ -727,8 +730,8 @@
     ['챔버 높이',`지붕 ${mm(M.hk60.roof)} → ${mm(pick.roof)} mm — 건물 유효높이·반입·크레인 재검토`,'구조'],
     ['EX-101 횡이송축',`방출 포크에 ±${mm(GEO.celly)} mm y축이 새로 든다 — 두 셀에 번갈아 넣는다`,'신규 축'],
     ['DL 셀 폭',`${mm(M.hk60.width)} → ${mm(2*GEO.halfW)} mm (DL 구간만) — 수평 병렬의 대가`,'배치'],
-    ['소모품',`카세트 ${2*M.cells}벌 · 권취 ${M.cells}벌 — 교환 빈도 2배`,'운전'],
-    ['모노레일 부하','반출 6계통이 1선을 공유 — 배타 인터록 필요','제어'],
+    ['소모품',`카세트 ${2*M.cells}벌 — 교환 빈도 2배 (백시트 롤은 없다)`,'운전'],
+    ['모노레일 부하','두 셀의 카세트 반출이 1선을 공유 — 배타 인터록 필요','제어'],
     ['가열실 단일점',`챔버가 서면 두 셀이 같이 선다 — 이중화 범위 합의 필요`,'가용성'],
   ].map(([a,b,c])=>`<tr><th>${a}</th><td>${b}</td><td class="k">${c}</td></tr>`).join(''));
 
@@ -827,7 +830,7 @@
       +T(dlX+dlW/2,Yy(-fy)-9,'DL 구간만 '+mm(2*fy),10,'#8b9ba4')
       +`<path d="M${X(0)} ${(Yy(fy)+30).toFixed(1)}H${X(GEO.len)}" stroke="#17679b" stroke-width="1.1" marker-start="url(#ta)" marker-end="url(#ta)"/>`
       +T(X(GEO.len/2),Yy(fy)+24,'전장 '+mm(GEO.len)+' — DG-HK60C 와 같다',12,'#17679b',700)
-      +T(X(0),Yy(fy)+52,'중앙 통로가 두 셀의 카세트 인출 포락선 '+mm(1.44)+' 를 공유한다 · RH 모노레일 1선이 반출 6계통을 배타로 낸다 (4.3항)',10.5,'#4a7c66',400,'start')
+      +T(X(0),Yy(fy)+52,'중앙 통로가 두 셀의 카세트 인출 포락선 '+mm(1.44)+' 를 공유한다 · RH 모노레일 1선이 두 셀의 카세트 반출을 배타로 낸다 (4.3항)',10.5,'#4a7c66',400,'start')
       +T(X(0),Yy(fy)+70,'점유면적 '+n1(occupied)+' m² · 건물 외곽으로 잡으면 '+n1(bounding)+' m² — 넓어지는 것은 DL 하나다',10.5,'#6b7f8b',400,'start')
       +T(X(0),Yy(-fy)-30,'GA-201 · 평면 배치 (X 이송방향 · Y 횡방향 · 1 m = '+s+' px)',12.5,'#14202a',700,'start');
     setHTML('planPlate',SV(1180,Yy(fy)+92,g,'DG-HK120C 평면 배치도'));
