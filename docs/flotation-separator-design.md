@@ -937,7 +937,7 @@ locked-cycle 시험에서 추가 체류시간의 이득이 확인될 때만 예�
 PYTHONPATH=src python -m flotation_design                               # 계산서 표준출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 검증 (466건)
+python -m unittest discover -s tests -t .                               # 검증 (1279건)
 ```
 
 설계 전제는 모두 `src/flotation_design/design_basis.py` 한 곳에, 문헌 실증값은
