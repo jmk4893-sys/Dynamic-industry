@@ -196,6 +196,75 @@ class TestNoSheetPrintsTextOverText(unittest.TestCase):
                         "안전회로 설명이 표제란 쪽으로 흘러간다")
 
 
+class TestTheKnifeSheetsDoNotOverprint(unittest.TestCase):
+    """계단 칼날로 다시 그린 세 장 — 브라우저 경계상자 검사가 잡은 자리를 못 박는다.
+
+    F-006 은 반출 단면 B-B 를 정면도 A-A 위에 통째로 겹쳐 그렸고, 교환 순서의
+    다섯째·여섯째 신호가 개정란(셋째 행이 생기며 올라왔다)을 밟았다. D-501 은
+    평면도 제목이 부제 밑에 붙고 교환 시간 상자가 표제란으로 흘렀다. F-005 는
+    진행 화살표 글자가 중앙 폭 치수와 조도 기호에 얹혔다. 글자 겹침 검사로는
+    도형끼리 겹친 첫째를 못 잡으므로 투상 사이의 간격은 좌표로 잰다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = CONSOLE.read_text(encoding="utf-8")
+        cls.env = console_consts.env(cls.src)
+
+    def _num(self, body, name):
+        m = re.search(rf"\b{name}=([\d./]+)", body)
+        self.assertIsNotNone(m, f"{name} 를 찾지 못했다")
+        a, _, b = m.group(1).partition("/")
+        return float(a) / float(b) if b else float(a)
+
+    def test_f006_section_stands_clear_of_the_front_view(self):
+        body = _fn(self.src, "winderFabDrawing")
+        e = self.env
+        FX, S = self._num(body, "FX"), self._num(body, "S_")
+        RX, RS = self._num(body, "RX"), self._num(body, "RS")
+        mw = e["CKC_POCKETS"] * e["CKC_PITCH"] + .20
+        fx = lambda v: FX + (v - (e["CRAIL_X0"] - .60)) * 1000 * S
+        ry = lambda v: RX + (e["RH_Y0"] + .40 - v) * 1000 * RS
+        front_right = fx(e["CKC_X"] + mw / 2 + .52) + 26       # '갠트리 최상단 2,740' 끝
+        section_left = ry(e["CKC_Y"] + e["KNIFE_W"] / 2)        # 매거진 막대 왼끝
+        self.assertLess(front_right, section_left,
+                        f"B-B({section_left:.0f})가 A-A({front_right:.0f}) 위에 얹힌다")
+
+    def test_f006_sequence_ends_before_the_revision_block(self):
+        body = _fn(self.src, "winderFabDrawing")
+        QX, QY, QP = (self._num(body, k) for k in ("QX", "QY", "QP"))
+        seq = re.search(r"const SEQ=\[(.*?)\];", body, re.S).group(1)
+        sigs = re.findall(r"'([A-Z][A-Z0-9_]+)'\]", seq)
+        last = QX + 9 + (len(sigs) - 1) * QP + max(len(s) for s in sigs) * 1.5 / 2
+        self.assertLess(last, 420 - 140 - 2, "교환 순서 끝 신호가 개정란(x 280)을 밟는다")
+        self.assertLess(QY + 31, 246 - 3, "교환 순서 각주가 주기 제목을 밟는다")
+
+    def test_d501_plan_sits_below_the_subtitle_and_the_box_above_the_title_block(self):
+        body = _fn(self.src, "cassetteDrawing")
+        title = re.search(r'<text x="45" y="(\d+)" font-size="13" font-weight="700" fill="#25353a">평면도', body)
+        self.assertIsNotNone(title, "평면도 제목을 찾지 못했다")
+        self.assertGreater(int(title.group(1)) - 13, 82 + 4, "평면도 제목이 부제(y 82)에 붙는다")
+        PY0 = self._num(body, "PY0")
+        self.assertGreater(PY0 - 40 - 8 - 11, int(title.group(1)) + 3,
+                           "전폭 치수 글자가 평면도 제목에 얹힌다")
+        box = re.search(r'<rect x="700" y="(\d+)" width="446" height="(\d+)"', body)
+        self.assertIsNotNone(box, "교환 시간 상자를 찾지 못했다")
+        self.assertLess(int(box.group(1)) + int(box.group(2)), 610 - 62,
+                        "교환 시간 상자가 표제란(y 548)으로 흐른다")
+
+    def test_d501_depth_is_dimensioned_as_the_sum_it_names(self):
+        """280 을 '깊이 240 + 홀더 120' 이라 적으면 도면을 믿는 사람이 360 을 280 으로 깎는다."""
+        body = _fn(self.src, "cassetteDrawing")
+        self.assertIn("`${mm(KNIFE_DEPTH+CASS_W)} (깊이 ${mm(KNIFE_DEPTH)} + 홀더 ${mm(CASS_W)})`", body)
+        self.assertNotIn("KNIFE_DEPTH-KNIFE_RISE+CASS_W", body)
+
+    def test_f005_travel_arrow_is_off_the_centre_dimension(self):
+        body = _fn(self.src, "tandemFabDrawing")
+        self.assertIn("M${dx(-KNIFE_W/2)-8} ${dy(KNIFE_DEPTH)}V${dy(0)}", body,
+                      "진행 화살표가 바깥 칼날 옆에 서지 않는다")
+        self.assertNotIn("M${dx(0)} ${dy(-.07)}", body, "진행 화살표가 중앙 폭 치수 위로 돌아왔다")
+
+
 class TestTheCoolerSheetDefinesOnlyTheDifference(unittest.TestCase):
     """M-007 은 F-002 와 같은 랙이다 — 그래서 도면이 짧아야 옳다.
 

@@ -145,6 +145,12 @@ class TestTheConclusionFollowsFromTheModel(unittest.TestCase):
                         "피치가 택트를 넘으면 처리량을 소킹이 정하게 된다")
         self.assertGreaterEqual(self.ex["new"]["rate"], AIR.CY.NET_TARGET)
 
+    def test_when_the_knife_governs_the_report_quotes_the_contract_rate(self):
+        """피치가 택트보다 짧으면 처리량은 칼날이 정한다 — 그러면 이 검토가 적는
+        순생산은 사이클 모델의 값과 같아야 한다. 표시용으로 반올림한 택트(54.3)로
+        나누면 CAL-001 은 59.7, 사양서는 59.6 을 말하게 된다."""
+        self.assertAlmostEqual(self.ex["new"]["rate"], AIR.CY.RATE_NET, places=9)
+
     def test_the_present_layout_breaks_the_contract_throughput(self):
         self.assertLess(self.ex["now"]["rate"], AIR.CY.NET_TARGET)
 

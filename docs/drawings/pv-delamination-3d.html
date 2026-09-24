@@ -204,6 +204,10 @@
     .material-flow{position:absolute;left:12px;right:12px;bottom:80px;display:grid;
       grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;pointer-events:none;opacity:.6;transition:opacity .2s}
     .material-flow.active{opacity:1}
+    /* 압축 계열은 반출이 둘이다 — 백시트가 셀모듈과 한 장으로 나간다. 카드의
+       display:flex 가 [hidden] 을 이기므로 숨김을 명시하고, 칸도 둘로 줄인다. */
+    .material-flow.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .flow-item[hidden]{display:none}
     .flow-item{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:var(--r1);
       background:var(--hud);border:1px solid var(--hud-line);
       backdrop-filter:blur(8px);box-shadow:var(--hud-shadow)}
@@ -367,7 +371,7 @@
       .focus-sequence div{grid-template-columns:19px 1fr}
       .focus-sequence strong{display:none}.focus-live{display:none}
       .carriage-hud .focus-sequence{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .material-flow{grid-template-columns:1fr;bottom:122px;gap:5px}
+      .material-flow,.material-flow.two{grid-template-columns:1fr;bottom:122px;gap:5px}
       .flow-item{padding:5px 9px}.flow-item span{font-size:9px}.flow-item strong{font-size:11px}
       .video-bottom{grid-template-columns:1fr 1fr}
       .video-bottom .mini-stat:nth-child(2),.video-bottom .mini-stat:nth-child(3){display:none}
@@ -5182,7 +5186,7 @@
          계열은 계단 칼날이 셀모듈과 백시트를 한 장으로 떼므로 둘이다 — 단계의
          flow 도 압축 계열은 [셀모듈, 유리] 두 칸이다. */
       const flowStates=s.flow,two=compactView();
-      $('flowBacksheet').hidden=two;
+      $('flowBacksheet').hidden=two;$('materialFlow').classList.toggle('two',two);
       $('flowCellLabel').textContent=two?'셀모듈 · 백시트 포함':'셀모듈';
       if(two){$('flowCellText').textContent=flowStates[0];$('flowGlassText').textContent=flowStates[1]}
       else{$('flowBacksheetText').textContent=flowStates[0];$('flowCellText').textContent=flowStates[1];$('flowGlassText').textContent=flowStates[2]}

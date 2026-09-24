@@ -83,8 +83,10 @@ def _case(lamps, rho):
     # 백시트는 계면보다 두께 방향으로 앞선다. 설계유속 4,514 W/m² 에서
     # 7.0 K 였으므로(CAL-001 T2) 국부 유속에 비례해 늘린다.
     back = s["centre"] + 7.0 * f.E[nx // 2][ny // 2] / 4514.0
+    # 처리량은 반올림하지 않은 택트로 낸다 — 표시용 54.3 으로 나누면 사양서의
+    # 순생산(cycle.RATE_NET)과 소수 첫째 자리가 갈라진다.
     return dict(field=f, dwell=dwell, back=back, pitch=dwell / IR.DECKS,
-                rate=3600 / max(dwell / IR.DECKS, TAKT) * 0.90, **s)
+                rate=3600 / max(dwell / IR.DECKS, CY.TAKT) * CY.AVAILABILITY, **s)
 
 
 def now(rho=RHO_POLISHED):

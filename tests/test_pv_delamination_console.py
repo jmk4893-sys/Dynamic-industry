@@ -863,6 +863,16 @@ class TestTenPanelTrial(unittest.TestCase):
         self.assertRegex(self.html, r"const flowStates=s\.flow[,;]",
                          "자재흐름이 단계 객체에서 나오지 않는다")
 
+    def test_the_compact_family_really_hides_the_backsheet_card(self):
+        """압축 계열은 반출이 둘이다. hidden 속성만 켜면 .flow-item 의 display:flex 가
+        이겨 '권취 대기' 카드가 그대로 남는다 — 철거한 권취부가 화면에서 살아 있게 된다."""
+        self.assertIn(".flow-item[hidden]{display:none}", self.html,
+                      "hidden 이 카드의 display 를 이기지 못한다")
+        self.assertIn("$('flowBacksheet').hidden=two;$('materialFlow').classList.toggle('two',two);",
+                      self.html, "압축 계열에서 백시트 카드가 숨지 않는다")
+        self.assertIn(".material-flow.two{grid-template-columns:repeat(2,minmax(0,1fr))}", self.html,
+                      "두 계통인데 세 칸을 그대로 쓴다")
+
     def test_all_three_material_paths_accumulate(self):
         body = re.search(r"function tenPanelTestActivity\(.*?\n    \}", self.html, re.S)
         self.assertIsNotNone(body, "10장 시운전 동작이 없다")
