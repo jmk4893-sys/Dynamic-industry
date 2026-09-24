@@ -5,8 +5,9 @@
 
   · 칼끝 깊이 예산 0.15 에서 칼 쪽(S10)이 0.105 를 쓰는데, 흡착패드 평면도
     0.3 이 만드는 유리 굴곡은 곧은 칼날을 가장 좋게 교정해도 그 나머지를 넘는다.
-  · 잠긴 칼날은 수직 반력으로 패드 사이 유리를 들어 올린다. 칼날이 유리를 타면
-    그 힘이 박리 전선에서 닫힌다.
+  · 칼날의 수직 반력은 잠금이든 추종이든 밑면 랜드가 박리 전선에서 되받는다 —
+    패드 사이 유리가 휨으로 받으려면 수십 mm 떠야 한다. 잠긴 곧은 칼날을 막는
+    것은 힘이 아니라 기하다: 낮은 자리의 잔막과 패드 위 높은 자리의 누름.
 
 숫자가 바뀌면 결론이 바뀔 수 있다 — 그래서 결론을 숫자에 묶는다. 카탈로그 ·
 인터록 · 사양서 · 파일럿이 같은 설계를 말하는지도 본다.
@@ -90,7 +91,7 @@ class TestTheStraightKnifeCannotFollowThePads(_Follow):
 
 
 class TestTheVerticalReactionClosesAtThePeelFront(_Follow):
-    """잠금이면 V 가 패드 사이를 건너고, 추종이면 전선에서 닫힌다."""
+    """V 는 두 운전 모두 전선에서 닫힌다 — 경간이 받으려면 유리가 EVA 보다 한참 떠야 한다."""
 
     def test_following_keeps_the_glass_inside_the_allowable(self):
         for rid in ("S13", "S14"):
@@ -104,16 +105,43 @@ class TestTheVerticalReactionClosesAtThePeelFront(_Follow):
         self.assertAlmostEqual(self.f["q_follow"], want, places=9)
         self.assertAlmostEqual(self.by["S13"].value, GF.span_stress(want), places=9)
 
-    def test_a_locked_knife_cannot_carry_the_peel_across_the_pads(self):
-        """잠금 운전으로 박리하려면 V/H 가 거의 0 이어야 한다 — 그래서 잠금은 진입·복귀용이다."""
-        self.assertLess(self.f["lock_vh_max"], 0.05)
+    def test_the_land_takes_the_vertical_reaction_back(self):
+        """랜드는 제가 남긴 잔막 위에 얹혀 0 mm 떨어져 있다. V 를 패드 사이 유리가 휨으로
+        받으려면 유리가 그만큼 떠야 하는데, 그 높이가 EVA 두께보다 두 자릿수 크다.
+        잠금이든 추종이든 같다 — 9/24 첫 판은 잠긴 칼날이면 V 가 경간을 든다고 적었다."""
+        want = GF.F_W * GF.SPAN_X ** 3 / (48 * GF.E_GL * GF.T_GLASS ** 3 / 12)
+        self.assertAlmostEqual(self.f["lift_per_vh"], want, places=9)
+        self.assertAlmostEqual(self.f["eva"], 0.45, places=9)
+        self.assertGreater(self.f["lift_over_eva"], 100, "V 가 경간으로 갈 만큼 유리가 뜰 수 있다")
         self.assertGreater(self.f["follow_vh_max"], ST.V_RATIO,
-                           "추종이 포락 V/H 에서 전선 우력을 못 견딘다")
+                           "전선 우력이 포락 V/H 를 못 견딘다")
+
+    def test_lift_and_span_stress_are_the_same_beam(self):
+        """들림과 굽힘을 같은 단순지지 경간에서 낸다 — σ = 6·E·t·w / L²."""
+        q = 1.0
+        w = GF.span_lift(q)
+        self.assertAlmostEqual(GF.span_stress(q), 6 * GF.E_GL * GF.T_GLASS * w / GF.SPAN_X ** 2,
+                               places=9)
+
+    def test_the_retracted_claim_stays_retracted(self):
+        """잠긴 칼날이 수직 반력으로 패드 사이 유리를 든다는 문장은 틀렸다 — 다시 들어오지 않는다."""
+        pt10 = next(t for t in PP.tests() if t.id == "PT-10")
+        texts = {"사양서": RFQ.read_text(encoding="utf-8"),
+                 "콘솔": CONSOLE.read_text(encoding="utf-8"),
+                 "PT-10": " ".join(pt10.steps) + pt10.accept,
+                 "S13": self.by["S13"].note}
+        for name, text in texts.items():
+            for bad in ("패드 사이 유리를 들어", "V 가 경간을 든다", "들어 올리는 운전"):
+                self.assertNotIn(bad, text, f"{name} 에 철회한 주장이 남았다: {bad}")
 
     def test_the_limits_go_to_the_pilot(self):
         pt10 = next(t for t in PP.tests() if t.id == "PT-10")
         self.assertIn(f"{self.f['vh_arm_max']:.2f} mm", pt10.accept)
-        self.assertIn(f"{self.f['lock_vh_max']:.3f}", pt10.accept)
+        self.assertIn(f"랜드 {c('KNIFE_LAND') * 1000:.1f} mm", pt10.accept)
+        self.assertIn(f"V/H {self.f['follow_vh_max']:.2f}", pt10.accept)
+        self.assertTrue(any("쿠폰" in st for st in pt10.steps),
+                        "실기 칼날 게이지로는 V 가 안 보인다 — 쿠폰으로 잰다고 적어야 한다")
+        self.assertIn(f"{PP.COUPON_PANELS} 장", pt10.reuse)
         for sid in ("S12", "S13", "S14"):
             self.assertIn(sid, pt10.closes + pt10.accept)
         self.assertIn(str(int(c("CHD_PRELOAD"))), pt10.factors)
@@ -197,7 +225,7 @@ class TestTheSpecificationSaysIt(_Follow):
         want = [f"±{c('KM_TRAVEL') * 1000:.1f} mm", f"±{c('KM_ROLL'):.1f}°",
                 f"{c('KNIFE_LAND') * 1000:.1f} mm", f"{c('KM_NET'):.2f} N/mm",
                 f"{c('PAD_FLAT') * 1000:.1f} mm", f"{c('KM_ENTRY') * 1000:.0f} mm",
-                f"{self.f['lock_vh_max']:.3f}", f"≤ {self.f['vh_arm_max']:.2f} mm"]
+                f"{self.f['lift_per_vh']:.0f} mm", f"≤ {self.f['vh_arm_max']:.2f} mm"]
         for token in want:
             self.assertIn(token, self.c62, f"6.2 항에 {token} 이 없다 — 모델과 갈라졌다")
 

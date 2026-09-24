@@ -23,11 +23,18 @@
      사이를 건넌다 — 칼날이 떠 있으니 누름판의 반력도 유리가 받는다. 단순지지
      상한으로 본다.
   ③ 박리 전선의 국부 우력. 칼날이 층을 들어 올리면 층은 전선에서 유리를 같은
-     힘으로 들어 올린다. 칼날이 랜드로 유리를 타면 그 힘과 랜드가 누르는 힘이
-     랜드 폭만큼 떨어져 선다 — 크기는 수직 반력 V 이고 팔이 짧다.
+     힘으로 들어 올린다. 유리는 곧바로 밑면 랜드에 닿고 — 랜드는 제가 남긴 잔막
+     위에 얹혀 있다 — 랜드가 그 힘을 되받는다. 두 힘이 랜드 폭만큼 떨어져 선다.
+     크기는 수직 반력 V 이고 팔이 짧다. 잠금이든 추종이든 같다.
+  ④ V 가 경간을 건너지 않는 이유. V 를 패드 사이 유리가 휨으로 받으려면 유리가
+     그만큼 떠야 한다. V/H 1 이면 수십 mm — EVA 두께보다 두 자릿수 크다. 랜드가
+     그 전에 받는다.
 
-잠금(Z축이 곧은 칼날을 잡는다)이면 ② 가 뒤집힌다. 칼날이 유리를 누르지 않으니
-층이 전선에서 드는 힘 V 가 그대로 패드 사이 유리를 들어 올린다.
+잠금(Z축이 곧은 칼날을 잡는다)과 추종을 가르는 것은 그래서 힘이 아니라 기하다.
+곧은 칼날은 ① 의 반폭만큼 유리면에서 어긋난다. 유리가 낮은 자리에는 잔막이 남고,
+높은 자리에서는 칼날이 유리를 누른다. 그 자리가 패드 위면 유리가 비킬 데가 없어
+누르는 힘은 V 가 아니라 캐리어·Z축의 강성이 정한다. 추종은 그 힘을 V + 예압에서
+자른다.
 
 값은 하나도 새로 정하지 않는다. 패드·패널·칼날은 콘솔 뿌리 상수, 유리 두께와
 허용응력은 열해석(analysis_thermal), 폭당 박리 저항은 knife_stepped 에서 온다.
@@ -60,6 +67,8 @@ ROW_Y = tuple((i - (PAD_ROWS - 1) / 2) * PANEL_W / PAD_ROWS
 SPAN_X = PANEL_L / PAD_COLS                     # 416.7 패드 열 간격 — 추종 선하중이 건너는 경간
 T_GLASS = TH.T_GLASS * 1000                     # 3.2 — 면적질량 ÷ 밀도
 SIG_GL = TH.SIG_GL                              # 7 MPa — 사양서 5.5 설계허용 (열응력과 같은 값)
+E_GL = TH.E_GL                                  # 73,000 MPa 유리 탄성계수 (열응력과 같은 값)
+EVA_T = c("MASS_EVA") / 2 / TH.RHO["EVA"] * 1000  # 0.45 칼끝이 서는 EVA 층 — 깊이 예산 0.15 의 세 배
 KM_NET = c("KM_NET")                            # N/mm 유리에 남는 순 예압
 HD_PRELOAD = c("CHD_PRELOAD") * c("CHD_POSTS")  # N 누름판 예압 합 — 층을 칼날에 붙들고, 추종 중에는 모듈을 거쳐 유리로 간다
 KNIFE_W = c("KNIFE_W") * 1000                   # 1,500 누름판이 덮는 폭
@@ -246,6 +255,15 @@ def span_stress(q: float) -> float:
     return 1.5 * q * SPAN_X / T_GLASS ** 2
 
 
+def span_lift(q: float) -> float:
+    """같은 선하중이 경간 가운데를 들어 올리는 높이 (mm) — 단순지지, 폭당.
+
+    w = q·L³ / (48·E·I), I = t³/12. V 가 휨으로 패드까지 가려면 유리가 이만큼
+    떠야 한다. 랜드는 잔막 위에 얹혀 0 mm 떨어져 있다.
+    """
+    return q * SPAN_X ** 3 / (48 * E_GL * T_GLASS ** 3 / 12)
+
+
 def couple_stress(q: float, arm: float) -> float:
     """박리 전선의 우력 — 칼날이 누르는 힘과 층이 드는 힘 q (N/mm) 가 arm 만큼 떨어져 선다.
 
@@ -258,7 +276,7 @@ def couple_stress(q: float, arm: float) -> float:
 def summary() -> dict:
     """문서·해석·시험이 읽는 값."""
     mc = monte_carlo()
-    lock_per_vh = span_stress(F_W)              # 잠금 — V = F_W × V/H 가 경간을 들어 올린다
+    lift_per_vh = span_lift(F_W)                # V 를 경간이 받으려면 유리가 뜰 높이 — 랜드가 먼저 받는다
     couple_per_vh = couple_stress(F_W, LAND)
     q_hd = HD_PRELOAD / KNIFE_W
     q_allow = SIG_GL * T_GLASS ** 2 / (1.5 * SPAN_X)
@@ -266,8 +284,8 @@ def summary() -> dict:
         mc=mc, band=PAD_FLAT, trials=TRIALS, rows=ROW_Y, span=SPAN_X, t=T_GLASS,
         modules=len(module_spans()),
         q_net=KM_NET, q_hd=q_hd, q_follow=KM_NET + q_hd,
-        follow_span=span_stress(KM_NET + q_hd), lock_span_per_vh=lock_per_vh,
-        lock_vh_max=SIG_GL / lock_per_vh,
+        follow_span=span_stress(KM_NET + q_hd),
+        lift_per_vh=lift_per_vh, eva=EVA_T, lift_over_eva=lift_per_vh / EVA_T,
         hd_post_max=(q_allow - KM_NET) * KNIFE_W / c("CHD_POSTS"),   # 추종에서 허용에 드는 포스트당 예압
         couple_per_vh=couple_per_vh, follow_vh_max=SIG_GL / couple_per_vh,
         vh_arm_max=SIG_GL * T_GLASS ** 2 / (3 * F_W),     # V/H × 팔 (mm) 의 상한
@@ -300,8 +318,8 @@ def report() -> str:
           f"  추종 중 패드 사이 굽힘 — 예압 {KM_NET:.2f} + 누름판 {s['q_hd']:.3f} N/mm · 경간 {SPAN_X:.0f} · "
           f"t {T_GLASS:.1f} → {s['follow_span']:.2f} MPa (허용 {SIG_GL:.0f}) · "
           f"누름판은 포스트당 {s['hd_post_max']:.0f} N 까지",
-          f"  잠금이면 V 가 경간을 든다 — V/H 1 에서 {s['lock_span_per_vh']:.0f} MPa · "
-          f"허용에 드는 V/H {s['lock_vh_max']:.4f}",
+          f"  V 는 랜드가 되받는다 (잠금·추종 모두) — 경간이 받으려면 유리가 V/H 1 에서 "
+          f"{s['lift_per_vh']:.0f} mm 떠야 한다 (EVA {EVA_T:.2f} 의 {s['lift_over_eva']:.0f} 배)",
           f"  박리 전선 우력 — 팔 = 랜드 {LAND:.1f} mm · V/H 1 에서 {s['couple_per_vh']:.2f} MPa · "
           f"허용에 드는 V/H {s['follow_vh_max']:.2f} (V/H × 랜드 ≤ {s['vh_arm_max']:.2f} mm)"]
     return "\n".join(L)

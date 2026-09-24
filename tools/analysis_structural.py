@@ -398,12 +398,16 @@ def follow():
     랜드가 유리를 타므로 칼 쪽의 기울기·휨은 유리가 대신 정하고, 남는 것은 모듈
     폭 안의 굴곡(얹힌 틈)과 연삭이다.
 
-    대가는 유리가 받는 힘이다. 두 운전에서 칼날의 수직 반력이 가는 길이 다르다.
-      · 잠금 — Z축이 칼날을 잡는다. 층이 박리 전선에서 유리를 V 로 들어 올리고 그
-        힘이 패드 열 사이를 건넌다. V/H 1 이면 유리가 수백 MPa 를 받는다.
-      · 추종 — 칼날이 유리를 타며 V 로 누르고 층이 전선에서 V 로 든다. 둘이
-        전선에서 닫혀 경간을 건너는 것은 모듈 예압뿐이다(S13). 남는 것은 랜드 폭만큼
-        떨어진 두 힘의 우력이다(S14).
+    대가는 유리가 받는 힘이다. 칼날의 수직 반력 V 는 두 운전 모두 박리 전선에서
+    닫힌다 — 층이 전선에서 유리를 V 로 들면 유리는 곧바로 밑면 랜드에 닿고(랜드는
+    제가 남긴 잔막 위에 얹혀 있다) 랜드가 V 를 되받는다. V 가 패드 사이를 휨으로
+    건너려면 유리가 V/H 1 에서 수십 mm 떠야 한다. 그래서 유리에 남는 것은 둘이다.
+      · 경간을 건너는 것 — 추종이면 모듈이 남기는 예압과 누름판뿐이다 (S13).
+      · 전선의 우력 — 랜드 폭만큼 떨어진 두 힘. 잠금이든 추종이든 같다 (S14).
+    잠금과 추종을 가르는 것은 힘이 아니라 기하다. 곧은 칼날은 유리가 낮은 자리에
+    잔막을 남기고, 높은 자리 — 패드 위라 유리가 비킬 데가 없는 자리 — 에서는 유리를
+    누른다. 그 힘은 V 가 아니라 캐리어·Z축의 강성이 정한다. 추종은 그 힘을 V + 예압
+    에서 자른다.
     """
     from glass_follow import (KM_NET, LAND, PAD_FLAT, SIG_GL, SPAN_X, TRIALS,
                               band_for, summary)
@@ -426,17 +430,19 @@ def follow():
                "사양서 5.5 유리 설계허용 7 MPa — 열응력과 같은 값을 쓴다",
                f"예압 {KM_NET:.2f} + 누름판 {g['q_hd']:.3f} N/mm 가 패드 열 사이 {SPAN_X:.0f} 을 건넌다 "
                f"(단순지지 상한 · 누름판은 포스트당 {g['hd_post_max']:.0f} N 까지) · 칼날의 수직 반력은 "
-               f"전선에서 닫혀 이 경간을 건너지 않는다 · 잠금이면 V 가 전선에서 유리를 들어 V/H 1 에서 "
-               f"{g['lock_span_per_vh']:.0f} MPa — 허용에 드는 V/H 는 {g['lock_vh_max']:.3f} 뿐이다"),
-        Result("S14", "추종 중 박리 전선의 국부 우력 (V/H 1 · 랜드 폭)", g["couple_per_vh"] * V_RATIO,
+               f"랜드가 전선에서 되받아 이 경간을 건너지 않는다 — 휨으로 건너려면 유리가 V/H 1 에서 "
+               f"{g['lift_per_vh']:.0f} mm 떠야 한다 (EVA {g['eva']:.2f} 의 {g['lift_over_eva']:.0f} 배 · 잠금도 같다)"),
+        Result("S14", "박리 전선의 국부 우력 (V/H 1 · 랜드 폭 · 잠금·추종 모두)", g["couple_per_vh"] * V_RATIO,
                "MPa", SIG_GL,
                "같은 허용 7 MPa — 칼날이 누르는 힘과 층이 드는 힘이 랜드 폭만큼 떨어져 선다",
                f"폭당 V = {KS.F_W:.2f} N/mm × V/H {V_RATIO:.1f} · 팔 = 랜드 {LAND:.1f} mm · 모멘트가 양쪽에 "
                f"절반씩 · 허용에 드는 V/H {g['follow_vh_max']:.2f} (V/H × 랜드 ≤ {g['vh_arm_max']:.2f} mm) — "
-               f"파일럿 PT-10 이 조각별로 잰다"),
+               f"랜드가 V 를 되받아 칼날 게이지에는 거의 안 나오므로 파일럿 PT-10 이 쿠폰으로 잰다"),
     ], dict(depth=depth, straight=straight, knife_side=knife_side, glass_allow=glass_allow,
-            band_needed=band_for(glass_allow), mc=mc, **{k2: g[k2] for k2 in (
-                "follow_span", "lock_span_per_vh", "lock_vh_max", "couple_per_vh",
+            band_needed=band_for(glass_allow), mc=mc,
+            bend_per_vh=k["bend"] / V_RATIO,          # V/H 1 전폭 하중이 캐리어를 휘는 양 — 강성의 눈금
+            **{k2: g[k2] for k2 in (
+                "follow_span", "lift_per_vh", "eva", "lift_over_eva", "couple_per_vh",
                 "follow_vh_max", "vh_arm_max", "trials", "band", "span", "t", "modules",
                 "q_net", "q_hd", "q_follow", "hd_post_max")})
 

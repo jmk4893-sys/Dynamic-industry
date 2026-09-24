@@ -193,8 +193,9 @@ def part3() -> str:
     바깥 캔틸레버의 처짐이 같아져 휨이 <span class="m">{ex['knife']['bend']:.3f} mm</span> 로 준다 —
     <strong>같은 빔, 같은 질량으로</strong>. 지점이 가까워 기울기 몫
     (<span class="m">{ex['knife']['tilt']:.3f}</span>)이 늘지만 합 <span class="m">{ex['knife']['total']:.3f} mm</span> 로
-    예산 안이다. 예산을 다 쓰는 수직 반력비는 <span class="m">{ex['knife']['vr_max']:.1f}</span> —
-    파일럿 <span class="k">PT-10</span> 이 조각별로 재서 이 선과 댄다.</div>
+    예산 안이다. 예산을 다 쓰는 수직 반력비는 <span class="m">{ex['knife']['vr_max']:.1f}</span> 다.
+    칼날이 유리에 올라서면 V 는 랜드가 되받아 캐리어로 오지 않는다(아래 S13) — 이 휨은 포락이고,
+    수직 반력비의 실제 한계는 전선 우력 S14 가 먼저 정한다.</div>
 {_follow_block(ex['follow'])}
 
   <div class="tw"><table>
@@ -240,19 +241,24 @@ def _follow_block(f) -> str:
     넓어서 그 안의 굴곡이 남는다(<span class="m">{mc['thirds']['p95']:.3f}</span>). 계단 칼날의 일곱
     조각이 각자 들리고 기울 때 <span class="m">{mc['modules']['p95']:.3f}</span> 로 들어온다 —
     칼날 형상은 그대로이고, 조각 경계가 곧 모듈 경계다.</div>
-  <div class="note"><strong>칼날의 수직 반력이 어디로 가는가 — 두 운전에서 반대다.</strong>
-    칼날이 층을 들어 올리면 층은 박리 전선에서 유리를 같은 힘 V 로 들어 올린다.
-    <strong>잠금</strong>이면 칼날이 유리에 닿지 않으니 그 V 가 패드 열 사이
-    <span class="m">{f['span']:.0f} mm</span> 를 건너며 유리를 휜다 — V/H 1 에서
-    <span class="m">{f['lock_span_per_vh']:.0f} MPa</span>(단순지지 상한), 허용 7 MPa 에 드는 V/H 는
-    <span class="m">{f['lock_vh_max']:.3f}</span> 뿐이다. <strong>추종</strong>이면 칼날이 랜드로 유리를 V 로
-    누르고 층이 전선에서 V 로 들어 둘이 전선에서 닫힌다. 경간을 건너는 것은 모듈이 남기는 예압
-    <span class="m">{f['q_net']:.2f}</span> 과 누름판 <span class="m">{f['q_hd']:.3f} N/mm</span> 뿐이고
-    (<span class="m">{f['follow_span']:.2f} MPa</span> · S13), 전선에는 랜드 폭만큼 떨어진 두 힘의
-    우력이 남는다(<span class="m">{f['couple_per_vh']:.2f} MPa</span> @ V/H 1 · S14).
-    그래서 박리는 추종으로 한다. 잠금은 들어갈 때 모듈마다 칼끝이 층 밑에 들 때까지와 복귀·교환
-    중에만 쓴다. 파일럿 <span class="k">PT-10</span> 이 잠금·추종을 같은 칼날로 대조하고
-    V/H × 랜드 폭 <span class="m">≤ {f['vh_arm_max']:.2f} mm</span> 를 조각마다 확인한다.</div>"""
+  <div class="note"><strong>칼날의 수직 반력은 두 운전 모두 전선에서 닫힌다 — 잠금과 추종을
+    가르는 것은 힘이 아니라 기하다.</strong>
+    칼날이 층을 들어 올리면 층은 박리 전선에서 유리를 같은 힘 V 로 들어 올린다. 유리는 곧바로
+    밑면 랜드에 닿고 — 랜드는 제가 남긴 잔막 위에 얹혀 있다 — 랜드가 V 를 되받는다. V 가 패드 열
+    사이 <span class="m">{f['span']:.0f} mm</span> 를 휨으로 건너려면 유리가 V/H 1 에서
+    <span class="m">{f['lift_per_vh']:.0f} mm</span> 떠야 한다 — EVA 두께의
+    <span class="m">{f['lift_over_eva']:.0f}</span> 배다. 그래서 유리에 남는 것은 둘이다. 경간을 건너는
+    모듈 예압 <span class="m">{f['q_net']:.2f}</span> 과 누름판 <span class="m">{f['q_hd']:.3f} N/mm</span>
+    (<span class="m">{f['follow_span']:.2f} MPa</span> · S13), 그리고 전선에서 랜드 폭만큼 떨어진 두 힘의
+    우력(<span class="m">{f['couple_per_vh']:.2f} MPa</span> @ V/H 1 · S14) — 우력은 잠금이든 추종이든 같다.
+    <strong>잠긴</strong> 곧은 칼날의 문제는 기하다. 유리가 낮은 자리에는 잔막을 남기고, 높은 자리에서는
+    유리를 누른다 — P95 로 <span class="m">{mc['straight']['p95']:.3f} mm</span>. 그 자리가 패드 위면 유리가
+    비킬 데가 없어 누르는 힘은 V 가 아니라 캐리어·Z축·패드의 강성이 정하고, 캐리어는 V/H 1 전폭 하중에
+    <span class="m">{f['bend_per_vh']:.3f} mm</span> 밖에 안 휘도록 세웠다. 추종하면 그 힘이 V + 예압에서
+    잘린다. 그래서 박리는 추종으로 한다. 잠금은 들어갈 때 모듈마다 칼끝이 층 밑에 들 때까지와
+    복귀·교환 중에만 쓴다. 파일럿 <span class="k">PT-10</span> 이 잠금·추종을 같은 칼날로 대조하고,
+    V/H 는 랜드가 되받아 칼날 게이지에 거의 안 나오므로 쿠폰으로 재서 V/H × 랜드 폭
+    <span class="m">≤ {f['vh_arm_max']:.2f} mm</span> 와 댄다.</div>"""
 
 
 # ── 4. 열 ────────────────────────────────────────────────────────────
@@ -762,7 +768,7 @@ def part6() -> str:
         박리강도를 지어낼 수 없다</td><td>파일럿 PT-01</td></tr>
       <tr><td>칼날의 수직 반력</td><td>OI-01 은 추력만 쟀다. S10 · S14 는 수직 반력을
         추력과 같게 포락했을 뿐 그 값을 모른다 — 쐐기각과 EVA 전단의 몫이 정한다</td>
-        <td>파일럿 PT-10 (조각별 스트레인게이지)</td></tr>
+        <td>파일럿 PT-10 (쿠폰 — 실기 칼날은 랜드가 V 를 되받아 게이지에 거의 안 나온다)</td></tr>
       <tr><td>폐패널 유리 자체의 굴곡</td><td>S12 는 패드 평면도만 흩뜨렸다. 강화 유리의
         롤러 웨이브 · 휨 · 판 안 두께 편차는 넣지 않았다 — 추종은 그것까지 따라가지만
         잠금 진입 구간은 못 따라간다</td>
