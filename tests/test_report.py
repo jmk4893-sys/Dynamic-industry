@@ -91,9 +91,24 @@ class TestRender(unittest.TestCase):
             self.assertIn(heading, self.text)
 
     def test_pilot_cell_and_hydrogen_are_reported(self):
+        from flotation_design.plant import attrition_budget
+
         self.assertIn(f"### 2.6 파일럿 시험 셀 {db.PILOT_TAG}", self.text)
         self.assertIn("### 2.7 수소", self.text)
-        self.assertIn("E90", self.text)
+        # 판정은 정광 품위 여유에서 나온 박리 목표의 E_X 로 한다
+        target = attrition_budget().removal_target
+        self.assertIn(f"E{target * 100:.0f}", self.text)
+        self.assertIn(f"{target * 100:.1f} %", self.text)
+        self.assertIn("**하류도 수소원이다.**", self.text)
+
+    def test_water_split_and_chain_test_are_reported(self):
+        self.assertIn("### 2.5 희석박스와 물 계통 — 청수와 공정수", self.text)
+        self.assertIn("**ES 앞에 넣은 청수는 전부 블리드가 된다.**", self.text)
+        self.assertIn("**연쇄 시험 C-1 — 세 단계를 잇는다.**", self.text)
+        self.assertIn("**계통 Ag 회수율**", self.text)
+        self.assertIn("**MIBC 는 두 곳에서 넣는다.**", self.text)
+        for case in ("W1", "W3", "W4"):
+            self.assertIn(case, self.text)
 
     def test_cites_both_papers(self):
         self.assertIn("Minerals Engineering", self.text)

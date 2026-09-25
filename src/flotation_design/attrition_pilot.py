@@ -60,8 +60,10 @@ EVA 막을 긁는다 — 입자 접촉점의 국부 응력은 유체 전단과 �
    분산제는 반응을 빠르게 하므로 쓰지 않는다. 배기량은 실측 전의 설계 기준이며,
    발생률은 첫 정규 회분 전에 P-0A(가스 포집 벤치)와 P-0B(저속 기동)로 잰다.
 9. **결과는 질량 기준으로 적는다.** 부착 EVA 제거율은 가라앉은 분획의
-   질량수율 x EVA 분율(TGA)로 정의하고(``attached_eva_removal``), E90 은 첫 시료
-   뒤의 에너지로 원점 통과 1차 적합해 구한다(``fit_first_order``).
+   질량수율 x EVA 분율(TGA)로 정의하고(``attached_eva_removal``), 박리 목표에
+   드는 비에너지 E_X 는 첫 시료 뒤의 에너지로 원점 통과 1차 적합해 구한다
+   (``fit_first_order``). 목표 X 는 정한 값이 아니라 정광 품위 여유에서 나온다
+   (``plant.attrition_budget`` — 설계 EVA 에서 약 95 %).
 
 연속 설비로의 환산
 ----------------
@@ -69,7 +71,8 @@ EVA 막을 긁는다 — 입자 접촉점의 국부 응력은 유체 전단과 �
 분포 때문에 적게 받는 입자가 생긴다. 박리가 비에너지에 대해 1차라고 보면
 (P-1 의 곡선으로 검증), 같은 제거율에 필요한 연속 평균 비에너지는 회분의 몇
 배가 된다 — ``continuous_energy_factor``. 90 % 제거에서 1기는 3.9배,
-2기(AS-1)는 1.9배, 3기는 1.5배다.
+2기(AS-1)는 1.9배, 3기는 1.5배다. 95 % 에서는 2기가 2.3배로, 목표가 높을수록
+체류시간 분포의 벌이 커진다.
 """
 
 from __future__ import annotations
@@ -869,7 +872,7 @@ def size_pilot_cell(
 
 
 # --------------------------------------------------------------------------
-# 시험 결과 정리 — 비에너지 · 부착 EVA 제거율 · E90
+# 시험 결과 정리 — 비에너지 · 부착 EVA 제거율 · E_X
 # --------------------------------------------------------------------------
 def net_specific_energy_kwh_t(
     times_s: Sequence[float],
@@ -947,6 +950,12 @@ class FirstOrderFit:
     def e90_kwh_t(self) -> float:
         return math.log(10.0) / self.k_per_kwh_t
 
+    def energy_kwh_t(self, removal: float) -> float:
+        """목표 제거율에 드는 회분 비에너지 — 판정은 박리 목표에서의 이 값(E_X)으로 한다."""
+        if not 0.0 < removal < 1.0:
+            raise ValueError("제거율은 0 과 1 사이")
+        return -math.log(1.0 - removal) / self.k_per_kwh_t
+
     def removal(self, energy_kwh_t: float) -> float:
         return 1.0 - math.exp(-self.k_per_kwh_t * energy_kwh_t)
 
@@ -954,7 +963,7 @@ class FirstOrderFit:
 def fit_first_order(
     energies_kwh_t: Sequence[float], removals: Sequence[float], saturation: float = 0.99
 ) -> FirstOrderFit:
-    """E90 를 구하는 1차 적합 — ``y = -ln(1 - X)``, ``k = Σ E·y / Σ E²``.
+    """E_X 를 구하는 1차 적합 — ``y = -ln(1 - X)``, ``k = Σ E·y / Σ E²``.
 
     E 는 첫 시료(E0) 뒤부터 센 값이다. X ≤ 0 인 점(기준보다 나빠진 점)과
     X ≥ ``saturation`` 인 점(잔류가 TGA 정량 하한 부근)은 뺀다. 1차 거동인지는

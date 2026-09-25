@@ -26,9 +26,11 @@ from .eva_separation import (
     EvaBatchLimits,
     EvaDesignParticle,
     EvaFilmCase,
+    EvaGradeBudget,
     EvaMethodScreen,
     EvaRequirement,
     batch_t90_limit,
+    eva_cake_water_tph,
     eva_design_particle,
     eva_rate_constant_1_min,
 )
@@ -135,13 +137,14 @@ class RfcOption:
 
     @property
     def filtrate_m3h(self) -> float:
-        """필터프레스 여액 — 러퍼(1안은 조건조) 급광으로 되돌린다."""
+        """필터프레스 여액 합계 — 정광 여액은 CT-1, 미광 여액은 공정수 탱크로."""
         return (
             self.concentrate_filter.filtrate_m3h + self.tailings_filter.filtrate_m3h
         )
 
     @property
     def filtrate_return_to(self) -> str:
+        """정광 여액이 가는 곳 — 부선 회로의 첫 단."""
         return db.FILTRATE_RETURN_TO["rfc"]
 
     @property
@@ -161,16 +164,12 @@ class RfcOption:
         )
 
     @property
-    def bleed_m3h(self) -> float:
-        return self.thickener_overflow_m3h * db.PROCESS_WATER_BLEED_FRACTION
-
-    @property
-    def fresh_makeup_m3h(self) -> float:
-        cake_water = (
+    def cake_water_m3h(self) -> float:
+        """정광 · 미광 케이크에 남아 계 밖으로 나가는 물."""
+        return (
             self.concentrate_filter.cake_water_tph
             + self.tailings_filter.cake_water_tph
         )
-        return cake_water + self.bleed_m3h
 
 
 @dataclass(frozen=True)
@@ -242,13 +241,14 @@ class MechanicalOption:
 
     @property
     def filtrate_m3h(self) -> float:
-        """필터프레스 여액 — 러퍼 급광으로 되돌린다."""
+        """필터프레스 여액 합계 — 정광 여액은 러퍼 급광, 미광 여액은 공정수 탱크로."""
         return (
             self.concentrate_filter.filtrate_m3h + self.tailings_filter.filtrate_m3h
         )
 
     @property
     def filtrate_return_to(self) -> str:
+        """정광 여액이 가는 곳 — 부선 회로의 첫 단."""
         return db.FILTRATE_RETURN_TO["mechanical"]
 
     @property
@@ -268,16 +268,12 @@ class MechanicalOption:
         )
 
     @property
-    def bleed_m3h(self) -> float:
-        return self.thickener_overflow_m3h * db.PROCESS_WATER_BLEED_FRACTION
-
-    @property
-    def fresh_makeup_m3h(self) -> float:
-        cake_water = (
+    def cake_water_m3h(self) -> float:
+        """정광 · 미광 케이크에 남아 계 밖으로 나가는 물."""
+        return (
             self.concentrate_filter.cake_water_tph
             + self.tailings_filter.cake_water_tph
         )
-        return cake_water + self.bleed_m3h
 
 
 #: 떨어진 EVA 를 회로 계산에서 부르는 성분명.
@@ -296,10 +292,15 @@ class EvaSeparation:
     Attributes:
         rate_constant_1_min: 설계 박편의 실기 속도상수 (ES-1 급기 기준).
         size_recovery: (EVA 등체적 지름 µm, 회로 회수율) — 최대 처리량.
+        budget: 1안 정광 품위 여유 — AS-1 박리 목표와 이 계통의 한도가 나눠 쓴다.
+        collector_sensitivity: (정상 부선 대비 은이 뜨는 속도 비, EVA 산물로 새는
+            Ag) — 포수제가 ES 로 들어올 때 (최대 처리량).
+        tolerable_collector_activity: EVA 산물 Ag 가 한도에 닿는 속도 비.
     """
 
     particle: EvaDesignParticle
     screen: EvaMethodScreen
+    budget: EvaGradeBudget
     requirement: EvaRequirement
     attachment_efficiency: float
     rate_constant_1_min: float
@@ -316,7 +317,24 @@ class EvaSeparation:
     size_recovery: tuple[tuple[float, float], ...]
     film_cases: tuple[EvaFilmCase, ...]
     limits: EvaBatchLimits
+    collector_sensitivity: tuple[tuple[float, float], ...]
+    tolerable_collector_activity: float
     bypass: str
+
+    @property
+    def removal_target(self) -> float:
+        """AS-1 박리 목표 — 이 몫이 떨어져 ES 로 온다."""
+        return self.budget.removal_target
+
+    def freed_eva_tph(self, dry_tph: float) -> float:
+        """AS-1 이 목표대로 뗀 EVA — ES 급광."""
+        return self.particle.content * dry_tph * self.removal_target
+
+    @property
+    def bypass_grade(self) -> float:
+        """ES 를 바이패스할 때 1안 정광 품위 — 떨어진 EVA 와 남은 부착 EVA 가 모두 뜨면."""
+        freed = self.freed_eva_tph(self.budget.dry_tph)
+        return self.budget.grade_with(freed, self.budget.eva_tph - freed)
 
     @property
     def installed_kw(self) -> float:
@@ -376,12 +394,12 @@ class Pretreatment:
     """전처리 계통 — 두 안이 공용하는 공통 설비.
 
     로드밀 배출을 고농도 그대로 어트리션 스크러버에 넣어 EVA 를 떼고,
-    희석박스에서 부선 농도로 묽힌 뒤, 떨어진 EVA 를 ES 에서 걷어내고
+    희석박스에서 ES 급광 농도로 묽힌 뒤, 떨어진 EVA 를 ES 에서 걷어내고
     조건조로 보낸다.
 
-    희석수는 어차피 부선 농도를 맞추려고 들어가던 물이라 **설비 전체 물수지는
-    달라지지 않는다** — 투입 지점이 정해질 뿐이다. 다만 그 물을 공정수 회수로
-    감당할 수 있는지는 확인해야 한다 (``dilution_covered_by_recycle``).
+    희석수는 **청수(포수제 없는 물)** 로 넣는다. 회수 공정수에는 포수제가 남아 있어
+    ES 로 들어오면 은이 EVA 산물로 뜬다. 그 대가로 ES 앞에 넣은 청수는 부선 뒤
+    공정수로 나와 블리드가 된다 — 물수지는 ``PlantDesign.water_balance`` 에서 닫는다.
     """
 
     scrubber: AttritionScrubber
@@ -400,20 +418,114 @@ class Pretreatment:
 
     @property
     def dilution_water_m3h(self) -> float:
+        """DB-1 희석수 설계 유량 — 출구 7 wt%, 순환류 공제 없음 (밸브·배관 기준)."""
         return self.dilution.dilution_water_m3h
 
-    def water_supply_ok(self, option: RfcOption | MechanicalOption) -> bool:
-        """희석수를 그 안의 회수 공정수와 신수 보충으로 받칠 수 있는지.
 
-        희석수는 계 안을 도는 내부 순환수라, 어트리션이 있든 없든 부선 농도를
-        맞추려면 어차피 같은 양이 들어간다. 계 밖으로 나가는 물(케이크 잔류수
-        + 블리드)이 달라지지 않으므로 **신수 보충량도 달라지지 않는다**.
-        여기서 보는 것은 공정수 계통이 이 유량을 감당하는지뿐이다.
-        """
-        return (
-            option.water_recycle_m3h - option.bleed_m3h + option.fresh_makeup_m3h
-            >= self.dilution_water_m3h
-        )
+#: 물수지 경우 — W1 기준(ES 앞 청수), W3 ES 20 wt%(청수 절감), W4 GAC(공정수 재사용).
+WATER_CASES = ("W1", "W3", "W4")
+WATER_CASE_LABELS = {
+    "W1": "W1 기준 — ES 앞 청수",
+    "W3": f"W3 ES {db.EVA_ALTERNATIVE_SOLIDS_WT * 100:.0f} wt%",
+    "W4": "W4 GAC — 공정수에서 포수제를 빼 ES 앞에",
+}
+
+
+@dataclass(frozen=True)
+class WaterBalance:
+    """계통 물수지 한 경우 (m3/h) — 청수와 회수 공정수를 가른다.
+
+    ES 앞(DB-1 희석 · ES-2 세척수)에는 청수, CT-1 부터는 공정수를 쓴다. ES 앞에 넣은
+    청수는 부선 뒤 공정수로 나오지만 ES 앞으로 되돌릴 수 없으므로, 케이크에 남는
+    몫을 뺀 전량이 블리드가 된다 (``gac`` 로 포수제를 뺀 공정수를 ES 앞에 쓸 때만
+    예외). 물수지는 ``feed_water + fresh = cake_water + bleed`` 로 닫힌다.
+
+    Attributes:
+        option: "1안" 또는 "2안".
+        case: ``WATER_CASES`` 중 하나.
+        feed_water: 로드밀 배출(70 wt%)과 함께 들어오는 물 — 상류가 청수로 댄다.
+        es_feed_solids: DB-1 설정 — ES-1 급광(순환류 포함) 고체 농도.
+        es_clean: ES 계통이 쓰는 청수 (DB-1 희석 + ES-2 세척수, FB-1 여액 반송 공제).
+        es_wash: 그중 ES-2 세척수.
+        es_tails_water: ES 미광에 실려 CT-1 로 가는 물.
+        eva_cake_water: EVA 케이크(FB-1)에 남아 나가는 물.
+        concentrate_filtrate: 정광 여액 — 첫 단 급광으로 직송.
+        ct1_makeup: CT-1 보충수 (공정수) — 부선 급광을 설계 유량·농도로 맞춘다.
+        process_users: 보충수 밖의 공정수 사용처 (1안 세척수, 2안 클리너 세척·희석수).
+        process_supply: 공정수 탱크로 오는 물 (농축조 월류 + 미광 여액).
+        overflow: 농축조 월류 — 최소 블리드의 기준.
+        filter_cake_water: 정광 · 미광 케이크에 남아 나가는 물.
+        gac: 공정수 중 GAC 로 포수제를 빼 ES 앞에 쓰는 몫 (W4).
+        es_ag_loss: 이 경우 EVA 산물로 새는 Ag / 급광 Ag.
+    """
+
+    option: str
+    case: str
+    dry_tph: float
+    feed_water: float
+    es_feed_solids: float
+    es_clean: float
+    es_wash: float
+    es_tails_water: float
+    eva_cake_water: float
+    concentrate_filtrate: float
+    ct1_makeup: float
+    process_users: float
+    process_supply: float
+    overflow: float
+    filter_cake_water: float
+    es_ag_loss: float
+    gac: float = 0.0
+
+    @property
+    def label(self) -> str:
+        return WATER_CASE_LABELS[self.case]
+
+    @property
+    def db1_dilution(self) -> float:
+        """운전 중 DB-1 희석수 — ES-2 미광과 FB-1 여액이 일부를 대신한다."""
+        return self.es_clean - self.es_wash
+
+    @property
+    def minimum_bleed(self) -> float:
+        return self.overflow * db.PROCESS_WATER_BLEED_FRACTION
+
+    @property
+    def process_surplus(self) -> float:
+        """공정수 탱크에 남는 물 — 사용처와 GAC 로 보낸 뒤."""
+        return self.process_supply - self.ct1_makeup - self.process_users - self.gac
+
+    @property
+    def bleed(self) -> float:
+        return max(self.minimum_bleed, self.process_surplus)
+
+    @property
+    def fresh_to_process(self) -> float:
+        """최소 블리드를 지키려고 공정수 탱크에 넣는 신수."""
+        return self.bleed - self.process_surplus
+
+    @property
+    def fresh_clean(self) -> float:
+        """ES 앞에 넣는 신수 (청수)."""
+        return self.es_clean - self.gac
+
+    @property
+    def fresh(self) -> float:
+        return self.fresh_clean + self.fresh_to_process
+
+    @property
+    def cake_water(self) -> float:
+        return self.filter_cake_water + self.eva_cake_water
+
+    @property
+    def closure_error(self) -> float:
+        """들어온 물(로드밀 + 신수) − 나간 물(케이크 + 블리드)."""
+        return self.feed_water + self.fresh - self.cake_water - self.bleed
+
+    @property
+    def gac_bed_m3(self) -> float:
+        """활성탄 층 체적 — 공탑 접촉시간 기준."""
+        return self.gac * db.GAC_EBCT_MIN / 60.0
 
 
 @dataclass(frozen=True)
@@ -428,6 +540,43 @@ class PlantDesign:
     def total_installed_kw(self, option: RfcOption | MechanicalOption) -> float:
         """전처리를 포함한 계통 전체 설치 전력."""
         return option.installed_kw + self.pretreatment.installed_kw
+
+    def concentrate(self, option: str, dry_tph: float | None = None) -> tuple[float, float]:
+        """(정광 t/h, Ag 품위) — EVA 없음."""
+        peak = dry_tph is None or math.isclose(dry_tph, self.feed.peak_tph)
+        if option == "1안":
+            perf = self.rfc.performance_peak if peak else self.rfc.performance_avg
+            return perf.concentrate_dry_tph, perf.concentrate_grade("Ag")
+        res = self.mechanical.result_peak if peak else self.mechanical.result_avg
+        return res.concentrate.dry_tph, res.concentrate.grade_fraction("Ag")
+
+    def option_ag_recovery(self, option: str, dry_tph: float | None = None) -> float:
+        peak = dry_tph is None or math.isclose(dry_tph, self.feed.peak_tph)
+        if option == "1안":
+            perf = self.rfc.performance_peak if peak else self.rfc.performance_avg
+            return perf.recovery("Ag")
+        res = self.mechanical.result_peak if peak else self.mechanical.result_avg
+        return res.recovery("Ag")
+
+    def overall_ag_recovery(self, option: str, dry_tph: float | None = None) -> float:
+        """전처리를 포함한 계통 Ag 회수율 — ES 에서 EVA 산물로 새는 몫을 뺀다."""
+        es = self.pretreatment.eva
+        peak = dry_tph is None or math.isclose(dry_tph, self.feed.peak_tph)
+        loss = es.ag_loss(es.result_peak if peak else es.result_avg)
+        return (1.0 - loss) * self.option_ag_recovery(option, dry_tph)
+
+    def eva_budget(self, option: str) -> EvaGradeBudget:
+        """최대 처리량 정광 품위 여유 — 1안이 AS-1 박리 목표를 정한다."""
+        if option == "1안":
+            return self.pretreatment.eva.budget
+        c_tph, grade = self.concentrate(option)
+        return _grade_budget(self.feed, c_tph, grade, self.pretreatment.eva.particle.content)
+
+    def water_balance(
+        self, option: str, dry_tph: float | None = None, case: str = "W1"
+    ) -> WaterBalance:
+        """최대(기본) · 평균 처리량의 계통 물수지."""
+        return _water_balance(self, option, dry_tph, case)
 
 
 # --------------------------------------------------------------------------
@@ -550,8 +699,9 @@ def solve_mechanical(
 
 
 def build_mechanical_option(feed: FeedSpec = db.FEED) -> MechanicalOption:
-    # 고체 산물량으로 필터 여액을 먼저 구한 뒤, 해당 여액을 러퍼 수력부하에
-    # 포함해 최종 회로를 다시 푼다. 목표 7 wt%는 유지되고 신수만 감소한다.
+    # 고체 산물량으로 필터 여액을 먼저 구한 뒤, 정광 여액을 러퍼 수력부하에
+    # 포함해 최종 회로를 다시 푼다 (미광 여액은 공정수 탱크로). 목표 7 wt%는
+    # 유지되고 ES 미광 · CT-1 보충수로 받을 몫만 준다.
     preliminary_peak = solve_mechanical(feed, feed.peak_tph)
     concentrate_filter = _concentrate_filter(
         "FL-201", preliminary_peak.concentrate.dry_tph, feed.solids_specific_gravity
@@ -559,20 +709,14 @@ def build_mechanical_option(feed: FeedSpec = db.FEED) -> MechanicalOption:
     tailings_filter = _tailings_filter(
         "FL-202", preliminary_peak.tailings.dry_tph, feed.solids_specific_gravity
     )
-    filtrate_peak = concentrate_filter.filtrate_m3h + tailings_filter.filtrate_m3h
-    result_peak = solve_mechanical(feed, feed.peak_tph, filtrate_peak)
+    result_peak = solve_mechanical(feed, feed.peak_tph, concentrate_filter.filtrate_m3h)
 
     preliminary_avg = solve_mechanical(feed, feed.average_tph)
     avg_concentrate_filter = _concentrate_filter(
         "FL-201", preliminary_avg.concentrate.dry_tph, feed.solids_specific_gravity
     )
-    avg_tailings_filter = _tailings_filter(
-        "FL-202", preliminary_avg.tailings.dry_tph, feed.solids_specific_gravity
-    )
     result_avg = solve_mechanical(
-        feed,
-        feed.average_tph,
-        avg_concentrate_filter.filtrate_m3h + avg_tailings_filter.filtrate_m3h,
+        feed, feed.average_tph, avg_concentrate_filter.filtrate_m3h
     )
     unit_results = {
         "FC-201": result_peak.rougher,
@@ -752,19 +896,45 @@ def solve_eva_circuit(
     eva_tph: float,
     rate_constant_1_min: float,
     rougher_cells: int = db.EVA_ROUGHER_CELLS,
+    feed_solids: float | None = None,
+    collector_activity: float = 0.0,
+    rougher_water_recovery: float | None = None,
 ) -> CircuitResult:
     """ES-1(러퍼 n 셀) + ES-2(클리너, 미광은 러퍼 급광으로) 물질수지.
 
     포수제가 없으므로 광물은 진부선 없이 수분 동반으로만 거품에 간다. EVA 는
     한 가지 속도상수로 뜬다. 클리너 급기가 러퍼와 다른 만큼 속도상수를 Jg 비로
     줄인다 (k 는 Jg 에 비례).
+
+    Args:
+        feed_solids: ES-1 급광(순환류 포함) 고체 농도 — DB-1 설정. 기본은 부선 설계 농도.
+        collector_activity: 포수제가 ES 로 들어올 때 — 광물이 정상 부선(실기 환산)
+            속도의 이 비율로 뜬다. 0 이면 수분 동반뿐이다.
+        rougher_water_recovery: ES-1 수분회수율 재정의. 농도를 올려도 거품 물(m3/h)은
+            급기·거품층이 정하므로, 급광 물이 준 만큼 비율이 커진다 (W3).
     """
-    kinetics = {
-        c.name: ComponentKinetics(
-            c.name, entrainment_factor=db.FLOAT_MODELS[c.name].entrainment_factor
-        )
-        for c in feed.components
-    }
+    if collector_activity < 0.0:
+        raise ValueError("collector_activity 는 0 이상")
+    if collector_activity == 0.0:
+        kinetics = {
+            c.name: ComponentKinetics(
+                c.name, entrainment_factor=db.FLOAT_MODELS[c.name].entrainment_factor
+            )
+            for c in feed.components
+        }
+    else:
+        scale = collector_activity * db.PLANT_SCALE_FACTOR
+        kinetics = {}
+        for c in feed.components:
+            m = db.FLOAT_MODELS[c.name]
+            kinetics[c.name] = ComponentKinetics(
+                c.name,
+                fast_fraction=m.fast_fraction,
+                k_fast=m.k_fast * scale,
+                slow_fraction=m.slow_fraction,
+                k_slow=m.k_slow * scale,
+                entrainment_factor=m.entrainment_factor,
+            )
     kinetics[EVA] = ComponentKinetics(
         EVA,
         fast_fraction=1.0,
@@ -778,7 +948,9 @@ def solve_eva_circuit(
     rougher = FlotationUnit(
         db.EVA_ROUGHER_TAG,
         db.EVA_ROUGHER_DUTY,
-        db.EVA_WATER_RECOVERY[db.EVA_ROUGHER_TAG],
+        db.EVA_WATER_RECOVERY[db.EVA_ROUGHER_TAG]
+        if rougher_water_recovery is None
+        else rougher_water_recovery,
         effective_volume_m3=db.EVA_ROUGHER_CELL.effective_slurry_volume_m3 * rougher_cells,
         cells_in_series=rougher_cells,
     )
@@ -798,8 +970,40 @@ def solve_eva_circuit(
         rougher,
         None,
         cleaner,
-        rougher_feed_solids=feed.solids_mass_fraction,
+        rougher_feed_solids=feed.solids_mass_fraction if feed_solids is None else feed_solids,
     )
+
+
+def solve_eva_for_tails_water(
+    feed: FeedSpec,
+    dry_tph: float,
+    eva_tph: float,
+    rate_constant_1_min: float,
+    tails_water_tph: float,
+    min_solids: float | None = None,
+) -> CircuitResult:
+    """ES 미광 물이 주어진 값이 되는 DB-1 설정(ES 급광 농도)을 찾는다.
+
+    하류가 받을 수 있는 물보다 ES 가 더 내보내면 뺄 방법이 없다 — 그때는 DB-1 이
+    덜 묽힌다. ES 미광 물은 급광 농도가 오를수록 줄어드는 단조 함수라 이분법으로 푼다.
+    """
+    lo = feed.solids_mass_fraction if min_solids is None else min_solids
+    hi = 0.5
+
+    def tails(w: float) -> CircuitResult:
+        return solve_eva_circuit(feed, dry_tph, eva_tph, rate_constant_1_min, feed_solids=w)
+
+    if tails(lo).tailings.water_tph <= tails_water_tph:
+        return tails(lo)
+    if tails(hi).tailings.water_tph > tails_water_tph:
+        raise ValueError("ES 급광 농도를 올려도 하류가 받을 물보다 많다")
+    for _ in range(60):
+        mid = 0.5 * (lo + hi)
+        if tails(mid).tailings.water_tph > tails_water_tph:
+            lo = mid
+        else:
+            hi = mid
+    return tails(hi)
 
 
 def eva_attachment_efficiency() -> float:
@@ -814,33 +1018,72 @@ def eva_attachment_efficiency() -> float:
     ).implied_attachment_efficiency
 
 
-def build_eva_separation(feed: FeedSpec = db.FEED) -> EvaSeparation:
-    """ES-1 · ES-2 · B-001 · P-001 · FB-1 — 떨어진 EVA 를 걷어내는 계통."""
-    rougher_tag, cleaner_tag = db.EVA_ROUGHER_TAG, db.EVA_CLEANER_TAG
+def design_eva_particle(
+    feed: FeedSpec = db.FEED, film_um: float = db.EVA_RESIDUAL_FILM_UM
+) -> EvaDesignParticle:
+    """잔막 두께 하나로 정한 설계 EVA — 함량과 박편 크기."""
     wafer_fraction = sum(
         c.mass_fraction for c in feed.components if c.name in ("Si", "Ag_locked_gangue")
     )
     wafer_sg = next(c.specific_gravity for c in feed.components if c.name == "Si")
+    return eva_design_particle(
+        film_um,
+        db.EVA_FLAKE_WIDTH_UM,
+        db.CELL_WAFER_THICKNESS_UM,
+        wafer_fraction,
+        db.EVA_SG,
+        wafer_sg,
+    )
+
+
+def _grade_budget(
+    feed: FeedSpec, concentrate_tph: float, grade: float, eva_content: float
+) -> EvaGradeBudget:
+    return EvaGradeBudget(
+        dry_tph=feed.peak_tph,
+        concentrate_tph=concentrate_tph,
+        grade=grade,
+        guarantee=db.CONCENTRATE_GRADE_GUARANTEE,
+        free_limit=db.EVA_FLOTATION_FEED_LIMIT,
+        eva_content=eva_content,
+    )
+
+
+def attrition_budget(feed: FeedSpec = db.FEED) -> EvaGradeBudget:
+    """1안(주설계) 최대 처리량 정광 품위 여유 — AS-1 박리 목표의 출처.
+
+    자유 EVA 한도를 뺀 나머지가 스크럽 뒤 부착 EVA 잔류 한도이고, 설계 EVA
+    함량으로 나눈 몫이 박리 목표다 (``db.ATTRITION_TARGET_OPTION``).
+    """
+    perf = rfc_separation(
+        feed.component_tph(feed.peak_tph), db.FLOAT_MODELS, db.RFC_AG_RECOVERY, 0.0
+    )
+    return _grade_budget(
+        feed,
+        perf.concentrate_dry_tph,
+        perf.concentrate_grade("Ag"),
+        design_eva_particle(feed).content,
+    )
+
+
+def build_eva_separation(feed: FeedSpec = db.FEED) -> EvaSeparation:
+    """ES-1 · ES-2 · B-001 · P-001 · FB-1 — 떨어진 EVA 를 걷어내는 계통."""
+    rougher_tag, cleaner_tag = db.EVA_ROUGHER_TAG, db.EVA_CLEANER_TAG
 
     def particle_for(film_um: float) -> EvaDesignParticle:
-        return eva_design_particle(
-            film_um,
-            db.EVA_FLAKE_WIDTH_UM,
-            db.CELL_WAFER_THICKNESS_UM,
-            wafer_fraction,
-            db.EVA_SG,
-            wafer_sg,
-        )
+        return design_eva_particle(feed, film_um)
 
     ea = eva_attachment_efficiency()
     jg = db.EVA_JG_CM_S[rougher_tag]
+    budget = attrition_budget(feed)
+    target = budget.removal_target
 
     def rate(diameter_um: float) -> float:
         return eva_rate_constant_1_min(diameter_um, jg, ea, db.BUBBLE_D32_MM)
 
     def freed(particle: EvaDesignParticle, dry_tph: float) -> float:
-        # AS-1 이 목표대로 뗀 몫이 ES 로 온다.
-        return particle.content * dry_tph * db.PILOT_EVA_REMOVAL_TARGET
+        # AS-1 이 목표(정광 품위 여유에서 나온 값)대로 뗀 몫이 ES 로 온다.
+        return particle.content * dry_tph * target
 
     particle = particle_for(db.EVA_RESIDUAL_FILM_UM)
     k_design = rate(particle.equivalent_diameter_um)
@@ -915,6 +1158,27 @@ def build_eva_separation(feed: FeedSpec = db.FEED) -> EvaSeparation:
         extra_cell_min=limit(feed.peak_tph, db.EVA_ROUGHER_CELLS + 1),
     )
 
+    def ag_loss_at(activity: float) -> float:
+        return EvaSeparation.ag_loss(solve_eva_circuit(
+            feed, feed.peak_tph, eva_peak, k_design, collector_activity=activity
+        ))
+
+    collector_sensitivity = tuple(
+        (a, EvaSeparation.ag_loss(result_peak) if a == 0.0 else ag_loss_at(a))
+        for a in db.EVA_COLLECTOR_ACTIVITY_CASES
+    )
+    lo, hi = 0.0, max(db.EVA_COLLECTOR_ACTIVITY_CASES)
+    if ag_loss_at(hi) <= db.EVA_AG_LOSS_LIMIT:
+        tolerable = hi
+    else:
+        for _ in range(60):
+            mid = 0.5 * (lo + hi)
+            if ag_loss_at(mid) > db.EVA_AG_LOSS_LIMIT:
+                hi = mid
+            else:
+                lo = mid
+        tolerable = lo
+
     bag = DewateringBag(
         tag=db.EVA_BAG_TAG,
         volume_m3=db.EVA_BAG_VOLUME_M3,
@@ -928,6 +1192,7 @@ def build_eva_separation(feed: FeedSpec = db.FEED) -> EvaSeparation:
     )
     return EvaSeparation(
         particle=particle,
+        budget=budget,
         screen=EvaMethodScreen(
             flow_m3h=result_peak.rougher.feed_volume_m3h,
             eva_diameter_um=particle.equivalent_diameter_um,
@@ -955,7 +1220,101 @@ def build_eva_separation(feed: FeedSpec = db.FEED) -> EvaSeparation:
         size_recovery=size_recovery,
         film_cases=tuple(film_cases),
         limits=limits,
-        bypass=f"{rougher_tag} 바이패스 ({db.DILUTION_BOX_TAG} → CT-1)",
+        collector_sensitivity=collector_sensitivity,
+        tolerable_collector_activity=tolerable,
+        bypass=f"{rougher_tag} 바이패스 ({db.DILUTION_BOX_TAG} → CT-1) — 수동, 정광 격리",
+    )
+
+
+# --------------------------------------------------------------------------
+# 계통 물수지 — 청수(ES 앞)와 회수 공정수(CT-1 부터)
+# --------------------------------------------------------------------------
+def _water_balance(
+    design: PlantDesign, option: str, dry_tph: float | None, case: str
+) -> WaterBalance:
+    """한 안 · 한 처리량 · 한 경우의 물수지.
+
+    1. 하류(부선 급광)가 받아야 할 물을 정한다 — 1안은 flux 고정 급광, 2안은
+       러퍼 7 wt%(순환류 포함). 정광 여액은 여기에 직송한다.
+    2. ES 는 설계 농도(W3 는 대안 농도)에서 돈다. ES 미광 물이 하류 몫보다 많으면
+       뺄 방법이 없으므로 DB-1 이 덜 묽힌다 (ES 급광 농도를 올린다).
+    3. 모자라는 몫은 CT-1 보충수(공정수)로 채운다.
+    4. 공정수 탱크 = 농축조 월류 + 미광 여액. 사용처를 뺀 나머지가 블리드다.
+    """
+    if option not in ("1안", "2안"):
+        raise ValueError("option 은 '1안' 또는 '2안'")
+    if case not in WATER_CASES:
+        raise ValueError(f"case 는 {WATER_CASES} 중 하나")
+    f = design.feed
+    sg = f.solids_specific_gravity
+    peak = dry_tph is None or math.isclose(dry_tph, f.peak_tph)
+    if not peak and not math.isclose(dry_tph, f.average_tph):
+        raise ValueError("물수지는 최대 · 평균 처리량에서만 푼다")
+    tph = f.peak_tph if peak else f.average_tph
+    es = design.pretreatment.eva
+
+    if option == "1안":
+        rfc = design.rfc
+        point = rfc.point_peak if peak else rfc.point_avg
+        perf = rfc.performance_peak if peak else rfc.performance_avg
+        c_dry, t_dry = perf.concentrate_dry_tph, perf.tailings_dry_tph
+        need = point.water_tph
+        users = point.wash_water_m3h
+        conc_water = point.overflow_water_m3h
+        tail_water = point.water_tph + point.wash_water_m3h - conc_water
+    else:
+        res = design.mechanical.result_peak if peak else design.mechanical.result_avg
+        c_dry, t_dry = res.concentrate.dry_tph, res.tailings.dry_tph
+        need = res.new_feed.water_tph
+        users = res.fresh_water_m3h - (res.new_feed.water_tph - res.filtrate_return_m3h)
+        conc_water = res.concentrate.water_tph
+        tail_water = res.tailings.water_tph
+    cf = _concentrate_filter("FL", c_dry, sg)
+    tf = _tailings_filter("FL", t_dry, sg)
+    from_es = need - cf.filtrate_m3h
+
+    eva_in = es.freed_eva_tph(tph)
+    k = es.rate_constant_1_min
+    if case == "W3":
+        w7 = f.solids_mass_fraction
+        w = db.EVA_ALTERNATIVE_SOLIDS_WT
+        water_ratio = ((1.0 - w7) / w7) / ((1.0 - w) / w)
+        es_res = solve_eva_circuit(
+            f, tph, eva_in, k, feed_solids=w,
+            rougher_water_recovery=min(
+                1.0, db.EVA_WATER_RECOVERY[db.EVA_ROUGHER_TAG] * water_ratio
+            ),
+        )
+    else:
+        es_res = es.result_peak if peak else es.result_avg
+    if es_res.tailings.water_tph > from_es + 1e-9:
+        # 하류가 더 받지 못한다 — DB-1 이 덜 묽힌다.
+        es_res = solve_eva_for_tails_water(f, tph, eva_in, k, from_es)
+    makeup = max(0.0, from_es - es_res.tailings.water_tph)
+    eva_cake = eva_cake_water_tph(
+        es_res.concentrate.component_tph(EVA), db.EVA_CAKE_SOLIDS_VOLUME_FRACTION, db.EVA_SG
+    )
+    feed_water = tph * (1.0 - db.ATTRITION_SOLIDS_WT) / db.ATTRITION_SOLIDS_WT
+    es_clean = es_res.tailings.water_tph + eva_cake - feed_water
+    overflow = (tail_water - tf.feed_water_tph) + (conc_water - cf.feed_water_tph)
+    return WaterBalance(
+        option=option,
+        case=case,
+        dry_tph=tph,
+        feed_water=feed_water,
+        es_feed_solids=es_res.rougher.feed.solids_mass_fraction,
+        es_clean=es_clean,
+        es_wash=db.EVA_CLEANER_WASH_WATER_M3H,
+        es_tails_water=es_res.tailings.water_tph,
+        eva_cake_water=eva_cake,
+        concentrate_filtrate=cf.filtrate_m3h,
+        ct1_makeup=makeup,
+        process_users=users,
+        process_supply=overflow + tf.filtrate_m3h,
+        overflow=overflow,
+        filter_cake_water=cf.cake_water_tph + tf.cake_water_tph,
+        es_ag_loss=EvaSeparation.ag_loss(es_res),
+        gac=es_clean if case == "W4" else 0.0,
     )
 
 
@@ -1018,12 +1377,12 @@ def build_mechanism_screen(feed: FeedSpec = db.FEED) -> MechanismScreen:
 
 
 def build_pilot_scale_up(feed: FeedSpec = db.FEED) -> PilotScaleUp:
-    """파일럿 회분 결과를 AS-1 로 옮기는 판정 한계."""
+    """파일럿 회분 결과를 AS-1 로 옮기는 판정 한계 — 목표는 정광 품위 여유에서."""
     return pilot_scale_up(
         build_pretreatment(feed).scrubber,
         feed.peak_tph,
         feed.average_tph,
-        db.PILOT_EVA_REMOVAL_TARGET,
+        attrition_budget(feed).removal_target,
     )
 
 

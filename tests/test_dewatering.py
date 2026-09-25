@@ -207,16 +207,23 @@ class TestPlantIntegration(unittest.TestCase):
                 product.water_tph,
                 places=9,
             )
+        # 정광 여액만 러퍼로 직송 — 미광 여액은 공정수 탱크로 간다
         self.assertAlmostEqual(
             m.result_peak.filtrate_return_m3h,
-            m.filtrate_m3h,
+            m.concentrate_filter.filtrate_m3h,
             places=9,
         )
         self.assertAlmostEqual(
-            m.fresh_makeup_m3h,
-            m.concentrate_filter.cake_water_tph
-            + m.tailings_filter.cake_water_tph
-            + m.bleed_m3h,
+            m.cake_water_m3h,
+            m.concentrate_filter.cake_water_tph + m.tailings_filter.cake_water_tph,
+            places=12,
+        )
+        # 계통 물수지는 청수 · 공정수 · 케이크 · 블리드로 닫힌다
+        w = self.plant.water_balance("2안")
+        self.assertLess(abs(w.closure_error), 1e-9)
+        self.assertAlmostEqual(
+            w.process_supply,
+            m.thickener_overflow_m3h + m.tailings_filter.filtrate_m3h,
             places=9,
         )
 

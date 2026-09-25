@@ -40,6 +40,7 @@ from flotation_design.attrition_pilot import (
     ventilation_for_hydrogen_m3h,
 )
 from flotation_design.plant import (
+    attrition_budget,
     build_mechanism_screen,
     build_pilot,
     build_pilot_scale_up,
@@ -290,7 +291,10 @@ class TestScaleUp(unittest.TestCase):
         self.assertEqual(su.cells, self.as1.cells)
         self.assertAlmostEqual(su.energy_factor,
                                continuous_energy_factor(su.target_removal, su.cells), places=12)
-        self.assertAlmostEqual(su.energy_factor, 1.878, places=3)
+        # 목표는 정광 품위 여유에서 나온다 (약 95 %) — 90 % 보다 체류시간 분포의 벌이 크다
+        self.assertAlmostEqual(su.target_removal, attrition_budget().removal_target, places=15)
+        self.assertAlmostEqual(su.energy_factor, 2.326, places=3)
+        self.assertGreater(su.energy_factor, continuous_energy_factor(0.90, su.cells))
 
     def test_as1_capability_is_taken_at_its_vfd_ceiling(self):
         su, as1 = self.su, self.as1
@@ -327,7 +331,7 @@ class TestScaleUp(unittest.TestCase):
                                su.as1_average_kwh_t)
         self.assertGreater(su.batch_limit_average_kwh_t, su.batch_limit_peak_kwh_t)
         self.assertLess(su.batch_limit_average_kwh_t, su.batch_limit_average_upsized_kwh_t)
-        self.assertAlmostEqual(su.batch_limit_average_kwh_t, 5.58, places=2)
+        self.assertAlmostEqual(su.batch_limit_average_kwh_t, 4.50, places=2)
 
 
 class TestDirectDriveMotor(unittest.TestCase):
@@ -527,6 +531,13 @@ class TestDataReduction(unittest.TestCase):
         # 10 · 20 kWh/t 는 99 % 를 넘어 적합에서 빠진다
         self.assertEqual([energies[i] for i in fit.used], [1.0, 2.0, 5.0])
         self.assertAlmostEqual(fit.removal(fit.e90_kwh_t), 0.9, places=12)
+        # 판정은 박리 목표에서의 E_X — 목표가 높으면 E_X 가 커진다
+        target = attrition_budget().removal_target
+        self.assertAlmostEqual(fit.removal(fit.energy_kwh_t(target)), target, places=12)
+        self.assertAlmostEqual(fit.energy_kwh_t(0.9), fit.e90_kwh_t, places=12)
+        self.assertGreater(fit.energy_kwh_t(target), fit.e90_kwh_t)
+        with self.assertRaises(ValueError):
+            fit.energy_kwh_t(1.0)
 
     def test_fit_drops_nonphysical_points_and_needs_one(self):
         fit = fit_first_order([1.0, 2.0, 5.0], [-0.02, 0.30, 0.995])

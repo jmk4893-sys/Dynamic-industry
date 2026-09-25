@@ -448,11 +448,20 @@ class TestPlantIntegration(unittest.TestCase):
             places=12,
         )
 
-    def test_water_supply_covers_the_dilution_demand_for_both_options(self):
-        pre = self.plant.pretreatment
-        for option in (self.plant.rfc, self.plant.mechanical):
-            with self.subTest(option=type(option).__name__):
-                self.assertTrue(pre.water_supply_ok(option))
+    def test_dilution_uses_clean_water_and_it_leaves_as_bleed(self):
+        """DB-1 은 청수 — 회수 공정수의 포수제가 ES 로 들어오지 않게 한다.
+
+        그 물은 부선 뒤 공정수로 나오지만 ES 앞으로 되돌릴 수 없으므로, 두 안 모두
+        케이크 몫을 뺀 전량이 블리드가 된다.
+        """
+        self.assertIn("DB-1 희석수", db.CLEAN_WATER_USERS)
+        self.assertIn("CT-1 보충수", db.PROCESS_WATER_USERS)
+        for option in ("1안", "2안"):
+            with self.subTest(option=option):
+                w = self.plant.water_balance(option)
+                self.assertLess(abs(w.closure_error), 1e-9)
+                self.assertGreater(w.bleed, w.minimum_bleed)
+                self.assertAlmostEqual(w.fresh, w.es_clean, places=9)
 
     def test_attrition_takes_no_performance_credit(self):
         """EVA 박리 설비이므로 부선 성적·약제에 어떤 이득도 반영하지 않는다."""

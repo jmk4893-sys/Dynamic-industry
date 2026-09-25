@@ -232,9 +232,23 @@ class TestDrawingMatchesDesign(unittest.TestCase):
                 f"Ø{s.bore_mm:.0f} / Ø{s.outer_diameter_mm:.0f} mm / "
                 f"{s.length_m:.2f} m", c.tag + " 중공축")
 
-    def test_filtrate_returns_to_flotation_feed(self):
-        # 여액은 공정수 탱크가 아니라 부선 급광으로 되돌린다.
-        self.assertIn("여액 0.47 m³/h → 급광 순환", self.html)
+    def test_filtrate_routing_and_process_water_loop(self):
+        """정광 여액은 CT-1 직송, 미광 여액은 공정수 탱크 — 공정수는 CT-1 부터만 쓴다."""
+        from flotation_design.plant import build_plant
+
+        plant = build_plant()
+        rfc, w = plant.rfc, plant.water_balance("1안")
+        self.assertIn(f"정광 여액 {rfc.concentrate_filter.filtrate_m3h:.3f}", self.html)
+        self.assertIn("→ CT-1 직송", self.html)
+        self.assertIn(
+            f"미광 여액 {rfc.tailings_filter.filtrate_m3h:.2f} → 공정수 탱크", self.html
+        )
+        self.assertIn(f"보충 {w.ct1_makeup:.2f}", self.html)
+        self.assertIn(f"블리드 {w.bleed:.2f}", self.html)
+        self.assertIn("청수 헤더 — 포수제 없는 물 (공정수 금지)", self.html)
+        self.assertIn(f"청수 {w.db1_dilution:.2f}", self.html)
+        # DB-1 희석수를 공정수 헤더에서 받던 이전 배관이 남아 있으면 안 된다
+        self.assertNotIn("공정수 헤더", self.html)
 
     def test_patent_disclosure_present(self):
         # 실시권 리스크는 도면에서 빠지면 안 되는 항목이다.
@@ -607,8 +621,24 @@ class TestPilotSheetMatchesDesign(unittest.TestCase):
             "고토크 인터록",
         )
 
-    def test_revision_is_b(self):
-        self.assertFigure("<span>REV</span><b>B</b>", "REV")
+    def test_revision_is_c_and_judges_the_derived_target(self):
+        """REV C — 판정은 정광 품위 여유에서 나온 박리 목표의 E_X 로 한다 (잠정 90 % 아님)."""
+        su = self.su
+        self.assertFigure("<span>REV</span><b>C</b>", "REV")
+        self.assertFigure("REV C", "부제의 REV")
+        label = f"E{su.target_removal * 100:.0f}"
+        self.assertFigure(
+            f"P-1 의 {label} (회분, 박리 목표 {su.target_removal * 100:.1f} %)", "판정선 제목"
+        )
+        self.assertFigure(f"{label} 신뢰구간", "P-5 재현성")
+        self.assertNotIn("E90", self.sheet)
+        # 띠는 눈금에 맞춰 그린다 — 0 ~ 10 kWh/t 를 930 px 에
+        for limit in (
+            su.batch_limit_peak_kwh_t,
+            su.batch_limit_peak_upsized_kwh_t,
+            su.batch_limit_average_upsized_kwh_t,
+        ):
+            self.assertFigure(f'x="{60 + limit * 93:.1f}" y="696"', f"판정선 {limit:.2f} 위치")
 
     def test_states_it_is_not_plant_equipment(self):
         self.assertFigure("플랜트 설비 아님", "플랜트 설비 아님")

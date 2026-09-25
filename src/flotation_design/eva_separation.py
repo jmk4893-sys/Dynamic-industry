@@ -37,7 +37,8 @@ EVA 와 물의 비중차는 0.05 다. 설계 박편(등체적 약 21 µm)이 제
 3. **작은 EVA 가 전부를 정한다.** Ec 가 (dp/db)^2 에 비례하므로 10 µm 박편은 20 µm
    박편의 약 1/4 속도로 뜬다. 그래서 크기별 회수율 표를 설계 결과로 낸다.
 4. **요구 제거율은 부선 급광 한도에서 역산한다.** 한도를 떨어진 EVA 양으로 나누면
-   필요한 제거율이 나온다.
+   필요한 제거율이 나온다. 한도와 AS-1 의 박리 목표는 같은 정광 품위 여유를 나눠
+   쓴다 (``EvaGradeBudget``) — 자유 EVA 한도를 뺀 나머지가 부착 EVA 잔류 한도다.
 5. **판정은 회분 t90 으로 한다.** 시험 S-1(회분 부선, 기포제만)에서 얻은 자유 EVA 의
    t90 을 ES 가 감당하는 한계와 비교한다 — AS-1 의 E90 판정과 같은 구조다.
 """
@@ -216,6 +217,69 @@ def concentrate_grade_with_eva(concentrate_tph: float, grade: float, eva_tph: fl
 
 
 @dataclass(frozen=True)
+class EvaGradeBudget:
+    """정광 품위 여유를 자유 EVA 와 부착 EVA 에 나눈다 — AS-1 박리 목표의 출처.
+
+    부선조로 넘어간 EVA 는 떨어진 것이든 입자에 붙은 것이든 전량 정광으로 간다고
+    본다 (보수 — 부착 EVA 가 은 부선에서 뜨는지는 연쇄 시험 C-1 에서 확인한다).
+    보증 품위까지의 여유(EVA 환산)에서 자유 EVA 한도(ES 인터페이스 조건)를 빼면
+    AS-1 이 남겨도 되는 부착 EVA 가 나온다. 판정은 이 **잔류량**으로 하고, 설계
+    EVA 함량으로 나누면 박리 목표(제거율)가 된다.
+
+    Attributes:
+        dry_tph: 광물 급광 (건조).
+        concentrate_tph: 설계 정광 (EVA 없음).
+        grade: 설계 정광 Ag 품위.
+        guarantee: 보증 품위.
+        free_limit: 부선 급광의 자유 EVA 한도 (고체 질량분율).
+        eva_content: 설계 EVA 함량 (광물 1 t 당 EVA t).
+    """
+
+    dry_tph: float
+    concentrate_tph: float
+    grade: float
+    guarantee: float
+    free_limit: float
+    eva_content: float
+
+    @property
+    def margin_tph(self) -> float:
+        """보증 품위까지 정광에 더 섞여도 되는 EVA."""
+        return grade_margin_tph(self.concentrate_tph, self.grade, self.guarantee)
+
+    @property
+    def free_allowance_tph(self) -> float:
+        return self.free_limit * self.dry_tph
+
+    @property
+    def attached_allowance_tph(self) -> float:
+        """AS-1 이 남겨도 되는 부착 EVA — 여유에서 자유 EVA 한도를 뺀 나머지."""
+        return self.margin_tph - self.free_allowance_tph
+
+    @property
+    def attached_residual_limit(self) -> float:
+        """판정 — 스크럽 뒤 부착 EVA 잔류 (고체 질량분율)."""
+        return self.attached_allowance_tph / self.dry_tph
+
+    @property
+    def eva_tph(self) -> float:
+        return self.eva_content * self.dry_tph
+
+    @property
+    def removal_target(self) -> float:
+        """설계 EVA 함량에서의 박리 목표 — 잔류 한도를 함량으로 나눈 몫의 나머지."""
+        if self.attached_allowance_tph <= 0.0:
+            return 1.0
+        return max(0.0, 1.0 - self.attached_allowance_tph / self.eva_tph)
+
+    def grade_with(self, free_tph: float, attached_tph: float) -> float:
+        """자유·부착 EVA 가 전부 정광으로 갈 때의 품위."""
+        return concentrate_grade_with_eva(
+            self.concentrate_tph, self.grade, free_tph + attached_tph
+        )
+
+
+@dataclass(frozen=True)
 class EvaRequirement:
     """ES 가 걷어내야 하는 몫.
 
@@ -315,6 +379,13 @@ class EvaBatchLimits:
 # --------------------------------------------------------------------------
 # EVA 산물 탈수
 # --------------------------------------------------------------------------
+def eva_cake_water_tph(eva_tph: float, solids_volume_fraction: float, eva_sg: float) -> float:
+    """EVA 케이크에 남아 계 밖으로 나가는 물 (t/h)."""
+    if not 0.0 < solids_volume_fraction < 1.0 or eva_sg <= 0 or eva_tph < 0:
+        raise ValueError("케이크 고체 체적분율은 0~1, 비중은 양수, EVA 는 0 이상")
+    return eva_tph * (1.0 - solids_volume_fraction) / (solids_volume_fraction * eva_sg)
+
+
 @dataclass(frozen=True)
 class DewateringBag:
     """EVA 산물 탈수 백 — 중력 배수, 2기 교대.
@@ -356,9 +427,8 @@ class DewateringBag:
 
     @property
     def cake_water_tph(self) -> float:
-        """케이크에 남아 계 밖으로 나가는 물 — 신수 보충에 더해진다."""
-        phi = self.cake_solids_volume_fraction
-        return self.eva_tph * (1.0 - phi) / (phi * self.eva_sg)
+        """케이크에 남아 계 밖으로 나가는 물 — 백 설계 상한 (떨어진 EVA 가 전부일 때)."""
+        return eva_cake_water_tph(self.eva_tph, self.cake_solids_volume_fraction, self.eva_sg)
 
     @property
     def cake_moisture(self) -> float:

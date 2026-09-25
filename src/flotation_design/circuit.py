@@ -322,8 +322,9 @@ class CircuitResult:
     """수렴된 회로 물질수지.
 
     ``fresh_water_m3h``는 부선 회로 경계에서 필요한 희석·세척수 중 필터 여액을
-    제외한 양이다. 설비 전체의 외부 신수는 농축조 월류 재사용·블리드·케이크
-    수분까지 닫은 :class:`plant.MechanicalOption.fresh_makeup_m3h`로 평가한다.
+    제외한 양이다. 설비 전체의 외부 신수는 청수(ES 앞)와 회수 공정수(CT-1 부터)를
+    가르고 블리드·케이크 수분까지 닫은 :meth:`plant.PlantDesign.water_balance`로
+    평가한다.
     """
 
     new_feed: Stream

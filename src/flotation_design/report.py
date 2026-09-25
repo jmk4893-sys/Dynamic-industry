@@ -93,7 +93,11 @@ def render(design: PlantDesign | None = None) -> str:
     sc, dil = pre.scrubber, pre.dilution
     g, dr, sh = sc.geometry, sc.drive, sc.shaft
     pc, ms = build_pilot(f), build_mechanism_screen(f)
-    su = pilot_scale_up(sc, f.peak_tph, f.average_tph, db.PILOT_EVA_REMOVAL_TARGET)
+    budget = pre.eva.budget
+    su = pilot_scale_up(sc, f.peak_tph, f.average_tph, pre.eva.removal_target)
+    ex = f"E{su.target_removal * 100:.0f}"
+    x_pct = f"{su.target_removal * 100:.1f} %"
+    residual_pct = f"{budget.attached_residual_limit * 100:.3f} wt%"
     trial = ref.CONTINUOUS_TRIAL
     batch = ref.BATCH_TAP_WATER
     peak_label = f"최대 {f.peak_tph:.2f} t/h"
@@ -162,6 +166,11 @@ def render(design: PlantDesign | None = None) -> str:
              f"{f.average_tph / ref.CELL_FRACTION_OF_MODULE:.1f} / "
              f"{f.peak_tph / ref.CELL_FRACTION_OF_MODULE:.1f} t/h",
              "상류 박리 설비가 감당해야 할 규모"],
+            ["EVA (조성표 밖)",
+             f"광물 1 t 당 {budget.eva_content * 1000:.0f} kg — 최대 "
+             f"{budget.eva_tph * 1000:.1f} kg/h 가 {f.peak_tph:.2f} t/h 위에 얹힌다",
+             f"잔막 {db.EVA_RESIDUAL_FILM_UM:g} µm 가정 (§2.8). 처리량 · 비에너지 · 부선은 광물 "
+             f"기준으로 계산하고, EVA 는 ES 물질수지에서 따로 추적한다"],
         ],
     ))
     add("")
@@ -217,8 +226,10 @@ def render(design: PlantDesign | None = None) -> str:
     add("**역할의 경계.** 이 설비가 하는 일은 EVA 박리 하나다. 은(Ag)을 띄우는 것은 뒤의 "
         "부선조(§3·§4)가 한다. 그래서 이 설비의 성능은 부선 성적이 아니라 두 가지로만 판정한다.")
     add("")
-    add(f"- **부착 EVA 제거율** — 스크럽 전후, 물에 가라앉은 분획의 EVA(TGA) 비교. "
-        f"목표 ≥ {db.PILOT_EVA_REMOVAL_TARGET * 100:.0f} % (잠정)")
+    add(f"- **부착 EVA 잔류** — 스크럽 뒤, 물에 가라앉은 분획의 EVA(TGA) ≤ 고체의 "
+        f"**{residual_pct}**. 설계 EVA {budget.eva_content * 100:.1f} wt% 에서 제거율 "
+        f"**≥ {x_pct}** 다. 정한 값이 아니라 1안 정광 품위 여유에서 자유 EVA 한도를 뺀 "
+        f"나머지다 (§2.8).")
     add(f"- **미립 생성** — 스크럽 전후 −10 µm 질량분율 증가 ≤ "
         f"{db.ATTRITION_FINES_ACCEPTANCE_PP:.0f} %p. 넘으면 EVA 를 떼는 것이 아니라 "
         f"Si 를 갈고 있다는 뜻이다.")
@@ -229,7 +240,8 @@ def render(design: PlantDesign | None = None) -> str:
         "부선 계산은 문헌 원료 기준이며 EVA 를 뗀 효과를 회수율·품위·약제에 반영하지 "
         f"않는다 (`ATTRITION_PERFORMANCE_CREDIT = {db.ATTRITION_PERFORMANCE_CREDIT:.1f}`). "
         f"대신 전량 바이패스({pre.bypass})를 두어 없는 것처럼 운전할 수 있게 했다. "
-        "박리가 확인되지 않으면 바이패스로 두거나 열분해로 간다.")
+        "박리가 확인되지 않으면 바이패스로 두거나 열분해로 간다. 바이패스 운전에서도 부착 "
+        "EVA 가 은 부선에서 뜨면 정광 품위가 떨어진다 — 뜨는지는 연쇄 시험 C-1(§2.8)이 가린다.")
     add("")
     add("### 2.1 운전 기준 — 고체 농도가 전부다")
     add("")
@@ -383,7 +395,8 @@ def render(design: PlantDesign | None = None) -> str:
     add(f"| T-1 비에너지-박리 곡선 | 시험 셀 {db.PILOT_TAG}(§2.6)에서 "
         + " / ".join(f"{e:g}" for e in db.PILOT_ENERGY_POINTS_KWH_T)
         + " kWh/t 시료의 부착 EVA(TGA) | "
-        f"1차 적합 → E90. §2.6 판정선과 비교해 AS-1 을 그대로 쓸지 정한다 |")
+        f"1차 적합 → {ex} (박리 목표 {x_pct}). §2.6 판정선과 비교해 AS-1 을 그대로 쓸지 "
+        f"정한다 |")
     add(f"| T-2 운전 변수 | {db.PILOT_TAG} 에서 주속 · 온도 · 농도를 바꿔 같은 채취 | "
         f"곡선이 비에너지 하나로 겹치는가 — 겹치면 비에너지만으로 운전한다 |")
     add("| T-3 실기 확인 | AS-1 시운전에서 급광·배출 시료의 부착 EVA 비교, 바이패스와 "
@@ -391,6 +404,9 @@ def render(design: PlantDesign | None = None) -> str:
     add(f"| T-4 미립 생성 | 스크럽 전후 −10 µm 질량분율 | 증가 "
         f"**{db.ATTRITION_FINES_ACCEPTANCE_PP:.0f} %p 이하** — 넘으면 EVA 를 떼는 것이 아니라 "
         f"Si 를 갈고 있다는 뜻 |")
+    add("")
+    add("세 단계(AS-1 → ES → 부선)를 이어 회수수까지 돌리는 연쇄 시험 C-1 은 §2.8 에 둔다 — "
+        "부착 EVA 가 은 부선에서 뜨는지, 회수수의 포수제가 ES 에서 은을 띄우는지를 가린다.")
     add("")
     add("**미립 생성이 이 설비의 진짜 위험이다.** 문헌 공정을 따라 탈니(desliming)를 하지 "
         "않으므로, 스크러버에서 깨져 나온 Si 미립은 걸러지지 않고 그대로 부선으로 넘어간다. "
@@ -410,18 +426,21 @@ def render(design: PlantDesign | None = None) -> str:
         f"는 모래의 통상값이라 **출발점일 뿐이다.** 이 원료에서 무엇을 얼마나 떼는지는 "
         f"{db.PILOT_TAG}(§2.6)이 정한다.")
     add("")
-    add("### 2.5 희석박스와 물수지")
+    add("### 2.5 희석박스와 물 계통 — 청수와 공정수")
     add("")
+    w1p, w1a = d.water_balance("1안"), d.water_balance("1안", f.average_tph)
+    w2p, w2a = d.water_balance("2안"), d.water_balance("2안", f.average_tph)
     add(_table(
         ["항목", "값", "비고"],
         [
             ["기기 번호 / 역할", f"{dil.tag} / {dil.duty}", ""],
             ["입구 / 출구 농도",
              f"{dil.inlet_solids_wt * 100:.0f} → {dil.outlet_solids_wt * 100:.0f} wt%",
-             "출구 농도는 밀도계로 제어 — 조건조 급광을 고정한다"],
-            ["**희석수**", f"**{dil.dilution_water_m3h:.2f} m3/h**",
-             "공정수 탱크에서 받는다 (아래 수급 확인)"],
-            ["출구 유량", f"{dil.outlet_m3h:.2f} m3/h", "조건조 CT-1 급광"],
+             "출구 농도는 밀도계로 제어 — ES 급광을 고정한다. 부선 급광은 CT-1 보충수가 맞춘다"],
+            ["**희석수**", f"**{dil.dilution_water_m3h:.2f} m3/h** (설계)",
+             f"**청수 헤더**에서 받는다 — 공정수 금지. 운전 중에는 {db.EVA_CLEANER_TAG} 미광과 "
+             f"{db.EVA_BAG_TAG} 여액이 일부를 대신해 {w1p.db1_dilution:.2f} m3/h ({peak_label})"],
+            ["출구 유량", f"{dil.outlet_m3h:.2f} m3/h", f"{db.EVA_ROUGHER_TAG} 급광"],
             ["체류시간 / 유효 체적",
              f"{dil.residence_min:.0f} min / {dil.working_volume_m3:.3f} m3",
              f"박스 {dil.box_volume_m3:.2f} m3"],
@@ -431,21 +450,124 @@ def render(design: PlantDesign | None = None) -> str:
         ],
     ))
     add("")
-    add(f"희석수는 **설비 전체 물수지를 바꾸지 않는다.** 부선 농도 "
-        f"{f.solids_mass_fraction * 100:.0f} wt% 를 맞추려고 어차피 들어가던 물이고, "
-        f"어트리션은 그 물의 **투입 지점을 뒤로 미룰 뿐**이다. 계 밖으로 나가는 물"
-        f"(케이크 잔류수 + 블리드)이 그대로이므로 신수 보충량도 그대로다. 바뀌는 것은 "
-        f"공정수 탱크가 감당해야 할 유량뿐이다.")
+    add(f"**ES 앞은 청수, CT-1 부터 공정수.** 회수 공정수(농축조 월류 + 미광 여액)에는 포수제"
+        f"(3418A · 242)와 MIBC 가 남아 있다. ES 는 체류가 길고 공기가 많아, 포수제가 들어오면 "
+        f"은이 떠 EVA 산물로 샌다 — 정상 부선 속도의 "
+        f"**{pre.eva.tolerable_collector_activity * 100:.2f} %** 만으로 한도"
+        f"({db.EVA_AG_LOSS_LIMIT * 100:.1f} %)에 닿는다 (§2.8 민감도). 그래서 물을 두 계통으로 "
+        f"가른다.")
     add("")
-    add(f"희석수 {dil.dilution_water_m3h:.2f} m3/h 는 **계통에서 가장 큰 단일 공정수 "
-        f"소비처**다 — 1안 세척수 {rfc.point_peak.wash_water_m3h:.2f} m3/h 의 "
-        f"{dil.dilution_water_m3h / rfc.point_peak.wash_water_m3h:.1f}배다. 공정수 배관과 "
-        f"밀도제어 밸브를 이 유량으로 잡는다. 회수 공정수(1안 {rfc.water_recycle_m3h:.2f} / "
-        f"2안 {mech.water_recycle_m3h:.2f} m3/h)와 신수 보충(1안 {rfc.fresh_makeup_m3h:.2f} / "
-        f"2안 {mech.fresh_makeup_m3h:.2f} m3/h)이 이 수요를 받치며, 두 안 모두 수급이 "
-        f"성립한다"
-        + (" — OK." if pre.water_supply_ok(rfc) and pre.water_supply_ok(mech) else " — **NG**.")
-        + " 신수 보충량 자체는 어트리션 도입 전과 같다.")
+    add(_table(
+        ["계통", "쓰는 곳", "근거"],
+        [
+            ["**청수** (포수제 없는 물)", " · ".join(db.CLEAN_WATER_USERS),
+             "ES 로 들어가는 물 — 포수제 금지"],
+            ["**공정수** (회수수)", " · ".join(db.PROCESS_WATER_USERS),
+             "포수제가 있어도 되는 자리 (CT-1 뒤)"],
+            ["상류 인터페이스", f"로드밀 급수 — {db.MILL_WATER}",
+             "로드밀 배출의 물은 그대로 AS-1 · ES 로 들어온다"],
+        ],
+    ))
+    add("")
+
+    def wb_col(w) -> list[str]:
+        return [
+            f"{w.feed_water:.2f}",
+            f"**{w.es_clean:.2f}** ({w.es_feed_solids * 100:.1f} wt%)",
+            f"{w.es_tails_water:.2f}",
+            f"{w.concentrate_filtrate:.3f}",
+            f"**{w.ct1_makeup:.2f}**",
+            f"{w.process_users:.2f}",
+            f"{w.process_supply:.2f}",
+            f"{w.cake_water:.3f}",
+            f"**{w.bleed:.2f}**",
+            f"**{w.fresh:.2f}**",
+            f"{abs(w.closure_error):.3f}",
+        ]
+
+    wb_labels = [
+        "로드밀 배출과 함께 (상류 청수)",
+        "**ES 앞 청수** (DB-1 희석 + ES-2 세척수) — DB-1 설정",
+        "ES 미광 → CT-1",
+        "정광 여액 → 첫 단",
+        "**CT-1 보충수** (공정수)",
+        "세척수 (1안 부선조 · 2안 클리너)",
+        "공정수 탱크 유입 (농축조 월류 + 미광 여액)",
+        "케이크 (정광 · 미광 · EVA)",
+        "**블리드** (공정수 탱크 → 처리)",
+        "**신수**",
+        "폐합 (들어온 물 − 나간 물)",
+    ]
+    cols = [wb_col(w) for w in (w1p, w1a, w2p, w2a)]
+    add("**계통 물수지 (W1 기준, m3/h).**")
+    add("")
+    add(_table(
+        ["흐름", f"1안 {peak_label}", f"1안 {avg_label}", f"2안 {peak_label}", f"2안 {avg_label}"],
+        [[label] + [c[i] for c in cols] for i, label in enumerate(wb_labels)],
+    ))
+    add("")
+    add(f"**ES 앞에 넣은 청수는 전부 블리드가 된다.** 그 물은 부선 뒤 공정수로 나오지만 ES "
+        f"앞으로 되돌릴 수 없고, 공정수 사용처(CT-1 보충수 · 세척수)는 공정수 안에서 돈다. "
+        f"그래서 블리드 = 로드밀 물 + ES 앞 청수 − 케이크 물이다 — 1안 최대 처리량에서 신수 "
+        f"**{w1p.fresh:.2f} m3/h**, 블리드 **{w1p.bleed:.2f} m3/h**. 용존물 축적을 막는 최소 "
+        f"블리드(농축조 월류의 {db.PROCESS_WATER_BLEED_FRACTION * 100:.0f} %, "
+        f"{w1p.minimum_bleed:.2f} m3/h)보다 크므로 그것이 블리드를 정하지 않는다. 블리드에는 "
+        f"포수제 · MIBC · 용존 Al 이 남아 있어 **방류 전에 처리**하거나 인수처를 정해야 한다.")
+    add("")
+    over = (w1p.es_tails_water + rfc.filtrate_m3h) / rfc.point_peak.water_tph - 1.0
+    add(f"**부선 급광은 CT-1 이 맞춘다.** {dil.tag} 은 ES 급광만 "
+        f"{f.solids_mass_fraction * 100:.0f} wt% 로 잡는다. 1안 부선조는 급광 유량이 flux 로 "
+        f"고정이라(§3) 모자라는 물을 **CT-1 보충수**(공정수, FIC)로 채운다 — {peak_label} "
+        f"{w1p.ct1_makeup:.2f}, {avg_label} {w1a.ct1_makeup:.2f} m3/h. 정광 여액만 첫 단으로 "
+        f"직송하고 미광 여액은 공정수 탱크로 보낸다 — 미광 여액까지 CT-1 로 돌리면 최대 "
+        f"처리량에서 급광이 {over * 100:.1f} % 넘친다. 2안은 순환류(스캐빈저 정광 + 클리너 "
+        f"미광)가 러퍼에 물을 보태 ES 미광이 러퍼 소요보다 많다 — 물은 뺄 수 없으므로 "
+        f"{dil.tag} 설정을 {w2p.es_feed_solids * 100:.1f} wt% 로 올려 러퍼를 "
+        f"{f.solids_mass_fraction * 100:.0f} wt% 에 둔다 (보충수 0, 처리량이 줄면 FIC 가 연다).")
+    add("")
+    alt_rows = []
+    for opt, w_base in (("1안", w1p), ("2안", w2p)):
+        for case in ("W1", "W3", "W4"):
+            w = d.water_balance(opt, None, case)
+            extra = {
+                "W1": "청수 헤더만",
+                "W3": f"CT-1 보충수 {w.ct1_makeup:.2f} m3/h — ES 셀이 남는다 (체류 ↑)",
+                "W4": f"활성탄 {w.gac_bed_m3:.1f} m3 (EBCT {db.GAC_EBCT_MIN:.0f} min) — "
+                      f"소모량은 C-1 의 잔류 포수제가 정한다",
+            }[case]
+            decide = {
+                "W1": "기준 — 확인 없이 성립",
+                "W3": f"S-1 을 {db.EVA_ALTERNATIVE_SOLIDS_WT * 100:.0f} wt% 로 — Ag 손실 · t90",
+                "W4": "S-1W · C-1 — 처리수로 EVA 산물 Ag 가 청수와 같은가",
+            }[case]
+            alt_rows.append([
+                f"{opt} {w.label}",
+                f"{w.es_feed_solids * 100:.1f} wt%",
+                f"{w.fresh:.2f}",
+                f"{w.bleed:.2f}",
+                f"{w.es_ag_loss * 100:.3f} %",
+                extra,
+                decide,
+            ])
+    add(f"**대안 — 신수와 블리드를 줄이려면** ({peak_label}).")
+    add("")
+    add(_table(
+        ["경우", "ES 급광", "신수 (m3/h)", "블리드 (m3/h)", "ES Ag 손실", "추가 설비", "택하는 조건"],
+        alt_rows,
+    ))
+    add("")
+    w3 = d.water_balance("1안", None, "W3")
+    add(f"W3 은 ES 를 {db.EVA_ALTERNATIVE_SOLIDS_WT * 100:.0f} wt% 에서 돌려 ES 앞 청수를 "
+        f"{w3.es_clean / w1p.es_clean * 100:.0f} % 로 줄인다. 거품 물(m3/h)은 급기와 거품층이 "
+        f"정하므로 같은 물에 실려 가는 광물이 늘어 Ag 손실이 {w3.es_ag_loss / w1p.es_ag_loss:.1f}배"
+        f"가 된다 — 한도 안이지만 여유가 준다. W4 는 공정수를 활성탄에 통과시켜 포수제를 빼고 ES "
+        f"앞에 쓴다. 신수 · 블리드는 최소 블리드 수준까지 줄지만, 활성탄이 MIBC 도 빼므로 ES "
+        f"기포제는 전량 새로 넣어야 한다. **결정은 S-1W 와 C-1 결과로 한다** — 그 전까지는 "
+        f"W1 이 기준이다.")
+    add("")
+    add(f"**감시.** EVA 산물({db.EVA_BAG_TAG}) Ag 는 교대마다 분석한다 — 오르면 포수제가 ES 로 "
+        f"새는 신호다 (청수 · 공정수 헤더 교차 연결, 약제 역류, 로드밀 급수). AS-1 플러싱수"
+        f"(간헐)도 청수 헤더에서 받는다.")
     add("")
     add(f"**어트리션 계 설치 전력 {pre.attrition_kw:.2f} kW** "
         f"(어트리션 {sc.installed_kw:.2f} + 희석박스 교반 {dil.agitator_kw:.2f}). 떨어진 EVA "
@@ -684,9 +806,10 @@ def render(design: PlantDesign | None = None) -> str:
     add("떨어진 EVA 는 뜬 분획으로 가므로 가라앉은 분획의 질량도 준다 — 분율만 비교하면 그 "
         "몫을 놓친다. TGA(N2) 질량 감소가 EVA 인지는 P-0 에서 기준 EVA 와 원료로 온도 구간을 "
         "정해 확인하고, 백시트 등 다른 유기물이 있으면 구간을 나눠 해석한다. XPS·FT-IR 은 "
-        f"정성 확인용이다 — 박리율을 내지 않는다. E90 은 1 − X = exp(−k(E − E₀)) 를 원점 통과 "
-        f"최소제곱(k = ΣE·y / ΣE², y = −ln(1 − X))으로 맞춰 ln 10 / k 로 구하고, "
-        f"X ≥ {db.PILOT_FIT_SATURATION * 100:.0f} % 인 점(잔류가 정량 하한 부근)은 뺀다.")
+        f"정성 확인용이다 — 박리율을 내지 않는다. {ex} 는 1 − X = exp(−k(E − E₀)) 를 원점 통과 "
+        f"최소제곱(k = ΣE·y / ΣE², y = −ln(1 − X))으로 맞춰 −ln(1 − X*) / k (X* = {x_pct}, "
+        f"박리 목표)로 구하고, X ≥ {db.PILOT_FIT_SATURATION * 100:.0f} % 인 점(잔류가 정량 하한 "
+        f"부근)은 뺀다.")
     add("")
     add(f"**온도.** 교반 동력은 전부 열이 된다. 단열이면 1 kWh/t 에 "
         f"{pc.adiabatic_rise_k_per_kwh_t:.2f} K, {max(pc.energy_points_kwh_t):g} kWh/t 에서 "
@@ -740,7 +863,7 @@ def render(design: PlantDesign | None = None) -> str:
         f"슬러리 토크-주속 곡선 | 이상 없으면 P-1. 이 회분은 곡선에 쓰지 않는다 |")
     add(f"| **P-1** 비에너지 곡선 | {base_tip:.0f} m/s, {pc.solids_mass_fraction * 100:.0f} wt%, "
         f"{base_temp:.0f} °C | 채취 {energies} kWh/t — 부착 EVA, 뜬 EVA 양·크기, −10 µm | "
-        f"1차 적합 1−X = exp(−k(E−E₀)) → **E90 = ln 10 / k** |")
+        f"1차 적합 1−X = exp(−k(E−E₀)) → **{ex} = −ln(1 − X*) / k** (X* = {x_pct}) |")
     add(f"| **P-1B** 시간 대조 | 벤치, 교반 없음, {pc.solids_mass_fraction * 100:.0f} wt%, "
         f"{base_temp:.0f} °C, " + " · ".join(f"{m:.0f}" for m in run_min) + " min | "
         f"부착 EVA, −10 µm, pH, H2 | 물에 담근 시간만으로 변하는가 — P-2 의 시간 차를 가른다 |")
@@ -753,9 +876,9 @@ def render(design: PlantDesign | None = None) -> str:
         f"{low_batch.withdrawal_fraction * 100:.0f} %, 잠김 "
         f"{low_batch.minimum_submergence_m / pd.diameter_m:.2f} D) | 로드밀 배출 농도 "
         f"요구(≥ {db.ATTRITION_MILL_DISCHARGE_MIN_SOLIDS_WT * 100:.0f} wt%) 확인 |")
-    add("| **P-5** 재현성 | P-1 조건 3회 | E90 편차, 질량 수지 폐합 | 판정의 신뢰구간 |")
+    add(f"| **P-5** 재현성 | P-1 조건 3회 | {ex} 편차, 질량 수지 폐합 | 판정의 신뢰구간 |")
     add(f"| **P-6** 라이닝 민감도 (조건부) | P-1 조건에 천연고무 라이닝 판 + 우레탄 피복 "
-        f"임펠러 — P-1 의 E90 이 판정선 안일 때만 | E90, −10 µm, 토크. 고무 마모분은 EVA 없는 "
+        f"임펠러 — P-1 의 {ex} 가 판정선 안일 때만 | {ex}, −10 µm, 토크. 고무 마모분은 EVA 없는 "
         f"같은 입도 시료로 같은 운전을 해 TGA blank 로 뺀다 | 벽 재질이 박리를 바꾸는가 — "
         f"파일럿은 접액 면적/체적이 AS-1 의 {wall_ratio:.2f}배라 차이가 있으면 여기서 더 크게 "
         f"보인다 |")
@@ -764,10 +887,12 @@ def render(design: PlantDesign | None = None) -> str:
         f"로 올리며 토크-주속 곡선을 적는다 — 곡선 채취가 끝난 뒤라 E 에 영향이 없다. 실측 "
         f"동력수가 나오고, P-1 과 P-4 를 비교하면 농도에 따른 유동 특성이 보인다.")
     add("")
-    add(f"**판정 기준.** 부착 EVA 제거율 **≥ {db.PILOT_EVA_REMOVAL_TARGET * 100:.0f} %** "
-        f"(잠정 — 부선 급광이 받아들일 수 있는 잔류 EVA 가 정해지면 그 값으로) 이고, 그 비에너지에서 "
+    add(f"**판정 기준.** 스크럽 뒤 부착 EVA 잔류 **≤ 고체의 {residual_pct}** — 설계 EVA "
+        f"{budget.eva_content * 100:.1f} wt% 에서 제거율 **≥ {x_pct}** — 이고, 그 비에너지에서 "
         f"−10 µm 증가가 **{db.ATTRITION_FINES_ACCEPTANCE_PP:.0f} %p 이하** (AS-1 T-4 와 같은 "
-        f"기준) 일 것.")
+        f"기준) 일 것. 잔류 한도는 1안 정광 품위 여유에서 자유 EVA 한도를 뺀 나머지다 (§2.8). "
+        f"P-0 에서 잰 함량이 설계와 다르면 목표 제거율을 1 − 잔류 한도 / 실측 함량으로 다시 "
+        f"잡고 판정선을 다시 계산한다.")
     add("")
     add(f"**AS-1 로 옮기기.** 회분에서는 모든 입자가 같은 에너지를 받지만, 완전혼합조 "
         f"직렬에서는 적게 받는 입자가 생긴다. 1차 거동이면 같은 제거율에 필요한 연속 "
@@ -776,11 +901,12 @@ def render(design: PlantDesign | None = None) -> str:
         f"3기 {continuous_energy_factor(su.target_removal, 3):.2f}배). 이 환산은 박리가 "
         f"비에너지에 대해 1차이고, 각 셀이 이상적 완전혼합조에 가깝고, {pc.tag} 에서 얻은 "
         f"속도상수 k 가 AS-1 에서도 유지된다는 가정 위에 선다 — P-1·P-2 적합도와 AS-1 "
-        f"시운전(T-3)으로 확인한다. AS-1 이 낼 수 있는 비에너지를 이 배수로 나누면 **P-1 의 "
-        f"E90 이 얼마 이하여야 하는지**가 나온다.")
+        f"시운전(T-3)으로 확인한다. 목표가 높을수록 적게 받는 입자의 벌이 커져 배수가 는다 "
+        f"(90 % 에서는 {continuous_energy_factor(0.90, su.cells):.2f}배). AS-1 이 낼 수 있는 "
+        f"비에너지를 이 배수로 나누면 **P-1 의 {ex} 가 얼마 이하여야 하는지**가 나온다.")
     add("")
     add(_table(
-        ["P-1 의 E90 (회분)", "AS-1 연속 비에너지 능력", "판정"],
+        [f"P-1 의 {ex} (회분)", "AS-1 연속 비에너지 능력", "판정"],
         [
             [f"≤ **{su.batch_limit_peak_kwh_t:.2f} kWh/t**",
              f"{su.as1_peak_kwh_t:.2f} kWh/t ({peak_label}, VFD 상한 "
@@ -803,7 +929,7 @@ def render(design: PlantDesign | None = None) -> str:
     add("")
     add(f"2·3행은 {su.practical_max_tip_speed_m_s:.0f} m/s 에서 미립 기준을 지킬 때만 "
         f"성립한다 — P-2 가 그것을 본다. {su.practical_max_tip_speed_m_s:.0f} m/s 를 쓸 수 "
-        f"없으면 E90 ≤ {su.batch_limit_peak_kwh_t:.2f} 는 그대로, "
+        f"없으면 {ex} ≤ {su.batch_limit_peak_kwh_t:.2f} 는 그대로, "
         f"**≤ {su.batch_limit_average_kwh_t:.2f} kWh/t 면 현 모터 · 평균 처리량 상한** "
         f"(VFD 상한 · {avg_label} 에서 {su.as1_average_kwh_t:.2f} kWh/t), 그 위는 셀 추가 또는 "
         f"열분해다. 1차 거동에서 벗어나면(잔차가 E 에 따라 한쪽으로 쏠리면) 환산 배수를 "
@@ -820,8 +946,9 @@ def render(design: PlantDesign | None = None) -> str:
         f"겹치지 않는지 본다.")
     add(f"- EVA 강도 {db.EVA_STRENGTH_MPA:.0f} MPa 는 벌크 강도의 보수적 하한이다. 계면 "
         f"박리강도가 아니다.")
-    add(f"- 부착 EVA 제거 목표 {db.PILOT_EVA_REMOVAL_TARGET * 100:.0f} % 는 잠정값, 박리의 "
-        f"1차 거동은 P-1 에서 확인한다.")
+    add(f"- 박리 목표 {x_pct} 는 부선조로 넘어간 부착 EVA 가 **전부 정광으로 간다**는 보수 "
+        f"가정의 값이다. 은 부선에서 뜨지 않으면(C-1) 목표를 낮출 수 있고, 붙은 Si 까지 함께 "
+        f"뜨면 더 높여야 한다. 박리의 1차 거동은 P-1 에서 확인한다.")
     add(f"- 재킷 총괄 열전달계수 {pc.jacket_u_w_m2k:.0f} W/m2K 는 고농도 강교반의 보수값이다.")
     add(f"- 수소 발생률은 문헌값이 없다. P-0A · P-0B 전에는 배기가 견디는 반응 속도(회분 Al 의 "
         f"{pc.tolerable_aluminium_reaction_per_h * 100:.0f} %/h)만 안다.")
@@ -861,6 +988,12 @@ def render(design: PlantDesign | None = None) -> str:
         f"{db.H2_DESIGN_LEL_FRACTION * 100:.0f} % 에서 AS-1 급광을 바이패스하고 플러싱을 "
         f"시작한다 — 배기는 멈추지 않는다. 배기량은 P-0A · P-0B 발생률로 확정한다. 예시 규모면 "
         f"소형 팬 한 대이므로 비용이 아니라 **빠뜨리지 않는 것**이 문제다.")
+    add("")
+    add(f"**하류도 수소원이다.** 어트리션으로 드러난 Al 면은 AS-1 을 나와서도 반응한다 — "
+        f"{dil.tag} · {db.EVA_ROUGHER_TAG}·{db.EVA_CLEANER_TAG} · CT-1 · 부선조가 모두 H2 를 낸다. "
+        f"ES 셀은 덮개가 없고 부선 공기가 쓸어 간다(§2.8). **CT-1 은 덮지 않거나 상부 배기를 "
+        f"둔다** — 교반조 헤드스페이스에 모이지 않게 한다. P-0A 에서 박리 직후부터 시간에 따른 "
+        f"발생률 감소(반감 시간)를 재서, 하류 어느 기기까지 배기가 필요한지 정한다.")
     add("")
 
     # 2.8 떨어진 EVA 분리 ---------------------------------------------------
@@ -944,7 +1077,7 @@ def render(design: PlantDesign | None = None) -> str:
              f"**{ep.equivalent_diameter_um:.1f} µm**",
              "폭은 원 입자의 면을 넘지 못한다 (시험 분획 하한 — 작을수록 보수적)"],
             [f"ES 로 오는 EVA ({peak_label})", f"{er.freed_eva_tph * 1000:.2f} kg/h",
-             f"AS-1 이 목표({db.PILOT_EVA_REMOVAL_TARGET * 100:.0f} %)대로 뗀 몫"],
+             f"AS-1 이 박리 목표({x_pct})대로 뗀 몫 — 아래 품위 여유 배분"],
             ["부착 효율 Ea", f"{es.attachment_efficiency:.3f}",
              "Ag 러퍼 FC-201 의 설계 속도상수를 재현하는 값 (§8.1) — S-1 로 확인"],
             ["설계 박편의 속도상수",
@@ -953,32 +1086,43 @@ def render(design: PlantDesign | None = None) -> str:
         ],
     ))
     add("")
-    margin_rows = []
-    for name, c_tph, grade in (
-        ("1안", rfc.performance_peak.concentrate_dry_tph, rfc.performance_peak.concentrate_grade("Ag")),
-        ("2안", mech.result_peak.concentrate.dry_tph, mech.result_peak.concentrate.grade_fraction("Ag")),
-    ):
-        margin = grade_margin_tph(c_tph, grade, db.CONCENTRATE_GRADE_GUARANTEE)
-        with_eva = concentrate_grade_with_eva(c_tph, grade, er.allowance_tph)
-        margin_rows.append([
-            name,
-            f"{c_tph * 1000:.2f} kg/h @ {grade * 100:.1f} wt%",
-            f"{margin * 1000:.2f} kg/h",
-            f"{with_eva * 100:.1f} wt%",
-            f"{er.allowance_tph / margin * 100:.0f} % 사용 — "
-            + ("OK" if with_eva >= db.CONCENTRATE_GRADE_GUARANTEE else "**NG**"),
+    b1, b2 = d.eva_budget("1안"), d.eva_budget("2안")
+    budget_rows = []
+    for name, b in (("1안", b1), ("2안", b2)):
+        with_target = b.grade_with(b.free_allowance_tph, b1.attached_allowance_tph)
+        budget_rows.append([
+            name + (" — **목표를 정한다**" if name == db.ATTRITION_TARGET_OPTION else ""),
+            f"{b.concentrate_tph * 1000:.2f} kg/h @ {b.grade * 100:.1f} wt%",
+            f"{b.margin_tph * 1000:.3f} kg/h",
+            f"{b.free_allowance_tph * 1000:.2f} kg/h",
+            f"{b.attached_allowance_tph * 1000:.3f} kg/h ({b.attached_residual_limit * 100:.3f} wt%)",
+            f"**{b.removal_target * 100:.1f} %**",
+            f"{with_target * 100:.1f} wt% — "
+            + ("OK" if with_target >= db.CONCENTRATE_GRADE_GUARANTEE - 1e-12
+               else f"보증 미달 → {b.removal_target * 100:.1f} % 필요"),
         ])
-    add(f"**얼마나 걷어야 하나 — 부선 급광 한도에서 역산한다.** 부선 급광으로 넘어간 자유 "
-        f"EVA 는 거의 전량 정광으로 간다고 본다. 한도 {db.EVA_FLOTATION_FEED_LIMIT * 100:.1f} wt% "
-        f"({er.allowance_tph * 1000:.2f} kg/h)는 1안 정광 품위의 보증 여유(→ "
-        f"{db.CONCENTRATE_GRADE_GUARANTEE * 100:.0f} wt%)의 약 절반이다. 나머지는 AS-1 이 남기는 "
-        f"부착 EVA 몫으로 둔다. 설계 EVA {er.freed_eva_tph * 1000:.2f} kg/h 에서 요구 제거율은 "
+    old_target = 0.90
+    grade_old = b1.grade_with(b1.free_allowance_tph, b1.eva_tph * (1.0 - old_target))
+    add(f"**얼마나 걷어야 하나 — 정광 품위 여유를 나눠 쓴다.** 부선조로 넘어간 EVA 는 떨어진 "
+        f"것이든 입자에 붙은 것이든 전량 정광으로 간다고 본다 (보수 — 부착 EVA 가 은 부선에서 "
+        f"뜨는지는 C-1 에서 확인한다). 보증 품위({db.CONCENTRATE_GRADE_GUARANTEE * 100:.0f} wt%)"
+        f"까지의 여유에서 이 계통이 넘겨도 되는 자유 EVA 한도 "
+        f"{db.EVA_FLOTATION_FEED_LIMIT * 100:.1f} wt% ({er.allowance_tph * 1000:.2f} kg/h)를 빼면 "
+        f"AS-1 이 남겨도 되는 부착 EVA 가 나오고, 설계 EVA 로 나누면 **AS-1 의 박리 목표**가 "
+        f"된다. 설계 EVA {er.freed_eva_tph * 1000:.2f} kg/h 에서 이 계통의 요구 제거율은 "
         f"**{er.required_recovery * 100:.1f} %** 다.")
     add("")
     add(_table(
-        ["안", "설계 정광", "보증까지의 여유 (EVA 환산)", "한도만큼 EVA 가 섞이면", "판정"],
-        margin_rows,
+        ["안", "설계 정광", "보증까지의 여유 (EVA)", "자유 EVA 한도 (ES)",
+         "부착 EVA 잔류 한도 (AS-1)", "박리 목표", "1안 목표로 둘 다 한도까지 섞이면"],
+        budget_rows,
     ))
+    add("")
+    add(f"1안이 목표를 정한다 — **{x_pct}** (잔류 ≤ 고체의 {residual_pct}). 잠정값 "
+        f"{old_target * 100:.0f} % 였다면 부착 EVA {b1.eva_tph * (1.0 - old_target) * 1000:.2f} kg/h "
+        f"가 남아, 자유 EVA 한도와 함께 뜨면 정광이 {grade_old * 100:.1f} wt% 로 보증에 못 "
+        f"미친다. 2안을 택하면 정광이 작아 여유도 작으므로 {b2.removal_target * 100:.1f} % 가 "
+        f"필요하다 — §2.6 판정선이 그만큼 내려간다.")
     add("")
     add(f"**설계 — 2안 동체를 그대로 쓴다.** {ro.tag} 은 FC-202 스캐빈저, {cl.tag} 는 FC-203 "
         f"클리너와 동체·로터·구동부가 같다. 새로 설계할 회전체가 없다. 다른 것은 운전 조건 — "
@@ -1035,9 +1179,12 @@ def render(design: PlantDesign | None = None) -> str:
              f"건조 EVA {es.bag.dry_capacity_kg:.0f} kg/백 — **{es.bag.change_interval_h:.0f} 시간마다 "
              f"교체** (EVA 전량이 떨어졌을 때 {es.bag.eva_tph * 1000:.1f} kg/h 기준), "
              f"케이크 함수 {es.bag.cake_moisture * 100:.0f} %"],
-            ["기포제", "MIBC 물 기준 30 ppm", f"{ro.tag} 급광에서 넣는다 — 물을 따라 부선조까지 "
-             f"가므로 따로 더 넣지 않는다 (§6)"],
-            ["바이패스", es.bypass, "ES 정지 시 부선조는 계속 돈다 — 그동안 EVA 는 정광으로 간다"],
+            ["기포제", "MIBC 물 기준 30 ppm", f"{ro.tag} 급광(청수)에서 넣는다 — 물을 따라 부선조까지 "
+             f"간다. CT-1 에서는 보충수(공정수) 몫만 트림 (§6)"],
+            ["바이패스", es.bypass,
+             f"ES 가 서면 **AS-1 급광을 멈춘다** (인터록) — 부선을 계속 돌리면 정광 "
+             f"{es.bypass_grade * 100:.0f} wt%. 수동 바이패스는 정광을 TK-102 에 넣지 않고 따로 "
+             f"받을 때만"],
         ],
     ))
     add("")
@@ -1060,6 +1207,26 @@ def render(design: PlantDesign | None = None) -> str:
         "**계산에 없는 위험**은 EVA 가 덜 떨어진 복합입자다 — 입자에 EVA 가 남아 있으면 "
         "포수제 없이도 뜰 수 있고, 그 입자에 Ag 가 붙어 있으면 EVA 산물로 샌다. 이것은 "
         "S-1 의 거품 Ag 로만 알 수 있다.")
+    add("")
+    tol = es.tolerable_collector_activity
+    add(f"**포수제가 들어오면 — ES 앞을 청수로 하는 이유.** ES 는 체류가 길고(러퍼 "
+        f"{es_peak.rougher.residence_min:.0f} min) 공기가 많다. 은이 뜨는 속도를 정상 부선(같은 "
+        f"약제, 실기 환산)의 비율로 두고 계산하면:")
+    add("")
+    add(_table(
+        ["ES 안에서 은이 뜨는 속도 (정상 부선 대비)", "EVA 산물로 새는 Ag", "판정"],
+        [
+            [f"{a * 100:g} %" + (" (설계 — 포수제 없음)" if a == 0.0 else ""),
+             f"{loss * 100:.3f} %",
+             "한도 안" if loss <= db.EVA_AG_LOSS_LIMIT else "한도 초과"]
+            for a, loss in es.collector_sensitivity
+        ],
+    ))
+    add("")
+    add(f"정상 부선 속도의 **{tol * 100:.2f} %** 만으로 한도({db.EVA_AG_LOSS_LIMIT * 100:.1f} %)에 "
+        f"닿는다. 회수 공정수에 포수제가 얼마나 남는지, 그 농도에서 은이 얼마나 뜨는지는 아직 "
+        f"모른다 — 그래서 ES 앞은 청수로 한다 (§2.5). 확인은 S-1W(회수수로 S-1)와 연쇄 시험 "
+        f"C-1 에서 한다. 운전 중에는 EVA 산물 Ag 를 교대마다 분석해 감시한다.")
     add("")
     size_rows = []
     for d_um, rec in es.size_recovery:
@@ -1131,7 +1298,7 @@ def render(design: PlantDesign | None = None) -> str:
     add("")
     add("| 시험 | 방법 | 판정 |")
     add("|---|---|---|")
-    add(f"| S-1 회분 EVA 부선 | {db.PILOT_TAG} 을 E90 에서 한 회분 더 돌린 시료, "
+    add(f"| S-1 회분 EVA 부선 | {db.PILOT_TAG} 을 {ex} 에서 한 회분 더 돌린 시료, 청수, "
         f"{f.solids_mass_fraction * 100:.0f} wt%, MIBC 30 ppm, 포수제 없음. 거품을 0.5 · 1 · 2 · "
         f"4 · 8 min 에 나눠 받는다. 기포제 종류·농도, 공기량, 시간, 고체 농도, pH, 온도를 "
         f"적는다 | 판정 둘 — (1) 자유 EVA 의 t90 → 위 판정표, (2) 거품으로 간 Ag ≤ 급광 Ag 의 "
@@ -1139,8 +1306,32 @@ def render(design: PlantDesign | None = None) -> str:
         f"(Σ 거품 질량 x Ag 품위 / 급광 질량 x Ag 품위) |")
     add("| S-2 크기별 회수 | S-1 거품·미광의 EVA 입도 | 위 크기별 표와 비교해 Ea 를 역산한다 — "
         "박편이 설계보다 잘면 여기서 드러난다 |")
-    add(f"| S-3 실기 확인 | ES 시운전, 급광·미광·EVA 산물 채취, 바이패스와 교대 | 부선 급광 "
-        f"자유 EVA ≤ {db.EVA_FLOTATION_FEED_LIMIT * 100:.1f} wt%, EVA 산물 Ag |")
+    add(f"| S-1W 회수수 | S-1 과 같되 물을 C-1 에서 나온 회수수로 (포수제 · MIBC 잔류) | "
+        f"EVA 산물 Ag 가 청수 S-1 과 같은가 — 늘면 ES 앞 청수(W1) 유지, 같으면 W4 검토 |")
+    add(f"| S-1H 고농도 | S-1 을 {db.EVA_ALTERNATIVE_SOLIDS_WT * 100:.0f} wt% 로 | Ag 손실 ≤ "
+        f"{db.EVA_AG_LOSS_LIMIT * 100:.1f} % 이고 t90 이 판정선 안이면 W3 (§2.5) |")
+    add(f"| S-3 실기 확인 | ES 시운전, 급광·미광·EVA 산물 채취 (수동 바이패스는 정광을 따로 "
+        f"받으며) | 부선 급광 자유 EVA ≤ {db.EVA_FLOTATION_FEED_LIMIT * 100:.1f} wt%, EVA 산물 Ag |")
+    add("")
+    add("**연쇄 시험 C-1 — 세 단계를 잇는다.** 지금까지의 시험은 단계별로 따로다 (박리는 "
+        f"{db.PILOT_TAG}, EVA 부선은 S-1, 은 부선은 원료로만). 그 사이에서만 드러나는 두 가지 — "
+        "부착 EVA 가 은 부선에서 뜨는가, 회수수의 포수제가 ES 에서 은을 띄우는가 — 를 잠금 "
+        "사이클(locked cycle)로 가린다.")
+    add("")
+    add("| 순서 | 방법 | 보는 것 |")
+    add("|---|---|---|")
+    add(f"| 1 | {db.PILOT_TAG} 을 {ex} 에서 돌린다 | 부착 EVA 잔류 (≤ {residual_pct}) |")
+    add(f"| 2 | 그 산물로 S-1 (기포제만) — 첫 사이클은 청수, 다음부터 앞 사이클의 회수수 | "
+        f"EVA 산물의 Ag · 질량 |")
+    add("| 3 | S-1 미광에 포수제 · 촉진제 (CT-1 조건) → 1 L 러퍼 · 클리너 | 정광 Ag · EVA · Si "
+        "품위, 미광 Ag |")
+    add("| 4 | 1~3 을 3~5 사이클, 회수수를 이어 쓴다 | 사이클마다 위 항목 + 회수수 잔류 포수제 "
+        "(용존 유기물) · MIBC — 정상상태에 이르는가 |")
+    add("")
+    add(f"판정: 정상상태 사이클의 정광 ≥ {db.CONCENTRATE_GRADE_GUARANTEE * 100:.0f} wt% 이고 EVA "
+        f"산물 Ag ≤ {db.EVA_AG_LOSS_LIMIT * 100:.1f} % 면 박리 목표와 물 계통을 확정한다. 정광의 "
+        f"EVA 가 부착 EVA 잔류보다 뚜렷이 적으면 부착 EVA 가 뜨지 않는 것이다 — 목표를 낮출 수 "
+        f"있다. 사이클이 갈수록 EVA 산물 Ag 가 오르면 회수수의 포수제가 원인이다 — W1 을 지킨다.")
     add("")
     al_peak = f.component_tph(f.peak_tph)["Al"] * 1000.0
     h2_in_es = hydrogen_from_aluminium_nm3(al_peak * db.PLANT_AL_REACTION_EXAMPLE)
@@ -1169,14 +1360,14 @@ def render(design: PlantDesign | None = None) -> str:
         f"대안은 ES 를 {db.EVA_ALTERNATIVE_SOLIDS_WT * 100:.0f} wt% 에서 돌리고 CT-1 앞에서 "
         f"부선 농도로 묽히는 것이다 — 슬러리가 {alt.volumetric_flow_m3h:.2f} m3/h 로 "
         f"{base.volumetric_flow_m3h:.2f} m3/h 의 {alt.volumetric_flow_m3h / base.volumetric_flow_m3h * 100:.0f} %"
-        f" 가 되어 셀이 작아진다. 대신 같은 거품 물에 실려 가는 광물이 "
-        f"{solids_per_water:.1f}배가 되므로, S-1 에서 두 농도의 Ag 손실을 비교한 뒤에만 택한다.")
+        f" 가 되어 셀이 작아진다. ES 앞 청수도 함께 준다 (W3, §2.5). 대신 같은 거품 물에 실려 "
+        f"가는 광물이 {solids_per_water:.1f}배가 되므로, S-1H 에서 Ag 손실을 비교한 뒤에만 택한다.")
     add("")
-    add(f"물: 세척수 {db.EVA_CLEANER_WASH_WATER_M3H:.2f} m3/h 는 공정수에서 받고, EVA 케이크에 "
-        f"남아 나가는 물 {es.bag.cake_water_tph:.3f} m3/h 만큼 신수 보충이 는다. ES 가 부선 "
-        f"급광에서 빼는 물은 EVA 산물의 {es_peak.concentrate.water_tph:.3f} m3/h "
-        f"({es_peak.concentrate.water_tph / es_peak.new_feed.water_tph * 100:.1f} %)라 부선 "
-        f"계산은 급광 {f.solids_mass_fraction * 100:.0f} wt% 그대로 둔다.")
+    w_es = d.water_balance("1안")
+    add(f"물: 세척수 {db.EVA_CLEANER_WASH_WATER_M3H:.2f} m3/h 는 **청수**다 (§2.5). EVA 케이크에 "
+        f"남아 나가는 물은 {w_es.eva_cake_water:.3f} m3/h (백 설계 상한 "
+        f"{es.bag.cake_water_tph:.3f}). ES 미광은 {w_es.es_tails_water:.2f} m3/h 를 CT-1 로 보내고, "
+        f"부선 급광에 모자라는 물은 CT-1 보충수(공정수)가 채운다.")
     add("")
 
     # 3. 1안 --------------------------------------------------------------
@@ -1304,13 +1495,18 @@ def render(design: PlantDesign | None = None) -> str:
     add("")
     add(_filter_table([rfc.concentrate_filter, rfc.tailings_filter]))
     add("")
-    add(f"**설치 전력 {rfc.installed_kw:.2f} kW**, 공정수 회수 {rfc.water_recycle_m3h:.2f} m3/h. "
-        f"농축조 월류 블리드 {rfc.bleed_m3h:.2f} m3/h와 케이크 잔류수를 합한 "
-        f"신수 보충량은 **{rfc.fresh_makeup_m3h:.2f} m3/h** 다.")
+    w_r = d.water_balance("1안")
+    add(f"**설치 전력 {rfc.installed_kw:.2f} kW**, 공정수 회수 {rfc.water_recycle_m3h:.2f} m3/h "
+        f"(농축조 월류 {rfc.thickener_overflow_m3h:.2f} + 여액 {rfc.filtrate_m3h:.3f}). 공정수는 "
+        f"CT-1 보충수 {w_r.ct1_makeup:.2f} m3/h 와 세척수 {rfc.point_peak.wash_water_m3h:.2f} m3/h "
+        f"로 쓰고, 나머지 **{w_r.bleed:.2f} m3/h 가 블리드**다 — ES 앞에 넣은 청수가 그만큼 "
+        f"나오기 때문이다. 신수는 **{w_r.fresh:.2f} m3/h** (ES 앞 청수). 물수지와 대안은 §2.5.")
     add("")
-    add(f"이 가운데 필터프레스 여액 {rfc.filtrate_m3h:.3f} m3/h 는 공정수 탱크가 아니라 "
+    add(f"정광 여액 {rfc.concentrate_filter.filtrate_m3h:.3f} m3/h 는 공정수 탱크가 아니라 "
         f"**{rfc.filtrate_return_to}** 으로 되돌린다. 여포를 빠져나온 미립자가 남아 있어 "
-        f"공정수로 희석하면 그 안의 Ag 를 그대로 잃기 때문이다.")
+        f"공정수로 희석하면 그 안의 Ag 를 그대로 잃기 때문이다. 미광 여액 "
+        f"{rfc.tailings_filter.filtrate_m3h:.3f} m3/h 는 {db.TAILINGS_FILTRATE_TO}로 보낸다 — 급광 "
+        f"유량이 flux 로 고정이라 여기까지 돌리면 최대 처리량에서 급광이 넘친다.")
     add("")
 
     # 4. 2안 --------------------------------------------------------------
@@ -1390,12 +1586,15 @@ def render(design: PlantDesign | None = None) -> str:
     add("")
     add(_filter_table([mech.concentrate_filter, mech.tailings_filter]))
     add("")
-    add(f"여액 {mech.filtrate_m3h:.3f} m3/h 는 공정수 탱크를 거치지 않고 "
+    w_m = d.water_balance("2안")
+    add(f"정광 여액 {mech.concentrate_filter.filtrate_m3h:.3f} m3/h 는 공정수 탱크를 거치지 않고 "
         f"**{mech.filtrate_return_to}** 으로 직접 되돌린다 — 여포를 빠져나온 미립자에 "
-        f"Ag 가 남아 있어 회로 첫 단에서 한 번 더 부선 기회를 준다. "
-        f"두 농축조 월류수와 합친 공정수 회수량은 {mech.water_recycle_m3h:.2f} m3/h, "
-        f"블리드 {mech.bleed_m3h:.2f} m3/h와 케이크 잔류수를 보충하는 신수는 "
-        f"**{mech.fresh_makeup_m3h:.2f} m3/h** 다.")
+        f"Ag 가 남아 있어 회로 첫 단에서 한 번 더 부선 기회를 준다. 미광 여액 "
+        f"{mech.tailings_filter.filtrate_m3h:.3f} m3/h 는 {db.TAILINGS_FILTRATE_TO}로 간다. "
+        f"두 농축조 월류수와 합친 공정수 회수량은 {mech.water_recycle_m3h:.2f} m3/h, 블리드는 "
+        f"**{w_m.bleed:.2f} m3/h**, 신수는 **{w_m.fresh:.2f} m3/h** 다 (ES 앞 청수, §2.5). "
+        f"순환류가 러퍼에 물을 보태 CT-1 보충수는 필요 없고, {dil.tag} 이 ES 급광을 "
+        f"{w_m.es_feed_solids * 100:.1f} wt% 로 잡는다.")
     add("")
     for label, res in ((peak_label, mech.result_peak), (avg_label, mech.result_avg)):
         add(f"### 물질수지 — {label}")
@@ -1422,7 +1621,7 @@ def render(design: PlantDesign | None = None) -> str:
                 ["순환부하", f"{_pct(res.circulating_load, 1)} %"],
                 ["회로 희석·세척수 요구량 (여액 제외)",
                  f"{res.fresh_water_m3h:.2f} m3/h"],
-                ["필터 여액 러퍼 직송", f"{res.filtrate_return_m3h:.3f} m3/h"],
+                ["정광 여액 러퍼 직송", f"{res.filtrate_return_m3h:.3f} m3/h"],
                 ["물질수지 폐합 오차", f"{res.mass_balance_error_tph() * 1e6:.1e} g/h"],
             ],
         ))
@@ -1476,8 +1675,12 @@ def render(design: PlantDesign | None = None) -> str:
     add(_table(
         ["지표", "1안 연속 부선조", "2안 기계식 3단", "판정"],
         [
-            ["Ag 회수율", f"**{_pct(rp.recovery('Ag'))} %**", f"{_pct(mp.recovery('Ag'))} %",
+            ["Ag 회수율 (부선)", f"**{_pct(rp.recovery('Ag'))} %**", f"{_pct(mp.recovery('Ag'))} %",
              f"1안 {(rp.recovery('Ag') - mp.recovery('Ag')) * 100:+.1f} %p"],
+            ["**계통 Ag 회수율** (ES 손실 포함 — 보증값)",
+             f"**{d.overall_ag_recovery('1안') * 100:.2f} %**",
+             f"{d.overall_ag_recovery('2안') * 100:.2f} %",
+             f"ES 에서 EVA 산물로 {es.ag_loss(es.result_peak) * 100:.3f} % 가 샌다"],
             ["Ag 정광 품위", f"{rp.concentrate_grade('Ag') * 100:.1f} wt%",
              f"{mp.concentrate.grade_fraction('Ag') * 100:.1f} wt%", "동등 (복합입자 상한)"],
             ["Ag 미광 손실", f"{perf_tail(rp):.0f} g/t",
@@ -1489,6 +1692,14 @@ def render(design: PlantDesign | None = None) -> str:
              f"**{d.total_installed_kw(rfc):.2f} kW**",
              f"{d.total_installed_kw(mech):.2f} kW",
              f"전처리 {pre.installed_kw:.2f} kW 는 두 안 공통 (§2)"],
+            ["AS-1 박리 목표 (정광 품위 여유)",
+             f"**{d.eva_budget('1안').removal_target * 100:.1f} %**",
+             f"{d.eva_budget('2안').removal_target * 100:.1f} %",
+             "2안은 정광이 작아 여유도 작다 (§2.8)"],
+            ["신수 / 블리드 (W1, 최대 처리량)",
+             f"{d.water_balance('1안').fresh:.2f} / {d.water_balance('1안').bleed:.2f} m3/h",
+             f"{d.water_balance('2안').fresh:.2f} / {d.water_balance('2안').bleed:.2f} m3/h",
+             "ES 앞 청수가 정한다 (§2.5)"],
             ["부선기 설치 면적", f"Ø{rd.diameter_m * 1000:.0f} mm x {rd.riser_height_m + 1.2:.1f} m(H)",
              f"{mech.cells[0].geometry.width_m * 2.2:.1f} x "
              f"{mech.cells[0].geometry.width_m * 1.3:.1f} m", "1안"],
@@ -1542,6 +1753,27 @@ def render(design: PlantDesign | None = None) -> str:
             ],
         ))
         add("")
+    mibc = next(r for r in db.REAGENTS if r.role == "기포제")
+    mibc_rows = []
+    for label, w in ((peak_label, d.water_balance("1안")),
+                     (avg_label, d.water_balance("1안", f.average_tph))):
+        es_part = reagent_schedule((mibc,), w.dry_tph, w.es_tails_water)[0]
+        ct1_part = reagent_schedule((mibc,), w.dry_tph, w.ct1_makeup)[0]
+        mibc_rows.append([
+            label,
+            f"{w.es_tails_water:.2f} m3/h → {es_part.solution_l_h:.3f} L/h",
+            f"{w.ct1_makeup:.2f} m3/h → {ct1_part.solution_l_h:.3f} L/h",
+            f"{es_part.solution_l_h + ct1_part.solution_l_h:.3f} L/h",
+        ])
+    add(f"**MIBC 는 두 곳에서 넣는다.** {db.EVA_ROUGHER_TAG} 급광(청수 — ES 가 쓰고 부선조까지 "
+        f"간다)과 CT-1 보충수(공정수) 몫이다. 1안은 평균 처리량에서 보충수가 커 CT-1 몫이 "
+        f"절반 가까이 된다. 공정수에 남은 MIBC 만큼 CT-1 몫을 줄인다 (트림 — 거품 상태로 조정).")
+    add("")
+    add(_table(
+        ["처리량 (1안)", f"{db.EVA_ROUGHER_TAG} 급광 물 → MIBC", "CT-1 보충수 → MIBC (상한)", "합"],
+        mibc_rows,
+    ))
+    add("")
     add("**관리 포인트**")
     add("")
     for r in db.REAGENTS:
