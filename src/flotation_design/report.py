@@ -7,6 +7,7 @@ from . import references as ref
 from .attrition import short_circuit_fraction
 from .attrition_pilot import (
     continuous_energy_factor,
+    direct_drive_motor,
     hydrogen_from_aluminium_nm3,
     pilot_scale_up,
     ventilation_for_hydrogen_m3h,
@@ -294,7 +295,8 @@ def render(design: PlantDesign | None = None) -> str:
              f"상용 계열 {sc.nominal_cell_m3 * 1000:.0f} L 선정"],
             ["**총 유효 체적**", f"**{sc.total_working_volume_m3 * 1000:.1f} L**", ""],
             ["임펠러", f"대향 피치 축류 {dr.impellers_per_shaft} 단/축",
-             "위는 아래로, 아래는 위로 밀어 중간 높이에 **전단면**을 만든다"],
+             "위는 아래로, 아래는 위로 밀어 두 흐름이 중간 높이에서 부딪히는 **충돌면**을 만든다 — "
+             "입자끼리 문질린다"],
             ["임펠러 지름 / 간격",
              f"Ø{dr.diameter_m * 1000:.0f} mm / {dr.spacing_m * 1000:.0f} mm",
              f"조 폭 대비 {dr.diameter_m / g.across_flats_m:.2f} "
@@ -455,7 +457,7 @@ def render(design: PlantDesign | None = None) -> str:
     add("")
 
     # 2.6 파일럿 시험 셀 ---------------------------------------------------
-    pg, pd, ps = pc.geometry, pc.drive, pc.shaft
+    pg, pd, ps, pm = pc.geometry, pc.drive, pc.shaft, pc.motor
     size_lo, size_hi = db.PILOT_FEED_SIZE_UM
     tips = pc.test_tip_speeds_m_s
     top_tip, low_tip = max(tips), min(tips)
@@ -466,6 +468,11 @@ def render(design: PlantDesign | None = None) -> str:
     lel_pct = db.H2_LEL_VOL * 100.0
     design_vol_pct = lel_pct * db.H2_DESIGN_LEL_FRACTION
     tolerable_kg_h = pc.tolerable_aluminium_reaction_per_h * pc.aluminium_in_batch_kg
+    low_batch = pc.low_solids_batch
+    wall_ratio = pg.wetted_area_per_volume_m / g.wetted_area_per_volume_m
+    nozzle_l = pc.pipe_volume_l(50.0, 100.0)
+    top_rpm = pc.speed_rpm(top_tip)
+    run_min = [pc.run_minutes(t) for t in sorted(tips, reverse=True)]
     add(f"### 2.6 파일럿 시험 셀 {pc.tag} — 블랙파우더 EVA 박리")
     add("")
     add(f"AS-1 이 이 원료에서 EVA 를 뗄 수 있는지는 아직 시험 근거가 없다. {pc.tag} 은 그 "
@@ -481,15 +488,16 @@ def render(design: PlantDesign | None = None) -> str:
         [
             ["로터-스테이터 고전단", "유체 전단 τ = μ_eff x γ̇",
              f"γ̇ {ms.shear_rate_s:,.0f} /s · {ms.volume_fraction * 100:.1f} vol% 에서도 "
-             f"τ ≈ {ms.fluid_shear_pa / 1000:.1f} kPa — EVA 강도(≥ {ms.eva_strength_mpa:.0f} MPa)의 "
-             f"**1/{ms.shear_shortfall:,.0f}**. 서브mm 간극은 고농도 연마성 슬러리에서 못 버틴다 — "
-             f"**기각**"],
+             f"τ ≈ {ms.fluid_shear_pa / 1000:.1f} kPa — 벌크 EVA 강도(보수적 하한 "
+             f"{ms.eva_strength_mpa:.0f} MPa)의 **1/{ms.shear_shortfall:,.0f}**. Si/EVA 계면 "
+             f"박리강도는 따로 잰 값이 없지만 세 자릿수 차이라 유체 전단 단독은 주 박리 기구가 "
+             f"되기 어렵다. 서브mm 간극은 고농도 연마성 슬러리에서 못 버틴다 — **기각**"],
             ["비드밀", "비드 충격·압축",
              "취성 Si 가 무른 EVA 보다 먼저 깨지고 비드 마모분이 섞인다. 미분을 "
              "**만드는** 방법 — **기각**"],
             ["**어트리션**", f"입자-입자 마찰 ({pc.solids_volume_fraction * 100:.0f} vol% 층)",
              "각진 Si 모서리가 EVA 막을 긁는다. 접촉점 응력은 유체 전단과 차원이 다르다 — "
-             "**채택**. 단 미분에서의 효율 근거가 없다 → 이 시험"],
+             "**채택 (주 가설)**. 단 미분에서의 효율 근거가 없다 → 이 시험"],
             ["열분해 450~550 °C", "EVA 분해·휘발",
              "확실하지만 로와 배가스 처리가 붙는다 — 기계식이 탈락하면 가는 **대안**"],
         ],
@@ -501,8 +509,9 @@ def render(design: PlantDesign | None = None) -> str:
         f"{ms.sand_surface_m2_kg:.1f} m2/kg)의 **{ms.surface_ratio_to_sand:.0f}배**다. "
         f"**그래서 시험 셀이 먼저다.**")
     add("")
-    add(f"**셀 사양.** AS-1 과 기하 상사다 — 흐름 구조가 같으므로 **주속과 비에너지**만 "
-        f"맞추면 결과가 AS-1 로 넘어간다.")
+    add(f"**셀 사양.** AS-1 과 기하 상사다 — 흐름 구조가 같으므로 **주속과 비에너지**를 "
+        f"1차 스케일업 변수로 쓴다. 재질(금속 / 고무 라이닝)·규모·연속 혼합의 차이는 가정으로 "
+        f"남아 P-6 과 AS-1 시운전(T-3)에서 확인한다.")
     add("")
     add(_table(
         ["항목", f"{pc.tag}", "AS-1 (참고)", "근거"],
@@ -528,20 +537,21 @@ def render(design: PlantDesign | None = None) -> str:
              f"대향 피치 {pd.impellers_per_shaft}단 Ø{pd.diameter_m * 1000:.0f} mm, "
              f"간격 {pd.spacing_m * 1000:.0f} · 하단 간극 {pc.impeller_clearance_m * 1000:.0f} mm",
              f"Ø{dr.diameter_m * 1000:.0f} mm",
-             f"폭 대비 {pd.diameter_m / pg.across_flats_m:.2f}, Np {pd.power_number:.1f} — 같음"],
+             f"폭 대비 {pd.diameter_m / pg.across_flats_m:.2f}, Np {pd.power_number:.1f} (설계 가정) — 같음"],
             ["**기준 회전수 / 주속**",
              f"**{pd.speed_rpm:,.0f} rpm / {pd.tip_speed_m_s:.2f} m/s**",
              f"{dr.speed_rpm:.0f} rpm / {dr.tip_speed_m_s:.2f} m/s", "주속을 맞춘다"],
             ["시험 주속",
              " / ".join(f"{t:.1f}" for t in tips) + " m/s "
-             f"({pc.speed_rpm(low_tip):,.0f}~{pc.speed_rpm(top_tip):,.0f} rpm)",
+             f"({pc.speed_rpm(low_tip):,.0f}~{top_rpm:,.0f} rpm)",
              f"VFD {dr.tip_speed_min_m_s:.1f}~{dr.tip_speed_ceiling_m_s:.2f} m/s",
              f"VFD 상한 {pd.tip_speed_ceiling_m_s:.2f} m/s — 모터가 시험 범위를 막지 않는다"],
             ["흡수동력 / 모터",
              f"{pc.power_w(base_tip):,.0f} W ({base_tip:.0f} m/s) · "
-             f"{pc.power_w(top_tip):,.0f} W ({top_tip:.0f} m/s) / **{pd.motor_rating_kw:.1f} kW**",
-             f"{dr.absorbed_power_w / 1000:.2f} / {dr.motor_rating_kw:.1f} kW",
-             "모터는 상한 주속에서 고른다"],
+             f"{pc.power_w(top_tip):,.0f} W ({top_tip:.0f} m/s) / **{pd.motor_rating_kw:.1f} kW "
+             f"{pm.poles}극 직결**",
+             f"{dr.absorbed_power_w / 1000:.2f} / {dr.motor_rating_kw:.1f} kW (감속기)",
+             "모터는 상한 주속에서 고르고, 직결이라 극수로 토크-속도를 맞춘다 (아래)"],
             ["체적당 동력",
              f"{pc.specific_power_kw_m3(base_tip):.1f} kW/m3 ({base_tip:.0f} m/s)",
              f"{sc.specific_power_kw_m3:.1f} kW/m3",
@@ -550,12 +560,18 @@ def render(design: PlantDesign | None = None) -> str:
              f"**Ø{ps.outer_diameter_mm:.0f} mm** 중실, 길이 {ps.length_m:.2f} m",
              f"Ø{sh.outer_diameter_mm:.0f} mm, {sh.length_m:.2f} m",
              f"{ps.governed_by} 지배 — 임계 {ps.critical_speed_rpm:,.0f} rpm, "
-             f"{ps.check_speed_rpm:,.0f} rpm({top_tip:.0f} m/s)에서 {ps.critical_speed_ratio:.2f}배"],
+             f"{ps.check_speed_rpm:,.0f} rpm({top_tip:.0f} m/s)에서 {ps.critical_speed_ratio:.2f}배 "
+             f"(예비 질량 — 제작도로 재검산)"],
             ["**토크센서**", f"**{pc.torque_sensor_nm:.0f} N·m** 회전형 + 엔코더", "—",
              f"기동 토크 {ps.torque_nm:.1f} N·m 수용, {low_tip:.0f} m/s 운전 토크 "
              f"{pc.torque_nm(low_tip):.2f} N·m = {pc.lowest_torque_fraction * 100:.0f} % FS"],
             ["접액부", pc.wetted_material, sc.liner,
-             "**고무·우레탄 금지** — 마모분이 TGA 잔류 EVA 에 섞인다"],
+             f"**고무·우레탄 금지** — 마모분이 TGA 잔류 EVA 에 섞인다. AS-1 과 다른 점이라 "
+             f"P-6 에서 따로 본다 (접액 면적/체적 {pg.wetted_area_per_volume_m:.1f} 대 "
+             f"{g.wetted_area_per_volume_m:.1f} 1/m)"],
+            ["바닥 시료 밸브", pc.sample_valve, "—",
+             f"퍼지 한도 점당 건조 {pc.purge_budget_kg * 1000:.0f} g "
+             f"(슬러리 {pc.purge_budget_l * 1000:.0f} mL) — 아래"],
             ["재킷 / TCU",
              f"전열면 {pc.jacket_area_m2:.3f} m2, U {pc.jacket_u_w_m2k:.0f} W/m2K",
              "—",
@@ -564,15 +580,77 @@ def render(design: PlantDesign | None = None) -> str:
              + ("OK" if pc.temperature_control_ok else "**NG**")],
             ["헤드스페이스 배기", f"{pc.vent_m3h:.0f} m3/h + H2 검지", "덮개 배기 (§2.7)",
              f"LEL {db.H2_ALARM_LEL_FRACTION * 100:.0f} % 경보, "
-             f"{db.H2_DESIGN_LEL_FRACTION * 100:.0f} % 교반 정지"],
-            ["판정", "성립" if pc.is_adequate else "**NG**", "", "형상·잠김·축·센서·온도·주속"],
+             f"{db.H2_DESIGN_LEL_FRACTION * 100:.0f} % 교반 정지 — 실측 전 설계 기준"],
+            ["판정", "성립" if pc.is_adequate else "**NG**", "",
+             "형상·잠김·축·센서·온도·주속·모터"],
         ],
     ))
     add("")
-    add(f"**채취 일정.** 비에너지는 조 안에 **남은** 고체 기준으로 쌓인다 — 시료를 뜰 "
-        f"때마다 고체가 줄어 같은 동력에서 t 당 에너지가 빨리 오른다. 시료를 다 떠도 "
-        f"상단 임펠러 위에 {pc.minimum_submergence_m * 1000:.0f} mm "
-        f"({pc.minimum_submergence_m / pd.diameter_m:.2f} D)가 남는다.")
+    four = direct_drive_motor(
+        pm.rating_kw, 4, pm.supply_hz, pm.speeds_rpm, pm.absorbed_w, pm.start_torque_nm,
+        pm.torque_sensor_nm, pm.service_factor, pm.vfd_overload, pm.max_field_weakening,
+    )
+    alt_hz = 50.0 if pm.supply_hz == 60.0 else 60.0
+    alt = direct_drive_motor(
+        pm.rating_kw, pm.poles, alt_hz, pm.speeds_rpm, pm.absorbed_w, pm.start_torque_nm,
+        pm.torque_sensor_nm, pm.service_factor, pm.vfd_overload, pm.max_field_weakening,
+    )
+    f_lo, f_hi = pm.frequency_range_hz
+    add(f"**모터 — 직결이라 극수가 정한다.** {pd.motor_rating_kw:.1f} kW 는 {top_tip:.0f} m/s "
+        f"흡수동력 {pc.power_w(top_tip):,.0f} W 에 {pm.service_factor:.1f} 를 곱해 골랐다. 이 "
+        f"선정은 모터가 **기저속도 이상**에서 돌 때만 맞다 — 기저속도 아래에서는 낼 수 있는 "
+        f"출력이 회전수에 비례해 준다. {pc.tag} 은 토크센서를 축 사이에 넣느라 감속기 없이 "
+        f"직결하므로 기저속도는 극수와 전원({pm.supply_hz:.0f} Hz)이 정한다. VFD 는 중부하 정격"
+        f"(정격 토크의 {pm.vfd_overload * 100:.0f} %, 60 s)으로 하고, 토크 제한을 토크센서 정격 "
+        f"아래로 걸어 굳은 슬러리 기동({pm.start_torque_nm:.1f} N·m)과 센서 보호를 함께 맡긴다.")
+    add("")
+    add(_table(
+        ["극수", "기저속도", f"{top_rpm:,.0f} rpm 에서 낼 수 있는 출력", "흡수동력 대비",
+         "VFD 토크 제한", "판정"],
+        [
+            [f"{four.poles}극", f"{four.base_speed_rpm:,.0f} rpm",
+             f"{four.available_power_w(top_rpm) / 1000:.2f} kW", f"{four.power_margin:.2f}배",
+             f"{four.torque_limit_nm:.1f} N·m", "**불가** — 출력 여유·기동 토크 모두 모자람"],
+            [f"**{pm.poles}극**", f"{pm.base_speed_rpm:,.0f} rpm",
+             f"{pm.available_power_w(top_rpm) / 1000:.2f} kW", f"{pm.power_margin:.2f}배",
+             f"{pm.torque_limit_nm:.1f} N·m",
+             f"**채택** — {f_lo:.0f}~{f_hi:.0f} Hz, 약계자 {pm.field_weakening_ratio:.2f}배"],
+        ],
+    ))
+    add("")
+    add(f"{alt_hz:.0f} Hz 현장이어도 {pm.poles}극이 성립한다 — 과부하 토크가 "
+        f"{alt.vfd_overload * alt.rated_torque_nm:.1f} N·m 라 토크 제한을 센서 정격 "
+        f"{alt.torque_limit_nm:.0f} N·m 로 낮춘다. 흡수동력은 동력수 {pd.power_number:.1f} "
+        f"가정이다 — 실측 토크가 더 크면 이 여유가 먼저 준다 (토크-주속 곡선, 시험 계획).")
+    add("")
+    add("**비에너지의 정의.** 순 축동력을 **그 순간** 조 안에 남은 건조 고체로 나눠 시간 "
+        "적분한다.")
+    add("")
+    add("```")
+    add("E(t) = ∫₀ᵗ [T(τ) − T₀(ω)]·ω(τ) / M_s(τ) dτ")
+    add("```")
+    add("")
+    add("T 는 토크센서 실측, T₀(ω) 는 빈 조(공기 중)에서 같은 회전수로 잰 베어링·씰 마찰 "
+        "토크, M_s 는 시료와 퍼지로 뺀 고체를 모두 뺀 조 안 건조 고체다. 물만 넣은 토크는 "
+        "빼지 않는다 — 액체 교반 손실도 AS-1 비에너지(슬러리 흡수동력 / 건조 고체)에 들어 "
+        "있는 몫이다. 전력계를 쓰지 않는 것은 1 kW 급에서 모터·VFD 손실이 입력의 수십 % 라 "
+        "kWh/t 가 부풀고 스케일업이 틀어지기 때문이다.")
+    add("")
+    add("**E = 0 은 투입 직후다.** 물을 먼저 넣고 저속으로 돌리며 투입구로 고체를 넣는다 "
+        "(시간·속도를 SOP 로 고정). 투입이 끝나면 첫 시료를 뜨고 그때까지의 적분값 E₀ 를 "
+        "기록한다. 그 뒤의 축 에너지는 가속·감속을 포함해 전부 E 에 든다. 적합에는 E − E₀ 를 "
+        "쓰고, 첫 시료와 P-0 원료의 부착 EVA 가 TGA 반복 정밀도 밖으로 다르면(투입 중에 이미 "
+        "벗겨졌으면) 원료를 기준으로 전체 E 로 다시 맞춘다.")
+    add("")
+    add(f"**채취 일정.** 시료를 뜰 때마다 고체가 줄어 같은 동력에서 t 당 에너지가 빨리 "
+        f"오른다. 아래 경과 시간은 동력수 가정에서 나온 계획값이고, 실제로는 적분값이 "
+        f"채취점에 닿을 때 뜬다. 시료를 다 떠도 상단 임펠러 위에 "
+        f"{pc.minimum_submergence_m * 1000:.0f} mm ({pc.minimum_submergence_m / pd.diameter_m:.2f} D)"
+        f"가 남는다 — 임펠러 **중심면**(날개 높이 가운데) 기준이다. 날개 윗끝 기준이면 날개 "
+        f"투영 높이의 절반만큼 주므로, 기준 {pc.min_submergence_ratio:.1f} D "
+        f"({pc.submergence_required_m * 1000:.0f} mm)와의 여유 "
+        f"{(pc.minimum_submergence_m - pc.submergence_required_m) * 1000:.0f} mm 가 그 절반보다 "
+        f"커야 한다 (제작도 확인).")
     add("")
     first = pc.schedule(tips[0])
     schedules = [pc.schedule(t) for t in tips]
@@ -587,11 +665,28 @@ def render(design: PlantDesign | None = None) -> str:
         ],
     ))
     add("")
-    add("경과 시간은 계획값이다. 실제 비에너지는 **축 토크 x 각속도를 적분**해 채취 "
-        "순간의 값을 기록한다. 1 kW 급에서는 모터·VFD 손실이 입력의 수십 % 라 전력계로 "
-        "재면 kWh/t 가 부풀고 스케일업이 틀어진다. 빈 조(공기 중)에서 같은 회전수로 잰 "
-        "베어링 마찰 토크만 빼고, 물만 넣은 토크는 빼지 않는다 — 액체 교반 손실도 AS-1 "
-        "비에너지(슬러리 흡수동력 / 건조 고체)에 들어 있는 몫이다.")
+    add(f"**바닥 시료.** 조를 돌리는 채로 바닥 밸브로 뜬다. 인출 한도 "
+        f"{pc.max_withdrawal * 100:.0f} % 에서 시료 몫({pc.samples_per_batch} x "
+        f"{pc.sample_dry_kg:.2f} kg)을 빼면 퍼지로 버릴 수 있는 것은 점당 건조 "
+        f"**{pc.purge_budget_kg * 1000:.0f} g — 슬러리 {pc.purge_budget_l * 1000:.0f} mL** 뿐이다. "
+        f"일반 볼밸브는 DN50 노즐 100 mm 만으로 {nozzle_l:.2f} L 가 고여 한도의 "
+        f"{nozzle_l / pc.purge_budget_l:.0f}배다. 그래서 밸브 시트가 조 바닥 면에 있는 "
+        f"**플러시 바텀 밸브**로 한다. 제작 후 물·슬러리로 데드 볼륨을 실측해 퍼지량(그 이상)을 "
+        f"SOP 에 적고, 퍼지로 뺀 고체도 M_s 에서 뺀다. 바닥 시료가 조 전체를 대표하는지는 "
+        f"P-0B 에서 상·중·하 시료의 고체 농도로 확인한다.")
+    add("")
+    add("**부착 EVA 제거율.** 질량 기준으로 정의한다.")
+    add("")
+    add("```")
+    add("X(E) = 1 − m(E) / m(E₀),   m = (가라앉은 분획 질량수율) x (그 분획의 EVA 분율, TGA)")
+    add("```")
+    add("")
+    add("떨어진 EVA 는 뜬 분획으로 가므로 가라앉은 분획의 질량도 준다 — 분율만 비교하면 그 "
+        "몫을 놓친다. TGA(N2) 질량 감소가 EVA 인지는 P-0 에서 기준 EVA 와 원료로 온도 구간을 "
+        "정해 확인하고, 백시트 등 다른 유기물이 있으면 구간을 나눠 해석한다. XPS·FT-IR 은 "
+        f"정성 확인용이다 — 박리율을 내지 않는다. E90 은 1 − X = exp(−k(E − E₀)) 를 원점 통과 "
+        f"최소제곱(k = ΣE·y / ΣE², y = −ln(1 − X))으로 맞춰 ln 10 / k 로 구하고, "
+        f"X ≥ {db.PILOT_FIT_SATURATION * 100:.0f} % 인 점(잔류가 정량 하한 부근)은 뺀다.")
     add("")
     add(f"**온도.** 교반 동력은 전부 열이 된다. 단열이면 1 kWh/t 에 "
         f"{pc.adiabatic_rise_k_per_kwh_t:.2f} K, {max(pc.energy_points_kwh_t):g} kWh/t 에서 "
@@ -603,27 +698,71 @@ def render(design: PlantDesign | None = None) -> str:
         f"{pc.vent_m3h:.0f} m3/h 는 헤드스페이스를 {design_vol_pct:.1f} vol% (LEL "
         f"{lel_pct:.0f} % 의 {db.H2_DESIGN_LEL_FRACTION * 100:.0f} %) 아래로 묶으면서 Al 반응 "
         f"{tolerable_kg_h:.2f} kg/h — 회분 Al 의 **{pc.tolerable_aluminium_reaction_per_h * 100:.0f} %/h** "
-        f"까지 견딘다. 실제 발생률은 첫 회분 전에 P-0 밀폐 용기 시험으로 잰다. 알칼리성 "
-        f"분산제는 Al 반응을 빠르게 하므로 쓰지 않는다.")
+        f"까지 견딘다. 이것은 **실측 전의 설계 기준**이다. 정치 시험만으로는 어트리션이 "
+        f"산화막을 벗기는 효과를 못 담으므로 첫 정규 회분 전에 두 단계로 잰다 — P-0A 는 "
+        f"가스를 포집·계량할 수 있는 압력 등급 용기에서 원료 소량을 "
+        f"{pc.solids_mass_fraction * 100:.0f} wt% 로 (정치·교반), P-0B 는 {pc.tag} 첫 회분을 "
+        f"저속부터 올리며 H2 농도·배기 유량·토크·온도를 본다. 알칼리성 분산제는 Al 반응을 "
+        f"빠르게 하므로 쓰지 않는다.")
+    add("")
+    add("**인터록.**")
+    add("")
+    add(_table(
+        ["조건", "동작"],
+        [
+            ["배기팬 운전 확인 없음", "교반 기동 금지 · 운전 중이면 정지"],
+            ["뚜껑 열림", "교반 기동 금지"],
+            [f"H2 LEL {db.H2_ALARM_LEL_FRACTION * 100:.0f} %", "경보"],
+            [f"H2 LEL {db.H2_DESIGN_LEL_FRACTION * 100:.0f} %", "교반 정지 — **배기는 계속**"],
+            ["과속 · 고토크 · 베어링 고온 · 고진동",
+             f"정지 (고토크 = VFD 토크 제한 {pm.torque_limit_nm:.1f} N·m, 센서 정격 "
+             f"{pc.torque_sensor_nm:.0f} N·m 이하)"],
+            ["TCU 고장 · 슬러리 온도 이탈", "경보 — 그 구간 시료는 무효"],
+            ["비상정지", "정지"],
+        ],
+    ))
     add("")
     add("**시험 계획.**")
     add("")
     add("| 단계 | 조건 | 측정 | 산출물 |")
     add("|---|---|---|---|")
-    add("| **P-0** 원료 특성 | 교반 전 | TGA(N2) 유기물, **수중 부침 분리**(뜬 EVA = 유리 / "
-        "가라앉은 분획 TGA = 부착), 입도(−10 µm), 성분 분석(Al·Si), **밀폐 용기 H2 발생률** "
-        "(70 wt%, 24 h) | 부착 EVA 가 없으면 스크러빙은 필요 없다. H2 가 배기 한계를 "
-        "넘으면 배기부터 키운다 |")
+    add("| **P-0** 원료 특성 | 교반 전 (벤치) | TGA(N2) 유기물 — 기준 EVA 로 온도 구간 확인, "
+        "**수중 부침 분리**(뜬 EVA = 떨어진 EVA(free) / 가라앉은 분획의 EVA = 부착), "
+        "입도(−10 µm), 성분 분석(Al·Si), 입자 밀도, 초기 수분, 공정수 pH·전도도·경도 | "
+        "부착 EVA 가 없으면 스크러빙은 필요 없다. 실측 비중이 설계값(2.374)과 다르면 설계 "
+        "기준을 고쳐 다시 계산한다 |")
+    add(f"| **P-0A** H2 벤치 | 원료 소량, {pc.solids_mass_fraction * 100:.0f} wt%, 정치·교반 | "
+        f"가스 포집·계량 압력 등급 용기 — H2 발생 속도, pH, 온도, 시간 | 배기 한계(회분 Al "
+        f"{pc.tolerable_aluminium_reaction_per_h * 100:.0f} %/h)와 비교 — 넘으면 배기부터 키운다 |")
+    add(f"| **P-0B** 시운전 회분 | {pc.tag} 첫 회분, {low_tip:.0f} m/s 부터 단계 상승 | "
+        f"빈 조 마찰 토크 T₀(ω), 인터록 작동, 배기 유량, 밸브 데드 볼륨, 상·중·하 시료 "
+        f"농도, {top_tip:.0f} m/s · 최저 액면에서 표면 와류·공기 흡입, H2·토크·온도, 새 "
+        f"슬러리 토크-주속 곡선 | 이상 없으면 P-1. 이 회분은 곡선에 쓰지 않는다 |")
     add(f"| **P-1** 비에너지 곡선 | {base_tip:.0f} m/s, {pc.solids_mass_fraction * 100:.0f} wt%, "
         f"{base_temp:.0f} °C | 채취 {energies} kWh/t — 부착 EVA, 뜬 EVA 양·크기, −10 µm | "
-        f"1차 적합 1−X = exp(−kE) → **E90 = ln 10 / k** |")
+        f"1차 적합 1−X = exp(−k(E−E₀)) → **E90 = ln 10 / k** |")
+    add(f"| **P-1B** 시간 대조 | 벤치, 교반 없음, {pc.solids_mass_fraction * 100:.0f} wt%, "
+        f"{base_temp:.0f} °C, " + " · ".join(f"{m:.0f}" for m in run_min) + " min | "
+        f"부착 EVA, −10 µm, pH, H2 | 물에 담근 시간만으로 변하는가 — P-2 의 시간 차를 가른다 |")
     add(f"| **P-2** 주속 | {low_tip:.0f} · {top_tip:.0f} m/s | P-1 과 같은 채취점 | 곡선이 E "
         f"하나로 겹치는가 — 겹치면 E 만으로 스케일업, 아니면 주속 상한 |")
     add(f"| **P-3** 온도 | {side_temps} °C | 〃 | 겨울·여름 공정수 온도 영향 |")
-    add(f"| **P-4** 농도 | {pc.low_solids_mass_fraction * 100:.0f} wt% "
-        f"({pc.minimum_solids_volume_fraction * 100:.0f} vol% 하한) | 〃 | 로드밀 배출 농도 "
+    add(f"| **P-4** 농도 | {low_batch.solids_mass_fraction * 100:.0f} wt% "
+        f"({pc.minimum_solids_volume_fraction * 100:.0f} vol% 하한), 액면 같게 — 건조 "
+        f"{low_batch.dry_kg:.1f} kg + 물 {low_batch.water_kg:.1f} kg | 〃 (인출 "
+        f"{low_batch.withdrawal_fraction * 100:.0f} %, 잠김 "
+        f"{low_batch.minimum_submergence_m / pd.diameter_m:.2f} D) | 로드밀 배출 농도 "
         f"요구(≥ {db.ATTRITION_MILL_DISCHARGE_MIN_SOLIDS_WT * 100:.0f} wt%) 확인 |")
     add("| **P-5** 재현성 | P-1 조건 3회 | E90 편차, 질량 수지 폐합 | 판정의 신뢰구간 |")
+    add(f"| **P-6** 라이닝 민감도 (조건부) | P-1 조건에 천연고무 라이닝 판 + 우레탄 피복 "
+        f"임펠러 — P-1 의 E90 이 판정선 안일 때만 | E90, −10 µm, 토크. 고무 마모분은 EVA 없는 "
+        f"같은 입도 시료로 같은 운전을 해 TGA blank 로 뺀다 | 벽 재질이 박리를 바꾸는가 — "
+        f"파일럿은 접액 면적/체적이 AS-1 의 {wall_ratio:.2f}배라 차이가 있으면 여기서 더 크게 "
+        f"보인다 |")
+    add("")
+    add(f"매 회분 마지막 시료 뒤에는 주속을 {low_tip:.0f} → {base_tip:.0f} → {top_tip:.0f} m/s "
+        f"로 올리며 토크-주속 곡선을 적는다 — 곡선 채취가 끝난 뒤라 E 에 영향이 없다. 실측 "
+        f"동력수가 나오고, P-1 과 P-4 를 비교하면 농도에 따른 유동 특성이 보인다.")
     add("")
     add(f"**판정 기준.** 부착 EVA 제거율 **≥ {db.PILOT_EVA_REMOVAL_TARGET * 100:.0f} %** "
         f"(잠정 — 부선 급광이 받아들일 수 있는 잔류 EVA 가 정해지면 그 값으로) 이고, 그 비에너지에서 "
@@ -634,8 +773,11 @@ def render(design: PlantDesign | None = None) -> str:
         f"직렬에서는 적게 받는 입자가 생긴다. 1차 거동이면 같은 제거율에 필요한 연속 "
         f"비에너지는 회분의 {su.cells}기 기준 **{su.energy_factor:.2f}배**다 "
         f"(1기 {continuous_energy_factor(su.target_removal, 1):.2f}배, "
-        f"3기 {continuous_energy_factor(su.target_removal, 3):.2f}배). AS-1 이 낼 수 있는 "
-        f"비에너지를 이 배수로 나누면 **P-1 의 E90 이 얼마 이하여야 하는지**가 나온다.")
+        f"3기 {continuous_energy_factor(su.target_removal, 3):.2f}배). 이 환산은 박리가 "
+        f"비에너지에 대해 1차이고, 각 셀이 이상적 완전혼합조에 가깝고, {pc.tag} 에서 얻은 "
+        f"속도상수 k 가 AS-1 에서도 유지된다는 가정 위에 선다 — P-1·P-2 적합도와 AS-1 "
+        f"시운전(T-3)으로 확인한다. AS-1 이 낼 수 있는 비에너지를 이 배수로 나누면 **P-1 의 "
+        f"E90 이 얼마 이하여야 하는지**가 나온다.")
     add("")
     add(_table(
         ["P-1 의 E90 (회분)", "AS-1 연속 비에너지 능력", "판정"],
@@ -660,8 +802,31 @@ def render(design: PlantDesign | None = None) -> str:
     ))
     add("")
     add(f"2·3행은 {su.practical_max_tip_speed_m_s:.0f} m/s 에서 미립 기준을 지킬 때만 "
-        f"성립한다 — P-2 가 그것을 본다. 판정의 전제인 1차 거동은 P-1 곡선의 적합도로 "
-        f"확인하고, 벗어나면 환산 배수를 곡선에서 직접 다시 계산한다.")
+        f"성립한다 — P-2 가 그것을 본다. {su.practical_max_tip_speed_m_s:.0f} m/s 를 쓸 수 "
+        f"없으면 E90 ≤ {su.batch_limit_peak_kwh_t:.2f} 는 그대로, "
+        f"**≤ {su.batch_limit_average_kwh_t:.2f} kWh/t 면 현 모터 · 평균 처리량 상한** "
+        f"(VFD 상한 · {avg_label} 에서 {su.as1_average_kwh_t:.2f} kWh/t), 그 위는 셀 추가 또는 "
+        f"열분해다. 1차 거동에서 벗어나면(잔차가 E 에 따라 한쪽으로 쏠리면) 환산 배수를 "
+        f"곡선에서 직접 다시 계산한다.")
+    add("")
+    add("**확인이 필요한 가정.**")
+    add("")
+    add(f"- 동력수 {pd.power_number:.1f} 은 모터 예비 선정용 설계 가정이다. 실제 흡수동력과 "
+        f"토크는 {pc.tag} 토크 실측으로 바꾼다.")
+    add(f"- 임펠러 조립체 질량은 지름 세제곱 비례 예비값({pd.assembly_mass_kg:.1f} kg)이다. "
+        f"제작도가 나오면 실측 질량, 허브, 축 단차, 커플링·토크센서, 베어링 강성·스팬, "
+        f"외팔 길이, 잠긴 부가질량으로 임계회전수를 다시 검산하고, 모터-커플링-토크센서-축의 "
+        f"비틀림 고유진동수가 운전 회전수({pc.speed_rpm(low_tip):,.0f}~{top_rpm:,.0f} rpm)와 "
+        f"겹치지 않는지 본다.")
+    add(f"- EVA 강도 {db.EVA_STRENGTH_MPA:.0f} MPa 는 벌크 강도의 보수적 하한이다. 계면 "
+        f"박리강도가 아니다.")
+    add(f"- 부착 EVA 제거 목표 {db.PILOT_EVA_REMOVAL_TARGET * 100:.0f} % 는 잠정값, 박리의 "
+        f"1차 거동은 P-1 에서 확인한다.")
+    add(f"- 재킷 총괄 열전달계수 {pc.jacket_u_w_m2k:.0f} W/m2K 는 고농도 강교반의 보수값이다.")
+    add(f"- 수소 발생률은 문헌값이 없다. P-0A · P-0B 전에는 배기가 견디는 반응 속도(회분 Al 의 "
+        f"{pc.tolerable_aluminium_reaction_per_h * 100:.0f} %/h)만 안다.")
+    add("- 단위 테스트는 계산 구현의 일관성을 확인할 뿐이다. 동력수, 박리 속도, H2 발생률, "
+        "온도·농도·라이닝 영향 같은 물리 가정은 이 시험으로 확인한다.")
     add("")
     # 2.7 수소 -------------------------------------------------------------
     al_frac = f.component_tph(1.0)["Al"]
@@ -677,7 +842,7 @@ def render(design: PlantDesign | None = None) -> str:
         f"2Al + 6H2O → 2Al(OH)3 + 3H2 로 Al 1 kg 이 H2 "
         f"{hydrogen_from_aluminium_nm3(1.0):.2f} Nm3 를 낸다. 반응 속도는 입도·온도·pH·"
         f"표면 상태에 따라 자릿수가 달라 문헌값으로 정할 수 없다 — "
-        f"{pc.tag} P-0 에서 잰다.")
+        f"{pc.tag} P-0A · P-0B 에서 잰다.")
     add("")
     add(_table(
         ["항목", "값", "비고"],
@@ -694,7 +859,7 @@ def render(design: PlantDesign | None = None) -> str:
     add(f"대책: AS-1·DB-1 에 덮개를 씌우고 비스파크 팬으로 국소배기한다. 배기 덕트의 "
         f"수소 검지기가 LEL {db.H2_ALARM_LEL_FRACTION * 100:.0f} % 에서 경보, "
         f"{db.H2_DESIGN_LEL_FRACTION * 100:.0f} % 에서 AS-1 급광을 바이패스하고 플러싱을 "
-        f"시작한다 — 배기는 멈추지 않는다. 배기량은 P-0 발생률로 확정한다. 예시 규모면 "
+        f"시작한다 — 배기는 멈추지 않는다. 배기량은 P-0A · P-0B 발생률로 확정한다. 예시 규모면 "
         f"소형 팬 한 대이므로 비용이 아니라 **빠뜨리지 않는 것**이 문제다.")
     add("")
 
@@ -968,8 +1133,10 @@ def render(design: PlantDesign | None = None) -> str:
     add("|---|---|---|")
     add(f"| S-1 회분 EVA 부선 | {db.PILOT_TAG} 을 E90 에서 한 회분 더 돌린 시료, "
         f"{f.solids_mass_fraction * 100:.0f} wt%, MIBC 30 ppm, 포수제 없음. 거품을 0.5 · 1 · 2 · "
-        f"4 · 8 min 에 나눠 받는다 | 자유 EVA 의 t90 → 위 판정표. 거품의 Ag → 한도 "
-        f"{db.EVA_AG_LOSS_LIMIT * 100:.1f} % |")
+        f"4 · 8 min 에 나눠 받는다. 기포제 종류·농도, 공기량, 시간, 고체 농도, pH, 온도를 "
+        f"적는다 | 판정 둘 — (1) 자유 EVA 의 t90 → 위 판정표, (2) 거품으로 간 Ag ≤ 급광 Ag 의 "
+        f"{db.EVA_AG_LOSS_LIMIT * 100:.1f} % — 거품 품위가 아니라 질량 수지 "
+        f"(Σ 거품 질량 x Ag 품위 / 급광 질량 x Ag 품위) |")
     add("| S-2 크기별 회수 | S-1 거품·미광의 EVA 입도 | 위 크기별 표와 비교해 Ea 를 역산한다 — "
         "박편이 설계보다 잘면 여기서 드러난다 |")
     add(f"| S-3 실기 확인 | ES 시운전, 급광·미광·EVA 산물 채취, 바이패스와 교대 | 부선 급광 "
@@ -986,7 +1153,7 @@ def render(design: PlantDesign | None = None) -> str:
         f"위 H2 는 {h2_in_es / (es.design_air_m3h + h2_in_es) * 100:.1f} vol% 로 설계 상한을 "
         f"조금 넘지만 폭발하한 {db.H2_LEL_VOL * 100:.0f} vol% 의 "
         f"{h2_in_es / (es.design_air_m3h + h2_in_es) / db.H2_LEL_VOL * 100:.0f} % 다. 셀 상부에 "
-        f"H2 검지기를 두고 경보·동작점을 AS-1 덮개 배기와 같게 잡는다. 발생률은 P-0 에서 잰다.")
+        f"H2 검지기를 두고 경보·동작점을 AS-1 덮개 배기와 같게 잡는다. 발생률은 P-0A · P-0B 에서 잰다.")
     add("")
     alt = PulpProperties(f.peak_tph, f.solids_specific_gravity, db.EVA_ALTERNATIVE_SOLIDS_WT)
     base = PulpProperties(f.peak_tph, f.solids_specific_gravity, f.solids_mass_fraction)

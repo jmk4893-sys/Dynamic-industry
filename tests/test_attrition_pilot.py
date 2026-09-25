@@ -10,6 +10,8 @@
 3. **시험 범위 전체를 돈다** — 모터·축·토크센서·재킷이 최고 주속, 최저 설정
    온도에서도 성립하고, 시료를 다 떠도 임펠러가 잠겨 있다.
 4. **안전** — 수소 배기는 정상상태 희석식과 맞고, 접액부에 유기 재질이 없다.
+5. **결과를 같은 정의로 적는다** — 비에너지는 순 축동력을 남은 고체로 나눈
+   적분, 부착 EVA 제거율은 질량 기준, E90 은 원점 통과 1차 적합이다.
 """
 
 import math
@@ -22,12 +24,18 @@ from flotation_design.attrition_pilot import (
     AL_MOLAR_MASS_KG_MOL,
     MOLAR_VOLUME_NM3_MOL,
     adiabatic_rise_k_per_kwh_t,
+    attached_eva_removal,
     continuous_energy_factor,
+    direct_drive_motor,
+    fit_first_order,
     fluid_shear_stress_pa,
     hydrogen_from_aluminium_nm3,
+    net_specific_energy_kwh_t,
     relative_viscosity,
+    select_direct_drive_motor,
     size_pilot_cell,
     specific_surface_m2_kg,
+    synchronous_speed_rpm,
     tolerable_aluminium_reaction_kg_h,
     ventilation_for_hydrogen_m3h,
 )
@@ -306,6 +314,227 @@ class TestScaleUp(unittest.TestCase):
         su = self.su
         self.assertGreater(su.upsized_motor_kw, self.as1.drive.motor_rating_kw)
         self.assertTrue(su.upsized_shaft_ok)
+
+    def test_fallback_limit_without_the_top_speed(self):
+        # 9 m/s 가 미립 기준에서 떨어지면 현 모터로 평균 처리량까지 줄이는 것이 다음 수
+        su, as1 = self.su, self.as1
+        self.assertAlmostEqual(
+            su.as1_average_kwh_t,
+            as1.specific_energy_kwh_t(db.FEED.average_tph, as1.drive.tip_speed_ceiling_m_s),
+            places=12,
+        )
+        self.assertAlmostEqual(su.batch_limit_average_kwh_t * su.energy_factor,
+                               su.as1_average_kwh_t)
+        self.assertGreater(su.batch_limit_average_kwh_t, su.batch_limit_peak_kwh_t)
+        self.assertLess(su.batch_limit_average_kwh_t, su.batch_limit_average_upsized_kwh_t)
+        self.assertAlmostEqual(su.batch_limit_average_kwh_t, 5.58, places=2)
+
+
+class TestDirectDriveMotor(unittest.TestCase):
+    """토크센서 때문에 직결 — 출력만이 아니라 극수(기저속도)가 맞아야 한다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.p = build_pilot()
+        cls.m = cls.p.motor
+
+    def other(self, poles, hz):
+        m = self.m
+        return direct_drive_motor(m.rating_kw, poles, hz, m.speeds_rpm, m.absorbed_w,
+                                  m.start_torque_nm, m.torque_sensor_nm,
+                                  service_factor=m.service_factor,
+                                  vfd_overload=m.vfd_overload,
+                                  max_field_weakening=m.max_field_weakening)
+
+    def test_synchronous_speed(self):
+        self.assertEqual(synchronous_speed_rpm(6, 60.0), 1200.0)
+        self.assertEqual(synchronous_speed_rpm(4, 50.0), 1500.0)
+        for bad in ((3, 60.0), (0, 60.0), (4, 0.0)):
+            with self.assertRaises(ValueError):
+                synchronous_speed_rpm(*bad)
+
+    def test_motor_is_checked_at_the_test_speeds(self):
+        p, m = self.p, self.m
+        tips = sorted(p.test_tip_speeds_m_s)
+        self.assertEqual(m.speeds_rpm, tuple(p.speed_rpm(t) for t in tips))
+        self.assertEqual(m.absorbed_w, tuple(p.power_w(t) for t in tips))
+        self.assertEqual(m.rating_kw, p.drive.motor_rating_kw)
+        self.assertEqual(m.supply_hz, db.SITE_SUPPLY_HZ)
+        self.assertAlmostEqual(m.start_torque_nm, p.shaft.torque_nm, places=12)
+        self.assertEqual(m.torque_sensor_nm, p.torque_sensor_nm)
+
+    def test_available_power_follows_speed_below_base_and_is_flat_above(self):
+        m = self.m
+        base = m.base_speed_rpm
+        self.assertAlmostEqual(m.available_power_w(base / 2.0), m.rating_kw * 500.0)
+        self.assertAlmostEqual(m.available_power_w(base * 1.2), m.rating_kw * 1000.0)
+
+    def test_four_pole_direct_drive_cannot_carry_the_top_speed(self):
+        # 1.5 kW 는 9 m/s 흡수동력 x 1.4 로 고른 값이다. 4극(60 Hz 1,800 rpm)을 직결하면
+        # 1,322 rpm 은 기저속도 아래라 낼 수 있는 출력이 회전수에 비례해 줄어 여유가 없다.
+        four = self.other(4, db.SITE_SUPPLY_HZ)
+        self.assertLess(four.field_weakening_ratio, 1.0)
+        self.assertLess(four.power_margin, four.service_factor)
+        self.assertAlmostEqual(four.power_margin, 1.03, places=2)
+        self.assertFalse(four.start_ok)          # 150 % 과부하로도 기동 토크가 모자란다
+        self.assertFalse(four.is_adequate)
+
+    def test_site_supply_gives_a_six_pole_motor(self):
+        m = self.m
+        self.assertEqual(m.poles, 6)
+        self.assertTrue(m.is_adequate)
+        self.assertGreaterEqual(m.power_margin, m.service_factor - 1e-9)
+        self.assertGreaterEqual(m.field_weakening_ratio, 1.0)
+        self.assertLessEqual(m.field_weakening_ratio, db.PILOT_MAX_FIELD_WEAKENING)
+        # 가장 빠듯한 곳은 최고 시험 속도다 (흡수동력은 N^3, 낼 수 있는 출력은 N 이하)
+        self.assertEqual(m.power_margin, m.power_margins[-1])
+
+    def test_torque_limit_starts_the_bed_and_protects_the_sensor(self):
+        m = self.m
+        self.assertTrue(m.start_ok)
+        self.assertLessEqual(m.torque_limit_nm, m.torque_sensor_nm)
+        self.assertGreaterEqual(m.torque_limit_nm, m.start_torque_nm)
+        # 50 Hz 현장이면 과부하 토크가 센서 정격을 넘어 제한값이 센서 정격이 된다
+        m50 = self.other(6, 50.0)
+        self.assertTrue(m50.is_adequate)
+        self.assertGreater(m50.vfd_overload * m50.rated_torque_nm, m50.torque_sensor_nm)
+        self.assertEqual(m50.torque_limit_nm, m50.torque_sensor_nm)
+
+    def test_selection_is_the_fewest_poles_that_work(self):
+        m = self.m
+        for poles in (2, 4):
+            self.assertFalse(self.other(poles, db.SITE_SUPPLY_HZ).is_adequate)
+        with self.assertRaises(ValueError):
+            select_direct_drive_motor(m.rating_kw, m.supply_hz, m.speeds_rpm, m.absorbed_w,
+                                      start_torque_nm=100.0,
+                                      torque_sensor_nm=m.torque_sensor_nm)
+
+    def test_rejects_mismatched_records(self):
+        m = self.m
+        with self.assertRaises(ValueError):
+            direct_drive_motor(m.rating_kw, 6, 60.0, m.speeds_rpm, m.absorbed_w[:-1],
+                               m.start_torque_nm, m.torque_sensor_nm)
+
+
+class TestSamplingValve(unittest.TestCase):
+    """바닥 시료 — 퍼지도 인출이고, 비에너지 분모에서 빠진다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.p = build_pilot()
+
+    def test_purge_budget_fills_the_withdrawal_limit(self):
+        p = self.p
+        total = p.samples_per_batch * (p.sample_dry_kg + p.purge_budget_kg)
+        self.assertAlmostEqual(total, p.max_withdrawal * p.batch_dry_kg, places=12)
+        self.assertAlmostEqual(p.purge_budget_kg, 0.0333, places=4)
+
+    def test_ordinary_nozzle_holds_several_budgets(self):
+        # DN50 관 100 mm 만 해도 퍼지 한도의 몇 배 — 플러시 바텀이어야 한다
+        p = self.p
+        self.assertGreater(p.pipe_volume_l(50.0, 100.0), 5.0 * p.purge_budget_l)
+        self.assertIn("플러시 바텀", p.sample_valve)
+
+    def test_design_solids_batch_reproduces_the_charge(self):
+        p = self.p
+        b = p.batch_at(p.solids_mass_fraction)
+        self.assertAlmostEqual(b.dry_kg, p.batch_dry_kg, places=9)
+        self.assertAlmostEqual(b.water_kg, p.water_kg, places=9)
+        self.assertAlmostEqual(b.minimum_submergence_m, p.minimum_submergence_m, places=12)
+
+    def test_low_solids_batch_keeps_the_level_and_the_impeller_covered(self):
+        p = self.p
+        b = p.low_solids_batch
+        self.assertAlmostEqual(b.slurry_volume_m3, p.slurry_volume_m3, places=15)
+        self.assertLess(b.dry_kg, p.batch_dry_kg)
+        # 시료 질량은 그대로라 인출 비율은 한도를 조금 넘지만, 잠김이 판정한다
+        self.assertGreater(b.withdrawal_fraction, p.max_withdrawal)
+        self.assertTrue(b.submergence_ok)
+        self.assertAlmostEqual(b.dry_kg, 16.1, places=1)
+
+
+class TestWallMaterialScaling(unittest.TestCase):
+    def test_pilot_has_more_wall_per_volume_than_as1(self):
+        # 기하 상사면 접액 면적/체적은 크기에 반비례 — 벽 재질 영향은 파일럿에서 더 크다
+        p, as1 = build_pilot(), build_pretreatment().scrubber
+        ratio = p.geometry.wetted_area_per_volume_m / as1.geometry.wetted_area_per_volume_m
+        self.assertAlmostEqual(ratio, as1.geometry.across_flats_m / p.geometry.across_flats_m,
+                               delta=0.05)
+        self.assertAlmostEqual(p.jacket_area_m2, p.geometry.wetted_area_m2, places=15)
+
+
+class TestDataReduction(unittest.TestCase):
+    """시험 기록을 판정 입력으로 바꾸는 정의."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.p = build_pilot()
+
+    def test_constant_power_on_constant_solids(self):
+        e = net_specific_energy_kwh_t([0.0, 3600.0], [5.0, 5.0], [1000.0, 1000.0], [20.0, 20.0])
+        power = 5.0 * 2.0 * math.pi * 1000.0 / 60.0
+        self.assertAlmostEqual(e[-1], power / 20.0, places=9)   # W·h/kg = kWh/t
+        self.assertEqual(e[0], 0.0)
+
+    def test_integral_reproduces_the_sampling_plan(self):
+        p = self.p
+        tip = db.ATTRITION_DESIGN_TIP_SPEED_M_S
+        plan = p.schedule(tip)
+        times = [pt.elapsed_min * 60.0 for pt in plan]
+        torque = [p.torque_nm(tip)] * len(plan)
+        rpm = [p.speed_rpm(tip)] * len(plan)
+        # i 번째 시료를 뜬 뒤 다음 시료까지 조 안에 남는 고체
+        mass = [pt.dry_kg_before - p.sample_dry_kg for pt in plan]
+        energy = net_specific_energy_kwh_t(times, torque, rpm, mass)
+        for pt, e in zip(plan, energy):
+            self.assertAlmostEqual(e, pt.energy_kwh_t, places=9)
+
+    def test_friction_torque_is_taken_off(self):
+        args = ([0.0, 600.0, 1200.0], [4.0, 4.0, 4.0], [1000.0, 1000.0, 1000.0],
+                [20.0, 19.7, 19.4])
+        gross = net_specific_energy_kwh_t(*args)
+        net = net_specific_energy_kwh_t(*args, friction_torque_nm=lambda rpm: 0.4)
+        for g, n in zip(gross[1:], net[1:]):
+            self.assertAlmostEqual(n / g, 0.9, places=12)
+
+    def test_energy_rejects_bad_records(self):
+        with self.assertRaises(ValueError):
+            net_specific_energy_kwh_t([0.0, 1.0], [1.0], [1.0, 1.0], [1.0, 1.0])
+        with self.assertRaises(ValueError):
+            net_specific_energy_kwh_t([1.0, 0.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0])
+        with self.assertRaises(ValueError):
+            net_specific_energy_kwh_t([0.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 0.0])
+
+    def test_removal_is_mass_based(self):
+        # 떨어진 EVA 가 뜬 분획으로 가면 가라앉은 분획의 질량도 준다
+        mass = attached_eva_removal(0.98, 0.020, 0.97, 0.005)
+        grade = 1.0 - 0.005 / 0.020
+        self.assertAlmostEqual(mass, 1.0 - 0.97 * 0.005 / (0.98 * 0.020), places=12)
+        self.assertGreater(mass, grade)
+        self.assertAlmostEqual(attached_eva_removal(0.98, 0.02, 0.98, 0.005), grade, places=12)
+        with self.assertRaises(ValueError):
+            attached_eva_removal(0.98, 0.0, 0.97, 0.005)
+        with self.assertRaises(ValueError):
+            attached_eva_removal(1.2, 0.02, 0.97, 0.005)
+
+    def test_fit_recovers_first_order_rate(self):
+        energies = db.PILOT_ENERGY_POINTS_KWH_T[1:]
+        k = 0.5
+        removals = [1.0 - math.exp(-k * e) for e in energies]
+        fit = fit_first_order(energies, removals, db.PILOT_FIT_SATURATION)
+        self.assertAlmostEqual(fit.k_per_kwh_t, k, places=12)
+        self.assertAlmostEqual(fit.e90_kwh_t, math.log(10.0) / k, places=12)
+        # 10 · 20 kWh/t 는 99 % 를 넘어 적합에서 빠진다
+        self.assertEqual([energies[i] for i in fit.used], [1.0, 2.0, 5.0])
+        self.assertAlmostEqual(fit.removal(fit.e90_kwh_t), 0.9, places=12)
+
+    def test_fit_drops_nonphysical_points_and_needs_one(self):
+        fit = fit_first_order([1.0, 2.0, 5.0], [-0.02, 0.30, 0.995])
+        self.assertEqual(fit.used, (1,))
+        with self.assertRaises(ValueError):
+            fit_first_order([1.0, 2.0], [0.0, 1.0])
+        with self.assertRaises(ValueError):
+            fit_first_order([1.0], [0.5, 0.6])
 
 
 if __name__ == "__main__":

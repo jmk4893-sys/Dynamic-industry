@@ -991,10 +991,15 @@ def build_pilot(feed: FeedSpec = db.FEED) -> PilotCell:
         tcu_min_supply_c=db.PILOT_TCU_MIN_SUPPLY_C,
         solids_cp_kj_kgk=db.SOLIDS_CP_KJ_KGK,
         torque_sensor_series_nm=db.PILOT_TORQUE_SENSOR_SERIES_NM,
+        supply_hz=db.SITE_SUPPLY_HZ,
+        motor_pole_series=db.PILOT_MOTOR_POLE_SERIES,
+        vfd_overload=db.PILOT_VFD_OVERLOAD,
+        max_field_weakening=db.PILOT_MAX_FIELD_WEAKENING,
         vent_m3h=db.PILOT_VENT_M3H,
         h2_lel_vol=db.H2_LEL_VOL,
         h2_design_lel_fraction=db.H2_DESIGN_LEL_FRACTION,
         wetted_material=db.PILOT_WETTED_MATERIAL,
+        sample_valve=db.PILOT_SAMPLE_VALVE,
     )
 
 

@@ -14,8 +14,9 @@ Dynamic industry Development
   (은을 띄우는 것은 뒤의 부선조 몫)
 - 떨어진 EVA 는 **ES-1 · ES-2 EVA 부선**(기포제만, 포수제 앞)이 걷어낸다 — 2안 동체
   Ø1.0 m × 2셀 + Ø0.4 m 를 그대로 써서, 부선 급광의 자유 EVA ≤ 0.1 wt%, 은 손실 ≤ 0.3 %
-- 박리 성능을 시험으로 정할 **파일럿 시험 셀 PAS-1** — 회분 20 kg, AF 260 mm, AS-1 과 기하 상사,
-  블랙파우더(31~75 µm) EVA 박리 비에너지 곡선 → AS-1 판정 (플랜트 설비 아님)
+- 박리 성능을 시험으로 정할 **파일럿 시험 셀 PAS-1** (REV B) — 회분 20 kg, AF 260 mm, 1.5 kW 6극 직결,
+  AS-1 과 기하 상사, 블랙파우더(31~75 µm) EVA 박리 비에너지 곡선 → AS-1 판정 (플랜트 설비 아님).
+  H₂ 벤치·시운전 회분(P-0A·P-0B)을 먼저 하고 인터록을 둔다
 - Ag 회수율 **99.7 %**, 정광 **6.36 kg/h @ 46.3 wt% Ag** (농축비 78배)
 - 기액 체류시간 **1 분**, 설치 전력 **6.52 kW** (탈수 보조설비 포함) + 전처리 **15.01 kW**
   (어트리션 4.77 + 떨어진 EVA 분리 10.24)
@@ -58,7 +59,7 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (1279건)
+python -m unittest discover -s tests -t .                               # 테스트 (1307건)
 
 # 부품 카탈로그 — 형상·치수·재질에서 질량과 자중을 계산한다
 python3 tools/parts.py                     # 카탈로그 리포트 (품목·질량·자중 검증)
@@ -111,7 +112,7 @@ src/flotation_design/
   design_basis.py   설계 전제 — 급광 조성, 속도상수, 셀 사양, 약제 (여기만 고치면 됨)
   feed.py           급광 조성 · 슬러리 물성
   attrition.py      어트리션 스크러버 · 희석박스 (EVA 박리, 공통 전처리)
-  attrition_pilot.py 파일럿 시험 셀 PAS-1 · 방식 선정 · 회분→연속 환산 · 수소 배기
+  attrition_pilot.py 파일럿 시험 셀 PAS-1 · 방식 선정 · 직결 모터 극수 · 회분→연속 환산 · 수소 배기 · 시험 결과 정리(E·X·E90)
   eva_separation.py 떨어진 EVA 분리 — 잔막 모델 · 기포 충돌 속도상수 · 요구 제거율 · S-1 판정선
   kinetics.py       2속도(Kelsall) 반응속도 — 속부선/지연부선/비부선, 회분식·연속
   circuit.py        흐름 추적 · 복합입자 동반 · 순환부하 수렴 (2안)

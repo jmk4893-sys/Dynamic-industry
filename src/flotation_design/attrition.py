@@ -31,8 +31,9 @@
 2. 체류시간으로 소요 체적을 구하고 상용 규격 계열에서 셀을 고른다. 소규모에서는
    보통 **상용 최소 기종**이 지배한다 (필터프레스와 같은 상황).
 3. 팔각조 — 배플 없이 vortex 를 깨는 표준 형상.
-4. 대향 피치 축류 임펠러 2단/축. 위는 아래로, 아래는 위로 밀어 **중간
-   높이에 전단면**을 만든다. 여기서 입자끼리 갈린다.
+4. 대향 피치 축류 임펠러 2단/축. 위는 아래로, 아래는 위로 밀어 두 흐름이
+   **중간 높이에서 부딪히는 충돌면**을 만든다. 여기서 입자끼리 문질린다 —
+   유체 전단이 아니라 입자 접촉이 EVA 를 긁는다.
 5. 회전수는 **설계 주속**에서 정하고, 그 결과 나오는 흡수동력에서 비에너지
    (kWh/t)를 역산해 목표 범위에 드는지 확인한다. 실기 제어변수는 체류시간이
    아니라 **비에너지**이므로, VFD 로 주속을 조정해 처리량 변동을 흡수한다.
@@ -133,6 +134,18 @@ class AttritionCellGeometry:
         return self.plan_area_m2 * self.depth_m
 
     @property
+    def wetted_area_m2(self) -> float:
+        """운전 액면 아래 벽면 + 바닥 — 슬러리가 닿는 면적."""
+        perimeter = 8.0 * self.across_flats_m * math.tan(math.pi / 8.0)
+        return perimeter * self.depth_m + self.plan_area_m2
+
+    @property
+    def wetted_area_per_volume_m(self) -> float:
+        """접액 면적 / 유효 체적 (1/m). 기하 상사면 크기에 반비례한다 — 벽 재질의
+        영향은 작은 셀에서 더 크게 나타난다."""
+        return self.wetted_area_m2 / self.working_volume_m3
+
+    @property
     def shell_height_m(self) -> float:
         return self.depth_m + self.freeboard_m
 
@@ -177,7 +190,7 @@ class AttritionDrive:
 
     @property
     def spacing_m(self) -> float:
-        """대향 임펠러 사이 간격 — 전단면이 서는 거리. 통상 1 D."""
+        """대향 임펠러 사이 간격 — 두 흐름의 충돌면이 서는 거리. 통상 1 D."""
         return self.diameter_m
 
     def power_w_at_tip_speed(self, tip_speed_m_s: float) -> float:

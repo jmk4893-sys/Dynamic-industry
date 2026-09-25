@@ -395,8 +395,12 @@ class TestAttritionSheetsMatchDesign(unittest.TestCase):
 
     def test_tags_and_bypass_are_drawn(self):
         for probe in (db.ATTRITION_TAG, db.DILUTION_BOX_TAG, "바이패스",
-                      "전단면", "플러싱"):
+                      "충돌면", "플러싱"):
             self.assertFigure(probe, probe)
+
+    def test_impingement_plane_is_not_called_a_shear_plane(self):
+        # 유체 전단을 주 기구로 기각했으므로 두 임펠러 사이를 전단면이라 부르지 않는다
+        self.assertNotIn("전단면", self.html)
 
     def test_hydrogen_exhaust_is_drawn(self):
         # 후면 전극 Al 이 물과 반응 — 덮개 국소배기와 검지기가 계통도에 있어야 한다
@@ -543,10 +547,68 @@ class TestPilotSheetMatchesDesign(unittest.TestCase):
         self.assertFigure(f"1/{self.ms.shear_shortfall:,.0f}", "로터-스테이터 부족 배수")
 
     def test_no_organic_wetted_parts_on_the_sheet(self):
+        # 고무·우레탄은 P-6(라이닝 민감도)의 시험 조건으로만 나온다
         self.assertFigure("SUS316L", "접액부 재질")
         self.assertIn("SUS316L", self.pc.wetted_material)
+        base = re.sub(r'<tr><td class="tag">P-6</td>.*?</tr>', "", self.sheet, flags=re.S)
+        self.assertNotEqual(base, self.sheet)
         for word in ("고무", "우레탄"):
-            self.assertNotIn(word, self.sheet)
+            self.assertNotIn(word, base)
+
+    def test_motor_is_a_six_pole_direct_drive(self):
+        from flotation_design.attrition_pilot import direct_drive_motor
+
+        m = self.pc.motor
+        lo, hi = m.frequency_range_hz
+        self.assertFigure(f"{m.poles}극 직결 · {lo:.0f}~{hi:.0f} Hz", "극수 · 주파수")
+        self.assertFigure(f"VFD 토크 제한 {m.torque_limit_nm:.1f} N·m", "VFD 토크 제한")
+        self.assertFigure(f"기저 {m.base_speed_rpm:,.0f} rpm", "기저속도")
+        four = direct_drive_motor(m.rating_kw, 4, m.supply_hz, m.speeds_rpm, m.absorbed_w,
+                                  m.start_torque_nm, m.torque_sensor_nm)
+        self.assertFigure(f"4극이면 {four.available_power_w(m.max_speed_rpm) / 1000:.2f} kW",
+                          "4극 대비")
+
+    def test_energy_is_defined_on_remaining_solids(self):
+        self.assertFigure("E = ∫ (T − T₀)·ω / Mₛ dt", "비에너지 정의")
+        self.assertFigure("시료·퍼지로 뺀 고체를 뺀다", "M_s 정의")
+        self.assertNotIn("유리)", self.sheet)   # 유리(glass)로 읽히는 표기 금지
+
+    def test_flush_bottom_valve_and_purge_budget(self):
+        pc = self.pc
+        self.assertFigure("플러시 바텀", "바닥 밸브 형식")
+        self.assertFigure(f"한도 {pc.purge_budget_kg * 1000:.0f} g", "퍼지 한도")
+        self.assertNotIn("첫 50 g", self.sheet)
+
+    def test_rev_b_test_plan(self):
+        pc = self.pc
+        for tag in ("P-0A", "P-0B", "P-1B", "P-6"):
+            self.assertFigure(f'<td class="tag">{tag}</td>', tag)
+        runs = " · ".join(f"{pc.run_minutes(t):.0f}" for t in sorted(pc.test_tip_speeds_m_s,
+                                                                         reverse=True))
+        self.assertFigure(f"{runs} min", "시간 대조")
+        low = pc.low_solids_batch
+        self.assertFigure(f"건조 {low.dry_kg:.1f} kg", "P-4 회분")
+        self.assertFigure(f"잠김 {low.minimum_submergence_m / pc.drive.diameter_m:.2f} D",
+                          "P-4 잠김")
+        from flotation_design.plant import build_pretreatment
+
+        as1 = build_pretreatment().scrubber.geometry
+        ratio = pc.geometry.wetted_area_per_volume_m / as1.wetted_area_per_volume_m
+        self.assertFigure(f"AS-1 의 {ratio:.2f}배", "접액 면적/체적")
+        self.assertFigure(f"{pc.tolerable_aluminium_reaction_per_h * 100:.0f} %/h 와 비교",
+                          "H2 벤치 판정")
+
+    def test_interlocks_are_listed(self):
+        m = self.pc.motor
+        for text in ("배기팬 운전 확인 없음", "뚜껑 열림", "교반 정지 — 배기는 계속", "비상정지"):
+            self.assertFigure(text, text)
+        self.assertFigure(
+            f"VFD 토크 제한 {m.torque_limit_nm:.1f} N·m ≤ 센서 {self.pc.torque_sensor_nm:.0f} N·m",
+            "고토크 인터록",
+        )
+
+    def test_revision_is_b(self):
+        self.assertFigure("<span>REV</span><b>B</b>", "REV")
 
     def test_states_it_is_not_plant_equipment(self):
         self.assertFigure("플랜트 설비 아님", "플랜트 설비 아님")

@@ -11,8 +11,10 @@ AS-1 의 시험 T-1(비에너지-박리 곡선)도 맡는다. 플랜트 설비�
 ----------
 1. **로터-스테이터 고전단 믹서.** 유체가 입자 표면에 거는 전단응력은
    로터-스테이터 간극의 통상 상한 전단속도(1e5 /s)를 그대로 써도 70 wt% 슬러리
-   에서 약 1 kPa 다. 라미네이트 EVA 의 접착·응집 강도는 MPa 급이라 **천 배
-   가까이 모자란다.** 서브mm 간극은 50 vol% 연마성 Si 슬러리에서 버티지도 못한다.
+   에서 약 1 kPa 다. 비교 기준은 벌크 EVA 강도의 보수적 하한(1 MPa)이다 — Si/EVA
+   계면 박리강도는 따로 잰 값이 없지만, 세 자릿수 차이라 **유체 전단 단독을
+   주 박리 기구로 삼기 어렵다.** 서브mm 간극은 50 vol% 연마성 Si 슬러리에서
+   버티지도 못한다.
 2. **비드밀.** 세라믹 비드 습식 밀링은 미세 Si 를 **만드는** 방법이다. 무른
    EVA 보다 취성인 Si 가 먼저 깨지고, 비드 마모분이 시료를 오염시킨다.
 3. **열분해 (450~550 °C).** EVA 는 확실히 없어진다. 기계식이 시험에서 탈락하면
@@ -27,9 +29,10 @@ EVA 막을 긁는다 — 입자 접촉점의 국부 응력은 유체 전단과 �
 설계 논리
 --------
 1. **AS-1 과 기하 상사.** 팔각조, 깊이/폭 1.2, 대향 피치 2단, D/W 0.5, 간격 1D.
-   흐름 구조가 같으므로 **주속과 비에너지(kWh/t)** 만 맞추면 결과가 AS-1 로
-   넘어간다. 체적당 동력은 스케일업 변수가 아니다 — 같은 주속에서 D 에 반비례해
-   파일럿 쪽이 크다.
+   흐름 구조가 같으므로 **주속과 비에너지(kWh/t)** 를 1차 스케일업 변수로 쓴다.
+   재질(PAS-1 금속 / AS-1 고무 라이닝)·규모·연속 혼합의 차이는 가정으로 남아
+   P-6(라이닝 민감도)과 AS-1 시운전(T-3)에서 확인한다. 체적당 동력은 스케일업
+   변수가 아니다 — 같은 주속에서 D 에 반비례해 파일럿 쪽이 크다.
 2. **회분식 + 시간 채취.** 한 회분으로 비에너지 곡선 전체를 얻는다. 연속식은
    체류시간 분포 때문에 입자마다 받은 에너지가 달라 곡선이 흐려진다.
 3. **회분 질량은 시료가 정한다.** 채취점 수 x 시료 질량을 빼도 회분이 10 %
@@ -38,8 +41,15 @@ EVA 막을 긁는다 — 입자 접촉점의 국부 응력은 유체 전단과 �
    라 전력계로 재면 kWh/t 가 그만큼 부풀고 스케일업이 틀어진다. 빈 조(공기
    중)에서 같은 회전수로 잰 베어링·씰 마찰 토크를 빼면 슬러리에 들어간 순
    입력이 남는다. 물만 넣은 토크를 빼면 안 된다 — 액체 교반 손실도 AS-1 의
-   비에너지 정의(슬러리 흡수동력 / 건조 고체)에 들어 있는 몫이다.
-5. **모터는 상한 주속에서 고른다.** 시험 셀은 주속 범위 전체를 돌려야 한다.
+   비에너지 정의(슬러리 흡수동력 / 건조 고체)에 들어 있는 몫이다. 순 축동력을
+   **그 순간** 조 안에 남은 건조 고체로 나눠 시간 적분한다 —
+   ``E(t) = ∫ (T - T0(ω))·ω / M_s dτ`` (``net_specific_energy_kwh_t``). 시료와
+   퍼지로 뺀 고체는 M_s 에서 뺀다.
+5. **모터는 상한 주속에서 고르고, 극수로 토크-속도를 맞춘다.** 시험 셀은 주속
+   범위 전체를 돌려야 한다. 토크센서 때문에 감속기 없이 직결하므로 출력만으로는
+   모자라다 — 기저속도 아래에서는 낼 수 있는 출력이 회전수에 비례해 준다.
+   최고 시험 회전수가 기저속도 이상인 극수를 고르고(``DirectDriveMotor``), 기동
+   토크는 VFD 과부하로 내되 토크 제한을 토크센서 정격 아래로 건다.
 6. **접액부 전부 금속.** 고무·우레탄 마모분은 유기물이라 TGA 로 재는 잔류
    EVA 에 섞인다.
 7. **온도를 고정한다.** 단열이면 1 kWh/t 에 약 1.4 K 오른다. 재킷과
@@ -47,7 +57,11 @@ EVA 막을 긁는다 — 입자 접촉점의 국부 응력은 유체 전단과 �
    가장 낮은 설정 온도를 가장 높은 주속에서 지킬 수 있어야 한다.
 8. **수소.** 블랙파우더에는 후면 전극 Al 이 있고, 새로 깨진 Si 면도 물과
    반응한다. 덮개 있는 조의 헤드스페이스를 배기하고 검지한다. 알칼리성
-   분산제는 반응을 빠르게 하므로 쓰지 않는다.
+   분산제는 반응을 빠르게 하므로 쓰지 않는다. 배기량은 실측 전의 설계 기준이며,
+   발생률은 첫 정규 회분 전에 P-0A(가스 포집 벤치)와 P-0B(저속 기동)로 잰다.
+9. **결과는 질량 기준으로 적는다.** 부착 EVA 제거율은 가라앉은 분획의
+   질량수율 x EVA 분율(TGA)로 정의하고(``attached_eva_removal``), E90 은 첫 시료
+   뒤의 에너지로 원점 통과 1차 적합해 구한다(``fit_first_order``).
 
 연속 설비로의 환산
 ----------------
@@ -61,6 +75,7 @@ EVA 막을 긁는다 — 입자 접촉점의 국부 응력은 유체 전단과 �
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 from .attrition import (
@@ -232,6 +247,161 @@ def adiabatic_rise_k_per_kwh_t(solids_mass_fraction: float, solids_cp_kj_kgk: fl
 
 
 # --------------------------------------------------------------------------
+# 모터 — 직결 VFD 의 토크-속도
+# --------------------------------------------------------------------------
+def synchronous_speed_rpm(poles: int, supply_hz: float) -> float:
+    """유도전동기 동기속도 ``120 f / p`` — 직결이면 이것이 기저속도다."""
+    if poles < 2 or poles % 2:
+        raise ValueError("극수는 2 이상의 짝수여야 함")
+    if supply_hz <= 0:
+        raise ValueError("주파수는 양수여야 함")
+    return 120.0 * supply_hz / poles
+
+
+@dataclass(frozen=True)
+class DirectDriveMotor:
+    """감속기 없이 축에 직결한 VFD 모터의 토크-속도 검산.
+
+    출력으로 고른 모터(흡수동력 x 서비스계수 ≤ 정격)는 **기저속도 이상**에서만
+    정격 출력을 낸다. 기저속도 아래(정토크 영역)에서 낼 수 있는 출력은
+    ``정격 x 회전수 / 기저속도`` 로 줄어든다. 직결이면 기저속도가 극수와 전원
+    주파수로 정해지므로, 최고 시험 회전수에서 정격 출력이 나오는 극수를 골라야
+    출력 기준 선정이 성립한다. 기저속도 위(약계자)는 정출력이지만 너무 멀리
+    가면 최대 토크가 모자라므로 약계자 비율에 상한을 둔다. 기동은 VFD 과부하
+    토크로 하되, 토크 제한을 토크센서 정격 아래로 걸어 센서를 지킨다.
+    동기속도로 정격 토크를 잡으므로(실제는 슬립만큼 느려 토크가 조금 크다)
+    보수적이다.
+
+    Attributes:
+        speeds_rpm, absorbed_w: 시험 회전수와 그때의 흡수동력 (같은 순서).
+        start_torque_nm: 굳은 슬러리 기동 토크 (축 설계 토크와 같다).
+    """
+
+    rating_kw: float
+    poles: int
+    supply_hz: float
+    service_factor: float
+    vfd_overload: float
+    max_field_weakening: float
+    speeds_rpm: tuple[float, ...]
+    absorbed_w: tuple[float, ...]
+    start_torque_nm: float
+    torque_sensor_nm: float
+
+    @property
+    def base_speed_rpm(self) -> float:
+        return synchronous_speed_rpm(self.poles, self.supply_hz)
+
+    @property
+    def rated_torque_nm(self) -> float:
+        return self.rating_kw * 1000.0 / (2.0 * math.pi * self.base_speed_rpm / 60.0)
+
+    def available_power_w(self, speed_rpm: float) -> float:
+        """이 회전수에서 연속으로 낼 수 있는 출력 — 기저속도 아래는 회전수에 비례."""
+        return self.rating_kw * 1000.0 * min(1.0, speed_rpm / self.base_speed_rpm)
+
+    @property
+    def power_margins(self) -> tuple[float, ...]:
+        return tuple(
+            self.available_power_w(n) / p for n, p in zip(self.speeds_rpm, self.absorbed_w)
+        )
+
+    @property
+    def power_margin(self) -> float:
+        """시험 회전수 중 가장 빠듯한 곳의 (낼 수 있는 출력 / 흡수동력)."""
+        return min(self.power_margins)
+
+    @property
+    def max_speed_rpm(self) -> float:
+        return max(self.speeds_rpm)
+
+    @property
+    def field_weakening_ratio(self) -> float:
+        """최고 시험 회전수 / 기저속도. 1 아래면 약계자 없이 정토크 영역에서만 돈다."""
+        return self.max_speed_rpm / self.base_speed_rpm
+
+    @property
+    def frequency_range_hz(self) -> tuple[float, float]:
+        f = self.supply_hz / self.base_speed_rpm
+        return min(self.speeds_rpm) * f, self.max_speed_rpm * f
+
+    @property
+    def torque_limit_nm(self) -> float:
+        """VFD 토크 제한 — 과부하 토크와 토크센서 정격 중 작은 쪽."""
+        return min(self.vfd_overload * self.rated_torque_nm, self.torque_sensor_nm)
+
+    @property
+    def start_ok(self) -> bool:
+        return self.torque_limit_nm >= self.start_torque_nm
+
+    @property
+    def is_adequate(self) -> bool:
+        return (
+            self.power_margin >= self.service_factor - 1e-9
+            and self.field_weakening_ratio <= self.max_field_weakening + 1e-9
+            and self.start_ok
+        )
+
+
+def direct_drive_motor(
+    rating_kw: float,
+    poles: int,
+    supply_hz: float,
+    speeds_rpm: Sequence[float],
+    absorbed_w: Sequence[float],
+    start_torque_nm: float,
+    torque_sensor_nm: float,
+    service_factor: float = 1.4,
+    vfd_overload: float = 1.5,
+    max_field_weakening: float = 1.5,
+) -> DirectDriveMotor:
+    """극수 하나로 직결 모터를 검산한다."""
+    if len(speeds_rpm) != len(absorbed_w) or not speeds_rpm:
+        raise ValueError("회전수와 흡수동력은 같은 길이여야 함")
+    if min(speeds_rpm) <= 0 or min(absorbed_w) <= 0:
+        raise ValueError("회전수와 흡수동력은 양수여야 함")
+    return DirectDriveMotor(
+        rating_kw=rating_kw,
+        poles=poles,
+        supply_hz=supply_hz,
+        service_factor=service_factor,
+        vfd_overload=vfd_overload,
+        max_field_weakening=max_field_weakening,
+        speeds_rpm=tuple(speeds_rpm),
+        absorbed_w=tuple(absorbed_w),
+        start_torque_nm=start_torque_nm,
+        torque_sensor_nm=torque_sensor_nm,
+    )
+
+
+def select_direct_drive_motor(
+    rating_kw: float,
+    supply_hz: float,
+    speeds_rpm: Sequence[float],
+    absorbed_w: Sequence[float],
+    start_torque_nm: float,
+    torque_sensor_nm: float,
+    pole_series: Sequence[int] = (2, 4, 6, 8),
+    service_factor: float = 1.4,
+    vfd_overload: float = 1.5,
+    max_field_weakening: float = 1.5,
+) -> DirectDriveMotor:
+    """성립하는 가장 적은 극수를 고른다 (극수가 적을수록 같은 출력에서 작고 싸다).
+
+    Raises:
+        ValueError: 후보 극수 중 어느 것도 출력·약계자·기동을 함께 만족하지 못할 때.
+    """
+    for poles in sorted(pole_series):
+        motor = direct_drive_motor(
+            rating_kw, poles, supply_hz, speeds_rpm, absorbed_w, start_torque_nm,
+            torque_sensor_nm, service_factor, vfd_overload, max_field_weakening,
+        )
+        if motor.is_adequate:
+            return motor
+    raise ValueError("후보 극수로 직결 모터의 토크-속도 조건을 만족할 수 없음")
+
+
+# --------------------------------------------------------------------------
 # 시험 셀
 # --------------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -252,6 +422,29 @@ class SamplePoint:
 
 
 @dataclass(frozen=True)
+class PilotBatch:
+    """같은 액면에서 농도를 바꾼 회분 (P-4 농도 시험).
+
+    기하 상사를 지키려면 액면(= 슬러리 체적)을 그대로 두고 건조 고체를 줄인다.
+    시료 질량은 분석 몫이라 줄이지 않으므로 인출 비율이 기준보다 조금 커질 수
+    있다 — 그때는 마지막 시료 뒤 임펠러 잠김으로 판정한다.
+    """
+
+    solids_mass_fraction: float
+    dry_kg: float
+    water_kg: float
+    slurry_volume_m3: float
+    withdrawal_fraction: float
+    minimum_fill_level_m: float
+    minimum_submergence_m: float
+    submergence_required_m: float
+
+    @property
+    def submergence_ok(self) -> bool:
+        return self.minimum_submergence_m >= self.submergence_required_m
+
+
+@dataclass(frozen=True)
 class PilotCell:
     """회분식 파일럿 어트리션 셀 1기."""
 
@@ -269,6 +462,7 @@ class PilotCell:
     geometry: AttritionCellGeometry
     drive: AttritionDrive
     shaft: AttritionShaft
+    motor: DirectDriveMotor
     impeller_clearance_m: float
     min_submergence_ratio: float
     jacket_u_w_m2k: float
@@ -276,6 +470,7 @@ class PilotCell:
     solids_cp_kj_kgk: float
     torque_sensor_nm: float
     wetted_material: str
+    sample_valve: str
     vent_m3h: float
     aluminium_mass_fraction: float
     h2_lel_vol: float
@@ -336,7 +531,9 @@ class PilotCell:
 
     @property
     def upper_impeller_elevation_m(self) -> float:
-        """바닥에서 상단 임펠러까지 — 하단 간극 + 임펠러 간격(1 D)."""
+        """바닥에서 상단 임펠러 **중심면**(날개 높이의 가운데)까지 — 하단 간극 +
+        임펠러 간격(1 D). 잠김은 이 면에서 잰다. 날개 윗끝 기준이면 날개 투영
+        높이의 절반만큼 준다."""
         return self.impeller_clearance_m + self.drive.spacing_m
 
     @property
@@ -344,8 +541,59 @@ class PilotCell:
         return self.minimum_fill_level_m - self.upper_impeller_elevation_m
 
     @property
+    def submergence_required_m(self) -> float:
+        return self.min_submergence_ratio * self.drive.diameter_m
+
+    @property
     def submergence_ok(self) -> bool:
-        return self.minimum_submergence_m >= self.min_submergence_ratio * self.drive.diameter_m
+        return self.minimum_submergence_m >= self.submergence_required_m
+
+    # -- 바닥 시료 ---------------------------------------------------------
+    @property
+    def purge_budget_kg(self) -> float:
+        """시료 1점마다 퍼지로 버릴 수 있는 건조 고체 — 인출 한도에서 시료 몫을 뺀 나머지.
+
+        퍼지는 비에너지 분모(조 안 건조 고체)에서도 빠진다. 이보다 많이 버려야
+        하는 밸브면 인출 한도를 넘는다.
+        """
+        spare = self.max_withdrawal * self.batch_dry_kg - self.samples_per_batch * self.sample_dry_kg
+        return max(0.0, spare) / self.samples_per_batch
+
+    @property
+    def purge_budget_l(self) -> float:
+        """퍼지 한도를 슬러리 체적으로 — 밸브·노즐 데드 볼륨과 비교하는 값."""
+        slurry_kg = self.purge_budget_kg / self.solids_mass_fraction
+        return slurry_kg / self.pulp_density_kg_m3 * 1000.0
+
+    def pipe_volume_l(self, bore_mm: float, length_mm: float) -> float:
+        """관 체적 (L) — 노즐·밸브 데드 볼륨 어림용."""
+        return math.pi / 4.0 * (bore_mm / 1000.0) ** 2 * (length_mm / 1000.0) * 1000.0
+
+    # -- 농도 시험 회분 ------------------------------------------------------
+    def batch_at(self, solids_mass_fraction: float) -> PilotBatch:
+        """같은 액면에서 다른 농도의 회분 — 기하 상사를 지키는 P-4 회분."""
+        if not 0.0 < solids_mass_fraction < 1.0:
+            raise ValueError("solids_mass_fraction 은 0~1 사이여야 함")
+        w = solids_mass_fraction
+        density = 1000.0 / (w / self.solids_sg + (1.0 - w))
+        slurry_kg = self.slurry_volume_m3 * density
+        dry = slurry_kg * w
+        withdrawal = self.samples_per_batch * self.sample_dry_kg / dry
+        low_level = self.fill_level_m * (1.0 - withdrawal)
+        return PilotBatch(
+            solids_mass_fraction=w,
+            dry_kg=dry,
+            water_kg=slurry_kg - dry,
+            slurry_volume_m3=self.slurry_volume_m3,
+            withdrawal_fraction=withdrawal,
+            minimum_fill_level_m=low_level,
+            minimum_submergence_m=low_level - self.upper_impeller_elevation_m,
+            submergence_required_m=self.submergence_required_m,
+        )
+
+    @property
+    def low_solids_batch(self) -> PilotBatch:
+        return self.batch_at(self.low_solids_mass_fraction)
 
     # -- 동력·토크 --------------------------------------------------------
     @property
@@ -419,9 +667,8 @@ class PilotCell:
 
     @property
     def jacket_area_m2(self) -> float:
-        """재킷 전열면 — 액면 아래 팔각 측벽 + 바닥."""
-        perimeter = 8.0 * self.geometry.across_flats_m * math.tan(math.pi / 8.0)
-        return perimeter * self.fill_level_m + self.geometry.plan_area_m2
+        """재킷 전열면 — 액면 아래 팔각 측벽 + 바닥 (= 접액 면적)."""
+        return self.geometry.wetted_area_m2
 
     def coolant_approach_k(self, tip_speed_m_s: float) -> float:
         """설정값을 지키려면 냉매가 슬러리보다 이만큼 차가워야 한다."""
@@ -463,6 +710,7 @@ class PilotCell:
             and self.torque_sensor_ok
             and self.temperature_control_ok
             and self.drive.tip_speed_ceiling_m_s >= self.max_test_tip_speed_m_s - 1e-9
+            and self.motor.is_adequate
         )
 
 
@@ -498,10 +746,15 @@ def size_pilot_cell(
     tcu_min_supply_c: float = -5.0,
     solids_cp_kj_kgk: float = 0.73,
     torque_sensor_series_nm: tuple[float, ...] = (5.0, 10.0, 20.0, 50.0, 100.0),
+    supply_hz: float = 60.0,
+    motor_pole_series: tuple[int, ...] = (2, 4, 6, 8),
+    vfd_overload: float = 1.5,
+    max_field_weakening: float = 1.5,
     vent_m3h: float = 30.0,
     h2_lel_vol: float = 0.04,
     h2_design_lel_fraction: float = 0.25,
     wetted_material: str = "SUS316L 전 접액부 (라이닝·피복 없음)",
+    sample_valve: str = "DN50 플러시 바텀 밸브",
     round_to_m: float = 0.005,
     speed_round_to_rpm: float = 10.0,
 ) -> PilotCell:
@@ -569,6 +822,21 @@ def size_pilot_cell(
     if sensor is None:
         raise ValueError("토크센서 정격 계열을 초과")
 
+    # 6. 직결 모터 극수 — 최고 시험 회전수에서 정격 출력, 기동은 센서 정격 안에서
+    tips = sorted(test_tip_speeds_m_s)
+    motor = select_direct_drive_motor(
+        drive.motor_rating_kw,
+        supply_hz,
+        [drive.speed_rpm_at_tip_speed(t) for t in tips],
+        [drive.power_w_at_tip_speed(t) for t in tips],
+        start_torque_nm=shaft.torque_nm,
+        torque_sensor_nm=sensor,
+        pole_series=motor_pole_series,
+        service_factor=motor_service_factor,
+        vfd_overload=vfd_overload,
+        max_field_weakening=max_field_weakening,
+    )
+
     return PilotCell(
         tag=tag,
         duty=duty,
@@ -584,6 +852,7 @@ def size_pilot_cell(
         geometry=geometry,
         drive=drive,
         shaft=shaft,
+        motor=motor,
         impeller_clearance_m=impeller_clearance_ratio * drive.diameter_m,
         min_submergence_ratio=min_submergence_ratio,
         jacket_u_w_m2k=jacket_u_w_m2k,
@@ -591,11 +860,118 @@ def size_pilot_cell(
         solids_cp_kj_kgk=solids_cp_kj_kgk,
         torque_sensor_nm=sensor,
         wetted_material=wetted_material,
+        sample_valve=sample_valve,
         vent_m3h=vent_m3h,
         aluminium_mass_fraction=aluminium_mass_fraction,
         h2_lel_vol=h2_lel_vol,
         h2_design_lel_fraction=h2_design_lel_fraction,
     )
+
+
+# --------------------------------------------------------------------------
+# 시험 결과 정리 — 비에너지 · 부착 EVA 제거율 · E90
+# --------------------------------------------------------------------------
+def net_specific_energy_kwh_t(
+    times_s: Sequence[float],
+    torques_nm: Sequence[float],
+    speeds_rpm: Sequence[float],
+    dry_kg: Sequence[float],
+    friction_torque_nm: Callable[[float], float] | None = None,
+) -> tuple[float, ...]:
+    """토크 기록에서 누적 비에너지 ``E(t)`` (kWh/t) 를 구한다.
+
+    ``E(t) = ∫ [T(τ) - T0(ω)]·ω(τ) / M_s(τ) dτ``
+
+    - ``T0(ω)`` 는 **빈 조(공기 중)** 에서 같은 회전수로 잰 베어링·씰 마찰 토크다.
+      물만 넣고 잰 토크는 빼지 않는다 — 액체 교반 손실도 AS-1 비에너지에 든다.
+    - ``M_s`` 는 그 구간 동안 조 안에 남아 있던 건조 고체다. ``dry_kg[i]`` 는
+      i 번째 기록부터 다음 기록까지의 값이며, 시료와 퍼지로 뺀 고체를 모두 뺀다.
+    - 가속·감속 구간도 기록에 있으면 그대로 적분한다. 적분은 사다리꼴이다.
+
+    Returns:
+        기록 시각마다의 누적 비에너지. 첫 값은 0 이다 — 적분을 어디서 시작할지
+        (투입 직후 첫 시료 E0)는 호출하는 쪽이 정한다.
+    """
+    n = len(times_s)
+    if n == 0 or not (len(torques_nm) == len(speeds_rpm) == len(dry_kg) == n):
+        raise ValueError("시각·토크·회전수·건조 고체 기록은 같은 길이여야 함")
+    if any(b < a for a, b in zip(times_s, times_s[1:])):
+        raise ValueError("시각은 증가 순이어야 함")
+    if min(dry_kg) <= 0:
+        raise ValueError("건조 고체는 양수여야 함")
+    friction = friction_torque_nm or (lambda rpm: 0.0)
+
+    def net_power_w(i: int) -> float:
+        omega = 2.0 * math.pi * speeds_rpm[i] / 60.0
+        return (torques_nm[i] - friction(speeds_rpm[i])) * omega
+
+    energy = [0.0]
+    for i in range(n - 1):
+        joules = 0.5 * (net_power_w(i) + net_power_w(i + 1)) * (times_s[i + 1] - times_s[i])
+        # J/kg = kJ/t, 3600 kJ = 1 kWh
+        energy.append(energy[-1] + joules / dry_kg[i] / 3600.0)
+    return tuple(energy)
+
+
+def attached_eva_removal(
+    sink_yield_ref: float, sink_eva_ref: float, sink_yield: float, sink_eva: float
+) -> float:
+    """부착 EVA 제거율 ``X = 1 - m(E) / m(ref)`` — **질량 기준**.
+
+    ``m`` 은 시료 건조 질량당 부착 EVA = 수중 부침 분리에서 가라앉은 분획의
+    질량수율 x 그 분획의 EVA 분율(TGA). 떨어진 EVA 는 뜬 분획으로 가므로 가라앉은
+    분획의 질량도 준다 — 분율(품위)만 비교하면 그 몫을 놓친다. 기준(ref)은 첫
+    시료(E0)이고, P-0 원료와 비교해 투입 중에 이미 벗겨졌는지 본다.
+    """
+    for v in (sink_yield_ref, sink_eva_ref, sink_yield, sink_eva):
+        if not 0.0 <= v <= 1.0:
+            raise ValueError("질량수율과 EVA 분율은 0~1 사이여야 함")
+    reference = sink_yield_ref * sink_eva_ref
+    if reference <= 0:
+        raise ValueError("기준 시료에 부착 EVA 가 없으면 제거율을 정의할 수 없음")
+    return 1.0 - sink_yield * sink_eva / reference
+
+
+@dataclass(frozen=True)
+class FirstOrderFit:
+    """``1 - X = exp(-kE)`` 원점 통과 적합 결과.
+
+    Attributes:
+        used: 적합에 쓴 점의 순서 번호 (포화·비물리 점 제외).
+    """
+
+    k_per_kwh_t: float
+    used: tuple[int, ...]
+
+    @property
+    def e90_kwh_t(self) -> float:
+        return math.log(10.0) / self.k_per_kwh_t
+
+    def removal(self, energy_kwh_t: float) -> float:
+        return 1.0 - math.exp(-self.k_per_kwh_t * energy_kwh_t)
+
+
+def fit_first_order(
+    energies_kwh_t: Sequence[float], removals: Sequence[float], saturation: float = 0.99
+) -> FirstOrderFit:
+    """E90 를 구하는 1차 적합 — ``y = -ln(1 - X)``, ``k = Σ E·y / Σ E²``.
+
+    E 는 첫 시료(E0) 뒤부터 센 값이다. X ≤ 0 인 점(기준보다 나빠진 점)과
+    X ≥ ``saturation`` 인 점(잔류가 TGA 정량 하한 부근)은 뺀다. 1차 거동인지는
+    잔차가 E 에 따라 한쪽으로 쏠리는지로 따로 본다 — 쏠리면 연속 환산 배수를
+    곡선에서 직접 다시 구한다.
+    """
+    if len(energies_kwh_t) != len(removals):
+        raise ValueError("비에너지와 제거율은 같은 길이여야 함")
+    used = tuple(
+        i for i, (e, x) in enumerate(zip(energies_kwh_t, removals))
+        if e > 0 and 0.0 < x < saturation
+    )
+    if not used:
+        raise ValueError("적합할 점이 없음 — 0 < X < 포화 인 점이 하나 이상 필요")
+    s_ey = sum(energies_kwh_t[i] * -math.log(1.0 - removals[i]) for i in used)
+    s_ee = sum(energies_kwh_t[i] ** 2 for i in used)
+    return FirstOrderFit(k_per_kwh_t=s_ey / s_ee, used=used)
 
 
 # --------------------------------------------------------------------------
@@ -626,6 +1002,7 @@ class PilotScaleUp:
     ceiling_tip_speed_m_s: float
     practical_max_tip_speed_m_s: float
     as1_peak_kwh_t: float
+    as1_average_kwh_t: float
     as1_peak_upsized_kwh_t: float
     as1_average_upsized_kwh_t: float
     upsized_motor_kw: float
@@ -640,6 +1017,11 @@ class PilotScaleUp:
     def batch_limit_peak_kwh_t(self) -> float:
         """이 이하면 AS-1 그대로, 최대 처리량에서도 목표 제거율."""
         return self.as1_peak_kwh_t / self.energy_factor
+
+    @property
+    def batch_limit_average_kwh_t(self) -> float:
+        """9 m/s 를 못 쓸 때(미립 불합격) — 현 모터로 평균 처리량까지 줄여 목표 제거율."""
+        return self.as1_average_kwh_t / self.energy_factor
 
     @property
     def batch_limit_peak_upsized_kwh_t(self) -> float:
@@ -671,6 +1053,7 @@ def pilot_scale_up(
         ceiling_tip_speed_m_s=ceiling,
         practical_max_tip_speed_m_s=practical,
         as1_peak_kwh_t=scrubber.specific_energy_kwh_t(peak_tph, ceiling),
+        as1_average_kwh_t=scrubber.specific_energy_kwh_t(average_tph, ceiling),
         as1_peak_upsized_kwh_t=scrubber.specific_energy_kwh_t(peak_tph, practical),
         as1_average_upsized_kwh_t=scrubber.specific_energy_kwh_t(average_tph, practical),
         upsized_motor_kw=select_motor_kw(
