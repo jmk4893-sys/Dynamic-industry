@@ -203,7 +203,7 @@
   <h1>DG-HK60C 태양광 패널 분리설비<br>제작 지침서</h1>
   <p class="subtitle">볼트 등급과 체결력, 용접 각장, 부재 판두께와 재질, 기초 앵커를
     <strong>하중에서 유도해</strong> 정한다. 값이 아니라 식을 적었으므로 하중이 바뀌면 표가 따라 움직인다.
-    제작사는 이 문서와 콘솔의 제작도(F-002 · F-003 · F-005 · F-006 · F-007 · D-501 · D-602)를 함께 본다.</p>
+    제작사는 이 문서와 콘솔의 제작도(F-002 · F-003 · F-005 · F-006 · F-007 · D-501 · D-502 · D-602)를 함께 본다.</p>
 
   <dl class="docref">
     <div><dt>문서번호</dt><dd>DG-HK60C-FAB-001</dd></div>
@@ -332,7 +332,7 @@
         <tr><th>판유리 1장</th><td class="num">0.226 kN</td><td class="num">0.339 kN</td>
           <td>유리 8.0 kg/m²</td></tr>
         <tr><th>칼날 카세트</th><td class="num">0.382 kN</td><td class="num">0.574 kN</td>
-          <td>39 kg/벌 — 계단 카세트 일곱 홀더 합 1,590 mm</td></tr>
+          <td>39 kg/벌 — 계단 카세트 칼날 길이 합 1,590 mm</td></tr>
         <tr><th>RH-201 인양물</th><td class="num">0.530 kN</td><td class="num">0.794 kN</td>
           <td>카세트 + 인양 프레임 15 kg — 권취부 철거로 만권 롤(3.50 kN)이 빠졌다</td></tr>
         <tr><th>박리 추력 (합성)</th><td class="num">15.60 kN</td><td class="num">30.42 kN</td>
@@ -396,7 +396,7 @@
 <tr><td class="k">STS304</td><td class="k">KS D 3705</td><td class="num">205</td><td class="num">520</td><td class="num">7,930</td><td>가열실 내피·고온 습부·식품접촉 없음</td></tr>
 <tr><td class="k">SM45C</td><td class="k">KS D 3752</td><td class="num">343</td><td class="num">569</td><td class="num">7,850</td><td>핀·축류 (테이퍼 로케이팅핀·롤러축)</td></tr>
 <tr><td class="k">A6061-T6</td><td class="k">KS D 6759</td><td class="num">240</td><td class="num">290</td><td class="num">2,700</td><td>이동 경량부 (캐리지·포크 암)</td></tr>
-<tr><td class="k">SKD11</td><td class="k">KS D 3753</td><td class="num">—</td><td class="num">—</td><td class="num">7,700</td><td>칼날 인서트 (HRC 58~62)</td></tr>
+<tr><td class="k">SKD11</td><td class="k">KS D 3753</td><td class="num">—</td><td class="num">—</td><td class="num">7,700</td><td>칼날 인서트 (HRC 58~60 · D-502) · 모듈 상한 스톱</td></tr>
       </tbody>
     </table></div>
     <ul>
@@ -592,7 +592,6 @@ F<sub>p,C</sub>  = 0.7·f<sub>ub</sub>·A<sub>s</sub>             설계 체결�
 <tr><td>갠트리 문형 기둥 ↔ 베이스플레이트</td><td class="num">7.60</td><td class="num">1,000</td><td class="k">SM490A</td><td class="num">30</td><td class="k">z10</td><td>판두께 t30</td></tr>
 <tr><td>크로스빔 ↔ 대차 브래킷</td><td class="num">15.21</td><td class="num">600</td><td class="k">SM490A</td><td class="num">20</td><td class="k">z8</td><td>판두께 t20</td></tr>
 <tr><td>크로스빔 웨브 ↔ 플랜지 (BOX)</td><td class="num">15.21</td><td class="num">6,080</td><td class="k">SM490A</td><td class="num">12</td><td class="k">z5</td><td>판두께 t12</td></tr>
-<tr><td>계단 카세트 홀더 ↔ 홀더 (계단 이음)</td><td class="num">4.35</td><td class="num">240</td><td class="k">SS400</td><td class="num">6</td><td class="k">z4</td><td>판두께 t6</td></tr>
 <tr><td>RH-201 런웨이 ↔ 기둥 두상판</td><td class="num">0.99</td><td class="num">400</td><td class="k">SS400</td><td class="num">16</td><td class="k">z6</td><td>판두께 t16</td></tr>
 <tr><td>데크 프레임 ↔ 레일 (가열실 내부)</td><td class="num">0.50</td><td class="num">5,760</td><td class="k">STS304</td><td class="num">6</td><td class="k">z4</td><td>판두께 t6</td></tr>
 <tr><td>방책 기둥 ↔ 베이스</td><td class="num">1.0</td><td class="num">240</td><td class="k">SS400</td><td class="num">6</td><td class="k">z4</td><td>판두께 t6</td></tr>
@@ -913,7 +912,7 @@ f<sub>ck</sub> = 25 MPa (C25/30 최소) · τ<sub>Rk</sub> = 10.0 MPa · γ<sub>
 <footer>
   <p>DG-HK60C-FAB-001 Rev.0 · 2026-09-06 · DYNAMIC INDUSTRY</p>
   <p>계산 근거 <span class="k">tools/fab_spec.py</span> · 형상 근거 콘솔 제작도
-    <span class="k">F-002 · F-003 · F-005 · F-006 · F-007 · D-501 · D-602</span></p>
+    <span class="k">F-002 · F-003 · F-005 · F-006 · F-007 · D-501 · D-502 · D-602</span></p>
 </footer>
 
 </div>

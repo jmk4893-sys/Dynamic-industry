@@ -312,10 +312,21 @@ class TestTheDocumentsSayTheSameEdge(unittest.TestCase):
         self.assertIn(f"{self.mu_gl:.3f}", row)
 
     def test_the_fabrication_spec_no_longer_welds_the_joints(self):
-        """모듈마다 따로 뜨는 홀더를 이음에서 용접하면 추종이 선다."""
+        """모듈마다 따로 뜨는 홀더를 이음에서 용접하면 추종이 선다. 부재표 문구만
+        고치고 용접표에 '홀더 ↔ 홀더' 행을 남겨 두었던 적이 있다."""
+        import fab_spec as F
         s = FAB.read_text(encoding="utf-8")
         self.assertNotIn("계단 이음 용접", s)
+        self.assertNotIn("홀더 ↔ 홀더", s, "용접표가 홀더끼리 잇는다")
+        self.assertFalse([w for w in F.WELDS if "홀더" in w[0]], "계산기가 홀더 이음 용접을 센다")
         self.assertIn(f"인서트 접시머리 {KE.SCREW}", s)
+
+    def test_the_fabrication_spec_names_the_edge_sheet_and_hardness(self):
+        import fab_spec as F
+        s = FAB.read_text(encoding="utf-8")
+        self.assertIn(f"HRC {KE.HRC}", F.MATERIALS["SKD11"]["use"], "재료표의 인서트 경도가 D-502 와 다르다")
+        self.assertEqual(s.count("D-501 · D-502 · D-602"), 2, "머리말 · 꼬리말 도면 목록에 D-502 가 없다")
+        self.assertNotIn("일곱 홀더 합", s, "1,590 은 홀더가 아니라 칼날 길이의 합이다")
 
     def test_f005_hands_the_edge_to_d502(self):
         src = CONSOLE.read_text(encoding="utf-8")
