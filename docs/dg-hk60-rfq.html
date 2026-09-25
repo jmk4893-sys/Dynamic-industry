@@ -194,7 +194,7 @@
   <dl class="docref">
     <div><dt>문서번호</dt><dd>DG-HK60-RFQ-001</dd></div>
     <div><dt>개정</dt><dd>Rev.0</dd></div>
-    <div><dt>발행일</dt><dd>2026-09-07</dd></div>
+    <div><dt>발행일</dt><dd>발행 시 기재</dd></div>
     <div><dt>선행자료</dt><dd>REV.21C (압축 배치)</dd></div>
     <div><dt>용역구분</dt><dd>상세설계</dd></div>
   </dl>
@@ -246,8 +246,9 @@
       <span class="k">F-007</span>(유리 냉각 랙 제작도),
       <span class="k">F-901</span>(볼트 체결 표준상세),
       <span class="k">D-501</span>(계단 칼날 카세트 상세도),
+      <span class="k">D-502</span>(칼날 인서트 날끝 상세도),
       <span class="k">D-602</span>(기초·앵커·유틸리티 배치도)는 판두께·일반공차
-      (ISO 2768-mK)·용접기호(ISO 2553)·데이텀과 기하공차(ISO 1101)·표면조도·
+      (ISO 2768-mK, 연삭한 칼날 인서트는 -fH)·용접기호(ISO 2553)·데이텀과 기하공차(ISO 1101)·표면조도·
       재질규격 또는 앵커 좌표·레벨(EL)·인입점을 갖춘 제작수준 표기로 작성되어
       있다. <strong>그러나 그 값들은 개념설계가 세운 가정이다</strong> —
       구조·열 해석으로 검증되지 않았고, 따라서 제작 착수 도면이 아니다.
@@ -469,7 +470,7 @@
         <tr><th>공정 지능</th><td>고정 레시피는 쉬운 패널에서 시간을 버리고 어려운 패널에서 유리를 깬다</td>
           <td class="k">적응 속도제어 · HS-101 · OPC UA</td><td><a href="#c7">7.4</a></td></tr>
         <tr><th>무인 연속운전</th><td>팔레트·칼날·카트가 사람 손을 요구하면 무인 시간이 그 주기로 끊긴다</td>
-          <td class="k">PL-101/201 · KC-101 · AD-101</td><td><a href="#c6">6.6</a></td></tr>
+          <td class="k">KC-101 · RH-201 · PL-101/201 인터페이스</td><td><a href="#c6">6.6</a></td></tr>
         <tr><th>환경·인증</th><td>배출 성상을 상시 기록하지 않으면 <a href="#c11">OI-10</a>이 닫히지 않는다</td>
           <td class="k">RTO-101 · HX-101 · CEMS-101</td><td><a href="#c6">6.7</a></td></tr>
       </tbody>
@@ -579,14 +580,14 @@
       <span class="m">3,380 mm</span> 안에서 끝난다. 냉각에 필요한 최소 단수는
       <span class="m">3</span>단이지만 <strong>가열실과 같은 5단으로 맞춘다</strong> —
       랙 구조와 포크가 같아지면 예비품이 한 벌이면 된다. 그 결과 여유가
-      <span class="m">13 → 88 %</span>로 벌어진다.</p>
+      <span class="m">14 → 90 %</span>로 벌어진다.</p>
     <div class="note"><strong>냉각이 아니라 예비품이 단수를 정한다.</strong>
       냉각시간 <span class="m">143 s</span>를 택트 <span class="m">54.3 s</span>로
       나누면 3단이면 충분하다. 그런데 랙을 가열실과 다른 단수로 만들면 구조도
       포크도 달라져 예비품이 두 벌이 된다. 같은 5단으로 맞추면 한 벌이면 되고,
-      덤으로 여유가 <span class="m">88 %</span>가 되어
+      덤으로 여유가 <span class="m">90 %</span>가 되어
       <a href="#c11">OI-05</a>의 강제공랭 계수 h 가정이 틀려도 단수를 다시
-      잡을 일이 없다. 종전 3단 랙의 여유 <span class="m">13 %</span>는
+      잡을 일이 없다. 종전 3단 랙의 여유 <span class="m">14 %</span>는
       그 가정 오차를 덮지 못했다.</div>
 
     <h4>2계통 반출 — 짧아진 만큼 옆으로 나갈 자리도 좁아진다</h4>
@@ -784,7 +785,7 @@
         <tr><th>표준 I/O 선언</th><td class="num">DI 160 · AO 8 · TC 40</td>
           <td class="num">DI 176 · AO 16 · TC 56</td>
           <td>예비 20 % 를 지키는 최소 카드 배수 (<a href="#c7">7.1항</a>)</td></tr>
-        <tr><th>유리 냉각 랙</th><td class="num">3단 · 여유 17 %</td><td class="num">5단 · 여유 94 %</td>
+        <tr><th>유리 냉각 랙</th><td class="num">3단 · 여유 14 %</td><td class="num">5단 · 여유 90 %</td>
           <td>가열실과 같은 단수 — 예비품 한 벌 (<a href="#c3">3.4항</a>)</td></tr>
       </tbody>
     </table></div>
@@ -830,7 +831,7 @@
     </table></div>
     <div class="note"><strong>합격 판정은 평균값이 아니라 P95 사이클과 60장 연속 데이터로 한다.</strong>
       개별 동작이 규정 시간 안에 들어도 최악 위상이 겹치면 사이클을 넘길 수 있다.
-      나이프 복귀(2,800 mm), GL-101 적입·GU-101 인출 포크 인덱스,
+      나이프 복귀(2,740 mm), GL-101 적입·GU-101 인출 포크 인덱스,
       CE-201 횡인출, EX-101 방출·LI-101 재장전이 모두 54.3 s 안에
       끝나는지 각각 확인한다.</div>
   </div></div>
@@ -859,8 +860,19 @@
       이 값을 출력 조건으로 등록했고, 그 절입이 백시트를 관통하므로 정션박스 자리의
       절결은 하류가 받아들인다. 절입을 백시트 두께 안으로 줄이는 쪽은 2,500 패널에서
       공차를 지키기 어렵다.
-      EVA 조성, 경년열화 정도는 입찰자가 발주자와 협의해 시험 패널 사양을 확정한다.
-      성능 보증은 합의된 시험 패널 기준으로 한다.</p>
+      시험 패널은 파일럿 계획서(DG-HK60C-PIL-001)의 두 로트로 정한다 — 로트 A
+      <strong>경년 5 년 이하 · 백시트 PVDF (Tedlar 계 아님)</strong>, 로트 B
+      <strong>경년 15 년 이상 · 백시트 PVF</strong>, 투입 상태는 위 표와 같다.
+      성능은 <strong>두 로트 각각에서</strong> 보증한다 — 쉬운 로트의 평균으로 어려운 로트를
+      덮지 않는다. 박리력의 상한과 로드셀 용량을 정하는 쪽이 로트 B 다.</p>
+    <ul>
+      <li><strong>설계 성능은 입찰자가 보증한다</strong> — 도면대로 제작·설치한 설비가
+        <a href="#c10">10.2항</a> SAT 합격선을 두 로트에서 모두 만족해야 한다</li>
+      <li><strong>도면대로 지었는가는 제작사가 보증한다</strong> — 제작 계약에서 정한다</li>
+      <li>SAT 불합격은 발주자가 주관하고 입찰자·제작사가 참석하는 합동 원인분석으로
+        원인을 가른다. 설계 원인이면 <a href="#c12">12.8항</a> 설계 책임으로 정정하고,
+        제작 원인이면 제작 계약으로 넘긴다</li>
+    </ul>
   </div></div>
 
   <div class="clause"><div class="n">4.3</div><div class="c">
@@ -873,7 +885,17 @@
       <li><strong>판유리</strong> — 잔류 EVA·미분리 셀·균열을 비전·열화상으로 판정,
         불합격품은 밀폐 리젝트 캐리지로 분기</li>
     </ul>
-    <p>유리 파손률과 잔류물 허용 한계는 입찰자가 DOE로 도출해 제안하고 발주자 승인을 받는다.</p>
+    <p>유리 파손률과 잔류물의 <strong>발주자 하한</strong>은 <a href="#c10">10.2항</a> SAT
+      합격선이다 — 로트마다 <span class="m">연속 93 장</span>에서 유리 파손
+      <span class="m">1 장</span> 이하(수율 하한 <span class="m">95 %</span> · 신뢰도 95 %,
+      Clopper–Pearson), 잔류 EVA 중량법 <span class="m">≤ 1.0 wt%</span>.
+      입찰자는 DOE 로 더 엄한 한계를 제안할 수 있고, 더 느슨한 한계는 제안할 수 없다.</p>
+    <div class="note"><strong>잔류 EVA 1.0 wt% 는 유리 위 EVA 막 0.084 mm 다.</strong>
+      칼날 모듈이 남기는 가장 나쁜 틈 — 칼끝 깊이 <span class="m">0.083 mm</span>
+      (CAL-001 S12, P95) — 이 그 안에 든다. 평균이 아니라 가장 나쁜 자리로 봐도 칼날이
+      합격선을 지킨다는 뜻이다. 시료 수는 파일럿 PT-03 과 같은 식으로 풀었다 —
+      파손 0 장을 요구하면 59 장으로 되지만, 한 장의 우연한 파손이 설비 전체를
+      떨어뜨리는 시험은 판정이 아니라 운이다.</div>
   </div></div>
 
   <div class="clause"><div class="n">4.4</div><div class="c">
@@ -1052,6 +1074,17 @@ t_열   = max( 5Q / (48 × 2.5 kW × η 0.65),  113.15 s )  = 225.4 s
       <li>공차 — 잠근 상태의 일곱 칼끝 높이 <span class="m">± 0.05 mm</span>(동일면), 계단 높이
         <span class="m">80 ± 0.5 mm</span>. 칼끝은 <strong>카세트째 잠근 채 한 평면으로 연삭</strong>하고
         교환마다 레이저 변위센서로 재확인한다 (<span class="k">KNIFE_TIP_OK</span>)</li>
+      <li><strong>날끝</strong> — SKD11 인서트 <span class="m">t 8 × 60</span>, 쐐기각
+        <span class="m">35° ± 0.5°</span>, 호닝 <span class="m">R 0.02 ± 0.01</span>, 밑면 랜드
+        <span class="m">1.5 ± 0.1 mm</span>, 랜드 뒤 릴리프 <span class="m">≥ 0.3 mm</span>, 인서트 코
+        <span class="m">12 mm</span> (<span class="k">D-502</span>). 떼어 낸 층은 레이크면을 타고 오르며
+        칼날을 누르고, 그 수직/수평 비의 상한은 cot(α + atan μ) 다. 마찰을 재지 않았으므로 하한
+        <span class="m">0.2</span> 로 풀어 구조해석 포락 V/H ≤ 1 을 지키는 가장 작은 5° 눈금을 골랐다 —
+        마찰이 <span class="m">0.18</span> 이상이면 포락 안, <span class="m">0.031</span> 이상이면 랜드
+        상한에서도 유리 우력 한계(S14) 안이다. <strong>층이 닿는 면은 모두 35° 보다 가파르게</strong>
+        한다 — 홀더 앞면은 레이크면 끝보다 뒤에 선다. 인서트는 접시머리 <span class="m">M6 10.9</span>
+        로 홀더 밑판 헬리코일에 체결하고 추력은 마찰로 받는다 (<span class="m">2.0 배</span>).
+        파일럿 <span class="k">PT-10</span> 쿠폰의 시험 인서트를 같은 레이크로 깎아 마찰 가정을 닫는다</li>
       <li><strong>칼날 모듈 추종</strong> — 홀더 7 을 판스프링으로 매달아 조각마다 들림
         <span class="m">±1.5 mm</span> · 롤 <span class="m">±0.5°</span> 만 푼다. 박리 중에는 밑면 랜드
         (<span class="m">1.5 mm</span> · 경면 연마)가 유리를 타며 제 폭의 유리면을 따라간다.
@@ -1182,7 +1215,8 @@ t_열   = max( 5Q / (48 × 2.5 kW × η 0.65),  113.15 s )  = 225.4 s
     <h3>자동 팔레타이징과 무인 연속운전</h3>
     <p>무인 시간은 <strong>가장 짧은 사람 개입 주기</strong>로 끊긴다. 선행 설계에서는
       팔레트 투입, 유리 적재, 칼날 교환, 만권 롤 반출이 모두 사람 손을 요구했다.
-      만권 롤은 계단 칼날 전환으로 권취부와 함께 없어졌고, 남은 셋을 자동화해
+      만권 롤은 계단 칼날 전환으로 권취부와 함께 없어졌고(롤을 받던 AGV 도킹
+      <span class="k">AD-101</span> 도 함께 빠졌다), 남은 셋을 자동화해
       <strong class="m">8시간 무인</strong>을 목표로 한다.</p>
     <div class="tw"><table>
       <caption>사람 개입 주기와 자동화 수단</caption>
@@ -1208,11 +1242,19 @@ CASSETTE_RELEASE = KNIVES_CLEAR ∧ CARRIER_PARKED ∧ HEATER_ISOLATED ∧ CASSE
       다만 <strong>히터 차단 확인만은 예외 없이 앞에 세운다</strong> —
       <span class="k">HEATER_ISOLATED</span> 없이는 잠금이 풀리지 않는다 (<a href="#c6">6.9</a>).</div>
     <ul>
-      <li>PL-101/201 은 각각 <strong>독립 방호구획</strong>으로 하고 팔레트 반출입구만 광커튼으로 연다</li>
+      <li><strong>PL-101/201 의 방호는 발주자 몫이다</strong> — 둘은 발주자 설비다
+        (<a href="#c3">3.4항</a>). 본 공급은 경계의 두 자재 개구를 뮤팅 광커튼
+        <span class="k">LC-001/002</span>로 막고 양쪽 비상정지를 <span class="k">BJ-102</span>로
+        잇는 데까지다. 발주자 방호구획이 그 개구에 닿는 자리의 안전거리(ISO 13857)는
+        60 % 단계에서 발주자와 입찰자가 함께 확인한다</li>
       <li>무인 감시 열화상 <span class="m">3점</span>으로 라인 전체를 덮어 이상 승온을 화재 이전에 잡는다</li>
       <li>반출 2계통 함의 레벨을 모두 읽는다 — 무인 운전은 함이 차면 끝난다</li>
       <li>무인 중 이상은 RC-101 원격 콘솔로 통보하고, <strong>원격승인 없이는 재기동하지 않는다</strong></li>
-      <li>CS-201 평적 카트의 반출은 발주자 기존 대차와의 인터페이스를 확인해 확정한다</li>
+      <li><strong>CS-201 카트는 발주자 물류가 방책 밖에서 바꾼다</strong> — 카트 하나
+        <span class="m">303 장 · 5.2 h</span>. 카트에 지게차 포크 포켓(4면 진입)을 두어 기존
+        대차의 형식과 무관하게 빼게 한다. 교체 동안 분리가 멈춘 시간은 가동률 예산
+        (시간당 <span class="m">360 s</span>)에서 나가므로 교체는 <span class="m">5 분</span>
+        안에 끝낸다</li>
     </ul>
   </div></div>
 
@@ -1547,7 +1589,8 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
         <tr><th>OEE</th><td>ISO 22400 으로 가용률·성능률·품질률을 자동 산출하고
           정지 사유를 계획정지 / 설비고장 / 자재대기 / 품질 / 외부로 분류한다</td></tr>
         <tr><th>연동</th><td>OPC UA 서버로 공정값을 읽기 전용 공개, 레시피 쓰기는 인증서 제한.
-          MES 연동 규약은 발주자와 합의한다</td></tr>
+          MES 쪽 수신·매핑은 발주자 몫이고, 입찰자는 공개 노드와 갱신주기 목록을
+          <a href="#c9">9.4항</a> 60 % 단계 전기·제어 도면에 붙여 낸다</td></tr>
       </tbody>
     </table></div>
     <div class="note"><strong>이력은 사후에 만들 수 없다.</strong> 그래서 기록 성공을
@@ -1671,6 +1714,23 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
     <h3>구분</h3>
     <p><strong>FAT</strong>는 제작사에서 무부하 시퀀스·안전기능·계측 교정을 확인한다.
       <strong>SAT</strong>는 설치 현장에서 실패널로 성능과 작업환경을 실측한다.</p>
+    <div class="tw"><table>
+      <caption>수행 · 입회 · 비용</caption>
+      <thead><tr><th>구분</th><th>수행</th><th>입회 · 승인</th><th>비용</th></tr></thead>
+      <tbody>
+        <tr><th>절차서</th><td>입찰자 — 100 % 단계 제출물 (<a href="#c9">9.4항</a>)</td>
+          <td>발주자 승인</td><td>본 용역 대가</td></tr>
+        <tr><th>FAT</th><td>제작사 — 제작사 공장 (제작 계약)</td>
+          <td>발주자 입회·승인 · 입찰자 입회 1 회</td><td>시험은 제작사 · 입회는 각자</td></tr>
+        <tr><th>SAT</th><td>제작사 — 설치 현장. 발주자가 시험 패널(로트 A · B)과 유틸리티를 댄다</td>
+          <td>발주자 승인 · 입찰자 입회 1 회</td><td>시험은 제작사 · 시험 패널·유틸리티는 발주자</td></tr>
+        <tr><th>재시험</th><td>불합격 원인 쪽 (<a href="#c4">4.2항</a> 합동 원인분석)</td>
+          <td>같음</td><td>설계 원인이면 입찰자가 도면 정정과 재입회를 부담</td></tr>
+      </tbody>
+    </table></div>
+    <p>입찰자의 FAT·SAT 입회 각 1 회는 <strong>본 용역 범위</strong>다 — 용역기간(30주)
+      뒤에 오더라도 인건비는 대가에 포함하고 여비·체재비만 실비로 정산한다.
+      그보다 많은 제작 단계 지원은 <a href="#c12">12.5항</a> 7 에 따로 적는다.</p>
   </div></div>
 
   <div class="clause"><div class="n">10.2</div><div class="c">
@@ -1688,7 +1748,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
         <tr><td class="k">FAT</td><td>카세트 교환 10회 반복</td><td>일곱 칼끝 높이 ± 0.05 mm · 계단 80 ± 0.5 mm 재현, 로드셀 영점 재현</td></tr>
         <tr><td class="k">FAT</td><td>계단 이음 박리 품질</td><td>이음 6 줄의 잔류 EVA 가 판 전체 판정과 구별되지 않을 것 · 층 찢김 없음</td></tr>
         <tr><td class="k">FAT</td><td>Z축 좌·우 동기</td><td>전 행정 높이차 ≤ 0.05 mm (<span class="m">KNIFE_LEVEL_OK</span>) · 초과 시 <span class="m">KNIFE_TILT</span> 트립</td></tr>
-        <tr><td class="k">FAT</td><td>칼날 모듈 잠금·추종</td><td>쐐기 7 개 잠금·해제 · 공압 차단 시 잠김 · 변위계 7 점 영점 · 행정 끝에서 <span class="m">KM_TRAVEL_END</span> 트립 · 추종 중 Z축 로드셀에서 수직 반력이 사라질 것</td></tr>
+        <tr><td class="k">FAT</td><td>칼날 모듈 잠금·추종</td><td>쐐기 7 개 잠금·해제 · 공압 차단 시 잠김 · 변위계 7 점 영점 · 행정 끝에서 <span class="m">KM_TRAVEL_END</span> 트립 · 추종 박리 중 Z축 로드셀에 패드 스파이크가 없을 것 (잠긴 곧은 칼날이 패드 위 높은 자리를 누르는 힘)</td></tr>
         <tr><td class="k">FAT</td><td>카세트 자동교환 정지시간</td><td>≤ 4.2 분 (무부하 계측, <a href="#c6">6.9</a>)</td></tr>
         <tr><td class="k">FAT</td><td>활선 분리 방지</td><td>히터 접촉기 투입 상태에서 잠금해제 불성립</td></tr>
         <tr><td class="k">FAT</td><td>카세트 강제공랭 실측</td><td>200 → 60 °C 시간으로 h 가정 확정</td></tr>
@@ -1701,7 +1761,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
         <tr><td class="k">SAT</td><td><strong>램프 봉착부 온도</strong> — 정격 운전 30 분 후</td>
           <td>250 ~ 350 °C (표본 4 등 · 접촉식 또는 열화상)</td></tr>
         <tr><td class="k">SAT</td><td>60장 연속 처리</td><td>P95 사이클 ≤ 55.9 s (계약 58 장/h · 가동률 90 % 의 사이클 — 명목 54.3 s)</td></tr>
-        <tr><td class="k">SAT</td><td>분리 품질</td><td>합의된 잔류물·파손률 기준</td></tr>
+        <tr><td class="k">SAT</td><td>분리 품질 — 로트 A · B 각각</td><td>연속 93 장에서 유리 파손 ≤ 1 장 (수율 하한 95 % · 신뢰도 95 %) · 잔류 EVA 중량법 ≤ 1.0 wt% (<a href="#c4">4.3</a>)</td></tr>
         <tr><td class="k">SAT</td><td>소음·조도·포집풍속</td><td>≤ 80 dBA · ≥ 300 lx · ≥ 0.5 m/s</td></tr>
         <tr><td class="k">SAT</td><td>배기 농도·활성탄 파과</td><td>관할 배출 기준</td></tr>
         <tr><td class="k">SAT</td><td>전력품질·접지연속성</td><td>계산서 대비 실측 일치</td></tr>
@@ -1789,12 +1849,16 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
           유리 냉각 랙의 강제공랭 계수 <span class="m">h = 25 W/(m²·K)</span>는
           여전히 가정이다. 다만 <span class="m">Bi = 0.04</span>로 덩어리 가정이 성립함을
           확인했고, <a href="#c3">3.4항</a>의 <strong>5단</strong> 랙은 여유가
-          <span class="m">88 %</span>라 <span class="m">h</span>가 절반으로 틀려도 견딘다.</p>
-        <p><em>해소</em>남은 것은 <strong>실효 열효율 65 %</strong>다. 벽 손실은
-          <span class="m">5.5 kW</span>로 손실 예산 <span class="m">35 kW</span>의
-          <span class="m">16 %</span>뿐이고, 나머지 <span class="m">30 kW</span>의 행방은
-          아직 아무도 세지 않았다. 파일럿(<span class="k">PT-05</span>)에서 전력량계·배기
-          엔탈피·벽 열류계로 열수지를 닫고, 냉각 <span class="m">h</span>는
+          <span class="m">90 %</span>라 <span class="m">h</span>가 절반으로 틀려도 견딘다.</p>
+        <p><em>해소</em>남은 것은 <strong>실효 열효율 65 %</strong>다. 벽 손실
+          <span class="m">5.6 kW</span>가 손실 예산 <span class="m">42 kW</span>(정격 120 − 유효 78)의
+          <span class="m">13 %</span>뿐이라 나머지 <span class="m">36 kW</span>의 행방을 물었는데,
+          <span class="k">CAL-001</span> 열수지가 제어체적으로 세어 보니 그 뺄셈은 서로 다른
+          두 운전점을 섞은 것이었다. 계약 <span class="m">58 장/h</span>에서 계를 실제로 떠나는
+          손실은 <span class="m">14.9 kW</span>(에어록 교환이 절반)이고 정상상태 효율은
+          <span class="m">79 %</span>라, 체류시간을 잡는 <span class="m">65 %</span>는 보수측이다.
+          이 수지는 계산이므로 파일럿(<span class="k">PT-05</span>)에서 전력량계·배기
+          엔탈피·벽 열류계로 실측해 닫고, 냉각 <span class="m">h</span>는
           <span class="k">PT-06</span>에서 유리 1장의 냉각곡선으로 실측해 대체한다.</p>
       </div>
     </div>
@@ -1803,7 +1867,8 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
       <div class="oi-b">
         <p><em>현황</em>생산보증 속도로 설정했으나 승인 근거가 없다. 60 mm/s는 FAT 상한이다.</p>
         <p><em>해소</em>계단 이음의 층 찢김, 조각별 피크하중(특히 혼자 먼저 무는 중앙 300 mm),
-          유리 열응력·파손률, 박리 잔류물을 속도 DOE로 확인해 확정한다.</p>
+          유리 열응력·파손률, 박리 잔류물을 속도 DOE로 확인해 <a href="#c4">4.3항</a>
+          합격선을 지키는 속도로 확정한다 — 합격선은 DOE 가 정하지 않는다.</p>
       </div>
     </div>
     <div class="oi">
@@ -1944,7 +2009,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
         <p><em>해소</em>발주자가 기존 후처리 설비의 처리 풍량·체류시간·현재 부하율과
           배출 허용치를 제시하고, <a href="#c11">OI-10</a>의 배출가스 성상 시험 결과와
           대조해 판정한다. 판정 전까지 입찰자는 후처리 포함·미포함 두 가지 가격을
-          분리해 제출한다.</p>
+          분리해 제출한다 — 평가는 포함 가격으로 한다(<a href="#c12">12.7항</a>).</p>
       </div>
     </div>
 
@@ -2012,8 +2077,8 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
       100 % 검토만 제작승인도 착수 전에 끝나야 하므로 <strong>일정에 행으로 세웠다</strong> —
       용역기간 30주는 이 2주를 포함한 값이다. 검토의견 반영에 드는 기간은 해당 단계 소요에 포함한다.</p>
     <div class="note"><strong>100 % 단계에 10주를 둔 것은 부품도 물량 때문이다.</strong>
-      참고도가 있는 것은 여덟 장뿐이고(<a href="#c1">1.2항</a> — F-002 · F-003 · F-005 ·
-      F-006 · F-007 · F-901 · D-501 · D-602), 그것도 해석으로
+      참고도가 있는 것은 아홉 장뿐이고(<a href="#c1">1.2항</a> — F-002 · F-003 · F-005 ·
+      F-006 · F-007 · F-901 · D-501 · D-502 · D-602), 그것도 해석으로
       검증되지 않은 가정값이다. 선행 개정의 R- 계열 일곱 장은 폐기 배치의 도면이므로
       납품 부품도 물량에 들어가지 않는다. 납품 13개 모듈 <strong class="m">169 품목</strong>
       (제작품 109 · 구매품 60)의 부품도를 판두께·공차·용접기호·가공기준면까지
@@ -2100,7 +2165,8 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
       <li>일정 — <a href="#c12">12.2항</a> 단계에 맞춘 상세 일정, 실측·DOE 시험 배치 포함</li>
       <li>품질관리 — 도면·계산서 검토 절차, 형상관리, 개정 이력 관리</li>
       <li>견적 — <a href="#c12">12.3항</a> 기성 구분에 맞춘 단계별 금액과 투입 인월</li>
-      <li>제작 단계 기술지원 범위 (해당 시)</li>
+      <li>제작 단계 기술지원 — <a href="#c10">10.1항</a> FAT·SAT 입회 각 1 회를 넘는
+        지원이 있으면 그 범위와 인월 (해당 시)</li>
     </ol>
     <p>제안서 본문은 <span class="m">30쪽</span> 이내로 하고 실적 증빙·이력서·도면 예시는
       부록으로 분리한다. 쪽수 제한은 부록에 적용하지 않는다.</p>
@@ -2123,19 +2189,18 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
       </tbody>
     </table></div>
     <div class="tw"><table>
-      <caption>접수 일정 — 본 사양서 발행일 2026-09-07 기준</caption>
+      <caption>접수 일정 — 본 사양서 발행일(D) 기준 영업일</caption>
       <thead><tr><th>구분</th><th class="num">기한</th><th>방법</th></tr></thead>
       <tbody>
-        <tr><th>질의 접수 마감</th><td class="num">2026-09-18 17:00</td><td>서면 · 조항번호 인용</td></tr>
-        <tr><th>질의 답변 회신</th><td class="num">2026-09-21</td><td>전체 입찰자 동일 배포</td></tr>
-        <tr><th>제안서 접수 마감</th><td class="num">2026-10-16 17:00</td><td>PDF 1부 및 인쇄본 2부</td></tr>
+        <tr><th>질의 접수 마감</th><td class="num">D + 9 영업일 17:00</td><td>서면 · 조항번호 인용</td></tr>
+        <tr><th>질의 답변 회신</th><td class="num">D + 10 영업일</td><td>전체 입찰자 동일 배포</td></tr>
+        <tr><th>제안서 접수 마감</th><td class="num">D + 25 영업일 17:00</td><td>PDF 1부 및 인쇄본 2부</td></tr>
       </tbody>
     </table></div>
     <div class="note">제안서 작성 기간은 질의 답변 회신일 다음날부터 <span class="m">15 영업일</span>이다.
-      추석 <span class="m">09-24 – 09-26</span>, 개천절 대체공휴일 <span class="m">10-05</span>,
-      한글날 <span class="m">10-09</span>은 이 기간에서 제외했다. 모든 기한은
-      <span class="m">17:00 (KST)</span> 기준이며, 기한이 휴일에 걸리면 다음 영업일로 넘긴다.</div>
-    <p>접수처와 담당자는 <code>발행 시 기재</code>한다. 마감 시각 이후 도착한 제안서는
+      영업일은 토·일과 관공서 공휴일을 뺀 날이고, 발행할 때 세 기한을 달력 날짜로 바꿔
+      적는다. 모든 기한은 <span class="m">17:00 (KST)</span> 기준이다.</div>
+    <p>발행일 · 접수처 · 담당자는 <code>발행 시 기재</code>한다. 마감 시각 이후 도착한 제안서는
       접수하지 않는다. 제안서 유효기간은 접수 마감일로부터 <span class="m">90일</span>로 한다.</p>
   </div></div>
 
@@ -2151,7 +2216,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
         <tr><td><strong>11항 확인사항 15건의 해소 계획</strong></td><td class="num">25</td></tr>
         <tr><td>수행 조직 및 실적</td><td class="num">20</td></tr>
         <tr><td>일정 및 품질관리 계획</td><td class="num">15</td></tr>
-        <tr><td class="k">가격</td><td>최저 제안가 기준 상대평가</td><td class="num">20</td></tr>
+        <tr><td class="k">가격</td><td>최저 제안가 기준 상대평가 — 후처리 포함 가격</td><td class="num">20</td></tr>
       </tbody>
       <tfoot><tr><th>합계</th><td>기술 80 · 가격 20</td><td class="num">100</td></tr></tfoot>
     </table></div>
@@ -2160,6 +2225,12 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
       (<a href="#c11">OI-01</a>), 열모델 상수가 가정이며(<a href="#c11">OI-05</a>),
       진공 유지력이 마찰계수 가정 위에 서 있다(<a href="#c11">OI-13</a>).
       이 15건을 어떻게 닫을지가 설계의 질을 결정한다.</div>
+    <p><strong>가격 점수는 후처리 포함 가격으로 매긴다</strong> (<a href="#c11">OI-15</a>).
+      미포함 가격만 보면 본체를 낮추고 선택분을 부풀린 제안이 이기고, 선택분을 행사하는
+      날 발주자가 그 값을 치른다. 두 가격의 차액은 M-016 설계의 투입 인월 × 본체와
+      같은 인월 단가로 나눠 적는다 — 단가가 본체와 다르면 본체 단가로 다시 계산해 평가한다.
+      계약은 M-016 설계를 선택분으로 두고, 발주자는 <strong>60 % 단계 검토가 끝나기
+      전까지</strong> 행사한다. 그 뒤의 행사는 <a href="#c12">12.8항</a> 계약 변경이다.</p>
     <p>기술평가 <span class="m">60점</span> 미만은 협상 대상에서 제외한다.
       최고점 순으로 기술협상하며, 협상 결렬 시 차순위와 협상한다.
       발주자는 필요 시 발표평가를 요구할 수 있다.</p>
@@ -2175,12 +2246,19 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
           발주자에게 귀속한다. 입찰자가 계약 전부터 보유한 기술은 입찰자에게 유보하되,
           본 설비의 제작·운전·정비·개조 목적에 한해 발주자에게 무상 실시권을 부여한다</td></tr>
         <tr><th>비밀유지</th><td>선행자료와 성과물은 제3자에게 공개하지 않는다.
-          의무는 계약 종료 후 <span class="m">3년</span>간 존속한다</td></tr>
+          의무는 <strong>선행자료 수령일(보안서약서 제출일)</strong>에 시작해 계약 종료 후
+          <span class="m">3년</span>간 존속한다. 선정되지 않은 입찰자는 선정 통보 후
+          <span class="m">14일</span> 안에 선행자료를 반납하거나 폐기하고 확인서를 내며,
+          의무는 선정 통보일부터 <span class="m">3년</span>간 존속한다</td></tr>
         <tr><th>하도급</th><td>구조해석·기능안전 검증 등 전문 분야에 한해 발주자 사전 서면승인을
           받아 하도급할 수 있다. 주요 설계업무의 일괄 하도급은 금지한다</td></tr>
         <tr><th>설계 책임</th><td>설계 오류로 제작·설치 단계에서 재작업이 발생하면 입찰자 부담으로
           도면을 정정한다. 책임기간은 최종 승인 후 <span class="m">24개월</span> 또는
           SAT 완료 시점 중 늦은 때까지로 한다</td></tr>
+        <tr><th>책임 한도</th><td>설계 책임으로 입찰자가 배상할 직접 손해(제작·설치 재작업비)는
+          <strong>계약금액</strong>을 한도로 한다. 생산 손실 등 간접·결과 손해는 배상하지 않는다.
+          고의·중과실, 제3자 지식재산권 침해, 비밀유지 위반에는 한도를 두지 않는다.
+          입찰자는 계약금액 이상을 보상하는 전문인 배상책임보험 증권을 계약 시 제출한다</td></tr>
         <tr><th>지체상금</th><td>지체일수 1일당 계약금액의 <span class="m">0.05 %</span>,
           총액은 계약금액의 <span class="m">10 %</span>를 넘지 않는다.
           국가계약법령이 적용되는 발주는 해당 법령의 기술용역 기준을 우선한다</td></tr>
@@ -2204,7 +2282,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
 </section>
 
 <footer>
-  <p><strong>DG-HK60-RFQ-001 Rev.0</strong> · DYNAMIC INDUSTRY · 2026-09-07</p>
+  <p><strong>DG-HK60-RFQ-001 Rev.0</strong> · DYNAMIC INDUSTRY · 발행일은 발행 시 기재한다</p>
   <p>본 사양서에 인용된 수치는 개념설계(REV.21C) 결과이며 설계 가설이다.
     입찰자는 이를 검증 대상으로 다루어야 하며, 상세설계 결과가 본 사양서의 수치와
     다를 경우 근거와 함께 발주자에게 제시한다.</p>

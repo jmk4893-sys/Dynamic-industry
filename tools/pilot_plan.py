@@ -27,9 +27,11 @@ from typing import NamedTuple
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
+import analysis_irbank as IRB  # noqa: E402
 import analysis_structural as ST  # noqa: E402
 import analysis_thermal as TH  # noqa: E402
 import cycle as CY  # noqa: E402
+import knife_edge as KE  # noqa: E402
 from console_consts import const as c  # noqa: E402
 
 DOC = "PIL-001"
@@ -49,6 +51,9 @@ KNIFE_RISE_MM = c("KNIFE_RISE") * 1000
 KNIFE_BLADES = int(c("KNIFE_BLADES"))
 KNIFE_LAP_MM = c("KNIFE_LAP") * 1000
 KNIFE_LAND_MM = c("KNIFE_LAND") * 1000
+YIELD_LOW = 0.95                             # 유리 수율 하한 — 신뢰도 95 % 로 보인다 (PT-03 · 사양서 SAT 합격선)
+YIELD_FAILS = 1                              # 허용 파손 장수 — 실패 0 을 요구하면 시험이 아니라 기도다
+RESIDUAL_EVA_MAX = 1.0                       # wt% 잔류 EVA 중량법 상한 (PT-03 · 사양서 4.3 · SAT 합격선)
 COUPON_PANELS = 2                            # 수직 반력 쿠폰 — 로트 A·B 에서 한 장씩 잘라 띠 시편을 만든다
 
 
@@ -153,7 +158,8 @@ RIG = [
         "필요 없다 — 다른 패드로 재면 그 환산이 새 가정이 된다"),
     Rig("계단 칼날 1 자루", f"SHK-101 실물 크기 — 중앙 {KNIFE_CENTER_MM:.0f} + "
         f"{KNIFE_STEP_MM:.0f}×{KNIFE_STEPS}/측 · 계단 {KNIFE_RISE_MM:.0f} · 전폭 {KNIFE_W_MM:,.0f} · "
-        f"SKD11 인서트 {KNIFE_BLADES} 교체식 · 카트리지히터 {KNIFE_BLADES} 존 · 열전대 {KNIFE_BLADES} 점",
+        f"SKD11 인서트 {KNIFE_BLADES} 교체식 (날끝 D-502 · 쐐기 {KE.ALPHA}°) · "
+        f"카트리지히터 {KNIFE_BLADES} 존 · 열전대 {KNIFE_BLADES} 점",
         "축소 칼날로는 **물림 램프와 계단 이음**을 못 본다 — 조각이 시간차로 물고 "
         "이음에서 겹치는 것이 이 칼날의 전부다. 한 자루만 만들면 되고, 인서트는 "
         "교체식이라야 수명 시험이 된다"),
@@ -162,7 +168,7 @@ RIG = [
         "무릎을 지나가 본다"),
     Rig("계측 프레임", f"3 축 로드셀 20 kN × 2 (Z축 좌·우 자리) · 조각별 스트레인게이지 "
         f"{KNIFE_BLADES} × 2 방향 (추력 · 수직) · 50 kHz 샘플링 · 수직 반력 쿠폰 지그 "
-        "(강판에 붙인 띠 시편 · 랜드 대신 여유각을 준 시험 인서트)",
+        f"(강판에 붙인 띠 시편 · 랜드 대신 여유각을 준 시험 인서트 · 레이크 {KE.ALPHA}°)",
         "박리력은 평균이 아니라 **파형**이다. 최대치가 로드셀 용량과 패드 "
         "면적을 정하므로 피크를 놓치면 시험이 무의미하다. 조각별 게이지가 "
         "추력 분담을 준다. **수직 반력비**는 실기 칼날에서 랜드가 유리 위에서 되받아 "
@@ -242,7 +248,7 @@ class Test(NamedTuple):
 
 def tests() -> list[Test]:
     n_peel = n_for_mean(0.20, 0.15)
-    n_yield = n_for_proportion(0.95, failures=1)
+    n_yield = n_for_proportion(YIELD_LOW, failures=YIELD_FAILS)
     n_life = 300
     _, ca = TH.cassette()                         # 열해석 T13 — 수동 교환 한 번의 정지
     _, kn = ST.knife()                            # 구조해석 S10 — 예산을 다 쓰는 수직 반력비
@@ -294,9 +300,9 @@ def tests() -> list[Test]:
               "쓸 방법이고 중량법은 그것을 교정할 기준이다",
               "깨진 장은 파단면을 촬영해 기점을 찾는다 — 열응력이면 "
               "가장자리에서, 기계력이면 칼날 접점에서 시작한다"),
-             f"수율 하한 95 % 를 신뢰도 95 % 로 보이려면 실패 1 장까지 "
+             f"수율 하한 {YIELD_LOW*100:.0f} % 를 신뢰도 95 % 로 보이려면 실패 {YIELD_FAILS} 장까지 "
              f"허용해 {n_yield} 장이 필요하다 (Clopper–Pearson). 잔류 EVA 는 "
-             f"중량법 기준 ≤ 1.0 wt%",
+             f"중량법 기준 ≤ {RESIDUAL_EVA_MAX:.1f} wt%",
              "생산보증 속도 55 mm/s 의 승인 근거. 파단 기점이 가장자리에 "
              "몰리면 R1(면내 편차)이 원인이므로 PT-04 로 되돌아간다"),
         Test("PT-04", "패널 면내 온도 균일도", 1, "열해석 R1",
@@ -304,14 +310,17 @@ def tests() -> list[Test]:
              "PT-01 통과분에 열화상을 함께 건다 — 소킹은 어차피 같은 소킹이다",
              ("열화상으로 전폭을 찍는다. 유리면은 방사율이 높아 그대로 "
               "찍히지만, 백시트면은 ε 보정판을 붙여 교정한다",
-              "소킹 30 · 60 · 120 · 222 s 네 시점에서 편차 지도를 만든다",
+              f"소킹 30 · 60 · 120 · {CY.DWELL:.0f} s 네 시점에서 편차 지도를 만든다 "
+              "— 마지막이 설계 체류다",
               "최고–최저와 가장자리–중앙을 따로 낸다 — 유리를 깨는 것은 "
               "가장자리–중앙이다",
               "반사판을 떼고 반복해 반사판의 기여를 분리한다"),
              "가장자리–중앙 편차 ≤ 21 K (허용 7 MPa · σ ≈ ½Eα·ΔT). "
              "설계목표는 ≤ 15 K. 넘으면 뱅크 램프 분배나 반사판 형상을 "
              "고친다 — 목표온도를 낮추는 것은 답이 아니다 (박리력이 오른다)",
-             "IR 뱅크 램프 분배 (6·7·7·7·7·6) · 반사판 형상 · 단당 계측점 "
+             f"IR 뱅크 램프 분배 (뱅크당 {TH.LAMPS // (TH.DECKS + 1)} 등 × "
+             f"{TH.DECKS + 1} 뱅크 · 위치 ±{max(IRB.NEW_X)*1000:,.0f}) "
+             "· 반사판 형상 · 단당 계측점 "
              "수 (현재 열전대 3 + IR 1 은 편차를 보기엔 성기다)"),
         Test("PT-05", "열수지 — 실효 열효율 65 % 의 검증", 1,
              "OI-05 · 열해석 R5", "정상상태 연속 운전 (2 h 이상)", 6, 0,
@@ -323,7 +332,7 @@ def tests() -> list[Test]:
              "수지 오차 ≤ 10 %. 실효 열효율이 60 % 아래면 체류시간이 "
              "늘어 처리량이 무너지므로 그 자리에서 IR 정격을 다시 잡는다",
              "MODEL.heatEfficiency · 체류시간 · 열공정 한계 처리량 · "
-             "IR 설치정격 100 kW · 배기 후처리 용량 (OI-15)"),
+             f"IR 설치정격 {TH.RATED_KW:.0f} kW · 배기 후처리 용량 (OI-15)"),
         Test("PT-06", "강제공랭 계수 h 실측", 1, "OI-05 · 열해석 R6",
              "유리 1 장 · 카세트 1 조 · 팬 회전수 3 점", 8, 0,
              "박리가 끝난 유리를 그대로 쓴다 — 냉각은 유리만의 문제다",
@@ -386,6 +395,10 @@ def tests() -> list[Test]:
               f"여유각을 준 시험 인서트를 대고 3 축 로드셀로 읽는다 (로트마다 {n_peel} 개). 실기 "
               "칼날에서는 랜드가 V 를 유리 위에서 되받아 조각 게이지에도 Z축 로드셀에도 거의 안 "
               "나온다 — 그것이 S13 의 전제다",
+              f"시험 인서트의 레이크면은 D-502 와 같게 수평에서 {KE.ALPHA}° 로 세우고 호닝 "
+              f"R {KE.HONE:.2f} 를 준다 — V/H 는 레이크 각과 마찰이 정하므로 다른 각으로 재면 환산이 "
+              f"새 가정이 된다. 쿠폰 V/H 에서 마찰을 역산해 D-502 가 둔 하한 {KE.MU_MIN} 과 댄다 "
+              f"({KE.ALPHA}° 에서 마찰 {KE.MU_MIN} 이면 V/H {KE.vh_bound(KE.ALPHA, KE.MU_MIN):.2f})",
               f"추종 칸에서 모듈 변위계 {KNIFE_BLADES} 점을 전 행정 기록한다 — 유리면 굴곡의 "
               "실측이다. 패드 평면도만 흩뜨린 S12 와 대조한다",
               f"조각마다 잔막 두께를 잰다 (잠금 · 추종). 계단 이음 {2*KNIFE_STEPS} 줄의 잔류 EVA 는 "
@@ -403,7 +416,7 @@ def tests() -> list[Test]:
              f"잠금 칸은 합격선이 아니라 대조다 — 거기서 잔막 초과와 패드 스파이크가 안 나오면 "
              f"S12 의 패드 밴드 가정이 비관적인 것이니 곧은 칼날을 다시 본다",
              "조각 몫 (knife_stepped) · 구조해석 S10 · S12 ~ S14 의 수직 반력비 · KNIFE_LAND · "
-             "KM_NET · KNIFE_LAP · CHD_PRELOAD · 로드셀 용량"),
+             "KNIFE_WEDGE (D-502) · KM_NET · KNIFE_LAP · CHD_PRELOAD · 로드셀 용량"),
     ]
 
 

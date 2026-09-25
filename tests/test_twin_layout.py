@@ -209,14 +209,40 @@ class TestTheTwinCrossingsAreResolved(unittest.TestCase):
         self.assertIn("fenceSegment(CFENCE_X0,sgn*nf,DX0,sgn*nf)", self.b)
 
     def test_the_discharge_traverse_clears_the_gantry(self):
-        """레일은 나이프 갠트리(2,740) 위여야 한다. 종전에는 만권 롤 하단(3,400)이
-        위를 막았지만 권취부가 빠져 그 한계는 없어졌다."""
-        self.assertIn("EXZ=CZ+2.01,EXC=CZ+1.79", self.b)
-        cz = console_consts.const("CZ")
-        top = console_consts.const("CBEAM_Z") + .12 + .14 / 2      # X축 구동 상면
+        """횡이송의 높이는 가장 낮게 매달린 것 — 접힌 승강 포크 — 이 정한다.
+
+        종전에는 레일과 캐리지만 갠트리 최상단(2,740) 위에 있는지 봤고, 캐리지
+        밑에 접혀 매달린 포크(하단 2,680)는 세지 않았다. 셀 갠트리가 원점에 서면
+        그 포크가 X축 랙피니언을 60 파고들었다. 높이를 그 포크 하단에서 거꾸로 푼다."""
+        top = console_consts.const("CGANTRY_TOP")
+        self.assertAlmostEqual(top, console_consts.const("CBEAM_Z") + .12 + .14 / 2, places=9,
+                               msg="갠트리 최상단이 X축 구동 상자에서 나오지 않는다")
         self.assertAlmostEqual(top, 2.74, places=6)
-        self.assertGreater(cz + 2.01 - .09, top, "횡이송 레일이 갠트리를 친다")
-        self.assertGreater(cz + 1.79 - .11, top, "횡이송 캐리지가 갠트리를 친다")
+        # 그리는 식과 시험이 보는 식이 같아야 한다 — 포크는 캐리지 중심 −.22 에 두께 .08
+        self.assertIn("constEX_GAP=.06,EX_FOLD=.26;", self.b)
+        self.assertIn("constEXC=CGANTRY_TOP+EX_GAP+EX_FOLD,EXZ=EXC+.22", self.b)
+        self.assertIn("box(V(EXX,y,EXC-.22),V(.44,1.30,.08),C.rail);", self.b,
+                      "접힌 포크의 그림이 EX_FOLD 와 갈라졌다")
+        self.assertIn("box(V(EXX,y,EXC),V(.30,.34,.22),C.cab);", self.b)
+        exc = top + .06 + .26
+        fork_bottom = exc - .22 - .08 / 2
+        self.assertAlmostEqual(fork_bottom, exc - .26, places=9)
+        self.assertGreaterEqual(fork_bottom - top, .05 - 1e-9,
+                                "접힌 포크와 갠트리 최상단 사이가 50 mm 도 안 된다")
+        self.assertGreater(exc - .22 / 2, fork_bottom, "캐리지가 포크보다 낮다")
+        self.assertGreater(exc + .22 - .18 / 2, top, "횡이송 레일이 갠트리를 친다")
+
+    def test_raising_the_traverse_does_not_meet_the_magazines(self):
+        """올린 레일(상면 3,370)은 매거진 하단(3,110)보다 높다 — 둘이 평면에서 떨어져
+        있어야만 성립한다. 매거진은 통로 안에만, 레일은 문형 기둥 밖으로만 있다."""
+        knife_w = console_consts.const("KNIFE_W")
+        magazine = knife_w / 2 + .20 + .12 / 2          # 가장 바깥 — 잠금·존재센서 바깥면
+        rail_from = console_consts.const("FORK_HALF_STD") + .075
+        self.assertIn("box(V(px,-KNIFE_W/2-.20,CKC_Z),V(.14,.12,.14),C.teal);", self.b,
+                      "매거진의 가장 바깥 부재가 바뀌었다 — 이 시험의 폭을 다시 잡을 것")
+        self.assertIn("EX0=cForkHalf()+.075", self.b)
+        self.assertLess(magazine, rail_from,
+                        f"매거진(|y| {magazine:.3f})이 횡이송 레일({rail_from:.3f}) 평면에 들어온다")
 
 
 class TestThePictureSaysWhatItIs(unittest.TestCase):
@@ -346,8 +372,8 @@ class TestEachCellIsItsOwnMachine(unittest.TestCase):
         rail_top = 1.95 + .22 / 2                       # CRAIL_Z + 레일 두께의 절반
         self.assertGreater(gz, rail_top, "가드가 갠트리 레일보다 낮다")
         self.assertLess(gz, 2.74, "가드가 나이프 갠트리 상단을 덮는다")
-        cz = 1.15
-        self.assertLess(gz, cz + 1.79 - .11, "가드가 EX-101 인계 높이를 막는다")
+        exc = console_consts.const("CGANTRY_TOP") + .06 + .26    # 횡이송 캐리지 중심
+        self.assertLess(gz, exc - .26, "가드가 EX-101 접힌 포크를 막는다")
 
     def test_the_guard_plan_steps_around_the_cooling_rack_column(self):
         """+x 안쪽 모서리에는 GC-101 기둥 베이스플레이트가 깔려 있다."""

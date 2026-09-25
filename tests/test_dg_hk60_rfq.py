@@ -8,7 +8,6 @@
 및 콘솔의 전기부하표와 직접 대조한다. 사양서만 고치거나 콘솔만 고치면 실패한다.
 """
 
-import datetime
 import math
 import pathlib
 import re
@@ -735,68 +734,49 @@ class TestProcurementTerms(unittest.TestCase):
         ):
             self.assertIn(token, table, f"필수 실적에 {why} 가 없다")
 
-    def test_intake_dates_are_ordered_and_after_issue(self):
-        issue = re.search(r"<dd>(\d{4}-\d{2}-\d{2})</dd>", self.html).group(1)
-        dates = re.findall(r'class="num">(\d{4}-\d{2}-\d{2})', self.c12)
-        self.assertEqual(len(dates), 3, "접수 일정이 3행이 아니다")
-        self.assertEqual(dates, sorted(dates), "질의·답변·접수 마감 순서가 뒤집혔다")
-        self.assertGreater(dates[0], issue, "질의 마감이 발행일보다 앞선다")
+    def _offsets(self):
+        """접수 일정 세 행의 '발행일 + N 영업일' 을 읽는다."""
+        rows = re.findall(r'class="num">D \+ (\d+) 영업일', self.c12)
+        self.assertEqual(len(rows), 3, "접수 일정이 발행일 기준 영업일 3행이 아니다")
+        return [int(n) for n in rows]
 
-    def test_the_issue_date_is_the_same_in_all_three_places(self):
-        """발행일은 머리말·접수 일정 표제·꼬리말 세 곳에 적힌다.
+    def test_intake_is_counted_from_issue_in_business_days(self):
+        """날짜를 박아 둔 사양서는 발행이 늦어지면 마감이 먼저 지나 버린다.
 
-        한 곳만 고치면 입찰자는 어느 날짜로 기간을 세야 하는지 알 수 없고,
+        9/7 초안은 질의 마감을 9/18 로 적었고, 발행 전에 그날이 지났다. 기한은
+        발행일(D)에서 영업일로 세고, 달력 날짜는 발행할 때 적는다.
+        """
+        offsets = self._offsets()
+        self.assertEqual(offsets, sorted(offsets), "질의·답변·접수 마감 순서가 뒤집혔다")
+        self.assertEqual(len(set(offsets)), 3, "두 기한이 같은 날이다")
+        self.assertGreater(offsets[0], 0, "질의 마감이 발행일과 같거나 앞선다")
+        self.assertIsNone(re.search(r"\d{4}-\d{2}-\d{2}", self.c12[self.c12.index("12.6"):
+                                                                  self.c12.index("12.7")]),
+                          "12.6 에 달력 날짜가 박혀 있다")
+
+    def test_the_issue_date_is_left_for_issue_in_all_three_places(self):
+        """발행일은 머리말·접수 일정 표제·꼬리말 세 곳에 나온다 — 세 곳 모두 발행 때 적는다.
+
+        한 곳만 날짜로 남으면 입찰자는 어느 날짜로 기간을 세야 하는지 알 수 없고,
         마감을 다투는 순간 그 불일치가 그대로 분쟁이 된다.
         """
-        head = re.search(r"<dt>발행일</dt><dd>(\d{4}-\d{2}-\d{2})</dd>", self.html)
-        self.assertIsNotNone(head, "머리말에 발행일이 없다")
-        caption = re.search(r"<caption>접수 일정 — 본 사양서 발행일 "
-                            r"(\d{4}-\d{2}-\d{2}) 기준</caption>", self.html)
-        self.assertIsNotNone(caption, "접수 일정 표제에 발행일이 없다")
-        foot = re.search(r"DYNAMIC INDUSTRY · (\d{4}-\d{2}-\d{2})</p>", self.html)
-        self.assertIsNotNone(foot, "꼬리말에 발행일이 없다")
-        found = {head.group(1), caption.group(1), foot.group(1)}
-        self.assertEqual(
-            len(found), 1,
-            "발행일이 세 곳에서 갈렸다: 머리말 %s · 표제 %s · 꼬리말 %s"
-            % (head.group(1), caption.group(1), foot.group(1)))
+        self.assertIn("<dt>발행일</dt><dd>발행 시 기재</dd>", self.html, "머리말 발행일")
+        self.assertIn("<caption>접수 일정 — 본 사양서 발행일(D) 기준 영업일</caption>", self.html,
+                      "접수 일정 표제")
+        self.assertIn("DYNAMIC INDUSTRY · 발행일은 발행 시 기재한다</p>", self.html, "꼬리말")
+        self.assertIn("발행일 · 접수처 · 담당자는 <code>발행 시 기재</code>한다", self.c12)
+        self.assertEqual(self.html.count("발행 시 기재"), 3,
+                         "발행 때 적을 칸이 셋(머리말 · 12.6 · 꼬리말)이 아니다")
 
-    def test_every_deadline_falls_on_a_business_day(self):
-        """마감을 휴일에 걸면 그 조항은 그날 지킬 수 없는 조항이 된다.
+    def test_business_days_are_defined(self):
+        """영업일의 정의가 없으면 '+9 영업일' 은 사람마다 다른 날이 된다."""
+        self.assertIn("영업일은 토·일과 관공서 공휴일을 뺀 날", self.c12)
+        self.assertIn("발행할 때 세 기한을 달력 날짜로 바꿔", self.c12)
 
-        2026 년 추석은 9/24(목) – 9/26(토)이고 그 다음 월요일까지 사실상 연휴다.
-        개천절 10/3(토)은 10/5(월)이 대체공휴일, 한글날은 10/9(금)이다.
-        """
-        holidays = {
-            "2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18",
-            "2026-03-01", "2026-03-02", "2026-05-05", "2026-05-24",
-            "2026-05-25", "2026-06-06", "2026-08-15", "2026-08-17",
-            "2026-09-24", "2026-09-25", "2026-09-26", "2026-10-03",
-            "2026-10-05", "2026-10-09", "2026-12-25",
-        }
-        dates = re.findall(r'class="num">(\d{4}-\d{2}-\d{2})', self.c12)
-        self.assertEqual(len(dates), 3, "접수 일정이 3행이 아니다")
-        for d in dates:
-            day = datetime.date(*map(int, d.split("-")))
-            self.assertLess(day.weekday(), 5,
-                            "%s 은 %s요일이다 — 마감을 주말에 걸었다"
-                            % (d, "월화수목금토일"[day.weekday()]))
-            self.assertNotIn(d, holidays, "%s 은 공휴일이다 — 마감이 설 수 없다" % d)
-
-    def test_the_proposal_window_clears_the_chuseok_holiday(self):
-        """답변 회신부터 접수 마감까지 실제로 몇 영업일인지 센다."""
-        closed = {
-            "2026-09-24", "2026-09-25", "2026-09-26", "2026-10-03",
-            "2026-10-05", "2026-10-09",
-        }
-        dates = re.findall(r'class="num">(\d{4}-\d{2}-\d{2})', self.c12)
-        reply = datetime.date(*map(int, dates[1].split("-")))
-        close = datetime.date(*map(int, dates[2].split("-")))
-        working, day = 0, reply + datetime.timedelta(days=1)
-        while day <= close:
-            if day.weekday() < 5 and day.isoformat() not in closed:
-                working += 1
-            day += datetime.timedelta(days=1)
+    def test_the_proposal_window_is_what_the_text_says(self):
+        """답변 회신부터 접수 마감까지의 영업일을 표에서 세어 본문과 댄다."""
+        offsets = self._offsets()
+        working = offsets[2] - offsets[1]
         self.assertGreaterEqual(
             working, 10,
             "제안서 작성 기간이 %d 영업일뿐이다 — 상세설계 제안에는 짧다" % working)
@@ -805,7 +785,7 @@ class TestProcurementTerms(unittest.TestCase):
         self.assertIsNotNone(stated, "본문이 제안서 작성 기간을 영업일로 밝히지 않았다")
         self.assertEqual(
             int(stated.group(1)), working,
-            "본문은 %s 영업일이라 적었는데 표의 날짜로 세면 %d 영업일이다"
+            "본문은 %s 영업일이라 적었는데 표로 세면 %d 영업일이다"
             % (stated.group(1), working))
 
     def test_payment_is_tied_to_approval_not_submission(self):

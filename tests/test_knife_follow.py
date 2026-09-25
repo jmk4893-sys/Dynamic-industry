@@ -131,8 +131,19 @@ class TestTheVerticalReactionClosesAtThePeelFront(_Follow):
                  "PT-10": " ".join(pt10.steps) + pt10.accept,
                  "S13": self.by["S13"].note}
         for name, text in texts.items():
-            for bad in ("패드 사이 유리를 들어", "V 가 경간을 든다", "들어 올리는 운전"):
+            for bad in ("패드 사이 유리를 들어", "V 가 경간을 든다", "들어 올리는 운전",
+                        "로드셀에서 수직 반력이 사라"):
                 self.assertNotIn(bad, text, f"{name} 에 철회한 주장이 남았다: {bad}")
+
+    def test_the_fat_looks_for_what_following_removes(self):
+        """추종이 없애는 것은 V 가 아니라 패드 위 높은 자리의 누름이다 — FAT 는 그것을 본다.
+
+        첫 FAT 행은 '추종 중 로드셀에서 수직 반력이 사라질 것' 이었다. V 는 랜드가
+        되받아도 Z축을 거쳐 로드셀에 그대로 나오므로 그 판정은 어떤 칼날로도 불합격이다.
+        """
+        rfq = RFQ.read_text(encoding="utf-8")
+        row = next(r for r in re.findall(r"<tr>(.*?)</tr>", rfq, re.S) if "칼날 모듈 잠금·추종" in r)
+        self.assertIn("추종 박리 중 Z축 로드셀에 패드 스파이크가 없을 것", row)
 
     def test_the_limits_go_to_the_pilot(self):
         pt10 = next(t for t in PP.tests() if t.id == "PT-10")
@@ -166,11 +177,18 @@ class TestTheModulesAreBuilt(unittest.TestCase):
             self.assertIn(name, by_name, f"{name} 이 카탈로그에 없다")
             self.assertEqual(by_name[name].qty, qty, f"{name} 수량")
 
-    def test_the_holders_add_up_to_the_cassette_length(self):
+    def test_holders_fill_the_width_and_inserts_the_length(self):
+        """홀더 몸통은 겹침 자리에 들지 않는다 — 따로 뜨는 두 홀더가 거기서 부딪힌다 (D-502).
+        홀더와 옆 틈이 전폭을 채우고, 겹침까지 든 길이(카세트 길이)는 인서트가 갖는다."""
         hold = [p for p in PT.P if p.name.startswith("카세트 홀더")]
-        total = sum(p.shape.d["L"] * p.qty for p in hold)
-        self.assertAlmostEqual(total, PT.CASS_L, places=6,
-                               msg="홀더 길이의 합이 카세트 길이(겹침 포함)와 다르다")
+        ins = [p for p in PT.P if p.name.startswith("SKD11 인서트")]
+        n = sum(p.qty for p in hold)
+        self.assertEqual(n, self.n)
+        width = sum(p.shape.d["L"] * p.qty for p in hold) + (n - 1) * c("KM_GAP") * 1000
+        self.assertAlmostEqual(width, c("KNIFE_W") * 1000, places=6,
+                               msg="홀더와 옆 틈의 합이 칼날 전폭과 다르다")
+        self.assertAlmostEqual(sum(p.shape.d["L"] * p.qty for p in ins), PT.CASS_L, places=6,
+                               msg="인서트 길이의 합이 카세트 길이(겹침 포함)와 다르다")
 
     def test_air_and_signals_stay_on_the_machine(self):
         """교환품에 공압과 신호를 실으면 교환 때마다 배관을 푼다."""

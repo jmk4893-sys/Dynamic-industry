@@ -18,6 +18,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import parts as PT  # noqa: E402
+from console_consts import const as c  # noqa: E402
 import procure as PR  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -66,7 +67,7 @@ LEAD = [
      "압력용기 검사가 붙는다. 검사증 없이는 반입하지 않는다.",
      "8~10 주"),
     ("50 %", "IR 램프 · 히터 · 열전대",
-     "규격품이나 수량이 많다(램프 40등). 시운전 소모를 보아 예비를 함께 산다.",
+     f"규격품이나 수량이 많다(램프 {int(c('LAMPS'))}등). 시운전 소모를 보아 예비를 함께 산다.",
      "4~6 주"),
     ("70 %", "필터 · 패드 · 소모품",
      "마지막에 산다. 먼저 사면 창고에서 늙는다 — 특히 NBR 패드와 필터.",
