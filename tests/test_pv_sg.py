@@ -614,13 +614,16 @@ class TestGrindingTheWholeBacksheetFace(unittest.TestCase):
             sg_grind.BACKSHEET_T_MM = t0
 
     def test_the_band_answer_holds_at_face_scale(self):
-        """띠에서 긁는 쪽이 이겼듯, 면에서도 벗기는 쪽이 세 자릿수로 이긴다.
+        """띠에서 긁는 쪽이 이겼듯, 면에서도 벗기는 쪽이 크게 이긴다.
 
-        상수를 실제값으로 낮춘 뒤에도 배수가 남는다 — 계면 일과 부피 일의
-        차이지 비에너지를 크게 잡아서 난 차이가 아니었다.
+        배수가 두 번 움직였고 둘 다 상수를 실제값으로 고쳐서다 — 연마
+        비에너지를 8.0 에서 1.6 으로 내렸고(배수가 커짐), 박리 Gc 를 근거
+        없던 0.5 에서 문헌값 2.0 으로 올렸다(배수가 1,024 → 256 으로 작아짐).
+        **그래도 두 자릿수가 남는다.** 계면 일과 부피 일의 차이지 어느 한
+        상수를 크게 잡아서 난 차이가 아니었다는 뜻이다.
         """
         self.assertGreater(sg_grind.scrape_beats_abrade_by(), 1_000)
-        self.assertGreater(sg_grind.peel_beats_abrade_by(), 1_000)
+        self.assertGreater(sg_grind.peel_beats_abrade_by(), 100)
         self.assertAlmostEqual(
             sg_grind.backsheet_peel_energy_j(),
             sg_grind.backsheet_peel_force_n() * float(campaign.PANEL_LENGTH_MM) / 1_000.0,

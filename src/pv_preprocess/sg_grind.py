@@ -75,9 +75,10 @@ BACKSHEET_T_MM = 0.32
 BACKSHEET_MELT_C = 200.0
 #: 백시트 폴리머 밀도 (g/mm³) — PVF/PET 3층의 대표값. 분진 질량에만 쓴다.
 BACKSHEET_DENSITY_G_MM3 = 1.78e-3
-#: 백시트–EVA 계면의 파괴에너지 (N/mm) — **실측 전 계획값**이고 저장소에
-#: 근거가 없다. 면 전체를 벗기는 대안을 견줄 때만 쓴다. 값이 오면 여기만 고친다.
-BACKSHEET_PEEL_GC_N_MM = 0.5
+#: 백시트–EVA 계면의 파괴에너지 (N/mm). 한때 근거 없이 0.5 로 두었는데
+#: **문헌값의 4~20 분의 1 이었다** — 신품 180° 박리가 60~100 N/cm(6~10 N/mm)
+#: 이고 습열 300 h 뒤에도 20 N/cm(2 N/mm)다. 정본을 `br_peel.INTERFACES` 로
+#: 옮겼다. 거기에는 계면이 여럿이고, 어느 면에서 뜯느냐가 20 배를 가른다.
 
 # ── 면 연마 라인 — 남의 설비에서 가져온 상수 ────────────────────────────
 #
@@ -860,12 +861,25 @@ def backsheet_abrade_power_kw() -> float:
     return round(backsheet_abrade_power_w() / 1_000.0, 1)
 
 
+def backsheet_peel_gc_n_mm() -> float:
+    """백시트–EVA 계면의 파괴에너지 (N/mm) — `br_peel` 이 정본이다.
+
+    노후값을 쓴다. 우리가 받는 것은 20 년 된 패널이고, 접착은 세월이
+    갈수록 **약해진다.**
+    """
+    from . import br_peel
+    return next(i for i in br_peel.INTERFACES
+                if i.key == "backsheet_eva").gc_aged_n_mm
+
+
 def backsheet_peel_force_n() -> float:
     """면 전체를 계면에서 벗기는 힘 (N) = Gc × 패널 폭.
 
-    두께에 안 걸린다 — 띠에서 쓴 것과 같은 **계면 일**이다.
+    두께에 안 걸린다 — 띠에서 쓴 것과 같은 **계면 일**이다. 다만 이 값은
+    백시트를 **통째로 EVA 에서** 뜯을 때의 것이다. `br_peel` 이 보여 주듯
+    백시트 안쪽에서 불소 외피만 벗기면 20 분의 1 로 내려간다.
     """
-    return round(BACKSHEET_PEEL_GC_N_MM * float(campaign.PANEL_WIDTH_MM), 1)
+    return round(backsheet_peel_gc_n_mm() * float(campaign.PANEL_WIDTH_MM), 1)
 
 
 def backsheet_peel_energy_j() -> float:
