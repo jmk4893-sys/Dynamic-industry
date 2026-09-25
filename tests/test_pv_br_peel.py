@@ -259,6 +259,33 @@ class TestTheGapMustBeMadeNotFound(unittest.TestCase):
         self.assertIn("절단 깊이를 무엇으로 잡는지가 안 정해졌다",
                       " ".join(br_peel.open_questions()))
 
+    def test_the_second_stage_is_a_cut_not_a_peel_entry(self):
+        """도면이 ②를 「2 차 커팅」이라 적는다 — 박리 진입으로 적어 두었었다."""
+        second = br_peel.stages()[1]
+        self.assertIn("2 차 커팅", second[0])
+        self.assertIn("절단이다", second[1])
+        self.assertNotIn("칼날 진입", second[0])
+
+    def test_what_the_second_cut_does_is_recorded_as_unread(self):
+        """②가 무엇을 가르는지 **모른다고 적는다** — 세 번째 추측을 안 넣는다.
+
+        이 자리에서 이미 두 번 틀렸다(「JBR 절결을 주워 쓴다」·「30 mm 가
+        절단 길이」). 읽힌 것과 못 읽은 것을 갈라 두는 것이 지금 할 일이다.
+        """
+        note = " ".join(br_peel.second_cut_is_unread())
+        self.assertIn("읽힌 것", note)
+        self.assertIn("못 읽은 것", note)
+        self.assertGreaterEqual(len(br_peel.second_cut_is_unread()), 4)
+        self.assertIn("2 차 커팅이 무엇을 가르는지 못 읽었다",
+                      " ".join(br_peel.open_questions()))
+
+    def test_the_peel_force_is_flagged_as_provisional(self):
+        """②가 폭을 나누면 박리력이 나뉜다 — 그 단서를 단계 글에 달아 둔다."""
+        third = br_peel.stages()[2]
+        self.assertIn("나뉜다", third[1])
+        self.assertIn("확정으로 읽으면 안 된다", third[1])
+        self.assertTrue(br_peel.summary()["secondCutIsUnread"])
+
     def test_no_stage_claims_the_gap_already_exists(self):
         """어느 단계도 「틈이 이미 있다」고 말하지 않는다 — 만들어서 연다."""
         text = " ".join(v for _, v in br_peel.stages())
