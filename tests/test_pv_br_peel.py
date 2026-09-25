@@ -177,6 +177,61 @@ class TestTheMethodTableIsHonestAboutWhatBlocksEach(unittest.TestCase):
             self.assertLessEqual(m.seconds_per_panel, br_peel.line_takt_s())
 
 
+class TestTheGapMustBeMadeNotFound(unittest.TestCase):
+    """칼날이 들어갈 틈이 **애초에 없다** — 그래서 공정이 둘이다.
+
+    한때 이 자리를 「JBR 절결을 주워 쓸 수 있다」로 적었다. 있는 구멍을 찾는
+    발상이었고, 실제 공정은 **틈을 만드는 공정을 따로 둔다.**
+    """
+
+    def test_the_unit_is_two_stages_not_one(self):
+        """1 차 커팅과 2 차 칼날 진입이 갈린다."""
+        self.assertTrue(br_peel.a_gap_must_be_made_not_found())
+        self.assertGreaterEqual(len(br_peel.stages()), 3)
+        first = br_peel.stages()[0]
+        self.assertIn("1 차", first[0])
+        self.assertIn(f"{br_peel.STARTER_CUT_MM:.0f} mm", first[1])
+        self.assertIn(br_peel.STARTER_CUT_ORIENTATION, first[1])
+        self.assertIn("가로", br_peel.STARTER_CUT_ORIENTATION)
+
+    def test_the_cut_has_the_same_depth_window_as_abrading(self):
+        """커팅 깊이 창이 연마 절입 창과 같다 — 라미네이트가 정하기 때문이다."""
+        from pv_preprocess import br_abrade
+        self.assertTrue(br_peel.starter_cut_is_the_same_depth_problem())
+        self.assertEqual(br_peel.starter_cut_window_mm(),
+                         br_abrade.depth_window_mm())
+        lo, hi = br_peel.starter_cut_window_mm()
+        self.assertAlmostEqual(lo, sg_grind.BACKSHEET_T_MM, places=3)
+        self.assertGreater(hi, lo)
+
+    def test_the_window_is_owned_elsewhere_not_redefined_here(self):
+        """창을 여기서 다시 정하지 않는다 — 두 곳에 적으면 갈라진다."""
+        from pv_preprocess import br_abrade
+        lo0, hi0 = br_abrade.depth_window_mm()
+        d0 = br_abrade.BACK_EVA_T_MM
+        try:
+            br_abrade.BACK_EVA_T_MM = d0 + 0.30
+            self.assertNotEqual(br_peel.starter_cut_window_mm(), (lo0, hi0))
+            self.assertEqual(br_peel.starter_cut_window_mm(),
+                             br_abrade.depth_window_mm())
+        finally:
+            br_abrade.BACK_EVA_T_MM = d0
+
+    def test_the_start_point_question_is_closed_and_a_new_one_opened(self):
+        """시작점은 닫혔고, 대신 「어디에 긋나」가 열렸다."""
+        note = " ".join(br_peel.what_the_first_cut_settles())
+        self.assertIn("시작점 물음이 닫혔다", note)
+        self.assertIn("어디에 긋느냐", note)
+        self.assertIn("어디에 긋는지가 안 정해졌다",
+                      " ".join(br_peel.open_questions()))
+
+    def test_no_stage_claims_the_gap_already_exists(self):
+        """어느 단계도 「틈이 이미 있다」고 말하지 않는다."""
+        text = " ".join(v for _, v in br_peel.stages())
+        self.assertIn("틈을 만든다", text)
+        self.assertNotIn("주워", text)
+
+
 class TestUpstreamAlreadyStoodForThis(unittest.TestCase):
     """상류가 이미 박리를 알고 있었다 — 새로 유도하지 않고 받아 온다."""
 
@@ -193,13 +248,17 @@ class TestUpstreamAlreadyStoodForThis(unittest.TestCase):
         self.assertIn(f"{handoff.SILICONE_RESIDUE_MAX_MM:g}", text)
         self.assertGreaterEqual(len(br_peel.upstream_conditions()), 3)
 
-    def test_the_jbr_notch_is_a_candidate_start_point_not_a_conclusion(self):
-        """절결이 시작점 후보다 — 다만 판 가운데라 확인이 필요하다고 적는다."""
-        note = " ".join(br_peel.jbr_notch_as_a_start_point())
-        self.assertIn(f"{handoff.BACKSHEET_NOTCH_MAX_MM:g}", note)
-        self.assertIn("가운데", note)
-        self.assertIn("시편", note)
+    def test_the_jbr_notch_is_no_longer_claimed_as_the_start_point(self):
+        """JBR 절결은 여전히 있지만 **시작점이 아니다.**
+
+        있는 구멍을 주워 쓰는 발상이었고, 실제 공정은 틈을 따로 만든다.
+        절결 자체는 `handoff` 가 든 상류 사실로 남는다 — 정션박스 발자국
+        안에만 있고 깊이 상한이 걸려 있다.
+        """
+        self.assertFalse(hasattr(br_peel, "jbr_notch_as_a_start_point"))
+        self.assertGreater(handoff.BACKSHEET_NOTCH_MAX_MM, 0.0)
         self.assertTrue(handoff.BACKSHEET_NOTCH_FOOTPRINT_ONLY)
+        self.assertTrue(br_peel.a_gap_must_be_made_not_found())
 
 
 class TestItSaysWhyThisBeatsAbrading(unittest.TestCase):

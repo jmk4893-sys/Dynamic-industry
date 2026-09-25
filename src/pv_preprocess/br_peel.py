@@ -2,6 +2,9 @@
 """BR-306 백시트 박리 — **약한 면은 덫이었다.**
 
 `br_abrade` 가 백시트를 갈아 없애는 유닛이라면 이쪽은 필름째 떼는 대안이다.
+**다만 한 공정이 아니라 둘이다** — 라미네이트에는 칼날이 들어갈 틈이 애초에
+없어서, 1 차로 가로 30 mm 를 그어 틈을 만들고 2 차로 칼날이 들어간다
+(`stages()`). 시작점은 찾는 것이 아니라 **만드는 것**이다.
 박리를 못 쓴다고 본 이유 하나는 정말로 틀렸고, 하나는 맞았는데 내가 그것을
 고쳤다고 착각했다.
 
@@ -84,6 +87,26 @@ INTERFACES: tuple[Interface, ...] = (
         "여기를 노리면 셀이 따라 나온다 — 전처리 단계에서 할 일이 아니다. "
         "값은 자릿수만 맞춘 계획값이다"),
 )
+
+# ── 1 차 커팅 — 칼날이 들어갈 틈을 **만든다** ───────────────────────────
+#
+#   **백시트를 바로 벗겨낼 수 없다.** 계면 박리는 칼날이 들어갈 틈이 있어야
+#   시작되는데 라미네이트에는 애초에 틈이 없다 — 백시트가 EVA 에 면으로
+#   붙어 변까지 이어져 있어 들어갈 자리가 없다.
+#
+#   그래서 공정이 **둘로 갈린다.**
+#
+#       ① 1 차 커팅 — 가로로 30 mm 쯤 그어 틈을 만든다
+#       ② 2 차      — 그 틈으로 칼날이 들어가 박리가 시작된다
+#
+#   한때 이 자리를 「JBR 절결을 시작점으로 주워 쓸 수 있다」로 적었다. 그것은
+#   **있는 구멍을 찾는** 발상이었고, 실제 공정은 **틈을 만드는 공정을 따로
+#   둔다.** 시작점은 찾는 것이 아니라 만드는 것이다.
+
+#: 1 차 커팅 길이 (mm).
+STARTER_CUT_MM = 30.0
+#: 그 방향 — 판을 가로지르는 쪽이다.
+STARTER_CUT_ORIENTATION = "가로(횡)"
 
 #: 가열 보조 온도 (°C) — KR101936925B1 의 흡착 가열 범위.
 HEAT_ASSIST_C = (50.0, 300.0)
@@ -332,27 +355,68 @@ def tear_risk_is_already_specified() -> bool:
     return handoff.RIBBON_STUB_MAX_MM > 0 and not handoff.RIBBON_MAY_BE_LAID_OVER
 
 
-def jbr_notch_as_a_start_point() -> tuple[str, ...]:
-    """시작점 문제 — JBR 이 이미 백시트에 구멍을 낸다.
-
-    계면 박리는 균열을 시작할 자리가 있어야 한다. 그런데 JBR-201 절입이
-    백시트를 뚫는 것이 **허용 조건**으로 이미 들어와 있다 — 정션박스 발자국
-    안에서 깊이 상한 `BACKSHEET_NOTCH_MAX_MM` 까지. 그 절결이 그리퍼가
-    물 자리가 될 수 있다.
-    """
-    from . import handoff
+def stages() -> tuple[tuple[str, str], ...]:
+    """이 유닛이 도는 차례 — **둘이다.**"""
+    lo, hi = starter_cut_window_mm()
     return (
-        f"JBR-201 이 정션박스 발자국 안에 깊이 ≤ "
-        f"{handoff.BACKSHEET_NOTCH_MAX_MM:g} mm 의 절결을 남기는 것이 발주처 "
-        "승인 사항이다. 없애려던 결함이 아니라 **받아들인 조건**이다.",
-        "계면 박리에 필요한 것이 시작점이므로, 그 절결이 그리퍼 자리로 쓰일 수 "
-        "있다 — 따로 긋는 수단을 안 만들어도 된다는 뜻이다.",
-        "다만 그 자리는 판 **가운데**(정션박스 자리)이지 변이 아니다. 가운데서 "
-        "시작하는 박리는 전선이 사방으로 퍼져 변에서 당기는 것과 다르다. "
-        "쓸 수 있는지는 시편으로 봐야 한다.",
-        f"그리고 같은 문서가 리본 단부를 ≤ {handoff.RIBBON_STUB_MAX_MM:g} mm 로 "
-        "묶어 둔 이유가 바로 **박리 중 찢김**이다. 상류가 이미 이 유닛을 "
-        "염두에 두고 서 있었다.",
+        ("① 1 차 커팅",
+         f"{STARTER_CUT_ORIENTATION}으로 {STARTER_CUT_MM:.0f} mm 를 그어 "
+         f"**틈을 만든다.** 깊이는 {lo}~{hi} mm 사이여야 한다 — 얕으면 백시트가 "
+         "안 끊겨 틈이 안 생기고, 깊으면 셀을 긋는다."),
+        ("② 2 차 · 칼날 진입",
+         "그 틈으로 칼날이 들어가 계면을 잡는다. 여기서부터가 계면 일이라 "
+         f"두께에 안 걸리고 {peel_force_n():,.0f} N 으로 간다."),
+        ("③ 박리",
+         f"전선이 퍼지며 백시트가 필름째 나온다. 노후가 {aging_saves_us()} 배, "
+         f"가열이 {heat_saves_us()} 배를 깎아 {heat_brings_it_to_n():,.0f} N 까지 "
+         "내려온다."),
+    )
+
+
+def a_gap_must_be_made_not_found() -> bool:
+    """틈을 **만들어야** 하는가 — 그렇다. 주워 쓸 구멍이 없다.
+
+    이 한 줄이 박리 유닛을 1 공정이 아니라 **2 공정**으로 만든다.
+    """
+    return STARTER_CUT_MM > 0.0
+
+
+def starter_cut_window_mm() -> tuple[float, float]:
+    """1 차 커팅이 들어가도 되는 깊이 (mm) — 라미네이트가 정하는 창이다.
+
+    연마 절입과 **같은 창**이다. 백시트를 끊을 만큼 깊어야 하고 셀에 닿지
+    않을 만큼 얕아야 한다. 정본은 `br_abrade` 가 든다 — 두 곳에 적으면 갈라진다.
+    """
+    from . import br_abrade
+    return br_abrade.depth_window_mm()
+
+
+def starter_cut_is_the_same_depth_problem() -> bool:
+    """1 차 커팅이 연마와 같은 깊이 문제를 안는가 — 안는다.
+
+    그래서 답도 같다: 깊이를 기계가 아니라 **면에서** 잡아야 한다.
+    공법이 달라도 창은 라미네이트가 정한다.
+    """
+    from . import br_abrade
+    return starter_cut_window_mm() == br_abrade.depth_window_mm()
+
+
+def what_the_first_cut_settles() -> tuple[str, ...]:
+    """1 차 커팅이 닫는 물음과, 그 대신 여는 물음."""
+    lo, hi = starter_cut_window_mm()
+    return (
+        "**시작점 물음이 닫혔다.** 「그리퍼가 균열을 어디서 시작하나」를 열어 "
+        "두고 JBR 절결을 후보로 적었는데, 실제 공정은 **틈을 만드는 공정을 "
+        "따로 둔다.** 있는 구멍을 찾는 문제가 아니었다.",
+        f"**대신 공정이 둘이 된다.** 1 차 커팅({STARTER_CUT_MM:.0f} mm "
+        f"{STARTER_CUT_ORIENTATION})이 점유와 부품표에 들어오고, 그 칼날이 "
+        "백시트 유닛의 별도 부품이 된다.",
+        f"**그리고 깊이 문제가 하나 더 생긴다.** 커팅 깊이가 {lo}~{hi} mm 창 "
+        "안에 들어야 한다 — 연마가 쓰는 것과 **같은 창**이다. 얕으면 틈이 안 "
+        "생기고 깊으면 셀을 긋는다. 답도 같다: 깊이를 면에서 잡는다.",
+        "**어디에 긋느냐가 아직 안 정해졌다.** 셀이 없는 여백이면 창이 넓어지고 "
+        "셀 위면 좁아진다. 30 mm 하나로 폭 1,400 을 다 여는지, 여러 번 긋는지도 "
+        "실제 설비를 봐야 안다.",
     )
 
 
@@ -370,10 +434,10 @@ def open_questions() -> tuple[str, ...]:
         "반쯤 사라진다 — 이것이 연마 대비 우위를 정하는 값이다. 그리고 여기서는 "
         "**약한 외피–심재 면이 오히려 해롭다** — 거기서 먼저 갈라지면 심재만 "
         "남는다.",
-        "**시작점은 후보가 생겼지만 확인이 필요하다.** JBR-201 절결이 이미 "
-        "백시트를 뚫어 두므로 그리퍼 자리로 쓸 수 있다 "
-        "(`jbr_notch_as_a_start_point()`). 다만 그 자리가 판 가운데라 변에서 "
-        "당기는 것과 전선 모양이 다르고, 쓸 수 있는지는 시편으로만 안다.",
+        f"**1 차 커팅을 어디에 긋는지가 안 정해졌다.** 시작점 자체는 닫혔다 — "
+        f"{STARTER_CUT_MM:.0f} mm 를 그어 틈을 만드는 것이 실제 공정이다. "
+        "남은 것은 자리다: 셀이 없는 여백이면 깊이 창이 넓어지고 셀 위면 "
+        "좁아진다. 30 mm 하나로 폭 1,400 을 다 여는지도 아직 모른다.",
     )
 
 
@@ -400,6 +464,10 @@ def summary() -> dict[str, object]:
         "methodCount": len(METHODS),
         "solventFreeCount": len(solvent_free_methods()),
         "recommended": recommended().key,
+        "starterCutMm": STARTER_CUT_MM,
+        "gapMustBeMade": a_gap_must_be_made_not_found(),
+        "starterCutWindowMm": list(starter_cut_window_mm()),
+        "stageCount": len(stages()),
         "tearRiskIsAlreadySpecified": tear_risk_is_already_specified(),
         "upstreamConditionCount": len(upstream_conditions()),
     }
