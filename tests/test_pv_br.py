@@ -287,10 +287,20 @@ class TestTheFinesThatEscapeAreTheRisk(unittest.TestCase):
             br_abrade.TARGET_DEPTH_MM = d0
 
     def test_the_note_explains_why_grams_alone_do_not_settle_it(self):
-        """질량비만 보면 안 되는 이유를 글로 적어 둔다."""
+        """질량비만 보면 안 되는 이유를 글로 적어 둔다.
+
+        그리고 **「미분이라 특별히 더 해롭다」는 말을 하지 않는다** — 급광이
+        32~75 µm 라 전부가 미분이다. 안 잡힌 분진은 그냥 안 걷힌 백시트다.
+        """
         note = " ".join(br_abrade.fines_that_escape_are_the_risk())
         self.assertIn("µm", note)
-        self.assertIn("침강분", note)
+        self.assertIn("안 걷힌 백시트", note)
+        self.assertIn("같은 창", note)
+
+    def test_the_feed_window_comes_from_separation(self):
+        """급광 창을 여기서 다시 정하지 않는다 — 실측이 `separation` 에 있다."""
+        self.assertEqual(br_abrade.feed_window_um(), separation.feed_window_um())
+        self.assertEqual(br_abrade.feed_window_um(), (32.0, 75.0))
         self.assertGreaterEqual(len(br_abrade.fines_that_escape_are_the_risk()), 4)
 
 

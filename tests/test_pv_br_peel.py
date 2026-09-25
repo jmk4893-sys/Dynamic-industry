@@ -205,10 +205,14 @@ class TestUpstreamAlreadyStoodForThis(unittest.TestCase):
 class TestItSaysWhyThisBeatsAbrading(unittest.TestCase):
     """연마 대신 이쪽을 먼저 보는 이유를 글로 적어 둔다."""
 
-    def test_the_case_rests_on_fines_not_on_force(self):
-        """요지는 힘이 아니라 **미분이 안 생긴다**는 것이다."""
+    def test_the_case_rests_on_removal_not_on_force(self):
+        """요지는 힘이 아니라 **필름째 라인 밖으로 나간다**는 것이다.
+
+        「미분이 안 생긴다」로 적었던 것을 고쳤다 — 급광이 32~75 µm 라
+        미분 자체가 문제가 아니었다. 문제는 **안 잡힌 몫이 남는다**는 것이다.
+        """
         note = " ".join(br_peel.why_not_abrading())
-        self.assertIn("미분", note)
+        self.assertIn("필름째", note)
         self.assertIn("침강분", note)
         self.assertGreaterEqual(len(br_peel.why_not_abrading()), 4)
 
