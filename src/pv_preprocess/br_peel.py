@@ -30,9 +30,13 @@
 `the_weak_plane_is_a_trap()` 이 그것을 판정한다. 남는 위안은 ①뿐이다 —
 노후가 4 배를 깎아 주고 가열이 다시 절반을 깎는다.
 
-    2,800 N   백시트–EVA · 노후 (설계값)
+    2,800 N   백시트–EVA · 노후 (설계값) — **폭 전체 합**
     1,400 N   거기에 가열까지
    11,200 N   신품이었다면
+
+그리고 그 합을 한 점이 받지 않는다. 백시트는 **길이 방향 7 장**으로 벗겨지고
+그 장수가 칼날 수다 — 한 장이 폭 200 mm 띠를 물어 **400 N**(가열 시 200 N)을
+받는다. 합은 그대로고 사양을 정하는 값만 7 분의 1 이 된다.
 
 EVA 는 걱정할 것이 아니다. 물보다 가벼워 선별조에서 스스로 뜬다 — 불순물이지만
 **스스로 갈라지는** 불순물이다. 그래서 박리가 EVA 를 조금 물고 나와도 된다.
@@ -124,6 +128,12 @@ STARTER_CUT_OFFSET_MM = 30.0
 STARTER_CUT_ORIENTATION = "가로(횡)"
 #: 절단선이 셀 위를 지나는가 — 지난다. 여백으로 피할 수 없다.
 STARTER_CUT_CROSSES_CELLS = True
+
+#: 박리 칼날 수 — **현장이 든 수다.** 백시트는 길이 방향 **7 장**으로 벗겨지고
+#: 그 장수가 곧 칼날 수다. 이 값 하나가 그리퍼·구동 사양을 정한다.
+BLADE_COUNT = 7
+#: 띠가 나뉘는 방향 — **길이 방향**이다. 1 차 커팅(가로)과 직각이다.
+STRIP_ORIENTATION = "세로(길이 방향)"
 
 #: 가열 보조 온도 (°C) — KR101936925B1 의 흡착 가열 범위.
 HEAT_ASSIST_C = (50.0, 300.0)
@@ -220,6 +230,62 @@ def heat_saves_us() -> float:
 def heat_brings_it_to_n() -> float:
     """가열까지 얹으면 힘이 얼마가 되는가 (N)."""
     return peel_force_n(heated=True)
+
+
+# ── 그 힘을 몇 장이 나눠 받는가 ─────────────────────────────────────────
+#
+#   합은 안 바뀌지만 **한 장이 받는 값이 바뀐다.** 그리퍼·구동은 합이 아니라
+#   한 장이 받는 값으로 고르므로 이쪽이 사양을 정하는 값이다.
+
+def strip_width_mm() -> float:
+    """칼날 한 장이 맡는 띠의 폭 (mm) = 판 폭 ÷ 칼날 수."""
+    return round(float(campaign.PANEL_WIDTH_MM) / BLADE_COUNT, 1)
+
+
+def peel_travel_mm() -> float:
+    """띠 한 장을 끝까지 벗기는 진행 거리 (mm).
+
+    띠가 **길이 방향**이라 진행도 길이 방향이다 — 1 차 커팅(가로)에서
+    출발해 판 길이만큼 간다.
+    """
+    return float(campaign.PANEL_LENGTH_MM)
+
+
+def peel_force_per_blade_n(iface: Interface | None = None, *,
+                           aged: bool = True, heated: bool = False) -> float:
+    """칼날 **한 장**이 받는 힘 (N) = Gc × 띠 폭.
+
+    `peel_force_n()` 은 폭 전체의 합이고 이쪽이 **사양을 정하는 값**이다.
+    """
+    iface = iface or required_interface()
+    gc = iface.gc_aged_n_mm if aged else iface.gc_fresh_n_mm
+    if heated:
+        gc *= HEAT_DERATE
+    return round(gc * strip_width_mm(), 1)
+
+
+def per_blade_relief() -> float:
+    """한 장이 받는 값이 합보다 몇 배 가벼운가 — 칼날 수 그대로다."""
+    return round(peel_force_n() / peel_force_per_blade_n(), 1)
+
+
+def total_force_is_conserved() -> bool:
+    """칼날로 나눠도 **합은 그대로인가** — 그대로다.
+
+    나뉘는 것은 한 장이 받는 값이지 일의 총량이 아니다. 계면 넓이가
+    같으니 에너지도 같다 — 폭을 나눈다고 붙어 있는 면이 줄지 않는다.
+    """
+    return abs(peel_force_per_blade_n() * BLADE_COUNT - peel_force_n()) <= 1.0
+
+
+def the_load_is_carried_by_seven_not_one() -> bool:
+    """**이 절의 요지** — 합을 한 점이 받는 것으로 잡으면 과설계가 된다.
+
+    한때 「폭을 나누는 절단이 없으니 2,800 N 을 한 번에 간다」고 적었다.
+    절단이 나누지 않는 것은 맞았지만 **칼날이 나눈다** — 7 장이 각각
+    띠 하나를 문다.
+    """
+    return BLADE_COUNT > 1 and total_force_is_conserved()
 
 
 def force_the_face_allows_n() -> float:
@@ -407,12 +473,15 @@ def stages() -> tuple[tuple[str, str], ...]:
          f"칼날 진입구가 된다. 깊이는 {lo}~{hi} mm 사이여야 하고, 절단선이 "
          "**셀 위**를 지나므로 그 창이 1,400 mm 내내 지켜져야 한다."),
         ("② 2 차 커팅 (= 박리)",
-         f"**현장이 박리를 이렇게 부른다.** 칼날이 그 틈으로 들어가 계면을 "
-         f"잡고 백시트를 필름째 벗긴다. 계면 일이라 두께에 안 걸리고 폭 "
-         f"{starter_cut_length_mm():,.0f} mm 를 한 번에 "
-         f"{peel_force_n():,.0f} N 으로 간다 — 노후가 {aging_saves_us()} 배, "
-         f"가열이 {heat_saves_us()} 배를 깎아 {heat_brings_it_to_n():,.0f} N "
-         "까지 내려온다."),
+         f"**현장이 박리를 이렇게 부른다.** 칼날 {BLADE_COUNT} 장이 그 틈으로 "
+         f"들어가 계면을 잡고 백시트를 필름째 벗긴다 — 나오는 것은 한 장이 "
+         f"아니라 {STRIP_ORIENTATION} 띠 {BLADE_COUNT} 장이고, 한 장이 폭 "
+         f"{strip_width_mm():,.0f} mm · 길이 {peel_travel_mm():,.0f} mm 다. "
+         f"계면 일이라 두께에 안 걸린다. **한 장이 받는 힘 "
+         f"{peel_force_per_blade_n():,.0f} N**(가열 시 "
+         f"{peel_force_per_blade_n(heated=True):,.0f} N), 합 "
+         f"{peel_force_n():,.0f} N — 노후가 {aging_saves_us()} 배, 가열이 "
+         f"{heat_saves_us()} 배를 깎는다."),
     )
 
 
@@ -429,8 +498,12 @@ def the_word_cutting_names_the_peel() -> tuple[str, ...]:
         "읽어 「무엇을 가르는지 모른다」고 적었다.",
         "**공정은 둘이다** — 1 차 커팅(틈 만들기)과 2 차 커팅(= 박리). "
         "절단은 한 번뿐이고, 그 다음은 계면을 벗기는 일이다.",
-        f"그래서 박리력 {peel_force_n():,.0f} N 은 **잠정이 아니라 확정**이다. "
-        "폭을 나누는 절단이 없으므로 한 번에 벗기는 값 그대로다.",
+        f"그래서 박리력 **합** {peel_force_n():,.0f} N 은 잠정이 아니라 "
+        "확정이다 — 폭을 나누는 **절단**이 없으므로 떼어야 할 면이 그대로다. "
+        f"다만 그 합을 한 점이 받는 것은 아니다: 칼날 {BLADE_COUNT} 장이 "
+        f"각각 폭 {strip_width_mm():,.0f} mm 띠를 물어 한 장이 받는 값은 "
+        f"{peel_force_per_blade_n():,.0f} N 이다. 「절단이 안 나눈다」에서 "
+        "「아무것도 안 나눈다」로 건너뛰었던 자리다.",
         "**말이 공정을 가리키지 물리를 가리키지 않는다.** 현장 용어를 물리 "
         "이름으로 그대로 옮기면 이렇게 어긋난다 — 다음에도 같은 자리를 조심한다.",
     )
@@ -494,11 +567,19 @@ def open_questions() -> tuple[str, ...]:
         "**유입 패널의 열화 정도를 모른다.** 노후값을 설계값으로 썼는데, 그 "
         "전제가 맞는지는 입고품 시편으로 확인해야 한다. 신품에 가까우면 힘이 "
         f"{peel_force_n(aged=False):,.0f} N 으로 여섯 배가 된다.",
-        "**백시트가 한 장으로 벗겨지는지 모른다.** 20 년 된 PET 은 가수분해로 "
-        "물러져 있어 뜯다가 찢어질 수 있다. 조각나면 박리의 장점(미분 없음)이 "
-        "반쯤 사라진다 — 이것이 연마 대비 우위를 정하는 값이다. 그리고 여기서는 "
-        "**약한 외피–심재 면이 오히려 해롭다** — 거기서 먼저 갈라지면 심재만 "
-        "남는다.",
+        f"**띠 한 장이 {peel_travel_mm():,.0f} mm 를 온전히 가는지 모른다.** "
+        f"「한 장으로 벗겨지나」라고 물었었는데 그 물음은 닫혔다 — 한 장이 "
+        f"아니라 {BLADE_COUNT} 장이고, 그것이 설계다. 남은 것은 그 띠가 진행 "
+        "중에 끊기지 않느냐다. 20 년 된 PET 은 가수분해로 물러져 있어 뜯다가 "
+        "찢어질 수 있고, 조각나면 박리의 장점(미분 없음)이 반쯤 사라진다 — "
+        "이것이 연마 대비 우위를 정하는 값이다. 그리고 여기서는 **약한 "
+        "외피–심재 면이 오히려 해롭다** — 거기서 먼저 갈라지면 심재만 남는다.",
+        f"**무엇이 필름을 {BLADE_COUNT} 장으로 가르는지 모른다.** 칼날 옆날이 "
+        "필름을 째는 것인지, 칼날 사이에서 필름이 스스로 찢어지는 것인지 "
+        "안 들었다. 현장은 「칼날 갯수만큼」이라고만 했다. 전자면 옆날이 "
+        "부품표에 들어오고 그 깊이도 창 안에 있어야 하며, 후자면 찢어지는 "
+        "자리가 칼날 사이 어디든이라 띠 폭이 균일하지 않다. **추측하지 "
+        "않는다** — 같은 자리에서 두 번 틀렸다.",
         f"**절단 깊이를 무엇으로 잡는지가 안 정해졌다.** 1 차의 자리와 길이는 닫혔다 "
         f"(변에서 {STARTER_CUT_OFFSET_MM:.0f} mm · 폭 전체 한 줄 · 셀 위). "
         f"남은 것은 그 창({starter_cut_window_mm()[0]}~"
@@ -522,6 +603,14 @@ def summary() -> dict[str, object]:
         "agingSavesUs": aging_saves_us(),
         "heatSavesUs": heat_saves_us(),
         "peelForceN": peel_force_n(),
+        "bladeCount": BLADE_COUNT,
+        "stripWidthMm": strip_width_mm(),
+        "stripOrientation": STRIP_ORIENTATION,
+        "peelTravelMm": peel_travel_mm(),
+        "peelForcePerBladeN": peel_force_per_blade_n(),
+        "peelForcePerBladeHeatedN": peel_force_per_blade_n(heated=True),
+        "perBladeRelief": per_blade_relief(),
+        "totalForceIsConserved": total_force_is_conserved(),
         "peelForceFreshN": peel_force_n(aged=False),
         "peelForceHeatedN": heat_brings_it_to_n(),
         "weakPlaneForceN": peel_force_n(weakest_interface()),

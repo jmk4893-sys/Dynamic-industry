@@ -878,6 +878,10 @@ def backsheet_peel_force_n() -> float:
     두께에 안 걸린다 — 띠에서 쓴 것과 같은 **계면 일**이다. 다만 이 값은
     백시트를 **통째로 EVA 에서** 뜯을 때의 것이다. `br_peel` 이 보여 주듯
     백시트 안쪽에서 불소 외피만 벗기면 20 분의 1 로 내려간다.
+
+    그리고 이 값은 연마와 견주기 위한 **폭 전체 합**이지 그리퍼 사양이
+    아니다. 실제 유닛은 칼날 여러 장이 띠를 나눠 문다 —
+    한 장이 받는 값은 `br_peel.peel_force_per_blade_n()` 이 든다.
     """
     return round(backsheet_peel_gc_n_mm() * float(campaign.PANEL_WIDTH_MM), 1)
 

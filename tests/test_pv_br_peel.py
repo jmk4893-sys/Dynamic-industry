@@ -285,13 +285,23 @@ class TestTheGapMustBeMadeNotFound(unittest.TestCase):
         self.assertGreaterEqual(len(br_peel.the_word_cutting_names_the_peel()), 4)
 
     def test_the_peel_force_is_settled_not_provisional(self):
-        """폭을 나누는 절단이 없으므로 박리력이 확정이다."""
+        """떼어야 할 면이 그대로이므로 **합**은 확정이다."""
         note = " ".join(br_peel.the_word_cutting_names_the_peel())
-        self.assertIn("잠정이 아니라 확정", note)
+        self.assertIn("잠정이 아니라", note)
         self.assertNotIn("secondCutIsUnread", br_peel.summary())
         self.assertAlmostEqual(
             br_peel.peel_force_n(),
             br_peel.peel_force_n(br_peel.required_interface()), places=1)
+
+    def test_the_note_no_longer_says_one_front_carries_it(self):
+        """「절단이 안 나눈다」를 「아무것도 안 나눈다」로 읽었던 자리다.
+
+        절단은 폭을 안 나누지만 **칼날이 나눈다.** 그 정정이 적혀 있어야 한다.
+        """
+        note = " ".join(br_peel.the_word_cutting_names_the_peel())
+        self.assertNotIn("한 번에 벗기는 값 그대로", note)
+        self.assertIn("한 점이 받는 것은 아니다", note)
+        self.assertIn(f"{br_peel.BLADE_COUNT} 장", note)
 
     def test_no_stage_claims_the_gap_already_exists(self):
         """어느 단계도 「틈이 이미 있다」고 말하지 않는다 — 만들어서 연다."""
@@ -299,6 +309,69 @@ class TestTheGapMustBeMadeNotFound(unittest.TestCase):
         self.assertIn("진입구가 된다", text)
         self.assertIn("긋는다", text)
         self.assertNotIn("주워", text)
+
+
+class TestSevenBladesCarryIt(unittest.TestCase):
+    """합은 그대로고 **한 장이 받는 값**만 나뉜다 — 사양은 그쪽이 정한다."""
+
+    def test_the_strip_width_is_the_panel_divided_by_blades(self):
+        """띠 폭 = 판 폭 ÷ 칼날 수."""
+        self.assertAlmostEqual(
+            br_peel.strip_width_mm(),
+            campaign.PANEL_WIDTH_MM / br_peel.BLADE_COUNT, places=1)
+        self.assertAlmostEqual(br_peel.strip_width_mm(), 200.0, places=1)
+
+    def test_one_blade_takes_a_seventh_of_the_load(self):
+        """칼날 한 장이 받는 힘은 합의 칼날 수분의 1 이다."""
+        self.assertAlmostEqual(br_peel.peel_force_per_blade_n(), 400.0, places=1)
+        self.assertAlmostEqual(
+            br_peel.per_blade_relief(), float(br_peel.BLADE_COUNT), places=1)
+        self.assertLess(br_peel.peel_force_per_blade_n(), br_peel.peel_force_n())
+
+    def test_heating_derates_the_blade_the_same_way(self):
+        """가열은 한 장에도 같은 몫으로 걸린다 — 계면 값이 깎이는 것이므로."""
+        self.assertAlmostEqual(
+            br_peel.peel_force_per_blade_n(heated=True),
+            round(br_peel.peel_force_per_blade_n() * br_peel.HEAT_DERATE, 1),
+            places=1)
+
+    def test_splitting_the_width_does_not_change_the_total(self):
+        """나뉘는 것은 한 장이 받는 값이지 **일의 총량이 아니다.**
+
+        붙어 있는 계면 넓이가 같으니 합도 같다. 여기서 합이 줄어 보이면
+        폭을 나눈 것으로 면적을 깎은 셈이라 틀린 것이다.
+        """
+        self.assertTrue(br_peel.total_force_is_conserved())
+        self.assertAlmostEqual(
+            br_peel.peel_force_per_blade_n() * br_peel.BLADE_COUNT,
+            br_peel.peel_force_n(), delta=1.0)
+
+    def test_the_load_is_not_carried_by_one_front(self):
+        """한때 합을 한 점이 받는 것으로 적었다 — 그 자리를 판정으로 막는다."""
+        self.assertTrue(br_peel.the_load_is_carried_by_seven_not_one())
+        self.assertGreater(br_peel.BLADE_COUNT, 1)
+
+    def test_the_strips_run_along_the_length(self):
+        """띠는 길이 방향이고 1 차 커팅(가로)과 직각이다."""
+        self.assertIn("길이", br_peel.STRIP_ORIENTATION)
+        self.assertIn("가로", br_peel.STARTER_CUT_ORIENTATION)
+        self.assertAlmostEqual(
+            br_peel.peel_travel_mm(), campaign.PANEL_LENGTH_MM, places=1)
+
+    def test_the_second_stage_states_the_per_blade_figure(self):
+        """②가 합만 들면 사양을 잘못 고른다 — 한 장이 받는 값이 적혀 있어야."""
+        second = br_peel.stages()[1][1]
+        self.assertIn(f"{br_peel.peel_force_per_blade_n():,.0f} N", second)
+        self.assertIn(f"{br_peel.BLADE_COUNT} 장", second)
+        self.assertNotIn("한 번에", second)
+
+    def test_the_summary_carries_the_blade_numbers(self):
+        """도면 리터럴이 칼날 수와 한 장 값을 본다."""
+        s = br_peel.summary()
+        for key in ("bladeCount", "stripWidthMm", "peelForcePerBladeN",
+                    "peelTravelMm", "totalForceIsConserved"):
+            self.assertIn(key, s)
+        self.assertEqual(s["bladeCount"], br_peel.BLADE_COUNT)
 
 
 class TestUpstreamAlreadyStoodForThis(unittest.TestCase):
@@ -345,11 +418,28 @@ class TestItSaysWhyThisBeatsAbrading(unittest.TestCase):
         self.assertGreaterEqual(len(br_peel.why_not_abrading()), 4)
 
     def test_the_open_questions_name_what_would_kill_it(self):
-        """이 공법을 무너뜨릴 값을 숨기지 않는다 — 한 장으로 벗겨지는가."""
+        """이 공법을 무너뜨릴 값을 숨기지 않는다 — 띠가 끝까지 가는가."""
         note = " ".join(br_peel.open_questions())
-        self.assertIn("한 장", note)
+        self.assertIn("온전히 가는지", note)
         self.assertIn("찢어", note)
         self.assertGreaterEqual(len(br_peel.open_questions()), 4)
+
+    def test_the_old_one_sheet_question_is_marked_closed(self):
+        """「한 장으로 벗겨지나」는 현장이 답했다 — 열어 둔 척하지 않는다."""
+        note = " ".join(br_peel.open_questions())
+        self.assertIn("그 물음은 닫혔다", note)
+        self.assertIn(f"{br_peel.BLADE_COUNT} 장", note)
+
+    def test_what_splits_the_film_is_written_as_unknown(self):
+        """무엇이 필름을 가르는지는 **안 들었다** — 세 번째 추측을 하지 않는다.
+
+        현장이 든 것은 「칼날 갯수만큼」뿐이다. 옆날이 째는지 사이에서
+        찢어지는지는 사양이 갈리는 물음이라 모른다고 적는다.
+        """
+        note = " ".join(br_peel.open_questions())
+        self.assertIn("무엇이 필름을", note)
+        self.assertIn("모른다", note)
+        self.assertIn("추측", note)
 
     def test_the_summary_is_flat_and_complete(self):
         """요약이 도면 리터럴에 실릴 수 있는 모양인가."""
