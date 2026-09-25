@@ -78,12 +78,17 @@ class Req(NamedTuple):
 T_AMB = c("T_AMB")                  # 25 ℃
 T_TARGET = c("T_TARGET")            # 140 ℃ EVA/유리 계면
 DECKS = int(c("DECKS"))             # 5
-LAMPS = int(c("LAMPS"))             # 40
+LAMPS = int(c("LAMPS"))             # 48
 PANEL_L, PANEL_W = c("PANEL_L"), c("PANEL_W")
-PANEL_A = PANEL_L * PANEL_W         # 2.88 m²
+PANEL_A = PANEL_L * PANEL_W         # 3.50 m²
 LAMP_KW = CY.DEFAULT["lampPower"]                 # 콘솔 기본 입력 2.5 kW
 ETA = CY.DEFAULT["heatEfficiency"] / 100          # 0.65
-USEFUL_KW = LAMPS * LAMP_KW * ETA   # 78 kW
+RATED_KW = LAMPS * LAMP_KW          # 120 kW 설치정격
+USEFUL_KW = RATED_KW * ETA          # 78 kW
+# 손실 예산 = 정격 − 유효 (42 kW). T12 가 이 정의로 벽을 재고, 열수지(HB1)가
+# 이 뺄셈이 두 운전점을 섞은 것임을 밝힌다 — 정의를 고치기 전까지는 이 값이
+# 적힌 그대로의 예산이므로 한 곳에서만 낸다 (램프 지지 LM5 도 이것을 쓴다).
+LOSS_BUDGET = RATED_KW - USEFUL_KW
 FLUX = (USEFUL_KW * 1000 / DECKS) / PANEL_A     # W/m² 패널 양면 합
 DWELL = CY.DWELL                    # s 콘솔 열체류 (5장 소킹) — thermalModel 거울
 TAKT = CY.TAKT                      # s 콘솔 라인 사이클
@@ -175,7 +180,7 @@ def panel():
 
     return [
         Result("T1", "계면 도달 지연 (FDM − 덩어리)", lag, "s", 0.05 * DWELL,
-               "설계 체류 222.6 s 의 5 % — 이보다 작아야 덩어리 모델을 쓴다",
+               f"설계 체류 {DWELL:.1f} s 의 5 % — 이보다 작아야 덩어리 모델을 쓴다",
                f"FDM {s['t_face']:.1f} s · 덩어리 {t_lump:.1f} s. 적층 "
                f"{st.thickness*1000:.2f} mm 는 열적으로 얇다 (Fo {fo:.0f} ≫ 1). "
                f"**덩어리 모델이 옳았다** — 이 해석의 첫 몫은 그것을 확인한 것이다"),
@@ -414,11 +419,12 @@ def chamber_wall():
                f"{t_steel:.0f} ℃ 로 **60 ℃ 를 넘는다** — 카탈로그가 GFRP 를 "
                f"고른 이유가 확인된다. 다만 M6 관통볼트 210개가 스페이서를 "
                f"단락시켜 손실을 {q_gfrp/q_nobolt:.1f} 배로 만든다 (R4)"),
-        Result("T12", "가열실 벽 손실", q_gfrp * A / 1000, "kW", 35.0,
-               "정격 100 kW − 유효 65 kW = 손실 예산 35 kW",
+        Result("T12", "가열실 벽 손실", q_gfrp * A / 1000, "kW", LOSS_BUDGET,
+               f"정격 {RATED_KW:.0f} kW − 유효 {USEFUL_KW:.0f} kW = 손실 예산 "
+               f"{LOSS_BUDGET:.0f} kW",
                f"벽 {A:.1f} m² · 필드 {q_field:.1f} → 열교 포함 {q_gfrp:.1f} W/m². "
-               f"손실 예산의 {q_gfrp*A/1000/35:.0%} 만 벽이다. 나머지 "
-               f"{35-q_gfrp*A/1000:.1f} kW 는 배기·데크 열용량·반사손실인데 "
+               f"손실 예산의 {q_gfrp*A/1000/LOSS_BUDGET:.0%} 만 벽이다. 나머지 "
+               f"{LOSS_BUDGET-q_gfrp*A/1000:.1f} kW 는 배기·데크 열용량·반사손실인데 "
                f"**아직 아무도 세지 않았다** — 효율 65 % 는 가정이지 결과가 "
                f"아니다 (PT-05)"),
     ], dict(area=A, r_wall=r_wall, q_field=q_field, t_field=t_field,
@@ -463,10 +469,17 @@ def cassette():
 
 # ── 이 해석이 만든 요구 ──────────────────────────────────────────────
 def requirements() -> list[Req]:
+    # R1 · R5 는 뒤따른 검토가 닫았다 — 그 값을 거기서 받아 적는다. 이 모듈이
+    # 먼저 읽히므로 두 검토는 여기서 늦게 부른다 (둘 다 이 모듈을 부른다).
+    import analysis_irbank as IRB
+    import heatbalance as HB
     _, gs = glass_stress()
     _, df = dwell_floor()
     _, cw = chamber_wall()
     _, ca = cassette()
+    ir_now, ir_new = IRB.now(), IRB.new()
+    hb = HB.balance()
+    wall_kw = cw['q_gfrp'] * cw['area'] / 1000
     return [
         Req("R1", "패널 면내 온도편차",
             f"≤ 18 K (백시트) · ≤ {DT_INPLANE:.0f} K (유리) — IR 뱅크 검토가 닫았다",
@@ -478,8 +491,11 @@ def requirements() -> list[Req]:
             f"백시트 융점 165 ℃ 가 165−140−7 = **18 K** 라는 더 좁은 창을 "
             f"준다 — 유리보다 백시트가 먼저 진다. 1 차원은 이 편차를 못 내므로 "
             f"별도 검토로 풀었다 (tools/analysis_irbank.py): 현행 배치는 "
-            f"87 K 로 4 배 넘겼고, 램프 발열장을 1,300 → 2,200 으로 늘리고 "
-            f"위치를 ±1,340 까지 밀어 11 K 로 내렸다. 실측은 PT-04 가 한다"),
+            f"{ir_now['spread']:.0f} K 로 {ir_now['spread']/DT_INPLANE:.1f} 배 "
+            f"넘겼고, 램프 발열장을 {IRB.NOW_LEN*1000:,.0f} → "
+            f"{IRB.NEW_LEN*1000:,.0f} 으로 늘리고 위치를 "
+            f"±{max(IRB.NEW_X)*1000:,.0f} 까지 밀어 {ir_new['spread']:.0f} K 로 "
+            f"내렸다. 실측은 PT-04 가 한다"),
         Req("R2", "체류시간 하한 fdmDwell",
             f"{df['t_des']:.0f} s (백시트 {T_BACK_DESIGN:.0f} ℃ 기준)",
             "콘솔 MODEL.fdmDwell · 제어 레시피",
@@ -492,7 +508,7 @@ def requirements() -> list[Req]:
             "PLC 인터록 · 안전 검토서",
             f"시간으로만 걸면 h 가정이 틀렸을 때 뜨거운 것을 사람에게 준다. "
             f"카세트 표면 열전대를 인터록 입력으로 쓰고, 시간은 하한으로만 "
-            f"둔다. 35 kg 은 인력 취급 한계를 넘으므로 지그가 먼저다"),
+            f"둔다. {c('CASS_MASS'):.0f} kg 은 인력 취급 한계를 넘으므로 지그가 먼저다"),
         Req("R4", "열교 스페이서 관통볼트",
             "M6 에 GFRP 부시 + 절연 와셔, 또는 볼트가 양 껍데기를 잇지 않을 것",
             "상세설계 · P-002-16 주석",
@@ -502,17 +518,20 @@ def requirements() -> list[Req]:
             f"올린다 — 스페이서만 있으면 {cw['q_nobolt']*cw['area']/1000:.1f} kW "
             f"인 것이 볼트까지 세면 {cw['q_gfrp']*cw['area']/1000:.1f} kW 다. "
             f"외피 온도는 여전히 안전하므로 **손실 문제이지 안전 문제는 아니다**"),
-        Req("R5", "실효 열효율 65 % 의 근거",
+        Req("R5", f"실효 열효율 {ETA*100:.0f} % 의 근거",
             "별도 수지로 해소 — tools/heatbalance.py (HB1~HB8 · RHB1~RHB5)",
             "사양서 5.1항 · 파일럿 PT-05",
-            f"벽 손실은 {cw['q_gfrp']*cw['area']/1000:.1f} kW 로 손실 예산 35 kW "
-            f"의 {cw['q_gfrp']*cw['area']/1000/35:.0%} 뿐이라 나머지 30 kW 를 찾으라고 "
-            f"넘겼는데, 제어체적으로 세어 보니 **질문이 틀려 있었다.** 65 kW 는 "
-            f"열공정 한계 80.9 장/h 의 값이고 라인은 60 장/h 로 돈다 — "
-            f"'100 − 65 = 35' 는 두 운전점을 뺀 값이다. 그리고 패널을 빗나간 "
-            f"복사는 연마 내피(ρ 0.8)에 되튀어 공동 안에서 **돈다** — 정상상태에서 "
-            f"계를 실제로 떠나는 것은 13.7 kW 뿐이고 효율은 78 % 다. 가정 65 % 는 "
-            f"보수측이므로 체류시간 계산은 그대로 둔다"),
+            f"벽 손실은 {wall_kw:.1f} kW 로 손실 예산 {LOSS_BUDGET:.0f} kW "
+            f"의 {wall_kw/LOSS_BUDGET:.0%} 뿐이라 나머지 "
+            f"{LOSS_BUDGET-wall_kw:.0f} kW 를 찾으라고 넘겼는데, 제어체적으로 "
+            f"세어 보니 **질문이 틀려 있었다.** {USEFUL_KW:.0f} kW 는 "
+            f"열공정 한계 {CY.RATE_THERMAL:.1f} 장/h 의 값이고 라인은 "
+            f"{float(CY.NET_TARGET):.0f} 장/h 로 돈다 — '{RATED_KW:.0f} − "
+            f"{USEFUL_KW:.0f} = {LOSS_BUDGET:.0f}' 는 두 운전점을 뺀 값이다. "
+            f"그리고 패널을 빗나간 복사는 연마 내피(ρ 0.8)에 되튀어 공동 안에서 "
+            f"**돈다** — 정상상태에서 계를 실제로 떠나는 것은 "
+            f"{hb['loss']:.1f} kW 뿐이고 효율은 {hb['eta']*100:.0f} % 다. 가정 "
+            f"{ETA*100:.0f} % 는 보수측이므로 체류시간 계산은 그대로 둔다"),
         Req("R6", "대류계수 h 실측",
             "유리 랙 25 · 카세트 60 W/(m²·K) 를 실측으로 확정",
             "파일럿 PT-06 · FAT",

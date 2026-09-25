@@ -24,6 +24,7 @@ import analysis_structural as ST  # noqa: E402
 import analysis_thermal as TH  # noqa: E402
 import fea  # noqa: E402
 import therm  # noqa: E402
+from console_consts import const as c  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SPEC = ROOT / "docs" / "dg-hk60-fab-spec.html"
@@ -352,7 +353,8 @@ def part4b() -> str:
 
   <div class="warn"><strong>전도가 구해 주지 않는다.</strong>
     면내 유효 확산계수는 <span class="m">3.7×10⁻⁷ m²/s</span> 이고 소킹
-    <span class="m">222 초</span>의 확산길이는 <span class="m">9 mm</span> 다.
+    <span class="m">{TH.DWELL:.0f} 초</span>의 확산길이는
+    <span class="m">{(3.7e-7 * TH.DWELL) ** 0.5 * 1000:.0f} mm</span> 다.
     램프 피치는 <span class="m">400 mm</span> 대다 —
     <strong>유속 분포가 그대로 온도 분포가 된다.</strong> 셀(실리콘)의 k·t 가
     유리의 10 배지만 156 mm 웨이퍼가 2 mm 씩 떨어져 있어 셀을 <em>건너서는</em>
@@ -374,11 +376,11 @@ def part4b() -> str:
   <h4>무엇이 듣고 무엇이 안 듣는가</h4>
   <ul>
     <li><strong>램프 발열장</strong> — 가장 크게 듣는다. 결손이 램프 축을 따라
-      있기 때문이다. 카탈로그의 <span class="m">1,300 mm</span> 는 패널 폭
-      1,200 에 끝단 여유 <span class="m">50 mm</span> 뿐이라 폭 가장자리 유속이
-      중앙의 <span class="m">69 %</span> 였다.</li>
-    <li><strong>길이방향 배치</strong> — 듣는다. 끝을 패널 끝단(±1,200) 바깥
-      <span class="m">±1,340</span> 까지 민다.</li>
+      있기 때문이다. 관습 발열장 <span class="m">{IRB.NOW_LEN*1000:,.0f} mm</span> 는
+      패널 폭 {c('PANEL_W')*1000:,.0f} 에 끝단 여유 <span class="m">50 mm</span> 뿐이라
+      폭 가장자리 유속이 중앙의 <span class="m">{ex['edge']*100:.0f} %</span> 다.</li>
+    <li><strong>길이방향 배치</strong> — 듣는다. 끝을 패널 끝단(±{c('PANEL_L')*500:,.0f}) 바깥
+      <span class="m">±{max(IRB.NEW_X)*1000:,.0f}</span> 까지 민다.</li>
     <li><strong>내피 반사율</strong> — 크게 듣는다. 연마 STS 가 하는 일이
       장식이 아니었다. 반사가 없으면 편차가
       <span class="m">{IRB.new(0.0)["spread"]:.0f} K</span>, ρ 0.8 이면
@@ -396,11 +398,11 @@ def part4b() -> str:
     <caption>확정 배치</caption>
     <tbody>
       <tr><th>램프</th><td>발열장 <strong>{IRB.NEW_LEN*1000:.0f} mm</strong> ·
-        2.5 kW · 뱅크당 {len(IRB.NEW_X)} 등 (총 {IRB.IR.LAMPS} 등 · 100 kW 불변)</td></tr>
+        2.5 kW · 뱅크당 {len(IRB.NEW_X)} 등 (총 {IRB.IR.LAMPS} 등 · {TH.RATED_KW:.0f} kW 불변)</td></tr>
       <tr><th>위치</th><td class="k">x = {pos} mm</td></tr>
       <tr><th>단자</th><td>측벽 관통 · 챔버 밖 소켓. 길이를 벌려고가 아니라
         <strong>석영 단자는 고온부 밖에 있어야 수명이 선다</strong> — 램프 교체도
-        챔버를 열지 않고 한다. 대가는 총 80 개소의 관통 실링이다</td></tr>
+        챔버를 열지 않고 한다. 대가는 총 {2*IRB.IR.LAMPS} 개소의 관통 실링이다</td></tr>
       <tr><th>내피</th><td>연마 STS304 #400 · 반사율
         <strong>ρ ≥ {IRB.RHO_SPEC:.1f}</strong> — 이제 미관이 아니라 검사·정비 항목이다</td></tr>
       <tr><th>엇갈림</th><td>쓰지 않는다 — 인접 뱅크는 같은 x 위치</td></tr>
@@ -431,14 +433,15 @@ def part4c() -> str:
     return f"""
 <div class="clause" id="p6"><div class="n">6</div><div class="c">
   <h3>램프 지지·관통 상세 — 걱정한 셋 중 둘이 서로를 지웠다</h3>
-  <p>IR 뱅크 검토가 발열장을 2,200 으로 늘리고 단자를 측벽 밖으로 빼면서
+  <p>IR 뱅크 검토가 발열장을 {LMT.HEAT_L:,.0f} 으로 늘리고 단자를 측벽 밖으로 빼면서
     <strong>“처짐 · 실링 · 그림자”</strong>를 상세설계로 넘겼다. 풀어 보니
     <strong>적지 않은 둘이 더 컸다.</strong></p>
 
   <div class="warn"><strong>처짐은 문제가 아니었다.</strong>
-    Ø25×1.2t 석영관 2,200 스팬의 자중 처짐은 <span class="m">{ex['sag']:.1f} mm</span>
-    이고, 램프–패널 거리 310 mm 에서 유속 변화는
-    <span class="m">{ex['dflux']:.2%}</span> 다 — 면내 편차 11 K 옆에서 보이지
+    Ø{LMT.OD:.0f}×{LMT.WALL:.1f}t 석영관 {LMT.HEAT_L:,.0f} 스팬의 자중 처짐은
+    <span class="m">{ex['sag']:.1f} mm</span> 이고, 램프–패널 거리
+    {IRB.IR.BANK_GAP*1000:.0f} mm 에서 유속 변화는
+    <span class="m">{ex['dflux']:.2%}</span> 다 — 면내 편차 {ex['spread']:.0f} K 옆에서 보이지
     않는다. <strong>중간 지지가 필요 없고, 필요 없으면 그림자도 없다.</strong>
     남는 것은 관이 아니라 <strong>관 안 필라멘트</strong>의 처짐이고, 그것은
     램프 안쪽 지지대로 제조사가 푼다 — 우리가 지정할 것이지 설계할 것이 아니다.</div>
@@ -452,7 +455,7 @@ def part4c() -> str:
 
   <h4>넘길 때 적지 않은 둘</h4>
   <div class="warn"><strong>① 차등 열팽창 — 첫 승온에서 램프가 뜯긴다.</strong>
-    강재 챔버 <span class="m">2,300 mm</span> 가
+    강재 챔버 <span class="m">{LMT.CAV_W:,.0f} mm</span> 가
     <span class="m">{ex['steel']:.2f} mm</span> 늘 때 석영관은
     <span class="m">{ex['quartz']:.2f} mm</span> 만 는다 (α
     <span class="m">17.3</span> vs <span class="m">0.55</span>×10⁻⁶).
@@ -469,7 +472,7 @@ def part4c() -> str:
     문제가 아니다.</strong></div>
 
   <h4>관통이 사 오는 대가</h4>
-  <p>80 개소를 뚫는다. <strong>열교는 작지만 침기가 크다.</strong> 연기(EVA 초산·
+  <p>{LMT.N_PEN} 개소를 뚫는다. <strong>열교는 작지만 침기가 크다.</strong> 연기(EVA 초산·
     불화물)를 잡으려면 챔버를 부압으로 둬야 하고, 그러면 그 구멍으로 찬 공기가
     들어와 그것을 140 ℃ 까지 데우는 것이 그대로 손실이 된다. 실링을 안 하면
     <span class="m">{ex['kw_raw']:.1f} kW</span>
@@ -500,6 +503,10 @@ def part4c() -> str:
 def part4d() -> str:
     rs, ex = HBAL.run()
     b, su = ex["b"], ex["startup"]
+    # 정격 · 유효 · 손실 예산 — R5 가 들고 온 물음의 숫자. 손으로 적으면
+    # 램프 수가 바뀔 때 이 장만 옛 설비를 말한다 (40 등 · 100 kW 가 그랬다).
+    R, U, B = HBAL.RATED_KW, HBAL.USEFUL_KW, HBAL.LOSS_BUDGET
+    rest = B - b["wall"]
     rows = "".join(
         f'<tr><td>{esc(n)}</td><td class="num">{b[k]:.2f}</td>'
         f'<td class="num">{b[k]/b["p_ir"]:.1%}</td></tr>'
@@ -513,19 +520,20 @@ def part4d() -> str:
         f'<td>{md(q.why)}</td></tr>' for q in HBAL.requirements())
     return f"""
 <div class="clause" id="p7"><div class="n">7</div><div class="c">
-  <h3>열수지 — 30 kW 는 새지 않았다</h3>
+  <h3>열수지 — {rest:.0f} kW 는 새지 않았다</h3>
   <p>열해석이 요구 <span class="k">R5</span> 를 남겼다: 벽 손실은
-    <span class="m">5.5 kW</span> 로 손실 예산 35 kW 의 16 % 뿐인데 나머지
-    30 kW 의 행방을 아무도 세지 않았다. 세어 보니
+    <span class="m">{b['wall']:.1f} kW</span> 로 손실 예산 {B:.0f} kW 의
+    {b['wall']/B*100:.0f} % 뿐인데 나머지 {rest:.0f} kW 의 행방을 아무도 세지 않았다.
+    세어 보니
     <strong>질문 자체가 틀려 있었다.</strong> 두 군데가 어긋난다.</p>
 
-  <div class="warn"><strong>① 65 kW 는 계약 처리량의 값이 아니다.</strong>
-    콘솔은 <span class="k">유효 = 정격 100 × η 0.65 = 65 kW</span> 를 쓰지만
+  <div class="warn"><strong>① {U:.0f} kW 는 계약 처리량의 값이 아니다.</strong>
+    콘솔은 <span class="k">유효 = 정격 {R:.0f} × η {HBAL.ETA_ASSUMED:.2f} = {U:.0f} kW</span> 를 쓰지만
     그것은 <strong>열공정 한계 {HBAL.RATE_THERMAL:.1f} 장/h</strong> 에서
     패널이 받는 값이다. 라인은 계단 칼날이 정하는
     <strong>{HBAL.RATE_CONTRACT:.0f} 장/h</strong> 로 돌고, 그때 패널이 가져가는
     것은 <span class="m">{b['panel']:.1f} kW</span> 다.
-    <span class="k">100 − 65 = 35</span> 은 <strong>서로 다른 두 운전점에서
+    <span class="k">{R:.0f} − {U:.0f} = {B:.0f}</span> 은 <strong>서로 다른 두 운전점에서
     하나씩 가져온 뺄셈</strong>이었다.</div>
 
   <div class="warn"><strong>② 빗나간 복사는 손실이 아니다.</strong>
@@ -534,7 +542,7 @@ def part4d() -> str:
     내피는 연마 STS(ρ 0.8)다 — 패널을 빗나간 복사는 되튀어 결국 패널·벽·배기
     중 하나로 간다. <strong>정상상태에서 계를 실제로 떠나는 것만이
     손실이다.</strong> 그것을 세면 <span class="m">{b['loss']:.1f} kW</span> 이고
-    남는 항이 없다 — 30 kW 는 새는 것이 아니라 <strong>돌고 있었다.</strong></div>
+    남는 항이 없다 — {rest:.0f} kW 는 새는 것이 아니라 <strong>돌고 있었다.</strong></div>
 
   <div class="tw"><table>
     <caption>제어체적 — 챔버 내부 · 정상상태 · {HBAL.RATE_CONTRACT:.0f} 장/h ·
@@ -548,11 +556,11 @@ def part4d() -> str:
     </tbody>
   </table></div>
 
-  <p><strong>가정 65 % 는 그대로 둔다.</strong> 결합효율로 체류시간을 잡는 것은
+  <p><strong>가정 {HBAL.ETA_ASSUMED*100:.0f} % 는 그대로 둔다.</strong> 결합효율로 체류시간을 잡는 것은
     옳고, 수지가 내는 {b['eta']:.0%} 보다 낮으므로
     <span class="m">{b['assumed_loss']-b['loss']:.1f} kW</span> 의 여유를 들고 있다.
     바꾸는 것은 값이 아니라 <strong>손실 예산의 정의</strong>다 —
-    설치정격 100 kW 는 <strong>승온 속도</strong>가 정하지 정상 소비가 정하지
+    설치정격 {R:.0f} kW 는 <strong>승온 속도</strong>가 정하지 정상 소비가 정하지
     않으며, 정상 소비는 <span class="m">{b['p_ir']:.1f} kW</span> 다.</p>
 
   <div class="tw"><table>
@@ -575,7 +583,7 @@ def part4d() -> str:
     포크 42 kg 이 매 사이클 통째로 열화한다고 놓아 13 kW 가 나왔고, 그 값이
     수지를 η 64.3 % 로 <em>너무 잘</em> 닫았다 — 가정 65 % 와 소수점까지 맞은
     것이 오히려 신호였다. 그 온도변화는 699 kJ 을 5 초에 넣는 것이라
-    <span class="m">140 kW</span> 가 필요한데 설치정격이 100 kW 다. 챔버가 줄 수
+    <span class="m">140 kW</span> 가 필요한데 설치정격이 {R:.0f} kW 다. 챔버가 줄 수
     없는 열이었다. 실제로는 전열률이 정하고
     <span class="m">{b['fork']:.2f} kW</span> 다.</div>
 
@@ -630,7 +638,7 @@ def part4e() -> str:
 
   <div class="warn"><strong>② 그 방의 부피를 문 포켓 깊이로 잡았다.</strong>
     격리 깊이를 <span class="k">CL_DOOR</span> <span class="m">0.30 m</span> 로
-    놓았는데, 두 문을 다 닫으려면 그 방에 <strong>패널 2,400 mm 가 통째로
+    놓았는데, 두 문을 다 닫으려면 그 방에 <strong>패널 {c('PANEL_L')*1000:,.0f} mm 가 통째로
     서야</strong> 한다. 0.30 m 짜리 격리실은 기하학적으로 있을 수 없다.</div>
 
   <div class="warn"><strong>③ 같은 열을 두 번 셌다.</strong>
