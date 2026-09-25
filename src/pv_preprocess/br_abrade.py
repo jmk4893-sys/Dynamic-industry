@@ -1,28 +1,42 @@
 # -*- coding: utf-8 -*-
-"""BR-305 백시트 면 연마 유닛 — 불소원을 열 앞에서 **고체로** 걷어낸다.
+"""BR-305 백시트 면 연마 유닛 — **부유선별에 들어갈 먹이를 깨끗하게 만든다.**
 
-`sg_grind` 의 「면 전체를 벗긴다면」 절은 면 연마를 **판단 근거**로만 들고
-있었다. 거기서 나온 답이 「에너지는 걸림돌이 아니다」였으므로, 이 모듈은
-그 다음 물음에 답한다 — **그러면 그 기계는 어떻게 생겼는가.**
+`sg_grind` 의 면 연마 절은 「에너지는 걸림돌이 아니다」까지 답하고 멈춰
+있었다. 이 모듈은 그 다음 물음 — 그러면 그 기계는 어떻게 생겼는가 — 을 받는다.
 
-세 가지가 이 설계를 정한다. 셋 다 처음에 예상한 것과 달랐다.
+**목적을 틀리게 잡았다가 고쳤다.** 처음에는 「불소를 열 앞에서 걷어 배가스의
+HF 를 막는다」로 세웠는데, 그것은 덤이지 목적이 아니다. 목적은 하류
+**부유선별**이다. 백시트가 붙은 채로 파쇄되면 조각이 선별조로 들어가는데 —
 
-  ① **깊이를 기계가 아니라 면에서 잡아야 한다.** 백시트 0.32 mm 를 3.5 m²
-     에 걸쳐 고르게 걷어야 하는데, 정반을 기준으로 잡으면 유리 두께 공차와
-     라미네이션 공차만으로 ±0.35 mm 라 창(窓)을 넘는다. SR-302 가 띠에서
-     배운 것과 같은 답이고, 면에서는 **분할 압반**으로 편다.
-  ② **열이 동력보다 먼저 걸린다.** 폴리머를 마른 벨트로 갈면 녹아서 벨트를
-     먹인다. 다만 판정 기준이 「칩이 몇 도까지 오르나」가 아니라
-     **「데워진 살이 칩으로 나가는가」** 다 — 가열층 δ 가 헤드당 절입 a 보다
-     얇으면 데워진 것이 그대로 떨어져 나가고 밑은 안 데워진다.
-  ③ 그래서 **헤드는 늘릴수록 나빠진다.** 헤드를 늘리면 a 가 얇아지는데
-     δ 는 그만큼 안 줄어 δ/a 가 1 을 넘는다. 헤드 수의 한계는 아래가 아니라
-     **위**에 있다 (`max_heads_thermally_allowed()`).
+  · 불소 폴리머는 **표면에너지가 가장 낮은 축**(PTFE 18 dyne/cm 급)이다. 즉
+    시약을 안 써도 **저절로 뜬다**. 억제제로 가라앉히기도 어렵다.
+  · 그래서 무엇을 띄우려 하든 백시트가 **같이 정광으로 올라간다.** 품위가
+    떨어지는데 화학으로 막을 방법이 없다.
+  · 필름 조각은 납작해서 기계적으로도 거품에 실린다 (entrainment).
 
-그리고 이 유닛이 정말로 하는 일은 **불소를 옮기는 것**이다. 열박리 배가스의
-HF 를 없애는 대신 가연성 불소 분진을 실내 집진기에 쌓는다. 옮긴 곳에서 불이
-나면 같은 HF 가 이번엔 사람 있는 쪽에서 나온다 — `what_it_moves()` 가 그것을
-적는다. 이 유닛의 진짜 결정 항목은 동력이 아니라 거기다.
+그러니 **파쇄 전에, 붙어 있는 채로** 걷어내야 한다. 그것이 이 유닛이다.
+
+목적이 바뀌면서 판정 기준 두 개가 같이 바뀌었다.
+
+  ① **에너지 장부는 판정 기준이 아니다.** 하류 열박리가 짧아지는 것
+     (−2.41 MJ/장)은 여전히 참이지만 덤이다. 이 유닛의 값은 정광 품위에서
+     나오지 전기값에서 나오지 않는다. `energy_ledger_is_not_the_criterion()`.
+  ② **잔존 백시트는 0 이어야 한다.** 불소가 목적이었다면 5 % 남는 것은
+     5 % 짜리 문제였다. 부유선별에서는 남은 조각이 파쇄돼 정광을 통째로
+     버린다 — 선형이 아니다. 그래서 깊이 공차가 **한쪽으로 닫혀야** 한다:
+     가장 얕게 깎이는 자리에서도 백시트가 다 없어져야 한다.
+
+그리고 이 목적에서 보면 연마에는 **되돌아오는 칼**이 있다.
+
+  연마는 백시트를 없애는 것이 아니라 **더 고운 가루로 바꾼다.** 파쇄 조각은
+  mm 급이지만 연마 분진은 수십 µm 급이고, 부유선별에서 38 µm 이하 미립자는
+  가장 다루기 나쁜 것이다 — 굵은 알갱이에 달라붙어(slime coating) 그쪽 회수를
+  막고, 거품 점도를 올려 맥석이 정광으로 딸려 올라가며, 시약을 많이 먹는다.
+  **그러니 집진 포집률은 안전 항목이 아니라 품질 사양이다.** 안 잡힌 가루는
+  자기가 대신한 필름보다 g 당 더 해롭다. `fines_that_escape_are_the_risk()`.
+
+세 가지 기계적 결론은 목적이 바뀌어도 그대로다 — 깊이를 면에서 잡아야 하고,
+열 판정이 δ/a < 1 이며, 헤드는 늘릴수록 나빠진다.
 
 지금 라인은 이 유닛을 **안 세운다.** 이 모듈은 「세운다면 무엇을 사야 하고
 무엇이 깨지는가」를 값으로 들고 있는 자리다.
@@ -51,8 +65,10 @@ BACKSHEET_T_MM = sg_grind.BACKSHEET_T_MM
 #: 폴리머 회수물을 버린다.
 BACK_EVA_T_MM = 0.45
 #: 실제로 걷는 깊이 (mm). 백시트보다 **일부러 깊다** — 면이 완전히 평평하지
-#: 않아 정확히 0.32 만 걷으면 낮은 자리에 백시트가 남는다. 남으면 불소가
-#: 남고, 그러면 이 유닛을 세운 뜻이 없다.
+#: 않아 정확히 0.32 만 걷으면 낮은 자리에 백시트가 남고, 남은 조각이 파쇄돼
+#: 부유선별 정광을 버린다. 근거는 `minimum_safe_depth_mm()` 이고 그 위에
+#: 여유를 얹은 값이다 — 깊을수록 잔존은 안전해지지만 **미분이 늘어난다.**
+#: 이 두 힘이 맞서는 자리가 이 유닛의 진짜 설계점이다.
 TARGET_DEPTH_MM = 0.45
 
 # ── 벨트와 헤드 — 시판 광폭 벨트 연마기 규격 ────────────────────────────
@@ -108,6 +124,13 @@ DUCT_D_MM = 150.0
 DUCT_VELOCITY_M_S = 22.0
 #: 헤드 하나가 무는 지관 간격 (mm) — 벨트 폭을 이 간격으로 나눈다.
 OUTLET_PITCH_MM = 400.0
+#: 집진 포집률 — **계획값**이고, 이 유닛에서 가장 무거운 한 개다.
+#: 안 잡힌 가루는 면에 남아 그대로 파쇄로 간다. 부유선별에서 그것은
+#: 자기가 대신한 필름보다 g 당 더 해롭다 (미립자라서).
+DUST_CAPTURE = 0.995
+#: 부유선별이 성가셔지기 시작하는 입도 (µm) — 이 아래가 미립자 영역이다.
+#: 충돌·부착 효율이 떨어지고 slime coating 과 entrainment 가 커진다.
+FINES_THRESHOLD_UM = 38.0
 
 
 # ── 자리와 시간 ─────────────────────────────────────────────────────────
@@ -155,6 +178,51 @@ def depth_window_half_mm() -> float:
     """그 창의 반폭 (mm) — 공차가 이 안에 들어야 한다."""
     lo, hi = depth_window_mm()
     return round((hi - lo) / 2.0, 4)
+
+
+def minimum_safe_depth_mm() -> float:
+    """잔존 백시트를 0 으로 만드는 **최소** 절입 (mm).
+
+    압반이 면을 ±오차만큼 따라가므로, 가장 얕게 깎이는 자리에서도 백시트가
+    다 없어지려면 지령 절입이 백시트 두께보다 그 오차만큼 깊어야 한다.
+    부유선별이 목적이면 이 값이 **하한이지 목표가 아니다** — 이보다 얕으면
+    설계가 아예 성립하지 않는다.
+    """
+    return round(BACKSHEET_T_MM + PLATEN_FOLLOW_MM, 3)
+
+
+def min_depth_cut_mm() -> float:
+    """실제로 가장 얕게 깎이는 자리의 절입 (mm)."""
+    return round(TARGET_DEPTH_MM - PLATEN_FOLLOW_MM, 3)
+
+
+def max_depth_cut_mm() -> float:
+    """실제로 가장 깊게 깎이는 자리의 절입 (mm)."""
+    return round(TARGET_DEPTH_MM + PLATEN_FOLLOW_MM, 3)
+
+
+def no_backsheet_survives() -> bool:
+    """가장 얕은 자리에서도 백시트가 다 없어지는가 — **이쪽이 진짜 사양이다.**
+
+    부유선별에서 잔존은 선형 문제가 아니다. 남은 조각이 파쇄되면 저절로
+    뜨는 폴리머가 되어 정광을 통째로 버린다.
+    """
+    return min_depth_cut_mm() >= BACKSHEET_T_MM
+
+
+def no_cell_is_touched() -> bool:
+    """가장 깊은 자리에서도 셀에 안 닿는가 — 닿으면 은·실리콘을 가루로 버린다."""
+    return max_depth_cut_mm() <= depth_window_mm()[1]
+
+
+def tolerance_closes_both_ways() -> bool:
+    """공차가 양쪽으로 다 닫히는가 — 이 유닛이 성립하는 조건."""
+    return no_backsheet_survives() and no_cell_is_touched()
+
+
+def depth_margin_over_minimum_mm() -> float:
+    """하한 위로 얹은 여유 (mm) — 벨트 마모·면 굴곡이 먹는 몫이다."""
+    return round(TARGET_DEPTH_MM - minimum_safe_depth_mm(), 3)
 
 
 def target_is_inside_the_window() -> bool:
@@ -356,6 +424,57 @@ def breaks_the_inert_premise() -> bool:
     return combustible_fraction_after() > 0.5
 
 
+# ── 부유선별 — 이 유닛의 값도 위험도 여기서 나온다 ──────────────────────
+#
+#   백시트를 붙은 채로 걷는 이유는 파쇄 뒤 선별조에 안 들어가게 하기 위해서다.
+#   그런데 연마는 그것을 **없애는 것이 아니라 더 고운 가루로 바꾼다.** 잡히면
+#   문제가 사라지고, 안 잡히면 문제가 **나빠진다** — 그 갈림이 포집률이다.
+
+def escaped_fines_g_per_panel() -> float:
+    """집진에 안 잡혀 면에 남는 가루 (g/장) — 그대로 파쇄로 간다."""
+    return round(swarf_kg_per_panel() * (1.0 - DUST_CAPTURE) * 1_000.0, 1)
+
+
+def uncut_backsheet_g_per_panel() -> float:
+    """이 유닛이 없었다면 파쇄로 갔을 백시트 (g/장) — 견줄 대상."""
+    return round(float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM)
+                 * BACKSHEET_T_MM * DENSITY_G_MM3, 1)
+
+
+def polymer_reduction_ratio() -> float:
+    """선별조로 가는 폴리머가 몇 분의 일로 줄었는가 — **질량 기준**이다."""
+    return round(uncut_backsheet_g_per_panel() / escaped_fines_g_per_panel(), 1)
+
+
+def capture_needed_for(residual_g: float) -> float:
+    """잔류를 목표치 이하로 누르려면 필요한 포집률.
+
+    사양을 거꾸로 세우는 자리다 — 선별 회로가 견디는 잔류량이 정해지면
+    집진 포집률이 그 값에서 **결정되지**, 벤더 카탈로그에서 오지 않는다.
+    """
+    return round(1.0 - residual_g / (swarf_kg_per_panel() * 1_000.0), 5)
+
+
+def fines_that_escape_are_the_risk() -> tuple[str, ...]:
+    """왜 잡힌 가루가 아니라 **안 잡힌 가루**가 이 유닛의 위험인가."""
+    return (
+        f"질량으로는 이긴다 — 선별조로 가는 폴리머가 "
+        f"{uncut_backsheet_g_per_panel():,.0f} g/장에서 "
+        f"{escaped_fines_g_per_panel():,.1f} g/장으로 "
+        f"{polymer_reduction_ratio():,.0f} 분의 일이 된다.",
+        f"그런데 **입도가 나빠진다.** 파쇄 조각은 mm 급이지만 연마 분진은 "
+        f"{FINES_THRESHOLD_UM:.0f} µm 아래가 섞인다. 그 영역은 충돌·부착 효율이 "
+        "떨어지고, 굵은 알갱이에 달라붙어(slime coating) 그쪽 회수를 막으며, "
+        "거품 점도를 올려 맥석을 정광으로 끌어올린다. 시약도 더 먹는다.",
+        "즉 **g 당 해로움이 커진다.** 질량비만 보고 「142 분의 일이니 됐다」고 "
+        "하면 안 되고, 선별 회로가 견디는 잔류량을 먼저 정해야 한다 — "
+        "그러면 포집률이 `capture_needed_for()` 로 **역산된다.**",
+        f"불소 폴리머는 표면에너지가 낮아 시약 없이도 뜬다. 억제가 안 되므로 "
+        f"들어온 것은 거의 그대로 정광으로 올라간다고 봐야 한다 — 이것이 "
+        "화학으로 못 고치고 **앞단에서 물리적으로 막아야 하는** 이유다.",
+    )
+
+
 # ── 이 유닛이 무엇을 옮기는가 ───────────────────────────────────────────
 def downstream_heat_saved_j() -> float:
     """하류 열박리에서 돌려받는 열 (J/장) — `sg_grind` 가 정본이다."""
@@ -370,8 +489,11 @@ def net_energy_j() -> float:
 def break_even_depth_mm() -> float:
     """에너지 장부가 0 이 되는 절입 (mm).
 
-    이 유닛의 채택 여부가 공법이 아니라 **여유 깊이**에서 갈린다는 뜻이다 —
-    백시트 0.32 만 걷으면 남고, 면이 고르지 않아 더 파야 하는 만큼 줄어든다.
+    **이것은 판정 기준이 아니다.** 한때 그렇게 읽고 「채택이 0.02 mm 에서
+    갈린다」고 적었는데, 그것은 이 유닛의 목적을 불소 배가스로 잘못 잡았을
+    때의 이야기였다. 목적이 부유선별 먹이라면 값은 정광 품위에서 나오고
+    전기값은 잔돈이다. 남겨 두는 이유는 하나 — 깊이를 키울 때 무엇이
+    같이 커지는지 보려고.
     """
     area = float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM)
     return round(downstream_heat_saved_j() / (area * ABRADE_J_MM3), 3)
@@ -383,8 +505,23 @@ def depth_headroom_mm() -> float:
 
 
 def pays_for_itself() -> bool:
-    """제 값을 하는가 — 음수면 라인 전체 에너지가 준다."""
+    """에너지만 놓고 보면 남는가 — **채택 판정이 아니다.**"""
     return net_energy_j() <= 0.0
+
+
+def energy_ledger_is_not_the_criterion() -> tuple[str, ...]:
+    """왜 이 장부로 채택을 정하면 안 되는가 — 한 번 그렇게 틀렸으므로 적어 둔다."""
+    return (
+        f"장부는 {net_energy_j()/1e6:+.2f} MJ/장이고 손익분기 절입은 "
+        f"{break_even_depth_mm()} mm 다. 실제 절입 {TARGET_DEPTH_MM} mm 와 "
+        f"{abs(depth_headroom_mm())} mm 차이라 **아슬아슬해 보인다.**",
+        "그 아슬아슬함이 결정을 내리는 것처럼 읽히면 안 된다. 전기 "
+        f"{abs(net_energy_j())/3.6e6:.2f} kWh/장은 잔돈이고, 이 유닛이 사는 것은 "
+        "**정광 품위**다 — 저절로 뜨는 폴리머를 파쇄 전에 막는 값이다.",
+        "그리고 하류 열박리 절감분은 목적이 아니라 덤이다. 목적이 그것이었다면 "
+        "잔존 5 % 는 5 % 짜리 문제였겠지만, 부유선별에서는 남은 조각 하나가 "
+        "정광을 통째로 버린다 — 그래서 `no_backsheet_survives()` 가 사양이다.",
+    )
 
 
 def back_face_sealant_mm3() -> float:
@@ -401,27 +538,37 @@ def what_it_moves() -> tuple[str, ...]:
     """이 유닛이 **없애는 것이 아니라 옮기는 것** — 결정 항목이 여기 있다."""
     from . import dust
     return (
-        f"불소를 배가스에서 집진기로 옮긴다. DG-HK60 이 불소 백시트를 안 태우니 "
-        f"HF 가 굴뚝으로 안 간다 — 대신 같은 불소가 {swarf_kg_per_h():,.1f} kg/h "
-        f"의 **가연성 고체 분진**으로 집진기에 쌓인다.",
-        f"그 집진기는 실내에 있다. `dust` 가 이미 「방폭벤트를 옥내로 열 수 없다」 "
-        f"고 적어 두었는데, 지금은 가연분이 전체의 "
-        f"{dust.combustible_flow_fraction():.0%} 뿐이라 견딜 만했다. 이 유닛은 "
-        f"전량 폴리머를 {hood_flow_m3h():,} m³/h 로 보낸다 — 지금 집계의 "
-        f"{flow_ratio_to_existing()} 배다.",
-        "불소 폴리머 분진이 집진기에서 타면 나오는 것이 **HF 다.** 굴뚝에서 "
-        "치우려던 바로 그 물질을 사람 있는 쪽으로 가져온 셈이므로, 이 유닛의 "
-        "채택 조건은 동력이 아니라 **별도 계통 + 불활성화 또는 옥외 이설**이다.",
-        f"열박리는 {downstream_heat_saved_j()/1e6:.2f} MJ/장을 돌려준다. "
-        f"에너지 장부는 {net_energy_j()/1e6:+.2f} MJ/장으로 "
-        f"{'남는다' if pays_for_itself() else '모자란다'} — 그러나 장부가 "
-        "남는다고 채택되는 것이 아니라 위의 셋이 닫혀야 채택된다.",
+        f"**폴리머를 선별조에서 집진기로 옮긴다.** 그것이 목적이다 — 파쇄 전에 "
+        f"걷으면 저절로 뜨는 불소 폴리머가 정광에 안 올라온다. 선별조로 가는 "
+        f"폴리머가 {uncut_backsheet_g_per_panel():,.0f} → "
+        f"{escaped_fines_g_per_panel():,.1f} g/장이 된다.",
+        f"**다만 옮긴 것이 더 곱다.** 연마 분진은 파쇄 조각보다 잘고 "
+        f"{FINES_THRESHOLD_UM:.0f} µm 아래가 섞인다. 안 잡히면 자기가 대신한 "
+        f"필름보다 g 당 더 해롭다 — 그래서 포집률 {DUST_CAPTURE:.1%} 가 "
+        "안전 항목이 아니라 **품질 사양**이고, 이 유닛에서 가장 무거운 계획값이다.",
+        f"**불소는 굴뚝에서 실내로 옮겨진다.** 열박리가 백시트를 안 태우니 HF 가 "
+        f"배가스로 안 가는 대신, 같은 불소가 {swarf_kg_per_h():,.1f} kg/h 의 "
+        f"가연성 분진으로 실내 집진기에 쌓인다. `dust` 가 이미 「방폭벤트를 "
+        f"옥내로 열 수 없다」고 적어 둔 그 집진기다.",
+        f"**집진 계통이 성격째 바뀐다.** 풍량 {hood_flow_m3h():,} m³/h 는 지금 "
+        f"집계의 {flow_ratio_to_existing()} 배라 못 얹고, 가연 풍량 비율이 "
+        f"{dust.combustible_flow_fraction():.3f} 에서 "
+        f"{combustible_fraction_after():.3f} 로 넘어간다. 채택 조건은 동력이 "
+        "아니라 **별도 계통 + 불활성화 또는 옥외 이설**이다.",
     )
 
 
 def open_questions() -> tuple[str, ...]:
     """실측이 와야 닫히는 것 — 계획값으로 세운 자리를 숨기지 않는다."""
     return (
+        f"**선별 회로가 견디는 잔류량이 정해져 있지 않다.** 그것이 정해져야 "
+        f"포집률이 역산된다 — 지금 계획값 {DUST_CAPTURE:.1%} 로는 "
+        f"{escaped_fines_g_per_panel()} g/장이 남는다. 1 g/장까지 눌러야 하면 "
+        f"포집률 {capture_needed_for(1.0):.3%} 가 필요하고, 그것은 집진기 사양이 "
+        "아니라 **후드 설계와 면 청소(브러시·에어나이프)의 문제**다.",
+        "**분진 입도 분포를 모른다.** 38 µm 아래가 몇 %인지가 부유선별에 주는 "
+        "해로움을 정하는데, 그것은 입도·벨트 주속·이송이 함께 정한다. 시험 "
+        "연마 한 번이면 나오는 값이고, 이 유닛에서 가장 먼저 재야 할 것이다.",
         f"**비에너지 {ABRADE_J_MM3} J/mm³ 가 역산값이다.** 벨트 모터 정격이 "
         f"공개돼 있지 않아 공정 전체 130~300 kWh/t 에서 배분해 얻었다. 이 값이 "
         f"두 배면 동력도 두 배({total_power_kw()*2:.1f} kW)이고 칩 온도도 두 배 "
@@ -498,13 +645,17 @@ def unit() -> Unit:
                             f"그대로 칩이 되어 나간다 (δ/a = {skin_to_depth_ratio()})."),
             ("③ 면 추종", f"분할 압반 {platen_segments()} 조각이 면을 따라가며 "
                           "깊이를 **면에서** 잡는다 — 정반 기준은 창을 넘는다."),
-            ("④ 2 단 절삭", f"고운 벨트({GRITS[1]})가 남은 절입을 걷어 백시트를 "
-                            "끝낸다. 낮은 자리에도 안 남게 일부러 EVA 로 조금 든다."),
+            ("④ 2 단 절삭", f"고운 벨트({GRITS[1]})가 남은 절입을 걷는다. 가장 얕은 "
+                            f"자리도 {min_depth_cut_mm()} mm 라 백시트 "
+                            f"{BACKSHEET_T_MM} mm 가 **어디에도 안 남는다** — "
+                            "남으면 파쇄돼 선별조로 간다."),
             ("⑤ 포집", f"후드가 {swarf_kg_per_panel()} kg/장을 "
-                       f"{hood_flow_m3h():,} m³/h 로 끌어낸다 — **가연성 불소 "
-                       "분진**이라 이 계통이 이 유닛의 결정 항목이다."),
-            ("⑥ 인계", f"불소가 빠진 판이 {DOWNSTREAM_TAG} 로 간다. 하류 열박리는 "
-                       f"{downstream_heat_saved_j()/1e6:.2f} MJ/장을 덜 쓴다."),
+                       f"{hood_flow_m3h():,} m³/h 로 끌어낸다. 포집률 "
+                       f"{DUST_CAPTURE:.1%} 를 못 지키면 남은 가루가 필름보다 "
+                       "**더 나쁜 형태**로 파쇄에 실린다 — 여기가 품질 사양이다."),
+            ("⑥ 인계", f"폴리머가 빠진 판이 {DOWNSTREAM_TAG} 로 간다. 파쇄 뒤 "
+                       f"부유선별에 들어가는 폴리머가 "
+                       f"{polymer_reduction_ratio():,.0f} 분의 일이 된다."),
         ),
         parts=tuple(parts))
 
@@ -522,6 +673,13 @@ def summary() -> dict[str, object]:
         "isNotTheNewBottleneck": is_not_the_new_bottleneck(),
         "targetDepthMm": TARGET_DEPTH_MM,
         "depthWindowMm": [lo, hi],
+        "minimumSafeDepthMm": minimum_safe_depth_mm(),
+        "depthMarginOverMinimumMm": depth_margin_over_minimum_mm(),
+        "minDepthCutMm": min_depth_cut_mm(),
+        "maxDepthCutMm": max_depth_cut_mm(),
+        "noBacksheetSurvives": no_backsheet_survives(),
+        "noCellIsTouched": no_cell_is_touched(),
+        "toleranceClosesBothWays": tolerance_closes_both_ways(),
         "bedReferenceWouldMiss": bed_reference_would_miss(),
         "faceReferenceFits": face_reference_fits(),
         "depthMarginRatio": depth_margin_ratio(),
@@ -539,6 +697,9 @@ def summary() -> dict[str, object]:
         "motorRatingKw": motor_rating_kw(),
         "energyPerPanelJ": energy_per_panel_j(),
         "swarfKgPerPanel": swarf_kg_per_panel(),
+        "uncutBacksheetGPerPanel": uncut_backsheet_g_per_panel(),
+        "escapedFinesGPerPanel": escaped_fines_g_per_panel(),
+        "polymerReductionRatio": polymer_reduction_ratio(),
         "swarfKgPerH": swarf_kg_per_h(),
         "hoodFlowM3h": hood_flow_m3h(),
         "flowRatioToExisting": flow_ratio_to_existing(),

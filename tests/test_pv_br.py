@@ -3,17 +3,23 @@
 이 유닛은 저장소에서 처음으로 「세울까 말까」 단계의 물건이다. 그래서 시험이
 보는 것도 「값이 맞는가」만이 아니라 **「무엇이 이 결정을 가르는가」** 다.
 
-세 가지가 이 설계를 정했고, 셋 다 처음 예상과 달랐다.
+**목적을 한 번 틀리게 잡았고 그 자리를 시험이 지킨다.** 처음에는 「불소를 열
+앞에서 걷어 배가스의 HF 를 막는다」로 세워서, 하류 열박리 절감분을 이 유닛의
+값으로 쳤다. 그러면 채택이 에너지 손익분기 0.02 mm 에서 갈리는 것처럼 보인다.
+실제 목적은 **부유선별 먹이를 깨끗하게 만드는 것**이다. 불소 폴리머는 표면
+에너지가 낮아 시약 없이도 떠서, 파쇄돼 선별조에 들어오면 화학으로 못 막고
+정광 품위를 버린다. 목적이 그러면 판정이 둘 다 바뀐다 —
 
-1. **깊이는 면에서 잡아야 한다.** 정반 기준 공차가 창(窓)을 넘는다 — SR-302 가
-   띠에서 만난 벽과 같다. 아래 시험이 그 두 기준을 같은 창에 대고 견준다.
-2. **헤드는 늘릴수록 나빠진다.** 절입이 얇아지면 가열층이 절입을 넘어 열이
-   밑으로 들어간다. 헤드 수의 한계가 **위**에 있다는 것을 붙든다.
-3. **채택은 0.02 mm 에서 갈린다.** 손익분기 절입 0.43 에 실제 절입 0.45 다.
-   공법이 아니라 여유 깊이가 장부를 뒤집는다 — 그 날카로움을 시험이 지킨다.
+  · 에너지 장부는 **판정 기준이 아니다** (`TestTheLedgerIsNotTheCriterion`).
+  · 잔존 백시트는 **0 이어야 한다.** 5 % 남는 것이 5 % 짜리 문제가 아니다
+    (`TestTheRealSpecIsThatNoBacksheetSurvives`).
 
-그리고 이 유닛이 정말로 하는 일은 불소를 **없애는 것이 아니라 옮기는 것**이다.
-가연 풍량 비율이 0.149 에서 0.852 로 넘어가는 것을 마지막 묶음이 붙든다.
+그리고 연마에는 되돌아오는 칼이 있다 — 백시트를 없애는 게 아니라 **더 고운
+가루로 바꾼다.** 안 잡힌 가루는 자기가 대신한 필름보다 g 당 더 해롭다
+(`TestTheFinesThatEscapeAreTheRisk`).
+
+기계적 결론 셋은 목적이 바뀌어도 그대로다 — 깊이를 면에서 잡아야 하고, 열
+판정이 δ/a < 1 이며, 헤드는 늘릴수록 나빠진다.
 """
 
 from __future__ import annotations
@@ -163,41 +169,132 @@ class TestPowerIsNotTheProblem(unittest.TestCase):
         self.assertIs(br_abrade.DENSITY_G_MM3, sg_grind.BACKSHEET_DENSITY_G_MM3)
 
 
-class TestTheLedgerTurnsOnTwoHundredthsOfAMillimetre(unittest.TestCase):
-    """채택 여부가 공법이 아니라 **여유 깊이**에서 갈린다."""
+class TestTheRealSpecIsThatNoBacksheetSurvives(unittest.TestCase):
+    """진짜 사양 — 가장 얕게 깎이는 자리에서도 백시트가 안 남아야 한다.
 
-    def test_the_break_even_depth_is_a_closed_form(self):
-        """손익분기 절입은 하류 절감분을 면적과 비에너지로 나눈 값이다."""
+    부유선별에서 잔존은 선형 문제가 아니다. 남은 조각이 파쇄되면 저절로 뜨는
+    폴리머가 되어 정광에 올라오고, 시약으로는 못 막는다.
+    """
+
+    def test_the_minimum_depth_is_set_by_the_following_error(self):
+        """최소 절입은 백시트 두께에 압반 추종 오차를 더한 값이다."""
+        self.assertAlmostEqual(
+            br_abrade.minimum_safe_depth_mm(),
+            br_abrade.BACKSHEET_T_MM + br_abrade.PLATEN_FOLLOW_MM, places=3)
+        self.assertGreater(br_abrade.TARGET_DEPTH_MM,
+                           br_abrade.minimum_safe_depth_mm())
+        self.assertGreater(br_abrade.depth_margin_over_minimum_mm(), 0.0)
+
+    def test_the_tolerance_closes_on_both_sides(self):
+        """얕은 쪽은 백시트를 다 걷고, 깊은 쪽은 셀에 안 닿는다."""
+        self.assertTrue(br_abrade.no_backsheet_survives())
+        self.assertTrue(br_abrade.no_cell_is_touched())
+        self.assertTrue(br_abrade.tolerance_closes_both_ways())
+        self.assertGreaterEqual(br_abrade.min_depth_cut_mm(),
+                                br_abrade.BACKSHEET_T_MM)
+        self.assertLessEqual(br_abrade.max_depth_cut_mm(),
+                             br_abrade.depth_window_mm()[1])
+
+    def test_a_worse_platen_breaks_the_spec_not_the_ledger(self):
+        """압반이 나빠지면 깨지는 것은 장부가 아니라 **사양**이다.
+
+        추종 오차가 커지면 최소 절입이 목표를 넘어서 백시트가 남는다.
+        그때 고칠 것은 깊이가 아니라 압반이다.
+        """
+        f0 = br_abrade.PLATEN_FOLLOW_MM
+        try:
+            br_abrade.PLATEN_FOLLOW_MM = 0.20
+            self.assertGreater(br_abrade.minimum_safe_depth_mm(),
+                               br_abrade.TARGET_DEPTH_MM)
+            self.assertFalse(br_abrade.no_backsheet_survives())
+        finally:
+            br_abrade.PLATEN_FOLLOW_MM = f0
+        self.assertTrue(br_abrade.no_backsheet_survives())
+
+
+class TestTheLedgerIsNotTheCriterion(unittest.TestCase):
+    """에너지 장부 — 계산은 맞지만 이것으로 채택을 정하면 안 된다.
+
+    한 번 이 장부로 결론을 냈다가 목적을 틀리게 잡은 것이 드러났다.
+    그래서 계산은 남기되 **판정이 아니라는 것**을 시험이 못 박는다.
+    """
+
+    def test_the_break_even_depth_is_still_a_closed_form(self):
+        """계산 자체는 맞다 — 하류 절감분을 면적과 비에너지로 나눈 값이다."""
         area = float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM)
         self.assertAlmostEqual(
             br_abrade.break_even_depth_mm(),
             round(br_abrade.downstream_heat_saved_j() / (area * br_abrade.ABRADE_J_MM3),
                   3), places=3)
-
-    def test_the_backsheet_alone_would_pay_but_the_overshoot_tips_it(self):
-        """백시트만 걷으면 남고, 남기지 않으려고 더 판 만큼 모자란다.
-
-        이것이 이 유닛의 진짜 결론이다 — 「면 연마는 되는가」가 아니라
-        「면을 얼마나 고르게 만들 수 있는가」가 답을 정한다.
-        """
-        self.assertGreater(br_abrade.break_even_depth_mm(), br_abrade.BACKSHEET_T_MM)
-        self.assertLess(br_abrade.break_even_depth_mm(), br_abrade.TARGET_DEPTH_MM)
-        self.assertLess(br_abrade.depth_headroom_mm(), 0.0)
-        self.assertGreater(br_abrade.depth_headroom_mm(), -0.1)
-        self.assertFalse(br_abrade.pays_for_itself())
-
-    def test_the_heat_credit_is_owned_by_sg_grind(self):
-        """돌려받는 열은 `sg_grind` 가 정본이고 여기서 다시 안 센다."""
-        self.assertAlmostEqual(br_abrade.downstream_heat_saved_j(),
-                               sg_grind.downstream_heat_saved_j(), places=1)
         self.assertAlmostEqual(
             br_abrade.net_energy_j(),
             br_abrade.energy_per_panel_j() - br_abrade.downstream_heat_saved_j(),
             places=1)
 
+    def test_the_energy_at_stake_is_pocket_change(self):
+        """걸린 전기가 잔돈이다 — 이 값으로 결정이 날 수 없다는 뜻이다."""
+        self.assertLess(abs(br_abrade.net_energy_j()) / 3.6e6, 0.5)
 
-class TestItMovesTheFluorineRatherThanRemovingIt(unittest.TestCase):
-    """이 유닛의 결정 항목 — 없애는 것이 아니라 옮기는 것이다."""
+    def test_the_module_says_out_loud_that_this_is_not_the_criterion(self):
+        """판정이 아니라는 것을 글로 적어 둔다 — 값만 두면 또 같은 실수를 한다."""
+        note = " ".join(br_abrade.energy_ledger_is_not_the_criterion())
+        self.assertIn("정광", note)
+        self.assertGreaterEqual(len(br_abrade.energy_ledger_is_not_the_criterion()), 3)
+
+    def test_the_heat_credit_is_owned_by_sg_grind(self):
+        """돌려받는 열은 `sg_grind` 가 정본이고 여기서 다시 안 센다."""
+        self.assertAlmostEqual(br_abrade.downstream_heat_saved_j(),
+                               sg_grind.downstream_heat_saved_j(), places=1)
+
+
+class TestTheFinesThatEscapeAreTheRisk(unittest.TestCase):
+    """연마는 백시트를 없애는 게 아니라 **더 고운 가루로 바꾼다.**"""
+
+    def test_mass_goes_down_by_two_orders(self):
+        """질량으로는 크게 이긴다 — 그러나 그것만 보면 안 된다."""
+        self.assertAlmostEqual(
+            br_abrade.escaped_fines_g_per_panel(),
+            round(br_abrade.swarf_kg_per_panel()
+                  * (1.0 - br_abrade.DUST_CAPTURE) * 1_000.0, 1), places=1)
+        self.assertLess(br_abrade.escaped_fines_g_per_panel(),
+                        br_abrade.uncut_backsheet_g_per_panel())
+        self.assertGreater(br_abrade.polymer_reduction_ratio(), 50.0)
+
+    def test_the_capture_rate_is_a_quality_spec_that_inverts(self):
+        """포집률은 벤더 카탈로그가 아니라 **선별 회로가 역산해 준다.**"""
+        for target in (1.0, 5.0, 20.0):
+            need = br_abrade.capture_needed_for(target)
+            self.assertAlmostEqual(
+                br_abrade.swarf_kg_per_panel() * 1_000.0 * (1.0 - need),
+                target, places=1)
+        self.assertGreater(br_abrade.capture_needed_for(1.0),
+                           br_abrade.capture_needed_for(20.0))
+
+    def test_a_deeper_cut_is_safer_on_residue_but_worse_on_fines(self):
+        """더 파면 잔존은 안전해지고 미분은 늘어난다 — 이 둘이 맞선다.
+
+        에너지 장부가 아니라 **이것이** 깊이를 정하는 자리다.
+        """
+        d0 = br_abrade.TARGET_DEPTH_MM
+        fines0 = br_abrade.escaped_fines_g_per_panel()
+        floor0 = br_abrade.min_depth_cut_mm()
+        try:
+            br_abrade.TARGET_DEPTH_MM = d0 + 0.20
+            self.assertGreater(br_abrade.escaped_fines_g_per_panel(), fines0)
+            self.assertGreater(br_abrade.min_depth_cut_mm(), floor0)
+        finally:
+            br_abrade.TARGET_DEPTH_MM = d0
+
+    def test_the_note_explains_why_grams_alone_do_not_settle_it(self):
+        """질량비만 보면 안 되는 이유를 글로 적어 둔다."""
+        note = " ".join(br_abrade.fines_that_escape_are_the_risk())
+        self.assertIn("µm", note)
+        self.assertIn("정광", note)
+        self.assertGreaterEqual(len(br_abrade.fines_that_escape_are_the_risk()), 4)
+
+
+class TestItMovesThePolymerRatherThanRemovingIt(unittest.TestCase):
+    """이 유닛의 결정 항목 — 폴리머를 선별조에서 집진기로 옮기는 것이다."""
 
     def test_the_dust_is_the_whole_backsheet_plus_the_overshoot(self):
         """분진이 백시트만이 아니다 — 더 판 만큼 EVA 도 함께 나온다."""
