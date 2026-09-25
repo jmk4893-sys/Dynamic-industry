@@ -190,9 +190,39 @@ class TestTheGapMustBeMadeNotFound(unittest.TestCase):
         self.assertGreaterEqual(len(br_peel.stages()), 3)
         first = br_peel.stages()[0]
         self.assertIn("1 차", first[0])
-        self.assertIn(f"{br_peel.STARTER_CUT_MM:.0f} mm", first[1])
+        self.assertIn(f"{br_peel.STARTER_CUT_OFFSET_MM:.0f} mm", first[1])
         self.assertIn(br_peel.STARTER_CUT_ORIENTATION, first[1])
         self.assertIn("가로", br_peel.STARTER_CUT_ORIENTATION)
+
+    def test_thirty_millimetres_is_an_offset_not_a_length(self):
+        """30 mm 는 **변에서 들어온 거리**이지 절단 길이가 아니다.
+
+        한 번 절단 길이로 읽어 짧은 슬릿으로 모델링했다 — 46.7 배를 짧게
+        잡은 것이었다. 절단선은 폭 전체를 지른다.
+        """
+        self.assertFalse(hasattr(br_peel, "STARTER_CUT_MM"))
+        self.assertAlmostEqual(br_peel.starter_cut_length_mm(),
+                               float(campaign.PANEL_WIDTH_MM), places=1)
+        self.assertGreater(br_peel.starter_cut_length_mm(),
+                           10 * br_peel.STARTER_CUT_OFFSET_MM)
+        self.assertTrue(br_peel.one_cut_opens_the_full_width())
+
+    def test_the_freed_tab_is_what_the_blade_grips(self):
+        """들리는 띠의 넓이 = 들어온 거리 × 폭 — 칼날이 물 자리다."""
+        self.assertAlmostEqual(
+            br_peel.released_tab_mm2(),
+            round(br_peel.STARTER_CUT_OFFSET_MM
+                  * br_peel.starter_cut_length_mm(), 1), places=1)
+
+    def test_the_cut_crosses_cells_so_the_window_never_relaxes(self):
+        """절단선이 셀 위를 지난다 — 여백으로 피할 수 없다.
+
+        연마가 면 3.5 m² 에서 겪는 깊이 문제를 커팅은 선 1,400 mm 에서
+        겪는다. 면적이 작을 뿐 성격은 같다.
+        """
+        self.assertTrue(br_peel.STARTER_CUT_CROSSES_CELLS)
+        self.assertTrue(br_peel.cut_must_hold_the_window_over_cells())
+        self.assertIn("셀 위", br_peel.stages()[0][1])
 
     def test_the_cut_has_the_same_depth_window_as_abrading(self):
         """커팅 깊이 창이 연마 절입 창과 같다 — 라미네이트가 정하기 때문이다."""
@@ -217,18 +247,23 @@ class TestTheGapMustBeMadeNotFound(unittest.TestCase):
         finally:
             br_abrade.BACK_EVA_T_MM = d0
 
-    def test_the_start_point_question_is_closed_and_a_new_one_opened(self):
-        """시작점은 닫혔고, 대신 「어디에 긋나」가 열렸다."""
+    def test_the_start_point_and_the_place_are_both_closed_now(self):
+        """시작점도 자리도 닫혔다 — 남은 것은 **깊이를 무엇으로 잡나**다.
+
+        물음이 두 번 좁아졌다: 「어디서 시작하나」 → 「어디에 긋나」 →
+        「그 창을 1,400 mm 내내 무엇으로 지키나」.
+        """
         note = " ".join(br_peel.what_the_first_cut_settles())
         self.assertIn("시작점 물음이 닫혔다", note)
-        self.assertIn("어디에 긋느냐", note)
-        self.assertIn("어디에 긋는지가 안 정해졌다",
+        self.assertIn("자리도 정해졌다", note)
+        self.assertIn("절단 깊이를 무엇으로 잡는지가 안 정해졌다",
                       " ".join(br_peel.open_questions()))
 
     def test_no_stage_claims_the_gap_already_exists(self):
-        """어느 단계도 「틈이 이미 있다」고 말하지 않는다."""
+        """어느 단계도 「틈이 이미 있다」고 말하지 않는다 — 만들어서 연다."""
         text = " ".join(v for _, v in br_peel.stages())
-        self.assertIn("틈을 만든다", text)
+        self.assertIn("진입구가 된다", text)
+        self.assertIn("긋는다", text)
         self.assertNotIn("주워", text)
 
 

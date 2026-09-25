@@ -3,8 +3,9 @@
 
 `br_abrade` 가 백시트를 갈아 없애는 유닛이라면 이쪽은 필름째 떼는 대안이다.
 **다만 한 공정이 아니라 둘이다** — 라미네이트에는 칼날이 들어갈 틈이 애초에
-없어서, 1 차로 가로 30 mm 를 그어 틈을 만들고 2 차로 칼날이 들어간다
-(`stages()`). 시작점은 찾는 것이 아니라 **만드는 것**이다.
+없어서, 1 차로 변에서 30 mm 안쪽에 **폭 전체를 가로질러 한 줄** 긋고(그 띠가
+들려 진입구가 된다) 2 차로 칼날이 들어간다 (`stages()`). 시작점은 찾는 것이
+아니라 **만드는 것**이다. 그리고 그 절단선은 **셀 위**를 지난다.
 박리를 못 쓴다고 본 이유 하나는 정말로 틀렸고, 하나는 맞았는데 내가 그것을
 고쳤다고 착각했다.
 
@@ -96,17 +97,27 @@ INTERFACES: tuple[Interface, ...] = (
 #
 #   그래서 공정이 **둘로 갈린다.**
 #
-#       ① 1 차 커팅 — 가로로 30 mm 쯤 그어 틈을 만든다
+#       ① 1 차 커팅 — 변에서 **30 mm 안쪽**에, **폭 전체를 가로질러** 한 줄
+#                      긋는다. 그 30 mm 띠가 들려 칼날 진입구가 된다.
 #       ② 2 차      — 그 틈으로 칼날이 들어가 박리가 시작된다
 #
-#   한때 이 자리를 「JBR 절결을 시작점으로 주워 쓸 수 있다」로 적었다. 그것은
-#   **있는 구멍을 찾는** 발상이었고, 실제 공정은 **틈을 만드는 공정을 따로
-#   둔다.** 시작점은 찾는 것이 아니라 만드는 것이다.
+#   **이 자리에서 두 번 틀렸다.** 처음에는 「JBR 절결을 시작점으로 주워 쓸 수
+#   있다」로 적었다 — **있는 구멍을 찾는** 발상이었고, 실제 공정은 틈을
+#   **만드는** 공정을 따로 둔다. 다음에는 30 mm 를 **절단 길이**로 읽어 짧은
+#   슬릿 하나로 모델링했다. 30 mm 는 **변에서 들어온 거리**이고 절단선은 폭
+#   1,400 을 다 지른다 — 46.7 배를 짧게 잡고 있었다. 「한 번에 폭 전체를
+#   연다」가 그 뜻이다.
+#
+#   그리고 절단선이 **셀 위**를 지난다. 셀 없는 여백으로 피할 수 없다는
+#   뜻이라 깊이 창이 느슨해지는 구간이 없다 — 1,400 mm 내내 창 안에 있어야 한다.
 
-#: 1 차 커팅 길이 (mm).
-STARTER_CUT_MM = 30.0
-#: 그 방향 — 판을 가로지르는 쪽이다.
+#: 절단선이 변에서 들어온 거리 (mm) — **절단 길이가 아니다.**
+#: 이 값만큼의 띠가 들려 칼날이 물 자리가 된다.
+STARTER_CUT_OFFSET_MM = 30.0
+#: 그 방향 — 판 폭을 가로지른다.
 STARTER_CUT_ORIENTATION = "가로(횡)"
+#: 절단선이 셀 위를 지나는가 — 지난다. 여백으로 피할 수 없다.
+STARTER_CUT_CROSSES_CELLS = True
 
 #: 가열 보조 온도 (°C) — KR101936925B1 의 흡착 가열 범위.
 HEAT_ASSIST_C = (50.0, 300.0)
@@ -355,14 +366,40 @@ def tear_risk_is_already_specified() -> bool:
     return handoff.RIBBON_STUB_MAX_MM > 0 and not handoff.RIBBON_MAY_BE_LAID_OVER
 
 
+def starter_cut_length_mm() -> float:
+    """절단선의 길이 (mm) — **판 폭 전체**다. 한 줄로 폭을 다 연다."""
+    return float(campaign.PANEL_WIDTH_MM)
+
+
+def released_tab_mm2() -> float:
+    """들려서 칼날이 물 띠의 넓이 (mm²) = 들어온 거리 × 폭."""
+    return round(STARTER_CUT_OFFSET_MM * starter_cut_length_mm(), 1)
+
+
+def one_cut_opens_the_full_width() -> bool:
+    """한 줄로 폭 전체가 열리는가 — 열린다. 여러 번 긋지 않는다."""
+    return starter_cut_length_mm() >= float(campaign.PANEL_WIDTH_MM)
+
+
+def cut_must_hold_the_window_over_cells() -> bool:
+    """절단선이 셀 위를 지나므로 창을 1,400 mm 내내 지켜야 하는가.
+
+    그렇다. 셀 없는 여백으로 피할 수 없으니 깊이 창이 느슨해지는 구간이
+    없다 — 연마가 면 전체에서 겪는 것과 같은 문제를 **선 하나**에서 겪는다.
+    """
+    return STARTER_CUT_CROSSES_CELLS
+
+
 def stages() -> tuple[tuple[str, str], ...]:
     """이 유닛이 도는 차례 — **둘이다.**"""
     lo, hi = starter_cut_window_mm()
     return (
         ("① 1 차 커팅",
-         f"{STARTER_CUT_ORIENTATION}으로 {STARTER_CUT_MM:.0f} mm 를 그어 "
-         f"**틈을 만든다.** 깊이는 {lo}~{hi} mm 사이여야 한다 — 얕으면 백시트가 "
-         "안 끊겨 틈이 안 생기고, 깊으면 셀을 긋는다."),
+         f"변에서 {STARTER_CUT_OFFSET_MM:.0f} mm 안쪽에 "
+         f"{STARTER_CUT_ORIENTATION}으로 **폭 {starter_cut_length_mm():,.0f} mm "
+         f"전체를 한 줄** 긋는다. 그 띠({released_tab_mm2():,.0f} mm²)가 들려 "
+         f"칼날 진입구가 된다. 깊이는 {lo}~{hi} mm 사이여야 하고, 절단선이 "
+         "**셀 위**를 지나므로 그 창이 1,400 mm 내내 지켜져야 한다."),
         ("② 2 차 · 칼날 진입",
          "그 틈으로 칼날이 들어가 계면을 잡는다. 여기서부터가 계면 일이라 "
          f"두께에 안 걸리고 {peel_force_n():,.0f} N 으로 간다."),
@@ -378,7 +415,7 @@ def a_gap_must_be_made_not_found() -> bool:
 
     이 한 줄이 박리 유닛을 1 공정이 아니라 **2 공정**으로 만든다.
     """
-    return STARTER_CUT_MM > 0.0
+    return STARTER_CUT_OFFSET_MM > 0.0
 
 
 def starter_cut_window_mm() -> tuple[float, float]:
@@ -408,15 +445,17 @@ def what_the_first_cut_settles() -> tuple[str, ...]:
         "**시작점 물음이 닫혔다.** 「그리퍼가 균열을 어디서 시작하나」를 열어 "
         "두고 JBR 절결을 후보로 적었는데, 실제 공정은 **틈을 만드는 공정을 "
         "따로 둔다.** 있는 구멍을 찾는 문제가 아니었다.",
-        f"**대신 공정이 둘이 된다.** 1 차 커팅({STARTER_CUT_MM:.0f} mm "
-        f"{STARTER_CUT_ORIENTATION})이 점유와 부품표에 들어오고, 그 칼날이 "
-        "백시트 유닛의 별도 부품이 된다.",
+        f"**대신 공정이 둘이 된다.** 1 차 커팅(변에서 "
+        f"{STARTER_CUT_OFFSET_MM:.0f} mm · {STARTER_CUT_ORIENTATION} · "
+        f"길이 {starter_cut_length_mm():,.0f} mm)이 점유와 부품표에 들어오고, "
+        "그 칼날이 백시트 유닛의 별도 부품이 된다.",
         f"**그리고 깊이 문제가 하나 더 생긴다.** 커팅 깊이가 {lo}~{hi} mm 창 "
         "안에 들어야 한다 — 연마가 쓰는 것과 **같은 창**이다. 얕으면 틈이 안 "
         "생기고 깊으면 셀을 긋는다. 답도 같다: 깊이를 면에서 잡는다.",
-        "**어디에 긋느냐가 아직 안 정해졌다.** 셀이 없는 여백이면 창이 넓어지고 "
-        "셀 위면 좁아진다. 30 mm 하나로 폭 1,400 을 다 여는지, 여러 번 긋는지도 "
-        "실제 설비를 봐야 안다.",
+        f"**자리도 정해졌다 — 셀 위다.** 여백으로 피할 수 없으니 깊이 창이 "
+        f"느슨해지는 구간이 없다. 연마가 면 {float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM) / 1e6:.1f} m² "
+        f"에서 겪는 깊이 문제를 커팅은 **선 {starter_cut_length_mm():,.0f} mm** "
+        "에서 겪는다 — 면적이 작을 뿐 문제의 성격은 같고, 답도 같다.",
     )
 
 
@@ -434,10 +473,11 @@ def open_questions() -> tuple[str, ...]:
         "반쯤 사라진다 — 이것이 연마 대비 우위를 정하는 값이다. 그리고 여기서는 "
         "**약한 외피–심재 면이 오히려 해롭다** — 거기서 먼저 갈라지면 심재만 "
         "남는다.",
-        f"**1 차 커팅을 어디에 긋는지가 안 정해졌다.** 시작점 자체는 닫혔다 — "
-        f"{STARTER_CUT_MM:.0f} mm 를 그어 틈을 만드는 것이 실제 공정이다. "
-        "남은 것은 자리다: 셀이 없는 여백이면 깊이 창이 넓어지고 셀 위면 "
-        "좁아진다. 30 mm 하나로 폭 1,400 을 다 여는지도 아직 모른다.",
+        f"**절단 깊이를 무엇으로 잡는지가 안 정해졌다.** 자리와 길이는 닫혔다 "
+        f"(변에서 {STARTER_CUT_OFFSET_MM:.0f} mm · 폭 전체 한 줄 · 셀 위). "
+        f"남은 것은 그 창({starter_cut_window_mm()[0]}~"
+        f"{starter_cut_window_mm()[1]} mm)을 1,400 mm 내내 지키는 수단이다 — "
+        "연마와 같은 답(면 기준)일 것 같지만 칼날은 슈를 못 얹는 자리도 있다.",
     )
 
 
@@ -464,7 +504,11 @@ def summary() -> dict[str, object]:
         "methodCount": len(METHODS),
         "solventFreeCount": len(solvent_free_methods()),
         "recommended": recommended().key,
-        "starterCutMm": STARTER_CUT_MM,
+        "starterCutOffsetMm": STARTER_CUT_OFFSET_MM,
+        "starterCutLengthMm": starter_cut_length_mm(),
+        "oneCutOpensTheFullWidth": one_cut_opens_the_full_width(),
+        "cutCrossesCells": cut_must_hold_the_window_over_cells(),
+        "releasedTabMm2": released_tab_mm2(),
         "gapMustBeMade": a_gap_must_be_made_not_found(),
         "starterCutWindowMm": list(starter_cut_window_mm()),
         "stageCount": len(stages()),
