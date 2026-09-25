@@ -27,8 +27,8 @@ import unittest
 
 from tests import _path  # noqa: F401
 
-from pv_preprocess import (afr, afr_peel, campaign, dust, frames, recipe,
-                           reliability, sg_grind, vision)
+from pv_preprocess import (afr, afr_peel, campaign, dust, frames, handoff,
+                           recipe, reliability, sg_grind, vision)
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CLOSEUP = ROOT / "docs/drawings/pv-sg-closeup.html"
@@ -544,6 +544,73 @@ class TestTheScraperThatClearsTheBand(unittest.TestCase):
             limit * sg_grind.SEALANT_BAND_MM + sg_grind.shoe_friction_n(),
             sg_grind.safe_face_force_n(), places=2)
         self.assertGreater(sg_grind.gc_margin(), 1.0)
+
+
+class TestGrindingTheWholeBacksheetFace(unittest.TestCase):
+    """면 전체를 갈아낼 것인가 — 띠에서 나온 답을 면으로 키운 값들.
+
+    지금 설계는 백시트 면을 안 건드린다. 그래도 이 비교를 값으로 들고 있는
+    이유는, 「면을 통째로 연마하면 어떤가」가 되풀이해서 나오는 물음이고
+    그때마다 손으로 다시 세면 답이 흔들리기 때문이다.
+    """
+
+    def test_abrading_is_volume_work_so_thickness_multiplies(self):
+        """연마는 부피 일이다 — 두께가 그대로 곱해진다."""
+        self.assertAlmostEqual(
+            sg_grind.backsheet_face_volume_mm3(),
+            sg_grind.backsheet_face_area_mm2() * sg_grind.BACKSHEET_T_MM, places=1)
+        self.assertAlmostEqual(
+            sg_grind.backsheet_abrade_energy_j(),
+            sg_grind.backsheet_face_volume_mm3() * sg_grind.SEALANT_ABRADE_J_MM3,
+            places=1)
+
+    def test_peeling_is_interfacial_work_so_thickness_does_not_enter(self):
+        """박리는 계면 일이다 — 두께를 두 배로 해도 힘이 안 변한다.
+
+        연마 쪽은 같은 조작에서 두 배가 된다. 그 대비가 수단을 가른다.
+        """
+        t0 = sg_grind.BACKSHEET_T_MM
+        peel0, abrade0 = sg_grind.backsheet_peel_force_n(), sg_grind.backsheet_abrade_energy_j()
+        try:
+            sg_grind.BACKSHEET_T_MM = t0 * 2.0
+            self.assertEqual(sg_grind.backsheet_peel_force_n(), peel0)
+            self.assertAlmostEqual(sg_grind.backsheet_abrade_energy_j(), abrade0 * 2.0, places=1)
+        finally:
+            sg_grind.BACKSHEET_T_MM = t0
+
+    def test_the_band_answer_holds_at_face_scale(self):
+        """띠에서 긁는 쪽이 이겼듯, 면에서도 벗기는 쪽이 세 자릿수로 이긴다."""
+        self.assertGreater(sg_grind.scrape_beats_abrade_by(), 1_000)
+        self.assertGreater(sg_grind.peel_beats_abrade_by(), 1_000)
+
+    def test_abrading_the_face_costs_more_than_the_whole_downstream_delamination(self):
+        """연마 한 수단이 하류 박리 공정 전체보다 비싸다 — 그래서 순증이다."""
+        self.assertFalse(sg_grind.face_abrading_fits_under_downstream_heat())
+        self.assertGreater(sg_grind.backsheet_abrade_energy_j(),
+                           sg_grind.downstream_heat_j_per_panel())
+
+    def test_the_dust_it_would_make_is_not_what_ds01_declares(self):
+        """DS-01 은 폴리머를 안 깎는다는 전제로 '불연' 이다.
+
+        지금은 참이다. 면을 갈면 그 전제가 깨지는데, 깨지는 크기를 값으로
+        들고 있는다 — 라인 속도로 환산한 분진량이다.
+        """
+        self.assertTrue(sg_grind.dust_stream_stays_inert())
+        self.assertFalse(sg_grind.wheel_may_touch_the_backsheet())
+        self.assertGreater(sg_grind.backsheet_dust_kg_per_h(), 100.0)
+
+    def test_the_values_come_from_the_modules_that_own_them(self):
+        """면적은 campaign, 하류 열과 라인 속도는 handoff 가 정본이다."""
+        self.assertAlmostEqual(
+            sg_grind.backsheet_face_area_mm2(),
+            float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM), places=1)
+        self.assertAlmostEqual(
+            sg_grind.downstream_heat_j_per_panel(),
+            handoff.downstream_rate().heat_per_panel_mj * 1e6, places=1)
+        self.assertAlmostEqual(
+            sg_grind.backsheet_dust_kg_per_h(),
+            round(sg_grind.backsheet_dust_kg_per_panel()
+                  * handoff.downstream_rate().line_per_h, 1), places=1)
 
 
 class TestCloseupDrawing(unittest.TestCase):

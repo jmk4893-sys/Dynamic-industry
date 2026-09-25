@@ -73,6 +73,11 @@ STACK_T_MM = float(frames.LAMINATE_STACK_MM)
 BACKSHEET_T_MM = 0.32
 #: 백시트 폴리머의 낮은 쪽 융점 (°C) — PVF. 이 위로 문지르면 녹아 휠에 먹는다.
 BACKSHEET_MELT_C = 200.0
+#: 백시트 폴리머 밀도 (g/mm³) — PVF/PET 3층의 대표값. 분진 질량에만 쓴다.
+BACKSHEET_DENSITY_G_MM3 = 1.78e-3
+#: 백시트–EVA 계면의 파괴에너지 (N/mm) — **실측 전 계획값**이고 저장소에
+#: 근거가 없다. 면 전체를 벗기는 대안을 견줄 때만 쓴다. 값이 오면 여기만 고친다.
+BACKSHEET_PEEL_GC_N_MM = 0.5
 
 # ── 프레임이 남기고 간 실란트 — `frames` 의 슬롯 치수가 정본 ───────────
 #: 프레임 슬롯이 라미네이트 **면**을 덮는 폭 (mm). 인발은 응집파괴라 이 폭만큼
@@ -760,6 +765,82 @@ def face_residue_has_a_tool() -> bool:
 def wheel_can_reach_after_scraping() -> bool:
     """띠를 걷고 나면 휠이 유리 모서리에 닿는가 — 날 폭이 어깨 길이를 덮으면 된다."""
     return BLADE_WIDTH_MM >= flange_reach_mm()
+
+
+# ── 면 전체를 벗긴다면 — 띠에서 나온 답을 면으로 키운다 ─────────────────
+#
+#   띠 20 mm 에서 답이 한 번 나왔다 (`scrape_beats_abrade_by()`). 같은 물음을
+#   백시트 **면 전체**로 키우면 배수가 어떻게 되고, 그 동력이 하류 열박리와
+#   견주어 어디쯤인지를 여기서 센다. 지금 설계는 면을 안 건드리므로
+#   (`wheel_may_touch_the_backsheet()` 가 거짓) 이 절은 **판단 근거**이지
+#   부품표에 걸리는 값이 아니다.
+
+def backsheet_face_area_mm2() -> float:
+    """백시트 한 면의 넓이 (mm²) — 패널 외형 그대로."""
+    return round(float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM), 1)
+
+
+def backsheet_face_volume_mm3() -> float:
+    """면 전체를 갈아 없앨 때의 부피 (mm³)."""
+    return round(backsheet_face_area_mm2() * BACKSHEET_T_MM, 1)
+
+
+def backsheet_abrade_energy_j() -> float:
+    """면 전체를 갈아내는 일 (J/장) — **부피 일**이라 두께가 그대로 곱해진다.
+
+    비에너지는 실란트와 같은 `SEALANT_ABRADE_J_MM3` 를 쓴다. 폴리머끼리라
+    자릿수는 맞지만 백시트 고유값은 아니다 — 위로 틀릴 여지가 있다.
+    """
+    return round(backsheet_face_volume_mm3() * SEALANT_ABRADE_J_MM3, 1)
+
+
+def backsheet_abrade_power_w() -> float:
+    """그 일을 정반 점유 안에 끝내려면 드는 동력 (W)."""
+    return round(backsheet_abrade_energy_j() / float(campaign.AFR_S), 1)
+
+
+def backsheet_peel_force_n() -> float:
+    """면 전체를 계면에서 벗기는 힘 (N) = Gc × 패널 폭.
+
+    두께에 안 걸린다 — 띠에서 쓴 것과 같은 **계면 일**이다.
+    """
+    return round(BACKSHEET_PEEL_GC_N_MM * float(campaign.PANEL_WIDTH_MM), 1)
+
+
+def backsheet_peel_power_w() -> float:
+    """같은 이송속도로 벗길 때의 동력 (W)."""
+    return round(backsheet_peel_force_n() * long_feed_mm_s() / 1_000.0, 2)
+
+
+def peel_beats_abrade_by() -> int:
+    """면 전체에서도 벗기는 쪽이 몇 배 싼가 — 띠에서의 배수와 견준다."""
+    return round(backsheet_abrade_power_w() / backsheet_peel_power_w())
+
+
+def backsheet_dust_kg_per_panel() -> float:
+    """갈아냈을 때 나오는 폴리머 분진 (kg/장)."""
+    return round(backsheet_face_volume_mm3() * BACKSHEET_DENSITY_G_MM3 / 1_000.0, 2)
+
+
+def backsheet_dust_kg_per_h() -> float:
+    """같은 것을 라인 속도로 환산한 값 (kg/h) — 집진이 받을 물건의 크기."""
+    from . import handoff
+    return round(backsheet_dust_kg_per_panel() * handoff.downstream_rate().line_per_h, 1)
+
+
+def downstream_heat_j_per_panel() -> float:
+    """하류 열박리가 한 장에 넣는 열 (J) — `handoff` 가 정본이다."""
+    from . import handoff
+    return round(handoff.downstream_rate().heat_per_panel_mj * 1e6, 1)
+
+
+def face_abrading_fits_under_downstream_heat() -> bool:
+    """면 전체 연마가 하류 열박리보다 싼가.
+
+    거짓이면 이 수단 하나가 **이미 있는 박리 공정 전체보다 비싸다**는 뜻이다 —
+    갈아낸 뒤에도 EVA·셀 박리는 그대로 남으므로 순증이다.
+    """
+    return backsheet_abrade_energy_j() <= downstream_heat_j_per_panel()
 
 
 # ── 순환 — 동시인가 순차인가 ────────────────────────────────────────────
@@ -1450,6 +1531,14 @@ def summary() -> dict[str, object]:
         "scrapePowerW": scrape_power_w(lf),
         "abradePowerW": abrade_power_w(lf),
         "scrapeBeatsAbradeBy": scrape_beats_abrade_by(),
+        "backsheetFaceVolumeMm3": backsheet_face_volume_mm3(),
+        "backsheetAbradePowerW": backsheet_abrade_power_w(),
+        "backsheetPeelForceN": backsheet_peel_force_n(),
+        "backsheetPeelPowerW": backsheet_peel_power_w(),
+        "peelBeatsAbradeBy": peel_beats_abrade_by(),
+        "backsheetDustKgPerPanel": backsheet_dust_kg_per_panel(),
+        "backsheetDustKgPerH": backsheet_dust_kg_per_h(),
+        "faceAbradingFitsUnderDownstreamHeat": face_abrading_fits_under_downstream_heat(),
         "shoePressureMpa": shoe_pressure_mpa(),
         "bladeAssemblyTolMm": blade_assembly_tol_mm(),
         "backsheetSurvives": backsheet_survives_scraping(),
