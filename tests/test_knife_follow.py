@@ -131,8 +131,19 @@ class TestTheVerticalReactionClosesAtThePeelFront(_Follow):
                  "PT-10": " ".join(pt10.steps) + pt10.accept,
                  "S13": self.by["S13"].note}
         for name, text in texts.items():
-            for bad in ("패드 사이 유리를 들어", "V 가 경간을 든다", "들어 올리는 운전"):
+            for bad in ("패드 사이 유리를 들어", "V 가 경간을 든다", "들어 올리는 운전",
+                        "로드셀에서 수직 반력이 사라"):
                 self.assertNotIn(bad, text, f"{name} 에 철회한 주장이 남았다: {bad}")
+
+    def test_the_fat_looks_for_what_following_removes(self):
+        """추종이 없애는 것은 V 가 아니라 패드 위 높은 자리의 누름이다 — FAT 는 그것을 본다.
+
+        첫 FAT 행은 '추종 중 로드셀에서 수직 반력이 사라질 것' 이었다. V 는 랜드가
+        되받아도 Z축을 거쳐 로드셀에 그대로 나오므로 그 판정은 어떤 칼날로도 불합격이다.
+        """
+        rfq = RFQ.read_text(encoding="utf-8")
+        row = next(r for r in re.findall(r"<tr>(.*?)</tr>", rfq, re.S) if "칼날 모듈 잠금·추종" in r)
+        self.assertIn("추종 박리 중 Z축 로드셀에 패드 스파이크가 없을 것", row)
 
     def test_the_limits_go_to_the_pilot(self):
         pt10 = next(t for t in PP.tests() if t.id == "PT-10")

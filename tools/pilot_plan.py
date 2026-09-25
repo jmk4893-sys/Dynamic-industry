@@ -49,6 +49,9 @@ KNIFE_RISE_MM = c("KNIFE_RISE") * 1000
 KNIFE_BLADES = int(c("KNIFE_BLADES"))
 KNIFE_LAP_MM = c("KNIFE_LAP") * 1000
 KNIFE_LAND_MM = c("KNIFE_LAND") * 1000
+YIELD_LOW = 0.95                             # 유리 수율 하한 — 신뢰도 95 % 로 보인다 (PT-03 · 사양서 SAT 합격선)
+YIELD_FAILS = 1                              # 허용 파손 장수 — 실패 0 을 요구하면 시험이 아니라 기도다
+RESIDUAL_EVA_MAX = 1.0                       # wt% 잔류 EVA 중량법 상한 (PT-03 · 사양서 4.3 · SAT 합격선)
 COUPON_PANELS = 2                            # 수직 반력 쿠폰 — 로트 A·B 에서 한 장씩 잘라 띠 시편을 만든다
 
 
@@ -242,7 +245,7 @@ class Test(NamedTuple):
 
 def tests() -> list[Test]:
     n_peel = n_for_mean(0.20, 0.15)
-    n_yield = n_for_proportion(0.95, failures=1)
+    n_yield = n_for_proportion(YIELD_LOW, failures=YIELD_FAILS)
     n_life = 300
     _, ca = TH.cassette()                         # 열해석 T13 — 수동 교환 한 번의 정지
     _, kn = ST.knife()                            # 구조해석 S10 — 예산을 다 쓰는 수직 반력비
@@ -294,9 +297,9 @@ def tests() -> list[Test]:
               "쓸 방법이고 중량법은 그것을 교정할 기준이다",
               "깨진 장은 파단면을 촬영해 기점을 찾는다 — 열응력이면 "
               "가장자리에서, 기계력이면 칼날 접점에서 시작한다"),
-             f"수율 하한 95 % 를 신뢰도 95 % 로 보이려면 실패 1 장까지 "
+             f"수율 하한 {YIELD_LOW*100:.0f} % 를 신뢰도 95 % 로 보이려면 실패 {YIELD_FAILS} 장까지 "
              f"허용해 {n_yield} 장이 필요하다 (Clopper–Pearson). 잔류 EVA 는 "
-             f"중량법 기준 ≤ 1.0 wt%",
+             f"중량법 기준 ≤ {RESIDUAL_EVA_MAX:.1f} wt%",
              "생산보증 속도 55 mm/s 의 승인 근거. 파단 기점이 가장자리에 "
              "몰리면 R1(면내 편차)이 원인이므로 PT-04 로 되돌아간다"),
         Test("PT-04", "패널 면내 온도 균일도", 1, "열해석 R1",
