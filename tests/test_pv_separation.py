@@ -171,9 +171,17 @@ class TestItSaysWhatItDoesNotKnow(unittest.TestCase):
         for c in separation.COMPONENTS:
             self.assertIn(c.behavior, ("float", "sink", "oversize"), c.key)
             self.assertIn(c.evidence, ("관측", "추정"), c.key)
-        observed = {c.key for c in separation.observed_components()}
-        for key in ("eva", "pet", "fluoro", "copper"):
-            self.assertIn(key, observed)
+
+    def test_nothing_in_the_table_is_a_guess_any_more(self):
+        """표에 추정이 하나도 안 남았다 — 여섯 번 뒤집힌 끝에 닿은 자리다.
+
+        새 성분을 추정으로 넣으면 이 시험이 먼저 깨진다. 추측을 조용히
+        섞지 말라는 뜻이고, 이 저장소에서 가장 비쌌던 실수가 그것이다.
+        """
+        self.assertTrue(separation.the_table_is_fully_observed())
+        self.assertEqual(separation.estimated_components(), ())
+        self.assertEqual(len(separation.observed_components()),
+                         len(separation.COMPONENTS))
 
     def test_the_sinking_mechanism_is_left_open_with_candidates(self):
         """왜 가라앉는지 후보만 늘어놓고 고르지 않는다."""

@@ -36,6 +36,10 @@
   ④ **은을 침강분에 두었다.** 은은 뜬다. 그래서 「EVA 는 방향이 반대라 덜
      아프다」고 적은 것이 정반대였다 — EVA 가 가는 쪽에 **은이 있다.**
 
+**표 전체가 실측 위에 서 있다** — 일곱 성분의 거동이 다 관측이고 추정이
+하나도 없다(`the_table_is_fully_observed()`). 여섯 번 뒤집힌 끝에 닿은
+자리이고, 새 성분을 추정으로 넣으면 시험이 먼저 깨진다.
+
 **왜 백시트가 가라앉는지는 여전히 모른다고 적는다**
 (`why_the_backsheet_sinks_is_open()`). 다만 후보 하나가 세졌다 — 포집제가
 **금속 은에 선택적**이니 폴리머에는 안 붙는다. 그래도 고르지 않는다:
@@ -106,10 +110,12 @@ COMPONENTS: tuple[Component, ...] = (
               "금속 은에 붙어 기포로 올린다. 뉴캐슬대 보고로 배치 97.6 % / "
               "연속 ~100 % 회수, 농축 32~83 배. 정광이 그만큼 작아지므로 "
               "**같이 뜬 불순물이 품위를 크게 깎는다**"),
-    Component("glass", "강화유리", 2.50, False, True, None, "sink", "추정",
+    Component("glass", "강화유리", 2.50, False, True, None, "sink", "관측",
               "GRM-401",
-              "값나가는 물건이지만 **급광에 있으면 안 된다.** 컬릿으로 따로 "
-              "회수하고, 남으면 실리콘·은과 같은 침강분에서 희석한다"),
+              "**가라앉는다**(관측). 실리콘과 같은 SiO₂ 계라 포집제가 안 붙는 "
+              "것으로 설명이 되지만, 그 설명이 아니라 관측이 근거다. 값나가는 "
+              "물건이어도 **급광에 있으면 안 된다** — 컬릿으로 따로 회수하고, "
+              "남으면 실리콘 산물을 희석한다"),
     Component("copper", "구리 (셀간 리본·버스바)", 8.96, False, True,
               COPPER_SIEVE_FLOOR_UM, "oversize", "관측", "분급 (−75 µm 체)",
               "연성이라 파쇄에서 안 깨지고 눌려 펴진다. 체 시험에서 "
@@ -176,8 +182,23 @@ def reports_to_sink(c: Component) -> bool:
 
 
 def observed_components() -> tuple[Component, ...]:
-    """거동이 실측으로 잡힌 성분 — 나머지는 추정이라고 적어 둔다."""
+    """거동이 실측으로 잡힌 성분."""
     return tuple(c for c in COMPONENTS if c.evidence == "관측")
+
+
+def estimated_components() -> tuple[Component, ...]:
+    """거동이 아직 추정인 성분 — **지금은 비어 있다.**
+
+    표 전체가 실측 위에 서 있다는 뜻이고, 이 모듈이 여섯 번 뒤집힌 끝에
+    닿은 자리다. 새 성분을 추정으로 넣으면 시험이 먼저 깨진다 — 추측을
+    조용히 섞지 말라는 뜻이다.
+    """
+    return tuple(c for c in COMPONENTS if c.evidence != "관측")
+
+
+def the_table_is_fully_observed() -> bool:
+    """표에 추정이 하나도 안 남았는가."""
+    return not estimated_components()
 
 
 # ── 급광 사양 — 이 모듈의 본론 ──────────────────────────────────────────
@@ -375,4 +396,6 @@ def summary() -> dict[str, object]:
         "copperIsClosedByClassification": copper_is_closed_by_classification(),
         "copperSieveFloorUm": COPPER_SIEVE_FLOOR_UM,
         "observedCount": len(observed_components()),
+        "estimatedCount": len(estimated_components()),
+        "tableIsFullyObserved": the_table_is_fully_observed(),
     }
