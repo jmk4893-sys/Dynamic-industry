@@ -552,6 +552,11 @@ class TestGrindingTheWholeBacksheetFace(unittest.TestCase):
     지금 설계는 백시트 면을 안 건드린다. 그래도 이 비교를 값으로 들고 있는
     이유는, 「면을 통째로 연마하면 어떤가」가 되풀이해서 나오는 물음이고
     그때마다 손으로 다시 세면 답이 흔들리기 때문이다.
+
+    이 묶음은 한 번 틀린 자리이기도 하다. 처음에는 띠의 비에너지를 면에
+    빌려 쓰고, 면 설비의 택트가 아니라 이 라인의 AFR 택트로 나누고, 하류에서
+    돌려받는 열을 아예 안 셌다. 셋이 겹쳐 「면 연마는 말이 안 된다」는 답이
+    나왔지만 실제로는 가동 중인 공법이다. 아래 시험은 그 셋을 각각 붙든다.
     """
 
     def test_abrading_is_volume_work_so_thickness_multiplies(self):
@@ -561,8 +566,38 @@ class TestGrindingTheWholeBacksheetFace(unittest.TestCase):
             sg_grind.backsheet_face_area_mm2() * sg_grind.BACKSHEET_T_MM, places=1)
         self.assertAlmostEqual(
             sg_grind.backsheet_abrade_energy_j(),
-            sg_grind.backsheet_face_volume_mm3() * sg_grind.SEALANT_ABRADE_J_MM3,
+            sg_grind.backsheet_face_volume_mm3() * sg_grind.BACKSHEET_ABRADE_J_MM3,
             places=1)
+
+    def test_the_face_does_not_borrow_the_bands_specific_energy(self):
+        """면은 띠의 비에너지를 안 빌린다 — 재료도 공구도 다르다.
+
+        경화 실리콘을 좁은 띠에서 긁는 값과, 무른 폴리머를 넓은 벨트로 얕게
+        걷는 값은 같을 수 없다. 빌려 쓰면 동력이 위로 크게 틀린다.
+        """
+        self.assertLess(sg_grind.BACKSHEET_ABRADE_J_MM3,
+                        sg_grind.SEALANT_ABRADE_J_MM3)
+        borrowed = (sg_grind.backsheet_face_volume_mm3()
+                    * sg_grind.SEALANT_ABRADE_J_MM3 / sg_grind.FACE_ABRADE_TACT_S)
+        self.assertGreater(borrowed, 4.0 * sg_grind.backsheet_abrade_power_w())
+
+    def test_the_face_unit_is_timed_by_its_own_tact_not_this_lines(self):
+        """면 설비는 자기 정반을 갖는다 — 이 라인의 AFR 택트로 나누지 않는다."""
+        self.assertAlmostEqual(
+            sg_grind.backsheet_abrade_power_w(),
+            sg_grind.backsheet_abrade_energy_j() / sg_grind.FACE_ABRADE_TACT_S,
+            places=1)
+        self.assertNotAlmostEqual(sg_grind.FACE_ABRADE_TACT_S, float(campaign.AFR_S),
+                                  places=1)
+
+    def test_the_power_it_needs_is_an_ordinary_industrial_sander(self):
+        """그렇게 세면 동력이 평범한 산업용 연마기 범위에 든다.
+
+        이 시험이 이 묶음의 요지다 — 면 연마가 못 할 일이라는 결론이 나오면
+        상수나 나눗수 어느 쪽이 틀린 것이다.
+        """
+        self.assertGreater(sg_grind.backsheet_abrade_power_kw(), 5.0)
+        self.assertLess(sg_grind.backsheet_abrade_power_kw(), 100.0)
 
     def test_peeling_is_interfacial_work_so_thickness_does_not_enter(self):
         """박리는 계면 일이다 — 두께를 두 배로 해도 힘이 안 변한다.
@@ -579,25 +614,74 @@ class TestGrindingTheWholeBacksheetFace(unittest.TestCase):
             sg_grind.BACKSHEET_T_MM = t0
 
     def test_the_band_answer_holds_at_face_scale(self):
-        """띠에서 긁는 쪽이 이겼듯, 면에서도 벗기는 쪽이 세 자릿수로 이긴다."""
+        """띠에서 긁는 쪽이 이겼듯, 면에서도 벗기는 쪽이 세 자릿수로 이긴다.
+
+        상수를 실제값으로 낮춘 뒤에도 배수가 남는다 — 계면 일과 부피 일의
+        차이지 비에너지를 크게 잡아서 난 차이가 아니었다.
+        """
         self.assertGreater(sg_grind.scrape_beats_abrade_by(), 1_000)
         self.assertGreater(sg_grind.peel_beats_abrade_by(), 1_000)
+        self.assertAlmostEqual(
+            sg_grind.backsheet_peel_energy_j(),
+            sg_grind.backsheet_peel_force_n() * float(campaign.PANEL_LENGTH_MM) / 1_000.0,
+            places=1)
 
-    def test_abrading_the_face_costs_more_than_the_whole_downstream_delamination(self):
-        """연마 한 수단이 하류 박리 공정 전체보다 비싸다 — 그래서 순증이다."""
-        self.assertFalse(sg_grind.face_abrading_fits_under_downstream_heat())
-        self.assertGreater(sg_grind.backsheet_abrade_energy_j(),
-                           sg_grind.downstream_heat_j_per_panel())
+    def test_removing_the_backsheet_first_buys_heat_back_downstream(self):
+        """면을 걷는 값은 순증이 아니다 — 불소원이 빠지면 열박리가 짧아진다.
 
-    def test_the_dust_it_would_make_is_not_what_ds01_declares(self):
-        """DS-01 은 폴리머를 안 깎는다는 전제로 '불연' 이다.
+        돌려받는 몫을 빼면 순 에너지가 음수다. 즉 에너지는 이 공법을 막는
+        근거가 못 된다. 앞선 판정은 이 항을 빠뜨려서 뒤집혀 있었다.
+        """
+        self.assertAlmostEqual(
+            sg_grind.downstream_heat_saved_j(),
+            sg_grind.downstream_heat_j_per_panel() * sg_grind.BACKSHEET_FIRST_HEAT_SAVING,
+            places=1)
+        self.assertAlmostEqual(
+            sg_grind.face_abrade_net_j(),
+            sg_grind.backsheet_abrade_energy_j() - sg_grind.downstream_heat_saved_j(),
+            places=1)
+        self.assertLess(sg_grind.face_abrade_net_j(), 0.0)
+        self.assertTrue(sg_grind.face_abrading_pays_for_itself())
 
-        지금은 참이다. 면을 갈면 그 전제가 깨지는데, 깨지는 크기를 값으로
-        들고 있는다 — 라인 속도로 환산한 분진량이다.
+    def test_what_actually_binds_is_dust_and_machine_count_not_energy(self):
+        """그래서 걸리는 곳은 에너지가 아니라 분진·대수·개구부다.
+
+        DS-01 은 폴리머를 안 깎는다는 전제로 '불연' 이다. 지금은 참이다.
+        면을 갈면 그 전제가 깨지는데, 깨지는 크기를 값으로 들고 있는다.
         """
         self.assertTrue(sg_grind.dust_stream_stays_inert())
         self.assertFalse(sg_grind.wheel_may_touch_the_backsheet())
         self.assertGreater(sg_grind.backsheet_dust_kg_per_h(), 100.0)
+        self.assertGreater(sg_grind.face_abraders_needed(), 1)
+        self.assertFalse(sg_grind.panel_fits_face_abrader())
+
+    def test_two_independent_routes_say_the_demo_machine_is_smaller(self):
+        """개구부와 이송속도가 각각 같은 말을 한다 — 설비가 이 패널보다 작다.
+
+        폭으로 봐도 안 들어가고, 길이를 그 이송속도로 지나게 해도 장당 택트를
+        넘는다. 서로 다른 두 상수가 같은 결론을 내므로 어느 하나를 잘못 옮겨
+        적은 것이 아니다. 공법이 아니라 크기가 걸린다는 뜻이다.
+        """
+        self.assertAlmostEqual(
+            sg_grind.face_abrade_pass_s(),
+            float(campaign.PANEL_LENGTH_MM) / sg_grind.FACE_ABRADE_FEED_MM_S, places=1)
+        self.assertFalse(sg_grind.face_abrade_tact_covers_this_panel())
+        self.assertFalse(sg_grind.panel_fits_face_abrader())
+
+    def test_the_dust_figure_survives_every_constant_we_had_wrong(self):
+        """분진만은 택트에도 비에너지에도 안 걸린다 — 부피 × 밀도뿐이다.
+
+        상수를 어떻게 고쳐도 집진이 받아야 할 물건의 크기는 그대로다.
+        그래서 이 값은 앞선 오류를 넘어 살아남은 유일한 요구사항이다.
+        """
+        e0, t0 = sg_grind.BACKSHEET_ABRADE_J_MM3, sg_grind.FACE_ABRADE_TACT_S
+        dust0 = sg_grind.backsheet_dust_kg_per_panel()
+        try:
+            sg_grind.BACKSHEET_ABRADE_J_MM3 = e0 * 5.0
+            sg_grind.FACE_ABRADE_TACT_S = t0 / 3.0
+            self.assertEqual(sg_grind.backsheet_dust_kg_per_panel(), dust0)
+        finally:
+            sg_grind.BACKSHEET_ABRADE_J_MM3, sg_grind.FACE_ABRADE_TACT_S = e0, t0
 
     def test_the_values_come_from_the_modules_that_own_them(self):
         """면적은 campaign, 하류 열과 라인 속도는 handoff 가 정본이다."""

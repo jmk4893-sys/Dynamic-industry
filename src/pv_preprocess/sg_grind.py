@@ -79,6 +79,40 @@ BACKSHEET_DENSITY_G_MM3 = 1.78e-3
 #: 근거가 없다. 면 전체를 벗기는 대안을 견줄 때만 쓴다. 값이 오면 여기만 고친다.
 BACKSHEET_PEEL_GC_N_MM = 0.5
 
+# ── 면 연마 라인 — 남의 설비에서 가져온 상수 ────────────────────────────
+#
+#   아래 다섯은 이 라인의 설계값이 아니라 **바깥에서 돌아가는 설비**의 값이다.
+#   면 전체를 갈아내는 공법이 실재하는지가 먼저 걸리는 물음이라 그것부터 적는다.
+#
+#   ① CEA 가 개발하고 ENVIE 2E Aquitaine 이 2025-07 부터 돌리는 연마 라인
+#      (EVERPV). 넓은 연마 벨트를 고속으로 돌려 유리 위의 층을 **분말**로
+#      걷어낸다. 1 만 장 넘게 처리해 유리 100 t 을 잔사 없는 컬릿으로 냈다.
+#      → 면 전체 연마는 가설이 아니라 가동 중인 공법이다.
+#   ② Leoben 의 밀링 연구. 백시트를 **먼저** 떼면 뒤따르는 열박리 시간이
+#      모든 온도에서 45 % 넘게 줄고, 고형 잔사가 줄며 배가스가 순해진다.
+#      → 면을 걷는 값은 순증이 아니다. 하류에서 돌려받는다.
+#
+#   그래서 이 절은 면 연마를 이 라인에 얹는 **추가 부하**로 세지 않는다.
+#   자기 정반·자기 택트를 갖는 **대안 아키텍처**로 놓고, 쓰는 값과
+#   돌려받는 값을 함께 센다.
+
+#: 면 연마 설비의 장당 정반 점유 (s) — 실증 라인 1 장/분.
+FACE_ABRADE_TACT_S = 60.0
+#: 그 라인의 이송속도 (mm/s) — 2.3 m/min.
+FACE_ABRADE_FEED_MM_S = 38.3
+#: 그 라인이 받는 패널 폭 상한 (mm) — 기계 개구부. 이 라인의 패널이 넘는다.
+FACE_ABRADE_OPENING_MM = 1_300.0
+#: 면 연마의 비에너지 (J/mm³) — **역산한 추정치**다. 벨트 모터 정격이 공개돼
+#: 있지 않아, 태양광 재활용 공정 전체가 130~300 kWh/t 안에서 돈다는 보고된
+#: 범위를 연마 한 단계에 배분해 얻었다. 실측 전력이 오면 여기만 고친다.
+#: 실란트의 `SEALANT_ABRADE_J_MM3` 와 자릿수가 다른 것이 맞다 — 그쪽은 경화
+#: 실리콘을 좁은 띠에서 긁어내는 값이고, 이쪽은 무른 폴리머를 넓은 벨트로
+#: 얕게 걷어내는 값이다. 띠의 상수를 면에 그대로 빌려 쓰면 위로 크게 틀린다.
+BACKSHEET_ABRADE_J_MM3 = 1.6
+#: 백시트를 먼저 걷었을 때 하류 열박리에서 돌려받는 몫. 보고된 값이
+#: "모든 온도에서 45 % 넘게 감소" 이므로 그 경계값을 쓴다 — 낮게 잡은 쪽이다.
+BACKSHEET_FIRST_HEAT_SAVING = 0.45
+
 # ── 프레임이 남기고 간 실란트 — `frames` 의 슬롯 치수가 정본 ───────────
 #: 프레임 슬롯이 라미네이트 **면**을 덮는 폭 (mm). 인발은 응집파괴라 이 폭만큼
 #: 실란트가 면에 남는다 — 변에만 남는 것이 아니다.
@@ -770,10 +804,20 @@ def wheel_can_reach_after_scraping() -> bool:
 # ── 면 전체를 벗긴다면 — 띠에서 나온 답을 면으로 키운다 ─────────────────
 #
 #   띠 20 mm 에서 답이 한 번 나왔다 (`scrape_beats_abrade_by()`). 같은 물음을
-#   백시트 **면 전체**로 키우면 배수가 어떻게 되고, 그 동력이 하류 열박리와
-#   견주어 어디쯤인지를 여기서 센다. 지금 설계는 면을 안 건드리므로
-#   (`wheel_may_touch_the_backsheet()` 가 거짓) 이 절은 **판단 근거**이지
-#   부품표에 걸리는 값이 아니다.
+#   백시트 **면 전체**로 키우면 어떻게 되는가.
+#
+#   다만 면은 띠의 확대판이 아니다. 두 가지를 틀리기 쉬워 여기 적어 둔다 —
+#
+#   ① **택트.** 면을 걷는 설비는 이 라인에 붙는 헤드가 아니라 자기 정반을
+#      갖는 별도 설비다. 그러니 이 라인의 `campaign.AFR_S` 로 나누면 안 되고
+#      `FACE_ABRADE_TACT_S` 로 나눠야 한다. 앞의 것으로 나누면 동력이
+#      한 자릿수 부풀어 "말도 안 되는 값" 이 나온다.
+#   ② **부호.** 면을 걷는 값은 순증이 아니다. 불소 백시트가 먼저 빠지면
+#      하류 열박리가 짧아지고 배가스가 순해진다 — `downstream_heat_saved_j()`.
+#      돌려받는 쪽을 빼지 않고 재면 이 공법은 항상 진다.
+#
+#   지금 설계는 면을 안 건드리므로 (`wheel_may_touch_the_backsheet()` 가 거짓)
+#   이 절은 **판단 근거**이지 부품표에 걸리는 값이 아니다.
 
 def backsheet_face_area_mm2() -> float:
     """백시트 한 면의 넓이 (mm²) — 패널 외형 그대로."""
@@ -788,15 +832,24 @@ def backsheet_face_volume_mm3() -> float:
 def backsheet_abrade_energy_j() -> float:
     """면 전체를 갈아내는 일 (J/장) — **부피 일**이라 두께가 그대로 곱해진다.
 
-    비에너지는 실란트와 같은 `SEALANT_ABRADE_J_MM3` 를 쓴다. 폴리머끼리라
-    자릿수는 맞지만 백시트 고유값은 아니다 — 위로 틀릴 여지가 있다.
+    비에너지는 면 고유의 `BACKSHEET_ABRADE_J_MM3` 를 쓴다. 띠에서 쓰는
+    `SEALANT_ABRADE_J_MM3` 를 빌려 오면 안 된다 — 경화 실리콘을 좁게 긁는
+    값이라 무른 폴리머를 넓게 걷는 이쪽보다 다섯 배쯤 높다.
     """
-    return round(backsheet_face_volume_mm3() * SEALANT_ABRADE_J_MM3, 1)
+    return round(backsheet_face_volume_mm3() * BACKSHEET_ABRADE_J_MM3, 1)
 
 
 def backsheet_abrade_power_w() -> float:
-    """그 일을 정반 점유 안에 끝내려면 드는 동력 (W)."""
-    return round(backsheet_abrade_energy_j() / float(campaign.AFR_S), 1)
+    """그 일을 **면 연마 설비 자기 택트** 안에 끝내려면 드는 동력 (W).
+
+    이 라인의 AFR 택트가 아니다 — 별도 설비이므로 `FACE_ABRADE_TACT_S` 다.
+    """
+    return round(backsheet_abrade_energy_j() / FACE_ABRADE_TACT_S, 1)
+
+
+def backsheet_abrade_power_kw() -> float:
+    """같은 값을 kW 로 — 시판 연마 설비 정격과 바로 견주라고 둔다."""
+    return round(backsheet_abrade_power_w() / 1_000.0, 1)
 
 
 def backsheet_peel_force_n() -> float:
@@ -807,25 +860,74 @@ def backsheet_peel_force_n() -> float:
     return round(BACKSHEET_PEEL_GC_N_MM * float(campaign.PANEL_WIDTH_MM), 1)
 
 
+def backsheet_peel_energy_j() -> float:
+    """면 전체를 벗기는 일 (J/장) = 힘 × 패널 길이."""
+    return round(backsheet_peel_force_n() * float(campaign.PANEL_LENGTH_MM) / 1_000.0, 1)
+
+
 def backsheet_peel_power_w() -> float:
-    """같은 이송속도로 벗길 때의 동력 (W)."""
+    """같은 것을 이 라인 이송속도로 벗길 때의 동력 (W)."""
     return round(backsheet_peel_force_n() * long_feed_mm_s() / 1_000.0, 2)
 
 
 def peel_beats_abrade_by() -> int:
-    """면 전체에서도 벗기는 쪽이 몇 배 싼가 — 띠에서의 배수와 견준다."""
-    return round(backsheet_abrade_power_w() / backsheet_peel_power_w())
+    """벗기는 쪽이 몇 배 싼가 — **장당 일**로 센다.
+
+    띠의 `scrape_beats_abrade_by()` 는 같은 이송속도에서 동력으로 쟀지만
+    면에서는 두 공법이 이송속도를 공유하지 않는다. 동력비를 그대로 쓰면
+    설비가 느린 것까지 공법 탓으로 세게 되므로 여기서는 일로 견준다.
+    """
+    return round(backsheet_abrade_energy_j() / backsheet_peel_energy_j())
 
 
 def backsheet_dust_kg_per_panel() -> float:
-    """갈아냈을 때 나오는 폴리머 분진 (kg/장)."""
+    """갈아냈을 때 나오는 폴리머 분진 (kg/장).
+
+    이 값만은 택트에도 비에너지에도 안 걸린다 — 부피 × 밀도뿐이다.
+    상수를 어떻게 고치든 집진이 받아야 할 물건의 크기는 이대로 남는다.
+    """
     return round(backsheet_face_volume_mm3() * BACKSHEET_DENSITY_G_MM3 / 1_000.0, 2)
 
 
+def face_abrade_pass_s() -> float:
+    """이 라인의 패널이 실증 라인 이송속도로 한 번 지나는 시간 (s)."""
+    return round(float(campaign.PANEL_LENGTH_MM) / FACE_ABRADE_FEED_MM_S, 1)
+
+
+def face_abrade_tact_covers_this_panel() -> bool:
+    """실증 라인의 장당 택트 안에 이 패널이 한 번 지나가는가.
+
+    거짓이다. 개구부(`panel_fits_face_abrader()`)와 같은 이야기를 다른 쪽에서
+    본 것이다 — 실증 설비는 이 라인보다 작은 패널에 맞춰 세워져 있다.
+    공법이 아니라 설비 크기가 다르다는 뜻이고, 그래서 대수를 세야 한다.
+    """
+    return face_abrade_pass_s() <= FACE_ABRADE_TACT_S
+
+
+def face_abrade_line_per_h() -> float:
+    """면 연마 설비 한 대의 처리량 (장/h)."""
+    return round(3_600.0 / FACE_ABRADE_TACT_S, 1)
+
+
+def face_abraders_needed() -> int:
+    """이 라인 속도를 따라가려면 면 연마 설비가 몇 대 필요한가."""
+    from . import handoff
+    return int(math.ceil(handoff.downstream_rate().line_per_h / face_abrade_line_per_h()))
+
+
 def backsheet_dust_kg_per_h() -> float:
-    """같은 것을 라인 속도로 환산한 값 (kg/h) — 집진이 받을 물건의 크기."""
+    """분진을 라인 속도로 환산한 값 (kg/h) — 집진이 받을 물건의 크기."""
     from . import handoff
     return round(backsheet_dust_kg_per_panel() * handoff.downstream_rate().line_per_h, 1)
+
+
+def panel_fits_face_abrader() -> bool:
+    """이 라인의 패널이 실증 연마 설비 개구부에 들어가는가.
+
+    거짓이다 — 공법이 아니라 **치수**가 걸린다. 실증 설비 개구부가 이
+    라인의 패널 폭보다 좁다는 뜻이지, 공법이 틀렸다는 뜻이 아니다.
+    """
+    return float(campaign.PANEL_WIDTH_MM) <= FACE_ABRADE_OPENING_MM
 
 
 def downstream_heat_j_per_panel() -> float:
@@ -834,13 +936,30 @@ def downstream_heat_j_per_panel() -> float:
     return round(handoff.downstream_rate().heat_per_panel_mj * 1e6, 1)
 
 
-def face_abrading_fits_under_downstream_heat() -> bool:
-    """면 전체 연마가 하류 열박리보다 싼가.
+def downstream_heat_saved_j() -> float:
+    """백시트를 먼저 걷어서 하류에서 돌려받는 열 (J/장).
 
-    거짓이면 이 수단 하나가 **이미 있는 박리 공정 전체보다 비싸다**는 뜻이다 —
-    갈아낸 뒤에도 EVA·셀 박리는 그대로 남으므로 순증이다.
+    불소원이 빠지면 열박리가 짧아진다. 이 몫을 세지 않으면 면 연마는
+    장부상 언제나 손해로 나온다 — 그것이 이 절의 앞선 오류였다.
     """
-    return backsheet_abrade_energy_j() <= downstream_heat_j_per_panel()
+    return round(downstream_heat_j_per_panel() * BACKSHEET_FIRST_HEAT_SAVING, 1)
+
+
+def face_abrade_net_j() -> float:
+    """면 연마의 **순** 에너지 (J/장) = 쓰는 값 − 돌려받는 값.
+
+    음수면 걷어내는 쪽이 라인 전체 에너지를 줄인다.
+    """
+    return round(backsheet_abrade_energy_j() - downstream_heat_saved_j(), 1)
+
+
+def face_abrading_pays_for_itself() -> bool:
+    """면 연마가 제 값을 하는가 — 하류에서 돌려받는 열이 제 소비보다 큰가.
+
+    참이라고 이 라인이 그리로 가야 한다는 뜻은 아니다. 에너지는 걸림돌이
+    아니라는 뜻이고, 판단은 분진·설비 대수·개구부 폭에서 갈린다.
+    """
+    return face_abrade_net_j() <= 0.0
 
 
 # ── 순환 — 동시인가 순차인가 ────────────────────────────────────────────
@@ -1536,9 +1655,18 @@ def summary() -> dict[str, object]:
         "backsheetPeelForceN": backsheet_peel_force_n(),
         "backsheetPeelPowerW": backsheet_peel_power_w(),
         "peelBeatsAbradeBy": peel_beats_abrade_by(),
+        "backsheetPeelEnergyJ": backsheet_peel_energy_j(),
+        "backsheetAbradePowerKw": backsheet_abrade_power_kw(),
         "backsheetDustKgPerPanel": backsheet_dust_kg_per_panel(),
         "backsheetDustKgPerH": backsheet_dust_kg_per_h(),
-        "faceAbradingFitsUnderDownstreamHeat": face_abrading_fits_under_downstream_heat(),
+        "faceAbradePassS": face_abrade_pass_s(),
+        "faceAbradeTactCoversThisPanel": face_abrade_tact_covers_this_panel(),
+        "faceAbradeLinePerH": face_abrade_line_per_h(),
+        "faceAbradersNeeded": face_abraders_needed(),
+        "panelFitsFaceAbrader": panel_fits_face_abrader(),
+        "downstreamHeatSavedJ": downstream_heat_saved_j(),
+        "faceAbradeNetJ": face_abrade_net_j(),
+        "faceAbradingPaysForItself": face_abrading_pays_for_itself(),
         "shoePressureMpa": shoe_pressure_mpa(),
         "bladeAssemblyTolMm": blade_assembly_tol_mm(),
         "backsheetSurvives": backsheet_survives_scraping(),
