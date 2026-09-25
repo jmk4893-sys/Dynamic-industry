@@ -185,9 +185,13 @@ class TestTheGapMustBeMadeNotFound(unittest.TestCase):
     """
 
     def test_the_unit_is_two_stages_not_one(self):
-        """1 차 커팅과 2 차 칼날 진입이 갈린다."""
+        """1 차 커팅과 2 차 커팅(= 박리)이 갈린다 — **정확히 둘이다.**
+
+        한때 셋으로 세었다: 커팅 · 칼날 진입 · 박리. 뒤의 둘은 같은 것이고
+        현장이 그것을 「2 차 커팅」이라 부른다.
+        """
         self.assertTrue(br_peel.a_gap_must_be_made_not_found())
-        self.assertGreaterEqual(len(br_peel.stages()), 3)
+        self.assertEqual(len(br_peel.stages()), 2)
         first = br_peel.stages()[0]
         self.assertIn("1 차", first[0])
         self.assertIn(f"{br_peel.STARTER_CUT_OFFSET_MM:.0f} mm", first[1])
@@ -259,32 +263,35 @@ class TestTheGapMustBeMadeNotFound(unittest.TestCase):
         self.assertIn("절단 깊이를 무엇으로 잡는지가 안 정해졌다",
                       " ".join(br_peel.open_questions()))
 
-    def test_the_second_stage_is_a_cut_not_a_peel_entry(self):
-        """도면이 ②를 「2 차 커팅」이라 적는다 — 박리 진입으로 적어 두었었다."""
+    def test_the_second_stage_is_the_peel_under_a_plant_name(self):
+        """②는 박리다 — 현장이 그것을 「2 차 커팅」이라 부를 뿐이다.
+
+        도면 글자만 보고 「절단이 한 번 더 있다」로 읽었다가 고쳤다.
+        공정은 둘이고 절단은 1 차 한 번뿐이다.
+        """
+        self.assertEqual(len(br_peel.stages()), 2)
         second = br_peel.stages()[1]
         self.assertIn("2 차 커팅", second[0])
-        self.assertIn("절단이다", second[1])
-        self.assertNotIn("칼날 진입", second[0])
+        self.assertIn("박리", second[0])
+        self.assertIn("벗긴다", second[1])
+        self.assertFalse(hasattr(br_peel, "second_cut_is_unread"))
 
-    def test_what_the_second_cut_does_is_recorded_as_unread(self):
-        """②가 무엇을 가르는지 **모른다고 적는다** — 세 번째 추측을 안 넣는다.
+    def test_the_vocabulary_trap_is_written_down(self):
+        """현장 말과 물리 이름이 어긋난 자리를 적어 둔다 — 한 번 틀렸으므로."""
+        note = " ".join(br_peel.the_word_cutting_names_the_peel())
+        self.assertIn("2 차 커팅", note)
+        self.assertIn("공정은 둘이다", note)
+        self.assertIn("말이 공정을 가리키지 물리를 가리키지 않는다", note)
+        self.assertGreaterEqual(len(br_peel.the_word_cutting_names_the_peel()), 4)
 
-        이 자리에서 이미 두 번 틀렸다(「JBR 절결을 주워 쓴다」·「30 mm 가
-        절단 길이」). 읽힌 것과 못 읽은 것을 갈라 두는 것이 지금 할 일이다.
-        """
-        note = " ".join(br_peel.second_cut_is_unread())
-        self.assertIn("읽힌 것", note)
-        self.assertIn("못 읽은 것", note)
-        self.assertGreaterEqual(len(br_peel.second_cut_is_unread()), 4)
-        self.assertIn("2 차 커팅이 무엇을 가르는지 못 읽었다",
-                      " ".join(br_peel.open_questions()))
-
-    def test_the_peel_force_is_flagged_as_provisional(self):
-        """②가 폭을 나누면 박리력이 나뉜다 — 그 단서를 단계 글에 달아 둔다."""
-        third = br_peel.stages()[2]
-        self.assertIn("나뉜다", third[1])
-        self.assertIn("확정으로 읽으면 안 된다", third[1])
-        self.assertTrue(br_peel.summary()["secondCutIsUnread"])
+    def test_the_peel_force_is_settled_not_provisional(self):
+        """폭을 나누는 절단이 없으므로 박리력이 확정이다."""
+        note = " ".join(br_peel.the_word_cutting_names_the_peel())
+        self.assertIn("잠정이 아니라 확정", note)
+        self.assertNotIn("secondCutIsUnread", br_peel.summary())
+        self.assertAlmostEqual(
+            br_peel.peel_force_n(),
+            br_peel.peel_force_n(br_peel.required_interface()), places=1)
 
     def test_no_stage_claims_the_gap_already_exists(self):
         """어느 단계도 「틈이 이미 있다」고 말하지 않는다 — 만들어서 연다."""
