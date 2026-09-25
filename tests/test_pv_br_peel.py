@@ -21,7 +21,7 @@ import unittest
 
 from tests import _path  # noqa: F401
 
-from pv_preprocess import br_peel, campaign, separation, sg_grind
+from pv_preprocess import br_peel, campaign, handoff, separation, sg_grind
 
 
 class TestTheWeakPlaneIsATrap(unittest.TestCase):
@@ -49,10 +49,10 @@ class TestTheWeakPlaneIsATrap(unittest.TestCase):
     def test_the_spec_comes_from_separation_not_from_here(self):
         """무엇이 빠져야 하는지는 `separation` 이 정한다 — 여기서 안 정한다."""
         self.assertEqual(br_peel.must_remove(),
-                         frozenset(separation.must_be_removed_before_crushing()))
+                         separation.gate_component_keys("backsheet"))
         self.assertIn("pet", br_peel.must_remove())
         self.assertIn("fluoro", br_peel.must_remove())
-        self.assertTrue(separation.the_whole_backsheet_is_the_target())
+        self.assertEqual(separation.gate_owner("backsheet"), "BR-305/306")
 
     def test_removing_pet_from_the_spec_would_make_the_weak_plane_enough(self):
         """PET 이 오염원이 아니었다면 약한 면으로 충분했다 — 거기가 갈림이다.
@@ -175,6 +175,31 @@ class TestTheMethodTableIsHonestAboutWhatBlocksEach(unittest.TestCase):
                                places=2)
         for m in br_peel.methods_that_fit_inline():
             self.assertLessEqual(m.seconds_per_panel, br_peel.line_takt_s())
+
+
+class TestUpstreamAlreadyStoodForThis(unittest.TestCase):
+    """상류가 이미 박리를 알고 있었다 — 새로 유도하지 않고 받아 온다."""
+
+    def test_the_tear_risk_is_an_existing_upstream_spec(self):
+        """찢김 위험이 이 유닛보다 먼저 사양으로 서 있었다."""
+        self.assertTrue(br_peel.tear_risk_is_already_specified())
+        self.assertGreater(handoff.RIBBON_STUB_MAX_MM, 0.0)
+        self.assertFalse(handoff.RIBBON_MAY_BE_LAID_OVER)
+
+    def test_the_conditions_come_from_handoff_not_from_here(self):
+        """값을 여기서 다시 정하지 않는다 — 두 곳에 적으면 갈라진다."""
+        text = " ".join(v for _, v in br_peel.upstream_conditions())
+        self.assertIn(f"{handoff.RIBBON_STUB_MAX_MM:g}", text)
+        self.assertIn(f"{handoff.SILICONE_RESIDUE_MAX_MM:g}", text)
+        self.assertGreaterEqual(len(br_peel.upstream_conditions()), 3)
+
+    def test_the_jbr_notch_is_a_candidate_start_point_not_a_conclusion(self):
+        """절결이 시작점 후보다 — 다만 판 가운데라 확인이 필요하다고 적는다."""
+        note = " ".join(br_peel.jbr_notch_as_a_start_point())
+        self.assertIn(f"{handoff.BACKSHEET_NOTCH_MAX_MM:g}", note)
+        self.assertIn("가운데", note)
+        self.assertIn("시편", note)
+        self.assertTrue(handoff.BACKSHEET_NOTCH_FOOTPRINT_ONLY)
 
 
 class TestItSaysWhyThisBeatsAbrading(unittest.TestCase):

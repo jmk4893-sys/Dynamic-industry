@@ -333,21 +333,29 @@ class TestItMovesThePolymerRatherThanRemovingIt(unittest.TestCase):
         self.assertGreater(br_abrade.combustible_fraction_after(), 0.5)
         self.assertTrue(br_abrade.breaks_the_inert_premise())
 
-    def test_the_eva_overshoot_costs_nothing_downstream(self):
-        """백시트보다 깊이 파는 몫은 오염으로 안 돌아온다 — EVA 는 스스로 뜬다.
+    def test_the_eva_overshoot_goes_the_other_way_but_is_not_free(self):
+        """백시트보다 깊이 판 몫은 실리콘 쪽으로 안 간다 — 다만 공짜도 아니다.
 
-        깊이를 정할 때 잔존 위험만 보면 되고 EVA 여유는 공짜라는 뜻이다.
+        EVA 도 관문 넷 중 하나다. 방향이 반대라 백시트가 남는 것보다 나을
+        뿐이고, 그래서 절입에 여유를 줄 수 있다.
         """
-        self.assertTrue(br_abrade.overshoot_into_eva_is_free())
-        self.assertTrue(separation.eva_overshoot_is_harmless())
-        self.assertIn("eva", [c.key for c in separation.separates_itself()])
-        self.assertNotIn("eva", separation.must_be_removed_before_crushing())
+        self.assertTrue(br_abrade.overshoot_into_eva_goes_the_other_way())
+        self.assertTrue(separation.eva_escape_goes_the_other_way())
+        self.assertIn("eva", [c.key
+                              for c in separation.must_be_removed_before_flotation()])
 
-    def test_the_sink_fraction_is_what_this_unit_defends(self):
-        """지키는 대상이 정광이 아니라 **실리콘이 있는 침강분**이다."""
-        self.assertIn("pet", separation.must_be_removed_before_crushing())
-        self.assertIn("fluoro", separation.must_be_removed_before_crushing())
+    def test_this_unit_owns_exactly_one_of_the_four_gates(self):
+        """이 유닛이 맡은 것은 넷 중 백시트 하나다."""
+        self.assertEqual(br_abrade.gate_this_unit_owns(), "backsheet")
+        self.assertIn(br_abrade.gate_this_unit_owns(), separation.THE_FOUR_GATES)
+        self.assertEqual(separation.gate_owner("backsheet"), "BR-305/306")
+
+    def test_the_sink_fraction_holds_both_things_being_protected(self):
+        """지키는 대상이 실리콘과 **은**이고 둘 다 침강분에 있다."""
         self.assertTrue(separation.reports_to_sink(separation.silicon()))
+        self.assertTrue(separation.reports_to_sink(separation.silver()))
+        for key in separation.gate_component_keys("backsheet"):
+            self.assertTrue(separation.reports_to_sink(separation.by_key(key)), key)
 
     def test_the_decision_note_says_where_the_fluorine_went(self):
         """옮긴 곳을 글로 적어 둔다 — 값만 두면 다음 사람이 못 읽는다."""

@@ -417,6 +417,11 @@ def combustible_fraction_after() -> float:
     return round(burnable / total, 3)
 
 
+def gate_this_unit_owns() -> str:
+    """이 유닛이 맡은 관문 — 넷 중 하나다."""
+    return "backsheet"
+
+
 def breaks_the_inert_premise() -> bool:
     """가연분이 소수에서 **다수**로 넘어가는가 — 넘어가면 보호 방식이 바뀐다.
 
@@ -478,14 +483,14 @@ def fines_that_escape_are_the_risk() -> tuple[str, ...]:
     )
 
 
-def overshoot_into_eva_is_free() -> bool:
-    """백시트보다 깊이 파는 몫이 오염으로 돌아오는가.
+def overshoot_into_eva_goes_the_other_way() -> bool:
+    """백시트보다 깊이 판 몫이 실리콘 쪽으로 가는가 — 안 간다.
 
-    안 돌아온다. EVA 는 물보다 가벼워 선별조에서 스스로 뜨므로, 딸려 나오든
-    안 잡히든 실리콘을 안 더럽힌다. 절입에 여유를 줄 수 있는 근거다 —
-    `separation` 이 정본이다.
+    EVA 는 물보다 가벼워 뜨므로 방향이 반대다. **공짜라는 뜻은 아니다** —
+    EVA 도 관문 넷 중 하나다. 다만 백시트가 남는 것보다는 훨씬 낫고,
+    그래서 절입에 여유를 줄 수 있다. `separation` 이 정본이다.
     """
-    return separation.eva_overshoot_is_harmless()
+    return separation.eva_escape_goes_the_other_way()
 
 
 # ── 이 유닛이 무엇을 옮기는가 ───────────────────────────────────────────

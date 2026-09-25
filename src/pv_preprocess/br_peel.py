@@ -104,8 +104,11 @@ def weakest_interface() -> Interface:
 
 
 def must_remove() -> frozenset[str]:
-    """파쇄 전에 빠져야 하는 성분 — `separation` 이 정본이다."""
-    return frozenset(separation.must_be_removed_before_crushing())
+    """이 유닛이 맡은 관문에서 빠져야 하는 성분 — `separation` 이 정본이다.
+
+    네 관문 중 **백시트** 하나다. 유리·구리·EVA 는 다른 유닛 몫이다.
+    """
+    return separation.gate_component_keys("backsheet")
 
 
 def is_sufficient(iface: Interface) -> bool:
@@ -300,6 +303,58 @@ def why_not_abrading() -> tuple[str, ...]:
     )
 
 
+# ── 상류가 이미 걸어 둔 조건 ────────────────────────────────────────────
+#
+#   이 유닛을 짓기 전부터 저장소가 박리를 알고 있었다. `handoff` 의 JBR-201
+#   출력 조건이 「튀어나온 리본 단부가 **박리 중 백시트를 걸어 찢는다**」고
+#   적고 그 한도를 들고 있다. 다시 유도하지 않고 받아 온다.
+
+def upstream_conditions() -> tuple[tuple[str, str], ...]:
+    """박리가 성립하려면 상류가 지켜야 하는 것 — `handoff` 가 정본이다."""
+    from . import handoff
+    return (
+        ("리본 단부 돌출",
+         f"백시트 면 위 ≤ {handoff.RIBBON_STUB_MAX_MM:g} mm — 넘으면 박리 중 "
+         "백시트를 걸어 찢는다"),
+        ("리본 단부 자세",
+         "눕혀 굽히지 않는다" if not handoff.RIBBON_MAY_BE_LAID_OVER
+         else "눕힘 허용",
+         ),
+        ("접착 실리콘 잔여",
+         f"백시트 면 위 ≤ {handoff.SILICONE_RESIDUE_MAX_MM:g} mm"),
+    )
+
+
+def tear_risk_is_already_specified() -> bool:
+    """찢김 위험이 이미 상류 사양으로 잡혀 있는가 — 새로 만들 것이 없다."""
+    from . import handoff
+    return handoff.RIBBON_STUB_MAX_MM > 0 and not handoff.RIBBON_MAY_BE_LAID_OVER
+
+
+def jbr_notch_as_a_start_point() -> tuple[str, ...]:
+    """시작점 문제 — JBR 이 이미 백시트에 구멍을 낸다.
+
+    계면 박리는 균열을 시작할 자리가 있어야 한다. 그런데 JBR-201 절입이
+    백시트를 뚫는 것이 **허용 조건**으로 이미 들어와 있다 — 정션박스 발자국
+    안에서 깊이 상한 `BACKSHEET_NOTCH_MAX_MM` 까지. 그 절결이 그리퍼가
+    물 자리가 될 수 있다.
+    """
+    from . import handoff
+    return (
+        f"JBR-201 이 정션박스 발자국 안에 깊이 ≤ "
+        f"{handoff.BACKSHEET_NOTCH_MAX_MM:g} mm 의 절결을 남기는 것이 발주처 "
+        "승인 사항이다. 없애려던 결함이 아니라 **받아들인 조건**이다.",
+        "계면 박리에 필요한 것이 시작점이므로, 그 절결이 그리퍼 자리로 쓰일 수 "
+        "있다 — 따로 긋는 수단을 안 만들어도 된다는 뜻이다.",
+        "다만 그 자리는 판 **가운데**(정션박스 자리)이지 변이 아니다. 가운데서 "
+        "시작하는 박리는 전선이 사방으로 퍼져 변에서 당기는 것과 다르다. "
+        "쓸 수 있는지는 시편으로 봐야 한다.",
+        f"그리고 같은 문서가 리본 단부를 ≤ {handoff.RIBBON_STUB_MAX_MM:g} mm 로 "
+        "묶어 둔 이유가 바로 **박리 중 찢김**이다. 상류가 이미 이 유닛을 "
+        "염두에 두고 서 있었다.",
+    )
+
+
 def open_questions() -> tuple[str, ...]:
     """실측이 와야 닫히는 것."""
     return (
@@ -314,9 +369,10 @@ def open_questions() -> tuple[str, ...]:
         "반쯤 사라진다 — 이것이 연마 대비 우위를 정하는 값이다. 그리고 여기서는 "
         "**약한 외피–심재 면이 오히려 해롭다** — 거기서 먼저 갈라지면 심재만 "
         "남는다.",
-        "**그리퍼가 시작점을 어떻게 만드는지가 안 정해졌다.** 계면 박리는 "
-        "균열을 시작할 자리가 있어야 한다. 모서리를 한 줄 긋는 것으로 될지, "
-        "별도 수단이 필요할지는 시편을 봐야 안다.",
+        "**시작점은 후보가 생겼지만 확인이 필요하다.** JBR-201 절결이 이미 "
+        "백시트를 뚫어 두므로 그리퍼 자리로 쓸 수 있다 "
+        "(`jbr_notch_as_a_start_point()`). 다만 그 자리가 판 가운데라 변에서 "
+        "당기는 것과 전선 모양이 다르고, 쓸 수 있는지는 시편으로만 안다.",
     )
 
 
@@ -330,6 +386,7 @@ def summary() -> dict[str, object]:
         "theWeakPlaneIsATrap": the_weak_plane_is_a_trap(),
         "costOfGoingToTheRightPlane": cost_of_going_to_the_right_plane(),
         "mustRemove": sorted(must_remove()),
+        "gate": "backsheet",
         "agingHelps": aging_helps(),
         "agingSavesUs": aging_saves_us(),
         "heatSavesUs": heat_saves_us(),
@@ -342,4 +399,6 @@ def summary() -> dict[str, object]:
         "methodCount": len(METHODS),
         "solventFreeCount": len(solvent_free_methods()),
         "recommended": recommended().key,
+        "tearRiskIsAlreadySpecified": tear_risk_is_already_specified(),
+        "upstreamConditionCount": len(upstream_conditions()),
     }

@@ -1,16 +1,18 @@
-"""하류 선별 — **무엇이 어디로 가는가**, 그리고 왜 한 번 반대로 알았는가.
+"""부선 급광 — **실리콘과 은만 들어가야 한다.**
 
-전처리 유닛 두 개가 이 표 하나에 걸려 있다. 그래서 이 묶음이 지키는 것은
-값이 아니라 **기구**다 — 기구를 틀리면 유닛 둘이 같이 틀린다.
+전처리 라인 전체가 무엇을 위해 있는지가 이 표 하나에 걸려 있다. 발주처
+최종 결론이 「부선 전에 유리·구리·EVA·백시트가 다 제거되는 것이 최상의
+결과를 내고, 그것이 은과 실리콘 순도의 가장 큰 변수」이므로, 판단 기준이
+유닛별 에너지가 아니라 **관문이 닫혔는가**다.
 
-처음에는 「불소 폴리머는 표면에너지가 낮아 시약 없이 저절로 뜨므로 정광에
-올라와 품위를 버린다」로 적었다. 현장은 반대다 — 백시트는 **가라앉고** EVA 는
-**떠오른다.** 표면화학이 아니라 **밀도와 입도**가 정한다. 소수성이 맞아도
-조각이 부상 상한보다 크면 기포가 못 들어 올린다.
+이 묶음이 지키는 것은 값이 아니라 **기구와 축**이다. 둘 다 한 번씩 틀렸다.
 
-그 정정이 유닛 쪽에서 무엇을 무너뜨렸는지도 여기서 붙든다 — PET 심재가 불소와
-같은 행선지라 **백시트를 통째로** 빼야 하고, 그래서 「가장 약한 면에서 뜯으면
-된다」가 성립하지 않는다.
+1. **기구** — 「불소는 표면에너지가 낮아 저절로 뜬다」고 적었는데 현장은
+   반대다. 입도 영역을 잘못 봤다: 부상 상한이 1 mm 남짓이라 파쇄 조각은
+   소수성이어도 기포에서 떨어진다 (`TestTwoDifferentReasonsForTwoDirections`).
+2. **축** — 그 정정을 「백시트만 걷으면 된다」로 좁게 읽고 유리를 **제품**
+   칸에 두었다. 회수 가치와 급광 적격은 다른 축이다. 유리·구리는 값이
+   나가지만 급광 밖이다 (`TestValueAndFeedAreDifferentAxes`).
 """
 
 from __future__ import annotations
@@ -63,36 +65,92 @@ class TestTwoDifferentReasonsForTwoDirections(unittest.TestCase):
             separation.SHRED_SIZE_MM = s0
 
 
-class TestItLandsOnTheValuableFraction(unittest.TestCase):
-    """가라앉는 곳이 하필 실리콘이 있는 쪽이다."""
+class TestValueAndFeedAreDifferentAxes(unittest.TestCase):
+    """값이 나가는 것과 급광에 있어도 되는 것은 다른 축이다."""
 
-    def test_silicon_is_in_the_sink_fraction(self):
-        """지키려는 것이 침강분에 있다 — 시약 없이는 기포가 안 붙는다.
+    def test_only_silicon_and_silver_belong_in_the_feed(self):
+        """급광에 있어야 하는 것은 둘뿐이다."""
+        self.assertEqual([c.key for c in separation.feed_should_contain()],
+                         ["silicon", "silver"])
+        for c in separation.feed_should_contain():
+            self.assertTrue(c.is_recovered, c.key)
 
-        실리콘이 가라앉는 이유는 백시트와 다르다. 백시트는 붙는데 커서
-        떨어지고, 실리콘은 **애초에 안 붙는다.**
-        """
-        si = separation.silicon()
-        self.assertTrue(si.is_product)
-        self.assertFalse(si.naturally_hydrophobic)
-        self.assertFalse(separation.can_be_lifted_by_bubbles(si))
-        self.assertTrue(separation.reports_to_sink(si))
-        self.assertGreater(si.density_g_cm3, separation.WATER_G_CM3)
+    def test_glass_and_copper_are_valuable_yet_must_go(self):
+        """유리·구리는 값이 나가는데도 급광 밖이다 — 두 축이 갈리는 자리."""
+        keys = [c.key for c in separation.valuable_but_not_in_the_feed()]
+        self.assertEqual(sorted(keys), ["copper", "glass"])
+        for c in separation.valuable_but_not_in_the_feed():
+            self.assertTrue(c.is_recovered, c.key)
+            self.assertFalse(c.belongs_in_feed, c.key)
 
-    def test_the_polymers_that_sink_are_exactly_the_removal_spec(self):
-        """전처리 사양이 「침강분으로 가는 불순물」에서 그대로 나온다."""
-        self.assertEqual(
-            set(separation.must_be_removed_before_crushing()),
-            {c.key for c in separation.contaminates_silicon()})
-        for c in separation.contaminates_silicon():
-            self.assertFalse(c.is_product, c.key)
+    def test_the_removal_spec_is_everything_that_is_not_the_two_products(self):
+        """제거 사양이 「급광 적격이 아닌 것 전부」에서 나온다."""
+        removed = {c.key for c in separation.must_be_removed_before_flotation()}
+        kept = {c.key for c in separation.feed_should_contain()}
+        self.assertEqual(removed | kept, {c.key for c in separation.COMPONENTS})
+        self.assertEqual(removed & kept, set())
+        self.assertEqual(removed, {"glass", "copper", "eva", "pet", "fluoro"})
+
+    def test_silicon_and_silver_are_both_in_the_sink_fraction(self):
+        """지키려는 둘이 다 침강분에 있다 — 거기로 오는 것이 제일 나쁘다."""
+        for c in (separation.silicon(), separation.silver()):
             self.assertTrue(separation.reports_to_sink(c), c.key)
+            self.assertFalse(c.naturally_hydrophobic, c.key)
+        self.assertGreater(separation.silver().density_g_cm3,
+                           separation.silicon().density_g_cm3)
 
-    def test_what_separates_itself_is_left_alone(self):
-        """스스로 갈라지는 불순물은 전처리가 손대지 않는다."""
-        self.assertEqual([c.key for c in separation.separates_itself()], ["eva"])
-        self.assertNotIn("eva", separation.must_be_removed_before_crushing())
-        self.assertTrue(separation.eva_overshoot_is_harmless())
+    def test_what_lands_on_them_is_named(self):
+        """그 침강분에 섞이는 것들을 값으로 든다."""
+        sinkers = {c.key for c in separation.contaminates_the_sink_fraction()}
+        self.assertIn("pet", sinkers)
+        self.assertIn("fluoro", sinkers)
+        self.assertIn("glass", sinkers)
+        self.assertIn("copper", sinkers)
+        self.assertNotIn("eva", sinkers)
+
+
+class TestTheFourGates(unittest.TestCase):
+    """관문 넷 — 닫힌 것과 빈 것을 세운다."""
+
+    def test_there_are_exactly_four(self):
+        """발주처가 정한 넷이다."""
+        self.assertEqual(separation.THE_FOUR_GATES,
+                         ("glass", "copper", "eva", "backsheet"))
+
+    def test_every_gate_maps_to_components_in_the_table(self):
+        """관문마다 표의 성분으로 내려간다 — 이름만 있는 관문은 없다."""
+        covered = set()
+        for g in separation.THE_FOUR_GATES:
+            keys = separation.gate_component_keys(g)
+            self.assertTrue(keys, g)
+            covered |= keys
+        self.assertEqual(
+            covered, {c.key for c in separation.must_be_removed_before_flotation()})
+
+    def test_the_backsheet_gate_is_two_components_not_one(self):
+        """백시트 관문은 불소층과 PET 둘이다 — 외피만 걷으면 안 닫힌다."""
+        self.assertEqual(separation.gate_component_keys("backsheet"),
+                         frozenset({"pet", "fluoro"}))
+
+    def test_copper_has_no_unit_and_that_is_reported(self):
+        """구리 관문이 비어 있다 — 설계 구멍이고 숨기지 않는다."""
+        self.assertIn("copper", separation.gates_without_a_unit())
+        self.assertEqual(separation.gate_owner("copper"), "")
+        self.assertFalse(separation.all_four_gates_are_covered())
+
+    def test_the_other_three_name_their_unit(self):
+        """나머지 셋은 맡는 유닛이 있다."""
+        self.assertEqual(separation.gate_owner("glass"), "GRM-401")
+        self.assertEqual(separation.gate_owner("eva"), "DG-HK60")
+        self.assertEqual(separation.gate_owner("backsheet"), "BR-305/306")
+
+    def test_the_conclusion_is_written_down_as_the_criterion(self):
+        """판단 기준이 에너지가 아니라 관문이라는 것을 글로 적어 둔다."""
+        note = " ".join(separation.purity_depends_on_this())
+        self.assertIn("은의 순도", note)
+        self.assertIn("실리콘의 순도", note)
+        self.assertIn("copper", note)
+        self.assertGreaterEqual(len(separation.purity_depends_on_this()), 4)
 
 
 class TestItBreaksTheWeakPlaneShortcut(unittest.TestCase):
@@ -100,11 +158,11 @@ class TestItBreaksTheWeakPlaneShortcut(unittest.TestCase):
 
     def test_the_pet_core_goes_where_the_fluoro_goes(self):
         """PET 심재와 불소가 같은 행선지라 외피만 벗기면 소용없다."""
-        pet = next(c for c in separation.COMPONENTS if c.key == "pet")
-        fluoro = next(c for c in separation.COMPONENTS if c.key == "fluoro")
+        pet, fluoro = separation.by_key("pet"), separation.by_key("fluoro")
         self.assertEqual(separation.reports_to_sink(pet),
                          separation.reports_to_sink(fluoro))
-        self.assertTrue(separation.the_whole_backsheet_is_the_target())
+        self.assertEqual(separation.gate_component_keys("backsheet"),
+                         frozenset({"pet", "fluoro"}))
 
     def test_the_open_question_about_fines_is_written_down_not_built_on(self):
         """곱게 갈면 뜰 수도 있다는 물음을 적되, 그 위에 설계를 안 세운다."""
@@ -123,11 +181,11 @@ class TestItBreaksTheWeakPlaneShortcut(unittest.TestCase):
     def test_the_summary_is_flat_and_complete(self):
         """요약이 두 유닛과 도면이 함께 볼 수 있는 모양인가."""
         s = separation.summary()
-        for key in ("contaminatesSilicon", "wholeBacksheetIsTheTarget",
-                    "evaOvershootIsHarmless", "coarseLimitMm"):
+        for key in ("feedShouldContain", "theFourGates", "gatesWithoutAUnit",
+                    "allFourGatesAreCovered", "coarseLimitMm"):
             self.assertIn(key, s)
         for v in s.values():
-            self.assertIsInstance(v, (int, float, bool, str, list))
+            self.assertIsInstance(v, (int, float, bool, str, list, dict))
 
 
 if __name__ == "__main__":
