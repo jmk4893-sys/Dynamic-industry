@@ -12,9 +12,9 @@
 
   · 백시트는 급광에서 **가라앉는다**(관측). 왜 그런지는 `separation` 이
     모른다고 적어 둔다 — 그 자리에서 두 번 틀렸다. 설계는 답에 안 걸린다.
-  · 가라앉는 곳이 하필 **실리콘과 은이 있는 침강분**이다. 값나가는 쪽을
-    더럽히고, 그것이 두 금속 순도의 가장 큰 변수다.
-  · EVA 는 뜬다 — 불순물이지만 방향이 반대다.
+  · 가라앉는 쪽이 **실리콘**이다. 그래서 이 유닛이 지키는 것은 실리콘 순도다.
+  · 뜨는 쪽은 **은정광**이고 거기로 가는 것은 EVA 다 — 이 유닛 소관이 아니라
+    DG-HK60 관문이다. 제품마다 오염원이 다르다는 것이 `separation` 의 요지다.
 
 그러니 **파쇄 전에, 붙어 있는 채로** 걷어내야 한다. 그것이 이 유닛이다.
 그리고 빼야 하는 것은 불소층만이 아니라 **백시트 전체**다 — PET 심재도 같은
@@ -487,14 +487,30 @@ def fines_that_escape_are_the_risk() -> tuple[str, ...]:
     )
 
 
-def overshoot_into_eva_goes_the_other_way() -> bool:
-    """백시트보다 깊이 판 몫이 실리콘 쪽으로 가는가 — 안 간다.
+def overshoot_into_eva_adds_nothing() -> bool:
+    """백시트보다 깊이 판 몫이 급광에 EVA 를 **더하는가** — 안 더한다.
 
-    EVA 는 물보다 가벼워 뜨므로 방향이 반대다. **공짜라는 뜻은 아니다** —
-    EVA 도 관문 넷 중 하나다. 다만 백시트가 남는 것보다는 훨씬 낫고,
-    그래서 절입에 여유를 줄 수 있다. `separation` 이 정본이다.
+    **한때 「방향이 반대라 덜 아프다」고 적었는데 정반대였다.** EVA 가 가는
+    쪽(뜨는 쪽)에 **은정광이 있다** — 거기는 83 배로 줄어든 작은 흐름이라
+    섞인 것이 품위를 가장 크게 깎는다. 방향이 반대인 것은 위안이 아니다.
+
+    그래도 절입 여유는 괜찮다. 이유가 다를 뿐이다 — 더 판 EVA 는 **판 안에
+    원래 있던 것**이고, 잡히면 라인 밖으로 나가고 안 잡혀도 하류
+    DG-HK60 이 원래 맡던 몫으로 돌아갈 뿐이다. **급광에 없던 EVA 를
+    새로 만들지 않는다**는 것이 여유의 근거다.
     """
-    return separation.eva_escape_goes_the_other_way()
+    return not separation.by_key("eva").belongs_in_feed
+
+
+def eva_lands_on_the_silver() -> bool:
+    """샌 EVA 가 어느 제품에 떨어지는가 — 은이다. `separation` 이 정본이다."""
+    return separation.eva_lands_on_the_silver()
+
+
+def this_units_dust_lands_on_the_silicon() -> bool:
+    """이 유닛이 못 잡은 백시트 분진은 어느 제품에 떨어지는가 — 실리콘이다."""
+    keys = {c.key for c in separation.contaminates("silicon")}
+    return separation.gate_component_keys("backsheet") <= keys
 
 
 # ── 이 유닛이 무엇을 옮기는가 ───────────────────────────────────────────
@@ -560,10 +576,11 @@ def what_it_moves() -> tuple[str, ...]:
     """이 유닛이 **없애는 것이 아니라 옮기는 것** — 결정 항목이 여기 있다."""
     from . import dust
     return (
-        f"**폴리머를 실리콘에서 집진기로 옮긴다.** 그것이 목적이다 — 파쇄 전에 "
-        f"걷으면 가라앉는 백시트가 실리콘과 같은 침강분에 안 들어온다. 그쪽으로 "
+        f"**백시트를 실리콘에서 집진기로 옮긴다.** 그것이 목적이다 — 파쇄 전에 "
+        f"걷으면 가라앉는 백시트가 실리콘과 같은 쪽에 안 들어온다. 그쪽으로 "
         f"가는 폴리머가 {uncut_backsheet_g_per_panel():,.0f} → "
-        f"{escaped_fines_g_per_panel():,.1f} g/장이 된다.",
+        f"{escaped_fines_g_per_panel():,.1f} g/장이 된다. **은은 이 유닛이 "
+        "지키는 대상이 아니다** — 은은 뜨고 백시트는 가라앉는다.",
         f"**다만 안 잡힌 몫은 그대로 남는다.** 밀도가 안 바뀌므로 가루가 되어도 "
         f"같은 침강분으로 간다. 그래서 포집률 {DUST_CAPTURE:.1%} 가 안전 항목이 "
         "아니라 **품질 사양**이고, 이 유닛에서 가장 무거운 계획값이다.",

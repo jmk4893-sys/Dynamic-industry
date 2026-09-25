@@ -299,7 +299,8 @@ def why_not_abrading() -> tuple[str, ...]:
         f"옳은 면으로 가는 값이 {cost_of_going_to_the_right_plane()} 배다.",
         f"그나마 노후가 {aging_saves_us()} 배, 가열이 다시 {heat_saves_us()} 배를 "
         f"깎아 {heat_brings_it_to_n():,.0f} N 까지 내려온다. EVA 를 조금 물고 "
-        "나와도 되는 것도 도움이 된다 — EVA 는 선별조에서 스스로 뜬다.",
+        "나와도 되는데, 그것이 **EVA 가 무해해서가 아니라**(EVA 는 뜨는 쪽 "
+        "은정광으로 간다) 판 안에 원래 있던 것을 앞당겨 걷는 것뿐이기 때문이다.",
     )
 
 

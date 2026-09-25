@@ -343,16 +343,21 @@ class TestItMovesThePolymerRatherThanRemovingIt(unittest.TestCase):
         self.assertGreater(br_abrade.combustible_fraction_after(), 0.5)
         self.assertTrue(br_abrade.breaks_the_inert_premise())
 
-    def test_the_eva_overshoot_goes_the_other_way_but_is_not_free(self):
-        """백시트보다 깊이 판 몫은 실리콘 쪽으로 안 간다 — 다만 공짜도 아니다.
+    def test_the_eva_overshoot_is_fine_but_not_for_the_reason_first_written(self):
+        """절입 여유는 괜찮다 — 다만 「방향이 반대라」가 아니다.
 
-        EVA 도 관문 넷 중 하나다. 방향이 반대라 백시트가 남는 것보다 나을
-        뿐이고, 그래서 절입에 여유를 줄 수 있다.
+        EVA 가 가는 쪽에 **은정광**이 있다. 여유가 괜찮은 진짜 이유는
+        더 판 EVA 가 **판 안에 원래 있던 것**이라 급광에 없던 EVA 를
+        새로 만들지 않기 때문이다.
         """
-        self.assertTrue(br_abrade.overshoot_into_eva_goes_the_other_way())
-        self.assertTrue(separation.eva_escape_goes_the_other_way())
-        self.assertIn("eva", [c.key
-                              for c in separation.must_be_removed_before_flotation()])
+        self.assertTrue(br_abrade.overshoot_into_eva_adds_nothing())
+        self.assertTrue(br_abrade.eva_lands_on_the_silver())
+        self.assertIn("eva", [c.key for c in separation.contaminates("silver")])
+
+    def test_this_units_own_escape_lands_on_the_silicon(self):
+        """이 유닛이 못 잡은 분진은 실리콘으로 간다 — 지키는 대상이 그쪽이다."""
+        self.assertTrue(br_abrade.this_units_dust_lands_on_the_silicon())
+        self.assertNotIn("eva", separation.gate_component_keys("backsheet"))
 
     def test_this_unit_owns_exactly_one_of_the_four_gates(self):
         """이 유닛이 맡은 것은 넷 중 백시트 하나다."""
@@ -360,12 +365,13 @@ class TestItMovesThePolymerRatherThanRemovingIt(unittest.TestCase):
         self.assertIn(br_abrade.gate_this_unit_owns(), separation.THE_FOUR_GATES)
         self.assertEqual(separation.gate_owner("backsheet"), "BR-305/306")
 
-    def test_the_sink_fraction_holds_both_things_being_protected(self):
-        """지키는 대상이 실리콘과 **은**이고 둘 다 침강분에 있다."""
+    def test_this_unit_defends_the_silicon_and_dg_defends_the_silver(self):
+        """이 유닛은 실리콘을 지킨다 — 은은 EVA 관문(DG-HK60) 몫이다."""
         self.assertTrue(separation.reports_to_sink(separation.silicon()))
-        self.assertTrue(separation.reports_to_sink(separation.silver()))
+        self.assertTrue(separation.floats(separation.silver()))
         for key in separation.gate_component_keys("backsheet"):
             self.assertTrue(separation.reports_to_sink(separation.by_key(key)), key)
+        self.assertEqual(separation.gate_owner("eva"), "DG-HK60")
 
     def test_the_decision_note_says_where_the_fluorine_went(self):
         """옮긴 곳을 글로 적어 둔다 — 값만 두면 다음 사람이 못 읽는다."""

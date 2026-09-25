@@ -112,19 +112,55 @@ class TestValueAndFeedAreDifferentAxes(unittest.TestCase):
         self.assertEqual(removed | kept, {c.key for c in separation.COMPONENTS})
         self.assertEqual(removed & kept, set())
 
-    def test_both_protected_metals_are_in_the_sink(self):
-        """지키려는 둘이 다 침강분에 있다 — 거기로 오는 것이 제일 나쁘다."""
-        for c in (separation.silicon(), separation.silver()):
-            self.assertTrue(separation.reports_to_sink(c), c.key)
-        sinkers = {c.key for c in separation.contaminates_the_sink_fraction()}
-        self.assertEqual(sinkers, {"glass", "pet", "fluoro"})
+    def test_the_two_products_are_on_opposite_sides(self):
+        """지키려는 둘이 서로 반대쪽에 있다 — 부선이 그 둘을 가르는 자리다."""
+        self.assertTrue(separation.floats(separation.silver()))
+        self.assertTrue(separation.reports_to_sink(separation.silicon()))
+        self.assertEqual(separation.float_product().key, "silver")
+        self.assertEqual(separation.sink_product().key, "silicon")
 
-    def test_eva_is_the_only_one_going_the_other_way(self):
-        """EVA 만 방향이 반대다 — 그래서 연마 절입의 EVA 여유가 덜 아프다."""
-        self.assertTrue(separation.floats(separation.by_key("eva")))
-        self.assertTrue(separation.eva_escape_goes_the_other_way())
-        floaters = [c.key for c in separation.COMPONENTS if separation.floats(c)]
-        self.assertEqual(floaters, ["eva"])
+
+class TestEachProductHasItsOwnContaminant(unittest.TestCase):
+    """제품마다 오염원이 다르다 — 「불순물」로 뭉뚱그리면 사라지는 구분이다."""
+
+    def test_eva_lands_on_the_silver_not_the_other_way(self):
+        """EVA 는 은정광으로 간다 — 한때 「방향이 반대라 덜 아프다」고 적었다."""
+        self.assertTrue(separation.eva_lands_on_the_silver())
+        self.assertEqual([c.key for c in separation.contaminates("silver")], ["eva"])
+
+    def test_the_backsheet_and_glass_land_on_the_silicon(self):
+        """백시트와 유리는 실리콘으로 간다."""
+        self.assertEqual(
+            {c.key for c in separation.contaminates("silicon")},
+            {"glass", "pet", "fluoro"})
+        self.assertEqual({c.key for c in separation.contaminates_the_sink_fraction()},
+                         {c.key for c in separation.contaminates("silicon")})
+
+    def test_the_two_contaminant_sets_do_not_overlap(self):
+        """한 불순물이 두 제품을 동시에 더럽히지는 않는다."""
+        ag = {c.key for c in separation.contaminates("silver")}
+        si = {c.key for c in separation.contaminates("silicon")}
+        self.assertEqual(ag & si, set())
+        removed = {c.key for c in separation.must_be_removed_before_flotation()}
+        self.assertEqual(ag | si | {"copper"}, removed)
+
+    def test_the_float_side_amplifies_what_lands_on_it(self):
+        """뜨는 쪽은 농축되는 작은 흐름이라 같은 g 이 더 아프다."""
+        self.assertAlmostEqual(separation.float_side_is_amplified_by(),
+                               separation.AG_UPGRADE_CONTINUOUS)
+        self.assertGreater(separation.float_side_is_amplified_by(), 10.0)
+        self.assertGreater(separation.AG_UPGRADE_CONTINUOUS,
+                           separation.AG_UPGRADE_BATCH)
+        self.assertGreater(separation.AG_RECOVERY_BATCH, 0.9)
+
+    def test_the_collector_is_named_and_silver_selective(self):
+        """포집제가 이름으로 적혀 있고, 그것이 은만 띄우는 근거로 쓰인다."""
+        self.assertGreaterEqual(len(separation.AG_COLLECTORS), 2)
+        note = " ".join(separation.why_the_backsheet_sinks_is_open())
+        for c in separation.AG_COLLECTORS:
+            self.assertIn(c, note)
+        self.assertIn("선택적", note)
+        self.assertIn("단정하지 않는다", note)
 
 
 class TestItSaysWhatItDoesNotKnow(unittest.TestCase):
@@ -159,18 +195,21 @@ class TestItSaysWhatItDoesNotKnow(unittest.TestCase):
         self.assertIn("급광은 전부가 미분", note)
         self.assertIn("안 걷힌 백시트", note)
 
-    def test_the_conclusion_is_written_down_as_the_criterion(self):
-        """판단 기준이 에너지가 아니라 관문이라는 것을 글로 적어 둔다."""
+    def test_the_conclusion_names_which_impurity_hits_which_product(self):
+        """판단 기준이 관문이라는 것과, 제품마다 오염원이 다르다는 것을 적는다."""
         note = " ".join(separation.purity_depends_on_this())
         self.assertIn("은의 순도", note)
         self.assertIn("실리콘의 순도", note)
         self.assertIn("32~75 µm", note)
+        self.assertIn("은정광", note)
+        self.assertIn("EVA", note)
 
     def test_the_summary_is_flat_and_complete(self):
         """요약이 두 유닛과 도면이 함께 볼 수 있는 모양인가."""
         s = separation.summary()
         for key in ("feedWindowUm", "theFourGates", "gatesWithoutAnOwner",
-                    "copperIsClosedByClassification", "screenedOut"):
+                    "copperIsClosedByClassification", "screenedOut",
+                    "floatProduct", "contaminatesSilver", "contaminatesSilicon"):
             self.assertIn(key, s)
         for v in s.values():
             self.assertIsInstance(v, (int, float, bool, str, list, dict))
