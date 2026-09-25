@@ -30,6 +30,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import analysis_structural as ST  # noqa: E402
 import analysis_thermal as TH  # noqa: E402
 import cycle as CY  # noqa: E402
+import knife_edge as KE  # noqa: E402
 from console_consts import const as c  # noqa: E402
 
 DOC = "PIL-001"
@@ -156,7 +157,8 @@ RIG = [
         "필요 없다 — 다른 패드로 재면 그 환산이 새 가정이 된다"),
     Rig("계단 칼날 1 자루", f"SHK-101 실물 크기 — 중앙 {KNIFE_CENTER_MM:.0f} + "
         f"{KNIFE_STEP_MM:.0f}×{KNIFE_STEPS}/측 · 계단 {KNIFE_RISE_MM:.0f} · 전폭 {KNIFE_W_MM:,.0f} · "
-        f"SKD11 인서트 {KNIFE_BLADES} 교체식 · 카트리지히터 {KNIFE_BLADES} 존 · 열전대 {KNIFE_BLADES} 점",
+        f"SKD11 인서트 {KNIFE_BLADES} 교체식 (날끝 D-502 · 쐐기 {KE.ALPHA}°) · "
+        f"카트리지히터 {KNIFE_BLADES} 존 · 열전대 {KNIFE_BLADES} 점",
         "축소 칼날로는 **물림 램프와 계단 이음**을 못 본다 — 조각이 시간차로 물고 "
         "이음에서 겹치는 것이 이 칼날의 전부다. 한 자루만 만들면 되고, 인서트는 "
         "교체식이라야 수명 시험이 된다"),
@@ -165,7 +167,7 @@ RIG = [
         "무릎을 지나가 본다"),
     Rig("계측 프레임", f"3 축 로드셀 20 kN × 2 (Z축 좌·우 자리) · 조각별 스트레인게이지 "
         f"{KNIFE_BLADES} × 2 방향 (추력 · 수직) · 50 kHz 샘플링 · 수직 반력 쿠폰 지그 "
-        "(강판에 붙인 띠 시편 · 랜드 대신 여유각을 준 시험 인서트)",
+        f"(강판에 붙인 띠 시편 · 랜드 대신 여유각을 준 시험 인서트 · 레이크 {KE.ALPHA}°)",
         "박리력은 평균이 아니라 **파형**이다. 최대치가 로드셀 용량과 패드 "
         "면적을 정하므로 피크를 놓치면 시험이 무의미하다. 조각별 게이지가 "
         "추력 분담을 준다. **수직 반력비**는 실기 칼날에서 랜드가 유리 위에서 되받아 "
@@ -389,6 +391,10 @@ def tests() -> list[Test]:
               f"여유각을 준 시험 인서트를 대고 3 축 로드셀로 읽는다 (로트마다 {n_peel} 개). 실기 "
               "칼날에서는 랜드가 V 를 유리 위에서 되받아 조각 게이지에도 Z축 로드셀에도 거의 안 "
               "나온다 — 그것이 S13 의 전제다",
+              f"시험 인서트의 레이크면은 D-502 와 같게 수평에서 {KE.ALPHA}° 로 세우고 호닝 "
+              f"R {KE.HONE:.2f} 를 준다 — V/H 는 레이크 각과 마찰이 정하므로 다른 각으로 재면 환산이 "
+              f"새 가정이 된다. 쿠폰 V/H 에서 마찰을 역산해 D-502 가 둔 하한 {KE.MU_MIN} 과 댄다 "
+              f"({KE.ALPHA}° 에서 마찰 {KE.MU_MIN} 이면 V/H {KE.vh_bound(KE.ALPHA, KE.MU_MIN):.2f})",
               f"추종 칸에서 모듈 변위계 {KNIFE_BLADES} 점을 전 행정 기록한다 — 유리면 굴곡의 "
               "실측이다. 패드 평면도만 흩뜨린 S12 와 대조한다",
               f"조각마다 잔막 두께를 잰다 (잠금 · 추종). 계단 이음 {2*KNIFE_STEPS} 줄의 잔류 EVA 는 "
@@ -406,7 +412,7 @@ def tests() -> list[Test]:
              f"잠금 칸은 합격선이 아니라 대조다 — 거기서 잔막 초과와 패드 스파이크가 안 나오면 "
              f"S12 의 패드 밴드 가정이 비관적인 것이니 곧은 칼날을 다시 본다",
              "조각 몫 (knife_stepped) · 구조해석 S10 · S12 ~ S14 의 수직 반력비 · KNIFE_LAND · "
-             "KM_NET · KNIFE_LAP · CHD_PRELOAD · 로드셀 용량"),
+             "KNIFE_WEDGE (D-502) · KM_NET · KNIFE_LAP · CHD_PRELOAD · 로드셀 용량"),
     ]
 
 

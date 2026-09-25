@@ -253,10 +253,15 @@ class TestTheKnifeSheetsDoNotOverprint(unittest.TestCase):
                         "교환 시간 상자가 표제란(y 548)으로 흐른다")
 
     def test_d501_depth_is_dimensioned_as_the_sum_it_names(self):
-        """280 을 '깊이 240 + 홀더 120' 이라 적으면 도면을 믿는 사람이 360 을 280 으로 깎는다."""
+        """280 을 '깊이 240 + 홀더 120' 이라 적으면 도면을 믿는 사람이 360 을 280 으로 깎는다.
+
+        120 은 홀더가 아니라 조각 단면이다 — 인서트 코 12 가 홀더 몸통 108 앞으로 나온다
+        (D-502). '홀더 120' 이라 적으면 P-005-25/26 의 108 과 갈라진다."""
         body = _fn(self.src, "cassetteDrawing")
-        self.assertIn("`${mm(KNIFE_DEPTH+CASS_W)} (깊이 ${mm(KNIFE_DEPTH)} + 홀더 ${mm(CASS_W)})`", body)
+        self.assertIn("`${mm(KNIFE_DEPTH+CASS_W)} (깊이 ${mm(KNIFE_DEPTH)} + 조각 ${mm(CASS_W)})`", body)
         self.assertNotIn("KNIFE_DEPTH-KNIFE_RISE+CASS_W", body)
+        self.assertNotIn("+ 홀더 ${mm(CASS_W)}", body, "조각 단면 120 을 홀더라 부른다")
+        self.assertNotIn("홀더 단면 ${mm(CASS_W)}", body, "조각 단면 120 을 홀더라 부른다")
 
     def test_f005_travel_arrow_is_off_the_centre_dimension(self):
         body = _fn(self.src, "tandemFabDrawing")

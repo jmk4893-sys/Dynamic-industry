@@ -729,7 +729,11 @@ def part5() -> str:
 
 # ── 6. 경계 ──────────────────────────────────────────────────────────
 def part6() -> str:
-    return """
+    import knife_edge as KE
+    lim = KE.limits()
+    mu_env = KE.up(KE.mu_for(KE.ALPHA, lim["vh_env"]), 2)
+    mu_gl = KE.up(KE.mu_for(KE.ALPHA, lim["vh_glass"]), 3)
+    return f"""
 <div class="clause" id="p10"><div class="n">10</div><div class="c">
   <h3>이 해석이 못 보는 것</h3>
   <p>해석의 한계를 적지 않으면 “해석했다”가 해석하지 않은 것까지 덮는다.
@@ -767,8 +771,13 @@ def part6() -> str:
       <tr><td>박리력 그 자체</td><td>재료가 답한다. 어떤 해석기도 폐패널 EVA 의
         박리강도를 지어낼 수 없다</td><td>파일럿 PT-01</td></tr>
       <tr><td>칼날의 수직 반력</td><td>OI-01 은 추력만 쟀다. S10 · S14 는 수직 반력을
-        추력과 같게 포락했을 뿐 그 값을 모른다 — 쐐기각과 EVA 전단의 몫이 정한다</td>
-        <td>파일럿 PT-10 (쿠폰 — 실기 칼날은 랜드가 V 를 되받아 게이지에 거의 안 나온다)</td></tr>
+        추력과 같게 포락했을 뿐 그 값을 모른다 — 쐐기각과 EVA 전단의 몫이 정한다.
+        날끝 D-502 가 쐐기각을 <span class="m">{KE.ALPHA}°</span> 로 잡아 레이크면 몫의 상한을
+        cot(α + atan μ) 로 묶었다: 마찰이 <span class="m">{mu_env:.2f}</span> 이상이면 포락
+        V/H ≤ {lim["vh_env"]:.0f} 안, <span class="m">{mu_gl:.3f}</span> 이상이면 랜드 상한
+        {lim["land_max"]:.1f} 에서도 S14 안이다. 남는 모름은 층과 연삭 SKD11 사이의 마찰이다</td>
+        <td>파일럿 PT-10 (쿠폰 — 실기 칼날은 랜드가 V 를 되받아 게이지에 거의 안 나온다 ·
+        시험 인서트 레이크 {KE.ALPHA}°)</td></tr>
       <tr><td>폐패널 유리 자체의 굴곡</td><td>S12 는 패드 평면도만 흩뜨렸다. 강화 유리의
         롤러 웨이브 · 휨 · 판 안 두께 편차는 넣지 않았다 — 추종은 그것까지 따라가지만
         잠금 진입 구간은 못 따라간다</td>

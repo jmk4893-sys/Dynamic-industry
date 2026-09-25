@@ -25,6 +25,8 @@ from typing import NamedTuple
 
 from console_consts import const as c
 
+import knife_edge as KE  # 인서트 날끝·구멍 배치 (D-502) — console_consts 만 부르는 가벼운 모듈
+
 # ── 0. 콘솔에서 가져오는 치수 (mm) ─────────────────────────────────────
 # m 단위 상수를 mm 로 올린다. 이 함수를 거치지 않은 숫자는 이 파일이
 # 스스로 정한 값이며, 그런 값에는 전부 '총괄 결정' 주석이 붙는다.
@@ -41,7 +43,7 @@ LAMPS = int(c("LAMPS"))                                 # 48
 LAMP_HEAT = M("LAMP_HEAT")                              # 2400 발열장
 CGY = M("CGY")                                          # 1520 갠트리 측면 프레임 y
 CARRIER_L, CARRIER_W = M("CARRIER_L"), M("CARRIER_W")   # 3000 × 1760
-CASS_L, CASS_W, CASS_H = M("CASS_L"), M("CASS_W"), M("CASS_H")   # 홀더 길이 합 1,590 · 단면 120 × 90
+CASS_L, CASS_W, CASS_H = M("CASS_L"), M("CASS_W"), M("CASS_H")   # 칼날 길이 합 1,590 · 조각 단면 120 × 90 (코 12 + 홀더 108)
 KNIFE_W, KNIFE_DEPTH = M("KNIFE_W"), M("KNIFE_DEPTH")   # 계단 칼날 전폭 1,500 · 깊이 240
 KNIFE_CENTER, KNIFE_STEP_W = M("KNIFE_CENTER"), M("KNIFE_STEP_W")   # 중앙 300 · 계단 200
 KNIFE_LAP = M("KNIFE_LAP")                              # 이음 겹침 15
@@ -101,9 +103,13 @@ class Shape(NamedTuple):
         return _BOX[self.kind](self.d)
 
 
-def PL(L, W, t, holes=(), name="") -> Shape:
-    """평판. holes = ((x, y, d), …) — 판 좌하단 기준 mm."""
-    return Shape("PL", dict(L=L, W=W, t=t, holes=tuple(holes), name=name))
+def PL(L, W, t, holes=(), name="", hnote="") -> Shape:
+    """평판. holes = ((x, y, d), …) — 판 좌하단 기준 mm. hnote 는 구멍 주기 —
+    비우면 부품도가 '관통 · 위치공차 ±0.5' 로 적는다 (접시·탭처럼 다른 구멍만 적는다)."""
+    d = dict(L=L, W=W, t=t, holes=tuple(holes), name=name)
+    if hnote:
+        d["hnote"] = hnote
+    return Shape("PL", d)
 
 
 def HB(h, b, tw, tf, L) -> Shape:
@@ -500,14 +506,25 @@ add("P-005-13", "M-005", "Z축 LM 가이드", BUY(500, 23, 22, 3.1), "—", "—
 add("P-005-14", "M-005", "칼날 캐리어 빔", BOX(160, 120, 8, KNIFE_W + 120), "SM490A", "카세트 취부면 연삭", 1,
     "Z축 슬라이드 좌·우에 M16×6 씩 (J4)",
     "두 Z축 사이를 건너 계단 카세트를 문다 — 테이퍼 핀·쐐기 클램프가 여기 앉는다", 6)
-add("P-005-15", "M-005", "SKD11 인서트 (중앙)", PL(KNIFE_CENTER, 60, 8), "SKD11", "HRC 58~62 · 연삭", 1,
-    "홀더에 M10×3 (접시머리)",
-    f"가장 먼저 무는 날 — 물림 충격을 혼자 받는다. 밑면 랜드 {KNIFE_LAND:.1f} 경면 연마 — 추종 중 유리를 탄다. "
-    "소모품, 교체 전제", 7)
-add("P-005-16", "M-005", "SKD11 인서트 (계단)", PL(KNIFE_STEP_W + KNIFE_LAP, 60, 8), "SKD11", "HRC 58~62 · 연삭",
-    2 * KNIFE_STEPS, "홀더에 M10×2 (접시머리)",
-    f"안쪽 끝이 겹침 {KNIFE_LAP:.0f} 만큼 안쪽 칼날 밑으로 들어간다 — 이음에서 칼끝이 끊기지 않게. "
-    f"밑면 랜드 {KNIFE_LAND:.1f} 경면 연마", 7)
+# 칼날 인서트 — 날끝 단면·구멍·공차는 D-502 (tools/knife_edge.py). 판 좌하단이 날끝 변이고,
+# 계단 인서트는 바깥 끝을 x 0 으로 잡는다 (안쪽 끝이 겹침이다). 나사는 M10 에서 M6 으로
+# 내렸다 — M10 접시머리(k 6.2)를 두께 8 판에 묻으면 머리 밑에 1.3 이 남아 소입에서 갈라진다.
+_INS_FIN = f"진공소입 · 심랭 −{abs(KE.CRYO_C)} ℃ · 고온뜨임 {KE.TEMPER_C} ℃ × 2 → HRC {KE.HRC} · 연삭"
+_INS_HOLE = f"접시 90° Ø{KE.CSK_D:.1f} · 날끝에서 {KE.hole_x():.0f} · 위치공차 ±0.1 (D-502)"
+_INS_EDGE = (f"날끝 쐐기 {KE.ALPHA:.0f}° · 호닝 R {KE.HONE:.2f} · 밑면 랜드 {KNIFE_LAND:.1f} 경면 · "
+             f"뒤 릴리프 {KE.RELIEF:.1f} · 코 {KE.NOSE:.0f} (D-502)")
+add("P-005-15", "M-005", "SKD11 인서트 (중앙)",
+    PL(KNIFE_CENTER, KE.W, KE.T, tuple((x, KE.hole_x(), KE.HOLE_D) for x in KE.holes_center()),
+       hnote=_INS_HOLE), "SKD11", _INS_FIN, 1,
+    f"홀더 밑판에 접시머리 {KE.SCREW} 10.9 ×{len(KE.holes_center())} (헬리코일) — 머리는 릴리프면에서 {KE.RECESS:.1f} 묻는다",
+    f"가장 먼저 무는 날 — 물림 충격을 혼자 받는다. {_INS_EDGE}. 소모품, 교체 전제", 7)
+add("P-005-16", "M-005", "SKD11 인서트 (계단)",
+    PL(KNIFE_STEP_W + KNIFE_LAP, KE.W, KE.T, tuple((x, KE.hole_x(), KE.HOLE_D) for x in KE.holes_step()),
+       hnote=_INS_HOLE), "SKD11", _INS_FIN,
+    2 * KNIFE_STEPS,
+    f"홀더 밑판에 접시머리 {KE.SCREW} 10.9 ×{len(KE.holes_step())} (헬리코일) — 머리는 릴리프면에서 {KE.RECESS:.1f} 묻는다",
+    f"안쪽 끝 {KE.lap_len():.0f} (겹침 {KNIFE_LAP:.0f} + 옆 틈 {KE.GAP:.0f}) 이 제 홀더 밖으로 나가 안쪽 홀더 밑에 든다 — "
+    f"그 자리 윗면을 {KE.LAP_STEP:.0f} 따내 두 모듈이 반대로 떠도 {KE.lap_clear():.1f} 이 남는다. {_INS_EDGE}", 7)
 add("P-005-17", "M-005", "카트리지 히터 (중앙)", BUY(KNIFE_CENTER - 20, 12, 12, 0.3), "—", "—", 1,
     "홀더 홀에 압입 + 세트스크류", "존 1 · 200 ℃ — 조각마다 한 존이고 열전대 1점이 존을 본다", 7)
 add("P-005-18", "M-005", "카트리지 히터 (계단)", BUY(KNIFE_STEP_W, 12, 12, 0.2), "—", "—", 2 * KNIFE_STEPS,
@@ -517,7 +534,8 @@ add("P-005-18", "M-005", "카트리지 히터 (계단)", BUY(KNIFE_STEP_W, 12, 1
 # 90 mm 는 유통 두께도 아니다 — 자재 발주표가 둘 다 잡아냈다.
 # 칼날 모듈 추종(9/24)으로 일곱 홀더는 더는 한 몸이 아니다. 계단 등판이 카세트
 # 본체가 되어 핀·클램프를 받고, 홀더는 판스프링으로 거기 매달려 조각마다 유리를
-# 따라간다. 홀더 길이의 합은 그대로 1,590 (겹침 포함) 이다.
+# 따라간다. 홀더 몸통은 겹침 자리에 들지 않는다 — 따로 움직이는 두 홀더가 겹침 15 × 40 에서
+# 부딪히기 때문이다 (중앙 300 · 계단 198). 겹침은 인서트만 안쪽 홀더 밑으로 나간다 (D-502).
 add("P-005-19", "M-005", "BC-201 카세트 본체 (계단 등판)", PL(CASS_L, 40, 6), "SS400", "분체도장", 1,
     "테이퍼 로케이팅핀 4 + 쐐기 클램프 2",
     f"일곱 홀더를 판스프링으로 매다는 계단 등판 · 평면 {KNIFE_W:,.0f} × {CASS_ENV_X:.0f} · 상세 D-501 · "
@@ -538,12 +556,17 @@ add("P-005-24", "M-005", "누름판 스프링 포스트", BUY(60, 60, 120, 0.8),
 # 곧은 칼날 한 자루는 패드 평면도가 만드는 유리 굴곡을 못 따라간다 (CAL-001 S12).
 # 홀더를 판스프링에 매달아 들림·롤만 풀고, 랜드가 유리를 타게 한다. 카세트는 여전히
 # 한 벌로 교환된다 — 잠금쐐기와 변위계는 교환품에 싣지 않고 캐리어 빔에 둔다.
-add("P-005-25", "M-005", "카세트 홀더 (중앙)", BOX(CASS_W, CASS_H, 6, KNIFE_CENTER), "SS400", "분체도장", 1,
-    "판스프링 2장으로 등판에 매단다",
-    "인서트·히터·열전대가 든다 — 조각마다 따로 떠서 제 폭의 유리를 탄다", 7)
-add("P-005-26", "M-005", "카세트 홀더 (계단)", BOX(CASS_W, CASS_H, 6, KNIFE_STEP_W + KNIFE_LAP), "SS400", "분체도장",
-    2 * KNIFE_STEPS, "판스프링 2장으로 등판에 매단다",
-    f"겹침 {KNIFE_LAP:.0f} 까지 든 길이 — 이웃 홀더와 따로 움직여도 이음에서 칼끝이 끊기지 않는다", 7)
+_HOLDER_NOTE = (f"몸통은 인서트 코 {KE.NOSE:.0f} 뒤에 선다 — 앞면이 레이크면보다 앞으로 나오면 떼어 낸 층이 "
+                f"홀더 밑에 갇힌다 (D-502). 밑면 인서트 자리는 도장하지 않고 연삭한다 — 추력을 마찰로 받는 면이다")
+add("P-005-25", "M-005", "카세트 홀더 (중앙)", BOX(CASS_W - KE.NOSE, CASS_H, 6, KNIFE_CENTER), "SS400",
+    "분체도장 (인서트 자리 연삭 · 무도장)", 1,
+    f"판스프링 2장으로 등판에 매단다 · 밑판 헬리코일 {KE.SCREW} ×{len(KE.holes_center())}",
+    f"인서트·히터·열전대가 든다 — 조각마다 따로 떠서 제 폭의 유리를 탄다. {_HOLDER_NOTE}", 7)
+add("P-005-26", "M-005", "카세트 홀더 (계단)", BOX(CASS_W - KE.NOSE, CASS_H, 6, KNIFE_STEP_W - KE.GAP), "SS400",
+    "분체도장 (인서트 자리 연삭 · 무도장)", 2 * KNIFE_STEPS,
+    f"판스프링 2장으로 등판에 매단다 · 밑판 헬리코일 {KE.SCREW} ×{len(KE.holes_step())}",
+    f"겹침 자리에는 들지 않는다 — 안쪽 홀더와 옆 틈 {KE.GAP:.0f} (롤 ±{KM_ROLL:.1f}° 면 두 홀더가 "
+    f"{KE.gap_need():.1f} 다가온다). 겹침은 인서트만 안쪽 홀더 밑으로 나간다. {_HOLDER_NOTE}", 7)
 add("P-005-27", "M-005", "모듈 판스프링 (들림·롤)", BUY(120, 40, 1, 0.04), "—", "—", 2 * KNIFE_BLADES,
     "홀더·등판에 M4×2 씩 (클램프 판 개재)",
     f"홀더마다 평행 2장 — 들림 ±{KM_TRAVEL:.1f} · 롤 ±{KM_ROLL:.1f}° 만 풀고 추력은 면내로 등판에 넘긴다. "
