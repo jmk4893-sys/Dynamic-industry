@@ -94,6 +94,14 @@ class TestRender(unittest.TestCase):
     def test_discloses_the_patent_application(self):
         self.assertIn("2025902821", self.text)
 
+    def test_marks_site_feed_performance_as_reference_only(self):
+        self.assertIn("현재 공장 원료 적용 경계", self.text)
+        self.assertIn("참조 계산값", self.text)
+
+    def test_mechanical_circuit_is_current_project_base(self):
+        self.assertIn("2안 (현재 프로젝트 기본안)", self.text)
+        self.assertIn("현재 프로젝트 권고 — 2안 기계식 3단", self.text)
+
     def test_reports_both_throughputs(self):
         self.assertIn("최대 0.50 t/h", self.text)
         self.assertIn("평균 0.30 t/h", self.text)
@@ -117,6 +125,16 @@ class TestGeneratedDocumentIsCurrent(unittest.TestCase):
             "계산서가 코드와 어긋남 — "
             "`PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md` 재실행 필요",
         )
+
+
+class TestClaudeAdoptionReview(unittest.TestCase):
+    ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+    def test_adoption_review_records_key_boundaries(self):
+        text = (self.ROOT / "docs" / "claude-adoption-review.md").read_text(encoding="utf-8")
+        self.assertIn("러퍼·스캐빈저", text)
+        self.assertIn("locked-cycle", text)
+        self.assertIn("실제 원료 파일럿", text)
 
 
 class TestCli(unittest.TestCase):

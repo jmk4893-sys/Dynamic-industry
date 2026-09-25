@@ -9,9 +9,10 @@ Dynamic industry Development
 [3D 운전 콘솔](docs/drawings/pv-delamination-3d.html)로 별도 정리했다.
 
 - 평균 **0.30 t/h**, 최대 **0.50 t/h** (건조 고체 기준)
-- **세척수 bias 연속 부선조 1단, Ø350 mm × 라이저 2.4 m** (대안: 기계식 러퍼·스캐빈저·클리너 3단)
-- Ag 회수율 **99.7 %**, 정광 **6.36 kg/h @ 46.3 wt% Ag** (농축비 78배)
-- 기액 체류시간 **1 분**, 설치 전력 **6.52 kW** (탈수 보조설비 포함)
+- 현재 제작 기본안: **기계식 러퍼·스캐빈저·클리너 3단** (R/S 공용 규격)
+- 참조 Ag 회수율 **93.1 %**, 정광 **6.08 kg/h @ 45.2 wt% Ag**
+- 최대 처리량 기준 체류시간 6.5/7.1/6.9분, 설치 전력 **15.07 kW**
+- 기술 대안: 세척수 bias 연속 부선조 1단 (실제 원료 파일럿·실시권 확인 후)
 - 황화제·pH 조정제·억제제 없음 — 약제는 포수제·촉진제·기포제 3종뿐
 
 ### 설계 근거
@@ -32,6 +33,7 @@ Dynamic industry Development
 |---|---|
 | [docs/flotation-separator-design.md](docs/flotation-separator-design.md) | 설계 사양서 — 근거, 두 안, 계장·안전, 시운전 계획 |
 | [docs/design-calculation.md](docs/design-calculation.md) | 설계 계산서 (코드에서 자동 생성) |
+| [docs/claude-adoption-review.md](docs/claude-adoption-review.md) | 클로드 설계 중 채택·보완·보류 항목과 현재 공장 원료 적용 경계 |
 | [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 7매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
 | [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 이동 계단 칼날(SHK-101) 박리 — 셀모듈과 백시트를 유리에서 한 장으로, 일곱 조각이 따로 떠서 유리를 따라간다(칼날 모듈 추종), 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 15종, **부품도 169장 · 모듈 조립도 13장**, 열수지 계산기 (브라우저로 열 것) |
@@ -42,6 +44,10 @@ Dynamic industry Development
 | [docs/dg-hk60-analysis.html](docs/dg-hk60-analysis.html) | **DG-HK60C 구조·열해석 보고서 (CAL-001)** — 직접강성법 프레임, 1차원 과도 열전도, **IR 뱅크 복사 유속 + 면내 2차원 전도**, **램프 지지·관통 상세**, **정상상태 열수지**, **칼날 모듈 추종**(패드 평면도가 만드는 유리 굴곡 · 몬테카를로). 닫힌해 15건으로 해석기를 검증하고 구조 14건·열 13건·IR 8건·지지 7건·수지 8건·에어록 8건을 푼 뒤, 해석이 만든 요구 26건과 **해석이 못 보는 것**을 적었다 (여섯 해석 모듈에서 생성) |
 | [docs/dg-hk60-pilot.html](docs/dg-hk60-pilot.html) | **DG-HK60C 파일럿 시험 계획서 (PIL-001)** — 온도–박리력 곡선·칼날 수명·유리 수율·면내 온도 균일도·열수지. 시료 수를 요구정밀도에서 거꾸로 풀어(t 분위수·Clopper–Pearson) 총 454장·2단계로 잡았다 (계획 모델에서 생성) |
 | [docs/dg-hk120-twin-cell.html](docs/dg-hk120-twin-cell.html) | **DG-HK120C 트윈 셀 검토서** — 1챔버·2분리셀(계단 칼날) 수평병렬로 처리량을 배로 올리는 안의 배치·전력·인터록 검토 (브라우저로 열 것) |
+| [docs/drawings/ag-flotation-rfc-reference.html](docs/drawings/ag-flotation-rfc-reference.html) | **RFC 계열 기준 구조 검증 도면 4매** — 외부 생성 개념도의 정정 대비표 포함, 시트별 PNG·SVG 저장 버튼 (브라우저로 열 것) |
+| [docs/rfc-diagram-correction-brief.md](docs/rfc-diagram-correction-brief.md) | 외부 생성 개념도 검증 결과·재작도 지시서 (외부 작도 도구에 전달용) |
+| [docs/rfc-rev-c-response.md](docs/rfc-rev-c-response.md) | 외부 기술검토(REV B) 회신 — Q1~Q5 답변, 카세트 스코핑, REV C 반영표 |
+| [docs/rfc-rev-d-response.md](docs/rfc-rev-d-response.md) | 외부 재검토(REV D) 회신 — 문헌 검증 결과, [2] 추적성 복원 근거 |
 
 ### 사용법
 
@@ -114,6 +120,10 @@ src/flotation_design/
 ```
 
 ### 모델에서 알아둘 두 가지
+
+**현재 프로젝트의 제작 기본안은 기계식 3단이다.** 연속 1단 부선조는 회수율과
+전력 면에서 유망하지만, 실제 고속분쇄·체분급·열처리/attrition 블랙파우더와
+0.5 t/h 규모에서의 검증 및 실시권 확인 전에는 대안기술로 관리한다.
 
 **정광 품위에는 물리적 상한이 있다.** Ag 는 Si 웨이퍼에 소결된 전극이라 부상할 때
 Si 코어를 달고 온다. 부상 Ag 1 kg 당 맥석 1.1 kg 이면 상한은 1/(1+1.1) = 47.6 wt%
