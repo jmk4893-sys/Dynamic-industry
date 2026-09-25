@@ -1,34 +1,35 @@
 # -*- coding: utf-8 -*-
-"""BR-306 백시트 박리 — **어느 면에서 뜯을지가 설계다.**
+"""BR-306 백시트 박리 — **약한 면은 덫이었다.**
 
-`br_abrade` 는 백시트를 갈아서 없앤다. 그 유닛을 짓고 나서 드러난 것이,
-부유선별이 목적이면 연마에 **되돌아오는 칼**이 있다는 것이었다 — 없애는 게
-아니라 더 고운 가루로 바꾸고, 안 잡힌 가루는 자기가 대신한 필름보다 해롭다.
-필름째 떼면 미분이 아예 안 생긴다. 그래서 박리를 다시 본다.
+`br_abrade` 가 백시트를 갈아 없애는 유닛이라면 이쪽은 필름째 떼는 대안이다.
+박리를 못 쓴다고 본 이유 하나는 정말로 틀렸고, 하나는 맞았는데 내가 그것을
+고쳤다고 착각했다.
 
-박리를 못 쓴다고 본 이유는 「오래된 패널은 접착이 세고 백시트가 부스러져
-잡을 데가 없다」였다. **앞은 반만 맞고 뒤는 면을 잘못 골라서 생긴 말이다.**
+  ① **맞게 고친 것 — 「노후 패널은 접착이 세다」는 반대다.** 백시트–EVA
+     박리력은 신품 60~100 N/cm 인데 습열 300 h 만에 20 N/cm 로 내려가고 그
+     뒤로도 계속 떨어진다. 20 년 된 패널을 받는 것이 **유리하다.**
+  ② **틀리게 고친 것 — 「가장 약한 면에서 뜯으면 된다」.** 백시트는 그
+     자체가 3층(불소 외피 / PET 심재 / 불소 내피)이고, 외피–심재 접착층이
+     백시트–EVA 의 20 분의 1 로 약하다. 거기서 뜯으면 140 N 이면 된다.
+     그리고 거기에 불소가 얹혀 있으니 **오염원과 약한 면이 같다**고 적었다.
 
-  ① **접착은 세월이 갈수록 약해진다.** 백시트–EVA 박리력은 신품 60~100 N/cm
-     인데 습열 300 h 만에 20 N/cm 로 내려가고, 그 뒤로도 계속 떨어진다.
-     노후 패널이 박리에 **불리한 게 아니라 유리하다.**
-  ② **그런데 거기가 뜯을 면이 아니다.** 백시트는 그 자체가 3층 적층이다 —
-     불소 외피 / PET 심재 / 불소 내피. 야외 노출된 모듈에서 실제로 벌어지는
-     곳은 EVA 계면이 아니라 **외피와 심재 사이 접착층**이고, 현장 박리가
-     일어나는 문턱이 100 J/m² = 0.1 N/mm 다. 백시트–EVA 의 **20 분의 1** 이다.
+     ②가 틀린 이유는 `separation` 에 있다. 실리콘을 더럽히는 것은 불소만이
+     아니라 **PET 심재도 같다** — 둘 다 물보다 무거워 실리콘과 같은 침강분으로
+     간다. 외피만 벗기면 심재가 남아 그대로 따라간다. **약한 면은 문제를
+     푸는 것처럼 보이지만 안 푼다.**
 
-그리고 이것이 우연이 아니다. 부유선별을 망치는 것은 **불소 외피**다 —
-표면에너지가 낮아 시약 없이 저절로 뜨고 억제도 안 된다. PET 은 밀도 1.38 로
-가라앉고 극성이 있어 억제제로 눌린다(리그닌설포네이트·알칼리 전처리 등
-선별 문헌에 방법이 있다). 즉
+그래서 뜯어야 하는 면은 약한 쪽이 아니라 **백시트–EVA** 다. 20 배 비싼 쪽이고,
+`the_weak_plane_is_a_trap()` 이 그것을 판정한다. 남는 위안은 ①뿐이다 —
+노후가 4 배를 깎아 주고 가열이 다시 절반을 깎는다.
 
-    **가장 약한 면과, 오염원이 얹혀 있는 면이 같은 면이다.**
+    2,800 N   백시트–EVA · 노후 (설계값)
+    1,400 N   거기에 가열까지
+   11,200 N   신품이었다면
 
-그러니 백시트를 통째로 EVA 에서 뜯을 이유가 없다. 불소 외피만 그 약한 면에서
-벗기면 오염원이 빠지고, 남는 PET·EVA 는 하류가 이미 다룰 수 있는 물건이 된다.
-`the_weak_plane_is_the_dirty_plane()` 이 그것을 판정한다.
+EVA 는 걱정할 것이 아니다. 물보다 가벼워 선별조에서 스스로 뜬다 — 불순물이지만
+**스스로 갈라지는** 불순물이다. 그래서 박리가 EVA 를 조금 물고 나와도 된다.
 
-이 모듈은 값을 정하지 않는다 — **면을 고르고, 공법 후보를 같은 잣대로 세운다.**
+이 모듈은 값을 정하지 않는다 — 면을 고르고 공법 후보를 같은 잣대로 세운다.
 실측이 오면 `INTERFACES` 의 Gc 만 고치면 된다.
 
     PYTHONPATH=src python -c "from pv_preprocess import br_peel; print(br_peel.summary())"
@@ -38,7 +39,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import campaign, sg_grind
+from . import campaign, separation, sg_grind
 
 #: 유닛 태그. `br_abrade` (BR-305) 와 **같은 자리**를 두고 겨루는 대안이다.
 UNIT_TAG = "BR-306"
@@ -59,7 +60,7 @@ class Interface:
     above: str                  # 이 면 위에 얹혀 있는 것 (떼면 같이 나오는 것)
     gc_fresh_n_mm: float
     gc_aged_n_mm: float
-    carries_fluoropolymer: bool  # 여기를 떼면 불소가 빠지는가
+    removes: tuple[str, ...]    # 여기를 떼면 **완전히** 빠지는 `separation` 성분
     basis: str
 
 
@@ -67,26 +68,22 @@ class Interface:
 INTERFACES: tuple[Interface, ...] = (
     Interface(
         "fluoro_pet", "불소 외피 ↔ PET 심재 (백시트 내부)", "불소 외피만",
-        0.60, 0.10, True,
-        "현장 박리가 일어나는 문턱이 100 J/m² = 0.1 N/mm 로 보고돼 있고, "
-        "PA·PET·PVDF 계 백시트 다수에서 **외피–심재 접착층이 노출과 함께 "
-        "약해지는** 것이 관찰됐다. 신품값은 계획값이다"),
+        0.60, 0.10, (),
+        "현장 박리 문턱이 100 J/m² = 0.1 N/mm 로 보고돼 있고, PA·PET·PVDF 계 "
+        "백시트 다수에서 **외피–심재 접착층이 노출과 함께 약해지는** 것이 "
+        "관찰됐다. 가장 약하지만 **아무것도 완전히 안 빼낸다** — PET 심재와 "
+        "불소 내피가 그대로 남아 실리콘으로 간다"),
     Interface(
         "backsheet_eva", "백시트 ↔ EVA", "백시트 3층 전부",
-        8.00, 2.00, True,
+        8.00, 2.00, ("fluoro", "pet"),
         "신품 180° 박리 60~100 N/cm(6~10 N/mm), 습열 300 h 에 20 N/cm"
         "(2 N/mm)까지 내려가고 그 뒤로도 계속 떨어진다"),
     Interface(
-        "eva_cell", "EVA ↔ 셀", "EVA + 백시트", 12.00, 6.00, True,
+        "eva_cell", "EVA ↔ 셀", "EVA + 백시트", 12.00, 6.00,
+        ("fluoro", "pet", "eva"),
         "여기를 노리면 셀이 따라 나온다 — 전처리 단계에서 할 일이 아니다. "
         "값은 자릿수만 맞춘 계획값이다"),
 )
-
-#: 부유선별을 망치는 성분 — 이것이 어느 면 위에 있는지가 설계를 정한다.
-CONTAMINANT = "불소 폴리머 (PVF/PVDF 외피)"
-#: 그 아래 PET 심재의 밀도 (g/cm³). 물보다 무거워 가라앉고, 극성이 있어
-#: 억제제가 듣는다 — 불소와 달리 하류가 **다룰 수 있는** 물건이다.
-PET_DENSITY_G_CM3 = 1.38
 
 #: 가열 보조 온도 (°C) — KR101936925B1 의 흡착 가열 범위.
 HEAT_ASSIST_C = (50.0, 300.0)
@@ -106,24 +103,40 @@ def weakest_interface() -> Interface:
     return interfaces_by_ease()[0]
 
 
-def shallowest_interface_that_removes_the_contaminant() -> Interface:
-    """오염원을 걷어내는 면 중 **가장 얕은** 것.
+def must_remove() -> frozenset[str]:
+    """파쇄 전에 빠져야 하는 성분 — `separation` 이 정본이다."""
+    return frozenset(separation.must_be_removed_before_crushing())
 
-    깊이 갈수록 딸려 나오는 것이 많아지므로, 오염원만 빠지면 거기서 멈춘다.
+
+def is_sufficient(iface: Interface) -> bool:
+    """이 면에서 뜯으면 실리콘을 더럽힐 것이 다 빠지는가."""
+    return must_remove() <= frozenset(iface.removes)
+
+
+def required_interface() -> Interface:
+    """충분한 면 중 **가장 얕은** 것 — 실제로 뜯어야 하는 면이다.
+
+    깊이 갈수록 딸려 나오는 것이 많아지므로, 오염원이 다 빠지면 멈춘다.
     """
     for iface in INTERFACES:
-        if iface.carries_fluoropolymer:
+        if is_sufficient(iface):
             return iface
-    raise AssertionError("불소를 지고 있는 면이 하나도 없다 — 표가 틀렸다")
+    raise AssertionError("충분한 면이 하나도 없다 — 표가 틀렸다")
 
 
-def the_weak_plane_is_the_dirty_plane() -> bool:
-    """**이 모듈의 요지** — 가장 약한 면과 오염원이 얹힌 면이 같은가.
+def the_weak_plane_is_a_trap() -> bool:
+    """**이 모듈의 요지** — 가장 약한 면이 문제를 푸는 것처럼 보이지만 안 푼다.
 
-    같다. 그래서 「세게 뜯어야 한다」와 「오염원을 빼야 한다」가 서로
-    싸우지 않는다. 백시트를 통째로 EVA 에서 뜯을 이유가 없다.
+    참이다. 외피–심재 면은 20 배 싸고 불소가 거기 얹혀 있어 답처럼 보이는데,
+    **PET 심재가 남는다.** 심재도 물보다 무거워 실리콘과 같은 침강분으로 가니
+    오염이 그대로다. 그래서 비싼 면으로 가야 한다.
     """
-    return weakest_interface().key == shallowest_interface_that_removes_the_contaminant().key
+    return not is_sufficient(weakest_interface())
+
+
+def cost_of_going_to_the_right_plane() -> float:
+    """약한 면 대신 옳은 면으로 갈 때 힘이 몇 배가 되는가."""
+    return round(peel_force_n(required_interface()) / peel_force_n(weakest_interface()), 1)
 
 
 def aging_helps() -> bool:
@@ -138,7 +151,7 @@ def peel_force_n(iface: Interface | None = None, *,
 
     두께가 안 들어간다 — 계면 일이라 백시트가 얼마나 두껍든 같다.
     """
-    iface = iface or weakest_interface()
+    iface = iface or required_interface()
     gc = iface.gc_aged_n_mm if aged else iface.gc_fresh_n_mm
     if heated:
         gc *= HEAT_DERATE
@@ -151,10 +164,14 @@ def peel_energy_j(iface: Interface | None = None, **kw) -> float:
                  * float(campaign.PANEL_LENGTH_MM) / 1_000.0, 1)
 
 
-def easier_than_full_backsheet_by() -> float:
-    """약한 면을 고르면 몇 배 쉬운가 — 백시트를 통째로 뜯는 것과 견준다."""
-    full = next(i for i in INTERFACES if i.key == "backsheet_eva")
-    return round(peel_force_n(full) / peel_force_n(), 1)
+def aging_saves_us() -> float:
+    """노후가 힘을 몇 배 깎아 주는가 — 남은 위안 하나다."""
+    return round(peel_force_n(aged=False) / peel_force_n(aged=True), 1)
+
+
+def heat_saves_us() -> float:
+    """가열이 그 위에서 다시 몇 배를 깎는가."""
+    return round(peel_force_n() / peel_force_n(heated=True), 1)
 
 
 def heat_brings_it_to_n() -> float:
@@ -263,19 +280,23 @@ def recommended() -> Method:
 
 
 def why_not_abrading() -> tuple[str, ...]:
-    """왜 `br_abrade` 대신 이쪽을 먼저 보는가 — 부유선별이 목적일 때."""
+    """왜 `br_abrade` 대신 이쪽을 보는가 — 그리고 어디가 더 비싼가."""
+    weak = weakest_interface()
     return (
-        "연마는 백시트를 없애는 게 아니라 **더 고운 가루로 바꾼다.** 박리는 "
-        "필름째 떼므로 미분이 아예 안 생긴다 — 포집률이 품질 사양이 될 일도 없다.",
-        f"뜯을 면을 잘 고르면 힘이 {peel_force_n():,.0f} N 이다. 백시트를 통째로 "
-        f"EVA 에서 뜯는 {peel_force_n(next(i for i in INTERFACES if i.key=='backsheet_eva')):,.0f} N "
-        f"의 {easier_than_full_backsheet_by()} 분의 일이고, 가열까지 얹으면 "
-        f"{heat_brings_it_to_n():,.0f} N 까지 내려간다.",
-        f"남는 PET 은 밀도 {PET_DENSITY_G_CM3} 로 가라앉고 극성이 있어 억제제가 "
-        "듣는다. 불소와 달리 **하류가 이미 다룰 수 있는** 물건이라, 오염 문제가 "
-        "사라지는 게 아니라 **풀리는 문제로 바뀐다.**",
-        f"집진도 통째로 안 든다. `br_abrade` 는 {sg_grind.backsheet_dust_kg_per_h():,.1f} kg/h "
-        "의 가연성 불소 분진과 그것을 받는 별도 계통이 전제였다.",
+        "박리는 필름째 뗀다 — **미분이 안 생긴다.** 연마는 백시트를 없애는 게 "
+        "아니라 더 고운 가루로 바꾸고, 안 잡힌 가루는 그대로 파쇄로 가 "
+        "실리콘과 같은 침강분에 섞인다. 그래서 연마는 포집률이 품질 사양이 되고 "
+        "박리는 그럴 일이 없다.",
+        f"집진도 통째로 안 든다. `br_abrade` 는 "
+        f"{sg_grind.backsheet_dust_kg_per_h():,.1f} kg/h 의 가연성 분진과 "
+        "그것을 받는 별도 계통이 전제였다.",
+        f"**대신 힘이 비싸다.** 뜯어야 하는 면이 {required_interface().name} 이고 "
+        f"{peel_force_n():,.0f} N 이다. 약한 면({weak.name})은 "
+        f"{peel_force_n(weak):,.0f} N 이지만 PET 심재를 못 빼내 쓸 수 없다 — "
+        f"옳은 면으로 가는 값이 {cost_of_going_to_the_right_plane()} 배다.",
+        f"그나마 노후가 {aging_saves_us()} 배, 가열이 다시 {heat_saves_us()} 배를 "
+        f"깎아 {heat_brings_it_to_n():,.0f} N 까지 내려온다. EVA 를 조금 물고 "
+        "나와도 되는 것도 도움이 된다 — EVA 는 선별조에서 스스로 뜬다.",
     )
 
 
@@ -288,10 +309,11 @@ def open_questions() -> tuple[str, ...]:
         "**유입 패널의 열화 정도를 모른다.** 노후값을 설계값으로 썼는데, 그 "
         "전제가 맞는지는 입고품 시편으로 확인해야 한다. 신품에 가까우면 힘이 "
         f"{peel_force_n(aged=False):,.0f} N 으로 여섯 배가 된다.",
-        "**불소 외피가 한 장으로 벗겨지는지 모른다.** 문헌의 100 J/m² 는 현장 "
-        "박리 문턱이지 「깨끗하게 한 장으로 떨어진다」는 뜻이 아니다. 찢어져 "
-        "조각나면 박리의 장점(미분 없음)이 반쯤 사라진다 — 이것이 연마 대비 "
-        "우위를 정하는 값이다.",
+        "**백시트가 한 장으로 벗겨지는지 모른다.** 20 년 된 PET 은 가수분해로 "
+        "물러져 있어 뜯다가 찢어질 수 있다. 조각나면 박리의 장점(미분 없음)이 "
+        "반쯤 사라진다 — 이것이 연마 대비 우위를 정하는 값이다. 그리고 여기서는 "
+        "**약한 외피–심재 면이 오히려 해롭다** — 거기서 먼저 갈라지면 심재만 "
+        "남는다.",
         "**그리퍼가 시작점을 어떻게 만드는지가 안 정해졌다.** 계면 박리는 "
         "균열을 시작할 자리가 있어야 한다. 모서리를 한 줄 긋는 것으로 될지, "
         "별도 수단이 필요할지는 시편을 봐야 안다.",
@@ -300,19 +322,21 @@ def open_questions() -> tuple[str, ...]:
 
 def summary() -> dict[str, object]:
     """한 눈에 — 시험과 도면 리터럴이 같은 값을 본다."""
-    full = next(i for i in INTERFACES if i.key == "backsheet_eva")
     return {
         "tag": UNIT_TAG,
         "between": f"{UPSTREAM_TAG} → {DOWNSTREAM_TAG}",
         "weakestInterface": weakest_interface().key,
-        "contaminantInterface": shallowest_interface_that_removes_the_contaminant().key,
-        "theWeakPlaneIsTheDirtyPlane": the_weak_plane_is_the_dirty_plane(),
+        "requiredInterface": required_interface().key,
+        "theWeakPlaneIsATrap": the_weak_plane_is_a_trap(),
+        "costOfGoingToTheRightPlane": cost_of_going_to_the_right_plane(),
+        "mustRemove": sorted(must_remove()),
         "agingHelps": aging_helps(),
+        "agingSavesUs": aging_saves_us(),
+        "heatSavesUs": heat_saves_us(),
         "peelForceN": peel_force_n(),
         "peelForceFreshN": peel_force_n(aged=False),
         "peelForceHeatedN": heat_brings_it_to_n(),
-        "fullBacksheetForceN": peel_force_n(full),
-        "easierThanFullBacksheetBy": easier_than_full_backsheet_by(),
+        "weakPlaneForceN": peel_force_n(weakest_interface()),
         "peelEnergyJ": peel_energy_j(),
         "lineTaktS": line_takt_s(),
         "methodCount": len(METHODS),

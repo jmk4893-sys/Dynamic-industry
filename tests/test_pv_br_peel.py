@@ -1,18 +1,18 @@
-"""BR-306 백시트 박리 — **어느 면에서 뜯을지가 설계다.**
+"""BR-306 백시트 박리 — **약한 면은 덫이었다.**
 
-`br_abrade` 를 지은 뒤, 부유선별이 목적이면 연마에 되돌아오는 칼이 있다는 것이
-드러났다 — 없애는 게 아니라 더 고운 가루로 바꾼다. 그래서 박리를 다시 봤고,
-못 쓴다고 본 이유 두 개가 다 틀렸다는 것을 이 묶음이 지킨다.
+박리를 못 쓴다고 본 이유 하나는 정말로 틀렸고, 하나는 맞았는데 고쳤다고
+착각했다. 이 묶음이 그 둘을 갈라 지킨다.
 
-1. **「노후 패널은 접착이 세다」가 반대였다.** 접착은 세월이 갈수록 약해진다.
-   노후 패널은 박리에 불리한 게 아니라 **유리하다** (`TestAgingHelps`).
-2. **면을 잘못 고르고 있었다.** 백시트는 그 자체가 3층 적층이고, 야외에서
-   실제로 벌어지는 곳은 EVA 계면이 아니라 백시트 **안쪽** 접착층이다.
-   거기가 20 분의 1 로 약하다 (`TestTheWeakPlaneIsTheDirtyPlane`).
+1. **맞게 고친 것** — 「노후 패널은 접착이 세다」는 반대다. 접착은 세월이
+   갈수록 약해지고, 20 년 된 패널을 받는 것이 **유리하다** (`TestAgingHelps`).
+2. **틀리게 고친 것** — 「가장 약한 면에서 뜯으면 된다」. 백시트 안쪽
+   외피–심재 면이 20 배 약하고 거기에 불소가 얹혀 있어 답처럼 보였는데,
+   **PET 심재도 실리콘과 같은 침강분으로 간다.** 외피만 벗기면 심재가 남아
+   오염이 그대로다 (`TestTheWeakPlaneIsATrap`).
 
-그리고 그 약한 면이 하필 **오염원이 얹힌 면**이다. 부유선별을 망치는 것은 불소
-외피이고, 그것이 바로 그 면 위에 있다. 「세게 뜯어야 한다」와 「오염원을 빼야
-한다」가 서로 싸우지 않는다는 뜻이고, 이 묶음의 요지가 그것이다.
+기구도 반대로 알고 있었다. 백시트가 정광으로 **올라온다**고 적었는데 실제로는
+물보다 무겁고 조각이 부상 상한보다 커서 **가라앉는다.** 정본은 `separation`
+이고, 이 묶음은 거기서 사양을 받아 온다 — 값을 여기서 다시 정하지 않는다.
 """
 
 from __future__ import annotations
@@ -21,35 +21,56 @@ import unittest
 
 from tests import _path  # noqa: F401
 
-from pv_preprocess import br_peel, campaign, sg_grind
+from pv_preprocess import br_peel, campaign, separation, sg_grind
 
 
-class TestTheWeakPlaneIsTheDirtyPlane(unittest.TestCase):
-    """요지 — 가장 약한 면과 오염원이 얹힌 면이 같다."""
+class TestTheWeakPlaneIsATrap(unittest.TestCase):
+    """요지 — 가장 약한 면이 문제를 푸는 것처럼 보이지만 안 푼다."""
 
-    def test_they_are_the_same_plane(self):
-        """둘이 같은 면이라 목적과 난이도가 안 싸운다."""
-        self.assertTrue(br_peel.the_weak_plane_is_the_dirty_plane())
-        self.assertEqual(br_peel.weakest_interface().key, "fluoro_pet")
-        self.assertTrue(br_peel.weakest_interface().carries_fluoropolymer)
+    def test_the_weakest_plane_does_not_remove_what_must_go(self):
+        """제일 약한 면은 아무것도 **완전히** 못 빼낸다 — 심재가 남는다."""
+        self.assertTrue(br_peel.the_weak_plane_is_a_trap())
+        weak = br_peel.weakest_interface()
+        self.assertEqual(weak.key, "fluoro_pet")
+        self.assertFalse(br_peel.is_sufficient(weak))
+        self.assertEqual(weak.removes, ())
 
-    def test_choosing_that_plane_is_worth_an_order_of_magnitude(self):
-        """면을 고르는 것만으로 한 자릿수가 바뀐다."""
-        full = next(i for i in br_peel.INTERFACES if i.key == "backsheet_eva")
-        self.assertGreater(br_peel.easier_than_full_backsheet_by(), 10.0)
-        self.assertLess(br_peel.peel_force_n(), br_peel.peel_force_n(full))
+    def test_the_required_plane_is_the_expensive_one(self):
+        """뜯어야 하는 면은 20 배 비싼 쪽이다."""
+        req = br_peel.required_interface()
+        self.assertEqual(req.key, "backsheet_eva")
+        self.assertTrue(br_peel.is_sufficient(req))
+        self.assertGreater(br_peel.cost_of_going_to_the_right_plane(), 10.0)
         self.assertAlmostEqual(
-            br_peel.easier_than_full_backsheet_by(),
-            round(br_peel.peel_force_n(full) / br_peel.peel_force_n(), 1), places=1)
+            br_peel.cost_of_going_to_the_right_plane(),
+            round(br_peel.peel_force_n(req)
+                  / br_peel.peel_force_n(br_peel.weakest_interface()), 1), places=1)
 
-    def test_it_stops_at_the_shallowest_plane_that_does_the_job(self):
-        """오염원이 빠지면 거기서 멈춘다 — 깊이 갈수록 딸려 나오는 게 많다."""
-        chosen = br_peel.shallowest_interface_that_removes_the_contaminant()
-        self.assertEqual(chosen.key, "fluoro_pet")
-        self.assertEqual(chosen.above, "불소 외피만")
-        deeper = [i for i in br_peel.INTERFACES if i.key != chosen.key]
-        for i in deeper:
-            self.assertGreater(i.gc_aged_n_mm, chosen.gc_aged_n_mm)
+    def test_the_spec_comes_from_separation_not_from_here(self):
+        """무엇이 빠져야 하는지는 `separation` 이 정한다 — 여기서 안 정한다."""
+        self.assertEqual(br_peel.must_remove(),
+                         frozenset(separation.must_be_removed_before_crushing()))
+        self.assertIn("pet", br_peel.must_remove())
+        self.assertIn("fluoro", br_peel.must_remove())
+        self.assertTrue(separation.the_whole_backsheet_is_the_target())
+
+    def test_removing_pet_from_the_spec_would_make_the_weak_plane_enough(self):
+        """PET 이 오염원이 아니었다면 약한 면으로 충분했다 — 거기가 갈림이다.
+
+        즉 이 유닛이 비싸진 이유가 공법이 아니라 **PET 의 행선지**다.
+        """
+        self.assertFalse(br_peel.is_sufficient(br_peel.weakest_interface()))
+        fake = br_peel.Interface(
+            "probe", "가정", "불소만", 0.6, 0.1, ("fluoro", "pet"), "시험용")
+        self.assertTrue(br_peel.is_sufficient(fake))
+
+    def test_the_default_force_is_the_required_plane_not_the_weak_one(self):
+        """기본값이 옳은 면이어야 한다 — 약한 면 값을 기본으로 두면 착각한다."""
+        self.assertAlmostEqual(br_peel.peel_force_n(),
+                               br_peel.peel_force_n(br_peel.required_interface()),
+                               places=1)
+        self.assertGreater(br_peel.peel_force_n(),
+                           br_peel.peel_force_n(br_peel.weakest_interface()))
 
     def test_peeling_is_interfacial_work_so_thickness_never_enters(self):
         """박리력에 두께가 안 들어간다 — 계면 일이기 때문이다."""
@@ -77,16 +98,18 @@ class TestAgingHelps(unittest.TestCase):
                         br_peel.peel_force_n(aged=False))
         self.assertAlmostEqual(
             br_peel.peel_force_n(),
-            round(br_peel.weakest_interface().gc_aged_n_mm
+            round(br_peel.required_interface().gc_aged_n_mm
                   * float(campaign.PANEL_WIDTH_MM), 1), places=1)
 
     def test_heat_takes_it_down_further(self):
-        """가열이 그 위에서 한 번 더 깎는다."""
+        """가열이 그 위에서 한 번 더 깎는다 — 둘이 남은 위안 전부다."""
         self.assertLess(br_peel.heat_brings_it_to_n(), br_peel.peel_force_n())
         self.assertAlmostEqual(
             br_peel.heat_brings_it_to_n(),
             round(br_peel.peel_force_n() * br_peel.HEAT_DERATE, 1), places=1)
         self.assertLess(br_peel.HEAT_ASSIST_C[0], br_peel.HEAT_ASSIST_C[1])
+        self.assertGreater(br_peel.aging_saves_us(), 1.0)
+        self.assertGreater(br_peel.heat_saves_us(), 1.0)
 
 
 class TestTheRepoHadTheWrongNumber(unittest.TestCase):
@@ -161,20 +184,21 @@ class TestItSaysWhyThisBeatsAbrading(unittest.TestCase):
         """요지는 힘이 아니라 **미분이 안 생긴다**는 것이다."""
         note = " ".join(br_peel.why_not_abrading())
         self.assertIn("미분", note)
-        self.assertIn("PET", note)
+        self.assertIn("침강분", note)
         self.assertGreaterEqual(len(br_peel.why_not_abrading()), 4)
 
     def test_the_open_questions_name_what_would_kill_it(self):
         """이 공법을 무너뜨릴 값을 숨기지 않는다 — 한 장으로 벗겨지는가."""
         note = " ".join(br_peel.open_questions())
         self.assertIn("한 장", note)
+        self.assertIn("찢어", note)
         self.assertGreaterEqual(len(br_peel.open_questions()), 4)
 
     def test_the_summary_is_flat_and_complete(self):
         """요약이 도면 리터럴에 실릴 수 있는 모양인가."""
         s = br_peel.summary()
-        for key in ("theWeakPlaneIsTheDirtyPlane", "peelForceN",
-                    "easierThanFullBacksheetBy", "recommended"):
+        for key in ("theWeakPlaneIsATrap", "peelForceN",
+                    "costOfGoingToTheRightPlane", "requiredInterface"):
             self.assertIn(key, s)
         for v in s.values():
             self.assertIsInstance(v, (int, float, bool, str, list))

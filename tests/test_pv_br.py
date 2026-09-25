@@ -29,7 +29,7 @@ import unittest
 
 from tests import _path  # noqa: F401
 
-from pv_preprocess import br_abrade, campaign, dust, handoff, sg_grind
+from pv_preprocess import br_abrade, campaign, dust, handoff, separation, sg_grind
 
 
 class TestItFitsTheLine(unittest.TestCase):
@@ -239,6 +239,7 @@ class TestTheLedgerIsNotTheCriterion(unittest.TestCase):
         """판정이 아니라는 것을 글로 적어 둔다 — 값만 두면 또 같은 실수를 한다."""
         note = " ".join(br_abrade.energy_ledger_is_not_the_criterion())
         self.assertIn("정광", note)
+        self.assertNotIn("저절로 뜬다", note)
         self.assertGreaterEqual(len(br_abrade.energy_ledger_is_not_the_criterion()), 3)
 
     def test_the_heat_credit_is_owned_by_sg_grind(self):
@@ -289,7 +290,7 @@ class TestTheFinesThatEscapeAreTheRisk(unittest.TestCase):
         """질량비만 보면 안 되는 이유를 글로 적어 둔다."""
         note = " ".join(br_abrade.fines_that_escape_are_the_risk())
         self.assertIn("µm", note)
-        self.assertIn("정광", note)
+        self.assertIn("침강분", note)
         self.assertGreaterEqual(len(br_abrade.fines_that_escape_are_the_risk()), 4)
 
 
@@ -331,6 +332,22 @@ class TestItMovesThePolymerRatherThanRemovingIt(unittest.TestCase):
         self.assertLess(dust.combustible_flow_fraction(), 0.5)
         self.assertGreater(br_abrade.combustible_fraction_after(), 0.5)
         self.assertTrue(br_abrade.breaks_the_inert_premise())
+
+    def test_the_eva_overshoot_costs_nothing_downstream(self):
+        """백시트보다 깊이 파는 몫은 오염으로 안 돌아온다 — EVA 는 스스로 뜬다.
+
+        깊이를 정할 때 잔존 위험만 보면 되고 EVA 여유는 공짜라는 뜻이다.
+        """
+        self.assertTrue(br_abrade.overshoot_into_eva_is_free())
+        self.assertTrue(separation.eva_overshoot_is_harmless())
+        self.assertIn("eva", [c.key for c in separation.separates_itself()])
+        self.assertNotIn("eva", separation.must_be_removed_before_crushing())
+
+    def test_the_sink_fraction_is_what_this_unit_defends(self):
+        """지키는 대상이 정광이 아니라 **실리콘이 있는 침강분**이다."""
+        self.assertIn("pet", separation.must_be_removed_before_crushing())
+        self.assertIn("fluoro", separation.must_be_removed_before_crushing())
+        self.assertTrue(separation.reports_to_sink(separation.silicon()))
 
     def test_the_decision_note_says_where_the_fluorine_went(self):
         """옮긴 곳을 글로 적어 둔다 — 값만 두면 다음 사람이 못 읽는다."""
