@@ -420,6 +420,94 @@ class TestSevenBladesCarryIt(unittest.TestCase):
         self.assertEqual(s["bladeCount"], br_peel.BLADE_COUNT)
 
 
+class TestTheStaircaseEngagesInOrder(unittest.TestCase):
+    """물리는 순차, 진행은 동시 — 그리고 **최대 합력은 안 내려간다.**"""
+
+    def test_the_layout_is_a_staircase_not_a_row(self):
+        """배치가 나란히가 아니라 진행 방향으로 어긋난 계단식이다."""
+        self.assertIn("계단식", br_peel.BLADE_LAYOUT)
+        self.assertIn("계단식", br_peel.stages()[1][1])
+        self.assertIn("진행은 다 같이", br_peel.stages()[1][1])
+
+    def test_the_boundary_is_the_strip_length_over_n_minus_one(self):
+        """경계 = 띠 길이 ÷ (칼날 수 − 1). 첫 칼날과 끝 칼날이 겹치는 한계다."""
+        self.assertAlmostEqual(
+            br_peel.stagger_pitch_below_which_all_engage_mm(),
+            br_peel.peel_travel_mm() / (br_peel.BLADE_COUNT - 1), places=1)
+        self.assertAlmostEqual(
+            br_peel.stagger_pitch_below_which_all_engage_mm(), 416.7, places=1)
+
+    def test_a_compact_stagger_does_not_lower_the_peak(self):
+        """**요지** — 경계 아래에서는 일곱이 한때 다 물려 합력이 그대로다.
+
+        「순차로 물리니 힘이 나뉜다」로 읽으면 구동을 작게 잡는다.
+        """
+        edge = br_peel.stagger_pitch_below_which_all_engage_mm()
+        for pitch in (0.0, 30.0, 100.0, 200.0, edge - 1.0):
+            self.assertEqual(br_peel.blades_engaged_at(pitch),
+                             br_peel.BLADE_COUNT, msg=f"p={pitch}")
+            self.assertAlmostEqual(br_peel.peak_force_n(pitch),
+                                   br_peel.peel_force_n(), places=1)
+            self.assertFalse(br_peel.stagger_lowers_the_peak(pitch))
+
+    def test_only_past_the_boundary_does_the_peak_fall(self):
+        """경계를 넘어야 비로소 최대 합력이 내려간다."""
+        edge = br_peel.stagger_pitch_below_which_all_engage_mm()
+        self.assertTrue(br_peel.stagger_lowers_the_peak(edge + 1.0))
+        self.assertLess(br_peel.peak_force_n(edge + 1.0), br_peel.peel_force_n())
+        self.assertEqual(br_peel.blades_engaged_at(700.0), 4)
+        self.assertAlmostEqual(br_peel.peak_force_n(700.0), 1600.0, places=1)
+
+    def test_lowering_the_peak_costs_stroke(self):
+        """합력을 낮추는 값은 행정으로 치른다 — 거래가 되는지 보이게 둔다."""
+        edge = br_peel.stagger_pitch_below_which_all_engage_mm()
+        self.assertGreaterEqual(br_peel.carriage_travel_mm(edge),
+                                2.0 * br_peel.peel_travel_mm())
+        self.assertGreater(br_peel.carriage_travel_mm(700.0),
+                           br_peel.carriage_travel_mm(200.0))
+
+    def test_the_carriage_goes_further_than_one_strip(self):
+        """캐리지 행정 = (n−1)p + 띠 길이. 띠 길이만 잡으면 모자란다."""
+        for pitch in (0.0, 50.0, 200.0):
+            self.assertAlmostEqual(
+                br_peel.carriage_travel_mm(pitch),
+                (br_peel.BLADE_COUNT - 1) * pitch + br_peel.peel_travel_mm(),
+                places=1)
+        self.assertAlmostEqual(br_peel.carriage_travel_mm(0.0),
+                               br_peel.peel_travel_mm(), places=1)
+        self.assertGreater(br_peel.carriage_travel_mm(50.0),
+                           br_peel.peel_travel_mm())
+
+    def test_what_it_buys_is_the_rise_not_the_peak(self):
+        """사 주는 것은 최대값이 아니라 기울기다 — 그 구분이 글에 있어야 한다."""
+        note = " ".join(br_peel.what_the_staircase_buys())
+        self.assertIn("최대 합력은 안 내려간다", note)
+        self.assertIn("진입 기울기", note)
+        self.assertEqual(br_peel.load_rise_is_divided_by(), br_peel.BLADE_COUNT)
+        self.assertGreaterEqual(len(br_peel.what_the_staircase_buys()), 4)
+
+    def test_the_initiation_ratio_is_named_as_unknown(self):
+        """기동/정상 비는 모른다 — 계단식이 최대값을 낮추는 유일한 경로인데도."""
+        buys = " ".join(br_peel.what_the_staircase_buys())
+        self.assertIn("기동", buys)
+        self.assertIn("값으로 안 적는다", buys)
+        self.assertIn("기동 박리력과 정상 박리력의 비를 모른다",
+                      " ".join(br_peel.open_questions()))
+
+    def test_the_pitch_itself_is_not_invented(self):
+        """어긋남 값은 안 들었다 — 상수를 지어내지 않는다."""
+        self.assertIsNone(br_peel.STAGGER_PITCH_MM)
+        self.assertIn("어긋남 p) 모른다", " ".join(br_peel.open_questions()))
+        # 모르는 값은 요약이 아니라 열린 물음에 산다 — 도면 리터럴은 찍을 수
+        # 있는 값만 받는다.
+        self.assertNotIn("staggerPitchMm", br_peel.summary())
+
+    def test_the_staircase_satisfies_the_support_condition_by_itself(self):
+        """계단식이면 크로스빔 하나에 못 건다 — 어제 단 조건이 저절로 지켜진다."""
+        self.assertTrue(br_peel.the_staircase_splits_the_supports_for_us())
+        self.assertTrue(br_peel.summary()["staircaseSplitsTheSupports"])
+
+
 class TestUpstreamAlreadyStoodForThis(unittest.TestCase):
     """상류가 이미 박리를 알고 있었다 — 새로 유도하지 않고 받아 온다."""
 

@@ -134,6 +134,16 @@ STARTER_CUT_CROSSES_CELLS = True
 BLADE_COUNT = 7
 #: 띠가 나뉘는 방향 — **길이 방향**이다. 1 차 커팅(가로)과 직각이다.
 STRIP_ORIENTATION = "세로(길이 방향)"
+#: 칼날 배치 — 나란히가 아니라 **진행 방향으로 어긋난 계단식**이다.
+#: 앞선 칼날이 먼저 물고 나머지가 차례로 물리는데, 캐리지는 하나라
+#: **진행은 다 같이** 한다. 「병렬이냐 순차냐」가 아니라 **둘 다**다.
+BLADE_LAYOUT = "계단식(진행 방향으로 어긋남)"
+#: 이웃한 칼날이 진행 방향으로 어긋난 거리 (mm) — **아직 못 들었다.**
+#: 이 값이 행정과 최대 합력을 함께 정하므로 지어내지 않는다. 계산 함수들은
+#: 이것을 읽지 않고 `pitch_mm` 을 인자로 받는다 — 그래서 이 상수를 그대로
+#: 넘기면 TypeError 로 **시끄럽게** 멈춘다. 요약에는 안 싣는다(도면 리터럴은
+#: 찍을 수 있는 값만 받는다). `open_questions()` 가 정본이다.
+STAGGER_PITCH_MM: float | None = None
 
 #: 가열 보조 온도 (°C) — KR101936925B1 의 흡착 가열 범위.
 HEAT_ASSIST_C = (50.0, 300.0)
@@ -249,6 +259,102 @@ def peel_travel_mm() -> float:
     출발해 판 길이만큼 간다.
     """
     return float(campaign.PANEL_LENGTH_MM)
+
+
+# ── 계단식이 바꾸는 것과 안 바꾸는 것 ───────────────────────────────────
+#
+#   칼날 i 는 캐리지가 `(i-1)·p` 갔을 때 물고 거기서 띠 길이 `L` 을 더 간 뒤
+#   빠진다. 그러니 **첫 칼날과 마지막 칼날이 겹치느냐**가 전부다.
+#
+#       (n-1)·p ≤ L  →  한때 전부 물린다  →  최대 합력은 **안 내려간다**
+#       (n-1)·p > L  →  다 물리는 순간이 없다 →  그만큼 내려간다
+#
+#   경계는 `L/(n-1)` 이고 이 판에서 417 mm 다. 머리를 조금이라도 컴팩트하게
+#   짜면 반드시 그 아래이므로 **실질적으로 최대 합력은 2,800 N 그대로다.**
+#   박리력은 *그 순간 벗겨지는 폭*에 걸리는데, 정상 상태에서는 어긋나 있든
+#   나란하든 폭 1,400 이 다 벗겨지고 있기 때문이다.
+#
+#   **그럼 계단식이 사 주는 것은 최대값이 아니라 기울기다.** 일자로는
+#   0 → 2,800 N 이 한 걸음에 서고, 계단식은 일곱 계단을 밟는다 —
+#   상승률이 1/n 이다. 구동이 겁내는 것은 최대값보다 이쪽이다.
+
+def stagger_pitch_below_which_all_engage_mm() -> float:
+    """이 값 **아래**로 어긋나면 한때 칼날이 전부 물린다 (mm) = 띠 길이/(n-1).
+
+    곧 **최대 합력이 안 줄어드는 구간의 상한**이다.
+    """
+    return round(peel_travel_mm() / (BLADE_COUNT - 1), 1)
+
+
+def blades_engaged_at(pitch_mm: float) -> int:
+    """어긋남이 이만큼일 때 **동시에** 물려 있는 칼날 수 (최대)."""
+    if pitch_mm <= 0:
+        return BLADE_COUNT
+    return min(BLADE_COUNT, int(peel_travel_mm() // pitch_mm) + 1)
+
+
+def peak_force_n(pitch_mm: float, **kw) -> float:
+    """어긋남이 이만큼일 때 라인이 한 번은 내야 하는 최대 합력 (N)."""
+    return round(blades_engaged_at(pitch_mm)
+                 * peel_force_per_blade_n(**kw), 1)
+
+
+def carriage_travel_mm(pitch_mm: float) -> float:
+    """캐리지가 실제로 가야 하는 거리 (mm) = (n-1)·p + 띠 길이.
+
+    띠 한 장은 여전히 `peel_travel_mm()` 만 벗겨지지만, 마지막 칼날이
+    끝까지 가려면 캐리지는 어긋남만큼 더 간다.
+    """
+    return round((BLADE_COUNT - 1) * max(pitch_mm, 0.0) + peel_travel_mm(), 1)
+
+
+def stagger_lowers_the_peak(pitch_mm: float) -> bool:
+    """이 어긋남이 최대 합력을 실제로 낮추는가 — 경계를 넘어야 낮춘다."""
+    return blades_engaged_at(pitch_mm) < BLADE_COUNT
+
+
+def load_rise_is_divided_by() -> int:
+    """진입 하중이 몇 걸음에 나눠 서는가 — 칼날 수 그대로다.
+
+    **최대값이 아니라 기울기가 나뉜다.** 일자형은 0 → 합력이 한 걸음이고
+    계단식은 한 장 값씩 n 걸음을 밟는다.
+    """
+    return BLADE_COUNT
+
+
+def what_the_staircase_buys() -> tuple[str, ...]:
+    """계단식이 사 주는 것과 **안** 사 주는 것 — 헷갈리기 쉬운 자리다."""
+    edge = stagger_pitch_below_which_all_engage_mm()
+    return (
+        f"**최대 합력은 안 내려간다.** 어긋남이 {edge:,.0f} mm 아래면 첫 "
+        f"칼날이 띠를 다 가기 전에 마지막이 물어 **한때 {BLADE_COUNT} 장이 "
+        f"전부 물린다** — 그 순간 {peel_force_n():,.0f} N 이다. 박리력은 그 "
+        "순간 벗겨지는 **폭**에 걸리는데, 정상 상태의 폭은 배치와 무관하게 "
+        f"{one_piece_blade_span_mm():,.0f} mm 다.",
+        f"**대신 진입 기울기가 {load_rise_is_divided_by()} 분의 1 이 된다.** "
+        f"일자로는 0 → {peel_force_n():,.0f} N 이 한 걸음에 서고, 계단식은 "
+        f"{peel_force_per_blade_n():,.0f} N 씩 {BLADE_COUNT} 계단을 밟는다. "
+        "구동·감속기가 겁내는 것은 최대값보다 이 충격이다.",
+        "**그리고 균열을 한 번에 하나씩만 틔운다.** 붙은 것을 처음 떼는 힘이 "
+        "이미 벌어진 것을 계속 떼는 힘보다 크다. 일자형은 그 기동력이 "
+        f"{BLADE_COUNT} 배로 한꺼번에 서고, 계단식은 **기동 하나 + 정상 "
+        f"{BLADE_COUNT - 1}** 이다. 이쪽은 최대값 자체를 낮추는데, "
+        "**기동/정상 비를 모르므로 값으로 안 적는다.**",
+        f"**합력을 정말 낮추려면 어긋남을 {edge:,.0f} mm 넘게 벌려야 하고 "
+        f"그러면 행정이 {carriage_travel_mm(edge):,.0f} mm 로 "
+        f"{carriage_travel_mm(edge) / peel_travel_mm():.0f} 배가 된다.** "
+        "절반으로 낮추려면 3 배다 — 거래가 안 된다.",
+    )
+
+
+def the_staircase_splits_the_supports_for_us() -> bool:
+    """계단식이 「지지도 나뉘어야 한다」는 조건을 저절로 지키는가 — 지킨다.
+
+    칼날이 진행 방향으로 서로 다른 자리에 있으니 **애초에 크로스빔 하나에
+    못 건다.** `the_split_needs_split_supports()` 가 경고한 위험을 배치가
+    구조적으로 막아 준다 — 조건을 지키려고 애쓸 필요가 없다.
+    """
+    return "계단식" in BLADE_LAYOUT
 
 
 def peel_force_per_blade_n(iface: Interface | None = None, *,
@@ -535,7 +641,8 @@ def stages() -> tuple[tuple[str, str], ...]:
          "**셀 위**를 지나므로 그 창이 1,400 mm 내내 지켜져야 한다."),
         ("② 2 차 커팅 (= 박리)",
          f"**현장이 박리를 이렇게 부른다.** 칼날 {BLADE_COUNT} 장이 그 틈으로 "
-         f"들어가 계면을 잡고 백시트를 필름째 벗긴다 — 나오는 것은 한 장이 "
+         f"**{BLADE_LAYOUT}으로** 차례로 들어가 계면을 잡고 백시트를 "
+         f"필름째 벗긴다(캐리지는 하나라 진행은 다 같이 한다) — 나오는 것은 한 장이 "
          f"아니라 {STRIP_ORIENTATION} 띠 {BLADE_COUNT} 장이고, 한 장이 폭 "
          f"{strip_width_mm():,.0f} mm · 길이 {peel_travel_mm():,.0f} mm 다. "
          f"계면 일이라 두께에 안 걸린다. **한 장이 받는 힘 "
@@ -635,6 +742,16 @@ def open_questions() -> tuple[str, ...]:
         "찢어질 수 있고, 조각나면 박리의 장점(미분 없음)이 반쯤 사라진다 — "
         "이것이 연마 대비 우위를 정하는 값이다. 그리고 여기서는 **약한 "
         "외피–심재 면이 오히려 해롭다** — 거기서 먼저 갈라지면 심재만 남는다.",
+        f"**칼날이 얼마나 어긋나 있는지(어긋남 p) 모른다.** 배치가 "
+        f"{BLADE_LAYOUT}인 것은 들었는데 간격은 못 들었다. 이 값 하나가 "
+        f"캐리지 행정((n−1)p + {peel_travel_mm():,.0f})과 최대 합력을 함께 "
+        f"정한다 — {stagger_pitch_below_which_all_engage_mm():,.0f} mm 아래면 "
+        f"합력이 {peel_force_n():,.0f} N 그대로이고 행정만 늘어난다. "
+        "컴팩트한 머리면 반드시 그 아래이므로 **지금은 합력을 안 깎고 본다.**",
+        "**기동 박리력과 정상 박리력의 비를 모른다.** 계단식이 최대값을 "
+        "낮추는 유일한 경로가 이것인데(기동 하나 + 정상 여섯), 비를 모르니 "
+        "얼마나 낮추는지 못 적는다. 시편 시험에서 같이 나올 값이다 — "
+        "**추측해서 값으로 넣지 않는다.**",
         f"**무엇이 필름을 {BLADE_COUNT} 장으로 가르는지 모른다.** 칼날 옆날이 "
         "필름을 째는 것인지, 칼날 사이에서 필름이 스스로 찢어지는 것인지 "
         "안 들었다. 현장은 「칼날 갯수만큼」이라고만 했다. 전자면 옆날이 "
@@ -675,6 +792,10 @@ def summary() -> dict[str, object]:
         "bendingMomentRatio": bending_moment_ratio(),
         "deflectionRatio": deflection_ratio(),
         "stiffnessBeatsForce": stiffness_beats_force_as_the_reason(),
+        "bladeLayout": BLADE_LAYOUT,
+        "staggerPitchAllEngageBelowMm": stagger_pitch_below_which_all_engage_mm(),
+        "loadRiseIsDividedBy": load_rise_is_divided_by(),
+        "staircaseSplitsTheSupports": the_staircase_splits_the_supports_for_us(),
         "peelForceFreshN": peel_force_n(aged=False),
         "peelForceHeatedN": heat_brings_it_to_n(),
         "weakPlaneForceN": peel_force_n(weakest_interface()),
