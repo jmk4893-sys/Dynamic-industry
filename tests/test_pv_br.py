@@ -1026,12 +1026,28 @@ class TestTheThinLine(unittest.TestCase):
         self.assertTrue(
             br_abrade.power_threshold_is_below_the_geometry_threshold())
         self.assertLess(br_abrade.line_height_within_installed_mm(),
-                        br_abrade.PLATEN_FOLLOW_MM)
+                        br_abrade.geometry_threshold_mm())
+
+    def test_the_geometry_threshold_comes_from_the_adopted_design(self):
+        """압반은 안 쓴다 — 문턱을 **없는 기계**의 추종 오차로 잡으면 안 된다.
+
+        `PLATEN_ADOPTED` 가 거짓이므로 문턱은 채택된 윗면 측정의 합 오차여야
+        한다. 압반 값은 되돌아올 자리를 위해 살아 있되 판정에는 안 들어간다.
+        """
+        self.assertFalse(br_abrade.PLATEN_ADOPTED)
+        self.assertAlmostEqual(br_abrade.geometry_threshold_mm(),
+                               br_abrade.Z_SENSOR_TOL_MM, places=6)
+        self.assertNotAlmostEqual(br_abrade.geometry_threshold_mm(),
+                                  br_abrade.PLATEN_FOLLOW_MM, places=3)
+        # 되돌아올 자리라 값과 판정은 살아 있어야 한다.
+        self.assertGreater(br_abrade.PLATEN_FOLLOW_MM, 0.0)
+        self.assertIsInstance(br_abrade.residue_line_fits_the_platen_follow(),
+                              bool)
 
     def test_the_verdict_has_three_bands(self):
         """문턱 두 개가 구간 셋을 만든다 — 경계 양쪽에서 판정이 달라야 한다."""
         lo = br_abrade.line_height_within_installed_mm()
-        hi = br_abrade.PLATEN_FOLLOW_MM
+        hi = br_abrade.geometry_threshold_mm()
         seen = {br_abrade.line_height_verdict(h)
                 for h in (lo / 2.0, (lo + hi) / 2.0, hi * 10.0)}
         self.assertEqual(len(seen), 3)
@@ -1041,7 +1057,7 @@ class TestTheThinLine(unittest.TestCase):
     def test_the_planned_line_still_does_not_fit(self):
         """계획값 0.2 mm 는 두 문턱을 다 넘는다 — 「얇으니 괜찮다」가 아니다."""
         self.assertFalse(br_abrade.residue_line_fits_the_installed_power())
-        self.assertFalse(br_abrade.residue_line_fits_the_platen_follow())
+        self.assertFalse(br_abrade.residue_line_is_within_the_z_measurement())
         self.assertGreater(br_abrade.cross_line_peak_kw(),
                            br_abrade.installed_power_kw())
 
@@ -1055,7 +1071,7 @@ class TestTheThinLine(unittest.TestCase):
         """판단문이 문턱 두 개와 그 순서를 다 말하는가."""
         text = " ".join(br_abrade.what_the_thin_line_changes())
         self.assertGreaterEqual(len(br_abrade.what_the_thin_line_changes()), 5)
-        self.assertIn(str(br_abrade.PLATEN_FOLLOW_MM), text)
+        self.assertIn(str(br_abrade.geometry_threshold_mm()), text)
         self.assertIn(str(br_abrade.line_height_within_installed_mm()), text)
         self.assertIn("관성", text)
 

@@ -1165,8 +1165,29 @@ def the_height_moves_the_peak() -> bool:
         RESIDUE_LINE_H_MM)
 
 
+def geometry_threshold_mm() -> float:
+    """선이 단차로 **안 보이는** 높이 상한 (mm) — 채택된 설계의 값.
+
+    압반은 안 쓴다 (`PLATEN_ADOPTED` = False). 그러니 `PLATEN_FOLLOW_MM`
+    0.08 을 여기 빌려 오면 **없는 기계의 값**으로 문턱을 잡는 것이 된다.
+    채택된 것은 윗면 측정 + 한 축 Z 추종이므로, 선이 보이기 시작하는 자리는
+    그 합 오차 `Z_SENSOR_TOL_MM` 다. 그보다 낮으면 측정 잡음 안이라 제어가
+    선을 구분하지 않는다.
+    """
+    return Z_SENSOR_TOL_MM
+
+
+def residue_line_is_within_the_z_measurement() -> bool:
+    """선 높이가 측정 잡음 안에 드는가 — 참이면 제어가 단차로 안 느낀다."""
+    return RESIDUE_LINE_H_MM <= geometry_threshold_mm()
+
+
 def residue_line_fits_the_platen_follow() -> bool:
-    """선 높이가 정반 추종 안에 드는가 — 참이면 벨트가 단차로 안 느낀다."""
+    """**안 쓰는 쪽의 값** — 분할 압반이었다면 단차로 안 느꼈을 높이인가.
+
+    `PLATEN_ADOPTED` 가 거짓이라 판정에 쓰지 않는다. 압반이 돌아오는 경우
+    (진공이 판을 못 편다는 결과가 나오면)를 위해 값만 살려 둔다.
+    """
     return RESIDUE_LINE_H_MM <= PLATEN_FOLLOW_MM
 
 
@@ -1178,17 +1199,17 @@ def residue_line_fits_the_installed_power() -> bool:
 def power_threshold_is_below_the_geometry_threshold() -> bool:
     """동력 문턱이 기하 문턱보다 낮은가 — 참이면 **동력이 먼저 걸린다.**
 
-    두 문턱이 따로 있다: 선이 `PLATEN_FOLLOW_MM` 보다 낮으면 벨트가 단차로
-    느끼지 않고(깊이 제어가 산다), `line_height_within_installed_mm()` 보다
-    낮으면 깔린 동력으로 잘린다. **둘 다** 있어야 하고, 낮은 쪽이 구속한다.
+    두 문턱이 따로 있다: 선이 `geometry_threshold_mm()` 보다 낮으면 제어가
+    단차로 느끼지 않고(깊이 제어가 산다), `line_height_within_installed_mm()`
+    보다 낮으면 깔린 동력으로 잘린다. **둘 다** 있어야 하고, 낮은 쪽이 구속한다.
     """
-    return line_height_within_installed_mm() < PLATEN_FOLLOW_MM
+    return line_height_within_installed_mm() < geometry_threshold_mm()
 
 
 def line_height_verdict(h_mm: float | None = None) -> str:
     """선 높이 하나로 설비가 어디로 가는가 — 문턱 두 개가 만드는 세 구간."""
     h = RESIDUE_LINE_H_MM if h_mm is None else h_mm
-    power, geom = line_height_within_installed_mm(), PLATEN_FOLLOW_MM
+    power, geom = line_height_within_installed_mm(), geometry_threshold_mm()
     lo, hi = min(power, geom), max(power, geom)
     if h <= lo:
         return "그대로 지나간다 — 증설도 감속도 없다"
@@ -1227,8 +1248,8 @@ def what_the_thin_line_changes() -> tuple[str, ...]:
         f"{residue_line_fits_the_platen_follow()}) — 그때는 SR-302 의 근거가 "
         f"이 유닛에서도 없어진다.",
         f"**문턱은 두 개고 순서가 있다.** 동력 "
-        f"{line_height_within_installed_mm()} mm 가 기하 {PLATEN_FOLLOW_MM} mm "
-        f"보다 낮으므로 **동력이 먼저 걸린다** "
+        f"{line_height_within_installed_mm()} mm 가 기하 "
+        f"{geometry_threshold_mm()} mm 보다 낮으므로 **동력이 먼저 걸린다** "
         f"(`power_threshold_is_below_the_geometry_threshold()` = "
         f"{power_threshold_is_below_the_geometry_threshold()}). 깊이 제어가 "
         f"살아 있는 높이에서도 모터는 이미 모자랄 수 있다.",
