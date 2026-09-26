@@ -365,6 +365,52 @@ class TestSevenBladesCarryIt(unittest.TestCase):
         self.assertIn(f"{br_peel.BLADE_COUNT} 장", second)
         self.assertNotIn("한 번에", second)
 
+    def test_the_moment_falls_as_the_square_and_deflection_as_the_fourth(self):
+        """칼날은 보다 — 길이를 1/n 로 자르면 모멘트 n², 처짐 n⁴."""
+        n = br_peel.BLADE_COUNT
+        self.assertAlmostEqual(br_peel.bending_moment_ratio(), n ** 2, places=1)
+        self.assertAlmostEqual(br_peel.deflection_ratio(), n ** 4, places=1)
+        self.assertAlmostEqual(br_peel.bending_moment_ratio(), 49.0, places=1)
+        self.assertAlmostEqual(br_peel.deflection_ratio(), 2401.0, places=1)
+
+    def test_the_reason_to_split_is_stiffness_not_force(self):
+        """이유를 힘으로 적으면 가장 작은 이득을 이유로 삼는 셈이다.
+
+        힘은 n 배뿐인데 처짐은 n⁴ 배다. 박리에서 무너지는 것은 힘이 아니라
+        날이 휘어 깊이가 흐트러지는 쪽이다.
+        """
+        self.assertTrue(br_peel.stiffness_beats_force_as_the_reason())
+        self.assertGreater(br_peel.deflection_ratio(),
+                           br_peel.per_blade_relief())
+        self.assertGreater(br_peel.deflection_ratio(),
+                           br_peel.bending_moment_ratio())
+
+    def test_the_span_that_a_one_piece_blade_must_cross(self):
+        """일자형은 판 폭 전체를 건너질러야 한다 — 거기서 L 이 온다."""
+        self.assertAlmostEqual(br_peel.one_piece_blade_span_mm(),
+                               campaign.PANEL_WIDTH_MM, places=1)
+        self.assertAlmostEqual(
+            br_peel.one_piece_blade_span_mm() / br_peel.BLADE_COUNT,
+            br_peel.strip_width_mm(), places=1)
+
+    def test_splitting_the_blade_without_splitting_the_support_buys_nothing(self):
+        """조건이 글로 남아 있어야 한다 — 지지가 안 나뉘면 강성 이득이 0 이다.
+
+        이 한 줄이 빠지면 「일곱 장이니 괜찮다」고 읽고 크로스빔 하나에
+        매달 수 있다. 그러면 L 이 안 줄어 이득이 사라진다.
+        """
+        note = " ".join(br_peel.the_split_needs_split_supports())
+        self.assertIn("지지가 따로일 때만", note)
+        self.assertIn("강성 이득은 0", note)
+        self.assertIn("면", note)
+        self.assertGreaterEqual(len(br_peel.the_split_needs_split_supports()), 4)
+
+    def test_the_total_is_still_the_frames_problem(self):
+        """분할이 덜어 주는 것은 한 부재의 몫이지 라인이 내야 하는 힘이 아니다."""
+        note = " ".join(br_peel.the_split_needs_split_supports())
+        self.assertIn(f"{br_peel.peel_force_n():,.0f} N", note)
+        self.assertIn("프레임과 구동", note)
+
     def test_the_summary_carries_the_blade_numbers(self):
         """도면 리터럴이 칼날 수와 한 장 값을 본다."""
         s = br_peel.summary()

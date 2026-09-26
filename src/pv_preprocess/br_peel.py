@@ -288,6 +288,67 @@ def the_load_is_carried_by_seven_not_one() -> bool:
     return BLADE_COUNT > 1 and total_force_is_conserved()
 
 
+# ── 왜 일곱으로 나누는가 — 힘이 아니라 **굽힘**이 이유다 ────────────────
+#
+#   칼날은 보(beam)다. 폭 방향으로 박리력이 고르게 걸리므로 등분포하중을
+#   받는 보이고, 모멘트는 `wL²/8`, 처짐은 `5wL⁴/384EI` 로 간다.
+#   **길이를 1/7 로 자르면 힘은 7 배, 모멘트는 7² = 49 배, 처짐은
+#   7⁴ = 2,401 배 가벼워진다.** 박리에서 정작 무너지는 것은 힘이 아니라
+#   **날이 휘어 깊이가 흐트러지는 것**이므로 이 2,401 이 진짜 이유다.
+#
+#   **다만 지지도 같이 나뉘어야 한다.** 일곱 장을 크로스빔 하나에 매달면
+#   그 빔이 여전히 1,400 을 건너지르며 합을 다 받는다 — 날끝 힘만 1/7 이
+#   되고 강성 이득은 0 이다. `the_split_needs_split_supports()`.
+
+def one_piece_blade_span_mm() -> float:
+    """일자형 한 장이 건너질러야 하는 거리 (mm) — 판 폭 전체다."""
+    return float(campaign.PANEL_WIDTH_MM)
+
+
+def bending_moment_ratio() -> float:
+    """일자형 대비 분할이 굽힘모멘트를 몇 배 덜 받는가 = 칼날 수².
+
+    `M = wL²/8` 에서 w 가 같고 L 만 1/n 이 되므로 n² 이다.
+    """
+    return round(float(BLADE_COUNT) ** 2, 1)
+
+
+def deflection_ratio() -> float:
+    """같은 단면일 때 처짐이 몇 배 줄어드는가 = 칼날 수⁴.
+
+    `δ ∝ wL⁴/EI`. **이 값이 분할의 진짜 이유다** — 힘보다 훨씬 크게 준다.
+    """
+    return round(float(BLADE_COUNT) ** 4, 1)
+
+
+def stiffness_beats_force_as_the_reason() -> bool:
+    """분할의 이유가 힘이 아니라 강성인가 — 그렇다.
+
+    힘 이득은 n 배뿐인데 처짐 이득은 n⁴ 배다. 「한 장이 2,800 N 을 못
+    버텨서」로 읽으면 이유를 가장 작은 것으로 잡는 셈이다.
+    """
+    return deflection_ratio() > per_blade_relief()
+
+
+def the_split_needs_split_supports() -> tuple[str, ...]:
+    """분할이 헛되지 않으려면 붙는 조건 — 지지도 같이 나뉘어야 한다."""
+    return (
+        f"위의 {bending_moment_ratio():.0f} 배·{deflection_ratio():,.0f} 배는 "
+        "**칼날마다 지지가 따로일 때만** 나온다. 날을 잘라도 그것을 매단 "
+        f"부재가 폭 {one_piece_blade_span_mm():,.0f} mm 를 그대로 건너지르면 "
+        "L 이 안 줄어 모멘트도 처짐도 그대로다.",
+        f"일곱 장을 크로스빔 하나에 매달면 그 빔이 합 {peel_force_n():,.0f} N "
+        f"을 다 받는다 — 날끝 힘만 {peel_force_per_blade_n():,.0f} N 으로 "
+        "내려가고 **강성 이득은 0** 이다.",
+        "그래서 각 날이 **자기 스프링·자기 액추에이터**로 뜨고 가라앉아야 "
+        "판의 휨을 따라간다. `sg_grind` 의 SR-302 가 「깊이를 기계가 아니라 "
+        "**면**에서 잡는다」고 한 것과 같은 답이고, 여기서는 그것을 일곱 번 한다.",
+        f"**합은 어느 쪽이든 {peel_force_n():,.0f} N 이다.** 프레임과 구동은 "
+        "그 값을 견뎌야 하니, 분할이 덜어 주는 것은 **한 부재가 받는 몫**이지 "
+        "라인이 내야 하는 힘이 아니다.",
+    )
+
+
 def force_the_face_allows_n() -> float:
     """면이 견디는 압착력 (N) — `sg_grind` 가 정본이다.
 
@@ -611,6 +672,9 @@ def summary() -> dict[str, object]:
         "peelForcePerBladeHeatedN": peel_force_per_blade_n(heated=True),
         "perBladeRelief": per_blade_relief(),
         "totalForceIsConserved": total_force_is_conserved(),
+        "bendingMomentRatio": bending_moment_ratio(),
+        "deflectionRatio": deflection_ratio(),
+        "stiffnessBeatsForce": stiffness_beats_force_as_the_reason(),
         "peelForceFreshN": peel_force_n(aged=False),
         "peelForceHeatedN": heat_brings_it_to_n(),
         "weakPlaneForceN": peel_force_n(weakest_interface()),
