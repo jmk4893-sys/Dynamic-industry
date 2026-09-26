@@ -544,12 +544,111 @@ class TestTheStaircaseEngagesInOrder(unittest.TestCase):
         """닫힌 물음 자리에 **계면** 물음이 들어섰다 — 지금 가장 큰 열림이다."""
         note = " ".join(br_peel.open_questions())
         self.assertIn("어느 계면을 무는 유닛인지", note)
-        self.assertIn("다섯 배", note)
+        self.assertIn("배 차이", note)
 
     def test_the_staircase_satisfies_the_support_condition_by_itself(self):
         """계단식이면 크로스빔 하나에 못 건다 — 조건이 저절로 지켜진다."""
         self.assertTrue(br_peel.the_staircase_splits_the_supports_for_us())
         self.assertTrue(br_peel.summary()["staircaseSplitsTheSupports"])
+
+
+class TestTheDilemmaIsADatumProblem(unittest.TestCase):
+    """백시트를 먼저 뜯으려면 EVA 안에 칼끝을 세워야 한다 — 기준면이 없다."""
+
+    def test_the_band_is_the_rear_eva_and_comes_from_br_abrade(self):
+        """띠는 후면 EVA 한 겹이고 값은 `br_abrade` 가 든다 — 두 곳에 안 적는다."""
+        from pv_preprocess import br_abrade
+        lo, hi = br_abrade.depth_window_mm()
+        self.assertAlmostEqual(br_peel.eva_band_mm(), hi - lo, places=3)
+        self.assertAlmostEqual(br_peel.eva_band_mm(),
+                               br_abrade.BACK_EVA_T_MM, places=2)
+
+    def test_the_tolerances_come_from_sg_grind(self):
+        """제어폭도 베끼지 않는다 — 슈 기준·프레임 기준 둘 다 `sg_grind` 정본."""
+        self.assertAlmostEqual(br_peel.depth_control_mm(True),
+                               sg_grind.blade_assembly_tol_mm(), places=4)
+        self.assertAlmostEqual(br_peel.depth_control_mm(False),
+                               sg_grind.depth_stack_mm(), places=4)
+
+    def test_only_the_face_reference_fits_in_the_band(self):
+        """**요지** — 면 기준은 들어가고 프레임 기준은 창을 통째로 넘는다."""
+        self.assertTrue(br_peel.the_face_reference_is_the_only_one_that_fits())
+        self.assertGreater(br_peel.depth_margin_ratio(True), 1.0)
+        self.assertLess(br_peel.depth_margin_ratio(False), 1.0)
+        self.assertAlmostEqual(br_peel.depth_margin_ratio(True), 2.25, places=2)
+
+    def test_the_margin_is_thin_even_when_it_fits(self):
+        """들어가도 얇다 — 한쪽에 0.125 mm 다. 넉넉하다고 읽으면 안 된다."""
+        self.assertAlmostEqual(br_peel.net_margin_each_side_mm(), 0.125, places=3)
+        self.assertLess(br_peel.net_margin_each_side_mm(),
+                        br_peel.eva_band_mm() / 3)
+
+    def test_the_root_is_the_datum_not_the_precision(self):
+        """유리는 기준면이 되고 EVA 는 안 된다 — 그것이 글로 남아야 한다."""
+        note = " ".join(br_peel.there_is_no_datum_inside_the_eva())
+        self.assertIn("접촉", note)
+        self.assertIn("재서", note)
+        self.assertIn("유리가 물리적으로 막아", note)
+        self.assertGreaterEqual(
+            len(br_peel.there_is_no_datum_inside_the_eva()), 4)
+
+    def test_the_failure_is_asymmetric(self):
+        """얕으면 하드 실패, 깊으면 공구 비용 — 그 비대칭이 적혀 있어야 한다."""
+        note = " ".join(br_peel.the_window_has_a_soft_upper_edge())
+        self.assertIn("하드 실패", note)
+        self.assertIn("제품 손실이 아니다", note)
+        self.assertIn("유리까지 가지 마라", note)
+
+    def test_the_soft_edge_is_not_turned_into_a_number(self):
+        """셀 두께와 전면 EVA 가 모델에 없으므로 **얼마나 넓어지는지 안 적는다.**"""
+        note = " ".join(br_peel.the_window_has_a_soft_upper_edge())
+        self.assertIn("못 적는다", " ".join(br_peel.open_questions()))
+        self.assertIn("지어내지 않는다", note)
+        for name in ("CELL_T_MM", "FRONT_EVA_T_MM", "soft_edge_extra_mm"):
+            self.assertFalse(hasattr(br_peel, name), msg=name)
+
+    def test_cutting_and_peeling_pull_temperature_apart(self):
+        """자르기는 차가워야, 떼기는 뜨거워야 — 한 유닛에 온도가 둘 필요하다."""
+        note = " ".join(br_peel.cutting_and_peeling_want_opposite_temperatures())
+        self.assertIn("차가워야", note)
+        self.assertIn("뜨거워야", note)
+        self.assertIn("온도가 두 개 필요하다", note)
+        self.assertIn("계면만 풀기", note)
+
+    def test_the_order_swap_is_recorded_as_a_way_out(self):
+        """순서를 바꾸면 EVA 를 가를 일도 1 차 커팅도 없어진다 — 근거로 남긴다."""
+        note = " ".join(br_peel.removing_the_glass_first_removes_the_cut())
+        self.assertIn("순서를 안 정했다", note)
+        self.assertIn("EVA 를 가를 필요가 없어진다", note)
+        self.assertIn("1 차 커팅이 없어진다", note)
+        self.assertGreaterEqual(
+            len(br_peel.removing_the_glass_first_removes_the_cut()), 5)
+
+    def test_the_order_is_not_decided_here(self):
+        """**판정을 만들지 않는다** — 유닛이 있느냐는 발주처 몫이다."""
+        self.assertTrue(br_peel.the_order_is_not_mine_to_decide())
+        self.assertTrue(br_peel.summary()["orderIsNotOursToDecide"])
+        for name in ("glass_first_is_better", "recommended_order",
+                     "the_backsheet_unit_is_unnecessary"):
+            self.assertFalse(hasattr(br_peel, name), msg=name)
+        # 계면과 힘은 그대로여야 한다 — 형상만 받아 왔다.
+        self.assertAlmostEqual(br_peel.required_interface().gc_aged_n_mm,
+                               2.0, places=2)
+        self.assertAlmostEqual(br_peel.peel_force_n(), 2800.0, places=1)
+
+    def test_the_swap_names_what_it_still_needs_measured(self):
+        """순서를 바꾸기 전에 모르는 둘 — 반송과 EVA 가 어느 쪽에 붙느냐."""
+        note = " ".join(br_peel.what_the_order_swap_needs_measured())
+        self.assertIn("깨져도 되는지", note)
+        self.assertIn(separation.float_product().name, note)
+        self.assertEqual(len(br_peel.what_the_order_swap_needs_measured()), 2)
+
+    def test_the_open_questions_lead_with_the_dilemma(self):
+        """열린 물음이 「갈려 있다」에서 멈추지 않고 **왜** 갈리는지 든다."""
+        note = " ".join(br_peel.open_questions())
+        self.assertIn("기준면이 없다", note)
+        self.assertIn("종류의 차이", note)
+        self.assertIn("내가 안 고른다", note)
 
 
 class TestUpstreamAlreadyStoodForThis(unittest.TestCase):

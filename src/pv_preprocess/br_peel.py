@@ -521,6 +521,156 @@ def where_shk101_and_this_unit_disagree() -> tuple[str, ...]:
     )
 
 
+# ── 딜레마 — 백시트를 먼저 뜯으려면 EVA 안에 칼끝을 세워야 한다 ─────────
+#
+#   현장이 든 물음: 「셀모듈이 EVA 로 접착돼 있는데 **정확하게 EVA 를 가르면서**
+#   들어가야 한다. 그래야 백시트만 먼저 제거된다.」
+#
+#   그 어려움의 뿌리는 정밀도가 아니라 **기준면의 유무**다. 아래 함수들이
+#   그것을 재는데, **어느 순서가 맞는지는 판정하지 않는다** — 발주처 몫이다.
+
+def eva_band_mm() -> float:
+    """칼끝이 안에 멈춰야 하는 띠의 두께 (mm) = 후면 EVA 그대로.
+
+    깊이 창의 폭이 곧 이 값이다 — 아래는 백시트를 끊는 깊이, 위는 셀에 닿기
+    직전이고 그 사이가 EVA 한 겹이다.
+    """
+    from . import br_abrade
+    lo, hi = br_abrade.depth_window_mm()
+    return round(hi - lo, 3)
+
+
+def depth_control_mm(referenced_from_the_face: bool = True) -> float:
+    """쓸 수 있는 깊이 제어폭 (mm) — `sg_grind` 가 정본이다.
+
+    면(슈) 기준이면 날끝 반경만 남고, 기계 프레임 기준이면 공차가 쌓인다.
+    """
+    return (sg_grind.blade_assembly_tol_mm() if referenced_from_the_face
+            else sg_grind.depth_stack_mm())
+
+
+def depth_margin_ratio(referenced_from_the_face: bool = True) -> float:
+    """띠가 제어폭의 몇 배인가 — 1 보다 크면 들어갈 자리가 있다."""
+    return round(eva_band_mm() / depth_control_mm(referenced_from_the_face), 2)
+
+
+def net_margin_each_side_mm(referenced_from_the_face: bool = True) -> float:
+    """띠 중앙을 노렸을 때 한쪽에 남는 순수 여유 (mm)."""
+    return round((eva_band_mm() - depth_control_mm(referenced_from_the_face)) / 2, 3)
+
+
+def the_face_reference_is_the_only_one_that_fits() -> bool:
+    """면 기준만 창에 들어가는가 — 그렇다. 프레임 기준은 창을 통째로 넘는다."""
+    return (depth_margin_ratio(True) > 1.0
+            and depth_margin_ratio(False) <= 1.0)
+
+
+def there_is_no_datum_inside_the_eva() -> tuple[str, ...]:
+    """**딜레마의 뿌리** — 유리는 기준면이 되고 EVA 는 안 된다.
+
+    이것이 「더 정밀하게 만들면 된다」로 풀리지 않는 이유다. 종류가 다르다.
+    """
+    return (
+        f"**유리 계면 쪽은 기준면이 있다.** SHK-101 의 랜드 "
+        f"{BLADE_LAND_MM:g} mm 가 유리를 타고, 칼끝은 유리보다 깊이 못 간다 — "
+        "유리가 물리적으로 막아 준다. 깊이 제어가 *측정*이 아니라 **접촉**이다.",
+        f"**EVA 안에는 그런 것이 없다.** 폭 {eva_band_mm():g} mm 띠 안에 "
+        f"칼끝을 **재서** 유지해야 하고, 그것을 면 "
+        f"{float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM) / 1e6:.1f} m² "
+        "내내 해야 한다. 접촉으로 멈출 대상이 없다.",
+        f"**여유가 {depth_margin_ratio():.2f} 배다.** 띠 {eva_band_mm():g} 대 "
+        f"면 기준 제어폭 {depth_control_mm():g} — 중앙을 노리면 한쪽에 "
+        f"{net_margin_each_side_mm():.3f} mm 만 남는다. 되기는 하는데 얇다.",
+        f"**그리고 그 {depth_control_mm():g} 는 슈가 라미네이트에 얹혀야 나온다.** "
+        f"슈를 못 얹으면 프레임 기준 {depth_control_mm(False):g} mm 로 떨어지고 "
+        f"그것은 띠를 {depth_control_mm(False) / eva_band_mm():.1f} 배로 넘는다 — "
+        "칼날이 슈를 못 얹는 자리가 있느냐가 그래서 설계를 가른다.",
+    )
+
+
+def the_window_has_a_soft_upper_edge() -> tuple[str, ...]:
+    """실패가 비대칭이다 — 숨은 여유일 수 있으니 값으로 확인할 자리다."""
+    from . import br_abrade
+    lo, hi = br_abrade.depth_window_mm()
+    return (
+        f"**얕으면(< {lo} mm) 하드 실패다.** 백시트가 안 끊기면 틈이 안 생기고 "
+        "틈이 없으면 박리가 아예 성립하지 않는다. 유닛이 아무것도 못 한다.",
+        f"**깊으면(> {hi} mm) 셀을 긋는다.** 그런데 Si·Ag 는 **하류가 어차피 "
+        f"{separation.FLOTATION_FEED_UM[0]:.0f}~{separation.FLOTATION_FEED_UM[1]:.0f} µm "
+        "로 분쇄할 것들**이다. 재사용 라인이면 치명적이지만 이 라인은 전부 갈아 "
+        "선별하므로 **제품 손실이 아니다** — 비용이 공구 수명(실리콘은 경질·연마성) "
+        "쪽으로 간다.",
+        f"**그래서 창의 위쪽 끝 {hi} 는 소프트 엣지다.** 진짜 경계는 「셀에 닿지 "
+        "마라」가 아니라 **「유리까지 가지 마라」**이고, 그 사이에 셀 두께와 전면 "
+        "EVA 만큼 더 있다. 유리에 닿으면 관문 ①(유리)을 스스로 깨는 일이라 "
+        "거기가 한계다.",
+        "**깊게 편향시키면 창이 실질적으로 넓어진다.** 다만 셀을 긋는 비용이 "
+        "정말 공구 수명뿐인지는 **확인할 값**이다 — 셀 두께와 전면 EVA 는 이 "
+        "모델에 없고, 지어내지 않는다.",
+    )
+
+
+def cutting_and_peeling_want_opposite_temperatures() -> tuple[str, ...]:
+    """자르는 일과 떼는 일이 온도를 반대로 당긴다 — 딜레마의 물리적 뿌리다."""
+    return (
+        f"**자르기(1 차 커팅)는 EVA 가 차가워야** 깔끔하다. 뜨거우면 물러 "
+        f"늘어져 깊이가 안 잡힌다 — 폭 {eva_band_mm():g} mm 띠에 세우는 일이라 "
+        "재료가 흐르면 곧바로 진다.",
+        f"**떼기(박리)는 EVA 가 뜨거워야** 가볍다. 가열이 박리력을 "
+        f"{1 / HEAT_DERATE:.0f} 분의 1 로 깎고("
+        f"{peel_force_n():,.0f} → {heat_brings_it_to_n():,.0f} N), SHK-101 쪽 "
+        "도면도 「온도를 내리면 박리력이 오른다」고 든다.",
+        f"**한 유닛에서 둘을 다 하려면 온도가 두 개 필요하다.** 가열 범위 "
+        f"{HEAT_ASSIST_C[0]:.0f}~{HEAT_ASSIST_C[1]:.0f} °C 안에서 자르는 자리와 "
+        "떼는 자리가 서로 반대쪽이다.",
+        "**SHK-101 은 200 ℃ 하나로 간다** — 자르지 않고 **계면만 풀기** "
+        "때문이다. 온도 충돌은 「EVA 를 가른다」를 고를 때 생기는 비용이다.",
+    )
+
+
+def removing_the_glass_first_removes_the_cut() -> tuple[str, ...]:
+    """순서를 바꾸면 문제의 **종류**가 바뀐다 — 근거만 적고 고르지는 않는다."""
+    return (
+        "**발주처 결론은 순서를 안 정했다.** 「부선 전에 네 개가 다 빠져야 "
+        "한다」뿐이므로 유리를 먼저 뺄 수도 있다.",
+        "**지금 순서(백시트 먼저)** — 유리에 붙은 채로 EVA 안을 갈라야 한다. "
+        "기준면이 없고, 온도가 두 개 필요하고, 1 차 커팅이 셀 위를 지난다.",
+        "**뒤바꾸면(유리 먼저)** — SHK-101 이 셀모듈과 백시트를 유리에서 "
+        "들어낸다(관문 유리 닫힘). 남는 것은 **유리가 없는 자유로운 판**이고 "
+        "백시트는 그 판의 한쪽 면이다 — 딱딱한 기판에 눌려 있지 않다.",
+        f"**그리고 EVA 를 가를 필요가 없어진다.** 백시트–EVA 는 이미 존재하는 "
+        f"**계면**(Gc {required_interface().gc_aged_n_mm:g} N/mm)이고 계면 박리는 "
+        "「재서 멈추는」 일이 아니라 「붙은 면을 따라가는」 일이다 — 칼끝이 한 번 "
+        "들면 계면이 스스로 안내한다.",
+        f"**지금 어려운 것은 박리가 아니라 1 차 커팅 한 줄**이고, 그것이 필요한 "
+        f"이유는 유리에 붙어 변에서 접근할 수 없기 때문이다(변에서 "
+        f"{STARTER_CUT_OFFSET_MM:.0f} mm 안쪽에 긋는 이유). 판이 자유로우면 "
+        "변에서 시작할 수 있고 1 차 커팅이 없어진다.",
+    )
+
+
+def what_the_order_swap_needs_measured() -> tuple[str, ...]:
+    """순서를 바꾸기 전에 모르는 것 — 시편 한두 장이면 답이 나온다."""
+    return (
+        "**유리를 뺀 셀모듈이 반송을 견디나.** 얇은 셀이 EVA 에 든 물렁한 "
+        "판이라 셀이 깨질 텐데, **깨져도 되는지**가 핵심이다. 어차피 분쇄로 "
+        "가니 깨짐 자체는 손실이 아닐 수 있다 — 다만 판이 갈라지면 그리퍼가 "
+        "못 잡는다.",
+        f"**그 판에서 백시트를 떼면 EVA 가 어느 쪽에 붙어 나오나.** EVA 는 "
+        f"뜨는 쪽({separation.float_product().name})으로 가야 하니 백시트에 "
+        f"딸려 가면 침강분({separation.sink_product().name})으로 끌려간다.",
+    )
+
+
+def the_order_is_not_mine_to_decide() -> bool:
+    """순서를 내가 고르지 않는가 — 안 고른다. 근거만 든다.
+
+    유닛이 있느냐를 정하는 물음이고 그것은 발주처 몫이다. 이 모듈은
+    **계면과 힘을 안 바꿨다** — 형상만 받아 왔다.
+    """
+    return not hasattr(the_order_is_not_mine_to_decide, "verdict")
+
+
 def the_staircase_splits_the_supports_for_us() -> bool:
     """계단식이 「지지도 나뉘어야 한다」는 조건을 저절로 지키는가 — 지킨다.
 
@@ -950,11 +1100,32 @@ def open_questions() -> tuple[str, ...]:
         f"경계 {rise_below_which_all_engage_mm():,.0f} mm 보다 한참 아래라 "
         f"한때 전부 물리고 **최대 합력은 {peel_force_n():,.0f} N 그대로**다. "
         f"행정만 {carriage_travel_mm():,.0f} mm 로 늘어난다.",
-        "**어느 계면을 무는 유닛인지가 갈려 있다.** "
-        "`where_shk101_and_this_unit_disagree()` 가 그 자리를 든다 — 형상은 "
-        "같은데 SHK-101 은 유리 계면에서 셀모듈까지 함께 들고 이 모듈은 "
-        "백시트만 뜯는다. **폭당 힘이 다섯 배 넘게 차이나므로 한쪽이 틀렸거나 "
-        "둘이 다른 공정이다.** 이것이 지금 가장 큰 열린 물음이다.",
+        f"**어느 계면을 무는 유닛인지가 갈려 있고, 그것이 지금 가장 큰 "
+        f"물음이다.** 형상은 같은데 SHK-101 은 유리 계면에서 셀모듈까지 함께 "
+        f"들고 이 모듈은 백시트만 뜯는다(폭당 힘 "
+        f"{SHK101_PEEL_N_MM / required_interface().gc_aged_n_mm:.2f} 배 차이). "
+        f"`where_shk101_and_this_unit_disagree()` 가 그 자리를 든다.",
+        f"**백시트를 먼저 뜯으려면 EVA 안에 칼끝을 세워야 하는데 거기엔 "
+        f"기준면이 없다.** 띠 {eva_band_mm():g} mm 대 면 기준 제어폭 "
+        f"{depth_control_mm():g} mm — 여유 {depth_margin_ratio():.2f} 배, 한쪽에 "
+        f"{net_margin_each_side_mm():.3f} mm. 유리 쪽은 랜드가 유리를 타서 "
+        "**접촉으로** 멈추는데 EVA 안은 **재서** 멈춰야 한다 — 정밀도가 아니라 "
+        "종류의 차이다(`there_is_no_datum_inside_the_eva()`).",
+        "**자르는 일과 떼는 일이 온도를 반대로 당긴다** — 자르기는 차가워야 "
+        "깊이가 잡히고 떼기는 뜨거워야 힘이 내려간다. 한 유닛에서 둘을 다 하려면 "
+        "온도가 두 개 필요하다(`cutting_and_peeling_want_opposite_temperatures()`).",
+        "**순서를 바꾸면 이 문제가 사라진다 — 고르지는 않았다.** 유리를 먼저 "
+        "빼면 남는 판에서 백시트는 이미 존재하는 **계면**이라 EVA 를 가를 일이 "
+        "없고 변에서 시작할 수 있어 1 차 커팅도 없어진다. 발주처가 순서를 안 "
+        "정했으므로 열려 있고, **유닛이 있느냐를 정하는 물음이라 내가 안 "
+        "고른다**(`removing_the_glass_first_removes_the_cut()`). 바꾸기 전에 "
+        "확인할 것 둘은 `what_the_order_swap_needs_measured()` 가 든다.",
+        f"**창의 위쪽 끝은 소프트 엣지일 수 있다.** 얕으면 틈이 안 생겨 하드 "
+        f"실패지만, 깊어 셀을 그으면 Si·Ag 가 어차피 분쇄로 갈 것들이라 제품 "
+        f"손실이 아니고 비용이 공구 수명으로 간다. 진짜 경계는 「셀에 닿지 마라」가 "
+        "아니라 **「유리까지 가지 마라」**다 — 다만 셀 두께와 전면 EVA 가 이 "
+        "모델에 없어 얼마나 넓어지는지는 **못 적는다**"
+        "(`the_window_has_a_soft_upper_edge()`).",
         "**기동 박리력과 정상 박리력의 비를 모른다.** 계단식이 최대값을 "
         "낮추는 유일한 경로가 이것인데(기동 하나 + 정상 나머지), 비를 모르니 "
         "얼마나 낮추는지 못 적는다. 시편 시험에서 같이 나올 값이다 — "
@@ -1018,6 +1189,13 @@ def summary() -> dict[str, object]:
         "loadRiseIsDividedBy": load_rise_is_divided_by(),
         "staircaseSplitsTheSupports": the_staircase_splits_the_supports_for_us(),
         "mirrorIsStillAMirror": the_mirror_must_become_a_delegation(),
+        "evaBandMm": eva_band_mm(),
+        "depthControlFaceMm": depth_control_mm(True),
+        "depthControlFrameMm": depth_control_mm(False),
+        "depthMarginRatio": depth_margin_ratio(),
+        "netMarginEachSideMm": net_margin_each_side_mm(),
+        "onlyTheFaceReferenceFits": the_face_reference_is_the_only_one_that_fits(),
+        "orderIsNotOursToDecide": the_order_is_not_mine_to_decide(),
         "peelForceFreshN": peel_force_n(aged=False),
         "peelForceHeatedN": heat_brings_it_to_n(),
         "weakPlaneForceN": peel_force_n(weakest_interface()),
