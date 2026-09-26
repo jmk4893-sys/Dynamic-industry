@@ -554,10 +554,10 @@ class TestTheScraperThatClearsTheBand(unittest.TestCase):
         self.assertIn("아리스를 요구하는 공정이 없다", titles)
         # 다섯째 — 발주처가 날은 살렸는데 그 날을 태운 휠은 요구가 없다.
         self.assertIn("날은 남는데 그것을 태운 휠은 요구가 없다", titles)
-        # 캐리어를 옮기면서 둘이 더 나왔다 — 면 수와 통과 시간.
-        self.assertIn("백시트면 띠를 걷을 공구가 없다", titles)
+        # 면 수는 날 두 장으로 닫혔고 통과 시간은 남았다.
+        self.assertNotIn("백시트면 띠를 걷을 공구가 없다", titles)
         self.assertIn("자기 캐리어의 통과가 여유에 안 들어간다", titles)
-        self.assertEqual(len(titles), 7)
+        self.assertEqual(len(titles), 6)
 
     def test_the_gc_headroom_is_stated_not_assumed(self):
         """Gc 가 얼마까지 오르면 허용 압착력을 넘는가 — 그 값을 내놓는다."""
@@ -839,7 +839,9 @@ class TestTheScraperSurvivesTheWheel(unittest.TestCase):
         self.assertTrue(sg_grind.the_carrier_is_its_own())
         titles = [t for t, _ in sg_grind.what_the_absent_arris_leaves_open()]
         self.assertIn("자기 캐리어의 운동학", titles)
-        self.assertIn("날이 몇 면을 긁는가", titles)
+        # 면은 답이 왔고, 그 자리에 붙잡는 힘이 들어왔다.
+        self.assertIn("판을 무엇이 붙잡는가", titles)
+        self.assertNotIn("날이 몇 면을 긁는가", titles)
         self.assertNotIn("SR-302 가 어디에 실리는가", titles)
 
     def test_the_requirement_widened_from_shoulder_to_band(self):
@@ -931,24 +933,26 @@ class TestTheBladeGetsItsOwnCarrier(unittest.TestCase):
             sg_grind.feed_that_fits_the_slack_mm_s())
 
 
-class TestTheBackFaceBandHasNoTool(unittest.TestCase):
-    """면 수가 안 맞는다 — 날은 유리면, 벨트는 백시트면이다."""
+class TestBothFacesAreScrapedAtOnce(unittest.TestCase):
+    """발주처가 날 두 장·양면 동시로 정했다 — 면 수가 맞춰졌다."""
 
-    def test_the_counts_disagree(self):
-        self.assertLess(sg_grind.BLADE_FACES, sg_grind.RESIDUE_FACES)
-        self.assertTrue(sg_grind.the_back_face_band_has_no_tool())
+    def test_the_counts_agree_now(self):
+        self.assertEqual(sg_grind.BLADE_FACES, sg_grind.RESIDUE_FACES)
+        self.assertFalse(sg_grind.the_back_face_band_has_no_tool())
 
     def test_the_name_matches_the_return(self):
         """이름이 「없다」이므로 없을 때 참이어야 한다 — 뒤집혀 있으면 오독한다."""
         self.assertEqual(sg_grind.the_back_face_band_has_no_tool(),
                          sg_grind.BLADE_FACES < sg_grind.RESIDUE_FACES)
 
-    def test_half_the_residue_has_no_tool(self):
+    def test_the_problem_it_solved_is_still_recorded(self):
+        """왜 두 장인지의 근거가 남아야 한다 — 한 장이면 절반이 남았다."""
         one = sg_grind.sealant_volume_per_panel_mm3(faces=1)
         both = sg_grind.sealant_volume_per_panel_mm3(faces=sg_grind.RESIDUE_FACES)
         self.assertAlmostEqual(both, 2 * one, places=1)
-        text = " ".join(sg_grind.the_faces_do_not_add_up())
+        text = " ".join(sg_grind.how_the_faces_were_made_to_add_up())
         self.assertIn(f"{one:,.0f} mm³", text)
+        self.assertIn(f"{sg_grind.EDGE_OVERHANG_MM:.0f} mm", text)
 
     def test_the_existing_predicate_is_marked_as_not_about_faces(self):
         """「공구가 있는가」를 「두 면이 걷힌다」로 읽으면 안 된다고 적혀야 한다."""
@@ -957,14 +961,90 @@ class TestTheBackFaceBandHasNoTool(unittest.TestCase):
         self.assertIn("몇 면을 걷는가", doc)
         self.assertIn("the_back_face_band_has_no_tool", doc)
 
-    def test_the_geometry_reason_is_recorded(self):
-        """유리면이 걷히는 이유가 기구라는 것 — 롤러 물러남이 자리를 낸다."""
-        text = " ".join(sg_grind.the_faces_do_not_add_up())
-        self.assertIn(f"{sg_grind.EDGE_OVERHANG_MM:.0f} mm", text)
+    def test_travel_is_one_lap_whatever_the_blade_count(self):
+        """「동시」의 값이 이것이다 — 주행이 날 수에 안 걸린다."""
+        per = 2.0 * (campaign.PANEL_LENGTH_MM + campaign.PANEL_WIDTH_MM)
+        self.assertAlmostEqual(sg_grind.scraper_travel_mm(), per, places=1)
+        self.assertTrue(sg_grind.the_second_blade_costs_no_time())
+        self.assertAlmostEqual(
+            sg_grind.travel_if_one_blade_did_both_faces_mm(),
+            per * sg_grind.RESIDUE_FACES, places=1)
 
-    def test_the_open_question_is_computed(self):
+    def test_the_scraping_length_is_not_the_travel(self):
+        """긁는 길이와 주행 거리를 섞으면 시간이 두 배로 나온다."""
+        self.assertAlmostEqual(
+            sg_grind.scraper_path_mm(),
+            sg_grind.scraper_travel_mm() * sg_grind.BLADE_FACES, places=1)
+        self.assertGreater(sg_grind.scraper_path_mm(),
+                           sg_grind.scraper_travel_mm())
+
+    def test_the_time_functions_read_the_travel(self):
+        """시간이 주행에서 나온다 — 면을 늘려도 안 변한다."""
+        lf = sg_grind.long_feed_mm_s()
+        want = sg_grind.scraper_travel_mm() / lf
+        self.assertAlmostEqual(sg_grind.scraper_serial_time_s(lf), want, places=2)
+
+    def test_the_second_blade_buys_exactly_one_lap(self):
+        lf = sg_grind.long_feed_mm_s()
+        self.assertAlmostEqual(sg_grind.time_the_second_blade_saves_s(lf),
+                               sg_grind.scraper_travel_mm() / lf, places=2)
+
+    def test_the_normal_force_cancels_and_the_tangential_adds(self):
+        """마주 본다고 다 상쇄되는 것이 아니다 — 갈리는 자리를 지킨다."""
+        self.assertEqual(sg_grind.normal_net_on_panel_n(), 0.0)
+        self.assertEqual(sg_grind.clamp_force_n(), sg_grind.SHOE_SPRING_N)
+        self.assertAlmostEqual(
+            sg_grind.tangential_total_n(),
+            sg_grind.scrape_total_force_n() * sg_grind.BLADE_FACES, places=2)
+        self.assertGreater(sg_grind.tangential_total_n(),
+                           sg_grind.scrape_total_force_n())
+
+    def test_the_cancellation_needs_them_opposed(self):
+        """같은 자리에서 마주 봐야 성립한다 — 어긋나면 우력이다."""
+        self.assertTrue(sg_grind.BLADES_ARE_OPPOSED)
+        text = " ".join(sg_grind.the_shoes_oppose_each_other())
+        self.assertIn("우력", text)
+        self.assertIn("같은 자리", text)
+
+    def test_one_face_still_sees_only_one_spring(self):
+        """두 장이라고 한 면이 두 배로 눌리지 않는다."""
+        self.assertTrue(sg_grind.shoe_is_gentle_enough())
+        self.assertLessEqual(sg_grind.SHOE_SPRING_N, sg_grind.safe_face_force_n())
+
+    def test_the_per_face_comparison_is_untouched(self):
+        """긁기 대 갈기 비교는 한 면끼리여야 한다 — 합력을 넣으면 반토막 난다."""
+        lf = sg_grind.long_feed_mm_s()
+        self.assertAlmostEqual(
+            sg_grind.scrape_power_w(lf),
+            sg_grind.scrape_total_force_n() * lf / 1_000.0, places=2)
+        self.assertGreater(sg_grind.scrape_beats_abrade_by(), 1_000)
+
+    def test_the_carrier_power_uses_the_total(self):
+        lf = sg_grind.long_feed_mm_s()
+        self.assertAlmostEqual(
+            sg_grind.scraper_power_at_w(lf),
+            sg_grind.tangential_total_n() * lf / 1_000.0, places=1)
+
+    def test_the_face_gap_is_no_longer_an_open_question(self):
         titles = [t for t, _ in sg_grind.open_questions()]
-        self.assertIn("백시트면 띠를 걷을 공구가 없다", titles)
+        self.assertNotIn("백시트면 띠를 걷을 공구가 없다", titles)
+
+    def test_the_drawing_carries_both_sets(self):
+        """도면이 두 세트를 다 세워야 한다 — 하나만 그리면 결정이 안 보인다."""
+        keys = [p.key for p in sg_grind.scraper_unit().parts]
+        for k in ("srbld", "srbld2", "srshoe", "srshoe2", "srband", "srband2"):
+            self.assertIn(k, keys)
+
+    def test_the_lower_set_mirrors_about_the_laminate(self):
+        """아래 세트가 라미네이트 중립면의 거울상이어야 마주 본다."""
+        parts = {p.key: p for p in sg_grind.scraper_unit().parts}
+        mid = -sg_grind.STACK_T_MM / 2 - 8.0
+        for a, b in (("srarm", "srarm2"), ("srspr", "srspr2"),
+                     ("srshoe", "srshoe2"), ("srbld", "srbld2"),
+                     ("srchip", "srchip2")):
+            self.assertAlmostEqual(parts[b].pos[1], 2 * mid - parts[a].pos[1],
+                                   places=3, msg=f"{b} 가 {a} 의 거울상이 아니다")
+            self.assertEqual(parts[b].pos[0], parts[a].pos[0])
 
 
 class TestCloseupDrawing(unittest.TestCase):

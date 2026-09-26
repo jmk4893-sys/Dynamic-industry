@@ -176,9 +176,11 @@ def spec_payload() -> str:
                     f"{g.lead_cost_if_shared_s()} s 를 가져갔고, 그것이 빠져 "
                     f"SG-301 점유가 **{g.occupancy_s()} s** · AFR 정반 안 여유 "
                     f"**{g.slack_s()} s** 다"],
-            ["날 자신의 운동학", f"경로 **{g.scraper_path_mm():,.0f} mm**(둘레 × "
-                         f"{g.BLADE_FACES} 면) · 물려받은 이송 {lf:.0f} mm/s 로는 "
-                         f"직렬 {g.scraper_serial_time_s(lf)} s 라 여유를 넘는다 → "
+            ["날 자신의 운동학", f"**주행 {g.scraper_travel_mm():,.0f} mm**(둘레 한 "
+                         f"바퀴 · 날 수와 무관) · 긁는 길이는 "
+                         f"{g.scraper_path_mm():,.0f} mm({g.BLADE_FACES} 면) · "
+                         f"물려받은 이송 {lf:.0f} mm/s 로는 직렬 "
+                         f"{g.scraper_serial_time_s(lf)} s 라 여유를 넘는다 → "
                          f"필요 이송 **{g.feed_that_fits_the_slack_mm_s():.0f} mm/s** "
                          f"(SG 헤드 배치면 "
                          f"{g.feed_that_fits_the_slack_mm_s(True):.0f})"],
@@ -189,10 +191,19 @@ def spec_payload() -> str:
                             f"{g.spindle_available_w():.0f} W 의 "
                             f"{g.scraper_power_at_w(lf) / g.spindle_available_w():.2%} — "
                             "**캐리지와 슈가 정한다**"],
-            ["면 수가 안 맞는다", f"날 **{g.BLADE_FACES} 면**(유리면) vs 잔사 "
-                          f"**{g.RESIDUE_FACES} 면** — 백시트면 "
-                          f"{g.sealant_volume_per_panel_mm3(faces=1):,.0f} mm³ 가 "
-                          f"공구 없이 남고 그것이 **BR-305 벨트가 지나가는 면**이다"],
+            ["양면 동시", f"날 **{g.BLADE_FACES} 장**이 판을 사이에 두고 마주 본다 — "
+                     f"한 장에 {g.sealant_volume_per_panel_mm3():,.0f} mm³ 가 다 "
+                     f"걷힌다. **주행은 한 바퀴 그대로**이고(한 장으로 두 면이면 "
+                     f"{g.travel_if_one_blade_did_both_faces_mm():,.0f} mm), "
+                     f"{lf:.0f} mm/s 기준 "
+                     f"{g.time_the_second_blade_saves_s(lf)} s 를 번다"],
+            ["힘이 갈린다", f"**법선은 상쇄** — 판이 받는 알짜 "
+                      f"{g.normal_net_on_panel_n():.0f} N, 대신 "
+                      f"{g.clamp_force_n():.0f} N 으로 문다(한 장일 때는 반력을 "
+                      f"반출롤러가 받았다). **접선은 더해짐** — "
+                      f"{g.scrape_total_force_n()} N × {g.BLADE_FACES} = "
+                      f"**{g.tangential_total_n()} N** 이 주행 방향으로 걸린다. "
+                      f"성립 조건은 **같은 자리**다 — 어긋나면 우력이 된다"],
             ["집진", "부스러기가 **고체**라 DS-01 에 폴리머가 안 들어간다 — "
                   "'불연' 선언이 그대로 선다"],
             ["Gc 여유", f"면 허용 압착력이 감당하는 상한이 **{g.max_gc_the_face_limit_allows()} "

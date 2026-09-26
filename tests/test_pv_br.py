@@ -521,15 +521,16 @@ class TestTheOrderIsSealantThenGrindThenGlass(unittest.TestCase):
         """순서에서 계산한다 — 뒤집으면 스스로 거짓이 된다."""
         self.assertTrue(br_abrade.the_scraper_comes_first())
 
-    def test_the_order_alone_does_not_clear_the_belts_path(self):
-        """순서는 필요하고 충분하지 않다 — 걷는 면이 벨트의 면과 달라서다.
+    def test_both_conditions_now_hold(self):
+        """순서도 면도 맞았다 — 두 조건이 각각 다른 결정에서 왔다.
 
-        처음에 이 술어를 순서만으로 썼다. 날은 유리면(아래)에 서고 벨트는
-        백시트면(위)을 지나간다 — 면을 안 본 것이 틀린 자리였다.
+        처음에 이 술어를 순서만으로 썼다. 날이 유리면(아래)에 서고 벨트는
+        백시트면(위)을 지나가 **순서가 맞는데도 안 닫혀 있었다.** 날 두 장이
+        그것을 닫았다.
         """
         self.assertTrue(br_abrade.the_scraper_comes_first())
-        self.assertFalse(br_abrade.the_sealant_is_gone_before_the_belt())
-        self.assertTrue(sg_grind.the_back_face_band_has_no_tool())
+        self.assertFalse(sg_grind.the_back_face_band_has_no_tool())
+        self.assertTrue(br_abrade.the_sealant_is_gone_before_the_belt())
 
     def test_the_predicate_needs_both_conditions(self):
         """두 조건의 곱이어야 한다 — 하나만 읽으면 다시 같은 오독이 된다."""
@@ -543,7 +544,12 @@ class TestTheOrderIsSealantThenGrindThenGlass(unittest.TestCase):
         self.assertGreater(br_abrade.sealant_step_vs_platen_follow(), 1.0)
         text = " ".join(br_abrade.the_order_is_necessary_but_not_sufficient())
         self.assertIn("이 유닛 안에서 고칠 수 있는 값이 아니다", text)
-        self.assertIn("공구 배치", text)
+
+    def test_the_two_conditions_stay_separate_after_both_hold(self):
+        """둘 다 참이 된 뒤에도 곱으로 남아야 한다 — 안 그러면 오독이 돌아온다."""
+        text = " ".join(br_abrade.the_order_is_necessary_but_not_sufficient())
+        self.assertIn("두 조건을 곱으로 둔다", text)
+        self.assertIn("순서가 맞는데도 안 닫혀 있었다", text)
 
     def test_the_reverse_order_is_blocked_on_both_sides(self):
         """양쪽이 막혀 있다 — 한쪽만 들면 근거가 반쪽이다."""
@@ -573,19 +579,19 @@ class TestTheOrderIsSealantThenGrindThenGlass(unittest.TestCase):
         self.assertIn("살아 있는 결함이 아니다", doc)
         self.assertIn("그 걸음을 빼면 이 수들이 그대로 돌아온다", doc)
 
-    def test_the_carrier_is_decided_and_the_faces_are_not(self):
-        """거처는 답이 왔고 면은 안 왔다 — 둘을 갈라 적는다."""
+    def test_what_is_decided_and_what_is_left_are_separated(self):
+        """거처도 면도 답이 왔고, 그 자리에 붙잡는 힘이 들어왔다."""
         text = " ".join(br_abrade.what_this_order_leaves_open())
         self.assertIn("거처는 정해졌다", text)
         self.assertIn("sg_grind.the_own_carrier_frees_the_feed", text)
-        self.assertIn("sg_grind.the_faces_do_not_add_up", text)
-        self.assertIn("추측해서 고르지 않는다", text)
+        self.assertIn("판을 무엇이 붙잡는가", text)
+        self.assertIn("sg_grind.the_shoes_oppose_each_other", text)
 
-    def test_the_three_step_record_names_the_face_gap(self):
-        """세 걸음 기록이 「①이 ②의 면을 아직 안 걷는다」를 들어야 한다."""
+    def test_the_three_step_record_says_the_face_is_covered(self):
+        """세 걸음 기록이 「①이 ②의 면도 걷는다」를 들어야 한다."""
         text = " ".join(br_abrade.the_order_is_sealant_then_grind_then_glass())
-        self.assertIn("아직 안 걷는다", text)
-        self.assertIn("공구 배치", text)
+        self.assertIn("면도 걷는다", text)
+        self.assertIn("두 장", text)
 
     def test_the_two_step_record_points_at_the_three_step_one(self):
         """옛 두 걸음 기록이 세 걸음을 가리켜야 한다 — 안 그러면 오독한다."""

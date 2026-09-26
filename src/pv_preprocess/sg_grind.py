@@ -508,10 +508,12 @@ def what_the_absent_arris_leaves_open() -> tuple[tuple[str, str], ...]:
          f"{feed_that_fits_the_slack_mm_s():.0f} mm/s(직렬) 또는 "
          f"{feed_that_fits_the_slack_mm_s(True):.0f} mm/s(SG 배치)가 필요하고, "
          "동력은 어느 쪽도 문제가 아니다."),
-        ("날이 몇 면을 긁는가",
-         f"지금 {BLADE_FACES} 면이고 잔사는 {RESIDUE_FACES} 면이다. 캐리어가 "
-         "따로 서면 어느 면으로 들어갈지 자유로워지지만, 날을 두 장으로 할지 "
-         "한 장으로 두 번 갈지는 안 들었다 — `the_faces_do_not_add_up()`."),
+        ("판을 무엇이 붙잡는가",
+         f"두 날이 마주 보아 법선은 상쇄되지만(알짜 "
+         f"{normal_net_on_panel_n():.0f} N) 접선은 더해져 "
+         f"**{tangential_total_n()} N** 이 주행 방향으로 걸린다. 한 장일 때의 "
+         f"{scrape_total_force_n()} N 에서 두 배다. 이것을 반출롤러 마찰이 "
+         "받는지 그리퍼가 받는지 안 들었다 — `the_shoes_oppose_each_other()`."),
         ("SG-301 이 남는가",
          "엣지 연마의 목적이 아리스였다면 목적이 없어진다. 남는 후보는 끝면 "
          f"살 {STOCK_MM} mm 뿐이고 그것은 단면의 "
@@ -784,11 +786,16 @@ def open_questions() -> tuple[tuple[str, str], ...]:
     if the_back_face_band_has_no_tool():
         out.append((
             "백시트면 띠를 걷을 공구가 없다",
-            f"날이 {BLADE_FACES} 면(유리면)에 서는데 잔사는 {RESIDUE_FACES} 면에 "
+            f"날이 {BLADE_FACES} 면에 서는데 잔사는 {RESIDUE_FACES} 면에 "
             f"남는다 — 한 장에 "
             f"{sealant_volume_per_panel_mm3(faces=1):,.0f} mm³ 가 공구 없이 "
             "남고 그 면이 BR-305 의 벨트가 지나가는 면이다. "
-            "`the_faces_do_not_add_up()`."))
+            "`how_the_faces_were_made_to_add_up()`."))
+    if BLADE_FACES >= 2 and not BLADES_ARE_OPPOSED:
+        out.append((
+            "두 날이 마주 보지 않는다",
+            f"압착 {SHOE_SPRING_N:.0f} N 이 상쇄가 아니라 우력이 되어 판을 "
+            "비튼다. 요크 한 몸으로 같은 자리에서 잡아야 한다."))
     if the_carrier_is_its_own() and not scraper_fits_the_slack():
         out.append((
             "자기 캐리어의 통과가 여유에 안 들어간다",
@@ -909,8 +916,68 @@ def shoe_friction_n() -> float:
 
 
 def scrape_total_force_n() -> float:
-    """이송 방향으로 필요한 힘 (N) — 계면 + 슈 마찰."""
+    """**한 날**이 이송 방향으로 내야 하는 힘 (N) — 계면 + 슈 마찰.
+
+    날이 두 장이므로 캐리어가 끌어야 하는 것은 이 값이 아니라
+    `tangential_total_n()` 이다. 이 함수와 `scrape_power_w()` 는 **한 면 기준**
+    으로 남겨 둔다 — 갈아내는 쪽(`abrade_power_w()`)도 한 면 값이라 그래야
+    `scrape_beats_abrade_by()` 의 비교가 같은 것끼리의 비교로 선다.
+    """
     return round(scrape_force_n() + shoe_friction_n(), 2)
+
+
+# ── 두 날 — 법선은 상쇄되고 접선은 더해진다 ─────────────────────────────
+#: 두 날이 판을 사이에 두고 **같은 자리에서 마주 보는가** — 발주처가 「양면
+#: 동시」로 정했으므로 참이다. 이 값이 법선력의 상쇄를 켜고 끈다.
+#:
+#: 조건은 **같은 자리**다. 주행 방향으로 어긋나 있으면 두 압착력이 상쇄가
+#: 아니라 **우력**이 되어 판을 비튼다. 요크(C 형) 한 몸으로 잡아야 성립한다.
+BLADES_ARE_OPPOSED = True
+
+
+def tangential_total_n() -> float:
+    """캐리어가 끌어야 하는 이송 방향 힘 (N) — 날 수만큼 **더해진다.**
+
+    두 날이 같은 방향으로 가므로 각자의 계면력과 슈 마찰이 같은 쪽으로 걸린다.
+    마주 본다고 상쇄되는 것은 법선이지 접선이 아니다.
+    """
+    return round(scrape_total_force_n() * BLADE_FACES, 2)
+
+
+def normal_net_on_panel_n() -> float:
+    """판이 실제로 받는 알짜 압착력 (N) — 마주 보면 0 이다.
+
+    한 장일 때는 슈가 한쪽에서 누르고 그 반력을 반출롤러가 받아야 했다.
+    두 장이 마주 보면 두 힘이 판 안에서 닫혀 **바깥으로 나가지 않는다.**
+    """
+    return 0.0 if (BLADES_ARE_OPPOSED and BLADE_FACES >= 2) else float(SHOE_SPRING_N)
+
+
+def clamp_force_n() -> float:
+    """마주 보는 두 슈가 판을 무는 힘 (N) — 한쪽 압착력 그대로다."""
+    return float(SHOE_SPRING_N) if (BLADES_ARE_OPPOSED and BLADE_FACES >= 2) else 0.0
+
+
+def the_shoes_oppose_each_other() -> tuple[str, ...]:
+    """두 장으로 가면서 힘이 어떻게 갈리는가 — 한쪽은 닫히고 한쪽은 는다."""
+    return (
+        f"**법선은 상쇄된다.** 한 장일 때 슈 압착 {SHOE_SPRING_N:.0f} N 의 반력을 "
+        f"판 반대쪽이 받아야 했다. 마주 보면 판이 받는 알짜가 "
+        f"{normal_net_on_panel_n():.0f} N 이고, 대신 {clamp_force_n():.0f} N 으로 "
+        "**무는** 상태가 된다 — 힘이 판 안에서 닫힌다.",
+        f"**접선은 더해진다.** 두 날이 같은 방향으로 가므로 "
+        f"{scrape_total_force_n()} N 씩 같은 쪽으로 걸려 "
+        f"**{tangential_total_n()} N** 이다. 이것은 판을 잡는 쪽이 받아야 한다 — "
+        "마주 본다고 없어지지 않는다.",
+        f"**면 허용은 한쪽씩 본다.** 슈 하나가 주는 접촉압 "
+        f"{shoe_pressure_mpa()} MPa 와 압착 {SHOE_SPRING_N:.0f} N 은 그대로이고 "
+        f"허용 {safe_face_force_n():.0f} N 안에 있다 "
+        f"(`shoe_is_gentle_enough()` = {shoe_is_gentle_enough()}). 두 장이라고 "
+        "한 면이 두 배로 눌리는 것이 아니다.",
+        "**성립 조건은 같은 자리다.** 주행 방향으로 어긋나면 상쇄가 아니라 "
+        "**우력**이 되어 판을 비튼다 — 요크 한 몸으로 잡아야 한다. "
+        f"`BLADES_ARE_OPPOSED` = {BLADES_ARE_OPPOSED} 가 그 전제다.",
+    )
 
 
 def scrape_power_w(feed_mm_s: float) -> float:
@@ -1034,29 +1101,70 @@ def occupancy_without_scraper_s() -> float:
 #   아니라는 것**이고, 안 되는 것은 **캐리지가 얼마나 빠른가**와 **몇 면을
 #   긁는가**다. 뒤 둘은 여기서 지어내지 않는다.
 
-#: 날이 긁는 면의 수 — 도면에 날이 **한 장**이고 한쪽 면에만 선다.
-#: `sealant_volume_per_panel_mm3()` 가 세는 양은 **두 면**이다. 이 둘이 안 맞는
-#: 것이 아래 `the_back_face_band_has_no_tool()` 의 내용이다.
-BLADE_FACES = 1
+#: 날이 긁는 면의 수 — 발주처 결정으로 **두 장, 양면 동시**다.
+#:
+#: 한때 한 장이었고 유리면(아래)에만 섰다. 반출롤러가 변에서 물러나 그 자리를
+#: 아래에 내주기 때문이었는데, 정작 BR-305 의 벨트가 지나가는 것은 백시트면
+#: (위)이라 잔사 절반이 공구 없이 남았다. 캐리어가 따로 서면서 어느 면으로
+#: 들어갈지가 자유로워졌고, 발주처가 두 장으로 정했다.
+#:
+#: **동시**라는 것이 시간과 힘을 가른다 — 두 날이 한 캐리어에 실려 같이 도니
+#: 주행은 한 바퀴 그대로이고(`the_second_blade_costs_no_time()`), 법선력은
+#: 마주 보아 상쇄되며 접선력만 더해진다(`the_shoes_oppose_each_other()`).
+BLADE_FACES = 2
 #: 실란트가 남는 면의 수 — 인발이 양쪽 슬롯 립을 다 남긴다.
 RESIDUE_FACES = 2
 
 
+def scraper_travel_mm() -> float:
+    """캐리어가 **주행하는** 거리 (mm) — 둘레 한 바퀴. 날 수와 무관하다.
+
+    두 날이 같은 캐리어에 마주 보고 실리므로 한 바퀴에 두 면이 다 걷힌다.
+    시간을 정하는 것은 이쪽이지 아래 `scraper_path_mm()` 이 아니다.
+    """
+    return round(2.0 * (float(campaign.PANEL_LENGTH_MM)
+                        + float(campaign.PANEL_WIDTH_MM)), 1)
+
+
 def scraper_path_mm(faces: int = BLADE_FACES) -> float:
-    """날이 긁어야 하는 경로 길이 (mm) — 띠가 둘레를 도니 한 면에 둘레 하나다.
+    """날이 **긁는** 길이 합 (mm) — 면마다 둘레 하나다.
 
     날 폭 `BLADE_WIDTH_MM` 이 띠 폭보다 넓으므로 한 변에 통과 한 번이면 된다
     (`the_blade_already_covers_the_wider_requirement()`).
+
+    **이것은 주행 거리가 아니다.** 두 날이 동시에 가므로 주행은
+    `scraper_travel_mm()` 한 바퀴뿐이다. 이 값이 재는 것은 걷히는 양이고,
+    부스러기 회수함과 날 수명이 이쪽에 걸린다.
     """
-    perimeter = 2.0 * (float(campaign.PANEL_LENGTH_MM) + float(campaign.PANEL_WIDTH_MM))
-    return round(perimeter * faces, 1)
+    return round(scraper_travel_mm() * faces, 1)
+
+
+def travel_if_one_blade_did_both_faces_mm() -> float:
+    """한 장으로 두 면을 **차례로** 걷는다면 주행했을 거리 (mm) — 두 바퀴."""
+    return round(scraper_travel_mm() * RESIDUE_FACES, 1)
+
+
+def the_second_blade_costs_no_time() -> bool:
+    """날을 늘려도 주행이 안 느는가 — 「동시」라는 말의 값이 이것이다.
+
+    한 장으로 두 면을 하려면 두 바퀴다. 두 장이 마주 보고 같이 돌면 한 바퀴다.
+    날이 하나 늘어난 값으로 **주행 한 바퀴**를 산다.
+    """
+    return scraper_travel_mm() < travel_if_one_blade_did_both_faces_mm()
+
+
+def time_the_second_blade_saves_s(feed_mm_s: float) -> float:
+    """두 번째 날이 아껴 주는 시간 (s) — 한 바퀴 몫."""
+    saved = travel_if_one_blade_did_both_faces_mm() - scraper_travel_mm()
+    return round(saved / feed_mm_s, 2)
 
 
 def scraper_serial_time_s(feed_mm_s: float) -> float:
-    """한 날이 네 변을 **차례로** 갈 때의 시간 (s) — 상한이다.
+    """캐리어가 네 변을 **차례로** 돌 때의 시간 (s) — 상한이다.
 
-    장변은 장변 이송, 단변은 횡행 이송으로 간다고 보고 센다. 병렬이 하나도
-    없는 경우라 실제는 이보다 짧다.
+    **주행 거리에서 나온다**(`scraper_travel_mm()`) — 날이 몇 장인지는 안
+    들어간다. 두 날이 마주 보고 같이 가므로 면을 늘려도 이 값이 안 변한다.
+    변끼리의 병렬이 하나도 없는 경우라 실제는 이보다 짧다.
     """
     long_t = 2.0 * float(campaign.PANEL_LENGTH_MM) / feed_mm_s
     short_t = 2.0 * float(campaign.PANEL_WIDTH_MM) / feed_mm_s
@@ -1075,8 +1183,12 @@ def scraper_time_like_sg_heads_s(feed_mm_s: float) -> float:
 
 
 def scraper_power_at_w(feed_mm_s: float) -> float:
-    """그 이송에서 긁는 데 드는 동력 (W) — 힘 × 속도."""
-    return round(scrape_total_force_n() * feed_mm_s / 1_000.0, 1)
+    """그 이송에서 **캐리어**가 내야 하는 동력 (W) — 합력 × 속도.
+
+    날 수만큼 더해진 `tangential_total_n()` 을 쓴다. 한 면 기준은
+    `scrape_power_w()` 쪽이다.
+    """
+    return round(tangential_total_n() * feed_mm_s / 1_000.0, 1)
 
 
 def feed_that_fits_the_slack_mm_s(like_sg_heads: bool = False) -> float:
@@ -1150,23 +1262,30 @@ def the_back_face_band_has_no_tool() -> bool:
     return BLADE_FACES < RESIDUE_FACES
 
 
-def the_faces_do_not_add_up() -> tuple[str, ...]:
-    """면 수가 안 맞는다는 것을 값으로 — 얼마가 공구 없이 남는가."""
+def how_the_faces_were_made_to_add_up() -> tuple[str, ...]:
+    """면 수가 안 맞던 것이 어떻게 맞춰졌는가 — 문제와 답을 같이 남긴다.
+
+    지우지 않고 적어 두는 이유는 값이 거기서 나오기 때문이다. 왜 두 장인지는
+    「한 장이면 절반이 공구 없이 남는다」는 사실이 근거다.
+    """
     one = sealant_volume_per_panel_mm3(faces=1)
     both = sealant_volume_per_panel_mm3(faces=RESIDUE_FACES)
     return (
-        f"**날은 {BLADE_FACES} 면, 잔사는 {RESIDUE_FACES} 면** — "
+        f"**한때 날이 1 면(유리면)이고 잔사는 {RESIDUE_FACES} 면이었다.** "
+        f"한 면 {one:,.0f} mm³ 가 걷히고 {both - one:,.0f} mm³ 가 남았는데, "
+        "남는 쪽이 하필 **BR-305 의 벨트가 지나가는 백시트면**이었다.",
+        f"**걷히는 쪽이 유리면이었던 이유는 기구다** — 반출롤러가 변에서 "
+        f"{EDGE_OVERHANG_MM:.0f} mm 물러나 아래에서 날이 들어갈 자리를 냈다. "
+        "위 면은 그 자리를 안 만들어 줬고, 휠 헤드에 동승하는 한 그쪽을 "
+        "따라갈 수밖에 없었다.",
+        f"**자기 캐리어가 그것을 풀었고 발주처가 두 장으로 정했다** — "
+        f"`BLADE_FACES` = {BLADE_FACES}, "
         f"`the_back_face_band_has_no_tool()` = "
-        f"{the_back_face_band_has_no_tool()}.",
-        f"**한 면 {one:,.0f} mm³ 가 걷히고 {both - one:,.0f} mm³ 가 남는다** "
-        f"(전체 {both:,.0f}). 남는 쪽이 백시트면이고 그것이 BR-305 의 벨트가 "
-        "지나가는 면이다.",
-        f"**걷히는 쪽이 유리면인 이유는 기구다** — 반출롤러가 변에서 "
-        f"{EDGE_OVERHANG_MM:.0f} mm 물러나 아래에서 날이 들어갈 자리를 낸다. "
-        "위 면은 그 자리를 안 만들어 줬다.",
-        "**자기 캐리어가 이것을 고칠 기회다** — 헤드 동승에서는 휠이 있는 쪽을 "
-        "따라가야 했지만, 캐리어가 따로 서면 어느 면으로 들어갈지 자유롭다. "
-        "날을 두 장으로 할지 한 장으로 두 번 갈지는 **안 들었다.**",
+        f"{the_back_face_band_has_no_tool()}. 이제 한 장에 {both:,.0f} mm³ 가 "
+        "다 걷힌다.",
+        f"**시간이 안 늘었다** — 두 날이 마주 보고 같이 도니 주행은 한 바퀴 "
+        f"{scraper_travel_mm():,.0f} mm 그대로다. 한 장으로 두 면을 하려면 "
+        f"{travel_if_one_blade_did_both_faces_mm():,.0f} mm 였다.",
     )
 
 
@@ -1913,6 +2032,8 @@ def scraper_unit() -> Unit:
     # 날과 휠이 원점을 사이에 두고 서게 자리를 옮긴다 — 리드가 이 유닛의
     # 주제이므로 그 간격이 화면 한가운데 와야 한다.
     hx = lead / 2.0
+    # 라미네이트 중립면 (y) — 아래쪽 세트를 이 면에 대해 거울상으로 놓는다.
+    mid = -STACK_T_MM / 2 - 8.0
     parts = (
         Part("srarm", "스크레이퍼 아암 (컴플라이언스)", 1, "box", (260.0, 90.0, 150.0),
              (hx, 168.0, 0.0), "S355 / 평행 링크",
@@ -1966,6 +2087,64 @@ def scraper_unit() -> Unit:
              spec=f"{SEALANT_BAND_MM:.0f} × {sealant_left_t_mm()} · 표시 두께 "
                   f"{BAND_DISPLAY_MAG:.0f} 배",
              catalog="—"),
+        # ── 아래쪽 세트 — 라미네이트 중립면(y = mid)에 대한 거울상 ──────
+        Part("srarm2", "스크레이퍼 아암 · 아래", 1, "box", (260.0, 90.0, 150.0),
+             (hx, 2 * mid - 168.0, 0.0), "S355 / 평행 링크",
+             role=f"위 아암과 **같은 자리에서 마주 본다.** 그래야 압착 "
+                  f"{SHOE_SPRING_N:.0f} N 이 판 안에서 닫혀 알짜가 "
+                  f"{normal_net_on_panel_n():.0f} N 이 된다 — 주행 방향으로 "
+                  "어긋나면 우력이 되어 판을 비튼다. 요크 한 몸이어야 하는 "
+                  "이유가 이것이다.",
+             color="frame", explode=(0, -200, 0),
+             spec=f"평행 링크 · 스프링 {SHOE_SPRING_N:.0f} N · 위와 대향",
+             catalog="SR-302"),
+        Part("srspr2", "압착 스프링 · 아래", 1, "cyl", (34.0, 90.0, 34.0),
+             (hx, 2 * mid - 92.0, 0.0), "SUS 압축 스프링", axis="y",
+             role=f"위 스프링과 같은 {SHOE_SPRING_N:.0f} N 이다. 두 배로 "
+                  f"누르는 것이 아니라 **무는** 것이라 한 면이 받는 압착은 "
+                  f"그대로 {SHOE_SPRING_N:.0f} N 이고 허용 "
+                  f"{safe_face_force_n():.0f} N 안에 있다.",
+             color="chrome", explode=(0, -150, 0),
+             spec=f"{SHOE_SPRING_N:.0f} N · 무는 힘 {clamp_force_n():.0f} N",
+             catalog="SR-302"),
+        Part("srshoe2", "기준 슈 · 아래", 1, "box",
+             (SHOE_LEN_MM, 12.0, BLADE_WIDTH_MM), (hx + 18.0, 2 * mid - 8.0, 0.0),
+             "PEEK",
+             role="아래 면에 얹혀 그쪽 깊이를 잡는다. 두 슈가 판을 물면 "
+                  "깊이 기준이 **판 두께 그 자체**가 되어 한쪽 면의 흔들림이 "
+                  "반대쪽 깊이로 안 넘어간다.",
+             color="aluminum", explode=(0, 120, 0),
+             spec=f"{SHOE_LEN_MM:.0f} × {BLADE_WIDTH_MM:.0f} · 남는 오차 "
+                  f"{blade_assembly_tol_mm()} mm", catalog="SR-302"),
+        Part("srbld2", "PEEK 스크레이퍼 날 · 아래", 1, "box",
+             (16.0, 22.0, BLADE_WIDTH_MM), (hx - 40.0, 2 * mid - 2.0, 0.0),
+             BLADE_MATERIAL,
+             role=f"반대 면 띠를 **같은 바퀴에** 걷는다. 계면력은 위와 같은 "
+                  f"{scrape_force_n():.0f} N 인데 **같은 방향**이라 접선은 "
+                  f"더해져 캐리어가 끄는 힘이 {tangential_total_n()} N 이다.",
+             color="orange", explode=(-140, 60, 0),
+             spec=f"폭 {BLADE_WIDTH_MM:.0f} · 경사 {BLADE_RAKE_DEG:.0f}° · 날끝 R"
+                  f"{BLADE_EDGE_R_MM}", catalog="SR-302"),
+        Part("srchip2", "부스러기 슈트 · 아래", 1, "box", (90.0, 120.0, 90.0),
+             (hx - 78.0, 2 * mid - 66.0, 0.0), "SUS304 t1.5",
+             role=f"아래 면 부스러기를 받는다. 두 슈트가 한 장에서 받는 양이 "
+                  f"{sealant_volume_per_panel_mm3():,.0f} mm³ — 한 장일 때의 "
+                  "두 배라 회수함 용량도 두 배다.",
+             color="dark", explode=(-90, -140, 0),
+             spec="고체 회수 · 집진 미연결", catalog="SR-302"),
+        Part("srband2", "걷어내는 실란트 띠 · 백시트면", 1, "box",
+             (300.0, sealant_left_t_mm() * BAND_DISPLAY_MAG, SEALANT_BAND_MM),
+             (hx + 250.0, 2 * mid + sealant_left_t_mm() * BAND_DISPLAY_MAG / 2, 0.0),
+             "실란트 잔사",
+             role=f"반대 면에도 같은 폭으로 남는다. **이쪽이 BR-305 의 벨트가 "
+                  f"지나가는 면**이라 여기를 안 걷으면 띠가 백시트보다 "
+                  f"{sealant_left_t_mm() - BACKSHEET_T_MM:.2f} mm 솟은 채로 "
+                  f"벨트를 맞는다. (두께는 보이라고 {BAND_DISPLAY_MAG:.0f} 배로 "
+                  "그렸다)",
+             color="rubber", explode=(180, 140, 0),
+             spec=f"{SEALANT_BAND_MM:.0f} × {sealant_left_t_mm()} · 표시 두께 "
+                  f"{BAND_DISPLAY_MAG:.0f} 배",
+             catalog="—"),
         Part("srwhl", "다이아몬드 형상휠 (같은 캐리지였을 때)", 1, "cyl",
              (WHEEL_D_MM, WHEEL_W_MM, WHEEL_D_MM), (-hx, -6.5, 0.0),
              f"메탈본드 D{GRIT_UM:.0f}", axis="y",
@@ -1990,9 +2169,9 @@ def scraper_unit() -> Unit:
              spec=f"적층 {STACK_T_MM} · 내밀림 {EDGE_OVERHANG_MM:.0f}", catalog="—"),
     )
     return Unit(
-        key="scraper", name="SR-302 잔사 스크레이퍼 (자기 캐리어)",
+        key="scraper", name="SR-302 잔사 스크레이퍼 (자기 캐리어 · 양면 동시)",
         sheet="PV-SR-302-ASM-5501",
-        envelope_mm=(900.0, 300.0, 300.0), view_r_mm=520.0,
+        envelope_mm=(900.0, 500.0, 300.0), view_r_mm=560.0,
         principle=(
             ("① 왜 필요한가", f"프레임이 남기고 간 실란트 띠가 면을 "
                           f"{SEALANT_BAND_MM:.0f} mm 덮고 두께가 {sealant_left_t_mm()} mm 다. "
@@ -2076,6 +2255,11 @@ def summary() -> dict[str, object]:
         "feedToFitSlackMmS": feed_that_fits_the_slack_mm_s(),
         "scraperFitsTheSlack": scraper_fits_the_slack(),
         "backFaceBandHasNoTool": the_back_face_band_has_no_tool(),
+        "bladeFaces": BLADE_FACES,
+        "scraperTravelMm": scraper_travel_mm(),
+        "tangentialTotalN": tangential_total_n(),
+        "normalNetOnPanelN": normal_net_on_panel_n(),
+        "clampForceN": clamp_force_n(),
         "normalForceN": normal_force_n(lf),
         "contactPressureMpa": contact_pressure_mpa(lf),
         "reliefCoversTolerance": relief_covers_tolerance(),
