@@ -144,7 +144,9 @@ def spec_payload() -> str:
             ["영역", f"h_eq / d_c = **{g.brittleness_ratio(lf):.0f} 배** → **취성**. "
                   "유리는 흐르지 않고 깨져서 떨어진다"],
             ["아리스", f"{g.ARRIS_MM} mm × {g.ARRIS_DEG:.0f}° × {g.ARRIS_COUNT} 곳 — "
-                    f"파단면의 균열 끝을 모서리에서 치운다"],
+                    f"파단면의 균열 끝을 모서리에서 치운다. 다만 **공정 요구는 "
+                    f"없다** (발주처 확인) — 이 모따기는 「갈면 따라오는 것」이고 "
+                    f"갈 **이유**는 아니다"],
             ["홈 도피 / 높이 공차", f"도피 {g.GROOVE_RELIEF_MM} > 공차 "
                              f"±{g.HEIGHT_TOL_MM} mm · 최악 EVA 스침 "
                              f"{g.eva_skim_mm()} mm"],

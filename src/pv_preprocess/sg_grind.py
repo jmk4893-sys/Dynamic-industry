@@ -129,6 +129,17 @@ SEALANT_RETAINED = 0.5
 ARRIS_MM = 0.5
 ARRIS_DEG = 45.0
 ARRIS_COUNT = 1
+#: 공정이 아리스를 **요구하는가** — 발주처 확인 결과 거짓이다.
+#:
+#: 위 세 수는 아리스를 **어떻게** 만드는가이고 이것은 **왜** 만드는가다. 후보로
+#: 셋을 들었고 셋 다 아니라고 돌아왔다 — ① 취급 안전 · ② 파편 억제 ·
+#: ③ 하류 유리 제거(GRM-401)가 날카로운 변을 싫어한다. 받은 값이고 내가 정한
+#: 것이 아니다.
+#:
+#: `arris_is_required()` 와 섞지 않는다. 그쪽은 **「간다면 필수」**(칩두께가
+#: 연성한계를 넘으니 파단면이 서고, 파단면이면 모서리를 죽여야 한다)이고
+#: 이쪽은 **「갈 이유」** 다. 앞의 것은 조건문의 귀결, 뒤의 것은 전건이다.
+ARRIS_REQUIRED_BY_PLANT = False
 #: 변 끝면에서 걷어내는 살 (mm) — 프레임 인발이 남긴 잔사와 미세 파단면.
 STOCK_MM = 0.03
 
@@ -344,6 +355,117 @@ def is_brittle(feed_mm_s: float) -> bool:
 def arris_is_required() -> bool:
     """아리스가 선택이 아니라 필수인가 — 취성 파단면이면 모서리를 죽여야 한다."""
     return is_brittle(long_feed_mm_s())
+
+
+# ── 공정은 아리스를 요구하지 않는다 — 물리 주장과 다른 명제다 ───────────
+def the_arris_has_no_requirement() -> tuple[str, ...]:
+    """위 판정이 판정한 것이 무엇이었는지 — 공정 요구가 아니었다.
+
+    `arris_is_required()` 는 공정을 읽지 않는다. 읽는 것은 통과속도 하나이고,
+    그 속도의 칩두께가 연성한계의 몇 배인가만 본다. 그래서 그것이 참인 것은
+    **「갈면 파단면이 나오니 모서리를 죽여야 한다」** 이다 — 가는 것을 전제한
+    필수, 즉 자기참조다.
+
+    전제가 빠지면 결론이 뒤집히는 것이 아니라 **물음이 사라진다.** 그러니
+    여기서 `arris_is_required()` 를 거짓으로 바꾸지 않는다. 물리는 그대로다 —
+    300 mm/s 로 유리를 갈면 면은 여전히 파단면이다. 바뀐 것은 **갈 이유**다.
+    """
+    lf = long_feed_mm_s()
+    return (
+        f"물리 주장 · `arris_is_required()` = {arris_is_required()} — 칩두께 "
+        f"{chip_thickness_mm(lf) * 1_000:.3f} µm 가 연성한계 "
+        f"{ductile_limit_mm() * 1_000:.4f} µm 의 {brittleness_ratio(lf)} 배다. "
+        "**간다면** 파단면이고, 파단면이면 모서리를 죽여야 한다.",
+        f"공정 요구 · `ARRIS_REQUIRED_BY_PLANT` = {ARRIS_REQUIRED_BY_PLANT} — "
+        "후보 셋(취급 안전 · 파편 억제 · 하류 유리 제거)이 다 아니라고 돌아왔다.",
+        "두 명제는 독립이다. 앞은 조건문의 귀결이고 뒤는 그 조건문을 부를 "
+        "이유다. 이유가 없으면 귀결이 거짓이 되는 게 아니라 **전건이 안 선다** — "
+        "엣지 연마를 할 까닭이 없어진다.",
+        "그래서 이 함수는 판정을 안 내린다. SG-301 이 남는가는 발주처가 "
+        "정할 일이고, 여기 적는 것은 그 결정이 무엇을 건드리는지다.",
+    )
+
+
+def what_the_absent_arris_releases() -> tuple[tuple[str, str], ...]:
+    """아리스를 안 만든다면 이 모듈의 무엇이 풀리는가 — 값으로 센다.
+
+    아리스는 이 모듈에서 가장 많은 것을 정한 형상이다. 단면적의 절반 이상이고,
+    통과속도의 상한이고, 휠 어깨가 있는 이유이고, 실란트와 부딪치는 이유다.
+    그것이 빠지면 네 가지가 같이 풀린다.
+    """
+    lf = long_feed_mm_s()
+    stock_only = round(STOCK_MM * GLASS_T_MM, 6)
+    return (
+        ("제거 단면이 절반 이하로 줄어든다",
+         f"{removal_area_mm2()} mm² 중 {arris_share() * 100:.0f} % 가 아리스 "
+         f"삼각형이다. 끝면 살만 남기면 {stock_only} mm² — "
+         f"{removal_area_mm2() / stock_only:.1f} 분의 1 이다."),
+        ("통과속도를 스핀들이 안 정한다",
+         f"지금 300 mm/s 는 스핀들이 정한 값이다 — 이용률 "
+         f"{utilisation(lf) * 100:.1f} %, 여유 {feed_margin() * 100:.1f} %. "
+         f"단면이 줄면 같은 정격이 {round(max_feed_mm_s() * removal_area_mm2() / stock_only):,.0f} "
+         f"mm/s 까지 내주고 이용률은 {utilisation(lf) * stock_only / removal_area_mm2() * 100:.0f} % "
+         "로 떨어진다. 그러면 속도를 정하는 것은 컨베이어다."),
+        ("휠 어깨가 있을 이유가 없어진다",
+         f"45° 어깨 한 곳은 아리스를 만드는 면이다 (`ARRIS_COUNT` = {ARRIS_COUNT}). "
+         "반대쪽을 안 죽인 것도 그쪽이 EVA 와 만나기 때문이었다. 아리스가 없으면 "
+         "홈은 그냥 평행 슬롯이고, 높이 공차가 형상을 좌우하지 않는다."),
+        ("실란트와의 「둘 다는 안 된다」가 사라진다",
+         f"`wheel_can_reach_the_glass_edge()` 가 거짓인 이유는 **어깨가 유리 "
+         f"모서리에 닿아야 아리스가 생긴다**는 것이었다. 그 어깨가 면 위로 "
+         f"{flange_reach_mm()} mm 걸쳐 나오고 그 구간이 통째로 띠 "
+         f"{SEALANT_BAND_MM:.0f} mm 안이라 부딪쳤다. 닿을 필요가 없어지면 "
+         f"여유를 실란트보다 벌려도 잃을 것이 없다 — `sealant_must_go_first_mm()` "
+         f"의 {sealant_must_go_first_mm()} mm 가 근거를 잃는다."),
+        ("끝면 살 0.03 mm 는 **같이 풀리지 않는다**",
+         f"`STOCK_MM` = {STOCK_MM} 의 근거는 아리스가 아니라 프레임 인발이 남긴 "
+         "잔사와 미세 파단면이다. 그것을 걷을 필요가 있는지는 별개의 물음이고 "
+         "발주처가 아니라고 한 셋에 들어 있지 않았다. 여기서 같이 지우지 않는다."),
+    )
+
+
+def the_scrapers_reason_was_the_wheel() -> tuple[str, ...]:
+    """SR-302 의 근거가 이 모듈에 무엇으로 적혀 있었는가 — 휠이었다.
+
+    아리스가 빠지면 휠이 빠지고, 휠이 빠지면 이 두 문장이 같이 빠진다. 그것을
+    발견이라고 적어 둔다 — 스크레이퍼를 지우자는 뜻이 아니라, **적혀 있던
+    근거가 그것뿐이었다**는 뜻이다.
+    """
+    return (
+        "`sealant_must_go_first_mm()` — 「휠이 들어가려면 띠에서 최소한 "
+        "걷어내야 하는 폭」.",
+        "`scraper_unit()` — 「휠보다 앞서 가며 실란트 띠를 걷는다」.",
+        "둘 다 주어가 휠이다. 실란트가 나가야 하는 이유로 이 모듈이 적어 둔 "
+        "것은 **휠의 접근**뿐이었다.",
+        "실란트는 네 관문(유리 · 구리 · EVA · 백시트)에 없고 "
+        "`separation.COMPONENTS` 에 행도 없다. 그러니 부유선별 쪽에서 오는 "
+        "요구도 지금 모델에는 없다.",
+        "그래도 실란트는 나가야 한다 — 근거가 휠에서 **BR-305 의 벨트**로 "
+        "옮겨간다. 그쪽은 `br_abrade.the_belt_meets_silicone_first()` 가 센다 "
+        "(이 모듈은 br_abrade 를 import 할 수 없다 — 그쪽이 이쪽을 읽는다).",
+    )
+
+
+def what_the_absent_arris_leaves_open() -> tuple[tuple[str, str], ...]:
+    """아리스 요구가 없다는 사실이 **열어 놓는** 것 — 내가 답하지 않는다."""
+    return (
+        ("SG-301 이 남는가",
+         "엣지 연마의 목적이 아리스였다면 목적이 없어진다. 남는 후보는 끝면 "
+         f"살 {STOCK_MM} mm 뿐이고 그것은 단면의 "
+         f"{(1 - arris_share()) * 100:.0f} % 다. 이 모듈을 지우는 것은 큰 "
+         "정리다 — DS-01 분진 용량이 `LONG_HEADS` 를 읽고, 계약 동력이 "
+         "스핀들 3 대를 물고, sg-closeup 도면이 이 단면을 그린다. 발주처 "
+         "결정 없이 손대지 않는다."),
+        ("실란트가 어디로 가는가",
+         f"한 장에 {sealant_volume_per_panel_mm3():,.0f} mm³ 로 유리 제거량의 "
+         f"{sealant_ratio_to_glass()} 배인데 `separation` 에 행이 없다. 파쇄로 "
+         "들어가면 뜨는지 가라앉는지가 안 정해져 있다 — 실리콘은 표면에너지가 "
+         "낮아 불소 폴리머처럼 시약 없이 뜰 소지가 있으나, 추측으로 행을 "
+         "만들지 않는다."),
+        ("끝면 살을 걷을 필요가 있는가",
+         "아리스와 별개의 물음이다. 필요하면 형상휠이 아니라 훨씬 작은 "
+         "설비로 되고, 필요 없으면 SG-301 의 마지막 근거도 없어진다."),
+    )
 
 
 # ── 힘 ──────────────────────────────────────────────────────────────────
@@ -596,6 +718,13 @@ def open_questions() -> tuple[tuple[str, str], ...]:
         f"전량이 남으면 띠 두께가 {SEALANT_FACE_T_MM} mm 로 두 배가 되고 긁는 "
         f"힘은 그대로지만(계면 일이라 두께와 무관) 부스러기 부피가 두 배다 — "
         "회수함 용량이 그만큼 든다."))
+    if not ARRIS_REQUIRED_BY_PLANT:
+        out.append((
+            "아리스를 요구하는 공정이 없다",
+            f"공정 요구가 없는데 단면의 {arris_share() * 100:.0f} % 와 통과속도 "
+            f"상한(이용률 {utilisation(long_feed_mm_s()) * 100:.1f} %)을 그것이 "
+            "정하고 있다. SG-301 이 남는가가 먼저 정해져야 이 모듈의 수들이 "
+            "의미를 갖는다 — `what_the_absent_arris_leaves_open()`."))
     if not blade_life_is_known():
         out.append((
             "날 수명이 없다",
@@ -1648,6 +1777,7 @@ def summary() -> dict[str, object]:
         "ductileLimitUm": round(ductile_limit_mm() * 1_000, 5),
         "brittlenessRatio": brittleness_ratio(lf),
         "arrisIsRequired": arris_is_required(),
+        "arrisRequiredByPlant": ARRIS_REQUIRED_BY_PLANT,
         "normalForceN": normal_force_n(lf),
         "contactPressureMpa": contact_pressure_mpa(lf),
         "reliefCoversTolerance": relief_covers_tolerance(),

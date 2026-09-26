@@ -526,6 +526,87 @@ def what_this_order_leaves_open() -> tuple[str, ...]:
     )
 
 
+# ── 실란트 — 근거가 휠에서 이 벨트로 옮겨왔다 ───────────────────────────
+#
+#   SG-301 의 아리스가 공정 요구가 아니라고 확인되면서
+#   (`sg_grind.ARRIS_REQUIRED_BY_PLANT`) 실란트를 먼저 걷어야 하는 근거가
+#   한쪽을 잃었다. SR-302 를 부른 이유로 그 모듈에 적혀 있던 것은
+#   **휠의 접근**뿐이었다. 휠이 없어지면 그 이유도 없어진다.
+#
+#   그런데 실란트는 여전히 나가야 한다 — 이번엔 이 유닛 때문이다. 띠는
+#   라미네이트 **면** 위에 있고, 이 유닛의 벨트가 지나가는 면이 바로 그 면이다.
+
+def sealant_step_over_backsheet_mm() -> float:
+    """실란트 띠가 백시트보다 얼마나 솟아 있는가 (mm) — 벨트가 먼저 만나는 높이."""
+    return round(sg_grind.sealant_left_t_mm() - BACKSHEET_T_MM, 4)
+
+
+def sealant_step_vs_platen_follow() -> float:
+    """그 단차가 정반(플래튼) 추종의 몇 배인가 — 1 을 넘으면 못 따라간다."""
+    return round(sealant_step_over_backsheet_mm() / PLATEN_FOLLOW_MM, 2)
+
+
+def sealant_band_face_area_mm2() -> float:
+    """띠가 한 면에서 덮는 면적 (mm²) — 네 변 둘레 띠, 모서리 겹침을 뺀다."""
+    b = float(sg_grind.SEALANT_BAND_MM)
+    perimeter = 2.0 * (float(campaign.PANEL_LENGTH_MM) + float(campaign.PANEL_WIDTH_MM))
+    return round(perimeter * b - 4.0 * b ** 2, 1)
+
+
+def sealant_band_face_share() -> float:
+    """면에서 띠가 차지하는 몫 — 작다는 것이 안심이 안 되는 이유는 높이다."""
+    return round(sealant_band_face_area_mm2()
+                 / sg_grind.backsheet_face_area_mm2(), 4)
+
+
+def the_belt_meets_silicone_first() -> tuple[str, ...]:
+    """휠이 없어도 실란트가 나가야 하는 이유 — 벨트가 백시트보다 이걸 먼저 만난다.
+
+    이 근거는 아리스와 독립이다. 아리스가 없어도, SG-301 이 없어도 성립한다 —
+    이 유닛의 벨트가 지나가는 면이 띠가 남아 있는 면이기 때문이다.
+    """
+    return (
+        f"**띠가 백시트보다 {sealant_step_over_backsheet_mm()} mm 솟아 있다.** "
+        f"인발 뒤 면에 남는 실란트 {sg_grind.sealant_left_t_mm()} mm 는 백시트 "
+        f"{BACKSHEET_T_MM} mm 의 "
+        f"{sg_grind.sealant_left_t_mm() / BACKSHEET_T_MM:.2f} 배다. 벨트는 "
+        "제일 높은 것을 먼저 만난다 — 백시트가 아니라 실리콘이다.",
+        f"**정반이 그 단차를 못 따라간다.** 추종 {PLATEN_FOLLOW_MM} mm 의 "
+        f"{sealant_step_vs_platen_follow()} 배다. 단차가 목표 절입 "
+        f"{TARGET_DEPTH_MM} mm 의 "
+        f"{sealant_step_over_backsheet_mm() / TARGET_DEPTH_MM * 100:.0f} % 라 "
+        "띠 위에서는 깊이 제어가 성립하지 않는다 — 면 기준이 띠를 기준으로 "
+        "잡히기 때문이다.",
+        f"**면적이 작은 것이 위안이 안 된다.** 띠는 한 면의 "
+        f"{sealant_band_face_share() * 100:.1f} % "
+        f"({sealant_band_face_area_mm2():,.0f} mm²) 뿐이지만 네 변 둘레를 "
+        "따라가므로 모든 통과가 그것을 건넌다. 넓이가 아니라 **높이와 위치**가 "
+        "문제다.",
+        f"**갈아서 걷는 쪽도 비싸다.** 경화 실리콘의 비에너지 "
+        f"{sg_grind.SEALANT_ABRADE_J_MM3} J/mm³ 는 백시트 {ABRADE_J_MM3} J/mm³ 의 "
+        f"{sg_grind.SEALANT_ABRADE_J_MM3 / ABRADE_J_MM3:.0f} 배다. 긁는 쪽이 "
+        f"가는 쪽보다 {sg_grind.scrape_beats_abrade_by():,} 배 싸다는 SG-301 의 "
+        "계산은 그대로 살아 있다 — 바뀐 것은 그 앞에 서는 이유뿐이다.",
+        "그래서 결론은 스크레이퍼를 지우자가 아니라 **근거가 옮겨왔다**다. "
+        "SR-302 를 부르는 것은 휠이 아니라 이 벨트다.",
+    )
+
+
+def the_sealant_has_no_destination() -> tuple[str, ...]:
+    """걷은 실란트가 어디로 가는지 이 모델은 모른다 — 지어내지 않는다."""
+    return (
+        f"한 장에 {sg_grind.sealant_volume_per_panel_mm3():,.0f} mm³ 다 — "
+        f"SG-301 유리 제거량의 {sg_grind.sealant_ratio_to_glass()} 배.",
+        f"네 관문(유리 · 구리 · EVA · 백시트)에 실란트가 없다. "
+        f"`separation.COMPONENTS` 에 행도 없다 — {len(separation.COMPONENTS)} 개 "
+        "성분 어디에도 안 들어 있다.",
+        "긁어낸 부스러기가 고형이라 (`sg_grind.debris_is_solid()`) 회수함으로 "
+        "가면 그만이다. 문제는 **안 걷힌 몫**이 파쇄로 들어갔을 때 부유선별에서 "
+        "뜨는지 가라앉는지다. 실리콘은 표면에너지가 낮아 불소 폴리머처럼 시약 "
+        "없이 뜰 소지가 있으나, 추측으로 행을 만들지 않는다.",
+    )
+
+
 def gate_this_unit_owns() -> str:
     """이 유닛이 맡은 관문 — 넷 중 하나다."""
     return "backsheet"

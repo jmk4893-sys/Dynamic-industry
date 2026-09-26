@@ -440,6 +440,72 @@ class TestItMovesThePolymerRatherThanRemovingIt(unittest.TestCase):
         self.assertGreaterEqual(len(br_abrade.open_questions()), 5)
 
 
+class TestTheBeltMeetsSiliconeFirst(unittest.TestCase):
+    """실란트를 걷어야 하는 근거가 휠에서 이 벨트로 옮겨왔다."""
+
+    def test_the_band_stands_proud_of_the_backsheet(self):
+        """벨트는 제일 높은 것을 먼저 만난다 — 그것이 백시트가 아니다."""
+        self.assertGreater(br_abrade.sealant_step_over_backsheet_mm(), 0.0)
+        self.assertAlmostEqual(
+            br_abrade.sealant_step_over_backsheet_mm(),
+            sg_grind.sealant_left_t_mm() - br_abrade.BACKSHEET_T_MM, places=4)
+
+    def test_the_platen_cannot_follow_that_step(self):
+        """단차가 추종의 몇 배인가 — 1 을 넘으면 띠 위에서 깊이 제어가 깨진다."""
+        self.assertGreater(br_abrade.sealant_step_vs_platen_follow(), 1.0)
+        self.assertAlmostEqual(
+            br_abrade.sealant_step_vs_platen_follow(),
+            br_abrade.sealant_step_over_backsheet_mm()
+            / br_abrade.PLATEN_FOLLOW_MM, places=2)
+
+    def test_the_step_is_most_of_the_target_depth(self):
+        """목표 절입의 대부분이라 「얇은 단차」로 못 넘긴다."""
+        self.assertGreater(
+            br_abrade.sealant_step_over_backsheet_mm()
+            / br_abrade.TARGET_DEPTH_MM, 0.9)
+
+    def test_the_band_is_small_in_area_but_on_every_pass(self):
+        """넓이가 아니라 위치가 문제다 — 네 변 둘레라 모든 통과가 건넌다."""
+        self.assertLess(br_abrade.sealant_band_face_share(), 0.1)
+        b = float(sg_grind.SEALANT_BAND_MM)
+        perimeter = 2.0 * (float(campaign.PANEL_LENGTH_MM)
+                           + float(campaign.PANEL_WIDTH_MM))
+        self.assertAlmostEqual(br_abrade.sealant_band_face_area_mm2(),
+                              perimeter * b - 4.0 * b ** 2, places=1)
+
+    def test_the_face_area_is_delegated_not_copied(self):
+        """면적의 정본은 sg_grind 다 — 여기서 다시 곱하지 않는다."""
+        self.assertAlmostEqual(
+            br_abrade.sealant_band_face_share(),
+            br_abrade.sealant_band_face_area_mm2()
+            / sg_grind.backsheet_face_area_mm2(), places=4)
+
+    def test_silicone_costs_more_per_volume_than_the_backsheet(self):
+        """갈아서 걷는 쪽도 비싸다는 것 — 비에너지가 자릿수로 다르다."""
+        self.assertGreater(sg_grind.SEALANT_ABRADE_J_MM3, br_abrade.ABRADE_J_MM3)
+
+    def test_the_reason_moved_rather_than_died(self):
+        """스크레이퍼를 지우자가 아니라 근거가 옮겨왔다 — 그렇게 적혀야 한다."""
+        text = " ".join(br_abrade.the_belt_meets_silicone_first())
+        self.assertIn("근거가 옮겨왔다", text)
+        self.assertIn("SR-302", text)
+
+    def test_this_reason_does_not_depend_on_the_arris(self):
+        """아리스가 없어도 성립한다 — 그것이 독립이라는 뜻이다."""
+        self.assertFalse(sg_grind.ARRIS_REQUIRED_BY_PLANT)
+        self.assertGreater(br_abrade.sealant_step_vs_platen_follow(), 1.0)
+        self.assertIn("독립",
+                      br_abrade.the_belt_meets_silicone_first.__doc__)
+
+    def test_the_sealant_has_no_row_in_separation(self):
+        """어디로 가는지 모른다고 적는다 — 추측으로 행을 만들지 않는다."""
+        names = [c.name for c in separation.COMPONENTS]
+        for guess in ("sealant", "silicone", "실란트", "실리콘"):
+            self.assertNotIn(guess, names)
+        text = " ".join(br_abrade.the_sealant_has_no_destination())
+        self.assertIn("추측으로 행을 만들지 않는다", text)
+
+
 class TestTheUnitDrawsItself(unittest.TestCase):
     """부품 — 위에서 정한 값이 부품표에 그대로 실린다."""
 

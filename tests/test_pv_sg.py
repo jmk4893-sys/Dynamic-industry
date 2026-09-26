@@ -90,12 +90,19 @@ class TestGrindingNumbers(unittest.TestCase):
         want = sg_grind.equivalent_depth_mm() / sg_grind.speed_ratio(feed)
         self.assertAlmostEqual(sg_grind.chip_thickness_mm(feed), want, places=6)
 
-    def test_the_cut_is_brittle_so_the_arris_is_not_optional(self):
-        """칩두께가 연성한계를 크게 넘는다 — 그래서 모따기가 필수다."""
+    def test_the_cut_is_brittle_so_the_arris_follows_if_you_grind(self):
+        """칩두께가 연성한계를 크게 넘는다 — **간다면** 모따기가 따라온다.
+
+        이 판정은 공정 요구를 안 읽는다. 읽는 것은 통과속도 하나다. 그러니
+        참이라는 것은 조건문의 귀결이고, 전건(갈 이유)은 따로 서야 한다 —
+        `ARRIS_REQUIRED_BY_PLANT` 가 그쪽이다.
+        """
         self.assertGreater(sg_grind.brittleness_ratio(sg_grind.long_feed_mm_s()), 5.0)
         self.assertTrue(sg_grind.is_brittle(sg_grind.long_feed_mm_s()))
         self.assertTrue(sg_grind.arris_is_required())
         self.assertGreaterEqual(sg_grind.ARRIS_COUNT, 1)
+        # 판정이 속도만 읽는다는 것 — 속도를 연성역으로 내리면 뒤집힌다.
+        self.assertFalse(sg_grind.is_brittle(1.0))
 
     def test_the_ductile_limit_is_bifano(self):
         e, h = sg_grind.GLASS_E_GPA * 1e9, sg_grind.GLASS_H_GPA * 1e9
@@ -534,7 +541,10 @@ class TestTheScraperThatClearsTheBand(unittest.TestCase):
         titles = [t for t, _ in sg_grind.open_questions()]
         self.assertIn("실란트 Gc 가 실측 전 계획값이다", titles)
         self.assertIn("날 수명이 없다", titles)
-        self.assertEqual(len(titles), 3)
+        # 발주처가 아리스 요구 없음을 확인하면서 넷째가 들어왔다 — 공구가 아니라
+        # **요구**가 없어져서 생긴 미결이라 위 셋과 종류가 다르다.
+        self.assertIn("아리스를 요구하는 공정이 없다", titles)
+        self.assertEqual(len(titles), 4)
 
     def test_the_gc_headroom_is_stated_not_assumed(self):
         """Gc 가 얼마까지 오르면 허용 압착력을 넘는가 — 그 값을 내놓는다."""
@@ -698,6 +708,95 @@ class TestGrindingTheWholeBacksheetFace(unittest.TestCase):
             sg_grind.backsheet_dust_kg_per_h(),
             round(sg_grind.backsheet_dust_kg_per_panel()
                   * handoff.downstream_rate().line_per_h, 1), places=1)
+
+
+class TestThePlantDoesNotRequireTheArris(unittest.TestCase):
+    """발주처가 아리스 요구 없음을 확인했다 — 물리 주장과 섞이지 않게 지킨다."""
+
+    def test_the_two_propositions_are_separate(self):
+        """하나는 「간다면 필수」, 하나는 「갈 이유」 — 값이 서로 안 따라간다."""
+        self.assertTrue(sg_grind.arris_is_required())
+        self.assertFalse(sg_grind.ARRIS_REQUIRED_BY_PLANT)
+
+    def test_the_physics_verdict_reads_only_the_feed(self):
+        """자기참조라는 주장의 근거 — 공정을 안 읽고 속도만 읽는다."""
+        self.assertEqual(sg_grind.arris_is_required(),
+                         sg_grind.is_brittle(sg_grind.long_feed_mm_s()))
+        # 속도를 연성역으로 내리면 같은 함수가 거짓이 된다. 공정은 안 바뀌었다.
+        self.assertFalse(sg_grind.is_brittle(1.0))
+
+    def test_the_record_says_which_three_were_ruled_out(self):
+        """셋 다 아니라고 돌아온 것이 무엇이었는지 적혀 있어야 한다."""
+        text = " ".join(sg_grind.the_arris_has_no_requirement())
+        for candidate in ("취급 안전", "파편 억제", "하류 유리 제거"):
+            self.assertIn(candidate, text)
+        self.assertIn("자기참조", sg_grind.the_arris_has_no_requirement.__doc__)
+
+    def test_it_does_not_flip_the_physics(self):
+        """요구가 없어진 것이 파단면을 연성면으로 만들지는 않는다."""
+        text = " ".join(sg_grind.the_arris_has_no_requirement())
+        self.assertIn("물음이 사라진다",
+                      sg_grind.the_arris_has_no_requirement.__doc__)
+        self.assertIn("전건이 안 선다", text)
+
+    def test_the_arris_was_the_majority_of_the_work(self):
+        """무엇이 풀리는지가 큰 이유 — 단면의 절반 이상이 아리스였다."""
+        self.assertGreater(sg_grind.arris_share(), 0.5)
+        stock_only = sg_grind.STOCK_MM * sg_grind.GLASS_T_MM
+        self.assertAlmostEqual(
+            stock_only, sg_grind.removal_area_mm2()
+            - sg_grind.ARRIS_COUNT * sg_grind.ARRIS_MM ** 2 / 2, places=6)
+        self.assertLess(stock_only, sg_grind.removal_area_mm2() / 2)
+
+    def test_the_spindle_stops_being_the_limit(self):
+        """아리스를 빼면 통과속도를 정하는 것이 스핀들이 아니게 된다."""
+        self.assertTrue(sg_grind.feed_is_spindle_bound())
+        stock_only = sg_grind.STOCK_MM * sg_grind.GLASS_T_MM
+        relieved = sg_grind.utilisation(sg_grind.long_feed_mm_s()) \
+            * stock_only / sg_grind.removal_area_mm2()
+        self.assertLess(relieved, 0.5)
+
+    def test_the_stock_is_not_released_with_it(self):
+        """끝면 살은 근거가 달라 같이 안 풀린다 — 그것을 적어 둔다."""
+        rows = dict(sg_grind.what_the_absent_arris_releases())
+        key = [k for k in rows if "끝면 살" in k]
+        self.assertEqual(len(key), 1)
+        self.assertIn("별개의 물음", rows[key[0]])
+
+    def test_the_sealant_conflict_loses_its_reason(self):
+        """「둘 다는 안 된다」가 아리스 때문이었다 — 근거가 사라지는 것을 센다."""
+        self.assertFalse(sg_grind.wheel_can_reach_the_glass_edge())
+        self.assertGreater(sg_grind.sealant_must_go_first_mm(), 0.0)
+        rows = dict(sg_grind.what_the_absent_arris_releases())
+        key = [k for k in rows if "둘 다는 안 된다" in k]
+        self.assertEqual(len(key), 1)
+
+    def test_the_scrapers_stated_reason_was_the_wheel(self):
+        """발견을 적어 둔다 — SR-302 의 근거로 적혀 있던 것이 휠뿐이었다."""
+        import inspect
+        for fn in (sg_grind.sealant_must_go_first_mm, sg_grind.scraper_unit):
+            self.assertIn("휠", inspect.getdoc(fn))
+        text = " ".join(sg_grind.the_scrapers_reason_was_the_wheel())
+        self.assertIn("br_abrade.the_belt_meets_silicone_first", text)
+
+    def test_it_does_not_decide_whether_sg301_survives(self):
+        """판정 함수를 안 만든다 — 결정은 발주처 것이고, 건드리는 것만 센다."""
+        titles = [t for t, _ in sg_grind.what_the_absent_arris_leaves_open()]
+        self.assertIn("SG-301 이 남는가", titles)
+        names = [n for n in dir(sg_grind) if "sg301" in n.lower()
+                 or "sg_301" in n.lower()]
+        self.assertEqual(names, [])
+
+    def test_the_open_question_is_computed_not_declared(self):
+        """미결이 상수에서 나온다 — 요구가 생기면 스스로 닫힌다."""
+        titles = [t for t, _ in sg_grind.open_questions()]
+        self.assertIn("아리스를 요구하는 공정이 없다", titles)
+
+    def test_the_summary_carries_both(self):
+        """도면과 요약이 두 명제를 나란히 든다 — 하나만 보면 오독한다."""
+        s = sg_grind.summary()
+        self.assertIs(s["arrisIsRequired"], True)
+        self.assertIs(s["arrisRequiredByPlant"], False)
 
 
 class TestCloseupDrawing(unittest.TestCase):
