@@ -59,6 +59,11 @@ TARGETS: dict[str, tuple[pathlib.Path, pathlib.Path]] = {
                     pathlib.Path("out/pv-afr-closeup-artifact.html")),
     "sg-closeup": (pathlib.Path("docs/drawings/pv-sg-closeup.html"),
                    pathlib.Path("out/pv-sg-closeup-artifact.html")),
+    "gi-closeup": (pathlib.Path("docs/drawings/pv-gi-closeup.html"),
+                   pathlib.Path("out/pv-gi-closeup-artifact.html")),
+    # 위 넷을 한 장에 담은 후단 도면집 — 링크 하나·판번 하나로 묶는다.
+    "afr-hub": (pathlib.Path("docs/drawings/pv-afr-hub.html"),
+                pathlib.Path("out/pv-afr-hub-artifact.html")),
 
     "fasteners": (pathlib.Path("docs/drawings/pv-fastener-book.html"),
                   pathlib.Path("out/pv-fastener-book-artifact.html")),
@@ -128,6 +133,9 @@ PUBLISHED: dict[str, str] = {
     "afr-scene": "6e68bee7-a1f1-495b-a84f-3942f6105c90",
     "afr-closeup": "2070e91e-1012-41db-be9e-9148c2512fd3",
     "sg-closeup": "6bfcba30-c0f3-44e6-b923-c56496c20aa6",
+    # 이 브랜치가 더한 둘 — GI 확대도와 그 넷을 담은 후단 도면집.
+    "gi-closeup": "43f2ae42-5267-48eb-b83a-52c362ed7650",
+    "afr-hub": "4b9ff34d-5236-4a37-b881-991db9774dcf",
 }
 
 #: 같은 도면으로 **잘못 하나 더 생긴** 아티팩트 — 재발행하지 말 것.
