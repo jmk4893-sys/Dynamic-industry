@@ -1,7 +1,17 @@
 # -*- coding: utf-8 -*-
-"""BR-306 백시트 박리 — **약한 면은 덫이었다.**
+"""BR-306 백시트 박리 — **가지 않은 길이고, 왜 안 갔는지의 근거다.**
 
-`br_abrade` 가 백시트를 갈아 없애는 유닛이라면 이쪽은 필름째 떼는 대안이다.
+**발주처가 순서를 정했다: 연마(백시트) → 칼날(셀모듈).** 그래서 백시트를
+필름째 뜯는 이 유닛은 **채택되지 않았다**(`this_path_was_not_taken()`).
+지우지 않고 남기는 이유는 하나다 — **왜 연마인지의 근거가 전부 이 안에
+있다.** 기준면이 없다는 것, 온도가 반대로 당긴다는 것, 약한 면이 덫이라는
+것을 여기서 재 두었고 `br_abrade.why_this_beats_peeling()` 이 그 값을 받아 쓴다.
+
+칼날은 사라지지 않는다 — **셀모듈을 유리에서 떼는 쪽으로 옮겨간다.** 거기서는
+랜드가 유리를 타므로 기준면이 있다. 이 모듈이 든 계면 표(백시트–EVA)는
+그 유닛의 것이 아니다.
+
+`br_abrade` 가 백시트를 갈아 없애는 유닛이라면 이쪽은 필름째 떼는 대안이었다.
 **다만 한 공정이 아니라 둘이다** — 라미네이트에는 칼날이 들어갈 틈이 애초에
 없어서, 1 차로 변에서 30 mm 안쪽에 **폭 전체를 가로질러 한 줄** 긋고(그 띠가
 들려 진입구가 된다) **2 차 커팅**이 따른다 (`stages()`). 시작점은 찾는 것이
@@ -53,8 +63,11 @@ from dataclasses import dataclass
 
 from . import campaign, separation, sg_grind
 
-#: 유닛 태그. `br_abrade` (BR-305) 와 **같은 자리**를 두고 겨루는 대안이다.
+#: 유닛 태그. 한때 `br_abrade` (BR-305) 와 같은 자리를 두고 겨루는 대안이었고
+#: **채택되지 않았다** — 발주처가 연마 → 칼날 순서를 정했다. 값은 근거로 남는다.
 UNIT_TAG = "BR-306"
+#: 채택 여부 — 거짓이다. 지우지 않고 **비교 근거**로 둔다.
+ADOPTED = False
 UPSTREAM_TAG, DOWNSTREAM_TAG = "AFR-101", "SG-301"
 
 
@@ -727,6 +740,28 @@ def what_the_order_swap_needs_measured() -> tuple[str, ...]:
     )
 
 
+def this_path_was_not_taken() -> tuple[str, ...]:
+    """**발주처가 순서를 정했다** — 연마(백시트) → 칼날(셀모듈).
+
+    그래서 이 유닛(백시트를 필름째 뜯는 쪽)은 채택되지 않았다. 판정을 내가
+    만든 것이 아니라 **받아 적는다**.
+    """
+    from . import br_abrade
+    return (
+        f"**채택 안 됨.** 백시트는 `{br_abrade.UNIT_TAG}`(연마)가 면에서 걷고, "
+        f"칼날은 **{br_abrade.NEXT_UNIT}** 로 옮겨간다.",
+        "**고른 이유가 이 모듈 안에 있다** — 연마는 면접촉이라 기준면이 생기고, "
+        "EVA 안에 멈추는 일은 기준면이 없다. 그 비교를 여기서 재 두었고 "
+        "`br_abrade.why_this_beats_peeling()` 이 그 값을 받아 쓴다.",
+        "**그래서 지우지 않는다.** 이 표와 계산이 「왜 연마인가」의 근거 전부고, "
+        "지우면 결정의 이유가 같이 사라진다.",
+        f"**칼날이 사라지는 것은 아니다.** 옮겨간 자리에서는 랜드가 유리를 "
+        f"타므로 기준면이 있다 — 여기 든 계면 표"
+        f"(`{required_interface().key}` {required_interface().gc_aged_n_mm:g} N/mm)는 "
+        "**그 유닛의 것이 아니다.** 유리 계면 값은 그쪽이 정본이다.",
+    )
+
+
 def the_order_is_not_mine_to_decide() -> bool:
     """순서를 내가 고르지 않는가 — 안 고른다. 근거만 든다.
 
@@ -1165,11 +1200,12 @@ def open_questions() -> tuple[str, ...]:
         f"경계 {rise_below_which_all_engage_mm():,.0f} mm 보다 한참 아래라 "
         f"한때 전부 물리고 **최대 합력은 {peel_force_n():,.0f} N 그대로**다. "
         f"행정만 {carriage_travel_mm():,.0f} mm 로 늘어난다.",
-        f"**어느 계면을 무는 유닛인지가 갈려 있고, 그것이 지금 가장 큰 "
-        f"물음이다.** 형상은 같은데 SHK-101 은 유리 계면에서 셀모듈까지 함께 "
-        f"들고 이 모듈은 백시트만 뜯는다(폭당 힘 "
-        f"{SHK101_PEEL_N_MM / required_interface().gc_aged_n_mm:.2f} 배 차이). "
-        f"`where_shk101_and_this_unit_disagree()` 가 그 자리를 든다.",
+        f"~~어느 계면을 무는 유닛인지~~ **닫혔다 — 발주처가 순서를 정했다.** "
+        f"연마(백시트) → 칼날(셀모듈). 칼날은 **유리 계면**을 물고 이 유닛(백시트를 "
+        f"필름째 뜯는 쪽)은 **채택되지 않았다**(`this_path_was_not_taken()`). "
+        f"폭당 힘 {SHK101_PEEL_N_MM / required_interface().gc_aged_n_mm:.2f} 배 "
+        "차이는 두 유닛이 서로 다른 계면을 물기 때문이었다 — 한쪽이 틀린 것이 "
+        "아니었다.",
         f"**백시트를 먼저 뜯으려면 EVA 안에 칼끝을 세워야 하는데 거기엔 "
         f"기준면이 없다.** 띠 {eva_band_mm():g} mm 대 면 기준 제어폭 "
         f"{depth_control_mm():g} mm — 여유 {depth_margin_ratio():.2f} 배, 한쪽에 "
@@ -1262,6 +1298,7 @@ def summary() -> dict[str, object]:
         "netMarginEachSideMm": net_margin_each_side_mm(),
         "onlyTheFaceReferenceFits": the_face_reference_is_the_only_one_that_fits(),
         "orderIsNotOursToDecide": the_order_is_not_mine_to_decide(),
+        "adopted": ADOPTED,
         "orderDecidesCount": len(what_the_order_decides()),
         "curveIsWorthMeasuringEitherWay": the_curve_is_worth_measuring_either_way(),
         "peelForceFreshN": peel_force_n(aged=False),

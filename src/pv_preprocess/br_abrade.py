@@ -16,6 +16,19 @@
   · 뜨는 쪽은 **은정광**이고 거기로 가는 것은 EVA 다 — 이 유닛 소관이 아니라
     DG-HK60 관문이다. 제품마다 오염원이 다르다는 것이 `separation` 의 요지다.
 
+## 순서가 정해졌다 — **연마(백시트) → 칼날(셀모듈)** (발주처 결정)
+
+한때 이 유닛과 `br_peel`(BR-306)이 **같은 자리를 두고 겨루는 대안**이었다.
+발주처가 그 구도를 없앴다: **연마가 백시트를 걷고, 그 다음 칼날이 셀모듈을
+유리에서 뗀다.** 둘은 경쟁이 아니라 **순차**이고 서로 다른 관문을 맡는다.
+
+고른 이유가 이 유닛의 물리에 있다 — **연마는 면접촉이라 기준면이 생긴다.**
+칼날이 EVA 안에 멈추려면 0.45 mm 띠 안을 **재서** 지켜야 하는데, 연마는
+압반이 면을 타므로 깊이가 **접촉**으로 잡힌다. `why_this_beats_peeling()` 이
+그 비교를 든다. 그리고 그것은 슈처럼 **붙이는 것이 아니라 기구 그 자체**다.
+
+**판정은 내가 만들지 않았다** — 발주처가 정한 것을 받아 적는다.
+
 그러니 **파쇄 전에, 붙어 있는 채로** 걷어내야 한다. 그것이 이 유닛이다.
 그리고 빼야 하는 것은 불소층만이 아니라 **백시트 전체**다 — PET 심재도 같은
 행선지다.
@@ -419,6 +432,98 @@ def combustible_fraction_after() -> float:
     total = sum(x.flow_m3h for x in listed) + hood_flow_m3h()
     burnable = sum(x.flow_m3h for x in listed if x.combustible) + hood_flow_m3h()
     return round(burnable / total, 3)
+
+
+# ── 순서 — 연마(백시트) → 칼날(셀모듈) ─────────────────────────────────
+#
+#   **발주처가 정한 순서다.** 이 유닛이 백시트 관문을 닫고, 그 다음 칼날이
+#   셀모듈을 유리에서 뗀다. 한때 `br_peel`(BR-306)과 같은 자리를 두고 겨루는
+#   대안이었는데 그 구도가 없어졌다 — 둘은 서로 다른 관문을 맡는다.
+
+#: 이 유닛 다음에 오는 것 — 계단형 핫나이프가 셀모듈을 유리에서 뗀다.
+NEXT_UNIT = "계단형 핫나이프 (셀모듈 ↔ 유리)"
+
+
+def the_order_is_grind_then_peel() -> tuple[str, ...]:
+    """정해진 순서와 각자가 맡는 관문 — 경쟁이 아니라 순차다."""
+    from . import separation
+    return (
+        f"**① 이 유닛(연마)** — 백시트를 면에서 걷어 **{gate_this_unit_owns()}** "
+        "관문을 닫는다. 압반이 면을 타므로 깊이가 접촉으로 잡힌다.",
+        f"**② {NEXT_UNIT}** — 백시트가 없어진 판에서 셀모듈을 유리에서 뗀다. "
+        "칼날 랜드가 **유리를 타므로** 그쪽도 접촉 기준이다.",
+        "**두 유닛이 각자 기준면을 가진다.** 연마는 판 면, 칼날은 유리 — "
+        "둘 다 재지 않고 **닿아서** 멈춘다. 그것이 이 순서의 요지다.",
+        f"관문 소유는 `separation.gate_owner()` 가 정본이다 — 백시트는 "
+        f"{separation.gate_owner('backsheet')}, 유리는 "
+        f"{separation.gate_owner('glass')}.",
+    )
+
+
+def why_this_beats_peeling() -> tuple[str, ...]:
+    """백시트를 칼날로 뜯는 대신 연마로 걷는 이유 — 넷이다.
+
+    `br_peel` 이 그 대안을 계산해 두었고, 값은 그쪽이 정본이다. 여기서는
+    **이 유닛이 이기는 이유**만 든다.
+    """
+    from . import br_peel
+    lo, hi = depth_window_mm()
+    band = round(hi - lo, 3)
+    return (
+        f"**① 기준면이 기구 그 자체다.** 띠 {band:g} mm 를 칼날은 슈 기준 "
+        f"{br_peel.depth_control_mm():g} mm 로(여유 "
+        f"{br_peel.depth_margin_ratio():.2f} 배) 지켜야 하는데, 연마는 압반 추종 "
+        f"{PLATEN_FOLLOW_MM:g} mm 로 여유 {band / PLATEN_FOLLOW_MM:.2f} 배다. "
+        "그리고 칼날은 슈를 **붙여야** 하고 못 붙는 자리가 있을 수 있는데 "
+        "연마는 압반이 면을 타는 것이 작동 원리다.",
+        f"**② 실패가 되돌릴 수 있는 쪽이다.** 얕으면 백시트가 남는데 그것은 "
+        f"**면에서 보이고 한 패스 더 돌리면 된다** — 연마는 점진적이다. 깊으면 "
+        f"여유 {hi - max_depth_cut_mm():.2f} mm 가 있고 넘쳐도 EVA 라 "
+        "`overshoot_into_eva_adds_nothing()` 이 든 대로 급광에 없던 것을 "
+        "새로 만들지 않는다. 칼날은 얕으면 **틈이 안 생겨 아예 성립하지 않는다.**",
+        f"**③ 약한 면 덫이 안 걸린다.** 칼날·구부림은 `{br_peel.weakest_interface().key}`"
+        f"({br_peel.weakest_interface().gc_aged_n_mm:g} N/mm)가 먼저 갈라져 PET "
+        f"심재를 남기는데(`br_peel.the_weak_plane_is_a_trap()`), **연마는 면을 "
+        "고르지 않는다** — 깊이 위의 모든 것을 걷는다. 약한 면이 어디 있든 무관하다.",
+        "**④ 온도 충돌이 없다.** 자르기는 차갑게·떼기는 뜨겁게가 한 유닛에서 "
+        "부딪히는데, 연마와 박리가 다른 스테이션이면 각자 온도를 가진다 "
+        "(`br_peel.cutting_and_peeling_want_opposite_temperatures()`).",
+    )
+
+
+def the_gate_leak_narrows_by() -> float:
+    """백시트 관문의 누출이 몇 배 좁아지는가 = 1 / (1 − 포집률).
+
+    갈아서 다 걷으면 남는 것은 **못 잡은 분진**뿐이다. 백시트가 통째로
+    급광에 들어가는 것(100 %)과 견주면 그만큼 좁아진다.
+    """
+    return round(1.0 / (1.0 - DUST_CAPTURE), 1)
+
+
+def the_leak_still_lands_on_the_silicon() -> bool:
+    """좁아진 누출도 **실리콘에 떨어지는가** — 떨어진다.
+
+    그래서 `the_gate_leak_narrows_by()` 가 충분한지는 **실리콘 순도 사양**이
+    정하고, 그 값은 이 모델에 없다. 포집률이 실측인지 설계 목표인지도 모른다.
+    """
+    return this_units_dust_lands_on_the_silicon()
+
+
+def what_this_order_leaves_open() -> tuple[str, ...]:
+    """순서가 정해져도 남는 것 — 지어내지 않는다."""
+    return (
+        f"**포집률 {DUST_CAPTURE:.1%} 가 실측인지 설계 목표인지 모른다.** 목표라면 "
+        f"실제는 낮을 것이고 누출이 그만큼 늘어난다. 관문이 "
+        f"{the_gate_leak_narrows_by():.0f} 배 좁아진다는 값이 여기 걸려 있다.",
+        "**좁아진 누출이 충분한지 모른다** — 실리콘 순도 사양을 안 들었다. "
+        "이 순서의 유일한 사활이다.",
+        "**백시트를 걷은 뒤 드러난 EVA 면**이 칼날 랜드·그리퍼에 어떻게 작용하는지 "
+        "모른다. 랜드는 유리를 타야 하는데 반대쪽 면이 가열에서 점착성이면 "
+        "반송과 그리핑이 달라진다.",
+        f"**{NEXT_UNIT} 가 유리 관문의 기존 주인과 어떤 관계인지 안 들었다** — "
+        "같은 기계인지, 앞에 서는지. `separation.gate_owner('glass')` 는 아직 "
+        "옛 주인을 든다. **추측해서 바꾸지 않는다.**",
+    )
 
 
 def gate_this_unit_owns() -> str:

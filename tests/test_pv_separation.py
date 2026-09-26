@@ -79,7 +79,7 @@ class TestClassificationClosesTheCopperGate(unittest.TestCase):
         self.assertIn("분급", separation.gate_owner("copper"))
         self.assertEqual(separation.gate_owner("glass"), "GRM-401")
         self.assertEqual(separation.gate_owner("eva"), "DG-HK60")
-        self.assertEqual(separation.gate_owner("backsheet"), "BR-305/306")
+        self.assertEqual(separation.gate_owner("backsheet"), "BR-305 (연마)")
 
     def test_an_owner_may_be_a_process_not_a_machine(self):
         """관문을 닫는 것이 꼭 유닛일 필요는 없다 — 그것이 구리의 교훈이다."""

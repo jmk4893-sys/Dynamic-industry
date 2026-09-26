@@ -359,11 +359,69 @@ class TestItMovesThePolymerRatherThanRemovingIt(unittest.TestCase):
         self.assertTrue(br_abrade.this_units_dust_lands_on_the_silicon())
         self.assertNotIn("eva", separation.gate_component_keys("backsheet"))
 
+    def test_the_order_is_grind_then_peel(self):
+        """**발주처 결정** — 연마가 백시트를, 칼날이 셀모듈을 맡는다."""
+        note = " ".join(br_abrade.the_order_is_grind_then_peel())
+        self.assertIn("연마", note)
+        self.assertIn("유리를 타므로", note)
+        self.assertIn("닿아서", note)
+        self.assertIn("셀모듈", br_abrade.NEXT_UNIT)
+        self.assertEqual(separation.gate_owner("backsheet"), "BR-305 (연마)")
+
+    def test_the_two_units_are_sequential_not_competing(self):
+        """경쟁 구도가 없어졌다 — 다만 **과거로는 남긴다.**
+
+        「겨루는 대안」이라는 말 자체를 지우지는 않는다. 그것이 있었다는 사실이
+        결정의 맥락이기 때문이다. 확인할 것은 **현재 시제로 경쟁을 주장하지
+        않는가**다.
+        """
+        import inspect
+        from pv_preprocess import br_peel
+        src = inspect.getsource(br_abrade)
+        self.assertIn("한때", src)                      # 과거로 적혀 있다
+        self.assertIn("겨루는 대안**이었다", src)         # 현재형이 아니다
+        self.assertIn("경쟁이 아니라 **순차**", src)
+        self.assertFalse(br_peel.ADOPTED)
+        self.assertGreaterEqual(len(br_peel.this_path_was_not_taken()), 4)
+
+    def test_why_grinding_won_names_four_reasons(self):
+        """이유 넷 — 기준면·되돌릴 수 있는 실패·약한 면 덫 없음·온도 충돌 없음."""
+        rows = br_abrade.why_this_beats_peeling()
+        self.assertEqual(len(rows), 4)
+        note = " ".join(rows)
+        self.assertIn("기준면이 기구 그 자체", note)
+        self.assertIn("한 패스 더 돌리면 된다", note)
+        self.assertIn("연마는 면을 고르지 않는다", note)
+        self.assertIn("온도 충돌이 없다", note)
+
+    def test_the_datum_margin_is_computed_not_asserted(self):
+        """여유 비교가 `br_peel` 값을 받아 온다 — 베끼지 않는다."""
+        from pv_preprocess import br_peel
+        lo, hi = br_abrade.depth_window_mm()
+        band = hi - lo
+        self.assertGreater(band / br_abrade.PLATEN_FOLLOW_MM,
+                           br_peel.depth_margin_ratio())
+        self.assertAlmostEqual(band / br_abrade.PLATEN_FOLLOW_MM, 5.62, places=2)
+
+    def test_the_gate_leak_narrows_but_still_lands_on_silicon(self):
+        """누출이 200 배 좁아져도 **실리콘에 떨어진다** — 충분한지는 모른다."""
+        self.assertAlmostEqual(br_abrade.the_gate_leak_narrows_by(), 200.0, places=1)
+        self.assertTrue(br_abrade.the_leak_still_lands_on_the_silicon())
+        note = " ".join(br_abrade.what_this_order_leaves_open())
+        self.assertIn("충분한지 모른다", note)
+        self.assertIn("실측인지 설계 목표인지 모른다", note)
+
+    def test_the_glass_gate_owner_is_not_guessed(self):
+        """칼날과 유리 관문 기존 주인의 관계는 **안 들었으므로 안 바꾼다.**"""
+        self.assertEqual(separation.gate_owner("glass"), "GRM-401")
+        self.assertIn("추측해서 바꾸지 않는다",
+                      " ".join(br_abrade.what_this_order_leaves_open()))
+
     def test_this_unit_owns_exactly_one_of_the_four_gates(self):
         """이 유닛이 맡은 것은 넷 중 백시트 하나다."""
         self.assertEqual(br_abrade.gate_this_unit_owns(), "backsheet")
         self.assertIn(br_abrade.gate_this_unit_owns(), separation.THE_FOUR_GATES)
-        self.assertEqual(separation.gate_owner("backsheet"), "BR-305/306")
+        self.assertEqual(separation.gate_owner("backsheet"), "BR-305 (연마)")
 
     def test_this_unit_defends_the_silicon_and_dg_defends_the_silver(self):
         """이 유닛은 실리콘을 지킨다 — 은은 EVA 관문(DG-HK60) 몫이다."""

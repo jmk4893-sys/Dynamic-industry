@@ -127,11 +127,11 @@ COMPONENTS: tuple[Component, ...] = (
               "아프다」고 적었는데 정반대다. 뜨는 쪽은 83 배로 줄어든 작은 "
               "흐름이라 여기 섞인 것이 은정광 품위를 가장 크게 깎는다"),
     Component("pet", "백시트 PET 심재", 1.38, False, False, None, "sink", "관측",
-              "BR-305/306",
+              "BR-305 (연마)",
               "**가라앉는다** — 실리콘·은과 같은 쪽이다. 이유는 아직 모른다 "
               "(`why_the_backsheet_sinks_is_open()`)"),
     Component("fluoro", "백시트 불소층 (PVF/PVDF)", 1.42, False, False, None,
-              "sink", "관측", "BR-305/306",
+              "sink", "관측", "BR-305 (연마)",
               "PET 과 같은 행선지다. 표면에너지가 가장 낮은 축인데도 가라앉는 "
               "것이 이 회로의 관측이고, 그것이 설명을 두 번 무너뜨렸다"),
 )

@@ -52,7 +52,7 @@ class TestTheWeakPlaneIsATrap(unittest.TestCase):
                          separation.gate_component_keys("backsheet"))
         self.assertIn("pet", br_peel.must_remove())
         self.assertIn("fluoro", br_peel.must_remove())
-        self.assertEqual(separation.gate_owner("backsheet"), "BR-305/306")
+        self.assertEqual(separation.gate_owner("backsheet"), "BR-305 (연마)")
 
     def test_removing_pet_from_the_spec_would_make_the_weak_plane_enough(self):
         """PET 이 오염원이 아니었다면 약한 면으로 충분했다 — 거기가 갈림이다.
