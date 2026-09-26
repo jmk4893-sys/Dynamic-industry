@@ -121,8 +121,41 @@ SEALANT_BAND_MM = float(frames.SLOT_LIP_MM)
 #: 면당 실란트 두께 (mm) — 슬롯이 적층보다 이만큼씩 높다.
 SEALANT_FACE_T_MM = float(frames.SEALANT_T_MM)
 #: 인발 뒤 라미네이트 쪽에 남는 몫 — 응집파괴면이 가운데 근처에서 갈린다는 계획값.
-#: 실측 전 값이라 1.0(전량 잔류)까지 커질 수 있다.
+#: **관찰 전 값이다.** 위험을 1.0(전량 잔류) 쪽으로 잡아 뒀는데, 현장은 반대쪽이
+#: 맞다고 한다 — `SEALANT_PARTS_WITH_THE_FRAME` 아래를 본다. 이 상수와 폭
+#: `SEALANT_BAND_MM` 은 **그대로 둔다**: SR-302 의 날 폭·슈·부품표가 여기에
+#: 걸려 있고, 유닛을 지울지는 아직 발주처 몫이다. 관찰값은 옆에 따로 적는다.
 SEALANT_RETAINED = 0.5
+
+# ── 현장 관찰 — 인발 뒤 면에 남는 것은 띠가 아니라 선이다 ────────────────
+#
+#   발주처 관찰: **실란트는 거의 전부 알루미늄 프레임에 붙어서 떨어지고,
+#   면에는 아주 얇은 선 모양으로만 남는다.**
+#
+#   이것이 두 가지를 동시에 부정한다 —
+#
+#   ① **파괴면.** 응집파괴(실란트 가운데가 갈린다)가 아니라 **계면파괴**다.
+#      갈라지는 자리가 실란트 속이 아니라 실란트–라미네이트 경계다. 그래서
+#      남는 몫이 `SEALANT_RETAINED` 0.5 보다 훨씬 작다.
+#   ② **형상.** 슬롯 립이 면을 20 mm 덮고 있었어도 남는 것이 그 폭 전체를
+#      덮지 않는다. 립 끝에서 전단된 자리에 **선**으로 남는다. 넓이가 아니라
+#      길이만 둘레를 따라간다.
+#
+#   ①만 맞고 ②가 틀리면 (얇지만 20 mm 폭) 이야기가 다르다 — 그래서 둘을
+#   따로 적었다. 두 값 다 **실측 전**이고, 아래 두 상수가 그 자리다.
+#: 실란트가 프레임 쪽으로 떨어지는가 — 발주처 현장 관찰. 내가 정한 값이 아니다.
+SEALANT_PARTS_WITH_THE_FRAME = True
+#: 그래서 파괴가 응집이 아니라 계면인가 — ① 의 기록.
+SEALANT_FAILURE_IS_INTERFACIAL = True
+#: 남는 것이 띠가 아니라 선인가 — ② 의 기록.
+RESIDUE_IS_A_LINE = True
+#: 그 선의 폭 (mm) — **실측 전 계획값.** 립 끝에서 전단된 자리라 보고 잡았다.
+#: 이 값은 첨두 동력을 바꾸지 않는다 (`br_abrade` 가 그 쪽을 센다) — 바꾸는 것은
+#: 첨두가 **얼마나 오래**인가, 즉 관성이 받아 줄 수 있는 에너지다.
+RESIDUE_LINE_W_MM = 2.0
+#: 그 선의 높이 (mm) — **실측 전 계획값.** "아주 얇은" 을 원래 1.5 mm 의
+#: 1/7 쯤으로 읽었다. 첨두 동력을 정하는 것은 **이 값 하나**다.
+RESIDUE_LINE_H_MM = 0.2
 #: 아리스(모따기) 다리 길이 (mm) · 각도 (°). 45° 한 곳 — 유리의 **바깥면 쪽**
 #: 모서리만 죽인다. 반대쪽 모서리는 EVA 와 만나므로 거기까지 파면 폴리머가
 #: 휠에 먹는다. 연마 높이 공차 ±0.10 mm 가 있는 이유가 이것이다.
@@ -613,6 +646,66 @@ def sealant_left_t_mm() -> float:
 def sealant_area_mm2() -> float:
     """한 면·한 변 1 mm 당 남는 실란트 단면적 (mm²) — 띠 폭 × 남은 두께."""
     return round(SEALANT_BAND_MM * sealant_left_t_mm(), 4)
+
+
+# ── 관찰된 선 — 같은 물음을 관찰값으로 다시 센다 ─────────────────────────
+def residue_line_area_mm2() -> float:
+    """한 면·한 변 1 mm 당 남는 실란트 단면적 (mm²) — **관찰된 선** 쪽 값."""
+    return round(RESIDUE_LINE_W_MM * RESIDUE_LINE_H_MM, 4)
+
+
+def residue_line_face_area_mm2() -> float:
+    """선이 한 면에서 덮는 면적 (mm²) — 네 변 둘레, 모서리 겹침을 뺀다."""
+    w = RESIDUE_LINE_W_MM
+    perimeter = 2.0 * (float(campaign.PANEL_LENGTH_MM) + float(campaign.PANEL_WIDTH_MM))
+    return round(perimeter * w - 4.0 * w ** 2, 1)
+
+
+def residue_line_volume_per_panel_mm3(faces: int = 2) -> float:
+    """한 장에서 면에 남는 실란트 부피 (mm³) — 관찰된 선 쪽."""
+    return round(residue_line_face_area_mm2() * RESIDUE_LINE_H_MM * faces, 1)
+
+
+def residue_share_of_the_band() -> float:
+    """관찰된 선이 관찰 전 띠 가정의 몇 분의 몇인가 — 단면적 비."""
+    return round(residue_line_area_mm2() / sealant_area_mm2(), 4)
+
+
+def the_band_assumption_was_the_worst_case() -> bool:
+    """띠 가정이 관찰보다 무거운 쪽이었는가 — 관찰이 설계를 **풀어 주는** 방향인가.
+
+    참이면 지금까지 계산한 모든 실란트 값(부피·동력·시간)이 상한이고, 관찰은
+    그 상한을 낮춘다. 거짓이면 반대로 다시 세워야 한다 — 그래서 이름과 반환을
+    같은 쪽으로 묶어 둔다.
+    """
+    return residue_line_area_mm2() < sealant_area_mm2()
+
+
+def what_the_field_observation_removes() -> tuple[str, ...]:
+    """관찰이 무엇을 지우고 무엇을 남기는가 — 값이 아니라 **판단**을 적는다."""
+    from . import br_abrade
+    return (
+        f"**부피가 {1.0 / residue_share_of_the_band():,.0f} 분의 1 로 준다.** "
+        f"단면적 {sealant_area_mm2()} → {residue_line_area_mm2()} mm²/mm, "
+        f"한 장 {sealant_volume_per_panel_mm3():,.0f} → "
+        f"{residue_line_volume_per_panel_mm3():,.0f} mm³ "
+        f"(`the_band_assumption_was_the_worst_case()` = "
+        f"{the_band_assumption_was_the_worst_case()}).",
+        f"**긁는 쪽의 근거가 약해진다.** 긁는 힘은 Gc × 폭이라 폭이 "
+        f"{SEALANT_BAND_MM:.0f} → {RESIDUE_LINE_W_MM:.0f} mm 로 줄면 같은 비율로 "
+        f"준다. 6.3 W 가 더 작아지는 것은 좋은 일이지만, **그만한 일을 하려고 "
+        f"캐리어 한 대를 세우는가**가 되물어진다 — 발주처 몫이다.",
+        f"**첨두 동력은 폭이 아니라 높이가 정한다.** 선이 가로변을 건널 때는 "
+        f"폭 {campaign.PANEL_WIDTH_MM:.0f} mm 전체가 동시에 물리므로 "
+        f"`br_abrade.cross_line_peak_kw()` 는 폭에 무관하다. 폭이 줄이는 것은 "
+        f"첨두의 **길이**, 곧 관성이 받아야 하는 에너지다.",
+        f"**그래도 선은 남는다.** 관찰은 「거의」 떨어진다는 것이고 「전부」가 "
+        f"아니다. 잔존 0 사양(`br_abrade.why_the_vision_is_needed()`)이 "
+        f"백시트에 걸려 있는 것과 같은 이유로, 선도 비전이 봐야 한다.",
+        f"**두 값이 실측 전이다.** 선 폭 {RESIDUE_LINE_W_MM} mm 와 높이 "
+        f"{RESIDUE_LINE_H_MM} mm 는 관찰을 숫자로 옮긴 계획값이다. 높이가 "
+        f"동력을, 폭이 시간을 정하므로 **둘 다 재야** 설비가 정해진다.",
+    )
 
 
 def sealant_volume_per_panel_mm3(faces: int = 2) -> float:

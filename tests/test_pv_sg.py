@@ -1295,5 +1295,66 @@ class TestCloseupDrawing(unittest.TestCase):
         self.assertTrue(str(out).endswith("pv-sg-closeup-artifact.html"))
 
 
+class TestTheResidueIsALine(unittest.TestCase):
+    """발주처 현장 관찰 — 실란트는 프레임에 붙어 나가고 면에는 선만 남는다."""
+
+    def test_the_observation_is_recorded_as_two_propositions(self):
+        """파괴면과 형상은 따로 틀릴 수 있으므로 따로 적혀 있다."""
+        self.assertTrue(sg_grind.SEALANT_PARTS_WITH_THE_FRAME)
+        self.assertTrue(sg_grind.SEALANT_FAILURE_IS_INTERFACIAL)
+        self.assertTrue(sg_grind.RESIDUE_IS_A_LINE)
+
+    def test_the_band_assumption_is_left_standing(self):
+        """관찰을 적었다고 띠 가정을 지우지 않는다 — SR-302 가 거기에 걸려 있다."""
+        self.assertAlmostEqual(sg_grind.SEALANT_RETAINED, 0.5, places=6)
+        self.assertAlmostEqual(sg_grind.SEALANT_BAND_MM, 20.0, places=6)
+        self.assertAlmostEqual(sg_grind.BLADE_WIDTH_MM,
+                               sg_grind.SEALANT_BAND_MM + 4.0, places=6)
+
+    def test_the_line_is_smaller_than_the_band(self):
+        """관찰이 설계를 푸는 쪽인가 — 상한이 내려가는 쪽이어야 한다."""
+        self.assertTrue(sg_grind.the_band_assumption_was_the_worst_case())
+        self.assertLess(sg_grind.residue_line_area_mm2(),
+                        sg_grind.sealant_area_mm2())
+        self.assertLess(sg_grind.residue_share_of_the_band(), 1.0)
+
+    def test_the_worst_case_verdict_can_fail(self):
+        """선이 띠보다 커지면 판정이 뒤집히는가 — 참으로 굳어 있지 않다."""
+        keep = sg_grind.RESIDUE_LINE_H_MM
+        # 띠 단면 20 x 0.75 = 15 mm² 를 넘겨야 실제로 뒤집힌다 — 폭이 2 mm 이므로
+        # 높이가 7.5 mm 를 넘어야 한다. 모자란 섭동은 통과해 버려서 시험이 안 된다.
+        self.assertGreater(20.0 * sg_grind.RESIDUE_LINE_W_MM,
+                           sg_grind.sealant_area_mm2())
+        try:
+            sg_grind.RESIDUE_LINE_H_MM = 20.0
+            self.assertFalse(sg_grind.the_band_assumption_was_the_worst_case())
+        finally:
+            sg_grind.RESIDUE_LINE_H_MM = keep
+        self.assertTrue(sg_grind.the_band_assumption_was_the_worst_case())
+
+    def test_the_line_volume_follows_its_own_geometry(self):
+        """선 부피가 둘레 × 폭 × 높이 × 면 수인가 — 모서리 겹침을 뺀다."""
+        w = sg_grind.RESIDUE_LINE_W_MM
+        peri = 2.0 * (float(campaign.PANEL_LENGTH_MM)
+                      + float(campaign.PANEL_WIDTH_MM))
+        self.assertAlmostEqual(sg_grind.residue_line_face_area_mm2(),
+                               round(peri * w - 4.0 * w ** 2, 1), places=1)
+        self.assertAlmostEqual(
+            sg_grind.residue_line_volume_per_panel_mm3(),
+            round(sg_grind.residue_line_face_area_mm2()
+                  * sg_grind.RESIDUE_LINE_H_MM * 2, 1), places=1)
+        self.assertLess(sg_grind.residue_line_volume_per_panel_mm3(),
+                        sg_grind.sealant_volume_per_panel_mm3())
+
+    def test_the_verdict_names_what_is_still_unmeasured(self):
+        """관찰을 적었다고 실측이 끝난 것이 아니다 — 두 값이 열려 있다고 말한다."""
+        text = " ".join(sg_grind.what_the_field_observation_removes())
+        self.assertGreaterEqual(
+            len(sg_grind.what_the_field_observation_removes()), 4)
+        self.assertIn("실측 전", text)
+        self.assertIn("높이", text)
+        self.assertIn("폭", text)
+
+
 if __name__ == "__main__":
     unittest.main()

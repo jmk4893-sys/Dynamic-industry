@@ -181,6 +181,10 @@ BED_REFERENCE_TOL_MM = 0.35
 THERMAL_DIFFUSIVITY_MM2_S = 0.09
 #: 비에너지 (J/mm³) — `sg_grind` 가 정본이고 역산한 추정치다.
 ABRADE_J_MM3 = sg_grind.BACKSHEET_ABRADE_J_MM3
+#: 관찰된 잔류 선의 폭·높이 (mm) — `sg_grind` 가 정본이다. 현장 관찰이
+#: 그 모듈에 적혀 있으므로 값을 여기서 다시 적지 않고 빌려 쓴다.
+RESIDUE_LINE_W_MM = sg_grind.RESIDUE_LINE_W_MM
+RESIDUE_LINE_H_MM = sg_grind.RESIDUE_LINE_H_MM
 #: 폴리머 밀도 (g/mm³) 와 비열 (J/g·K).
 DENSITY_G_MM3 = sg_grind.BACKSHEET_DENSITY_G_MM3
 SPECIFIC_HEAT_J_G_K = 1.2
@@ -1029,13 +1033,209 @@ def what_this_order_leaves_open() -> tuple[str, ...]:
 #   라미네이트 **면** 위에 있고, 이 유닛의 벨트가 지나가는 면이 바로 그 면이다.
 
 def sealant_step_over_backsheet_mm() -> float:
-    """실란트 띠가 백시트보다 얼마나 솟아 있는가 (mm) — 벨트가 먼저 만나는 높이."""
-    return round(sg_grind.sealant_left_t_mm() - BACKSHEET_T_MM, 4)
+    """실란트가 백시트보다 얼마나 솟아 있는가 (mm) — 벨트가 먼저 만나는 높이.
+
+    **기준면.** 남은 두께가 그대로 단차다. 실란트는 적층 **위에** 얹히고
+    (`frames.SLOT_H_MM` = `LAMINATE_STACK_MM` + 2 × `SEALANT_T_MM`), 그
+    적층이 이미 백시트를 품고 있다 — 유리 + EVA/셀 + **백시트**. 그러니 실란트
+    밑면이 곧 백시트 윗면이고, 솟은 높이는 실란트 두께다.
+
+    한때 여기서 `BACKSHEET_T_MM` 을 뺐다. **두께를 높이에서 뺀 것**이라
+    근거가 없었고, 단차를 0.75 가 아니라 0.43 mm 로 낮춰 잡았다. 결론
+    (`platen_cannot_follow_the_step()`)은 안 뒤집혔지만 — 낮게 잡아도 이미
+    추종을 넘었으므로 — 틀린 쪽으로 틀렸으니 고쳐 둔다.
+    """
+    return sg_grind.sealant_left_t_mm()
 
 
 def sealant_step_vs_platen_follow() -> float:
     """그 단차가 정반(플래튼) 추종의 몇 배인가 — 1 을 넘으면 못 따라간다."""
     return round(sealant_step_over_backsheet_mm() / PLATEN_FOLLOW_MM, 2)
+
+
+# ── 띠가 아니라 선이라면 — 첨두와 그 길이 ───────────────────────────────
+#
+#   `sg_grind` 가 발주처 관찰을 적었다: 실란트는 거의 프레임에 붙어 떨어지고
+#   면에는 얇은 **선**으로만 남는다. 여기서 세는 것은 그 선이 이 벨트에
+#   무엇을 요구하는가다. 그리고 답이 둘로 갈린다 —
+#
+#   * **동력**은 선 **높이**만 본다. 가로변을 건널 때 폭 전체가 동시에
+#     물리므로 선이 좁아도 첨두는 그대로다.
+#   * **시간**(= 첨두 에너지)은 선 **폭**이 정한다. 좁으면 첨두가 짧고,
+#     짧으면 회전 관성이 받아 줄 수 있다.
+#
+#   그래서 「얇으니 괜찮다」가 반만 맞는다. 얇은 것이 낮은 것이면 동력이 풀리고,
+#   얇은 것이 좁은 것이면 시간이 풀린다 — 관찰은 둘을 구분해 주지 않는다.
+
+def steady_j_per_mm() -> float:
+    """띠 없는 구간에서 주행 1 mm 당 드는 일 (J/mm) — 폭 × 절입 × 비에너지."""
+    return round(float(campaign.PANEL_WIDTH_MM) * TARGET_DEPTH_MM * ABRADE_J_MM3, 1)
+
+
+def cross_line_peak_kw(h_mm: float | None = None) -> float:
+    """**가로변** 선을 건널 때의 첨두 동력 (kW) — 폭 전체가 동시에 물린다.
+
+    선 폭이 들어가지 않는다. 가로선은 주행 방향으로 짧고 폭 방향으로 판을
+    가로지르므로, 순간 절삭 폭은 선 폭이 아니라 **패널 폭**이다.
+    """
+    h = RESIDUE_LINE_H_MM if h_mm is None else h_mm
+    extra = float(campaign.PANEL_WIDTH_MM) * h * sg_grind.SEALANT_ABRADE_J_MM3
+    return round((steady_j_per_mm() + extra) * feed_mm_s() / 1_000.0, 1)
+
+
+def side_line_steady_kw(w_mm: float | None = None,
+                        h_mm: float | None = None) -> float:
+    """**세로변** 두 선이 물려 있는 동안의 상시 동력 (kW) — 여기는 폭이 들어간다."""
+    w = RESIDUE_LINE_W_MM if w_mm is None else w_mm
+    h = RESIDUE_LINE_H_MM if h_mm is None else h_mm
+    extra = 2.0 * w * h * sg_grind.SEALANT_ABRADE_J_MM3
+    return round((steady_j_per_mm() + extra) * feed_mm_s() / 1_000.0, 1)
+
+
+def line_spike_energy_kj(w_mm: float | None = None,
+                         h_mm: float | None = None) -> float:
+    """가로선 하나를 건너는 동안의 **초과** 에너지 (kJ) — 관성이 받아야 하는 몫.
+
+    첨두에서 상시를 뺀 몫에 선 폭을 곱한다. 이 값이 작으면 모터가 첨두를
+    안 봐도 된다 — 회전체가 속도를 조금 내주고 끝난다.
+    """
+    w = RESIDUE_LINE_W_MM if w_mm is None else w_mm
+    h = RESIDUE_LINE_H_MM if h_mm is None else h_mm
+    return round(float(campaign.PANEL_WIDTH_MM) * h
+                 * sg_grind.SEALANT_ABRADE_J_MM3 * w / 1_000.0, 1)
+
+
+def line_spike_s(w_mm: float | None = None) -> float:
+    """그 첨두가 이어지는 시간 (s) — 선 폭 ÷ 이송."""
+    w = RESIDUE_LINE_W_MM if w_mm is None else w_mm
+    return round(w / feed_mm_s(), 4)
+
+
+def installed_power_kw() -> float:
+    """깔려 있는 동력 (kW) — 헤드 정격 × 헤드 수."""
+    return round(motor_rating_kw() * float(HEADS), 1)
+
+
+def line_height_within_installed_mm() -> float:
+    """첨두가 깔린 동력 안에 드는 선 높이 상한 (mm) — 이보다 낮으면 증설이 없다."""
+    room = installed_power_kw() * 1_000.0 / feed_mm_s() - steady_j_per_mm()
+    return round(room / (float(campaign.PANEL_WIDTH_MM)
+                         * sg_grind.SEALANT_ABRADE_J_MM3), 4)
+
+
+def cross_line_cut_width_mm(w_mm: float | None = None) -> float:
+    """가로선을 건널 때 순간 절삭 폭 (mm) — 선 폭이 아니라 **패널 폭**이다.
+
+    폭을 인자로 받고 **쓰지 않는다.** 일부러다 — 안 쓰인다는 것이 이 절의
+    주장이고, 인자가 있어야 `the_peak_is_set_by_height_not_width()` 가 그걸
+    실제로 시험할 수 있다.
+    """
+    return float(campaign.PANEL_WIDTH_MM)
+
+
+def side_line_cut_width_mm(w_mm: float | None = None) -> float:
+    """세로선이 물려 있을 때 순간 절삭 폭 (mm) — 이쪽은 선 폭 두 줄이다."""
+    w = RESIDUE_LINE_W_MM if w_mm is None else w_mm
+    return round(2.0 * w, 4)
+
+
+def the_peak_is_set_by_height_not_width() -> bool:
+    """첨두가 폭과 무관한가 — **절삭 폭**이 선 폭을 안 따라가는가.
+
+    동어반복을 피하려고 판정을 실제로 갈리는 양에 걸었다: 선을 열 배로 넓혀도
+    가로선의 절삭 폭은 안 변하고(패널 폭이므로) 세로선 쪽은 열 배가 돼야 한다.
+    한쪽만 맞으면 거짓이다.
+    """
+    narrow, wide = RESIDUE_LINE_W_MM, RESIDUE_LINE_W_MM * 10.0
+    cross_holds = cross_line_cut_width_mm(wide) == cross_line_cut_width_mm(narrow)
+    side_follows = side_line_cut_width_mm(wide) > side_line_cut_width_mm(narrow)
+    return cross_holds and side_follows
+
+
+def the_width_moves_the_spike_length() -> bool:
+    """폭이 바꾸는 것은 첨두의 길이인가 — 위 판정의 짝."""
+    narrow, wide = RESIDUE_LINE_W_MM, RESIDUE_LINE_W_MM * 10.0
+    return (line_spike_energy_kj(wide) > line_spike_energy_kj(narrow)
+            and line_spike_s(wide) > line_spike_s(narrow))
+
+
+def the_height_moves_the_peak() -> bool:
+    """높이는 반대로 첨두를 움직이는가 — 위 판정의 짝. 둘이 같이 참이어야 뜻이 산다."""
+    return cross_line_peak_kw(RESIDUE_LINE_H_MM * 2.0) > cross_line_peak_kw(
+        RESIDUE_LINE_H_MM)
+
+
+def residue_line_fits_the_platen_follow() -> bool:
+    """선 높이가 정반 추종 안에 드는가 — 참이면 벨트가 단차로 안 느낀다."""
+    return RESIDUE_LINE_H_MM <= PLATEN_FOLLOW_MM
+
+
+def residue_line_fits_the_installed_power() -> bool:
+    """선의 첨두가 깔린 동력 안에 드는가 — 거짓이면 증설이거나 감속이다."""
+    return cross_line_peak_kw() <= installed_power_kw()
+
+
+def power_threshold_is_below_the_geometry_threshold() -> bool:
+    """동력 문턱이 기하 문턱보다 낮은가 — 참이면 **동력이 먼저 걸린다.**
+
+    두 문턱이 따로 있다: 선이 `PLATEN_FOLLOW_MM` 보다 낮으면 벨트가 단차로
+    느끼지 않고(깊이 제어가 산다), `line_height_within_installed_mm()` 보다
+    낮으면 깔린 동력으로 잘린다. **둘 다** 있어야 하고, 낮은 쪽이 구속한다.
+    """
+    return line_height_within_installed_mm() < PLATEN_FOLLOW_MM
+
+
+def line_height_verdict(h_mm: float | None = None) -> str:
+    """선 높이 하나로 설비가 어디로 가는가 — 문턱 두 개가 만드는 세 구간."""
+    h = RESIDUE_LINE_H_MM if h_mm is None else h_mm
+    power, geom = line_height_within_installed_mm(), PLATEN_FOLLOW_MM
+    lo, hi = min(power, geom), max(power, geom)
+    if h <= lo:
+        return "그대로 지나간다 — 증설도 감속도 없다"
+    if h <= hi:
+        return "깊이 제어는 서는데 동력이 모자란다 — 관성이 받거나 증설이다"
+    return "단차이자 동력이다 — 앞 공정이 걷어 주거나 감속이다"
+
+
+def what_the_thin_line_changes() -> tuple[str, ...]:
+    """관찰된 선이 이 유닛에 무엇을 요구하는가 — 갈리는 지점을 적는다."""
+    band_h = sg_grind.sealant_left_t_mm()
+    return (
+        f"**첨두는 여전히 크다.** 선 높이 {RESIDUE_LINE_H_MM} mm 로도 가로변에서 "
+        f"{cross_line_peak_kw()} kW — 상시 {total_power_kw()} kW 의 "
+        f"{cross_line_peak_kw() / total_power_kw():.2f} 배다. 띠 가정 "
+        f"({band_h} mm) 의 {cross_line_peak_kw(band_h)} kW 보다는 "
+        f"{cross_line_peak_kw(band_h) / cross_line_peak_kw():.1f} 배 낮지만 "
+        f"깔린 {installed_power_kw()} kW 안에는 안 든다 "
+        f"(`residue_line_fits_the_installed_power()` = "
+        f"{residue_line_fits_the_installed_power()}).",
+        f"**대신 첨두가 짧아진다.** 폭 {RESIDUE_LINE_W_MM} mm 면 "
+        f"{line_spike_s()} s 동안 {line_spike_energy_kj()} kJ 다. 띠 "
+        f"{sg_grind.SEALANT_BAND_MM:.0f} mm 였을 때의 "
+        f"{line_spike_energy_kj(sg_grind.SEALANT_BAND_MM, band_h):,.0f} kJ 와 "
+        f"자릿수가 다르다 — 이쪽은 회전 관성이 받아 줄 만한 크기고, 그러면 "
+        f"모터는 첨두를 안 본다. **관성을 재야 확정된다.**",
+        f"**세로변은 문제가 아니다.** 두 선이 물려도 "
+        f"{side_line_steady_kw()} kW 로 상시의 "
+        f"{side_line_steady_kw() / total_power_kw():.3f} 배다. 띠였을 때도 "
+        f"{side_line_steady_kw(sg_grind.SEALANT_BAND_MM, band_h)} kW 였으니 "
+        f"여기가 걸린 적은 없다.",
+        f"**증설 없이 넘기는 높이는 {line_height_within_installed_mm()} mm 다.** "
+        f"선이 그보다 낮으면 동력 이야기가 끝난다. 그리고 "
+        f"{PLATEN_FOLLOW_MM} mm 보다 낮으면 단차로도 안 느껴진다 "
+        f"(`residue_line_fits_the_platen_follow()` = "
+        f"{residue_line_fits_the_platen_follow()}) — 그때는 SR-302 의 근거가 "
+        f"이 유닛에서도 없어진다.",
+        f"**문턱은 두 개고 순서가 있다.** 동력 "
+        f"{line_height_within_installed_mm()} mm 가 기하 {PLATEN_FOLLOW_MM} mm "
+        f"보다 낮으므로 **동력이 먼저 걸린다** "
+        f"(`power_threshold_is_below_the_geometry_threshold()` = "
+        f"{power_threshold_is_below_the_geometry_threshold()}). 깊이 제어가 "
+        f"살아 있는 높이에서도 모터는 이미 모자랄 수 있다.",
+        f"**그러니 재야 하는 것은 높이 하나다.** 폭은 관성이 받아 주는지만 "
+        f"가린다. 지금 계획값 {RESIDUE_LINE_H_MM} mm 면 — "
+        f"**{line_height_verdict()}** (`line_height_verdict()`).",
+    )
 
 
 def sealant_band_face_area_mm2() -> float:

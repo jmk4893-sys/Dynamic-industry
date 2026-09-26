@@ -479,15 +479,30 @@ class TestTheBeltMeetsSiliconeFirst(unittest.TestCase):
         self.assertGreater(br_abrade.sealant_step_over_backsheet_mm(), 0.0)
         self.assertAlmostEqual(
             br_abrade.sealant_step_over_backsheet_mm(),
-            sg_grind.sealant_left_t_mm() - br_abrade.BACKSHEET_T_MM, places=4)
+            sg_grind.sealant_left_t_mm(), places=4)
+
+    def test_the_step_is_measured_from_the_backsheet_face(self):
+        """기준면 — 실란트는 적층 **위에** 얹히고 적층이 백시트를 품고 있다.
+
+        슬롯 높이가 적층 + 양면 실란트로 짜여 있으므로 실란트 밑면이 곧
+        백시트 윗면이다. 그래서 솟은 높이에 백시트 두께가 **들어가지 않는다** —
+        한때 그것을 빼고 있었고, 단차를 낮게 잡았다.
+        """
+        from pv_preprocess import frames
+        self.assertAlmostEqual(
+            frames.SLOT_H_MM,
+            frames.LAMINATE_STACK_MM + 2 * frames.SEALANT_T_MM, places=6)
+        self.assertNotAlmostEqual(
+            br_abrade.sealant_step_over_backsheet_mm(),
+            sg_grind.sealant_left_t_mm() - br_abrade.BACKSHEET_T_MM, places=3)
 
     def test_the_platen_cannot_follow_that_step(self):
         """단차가 추종의 몇 배인가 — 1 을 넘으면 띠 위에서 깊이 제어가 깨진다."""
         self.assertGreater(br_abrade.sealant_step_vs_platen_follow(), 1.0)
         self.assertAlmostEqual(
             br_abrade.sealant_step_vs_platen_follow(),
-            br_abrade.sealant_step_over_backsheet_mm()
-            / br_abrade.PLATEN_FOLLOW_MM, places=2)
+            round(br_abrade.sealant_step_over_backsheet_mm()
+                  / br_abrade.PLATEN_FOLLOW_MM, 2), places=4)
 
     def test_the_step_is_most_of_the_target_depth(self):
         """목표 절입의 대부분이라 「얇은 단차」로 못 넘긴다."""
@@ -962,6 +977,87 @@ class TestTheUnitDrawsItself(unittest.TestCase):
             self.assertIn(key, s)
         for value in s.values():
             self.assertIsInstance(value, (int, float, bool, str, list))
+
+
+class TestTheThinLine(unittest.TestCase):
+    """띠가 아니라 선이라면 — 동력은 높이가, 시간은 폭이 정한다."""
+
+    def test_the_steady_term_reproduces_the_unit_power(self):
+        """J/mm 로 다시 쓴 상시항이 제거율로 구한 동력과 같은가 — 독립 교차검산."""
+        self.assertAlmostEqual(
+            br_abrade.steady_j_per_mm() * br_abrade.feed_mm_s() / 1_000.0,
+            br_abrade.total_power_kw(), places=1)
+
+    def test_the_peak_ignores_the_line_width(self):
+        """가로선은 폭 전체가 물리므로 절삭 폭이 선 폭을 안 따라간다."""
+        self.assertTrue(br_abrade.the_peak_is_set_by_height_not_width())
+        self.assertAlmostEqual(br_abrade.cross_line_cut_width_mm(0.5),
+                               float(campaign.PANEL_WIDTH_MM), places=6)
+        self.assertAlmostEqual(br_abrade.cross_line_cut_width_mm(50.0),
+                               float(campaign.PANEL_WIDTH_MM), places=6)
+
+    def test_the_height_moves_the_peak_and_the_width_moves_its_length(self):
+        """두 인자가 서로 다른 것을 움직인다 — 하나로 뭉뚱그리면 판단이 틀린다."""
+        self.assertTrue(br_abrade.the_height_moves_the_peak())
+        self.assertTrue(br_abrade.the_width_moves_the_spike_length())
+        w = br_abrade.RESIDUE_LINE_W_MM
+        self.assertAlmostEqual(br_abrade.line_spike_energy_kj(2.0 * w),
+                               2.0 * br_abrade.line_spike_energy_kj(w), places=3)
+        self.assertAlmostEqual(br_abrade.line_spike_s(2.0 * w),
+                               2.0 * br_abrade.line_spike_s(w), places=3)
+
+    def test_the_cross_line_costs_more_than_the_side_lines(self):
+        """가로선이 세로선보다 비싸다 — 같은 선인데 방향이 값을 바꾼다."""
+        self.assertGreater(br_abrade.cross_line_peak_kw(),
+                           br_abrade.side_line_steady_kw())
+        self.assertGreater(br_abrade.side_line_steady_kw(),
+                           br_abrade.total_power_kw())
+
+    def test_the_power_threshold_round_trips(self):
+        """문턱 높이를 다시 넣으면 첨두가 깔린 동력과 같은가 — 대수 오류를 잡는다."""
+        h = br_abrade.line_height_within_installed_mm()
+        self.assertAlmostEqual(br_abrade.cross_line_peak_kw(h),
+                               br_abrade.installed_power_kw(), places=0)
+        self.assertGreater(h, 0.0)
+        self.assertLess(h, sg_grind.sealant_left_t_mm())
+
+    def test_the_power_threshold_binds_before_the_geometry_one(self):
+        """깊이 제어가 살아 있는 높이에서도 모터가 먼저 모자랄 수 있다."""
+        self.assertTrue(
+            br_abrade.power_threshold_is_below_the_geometry_threshold())
+        self.assertLess(br_abrade.line_height_within_installed_mm(),
+                        br_abrade.PLATEN_FOLLOW_MM)
+
+    def test_the_verdict_has_three_bands(self):
+        """문턱 두 개가 구간 셋을 만든다 — 경계 양쪽에서 판정이 달라야 한다."""
+        lo = br_abrade.line_height_within_installed_mm()
+        hi = br_abrade.PLATEN_FOLLOW_MM
+        seen = {br_abrade.line_height_verdict(h)
+                for h in (lo / 2.0, (lo + hi) / 2.0, hi * 10.0)}
+        self.assertEqual(len(seen), 3)
+        self.assertNotEqual(br_abrade.line_height_verdict(lo),
+                            br_abrade.line_height_verdict(hi * 10.0))
+
+    def test_the_planned_line_still_does_not_fit(self):
+        """계획값 0.2 mm 는 두 문턱을 다 넘는다 — 「얇으니 괜찮다」가 아니다."""
+        self.assertFalse(br_abrade.residue_line_fits_the_installed_power())
+        self.assertFalse(br_abrade.residue_line_fits_the_platen_follow())
+        self.assertGreater(br_abrade.cross_line_peak_kw(),
+                           br_abrade.installed_power_kw())
+
+    def test_the_line_is_two_orders_cheaper_than_the_band_in_spike(self):
+        """첨두 에너지에서 자릿수가 갈린다 — 관성이 받을 수 있는가의 근거."""
+        band = br_abrade.line_spike_energy_kj(
+            sg_grind.SEALANT_BAND_MM, sg_grind.sealant_left_t_mm())
+        self.assertGreater(band / br_abrade.line_spike_energy_kj(), 30.0)
+
+    def test_the_verdict_names_both_thresholds(self):
+        """판단문이 문턱 두 개와 그 순서를 다 말하는가."""
+        text = " ".join(br_abrade.what_the_thin_line_changes())
+        self.assertGreaterEqual(len(br_abrade.what_the_thin_line_changes()), 5)
+        self.assertIn(str(br_abrade.PLATEN_FOLLOW_MM), text)
+        self.assertIn(str(br_abrade.line_height_within_installed_mm()), text)
+        self.assertIn("관성", text)
 
 
 if __name__ == "__main__":
