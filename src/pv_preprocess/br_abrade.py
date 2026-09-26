@@ -81,9 +81,9 @@ from .afr_units import Part, Unit
 
 #: 유닛 태그와 라인에서의 자리.
 UNIT_TAG = "BR-305"
-#: 앞뒤 유닛 — 프레임이 빠진 뒤여야 벨트가 면에 닿고, 열이 오기 전이어야
-#: 불소를 걷는 뜻이 있다. 그래서 자리가 이 둘 사이로 **정해진다**.
-UPSTREAM_TAG, DOWNSTREAM_TAG = "AFR-101", "SG-301"
+#: 프레임이 떨어지는 자리 — 벨트가 면에 닿으려면 프레임이 먼저 빠져야 한다.
+#: 앞 걸음과는 **다른 사실**이다. 한때 한 상수가 둘을 겸했다.
+FRAME_REMOVED_AT = "AFR-101"
 
 # ── 벗겨야 할 것과 남겨야 할 것 ─────────────────────────────────────────
 #: 백시트 두께 (mm) — `sg_grind` 가 정본이다.
@@ -461,6 +461,20 @@ NEXT_UNIT = "계단형 핫나이프 (셀모듈 ↔ 유리)"
 #: 유리 제거가 `NEXT_UNIT` 과 같은 기계인지 GRM-401 이 따로 서는지는
 #: 아직 안 들었다 — `what_this_order_leaves_open()` 이 그것을 든다.
 LINE_ORDER = ("AFR-101 정치", PRIOR_UNIT, "BR-305 백시트 연마", "유리 제거")
+#: 이 유닛이 `LINE_ORDER` 에서 서는 자리.
+LINE_INDEX = LINE_ORDER.index("BR-305 백시트 연마")
+
+
+def _tag(step: str) -> str:
+    """공정 이름에서 태그를 뽑는다 — 「SR-302 잔사 …」 → 「SR-302」."""
+    head = step.split(" ", 1)[0]
+    return head if "-" in head else step
+
+
+#: 앞뒤 걸음 — **`LINE_ORDER` 에서 계산한다.** 한때 이 둘이 "AFR-101", "SG-301"
+#: 로 박혀 있었는데 발주처가 순서를 정하면서 어긋났다. 상수로 두면 또 어긋난다.
+UPSTREAM_TAG = _tag(LINE_ORDER[LINE_INDEX - 1])
+DOWNSTREAM_TAG = _tag(LINE_ORDER[LINE_INDEX + 1])
 
 
 def the_order_is_grind_then_peel() -> tuple[str, ...]:
@@ -971,59 +985,145 @@ def open_questions() -> tuple[str, ...]:
 
 
 # ── 부품 ────────────────────────────────────────────────────────────────
+# ── 3D 배치 — BOM 을 자리로 편다 ─────────────────────────────────────────
+#
+#   한때 부품이 전부 (0, y, 0) 에 쌓여 있었다. 수량과 규격만 맞으면 되는
+#   **부품표**였기 때문인데, 그것을 그대로 세우면 두 헤드가 겹치고 아무것도
+#   안 보인다. 그래서 자리를 준다 — 이송은 **x**, 벨트 폭은 **z**, 위가 **y** 다.
+#
+#   기준면은 **판 윗면 y = 0** 이다. 벨트가 그 위에 얹히고 이송 롤러가 밑을
+#   받치므로, 부호만 보고도 무엇이 판을 누르고 무엇이 받치는지 읽힌다.
+
+#: 줄지어 세우는 부품의 간격 (mm) — 3D 가 수량을 자리로 펼 때 쓴다.
+ROW_PITCH_MM = {"feed": 520.0, "duct": 200.0}
+
+#: 연마 벨트 두께 (mm) — 배킹 + 연마층. 한때 부품표에 숫자로만 박혀 있었다.
+BELT_T_MM = 8.0
+#: 헤드 두 대의 이송 방향 간격 (mm) — ±이 값에 서고 `mirror=('x',)` 로 편다.
+HEAD_PITCH_MM = 1_400.0
+#: 접촉부 확대 배율 — 절입 0.45 mm 를 5.5 mm 적층 옆에서 읽으려면 이만큼 키운다.
+CONTACT_MAG = 60.0
+
+#: 유닛별 기본 시점. 기계는 이송축을 비스듬히 봐야 두 헤드가 갈려 보이고,
+#: 접촉부는 폭 방향(z)에서 봐야 층이 단면으로 읽힌다.
+VIEW_DIR = {
+    "br305": (1.05, 0.88, 1.05),
+    "contact": (0.35, 0.55, 1.35),
+}
+
+
 def unit() -> Unit:
-    """BR-305 의 부품 구성 — 헤드 하나 기준으로 세고 수량으로 곱한다."""
+    """BR-305 기계 전경 — 판이 롤러에 실려 두 헤드를 지난다.
+
+    부품 수량은 부품표 그대로이고, 자리는 위 좌표계로 준다. 두 헤드는
+    `mirror=('x',)` 로 ±`HEAD_PITCH_MM`/2 에 선다.
+    """
     w = BELT_WIDTH_MM
+    hx = HEAD_PITCH_MM / 2.0
+    t = sg_grind.STACK_T_MM                          # 적층 두께 — sg_grind 정본
+    belt_y = BELT_T_MM / 2.0                                 # 벨트가 판 위에 얹힌다
+    drum_y = BELT_T_MM + CONTACT_DRUM_D_MM / 2.0
     parts: list[Part] = [
-        Part("frame", "본체 프레임", 1, "box", (3_400.0, 2_200.0, w + 400.0),
-             (0.0, 0.0, 0.0), "용접구조용강",
-             "헤드·압반·이송을 한 몸에 잡는다", catalog=f"{UNIT_TAG}-FR-01"),
+        Part("frame", "본체 프레임", 1, "box", (3_400.0, 1_500.0, w + 400.0),
+             (0.0, 480.0, 0.0), "용접구조용강",
+             "헤드·압반·이송을 한 몸에 잡는다. 화면에서는 **포락선**으로만 "
+             "세운다 — 채우면 안이 안 보인다.",
+             color="ghost", explode=(0.0, 900.0, 0.0),
+             spec="3,400 × 2,200 × 2,000", catalog=f"{UNIT_TAG}-FR-01"),
+        Part("panel", "라미네이트 (백시트가 위)", 1, "box",
+             (float(campaign.PANEL_LENGTH_MM), t, float(campaign.PANEL_WIDTH_MM)),
+             (0.0, -t / 2.0, 0.0), f"유리 t{sg_grind.GLASS_T_MM} + EVA·백시트",
+             f"**윗면이 y = 0** 이다. {feed_mm_s():.1f} mm/s 로 지나가며 두 헤드를 "
+             f"차례로 만난다 — 통과 거리 {pass_length_mm():,.0f} mm, 점유 "
+             f"{occupancy_s()} s.",
+             color="aluminum", explode=(0.0, -700.0, 0.0),
+             spec=f"{campaign.PANEL_LENGTH_MM:,.0f} × {campaign.PANEL_WIDTH_MM:,.0f} "
+                  f"× {t}", catalog="—"),
+        Part("feed", "이송 롤러", 6, "cylrow", (120.0, w, 120.0),
+             (0.0, -t - 60.0, 0.0), "강 + 폴리우레탄",
+             "판을 물어 정속으로 보낸다. 판 **밑**에 있으므로 벨트가 누르는 힘을 "
+             "이쪽이 받는다.", axis="z",
+             color="chrome", explode=(0.0, -320.0, 0.0),
+             spec=f"Ø120 × {w:.0f} · {feed_mm_s():.1f} mm/s",
+             catalog=f"{UNIT_TAG}-FD-01"),
+        Part("belt", "연마 벨트", HEADS, "box", (760.0, BELT_T_MM, w),
+             (hx, belt_y, 0.0), "산화알루미늄 오픈코트",
+             f"폴리머를 칩으로 걷어낸다 — 오픈코트라야 안 먹는다. 화면에 세운 "
+             f"것은 **접촉 주행분**이고 고리 전체는 2,400 mm 다. 주속 "
+             f"{BELT_SPEED_M_S:.0f} m/s 가 이송 {feed_mm_s():.1f} mm/s 의 "
+             f"{BELT_SPEED_M_S * 1_000.0 / feed_mm_s():,.0f} 배라 한 자리를 "
+             "그만큼 여러 번 지나간다.",
+             mirror=("x",), color="dark", explode=(0.0, 260.0, 0.0),
+             spec=f"{'/'.join(GRITS)} · 고리 2,400 × {w:.0f} · 주속 "
+                  f"{BELT_SPEED_M_S:.0f} m/s", catalog=f"{UNIT_TAG}-BT-01"),
         Part("drum", "접촉 드럼", HEADS, "cyl",
-             (CONTACT_DRUM_D_MM, w, CONTACT_DRUM_D_MM), (0.0, 900.0, 0.0),
-             "강 + 고무 라이닝", "벨트를 면에 눌러 절입을 만든다", axis="y",
+             (CONTACT_DRUM_D_MM, w, CONTACT_DRUM_D_MM), (hx, drum_y, 0.0),
+             "강 + 고무 라이닝",
+             f"벨트를 면에 눌러 절입을 만든다. 접촉 호가 "
+             f"{contact_arc_mm()} mm 이고 그 안에 판이 머무는 시간이 "
+             f"{contact_time_s() * 1_000:.2f} ms 다 — 열이 안 퍼지고 칩으로 "
+             "나가는 근거가 이 짧음이다.", axis="z",
+             mirror=("x",), color="steel", explode=(0.0, 620.0, 0.0),
              spec=f"Ø{CONTACT_DRUM_D_MM:.0f} × {w:.0f}",
              catalog=f"{UNIT_TAG}-DR-01"),
-        Part("belt", "연마 벨트", HEADS, "box", (2_400.0, 8.0, w),
-             (0.0, 1_000.0, 0.0), "산화알루미늄 오픈코트",
-             "폴리머를 칩으로 걷어낸다 — 오픈코트라야 안 먹는다",
-             spec=f"{'/'.join(GRITS)} · 주속 {BELT_SPEED_M_S:.0f} m/s",
-             catalog=f"{UNIT_TAG}-BT-01"),
         Part("platen", "분할 압반 세그먼트", platen_segments() * HEADS, "box",
-             (PLATEN_SEGMENT_MM, 60.0, 90.0), (0.0, 860.0, 0.0),
-             "강 + 흑연포",
-             "면을 따라가며 깊이를 **면에서** 잡는다 — 정반 기준은 창을 넘는다",
-             spec=f"피치 {PLATEN_SEGMENT_MM:.0f} mm · 추종 ±{PLATEN_FOLLOW_MM} mm",
-             catalog=f"{UNIT_TAG}-PL-01"),
-        Part("motor", "헤드 주모터", HEADS, "cyl", (320.0, 520.0, 320.0),
-             (0.0, 1_500.0, 0.0), "IE3 3상유도",
-             "벨트를 돌린다", axis="y",
-             spec=f"{motor_rating_kw():.0f} kW", catalog=f"{UNIT_TAG}-MT-01"),
-        Part("feed", "이송 롤러", 6, "cyl", (120.0, w, 120.0),
-             (0.0, 780.0, 0.0), "강 + 폴리우레탄",
-             "판을 물어 정속으로 보낸다", axis="y",
-             spec=f"{feed_mm_s():.0f} mm/s", catalog=f"{UNIT_TAG}-FD-01"),
-        Part("hood", "집진 후드", HEADS, "box", (420.0, 400.0, w),
-             (0.0, 1_180.0, 0.0), "강판",
-             "벨트 나가는 쪽을 감싸 분진을 잡는다", catalog=f"{UNIT_TAG}-HD-01"),
-        Part("duct", "집진 지관", outlets_per_head() * HEADS, "cyl",
-             (DUCT_D_MM, 700.0, DUCT_D_MM), (0.0, 1_500.0, 0.0), "강관",
-             "분진을 반송속도 위로 끌어낸다 — 느리면 덕트에 쌓여 그것이 연료다",
-             axis="y", spec=f"Ø{DUCT_D_MM:.0f} · {DUCT_VELOCITY_M_S:.0f} m/s",
-             catalog=f"{UNIT_TAG}-DT-01"),
+             (90.0, 60.0, platen_segments() * PLATEN_SEGMENT_MM),
+             (hx - 220.0, BELT_T_MM + 30.0, 0.0), "강 + 흑연포",
+             f"면을 따라가며 깊이를 **면에서** 잡는다 — 정반 기준은 창을 넘는다. "
+             f"{platen_segments()} 조각이 피치 {PLATEN_SEGMENT_MM:.0f} mm 로 "
+             f"**폭 방향**에 늘어서므로 합이 "
+             f"{platen_segments() * PLATEN_SEGMENT_MM:,.0f} mm — 판 폭 "
+             f"{campaign.PANEL_WIDTH_MM:,.0f} 을 덮는다. 조각마다 따로 떠서 "
+             f"±{PLATEN_FOLLOW_MM} mm 를 따라간다.",
+             mirror=("x",), color="frame", explode=(0.0, 420.0, 0.0),
+             spec=f"피치 {PLATEN_SEGMENT_MM:.0f} mm × {platen_segments()} · 추종 "
+                  f"±{PLATEN_FOLLOW_MM} mm", catalog=f"{UNIT_TAG}-PL-01"),
         Part("airknife", "냉각 에어나이프", HEADS, "box", (40.0, 40.0, w),
-             (0.0, 1_020.0, 0.0), "알루미늄",
-             "접촉 직후를 식혀 녹은 칩이 벨트에 붙는 것을 막는다",
+             (hx - 400.0, 40.0, 0.0), "알루미늄",
+             "접촉 직후를 식혀 녹은 칩이 벨트에 붙는 것을 막는다. 드럼 "
+             f"**나가는 쪽**에 선다 — 들어가는 쪽에 두면 아직 안 깎인 면을 "
+             "식힌다.", mirror=("x",), color="aluminum",
+             explode=(0.0, 200.0, 0.0), spec=f"40 × 40 × {w:.0f}",
              catalog=f"{UNIT_TAG}-AK-01"),
+        Part("hood", "집진 후드", HEADS, "box", (420.0, 400.0, w),
+             (hx - 620.0, 240.0, 0.0), "강판",
+             f"벨트 나가는 쪽을 감싸 분진을 잡는다. 한 장에 "
+             f"{swarf_kg_per_panel()} kg 이 나오고 후드가 "
+             f"{hood_flow_m3h():,} m³/h 로 끌어낸다 — 포집률 {DUST_CAPTURE:.1%} "
+             "는 안전 항목이 아니라 **품질 사양**이다.",
+             mirror=("x",), color="shroud", explode=(0.0, 520.0, 0.0),
+             spec=f"420 × 400 × {w:.0f} · {hood_flow_m3h():,} m³/h",
+             catalog=f"{UNIT_TAG}-HD-01"),
+        Part("duct", "집진 지관", outlets_per_head() * HEADS, "cylrow",
+             (DUCT_D_MM, 420.0, DUCT_D_MM), (0.0, 640.0, 0.0), "강관",
+             f"분진을 반송속도 위로 끌어낸다 — 느리면 덕트에 쌓여 그것이 "
+             f"연료다. 헤드당 {outlets_per_head()} 개씩 "
+             f"{outlets_per_head() * HEADS} 개가 "
+             f"{DUCT_VELOCITY_M_S:.0f} m/s 를 지킨다.", axis="y",
+             color="chrome", explode=(0.0, 700.0, 0.0),
+             spec=f"Ø{DUCT_D_MM:.0f} · {DUCT_VELOCITY_M_S:.0f} m/s",
+             catalog=f"{UNIT_TAG}-DT-01"),
+        Part("motor", "헤드 주모터", HEADS, "cyl", (320.0, 520.0, 320.0),
+             (hx, 300.0, w / 2.0 + 260.0), "IE3 3상유도",
+             f"벨트를 돌린다. 헤드당 절삭 {power_per_head_kw()} kW 라 정격이 "
+             f"{motor_rating_kw():.0f} kW 이고 두 대 합이 "
+             f"{total_power_kw()} kW 다 — 벨트 폭 밖에 세워 집진 통로를 "
+             "안 막는다.", axis="y",
+             mirror=("x",), color="dark", explode=(0.0, 0.0, 520.0),
+             spec=f"{motor_rating_kw():.0f} kW · Ø320 × 520",
+             catalog=f"{UNIT_TAG}-MT-01"),
     ]
     return Unit(
         key="br305",
-        name=f"{UNIT_TAG} 백시트 면 연마 유닛",
+        name=f"{UNIT_TAG} 백시트 면 연마 유닛 — 2 헤드 통과",
         sheet=f"PV-{UNIT_TAG}-ASM-5101",
-        envelope_mm=(3_400.0, 2_200.0, w + 400.0),
-        view_r_mm=2_200.0,
+        envelope_mm=(3_400.0, 1_500.0, w + 400.0),
+        view_r_mm=1_850.0,
         principle=(
             ("① 물림", "이송 롤러가 판을 물어 정속으로 보낸다. 프레임은 "
-                       f"{UPSTREAM_TAG} 에서 이미 빠졌으므로 면이 트여 있다."),
+                       f"{FRAME_REMOVED_AT} 에서 이미 빠졌으므로 면이 트여 있고, "
+                       f"실란트 띠도 앞 걸음 {UPSTREAM_TAG} 가 걷어 놨다 — "
+                       "안 걷혔으면 띠가 벨트를 먼저 맞는다."),
             ("② 1 단 절삭", f"거친 벨트({GRITS[0]})가 절입 "
                             f"{depth_per_head_mm():.3f} mm 를 걷는다. 데워진 살이 "
                             f"그대로 칩이 되어 나간다 (δ/a = {skin_to_depth_ratio()})."),
@@ -1042,6 +1142,135 @@ def unit() -> Unit:
                        f"{polymer_reduction_ratio():,.0f} 분의 일이 된다."),
         ),
         parts=tuple(parts))
+
+
+def contact_unit() -> Unit:
+    """벨트–적층 접촉부 — 배율 `CONTACT_MAG` 배. 0.45 mm 를 눈에 보이게 세운다.
+
+    이 유닛만 배율이 걸린다. 적층이 5.5 mm 인데 걷는 것은 0.45 mm 라, 실제
+    비율로 그리면 **깎는 층이 선 하나**가 된다. 그래서 키운다 — 키운 것은
+    치수가 아니라 **화면**이고, 값은 전부 모델에서 온다.
+
+    **두께(y)만 키운다.** 폭·깊이는 그대로다. 3D 연장이 배율을 스윕 단면에만
+    먹이고 상자에는 안 먹이므로, 층을 상자로 세우는 이 유닛은 배율을 **부품
+    치수에 직접 넣는다** — `sg_grind` 가 실란트 띠를 20 배로 그리는 것과 같은
+    방식이다. 그래서 화면의 세로 치수는 읽으면 안 되고, 읽을 것은 **비율**이다.
+
+    **공구(벨트·압반)는 배율을 안 먹인다.** 벨트 8 mm 를 60 배 키우면 480 mm 가
+    되어 적층 전체보다 두꺼워진다. 실치수는 이름과 규격에 적는다.
+    """
+    m = CONTACT_MAG
+    lo, hi = depth_window_mm()
+    back_eva = BACK_EVA_T_MM
+    cells = (sg_grind.STACK_T_MM - sg_grind.GLASS_T_MM
+             - back_eva - BACKSHEET_T_MM)
+    span = 900.0                                    # 화면에 세우는 폭
+    # 층을 아래에서 위로 쌓는다 — 판 윗면이 y = 0 이므로 전부 음수다.
+    y_back = -BACKSHEET_T_MM / 2.0 * m
+    y_beva = (-BACKSHEET_T_MM - back_eva / 2.0) * m
+    y_cell = (-BACKSHEET_T_MM - back_eva - cells / 2.0) * m
+    y_glass = (-BACKSHEET_T_MM - back_eva - cells
+               - sg_grind.GLASS_T_MM / 2.0) * m
+    parts = (
+        Part("cbacksheet", f"백시트 t{BACKSHEET_T_MM} (걷는 것)", 1, "box",
+             (span, BACKSHEET_T_MM * m, 300.0), (0.0, y_back, 0.0),
+             "불소층 + PET 심재",
+             f"**이 층이 관문이다.** 목표 절입 {TARGET_DEPTH_MM} mm 가 이 "
+             f"{BACKSHEET_T_MM} mm 를 넘어야 하고, 가장 얕은 자리도 "
+             f"{min_depth_cut_mm()} mm 라 어디에도 안 남는다.",
+             color="orange", explode=(0.0, 320.0, 0.0),
+             spec=f"t{BACKSHEET_T_MM} · 창 {lo}~{hi} mm", catalog="—"),
+        Part("cbackeva", f"배면 EVA t{back_eva} (넘쳐도 되는 층)", 1, "box",
+             (span, back_eva * m, 300.0), (0.0, y_beva, 0.0), "EVA",
+             f"백시트를 다 걷고도 {round(hi - TARGET_DEPTH_MM, 3)} mm 가 남는 "
+             "여유층이다. 넘쳐 들어가도 급광에 없던 것을 새로 만들지 않는다 — "
+             "`overshoot_into_eva_adds_nothing()`.",
+             color="rubber", explode=(0.0, 180.0, 0.0),
+             spec=f"t{back_eva} · 여유 {round(hi - TARGET_DEPTH_MM, 3)} mm",
+             catalog="—"),
+        Part("ccell", "셀 + 전면 EVA (건드리면 안 되는 층)", 1, "box",
+             (span, cells * m, 300.0), (0.0, y_cell, 0.0), "실리콘 셀 + EVA",
+             f"여기까지 내려가면 은과 실리콘이 깨진다. 창 상한 {hi} mm 가 "
+             "이 면 위에서 닫히는 이유다.",
+             color="dark", explode=(0.0, -160.0, 0.0),
+             spec=f"t{round(cells, 3)}", catalog="—"),
+        Part("cglass", f"유리 t{sg_grind.GLASS_T_MM}", 1, "box",
+             (span, sg_grind.GLASS_T_MM * m, 300.0), (0.0, y_glass, 0.0),
+             "소다석회",
+             "이 유닛은 유리를 안 건드린다. 유리는 다음 걸음 "
+             f"({DOWNSTREAM_TAG}) 이 맡는다.",
+             color="ghost", explode=(0.0, -420.0, 0.0),
+             spec=f"t{sg_grind.GLASS_T_MM}", catalog="—"),
+        # 공구는 배율을 안 먹인다 — 벨트 8 mm 를 60 배 키우면 480 mm 가 되어
+        # 적층 전체(330 mm)보다 두꺼워진다. 읽히는 크기로 그리고 실치수는 적는다.
+        Part("cbelt", f"연마 벨트 (접촉 단면 · 실제 t{BELT_T_MM:.0f})", 1, "box",
+             (span, 120.0, 300.0), (0.0, 60.0, 0.0),
+             "산화알루미늄 오픈코트",
+             f"판 **위에서** 내려온다. 절입 {TARGET_DEPTH_MM} mm 만큼 층을 "
+             f"먹으면 그 살이 칩이 되어 나간다 — 열침투 "
+             f"{thermal_skin_mm()} mm 가 절입의 "
+             f"{skin_to_depth_ratio()} 배라 데워진 살이 그대로 떨어진다.",
+             color="steel", explode=(0.0, 260.0, 0.0),
+             spec=f"실제 t{BELT_T_MM} · {'/'.join(GRITS)} · 그림은 공구 배율 없음",
+             catalog="—"),
+        Part("cplaten", "압반 세그먼트 한 조각 (실제 30 × 60)", 1, "box",
+             (220.0, 200.0, 300.0), (span / 2.0 - 160.0, 220.0, 0.0),
+             "강 + 흑연포",
+             f"한 조각이 피치 {PLATEN_SEGMENT_MM:.0f} mm 다. 조각이 **판 면**에 "
+             f"얹혀 ±{PLATEN_FOLLOW_MM} mm 를 따라가므로 깊이 기준이 기계가 "
+             f"아니라 판이다 — 정반 기준이면 공차합 "
+             f"{BED_REFERENCE_TOL_MM} mm 로 창 {round(hi - lo, 3)} mm 를 넘는다.",
+             color="frame", explode=(0.0, 420.0, 0.0),
+             spec=f"실제 {PLATEN_SEGMENT_MM:.0f} × 60 · 추종 ±{PLATEN_FOLLOW_MM}",
+             catalog=f"{UNIT_TAG}-PL-01"),
+        Part("cchip", "걷힌 칩", 1, "box",
+             (span / 3.0, TARGET_DEPTH_MM * m, 300.0),
+             (-span / 2.0 + span / 6.0, 150.0, 0.0),
+             "불소·PET 가루",
+             f"한 장에 {swarf_kg_per_panel()} kg 이 이 두께에서 나온다. **없애는 "
+             f"것이 아니라 가루로 바꾼다** — 포집 {DUST_CAPTURE:.1%} 를 놓친 "
+             f"몫 {escaped_fines_g_per_panel()} g 은 필름보다 나쁜 형태로 "
+             "파쇄에 실린다.",
+             color="rubber", explode=(0.0, 640.0, 0.0),
+             spec=f"{swarf_kg_per_panel()} kg/장 · 누출 "
+                  f"{escaped_fines_g_per_panel()} g", catalog="—"),
+    )
+    return Unit(
+        key="contact",
+        name=f"벨트–적층 접촉부 (배율 {CONTACT_MAG:.0f} 배)",
+        sheet=f"PV-{UNIT_TAG}-DET-5102",
+        envelope_mm=(span, 700.0, 300.0), view_r_mm=680.0,
+        principle=(
+            ("① 층", f"위에서 백시트 {BACKSHEET_T_MM} · 배면 EVA {back_eva} · "
+                     f"셀+전면 EVA {round(cells, 3)} · 유리 "
+                     f"{sg_grind.GLASS_T_MM} 다. "
+                     f"걷어야 할 것은 맨 위 {BACKSHEET_T_MM} mm 뿐이다. "
+                     f"**두께만 {CONTACT_MAG:.0f} 배로 그렸다** — 폭은 그대로라 "
+                     "화면의 세로는 읽지 말고 층 사이 비율을 읽는다."),
+            ("② 창", f"그래서 깊이 창이 **{lo}~{hi} mm** 다 — 아래로는 백시트를 "
+                     f"다 걷어야 하고 위로는 셀에 닿기 전에 멈춰야 한다. 폭 "
+                     f"{round(hi - lo, 3)} mm."),
+            ("③ 기준면", f"압반 조각이 **판 면**에 얹혀 ±{PLATEN_FOLLOW_MM} mm 를 "
+                        f"따라간다. 정반 기준이면 공차합 {BED_REFERENCE_TOL_MM} mm "
+                        f"로 창을 넘는다 — 여유 배수 {depth_margin_ratio()}."),
+            ("④ 절삭", f"벨트가 절입 {TARGET_DEPTH_MM} mm 를 먹는다. 접촉 호 "
+                       f"{contact_arc_mm()} mm 를 {contact_time_s() * 1_000:.2f} ms "
+                       f"에 지나므로 열침투가 {thermal_skin_mm()} mm — 절입의 "
+                       f"{skin_to_depth_ratio()} 배라 데워진 살이 그대로 칩이 된다."),
+            ("⑤ 남기지 않는다", f"가장 얕게 깎이는 자리도 {min_depth_cut_mm()} mm "
+                            f"라 백시트가 **어디에도 안 남는다**. 가장 깊은 자리는 "
+                            f"{max_depth_cut_mm()} mm 로 창 상한 {hi} 아래다."),
+            ("⑥ 가루로 바뀐다", f"걷힌 살은 없어지는 것이 아니라 "
+                           f"{swarf_kg_per_panel()} kg/장의 가루가 된다. 포집을 "
+                           f"놓친 {escaped_fines_g_per_panel()} g 이 이 유닛의 "
+                           "진짜 위험이다 — 미립자는 필름보다 나쁘다."),
+        ),
+        parts=parts)
+
+
+def units() -> tuple[Unit, ...]:
+    """도면이 세우는 유닛 — 기계 전경과 접촉부."""
+    return (unit(), contact_unit())
 
 
 def summary() -> dict[str, object]:

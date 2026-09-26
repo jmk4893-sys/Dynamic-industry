@@ -24,22 +24,52 @@
 
 from __future__ import annotations
 
+import importlib.util
 import inspect
+import json
 import math
+import pathlib
 import unittest
 
 from tests import _path  # noqa: F401
 
 from pv_preprocess import br_abrade, campaign, dust, handoff, separation, sg_grind
 
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+CLOSEUP = ROOT / "docs/drawings/pv-br-closeup.html"
+
+
+def _load(name: str):
+    spec = importlib.util.spec_from_file_location(name, ROOT / "tools" / f"{name}.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
 
 class TestItFitsTheLine(unittest.TestCase):
     """라인에 들어갈 수 있는가 — 자리와 시간."""
 
-    def test_it_sits_between_the_two_units_that_force_its_position(self):
-        """자리가 정해진다 — 프레임이 빠진 뒤여야 하고 열이 오기 전이어야 한다."""
-        self.assertEqual(br_abrade.UPSTREAM_TAG, "AFR-101")
-        self.assertEqual(br_abrade.DOWNSTREAM_TAG, "SG-301")
+    def test_the_neighbours_come_from_the_recorded_order(self):
+        """앞뒤 걸음이 `LINE_ORDER` 에서 나온다 — 상수로 박으면 또 어긋난다.
+
+        한때 "AFR-101", "SG-301" 로 박혀 있었다. 발주처가 순서를 정하면서
+        앞이 SR-302 로, 뒤가 유리 제거로 바뀌었는데 상수는 안 따라왔다.
+        """
+        i = br_abrade.LINE_INDEX
+        self.assertEqual(br_abrade.LINE_ORDER[i], "BR-305 백시트 연마")
+        self.assertEqual(br_abrade.UPSTREAM_TAG,
+                         br_abrade._tag(br_abrade.LINE_ORDER[i - 1]))
+        self.assertEqual(br_abrade.DOWNSTREAM_TAG,
+                         br_abrade._tag(br_abrade.LINE_ORDER[i + 1]))
+        self.assertEqual(br_abrade.UPSTREAM_TAG, "SR-302")
+
+    def test_the_frame_removal_is_a_separate_fact(self):
+        """프레임이 빠지는 자리는 앞 걸음과 **다른 사실**이다 — 한 상수가 겸했었다."""
+        self.assertEqual(br_abrade.FRAME_REMOVED_AT, "AFR-101")
+        self.assertNotEqual(br_abrade.FRAME_REMOVED_AT, br_abrade.UPSTREAM_TAG)
+        first = br_abrade.unit().principle[0][1]
+        self.assertIn(br_abrade.FRAME_REMOVED_AT, first)
+        self.assertIn(br_abrade.UPSTREAM_TAG, first)
 
     def test_it_does_not_become_the_new_bottleneck(self):
         """새 병목이 되면 안 된다 — 점유가 라인 택트 안에 든다."""
@@ -597,6 +627,158 @@ class TestTheOrderIsSealantThenGrindThenGlass(unittest.TestCase):
         """옛 두 걸음 기록이 세 걸음을 가리켜야 한다 — 안 그러면 오독한다."""
         doc = inspect.getdoc(br_abrade.the_order_is_grind_then_peel)
         self.assertIn("the_order_is_sealant_then_grind_then_glass", doc)
+
+
+class TestTheUnitStandsUpIn3D(unittest.TestCase):
+    """부품표를 자리로 폈다 — 겹쳐 있으면 아무것도 안 보인다."""
+
+    def test_the_parts_are_no_longer_stacked_on_one_spot(self):
+        """한때 전부 (0, y, 0) 이었다 — x 로 갈려야 두 헤드가 보인다."""
+        xs = {p.pos[0] for p in br_abrade.unit().parts}
+        self.assertGreater(len(xs), 1)
+
+    def test_the_two_heads_are_mirrored_on_the_feed_axis(self):
+        """헤드 부품은 ±HEAD_PITCH/2 에 선다 — mirror 가 그것을 편다."""
+        parts = {p.key: p for p in br_abrade.unit().parts}
+        hx = br_abrade.HEAD_PITCH_MM / 2.0
+        for key in ("belt", "drum", "platen", "airknife", "hood", "motor"):
+            with self.subTest(key):
+                self.assertIn("x", parts[key].mirror)
+        self.assertEqual(parts["drum"].pos[0], hx)
+        self.assertEqual(parts["belt"].pos[0], hx)
+
+    def test_the_panel_top_face_is_the_datum(self):
+        """판 윗면이 y = 0 이라 부호만 보고 누르는 것과 받치는 것이 갈린다."""
+        parts = {p.key: p for p in br_abrade.unit().parts}
+        self.assertAlmostEqual(parts["panel"].pos[1],
+                               -sg_grind.STACK_T_MM / 2.0, places=3)
+        self.assertLess(parts["feed"].pos[1], 0.0)       # 롤러는 판 밑
+        self.assertGreater(parts["belt"].pos[1], 0.0)    # 벨트는 판 위
+        self.assertGreater(parts["drum"].pos[1], parts["belt"].pos[1])
+
+    def test_the_platen_spans_the_panel_width(self):
+        """조각 47 × 피치 30 이 폭 방향이라는 것 — 자리가 그것을 말해야 한다."""
+        parts = {p.key: p for p in br_abrade.unit().parts}
+        span = br_abrade.platen_segments() * br_abrade.PLATEN_SEGMENT_MM
+        self.assertAlmostEqual(parts["platen"].size[2], span, places=1)
+        self.assertGreaterEqual(span, campaign.PANEL_WIDTH_MM)
+
+    def test_the_motor_stands_outside_the_belt_width(self):
+        """벨트 폭 안에 세우면 집진 통로를 막는다."""
+        parts = {p.key: p for p in br_abrade.unit().parts}
+        self.assertGreater(abs(parts["motor"].pos[2]),
+                           br_abrade.BELT_WIDTH_MM / 2.0)
+
+    def test_the_contact_unit_is_the_layer_stack(self):
+        """접촉부가 적층을 층으로 세운다 — 배율을 빼면 두께 합이 적층과 같다.
+
+        두께에 `CONTACT_MAG` 이 들어가 있으므로 합을 그대로 견주면 안 된다.
+        지켜야 하는 것은 **비율**이다.
+        """
+        parts = {p.key: p for p in br_abrade.contact_unit().parts}
+        layers = ("cbacksheet", "cbackeva", "ccell", "cglass")
+        total = sum(parts[k].size[1] for k in layers) / br_abrade.CONTACT_MAG
+        self.assertAlmostEqual(total, sg_grind.STACK_T_MM, places=3)
+        # 층이 위에서 아래로 내려간다 — 백시트가 맨 위다.
+        ys = [parts[k].pos[1] for k in layers]
+        self.assertEqual(ys, sorted(ys, reverse=True))
+
+    def test_the_tools_are_not_magnified_with_the_layers(self):
+        """공구까지 60 배 키우면 벨트가 적층보다 두꺼워진다 — 이름에 실치수를 적는다."""
+        parts = {p.key: p for p in br_abrade.contact_unit().parts}
+        stack = sg_grind.STACK_T_MM * br_abrade.CONTACT_MAG
+        self.assertLess(parts["cbelt"].size[1], stack)
+        self.assertLess(parts["cbelt"].size[1],
+                        br_abrade.BELT_T_MM * br_abrade.CONTACT_MAG)
+        self.assertIn(f"실제 t{br_abrade.BELT_T_MM:.0f}", parts["cbelt"].name)
+        doc = inspect.getdoc(br_abrade.contact_unit)
+        self.assertIn("공구(벨트·압반)는 배율을 안 먹인다", doc)
+
+    def test_the_belt_sits_above_the_backsheet(self):
+        parts = {p.key: p for p in br_abrade.contact_unit().parts}
+        self.assertGreater(parts["cbelt"].pos[1], parts["cbacksheet"].pos[1])
+
+    def test_both_units_are_listed_with_a_view_and_steps(self):
+        keys = [u.key for u in br_abrade.units()]
+        self.assertEqual(keys, ["br305", "contact"])
+        for u in br_abrade.units():
+            with self.subTest(u.key):
+                self.assertIn(u.key, br_abrade.VIEW_DIR)
+                self.assertGreaterEqual(len(u.principle), 6)
+                self.assertTrue(u.parts)
+                self.assertTrue(u.sheet.startswith("PV-BR-305-"))
+                for p in u.parts:
+                    self.assertTrue(p.role.strip())
+                    self.assertTrue(p.material.strip())
+
+    def test_the_stack_thicknesses_are_delegated_not_copied(self):
+        """적층·유리 두께의 정본은 sg_grind 다 — 여기서 숫자로 안 적는다."""
+        src = inspect.getsource(br_abrade.contact_unit)
+        self.assertIn("sg_grind.STACK_T_MM", src)
+        self.assertIn("sg_grind.GLASS_T_MM", src)
+
+
+class TestCloseupDrawing(unittest.TestCase):
+    """커밋된 확대도가 생성기 출력과 같고, 화면에 손으로 쓴 수가 없는지."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.builder = _load("build_br_closeup")
+        cls.html = CLOSEUP.read_text(encoding="utf-8")
+
+    def test_the_committed_file_is_what_the_builder_makes(self):
+        self.assertEqual(self.html, self.builder.build(),
+                         "PYTHONPATH=src python tools/build_br_closeup.py 를 다시 돌릴 것")
+
+    def test_it_is_derived_from_the_plant(self):
+        self.assertIn("tools/build_br_closeup.py", self.html)
+        self.assertIn("<title>BR-305 백시트 면 연마 작동 확대도</title>", self.html)
+        self.assertNotIn("<title>태양광 전처리 통합 플랜트</title>", self.html)
+
+    def test_the_payload_is_the_model(self):
+        units = json.loads(self.builder.unit_payload())
+        self.assertEqual([u["key"] for u in units], ["br305", "contact"])
+        for got, want in zip(units, br_abrade.units()):
+            self.assertEqual(got["sheet"], want.sheet)
+            self.assertEqual(len(got["parts"]), len(want.parts))
+            self.assertEqual(got["view"], list(br_abrade.VIEW_DIR[want.key]))
+        self.assertEqual(units[1]["mag"], br_abrade.CONTACT_MAG)
+        self.assertEqual(units[0]["mag"], 1.0)
+
+    def test_the_depth_window_payload_is_the_model(self):
+        w = json.loads(self.builder.cycle_payload())
+        lo, hi = br_abrade.depth_window_mm()
+        self.assertEqual((w["lo"], w["hi"]), (lo, hi))
+        self.assertEqual(w["minCut"], br_abrade.min_depth_cut_mm())
+        self.assertEqual(w["maxCut"], br_abrade.max_depth_cut_mm())
+        self.assertEqual(len(w["marks"]), 5)
+        # 눈금이 창 안에서 순서대로 선다 — 뒤집히면 그림이 거짓말을 한다.
+        vals = [m[0] for m in w["marks"]]
+        self.assertEqual(vals, sorted(vals))
+
+    def test_it_is_not_compared_against_the_afr_platen(self):
+        """BR-305 는 자기 스테이션이다 — AFR 정반 점유와 견주면 안 된다."""
+        w = json.loads(self.builder.cycle_payload())
+        self.assertNotIn("afr", w)
+        self.assertEqual(w["taktFloor"], campaign.takt_floor_s())
+        self.assertTrue(w["notBottleneck"])
+
+    def test_the_screen_carries_no_hand_written_number(self):
+        """사양표의 값이 전부 모델에서 온다 — 몇 개를 찍어 본다."""
+        spec = json.loads(self.builder.spec_payload())
+        text = " ".join(r[1] for rows in spec.values() for r in rows)
+        self.assertIn(f"{br_abrade.occupancy_s()}", text)
+        self.assertIn(f"{br_abrade.total_power_kw()}", text)
+        self.assertIn(f"{br_abrade.platen_segments()}", text)
+        self.assertIn(br_abrade.UPSTREAM_TAG, text)
+
+    def test_the_open_list_comes_from_both_sources(self):
+        rows = json.loads(self.builder.open_payload())
+        self.assertEqual(len(rows), len(br_abrade.open_questions())
+                         + len(br_abrade.what_this_order_leaves_open()))
+        for title, line in rows:
+            self.assertTrue(title.strip())
+            self.assertTrue(line.strip())
 
 
 class TestTheUnitDrawsItself(unittest.TestCase):
