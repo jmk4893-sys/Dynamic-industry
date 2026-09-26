@@ -197,6 +197,15 @@ def spec_payload() -> str:
                      f"{g.travel_if_one_blade_did_both_faces_mm():,.0f} mm), "
                      f"{lf:.0f} mm/s 기준 "
                      f"{g.time_the_second_blade_saves_s(lf)} s 를 번다"],
+            ["그리퍼가 받는다", f"끄는 힘 {g.tangential_total_n()} N → 안전율 "
+                        f"{g.GRIP_SAFETY:g} · 마찰 {g.GRIP_FRICTION:g} 에서 물어야 "
+                        f"하는 힘 **{g.grip_force_needed_n():.0f} N**. 면 허용 "
+                        f"{g.FACE_SAFE_MPA} MPa 가 그것을 **넓이 "
+                        f"{g.grip_pad_area_needed_mm2():,.0f} mm²**(한 변 "
+                        f"{g.grip_pad_side_mm():.0f})로 바꾼다 — 힘의 한계가 아니라 "
+                        f"치수다. 변에서 **≥{g.grip_must_sit_inboard_mm():.0f} mm "
+                        f"안쪽**(띠를 안 밟는다) · 단변 통과 모멘트 "
+                        f"{g.grip_moment_n_m()} N·m 는 패드 배치가 가른다"],
             ["힘이 갈린다", f"**법선은 상쇄** — 판이 받는 알짜 "
                       f"{g.normal_net_on_panel_n():.0f} N, 대신 "
                       f"{g.clamp_force_n():.0f} N 으로 문다(한 장일 때는 반력을 "

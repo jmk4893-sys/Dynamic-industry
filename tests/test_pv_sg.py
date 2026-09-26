@@ -557,7 +557,9 @@ class TestTheScraperThatClearsTheBand(unittest.TestCase):
         # 면 수는 날 두 장으로 닫혔고 통과 시간은 남았다.
         self.assertNotIn("백시트면 띠를 걷을 공구가 없다", titles)
         self.assertIn("자기 캐리어의 통과가 여유에 안 들어간다", titles)
-        self.assertEqual(len(titles), 6)
+        # 그리퍼를 정하면서 그 공구의 물성·배치가 새 입력으로 들어왔다.
+        self.assertIn("그리퍼 패드 마찰이 실측 전 계획값이다", titles)
+        self.assertEqual(len(titles), 9)
 
     def test_the_gc_headroom_is_stated_not_assumed(self):
         """Gc 가 얼마까지 오르면 허용 압착력을 넘는가 — 그 값을 내놓는다."""
@@ -839,8 +841,8 @@ class TestTheScraperSurvivesTheWheel(unittest.TestCase):
         self.assertTrue(sg_grind.the_carrier_is_its_own())
         titles = [t for t, _ in sg_grind.what_the_absent_arris_leaves_open()]
         self.assertIn("자기 캐리어의 운동학", titles)
-        # 면은 답이 왔고, 그 자리에 붙잡는 힘이 들어왔다.
-        self.assertIn("판을 무엇이 붙잡는가", titles)
+        # 면도 붙잡는 주체도 답이 왔고, 남은 것은 그리퍼의 생김새다.
+        self.assertIn("그리퍼를 무엇으로 어떻게 놓는가", titles)
         self.assertNotIn("날이 몇 면을 긁는가", titles)
         self.assertNotIn("SR-302 가 어디에 실리는가", titles)
 
@@ -1045,6 +1047,93 @@ class TestBothFacesAreScrapedAtOnce(unittest.TestCase):
             self.assertAlmostEqual(parts[b].pos[1], 2 * mid - parts[a].pos[1],
                                    places=3, msg=f"{b} 가 {a} 의 거울상이 아니다")
             self.assertEqual(parts[b].pos[0], parts[a].pos[0])
+
+
+class TestTheGripperTakesTheDrag(unittest.TestCase):
+    """발주처가 접선 합력을 그리퍼가 받는 것으로 정했다."""
+
+    def test_the_grip_force_follows_from_the_drag(self):
+        """물어야 하는 힘이 끄는 힘 ÷ 마찰 × 안전율이다 — 임의값이 아니다."""
+        self.assertAlmostEqual(
+            sg_grind.grip_force_needed_n(),
+            sg_grind.tangential_total_n() * sg_grind.GRIP_SAFETY
+            / sg_grind.GRIP_FRICTION, places=1)
+        self.assertGreater(sg_grind.grip_force_needed_n(),
+                           sg_grind.tangential_total_n())
+
+    def test_the_face_limit_is_a_pressure_not_a_force(self):
+        """면 한계가 넓이로 답을 낸다 — 「몇 N 까지」가 아니라 「몇 mm² 를」."""
+        self.assertAlmostEqual(
+            sg_grind.grip_pad_area_needed_mm2(),
+            sg_grind.grip_force_needed_n() / sg_grind.FACE_SAFE_MPA, places=1)
+        self.assertTrue(sg_grind.grip_is_sized_by_area_not_force())
+        text = " ".join(sg_grind.the_face_limit_turns_force_into_area())
+        self.assertIn("한계가 아니라", text)
+
+    def test_the_pad_is_far_from_being_the_binding_limit(self):
+        """성립이 깨지는 마찰이 한참 아래여야 한다 — 그래야 치수 문제다."""
+        self.assertLess(sg_grind.friction_below_which_the_pad_outgrows_the_panel(),
+                        sg_grind.GRIP_FRICTION / 10.0)
+        face = campaign.PANEL_LENGTH_MM * campaign.PANEL_WIDTH_MM
+        self.assertLess(sg_grind.grip_pad_area_needed_mm2(), face / 100.0)
+
+    def test_the_shoe_friction_is_not_reused_for_the_pad(self):
+        """슈는 미끄러지라고, 패드는 잡으라고 고른 값이다 — 같으면 안 된다."""
+        self.assertGreater(sg_grind.GRIP_FRICTION, sg_grind.SHOE_FRICTION)
+        doc = inspect.getdoc(sg_grind.grip_force_needed_n)
+        self.assertIn("마찰계수", doc)
+        src = inspect.getsource(sg_grind)
+        self.assertIn("빌려 오면 안 된다", src)
+
+    def test_the_pad_must_clear_the_sealant_band(self):
+        """띠 위에 얹으면 걷을 것을 눌러 붙이고 마찰 전제도 깨진다."""
+        self.assertEqual(sg_grind.grip_must_sit_inboard_mm(),
+                         sg_grind.SEALANT_BAND_MM)
+
+    def test_the_drag_also_makes_a_moment(self):
+        """변에서 끌고 안쪽에서 잡으니 힘만 받는 것이 아니다."""
+        short_pass = sg_grind.grip_moment_n_m()
+        long_pass = sg_grind.grip_moment_n_m(long_edge=True)
+        self.assertGreater(short_pass, long_pass)
+        self.assertAlmostEqual(
+            short_pass,
+            sg_grind.tangential_total_n() * campaign.PANEL_LENGTH_MM
+            / 2.0 / 1_000.0, places=2)
+
+    def test_the_layout_is_a_parameter_not_a_decision(self):
+        """배치를 정하지 않는다 — 정해지면 값이 나온다는 것만 보인다."""
+        wide = sg_grind.grip_pad_force_n(4, 1_000.0)
+        narrow = sg_grind.grip_pad_force_n(4, 500.0)
+        self.assertGreater(narrow, wide)        # 좁게 놓으면 우력분이 커진다
+        self.assertGreater(sg_grind.grip_pad_force_n(2, 1_000.0), wide)
+        doc = inspect.getdoc(sg_grind.grip_pad_force_n)
+        self.assertIn("배치를 정하는 함수가 아니다", doc)
+        self.assertEqual(sg_grind.grip_pad_force_n(0, 1_000.0), float("inf"))
+
+    def test_the_planning_values_are_open_questions(self):
+        titles = [t for t, _ in sg_grind.open_questions()]
+        self.assertIn("그리퍼 패드 마찰이 실측 전 계획값이다", titles)
+        self.assertIn("그리퍼 패드 배치를 안 들었다", titles)
+        self.assertIn("한쪽으로 누르는지 양쪽으로 무는지 안 들었다", titles)
+
+    def test_the_holder_is_decided_but_not_its_shape(self):
+        titles = [t for t, _ in sg_grind.what_the_absent_arris_leaves_open()]
+        self.assertIn("그리퍼를 무엇으로 어떻게 놓는가", titles)
+        self.assertNotIn("판을 무엇이 붙잡는가", titles)
+
+    def test_the_drawing_shows_where_the_pad_must_stand(self):
+        parts = {p.key: p for p in sg_grind.scraper_unit().parts}
+        self.assertIn("srgrip", parts)
+        self.assertIn("배치 미정", parts["srgrip"].name)
+        self.assertIn(f"{sg_grind.grip_must_sit_inboard_mm():.0f} mm 안쪽",
+                      parts["srgrip"].role)
+
+    def test_the_summary_carries_the_sizing_chain(self):
+        s = sg_grind.summary()
+        self.assertAlmostEqual(s["gripForceNeededN"],
+                               sg_grind.grip_force_needed_n(), places=1)
+        self.assertAlmostEqual(s["gripPadAreaMm2"],
+                               sg_grind.grip_pad_area_needed_mm2(), places=1)
 
 
 class TestCloseupDrawing(unittest.TestCase):

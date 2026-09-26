@@ -508,12 +508,13 @@ def what_the_absent_arris_leaves_open() -> tuple[tuple[str, str], ...]:
          f"{feed_that_fits_the_slack_mm_s():.0f} mm/s(직렬) 또는 "
          f"{feed_that_fits_the_slack_mm_s(True):.0f} mm/s(SG 배치)가 필요하고, "
          "동력은 어느 쪽도 문제가 아니다."),
-        ("판을 무엇이 붙잡는가",
-         f"두 날이 마주 보아 법선은 상쇄되지만(알짜 "
-         f"{normal_net_on_panel_n():.0f} N) 접선은 더해져 "
-         f"**{tangential_total_n()} N** 이 주행 방향으로 걸린다. 한 장일 때의 "
-         f"{scrape_total_force_n()} N 에서 두 배다. 이것을 반출롤러 마찰이 "
-         "받는지 그리퍼가 받는지 안 들었다 — `the_shoes_oppose_each_other()`."),
+        ("그리퍼를 무엇으로 어떻게 놓는가",
+         f"붙잡는 주체는 정해졌다 — 발주처가 **그리퍼**로 정했고, 끄는 힘 "
+         f"{tangential_total_n()} N 에 대해 물어야 하는 힘이 "
+         f"{grip_force_needed_n()} N, 패드가 "
+         f"{grip_pad_area_needed_mm2():,.0f} mm² 다. 열린 것은 **패드 재질"
+         f"(마찰)·장수·간격**과 한쪽/양쪽이다 — "
+         "`the_face_limit_turns_force_into_area()`."),
         ("SG-301 이 남는가",
          "엣지 연마의 목적이 아리스였다면 목적이 없어진다. 남는 후보는 끝면 "
          f"살 {STOCK_MM} mm 뿐이고 그것은 단면의 "
@@ -791,6 +792,25 @@ def open_questions() -> tuple[tuple[str, str], ...]:
             f"{sealant_volume_per_panel_mm3(faces=1):,.0f} mm³ 가 공구 없이 "
             "남고 그 면이 BR-305 의 벨트가 지나가는 면이다. "
             "`how_the_faces_were_made_to_add_up()`."))
+    out.append((
+        "그리퍼 패드 마찰이 실측 전 계획값이다",
+        f"물어야 하는 힘이 끄는 힘 ÷ 마찰이라 패드 면적이 여기에 반비례로 "
+        f"걸린다. {GRIP_FRICTION:g} 에서 {grip_pad_area_needed_mm2():,.0f} mm² "
+        f"인데 슈의 {SHOE_FRICTION:g} 까지 떨어지면 "
+        f"{round(tangential_total_n() * GRIP_SAFETY / SHOE_FRICTION / FACE_SAFE_MPA):,.0f} mm² "
+        f"다. 성립이 깨지는 값은 {friction_below_which_the_pad_outgrows_the_panel()} "
+        "라 한참 아래이니 **치수 문제이지 성립 문제는 아니다.**"))
+    out.append((
+        "그리퍼 패드 배치를 안 들었다",
+        f"단변 통과에서 모멘트가 {grip_moment_n_m()} N·m 선다. 장수와 간격이 "
+        f"정해져야 한 장의 값이 나온다 — 예로 네 장을 "
+        f"1,000 mm 벌리면 {grip_pad_force_n(4, 1000.0)} N, 두 장이면 "
+        f"{grip_pad_force_n(2, 1000.0)} N 이다. **예시이지 배치가 아니다.**"))
+    out.append((
+        "한쪽으로 누르는지 양쪽으로 무는지 안 들었다",
+        f"한쪽이면 {grip_force_needed_n()} N 의 반력을 반출롤러가 받아야 하고, "
+        "양쪽이면 슈처럼 판 안에서 닫히되 아래 패드가 롤러 사이에 들어가야 "
+        "한다. 둘이 서로 다른 부품표를 부른다."))
     if BLADE_FACES >= 2 and not BLADES_ARE_OPPOSED:
         out.append((
             "두 날이 마주 보지 않는다",
@@ -958,6 +978,122 @@ def clamp_force_n() -> float:
     return float(SHOE_SPRING_N) if (BLADES_ARE_OPPOSED and BLADE_FACES >= 2) else 0.0
 
 
+# ── 그리퍼 — 주행 방향 합력을 판이 아니라 그리퍼가 받는다 ───────────────
+#
+#   두 날이 마주 보면서 법선은 닫혔지만 접선 `tangential_total_n()` 은 남는다.
+#   판이 그만큼 끌리므로 무엇이든 그것을 붙들어야 한다. **발주처가 그리퍼로
+#   정했다.**
+#
+#   붙드는 방법이 둘인데 하나가 막혀 있다. **기계적 스토퍼**는 변을 짚어야
+#   하는데 날이 도는 곳이 바로 변이고, 캐리어가 네 변을 돌면 끄는 방향이
+#   네 번 바뀌므로 네 변을 다 짚어야 한다 — 날과 자리를 다툰다. 그래서
+#   **면을 물어 마찰로 잡는다.**
+
+#: 그리퍼 패드와 라미네이트 사이 마찰계수 — 계획값.
+#:
+#: **슈의 `SHOE_FRICTION` 을 빌려 오면 안 된다.** 그쪽은 PEEK 를 **미끄러지라고**
+#: 고른 값(0.2)이고 이쪽은 **잡으라고** 고르는 값이다. 엘라스토머 패드가 유리·
+#: 폴리머에 닿을 때의 통상대(0.5~1.0)에서 보수적으로 잡았다. 실측 전 값이고
+#: 여기에 패드 면적이 반비례로 걸린다.
+GRIP_FRICTION = 0.6
+#: 마찰 파지의 안전율 — 계획값. 미끄러지면 판이 날 밑에서 밀린다.
+GRIP_SAFETY = 2.0
+
+
+def grip_force_needed_n() -> float:
+    """미끄러지지 않으려면 물어야 하는 힘 (N) = 끄는 힘 × 안전율 / 마찰계수."""
+    return round(tangential_total_n() * GRIP_SAFETY / GRIP_FRICTION, 1)
+
+
+def grip_pad_area_needed_mm2() -> float:
+    """그 힘을 면 허용 접촉압 안에서 주려면 필요한 패드 면적 (mm²).
+
+    **면 한계는 힘의 한계가 아니라 압력의 한계다.** 그래서 「몇 N 까지 되는가」가
+    아니라 「몇 mm² 를 깔아야 하는가」로 답이 나온다 — 넓히면 얼마든 물 수 있다.
+    """
+    return round(grip_force_needed_n() / FACE_SAFE_MPA, 1)
+
+
+def grip_pad_side_mm() -> float:
+    """정사각 패드 한 장으로 받는다면 한 변 (mm) — 크기 감을 잡는 값."""
+    return round(math.sqrt(grip_pad_area_needed_mm2()), 1)
+
+
+def grip_must_sit_inboard_mm() -> float:
+    """패드가 변에서 최소한 물러나야 하는 거리 (mm) — 실란트 띠 폭.
+
+    띠 위에 얹으면 두 가지가 깨진다. 걷어내야 할 것을 눌러 밀착시키고,
+    마찰 계획값이 유리·폴리머가 아니라 **실리콘 위**의 값이 된다.
+    """
+    return float(SEALANT_BAND_MM)
+
+
+def grip_moment_n_m(long_edge: bool = False) -> float:
+    """끄는 힘이 판 중심에 대해 만드는 모멘트 (N·m).
+
+    날은 변에서 끌고 그리퍼는 안쪽에서 잡으므로 힘만 받는 것이 아니다.
+    단변을 지날 때 팔이 가장 길다 — 힘의 작용선이 중심에서 판 길이의 절반만큼
+    떨어진다.
+    """
+    arm_mm = (float(campaign.PANEL_WIDTH_MM) if long_edge
+              else float(campaign.PANEL_LENGTH_MM)) / 2.0
+    return round(tangential_total_n() * arm_mm / 1_000.0, 2)
+
+
+def grip_pad_force_n(pads: int, spacing_mm: float) -> float:
+    """패드 배치를 정하면 한 장이 받는 최악 힘 (N) — 직접분 + 우력분.
+
+    **배치를 정하는 함수가 아니다.** 몇 장을 얼마나 벌려 놓느냐가 정해지면
+    그때 한 장의 값이 나온다는 것을 보이는 함수다.
+    """
+    if pads < 1 or spacing_mm <= 0.0:
+        return float("inf")
+    direct = tangential_total_n() / pads
+    couple = grip_moment_n_m() * 1_000.0 / spacing_mm
+    return round(direct + couple, 1)
+
+
+def the_face_limit_turns_force_into_area() -> tuple[str, ...]:
+    """그리퍼가 받는다고 정하면 무엇이 정해지는가 — 힘이 아니라 넓이다."""
+    return (
+        f"**끄는 힘은 {tangential_total_n()} N** 이다 (두 날의 계면력 + 슈 마찰). "
+        f"안전율 {GRIP_SAFETY:g} 에 마찰 {GRIP_FRICTION:g} 이면 물어야 하는 힘이 "
+        f"**{grip_force_needed_n()} N** 이다.",
+        f"**면은 그 힘을 못 막는다 — 압력을 막는다.** 허용 {FACE_SAFE_MPA} MPa "
+        f"로 {grip_force_needed_n()} N 을 주려면 패드가 "
+        f"**{grip_pad_area_needed_mm2():,.0f} mm²** 필요하다 (정사각이면 한 변 "
+        f"{grip_pad_side_mm():.0f} mm). 넓히면 얼마든 물 수 있으니 이것은 "
+        "한계가 아니라 **치수**다.",
+        f"**마찰계수가 그 넓이를 정한다.** {GRIP_FRICTION:g} 에서 "
+        f"{grip_pad_area_needed_mm2():,.0f} mm² 인데 슈의 "
+        f"{SHOE_FRICTION:g}(미끄러지라고 고른 값)로 떨어지면 "
+        f"{round(tangential_total_n() * GRIP_SAFETY / SHOE_FRICTION / FACE_SAFE_MPA):,.0f} mm² "
+        "가 된다. 패드 재질이 이 유닛에서 가장 민감한 계획값이다.",
+        f"**힘만 받는 것이 아니다.** 날이 변에서 끌고 패드는 안쪽에 있으므로 "
+        f"모멘트가 선다 — 단변 통과에서 {grip_moment_n_m()} N·m, 장변에서 "
+        f"{grip_moment_n_m(long_edge=True)} N·m. 패드를 몇 장 얼마나 벌리느냐가 "
+        f"한 장의 값을 정한다 (`grip_pad_force_n()`).",
+        f"**패드는 변에서 {grip_must_sit_inboard_mm():.0f} mm 안쪽에 서야 한다** — "
+        "실란트 띠 위에 얹으면 걷어낼 것을 눌러 붙이고, 마찰 계획값도 "
+        "유리·폴리머가 아니라 실리콘 위의 값이 된다.",
+    )
+
+
+def grip_is_sized_by_area_not_force() -> bool:
+    """면 한계가 넓이 문제인가 — 패드를 넓힐 수 있으면 참이다.
+
+    패널 한 면보다 커져야 한다면 그때는 진짜 한계다.
+    """
+    face = float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM)
+    return grip_pad_area_needed_mm2() < face
+
+
+def friction_below_which_the_pad_outgrows_the_panel() -> float:
+    """패드가 판 면보다 커지는 마찰계수 (–) — 아래로 내려가면 파지가 성립 안 한다."""
+    face = float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM)
+    return round(tangential_total_n() * GRIP_SAFETY / (FACE_SAFE_MPA * face), 5)
+
+
 def the_shoes_oppose_each_other() -> tuple[str, ...]:
     """두 장으로 가면서 힘이 어떻게 갈리는가 — 한쪽은 닫히고 한쪽은 는다."""
     return (
@@ -967,8 +1103,11 @@ def the_shoes_oppose_each_other() -> tuple[str, ...]:
         "**무는** 상태가 된다 — 힘이 판 안에서 닫힌다.",
         f"**접선은 더해진다.** 두 날이 같은 방향으로 가므로 "
         f"{scrape_total_force_n()} N 씩 같은 쪽으로 걸려 "
-        f"**{tangential_total_n()} N** 이다. 이것은 판을 잡는 쪽이 받아야 한다 — "
-        "마주 본다고 없어지지 않는다.",
+        f"**{tangential_total_n()} N** 이다. 마주 본다고 없어지지 않는다 — "
+        f"발주처가 **그리퍼가 받는 것**으로 정했고, 그러면 물어야 하는 힘이 "
+        f"{grip_force_needed_n()} N, 패드가 "
+        f"{grip_pad_area_needed_mm2():,.0f} mm² 다 "
+        "(`the_face_limit_turns_force_into_area()`).",
         f"**면 허용은 한쪽씩 본다.** 슈 하나가 주는 접촉압 "
         f"{shoe_pressure_mpa()} MPa 와 압착 {SHOE_SPRING_N:.0f} N 은 그대로이고 "
         f"허용 {safe_face_force_n():.0f} N 안에 있다 "
@@ -2157,6 +2296,20 @@ def scraper_unit() -> Unit:
              color="ghost", explode=(240, 0, 0),
              spec=f"Ø{WHEEL_D_MM:.0f} · 동승이었다면 리드 {lead:.0f} mm",
              catalog="SP-03"),
+        Part("srgrip", "그리퍼 패드 (배치 미정 · 한 장만 표시)", 1, "box",
+             (grip_pad_side_mm(), 14.0, grip_pad_side_mm()),
+             (hx + 360.0, 7.0, 0.0), "엘라스토머 패드",
+             role=f"주행 방향 합력 {tangential_total_n()} N 을 **판이 아니라 "
+                  f"여기가** 받는다. 안전율 {GRIP_SAFETY:g}·마찰 "
+                  f"{GRIP_FRICTION:g} 에서 물어야 하는 힘이 "
+                  f"{grip_force_needed_n()} N 이고, 면 허용 {FACE_SAFE_MPA} MPa 가 "
+                  f"그것을 **넓이 {grip_pad_area_needed_mm2():,.0f} mm²** 로 "
+                  f"바꾼다. 변에서 {grip_must_sit_inboard_mm():.0f} mm 안쪽에 "
+                  f"서야 실란트 띠를 안 밟는다. 장수·간격은 안 들었다 — "
+                  f"단변 통과 모멘트 {grip_moment_n_m()} N·m 가 그것으로 갈린다.",
+             color="rubber", explode=(0, 220, 0),
+             spec=f"{grip_pad_side_mm():.0f}□ · {grip_force_needed_n():.0f} N · "
+                  f"변에서 ≥{grip_must_sit_inboard_mm():.0f}", catalog="SR-302"),
         Part("srglass", "라미네이트 (유리면이 아래)", 1, "box",
              (820.0, STACK_T_MM, 240.0), (0.0, -STACK_T_MM / 2 - 8.0, 0.0),
              f"유리 t{GLASS_T_MM} + EVA·백시트",
@@ -2260,6 +2413,11 @@ def summary() -> dict[str, object]:
         "tangentialTotalN": tangential_total_n(),
         "normalNetOnPanelN": normal_net_on_panel_n(),
         "clampForceN": clamp_force_n(),
+        "gripForceNeededN": grip_force_needed_n(),
+        "gripPadAreaMm2": grip_pad_area_needed_mm2(),
+        "gripPadSideMm": grip_pad_side_mm(),
+        "gripMomentNm": grip_moment_n_m(),
+        "gripInboardMm": grip_must_sit_inboard_mm(),
         "normalForceN": normal_force_n(lf),
         "contactPressureMpa": contact_pressure_mpa(lf),
         "reliefCoversTolerance": relief_covers_tolerance(),
