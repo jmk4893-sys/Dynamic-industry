@@ -32,7 +32,11 @@
 유리**. 이 유닛에게 그것이 중요한 이유는 하나다: 인발이 면에 남긴 실란트 띠가
 백시트보다 0.43 mm 솟아 있어 **벨트가 백시트보다 그것을 먼저 만나는데**, 압반
 추종 0.08 mm 로는 그 단차를 못 따라간다. 그 문제를 기계가 아니라 **순서가**
-닫는다 — `the_order_closes_the_step_not_a_machine()`.
+닫는다 — `the_order_is_necessary_but_not_sufficient()`.
+
+**다만 순서만으로는 아직 안 닫혔다.** 그 날은 유리면(아래) 띠를 걷는데 이
+유닛의 벨트가 지나가는 면은 백시트면(위)이다. 고칠 자리가 공정 순서에서
+**공구 배치**로 좁아진 것이고, 그 배치는 안 들었다.
 
 **판정은 내가 만들지 않았다** — 발주처가 정한 것을 받아 적는다.
 
@@ -498,31 +502,59 @@ def the_order_is_sealant_then_grind_then_glass() -> tuple[str, ...]:
         "유리에서 뗀다.",
         "**세 걸음이 전부 접촉으로 멈춘다.** 스크레이퍼는 슈가 백시트를, 연마는 "
         "압반이 판 면을, 칼날은 랜드가 유리를 탄다 — 어느 것도 재지 않는다.",
+        f"**다만 ① 이 ② 의 면을 아직 안 걷는다.** 날이 유리면에 서므로 "
+        f"백시트면 띠가 남는다 — "
+        f"`the_sealant_is_gone_before_the_belt()` = "
+        f"{the_sealant_is_gone_before_the_belt()}. 순서가 아니라 **공구 배치**의 "
+        "문제로 좁혀졌다.",
     )
 
 
-def the_sealant_is_gone_before_the_belt() -> bool:
-    """벨트가 오기 전에 띠가 걷혀 있는가 — 순서가 참으로 만든다."""
+def the_scraper_comes_first() -> bool:
+    """앞 걸음이 이 유닛보다 앞에 서는가 — 순서만 본다."""
     return PRIOR_UNIT in LINE_ORDER and (
         LINE_ORDER.index(PRIOR_UNIT) < LINE_ORDER.index("BR-305 백시트 연마"))
 
 
-def the_order_closes_the_step_not_a_machine() -> tuple[str, ...]:
-    """0.43 mm 단차를 무엇이 닫는가 — 이 유닛이 아니라 앞 걸음이다.
+def the_sealant_is_gone_before_the_belt() -> bool:
+    """벨트가 오기 전에 띠가 걷혀 있는가 — **순서만으로는 안 된다.**
+
+    처음에 이 술어를 순서만으로 썼다. 틀렸다. 순서는 **필요**하고 충분하지
+    않다 — 걷는 면이 맞아야 한다.
+
+    SR-302 의 날은 **유리면(아래)** 띠를 걷는다. 반출롤러가 변에서 물러나 그
+    자리를 아래에 내주기 때문이다. 그런데 이 유닛의 벨트가 지나가는 면은
+    **백시트면(위)** 이고, 그쪽 띠는 공구가 없다
+    (`sg_grind.the_back_face_band_has_no_tool()`).
+
+    그래서 지금은 거짓이고, 그것이 맞다. 날이 위 면도 걷게 되면 참이 된다.
+    """
+    return the_scraper_comes_first() and not sg_grind.the_back_face_band_has_no_tool()
+
+
+def the_order_is_necessary_but_not_sufficient() -> tuple[str, ...]:
+    """0.43 mm 단차를 무엇이 닫는가 — 순서가 필요하고, 그것만으로는 모자란다.
 
     이 유닛은 그 단차에 대해 **아무것도 할 수 없다.** 압반 추종은 0.08 mm 이고
-    그것을 키우면 깊이 제어가 같이 풀린다. 그러니 닫는 방법은 하나뿐이다 —
-    벨트가 오기 전에 띠가 없어져 있는 것.
+    그것을 키우면 깊이 제어가 같이 풀린다. 그러니 닫는 것은 앞 걸음이다.
+
+    다만 앞 걸음이 **서 있는 것**과 **이 유닛이 만나는 면을 걷는 것**은 다른
+    조건이다. 지금 날은 유리면에 서고 벨트는 백시트면을 지나간다.
     """
     return (
         f"**단차는 {sealant_step_over_backsheet_mm()} mm 이고 추종은 "
         f"{PLATEN_FOLLOW_MM} mm 다** — {sealant_step_vs_platen_follow()} 배. "
         "이 유닛 안에서 고칠 수 있는 값이 아니다.",
-        f"**앞 걸음이 그것을 걷는다** — `the_sealant_is_gone_before_the_belt()` = "
-        f"{the_sealant_is_gone_before_the_belt()}. 기계를 더 사는 것이 아니라 "
-        "순서가 닫는다.",
-        "**그래서 이 순서는 취향이 아니다.** 뒤집으면 벨트가 실리콘을 먼저 "
-        "만나고 띠 위에서 깊이 제어가 성립하지 않는다.",
+        f"**순서는 맞다** — `the_scraper_comes_first()` = "
+        f"{the_scraper_comes_first()}. 기계를 더 사는 것이 아니라 순서가 "
+        "닫는 쪽이다.",
+        f"**그런데 아직 안 닫혔다** — `the_sealant_is_gone_before_the_belt()` = "
+        f"{the_sealant_is_gone_before_the_belt()}. 날이 걷는 면은 유리면(아래)이고 "
+        "벨트가 지나가는 면은 백시트면(위)다. "
+        "`sg_grind.the_back_face_band_has_no_tool()` 이 그것을 든다.",
+        "**그래도 이 순서는 취향이 아니다.** 뒤집으면 벨트가 실리콘을 먼저 "
+        "만나는 것이 확정이고, 이 순서에서는 **면만 맞추면** 닫힌다 — 고칠 자리가 "
+        "공정 순서가 아니라 공구 배치로 좁아진다.",
         "**되돌아가는 쪽도 막혀 있다** — 연마를 먼저 하면 스크레이퍼의 슈가 "
         f"얹힐 백시트가 없어져 EVA {BACK_EVA_T_MM} mm 면에 앉는다. 그 면이 "
         "가열에서 어떻게 거동하는지는 아직 모르는 항목이다.",
@@ -633,11 +665,18 @@ def what_this_order_leaves_open() -> tuple[str, ...]:
         f"**{NEXT_UNIT} 가 유리 관문의 기존 주인과 어떤 관계인지 안 들었다** — "
         "같은 기계인지, 앞에 서는지. `separation.gate_owner('glass')` 는 아직 "
         "옛 주인을 든다. **추측해서 바꾸지 않는다.**",
-        f"**{PRIOR_UNIT} 가 어디에 실리는지 안 들었다.** 지금 모델에서 그 날은 "
-        "SG-301 형상휠 헤드에 동승하는 부품인데, 그 휠의 목적이었던 아리스는 "
-        "공정 요구가 없다(`sg_grind.ARRIS_REQUIRED_BY_PLANT`). 숙주가 빠지면 "
-        "날에 **자기 캐리어**가 필요하다 — 이 순서가 성립하려면 그 걸음이 "
-        "실제로 서야 한다. `sg_grind.the_scraper_outlives_its_host()`.",
+        f"**{PRIOR_UNIT} 의 거처는 정해졌다** — 발주처가 자기 캐리어로 정했고 "
+        f"(`campaign.SCRAPER_ON_ITS_OWN_CARRIER`) SG-301 에서 리드가 빠졌다. "
+        "열린 것은 그 캐리어가 **몇 헤드로 얼마나 빨리** 가는가다 — 동력은 "
+        "어느 속도에서도 문제가 아니고 캐리지와 슈가 정한다. "
+        "`sg_grind.the_own_carrier_frees_the_feed()`.",
+        "**그 날이 이 유닛의 면을 걷는지가 아직 아니다.** 날이 "
+        f"{sg_grind.BLADE_FACES} 면(유리면)에 서고 잔사는 "
+        f"{sg_grind.RESIDUE_FACES} 면에 남는다 — 한 장에 "
+        f"{sg_grind.sealant_volume_per_panel_mm3(faces=1):,.0f} mm³ 가 백시트면에 "
+        "공구 없이 남고 **그것이 벨트가 만나는 쪽**이다. 날을 두 장으로 할지 "
+        "한 장으로 두 번 갈지는 안 들었다 — `sg_grind.the_faces_do_not_add_up()`. "
+        "**추측해서 고르지 않는다.**",
     )
 
 

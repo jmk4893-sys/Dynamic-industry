@@ -466,14 +466,17 @@ def the_scraper_outlives_its_host() -> tuple[str, ...]:
         f"**휠은 목적이 없다** — `ARRIS_REQUIRED_BY_PLANT` = "
         f"{ARRIS_REQUIRED_BY_PLANT}. 남는 후보는 끝면 살 {STOCK_MM} mm 뿐이다.",
         f"**리드 {BLADE_LEAD_MM:.0f} mm 는 휠 때문에 있었다** — 「휠이 오기 전에 "
-        f"그 자리가 비어 있어야 한다」. 점유 {occupancy_s()} s 중 "
-        f"{scraper_lead_cost_s()} s 가 그 리드다. 휠이 없으면 리드가 근거를 "
-        f"잃고 점유는 {occupancy_without_scraper_s()} s 쪽으로 간다 — 다만 그때 "
-        "남는 통과는 **연마 통과가 아니라 긁는 통과**라 이 값을 그대로 쓰면 안 "
-        "된다. 스크레이퍼만의 점유는 아직 안 풀었다.",
-        "**날이 어디에 실리는가가 열린 물음이다** — 휠 없는 헤드에 그대로 "
-        "두는지, 자기 캐리어를 갖는지, 다른 스테이션에 붙는지. 셋 다 이 "
-        "모듈의 값을 바꾼다. **추측해서 고르지 않는다.**",
+        f"그 자리가 비어 있어야 한다」. 동승이던 동안 그것이 "
+        f"{lead_cost_if_shared_s()} s 를 가져갔고, 캐리어가 나가면서 SG-301 "
+        f"에서 빠졌다(지금 실리는 리드 {scraper_lead_cost_s()} s). **그 "
+        f"{lead_cost_if_shared_s()} s 가 날의 점유가 되는 것이 아니다** — "
+        "남는 통과는 연마 통과가 아니라 긁는 통과라 다시 풀어야 한다. "
+        "이 값을 그대로 쓰면 안 된다.",
+        f"**발주처가 자기 캐리어로 정했다** — `campaign.SCRAPER_ON_ITS_OWN_CARRIER` "
+        f"= {campaign.SCRAPER_ON_ITS_OWN_CARRIER}. 그래서 리드가 SG-301 에서 "
+        f"빠지고 점유가 {occupancy_s()} s 로, 여유가 {slack_s()} s 로 늘었다. "
+        "대신 **날 자신의 운동학**이 새 입력으로 들어왔다 — "
+        "`the_own_carrier_frees_the_feed()`.",
     )
 
 
@@ -498,11 +501,17 @@ def the_blade_already_covers_the_wider_requirement() -> bool:
 def what_the_absent_arris_leaves_open() -> tuple[tuple[str, str], ...]:
     """아리스 요구가 없다는 사실이 **열어 놓는** 것 — 내가 답하지 않는다."""
     return (
-        ("SR-302 가 어디에 실리는가",
-         f"발주처가 날은 살렸는데(`SCRAPER_KEPT_BY_PLANT` = "
-         f"{SCRAPER_KEPT_BY_PLANT}) 그것을 태우고 있던 휠은 요구가 없다. "
-         "동승이 전제였으므로 숙주가 빠지면 캐리어를 새로 정해야 하고 점유도 "
-         "다시 풀어야 한다 — `the_scraper_outlives_its_host()`."),
+        ("자기 캐리어의 운동학",
+         f"거처는 정해졌다(`campaign.SCRAPER_ON_ITS_OWN_CARRIER` = "
+         f"{campaign.SCRAPER_ON_ITS_OWN_CARRIER}). 열린 것은 그 캐리어가 **몇 "
+         f"헤드로 얼마나 빨리** 가는가다 — 여유 {slack_s()} s 에 들어가려면 "
+         f"{feed_that_fits_the_slack_mm_s():.0f} mm/s(직렬) 또는 "
+         f"{feed_that_fits_the_slack_mm_s(True):.0f} mm/s(SG 배치)가 필요하고, "
+         "동력은 어느 쪽도 문제가 아니다."),
+        ("날이 몇 면을 긁는가",
+         f"지금 {BLADE_FACES} 면이고 잔사는 {RESIDUE_FACES} 면이다. 캐리어가 "
+         "따로 서면 어느 면으로 들어갈지 자유로워지지만, 날을 두 장으로 할지 "
+         "한 장으로 두 번 갈지는 안 들었다 — `the_faces_do_not_add_up()`."),
         ("SG-301 이 남는가",
          "엣지 연마의 목적이 아리스였다면 목적이 없어진다. 남는 후보는 끝면 "
          f"살 {STOCK_MM} mm 뿐이고 그것은 단면의 "
@@ -772,6 +781,23 @@ def open_questions() -> tuple[tuple[str, str], ...]:
         f"전량이 남으면 띠 두께가 {SEALANT_FACE_T_MM} mm 로 두 배가 되고 긁는 "
         f"힘은 그대로지만(계면 일이라 두께와 무관) 부스러기 부피가 두 배다 — "
         "회수함 용량이 그만큼 든다."))
+    if the_back_face_band_has_no_tool():
+        out.append((
+            "백시트면 띠를 걷을 공구가 없다",
+            f"날이 {BLADE_FACES} 면(유리면)에 서는데 잔사는 {RESIDUE_FACES} 면에 "
+            f"남는다 — 한 장에 "
+            f"{sealant_volume_per_panel_mm3(faces=1):,.0f} mm³ 가 공구 없이 "
+            "남고 그 면이 BR-305 의 벨트가 지나가는 면이다. "
+            "`the_faces_do_not_add_up()`."))
+    if the_carrier_is_its_own() and not scraper_fits_the_slack():
+        out.append((
+            "자기 캐리어의 통과가 여유에 안 들어간다",
+            f"물려받은 이송 {long_feed_mm_s():.0f} mm/s 로 직렬이면 "
+            f"{scraper_serial_time_s(long_feed_mm_s())} s 인데 여유는 "
+            f"{slack_s()} s 다. 들어가려면 "
+            f"{feed_that_fits_the_slack_mm_s():.0f} mm/s 가 필요하고 동력은 "
+            f"{scraper_power_at_w(feed_that_fits_the_slack_mm_s()):.0f} W 로 "
+            "문제가 아니다 — 캐리지가 그 속도를 내는지가 미결이다."))
     if SCRAPER_KEPT_BY_PLANT and not ARRIS_REQUIRED_BY_PLANT:
         out.append((
             "날은 남는데 그것을 태운 휠은 요구가 없다",
@@ -962,24 +988,186 @@ def dust_stream_unchanged_by_scraping() -> bool:
     return debris_is_solid() and not wheel_may_touch_the_backsheet()
 
 
-def scraper_lead_cost_s() -> float:
-    """날이 휠보다 앞서 가느라 더 드는 시간 (s).
+def the_carrier_is_its_own() -> bool:
+    """날이 자기 캐리어를 갖는가 — 발주처 결정. 정본은 `campaign` 이다."""
+    return bool(campaign.SCRAPER_ON_ITS_OWN_CARRIER)
 
+
+def lead_cost_if_shared_s() -> float:
+    """**같은 캐리지였다면** 리드가 가져갔을 시간 (s) — 반사실값.
+
+    리드가 있었던 이유는 휠이다 — 휠이 오기 전에 그 자리가 비어 있어야 했다.
     장변은 통과 한 번에 리드만큼 더 가고, 단변은 횡행 두 번에 각각 더 간다.
+    날이 자기 캐리어로 나간 지금 이 시간은 SG-301 에서 **빠졌다.**
     """
     long_extra = BLADE_LEAD_MM / long_feed_mm_s()
     short_extra = 2.0 * BLADE_LEAD_MM / short_feed_mm_s()
     return round(long_extra + short_extra, 3)
 
 
-def occupancy_without_scraper_s() -> float:
-    """날을 떼었다면 걸렸을 점유 (s) — **쓰지 않는 쪽의 값**.
+def scraper_lead_cost_s() -> float:
+    """SG-301 순환에 **실제로 실리는** 리드 비용 (s) — 자기 캐리어면 0 이다."""
+    return 0.0 if the_carrier_is_its_own() else lead_cost_if_shared_s()
 
-    SR-302 는 헤드에 달린 부품이지 옵션이 아니다. 그래서 리드는 `cycle()` 안에
-    있고 `occupancy_s()` 가 이미 그것을 물고 있다. 이 함수는 날이 얼마를
-    가져갔는지 보여줄 때만 쓴다 — 광고하는 점유는 이쪽이 아니다.
+
+def occupancy_without_scraper_s() -> float:
+    """날을 뺀 SG-301 점유 (s).
+
+    한때 이 함수는 **쓰지 않는 쪽의 값**이었다 — 날이 헤드에 달린 부품이라
+    리드가 `cycle()` 안에 있었고, 날 없는 점유를 광고하면 도면이 없는 기계의
+    택트를 파는 셈이었다.
+
+    발주처가 날을 자기 캐리어로 옮겨서 이제 `occupancy_s()` 가 **이미** 날 없는
+    점유다. 두 값이 같아졌다. 리드가 얼마였는지는 `lead_cost_if_shared_s()` 가
+    들고 있다.
     """
     return round(occupancy_s() - scraper_lead_cost_s(), 2)
+
+
+# ── 자기 캐리어 — 발주처가 날의 거처를 정했다 ───────────────────────────
+#
+#   동승이 전제였을 때 날의 값은 **리드뿐**이었다. 장비가 안 늘고 통과 거리만
+#   길어졌으니까. 캐리어가 따로 서면 그 회계가 통째로 바뀐다 — 리드가 SG-301
+#   에서 빠지고, 대신 **날 자신의 운동학**이 새 입력이 된다.
+#
+#   그 운동학에서 하나는 계산되고 둘은 안 된다. 계산되는 것은 **동력이 한계가
+#   아니라는 것**이고, 안 되는 것은 **캐리지가 얼마나 빠른가**와 **몇 면을
+#   긁는가**다. 뒤 둘은 여기서 지어내지 않는다.
+
+#: 날이 긁는 면의 수 — 도면에 날이 **한 장**이고 한쪽 면에만 선다.
+#: `sealant_volume_per_panel_mm3()` 가 세는 양은 **두 면**이다. 이 둘이 안 맞는
+#: 것이 아래 `the_back_face_band_has_no_tool()` 의 내용이다.
+BLADE_FACES = 1
+#: 실란트가 남는 면의 수 — 인발이 양쪽 슬롯 립을 다 남긴다.
+RESIDUE_FACES = 2
+
+
+def scraper_path_mm(faces: int = BLADE_FACES) -> float:
+    """날이 긁어야 하는 경로 길이 (mm) — 띠가 둘레를 도니 한 면에 둘레 하나다.
+
+    날 폭 `BLADE_WIDTH_MM` 이 띠 폭보다 넓으므로 한 변에 통과 한 번이면 된다
+    (`the_blade_already_covers_the_wider_requirement()`).
+    """
+    perimeter = 2.0 * (float(campaign.PANEL_LENGTH_MM) + float(campaign.PANEL_WIDTH_MM))
+    return round(perimeter * faces, 1)
+
+
+def scraper_serial_time_s(feed_mm_s: float) -> float:
+    """한 날이 네 변을 **차례로** 갈 때의 시간 (s) — 상한이다.
+
+    장변은 장변 이송, 단변은 횡행 이송으로 간다고 보고 센다. 병렬이 하나도
+    없는 경우라 실제는 이보다 짧다.
+    """
+    long_t = 2.0 * float(campaign.PANEL_LENGTH_MM) / feed_mm_s
+    short_t = 2.0 * float(campaign.PANEL_WIDTH_MM) / feed_mm_s
+    return round(long_t + short_t, 2)
+
+
+def scraper_time_like_sg_heads_s(feed_mm_s: float) -> float:
+    """SG-301 과 같은 헤드 배치(장변 2 동기 · 단변 1 횡행)로 갈 때의 시간 (s).
+
+    **배치를 정한 것이 아니라** 지금 있는 배치를 빌려 견주는 값이다. 캐리어의
+    헤드 수는 아직 안 들었다.
+    """
+    long_t = float(campaign.PANEL_LENGTH_MM) / feed_mm_s
+    short_t = 2.0 * float(campaign.PANEL_WIDTH_MM) / feed_mm_s
+    return round(long_t + short_t, 2)
+
+
+def scraper_power_at_w(feed_mm_s: float) -> float:
+    """그 이송에서 긁는 데 드는 동력 (W) — 힘 × 속도."""
+    return round(scrape_total_force_n() * feed_mm_s / 1_000.0, 1)
+
+
+def feed_that_fits_the_slack_mm_s(like_sg_heads: bool = False) -> float:
+    """SG-301 이 남긴 여유 안에 날이 들어가려면 필요한 이송 (mm/s).
+
+    리드가 빠져 여유가 `slack_s()` 로 늘었다. 그 안에 날의 통과가 들어가면
+    캐리어가 같은 스테이션에 서도 되고, 안 들어가면 스테이션이 하나 늘거나
+    택트가 깎인다.
+    """
+    slack = slack_s()
+    if slack <= 0.0:
+        return float("inf")
+    p, w = float(campaign.PANEL_LENGTH_MM), float(campaign.PANEL_WIDTH_MM)
+    distance = (p + 2.0 * w) if like_sg_heads else (2.0 * p + 2.0 * w)
+    return round(distance / slack, 1)
+
+
+def the_own_carrier_frees_the_feed() -> tuple[str, ...]:
+    """캐리어가 따로 서면 이송을 무엇이 정하는가 — 스핀들이 아니다.
+
+    동승일 때 날은 휠의 이송으로 갔다. 그 이송은 **스핀들이 정한 값**이고
+    (`feed_is_spindle_bound()`), 날에게는 그것을 따를 이유가 없었다 —
+    긁는 것은 계면 일이라 동력이 자릿수로 작다.
+    """
+    lf = long_feed_mm_s()
+    return (
+        f"**물려받은 이송 {lf:.0f} mm/s 에서 긁는 동력은 "
+        f"{scraper_power_at_w(lf)} W** 다. 스핀들 가용 "
+        f"{spindle_available_w():.0f} W 의 "
+        f"{scraper_power_at_w(lf) / spindle_available_w():.2%} — 이송을 정한 것이 "
+        "날이 아니었다.",
+        f"**10 배로 올려도 {scraper_power_at_w(lf * 10):.0f} W** 다. 힘이 "
+        f"{scrape_total_force_n()} N 로 고정이라 동력은 속도에 선형이고, 그 "
+        "선형이 어디서도 한계에 안 닿는다. **동력은 한계가 아니다.**",
+        f"**여유에 들어가려면 {feed_that_fits_the_slack_mm_s():.0f} mm/s** 다 "
+        f"(한 날 직렬). SG-301 헤드 배치를 빌리면 "
+        f"{feed_that_fits_the_slack_mm_s(like_sg_heads=True):.0f} mm/s 로 내려간다.",
+        f"그 이송에서도 동력은 "
+        f"{scraper_power_at_w(feed_that_fits_the_slack_mm_s()):.0f} W 다. "
+        "**그러니 한계는 동력이 아니라 캐리지와 슈다** — 얼마나 빨리 가도 슈가 "
+        "면을 놓치지 않는지, 부스러기가 제때 빠지는지. 둘 다 이 모델에 없다.",
+    )
+
+
+def scraper_fits_the_slack(feed_mm_s: float | None = None,
+                           like_sg_heads: bool = False) -> bool:
+    """그 이송에서 날의 통과가 SG-301 이 남긴 여유 안에 들어가는가."""
+    feed = long_feed_mm_s() if feed_mm_s is None else feed_mm_s
+    t = (scraper_time_like_sg_heads_s(feed) if like_sg_heads
+         else scraper_serial_time_s(feed))
+    return t <= slack_s()
+
+
+def the_back_face_band_has_no_tool() -> bool:
+    """백시트면 띠를 걷을 공구가 있는가 — **없다.** 날이 한 장이고 유리면에 선다.
+
+    이것은 캐리어를 옮기려고 리드가 걸린 자리를 훑다가 나온 것이다. 도면이
+    말하는 것과 계산이 세는 것이 다르다 —
+
+      · `srband` 의 역할: 「폭 20 × 두께 0.75 가 **유리면에** 남아 있다」
+      · `srglass` 의 역할: 「유리면이 아래라 **걷어야 할 띠도 아래에** 있고,
+        반출롤러가 변에서 150 mm 물러나 그 자리를 낸다」
+      · 그런데 `sealant_volume_per_panel_mm3()` 은 **두 면**을 센다.
+
+    날이 유리면(아래) 띠를 걷는데, **BR-305 의 벨트가 만나는 것은 백시트면
+    (위) 띠**다. 그러니 순서만으로는 벨트 앞이 안 치워진다 — 날이 위 면도
+    걷어야 한다. 지난 기록에서 이 구분을 안 했다.
+
+    이름이 「없다」이므로 **없을 때 참**이다.
+    """
+    return BLADE_FACES < RESIDUE_FACES
+
+
+def the_faces_do_not_add_up() -> tuple[str, ...]:
+    """면 수가 안 맞는다는 것을 값으로 — 얼마가 공구 없이 남는가."""
+    one = sealant_volume_per_panel_mm3(faces=1)
+    both = sealant_volume_per_panel_mm3(faces=RESIDUE_FACES)
+    return (
+        f"**날은 {BLADE_FACES} 면, 잔사는 {RESIDUE_FACES} 면** — "
+        f"`the_back_face_band_has_no_tool()` = "
+        f"{the_back_face_band_has_no_tool()}.",
+        f"**한 면 {one:,.0f} mm³ 가 걷히고 {both - one:,.0f} mm³ 가 남는다** "
+        f"(전체 {both:,.0f}). 남는 쪽이 백시트면이고 그것이 BR-305 의 벨트가 "
+        "지나가는 면이다.",
+        f"**걷히는 쪽이 유리면인 이유는 기구다** — 반출롤러가 변에서 "
+        f"{EDGE_OVERHANG_MM:.0f} mm 물러나 아래에서 날이 들어갈 자리를 낸다. "
+        "위 면은 그 자리를 안 만들어 줬다.",
+        "**자기 캐리어가 이것을 고칠 기회다** — 헤드 동승에서는 휠이 있는 쪽을 "
+        "따라가야 했지만, 캐리어가 따로 서면 어느 면으로 들어갈지 자유롭다. "
+        "날을 두 장으로 할지 한 장으로 두 번 갈지는 **안 들었다.**",
+    )
 
 
 def face_residue_has_a_tool() -> bool:
@@ -988,6 +1176,11 @@ def face_residue_has_a_tool() -> bool:
     한때 없었다. 레시피는 '백시트 접촉 압력' 을 선언하는데 AFR 스테이션
     부품표에는 클램프 패드뿐이었다. 이제 조건으로 확인한다 — 걷을 수 있고,
     유리를 안 긁고, 백시트를 남기고, 동력이 든다면 참이다.
+
+    **이 술어는 「공구가 존재하는가」이고 「몇 면을 걷는가」가 아니다.** 날은
+    한 장이고 유리면에 선다 — 백시트면 띠는 공구가 없다
+    (`the_back_face_band_has_no_tool()`). 이 참을 「두 면이 다 걷힌다」로 읽으면
+    안 된다.
     """
     return (blade_can_shear_the_sealant() and blade_cannot_scratch_glass()
             and backsheet_survives_scraping() and shoe_is_gentle_enough()
@@ -1192,8 +1385,9 @@ def cycle() -> tuple[dict[str, object], ...]:
     장변은 유리가 **움직여야** 갈리고 단변은 유리가 **서 있어야** 훑을 수 있다.
     두 상태는 배타적이라 동시가 성립하지 않는다 — 그래서 점유가 더해진다.
     """
-    # 날이 휠보다 앞서 달리므로 통과 거리는 판 치수가 아니라 판 + 리드다.
-    lead = float(campaign.SG_BLADE_LEAD_MM)
+    # 날이 자기 캐리어로 나갔으므로 통과 거리는 판 치수 그대로다. 동승이면
+    # 판 + 리드였다 — 켜고 끄는 것은 `campaign.SCRAPER_ON_ITS_OWN_CARRIER` 다.
+    lead = campaign.sg_blade_lead_mm()
     sweep = (float(campaign.PANEL_WIDTH_MM) + lead) / short_feed_mm_s()
     stroke = float(campaign.SG_HEAD_STROKE_S)
     passing = (float(campaign.PANEL_LENGTH_MM) + lead) / long_feed_mm_s()
@@ -1761,38 +1955,57 @@ def scraper_unit() -> Unit:
              (hx + 250.0, -sealant_left_t_mm() * BAND_DISPLAY_MAG / 2, 0.0),
              "실란트 잔사",
              role=f"폭 {SEALANT_BAND_MM:.0f} × 두께 {sealant_left_t_mm()} 가 유리면에 "
-                  f"남아 있다. 이것이 있으면 휠 어깨가 유리 모서리에 못 닿는다 — "
-                  f"날이 휠보다 {lead:.0f} mm 앞서 가는 이유다. (두께는 보이라고 "
+                  f"남아 있다. 한때 이것을 걷는 이유가 **휠 어깨**였다 — 띠가 "
+                  f"있으면 어깨가 유리 모서리에 못 닿았다. 지금 이유는 "
+                  f"**BR-305 의 벨트**다: 띠가 백시트보다 "
+                  f"{sealant_left_t_mm() - BACKSHEET_T_MM:.2f} mm 솟아 벨트가 그것을 "
+                  f"먼저 만난다. 그런데 벨트가 지나가는 것은 **반대 면**이라 "
+                  f"거기까지 걷는 배치가 아직 없다. (두께는 보이라고 "
                   f"{BAND_DISPLAY_MAG:.0f} 배로 그렸다)",
              color="rubber", explode=(180, -140, 0),
              spec=f"{SEALANT_BAND_MM:.0f} × {sealant_left_t_mm()} · 표시 두께 "
                   f"{BAND_DISPLAY_MAG:.0f} 배",
              catalog="—"),
-        Part("srwhl", "다이아몬드 형상휠 (뒤따라온다)", 1, "cyl",
+        Part("srwhl", "다이아몬드 형상휠 (같은 캐리지였을 때)", 1, "cyl",
              (WHEEL_D_MM, WHEEL_W_MM, WHEEL_D_MM), (-hx, -6.5, 0.0),
              f"메탈본드 D{GRIT_UM:.0f}", axis="y",
-             role=f"날이 지나간 자리를 {lead:.0f} mm 뒤에서 받는다. 같은 캐리지라 "
-                  f"순환이 리드만큼만 는다 ({scraper_lead_cost_s()} s).",
+             role=f"동승이던 동안 날이 지나간 자리를 {lead:.0f} mm 뒤에서 받았다. "
+                  f"장비가 안 늘고 순환만 {lead_cost_if_shared_s()} s 늘었다. "
+                  f"**지금은 같은 캐리지가 아니다** — 발주처가 날을 자기 캐리어로 "
+                  f"옮겨서 이 휠은 날을 기다리지 않고, 그 리드가 SG-301 에서 "
+                  f"빠졌다(실리는 리드 {scraper_lead_cost_s()} s). 그리고 이 휠 "
+                  f"자체도 목적이 없다 — 아리스 공정 요구가 없다.",
              color="ghost", explode=(240, 0, 0),
-             spec=f"Ø{WHEEL_D_MM:.0f} · 리드 {lead:.0f} mm", catalog="SP-03"),
+             spec=f"Ø{WHEEL_D_MM:.0f} · 동승이었다면 리드 {lead:.0f} mm",
+             catalog="SP-03"),
         Part("srglass", "라미네이트 (유리면이 아래)", 1, "box",
              (820.0, STACK_T_MM, 240.0), (0.0, -STACK_T_MM / 2 - 8.0, 0.0),
              f"유리 t{GLASS_T_MM} + EVA·백시트",
-             role=f"{lf:.0f} mm/s 로 지나간다. 유리면이 아래라 걷어야 할 띠도 아래에 "
-                  f"있고, 반출롤러가 변에서 {EDGE_OVERHANG_MM:.0f} mm 물러나 그 자리를 "
-                  "낸다.",
+             role=f"{lf:.0f} mm/s 로 지나간다. 유리면이 아래라 **이 날이 걷는 띠도 "
+                  f"아래에** 있고, 반출롤러가 변에서 {EDGE_OVERHANG_MM:.0f} mm 물러나 "
+                  f"그 자리를 낸다. 위 면(백시트)에도 같은 폭으로 띠가 남지만 "
+                  f"거기는 그 자리가 없어 **공구가 안 닿는다** — 잔사 "
+                  f"{RESIDUE_FACES} 면 중 걷히는 것이 {BLADE_FACES} 면이다.",
              color="ghost", explode=(0, -260, 0),
              spec=f"적층 {STACK_T_MM} · 내밀림 {EDGE_OVERHANG_MM:.0f}", catalog="—"),
     )
     return Unit(
-        key="scraper", name="SR-302 잔사 스크레이퍼 (휠보다 앞서 간다)",
+        key="scraper", name="SR-302 잔사 스크레이퍼 (자기 캐리어)",
         sheet="PV-SR-302-ASM-5501",
         envelope_mm=(900.0, 300.0, 300.0), view_r_mm=520.0,
         principle=(
             ("① 왜 필요한가", f"프레임이 남기고 간 실란트 띠가 면을 "
                           f"{SEALANT_BAND_MM:.0f} mm 덮고 두께가 {sealant_left_t_mm()} mm 다. "
-                          f"휠 어깨는 면 위로 {flange_reach_mm():.0f} mm 걸쳐 나오므로 "
-                          "**띠를 먼저 걷지 않으면 휠이 유리 모서리에 닿지도 못한다.**"),
+                          f"한때 이유가 휠이었다 — 어깨가 면 위로 "
+                          f"{flange_reach_mm():.0f} mm 걸쳐 나오니 띠를 먼저 걷지 "
+                          f"않으면 유리 모서리에 닿지도 못했다. 아리스 공정 요구가 "
+                          f"없어지면서 그 이유가 빠지고, 지금 이유는 **BR-305 의 "
+                          f"벨트**다: 띠가 백시트보다 "
+                          f"{sealant_left_t_mm() - BACKSHEET_T_MM:.2f} mm 솟아 압반 "
+                          f"추종으로는 못 따라간다. 요구 폭도 어깨 몫 "
+                          f"{sealant_must_go_first_mm():.0f} mm 에서 **띠 전체 "
+                          f"{SEALANT_BAND_MM:.0f} mm** 로 넓어졌다 — 날 폭 "
+                          f"{BLADE_WIDTH_MM:.0f} mm 가 이미 덮는다."),
             ("② 왜 긁는가", f"같은 띠를 **갈아냈다면** "
                         f"{abrade_power_w(lf) / 1000:,.0f} kW 가 든다 — 부피 일이기 "
                         f"때문이다. **긁으면** 계면 일이라 Gc × 폭 = "
@@ -1809,12 +2022,22 @@ def scraper_unit() -> Unit:
                             f"압착도 {SHOE_SPRING_N:.0f} N 으로 허용 "
                             f"{safe_face_force_n():.0f} N 의 "
                             f"{SHOE_SPRING_N / safe_face_force_n():.0%} 만 쓴다."),
-            ("⑤ 값은 리드뿐", f"날이 휠보다 {lead:.0f} mm 앞서 간다. 같은 캐리지라 장비가 "
-                         f"안 늘고, 통과 거리만 그만큼 길어져 {scraper_lead_cost_s()} s "
-                         f"가 든다 — 날이 없다면 {occupancy_without_scraper_s()} s 일 "
-                         f"점유가 {occupancy_s()} s 이고, AFR 정반 {campaign.AFR_S} s "
-                         f"안에 {slack_s()} s 가 남는다. "
-                         "부스러기는 고체라 집진 흐름도 안 바뀐다."),
+            ("⑤ 값은 캐리어다", f"한때 날이 휠보다 {lead:.0f} mm 앞서 가는 부품이었고 "
+                          f"값이 리드 {lead_cost_if_shared_s()} s 뿐이었다. 발주처가 "
+                          f"**자기 캐리어**로 정해서 그 리드가 SG-301 에서 빠졌다 — "
+                          f"점유 {occupancy_s()} s, AFR 정반 {campaign.AFR_S} s 안에 "
+                          f"{slack_s()} s 여유. 대신 **날 자신의 운동학**이 값이 "
+                          f"된다: 경로 {scraper_path_mm():,.0f} mm 를 여유 안에 "
+                          f"가려면 {feed_that_fits_the_slack_mm_s():.0f} mm/s 이고 "
+                          f"그때 동력은 "
+                          f"{scraper_power_at_w(feed_that_fits_the_slack_mm_s()):.0f} W "
+                          "다 — 한계는 동력이 아니라 캐리지와 슈다."),
+            ("⑥ 아직 안 맞는 것", f"날이 **{BLADE_FACES} 면**(유리면)에 서는데 잔사는 "
+                            f"**{RESIDUE_FACES} 면**에 남는다. 백시트면 "
+                            f"{sealant_volume_per_panel_mm3(faces=1):,.0f} mm³ 가 "
+                            f"공구 없이 남고 그것이 **BR-305 의 벨트가 지나가는 "
+                            f"면**이다. 캐리어가 따로 서면 어느 면으로 들어갈지 "
+                            f"자유롭지만 그 배치는 아직 안 들었다."),
         ),
         parts=parts)
 
@@ -1847,6 +2070,12 @@ def summary() -> dict[str, object]:
         "arrisIsRequired": arris_is_required(),
         "arrisRequiredByPlant": ARRIS_REQUIRED_BY_PLANT,
         "scraperKeptByPlant": SCRAPER_KEPT_BY_PLANT,
+        "scraperOwnCarrier": the_carrier_is_its_own(),
+        "leadCostIfSharedS": lead_cost_if_shared_s(),
+        "scraperPathMm": scraper_path_mm(),
+        "feedToFitSlackMmS": feed_that_fits_the_slack_mm_s(),
+        "scraperFitsTheSlack": scraper_fits_the_slack(),
+        "backFaceBandHasNoTool": the_back_face_band_has_no_tool(),
         "normalForceN": normal_force_n(lf),
         "contactPressureMpa": contact_pressure_mpa(lf),
         "reliefCoversTolerance": relief_covers_tolerance(),

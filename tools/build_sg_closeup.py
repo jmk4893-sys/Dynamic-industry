@@ -171,10 +171,28 @@ def spec_payload() -> str:
                     f"{g.SHOE_SPRING_N / g.safe_face_force_n():.0%}) · 접촉압 "
                     f"{g.shoe_pressure_mpa()} MPa · 남는 깊이 오차 "
                     f"**{g.blade_assembly_tol_mm()} mm** < 백시트 {g.BACKSHEET_T_MM} mm"],
-            ["순환 비용", f"리드 {g.BLADE_LEAD_MM:.0f} mm → **{g.scraper_lead_cost_s()} s** · "
-                     f"점유 {g.occupancy_s()} s (날 없으면 "
-                     f"{g.occupancy_without_scraper_s()} s) · "
-                     f"AFR 정반 안에 {g.slack_s()} s 여유"],
+            ["캐리어", f"발주처가 **자기 캐리어**로 정했다 — 휠 헤드 동승이 아니다. "
+                    f"동승이었다면 리드 {g.BLADE_LEAD_MM:.0f} mm 가 "
+                    f"{g.lead_cost_if_shared_s()} s 를 가져갔고, 그것이 빠져 "
+                    f"SG-301 점유가 **{g.occupancy_s()} s** · AFR 정반 안 여유 "
+                    f"**{g.slack_s()} s** 다"],
+            ["날 자신의 운동학", f"경로 **{g.scraper_path_mm():,.0f} mm**(둘레 × "
+                         f"{g.BLADE_FACES} 면) · 물려받은 이송 {lf:.0f} mm/s 로는 "
+                         f"직렬 {g.scraper_serial_time_s(lf)} s 라 여유를 넘는다 → "
+                         f"필요 이송 **{g.feed_that_fits_the_slack_mm_s():.0f} mm/s** "
+                         f"(SG 헤드 배치면 "
+                         f"{g.feed_that_fits_the_slack_mm_s(True):.0f})"],
+            ["한계는 동력이 아니다", f"긁는 힘 {g.scrape_total_force_n()} N 고정 → "
+                            f"{lf:.0f} mm/s 에서 {g.scraper_power_at_w(lf)} W · "
+                            f"{lf * 10:.0f} mm/s 에서도 "
+                            f"{g.scraper_power_at_w(lf * 10):.0f} W. 스핀들 가용 "
+                            f"{g.spindle_available_w():.0f} W 의 "
+                            f"{g.scraper_power_at_w(lf) / g.spindle_available_w():.2%} — "
+                            "**캐리지와 슈가 정한다**"],
+            ["면 수가 안 맞는다", f"날 **{g.BLADE_FACES} 면**(유리면) vs 잔사 "
+                          f"**{g.RESIDUE_FACES} 면** — 백시트면 "
+                          f"{g.sealant_volume_per_panel_mm3(faces=1):,.0f} mm³ 가 "
+                          f"공구 없이 남고 그것이 **BR-305 벨트가 지나가는 면**이다"],
             ["집진", "부스러기가 **고체**라 DS-01 에 폴리머가 안 들어간다 — "
                   "'불연' 선언이 그대로 선다"],
             ["Gc 여유", f"면 허용 압착력이 감당하는 상한이 **{g.max_gc_the_face_limit_allows()} "

@@ -97,20 +97,46 @@ def total_dwell_s() -> float:
     return round(INFEED_S + JBR_S + AFR_S, 2)
 
 
-#: SR-302 날이 휠보다 앞서 가는 거리 (mm) — 휠이 오기 전에 그 자리가 비어 있어야
-#: 한다. 날이 앞서면 통과마다 그만큼 **더 가야** 하므로 점유에 그대로 실린다.
+#: SR-302 날이 휠보다 앞서 가는 거리 (mm) — **같은 캐리지에 달렸을 때**의 값.
+#: 휠이 오기 전에 그 자리가 비어 있어야 하고, 날이 앞서면 통과마다 그만큼 **더
+#: 가야** 하므로 점유에 그대로 실린다. 발주처가 날을 자기 캐리어로 옮겨서
+#: 지금은 안 걸린다 — 값은 **왜 그랬는지의 근거**로 남겨 둔다.
 SG_BLADE_LEAD_MM = 200.0
+
+#: 발주처 결정 — SR-302 날이 **자기 캐리어**를 갖는다. 휠 헤드 동승이 아니다.
+#:
+#: 아리스가 공정 요구가 아니라고 확인되면서 날을 태우고 있던 휠이 근거를
+#: 잃었고(`sg_grind.the_scraper_outlives_its_host()`), 발주처가 거처를 자기
+#: 캐리어로 정했다. 받은 값이고 내가 정한 것이 아니다.
+#:
+#: 이 값이 **리드를 켜고 끈다** — 날이 휠 앞을 달리지 않으면 통과 거리가 판
+#: 치수로 돌아온다. 그래서 상수를 지우지 않고 술어로 갈랐다.
+SCRAPER_ON_ITS_OWN_CARRIER = True
+
+
+def sg_blade_lead_mm() -> float:
+    """SG-301 통과 거리에 **실제로 실리는** 리드 (mm).
+
+    날이 자기 캐리어로 나가면 휠은 더 이상 그 앞자리를 기다리지 않는다.
+    그러면 리드가 0 이고, 통과 거리는 판 치수 그대로다.
+    """
+    return 0.0 if SCRAPER_ON_ITS_OWN_CARRIER else SG_BLADE_LEAD_MM
 
 
 def sg_occupancy_s() -> float:
     """SG-301 반출롤러 점유 (s) — 앞단변 + 장변 통과 + 뒷단변 + 정지·헤드 행정.
 
-    날이 휠보다 `SG_BLADE_LEAD_MM` 앞서 달리므로 통과 거리가 판 치수가 아니라
-    판 + 리드다. 스크레이퍼는 붙였다 뗐다 하는 물건이 아니라 헤드에 달린
-    부품이라, 그 값을 밖에 빼두면 도면이 없는 기계의 택트를 광고하게 된다.
+    한때 날이 휠보다 `SG_BLADE_LEAD_MM` 앞서 달려 통과 거리가 판 + 리드였다.
+    스크레이퍼가 헤드에 달린 부품이었기 때문이고, 그 값을 밖에 빼두면 도면이
+    없는 기계의 택트를 광고하는 셈이었다.
+
+    발주처가 날을 자기 캐리어로 옮겼다. 그래서 이 점유는 **휠만의 점유**이고,
+    날의 점유는 자기 캐리어의 운동학에서 따로 나온다 — 이 값에 안 들어 있다.
+    `sg_grind.what_the_own_carrier_leaves_open()` 이 그것을 든다.
     """
-    short = (PANEL_WIDTH_MM + SG_BLADE_LEAD_MM) / SG_SWEEP_MM_S + SG_HEAD_STROKE_S
-    long = (PANEL_LENGTH_MM + SG_BLADE_LEAD_MM) / SG_PASS_MM_S
+    lead = sg_blade_lead_mm()
+    short = (PANEL_WIDTH_MM + lead) / SG_SWEEP_MM_S + SG_HEAD_STROKE_S
+    long = (PANEL_LENGTH_MM + lead) / SG_PASS_MM_S
     return round(2 * short + long + SG_INDEX_S, 2)
 
 

@@ -506,24 +506,31 @@ class TestTheScraperThatClearsTheBand(unittest.TestCase):
         self.assertGreater(sg_grind.slack_s(), 0.0)
         self.assertGreater(sg_grind.BLADE_LEAD_MM, sg_grind.WHEEL_D_MM / 2)
 
-    def test_the_published_occupancy_already_carries_the_blade(self):
-        """광고하는 점유가 **날을 단 기계**의 점유여야 한다.
+    def test_the_published_occupancy_matches_the_carrier_decision(self):
+        """광고하는 점유가 **지금 있는 기계**의 점유여야 한다.
 
-        SR-302 는 옵션이 아니라 헤드에 달린 부품이다. 리드를 점유 밖에 빼두면
-        캠페인·리터럴·근접도면이 존재하지 않는 기계의 택트를 광고하게 된다.
+        한때 SR-302 가 헤드에 달린 부품이라 리드가 순환의 상(相) 안에 있었고,
+        그것을 밖에 빼두면 존재하지 않는 기계의 택트를 광고하는 셈이었다.
+
+        발주처가 날을 자기 캐리어로 옮겼다. 그래서 이 점유는 **휠만의 점유**이고
+        리드가 안 실린다 — 반대로, 리드를 아직 물고 있으면 없는 부품의 시간을
+        파는 셈이 된다. 어느 쪽이든 정본은 하나이고 두 모듈이 같아야 한다.
         """
         self.assertEqual(sg_grind.BLADE_LEAD_MM, campaign.SG_BLADE_LEAD_MM)
         self.assertAlmostEqual(sg_grind.occupancy_s(),
                                campaign.sg_occupancy_s(), places=2)
-        # 리드는 순환의 상(相) 안에 있다 — 밖에서 더하는 값이 아니다.
         lead_free = ((campaign.PANEL_WIDTH_MM / sg_grind.short_feed_mm_s()
                       + campaign.SG_HEAD_STROKE_S) * 2
                      + campaign.PANEL_LENGTH_MM / sg_grind.long_feed_mm_s()
                      + campaign.SG_INDEX_S)
-        self.assertAlmostEqual(sg_grind.occupancy_without_scraper_s(),
-                               lead_free, places=2)
-        self.assertGreater(sg_grind.occupancy_s(), lead_free,
-                           "날을 달고도 점유가 안 늘었다면 리드가 어디에도 없다")
+        if sg_grind.the_carrier_is_its_own():
+            self.assertAlmostEqual(sg_grind.occupancy_s(), lead_free, places=2)
+            self.assertEqual(sg_grind.scraper_lead_cost_s(), 0.0)
+        else:
+            self.assertGreater(sg_grind.occupancy_s(), lead_free,
+                               "동승인데 점유가 안 늘었다면 리드가 어디에도 없다")
+        # 반사실값은 결정과 무관하게 계산된다 — 왜 그랬는지가 남아야 한다.
+        self.assertGreater(sg_grind.lead_cost_if_shared_s(), 0.0)
 
     def test_the_tool_now_exists_and_the_wheel_can_follow(self):
         self.assertTrue(sg_grind.face_residue_has_a_tool())
@@ -547,7 +554,10 @@ class TestTheScraperThatClearsTheBand(unittest.TestCase):
         self.assertIn("아리스를 요구하는 공정이 없다", titles)
         # 다섯째 — 발주처가 날은 살렸는데 그 날을 태운 휠은 요구가 없다.
         self.assertIn("날은 남는데 그것을 태운 휠은 요구가 없다", titles)
-        self.assertEqual(len(titles), 5)
+        # 캐리어를 옮기면서 둘이 더 나왔다 — 면 수와 통과 시간.
+        self.assertIn("백시트면 띠를 걷을 공구가 없다", titles)
+        self.assertIn("자기 캐리어의 통과가 여유에 안 들어간다", titles)
+        self.assertEqual(len(titles), 7)
 
     def test_the_gc_headroom_is_stated_not_assumed(self):
         """Gc 가 얼마까지 오르면 허용 압착력을 넘는가 — 그 값을 내놓는다."""
@@ -809,26 +819,28 @@ class TestTheScraperSurvivesTheWheel(unittest.TestCase):
         self.assertTrue(sg_grind.SCRAPER_KEPT_BY_PLANT)
         self.assertFalse(sg_grind.ARRIS_REQUIRED_BY_PLANT)
 
-    def test_the_lead_exists_for_the_wheel(self):
-        """리드가 휠 때문에 있었다는 것 — 점유에 얼마가 실려 있는지 센다."""
-        self.assertIn("휠", inspect.getdoc(sg_grind.scraper_lead_cost_s))
-        self.assertGreater(sg_grind.scraper_lead_cost_s(), 0.0)
-        self.assertAlmostEqual(
-            sg_grind.occupancy_without_scraper_s(),
-            sg_grind.occupancy_s() - sg_grind.scraper_lead_cost_s(), places=2)
+    def test_the_lead_left_the_wheels_cycle(self):
+        """리드가 휠 때문에 있었고, 날이 나가면서 SG-301 에서 빠졌다."""
+        self.assertIn("휠", inspect.getdoc(sg_grind.lead_cost_if_shared_s))
+        self.assertGreater(sg_grind.lead_cost_if_shared_s(), 0.0)
+        self.assertEqual(sg_grind.scraper_lead_cost_s(), 0.0)
+        # 두 값이 같아졌다 — 지금 점유가 이미 날 없는 점유다.
+        self.assertAlmostEqual(sg_grind.occupancy_without_scraper_s(),
+                               sg_grind.occupancy_s(), places=2)
 
-    def test_it_does_not_repurpose_the_occupancy_number(self):
-        """휠이 빠진 뒤의 점유를 아직 안 풀었다고 적는다 — 그 수를 재활용하지 않는다."""
+    def test_it_does_not_repurpose_the_lead_as_the_blades_time(self):
+        """빠진 리드가 날의 점유가 되는 것이 아니라고 적는다 — 통과 종류가 다르다."""
         text = " ".join(sg_grind.the_scraper_outlives_its_host())
         self.assertIn("이 값을 그대로 쓰면 안", text)
-        self.assertIn("아직 안 풀었다", text)
+        self.assertIn("날의 점유가 되는 것이 아니다", text)
 
-    def test_it_does_not_pick_a_carrier(self):
-        """거처를 셋 중에서 고르지 않는다 — 추측이 아니라 미결이다."""
-        text = " ".join(sg_grind.the_scraper_outlives_its_host())
-        self.assertIn("추측해서 고르지 않는다", text)
+    def test_the_carrier_is_decided_and_the_kinematics_are_not(self):
+        """거처는 정해졌고 운동학은 안 정해졌다 — 그 둘을 갈라 적는다."""
+        self.assertTrue(sg_grind.the_carrier_is_its_own())
         titles = [t for t, _ in sg_grind.what_the_absent_arris_leaves_open()]
-        self.assertIn("SR-302 가 어디에 실리는가", titles)
+        self.assertIn("자기 캐리어의 운동학", titles)
+        self.assertIn("날이 몇 면을 긁는가", titles)
+        self.assertNotIn("SR-302 가 어디에 실리는가", titles)
 
     def test_the_requirement_widened_from_shoulder_to_band(self):
         """근거가 옮겨가며 요구 폭이 넓어진다 — 어깨 몫에서 띠 전체로."""
@@ -852,6 +864,107 @@ class TestTheScraperSurvivesTheWheel(unittest.TestCase):
     def test_the_summary_carries_the_decision(self):
         s = sg_grind.summary()
         self.assertIs(s["scraperKeptByPlant"], True)
+
+
+class TestTheBladeGetsItsOwnCarrier(unittest.TestCase):
+    """발주처가 거처를 자기 캐리어로 정했다 — 회계가 리드에서 운동학으로 옮겼다."""
+
+    def test_the_decision_lives_in_campaign(self):
+        """정본이 하나다 — 리드를 쥔 모듈이 결정도 쥔다."""
+        self.assertTrue(campaign.SCRAPER_ON_ITS_OWN_CARRIER)
+        self.assertIs(sg_grind.the_carrier_is_its_own(), True)
+        self.assertEqual(campaign.sg_blade_lead_mm(), 0.0)
+
+    def test_the_cycle_reads_the_decision_not_the_constant(self):
+        """순환이 결정에서 리드를 받아 온다 — 리터럴을 안 쓴다."""
+        src = inspect.getsource(sg_grind.cycle)
+        self.assertIn("campaign.sg_blade_lead_mm()", src)
+        self.assertNotIn("campaign.SG_BLADE_LEAD_MM", src)
+
+    def test_the_two_modules_agree_on_the_occupancy(self):
+        self.assertAlmostEqual(sg_grind.occupancy_s(),
+                               campaign.sg_occupancy_s(), places=2)
+
+    def test_the_slack_grew_by_exactly_the_lead(self):
+        """리드가 빠진 만큼 여유가 늘었다 — 다른 데서 온 값이 아니다."""
+        self.assertAlmostEqual(
+            sg_grind.slack_s(),
+            campaign.AFR_S - sg_grind.occupancy_s(), places=2)
+        self.assertGreater(sg_grind.slack_s(), sg_grind.lead_cost_if_shared_s())
+
+    def test_the_path_is_the_perimeter_per_face(self):
+        per = 2.0 * (campaign.PANEL_LENGTH_MM + campaign.PANEL_WIDTH_MM)
+        self.assertAlmostEqual(sg_grind.scraper_path_mm(1), per, places=1)
+        self.assertAlmostEqual(sg_grind.scraper_path_mm(2), 2 * per, places=1)
+
+    def test_power_is_never_the_limit(self):
+        """힘이 고정이라 동력이 속도에 선형인데 어디서도 한계에 안 닿는다."""
+        for feed in (300.0, 1000.0, 3000.0):
+            self.assertLess(sg_grind.scraper_power_at_w(feed),
+                            sg_grind.spindle_available_w() * 0.1)
+        self.assertAlmostEqual(
+            sg_grind.scraper_power_at_w(600.0),
+            2 * sg_grind.scraper_power_at_w(300.0), places=1)
+
+    def test_the_inherited_feed_does_not_fit_the_slack(self):
+        """물려받은 이송으로는 안 들어간다 — 그래서 필요 이송을 내놓는다."""
+        lf = sg_grind.long_feed_mm_s()
+        self.assertFalse(sg_grind.scraper_fits_the_slack(lf))
+        need = sg_grind.feed_that_fits_the_slack_mm_s()
+        self.assertGreater(need, lf)
+        self.assertTrue(sg_grind.scraper_fits_the_slack(need * 1.001))
+
+    def test_the_needed_feed_is_cheap_in_power(self):
+        """필요 이송에서도 동력이 문제가 아니라는 것 — 한계가 캐리지임의 근거."""
+        need = sg_grind.feed_that_fits_the_slack_mm_s()
+        self.assertLess(sg_grind.scraper_power_at_w(need),
+                        sg_grind.spindle_available_w() * 0.05)
+        text = " ".join(sg_grind.the_own_carrier_frees_the_feed())
+        self.assertIn("캐리지와 슈", text)
+
+    def test_the_head_arrangement_is_borrowed_not_chosen(self):
+        """SG 배치를 빌려 견주기만 한다 — 정한 것이 아니라고 적혀야 한다."""
+        doc = inspect.getdoc(sg_grind.scraper_time_like_sg_heads_s)
+        self.assertIn("배치를 정한 것이 아니라", doc)
+        self.assertLess(
+            sg_grind.feed_that_fits_the_slack_mm_s(like_sg_heads=True),
+            sg_grind.feed_that_fits_the_slack_mm_s())
+
+
+class TestTheBackFaceBandHasNoTool(unittest.TestCase):
+    """면 수가 안 맞는다 — 날은 유리면, 벨트는 백시트면이다."""
+
+    def test_the_counts_disagree(self):
+        self.assertLess(sg_grind.BLADE_FACES, sg_grind.RESIDUE_FACES)
+        self.assertTrue(sg_grind.the_back_face_band_has_no_tool())
+
+    def test_the_name_matches_the_return(self):
+        """이름이 「없다」이므로 없을 때 참이어야 한다 — 뒤집혀 있으면 오독한다."""
+        self.assertEqual(sg_grind.the_back_face_band_has_no_tool(),
+                         sg_grind.BLADE_FACES < sg_grind.RESIDUE_FACES)
+
+    def test_half_the_residue_has_no_tool(self):
+        one = sg_grind.sealant_volume_per_panel_mm3(faces=1)
+        both = sg_grind.sealant_volume_per_panel_mm3(faces=sg_grind.RESIDUE_FACES)
+        self.assertAlmostEqual(both, 2 * one, places=1)
+        text = " ".join(sg_grind.the_faces_do_not_add_up())
+        self.assertIn(f"{one:,.0f} mm³", text)
+
+    def test_the_existing_predicate_is_marked_as_not_about_faces(self):
+        """「공구가 있는가」를 「두 면이 걷힌다」로 읽으면 안 된다고 적혀야 한다."""
+        self.assertTrue(sg_grind.face_residue_has_a_tool())
+        doc = inspect.getdoc(sg_grind.face_residue_has_a_tool)
+        self.assertIn("몇 면을 걷는가", doc)
+        self.assertIn("the_back_face_band_has_no_tool", doc)
+
+    def test_the_geometry_reason_is_recorded(self):
+        """유리면이 걷히는 이유가 기구라는 것 — 롤러 물러남이 자리를 낸다."""
+        text = " ".join(sg_grind.the_faces_do_not_add_up())
+        self.assertIn(f"{sg_grind.EDGE_OVERHANG_MM:.0f} mm", text)
+
+    def test_the_open_question_is_computed(self):
+        titles = [t for t, _ in sg_grind.open_questions()]
+        self.assertIn("백시트면 띠를 걷을 공구가 없다", titles)
 
 
 class TestCloseupDrawing(unittest.TestCase):
