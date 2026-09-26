@@ -18,7 +18,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
 
-from pv_preprocess import afr, frames, kinematics, layout  # noqa: E402
+from pv_preprocess import afr, afr_peel, frames, kinematics, layout  # noqa: E402
 
 DRAWING = pathlib.Path(__file__).resolve().parent.parent / "docs/drawings/pv-preprocess-plant.html"
 
@@ -60,6 +60,228 @@ def _f(v: float, nd: int = 4) -> str:
     if t in ("", "-"):
         return "0"
     return t.replace("0.", ".").replace("-0.", "-.") if t.startswith(("0.", "-0.")) else t
+
+
+# ── 연속체 프레임 — 실물 압출재 단면을 스윕하고 XPBD 로 휘게 한다 ────────
+#: 파티클 수. 장변은 β⁻¹(352 mm) 안에 여러 마디가 들어가야 휨이 곡선으로 보인다.
+NODES_LONG = 33
+NODES_SHORT = 21
+#: 한 프레임의 물리 서브스텝 수 — XPBD 는 반복이 아니라 서브스텝으로 수렴한다.
+SUBSTEPS = 8
+#: 캐리지 롤러가 홈을 무는 유효 반경 (m)·그 밖에서 남는 마찰 몫.
+GRIP_R_M = 0.14
+GRIP_TAIL = 0.0
+
+
+def build_continuum_frames() -> str:
+    """네 변을 **연속체**로 만든다 — 토막 32 개 대신 스윕 메시 4 벌.
+
+    형상: `afr_peel.section_outline_m()` 의 단면 다각형(도심 기준)을 절점마다
+    세워 스윕한다. 같은 다각형에서 면적·단면 2차 모멘트가 나오므로, 화면이
+    그리는 단면과 계산이 쓴 단면이 어긋날 수 없다.
+
+    운동: 브라우저에서 XPBD(확장 위치기반동역학)를 돌린다. 늘어남 구속은 EA/L,
+    굽힘 구속은 EI/L³, 접착 구속은 실란트 강성에서 컴플라이언스를 받는다 —
+    상수는 전부 `afr_peel.physics_si()` 에서 오고 화면에 리터럴이 없다.
+    접착 전선의 위치만은 유한요소가 낸 `front_curve()` 를 쓴다: 되감아도 같은
+    자리에서 같은 값이 나와야 스크럽이 어긋나지 않기 때문이다.
+    """
+    q = _f
+    q6 = lambda v: _f(v, 6)                    # noqa: E731  단면점은 mm 이하까지 쓴다
+    sec = afr_peel.section_outline_m()
+    cap = afr_peel.section_cap_indices()
+    phy = afr_peel.physics_si()
+    prof = frames.profile()
+    front = afr_peel.front_curve()
+    pk = afr_peel
+    short_clear = (kinematics.PANEL_MM[1] - 2 * afr.FRAME_W_MM) / 1000.0
+    base_y = PANEL_TOP - FRAME_T            # 프레임 밑면 — 단면 v=0 자리
+    cy = base_y + prof["cv_mm"] / 1000.0    # 도심 높이
+    cu = prof["cu_mm"] / 1000.0             # 바깥면에서 도심까지
+
+    js: list[str] = []
+    A = js.append
+    A("var pvAfrSec=[" + ",".join("[%s,%s]" % (q6(u), q6(v)) for u, v in sec) + "];")
+    A("var pvAfrCap=[" + ",".join(str(i) for i in cap) + "];")
+    A("var pvAfrPhy={" + ",".join("%s:%g" % (k, v) for k, v in phy.items()) + "};")
+    A("var pvAfrFront=[" + ",".join("[%s,%s]" % (q(a_), q(b_)) for a_, b_ in front) + "];")
+    # 쇠막대의 4차 처짐 형상 — 단변 강제변위의 **모양**이다 (중앙이 뒤처진다).
+    sp = afr_peel.short_edge_profile(NODES_SHORT - 1)
+    push = float(afr.push_travel_mm())
+    A("var pvAfrShort=[" + ",".join(_f(v / push, 6) for v in sp) + "];")
+    A("var pvAfrAlu=Xo.clone();pvAfrAlu.side=bn;")
+    # 모양은 물리가 낸다. 크기만 이 배율로 키운다 — 실제 처짐이 mm 단위라
+    # 플랜트 축척에서는 보이지 않기 때문이고, 배율은 화면 주기에 적어 둔다.
+    A("var pvAfrExag=%s,pvAfrExagCap=.12;" % q(frames.DISPLAY_EXAGGERATION))
+
+    A("function pvAfrBuildEdge(o){"
+      "var S=pvAfrSec.length,n=o.nodes,pos=new Float32Array((n*S+2*S)*3),ix=[];"
+      "for(let i=0;i<n-1;i+=1)for(let j=0;j<S;j+=1){let k=(j+1)%S,a=i*S+j,b=i*S+k,c=(i+1)*S+k,d=(i+1)*S+j;"
+      "ix.push(a,b,c,a,c,d)}"
+      "let ca=n*S,cb=n*S+S;"
+      "for(let t=0;t<pvAfrCap.length;t+=3){ix.push(ca+pvAfrCap[t+2],ca+pvAfrCap[t+1],ca+pvAfrCap[t]);"
+      "ix.push(cb+pvAfrCap[t],cb+pvAfrCap[t+1],cb+pvAfrCap[t+2])}"
+      "let g=new an();g.setAttribute('position',new on(pos,3));g.setIndex(ix);"
+      "let m=new et(g,pvAfrAlu);m.castShadow=!0;m.receiveShadow=!0;"
+      "if(o.label){m.userData.label=o.label;m.userData.note=o.note;"
+      "m.userData.partNo=Fr.get(o.label)?.no||null;Ns.push(m)}Cs.add(m);"
+      "let e={mesh:m,geo:g,pos:pos,n:n,S:S,axis:o.axis,lat:o.lat,sign:o.sign,len:o.len,"
+      "seg:o.len/(n-1),restLat:o.restLat,restY:o.restY,"
+      "p:new Float64Array(n*3),v:new Float64Array(n*3),q:new Float64Array(n*3),"
+      "anc:new Float64Array(n*3),bond:new Float64Array(n),rg:new Float64Array(n*3),"
+      "dv:new Float64Array(n*3),sm:new Float64Array(n*3),"
+      "pin:new Float64Array(n),"
+      "mass:pvAfrPhy.rhoA*(o.len/(n-1))};"
+      "pvAfrRest(e);return e}")
+
+    A("function pvAfrRest(e){"
+      "for(let i=0;i<e.n;i+=1){let s=-e.len/2+i*e.seg,x=i*3;"
+      "if(e.axis===0){e.p[x]=s;e.p[x+2]=e.restLat}else{e.p[x]=e.restLat;e.p[x+2]=s}"
+      "e.p[x+1]=e.restY;e.anc[x]=e.p[x];e.anc[x+1]=e.p[x+1];e.anc[x+2]=e.p[x+2];"
+      "e.v[x]=e.v[x+1]=e.v[x+2]=0;e.bond[i]=1}}")
+
+    A("function pvAfrSolve(e,h,out,drop,grip){"
+      "var n=e.n,p=e.p,v=e.v,qq=e.q,L=e.seg,li=e.lat,im=1/e.mass,"
+      "aS=(L/pvAfrPhy.ea)/(h*h),aB=(L*L*L/pvAfrPhy.ei)/(h*h),"
+      "aBond=(1/(pvAfrPhy.bondK*L))/(h*h),"
+      "fBond=pvAfrPhy.bondQ*L*h*h,brk=pvAfrPhy.bondBreak,sep=pvAfrPhy.bondSep;"
+      # ① 예측 — 중력을 먹이고 한 걸음 나아간다
+      "for(let i=0;i<n;i+=1){let x=i*3;v[x+1]+=-9.81*h;"
+      "qq[x]=p[x];qq[x+1]=p[x+1];qq[x+2]=p[x+2];"
+      "p[x]+=v[x]*h;p[x+1]+=v[x+1]*h;p[x+2]+=v[x+2]*h}"
+      # ② 구동 — 강체 자세를 적어 두고, 롤러·쇠막대가 무는 마디를 운동학으로 붙잡는다
+      "for(let i=0;i<n;i+=1){let x=i*3,s=-e.len/2+i*e.seg,"
+      "ty=e.restY-drop(i),tl=e.restLat+e.sign*out(i);"
+      "e.rg[x]=e.axis===0?s:tl;e.rg[x+1]=ty;e.rg[x+2]=e.axis===0?tl:s;"
+      "e.pin[i]=0;if(e.bond[i]>0)continue;"
+      "if(grip(i)>0){e.pin[i]=1;p[x+li]=tl}else{p[x+li]+=(tl-p[x+li])*.06}"
+      "p[x+1]+=(ty-p[x+1])*.22}"
+      # ③ 접착 — 이중선형 응집영역. 끊어진 마디는 다시 붙지 않는다
+      "for(let i=0;i<n;i+=1){if(e.bond[i]<=0)continue;let x=i*3,"
+      "dx=p[x]-e.anc[x],dy=p[x+1]-e.anc[x+1],dz=p[x+2]-e.anc[x+2],"
+      "d=Math.sqrt(dx*dx+dy*dy+dz*dz);if(d<1e-12)continue;"
+      "if(d>sep){e.bond[i]=0;continue}"
+      "let soft=d<=brk?1:(sep-d)/(sep-brk),"
+      "dl=-d/(im+aBond/Math.max(soft,.02));"
+      "if(-dl>fBond*soft)dl=-fBond*soft;"
+      "let s=dl*im/d;p[x]+=dx*s;p[x+1]+=dy*s;p[x+2]+=dz*s}"
+      # ④ 늘어남(EA/L)·굽힘(EI/L³) — 33 마디까지 정보가 가도록 여러 번 쓴다
+      "for(let it=0;it<4;it+=1){"
+      "for(let i=0;i<n-1;i+=1){let a=i*3,b=a+3,"
+      "dx=p[b]-p[a],dy=p[b+1]-p[a+1],dz=p[b+2]-p[a+2],"
+      "d=Math.sqrt(dx*dx+dy*dy+dz*dz);if(d<1e-12)continue;"
+      "let wa=(e.bond[i]>0||e.pin[i])?0:im,wb=(e.bond[i+1]>0||e.pin[i+1])?0:im,"
+      "W=wa+wb;if(W<=0)continue;"
+      "let dl=-(d-L)/(W+aS),s=dl/d;"
+      "p[a]-=dx*s*wa;p[a+1]-=dy*s*wa;p[a+2]-=dz*s*wa;"
+      "p[b]+=dx*s*wb;p[b+1]+=dy*s*wb;p[b+2]+=dz*s*wb}"
+      "for(let i=1;i<n-1;i+=1){let a=(i-1)*3,b=i*3,c=(i+1)*3,"
+      "dx=p[a]-2*p[b]+p[c],dy=p[a+1]-2*p[b+1]+p[c+1],dz=p[a+2]-2*p[b+2]+p[c+2],"
+      "d=Math.sqrt(dx*dx+dy*dy+dz*dz);if(d<1e-12)continue;"
+      "let wa=(e.bond[i-1]>0||e.pin[i-1])?0:im,wb=(e.bond[i]>0||e.pin[i])?0:im,"
+      "wc=(e.bond[i+1]>0||e.pin[i+1])?0:im,W=wa+4*wb+wc;if(W<=0)continue;"
+      "let dl=-d/(W+aB),s=dl/d;"
+      "p[a]+=dx*s*wa;p[a+1]+=dy*s*wa;p[a+2]+=dz*s*wa;"
+      "p[b]-=2*dx*s*wb;p[b+1]-=2*dy*s*wb;p[b+2]-=2*dz*s*wb;"
+      "p[c]+=dx*s*wc;p[c+1]+=dy*s*wc;p[c+2]+=dz*s*wc}}"
+      # ⑤ 속도 — 위치 차분에서 낸다 (XPBD). 0.994 는 재료·공기 감쇠 몫이다
+      "for(let i=0;i<n;i+=1){let x=i*3;"
+      "v[x]=(p[x]-qq[x])/h*.93;v[x+1]=(p[x+1]-qq[x+1])/h*.93;"
+      "v[x+2]=(p[x+2]-qq[x+2])/h*.93}}")
+
+    A("var pvAfrT=new C,pvAfrU=new C,pvAfrUp=new C(0,1,0),pvAfrIn=new C;"
+      # 강체 자세에서의 편차를 매끄럽게 한 뒤 키운다. 보의 변형은 C1 이므로
+      # 마디마다 튀는 것은 물리가 아니라 XPBD 잔차다 — 그것까지 배로 키우면
+      # 곡선이 톱니가 된다. 라플라시안 두 번이면 잔차만 지워진다.
+      "function pvAfrSmooth(e){var n=e.n,d=e.dv,s=e.sm;"
+      "for(let i=0;i<n*3;i+=1)d[i]=e.p[i]-e.rg[i];"
+      "for(let k=0;k<2;k+=1){for(let i=0;i<n;i+=1){let a=Math.max(0,i-1)*3,"
+      "b=i*3,c=Math.min(n-1,i+1)*3;"
+      "s[b]=(d[a]+2*d[b]+d[c])/4;s[b+1]=(d[a+1]+2*d[b+1]+d[c+1])/4;"
+      "s[b+2]=(d[a+2]+2*d[b+2]+d[c+2])/4}"
+      "for(let i=0;i<n*3;i+=1)d[i]=s[i]}"
+      "for(let i=0;i<n*3;i+=1){let z=d[i]*pvAfrExag;"
+      "d[i]=(z>pvAfrExagCap?pvAfrExagCap:z<-pvAfrExagCap?-pvAfrExagCap:z)/pvAfrExag}}"
+      "function pvAfrSkin(e){var n=e.n,S=e.S,p=e.p,pos=e.pos,d=e.dv;pvAfrSmooth(e);"
+      "for(let i=0;i<n;i+=1){let a=Math.max(0,i-1)*3,b=Math.min(n-1,i+1)*3,x=i*3;"
+      "pvAfrT.set(e.rg[b]+d[b]*pvAfrExag-e.rg[a]-d[a]*pvAfrExag,"
+      "e.rg[b+1]+d[b+1]*pvAfrExag-e.rg[a+1]-d[a+1]*pvAfrExag,"
+      "e.rg[b+2]+d[b+2]*pvAfrExag-e.rg[a+2]-d[a+2]*pvAfrExag);"
+      "if(pvAfrT.lengthSq()<1e-16)pvAfrT.set(e.axis===0?1:0,0,e.axis===0?0:1);"
+      "pvAfrT.normalize();pvAfrU.copy(pvAfrUp).cross(pvAfrT);"
+      "if(pvAfrU.lengthSq()<1e-16)pvAfrU.set(1,0,0);pvAfrU.normalize();"
+      "pvAfrIn.set(0,0,0);pvAfrIn.setComponent(e.lat,-e.sign);"
+      "if(pvAfrU.dot(pvAfrIn)<0)pvAfrU.negate();"
+      "let cx=e.rg[x]+d[x]*pvAfrExag,cy=e.rg[x+1]+d[x+1]*pvAfrExag,"
+      "cz=e.rg[x+2]+d[x+2]*pvAfrExag;"
+      "for(let j=0;j<S;j+=1){let s=pvAfrSec[j],o=(i*S+j)*3;"
+      "pos[o]=cx+pvAfrU.x*s[0];pos[o+1]=cy+s[1];pos[o+2]=cz+pvAfrU.z*s[0]}"
+      "if(i===0||i===n-1){let base=(n*S+(i===0?0:S))*3;"
+      "for(let j=0;j<S;j+=1){let o=(i*S+j)*3;pos[base+j*3]=pos[o];"
+      "pos[base+j*3+1]=pos[o+1];pos[base+j*3+2]=pos[o+2]}}}"
+      "e.geo.attributes.position.needsUpdate=!0;e.geo.computeVertexNormals();"
+      "e.geo.computeBoundingSphere()}")
+
+    long_note = ('"바깥면 홈(%d×%d mm)에 롤러가 들어가 걸치고 %d mm 바깥으로 당깁니다. '
+                 '압출재를 토막이 아니라 **연속체**로 풉니다 — 단면 %.0f mm² · '
+                 'I %s mm⁴ · %s kg/m 를 화면에서 XPBD 로 실시간 적분합니다. '
+                 '접착 위의 보라 휨이 잦아드는 특성길이가 β⁻¹ = %s mm 이고, 그 크기의 '
+                 '곡선이 인발 중에 보입니다. 설계 인발력 %d N 은 정상박리력 %s N 의 '
+                 '%s 배라 균열이 캐리지를 앞질러 달립니다 — 유한요소 결과이며 실란트 '
+                 '실측이 오면 바뀔 수 있습니다. 화면의 휨은 **모양은 물리 그대로**이고 '
+                 '크기만 %d배 과장했습니다 — 실제 처짐이 mm 단위라 플랜트 축척에서는 '
+                 '보이지 않기 때문입니다."'
+                 % (afr.GROOVE_H_MM, afr.GROOVE_D_MM, afr.pull_travel_mm(),
+                    prof["area_mm2"], format(prof["i_lateral_mm4"], ",.0f"),
+                    frames.profile_mass_kg_m(), pk.decay_length_mm(),
+                    int(frames.PEEL_FORCE_N), pk.steady_peel_force_n(), pk.stability(),
+                    int(frames.DISPLAY_EXAGGERATION)))
+    short_note = ('"정반 안의 실린더 %d 본이 쇠막대를 통해 이 변 전체를 한 번에 %d mm '
+                  '밀어냅니다. 막대가 강체가 아니라 스팬 중앙이 %s mm 처지고, 그 4차 '
+                  '처짐 형상이 그대로 알루미늄의 강제변위가 됩니다 — 유한요소가 낸 중앙 '
+                  '지연은 %.3f mm 입니다. 과장하지 않은 실제 값이라 화면에서는 거의 '
+                  '직선입니다."'
+                  % (afr.CYL_PER_PLATEN, afr.push_travel_mm(), afr.bar_sag_mm(),
+                     pk.short_edge_lag_mm()))
+
+    A("var pvAfrEdges=["
+      "pvAfrBuildEdge({nodes:%d,axis:0,lat:2,sign:1,len:%s,restLat:%s,restY:%s,"
+      "label:'AFR 장축 알루미늄 프레임',note:%s}),"
+      "pvAfrBuildEdge({nodes:%d,axis:0,lat:2,sign:-1,len:%s,restLat:%s,restY:%s,label:null}),"
+      "pvAfrBuildEdge({nodes:%d,axis:2,lat:0,sign:1,len:%s,restLat:%s,restY:%s,"
+      "label:'AFR 단축 알루미늄 프레임',note:%s}),"
+      "pvAfrBuildEdge({nodes:%d,axis:2,lat:0,sign:-1,len:%s,restLat:%s,restY:%s,label:null})];"
+      % (NODES_LONG, q(2 * HALF_X), q(HALF_Z - cu), q(cy), long_note,
+         NODES_LONG, q(2 * HALF_X), q(-(HALF_Z - cu)), q(cy),
+         NODES_SHORT, q(short_clear), q(HALF_X - cu), q(cy), short_note,
+         NODES_SHORT, q(short_clear), q(-(HALF_X - cu)), q(cy)))
+
+    A("function pvAfrFrontAt(f){var t=pvAfrFront;if(f<=t[0][0])return t[0][1];"
+      "for(let i=1;i<t.length;i+=1)if(f<=t[i][0]){let a=t[i-1],b=t[i];"
+      "return a[1]+(b[1]-a[1])*(f-a[0])/Math.max(1e-9,b[0]-a[0])}"
+      "return t[t.length-1][1]}")
+
+    A("var pvAfrClock=-1;"
+      "function pvAfrStep(sc){"
+      "var back=sc.t<pvAfrClock-1e-6||sc.reset;pvAfrClock=sc.t;"
+      "if(back)pvAfrEdges.forEach(pvAfrRest);"
+      "var h=1/(60*%d),lf=pvAfrFrontAt(sc.longFrac);"
+      "for(let k=0;k<%d;k+=1)for(let m=0;m<pvAfrEdges.length;m+=1){"
+      "var e=pvAfrEdges[m],isLong=e.axis===0;"
+      "for(let i=0;i<e.n;i+=1){if(e.bond[i]<=0)continue;"
+      "var s=Math.abs(-e.len/2+i*e.seg);"
+      "if(isLong?(lf>0&&e.len/2-s<=lf):(sc.shortFrac>0))e.bond[i]=0}"
+      "pvAfrSolve(e,h,"
+      "isLong?function(){return sc.longOut}:function(i){return sc.shortOut*sc.shortShape(i)},"
+      "isLong?function(){return sc.longDrop}:function(){return sc.shortDrop},"
+      "isLong?function(i){var x=-e.len/2+i*e.seg;"
+      "return Math.min(Math.abs(x-sc.carA),Math.abs(x-sc.carB))<%s?1:%s}"
+      ":function(){return 1})}"
+      "for(let m=0;m<pvAfrEdges.length;m+=1)pvAfrSkin(pvAfrEdges[m]);"
+      "pvAfrEdges[0].mesh.visible=pvAfrEdges[1].mesh.visible=sc.longVis;"
+      "pvAfrEdges[2].mesh.visible=pvAfrEdges[3].mesh.visible=sc.shortVis}"
+      % (SUBSTEPS, SUBSTEPS, q(GRIP_R_M), q(GRIP_TAIL)))
+    return "".join(js)
 
 
 def build_block() -> str:
@@ -249,33 +471,8 @@ def build_block() -> str:
     A(f'var iM=P(Cs,[{q(2 * HALF_X)},{q(PANEL_T)},{q(2 * HALF_Z)}],[0,{q(PANEL_Y)},0],h0,'
       f'"JBR 완료 패널 · JBOX 제거상태",'
       f'"{kinematics.PANEL_MM[0]:,}×{kinematics.PANEL_MM[1]:,} mm 최대규격이며 유리면 아래·백시트 위, '
-      f'정션박스와 케이블 제거 완료 상태로만 AFR 에 진입합니다."),m0=[];')
-    A(f'[-1,1].forEach(i=>{{for(let k=0;k<{n_short};k+=1){{'
-      f'let z=-{q(HALF_Z - short_seg / 2)}+k*{q(short_seg)},'
-      f'e=P(Cs,[{q(FW)},{q(FRAME_T)},{q(short_seg)}],[i*{q(short_cx)},{q(FRAME_Y)},z],Xo,'
-      f'i<0&&k===0?"AFR 단축 알루미늄 프레임":null,'
-      f'"정반 안의 실린더 {a.CYL_PER_PLATEN} 본이 쇠막대를 통해 이 변 전체를 한 번에 '
-      f'{a.push_travel_mm()} mm 밀어내고, 스토퍼가 받아 세웁니다. 막대 중앙 처짐 {a.bar_sag_mm()} mm 만큼 '
-      f'가운데가 뒤처지며(화면에서는 {frames.DISPLAY_EXAGGERATION:.0f}배 과장), 떨어지면 복원합니다.");'
-      f'e.userData.baseX=i*{q(short_cx)},e.userData.sign=i,'
-      f'e.userData.bowT=1-Math.pow(z/{q(HALF_Z - short_seg / 2)},2),m0.push(e)}}}});')
-    A(f'var g0=[];[-1,1].forEach(i=>{{for(let e=0;e<{n_long};e+=1){{'
-      f'let t=-{q(HALF_X - long_seg / 2)}+e*{q(long_seg)},'
-      f'n=P(Cs,[{q(long_seg)},{q(FRAME_T)},{q(FW)}],[t,{q(FRAME_Y)},i*{q(long_cz)}],Xo,'
-      f'i<0&&e===0?"AFR 장축 알루미늄 프레임":null,'
-      f'"바깥면 홈({a.GROOVE_H_MM}×{a.GROOVE_D_MM} mm)에 롤러가 들어가 걸치고 {a.pull_travel_mm()} mm 바깥으로 '
-      f'당기면서 LM 가이드를 {a.LM_STROKE_MM:,} mm 탑니다. 롤러가 접착 전선과 같이 가므로 자유 길이가 '
-      f'롤러 반경 {a.roller_free_length_mm()} mm 뿐이고, 남는 것은 이미 떨어진 {a.released_length_mm():.0f} mm 의 '
-      f'자중 처짐 {a.self_weight_sag_mm()} mm 입니다 — 휘지 않고 직선으로 떨어집니다.");'
-      f'P(n,[{q(long_seg)},{q(groove_h)},{q(groove_d)}],[0,0,i*{q(HALF_Z - groove_d / 2 - long_cz)}],M.dark,'
-      f'i<0&&e===0?"AFR 장축 압출재 인발 홈":null,'
-      f'"롤러 Ø{a.roller_d_mm()} × 높이 {a.roller_h_mm()} mm 가 여기 들어가 걸칩니다. '
-      f'캐리지당 {n_roll} 개로 나눠 받아 접촉압 {a.roller_contact_mpa()} MPa — '
-      f'구름 항복 {a.rolling_yield_mpa()} MPa 에 설계계수 {a.ROLLER_DESIGN_FACTOR} 를 얹은 '
-      f'{a.roller_allow_mpa()} MPa 아래라 홈에 압흔이 남지 않습니다.");'
-      f'n.userData.baseX=t,n.userData.baseZ=i*{q(long_cz)},n.userData.sign=i,'
-      f'n.userData.pullAt=Math.min(({q(lm_start)}-Math.abs(t))/{q(M(a.LM_STROKE_MM))},.96),'
-      f'n.userData.edgeOrder=1-Math.abs(t)/{q(HALF_X - long_seg / 2)},g0.push(n)}}}});')
+      f'정션박스와 케이블 제거 완료 상태로만 AFR 에 진입합니다.");')
+    A(build_continuum_frames())
 
     # ── LM 인발 캐리지 — 롤러가 홈에 들어가 바깥으로 당긴다 ──────────────
     A(f'var Du=[],pvAfrHead=[];[-1,1].forEach(i=>{{'
@@ -348,18 +545,19 @@ def build_anim() -> str:
     A(f'pvAfrBar.forEach(({{group:V,sign:ae}})=>{{'
       f'V.position.x=ae*({q(bar_local)}+{q(push)}*(PS-PR))}}),')
 
-    A(f'm0.forEach(V=>{{V.visible=te&&(o||l<20.4);'
-      f'V.position.x=V.userData.baseX+V.userData.sign*({q(push)}*PS-{q(bow_short)}*V.userData.bowT*4*PS*(1-PS));'
-      f'V.position.y={q(FRAME_Y)}-.72*p,V.rotation.z=V.userData.sign*p*.16}}),')
     A(f'Qh.visible=a&&l>=19.5,Qh.scale.y=le(.2,1,p),')
     A(f'pvAfrHead.forEach(({{head:V,zSign:ae}})=>{{'
       f'let pz=le({q(park_z)},{q(groove_z)},PJ*(1-PB))+{q(pull)}*EN*(1-PB);'
       f'V.position.z=ae*(pz-{q(rail_z)})}}),')
-    A(f'g0.forEach(V=>{{let ae=me($t((PW-V.userData.pullAt)/.08)),bw={q(bow_long)}*4*ae*(1-ae);'
-      f'V.visible=te&&(o||l<{q(t_drop + 0.2, 3)});'
-      f'V.position.z=V.userData.baseZ+V.userData.sign*({q(pull)}*ae+bw);'
-      f'V.position.y={q(FRAME_Y)}-.72*PF*ae+bw*.35;'
-      f'V.rotation.x=V.userData.sign*(PF*ae*.12+bw*1.6)}}),')
+    # 프레임은 이제 강체 토막이 아니라 연속체다 — 시계가 자세를 정하고, 휨은
+    # 화면에서 도는 XPBD 가 낸다 (tools/build_afr.py: build_continuum_frames).
+    A(f'pvAfrStep({{t:l,reset:!te,'
+      f'longFrac:EN*(1-PB),longOut:{q(pull)}*EN*(1-PB),longDrop:.72*PF,'
+      f'carA:-le({q(lm_start)},{q(lm_end)},PW*(1-PB)),'
+      f'carB:le({q(lm_start)},{q(lm_end)},PW*(1-PB)),'
+      f'shortFrac:PS,shortOut:{q(push)}*PS,shortDrop:.72*p,'
+      f'shortShape:function(i){{return pvAfrShort[i]}},'
+      f'longVis:te&&(o||l<{q(t_drop + 0.2, 3)}),shortVis:te&&(o||l<20.4)}}),')
     A(f'Du.forEach(({{carriage:V,xSign:ae,zSign:ie}})=>{{'
       f'V.position.x=ae*le({q(lm_start)},{q(lm_end)},PW*(1-PB));V.visible=a}}),')
     A(f'Cs.position.y={q(M(a.CHAIN_LIFT_MM))}*$t((CH-{q(a.CHAIN_PARK_MM / a.chain_rise_mm())})'

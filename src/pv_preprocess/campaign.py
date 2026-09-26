@@ -87,10 +87,89 @@ SG_INDEX_S = 1.5            # 정지 두 번의 감속·정착 합
 PANEL_WIDTH_MM = 1400.0
 
 
+def total_dwell_s() -> float:
+    """한 장의 종단 체류 (s) — 투입 + JBR + AFR 이후.
+
+    도면 여러 벌이 이 값을 배지·시계·스크럽 범위에 쓴다. 각자 더하면 REV 가
+    한 칸을 고칠 때마다 어긋난 곳이 생긴다 — REV.59 가 JBR 을 54 → 51 s 로
+    되찾자 파생본 생성기 셋이 124.03 을 앵커로 물고 있어 한꺼번에 멈췄다.
+    """
+    return round(INFEED_S + JBR_S + AFR_S, 2)
+
+
+#: SR-302 날이 휠보다 앞서 가는 거리 (mm) — **같은 캐리지에 달렸을 때**의 값.
+#: 휠이 오기 전에 그 자리가 비어 있어야 하고, 날이 앞서면 통과마다 그만큼 **더
+#: 가야** 하므로 점유에 그대로 실린다. 발주처가 날을 자기 캐리어로 옮겨서
+#: 지금은 안 걸린다 — 값은 **왜 그랬는지의 근거**로 남겨 둔다.
+SG_BLADE_LEAD_MM = 200.0
+
+#: 발주처 결정 — SR-302 날이 **자기 캐리어**를 갖는다. 휠 헤드 동승이 아니다.
+#:
+#: 아리스가 공정 요구가 아니라고 확인되면서 날을 태우고 있던 휠이 근거를
+#: 잃었고(`sg_grind.the_scraper_outlives_its_host()`), 발주처가 거처를 자기
+#: 캐리어로 정했다. 받은 값이고 내가 정한 것이 아니다.
+#:
+#: 이 값이 **리드를 켜고 끈다** — 날이 휠 앞을 달리지 않으면 통과 거리가 판
+#: 치수로 돌아온다. 그래서 상수를 지우지 않고 술어로 갈랐다.
+SCRAPER_ON_ITS_OWN_CARRIER = True
+
+
+# ── 진공 테이블 — 두 유닛이 같이 쓰는 지지 방식 ─────────────────────────
+#
+#   외부 갠트리 사양서에서 온 안을 검토해 채택했다
+#   (`docs/br-305-gantry-review.md`). BR-305 와 SR-302 가 **같은 방식**을 쓰므로
+#   값이 여기 있다 — 두 모듈에 따로 적으면 갈라진다. 각 유닛은 **자기 면적**으로
+#   흡착력을 셈한다.
+
+#: 라인이 판을 지지·파지하는 방식이 진공 테이블인가 — 발주처 결정.
+SUPPORT_IS_VACUUM_TABLE = True
+#: 테이블 진공도 (kPa, 게이지 음압) — **계획값**. 유리면을 문다.
+VACUUM_KPA = 20.0
+#: 테이블 패드와 유리 사이 마찰계수 — **계획값**.
+TABLE_FRICTION = 0.5
+#: 흡착 배기 + 해제에 드는 시간 (s) — **계획값**. 판이 서므로 이 시간이
+#: 각 유닛의 통과 시간에서 빠진다.
+VACUUM_CYCLE_S = 6.0
+
+
+def vacuum_hold_kn(area_mm2: float) -> float:
+    """그 면적을 물 때의 흡착력 (kN) = 진공도 × 면적."""
+    return round(VACUUM_KPA * 1_000.0 * area_mm2 / 1e6 / 1_000.0, 1)
+
+
+def vacuum_friction_kn(area_mm2: float) -> float:
+    """미끄러지기 전까지 버티는 면내 힘 (kN)."""
+    return round(vacuum_hold_kn(area_mm2) * TABLE_FRICTION, 1)
+
+
+def vacuum_contact_mpa() -> float:
+    """판이 받는 접촉압 (MPa) — 진공도 그 자체다. 무는 면은 **유리**다."""
+    return round(VACUUM_KPA / 1_000.0, 4)
+
+
+def sg_blade_lead_mm() -> float:
+    """SG-301 통과 거리에 **실제로 실리는** 리드 (mm).
+
+    날이 자기 캐리어로 나가면 휠은 더 이상 그 앞자리를 기다리지 않는다.
+    그러면 리드가 0 이고, 통과 거리는 판 치수 그대로다.
+    """
+    return 0.0 if SCRAPER_ON_ITS_OWN_CARRIER else SG_BLADE_LEAD_MM
+
+
 def sg_occupancy_s() -> float:
-    """SG-301 반출롤러 점유 (s) — 앞단변 + 장변 통과 + 뒷단변 + 정지·헤드 행정."""
-    short = PANEL_WIDTH_MM / SG_SWEEP_MM_S + SG_HEAD_STROKE_S
-    long = PANEL_LENGTH_MM / SG_PASS_MM_S
+    """SG-301 반출롤러 점유 (s) — 앞단변 + 장변 통과 + 뒷단변 + 정지·헤드 행정.
+
+    한때 날이 휠보다 `SG_BLADE_LEAD_MM` 앞서 달려 통과 거리가 판 + 리드였다.
+    스크레이퍼가 헤드에 달린 부품이었기 때문이고, 그 값을 밖에 빼두면 도면이
+    없는 기계의 택트를 광고하는 셈이었다.
+
+    발주처가 날을 자기 캐리어로 옮겼다. 그래서 이 점유는 **휠만의 점유**이고,
+    날의 점유는 자기 캐리어의 운동학에서 따로 나온다 — 이 값에 안 들어 있다.
+    `sg_grind.what_the_own_carrier_leaves_open()` 이 그것을 든다.
+    """
+    lead = sg_blade_lead_mm()
+    short = (PANEL_WIDTH_MM + lead) / SG_SWEEP_MM_S + SG_HEAD_STROKE_S
+    long = (PANEL_LENGTH_MM + lead) / SG_PASS_MM_S
     return round(2 * short + long + SG_INDEX_S, 2)
 
 
