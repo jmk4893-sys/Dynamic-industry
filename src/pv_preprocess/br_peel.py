@@ -645,7 +645,72 @@ def removing_the_glass_first_removes_the_cut() -> tuple[str, ...]:
         f"**지금 어려운 것은 박리가 아니라 1 차 커팅 한 줄**이고, 그것이 필요한 "
         f"이유는 유리에 붙어 변에서 접근할 수 없기 때문이다(변에서 "
         f"{STARTER_CUT_OFFSET_MM:.0f} mm 안쪽에 긋는 이유). 판이 자유로우면 "
-        "변에서 시작할 수 있고 1 차 커팅이 없어진다.",
+        "휠 수 있어 **깊이를 재서 멈출 필요가 없어진다.**",
+        f"**다만 1 차 커팅이 통째로 없어지는 것은 아니다.** 한때 그렇게 적었다가 "
+        f"고쳤다 — 구부리면 벌어지는 것은 **가장 약한 면**이고 그것은 "
+        f"`{weakest_interface().key}`({weakest_interface().gc_aged_n_mm:g} N/mm)라 "
+        f"필요한 면보다 {cost_of_going_to_the_right_plane():.0f} 배 약하다. "
+        f"그냥 휘면 불소 외피만 벗고 **PET 심재가 남는다** — "
+        "`the_weak_plane_is_a_trap()` 이 이미 들고 있는 함정이다. 무엇이든 "
+        "**면을 골라 줘야** 한다.",
+        f"**그래서 줄어드는 것은 「분산 → 국소」다.** 지금은 면 "
+        f"{float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM) / 1e6:.1f} m² "
+        f"의 모든 자리가 창 {eva_band_mm():g} mm 안이어야 하는데, 유리를 먼저 "
+        "빼면 **변 한 곳에서 옳은 면을 고르는** 문제가 된다. 크게 쉬워지지만 "
+        "공짜는 아니다.",
+    )
+
+
+def what_the_order_decides() -> tuple[tuple[str, str, str], ...]:
+    """열린 물음별로 (무엇에 대한 물음 · 백시트 먼저 · 유리 먼저).
+
+    **세 개가 사라지는 것이 아니라 모양이 바뀐다.** 한때 「②③이 같이 사라지고
+    시편 둘도 바뀐다」고 적었는데 따라가 보니 ②는 국소화되고 ③은 다른 유닛으로
+    옮겨가고 시편은 **하나만** 바뀐다.
+    """
+    return (
+        ("절단 깊이 — 1 차 커팅에 걸린 물음",
+         f"분산형: 면 {float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM) / 1e6:.1f} m² "
+         f"내내 창 {eva_band_mm():g} mm 안",
+         "국소형: 변 한 곳에서 옳은 **면 선택** (약한 면 함정을 피해야 한다)"),
+        ("기동/정상 비 — 계단 칼날에 걸린 물음",
+         "두 유닛이 필요 (이 유닛도 계단 칼날이다)",
+         "**한 유닛**만 — 라인에 계단 칼날은 어느 쪽이든 하나 남으므로 "
+         "값은 안 없어지고 **어느 계면에서 재느냐**가 달라진다"),
+        ("띠 온전성 — 7 조각 형상에 걸린 물음",
+         f"띠 한 장이 {peel_travel_mm():,.0f} mm 를 끊기지 않고 가나",
+         "**형태가 바뀐다**: 자유 판에서 백시트가 한 장으로 떨어지나"),
+        ("온도별 박리력 곡선 — EVA 물성에 걸린 물음",
+         "제약 **둘**에 대고 읽어야 한다 (자르기는 차갑게·떼기는 뜨겁게)",
+         "제약 **하나**: 자르는 일이 없으니 박리력만 보고 온도를 고른다"),
+    )
+
+
+def the_curve_is_worth_measuring_either_way() -> bool:
+    """온도 곡선만 순서를 안 기다려도 되는가 — 그렇다.
+
+    **EVA 자체의 물성**이라 어느 순서든 쓰인다. 나머지는 「어떤 기계의」 물음이고
+    그 기계가 존재하느냐를 순서가 정하므로, 순서 전에 재면 버려질 수 있다.
+    """
+    return True
+
+
+def why_the_order_dominates() -> tuple[str, ...]:
+    """①이 나머지를 지배하는 이유 — 논리적 함의가 아니다."""
+    return (
+        "**논리적 함의가 아니다.** 나머지가 전부 「어떤 기계의」 물음이고, "
+        "순서가 그 **기계가 존재하느냐**를 정하기 때문이다 — 존재가 미정인 "
+        "기계를 위해 시편을 설계하면 순서가 반대로 정해지는 순간 답할 대상이 "
+        "없어진다.",
+        f"**띠 온전성이 정확히 그런 값이다** — {BLADE_COUNT} 조각 계단으로 "
+        "백시트를 뗀다는 전제 위에 서 있고, 그 전제가 곧 순서다.",
+        "**온도 곡선은 예외다.** EVA 물성이라 어느 순서든 쓰이므로 순서를 "
+        "기다리지 않고 지금 돌려도 버려지지 않는다 — 열린 넷 중 유일하다.",
+        "**네 관문은 순서와 무관하다.** 유리·구리·EVA·백시트가 다 빠져야 하는 "
+        "것은 그대로고, 순서가 정하는 것은 *어느 기계가 어느 관문을 닫느냐*이지 "
+        "*닫느냐*가 아니다.",
+        "**PR 본문은 아예 무관하다** — 문서 작업이다. 「나머지를 다 지배한다」고 "
+        "적었다가 고쳤다: 넷 중 셋이다.",
     )
 
 
@@ -1114,9 +1179,10 @@ def open_questions() -> tuple[str, ...]:
         "**자르는 일과 떼는 일이 온도를 반대로 당긴다** — 자르기는 차가워야 "
         "깊이가 잡히고 떼기는 뜨거워야 힘이 내려간다. 한 유닛에서 둘을 다 하려면 "
         "온도가 두 개 필요하다(`cutting_and_peeling_want_opposite_temperatures()`).",
-        "**순서를 바꾸면 이 문제가 사라진다 — 고르지는 않았다.** 유리를 먼저 "
+        "**순서를 바꾸면 이 문제의 종류가 바뀐다 — 고르지는 않았다.** 유리를 먼저 "
         "빼면 남는 판에서 백시트는 이미 존재하는 **계면**이라 EVA 를 가를 일이 "
-        "없고 변에서 시작할 수 있어 1 차 커팅도 없어진다. 발주처가 순서를 안 "
+        "없고 변에서 시작할 수 있다(다만 **면을 골라 줘야** 한다 — 구부리면 "
+        "약한 면이 먼저 갈라진다). 발주처가 순서를 안 "
         "정했으므로 열려 있고, **유닛이 있느냐를 정하는 물음이라 내가 안 "
         "고른다**(`removing_the_glass_first_removes_the_cut()`). 바꾸기 전에 "
         "확인할 것 둘은 `what_the_order_swap_needs_measured()` 가 든다.",
@@ -1196,6 +1262,8 @@ def summary() -> dict[str, object]:
         "netMarginEachSideMm": net_margin_each_side_mm(),
         "onlyTheFaceReferenceFits": the_face_reference_is_the_only_one_that_fits(),
         "orderIsNotOursToDecide": the_order_is_not_mine_to_decide(),
+        "orderDecidesCount": len(what_the_order_decides()),
+        "curveIsWorthMeasuringEitherWay": the_curve_is_worth_measuring_either_way(),
         "peelForceFreshN": peel_force_n(aged=False),
         "peelForceHeatedN": heat_brings_it_to_n(),
         "weakPlaneForceN": peel_force_n(weakest_interface()),

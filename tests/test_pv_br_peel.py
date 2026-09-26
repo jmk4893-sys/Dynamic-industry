@@ -616,13 +616,67 @@ class TestTheDilemmaIsADatumProblem(unittest.TestCase):
         self.assertIn("계면만 풀기", note)
 
     def test_the_order_swap_is_recorded_as_a_way_out(self):
-        """순서를 바꾸면 EVA 를 가를 일도 1 차 커팅도 없어진다 — 근거로 남긴다."""
+        """순서를 바꾸면 깊이를 재서 멈출 일이 없어진다 — 근거로 남긴다."""
         note = " ".join(br_peel.removing_the_glass_first_removes_the_cut())
         self.assertIn("순서를 안 정했다", note)
         self.assertIn("EVA 를 가를 필요가 없어진다", note)
-        self.assertIn("1 차 커팅이 없어진다", note)
+        self.assertIn("깊이를 재서 멈출 필요가 없어진다", note)
         self.assertGreaterEqual(
             len(br_peel.removing_the_glass_first_removes_the_cut()), 5)
+
+    def test_the_cut_does_not_simply_vanish(self):
+        """**내가 과하게 적었던 자리** — 구부리면 약한 면이 먼저 갈라진다.
+
+        한때 「1 차 커팅이 없어진다」고 적었다. 같은 파일이 이미
+        `the_weak_plane_is_a_trap()` 을 들고 있는데 그 둘을 연결하지 않았다.
+        """
+        note = " ".join(br_peel.removing_the_glass_first_removes_the_cut())
+        self.assertNotIn("1 차 커팅이 없어진다", note)
+        self.assertNotIn("1 차 커팅도 없어진다", note)
+        self.assertIn("통째로 없어지는 것은 아니다", note)
+        self.assertIn("면을 골라 줘야", note)
+        self.assertIn(br_peel.weakest_interface().key, note)
+        self.assertIn("분산 → 국소", note)
+        # 열린 물음 쪽 사본도 같이 고쳐져 있어야 한다.
+        self.assertNotIn("1 차 커팅도 없어진다",
+                         " ".join(br_peel.open_questions()))
+
+    def test_the_order_decides_four_things_not_five(self):
+        """순서가 정하는 것은 넷이고 PR 본문은 무관하다 — 「다 지배한다」가 과했다."""
+        rows = br_peel.what_the_order_decides()
+        self.assertEqual(len(rows), 4)
+        for subject, first, second in rows:
+            self.assertTrue(subject and first and second)
+            self.assertNotEqual(first, second)
+        joined = " ".join(s for r in rows for s in r)
+        self.assertNotIn("PR 본문", joined)
+
+    def test_two_of_the_four_change_shape_rather_than_vanish(self):
+        """②는 국소화되고 ③은 다른 유닛으로 옮겨간다 — 사라진다고 적지 않는다."""
+        rows = dict((r[0], r[2]) for r in br_peel.what_the_order_decides())
+        depth = next(v for k, v in rows.items() if "절단 깊이" in k)
+        ratio = next(v for k, v in rows.items() if "기동" in k)
+        self.assertIn("국소형", depth)
+        self.assertIn("면 선택", depth)
+        self.assertIn("값은 안 없어지고", ratio)
+        self.assertIn("어느 계면에서 재느냐", ratio)
+
+    def test_the_temperature_curve_survives_either_order(self):
+        """온도 곡선만 순서를 안 기다려도 된다 — EVA 물성이기 때문이다."""
+        self.assertTrue(br_peel.the_curve_is_worth_measuring_either_way())
+        rows = dict((r[0], (r[1], r[2])) for r in br_peel.what_the_order_decides())
+        curve = next(v for k, v in rows.items() if "온도별" in k)
+        self.assertIn("둘", curve[0])
+        self.assertIn("하나", curve[1])
+        self.assertIn("버려지지 않는다", " ".join(br_peel.why_the_order_dominates()))
+
+    def test_why_it_dominates_is_not_logical_entailment(self):
+        """지배하는 이유가 함의가 아니라 **주체의 존재**라는 것이 적혀 있어야."""
+        note = " ".join(br_peel.why_the_order_dominates())
+        self.assertIn("논리적 함의가 아니다", note)
+        self.assertIn("기계가 존재하느냐", note)
+        self.assertIn("넷 중 셋", note)
+        self.assertIn("네 관문은 순서와 무관", note)
 
     def test_the_order_is_not_decided_here(self):
         """**판정을 만들지 않는다** — 유닛이 있느냐는 발주처 몫이다."""
