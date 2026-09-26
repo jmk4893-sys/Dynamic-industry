@@ -311,45 +311,85 @@ class TestTheGapMustBeMadeNotFound(unittest.TestCase):
         self.assertNotIn("주워", text)
 
 
-class TestSevenBladesCarryIt(unittest.TestCase):
-    """합은 그대로고 **한 장이 받는 값**만 나뉜다 — 사양은 그쪽이 정한다."""
+class TestTheRealKnifeGeometry(unittest.TestCase):
+    """SHK-101 실측 형상 — 내가 가정으로 채웠던 자리를 이 값들이 고쳤다."""
 
-    def test_the_strip_width_is_the_panel_divided_by_blades(self):
-        """띠 폭 = 판 폭 ÷ 칼날 수."""
+    def test_the_knife_is_wider_than_the_panel(self):
+        """전폭 = 중앙 + 양쪽 계단 = 1,500. 패널 1,400 에 양쪽 50 이 남는다."""
+        self.assertAlmostEqual(br_peel.knife_width_mm(), 1500.0, places=1)
         self.assertAlmostEqual(
-            br_peel.strip_width_mm(),
-            campaign.PANEL_WIDTH_MM / br_peel.BLADE_COUNT, places=1)
-        self.assertAlmostEqual(br_peel.strip_width_mm(), 200.0, places=1)
+            br_peel.knife_width_mm(),
+            br_peel.CENTER_BLADE_MM
+            + 2 * br_peel.STAGGER_STEPS * br_peel.STEP_BLADE_MM, places=1)
+        self.assertAlmostEqual(br_peel.overhang_each_side_mm(), 50.0, places=1)
+        self.assertGreater(br_peel.knife_width_mm(), campaign.PANEL_WIDTH_MM)
 
-    def test_one_blade_takes_a_seventh_of_the_load(self):
-        """칼날 한 장이 받는 힘은 합의 칼날 수분의 1 이다."""
-        self.assertAlmostEqual(br_peel.peel_force_per_blade_n(), 400.0, places=1)
+    def test_the_insert_length_sum_carries_the_lap(self):
+        """인서트 길이 합 1,590 = 전폭 + 양쪽 단마다 겹침."""
+        self.assertAlmostEqual(br_peel.blade_length_sum_mm(), 1590.0, places=1)
         self.assertAlmostEqual(
-            br_peel.per_blade_relief(), float(br_peel.BLADE_COUNT), places=1)
-        self.assertLess(br_peel.peel_force_per_blade_n(), br_peel.peel_force_n())
+            br_peel.blade_length_sum_mm() - br_peel.knife_width_mm(),
+            2 * br_peel.STAGGER_STEPS * br_peel.BLADE_LAP_MM, places=1)
 
-    def test_heating_derates_the_blade_the_same_way(self):
-        """가열은 한 장에도 같은 몫으로 걸린다 — 계면 값이 깎이는 것이므로."""
+    def test_seven_blades_come_from_one_centre_and_three_steps_a_side(self):
+        """칼날 수는 선언이 아니라 형상에서 나온다 — 1 + 2×3."""
+        self.assertEqual(br_peel.BLADE_COUNT, 1 + 2 * br_peel.STAGGER_STEPS)
+        self.assertEqual(len(br_peel.blade_segments()), br_peel.BLADE_COUNT)
+
+    def test_the_strips_are_not_uniform(self):
+        """**내가 틀린 자리** — 7×200 균일이 아니라 중앙 300 · 바깥은 잘린다."""
+        widths = br_peel.strip_widths_mm()
+        self.assertEqual(widths, (300.0, 200.0, 200.0, 200.0, 200.0, 150.0, 150.0))
+        self.assertGreater(len(set(widths)), 1)
+        self.assertAlmostEqual(br_peel.widest_strip_mm(), 300.0, places=1)
+
+    def test_the_engaged_widths_add_up_to_the_panel(self):
+        """조각들이 패널 안에서 무는 폭의 합은 패널 폭이어야 한다."""
+        self.assertAlmostEqual(br_peel.engaged_width_mm(),
+                               campaign.PANEL_WIDTH_MM, places=1)
+
+    def test_the_worst_segment_sets_the_spec_not_the_average(self):
+        """사양은 평균이 아니라 최악 조각이다 — 중앙 300 → 600 N."""
+        self.assertAlmostEqual(br_peel.peel_force_per_blade_n(), 600.0, places=1)
+        self.assertAlmostEqual(br_peel.per_blade_relief(), 4.67, places=2)
+        self.assertLess(br_peel.per_blade_relief(), br_peel.BLADE_COUNT)
+
+    def test_heating_derates_the_segment_the_same_way(self):
+        """가열은 조각에도 같은 몫으로 걸린다."""
         self.assertAlmostEqual(
             br_peel.peel_force_per_blade_n(heated=True),
             round(br_peel.peel_force_per_blade_n() * br_peel.HEAT_DERATE, 1),
             places=1)
 
     def test_splitting_the_width_does_not_change_the_total(self):
-        """나뉘는 것은 한 장이 받는 값이지 **일의 총량이 아니다.**
-
-        붙어 있는 계면 넓이가 같으니 합도 같다. 여기서 합이 줄어 보이면
-        폭을 나눈 것으로 면적을 깎은 셈이라 틀린 것이다.
-        """
+        """조각별 힘을 다 더하면 폭 전체 값이다 — 겹침은 안 센다."""
         self.assertTrue(br_peel.total_force_is_conserved())
         self.assertAlmostEqual(
-            br_peel.peel_force_per_blade_n() * br_peel.BLADE_COUNT,
+            sum(br_peel.peel_force_on_segment_n(s)
+                for s in br_peel.blade_segments()),
             br_peel.peel_force_n(), delta=1.0)
 
     def test_the_load_is_not_carried_by_one_front(self):
-        """한때 합을 한 점이 받는 것으로 적었다 — 그 자리를 판정으로 막는다."""
+        """합을 한 점이 받는 것으로 적었던 자리를 판정으로 막는다."""
         self.assertTrue(br_peel.the_load_is_carried_by_seven_not_one())
         self.assertGreater(br_peel.BLADE_COUNT, 1)
+
+    def test_the_span_ratio_is_the_knife_over_the_widest_segment(self):
+        """**내가 틀린 자리** — n² · n⁴ 의 n 은 칼날 수가 아니라 span 비다."""
+        self.assertAlmostEqual(br_peel.span_ratio(), 5.0, places=3)
+        self.assertAlmostEqual(br_peel.one_piece_blade_span_mm(),
+                               br_peel.knife_width_mm(), places=1)
+        self.assertAlmostEqual(br_peel.bending_moment_ratio(), 25.0, places=1)
+        self.assertAlmostEqual(br_peel.deflection_ratio(), 625.0, places=1)
+        self.assertNotAlmostEqual(br_peel.deflection_ratio(), 2401.0, places=1)
+
+    def test_the_reason_to_split_is_still_stiffness(self):
+        """값이 작아졌어도 처짐 쪽이 여전히 가장 크다 — 이유는 안 바뀐다."""
+        self.assertTrue(br_peel.stiffness_beats_force_as_the_reason())
+        self.assertGreater(br_peel.deflection_ratio(),
+                           br_peel.bending_moment_ratio())
+        self.assertGreater(br_peel.bending_moment_ratio(),
+                           br_peel.per_blade_relief())
 
     def test_the_strips_run_along_the_length(self):
         """띠는 길이 방향이고 1 차 커팅(가로)과 직각이다."""
@@ -359,151 +399,155 @@ class TestSevenBladesCarryIt(unittest.TestCase):
             br_peel.peel_travel_mm(), campaign.PANEL_LENGTH_MM, places=1)
 
     def test_the_second_stage_states_the_per_blade_figure(self):
-        """②가 합만 들면 사양을 잘못 고른다 — 한 장이 받는 값이 적혀 있어야."""
+        """②가 합만 들면 사양을 잘못 고른다 — 최악 조각 값이 적혀 있어야."""
         second = br_peel.stages()[1][1]
         self.assertIn(f"{br_peel.peel_force_per_blade_n():,.0f} N", second)
         self.assertIn(f"{br_peel.BLADE_COUNT} 장", second)
         self.assertNotIn("한 번에", second)
 
-    def test_the_moment_falls_as_the_square_and_deflection_as_the_fourth(self):
-        """칼날은 보다 — 길이를 1/n 로 자르면 모멘트 n², 처짐 n⁴."""
-        n = br_peel.BLADE_COUNT
-        self.assertAlmostEqual(br_peel.bending_moment_ratio(), n ** 2, places=1)
-        self.assertAlmostEqual(br_peel.deflection_ratio(), n ** 4, places=1)
-        self.assertAlmostEqual(br_peel.bending_moment_ratio(), 49.0, places=1)
-        self.assertAlmostEqual(br_peel.deflection_ratio(), 2401.0, places=1)
-
-    def test_the_reason_to_split_is_stiffness_not_force(self):
-        """이유를 힘으로 적으면 가장 작은 이득을 이유로 삼는 셈이다.
-
-        힘은 n 배뿐인데 처짐은 n⁴ 배다. 박리에서 무너지는 것은 힘이 아니라
-        날이 휘어 깊이가 흐트러지는 쪽이다.
-        """
-        self.assertTrue(br_peel.stiffness_beats_force_as_the_reason())
-        self.assertGreater(br_peel.deflection_ratio(),
-                           br_peel.per_blade_relief())
-        self.assertGreater(br_peel.deflection_ratio(),
-                           br_peel.bending_moment_ratio())
-
-    def test_the_span_that_a_one_piece_blade_must_cross(self):
-        """일자형은 판 폭 전체를 건너질러야 한다 — 거기서 L 이 온다."""
-        self.assertAlmostEqual(br_peel.one_piece_blade_span_mm(),
-                               campaign.PANEL_WIDTH_MM, places=1)
-        self.assertAlmostEqual(
-            br_peel.one_piece_blade_span_mm() / br_peel.BLADE_COUNT,
-            br_peel.strip_width_mm(), places=1)
-
-    def test_splitting_the_blade_without_splitting_the_support_buys_nothing(self):
-        """조건이 글로 남아 있어야 한다 — 지지가 안 나뉘면 강성 이득이 0 이다.
-
-        이 한 줄이 빠지면 「일곱 장이니 괜찮다」고 읽고 크로스빔 하나에
-        매달 수 있다. 그러면 L 이 안 줄어 이득이 사라진다.
-        """
-        note = " ".join(br_peel.the_split_needs_split_supports())
-        self.assertIn("지지가 따로일 때만", note)
-        self.assertIn("강성 이득은 0", note)
-        self.assertIn("면", note)
-        self.assertGreaterEqual(len(br_peel.the_split_needs_split_supports()), 4)
-
-    def test_the_total_is_still_the_frames_problem(self):
-        """분할이 덜어 주는 것은 한 부재의 몫이지 라인이 내야 하는 힘이 아니다."""
-        note = " ".join(br_peel.the_split_needs_split_supports())
-        self.assertIn(f"{br_peel.peel_force_n():,.0f} N", note)
-        self.assertIn("프레임과 구동", note)
-
-    def test_the_summary_carries_the_blade_numbers(self):
-        """도면 리터럴이 칼날 수와 한 장 값을 본다."""
+    def test_the_summary_carries_the_real_geometry(self):
+        """도면 리터럴이 실측 형상을 본다."""
         s = br_peel.summary()
-        for key in ("bladeCount", "stripWidthMm", "peelForcePerBladeN",
-                    "peelTravelMm", "totalForceIsConserved"):
+        for key in ("knifeWidthMm", "bladeLengthSumMm", "staggerRiseMm",
+                    "staggerSpreadMm", "bladeLapMm", "widestStripMm",
+                    "stripWidthsMm", "spanRatio", "engagedWidthMm"):
             self.assertIn(key, s)
-        self.assertEqual(s["bladeCount"], br_peel.BLADE_COUNT)
+        self.assertEqual(s["staggerSteps"], br_peel.STAGGER_STEPS)
+
+
+class TestTheMirrorIsMarkedAsOne(unittest.TestCase):
+    """베낀 값은 갈라질 자리다 — 정본이 오면 시끄럽게 실패해야 한다."""
+
+    def test_the_mirror_knows_it_is_a_mirror(self):
+        """정본 모듈이 이 트리에 없는 동안만 베껴 두는 것이 허용된다."""
+        self.assertTrue(br_peel.the_mirror_must_become_a_delegation())
+        self.assertTrue(br_peel.summary()["mirrorIsStillAMirror"])
+
+    def test_the_provenance_is_written_in_the_source(self):
+        """어디서 베꼈는지가 소스에 적혀 있어야 한다."""
+        import inspect
+        src = inspect.getsource(br_peel)
+        self.assertIn("SHK-101", src)
+        self.assertIn("console_consts", src)
+        self.assertIn("발주자 확정", src)
+
+    def test_the_interface_disagreement_is_recorded_not_resolved(self):
+        """형상은 받아 쓰고 **계면은 안 바꿨다** — 그 갈림이 글로 남아야 한다."""
+        note = " ".join(br_peel.where_shk101_and_this_unit_disagree())
+        self.assertIn("유리 계면", note)
+        self.assertIn("백시트–EVA", note)
+        self.assertIn("안 들었다", note)
+        self.assertGreaterEqual(
+            len(br_peel.where_shk101_and_this_unit_disagree()), 5)
+        # 판정을 만들지 않는다 — 어느 쪽이 맞는지는 내가 정할 일이 아니다.
+        self.assertFalse(hasattr(br_peel, "shk101_is_the_real_unit"))
+
+    def test_the_two_peel_resistances_are_far_apart(self):
+        """다섯 배 넘게 벌어져 있다 — 한쪽이 틀렸거나 둘이 다른 공정이다."""
+        mine = br_peel.required_interface().gc_aged_n_mm
+        self.assertGreater(br_peel.SHK101_PEEL_N_MM / mine, 5.0)
 
 
 class TestTheStaircaseEngagesInOrder(unittest.TestCase):
     """물리는 순차, 진행은 동시 — 그리고 **최대 합력은 안 내려간다.**"""
 
     def test_the_layout_is_a_staircase_not_a_row(self):
-        """배치가 나란히가 아니라 진행 방향으로 어긋난 계단식이다."""
+        """배치가 중앙 먼저, 좌우 쌍이 한 단씩 물러나는 계단이다."""
         self.assertIn("계단식", br_peel.BLADE_LAYOUT)
         self.assertIn("계단식", br_peel.stages()[1][1])
         self.assertIn("진행은 다 같이", br_peel.stages()[1][1])
+        backs = sorted({s.back_mm for s in br_peel.blade_segments()})
+        self.assertEqual(backs, [0.0, 80.0, 160.0, 240.0])
 
-    def test_the_boundary_is_the_strip_length_over_n_minus_one(self):
-        """경계 = 띠 길이 ÷ (칼날 수 − 1). 첫 칼날과 끝 칼날이 겹치는 한계다."""
+    def test_the_spread_is_steps_times_rise_not_n_minus_one(self):
+        """**내가 틀린 자리** — 대칭 계단이라 퍼짐이 (n−1)p 의 절반이다."""
+        self.assertAlmostEqual(br_peel.stagger_spread_mm(), 240.0, places=1)
         self.assertAlmostEqual(
-            br_peel.stagger_pitch_below_which_all_engage_mm(),
-            br_peel.peel_travel_mm() / (br_peel.BLADE_COUNT - 1), places=1)
-        self.assertAlmostEqual(
-            br_peel.stagger_pitch_below_which_all_engage_mm(), 416.7, places=1)
+            br_peel.stagger_spread_mm(),
+            br_peel.STAGGER_STEPS * br_peel.STAGGER_RISE_MM, places=1)
+        self.assertLess(br_peel.stagger_spread_mm(),
+                        (br_peel.BLADE_COUNT - 1) * br_peel.STAGGER_RISE_MM)
 
-    def test_a_compact_stagger_does_not_lower_the_peak(self):
-        """**요지** — 경계 아래에서는 일곱이 한때 다 물려 합력이 그대로다.
-
-        「순차로 물리니 힘이 나뉜다」로 읽으면 구동을 작게 잡는다.
-        """
-        edge = br_peel.stagger_pitch_below_which_all_engage_mm()
-        for pitch in (0.0, 30.0, 100.0, 200.0, edge - 1.0):
-            self.assertEqual(br_peel.blades_engaged_at(pitch),
-                             br_peel.BLADE_COUNT, msg=f"p={pitch}")
-            self.assertAlmostEqual(br_peel.peak_force_n(pitch),
-                                   br_peel.peel_force_n(), places=1)
-            self.assertFalse(br_peel.stagger_lowers_the_peak(pitch))
+    def test_the_real_rise_does_not_lower_the_peak(self):
+        """**요지** — 퍼짐 240 이 띠 길이 2,500 안이라 합력이 그대로다."""
+        self.assertTrue(br_peel.all_blades_engage_at_once())
+        self.assertFalse(br_peel.stagger_lowers_the_peak())
+        self.assertAlmostEqual(br_peel.peak_force_n(),
+                               br_peel.peel_force_n(), places=1)
 
     def test_only_past_the_boundary_does_the_peak_fall(self):
-        """경계를 넘어야 비로소 최대 합력이 내려간다."""
-        edge = br_peel.stagger_pitch_below_which_all_engage_mm()
+        """경계는 띠 길이 ÷ 단수 = 833 mm. 실제 80 은 한참 아래다."""
+        edge = br_peel.rise_below_which_all_engage_mm()
+        self.assertAlmostEqual(edge, campaign.PANEL_LENGTH_MM / 3, places=1)
+        self.assertLess(br_peel.STAGGER_RISE_MM, edge / 10)
         self.assertTrue(br_peel.stagger_lowers_the_peak(edge + 1.0))
         self.assertLess(br_peel.peak_force_n(edge + 1.0), br_peel.peel_force_n())
-        self.assertEqual(br_peel.blades_engaged_at(700.0), 4)
-        self.assertAlmostEqual(br_peel.peak_force_n(700.0), 1600.0, places=1)
 
     def test_lowering_the_peak_costs_stroke(self):
-        """합력을 낮추는 값은 행정으로 치른다 — 거래가 되는지 보이게 둔다."""
-        edge = br_peel.stagger_pitch_below_which_all_engage_mm()
-        self.assertGreaterEqual(br_peel.carriage_travel_mm(edge),
-                                2.0 * br_peel.peel_travel_mm())
-        self.assertGreater(br_peel.carriage_travel_mm(700.0),
-                           br_peel.carriage_travel_mm(200.0))
+        """합력을 낮추는 값은 행정으로 치른다."""
+        edge = br_peel.rise_below_which_all_engage_mm()
+        self.assertGreater(br_peel.carriage_travel_mm(edge),
+                           br_peel.carriage_travel_mm())
+        self.assertGreater(br_peel.carriage_travel_mm(edge),
+                           1.9 * br_peel.peel_travel_mm())
 
-    def test_the_carriage_goes_further_than_one_strip(self):
-        """캐리지 행정 = (n−1)p + 띠 길이. 띠 길이만 잡으면 모자란다."""
-        for pitch in (0.0, 50.0, 200.0):
-            self.assertAlmostEqual(
-                br_peel.carriage_travel_mm(pitch),
-                (br_peel.BLADE_COUNT - 1) * pitch + br_peel.peel_travel_mm(),
-                places=1)
-        self.assertAlmostEqual(br_peel.carriage_travel_mm(0.0),
-                               br_peel.peel_travel_mm(), places=1)
-        self.assertGreater(br_peel.carriage_travel_mm(50.0),
+    def test_the_carriage_goes_the_spread_further(self):
+        """캐리지 행정 = 퍼짐 + 띠 길이 = 2,740."""
+        self.assertAlmostEqual(br_peel.carriage_travel_mm(), 2740.0, places=1)
+        self.assertAlmostEqual(
+            br_peel.carriage_travel_mm(),
+            br_peel.stagger_spread_mm() + br_peel.peel_travel_mm(), places=1)
+        self.assertGreater(br_peel.carriage_travel_mm(),
                            br_peel.peel_travel_mm())
 
+    def test_the_ramp_is_four_steps_not_seven(self):
+        """**내가 틀린 자리** — 좌우 쌍이 같이 물어 걸음이 조각 수보다 적다."""
+        ramp = br_peel.engagement_ramp()
+        self.assertEqual(len(ramp), br_peel.STAGGER_STEPS + 1)
+        self.assertEqual(br_peel.load_rise_is_divided_by(), 4)
+        self.assertNotEqual(br_peel.load_rise_is_divided_by(),
+                            br_peel.BLADE_COUNT)
+        self.assertEqual([w for _, w, _ in ramp], [300.0, 700.0, 1100.0, 1400.0])
+        self.assertAlmostEqual(ramp[-1][2], br_peel.peel_force_n(), places=1)
+
+    def test_the_ramp_only_grows(self):
+        """물린 폭과 합력이 단마다 늘기만 해야 한다."""
+        ramp = br_peel.engagement_ramp()
+        for (t0, w0, f0), (t1, w1, f1) in zip(ramp, ramp[1:]):
+            self.assertLess(t0, t1)
+            self.assertLess(w0, w1)
+            self.assertLess(f0, f1)
+
     def test_what_it_buys_is_the_rise_not_the_peak(self):
-        """사 주는 것은 최대값이 아니라 기울기다 — 그 구분이 글에 있어야 한다."""
+        """사 주는 것은 최대값이 아니라 기울기다."""
         note = " ".join(br_peel.what_the_staircase_buys())
         self.assertIn("최대 합력은 안 내려간다", note)
-        self.assertIn("진입 기울기", note)
-        self.assertEqual(br_peel.load_rise_is_divided_by(), br_peel.BLADE_COUNT)
+        self.assertIn("걸음에 나뉜다", note)
+        self.assertIn("좌우 쌍이 같은 단에서 같이 물기", note)
         self.assertGreaterEqual(len(br_peel.what_the_staircase_buys()), 4)
 
-    def test_the_initiation_ratio_is_named_as_unknown(self):
-        """기동/정상 비는 모른다 — 계단식이 최대값을 낮추는 유일한 경로인데도."""
-        buys = " ".join(br_peel.what_the_staircase_buys())
-        self.assertIn("기동", buys)
-        self.assertIn("값으로 안 적는다", buys)
-        self.assertIn("기동 박리력과 정상 박리력의 비를 모른다",
-                      " ".join(br_peel.open_questions()))
+    def test_the_lap_closes_what_splits_the_film(self):
+        """겹침이 「무엇이 가르나」를 닫는다 — 옆날도 찢김도 아니었다."""
+        note = " ".join(br_peel.open_questions())
+        self.assertIn("닫혔다", note)
+        self.assertIn(f"{br_peel.BLADE_LAP_MM:g} mm", note)
+        self.assertIn("안쪽 밑으로", note)
+        self.assertNotIn("옆날이 째는 것인지", note)
 
-    def test_the_pitch_itself_is_not_invented(self):
-        """어긋남 값은 안 들었다 — 상수를 지어내지 않는다."""
-        self.assertIsNone(br_peel.STAGGER_PITCH_MM)
-        self.assertIn("어긋남 p) 모른다", " ".join(br_peel.open_questions()))
-        # 모르는 값은 요약이 아니라 열린 물음에 산다 — 도면 리터럴은 찍을 수
-        # 있는 값만 받는다.
-        self.assertNotIn("staggerPitchMm", br_peel.summary())
+    def test_the_rise_is_no_longer_unknown(self):
+        """단높이는 발주자 확정이라 이제 상수다 — None 이 아니다."""
+        self.assertFalse(hasattr(br_peel, "STAGGER_PITCH_MM"))
+        self.assertAlmostEqual(br_peel.STAGGER_RISE_MM, 80.0, places=1)
+        self.assertIn("단높이", " ".join(br_peel.open_questions()))
+
+    def test_the_interface_question_replaced_the_pitch_question(self):
+        """닫힌 물음 자리에 **계면** 물음이 들어섰다 — 지금 가장 큰 열림이다."""
+        note = " ".join(br_peel.open_questions())
+        self.assertIn("어느 계면을 무는 유닛인지", note)
+        self.assertIn("다섯 배", note)
 
     def test_the_staircase_satisfies_the_support_condition_by_itself(self):
-        """계단식이면 크로스빔 하나에 못 건다 — 어제 단 조건이 저절로 지켜진다."""
+        """계단식이면 크로스빔 하나에 못 건다 — 조건이 저절로 지켜진다."""
         self.assertTrue(br_peel.the_staircase_splits_the_supports_for_us())
         self.assertTrue(br_peel.summary()["staircaseSplitsTheSupports"])
 

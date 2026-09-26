@@ -137,13 +137,44 @@ STRIP_ORIENTATION = "세로(길이 방향)"
 #: 칼날 배치 — 나란히가 아니라 **진행 방향으로 어긋난 계단식**이다.
 #: 앞선 칼날이 먼저 물고 나머지가 차례로 물리는데, 캐리지는 하나라
 #: **진행은 다 같이** 한다. 「병렬이냐 순차냐」가 아니라 **둘 다**다.
-BLADE_LAYOUT = "계단식(진행 방향으로 어긋남)"
-#: 이웃한 칼날이 진행 방향으로 어긋난 거리 (mm) — **아직 못 들었다.**
-#: 이 값이 행정과 최대 합력을 함께 정하므로 지어내지 않는다. 계산 함수들은
-#: 이것을 읽지 않고 `pitch_mm` 을 인자로 받는다 — 그래서 이 상수를 그대로
-#: 넘기면 TypeError 로 **시끄럽게** 멈춘다. 요약에는 안 싣는다(도면 리터럴은
-#: 찍을 수 있는 값만 받는다). `open_questions()` 가 정본이다.
-STAGGER_PITCH_MM: float | None = None
+BLADE_LAYOUT = "계단식(중앙이 먼저, 좌우 쌍이 한 단씩 물러남)"
+
+# ── 실측 형상 — SHK-101 계단형 핫나이프 ─────────────────────────────────
+#
+#   **이 값들은 내가 정한 것이 아니다.** 같은 저장소의 다른 작업
+#   (SHK-101 계단형 핫나이프 · 콘솔 도면의 `KNIFE_*` 뿌리 상수 ·
+#   `tools/knife_stepped.py`)이 발주자 스케치에서 확정한 값이고, 그쪽이
+#   **정본**이다. 그 브랜치가 이 트리에 아직 없어 값을 **베껴** 두는데,
+#   베끼는 것은 갈라질 자리이므로 조건을 하나 붙인다:
+#
+#       `tools/console_consts.py` 가 이 트리에 생기면 아래 상수를 지우고
+#       그쪽에서 읽어 온다. `the_mirror_must_become_a_delegation()` 이
+#       그때 실패해서 알려 준다.
+#
+#   형상은 **대칭 계단**이다 — 중앙 300 이 먼저 물고 양쪽 200 칼날이 한 단에
+#   80 씩 물러나며 세 단을 내려간다. 전폭 1,500 은 패널 1,400 에 양쪽 50 을
+#   더한 것이고, 바깥 칼날은 안쪽 칼날 **밑으로 15** 겹쳐 덮는 자리를 남기지
+#   않는다.
+#
+#: 중앙 칼날 폭 (mm) — 가장 먼저 물고 **가장 넓다**.
+CENTER_BLADE_MM = 300.0
+#: 계단 칼날 폭 (mm) — 중앙 양쪽으로 한 단씩.
+STEP_BLADE_MM = 200.0
+#: 한쪽 단수 — 좌우 합쳐 칼날이 1 + 2×3 = 7 장이 된다.
+STAGGER_STEPS = 3
+#: 한 단에 뒤로 물러나는 거리 (mm) — **발주자 확정.** 어제 「모른다」고
+#: 적어 둔 그 값이다.
+STAGGER_RISE_MM = 80.0
+#: 이음 겹침 (mm) — **바깥 칼날이 안쪽 밑으로.** 힘을 보태지 않는다:
+#: 안쪽 칼날이 이미 떼어 간 줄을 다시 긋는 자리다.
+BLADE_LAP_MM = 15.0
+#: 칼날 밑면 랜드 (mm) — 추종 중 **유리를 타는** 면. 경면 연마.
+BLADE_LAND_MM = 1.5
+#: 날끝 쐐기각 (°) — 레이크면과 랜드 사이 (D-502).
+BLADE_WEDGE_DEG = 35.0
+#: SHK-101 이 재는 박리 저항 (N/mm) — OI-01 밴드 상한 111 N/cm.
+#: **내 `INTERFACES` 와 다른 계면의 값이다** — 아래 주의를 읽을 것.
+SHK101_PEEL_N_MM = 11.14
 
 #: 가열 보조 온도 (°C) — KR101936925B1 의 흡착 가열 범위.
 HEAT_ASSIST_C = (50.0, 300.0)
@@ -247,9 +278,73 @@ def heat_brings_it_to_n() -> float:
 #   합은 안 바뀌지만 **한 장이 받는 값이 바뀐다.** 그리퍼·구동은 합이 아니라
 #   한 장이 받는 값으로 고르므로 이쪽이 사양을 정하는 값이다.
 
-def strip_width_mm() -> float:
-    """칼날 한 장이 맡는 띠의 폭 (mm) = 판 폭 ÷ 칼날 수."""
-    return round(float(campaign.PANEL_WIDTH_MM) / BLADE_COUNT, 1)
+def knife_width_mm() -> float:
+    """칼날 전폭 (mm) = 중앙 + 양쪽 계단. 패널보다 넓다."""
+    return CENTER_BLADE_MM + 2 * STAGGER_STEPS * STEP_BLADE_MM
+
+
+def blade_length_sum_mm() -> float:
+    """인서트 길이의 합 (mm) — 전폭에 이음 겹침을 더한 값이다."""
+    return knife_width_mm() + 2 * STAGGER_STEPS * BLADE_LAP_MM
+
+
+def overhang_each_side_mm() -> float:
+    """칼날이 패널 밖으로 나가는 폭 (mm) — 한쪽."""
+    return round((knife_width_mm() - float(campaign.PANEL_WIDTH_MM)) / 2, 1)
+
+
+@dataclass(frozen=True)
+class Segment:
+    """칼날 조각 하나 — 명목 구간과 뒤로 물러난 거리."""
+
+    step: int                   # 0 = 중앙, 1..STAGGER_STEPS = 계단
+    y0: float                   # 명목 구간 (패널 중심 기준 mm)
+    y1: float
+    back_mm: float              # 중앙 칼끝에서 뒤로 물러난 거리
+
+    @property
+    def nominal_width_mm(self) -> float:
+        return round(self.y1 - self.y0, 1)
+
+    @property
+    def engaged_mm(self) -> float:
+        """패널(±폭/2) 안에 든 폭 — **힘은 이 폭에서만 나온다.**"""
+        half = float(campaign.PANEL_WIDTH_MM) / 2
+        return round(max(0.0, min(half, self.y1) - max(-half, self.y0)), 1)
+
+
+def blade_segments() -> tuple[Segment, ...]:
+    """칼날 조각 표 — 중앙부터 바깥으로, 좌우 한 쌍씩.
+
+    겹침은 넣지 않는다. 바깥 칼날이 안쪽 **밑으로** 들어가 이미 떼어 간 줄을
+    다시 긋는 자리라 힘을 보태지 않기 때문이다.
+    """
+    half_c = CENTER_BLADE_MM / 2
+    out = [Segment(0, -half_c, half_c, 0.0)]
+    for k in range(1, STAGGER_STEPS + 1):
+        a = half_c + (k - 1) * STEP_BLADE_MM
+        b = a + STEP_BLADE_MM
+        out += [Segment(k, a, b, k * STAGGER_RISE_MM),
+                Segment(k, -b, -a, k * STAGGER_RISE_MM)]
+    return tuple(out)
+
+
+def engaged_width_mm() -> float:
+    """조각들이 패널 안에서 무는 폭의 합 (mm) — 패널 폭이어야 한다."""
+    return round(sum(s.engaged_mm for s in blade_segments()), 1)
+
+
+def strip_widths_mm() -> tuple[float, ...]:
+    """조각별 패널 안 폭 (mm) — **균일하지 않다.**
+
+    바깥 단은 전폭이 패널보다 넓어 일부가 패널 밖으로 나간다.
+    """
+    return tuple(s.engaged_mm for s in blade_segments())
+
+
+def widest_strip_mm() -> float:
+    """가장 넓은 조각의 폭 (mm) — **사양을 정하는 조각**이다. 중앙이다."""
+    return max(strip_widths_mm())
 
 
 def peel_travel_mm() -> float:
@@ -278,72 +373,151 @@ def peel_travel_mm() -> float:
 #   0 → 2,800 N 이 한 걸음에 서고, 계단식은 일곱 계단을 밟는다 —
 #   상승률이 1/n 이다. 구동이 겁내는 것은 최대값보다 이쪽이다.
 
-def stagger_pitch_below_which_all_engage_mm() -> float:
-    """이 값 **아래**로 어긋나면 한때 칼날이 전부 물린다 (mm) = 띠 길이/(n-1).
+def stagger_spread_mm(rise_mm: float | None = None) -> float:
+    """첫 칼끝에서 마지막 칼끝까지 (mm) = **단수** × 단높이.
 
-    곧 **최대 합력이 안 줄어드는 구간의 상한**이다.
+    한때 `(n−1)·p` 로 적었는데 그것은 일곱이 **한 줄로** 늘어선 경우다.
+    실제는 좌우 쌍이 같은 단을 쓰는 **대칭 계단**이라 퍼짐이 절반이다 —
+    6×80 = 480 이 아니라 3×80 = 240.
     """
-    return round(peel_travel_mm() / (BLADE_COUNT - 1), 1)
+    return round(STAGGER_STEPS * (STAGGER_RISE_MM if rise_mm is None
+                                  else max(rise_mm, 0.0)), 1)
 
 
-def blades_engaged_at(pitch_mm: float) -> int:
-    """어긋남이 이만큼일 때 **동시에** 물려 있는 칼날 수 (최대)."""
-    if pitch_mm <= 0:
-        return BLADE_COUNT
-    return min(BLADE_COUNT, int(peel_travel_mm() // pitch_mm) + 1)
+def all_blades_engage_at_once(rise_mm: float | None = None) -> bool:
+    """퍼짐이 띠 길이보다 짧은가 — 짧으면 한때 전부 물린다.
 
-
-def peak_force_n(pitch_mm: float, **kw) -> float:
-    """어긋남이 이만큼일 때 라인이 한 번은 내야 하는 최대 합력 (N)."""
-    return round(blades_engaged_at(pitch_mm)
-                 * peel_force_per_blade_n(**kw), 1)
-
-
-def carriage_travel_mm(pitch_mm: float) -> float:
-    """캐리지가 실제로 가야 하는 거리 (mm) = (n-1)·p + 띠 길이.
-
-    띠 한 장은 여전히 `peel_travel_mm()` 만 벗겨지지만, 마지막 칼날이
-    끝까지 가려면 캐리지는 어긋남만큼 더 간다.
+    경계는 칼날 수가 아니라 **퍼짐 대 띠 길이**다.
     """
-    return round((BLADE_COUNT - 1) * max(pitch_mm, 0.0) + peel_travel_mm(), 1)
+    return stagger_spread_mm(rise_mm) <= peel_travel_mm()
 
 
-def stagger_lowers_the_peak(pitch_mm: float) -> bool:
-    """이 어긋남이 최대 합력을 실제로 낮추는가 — 경계를 넘어야 낮춘다."""
-    return blades_engaged_at(pitch_mm) < BLADE_COUNT
+def rise_below_which_all_engage_mm() -> float:
+    """이 단높이 **아래**면 한때 전부 물린다 (mm) = 띠 길이 / 단수."""
+    return round(peel_travel_mm() / STAGGER_STEPS, 1)
+
+
+def peak_force_n(rise_mm: float | None = None, **kw) -> float:
+    """라인이 한 번은 내야 하는 최대 합력 (N).
+
+    조각 하나는 캐리지가 `back` 갔을 때 물고 거기서 띠 길이를 더 간 뒤
+    빠진다. 어느 진행 위치에서 동시에 물린 조각들의 힘 합이 가장 큰가를 본다.
+    퍼짐이 띠 길이 안이면 그 값이 폭 전체 값이다.
+    """
+    r = STAGGER_RISE_MM if rise_mm is None else max(rise_mm, 0.0)
+    segs = blade_segments()
+    backs = [s.step * r for s in segs]
+    L = peel_travel_mm()
+    best = 0.0
+    for x in backs:                                  # 물림이 늘어나는 순간만 보면 된다
+        live = sum(peel_force_on_segment_n(s, **kw)
+                   for s, b in zip(segs, backs) if b <= x <= b + L)
+        best = max(best, live)
+    return round(best, 1)
+
+
+def carriage_travel_mm(rise_mm: float | None = None) -> float:
+    """캐리지가 실제로 가야 하는 거리 (mm) = 퍼짐 + 띠 길이.
+
+    띠 한 장은 여전히 `peel_travel_mm()` 만 벗겨지지만, 바깥 칼끝이 패널
+    뒤끝을 벗어나려면 캐리지는 퍼짐만큼 더 간다.
+    """
+    return round(stagger_spread_mm(rise_mm) + peel_travel_mm(), 1)
+
+
+def stagger_lowers_the_peak(rise_mm: float | None = None) -> bool:
+    """이 단높이가 최대 합력을 실제로 낮추는가 — 경계를 넘어야 낮춘다."""
+    return not all_blades_engage_at_once(rise_mm)
 
 
 def load_rise_is_divided_by() -> int:
-    """진입 하중이 몇 걸음에 나눠 서는가 — 칼날 수 그대로다.
+    """진입 하중이 몇 걸음에 나눠 서는가 — **단수 + 1** 이다.
 
-    **최대값이 아니라 기울기가 나뉜다.** 일자형은 0 → 합력이 한 걸음이고
-    계단식은 한 장 값씩 n 걸음을 밟는다.
+    칼날 수(7)가 아니다. 좌우 쌍이 같은 단에서 **같이** 물기 때문에
+    걸음이 조각 수보다 적다 — 3 단이면 4 걸음이다.
     """
-    return BLADE_COUNT
+    return STAGGER_STEPS + 1
+
+
+def engagement_ramp() -> tuple[tuple[float, float, float], ...]:
+    """물림 램프 — (진행 mm, 물린 폭 mm, 그때 합력 N).
+
+    중앙 칼끝이 패널 앞끝에 닿은 뒤 단높이만큼 갈 때마다 한 단씩 더 문다.
+    """
+    out, prev = [], 0.0
+    for k in range(STAGGER_STEPS + 1):
+        w = sum(s.engaged_mm for s in blade_segments() if s.step <= k)
+        out.append((k * STAGGER_RISE_MM, round(w, 1),
+                    round(_gc(None, True, False) * w, 1)))
+        prev = w
+    return tuple(out)
 
 
 def what_the_staircase_buys() -> tuple[str, ...]:
     """계단식이 사 주는 것과 **안** 사 주는 것 — 헷갈리기 쉬운 자리다."""
-    edge = stagger_pitch_below_which_all_engage_mm()
+    edge = rise_below_which_all_engage_mm()
+    ramp = engagement_ramp()
     return (
-        f"**최대 합력은 안 내려간다.** 어긋남이 {edge:,.0f} mm 아래면 첫 "
-        f"칼날이 띠를 다 가기 전에 마지막이 물어 **한때 {BLADE_COUNT} 장이 "
-        f"전부 물린다** — 그 순간 {peel_force_n():,.0f} N 이다. 박리력은 그 "
-        "순간 벗겨지는 **폭**에 걸리는데, 정상 상태의 폭은 배치와 무관하게 "
-        f"{one_piece_blade_span_mm():,.0f} mm 다.",
-        f"**대신 진입 기울기가 {load_rise_is_divided_by()} 분의 1 이 된다.** "
-        f"일자로는 0 → {peel_force_n():,.0f} N 이 한 걸음에 서고, 계단식은 "
-        f"{peel_force_per_blade_n():,.0f} N 씩 {BLADE_COUNT} 계단을 밟는다. "
-        "구동·감속기가 겁내는 것은 최대값보다 이 충격이다.",
-        "**그리고 균열을 한 번에 하나씩만 틔운다.** 붙은 것을 처음 떼는 힘이 "
-        "이미 벌어진 것을 계속 떼는 힘보다 크다. 일자형은 그 기동력이 "
-        f"{BLADE_COUNT} 배로 한꺼번에 서고, 계단식은 **기동 하나 + 정상 "
-        f"{BLADE_COUNT - 1}** 이다. 이쪽은 최대값 자체를 낮추는데, "
-        "**기동/정상 비를 모르므로 값으로 안 적는다.**",
-        f"**합력을 정말 낮추려면 어긋남을 {edge:,.0f} mm 넘게 벌려야 하고 "
+        f"**최대 합력은 안 내려간다.** 퍼짐 {stagger_spread_mm():,.0f} mm 가 "
+        f"띠 길이 {peel_travel_mm():,.0f} mm 안이라 **한때 조각이 전부 물린다** "
+        f"— 그 순간 {peel_force_n():,.0f} N 이다. 박리력은 그 순간 벗겨지는 "
+        "**폭**에 걸리는데, 정상 상태의 폭은 배치와 무관하게 패널 폭 "
+        f"{float(campaign.PANEL_WIDTH_MM):,.0f} mm 다.",
+        f"**대신 진입이 {load_rise_is_divided_by()} 걸음에 나뉜다** — 물린 폭이 "
+        + " → ".join(f"{w:,.0f}" for _, w, _ in ramp) + " mm 로 늘고 합력이 "
+        + " → ".join(f"{f:,.0f}" for _, _, f in ramp) + " N 로 따라 오른다. "
+        f"일자로는 0 → {peel_force_n():,.0f} N 이 한 걸음에 선다. 걸음이 "
+        f"조각 수 {BLADE_COUNT} 가 아니라 {load_rise_is_divided_by()} 인 것은 "
+        "**좌우 쌍이 같은 단에서 같이 물기** 때문이다.",
+        "**그리고 균열을 한 단씩만 틔운다.** 붙은 것을 처음 떼는 힘이 이미 "
+        "벌어진 것을 계속 떼는 힘보다 크다. 일자형은 그 기동력이 전폭으로 "
+        "한꺼번에 서고, 계단식은 중앙 몫부터 한 단씩이다. 이쪽은 최대값 "
+        "자체를 낮추는데, **기동/정상 비를 모르므로 값으로 안 적는다.**",
+        f"**합력을 정말 낮추려면 단높이를 {edge:,.0f} mm 넘게 벌려야 하고 "
         f"그러면 행정이 {carriage_travel_mm(edge):,.0f} mm 로 "
-        f"{carriage_travel_mm(edge) / peel_travel_mm():.0f} 배가 된다.** "
-        "절반으로 낮추려면 3 배다 — 거래가 안 된다.",
+        f"{carriage_travel_mm(edge) / peel_travel_mm():.1f} 배가 된다.** "
+        f"실제 단높이는 {STAGGER_RISE_MM:g} mm 라 그 십 분의 일도 안 된다 — "
+        "애초에 거래가 아니다.",
+    )
+
+
+def the_mirror_must_become_a_delegation() -> bool:
+    """베낀 값이 아직 베낀 채로 있어도 되는가 — 정본이 이 트리에 없으면 참.
+
+    `tools/console_consts.py` 가 생기면(SHK-101 쪽이 병합되면) 거짓이 되어
+    시험이 깨진다. **그때 위 상수를 지우고 그쪽에서 읽어 와야 한다.**
+    """
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parents[2]
+    return not (root / "tools" / "console_consts.py").exists()
+
+
+def where_shk101_and_this_unit_disagree() -> tuple[str, ...]:
+    """**형상은 같고 계면이 다르다** — 값을 베끼며 드러난 것이라 적어 둔다.
+
+    SHK-101 의 형상(칼날 7 · 계단 · 단높이 80 · 겹침 15)은 현장이 나에게
+    말해 준 것과 같다. 그런데 **그 칼날이 무는 계면이 내 모델과 다르다.**
+    어느 쪽이 맞는지는 내가 정할 일이 아니라서 판정을 안 만든다.
+    """
+    mine = required_interface()
+    return (
+        f"**SHK-101 은 유리 계면을 문다.** 랜드 {BLADE_LAND_MM:g} mm 가 "
+        f"추종 중 **유리를 타고**(경면 연마) 칼끝이 그 위 층 밑으로 들어가 "
+        "**셀모듈과 백시트를 함께** 들어 올린다. 칼날 온도 200 ℃ 주석도 "
+        "「유리 계면만 문다」고 적혀 있다.",
+        f"**이 모듈은 백시트–EVA 를 뜯는다.** `{mine.key}` · 노후 Gc "
+        f"{mine.gc_aged_n_mm:g} N/mm. 백시트만 떼고 셀은 남기는 공정이다.",
+        f"**그래서 폭당 힘이 {SHK101_PEEL_N_MM / mine.gc_aged_n_mm:.2f} 배 "
+        f"차이난다** — SHK-101 {SHK101_PEEL_N_MM:g} N/mm(OI-01 상한 111 N/cm · "
+        f"폭 1,400 에서 {SHK101_PEEL_N_MM * campaign.PANEL_WIDTH_MM / 1000:.2f} kN) "
+        f"대 이쪽 {mine.gc_aged_n_mm:g} N/mm({peel_force_n():,.0f} N).",
+        "**둘 중 무엇이 실제 공정인지 안 들었다.** 유리 계면에서 한 번에 다 "
+        "들면 백시트를 따로 뜯는 공정이 없어도 되고, 따로 뜯으면 SHK-101 "
+        "뒤에 이 유닛이 선다. 형상 값은 어느 쪽이든 같으므로 받아 썼고, "
+        "**계면과 힘은 안 바꿨다** — 그것은 유닛이 있느냐를 정하는 물음이다.",
+        "그리고 SHK-101 쪽도 그 힘을 잠정으로 든다 — OI-01 밴드는 **탠덤 시절 "
+        "두 계면의 합**을 잰 값이고 계단 칼날로 파일럿 PT-01 이 다시 잰다고 "
+        "적혀 있다.",
     )
 
 
@@ -357,31 +531,45 @@ def the_staircase_splits_the_supports_for_us() -> bool:
     return "계단식" in BLADE_LAYOUT
 
 
-def peel_force_per_blade_n(iface: Interface | None = None, *,
-                           aged: bool = True, heated: bool = False) -> float:
-    """칼날 **한 장**이 받는 힘 (N) = Gc × 띠 폭.
-
-    `peel_force_n()` 은 폭 전체의 합이고 이쪽이 **사양을 정하는 값**이다.
-    """
+def _gc(iface: Interface | None, aged: bool, heated: bool) -> float:
     iface = iface or required_interface()
     gc = iface.gc_aged_n_mm if aged else iface.gc_fresh_n_mm
-    if heated:
-        gc *= HEAT_DERATE
-    return round(gc * strip_width_mm(), 1)
+    return gc * HEAT_DERATE if heated else gc
+
+
+def peel_force_on_segment_n(seg: Segment, iface: Interface | None = None, *,
+                            aged: bool = True, heated: bool = False) -> float:
+    """조각 하나가 받는 힘 (N) = Gc × 그 조각이 패널 안에서 무는 폭."""
+    return round(_gc(iface, aged, heated) * seg.engaged_mm, 1)
+
+
+def peel_force_per_blade_n(iface: Interface | None = None, *,
+                           aged: bool = True, heated: bool = False) -> float:
+    """**가장 무거운** 조각이 받는 힘 (N) = Gc × 가장 넓은 조각.
+
+    사양은 평균이 아니라 최악 조각으로 고른다. 한때 판 폭을 칼날 수로 그냥
+    나눠 200 mm·400 N 으로 적었는데, 실제 형상은 중앙이 300 mm 라 **1.5 배**
+    무겁다. 균일하다고 가정한 것이 틀렸다.
+    """
+    return round(_gc(iface, aged, heated) * widest_strip_mm(), 1)
 
 
 def per_blade_relief() -> float:
-    """한 장이 받는 값이 합보다 몇 배 가벼운가 — 칼날 수 그대로다."""
-    return round(peel_force_n() / peel_force_per_blade_n(), 1)
+    """최악 조각이 합보다 몇 배 가벼운가 — **칼날 수가 아니다.**
+
+    폭이 균일하면 칼날 수가 되겠지만 중앙이 넓어 그보다 작다.
+    """
+    return round(peel_force_n() / peel_force_per_blade_n(), 2)
 
 
 def total_force_is_conserved() -> bool:
-    """칼날로 나눠도 **합은 그대로인가** — 그대로다.
+    """조각으로 나눠도 **합은 그대로인가** — 그대로다.
 
-    나뉘는 것은 한 장이 받는 값이지 일의 총량이 아니다. 계면 넓이가
-    같으니 에너지도 같다 — 폭을 나눈다고 붙어 있는 면이 줄지 않는다.
+    나뉘는 것은 한 조각이 받는 값이지 일의 총량이 아니다. 조각별 힘을 다
+    더하면 폭 전체 값이 나온다 — 겹침은 힘을 안 보태므로 세지 않는다.
     """
-    return abs(peel_force_per_blade_n() * BLADE_COUNT - peel_force_n()) <= 1.0
+    each = sum(peel_force_on_segment_n(s) for s in blade_segments())
+    return abs(each - peel_force_n()) <= 1.0
 
 
 def the_load_is_carried_by_seven_not_one() -> bool:
@@ -407,24 +595,37 @@ def the_load_is_carried_by_seven_not_one() -> bool:
 #   되고 강성 이득은 0 이다. `the_split_needs_split_supports()`.
 
 def one_piece_blade_span_mm() -> float:
-    """일자형 한 장이 건너질러야 하는 거리 (mm) — 판 폭 전체다."""
-    return float(campaign.PANEL_WIDTH_MM)
+    """일자형 한 장이 건너질러야 하는 거리 (mm) — **칼날 전폭**이다.
+
+    판 폭이 아니다. 칼날은 양쪽으로 나가 있으므로 건너지를 거리는 1,500 이다.
+    """
+    return knife_width_mm()
+
+
+def span_ratio() -> float:
+    """일자형 span 이 **가장 넓은 조각**의 몇 배인가 — 여기서 n² · n⁴ 가 나온다.
+
+    조각 폭이 균일하지 않으므로 칼날 수(7)가 아니다. 사양은 최악 조각으로
+    고르니 분모도 가장 넓은 조각이어야 한다 — 1,500 / 300 = 5.
+    """
+    return round(one_piece_blade_span_mm() / widest_strip_mm(), 3)
 
 
 def bending_moment_ratio() -> float:
-    """일자형 대비 분할이 굽힘모멘트를 몇 배 덜 받는가 = 칼날 수².
+    """일자형 대비 분할이 굽힘모멘트를 몇 배 덜 받는가 = span 비².
 
-    `M = wL²/8` 에서 w 가 같고 L 만 1/n 이 되므로 n² 이다.
+    `M = wL²/8` 에서 w 가 같고 L 만 1/k 이 되므로 k² 이다. 한때 칼날 수를
+    그대로 썼는데(49), 조각 폭이 균일하지 않아 실제 비는 그보다 작다.
     """
-    return round(float(BLADE_COUNT) ** 2, 1)
+    return round(span_ratio() ** 2, 1)
 
 
 def deflection_ratio() -> float:
-    """같은 단면일 때 처짐이 몇 배 줄어드는가 = 칼날 수⁴.
+    """같은 단면일 때 처짐이 몇 배 줄어드는가 = span 비⁴.
 
     `δ ∝ wL⁴/EI`. **이 값이 분할의 진짜 이유다** — 힘보다 훨씬 크게 준다.
     """
-    return round(float(BLADE_COUNT) ** 4, 1)
+    return round(span_ratio() ** 4, 1)
 
 
 def stiffness_beats_force_as_the_reason() -> bool:
@@ -644,7 +845,8 @@ def stages() -> tuple[tuple[str, str], ...]:
          f"**{BLADE_LAYOUT}으로** 차례로 들어가 계면을 잡고 백시트를 "
          f"필름째 벗긴다(캐리지는 하나라 진행은 다 같이 한다) — 나오는 것은 한 장이 "
          f"아니라 {STRIP_ORIENTATION} 띠 {BLADE_COUNT} 장이고, 한 장이 폭 "
-         f"{strip_width_mm():,.0f} mm · 길이 {peel_travel_mm():,.0f} mm 다. "
+         f"{CENTER_BLADE_MM:,.0f}(중앙)~{STEP_BLADE_MM:,.0f} mm · 길이 "
+         f"{peel_travel_mm():,.0f} mm 다. "
          f"계면 일이라 두께에 안 걸린다. **한 장이 받는 힘 "
          f"{peel_force_per_blade_n():,.0f} N**(가열 시 "
          f"{peel_force_per_blade_n(heated=True):,.0f} N), 합 "
@@ -669,7 +871,8 @@ def the_word_cutting_names_the_peel() -> tuple[str, ...]:
         f"그래서 박리력 **합** {peel_force_n():,.0f} N 은 잠정이 아니라 "
         "확정이다 — 폭을 나누는 **절단**이 없으므로 떼어야 할 면이 그대로다. "
         f"다만 그 합을 한 점이 받는 것은 아니다: 칼날 {BLADE_COUNT} 장이 "
-        f"각각 폭 {strip_width_mm():,.0f} mm 띠를 물어 한 장이 받는 값은 "
+        f"각각 자기 띠를 물어 **가장 넓은 조각**({widest_strip_mm():,.0f} mm)이 "
+        "받는 값은 "
         f"{peel_force_per_blade_n():,.0f} N 이다. 「절단이 안 나눈다」에서 "
         "「아무것도 안 나눈다」로 건너뛰었던 자리다.",
         "**말이 공정을 가리키지 물리를 가리키지 않는다.** 현장 용어를 물리 "
@@ -742,22 +945,25 @@ def open_questions() -> tuple[str, ...]:
         "찢어질 수 있고, 조각나면 박리의 장점(미분 없음)이 반쯤 사라진다 — "
         "이것이 연마 대비 우위를 정하는 값이다. 그리고 여기서는 **약한 "
         "외피–심재 면이 오히려 해롭다** — 거기서 먼저 갈라지면 심재만 남는다.",
-        f"**칼날이 얼마나 어긋나 있는지(어긋남 p) 모른다.** 배치가 "
-        f"{BLADE_LAYOUT}인 것은 들었는데 간격은 못 들었다. 이 값 하나가 "
-        f"캐리지 행정((n−1)p + {peel_travel_mm():,.0f})과 최대 합력을 함께 "
-        f"정한다 — {stagger_pitch_below_which_all_engage_mm():,.0f} mm 아래면 "
-        f"합력이 {peel_force_n():,.0f} N 그대로이고 행정만 늘어난다. "
-        "컴팩트한 머리면 반드시 그 아래이므로 **지금은 합력을 안 깎고 본다.**",
+        f"~~칼날 어긋남 p~~ **닫혔다** — 단높이 {STAGGER_RISE_MM:g} mm · "
+        f"{STAGGER_STEPS} 단 · 퍼짐 {stagger_spread_mm():,.0f} mm (발주자 확정). "
+        f"경계 {rise_below_which_all_engage_mm():,.0f} mm 보다 한참 아래라 "
+        f"한때 전부 물리고 **최대 합력은 {peel_force_n():,.0f} N 그대로**다. "
+        f"행정만 {carriage_travel_mm():,.0f} mm 로 늘어난다.",
+        "**어느 계면을 무는 유닛인지가 갈려 있다.** "
+        "`where_shk101_and_this_unit_disagree()` 가 그 자리를 든다 — 형상은 "
+        "같은데 SHK-101 은 유리 계면에서 셀모듈까지 함께 들고 이 모듈은 "
+        "백시트만 뜯는다. **폭당 힘이 다섯 배 넘게 차이나므로 한쪽이 틀렸거나 "
+        "둘이 다른 공정이다.** 이것이 지금 가장 큰 열린 물음이다.",
         "**기동 박리력과 정상 박리력의 비를 모른다.** 계단식이 최대값을 "
-        "낮추는 유일한 경로가 이것인데(기동 하나 + 정상 여섯), 비를 모르니 "
+        "낮추는 유일한 경로가 이것인데(기동 하나 + 정상 나머지), 비를 모르니 "
         "얼마나 낮추는지 못 적는다. 시편 시험에서 같이 나올 값이다 — "
         "**추측해서 값으로 넣지 않는다.**",
-        f"**무엇이 필름을 {BLADE_COUNT} 장으로 가르는지 모른다.** 칼날 옆날이 "
-        "필름을 째는 것인지, 칼날 사이에서 필름이 스스로 찢어지는 것인지 "
-        "안 들었다. 현장은 「칼날 갯수만큼」이라고만 했다. 전자면 옆날이 "
-        "부품표에 들어오고 그 깊이도 창 안에 있어야 하며, 후자면 찢어지는 "
-        "자리가 칼날 사이 어디든이라 띠 폭이 균일하지 않다. **추측하지 "
-        "않는다** — 같은 자리에서 두 번 틀렸다.",
+        f"~~무엇이 필름을 {BLADE_COUNT} 장으로 가르는지~~ **닫혔다** — "
+        f"조각 자체가 가르고, 이음에서 **바깥 칼날이 안쪽 밑으로 "
+        f"{BLADE_LAP_MM:g} mm** 겹쳐 덮이지 않는 자리를 남기지 않는다. "
+        "옆날이 째는 것도, 사이에서 찢어지는 것도 아니었다. 겹침은 힘을 "
+        "안 보탠다 — 안쪽이 이미 떼어 간 줄을 다시 긋는 자리다.",
         f"**절단 깊이를 무엇으로 잡는지가 안 정해졌다.** 1 차의 자리와 길이는 닫혔다 "
         f"(변에서 {STARTER_CUT_OFFSET_MM:.0f} mm · 폭 전체 한 줄 · 셀 위). "
         f"남은 것은 그 창({starter_cut_window_mm()[0]}~"
@@ -782,7 +988,6 @@ def summary() -> dict[str, object]:
         "heatSavesUs": heat_saves_us(),
         "peelForceN": peel_force_n(),
         "bladeCount": BLADE_COUNT,
-        "stripWidthMm": strip_width_mm(),
         "stripOrientation": STRIP_ORIENTATION,
         "peelTravelMm": peel_travel_mm(),
         "peelForcePerBladeN": peel_force_per_blade_n(),
@@ -793,9 +998,26 @@ def summary() -> dict[str, object]:
         "deflectionRatio": deflection_ratio(),
         "stiffnessBeatsForce": stiffness_beats_force_as_the_reason(),
         "bladeLayout": BLADE_LAYOUT,
-        "staggerPitchAllEngageBelowMm": stagger_pitch_below_which_all_engage_mm(),
+        "knifeWidthMm": knife_width_mm(),
+        "bladeLengthSumMm": blade_length_sum_mm(),
+        "overhangEachSideMm": overhang_each_side_mm(),
+        "centerBladeMm": CENTER_BLADE_MM,
+        "stepBladeMm": STEP_BLADE_MM,
+        "staggerSteps": STAGGER_STEPS,
+        "staggerRiseMm": STAGGER_RISE_MM,
+        "staggerSpreadMm": stagger_spread_mm(),
+        "bladeLapMm": BLADE_LAP_MM,
+        "bladeLandMm": BLADE_LAND_MM,
+        "bladeWedgeDeg": BLADE_WEDGE_DEG,
+        "stripWidthsMm": list(strip_widths_mm()),
+        "widestStripMm": widest_strip_mm(),
+        "engagedWidthMm": engaged_width_mm(),
+        "riseBelowWhichAllEngageMm": rise_below_which_all_engage_mm(),
+        "allBladesEngageAtOnce": all_blades_engage_at_once(),
+        "spanRatio": span_ratio(),
         "loadRiseIsDividedBy": load_rise_is_divided_by(),
         "staircaseSplitsTheSupports": the_staircase_splits_the_supports_for_us(),
+        "mirrorIsStillAMirror": the_mirror_must_become_a_delegation(),
         "peelForceFreshN": peel_force_n(aged=False),
         "peelForceHeatedN": heat_brings_it_to_n(),
         "weakPlaneForceN": peel_force_n(weakest_interface()),
