@@ -24,6 +24,7 @@
 
 from __future__ import annotations
 
+import inspect
 import math
 import unittest
 
@@ -504,6 +505,67 @@ class TestTheBeltMeetsSiliconeFirst(unittest.TestCase):
             self.assertNotIn(guess, names)
         text = " ".join(br_abrade.the_sealant_has_no_destination())
         self.assertIn("추측으로 행을 만들지 않는다", text)
+
+
+class TestTheOrderIsSealantThenGrindThenGlass(unittest.TestCase):
+    """발주처가 세 걸음을 정했다 — 실란트 → 백시트 → 유리."""
+
+    def test_the_chain_has_the_scraper_before_this_unit(self):
+        self.assertIn(br_abrade.PRIOR_UNIT, br_abrade.LINE_ORDER)
+        self.assertLess(br_abrade.LINE_ORDER.index(br_abrade.PRIOR_UNIT),
+                        br_abrade.LINE_ORDER.index("BR-305 백시트 연마"))
+        self.assertLess(br_abrade.LINE_ORDER.index("BR-305 백시트 연마"),
+                        br_abrade.LINE_ORDER.index("유리 제거"))
+
+    def test_the_predicate_reads_the_order_not_a_literal(self):
+        """순서에서 계산한다 — 뒤집으면 스스로 거짓이 된다."""
+        self.assertTrue(br_abrade.the_sealant_is_gone_before_the_belt())
+
+    def test_the_order_closes_the_step_this_unit_cannot_fix(self):
+        """단차를 닫는 것이 이 유닛이 아니라 앞 걸음이라는 것."""
+        self.assertGreater(br_abrade.sealant_step_vs_platen_follow(), 1.0)
+        text = " ".join(br_abrade.the_order_closes_the_step_not_a_machine())
+        self.assertIn("순서가", text)
+        self.assertIn("이 유닛 안에서 고칠 수 있는 값이 아니다", text)
+
+    def test_the_reverse_order_is_blocked_on_both_sides(self):
+        """양쪽이 막혀 있다 — 한쪽만 들면 근거가 반쪽이다."""
+        text = " ".join(br_abrade.the_order_closes_the_step_not_a_machine())
+        self.assertIn("뒤집으면", text)          # 벨트가 실리콘을 먼저 만난다
+        self.assertIn("되돌아가는 쪽도", text)    # 슈가 얹힐 백시트가 없다
+
+    def test_the_scrape_error_lands_where_this_unit_will_grind(self):
+        """이 순서가 스크레이퍼에게 사 주는 여유 — 값으로 확인한다."""
+        tol = sg_grind.blade_assembly_tol_mm()
+        self.assertLess(tol, br_abrade.BACKSHEET_T_MM)
+        self.assertTrue(sg_grind.backsheet_survives_scraping())
+        text = " ".join(br_abrade.the_scrape_error_lands_on_a_layer_that_leaves())
+        self.assertIn("다음 걸음에서 통째로 없어진다", text)
+
+    def test_the_band_requirement_widens_but_the_blade_covers_it(self):
+        """요구가 어깨 몫에서 띠 전체로 넓어지는데 공구는 그대로다."""
+        wheel, belt, blade = sg_grind.the_band_requirement_widened()
+        self.assertGreater(belt, wheel)
+        self.assertGreaterEqual(blade, belt)
+        text = " ".join(br_abrade.the_band_must_go_whole_now())
+        self.assertIn("공구를 안 바꿔도 된다", text)
+
+    def test_the_belt_calculation_is_marked_as_not_a_live_defect(self):
+        """살아 있는 결함으로 읽히면 안 된다 — 순서가 닫았다고 적혀야 한다."""
+        doc = inspect.getdoc(br_abrade.the_belt_meets_silicone_first)
+        self.assertIn("살아 있는 결함이 아니다", doc)
+        self.assertIn("그 걸음을 빼면 이 수들이 그대로 돌아온다", doc)
+
+    def test_the_carriers_question_is_left_open(self):
+        """스크레이퍼의 거처가 열려 있다고 적는다 — 이 순서가 그것에 걸려 있다."""
+        text = " ".join(br_abrade.what_this_order_leaves_open())
+        self.assertIn("자기 캐리어", text)
+        self.assertIn("sg_grind.the_scraper_outlives_its_host", text)
+
+    def test_the_two_step_record_points_at_the_three_step_one(self):
+        """옛 두 걸음 기록이 세 걸음을 가리켜야 한다 — 안 그러면 오독한다."""
+        doc = inspect.getdoc(br_abrade.the_order_is_grind_then_peel)
+        self.assertIn("the_order_is_sealant_then_grind_then_glass", doc)
 
 
 class TestTheUnitDrawsItself(unittest.TestCase):

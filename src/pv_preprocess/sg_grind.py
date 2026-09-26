@@ -443,12 +443,66 @@ def the_scrapers_reason_was_the_wheel() -> tuple[str, ...]:
         "그래도 실란트는 나가야 한다 — 근거가 휠에서 **BR-305 의 벨트**로 "
         "옮겨간다. 그쪽은 `br_abrade.the_belt_meets_silicone_first()` 가 센다 "
         "(이 모듈은 br_abrade 를 import 할 수 없다 — 그쪽이 이쪽을 읽는다).",
+        f"**발주처가 이 걸음을 살렸다** (`SCRAPER_KEPT_BY_PLANT` = "
+        f"{SCRAPER_KEPT_BY_PLANT}) — 실란트 → 백시트 연마 → 유리 제거. "
+        "그러니 SR-302 는 남는다. 다만 **남는 근거가 바뀌었다**는 것이 "
+        "이 절의 요지다.",
     )
+
+
+def the_scraper_outlives_its_host() -> tuple[str, ...]:
+    """SR-302 는 남는데 그것을 태우고 있던 휠은 목적이 없다 — 거처가 열린다.
+
+    이 모듈에서 SR-302 는 **SG-301 헤드에 달린 부품**이다. 옵션이 아니라
+    동승이라 리드가 `cycle()` 안에 있고 `occupancy_s()` 가 그것을 물고 있다.
+    그 전제가 「휠이 간다」였다.
+
+    발주처가 날은 살렸고 아리스는 요구하지 않았다. 두 답이 **서로 다른 방향**을
+    가리킨다 — 걸음은 남고 그 걸음을 태울 것은 근거를 잃었다. 그래서 여기서
+    판정하지 않고, 무엇이 열리는지만 적는다.
+    """
+    return (
+        f"**날은 남는다** — `SCRAPER_KEPT_BY_PLANT` = {SCRAPER_KEPT_BY_PLANT}.",
+        f"**휠은 목적이 없다** — `ARRIS_REQUIRED_BY_PLANT` = "
+        f"{ARRIS_REQUIRED_BY_PLANT}. 남는 후보는 끝면 살 {STOCK_MM} mm 뿐이다.",
+        f"**리드 {BLADE_LEAD_MM:.0f} mm 는 휠 때문에 있었다** — 「휠이 오기 전에 "
+        f"그 자리가 비어 있어야 한다」. 점유 {occupancy_s()} s 중 "
+        f"{scraper_lead_cost_s()} s 가 그 리드다. 휠이 없으면 리드가 근거를 "
+        f"잃고 점유는 {occupancy_without_scraper_s()} s 쪽으로 간다 — 다만 그때 "
+        "남는 통과는 **연마 통과가 아니라 긁는 통과**라 이 값을 그대로 쓰면 안 "
+        "된다. 스크레이퍼만의 점유는 아직 안 풀었다.",
+        "**날이 어디에 실리는가가 열린 물음이다** — 휠 없는 헤드에 그대로 "
+        "두는지, 자기 캐리어를 갖는지, 다른 스테이션에 붙는지. 셋 다 이 "
+        "모듈의 값을 바꾼다. **추측해서 고르지 않는다.**",
+    )
+
+
+def the_band_requirement_widened() -> tuple[float, float, float]:
+    """띠에서 걷어야 하는 폭이 (휠 기준, 벨트 기준, 날 폭) — 단위 mm.
+
+    근거가 휠에서 벨트로 옮겨가면서 요구가 넓어진다. 휠은 어깨가 들어갈 만큼만
+    필요했고, 벨트는 면을 통째로 지나가므로 띠 전체가 나가야 한다.
+
+    **공구를 안 바꿔도 된다** — 날 폭이 애초에 어깨가 아니라 띠를 기준으로
+    잡혀 있었기 때문이다(`BLADE_WIDTH_MM = SEALANT_BAND_MM + 4`).
+    """
+    return (sealant_must_go_first_mm(), float(SEALANT_BAND_MM), BLADE_WIDTH_MM)
+
+
+def the_blade_already_covers_the_wider_requirement() -> bool:
+    """넓어진 요구를 지금 날이 덮는가 — 덮어야 공구 변경이 없다."""
+    _, needed, have = the_band_requirement_widened()
+    return have >= needed
 
 
 def what_the_absent_arris_leaves_open() -> tuple[tuple[str, str], ...]:
     """아리스 요구가 없다는 사실이 **열어 놓는** 것 — 내가 답하지 않는다."""
     return (
+        ("SR-302 가 어디에 실리는가",
+         f"발주처가 날은 살렸는데(`SCRAPER_KEPT_BY_PLANT` = "
+         f"{SCRAPER_KEPT_BY_PLANT}) 그것을 태우고 있던 휠은 요구가 없다. "
+         "동승이 전제였으므로 숙주가 빠지면 캐리어를 새로 정해야 하고 점유도 "
+         "다시 풀어야 한다 — `the_scraper_outlives_its_host()`."),
         ("SG-301 이 남는가",
          "엣지 연마의 목적이 아리스였다면 목적이 없어진다. 남는 후보는 끝면 "
          f"살 {STOCK_MM} mm 뿐이고 그것은 단면의 "
@@ -718,6 +772,12 @@ def open_questions() -> tuple[tuple[str, str], ...]:
         f"전량이 남으면 띠 두께가 {SEALANT_FACE_T_MM} mm 로 두 배가 되고 긁는 "
         f"힘은 그대로지만(계면 일이라 두께와 무관) 부스러기 부피가 두 배다 — "
         "회수함 용량이 그만큼 든다."))
+    if SCRAPER_KEPT_BY_PLANT and not ARRIS_REQUIRED_BY_PLANT:
+        out.append((
+            "날은 남는데 그것을 태운 휠은 요구가 없다",
+            f"SR-302 는 헤드 동승이 전제인데 숙주의 목적이 없어졌다. 리드 "
+            f"{BLADE_LEAD_MM:.0f} mm ({scraper_lead_cost_s()} s) 도 휠 때문에 "
+            "있었다. 캐리어를 정하기 전에는 이 유닛의 점유가 안 풀린다."))
     if not ARRIS_REQUIRED_BY_PLANT:
         out.append((
             "아리스를 요구하는 공정이 없다",
@@ -792,6 +852,14 @@ BAND_DISPLAY_MAG = 20.0
 #: 걷은 실란트를 갈아내려 했다면 필요했을 비에너지 (J/mm³) — 계획값.
 #: 이 값은 **쓰지 않는다.** 긁는 쪽과 견주려고만 둔다.
 SEALANT_ABRADE_J_MM3 = 8.0
+
+#: 발주처가 **「SR-302 를 살린 안」**을 골랐다 — 실란트 제거를 백시트 연마로
+#: 갈음하지 않고 둘을 차례로 세운다: 실란트 → 백시트 연마 → 유리 제거.
+#:
+#: 받은 값이고 내가 정한 것이 아니다. 이 걸음이 남는다는 것과 **그 걸음이
+#: 어디에 실리는가**는 다른 물음이다 — 후자는 아직 안 들었다
+#: (`the_scraper_outlives_its_host()`).
+SCRAPER_KEPT_BY_PLANT = True
 
 
 def sealant_gc_n_mm() -> float:
@@ -1778,6 +1846,7 @@ def summary() -> dict[str, object]:
         "brittlenessRatio": brittleness_ratio(lf),
         "arrisIsRequired": arris_is_required(),
         "arrisRequiredByPlant": ARRIS_REQUIRED_BY_PLANT,
+        "scraperKeptByPlant": SCRAPER_KEPT_BY_PLANT,
         "normalForceN": normal_force_n(lf),
         "contactPressureMpa": contact_pressure_mpa(lf),
         "reliefCoversTolerance": relief_covers_tolerance(),

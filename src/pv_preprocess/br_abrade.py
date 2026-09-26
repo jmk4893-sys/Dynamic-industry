@@ -27,6 +27,13 @@
 압반이 면을 타므로 깊이가 **접촉**으로 잡힌다. `why_this_beats_peeling()` 이
 그 비교를 든다. 그리고 그것은 슈처럼 **붙이는 것이 아니라 기구 그 자체**다.
 
+그 뒤 발주처가 앞 걸음도 정했다: **실란트 제거를 이 유닛으로 갈음하지 않고**
+그대로 둔다. 그래서 순서는 세 걸음이다 — **실란트(SR-302) → 백시트(이 유닛) →
+유리**. 이 유닛에게 그것이 중요한 이유는 하나다: 인발이 면에 남긴 실란트 띠가
+백시트보다 0.43 mm 솟아 있어 **벨트가 백시트보다 그것을 먼저 만나는데**, 압반
+추종 0.08 mm 로는 그 단차를 못 따라간다. 그 문제를 기계가 아니라 **순서가**
+닫는다 — `the_order_closes_the_step_not_a_machine()`.
+
 **판정은 내가 만들지 않았다** — 발주처가 정한 것을 받아 적는다.
 
 그러니 **파쇄 전에, 붙어 있는 채로** 걷어내야 한다. 그것이 이 유닛이다.
@@ -440,12 +447,24 @@ def combustible_fraction_after() -> float:
 #   셀모듈을 유리에서 뗀다. 한때 `br_peel`(BR-306)과 같은 자리를 두고 겨루는
 #   대안이었는데 그 구도가 없어졌다 — 둘은 서로 다른 관문을 맡는다.
 
+#: 이 유닛 **앞**에 오는 것 — 발주처가 「SR-302 를 살린 안」을 골랐다.
+#: 실란트 제거를 백시트 연마로 갈음하지 **않고** 둘을 차례로 세운다.
+PRIOR_UNIT = "SR-302 잔사 스크레이퍼 (실란트 띠)"
 #: 이 유닛 다음에 오는 것 — 계단형 핫나이프가 셀모듈을 유리에서 뗀다.
 NEXT_UNIT = "계단형 핫나이프 (셀모듈 ↔ 유리)"
 
+#: 발주처가 정한 공정 순서. **세 걸음이고 이 유닛이 가운데다.**
+#: 유리 제거가 `NEXT_UNIT` 과 같은 기계인지 GRM-401 이 따로 서는지는
+#: 아직 안 들었다 — `what_this_order_leaves_open()` 이 그것을 든다.
+LINE_ORDER = ("AFR-101 정치", PRIOR_UNIT, "BR-305 백시트 연마", "유리 제거")
+
 
 def the_order_is_grind_then_peel() -> tuple[str, ...]:
-    """정해진 순서와 각자가 맡는 관문 — 경쟁이 아니라 순차다."""
+    """정해진 순서와 각자가 맡는 관문 — 경쟁이 아니라 순차다.
+
+    이것은 세 걸음 중 **뒤 둘**이다. 앞에 실란트가 한 걸음 더 서는 것이
+    `the_order_is_sealant_then_grind_then_glass()` 이다.
+    """
     from . import separation
     return (
         f"**① 이 유닛(연마)** — 백시트를 면에서 걷어 **{gate_this_unit_owns()}** "
@@ -457,6 +476,97 @@ def the_order_is_grind_then_peel() -> tuple[str, ...]:
         f"관문 소유는 `separation.gate_owner()` 가 정본이다 — 백시트는 "
         f"{separation.gate_owner('backsheet')}, 유리는 "
         f"{separation.gate_owner('glass')}.",
+    )
+
+
+def the_order_is_sealant_then_grind_then_glass() -> tuple[str, ...]:
+    """발주처가 고른 세 걸음 — 실란트 → 백시트 → 유리.
+
+    두 안이 있었다. 실란트 제거를 이 유닛으로 **갈음하는** 안과, 실란트를
+    그대로 두고 이 유닛을 **그 뒤에 세우는** 안. 발주처가 뒤쪽을 골랐다.
+
+    갈음하는 안이 아니라는 것이 이 유닛에 중요하다 — 실란트가 남은 면을
+    벨트가 지나가면 띠가 먼저 닿기 때문이다(`the_belt_meets_silicone_first()`).
+    그 문제를 **기계가 아니라 순서가** 닫는다.
+    """
+    return (
+        f"**① {PRIOR_UNIT}** — 프레임 인발이 면에 남긴 띠를 긁어낸다. "
+        f"슈가 **백시트 면에 얹혀** 깊이를 잡는다.",
+        f"**② BR-305 (이 유닛)** — 띠가 없어진 면을 벨트가 지나가며 백시트를 "
+        f"걷고 **{gate_this_unit_owns()}** 관문을 닫는다.",
+        f"**③ 유리 제거** — {NEXT_UNIT}. 백시트가 없어진 판에서 셀모듈을 "
+        "유리에서 뗀다.",
+        "**세 걸음이 전부 접촉으로 멈춘다.** 스크레이퍼는 슈가 백시트를, 연마는 "
+        "압반이 판 면을, 칼날은 랜드가 유리를 탄다 — 어느 것도 재지 않는다.",
+    )
+
+
+def the_sealant_is_gone_before_the_belt() -> bool:
+    """벨트가 오기 전에 띠가 걷혀 있는가 — 순서가 참으로 만든다."""
+    return PRIOR_UNIT in LINE_ORDER and (
+        LINE_ORDER.index(PRIOR_UNIT) < LINE_ORDER.index("BR-305 백시트 연마"))
+
+
+def the_order_closes_the_step_not_a_machine() -> tuple[str, ...]:
+    """0.43 mm 단차를 무엇이 닫는가 — 이 유닛이 아니라 앞 걸음이다.
+
+    이 유닛은 그 단차에 대해 **아무것도 할 수 없다.** 압반 추종은 0.08 mm 이고
+    그것을 키우면 깊이 제어가 같이 풀린다. 그러니 닫는 방법은 하나뿐이다 —
+    벨트가 오기 전에 띠가 없어져 있는 것.
+    """
+    return (
+        f"**단차는 {sealant_step_over_backsheet_mm()} mm 이고 추종은 "
+        f"{PLATEN_FOLLOW_MM} mm 다** — {sealant_step_vs_platen_follow()} 배. "
+        "이 유닛 안에서 고칠 수 있는 값이 아니다.",
+        f"**앞 걸음이 그것을 걷는다** — `the_sealant_is_gone_before_the_belt()` = "
+        f"{the_sealant_is_gone_before_the_belt()}. 기계를 더 사는 것이 아니라 "
+        "순서가 닫는다.",
+        "**그래서 이 순서는 취향이 아니다.** 뒤집으면 벨트가 실리콘을 먼저 "
+        "만나고 띠 위에서 깊이 제어가 성립하지 않는다.",
+        "**되돌아가는 쪽도 막혀 있다** — 연마를 먼저 하면 스크레이퍼의 슈가 "
+        f"얹힐 백시트가 없어져 EVA {BACK_EVA_T_MM} mm 면에 앉는다. 그 면이 "
+        "가열에서 어떻게 거동하는지는 아직 모르는 항목이다.",
+    )
+
+
+def the_scrape_error_lands_on_a_layer_that_leaves() -> tuple[str, ...]:
+    """이 순서가 스크레이퍼에게 사 주는 것 — 깊이 오차가 어차피 없어질 층에 떨어진다.
+
+    `why_this_beats_peeling()` 의 ② 와 같은 모양이다. 실패가 되돌릴 수 있는
+    쪽에 서면 공차를 싸게 살 수 있다.
+    """
+    tol = sg_grind.blade_assembly_tol_mm()
+    return (
+        f"**날 깊이 오차 {tol} mm 가 백시트 {BACKSHEET_T_MM} mm 안에 있다** — "
+        f"여유 {round(BACKSHEET_T_MM - tol, 3)} mm "
+        f"(`sg_grind.backsheet_survives_scraping()` = "
+        f"{sg_grind.backsheet_survives_scraping()}).",
+        "**넘쳐도 이 유닛이 그 자리를 걷는다.** 스크레이퍼가 백시트를 파고들어도 "
+        "그 층은 다음 걸음에서 통째로 없어진다 — 급광에 없던 것을 새로 만들지 "
+        "않는다.",
+        "**뒤집힌 순서에서는 이 논증이 없다.** 연마 뒤에 긁으면 오차가 EVA 에 "
+        "떨어지고 그 밑이 셀이다. 사라질 층이 아니다.",
+    )
+
+
+def the_band_must_go_whole_now() -> tuple[str, ...]:
+    """요구 폭이 6 → 20 mm 로 넓어진다 — 그런데 날이 이미 그것을 덮는다.
+
+    휠이 근거였을 때 필요한 것은 **어깨가 들어갈 만큼**이었다
+    (`sg_grind.sealant_must_go_first_mm()`). 벨트가 근거가 되면 면을 통째로
+    지나가므로 **띠 전체**가 나가야 한다.
+    """
+    need_for_wheel = sg_grind.sealant_must_go_first_mm()
+    band = float(sg_grind.SEALANT_BAND_MM)
+    return (
+        f"**휠 기준 요구는 {need_for_wheel} mm** 였다 — 플랜지가 면 위로 "
+        "걸쳐 나오는 길이만큼.",
+        f"**벨트 기준 요구는 띠 전체 {band:.0f} mm** 다. 벨트는 면을 다 지나가니 "
+        "부분만 걷어도 남은 자리에서 같은 단차를 만난다.",
+        f"**날 폭 {sg_grind.BLADE_WIDTH_MM:.0f} mm 가 이미 그것을 덮는다** "
+        f"(띠 + {sg_grind.BLADE_WIDTH_MM - band:.0f} mm). 요구가 "
+        f"{band / need_for_wheel:.1f} 배로 넓어졌는데 공구를 안 바꿔도 된다 — "
+        "날 폭이 애초에 휠 어깨가 아니라 **띠**를 기준으로 잡혀 있었기 때문이다.",
     )
 
 
@@ -523,6 +633,11 @@ def what_this_order_leaves_open() -> tuple[str, ...]:
         f"**{NEXT_UNIT} 가 유리 관문의 기존 주인과 어떤 관계인지 안 들었다** — "
         "같은 기계인지, 앞에 서는지. `separation.gate_owner('glass')` 는 아직 "
         "옛 주인을 든다. **추측해서 바꾸지 않는다.**",
+        f"**{PRIOR_UNIT} 가 어디에 실리는지 안 들었다.** 지금 모델에서 그 날은 "
+        "SG-301 형상휠 헤드에 동승하는 부품인데, 그 휠의 목적이었던 아리스는 "
+        "공정 요구가 없다(`sg_grind.ARRIS_REQUIRED_BY_PLANT`). 숙주가 빠지면 "
+        "날에 **자기 캐리어**가 필요하다 — 이 순서가 성립하려면 그 걸음이 "
+        "실제로 서야 한다. `sg_grind.the_scraper_outlives_its_host()`.",
     )
 
 
@@ -564,6 +679,11 @@ def the_belt_meets_silicone_first() -> tuple[str, ...]:
 
     이 근거는 아리스와 독립이다. 아리스가 없어도, SG-301 이 없어도 성립한다 —
     이 유닛의 벨트가 지나가는 면이 띠가 남아 있는 면이기 때문이다.
+
+    **지금 라인에서 이것은 살아 있는 결함이 아니다.** 발주처가 실란트를 앞
+    걸음으로 세웠으므로(`the_sealant_is_gone_before_the_belt()`) 벨트가 올 때
+    띠는 없다. 이 함수가 세는 것은 **왜 그 걸음이 앞에 서야 하는가**이고,
+    그 걸음을 빼면 이 수들이 그대로 돌아온다.
     """
     return (
         f"**띠가 백시트보다 {sealant_step_over_backsheet_mm()} mm 솟아 있다.** "

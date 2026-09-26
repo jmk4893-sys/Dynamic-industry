@@ -179,6 +179,18 @@ def spec_payload() -> str:
                   "'불연' 선언이 그대로 선다"],
             ["Gc 여유", f"면 허용 압착력이 감당하는 상한이 **{g.max_gc_the_face_limit_allows()} "
                     f"N/mm** — 계획값 {g.sealant_gc_n_mm()} 의 {g.gc_margin()} 배"],
+            ["공정 순서", "발주처가 **이 걸음을 살렸다** — 실란트(SR-302) → "
+                     "백시트 연마(BR-305) → 유리 제거. 띠를 먼저 걷는 이유가 "
+                     f"휠이 아니라 **BR-305 의 벨트**다: 띠가 백시트보다 "
+                     f"{g.sealant_left_t_mm() - g.BACKSHEET_T_MM:.2f} mm 솟아 있어 "
+                     "압반 추종으로는 못 따라간다"],
+            ["넓어진 요구", f"휠 기준 **{g.sealant_must_go_first_mm():.0f} mm**(어깨 몫) → "
+                      f"벨트 기준 **띠 전체 {g.SEALANT_BAND_MM:.0f} mm**. 날 폭 "
+                      f"{g.BLADE_WIDTH_MM:.0f} mm 가 이미 덮으므로 공구는 그대로다"],
+            ["열린 것", f"아리스 공정 요구가 없어(`{g.ARRIS_REQUIRED_BY_PLANT}`) "
+                    f"이 날을 태운 휠이 근거를 잃었다. 리드 {g.BLADE_LEAD_MM:.0f} mm "
+                    f"({g.scraper_lead_cost_s()} s)도 휠 때문이었다 — **날의 "
+                    "거처가 미결이다**"],
         ],
     }, ensure_ascii=False, separators=(",", ":"))
 

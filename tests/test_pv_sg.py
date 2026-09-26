@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import inspect
 import math
 import pathlib
 import unittest
@@ -544,7 +545,9 @@ class TestTheScraperThatClearsTheBand(unittest.TestCase):
         # 발주처가 아리스 요구 없음을 확인하면서 넷째가 들어왔다 — 공구가 아니라
         # **요구**가 없어져서 생긴 미결이라 위 셋과 종류가 다르다.
         self.assertIn("아리스를 요구하는 공정이 없다", titles)
-        self.assertEqual(len(titles), 4)
+        # 다섯째 — 발주처가 날은 살렸는데 그 날을 태운 휠은 요구가 없다.
+        self.assertIn("날은 남는데 그것을 태운 휠은 요구가 없다", titles)
+        self.assertEqual(len(titles), 5)
 
     def test_the_gc_headroom_is_stated_not_assumed(self):
         """Gc 가 얼마까지 오르면 허용 압착력을 넘는가 — 그 값을 내놓는다."""
@@ -773,7 +776,6 @@ class TestThePlantDoesNotRequireTheArris(unittest.TestCase):
 
     def test_the_scrapers_stated_reason_was_the_wheel(self):
         """발견을 적어 둔다 — SR-302 의 근거로 적혀 있던 것이 휠뿐이었다."""
-        import inspect
         for fn in (sg_grind.sealant_must_go_first_mm, sg_grind.scraper_unit):
             self.assertIn("휠", inspect.getdoc(fn))
         text = " ".join(sg_grind.the_scrapers_reason_was_the_wheel())
@@ -797,6 +799,59 @@ class TestThePlantDoesNotRequireTheArris(unittest.TestCase):
         s = sg_grind.summary()
         self.assertIs(s["arrisIsRequired"], True)
         self.assertIs(s["arrisRequiredByPlant"], False)
+
+
+class TestTheScraperSurvivesTheWheel(unittest.TestCase):
+    """발주처가 「SR-302 를 살린 안」을 골랐다 — 걸음은 남고 숙주는 근거를 잃었다."""
+
+    def test_the_two_decisions_point_different_ways(self):
+        """날은 살리고 아리스는 요구하지 않았다 — 두 답이 같은 방향이 아니다."""
+        self.assertTrue(sg_grind.SCRAPER_KEPT_BY_PLANT)
+        self.assertFalse(sg_grind.ARRIS_REQUIRED_BY_PLANT)
+
+    def test_the_lead_exists_for_the_wheel(self):
+        """리드가 휠 때문에 있었다는 것 — 점유에 얼마가 실려 있는지 센다."""
+        self.assertIn("휠", inspect.getdoc(sg_grind.scraper_lead_cost_s))
+        self.assertGreater(sg_grind.scraper_lead_cost_s(), 0.0)
+        self.assertAlmostEqual(
+            sg_grind.occupancy_without_scraper_s(),
+            sg_grind.occupancy_s() - sg_grind.scraper_lead_cost_s(), places=2)
+
+    def test_it_does_not_repurpose_the_occupancy_number(self):
+        """휠이 빠진 뒤의 점유를 아직 안 풀었다고 적는다 — 그 수를 재활용하지 않는다."""
+        text = " ".join(sg_grind.the_scraper_outlives_its_host())
+        self.assertIn("이 값을 그대로 쓰면 안", text)
+        self.assertIn("아직 안 풀었다", text)
+
+    def test_it_does_not_pick_a_carrier(self):
+        """거처를 셋 중에서 고르지 않는다 — 추측이 아니라 미결이다."""
+        text = " ".join(sg_grind.the_scraper_outlives_its_host())
+        self.assertIn("추측해서 고르지 않는다", text)
+        titles = [t for t, _ in sg_grind.what_the_absent_arris_leaves_open()]
+        self.assertIn("SR-302 가 어디에 실리는가", titles)
+
+    def test_the_requirement_widened_from_shoulder_to_band(self):
+        """근거가 옮겨가며 요구 폭이 넓어진다 — 어깨 몫에서 띠 전체로."""
+        wheel, belt, blade = sg_grind.the_band_requirement_widened()
+        self.assertEqual(wheel, sg_grind.sealant_must_go_first_mm())
+        self.assertEqual(belt, float(sg_grind.SEALANT_BAND_MM))
+        self.assertGreater(belt, wheel)
+        self.assertEqual(blade, sg_grind.BLADE_WIDTH_MM)
+
+    def test_the_existing_blade_already_covers_it(self):
+        """공구를 안 바꿔도 되는 이유 — 날 폭이 애초에 띠 기준이었다."""
+        self.assertTrue(sg_grind.the_blade_already_covers_the_wider_requirement())
+        self.assertEqual(sg_grind.BLADE_WIDTH_MM,
+                         sg_grind.SEALANT_BAND_MM + 4.0)
+
+    def test_the_open_question_is_computed_from_the_two_constants(self):
+        """미결이 두 상수에서 나온다 — 한쪽이 바뀌면 스스로 닫힌다."""
+        titles = [t for t, _ in sg_grind.open_questions()]
+        self.assertIn("날은 남는데 그것을 태운 휠은 요구가 없다", titles)
+
+    def test_the_summary_carries_the_decision(self):
+        s = sg_grind.summary()
+        self.assertIs(s["scraperKeptByPlant"], True)
 
 
 class TestCloseupDrawing(unittest.TestCase):
