@@ -142,6 +142,10 @@ VACUUM_KPA = 20.0
 TABLE_FRICTION = 0.5
 #: 판이 서고 헤드가 가는가 — 진공 테이블은 판을 세워야 성립한다.
 PANEL_MOVES = False
+#: 갠트리 양끝 오버트래블 (mm) — 헤드가 판 밖에서 가·감속할 자리.
+GANTRY_OVERTRAVEL_MM = 400.0
+#: 프레임이 행정 밖으로 더 나가는 길이 (mm, 한쪽).
+FRAME_END_MM = 450.0
 #: 흡착 배기 + 해제에 드는 시간 (s) — **계획값**. 판이 서므로 이 시간이
 #: 통과 시간에서 빠진다. 아래 `vacuum_budget_s()` 가 상한을 낸다.
 VACUUM_CYCLE_S = 6.0
@@ -461,6 +465,38 @@ def the_platen_is_replaced_by_the_table() -> tuple[str, ...]:
 
 
 # ── 판이 서면 시간이 어떻게 갈리는가 ────────────────────────────────────
+def gantry_stroke_mm() -> float:
+    """갠트리가 왕복해야 하는 거리 (mm).
+
+    판이 서 있으므로 **헤드가 판을 다 건너야 한다.** 뒤쪽 헤드가 판 끝을
+    지나려면 앞쪽 헤드는 이미 헤드 간격만큼 더 나가 있어야 하고, 양끝에
+    오버트래블이 든다.
+    """
+    return round(float(campaign.PANEL_LENGTH_MM) + HEAD_PITCH_MM
+                 + 2.0 * GANTRY_OVERTRAVEL_MM, 1)
+
+
+def machine_length_mm() -> float:
+    """그래서 기계가 차지하는 길이 (mm) — 행정에 갠트리 폭과 프레임이 붙는다."""
+    return round(gantry_stroke_mm() + 2.0 * FRAME_END_MM, 1)
+
+
+def the_gantry_is_why_the_machine_is_long() -> tuple[str, ...]:
+    """판을 세운 값 — 기계 길이로 돌아온다."""
+    return (
+        f"**판이 서므로 헤드가 건넌다.** 행정이 판 길이 "
+        f"{campaign.PANEL_LENGTH_MM:,.0f} 에 헤드 간격 {HEAD_PITCH_MM:,.0f} 과 "
+        f"오버트래블 {GANTRY_OVERTRAVEL_MM:,.0f}×2 를 더해 "
+        f"**{gantry_stroke_mm():,.0f} mm** 다.",
+        f"**기계 길이가 {machine_length_mm():,.0f} mm** 로 판 길이의 "
+        f"{machine_length_mm() / float(campaign.PANEL_LENGTH_MM):.1f} 배가 된다. "
+        "through-feed 는 판이 지나가므로 이 길이가 안 들었다 — 진공 테이블이 "
+        "사 온 것의 또 다른 값이다.",
+        f"**통과 거리는 행정이 아니다.** 벨트가 실제로 물고 가는 것은 판 길이 "
+        f"+ 리드 = {pass_length_mm():,.0f} mm 이고, 시간은 그쪽에서 나온다.",
+    )
+
+
 def vacuum_budget_s(max_feed_m_min: float = 5.0) -> float:
     """기계 이송 상한을 지키면서 흡착·해제에 쓸 수 있는 시간 (s).
 
@@ -1328,18 +1364,22 @@ def unit() -> Unit:
     belt_y = BELT_T_MM / 2.0                                 # 벨트가 판 위에 얹힌다
     drum_y = BELT_T_MM + CONTACT_DRUM_D_MM / 2.0
     parts: list[Part] = [
-        Part("frame", "본체 프레임", 1, "box", (3_400.0, 1_500.0, w + 400.0),
+        Part("frame", "본체 프레임", 1, "box",
+             (machine_length_mm(), 1_500.0, w + 400.0),
              (0.0, 480.0, 0.0), "용접구조용강",
              "헤드·압반·이송을 한 몸에 잡는다. 화면에서는 **포락선**으로만 "
              "세운다 — 채우면 안이 안 보인다.",
              color="ghost", explode=(0.0, 900.0, 0.0),
-             spec="3,400 × 2,200 × 2,000", catalog=f"{UNIT_TAG}-FR-01"),
+             spec=f"{machine_length_mm():,.0f} × 1,500 × {w + 400.0:,.0f} — "
+                  f"갠트리 행정 {gantry_stroke_mm():,.0f} 이 길이를 정한다",
+             catalog=f"{UNIT_TAG}-FR-01"),
         Part("panel", "라미네이트 (백시트가 위)", 1, "box",
              (float(campaign.PANEL_LENGTH_MM), t, float(campaign.PANEL_WIDTH_MM)),
              (0.0, -t / 2.0, 0.0), f"유리 t{sg_grind.GLASS_T_MM} + EVA·백시트",
-             f"**윗면이 y = 0** 이다. {feed_mm_s():.1f} mm/s 로 지나가며 두 헤드를 "
-             f"차례로 만난다 — 통과 거리 {pass_length_mm():,.0f} mm, 점유 "
-             f"{occupancy_s()} s.",
+             f"**윗면이 y = 0** 이고, 진공 테이블에 물려 **서 있다.** 움직이는 "
+             f"것은 갠트리다 — 헤드가 {feed_mm_s():.1f} mm/s 로 건너며 두 대가 "
+             f"차례로 같은 자리를 지난다. 통과 거리 {pass_length_mm():,.0f} mm, "
+             f"점유 {occupancy_s()} s.",
              color="aluminum", explode=(0.0, -700.0, 0.0),
              spec=f"{campaign.PANEL_LENGTH_MM:,.0f} × {campaign.PANEL_WIDTH_MM:,.0f} "
                   f"× {t}", catalog="—"),
@@ -1427,6 +1467,17 @@ def unit() -> Unit:
              color="chrome", explode=(0.0, 700.0, 0.0),
              spec=f"Ø{DUCT_D_MM:.0f} · {DUCT_VELOCITY_M_S:.0f} m/s",
              catalog=f"{UNIT_TAG}-DT-01"),
+        Part("gantry", "갠트리 빔 (X 왕복)", 1, "box",
+             (520.0, 260.0, float(campaign.PANEL_WIDTH_MM) + 900.0),
+             (0.0, 420.0, 0.0), "용접 각관",
+             f"헤드 {HEADS} 대를 싣고 **판 위를 건넌다.** 판은 진공 테이블에 "
+             f"물려 서 있으므로 움직이는 것은 이쪽이다 — 행정은 판 길이 "
+             f"{campaign.PANEL_LENGTH_MM:,.0f} 에 헤드 간격 "
+             f"{HEAD_PITCH_MM:,.0f} 과 오버트래블을 더한 값이고, 그래서 기계 "
+             "길이가 판의 두 배 넘게 든다.",
+             color="steel", explode=(0.0, 560.0, 0.0),
+             spec=f"행정 {gantry_stroke_mm():,.0f} mm · {feed_mm_s():.1f} mm/s",
+             catalog=f"{UNIT_TAG}-GT-01"),
         Part("motor", "헤드 주모터", HEADS, "cyl", (320.0, 520.0, 320.0),
              (hx, 300.0, w / 2.0 + 260.0), "IE3 3상유도",
              f"벨트를 돌린다. 헤드당 절삭 {power_per_head_kw()} kW 라 정격이 "
@@ -1441,8 +1492,8 @@ def unit() -> Unit:
         key="br305",
         name=f"{UNIT_TAG} 백시트 면 연마 유닛 — 진공 테이블 · 2 헤드",
         sheet=f"PV-{UNIT_TAG}-ASM-5101",
-        envelope_mm=(3_400.0, 1_500.0, w + 400.0),
-        view_r_mm=1_850.0,
+        envelope_mm=(machine_length_mm(), 1_500.0, w + 400.0),
+        view_r_mm=2_300.0,
         principle=(
             ("① 흡착", f"진공 테이블이 유리면을 {VACUUM_KPA:.0f} kPa 로 빨아 "
                        f"당겨 판을 **펴고 잡는다** ({vacuum_hold_kn()} kN). 프레임은 "

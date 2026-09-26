@@ -160,6 +160,13 @@ def spec_payload() -> str:
             ["헤드 / 벨트", f"{a.HEADS} 대 · {'/'.join(a.GRITS)} · 폭 "
                        f"{a.BELT_WIDTH_MM:.0f} · 주속 **{a.BELT_SPEED_M_S:.0f} m/s** "
                        f"(이송의 {a.BELT_SPEED_M_S * 1000 / a.feed_mm_s():,.0f} 배)"],
+            ["갠트리", f"판이 서므로 **헤드가 건넌다** — 행정 "
+                  f"**{a.gantry_stroke_mm():,.0f} mm** (판 "
+                  f"{campaign.PANEL_LENGTH_MM:,.0f} + 헤드 간격 "
+                  f"{a.HEAD_PITCH_MM:,.0f} + 오버트래블 "
+                  f"{a.GANTRY_OVERTRAVEL_MM:,.0f}×2) · 기계 길이 "
+                  f"**{a.machine_length_mm():,.0f} mm** = 판의 "
+                  f"{a.machine_length_mm() / campaign.PANEL_LENGTH_MM:.1f} 배"],
             ["판이 선다", f"흡착 배기·해제 **{a.VACUUM_CYCLE_S:.0f} s** 가 통과에서 "
                     f"빠져 이송이 {a.feed_m_min()} m/min 으로 올라간다. 예산은 "
                     f"**{a.vacuum_budget_s()} s**(이송 상한 5 m/min 기준) — "
@@ -356,7 +363,8 @@ def scene_script() -> str:
       PANEL_W = {campaign.PANEL_WIDTH_MM}, PANEL_L = {campaign.PANEL_LENGTH_MM},
       MAG = {g.CONTACT_MAG}, DEPTH = {g.TARGET_DEPTH_MM},
       DRUM_RPS = {g.BELT_SPEED_M_S * 1000.0 / (math.pi * g.CONTACT_DRUM_D_MM):.3f},
-      HEADS = {g.HEADS}, PASS = {g.pass_length_mm()};
+      HEADS = {g.HEADS}, PASS = {g.pass_length_mm()},
+      STROKE = {g.gantry_stroke_mm()}, MACHINE_L = {g.machine_length_mm()};
   var chrome = K.M.steel.clone(); chrome.metalness = .62; chrome.roughness = .26;
   /* 포락선은 **틀만** 보이면 된다 — sg 보다 훨씬 비춘다. 여기서는 기계가
      상자 안에 들어 있어서 .38 이면 안이 안 보인다. */
@@ -442,14 +450,18 @@ def scene_script() -> str:
       var k = m.userData.part, h = m.userData.home, d = new S.Vector3(), side = m.userData.side;
       /* 자리 변화는 전부 **mm 로 셈해서 마지막에 m 로 바꾼다** — 씬은 m 다. */
       if (u.key === 'br305') {{
-        /* ① 판이 들어온다 → ②③ 1 단 → ④ 2 단 → ⑤⑥ 나간다.
-           판은 **한 방향으로만** 간다 — 왕복시키면 두 헤드를 두 번 지난다. */
-        var run = Math.max(0, Math.min(1, t / 4));
-        if (k === 'panel') d.x = (1 - run * 2) * PANEL_L / 2;
-        /* 헤드는 물릴 때 내려앉는다 — 절입이 만들어지는 자리가 여기다 */
-        var head = (k === 'belt' || k === 'drum' || k === 'zprobe'
-                    || k === 'airknife' || k === 'hood');
+        /* **판은 진공 테이블에 물려 서 있다.** 움직이는 것은 갠트리다 —
+           through-feed 였을 때와 반대이고, 그래서 기계가 판의 두 배 넘게 길다.
+           ① 흡착 → ② 측정 → ③④⑤ 갠트리가 건넌다 → ⑥⑦⑧ */
+        var head = (k === 'gantry' || k === 'belt' || k === 'drum'
+                    || k === 'zprobe' || k === 'airknife' || k === 'hood'
+                    || k === 'motor');
+        /* 헤드가 물릴 때 내려앉는다 — 절입이 만들어지는 자리가 여기다 */
         if (head) d.y = (1 - Math.max(0, Math.min(1, t))) * 180;
+        /* 건너는 것은 ② 뒤부터다. 행정의 절반씩 좌우로 — 한 방향 주행이다. */
+        var run = Math.max(0, Math.min(1, (t - 2) / 3));
+        if (head) d.x = (run * 2 - 1) * STROKE / 2;
+        /* 테이블은 판을 물고 있으므로 판과 같이 서 있다 (안 움직인다). */
       }} else {{
         /* 접촉부 — 벨트가 내려와 백시트를 먹고, 칩이 떠서 나간다.
            이 유닛은 배율이 걸려 있으므로 이동도 같은 배율로 잰다. */
@@ -647,6 +659,7 @@ def scene_script() -> str:
   window.__pvBrCloseup = {{ units: UNITS.length, cycle: CYCLE,
     feed: {{ mmS: FEED, beltMS: BELT_MS, passMm: PASS }},
     panel: {{ w: PANEL_W, l: PANEL_L }}, mag: MAG, depth: DEPTH, heads: HEADS,
+    gantry: {{ strokeMm: STROKE, machineMm: MACHINE_L }},
     get meshes() {{ return group.children.reduce(function (a, g) {{
       return a + g.children.length; }}, 0); }},
     get active() {{ return active && active.key; }},

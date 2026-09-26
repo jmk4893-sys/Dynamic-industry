@@ -656,6 +656,36 @@ class TestTheUnitStandsUpIn3D(unittest.TestCase):
         self.assertGreater(parts["belt"].pos[1], 0.0)    # 벨트는 판 위
         self.assertGreater(parts["drum"].pos[1], parts["belt"].pos[1])
 
+    def test_the_gantry_moves_because_the_panel_does_not(self):
+        """진공 테이블에 물린 판은 서 있다 — 움직이는 것은 갠트리다."""
+        self.assertFalse(br_abrade.PANEL_MOVES)
+        keys = {p.key for p in br_abrade.unit().parts}
+        self.assertIn("gantry", keys)
+        # 행정은 판을 다 건너고 헤드 간격과 오버트래블을 더한 값이다.
+        self.assertAlmostEqual(
+            br_abrade.gantry_stroke_mm(),
+            campaign.PANEL_LENGTH_MM + br_abrade.HEAD_PITCH_MM
+            + 2 * br_abrade.GANTRY_OVERTRAVEL_MM, places=1)
+        self.assertGreater(br_abrade.gantry_stroke_mm(), campaign.PANEL_LENGTH_MM)
+
+    def test_standing_the_panel_costs_machine_length(self):
+        """판을 세운 값이 기계 길이로 돌아온다 — 공짜가 아니라는 것."""
+        self.assertGreater(br_abrade.machine_length_mm(),
+                           br_abrade.gantry_stroke_mm())
+        self.assertGreater(br_abrade.machine_length_mm(),
+                           2.0 * campaign.PANEL_LENGTH_MM)
+        text = " ".join(br_abrade.the_gantry_is_why_the_machine_is_long())
+        self.assertIn("through-feed 는 판이 지나가므로 이 길이가 안 들었다", text)
+
+    def test_the_stroke_is_not_the_cutting_distance(self):
+        """행정과 통과 거리를 섞으면 시간이 틀린다."""
+        self.assertGreater(br_abrade.gantry_stroke_mm(),
+                           br_abrade.pass_length_mm())
+        # 시간은 통과 거리에서 나온다 — 행정이 아니다.
+        self.assertAlmostEqual(
+            br_abrade.feed_mm_s(),
+            br_abrade.pass_length_mm() / br_abrade.belt_time_s(), places=1)
+
     def test_the_table_covers_the_whole_panel(self):
         """면으로 빨아 당기려면 판을 다 덮어야 한다 — 그게 롤러와의 차이다."""
         parts = {p.key: p for p in br_abrade.unit().parts}

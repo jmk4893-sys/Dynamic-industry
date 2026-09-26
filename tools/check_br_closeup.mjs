@@ -48,6 +48,7 @@ const got = await page.evaluate(() => {
     .map((s) => s.querySelector('b').textContent);
   out.marks = document.querySelectorAll('#br-cu-band .br-cu-mark').length;
   out.band = band; out.heads = A.heads; out.feed = A.feed;
+  out.gantry = A.gantry; out.panel = A.panel;
   out.rows = document.getElementById('br-cu-rows').children.length;
   out.spec = document.getElementById('br-cu-spec').children.length;
   out.stars = (document.getElementById('br-cu').textContent.match(/\*\*/g) || []).length;
@@ -63,14 +64,20 @@ for (const u of ['br305', 'contact']) {
   if (!got.counts[u]) bad.push(`${u}: 부품이 하나도 안 섰다`);
   /* 움직였는가만 보면 단위를 틀려도 통과한다 — sg 쪽에서 한 번 그렇게 당했다:
      자리 변화를 mm 로 셈해 놓고 m 에 그대로 넣어 유리가 1,400 **m** 를 갔는데도
-     '움직인다' 였다. 그래서 위아래를 다 막는다. 판은 제 길이만큼 지나가므로
-     상한은 판 길이(2.5 m)에 여유를 둔 값이다. */
+     '움직인다' 였다. 그래서 위아래를 다 막는다. 움직이는 것이 판이 아니라
+     **갠트리**이므로 상한은 판 길이가 아니라 **행정**에 여유를 둔 값이다. */
+  const cap = u === 'br305' ? got.gantry.strokeMm / 1000 * 1.1 : 3.0;
   if (got.moves[u].m < 0.02) bad.push(`${u}: 단계를 넘겨도 안 움직인다 (최대 ${got.moves[u].m} m)`);
-  if (got.moves[u].m > 3.0) bad.push(`${u}: ${got.moves[u].part} 가 ${got.moves[u].m} m 움직였다`
-    + ' — 판 길이를 넘는다 (mm 를 m 에 넣지 않았는지 볼 것)');
+  if (got.moves[u].m > cap) bad.push(`${u}: ${got.moves[u].part} 가 ${got.moves[u].m} m 움직였다`
+    + ` — 행정 ${cap.toFixed(2)} m 를 넘는다 (mm 를 m 에 넣지 않았는지 볼 것)`);
 }
-/* 판이 정말 통과하는가 — 두 헤드를 지나려면 적어도 헤드 간격만큼은 가야 한다. */
-if (got.moves.br305.m < 1.0) bad.push(`판이 ${got.moves.br305.m} m 만 갔다 — 두 헤드를 안 지난다`);
+/* **판이 아니라 갠트리가 움직여야 한다.** 진공 테이블에 물린 판이 움직이면
+   흡착이 의미가 없다 — 이 검사가 그 뒤집힘을 막는다. */
+if (got.moves.br305.part === 'panel' || got.moves.br305.part === 'table')
+  bad.push(`${got.moves.br305.part} 가 가장 많이 움직였다 — 진공 테이블에 물린 판은 서 있어야 한다`);
+if (got.moves.br305.m < 1.0) bad.push(`갠트리가 ${got.moves.br305.m} m 만 갔다 — 판을 안 건넌다`);
+if (got.gantry.strokeMm < got.panel.l) bad.push(`행정 ${got.gantry.strokeMm} 이 판 길이 ${got.panel.l} 보다 짧다`);
+if (got.gantry.machineMm < got.gantry.strokeMm) bad.push('기계 길이가 행정보다 짧다');
 /* 깊이 창이 계산에서 오는가 */
 if (!(c.lo < c.minCut && c.minCut < c.target && c.target < c.maxCut && c.maxCut < c.hi))
   bad.push(`깊이 창 순서가 깨졌다: ${c.lo} < ${c.minCut} < ${c.target} < ${c.maxCut} < ${c.hi}`);
@@ -102,6 +109,8 @@ console.log(`  유닛 ${got.units} · 부품 메시 br305 ${got.counts.br305}`
   + ` / contact ${got.counts.contact} · 접촉부 배율 ${got.mag}배 · 헤드 ${got.heads}`);
 console.log(`  단계 이동 — br305 ${got.moves.br305.part} ${got.moves.br305.m} m ·`
   + ` contact ${got.moves.contact.part} ${got.moves.contact.m} m`);
+console.log(`  갠트리 행정 ${got.gantry.strokeMm} mm · 기계 길이 ${got.gantry.machineMm} mm`
+  + ` (판 ${got.panel.l} 의 ${(got.gantry.machineMm / got.panel.l).toFixed(1)} 배)`);
 console.log(`  깊이 창 ${c.lo}–${c.hi} mm · 실제 ${c.minCut}–${c.maxCut} · 목표 ${c.target}`
   + ` · 테이블 기준 ${c.tableMargin} 배(못 듦) → 윗면 측정 ±${c.sensorTol} 로 ${c.measuredMargin} 배`);
 console.log(`  진공 ${c.vacuumKpa} kPa ${c.vacuumHoldKn} kN · 흡착 ${c.vacuumCycleS} s / 예산 ${c.vacuumBudgetS} s`
@@ -110,4 +119,4 @@ console.log(`  이송 ${got.feed.mmS} mm/s · 벨트 ${got.feed.beltMS} m/s · �
   + ` · 점유 ${c.occupancy} s / 택트 하한 ${c.taktFloor} s (병목 ${c.bottleneck} ${c.idealTakt} s)`);
 console.log('');
 if (bad.length) { bad.forEach((b) => console.log('   ✗ ' + b)); process.exit(1); }
-console.log('\n✓ 두 유닛이 서고, 판이 두 헤드를 지나며, 깊이 창이 계산에서 온다');
+console.log('\n✓ 두 유닛이 서고, 갠트리가 선 판을 건너며, 깊이 창이 계산에서 온다');
