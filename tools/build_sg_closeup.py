@@ -197,15 +197,23 @@ def spec_payload() -> str:
                      f"{g.travel_if_one_blade_did_both_faces_mm():,.0f} mm), "
                      f"{lf:.0f} mm/s 기준 "
                      f"{g.time_the_second_blade_saves_s(lf)} s 를 번다"],
-            ["그리퍼가 받는다", f"끄는 힘 {g.tangential_total_n()} N → 안전율 "
-                        f"{g.GRIP_SAFETY:g} · 마찰 {g.GRIP_FRICTION:g} 에서 물어야 "
-                        f"하는 힘 **{g.grip_force_needed_n():.0f} N**. 면 허용 "
-                        f"{g.FACE_SAFE_MPA} MPa 가 그것을 **넓이 "
-                        f"{g.grip_pad_area_needed_mm2():,.0f} mm²**(한 변 "
-                        f"{g.grip_pad_side_mm():.0f})로 바꾼다 — 힘의 한계가 아니라 "
-                        f"치수다. 변에서 **≥{g.grip_must_sit_inboard_mm():.0f} mm "
-                        f"안쪽**(띠를 안 밟는다) · 단변 통과 모멘트 "
-                        f"{g.grip_moment_n_m()} N·m 는 패드 배치가 가른다"],
+            ["진공 테이블", f"끄는 힘 {g.tangential_total_n()} N 을 **진공이 받는다** — "
+                     f"변에서 {g.TABLE_INSET_MM:.0f} mm 물려(아래 날이 들어갈 자리) "
+                     f"면적 {g.table_area_share():.1%}, 흡착 {g.table_hold_kn()} kN, "
+                     f"면내 {g.table_friction_kn()} kN = **{g.table_margin_over_drag():,.0f} 배**. "
+                     f"무는 면이 **유리**라 셀 허용치와 무관하다. 흡착 "
+                     f"{campaign.VACUUM_CYCLE_S:.0f} s 가 여유를 먹어 "
+                     f"{g.slack_s()} → {g.scraper_time_left_s()} s, 필요 이송 "
+                     f"**{g.feed_that_fits_the_slack_mm_s():.0f} mm/s**"],
+            ["그리퍼는 대체됐다", f"한때 패드 "
+                        f"**{g.grip_pad_area_needed_mm2():,.0f} mm²**(한 변 "
+                        f"{g.grip_pad_side_mm():.0f})를 깔아 물 힘 "
+                        f"{g.grip_force_needed_n():.0f} N 을 면 허용 "
+                        f"{g.FACE_SAFE_MPA} MPa 안에서 주려 했고, 단변 통과 모멘트 "
+                        f"{g.grip_moment_n_m()} N·m 를 배치로 받아야 했다. "
+                        f"진공이 그 물음을 없앴다 — `GRIP_ADOPTED` = "
+                        f"{g.GRIP_ADOPTED}. **값은 살려 뒀다**(진공이 안 되는 "
+                        f"자리가 나오면 돌아올 근거)"],
             ["힘이 갈린다", f"**법선은 상쇄** — 판이 받는 알짜 "
                       f"{g.normal_net_on_panel_n():.0f} N, 대신 "
                       f"{g.clamp_force_n():.0f} N 으로 문다(한 장일 때는 반력을 "
@@ -473,9 +481,13 @@ def scene_script() -> str:
         var down = Math.max(0, Math.min(1, t - 1));
         var run = Math.max(0, Math.min(1, (t - 3) / 2));
         var head = (k === 'srarm' || k === 'srspr' || k === 'srshoe'
-                    || k === 'srbld' || k === 'srchip');
+                    || k === 'srbld' || k === 'srchip'
+                    || k === 'srarm2' || k === 'srspr2' || k === 'srshoe2'
+                    || k === 'srbld2' || k === 'srchip2');
         if (head) d.y = -down * 42;
-        if (k === 'srglass' || k === 'srband') d.x = -run * 620;
+        /* **판은 진공 테이블에 물려 서 있다.** 도는 것은 캐리어다 —
+           띠만 걷혀 사라진다. 판을 움직이면 흡착이 의미가 없다. */
+        if (head) d.x = -run * 620;
         /* 걷히고 나면 띠가 없다 — 그것이 이 유닛이 하는 일이다 */
         if (k === 'srband') m.visible = run < .92;
       }} else {{

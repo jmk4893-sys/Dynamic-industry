@@ -136,19 +136,19 @@ TAKT_MARGIN_S = 2.0
 
 #: 이 유닛이 판을 받치고 잡는 방식.
 SUPPORT = "진공 테이블"
-#: 테이블 진공도 (kPa, 게이지 음압) — **계획값**. 유리면을 문다.
-VACUUM_KPA = 20.0
-#: 테이블 패드와 유리 사이 마찰계수 — **계획값**.
-TABLE_FRICTION = 0.5
+#: 진공도·마찰·사이클은 **`campaign` 이 정본**이다 — SR-302 가 같은 방식을
+#: 쓰므로 두 곳에 적으면 갈라진다. 여기서는 받아 쓴다.
+VACUUM_KPA = campaign.VACUUM_KPA
+TABLE_FRICTION = campaign.TABLE_FRICTION
 #: 판이 서고 헤드가 가는가 — 진공 테이블은 판을 세워야 성립한다.
 PANEL_MOVES = False
 #: 갠트리 양끝 오버트래블 (mm) — 헤드가 판 밖에서 가·감속할 자리.
 GANTRY_OVERTRAVEL_MM = 400.0
 #: 프레임이 행정 밖으로 더 나가는 길이 (mm, 한쪽).
 FRAME_END_MM = 450.0
-#: 흡착 배기 + 해제에 드는 시간 (s) — **계획값**. 판이 서므로 이 시간이
+#: 흡착 배기 + 해제에 드는 시간 (s) — `campaign` 이 정본. 판이 서므로 이 시간이
 #: 통과 시간에서 빠진다. 아래 `vacuum_budget_s()` 가 상한을 낸다.
-VACUUM_CYCLE_S = 6.0
+VACUUM_CYCLE_S = campaign.VACUUM_CYCLE_S
 
 # ── 깊이 기준 — 윗면을 잰다 ─────────────────────────────────────────────
 #: 변위센서 + Z축 추종의 합 오차 (mm) — **계획값**.
@@ -320,18 +320,18 @@ def table_area_mm2() -> float:
 
 
 def vacuum_hold_kn() -> float:
-    """테이블이 판을 당기는 힘 (kN) = 진공도 × 면적."""
-    return round(VACUUM_KPA * 1_000.0 * table_area_mm2() / 1e6 / 1_000.0, 1)
+    """테이블이 판을 당기는 힘 (kN) — 셈은 `campaign` 이 하고 면적만 준다."""
+    return campaign.vacuum_hold_kn(table_area_mm2())
 
 
 def vacuum_contact_mpa() -> float:
     """그때 유리면이 받는 접촉압 (MPa) — 진공도 그 자체다."""
-    return round(VACUUM_KPA / 1_000.0, 4)
+    return campaign.vacuum_contact_mpa()
 
 
 def vacuum_friction_hold_kn() -> float:
     """미끄러지기 전까지 버티는 면내 힘 (kN)."""
-    return round(vacuum_hold_kn() * TABLE_FRICTION, 1)
+    return campaign.vacuum_friction_kn(table_area_mm2())
 
 
 def vacuum_margin_over(force_n: float) -> float:

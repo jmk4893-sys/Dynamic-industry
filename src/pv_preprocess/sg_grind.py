@@ -508,13 +508,14 @@ def what_the_absent_arris_leaves_open() -> tuple[tuple[str, str], ...]:
          f"{feed_that_fits_the_slack_mm_s():.0f} mm/s(직렬) 또는 "
          f"{feed_that_fits_the_slack_mm_s(True):.0f} mm/s(SG 배치)가 필요하고, "
          "동력은 어느 쪽도 문제가 아니다."),
-        ("그리퍼를 무엇으로 어떻게 놓는가",
-         f"붙잡는 주체는 정해졌다 — 발주처가 **그리퍼**로 정했고, 끄는 힘 "
-         f"{tangential_total_n()} N 에 대해 물어야 하는 힘이 "
-         f"{grip_force_needed_n()} N, 패드가 "
-         f"{grip_pad_area_needed_mm2():,.0f} mm² 다. 열린 것은 **패드 재질"
-         f"(마찰)·장수·간격**과 한쪽/양쪽이다 — "
-         "`the_face_limit_turns_force_into_area()`."),
+        ("이 걸음이 어느 스테이션에 서는가",
+         f"파지는 정해졌다 — **진공 테이블**이 면내 {table_friction_kn()} kN 으로 "
+         f"끄는 힘 {tangential_total_n()} N 의 {table_margin_over_drag():,.0f} 배를 "
+         f"버틴다(그리퍼 패드는 대체됐다). 대신 흡착 "
+         f"{campaign.VACUUM_CYCLE_S:.0f} s 가 여유를 먹어 필요 이송이 "
+         f"{feed_that_fits_the_slack_mm_s():.0f} mm/s 로 올라갔다. **SG-301 과 "
+         "같은 스테이션에 서는지 자기 스테이션을 갖는지**가 그 수를 통째로 "
+         "바꾸는데 안 들었다 — `the_table_takes_time_back()`."),
         ("SG-301 이 남는가",
          "엣지 연마의 목적이 아리스였다면 목적이 없어진다. 남는 후보는 끝면 "
          f"살 {STOCK_MM} mm 뿐이고 그것은 단면의 "
@@ -792,7 +793,8 @@ def open_questions() -> tuple[tuple[str, str], ...]:
             f"{sealant_volume_per_panel_mm3(faces=1):,.0f} mm³ 가 공구 없이 "
             "남고 그 면이 BR-305 의 벨트가 지나가는 면이다. "
             "`how_the_faces_were_made_to_add_up()`."))
-    out.append((
+    if GRIP_ADOPTED:
+        out.append((
         "그리퍼 패드 마찰이 실측 전 계획값이다",
         f"물어야 하는 힘이 끄는 힘 ÷ 마찰이라 패드 면적이 여기에 반비례로 "
         f"걸린다. {GRIP_FRICTION:g} 에서 {grip_pad_area_needed_mm2():,.0f} mm² "
@@ -800,13 +802,13 @@ def open_questions() -> tuple[tuple[str, str], ...]:
         f"{round(tangential_total_n() * GRIP_SAFETY / SHOE_FRICTION / FACE_SAFE_MPA):,.0f} mm² "
         f"다. 성립이 깨지는 값은 {friction_below_which_the_pad_outgrows_the_panel()} "
         "라 한참 아래이니 **치수 문제이지 성립 문제는 아니다.**"))
-    out.append((
+        out.append((
         "그리퍼 패드 배치를 안 들었다",
         f"단변 통과에서 모멘트가 {grip_moment_n_m()} N·m 선다. 장수와 간격이 "
         f"정해져야 한 장의 값이 나온다 — 예로 네 장을 "
         f"1,000 mm 벌리면 {grip_pad_force_n(4, 1000.0)} N, 두 장이면 "
         f"{grip_pad_force_n(2, 1000.0)} N 이다. **예시이지 배치가 아니다.**"))
-    out.append((
+        out.append((
         "한쪽으로 누르는지 양쪽으로 무는지 안 들었다",
         f"한쪽이면 {grip_force_needed_n()} N 의 반력을 반출롤러가 받아야 하고, "
         "양쪽이면 슈처럼 판 안에서 닫히되 아래 패드가 롤러 사이에 들어가야 "
@@ -816,6 +818,18 @@ def open_questions() -> tuple[tuple[str, str], ...]:
             "두 날이 마주 보지 않는다",
             f"압착 {SHOE_SPRING_N:.0f} N 이 상쇄가 아니라 우력이 되어 판을 "
             "비튼다. 요크 한 몸으로 같은 자리에서 잡아야 한다."))
+    if not table_inset_clears_the_blade():
+        out.append((
+            "테이블이 아래 날을 막는다",
+            f"물림 {TABLE_INSET_MM:.0f} mm 가 날 폭 {BLADE_WIDTH_MM:.0f} mm 보다 "
+            "좁아 아래 면 띠에 못 닿는다."))
+    out.append((
+        "흡착 배기·해제가 여유를 먹는다",
+        f"진공 테이블을 쓰면 {campaign.VACUUM_CYCLE_S:.0f} s (계획값)가 먼저 "
+        f"빠져 쓸 수 있는 시간이 {slack_s()} → {scraper_time_left_s()} s 가 "
+        f"된다. 필요한 이송이 {feed_that_fits_the_slack_mm_s():.0f} mm/s "
+        f"(SG 배치 {feed_that_fits_the_slack_mm_s(True):.0f})로 올라간다 — "
+        "`the_table_takes_time_back()`."))
     if the_carrier_is_its_own() and not scraper_fits_the_slack():
         out.append((
             "자기 캐리어의 통과가 여유에 안 들어간다",
@@ -989,6 +1003,25 @@ def clamp_force_n() -> float:
 #   네 번 바뀌므로 네 변을 다 짚어야 한다 — 날과 자리를 다툰다. 그래서
 #   **면을 물어 마찰로 잡는다.**
 
+# ── 진공 테이블 — BR-305 와 같은 방식을 이 걸음에도 쓴다 ────────────────
+#
+#   BR-305 에서 채택한 진공 테이블을 SR-302 에도 쓴다(발주처 결정). 그런데
+#   이 걸음에는 **BR-305 에 없는 제약**이 하나 있다 —
+#
+#     날이 **두 장**이고 **양면**을 긁는다. 테이블이 아래 면을 덮으면
+#     아래 날이 띠에 못 닿는다.
+#
+#   그래서 테이블을 변에서 안쪽으로 **물려야** 한다. 물린 만큼 무는 면적이
+#   줄지만, 버텨야 하는 힘이 42 N 뿐이라 그 손해는 문제가 안 된다.
+
+#: 테이블이 변에서 물러나는 거리 (mm) — 아래 날이 들어갈 자리를 낸다.
+#: `BLADE_WIDTH_MM` 보다 커야 한다(`the_table_must_clear_the_band()`).
+TABLE_INSET_MM = 40.0
+#: 그리퍼 패드로 잡는 안을 채택했는가 — **진공 테이블이 대신하므로 아니다.**
+#: 값을 지우지 않는 이유는 그것이 「면 허용 압착력 안에서 어떻게 잡을 것인가」
+#: 의 답이었고, 진공이 그 물음을 없앴다는 것이 판단 근거이기 때문이다.
+GRIP_ADOPTED = False
+
 #: 그리퍼 패드와 라미네이트 사이 마찰계수 — 계획값.
 #:
 #: **슈의 `SHOE_FRICTION` 을 빌려 오면 안 된다.** 그쪽은 PEEK 를 **미끄러지라고**
@@ -1092,6 +1125,80 @@ def friction_below_which_the_pad_outgrows_the_panel() -> float:
     """패드가 판 면보다 커지는 마찰계수 (–) — 아래로 내려가면 파지가 성립 안 한다."""
     face = float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM)
     return round(tangential_total_n() * GRIP_SAFETY / (FACE_SAFE_MPA * face), 5)
+
+
+def table_inset_clears_the_blade() -> bool:
+    """물린 거리가 아래 날이 들어갈 만큼인가."""
+    return TABLE_INSET_MM >= BLADE_WIDTH_MM
+
+
+def table_held_area_mm2() -> float:
+    """테이블이 실제로 무는 면적 (mm²) — 변에서 물린 안쪽만."""
+    length = float(campaign.PANEL_LENGTH_MM) - 2.0 * TABLE_INSET_MM
+    width = float(campaign.PANEL_WIDTH_MM) - 2.0 * TABLE_INSET_MM
+    return round(length * width, 1)
+
+
+def table_area_share() -> float:
+    """판 면적 중 무는 몫 — 물린 만큼 준다."""
+    whole = float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM)
+    return round(table_held_area_mm2() / whole, 4)
+
+
+def table_hold_kn() -> float:
+    """그 면적이 내는 흡착력 (kN) — 셈은 `campaign` 이 한다."""
+    return campaign.vacuum_hold_kn(table_held_area_mm2())
+
+
+def table_friction_kn() -> float:
+    """미끄러지기 전까지 버티는 면내 힘 (kN)."""
+    return campaign.vacuum_friction_kn(table_held_area_mm2())
+
+
+def table_margin_over_drag() -> float:
+    """두 날이 끄는 힘의 몇 배를 버티는가."""
+    return round(table_friction_kn() * 1_000.0 / tangential_total_n(), 1)
+
+
+def the_table_must_clear_the_band() -> tuple[str, ...]:
+    """진공 테이블을 이 걸음에 붙일 때의 **유일한 기하 제약**.
+
+    BR-305 는 백시트 면 하나만 건드리므로 테이블이 반대 면을 통째로 물어도
+    된다. 이 걸음은 **양면**이라 그게 안 된다.
+    """
+    return (
+        f"**날이 {BLADE_FACES} 장이고 양면을 긁는다.** 테이블이 아래 면을 덮으면 "
+        "아래 날이 띠에 못 닿는다 — BR-305 에는 없던 제약이다.",
+        f"**그래서 테이블을 변에서 {TABLE_INSET_MM:.0f} mm 물린다.** 날 폭 "
+        f"{BLADE_WIDTH_MM:.0f} mm 보다 커야 하고 "
+        f"(`table_inset_clears_the_blade()` = {table_inset_clears_the_blade()}), "
+        f"띠 폭 {SEALANT_BAND_MM:.0f} mm 는 그 안에 든다.",
+        f"**무는 면적이 {table_area_share():.1%} 로 준다** — "
+        f"{table_held_area_mm2():,.0f} mm². 그래도 흡착 {table_hold_kn()} kN, "
+        f"면내 {table_friction_kn()} kN 이라 끄는 힘 {tangential_total_n()} N 의 "
+        f"**{table_margin_over_drag():,.0f} 배**다. 물린 손해는 문제가 안 된다.",
+        "**요크는 변을 감싸야 한다.** 두 날이 마주 보려면 판 둘레를 C 형으로 "
+        "타야 하고, 물린 구간이 그 자리를 낸다 — 물림이 두 가지 일을 한다.",
+    )
+
+
+def the_vacuum_replaces_the_pads() -> tuple[str, ...]:
+    """그리퍼 패드가 왜 빠지는가 — 지우지 않고 근거로 남긴다."""
+    return (
+        f"**패드는 「면 허용 압착력 안에서 어떻게 잡을 것인가」의 답이었다** — "
+        f"물 힘 {grip_force_needed_n()} N 을 허용 압력 {FACE_SAFE_MPA} MPa 로 "
+        f"주려면 넓이 {grip_pad_area_needed_mm2():,.0f} mm² 가 들었다.",
+        f"**진공은 그 물음을 없앤다.** 접촉압이 "
+        f"{campaign.vacuum_contact_mpa()} MPa 로 허용의 "
+        f"{campaign.vacuum_contact_mpa() / FACE_SAFE_MPA:.1f} 배이고, 무는 면이 "
+        "**유리**라 셀 기준을 쓸 일도 없다.",
+        f"**모멘트도 같이 없어진다.** 패드였다면 단변 통과에서 "
+        f"{grip_moment_n_m()} N·m 를 장수와 간격으로 받아야 했는데 — 그 배치가 "
+        "미결이었다 — 진공은 면 전체에 퍼져 우력이 한곳에 몰리지 않는다.",
+        f"**패드 값은 살려 둔다** (`GRIP_ADOPTED` = {GRIP_ADOPTED}). 진공이 "
+        "안 되는 자리가 나오면 돌아올 자리이고, 그때 마찰 계획값 "
+        f"{GRIP_FRICTION:g} 와 넓이가 근거가 된다.",
+    )
 
 
 def the_shoes_oppose_each_other() -> tuple[str, ...]:
@@ -1330,19 +1437,46 @@ def scraper_power_at_w(feed_mm_s: float) -> float:
     return round(tangential_total_n() * feed_mm_s / 1_000.0, 1)
 
 
+def scraper_time_left_s() -> float:
+    """흡착·해제를 빼고 **실제로 긁을 수 있는** 시간 (s).
+
+    진공 테이블을 쓰면 판을 세우고 빨아 당겼다 놓는 시간이 든다. 그 시간이
+    SG-301 이 남긴 여유에서 먼저 빠진다 — 캐리어가 같은 스테이션에 선다면.
+    """
+    return round(slack_s() - campaign.VACUUM_CYCLE_S, 2)
+
+
 def feed_that_fits_the_slack_mm_s(like_sg_heads: bool = False) -> float:
     """SG-301 이 남긴 여유 안에 날이 들어가려면 필요한 이송 (mm/s).
 
-    리드가 빠져 여유가 `slack_s()` 로 늘었다. 그 안에 날의 통과가 들어가면
-    캐리어가 같은 스테이션에 서도 되고, 안 들어가면 스테이션이 하나 늘거나
-    택트가 깎인다.
+    리드가 빠져 여유가 `slack_s()` 로 늘었는데, 진공 테이블이 흡착 시간을
+    도로 가져간다. 남는 것이 `scraper_time_left_s()` 이고 그 안에 날의 통과가
+    들어가면 캐리어가 같은 스테이션에 서도 된다.
     """
-    slack = slack_s()
+    slack = scraper_time_left_s()
     if slack <= 0.0:
         return float("inf")
     p, w = float(campaign.PANEL_LENGTH_MM), float(campaign.PANEL_WIDTH_MM)
     distance = (p + 2.0 * w) if like_sg_heads else (2.0 * p + 2.0 * w)
     return round(distance / slack, 1)
+
+
+def the_table_takes_time_back() -> tuple[str, ...]:
+    """진공 테이블이 파지를 사 주는 대신 시간을 가져간다 — 공짜가 아니다."""
+    return (
+        f"**여유가 {slack_s()} s 에서 {scraper_time_left_s()} s 로 준다** — 흡착 "
+        f"배기·해제 {campaign.VACUUM_CYCLE_S:.0f} s 가 먼저 빠진다.",
+        f"**그만큼 필요한 이송이 올라간다** — 한 날 직렬이면 "
+        f"{feed_that_fits_the_slack_mm_s():.0f} mm/s, SG 헤드 배치를 빌리면 "
+        f"{feed_that_fits_the_slack_mm_s(like_sg_heads=True):.0f} mm/s 다.",
+        f"**동력은 여전히 문제가 아니다** — 그 이송에서도 "
+        f"{scraper_power_at_w(feed_that_fits_the_slack_mm_s()):.0f} W 로 스핀들 "
+        f"가용의 {scraper_power_at_w(feed_that_fits_the_slack_mm_s()) / spindle_available_w():.1%} "
+        "다. 한계는 캐리지와 슈다.",
+        "**이 값들은 캐리어가 SG-301 과 같은 스테이션에 선다는 전제다.** 자기 "
+        "스테이션을 가지면 여유가 SG 의 것이 아니라 택트에서 나오고 수가 통째로 "
+        "달라진다 — **그 자리는 안 들었다.**",
+    )
 
 
 def the_own_carrier_frees_the_feed() -> tuple[str, ...]:
@@ -1378,7 +1512,7 @@ def scraper_fits_the_slack(feed_mm_s: float | None = None,
     feed = long_feed_mm_s() if feed_mm_s is None else feed_mm_s
     t = (scraper_time_like_sg_heads_s(feed) if like_sg_heads
          else scraper_serial_time_s(feed))
-    return t <= slack_s()
+    return t <= scraper_time_left_s()
 
 
 def the_back_face_band_has_no_tool() -> bool:
@@ -2296,33 +2430,35 @@ def scraper_unit() -> Unit:
              color="ghost", explode=(240, 0, 0),
              spec=f"Ø{WHEEL_D_MM:.0f} · 동승이었다면 리드 {lead:.0f} mm",
              catalog="SP-03"),
-        Part("srgrip", "그리퍼 패드 (배치 미정 · 한 장만 표시)", 1, "box",
-             (grip_pad_side_mm(), 14.0, grip_pad_side_mm()),
-             (hx + 360.0, 7.0, 0.0), "엘라스토머 패드",
-             role=f"주행 방향 합력 {tangential_total_n()} N 을 **판이 아니라 "
-                  f"여기가** 받는다. 안전율 {GRIP_SAFETY:g}·마찰 "
-                  f"{GRIP_FRICTION:g} 에서 물어야 하는 힘이 "
-                  f"{grip_force_needed_n()} N 이고, 면 허용 {FACE_SAFE_MPA} MPa 가 "
-                  f"그것을 **넓이 {grip_pad_area_needed_mm2():,.0f} mm²** 로 "
-                  f"바꾼다. 변에서 {grip_must_sit_inboard_mm():.0f} mm 안쪽에 "
-                  f"서야 실란트 띠를 안 밟는다. 장수·간격은 안 들었다 — "
-                  f"단변 통과 모멘트 {grip_moment_n_m()} N·m 가 그것으로 갈린다.",
-             color="rubber", explode=(0, 220, 0),
-             spec=f"{grip_pad_side_mm():.0f}□ · {grip_force_needed_n():.0f} N · "
-                  f"변에서 ≥{grip_must_sit_inboard_mm():.0f}", catalog="SR-302"),
+        Part("srtable", "진공 테이블 (변에서 물려 선다)", 1, "box",
+             (620.0, 90.0, float(campaign.PANEL_WIDTH_MM) - 2 * TABLE_INSET_MM),
+             (hx + 180.0, mid - STACK_T_MM / 2 - 45.0, 0.0),
+             "알루미늄 + 실링 패드",
+             role=f"판을 **유리면에서** 빨아 당겨 잡는다. 변에서 "
+                  f"{TABLE_INSET_MM:.0f} mm 물러나 **아래 날이 들어갈 자리**를 "
+                  f"낸다 — 날 폭 {BLADE_WIDTH_MM:.0f} mm 보다 넓어야 하고, "
+                  f"BR-305 에는 없던 제약이다(그쪽은 한 면만 건드린다). 무는 "
+                  f"면적이 {table_area_share():.1%} 로 줄어도 면내 "
+                  f"{table_friction_kn()} kN 이라 끄는 힘 {tangential_total_n()} N "
+                  f"의 {table_margin_over_drag():,.0f} 배다. **그리퍼 패드 "
+                  f"{grip_pad_area_needed_mm2():,.0f} mm² 가 이것으로 대체됐다.**",
+             color="frame", explode=(0, -420, 0),
+             spec=f"{campaign.VACUUM_KPA:.0f} kPa · {table_hold_kn()} kN · "
+                  f"변에서 {TABLE_INSET_MM:.0f} 물림", catalog="SR-302"),
         Part("srglass", "라미네이트 (유리면이 아래)", 1, "box",
              (820.0, STACK_T_MM, 240.0), (0.0, -STACK_T_MM / 2 - 8.0, 0.0),
              f"유리 t{GLASS_T_MM} + EVA·백시트",
-             role=f"{lf:.0f} mm/s 로 지나간다. 유리면이 아래라 **이 날이 걷는 띠도 "
-                  f"아래에** 있고, 반출롤러가 변에서 {EDGE_OVERHANG_MM:.0f} mm 물러나 "
-                  f"그 자리를 낸다. 위 면(백시트)에도 같은 폭으로 띠가 남지만 "
-                  f"거기는 그 자리가 없어 **공구가 안 닿는다** — 잔사 "
-                  f"{RESIDUE_FACES} 면 중 걷히는 것이 {BLADE_FACES} 면이다.",
+             role=f"진공 테이블에 물려 **서 있다** — 도는 것은 캐리어다. "
+                  f"유리면이 아래라 **이 날이 걷는 띠도 "
+                  f"아래에** 있고, 테이블이 변에서 {TABLE_INSET_MM:.0f} mm 물러나 "
+                  f"그 자리를 낸다. 위 면(백시트) 띠는 위 날이 **같은 바퀴에** "
+                  f"걷는다 — 잔사 {RESIDUE_FACES} 면을 날 {BLADE_FACES} 장이 "
+                  "동시에 맡는다.",
              color="ghost", explode=(0, -260, 0),
              spec=f"적층 {STACK_T_MM} · 내밀림 {EDGE_OVERHANG_MM:.0f}", catalog="—"),
     )
     return Unit(
-        key="scraper", name="SR-302 잔사 스크레이퍼 (자기 캐리어 · 양면 동시)",
+        key="scraper", name="SR-302 잔사 스크레이퍼 (자기 캐리어 · 양면 동시 · 진공 테이블)",
         sheet="PV-SR-302-ASM-5501",
         envelope_mm=(900.0, 500.0, 300.0), view_r_mm=560.0,
         principle=(
@@ -2413,6 +2549,11 @@ def summary() -> dict[str, object]:
         "tangentialTotalN": tangential_total_n(),
         "normalNetOnPanelN": normal_net_on_panel_n(),
         "clampForceN": clamp_force_n(),
+        "gripAdopted": GRIP_ADOPTED,
+        "tableInsetMm": TABLE_INSET_MM,
+        "tableHoldKn": table_hold_kn(),
+        "tableMarginOverDrag": table_margin_over_drag(),
+        "scraperTimeLeftS": scraper_time_left_s(),
         "gripForceNeededN": grip_force_needed_n(),
         "gripPadAreaMm2": grip_pad_area_needed_mm2(),
         "gripPadSideMm": grip_pad_side_mm(),

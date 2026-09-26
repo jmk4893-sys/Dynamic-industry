@@ -114,6 +114,39 @@ SG_BLADE_LEAD_MM = 200.0
 SCRAPER_ON_ITS_OWN_CARRIER = True
 
 
+# ── 진공 테이블 — 두 유닛이 같이 쓰는 지지 방식 ─────────────────────────
+#
+#   외부 갠트리 사양서에서 온 안을 검토해 채택했다
+#   (`docs/br-305-gantry-review.md`). BR-305 와 SR-302 가 **같은 방식**을 쓰므로
+#   값이 여기 있다 — 두 모듈에 따로 적으면 갈라진다. 각 유닛은 **자기 면적**으로
+#   흡착력을 셈한다.
+
+#: 라인이 판을 지지·파지하는 방식이 진공 테이블인가 — 발주처 결정.
+SUPPORT_IS_VACUUM_TABLE = True
+#: 테이블 진공도 (kPa, 게이지 음압) — **계획값**. 유리면을 문다.
+VACUUM_KPA = 20.0
+#: 테이블 패드와 유리 사이 마찰계수 — **계획값**.
+TABLE_FRICTION = 0.5
+#: 흡착 배기 + 해제에 드는 시간 (s) — **계획값**. 판이 서므로 이 시간이
+#: 각 유닛의 통과 시간에서 빠진다.
+VACUUM_CYCLE_S = 6.0
+
+
+def vacuum_hold_kn(area_mm2: float) -> float:
+    """그 면적을 물 때의 흡착력 (kN) = 진공도 × 면적."""
+    return round(VACUUM_KPA * 1_000.0 * area_mm2 / 1e6 / 1_000.0, 1)
+
+
+def vacuum_friction_kn(area_mm2: float) -> float:
+    """미끄러지기 전까지 버티는 면내 힘 (kN)."""
+    return round(vacuum_hold_kn(area_mm2) * TABLE_FRICTION, 1)
+
+
+def vacuum_contact_mpa() -> float:
+    """판이 받는 접촉압 (MPa) — 진공도 그 자체다. 무는 면은 **유리**다."""
+    return round(VACUUM_KPA / 1_000.0, 4)
+
+
 def sg_blade_lead_mm() -> float:
     """SG-301 통과 거리에 **실제로 실리는** 리드 (mm).
 

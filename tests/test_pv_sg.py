@@ -557,9 +557,9 @@ class TestTheScraperThatClearsTheBand(unittest.TestCase):
         # 면 수는 날 두 장으로 닫혔고 통과 시간은 남았다.
         self.assertNotIn("백시트면 띠를 걷을 공구가 없다", titles)
         self.assertIn("자기 캐리어의 통과가 여유에 안 들어간다", titles)
-        # 그리퍼를 정하면서 그 공구의 물성·배치가 새 입력으로 들어왔다.
-        self.assertIn("그리퍼 패드 마찰이 실측 전 계획값이다", titles)
-        self.assertEqual(len(titles), 9)
+        # 진공 테이블이 패드를 대신하면서 패드 미결 셋이 닫히고 흡착이 들어왔다.
+        self.assertIn("흡착 배기·해제가 여유를 먹는다", titles)
+        self.assertEqual(len(titles), 7)
 
     def test_the_gc_headroom_is_stated_not_assumed(self):
         """Gc 가 얼마까지 오르면 허용 압착력을 넘는가 — 그 값을 내놓는다."""
@@ -841,8 +841,8 @@ class TestTheScraperSurvivesTheWheel(unittest.TestCase):
         self.assertTrue(sg_grind.the_carrier_is_its_own())
         titles = [t for t, _ in sg_grind.what_the_absent_arris_leaves_open()]
         self.assertIn("자기 캐리어의 운동학", titles)
-        # 면도 붙잡는 주체도 답이 왔고, 남은 것은 그리퍼의 생김새다.
-        self.assertIn("그리퍼를 무엇으로 어떻게 놓는가", titles)
+        # 면도 파지도 답이 왔고, 남은 것은 어느 스테이션에 서는가다.
+        self.assertIn("이 걸음이 어느 스테이션에 서는가", titles)
         self.assertNotIn("날이 몇 면을 긁는가", titles)
         self.assertNotIn("SR-302 가 어디에 실리는가", titles)
 
@@ -1110,23 +1110,27 @@ class TestTheGripperTakesTheDrag(unittest.TestCase):
         self.assertIn("배치를 정하는 함수가 아니다", doc)
         self.assertEqual(sg_grind.grip_pad_force_n(0, 1_000.0), float("inf"))
 
-    def test_the_planning_values_are_open_questions(self):
+    def test_the_pad_questions_close_with_the_pads(self):
+        """진공이 대신하면서 패드의 미결 셋이 같이 닫혔다."""
+        self.assertFalse(sg_grind.GRIP_ADOPTED)
         titles = [t for t, _ in sg_grind.open_questions()]
-        self.assertIn("그리퍼 패드 마찰이 실측 전 계획값이다", titles)
-        self.assertIn("그리퍼 패드 배치를 안 들었다", titles)
-        self.assertIn("한쪽으로 누르는지 양쪽으로 무는지 안 들었다", titles)
+        self.assertNotIn("그리퍼 패드 마찰이 실측 전 계획값이다", titles)
+        self.assertNotIn("그리퍼 패드 배치를 안 들었다", titles)
+        self.assertNotIn("한쪽으로 누르는지 양쪽으로 무는지 안 들었다", titles)
+        # 대신 흡착이 여유를 먹는 것이 새 미결이다.
+        self.assertIn("흡착 배기·해제가 여유를 먹는다", titles)
 
-    def test_the_holder_is_decided_but_not_its_shape(self):
+    def test_the_holder_is_decided_and_the_station_is_not(self):
         titles = [t for t, _ in sg_grind.what_the_absent_arris_leaves_open()]
-        self.assertIn("그리퍼를 무엇으로 어떻게 놓는가", titles)
-        self.assertNotIn("판을 무엇이 붙잡는가", titles)
+        self.assertIn("이 걸음이 어느 스테이션에 서는가", titles)
+        self.assertNotIn("그리퍼를 무엇으로 어떻게 놓는가", titles)
 
-    def test_the_drawing_shows_where_the_pad_must_stand(self):
+    def test_the_drawing_shows_the_table_not_the_pad(self):
         parts = {p.key: p for p in sg_grind.scraper_unit().parts}
-        self.assertIn("srgrip", parts)
-        self.assertIn("배치 미정", parts["srgrip"].name)
-        self.assertIn(f"{sg_grind.grip_must_sit_inboard_mm():.0f} mm 안쪽",
-                      parts["srgrip"].role)
+        self.assertNotIn("srgrip", parts)
+        self.assertIn("srtable", parts)
+        self.assertIn(f"{sg_grind.TABLE_INSET_MM:.0f} mm 물러나",
+                      parts["srtable"].role)
 
     def test_the_summary_carries_the_sizing_chain(self):
         s = sg_grind.summary()
@@ -1134,6 +1138,72 @@ class TestTheGripperTakesTheDrag(unittest.TestCase):
                                sg_grind.grip_force_needed_n(), places=1)
         self.assertAlmostEqual(s["gripPadAreaMm2"],
                                sg_grind.grip_pad_area_needed_mm2(), places=1)
+
+
+class TestTheScraperGetsTheVacuumTableToo(unittest.TestCase):
+    """BR-305 의 진공 테이블을 이 걸음에도 — 다만 제약이 하나 더 있다."""
+
+    def test_the_table_must_be_inset_for_the_lower_blade(self):
+        """양면을 긁으므로 테이블이 아래 면을 다 덮으면 안 된다."""
+        self.assertEqual(sg_grind.BLADE_FACES, 2)
+        self.assertTrue(sg_grind.table_inset_clears_the_blade())
+        self.assertGreaterEqual(sg_grind.TABLE_INSET_MM, sg_grind.BLADE_WIDTH_MM)
+        text = " ".join(sg_grind.the_table_must_clear_the_band())
+        self.assertIn("BR-305 에는 없던 제약", text)
+
+    def test_the_held_area_shrinks_but_still_holds(self):
+        """물린 만큼 면적이 줄어도 버티는 힘이 자릿수로 남는다."""
+        whole = campaign.PANEL_LENGTH_MM * campaign.PANEL_WIDTH_MM
+        self.assertLess(sg_grind.table_held_area_mm2(), whole)
+        self.assertGreater(sg_grind.table_area_share(), 0.8)
+        self.assertGreater(sg_grind.table_margin_over_drag(), 100.0)
+
+    def test_the_hold_is_delegated_to_campaign(self):
+        """진공도·마찰은 두 유닛이 같이 쓰므로 정본이 하나다."""
+        self.assertAlmostEqual(
+            sg_grind.table_hold_kn(),
+            campaign.vacuum_hold_kn(sg_grind.table_held_area_mm2()), places=1)
+        src = inspect.getsource(sg_grind.table_hold_kn)
+        self.assertIn("campaign.vacuum_hold_kn", src)
+
+    def test_the_pads_are_kept_as_the_fallback(self):
+        self.assertFalse(sg_grind.GRIP_ADOPTED)
+        self.assertGreater(sg_grind.grip_pad_area_needed_mm2(), 0.0)
+        text = " ".join(sg_grind.the_vacuum_replaces_the_pads())
+        self.assertIn("돌아올 자리", text)
+        self.assertIn("모멘트도 같이 없어진다", text)
+
+    def test_the_table_takes_time_back(self):
+        """파지를 사 주는 대신 시간을 가져간다 — 공짜가 아니다."""
+        self.assertAlmostEqual(
+            sg_grind.scraper_time_left_s(),
+            sg_grind.slack_s() - campaign.VACUUM_CYCLE_S, places=2)
+        self.assertLess(sg_grind.scraper_time_left_s(), sg_grind.slack_s())
+        # 남는 시간이 줄면 필요한 이송이 올라간다.
+        self.assertGreater(sg_grind.feed_that_fits_the_slack_mm_s(),
+                           sg_grind.scraper_travel_mm() / sg_grind.slack_s())
+
+    def test_the_station_question_is_left_open(self):
+        text = " ".join(sg_grind.the_table_takes_time_back())
+        self.assertIn("같은 스테이션에 선다는 전제", text)
+        self.assertIn("안 들었다", text)
+
+    def test_the_panel_stands_in_the_drawing(self):
+        """진공 테이블에 물린 판이 움직이면 흡착이 의미가 없다.
+
+        문구 하나를 보면 다른 형태로 되돌려도 통과한다. **자리를 옮기는 줄에
+        판이 들어 있는가**를 본다.
+        """
+        src = inspect.getsource(_load("build_sg_closeup").scene_script)
+        self.assertIn("판은 진공 테이블에 물려 서 있다", src)
+        # 스크레이퍼 분기 안에서 자리를 옮기는 줄을 전부 본다.
+        body = src.split("u.key === 'scraper'")[1].split("}} else {{")[0]
+        moving = [ln for ln in body.splitlines() if "d.x" in ln or "d.y" in ln]
+        self.assertTrue(moving, "스크레이퍼 분기에서 아무것도 안 움직인다")
+        for line in moving:
+            with self.subTest(line.strip()):
+                self.assertNotIn("srglass", line)
+                self.assertNotIn("srtable", line)
 
 
 class TestCloseupDrawing(unittest.TestCase):
