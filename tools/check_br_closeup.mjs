@@ -75,8 +75,17 @@ if (got.moves.br305.m < 1.0) bad.push(`판이 ${got.moves.br305.m} m 만 갔다 
 if (!(c.lo < c.minCut && c.minCut < c.target && c.target < c.maxCut && c.maxCut < c.hi))
   bad.push(`깊이 창 순서가 깨졌다: ${c.lo} < ${c.minCut} < ${c.target} < ${c.maxCut} < ${c.hi}`);
 if (c.lo !== c.backsheet) bad.push(`창 하한 ${c.lo} 이 백시트 ${c.backsheet} 과 다르다`);
-if (!c.faceFits) bad.push('면 기준이 창에 안 든다');
-if (!c.bedMisses) bad.push('정반 기준이 창을 안 넘는다 — 그러면 압반을 분할할 이유가 없다');
+/* 채택된 기준면은 **윗면 측정**이다. 테이블 기준이 창을 넘는다는 것이
+   그 판단의 근거이므로 둘을 같이 본다 — 테이블 기준이 들어 버리면 측정이
+   필요 없어지고, 측정이 안 들면 기계가 성립하지 않는다. */
+if (c.tableFits) bad.push(`테이블 기준이 창에 든다 (${c.tableMargin} 배) — 그러면 Z 측정을 넣을 이유가 없다`);
+if (c.tableMargin >= 1) bad.push(`테이블 기준 여유 ${c.tableMargin} 배가 1 이상이다`);
+if (!c.measuredFits) bad.push(`윗면 측정이 창에 안 든다 (${c.sensorTol} mm) — 물러설 자리가 없다`);
+if (c.measuredMargin <= c.tableMargin) bad.push('측정이 테이블 기준보다 못하다');
+if (c.platenAdopted) bad.push('압반이 아직 채택돼 있다 — 진공 테이블과 겹친다');
+if (!c.vacuumFits) bad.push(`흡착 ${c.vacuumCycleS} s 가 예산 ${c.vacuumBudgetS} s 를 넘는다`);
+if (!c.visionSees) bad.push('비전이 잣대보다 굵다');
+if (c.visionMinMm2 >= c.visionMarkMm2) bad.push('비전 최소 조각이 잣대보다 크다');
 if (!c.closesBothWays) bad.push('깊이 공차가 양쪽으로 안 닫힌다');
 /* BR-305 는 자기 스테이션이다 — AFR 정반 점유와 견주면 안 된다(그것은 SG-301
    이야기다). 견줄 대상은 라인의 택트 하한이고, 넘으면 이 유닛이 병목이 된다. */
@@ -94,7 +103,9 @@ console.log(`  유닛 ${got.units} · 부품 메시 br305 ${got.counts.br305}`
 console.log(`  단계 이동 — br305 ${got.moves.br305.part} ${got.moves.br305.m} m ·`
   + ` contact ${got.moves.contact.part} ${got.moves.contact.m} m`);
 console.log(`  깊이 창 ${c.lo}–${c.hi} mm · 실제 ${c.minCut}–${c.maxCut} · 목표 ${c.target}`
-  + ` · 추종 ±${c.follow} (여유 ${c.marginRatio} 배) · 정반이면 ${c.bed} 로 창 초과`);
+  + ` · 테이블 기준 ${c.tableMargin} 배(못 듦) → 윗면 측정 ±${c.sensorTol} 로 ${c.measuredMargin} 배`);
+console.log(`  진공 ${c.vacuumKpa} kPa ${c.vacuumHoldKn} kN · 흡착 ${c.vacuumCycleS} s / 예산 ${c.vacuumBudgetS} s`
+  + ` · 비전 ${c.visionMinMm2} mm² / 잣대 ${c.visionMarkMm2} mm²`);
 console.log(`  이송 ${got.feed.mmS} mm/s · 벨트 ${got.feed.beltMS} m/s · 통과 ${got.feed.passMm} mm`
   + ` · 점유 ${c.occupancy} s / 택트 하한 ${c.taktFloor} s (병목 ${c.bottleneck} ${c.idealTakt} s)`);
 console.log('');

@@ -420,7 +420,7 @@ class TestItMovesThePolymerRatherThanRemovingIt(unittest.TestCase):
         rows = br_abrade.why_this_beats_peeling()
         self.assertEqual(len(rows), 4)
         note = " ".join(rows)
-        self.assertIn("기준면이 기구 그 자체", note)
+        self.assertIn("기준면을 잴 수 있다", note)
         self.assertIn("한 패스 더 돌리면 된다", note)
         self.assertIn("연마는 면을 고르지 않는다", note)
         self.assertIn("온도 충돌이 없다", note)
@@ -641,7 +641,7 @@ class TestTheUnitStandsUpIn3D(unittest.TestCase):
         """헤드 부품은 ±HEAD_PITCH/2 에 선다 — mirror 가 그것을 편다."""
         parts = {p.key: p for p in br_abrade.unit().parts}
         hx = br_abrade.HEAD_PITCH_MM / 2.0
-        for key in ("belt", "drum", "platen", "airknife", "hood", "motor"):
+        for key in ("belt", "drum", "zprobe", "airknife", "hood", "motor"):
             with self.subTest(key):
                 self.assertIn("x", parts[key].mirror)
         self.assertEqual(parts["drum"].pos[0], hx)
@@ -652,16 +652,18 @@ class TestTheUnitStandsUpIn3D(unittest.TestCase):
         parts = {p.key: p for p in br_abrade.unit().parts}
         self.assertAlmostEqual(parts["panel"].pos[1],
                                -sg_grind.STACK_T_MM / 2.0, places=3)
-        self.assertLess(parts["feed"].pos[1], 0.0)       # 롤러는 판 밑
+        self.assertLess(parts["table"].pos[1], 0.0)      # 테이블은 판 밑
         self.assertGreater(parts["belt"].pos[1], 0.0)    # 벨트는 판 위
         self.assertGreater(parts["drum"].pos[1], parts["belt"].pos[1])
 
-    def test_the_platen_spans_the_panel_width(self):
-        """조각 47 × 피치 30 이 폭 방향이라는 것 — 자리가 그것을 말해야 한다."""
+    def test_the_table_covers_the_whole_panel(self):
+        """면으로 빨아 당기려면 판을 다 덮어야 한다 — 그게 롤러와의 차이다."""
         parts = {p.key: p for p in br_abrade.unit().parts}
-        span = br_abrade.platen_segments() * br_abrade.PLATEN_SEGMENT_MM
-        self.assertAlmostEqual(parts["platen"].size[2], span, places=1)
-        self.assertGreaterEqual(span, campaign.PANEL_WIDTH_MM)
+        self.assertGreaterEqual(parts["table"].size[0], campaign.PANEL_LENGTH_MM)
+        self.assertGreaterEqual(parts["table"].size[2], campaign.PANEL_WIDTH_MM)
+        self.assertAlmostEqual(br_abrade.table_area_mm2(),
+                               campaign.PANEL_LENGTH_MM * campaign.PANEL_WIDTH_MM,
+                               places=1)
 
     def test_the_motor_stands_outside_the_belt_width(self):
         """벨트 폭 안에 세우면 집진 통로를 막는다."""
@@ -697,6 +699,9 @@ class TestTheUnitStandsUpIn3D(unittest.TestCase):
     def test_the_belt_sits_above_the_backsheet(self):
         parts = {p.key: p for p in br_abrade.contact_unit().parts}
         self.assertGreater(parts["cbelt"].pos[1], parts["cbacksheet"].pos[1])
+        # 테이블은 유리 밑, 센서는 벨트 위다.
+        self.assertLess(parts["ctable"].pos[1], parts["cglass"].pos[1])
+        self.assertGreater(parts["czprobe"].pos[1], parts["cbelt"].pos[1])
 
     def test_both_units_are_listed_with_a_view_and_steps(self):
         keys = [u.key for u in br_abrade.units()]
@@ -716,6 +721,111 @@ class TestTheUnitStandsUpIn3D(unittest.TestCase):
         src = inspect.getsource(br_abrade.contact_unit)
         self.assertIn("sg_grind.STACK_T_MM", src)
         self.assertIn("sg_grind.GLASS_T_MM", src)
+
+
+class TestTheVacuumTableAndTheMeasuredDatum(unittest.TestCase):
+    """진공 테이블 채택 — 무엇을 없애고 무엇을 못 없애는가."""
+
+    def test_the_table_does_not_fix_the_datum(self):
+        """이게 핵심이다 — 진공은 판을 펴 줄 뿐 두께를 못 바꾼다."""
+        self.assertFalse(br_abrade.table_reference_fits())
+        self.assertLess(br_abrade.table_reference_margin(), 1.0)
+        self.assertAlmostEqual(
+            br_abrade.table_reference_margin(),
+            br_abrade.depth_window_half_mm() / br_abrade.BED_REFERENCE_TOL_MM,
+            places=2)
+
+    def test_measuring_the_top_face_is_what_fixes_it(self):
+        self.assertTrue(br_abrade.measured_reference_fits())
+        self.assertGreater(br_abrade.measured_reference_margin(), 1.0)
+        self.assertGreater(br_abrade.measured_reference_margin(),
+                           br_abrade.table_reference_margin())
+
+    def test_the_measurement_is_recorded_as_a_condition_not_a_feature(self):
+        """원가 절감 때 제일 먼저 빠지지 않게 근거를 적어 둔다."""
+        text = " ".join(br_abrade.why_the_height_measurement_is_not_optional())
+        self.assertIn("빠듯한 게 아니라", text)
+        self.assertIn("원가 절감 대상이 아니다", text)
+
+    def test_the_table_and_the_single_axis_are_a_pair(self):
+        text = " ".join(br_abrade.the_single_z_axis_needs_the_table())
+        self.assertIn("둘 중 하나만 있으면 안 된다", text)
+        self.assertIn("추측해서 정하지 않는다", text)
+
+    def test_the_vacuum_holds_by_orders_of_magnitude(self):
+        """파지가 풀린다는 주장 — 배수로 확인한다."""
+        self.assertAlmostEqual(
+            br_abrade.vacuum_hold_kn(),
+            br_abrade.VACUUM_KPA * 1_000.0 * br_abrade.table_area_mm2()
+            / 1e6 / 1_000.0, places=1)
+        # SR-302 가 끄는 힘에는 세 자릿수, 이 유닛 벨트에는 한 자릿수 여유다 —
+        # 벨트 쪽이 훨씬 세다는 것을 감추지 않는다.
+        self.assertGreater(br_abrade.vacuum_margin_over(sg_grind.tangential_total_n()),
+                           100.0)
+        self.assertGreater(br_abrade.vacuum_margin_over(br_abrade.belt_tangential_n()),
+                           2.0)
+
+    def test_it_bites_the_glass_not_the_cells(self):
+        """접촉압을 셀 기준과 견줄 필요가 없다는 것 — 그래도 그 안이다."""
+        self.assertEqual(br_abrade.vacuum_contact_mpa(),
+                         round(br_abrade.VACUUM_KPA / 1_000.0, 4))
+        self.assertLess(br_abrade.vacuum_contact_mpa(), sg_grind.FACE_SAFE_MPA)
+
+    def test_standing_the_panel_costs_time(self):
+        """판이 서면 흡착 시간이 통과에서 빠진다 — 공짜가 아니다."""
+        self.assertFalse(br_abrade.PANEL_MOVES)
+        self.assertAlmostEqual(
+            br_abrade.belt_time_s(),
+            br_abrade.occupancy_s() - br_abrade.INDEX_S
+            - br_abrade.VACUUM_CYCLE_S, places=2)
+        self.assertTrue(br_abrade.vacuum_cycle_fits())
+        self.assertLess(br_abrade.feed_m_min(), 5.0)
+
+    def test_the_vacuum_budget_comes_from_the_feed_cap(self):
+        """예산이 이송 상한에서 나온다 — 임의로 정한 값이 아니다."""
+        budget = br_abrade.vacuum_budget_s(5.0)
+        tighter = br_abrade.vacuum_budget_s(4.0)
+        self.assertLess(tighter, budget)     # 상한이 낮으면 예산이 준다
+        self.assertGreater(budget, br_abrade.VACUUM_CYCLE_S)
+
+    def test_the_platen_is_kept_as_the_fallback(self):
+        text = " ".join(br_abrade.the_platen_is_replaced_by_the_table())
+        self.assertIn("물음 자체를 없앤다", text)
+        titles = " ".join(br_abrade.open_questions())
+        self.assertIn("평탄도", titles)
+
+
+class TestTheResidualVision(unittest.TestCase):
+    """잔존 백시트 검사 — 사양서가 맞고 이 모델이 빠뜨렸던 자리."""
+
+    def test_the_yardstick_is_the_dust_already_leaking(self):
+        """비전의 잣대가 임의값이 아니라 집진 누출에서 나온다."""
+        mark = br_abrade.patch_that_weighs_like_the_leak_mm2()
+        self.assertAlmostEqual(
+            br_abrade.residual_patch_mass_g(mark),
+            br_abrade.escaped_fines_g_per_panel(), places=2)
+
+    def test_resolution_is_not_the_problem(self):
+        self.assertTrue(br_abrade.vision_sees_what_matters())
+        self.assertLess(br_abrade.vision_min_patch_mm2(),
+                        br_abrade.patch_that_weighs_like_the_leak_mm2() / 1_000.0)
+
+    def test_the_real_question_is_coverage_and_disposal(self):
+        text = " ".join(br_abrade.why_the_vision_is_needed())
+        self.assertIn("분해능은 문제가 아니다", text)
+        self.assertIn("커버리지와 처분", text)
+        self.assertIn("추측해서 정하지 않는다", text)
+
+    def test_the_unit_carries_the_camera_and_the_step(self):
+        keys = {p.key for p in br_abrade.unit().parts}
+        self.assertIn("vision", keys)
+        steps = " ".join(k for k, _ in br_abrade.unit().principle)
+        self.assertIn("잔존 검사", steps)
+
+    def test_depth_control_and_actually_gone_are_different_claims(self):
+        """창 안에 들었다는 것과 다 걷혔다는 것은 다른 명제다."""
+        text = " ".join(br_abrade.why_the_vision_is_needed())
+        self.assertIn("다른 명제", text)
 
 
 class TestCloseupDrawing(unittest.TestCase):
@@ -769,7 +879,8 @@ class TestCloseupDrawing(unittest.TestCase):
         text = " ".join(r[1] for rows in spec.values() for r in rows)
         self.assertIn(f"{br_abrade.occupancy_s()}", text)
         self.assertIn(f"{br_abrade.total_power_kw()}", text)
-        self.assertIn(f"{br_abrade.platen_segments()}", text)
+        self.assertIn(f"{br_abrade.vacuum_hold_kn()}", text)
+        self.assertIn(f"{br_abrade.measured_reference_margin()}", text)
         self.assertIn(br_abrade.UPSTREAM_TAG, text)
 
     def test_the_open_list_comes_from_both_sources(self):
@@ -785,14 +896,25 @@ class TestTheUnitDrawsItself(unittest.TestCase):
     """부품 — 위에서 정한 값이 부품표에 그대로 실린다."""
 
     def test_the_parts_carry_the_numbers_the_model_computed(self):
-        """모터 정격·압반 조각 수·지관 수가 계산값과 같다."""
+        """모터 정격·지관 수·센서 수가 계산값과 같다."""
         parts = {p.key: p for p in br_abrade.unit().parts}
-        self.assertEqual(parts["platen"].qty,
-                         br_abrade.platen_segments() * br_abrade.HEADS)
         self.assertEqual(parts["duct"].qty,
                          br_abrade.outlets_per_head() * br_abrade.HEADS)
         self.assertEqual(parts["motor"].qty, br_abrade.HEADS)
+        self.assertEqual(parts["zprobe"].qty, br_abrade.HEADS)
         self.assertIn(f"{br_abrade.motor_rating_kw():.0f} kW", parts["motor"].spec)
+
+    def test_the_platen_left_with_the_vacuum_table(self):
+        """압반이 부품에서 빠졌다 — 값은 남기고 채택만 거둔다."""
+        keys = {p.key for p in br_abrade.unit().parts}
+        self.assertNotIn("platen", keys)
+        self.assertIn("table", keys)
+        self.assertFalse(br_abrade.PLATEN_ADOPTED)
+        # 돌아올 자리라 값은 살아 있어야 한다.
+        self.assertGreater(br_abrade.platen_segments(), 0)
+        self.assertGreater(br_abrade.PLATEN_FOLLOW_MM, 0.0)
+        text = " ".join(br_abrade.the_platen_is_replaced_by_the_table())
+        self.assertIn("돌아올 자리", text)
 
     def test_the_principle_walks_the_panel_through(self):
         """작동원리가 물림에서 인계까지 끊기지 않는다."""

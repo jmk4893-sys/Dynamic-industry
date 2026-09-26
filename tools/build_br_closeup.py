@@ -96,6 +96,22 @@ def cycle_payload() -> str:
         "marginRatio": a.depth_margin_ratio(),
         "faceFits": a.face_reference_fits(),
         "bedMisses": a.bed_reference_would_miss(),
+        # 채택된 기준면은 **윗면 측정**이다. 압반 추종은 채택 안 된 쪽의 값이라
+        # 화면이 그것을 여유로 광고하면 안 된다.
+        "platenAdopted": a.PLATEN_ADOPTED,
+        "sensorTol": a.Z_SENSOR_TOL_MM,
+        "measuredMargin": a.measured_reference_margin(),
+        "measuredFits": a.measured_reference_fits(),
+        "tableMargin": a.table_reference_margin(),
+        "tableFits": a.table_reference_fits(),
+        "vacuumKpa": a.VACUUM_KPA,
+        "vacuumHoldKn": a.vacuum_hold_kn(),
+        "vacuumCycleS": a.VACUUM_CYCLE_S,
+        "vacuumBudgetS": a.vacuum_budget_s(),
+        "vacuumFits": a.vacuum_cycle_fits(),
+        "visionMinMm2": a.vision_min_patch_mm2(),
+        "visionMarkMm2": a.patch_that_weighs_like_the_leak_mm2(),
+        "visionSees": a.vision_sees_what_matters(),
         "closesBothWays": a.tolerance_closes_both_ways(),
         "occupancy": a.occupancy_s(),
         # **AFR 정반과 견주지 않는다.** 그것은 SG-301 이야기다 — SG 는 AFR 후단
@@ -122,25 +138,43 @@ def spec_payload() -> str:
     common = [
         ["이송 / 통과", f"**{a.feed_mm_s():.1f} mm/s** · 통과 "
                     f"{a.pass_length_mm():,.0f} mm · 점유 **{a.occupancy_s()} s** "
-                    f"(AFR 정반 {campaign.AFR_S} s · 택트 하한 "
-                    f"{campaign.takt_floor_s()} s 아래)"],
+                    f"— 자기 스테이션이라 견줄 대상은 **택트 하한 "
+                    f"{campaign.takt_floor_s()} s** 다 (병목 {campaign.bottleneck()} "
+                    f"{campaign.ideal_takt_s()} s)"],
         ["깊이 창", f"**{lo}~{hi} mm** (폭 {round(hi - lo, 3)}) — 아래로는 백시트 "
                 f"{a.BACKSHEET_T_MM} 를 다 걷고, 위로는 셀에 닿기 전에 멈춘다. "
                 f"목표 {a.TARGET_DEPTH_MM} · 실제 {a.min_depth_cut_mm()}~"
                 f"{a.max_depth_cut_mm()}"],
-        ["기준면", f"압반 추종 **±{a.PLATEN_FOLLOW_MM} mm** 가 창 안에 든다 "
-               f"(여유 **{a.depth_margin_ratio()} 배**). 정반 기준이면 공차합 "
-               f"{a.BED_REFERENCE_TOL_MM} mm 라 **창을 넘는다** — 그래서 면 기준이다"],
+        ["기준면", f"**윗면을 잰다.** 진공 테이블이 판을 펴 주지만 재료 두께 공차 "
+               f"{a.BED_REFERENCE_TOL_MM} mm 는 남아 테이블 기준으로는 "
+               f"**{a.table_reference_margin()} 배 — 못 든다.** 윗면을 재면 센서+추종 "
+               f"{a.Z_SENSOR_TOL_MM} mm 로 여유 **{a.measured_reference_margin()} 배**"],
+        ["지지·파지", f"진공 **{a.VACUUM_KPA:.0f} kPa** → {a.vacuum_hold_kn()} kN "
+                 f"(면내 {a.vacuum_friction_hold_kn()} kN) · 접촉압 "
+                 f"{a.vacuum_contact_mpa()} MPa 를 **유리면**이 받는다 · 벨트 접선력 "
+                 f"{a.belt_tangential_n():,.0f} N 의 "
+                 f"{a.vacuum_margin_over(a.belt_tangential_n()):,.0f} 배"],
     ]
     return json.dumps({
         "br305": common + [
             ["헤드 / 벨트", f"{a.HEADS} 대 · {'/'.join(a.GRITS)} · 폭 "
                        f"{a.BELT_WIDTH_MM:.0f} · 주속 **{a.BELT_SPEED_M_S:.0f} m/s** "
                        f"(이송의 {a.BELT_SPEED_M_S * 1000 / a.feed_mm_s():,.0f} 배)"],
-            ["압반", f"조각 **{a.platen_segments()}** × 피치 "
-                 f"{a.PLATEN_SEGMENT_MM:.0f} mm = "
-                 f"{a.platen_segments() * a.PLATEN_SEGMENT_MM:,.0f} mm — 판 폭 "
-                 f"{campaign.PANEL_WIDTH_MM:,.0f} 을 **폭 방향**으로 덮는다"],
+            ["판이 선다", f"흡착 배기·해제 **{a.VACUUM_CYCLE_S:.0f} s** 가 통과에서 "
+                    f"빠져 이송이 {a.feed_m_min()} m/min 으로 올라간다. 예산은 "
+                    f"**{a.vacuum_budget_s()} s**(이송 상한 5 m/min 기준) — "
+                    f"넘으면 병목이 된다"],
+            ["압반이 빠졌다", f"분할 압반 **{a.platen_segments() * a.HEADS} 개**가 "
+                       f"필요 없어졌다 — 폭 방향 굴곡을 테이블이 편다. 값은 살려 "
+                       f"뒀다(추종 ±{a.PLATEN_FOLLOW_MM}, 여유 "
+                       f"{a.depth_margin_ratio()} 배): 테이블이 못 편다는 것이 "
+                       f"시험에서 나오면 돌아올 자리다"],
+            ["잔존 검사", f"비전 {a.VISION_PIXEL_MM} mm/px 로 "
+                    f"**{a.vision_min_patch_mm2()} mm²** 를 잡는다. 잣대는 집진이 "
+                    f"놓치는 {a.escaped_fines_g_per_panel()} g 과 같은 무게인 "
+                    f"{a.patch_that_weighs_like_the_leak_mm2():,.0f} mm² — "
+                    f"{a.patch_that_weighs_like_the_leak_mm2() / a.vision_min_patch_mm2():,.0f} "
+                    "분의 일이라 **분해능은 문제가 아니다**"],
             ["동력", f"제거율 {a.removal_rate_mm3_s():,.0f} mm³/s → 헤드당 "
                  f"{a.power_per_head_kw()} kW · 합 **{a.total_power_kw()} kW** · "
                  f"모터 정격 {a.motor_rating_kw():.0f} kW"],
@@ -413,7 +447,7 @@ def scene_script() -> str:
         var run = Math.max(0, Math.min(1, t / 4));
         if (k === 'panel') d.x = (1 - run * 2) * PANEL_L / 2;
         /* 헤드는 물릴 때 내려앉는다 — 절입이 만들어지는 자리가 여기다 */
-        var head = (k === 'belt' || k === 'drum' || k === 'platen'
+        var head = (k === 'belt' || k === 'drum' || k === 'zprobe'
                     || k === 'airknife' || k === 'hood');
         if (head) d.y = (1 - Math.max(0, Math.min(1, t))) * 180;
       }} else {{
@@ -482,11 +516,13 @@ def scene_script() -> str:
       '아래로는 백시트 **' + CYCLE.backsheet.toFixed(2) + ' mm** 를 다 걷어야 하고, '
       + '위로는 셀에 닿기 전에 멈춰야 한다 — 그 사이 **'
       + (CYCLE.hi - CYCLE.lo).toFixed(2) + ' mm** 가 이 기계가 지켜야 하는 전부다. '
-      + '압반이 **판 면**에 얹혀 ±' + CYCLE.follow.toFixed(2) + ' mm 를 따라가므로 '
-      + '여유가 **' + CYCLE.marginRatio.toFixed(2) + ' 배**다. 정반을 기준으로 잡으면 '
-      + '공차합 ' + CYCLE.bed.toFixed(2) + ' mm 라 **창을 넘는다** — 그것이 이 유닛이 '
-      + '압반을 분할하는 이유다. 눈금은 왼쪽부터 창 하한 · 가장 얕은 자리 · 목표 · '
-      + '가장 깊은 자리 · 창 상한이다.');
+      + '**진공 테이블이 판을 펴 주지만 두께 공차는 못 없앤다** — 테이블 면을 '
+      + '기준으로 잡으면 ' + CYCLE.bed.toFixed(2) + ' mm 가 남아 여유가 '
+      + CYCLE.tableMargin.toFixed(2) + ' 배로 **1 을 못 넘는다.** 그래서 '
+      + '**백시트 윗면을 직접 재고**(센서+추종 ' + CYCLE.sensorTol.toFixed(2) + ' mm) '
+      + '여유가 **' + CYCLE.measuredMargin.toFixed(2) + ' 배**가 된다 — Z축 측정은 '
+      + '부가 기능이 아니라 이 기계가 성립하는 조건이다. 눈금은 왼쪽부터 창 하한 · '
+      + '가장 얕은 자리 · 목표 · 가장 깊은 자리 · 창 상한이다.');
   }}
 
   function bandMark() {{

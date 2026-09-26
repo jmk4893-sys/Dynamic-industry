@@ -121,11 +121,53 @@ INDEX_S = 4.0
 #: 택트 대비 남겨 둘 여유 (s). 이 유닛이 **새 병목이 되면 안 된다.**
 TAKT_MARGIN_S = 2.0
 
+# ── 지지·파지 — 진공 테이블 ─────────────────────────────────────────────
+#
+#   외부에서 온 갠트리 사양서가 **진공 테이블**을 들고 왔고, 검토 결과 채택할
+#   만하다 (`docs/br-305-gantry-review.md`). 이 유닛에 중요한 것은 셋이다.
+#
+#   ① **폭 방향 굴곡이 없어진다.** 롤러로 선(線) 지지하면 판이 처지고 굽는데
+#      면으로 빨아 당기면 그게 없어진다. 그래서 깊이를 **한 축**으로 잡을 수
+#      있게 되고, 폭 1,400 을 더듬던 분할 압반 47 조각이 필요 없어진다.
+#   ② **파지가 통째로 풀린다.** 앞 걸음(SR-302)이 끄는 힘도, 이 유닛 벨트의
+#      접선력도 세 자릿수 여유로 버틴다. 무는 면이 **유리**라 셀 허용 접촉압을
+#      쓸 필요도 없다.
+#   ③ **그런데 두께 공차는 못 없앤다.** 이게 갈림길이다 — 아래 기준면 절 참조.
+
+#: 이 유닛이 판을 받치고 잡는 방식.
+SUPPORT = "진공 테이블"
+#: 테이블 진공도 (kPa, 게이지 음압) — **계획값**. 유리면을 문다.
+VACUUM_KPA = 20.0
+#: 테이블 패드와 유리 사이 마찰계수 — **계획값**.
+TABLE_FRICTION = 0.5
+#: 판이 서고 헤드가 가는가 — 진공 테이블은 판을 세워야 성립한다.
+PANEL_MOVES = False
+#: 흡착 배기 + 해제에 드는 시간 (s) — **계획값**. 판이 서므로 이 시간이
+#: 통과 시간에서 빠진다. 아래 `vacuum_budget_s()` 가 상한을 낸다.
+VACUUM_CYCLE_S = 6.0
+
+# ── 깊이 기준 — 윗면을 잰다 ─────────────────────────────────────────────
+#: 변위센서 + Z축 추종의 합 오차 (mm) — **계획값**.
+#: 테이블 높이가 아니라 **백시트 윗면**을 재는 경우의 값이다.
+Z_SENSOR_TOL_MM = 0.05
+
+# ── 잔존 검사 — 갈고 나서 정말 없는지 본다 ──────────────────────────────
+#: 비전 화소 크기 (mm/px) 와 검출에 필요한 화소 수 — **계획값**.
+#: 사양서가 맞고 이 모델이 빠뜨렸던 것이다. 잔존 0 을 **요구만** 하고
+#: 확인할 수단이 없었다.
+VISION_PIXEL_MM = 0.5
+VISION_MIN_PATCH_PX = 9
+
 # ── 깊이를 면에서 잡는 장치 ─────────────────────────────────────────────
 #: 분할 압반 세그먼트 피치 (mm) — 좁을수록 면을 잘 따라간다.
 PLATEN_SEGMENT_MM = 30.0
 #: 세그먼트 추종 오차 (mm) — **계획값**. 벤더 실측으로 바뀐다.
 PLATEN_FOLLOW_MM = 0.08
+#: 분할 압반을 채택했는가 — **진공 테이블이 그 일을 대신하므로 아니다.**
+#: 지우지 않는 이유는 이것이 「폭 1,400 의 굴곡을 어떻게 따라갈 것인가」에
+#: 대한 답이었고, 진공 테이블이 그 물음 자체를 없앴다는 것이 판단 근거이기
+#: 때문이다. `the_platen_is_replaced_by_the_table()`.
+PLATEN_ADOPTED = False
 #: 정반을 기준으로 잡았다면 쌓였을 공차 (mm) — 유리 두께 ±0.20 과
 #: 라미네이션 두께 ±0.15 의 합. 비교용으로만 둔다.
 BED_REFERENCE_TOL_MM = 0.35
@@ -176,8 +218,13 @@ def occupancy_s() -> float:
 
 
 def belt_time_s() -> float:
-    """그중 실제로 벨트 밑을 지나는 시간 (s)."""
-    return round(occupancy_s() - INDEX_S, 2)
+    """그중 실제로 벨트 밑을 지나는 시간 (s).
+
+    판이 서므로(`PANEL_MOVES` = False) 흡착 배기와 해제가 여기서 빠진다.
+    through-feed 였을 때는 이 시간이 없었다.
+    """
+    vac = 0.0 if PANEL_MOVES else VACUUM_CYCLE_S
+    return round(occupancy_s() - INDEX_S - vac, 2)
 
 
 def feed_mm_s() -> float:
@@ -260,6 +307,245 @@ def target_is_inside_the_window() -> bool:
     """실제 절입이 창 안에 있는가."""
     lo, hi = depth_window_mm()
     return lo <= TARGET_DEPTH_MM <= hi
+
+
+# ── 진공 테이블 — 무엇을 없애고 무엇을 못 없애는가 ──────────────────────
+def table_area_mm2() -> float:
+    """흡착 면적 (mm²) — 판 한 면 전체."""
+    return round(float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM), 1)
+
+
+def vacuum_hold_kn() -> float:
+    """테이블이 판을 당기는 힘 (kN) = 진공도 × 면적."""
+    return round(VACUUM_KPA * 1_000.0 * table_area_mm2() / 1e6 / 1_000.0, 1)
+
+
+def vacuum_contact_mpa() -> float:
+    """그때 유리면이 받는 접촉압 (MPa) — 진공도 그 자체다."""
+    return round(VACUUM_KPA / 1_000.0, 4)
+
+
+def vacuum_friction_hold_kn() -> float:
+    """미끄러지기 전까지 버티는 면내 힘 (kN)."""
+    return round(vacuum_hold_kn() * TABLE_FRICTION, 1)
+
+
+def vacuum_margin_over(force_n: float) -> float:
+    """그 힘의 몇 배를 버티는가 — 얼마나 넉넉한지가 요지다."""
+    if force_n <= 0.0:
+        return float("inf")
+    return round(vacuum_friction_hold_kn() * 1_000.0 / force_n, 1)
+
+
+def belt_tangential_n() -> float:
+    """이 유닛 벨트가 판을 끄는 힘 (N) = 절삭 동력 / 벨트 주속."""
+    return round(total_power_kw() * 1_000.0 / BELT_SPEED_M_S, 1)
+
+
+def what_the_vacuum_table_replaces() -> tuple[str, ...]:
+    """진공 테이블이 사 주는 것 — 값으로 센다."""
+    from . import sg_grind as sg
+    return (
+        f"**파지가 통째로 풀린다.** 진공 {VACUUM_KPA:.0f} kPa 로 "
+        f"{vacuum_hold_kn()} kN 을 당기고 마찰 {TABLE_FRICTION:g} 면 면내 "
+        f"{vacuum_friction_hold_kn()} kN 을 버틴다 — 앞 걸음 SR-302 가 끄는 "
+        f"{sg.tangential_total_n()} N 의 "
+        f"**{vacuum_margin_over(sg.tangential_total_n()):,.0f} 배**, 이 유닛 "
+        f"벨트 접선력 {belt_tangential_n():,.0f} N 의 "
+        f"**{vacuum_margin_over(belt_tangential_n()):,.0f} 배**다.",
+        f"**셀 허용치를 안 쓴다.** 무는 면이 유리라 접촉압 "
+        f"{vacuum_contact_mpa()} MPa 를 셀 기준 "
+        f"{sg.FACE_SAFE_MPA} MPa 와 견줄 필요가 없다 — 견주어도 "
+        f"{vacuum_contact_mpa() / sg.FACE_SAFE_MPA:.1f} 배로 그 안이다.",
+        f"**그리퍼 패드 계산이 사라진다.** SR-302 에서 패드 "
+        f"{sg.grip_pad_area_needed_mm2():,.0f} mm² 를 깔아 풀던 문제가 테이블 "
+        "하나로 없어진다.",
+        f"**분할 압반 {platen_segments()} 조각이 필요 없어진다** — 폭 방향 "
+        "굴곡을 테이블이 펴 주므로 깊이를 한 축으로 잡는다. "
+        "`the_platen_is_replaced_by_the_table()`.",
+    )
+
+
+def the_table_flattens_but_does_not_thin() -> tuple[str, ...]:
+    """진공 테이블이 **못** 없애는 것 — 여기가 이 안의 갈림길이다.
+
+    테이블은 판을 **펴** 준다. 휨·굴곡·지지 평면도가 없어진다. 그런데
+    `BED_REFERENCE_TOL_MM` 은 그런 것이 아니라 **재료 두께 공차**다 —
+    유리 두께 ±0.20 과 라미네이션 ±0.15. 진공은 판을 얇게도 두껍게도
+    못 만든다.
+
+    그래서 **테이블 면을 기준으로 Z 를 내리면 창을 못 지킨다.**
+    """
+    return (
+        f"**없애는 것** — 휨·굴곡·지지 평면도. 그래서 한 축 Z 로 충분해지고 "
+        f"분할 압반 {platen_segments()} 조각이 빠진다.",
+        f"**못 없애는 것** — 재료 두께 공차 {BED_REFERENCE_TOL_MM} mm "
+        "(유리 ±0.20 + 라미네이션 ±0.15). 진공은 두께를 못 바꾼다.",
+        f"**그래서 테이블 기준은 여전히 안 된다** — 창 반폭 "
+        f"{depth_window_half_mm()} 대비 "
+        f"**{table_reference_margin()} 배**로 1 을 못 넘는다 "
+        f"(`table_reference_fits()` = {table_reference_fits()}).",
+        f"**윗면을 재면 든다** — 센서+추종 {Z_SENSOR_TOL_MM} mm 로 여유 "
+        f"**{measured_reference_margin()} 배** "
+        f"(`measured_reference_fits()` = {measured_reference_fits()}).",
+    )
+
+
+def table_reference_margin() -> float:
+    """테이블 면을 기준으로 잡을 때의 여유 배수 — 1 을 넘어야 든다."""
+    return round(depth_window_half_mm() / BED_REFERENCE_TOL_MM, 2)
+
+
+def table_reference_fits() -> bool:
+    """테이블 기준으로 창에 드는가 — **안 든다.**"""
+    return BED_REFERENCE_TOL_MM <= depth_window_half_mm()
+
+
+def measured_reference_margin() -> float:
+    """윗면을 재서 따라갈 때의 여유 배수."""
+    return round(depth_window_half_mm() / Z_SENSOR_TOL_MM, 2)
+
+
+def measured_reference_fits() -> bool:
+    """재서 잡으면 창에 드는가."""
+    return Z_SENSOR_TOL_MM <= depth_window_half_mm()
+
+
+def why_the_height_measurement_is_not_optional() -> tuple[str, ...]:
+    """Z축 높이 측정이 부가 기능이 아니라 **전제**라는 것.
+
+    받은 사양서에 「자동 높이 측정 및 표면 추종(Z축 제어)」가 특징 목록의
+    한 줄로 들어 있다. 맞게 본 것인데 **왜 필수인지**가 안 적혀 있어
+    옵션처럼 읽힌다. 그러면 원가를 줄일 때 제일 먼저 빠진다.
+    """
+    return (
+        f"**빠듯한 것을 메우는 장치가 아니다.** 테이블 기준으로는 여유가 "
+        f"{table_reference_margin()} 배로 **1 미만**이다 — 빠듯한 게 아니라 "
+        "아예 못 든다.",
+        "**테이블 높이 기준 제어로는 안 된다.** 재야 하는 것은 테이블에서 "
+        "백시트 윗면까지가 아니라 **백시트 윗면 그 자체**다.",
+        f"**재면 여유가 {measured_reference_margin()} 배**가 되어 분할 압반의 "
+        f"{depth_margin_ratio()} 배보다도 낫다 — 다만 센서값이 계획값이다.",
+        "**그래서 이 항목은 원가 절감 대상이 아니다.** 빼면 기계가 성립하지 "
+        "않는다.",
+    )
+
+
+def the_single_z_axis_needs_the_table() -> tuple[str, ...]:
+    """한 축 Z 와 진공 테이블은 **짝**이다 — 하나만 있으면 성립 안 한다."""
+    return (
+        "**한 축 Z 는 평면만 따라간다.** 폭 방향 굴곡은 못 따라간다.",
+        f"**그 굴곡을 테이블이 편다.** 그래서 한 축으로 되는 것이고, 안 펴지면 "
+        f"다시 분할 압반 {platen_segments()} 조각이 든다.",
+        "**둘 중 하나만 있으면 안 된다** — 테이블만 있으면 두께 공차에 걸리고, "
+        "측정만 있으면 굴곡에 걸린다.",
+        "**그러므로 이 안의 사활은 하나다: 진공 흡착 상태에서 판이 실제로 "
+        "얼마나 펴지는가.** 시험 한 번이면 나오는 값이고, 그 전에는 한 축으로 "
+        "충분한지 못 정한다. **추측해서 정하지 않는다.**",
+    )
+
+
+def the_platen_is_replaced_by_the_table() -> tuple[str, ...]:
+    """분할 압반을 왜 안 쓰는가 — 지우지 않고 근거로 남긴다."""
+    return (
+        f"**압반은 「폭 {campaign.PANEL_WIDTH_MM:,.0f} 의 굴곡을 어떻게 "
+        f"따라갈 것인가」의 답이었다** — 피치 {PLATEN_SEGMENT_MM:.0f} mm 로 "
+        f"{platen_segments()} 조각, 헤드 {HEADS} 대면 "
+        f"{platen_segments() * HEADS} 개다.",
+        f"**진공 테이블은 그 물음 자체를 없앤다.** 판을 펴 놓으면 따라갈 굴곡이 "
+        f"없다 — `PLATEN_ADOPTED` = {PLATEN_ADOPTED}.",
+        f"**다만 추종 {PLATEN_FOLLOW_MM} mm 라는 값은 살려 둔다.** 테이블이 "
+        "판을 못 편다는 것이 시험에서 나오면 돌아올 자리이고, 그때 여유 "
+        f"{depth_margin_ratio()} 배가 근거가 된다.",
+    )
+
+
+# ── 판이 서면 시간이 어떻게 갈리는가 ────────────────────────────────────
+def vacuum_budget_s(max_feed_m_min: float = 5.0) -> float:
+    """기계 이송 상한을 지키면서 흡착·해제에 쓸 수 있는 시간 (s).
+
+    판이 서므로 배기·해제 시간이 통과 시간에서 **빠진다.** 그만큼 이송이
+    빨라져야 하는데, 이송에는 기계 상한이 있다. 그 둘이 만나는 자리가
+    흡착 사이클의 예산이다.
+    """
+    max_mm_s = max_feed_m_min * 1_000.0 / 60.0
+    need_s = pass_length_mm() / max_mm_s
+    return round(occupancy_s() - INDEX_S - need_s, 2)
+
+
+def vacuum_cycle_fits(max_feed_m_min: float = 5.0) -> bool:
+    """계획한 흡착 사이클이 그 예산 안에 드는가."""
+    return VACUUM_CYCLE_S <= vacuum_budget_s(max_feed_m_min)
+
+
+def what_standing_the_panel_costs() -> tuple[str, ...]:
+    """판을 세우면 무엇을 내주는가 — through-feed 와의 차이."""
+    return (
+        f"**흡착·해제 시간이 통과에서 빠진다.** 점유 {occupancy_s()} s 에서 "
+        f"정착 {INDEX_S:.0f} s 와 흡착 {VACUUM_CYCLE_S:.0f} s 를 빼면 실제로 "
+        f"가는 시간이 {belt_time_s()} s 이고, 그래서 이송이 "
+        f"**{feed_mm_s()} mm/s ({feed_m_min()} m/min)** 로 올라간다.",
+        f"**예산은 {vacuum_budget_s()} s 다** — 이송 상한 5 m/min 을 지키면서 "
+        f"쓸 수 있는 흡착 시간이 그만큼이다 "
+        f"(`vacuum_cycle_fits()` = {vacuum_cycle_fits()}).",
+        "**through-feed 는 이 시간이 없었다.** 판이 계속 가므로 배기도 해제도 "
+        "없다 — 진공 테이블이 사 온 것의 값이 여기다.",
+        f"**흡착 사이클은 실측 전 계획값이다.** {VACUUM_CYCLE_S:.0f} s 를 넘으면 "
+        "이송 상한에 먼저 걸리고, 그러면 이 유닛이 라인 병목이 된다.",
+    )
+
+
+# ── 잔존 검사 — 갈고 나서 정말 없는지 ───────────────────────────────────
+def vision_min_patch_mm2() -> float:
+    """비전이 잡아내는 최소 잔존 조각 (mm²)."""
+    return round(VISION_MIN_PATCH_PX * VISION_PIXEL_MM ** 2, 3)
+
+
+def residual_patch_mass_g(area_mm2: float) -> float:
+    """그 넓이만큼 백시트가 남았을 때의 질량 (g)."""
+    return round(area_mm2 * BACKSHEET_T_MM * DENSITY_G_MM3, 4)
+
+
+def patch_that_weighs_like_the_leak_mm2() -> float:
+    """이미 집진에서 새고 있는 양과 **같은 무게**가 되는 잔존 넓이 (mm²).
+
+    이 값이 비전의 잣대다. 이보다 작은 조각은 지금도 새고 있는 분진보다
+    가볍다 — 그것까지 잡으라고 요구하면 집진 쪽이 먼저 어긋난다.
+    """
+    return round(escaped_fines_g_per_panel()
+                 / (BACKSHEET_T_MM * DENSITY_G_MM3), 1)
+
+
+def vision_sees_what_matters() -> bool:
+    """비전 분해능이 그 잣대보다 고운가."""
+    return vision_min_patch_mm2() < patch_that_weighs_like_the_leak_mm2()
+
+
+def why_the_vision_is_needed() -> tuple[str, ...]:
+    """잔존 검사가 왜 드는가 — 이 모델이 빠뜨렸던 자리다.
+
+    이 유닛은 「잔존 백시트 0」을 사양으로 **요구만** 했고 확인할 수단이
+    없었다. 받은 갠트리 사양서의 공정 흐름도에 그 단계가 들어 있었고,
+    그쪽이 맞다.
+    """
+    marker = patch_that_weighs_like_the_leak_mm2()
+    return (
+        "**잔존은 선형 손해가 아니다.** 5 % 남으면 5 % 짜리 문제가 아니라, "
+        "남은 조각이 파쇄돼 정광을 통째로 버린다. 그래서 사양이 0 이다.",
+        f"**그런데 0 인지 볼 수단이 없었다.** 깊이 제어가 창 안에 든다는 것과 "
+        f"실제로 다 걷혔다는 것은 다른 명제다 — 벨트 마모·띠 잔사·흡착 "
+        "들뜸이 다 그 사이에 끼어든다.",
+        f"**잣대는 이미 새는 분진이다.** 집진이 놓치는 "
+        f"{escaped_fines_g_per_panel()} g/장 과 같은 무게가 되는 잔존 조각이 "
+        f"**{marker:,.0f} mm² (한 변 {marker ** 0.5:.0f} mm)** 다. 그보다 작은 "
+        "조각을 잡으라고 하면 집진 쪽이 먼저 어긋난다.",
+        f"**분해능은 문제가 아니다.** 화소 {VISION_PIXEL_MM} mm 로 "
+        f"{VISION_MIN_PATCH_PX} 화소면 {vision_min_patch_mm2()} mm² 를 잡는다 — "
+        f"잣대의 **{marker / vision_min_patch_mm2():,.0f} 분의 일**이다.",
+        "**문제는 커버리지와 처분이다.** 면 전체를 보는가, 그리고 잡히면 "
+        "**되돌려 한 번 더 가는가 버리는가** — 둘 다 안 들었다. "
+        "**추측해서 정하지 않는다.**",
+    )
 
 
 def bed_reference_would_miss() -> bool:
@@ -628,12 +914,13 @@ def why_this_beats_peeling() -> tuple[str, ...]:
     lo, hi = depth_window_mm()
     band = round(hi - lo, 3)
     return (
-        f"**① 기준면이 기구 그 자체다.** 띠 {band:g} mm 를 칼날은 슈 기준 "
+        f"**① 기준면을 잴 수 있다.** 띠 {band:g} mm 를 칼날은 슈 기준 "
         f"{br_peel.depth_control_mm():g} mm 로(여유 "
-        f"{br_peel.depth_margin_ratio():.2f} 배) 지켜야 하는데, 연마는 압반 추종 "
-        f"{PLATEN_FOLLOW_MM:g} mm 로 여유 {band / PLATEN_FOLLOW_MM:.2f} 배다. "
-        "그리고 칼날은 슈를 **붙여야** 하고 못 붙는 자리가 있을 수 있는데 "
-        "연마는 압반이 면을 타는 것이 작동 원리다.",
+        f"{br_peel.depth_margin_ratio():.2f} 배) 지켜야 하는데, 연마는 윗면을 "
+        f"**재서** {Z_SENSOR_TOL_MM:g} mm 로 여유 "
+        f"{measured_reference_margin():.2f} 배다. 칼날은 슈를 **붙여야** 하고 "
+        "못 붙는 자리가 있을 수 있는데, 연마는 판을 진공으로 펴 놓고 위에서 "
+        "재므로 붙일 것이 없다.",
         f"**② 실패가 되돌릴 수 있는 쪽이다.** 얕으면 백시트가 남는데 그것은 "
         f"**면에서 보이고 한 패스 더 돌리면 된다** — 연마는 점진적이다. 깊으면 "
         f"여유 {hi - max_depth_cut_mm():.2f} mm 가 있고 넘쳐도 EVA 라 "
@@ -959,6 +1246,23 @@ def what_it_moves() -> tuple[str, ...]:
 def open_questions() -> tuple[str, ...]:
     """실측이 와야 닫히는 것 — 계획값으로 세운 자리를 숨기지 않는다."""
     return (
+        f"**진공 흡착 상태의 판 평탄도를 모른다 — 이 안의 사활이다.** 한 축 Z "
+        f"추종은 폭 방향 굴곡을 못 따라가고, 그 굴곡을 테이블이 펴 준다는 것이 "
+        f"전제다. 안 펴지면 분할 압반 {platen_segments() * HEADS} 개가 돌아오고 "
+        f"(`PLATEN_ADOPTED` 가 참이 된다) 부품이 다시 네 배가 된다. 시험 한 "
+        "번이면 나오는 값이다.",
+        f"**변위센서+Z 추종 합 오차 {Z_SENSOR_TOL_MM} mm 가 계획값이다.** 창 "
+        f"반폭 {depth_window_half_mm()} 대비 여유 "
+        f"{measured_reference_margin()} 배인데, 이 값이 "
+        f"{depth_window_half_mm()} 를 넘으면 기계가 성립하지 않는다 — "
+        "테이블 기준으로는 이미 안 되기 때문에 물러설 자리가 없다.",
+        f"**흡착 배기·해제 {VACUUM_CYCLE_S:.0f} s 가 계획값이다.** 판이 서므로 "
+        f"이 시간이 통과에서 빠지고 이송이 {feed_m_min()} m/min 으로 올라간다. "
+        f"예산은 {vacuum_budget_s()} s 이고(이송 상한 5 m/min 기준) 넘으면 이 "
+        "유닛이 라인 병목이 된다.",
+        "**비전이 면 전체를 보는지, 잡히면 어떻게 하는지 안 들었다.** 분해능은 "
+        f"잣대의 {patch_that_weighs_like_the_leak_mm2() / vision_min_patch_mm2():,.0f} "
+        "분의 일이라 문제가 아니다 — 커버리지와 처분(되돌림/폐기)이 미결이다.",
         f"**선별 회로가 견디는 잔류량이 정해져 있지 않다.** 그것이 정해져야 "
         f"포집률이 역산된다 — 지금 계획값 {DUST_CAPTURE:.1%} 로는 "
         f"{escaped_fines_g_per_panel()} g/장이 남는다. 1 g/장까지 눌러야 하면 "
@@ -1039,13 +1343,31 @@ def unit() -> Unit:
              color="aluminum", explode=(0.0, -700.0, 0.0),
              spec=f"{campaign.PANEL_LENGTH_MM:,.0f} × {campaign.PANEL_WIDTH_MM:,.0f} "
                   f"× {t}", catalog="—"),
-        Part("feed", "이송 롤러", 6, "cylrow", (120.0, w, 120.0),
-             (0.0, -t - 60.0, 0.0), "강 + 폴리우레탄",
-             "판을 물어 정속으로 보낸다. 판 **밑**에 있으므로 벨트가 누르는 힘을 "
-             "이쪽이 받는다.", axis="z",
-             color="chrome", explode=(0.0, -320.0, 0.0),
-             spec=f"Ø120 × {w:.0f} · {feed_mm_s():.1f} mm/s",
-             catalog=f"{UNIT_TAG}-FD-01"),
+        Part("table", "진공 테이블 (유리면 지지)", 1, "box",
+             (float(campaign.PANEL_LENGTH_MM) + 200.0, 180.0,
+              float(campaign.PANEL_WIDTH_MM) + 200.0),
+             (0.0, -t - 90.0, 0.0), "알루미늄 + 실링 패드",
+             f"판을 **면으로** 빨아 당긴다. 진공 {VACUUM_KPA:.0f} kPa 로 "
+             f"{vacuum_hold_kn()} kN, 면내로 {vacuum_friction_hold_kn()} kN 을 "
+             f"버틴다 — 벨트 접선력 {belt_tangential_n():,.0f} N 의 "
+             f"{vacuum_margin_over(belt_tangential_n()):,.0f} 배다. 무는 면이 "
+             f"유리라 접촉압 {vacuum_contact_mpa()} MPa 가 셀 허용치와 무관하다. "
+             "**이 테이블이 판을 펴 주는 것이 한 축 Z 제어의 전제다.**",
+             color="frame", explode=(0.0, -420.0, 0.0),
+             spec=f"{VACUUM_KPA:.0f} kPa · {vacuum_hold_kn()} kN · 접촉압 "
+                  f"{vacuum_contact_mpa()} MPa", catalog=f"{UNIT_TAG}-VT-01"),
+        Part("zprobe", "윗면 변위센서 + Z 추종", HEADS, "cyl",
+             (60.0, 180.0, 60.0), (hx + 420.0, 140.0, 0.0), "레이저 변위센서",
+             axis="y",
+             role=f"**백시트 윗면을 직접 잰다.** 테이블 높이를 기준으로 잡으면 "
+                  f"재료 두께 공차 {BED_REFERENCE_TOL_MM} mm 가 남아 창 반폭 "
+                  f"{depth_window_half_mm()} 의 {table_reference_margin()} 배 — "
+                  f"**못 든다.** 윗면을 재면 센서+추종 {Z_SENSOR_TOL_MM} mm 로 "
+                  f"여유가 {measured_reference_margin()} 배가 된다. 이 부품은 "
+                  "**옵션이 아니라 이 기계가 성립하는 조건**이다.",
+             mirror=("x",), color="orange", explode=(0.0, 360.0, 0.0),
+             spec=f"합 오차 {Z_SENSOR_TOL_MM} mm · 여유 "
+                  f"{measured_reference_margin()} 배", catalog=f"{UNIT_TAG}-ZP-01"),
         Part("belt", "연마 벨트", HEADS, "box", (760.0, BELT_T_MM, w),
              (hx, belt_y, 0.0), "산화알루미늄 오픈코트",
              f"폴리머를 칩으로 걷어낸다 — 오픈코트라야 안 먹는다. 화면에 세운 "
@@ -1066,18 +1388,20 @@ def unit() -> Unit:
              mirror=("x",), color="steel", explode=(0.0, 620.0, 0.0),
              spec=f"Ø{CONTACT_DRUM_D_MM:.0f} × {w:.0f}",
              catalog=f"{UNIT_TAG}-DR-01"),
-        Part("platen", "분할 압반 세그먼트", platen_segments() * HEADS, "box",
-             (90.0, 60.0, platen_segments() * PLATEN_SEGMENT_MM),
-             (hx - 220.0, BELT_T_MM + 30.0, 0.0), "강 + 흑연포",
-             f"면을 따라가며 깊이를 **면에서** 잡는다 — 정반 기준은 창을 넘는다. "
-             f"{platen_segments()} 조각이 피치 {PLATEN_SEGMENT_MM:.0f} mm 로 "
-             f"**폭 방향**에 늘어서므로 합이 "
-             f"{platen_segments() * PLATEN_SEGMENT_MM:,.0f} mm — 판 폭 "
-             f"{campaign.PANEL_WIDTH_MM:,.0f} 을 덮는다. 조각마다 따로 떠서 "
-             f"±{PLATEN_FOLLOW_MM} mm 를 따라간다.",
-             mirror=("x",), color="frame", explode=(0.0, 420.0, 0.0),
-             spec=f"피치 {PLATEN_SEGMENT_MM:.0f} mm × {platen_segments()} · 추종 "
-                  f"±{PLATEN_FOLLOW_MM} mm", catalog=f"{UNIT_TAG}-PL-01"),
+        Part("vision", "잔존 백시트 검사 비전", 1, "box", (240.0, 160.0, w),
+             (-hx - 700.0, 320.0, 0.0), "라인스캔 카메라 + 조명",
+             role=f"갈고 나서 **정말 없는지** 본다. 깊이가 창 안에 들었다는 "
+                  f"것과 다 걷혔다는 것은 다른 명제다 — 벨트 마모·띠 잔사·흡착 "
+                  f"들뜸이 그 사이에 낀다. 화소 {VISION_PIXEL_MM} mm 로 "
+                  f"{vision_min_patch_mm2()} mm² 를 잡는데, 잣대는 집진이 이미 "
+                  f"놓치는 {escaped_fines_g_per_panel()} g 과 같은 무게가 되는 "
+                  f"{patch_that_weighs_like_the_leak_mm2():,.0f} mm² 다 — "
+                  f"{patch_that_weighs_like_the_leak_mm2() / vision_min_patch_mm2():,.0f} "
+                  "분의 일이라 분해능은 문제가 아니다. **커버리지와 처분이 "
+                  "미결이다.**",
+             color="chrome", explode=(0.0, 420.0, 0.0),
+             spec=f"{VISION_PIXEL_MM} mm/px · 최소 {vision_min_patch_mm2()} mm²",
+             catalog=f"{UNIT_TAG}-VS-01"),
         Part("airknife", "냉각 에어나이프", HEADS, "box", (40.0, 40.0, w),
              (hx - 400.0, 40.0, 0.0), "알루미늄",
              "접촉 직후를 식혀 녹은 칩이 벨트에 붙는 것을 막는다. 드럼 "
@@ -1115,29 +1439,42 @@ def unit() -> Unit:
     ]
     return Unit(
         key="br305",
-        name=f"{UNIT_TAG} 백시트 면 연마 유닛 — 2 헤드 통과",
+        name=f"{UNIT_TAG} 백시트 면 연마 유닛 — 진공 테이블 · 2 헤드",
         sheet=f"PV-{UNIT_TAG}-ASM-5101",
         envelope_mm=(3_400.0, 1_500.0, w + 400.0),
         view_r_mm=1_850.0,
         principle=(
-            ("① 물림", "이송 롤러가 판을 물어 정속으로 보낸다. 프레임은 "
+            ("① 흡착", f"진공 테이블이 유리면을 {VACUUM_KPA:.0f} kPa 로 빨아 "
+                       f"당겨 판을 **펴고 잡는다** ({vacuum_hold_kn()} kN). 프레임은 "
                        f"{FRAME_REMOVED_AT} 에서 이미 빠졌으므로 면이 트여 있고, "
                        f"실란트 띠도 앞 걸음 {UPSTREAM_TAG} 가 걷어 놨다 — "
                        "안 걷혔으면 띠가 벨트를 먼저 맞는다."),
-            ("② 1 단 절삭", f"거친 벨트({GRITS[0]})가 절입 "
+            ("② 측정", f"변위센서가 **백시트 윗면을 직접 잰다.** 테이블 높이를 "
+                       f"기준으로 잡으면 재료 두께 공차 {BED_REFERENCE_TOL_MM} mm 가 "
+                       f"남아 창 반폭 {depth_window_half_mm()} 의 "
+                       f"{table_reference_margin()} 배 — **못 든다.** 재면 "
+                       f"{measured_reference_margin()} 배가 된다."),
+            ("③ 1 단 절삭", f"거친 벨트({GRITS[0]})가 절입 "
                             f"{depth_per_head_mm():.3f} mm 를 걷는다. 데워진 살이 "
                             f"그대로 칩이 되어 나간다 (δ/a = {skin_to_depth_ratio()})."),
-            ("③ 면 추종", f"분할 압반 {platen_segments()} 조각이 면을 따라가며 "
-                          "깊이를 **면에서** 잡는다 — 정반 기준은 창을 넘는다."),
-            ("④ 2 단 절삭", f"고운 벨트({GRITS[1]})가 남은 절입을 걷는다. 가장 얕은 "
+            ("④ 한 축 추종", f"Z 축 하나가 잰 높이를 따라간다. 폭 방향 굴곡은 "
+                          f"**테이블이 펴서 없앴으므로** 분할 압반 "
+                          f"{platen_segments() * HEADS} 개가 필요 없다 — 둘은 "
+                          "짝이고, 테이블이 못 펴면 압반이 돌아온다."),
+            ("⑤ 2 단 절삭", f"고운 벨트({GRITS[1]})가 남은 절입을 걷는다. 가장 얕은 "
                             f"자리도 {min_depth_cut_mm()} mm 라 백시트 "
                             f"{BACKSHEET_T_MM} mm 가 **어디에도 안 남는다** — "
                             "남으면 파쇄돼 선별조로 간다."),
-            ("⑤ 포집", f"후드가 {swarf_kg_per_panel()} kg/장을 "
+            ("⑥ 포집", f"후드가 {swarf_kg_per_panel()} kg/장을 "
                        f"{hood_flow_m3h():,} m³/h 로 끌어낸다. 포집률 "
                        f"{DUST_CAPTURE:.1%} 를 못 지키면 남은 가루가 필름보다 "
                        "**더 나쁜 형태**로 파쇄에 실린다 — 여기가 품질 사양이다."),
-            ("⑥ 인계", f"폴리머가 빠진 판이 {DOWNSTREAM_TAG} 로 간다. 파쇄 뒤 "
+            ("⑦ 잔존 검사", f"비전이 면 전체를 훑어 **정말 없는지** 본다. "
+                          f"{vision_min_patch_mm2()} mm² 를 잡는데 잣대는 집진이 "
+                          f"놓치는 {escaped_fines_g_per_panel()} g 과 같은 무게인 "
+                          f"{patch_that_weighs_like_the_leak_mm2():,.0f} mm² 다. "
+                          "잡히면 되돌리는지 버리는지는 **안 들었다.**"),
+            ("⑧ 인계", f"폴리머가 빠진 판이 {DOWNSTREAM_TAG} 로 간다. 파쇄 뒤 "
                        f"부유선별에 들어가는 폴리머가 "
                        f"{polymer_reduction_ratio():,.0f} 분의 일이 된다."),
         ),
@@ -1213,16 +1550,26 @@ def contact_unit() -> Unit:
              color="steel", explode=(0.0, 260.0, 0.0),
              spec=f"실제 t{BELT_T_MM} · {'/'.join(GRITS)} · 그림은 공구 배율 없음",
              catalog="—"),
-        Part("cplaten", "압반 세그먼트 한 조각 (실제 30 × 60)", 1, "box",
-             (220.0, 200.0, 300.0), (span / 2.0 - 160.0, 220.0, 0.0),
-             "강 + 흑연포",
-             f"한 조각이 피치 {PLATEN_SEGMENT_MM:.0f} mm 다. 조각이 **판 면**에 "
-             f"얹혀 ±{PLATEN_FOLLOW_MM} mm 를 따라가므로 깊이 기준이 기계가 "
-             f"아니라 판이다 — 정반 기준이면 공차합 "
-             f"{BED_REFERENCE_TOL_MM} mm 로 창 {round(hi - lo, 3)} mm 를 넘는다.",
-             color="frame", explode=(0.0, 420.0, 0.0),
-             spec=f"실제 {PLATEN_SEGMENT_MM:.0f} × 60 · 추종 ±{PLATEN_FOLLOW_MM}",
-             catalog=f"{UNIT_TAG}-PL-01"),
+        Part("czprobe", "윗면 변위센서 (Z 추종)", 1, "box",
+             (160.0, 200.0, 300.0), (span / 2.0 - 120.0, 220.0, 0.0),
+             "레이저 변위센서",
+             f"**백시트 윗면을 직접 잰다.** 테이블 면을 기준으로 잡으면 재료 "
+             f"두께 공차 {BED_REFERENCE_TOL_MM} mm 가 남아 창 반폭 "
+             f"{depth_window_half_mm()} 의 {table_reference_margin()} 배로 "
+             f"**못 든다** — 진공은 판을 펴 줄 뿐 두께를 못 바꾼다. 재면 "
+             f"{Z_SENSOR_TOL_MM} mm 라 여유가 {measured_reference_margin()} 배다.",
+             color="orange", explode=(0.0, 420.0, 0.0),
+             spec=f"합 오차 {Z_SENSOR_TOL_MM} · 여유 {measured_reference_margin()} 배",
+             catalog=f"{UNIT_TAG}-ZP-01"),
+        Part("ctable", "진공 테이블 면 (유리면 지지)", 1, "box",
+             (span, 90.0, 300.0), (0.0, y_glass - sg_grind.GLASS_T_MM / 2.0 * m - 45.0,
+                                   0.0), "알루미늄 + 실링 패드",
+             f"판을 **면으로** 당겨 편다. 그래서 폭 방향 굴곡이 없어지고 깊이를 "
+             f"한 축으로 잡을 수 있다 — 분할 압반 {platen_segments() * HEADS} 개가 "
+             f"여기서 빠졌다. 다만 **두께 공차는 못 없앤다.**",
+             color="frame", explode=(0.0, -520.0, 0.0),
+             spec=f"{VACUUM_KPA:.0f} kPa · {vacuum_hold_kn()} kN",
+             catalog=f"{UNIT_TAG}-VT-01"),
         Part("cchip", "걷힌 칩", 1, "box",
              (span / 3.0, TARGET_DEPTH_MM * m, 300.0),
              (-span / 2.0 + span / 6.0, 150.0, 0.0),
@@ -1250,9 +1597,11 @@ def contact_unit() -> Unit:
             ("② 창", f"그래서 깊이 창이 **{lo}~{hi} mm** 다 — 아래로는 백시트를 "
                      f"다 걷어야 하고 위로는 셀에 닿기 전에 멈춰야 한다. 폭 "
                      f"{round(hi - lo, 3)} mm."),
-            ("③ 기준면", f"압반 조각이 **판 면**에 얹혀 ±{PLATEN_FOLLOW_MM} mm 를 "
-                        f"따라간다. 정반 기준이면 공차합 {BED_REFERENCE_TOL_MM} mm "
-                        f"로 창을 넘는다 — 여유 배수 {depth_margin_ratio()}."),
+            ("③ 기준면", f"**윗면을 잰다.** 진공 테이블이 판을 펴 주지만 재료 "
+                        f"두께 공차 {BED_REFERENCE_TOL_MM} mm 는 그대로 남아 "
+                        f"테이블 기준으로는 {table_reference_margin()} 배 — "
+                        f"못 든다. 윗면을 재면 {Z_SENSOR_TOL_MM} mm 로 "
+                        f"{measured_reference_margin()} 배다."),
             ("④ 절삭", f"벨트가 절입 {TARGET_DEPTH_MM} mm 를 먹는다. 접촉 호 "
                        f"{contact_arc_mm()} mm 를 {contact_time_s() * 1_000:.2f} ms "
                        f"에 지나므로 열침투가 {thermal_skin_mm()} mm — 절입의 "
