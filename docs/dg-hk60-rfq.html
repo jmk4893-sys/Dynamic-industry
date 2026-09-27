@@ -1757,7 +1757,9 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
         <tr><td class="k">FAT</td><td><strong>에어록 단별 셔터 동시개방 금지</strong></td>
           <td>강제 2 장 개방 지령에 <span class="m">DECK_SHUTTER_MUTEX</span> 불성립</td></tr>
         <tr><td class="k">FAT</td><td><strong>포크 왕복 시간</strong> — 문 열림 시간의 근거</td>
-          <td>≤ 10.7 s (에어록 손실이 이 시간에 선형이다)</td></tr>
+          <td>문 열림 ≤ 10.9 s — 포크 왕복 8.4 s 가 대부분 (에어록 손실이 이 시간에 선형이다)</td></tr>
+        <tr><td class="k">FAT</td><td><strong>가열실 무부하 손실</strong> — 140 °C 에서 문 닫힘 유지 · 생산 개폐 (각 정상상태)</td>
+          <td>유지 전력 + 개폐 증분 ≤ 30.5 kW (η 0.65 가 계약 58 장/h 에서 허용하는 손실 · 계산 6.7 + 8.2 = 14.9 kW)</td></tr>
         <tr><td class="k">SAT</td><td><strong>램프 봉착부 온도</strong> — 정격 운전 30 분 후</td>
           <td>250 ~ 350 °C (표본 4 등 · 접촉식 또는 열화상)</td></tr>
         <tr><td class="k">SAT</td><td>60장 연속 처리</td><td>P95 사이클 ≤ 55.9 s (계약 58 장/h · 가동률 90 % 의 사이클 — 명목 54.3 s)</td></tr>
@@ -1857,8 +1859,10 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
           두 운전점을 섞은 것이었다. 계약 <span class="m">58 장/h</span>에서 계를 실제로 떠나는
           손실은 <span class="m">14.9 kW</span>(에어록 교환이 절반)이고 정상상태 효율은
           <span class="m">79 %</span>라, 체류시간을 잡는 <span class="m">65 %</span>는 보수측이다.
-          이 수지는 계산이므로 파일럿(<span class="k">PT-05</span>)에서 전력량계·배기
-          엔탈피·벽 열류계로 실측해 닫고, 냉각 <span class="m">h</span>는
+          이 수지는 계산이다. 파일럿 벤치는 옆면이 열려 있어 챔버의 수지를 닫지 못하므로
+          <span class="k">PT-05</span>는 벤치에서 결합효율의 <strong>하한</strong>을, 셔터 한 장을 단
+          상자에서 가장 큰 항인 에어록 교환을 따로 재고, 챔버의 손실 합은
+          <a href="#c10">10.2항</a> FAT 무부하 손실 시험이 닫는다. 냉각 <span class="m">h</span>는
           <span class="k">PT-06</span>에서 유리 1장의 냉각곡선으로 실측해 대체한다.</p>
       </div>
     </div>

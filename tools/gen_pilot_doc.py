@@ -111,8 +111,12 @@ def part2() -> str:
     않고 벤치로 재지도 못하는 문제라 FAT 로 넘긴다. 칼날은 반대로
     <strong>실물 크기</strong>로 만든다 — 계단 칼날은 조각이 시간차로 물고 이음에서
     겹치는 것이 전부라, 축소하면 재려던 것이 사라진다. 한 자루면 된다.</p>
+  <p>에어록은 벤치에 아예 없다 — 옆면이 열려 있기 때문이다. 그런데 에어록 교환은
+    열수지에서 가장 큰 손실 항이라 <strong>셔터 한 장을 뜨거운 상자에 따로 단다</strong>.
+    교환유동은 문 하나의 높이와 열린 시간이 정하고, 챔버는 그 뒤에서 뜨거운 공기를
+    댈 뿐이다. 셔터 {P.AIR.shutters()['n']} 장이 함께 새는 챔버 전체는 FAT 가 본다.</p>
   <div class="tw"><table>
-    <caption>파일럿 벤치 구성</caption>
+    <caption>파일럿 장치 구성</caption>
     <thead><tr><th>계통</th><th>사양</th><th>왜 이것이 필요한가</th></tr></thead>
     <tbody>{rig}</tbody>
   </table></div>

@@ -424,9 +424,10 @@ def chamber_wall():
                f"{LOSS_BUDGET:.0f} kW",
                f"벽 {A:.1f} m² · 필드 {q_field:.1f} → 열교 포함 {q_gfrp:.1f} W/m². "
                f"손실 예산의 {q_gfrp*A/1000/LOSS_BUDGET:.0%} 만 벽이다. 나머지 "
-               f"{LOSS_BUDGET-q_gfrp*A/1000:.1f} kW 는 배기·데크 열용량·반사손실인데 "
-               f"**아직 아무도 세지 않았다** — 효율 65 % 는 가정이지 결과가 "
-               f"아니다 (PT-05)"),
+               f"{LOSS_BUDGET-q_gfrp*A/1000:.1f} kW 는 새는 곳을 찾을 몫이 아니다 — "
+               f"열수지가 제어체적으로 세어 보니 그 뺄셈은 두 운전점을 섞은 값이고, "
+               f"패널을 빗나간 복사는 공동 안에서 되튀어 손실이 되지 않는다 (HB1 · HB2). "
+               f"효율 {ETA*100:.0f} % 는 결합효율의 가정이고 그 하한을 파일럿 PT-05 가 잰다"),
     ], dict(area=A, r_wall=r_wall, q_field=q_field, t_field=t_field,
             t_gfrp=t_gfrp, t_steel=t_steel, t_nobolt=t_nobolt,
             q_gfrp=q_gfrp, q_nobolt=q_nobolt, q_steel=q_steel,
