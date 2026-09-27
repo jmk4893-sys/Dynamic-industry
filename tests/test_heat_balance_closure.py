@@ -145,6 +145,17 @@ class TestTheChamberClosesAtFat(unittest.TestCase):
         self.assertIn(f"문 열림 ≤ {AIR.open_time():.1f} s", row)
         self.assertIn(f"포크 왕복 {2 * AIR.REACH / AIR.V_FORK:.1f} s", row)
 
+    def test_the_rfq_shutter_is_the_one_the_box_tests(self):
+        """셔터 상자는 생산 셔터를 단다 — 사양서 6.3 이 다른 개구를 적으면 다른 문을 잰다.
+
+        포락선을 1,400 폭으로 넓힐 때 셔터 폭은 DECK_W + 200 = 1,880 으로 따라갔는데
+        사양서 6.3 은 1,680 을 들고 있었다.
+        """
+        clause = re.search(r"투입·배출 단별 셔터</strong>(.*?)</li>", self.rfq, re.S).group(1)
+        self.assertIn(f"개구 <span class=\"m\">{AIR.OPEN_W*1e3:,.0f} × {AIR.OPEN_H*1e3:.0f} mm</span>",
+                      clause)
+        self.assertIn(f"{AIR.shutters()['n']} 매", clause)
+
     def test_rhb5_and_ral5_hand_the_chamber_to_fat(self):
         reqs = {q.id: q for q in HB.requirements() + AIR.requirements()}
         for rid in ("RHB5", "RAL5"):
