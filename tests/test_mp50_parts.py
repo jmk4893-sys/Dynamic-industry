@@ -13,7 +13,9 @@ import subprocess
 import sys
 import unittest
 
-from . import _path  # noqa: F401
+from . import _path  # noqa: F401   # src 와 tools 를 경로에 올린다
+
+import mp50_parts                    # 생성기를 직접 읽어 규칙을 맞춘다
 
 from mp50_separator import ASSEMBLIES, GEOMETRY as G
 from mp50_separator.components import FABRICATED
@@ -21,9 +23,6 @@ from mp50_separator.components import FABRICATED
 from .test_mp50_drawings import standalone_checks
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-if str(ROOT / "tools") not in sys.path:        # 생성기를 직접 읽어 규칙을 맞춘다
-    sys.path.insert(0, str(ROOT / "tools"))
-import mp50_parts  # noqa: E402
 PARTS_DOC = ROOT / "docs" / "drawings" / "mp50-part-drawings.html"
 CONSOLE = ROOT / "docs" / "drawings" / "mp50-3d.html"
 
