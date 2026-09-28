@@ -21,14 +21,15 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import inspect
 import math
 import pathlib
 import unittest
 
 from tests import _path  # noqa: F401
 
-from pv_preprocess import (afr, afr_peel, campaign, dust, frames, recipe,
-                           reliability, sg_grind, vision)
+from pv_preprocess import (afr, afr_peel, campaign, dust, frames, handoff,
+                           recipe, reliability, sg_grind, vision)
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CLOSEUP = ROOT / "docs/drawings/pv-sg-closeup.html"
@@ -90,12 +91,19 @@ class TestGrindingNumbers(unittest.TestCase):
         want = sg_grind.equivalent_depth_mm() / sg_grind.speed_ratio(feed)
         self.assertAlmostEqual(sg_grind.chip_thickness_mm(feed), want, places=6)
 
-    def test_the_cut_is_brittle_so_the_arris_is_not_optional(self):
-        """칩두께가 연성한계를 크게 넘는다 — 그래서 모따기가 필수다."""
+    def test_the_cut_is_brittle_so_the_arris_follows_if_you_grind(self):
+        """칩두께가 연성한계를 크게 넘는다 — **간다면** 모따기가 따라온다.
+
+        이 판정은 공정 요구를 안 읽는다. 읽는 것은 통과속도 하나다. 그러니
+        참이라는 것은 조건문의 귀결이고, 전건(갈 이유)은 따로 서야 한다 —
+        `ARRIS_REQUIRED_BY_PLANT` 가 그쪽이다.
+        """
         self.assertGreater(sg_grind.brittleness_ratio(sg_grind.long_feed_mm_s()), 5.0)
         self.assertTrue(sg_grind.is_brittle(sg_grind.long_feed_mm_s()))
         self.assertTrue(sg_grind.arris_is_required())
         self.assertGreaterEqual(sg_grind.ARRIS_COUNT, 1)
+        # 판정이 속도만 읽는다는 것 — 속도를 연성역으로 내리면 뒤집힌다.
+        self.assertFalse(sg_grind.is_brittle(1.0))
 
     def test_the_ductile_limit_is_bifano(self):
         e, h = sg_grind.GLASS_E_GPA * 1e9, sg_grind.GLASS_H_GPA * 1e9
@@ -498,24 +506,31 @@ class TestTheScraperThatClearsTheBand(unittest.TestCase):
         self.assertGreater(sg_grind.slack_s(), 0.0)
         self.assertGreater(sg_grind.BLADE_LEAD_MM, sg_grind.WHEEL_D_MM / 2)
 
-    def test_the_published_occupancy_already_carries_the_blade(self):
-        """광고하는 점유가 **날을 단 기계**의 점유여야 한다.
+    def test_the_published_occupancy_matches_the_carrier_decision(self):
+        """광고하는 점유가 **지금 있는 기계**의 점유여야 한다.
 
-        SR-302 는 옵션이 아니라 헤드에 달린 부품이다. 리드를 점유 밖에 빼두면
-        캠페인·리터럴·근접도면이 존재하지 않는 기계의 택트를 광고하게 된다.
+        한때 SR-302 가 헤드에 달린 부품이라 리드가 순환의 상(相) 안에 있었고,
+        그것을 밖에 빼두면 존재하지 않는 기계의 택트를 광고하는 셈이었다.
+
+        발주처가 날을 자기 캐리어로 옮겼다. 그래서 이 점유는 **휠만의 점유**이고
+        리드가 안 실린다 — 반대로, 리드를 아직 물고 있으면 없는 부품의 시간을
+        파는 셈이 된다. 어느 쪽이든 정본은 하나이고 두 모듈이 같아야 한다.
         """
         self.assertEqual(sg_grind.BLADE_LEAD_MM, campaign.SG_BLADE_LEAD_MM)
         self.assertAlmostEqual(sg_grind.occupancy_s(),
                                campaign.sg_occupancy_s(), places=2)
-        # 리드는 순환의 상(相) 안에 있다 — 밖에서 더하는 값이 아니다.
         lead_free = ((campaign.PANEL_WIDTH_MM / sg_grind.short_feed_mm_s()
                       + campaign.SG_HEAD_STROKE_S) * 2
                      + campaign.PANEL_LENGTH_MM / sg_grind.long_feed_mm_s()
                      + campaign.SG_INDEX_S)
-        self.assertAlmostEqual(sg_grind.occupancy_without_scraper_s(),
-                               lead_free, places=2)
-        self.assertGreater(sg_grind.occupancy_s(), lead_free,
-                           "날을 달고도 점유가 안 늘었다면 리드가 어디에도 없다")
+        if sg_grind.the_carrier_is_its_own():
+            self.assertAlmostEqual(sg_grind.occupancy_s(), lead_free, places=2)
+            self.assertEqual(sg_grind.scraper_lead_cost_s(), 0.0)
+        else:
+            self.assertGreater(sg_grind.occupancy_s(), lead_free,
+                               "동승인데 점유가 안 늘었다면 리드가 어디에도 없다")
+        # 반사실값은 결정과 무관하게 계산된다 — 왜 그랬는지가 남아야 한다.
+        self.assertGreater(sg_grind.lead_cost_if_shared_s(), 0.0)
 
     def test_the_tool_now_exists_and_the_wheel_can_follow(self):
         self.assertTrue(sg_grind.face_residue_has_a_tool())
@@ -534,7 +549,17 @@ class TestTheScraperThatClearsTheBand(unittest.TestCase):
         titles = [t for t, _ in sg_grind.open_questions()]
         self.assertIn("실란트 Gc 가 실측 전 계획값이다", titles)
         self.assertIn("날 수명이 없다", titles)
-        self.assertEqual(len(titles), 3)
+        # 발주처가 아리스 요구 없음을 확인하면서 넷째가 들어왔다 — 공구가 아니라
+        # **요구**가 없어져서 생긴 미결이라 위 셋과 종류가 다르다.
+        self.assertIn("아리스를 요구하는 공정이 없다", titles)
+        # 다섯째 — 발주처가 날은 살렸는데 그 날을 태운 휠은 요구가 없다.
+        self.assertIn("날은 남는데 그것을 태운 휠은 요구가 없다", titles)
+        # 면 수는 날 두 장으로 닫혔고 통과 시간은 남았다.
+        self.assertNotIn("백시트면 띠를 걷을 공구가 없다", titles)
+        self.assertIn("자기 캐리어의 통과가 여유에 안 들어간다", titles)
+        # 진공 테이블이 패드를 대신하면서 패드 미결 셋이 닫히고 흡착이 들어왔다.
+        self.assertIn("흡착 배기·해제가 여유를 먹는다", titles)
+        self.assertEqual(len(titles), 7)
 
     def test_the_gc_headroom_is_stated_not_assumed(self):
         """Gc 가 얼마까지 오르면 허용 압착력을 넘는가 — 그 값을 내놓는다."""
@@ -544,6 +569,641 @@ class TestTheScraperThatClearsTheBand(unittest.TestCase):
             limit * sg_grind.SEALANT_BAND_MM + sg_grind.shoe_friction_n(),
             sg_grind.safe_face_force_n(), places=2)
         self.assertGreater(sg_grind.gc_margin(), 1.0)
+
+
+class TestGrindingTheWholeBacksheetFace(unittest.TestCase):
+    """면 전체를 갈아낼 것인가 — 띠에서 나온 답을 면으로 키운 값들.
+
+    지금 설계는 백시트 면을 안 건드린다. 그래도 이 비교를 값으로 들고 있는
+    이유는, 「면을 통째로 연마하면 어떤가」가 되풀이해서 나오는 물음이고
+    그때마다 손으로 다시 세면 답이 흔들리기 때문이다.
+
+    이 묶음은 한 번 틀린 자리이기도 하다. 처음에는 띠의 비에너지를 면에
+    빌려 쓰고, 면 설비의 택트가 아니라 이 라인의 AFR 택트로 나누고, 하류에서
+    돌려받는 열을 아예 안 셌다. 셋이 겹쳐 「면 연마는 말이 안 된다」는 답이
+    나왔지만 실제로는 가동 중인 공법이다. 아래 시험은 그 셋을 각각 붙든다.
+    """
+
+    def test_abrading_is_volume_work_so_thickness_multiplies(self):
+        """연마는 부피 일이다 — 두께가 그대로 곱해진다."""
+        self.assertAlmostEqual(
+            sg_grind.backsheet_face_volume_mm3(),
+            sg_grind.backsheet_face_area_mm2() * sg_grind.BACKSHEET_T_MM, places=1)
+        self.assertAlmostEqual(
+            sg_grind.backsheet_abrade_energy_j(),
+            sg_grind.backsheet_face_volume_mm3() * sg_grind.BACKSHEET_ABRADE_J_MM3,
+            places=1)
+
+    def test_the_face_does_not_borrow_the_bands_specific_energy(self):
+        """면은 띠의 비에너지를 안 빌린다 — 재료도 공구도 다르다.
+
+        경화 실리콘을 좁은 띠에서 긁는 값과, 무른 폴리머를 넓은 벨트로 얕게
+        걷는 값은 같을 수 없다. 빌려 쓰면 동력이 위로 크게 틀린다.
+        """
+        self.assertLess(sg_grind.BACKSHEET_ABRADE_J_MM3,
+                        sg_grind.SEALANT_ABRADE_J_MM3)
+        borrowed = (sg_grind.backsheet_face_volume_mm3()
+                    * sg_grind.SEALANT_ABRADE_J_MM3 / sg_grind.FACE_ABRADE_TACT_S)
+        self.assertGreater(borrowed, 4.0 * sg_grind.backsheet_abrade_power_w())
+
+    def test_the_face_unit_is_timed_by_its_own_tact_not_this_lines(self):
+        """면 설비는 자기 정반을 갖는다 — 이 라인의 AFR 택트로 나누지 않는다."""
+        self.assertAlmostEqual(
+            sg_grind.backsheet_abrade_power_w(),
+            sg_grind.backsheet_abrade_energy_j() / sg_grind.FACE_ABRADE_TACT_S,
+            places=1)
+        self.assertNotAlmostEqual(sg_grind.FACE_ABRADE_TACT_S, float(campaign.AFR_S),
+                                  places=1)
+
+    def test_the_power_it_needs_is_an_ordinary_industrial_sander(self):
+        """그렇게 세면 동력이 평범한 산업용 연마기 범위에 든다.
+
+        이 시험이 이 묶음의 요지다 — 면 연마가 못 할 일이라는 결론이 나오면
+        상수나 나눗수 어느 쪽이 틀린 것이다.
+        """
+        self.assertGreater(sg_grind.backsheet_abrade_power_kw(), 5.0)
+        self.assertLess(sg_grind.backsheet_abrade_power_kw(), 100.0)
+
+    def test_peeling_is_interfacial_work_so_thickness_does_not_enter(self):
+        """박리는 계면 일이다 — 두께를 두 배로 해도 힘이 안 변한다.
+
+        연마 쪽은 같은 조작에서 두 배가 된다. 그 대비가 수단을 가른다.
+        """
+        t0 = sg_grind.BACKSHEET_T_MM
+        peel0, abrade0 = sg_grind.backsheet_peel_force_n(), sg_grind.backsheet_abrade_energy_j()
+        try:
+            sg_grind.BACKSHEET_T_MM = t0 * 2.0
+            self.assertEqual(sg_grind.backsheet_peel_force_n(), peel0)
+            self.assertAlmostEqual(sg_grind.backsheet_abrade_energy_j(), abrade0 * 2.0, places=1)
+        finally:
+            sg_grind.BACKSHEET_T_MM = t0
+
+    def test_the_band_answer_holds_at_face_scale(self):
+        """띠에서 긁는 쪽이 이겼듯, 면에서도 벗기는 쪽이 크게 이긴다.
+
+        배수가 두 번 움직였고 둘 다 상수를 실제값으로 고쳐서다 — 연마
+        비에너지를 8.0 에서 1.6 으로 내렸고(배수가 커짐), 박리 Gc 를 근거
+        없던 0.5 에서 문헌값 2.0 으로 올렸다(배수가 1,024 → 256 으로 작아짐).
+        **그래도 두 자릿수가 남는다.** 계면 일과 부피 일의 차이지 어느 한
+        상수를 크게 잡아서 난 차이가 아니었다는 뜻이다.
+        """
+        self.assertGreater(sg_grind.scrape_beats_abrade_by(), 1_000)
+        self.assertGreater(sg_grind.peel_beats_abrade_by(), 100)
+        self.assertAlmostEqual(
+            sg_grind.backsheet_peel_energy_j(),
+            sg_grind.backsheet_peel_force_n() * float(campaign.PANEL_LENGTH_MM) / 1_000.0,
+            places=1)
+
+    def test_removing_the_backsheet_first_buys_heat_back_downstream(self):
+        """면을 걷는 값은 순증이 아니다 — 불소원이 빠지면 열박리가 짧아진다.
+
+        돌려받는 몫을 빼면 순 에너지가 음수다. 즉 에너지는 이 공법을 막는
+        근거가 못 된다. 앞선 판정은 이 항을 빠뜨려서 뒤집혀 있었다.
+        """
+        self.assertAlmostEqual(
+            sg_grind.downstream_heat_saved_j(),
+            sg_grind.downstream_heat_j_per_panel() * sg_grind.BACKSHEET_FIRST_HEAT_SAVING,
+            places=1)
+        self.assertAlmostEqual(
+            sg_grind.face_abrade_net_j(),
+            sg_grind.backsheet_abrade_energy_j() - sg_grind.downstream_heat_saved_j(),
+            places=1)
+        self.assertLess(sg_grind.face_abrade_net_j(), 0.0)
+        self.assertTrue(sg_grind.face_abrading_pays_for_itself())
+
+    def test_what_actually_binds_is_dust_and_machine_count_not_energy(self):
+        """그래서 걸리는 곳은 에너지가 아니라 분진·대수·개구부다.
+
+        DS-01 은 폴리머를 안 깎는다는 전제로 '불연' 이다. 지금은 참이다.
+        면을 갈면 그 전제가 깨지는데, 깨지는 크기를 값으로 들고 있는다.
+        """
+        self.assertTrue(sg_grind.dust_stream_stays_inert())
+        self.assertFalse(sg_grind.wheel_may_touch_the_backsheet())
+        self.assertGreater(sg_grind.backsheet_dust_kg_per_h(), 100.0)
+        self.assertGreater(sg_grind.face_abraders_needed(), 1)
+        self.assertFalse(sg_grind.panel_fits_face_abrader())
+
+    def test_two_independent_routes_say_the_demo_machine_is_smaller(self):
+        """개구부와 이송속도가 각각 같은 말을 한다 — 설비가 이 패널보다 작다.
+
+        폭으로 봐도 안 들어가고, 길이를 그 이송속도로 지나게 해도 장당 택트를
+        넘는다. 서로 다른 두 상수가 같은 결론을 내므로 어느 하나를 잘못 옮겨
+        적은 것이 아니다. 공법이 아니라 크기가 걸린다는 뜻이다.
+        """
+        self.assertAlmostEqual(
+            sg_grind.face_abrade_pass_s(),
+            float(campaign.PANEL_LENGTH_MM) / sg_grind.FACE_ABRADE_FEED_MM_S, places=1)
+        self.assertFalse(sg_grind.face_abrade_tact_covers_this_panel())
+        self.assertFalse(sg_grind.panel_fits_face_abrader())
+
+    def test_the_dust_figure_survives_every_constant_we_had_wrong(self):
+        """분진만은 택트에도 비에너지에도 안 걸린다 — 부피 × 밀도뿐이다.
+
+        상수를 어떻게 고쳐도 집진이 받아야 할 물건의 크기는 그대로다.
+        그래서 이 값은 앞선 오류를 넘어 살아남은 유일한 요구사항이다.
+        """
+        e0, t0 = sg_grind.BACKSHEET_ABRADE_J_MM3, sg_grind.FACE_ABRADE_TACT_S
+        dust0 = sg_grind.backsheet_dust_kg_per_panel()
+        try:
+            sg_grind.BACKSHEET_ABRADE_J_MM3 = e0 * 5.0
+            sg_grind.FACE_ABRADE_TACT_S = t0 / 3.0
+            self.assertEqual(sg_grind.backsheet_dust_kg_per_panel(), dust0)
+        finally:
+            sg_grind.BACKSHEET_ABRADE_J_MM3, sg_grind.FACE_ABRADE_TACT_S = e0, t0
+
+    def test_the_values_come_from_the_modules_that_own_them(self):
+        """면적은 campaign, 하류 열과 라인 속도는 handoff 가 정본이다."""
+        self.assertAlmostEqual(
+            sg_grind.backsheet_face_area_mm2(),
+            float(campaign.PANEL_LENGTH_MM) * float(campaign.PANEL_WIDTH_MM), places=1)
+        self.assertAlmostEqual(
+            sg_grind.downstream_heat_j_per_panel(),
+            handoff.downstream_rate().heat_per_panel_mj * 1e6, places=1)
+        self.assertAlmostEqual(
+            sg_grind.backsheet_dust_kg_per_h(),
+            round(sg_grind.backsheet_dust_kg_per_panel()
+                  * handoff.downstream_rate().line_per_h, 1), places=1)
+
+
+class TestThePlantDoesNotRequireTheArris(unittest.TestCase):
+    """발주처가 아리스 요구 없음을 확인했다 — 물리 주장과 섞이지 않게 지킨다."""
+
+    def test_the_two_propositions_are_separate(self):
+        """하나는 「간다면 필수」, 하나는 「갈 이유」 — 값이 서로 안 따라간다."""
+        self.assertTrue(sg_grind.arris_is_required())
+        self.assertFalse(sg_grind.ARRIS_REQUIRED_BY_PLANT)
+
+    def test_the_physics_verdict_reads_only_the_feed(self):
+        """자기참조라는 주장의 근거 — 공정을 안 읽고 속도만 읽는다."""
+        self.assertEqual(sg_grind.arris_is_required(),
+                         sg_grind.is_brittle(sg_grind.long_feed_mm_s()))
+        # 속도를 연성역으로 내리면 같은 함수가 거짓이 된다. 공정은 안 바뀌었다.
+        self.assertFalse(sg_grind.is_brittle(1.0))
+
+    def test_the_record_says_which_three_were_ruled_out(self):
+        """셋 다 아니라고 돌아온 것이 무엇이었는지 적혀 있어야 한다."""
+        text = " ".join(sg_grind.the_arris_has_no_requirement())
+        for candidate in ("취급 안전", "파편 억제", "하류 유리 제거"):
+            self.assertIn(candidate, text)
+        self.assertIn("자기참조", sg_grind.the_arris_has_no_requirement.__doc__)
+
+    def test_it_does_not_flip_the_physics(self):
+        """요구가 없어진 것이 파단면을 연성면으로 만들지는 않는다."""
+        text = " ".join(sg_grind.the_arris_has_no_requirement())
+        self.assertIn("물음이 사라진다",
+                      sg_grind.the_arris_has_no_requirement.__doc__)
+        self.assertIn("전건이 안 선다", text)
+
+    def test_the_arris_was_the_majority_of_the_work(self):
+        """무엇이 풀리는지가 큰 이유 — 단면의 절반 이상이 아리스였다."""
+        self.assertGreater(sg_grind.arris_share(), 0.5)
+        stock_only = sg_grind.STOCK_MM * sg_grind.GLASS_T_MM
+        self.assertAlmostEqual(
+            stock_only, sg_grind.removal_area_mm2()
+            - sg_grind.ARRIS_COUNT * sg_grind.ARRIS_MM ** 2 / 2, places=6)
+        self.assertLess(stock_only, sg_grind.removal_area_mm2() / 2)
+
+    def test_the_spindle_stops_being_the_limit(self):
+        """아리스를 빼면 통과속도를 정하는 것이 스핀들이 아니게 된다."""
+        self.assertTrue(sg_grind.feed_is_spindle_bound())
+        stock_only = sg_grind.STOCK_MM * sg_grind.GLASS_T_MM
+        relieved = sg_grind.utilisation(sg_grind.long_feed_mm_s()) \
+            * stock_only / sg_grind.removal_area_mm2()
+        self.assertLess(relieved, 0.5)
+
+    def test_the_stock_is_not_released_with_it(self):
+        """끝면 살은 근거가 달라 같이 안 풀린다 — 그것을 적어 둔다."""
+        rows = dict(sg_grind.what_the_absent_arris_releases())
+        key = [k for k in rows if "끝면 살" in k]
+        self.assertEqual(len(key), 1)
+        self.assertIn("별개의 물음", rows[key[0]])
+
+    def test_the_sealant_conflict_loses_its_reason(self):
+        """「둘 다는 안 된다」가 아리스 때문이었다 — 근거가 사라지는 것을 센다."""
+        self.assertFalse(sg_grind.wheel_can_reach_the_glass_edge())
+        self.assertGreater(sg_grind.sealant_must_go_first_mm(), 0.0)
+        rows = dict(sg_grind.what_the_absent_arris_releases())
+        key = [k for k in rows if "둘 다는 안 된다" in k]
+        self.assertEqual(len(key), 1)
+
+    def test_the_scrapers_stated_reason_was_the_wheel(self):
+        """발견을 적어 둔다 — SR-302 의 근거로 적혀 있던 것이 휠뿐이었다."""
+        for fn in (sg_grind.sealant_must_go_first_mm, sg_grind.scraper_unit):
+            self.assertIn("휠", inspect.getdoc(fn))
+        text = " ".join(sg_grind.the_scrapers_reason_was_the_wheel())
+        self.assertIn("br_abrade.the_belt_meets_silicone_first", text)
+
+    def test_it_does_not_decide_whether_sg301_survives(self):
+        """판정 함수를 안 만든다 — 결정은 발주처 것이고, 건드리는 것만 센다."""
+        titles = [t for t, _ in sg_grind.what_the_absent_arris_leaves_open()]
+        self.assertIn("SG-301 이 남는가", titles)
+        names = [n for n in dir(sg_grind) if "sg301" in n.lower()
+                 or "sg_301" in n.lower()]
+        self.assertEqual(names, [])
+
+    def test_the_open_question_is_computed_not_declared(self):
+        """미결이 상수에서 나온다 — 요구가 생기면 스스로 닫힌다."""
+        titles = [t for t, _ in sg_grind.open_questions()]
+        self.assertIn("아리스를 요구하는 공정이 없다", titles)
+
+    def test_the_summary_carries_both(self):
+        """도면과 요약이 두 명제를 나란히 든다 — 하나만 보면 오독한다."""
+        s = sg_grind.summary()
+        self.assertIs(s["arrisIsRequired"], True)
+        self.assertIs(s["arrisRequiredByPlant"], False)
+
+
+class TestTheScraperSurvivesTheWheel(unittest.TestCase):
+    """발주처가 「SR-302 를 살린 안」을 골랐다 — 걸음은 남고 숙주는 근거를 잃었다."""
+
+    def test_the_two_decisions_point_different_ways(self):
+        """날은 살리고 아리스는 요구하지 않았다 — 두 답이 같은 방향이 아니다."""
+        self.assertTrue(sg_grind.SCRAPER_KEPT_BY_PLANT)
+        self.assertFalse(sg_grind.ARRIS_REQUIRED_BY_PLANT)
+
+    def test_the_lead_left_the_wheels_cycle(self):
+        """리드가 휠 때문에 있었고, 날이 나가면서 SG-301 에서 빠졌다."""
+        self.assertIn("휠", inspect.getdoc(sg_grind.lead_cost_if_shared_s))
+        self.assertGreater(sg_grind.lead_cost_if_shared_s(), 0.0)
+        self.assertEqual(sg_grind.scraper_lead_cost_s(), 0.0)
+        # 두 값이 같아졌다 — 지금 점유가 이미 날 없는 점유다.
+        self.assertAlmostEqual(sg_grind.occupancy_without_scraper_s(),
+                               sg_grind.occupancy_s(), places=2)
+
+    def test_it_does_not_repurpose_the_lead_as_the_blades_time(self):
+        """빠진 리드가 날의 점유가 되는 것이 아니라고 적는다 — 통과 종류가 다르다."""
+        text = " ".join(sg_grind.the_scraper_outlives_its_host())
+        self.assertIn("이 값을 그대로 쓰면 안", text)
+        self.assertIn("날의 점유가 되는 것이 아니다", text)
+
+    def test_the_carrier_is_decided_and_the_kinematics_are_not(self):
+        """거처는 정해졌고 운동학은 안 정해졌다 — 그 둘을 갈라 적는다."""
+        self.assertTrue(sg_grind.the_carrier_is_its_own())
+        titles = [t for t, _ in sg_grind.what_the_absent_arris_leaves_open()]
+        self.assertIn("자기 캐리어의 운동학", titles)
+        # 면도 파지도 답이 왔고, 남은 것은 어느 스테이션에 서는가다.
+        self.assertIn("이 걸음이 어느 스테이션에 서는가", titles)
+        self.assertNotIn("날이 몇 면을 긁는가", titles)
+        self.assertNotIn("SR-302 가 어디에 실리는가", titles)
+
+    def test_the_requirement_widened_from_shoulder_to_band(self):
+        """근거가 옮겨가며 요구 폭이 넓어진다 — 어깨 몫에서 띠 전체로."""
+        wheel, belt, blade = sg_grind.the_band_requirement_widened()
+        self.assertEqual(wheel, sg_grind.sealant_must_go_first_mm())
+        self.assertEqual(belt, float(sg_grind.SEALANT_BAND_MM))
+        self.assertGreater(belt, wheel)
+        self.assertEqual(blade, sg_grind.BLADE_WIDTH_MM)
+
+    def test_the_existing_blade_already_covers_it(self):
+        """공구를 안 바꿔도 되는 이유 — 날 폭이 애초에 띠 기준이었다."""
+        self.assertTrue(sg_grind.the_blade_already_covers_the_wider_requirement())
+        self.assertEqual(sg_grind.BLADE_WIDTH_MM,
+                         sg_grind.SEALANT_BAND_MM + 4.0)
+
+    def test_the_open_question_is_computed_from_the_two_constants(self):
+        """미결이 두 상수에서 나온다 — 한쪽이 바뀌면 스스로 닫힌다."""
+        titles = [t for t, _ in sg_grind.open_questions()]
+        self.assertIn("날은 남는데 그것을 태운 휠은 요구가 없다", titles)
+
+    def test_the_summary_carries_the_decision(self):
+        s = sg_grind.summary()
+        self.assertIs(s["scraperKeptByPlant"], True)
+
+
+class TestTheBladeGetsItsOwnCarrier(unittest.TestCase):
+    """발주처가 거처를 자기 캐리어로 정했다 — 회계가 리드에서 운동학으로 옮겼다."""
+
+    def test_the_decision_lives_in_campaign(self):
+        """정본이 하나다 — 리드를 쥔 모듈이 결정도 쥔다."""
+        self.assertTrue(campaign.SCRAPER_ON_ITS_OWN_CARRIER)
+        self.assertIs(sg_grind.the_carrier_is_its_own(), True)
+        self.assertEqual(campaign.sg_blade_lead_mm(), 0.0)
+
+    def test_the_cycle_reads_the_decision_not_the_constant(self):
+        """순환이 결정에서 리드를 받아 온다 — 리터럴을 안 쓴다."""
+        src = inspect.getsource(sg_grind.cycle)
+        self.assertIn("campaign.sg_blade_lead_mm()", src)
+        self.assertNotIn("campaign.SG_BLADE_LEAD_MM", src)
+
+    def test_the_two_modules_agree_on_the_occupancy(self):
+        self.assertAlmostEqual(sg_grind.occupancy_s(),
+                               campaign.sg_occupancy_s(), places=2)
+
+    def test_the_slack_grew_by_exactly_the_lead(self):
+        """리드가 빠진 만큼 여유가 늘었다 — 다른 데서 온 값이 아니다."""
+        self.assertAlmostEqual(
+            sg_grind.slack_s(),
+            campaign.AFR_S - sg_grind.occupancy_s(), places=2)
+        self.assertGreater(sg_grind.slack_s(), sg_grind.lead_cost_if_shared_s())
+
+    def test_the_path_is_the_perimeter_per_face(self):
+        per = 2.0 * (campaign.PANEL_LENGTH_MM + campaign.PANEL_WIDTH_MM)
+        self.assertAlmostEqual(sg_grind.scraper_path_mm(1), per, places=1)
+        self.assertAlmostEqual(sg_grind.scraper_path_mm(2), 2 * per, places=1)
+
+    def test_power_is_never_the_limit(self):
+        """힘이 고정이라 동력이 속도에 선형인데 어디서도 한계에 안 닿는다."""
+        for feed in (300.0, 1000.0, 3000.0):
+            self.assertLess(sg_grind.scraper_power_at_w(feed),
+                            sg_grind.spindle_available_w() * 0.1)
+        self.assertAlmostEqual(
+            sg_grind.scraper_power_at_w(600.0),
+            2 * sg_grind.scraper_power_at_w(300.0), places=1)
+
+    def test_the_inherited_feed_does_not_fit_the_slack(self):
+        """물려받은 이송으로는 안 들어간다 — 그래서 필요 이송을 내놓는다."""
+        lf = sg_grind.long_feed_mm_s()
+        self.assertFalse(sg_grind.scraper_fits_the_slack(lf))
+        need = sg_grind.feed_that_fits_the_slack_mm_s()
+        self.assertGreater(need, lf)
+        self.assertTrue(sg_grind.scraper_fits_the_slack(need * 1.001))
+
+    def test_the_needed_feed_is_cheap_in_power(self):
+        """필요 이송에서도 동력이 문제가 아니라는 것 — 한계가 캐리지임의 근거."""
+        need = sg_grind.feed_that_fits_the_slack_mm_s()
+        self.assertLess(sg_grind.scraper_power_at_w(need),
+                        sg_grind.spindle_available_w() * 0.05)
+        text = " ".join(sg_grind.the_own_carrier_frees_the_feed())
+        self.assertIn("캐리지와 슈", text)
+
+    def test_the_head_arrangement_is_borrowed_not_chosen(self):
+        """SG 배치를 빌려 견주기만 한다 — 정한 것이 아니라고 적혀야 한다."""
+        doc = inspect.getdoc(sg_grind.scraper_time_like_sg_heads_s)
+        self.assertIn("배치를 정한 것이 아니라", doc)
+        self.assertLess(
+            sg_grind.feed_that_fits_the_slack_mm_s(like_sg_heads=True),
+            sg_grind.feed_that_fits_the_slack_mm_s())
+
+
+class TestBothFacesAreScrapedAtOnce(unittest.TestCase):
+    """발주처가 날 두 장·양면 동시로 정했다 — 면 수가 맞춰졌다."""
+
+    def test_the_counts_agree_now(self):
+        self.assertEqual(sg_grind.BLADE_FACES, sg_grind.RESIDUE_FACES)
+        self.assertFalse(sg_grind.the_back_face_band_has_no_tool())
+
+    def test_the_name_matches_the_return(self):
+        """이름이 「없다」이므로 없을 때 참이어야 한다 — 뒤집혀 있으면 오독한다."""
+        self.assertEqual(sg_grind.the_back_face_band_has_no_tool(),
+                         sg_grind.BLADE_FACES < sg_grind.RESIDUE_FACES)
+
+    def test_the_problem_it_solved_is_still_recorded(self):
+        """왜 두 장인지의 근거가 남아야 한다 — 한 장이면 절반이 남았다."""
+        one = sg_grind.sealant_volume_per_panel_mm3(faces=1)
+        both = sg_grind.sealant_volume_per_panel_mm3(faces=sg_grind.RESIDUE_FACES)
+        self.assertAlmostEqual(both, 2 * one, places=1)
+        text = " ".join(sg_grind.how_the_faces_were_made_to_add_up())
+        self.assertIn(f"{one:,.0f} mm³", text)
+        self.assertIn(f"{sg_grind.EDGE_OVERHANG_MM:.0f} mm", text)
+
+    def test_the_existing_predicate_is_marked_as_not_about_faces(self):
+        """「공구가 있는가」를 「두 면이 걷힌다」로 읽으면 안 된다고 적혀야 한다."""
+        self.assertTrue(sg_grind.face_residue_has_a_tool())
+        doc = inspect.getdoc(sg_grind.face_residue_has_a_tool)
+        self.assertIn("몇 면을 걷는가", doc)
+        self.assertIn("the_back_face_band_has_no_tool", doc)
+
+    def test_travel_is_one_lap_whatever_the_blade_count(self):
+        """「동시」의 값이 이것이다 — 주행이 날 수에 안 걸린다."""
+        per = 2.0 * (campaign.PANEL_LENGTH_MM + campaign.PANEL_WIDTH_MM)
+        self.assertAlmostEqual(sg_grind.scraper_travel_mm(), per, places=1)
+        self.assertTrue(sg_grind.the_second_blade_costs_no_time())
+        self.assertAlmostEqual(
+            sg_grind.travel_if_one_blade_did_both_faces_mm(),
+            per * sg_grind.RESIDUE_FACES, places=1)
+
+    def test_the_scraping_length_is_not_the_travel(self):
+        """긁는 길이와 주행 거리를 섞으면 시간이 두 배로 나온다."""
+        self.assertAlmostEqual(
+            sg_grind.scraper_path_mm(),
+            sg_grind.scraper_travel_mm() * sg_grind.BLADE_FACES, places=1)
+        self.assertGreater(sg_grind.scraper_path_mm(),
+                           sg_grind.scraper_travel_mm())
+
+    def test_the_time_functions_read_the_travel(self):
+        """시간이 주행에서 나온다 — 면을 늘려도 안 변한다."""
+        lf = sg_grind.long_feed_mm_s()
+        want = sg_grind.scraper_travel_mm() / lf
+        self.assertAlmostEqual(sg_grind.scraper_serial_time_s(lf), want, places=2)
+
+    def test_the_second_blade_buys_exactly_one_lap(self):
+        lf = sg_grind.long_feed_mm_s()
+        self.assertAlmostEqual(sg_grind.time_the_second_blade_saves_s(lf),
+                               sg_grind.scraper_travel_mm() / lf, places=2)
+
+    def test_the_normal_force_cancels_and_the_tangential_adds(self):
+        """마주 본다고 다 상쇄되는 것이 아니다 — 갈리는 자리를 지킨다."""
+        self.assertEqual(sg_grind.normal_net_on_panel_n(), 0.0)
+        self.assertEqual(sg_grind.clamp_force_n(), sg_grind.SHOE_SPRING_N)
+        self.assertAlmostEqual(
+            sg_grind.tangential_total_n(),
+            sg_grind.scrape_total_force_n() * sg_grind.BLADE_FACES, places=2)
+        self.assertGreater(sg_grind.tangential_total_n(),
+                           sg_grind.scrape_total_force_n())
+
+    def test_the_cancellation_needs_them_opposed(self):
+        """같은 자리에서 마주 봐야 성립한다 — 어긋나면 우력이다."""
+        self.assertTrue(sg_grind.BLADES_ARE_OPPOSED)
+        text = " ".join(sg_grind.the_shoes_oppose_each_other())
+        self.assertIn("우력", text)
+        self.assertIn("같은 자리", text)
+
+    def test_one_face_still_sees_only_one_spring(self):
+        """두 장이라고 한 면이 두 배로 눌리지 않는다."""
+        self.assertTrue(sg_grind.shoe_is_gentle_enough())
+        self.assertLessEqual(sg_grind.SHOE_SPRING_N, sg_grind.safe_face_force_n())
+
+    def test_the_per_face_comparison_is_untouched(self):
+        """긁기 대 갈기 비교는 한 면끼리여야 한다 — 합력을 넣으면 반토막 난다."""
+        lf = sg_grind.long_feed_mm_s()
+        self.assertAlmostEqual(
+            sg_grind.scrape_power_w(lf),
+            sg_grind.scrape_total_force_n() * lf / 1_000.0, places=2)
+        self.assertGreater(sg_grind.scrape_beats_abrade_by(), 1_000)
+
+    def test_the_carrier_power_uses_the_total(self):
+        lf = sg_grind.long_feed_mm_s()
+        self.assertAlmostEqual(
+            sg_grind.scraper_power_at_w(lf),
+            sg_grind.tangential_total_n() * lf / 1_000.0, places=1)
+
+    def test_the_face_gap_is_no_longer_an_open_question(self):
+        titles = [t for t, _ in sg_grind.open_questions()]
+        self.assertNotIn("백시트면 띠를 걷을 공구가 없다", titles)
+
+    def test_the_drawing_carries_both_sets(self):
+        """도면이 두 세트를 다 세워야 한다 — 하나만 그리면 결정이 안 보인다."""
+        keys = [p.key for p in sg_grind.scraper_unit().parts]
+        for k in ("srbld", "srbld2", "srshoe", "srshoe2", "srband", "srband2"):
+            self.assertIn(k, keys)
+
+    def test_the_lower_set_mirrors_about_the_laminate(self):
+        """아래 세트가 라미네이트 중립면의 거울상이어야 마주 본다."""
+        parts = {p.key: p for p in sg_grind.scraper_unit().parts}
+        mid = -sg_grind.STACK_T_MM / 2 - 8.0
+        for a, b in (("srarm", "srarm2"), ("srspr", "srspr2"),
+                     ("srshoe", "srshoe2"), ("srbld", "srbld2"),
+                     ("srchip", "srchip2")):
+            self.assertAlmostEqual(parts[b].pos[1], 2 * mid - parts[a].pos[1],
+                                   places=3, msg=f"{b} 가 {a} 의 거울상이 아니다")
+            self.assertEqual(parts[b].pos[0], parts[a].pos[0])
+
+
+class TestTheGripperTakesTheDrag(unittest.TestCase):
+    """발주처가 접선 합력을 그리퍼가 받는 것으로 정했다."""
+
+    def test_the_grip_force_follows_from_the_drag(self):
+        """물어야 하는 힘이 끄는 힘 ÷ 마찰 × 안전율이다 — 임의값이 아니다."""
+        self.assertAlmostEqual(
+            sg_grind.grip_force_needed_n(),
+            sg_grind.tangential_total_n() * sg_grind.GRIP_SAFETY
+            / sg_grind.GRIP_FRICTION, places=1)
+        self.assertGreater(sg_grind.grip_force_needed_n(),
+                           sg_grind.tangential_total_n())
+
+    def test_the_face_limit_is_a_pressure_not_a_force(self):
+        """면 한계가 넓이로 답을 낸다 — 「몇 N 까지」가 아니라 「몇 mm² 를」."""
+        self.assertAlmostEqual(
+            sg_grind.grip_pad_area_needed_mm2(),
+            sg_grind.grip_force_needed_n() / sg_grind.FACE_SAFE_MPA, places=1)
+        self.assertTrue(sg_grind.grip_is_sized_by_area_not_force())
+        text = " ".join(sg_grind.the_face_limit_turns_force_into_area())
+        self.assertIn("한계가 아니라", text)
+
+    def test_the_pad_is_far_from_being_the_binding_limit(self):
+        """성립이 깨지는 마찰이 한참 아래여야 한다 — 그래야 치수 문제다."""
+        self.assertLess(sg_grind.friction_below_which_the_pad_outgrows_the_panel(),
+                        sg_grind.GRIP_FRICTION / 10.0)
+        face = campaign.PANEL_LENGTH_MM * campaign.PANEL_WIDTH_MM
+        self.assertLess(sg_grind.grip_pad_area_needed_mm2(), face / 100.0)
+
+    def test_the_shoe_friction_is_not_reused_for_the_pad(self):
+        """슈는 미끄러지라고, 패드는 잡으라고 고른 값이다 — 같으면 안 된다."""
+        self.assertGreater(sg_grind.GRIP_FRICTION, sg_grind.SHOE_FRICTION)
+        doc = inspect.getdoc(sg_grind.grip_force_needed_n)
+        self.assertIn("마찰계수", doc)
+        src = inspect.getsource(sg_grind)
+        self.assertIn("빌려 오면 안 된다", src)
+
+    def test_the_pad_must_clear_the_sealant_band(self):
+        """띠 위에 얹으면 걷을 것을 눌러 붙이고 마찰 전제도 깨진다."""
+        self.assertEqual(sg_grind.grip_must_sit_inboard_mm(),
+                         sg_grind.SEALANT_BAND_MM)
+
+    def test_the_drag_also_makes_a_moment(self):
+        """변에서 끌고 안쪽에서 잡으니 힘만 받는 것이 아니다."""
+        short_pass = sg_grind.grip_moment_n_m()
+        long_pass = sg_grind.grip_moment_n_m(long_edge=True)
+        self.assertGreater(short_pass, long_pass)
+        self.assertAlmostEqual(
+            short_pass,
+            sg_grind.tangential_total_n() * campaign.PANEL_LENGTH_MM
+            / 2.0 / 1_000.0, places=2)
+
+    def test_the_layout_is_a_parameter_not_a_decision(self):
+        """배치를 정하지 않는다 — 정해지면 값이 나온다는 것만 보인다."""
+        wide = sg_grind.grip_pad_force_n(4, 1_000.0)
+        narrow = sg_grind.grip_pad_force_n(4, 500.0)
+        self.assertGreater(narrow, wide)        # 좁게 놓으면 우력분이 커진다
+        self.assertGreater(sg_grind.grip_pad_force_n(2, 1_000.0), wide)
+        doc = inspect.getdoc(sg_grind.grip_pad_force_n)
+        self.assertIn("배치를 정하는 함수가 아니다", doc)
+        self.assertEqual(sg_grind.grip_pad_force_n(0, 1_000.0), float("inf"))
+
+    def test_the_pad_questions_close_with_the_pads(self):
+        """진공이 대신하면서 패드의 미결 셋이 같이 닫혔다."""
+        self.assertFalse(sg_grind.GRIP_ADOPTED)
+        titles = [t for t, _ in sg_grind.open_questions()]
+        self.assertNotIn("그리퍼 패드 마찰이 실측 전 계획값이다", titles)
+        self.assertNotIn("그리퍼 패드 배치를 안 들었다", titles)
+        self.assertNotIn("한쪽으로 누르는지 양쪽으로 무는지 안 들었다", titles)
+        # 대신 흡착이 여유를 먹는 것이 새 미결이다.
+        self.assertIn("흡착 배기·해제가 여유를 먹는다", titles)
+
+    def test_the_holder_is_decided_and_the_station_is_not(self):
+        titles = [t for t, _ in sg_grind.what_the_absent_arris_leaves_open()]
+        self.assertIn("이 걸음이 어느 스테이션에 서는가", titles)
+        self.assertNotIn("그리퍼를 무엇으로 어떻게 놓는가", titles)
+
+    def test_the_drawing_shows_the_table_not_the_pad(self):
+        parts = {p.key: p for p in sg_grind.scraper_unit().parts}
+        self.assertNotIn("srgrip", parts)
+        self.assertIn("srtable", parts)
+        self.assertIn(f"{sg_grind.TABLE_INSET_MM:.0f} mm 물러나",
+                      parts["srtable"].role)
+
+    def test_the_summary_carries_the_sizing_chain(self):
+        s = sg_grind.summary()
+        self.assertAlmostEqual(s["gripForceNeededN"],
+                               sg_grind.grip_force_needed_n(), places=1)
+        self.assertAlmostEqual(s["gripPadAreaMm2"],
+                               sg_grind.grip_pad_area_needed_mm2(), places=1)
+
+
+class TestTheScraperGetsTheVacuumTableToo(unittest.TestCase):
+    """BR-305 의 진공 테이블을 이 걸음에도 — 다만 제약이 하나 더 있다."""
+
+    def test_the_table_must_be_inset_for_the_lower_blade(self):
+        """양면을 긁으므로 테이블이 아래 면을 다 덮으면 안 된다."""
+        self.assertEqual(sg_grind.BLADE_FACES, 2)
+        self.assertTrue(sg_grind.table_inset_clears_the_blade())
+        self.assertGreaterEqual(sg_grind.TABLE_INSET_MM, sg_grind.BLADE_WIDTH_MM)
+        text = " ".join(sg_grind.the_table_must_clear_the_band())
+        self.assertIn("BR-305 에는 없던 제약", text)
+
+    def test_the_held_area_shrinks_but_still_holds(self):
+        """물린 만큼 면적이 줄어도 버티는 힘이 자릿수로 남는다."""
+        whole = campaign.PANEL_LENGTH_MM * campaign.PANEL_WIDTH_MM
+        self.assertLess(sg_grind.table_held_area_mm2(), whole)
+        self.assertGreater(sg_grind.table_area_share(), 0.8)
+        self.assertGreater(sg_grind.table_margin_over_drag(), 100.0)
+
+    def test_the_hold_is_delegated_to_campaign(self):
+        """진공도·마찰은 두 유닛이 같이 쓰므로 정본이 하나다."""
+        self.assertAlmostEqual(
+            sg_grind.table_hold_kn(),
+            campaign.vacuum_hold_kn(sg_grind.table_held_area_mm2()), places=1)
+        src = inspect.getsource(sg_grind.table_hold_kn)
+        self.assertIn("campaign.vacuum_hold_kn", src)
+
+    def test_the_pads_are_kept_as_the_fallback(self):
+        self.assertFalse(sg_grind.GRIP_ADOPTED)
+        self.assertGreater(sg_grind.grip_pad_area_needed_mm2(), 0.0)
+        text = " ".join(sg_grind.the_vacuum_replaces_the_pads())
+        self.assertIn("돌아올 자리", text)
+        self.assertIn("모멘트도 같이 없어진다", text)
+
+    def test_the_table_takes_time_back(self):
+        """파지를 사 주는 대신 시간을 가져간다 — 공짜가 아니다."""
+        self.assertAlmostEqual(
+            sg_grind.scraper_time_left_s(),
+            sg_grind.slack_s() - campaign.VACUUM_CYCLE_S, places=2)
+        self.assertLess(sg_grind.scraper_time_left_s(), sg_grind.slack_s())
+        # 남는 시간이 줄면 필요한 이송이 올라간다.
+        self.assertGreater(sg_grind.feed_that_fits_the_slack_mm_s(),
+                           sg_grind.scraper_travel_mm() / sg_grind.slack_s())
+
+    def test_the_station_question_is_left_open(self):
+        text = " ".join(sg_grind.the_table_takes_time_back())
+        self.assertIn("같은 스테이션에 선다는 전제", text)
+        self.assertIn("안 들었다", text)
+
+    def test_the_panel_stands_in_the_drawing(self):
+        """진공 테이블에 물린 판이 움직이면 흡착이 의미가 없다.
+
+        문구 하나를 보면 다른 형태로 되돌려도 통과한다. **자리를 옮기는 줄에
+        판이 들어 있는가**를 본다.
+        """
+        src = inspect.getsource(_load("build_sg_closeup").scene_script)
+        self.assertIn("판은 진공 테이블에 물려 서 있다", src)
+        # 스크레이퍼 분기 안에서 자리를 옮기는 줄을 전부 본다.
+        body = src.split("u.key === 'scraper'")[1].split("}} else {{")[0]
+        moving = [ln for ln in body.splitlines() if "d.x" in ln or "d.y" in ln]
+        self.assertTrue(moving, "스크레이퍼 분기에서 아무것도 안 움직인다")
+        for line in moving:
+            with self.subTest(line.strip()):
+                self.assertNotIn("srglass", line)
+                self.assertNotIn("srtable", line)
 
 
 class TestCloseupDrawing(unittest.TestCase):
@@ -633,6 +1293,67 @@ class TestCloseupDrawing(unittest.TestCase):
             self.assertNotIn("<html", body.lower())
             self.assertIn("<title>", body)
         self.assertTrue(str(out).endswith("pv-sg-closeup-artifact.html"))
+
+
+class TestTheResidueIsALine(unittest.TestCase):
+    """발주처 현장 관찰 — 실란트는 프레임에 붙어 나가고 면에는 선만 남는다."""
+
+    def test_the_observation_is_recorded_as_two_propositions(self):
+        """파괴면과 형상은 따로 틀릴 수 있으므로 따로 적혀 있다."""
+        self.assertTrue(sg_grind.SEALANT_PARTS_WITH_THE_FRAME)
+        self.assertTrue(sg_grind.SEALANT_FAILURE_IS_INTERFACIAL)
+        self.assertTrue(sg_grind.RESIDUE_IS_A_LINE)
+
+    def test_the_band_assumption_is_left_standing(self):
+        """관찰을 적었다고 띠 가정을 지우지 않는다 — SR-302 가 거기에 걸려 있다."""
+        self.assertAlmostEqual(sg_grind.SEALANT_RETAINED, 0.5, places=6)
+        self.assertAlmostEqual(sg_grind.SEALANT_BAND_MM, 20.0, places=6)
+        self.assertAlmostEqual(sg_grind.BLADE_WIDTH_MM,
+                               sg_grind.SEALANT_BAND_MM + 4.0, places=6)
+
+    def test_the_line_is_smaller_than_the_band(self):
+        """관찰이 설계를 푸는 쪽인가 — 상한이 내려가는 쪽이어야 한다."""
+        self.assertTrue(sg_grind.the_band_assumption_was_the_worst_case())
+        self.assertLess(sg_grind.residue_line_area_mm2(),
+                        sg_grind.sealant_area_mm2())
+        self.assertLess(sg_grind.residue_share_of_the_band(), 1.0)
+
+    def test_the_worst_case_verdict_can_fail(self):
+        """선이 띠보다 커지면 판정이 뒤집히는가 — 참으로 굳어 있지 않다."""
+        keep = sg_grind.RESIDUE_LINE_H_MM
+        # 띠 단면 20 x 0.75 = 15 mm² 를 넘겨야 실제로 뒤집힌다 — 폭이 2 mm 이므로
+        # 높이가 7.5 mm 를 넘어야 한다. 모자란 섭동은 통과해 버려서 시험이 안 된다.
+        self.assertGreater(20.0 * sg_grind.RESIDUE_LINE_W_MM,
+                           sg_grind.sealant_area_mm2())
+        try:
+            sg_grind.RESIDUE_LINE_H_MM = 20.0
+            self.assertFalse(sg_grind.the_band_assumption_was_the_worst_case())
+        finally:
+            sg_grind.RESIDUE_LINE_H_MM = keep
+        self.assertTrue(sg_grind.the_band_assumption_was_the_worst_case())
+
+    def test_the_line_volume_follows_its_own_geometry(self):
+        """선 부피가 둘레 × 폭 × 높이 × 면 수인가 — 모서리 겹침을 뺀다."""
+        w = sg_grind.RESIDUE_LINE_W_MM
+        peri = 2.0 * (float(campaign.PANEL_LENGTH_MM)
+                      + float(campaign.PANEL_WIDTH_MM))
+        self.assertAlmostEqual(sg_grind.residue_line_face_area_mm2(),
+                               round(peri * w - 4.0 * w ** 2, 1), places=1)
+        self.assertAlmostEqual(
+            sg_grind.residue_line_volume_per_panel_mm3(),
+            round(sg_grind.residue_line_face_area_mm2()
+                  * sg_grind.RESIDUE_LINE_H_MM * 2, 1), places=1)
+        self.assertLess(sg_grind.residue_line_volume_per_panel_mm3(),
+                        sg_grind.sealant_volume_per_panel_mm3())
+
+    def test_the_verdict_names_what_is_still_unmeasured(self):
+        """관찰을 적었다고 실측이 끝난 것이 아니다 — 두 값이 열려 있다고 말한다."""
+        text = " ".join(sg_grind.what_the_field_observation_removes())
+        self.assertGreaterEqual(
+            len(sg_grind.what_the_field_observation_removes()), 4)
+        self.assertIn("실측 전", text)
+        self.assertIn("높이", text)
+        self.assertIn("폭", text)
 
 
 if __name__ == "__main__":

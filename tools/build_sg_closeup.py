@@ -144,7 +144,9 @@ def spec_payload() -> str:
             ["영역", f"h_eq / d_c = **{g.brittleness_ratio(lf):.0f} 배** → **취성**. "
                   "유리는 흐르지 않고 깨져서 떨어진다"],
             ["아리스", f"{g.ARRIS_MM} mm × {g.ARRIS_DEG:.0f}° × {g.ARRIS_COUNT} 곳 — "
-                    f"파단면의 균열 끝을 모서리에서 치운다"],
+                    f"파단면의 균열 끝을 모서리에서 치운다. 다만 **공정 요구는 "
+                    f"없다** (발주처 확인) — 이 모따기는 「갈면 따라오는 것」이고 "
+                    f"갈 **이유**는 아니다"],
             ["홈 도피 / 높이 공차", f"도피 {g.GROOVE_RELIEF_MM} > 공차 "
                              f"±{g.HEIGHT_TOL_MM} mm · 최악 EVA 스침 "
                              f"{g.eva_skim_mm()} mm"],
@@ -169,14 +171,72 @@ def spec_payload() -> str:
                     f"{g.SHOE_SPRING_N / g.safe_face_force_n():.0%}) · 접촉압 "
                     f"{g.shoe_pressure_mpa()} MPa · 남는 깊이 오차 "
                     f"**{g.blade_assembly_tol_mm()} mm** < 백시트 {g.BACKSHEET_T_MM} mm"],
-            ["순환 비용", f"리드 {g.BLADE_LEAD_MM:.0f} mm → **{g.scraper_lead_cost_s()} s** · "
-                     f"점유 {g.occupancy_s()} s (날 없으면 "
-                     f"{g.occupancy_without_scraper_s()} s) · "
-                     f"AFR 정반 안에 {g.slack_s()} s 여유"],
+            ["캐리어", f"발주처가 **자기 캐리어**로 정했다 — 휠 헤드 동승이 아니다. "
+                    f"동승이었다면 리드 {g.BLADE_LEAD_MM:.0f} mm 가 "
+                    f"{g.lead_cost_if_shared_s()} s 를 가져갔고, 그것이 빠져 "
+                    f"SG-301 점유가 **{g.occupancy_s()} s** · AFR 정반 안 여유 "
+                    f"**{g.slack_s()} s** 다"],
+            ["날 자신의 운동학", f"**주행 {g.scraper_travel_mm():,.0f} mm**(둘레 한 "
+                         f"바퀴 · 날 수와 무관) · 긁는 길이는 "
+                         f"{g.scraper_path_mm():,.0f} mm({g.BLADE_FACES} 면) · "
+                         f"물려받은 이송 {lf:.0f} mm/s 로는 직렬 "
+                         f"{g.scraper_serial_time_s(lf)} s 라 여유를 넘는다 → "
+                         f"필요 이송 **{g.feed_that_fits_the_slack_mm_s():.0f} mm/s** "
+                         f"(SG 헤드 배치면 "
+                         f"{g.feed_that_fits_the_slack_mm_s(True):.0f})"],
+            ["한계는 동력이 아니다", f"긁는 힘 {g.scrape_total_force_n()} N 고정 → "
+                            f"{lf:.0f} mm/s 에서 {g.scraper_power_at_w(lf)} W · "
+                            f"{lf * 10:.0f} mm/s 에서도 "
+                            f"{g.scraper_power_at_w(lf * 10):.0f} W. 스핀들 가용 "
+                            f"{g.spindle_available_w():.0f} W 의 "
+                            f"{g.scraper_power_at_w(lf) / g.spindle_available_w():.2%} — "
+                            "**캐리지와 슈가 정한다**"],
+            ["양면 동시", f"날 **{g.BLADE_FACES} 장**이 판을 사이에 두고 마주 본다 — "
+                     f"한 장에 {g.sealant_volume_per_panel_mm3():,.0f} mm³ 가 다 "
+                     f"걷힌다. **주행은 한 바퀴 그대로**이고(한 장으로 두 면이면 "
+                     f"{g.travel_if_one_blade_did_both_faces_mm():,.0f} mm), "
+                     f"{lf:.0f} mm/s 기준 "
+                     f"{g.time_the_second_blade_saves_s(lf)} s 를 번다"],
+            ["진공 테이블", f"끄는 힘 {g.tangential_total_n()} N 을 **진공이 받는다** — "
+                     f"변에서 {g.TABLE_INSET_MM:.0f} mm 물려(아래 날이 들어갈 자리) "
+                     f"면적 {g.table_area_share():.1%}, 흡착 {g.table_hold_kn()} kN, "
+                     f"면내 {g.table_friction_kn()} kN = **{g.table_margin_over_drag():,.0f} 배**. "
+                     f"무는 면이 **유리**라 셀 허용치와 무관하다. 흡착 "
+                     f"{campaign.VACUUM_CYCLE_S:.0f} s 가 여유를 먹어 "
+                     f"{g.slack_s()} → {g.scraper_time_left_s()} s, 필요 이송 "
+                     f"**{g.feed_that_fits_the_slack_mm_s():.0f} mm/s**"],
+            ["그리퍼는 대체됐다", f"한때 패드 "
+                        f"**{g.grip_pad_area_needed_mm2():,.0f} mm²**(한 변 "
+                        f"{g.grip_pad_side_mm():.0f})를 깔아 물 힘 "
+                        f"{g.grip_force_needed_n():.0f} N 을 면 허용 "
+                        f"{g.FACE_SAFE_MPA} MPa 안에서 주려 했고, 단변 통과 모멘트 "
+                        f"{g.grip_moment_n_m()} N·m 를 배치로 받아야 했다. "
+                        f"진공이 그 물음을 없앴다 — `GRIP_ADOPTED` = "
+                        f"{g.GRIP_ADOPTED}. **값은 살려 뒀다**(진공이 안 되는 "
+                        f"자리가 나오면 돌아올 근거)"],
+            ["힘이 갈린다", f"**법선은 상쇄** — 판이 받는 알짜 "
+                      f"{g.normal_net_on_panel_n():.0f} N, 대신 "
+                      f"{g.clamp_force_n():.0f} N 으로 문다(한 장일 때는 반력을 "
+                      f"반출롤러가 받았다). **접선은 더해짐** — "
+                      f"{g.scrape_total_force_n()} N × {g.BLADE_FACES} = "
+                      f"**{g.tangential_total_n()} N** 이 주행 방향으로 걸린다. "
+                      f"성립 조건은 **같은 자리**다 — 어긋나면 우력이 된다"],
             ["집진", "부스러기가 **고체**라 DS-01 에 폴리머가 안 들어간다 — "
                   "'불연' 선언이 그대로 선다"],
             ["Gc 여유", f"면 허용 압착력이 감당하는 상한이 **{g.max_gc_the_face_limit_allows()} "
                     f"N/mm** — 계획값 {g.sealant_gc_n_mm()} 의 {g.gc_margin()} 배"],
+            ["공정 순서", "발주처가 **이 걸음을 살렸다** — 실란트(SR-302) → "
+                     "백시트 연마(BR-305) → 유리 제거. 띠를 먼저 걷는 이유가 "
+                     f"휠이 아니라 **BR-305 의 벨트**다: 띠가 백시트보다 "
+                     f"{g.sealant_left_t_mm() - g.BACKSHEET_T_MM:.2f} mm 솟아 있어 "
+                     "압반 추종으로는 못 따라간다"],
+            ["넓어진 요구", f"휠 기준 **{g.sealant_must_go_first_mm():.0f} mm**(어깨 몫) → "
+                      f"벨트 기준 **띠 전체 {g.SEALANT_BAND_MM:.0f} mm**. 날 폭 "
+                      f"{g.BLADE_WIDTH_MM:.0f} mm 가 이미 덮으므로 공구는 그대로다"],
+            ["열린 것", f"아리스 공정 요구가 없어(`{g.ARRIS_REQUIRED_BY_PLANT}`) "
+                    f"이 날을 태운 휠이 근거를 잃었다. 리드 {g.BLADE_LEAD_MM:.0f} mm "
+                    f"({g.scraper_lead_cost_s()} s)도 휠 때문이었다 — **날의 "
+                    "거처가 미결이다**"],
         ],
     }, ensure_ascii=False, separators=(",", ":"))
 
@@ -421,9 +481,13 @@ def scene_script() -> str:
         var down = Math.max(0, Math.min(1, t - 1));
         var run = Math.max(0, Math.min(1, (t - 3) / 2));
         var head = (k === 'srarm' || k === 'srspr' || k === 'srshoe'
-                    || k === 'srbld' || k === 'srchip');
+                    || k === 'srbld' || k === 'srchip'
+                    || k === 'srarm2' || k === 'srspr2' || k === 'srshoe2'
+                    || k === 'srbld2' || k === 'srchip2');
         if (head) d.y = -down * 42;
-        if (k === 'srglass' || k === 'srband') d.x = -run * 620;
+        /* **판은 진공 테이블에 물려 서 있다.** 도는 것은 캐리어다 —
+           띠만 걷혀 사라진다. 판을 움직이면 흡착이 의미가 없다. */
+        if (head) d.x = -run * 620;
         /* 걷히고 나면 띠가 없다 — 그것이 이 유닛이 하는 일이다 */
         if (k === 'srband') m.visible = run < .92;
       }} else {{
