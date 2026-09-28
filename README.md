@@ -89,8 +89,15 @@ seal gland/sleeve · frame height 를 확정하지 않는다.
 | [docs/drawings/mp50-pilot-drawings.html](docs/drawings/mp50-pilot-drawings.html) | **MP-50 제작도 11매 (Rev.B)** — 기준좌표·부품표(34점), 분리 원리·운전 시퀀스, 3×3 유효밀도·밀도컷, 층분리 운동학, 탱크 셀·콘, 커버·맨홀·스키머, 교반계·간섭 검사, 분산 링·공기 공급계, 배출·프레임, Release/HOLD·공차, FAT·KPI·DOE·재질 (브라우저로 열 것) |
 | [docs/drawings/mp50-pilot-3d.html](docs/drawings/mp50-pilot-3d.html) | **MP-50 3D 조립·분해도 (Rev.A)** — 26개 부품 분해, 동체 컷어웨이, FLOAT/SINK 층을 보이는 「분리 결과」 보기, 보기별 제원 (브라우저로 열 것) |
 | [docs/drawings/mp50-separation-motion.html](docs/drawings/mp50-separation-motion.html) | **MP-50 층분리 거동 시뮬레이터** — 분산 정지 t=0 부터 배출까지를 입자 1,000 개로 재생한다. 재생·스크럽·배속, 분할면 기준 배분과 KPI 판정, 염도·배출량 조작 (브라우저로 열 것) |
-| [docs/drawings/mp50-process-console.html](docs/drawings/mp50-process-console.html) | **MP-50 운전조건 콘솔** — 염도·온도·분산/정치시간·배출량·Feed 조성을 움직이면 분할면·필요 정치시간·4개 KPI 가 Monte Carlo P10/P90 으로 다시 계산된다. **재질 밀도를 「연구문서 유효밀도 / 문헌 실밀도 / 복합 파편」 으로 바꿔 가며** 비교할 수 있다 (브라우저로 열 것) |
-| [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 13종, 열수지 계산기 (브라우저로 열 것) |
+| [docs/drawings/mp50-process-console.html](docs/drawings/mp50-process-console.html) | **MP-50 운전조건 콘솔** — 염도·온도·분산/정치시간·배출량·Feed 조성을 움직이면 분할면·필요 정치시간·4개 KPI 가 Monte Carlo P10/P90 으로 다시 계산된다. **재질 밀도를 「연구문서 유효밀도 / 문헌 실밀도 / 복합 파편 / 적층 해리」 로 바꿔 가며** 비교할 수 있다 (브라우저로 열 것) |
+| [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 이동 계단 칼날(SHK-101) 박리 — 셀모듈과 백시트를 유리에서 한 장으로, 일곱 조각이 따로 떠서 유리를 따라간다(칼날 모듈 추종), 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 15종, **부품도 169장 · 모듈 조립도 13장**, 열수지 계산기 (브라우저로 열 것) |
+| [docs/dg-hk60-rfq.html](docs/dg-hk60-rfq.html) | **DG-HK60 상세설계 기술사양서 (RFQ)** — 상세설계 용역 발주용. 요구성능·설계기준·기계/전기/안전 요구사항·납품물·FAT/SAT·입찰자 확인사항 16건 — 열린 15건 · OI-11 해소 (브라우저로 열 것, A4 인쇄 가능) |
+| [docs/dg-hk60-fab-spec.html](docs/dg-hk60-fab-spec.html) | **DG-HK60C 제작 지침서 (FAB-001)** — 볼트 등급·체결력·조임토크, 용접 각장, 부재 판두께·재질, 기초 앵커 매입깊이·연단거리를 하중에서 유도한 문서. 접합부 11개소·부재 27종·앵커 6개소·ITP 16단계 (브라우저로 열 것, A4 인쇄 가능) |
+| [docs/dg-hk60-assembly.html](docs/dg-hk60-assembly.html) | **DG-HK60C 조립 지침서 (ASM-001)** — 도면을 처음 보는 사람이 조립도·부품도만으로 세울 수 있게 쓴 문서. 안전·공구·도면 읽는 법·볼트 조이는 법·모듈 사이의 순서·모듈별 67단계 (부품 카탈로그에서 생성) |
+| [docs/dg-hk60-procurement.html](docs/dg-hk60-procurement.html) | **DG-HK60C 조달 지침서 (PRC-001)** — 자재 발주표(1차원 절단 배치를 푼 정척 본수·시트 매수) · 운반 분할(세우는 순서를 따르는 차수표) · 구매품 사양 60종 (부품 카탈로그에서 생성) |
+| [docs/dg-hk60-analysis.html](docs/dg-hk60-analysis.html) | **DG-HK60C 구조·열해석 보고서 (CAL-001)** — 직접강성법 프레임, 1차원 과도 열전도, **IR 뱅크 복사 유속 + 면내 2차원 전도**, **램프 지지·관통 상세**, **정상상태 열수지**, **칼날 모듈 추종**(패드 평면도가 만드는 유리 굴곡 · 몬테카를로). 닫힌해 15건으로 해석기를 검증하고 구조 14건·열 13건·IR 8건·지지 7건·수지 8건·에어록 8건을 푼 뒤, 해석이 만든 요구 26건과 **해석이 못 보는 것**을 적었다 (여섯 해석 모듈에서 생성) |
+| [docs/dg-hk60-pilot.html](docs/dg-hk60-pilot.html) | **DG-HK60C 파일럿 시험 계획서 (PIL-001)** — 온도–박리력 곡선·칼날 수명·유리 수율·면내 온도 균일도·열수지. 시료 수를 요구정밀도에서 거꾸로 풀어(t 분위수·Clopper–Pearson) 총 454장·2단계로 잡았다 (계획 모델에서 생성) |
+| [docs/dg-hk120-twin-cell.html](docs/dg-hk120-twin-cell.html) | **DG-HK120C 트윈 셀 검토서** — 1챔버·2분리셀(계단 칼날) 수평병렬로 처리량을 배로 올리는 안의 배치·전력·인터록 검토 (브라우저로 열 것) |
 
 ### 사용법
 
@@ -100,7 +107,30 @@ seal gland/sleeve · frame height 를 확정하지 않는다.
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (446건)
+python -m unittest discover -s tests -t .                               # 테스트 (1,201건)
+
+# 부품 카탈로그 — 형상·치수·재질에서 질량과 자중을 계산한다
+python3 tools/parts.py                     # 카탈로그 리포트 (품목·질량·자중 검증)
+python3 tools/fab_spec.py                  # 제작 지침서 계산 근거
+python3 tools/gen_parts_js.py --write      # 카탈로그 → 콘솔의 부품도·조립도 데이터
+python3 tools/gen_assembly_doc.py --write  # 카탈로그 → 조립 지침서 HTML
+python3 tools/procure.py                   # 조달 계산 (자재·운반·구매)
+python3 tools/gen_procure_doc.py --write   # 카탈로그 → 조달 지침서 HTML
+
+# 해석 — 형상이 바뀌면 결과가 따라 움직인다
+python3 tools/fea.py                       # 구조 해석기 검증 (닫힌해 5건)
+python3 tools/therm.py                     # 열 해석기 검증 (닫힌해 5건)
+python3 tools/analysis_structural.py       # 구조해석 S1~S14 (S10 계단 칼날 칼끝 예산 · S12~S14 칼날 모듈 추종)
+python3 tools/glass_follow.py              # 유리면 추종 — 패드 평면도 몬테카를로 · 곧은 칼날 vs 일곱 모듈 · 유리 굽힘
+python3 tools/analysis_thermal.py          # 열해석 T1~T13 + 요구 R1~R6
+python3 tools/analysis_irbank.py           # IR 뱅크 배치 IR1~IR8 + 요구 RIR1~RIR5
+python3 tools/lampmount.py                 # 램프 지지·관통 LM1~LM7 + 요구 RLM1~RLM5
+python3 tools/heatbalance.py               # 정상상태 열수지 HB1~HB8 + 요구 RHB1~RHB5
+python3 tools/gen_analysis_doc.py --write  # 해석 → 보고서 HTML
+python3 tools/pilot_plan.py                # 파일럿 시료 수·규모·일정
+python3 tools/gen_pilot_doc.py --write     # 계획 → 시험 계획서 HTML
+python3 tools/sync_fab_doc.py --write      # 제작 지침서의 파생 숫자를 계산기와 맞춤
+python3 tools/knife_stepped.py             # 계단형 핫나이프 — 조각별 힘 · 물림 램프 · 사이클 · 계단 높이의 창
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
