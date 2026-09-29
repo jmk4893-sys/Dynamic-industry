@@ -149,6 +149,23 @@ class TestRfqDocument(unittest.TestCase):
         self.assertIn("decks:7", CONSOLE.read_text(encoding="utf-8").replace(" ", ""),
                       "콘솔의 확장 배치가 7 단이 아니다")
 
+        # IR 여유도 같은 두 곳에서 나온다 — 출발은 납품 설비의 램프 수, 도착은
+        # 검토서가 고른 램프 수. 한동안 '100 → 200 kW' 가 남아 있었다 — 출발은
+        # 포락선 이전의 40 등, 도착은 그보다도 앞선 셈이었다.
+        ir = re.search(r'IR 을 <span class="m">(\d+) → (\d+) kW</span>'
+                       r'\(램프 <span class="m">(\d+) → (\d+)</span> 등\)', body)
+        self.assertIsNotNone(ir, "확장 시 IR 정격과 램프 수를 밝히지 않았다")
+        lamps = int(console_consts.const("LAMPS"))
+        lamp_kw = console_consts.obj("MODEL_DEFAULT")["lampPower"]
+        self.assertEqual((int(ir.group(3)), int(ir.group(1))),
+                         (lamps, round(lamps * lamp_kw)),
+                         "확장의 출발 정격이 납품 설비의 램프 수와 다르다")
+        pick = re.search(r'name="description" content="[^"]*?(\d+)단 (\d+)등 (\d+)kW', study)
+        self.assertIsNotNone(pick, "검토서 카드 요약에 채택안이 없다")
+        self.assertEqual(decks.group(2), pick.group(1), "확장 단수가 검토서 채택안과 다르다")
+        self.assertEqual((ir.group(4), ir.group(2)), (pick.group(2), pick.group(3)),
+                         "확장의 도착 정격이 검토서 채택안과 다르다")
+
         aisle = re.search(r'셀 사이 통로 <span class="m">([\d,]+) mm</span>', body)
         self.assertIsNotNone(aisle, "셀 사이 통로 폭을 밝히지 않았다")
         self.assertIn("EX-101", body, "통로 폭을 정하는 장치를 대지 않았다")

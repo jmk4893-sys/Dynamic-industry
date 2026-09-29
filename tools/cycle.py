@@ -31,16 +31,23 @@ DEFAULT = obj("MODEL_DEFAULT")
 RANGE = obj("MODEL_RANGE")
 
 
-def model(v: dict | None = None, knife_depth: float | None = None, **over) -> dict:
+def model(v: dict | None = None, knife_depth: float | None = None,
+          plant: dict | None = None, **over) -> dict:
     """콘솔 thermalModel(v) — 입력 한 벌에서 열수지·칼날·라인 사이클을 낸다.
 
     knife_depth 는 계단 깊이(mm, 첫 칼끝에서 마지막 칼끝까지)를 콘솔 MODEL 의
     값(KNIFE_DEPTH · 240) 대신 넣을 때 쓴다 — 단높이·단수를 바꿔 보는 계산기
     (knife_stepped.py)가 쓴다. 안 주면 콘솔과 같은 식·같은 값이다
     (tests/test_cycle.py 가 대조).
+
+    plant 는 MODEL 의 설비 가정(dT · lamps …)을 바꿔 본다. 사양서가 "같은
+    설비에서 온도만 바꾸면" · "같은 칼날로 램프만 줄이면" 을 적는 자리가
+    이것으로 계산된다 — 손으로 셈한 비교값은 설비가 바뀐 날 옛 값으로 남는다.
     """
     v = {**DEFAULT, **(v or {}), **over}
-    m = MODEL if knife_depth is None else {**MODEL, "knifeDepth": knife_depth}
+    m = {**MODEL, **(plant or {})}
+    if knife_depth is not None:
+        m["knifeDepth"] = knife_depth
     q = v["panelLength"] * v["panelWidth"] / 1e6 * m["arealCp"] * m["dT"]     # kJ/장
     rated = m["lamps"] * v["lampPower"]
     eta = v["heatEfficiency"] / 100

@@ -323,7 +323,7 @@
       확장분의 도면·계산은 본 용역 범위 밖이다.</div>
     <ul>
       <li>가열실 <span class="k">HC-101</span>은 단수를 <span class="m">5 → 7</span>단으로,
-        IR 을 <span class="m">100 → 200 kW</span>로 올릴 수 있는 구조·배관·전기 여유를 남긴다
+        IR 을 <span class="m">120 → 240 kW</span>(램프 <span class="m">48 → 96</span> 등)로 올릴 수 있는 구조·배관·전기 여유를 남긴다
         — 챔버 외형과 기초는 7단 하중·높이를 수용한다. <strong>5단이 그 절반을 이미
         가져다 놓았다</strong> — 확장에 필요한 두 단만 더 올리면 되고, 외장 단높임과
         모노레일·배기 헤더 높이는 이미 단수에서 파생된다 (<a href="#c3">3.6항</a>)</li>
@@ -691,7 +691,8 @@
       </tbody>
     </table></div>
     <div class="tw"><table>
-      <caption>변경 전후</caption>
+      <caption>변경 전후 — 납품 설비(포락선 2,500 × 1,400 · 48 등 120 kW · η 0.65 ·
+        칼날 사이클 54.3 s)에서 온도만 바꾼 값</caption>
       <thead><tr><th>항목</th><th class="num">종전</th><th class="num">변경</th><th>비고</th></tr></thead>
       <tbody>
         <tr><th>EVA/유리 계면 목표</th><td class="num">200 °C</td><td class="num">140 °C</td>
@@ -699,14 +700,18 @@
         <tr><th>계단 칼날 (유리 계면)</th><td class="num">250 – 270 °C</td><td class="num">200 °C</td>
           <td>상용 밴드 상단 — 실란 결합 계면을 끊는다. 종전 탠덤의 백시트 칼날(HKB 230 → 180 °C)은
             계단 칼날 전환으로 없어졌다 — <strong>백시트에 닿는 칼날이 더는 없다</strong></td></tr>
-        <tr><th>패널당 열량</th><td class="num">4.403 MJ</td><td class="num">2.893 MJ</td>
-          <td>−34 %</td></tr>
-        <tr><th>IR 평균전력</th><td class="num">126 kW</td><td class="num">83 kW</td>
-          <td>−43 kW</td></tr>
-        <tr><th>열공정 여유</th><td class="num">15.7 %</td><td class="num">44.6 %</td>
-          <td>처리량은 칼날이 정하므로 불변 — 이 여유를 <a href="#c3">3.6항</a>에서 회수한다</td></tr>
-        <tr><th>카세트 자동교환 정지</th><td class="num">4.5 분</td><td class="num">4.2 분</td>
-          <td>승온 구간이 짧아진다</td></tr>
+        <tr><th>패널당 열량</th><td class="num">5.351 MJ</td><td class="num">3.516 MJ</td>
+          <td>−34 % — ΔT 에 비례한다</td></tr>
+        <tr><th>IR 평균전력</th><td class="num">151.5 kW</td><td class="num">99.6 kW</td>
+          <td>Q / (η · 칼날 사이클). <strong>종전 값은 설치 <span class="m">120 kW</span>를
+            넘는다</strong> — 가열이 칼날을 따라가지 못한다</td></tr>
+        <tr><th>열공정 여유</th><td class="num">−26.3 %</td><td class="num">17.0 %</td>
+          <td>종전 온도면 가열이 병목이 되어 명목 <span class="m">52.5 장/h</span>(순생산
+            47.2)로 계약 58 장/h 에 못 미친다. 같은 여유를 지키려면 설치전력이 ΔT 비만큼
+            늘어야 했다 — 120 × 175 / 115 = <span class="m">182.6 kW</span>.
+            <a href="#c3">3.6항</a>의 48 등 120 kW 는 140 °C 에서 정한 값이다</td></tr>
+        <tr><th>카세트 자동교환 정지</th><td class="num">5.8 – 6.5 분</td><td class="num">4.2 분</td>
+          <td>예열 포켓 120 °C 에서 칼날 온도까지의 승온 구간이 짧아진다</td></tr>
       </tbody>
     </table></div>
     <div class="warn"><strong>200 °C 는 백시트 융점을 넘고 있었다.</strong>
@@ -732,8 +737,8 @@
       규칙을 끊으면 둘이 각자의 근거로 정해진다.</p>
     <div class="logic">설치전력 ← 칼날 택트   방출피치 = Q / (정격 · η) — 단수와 무관
                        포락선 2,500 × 1,400 · 48 등 120 kW 에서 열공정 여유 17.0 %
-                       2,400 × 1,200 시절 40 등 100 kW 의 여유가 16.9 % 였고, 포락선은 Q +21.5 % ·
-                       사이클 +1.8 s 라 100 kW 그대로면 여유가 2.4 % 로 무너진다 — 뱅크당 한 등을 더한다
+                       같은 칼날로 2,400 × 1,200 · 40 등 100 kW 는 여유 15.2 % 다. 포락선은 Q +21.5 % ·
+                       사이클 +1.8 s 라 100 kW 그대로면 여유가 0.4 % 로 무너진다 — 뱅크당 한 등을 더한다
 
 단수     ← 유리 열응력  플럭스 = 정격 · η · 유리몫 / (단수 · 면적)
                        σ = E·α·ΔT / 2(1−ν) ≤ 7 MPa (풀림유리 설계허용)</div>
@@ -1260,8 +1265,10 @@ CASSETTE_RELEASE = KNIVES_CLEAR ∧ CARRIER_PARKED ∧ HEATER_ISOLATED ∧ CASSE
 
   <div class="clause"><div class="n">6.7</div><div class="c">
     <h3>축열식 열산화와 배기 열회수</h3>
-    <p>선행 설계의 배기는 응축 + 활성탄이었고, <span class="m">150 kW</span> IR 이 만든
-      배기열은 그대로 버렸다. 축열식 열산화로(RTO)로 바꾸면 VOC 파괴효율이 오르고,
+    <p>고도화 이전의 선행 설계(<span class="k">REV.20</span> · IR <span class="m">60 등 150 kW</span>)는
+      배기를 응축 + 활성탄으로 처리했고, IR 이 만든 배기열은 그대로 버렸다. 납품 설비의 IR 은
+      <span class="m">48 등 120 kW</span>다 (<a href="#c3">3.6항</a>).
+      축열식 열산화로(RTO)로 바꾸면 VOC 파괴효율이 오르고,
       그 배열로 급기를 예열하면 <strong>같은 배기 처리가 에너지 회수가 된다</strong>.</p>
     <div class="warn"><strong>이 항은 조건부다.</strong> RTO 는
       <a href="#c3">3.4항</a>에서 발주자 설비로 넘어갔고 납품 모듈표
