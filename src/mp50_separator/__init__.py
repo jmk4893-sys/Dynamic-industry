@@ -21,6 +21,7 @@
 
 from __future__ import annotations
 
+from . import control
 from .checks import CheckResult, run_checks
 from .components import ASSEMBLIES, Assembly, Part, bill_of_materials
 from .conflicts import CONFLICTS, Conflict
@@ -37,5 +38,6 @@ __all__ = [
     "Nozzle",
     "Part",
     "bill_of_materials",
+    "control",
     "run_checks",
 ]

@@ -13,7 +13,8 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import ASSEMBLIES, CONFLICTS, GEOMETRY as G, run_checks
+from . import ASSEMBLIES, CONFLICTS, GEOMETRY as G, control, run_checks
+from .checks import DESIGN_MAX_RPM, GEARBOX_MAX_RPM
 from .components import dry_mass_kg, wet_mass_kg
 from .geometry import COVER_NOZZLES, NOZZLES
 
@@ -67,6 +68,41 @@ def report() -> str:
                  for n in NOZZLES]
                 + [[n.tag, n.service, n.size, f"{n.theta_deg:.0f}°", "커버면"]
                    for n in COVER_NOZZLES])
+    L.append("")
+    L.append("## 제어반 J-06")
+    L.append("")
+    L.append("임펠러와 급기의 **동시 차단**이 이 장치의 핵심 동작이다. 둘이 어긋나 "
+             "멎으면 잔류 와류·기포가 층분리를 흐트러뜨려 정치 t=0 이 정의되지 않고, "
+             "DOE 의 정치시간 축을 통째로 못 쓰게 된다. 운전 릴레이 CR1 의 접점 "
+             "하나가 VFD RUN 과 급기 솔레노이드를 함께 물어 이를 구조로 강제한다.")
+    L.append("")
+    L += _table(["항목", "값"], [[k, v] for k, v in control.summary().items()])
+    L.append("")
+    L.append("### 운전 시퀀스")
+    L.append("")
+    L += _table(["단계", "이름", "임펠러", "급기", "무엇이 끝내나"],
+                [[s.no, s.name, s.impeller, s.air, s.ends_by] for s in control.SEQUENCE])
+    L.append("")
+    L.append("### 감속비")
+    L.append("")
+    L.append(f"표준 감속비 가운데 축 {DESIGN_MAX_RPM:.0f} rpm 을 낼 수 있는 것은 "
+             f"1/{control.RECOMMENDED_RATIO:.0f} 뿐이다. 1/20 은 상용주파수에서도 "
+             f"{control.shaft_rpm(control.MAINS_HZ, 20.0):.0f} rpm 에 그치는데, 이것이 "
+             f"[R] 이 적은 상한 {GEARBOX_MAX_RPM:.0f} rpm 의 정체로 보인다 (CHK-05).")
+    L.append("")
+    L += _table(["감속비", "60 Hz 축속", f"{control.SHAFT_MIN_RPM:.0f} rpm 주파수", "판정"],
+                [list(r) for r in control.ratio_table()])
+    L.append("")
+    L.append("### 단자")
+    L.append("")
+    L += _table(["단자", "종류", "명칭", "접속처", "비고"],
+                [[t.no, t.kind, t.name, t.to, t.note] for t in control.TERMINALS])
+    L.append("")
+    L.append("### 제어반 구성품")
+    L.append("")
+    L += _table(["기호", "품명", "사양", "수량"],
+                [[i.tag, i.name, i.spec.replace("**", ""), str(i.qty)]
+                 for i in control.PANEL_BOM])
     L.append("")
     L.append("## 원본 치수 충돌")
     L.append("")

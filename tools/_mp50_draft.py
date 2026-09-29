@@ -48,26 +48,53 @@ def esc(text: str) -> str:
     )
 
 
-def text_width(s: str, size: float) -> float:
+#: 굵은 자형이 없어 굵게 해도 폭이 그대로인 글자. 폴백 글꼴에서 오는
+#: 화살표·수학기호·대시류가 여기 든다.
+_W_FIXED = {
+    "\u2014": 1.00, "@": 1.00, "~": 0.84, "\u00d7": 0.84, "\u00f7": 0.84,
+    "\u00b1": 0.84, "<": 0.84, ">": 0.84, "+": 0.84, "=": 0.84, "#": 0.84,
+    "\u2192": 0.84, "\u2190": 0.84, "\u2191": 0.84, "\u2193": 0.84,
+    "\u2013": 0.50, "\u00b0": 0.50, "_": 0.50, "\u2300": 0.60,
+}
+
+#: 보통 굵기의 자폭. 굵게는 ``_W_BOLD`` 배로 본다.
+_W_GLYPH = {
+    " ": 0.318, ".": 0.318, ",": 0.318, ":": 0.337, ";": 0.337, "'": 0.275,
+    "|": 0.337, "!": 0.401, "\u00b7": 0.32, "-": 0.36, "/": 0.34, "\\": 0.34,
+    "(": 0.39, ")": 0.39, "[": 0.39, "]": 0.39, "{": 0.64, "}": 0.64,
+    '"': 0.46, "*": 0.50, "?": 0.53, "%": 0.95, "&": 0.78,
+    "\u00d8": 0.79, "\u03c6": 0.66, "\u03bc": 0.64, "\u03a9": 0.76,
+}
+
+_W_LOWER, _W_UPPER, _W_DIGIT, _W_BOLD = 0.562, 0.673, 0.636, 1.12
+
+
+def text_width(s: str, size: float, bold: bool = False) -> float:
     """글자열의 대략 폭 (mm).
 
-    한글·한자는 전각이라 글자당 폭이 글자높이와 거의 같고, 라틴은 그 절반쯤이다.
-    둘을 같게 보면 한글 제목마다 밑줄과 옆 글자가 어긋난다.
+    IBM Plex Sans KR 의 자폭을 Chromium 의 ``getComputedTextLength()`` 로
+    실측해 세운 표다. 눈대중으로 세우면 두 가지가 어긋난다.
 
-    라틴을 한 값으로 뭉뚱그리면 ``ISO 2768-mK`` 처럼 대문자와 숫자만 있는
-    문자열이 3 mm 쯤 좁게 나와 옆 칸을 침범한다. 대문자·숫자는 소문자보다
-    확실히 넓으므로 셋을 나눈다.
+    첫째, ``~ \u00d7 \u2192 \u2014`` 같은 기호는 라틴 소문자보다 훨씬 넓다 (0.84~1.00).
+    이들을 소문자로 뭉뚱그리면 ``10.3~51.5 Hz`` 가 20 % 좁게 나와 옆 칸을
+    침범한다. 둘째, 굵은 글씨는 12 % 넓은데 머리띠 값과 뷰 제목이 전부
+    굵은 글씨라 칩마다 글자가 삐져나온다.
+
+    한글·한자는 전각이라 굵기와 상관없이 글자높이와 같다.
     """
     units = 0.0
     for ch in str(s):
+        fixed = _W_FIXED.get(ch)
+        if fixed is not None:
+            units += fixed
+            continue
         if ord(ch) > 0x2E80:
             units += 1.0                       # 전각
-        elif ch.isupper() or ch.isdigit():
-            units += 0.62
-        elif ch in " .,:;'|!\u00b7":
-            units += 0.30
-        else:
-            units += 0.52
+            continue
+        w = _W_GLYPH.get(ch)
+        if w is None:
+            w = _W_DIGIT if ch.isdigit() else _W_UPPER if ch.isupper() else _W_LOWER
+        units += w * (_W_BOLD if bold else 1.0)
     return units * size
 
 
@@ -93,6 +120,7 @@ class Canvas:
         self.scale = scale
         self.aria = aria
         self.body: list[str] = []
+        self.title_block: tuple[float, float, float, float] | None = None
         self._defs: list[str] = []
         self._def_ids: set[str] = set()
 
@@ -393,9 +421,12 @@ class Canvas:
         w = self.WIDTH - self.MARGIN_L - self.MARGIN
         h = self.HEIGHT - 2 * self.MARGIN
         self.rect(x0, y0, w, h, FRAME, "ln")
-        # 표제란
+        # 표제란 — 뒤에 오는 그림이 여기를 침범하지 않았는지 시험이 보므로
+        # 표제란 안의 글은 <g class="tb"> 로 묶어 구분한다.
+        start = len(self.body)
         tw, th = 178.0, 30.0
         tx, ty = x0 + w - tw, y0 + h - th
+        self.title_block = (tx, ty, tw, th)
         self.rect(tx, ty, tw, th, FRAME, "ln", fill="var(--paper)")
         self.line(tx, ty + 13, tx + tw, ty + 13, THIN, "ln")
         self.line(tx + 118, ty, tx + 118, ty + th, THIN, "ln")
@@ -419,6 +450,7 @@ class Canvas:
         self.circle(tx + 168, ty + 21.5, 1.5, THIN, "ln")
         self.poly([(tx + 158, ty + 18.3), (tx + 163, ty + 21.5), (tx + 158, ty + 24.7)],
                   THIN, "ln", close=True)
+        self.body[start:] = ['<g class="tb">' + "".join(self.body[start:]) + "</g>"]
         return None
 
     def head(self, chips: list[tuple[str, str]]) -> None:
@@ -426,14 +458,15 @@ class Canvas:
         x = self.MARGIN_L + 2.0
         y = self.MARGIN + 2.0
         for label, value in chips:
-            wv = max(text_width(value, T_NOTE), text_width(label, T_DIM - 0.6)) + 4.4
+            wv = max(text_width(value, T_NOTE, bold=True),
+                     text_width(label, T_DIM - 0.6)) + 4.4
             self.rect(x, y, wv, 9.0, THIN, "ln", fill="var(--band)")
             self.text(x + 2.2, y + 3.6, label, T_DIM - 0.6, "start", "tx2")
             self.text(x + 2.2, y + 7.6, value, T_NOTE, "start", "tx", weight="600")
             x += wv + 1.6
 
     def view_title(self, x: float, y: float, name: str, scale: str = "") -> None:
-        w = text_width(name, T_VIEW)
+        w = text_width(name, T_VIEW, bold=True)
         self.text(x, y, name, T_VIEW, "start", "tx", weight="700")
         if scale:
             self.text(x + w + 2.6, y, f"척도 {scale}", T_DIM, "start", "tx2")

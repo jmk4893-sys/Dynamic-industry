@@ -1605,7 +1605,8 @@ def sheet_g02() -> None:
                 if math.hypot(xx, yy) < 46:
                     c.circle(v.x(xx), v.y(yy), v.d(hd / 2), THIN, "ln")
         c.circle(v.x(0), v.y(0), v.d(48), THIN, "dl", dash="3 2")
-        c.leader(v.x(34), v.y(34), v.x(od / 2 + 16), v.y(-od / 4),
+        # 글 끝이 오른쪽 타공 배열 상세의 피치 치수(3.5)에 닿으므로 안쪽으로 당긴다.
+        c.leader(v.x(34), v.y(34), v.x(od / 2 - 6), v.y(-od / 4),
                  "대표 구간만 작도", lines=("실제는 전면 타공",))
         c.dim_h(v.x(-od / 2), v.x(od / 2), v.y(-od / 2 - 14), f"Ø{fmt(od)} ±2")
         c.view_title(14.0, 30.0, "평면", v.label)
