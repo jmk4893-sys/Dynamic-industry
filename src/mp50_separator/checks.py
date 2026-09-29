@@ -77,13 +77,25 @@ def stokes_velocity(particle_density: float, dp_um: float, salt_wt: float) -> fl
     return (particle_density - rho_f) * 9.81 * (dp_um * 1e-6) ** 2 / (18.0 * mu)
 
 
-def travel_fraction(velocity_ms: float, seconds: float, column_m: float) -> float:
+def reach_fraction(g: Geometry, velocity_ms: float, seconds: float) -> float:
     """정치 ``seconds`` 후 목적층에 도달한 입자의 질량분율.
 
-    분산 직후 입자가 컬럼에 균일하게 퍼져 있다고 보면, 표면(또는 바닥)에서
-    ``v·t`` 안에 있던 것만 도달한다. 그 비율이 곧 회수율의 상한이다.
+    분산 직후 입자가 **액체 부피에** 균일하게 퍼져 있다고 본다. 가라앉는
+    입자는 바닥에서 ``v·t`` 안에 있던 것만, 뜨는 입자는 액면에서 ``v·t``
+    안에 있던 것만 도달한다. 그 비율이 곧 회수율의 상한이다.
+
+    높이만 보고 콘을 빼면 안 된다. 운전 장입 61.4 L 가운데 **14.5 L (24 %)**
+    가 콘 안에 있고 그 입자들도 같이 분산된다. 동체 직동부(374 mm)만 컬럼으로
+    잡으면 실제 액주(668 mm)의 절반만 세는 셈이라 도달률이 크게 과대평가된다 —
+    31 µm 실리콘의 600 s 침강 도달률이 62 % 로 나오지만 부피로 세면 13 % 다.
+    콘은 아래로 갈수록 단면이 좁아 같은 높이에 든 부피가 적으므로, 높이가
+    아니라 ``volume_at_l`` 로 적분해야 한다.
     """
-    return min(1.0, abs(velocity_ms) * seconds / column_m)
+    d_mm = abs(velocity_ms) * seconds * 1000.0
+    total = g.operating_volume_l
+    if velocity_ms >= 0.0:                        # 침강 — 바닥에서 d 이내
+        return min(1.0, g.volume_at_l(g.cone_outlet_z + d_mm) / total)
+    return min(1.0, (total - g.volume_at_l(g.operating_level_z - d_mm)) / total)
 
 
 @dataclass(frozen=True)
@@ -339,7 +351,7 @@ def _discharge(g: Geometry) -> CheckResult:
 
 def _settling_time(g: Geometry) -> CheckResult:
     """DOE 정치시간 안에 층이 갈리는가 — 이 장치 최대의 쟁점."""
-    column = (g.operating_level_z - g.shell_bottom_z) / 1000.0
+    column = (g.operating_level_z - g.cone_outlet_z) / 1000.0   # 콘 포함 실제 액주
     salt = max(DOE_SALINITY_WT)
     rows = []
     for label, rho, dp in (
@@ -350,7 +362,7 @@ def _settling_time(g: Geometry) -> CheckResult:
         ("백시트 31 µm", BACKSHEET_DENSITY[0], 31.0),
     ):
         v = stokes_velocity(rho, dp, salt)
-        rows.append((label, v, travel_fraction(v, DOE_SETTLING_MAX_S, column)))
+        rows.append((label, v, reach_fraction(g, v, DOE_SETTLING_MAX_S)))
     worst = min(rows, key=lambda r: r[2])
     fine_eva = next(r for r in rows if r[0] == "EVA 31 µm")
     # 포화 염수로 올렸을 때 미세 백시트가 얼마나 빨라지는지
@@ -362,7 +374,8 @@ def _settling_time(g: Geometry) -> CheckResult:
         "전 성분이 정치시간 안에 목적층에 도달할 것",
         f"최저 {worst[0]} {worst[2] * 100:.0f} %",
         "WARN",
-        f"컬럼 {column * 1000:.0f} mm, NaCl {salt:.0f} wt% 기준 — {detail}. "
+        f"액주 {column * 1000:.0f} mm (콘 포함 {g.operating_volume_l:.1f} L), "
+        f"NaCl {salt:.0f} wt% 기준 — 부피 균등분포로 세면 {detail}. "
         f"Si 는 문제가 없지만 **미세 폴리머가 뜨지 않는다**: 31 µm EVA 는 "
         f"{DOE_SETTLING_MAX_S:.0f} s 에 {fine_eva[2] * 100:.0f} % 만 표면에 닿고, "
         f"31 µm 백시트는 Δρ 가 {BACKSHEET_DENSITY[0] - brine_density(salt):+.0f} kg/m³ 뿐이라 "
