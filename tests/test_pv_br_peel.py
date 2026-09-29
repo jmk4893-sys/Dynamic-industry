@@ -418,10 +418,49 @@ class TestTheRealKnifeGeometry(unittest.TestCase):
 class TestTheMirrorIsMarkedAsOne(unittest.TestCase):
     """베낀 값은 갈라질 자리다 — 정본이 오면 시끄럽게 실패해야 한다."""
 
-    def test_the_mirror_knows_it_is_a_mirror(self):
-        """정본 모듈이 이 트리에 없는 동안만 베껴 두는 것이 허용된다."""
-        self.assertTrue(br_peel.the_mirror_must_become_a_delegation())
-        self.assertTrue(br_peel.summary()["mirrorIsStillAMirror"])
+    def test_the_mirror_became_a_delegation_when_the_canon_arrived(self):
+        """정본이 오면 베낀 값은 **위임으로 바뀌어야** 한다 — 09-29 그 일이 났다.
+
+        한때 이 시험은 「정본이 없는 동안만 베껴도 된다」를 물었고, 베이스
+        병합으로 `tools/console_consts.py` 가 들어오면서 설계대로 깨졌다.
+        지금 묻는 것은 그 다음 걸음이다 — **읽고 있는가.**
+        """
+        self.assertTrue(br_peel.the_canon_is_in_this_tree())
+        self.assertTrue(br_peel.the_shape_is_delegated_to_the_canon())
+        self.assertTrue(br_peel.summary()["shapeIsDelegated"])
+        # 방향이 뒤집힌 옛 술어는 남겨 두지 않는다(㉘).
+        self.assertFalse(hasattr(br_peel, "the_mirror_must_become_a_delegation"))
+
+    def test_every_shape_value_comes_from_the_canon(self):
+        """상수가 정본과 같은가 — **정본을 따로 읽어** 맞대 본다.
+
+        같은 함수를 두 번 부르면 같은 답이 나오므로 그것으로는 못 묻는다.
+        여기서는 `tools/console_consts.py` 를 시험이 **직접** 열어서 잰다.
+        """
+        import importlib.util, pathlib
+        canon = (pathlib.Path(br_peel.__file__).resolve().parents[2]
+                 / "tools" / "console_consts.py")
+        self.assertTrue(canon.exists())
+        spec = importlib.util.spec_from_file_location("_canon_under_test", canon)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        env = mod.env(mod.text())
+        self.assertEqual(br_peel.BLADE_COUNT, int(env["KNIFE_BLADES"]))
+        for attr, key in (("CENTER_BLADE_MM", "KNIFE_CENTER"),
+                          ("STEP_BLADE_MM", "KNIFE_STEP_W"),
+                          ("STAGGER_RISE_MM", "KNIFE_RISE"),
+                          ("BLADE_LAP_MM", "KNIFE_LAP"),
+                          ("BLADE_LAND_MM", "KNIFE_LAND")):
+            self.assertAlmostEqual(getattr(br_peel, attr),
+                                   round(env[key] * 1000.0, 4), places=3,
+                                   msg=f"{attr} 이 정본 {key} 과 갈라졌다")
+        self.assertEqual(br_peel.STAGGER_STEPS, int(env["KNIFE_STEPS"]))
+
+    def test_a_missing_canon_value_stops_rather_than_invents(self):
+        """정본에 없는 이름을 물으면 **값을 지어내지 않고 멈추는가**."""
+        with self.assertRaises(RuntimeError) as cm:
+            br_peel._from_canon("KNIFE_THIS_DOES_NOT_EXIST")
+        self.assertIn("되베끼지 말고", str(cm.exception))
 
     def test_the_provenance_is_written_in_the_source(self):
         """어디서 베꼈는지가 소스에 적혀 있어야 한다."""

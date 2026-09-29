@@ -144,7 +144,8 @@ STARTER_CUT_CROSSES_CELLS = True
 
 #: 박리 칼날 수 — **현장이 든 수다.** 백시트는 길이 방향 **7 장**으로 벗겨지고
 #: 그 장수가 곧 칼날 수다. 이 값 하나가 그리퍼·구동 사양을 정한다.
-BLADE_COUNT = 7
+#: 2026-09-29 부터 정본 `KNIFE_BLADES` 에서 읽는다 — 아래 「정본에서 읽는다」 참조.
+BLADE_COUNT = 7   # noqa: E305 — 아래에서 정본 값으로 다시 묶는다
 #: 띠가 나뉘는 방향 — **길이 방향**이다. 1 차 커팅(가로)과 직각이다.
 STRIP_ORIENTATION = "세로(길이 방향)"
 #: 칼날 배치 — 나란히가 아니라 **진행 방향으로 어긋난 계단식**이다.
@@ -152,37 +153,82 @@ STRIP_ORIENTATION = "세로(길이 방향)"
 #: **진행은 다 같이** 한다. 「병렬이냐 순차냐」가 아니라 **둘 다**다.
 BLADE_LAYOUT = "계단식(중앙이 먼저, 좌우 쌍이 한 단씩 물러남)"
 
-# ── 실측 형상 — SHK-101 계단형 핫나이프 ─────────────────────────────────
+# ── 실측 형상 — SHK-101 계단형 핫나이프 · **정본에서 읽는다** ───────────
 #
 #   **이 값들은 내가 정한 것이 아니다.** 같은 저장소의 다른 작업
-#   (SHK-101 계단형 핫나이프 · 콘솔 도면의 `KNIFE_*` 뿌리 상수 ·
-#   `tools/knife_stepped.py`)이 발주자 스케치에서 확정한 값이고, 그쪽이
-#   **정본**이다. 그 브랜치가 이 트리에 아직 없어 값을 **베껴** 두는데,
-#   베끼는 것은 갈라질 자리이므로 조건을 하나 붙인다:
+#   (SHK-101 계단형 핫나이프 · 콘솔 도면 `pv-delamination-3d.html` 의
+#   `KNIFE_*` 뿌리 상수)이 **발주자 확정**으로 정한 값이고 그쪽이 정본이다.
 #
-#       `tools/console_consts.py` 가 이 트리에 생기면 아래 상수를 지우고
-#       그쪽에서 읽어 온다. `the_mirror_must_become_a_delegation()` 이
-#       그때 실패해서 알려 준다.
+#   **2026-09-29 그 정본이 이 트리에 들어왔다** (베이스 병합으로
+#   `tools/console_consts.py` 도착). 그때까지는 값을 **베껴** 두고
+#   `the_mirror_must_become_a_delegation()` 이 「정본이 오면 실패한다」고
+#   걸어 두었는데, 병합과 함께 그 시험이 실제로 깨졌다 — 설계대로다.
+#   그래서 아래는 **더 이상 리터럴이 아니라 정본을 읽은 값**이다.
+#
+#   베껴 두었던 수는 전부 정본과 **같았다**(칼날 7 · 중앙 300 · 계단 200 ·
+#   단 3 · 단높이 80 · 겹침 15 · 랜드 1.5). 값이 맞았다는 것과 정본을 읽고
+#   있다는 것은 다르다 — 앞으로 정본이 움직이면 이쪽이 따라간다.
 #
 #   형상은 **대칭 계단**이다 — 중앙 300 이 먼저 물고 양쪽 200 칼날이 한 단에
 #   80 씩 물러나며 세 단을 내려간다. 전폭 1,500 은 패널 1,400 에 양쪽 50 을
 #   더한 것이고, 바깥 칼날은 안쪽 칼날 **밑으로 15** 겹쳐 덮는 자리를 남기지
 #   않는다.
-#
-#: 중앙 칼날 폭 (mm) — 가장 먼저 물고 **가장 넓다**.
-CENTER_BLADE_MM = 300.0
-#: 계단 칼날 폭 (mm) — 중앙 양쪽으로 한 단씩.
-STEP_BLADE_MM = 200.0
-#: 한쪽 단수 — 좌우 합쳐 칼날이 1 + 2×3 = 7 장이 된다.
-STAGGER_STEPS = 3
-#: 한 단에 뒤로 물러나는 거리 (mm) — **발주자 확정.** 어제 「모른다」고
-#: 적어 둔 그 값이다.
-STAGGER_RISE_MM = 80.0
+
+def _canon_path() -> "pathlib.Path":
+    """칼날 형상 정본의 자리 — `tools/console_consts.py`."""
+    import pathlib
+    return pathlib.Path(__file__).resolve().parents[2] / "tools" / "console_consts.py"
+
+
+def _canon_env() -> dict:
+    """정본이 콘솔 도면에서 읽어 낸 상수 — 못 읽으면 빈 사전.
+
+    `src` 가 `tools` 를 읽는 것은 이 한 곳뿐이다. 칼날 형상의 정본이 도면이고
+    그것을 푸는 코드가 거기 있어서다 — **값을 이쪽으로 옮겨 오면 다시 거울이
+    된다.**
+    """
+    import importlib.util
+    p = _canon_path()
+    if not p.exists():
+        return {}
+    try:
+        spec = importlib.util.spec_from_file_location("_shk101_canon", p)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)          # type: ignore[union-attr]
+        return dict(mod.env(mod.text()))
+    except Exception:                          # noqa: BLE001 — 아래에서 이름 붙여 던진다
+        return {}
+
+
+_CANON = _canon_env()
+
+
+def _from_canon(name: str, scale: float = 1.0) -> float:
+    """정본의 한 상수를 읽는다 — 없으면 **값을 지어내지 않고 멈춘다**."""
+    try:
+        return round(float(_CANON[name]) * scale, 4)
+    except KeyError:
+        raise RuntimeError(
+            f"칼날 정본에 `{name}` 이 없다 — {_canon_path()} 가 읽는 콘솔 도면이 "
+            "바뀌었다. **여기에 값을 되베끼지 말고** 정본 쪽을 본다."
+        ) from None
+
+
+#: 중앙 칼날 폭 (mm) — 가장 먼저 물고 **가장 넓다**. 정본 `KNIFE_CENTER`.
+CENTER_BLADE_MM = _from_canon("KNIFE_CENTER", 1000.0)
+#: 계단 칼날 폭 (mm) — 중앙 양쪽으로 한 단씩. 정본 `KNIFE_STEP_W`.
+STEP_BLADE_MM = _from_canon("KNIFE_STEP_W", 1000.0)
+#: 한쪽 단수 — 좌우 합쳐 칼날이 1 + 2×3 = 7 장이 된다. 정본 `KNIFE_STEPS`.
+STAGGER_STEPS = int(_from_canon("KNIFE_STEPS"))
+#: 한 단에 뒤로 물러나는 거리 (mm) — **발주자 확정.** 정본 `KNIFE_RISE`.
+STAGGER_RISE_MM = _from_canon("KNIFE_RISE", 1000.0)
 #: 이음 겹침 (mm) — **바깥 칼날이 안쪽 밑으로.** 힘을 보태지 않는다:
-#: 안쪽 칼날이 이미 떼어 간 줄을 다시 긋는 자리다.
-BLADE_LAP_MM = 15.0
-#: 칼날 밑면 랜드 (mm) — 추종 중 **유리를 타는** 면. 경면 연마.
-BLADE_LAND_MM = 1.5
+#: 안쪽 칼날이 이미 떼어 간 줄을 다시 긋는 자리다. 정본 `KNIFE_LAP`.
+BLADE_LAP_MM = _from_canon("KNIFE_LAP", 1000.0)
+#: 칼날 밑면 랜드 (mm) — 추종 중 **유리를 타는** 면. 경면 연마. 정본 `KNIFE_LAND`.
+BLADE_LAND_MM = _from_canon("KNIFE_LAND", 1000.0)
+#: 칼날 수도 같은 정본에서 온다 — 위의 선언을 여기서 덮는다.
+BLADE_COUNT = int(_from_canon("KNIFE_BLADES"))
 #: 날끝 쐐기각 (°) — 레이크면과 랜드 사이 (D-502).
 BLADE_WEDGE_DEG = 35.0
 #: SHK-101 이 재는 박리 저항 (N/mm) — OI-01 밴드 상한 111 N/cm.
@@ -494,15 +540,35 @@ def what_the_staircase_buys() -> tuple[str, ...]:
     )
 
 
-def the_mirror_must_become_a_delegation() -> bool:
-    """베낀 값이 아직 베낀 채로 있어도 되는가 — 정본이 이 트리에 없으면 참.
+def the_canon_is_in_this_tree() -> bool:
+    """칼날 형상의 정본이 이 트리에 있는가 — 2026-09-29 베이스 병합으로 왔다."""
+    return _canon_path().exists()
 
-    `tools/console_consts.py` 가 생기면(SHK-101 쪽이 병합되면) 거짓이 되어
-    시험이 깨진다. **그때 위 상수를 지우고 그쪽에서 읽어 와야 한다.**
+
+def the_shape_is_delegated_to_the_canon() -> bool:
+    """형상 값이 **정본에서 읽은** 것인가 — 리터럴로 되돌아가면 거짓이 된다.
+
+    한때 이 자리에 `the_mirror_must_become_a_delegation()` 이 있었고
+    「정본이 없는 동안만 참」이었다. 정본이 오면서 그 시험이 설계대로 깨졌고,
+    값을 지우고 여기서 읽게 바꾸면서 술어도 **방향이 맞는 이름**으로 갈랐다 —
+    「베껴도 되는가」가 아니라 「위임했는가」를 묻는다.
     """
-    import pathlib
-    root = pathlib.Path(__file__).resolve().parents[2]
-    return not (root / "tools" / "console_consts.py").exists()
+    need = ("KNIFE_BLADES", "KNIFE_CENTER", "KNIFE_STEP_W", "KNIFE_STEPS",
+            "KNIFE_RISE", "KNIFE_LAP", "KNIFE_LAND")
+    return all(k in _CANON for k in need)
+
+
+def canon_shape_mm() -> dict[str, float]:
+    """정본이 말하는 칼날 형상 (mm) — 시험이 이쪽과 상수를 맞대 본다."""
+    return {
+        "blades": float(int(_from_canon("KNIFE_BLADES"))),
+        "center": _from_canon("KNIFE_CENTER", 1000.0),
+        "step": _from_canon("KNIFE_STEP_W", 1000.0),
+        "steps": float(int(_from_canon("KNIFE_STEPS"))),
+        "rise": _from_canon("KNIFE_RISE", 1000.0),
+        "lap": _from_canon("KNIFE_LAP", 1000.0),
+        "land": _from_canon("KNIFE_LAND", 1000.0),
+    }
 
 
 def where_shk101_and_this_unit_disagree() -> tuple[str, ...]:
@@ -1290,7 +1356,7 @@ def summary() -> dict[str, object]:
         "spanRatio": span_ratio(),
         "loadRiseIsDividedBy": load_rise_is_divided_by(),
         "staircaseSplitsTheSupports": the_staircase_splits_the_supports_for_us(),
-        "mirrorIsStillAMirror": the_mirror_must_become_a_delegation(),
+        "shapeIsDelegated": the_shape_is_delegated_to_the_canon(),
         "evaBandMm": eva_band_mm(),
         "depthControlFaceMm": depth_control_mm(True),
         "depthControlFrameMm": depth_control_mm(False),
