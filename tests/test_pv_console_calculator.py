@@ -37,11 +37,11 @@ AREAL_CP_KJ_M2K = 8.7358962
 # 않고 물러지기만 한다(열경화 망상). 문헌의 100 vs 140 °C 비교도 "과열은
 # 박리를 크게 개선하지 않는다"로 끝나고, 상용 핫나이프는 벌크 예열 없이
 # 칼날만 180~200 °C 로 쓴다. 200 °C 는 PVDF(165)·PVF(195) 백시트 융점을
-# 넘어 권취 중 파단 위험까지 있었다.
+# 넘는다 — 녹은 백시트는 누름판에 눌어붙고 평적 카트에서 장끼리 붙는다.
 T_AMBIENT_C = 25
 T_TARGET_C = 140
 DELTA_T_K = T_TARGET_C - T_AMBIENT_C
-T_HKB_C, T_HKS_C = 180, 200      # 칼날 — NPC 상용 밴드 180~200
+T_KNIFE_C = 200          # 계단 칼날 — NPC 상용 밴드 상단. 한 자루라 온도도 하나다
 # 체류시간의 물리 하한. 종전 주석은 "1D-FDM 으로 구한 계면 도달시간" 이라고
 # 적혀 있었고 그 FDM 을 아무도 푼 적이 없었다. tools/analysis_thermal.py 가
 # 풀었다 — 하한을 정하는 것은 계면이 아니라 **백시트**다. 유속을 올리면
@@ -51,7 +51,7 @@ FDM_DWELL_S = 113.15
 LAMPS = 48    # 2.5 kW × 48 = 120 kW 설치 — 6 뱅크 × 8 (포락선 2,500 × 1,400 이 뱅크당 한 등을 더했다)
 MASS_GLASS_CP = 8.000 * 0.75            # kJ/(m²·K) — 적층 중 유리 몫
 DECKS = 5     # 가열 캐리지 단수 — 유리 열응력이 정한다 (3단은 σ 6.97 — 허용 7 에 붙어 여유가 없다)
-KNIFE_PITCH_MM = 300     # HKB 가 HKS 보다 앞서는 거리
+KNIFE_DEPTH_MM = 3 * 80  # 계단 깊이 — 단 80 × 3 (발주자 확정). 탠덤 칼끝 간격 300 의 자리
 RAPID_DISTANCE_MM = 300  # 장당 급속이송 등가거리
 
 DEFAULTS = dict(
@@ -61,7 +61,7 @@ DEFAULTS = dict(
 
 
 def thermal_model(**over):
-    """문서가 밝힌 식으로 열수지·탠덤·라인 능력을 낸다."""
+    """문서가 밝힌 식으로 열수지·계단 칼날·라인 능력을 낸다."""
     v = {**DEFAULTS, **over}
     q = v["panelLength"] * v["panelWidth"] / 1e6 * AREAL_CP_KJ_M2K * DELTA_T_K
     rated = LAMPS * v["lampPower"]
@@ -69,13 +69,13 @@ def thermal_model(**over):
     dwell = max(DECKS * q / (rated * eta), FDM_DWELL_S)
     pitch = dwell / DECKS
     handling = RAPID_DISTANCE_MM / v["rapidSpeed"] + v["handlingTime"]
-    cycle = (KNIFE_PITCH_MM + v["panelLength"]) / v["knifeSpeed"] + handling
+    cycle = (KNIFE_DEPTH_MM + v["panelLength"]) / v["knifeSpeed"] + handling
     line_cycle = max(pitch, cycle)
     energy = q / (eta * 3600)
     line_rate = 3600 / line_cycle
     return dict(
         q_kj=q, rated_kw=rated, dwell_s=dwell, pitch_s=pitch,
-        thermal_rate=3600 / pitch, cycle_s=cycle, tandem_rate=3600 / cycle,
+        thermal_rate=3600 / pitch, cycle_s=cycle, knife_rate=3600 / cycle,
         line_cycle_s=line_cycle, line_rate=line_rate,
         energy_kwh=energy, average_kw=energy * line_rate,
     )
@@ -122,12 +122,13 @@ class TestModelConstantsAreShared(unittest.TestCase):
                       "ΔT 가 목표온도에서 파생되지 않고 값으로 적혀 있다")
         self.assertAlmostEqual(self._const("T_TARGET"), T_TARGET_C, places=6)
         self.assertAlmostEqual(self._const("T_AMB"), T_AMBIENT_C, places=6)
-        self.assertAlmostEqual(self._const("T_HKB"), T_HKB_C, places=6)
-        self.assertAlmostEqual(self._const("T_HKS"), T_HKS_C, places=6)
+        self.assertAlmostEqual(self._const("T_KNIFE"), T_KNIFE_C, places=6)
         self.assertAlmostEqual(self._model_field("fdmDwell"), FDM_DWELL_S, places=6)
         self.assertAlmostEqual(self._model_field("lamps"), LAMPS, places=6)
         self.assertAlmostEqual(self._model_field("decks"), DECKS, places=6)
-        self.assertAlmostEqual(self._model_field("knifePitch"), KNIFE_PITCH_MM, places=6)
+        self.assertIn("knifeDepth:KNIFE_DEPTH*1000", self.html,
+                      "사이클의 계단 깊이가 칼날 형상 상수에서 나오지 않는다")
+        self.assertAlmostEqual(console_consts.const("KNIFE_DEPTH") * 1000, KNIFE_DEPTH_MM, places=6)
         self.assertAlmostEqual(
             self._model_field("rapidDistance"), RAPID_DISTANCE_MM, places=6
         )
@@ -197,19 +198,19 @@ class TestStatedFiguresMatchTheModel(unittest.TestCase):
         self.assertAlmostEqual(self.m["pitch_s"], pitch, delta=0.05)
         self.assertAlmostEqual(self.m["thermal_rate"], rate, delta=0.05)
 
-    def test_tandem_cycle_at_both_speeds(self):
+    def test_knife_cycle_at_both_speeds(self):
         c55, r55, c60, r60 = self._stated(
-            r"55mm/s 탠덤 ([\d.]+)초·([\d.]+)장/h, 60mm/s 탠덤 ([\d.]+)초·([\d.]+)장/h"
+            r"55mm/s 계단 칼날 ([\d.]+)초·([\d.]+)장/h, 60mm/s ([\d.]+)초·([\d.]+)장/h"
         )
         self.assertAlmostEqual(self.m["cycle_s"], c55, delta=0.05)
-        self.assertAlmostEqual(self.m["tandem_rate"], r55, delta=0.05)
+        self.assertAlmostEqual(self.m["knife_rate"], r55, delta=0.05)
         fast = thermal_model(knifeSpeed=60)
         self.assertAlmostEqual(fast["cycle_s"], c60, delta=0.05)
-        self.assertAlmostEqual(fast["tandem_rate"], r60, delta=0.05)
+        self.assertAlmostEqual(fast["knife_rate"], r60, delta=0.05)
 
     def test_nominal_and_derated_throughput(self):
         cycle, nominal, derated = self._stated(
-            r"55mm/s 탠덤 사이클 ([\d.]+)초·명목 ([\d.]+)장/h·90% 환산 ([\d.]+)장/h"
+            r"55mm/s 계단 칼날 사이클 ([\d.]+)초·명목 ([\d.]+)장/h·90% 환산 ([\d.]+)장/h"
         )
         self.assertAlmostEqual(self.m["cycle_s"], cycle, delta=0.05)
         self.assertAlmostEqual(self.m["line_rate"], nominal, delta=0.05)
@@ -277,7 +278,7 @@ class TestModelBehaviour(unittest.TestCase):
     def test_bottleneck_moves_to_heating_when_peeling_is_fast(self):
         slow = thermal_model(knifeSpeed=35)
         fast = thermal_model(knifeSpeed=60, lampPower=1.0)
-        self.assertGreater(slow["cycle_s"], slow["pitch_s"], "35mm/s 는 탠덤 병목이어야 한다")
+        self.assertGreater(slow["cycle_s"], slow["pitch_s"], "35mm/s 는 칼날 병목이어야 한다")
         self.assertGreater(fast["pitch_s"], fast["cycle_s"], "램프가 모자라면 열 병목이어야 한다")
 
     def test_line_rate_never_beats_either_limit(self):
@@ -285,7 +286,7 @@ class TestModelBehaviour(unittest.TestCase):
             for lamp in (1.0, 2.0, 2.5, 3.0):
                 m = thermal_model(knifeSpeed=speed, lampPower=lamp)
                 self.assertLessEqual(
-                    m["line_rate"], min(m["thermal_rate"], m["tandem_rate"]) + 1e-9,
+                    m["line_rate"], min(m["thermal_rate"], m["knife_rate"]) + 1e-9,
                     f"{speed}mm/s·{lamp}kW 에서 라인 능력이 병목을 넘었다",
                 )
 
@@ -318,7 +319,8 @@ if __name__ == "__main__":
 class TestProcessTemperature(unittest.TestCase):
     """공정 온도가 왜 그 값인지, 그리고 한 곳에만 있는지.
 
-    계면 목표는 200 → 140 °C, 칼날은 230/250–270 → 180/200 °C 로 내렸다.
+    계면 목표는 200 → 140 °C, 칼날은 230/250–270 → 180/200 °C 로 내렸고, 계단 칼날
+    전환(9/24)으로 백시트에 닿던 180 °C 칼날(HKB)이 없어져 200 °C 하나가 남았다.
     근거는 세 갈래다 — 가교 EVA 는 결정 융해(55~95 °C)가 끝나면 액체가 되지
     않고 물러지기만 하는 열경화 망상이고, 문헌의 100 vs 140 °C 비교도 과열이
     박리를 크게 개선하지 않는다로 끝나며, 상용 핫나이프는 벌크 예열 없이
@@ -348,25 +350,25 @@ class TestProcessTemperature(unittest.TestCase):
         self.assertGreater(t, self.EVA_MELT_TOP,
                            "목표가 EVA 결정 융해 상단보다 낮다 — 물러지지 않는다")
         self.assertLess(t, self.PVDF_MELT,
-                        "목표가 PVDF 백시트 융점을 넘는다 — 권취 중 찢어진다")
+                        "목표가 PVDF 백시트 융점을 넘는다 — 누름판에 눌어붙는다")
 
-    def test_the_knives_sit_in_the_commercial_band(self):
+    def test_the_knife_sits_in_the_commercial_band(self):
         lo, hi = self.NPC_BAND
-        for name in ("T_HKB", "T_HKS"):
-            v = self._c(name)
-            self.assertGreaterEqual(v, lo, f"{name} 가 상용 밴드 아래다")
-            self.assertLessEqual(v, hi, f"{name} 가 상용 밴드 위다")
-        self.assertLessEqual(self._c("T_HKB"), self._c("T_HKS"),
-                             "백시트 칼날이 유리계면 칼날보다 뜨겁다 — 백시트에 직접 닿는 쪽이다")
+        v = self._c("T_KNIFE")
+        self.assertGreaterEqual(v, lo, "계단 칼날이 상용 밴드 아래다")
+        self.assertLessEqual(v, hi, "계단 칼날이 상용 밴드 위다")
+        for gone in ("T_HKB", "T_HKS"):
+            self.assertNotRegex(self.html, rf"const {gone}=",
+                                f"탠덤 칼날 온도 {gone} 가 아직 상수로 남아 있다")
 
-    def test_the_knives_are_hotter_than_the_bulk(self):
+    def test_the_knife_is_hotter_than_the_bulk(self):
         """칼날은 국부 승온을 담당한다 — 벌크보다 낮으면 아무 일도 못 한다."""
-        self.assertGreater(self._c("T_HKB"), self._c("T_TARGET"))
+        self.assertGreater(self._c("T_KNIFE"), self._c("T_TARGET"))
 
     def test_the_cassette_temperature_is_the_knife_temperature(self):
         """값을 두 번 적으면 칼날만 내리고 카세트는 그대로인 날이 온다."""
-        self.assertIn("const CASS_T_HOT=T_HKS,", self.html,
-                      "카세트 온도가 칼날 온도의 별칭이 아니다")
+        self.assertRegex(self.html, r"CASS_T_HOT=T_KNIFE\b",
+                         "카세트 온도가 칼날 온도의 별칭이 아니다")
 
     def test_delta_t_has_one_source(self):
         self.assertIn("dT:T_TARGET-T_AMB", self.html)
@@ -448,7 +450,7 @@ class TestTheHeatingChamberSizeIsDerived(unittest.TestCase):
 class TestTheDeckCountIsBoundedByGlassStress(unittest.TestCase):
     """단수를 정하는 것은 처리량이 아니라 유리 열응력이다.
 
-    처리량은 탠덤이 정하므로 단수를 줄여도 라인은 그대로다. 대신 같은 열을
+    처리량은 칼날이 정하므로 단수를 줄여도 라인은 그대로다. 대신 같은 열을
     더 적은 장수에 넣게 되어 장당 플럭스가 오르고, 그 플럭스가 유리 두께를
     지나며 만드는 온도차가 열응력이 된다. 여기가 진짜 하한이다.
 

@@ -131,7 +131,10 @@ def _model_field(key: str) -> float:
 
 AREAL_CP_KJ_M2K: float = _model_field("arealCp")     # 8.7358962
 FDM_DWELL_S: float = _model_field("fdmDwell")        # 113.15 — 백시트가 정하는 하한
-KNIFE_PITCH_MM: float = _model_field("knifePitch")   # 300 칼끝 간격
+#: 계단 깊이 (mm) — 첫 칼끝(중앙 300)에서 마지막 칼끝까지. 벤더가 탠덤 두 자루를
+#: 계단 한 자루(SHK-101)로 바꾸면서 `knifePitch`(칼끝 간격 300)가 없어지고 이 필드가
+#: **그 자리에 들어왔다** — 콘솔 주석이 그렇게 적는다. 240 = 3계단 × 상승 80.
+KNIFE_DEPTH_MM: float = const("KNIFE_DEPTH") * 1000.0   # 240 = 3계단 × 상승 80
 RAPID_DISTANCE_MM: float = _model_field("rapidDistance")  # 300
 AVAILABILITY: float = _model_field("availability")   # 0.90
 #: 계약 순생산 — 포락선 개정부터 콘솔 최상단 `NET_TARGET`(정수)이고, 그 전에는 MODEL.netTarget 이었다.
@@ -150,7 +153,9 @@ _range = re.search(r"panelLength:\[(\d+),[^\]]*\],panelWidth:\[(\d+),[^\]]*\]", 
 PANEL_MIN_MM: tuple[int, int] = (int(_range.group(1)), int(_range.group(2)))
 PANEL_MASS_KG: float = round(const("PANEL_MASS"), 2)     # 28.21
 GLASS_KG: float = round(const("GLASS_KG"), 2)            # 23.04
-CELL_EVA_KG: float = round(const("CE_KG"), 2)            # 3.96
+#: 셀모듈 한 장의 질량 (kg) — EVA·셀·**백시트**. 계단 칼날이 유리 계면 하나에서
+#: 셋을 한 장으로 들어내므로 백시트가 여기에 들어온다(종전 셀/EVA 만 4.81).
+CELL_MODULE_KG: float = round(const("CE_KG"), 2)          # 6.28 — 포락선 2,500×1,400
 POSE = "유리면 ↓ · 백시트 ↑"                              # 사양서 4.2 '유리면 아래 · 백시트 위'
 
 # ── 기하 — 스테이션·공정선·방책 (기계 좌표 mm) ─────────────────────────────
@@ -187,7 +192,7 @@ def _stations() -> tuple[Station, ...]:
         if width is None:
             raise ValueError(f"{tag} 폭 식을 못 푼다: {expr}")
         w = round(width * 1000)
-        name = {"LD": "투입 셔틀", "HC": f"{DECKS}단 밀폐 가열실", "DL": "탠덤 분리 셀",
+        name = {"LD": "투입 셔틀", "HC": f"{DECKS}단 밀폐 가열실", "DL": "계단 칼날 분리 셀",
                 "GC": "유리 냉각 랙", "UL": "반출 셔틀"}[tag[:2]]
         out.append(Station(tag[:2], tag, name, cur, cur + w))
         cur += w + CL_CLEAR_MM
@@ -276,12 +281,15 @@ CART_Y_MM: int = round(_cc.value(_cart[1], _env()) * 1000)   # −3,200 (CSCART_
 CART_L_MM: int = round(const("CSCART_L") * 1000)        # 2,600
 CART_W_MM: int = round(const("CSCART_W") * 1000)        # 1,300
 
-#: 백시트 만권 롤·칼날 카세트 반출 — RH-201 모노레일 (기계 좌표).
-WINDER_X_MM: int = round(const("CRAIL_X0") * 1000)      # 8,050 드럼·모노레일 x
-RH_Y_MM: tuple[int, int] = (round(const("RH_Y0") * 1000), round(const("RH_Y1") * 1000))  # +550 → −7,000
-_saddle = _cc._split_top(re.search(r"const BS_SADDLE=V\((.*?)\);", _console_text()).group(1))
-ROLL_SADDLE_Y_MM: int = round(_cc.value(_saddle[1], _env()) * 1000)  # −5,200 — 방책 밖
-CASSETTE_SADDLE_Y_MM: int = round(const("CKC_RACK_Y") * 1000)  # −7,000
+#: 칼날 카세트 반출 — RH-201 모노레일 (기계 좌표).
+#:
+#: 여기서 만권 롤이 빠졌다. 벤더가 탠덤 두 칼날을 계단 한 자루(SHK-101)로 바꾸면서
+#: **셀모듈과 백시트를 한 장으로** 떼므로 백시트를 따로 감지 않는다 — WR-101 권취부와
+#: 그 반출 계통(만권 롤·방책 밖 새들)이 통째로 빠졌다. 콘솔에 남은 `BS_SADDLE_X`·
+#: `ROLL_MASS` 는 폐기된 REV.20 도면을 그리는 값이라고 콘솔이 못박아 두었으므로
+#: **플랜트는 읽지 않는다**. 레일이 나르는 것은 이제 칼날 카세트뿐이다.
+RH_Y_MM: tuple[int, int] = (round(const("RH_Y0") * 1000), round(const("RH_Y1") * 1000))
+CASSETTE_SADDLE_Y_MM: int = round(const("CKC_RACK_Y") * 1000)
 
 
 def _deck_z(k: int) -> float:
@@ -294,8 +302,6 @@ def monorail_el_mm() -> int:
     return round(max(4.85, math.ceil(need * 20) / 20) * 1000)     # 5,100
 
 
-ROLL_MASS_KG: int = round(const("ROLL_MASS")) if "ROLL_MASS" in _env() else 357
-ROLL_PERIOD_H: float = 4.9                                       # 사양서 6.x — OI-11
 
 #: 경계 인터페이스반 BJ-101/102 과 경계 덕트 플랜지 (기계 좌표).
 BJ_X_MM: int = STATION["UL"].x1_mm - 1000               # CBJ_X = CST.UL.x1 − 1.0
@@ -363,6 +369,20 @@ class Rate:
     bottleneck: str
 
 
+def _knife_cycle(length_mm: float, knife_speed_mm_s: float) -> float:
+    """장당 칼날 사이클 (s) — 콘솔 `thermalModel` 의 `knifeCycle` 을 그대로 낸다.
+
+    물림(계단 깊이) + 박리(패널 길이) + 그 뒤 창. 이동 나이프는 **한 대**라 지나온
+    거리(계단 깊이 + 패널 길이)를 되돌아와야 다음 장을 시작하는데, 복귀는 유리 반출·
+    패널 투입과 같은 창에서 일어나므로 **둘 중 긴 쪽만** 사이클에 든다. 기본 복귀속도
+    700 mm/s 에서는 고정동작(4.5 s)이 복귀(3.9 s)보다 길어 복귀가 숨는다.
+    """
+    lead_peel = (KNIFE_DEPTH_MM + length_mm) / knife_speed_mm_s
+    handling = RAPID_DISTANCE_MM / RAPID_SPEED_MM_S + HANDLING_S
+    ret = (KNIFE_DEPTH_MM + length_mm) / KNIFE_RETURN_MM_S
+    return lead_peel + max(handling, ret)
+
+
 def rate(length_mm: float | None = None, width_mm: float | None = None,
          knife_speed_mm_s: float | None = None, lamps: int | None = None,
          lamp_kw: float | None = None) -> Rate:
@@ -377,30 +397,30 @@ def rate(length_mm: float | None = None, width_mm: float | None = None,
     useful_kw = n_lamp * p_lamp * HEAT_EFFICIENCY_PCT / 100.0
     dwell = max(DECKS * heat_kj / useful_kw, FDM_DWELL_S)
     pitch = dwell / DECKS
-    tandem = (KNIFE_PITCH_MM + L) / v + RAPID_DISTANCE_MM / RAPID_SPEED_MM_S + HANDLING_S
+    tandem = _knife_cycle(L, v)
     nominal = 3600.0 / max(pitch, tandem)
     return Rate(round(heat_kj / 1000.0, 2), round(dwell, 1), round(pitch, 1),
                 round(3600.0 / pitch, 1), round(tandem, 1), round(3600.0 / tandem, 1),
                 round(nominal * AVAILABILITY, 1),
-                "IR 열공정" if pitch > tandem else "탠덤 박리")
+                "IR 열공정" if pitch > tandem else "계단 칼날 박리·이송")
 
 
 #: 콘솔이 계산하는 값을 같은 식으로 낸다 — 콘솔 `HK60C.rate/cycle` 과 대조하는 것은
 #: `reproduces_the_console()` 이고, 계약 순생산(`NET_TARGET_PER_H`)은 그 아래 정수다.
 RATE_PER_H: float = rate().line_per_h
 CYCLE_S: float = rate().tandem_cycle_s
-CELL_EVA_KG_PER_H: float = round(CELL_EVA_KG * RATE_PER_H, 1)    # 셀/EVA 반출 질량률 (kg/h)
+CELL_MODULE_KG_PER_H: float = round(CELL_MODULE_KG * RATE_PER_H, 1)   # 셀모듈 반출 질량률 (kg/h)
 
 
 def reproduces_the_console() -> bool:
     """재현한 순생산·사이클이 콘솔 값과 같은가 — 콘솔은 `+(CYC.knifeLineRate*availability).toFixed(1)`.
 
-    콘솔 식: 사이클 = (칼끝 간격 + 패널 길이)/칼날속도 + 급속거리/급속속도 + 고정동작,
+    콘솔 식: 사이클 = (계단 깊이 + 패널 길이)/칼날속도 + max(고정동작, 복귀),
     명목 = 3600/사이클, 순생산 = 명목 × 가동률. 계약 순생산(NET_TARGET)은 그 값을
     내림한 정수라 순생산이 계약을 넘어야 한다.
     """
     r = rate()
-    tandem = (KNIFE_PITCH_MM + PANEL_MAX_MM[0]) / KNIFE_SPEED_MM_S + RAPID_DISTANCE_MM / RAPID_SPEED_MM_S + HANDLING_S
+    tandem = _knife_cycle(PANEL_MAX_MM[0], KNIFE_SPEED_MM_S)
     console_rate = round(3600.0 / tandem * AVAILABILITY, 1)
     return (abs(r.line_per_h - console_rate) < 0.06 and abs(r.tandem_cycle_s - round(tandem, 1)) < 0.06
             and r.line_per_h >= NET_TARGET_PER_H)
@@ -433,8 +453,12 @@ def machine_kg() -> float:
     return round(sum(module_kg().values()), 1)
 
 
-_anchor = re.search(r"앵커 (\d+)점", ASSEMBLY.read_text(encoding="utf-8"))
-ANCHOR_COUNT: int = int(_anchor.group(1))                     # 41 — D-602 A1~A14
+#: D-602 기초 앵커 점수 — 벤더 앵커 계획(`tools/fab_spec.py` ANCHORS)에서 센다.
+#:
+#: 종전에는 조립 지침서 본문의 '앵커 N점' 을 정규식으로 긁었다. 권취부가 철거되며
+#: A9(WR-101 권취 문형)·A12(BS-301 롤 새들)가 **결번**이 되고 그 문구도 사라져,
+#: 플랜트가 존재하지 않는 숫자를 읽고 있었다. 앵커군을 세는 쪽이 정본이다.
+ANCHOR_COUNT: int = sum(a["n"] for a in _tool("fab_spec").ANCHORS)   # 24 — 6군 × 4
 
 # ── 경계 신호 — PLC 모델 ───────────────────────────────────────────────────
 

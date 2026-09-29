@@ -36,7 +36,8 @@ GAMMA_Q = 1.50      # 적재·공정하중
 GAMMA_M0 = 1.00     # 단면 항복
 GAMMA_M2 = 1.25     # 볼트·용접 파단
 GAMMA_M3 = 1.25     # 마찰접합 미끄러짐
-PSI_DYN = 1.30      # 칼날 물림 충격 — 정적 박리력에 얹는다
+PSI_DYN = 1.30      # 칼날 물림 충격 — 정적 박리력에 얹는다. 계단 칼날은 물림이 네 번에
+                    # 나뉘어 충격이 한 단 몫씩 오지만, 박리력 곡선(OI-01)이 없으니 그대로 둔다
 SEISMIC = 0.30      # 기계 정착부 수평계수 (KDS 41 17 00 간이)
 G = 9.80665
 
@@ -46,7 +47,7 @@ MATERIALS = {
     "SS400":     dict(fy=235, fu=400, rho=7850, std="KS D 3503", use="일반 구조·외함·데크"),
     "SM490A":    dict(fy=325, fu=490, rho=7850, std="KS D 3515", use="갠트리·주행레일 문형·고응력 부재"),
     "STS304":    dict(fy=205, fu=520, rho=7930, std="KS D 3705", use="가열실 내피·고온 습부·식품접촉 없음"),
-    "SM45C":     dict(fy=343, fu=569, rho=7850, std="KS D 3752", use="축류 (권취축·롤러축)"),
+    "SM45C":     dict(fy=343, fu=569, rho=7850, std="KS D 3752", use="핀·축류 (테이퍼 로케이팅핀·롤러축)"),
     "A6061-T6":  dict(fy=240, fu=290, rho=2700, std="KS D 6759", use="이동 경량부 (캐리지·포크 암)"),
     "SKD11":     dict(fy=None, fu=None, rho=7700, std="KS D 3753", use="칼날 인서트 (HRC 58~62)"),
 }
@@ -182,10 +183,12 @@ def fillet_leg(force_kn: float, length_mm: float, mat: str = "SS400",
 PANEL_L, PANEL_W = c("PANEL_L"), c("PANEL_W")
 W_PANEL = c("MASS_AREAL") * PANEL_L * PANEL_W * G / 1000          # kN/장
 W_GLASS = c("MASS_GLASS") * PANEL_L * PANEL_W * G / 1000
-WR_TURN = PANEL_L * c("BACKSHEET_T") / math.pi
-ROLL_PANELS = round((c("WR_FULL_R") ** 2 - c("WR_CORE_R") ** 2) / WR_TURN)
-W_ROLL = c("MASS_BACK") * PANEL_L * PANEL_W * ROLL_PANELS * G / 1000
 W_CASS = c("CASS_MASS") * G / 1000
+# RH-201 이 드는 것 — 계단 카세트 한 벌 + 인양 프레임. 종전에는 만권 롤(10.2 kN)을
+# 들었다. 권취부가 빠져 모노레일은 카세트 전용이다.
+LIFT_FRAME_KG = 15.0                               # 카세트 인양 프레임 (parts P-006-06 개산)
+HOIST_KG = 28.0                                    # 호이스트 트롤리 (parts P-006-05)
+W_LIFT = (c("CASS_MASS") + LIFT_FRAME_KG) * G / 1000
 
 # 박리 추력 — 밴드의 상한에 동적계수를 얹어 포락한다 (OI-01).
 F_PEEL_K = c("F_PEEL")                             # kN 특성값 — OI-01 상한 13.37 @ 폭 1,200 을 포락선 폭으로 환산 (콘솔 F_PEEL)
@@ -196,18 +199,18 @@ F_PEEL_D = F_PEEL_K * PSI_DYN * GAMMA_Q            # kN 설계값
 # 따라 움직이고, 아래 접합부·앵커·용접이 전부 따라 움직인다.
 #
 # 개념단계에는 이 넷을 형상 없이 개산으로 적었다. 카탈로그를 세우고 대조해
-# 보니 권취 문형이 +48 %, 진공테이블이 +38 % 빗나가 있었다 (parts.report()).
+# 보니 권취 문형이 +61 %, 진공테이블이 +67 % 빗나가 있었다 (parts.report()).
 # 형상 없이 적은 자중으로 앵커를 정하면 그런 크기의 오차를 안고 가는 것이다.
+# 권취 문형은 계단 칼날 전환으로 철거돼 이제 셋이다.
 #
 # 제작사 중량표가 나오면 여기가 아니라 parts.py 의 형상을 고친다. 카탈로그가
-# ±15 % 를 벗어나면 앵커·기초를 다시 본다 — 일곱 개소 전부 콘크리트 콘
+# ±15 % 를 벗어나면 앵커·기초를 다시 본다 — 여섯 개소 전부 콘크리트 콘
 # 파괴가 지배하므로 매입깊이가 규격보다 먼저 움직인다.
 from parts import mass as _pm
 
 M_CHAMBER = _pm("M_CHAMBER")    # 가열실 일식 (골조·벽체·데크·IR)
 M_GANTRY = _pm("M_GANTRY")      # 갠트리 이동부 (주행 문형·레일 제외)
 M_TABLE = _pm("M_TABLE")        # VT-101 상판·리브·기둥·진공계통
-M_WINDER = _pm("M_WINDER")      # 권취 문형 (RH-201 런웨이 제외)
 
 
 def kn(mass_kg: float) -> float:
@@ -241,24 +244,28 @@ def _joints():
                   note=f"추력 {F_PEEL_D:.1f} kN @ EL {rail_h*1000:.0f} · 문형 스팬 {rail_span:.2f} m"))
 
     # ── J3 · KG-101 크로스빔 ↔ 주행대차 (마찰접합)
-    # 여기서 미끄러지면 칼끝 간격 300±2 가 깨진다. 지압접합이 아니라
+    # 여기서 미끄러지면 칼날 위치가 엔코더와 어긋나고, 좌우가 따로 미끄러지면
+    # 칼날이 수평면에서 돌아 계단의 선후가 어긋난다. 지압접합이 아니라
     # 마찰접합으로 잡는다 — 미끄러진 뒤 지압으로 버티는 것은 늦다.
     J.append(dict(id="J3", name="KG-101 크로스빔 ↔ 주행대차 (마찰접합)", grade="10.9", n=8,
                   N=0.0, V=F_PEEL_D / 8, planes=1, minimum="M16", slip=True,
-                  note="칼끝 간격 300±2 를 지키려면 미끄러지면 안 된다 — 마찰접합 μ=0.50"))
+                  note="미끄러지면 칼날이 돌아 계단 선후가 어긋난다 — 마찰접합 μ=0.50"))
 
-    # ── J4 · HKB/HKS 칼날 빔 ↔ Z축 서보슬라이드
-    # 칼날 하나가 받는 추력은 합성추력의 절반이다.
-    J.append(dict(id="J4", name="칼날 빔 ↔ Z축 서보슬라이드", grade="10.9", n=6,
+    # ── J4 · 칼날 캐리어 빔 ↔ Z축 서보슬라이드 좌·우
+    # 칼날은 한 자루이고 추력 전부를 받는다. 그 칼날을 Z축 두 조가 베셀점
+    # (y ±390)에서 들므로 슬라이드 하나가 받는 것은 합성추력의 절반이다 — 탠덤
+    # 시절 칼날 한 기의 몫과 크기가 같다.
+    J.append(dict(id="J4", name="칼날 캐리어 빔 ↔ Z축 서보슬라이드 (좌·우 각)", grade="10.9", n=6,
                   N=F_PEEL_D / 2 / 6, V=F_PEEL_D / 2 / 6, planes=1, minimum="M12",
-                  note=f"칼날 1기 분담 {F_PEEL_D/2:.1f} kN — 인장·전단 동시"))
+                  note=f"Z축 1조 분담 {F_PEEL_D/2:.1f} kN — 인장·전단 동시"))
 
-    # ── J5 · BC-201 카세트 ↔ 슬라이드 (테이퍼 핀 + 쐐기 클램프)
-    # 클램프는 밀착만 하고 전단은 테이퍼 로케이팅핀 4개가 받는다.
-    # 클램프를 전단재로 세면 15 kN×2 = 30 kN 이 설계추력 대비 1.15 밖에 안 된다.
-    J.append(dict(id="J5", name="BC-201 카세트 테이퍼 로케이팅핀", grade="10.9", n=4,
-                  N=0.0, V=F_PEEL_D / 2 / 4, planes=2, minimum="M16", pin=True,
-                  note=f"쐐기 클램프({c('CASS_CLAMP_KN')} kN×2)는 밀착용 — 전단은 핀 4개가 받는다"))
+    # ── J5 · BC-201 계단 카세트 ↔ 캐리어 빔 (테이퍼 핀 + 쐐기 클램프)
+    # 클램프는 밀착만 하고 전단은 테이퍼 로케이팅핀 4개가 받는다. 카세트가
+    # 하나라 핀 4개가 추력 전부를 나눈다 — 탠덤 시절(카세트당 절반)의 두 배다.
+    # 클램프를 전단재로 세면 20 kN×2 = 40 kN 이 설계추력 대비 1.31 밖에 안 된다.
+    J.append(dict(id="J5", name="BC-201 계단 카세트 테이퍼 로케이팅핀", grade="10.9", n=4,
+                  N=0.0, V=F_PEEL_D / 4, planes=2, minimum="M16", pin=True,
+                  note=f"쐐기 클램프({c('CASS_CLAMP_KN')} kN×2)는 밀착용 — 전단은 핀 4개가 추력 전부를 받는다"))
 
     # ── J6 · HC-101 가열실 기둥 베이스
     w = kn(M_CHAMBER)
@@ -273,18 +280,15 @@ def _joints():
                   N=deck_w / 4 / 2, V=deck_w / 4, planes=1, minimum="M12",
                   note=f"데크 1단 {W_PANEL+kn(120):.2f} kN · {c('T_TARGET')} °C 환경 — STS304 볼트"))
 
-    # ── J8 · WR-101 권취 지지 문형 기둥 베이스
-    w_wr = kn(M_WINDER) + GAMMA_Q * W_ROLL
-    J.append(dict(id="J8", name="WR-101 권취 문형 기둥 ↔ 베이스플레이트", grade="8.8", n=4,
-                  N=SEISMIC * w_wr * 3.70 / 2.60 / 2 / 4,
-                  V=SEISMIC * w_wr / 2 / 4, planes=1, minimum="M16",
-                  note=f"만권 롤 {W_ROLL:.2f} kN @ EL 3,700 · 문형 스팬 2.60 m"))
+    # ── J8 · 결번 — WR-101 권취 문형 기둥 베이스. 계단 칼날 전환으로 권취부가
+    #   철거됐다. 번호를 당기지 않는 것은 견적·도면이 J9 이후를 그 이름으로
+    #   부르기 때문이다.
 
     # ── J9 · RH-201 모노레일 런웨이 ↔ 기둥
-    hoist = GAMMA_Q * (W_ROLL + kn(150)) * 1.25       # 호이스트 동적계수 1.25 (ISO 8686 간이)
+    hoist = GAMMA_Q * (W_LIFT + kn(HOIST_KG)) * 1.25  # 호이스트 동적계수 1.25 (ISO 8686 간이)
     J.append(dict(id="J9", name="RH-201 런웨이 빔 ↔ 기둥 두상판", grade="10.9", n=6,
                   N=hoist / 6, V=hoist / 6 / 3, planes=1, minimum="M16",
-                  note=f"롤 {W_ROLL:.2f} kN + 호이스트 자중 · 동적계수 1.25"))
+                  note=f"카세트+인양 프레임 {W_LIFT:.2f} kN + 호이스트 자중 · 동적계수 1.25"))
 
     # ── J10 · 승강 포크 문형 볼스크류 지지 (LI·EX·GL·GU 공통)
     fork = GAMMA_Q * (W_PANEL + kn(180)) * 1.20       # 급정지 계수 1.20
@@ -356,8 +360,8 @@ def stress_range(m_knm: float, z_mm3: float) -> float:
     return m_knm * 1e6 / z_mm3
 
 
-# 정렬이 걸린 부재의 처짐 한계. 칼끝 간격 300±2 를 지키려면 갠트리
-# 크로스빔이 추력 아래에서 0.5 mm 이상 휘면 안 된다 — 공차의 1/4 이다.
+# 정렬이 걸린 부재의 처짐 한계. 갠트리 크로스빔이 추력 아래에서 휘면 칼날이
+# 수평면에서 돌아 좌우 계단의 선후가 어긋난다 — 계단 공차 ±0.5 를 넘으면 안 된다.
 E_STEEL = 210_000           # MPa
 
 
@@ -370,15 +374,17 @@ def beam_deflection(f_kn: float, span_mm: float, i_mm4: float) -> float:
 def _critical():
     C = []
 
-    # KG-101 크로스빔 BOX-300×200×12 — 칼끝 간격을 지키는 부재
+    # KG-101 크로스빔 BOX-300×200×12 — 계단 칼날을 수평으로 붙드는 부재.
+    # 추력은 Z축 좌·우 두 점(y ±390 · 베셀점)으로 들어오지만 한가운데 한 점으로 걸어
+    # 보수로 잡는다.
     I_beam = (200 * 300 ** 3 - 176 * 276 ** 3) / 12
     Z_beam = I_beam / 150
     span = 2 * c("CGY") * 1000
     C.append(dict(
         id="C1", member="KG-101 크로스빔 BOX-300×200×12", mat="SM490A",
-        gov="처짐 (칼끝 간격 300±2)",
+        gov=f"처짐 (계단 {c('KNIFE_RISE')*1000:.0f}±0.5)",
         value=beam_deflection(F_PEEL_K, span, I_beam), limit=0.50, unit="mm",
-        note=f"스팬 {span:.0f} · 특성 추력 {F_PEEL_K:.2f} kN · 한계는 공차의 1/4"))
+        note=f"스팬 {span:.0f} · 특성 추력 {F_PEEL_K:.2f} kN · 한계는 계단 공차 — 휨이 칼날을 돌리면 좌우 계단 선후가 어긋난다"))
     C.append(dict(
         id="C2", member="KG-101 크로스빔 (용접 부착부)", mat="SM490A",
         gov="피로 — 필릿 용접 부착물 (등급 71)",
@@ -407,20 +413,7 @@ def _critical():
         limit=fatigue_limit(DETAIL_CATEGORY["필릿 용접 부착물"]), unit="MPa",
         note=f"레일 EL {c('CRAIL_Z')*1000:.0f} 에서의 캔틸레버 휨"))
 
-    # WR-101 권취축 Ø55 — 휨 + 비틀림 합성
-    # Ø55 는 피로 이용률 0.89 였다. 기계 축에 두기엔 빡빡해 한 치수 올린다.
-    d_shaft = 60
-    Z_shaft = math.pi * d_shaft ** 3 / 32
-    span_shaft = (c("ROLL_FACE") + 0.28) * 1000
-    m_shaft = W_ROLL * span_shaft / 8 / 1000
-    t_shaft = 2.0 * c("WR_FULL_R")            # 장력 상한 2 kN × 만권 반경
-    me = math.sqrt(m_shaft ** 2 + t_shaft ** 2)
-    C.append(dict(
-        id="C5", member="WR-101 권취축 Ø60 h6", mat="SM45C",
-        gov="피로 — 모재 회전굽힘 (등급 160 · 안전측 90 적용)",
-        value=stress_range(me, Z_shaft),
-        limit=fatigue_limit(DETAIL_CATEGORY["맞대기 용접 (완전용입·연삭)"]), unit="MPa",
-        note=f"휨 {m_shaft:.2f} + 비틀림 {t_shaft:.2f} 합성 {me:.2f} kN·m · 스팬 {span_shaft:.0f}"))
+    # C5 · 결번 — WR-101 권취축 피로. 권취부 철거로 검토 대상이 없어졌다.
 
     # RH-201 런웨이 빔 — 이동하중 처짐
     I_run = 1.87e7                            # H-200×100×5.5/8
@@ -428,9 +421,9 @@ def _critical():
     C.append(dict(
         id="C6", member="RH-201 런웨이 빔 H-200×100×5.5/8", mat="SS400",
         gov="처짐 L/500 (호이스트 주행)",
-        value=beam_deflection(W_ROLL + kn(150), run_span, I_run),
+        value=beam_deflection(W_LIFT + kn(HOIST_KG), run_span, I_run),
         limit=run_span / 500, unit="mm",
-        note=f"롤 {W_ROLL:.2f} + 호이스트 {kn(150):.2f} kN · 지지 간격 {run_span:.0f}"))
+        note=f"카세트+프레임 {W_LIFT:.2f} + 호이스트 {kn(HOIST_KG):.2f} kN · 지지 간격 {run_span:.0f}"))
 
     for x in C:
         x["util"] = x["value"] / x["limit"]
@@ -465,11 +458,11 @@ for _aid, _eq, _d, _hef, _grade, _n in (
     ("A2", "HC-101 가열실", 20, 170, "8.8", 4),
     ("A7", "KG-101 주행레일 문형", 24, 210, "10.9", 4),
     ("A8", "VT-101 진공테이블", 24, 210, "10.9", 4),
-    ("A9", "WR-101 권취 문형", 20, 170, "8.8", 4),
     ("A10", "RH-201 모노레일 기둥", 20, 170, "8.8", 4),
     ("A11", "CE-201 횡인출", 16, 125, "8.8", 4),
-    ("A12", "BS-301 롤 새들", 16, 125, "8.8", 4),
+    ("A13", "KC-301 카세트 새들", 16, 125, "8.8", 4),
 ):
+    # A9 (WR-101 권취 문형) · A12 (BS-301 롤 새들) 는 결번 — 권취부 철거.
     _size = f"M{_d}"
     ANCHORS.append(dict(
         id=_aid, eq=_eq, size=_size, hef=_hef, grade=_grade, n=_n,
@@ -508,7 +501,7 @@ WASHER_RULE = [
 ]
 LOCKING_RULE = [
     ("정적 구조 접합", "체결력 관리 (Fp,C 70 %)", "토크렌치 + 마킹 — 별도 풀림방지 불요"),
-    ("진동·왕복 부위", "쐐기형 풀림방지 와셔", "갠트리 대차·포크 캐리지·권취 베어링"),
+    ("진동·왕복 부위", "쐐기형 풀림방지 와셔", "갠트리 대차·포크 캐리지·Z축 서보슬라이드"),
     ("고온부 (>120 °C)", "전 나사 고착방지제 + 록너트", "가열실 내부 — 나사 소착 방지"),
     ("정비 중 반복 탈착", "헬리코일 인서트", "카세트 인터페이스·점검도어"),
 ]
@@ -521,8 +514,8 @@ WELDS = [
     ("갠트리 문형 기둥 ↔ 베이스플레이트", F_PEEL_D / 4, 4 * 250, "SM490A", 30),
     ("크로스빔 ↔ 대차 브래킷", F_PEEL_D / 2, 2 * 300, "SM490A", 20),
     ("크로스빔 웨브 ↔ 플랜지 (BOX)", F_PEEL_D / 2, 2 * (2 * c("CGY") * 1000), "SM490A", 12),
-    ("권취 문형 기둥 ↔ 베이스플레이트", GAMMA_Q * W_ROLL, 4 * 150, "SS400", 20),
-    ("RH-201 런웨이 ↔ 기둥 두상판", GAMMA_Q * W_ROLL * 1.25, 2 * 200, "SS400", 16),
+    ("계단 카세트 홀더 ↔ 홀더 (계단 이음)", F_PEEL_D / c("KNIFE_BLADES"), 2 * 120, "SS400", 6),
+    ("RH-201 런웨이 ↔ 기둥 두상판", GAMMA_Q * W_LIFT * 1.25, 2 * 200, "SS400", 16),
     ("데크 프레임 ↔ 레일 (가열실 내부)", GAMMA_Q * W_PANEL, 2 * c("DECK_L") * 1000, "STS304", 6),
     ("방책 기둥 ↔ 베이스", 1.0, 4 * 60, "SS400", 6),
 ]
@@ -546,12 +539,12 @@ MEMBERS = [
     ("M-004", "베이스플레이트", "PL 28 · 360×360", "SM490A", "앵커 인장 · 추력 전단"),
     ("M-005", "주행레일 문형 기둥", "H-250×250×9/14", "SM490A", "추력 전도 + 갠트리 관성"),
     ("M-005", "주행레일", "프리로드 LM 레일 (사이즈 45)", "베어링강", "정격 수명 20,000 h"),
-    ("M-005", "크로스빔", "BOX-300×200×12", "SM490A", "칼날 2기 자중 + 추력 휨"),
-    ("M-005", "Z축 서보슬라이드 베이스", "PL 20", "SM490A", "칼날 반력 편심"),
-    ("M-005", "칼날 빔", "PL 25 + SKD11 인서트 t8", "SS400/SKD11", "카트리지히터 홀 + 인서트 볼트"),
-    ("M-006", "권취 문형 기둥", "H-150×150×7/10", "SS400", "만권 롤 + 지진"),
-    ("M-006", "권취축", "Ø60 h6", "SM45C", "휨 + 비틀림 합성 피로 (조질 후 연삭)"),
-    ("M-006", "RH-201 런웨이 빔", "H-200×100×5.5/8", "SS400", "호이스트 이동하중 · 처짐 L/500"),
+    ("M-005", "크로스빔", "BOX-300×200×12", "SM490A", "계단 칼날 1기 자중 + 추력 휨 · 계단 공차"),
+    ("M-005", "Z축 서보슬라이드 베이스", "PL 20 × 2 (좌·우)", "SM490A", "칼날 반력 편심 · 좌우 취부면 한 평면"),
+    ("M-005", "칼날 캐리어 빔", "BOX-160×120×8", "SM490A", "두 Z축 사이 휨 — 일곱 칼끝 높이"),
+    ("M-005", "계단 카세트 홀더", "BOX-120×90×6 ×7 · 인서트 t8", "SS400/SKD11", "카트리지히터 홀 + 인서트 볼트 · 계단 이음 용접"),
+    ("M-005", "누름판", "PL 6 · PTFE 코팅", "STS304", "비가열 · 스프링 예압 20 N"),
+    ("M-006", "RH-201 런웨이 빔", "H-200×100×5.5/8", "SS400", "호이스트 이동하중 · 처짐 L/500 (카세트 전용)"),
     ("M-007", "냉각 랙 골조", "H-200×200×8/12", "SS400", "F-002 준용 — 지그 공용"),
     ("M-007", "측벽", "폴리카보네이트 t6", "PC", "방호 · 투시 (단열 아님)"),
     ("M-003", "포크 문형 기둥", "□-125×125×6", "SS400", "볼스크류 반력 + 편심"),
@@ -578,8 +571,8 @@ def report() -> str:
     add("── 설계하중 ────────────────────────────────────────────")
     add(f"  패널          {W_PANEL:8.3f} kN/장")
     add(f"  유리          {W_GLASS:8.3f} kN/장")
-    add(f"  만권 롤       {W_ROLL:8.3f} kN  ({ROLL_PANELS} 장/롤)")
-    add(f"  칼날 카세트   {W_CASS:8.3f} kN/벌")
+    add(f"  칼날 카세트   {W_CASS:8.3f} kN/벌  (계단 칼날 한 자루 — 조각 {int(c('KNIFE_BLADES'))})")
+    add(f"  모노레일 인양 {W_LIFT:8.3f} kN  (카세트 + 인양 프레임 · 권취부 철거로 롤 없음)")
     add(f"  박리 추력     {F_PEEL_K:8.3f} kN 특성  →  {F_PEEL_D:8.3f} kN 설계 "
         f"(×{PSI_DYN}×{GAMMA_Q})")
     add(f"  가열실 자중   {kn(M_CHAMBER):8.3f} kN  ({M_CHAMBER/1000:.2f} t · 설계 가정)")

@@ -17,6 +17,19 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import analysis_thermal as TH  # noqa: E402
+
+
+def _open_item_count() -> int:
+    """사양서 11항에서 아직 열린 확인사항 수 — 닫힌 항목은 제목에 '해소' 를 단다.
+
+    종전에는 이 수를 본문에 손으로 적었다. 벤더가 OI-16(램프 봉착부)을 올리고 우리가
+    OI-17·18 을 더하는 동안 여기는 15 에 머물러 있었다 — 사양서에서 세면 벌어지지 않는다.
+    """
+    rfq = (pathlib.Path(__file__).resolve().parents[1]
+           / "docs" / "dg-hk60-rfq.html").read_text(encoding="utf-8")
+    return sum(1 for _oi, title in re.findall(
+        r'<div class="oi-h"><b>(OI-\d+)</b><span>(.*?)</span>', rfq)
+        if "해소" not in title)
 import pilot_plan as P  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -52,7 +65,7 @@ def part1() -> str:
 <div class="clause" id="p1"><div class="n">1</div><div class="c">
   <h3>이 설비는 아직 가정 위에 서 있다</h3>
   <p>사양서(<span class="k">DG-HK60-RFQ-001</span>)가 미결항목
-    <strong>15 건</strong>을 스스로 밝혔고, 열해석(<span class="k">DG-HK60C-CAL-001</span>)이
+    <strong>{_open_item_count()} 건</strong>을 스스로 밝혔고, 열해석(<span class="k">DG-HK60C-CAL-001</span>)이
     요구 <strong>6 건</strong>을 더 만들었다. 그 가운데 <strong>계산으로 닫히지
     않는 것</strong>이 파일럿의 몫이다 — 폐패널의 EVA 가 몇 도에서 얼마의 힘으로
     떨어지는지는 아무리 정교한 해석기도 답하지 못한다. 재료가 답한다.</p>
@@ -108,8 +121,9 @@ def part2() -> str:
   <h3>시험 장치 — 1 단 벤치로 충분한 이유</h3>
   <p>5 단을 지을 필요가 없다. 계면 온도를 정하는 것은 <strong>한 장이 받는
     유속</strong>이고, 그것은 1 단으로 낸다. 단간 복사 간섭은 1 차원으로 풀리지도
-    않고 벤치로 재지도 못하는 문제라 FAT 로 넘긴다. 탠덤 2 칼날도 마찬가지다 —
-    두 칼날의 동시 추력은 <strong>합</strong>이지 상호작용이 아니고, 합은 계산된다.</p>
+    않고 벤치로 재지도 못하는 문제라 FAT 로 넘긴다. 칼날은 반대로
+    <strong>실물 크기</strong>로 만든다 — 계단 칼날은 조각이 시간차로 물고 이음에서
+    겹치는 것이 전부라, 축소하면 재려던 것이 사라진다. 한 자루면 된다.</p>
   <div class="tw"><table>
     <caption>파일럿 벤치 구성</caption>
     <thead><tr><th>계통</th><th>사양</th><th>왜 이것이 필요한가</th></tr></thead>

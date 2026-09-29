@@ -160,10 +160,11 @@ def part3() -> str:
     return f"""
 <div class="clause" id="p3"><div class="n">3</div><div class="c">
   <h3>구조해석</h3>
-  <p>네 가지를 푼다 — <strong>KG-101 갠트리</strong>(칼끝 처짐과 고유진동),
+  <p>다섯 가지를 푼다 — <strong>KG-101 갠트리</strong>(칼끝 처짐과 고유진동),
     <strong>HC-101 가열실</strong>(기둥 좌굴 · 지진 층간변위 · 세장비),
     <strong>VT-101 상판</strong>(추력 변위와 자중 처짐),
-    <strong>WR-101 권취축</strong>(처짐과 휨응력).</p>
+    <strong>계단 칼날 캐리어 빔</strong>(일곱 칼끝의 깊이 예산과 계단),
+    <strong>칼날 모듈 추종</strong>(유리면이 곧지 않을 때 누가 따라가는가 · 그때 유리가 받는 힘).</p>
   <div class="tw"><table>
     <caption>구조 검토 — 값 · 한계 · 이용률</caption>
     <thead><tr><th>ID</th><th>항목</th><th class="num">값</th><th class="num">단위</th>
@@ -180,13 +181,22 @@ def part3() -> str:
     잡으면 남는 외력은 <strong>패널 자중 {ex['table']['w_panel']:.2f} kN</strong> 뿐이다.
     한계까지 늘려 통과시키는 대신 물리를 다시 유도해서 얻은 답이다.</div>
 
-  <div class="warn"><strong>{"초과 항목 " + " · ".join(r.id for r in bad) if bad else "전 항목 만족"}
-    — 그것이 요구가 된다.</strong>
-    <span class="k">S11</span> 은 실패가 아니라 <strong>의도한 경계 사례</strong>다.
-    권취 클램프를 축 중앙에 몰면 처짐이 한계를 넘고, 양단에 두면 넘지 않는다.
-    코어 <span class="m">Ø300×8t</span> 가 축 <span class="m">Ø60</span> 보다
-    <span class="m">123 배</span> 뻣뻣해서 <strong>클램프 위치가 답을 정한다</strong> —
-    그러므로 그 위치는 도면에 고정되어야 하고, 그것이 이 해석의 결론이다.</div>
+  <div class="decide"><strong>{"초과 항목 " + " · ".join(r.id for r in bad) if bad else "전 항목 만족"}
+    — 총괄 결정 · S10: Z축 두 조를 폭의 베셀점에 둔다.</strong>
+    잠긴 계단 칼날은 <strong>한 자루</strong>다. 일곱 칼끝을 카세트째 한 평면으로 연삭해도
+    하중에서 그 평면이 셋에서 흐트러진다 — 연삭 공차, Z축 좌·우 높이차의 기울기,
+    캐리어 빔의 휨. 수직 반력은 아직 아무도 재지 않았으므로(OI-01 은 추력만 쟀다)
+    추력과 같게 포락했다. Z축을 칼날 양끝(<span class="m">±{ex['knife']['ends']:.0f}</span>)에 두면
+    캐리어 빔이 가운데서 처져 휨만 <span class="m">{ex['knife']['bend_ends']:.3f} mm</span>,
+    합 <span class="m">{ex['knife']['total_ends']:.3f} mm</span> 로 칼날 깊이 예산 0.15 를 넘는다.
+    폭의 베셀점(<span class="m">±{ex['knife']['zs']:.0f}</span>)으로 옮기면 두 지점 사이의 처짐과
+    바깥 캔틸레버의 처짐이 같아져 휨이 <span class="m">{ex['knife']['bend']:.3f} mm</span> 로 준다 —
+    <strong>같은 빔, 같은 질량으로</strong>. 지점이 가까워 기울기 몫
+    (<span class="m">{ex['knife']['tilt']:.3f}</span>)이 늘지만 합 <span class="m">{ex['knife']['total']:.3f} mm</span> 로
+    예산 안이다. 예산을 다 쓰는 수직 반력비는 <span class="m">{ex['knife']['vr_max']:.1f}</span> 다.
+    칼날이 유리에 올라서면 V 는 랜드가 되받아 캐리어로 오지 않는다(아래 S13) — 이 휨은 포락이고,
+    수직 반력비의 실제 한계는 전선 우력 S14 가 먼저 정한다.</div>
+{_follow_block(ex['follow'])}
 
   <div class="tw"><table>
     <caption>근거와 읽는 법</caption>
@@ -194,6 +204,61 @@ def part3() -> str:
     <tbody>{_basis(rs)}</tbody>
   </table></div>
 </div></div>"""
+
+
+def _follow_block(f) -> str:
+    """S12 ~ S14 — 칼날 모듈 추종. S10 이 세지 않은 유리 쪽과, 그때 유리가 받는 힘."""
+    mc = f["mc"]
+    pick = ' class="pick"'
+    rows = "".join(
+        f'<tr{pick if k == "modules" else ""}><td>{name}</td>'
+        f'<td class="num">{mc[k]["p50"]:.3f}</td><td class="num">{mc[k]["p95"]:.3f}</td>'
+        f'<td class="num">{mc[k]["max"]:.3f}</td><td>{why}</td></tr>'
+        for k, name, why in (
+            ("straight", "곧은 한 자루 — 테이블마다 가장 좋게 교정 (± 반폭)",
+             "칼 쪽 S10 에 더해진다"),
+            ("heave", "일곱 모듈 — 들림만", "모듈 폭 안의 기울기를 못 따라간다"),
+            ("thirds", "세 조각 — 들림 + 롤", "조각이 넓어 그 안의 굴곡이 남는다"),
+            ("modules", "일곱 모듈 — 들림 + 롤 (채택)", "계단 조각 경계 그대로")))
+    return f"""
+  <div class="decide"><strong>총괄 결정 · S12 ~ S14: 일곱 조각을 풀어 유리를 따라가게 한다.</strong>
+    S10 은 칼 쪽만 셌다. 유리는 흡착패드 위에 앉고 패드 상면은 동일 평면
+    <span class="m">{f['band']:.1f} mm</span> 안에서 흩어진다 — 곧은 칼날 한 자루에 남는 유리 쪽 몫
+    <span class="m">{f['glass_allow']:.3f} mm</span> 의 여섯 배가 넘는 밴드다. 패드 높이를 그 밴드 안에서
+    고르게 흩뜨린 테이블 <span class="m">{f['trials']:,}</span> 대를 추첨하고(<span class="k">tools/glass_follow.py</span>),
+    유리가 패드 사이를 매끄럽게 잇는 단면에 칼날을 대 봤다.</div>
+  <div class="tw"><table>
+    <caption>패드 평면도 {f['band']:.1f} mm 가 칼끝에 남기는 어긋남 (mm)</caption>
+    <thead><tr><th>칼날</th><th class="num">P50</th><th class="num">P95</th><th class="num">최대</th><th>읽는 법</th></tr></thead>
+    <tbody>{rows}</tbody>
+  </table></div>
+  <div class="warn"><strong>곧은 칼날은 교정으로 못 구한다.</strong>
+    가장 좋은 높이·기울기로 맞춰도 P95 <span class="m">±{mc['straight']['p95']:.3f}</span> 가 남고,
+    칼 쪽 <span class="m">{f['knife_side']:.3f}</span> 와 합해 <span class="m">{f['straight']:.3f} mm</span> 다.
+    한 자루로 들려면 패드 평면도를 <span class="m">{f['band_needed']:.3f} mm</span> 아래로 조여야 하는데
+    벨로우즈 패드로는 못 하고, 폐패널 유리 자체의 굴곡은 거기에 따로 더해진다. 들림만 주면
+    모듈 폭 안의 기울기를 못 따라가고(<span class="m">{mc['heave']['p95']:.3f}</span>), 세 조각은
+    넓어서 그 안의 굴곡이 남는다(<span class="m">{mc['thirds']['p95']:.3f}</span>). 계단 칼날의 일곱
+    조각이 각자 들리고 기울 때 <span class="m">{mc['modules']['p95']:.3f}</span> 로 들어온다 —
+    칼날 형상은 그대로이고, 조각 경계가 곧 모듈 경계다.</div>
+  <div class="note"><strong>칼날의 수직 반력은 두 운전 모두 전선에서 닫힌다 — 잠금과 추종을
+    가르는 것은 힘이 아니라 기하다.</strong>
+    칼날이 층을 들어 올리면 층은 박리 전선에서 유리를 같은 힘 V 로 들어 올린다. 유리는 곧바로
+    밑면 랜드에 닿고 — 랜드는 제가 남긴 잔막 위에 얹혀 있다 — 랜드가 V 를 되받는다. V 가 패드 열
+    사이 <span class="m">{f['span']:.0f} mm</span> 를 휨으로 건너려면 유리가 V/H 1 에서
+    <span class="m">{f['lift_per_vh']:.0f} mm</span> 떠야 한다 — EVA 두께의
+    <span class="m">{f['lift_over_eva']:.0f}</span> 배다. 그래서 유리에 남는 것은 둘이다. 경간을 건너는
+    모듈 예압 <span class="m">{f['q_net']:.2f}</span> 과 누름판 <span class="m">{f['q_hd']:.3f} N/mm</span>
+    (<span class="m">{f['follow_span']:.2f} MPa</span> · S13), 그리고 전선에서 랜드 폭만큼 떨어진 두 힘의
+    우력(<span class="m">{f['couple_per_vh']:.2f} MPa</span> @ V/H 1 · S14) — 우력은 잠금이든 추종이든 같다.
+    <strong>잠긴</strong> 곧은 칼날의 문제는 기하다. 유리가 낮은 자리에는 잔막을 남기고, 높은 자리에서는
+    유리를 누른다 — P95 로 <span class="m">{mc['straight']['p95']:.3f} mm</span>. 그 자리가 패드 위면 유리가
+    비킬 데가 없어 누르는 힘은 V 가 아니라 캐리어·Z축·패드의 강성이 정하고, 캐리어는 V/H 1 전폭 하중에
+    <span class="m">{f['bend_per_vh']:.3f} mm</span> 밖에 안 휘도록 세웠다. 추종하면 그 힘이 V + 예압에서
+    잘린다. 그래서 박리는 추종으로 한다. 잠금은 들어갈 때 모듈마다 칼끝이 층 밑에 들 때까지와
+    복귀·교환 중에만 쓴다. 파일럿 <span class="k">PT-10</span> 이 잠금·추종을 같은 칼날로 대조하고,
+    V/H 는 랜드가 되받아 칼날 게이지에 거의 안 나오므로 쿠폰으로 재서 V/H × 랜드 폭
+    <span class="m">≤ {f['vh_arm_max']:.2f} mm</span> 와 댄다.</div>"""
 
 
 # ── 4. 열 ────────────────────────────────────────────────────────────
@@ -457,7 +522,7 @@ def part4d() -> str:
   <div class="warn"><strong>① 65 kW 는 계약 처리량의 값이 아니다.</strong>
     콘솔은 <span class="k">유효 = 정격 100 × η 0.65 = 65 kW</span> 를 쓰지만
     그것은 <strong>열공정 한계 {HBAL.RATE_THERMAL:.1f} 장/h</strong> 에서
-    패널이 받는 값이다. 라인은 탠덤이 정하는
+    패널이 받는 값이다. 라인은 계단 칼날이 정하는
     <strong>{HBAL.RATE_CONTRACT:.0f} 장/h</strong> 로 돌고, 그때 패널이 가져가는
     것은 <span class="m">{b['panel']:.1f} kW</span> 다.
     <span class="k">100 − 65 = 35</span> 은 <strong>서로 다른 두 운전점에서
@@ -603,7 +668,7 @@ def part4e() -> str:
     개구를 포락선까지 줄이고 나면 한 번 여닫는 동안 지나가는 양이
     <span class="m">{o['C']['V']:.2f} m³</span> 뿐이라 격리실
     (<span class="m">{AIR.vestibule(AIR.OPEN_H):.2f} m³</span>)을 채우지도 못한다 —
-    <strong>부피 상한이 걸리지 않는다.</strong> 그런데 출력측은 탠덤과 붙어 있어
+    <strong>부피 상한이 걸리지 않는다.</strong> 그런데 출력측은 분리 셀과 붙어 있어
     격리실을 두면 <span class="m">{AIR.VEST_ADD*1e3:,.0f} mm</span> 가 새로 든다.
     <strong>안 사는 것이 결론이지만, “검토하지 않았다”와 “검토하고 안 샀다”는
     다르다</strong> — 도면 주기에 이 숫자를 남긴다 (<span class="k">RAL3</span>).</div>
@@ -701,6 +766,13 @@ def part6() -> str:
         <td>램프 제조사 수평 정격 · 초기 운전</td></tr>
       <tr><td>박리력 그 자체</td><td>재료가 답한다. 어떤 해석기도 폐패널 EVA 의
         박리강도를 지어낼 수 없다</td><td>파일럿 PT-01</td></tr>
+      <tr><td>칼날의 수직 반력</td><td>OI-01 은 추력만 쟀다. S10 · S14 는 수직 반력을
+        추력과 같게 포락했을 뿐 그 값을 모른다 — 쐐기각과 EVA 전단의 몫이 정한다</td>
+        <td>파일럿 PT-10 (쿠폰 — 실기 칼날은 랜드가 V 를 되받아 게이지에 거의 안 나온다)</td></tr>
+      <tr><td>폐패널 유리 자체의 굴곡</td><td>S12 는 패드 평면도만 흩뜨렸다. 강화 유리의
+        롤러 웨이브 · 휨 · 판 안 두께 편차는 넣지 않았다 — 추종은 그것까지 따라가지만
+        잠금 진입 구간은 못 따라간다</td>
+        <td>파일럿 PT-10 (모듈 변위계 기록)</td></tr>
     </tbody>
   </table></div>
 </div></div>"""

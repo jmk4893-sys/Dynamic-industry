@@ -24,11 +24,11 @@ from .test_pv_console_calculator import (AREAL_CP_KJ_M2K, DEFAULTS, FDM_DWELL_S,
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 STUDY = ROOT / "docs" / "dg-hk120-twin-cell.html"
 CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
-TITLE = "DG-HK120C 검토서 · 1챔버 2탠덤셀"
+TITLE = "DG-HK120C 검토서 · 1챔버 2분리셀"
 
 CELLS = 2
 GLASS_ALLOW_MPA = 7.0
-REF_MARGIN = 18.6          # DG-HK60C 열공정 여유 — 포락선 2,500 × 1,400 · 48등
+REF_MARGIN = 17.0          # DG-HK60C 열공정 여유 — 포락선 2,500 × 1,400 · 48등 · 계단 칼날 사이클 54.3 s
 
 
 def study():
@@ -122,14 +122,18 @@ class TestTheChamberSizingIsBounded(unittest.TestCase):
     def test_the_reference_cycle_matches_the_console(self):
         """셀 하나의 사이클은 콘솔이 정한다 — 검토서가 새로 정하지 않는다.
 
-        콘솔의 이동 나이프 사이클은 선행 + 박리 + max(교환창, 복귀) 다.
-        검토서는 그 값을 그대로 받아 쓴다.
+        콘솔의 이동 나이프 사이클은 선행 + 박리 + max(교환창, 복귀) 다. 선행은
+        계단 깊이(단 80 × 3)를 박리속도로 가는 시간이다 — 탠덤 시절에는 칼끝 간격
+        300 이 그 자리였다. 검토서는 그 값을 그대로 받아 쓴다.
         """
         m = thermal_model()
-        lead = 300 / DEFAULTS["knifeSpeed"]
+        depth = console_consts.const("KNIFE_DEPTH") * 1000
+        self.assertAlmostEqual(const("knifeDepth", self.s), depth, delta=1e-9,
+                               msg="검토서의 계단 깊이가 콘솔 KNIFE_DEPTH 와 다르다")
+        lead = depth / DEFAULTS["knifeSpeed"]
         peel = DEFAULTS["panelLength"] / DEFAULTS["knifeSpeed"]
         handling = 300 / DEFAULTS["rapidSpeed"] + DEFAULTS["handlingTime"]
-        ret = (300 + DEFAULTS["panelLength"]) / 700
+        ret = (depth + DEFAULTS["panelLength"]) / 700
         knife_cycle = lead + peel + max(handling, ret)
         self.assertAlmostEqual(const("cellCycle", self.s), knife_cycle, delta=.01)
         self.assertGreater(knife_cycle, m["cycle_s"] - 1,
@@ -293,6 +297,38 @@ class TestTheLayoutKeepsWhatWasEarned(unittest.TestCase):
         """직사각형으로 그리면 점유면적을 과장한다."""
         s = study()
         self.assertIn("방책은 계단형이다", s)
+
+
+class TestTheStudyFollowsTheSteppedKnife(unittest.TestCase):
+    """계단 칼날로 바뀐 날 콘솔과 사양서는 따라왔는데 검토서 산문이 남았다.
+
+    '권취 2벌' · '만권 롤 2벌과 카세트 4벌' · '반출 6계통' · '롤이 2.5 h 마다' 가
+    권취기를 철거한 뒤에도 두 셀 구성의 대가로 적혀 있었다. 시험이 숫자만 보고
+    말을 보지 않았기 때문이다.
+    """
+
+    def test_the_winder_appears_only_as_removed(self):
+        """권취·만권 롤은 '없다'·'철거' 와 함께가 아니면 나오면 안 된다."""
+        text = re.sub(r"<[^>]+>", "", study())
+        for line in text.splitlines():
+            if re.search(r"권취|만권|WR-?\d*\b|웹", line):
+                self.assertRegex(line, r"없|철거|사라졌",
+                                 f"권취기가 설비처럼 남아 있다: {line.strip()[:80]}")
+        self.assertNotRegex(text, r"6\s*계통|여섯", "반출 계통 수가 권취 시절 값이다")
+
+    def test_the_single_cell_rate_comes_from_the_cycle(self):
+        """비교표의 명목 처리량이 순생산을 가동률로 되나눈 값이면 1.1항(3600 ÷ 사이클)과
+        소수 첫째 자리가 어긋난다 — 66.2 대 66.3 으로 한 문서 안에서 갈라졌다."""
+        s = study().replace(" ", "")
+        self.assertIn("['명목처리량',n1(3600/M.cellCycle)", s)
+        self.assertNotIn("M.hk60.rate/M.availability", s)
+
+    def test_the_deck_change_is_read_from_the_model(self):
+        """'단수가 3 → 7' 은 3단 시절의 글자였다 — 단수는 모델 두 값에서 쓴다."""
+        s = study()
+        self.assertIn('id="deckDelta"', s)
+        self.assertIn("setText('deckDelta',`${M.hk60.decks} → ${pick.decks}`)", s)
+        self.assertNotRegex(re.sub(r"<[^>]+>", "", s), r"단수가\s*\d+\s*→")
 
 
 class TestTheBrandMarkIsTheOneDefinition(unittest.TestCase):

@@ -29,6 +29,7 @@ from . import _path  # noqa: F401
 import console_consts                                        # noqa: E402
 
 from .test_twin_cell_study import aisle, celly, geo, half_width
+from .test_compact_line import fn
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONSOLE = ROOT / "docs" / "drawings" / "pv-delamination-3d.html"
@@ -134,7 +135,7 @@ class TestTheLayoutIsConfigured(unittest.TestCase):
 
     def test_two_cells_are_drawn_mirrored_and_unshared(self):
         """셀 B 는 셀 A 의 거울이고, 공용 설비는 한 번만 그린다."""
-        self.assertIn("cTandem({mirror:c===1,shared:false,tag:c?'B':'A'})", self.b)
+        self.assertIn("cPeelCell({mirror:c===1,shared:false,tag:c?'B':'A'})", self.b)
         self.assertIn("withPartOffset(o.tandem,()=>cTwinShared())", self.b)
 
     def test_the_cells_sit_either_side_of_the_centre(self):
@@ -164,7 +165,7 @@ class TestTheTwinCrossingsAreResolved(unittest.TestCase):
         self.assertIn("EXX=cMastOut()", self.b)
 
     def test_the_monorail_clears_the_exhaust_header(self):
-        """트윈 본선은 셀 B 롤까지 오므로 배기 헤더(y1,880)를 가로지른다."""
+        """트윈 본선은 셀 B 바깥 기둥까지 가므로 배기 헤더(y1,880)를 가로지른다."""
         self.assertIn("cRhZ=()=>", self.b, "모노레일 높이가 배치에서 파생되지 않는다")
         self.assertIn("cDuctZ()+.55", self.b,
                       "트윈 본선이 배기 헤더 위로 올라가지 않는다")
@@ -176,25 +177,27 @@ class TestTheTwinCrossingsAreResolved(unittest.TestCase):
         self.assertIn("const cDuctZ=()=>ductZOf(LC().decks);", src,
                       "활성 배치의 헤더가 그 식을 쓰지 않는다")
         self.assertNotIn("const CDUCT_Z=", src, "배기 헤더가 아직 값으로 박혀 있다")
-        # 그리고 본선은 EX-101 포크 두상보 위여야 한다 — 만권롤과 카세트가
+        # 그리고 본선은 EX-101 포크 두상보 위여야 한다 — 뜨거운 카세트가
         # 방책을 넘는 유일한 길이라 막히면 무인 운전이 거기서 끝난다.
         self.assertIn("rhMinZ", self.b, "모노레일이 포크 두상보 하한을 받지 않는다")
 
     def test_the_storage_rows_move_out_with_the_fence(self):
         """방책이 물러나면 보관대도 같이 나가야 방책 밖에 남는다."""
         self.assertIn("cOutRow=()=>Math.max(0,LC().fenceN-CFENCE_YN)", self.b)
-        self.assertIn("cBsY=()=>BS_SADDLE.y-cOutRow()", self.b)
         self.assertIn("cKcY=()=>CKC_RACK_Y-cOutRow()", self.b)
+        # 백시트 롤 보관열은 권취부와 함께 없어졌다 — 이름이 남으면 다음 사람이
+        # 그 자리에 무엇을 놓아야 하는지 묻는다.
+        self.assertNotIn("cBsY", self.b, "없어진 백시트 롤 보관열의 좌표가 남아 있다")
 
     def test_the_storage_rows_end_up_outside_the_twin_fence(self):
-        """압축의 −5,200 / −7,000 은 방책 −4,200 밖이지만 트윈 방책은 더 나간다."""
+        """압축의 KC-301 은 방책 밖이지만 트윈 방책은 더 나간다."""
         twin = layout("HK120C")["fenceN"]
         compact = console_consts.const("CFENCE_YN")
         out = max(0.0, twin - compact)
-        for name, base in (("BS-301", -vec("BS_SADDLE")[1]),
-                           ("KC-301", -console_consts.const("CKC_RACK_Y"))):
-            self.assertGreater(base + out, twin,
-                               f"{name} 보관대가 트윈 방책({twin} m) 안에 남는다")
+        base = -console_consts.const("CKC_RACK_Y")
+        self.assertGreater(base, compact, "KC-301 보관대가 압축 방책 안에 있다")
+        self.assertGreater(base + out, twin,
+                           f"KC-301 보관대가 트윈 방책({twin} m) 안에 남는다")
 
     def test_the_twin_fence_is_stepped_like_the_study(self):
         """직사각형으로 두르면 점유면적을 과장하고, 넓어지는 것이 DL 하나라는
@@ -205,12 +208,15 @@ class TestTheTwinCrossingsAreResolved(unittest.TestCase):
         self.assertIn("fenceSegment(DX1,sgn*nf,DX1,sgn*FP)", self.b)
         self.assertIn("fenceSegment(CFENCE_X0,sgn*nf,DX0,sgn*nf)", self.b)
 
-    def test_the_discharge_traverse_sits_between_gantry_and_roll(self):
-        """레일은 나이프 갠트리(2,740) 위, 만권 롤 하단(3,400) 아래여야 한다."""
+    def test_the_discharge_traverse_clears_the_gantry(self):
+        """레일은 나이프 갠트리(2,740) 위여야 한다. 종전에는 만권 롤 하단(3,400)이
+        위를 막았지만 권취부가 빠져 그 한계는 없어졌다."""
         self.assertIn("EXZ=CZ+2.01,EXC=CZ+1.79", self.b)
-        cz, full_r, drum_z = 1.15, .30, 3.70
-        self.assertGreater(cz + 2.01 - .09, 2.74, "횡이송 레일이 갠트리를 친다")
-        self.assertLess(cz + 2.01 + .09, drum_z - full_r, "횡이송 레일이 만권 롤을 친다")
+        cz = console_consts.const("CZ")
+        top = console_consts.const("CBEAM_Z") + .12 + .14 / 2      # X축 구동 상면
+        self.assertAlmostEqual(top, 2.74, places=6)
+        self.assertGreater(cz + 2.01 - .09, top, "횡이송 레일이 갠트리를 친다")
+        self.assertGreater(cz + 1.79 - .11, top, "횡이송 캐리지가 갠트리를 친다")
 
 
 class TestThePictureSaysWhatItIs(unittest.TestCase):
@@ -293,7 +299,7 @@ class TestThePictureSaysWhatItIs(unittest.TestCase):
         """카메라가 어떻게 서든 계통은 글로 남아야 한다."""
         self.assertIn("functiondrawFlowMimic()", self.b)
         self.assertIn("drawTitleBlock();drawFlowMimic();", self.b)
-        self.assertIn("탠덤${L.cells}셀수평병렬", self.b)
+        self.assertIn("분리셀${L.cells}수평병렬", self.b)
         self.assertIn("확장옵션·두셀같은바닥", self.b)
 
     def test_the_floor_paint_shows_the_branch(self):
@@ -384,45 +390,46 @@ class TestEachCellIsItsOwnMachine(unittest.TestCase):
         self.assertIn("constvx=CST.GC.x0+(twinView()?.75:.5)", self.b)
 
 
-class TestTheThreeStreamsAreVisible(unittest.TestCase):
-    """세 계통이 그림에서 실제로 보이는가.
+class TestTheTwoStreamsAreVisible(unittest.TestCase):
+    """두 계통이 그림에서 실제로 보이는가.
 
     형상이 있어도 나오는 단계가 좁으면 '표현이 안 된다' 로 읽힌다 — 실제로
-    그렇게 읽혔다. 필름은 박리 중에만 걸려 있었고(나머지 아홉 단계에서 권취부는
-    빈 롤러 셋), 롤은 늘 코어 Ø300 이었으며(295장에 걸쳐 자라는 물건이다),
-    셀/EVA 는 트로프 위 세 단계와 카트 위 한 장 사이가 비어 있었다."""
+    그렇게 읽혔다. 탠덤이던 때는 필름이 박리 중에만 걸려 있었고 롤은 늘 코어
+    Ø300 이었으며, 셀/EVA 는 트로프 위 세 단계와 카트 위 한 장 사이가 비어
+    있었다. 계단 칼날은 셀모듈과 백시트를 한 장으로 떼므로 계통은 둘이 됐지만,
+    그 한 장이 칼날 뒤에서 들려 나가는 모습과 카트까지 가는 길은 여전히
+    끊기지 않고 그려져야 한다."""
 
     @classmethod
     def setUpClass(cls):
         cls.src = console()
         cls.b = cls.src.replace(" ", "").replace("\n", "")
 
-    def test_the_web_stays_threaded_between_panels(self):
-        """통과 사이에도 필름은 드럼에서 댄서·아이들러까지 걸려 있다."""
-        self.assertIn("functioncWebThread(panels)", self.b)
-        self.assertIn("cWebThread(wn);", self.b)
-        self.assertIn("if(!(cs.onTable&&cs.peeling))cWebTail();", self.b,
-                      "박리하지 않을 때 필름 자유단이 없다")
-        # 상시 구간은 박리 여부와 무관한 자리에서 불려야 한다
-        i = self.b.index("cWebThread(wn);")
-        self.assertLess(self.b.index("cRoll(wn,"), i,
-                        "웹 걸기가 롤과 같은 블록에 있지 않다")
+    def test_the_remaining_stack_is_stepped_like_the_knife(self):
+        """칼끝이 계단이면 유리 위에 남은 적층도 계단이다 — 한 줄로 자르면
+        중앙이 먼저 떨어지는 이 칼날의 요점이 그림에서 지워진다."""
+        body = fn("cPanelLayers").replace(" ", "")
+        self.assertIn("for(constsegofKNIFE_SEGS)", body, "남은 적층이 칼날 조각을 따르지 않는다")
+        self.assertIn("cut=clamp(kx-d,rear,front)", body, "조각마다 자기 칼끝에서 끊기지 않는다")
 
-    def test_the_rollers_show_the_film_wrapping_them(self):
-        self.assertIn("functionwebWrap(cx,cz,r,a0,a1,seg=7)", self.b)
-        self.assertIn("webWrap(CID_X,CID_Z", self.b)
-        self.assertIn("webWrap(CDN_X,", self.b)
+    def test_the_peeled_sheet_lifts_behind_the_last_tip(self):
+        """전폭이 다 떨어진 자리는 마지막 칼끝 뒤다 — 거기서부터 한 장이 30° 로 들린다."""
+        body = fn("cPanelLayers").replace(" ", "")
+        self.assertIn("base=clamp(kx-KNIFE_DEPTH-CASS_W,rear,front)", body,
+                      "들림이 마지막 칼끝 뒤에서 시작하지 않는다")
+        self.assertIn("consta=Math.PI/6", body, "들림각이 30° 가 아니다")
+        # 들리는 것은 한 장이다 — 셀·EVA 와 백시트가 같은 곡면을 탄다
+        self.assertIn("flexSurface(tx,base,tz,z0,C.cell", body)
+        self.assertIn("flexSurface(tx,base,tz+.03,z0+.03,C.sheet", body,
+                      "백시트가 셀모듈과 함께 들리지 않는다")
 
-    def test_the_roll_is_not_forever_at_core_diameter(self):
-        """코어만인 시간은 전체의 1/295 다. 늘 코어면 권취부가 축으로 보인다."""
-        m = re.search(r"constCROLL_BASE=Math\.round\(ROLL_FULL_PANELS\*([\d.]+)\)", self.b)
-        self.assertIsNotNone(m, "권취 바탕값이 없다")
-        frac = float(m.group(1))
-        self.assertGreater(frac, .2)
-        self.assertLess(frac, .9)
-        self.assertIn("constwn=CROLL_BASE+cs.wound;", self.b)
-        self.assertIn("constn=CROLL_BASE+cState(index,local).wound", self.b,
-                      "HUD 가 3D 와 다른 권취량을 말한다")
+    def test_the_cell_module_carries_its_backsheet_everywhere(self):
+        """컨베이어 위든 카트 위든 셀모듈은 두 겹이다 — 한 겹이면 백시트가 어디 갔는지 묻는다."""
+        slab = fn("cellModuleSlab")
+        self.assertIn("C.cell", slab)
+        self.assertIn("C.sheet", slab, "셀모듈 한 장에 백시트가 없다")
+        self.assertIn("cellModuleSlab((CE_X0+CE_X1)/2,dy*ly,", self.b, "컨베이어 위 셀모듈이 한 장이 아니다")
+        self.assertIn("cellModuleSlab(CSCART.x,dy*CSCART.y,", self.b, "카트 위 셀모듈이 한 장이 아니다")
 
     def test_the_cell_stream_does_not_break_between_trough_and_cart(self):
         self.assertIn("if(i>=4&&i<=7)withPartOffset(off,()=>{", self.b)
@@ -430,27 +437,27 @@ class TestTheThreeStreamsAreVisible(unittest.TestCase):
         self.assertIn("constn=1+((carriageCycleNo+c)%4);", self.b,
                       "카트에 한 장만 얹으면 평적이 안 보인다")
 
-    def test_the_roll_reclaim_has_visible_gear_and_a_standing_route(self):
-        """357 kg 이 셀당 4.9시간마다 나간다 — 그 수단과 길이 보여야 한다."""
-        self.assertIn("functioncHoist(hy,rz,bsy)", self.b)
+    def test_the_cassette_reclaim_has_visible_gear_and_a_standing_route(self):
+        """200°C 를 지난 카세트가 셀마다 나간다 — 그 수단과 길이 보여야 한다.
+        이 호이스트는 종전에 만권 롤을 들던 자리다."""
+        self.assertIn("functioncHoist(hy,rz,ky)", self.b)
         # 주석이 아니라 그려지는 것을 본다 — 설명만 남고 형상이 빠질 수 있다
         for part, frag in (
                 ("훅블록", "box(V(CRAIL_X0,hy,rz-.56),V(.20,.24,.16),C.steel2)"),
                 ("슬링", "line([V(CRAIL_X0,hy,rz-.80),V(CRAIL_X0,hy+dyy,bz)]"),
-                ("인양빔", "box(V(CRAIL_X0,hy,bz),V(.16,ROLL_FACE+.12,.10),C.steel2)"),
-                ("코어 그리퍼", "box(V(CRAIL_X0,hy+dyy,bz-.09),V(.11,.09,.10),C.yellow)")):
+                ("인양 프레임", "box(V(CRAIL_X0,hy,bz),V(.14,KNIFE_W+.12,.10),C.steel2)"),
+                ("인양 훅", "box(V(CRAIL_X0,hy+dyy,bz-.09),V(.11,.09,.10),C.yellow)")):
             self.assertIn(frag, self.b, f"인양구에 {part} 이 그려지지 않는다")
-        self.assertIn("line([V(CRAIL_X0,hy,rz-.50),V(CRAIL_X0,bsy,rz-.50)]", self.b,
-                      "반출 경로가 상시 표시되지 않는다")
-        self.assertIn("cHoist(0,RH_Z,BS_SADDLE.y);", self.b)      # 압축
-        self.assertIn("cHoist(ya,RHZ,BSY);", self.b)              # 트윈
+        self.assertIn("line([V(CRAIL_X0,hy,rz-.50),V(CRAIL_X0,ky,rz-.50)]", self.b,
+                      "반출 경로가 표시되지 않는다")
+        self.assertIn("cHoist(CKC_Y,RH_Z,CKC_SADDLE.y);", self.b)   # 압축
+        self.assertIn("cHoist(0,RHZ,KCY);", self.b)                 # 트윈
 
-    def test_each_cell_names_its_own_two_outlets(self):
+    def test_each_cell_names_its_own_outlet(self):
         """셀이 둘이면 반출도 둘이다 — 이름이 없으면 어느 셀 것인지 모른다."""
-        self.assertIn("WR-101${opt.tag}·백시트권취부", self.b)
-        self.assertIn("CE-201${opt.tag}→CS-201${opt.tag}·셀/EVA반출", self.b)
-        self.assertIn("C.sheet,!!opt.tag)", self.b, "권취부 이름표가 항상 뜨지 않는다")
+        self.assertIn("CE-201${opt.tag}→CS-201${opt.tag}·셀모듈반출", self.b)
         self.assertIn("C.cell2,true)", self.b, "반출 이름표가 항상 뜨지 않는다")
+        self.assertNotIn("WR-101${opt.tag}", self.b, "셀마다 권취부 이름표가 남아 있다")
 
 
 class TestTheStandardAndTheOptionAreNamedAsSuch(unittest.TestCase):
@@ -476,12 +483,12 @@ class TestTheStandardAndTheOptionAreNamedAsSuch(unittest.TestCase):
 
     def test_the_console_shows_the_role_where_it_is_read(self):
         """버튼·명판·표제란 — 셋 다 어느 구조인지 말해야 한다."""
-        self.assertIn("L.cells>1?'수평 병렬':'단일 탠덤'", self.src, "버튼이 구조를 말하지 않는다")
+        self.assertIn("L.cells>1?'수평 병렬':'단일 셀'", self.src, "버튼이 구조를 말하지 않는다")
         self.assertIn("[${L.role}]${L.roleNote}", self.b, "명판이 역할을 말하지 않는다")
         self.assertIn("${TL.plan}·${TL.role}", self.b, "표제란이 역할을 말하지 않는다")
 
     def test_the_mimic_says_the_parallel_is_horizontal(self):
-        self.assertIn("탠덤${L.cells}셀수평병렬", self.b)
+        self.assertIn("분리셀${L.cells}수평병렬", self.b)
         self.assertIn("두셀같은바닥—쌓지않는다", self.b,
                       "수평이라는 것이 미믹에 없다")
         self.assertIn("납품표준·직렬5스테이션", self.b)
@@ -501,7 +508,7 @@ class TestTheStandardAndTheOptionAreNamedAsSuch(unittest.TestCase):
     def test_the_study_records_the_decision(self):
         """검토서가 '이것도 가능하다' 로 끝나면 결정이 남지 않는다."""
         st = self.study.replace(" ", "").replace("\n", "")
-        self.assertIn("납품표준안은<strong>DG-HK60C단일탠덤</strong>", st)
+        self.assertIn("납품표준안은<strong>DG-HK60C단일셀</strong>", st)
         self.assertIn("확장옵션으로설계에나란히보존", st)
         self.assertIn("수직적층이아니라", st)
 
@@ -526,7 +533,7 @@ class TestTheLayoutOrderStartsAtTheDeliveredLine(unittest.TestCase):
         b = body().replace(" ", "")
         self.assertNotIn("'DG-HK60C압축배치·개념제작도'", b)
         self.assertIn("TL.model", console())
-        self.assertIn("plan:'1가열실·탠덤2셀병렬'", console().replace(" ", ""))
+        self.assertIn("plan:'1가열실·계단칼날2셀병렬'", console().replace(" ", ""))
 
 
 if __name__ == "__main__":                                   # pragma: no cover

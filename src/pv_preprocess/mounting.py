@@ -135,7 +135,7 @@ MEMBERS: tuple[Member, ...] = (
     Member("DG-HK60C HC-101 가열실 골조 (벤더 앵커군 A1)", "grm", "floor",
            "5단 데크 · IR 6뱅크 · 적재 패널 5장"),
     Member("DG-HK60C KG-101 갠트리 주행 문형 4본 (벤더 앵커군 A7)", "grm", "floor",
-           "이동 나이프 탠덤 · 55↔700 mm/s 왕복 관성"),
+           "이동 계단 칼날 · 55↔700 mm/s 왕복 관성"),
     Member("DG-HK60C VT-101 진공테이블 기둥 6본 (벤더 앵커군 A8)", "grm", "floor",
            "박리 추력 13.37 kN"),
     Member("DG-HK60C GC-101 냉각 랙 골조 (벤더 앵커군 A2)", "grm", "floor",

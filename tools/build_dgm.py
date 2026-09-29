@@ -171,11 +171,9 @@ def _plant_tags() -> list[tuple[float, float, float, str, str]]:
          "상판 710 kg — 최중량 단품. 기둥 6본이 바닥으로 내린다"),
         (rx0, -gy, 1.0, "DG-HK60C KG-101 갠트리 주행 문형 4본 (벤더 앵커군 A7)",
          f"주행레일 EL {round(rz * 1000):,} — 55 mm/s 박리 · 700 mm/s 복귀"),
-        (m(H.WINDER_X_MM), 0, 3.7, "WR-101 백시트 만권 롤",
-         f"Ø600 × 1,460 · {H.ROLL_MASS_KG} kg — RH-201 모노레일로 방책 밖 새들에 내린다"),
         ((cex[0] + cex[1]) / 2, (cey[0] + cey[1]) / 2, m(H.CE_EL_MM),
-         "CE-201 셀/EVA 횡인출 컨베이어", "적층체를 자르지 않고 통째로 옆으로 뺀다"),
-        (m(H.CART_X_MM), m(H.CART_Y_MM), .275, "CS-201 셀/EVA 평적 카트",
+         "CE-201 셀모듈 횡인출 컨베이어", "셀·EVA·백시트 한 장을 자르지 않고 통째로 옆으로 뺀다"),
+        (m(H.CART_X_MM), m(H.CART_Y_MM), .275, "CS-201 셀모듈 평적 카트",
          f"{H.CART_L_MM:,} × {H.CART_W_MM:,} · 통로쪽 레인에서 AGV 가 받는다"),
         (m(gc.cx_mm), 0, .3, "DG-HK60C GC-101 냉각 랙 골조 (벤더 앵커군 A2)",
          f"{H.DECKS}단 강제공랭 140 → 60 ℃ — 배기는 경계 덕트에 합류"),
@@ -210,7 +208,7 @@ def build_vendor() -> str:
     base = [r for r in (_clip_x(q) for q in cap["base"] if _delivered(q)) if r is not None]
     pose = [r for r in (_clip_x(q) for q in cap["dynamic"] if _delivered(q)) if r is not None]
     parts = base + pose
-    #: 정지 자세(4단계)에서 **움직이는 것들** — 캐리지·나이프·박리 중 유리·셀/EVA 적층체.
+    #: 정지 자세에서 **움직이는 것들** — 캐리지·칼끝·박리 중 유리·셀모듈 적층체.
     #: 이것만은 합치지 않고 낱개 메시로 세운다. 영상이 이 자세에서 공정을 이어 돌리려면
     #: 조각을 하나씩 잡아 옮겨야 하고, 합쳐 버리면 그 순간 잡을 것이 없어진다.
     moving = {i for i in range(len(base), len(parts)) if parts[i]["t"] in ("b", "c")}
@@ -239,22 +237,34 @@ def build_vendor() -> str:
             if tip:
                 note[best] = tip
 
-    # 탠덤 칼날 두 대는 자리가 아니라 **형상**으로 찾는다 — 정지 자세가 행정 중간이라
-    # 캐리지 위치가 단계마다 다르다. 패널 폭을 건너지르는 같은 단면의 바 두 개이고,
-    # 그 사이가 칼끝 리드(300)다. 그 사실을 여기서 확인하고 이름을 붙인다.
-    lead_m = H.KNIFE_PITCH_MM / 1000.0
-    cand = sorted((i for i, q in enumerate(parts)
-                   if q["t"] == "b" and .20 <= q["s"][0] <= .30
-                   and m(H.PANEL_MAX_MM[1]) < q["s"][1] <= m(H.PANEL_MAX_MM[1]) + .4
-                   and .20 <= q["s"][2] <= .35), key=lambda i: parts[i]["c"][0])
-    bars = next(([a, b] for a in cand for b in cand
-                 if abs((parts[b]["c"][0] - parts[a]["c"][0]) - lead_m) < .02), [])
-    if len(bars) >= 2:
-        lead = round((parts[bars[1]]["c"][0] - parts[bars[0]]["c"][0]) * 1000)
-        named[bars[0]] = "HKB-101 백시트 개방 핫나이프 (카세트)"
-        note[bars[0]] = f"백시트/EVA 계면을 {lead} 선행해 연다 — 180 ℃ (벤더 원본 형상)"
-        named[bars[1]] = "HKS-201 셀/EVA 분리 핫나이프 (카세트)"
-        note[bars[1]] = f"{lead} 뒤를 따라가며 셀/EVA 를 유리에서 뗀다 — 200 ℃ (벤더 원본 형상)"
+    # 계단 칼날은 자리가 아니라 **도장**으로 찾는다 — 정지 자세가 행정 중간이라
+    # 갠트리 위치가 단계마다 다르다. 벤더가 칼끝에만 쓰는 도장(`knife`)이 있고 칼끝은
+    # 일곱 조각(중앙 300 + 양쪽 200×3)이다. 그 일곱을 모아 x 벌어짐이 계단 깊이(240)와
+    # 맞는지 확인하고 이름을 붙인다 — 맞지 않으면 벤더 형상이 또 바뀐 것이다.
+    #
+    # 종전에는 같은 단면의 바 **두 개**와 그 사이 칼끝 간격(300)을 찾았다 — 탠덤
+    # 두 자루(HKB/HKS)를 그렇게 집었다. 벤더가 계단 한 자루로 바꾸자 그 판정은
+    # 아무것도 못 집고 조용히 지나갔다 — 칼날에 이름이 안 붙는다.
+    _pal = {v: k for k, v in cap["palette"].items()}
+    # 칼끝은 두 벌 들어온다 — 정지 형상 한 벌과 **정지 자세**(움직이는 것) 한 벌.
+    # 이름은 자세 쪽에 붙인다. 영상이 잡아 이어 돌리는 것이 그쪽이다.
+    tips = sorted((i for i in moving
+                   if _pal.get(parts[i]["k"]) == "knife" and parts[i]["t"] == "b"),
+                  key=lambda i: -parts[i]["c"][0])
+    blades = int(H.const("KNIFE_STEPS")) * 2 + 1
+    if len(tips) == blades:
+        xs = [parts[i]["c"][0] for i in tips]
+        got = round((max(xs) - min(xs)) * 1000)
+        assert abs(got - H.KNIFE_DEPTH_MM) <= 2, (
+            f"칼끝 벌어짐 {got} 이 계단 깊이 {H.KNIFE_DEPTH_MM:.0f} 과 다르다 — "
+            "벤더 형상이 바뀌었으면 캡처를 다시 돌려라")
+        named[tips[0]] = "SHK-101 계단 칼날 (카세트 · 중앙 칼끝)"
+        note[tips[0]] = (
+            f"중앙 {round(H.const('KNIFE_CENTER')*1000):,} 이 먼저 물고 양쪽 조각이 한 단에 "
+            f"{round(H.const('KNIFE_RISE')*1000)} 씩 물러난다 — 계단 깊이 {got} · 셀모듈과 "
+            "백시트를 한 장으로 뗀다 — 200 ℃ (벤더 원본 형상)")
+        for k in tips[1:]:
+            named.setdefault(k, "SHK-101 계단 칼날 조각 (카세트)")
     for tx, ty, tz, tag, tip in _plant_tags():
         _attach(tx, ty, tz, tag, tip, 2.5)
     for lab in labels:
@@ -341,24 +351,23 @@ def build_vendor() -> str:
     w("Ns.push(me);g.add(me)})})();")
     # 이름 붙은 덩어리와 **움직이는 조각** — 낱개 메시
     #: 움직이는 조각에 **역할 이름**을 붙인다 — 도장색과 자리가 역할을 말한다.
-    #: 영상이 이 이름으로 조각을 잡아 공정을 이어 돌린다(유리는 냉각·반출로, 셀/EVA 는
-    #: 옆으로, 백시트는 권취로). 이름이 없으면 합쳐진 덩어리와 구분할 길이 없다.
-    pal = {v: k for k, v in cap["palette"].items()}
-    knife_x = [parts[i]["c"][0] for i in bars] if len(bars) >= 2 else []
+    #: 영상이 이 이름으로 조각을 잡아 공정을 이어 돌린다(유리는 냉각·반출로, 셀모듈은
+    #: 백시트째 옆으로). 이름이 없으면 합쳐진 덩어리와 구분할 길이 없다.
+    knife_x = [parts[i]["c"][0] for i in tips] if len(tips) == blades else []
 
     def _role(q: dict) -> str | None:
-        role = pal.get(q["k"])
+        role = _pal.get(q["k"])
         if role == "glass":
             return "DG-HK60C 박리 중 유리"
         if role == "sheet":
-            return "DG-HK60C 벗겨지는 백시트"
+            return "DG-HK60C 셀모듈에 붙어 나오는 백시트"
         if role in ("cell", "cell2"):
             y = q["c"][1]
             if y < -3.0:
-                return "DG-HK60C 셀/EVA 카트 적재"
+                return "DG-HK60C 셀모듈 카트 적재"
             if y < -1.5:
-                return "DG-HK60C 셀/EVA 반출 적층체"
-            return "DG-HK60C 유리 위 셀/EVA 층"
+                return "DG-HK60C 셀모듈 반출 적층체"
+            return "DG-HK60C 유리 위 셀모듈 층"
         if knife_x and q["t"] == "b" and q["c"][2] > m(H.LINE_EL_MM) \
                 and min(abs(q["c"][0] - x) for x in knife_x) < .6:
             return "DG-HK60C 나이프 캐리지"
@@ -371,7 +380,7 @@ def build_vendor() -> str:
         q = parts[i]
         k = ci[(q["k"], q["a"])]
         tip = s(note[i]) if i in note else s(
-            "탠덤 박리 중 — 영상이 이 조각을 이어 돌린다" if i in moving
+            "계단 칼날 박리 중 — 영상이 이 조각을 이어 돌린다" if i in moving
             else "벤더 원본 · 도장 " + q["k"])
         if q["t"] == "b":
             r = q.get("r") or [0, 0, 0]
@@ -395,7 +404,6 @@ def build_3d() -> str:
     pick = -m(layout.zone_overlap_mm("grm"))    # 브리지가 유리를 집는 자리 (기계 x −475)
     place = m(H.INFEED_CX_MM)                   # 놓는 자리 — LD-101 데크 중심
     rh_z = m(H.monorail_el_mm())
-    roll_y = -(layout.roll_saddle_plant_y_mm() - Y0 - H.FENCE_YP_MM)      # 기계 y (mm)
     cass_y = H.CASSETTE_SADDLE_Y_MM
     duct_el = m(H.DUCT_FLANGE_EL_MM)
     mods = H.MODULES
@@ -423,10 +431,10 @@ def build_3d() -> str:
     w(f"[[{n(pick+.15)},-1.0],[{n(place-.4)},-1.0]].forEach(function(p,i){{MP(.14,.14,0,{n(EL+.32)},p[0],p[1],i===0?'BX-101 브리지 지주 2본 (베이스 4×M16)':null);AB(p[0],p[1],2,.16)}});")
     w(f"[[{n(pick+.15)},1.0],[{n(place-.4)},1.0]].forEach(function(p){{MP(.14,.14,0,{n(EL+.32)},p[0],p[1],null);AB(p[0],p[1],2,.16)}});")
     w(f"L([.15,.3,.12],[{n(pick+.2)},.15,1.35],M.red,'BX-SF-301 브리지 안전 스캐너','브리지 행정 구간 진입 방지 — 안전 PLC (SF-07)');")
-    # RH-201 모노레일은 방책을 넘어 통로 **밖** 새들까지 간다 — 그 연장과 기둥,
-    # 롤·카세트 새들은 플랜트가 자기 레인에 놓는다 (RFQ OI-17). 방책 안 권취
-    # 드럼·문형은 벤더 원본에 있으므로 여기서 다시 그리지 않는다.
-    wrx = m(H.WINDER_X_MM)
+    # RH-201 모노레일은 방책을 넘어 통로 **밖** 카세트 새들까지 간다 — 그 연장과
+    # 기둥, 새들은 플랜트가 자기 레인에 놓는다 (RFQ OI-17). 권취부가 철거돼 이 길로
+    # 나오는 것은 200 ℃ 를 지난 칼날 카세트뿐이다 — 만권 롤은 없다.
+    wrx = m(H.const("CKC_X") * 1000)
     hc = ST["HC"]                       # 명판 자리 — 가열실 중심 위
     fyn = m(H.FENCE_YN_MM)              # 통로쪽 방책선 (명판이 그 안쪽 면에 붙는다)
     w(f"L([.12,.12,{n(m(H.RH_Y_MM[0]-cass_y))}],[{n(wrx)},{n(rh_z)},{n((lz(H.RH_Y_MM[0])+lz(cass_y))/2)}],M.steel,'RH-201 모노레일 (EL {H.monorail_el_mm():,})','드럼 위(+550)에서 통로 위를 넘어 카세트 새들(−7,000)까지 — 롤과 소모품이 같은 길로 난다. 통로 위 헤드룸 {H.monorail_el_mm()-490:,}');")
@@ -436,8 +444,6 @@ def build_3d() -> str:
         lab = s("RH-201 모노레일 기둥") if yy == H.RH_Y_MM[0] else "null"
         w(f"L([.14,{n(rh_z-.06)},.14],[{n(wrx+.3)},{n((rh_z-.06)/2)},{n(lz(yy))}],M.steel,{lab});")
         w(f"L([.4,.12,.14],[{n(wrx+.13)},{n(rh_z)},{n(lz(yy))}],M.steel,null);")  # 기둥 → 레일 캔틸레버 암
-    w(f"L([1.4,.4,.9],[{n(wrx)},.72,{n(lz(roll_y))}],M.dark,'BS-301 만권 롤 새들 (통로 밖 · AGV 도킹)','기계 좌표 −5,200 은 플랜트 통로 한가운데(Y 8,600)라 −{-roll_y:,.0f}(Y {layout.roll_saddle_plant_y_mm():,})으로 낸다 — 벤더 확인사항 OI-16');")
-    w(f"Ee(g,{n(H.const('WR_FULL_R'))},{n(H.const('ROLL_FACE'))},[{n(wrx)},1.22,{n(lz(roll_y))}],M.rubber,null,null,[Math.PI/2,0,0]);")
     w(f"L([1.2,.3,.8],[{n(wrx+.55)},.9,{n(lz(cass_y))}],M.dark,'KC-301 칼날 카세트 새들 (통로 밖)','200 ℃ 를 지난 카세트는 방책 밖에서만 만진다');")
     # 명판
     # 데칼은 월드 그룹에 존 식으로 놓고 adopt() 가 셀에 입양한다 — 통로 경계(방책 안쪽 면)
@@ -474,12 +480,11 @@ def build_sheet() -> str:
         ("EX-101", "방출 승강 포크 문형 (M-003)", dims("M-003"), [X(dl.x0_mm + 420), mods["M-003"][1][2] // 2, 0], [-400, 600, 0], "secondary"),
         ("VT-101", "6존 고정 진공테이블 (M-004)", dims("M-004"), [X(tbl_cx), mods["M-004"][1][2] // 2, 0], [0, -500, 0], "primary"),
         ("KG-101", "이동 나이프 갠트리 · 주행레일 EL 1,950 (M-005)", [3500, 2720, 3010], [X((H.const("CRAIL_X0") + H.const("CRAIL_X1")) * 500), 1360, 0], [0, 1200, 0], "primary"),
-        ("BC-201", "HKB/HKS 칼날 카세트 (KC-101 자동교환)", [600, 900, 1440], [X(tbl_cx - 900), 1600, 0], [200, 900, 0], "primary"),
-        ("WR-101", "백시트 권취 · 만권 롤 Ø600 (M-006)", [1300, 600, 1460], [X(H.WINDER_X_MM), 3700, 0], [0, 1400, -900], "secondary", "cylinder"),
-        ("RH-201", "롤·카세트 반출 모노레일 EL 5,100 (방책까지)", [140, 140, H.FENCE_YN_MM + H.RH_Y_MM[0]], [X(H.WINDER_X_MM), H.monorail_el_mm(), Zc((H.RH_Y_MM[0] - H.FENCE_YN_MM) / 2)], [0, 1600, 0], "base"),
+        ("BC-201", "SHK-101 계단 칼날 카세트 (KC-101 자동교환)", [600, 900, 1440], [X(tbl_cx - 900), 1600, 0], [200, 900, 0], "primary"),
+        ("RH-201", "칼날 카세트 반출 모노레일 EL 5,100 (방책까지)", [140, 140, H.FENCE_YN_MM + H.RH_Y_MM[0]], [X(round(H.const("CKC_X") * 1000)), H.monorail_el_mm(), Zc((H.RH_Y_MM[0] - H.FENCE_YN_MM) / 2)], [0, 1600, 0], "base"),
         ("KC-101", "칼날 카세트 매거진 (갠트리 위)", [1000, 400, 700], [X(H.const("CKC_X") * 1000), H.const("CKC_Z") * 1000, Zc(H.const("CKC_Y") * 1000)], [200, 1000, 800], "secondary"),
-        ("CE-201", "셀/EVA 횡인출 컨베이어 EL 1,050 (M-008)", [H.CE_X_MM[1] - H.CE_X_MM[0], 100, 2000], [X(CART_X := (H.CE_X_MM[0] + H.CE_X_MM[1]) // 2), H.CE_EL_MM, Zc(-1900)], [0, -300, 1200], "secondary"),
-        ("CS-201", "셀/EVA 평적 카트 2,600 × 1,300", [H.CART_L_MM, 550, H.CART_W_MM], [X(H.CART_X_MM), 275, Zc(H.CART_Y_MM)], [0, 0, 1800], "base"),
+        ("CE-201", "셀모듈 횡인출 컨베이어 EL 1,050 (M-008)", [H.CE_X_MM[1] - H.CE_X_MM[0], 100, 2000], [X(CART_X := (H.CE_X_MM[0] + H.CE_X_MM[1]) // 2), H.CE_EL_MM, Zc(-1900)], [0, -300, 1200], "secondary"),
+        ("CS-201", "셀모듈 평적 카트 2,600 × 1,300", [H.CART_L_MM, 550, H.CART_W_MM], [X(H.CART_X_MM), 275, Zc(H.CART_Y_MM)], [0, 0, 1800], "base"),
         ("GC-101", f"{H.DECKS}단 유리 냉각 랙 · 140 → 60 ℃ (M-007)", dims("M-007"), [X(gc.cx_mm), mods["M-007"][1][2] // 2, 0], [700, 0, 0], "primary"),
         ("GL-101", "냉각 적입 포크 문형 (M-003)", dims("M-003"), [X(gc.x0_mm - 420), mods["M-003"][1][2] // 2, 0], [400, 600, 0], "secondary"),
         ("GU-101", "냉각 인출 포크 문형 (M-003)", dims("M-003"), [X(gc.x1_mm + 420), mods["M-003"][1][2] // 2, 0], [900, 600, 0], "secondary"),
@@ -497,8 +502,8 @@ def build_sheet() -> str:
     flow = [
         ("1", f"BX-101 브리지 — GBR 슬롯(950)에서 LD-101 데크(1,150)로 {layout.bridge_travel_mm():,} (인계면부터)", [X(0), 1150, 0], [X(ld.cx_mm), 1150, 0]),
         ("2", f"LI-101 포크가 C1…C{H.DECKS} 에 적재 · FULL_LOAD_ACK 후 밀폐 가열 (소킹 {r.dwell_s:g} s)", [X(ld.cx_mm), 1150, 0], [X(hc.cx_mm), 2450, 0]),
-        ("3", f"EX-101 방출 (피치 {r.release_pitch_s:g} s) → VT-101 흡착 · 이동 나이프 HKB→HKS 박리 (사이클 {r.tandem_cycle_s:g} s)", [X(hc.cx_mm), 1150, 0], [X(tbl_cx), 1150, 0]),
-        ("4", "백시트는 WR-101 권취 → RH-201 로 통로 밖 새들 · 셀/EVA 는 CE-201 → CS-201 카트", [X(tbl_cx), 1500, 0], [X(H.WINDER_X_MM), 3700, 0]),
+        ("3", f"EX-101 방출 (피치 {r.release_pitch_s:g} s) → VT-101 흡착 · 이동 계단 칼날 SHK-101 박리 (사이클 {r.tandem_cycle_s:g} s)", [X(hc.cx_mm), 1150, 0], [X(tbl_cx), 1150, 0]),
+        ("4", "셀모듈(셀·EVA·백시트) 한 장을 CE-201 → CS-201 카트 — 백시트를 따로 감지 않는다", [X(tbl_cx), 1500, 0], [X(CART_X), H.CE_EL_MM, 0]),
         ("5", f"GL-101 → GC-101 {H.DECKS}단 냉각 140 → 60 ℃ (143 s)", [X(tbl_cx), 1150, 0], [X(gc.cx_mm), 2450, 0]),
         ("6", "GU-101 → QI-301 검사 → UL-101 반출 → 픽업 스테이션 (GLASS_TAKEAWAY_READY)", [X(gc.cx_mm), 1150, 0], [X(GLASS_PICKUP_IN_MM), 250, 0]),
     ]
@@ -516,7 +521,7 @@ def build_sheet() -> str:
              "      tolerance: '앵커 위치 ±10 · 레벨 ±5 (D-602) · 롤러 상면 EL 1,150 ±2 · 칼끝 간격 300±2 · 폭 정렬 1,200±3',",
              "      service: '방책 −y 카트 레인 1,850 · 정비 간격 300 · 통로 밖 물류 레인 2,200 (새들·AGV)',",
              f"      utility: 'IR {H.LAMPS}등 {H.IR_INSTALLED_KW:g} kW · 연결부하 {H.CONNECTED_KW:g} kW(수요 {H.EXPECTED_DEMAND_KW:g}) · 진공 −65 kPa 6존 · 계장공기 0.6 MPa · 경계 덕트 Ø600 (팬·후처리 발주자)',",
-             f"      release: '브리지 핸드셰이크(UP_PANEL_OFFER/ACK) · IF_ESTOP_LOOP_OK · FULL_LOAD_ACK · P95 사이클 {r.tandem_cycle_s:g} s · 60장 연속 · GC-101 냉각 배기 합류 확인 (OI-16)',",
+             f"      release: '브리지 핸드셰이크(UP_PANEL_OFFER/ACK) · IF_ESTOP_LOOP_OK · FULL_LOAD_ACK · P95 사이클 {r.tandem_cycle_s:g} s · 60장 연속 · GC-101 냉각 배기 합류 확인 (OI-17)',",
              f"      levels: [[{H.LINE_EL_MM}, 'LINE EL {H.LINE_EL_MM:,}'], [{H.const('CRAIL_Z')*1000:.0f}, 'RAIL {H.const('CRAIL_Z')*1000:,.0f}'], [{mods['M-002'][1][2]}, 'HC TOP {mods['M-002'][1][2]:,}'], [{H.DUCT_FLANGE_EL_MM}, 'DUCT/RH {H.DUCT_FLANGE_EL_MM:,}']],",
              "      parts: ["]
     for p in parts:
@@ -607,7 +612,7 @@ def build_handoff_html() -> str:
     <summary>후단 인계 — {H.MODEL} 유리제거기 <span class="viz-badge">PV-PLANT-HO-1012</span></summary>
     <p class="text-small text-muted">전처리의 마지막 공정은 알루미늄 프레임 제거(AFR) 뒤의 <b>유리 버퍼</b>다. 그 버퍼가
       <a href="pv-delamination-3d.html" target="_blank" rel="noopener"><b>{H.MODEL}</b> — {H.DECKS}단 밀폐 IR 가열실·이동 나이프 탠덤·{H.DECKS}단 냉각 랙 ({H.REV} {H.PLAN})</a> 의 투입 셔틀 LD-101 로 이어진다.
-      벤더 문서: <a href="../dg-hk60-rfq.html" target="_blank" rel="noopener">발주 기술사양서 (RFQ)</a> · <a href="../dg-hk60-assembly.html" target="_blank" rel="noopener">조립 지침서</a> — 상류 직결 확인사항은 RFQ OI-16.
+      벤더 문서: <a href="../dg-hk60-rfq.html" target="_blank" rel="noopener">발주 기술사양서 (RFQ)</a> · <a href="../dg-hk60-assembly.html" target="_blank" rel="noopener">조립 지침서</a> — 상류 직결 확인사항은 RFQ OI-17.
       잇는다는 것은 링크를 거는 일이 아니라 <b>경계 조건이 맞는지 따지는 일</b>이다. REV.54 에서 넷을 다시 쟀다 — 자세 하나만 그대로 맞고, 치수·처리율·인계 방식은 결정이 필요했다.
       후단 수치는 옮겨 적지 않는다 — <code>src/pv_preprocess/hk60c.py</code> 가 그 기계의 콘솔·사양서에서 읽고, <code>handoff.py</code> 와 어긋나면 테스트가 실패한다.</p>
     <div class="table-responsive">
@@ -627,7 +632,7 @@ def build_handoff_html() -> str:
     </div>
     <p class="text-small text-muted">파손 유리(R-B)는 이 인계에 넣지 않는다 — 시트로 벗길 수 없어 파편 계통(R-B2 밀폐 파편 분리)으로 빠진다.
       페이싱 뒤에는 후단이 유입보다 빨라 버퍼가 차지 않는다 — 후단이 멈춰도 전처리를 <span id="jb-ho-autonomy"></span> 더 돌리는 완충으로만 남는다.
-      후단의 계획 정지(칼날 카세트 교환 3.9 분 · 만권 롤 {H.ROLL_PERIOD_H:g} h 마다)는 순생산 {r.line_per_h:g} 장/h 에 가동률 {H.AVAILABILITY:g} 으로 이미 들어 있다.</p>
+      후단의 계획 정지(칼날 카세트 교환 3.9 분)는 순생산 {r.line_per_h:g} 장/h 에 가동률 {H.AVAILABILITY:g} 으로 이미 들어 있다.</p>
   </details>
 <!-- @dgm-ho-end -->"""
 
@@ -683,7 +688,7 @@ def main() -> int:
     # 도면 목록 GA 행
     text = re.sub(r"\['PV-(?:GRM|DGM)-401-GA-6101', '[^']*', '2D/3D GA', '[^']*', '[^']*'\]",
                   f"['{layout.STATIONS['grm'].sheet}', '{H.MODEL} 유리제거기 (벤더 · {H.DECKS}단 IR·탠덤·냉각 랙)', "
-                  "'2D/3D GA', '앱 반영', '벤더 D-602 기초·앵커 하중 · 냉각 배기 합류 · 브리지 핸드셰이크 (OI-16)']", text)
+                  "'2D/3D GA', '앱 반영', '벤더 D-602 기초·앵커 하중 · 냉각 배기 합류 · 브리지 핸드셰이크 (OI-17)']", text)
     # 인터록 표 두 행
     text = re.sub(r"<tr><td>AFR 박리 허가</td><td>[\d,]+×[\d,]+ 치수 레시피,",
                   f"<tr><td>AFR 박리 허가</td><td>{LINE[0]:,}×{LINE[1]:,} 치수 레시피,", text)

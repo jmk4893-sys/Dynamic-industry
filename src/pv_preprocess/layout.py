@@ -362,7 +362,7 @@ STATIONS: dict[str, Station] = {
         # 픽업 스테이션)은 브리지가 그 자리를 대신하므로 존에 넣지 않는다.
         # 이송 높이는 벤더 공정선 EL 1,150 — 다섯 스테이션이 같다.
         Station("grm", "PV-DGM-401-GA-6101",
-                f"{hk60c.TAG} · {hk60c.MODEL} {hk60c.DECKS}단 밀폐 IR·이동나이프 탠덤 유리제거기",
+                f"{hk60c.TAG} · {hk60c.MODEL} {hk60c.DECKS}단 밀폐 IR·이동 계단 칼날 유리제거기",
                 hk60c.ENVELOPE_MM, hk60c.LINE_EL_MM),
     )
 }
@@ -381,7 +381,7 @@ ZONE_SEED: tuple[tuple[str, str, int, str, tuple[int, int, int] | None], ...] = 
     ("buffer", "GBR · BUFFER", 0, "R-A/R-B/HOLD", None),
     # REV.54: 기계의 −y 면(카트 레인·경계반·인입점·모노레일 반출)을 통로 쪽에 둔다.
     # +y 방책선이 벽쪽(Y 0)에 붙어 존이 밴드 7,600 을 꽉 채운다 — hk60c.plant_y_mm().
-    ("grm", f"{hk60c.TAG} · {hk60c.MODEL}", 0, "브리지 인계·밀폐 IR 가열·탠덤 박리·3계통 반출", None),
+    ("grm", f"{hk60c.TAG} · {hk60c.MODEL}", 0, "브리지 인계·밀폐 IR 가열·계단 칼날 박리·2계통 반출", None),
 )
 
 
@@ -780,17 +780,14 @@ def bridge_lift_mm() -> int:
     return hk60c.LINE_EL_MM - LINE_TRANSFER_MM
 
 
-#: 통로 **밖**의 물류 레인 (mm) — 후단 존에만 있다. 만권 롤(357 kg · 4.9 h 마다)과
-#: 칼날 카세트가 RH-201 모노레일로 통로 위(EL 5,100)를 넘어 여기 새들에 내려앉고
-#: AGV 가 받는다. 기계 좌표로 롤 새들 −5,200 은 플랜트 Y 8,600 — **통로 한가운데**
-#: 다. 그래서 플랜트에서는 새들을 통로 밖 −6,200(Y 9,800)으로 내고 카세트 새들
-#: −7,000(Y 10,400)은 그대로 둔다 — 벤더 확인사항 OI-16.
+#: 통로 **밖**의 물류 레인 (mm) — 후단 존에만 있다. 200 ℃ 를 지난 칼날 카세트가
+#: RH-201 모노레일로 통로 위(EL 5,100)를 넘어 여기 새들에 내려앉고 AGV 가 받는다.
+#:
+#: 종전에는 만권 롤(357 kg · 4.9 h 마다)이 같은 길로 나왔고, 기계 좌표 −5,200 이
+#: 플랜트 Y 8,600 — 통로 한가운데였으므로 플랜트가 그 새들만 통로 밖으로 내렸다.
+#: 벤더가 계단 칼날로 **셀모듈과 백시트를 한 장으로** 떼면서 권취부가 철거돼 롤이
+#: 없어졌다 — 레인에 남는 것은 카세트 새들 −7,000(Y 10,400) 하나뿐이다.
 DOWNSTREAM_LANE_MM = 2200
-
-
-def roll_saddle_plant_y_mm() -> int:
-    """BS-301 만권 롤 새들의 플랜트 Y — 통로 바깥 1,000."""
-    return MACHINE_BAND_Y_MM + AISLE_WIDTH_MM + 1000
 
 
 def cassette_saddle_plant_y_mm() -> int:
@@ -799,10 +796,10 @@ def cassette_saddle_plant_y_mm() -> int:
     return hk60c.plant_y_mm(y0, hk60c.CASSETTE_SADDLE_Y_MM)
 
 
-def saddles_clear_the_aisle() -> bool:
-    """두 새들이 통로 밖에 있는가 — 통로 안에 있으면 사람이 롤 밑을 지난다."""
-    a0, a1 = aisle_band_mm()
-    return all(y >= a1 + 500 for y in (roll_saddle_plant_y_mm(), cassette_saddle_plant_y_mm()))
+def saddle_clears_the_aisle() -> bool:
+    """카세트 새들이 통로 밖에 있는가 — 통로 안이면 사람이 200 ℃ 밑을 지난다."""
+    _, a1 = aisle_band_mm()
+    return cassette_saddle_plant_y_mm() >= a1 + 500
 
 
 def site_envelope_mm() -> tuple[int, int, int]:

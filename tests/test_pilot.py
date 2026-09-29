@@ -25,6 +25,17 @@ import pilot_plan as P
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
+def _rfq() -> str:
+    return (ROOT / "docs" / "dg-hk60-rfq.html").read_text(encoding="utf-8")
+
+
+def _open_items() -> set[str]:
+    """사양서 11항에서 아직 열린 항목. 닫힌 항목은 제목에 '해소' 를 달고 번호를 지킨다."""
+    return {oi for oi, title in re.findall(
+        r'<div class="oi-h"><b>(OI-\d+)</b><span>(.*?)</span>', _rfq())
+        if "해소" not in title}
+
+
 class TestSampleSizeIsSolvedNotGuessed(unittest.TestCase):
     """시료 수는 요구정밀도의 함수다 — 상수가 아니다."""
 
@@ -148,12 +159,17 @@ class TestEveryTestClosesSomething(unittest.TestCase):
                               f"{q.id} 을 파일럿이 받기로 했는데 항목이 없다")
 
     def test_the_open_items_the_plan_claims_are_real(self):
-        """사양서에 없는 미결항목을 닫겠다고 쓰면 계획이 허공을 가리킨다."""
-        rfq = (ROOT / "docs" / "dg-hk60-rfq.html").read_text(encoding="utf-8")
-        real = set(re.findall(r"<b>(OI-\d+)</b>", rfq))
+        """사양서에 없는 미결항목을 닫겠다고 쓰면 계획이 허공을 가리킨다.
+
+        이미 닫힌 항목도 마찬가지다 — OI-11 은 권취부 철거로 닫혔지만 번호는
+        남아 있으므로, 번호가 있다는 것만으로는 닫을 거리가 있다는 뜻이 아니다.
+        """
+        real = set(re.findall(r"<b>(OI-\d+)</b>", _rfq()))
+        still_open = _open_items()
         for t in self.ts:
             for oi in re.findall(r"OI-\d+", t.closes):
                 self.assertIn(oi, real, f"{t.id} 이 없는 {oi} 을 닫겠다고 한다")
+                self.assertIn(oi, still_open, f"{t.id} 이 이미 닫힌 {oi} 을 닫겠다고 한다")
 
     def test_the_plan_says_what_it_cannot_answer(self):
         self.assertGreaterEqual(len(P.OUT_OF_SCOPE), 4)
@@ -189,6 +205,19 @@ class TestThePlanDocumentIsGenerated(unittest.TestCase):
     def test_no_markdown_leaks_into_the_printed_page(self):
         body = re.sub(r"<style>.*?</style>", "", self.html, flags=re.S)
         self.assertNotIn("**", body)
+
+    def test_the_open_item_count_is_the_specifications(self):
+        """1항의 '사양서가 미결항목 N 건' 은 사양서 11항에서 열린 항목을 센 수다.
+
+        OI-16 이 늘었을 때 여기는 15 에 머물러 있었고, OI-11 이 닫히자 우연히
+        다시 맞았다 — 우연히 맞는 숫자는 다음 변경에서 또 틀린다.
+        """
+        m = re.search(r"미결항목\s*<strong>(\d+) 건</strong>", self.html)
+        self.assertIsNotNone(m, "1항이 사양서의 미결항목 수를 적지 않았다")
+        self.assertEqual(
+            int(m.group(1)), len(_open_items()),
+            f"계획서는 미결항목 {m.group(1)} 건이라 하는데 사양서에 열린 항목은 "
+            f"{len(_open_items())} 건이다")
 
 
 class TestTheSpecimenStateReachesTheDocument(unittest.TestCase):

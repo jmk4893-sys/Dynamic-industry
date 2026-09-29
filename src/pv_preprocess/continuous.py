@@ -93,7 +93,7 @@ def equipment() -> tuple[Equipment, ...]:
         Equipment("HC-101", "IR 밀폐 가열 — 방출 피치",
                   r.release_pitch_s, normal, False,
                   "line.downstream_rate().release_pitch_s", parent="DGM-401"),
-        Equipment("DL-101", "탠덤 박리 — 칼날 왕복",
+        Equipment("DL-101", "계단 칼날 박리 — 칼날 왕복",
                   r.tandem_cycle_s, normal, False,
                   "line.downstream_rate().tandem_cycle_s", parent="DGM-401"),
         Equipment("DGM-401", f"{hk60c.MODEL} 유리제거 (가동률 {hk60c.AVAILABILITY:g} 포함)",
@@ -158,7 +158,7 @@ class Run:
     scrapped: int          # 전손 리젝트 (라인에 안 들어간다)
     to_buffer: int         # 버퍼까지 간 장수 (정상 + 유리 깨짐)
     glass_out: int         # 유리제거기가 내보낸 유리 장수
-    cell_eva_kg: float     # 같은 장수에서 나온 셀·EVA 질량
+    cell_module_kg: float     # 같은 장수에서 나온 셀모듈 질량 (EVA·셀·백시트)
     buffer_peak: int       # R-A 재고 최고
     buffer_end: int        # 60분 끝 R-A 재고
     slices: tuple[Slice, ...]
@@ -312,7 +312,7 @@ def run(minutes: float = WINDOW_MIN, swap_at_min: float | None = None,
     if stock <= 0 < len(arrivals):
         breaks.append("R-A 재고 고갈 — 후단이 상류를 기다린다")
     return Run(minutes, released, scrapped, to_buffer, glass_out,
-               round(glass_out * hk60c.CELL_EVA_KG, 1), peak, stock, slices,
+               round(glass_out * hk60c.CELL_MODULE_KG, 1), peak, stock, slices,
                tuple(stops), tuple(breaks), tuple(spans), tuple(trace))
 
 
@@ -372,7 +372,7 @@ def summary() -> dict[str, object]:
         "released": result.released,
         "glassOut": result.glass_out,
         "glassPerH": result.glass_per_h,
-        "cellEvaKg": result.cell_eva_kg,
+        "cellModuleKg": result.cell_module_kg,
         "bufferPeak": result.buffer_peak,
         "swapAbsorbMin": swap_interval_the_machine_absorbs_min(),
         "machineIdleSPerH": steady_state_machine_idle_s_per_h(),

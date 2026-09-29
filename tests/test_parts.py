@@ -181,7 +181,13 @@ class TestTheCatalogueFeedsTheSpecification(unittest.TestCase):
         self.assertEqual(set(PT.MASS_CONCEPT), {s for s, _w, _p in PT.MASS_GROUPS})
         off = [s for s, _w, _a, _g, _d, ok in PT.mass_check() if not ok]
         self.assertTrue(off, "개산이 전부 맞았다면 이 기록을 둘 이유가 없다")
-        self.assertIn("M_WINDER", off, "권취 문형 개산이 빗나간 기록이 사라졌다")
+        # 권취 문형(+61 %)은 가장 크게 빗나간 개산이었다. 계단 칼날 전환으로 권취부가
+        # 철거돼 대조 그룹에서는 빠졌지만 기록은 남는다 — 지우면 '왜 형상이 필요한가' 의
+        # 가장 좋은 예가 사라진다.
+        self.assertIn("M_WINDER", PT.MASS_CONCEPT_RETIRED, "권취 문형 개산이 빗나간 기록이 사라졌다")
+        est, got, why = PT.MASS_CONCEPT_RETIRED["M_WINDER"]
+        self.assertGreater(abs(got - est) / est, 0.30, "철거 기록이 빗나간 크기를 잃었다")
+        self.assertIn("철거", why)
 
     def test_the_mass_groups_do_not_double_count(self):
         """같은 부품을 두 그룹이 세면 자중이 부풀고 앵커가 과대해진다."""
@@ -421,6 +427,29 @@ class TestHandoverCountsFollowTheCatalog(unittest.TestCase):
         m = re.search(r"부품도 (\d+)장", self.readme)
         self.assertIsNotNone(m)
         self.assertEqual(int(m.group(1)), self.total)
+
+
+class TestAssemblyStepsCountWhatTheCatalogHolds(unittest.TestCase):
+    """조립 단계가 세는 수량은 그 부품의 수량이다.
+
+    VT-101 의 조립 순서가 '기둥 4본' · '흡착패드 18개' 로 남아 있었다 — 구조해석이
+    기둥을 6본으로, 포락선 2,500 × 1,400 이 패드를 6 × 4 = 24 개로 올린 뒤에도.
+    조달 규격의 검사 항목도 '18점 동일 평면' 이었다. 부품표는 맞는데 단계표가
+    틀리면 현장은 단계표를 따른다.
+    """
+
+    def test_the_table_steps_count_the_catalog_quantities(self):
+        by = {p.pid: p for p in PT.P}
+        texts = " ".join(s[1] for s in PT.STEPS["M-004"])
+        self.assertIn(f"기둥 {by['P-004-04'].qty}본", texts)
+        self.assertIn(f"흡착패드 {by['P-004-08'].qty}개", texts)
+        self.assertEqual(by["P-004-05"].qty, by["P-004-04"].qty, "베이스플레이트는 기둥마다 한 장")
+        self.assertEqual(by["P-004-06"].qty, 4 * by["P-004-04"].qty, "거싯은 기둥마다 네 장")
+
+    def test_the_pad_inspection_counts_every_pad(self):
+        import procure as PR
+        n = next(p.qty for p in PT.P if p.pid == "P-004-08")
+        self.assertIn(f"{n}점 동일 평면", PR.BUY_SPEC["P-004-08"][3])
 
 
 class TestTheAlignmentGuideNeverTouchesGlassWithSteel(unittest.TestCase):
