@@ -849,6 +849,7 @@
         <tr><th>투입 단위 · 질량</th><td class="num">낱장 투입 · ≤ 34.3 kg/장 (적층 면적질량 × 포락선 면적 · 프레임 · 정션박스 제외)</td></tr>
         <tr><th>투입 자세</th><td class="num">유리면 아래 · 백시트 위</td></tr>
         <tr><th>칼날 전폭 기준</th><td class="num">1,500 mm — 패널 폭 1,400 + 양쪽 50 (계단 칼날 SHK-101)</td></tr>
+        <tr><th>투입 방식</th><td class="num">상류 버퍼 GBR-301 → BX-101 브리지 직결 (<a href="#c11">OI-17</a>) · 팔레트 투입은 단독 운전·비상 우회</td></tr>
       </tbody>
     </table></div>
     <p><strong>프레임과 정션박스는 제거되어 들어온다 (발주자 확정).</strong> 그래서 정렬
@@ -1201,6 +1202,10 @@ t_열   = max( 5Q / (48 × 2.5 kW × η 0.65),  113.15 s )  = 225.4 s
     <div class="logic">UNMANNED_PERMIT  = AUTO_FEED ∧ AUTO_STACK ∧ KC_MAGAZINE_READY ∧ BIN_LEVEL_OK ∧ THERMAL_CAM_OK ∧ FIRE_OK ∧ REMOTE_ACK ∧ OEE_VALID
 KNIFE_AUTOCHANGE = KNIFE_CHANGE_DUE ∧ KC_MAGAZINE_READY ∧ KC_ARM_HOME ∧ CASSETTE_RELEASE
 CASSETTE_RELEASE = KNIVES_CLEAR ∧ CARRIER_PARKED ∧ HEATER_ISOLATED ∧ CASSETTE_PRESENT ∧ KM_ALL_LOCKED</div>
+    <div class="warn"><strong>위 무인 허가의 투입 항은 팔레트 디스태커 전용이다.</strong> 상류 직결
+      (<a href="#c11">OI-17</a>)에서는 디스태커 픽업 스테이션이 브리지 개구로 대체돼
+      <span class="k">AUTO_FEED</span> 가 성립하지 않으므로, 투입 항을 활성 모드를 고르는 항으로
+      바꾸지 않으면 정상 운전에서 무인 허가를 받을 수 없다.</div>
     <div class="warn"><strong>칼날 자동교환은 정비허가(LOTO)가 아니라 캐리어 파킹 상태에서 돈다.</strong>
       무인 운전 중에 LOTO 를 요구하면 그 허가는 영원히 성립하지 않고, 결국 사람이
       들어가야 한다. 대신 파킹 위치·칼날 Z 상한·매거진 위치를 모두 읽어 등가의
@@ -1400,9 +1405,9 @@ KG-101 갠트리 스윕   y ±1,520 · x 8,250 ~ 11,850 · 상단 2,740  → 이
     <h3>제어 구성</h3>
     <ul>
       <li>안전 PLC와 표준 PLC 분리, 원격 I/O 3반</li>
-      <li>표준 I/O — <span class="m">DI 176 · DO 96 · AI 48 · AO 16 · TC 56</span>. 실사용 <span class="m">DI 119 · DO 46 · AI 35 · AO 6 · TC 33</span> 에서 예비 20 % 이상을 남기고 카드 배수로 올린 값이다.
+      <li>표준 I/O — <span class="m">DI 176 · DO 96 · AI 48 · AO 16 · TC 56</span>. 실사용 <span class="m">DI 121 · DO 47 · AI 35 · AO 6 · TC 33</span> 에서 예비 20 % 이상을 남기고 카드 배수로 올린 값이다.
       칼날 모듈 추종이 모듈마다 잠금 확인 DI · 변위계 AI · 잠금쐐기 DO 를 하나씩 더해 AI 예비가 12.5 % 로
-      떨어졌으므로 <strong>AI 카드 한 장(8 점)을 더했다</strong>.
+      떨어졌으므로 <strong>AI 카드 한 장(8 점)을 더했다</strong>. 상류 직결의 경계 핸드셰이크가 DI 2 · DO 1 을 더한다 (<a href="#c11">OI-17</a>).
       권취부 철거로 실사용이 DI 14 · DO 7 · AI 2 · TC 1 점 줄었지만 <strong>카드는 그대로 둔다</strong> —
       파일럿이 조각별 분력 계측을 양산으로 가져오면 그 자리가 된다. 후처리·팔레타이징이 <a href="#c11">OI-15</a>에서 공급범위로 되돌아오면 그 점수가 여기로 다시 들어오므로 <strong>예비를 더 깎지 않는다</strong></li>
       <li>안전 I/O — <span class="m">F-DI 48 · F-DO 8</span> (실사용 F-DI 38 · F-DO 6).
@@ -1496,13 +1501,14 @@ KNIFE_TRAVERSE_PERMIT = PEEL_PERMIT ∧ KNIFE_X_HOME ∧ KNIFE_X_POS</div>
         <tr><td class="k">CASSETTE_TEMP</td><td>CASSETTE_COOL_OK</td><td>카세트 온도센서 × 2</td><td class="num">TC 2</td></tr>
         <tr><td class="k">HEATER_ISOLATED</td><td>CASSETTE_RELEASE</td><td>히터 차단 확인 접촉기 × 2</td><td class="num">F-DI 2</td></tr>
         <tr><td class="k">KNIFE_TIP_OK</td><td>CASSETTE_READY</td><td>칼끝 높이 레이저 변위센서 (일곱 칼끝 · 계단)</td><td class="num">COMM</td></tr>
+        <tr><td class="k">UP_PANEL_OFFER · UP_PANEL_ACK</td><td>UPSTREAM_FEED</td><td>경계 인터페이스반 BJ-101 — 상류 BX-101 브리지 핸드셰이크 (<a href="#c11">OI-17</a>)</td><td class="num">DI 2 · DO 1</td></tr>
       </tbody>
     </table></div>
     <div class="warn"><strong>보완 전 I/O 선언은 실제 점수를 담지 못했다.</strong>
       대조로 확정한 실사용은 <span class="m">DI 105 · TC 32</span>인데 종전 선언은
       <span class="m">DI 96 · TC 16</span>이었다. 위 표의 장치를 더하기 전부터 이미
       초과 상태였다. <a href="#c3">3.3항</a> 고도화 네 축과 <a href="#c3">3.4항</a> 공급범위 경계 인터페이스, 칼날 모듈 추종까지 더한 실사용은
-      <span class="m">DI 119 · DO 46 · AI 35 · AO 6 · TC 33 · F-DI 38 · F-DO 6</span>이며,
+      <span class="m">DI 121 · DO 47 · AI 35 · AO 6 · TC 33 · F-DI 38 · F-DO 6</span>이며,
       <a href="#c7">7.1항</a>의 I/O 수량은 여기서 예비 20 %를 남기고 카드 배수로 올려
       다시 잡은 값이다.</div>
     <p><span class="m">HORN_3S</span>와 <span class="m">BEACON_AMBER</span>는
@@ -1968,6 +1974,56 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
           그 소비전력을 부하표에 넣는다.</p>
       </div>
     </div>
+    <div class="oi">
+      <div class="oi-h"><b>OI-17</b><span>상류 전처리 플랜트 직결 — 디스태커·픽업 스테이션의 대체</span></div>
+      <div class="oi-b">
+        <p><em>현황</em>본 기계는 발주자의 전처리 플랜트(REV.54) 최종 버퍼 GBR-301 뒤에
+          <strong>직결</strong>된다. 플랜트 측 인계 브리지 BX-101 이 버퍼 캐리지 슬롯(이송면 950)에서 유리 한 장을
+          들어 LD-101 데크(공정선 1,150)에 내려놓으므로, 상류 디스태커 PL-101 과 픽업 스테이션은 이 자리에서
+          <strong>플랜트 끝단 케이싱의 브리지 개구</strong>로 대체된다. 팔레트 투입은 단독 운전·비상 우회로만 남는다.
+          플랜트 투입 상한은 <span class="m">2,400 × 1,200 mm</span>(발주처 선택 · 본 기계 상한 2,500 × 1,400 안)이고 투입물은
+          프레임·정션박스가 제거된 무프레임 유리 적층체다(<a href="#c4">4.2항</a>).</p>
+        <p><em>왜 미해결인가</em>경계 신호가 하나 늘었다 — 브리지 핸드셰이크
+          <span class="k">UP_PANEL_OFFER</span>(플랜트 → 본 기계, DI 2) · <span class="k">UP_PANEL_ACK</span>(본 기계 → 플랜트, DO 1)
+          가 <span class="k">UPSTREAM_FEED</span> 허가를 만들며, 안전회로 <span class="k">IF_ESTOP_LOOP_OK</span> 는
+          브리지 행정을 포함해 잇는다. <strong>그런데 무인 운전 허가는 그 신호를 보지 않는다</strong> —
+          <span class="k">UNMANNED_PERMIT</span> 의 투입 항이 <span class="k">AUTO_FEED</span> 단독이고 그것은
+          디스태커 픽업 스테이션 접점 <span class="k">PL_IN_STACK_PRESENT</span> 를 읽으므로, 그 스테이션이
+          브리지 개구로 대체되는 <strong>직결(정상) 모드에서는 무인 허가가 영원히 성립하지 않는다</strong>.
+          또 방책 −y 쪽 통로가 플랜트 보행 통로(Y 8,160 – 9,360)와 겹친다. 권취부 철거로 BS-301 만권 롤
+          새들은 없어졌고, 남은 칼날 카세트 랙은 본 기계 좌표로 <span class="m">y −5,850</span>
+          (방책 밖 500)인데 그 500 이 통로 안이라 카세트 <span class="m">1,590</span> 이 통로를
+          <span class="m">745 mm</span> 먹는다 — 발주자는 그 새들을 <span class="m">y −7,095</span>
+          (플랜트 Y 10,655 · 통로 밖 500)로 내고 RH-201 모노레일을 <span class="m">1,245 mm</span>
+          연장해 통로 위(EL 5,100)를 넘긴다. GC-101 냉각 팬 배기(26 kW)는 실내로 내지 않고 경계 덕트에
+          합류한다. 넷 다 플랜트 측 값이 확정돼야 닫힌다.</p>
+        <p><em>해소</em>발주자가 브리지 인계면 좌표(존 경계 −475 · EL 1,150)·핸드셰이크 타이밍(방출 피치 44.5 s 이하)·
+          통로 경계 Y 와 경계 덕트 접속점을 확정 도면으로 제시하고, 입찰자는 LD-101 폭조절 가이드 1,200±3 과
+          BJ-101 의 추가 접점, 새들 위치 변경에 따른 RH-201 지주 배치를 반영한 배치도를 제출한다.
+          무인 허가는 투입 모드를 고르는 항으로 바꾼 논리도를 제출한다 —
+          <span class="k">FEED_READY = AUTO_FEED ∨ UPSTREAM_FEED</span> 를 두고
+          <span class="k">UNMANNED_PERMIT</span> 이 그것을 읽으면 팔레트 우회 운전과 직결 운전이 같은 허가로 선다.
+          팔레트 투입 우회 운전은 인수시험 항목에 남긴다.</p>
+      </div>
+    </div>
+    <div class="oi">
+      <div class="oi-h"><b>OI-18</b><span>배기 헤더 최고점 — 모듈 외형표 5,400 과 운전 콘솔 도면 5,780 의 차이</span></div>
+      <div class="oi-b">
+        <p><em>현황</em>사양서 3.x 납품 모듈 외형표는 <span class="k">M-017</span>(경계 인터페이스 ·
+          <strong>배기 헤더 포함</strong>)의 높이를 <span class="m">5,400 mm</span> 로 적는다. 그런데 본 기계의
+          운전 콘솔(<span class="k">pv-delamination-3d.html</span>)은 HC-101 가열실 배기 라이저를
+          <span class="m">EL 5,780</span> 까지, 경계로 나가는 헤더를 <span class="m">EL 5,560</span> 에 그린다.
+          같은 기계의 두 문서가 최고점을 <span class="m">380 mm</span> 다르게 말한다.</p>
+        <p><em>왜 미해결인가</em>둘 다 맞을 수 있다 — 모듈표는 <strong>운송·앵커용 외형</strong>이고 라이저는
+          현장에서 잇는 배관일 수 있다. 하지만 발주자가 <strong>비워 둘 높이</strong>는 그 구분과 무관하게 큰 쪽이라,
+          전처리 플랜트는 유리제거기 존 높이를 <span class="m">5,780</span> 으로 잡았다(건축 유효고·천장크레인
+          거더 하면·배기 덕트 경로가 그 값에서 나온다). 모듈표 값이 맞다면 플랜트가 380 을 과하게 비운 것이고,
+          콘솔이 맞다면 모듈표가 배기 헤더를 덜 적은 것이다.</p>
+        <p><em>해소</em>입찰자는 배기 헤더·라이저의 <strong>최고점 확정값</strong>과 그것이 납품 범위인지
+          현장 배관인지를 밝히고, 경계 플랜지 중심 EL(사양서 부기 <span class="m">5,100</span>)과의 관계를
+          단면도로 제시한다. 확정값이 5,400 이하면 플랜트 존 높이를 되돌린다.</p>
+      </div>
+    </div>
   </div></div>
 </section>
 
@@ -2093,7 +2149,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
     <p>아래 순서로 작성한다. 순서는 <a href="#c12">12.7항</a> 평가 항목과 같다.</p>
     <ol>
       <li>설계 접근 방법 및 주요 기술적 판단</li>
-      <li><a href="#c11">11항</a> 확인사항 가운데 열린 <strong>15건 전부</strong>에 대한 해소 방법·소요·책임 범위
+      <li><a href="#c11">11항</a> 확인사항 가운데 열린 <strong>17건 전부</strong>에 대한 해소 방법·소요·책임 범위
         — 항목별로 시험·해석·문헌 중 무엇으로 해소할지, 그 결과가 어느 설계값을 바꾸는지 적는다.
         닫힌 <a href="#c11">OI-11</a> 에는 답하지 않는다</li>
       <li>수행 조직 — <a href="#c12">12.4항</a> 인력별 이력과 해당 실적</li>
@@ -2148,7 +2204,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
       <thead><tr><th>구분</th><th>항목</th><th class="num">배점</th></tr></thead>
       <tbody>
         <tr><td class="k" rowspan="4">기술</td><td>과업 이해도 및 설계 접근 방법</td><td class="num">20</td></tr>
-        <tr><td><strong>11항 확인사항 15건의 해소 계획</strong></td><td class="num">25</td></tr>
+        <tr><td><strong>11항 확인사항 17건의 해소 계획</strong></td><td class="num">25</td></tr>
         <tr><td>수행 조직 및 실적</td><td class="num">20</td></tr>
         <tr><td>일정 및 품질관리 계획</td><td class="num">15</td></tr>
         <tr><td class="k">가격</td><td>최저 제안가 기준 상대평가</td><td class="num">20</td></tr>
@@ -2159,7 +2215,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
       이 용역의 위험은 도면을 그리는 데 있지 않다. 로드셀 용량이 부족할 수 있고
       (<a href="#c11">OI-01</a>), 열모델 상수가 가정이며(<a href="#c11">OI-05</a>),
       진공 유지력이 마찰계수 가정 위에 서 있다(<a href="#c11">OI-13</a>).
-      이 15건을 어떻게 닫을지가 설계의 질을 결정한다.</div>
+      이 17건을 어떻게 닫을지가 설계의 질을 결정한다.</div>
     <p>기술평가 <span class="m">60점</span> 미만은 협상 대상에서 제외한다.
       최고점 순으로 기술협상하며, 협상 결렬 시 차순위와 협상한다.
       발주자는 필요 시 발표평가를 요구할 수 있다.</p>

@@ -1,0 +1,555 @@
+"""배치 모델이 바뀌면 따라 움직이는 도면 리터럴을 한 번에 다시 찍는다.
+
+존 표(`layout.build_zones`)는 이 플랜트의 뿌리다 — 존 하나가 길어지거나 없어지면
+소음원 위치·케이블 길이·MDB 부하중심·크레인 주행로·스마트 시설 X·케이싱이 전부
+따라 움직인다. 그동안 그 재생성을 그때그때 임시 스크립트로 했고, 스크립트가 남지
+않아 다음 사람이 같은 것을 다시 짰다. REV.45 에서 게이트 존이 없어지며 도면
+리터럴 50여 곳이 한꺼번에 어긋난 것이 계기다.
+
+    PYTHONPATH=src python tools/build_literals.py
+
+멱등이다. 값이 이미 맞으면 아무것도 안 바꾼다.
+"""
+
+from __future__ import annotations
+
+import json
+import pathlib
+import re
+import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
+
+from pv_preprocess import (access, acoustics, ai, crane, kinematics,  # noqa: E402
+                           layout, mounting, reliability, safety, smart, thermal,
+                           wiring)
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+DRAWING = ROOT / "docs/drawings/pv-preprocess-plant.html"
+
+# AFR 시트에 손으로 그린 12구역 지지베드 — 공용 인계롤러가 여기서 끝난다.
+# 시트의 BED 부품과 같은 값이어야 한다 (part('BED', …, [3250, …], [-400, …])).
+BED_X_MM, BED_L_MM = -400, 3250
+
+#: 3D 씬 원점의 플랜트 X (mm). world_x = (plant_x - 이 값) / 1000.
+SCENE_ORIGIN_X_MM = 24_750
+
+
+def q(v: object) -> str:
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, str):
+        return "'" + v + "'"
+    if isinstance(v, float):
+        return f"{v:g}" if v != int(v) else f"{v:.1f}"
+    return str(v)
+
+
+class Patch:
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self.changed = 0
+
+    def one(self, pattern: str, build) -> None:
+        """정확히 한 곳을 찾아 갈아 끼운다. 0 곳이나 2 곳이면 멈춘다."""
+        hits = re.findall(pattern, self.text, re.S)
+        assert len(hits) == 1, f"앵커 {len(hits)}곳: {pattern[:60]}"
+        new = self.text[:]
+        self.text = re.sub(pattern, lambda m: build(m), self.text, count=1, flags=re.S)
+        if new != self.text:
+            self.changed += 1
+
+    def rows(self, name: str, rows, indent: str = "        ") -> None:
+        body = "\n" + ",\n".join(
+            indent + "[" + ", ".join(q(c) for c in r) + "]" for r in rows)
+        self.one(rf"(var {name} = \[)(?:.*?)(\n  \];)",
+                 lambda m: m.group(1) + body + m.group(2))
+
+    def scalar(self, key: str, value: object, sep: str = ": ") -> None:
+        pat = re.escape(key) + re.escape(sep) + r"-?[\d.]+"
+        hits = re.findall(pat, self.text)
+        assert len(hits) == 1, f"스칼라 {key} {len(hits)}곳"
+        new = re.sub(pat, key + sep + q(value), self.text, count=1)
+        if new != self.text:
+            self.changed += 1
+        self.text = new
+
+
+def zone_seed_rows() -> list[list[object]]:
+    out: list[list[object]] = []
+    for key, label, y0, note, fallback in layout.ZONE_SEED:
+        row: list[object] = [key, label, y0, note]
+        if fallback is not None:
+            row += list(fallback)
+        out.append(row)
+    return out
+
+
+def main() -> int:
+    p = Patch(DRAWING.read_text(encoding="utf-8"))
+
+    # ── 존 시드 ──────────────────────────────────────────────────────────
+    body = "\n" + ",\n".join(
+        "    [" + ", ".join(q(c) for c in row) + "]" for row in zone_seed_rows())
+    p.one(r"(  var zoneSeed = \[)(?:.*?)(\n  \];)",
+          lambda m: m.group(1) + body + m.group(2))
+
+    # ── 3D 셀 격자 ───────────────────────────────────────────────────────
+    # 이 플랜트에는 격자가 둘 있었다. 존 표(여기)와, 씬에 손으로 놓은 셀 좌표.
+    # 두 격자는 AFR 아래에서 4,600 mm 갈라져 있었고 아무 검사도 그것을 안 봤다
+    # (케이싱·하중경로 검사는 "형상끼리" 를 묻지 "형상이 자기 존 안인가" 를
+    # 묻지 않는다). 존 범위를 씬에 값으로 들여보내 3D 가 그것을 기준으로
+    # 검사받게 한다 — `tools/check_cell_grid.mjs`.
+    def _m(mm: int) -> str:
+        """플랜트 mm → 씬 world m 문자열 (씬 원점은 x 24,750 mm)."""
+        t = f"{(mm - SCENE_ORIGIN_X_MM) / 1000:g}"
+        return t[1:] if t.startswith("0.") else (
+            "-" + t[2:] if t.startswith("-0.") else t)
+
+    grid = ",".join(f"{z.key}:[{_m(z.x0_mm)},{_m(z.x1_mm)}]"
+                    for z in layout.build_zones())
+    p.one(r"var pvZone=\{[^}]*\}", lambda m: "var pvZone={" + grid + "}")
+
+    # ── 셀 외형·이름 ─────────────────────────────────────────────────────
+    for key, st in layout.STATIONS.items():
+        if key == "bfc":
+            continue                       # 부품 조립도라 존이 없다
+        p.one(rf"(\n    {key}: \{{.*?envelope: )\[[\d, ]+\]",
+              lambda m, st=st: m.group(1)
+              + "[" + ", ".join(str(v) for v in st.envelope) + "]")
+
+    # 이송면 — 셀 표제란의 H 는 모델의 이송 높이다. REV.44 까지 robot·jbr 이
+    # 900 으로 남아 있었고 3D 는 또 1,025 였다 — 한 플랜트에 세 값이 있었다.
+    for key, st in layout.STATIONS.items():
+        if key == "bfc":
+            continue
+        p.one(rf"(\n    {key}: \{{.*?\n      transfer: )\d+",
+              lambda m, st=st: m.group(1) + str(st.transfer_height_mm))
+
+    # 종단면 주기 — 라인의 최저·최고 이송면에서 파생한다
+    levels = sorted({st.transfer_height_mm for k, st in layout.STATIONS.items()
+                     if k not in ("afu", "bfc")})
+    # REV.56 — 투입 베이 방위. 씬은 이 값 하나로 적층대·반전 카세트·지게차 도킹을 돌린다.
+    p.one(r"var pvBayYaw=[^,]+,",
+          lambda m: f"var pvBayYaw={layout.INFEED_BAY_YAW_DEG}*Math.PI/180,")
+
+    p.one(r"'기준 이송면 H=[\d,~]+ · BFC 로봇 인계 H=[\d,]+'",
+          lambda m: f"'기준 이송면 H={levels[0]:,}~{levels[-1]:,} · "
+          f"BFC 로봇 인계 H={layout.STATIONS['bfc'].transfer_height_mm:,}'")
+
+    # 초점 뷰 — 없어진 존을 가리키면 화면이 빈다
+    p.one(r"var LAYOUT_FOCUS = \{[^}]*\}",
+          lambda m: "var LAYOUT_FOCUS = { all: null, upstream: ['afu', 'robot'], "
+                    "jbr: ['jbr'], afr: ['afr', 'post'] }")
+
+    # ── 지지·장착 요약 ───────────────────────────────────────────────
+    # 부재 수·브래킷 수·앵커 수는 mounting 이 센다. 손으로 적으면 부재 하나를
+    # 빼도 배지가 옛 수를 보여 준다 (REV.49 에서 셔틀 포스트를 빼며 그랬다).
+    sm = mounting.summary()
+    p.one(r"MOUNT_SUMMARY = \{[^}]*\}",
+          lambda m: ("MOUNT_SUMMARY = { stations: %d, anchors: %d, m16: %d, m20: %d, m24: %d, "
+                     "members: %d, brackets: %d, keepOut: %d, floor: %d, frame: %d, gantry: %d, "
+                     "exempt: %d }")
+          % (sm["stations"], sm["anchors"], sm["by_bolt"]["M16"], sm["by_bolt"]["M20"],
+             sm["by_bolt"]["M24"], sm["members"], sm["brackets"], sm["keepOut"],
+             sm["by_class"]["floor"], sm["by_class"]["frame"], sm["by_class"]["gantry"],
+             sm["exempt"]))
+
+    # ── 반전기 기구학 요약 ───────────────────────────────────────────
+    # 3D 표제란이 그대로 보여 주는 값이다. REV.48 까지 손으로 적은 리터럴이었고,
+    # 시험이 모델 요약의 키·값이 도면에 있는지만 봤다 — 모델에서 키가 없어지면
+    # (REV.49 의 이송면·링 밑 여유) 도면에 옛 값이 남아도 아무도 몰랐을 자리다.
+    def _kv(k: str, v: object) -> str:
+        return f"{k}: {json.dumps(v)}" if isinstance(v, list) else f"{k}: {v}"
+    p.one(r"var KINEMATICS = \{[^}]*\}",
+          lambda m: "var KINEMATICS = {" + ", ".join(
+              _kv(k, v) for k, v in kinematics.summary().items()) + "}")
+
+    # ── 소음 ─────────────────────────────────────────────────────────────
+    p.rows("NOISE_SOURCES",
+           [(s.tag, s.equipment, s.x_mm, s.lw_dba, s.reduction_db,
+             s.mitigation, s.character) for s in acoustics.noise_sources()])
+    raw_x, raw = acoustics.worst_aisle_dba(mitigated=False)
+    mit_x, mit = acoustics.worst_aisle_dba(mitigated=True)
+    p.one(r"var NOISE_SUMMARY = \{[^}]*\}",
+          lambda m: ("var NOISE_SUMMARY = { nearRaw: %s, nearMit: %s, aisleRawX: %d, "
+                     "aisleRaw: %s, aisleMitX: %d, aisleMit: %s, nearLimit: %.0f, "
+                     "aisleLimit: %.0f, standoffM: %.0f }")
+          % (acoustics.worst_near_field_dba(False), acoustics.worst_near_field_dba(True),
+             raw_x, raw, mit_x, mit, acoustics.NEAR_FIELD_LIMIT_DBA,
+             acoustics.AISLE_LIMIT_DBA, acoustics.AISLE_STANDOFF_M))
+
+    # ── 배선 ─────────────────────────────────────────────────────────────
+    p.one(r"var MDB_X_MM = \d+, INCOMING_CABLE_M = [\d.]+, TOTAL_POWER_CABLE_M = [\d.]+",
+          lambda m: "var MDB_X_MM = %d, INCOMING_CABLE_M = %s, TOTAL_POWER_CABLE_M = %s"
+          % (wiring.MDB_POSITION_MM[0],
+             0 if wiring.incoming_cable_m() is None else q(wiring.incoming_cable_m()),
+             q(round(wiring.total_power_cable_m(), 1))))
+
+
+    # 케이블 길이 — 반이 움직이면 12본이 전부 다시 계산된다
+    p.one(r"var CABLE_LENGTH_M = \{[^}]*\}",
+          lambda m: "var CABLE_LENGTH_M = { "
+          + ", ".join(f"{c.feeder}: {c.length_m:g}" for c in wiring.power_cables())
+          + " }")
+
+    # ── 통합 제거셀의 가드 ───────────────────────────────────────────────
+    # 두 스테이션은 한 인클로저 안에 있다. 접합부에는 벽이 없으므로 각 시트의
+    # 가드는 자기 존 구간만 그린다 — 폭·중심을 장비 실측에서 파생한다.
+    # REV.52: 스테이션이 셋이다 — post 하드웨어는 CV-102 통과 롤러 런이고 시트
+    # 로컬 원점(GI 검사대 중심)에서 상류 1,225 · 하류 1,645 다.
+    hardware = {"jbr": (-3400, 3400),
+                "afr": (-2325, 3325),   # REV.50: SG-301 몸체 끝 (롤러 런 중심 2,225 + 1,100)
+                "post": (-layout.POST_GI_FROM_HARDWARE_MM,
+                         layout.STATION_HARDWARE_X_MM["post"]
+                         - layout.POST_GI_FROM_HARDWARE_MM)}
+    sides = {0: "상류", len(layout.INTEGRATED_CELL) - 1: "하류"}
+    guard_lo: dict[str, int] = {}
+    for key, (h0, h1) in hardware.items():
+        up, down = layout.station_edges_mm(key)
+        lo, hi = h0 - up, h1 + down
+        assert hi - lo == layout.STATIONS[key].envelope[0], (key, hi - lo)
+        guard_lo[key] = lo
+        side = sides.get(layout.INTEGRATED_CELL.index(key), "가운데")
+        # 접합부 250 을 반씩 나눠 가지면 구간이 홀수인 스테이션이 생긴다 —
+        # post 가 그렇다(3,025). 중심을 반올림하면 부재 끝이 0.5 mm 어긋나므로
+        # 공용 인계롤러(CV-JA)와 같은 이유로 실제 기하를 그대로 적는다.
+        p.one(rf"(\n    {key}: \{{.*?part\('GUARD', )'[^']*', \[\d+, (\d+), (\d+)\], "
+              rf"\[-?[\d.]+, (\d+), 0\]",
+              lambda m, lo=lo, hi=hi, side=side:
+              m.group(1) + f"'JB/AFR 통합 가드 ({side} 스테이션 구간)', "
+              f"[{hi - lo}, {m.group(2)}, {m.group(3)}], [{(lo + hi) / 2:g}, {m.group(4)}, 0]")
+
+    # 접합부를 넘어 이어지는 공용 인계롤러는 자기 시트 안에서만 그린다.
+    # 통합 전에는 AFR 가드(-3,200)까지 그려도 됐지만, 가드가 물러나며 시트
+    # 밖으로 나갔다 — 서브어셈블리 시트는 자기 구간까지만 그린다.
+    #
+    # 접합부 250 을 절반씩 나눠 가지므로 이 구간은 **홀수**(425)다. 그래서
+    # 중심이 -2,237.5 로 떨어진다. 반올림하면 부품 끝이 시트 포락선을 0.5 mm
+    # 넘거나 베드를 0.5 mm 파고든다 — 실제 기하가 반올림보다 우선이다.
+    lo = guard_lo["afr"]              # AFR 시트의 상류 경계 = 통합 가드 끝
+    hi = BED_X_MM - BED_L_MM // 2     # 12구역 지지베드 상류 끝
+    p.one(r"part\('CV-JA', '[^']*', \[[\d.]+, (\d+), (\d+)\], \[-?[\d.]+, (\d+), 0\]",
+          lambda m: f"part('CV-JA', '공용 인계롤러 (JBR 스테이션에서 이어짐)', "
+          f"[{q(hi - lo)}, {m.group(1)}, {m.group(2)}], "
+          f"[{q((lo + hi) / 2)}, {m.group(3)}, 0]")
+
+    # 진입 화살표도 같은 경계에서 출발한다. 통합 전에는 -2,610 에서 시작했는데
+    # 그건 옛 AFR 가드(-3,200) 안쪽이었다 — 가드가 -2,450 으로 물러난 지금은
+    # 시트 밖에서 출발하는 화살표다. 경계에서 베드 중심까지로 다시 찍는다.
+    p.one(r"step\('1', '공용 인계롤러 진입[^']*', \[-?\d+, (\d+), 0\], \[-?\d+, (\d+), 0\]\)",
+          lambda m: f"step('1', '공용 인계롤러 진입·베드 안착 {BED_X_MM - lo:,}', "
+          f"[{lo}, {m.group(1)}, 0], [{BED_X_MM}, {m.group(2)}, 0])")
+
+    # AFR 존 시작부터 플랜트 끝까지의 상세 포락선 표기 — 존에서 파생한다
+    zones = {z.key: z for z in layout.build_zones()}
+    tail = layout.plant_envelope_mm()[0] - zones["afr"].x0_mm
+    p.one(r"상세 배치 포락선은 [\d,]+ × [\d,]+ mm",
+          lambda m: f"상세 배치 포락선은 {tail:,} × {layout.MACHINE_BAND_Y_MM:,} mm")
+
+    # ── AFR CL-221 클램프 포탈 ───────────────────────────────────────────
+    # 크로스헤드 하면은 이송면 위에 쌓인 것들의 합이다 (kinematics). 이송면이
+    # 움직이면 기둥 전장·크로스헤드·타이빔이 전부 따라와야 하고, 안 따라오면
+    # 클램프가 크로스헤드에서 떨어져 공중에 매달린다.
+    soffit = kinematics.AFR_CROSSHEAD_SOFFIT_MM / 1000
+    depth = kinematics.AFR_CROSSHEAD_DEPTH_MM / 1000
+    col = kinematics.AFR_PORTAL_HEIGHT_MM / 1000
+    p.one(r"L\(\[\.14, [\d.]+, \.14\], \[x, [\d.]+, z\]",
+          lambda m: f"L([.14, {col:g}, .14], [x, {col / 2:g}, z]")
+    p.one(r"L\(\[\.16, [\d.]+, 3\.04\], \[x, [\d.]+, 0\]",
+          lambda m: f"L([.16, {depth:g}, 3.04], [x, {soffit + depth / 2:g}, 0]")
+    p.one(r"L\(\[1\.98, [\d.]+, \.14\], \[pvZone\.afr\[0\]\+2\.05, [\d.]+, z\]",
+          lambda m: f"L([1.98, {depth:g}, .14], [pvZone.afr[0]+2.05, {soffit + depth / 2:g}, z]")
+    p.one(r"// 크로스헤드 하면 [\d.]+ 가 클램프 실린더 상단을 직접 받는다\.",
+          lambda m: f"// 크로스헤드 하면 {soffit:g} 가 클램프 실린더 상단을 직접 받는다.")
+    p.one(r"y 1\.03…[\d.]+ 에 서 있는데 \*\*[\d.]+ 위에 아무것도 없었다\*\*",
+          lambda m: f"y 1.03…{soffit:g} 에 서 있는데 **{soffit:g} 위에 아무것도 없었다**")
+    p.one(r"'하면 [\d.]+ 가 상부 클램프 실린더 상단을 직접 받는다",
+          lambda m: f"'하면 {soffit:g} 가 상부 클램프 실린더 상단을 직접 받는다")
+    p.one(r"\['AFR CL-221 포탈 크로스헤드 2본', 'afr', 'floor', '[^']*'\]",
+          lambda m: "['AFR CL-221 포탈 크로스헤드 2본', 'afr', 'floor', '"
+          + [mm for mm in mounting.MEMBERS
+             if mm.label == "AFR CL-221 포탈 크로스헤드 2본"][0].carries + "']")
+
+    # ── 신뢰도·AI ────────────────────────────────────────────────────────
+    # 블록을 하나 가르거나 가용률 식을 고치면 도면의 두 표가 같이 움직여야 한다.
+    p.one(r"var RELIABILITY = \{.*?\};",
+          lambda m: "var RELIABILITY = "
+          + json.dumps(reliability.summary(), ensure_ascii=False) + ";")
+    p.one(r"var RELIABILITY_BLOCKS = \[.*?\];",
+          lambda m: "var RELIABILITY_BLOCKS = " + json.dumps(
+              [[b.tag, b.name, b.share, b.mttr_h, b.redundant, b.buffered,
+                b.downtime_h(), b.failures_per_year(), b.required_mtbf_h(), b.basis]
+               for b in reliability.BLOCKS], ensure_ascii=False) + ";")
+
+    a = ai.summary()
+    labels = a["labels"]
+    grades = a["grades"]
+    p.one(r"var AI_SUMMARY = \{[^}]*\};",
+          lambda m: ("var AI_SUMMARY = { cases: %d, gradeA: %d, gradeB: %d, gradeC: %d, "
+                     "gradeD: %d, annualPanels: %d, labelNormal: %d, labelCracked: %d, "
+                     "labelScrap: %d, scarcest: '%s', coldStartMonths: %s, transferMin: %d, "
+                     "scrapMissS: %s, crackedMissS: %s };")
+          % (a["cases"], grades["A"], grades["B"], grades["C"], grades["D"],
+             a["annual_panels"], labels["정상"], labels["유리 깨짐"], labels["전손"],
+             a["scarcest"], q(a["cold_start_months"]), a["transfer_min"],
+             q(a["scrap_miss_s"]), q(a["cracked_miss_s"])))
+
+    # ── 안전 ─────────────────────────────────────────────────────────────
+    p.one(r"var SAFETY = \{.*?\};",
+          lambda m: "var SAFETY = "
+          + json.dumps(safety.summary(), ensure_ascii=False) + ";")
+    p.one(r"var SAFETY_OPENINGS = \[.*?\];",
+          lambda m: "var SAFETY_OPENINGS = " + json.dumps(
+              [[o.tag, o.name, o.plane_x_mm, o.hazard_x_mm, o.hazard_part,
+                o.distance_mm, o.budget_ms, o.note] for o in safety.OPENINGS],
+              ensure_ascii=False) + ";")
+
+    # ── 고소 접근 ────────────────────────────────────────────────────────
+    # 이송면이 내려가면 포탈이 낮아지고, 낮아지면 추락 방호 대상 수가 바뀐다.
+    p.one(r"var ACCESS = \{.*?\};",
+          lambda m: "var ACCESS = "
+          + json.dumps(access.summary(), ensure_ascii=False) + ";")
+    p.one(r"var ACCESS_POINTS = \[.*?\];",
+          lambda m: "var ACCESS_POINTS = " + json.dumps(
+              [[pt.tag, pt.equipment, pt.station, pt.height_mm, pt.task,
+                pt.per_year, pt.ours, pt.means, pt.needs_fall_protection, pt.basis]
+               for pt in access.POINTS], ensure_ascii=False) + ";")
+
+    # ── 크레인 ───────────────────────────────────────────────────────────
+    p.scalar("runwayMm", crane.summary()["runwayMm"])
+    # 3D — 주행거더 중앙은 플랜트 중앙이다 (월드 원점 x = 24,750)
+    rx = (layout.plant_envelope_mm()[0] / 2 - 24_750) / 1000
+    p.one(r"RX=[-\d.]+,BX=RX;", lambda m: f"RX={rx:g},BX=RX;")
+    p.one(r"L\(\[[\d.]+,\.40,\.20\],\[RX,10\.50,z\]",
+          lambda m: f"L([{crane.RUNWAY_MM / 1000:.2f},.40,.20],[RX,10.50,z]")
+    p.one(r"'길이 [\d,]+ 이 플랜트 전장 [\d,]+ 을 덮는다\.",
+          lambda m: f"'길이 {crane.RUNWAY_MM:,} 이 플랜트 전장 "
+          f"{layout.plant_envelope_mm()[0]:,} 을 덮는다.")
+    p.one(r'installOrder: \[[^\]]*\]',
+          lambda m: "installOrder: ["
+          + ", ".join('"' + k + '"' for k in crane.install_order()) + "]")
+
+    # ── 스마트 시설 — 위치는 배선 모델이 존에서 파생한다 ───────────────
+    # 데이터량·태그 수는 서보 축 수의 함수다 (REV.49 에서 셔틀 X 축 2 가 빠지며
+    # 37 → 35 축, 태그 600 → 584, 시계열 94.1 → 89.2 kB/s). 손으로 적은 리터럴은
+    # 축을 빼도 옛 값을 보여 준다 — 그래서 요약에서 그대로 찍는다.
+    sm = smart.summary()
+    for key, value in (("serverRoomX", wiring.server_room_center_x_mm()),
+                       ("controlRoomX", wiring.control_room_center_x_mm()),
+                       ("edgeCenterX", wiring.edge_cabinet_center_x_mm()),
+                       ("facilityX0", wiring.facility_x0_mm()),
+                       ("facilityX1", wiring.facility_span_mm()[1])):
+        p.scalar(key, value)
+    # 나머지 키는 SMART 리터럴 **안에서만** 바꾼다 — itKw 같은 이름은 다른 표에도 있다.
+    smart_keys = (("racks", sm["racks"]), ("rackU", sm["rack_u"]),
+                  ("rackHeatKw", sm["rack_heat_kw"]),
+                  ("edgeCabinets", sm["edge_cabinets"]), ("wifiAps", sm["wifi_aps"]),
+                  ("instruments", sm["instruments"]), ("plcTags", sm["plc_tags"]),
+                  ("servos", sm["drive_counts"]["서보"]),
+                  ("inverters", sm["drive_counts"]["인버터"]),
+                  ("dol", sm["drive_counts"]["직입"] + sm["drive_counts"]["소프트스타터"]),
+                  ("timeseriesKbS", sm["timeseries_kb_s"]),
+                  ("visionRawMbS", sm["vision_raw_mb_s"]),
+                  ("visionKeptMbS", sm["vision_kept_mb_s"]),
+                  ("retentionPct", sm["vision_retention_pct"]),
+                  ("requiredMbps", sm["required_mbps"]),
+                  ("backboneMbps", sm["backbone_mbps"]),
+                  ("annualTb", sm["annual_tb"]), ("storageTb", sm["storage_tb"]),
+                  ("itKw", sm["it_kw"]), ("instKw", sm["inst_kw"]),
+                  ("smartKw", sm["smart_kw"]),
+                  ("hoursPerYear", int(sm["hours_per_year"])))
+
+    def _smart(m: re.Match) -> str:
+        body = m.group(0)
+        for key, value in smart_keys:
+            body, n = re.subn(rf"\b{key}: -?[\d.]+", f"{key}: {q(value)}", body)
+            assert n == 1, f"SMART 키 {key} {n}곳"
+        return body
+    p.one(r"var SMART = \{[^}]*\}", _smart)
+
+    # ── 패널 구조 레시피 (REV.51) — recipe.py 가 정본이다 ──────────────────
+    from pv_preprocess import recipe, campaign
+    p.rows("STRUCTURE_RECIPES", recipe.literal_rows(), indent="    ")
+    # SG-301 반출롤러 점유 — 설계·PLC·검증 표의 문구가 campaign 값을 따른다
+    p.one(r"SG-301 반출롤러 점유 [\d.]+ s",
+          lambda m: f"SG-301 반출롤러 점유 {campaign.sg_occupancy_s():g} s")
+
+    # ── 열수지 — 반내 발열은 서보 일람에서 나온다 ────────────────────────
+    # 이름표도 모델에서 찍는다 — "셀 분전반 7면" 처럼 반 수가 박힌 문구가 있어,
+    # 반이 합쳐지면 값만 고쳐서는 도면이 옛 이야기를 계속 한다 (REV.52).
+    # REV.54: 발열원 표는 아래에서 통째로 찍는다 (태그가 바뀌면 행 패치로는 못 따라간다).
+    loads = thermal.cabinet_loads()
+    p.rows("THERMAL_CABINETS",
+           [(panel, kw, "열교환기" if thermal.cabinet_needs_exchanger(panel)
+             else ("필터팬" if kw > 0 else "— (전동기 없음)"))
+            for panel, kw in loads.items()])
+
+    # ── REV.54 — 손으로 적혀 있던 표를 전부 모델에서 찍는다 ──────────────────
+    # GRM-401 을 DG-HK60C 로 바꾸며 피더·서보·계측·부재·안전·지진·예비품 표가
+    # 한꺼번에 움직였다. 시험이 한 줄씩 대조하던 표들이라 손으로 고치면 반드시
+    # 한 줄이 남는다 — 그래서 여기서 찍고, 사람은 모델만 고친다.
+    import dataclasses
+    from pv_preprocess import (acceptance, air, casing, dust, electrical, hk60c, seismic,
+                               servos, handoff)
+
+    def jsv(v: object) -> str:
+        """단따옴표 JS 리터럴 — 문자열·수·불·중첩 배열."""
+        if isinstance(v, bool):
+            return "true" if v else "false"
+        if v is None:
+            return "null"
+        if isinstance(v, str):
+            return "'" + v.replace("'", "’") + "'"
+        if isinstance(v, (list, tuple)):
+            return "[" + ",".join(jsv(x) for x in v) + "]"
+        return q(v)
+
+    def rows_js(name: str, rows, indent: str = "    ") -> None:
+        body = "\n" + ",\n".join(indent + "[" + ", ".join(jsv(c) for c in r) + "]" for r in rows)
+        p.one(rf"(var {name} = \[)(?:.*?)(\n  \];)", lambda m: m.group(1) + body + m.group(2))
+
+    def json_var(name: str, value, *, sep: str = ";") -> None:
+        p.one(rf"var {name} = (?:\[|\{{).*?(?:\]|\}}){re.escape(sep)}",
+              lambda m: f"var {name} = " + json.dumps(value, ensure_ascii=False) + sep)
+
+    def js_dict(name: str, d: dict, *, dq: bool = False) -> None:
+        def v(x):
+            if isinstance(x, bool):
+                return "true" if x else "false"
+            if isinstance(x, str):
+                return json.dumps(x, ensure_ascii=False) if dq else "'" + x + "'"
+            if isinstance(x, (list, tuple)):
+                return json.dumps(list(x), ensure_ascii=False)
+            return q(x)
+        p.one(rf"var {name} = \{{.*?\}};",
+              lambda m: f"var {name} = {{ " + ", ".join(f"{k}: {v(x)}" for k, x in d.items()) + " };")
+
+    # 전기 — 피더 표 · 분전반 위치 · 제어 체인
+    p.one(r"(  var feeders = \[)(?:.*?)(\n  \];)",
+          lambda m: m.group(1) + "\n" + ",\n".join(
+              "        [" + ", ".join(jsv(c) for c in (f.tag, f.panel, f.served, f.installed_kw,
+                                                      f.diversity, f.breaker_at, f.cable, f.source)) + "]"
+              for f in electrical.FEEDERS) + m.group(2))
+    lp_new = ("      // REV.54 DG-HK60C — 벤더 MCC M-011 이 기초 패드 P1(EP-1 · 기계 x 4,200)에 선다.\n"
+              "      // 두 피더(IR · 기구) 다 그 반으로 가므로 자리는 하나다.\n"
+              "      'LP-DGM-IR': zoneByKey('grm')[2] + 4200, 'LP-DGM-MC': zoneByKey('grm')[2] + 4200,\n")
+    if "'LP-DGM-IR': zoneByKey('grm')[2] + 4200" not in p.text:
+        p.one(r"      // REV\.23 유리제거셀 4면\..*?'LP-GRM-EXH': center\('grm'\) \+ 4200,\n", lambda m: lp_new)
+    segments = wiring.control_segments()
+    chain = [segments[0].feeder.split("→")[0]] + [row.panel for row in segments]
+    p.one(r"var EL_CHAIN = \[[^\]]*\];",
+          lambda m: "var EL_CHAIN = [" + ", ".join("'" + k + "'" for k in chain) + "];")
+    c = electrical.incomer_summary()
+    js_dict("INCOMER", {
+        "method": c["method"], "tapsSite": c["taps_site"], "tapLowVoltage": c["tap_low_voltage"],
+        "siteServiceKw": c["site_service_kw"], "siteUtilPct": c["site_utilisation_pct"],
+        "siteHeadroomKw": c["site_headroom_kw"], "worstCaseKw": c["worst_case_kw"],
+        "coincidentWorstCaseKw": c["coincident_worst_case_kw"], "lvTapMaxM": c["lv_tap_max_m"],
+        "highVoltage": c["high_voltage"], "hvV": c["hv_voltage_v"], "contractKw": c["contract_kw"],
+        "contractKva": c["contract_kva"], "apparentKva": c["apparent_kva"],
+        "transformerKva": c["transformer_kva"], "transformerKvaIfHv": c["unit_transformer_kva"],
+        "transformerLoadPct": c["transformer_load_pct"], "capacitorKvar": c["capacitor_kvar"],
+        "hvCurrentA": c["hv_current_a"], "hvCable": c["incoming_cable"], "vcbA": c["vcb_a"],
+        "lvMainMm2": c["lv_main_cable_mm2"], "substationMm": c["substation_room_mm"],
+        "lowVoltageLimitKw": electrical.LOW_VOLTAGE_LIMIT_KW,
+        "incomingKnown": wiring.incoming_cable_m() is not None,
+        "withinLvLimit": bool(c["taps_site"]), "lvTapConfirmed": bool(c["tap_low_voltage"]),
+        "dropPct": electrical.FEEDER_VOLTAGE_DROP_PCT, "breakerHeadroomKw": c["breaker_headroom_kw"]})
+    p.one(r"var MAIN_BREAKER_FRAME_A = \d+;",
+          lambda m: f"var MAIN_BREAKER_FRAME_A = {electrical.MAIN_BREAKER_FRAME_A};")
+
+    # 서보·전동기
+    rows_js("SERVO_AXES", [dataclasses.astuple(a) for a in servos.SERVO_AXES], indent="        ")
+    rows_js("PLANT_MOTORS", [dataclasses.astuple(a) for a in servos.MOTORS], indent="        ")
+
+    # 계측·AI·영상 스트림
+    rows_js("INSTRUMENTS", [dataclasses.astuple(i) for i in smart.INSTRUMENTS])
+    rows_js("AI_CASES", [(c.tag, c.grade, c.name, c.where, c.data, c.label, c.method,
+                          c.benefit, c.caveat, list(c.needs)) for c in ai.CASES])
+    rows_js("IMAGE_STREAMS", [(s.head, s.zone, s.pixels, s.per_hour) for s in smart.image_streams()])
+
+    # 지지·장착
+    rows_js("MOUNTINGS", [(mt.station, [[a.target, a.count, a.bolt, a.units, a.per_unit] for a in mt.anchors],
+                           mt.plate, mt.grout_mm, mt.level, mt.note, mt.total_anchors)
+                          for mt in mounting.MOUNTINGS])
+    rows_js("MOUNT_MEMBERS", [(mm.label, mm.station, mm.support, mm.carries) for mm in mounting.MEMBERS])
+
+    # 열수지 — 발열원 표 전체 (태그가 바뀌면 행 단위 패치로는 못 따라간다)
+    rows_js("THERMAL_SOURCES", [(s.tag, s.equipment, s.loss_kw, s.sink, s.cooling, s.cooler_tag, s.cooler_kw)
+                                for s in thermal.heat_sources()])
+    p.one(r"var THERMAL_SUMMARY = \{[^}]*\};",
+          lambda m: ("var THERMAL_SUMMARY = { "
+                     f"room: {thermal.room_load_kw()}, airflow: {thermal.required_airflow_m3h()}, "
+                     f"exhausted: {thermal.exhausted_kw()}, deltaT: {thermal.ROOM_DELTA_T_C:.0f}, "
+                     f"hpuLossRatio: {thermal.HPU_LOSS_RATIO}, driveLossRatio: {thermal.DRIVE_LOSS_RATIO}, "
+                     f"coolerMargin: {thermal.COOLER_MARGIN} }};"))
+
+    # 신뢰도·예비품·검수·껍질·집진·접근·지진·안전 — JSON 블록
+    json_var("SPARES", [[s.tag, s.name, s.block, s.qty_installed, s.per_year, s.lead_weeks, s.stock(), s.basis]
+                        for s in reliability.SPARES()])
+    json_var("CASING", casing.summary())
+    json_var("ACCEPTANCE", acceptance.summary())
+    json_var("ACCEPTANCE_ITEMS", [[i.tag, i.stage, i.subject, i.method, i.source, f"{i.value()}",
+                                   i.tolerance, i.blocking] for i in acceptance.items()])
+    json_var("DUST", dust.summary())
+    json_var("DUST_STREAMS", [[s.tag, s.source, s.flow_m3h, s.material, s.combustible, s.basis]
+                              for s in dust.STREAMS])
+    json_var("DUST_IGNITION", [list(r) for r in dust.IGNITION_SOURCES])
+    json_var("DUST_VENT_OPTIONS", [list(r) for r in dust.INDOOR_VENT_OPTIONS])
+    json_var("DUST_TESTS", [list(r) for r in dust.REQUIRED_TESTS])
+    json_var("DUST_ST", [list(r) for r in dust.ST_CLASSES])
+    json_var("ACCESS_ANCHORS", [list(r) for r in access.anchor_points()])
+    json_var("SEISMIC", seismic.summary())
+    json_var("SEISMIC_COMPONENTS", [[cp.name, cp.station, cp.mass_kg, cp.height_mm, cp.base_mm, cp.wall_mounted,
+                                     cp.slenderness, cp.is_flexible, seismic.total_anchors(cp),
+                                     seismic.anchor_size(cp), seismic.anchor_tension_kn(cp),
+                                     seismic.anchor_utilisation(cp), cp.basis] for cp in seismic.components()])
+    json_var("SEISMIC_REMEDY", [list(r) for r in seismic.REMEDY_ORDER])
+    json_var("HAZARDS", [[h.tag, h.cell, h.description, h.severity, h.frequency, h.avoidance, h.plr, h.basis]
+                         for h in safety.HAZARDS])
+    json_var("SAFETY_FUNCTIONS", [[f.tag, f.name, list(f.hazards), f.detection, f.logic, f.actuator, f.plr,
+                                   f.category, f.note] for f in safety.SAFETY_FUNCTIONS])
+    json_var("SAFETY_DEVICES", [[d.tag, d.name, d.qty, d.inputs_each, d.outputs_each, d.fsoe_node, d.inputs,
+                                 d.outputs, d.note] for d in safety.SAFETY_DEVICES])
+    json_var("STOP_CHAIN", [list(r) for r in safety.STOP_CHAIN])
+    json_var("SISTEMA_INPUTS", [list(r) for r in safety.SISTEMA_INPUTS])
+    js_dict("CRANE", crane.summary(), dq=True)
+    js_dict("AIR", air.summary())
+
+    # 후단 요약 — 콘솔 명판 등에서 쓰는 후단 이름은 hk60c 가 정한다
+    p.one(r"var DOWNSTREAM = \{[^}]*\};", lambda m: m.group(0)) if "var DOWNSTREAM = {" in p.text else None
+
+    # ── 캠페인 시각표 — 페이싱(REV.54)으로 택트가 움직이면 60장 전부 다시 찍는다 ─────
+    sched = ",".join("[" + ",".join(f"{v:g}" for v in (pl.infeed_start, pl.infeed_end, pl.jbr_start,
+                                                        pl.jbr_end, pl.afr_start, pl.afr_end)) + "]"
+                     for pl in campaign.panels())
+    p.one(r"var pvCamT=\[.*?\];", lambda m: "var pvCamT=[" + sched + "];")
+    for key in ("pvCamTakt", "pvCamWrap"):
+        p.scalar(key, campaign.release_takt_s(), sep="=")
+    p.scalar("pvCamAfr", campaign.AFR_S, sep="=")
+    p.one(r"var MACHINE_BAND_Y = \d+;", lambda m: f"var MACHINE_BAND_Y = {layout.MACHINE_BAND_Y_MM};")
+    p.one(r"var AISLE_WIDTH = \d+;", lambda m: f"var AISLE_WIDTH = {layout.AISLE_WIDTH_MM};")
+
+    # ── 통로 바깥벽의 것들 — 밴드가 넓어지면 같이 밀린다 ────────────────────
+    # 엣지 캐비닛 7면(깊이 300, 통로 바깥벽 벽부)과 그 명판, 케이싱 검사의 통로 시작선.
+    # REV.54 에 밴드 7,100 → 7,600 → (벤더 방책 개정) 8,300 으로 두 번 움직였고, 손으로
+    # 적힌 z 가 매번 남았다 — 여기서 밴드에서 찍는다. 씬 z 원점은 플랜트 Y 3,550.
+    cab_z = (layout.MACHINE_BAND_Y_MM + layout.AISLE_WIDTH_MM - 150 - 3550) / 1000
+    n_cab = len(re.findall(r",\.7,[\d.]+\],M\.frame,'EC-", p.text))
+    if n_cab != 7:
+        raise SystemExit(f"✗ 엣지 캐비닛 3D 가 7면이 아니다 ({n_cab})")
+    p.text = re.sub(r",\.7,[\d.]+\],M\.frame,'EC-", f",.7,{cab_z:g}],M.frame,'EC-", p.text)
+    p.text = re.sub(r",1\.18,[\d.]+\],0,'EC-", f",1.18,{cab_z - 0.144:g}],0,'EC-", p.text)
+    fit = ROOT / "tools" / "check_casing_fit.mjs"
+    aisle_z = (layout.MACHINE_BAND_Y_MM - 3550) / 1000
+    fit.write_text(re.sub(r"const AISLE_Z = [\d.]+;", f"const AISLE_Z = {aisle_z:g};",
+                          fit.read_text(encoding="utf-8"), count=1), encoding="utf-8")
+    DRAWING.write_text(p.text, encoding="utf-8")
+    print(f"도면 리터럴 재생성 — {p.changed}곳 갱신 "
+          f"(존 {len(layout.ZONE_SEED)}개 · 전장 {layout.plant_envelope_mm()[0]:,} mm)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

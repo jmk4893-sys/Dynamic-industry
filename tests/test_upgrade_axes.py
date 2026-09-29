@@ -125,11 +125,34 @@ class TestUnmannedOperation(_Base):
 
     def test_permit_covers_every_manual_intervention(self):
         p = self.derived["UNMANNED_PERMIT"].terms
+        reach = self.reaches("UNMANNED_PERMIT")
         for term, why in (("AUTO_FEED", "팔레트 투입"),
                           ("AUTO_STACK", "유리 적재"),
                           ("KC_MAGAZINE_READY", "칼날 교환"),
                           ("BIN_LEVEL_OK", "반출함 만재")):
-            self.assertIn(term, p, f"무인 허가가 {why} 를 보지 않는다")
+            self.assertIn(term, reach, f"무인 허가가 {why} 를 보지 않는다")
+        # 투입은 모드가 둘이라 항이 하나 들어가 있다 — 그 항을 거쳐야 직결이 보인다
+        self.assertIn("FEED_READY", p)
+
+    def test_the_permit_can_be_granted_on_the_direct_connection(self):
+        """정상 모드가 직결인데 허가가 팔레트 접점을 요구하면 영원히 성립하지 않는다.
+
+        상류 직결(OI-17)에서 디스태커 픽업 스테이션은 BX-101 브리지 개구로
+        대체되므로 `PL_IN_STACK_PRESENT` 를 만들 장치가 그 자리에 없다. 무인 허가가
+        그 접점을 **단독으로** 읽으면, 팔레트를 흉내내지 않는 한 무인 운전 허가를
+        못 받는다. 투입 항은 활성 모드를 고르는 선택 항이어야 한다.
+        """
+        feed = self.derived["FEED_READY"]
+        self.assertEqual(set(feed.terms), {"AUTO_FEED", "UPSTREAM_FEED"})
+        self.assertIn("∨", feed.note, "선택 항이라는 것이 적혀 있지 않으면 ∧ 로 읽힌다")
+        # 팔레트 접점은 선택 항 **뒤에** 있어야 한다 — 허가가 직접 읽으면 안 된다
+        self.assertNotIn("PL_IN_STACK_PRESENT", self.derived["UNMANNED_PERMIT"].terms)
+        self.assertNotIn("AUTO_FEED", self.derived["UNMANNED_PERMIT"].terms)
+        # 직결 핸드셰이크는 허가가 결국 읽는 신호 안에 들어와야 한다
+        reach = self.reaches("UNMANNED_PERMIT")
+        for term in ("UPSTREAM_FEED", "UP_PANEL_OFFER", "UP_PANEL_ACK"):
+            with self.subTest(term=term):
+                self.assertIn(term, reach, "무인 허가가 직결 투입을 보지 않는다")
 
     def test_the_roll_handoff_left_with_the_winder(self):
         """만권 롤이 가장 잦은 사람 개입이었다 — 권취부 철거로 그 주기와 AGV 도킹이 함께 빠졌다."""
