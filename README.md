@@ -42,7 +42,92 @@ Dynamic industry Development
 | [docs/drawings/pv-fastener-book.html](docs/drawings/pv-fastener-book.html) | **체결 부품 도면집** — 볼트·너트·평와셔·스프링와셔의 형상도(대변·머리 두께·피치·나사부·와셔 규격) 7종, 관통·탭·앵커 체결 상세 단면, 재질·표면처리·풀림 방지, 나사 물림과 탭 깊이, 체결 71건 적용표, 앵커 로드 길이 검산, 소요량(예비 10 %). 정본은 `src/pv_preprocess/fasteners.py` (`PYTHONPATH=src python tools/build_fasteners.py`, 브라우저로 열 것) |
 | [docs/drawings/pv-assembly-steps.html](docs/drawings/pv-assembly-steps.html) | **조립 순서도** — 조립체 12벌 · 47단계마다 등각 조립도 한 장. 이미 놓인 부품은 흐리게, 그 단계에서 놓는 부품은 진하게 그리고 풍선 번호·부품도 링크·수량·그 단계의 체결(볼트 호칭·등급·토크)을 붙인다. 부품↔단계 배정은 `fabrication.STEP_PARTS` 가 정본이고 117종이 한 번씩 배정됐는지 검사가 본다 (`PYTHONPATH=src python tools/build_assembly_steps.py`, 브라우저로 열 것) |
 | [docs/drawings/pv-bfc-prototype.html](docs/drawings/pv-bfc-prototype.html) | **BFC 반전 카세트 시작품 계획** — 라인을 짓기 전에 한 Bay 만 만들어 공정 가정을 시험한다. 닫는 질문 7 · 범위와 대체품 · 리그 입면 · 관문 G0–G6 20주 · 시험 12건(합격 기준은 설계 모델에서) · 시료 100장 · 리그 안전 · 수량 산출(단가는 견적) · 위험 · 모델 반영. 정본은 `src/pv_preprocess/prototype.py` (`PYTHONPATH=src python tools/build_prototype.py`, 브라우저로 열 것) |
-| [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 고정 HKB/HKS 탠덤 박리, 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 13종, 열수지 계산기 (브라우저로 열 것) |
+| [docs/drawings/pv-delamination-3d.html](docs/drawings/pv-delamination-3d.html) | **DG-HK60 3D 운전 콘솔** — 부선 공정에 셀 분획을 공급하는 상류 분리설비. 5단 밀폐 IR 캐리지 순환, 이동 계단 칼날(SHK-101) 박리 — 셀모듈과 백시트를 유리에서 한 장으로, 일곱 조각이 따로 떠서 유리를 따라간다(칼날 모듈 추종), 15단계 공정 재생, 컷어웨이·분해도, 전기·PLC·제작도면 15종, **부품도 169장 · 모듈 조립도 13장**, 열수지 계산기 (브라우저로 열 것) |
+| [docs/dg-hk60-rfq.html](docs/dg-hk60-rfq.html) | **DG-HK60 상세설계 기술사양서 (RFQ)** — 상세설계 용역 발주용. 요구성능·설계기준·기계/전기/안전 요구사항·납품물·FAT/SAT·입찰자 확인사항 16건 — 열린 15건 · OI-11 해소 (브라우저로 열 것, A4 인쇄 가능) |
+| [docs/dg-hk60-fab-spec.html](docs/dg-hk60-fab-spec.html) | **DG-HK60C 제작 지침서 (FAB-001)** — 볼트 등급·체결력·조임토크, 용접 각장, 부재 판두께·재질, 기초 앵커 매입깊이·연단거리를 하중에서 유도한 문서. 접합부 11개소·부재 27종·앵커 6개소·ITP 16단계 (브라우저로 열 것, A4 인쇄 가능) |
+| [docs/dg-hk60-assembly.html](docs/dg-hk60-assembly.html) | **DG-HK60C 조립 지침서 (ASM-001)** — 도면을 처음 보는 사람이 조립도·부품도만으로 세울 수 있게 쓴 문서. 안전·공구·도면 읽는 법·볼트 조이는 법·모듈 사이의 순서·모듈별 67단계 (부품 카탈로그에서 생성) |
+| [docs/dg-hk60-procurement.html](docs/dg-hk60-procurement.html) | **DG-HK60C 조달 지침서 (PRC-001)** — 자재 발주표(1차원 절단 배치를 푼 정척 본수·시트 매수) · 운반 분할(세우는 순서를 따르는 차수표) · 구매품 사양 60종 (부품 카탈로그에서 생성) |
+| [docs/dg-hk60-analysis.html](docs/dg-hk60-analysis.html) | **DG-HK60C 구조·열해석 보고서 (CAL-001)** — 직접강성법 프레임, 1차원 과도 열전도, **IR 뱅크 복사 유속 + 면내 2차원 전도**, **램프 지지·관통 상세**, **정상상태 열수지**, **칼날 모듈 추종**(패드 평면도가 만드는 유리 굴곡 · 몬테카를로). 닫힌해 15건으로 해석기를 검증하고 구조 14건·열 13건·IR 8건·지지 7건·수지 8건·에어록 8건을 푼 뒤, 해석이 만든 요구 26건과 **해석이 못 보는 것**을 적었다 (여섯 해석 모듈에서 생성) |
+| [docs/dg-hk60-pilot.html](docs/dg-hk60-pilot.html) | **DG-HK60C 파일럿 시험 계획서 (PIL-001)** — 온도–박리력 곡선·칼날 수명·유리 수율·면내 온도 균일도·열수지. 시료 수를 요구정밀도에서 거꾸로 풀어(t 분위수·Clopper–Pearson) 총 454장·2단계로 잡았다 (계획 모델에서 생성) |
+| [docs/dg-hk120-twin-cell.html](docs/dg-hk120-twin-cell.html) | **DG-HK120C 트윈 셀 검토서** — 1챔버·2분리셀(계단 칼날) 수평병렬로 처리량을 배로 올리는 안의 배치·전력·인터록 검토 (브라우저로 열 것) |
+
+## MP-50 염수 밀도분리 파일럿 장치
+
+폐태양광 후처리 블랙파우더에서 **EVA·백시트를 실리콘 분말로부터 걷어내는** 소형
+파일럿. 세 재질의 입경이 31~75 µm 로 겹쳐 체로는 나눌 수 없으므로, 염수(NaCl
+0~18 wt%)의 밀도를 세 재질의 유효밀도 사이에 놓고 나눈다. 임펠러와 급기는
+**분산 수단이지 분리 수단이 아니다** — 둘을 동시에 정지시킨 뒤의 자연 부상·침강이
+분리다.
+
+- 동체 **Ø400 ID × H600**, 원뿔 60° · 전용적 **89.86 L**, 운전 장입 **61.4 L**
+- 아세이 A~K **11계통 · 부품 220개**, 건조질량 **146 kg**
+- 교반축 Ø25 SUS316L, Ø300 4PBT45° 임펠러 2단, 배플 4매, 콘 급기 분산링
+
+### 원본 도면 그대로는 제작이 되지 않는다
+
+치수가 세 문서에 흩어져 있고 셋이 서로 다르다 — 연구문서 Rev.0, 도면
+MP-50-P0-001, 도면 MP50-DR-000. 충돌 8건을 정리했고 그중 **2건은 그대로 두면
+조립 자체가 불가능**하다.
+
+| 번호 | 항목 | 원본 | 문제 |
+|---|---|---|---|
+| **C1** | 원뿔 높이 | H150 + 60° | Ø400 에서 Ø38 로 닫히지 않는다 (313.5 필요) |
+| **C2** | 배플 폭 | 80 × 4매 | 안쪽 모서리 R114 가 Ø300 임펠러 팁 R150 과 **36 mm 겹쳐 축이 돌지 않는다** |
+
+해결 근거는 [`conflicts.py`](src/mp50_separator/conflicts.py) 와 제작도면의
+'원본 치수 충돌과 해결 근거' 절에 남겼다. C1 은 연구문서의 H346 을 **가상 정점높이**로
+읽으면 동체 상단 Z946 · 커버 상면 Z951 · 전용적 89.9 L 가 한 원점에서 동시에
+맞아떨어지므로 확정했고, C2 는 임펠러 Ø300 이 세 문서에 모두 같고 DOE·동력·Njs
+모델이 그 위에 서 있으므로 배플 쪽을 35 mm 로 줄였다.
+
+### 문서
+
+| 문서 | 내용 |
+|---|---|
+| [docs/drawings/mp50-fabrication-drawings.html](docs/drawings/mp50-fabrication-drawings.html) | **제작도면 A3 15매** — 기준좌표·공차, 전체 조립도, 아세이 A~K, 동체·원뿔 전개도, 노즐표, 용접·검사 기준. 손으로 적은 치수가 없다 (브라우저로 열 것) |
+| [docs/drawings/mp50-part-drawings.html](docs/drawings/mp50-part-drawings.html) | **부품 상세도면 A3 29매** — 제작품 33종을 27장에 담았다 (소물은 합본). 장마다 소재 규격, 완성 치수, 기하공차, 표면, 가공 순서, 검사. 규격·구매품은 도면 대신 명세 한 장 (브라우저로 열 것) |
+| [docs/drawings/mp50-3d.html](docs/drawings/mp50-3d.html) | **3D 분해 · 컷어웨이 · 부품 단독 보기 콘솔** — 아세이별 분해, 단면 컷어웨이, 부품 하나만 떼어 보기, 분산→동시 정지→자연 층분리 재생. 입자는 검증 모듈과 같은 Stokes 식으로 움직인다 (브라우저로 열 것) |
+| [docs/mp50-fabrication-spec.md](docs/mp50-fabrication-spec.md) | 제작 기준 요약 (코드에서 자동 생성) |
+
+### 설계 검증에서 나온 것
+
+검증 14건 중 조립 항목은 전부 통과했고, 기능 항목 2건이 WARN 이다. 둘 다
+**장치가 아니라 시험계획을 고치라**는 뜻이다.
+
+- **CHK-05** Zwietering Njs 가 135 rpm 인데 감속기 상한이 90 rpm 이라 여유가 없다 →
+  최고속도 150 rpm 확보 권고 (축·동력·위험속도는 150 rpm 으로 검증했다)
+- **CHK-10** 정치 600 s 로는 31 µm 백시트가 1 % 만 부상한다. Stokes 는 지름의
+  제곱으로 가므로 미세분은 시간이 제곱으로 든다 → 정치시간 격자를 600~3600 s 로
+  넓히고, 염도 격자에 22/26 wt% 를 넣을 것 (포화까지 올리면 상승속도 2.7 배).
+  단 포화 염수까지 갈 경우 동체는 SUS304 가 아니라 SUS316L 이어야 한다.
+
+### 사용법
+
+```bash
+PYTHONPATH=src python -m mp50_separator                          # 제작 기준 출력
+PYTHONPATH=src python -m mp50_separator -o docs/mp50-fabrication-spec.md
+python tools/mp50_drawings.py                                    # 아세이 제작도면 15매
+python tools/mp50_parts.py                                       # 부품 상세도면 29매
+```
+
+### 구조
+
+```
+src/mp50_separator/
+  geometry.py    Z 기준좌표계 · 원뿔 폐합 · 용적 · 노즐 (여기만 고치면 된다)
+  components.py  아세이 A~K 부품표 — 질량은 기하에서 계산한다
+  conflicts.py   원본 3종의 치수 충돌 8건과 해결 근거
+  checks.py      제작성·기능성 검증 14건 (조립 / 기능)
+tools/
+  mp50_drawings.py   기하에서 아세이 제작도면 HTML 을 생성
+  mp50_parts.py      제작품마다 부품 상세도면 HTML 을 생성
+  _mp50_draft.py     ISO 128 제도 프리미티브 (두 생성기 공용)
+```
+
+도면은 둘 다 **코드에서 생성**한다. 손으로 고치면 `tests/test_mp50_drawings.py`
+와 `tests/test_mp50_parts.py` 의 재생성 검사가 깨진다. 부품도는 `components.py`
+의 조달 구분(제작/규격/구매/가공)을 그대로 따르므로, 제작품을 하나 추가하고
+도면을 잊으면 생성 자체가 실패한다.
 
 ### 사용법
 
@@ -52,7 +137,30 @@ Dynamic industry Development
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (506건)
+python -m unittest discover -s tests -t .                               # 테스트 (2,057건)
+
+# 부품 카탈로그 — 형상·치수·재질에서 질량과 자중을 계산한다
+python3 tools/parts.py                     # 카탈로그 리포트 (품목·질량·자중 검증)
+python3 tools/fab_spec.py                  # 제작 지침서 계산 근거
+python3 tools/gen_parts_js.py --write      # 카탈로그 → 콘솔의 부품도·조립도 데이터
+python3 tools/gen_assembly_doc.py --write  # 카탈로그 → 조립 지침서 HTML
+python3 tools/procure.py                   # 조달 계산 (자재·운반·구매)
+python3 tools/gen_procure_doc.py --write   # 카탈로그 → 조달 지침서 HTML
+
+# 해석 — 형상이 바뀌면 결과가 따라 움직인다
+python3 tools/fea.py                       # 구조 해석기 검증 (닫힌해 5건)
+python3 tools/therm.py                     # 열 해석기 검증 (닫힌해 5건)
+python3 tools/analysis_structural.py       # 구조해석 S1~S14 (S10 계단 칼날 칼끝 예산 · S12~S14 칼날 모듈 추종)
+python3 tools/glass_follow.py              # 유리면 추종 — 패드 평면도 몬테카를로 · 곧은 칼날 vs 일곱 모듈 · 유리 굽힘
+python3 tools/analysis_thermal.py          # 열해석 T1~T13 + 요구 R1~R6
+python3 tools/analysis_irbank.py           # IR 뱅크 배치 IR1~IR8 + 요구 RIR1~RIR5
+python3 tools/lampmount.py                 # 램프 지지·관통 LM1~LM7 + 요구 RLM1~RLM5
+python3 tools/heatbalance.py               # 정상상태 열수지 HB1~HB8 + 요구 RHB1~RHB5
+python3 tools/gen_analysis_doc.py --write  # 해석 → 보고서 HTML
+python3 tools/pilot_plan.py                # 파일럿 시료 수·규모·일정
+python3 tools/gen_pilot_doc.py --write     # 계획 → 시험 계획서 HTML
+python3 tools/sync_fab_doc.py --write      # 제작 지침서의 파생 숫자를 계산기와 맞춤
+python3 tools/knife_stepped.py             # 계단형 핫나이프 — 조각별 힘 · 물림 램프 · 사이클 · 계단 높이의 창
 ```
 
 설치하면 `PYTHONPATH` 없이 쓸 수 있다.
@@ -459,6 +567,11 @@ BY_DESIGN` 에 `grm→buffer 475 mm`(브리지가 버퍼 쪽으로 무는 절반
 픽업점까지의 **4,400**(지게차 도킹·주차 여유)이고, 그것은 기구가 아니라 물류 운영
 조건이 정한다 — 줄일 수 있는지는 발주처 결정 항목이다. 버퍼·GRM 은 완충시간과 IR
 가열 길이가 정한 값이라 통합으로 줄지 않는다.
+
+**추가 검토.** 적층→픽업 4,400 을 줄일 수 있는지 다시 봤다 — 필요한 것은 FL-101
+실제 제원(직각 적재 통로 폭이 핵심, 전장·회전반경·포크 삽입 깊이·마스트 전진량·
+정지 위치 반복정밀도)이고, 지금 값은 그 중 무엇도 역산된 적이 없는 운영 여유
+그대로다. **발주처가 벤더 제원 없이 4,400 을 확정했다** — 축소는 더 검토하지 않는다.
 
 #### §55 후단 검사를 통합셀 안으로 — 스테이션 셋 · 반 하나 (REV.52)
 
