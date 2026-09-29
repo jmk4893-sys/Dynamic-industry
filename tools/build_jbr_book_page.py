@@ -19,6 +19,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from pv_preprocess import campaign  # noqa: E402
 
+import revision  # noqa: E402
+
 # [시작 초, 제목, 설명] — render_jbr_book.mjs 의 CHAPTERS 와 길이가 같아야 한다.
 CHAPTERS = [
     (0, "3D 운전 — 40 → 85 s",
@@ -37,21 +39,6 @@ CHAPTERS = [
      "박스가 손을 떠난 뒤로는 아무도 자세를 정해 주지 않는다. 낙하·충돌·튀어오름을 "
      "적분해 수거함 안에 남는지를 본다."),
 ]
-
-
-def _rev() -> str:
-    """지금 개정 — README 의 최신 `#### §N … (REV.M)` 에서 읽는다.
-
-    손으로 적어 두었더니 REV.57 에 머물러, 계단 칼날 개정을 찍은 영상 옆에 옛 개정
-    번호가 붙었다. 영상 옆의 값은 영상과 다른 데서 올 수 없다는 규칙이 개정 번호에도
-    똑같이 걸린다.
-    """
-    text = Path("README.md").read_text(encoding="utf-8")
-    revs = [int(r) for r in re.findall(r"^#### §\d+ .*\(REV\.(\d+)\)", text, re.M)]
-    if not revs:
-        raise SystemExit("README 에서 개정 절을 못 읽었다")
-    # 절은 새것이 위지만 순서로 집으면 안 된다 — 앞쪽에 옛 절(§48)이 하나 끼어 있다.
-    return f"REV.{max(revs)}"
 
 
 def build(mp4: Path, out: Path) -> Path:
@@ -77,7 +64,7 @@ def build(mp4: Path, out: Path) -> Path:
         f'    <div class="card"><div class="k">{k}</div><div class="v">{v}</div>'
         f'<div class="n">{n}</div></div>' for k, v, n in cards
     )
-    html = TEMPLATE.format(b64=b64, shots=shots, grid=grid, secs=secs, rev=_rev(),
+    html = TEMPLATE.format(b64=b64, shots=shots, grid=grid, secs=secs, rev=revision.current(),
                            mb=len(b64) / 4 * 3 / 1e6)
     out.write_text(html, encoding="utf-8")
     return out

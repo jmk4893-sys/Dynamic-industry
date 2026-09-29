@@ -15,6 +15,10 @@ import struct
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import revision  # noqa: E402
+
 # [초, 제목, 설명, 아티팩트 id] — render_artifact_book.mjs 의 CHAPTERS 순서 그대로.
 CHAPTERS = [
     (4, "표지", "플랜트 3D 네 벌 · 운전 콘솔 · 60분 연속 운전 · JBR-201 도면집 · "
@@ -94,7 +98,8 @@ def build(mp4: Path, out: Path) -> Path:
         f'    <div class="card"><div class="k">{k}</div><div class="v">{v}</div>'
         f'<div class="n">{n}</div></div>' for k, v, n in cards)
     out.write_text(TEMPLATE.format(b64=b64, shots="\n".join(rows), grid=grid,
-                                   secs=secs, mb=len(b64) / 4 * 3 / 1e6),
+                                   secs=secs, rev=revision.current(),
+                                   mb=len(b64) / 4 * 3 / 1e6),
                    encoding="utf-8")
     return out
 
@@ -154,7 +159,7 @@ code {{ font:12.5px/1.5 var(--mono); background:rgba(127,127,127,.13);
         벤더 DG-HK60 문서 · 영상 두 편</p>
     </div>
     <span class="spacer"></span>
-    <div class="stamp"><b>REV.58</b>1280 × 720 · 15 fps · {secs}초 · {mb:.1f} MB</div>
+    <div class="stamp"><b>{rev}</b>1280 × 720 · 15 fps · {secs}초 · {mb:.1f} MB</div>
   </header>
 
   <figure>
