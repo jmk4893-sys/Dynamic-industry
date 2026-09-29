@@ -270,6 +270,18 @@ def float_unit(
     )
 
 
+def concentrate_grade_ceiling(carry_ratio: float) -> float:
+    """복합입자 동반비 r 에서 정광 품위의 물리적 상한 (질량분율).
+
+    부상 Ag 1 kg 이 같은 입자의 일부로 맥석 r kg 을 달고 오면 품위는
+    1/(1+r) 을 넘을 수 없다. 이 동반분은 세척수로 씻기지 않으므로
+    클리너를 더 붙여도 넘을 수 없다.
+    """
+    if carry_ratio < 0:
+        raise ValueError("carry_ratio 는 0 이상")
+    return 1.0 / (1.0 + carry_ratio)
+
+
 def _add_composite_carry(
     feed: Stream,
     kinetics: dict[str, ComponentKinetics],
@@ -310,8 +322,9 @@ class CircuitResult:
     """수렴된 회로 물질수지.
 
     ``fresh_water_m3h``는 부선 회로 경계에서 필요한 희석·세척수 중 필터 여액을
-    제외한 양이다. 설비 전체의 외부 신수는 농축조 월류 재사용·블리드·케이크
-    수분까지 닫은 :class:`plant.MechanicalOption.fresh_makeup_m3h`로 평가한다.
+    제외한 양이다. 설비 전체의 외부 신수는 청수(ES 앞)와 회수 공정수(CT-1 부터)를
+    가르고 블리드·케이크 수분까지 닫은 :meth:`plant.PlantDesign.water_balance`로
+    평가한다.
     """
 
     new_feed: Stream
