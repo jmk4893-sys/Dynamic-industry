@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import json
+import math
 import pathlib
 import re
 import sys
@@ -240,7 +241,7 @@ def main() -> int:
     zones = {z.key: z for z in layout.build_zones()}
     tail = layout.plant_envelope_mm()[0] - zones["afr"].x0_mm
     p.one(r"상세 배치 포락선은 [\d,]+ × [\d,]+ mm",
-          lambda m: f"상세 배치 포락선은 {tail:,} × {layout.MACHINE_BAND_Y_MM:,} mm")
+          lambda m: f"상세 배치 포락선은 {tail:,} × {crane.MACHINE_BAND_MM:,} mm")
 
     # ── AFR CL-221 클램프 포탈 ───────────────────────────────────────────
     # 크로스헤드 하면은 이송면 위에 쌓인 것들의 합이다 (kinematics). 이송면이
@@ -325,6 +326,49 @@ def main() -> int:
           lambda m: "installOrder: ["
           + ", ".join('"' + k + '"' for k in crane.install_order()) + "]")
 
+    # 브리지 스팬 — `crane.SPAN_MM` 이 정본이다.
+    #
+    # 베이스가 8,800 → 9,800 으로 옮길 때 3D 형상과 주행거더 문구는 따라왔는데
+    # **카탈로그 넷은 8,800 에 남았다** (`grep 스팬` 이 6 대 2 로 갈려 있었다).
+    # 값 하나가 여덟 곳에 손으로 적혀 있으면 언제든 다시 갈린다 — 여기서 찍는다.
+    # 후크 도달거리도 같은 값에서 나온다 (스팬/2 − 트롤리 접근).
+    _span, _reach = crane.SPAN_MM, crane.hook_reach_z_mm()
+    _tor = crane.summary()["railTopMm"]
+    p.one(r"\[-[\d.]+,[\d.]+\]\.forEach\(function \(z, i\) \{\n  L\(\[[\d.]+,\.40,\.20\]",
+          lambda m: f"[-{_span / 2000:g},{_span / 2000:g}].forEach(function (z, i) {{\n"
+                    f"  L([{crane.RUNWAY_MM / 1000:.2f},.40,.20]")
+    p.one(r"L\(\[\.30,\.70,[\d.]+\],\[BX,11\.10,0\],M\.frame,'CRN-901 브리지 거더 \(스팬 [\d,]+\)'",
+          lambda m: f"L([.30,.70,{_span / 1000:.2f}],[BX,11.10,0],M.frame,"
+                    f"'CRN-901 브리지 거더 (스팬 {_span:,})'")
+    p.one(r"요구값\(TOR·스팬 [\d,]+·주행 반력\)",
+          lambda m: f"요구값(TOR·스팬 {_span:,}·주행 반력)")
+    p.one(r"건물 측 요구값은 주행레일 상면 [\d,]+ · 스팬 [\d,]+ 이다\.",
+          lambda m: f"건물 측 요구값은 주행레일 상면 {_tor:,} · 스팬 {_span:,} 이다.")
+    p.one(r'"브리지 거더·주행 엔드트럭 \(스팬 [\d,]+\)","1식",\[\d+,700,300\]',
+          lambda m: f'"브리지 거더·주행 엔드트럭 (스팬 {_span:,})","1식",[{_span},700,300]')
+    p.one(r"스팬 [\d,]+ 은 장비 밴드 [\d,]+ 을 후크가 끝까지 덮는 값이다 — "
+          r"트롤리 끝단 접근 [\d,]+ 을 빼면 후크가 ±[\d,]+ 까지 간다\.",
+          lambda m: f"스팬 {_span:,} 은 장비 밴드 {crane.MACHINE_BAND_MM:,} 을 후크가 "
+                    f"끝까지 덮는 값이다 — 트롤리 끝단 접근 "
+                    f"{crane.TROLLEY_APPROACH_MM:,} 을 빼면 후크가 ±{_reach:,} 까지 간다.")
+    p.one(r'\["CRN-901 브리지 거더 \(스팬 [\d,]+\)"',
+          lambda m: f'["CRN-901 브리지 거더 (스팬 {_span:,})"')
+    # 도면 본문 서술도 같은 값에서 낸다 — 여기가 마지막 8,800 두 곳이었다.
+    p.one(r"스팬 [\d,]+ 은 장비 밴드\([\d,]+\)를 후크가 끝까지 덮어야 나오는 값이다",
+          lambda m: f"스팬 {_span:,} 은 장비 밴드({crane.MACHINE_BAND_MM:,})를 "
+                    f"후크가 끝까지 덮어야 나오는 값이다")
+    p.one(r"요구하는 값\(TOR [\d,]+ · 스팬 [\d,]+\)",
+          lambda m: f"요구하는 값(TOR {_tor:,} · 스팬 {_span:,})")
+
+    # ── JBR 박리 실린더 속도 — `jbr_fabrication` 이 정본이다 ─────────────
+    # `tests/test_pv_jbr_analysis` 가 "부품표가 원본" 이라며 도면을 읽어 모델과
+    # 견주는데, 정작 도면 쪽 숫자는 손으로 적혀 있었다. 시험이 갈림을 **잡기는**
+    # 했지만 잡히는 것과 따라오는 것은 다른 일이다 — 여기서 찍는다.
+    from pv_preprocess import jbr_fabrication as _jf
+    p.one(r'("JB-HD-002".{0,300}?"속도 )\d+( mm/s ±)\d+(%")',
+          lambda m: f"{m.group(1)}{_jf.PEEL_SPEED_MMS:g}{m.group(2)}"
+                    f"{_jf.PEEL_SPEED_TOL * 100:g}{m.group(3)}")
+
     # ── 스마트 시설 — 위치는 배선 모델이 존에서 파생한다 ───────────────
     # 데이터량·태그 수는 서보 축 수의 함수다 (REV.49 에서 셔틀 X 축 2 가 빠지며
     # 37 → 35 축, 태그 600 → 584, 시계열 94.1 → 89.2 kB/s). 손으로 적은 리터럴은
@@ -363,12 +407,260 @@ def main() -> int:
         return body
     p.one(r"var SMART = \{[^}]*\}", _smart)
 
+    # ── 공압·집진 — 두 블록이 모델 요약을 그대로 받는다 ─────────────────
+    # 이 둘은 손으로 넣은 리터럴이었다. REV.59 에서 SG 후드가 한 대 몫에서 두 대
+    # 몫으로 늘자 여과면적·펄스밸브·압축공기가 다 움직였는데 도면은 옛 수를 계속
+    # 말했다 — 시험이 잡았지만, 잡히는 것과 따라오는 것은 다른 일이다.
+    def _block(name: str, values: dict):
+        """도면 블록이 들고 있는 키를 모델 요약으로 갈아 끼운다.
+
+        키가 `key:` 인 블록과 `"key":` 인 블록이 섞여 있다 — 둘 다 받는다.
+        처음에 홑따옴표 꼴만 보게 만들었더니 DUST 블록에서 **한 키도 못 찾고
+        조용히 지나갔다.** 그래서 한 키도 못 찾으면 멈춘다.
+
+        블록에 있는 키만 다룬다 — 요약이 더 많은 것을 들고 있어도 도면이 다 보여
+        줄 이유는 없다. 반대로 **블록에 있는데 요약에 없는 키**는 정본이 사라진
+        것이므로 멈춘다.
+        """
+        val = r"(?:-?[\d.]+|'[^']*'|\"[^\"]*\"|true|false)"
+
+        def build(m: re.Match) -> str:
+            body = m.group(0)
+            keys = re.findall(rf'"?(\w+)"?: {val}', body)
+            assert keys, f"{name} 블록에서 키를 하나도 못 찾았다"
+            missing = [k for k in keys if k not in values]
+            assert not missing, f"{name} 블록의 {missing} 가 모델 요약에 없다"
+            for key in keys:
+                value = values[key]
+                if isinstance(value, (list, tuple, dict)):
+                    continue                      # 구조는 이 자리에서 안 다룬다
+                for quoted in (f'"{key}"', key):  # 블록의 표기를 그대로 지킨다
+                    pat = rf"{re.escape(quoted)}: {val}"
+                    body, n = re.subn(pat, f"{quoted}: {q(value)}", body, count=1)
+                    if n:
+                        break
+                else:
+                    raise AssertionError(f"{name} 키 {key} 를 못 갈아 끼웠다")
+            # 모델이 키를 새로 내놓으면 블록에 **넣는다** — 갈아 끼우기만 하면
+            # 새 값이 도면에 영영 안 나타난다 (시험이 잡지만 손으로 넣어야 했다).
+            quoted = '"' in body.split("{", 1)[1].split(":", 1)[0]
+            for key, value in values.items():
+                if key in keys or isinstance(value, (list, tuple, dict)):
+                    continue
+                label = f'"{key}"' if quoted else key
+                body = body.rstrip().rstrip("}").rstrip()
+                sep = "" if body.endswith("{") else ","
+                body = f"{body}{sep} {label}: {q(value)} }}"
+            return body
+        p.one(rf"var {name} = \{{[^}}]*\}}", build)
+
+    from pv_preprocess import acceptance, air as _air, dust as _dust, electrical
+    _block("AIR", _air.summary())
+    _block("DUST", _dust.summary())
+    _block("THERMAL_SUMMARY", {
+        "room": thermal.room_load_kw(), "airflow": thermal.required_airflow_m3h(),
+        "exhausted": thermal.exhausted_kw(),
+        # 도면이 정수로 적어 온 자리다 — 5.0 으로 찍으면 시험이 잡는다.
+        "deltaT": int(thermal.ROOM_DELTA_T_C),
+        "hpuLossRatio": thermal.HPU_LOSS_RATIO,
+        "driveLossRatio": thermal.DRIVE_LOSS_RATIO,
+        "coolerMargin": thermal.COOLER_MARGIN})
+    _block("ACCEPTANCE", acceptance.summary())
+    # INCOMER 블록은 모델의 snake_case 를 camelCase 로 옮겨 적은 것이라 이름이
+    # 1:1 이 아니다 (hv_voltage_v → hvV). 그 대응을 여기에 명시로 둔다 —
+    # 시험(test_drawing_carries_the_confirmed_incomer)이 쓰는 것과 같은 표다.
+    # 급전 표도 손으로 유지되고 있었다 — F7 의 풍량 문구와 F16 의 다이버시티가
+    # 모델에서 움직였는데 도면은 옛 값을 계속 말했다.
+    p.rows("feeders",
+           [[f.tag, f.panel, f.served, f.installed_kw, f.diversity, f.breaker_at,
+             f.cable, f.source] for f in electrical.FEEDERS], indent="    ")
+
+    _inc = electrical.incomer_summary()
+    _block("INCOMER", {
+        "tapsSite": _inc["taps_site"], "tapLowVoltage": _inc["tap_low_voltage"],
+        "siteServiceKw": _inc["site_service_kw"],
+        "siteUtilPct": _inc["site_utilisation_pct"],
+        "siteHeadroomKw": _inc["site_headroom_kw"],
+        "worstCaseKw": _inc["worst_case_kw"],
+        "coincidentWorstCaseKw": _inc["coincident_worst_case_kw"],
+        "lvTapMaxM": _inc["lv_tap_max_m"], "highVoltage": _inc["high_voltage"],
+        "hvV": _inc["hv_voltage_v"], "contractKw": _inc["contract_kw"],
+        "contractKva": _inc["contract_kva"], "apparentKva": _inc["apparent_kva"],
+        "transformerKva": _inc["transformer_kva"],
+        "transformerKvaIfHv": _inc["unit_transformer_kva"],
+        "transformerLoadPct": _inc["transformer_load_pct"],
+        "capacitorKvar": _inc["capacitor_kvar"], "hvCurrentA": _inc["hv_current_a"],
+        "hvCable": _inc["incoming_cable"], "vcbA": _inc["vcb_a"],
+        "lvMainMm2": _inc["lv_main_cable_mm2"],
+        "breakerHeadroomKw": _inc["breaker_headroom_kw"],
+        # 아래 넷은 요약에 없고 상수·판정이다. 값이 안 움직이는 것들이지만
+        # 블록의 모든 키를 덮어야 "조용히 안 갈아 끼움" 이 안 생긴다.
+        "lowVoltageLimitKw": electrical.LOW_VOLTAGE_LIMIT_KW,
+        "dropPct": electrical.FEEDER_VOLTAGE_DROP_PCT,
+        "incomingKnown": not _inc["taps_site"],
+        "withinLvLimit": _inc["contract_kw"] <= _inc["site_service_kw"],
+        "lvTapConfirmed": _inc["tap_low_voltage"],
+        "method": _inc["method"], "substationMm": _inc["substation_room_mm"]})
+
     # ── 패널 구조 레시피 (REV.51) — recipe.py 가 정본이다 ──────────────────
     from pv_preprocess import recipe, campaign
     p.rows("STRUCTURE_RECIPES", recipe.literal_rows(), indent="    ")
     # SG-301 반출롤러 점유 — 설계·PLC·검증 표의 문구가 campaign 값을 따른다
     p.one(r"SG-301 반출롤러 점유 [\d.]+ s",
           lambda m: f"SG-301 반출롤러 점유 {campaign.sg_occupancy_s():g} s")
+
+    # ── 레시피 버퍼 용량 — handoff.py 가 정본이다 ─────────────────────────
+    # 3D 는 캐리지를 **물리 행**으로 세어 R-A 50 / R-B 50 이었고, 완충시간을 내는
+    # `handoff.py` 는 **레시피 배분**으로 세어 75 / 25 였다. 같은 하드웨어를 두
+    # 문서가 다르게 읽고 있었던 것이고, 화면은 50 을 띄우는데 사양서의 완충시간은
+    # 75 에서 나왔다. GA 시트가 B 열 스테이지 자리를 「R-A 스테이지 캐리지
+    # (B열 · 레시피 재배분)」 = A-501C 로 못박고 있으므로 배분 쪽이 설계 의도다.
+    # 두 곳이 갈리지 않게 여기서 찍는다.
+    from pv_preprocess import handoff
+    _mod = {"A": handoff.BUFFER_CARRIAGES[0], "B": handoff.BUFFER_CARRIAGES[1], "H": 1}
+    _cap = {"A": handoff.BUFFER_RA_SLOTS, "B": handoff.BUFFER_RB_SLOTS,
+            "H": handoff.BUFFER_HOLD_SLOTS}
+    p.one(r"BUF_SLOT=\d+,BUF_CAP=\{[^}]*\},BUF_MOD=\{[^}]*\}",
+          lambda m: f"BUF_SLOT={handoff.SLOTS_PER_CARRIAGE},"
+                    + "BUF_CAP={" + ",".join(f"{k}:{v}" for k, v in _cap.items()) + "},"
+                    + "BUF_MOD={" + ",".join(f"{k}:{v}" for k, v in _mod.items()) + "}")
+
+    # ── 버퍼 캐리지 행 중심 — gbr_load.py 가 제약에서 낸다 ────────────────
+    # GA 시트는 ∓2,350, 3D 는 ∓2,100 으로 250 mm 갈려 있었고 **둘 다 무언가를
+    # 깨고 있었다** (2,350 은 외측 마스트가 가드에 여유 0 이고 유리가 데크 롤러
+    # 밖으로 170 나간다 · 2,100 은 내측 마스트가 HOLD 마스트를 100 파고든다).
+    # 마스트 두 제약이 [2,250, 2,300] 을 남기므로 상한을 쓰고, 세 번째 제약은
+    # 데크 Z 분기 롤러를 R+700 까지 늘리라고 말한다.
+    from pv_preprocess import gbr_load
+    assert gbr_load.row_z_ok(), "행 중심이 제약 창 밖이다"
+    _row = gbr_load.ROW_Z_MM / 1000.0
+    _reach = gbr_load.deck_roller_reach_mm() / 1000.0
+    p.one(r"Kn=\{A:-[\d.]+,B:[\d.]+,H:0\}",
+          lambda m: f"Kn={{A:-{_row:g},B:{_row:g},H:0}}")
+    # 분기 끝에서 유리가 롤러 위에 다 있어야 한다 — 피치 0.32 의 다음 눈금까지.
+    _last = round(math.ceil(_reach / 0.32) * 0.32, 2)
+    p.one(r"for\(let i=-[\d.]+;i<=[\d.]+;i\+=\.32\)",
+          lambda m: f"for(let i=-{_last:g};i<={_last:g};i+=.32)")
+    # TG-813 선단받이는 바깥 콤포크 밑을 받는다 — 행 중심 + 포크 오프셋.
+    _tg = round((gbr_load.ROW_Z_MM + gbr_load.FORK_OFFSET_MM) / 1000.0, 3)
+    p.one(r"\[-[\d.]+, [\d.]+\]\.forEach\(function \(z, i\) \{",
+          lambda m: f"[-{_tg:g}, {_tg:g}].forEach(function (z, i) {{")
+    # GA 시트의 행 부재도 같은 값에서 찍는다 — 행 중심 ± 정해진 오프셋이다.
+    _fk = gbr_load.FORK_OFFSET_MM
+    _off = {"MSO": 1000, "MSI": -1000, "TIE": 0, "LFO": 770, "LFI": -770,
+            "FKO": _fk, "FKI": -_fk, "TGO": _fk, "TGI": -_fk}
+    for tag, off in _off.items():
+        for row, sign in (("A", -1), ("B", 1)):
+            z = int(sign * (gbr_load.ROW_Z_MM + off))
+            p.one(rf"(part\('{tag}-{row}', '[^']*', \[[\d, ]+\], \[-?[\d.]+, -?[\d.]+, )-?\d+(\])",
+                  lambda m, z=z: f"{m.group(1)}{z}{m.group(2)}")
+    # HOLD 행은 중심이 0 이라 위 루프가 안 돌지만 콤포크·선단받이는 같이 옮겨야
+    # 한다 (승강캐리지는 폭이 달라 아래에서 따로 잡는다).
+    for tag in ("FKO", "FKI", "TGO", "TGI"):
+        z = int(-_off[tag])
+        p.one(rf"(part\('{tag}-H', '[^']*', \[[\d, ]+\], \[-?[\d.]+, -?[\d.]+, )-?\d+(\])",
+              lambda m, z=z: f"{m.group(1)}{z}{m.group(2)}")
+    # HOLD 승강캐리지는 마스트 안쪽 면부터 콤포크 안쪽 모서리까지를 덮어야 한다 —
+    # 콤포크가 안으로 오면 캐리지도 따라와야 포크가 제 캐리지 밑에 남는다.
+    _lf_out = gbr_load.MAST_OFFSET_MM + gbr_load.MAST_SECTION_MM / 2
+    _lf_in = gbr_load.FORK_OFFSET_MM - gbr_load.FORK_W_MM / 2
+    _lf_w, _lf_z = int(_lf_out - _lf_in), int((_lf_out + _lf_in) / 2)
+    for tag, sign in (("LFO", -1), ("LFI", 1)):
+        p.one(rf"(part\('{tag}-H', '[^']*', \[170, 300, )\d+(\], \[205, 985, )-?\d+(\])",
+              lambda m, sign=sign: f"{m.group(1)}{_lf_w}{m.group(2)}{sign * _lf_z}{m.group(3)}")
+
+    for code, sign in (("A-501A", -1), ("A-501B", -1), ("B-501A", 1), ("A-501C", 1)):
+        z = int(sign * gbr_load.ROW_Z_MM)
+        p.one(rf"(part\('{code}', '[^']*', \[[\d, ]+\], \[-?[\d.]+, -?[\d.]+, )-?\d+(\])",
+              lambda m, z=z: f"{m.group(1)}{z}{m.group(2)}")
+    # 흐름 2번 문구와 그 좌표, 그리고 3·4·5 번의 행 좌표.
+    p.one(r"step\('2', '데크 롤러 Z 분기 [\d,]+ \(R-A 행\)', \[(-?\d+), (\d+), 0\], \[-?\d+, \d+, -?\d+\]\)",
+          lambda m: f"step('2', '데크 롤러 Z 분기 {gbr_load.ROW_Z_MM:,.0f} (R-A 행)', "
+                    f"[{m.group(1)}, {m.group(2)}, 0], "
+                    f"[{m.group(1)}, {m.group(2)}, {-int(gbr_load.ROW_Z_MM)}])")
+    # 나머지 흐름은 그 행 위에서 일어난다 — 문구로 집는다 (`step('3', …)` 만으로는
+    # 다른 GA 시트의 3번 단계까지 걸린다).
+    for head in ("콤포크 +15 픽업", "포크 X+ 3,200 신장",
+                 "소하강", "만재 시 도킹 해제"):
+        p.one(rf"(step\('\d', '{re.escape(head)}[^']*', \[-?\d+, \d+, )-?\d+(\], \[-?\d+, \d+, )-?\d+(\]\))",
+              lambda m, z=-int(gbr_load.ROW_Z_MM): f"{m.group(1)}{z}{m.group(2)}{z}{m.group(3)}")
+    # 셔틀 데크 폭 — GA 시트는 7,100(존 폭)을 적었는데 그 자리에는 가드가 선다.
+    p.one(r"(part\('GBR-301', '수평셔틀', \[\d+, \d+, )\d+(\])",
+          lambda m: f"{m.group(1)}6600{m.group(2)}")
+
+    # ── 적재 인터페이스 — `gbr_dynamics` 가 푼 것을 형상에 옮긴다 ─────────
+    #
+    # 세 값이 서로 물려 있어 한 곳에서 찍는다.
+    #
+    #   · 선반 레일 — 종전 z ±730 · 폭 55 는 ±702.5…757.5 라 **유리(±700)에
+    #     닿지 않았다.** 하중 경로가 통째로 비어 있었고 강체 적분이 그것을
+    #     잡아냈다 (`pv-gbr-physics.html`). 이제 기둥과 유리가 레일 양 끝을 정한다.
+    #   · 콤포크 — 넓어진 레일을 비켜 안쪽으로 온다 (z ±620 → ±540).
+    #   · 콤포크 깊이 — 슬롯 피치 79 가 정한다. GA 의 95 는 피치보다 커서 한 칸
+    #     아래 유리를 긁었다. 60 에서 처짐 2.9 mm 로 창 안에 든다.
+    from pv_preprocess import gbr_dynamics
+    assert gbr_load.fork_offset_ok(), "콤포크가 슬롯 레일과 겹친다"
+    assert gbr_dynamics.fork_depth_ok(), "콤포크 깊이가 슬롯 피치에 안 들어간다"
+    assert gbr_dynamics.set_down_releases_the_fork(), "소하강이 포크를 안 놓는다"
+    assert gbr_dynamics.tg_gap_ok(), "TG-813 이 소하강을 막는다"
+    _sz, _sw = gbr_load.SHELF_Z_MM / 1000.0, gbr_load.SHELF_W_MM / 1000.0
+    _fh, _fo = gbr_load.FORK_H_MM / 1000.0, gbr_load.FORK_OFFSET_MM / 1000.0
+    #: 콤포크 상면(유리가 얹히는 면)은 3D 의 자세 그대로 둔다 — 깊이만 바뀐다.
+    _fork_top = 1.1075
+    _fork_y = round(_fork_top - _fh / 2, 6)
+    #: TG-813 은 포크 밑면에서 `TG_GAP_MM` 만큼 떨어져 매달린다 (레일 높이 50).
+    _tg_y = round(_fork_top - _fh - gbr_load.TG_GAP_MM / 1000.0 - 0.025, 6)
+    #: 유리는 레일 상면에 **얹힌다** — 종전에는 2.5 mm 떠 있었다 (판 두께 20·25).
+    _rail_top = gbr_load.SHELF_T_MM / 2000.0
+
+    p.one(r"P\(ft,\[2\.6,[\d.]+,\.12\],\[Ri,[\d.]+,gz\+gs\*[\d.]+\],M\.aluminum,",
+          lambda m: f"P(ft,[2.6,{_fh:g},.12],[Ri,{_fork_y:g},gz+gs*{_fo:g}],M.aluminum,")
+    p.one(r"\[-[\d.]+,[\d.]+\]\.forEach\(c=>P\(ft,\[2\.58,\.025,[\d.]+\]",
+          lambda m: f"[-{_sz:g},{_sz:g}].forEach(c=>P(ft,[2.58,.025,{_sw:g}]")
+    p.one(r"\[-[\d.]+,[\d.]+\]\.forEach\(n=>P\(ft,\[2\.58,\.025,[\d.]+\]",
+          lambda m: f"[-{_sz:g},{_sz:g}].forEach(n=>P(ft,[2.58,.025,{_sw:g}]")
+    p.one(r"let l=P\(ft,\[2\.5,\.02,1\.4\],\[s,o\+[\d.]+,e\]",
+          lambda m: f"let l=P(ft,[2.5,.02,1.4],[s,o+{_rail_top + 0.01:g},e]")
+    p.one(r"let t=P\(ft,\[2\.5,\.025,1\.4\],\[Fo,e\+[\d.]+,Kn\.H\]",
+          lambda m: f"let t=P(ft,[2.5,.025,1.4],[Fo,e+{_rail_top + 0.0125:g},Kn.H]")
+    p.one(r"L\(\[2\.60, \.05, \.10\], \[pvZone\.buffer\[0\]\+5\.65, [\d.]+, z\]",
+          lambda m: f"L([2.60, .05, .10], [pvZone.buffer[0]+5.65, {_tg_y:g}, z]")
+    # GA 시트의 콤포크 단면과 카탈로그 치수도 같은 깊이에서 찍는다.
+    for tag in ("FKO", "FKI"):
+        for row in ("A", "B", "H"):
+            p.one(rf"(part\('{tag}-{row}', '[^']*', \[2600, )\d+(, 120\])",
+                  lambda m: f"{m.group(1)}{gbr_load.FORK_H_MM:g}{m.group(2)}")
+    p.one(r'(AFR-TF-810","레시피 버퍼","[^"]*","\d+EA",\[2600,120,)\d+',
+          lambda m: f"{m.group(1)}{gbr_load.FORK_H_MM:g}")
+    # 문구 안의 숫자도 같은 모델에서 찍는다 — 값만 고치면 도면이 옛 이야기를 한다.
+    _edge = gbr_load.GLASS_W_MM / 2 - gbr_load.FORK_OFFSET_MM
+    p.one(r"step\('5', '소하강 [\d.]+ 레일 안착·포크 복귀 −[\d,]+'",
+          lambda m: f"step('5', '소하강 {gbr_load.SET_DOWN_MM:g} 레일 안착"
+                    f"·포크 복귀 −{gbr_load.FORK_STROKE_MM:,.0f}'")
+    p.one(r"2단 텔레스코픽 콤포크 쌍이 패널 장변 [\d.]+ mm 안쪽\(z ±[\d]+\)을 전장 지지해 "
+          r"X [\d,]+ 신장·[\d.]+ 소하강으로 도크 슬롯에 안착시키고, [^\"]*\.",
+          lambda m: f"2단 텔레스코픽 콤포크 쌍이 패널 장변 {_edge:,.0f} mm 안쪽"
+                    f"(z ±{gbr_load.FORK_OFFSET_MM:,.0f})을 전장 지지해 "
+                    f"X {gbr_load.FORK_STROKE_MM:,.0f} 신장·"
+                    f"{gbr_load.SET_DOWN_MM:g} 소하강으로 도크 슬롯에 안착시키고, "
+                    f"선단은 겹침 두 점에 받쳐져 실제 외팔은 "
+                    f"{gbr_dynamics.fork_static().free_mm:,.0f} mm 입니다 "
+                    f"(선단 처짐 {gbr_dynamics.fork_droop_mm():.1f} mm).")
+
+    # AFR 셀이 패널을 받는 시각 — 3D 애니메이션의 `nt` 다. 리터럴로 박혀 있었고,
+    # REV.58 이 JBR 칸을 4 → 7 s 로 늘려 인계가 85 → 94 s 로 밀렸는데도 85 로
+    # 남아 있었다 — 그 9 s 동안 AFR 이 아직 오지 않은 패널을 잡고 움직였다.
+    # 이제 모델이 정한다: 투입 구간 + JBR 점유가 곧 이 셀의 시작이다.
+    p.one(r"\bvar nt=[\d.]+,",
+          lambda m: f"var nt={campaign.INFEED_S + campaign.JBR_S:g},")
+
+    # 종단 체류 — 화면 두 곳이 아직 124 를 말하고 있었다. `ci`(=nt+Lr)는 3D 가
+    # 계산해 쓰는데, 통합 헤더 배지와 서보 패널의 분모는 **글자로 박혀** 있어
+    # REV.58·59 가 JBR 칸을 옮길 때 따라오지 못했다. 여기서 찍어 다시 갈라지지 않게 한다.
+    p.one(r"ONE PLANT · [\d.]+ s TRACE",
+          lambda m: f"ONE PLANT · {campaign.total_dwell_s():g} s TRACE")
+    p.one(r"stage\.time\.toFixed\(1\) \+ ' / [\d.]+ s'",
+          lambda m: f"stage.time.toFixed(1) + ' / {campaign.total_dwell_s():.1f} s'")
 
     # ── 열수지 — 반내 발열은 서보 일람에서 나온다 ────────────────────────
     # 이름표도 모델에서 찍는다 — "셀 분전반 7면" 처럼 반 수가 박힌 문구가 있어,

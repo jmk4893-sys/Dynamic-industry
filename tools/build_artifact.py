@@ -53,6 +53,16 @@ TARGETS: dict[str, tuple[pathlib.Path, pathlib.Path]] = {
                 pathlib.Path("out/pv-jbr-hub-artifact.html")),
     "jbr-physics": (pathlib.Path("docs/drawings/pv-jbr-physics.html"),
                     pathlib.Path("out/pv-jbr-physics-artifact.html")),
+    "afr-scene": (pathlib.Path("docs/drawings/pv-afr-scene.html"),
+                  pathlib.Path("out/pv-afr-scene-artifact.html")),
+    "afr-closeup": (pathlib.Path("docs/drawings/pv-afr-closeup.html"),
+                    pathlib.Path("out/pv-afr-closeup-artifact.html")),
+    "sg-closeup": (pathlib.Path("docs/drawings/pv-sg-closeup.html"),
+                   pathlib.Path("out/pv-sg-closeup-artifact.html")),
+    "gbr-scene": (pathlib.Path("docs/drawings/pv-gbr-scene.html"),
+                  pathlib.Path("out/pv-gbr-scene-artifact.html")),
+    "gbr-physics": (pathlib.Path("docs/drawings/pv-gbr-physics.html"),
+                    pathlib.Path("out/pv-gbr-physics-artifact.html")),
 
     "fasteners": (pathlib.Path("docs/drawings/pv-fastener-book.html"),
                   pathlib.Path("out/pv-fastener-book-artifact.html")),
@@ -117,6 +127,15 @@ PUBLISHED: dict[str, str] = {
     "jbr-fab": "90ac72e3-34cf-4602-a3ff-207fd4644997",
     "jbr-hub": "4b703023-c217-4d60-a07f-a7bd36e962c9",
     "jbr-physics": "d5eaa3df-fcc9-4e6f-8a32-dc165b75a707",
+    # 후단 — 이 브랜치가 발행한 셋. GI 확대도와 후단 도면집은 그것을 만든
+    # 브랜치(claude/gi-inspection-cell)가 자기 자리에서 적는다.
+    "afr-scene": "6e68bee7-a1f1-495b-a84f-3942f6105c90",
+    "afr-closeup": "2070e91e-1012-41db-be9e-9148c2512fd3",
+    "sg-closeup": "6bfcba30-c0f3-44e6-b923-c56496c20aa6",
+    # 버퍼 — 이 브랜치가 발행한 둘. 파생본은 REV.61 에서 한 번 더 찍었지만
+    # `url` 을 주고 **같은 자리에 덮었으므로** 새 것이 생기지 않았다.
+    "gbr-scene": "f7ef9349-80b4-41b4-bafb-e83af15fc142",
+    "gbr-physics": "355ac560-aefc-4102-a018-20dd9d716b1e",
 }
 
 #: 같은 도면으로 **잘못 하나 더 생긴** 아티팩트 — 재발행하지 말 것.

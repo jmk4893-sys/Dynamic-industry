@@ -27,6 +27,22 @@ from dataclasses import dataclass
 from . import air
 
 
+# ── SG-301 후드 — 몇 대가 **동시에** 도는가가 풍량을 정한다 ──────────────
+#: 연마 헤드 하나가 쓰는 국소 후드 풍량 (m³/h). REV.51 이 총 풍량으로 적어 둔
+#: 1,000 이 곧 한 대 몫이다 ("동시에 도는 헤드가 없다" 는 전제였으므로).
+SG_HOOD_M3H = 1_000
+
+#: 동시에 도는 후드 수. 장변 2 대가 같은 통과에서 함께 갈므로 첨두는 2 다 —
+#: 단변 상(相)에서는 1 이지만 집진기는 첨두로 골라야 한다.
+#: 정본은 `sg_grind.LONG_HEADS` 이고 여기서 베끼지 않는다.
+def _simultaneous_hoods() -> int:
+    from . import sg_grind
+    return max(sg_grind.LONG_HEADS, sg_grind.SHORT_HEADS)
+
+
+SG_SIMULTANEOUS_HOODS = _simultaneous_hoods()
+
+
 # ── 흐름 ─────────────────────────────────────────────────────────────────
 @dataclass(frozen=True)
 class Stream:
@@ -41,9 +57,13 @@ class Stream:
 
 
 STREAMS: tuple[Stream, ...] = (
-    # REV.51: 헤드가 셋(장변 2 + 단변 횡행 1)이지만 순차 운전이라 후드 댐퍼를 절환해
-    # 총 풍량은 1,000 그대로다 — 동시에 도는 헤드가 없다 (campaign.sg_occupancy_s 순서).
-    Stream("DS-01", "SG-301 엣지 연마 (스핀들 3,000 rpm · 후드 3 순차)", 1_000,
+    # REV.59: 여기에 "순차 운전이라 동시에 도는 헤드가 없다" 고 적고 총 풍량을 한 대
+    # 몫인 1,000 으로 두었는데, `campaign.sg_occupancy_s()` 는 두 장변을 **한 번의
+    # 통과**로 세고 있었다 — 그러려면 장변 2 대가 동시다. 두 모델이 서로 다른 말을
+    # 하고 있었고, 발주처가 **동시** 로 정했다. 그러니 풍량은 한 대 몫이 아니라
+    # **동시에 도는 헤드 수**만큼이다. 아래 sg_hood_flow_m3h() 가 그것을 곱한다.
+    Stream("DS-01", "SG-301 엣지 연마 (스핀들 3,000 rpm · 장변 2 동시 + 단변 1)",
+           SG_HOOD_M3H * SG_SIMULTANEOUS_HOODS,
            "소다석회 유리분 + 연마휠 마모분", False,
            "SiO₂ 기반이라 그 자체로는 불연이다. 다만 **불활성분이 있다는 것과 "
            "혼합물이 불활성화된다는 것은 다른 말이다**"),
@@ -54,7 +74,7 @@ STREAMS: tuple[Stream, ...] = (
            "EVA·백시트 파쇄분", True,
            "**도면에 이름은 있는데 풍량이 없다.** 파쇄분은 절삭분보다 곱고 "
            "가연성이라 폭발 평가에서 가장 무거운 흐름인데, DX-601 집계"
-           "(1,350 m³/h)에도 안 들어가 있다"),
+           f"({air.DUST_FLOW_M3H:,} m³/h)에도 안 들어가 있다"),
 )
 
 
@@ -192,11 +212,60 @@ def missing_flow_consequences() -> tuple[str, ...]:
     )
 
 
+#: 주 집진 블로워의 GA 명시 풍량·정격 (m³/h, kW) — `servos` 의 MTR-DX-MB.
+BLOWER_GA_M3H = 1_000
+BLOWER_GA_KW = 7.5
+
+
+def blower_shortfall_ratio() -> float:
+    """집계 풍량이 GA 블로워 풍량의 몇 배인가 — 1 을 넘으면 모자란다."""
+    return round(counted_flow_m3h() / BLOWER_GA_M3H, 2)
+
+
+def blower_is_undersized() -> bool:
+    """GA 가 적어 둔 블로워로 이 풍량을 감당하는가."""
+    return blower_shortfall_ratio() > 1.0
+
+
+def blower_kw_at_counted_flow() -> float:
+    """집계 풍량에서 필요한 블로워 축동력 (kW) — 정압이 같다면 풍량에 비례한다.
+
+    **어림이다.** 실제로는 덕트 정압이 풍량의 제곱으로 커져 동력은 세제곱에
+    가깝게 는다. 여기서는 하한(비례)만 내놓는다 — 벤더 선정이 이 값 **위**로
+    간다는 뜻이지 이 값이면 된다는 뜻이 아니다.
+    """
+    return round(BLOWER_GA_KW * blower_shortfall_ratio(), 1)
+
+
+def what_the_simultaneous_heads_cost() -> tuple[str, ...]:
+    """장변 2 대를 동시에 돌리기로 한 결정이 집진에 무엇을 하는가.
+
+    발주처가 동시로 정했다. 그 결정은 택트를 8.33 s 아끼는 대신 첨두 풍량을
+    두 배로 만든다 — 그 값이 여과면적·펄스밸브·압축공기·블로워로 이어진다.
+    """
+    return (
+        f"SG-301 국소 풍량이 후드 한 몫 {SG_HOOD_M3H:,} → 두 몫 "
+        f"{SG_HOOD_M3H * SG_SIMULTANEOUS_HOODS:,} m³/h",
+        f"집계 풍량 {counted_flow_m3h():,} m³/h — 여과면적·펄스밸브·압축공기가 따라온다",
+        f"**GA 가 적어 둔 주 블로워 {BLOWER_GA_M3H:,} m³/h · {BLOWER_GA_KW} kW 로는 "
+        f"모자란다** — 집계가 그 {blower_shortfall_ratio()} 배다. 축동력은 비례로만 "
+        f"봐도 {blower_kw_at_counted_flow()} kW 이고, 정압이 풍량의 제곱으로 커지므로 "
+        "실제 선정은 그 위다",
+        "덕트 반송풍속(≥ 20 m/s)을 지키려면 지관·주관 구경도 다시 잡아야 한다",
+        f"대신 얻는 것은 택트다 — 순차였다면 장변을 두 번 지나가 SG 점유가 "
+        f"8.33 s 늘었다",
+    )
+
+
 def summary() -> dict[str, object]:
     """도면 리터럴이 받아 가는 값."""
     return {
         "streams": len(STREAMS),
         "countedFlowM3h": counted_flow_m3h(),
+        "sgHoodM3h": SG_HOOD_M3H,
+        "sgSimultaneousHoods": SG_SIMULTANEOUS_HOODS,
+        "blowerShortfall": blower_shortfall_ratio(),
+        "blowerUndersized": blower_is_undersized(),
         "unquantified": len(unquantified_streams()),
         "combustibleFraction": combustible_flow_fraction(),
         "framePulledNotCut": FRAME_IS_PULLED_NOT_CUT,

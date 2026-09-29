@@ -27,6 +27,7 @@
  *     node tools/check_bay_clearance.mjs [도면.html]
  */
 import { chromium } from 'playwright';
+import { browserPath } from './pw_browser.mjs';
 import { resolve } from 'node:path';
 
 const file = process.argv[2] || 'docs/drawings/pv-preprocess-plant.html';
@@ -37,7 +38,10 @@ const BAY_PARTS = '(BFC-101|BLR-101|SEP-101|CD-101)([AB])';
 /** 맞닿아도 되는 깊이 (m). 볼트로 붙은 것과 파고든 것을 가르는 선이다. */
 const TOUCH_M = 0.002;
 
+/* 컨테이너에 미리 깔린 chromium 을 직접 짚는다 — 다른 검사 여덟은 이미
+   `pw_browser.mjs` 를 쓰는데 이 하나만 빠져 있어 실행조차 못 했다. */
 const browser = await chromium.launch({
+  executablePath: browserPath(),
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
