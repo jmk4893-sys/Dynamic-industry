@@ -3643,6 +3643,21 @@ class TestGlassRemovalIntegration(unittest.TestCase):
                       "'KC-301 칼날 카세트 새들 (통로 밖)'", block,
                       "새들을 옮긴 자리·카세트 길이로 그리지 않았다")
 
+    def test_the_readme_summary_carries_the_model_envelope(self):
+        """README 머리의 현황 줄은 이 모델에서 나온 값이어야 한다.
+
+        REV.54 부터 이 줄이 따라오지 않아 55,625 × 8,800 × 5,400 · 밴드 7,600 ·
+        부지 Y 11,000 을 달고 있었다 — 읽는 사람은 그것을 **오늘 값**으로 읽는다.
+        """
+        with io.open("README.md", encoding="utf-8") as handle:
+            readme = handle.read()
+        x, y, z = layout.plant_envelope_mm()
+        a0, a1 = layout.aisle_band_mm()
+        self.assertIn(f"영구설비 **{x:,} × {y:,} × {z:,} mm**", readme)
+        self.assertIn(f"장비 밴드 {layout.MACHINE_BAND_Y_MM:,} · 통로 {a0:,}–{a1:,}", readme)
+        self.assertIn(f"(부지 Y {layout.site_envelope_mm()[1]:,} · "
+                      f"새들 Y {layout.cassette_saddle_plant_y_mm():,})", readme)
+
     def test_the_specification_asks_the_vendor_for_the_relocated_saddle(self):
         """옮긴 자리는 사양서가 벤더에게 부르는 숫자이기도 하다 (OI-17).
 

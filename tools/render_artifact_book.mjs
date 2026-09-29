@@ -19,9 +19,20 @@
  * 찾아갈 수 있어야 한다.
  */
 import { chromium } from 'playwright';
-import { writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, copyFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
+
+/* 표지의 개정 번호 — README 의 개정 절에서 읽는다 (`tools/revision.py` 와 같은 규칙).
+ * 손으로 적어 두면 개정마다 어긋난다. 절은 새것이 위에 오지만 앞쪽에 옛 절(§48)이
+ * 끼어 있어 순서가 아니라 **가장 큰 값**이 지금 개정이다. */
+function currentRevision() {
+  const readme = readFileSync(resolve('README.md'), 'utf8');
+  const revs = [...readme.matchAll(/^#### §\d+ .*\(REV\.(\d+)\)/gm)].map((m) => Number(m[1]));
+  if (!revs.length) throw new Error('README.md 에서 개정 절(#### §N … (REV.M))을 못 읽었다');
+  return `REV.${Math.max(...revs)}`;
+}
+const REV = currentRevision();
 
 const outDir = process.argv[2] || 'out/artifact-frames';
 const FPS = Number(process.argv[3] || 15);
@@ -38,7 +49,7 @@ const span = (v, a, b) => clamp01((v - a) / (b - a));
 /* 장 — {초, 방식, 파일, 제목, 부제, 아티팩트 주소} */
 const CHAPTERS = [
   { secs: 4, mode: 'card', title: '발행 아티팩트',
-    sub: '태양광 패널 전처리 플랜트 · REV.58',
+    sub: `태양광 패널 전처리 플랜트 · ${REV}`,
     lines: ['플랜트 3D 네 벌 · 운전 콘솔 · 60분 연속 운전',
             'JBR-201 도면집 · 벤더 DG-HK60 문서 · 영상 두 편'] },
 
