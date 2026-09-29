@@ -563,6 +563,7 @@
           <polyline class="wt-l" points="802,448 802,478 646,478"></polyline>
           <polyline class="wt-t" points="860,112 890,112 890,478 802,478"></polyline>
           <text class="t-mono t-wt" x="756" y="498" text-anchor="middle">여액 0.47 m³/h → 급광 순환</text>
+          <text class="t-mono t-wt" x="756" y="516" text-anchor="middle">QI-106 적합 시 직송 · 불합격 시 W113 우회</text>
           <circle class="stream-n" cx="430" cy="478" r="11"></circle>
           <text class="stream-t" x="430" y="482" text-anchor="middle">6</text>
           <text class="t-mono t-wt" x="300" y="498" text-anchor="start">공정수 회수 9.4 m³/h · 월류 블리드 0.89</text>
@@ -1555,9 +1556,12 @@
       <li><strong>bias 제어(FFIC-106)가 이 설비의 전부다.</strong> bias 가 음수로 넘어가면 세척 효과가 사라져 정광 품위가 무너지고, 과도하면 회수율이 떨어진다. 세척수 유량과 미광 배출을 협조 제어해 Jb 를 직접 연산한다.</li>
       <li>pH 조정제·황화제·억제제를 쓰지 않는다. 포수제가 금속 Ag 표면에 직접 선택 흡착하므로 <strong>자연 pH</strong> 에서 운전하며, H₂S·CS₂ 위험이 설계상 존재하지 않는다.</li>
       <li>1안은 공정수 <strong>9.4 m³/h</strong>, 2안은 6.31 m³/h를 회수한다. 농축조 월류의 10%만 블리드하고, <strong>필터프레스 여액 0.47 m³/h는 부선 회로 첫 단 급광으로 직접 순환</strong>한다(1안 CT-1, 2안 FC-201 러퍼). 여액을 월류수와 중복 계상하지 않는다.</li>
+      <li>여액 직송은 <strong>QI-106 품질 permissive</strong>(TSS/탁도, pH, 전도도, 온도, 잔류약품)와 TK-104 수위·P-106 상태가 정상일 때만 허용한다. 불합격 시 러퍼 인입을 차단하고 W113 off-spec 탱크로 우회한다.</li>
       <li>정광·미광 필터프레스는 <strong>서로 다른 기준으로 규격이 정해진다.</strong> 미광기(FL-102/FL-202)는 사이클당 케이크 부피가 챔버 총용적 702 L 를 결정하고, 정광기(FL-101/FL-201)는 필요 면적이 0.1 m² 에 못 미쳐 <strong>상용 최소 기종</strong>이 하한이 된다. 그래도 교차오염 손실이 회수한 은보다 클 수 있어 미광기와 합치지 않는다.</li>
       <li>2안의 급기는 스파저가 아니라 <strong>중공축</strong>으로 넣는다(DWG-004). 축 외경은 서비스계수 2.0 비틀림과 <strong>예비 로터동역학</strong> 중 큰 값으로 선정했으며, 보어·조인트·허브 토출구 손실을 송풍기 토출압에 반영했다. 별도 스파저 손실은 적용하지 않았다.</li>
       <li>1안의 장치 형식은 <strong>특허 가출원 대상</strong>(AU 2025902821)이다. 상업화 시 실시권 검토가 필요하며, 불발 시 2안이 현실적 차선이다.</li>
+      <li>현재 프로젝트의 제작 기본안은 <strong>2안 기계식 3단</strong>이다. 1안은 실제 고속분쇄·체분급·열처리/attrition 블랙파우더 파일럿과 실시권 확인 후 Phase 2 대안으로 재평가한다.</li>
+      <li>논문 원료는 박리 셀 분획의 습식분쇄물이다. 현재 원료에 성능을 이월하려면 PSD 외에 Ag 노출도, EVA·백시트·탄화잔사, Cu·Al 조성, 레올로지와 locked-cycle 결과를 확인한다.</li>
       <li>도면의 모든 수치는 <code>design_basis.py</code> 로부터 코드로 산출된 값이다. 시운전 시험 결과로 설계 기준을 갱신하면 수치가 달라질 수 있다.</li>
     </ol>
   </section>
