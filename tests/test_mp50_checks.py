@@ -16,7 +16,7 @@ from . import _path  # noqa: F401
 from mp50_separator import GEOMETRY as G, run_checks
 from mp50_separator.checks import (
     BACKSHEET_DENSITY, DESIGN_MAX_RPM, EVA_DENSITY, GEARBOX_MAX_RPM, SILICON_DENSITY,
-    brine_density, brine_viscosity, critical_speed, stokes_velocity, travel_fraction,
+    brine_density, brine_viscosity, critical_speed, reach_fraction, stokes_velocity,
 )
 
 CHECKS = {c.ref: c for c in run_checks()}
@@ -67,9 +67,8 @@ class TestSeparationPhysics(unittest.TestCase):
             self.assertLess(stokes_velocity(EVA_DENSITY[0], 45, wt), 0, f"{wt} wt%")
 
     def test_fine_backsheet_barely_moves_at_18_wt(self):
-        v = abs(stokes_velocity(BACKSHEET_DENSITY[0], 31, 18))
-        column = (G.operating_level_z - G.shell_bottom_z) / 1000
-        self.assertLess(travel_fraction(v, 600, column), 0.05)
+        v = stokes_velocity(BACKSHEET_DENSITY[0], 31, 18)
+        self.assertLess(reach_fraction(G, v, 600), 0.05)
 
     def test_saturation_makes_fine_backsheet_move(self):
         """포화까지 올리면 상승속도가 뚜렷이 빨라진다 — CHK-10 의 권고 근거.
@@ -87,9 +86,24 @@ class TestSeparationPhysics(unittest.TestCase):
         b = stokes_velocity(SILICON_DENSITY, 62, 18)
         self.assertAlmostEqual(b / a, 4.0, places=6)
 
-    def test_travel_fraction_is_bounded(self):
-        self.assertEqual(travel_fraction(1.0, 10, 0.1), 1.0)
-        self.assertAlmostEqual(travel_fraction(0.001, 100, 1.0), 0.1)
+    def test_reach_fraction_is_bounded(self):
+        self.assertEqual(reach_fraction(G, 1.0, 10), 1.0)      # 침강
+        self.assertEqual(reach_fraction(G, -1.0, 10), 1.0)     # 부상
+        self.assertEqual(reach_fraction(G, 0.0, 600), 0.0)
+
+    def test_reach_fraction_counts_volume_not_height(self):
+        """콘은 아래로 갈수록 좁다 — 같은 거리를 가도 잡히는 부피가 적다.
+
+        높이 비율로 세던 옛 계산은 31 µm 실리콘의 600 s 침강 도달률을 62 % 로
+        봤지만, 콘까지 넣어 부피로 세면 13 % 다. 이 차이가 CHK-10 의 권고를
+        뒷받침한다 — 정치시간을 더 늘려야 한다는 쪽으로 강해진다.
+        """
+        v = stokes_velocity(SILICON_DENSITY, 31, 18)
+        d_mm = v * 600 * 1000
+        by_height = d_mm / (G.operating_level_z - G.cone_outlet_z)
+        by_volume = reach_fraction(G, v, 600)
+        self.assertLess(by_volume, by_height)                  # 부피로 세면 항상 더 작다
+        self.assertAlmostEqual(by_volume, 0.126, places=2)
 
 
 class TestFindingsSurviveUncertainty(unittest.TestCase):
@@ -103,9 +117,8 @@ class TestFindingsSurviveUncertainty(unittest.TestCase):
         self.assertLess(njs, DESIGN_MAX_RPM)             # 권고 150 rpm 안에는 든다
 
     def test_fine_polymer_still_short_at_600_s_with_slower_settling(self):
-        column = (G.operating_level_z - G.shell_bottom_z) / 1000
-        v = abs(stokes_velocity(EVA_DENSITY[0], 31, 18)) * 1.25   # 25 % 빠르게 봐도
-        self.assertLess(travel_fraction(v, 600, column), 0.20)
+        v = stokes_velocity(EVA_DENSITY[0], 31, 18) * 1.25        # 25 % 빠르게 봐도
+        self.assertLess(reach_fraction(G, v, 600), 0.20)
 
     def test_critical_speed_margin_is_large(self):
         rpm, span, m_eff = critical_speed()
