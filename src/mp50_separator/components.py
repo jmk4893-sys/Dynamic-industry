@@ -29,7 +29,7 @@ import dataclasses
 import math
 from dataclasses import dataclass, field
 
-from .geometry import COVER_NOZZLES, GEOMETRY, NOZZLES, Geometry
+from .geometry import COVER_INSTRUMENT_NOZZLES, GEOMETRY, NOZZLES, Geometry
 
 #: 재질별 밀도 (kg/m³).
 DENSITY = {
@@ -187,8 +187,10 @@ def _cover(g: Geometry) -> Assembly:
                  "HOLD", "볼트 PCD·보어는 교반기 벤더 GA 확정 후 가공 (B1 인터페이스)"),
             Part("B-03", "허브 거싯", "80 × 60 × t5", "SUS304", 4,
                  plate_kg(80.0 * 60.0 / 2.0, 5.0, "SUS304"), "HOLD", "허브 ↔ 커버판 · 벤더 하중 확정 후"),
-            Part("B-04", "커버 노즐", f"{len(COVER_NOZZLES)}종 · 노즐표 참조", "SUS316L", len(COVER_NOZZLES),
-                 tube_kg(16.7, 2.0, 60.0, "SUS316L") + 0.16, "RELEASE", "계측은 전부 커버에서 내린다"),
+            Part("B-04", "커버 노즐", f"{len(COVER_INSTRUMENT_NOZZLES)}종 · 노즐표 참조", "SUS316L",
+                 len(COVER_INSTRUMENT_NOZZLES),
+                 tube_kg(16.7, 2.0, 60.0, "SUS316L") + 0.16, "RELEASE",
+                 "B2·B3·B4 — 계측은 전부 커버에서 내린다. B1 은 구동 보스라 B-02 다"),
             Part("B-05", "가스켓 O-링", "Ø430 코드 Ø5", "EPDM", 1,
                  math.pi * 430.0 * (math.pi / 4.0 * 25.0) * 1e-9 * DENSITY["EPDM"],
                  "RELEASE", "플랜지 면 홈에 삽입 — 커버는 금속면 착좌 (Z951 유지)"),
@@ -398,7 +400,7 @@ def _instruments(g: Geometry) -> Assembly:
         parts=(
             Part("J-01", "전도도 / 염도 센서", "0~200 mS/cm, 삽입장 425, 위생 ½\" 접속", "-", 1, 0.4,
                  "PROPOSED", "C7 — 제어변수는 염수 밀도지 pH 가 아니다 · B2 에서 삽입, 선단 Z526"),
-            Part("J-02", "온도센서", "Pt100 3-wire, 삽입장 225, 위생 ½\" 접속", "-", 1, 0.3,
+            Part("J-02", "온도센서", "Pt100 3-wire, 삽입장 425, 위생 ½\" 접속", "-", 1, 0.3,
                  "RELEASE", "B3 · 염수밀도 온도보정 (약 -0.3 kg/m³·K)"),
             Part("J-03", "공기 유량계", "로타미터 0~20 L/min + 압력계 0~2 bar", "-", 1, 0.5,
                  "RELEASE", "DOE 급기 조건 재현용"),

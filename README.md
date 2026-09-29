@@ -185,7 +185,7 @@ tools/
 PYTHONPATH=src python -m flotation_design                               # 계산서 출력
 PYTHONPATH=src python -m flotation_design -o docs/design-calculation.md # 파일로 저장
 PYTHONPATH=src python -m flotation_design --peak-tph 0.6                # 처리량 변경
-python -m unittest discover -s tests -t .                               # 테스트 (1,311건)
+python -m unittest discover -s tests -t .                               # 테스트 (1,312건)
 
 # 부품 카탈로그 — 형상·치수·재질에서 질량과 자중을 계산한다
 python3 tools/parts.py                     # 카탈로그 리포트 (품목·질량·자중 검증)
