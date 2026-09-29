@@ -95,6 +95,22 @@ class TestPartDrawingDocument(unittest.TestCase):
             self.assertTrue(p.stock, f"{p.no} 에 소재 규격이 없다")
             has(self, self.html, p.stock, f"{p.no} 소재")
 
+    def test_material_and_stock_agree(self):
+        """재질란과 소재란이 서로 다른 재질을 말하면 안 된다.
+
+        부품도는 둘을 나란히 싣는다. 실제로 노즐(A-04·B-04)이 재질 SUS304 ·
+        소재 SUS316L 위생튜브로 어긋난 채 도면에 나갔다 — 염수에 닿는 부품이라
+        316L 이 맞고 재질란이 틀린 쪽이었다. 값싸게 잡히는 모순이므로 묶어 둔다.
+        """
+        for a in ASSEMBLIES:
+            for p in a.parts:
+                named = [m for m in ("SUS316L", "SUS304", "EPDM") if m in p.stock]
+                if not named:
+                    continue          # 소재란이 재질을 말하지 않는 것은 넘어간다
+                self.assertIn(
+                    p.material, named,
+                    f"{p.no} 재질 {p.material} 인데 소재는 {named[0]} 이다 — {p.stock!r}")
+
     def test_general_tolerance_and_finish_are_stated_once(self):
         has(self, self.html, "ISO 2768-mK", "일반공차")
         has(self, self.html, "산세 · 부동태화", "후처리")

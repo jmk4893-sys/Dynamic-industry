@@ -139,7 +139,7 @@ def _tank(g: Geometry) -> Assembly:
     shell_mid = g.tank_id_mm + g.shell_thickness_mm
     cone_lateral = math.pi * (g.tank_id_mm + g.cone_outlet_id_mm) / 2.0 * g.cone_slant_length_mm
     nozzle_kg = sum(
-        tube_kg(n.tube_od_mm + 4.0, 2.0, n.projection_mm, "SUS304") + 0.18 for n in NOZZLES
+        tube_kg(n.tube_od_mm + 4.0, 2.0, n.projection_mm, "SUS316L") + 0.18 for n in NOZZLES
     ) / len(NOZZLES)
     return Assembly(
         code="A",
@@ -155,7 +155,7 @@ def _tank(g: Geometry) -> Assembly:
                  "PROPOSED", f"전개 부채꼴 R{g.cone_development_outer_r_mm:.0f}/R{g.cone_development_inner_r_mm:.1f} × {g.cone_development_angle_deg:.0f}° (C1·C3)"),
             Part("A-03", "배출 스터브", 'Ø63.5 × t2.0 × L40 + 2" 페룰', "SUS316L", 1,
                  tube_kg(63.5, 2.0, 40.0, "SUS316L") + 0.22, "PROPOSED", "C3 — 2 in 으로 붙이고 기본형은 리듀싱 클램프"),
-            Part("A-04", "동체 노즐", f"{len(NOZZLES)}종 · 노즐표 참조", "SUS304", len(NOZZLES),
+            Part("A-04", "동체 노즐", f"{len(NOZZLES)}종 · 노즐표 참조", "SUS316L", len(NOZZLES),
                  nozzle_kg, "RELEASE", "전용입 set-through · 내면 평활 연삭 · 잔여 크레비스 없을 것"),
             Part("A-05", "상단 플랜지", f"OD Ø{g.top_flange_od_mm:.0f} × ID Ø{g.shell_od_mm:.0f} × t{g.top_flange_thickness_mm:.0f}",
                  "SUS304", 1, plate_kg(annulus_mm2(g.top_flange_od_mm, g.shell_od_mm), g.top_flange_thickness_mm, "SUS304"),
@@ -187,8 +187,8 @@ def _cover(g: Geometry) -> Assembly:
                  "HOLD", "볼트 PCD·보어는 교반기 벤더 GA 확정 후 가공 (B1 인터페이스)"),
             Part("B-03", "허브 거싯", "80 × 60 × t5", "SUS304", 4,
                  plate_kg(80.0 * 60.0 / 2.0, 5.0, "SUS304"), "HOLD", "허브 ↔ 커버판 · 벤더 하중 확정 후"),
-            Part("B-04", "커버 노즐", f"{len(COVER_NOZZLES)}종 · 노즐표 참조", "SUS304", len(COVER_NOZZLES),
-                 tube_kg(16.7, 2.0, 60.0, "SUS304") + 0.16, "RELEASE", "계측은 전부 커버에서 내린다"),
+            Part("B-04", "커버 노즐", f"{len(COVER_NOZZLES)}종 · 노즐표 참조", "SUS316L", len(COVER_NOZZLES),
+                 tube_kg(16.7, 2.0, 60.0, "SUS316L") + 0.16, "RELEASE", "계측은 전부 커버에서 내린다"),
             Part("B-05", "가스켓 O-링", "Ø430 코드 Ø5", "EPDM", 1,
                  math.pi * 430.0 * (math.pi / 4.0 * 25.0) * 1e-9 * DENSITY["EPDM"],
                  "RELEASE", "플랜지 면 홈에 삽입 — 커버는 금속면 착좌 (Z951 유지)"),
