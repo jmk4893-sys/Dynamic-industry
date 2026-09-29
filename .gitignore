@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# 산출물 — 원본에서 기계로 찍는다 (tools/render_brand_reference.py)
+out/
