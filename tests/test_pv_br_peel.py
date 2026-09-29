@@ -594,13 +594,19 @@ class TestTheStaircaseEngagesInOrder(unittest.TestCase):
 class TestTheDilemmaIsADatumProblem(unittest.TestCase):
     """백시트를 먼저 뜯으려면 EVA 안에 칼끝을 세워야 한다 — 기준면이 없다."""
 
-    def test_the_band_is_the_rear_eva_and_comes_from_br_abrade(self):
-        """띠는 후면 EVA 한 겹이고 값은 `br_abrade` 가 든다 — 두 곳에 안 적는다."""
+    def test_the_band_is_the_rear_eva_less_the_cell_clearance(self):
+        """띠는 후면 EVA 한 겹에서 **셀 여유를 뺀** 것이고 값은 `br_abrade` 가 든다.
+
+        2026-09-29 전에는 띠가 후면 EVA 와 같았다 — `br_abrade` 의 창 상한이
+        셀 상면 그 자체였기 때문이다. 상한이 여유를 남기면서 띠도 그만큼 줄었다.
+        """
         from pv_preprocess import br_abrade
         lo, hi = br_abrade.depth_window_mm()
         self.assertAlmostEqual(br_peel.eva_band_mm(), hi - lo, places=3)
-        self.assertAlmostEqual(br_peel.eva_band_mm(),
-                               br_abrade.BACK_EVA_T_MM, places=2)
+        self.assertAlmostEqual(
+            br_peel.eva_band_mm(),
+            br_abrade.BACK_EVA_T_MM - br_abrade.CELL_CLEARANCE_MM, places=3)
+        self.assertLess(br_peel.eva_band_mm(), br_abrade.BACK_EVA_T_MM)
 
     def test_the_tolerances_come_from_sg_grind(self):
         """제어폭도 베끼지 않는다 — 슈 기준·프레임 기준 둘 다 `sg_grind` 정본."""
@@ -614,11 +620,15 @@ class TestTheDilemmaIsADatumProblem(unittest.TestCase):
         self.assertTrue(br_peel.the_face_reference_is_the_only_one_that_fits())
         self.assertGreater(br_peel.depth_margin_ratio(True), 1.0)
         self.assertLess(br_peel.depth_margin_ratio(False), 1.0)
-        self.assertAlmostEqual(br_peel.depth_margin_ratio(True), 2.25, places=2)
+        # 띠가 셀 여유만큼 줄면서 2.25 → 2.00 으로 내려왔다(2026-09-29).
+        self.assertAlmostEqual(br_peel.depth_margin_ratio(True), 2.00, places=2)
 
     def test_the_margin_is_thin_even_when_it_fits(self):
-        """들어가도 얇다 — 한쪽에 0.125 mm 다. 넉넉하다고 읽으면 안 된다."""
-        self.assertAlmostEqual(br_peel.net_margin_each_side_mm(), 0.125, places=3)
+        """들어가도 얇다 — 한쪽에 0.10 mm 다. 넉넉하다고 읽으면 안 된다.
+
+        0.125 였는데 `br_abrade` 가 셀 여유를 남기면서 더 얇아졌다(2026-09-29).
+        """
+        self.assertAlmostEqual(br_peel.net_margin_each_side_mm(), 0.10, places=3)
         self.assertLess(br_peel.net_margin_each_side_mm(),
                         br_peel.eva_band_mm() / 3)
 

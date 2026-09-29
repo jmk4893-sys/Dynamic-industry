@@ -100,12 +100,20 @@ class TestItFitsTheLine(unittest.TestCase):
 class TestDepthMustBeTakenFromTheFace(unittest.TestCase):
     """깊이 — 창이 있고, 그 창을 어디서 잡느냐가 유닛을 가른다."""
 
-    def test_there_is_a_window_and_it_is_the_eva_underneath(self):
-        """창의 넓이가 곧 백시트 밑 EVA 다 — 아래는 불소, 위는 셀이다."""
+    def test_there_is_a_window_and_it_stops_short_of_the_cell(self):
+        """아래는 불소, 위는 셀이다 — **닿기 전에 멈춘다.**
+
+        한때 상한이 `BACKSHEET_T_MM + BACK_EVA_T_MM`, 곧 셀 상면 **그 자체**였다.
+        「닿기 직전」이라 적어 놓고 닿는 자리를 주고 있었다(2026-09-29 정정).
+        """
         lo, hi = br_abrade.depth_window_mm()
         self.assertAlmostEqual(lo, br_abrade.BACKSHEET_T_MM, places=3)
-        self.assertAlmostEqual(hi, br_abrade.BACKSHEET_T_MM + br_abrade.BACK_EVA_T_MM,
+        self.assertAlmostEqual(br_abrade.cell_top_mm(),
+                               br_abrade.BACKSHEET_T_MM + br_abrade.BACK_EVA_T_MM,
                                places=3)
+        self.assertAlmostEqual(hi, br_abrade.cell_top_mm()
+                               - br_abrade.CELL_CLEARANCE_MM, places=3)
+        self.assertLess(hi, br_abrade.cell_top_mm())
         self.assertTrue(br_abrade.target_is_inside_the_window())
 
     def test_we_overshoot_on_purpose(self):
@@ -432,7 +440,11 @@ class TestItMovesThePolymerRatherThanRemovingIt(unittest.TestCase):
         band = hi - lo
         self.assertGreater(band / br_abrade.PLATEN_FOLLOW_MM,
                            br_peel.depth_margin_ratio())
-        self.assertAlmostEqual(band / br_abrade.PLATEN_FOLLOW_MM, 5.62, places=2)
+        # 창이 셀 여유만큼 좁아지면서 5.62 → 5.00 으로 내려왔다(2026-09-29).
+        self.assertAlmostEqual(band / br_abrade.PLATEN_FOLLOW_MM, 5.00, places=2)
+        self.assertAlmostEqual(
+            band, br_abrade.cell_top_mm() - br_abrade.CELL_CLEARANCE_MM
+            - br_abrade.BACKSHEET_T_MM, places=4)
 
     def test_the_gate_leak_narrows_but_still_lands_on_silicon(self):
         """누출이 200 배 좁아져도 **실리콘에 떨어진다** — 충분한지는 모른다."""
@@ -775,10 +787,16 @@ class TestTheVacuumTableAndTheMeasuredDatum(unittest.TestCase):
         """이게 핵심이다 — 진공은 판을 펴 줄 뿐 두께를 못 바꾼다."""
         self.assertFalse(br_abrade.table_reference_fits())
         self.assertLess(br_abrade.table_reference_margin(), 1.0)
+        # **잣대가 반폭이 아니다** — 목표가 창 중앙이 아니므로 좁은 쪽으로 잰다.
         self.assertAlmostEqual(
             br_abrade.table_reference_margin(),
-            br_abrade.depth_window_half_mm() / br_abrade.BED_REFERENCE_TOL_MM,
-            places=2)
+            br_abrade.depth_margin_from_target_mm()
+            / br_abrade.BED_REFERENCE_TOL_MM, places=2)
+        self.assertTrue(br_abrade.the_target_is_off_centre())
+        self.assertLess(br_abrade.table_reference_margin(),
+                        round(br_abrade.depth_window_half_mm()
+                              / br_abrade.BED_REFERENCE_TOL_MM, 2),
+                        "반폭으로 재면 여유를 실제보다 크게 본다")
 
     def test_measuring_the_top_face_is_what_fixes_it(self):
         self.assertTrue(br_abrade.measured_reference_fits())
@@ -1074,6 +1092,145 @@ class TestTheThinLine(unittest.TestCase):
         self.assertIn(str(br_abrade.geometry_threshold_mm()), text)
         self.assertIn(str(br_abrade.line_height_within_installed_mm()), text)
         self.assertIn("관성", text)
+
+
+class TestTheDepthWindowWasMeasuredWrong(unittest.TestCase):
+    """외부 검토(GP217, 2026-09-28)가 짚은 셋 — 전부 이 코드로 다시 쟀다.
+
+    공법이 다른 쪽(2단 밀링)에서 같은 자리를 풀며 나온 지적이고, 셋 다 맞았다.
+    """
+
+    def test_the_upper_bound_is_no_longer_the_cell_top(self):
+        """상한이 셀 상면 **그 자체**였다 — 여유가 0 이면 상한이 아니다."""
+        lo, hi = br_abrade.depth_window_mm()
+        self.assertEqual(br_abrade.cell_top_mm(),
+                         round(br_abrade.BACKSHEET_T_MM
+                               + br_abrade.BACK_EVA_T_MM, 3))
+        self.assertLess(hi, br_abrade.cell_top_mm(),
+                        "상한이 셀 상면과 같다 — 여유가 0 이다")
+        self.assertAlmostEqual(br_abrade.cell_top_mm() - hi,
+                               br_abrade.CELL_CLEARANCE_MM, places=6)
+        self.assertEqual(lo, br_abrade.BACKSHEET_T_MM)
+
+    def test_the_margin_is_measured_from_the_target_not_the_half_window(self):
+        """여유는 **목표 기준**이다 — 목표가 창 가운데가 아니면 반폭은 과대다."""
+        lo, hi = br_abrade.depth_window_mm()
+        t = br_abrade.TARGET_DEPTH_MM
+        self.assertTrue(br_abrade.the_target_is_off_centre())
+        self.assertAlmostEqual(br_abrade.depth_margin_from_target_mm(),
+                               min(t - lo, hi - t), places=6)
+        # 구속하는 쪽이 아래이고, 반폭보다 좁다.
+        self.assertLess(t - lo, hi - t)
+        self.assertLess(br_abrade.depth_margin_from_target_mm(),
+                        br_abrade.depth_window_half_mm())
+        # 판정 배수가 그 좁은 쪽에서 나온다.
+        self.assertAlmostEqual(
+            br_abrade.measured_reference_margin(),
+            round(br_abrade.depth_margin_from_target_mm()
+                  / br_abrade.Z_SENSOR_TOL_MM, 2), places=2)
+        self.assertAlmostEqual(
+            br_abrade.table_reference_margin(),
+            round(br_abrade.depth_margin_from_target_mm()
+                  / br_abrade.BED_REFERENCE_TOL_MM, 2), places=2)
+
+    def test_the_conclusion_survives_the_correction(self):
+        """여유가 줄어도 **결론은 안 뒤집힌다** — 그것도 확인해 둔다."""
+        self.assertFalse(br_abrade.table_reference_fits())
+        self.assertTrue(br_abrade.measured_reference_fits())
+        self.assertGreater(br_abrade.measured_reference_margin(), 1.0)
+        self.assertLess(br_abrade.table_reference_margin(), 1.0)
+
+    def test_the_target_moves_the_margin(self):
+        """여유가 목표에 걸려 있는가 — 목표를 창 중앙으로 옮기면 넓어져야 한다."""
+        base = br_abrade.depth_margin_from_target_mm()
+        lo, hi = br_abrade.depth_window_mm()
+        keep = br_abrade.TARGET_DEPTH_MM
+        try:
+            br_abrade.TARGET_DEPTH_MM = (lo + hi) / 2.0
+            centred = br_abrade.depth_margin_from_target_mm()
+            self.assertGreater(centred, base)
+            self.assertAlmostEqual(centred, br_abrade.depth_window_half_mm(),
+                                   places=4)
+            self.assertFalse(br_abrade.the_target_is_off_centre())
+        finally:
+            br_abrade.TARGET_DEPTH_MM = keep
+        self.assertAlmostEqual(br_abrade.depth_margin_from_target_mm(), base)
+
+
+class TestTheFixedTargetDoesNotServeEveryLayup(unittest.TestCase):
+    """층두께가 분포이면 목표 하나로 안 된다 — 그리고 범인은 리본이 아니었다."""
+
+    def test_the_distribution_alone_breaks_it(self):
+        """리본을 빼고도 깨진다 — 두꺼운 백시트에서 **덜 걷는** 쪽으로."""
+        self.assertTrue(br_abrade.the_distribution_alone_breaks_the_fixed_target())
+        self.assertFalse(br_abrade.the_target_serves_every_layup(ribbon=False))
+        fails = [l for l in br_abrade.how_the_fixed_target_fails()
+                 if "못 걷는다" in l]
+        self.assertEqual(len(fails), 2)
+        self.assertTrue(all(str(br_abrade.BACKSHEET_T_RANGE_MM[1]) in l
+                            for l in fails))
+
+    def test_the_ribbon_is_a_second_reason_not_the_first(self):
+        """리본은 창을 **더** 좁힐 뿐이다 — 이름이 그 방향으로 읽혀야 한다."""
+        self.assertTrue(br_abrade.the_ribbon_narrows_it_further())
+        self.assertLess(br_abrade.worst_window_mm(ribbon=True)[2],
+                        br_abrade.worst_window_mm(ribbon=False)[2])
+        # 리본을 0 으로 두면 더 좁히지 못한다.
+        keep = br_abrade.REAR_RIBBON_T_MM
+        try:
+            br_abrade.REAR_RIBBON_T_MM = 0.0
+            self.assertFalse(br_abrade.the_ribbon_narrows_it_further())
+            # 그래도 분포 때문에 고정 목표는 여전히 깨진다.
+            self.assertTrue(
+                br_abrade.the_distribution_alone_breaks_the_fixed_target())
+        finally:
+            br_abrade.REAR_RIBBON_T_MM = keep
+        self.assertTrue(br_abrade.the_ribbon_narrows_it_further())
+
+    def test_the_ribbon_stays_out_of_the_live_window(self):
+        """남의 계획값이 **현행 판정에 새어 들면 안 된다**(㊵)."""
+        self.assertTrue(br_abrade.RIBBON_IS_A_PLANNING_VALUE)
+        before = (br_abrade.depth_window_mm(),
+                  br_abrade.depth_margin_from_target_mm(),
+                  br_abrade.measured_reference_margin(),
+                  br_abrade.table_reference_fits())
+        keep = br_abrade.REAR_RIBBON_T_MM
+        try:
+            br_abrade.REAR_RIBBON_T_MM = 2.0      # 창을 통째로 닫을 크기
+            after = (br_abrade.depth_window_mm(),
+                     br_abrade.depth_margin_from_target_mm(),
+                     br_abrade.measured_reference_margin(),
+                     br_abrade.table_reference_fits())
+        finally:
+            br_abrade.REAR_RIBBON_T_MM = keep
+        self.assertEqual(before, after, "리본이 현행 창을 움직이고 있다")
+
+    def test_the_nominal_layup_sits_inside_the_declared_range(self):
+        """내 공칭이 외부 범위 안에 있는가 — 벗어나면 둘 중 하나가 틀린 것이다."""
+        bl, bh = br_abrade.BACKSHEET_T_RANGE_MM
+        el, eh = br_abrade.BACK_EVA_T_RANGE_MM
+        self.assertTrue(bl <= br_abrade.BACKSHEET_T_MM <= bh)
+        self.assertTrue(el <= br_abrade.BACK_EVA_T_MM <= eh)
+
+    def test_the_review_note_names_both_failures_and_the_provenance(self):
+        """서술이 **두 방향의 실패**와 값의 출처를 같이 말하는가."""
+        text = " ".join(br_abrade.what_the_external_review_found())
+        self.assertIn("셀 상면", text)
+        self.assertIn("못 걷는다", text)          # 반대쪽 실패
+        self.assertIn("계획값", text)             # 리본의 출처
+        self.assertIn("패널마다", text)           # 결론
+        agreed = " ".join(br_abrade.what_the_external_review_agreed_on())
+        self.assertIn("불소", agreed)
+        self.assertIn("SR-302", agreed)
+        self.assertGreaterEqual(
+            len(br_abrade.what_the_external_review_found()), 5)
+
+    def test_the_open_questions_carry_the_two_new_ones(self):
+        """층두께 분포와 리본이 열린 항목으로 서 있는가."""
+        qs = " ".join(br_abrade.open_questions())
+        self.assertIn("층두께 실측 분포가 없다", qs)
+        self.assertIn("리본", qs)
+        self.assertIn("패널마다 층두께에서 받는", qs)
 
 
 if __name__ == "__main__":

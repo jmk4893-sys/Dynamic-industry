@@ -92,6 +92,36 @@ BACKSHEET_T_MM = sg_grind.BACKSHEET_T_MM
 #: 이 값이 곧 「더 파도 되는 여유」다. 셀에 닿으면 은·실리콘이 분말로 섞여
 #: 폴리머 회수물을 버린다.
 BACK_EVA_T_MM = 0.45
+
+# ── 셀에 닿지 않으려면 — 상한이 셀 상면 그 자체였다 (2026-09-29 정정) ────
+#
+#   `depth_window_mm()` 의 주석은 「위는 셀에 닿기 직전」이라고 적어 놓고
+#   값은 `BACKSHEET_T_MM + BACK_EVA_T_MM` = 0.77, 곧 **셀 상면 그 자체**를
+#   돌려주고 있었다. 여유가 0 이면 상한이 아니다 — 외부 검토가 같은 자리를
+#   짚었다(`what_the_external_review_found()`).
+#
+#: 셀 상면까지 남겨야 하는 몫 (mm) — **계획값**. 0 이면 상한이 아니다.
+CELL_CLEARANCE_MM = 0.05
+
+# ── 후면 리본과 층두께 분포 — 외부 설계에서 온 것 ───────────────────────
+#
+#   외부(GP217) 설계가 같은 자리를 다른 공법(2단 밀링)으로 풀면서 **이 모델에
+#   없던 층**을 셈에 넣었다: 셀 뒷면에 얹힌 **인터커넥트 리본**이다. 리본이
+#   솟아 있으면 커터·벨트가 닿을 수 있는 상한은 셀 상면이 아니라 **리본 상면**
+#   에서 끊긴다. 구리를 칩 분획에 넣는 것은 셀을 깎는 것과 같은 손실이다.
+#
+#   **이것은 받은 결정이 아니라 남의 계획값이다.** 그래서 값은 세워 두되
+#   현행 판정(`depth_window_mm()`)에는 안 넣는다 — 리본이 실제로 있는지,
+#   얼마나 솟는지는 실측으로 닫힌다(`open_questions()`).
+#
+#: 셀 상면 위로 솟은 후면 인터커넥트 리본 두께 (mm) — **외부 계획값**.
+REAR_RIBBON_T_MM = 0.25
+#: 그 값이 실측인가 — **아니다.** 외부 설계서의 계획값이다.
+RIBBON_IS_A_PLANNING_VALUE = True
+#: 층두께가 한 값이 아니라 분포라는 것 — 외부 설계의 범위 (mm).
+#: 내 공칭(백시트 0.32 · 후면 EVA 0.45)은 이 안에 있지만 **가운데가 아니다.**
+BACKSHEET_T_RANGE_MM = (0.30, 0.50)
+BACK_EVA_T_RANGE_MM = (0.40, 0.60)
 #: 실제로 걷는 깊이 (mm). 백시트보다 **일부러 깊다** — 면이 완전히 평평하지
 #: 않아 정확히 0.32 만 걷으면 낮은 자리에 백시트가 남고, 남은 조각이 파쇄돼
 #: 부유선별 정광을 버린다. 근거는 `minimum_safe_depth_mm()` 이고 그 위에
@@ -251,20 +281,201 @@ def is_not_the_new_bottleneck() -> bool:
 
 
 # ── 깊이 — 창(窓)이 있고, 그 창을 어디서 잡느냐 ─────────────────────────
+def cell_top_mm(t_bs: float | None = None, t_eva: float | None = None) -> float:
+    """백시트 윗면에서 **셀 상면**까지 (mm) — 넘으면 은·실리콘이 칩에 섞인다."""
+    tb = BACKSHEET_T_MM if t_bs is None else float(t_bs)
+    te = BACK_EVA_T_MM if t_eva is None else float(t_eva)
+    return round(tb + te, 3)
+
+
 def depth_window_mm() -> tuple[float, float]:
     """걷어도 되는 깊이의 아래·위 (mm).
 
-    아래는 백시트를 다 걷는 깊이, 위는 셀에 닿기 직전이다. 이 사이가
-    설계가 쓸 수 있는 전부다.
+    아래는 백시트를 다 걷는 깊이, 위는 **셀 상면에서 여유를 뺀** 자리다.
+
+    **2026-09-29 정정.** 한때 위를 `BACKSHEET_T_MM + BACK_EVA_T_MM` 로 두었는데
+    그것은 셀 상면 **그 자체**라 여유가 0 이었다. 「닿기 직전」이라고 주석에
+    적어 놓고 값은 닿는 자리를 주고 있었다 — 외부 검토가 같은 것을 짚었고
+    (「상한 0.77 은 얇은 라미네이트에서 셀 침범」), 내 쪽에서 다시 재 보니
+    공칭 적층에서도 여유가 없었다.
     """
-    return (BACKSHEET_T_MM, round(BACKSHEET_T_MM + BACK_EVA_T_MM, 3))
+    return (BACKSHEET_T_MM, round(cell_top_mm() - CELL_CLEARANCE_MM, 3))
 
 
 def depth_window_half_mm() -> float:
-    """그 창의 반폭 (mm) — 공차가 이 안에 들어야 한다."""
+    """그 창의 반폭 (mm).
+
+    **여유를 재는 값이 아니다** — 목표가 창 가운데에 있을 때만 반폭이 곧
+    여유다. 이 설계는 목표가 아래쪽에 치우쳐 있어 구속하는 쪽이 더 좁다.
+    `depth_margin_from_target_mm()` 을 쓸 것.
+    """
     lo, hi = depth_window_mm()
     return round((hi - lo) / 2.0, 4)
 
+
+def depth_margin_from_target_mm() -> float:
+    """**목표에서 창 끝까지의 좁은 쪽** (mm) — 오차가 실제로 싸워야 하는 값.
+
+    **2026-09-29 정정.** 여유 배수를 창 **반폭**으로 재고 있었다. 반폭은
+    목표가 창 중앙일 때만 여유와 같은데, 이 설계는 목표 0.45 가 창 중심
+    0.545 보다 아래에 있어 아래쪽 여유가 위쪽의 절반도 안 된다. 외부 검토가
+    「창 중심 ≠ 목표, ±0.225 는 목표 기준 대칭이 아니다」로 짚었고 맞았다.
+    """
+    lo, hi = depth_window_mm()
+    return round(min(TARGET_DEPTH_MM - lo, hi - TARGET_DEPTH_MM), 4)
+
+
+def the_target_is_off_centre() -> bool:
+    """목표가 창 가운데가 아닌가 — 참이면 반폭으로 여유를 재면 안 된다."""
+    lo, hi = depth_window_mm()
+    return abs(TARGET_DEPTH_MM - (lo + hi) / 2.0) > 1e-9
+
+
+
+# ── 층두께가 분포이고 리본이 있다면 — 외부 설계가 셈에 넣은 것 ───────────
+#
+#   내 창은 **공칭 적층 하나**에서 나온다. 외부 설계는 두 가지를 더 넣는다 —
+#   층두께의 **분포**와 셀 뒷면의 **리본**. 둘 다 창을 좁히는 쪽이고, 같이
+#   넣으면 「고정 목표 하나로 모든 패널을 처리한다」가 깨진다.
+#
+#   **받아 적되 현행 판정에는 안 넣는다**(㉒·㊵) — 리본은 남의 계획값이다.
+
+def depth_window_for_mm(t_bs: float, t_eva: float,
+                        ribbon: bool = False) -> tuple[float, float, float]:
+    """한 적층에서의 창 (하한, 상한, 폭) — 리본을 넣을지 고를 수 있다."""
+    lo = float(t_bs)
+    top = cell_top_mm(t_bs, t_eva) - (REAR_RIBBON_T_MM if ribbon else 0.0)
+    hi = top - CELL_CLEARANCE_MM
+    return (round(lo, 4), round(hi, 4), round(hi - lo, 4))
+
+
+def layups_mm() -> tuple[tuple[float, float], ...]:
+    """분포의 네 모서리 — 두께가 한 값이 아니라는 것을 네 점으로 본다."""
+    bl, bh = BACKSHEET_T_RANGE_MM
+    el, eh = BACK_EVA_T_RANGE_MM
+    return ((bl, el), (bl, eh), (bh, el), (bh, eh))
+
+
+def thinnest_layup_mm() -> tuple[float, float]:
+    """셀이 가장 얕은 적층 — 창이 여기서 제일 좁다."""
+    return (BACKSHEET_T_RANGE_MM[0], BACK_EVA_T_RANGE_MM[0])
+
+
+def worst_window_mm(ribbon: bool = False) -> tuple[float, float, float]:
+    """분포 안에서 **가장 좁은** 창."""
+    return min((depth_window_for_mm(b, e, ribbon) for b, e in layups_mm()),
+               key=lambda w: w[2])
+
+
+def the_target_serves_every_layup(ribbon: bool = False) -> bool:
+    """고정 목표 하나가 **모든 적층**의 창 안에 드는가.
+
+    이름이 「든다」이므로 들 때 참이다. 거짓이면 목표를 패널마다 층두께에서
+    받아야 한다 — 외부 검토의 권고(「모듈 유형별 층두께 DB 연동 가변값」)가
+    그것이고, 외부 설계는 2 단을 실제로 「모듈별 가변」으로 두었다.
+    """
+    return all(lo <= TARGET_DEPTH_MM <= hi
+               for lo, hi, _ in (depth_window_for_mm(b, e, ribbon)
+                                 for b, e in layups_mm()))
+
+
+def the_distribution_alone_breaks_the_fixed_target() -> bool:
+    """**리본이 없어도** 고정 목표가 깨지는가 — 두께 분포만으로 깨진다.
+
+    처음엔 리본이 범인이라고 적었는데 세어 보니 아니었다(㉙ — 조건을 하나
+    찾으면 「이것만으로 되는가」를 묻는다). 백시트가 0.50 이면 하한이 0.50 이라
+    목표 0.45 가 **백시트를 다 못 걷는다** — 셀 침범과 반대쪽 실패다. 리본은
+    그 위에 얹히는 두 번째 이유지 첫 번째가 아니다.
+    """
+    return not the_target_serves_every_layup(ribbon=False)
+
+
+def the_ribbon_narrows_it_further() -> bool:
+    """리본이 창을 **더** 좁히는가 — 고정 목표가 이미 깨진 뒤의 이야기다."""
+    return worst_window_mm(ribbon=True)[2] < worst_window_mm(ribbon=False)[2]
+
+
+def how_the_fixed_target_fails() -> tuple[str, ...]:
+    """적층마다 무엇이 먼저 걸리는가 — 실패가 한 종류가 아니다."""
+    out = []
+    for tb, te in layups_mm():
+        lo, hi, _ = depth_window_for_mm(tb, te)
+        if TARGET_DEPTH_MM < lo:
+            why = f"백시트를 {lo - TARGET_DEPTH_MM:.2f} mm 못 걷는다"
+        elif TARGET_DEPTH_MM > hi:
+            why = f"셀 쪽으로 {TARGET_DEPTH_MM - hi:.2f} mm 넘는다"
+        else:
+            why = f"든다 (여유 {margin_for_mm(tb, te):.2f} mm)"
+        out.append(f"백시트 {tb} + 후면 EVA {te} → {why}")
+    return tuple(out)
+
+
+def margin_for_mm(t_bs: float, t_eva: float, ribbon: bool = False) -> float:
+    """그 적층에서 목표 기준 여유 (mm) — 음수면 목표가 창 밖이다."""
+    lo, hi, _ = depth_window_for_mm(t_bs, t_eva, ribbon)
+    return round(min(TARGET_DEPTH_MM - lo, hi - TARGET_DEPTH_MM), 4)
+
+
+def what_the_external_review_found() -> tuple[str, ...]:
+    """외부(GP217) 검토가 이 유닛에서 짚은 것 — 맞은 것만 적는다.
+
+    2026-09-28 자 「BR-305 … (REV.E) 과학적 분석 보고서」. 공법이 다른 쪽
+    (2단 밀링)에서 같은 자리를 풀며 나온 지적이고, **셋 다 내 코드로 다시 재
+    확인했다.** 확인 안 된 것은 여기 안 적는다.
+    """
+    lo, hi = depth_window_mm()
+    tl, te = thinnest_layup_mm()
+    return (
+        f"**목표가 창 가운데가 아니다.** 창 {lo}~{hi} 의 중심은 "
+        f"{(lo + hi) / 2:.3f} 인데 목표는 {TARGET_DEPTH_MM} 다. 구속하는 쪽은 "
+        f"아래 {depth_margin_from_target_mm()} mm 이고, 반폭 "
+        f"{depth_window_half_mm()} 로 재던 여유 배수가 측정 기준에서 "
+        f"**{round(depth_window_half_mm() / Z_SENSOR_TOL_MM, 2)} → "
+        f"{measured_reference_margin()} 배**로 내려간다.",
+        f"**상한이 셀 상면 그 자체였다.** 한때 {cell_top_mm()} 를 상한으로 "
+        f"두었는데 그것이 곧 셀 상면이라 여유가 0 이었다. 지금은 "
+        f"{CELL_CLEARANCE_MM} mm 를 남긴 {hi} 다.",
+        f"**층두께는 한 값이 아니라 분포다.** 백시트 {BACKSHEET_T_RANGE_MM} · "
+        f"후면 EVA {BACK_EVA_T_RANGE_MM} 이면 셀 상면이 "
+        f"{cell_top_mm(*thinnest_layup_mm())}~"
+        f"{cell_top_mm(BACKSHEET_T_RANGE_MM[1], BACK_EVA_T_RANGE_MM[1])} 로 "
+        f"벌어진다. 얇은 쪽({tl}+{te})에서 옛 상한 {cell_top_mm()} 는 셀을 "
+        f"{cell_top_mm() - cell_top_mm(tl, te):.2f} mm 파고든다 — 은이 폴리머 "
+        "칩으로 나가고 실리콘 파편이 칩 분획에 섞이는 **이중 손실**이다.",
+        f"**그리고 고정 목표는 리본이 없어도 이미 깨진다.** 세어 보니 범인은 "
+        f"리본이 아니라 분포였다 — 백시트가 {BACKSHEET_T_RANGE_MM[1]} 면 하한이 "
+        f"거기라 목표 {TARGET_DEPTH_MM} 가 **백시트를 다 못 걷는다**(셀 침범과 "
+        f"반대쪽 실패다). `the_distribution_alone_breaks_the_fixed_target()` = "
+        f"{the_distribution_alone_breaks_the_fixed_target()} · 적층별로는 "
+        f"`how_the_fixed_target_fails()`.",
+        f"**리본은 그 위에 얹히는 두 번째 이유다.** 넣으면 가장 좁은 창이 "
+        f"{worst_window_mm()[2]} → {worst_window_mm(ribbon=True)[2]} mm 로 "
+        f"더 좁아진다(`the_ribbon_narrows_it_further()` = "
+        f"{the_ribbon_narrows_it_further()}). 어느 쪽이든 결론은 같다 — "
+        "**깊이를 패널마다 층두께에서 받아야 한다.** 외부 검토의 권고(모듈 "
+        "유형별 층두께 DB 연동 가변값)와 외부 설계의 2 단 「모듈별 가변」이 "
+        "같은 자리를 가리킨다.",
+        f"**리본은 남의 계획값이다** (`RIBBON_IS_A_PLANNING_VALUE` = "
+        f"{RIBBON_IS_A_PLANNING_VALUE}). 그래서 `depth_window_mm()` 에는 안 "
+        "넣었다 — 실측이 오면 그때 넣는다.",
+    )
+
+
+def what_the_external_review_agreed_on() -> tuple[str, ...]:
+    """같은 검토가 **확인해 준** 것 — 다른 공법에서 같은 수가 나왔다."""
+    return (
+        f"**이송 {feed_mm_s():.1f} mm/s ({feed_mm_s() * 60 / 1000:.2f} m/min)** — "
+        "REV.D 에서 「상한 5 가 하한으로 뒤집혔다」고 고쳐 보낸 값을 그대로 썼다.",
+        f"**집진 {hood_flow_m3h():,.0f} m³/h** — 그쪽이 ≥11,000 m³/h 로 잡았다.",
+        "**백시트 우선의 근거 둘** — 불소계 오염 격리(PVF/PVDF 를 칩으로 먼저 "
+        "빼 Ag 회수 급광에 불소가 안 들어가게)와 무열 공정(EVA 열분해가 없어 "
+        "VOC·HF 를 피함). 이 모듈 주석이 적어 둔 것과 같다.",
+        "**공정 순서** AFR-101 → SR-302(선택) → BR-305 → 유리 제거.",
+        f"**공법은 다르다** — 그쪽은 Ø200 초경 커터 16 개 2단 밀링으로 48 kW, "
+        f"이쪽은 광폭 벨트로 {total_power_kw()} kW 다. 칩을 만드는 쪽이 분말로 "
+        "만드는 쪽보다 비에너지가 자릿수로 싸서이고, **`sg_grind` 의 「긁기 "
+        "6.3 W vs 갈기 36 kW」와 같은 구조**가 한 단계 위에서 또 나온 것이다.",
+    )
 
 def minimum_safe_depth_mm() -> float:
     """잔존 백시트를 0 으로 만드는 **최소** 절입 (mm).
@@ -390,7 +601,7 @@ def the_table_flattens_but_does_not_thin() -> tuple[str, ...]:
         f"**못 없애는 것** — 재료 두께 공차 {BED_REFERENCE_TOL_MM} mm "
         "(유리 ±0.20 + 라미네이션 ±0.15). 진공은 두께를 못 바꾼다.",
         f"**그래서 테이블 기준은 여전히 안 된다** — 창 반폭 "
-        f"{depth_window_half_mm()} 대비 "
+        f"{depth_margin_from_target_mm()} (목표 기준) 대비 "
         f"**{table_reference_margin()} 배**로 1 을 못 넘는다 "
         f"(`table_reference_fits()` = {table_reference_fits()}).",
         f"**윗면을 재면 든다** — 센서+추종 {Z_SENSOR_TOL_MM} mm 로 여유 "
@@ -400,23 +611,26 @@ def the_table_flattens_but_does_not_thin() -> tuple[str, ...]:
 
 
 def table_reference_margin() -> float:
-    """테이블 면을 기준으로 잡을 때의 여유 배수 — 1 을 넘어야 든다."""
-    return round(depth_window_half_mm() / BED_REFERENCE_TOL_MM, 2)
+    """테이블 면을 기준으로 잡을 때의 여유 배수 — 1 을 넘어야 든다.
+
+    **목표 기준**으로 잰다 — 반폭이 아니다(`depth_margin_from_target_mm()`).
+    """
+    return round(depth_margin_from_target_mm() / BED_REFERENCE_TOL_MM, 2)
 
 
 def table_reference_fits() -> bool:
     """테이블 기준으로 창에 드는가 — **안 든다.**"""
-    return BED_REFERENCE_TOL_MM <= depth_window_half_mm()
+    return BED_REFERENCE_TOL_MM <= depth_margin_from_target_mm()
 
 
 def measured_reference_margin() -> float:
-    """윗면을 재서 따라갈 때의 여유 배수."""
-    return round(depth_window_half_mm() / Z_SENSOR_TOL_MM, 2)
+    """윗면을 재서 따라갈 때의 여유 배수 — **목표 기준**이다."""
+    return round(depth_margin_from_target_mm() / Z_SENSOR_TOL_MM, 2)
 
 
 def measured_reference_fits() -> bool:
     """재서 잡으면 창에 드는가."""
-    return Z_SENSOR_TOL_MM <= depth_window_half_mm()
+    return Z_SENSOR_TOL_MM <= depth_margin_from_target_mm()
 
 
 def why_the_height_measurement_is_not_optional() -> tuple[str, ...]:
@@ -595,7 +809,7 @@ def bed_reference_would_miss() -> bool:
     깊이를 면에서 잡는다. 다만 띠에서는 슈 하나면 됐고 면에서는 폭
     1,400 을 따라가야 하므로 분할 압반이 든다.
     """
-    return BED_REFERENCE_TOL_MM > depth_window_half_mm()
+    return BED_REFERENCE_TOL_MM > depth_margin_from_target_mm()
 
 
 def face_reference_fits() -> bool:
@@ -1508,11 +1722,23 @@ def open_questions() -> tuple[str, ...]:
         f"전제다. 안 펴지면 분할 압반 {platen_segments() * HEADS} 개가 돌아오고 "
         f"(`PLATEN_ADOPTED` 가 참이 된다) 부품이 다시 네 배가 된다. 시험 한 "
         "번이면 나오는 값이다.",
-        f"**변위센서+Z 추종 합 오차 {Z_SENSOR_TOL_MM} mm 가 계획값이다.** 창 "
-        f"반폭 {depth_window_half_mm()} 대비 여유 "
+        f"**변위센서+Z 추종 합 오차 {Z_SENSOR_TOL_MM} mm 가 계획값이다.** "
+        f"목표 기준 여유 {depth_margin_from_target_mm()} mm 대비 "
         f"{measured_reference_margin()} 배인데, 이 값이 "
-        f"{depth_window_half_mm()} 를 넘으면 기계가 성립하지 않는다 — "
-        "테이블 기준으로는 이미 안 되기 때문에 물러설 자리가 없다.",
+        f"{depth_margin_from_target_mm()} 를 넘으면 기계가 성립하지 않는다 — "
+        "테이블 기준으로는 이미 안 되기 때문에 물러설 자리가 없다. "
+        "**창 반폭으로 재면 이 여유를 실제보다 크게 본다**(2026-09-29 정정).",
+        f"**층두께 실측 분포가 없다 — 고정 목표가 여기서 깨진다.** 백시트 "
+        f"{BACKSHEET_T_RANGE_MM} · 후면 EVA {BACK_EVA_T_RANGE_MM}(외부 설계의 "
+        f"범위)를 넣으면 고정 목표 {TARGET_DEPTH_MM} 가 네 모서리 중 둘에서 "
+        f"창 밖이다 — `how_the_fixed_target_fails()`. 실측 분포가 오면 목표를 "
+        "**패널마다 층두께에서 받는** 제어로 바꿔야 하고, 그러면 두께를 재는 "
+        "수단(선행 라인레이저 또는 모듈 유형 DB)이 부품표에 들어온다.",
+        f"**셀 뒷면 리본 {REAR_RIBBON_T_MM} mm 가 남의 계획값이다.** 있다면 "
+        f"가장 좁은 창이 {worst_window_mm()[2]} → "
+        f"{worst_window_mm(ribbon=True)[2]} mm 로 좁아진다. 구리를 칩 분획에 "
+        "넣는 것은 셀을 깎는 것과 같은 손실이라 상한이 리본 상면에서 끊긴다 — "
+        "**실측 전이라 `depth_window_mm()` 에는 안 넣었다.**",
         f"**흡착 배기·해제 {VACUUM_CYCLE_S:.0f} s 가 계획값이다.** 판이 서므로 "
         f"이 시간이 통과에서 빠지고 이송이 {feed_m_min()} m/min 으로 올라간다. "
         f"예산은 {vacuum_budget_s()} s 이고(이송 상한 5 m/min 기준) 넘으면 이 "
