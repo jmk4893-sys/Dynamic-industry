@@ -28,8 +28,8 @@ import unittest
 
 from tests import _path  # noqa: F401
 
-from pv_preprocess import (afr, afr_peel, campaign, dust, frames, handoff,
-                           recipe, reliability, sg_grind, vision)
+from pv_preprocess import (afr, afr_peel, br_abrade, campaign, dust, frames,
+                           handoff, recipe, reliability, sg_grind, vision)
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CLOSEUP = ROOT / "docs/drawings/pv-sg-closeup.html"
@@ -559,7 +559,10 @@ class TestTheScraperThatClearsTheBand(unittest.TestCase):
         self.assertIn("자기 캐리어의 통과가 여유에 안 들어간다", titles)
         # 진공 테이블이 패드를 대신하면서 패드 미결 셋이 닫히고 흡착이 들어왔다.
         self.assertIn("흡착 배기·해제가 여유를 먹는다", titles)
-        self.assertEqual(len(titles), 7)
+        # 여덟째 — 「정반에 얹을 수 있는가」를 세다가 나왔다. 변 밑에 날이 설
+        # 자리를 재려니 라미네이트 끝이 어디인지 모델이 두 가지로 읽고 있었다.
+        self.assertIn("라미네이트 끝이 어디인지 모델이 모른다", titles)
+        self.assertEqual(len(titles), 8)
 
     def test_the_gc_headroom_is_stated_not_assumed(self):
         """Gc 가 얼마까지 오르면 허용 압착력을 넘는가 — 그 값을 내놓는다."""
@@ -1354,6 +1357,149 @@ class TestTheResidueIsALine(unittest.TestCase):
         self.assertIn("실측 전", text)
         self.assertIn("높이", text)
         self.assertIn("폭", text)
+
+
+class TestTheAfrPlatenCannotHostTheBlade(unittest.TestCase):
+    """「잔사 스크래퍼를 AFR-101 정반에 같이 붙일 수 있는가」 — 발주처 물음.
+
+    답은 시간도 힘도 아니라 **기구가 어느 면에 자리를 내주는가**가 정한다.
+    정반은 단변마다 위에서 내려오므로 윗면을 가리고 아랫면을 연다. 그런데
+    BR-305 의 벨트가 지나가는 것은 윗면이다.
+    """
+
+    def test_the_platen_opens_the_bottom_and_hides_the_top(self):
+        """가리는 면이 하필 필요한 면인가 — 결론 한 줄."""
+        self.assertTrue(sg_grind.platen_reaches_the_bottom_face())
+        self.assertTrue(sg_grind.platen_hides_the_face_br305_meets())
+        self.assertAlmostEqual(sg_grind.platen_top_face_share(), 1.0 / 3.0,
+                               places=3)
+        self.assertAlmostEqual(sg_grind.platen_both_faces_share(), 2.0 / 3.0,
+                               places=3)
+
+    def test_the_hidden_face_is_the_one_the_belt_meets(self):
+        """**이유**를 본다 — 값이 아니라 배치가 그렇게 만드는지.
+
+        유리가 아래라 백시트가 위이고, 정반은 위에서 내려온다. 셋 중 하나만
+        뒤집혀도 이 안의 결론이 달라진다.
+        """
+        self.assertTrue(sg_grind.panel_is_glass_down())
+        self.assertEqual(afr.PLATEN_COUNT, 2)
+        self.assertTrue(afr.platen_spans_the_panel_width())
+        self.assertGreater(sg_grind.platen_hidden_perimeter_mm(),
+                           sg_grind.platen_free_perimeter_mm())
+
+    def test_the_coverage_is_read_from_the_platen_not_written_here(self):
+        """덮는 몫이 `afr` 의 정반 치수에서 나오는가 — 교란이 확인한다."""
+        base = sg_grind.platen_top_face_share()
+        keep = afr.PLATEN_X_MM
+        try:
+            afr.PLATEN_X_MM = 0                      # 정반이 단변만 덮는다
+            shallow = sg_grind.platen_top_face_share()
+            afr.PLATEN_X_MM = 1250                   # 정반 둘이 가운데서 만난다
+            deep = sg_grind.platen_top_face_share()
+        finally:
+            afr.PLATEN_X_MM = keep
+        # 교란이 실제로 판정을 옮기는 크기여야 한다.
+        self.assertGreater(shallow, base)
+        self.assertEqual(deep, 0.0)
+        self.assertAlmostEqual(shallow, (7800.0 - 2800.0) / 7800.0, places=3)
+        self.assertEqual(sg_grind.platen_top_face_share(), base)
+
+    def test_the_verdict_turns_on_the_residue_height(self):
+        """판정이 선 높이 하나로 갈리는가 — 그리고 문턱이 BR-305 의 것인가."""
+        thr = min(br_abrade.line_height_within_installed_mm(),
+                  br_abrade.geometry_threshold_mm())
+        self.assertFalse(sg_grind.the_top_face_still_needs_a_tool(thr - 0.005))
+        self.assertTrue(sg_grind.the_top_face_still_needs_a_tool(thr + 0.005))
+        self.assertIn("된다", sg_grind.platen_mount_verdict(thr - 0.005))
+        self.assertIn("안 된다", sg_grind.platen_mount_verdict(thr + 0.005))
+        # 지금 계획값에서는 안 된다.
+        self.assertTrue(sg_grind.the_top_face_still_needs_a_tool())
+        self.assertIn("안 된다", sg_grind.platen_mount_verdict())
+
+    def test_the_threshold_is_not_a_local_literal(self):
+        """문턱을 여기 베껴 두지 않았는가 — BR-305 를 움직이면 따라와야 한다."""
+        keep = br_abrade.line_height_within_installed_mm
+        try:
+            br_abrade.line_height_within_installed_mm = lambda: 10.0
+            br_abrade_geom = br_abrade.geometry_threshold_mm()
+            # 동력 문턱을 치워도 기하 문턱이 남으므로 그 위/아래로 갈려야 한다.
+            self.assertFalse(
+                sg_grind.the_top_face_still_needs_a_tool(br_abrade_geom - 0.01))
+            self.assertTrue(
+                sg_grind.the_top_face_still_needs_a_tool(br_abrade_geom + 0.01))
+        finally:
+            br_abrade.line_height_within_installed_mm = keep
+        self.assertTrue(sg_grind.the_top_face_still_needs_a_tool())
+
+    def test_the_platen_is_tighter_though_it_saves_the_vacuum(self):
+        """흡착 6 s 를 아끼고도 더 빡빡하다 — 여유 자체가 작아서다."""
+        self.assertEqual(sg_grind.platen_saves_the_vacuum_cycle_s(),
+                         campaign.VACUUM_CYCLE_S)
+        self.assertAlmostEqual(
+            sg_grind.platen_takt_headroom_s(),
+            round(campaign.ideal_takt_s() - campaign.AFR_S, 2), places=2)
+        self.assertTrue(sg_grind.the_platen_is_tighter_than_its_own_station())
+        self.assertLess(sg_grind.platen_takt_headroom_s(),
+                        sg_grind.scraper_time_left_s())
+        self.assertGreater(sg_grind.feed_that_fits_the_platen_mm_s(),
+                           sg_grind.feed_that_fits_the_slack_mm_s())
+        # 동력은 어느 쪽에서도 한계가 아니다.
+        self.assertLess(
+            sg_grind.scraper_power_at_w(
+                sg_grind.feed_that_fits_the_platen_mm_s()),
+            sg_grind.spindle_available_w())
+
+    def test_the_lifted_panel_is_held_by_its_own_weight(self):
+        """정반을 들면 자중 마찰만 남는다 — 두 날이 마주 보므로 법선은 0 이다."""
+        self.assertEqual(sg_grind.normal_net_on_panel_n(), 0.0)
+        self.assertEqual(sg_grind.pad_friction_hold_n(),
+                         round(afr.laminate_weight_n()
+                               * campaign.TABLE_FRICTION, 1))
+        self.assertTrue(sg_grind.lifted_panel_holds_against_the_blade())
+        # 마찰이 접선력보다 커야 참이다 — μ 를 낮추면 뒤집힌다.
+        mu_fail = sg_grind.tangential_total_n() / afr.laminate_weight_n() / 2.0
+        self.assertFalse(
+            sg_grind.lifted_panel_holds_against_the_blade(mu_fail))
+
+    def test_the_review_is_not_adopted_and_feeds_nothing_live(self):
+        """검토일 뿐이다 — 거처는 발주처 몫이고(⑥) 현행 값이 이걸 안 읽는다(㊵)."""
+        self.assertFalse(sg_grind.PLATEN_MOUNT_ADOPTED)
+        before = (sg_grind.occupancy_s(), sg_grind.slack_s(),
+                  sg_grind.scraper_time_left_s(),
+                  sg_grind.feed_that_fits_the_slack_mm_s(),
+                  sg_grind.scraper_fits_the_slack())
+        keep = sg_grind.PLATEN_MOUNT_ADOPTED
+        try:
+            sg_grind.PLATEN_MOUNT_ADOPTED = True
+            after = (sg_grind.occupancy_s(), sg_grind.slack_s(),
+                     sg_grind.scraper_time_left_s(),
+                     sg_grind.feed_that_fits_the_slack_mm_s(),
+                     sg_grind.scraper_fits_the_slack())
+        finally:
+            sg_grind.PLATEN_MOUNT_ADOPTED = keep
+        self.assertEqual(before, after)
+
+    def test_the_narrative_names_the_obstacle_and_what_is_missing(self):
+        """서술이 걸림돌과 **모델에 없는 것**을 같이 말하는가."""
+        lines = sg_grind.what_the_platen_gives_and_takes()
+        text = " ".join(lines)
+        self.assertGreaterEqual(len(lines), 6)
+        self.assertIn("BR-305", text)
+        self.assertIn("안 박혀 있어서다", text)   # 내민 길이의 읽기가 둘이다
+        self.assertIn("이 모델에 없다", text)   # C 형 요크 통로
+        self.assertIn(f"{sg_grind.RESIDUE_LINE_H_MM}", text)
+
+    def test_the_open_question_names_the_two_readings(self):
+        """설 자리의 하한이 날 폭보다 좁은 것이 열린 항목으로 서 있는가."""
+        self.assertLess(afr.pad_overhang_min_z_mm(), sg_grind.BLADE_WIDTH_MM)
+        self.assertGreater(afr.pad_overhang_max_z_mm(), sg_grind.BLADE_WIDTH_MM)
+        hits = [v for k, v in sg_grind.open_questions()
+                if "라미네이트 끝" in k]
+        self.assertEqual(len(hits), 1)
+        self.assertIn("frame_inner_face_z_mm", hits[0])
+        self.assertIn("backsheet_face_area_mm2", hits[0])
+        self.assertIn("platen_mount_verdict", hits[0])
 
 
 if __name__ == "__main__":

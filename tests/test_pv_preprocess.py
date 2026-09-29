@@ -6489,6 +6489,78 @@ class TestAfrMechanism(unittest.TestCase):
             afr.FRAME_W_MM = keep
         self.assertEqual(max(afr.support_rows_z_mm()), 440)
 
+    def test_the_edge_is_free_underneath_the_overhang(self):
+        """변 밑에 공구가 들어갈 자리가 있는가 — 내밀고, 그 밑이 비어야 한다."""
+        self.assertTrue(afr.the_edge_is_free_underneath())
+        self.assertEqual(afr.pad_overhang_min_z_mm(),
+                         round(afr.frame_inner_face_z_mm()
+                               - afr.outer_pad_edge_z_mm(), 1))
+        keep = afr.SUPPORT_PAD_T_MM
+        try:
+            afr.SUPPORT_PAD_T_MM = 0
+            self.assertFalse(afr.the_edge_is_free_underneath(),
+                             "패드 두께를 0 으로 해도 밑이 열려 있다고 한다")
+        finally:
+            afr.SUPPORT_PAD_T_MM = keep
+        self.assertTrue(afr.the_edge_is_free_underneath())
+
+    def test_the_overhang_floor_is_the_pad_clearance_itself(self):
+        """하한이 왜 안 늘어나는가 — 패드를 프레임에서 그만큼 띄워 놨기 때문이다.
+
+        패드가 프레임 안쪽면에서 `PAD_EDGE_CLEAR_MM` 물러나 서므로, 프레임을
+        넓히면 패드도 같이 안으로 들어와 **내민 길이는 그대로다.** 이 값을
+        늘리려면 여유 자체를 키우는 수밖에 없다.
+        """
+        self.assertEqual(afr.pad_overhang_min_z_mm(), afr.PAD_EDGE_CLEAR_MM)
+        keep = afr.FRAME_W_MM
+        try:
+            afr.FRAME_W_MM = 300               # 네 배로 넓혀도
+            self.assertEqual(afr.pad_overhang_min_z_mm(),
+                             afr.PAD_EDGE_CLEAR_MM)
+        finally:
+            afr.FRAME_W_MM = keep
+        keep_clear = afr.PAD_EDGE_CLEAR_MM
+        try:
+            afr.PAD_EDGE_CLEAR_MM = 60         # 여유를 키우면 따라온다
+            self.assertEqual(afr.pad_overhang_min_z_mm(), 60)
+        finally:
+            afr.PAD_EDGE_CLEAR_MM = keep_clear
+        self.assertEqual(afr.pad_overhang_min_z_mm(), 15)
+
+    def test_the_laminate_edge_is_not_pinned(self):
+        """끝을 모른다고 말하는가 — 하한과 상한이 벌어져 있으면 모르는 것이다."""
+        self.assertFalse(afr.the_laminate_edge_is_pinned())
+        self.assertLess(afr.pad_overhang_min_z_mm(), afr.pad_overhang_max_z_mm())
+        self.assertLess(afr.pad_overhang_min_x_mm(), afr.pad_overhang_max_x_mm())
+        self.assertEqual(afr.pad_overhang_max_z_mm(),
+                         round(kinematics.PANEL_MM[1] / 2
+                               - afr.outer_pad_edge_z_mm(), 1))
+
+    def test_the_platen_covers_the_panel_width(self):
+        """정반 폭이 판 폭을 덮는가 — 덮으면 단변 둘레가 통째로 가린다."""
+        self.assertTrue(afr.platen_spans_the_panel_width())
+        self.assertEqual(afr.platen_reach_inboard_mm(), float(afr.PLATEN_X_MM))
+        keep = afr.PLATEN_Z_MM
+        try:
+            afr.PLATEN_Z_MM = 700
+            self.assertFalse(afr.platen_spans_the_panel_width())
+        finally:
+            afr.PLATEN_Z_MM = keep
+
+    def test_the_laminate_weight_comes_from_the_areal_density(self):
+        """자중이 면밀도 × 외형인가 — 리터럴이 아니다."""
+        area_m2 = (kinematics.PANEL_MM[0] / 1000) * (kinematics.PANEL_MM[1] / 1000)
+        self.assertAlmostEqual(afr.laminate_weight_n(),
+                               round(afr.LAMINATE_KG_M2 * area_m2 * 9.81, 1),
+                               places=1)
+        keep = afr.LAMINATE_KG_M2
+        try:
+            afr.LAMINATE_KG_M2 = keep * 2
+            self.assertAlmostEqual(afr.laminate_weight_n(),
+                                   round(2 * keep * area_m2 * 9.81, 1), places=1)
+        finally:
+            afr.LAMINATE_KG_M2 = keep
+
     def test_the_chain_carries_the_bare_laminate(self):
         """프레임이 빠진 유리를 체인 세 줄이 안전하게 든다."""
         self.assertTrue(afr.chain_carries_the_laminate())

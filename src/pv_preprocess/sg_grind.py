@@ -945,6 +945,18 @@ def open_questions() -> tuple[tuple[str, str], ...]:
             f"상한(이용률 {utilisation(long_feed_mm_s()) * 100:.1f} %)을 그것이 "
             "정하고 있다. SG-301 이 남는가가 먼저 정해져야 이 모듈의 수들이 "
             "의미를 갖는다 — `what_the_absent_arris_leaves_open()`."))
+    if not afr.the_laminate_edge_is_pinned():
+        out.append((
+            "라미네이트 끝이 어디인지 모델이 모른다",
+            f"바깥 지지패드 너머로 내미는 길이가 z 로 "
+            f"{afr.pad_overhang_min_z_mm():.0f}~{afr.pad_overhang_max_z_mm():.0f} mm "
+            "로 벌어진다 — 패드 배치는 프레임 바닥 플랜지 끝을 라미네이트 끝으로 "
+            "읽고(`afr.frame_inner_face_z_mm()`), 면적을 세는 쪽은 패널 외형을 "
+            "그대로 쓴다(`backsheet_face_area_mm2()`). 슬롯이 판을 얼마나 물고 "
+            f"있는지가 상수로 없다. **하한 {afr.pad_overhang_min_z_mm():.0f} mm 는 "
+            f"날 폭 {BLADE_WIDTH_MM:.0f} mm 보다 좁으므로** 정반 탑재안"
+            "(`platen_mount_verdict()`)의 아랫날이 여기 걸린다. 라미네이트 "
+            "실치수가 오면 닫힌다."))
     if not blade_life_is_known():
         out.append((
             "날 수명이 없다",
@@ -1606,6 +1618,196 @@ def scraper_fits_the_slack(feed_mm_s: float | None = None,
     t = (scraper_time_like_sg_heads_s(feed) if like_sg_heads
          else scraper_serial_time_s(feed))
     return t <= scraper_time_left_s()
+
+
+# ── AFR-101 정반에 얹을 수 있는가 — 발주처 물음 (열린 항목 ⑥) ───────────────
+#
+#   물음은 「실란트 잔사 스크래퍼를 AFR-101 정반에 같이 붙이는 것이 가능한가」
+#   였다. 세어 보면 **반만 된다 — 그리고 되는 반이 필요 없는 반이다.**
+#
+#   가르는 것은 시간도 힘도 아니라 **기구가 어느 면에 자리를 내주는가**다.
+#   정반은 면 전체를 받는 베드가 아니라 600 × 1,400 짜리 두 매가 **단변마다
+#   위에서 내려오는** 클램프다 (`afr.PLATEN_COUNT`). 그래서 —
+#
+#     · **아랫면(유리)** 은 통째로 열린다. 지지패드가 장변 프레임 안쪽면에서
+#       물러나 있어 라미네이트가 내밀고 그 밑이 패드 두께만큼 비어 있다
+#       (`afr.the_edge_is_free_underneath()`).
+#     · **윗면(백시트)** 은 둘레의 2/3 를 정반이 깔고 앉는다 — 단변 둘 전체와
+#       장변 양끝이다. 자유로운 곳은 장변 가운데뿐.
+#
+#   그런데 **BR-305 의 벨트가 지나가는 것이 윗면**이다. 이건 이 모듈이 이미 한 번
+#   잡았던 실패다 — `the_back_face_band_has_no_tool()` 을 보라. 날이 한 장이고
+#   유리면에 섰던 이유가 「반출롤러가 아래에 자리를 내줘서」였고, 절반이 공구 없이
+#   남는 것이 드러나 발주처가 ⑤ 로 두 장을 정했다. 정반에 얹으면 기구가 내주는
+#   자리가 또 아래뿐이라 **그 실패로 돌아간다.**
+#
+#   **거처는 발주처 몫이다**(⑥). 여기 있는 것은 검토 기록이고 부품표에 걸리는
+#   값이 아니다 — 아래 상수가 그것을 말한다.
+
+#: 정반 탑재안이 채택됐는가 — **아니다.** 검토만 했고 값은 살려 둔다(㉕).
+#: 이 절의 값이 현행 판정에 새어 들어가면 안 된다(㊵) — 시험이 확인한다.
+PLATEN_MOUNT_ADOPTED = False
+
+
+def platen_hidden_perimeter_mm() -> float:
+    """정반이 **윗면에서** 깔고 앉는 둘레 길이 (mm).
+
+    단변 둘은 정반 폭이 판 폭을 덮으면 통째로 가리고, 장변 둘은 양끝에서 정반이
+    안쪽으로 들어온 깊이만큼 가린다. 정반 둘이 겹칠 만큼 깊으면 둘레 전체다.
+    """
+    w, p = float(campaign.PANEL_WIDTH_MM), float(campaign.PANEL_LENGTH_MM)
+    reach = min(afr.platen_reach_inboard_mm(), p / 2.0)
+    short = 2.0 * (w if afr.platen_spans_the_panel_width()
+                   else min(float(afr.PLATEN_Z_MM), w))
+    return round(min(short + 4.0 * reach, scraper_travel_mm()), 1)
+
+
+def platen_free_perimeter_mm() -> float:
+    """정반을 내린 채로 **윗면에서** 날이 닿는 둘레 길이 (mm)."""
+    return round(max(scraper_travel_mm() - platen_hidden_perimeter_mm(), 0.0), 1)
+
+
+def platen_top_face_share() -> float:
+    """윗면 둘레 중 날이 닿는 몫."""
+    return round(platen_free_perimeter_mm() / scraper_travel_mm(), 4)
+
+
+def platen_both_faces_share() -> float:
+    """두 면을 합쳐 날이 닿는 몫 — 아랫면은 통째로 열린다."""
+    reached = scraper_travel_mm() + platen_free_perimeter_mm()
+    return round(reached / (RESIDUE_FACES * scraper_travel_mm()), 4)
+
+
+def platen_reaches_the_bottom_face() -> bool:
+    """정반을 내린 채로 아랫면 둘레에 닿는가 — 변 밑이 열려 있으면 닿는다."""
+    return afr.the_edge_is_free_underneath()
+
+
+def platen_hides_the_face_br305_meets() -> bool:
+    """정반이 **BR-305 가 만나는 면**을 가리는가 — 이 안이 걸리는 자리다.
+
+    벨트가 지나가는 것은 백시트면이고 유리가 아래이므로 백시트면은 위다. 정반은
+    위에서 내려오므로 가리는 것이 바로 그 면이다. 아랫면이 아무리 열려 있어도
+    이 참이면 윗날의 자리가 없다.
+
+    이름이 「가린다」이므로 **가릴 때 참**이다.
+    """
+    return panel_is_glass_down() and platen_top_face_share() < 1.0
+
+
+def platen_clamp_margin_over_drag() -> float:
+    """정반 클램프가 날이 끄는 힘의 몇 배인가 — 파지는 공짜라는 근거."""
+    return round(afr.clamp_net_kn() * 1000.0 / tangential_total_n(), 1)
+
+
+def platen_saves_the_vacuum_cycle_s() -> float:
+    """정반이 잡아 주면 아끼는 시간 (s) — 흡착 배기·해제가 통째로 빠진다."""
+    return float(campaign.VACUUM_CYCLE_S)
+
+
+def platen_takt_headroom_s() -> float:
+    """AFR 정반 점유를 늘릴 수 있는 한계 (s) — 택트에서 지금 점유를 뺀 값.
+
+    모델이 세는 정반 항의 합은 이보다 짧지만 그 차이에 무엇이 있는지 이 모델에
+    없다. **쓸 수 있다고 셀 수 있는 것은 택트 여유뿐이다.**
+    """
+    return round(campaign.ideal_takt_s() - float(campaign.AFR_S), 2)
+
+
+def feed_that_fits_the_platen_mm_s() -> float:
+    """택트 여유 안에 둘레 한 바퀴가 들어가려면 필요한 이송 (mm/s)."""
+    head = platen_takt_headroom_s()
+    return float("inf") if head <= 0.0 else round(scraper_travel_mm() / head, 1)
+
+
+def the_platen_is_tighter_than_its_own_station() -> bool:
+    """흡착 6 s 를 아끼고도 정반 쪽이 더 빡빡한가 — 여유 자체가 작으면 참이다."""
+    return platen_takt_headroom_s() < scraper_time_left_s()
+
+
+def pad_friction_hold_n(mu: float = float(campaign.TABLE_FRICTION)) -> float:
+    """정반을 들었을 때 패드 마찰이 잡아 주는 힘 (N) — 자중만 쓴다."""
+    return round(afr.laminate_weight_n() * mu, 1)
+
+
+def lifted_panel_holds_against_the_blade(
+        mu: float = float(campaign.TABLE_FRICTION)) -> bool:
+    """정반을 들고 긁어도 판이 안 끌려가는가.
+
+    두 날이 마주 보아 법선 알짜가 0 이므로(`the_shoes_oppose_each_other()`)
+    누르지도 들지도 않는다. 남는 것은 접선력뿐이고 그것을 자중 마찰이 받는다.
+    """
+    return pad_friction_hold_n(mu) > tangential_total_n()
+
+
+def the_top_face_still_needs_a_tool(h_mm: float | None = None) -> bool:
+    """윗면에 공구가 여전히 필요한가 — **BR-305 의 아래 문턱이 정한다.**
+
+    선이 충분히 낮으면 벨트가 그냥 지나가므로 윗날이 필요 없고, 그러면 아랫날만
+    정반에 얹으면 된다. 문턱 둘 중 낮은 쪽(동력 쪽)이 먼저 걸린다.
+
+    `br_abrade` 는 이 모듈을 읽으므로 **함수 안에서** 부른다 — 모듈 수준 import
+    는 방향을 거스른다.
+    """
+    from . import br_abrade
+    h = RESIDUE_LINE_H_MM if h_mm is None else float(h_mm)
+    return h > min(br_abrade.line_height_within_installed_mm(),
+                   br_abrade.geometry_threshold_mm())
+
+
+def platen_mount_verdict(h_mm: float | None = None) -> str:
+    """정반에 얹을 수 있는가 — 잔류 선 높이 하나가 가른다."""
+    if not platen_reaches_the_bottom_face():
+        return "안 된다 — 변 밑에 날이 들어갈 자리가 없다"
+    if the_top_face_still_needs_a_tool(h_mm):
+        return ("안 된다 — 윗면에 공구가 필요한데 정반이 그 둘레의 "
+                f"{1.0 - platen_top_face_share():.0%} 를 깔고 앉는다")
+    return ("된다 — 윗날이 필요 없으니 아랫날만 얹으면 SR-302 스테이션이 "
+            "통째로 빠진다")
+
+
+def what_the_platen_gives_and_takes() -> tuple[str, ...]:
+    """정반에 얹으면 무엇을 얻고 무엇을 잃는가 — 얻는 쪽부터 적는다."""
+    return (
+        f"**파지가 공짜다.** 클램프 알짜 {afr.clamp_net_kn():.1f} kN 이 날의 접선력 "
+        f"{tangential_total_n():.0f} N 의 {platen_clamp_margin_over_drag():,.0f} 배라 "
+        f"진공 테이블이 필요 없다 — 흡착 {platen_saves_the_vacuum_cycle_s():.0f} s 가 "
+        "통째로 빠지고, 판을 한 번 더 세우고 놓는 일도 없다.",
+        f"**아랫면은 통째로 열린다 — 다만 설 자리의 폭을 모른다.** 라미네이트가 "
+        f"바깥 패드 너머로 z {afr.pad_overhang_min_z_mm():.0f}~"
+        f"{afr.pad_overhang_max_z_mm():.0f} · x {afr.pad_overhang_min_x_mm():.0f}~"
+        f"{afr.pad_overhang_max_x_mm():.0f} mm 내밀고 그 밑이 "
+        f"{afr.underside_clear_mm():.0f} mm 비어 있다. **하한과 상한이 여섯 배 "
+        f"차이 나는 이유는 라미네이트 끝이 이 모델에 안 박혀 있어서다** "
+        f"(`afr.the_laminate_edge_is_pinned()` = "
+        f"{afr.the_laminate_edge_is_pinned()}). 하한은 패드-프레임 여유 "
+        f"{afr.PAD_EDGE_CLEAR_MM} mm 와 **구조적으로 같아** 판이나 프레임이 바뀌어도 "
+        f"안 늘고, 날 폭 {BLADE_WIDTH_MM:.0f} mm 보다 좁다.",
+        f"**윗면은 {1.0 - platen_top_face_share():.0%} 가 막힌다.** 둘레 "
+        f"{scraper_travel_mm():,.0f} 중 {platen_hidden_perimeter_mm():,.0f} mm 를 "
+        f"정반 {afr.PLATEN_COUNT} 매가 깔고 앉는다(단변 둘 전체 + 장변 양끝). 남는 "
+        f"곳은 장변 가운데 {platen_free_perimeter_mm():,.0f} mm 뿐이고, **하필 그 "
+        "면이 BR-305 의 벨트가 지나가는 면**이다.",
+        f"**시간은 오히려 더 빡빡하다.** 택트 {campaign.ideal_takt_s()} s 에서 AFR "
+        f"정반 점유 {campaign.AFR_S} s 를 빼면 {platen_takt_headroom_s()} s 이고, "
+        f"둘레 한 바퀴를 그 안에 넣으려면 {feed_that_fits_the_platen_mm_s():.0f} mm/s "
+        f"다 — 자기 스테이션의 {feed_that_fits_the_slack_mm_s():.0f} mm/s 보다 높다. "
+        f"흡착을 아꼈는데도 그렇다(`the_platen_is_tighter_than_its_own_station()` = "
+        f"{the_platen_is_tighter_than_its_own_station()}). 동력은 "
+        f"{scraper_power_at_w(feed_that_fits_the_platen_mm_s()):.0f} W 로 여전히 "
+        "문제가 아니다.",
+        f"**정반을 들면 윗면이 열리지만 잡아 주는 것이 자중뿐이다.** μ "
+        f"{campaign.TABLE_FRICTION} 에서 마찰 {pad_friction_hold_n():.0f} N 이 접선 "
+        f"{tangential_total_n():.0f} N 의 "
+        f"{pad_friction_hold_n() / tangential_total_n():.1f} 배 — **버티기는 한다**. "
+        "걸리는 것은 힘이 아니라 **변 둘레의 수풀**이다: 스토퍼·쇠막대·밀려나 선 "
+        "단변 알루미늄·LM 레일 사이로 C 형 요크가 한 바퀴를 돌아야 하는데, 발주처 "
+        "결정 ⑧ 이 전용 진공 테이블에 「변에서 40 mm 물러난 자리」를 조건으로 건 "
+        "이유가 그것이다. **그 통로는 이 모델에 없다.**",
+        f"**뒤집는 값은 하나다** — 잔류 선 높이. 지금 계획값 {RESIDUE_LINE_H_MM} mm "
+        f"에서는 「{platen_mount_verdict()}」이고, 실측이 BR-305 의 아래 문턱 아래로 "
+        "오면 윗날이 사라져 **아랫날만 얹으면 스테이션 하나가 통째로 빠진다**.",
+    )
 
 
 def the_back_face_band_has_no_tool() -> bool:

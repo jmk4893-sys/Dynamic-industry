@@ -444,6 +444,106 @@ def pads_clear_the_frames() -> bool:
     return outer + PAD_EDGE_CLEAR_MM <= kinematics.PANEL_MM[1] / 2 - FRAME_W_MM
 
 
+# ── 판 가장자리가 어디서 지지를 잃는가 ──────────────────────────────────
+#
+#   패드는 **프레임 안쪽면에서 물러나** 선다 (`support_rows_z_mm()`). 그러면
+#   프레임을 걷은 뒤 라미네이트의 가장자리는 패드 밖으로 내밀고, 그 밑은
+#   패드 두께만큼 비어 있다. 아래에서 무언가가 그 변을 만지려면 이 자리다.
+#
+#   **라미네이트가 어디서 끝나는지는 이 저장소가 두 가지로 읽는다.** 패드 배치는
+#   프레임 안쪽면(`frame_inner_face_z_mm()`)을 라미네이트 끝으로 잡고, 면적을 세는
+#   쪽은 패널 외형을 그대로 쓴다(`sg_grind.backsheet_face_area_mm2()` — 스스로
+#   근사라고 적어 두었다). 여기서는 **보수 쪽**, 곧 프레임 안쪽면을 쓴다 — 내민
+#   길이를 작게 잡는 쪽이다.
+
+def frame_inner_face_z_mm() -> float:
+    """장변 프레임 안쪽면의 z (mm) — 패드 배치가 라미네이트 끝으로 잡는 자리."""
+    return kinematics.PANEL_MM[1] / 2.0 - FRAME_W_MM
+
+
+def frame_inner_face_x_mm() -> float:
+    """단변 프레임 안쪽면의 x (mm)."""
+    return kinematics.PANEL_MM[0] / 2.0 - FRAME_W_MM
+
+
+def outer_pad_edge_z_mm() -> float:
+    """바깥 지지패드의 z 바깥 모서리 (mm) — 판 밑 지지가 여기서 끊긴다."""
+    return max(support_rows_z_mm()) + SUPPORT_PAD_Z_MM / 2.0
+
+
+def outer_pad_edge_x_mm() -> float:
+    """바깥 지지패드의 x 바깥 모서리 (mm)."""
+    return max(SUPPORT_COLS_X_MM) + SUPPORT_PAD_X_MM / 2.0
+
+
+def pad_overhang_min_z_mm() -> float:
+    """라미네이트가 바깥 패드 너머로 내미는 길이의 **하한** — z (mm).
+
+    프레임 바닥 플랜지가 안쪽으로 `FRAME_W_MM` mm 들어와 있고 패드는 거기서 다시
+    `PAD_EDGE_CLEAR_MM` 만큼 물러난다. 라미네이트는 최소한 그 플랜지 끝까지는
+    있으므로 이만큼은 확실히 내민다.
+
+    **이 값은 `PAD_EDGE_CLEAR_MM` 과 구조적으로 같다** — 패드를 프레임 안쪽면에서
+    그만큼 띄워 놓았으니 프레임을 넓히든 판을 키우든 따라 움직이지 않는다.
+    """
+    return round(frame_inner_face_z_mm() - outer_pad_edge_z_mm(), 1)
+
+
+def pad_overhang_min_x_mm() -> float:
+    """내미는 길이의 **하한** — x (mm)."""
+    return round(frame_inner_face_x_mm() - outer_pad_edge_x_mm(), 1)
+
+
+def pad_overhang_max_z_mm() -> float:
+    """내미는 길이의 **상한** — z (mm). 라미네이트가 패널 외형까지 간다면.
+
+    면적을 세는 쪽은 라미네이트를 패널 외형 그대로 읽는다
+    (`sg_grind.backsheet_face_area_mm2()` — 스스로 근사라고 적어 두었다).
+    """
+    return round(kinematics.PANEL_MM[1] / 2.0 - outer_pad_edge_z_mm(), 1)
+
+
+def pad_overhang_max_x_mm() -> float:
+    """내미는 길이의 **상한** — x (mm)."""
+    return round(kinematics.PANEL_MM[0] / 2.0 - outer_pad_edge_x_mm(), 1)
+
+
+def the_laminate_edge_is_pinned() -> bool:
+    """라미네이트 끝이 어디인지 이 모델이 아는가 — **모른다.**
+
+    하한(프레임 바닥 플랜지 끝)과 상한(패널 외형)이 다르고, 슬롯이 판을 얼마나
+    물고 있는지가 상수로 없다. 변 밑에 공구가 설 자리가 이 차이만큼 벌어진다.
+    """
+    return pad_overhang_min_z_mm() == pad_overhang_max_z_mm()
+
+
+def underside_clear_mm() -> float:
+    """내민 자리 **밑에** 열려 있는 높이 (mm) — 패드 두께가 그대로 공간이다."""
+    return float(SUPPORT_PAD_T_MM)
+
+
+def laminate_weight_n() -> float:
+    """무프레임 라미네이트 한 장의 자중 (N) — 면밀도 × 외형."""
+    area_m2 = (kinematics.PANEL_MM[0] / 1000.0) * (kinematics.PANEL_MM[1] / 1000.0)
+    return round(LAMINATE_KG_M2 * area_m2 * 9.81, 1)
+
+
+def the_edge_is_free_underneath() -> bool:
+    """변 밑에 공구가 들어갈 자리가 있는가 — 내밀고, 그 밑이 비어 있어야 한다."""
+    return (pad_overhang_min_z_mm() > 0.0 and pad_overhang_min_x_mm() > 0.0
+            and underside_clear_mm() > 0.0)
+
+
+def platen_reach_inboard_mm() -> float:
+    """정반이 단변에서 **안쪽으로** 덮는 깊이 (mm) — 윗면을 가리는 깊이다."""
+    return float(PLATEN_X_MM)
+
+
+def platen_spans_the_panel_width() -> bool:
+    """정반의 z 치수가 판 폭을 다 덮는가 — 덮으면 단변 둘레가 통째로 가린다."""
+    return PLATEN_Z_MM >= kinematics.PANEL_MM[1]
+
+
 def slot_z_mm() -> tuple[int, ...]:
     """긴 홈의 중심 z — 지지열마다 하나. 홈이 패드를 앞뒤로 가른다."""
     return support_rows_z_mm()
