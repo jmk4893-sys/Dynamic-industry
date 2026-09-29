@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# 시뮬레이션 산출물 (재생성 가능)
+sim_out/
