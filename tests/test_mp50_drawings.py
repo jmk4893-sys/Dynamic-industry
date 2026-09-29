@@ -15,6 +15,7 @@ import sys
 import unittest
 
 from . import _path  # noqa: F401
+from . import _sheets
 
 from mp50_separator import ASSEMBLIES, CONFLICTS, GEOMETRY as G, run_checks
 from mp50_separator.components import dry_mass_kg
@@ -22,6 +23,8 @@ from mp50_separator.geometry import NOZZLES
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DRAWINGS = ROOT / "docs" / "drawings" / "mp50-fabrication-drawings.html"
+#: 목록·GA 두 장 + 아세이·제어반 시트. 장을 늘리면 여기 하나만 고친다.
+SHEET_COUNT = 17
 CONSOLE = ROOT / "docs" / "drawings" / "mp50-3d.html"
 
 
@@ -65,17 +68,22 @@ class TestDrawingDocument(unittest.TestCase):
     def test_is_standalone_document(self):
         standalone_checks(self, self.html, "MP-50 아세이별 제작도면")
 
-    def test_fifteen_sheets(self):
+    def test_every_sheet_is_present(self):
         numbers = ["MP50-000", "MP50-100", "MP50-A1", "MP50-A2", "MP50-A3"]
         numbers += [a.drawing for a in ASSEMBLIES if a.code not in ("A",)]
+        numbers += ["MP50-L1", "MP50-L2"]          # 제어반 J-06
         for no in numbers:
             contains(self, self.html, no, f"도면번호 {no}")
-        self.assertEqual(len(re.findall(r"<svg ", self.html)), 15)
+        self.assertEqual(len(re.findall(r"<svg ", self.html)), SHEET_COUNT)
+        # 시트 번호는 "n/총매수" 로 찍힌다 — 장을 늘리고 분모를 잊으면 여기서 깨진다.
+        self.assertEqual(
+            sorted(int(m) for m in re.findall(rf">(\d+)/{SHEET_COUNT}<", self.html)),
+            list(range(1, SHEET_COUNT + 1)), "시트 번호가 1..N 으로 이어지지 않는다")
 
     def test_every_sheet_is_labelled_for_screen_readers(self):
-        self.assertEqual(len(re.findall(r'role="img"', self.html)), 15)
-        self.assertEqual(len(re.findall(r"aria-label=", self.html)), 15)
-        self.assertEqual(len(re.findall(r"<figcaption>", self.html)), 15)
+        self.assertEqual(len(re.findall(r'role="img"', self.html)), SHEET_COUNT)
+        self.assertEqual(len(re.findall(r"aria-label=", self.html)), SHEET_COUNT)
+        self.assertEqual(len(re.findall(r"<figcaption>", self.html)), SHEET_COUNT)
 
     def test_container_tags_balance(self):
         for tag in ("svg", "figure", "section", "table", "defs", "div", "style", "ul", "tbody"):
@@ -110,6 +118,27 @@ class TestDrawingDocument(unittest.TestCase):
         for n in NOZZLES:
             contains(self, self.html, n.tag, f"노즐 {n.tag}")
             contains(self, self.html, n.service, f"{n.tag} 용도")
+
+
+class TestSheetLayout(unittest.TestCase):
+    """글자가 프레임 밖이나 다른 글자 위로 나가지 않는지 — 배치는 눈으로만 보면 샌다.
+
+    제어반 두 장을 그리면서 표제란을 덮은 주기, 프레임 아래로 흘러내린 검증
+    블록, 부품표 위에 앉은 지시선이 한꺼번에 나왔다. 셋 다 도면을 띄워 보기
+    전에는 몰랐고, 셋 다 이 두 검사에 걸린다. 자세한 셈법은 ``_sheets`` 에 있다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = DRAWINGS.read_text(encoding="utf-8")
+
+    def test_nothing_runs_off_the_frame_or_over_the_title_block(self):
+        bad = _sheets.off_frame(self.html)
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_no_two_labels_sit_on_top_of_each_other(self):
+        bad = _sheets.overlaps(self.html)
+        self.assertEqual(bad, [], "\n".join(bad))
 
 
 class TestDrawingsAreGenerated(unittest.TestCase):

@@ -14,6 +14,7 @@ import sys
 import unittest
 
 from . import _path  # noqa: F401   # src 와 tools 를 경로에 올린다
+from . import _sheets                # 배치 검사 (프레임·겹침)
 
 import mp50_parts                    # 생성기를 직접 읽어 규칙을 맞춘다
 
@@ -169,6 +170,15 @@ class TestPartDrawingDocument(unittest.TestCase):
                 if left < col_x and left + w > col_x - 1.0:
                     bad.append((no, txt[:30], round(left, 1), round(left + w, 1)))
         self.assertEqual(bad[:6], [], f"오른쪽 기둥을 침범한 글자 {len(bad)} 개")
+
+    def test_nothing_runs_off_the_frame_or_over_the_title_block(self):
+        bad = _sheets.off_frame(self.html)
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_no_two_labels_sit_on_top_of_each_other(self):
+        """위 오른쪽-기둥 검사보다 넓게 본다 — 뷰 안에서 부딪치는 것까지 잡는다."""
+        bad = _sheets.overlaps(self.html)
+        self.assertEqual(bad, [], "\n".join(bad))
 
     def test_toc_lists_every_sheet(self):
         toc = re.findall(r'<li><a href="#(MP50-P-[0-9A-Z]+)">', self.html)

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import math
+import re
 import pathlib
 import sys
 
@@ -28,6 +29,7 @@ from _mp50_draft import (  # noqa: E402
 from mp50_separator import ASSEMBLIES, CONFLICTS, GEOMETRY as G, run_checks  # noqa: E402
 from mp50_separator.components import BY_CODE, dry_mass_kg, wet_mass_kg  # noqa: E402
 from mp50_separator.geometry import COVER_NOZZLES, NOZZLES  # noqa: E402
+from mp50_separator import control as CTL  # noqa: E402
 
 REV = "R1"
 DATE = "2026-09-10"
@@ -43,9 +45,27 @@ def sheet(number: str, title: str, subtitle: str, scale: str, aria: str) -> Canv
     return c
 
 
+TOTAL_SHEETS = 0        # main() 이 시트 함수 수에서 채운다
+_COUNTER = [0]
+
+
+def sheet_no() -> str:
+    """표제란의 ``n/전체``. 시트를 더해도 다른 장을 건드리지 않는다."""
+    _COUNTER[0] += 1
+    return f"{_COUNTER[0]}/{TOTAL_SHEETS}"
+
+
 # ==========================================================================
 # 공용 형상 — 여러 시트가 같은 윤곽을 그린다
 # ==========================================================================
+def probe_tip_z(nozzle) -> float:
+    """커버 계측 노즐의 선단 표고. 주기의 ``선단 Zxxx`` 를 그대로 읽는다."""
+    m = re.search(r"선단 Z([\d.]+)", nozzle.note)
+    if not m:
+        raise ValueError(f"{nozzle.tag} 주기에 선단 표고가 없다: {nozzle.note!r}")
+    return float(m.group(1))
+
+
 def cone_wall_offset() -> float:
     """콘 벽 두께의 **수평** 성분. 경사면이라 판 두께보다 크다."""
     return G.cone_thickness_mm / math.cos(math.radians(G.cone_half_angle_deg))
@@ -222,7 +242,7 @@ def sheet_000() -> None:
     c = sheet("MP50-000", "기준좌표 · 공차 · 도면목록",
               "Z 원점은 원뿔 가상 정점 · θ 원점은 N1",
               "1:5", "MP-50 기준좌표계와 주요 표고, 도면 목록, 조립 공차, 원본 도면 간 치수 충돌 해결 레지스터")
-    c.frame_and_title(REV, DATE, "1/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     c.head([("전용적", f"{G.total_volume_l:.2f} L"),
             ("운전 장입", f"{G.operating_volume_l:.1f} L @ Z{G.operating_level_z:.0f}"),
             ("건조질량", f"{dry_mass_kg():.0f} kg"),
@@ -318,7 +338,7 @@ def sheet_000() -> None:
 def sheet_100() -> None:
     c = sheet("MP50-100", "전체 조립도 (GA)", "아세이 A~K 배치 · 설치 표고 · 총질량",
               "1:8", "MP-50 전체 조립도 — 정면도와 평면도에 아세이 A부터 K까지의 배치, 프레임 위 설치 표고, 노즐 방위")
-    c.frame_and_title(REV, DATE, "2/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     c.head([("전체높이", f"{G.overall_height_mm:.0f} + 구동부"),
             ("프레임", f"{G.frame_width_mm:.0f} × {G.frame_width_mm:.0f} × H{G.frame_height_mm:.0f}"),
             ("배출 표고", f"{G.discharge_elevation_mm:.0f}"),
@@ -433,8 +453,9 @@ def sheet_100() -> None:
     c.circle(p.x(0), p.y(0), p.d(G.impeller_od_mm / 2), THIN, "ln", dash="3 1.6")
     c.circle(p.x(0), p.y(0), p.d(G.cover_hub_od_mm / 2), THIN, "ln")
     c.circle(p.x(0), p.y(0), p.d(G.shaft_od_mm / 2), THICK, "ln")
-    c.dim_h(p.x(-G.tank_id_mm / 2), p.x(G.tank_id_mm / 2), p.y(-330), f"Ø{fmt(G.tank_id_mm)}")
-    c.dim_h(p.x(-G.top_flange_od_mm / 2), p.x(G.top_flange_od_mm / 2), p.y(-360),
+    # 치수선은 노즐 라벨(반경 +46) 바깥으로 뺀다 — 안쪽이면 N4 라벨을 깔고 앉는다.
+    c.dim_h(p.x(-G.tank_id_mm / 2), p.x(G.tank_id_mm / 2), p.y(-400), f"Ø{fmt(G.tank_id_mm)}")
+    c.dim_h(p.x(-G.top_flange_od_mm / 2), p.x(G.top_flange_od_mm / 2), p.y(-440),
             f"Ø{fmt(G.top_flange_od_mm)} 플랜지")
     c.text(p.x(0), p.y(400), "θ 0° = N1 · 위에서 볼 때 반시계 양", T_DIM, "middle", "tx2")
     c.view_title(160.0, 30.0, "평면도", p.label)
@@ -512,7 +533,7 @@ def ordinate_column(c: Canvas, v: View, items: list[tuple[float, str]], x: float
 def sheet_a1() -> None:
     c = sheet("MP50-A1", "탱크 아세이 조립 단면", "동체 · 원뿔 · 노즐 · 플랜지 · 지지링 · 용접",
               "1:5", "탱크 아세이 조립 단면도 — 동체와 원뿔의 표고, 노즐 위치, 용접 지시, 부품표")
-    c.frame_and_title(REV, DATE, "3/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     c.head([("재질", "SUS304 2B"), ("판두께", f"t{G.shell_thickness_mm:.0f}"),
             ("내면", "Ra ≤ 0.8 (버프)"), ("용접", "TIG 전용입 · 내면 평활"),
             ("전용적", f"{G.total_volume_l:.2f} L"), ("아세이 질량", f"{BY_CODE['A'].total_kg:.1f} kg")])
@@ -592,7 +613,7 @@ def sheet_a1() -> None:
 def sheet_a2() -> None:
     c = sheet("MP50-A2", "동체 · 원뿔 전개도", "판금 절단 원도 — 중립축 기준",
               "1:10", "동체와 원뿔의 전개도 — 절단 치수, 노즐 구멍 위치, 롤링 지시, 용접 개선 상세")
-    c.frame_and_title(REV, DATE, "4/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     c.head([("재질", "SUS304 2B"), ("판두께", f"t{G.shell_thickness_mm:.0f}"),
             ("전개 기준", "중립축 (판 두께 중앙)"), ("절단", "레이저 · 절단면 산세"),
             ("공차", "±1.0 (전개 길이)")])
@@ -687,7 +708,7 @@ def sheet_a2() -> None:
 def sheet_a3() -> None:
     c = sheet("MP50-A3", "노즐 배치 · 노즐표", "동체 · 커버 노즐의 방위와 표고",
               "1:5", "노즐 배치도 — 동체와 커버 노즐의 방위각과 표고, 노즐 규격표")
-    c.frame_and_title(REV, DATE, "5/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     c.head([("접속", "위생 Tri-clamp"), ("돌출", "동체 외면 +75"),
             ("용접", "set-through 전용입"), ("내면", "평활 연삭 · 크레비스 없을 것"),
             ("동체 노즐", f"{len(NOZZLES)} 개"), ("커버 노즐", f"{len(COVER_NOZZLES)} 개")])
@@ -758,7 +779,7 @@ def sheet_a3() -> None:
 def sheet_b() -> None:
     c = sheet("MP50-B", "상부 커버 아세이", "커버판 · 보강 허브 · 가스켓 · 계측 노즐",
               "1:4", "상부 커버 아세이 — 평면과 단면, 볼트 PCD, 중앙 허브 HOLD 구역, 가스켓 홈")
-    c.frame_and_title(REV, DATE, "6/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     c.head([("재질", "SUS304"), ("커버 두께", f"t{G.cover_thickness_mm:.0f}"),
             ("평면도", "≤ 0.5"), ("가스켓", "EPDM O-링 Ø5"),
             ("볼트", f"{G.top_flange_bolt} × {G.top_flange_bolts} · 40 N·m"),
@@ -843,7 +864,7 @@ def sheet_b() -> None:
 def sheet_c() -> None:
     c = sheet("MP50-C", "구동부 아세이 — 인터페이스 HOLD", "벤더 GA 승인 전 커버 중앙 가공 금지",
               "1:5", "구동부 아세이 — 설치 envelope 와 인터페이스 치수, 벤더 제출자료 목록")
-    c.frame_and_title(REV, DATE, "7/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     c.head([("공급", "교반기 벤더 일체"), ("모터", "0.55 kW · VFD"),
             ("출력속도", "30~150 rpm"), ("씰", "고형분용 더블 카트리지"),
             ("상태", "CRITICAL HOLD"), ("아세이 질량", f"{BY_CODE['C'].total_kg:.1f} kg")])
@@ -871,7 +892,7 @@ def sheet_c() -> None:
     c.poly(v.pts([(-G.shaft_od_mm / 2, 940), (-G.shaft_od_mm / 2, z0 + 200),
                   (G.shaft_od_mm / 2, z0 + 200), (G.shaft_od_mm / 2, 940)]), THICK, "ln")
     c.dim_v(v.y(z0), v.y(z), v.x(150) + 10.0, f"{fmt(z - z0)} 설치 envelope", left=False)
-    c.dim_v(v.y(G.cover_top_z), v.y(z), v.x(150) + 22.0, f"{fmt(z - G.cover_top_z)} 커버 위 전체", left=False)
+    c.dim_v(v.y(G.cover_top_z), v.y(z), v.x(150) + 42.0, f"{fmt(z - G.cover_top_z)} 커버 위 전체", left=False)
     c.dim_h(v.x(-130), v.x(130), v.y(z) + 10.0, "260 최대 폭", ext_from=v.y(z))
     c.leader(v.x(-110), v.y(G.cover_top_z + 5), v.x(-190), v.y(1200),
              "B1 인터페이스 — HOLD", anchor="end",
@@ -905,13 +926,13 @@ def sheet_c() -> None:
 def sheet_d() -> None:
     c = sheet("MP50-D", "교반축 · 임펠러 아세이", "분산 수단 — 분리 수단이 아니다",
               "1:5", "교반축과 임펠러 아세이 — 축 전장과 키홈, 임펠러 평면과 블레이드 상세, 위험속도 검증")
-    c.frame_and_title(REV, DATE, "8/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     c.head([("재질", "SUS316L"), ("축", f"Ø{G.shaft_od_mm:.0f} h7 × L760"),
             ("임펠러", f"Ø{G.impeller_od_mm:.0f} {G.impeller_blades}PBT{G.impeller_pitch_deg:.0f}°"),
             ("직진도", "0.5 / 600"), ("TIR", "≤ 1.0"),
             ("아세이 질량", f"{BY_CODE['D'].total_kg:.1f} kg")])
 
-    v = View(54.0, 248.0, 5.0)
+    v = View(54.0, 258.0, 5.0)    # 머리띠(y16)를 피해 축 전장을 아래로 내린다
     top = 1155.0
     c.poly(v.pts([(-G.shaft_od_mm / 2, 395), (-G.shaft_od_mm / 2, top),
                   (G.shaft_od_mm / 2, top), (G.shaft_od_mm / 2, 395)]), THICK, "ln", close=True)
@@ -960,7 +981,7 @@ def sheet_d() -> None:
     c.text(pv.x(0), pv.y(210), f"{G.impeller_blades}매 90° 등분", T_DIM - 0.2, "middle", "tx2")
     c.view_title(128.0, 30.0, "임펠러 평면", pv.label)
 
-    bv = View(136.0, 190.0, 2.5)
+    bv = View(136.0, 182.0, 2.5)
     rl = G.impeller_blade_radial_mm
     bw = G.impeller_blade_width_mm
     c.rect(bv.x(0), bv.y(bw / 2), bv.d(rl), bv.d(bw), THICK, "ln")
@@ -974,7 +995,7 @@ def sheet_d() -> None:
     c.line(ax, ay, ax + 14.2, ay - 14.2, THIN, "dl")
     c.text(ax + 11.0, ay + 4.4, f"{fmt(G.impeller_pitch_deg)}° 취부각",
            T_NOTE, "start", "tx", weight="600")
-    c.view_title(128.0, 168.0, "블레이드 상세", bv.label)
+    c.view_title(128.0, 160.0, "블레이드 상세", bv.label)
 
     kv = View(168.0, 252.0, 1.0)
     c.circle(kv.x(0), kv.y(0), kv.d(G.impeller_hub_od_mm / 2), THICK, "ln")
@@ -1001,7 +1022,7 @@ def sheet_d() -> None:
 def sheet_e() -> None:
     c = sheet("MP50-E", "배플 아세이", "선회류 차단 — 원본 폭 80 은 임펠러와 간섭한다",
               "1:4", "배플 아세이 — 배치 평면과 1대1 간극 상세에 원본 80 mm 폭의 임펠러 간섭과 채택한 35 mm 의 간극을 함께 표시")
-    c.frame_and_title(REV, DATE, "9/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     c.head([("재질", "SUS316L"), ("규격", f"W{G.baffle_width_mm:.0f} × L{G.baffle_length_mm:.0f} × t{G.baffle_thickness_mm:.0f}"),
             ("수량", f"{G.baffle_count} 매 90° 등분"), ("벽 이격", f"{G.baffle_wall_gap_mm:.0f}"),
             ("팁 간극", f"{G.impeller_tip_clearance_mm:.0f}"), ("배플비", f"{G.baffle_area_ratio:.3f} (n·w/T)")])
@@ -1099,7 +1120,7 @@ def sheet_e() -> None:
 def sheet_f() -> None:
     c = sheet("MP50-F", "급기 분산링 아세이", "콘 정착층을 들어올리는 분산 보조 — 부선용 아님",
               "1:2.5", "급기 분산링 아세이 — 링 평면, 분사홀 상세, 강하관 배치, 급기 분배 검증")
-    c.frame_and_title(REV, DATE, "10/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     c.head([("재질", "SUS316L"), ("링", f"PCD Ø{G.sparger_pcd_mm:.0f} · Ø{G.sparger_tube_od_mm:.0f} × t{G.sparger_tube_thickness_mm:.1f}"),
             ("분사홀", f"Ø{G.sparger_hole_dia_mm:.1f} × {G.sparger_holes} 하향"),
             ("설치", f"Z{G.sparger_z:.0f}±{G.sparger_z_tolerance_mm:.0f}"),
@@ -1162,7 +1183,7 @@ def sheet_f() -> None:
 def sheet_g() -> None:
     c = sheet("MP50-G", "스키머 아세이", "부상 폴리머를 걸러낸 채로 통째로 들어올린다",
               "1:4", "스키머 아세이 — 바스켓 평면과 단면, 조절봉, 반출 간극 검증")
-    c.frame_and_title(REV, DATE, "11/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     c.head([("재질", "SUS316L"), ("바스켓", f"Ø{G.skimmer_od_mm:.0f} × H{G.skimmer_height_mm:.0f} × t2"),
             ("타공", "Ø2 · 개공률 30 %"), ("설치", f"Z{G.skimmer_z:.0f}±{G.skimmer_z_tolerance_mm:.0f}"),
             ("반출 간극", f"편측 {G.skimmer_clearance_mm:.0f}"), ("위어 수평도", "≤ 1.0")])
@@ -1220,7 +1241,7 @@ def sheet_g() -> None:
 def sheet_h() -> None:
     c = sheet("MP50-H", "프레임 아세이", "높이는 배출 여유에서 역산했다",
               "1:8", "프레임 아세이 — 정면·측면·평면, 절단 목록, 배출 여유와 전도 검토")
-    c.frame_and_title(REV, DATE, "12/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     fw, ft, fh = G.frame_width_mm, G.frame_tube_mm, G.frame_height_mm
     c.head([("재질", "SUS304"), ("각파이프", f"□{ft:.0f} × {ft:.0f} × t{G.frame_tube_thickness_mm:.0f}"),
             ("크기", f"{fw:.0f} × {fw:.0f} × H{fh:.0f}"), ("레벨링", "M16 × 4 · ±25"),
@@ -1256,7 +1277,8 @@ def sheet_h() -> None:
     sv = View(160.0, 176.0, 8.0)
     frame_elevation(sv, cross=True)
     c.view_title(120.0, 30.0, "측면 (크로스레일 방향)", sv.label)
-    c.leader(sv.x(150), sv.y(fh - ft / 2), sv.x(fw / 2 + 36), sv.y(fh + 90), "상부 크로스레일 2 개",
+    # 글은 부품표(x208) 왼쪽에 둔다 — 오른쪽으로 빼면 표 위에 얹힌다.
+    c.leader(sv.x(150), sv.y(fh - ft / 2), sv.x(fw / 2 - 340), sv.y(fh + 220), "상부 크로스레일 2 개",
              lines=("Y = ±150 — 지지링 Ø480 이", "둘레재에 5 mm 밖에 안 걸린다"))
 
     pv = View(64.0, 248.0, 8.0)
@@ -1271,11 +1293,12 @@ def sheet_h() -> None:
             c.circle(pv.x(sx * 180), pv.y(sy * 150), pv.d(7), THICK, "ln")
     c.centreline(pv.x(-fw / 2 - 30), pv.y(0), pv.x(fw / 2 + 30), pv.y(0))
     c.centreline(pv.x(0), pv.y(-fw / 2 - 30), pv.x(0), pv.y(fw / 2 + 30))
-    c.dim_h(pv.x(-180), pv.x(180), pv.y(-fw / 2 - 16), "360 볼트 간격")
+    c.dim_h(pv.x(-180), pv.x(180), pv.y(-fw / 2 - 40), "360 볼트 간격")
     c.dim_v(pv.y(-150), pv.y(150), pv.x(fw / 2) + 12.0, "300", left=False)
-    c.text(pv.x(fw / 2) + 14.0, pv.y(60), f"지지링 Ø{fmt(G.support_ring_od_mm)} 이", T_DIM - 0.2, "start", "tx2")
-    c.text(pv.x(fw / 2) + 14.0, pv.y(20), "크로스레일에 앉는다", T_DIM - 0.2, "start", "tx2")
-    c.text(pv.x(fw / 2) + 14.0, pv.y(-20), "M12 × 4", T_DIM - 0.2, "start", "tx2")
+    # 세로 치수 글씨(300)가 세워져 있으므로 주기는 그 바깥으로 물린다.
+    for dz, line in ((60, f"지지링 Ø{fmt(G.support_ring_od_mm)} 이"),
+                     (20, "크로스레일에 앉는다"), (-20, "M12 × 4")):
+        c.text(pv.x(fw / 2) + 26.0, pv.y(dz), line, T_DIM - 0.2, "start", "tx2")
     c.view_title(16.0, 206.0, "평면", pv.label)
 
     end = bom_block(c, "H", 208.0, 30.0)
@@ -1298,7 +1321,7 @@ def sheet_h() -> None:
 def sheet_i() -> None:
     c = sheet("MP50-I", "노즐 · 배관 · 밸브 계통도", "장입 · 배출 · 급기 · 시료채취",
               "NTS", "배관 계통도 — 장입, 부상물 배출, 급기, 시료채취, 하부 배출 계통과 밸브 목록")
-    c.frame_and_title(REV, DATE, "13/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     c.head([("배관", "위생 Tri-clamp"), ("재질", "SUS316L / EPDM 가스켓"),
             ("배출", '1½ in 기본 / 2 in 시험'), ("급기", f"0~{G.air_max_lpm:.0f} L/min"),
             ("시료", "5 단 사다리"), ("아세이 질량", f"{BY_CODE['I'].total_kg:.1f} kg")])
@@ -1342,8 +1365,8 @@ def sheet_i() -> None:
         run([(rs, n.z_mm), (300, n.z_mm)])
         valve(v.x(300), v.y(n.z_mm), 2.6)
         c.text(v.x(318), v.y(n.z_mm) + 1.0, n.tag, T_DIM - 0.4, "start", "tx2")
-    c.text(v.x(330), v.y(760), "시료 사다리 5 단", T_DIM - 0.2, "middle", "tx", weight="600")
-    c.text(v.x(330), v.y(736) + 3.0, "V3A~V3E", T_DIM - 0.4, "middle", "tx2")
+    c.text(v.x(392), v.y(760), "시료 사다리 5 단", T_DIM - 0.2, "middle", "tx", weight="600")
+    c.text(v.x(392), v.y(736) + 3.0, "V3A~V3E", T_DIM - 0.4, "middle", "tx2")
 
     bz = G.cone_outlet_z
     run([(0, bz), (0, bz - 200)])
@@ -1374,7 +1397,7 @@ def sheet_i() -> None:
 def sheet_j() -> None:
     c = sheet("MP50-J", "계측 · 센서 아세이", "재는 것은 염수 밀도와 온도지 pH 가 아니다",
               "1:6", "계측 아세이 — 센서 위치, 계기 목록, 제어반 구성, 시료 사다리 피복 검증")
-    c.frame_and_title(REV, DATE, "14/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     c.head([("제어", "VFD + 타이머"), ("핵심 동작", "임펠러 · 급기 동시 OFF"),
             ("염도", "전도도 0~200 mS/cm"), ("온도", "Pt100 3-wire"),
             ("급기", "로타미터 0~20 L/min"), ("층 높이", "시료 사다리 5 단")])
@@ -1385,7 +1408,15 @@ def sheet_j() -> None:
         c.poly(v.pts(vessel_inner(sign)), THICK, "ln")
     c.poly(v.pts([(-G.tank_id_mm / 2, G.shell_top_z), (G.tank_id_mm / 2, G.shell_top_z)]), THICK, "ln")
     draw_liquid(c, v)
-    for tag, z, side, note in (("J01", 526.0, -1, "전도도 · 삽입 425"), ("J02", 726.0, 1, "온도 · 삽입 225")):
+    # 표고와 삽입장은 COVER_NOZZLES 에서 읽는다. 손으로 적어 두면 노즐을 고쳐도
+    # 도면이 따라오지 않는다 — 실제로 B3 을 내렸을 때 이 줄만 옛 값에 남아 있었다.
+    probes = []
+    for tag, part, side in (("B2", "J01", -1), ("B3", "J02", 1)):
+        nz = next(x for x in COVER_NOZZLES if x.tag == tag)
+        ins = G.cover_top_z - probe_tip_z(nz)
+        probes.append((part, probe_tip_z(nz), side,
+                       f"{'전도도' if tag == 'B2' else '온도'} · 삽입 {ins:.0f}"))
+    for tag, z, side, note in probes:
         c.poly(v.pts([(side * 90, G.cover_top_z), (side * 90, z)]), THICK, "ln")
         c.circle(v.x(side * 90), v.y(z), v.d(16), THICK, "ln", fill="var(--ink)")
         bx, by = v.x(side * 250), v.y(1120)
@@ -1443,7 +1474,7 @@ def sheet_j() -> None:
 def sheet_k() -> None:
     c = sheet("MP50-K", "체결 · 용접 · 검사 기준", "용접 지도 · 조임 토크 · FAT",
               "1:10", "체결과 용접 기준 — 용접 지도와 용접표, 노즐 관통부 상세, 조임 토크, FAT 시험 단계")
-    c.frame_and_title(REV, DATE, "15/15")
+    c.frame_and_title(REV, DATE, sheet_no())
     c.head([("용접", "TIG (GTAW) · 316L 용가재"), ("이면", "아르곤 백퍼지 필수"),
             ("내면", "평활 연삭 · 크레비스 없을 것"), ("검사", "PT + 누설 0.2 MPa 30 분"),
             ("후처리", "산세 · 부동태화"), ("체결", "SUS304 A2-70")])
@@ -1735,6 +1766,10 @@ def build_html() -> str:
 
 
 def main() -> None:
+    global TOTAL_SHEETS
+    TOTAL_SHEETS = 2 + len(_SHEET_FUNCTIONS)
+    _COUNTER[0] = 0
+    SHEETS.clear()
     sheet_000()
     sheet_100()
     for fn in _SHEET_FUNCTIONS:
@@ -1744,7 +1779,254 @@ def main() -> None:
     print(f"{OUT} — {len(SHEETS)} 매, {OUT.stat().st_size // 1024} KB")
 
 
-_SHEET_FUNCTIONS: list = [sheet_a1, sheet_a2, sheet_a3, sheet_b, sheet_c, sheet_d, sheet_e, sheet_f, sheet_g, sheet_h, sheet_i, sheet_j, sheet_k]
+# ==========================================================================
+# L — 제어반 J-06
+# ==========================================================================
+def ladder_contact(c: Canvas, x: float, y: float, label: str, closed: bool = False,
+                   sub: str = "") -> float:
+    """래더의 접점 하나. ``closed`` 면 b 접점 (사선을 긋는다). 오른쪽 x 를 돌려준다."""
+    w, h = 5.0, 3.2
+    c.line(x, y, x + 1.6, y, THIN, "ln")
+    c.line(x + 1.6, y - h / 2, x + 1.6, y + h / 2, THICK, "ln")
+    c.line(x + 1.6 + w, y - h / 2, x + 1.6 + w, y + h / 2, THICK, "ln")
+    if closed:
+        c.line(x + 1.6, y + h / 2, x + 1.6 + w, y - h / 2, THIN, "ln")
+    c.line(x + 1.6 + w, y, x + 1.6 + w + 1.6, y, THIN, "ln")
+    c.text(x + 1.6 + w / 2, y - h / 2 - 1.6, label, T_DIM - 0.4, "middle", "tx", weight="600")
+    if sub:
+        c.text(x + 1.6 + w / 2, y + h / 2 + 3.0, sub, T_DIM - 0.6, "middle", "tx2")
+    return x + w + 3.2
+
+
+def ladder_coil(c: Canvas, x: float, y: float, label: str, sub: str = "") -> None:
+    """래더의 코일. 반원 두 개로 그린다."""
+    r = 2.4
+    c.line(x, y, x + 1.4, y, THIN, "ln")
+    c.arc(x + 1.4 + r, y, r, 100, 260, THICK, "ln")
+    c.arc(x + 1.4 + r, y, r, -80, 80, THICK, "ln")
+    c.text(x + 1.4 + r, y - r - 1.6, label, T_DIM - 0.4, "middle", "tx", weight="600")
+    if sub:
+        c.text(x + 1.4 + r, y + r + 3.0, sub, T_DIM - 0.6, "middle", "tx2")
+
+
+def sheet_l1() -> None:
+    c = sheet("MP50-L1", "제어반 J-06 — 주회로 · 제어회로",
+              "임펠러와 급기를 하나의 접점이 끊는다",
+              "NTS", "제어반 주회로 단선도와 제어회로 래더 — 동시 OFF 회로, 급기 계통")
+    c.frame_and_title(REV, DATE, sheet_no())
+    k = CTL.summary()
+    c.head([("모터", k["모터"]), ("제어전원", k["제어전원"]),
+            ("정지방식", k["정지방식"]), ("VFD", k["VFD 주파수"]),
+            ("감속비", k["감속비"]), ("핵심", "CR1 단일 접점")])
+
+    # --- 주회로 단선도 ---
+    c.view_title(14.0, 30.0, "주회로 단선도", "NTS")
+    x = 40.0
+    c.text(x, 38.0, f"3φ {CTL.MAINS_V:.0f} V {CTL.MAINS_HZ:.0f} Hz", T_DIM - 0.2, "middle", "tx2")
+    c.line(x, 40.0, x, 48.0, THICK, "ln")
+    for i, (h, tag, spec) in enumerate(((48.0, "QF1", "3P 10 A · ELCB 30 mA"),
+                                        (72.0, "INV", f"VFD {CTL.MOTOR_KW:.2f} kW 정토크"))):
+        c.rect(x - 13.0, h, 26.0, 14.0, THICK, "ln", fill="var(--paper)")
+        c.text(x, h + 8.4, tag, T_NOTE, "middle", "tx", weight="700")
+        c.text(x + 16.0, h + 6.0, spec, T_DIM - 0.3, "start", "tx2")
+        c.line(x, h + 14.0, x, h + 24.0 if i == 0 else h + 20.0, THICK, "ln")
+    c.circle(x, 102.0, 8.0, THICK, "ln", fill="var(--paper)")
+    c.text(x, 103.4, "M", T_LABEL, "middle", "tx", weight="700")
+    c.text(x + 12.0, 100.0, f"C-01 {CTL.MOTOR_KW:.2f} kW", T_DIM - 0.3, "start", "tx2")
+    c.text(x + 12.0, 104.6, f"{CTL.MOTOR_POLES} 극 · IP55", T_DIM - 0.3, "start", "tx2")
+    c.line(x, 110.0, x, 118.0, THICK, "ln")
+    c.rect(x - 13.0, 118.0, 26.0, 11.0, THICK, "ln", fill="var(--band)")
+    c.text(x, 125.2, "C-02 감속기", T_DIM - 0.2, "middle", "tx", weight="600")
+    c.text(x + 16.0, 124.0, k["감속비"], T_DIM - 0.3, "start", "tx2")
+    c.line(x, 129.0, x, 137.0, THICK, "ln")
+    c.text(x, 141.0, f"교반축 {k['축 회전수']}", T_DIM - 0.2, "middle", "tx", weight="600")
+
+    # --- 급기 계통 ---
+    c.view_title(14.0, 156.0, "급기 계통", "NTS")
+    ay = 172.0
+    stages = (("공기원", "0.4~0.6 MPa"), ("감압", "0.2 MPa"), ("SOL", "NC · DC 24 V"),
+              ("니들 I-05", "미세조절"), ("로타미터 J-03", "0~20 L/min"),
+              ("체크 F-05", "20 kPa"))
+    sx = 18.0
+    for i, (nm, sp) in enumerate(stages):
+        w = 22.0
+        fill = "var(--band)" if nm == "SOL" else "var(--paper)"
+        c.rect(sx, ay, w, 11.0, THICK, "ln", fill=fill)
+        c.text(sx + w / 2, ay + 5.0, nm, T_DIM - 0.3, "middle", "tx",
+               weight="700" if nm == "SOL" else "600")
+        c.text(sx + w / 2, ay + 9.0, sp, T_DIM - 0.6, "middle", "tx2")
+        if i < len(stages) - 1:
+            c.line(sx + w, ay + 5.5, sx + w + 2.6, ay + 5.5, THICK, "ln")
+        sx += w + 2.6
+    c.line(sx, ay + 5.5, sx + 5.0, ay + 5.5, THICK, "ln")
+    c.text(sx + 6.6, ay + 6.8, "N3 → 분산링 F-01", T_DIM - 0.4, "start", "tx2")
+    c.leader(18.0 + 2 * 24.6 + 11.0, ay + 11.0, 58.0, ay + 28.0,
+             "소자되면 닫힌다",
+             lines=("정전에도 공기가 들어가지 않는다",))
+
+    # --- 제어회로 래더 ---
+    c.view_title(196.0, 30.0, "제어회로 (DC 24 V)", "래더")
+    xl, xr = 200.0, 404.0
+    rungs = [
+        ("1", [("EMS", True, "비상정지"), ("PB1", False, "운전"), ("PB2", True, "동시 OFF"),
+               ("TIM1", True, "분산 종료")], ("CR1", "운전 릴레이")),
+        ("2", [("CR1", False, "")], ("TIM1", "분산 타이머")),
+        ("3", [("CR1", False, "")], ("Y1", "VFD RUN")),
+        ("4", [("CR1", False, "")], ("Y3", "급기 SOL")),
+        ("5", [("CR1", False, "")], ("Y5", "t=0 마크 → J-07")),
+        ("6", [("CR1", False, "기동"), ("PB3", True, "리셋")], ("CR2", "사이클 래치")),
+        ("7", [("CR2", False, ""), ("CR1", True, "떨어진 뒤")], ("TIM2", "정치 타이머")),
+        ("8", [("TIM2", False, "정치 종료")], ("BZ1", "부저 · PL3")),
+    ]
+    y = 44.0
+    # CR1 한 접점이 무는 세 출력 (3·4·5 행) 을 음영으로 묶는다. 지시선을
+    # 끌면 아래 행들을 가로질러야 하므로 띠로 표시하고 행 번호로 가리킨다.
+    c.rect(xl, 44.0 + 2 * 19.0 - 8.0, xr - xl, 3 * 19.0 - 3.0, 0.0, "none",
+           fill="var(--band)")
+    c.line(xl, 40.0, xl, 40.0 + len(rungs) * 19.0, THICK, "ln")
+    c.line(xr, 40.0, xr, 40.0 + len(rungs) * 19.0, THICK, "ln")
+    c.text(xl, 37.0, "24V", T_DIM - 0.4, "middle", "tx2")
+    c.text(xr, 37.0, "0V", T_DIM - 0.4, "middle", "tx2")
+    for no, contacts, (coil, coil_sub) in rungs:
+        c.text(xl - 5.0, y + 1.0, no, T_DIM - 0.3, "middle", "tx2")
+        px = xl
+        for label, closed, sub in contacts:
+            px = ladder_contact(c, px, y, label, closed, sub)
+        c.line(px, y, xr - 12.0, y, THIN, "ln")
+        ladder_coil(c, xr - 12.0, y, coil, coil_sub)
+        y += 19.0
+    # 자기유지 — PB1 을 건너뛰는 CR1 a 접점
+    hy = 44.0 - 7.0
+    c.line(xl + 8.2, 44.0, xl + 8.2, hy, THIN, "ln")
+    c.line(xl + 8.2, hy, xl + 24.0, hy, THIN, "ln")
+    c.line(xl + 24.0, hy, xl + 24.0, 44.0, THIN, "ln")
+    c.line(xl + 12.0, hy - 1.6, xl + 12.0, hy + 1.6, THICK, "ln")
+    c.line(xl + 18.0, hy - 1.6, xl + 18.0, hy + 1.6, THICK, "ln")
+    c.text(xl + 15.0, hy - 3.2, "CR1", T_DIM - 0.4, "middle", "tx", weight="600")
+    c.text(xl + 31.0, hy - 1.0, "자기유지", T_DIM - 0.5, "start", "tx2")
+
+    c.text(xl, 200.0, "음영 3·4·5 행 — CR1 접점 하나가 VFD RUN · 급기 SOL · "
+           "로거 t=0 마크를 함께 끊는다.", T_NOTE, "start", "tx", weight="600")
+    c.text(xl, 204.6, "버튼을 둘로 나누면 사람이 누르는 순서가 정치 t=0 에 섞인다.",
+           T_DIM - 0.2, "start", "tx2")
+
+    notes = [
+        "동시 OFF 는 비상정지가 아니다. 비상정지(EMS)는 제어전원을 끊고 수동 복귀를 요구하지만, "
+        "동시 OFF(PB2·TIM1)는 CR1 유지회로만 열어 다음 배치를 바로 돌릴 수 있게 둔다. "
+        "둘을 한 버튼으로 합치면 매 배치마다 비상정지를 누르는 셈이 된다.",
+        "VFD 정지방식은 프리런이다. 램프 정지를 쓰면 감속하는 동안에도 임펠러가 저어서 "
+        "정치 t=0 이 흐려진다. 출력을 즉시 끊고 유체가 세우게 둔다 — 감속 시간은 "
+        "J-07 의 전류 기록에 남으므로 배치마다 재현되는지 확인할 수 있다.",
+        "급기 솔레노이드는 NC 형이다. 소자되면 닫히므로 정전이나 배선 단선에서도 "
+        "공기가 들어가지 않는다. 정치 중에 기포가 올라오면 밀도차 분리가 부선으로 오염된다 (C5).",
+        "분산시간을 사람이 끊지 않는다. TIM1 이 시간종료로 CR1 을 떨어뜨리므로 "
+        "조건표대로 돌리면 배치마다 분산시간이 같다. PB2 는 조기 차단용으로만 쓴다.",
+    ]
+    y = 214.0
+    c.view_title(14.0, y - 6.0, "주기")
+    for n in notes:
+        for line in wrap("· " + n, 112):
+            c.text(14.0, y, line, T_DIM - 0.2, "start", "tx2")
+            y += 4.4
+        y += 1.6
+    # 이 시트가 그리는 모터·VFD 를 고른 검증. 표제란(x237·y262) 위로는
+    # 내려가지 않는 자리다.
+    check_note(c, xl, 214.0, ("CHK-06",), 86)
+
+
+def sheet_l2() -> None:
+    c = sheet("MP50-L2", "제어반 J-06 — 시퀀스 · 단자 · 설정값",
+              "조건표대로 돌리면 배치마다 같은 시간이 나온다",
+              "NTS", "운전 시퀀스 타임차트와 단자표, VFD 설정값, 제어반 구성품")
+    c.frame_and_title(REV, DATE, sheet_no())
+    k = CTL.summary()
+    c.head([("시퀀스", f"{len(CTL.SEQUENCE)} 단계"), ("단자", f"{len(CTL.TERMINALS)} 조"),
+            ("구성품", f"{len(CTL.PANEL_BOM)} 품목"), ("정치시간", k["정치시간"]),
+            ("급기", k["급기"]), ("로깅", "전류 4~20 mA")])
+
+    # --- 타임차트 ---
+    c.view_title(14.0, 30.0, "운전 시퀀스", "시간축 NTS")
+    x0, x1 = 44.0, 250.0
+    top, band_h, pitch = 36.0, 6.0, 11.0
+    n = len(CTL.SEQUENCE)
+    w = (x1 - x0) / n
+    bands = CTL.timing()
+    bottom = top + (len(bands) - 1) * pitch + band_h + 4.0
+    for i, st in enumerate(CTL.SEQUENCE):
+        bx = x0 + i * w
+        c.line(bx, top - 2.0, bx, bottom, THIN, "cl", dash="3 1.5")
+        c.text(bx + w / 2, bottom + 5.0, f"{st.no} {st.name}", T_DIM - 0.2,
+               "middle", "tx", weight="600")
+    c.line(x1, top - 2.0, x1, bottom, THIN, "cl", dash="3 1.5")
+    for j, (name, on) in enumerate(bands):
+        by = top + j * pitch
+        c.text(x0 - 3.0, by + 3.4, name, T_DIM - 0.3, "end", "tx2")
+        i = 0
+        while i < len(on):                     # 이어진 on 은 한 덩어리로 — 안쪽에
+            k = i + 1                          # 세로선이 생기면 두 번 켠 것처럼 읽힌다
+            while k < len(on) and on[k] == on[i]:
+                k += 1
+            bx, bw = x0 + i * w, (k - i) * w
+            if on[i]:
+                c.rect(bx, by, bw, band_h, THICK, "ln", fill="var(--band)")
+            else:
+                c.line(bx, by + band_h, bx + bw, by + band_h, THICK, "ln")
+            i = k
+    off_x = x0 + next(i for i, st in enumerate(CTL.SEQUENCE) if st.no == "S3") * w
+    c.line(off_x, top - 8.0, off_x, bottom, THICK, "ln")
+    c.text(off_x, top - 10.0, "동시 OFF = 정치 t=0", T_DIM - 0.1, "middle", "tx",
+           weight="700")
+
+    rows = [["단계", "이름", "임펠러", "급기", "무엇이 끝내나", "주기"]]
+    for st in CTL.SEQUENCE:
+        rows.append([st.no, st.name, st.impeller, st.air, st.ends_by, st.note])
+    c.view_title(14.0, 90.0, "단계별 지시")
+    end = c.table(14.0, 94.0, [12.0, 22.0, 24.0, 20.0, 30.0, 128.0], rows, row_h=5.4,
+                  size=T_DIM - 0.3, aligns=["middle", "start", "middle", "middle", "start", "start"])
+
+    rows2 = [["단자", "종류", "명칭", "접속처", "비고"]]
+    for t in CTL.TERMINALS:
+        rows2.append([t.no, t.kind, t.name, t.to, t.note])
+    c.view_title(14.0, end + 8.0, "단자표")
+    end2 = c.table(14.0, end + 12.0, [22.0, 12.0, 40.0, 44.0, 78.0], rows2, row_h=5.0,
+                   size=T_DIM - 0.4, aligns=["middle", "middle", "start", "start", "start"])
+
+    rows5 = [["감속비", "60 Hz 축속", f"{CTL.SHAFT_MIN_RPM:.0f} rpm 주파수", "판정"]]
+    for r in CTL.ratio_table():
+        rows5.append(list(r))
+    c.view_title(14.0, end2 + 8.0, "감속비 후보")
+    end3 = c.table(14.0, end2 + 12.0, [20.0, 26.0, 32.0, 70.0], rows5, row_h=5.0,
+                   size=T_DIM - 0.4, aligns=["middle", "end", "end", "start"])
+    yy = end3 + 6.0
+    for line in wrap(
+            f"표준 감속비 가운데 축 {CTL.DESIGN_MAX_RPM:.0f} rpm 을 낼 수 있는 것은 "
+            f"1/{CTL.RECOMMENDED_RATIO:.0f} 뿐이다. 1/20 은 60 Hz 에서도 "
+            f"{CTL.shaft_rpm(CTL.MAINS_HZ, 20.0):.0f} rpm 에 그치는데, 이것이 [R] 이 적은 "
+            f"상한 {CTL.GEARBOX_MAX_RPM:.0f} rpm 의 정체로 보인다 — 감속비를 바꾸지 않으면 "
+            f"Njs 를 넘지 못한다 (CHK-05).", 92):
+        c.text(14.0, yy, line, T_DIM - 0.2, "start", "tx2")
+        yy += 3.9
+
+    # --- 오른쪽 기둥 ---
+    rows3 = [["항목", "설정", "왜"]]
+    for a, b, why in CTL.VFD_PARAMETERS:
+        rows3.append([a, b, why])
+    c.view_title(266.0, 28.0, "VFD 설정값")
+    e3 = c.table(266.0, 32.0, [26.0, 30.0, 92.0], rows3, row_h=5.0, size=T_DIM - 0.4,
+                 aligns=["start", "start", "start"])
+
+    rows4 = [["기호", "품명", "사양", "수량"]]
+    for it in CTL.PANEL_BOM:
+        rows4.append([it.tag, it.name, it.spec, str(it.qty)])
+    c.view_title(266.0, e3 + 7.0, "제어반 구성품")
+    e4 = c.table(266.0, e3 + 11.0, [16.0, 30.0, 90.0, 12.0], rows4, row_h=5.0,
+                 size=T_DIM - 0.4, aligns=["middle", "start", "start", "middle"])
+
+    # 이 시트가 정한 두 값 — 최고 주파수와 정치 타이머 범위 — 의 근거.
+    check_note(c, 266.0, e4 + 7.0, ("CHK-05", "CHK-10"), 86)
+
+
+_SHEET_FUNCTIONS: list = [sheet_a1, sheet_a2, sheet_a3, sheet_b, sheet_c, sheet_d, sheet_e, sheet_f, sheet_g, sheet_h, sheet_i, sheet_j, sheet_k, sheet_l1, sheet_l2]
 
 if __name__ == "__main__":
     main()
