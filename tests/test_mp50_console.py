@@ -250,12 +250,43 @@ class TestPhysicsCarriedFromTheDrawings(unittest.TestCase):
         self.assertIn("Zwietering", self.html)
 
     def test_density_cut_neutral_point_is_flagged(self):
-        """설계점 15 wt% 는 백시트 31–45 µm 중립점 바로 위다."""
-        w_cut = (1110 - 998) / 7.55
+        """설계점 15 wt% 는 백시트 31–45 µm 중립점 바로 위다 (연구문서 유효밀도)."""
+        w_cut = (RHO_EFF["BS"][0] - 998) / 7.55
         self.assertAlmostEqual(w_cut, 14.83, places=2)
         self.assertLess(abs(15 - w_cut), 0.2)
-        self.assertIn("(1110-998)/7.55", self.html.replace(" ", ""))
         self.assertIn("중립점", self.html)
+
+    def test_the_neutral_warning_follows_the_selected_density(self):
+        """중립점 경고가 고른 밀도 소스를 따라가야 한다 — 1110 은 문서 모드 전용이다.
+
+        BINS[0] 이 31–45 µm 이므로 그 셀의 밀도는 MATS[1].rho[0][0] 이고,
+        공기를 문 파편이면 withAir 로 내려간다. 리터럴을 박아 두면 문헌
+        실밀도(1450) 를 골라도 화면은 여전히 15 wt% 근처가 중립이라고 말한다.
+        """
+        body = self.html[self.html.index("function render("):]
+        body = body[: body.index("\nfunction ")]
+        self.assertNotIn("(1110-998)", body.replace(" ", ""),
+                         "중립점이 문서 모드 밀도 리터럴에 박혀 있다")
+        self.assertRegex(body.replace(" ", ""),
+                         r"wCut=wNeutral\(withAir\(MATS\[1\]\.rho\[0\]\[0\],true,S\.airv\)\)")
+
+    def test_liberation_mode_does_not_overwrite_the_presets(self):
+        """해리 모드가 프리셋 배열을 제자리에서 고치면 doc→lib→doc 이 오염된다.
+
+        else 분기가 MATS[1].rho 에 RHO_SETS[key].BS 를 참조로 넣으므로,
+        lib 분기가 MATS[1].rho[i] 에 대입하면 프리셋 자체가 덮인다.
+        새 배열을 만들어 넣어야 한다.
+        """
+        fn = self.html[self.html.index("function applyRhoSet("):]
+        fn = fn[: fn.index("\n}")]
+        lib = fn[: fn.index("return;")].replace(" ", "")
+        self.assertNotIn("MATS[1].rho[i]=", lib,
+                         "해리 분기가 MATS[1].rho 를 제자리에서 고친다")
+        self.assertIn("MATS[1].rho=bs", lib, "해리 분기가 새 배열을 대입하지 않는다")
+        tail = fn[fn.index("return;"):].replace(" ", "")
+        for i, mat in enumerate(("EVA", "BS", "Si")):
+            self.assertIn("MATS[%d].rho=R.%s.slice()" % (i, mat), tail,
+                          "프리셋을 참조로 넘기면 뒤에서 덮일 수 있다")
 
     def test_feed_composition_and_bins(self):
         self.assertIn("BINS=[[31,45],[45,60],[60,75]]", self.html.replace(" ", ""))

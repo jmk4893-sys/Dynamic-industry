@@ -37,6 +37,8 @@ Z_LEVEL_MM = 720.0
 Z_RING_MM = 300.0
 TRAVEL_MM = Z_LEVEL_MM - Z_TAN_MM               # 373.59
 WIN_S = 600.0                                   # 판정 창
+T0_S, T_END_S = -60.0, 1260.0                   # 재생 타임라인의 양 끝
+CHAPTER_S = [-45, 0, 230, 600, 700, 900]        # 챕터 시각 (배출 900 s 까지)
 BINS = [(31, 45), (45, 60), (60, 75)]
 PSD_W = [0.33, 0.34, 0.33]
 RHO_EFF = {
@@ -171,9 +173,24 @@ class TestMotionDocument(unittest.TestCase):
         self.assertIn("if(!reduce){", self.html)
 
     def test_playback_covers_dispersion_and_settling(self):
-        """−60 s 분산 → 0 정지 → +600 s 판정 → +660 s 까지가 한 편이다."""
+        """−60 s 분산 → 0 정지 → +600 s 판정 → +900 s 배출까지가 한 편이다."""
         self.assertIn("var WIN=600, T0=-60, T_END=1260;", self.html)
-        self.assertIn('id="scrub" min="-60" max="660"', self.html.replace('max="1260"', 'max="660"'))
+
+    def test_the_scrubber_reaches_every_chapter(self):
+        """스크러버의 양 끝이 타임라인과 같아야 한다 — 짧으면 썸이 중간에 박힌다.
+
+        max 가 T_END 보다 작으면 재생이 그 지점을 지나도 썸이 끝에 붙어
+        멈추고, 챕터 버튼으로 간 뒤 슬라이더를 건드리면 시각이 되돌아간다.
+        """
+        m = re.search(r'id="scrub" min="(-?\d+)" max="(\d+)"', self.html)
+        self.assertIsNotNone(m, "스크러버 입력의 범위를 못 찾았다")
+        lo, hi = int(m.group(1)), int(m.group(2))
+        self.assertEqual(lo, T0_S, "스크러버 하단이 분산 시작과 다르다")
+        self.assertEqual(hi, T_END_S, "스크러버 상단이 T_END 와 다르다")
+        for t in CHAPTER_S:
+            self.assertGreaterEqual(t, lo)
+            self.assertLessEqual(t, hi, "챕터 %d s 로 스크럽할 수 없다" % t)
+            self.assertIn("[%d," % t, self.html, "챕터 %d s 가 화면에 없다" % t)
 
 
 class TestGeometryMatchesTheDrawings(unittest.TestCase):

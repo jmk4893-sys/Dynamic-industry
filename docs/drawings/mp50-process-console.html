@@ -412,18 +412,23 @@ function applyRhoSet(key,s){
   if(key==="lib"){
     var t1=s?s.t1:0.50, t2=s?s.t2:0.25, rbs=s?s.rbs:1450;
     MATS[0].rho=[[948,12],[948,12],[948,12]];
-    MATS[2].rho=RHO_SETS.lit.Si;
+    MATS[2].rho=RHO_SETS.lit.Si.slice();
+    /* 새 배열에 담는다 — MATS[1].rho 는 직전 프리셋 배열을 가리키고 있을 수
+       있고, 제자리에서 고치면 RHO_SETS 자체가 해리값으로 덮인다. */
+    var bs=[];
     for(var i=0;i<3;i++){
       var st=cutStats((BINS[i][0]+BINS[i][1])/2/1000*(s?s.psd:1),t1,t2,rbs);
-      LIB[i]=st; MATS[1].rho[i]=[st.mean,Math.max(8,st.sd)];
+      LIB[i]=st; bs[i]=[st.mean,Math.max(8,st.sd)];
     }
+    MATS[1].rho=bs;
     // 실리콘도 EVA 를 달고 나온다 — 굵게 부술수록 가벼워진다
     var dSi=(BINS[2][0]+BINS[2][1])/2/1000*(s?s.psd:1);
     LIB_SI=cutStats(dSi,2*t1,T_CELL,2329);
     return;
   }
   var R=RHO_SETS[key]||RHO_SETS.doc;
-  MATS[0].rho=R.EVA; MATS[1].rho=R.BS; MATS[2].rho=R.Si;
+  /* 프리셋은 복사해서 넘긴다 — 참조를 넘기면 뒤에서 덮일 수 있다. */
+  MATS[0].rho=R.EVA.slice(); MATS[1].rho=R.BS.slice(); MATS[2].rho=R.Si.slice();
 }
 /* 미습윤 파편이 물고 있는 공기 — 밀도 효과로만 다룬다 (부선이 아니다) */
 function withAir(rho_p, poly, a){
@@ -833,7 +838,7 @@ function render(){
     "(CaCl₂ ~1,400 · ZnCl₂ ~2,000 kg/m³)이 필요하다."]);
   else if(wBs>18) A.push(["","밀도",
     "백시트가 뜨려면 "+wBs.toFixed(1)+" wt% 이상이 필요하다 — DOE 상한 18 % 밖이다."]);
-  var wCut=(1110-998)/7.55;
+  var wCut=wNeutral(withAir(MATS[1].rho[0][0],true,S.airv));
   if(Math.abs(S.w-wCut)<0.6) A.push(["","밀도컷",
     "설계점이 백시트 31–45 µm 의 중립점("+wCut.toFixed(2)+" wt%)에서 "+
     Math.abs(S.w-wCut).toFixed(2)+" %p 안에 있다. 이 셀은 제자리에 머물러 <b>배출 체적비 "+
