@@ -289,7 +289,15 @@ CART_W_MM: int = round(const("CSCART_W") * 1000)        # 1,300
 #: `ROLL_MASS` 는 폐기된 REV.20 도면을 그리는 값이라고 콘솔이 못박아 두었으므로
 #: **플랜트는 읽지 않는다**. 레일이 나르는 것은 이제 칼날 카세트뿐이다.
 RH_Y_MM: tuple[int, int] = (round(const("RH_Y0") * 1000), round(const("RH_Y1") * 1000))
+#: 벤더가 그린 KC-301 랙 중심 (기계 y mm). 콘솔 식은 `−(CFENCE_YN + .50 + KNIFE_W/2)`
+#: — **자기 방책 밖 500** 에 카세트 한 벌을 눕히는 자리다. 계단 칼날로 기계가 좁아지며
+#: −7,000 에서 −5,850 으로 당겨졌고, 그 500 은 플랜트 보행 통로(1,200) 안이다.
+#: 그래서 플랜트는 이 좌표를 **그대로 쓰지 않는다** — `layout` 이 자기 물류 레인으로
+#: 옮긴다. 옮길 양을 재려면 카세트가 y 로 차지하는 길이가 있어야 한다.
 CASSETTE_SADDLE_Y_MM: int = round(const("CKC_RACK_Y") * 1000)
+#: 카세트 한 벌이 y 로 차지하는 길이 (mm) — 콘솔 `CASS_L = KNIFE_BLADE_L`.
+#: 계단 조각까지 문 길이라 칼날 전폭 1,500 보다 계단 여유만큼 길다.
+CASSETTE_L_MM: int = round(const("CASS_L") * 1000)       # 1,590
 
 
 def _deck_z(k: int) -> float:

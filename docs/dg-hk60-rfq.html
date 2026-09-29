@@ -1202,6 +1202,10 @@ t_열   = max( 5Q / (48 × 2.5 kW × η 0.65),  113.15 s )  = 225.4 s
     <div class="logic">UNMANNED_PERMIT  = AUTO_FEED ∧ AUTO_STACK ∧ KC_MAGAZINE_READY ∧ BIN_LEVEL_OK ∧ THERMAL_CAM_OK ∧ FIRE_OK ∧ REMOTE_ACK ∧ OEE_VALID
 KNIFE_AUTOCHANGE = KNIFE_CHANGE_DUE ∧ KC_MAGAZINE_READY ∧ KC_ARM_HOME ∧ CASSETTE_RELEASE
 CASSETTE_RELEASE = KNIVES_CLEAR ∧ CARRIER_PARKED ∧ HEATER_ISOLATED ∧ CASSETTE_PRESENT ∧ KM_ALL_LOCKED</div>
+    <div class="warn"><strong>위 무인 허가의 투입 항은 팔레트 디스태커 전용이다.</strong> 상류 직결
+      (<a href="#c11">OI-17</a>)에서는 디스태커 픽업 스테이션이 브리지 개구로 대체돼
+      <span class="k">AUTO_FEED</span> 가 성립하지 않으므로, 투입 항을 활성 모드를 고르는 항으로
+      바꾸지 않으면 정상 운전에서 무인 허가를 받을 수 없다.</div>
     <div class="warn"><strong>칼날 자동교환은 정비허가(LOTO)가 아니라 캐리어 파킹 상태에서 돈다.</strong>
       무인 운전 중에 LOTO 를 요구하면 그 허가는 영원히 성립하지 않고, 결국 사람이
       들어가야 한다. 대신 파킹 위치·칼날 Z 상한·매거진 위치를 모두 읽어 등가의
@@ -1982,13 +1986,23 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
         <p><em>왜 미해결인가</em>경계 신호가 하나 늘었다 — 브리지 핸드셰이크
           <span class="k">UP_PANEL_OFFER</span>(플랜트 → 본 기계, DI 2) · <span class="k">UP_PANEL_ACK</span>(본 기계 → 플랜트, DO 1)
           가 <span class="k">UPSTREAM_FEED</span> 허가를 만들며, 안전회로 <span class="k">IF_ESTOP_LOOP_OK</span> 는
-          브리지 행정을 포함해 잇는다. 또 방책 −y 쪽 통로가 플랜트 보행 통로(Y 8,300 – 9,500)와 겹치므로
-          BS-301 만권 롤 새들은 기계 좌표 <span class="m">y −6,800</span>, 칼날 카세트 새들은
-          <span class="m">y −7,600</span> 으로 통로 밖에 두고 RH-201 모노레일이 통로 위(EL 5,100)를 넘는다.
-          GC-101 냉각 팬 배기(26 kW)는 실내로 내지 않고 경계 덕트에 합류한다. 셋 다 플랜트 측 값이 확정돼야 닫힌다.</p>
+          브리지 행정을 포함해 잇는다. <strong>그런데 무인 운전 허가는 그 신호를 보지 않는다</strong> —
+          <span class="k">UNMANNED_PERMIT</span> 의 투입 항이 <span class="k">AUTO_FEED</span> 단독이고 그것은
+          디스태커 픽업 스테이션 접점 <span class="k">PL_IN_STACK_PRESENT</span> 를 읽으므로, 그 스테이션이
+          브리지 개구로 대체되는 <strong>직결(정상) 모드에서는 무인 허가가 영원히 성립하지 않는다</strong>.
+          또 방책 −y 쪽 통로가 플랜트 보행 통로(Y 8,160 – 9,360)와 겹친다. 권취부 철거로 BS-301 만권 롤
+          새들은 없어졌고, 남은 칼날 카세트 랙은 본 기계 좌표로 <span class="m">y −5,850</span>
+          (방책 밖 500)인데 그 500 이 통로 안이라 카세트 <span class="m">1,590</span> 이 통로를
+          <span class="m">745 mm</span> 먹는다 — 발주자는 그 새들을 <span class="m">y −7,095</span>
+          (플랜트 Y 10,655 · 통로 밖 500)로 내고 RH-201 모노레일을 <span class="m">1,245 mm</span>
+          연장해 통로 위(EL 5,100)를 넘긴다. GC-101 냉각 팬 배기(26 kW)는 실내로 내지 않고 경계 덕트에
+          합류한다. 넷 다 플랜트 측 값이 확정돼야 닫힌다.</p>
         <p><em>해소</em>발주자가 브리지 인계면 좌표(존 경계 −475 · EL 1,150)·핸드셰이크 타이밍(방출 피치 44.5 s 이하)·
           통로 경계 Y 와 경계 덕트 접속점을 확정 도면으로 제시하고, 입찰자는 LD-101 폭조절 가이드 1,200±3 과
           BJ-101 의 추가 접점, 새들 위치 변경에 따른 RH-201 지주 배치를 반영한 배치도를 제출한다.
+          무인 허가는 투입 모드를 고르는 항으로 바꾼 논리도를 제출한다 —
+          <span class="k">FEED_READY = AUTO_FEED ∨ UPSTREAM_FEED</span> 를 두고
+          <span class="k">UNMANNED_PERMIT</span> 이 그것을 읽으면 팔레트 우회 운전과 직결 운전이 같은 허가로 선다.
           팔레트 투입 우회 운전은 인수시험 항목에 남긴다.</p>
       </div>
     </div>

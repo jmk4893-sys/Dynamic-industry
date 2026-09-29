@@ -51,6 +51,23 @@ class TestRfqDocument(unittest.TestCase):
                 f"목차가 존재하지 않는 조항 {target} 을 가리킨다",
             )
 
+    def test_the_unmanned_permit_admits_the_direct_connection(self):
+        """무인 허가의 투입 항이 팔레트 전용이면 직결(정상) 모드에서 성립하지 않는다.
+
+        콘솔의 허가식은 벤더 것이라 이 문서가 고쳐 적을 수 없다 — 그대로 옮겨
+        적고(논리식 시험이 두 문서를 대조한다), **바꿔 달라는 요청**을 OI-17 에
+        적는다. 요청이 없으면 발주자는 팔레트 접점을 흉내내는 배선으로 무인
+        운전을 받게 된다.
+        """
+        self.assertIn("UNMANNED_PERMIT  = AUTO_FEED ∧ AUTO_STACK", self.html,
+                      "벤더 허가식을 그대로 옮겨 적지 않았다")
+        self.assertIn("위 무인 허가의 투입 항은 팔레트 디스태커 전용이다", self.html,
+                      "허가식 옆에 그 항이 직결에서 안 선다는 경고가 없다")
+        oi = re.sub(r"\s+", " ", self.html.split("<b>OI-17</b>")[1].split("<b>OI-18</b>")[0])
+        self.assertIn("FEED_READY = AUTO_FEED ∨ UPSTREAM_FEED", oi,
+                      "OI-17 이 바꿀 식을 적지 않았다")
+        self.assertIn("PL_IN_STACK_PRESENT", oi, "왜 안 서는지(읽는 접점)를 적지 않았다")
+
     def test_open_items_are_numbered_and_actionable(self):
         """확인사항은 번호가 있어야 제안서에서 항목별로 답할 수 있다."""
         ids = re.findall(r"<b>(OI-\d+)</b>", self.html)

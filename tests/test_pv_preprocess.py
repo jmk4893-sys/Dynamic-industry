@@ -3613,6 +3613,57 @@ class TestGlassRemovalIntegration(unittest.TestCase):
                          "밴드는 가장 넓은 스테이션(DGM 7,600)이 정한다")
         self.assertTrue(layout.band_is_the_widest_station())
 
+    def test_the_hot_cassette_saddle_stays_out_of_the_walkway(self):
+        """200 ℃ 를 지난 카세트 밑으로 사람을 지나가게 둘 수 없다.
+
+        벤더 랙 좌표는 **자기 방책 밖 500**(콘솔 `−(CFENCE_YN+.50+KNIFE_W/2)`)이다.
+        계단 칼날로 기계가 좁아지며 그 자리가 −7,000 에서 −5,850 으로 당겨졌는데,
+        플랜트는 방책 바로 밖에 통로 1,200 을 두므로 카세트 1,590 이 통로를 745
+        먹는다. 종전 검사는 새들을 **점**으로 세어(중심 ≥ 통로끝 + 500) 그 자리를
+        통과시켰고, 아무도 그 검사를 부르지 않아 False 인 채로 지나갔다.
+        """
+        a0, a1 = layout.aisle_band_mm()
+        self.assertEqual((a0, a1), (8160, 9360))
+        # 벤더 좌표 그대로 놓으면 통로를 먹는다 — 이 값이 옮기는 근거다
+        self.assertEqual(layout.cassette_saddle_vendor_y_mm(), 9_410)
+        self.assertEqual(layout.vendor_saddle_intrudes_mm(), 745)
+        # 플랜트가 옮긴 자리 — 카세트의 **가까운 면**이 통로에서 500 떨어진다
+        self.assertEqual(layout.cassette_saddle_plant_y_mm(), 10_655)
+        self.assertEqual(layout.cassette_saddle_machine_y_mm(), -7_095)
+        y0 = next(z.y0_mm for z in layout.build_zones() if z.key == "grm")
+        self.assertEqual(hk60c.plant_y_mm(y0, layout.cassette_saddle_machine_y_mm()),
+                         layout.cassette_saddle_plant_y_mm(),
+                         "사양서가 부르는 기계 좌표와 플랜트 Y 가 왕복하지 않는다")
+        self.assertTrue(layout.saddle_clears_the_aisle())
+        self.assertTrue(layout.saddle_fits_the_lane(), "옮긴 새들이 물류 레인을 넘었다")
+        # 도면이 옮긴 자리에 그려야 옮긴 것이다 — 기계 좌표를 그대로 그리면 통로 위다
+        block = self.html.split("/* @dgm-3d-begin */")[1].split("/* @dgm-3d-end */")[0]
+        self.assertIn(f"L([1.2,.3,{hk60c.CASSETTE_L_MM / 1000}],"
+                      f"[9.45,.9,{-layout.cassette_saddle_machine_y_mm() / 1000}],M.dark,"
+                      "'KC-301 칼날 카세트 새들 (통로 밖)'", block,
+                      "새들을 옮긴 자리·카세트 길이로 그리지 않았다")
+
+    def test_the_specification_asks_the_vendor_for_the_relocated_saddle(self):
+        """옮긴 자리는 사양서가 벤더에게 부르는 숫자이기도 하다 (OI-17).
+
+        두 문서에 손으로 적어 두면 방책이 움직이는 날 갈라진다 — 사양서가 적은
+        숫자가 배치 모델에서 나온 값과 같은지 여기서 대조한다.
+        """
+        rfq = hk60c.RFQ.read_text(encoding="utf-8")
+        block = rfq.split("<b>OI-17</b>")[1].split("<b>OI-18</b>")[0]
+        flat = re.sub(r"\s+", " ", block)
+        a0, a1 = layout.aisle_band_mm()
+        moved = layout.cassette_saddle_plant_y_mm() - layout.cassette_saddle_vendor_y_mm()
+        for want in (f"Y {a0:,} – {a1:,}",                                  # 플랜트 보행 통로
+                     f"y −{abs(hk60c.CASSETTE_SADDLE_Y_MM):,}",            # 벤더 랙
+                     f"{hk60c.CASSETTE_L_MM:,}",                           # 카세트 길이
+                     f"{layout.vendor_saddle_intrudes_mm():,} mm",         # 통로 잠식
+                     f"y −{abs(layout.cassette_saddle_machine_y_mm()):,}",  # 옮긴 자리
+                     f"플랜트 Y {layout.cassette_saddle_plant_y_mm():,}",
+                     f"{moved:,} mm"):                                     # 모노레일 연장
+            with self.subTest(want=want):
+                self.assertIn(want, flat, "사양서 OI-17 의 숫자가 배치 모델과 다르다")
+
     def test_the_3d_scene_actually_carries_the_cell(self):
         """도면에만 있고 영상에 없으면 '연결'이 아니다."""
         self.assertIn("var pvGrm=new ce;pt.add(pvCell(pvGrm,'grm'));", self.html)

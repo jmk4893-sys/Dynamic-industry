@@ -398,12 +398,20 @@ DERIVED = [
             "팔레트 투입 — 단독 운전·비상 우회"),
     Derived("UPSTREAM_FEED", ["UP_PANEL_OFFER", "UP_PANEL_ACK", "TRACK_CLEAR", "LOT_OPEN"],
             "상류 직결 투입 — 브리지 핸드셰이크 (REV.54 · OI-17)"),
+    # 투입 허가는 **모드를 고르는 항**이다 — 선택(∨)이라 둘 중 활성 모드 하나면 선다.
+    # 이것이 없으면 무인 허가가 AUTO_FEED 단독을 읽는데, 직결에서는 디스태커 픽업
+    # 스테이션이 브리지 개구로 대체돼 PL_IN_STACK_PRESENT 가 영원히 거짓이다 —
+    # 정상 모드에서 무인 운전 허가를 못 받고, UPSTREAM_FEED 는 정의만 있고 아무도
+    # 읽지 않는 신호로 남는다. 콘솔의 무인 허가식은 아직 AUTO_FEED 단독이므로 이
+    # 변경은 사양서 OI-17 로 요청한다 — UPSTREAM_FEED 가 들어온 것과 같은 자리다.
+    Derived("FEED_READY", ["AUTO_FEED", "UPSTREAM_FEED"],
+            "FEED_READY = AUTO_FEED ∨ UPSTREAM_FEED — 선택 항이다 (팔레트 우회 ∨ 상류 직결)"),
     Derived("AUTO_STACK", ["PL_OUT_SPACE_OK", "GLASS_CARRIAGE_ACK", "DOCK_LOCKED"]),
     # 칼날 자동교환은 정비허가가 아니라 파킹 상태에서 돈다. LOTO 를 요구하면
     # 무인 운전 중에는 영원히 성립하지 않는다.
     Derived("KNIFE_AUTOCHANGE", ["KNIFE_CHANGE_DUE", "KC_MAGAZINE_READY",
                                  "KC_ARM_HOME", "CASSETTE_RELEASE"]),
-    Derived("UNMANNED_PERMIT", ["AUTO_FEED", "AUTO_STACK", "KC_MAGAZINE_READY",
+    Derived("UNMANNED_PERMIT", ["FEED_READY", "AUTO_STACK", "KC_MAGAZINE_READY",
                                 "BIN_LEVEL_OK", "THERMAL_CAM_OK", "FIRE_OK",
                                 "REMOTE_ACK", "OEE_VALID"]),
     # ── 환경·인증 ───────────────────────────────────────────────────────

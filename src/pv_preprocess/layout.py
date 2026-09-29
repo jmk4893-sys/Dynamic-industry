@@ -786,20 +786,74 @@ def bridge_lift_mm() -> int:
 #: 종전에는 만권 롤(357 kg · 4.9 h 마다)이 같은 길로 나왔고, 기계 좌표 −5,200 이
 #: 플랜트 Y 8,600 — 통로 한가운데였으므로 플랜트가 그 새들만 통로 밖으로 내렸다.
 #: 벤더가 계단 칼날로 **셀모듈과 백시트를 한 장으로** 떼면서 권취부가 철거돼 롤이
-#: 없어졌다 — 레인에 남는 것은 카세트 새들 −7,000(Y 10,400) 하나뿐이다.
+#: 없어졌다 — 레인에 남는 것은 칼날 카세트 새들 하나뿐이다.
+#:
+#: **그 하나가 롤과 같은 문제를 물려받았다.** 기계가 좁아지면서 벤더가 랙을 −7,000
+#: 에서 −5,850 으로 당겼는데, 그 좌표는 벤더 방책 밖 500 이고 거기는 플랜트 보행
+#: 통로 안이다(플랜트 Y 9,410 · 카세트 1,590 이 8,615–10,205 를 덮어 통로 1,200 중
+#: 745 를 먹는다). 롤 새들에 했던 것과 똑같이 **플랜트가 자기 레인으로 옮긴다** —
+#: 사람이 200 ℃ 를 지난 카세트 밑을 지나게 둘 수 없다. 레인 폭은 그 새들과 AGV
+#: 접근을 받고도 남는다(`saddle_fits_the_lane()`).
 DOWNSTREAM_LANE_MM = 2200
 
+#: 옮긴 새들의 가까운 면이 통로에서 떨어지는 양 (mm). 벤더가 자기 방책 밖에 두는
+#: 여유와 같은 값이다 — 통로 쪽이라고 더 좁혀서는 안 된다.
+SADDLE_AISLE_CLEARANCE_MM = 500
 
-def cassette_saddle_plant_y_mm() -> int:
-    """KC-301 카세트 새들의 플랜트 Y — 기계 좌표 그대로."""
+
+def cassette_saddle_vendor_y_mm() -> int:
+    """벤더가 그린 KC-301 랙 중심을 플랜트 Y 로 옮긴 값 — 옮기기 **전**이다."""
     y0 = next(z.y0_mm for z in build_zones() if z.key == "grm")
     return hk60c.plant_y_mm(y0, hk60c.CASSETTE_SADDLE_Y_MM)
 
 
-def saddle_clears_the_aisle() -> bool:
-    """카세트 새들이 통로 밖에 있는가 — 통로 안이면 사람이 200 ℃ 밑을 지난다."""
+def vendor_saddle_intrudes_mm() -> int:
+    """벤더 좌표 그대로 놓으면 카세트가 통로를 먹는 양 (mm). 0 이면 옮길 일이 없다.
+
+    벤더가 랙을 통로 밖으로 다시 물리면 이 값이 0 이 되고, 그때는
+    `cassette_saddle_plant_y_mm()` 도 벤더 좌표를 그대로 쓴다.
+    """
     _, a1 = aisle_band_mm()
-    return cassette_saddle_plant_y_mm() >= a1 + 500
+    near = cassette_saddle_vendor_y_mm() - hk60c.CASSETTE_L_MM // 2
+    return max(0, a1 - near)
+
+
+def cassette_saddle_plant_y_mm() -> int:
+    """KC-301 카세트 새들의 플랜트 Y — 통로 밖으로 옮긴 자리 (RFQ OI-17).
+
+    가까운 면이 통로에서 `SADDLE_AISLE_CLEARANCE_MM` 떨어지는 자리다. 벤더 좌표가
+    이미 그보다 밖이면 옮기지 않는다 — 플랜트가 값을 덮어쓰는 것이 아니라, 통로가
+    요구하는 최소치를 거는 것이다.
+    """
+    _, a1 = aisle_band_mm()
+    needed = a1 + SADDLE_AISLE_CLEARANCE_MM + hk60c.CASSETTE_L_MM // 2
+    return max(cassette_saddle_vendor_y_mm(), needed)
+
+
+def cassette_saddle_machine_y_mm() -> int:
+    """옮긴 자리를 기계 좌표로 되돌린 값 — 사양서가 벤더에게 부르는 숫자다 (OI-17).
+
+    도면·사양서가 이 쪽을 쓴다. 두 문서에 손으로 적어 두면 방책이 움직이는 날
+    갈라지므로, 옮긴 플랜트 Y 하나에서 낸다.
+    """
+    y0 = next(z.y0_mm for z in build_zones() if z.key == "grm")
+    return y0 + hk60c.FENCE_YP_MM - cassette_saddle_plant_y_mm()
+
+
+def saddle_clears_the_aisle() -> bool:
+    """카세트 새들이 통로 밖에 있는가 — 통로 안이면 사람이 200 ℃ 밑을 지난다.
+
+    중심이 아니라 **카세트의 가까운 면**으로 본다. 중심으로 보던 종전 검사는 길이
+    1,590 인 물건을 점으로 세어 통로를 745 먹는 자리를 통과시켰다.
+    """
+    _, a1 = aisle_band_mm()
+    return cassette_saddle_plant_y_mm() - hk60c.CASSETTE_L_MM // 2 >= a1 + SADDLE_AISLE_CLEARANCE_MM
+
+
+def saddle_fits_the_lane() -> bool:
+    """옮긴 새들이 물류 레인 안에 드는가 — 레인을 넘으면 부지 포락선이 거짓이 된다."""
+    _, a1 = aisle_band_mm()
+    return cassette_saddle_plant_y_mm() + hk60c.CASSETTE_L_MM // 2 <= a1 + DOWNSTREAM_LANE_MM
 
 
 def site_envelope_mm() -> tuple[int, int, int]:

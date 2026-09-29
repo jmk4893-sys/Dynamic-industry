@@ -404,7 +404,9 @@ def build_3d() -> str:
     pick = -m(layout.zone_overlap_mm("grm"))    # 브리지가 유리를 집는 자리 (기계 x −475)
     place = m(H.INFEED_CX_MM)                   # 놓는 자리 — LD-101 데크 중심
     rh_z = m(H.monorail_el_mm())
-    cass_y = H.CASSETTE_SADDLE_Y_MM
+    # 벤더 랙 좌표(−5,850)는 자기 방책 밖 500 — 플랜트 보행 통로 안이다. 새들은
+    # 플랜트가 자기 레인으로 옮긴 자리에 그린다 (RFQ OI-17).
+    cass_y = layout.cassette_saddle_machine_y_mm()
     duct_el = m(H.DUCT_FLANGE_EL_MM)
     mods = H.MODULES
 
@@ -437,14 +439,14 @@ def build_3d() -> str:
     wrx = m(H.const("CKC_X") * 1000)
     hc = ST["HC"]                       # 명판 자리 — 가열실 중심 위
     fyn = m(H.FENCE_YN_MM)              # 통로쪽 방책선 (명판이 그 안쪽 면에 붙는다)
-    w(f"L([.12,.12,{n(m(H.RH_Y_MM[0]-cass_y))}],[{n(wrx)},{n(rh_z)},{n((lz(H.RH_Y_MM[0])+lz(cass_y))/2)}],M.steel,'RH-201 모노레일 (EL {H.monorail_el_mm():,})','드럼 위(+550)에서 통로 위를 넘어 카세트 새들(−7,000)까지 — 롤과 소모품이 같은 길로 난다. 통로 위 헤드룸 {H.monorail_el_mm()-490:,}');")
+    w(f"L([.12,.12,{n(m(H.RH_Y_MM[0]-cass_y))}],[{n(wrx)},{n(rh_z)},{n((lz(H.RH_Y_MM[0])+lz(cass_y))/2)}],M.steel,'RH-201 모노레일 (EL {H.monorail_el_mm():,})','매거진 위(+550)에서 통로 위를 넘어 카세트 새들(기계 y −{abs(cass_y):,} · 플랜트가 통로 밖으로 옮긴 자리)까지 — 200 ℃ 를 지난 카세트만 이 길로 난다. 통로 위 헤드룸 {H.monorail_el_mm()-490:,}');")
     # 기둥은 방책 안(방책선 −50)과 통로 밖(방책선 − 통로폭 − 100)에 선다 — 플랜트 통로는 비운다
     aisle = layout.AISLE_WIDTH_MM
     for yy in (H.RH_Y_MM[0], -2600, -(H.FENCE_YN_MM - 50), -(H.FENCE_YN_MM + aisle + 100), cass_y):
         lab = s("RH-201 모노레일 기둥") if yy == H.RH_Y_MM[0] else "null"
         w(f"L([.14,{n(rh_z-.06)},.14],[{n(wrx+.3)},{n((rh_z-.06)/2)},{n(lz(yy))}],M.steel,{lab});")
         w(f"L([.4,.12,.14],[{n(wrx+.13)},{n(rh_z)},{n(lz(yy))}],M.steel,null);")  # 기둥 → 레일 캔틸레버 암
-    w(f"L([1.2,.3,.8],[{n(wrx+.55)},.9,{n(lz(cass_y))}],M.dark,'KC-301 칼날 카세트 새들 (통로 밖)','200 ℃ 를 지난 카세트는 방책 밖에서만 만진다');")
+    w(f"L([1.2,.3,{n(m(H.CASSETTE_L_MM))}],[{n(wrx+.55)},.9,{n(lz(cass_y))}],M.dark,'KC-301 칼날 카세트 새들 (통로 밖)','카세트 {H.CASSETTE_L_MM:,} 한 벌이 눕는다 — 벤더 랙 자리(방책 밖 500)는 플랜트 통로를 {layout.vendor_saddle_intrudes_mm():,} 먹으므로 레인으로 {layout.cassette_saddle_plant_y_mm()-layout.cassette_saddle_vendor_y_mm():,} 더 냈다. 200 ℃ 를 지난 카세트는 방책 밖에서만 만진다');")
     # 명판
     # 데칼은 월드 그룹에 존 식으로 놓고 adopt() 가 셀에 입양한다 — 통로 경계(방책 안쪽 면)
     w("})();")
