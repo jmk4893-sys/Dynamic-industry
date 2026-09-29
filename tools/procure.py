@@ -23,6 +23,7 @@ from typing import NamedTuple
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
+import knife_edge as KE  # noqa: E402
 import knife_stepped as KS  # noqa: E402
 import parts as PT  # noqa: E402
 
@@ -74,6 +75,60 @@ PLATE_THICK = {
 # 무른 재료는 전단이 아니라 칼로 재단하고 규격대로 온다 — 트림 여유가 없다.
 NO_TRIM = ("미네랄울", "AL반사판", "세라믹파이버", "GFRP")
 PLATE_TRIM = 20                         # 판 재단 여유 (사방)
+
+# 소입 후 연삭하는 재질은 완성 두께로 사지 않는다. 한동안 SKD11 인서트를
+# 도면 두께 t8 그대로 사게 잡았다 — 소입하면 휘고, 휜 것을 연삭하면 8 이
+# 남지 않는다. 사야 하는 두께는 완성에서 거꾸로 푼다:
+#
+#   완성 → (부품이 달고 오는 연삭 여유) → 납품 → (소입 변형 양면 연삭)
+#        → (흑피·탈탄층 양면 제거) → 소재 → 유통 두께로 올림
+#
+# 여유는 가정이다. 탈탄 깊이는 소재 성적서로, 소입 변형은 열처리사의 같은
+# 형상 실적으로 확인한다. 연삭 평강으로 사면 흑피 몫이 빠지지만, 그렇게 풀어도
+# 사는 두께가 같은지를 hardened_route() 가 함께 낸다.
+HARDENED = {
+    # 재질: (면당 흑피·탈탄층 제거, 면당 소입 변형 연삭) mm
+    "SKD11": (0.5, 0.3),
+}
+# 부품이 연삭 여유를 달고 납품되는 경우. 칼날 인서트는 MC-401 에서 일곱 조각을
+# 잠근 채 한 평면으로 한 번 더 연삭하므로 그만큼 두껍게 온다 (D-502 두께 8 · 납품 8.1).
+DELIVERY_STOCK = {"P-005-15": KE.GRIND_STOCK, "P-005-16": KE.GRIND_STOCK}
+
+
+def stock_need(p, decarb: bool = True) -> float:
+    """완성 두께에서 거꾸로 푼 소재 두께 — 유통 두께로 올리기 전.
+
+    decarb=False 는 흑피를 걷어 낸 연삭 평강으로 살 때다.
+    """
+    t = p.shape.d["t"] + DELIVERY_STOCK.get(p.pid, 0.0)
+    skin, grind = HARDENED.get(p.mat, (0.0, 0.0))
+    return t + 2 * grind + (2 * skin if decarb else 0.0)
+
+
+def stock_t(p, decarb: bool = True) -> float | None:
+    """사야 하는 두께. 소입 재질은 여유를 얹어 유통 두께로 올리고, 그 밖은
+    도면 두께 그대로 산다. 올릴 유통 두께가 없으면 None — 살 수 없다."""
+    if p.mat not in HARDENED:
+        return p.shape.d["t"]
+    need = stock_need(p, decarb)
+    up = [x for x in PLATE_THICK.get(p.mat, ()) if x >= need - 1e-9]
+    return min(up) if up else None
+
+
+def hardened_route() -> list[dict]:
+    """소입 재질 부품마다 두께를 어떻게 풀었는가 — 문서가 이 값을 그대로 적는다."""
+    out = []
+    for p in PT.P:
+        if p.buy or p.mat not in HARDENED or p.shape.kind not in ("PL", "SLAB"):
+            continue
+        skin, grind = HARDENED[p.mat]
+        extra = DELIVERY_STOCK.get(p.pid, 0.0)
+        out.append(dict(pid=p.pid, name=p.name, mat=p.mat, qty=p.qty,
+                        t=p.shape.d["t"], extra=extra, delivered=p.shape.d["t"] + extra,
+                        skin=skin, grind=grind,
+                        need=stock_need(p), need_ground=stock_need(p, decarb=False),
+                        stock=stock_t(p), stock_ground=stock_t(p, decarb=False)))
+    return out
 
 
 class Cut(NamedTuple):
@@ -168,13 +223,14 @@ class BarLot(NamedTuple):
 
 class PlateLot(NamedTuple):
     mat: str
-    t: float
+    t: float               # 사는 두께 — 소입 재질은 완성 두께가 아니다 (stock_t)
     pieces: tuple          # ((L, W, 수량, 품번), …)
     sheet: tuple | None
     sheets: int
     area_net: float        # m² — 부품 면적 합
     kg_net: float
     unbuyable: tuple       # 어떤 시트에도 안 들어가는 품번
+    t_fin: tuple = ()      # 이 소재에서 나오는 완성 두께들
 
 
 def _section_of(p) -> str:
@@ -207,13 +263,19 @@ def bar_lots() -> list[BarLot]:
 
 
 def plate_lots() -> list[PlateLot]:
-    """판재를 재질 × 두께로 묶고 시트 매수를 낸다."""
+    """판재를 재질 × 사는 두께로 묶고 시트 매수를 낸다.
+
+    소입 재질은 완성 두께가 아니라 stock_t() 로 묶는다. 올릴 유통 두께가 없으면
+    풀어 낸 두께 그대로 두어 unbuyable() 이 잡게 한다."""
     groups: dict[tuple, list] = {}
     for p in PT.P:
         if p.buy or p.shape.kind not in ("PL", "SLAB"):
             continue
         g = p.shape.d
-        groups.setdefault((p.mat, g["t"]), []).append((g["L"], g["W"], p.qty, p))
+        t = stock_t(p)
+        if t is None:
+            t = round(stock_need(p), 1)
+        groups.setdefault((p.mat, t), []).append((g["L"], g["W"], p.qty, p))
 
     out = []
     for (mat, t), rows in sorted(groups.items(), key=lambda kv: (kv[0][0], kv[0][1])):
@@ -229,7 +291,8 @@ def plate_lots() -> list[PlateLot]:
                             tuple((L, W, q, p.pid) for L, W, q, p in rows),
                             sheet, math.ceil(sheets),
                             sum(L * W * q for L, W, q, _ in rows) / 1e6,
-                            sum(p.kg * q for _, _, q, p in rows), tuple(bad)))
+                            sum(p.kg * q for _, _, q, p in rows), tuple(bad),
+                            tuple(sorted({p.shape.d["t"] for _, _, _, p in rows}))))
     return out
 
 
@@ -243,9 +306,11 @@ def unbuyable() -> list[tuple[str, str, str]]:
         avail = PLATE_THICK.get(lot.mat)
         if avail and lot.t not in avail:
             near = min(avail, key=lambda x: abs(x - lot.t))
+            why = (f"소입 연삭 여유를 얹으면 t{lot.t:g} — 유통 두께 t{max(avail):g} 를 넘는다"
+                   if lot.mat in HARDENED else
+                   f"유통 두께가 아니다 — 가장 가까운 재고는 t{near:g}")
             for _L, _W, _q, pid in lot.pieces:
-                out.append((pid, f"{lot.mat} t{lot.t:g}",
-                            f"유통 두께가 아니다 — 가장 가까운 재고는 t{near:g}"))
+                out.append((pid, f"{lot.mat} t{lot.t:g}", why))
         for pid in lot.unbuyable:
             p = [x for x in PT.P if x.pid == pid][0]
             g = p.shape.d

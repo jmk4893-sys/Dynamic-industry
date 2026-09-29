@@ -85,6 +85,50 @@ HAUL = [
 ]
 
 
+def hardened() -> str:
+    """소입 후 연삭하는 재질 — 사는 두께를 완성에서 거꾸로 푼 표와 그 근거."""
+    route = PR.hardened_route()
+    if not route:
+        return ""
+    # 같은 풀이를 밟는 부품은 한 줄로 — 인서트 둘은 두께 경로가 같다
+    groups: dict[tuple, list] = {}
+    for r in route:
+        groups.setdefault((r["t"], r["extra"], r["stock"]), []).append(r)
+
+    def label(r):
+        return r["name"].replace(f'{r["mat"]} ', "").split(" (")[0]
+
+    rows, ground = [], []
+    for rs in groups.values():
+        r = rs[0]
+        dlv = f'{r["delivered"]:.1f}' + (f' (연삭 여유 {r["extra"]:g})' if r["extra"] else "")
+        rows.append(
+            f'<tr><td class="k">{esc(" · ".join(x["pid"] for x in rs))} {esc(label(r))}</td>'
+            f'<td class="num">{r["t"]:.1f}</td><td class="num">{dlv}</td>'
+            f'<td class="num">{r["delivered"] + 2 * r["grind"]:.1f}</td>'
+            f'<td class="num">{r["need"]:.1f}</td>'
+            f'<td class="num"><strong>t{r["stock"]:g}</strong></td></tr>')
+        ground.append(f'{label(r)} {r["need_ground"]:.1f}')
+    skin, grind = PR.HARDENED[route[0]["mat"]]
+    ins = next(r for r in route if r["extra"])
+    same = all(r["stock"] == r["stock_ground"] for r in route)
+    tail = (f"흑피를 걷은 연삭 평강으로 사도 {' · '.join(ground)} 이라 사는 두께는 같다."
+            if same else "흑피를 걷은 연삭 평강으로 사면 사는 두께가 달라진다 — 형태를 정하고 발주한다.")
+    return f"""<div class="tw"><table>
+      <caption>소입 후 연삭하는 SKD11 — 사는 두께를 완성에서 거꾸로 푼다 (mm)</caption>
+      <thead><tr><th>품번</th><th class="num">완성</th><th class="num">납품</th>
+        <th class="num">+ 소입 변형 연삭</th><th class="num">+ 흑피 · 탈탄층</th><th class="num">소재</th></tr></thead>
+      <tbody>{"".join(rows)}</tbody>
+    </table></div>
+    <div class="warn"><strong>SKD11 은 완성 두께로 사지 않는다.</strong>
+      한동안 칼날 인서트를 도면 두께 t{ins["t"]:g} 그대로 사게 잡았다. 인서트는 풀림 상태로 사서
+      황삭 → 진공소입 · 심랭 · 뜨임 → 양면 연삭 → MC-401 한 평면 연삭을 거친다 — 소입하면 휘고,
+      휜 것을 연삭하면 {ins["t"]:g} 이 남지 않는다. 여유는 면당 흑피 · 탈탄층
+      <span class="m">{skin:g}</span> · 소입 변형 연삭 <span class="m">{grind:g}</span> 으로 잡았다.
+      <strong>가정이다</strong> — 탈탄 깊이는 소재 성적서로, 소입 변형은 열처리사의 같은 형상 실적으로 확인한다.
+      {tail}</div>"""
+
+
 def part1() -> str:
     bl, pl = PR.bar_lots(), PR.plate_lots()
     bad = PR.unbuyable()
@@ -97,8 +141,13 @@ def part1() -> str:
         f'<td class="num">{l.waste_pct:.0%}</td><td class="num">{l.kg_net:,.0f}</td></tr>'
         for l in bl)
 
+    def thick(l):
+        if l.t_fin in ((), (l.t,)):
+            return f"{l.t:g} t"
+        return f'{l.t:g} t · 완성 {" · ".join(f"{x:g}" for x in l.t_fin)}'
+
     plates = "".join(
-        f'<tr><td class="k">{esc(l.mat)}</td><td class="num">{l.t:g} t</td>'
+        f'<tr><td class="k">{esc(l.mat)}</td><td class="num">{thick(l)}</td>'
         f'<td class="k">{f"{l.sheet[0]:,}×{l.sheet[1]:,}" if l.sheet else "—"}</td>'
         f'<td class="num"><strong>{l.sheets}</strong></td>'
         f'<td class="num">{sum(q for _, _, q, _ in l.pieces)}</td>'
@@ -167,6 +216,7 @@ def part1() -> str:
     <div class="note"><strong>매수는 직교 재단(길로틴) 기준의 하한이다.</strong>
       실제 네스팅은 제작사가 더 잘 뽑는다 — 이 표는 <strong>몇 매를 사야 하는가</strong>를
       정직하게 내는 데까지다. 제작사가 네스팅 도면을 내면 그 매수를 쓴다.</div>
+    {hardened()}
   </div></div>
 
   <div class="clause"><div class="n">1.4</div><div class="c">
