@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "flotation-design"
 version = "0.1.0"
-description = "태양광 패널 재활용용 단단 부유선별기 설계 계산 (Ag/Cu 회수)"
+description = "태양광 패널 재활용 설비 설계 계산 — Ag 부유선별기와 MP-50 염수 밀도분리 파일럿"
 requires-python = ">=3.10"
 dependencies = []
 
@@ -18,6 +18,7 @@ simulation = [
 
 [project.scripts]
 flotation-design = "flotation_design.__main__:main"
+mp50-spec = "mp50_separator.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

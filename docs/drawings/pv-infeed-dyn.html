@@ -3854,7 +3854,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
   var INCOMER = { method: '기존 부지 인입 1,200 kW 에서 분기 (이 플랜트 24.8 %)', tapsSite: true, tapLowVoltage: true, siteServiceKw: 1200.0, siteUtilPct: 24.8, siteHeadroomKw: 902.9, worstCaseKw: 303.7, coincidentWorstCaseKw: 297.0, lvTapMaxM: 170.4, highVoltage: true, hvV: 380, contractKw: 297.1, contractKva: 330.15, apparentKva: 244.6, transformerKva: 0, transformerKvaIfHv: 500, transformerLoadPct: 0.0, capacitorKvar: 35, hvCurrentA: 0.0, hvCable: '4C×300 mm² Cu (부지 저압 배전반 분기)', vcbA: 0, lvMainMm2: 300, substationMm: [0, 0, 0], lowVoltageLimitKw: 100.0, incomingKnown: false, withinLvLimit: true, lvTapConfirmed: true, dropPct: 3.0, breakerHeadroomKw: 49.2 };
   // 스마트 팩토리 계층 — src/pv_preprocess/smart.py 파생 (테스트 대조).
   var AIR = { useBar: 6.0, supplyBar: 7.0, averageNlMin: 392.8, peakNlMin: 552.8, unlistedMargin: 0.15, leakageMargin: 0.2, requiredFadNlMin: 542.1, compressorKw: 5.5, compressorUnits: 2, compressorFadNlMin: 800, compressorMargin: 1.48, receiverL: 300, receiverGovernedBy: '기동 횟수', dryerDewPointC: 3.0, headerBoreMm: 20, headerVelocityMs: 3.59, filterAreaM2: 18.8, pulseValves: 7, roomMm: [3100, 1700, 2700], installedKw: 11.5, demandKw: 4.25, headerRunMm: 50950, hangers: 18, hangerPitchMm: 3000, hangerLoadKg: 3.9, noiseDba: 75.0 };
-  var SMART = { serverRoomX: 36600, controlRoomX: 39700, edgeCenterX: 20500, facilityX0: 35700, facilityX1: 41700, serverRoomMm: [1800, 3200, 2700], controlRoomMm: [4000, 3400, 2700], racks: 2, rackU: 28, rackHeatKw: 6.03, edgeCabinets: 7, wifiAps: 5, instruments: 47, plcTags: 584, servos: 34, inverters: 11, dol: 7, timeseriesKbS: 87.2, visionRawMbS: 13.28, visionKeptMbS: 1.82, retentionPct: 13.7, requiredMbps: 213.9, backboneMbps: 1000, annualTb: 27.12, storageTb: 122.0, itKw: 10.3, instKw: 4.5, smartKw: 14.8, hoursPerYear: 4125.0 };
+  var SMART = { serverRoomX: 36600, controlRoomX: 39700, edgeCenterX: 20500, facilityX0: 35700, facilityX1: 41700, serverRoomMm: [1800, 3200, 2700], controlRoomMm: [4000, 3400, 2700], racks: 2, rackU: 28, rackHeatKw: 6.03, edgeCabinets: 7, wifiAps: 5, instruments: 47, plcTags: 584, servos: 34, inverters: 11, dol: 7, timeseriesKbS: 87.2, visionRawMbS: 13.28, visionKeptMbS: 1.82, retentionPct: 13.7, requiredMbps: 213.9, backboneMbps: 1000, annualTb: 27.12, storageTb: 122.0, itKw: 10.3, instKw: 4.5, smartKw: 14.8, hoursPerYear: 4125 };
   // [태그, 존, 이름, 수량, 신호수, Hz, 분전반, W, 용도, 여는 과제]
   var INSTRUMENTS = [
     ['VIB-901', 'afu', 'HPU-101 유압펌프 3축 진동', 1, 16, 1.0, 'LP-INST', 6.0, '펌프·전동기 베어링 열화 추세', 'AI-05'],
@@ -3907,7 +3907,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
   var STRUCTURE_RECIPES = [
     ['GLASS_BACKSHEET', 'glass-backsheet', '유리·백시트·프레임형 (기본)', true, '백시트', true, 'PROCESS', '단축 밀기 → 장축 인발', '장변·단변 엣지 연마 · 백시트 접촉 압력 기본값', '—', '검증한 기본 레시피. JBR → AFR → SG-301 → GI-301/302/303 → GBR-301'],
     ['GLASS_GLASS_MONO', 'glass-glass-mono', '단면발전 이중유리·프레임형', true, '유리', true, 'PROCESS', '단축 밀기 → 장축 인발 (프레임 단면 등록값 확인)', '상면이 유리 — 백시트용 접촉 압력 재사용 금지 · 유리 접촉 조건 별도 승인', '접촉 조건 미승인이면 HOLD', '양면발전과 다르다. 발전면은 하나인데 유리가 두 장이라 상면 기재가 다르다'],
-    ['FRAMELESS', 'frameless', '무프레임 (단면·유리·백시트)', false, '백시트', true, 'PROCESS_NO_AFR', '클램프·정반 통과 — 인발 생략 (프레임 부재를 고장으로 치환하지 않는다)', '엣지 연마 — 실란트 대신 라미네이트 가장자리 정리, 접촉압 하한', '프레임 존재 센서가 프레임을 보면 등록 불일치 → HOLD', 'AFR 이 프레임 없음을 정상으로 받는 유일한 레시피 (도면 리터럴은 작은따옴표로 싸므로 문자열 안에 작은따옴표를 쓰지 않는다)'],
+    ['FRAMELESS', 'frameless', '무프레임 (단면·유리·백시트)', false, '백시트', true, 'PROCESS_NO_AFR', '클램프·정반 통과 — 인발 생략 (프레임 부재를 고장으로 치환하지 않는다). 다만 **달라지는 곳은 AFR 이 아니라 투입부가 먼저다** — 프레임이 없으면 적층에서 유리면끼리 닿아 SEP-101 이 곧게 못 뗀다. 엣지 리프터로 모서리를 젖혀 크랙을 낸 뒤 이어 들어야 한다 (OI-08 · destack.py)', '엣지 연마 — 실란트 대신 라미네이트 가장자리 정리, 접촉압 하한', '프레임 존재 센서가 프레임을 보면 등록 불일치 → HOLD', 'AFR 이 프레임 없음을 정상으로 받는 유일한 레시피 (도면 리터럴은 작은따옴표로 싸므로 문자열 안에 작은따옴표를 쓰지 않는다)'],
     ['BIFACIAL', 'bifacial', '양면발전형', true, '유리', false, 'REJECT_OUT_OF_SCOPE', '—', '—', '범위 외 리젝트 — RB-101 이 리젝트 랙(AFU-RJ-101)에 놓는다 (전손과 같은 경로)', '사용자 제외 범위. 뒷면도 발전면이라 차광·전기 확인 조건이 다르다'],
     ['UNREGISTERED', 'unregistered', '미등록·구조 미확인', true, '미확인', false, 'HOLD_UNREGISTERED', '—', '—', '투입 보류 — 마지막 정상 레시피를 자동 적용하지 않는다. 등록 후 재투입', '외관만으로 구조를 확정하지 않는다 — 비전은 등록값을 검증하는 수단이다']
   ];
@@ -3919,7 +3919,7 @@ window.pvMarkPaint = function (ctx, x, y, w) {
     ['GI-303', 'post', 350000000, 66.0],
     ['VS-401', 'grm', 12000000, 66.0]
   ];
-  var AI_SUMMARY = { cases: 12, gradeA: 3, gradeB: 5, gradeC: 2, gradeD: 2, annualPanels: 282727, labelNormal: 224265, labelCracked: 21157, labelScrap: 9424, scarcest: '전손', coldStartMonths: 1.3, transferMin: 1000, scrapMissS: 48.1, crackedMissS: 47.04 };
+  var AI_SUMMARY = { cases: 12, gradeA: 3, gradeB: 5, gradeC: 2, gradeD: 2, annualPanels: 282727, labelNormal: 249742, labelCracked: 23561, labelScrap: 9424, scarcest: '전손', coldStartMonths: 1.3, transferMin: 1000, scrapMissS: 48.1, crackedMissS: 47.04 };
   // 지지·장착 — src/pv_preprocess/mounting.py 파생 (테스트 대조).
   // [셀, [[대상,개수,볼트,개소,개소당]], 플레이트, grout, 레벨링, 비고, 합계]
   var MOUNTINGS = [
