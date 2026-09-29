@@ -35,9 +35,15 @@ def standalone_document_checks(case, html, title):
             or url.startswith("http://www.w3.org/"),
             f"CSP 상 차단되는 외부 리소스: {url}",
         )
-    case.assertIn("@media (prefers-color-scheme: dark)", html)
-    case.assertIn(':root:not([data-theme="light"])', html)
-    case.assertIn(':root[data-theme="dark"]', html)
+    # 세 상태(시스템 기본 · 명시적 라이트 · 명시적 다크)를 모두 정의했는지.
+    # 계기판처럼 다크를 기본으로 잡은 문서는 같은 구조를 좌우만 뒤집어 쓴다.
+    if "@media (prefers-color-scheme: light)" in html:
+        case.assertIn(':root:not([data-theme="dark"])', html)
+        case.assertIn(':root[data-theme="light"]', html)
+    else:
+        case.assertIn("@media (prefers-color-scheme: dark)", html)
+        case.assertIn(':root:not([data-theme="light"])', html)
+        case.assertIn(':root[data-theme="dark"]', html)
 
 
 class TestDrawingDocument(unittest.TestCase):
