@@ -53,6 +53,23 @@ def tube_kg(od_mm: float, wall_mm: float, length_mm: float, material: str) -> fl
     return math.pi / 4.0 * (od_mm ** 2 - id_mm ** 2) * length_mm * 1e-9 * DENSITY[material]
 
 
+def square_tube_kg(width_mm: float, wall_mm: float, length_mm: float,
+                   material: str) -> float:
+    """각관 1 본의 질량.
+
+    둥근 관 식을 그대로 쓰면 안 된다 — □40 × t2 의 단면은 40² − 36² = 304 mm²
+    인데 원형 식은 π/4 를 곱해 239 mm² 로 21 % 가볍게 나온다. 프레임 18 본이
+    전부 각관이라 아세이 질량이 5 kg 가까이 어긋난다.
+
+    바깥 모서리는 벽두께의 1.5 배로 둥글다고 본다 (인발 각관의 통상값).
+    """
+    ro = wall_mm * 1.5
+    ri = max(0.0, ro - wall_mm)
+    outer = width_mm ** 2 - (4.0 - math.pi) * ro ** 2
+    inner = (width_mm - 2 * wall_mm) ** 2 - (4.0 - math.pi) * ri ** 2
+    return (outer - inner) * length_mm * 1e-9 * DENSITY[material]
+
+
 def bar_kg(od_mm: float, length_mm: float, material: str) -> float:
     """환봉 질량."""
     return math.pi / 4.0 * od_mm ** 2 * length_mm * 1e-9 * DENSITY[material]
@@ -197,7 +214,8 @@ def _cover(g: Geometry) -> Assembly:
             Part("B-06", "체결 볼트 세트", f"{g.top_flange_bolt} × 35 육각 + 너트 + 평·스프링와셔", "SUS304",
                  g.top_flange_bolts, 0.055, "RELEASE", "조임 40 N·m · 대각 2 회전 조임"),
             Part("B-07", "스키머 조절봉 부싱", "M8 관통 부싱 + O-링", "SUS304", 3,
-                 0.04, "RELEASE", "PCD Ø330 — 허브 Ø220 바깥"),
+                 annulus_mm2(20.0, 8.4) * 30.0 * 1e-9 * DENSITY["SUS304"], "RELEASE",
+                 "PCD Ø330 — 허브 Ø220 바깥"),
         ),
     )
 
@@ -332,7 +350,7 @@ def _frame(g: Geometry) -> Assembly:
     """H — 프레임 아세이."""
     tube = g.frame_tube_mm
     wall = g.frame_tube_thickness_mm
-    per_m = tube_kg(tube, wall, 1000.0, "SUS304")
+    per_m = square_tube_kg(tube, wall, 1000.0, "SUS304")
     columns = 4 * g.frame_height_mm
     perimeter = 2 * 4 * (g.frame_width_mm - tube)
     cross = 2 * (g.frame_width_mm - 2 * tube)
@@ -462,7 +480,7 @@ PROCUREMENT: dict[str, tuple[str, str]] = {
     # C 구동부
     "C-01": ("구매", "-"), "C-02": ("구매", "-"), "C-03": ("구매", "-"), "C-04": ("구매", "-"),
     "C-05": ("제작", "SUS304 t6 판재 + Ø180 × t5 관재 (HOLD)"),
-    "C-06": ("제작", "SUS304 t1.5 판재 600 × 90"),
+    "C-06": ("제작", "SUS304 t1.5 판재 600 × 170"),
     # D 교반축
     "D-01": ("제작", "SUS316L Ø28 환봉 L780 (가공 여유 포함)"),
     "D-02": ("제작", "허브 Ø65 환봉 L70 + 날개 t3 판재 130 × 70 × 4"),
