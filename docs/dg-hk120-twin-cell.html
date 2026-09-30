@@ -676,7 +676,7 @@
   setText('altSigma',alt?n2(alt.sigma)+' MPa':'—');
   setText('altGap',alt?n2(M.glass.allow-alt.sigma)+' MPa':'—');
   setHTML('coolLogic',
-    `필요 냉각   ${n1(coolSec())} s   (${M.cool.tin} → ${M.cool.tout} °C · 강제공랭 h ${M.cool.h} W/(m²·K) · 양면)\n`
+    `필요 냉각   ${n1(coolSec())} s   (${M.cool.tin} → ${M.cool.tout} °C · 분사 냉각 뱅크 h ${M.cool.h} W/(m²·K) · 양면)\n`
    +`택트        ${n1(takt)} s        → 필요 단수 ${Math.ceil(coolSec()/takt)}단\n`
    +`가열실 공용 ${pick.decks}단        → 여유 ${n1((pick.decks*takt/coolSec()-1)*100)} %`);
 

@@ -320,18 +320,23 @@ class TestTheCoolerSheetDefinesOnlyTheDifference(unittest.TestCase):
         for token in ("MASS_GLASS", "CP_GLASS", "GCOOL_H", "GCOOL_T_IN", "GCOOL_T_OUT"):
             self.assertIn(token, self.body, f"냉각시간 근거에 {token} 가 없다")
 
-    def test_the_fans_stand_where_the_lamp_banks_did(self):
-        """열원 자리를 대신하는 것이 이 랙의 요지다 — 대수도 단수를 따라간다."""
-        self.assertIn("FANS=DK+1", self.flat, "팬 대수가 단수에서 나오지 않는다")
-        self.assertIn("FANZ=cDeckZ(", self.flat, "팬 높이가 층 상수에서 나오지 않는다")
+    def test_the_banks_stand_where_the_lamp_banks_did(self):
+        """열원 자리를 대신하는 것이 이 랙의 요지다 — 냉각 뱅크가 IR 뱅크 자리(단수 + 1)에 선다.
+
+        한동안 여기에 축류 팬 한 줄(단수 + 1 대)을 그렸다. 팬끼리 · 가운데 기둥과 겹쳤고,
+        옆바람으로는 설계 h 에 필요한 풍량을 급기 필터 면이 받지 못했다 (tests/test_glass_cool.py)."""
+        self.assertIn("BANKS=DK+1", self.flat, "뱅크 수가 단수에서 나오지 않는다")
+        self.assertIn("bankZ=b=>CDECK_Z0+CDECK_DZ*b", self.flat, "뱅크 높이가 IR 뱅크 자리가 아니다")
         self.assertIn("IR 뱅크가 있던 자리", self.body, "무엇을 대신하는지가 도면에 없다")
+        self.assertNotIn("FANS=DK+1", self.flat, "철거한 팬 줄이 남아 있다")
 
     def test_the_sheet_says_the_frame_is_shared_and_not_insulated(self):
         """두 가지가 빠지면 이 도면은 F-002 의 축소 복사본이 된다."""
         self.assertIn("F-002", self.body, "가열실 도면을 준용한다는 말이 없다")
         self.assertIn("준용", self.body, "준용 관계가 적히지 않는다")
         self.assertIn("단열하지 않는다", self.body, "단열하지 않는다는 것이 도면에 없다")
-        self.assertIn("필터 급기면", self.body, "급기면이 도면에 없다")
+        self.assertIn("G4 + F7", self.body, "급기 필터가 도면에 없다")
+        self.assertIn("급기 유닛", self.body, "급기 유닛이 도면에 없다")
         self.assertIn("F-002 부품란", self.body,
                       "부품란이 골조를 준용으로 넘기지 않아 같은 것을 두 번 적는다")
 

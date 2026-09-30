@@ -90,6 +90,27 @@ def groups():
     return [(aid, pid, plate(pid), pts[aid]) for aid, _eq, pid, *_ in PT.ANCHOR_GROUPS]
 
 
+def pads():
+    """[(기호, (x, y, w, d))] — D-602 PADS 와 같은 식. 반 · 스키드 · 급기 유닛이 앉는 기초 패드."""
+    with CC.layout("compact"):
+        cst = c("CST")
+        u = next(p for p in PT.P if p.pid == "P-007-13").shape.d
+        return [
+            ("P1", (cst.HC.x0 + 0.6, -2.88, 1.60, 0.86)),
+            ("P2", (cst.GC.x0 + 0.5, -2.90, 1.50, 0.86)),
+            ("P3", (c("CBJ_X"), -2.62, 1.50, 1.00)),
+            ("P4", (cst.GC.cx + (cst.GC.w / 2 - c("GC_COL_INSET")) / 2,
+                    c("RACK_COL_Y") + 0.25 + u["W"] / 2000, u["L"] / 1000, u["W"] / 1000)),
+        ]
+
+
+def pad_clashes(limit=GAP_MIN):
+    """패드와 앵커 판 사이 틈이 limit 보다 작은 쌍."""
+    flat = [(aid, (x, y, L, W)) for aid, _pid, (L, W), pts in groups() for x, y in pts]
+    return [(pid, aid, gap(box, b)) for pid, box in pads() for aid, b in flat
+            if gap(box, b) < limit - 1e-9]
+
+
 def gap(a, b):
     """두 판 사이 틈 m — 음수면 겹친다. a · b = (x, y, L, W)."""
     gx = abs(a[0] - b[0]) - (a[2] + b[2]) / 2

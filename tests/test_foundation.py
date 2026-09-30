@@ -194,6 +194,16 @@ class TestThePlatesDoNotOverlap(unittest.TestCase):
         self.assertIn("Math.ceil(L/FENCE_PITCH-1e-9)", re.sub(r"\s+", "", self.src),
                       "3D 방책이 공용 피치로 칸을 나누지 않는다")
 
+    def test_no_pad_sits_on_an_anchor_plate(self):
+        """반 · 스키드 · 냉각 급기 유닛(P4)의 패드는 앵커 판과 떨어진다 — 급기 유닛은 냉각 랙 판 50 밖."""
+        self.assertEqual(FD.pad_clashes(), [], "패드가 앵커 판에 얹힌다")
+        for pid, expr in (("P1", "x:CST.HC.x0+.6,y:-2.88,w:1.60,d:.86"),
+                          ("P2", "x:CST.GC.x0+.5,y:-2.90,w:1.50,d:.86"),
+                          ("P3", "x:CBJ_X,y:-2.62,w:1.50,d:1.00"),
+                          ("P4", "x:CST.GC.cx+(CST.GC.w/2-GC_COL_INSET)/2,y:RACK_COL_Y+.25+PARTS.find")):
+            i = self.flat.index("{id:'%s'," % pid)
+            self.assertTrue(expr in self.flat[i:i + 260], f"D-602 {pid} 자리가 foundation.pads() 와 갈라졌다")
+
     def test_the_totals_on_the_title_block_are_counted(self):
         self.assertTrue("constNPL=GROUPS.reduce((a,g)=>a+g.pts.length,0),"
                         "NAN=GROUPS.reduce((a,g)=>a+g.pts.length*g.anchor.n,0);" in self.flat,

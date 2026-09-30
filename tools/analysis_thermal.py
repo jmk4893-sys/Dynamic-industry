@@ -42,7 +42,10 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import therm as T  # noqa: E402
 import console_consts as CC  # noqa: E402
 import cycle as CY  # noqa: E402
+import glass_cool as GL  # noqa: E402  냉각 뱅크 분사 h (T8 · T14)
 from console_consts import const as c  # noqa: E402
+
+GL_STAG = 2.0             # 정체점 h / 분사 면평균 h — 분류 바로 밑은 평균보다 세게 식는다 (보수)
 
 
 class Result(NamedTuple):
@@ -308,8 +311,9 @@ def rfq_bound(decks: int) -> tuple[float, float, float]:
 def glass_stress():
     heat = soak(FLUX)["dt_glass"]
 
-    # 급냉 — 140 ℃ 유리를 25 ℃ 강제공랭에 넣는 순간이 가장 심하다
-    q = glass_cool_run()
+    # 급냉 — 140 ℃ 유리가 25 ℃ 분류를 만나는 순간이 가장 심하다. 분류 바로 밑(정체점)은
+    # 면평균보다 세게 식으므로 그 h 로 본다.
+    q = glass_cool_run(GL_STAG * GL.martin()["h"])
     st, r = q["stack"], q["run"]
     dt_q = r.peak(st.N // 2, 0)
 
@@ -342,16 +346,17 @@ def glass_stress():
         Result("T8", "급냉 중 유리 열응력 (냉각 랙 투입 순간)", _sigma(dt_q),
                "MPa", SIG_GL,
                "같은 허용응력. 급냉은 표면이 인장이라 승온보다 위험하다",
-               f"140 ℃ 유리가 h {c('GCOOL_H'):.0f} W/(m²·K) 강제공랭을 만나는 "
-               f"순간 중심–표면 {dt_q:.2f} K. Bi {c('GCOOL_H')*T_GLASS/2/KTH['유리']:.3f} "
-               f"가 작아 충격이 서지 않는다 — 팬을 세게 돌려도 되는 근거다"),
+               f"140 ℃ 유리가 냉각 뱅크의 분류를 만나는 순간 — 정체점 h 를 분사 면평균 "
+               f"{GL.martin()['h']:.0f} 의 {GL_STAG:.0f} 배({q['h']:.0f} W/(m²·K))로 보아도 "
+               f"중심–표면 {dt_q:.2f} K. Bi {q['h']*T_GLASS/2/KTH['유리']:.3f} "
+               f"가 작아 충격이 서지 않는다 — 분사 속도를 올려도 되는 근거다"),
     ], dict(rows=rows, dt_quench=dt_q, heat=heat)
 
 
 # ── ④ 유리 냉각 랙 ──────────────────────────────────────────────────
 @functools.lru_cache(maxsize=4)
-def glass_cool_run():
-    h = c("GCOOL_H")
+def glass_cool_run(h: float | None = None):
+    h = c("GCOOL_H") if h is None else h
     st = T.Stack(T.Layer("유리", T_GLASS, KTH["유리"], RHO["유리"],
                          c("CP_GLASS") * 1000, n=12))
     bc = T.BC(h=h, t_inf=T_AMB)
@@ -380,8 +385,7 @@ def glass_cool():
         Result("T10", "냉각 랙 비오 수", bi, "—", 0.10,
                "Bi < 0.1 이면 덩어리 가정이 성립한다",
                f"h {h:.0f} W/(m²·K) · 유리 {T_GLASS*1000:.1f} mm. 콘솔이 쓴 "
-               f"LMTD 식이 **타당하다**. h 는 계산이 아니라 가정이므로 "
-               f"파일럿에서 실측한다 (PT-06)"),
+               f"LMTD 식이 **타당하다**. 그 h 를 무엇이 내는지는 T14 가 본다"),
     ], dict(t_cool=t_cool, lump=lump, bi=bi, need=need)
 
 
@@ -505,6 +509,26 @@ def cassette():
             stop=stop, budget=budget, panels=panels_needed)
 
 
+# ── ⑦ 냉각 뱅크 — 설계 h 를 무엇이 내는가 ───────────────────────────
+def glass_jets():
+    """T9 가 쓰는 GCOOL_H 를 냉각 뱅크의 분사가 내는지 — tools/glass_cool.py (Martin)."""
+    h = c("GCOOL_H")
+    jet = GL.martin()
+    return [
+        Result("T14", "냉각 뱅크 분사 h — 설계 h × 1.2 가 드는가", h * GL.H_MARGIN,
+               "W/(m²·K)", jet["h"],
+               f"Martin (1977) 원형 노즐 배열 · 설계 h {h:.0f} × {GL.H_MARGIN} "
+               f"(상관식 ±15 % · 뱅크 배분 ±5 %)",
+               f"IR 뱅크 자리 {GL.BANKS} 곳의 냉각 뱅크가 노즐 Ø{GL.JET_D*1000:.0f} "
+               f"@{GL.JET_S*1000:.0f} 로 {GL.JET_V:g} m/s 를 뿜는다 — H {GL.jet_gap()*1000:.0f} "
+               f"(H/D {jet['hd']:.1f} · f {jet['f']*100:.2f} % · Re {jet['re']:,.0f} · "
+               f"모두 상관식 범위 안) → h {jet['h']:.1f}, 급기 {GL.air_flow():.2f} m³/s. "
+               f"옆에서 부는 바람으로 같은 h 를 내려면 {GL.crossflow_q(h):.0f} m³/s — "
+               f"급기 필터 면 정격 {GL.filter_face()[0] * GL.FILTER_Q:.0f} m³/s 를 넘고, 경계층이 "
+               f"층류로 남으면 h 가 절반 아래다. 실측은 노즐판 한 칸으로 한다 (PT-06)"),
+    ], dict(jet=jet)
+
+
 # ── 이 해석이 만든 요구 ──────────────────────────────────────────────
 def requirements() -> list[Req]:
     # R1 · R5 는 뒤따른 검토가 닫았다 — 그 값을 거기서 받아 적는다. 이 모듈이
@@ -572,11 +596,12 @@ def requirements() -> list[Req]:
             f"{hb['loss']:.1f} kW 뿐이고 효율은 {hb['eta']*100:.0f} % 다. 가정 "
             f"{ETA*100:.0f} % 는 보수측이므로 체류시간 계산은 그대로 둔다"),
         Req("R6", "대류계수 h 실측",
-            "유리 랙 25 · 카세트 60 W/(m²·K) 를 실측으로 확정",
+            f"유리 랙 분사 h (설계 {c('GCOOL_H'):.0f} · 상관식 {GL.martin()['h']:.0f}) · "
+            f"카세트 60 W/(m²·K) 를 실측으로 확정",
             "파일럿 PT-06 · FAT",
-            "두 개 다 가정이다. 냉각 랙 단수와 카세트 인터록 시간이 이 "
-            "숫자에 달려 있다 — 랙은 여유가 2단 있어 견디지만, 카세트는 "
-            "여유가 없다"),
+            "유리 쪽은 이제 분사 상관식(Martin)이 뒷받침한다 — 냉각 뱅크 노즐판 한 칸으로 "
+            "재면 된다. 카세트 60 은 여전히 가정이다. 냉각 랙 단수와 카세트 인터록 시간이 "
+            "이 숫자에 달려 있다 — 랙은 여유가 2단 있어 견디지만, 카세트는 여유가 없다"),
     ]
 
 
@@ -584,7 +609,7 @@ def requirements() -> list[Req]:
 def run():
     rs, extra = [], {}
     for fn in (panel, dwell_floor, glass_stress, glass_cool,
-               chamber_wall, cassette):
+               chamber_wall, cassette, glass_jets):
         r, e = fn()
         rs += r
         extra[fn.__name__] = e

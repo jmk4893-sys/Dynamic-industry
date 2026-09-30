@@ -397,20 +397,20 @@
     </div>
   </div>
   <div class="oi">
-    <div class="oi-h"><b>PT-06</b><span>강제공랭 계수 h 실측</span></div>
+    <div class="oi-h"><b>PT-06</b><span>냉각 대류계수 h 실측 — 분사 뱅크 · 카세트</span></div>
     <div class="oi-b">
       <div class="tw"><table>
         <tbody>
-          <tr><th>닫는 것</th><td class="k">OI-05 · 열해석 R6</td></tr>
-          <tr><th>바꾸는 것</th><td>유리 1 장 · 카세트 1 조 · 팬 회전수 3 점</td></tr>
+          <tr><th>닫는 것</th><td class="k">OI-05 · 열해석 R6 · T14</td></tr>
+          <tr><th>바꾸는 것</th><td>유리 1 장 · 노즐판 한 칸(Ø25 @200 · H 260) · 분사 속도 3 점 · 카세트 1 조</td></tr>
           <tr><th>시행 · 신품</th><td><strong>8</strong> 회 ·
             <strong>0</strong> 장 &nbsp;— 박리가 끝난 유리를 그대로 쓴다 — 냉각은 유리만의 문제다</td></tr>
           <tr><th>단계</th><td>1 단계</td></tr>
         </tbody>
       </table></div>
-      <p><em>절차</em></p><ol class="steps"><li>140 ℃ 유리를 냉각 위치에 넣고 중심 열전대로 냉각곡선을 끝까지 기록한다</li><li>ln((T−T∞)/(T₀−T∞)) 를 시간에 대해 그리면 기울기가 hA/mc 다 — 직선이 아니면 덩어리 가정이 깨진 것이므로 그것부터 본다</li><li>카세트도 같은 방법으로 200 → 60 ℃ 를 잰다</li></ol>
-      <p><em>판정</em>유리 h ≥ 20 W/(m²·K) 이면 랙 5 단이 그대로 선다 (필요 3 단, 여유 2 단). 카세트는 여유가 없으므로 h 가 60 아래로 나오면 인터록 시간을 실측값으로 다시 쓴다</p>
-      <p><em>되먹임</em>GCOOL_H · CASS_HCONV · 랙 단수 · CASSETTE_HANDLING_SAFE 인터록 시간</p>
+      <p><em>절차</em></p><ol class="steps"><li>140 ℃ 유리를 노즐판 아래 · 위에 두고 중심 열전대로 냉각곡선을 끝까지 기록한다 — 분사 6.5 · 8.5 · 10.5 m/s</li><li>ln((T−T∞)/(T₀−T∞)) 를 시간에 대해 그리면 기울기가 hA/mc 다 — 직선이 아니면 덩어리 가정이 깨진 것이므로 그것부터 본다</li><li>열화상으로 노즐 칸 무늬(정체점과 칸 사이 온도차)를 본다 — 면내 편차가 유리 응력이다</li><li>카세트도 같은 방법으로 200 → 60 ℃ 를 잰다</li></ol>
+      <p><em>판정</em>설계 분사 속도에서 유리 h ≥ 25 W/(m²·K) 이면 랙 5 단이 그대로 선다 (필요 3 단, 여유 2 단). 13 과 25 사이면 단수는 그대로 두고 인버터로 분사 속도를 올린다. 카세트는 여유가 없으므로 h 가 60 아래로 나오면 인터록 시간을 실측값으로 다시 쓴다</p>
+      <p><em>되먹임</em>GCOOL_H · GCOOL_JET_V · CASS_HCONV · 랙 단수 · CASSETTE_HANDLING_SAFE 인터록 시간</p>
     </div>
   </div>
   <div class="oi">

@@ -33,6 +33,7 @@ import analysis_irbank as IRB  # noqa: E402
 import analysis_structural as ST  # noqa: E402
 import analysis_thermal as TH  # noqa: E402
 import cycle as CY  # noqa: E402
+import glass_cool as GC  # noqa: E402
 import knife_edge as KE  # noqa: E402
 import lampmount as LM  # noqa: E402
 from console_consts import const as c  # noqa: E402
@@ -399,18 +400,21 @@ def tests() -> list[Test]:
              f"IR 설치정격 {TH.RATED_KW:.0f} kW · 배기 후처리 용량 (OI-15) · "
              f"에어록 유출계수 (가정 {AIR.CD:.2f}) · 셔터 개구 {AIR.OPEN_H*1e3:.0f} · "
              f"포크 속도 {AIR.V_FORK:.2f} m/s (RAL1 · RAL2)"),
-        Test("PT-06", "강제공랭 계수 h 실측", 1, "OI-05 · 열해석 R6",
-             "유리 1 장 · 카세트 1 조 · 팬 회전수 3 점", 8, 0,
+        Test("PT-06", "냉각 대류계수 h 실측 — 분사 뱅크 · 카세트", 1, "OI-05 · 열해석 R6 · T14",
+             f"유리 1 장 · 노즐판 한 칸(Ø{GC.JET_D * 1000:.0f} @{GC.JET_S * 1000:.0f} · H "
+             f"{GC.jet_gap() * 1000:.0f}) · 분사 속도 3 점 · 카세트 1 조", 8, 0,
              "박리가 끝난 유리를 그대로 쓴다 — 냉각은 유리만의 문제다",
-             ("140 ℃ 유리를 냉각 위치에 넣고 중심 열전대로 냉각곡선을 "
-              "끝까지 기록한다",
+             ("140 ℃ 유리를 노즐판 아래 · 위에 두고 중심 열전대로 냉각곡선을 "
+              f"끝까지 기록한다 — 분사 {GC.JET_V - 2:g} · {GC.JET_V:g} · {GC.JET_V + 2:g} m/s",
               "ln((T−T∞)/(T₀−T∞)) 를 시간에 대해 그리면 기울기가 hA/mc 다 — "
               "직선이 아니면 덩어리 가정이 깨진 것이므로 그것부터 본다",
+              "열화상으로 노즐 칸 무늬(정체점과 칸 사이 온도차)를 본다 — 면내 편차가 유리 응력이다",
               "카세트도 같은 방법으로 200 → 60 ℃ 를 잰다"),
-             "유리 h ≥ 20 W/(m²·K) 이면 랙 5 단이 그대로 선다 (필요 3 단, "
-             "여유 2 단). 카세트는 여유가 없으므로 h 가 60 아래로 나오면 "
-             "인터록 시간을 실측값으로 다시 쓴다",
-             "GCOOL_H · CASS_HCONV · 랙 단수 · CASSETTE_HANDLING_SAFE "
+             f"설계 분사 속도에서 유리 h ≥ {GC.H_DESIGN:.0f} W/(m²·K) 이면 랙 5 단이 그대로 "
+             f"선다 (필요 3 단, 여유 2 단). {GC.h_required():.0f} 과 {GC.H_DESIGN:.0f} 사이면 단수는 "
+             "그대로 두고 인버터로 분사 속도를 올린다. 카세트는 여유가 없으므로 h 가 60 아래로 "
+             "나오면 인터록 시간을 실측값으로 다시 쓴다",
+             "GCOOL_H · GCOOL_JET_V · CASS_HCONV · 랙 단수 · CASSETTE_HANDLING_SAFE "
              "인터록 시간"),
         Test("PT-07", "배출가스 성상", 1, "OI-10 · OI-15",
              f"계면 {int(T_TARGET)} ℃ · 칼날 {int(T_KNIFE)} ℃ · 로트 A·B", 6, 0,

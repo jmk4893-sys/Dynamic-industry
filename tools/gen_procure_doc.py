@@ -436,8 +436,8 @@ def _mod_change(m: str) -> str:
                 f"H-{B.RH_SEC[0]} → H-{T.RH_SEC[0]} · 기둥 {len(B.RH_POSTS)} → {len(T.RH_POSTS)} · "
                 f"KC-101 매거진 {T.CELLS}조 · KC-301 포켓 {B.KC_SLOTS} → {T.KC_SLOTS}")
     if m == "M-007":
-        return (f"{B.GCOOL_DECKS} → {T.GCOOL_DECKS}단 · 팬 {B.GC_FANS} → {T.GC_FANS} · "
-                f"필터 {B.GC_FILTERS} → {T.GC_FILTERS}")
+        return (f"{B.GCOOL_DECKS} → {T.GCOOL_DECKS}단 · 냉각 뱅크 {B.GC_BANKS} → {T.GC_BANKS} · "
+                f"급기 {B.GC_AIR_Q:.2f} → {T.GC_AIR_Q:.2f} m³/s · 필터 {B.GC_FILTERS} → {T.GC_FILTERS}")
     if m == "M-011":
         eb, et = OPT.EL_B.summary(), None
         with OPT.pinned():
