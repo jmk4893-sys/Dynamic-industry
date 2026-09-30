@@ -18,6 +18,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import json
 import math
 import pathlib
 import re
@@ -68,20 +70,53 @@ def value(expr, env):
     return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
 
 
+# ── 배치 계열 ──────────────────────────────────────────────────────────
+# 콘솔은 표준 DG-HK60C 와 옵션 DG-HK120C 를 한 벌의 상수로 든다. 둘이 다른
+# 것은 가열실 단수 · 램프 수 · 분리 셀 수(와 그에 따른 방책·통로)뿐이고,
+# 그 값은 콘솔의 배치 설정 객체(HK60C · HK120C)가 쥐고 있다.
+#
+# 옵션을 따로 적으면 한쪽만 고쳐지는 날이 온다. 그래서 옵션은 뿌리 상수
+# 자리에 그 배치의 값을 '핀' 으로 박아 푼다 — DECKS 에서 파생되는 HC_Z 같은
+# 값이 같은 식으로 다시 풀리고, 카탈로그·조달·해석이 같은 코드로 옵션을 낸다.
+_PIN: dict = {}
+_ACTIVE = "compact"
+# env() 는 818 KB 콘솔을 정규식으로 훑고 식을 여러 바퀴 푼다. const() 가 부를 때마다
+# 그것을 다시 하면 카탈로그 한 벌에 2 초가 든다 — 표준과 옵션을 함께 풀면 곱절이다.
+# 본문과 핀이 같으면 답도 같으므로 둘을 열쇠로 기억한다. 콘솔을 고쳐 쓰면(--write)
+# 본문이 달라져 열쇠가 바뀌므로 옛 답이 남지 않는다.
+_ENV_CACHE: dict = {}
+
+# 배치 id → 콘솔의 설정 객체 이름
+LAYOUT_OBJ = {"compact": "HK60C", "twin": "HK120C"}
+# 설정 객체 필드 → 뿌리 상수. CELLS 는 콘솔에 낱개 const 가 없다 — 셀 수는
+# 배치 설정에만 있고, 압축 배치(HK60C)의 cells 는 1 이다 (시험이 둘을 잇는다).
+LAYOUT_ROOTS = {"decks": "DECKS", "lamps": "LAMPS", "cells": "CELLS"}
+BASE_CELLS = 1
+
+
 def env(console):
     """콘솔의 숫자 상수를 이름→값으로 모은다.
 
     `const HC_Z=HC_Z0+HC_DZ*DECKS;` 처럼 다른 상수를 가리키는 것이 있어
     한 번에 다 풀리지 않는다. 더 풀리는 게 없을 때까지 돌린다 — 순환
     참조가 있으면 안 풀린 채로 남고, 그때는 펼치지 않는다.
+
+    배치 핀(layout())이 박혀 있으면 그 이름은 콘솔의 정의 대신 핀 값을 쓰고,
+    거기서 파생되는 상수는 핀 값으로 다시 푼다.
     """
+    key = (hash(console), len(console), tuple(sorted(_PIN.items())))
+    hit = _ENV_CACHE.get(key)
+    if hit is not None:
+        return dict(hit)
     pend = {}
     for body in re.findall(r"\bconst ([^;\n]+);", console):
         for part in _split_top(body):
             m = re.fullmatch(r"\s*([A-Z][A-Z0-9_]*)\s*=\s*(.+?)\s*", part, re.S)
             if m:
                 pend.setdefault(m.group(1), m.group(2))
-    out = {}
+    out = {"CELLS": BASE_CELLS, **_PIN}
+    for name in out:
+        pend.pop(name, None)
     for _ in range(8):
         moved = False
         for name, rhs in list(pend.items()):
@@ -95,7 +130,10 @@ def env(console):
                 out["CST"], moved = cst, True
         if not moved:
             break
-    return out
+    if len(_ENV_CACHE) > 16:
+        _ENV_CACHE.clear()
+    _ENV_CACHE[key] = out
+    return dict(out)
 
 
 class _NS:
@@ -132,16 +170,45 @@ def _fmt(v):
     return str(int(v) if float(v).is_integer() else v)
 
 
+_PQ_CACHE: dict = {}
+
+
+def part_qty(console):
+    """콘솔 PARTS 블록(gen_parts_js 가 쓴다)의 품번 → 수량.
+
+    모듈표는 수량을 따로 세지 않고 카탈로그에서 읽는다 — `${PQ('P-004-04')}`.
+    VT-101 기둥이 모듈표에는 4, 카탈로그·해석에는 6 이던 것이 그렇게 닫혔다.
+    펼칠 때도 도면이 읽는 것과 같은 블록을 읽는다.
+    """
+    key = (hash(console), len(console))
+    hit = _PQ_CACHE.get(key)
+    if hit is None:
+        m = re.search(r"^const PARTS=(\[.*\]);$", console, re.M)
+        hit = {} if m is None else {p["id"]: p["q"] for p in json.loads(m.group(1))}
+        _PQ_CACHE.clear()
+        _PQ_CACHE[key] = hit
+    return hit
+
+
 def expand(console, extra=None):
-    """콘솔의 ${...} 중 상수만으로 풀리는 것을 값으로 바꾼다."""
+    """콘솔의 ${...} 중 상수만으로 풀리는 것을 값으로 바꾼다.
+
+    `${PQ('P-xxx-yy')}` 는 카탈로그 수량으로 푼다 — 카탈로그에 없는 품번은
+    그대로 둔다 (모르면 그대로 둔다)."""
     scope = env(console)
     if extra:
         scope.update(extra)
+    qty = part_qty(console)
+
+    def pq(m):
+        q = qty.get(m.group(1))
+        return m.group(0) if q is None else _fmt(q)
 
     def sub(m):
         v = value(m.group(1), scope)
         return m.group(0) if v is None else _fmt(v)
 
+    console = re.sub(r"\$\{PQ\('(P-\d{3}-\d{2})'\)\}", pq, console)
     return re.sub(r"\$\{([^{}]*)\}", sub, console)
 
 
@@ -228,3 +295,43 @@ def const(name):
         owner, key = name.split(".", 1)
         return obj(owner, console)[key]
     return env(console)[name]
+
+
+def layouts(console=None):
+    """배치 계열 설정 — {'compact': {...}, 'twin': {...}}. 숫자 필드만 편다.
+
+    **늘 핀 없이 푼다.** 핀이 박힌 채로 풀면 HK60C 의 `decks:DECKS` 가 핀 값으로
+    읽히고 HK120C 의 `lamps:2*LAMPS` 는 두 번 곱해진다 — 옵션 안에서 표준의 값을
+    물을 때(부하표가 분기를 가를 때) 표준이 옵션의 얼굴을 하고 나온다.
+    """
+    global _PIN
+    console = CONSOLE.read_text(encoding="utf-8") if console is None else console
+    saved, _PIN = _PIN, {}
+    try:
+        return {lid: obj(name, console) for lid, name in LAYOUT_OBJ.items()}
+    finally:
+        _PIN = saved
+
+
+def active():
+    """지금 핀이 박힌 배치 id — 핀이 없으면 표준 'compact'."""
+    return _ACTIVE
+
+
+@contextlib.contextmanager
+def layout(lid):
+    """배치 계열 하나의 뿌리 값을 핀으로 박는다.
+
+    이 안에서 부르는 const() · env() · obj() 는 그 배치의 값을 낸다 —
+    DECKS=7 을 박으면 DECKS 에서 파생되는 상수도 7 단으로 다시 풀린다.
+    'compact' 는 핀이 없는 상태와 같아야 한다 (시험이 잇는다).
+    """
+    global _PIN, _ACTIVE
+    fields = layouts()[lid]
+    pins = {root: fields[f] for f, root in LAYOUT_ROOTS.items()}
+    old = (_PIN, _ACTIVE)
+    _PIN, _ACTIVE = {**old[0], **pins}, lid
+    try:
+        yield fields
+    finally:
+        _PIN, _ACTIVE = old

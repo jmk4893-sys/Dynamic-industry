@@ -49,7 +49,8 @@ MATERIALS = {
     "STS304":    dict(fy=205, fu=520, rho=7930, std="KS D 3705", use="가열실 내피·고온 습부·식품접촉 없음"),
     "SM45C":     dict(fy=343, fu=569, rho=7850, std="KS D 3752", use="핀·축류 (테이퍼 로케이팅핀·롤러축)"),
     "A6061-T6":  dict(fy=240, fu=290, rho=2700, std="KS D 6759", use="이동 경량부 (캐리지·포크 암)"),
-    "SKD11":     dict(fy=None, fu=None, rho=7700, std="KS D 3753", use="칼날 인서트 (HRC 58~62)"),
+    "SKD11":     dict(fy=None, fu=None, rho=7700, std="KS D 3753",
+                      use="칼날 인서트 (HRC 58~60 · D-502 · 예비와 한 소재 로트 · 한 열처리 배치) · 모듈 상한 스톱"),
 }
 
 
@@ -204,11 +205,15 @@ F_PEEL_D = F_PEEL_K * PSI_DYN * GAMMA_Q            # kN 설계값
 # 권취 문형은 계단 칼날 전환으로 철거돼 이제 셋이다.
 #
 # 제작사 중량표가 나오면 여기가 아니라 parts.py 의 형상을 고친다. 카탈로그가
-# ±15 % 를 벗어나면 앵커·기초를 다시 본다 — 여섯 개소 전부 콘크리트 콘
+# ±15 % 를 벗어나면 앵커·기초를 다시 본다 — 열네 군 전부 콘크리트 콘
 # 파괴가 지배하므로 매입깊이가 규격보다 먼저 움직인다.
 from parts import mass as _pm
+import knife_edge as KE  # noqa: E402  칼날 인서트 날끝 (D-502)
 
 M_CHAMBER = _pm("M_CHAMBER")    # 가열실 일식 (골조·벽체·데크·IR)
+import parts as _PT  # noqa: E402
+RACK_TOP_M = _PT.RACK_TOP / 1000   # m 랙 지붕 — 옵션은 7 단이라 높다
+CHAMBER_CG_RATIO = 0.55            # 총괄 결정 — 가열실 무게중심 / 랙 높이
 M_GANTRY = _pm("M_GANTRY")      # 갠트리 이동부 (주행 문형·레일 제외)
 M_TABLE = _pm("M_TABLE")        # VT-101 상판·리브·기둥·진공계통
 
@@ -226,12 +231,16 @@ def _joints():
     # 박리 추력의 반작용이 흡착패드 → 상판 → 기둥 → 앵커로 내려온다.
     # F-005 는 "테이블은 패널 반력만 받는다" 고 적었지만, 그 패널 반력이
     # 곧 추력이다 — 작용·반작용 쌍이므로 양쪽 기초가 같은 크기를 받는다.
-    tbl_span_x, tbl_span_y, tbl_h = c("CARRIER_L") - 0.40, c("CARRIER_W") - 0.32, c("CZ")
-    V_tbl = F_PEEL_D / 4                                     # 기둥 4개 분담 전단
-    N_tbl = (F_PEEL_D * tbl_h) / tbl_span_x / 2              # 전도 짝힘 → 기둥당 인장
+    # 기둥 자리는 콘솔 격자 그대로 — 길이 방향 TBL_COLS_X 열 × 2 줄. 전도 짝힘은
+    # 양 끝 열이 받는다 (가운데 열은 중립축 위라 축력이 0).
+    tbl_cols = 2 * round(c("TBL_COLS_X"))
+    tbl_span_x = c("CARRIER_L") - 2 * c("TBL_INSET_X")      # 양 끝 열 간격
+    tbl_h = c("CZ")
+    V_tbl = F_PEEL_D / tbl_cols                              # 기둥 분담 전단
+    N_tbl = (F_PEEL_D * tbl_h) / tbl_span_x / 2              # 전도 짝힘 → 끝 열 기둥당 인장
     J.append(dict(id="J1", name="VT-101 기둥 ↔ 베이스플레이트", grade="8.8", n=4,
                   N=N_tbl / 4, V=V_tbl / 4, planes=1, minimum="M16",
-                  note=f"추력 반작용 {F_PEEL_D:.1f} kN · 팔길이 {tbl_h:.2f} m · 기둥간격 {tbl_span_x:.2f} m"))
+                  note=f"추력 반작용 {F_PEEL_D:.1f} kN · 기둥 {tbl_cols}본 · 팔길이 {tbl_h:.2f} m · 끝 열 간격 {tbl_span_x:.2f} m"))
 
     # ── J2 · KG-101 주행레일 문형 기둥 베이스 (기초 A7)
     # 칼날이 미는 쪽. 같은 추력이 레일 높이에서 걸린다.
@@ -268,11 +277,15 @@ def _joints():
                   note=f"쐐기 클램프({c('CASS_CLAMP_KN')} kN×2)는 밀착용 — 전단은 핀 4개가 추력 전부를 받는다"))
 
     # ── J6 · HC-101 가열실 기둥 베이스
+    # 무게중심은 랙 높이의 55 % 로 본다 — 지붕·타이빔·상단 뱅크가 위에 몰려 있어 균등분포
+    # (50 %)보다 높다. 종전에는 2.40 m 를 값으로 적어 두어 단수가 오르면 옛 높이로 남았다
+    # (4.55 m 랙의 53 %). 전도 팔 2.30 m 는 평면이 정하므로 단수와 무관하다.
     w = kn(M_CHAMBER)
-    N_ch = (SEISMIC * w * 2.40) / 2.30 / 2 - GAMMA_G * w / 4   # 지진 인장 − 자중 압축
+    h_cg = CHAMBER_CG_RATIO * RACK_TOP_M
+    N_ch = (SEISMIC * w * h_cg) / 2.30 / 2 - GAMMA_G * w / 4   # 지진 인장 − 자중 압축
     J.append(dict(id="J6", name="HC-101 가열실 기둥 ↔ 베이스플레이트", grade="8.8", n=4,
                   N=max(N_ch, 0.0) / 4, V=SEISMIC * w / 4 / 4, planes=1, minimum="M20",
-                  note=f"자중 {M_CHAMBER/1000:.1f} t · 지진 {SEISMIC:.2f}W @ 무게중심 EL 2,400"))
+                  note=f"자중 {M_CHAMBER/1000:.1f} t · 지진 {SEISMIC:.2f}W @ 무게중심 EL {h_cg*1000:,.0f}"))
 
     # ── J7 · 가열실 데크 레일 ↔ 기둥 (내부 · 고온)
     deck_w = GAMMA_Q * (W_PANEL + kn(120))
@@ -301,9 +314,10 @@ def _joints():
                   N=0.50, V=0.75, planes=1, minimum="M10",
                   note="ISO 14120 — 수평 1,000 N 을 기둥 상단에서 견딘다"))
 
-    # ── J12 · 배기 헤더 플랜지 (Ø600 경계)
+    # ── J12 · 배기 헤더 플랜지 (경계) — 관경은 풍량에서 나온다 (exhaust · CAL-001 8.2)
     duct = GAMMA_Q * kn(60) + 0.30                    # 덕트 자중 + 부압
-    J.append(dict(id="J12", name="배기 헤더 Ø600 플랜지 (M-017 경계)", grade="8.8", n=12,
+    J.append(dict(id="J12", name=f"배기 헤더 Ø{c('DUCT_D_HDR') * 1000:.0f} 플랜지 (M-017 경계)",
+                  grade="8.8", n=12,
                   N=duct / 12, V=duct / 12 / 2, planes=1, minimum="M12",
                   note="발주자 설비와의 인계면 — 개스킷 압착과 기밀이 지배"))
 
@@ -325,7 +339,7 @@ JOINTS = _joints()
 
 
 # ── 6b. 피로 (EN 1993-1-9) ─────────────────────────────────────────────
-# 이 라인은 60 장/h 로 돌아간다. 20 년이면 박리 추력이 1,000 만 번 걸린다 —
+# 이 라인은 계약 58 장/h 로 돌아간다. 20 년이면 박리 추력이 1,000 만 번 걸린다 —
 # 정적 강도로는 이용률 0.05 인 접합이 피로로는 지배될 수 있다. 그래서
 # 부재 단면은 정적 강도가 아니라 **응력범위**와 **처짐**이 정한다.
 NET_TARGET = int(c("NET_TARGET"))   # 계약 순생산 장/h (콘솔 NET_TARGET)
@@ -415,11 +429,13 @@ def _critical():
 
     # C5 · 결번 — WR-101 권취축 피로. 권취부 철거로 검토 대상이 없어졌다.
 
-    # RH-201 런웨이 빔 — 이동하중 처짐
-    I_run = 1.87e7                            # H-200×100×5.5/8
-    run_span = 3000.0                         # 지지 간격
+    # RH-201 런웨이 빔 — 이동하중 처짐. 단면과 경간은 카탈로그가 고른다 (가장 긴 경간이
+    # 단면을 정한다 — 옵션은 통로에 기둥을 못 세워 경간이 세 배다).
+    _h, _b, _tw, _tf = _PT.RH_SEC
+    I_run = _PT._hb_i(*_PT.RH_SEC)            # 필렛을 뺀 판 조합 — 약간 작게 잡는다
+    run_span = _PT.RH_SPAN                    # 가장 긴 지지 간격
     C.append(dict(
-        id="C6", member="RH-201 런웨이 빔 H-200×100×5.5/8", mat="SS400",
+        id="C6", member=f"RH-201 런웨이 빔 H-{_h}×{_b}×{_tw:g}/{_tf:g}", mat="SS400",
         gov="처짐 L/500 (호이스트 주행)",
         value=beam_deflection(W_LIFT + kn(HOIST_KG), run_span, I_run),
         limit=run_span / 500, unit="mm",
@@ -453,19 +469,16 @@ def anchor_bond(d_mm: float, hef_mm: float) -> float:
     return math.pi * d_mm * hef_mm * TAU_RK / 1000 / GAMMA_MC
 
 
+# 앵커군은 카탈로그 한 표(parts.ANCHOR_GROUPS)에서 읽는다 — 기초도 D-602 와 같은 줄이다.
+# 여기 손으로 적은 표는 가열실을 A2(기초도는 A1)로 불렀고, CE-201 을 M16 × 4 로 적었는데
+# 카탈로그 다리 판은 M12 구멍 둘이었다. 판 한 장의 앵커 수는 그 판의 구멍 수다.
+# A9 (WR-101 권취 문형) · A12 (BS-301 롤 새들) 는 결번 — 권취부 철거.
 ANCHORS = []
-for _aid, _eq, _d, _hef, _grade, _n in (
-    ("A2", "HC-101 가열실", 20, 170, "8.8", 4),
-    ("A7", "KG-101 주행레일 문형", 24, 210, "10.9", 4),
-    ("A8", "VT-101 진공테이블", 24, 210, "10.9", 4),
-    ("A10", "RH-201 모노레일 기둥", 20, 170, "8.8", 4),
-    ("A11", "CE-201 횡인출", 16, 125, "8.8", 4),
-    ("A13", "KC-301 카세트 새들", 16, 125, "8.8", 4),
-):
-    # A9 (WR-101 권취 문형) · A12 (BS-301 롤 새들) 는 결번 — 권취부 철거.
-    _size = f"M{_d}"
+for _aid, _eq, _pid, _size, _hef, _grade in _PT.ANCHOR_GROUPS:
+    _n = len(next(p for p in _PT.P if p.pid == _pid).shape.d["holes"])
+    _d = int(_size[1:])
     ANCHORS.append(dict(
-        id=_aid, eq=_eq, size=_size, hef=_hef, grade=_grade, n=_n,
+        id=_aid, eq=_eq, part=_pid, size=_size, hef=_hef, grade=_grade, n=_n,
         steel=bolt_tension(_size, _grade),
         cone=anchor_cone(_hef), bond=anchor_bond(_d, _hef),
         edge=max(1.5 * _hef, 100), spacing=max(3.0 * _hef, 150),
@@ -477,6 +490,36 @@ for _a in ANCHORS:
     _a["gov"] = min((_a["steel"], "강재"), (_a["cone"], "콘크리트 콘"),
                     (_a["bond"], "접착"))[1]
     _a["Nrd"] = min(_a["steel"], _a["cone"], _a["bond"])
+
+
+# ── 판 한 장의 앵커군 (EN 1992-4 7.2.1.4 · 7.2.1.6 투영면적법)
+# 위 표의 간격 3·hef 는 콘이 서로 겹치지 않는 특성 간격 s_cr 이지 판이 지켜야 할
+# 최소 간격이 아니다. 판 구멍은 그보다 좁다 (A1 판 280 ↔ s_cr 510) — 콘이 겹치므로
+# 판 한 장의 내력은 앵커 수 × 단일 콘이 아니라 투영면적 비만큼이다. 한동안 표가
+# '간격 510' 을 배치 요구로 적은 채 판은 280 으로 뚫려 있었다.
+# 연단은 c_cr 이상으로 요구하므로(연단 칸) 연단 감소 ψs 는 1 이다. 배근 조건은 모른다 —
+# 얕은 앵커(hef < 100)는 표피 박리 ψre = 0.5 + hef/200 을 무조건 곱한다(안전측).
+def _proj(coords, s_cr):
+    """한 방향 투영 길이 — 이웃 간격이 s_cr 보다 넓으면 콘이 겹치지 않는다."""
+    xs = sorted(set(coords))
+    return s_cr + sum(min(b - a, s_cr) for a, b in zip(xs, xs[1:]))
+
+
+for _a in ANCHORS:
+    _holes = next(p for p in _PT.P if p.pid == _a["part"]).shape.d["holes"]
+    _xs, _ys = [h[0] for h in _holes], [h[1] for h in _holes]
+    _d = int(_a["size"][1:])
+    _psi_re = min(1.0, 0.5 + _a["hef"] / 200)
+    _s_cr = 3.0 * _a["hef"]
+    _s_crp = min(7.3 * _d * math.sqrt(TAU_RK), _s_cr)       # 접착 특성 간격
+    _gaps = [b - a for v in (_xs, _ys) for a, b in zip(sorted(set(v)), sorted(set(v))[1:])]
+    _a["s_plate"] = min(_gaps) if _gaps else 0.0            # 판 구멍 최소 간격
+    _a["cone_g"] = _a["cone"] * _proj(_xs, _s_cr) * _proj(_ys, _s_cr) / _s_cr ** 2 * _psi_re
+    _a["bond_g"] = _a["bond"] * _proj(_xs, _s_crp) * _proj(_ys, _s_crp) / _s_crp ** 2 * _psi_re
+    _a["steel_g"] = _a["n"] * _a["steel"]
+    _a["gov_g"] = min((_a["steel_g"], "강재"), (_a["cone_g"], "콘크리트 콘"),
+                      (_a["bond_g"], "접착"))[1]
+    _a["Nrd_g"] = min(_a["steel_g"], _a["cone_g"], _a["bond_g"])
 
 
 # ── 6d. 체결 부품 규칙 ─────────────────────────────────────────────────
@@ -514,7 +557,8 @@ WELDS = [
     ("갠트리 문형 기둥 ↔ 베이스플레이트", F_PEEL_D / 4, 4 * 250, "SM490A", 30),
     ("크로스빔 ↔ 대차 브래킷", F_PEEL_D / 2, 2 * 300, "SM490A", 20),
     ("크로스빔 웨브 ↔ 플랜지 (BOX)", F_PEEL_D / 2, 2 * (2 * c("CGY") * 1000), "SM490A", 12),
-    ("계단 카세트 홀더 ↔ 홀더 (계단 이음)", F_PEEL_D / c("KNIFE_BLADES"), 2 * 120, "SS400", 6),
+    # 계단 카세트 홀더끼리의 이음 용접은 없다 — 일곱 홀더는 판스프링에 따로 매달려
+    # 옆 틈 2 를 두고 뜬다 (칼날 모듈 추종 · D-502). 이으면 추종이 선다.
     ("RH-201 런웨이 ↔ 기둥 두상판", GAMMA_Q * W_LIFT * 1.25, 2 * 200, "SS400", 16),
     ("데크 프레임 ↔ 레일 (가열실 내부)", GAMMA_Q * W_PANEL, 2 * c("DECK_L") * 1000, "STS304", 6),
     ("방책 기둥 ↔ 베이스", 1.0, 4 * 60, "SS400", 6),
@@ -542,16 +586,18 @@ MEMBERS = [
     ("M-005", "크로스빔", "BOX-300×200×12", "SM490A", "계단 칼날 1기 자중 + 추력 휨 · 계단 공차"),
     ("M-005", "Z축 서보슬라이드 베이스", "PL 20 × 2 (좌·우)", "SM490A", "칼날 반력 편심 · 좌우 취부면 한 평면"),
     ("M-005", "칼날 캐리어 빔", "BOX-160×120×8", "SM490A", "두 Z축 사이 휨 — 일곱 칼끝 높이"),
-    ("M-005", "계단 카세트 홀더", "BOX-120×90×6 ×7 · 인서트 t8", "SS400/SKD11", "카트리지히터 홀 + 인서트 볼트 · 계단 이음 용접"),
+    ("M-005", "계단 카세트 홀더", f"BOX-{KE.CASS_W - KE.NOSE:.0f}×{KE.CASS_H:.0f}×6 ×7 · 인서트 t{KE.T:.0f} (코 {KE.NOSE:.0f} · D-502)", "SS400/SKD11",
+     f"카트리지히터 홀 + 인서트 접시머리 {KE.SCREW} (헬리코일) · 이음은 용접하지 않는다 — 옆 틈 {KE.GAP:.0f}, 모듈마다 따로 뜬다"),
     ("M-005", "누름판", "PL 6 · PTFE 코팅", "STS304", "비가열 · 스프링 예압 20 N"),
-    ("M-006", "RH-201 런웨이 빔", "H-200×100×5.5/8", "SS400", "호이스트 이동하중 · 처짐 L/500 (카세트 전용)"),
+    ("M-006", "RH-201 런웨이 빔", "H-{}×{}×{:g}/{:g}".format(*_PT.RH_SEC), "SS400",
+     "호이스트 이동하중 · 처짐 L/500 (카세트 전용) — 가장 긴 경간이 단면을 고른다"),
     ("M-007", "냉각 랙 골조", "H-200×200×8/12", "SS400", "F-002 준용 — 지그 공용"),
     ("M-007", "측벽", "폴리카보네이트 t6", "PC", "방호 · 투시 (단열 아님)"),
     ("M-003", "포크 문형 기둥", "□-125×125×6", "SS400", "볼스크류 반력 + 편심"),
     ("M-003", "포크 암", "압출형재 t8", "A6061-T6", "이동 관성 최소화"),
     ("M-013", "방책 기둥", "□-60×60×3.2", "SS400", "ISO 14120 수평 1,000 N"),
     ("M-013", "메시 패널", "Ø4 @40×40", "SS400 아연도금", "ISO 13857 개구 기준"),
-    ("M-017", "경계 덕트", "Ø600 t3.0", "SS400", "부압 · 지지 간격 3,000"),
+    ("M-017", "경계 덕트", f"Ø{c('DUCT_D_HDR') * 1000:.0f} t3.0", "SS400", "부압 · 지지 간격 3,000"),
 ]
 
 
@@ -631,13 +677,15 @@ def report() -> str:
     add(f"  단위는 부재별 — 처짐 mm · 응력범위 MPa")
     add("")
     add("── 앵커 (EN 1992-4 · 접착식 · C25/30 이상) ────────────")
-    add(f"  {'기초':6s}{'설비':26s}{'규격':7s}{'hef':>6s}{'강재':>8s}"
-        f"{'콘':>8s}{'접착':>8s}{'지배':>10s}{'연단':>7s}{'간격':>7s}{'기초t':>7s}")
+    add(f"  {'기초':6s}{'설비':26s}{'규격':9s}{'hef':>6s}{'강재':>8s}"
+        f"{'콘':>8s}{'접착':>8s}{'지배':>10s}{'연단':>7s}{'판/scr':>11s}{'판당':>8s}{'기초t':>7s}")
     for a in ANCHORS:
-        add(f"  {a['id']:6s}{a['eq'][:24]:26s}{a['size']:7s}{a['hef']:6.0f}"
+        add(f"  {a['id']:6s}{a['eq'][:24]:26s}{a['size'] + '×' + str(a['n']):9s}{a['hef']:6.0f}"
             f"{a['steel']:8.1f}{a['cone']:8.1f}{a['bond']:8.1f}"
-            f"{a['gov']:>10s}{a['edge']:7.0f}{a['spacing']:7.0f}{a['slab']:7.0f}")
+            f"{a['gov']:>10s}{a['edge']:7.0f}{a['s_plate']:6.0f}/{a['spacing']:<4.0f}"
+            f"{a['Nrd_g']:8.1f}{a['slab']:7.0f}")
     add("  내력 kN · hef·연단·간격·기초두께 mm — 전 앵커에서 콘크리트측이 지배한다")
+    add("  판당 = 판 한 장의 군 내력 (투영면적 비 · ψre) — 판 구멍이 s_cr 보다 좁아 콘이 겹친다")
     add("")
     add("── 부재표 ──────────────────────────────────────────────")
     add(f"  {'모듈':7s}{'부재':22s}{'단면·두께':30s}{'재질':10s}")

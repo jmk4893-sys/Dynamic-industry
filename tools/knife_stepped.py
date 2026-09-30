@@ -62,7 +62,7 @@ V_KNIFE = CY.DEFAULT["knifeSpeed"]             # mm/s 박리속도 55
 
 # ── 열 ───────────────────────────────────────────────────────────────────
 HEAT_KW = c("CASS_HEAT_KW")                    # kW 카세트 히터 정격 — 일곱 존의 합
-BLADE_L_SUM = c("CASS_L") * 1000               # mm 일곱 홀더 길이 합 (겹침 포함) 1,590
+BLADE_L_SUM = c("CASS_L") * 1000               # mm 일곱 칼날(인서트) 길이 합 (겹침 포함) 1,590
 ALPHA_SKD11 = 11.5e-6                          # 1/K 냉간공구강 선팽창 (20~200 ℃ 카탈로그 11~12)
 DT_BLADE = c("T_KNIFE") - c("T_AMB")           # K 200 − 25
 

@@ -8,7 +8,6 @@
 및 콘솔의 전기부하표와 직접 대조한다. 사양서만 고치거나 콘솔만 고치면 실패한다.
 """
 
-import datetime
 import math
 import pathlib
 import re
@@ -137,7 +136,11 @@ class TestRfqDocument(unittest.TestCase):
         self.assertIn("수평", body, "확장이 수평 병렬임을 밝히지 않았다")
         self.assertIn("DG-HK120C", body)
         self.assertIn("dg-hk120-twin-cell.html", body, "검토서 경로를 대지 않았다")
-        self.assertIn("범위 밖", body, "확장 설계가 본 용역 밖임을 못 박지 않았다")
+        # 확장 설계는 범위 밖이 아니라 선택분이다 — 행사 기한과 단가 규칙이 함께 있어야 한다
+        self.assertIn("본 용역의 선택분이다", body, "확장 설계가 선택분임을 밝히지 않았다")
+        self.assertIn("60 % 단계 검토가 끝나기 전까지", body, "선택분의 행사 기한이 없다")
+        self.assertIn("본체와 같은 인월 단가", body, "선택분 단가 규칙이 없다 — 옵션을 부풀릴 수 있다")
+        self.assertNotIn("범위 밖", body, "선택분으로 바꾼 확장을 다시 범위 밖이라 적었다")
 
         decks = re.search(r"<span class=\"m\">(\d+) → (\d+)</span>단", body)
         self.assertIsNotNone(decks, "확장 시 단수를 밝히지 않았다")
@@ -150,13 +153,70 @@ class TestRfqDocument(unittest.TestCase):
         self.assertIn("decks:7", CONSOLE.read_text(encoding="utf-8").replace(" ", ""),
                       "콘솔의 확장 배치가 7 단이 아니다")
 
+        # IR 여유도 같은 두 곳에서 나온다 — 출발은 납품 설비의 램프 수, 도착은
+        # 검토서가 고른 램프 수. 한동안 '100 → 200 kW' 가 남아 있었다 — 출발은
+        # 포락선 이전의 40 등, 도착은 그보다도 앞선 셈이었다.
+        ir = re.search(r'IR 을 <span class="m">(\d+) → (\d+) kW</span>'
+                       r'\(램프 <span class="m">(\d+) → (\d+)</span> 등\)', body)
+        self.assertIsNotNone(ir, "확장 시 IR 정격과 램프 수를 밝히지 않았다")
+        lamps = int(console_consts.const("LAMPS"))
+        lamp_kw = console_consts.obj("MODEL_DEFAULT")["lampPower"]
+        self.assertEqual((int(ir.group(3)), int(ir.group(1))),
+                         (lamps, round(lamps * lamp_kw)),
+                         "확장의 출발 정격이 납품 설비의 램프 수와 다르다")
+        pick = re.search(r'name="description" content="[^"]*?(\d+)단 (\d+)등 (\d+)kW', study)
+        self.assertIsNotNone(pick, "검토서 카드 요약에 채택안이 없다")
+        self.assertEqual(decks.group(2), pick.group(1), "확장 단수가 검토서 채택안과 다르다")
+        self.assertEqual((ir.group(4), ir.group(2)), (pick.group(2), pick.group(3)),
+                         "확장의 도착 정격이 검토서 채택안과 다르다")
+
         aisle = re.search(r'셀 사이 통로 <span class="m">([\d,]+) mm</span>', body)
         self.assertIsNotNone(aisle, "셀 사이 통로 폭을 밝히지 않았다")
         self.assertIn("EX-101", body, "통로 폭을 정하는 장치를 대지 않았다")
-        self.assertEqual(aisle.group(1), "2,760",
-                         "통로 폭이 EX-101 포탈에서 나온 2,760 mm 가 아니다")
+        # 한동안 2,760 · 5,600 이 남아 있었다 — 콘솔 트윈 배치는 2,960 · 6,000 이다
+        self.assertEqual(aisle.group(1), f"{console_consts.const('TWIN_AISLE') * 1000:,.0f}",
+                         "통로 폭이 콘솔 TWIN_AISLE 과 다르다")
+        pitch = re.search(r'중심간 <span class="m">([\d,]+) mm</span>', body)
+        self.assertIsNotNone(pitch, "셀 중심간 거리를 밝히지 않았다")
+        self.assertEqual(pitch.group(1), f"{2 * console_consts.const('TWIN_CELLY') * 1000:,.0f}",
+                         "셀 중심간 거리가 콘솔 TWIN_CELLY 의 두 배가 아니다")
+        self.assertIn(f"±{console_consts.const('FORK_HALF_TWIN') * 1000:,.0f}", body,
+                      "옵션 횡이송 문형 반폭이 콘솔 FORK_HALF_TWIN 과 다르다")
         self.assertIn("aisleFork", study,
                       "검토서가 포크 포탈로 통로를 유도하지 않는다")
+
+    def test_the_option_handover_is_what_the_models_give(self):
+        """1.4 인계표의 옵션 물량·도번·전기·요구는 옵션 모델이 낸 값이어야 한다.
+
+        견적은 이 표로 한다 — 표가 모델과 갈라지면 입찰자는 없는 기계를 견적한다."""
+        import option as O
+        import analysis_option as AO
+        body = re.search(r'<div class="n">1\.4</div>(.*?)</div></div>', self.html, re.S).group(1)
+        t = O.totals()
+        b, o = t["base"], t["opt"]
+        flat = re.sub(r"<[^>]+>", "", body)
+        for label, key, fmt in (("품목", "items", "{:,.0f}"), ("정척", "bars", "{:,.0f}"),
+                                ("시트", "sheets", "{:,.0f}"), ("운반", "trucks", "{:,.0f}"),
+                                ("구매품", "buy", "{:,.0f}")):
+            self.assertIn(f"{label} {fmt.format(b[key])} → {fmt.format(o[key])}", flat, label)
+        self.assertIn(f"총질량 {b['kg'] / 1000:.1f} → {o['kg'] / 1000:.1f} t", flat)
+        reg = O.drawing_register()
+        self.assertIn(f"표준 부품도 {len(reg['same'])} 장", flat)
+        self.assertIn(f"{len(reg['new'])} 장이 새로 선다", flat)
+        with O.pinned():
+            e = O.EL_T.summary()
+        for tok in (f"연결부하 {e['kw']:.0f} kW", f"FLA {e['fla']:.0f} A", f"주차단기 {e['main_af']} AF",
+                    f"변압기 {e['tr_kva']:.0f} kVA", f"SCCR {e['sccr_ka']} kA"):
+            self.assertIn(tok, flat, tok)
+        ids = [q.id for q in AO.requirements()]
+        self.assertIn(f"{ids[0]}~{ids[-1]}", flat, "옵션 요구 범위가 CAL-001 12 장과 다르다")
+        tw = console_consts.layouts()["twin"]
+        self.assertIn(f"{int(tw['lamps'] // 2)} → {int(tw['lamps'])}", flat, "옵션 램프 수가 콘솔과 다르다")
+        # 옵션 순생산은 옵션 사이클 모델이 낸다 — 모델명(HK120)에서 온 120 이 아니다
+        import variant
+        cy_t = variant.load("twin", "cycle")["cycle"]
+        self.assertIn(f"{int(cy_t.RATE_NET)} 장/h", flat, "1.4 의 옵션 순생산이 옵션 사이클 모델과 다르다")
+        self.assertGreaterEqual(cy_t.RATE_NET, cy_t.NET_TARGET, "옵션 순생산이 옵션 계약(셀 수 × 표준)에 못 미친다")
 
     def test_the_handed_over_console_revision_is_the_one_on_disk(self):
         """사양서가 인계한다고 적은 개정과 콘솔이 스스로 붙이는 개정이 같아야 한다.
@@ -334,7 +394,8 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
         fla = apparent * 1000 / (3 ** 0.5 * volts)
 
         self.assertAlmostEqual(self._num(r"FLA ([\d.]+) A"), round(fla), delta=0.5)
-        self.assertAlmostEqual(self._num(r"([\d.]+) kVA"), apparent, delta=0.05)
+        # 부하표 합계 행의 피상전력 — 문서 첫 'kVA' 는 1.4 옵션 표(변압기)일 수 있다
+        self.assertAlmostEqual(self._num(r"kvar · ([\d.]+) kVA"), apparent, delta=0.05)
         self.assertAlmostEqual(
             self._num(rf"class=\"num\">([\d.]+)</td><td class=\"num\">{fla:.1f}"),
             active / apparent, delta=0.001,
@@ -735,68 +796,49 @@ class TestProcurementTerms(unittest.TestCase):
         ):
             self.assertIn(token, table, f"필수 실적에 {why} 가 없다")
 
-    def test_intake_dates_are_ordered_and_after_issue(self):
-        issue = re.search(r"<dd>(\d{4}-\d{2}-\d{2})</dd>", self.html).group(1)
-        dates = re.findall(r'class="num">(\d{4}-\d{2}-\d{2})', self.c12)
-        self.assertEqual(len(dates), 3, "접수 일정이 3행이 아니다")
-        self.assertEqual(dates, sorted(dates), "질의·답변·접수 마감 순서가 뒤집혔다")
-        self.assertGreater(dates[0], issue, "질의 마감이 발행일보다 앞선다")
+    def _offsets(self):
+        """접수 일정 세 행의 '발행일 + N 영업일' 을 읽는다."""
+        rows = re.findall(r'class="num">D \+ (\d+) 영업일', self.c12)
+        self.assertEqual(len(rows), 3, "접수 일정이 발행일 기준 영업일 3행이 아니다")
+        return [int(n) for n in rows]
 
-    def test_the_issue_date_is_the_same_in_all_three_places(self):
-        """발행일은 머리말·접수 일정 표제·꼬리말 세 곳에 적힌다.
+    def test_intake_is_counted_from_issue_in_business_days(self):
+        """날짜를 박아 둔 사양서는 발행이 늦어지면 마감이 먼저 지나 버린다.
 
-        한 곳만 고치면 입찰자는 어느 날짜로 기간을 세야 하는지 알 수 없고,
+        9/7 초안은 질의 마감을 9/18 로 적었고, 발행 전에 그날이 지났다. 기한은
+        발행일(D)에서 영업일로 세고, 달력 날짜는 발행할 때 적는다.
+        """
+        offsets = self._offsets()
+        self.assertEqual(offsets, sorted(offsets), "질의·답변·접수 마감 순서가 뒤집혔다")
+        self.assertEqual(len(set(offsets)), 3, "두 기한이 같은 날이다")
+        self.assertGreater(offsets[0], 0, "질의 마감이 발행일과 같거나 앞선다")
+        self.assertIsNone(re.search(r"\d{4}-\d{2}-\d{2}", self.c12[self.c12.index("12.6"):
+                                                                  self.c12.index("12.7")]),
+                          "12.6 에 달력 날짜가 박혀 있다")
+
+    def test_the_issue_date_is_left_for_issue_in_all_three_places(self):
+        """발행일은 머리말·접수 일정 표제·꼬리말 세 곳에 나온다 — 세 곳 모두 발행 때 적는다.
+
+        한 곳만 날짜로 남으면 입찰자는 어느 날짜로 기간을 세야 하는지 알 수 없고,
         마감을 다투는 순간 그 불일치가 그대로 분쟁이 된다.
         """
-        head = re.search(r"<dt>발행일</dt><dd>(\d{4}-\d{2}-\d{2})</dd>", self.html)
-        self.assertIsNotNone(head, "머리말에 발행일이 없다")
-        caption = re.search(r"<caption>접수 일정 — 본 사양서 발행일 "
-                            r"(\d{4}-\d{2}-\d{2}) 기준</caption>", self.html)
-        self.assertIsNotNone(caption, "접수 일정 표제에 발행일이 없다")
-        foot = re.search(r"DYNAMIC INDUSTRY · (\d{4}-\d{2}-\d{2})</p>", self.html)
-        self.assertIsNotNone(foot, "꼬리말에 발행일이 없다")
-        found = {head.group(1), caption.group(1), foot.group(1)}
-        self.assertEqual(
-            len(found), 1,
-            "발행일이 세 곳에서 갈렸다: 머리말 %s · 표제 %s · 꼬리말 %s"
-            % (head.group(1), caption.group(1), foot.group(1)))
+        self.assertIn("<dt>발행일</dt><dd>발행 시 기재</dd>", self.html, "머리말 발행일")
+        self.assertIn("<caption>접수 일정 — 본 사양서 발행일(D) 기준 영업일</caption>", self.html,
+                      "접수 일정 표제")
+        self.assertIn("DYNAMIC INDUSTRY · 발행일은 발행 시 기재한다</p>", self.html, "꼬리말")
+        self.assertIn("발행일 · 접수처 · 담당자는 <code>발행 시 기재</code>한다", self.c12)
+        self.assertEqual(self.html.count("발행 시 기재"), 3,
+                         "발행 때 적을 칸이 셋(머리말 · 12.6 · 꼬리말)이 아니다")
 
-    def test_every_deadline_falls_on_a_business_day(self):
-        """마감을 휴일에 걸면 그 조항은 그날 지킬 수 없는 조항이 된다.
+    def test_business_days_are_defined(self):
+        """영업일의 정의가 없으면 '+9 영업일' 은 사람마다 다른 날이 된다."""
+        self.assertIn("영업일은 토·일과 관공서 공휴일을 뺀 날", self.c12)
+        self.assertIn("발행할 때 세 기한을 달력 날짜로 바꿔", self.c12)
 
-        2026 년 추석은 9/24(목) – 9/26(토)이고 그 다음 월요일까지 사실상 연휴다.
-        개천절 10/3(토)은 10/5(월)이 대체공휴일, 한글날은 10/9(금)이다.
-        """
-        holidays = {
-            "2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18",
-            "2026-03-01", "2026-03-02", "2026-05-05", "2026-05-24",
-            "2026-05-25", "2026-06-06", "2026-08-15", "2026-08-17",
-            "2026-09-24", "2026-09-25", "2026-09-26", "2026-10-03",
-            "2026-10-05", "2026-10-09", "2026-12-25",
-        }
-        dates = re.findall(r'class="num">(\d{4}-\d{2}-\d{2})', self.c12)
-        self.assertEqual(len(dates), 3, "접수 일정이 3행이 아니다")
-        for d in dates:
-            day = datetime.date(*map(int, d.split("-")))
-            self.assertLess(day.weekday(), 5,
-                            "%s 은 %s요일이다 — 마감을 주말에 걸었다"
-                            % (d, "월화수목금토일"[day.weekday()]))
-            self.assertNotIn(d, holidays, "%s 은 공휴일이다 — 마감이 설 수 없다" % d)
-
-    def test_the_proposal_window_clears_the_chuseok_holiday(self):
-        """답변 회신부터 접수 마감까지 실제로 몇 영업일인지 센다."""
-        closed = {
-            "2026-09-24", "2026-09-25", "2026-09-26", "2026-10-03",
-            "2026-10-05", "2026-10-09",
-        }
-        dates = re.findall(r'class="num">(\d{4}-\d{2}-\d{2})', self.c12)
-        reply = datetime.date(*map(int, dates[1].split("-")))
-        close = datetime.date(*map(int, dates[2].split("-")))
-        working, day = 0, reply + datetime.timedelta(days=1)
-        while day <= close:
-            if day.weekday() < 5 and day.isoformat() not in closed:
-                working += 1
-            day += datetime.timedelta(days=1)
+    def test_the_proposal_window_is_what_the_text_says(self):
+        """답변 회신부터 접수 마감까지의 영업일을 표에서 세어 본문과 댄다."""
+        offsets = self._offsets()
+        working = offsets[2] - offsets[1]
         self.assertGreaterEqual(
             working, 10,
             "제안서 작성 기간이 %d 영업일뿐이다 — 상세설계 제안에는 짧다" % working)
@@ -805,7 +847,7 @@ class TestProcurementTerms(unittest.TestCase):
         self.assertIsNotNone(stated, "본문이 제안서 작성 기간을 영업일로 밝히지 않았다")
         self.assertEqual(
             int(stated.group(1)), working,
-            "본문은 %s 영업일이라 적었는데 표의 날짜로 세면 %d 영업일이다"
+            "본문은 %s 영업일이라 적었는데 표로 세면 %d 영업일이다"
             % (stated.group(1), working))
 
     def test_payment_is_tied_to_approval_not_submission(self):
@@ -910,3 +952,49 @@ class TestTheSafetyIoBudgetFollowsTheAirlock(unittest.TestCase):
                       "7.1 의 안전 I/O 선언이 실행 모델의 예산과 다르다")
         self.assertIn(f"실사용 F-DI {used[M.FDI]}", plain,
                       "실사용 F-DI 가 모델과 다르다")
+
+
+class TestTheGuardEnvelopeIsTheFence(unittest.TestCase):
+    """방호구획 치수는 부품 카탈로그가 세는 방책에서 나온다.
+
+    3.2 한 문단이 납품 방호구획을 21,000 × 8,160 으로 적고, 몇 줄 아래에서 같은 방호
+    범위를 19,260 × 8,160 으로 적고 있었다 — 19,260 은 기계 전장이다. 방책을 세는 것은
+    카탈로그(M-013 · 콘솔 cFence 의 구간)이므로 사양서의 치수를 거기에 댄다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import parts
+        cls.P = parts
+        cls.plain = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", RFQ.read_text(encoding="utf-8")))
+
+    @staticmethod
+    def _n(s):
+        return int(s.replace(",", ""))
+
+    def test_every_guard_envelope_is_the_fence_box(self):
+        L, W = (round(v) for v in self.P.FENCE_BOX)
+        found = []
+        for m in re.finditer(r"(방호구획|방호 범위|안전펜스)[^×]{0,20}?(\d{1,2},\d{3}) × (\d{1,2},\d{3})",
+                             self.plain):
+            if "REV.20" in self.plain[max(0, m.start() - 20):m.start()]:
+                continue                                   # 선행 개정의 방호구획은 이력이다
+            found.append((m.group(1), self._n(m.group(2)), self._n(m.group(3))))
+        self.assertGreaterEqual(len(found), 3, f"방호구획 치수를 적은 자리가 줄었다: {found}")
+        for what, a, b in found:
+            self.assertEqual((a, b), (L, W), f"{what} {a:,} × {b:,} — 방책은 {L:,} × {W:,} 다")
+
+    def test_the_envelope_is_explained_from_the_machine(self):
+        """길이 = 기계 전장 + 앞뒤 여유 · 폭 = 라인 중심에서 양쪽 방책까지."""
+        m = re.search(r"기계 전장은 ([\d,]+) mm", self.plain)
+        self.assertIsNotNone(m, "3.2 가 기계 전장을 적지 않는다")
+        self.assertEqual(self._n(m.group(1)), round(self.P.LINE_LEN))
+        m = re.search(r"앞뒤로 ([\d,]+) · ([\d,]+) 을 더한", self.plain)
+        self.assertIsNotNone(m, "방호 범위의 길이가 어디서 오는지 적지 않는다")
+        front, back = self._n(m.group(1)), self._n(m.group(2))
+        self.assertEqual(front, round(-1000 * console_consts.const("CFENCE_X0")))
+        self.assertEqual(round(self.P.LINE_LEN) + front + back, round(self.P.FENCE_BOX[0]))
+        m = re.search(r"\+Y ([\d,]+) · 반출 쪽\(−Y\) ([\d,]+) mm", self.plain)
+        self.assertIsNotNone(m, "방호 범위의 폭을 양쪽으로 나눠 적지 않는다")
+        self.assertEqual((self._n(m.group(1)), self._n(m.group(2))),
+                         (round(self.P.FENCE_P), round(self.P.FENCE_N)))

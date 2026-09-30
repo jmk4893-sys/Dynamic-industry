@@ -311,3 +311,162 @@ class TestTheLampIsBoughtWithItsGuarantee(unittest.TestCase):
         self.assertGreater(len(rows), 40, "구매품이 없다면 이 시험이 지키는 것이 없다")
         missing = [r[0].pid for r in rows if r[0].pid not in PR.BUY_SPEC]
         self.assertEqual(missing, [], f"구매 사양이 없는 품목: {missing}")
+
+
+class TestHardenedStockIsNotBoughtAtFinishThickness(unittest.TestCase):
+    """소입 후 연삭하는 재질은 완성 두께로 사지 않는다.
+
+    한동안 SKD11 칼날 인서트를 도면 두께 t8 그대로 사게 잡았다. 인서트는
+    풀림 상태로 사서 황삭 → 진공소입 · 심랭 · 뜨임 → 양면 연삭 → MC-401 한
+    평면 연삭을 거친다. 완성 두께로 사면 소입 변형을 잡을 몫도 흑피 · 탈탄층을
+    걷어 낼 몫도 없다 — 휜 판을 연삭하면 8 이 남지 않는다. 사야 하는 두께는
+    완성에서 거꾸로 풀고, 그 값을 유통 두께로 올린다.
+    """
+
+    def _hardened(self):
+        return [p for p in PT.P if not p.buy and p.mat in PR.HARDENED
+                and p.shape.kind in ("PL", "SLAB")]
+
+    def test_no_hardened_part_is_bought_at_its_finish_thickness(self):
+        parts = self._hardened()
+        self.assertTrue(parts, "소입 재질 판 부품이 하나도 없다 — 규칙이 아무것도 안 본다")
+        for p in parts:
+            self.assertGreater(PR.stock_t(p), p.shape.d["t"],
+                               f"{p.pid} {p.name} 을 완성 두께 t{p.shape.d['t']:g} 로 산다")
+
+    def test_the_stock_covers_every_allowance_and_is_the_thinnest_that_does(self):
+        for r in PR.hardened_route():
+            need = r["t"] + r["extra"] + 2 * (r["skin"] + r["grind"])
+            self.assertAlmostEqual(r["need"], need, places=9)
+            avail = PR.PLATE_THICK[r["mat"]]
+            self.assertIn(r["stock"], avail, f"{r['pid']} 소재 t{r['stock']:g} 가 유통 두께가 아니다")
+            self.assertGreaterEqual(r["stock"], need - 1e-9,
+                                    f"{r['pid']} 소재가 여유를 다 덮지 못한다")
+            thinner = [x for x in avail if need - 1e-9 <= x < r["stock"]]
+            self.assertEqual(thinner, [], f"{r['pid']} 은 더 얇은 유통 두께로 된다")
+
+    def test_the_inserts_start_from_the_d502_delivery_thickness(self):
+        """인서트는 MC-401 에서 한 번 더 연삭된다 — D-502 가 적은 납품 두께가 출발점이다."""
+        import knife_edge as KE
+        inserts = [p for p in self._hardened() if p.shape.d["t"] == KE.T]
+        self.assertEqual(sorted(p.pid for p in inserts), ["P-005-15", "P-005-16"])
+        for p in inserts:
+            self.assertEqual(PR.DELIVERY_STOCK.get(p.pid), KE.GRIND_STOCK,
+                             f"{p.pid} 이 MC-401 연삭 여유 없이 풀린다")
+        console = (ROOT / "docs" / "drawings" / "pv-delamination-3d.html").read_text(encoding="utf-8")
+        self.assertIn("['두께',`${T} (납품 ${f1(T+E.stock)})`", console,
+                      "D-502 가 납품 두께를 적지 않는다 — 조달이 기대는 값이다")
+
+    def test_the_plate_lot_buys_the_stock_thickness(self):
+        lots = {(l.mat, l.t): l for l in PR.plate_lots()}
+        for r in PR.hardened_route():
+            lot = lots.get((r["mat"], r["stock"]))
+            self.assertIsNotNone(lot, f"{r['pid']} 의 소재 t{r['stock']:g} 로트가 없다")
+            self.assertIn(r["pid"], [pid for *_x, pid in lot.pieces])
+            self.assertIn(r["t"], lot.t_fin, "로트가 제 완성 두께를 모른다")
+        self.assertNotIn(("SKD11", 8.0), lots, "SKD11 인서트를 완성 두께 t8 로 산다")
+
+    def test_the_ground_bar_route_is_reported_honestly(self):
+        """연삭 평강으로 사면 흑피 몫이 빠진다 — 그래도 같은 두께인지 문서가 말한다."""
+        html = GEN.OUT.read_text(encoding="utf-8")
+        route = PR.hardened_route()
+        if all(r["stock"] == r["stock_ground"] for r in route):
+            self.assertIn("사는 두께는 같다", html)
+            for r in route:
+                self.assertIn(f'{r["need_ground"]:.1f}', html)
+        else:
+            self.assertIn("형태를 정하고 발주한다", html)
+
+    def test_the_guide_shows_the_stock_and_the_route(self):
+        html = GEN.OUT.read_text(encoding="utf-8")
+        self.assertIn("SKD11 은 완성 두께로 사지 않는다", html)
+        for r in PR.hardened_route():
+            self.assertIn(f'<td class="num"><strong>t{r["stock"]:g}</strong></td>', html,
+                          f"{r['pid']} 의 소재 두께가 풀이 표에 없다")
+            self.assertIn(f'<td class="num">{r["need"]:.1f}</td>', html)
+        for lot in PR.plate_lots():
+            if lot.mat in PR.HARDENED:
+                self.assertIn(f'{lot.t:g} t · 완성', html, "발주표가 사는 두께와 완성 두께를 함께 적지 않는다")
+
+
+class TestTheSpareInsertsShareTheProductionLot(unittest.TestCase):
+    """예비 인서트는 본품과 한 소재 로트로 사서 한 열처리 배치에 넣는다 (발주자 결정 9/30).
+
+    경도와 소입 변형 이력이 같아야 교체한 조각이 나머지와 MC-401 한 평면 연삭에 한 번에
+    맞는다. 한동안 예비 인서트는 예비품 목록에만 있고 그 소재는 아무도 사지 않았다 —
+    판재 로트가 본품 수량만 셌다.
+    """
+
+    def _lot_of(self, lots, pid):
+        for lot in lots:
+            if pid in [x[-1] for x in lot.pieces]:
+                return lot
+        self.fail(f"{pid} 가 어느 판재 로트에도 없다")
+
+    def test_the_spares_are_sets_of_the_production_inserts(self):
+        qty = {p.pid: p.qty for p in PT.P}
+        self.assertEqual(sorted(PR.MADE_SPARES), ["P-005-15", "P-005-16"])
+        for pid, n in PR.MADE_SPARES.items():
+            self.assertEqual(n, PR.INSERT_SPARE_SETS * qty[pid], f"{pid} 예비가 본품의 벌 수가 아니다")
+
+    def test_the_spares_are_cut_from_the_same_lot(self):
+        qty = {p.pid: p.qty for p in PT.P}
+        lots = PR.plate_lots()
+        for pid, n in PR.MADE_SPARES.items():
+            lot = self._lot_of(lots, pid)
+            got = sum(q for _L, _W, q, x in lot.pieces if x == pid)
+            self.assertEqual(got, qty[pid] + n, f"{pid} 로트가 예비 {n} 개를 사지 않는다")
+        ins = {id(self._lot_of(lots, pid)) for pid in PR.MADE_SPARES}
+        self.assertEqual(len(ins), 1, "중앙과 계단 인서트가 서로 다른 로트다 — 한 로트로 산다")
+        lot = self._lot_of(lots, "P-005-15")
+        self.assertEqual(lot.spares, sum(PR.MADE_SPARES.values()))
+
+    def test_the_spares_change_only_the_insert_lot_and_are_really_bought(self):
+        with_, bare = PR.plate_lots(), PR.plate_lots(spares=False)
+        self.assertEqual(len(with_), len(bare))
+        ins = self._lot_of(with_, "P-005-15")
+        for a, b in zip(with_, bare):
+            if a is ins:
+                continue
+            self.assertEqual((a.mat, a.t, a.sheets, a.pieces), (b.mat, b.t, b.sheets, b.pieces),
+                             f"예비 인서트가 {a.mat} t{a.t:g} 로트를 바꿨다")
+        per = {}
+        for L, W, q, pid in ins.pieces:
+            per[pid] = PR.fit_plate(L, W, ins.mat)[1]
+        import math
+        self.assertEqual(ins.sheets, math.ceil(sum(q / per[pid] for _L, _W, q, pid in ins.pieces)))
+        base = self._lot_of(bare, "P-005-15")
+        self.assertGreater(ins.sheets, base.sheets, "예비를 더했는데 사는 평강이 늘지 않는다")
+
+    def test_the_spare_list_says_the_same_count_and_the_same_lot(self):
+        for pid, n in PR.MADE_SPARES.items():
+            txt = PR.SPARES[pid]
+            self.assertIn(f"{n}개", txt, f"{pid} 예비품 목록의 개수가 로트와 다르다")
+            self.assertIn("한 소재 로트", txt)
+            self.assertIn("한 열처리 배치", txt)
+
+    def test_the_guide_says_why_the_lot_grows(self):
+        html = GEN.OUT.read_text(encoding="utf-8")
+        lot = self._lot_of(PR.plate_lots(), "P-005-15")
+        bare = self._lot_of(PR.plate_lots(spares=False), "P-005-15")
+        self.assertIn("예비 인서트는 본품과 한 소재 로트로 사서 한 열처리 배치에 넣는다", html)
+        self.assertIn(f'<span class="m">{bare.sheets}</span> 본에서 <strong>{lot.sheets} 본</strong>', html)
+        qty = sum(p.qty for p in PT.P if p.pid in PR.MADE_SPARES)
+        self.assertIn(f'<td class="num">{qty} + 예비 {lot.spares}</td>', html,
+                      "풀이 표가 본품과 예비를 나눠 적지 않는다")
+        self.assertIn(f" (예비 {lot.spares})</td>", html, "발주표 조각 수가 예비를 말하지 않는다")
+
+    def test_the_fabrication_spec_keeps_the_heat_treatment_batch(self):
+        import fab_spec as F
+        use = F.MATERIALS["SKD11"]["use"]
+        self.assertIn("한 소재 로트", use)
+        self.assertIn("한 열처리 배치", use, "제작 지침서가 예비를 따로 열처리해도 된다고 읽힌다")
+
+    def test_the_option_keeps_two_sets_per_cell(self):
+        import option as O
+        import variant as V
+        opt = V.load(O.LID, "procure")["procure"]
+        self.assertEqual(opt.MADE_SPARES, {pid: 2 * n for pid, n in PR.MADE_SPARES.items()},
+                         "옵션은 칼날 두 자루가 같은 속도로 닳는다 — 예비도 셀 수만큼")
+        lot = [l for l in opt.plate_lots() if "P-005-15" in [x[-1] for x in l.pieces]][0]
+        self.assertEqual(lot.spares, sum(opt.MADE_SPARES.values()))

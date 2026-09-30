@@ -65,7 +65,10 @@ def sync(text: str) -> tuple[str, list[str]]:
         tds = [k for k, x in enumerate(parts_) if x.startswith("<td")]
         if len(tds) < 10:
             continue
-        for idx, val in ((5, f"{j['N']:.2f}"), (6, f"{j['V']:.2f}"), (7, f"{j['util']:.2f}")):
+        # 이름 칸도 계산기가 쓴다 — 경계 플랜지 관경이 풍량에서 나오게 된 날(Ø600 → 450)
+        # 값 열은 따라왔는데 'Ø600 플랜지' 라는 이름이 남았다.
+        for idx, val in ((1, j["name"]), (5, f"{j['N']:.2f}"), (6, f"{j['V']:.2f}"),
+                         (7, f"{j['util']:.2f}")):
             cur = re.search(r"<td[^>]*>(.*?)</td>", parts_[tds[idx]]).group(1)
             if cur != val:
                 parts_[tds[idx]] = parts_[tds[idx]].replace(">" + cur + "<", ">" + val + "<")
@@ -146,7 +149,28 @@ def sync(text: str) -> tuple[str, list[str]]:
                 log.append(f"용접 {name} 용접장 {cur_l} → {want_l}")
             lines[i] = ln
             break
-    return "\n".join(lines), log
+
+    # ── 앵커 표: 행 전체
+    # 앵커군은 카탈로그 한 표(parts.ANCHOR_GROUPS)가 정한다. 이 표를 손으로 적던 동안
+    # 가열실이 A2(기초도는 A1)로 불렸고, CE-201 은 판에 구멍이 없는 M16 × 4 였고,
+    # 기초도의 열네 군 가운데 여섯만 실렸다. 칸을 고치는 대신 행을 전부 다시 쓴다.
+    text = "\n".join(lines)
+    cap = text.index("<caption>접착식 앵커")
+    b0 = text.index("<tbody>", cap) + len("<tbody>")
+    b1 = text.index("</tbody>", b0)
+    rows = "".join(
+        f'\n<tr><td class="k">{a["id"]}</td><td>{a["eq"]} · {a["part"]}</td>'
+        f'<td class="k">{a["size"]} × {a["n"]}</td><td class="num">{a["hef"]:.0f}</td>'
+        f'<td class="num">{a["steel"]:.1f}</td><td class="num">{a["cone"]:.1f}</td>'
+        f'<td class="num">{a["bond"]:.1f}</td><td class="k">{a["gov"]}</td>'
+        f'<td class="num">{a["edge"]:.0f}</td>'
+        f'<td class="num">{a["s_plate"]:.0f} / {a["spacing"]:.0f}</td>'
+        f'<td class="num">{a["Nrd_g"]:.1f}</td><td class="num">{a["slab"]:.0f}</td></tr>'
+        for a in F.ANCHORS) + "\n      "
+    if text[b0:b1] != rows:
+        log.append(f"앵커 표 {text[b0:b1].count('<tr>')} 행 → {len(F.ANCHORS)} 행")
+        text = text[:b0] + rows + text[b1:]
+    return text, log
 
 
 if __name__ == "__main__":

@@ -253,10 +253,15 @@ class TestTheKnifeSheetsDoNotOverprint(unittest.TestCase):
                         "교환 시간 상자가 표제란(y 548)으로 흐른다")
 
     def test_d501_depth_is_dimensioned_as_the_sum_it_names(self):
-        """280 을 '깊이 240 + 홀더 120' 이라 적으면 도면을 믿는 사람이 360 을 280 으로 깎는다."""
+        """280 을 '깊이 240 + 홀더 120' 이라 적으면 도면을 믿는 사람이 360 을 280 으로 깎는다.
+
+        120 은 홀더가 아니라 조각 단면이다 — 인서트 코 12 가 홀더 몸통 108 앞으로 나온다
+        (D-502). '홀더 120' 이라 적으면 P-005-25/26 의 108 과 갈라진다."""
         body = _fn(self.src, "cassetteDrawing")
-        self.assertIn("`${mm(KNIFE_DEPTH+CASS_W)} (깊이 ${mm(KNIFE_DEPTH)} + 홀더 ${mm(CASS_W)})`", body)
+        self.assertIn("`${mm(KNIFE_DEPTH+CASS_W)} (깊이 ${mm(KNIFE_DEPTH)} + 조각 ${mm(CASS_W)})`", body)
         self.assertNotIn("KNIFE_DEPTH-KNIFE_RISE+CASS_W", body)
+        self.assertNotIn("+ 홀더 ${mm(CASS_W)}", body, "조각 단면 120 을 홀더라 부른다")
+        self.assertNotIn("홀더 단면 ${mm(CASS_W)}", body, "조각 단면 120 을 홀더라 부른다")
 
     def test_f005_travel_arrow_is_off_the_centre_dimension(self):
         body = _fn(self.src, "tandemFabDrawing")
@@ -315,18 +320,23 @@ class TestTheCoolerSheetDefinesOnlyTheDifference(unittest.TestCase):
         for token in ("MASS_GLASS", "CP_GLASS", "GCOOL_H", "GCOOL_T_IN", "GCOOL_T_OUT"):
             self.assertIn(token, self.body, f"냉각시간 근거에 {token} 가 없다")
 
-    def test_the_fans_stand_where_the_lamp_banks_did(self):
-        """열원 자리를 대신하는 것이 이 랙의 요지다 — 대수도 단수를 따라간다."""
-        self.assertIn("FANS=DK+1", self.flat, "팬 대수가 단수에서 나오지 않는다")
-        self.assertIn("FANZ=cDeckZ(", self.flat, "팬 높이가 층 상수에서 나오지 않는다")
+    def test_the_banks_stand_where_the_lamp_banks_did(self):
+        """열원 자리를 대신하는 것이 이 랙의 요지다 — 냉각 뱅크가 IR 뱅크 자리(단수 + 1)에 선다.
+
+        한동안 여기에 축류 팬 한 줄(단수 + 1 대)을 그렸다. 팬끼리 · 가운데 기둥과 겹쳤고,
+        옆바람으로는 설계 h 에 필요한 풍량을 급기 필터 면이 받지 못했다 (tests/test_glass_cool.py)."""
+        self.assertIn("BANKS=DK+1", self.flat, "뱅크 수가 단수에서 나오지 않는다")
+        self.assertIn("bankZ=b=>CDECK_Z0+CDECK_DZ*b", self.flat, "뱅크 높이가 IR 뱅크 자리가 아니다")
         self.assertIn("IR 뱅크가 있던 자리", self.body, "무엇을 대신하는지가 도면에 없다")
+        self.assertNotIn("FANS=DK+1", self.flat, "철거한 팬 줄이 남아 있다")
 
     def test_the_sheet_says_the_frame_is_shared_and_not_insulated(self):
         """두 가지가 빠지면 이 도면은 F-002 의 축소 복사본이 된다."""
         self.assertIn("F-002", self.body, "가열실 도면을 준용한다는 말이 없다")
         self.assertIn("준용", self.body, "준용 관계가 적히지 않는다")
         self.assertIn("단열하지 않는다", self.body, "단열하지 않는다는 것이 도면에 없다")
-        self.assertIn("필터 급기면", self.body, "급기면이 도면에 없다")
+        self.assertIn("G4 + F7", self.body, "급기 필터가 도면에 없다")
+        self.assertIn("급기 유닛", self.body, "급기 유닛이 도면에 없다")
         self.assertIn("F-002 부품란", self.body,
                       "부품란이 골조를 준용으로 넘기지 않아 같은 것을 두 번 적는다")
 
@@ -457,9 +467,10 @@ class TestTheForkSheetIsOneDrawingForFour(unittest.TestCase):
         """넷 가운데 하나라도 빠지면 그 문형은 도면 없이 제작된다."""
         for tag in ("LI-101", "EX-101", "GL-101", "GU-101"):
             self.assertIn(tag, self.body, f"{tag} 가 설치 위치표에 없다")
-        for coord in ("CMAST_IN", "CMAST_OUT", "CST.DL.x1+.08", "CST.GC.x1+.34"):
-            self.assertIn(coord, self.flat.replace("+.08", "+.08"),
-                          f"{coord} 좌표가 배치에서 나오지 않는다")
+        # 3D · F-003 · D-602 가 같은 상수를 읽는다 — 식을 도면마다 적으면 한 곳만 옮겨 간다
+        for coord in ("CMAST_IN", "CMAST_OUT", "CMAST_GL", "CMAST_GU"):
+            self.assertIn(coord, self.flat, f"{coord} 좌표가 배치에서 나오지 않는다")
+        self.assertNotIn("CST.GC.x1+.34", self.flat, "F-003 이 GU-101 자리를 따로 적는다")
         self.assertIn("UNITS.length", self.body, "기수가 목록에서 나오지 않는다")
 
     def test_the_height_follows_the_deck_count(self):
@@ -633,10 +644,13 @@ class TestTheArrangementSheetIsFabricationLevel(unittest.TestCase):
 
     def test_every_anchor_coordinate_comes_from_the_layout(self):
         """좌표를 손으로 적으면 배치를 옮길 때 3D 만 따라오고 기초는 옛 자리에 뚫는다."""
-        for name in ("CST.HC.x0", "CST.GC.x1", "CMAST_IN", "CMAST_OUT",
-                     "CRAIL_X0", "CRAIL_X1", "CGY", "CTBL_CX",
-                     "CE_X0", "CKC_SADDLE", "CKC_RACK_Y",
-                     "CFENCE_YN", "FORK_HALF_STD"):
+        # 기둥 앵커(A1 · A2 · A8)는 3D 와 같은 기둥 격자 함수에서 나온다 — 격자가
+        # CTBL_CX · 스테이션 중심을 읽는다 (tests/test_column_grids.py).
+        for name in ("CMAST_IN", "CMAST_OUT", "CMAST_GL", "CMAST_GU",
+                     "CRAIL_X0", "CRAIL_X1", "CGY", "tblColXs()", "tblColYs()",
+                     "rackColXs(CST.HC.cx,CST.HC.w)", "rackColXs(CST.GC.cx,CST.GC.w,GC_COL_INSET)",
+                     "CE_LEG_X0", "CE_LEG_Y1", "CKC_SADDLE", "CKC_RACK_Y", "QI_X", "RH_POST_IN",
+                     "CE_X0", "GATE_W", "FENCE_PITCH", "CFENCE_YN", "FORK_HALF_STD"):
             self.assertIn(name, self.body, f"앵커 좌표가 {name} 에서 나오지 않는다")
         # 평면 좌표계 자체도 방책선에서 나온다
         self.assertIn("PX=x=>33+(x-CFENCE_X0)*S", self.flat.replace(" ", ""))
@@ -678,15 +692,16 @@ class TestTheArrangementSheetIsFabricationLevel(unittest.TestCase):
                          ("compactView()", "배치 상태를 본다")):
             self.assertNotIn(bad, self.body, f"D-602 가 {why}")
 
-    def test_the_shared_foundation_is_not_counted_twice(self):
-        """RH-201 내측 기둥과 KG-101 레일 문형은 같은 자리다.
+    def test_the_monorail_inner_post_stands_on_its_own_plate(self):
+        """RH-201 안쪽 기둥은 KG-101 문형 기둥 바깥에 따로 선다.
 
-        3D 가 두 함수에서 각각 기둥을 세우므로 그대로 세면 앵커가 하나 더
-        잡히고, 기초가 있지도 않은 자리에 하나 더 들어간다."""
-        self.assertIn("A7 과 기초 공용", self.body,
-                      "공용 기초가 도면에 표시되지 않는다")
-        self.assertIn("pts:grid([CRAIL_X0],[-(CFENCE_YN+.10)])", self.body,
-                      "모노레일 앵커가 아직 내측 기둥을 중복해 센다")
+        한동안 두 기둥이 같은 좌표였다 — 3D 는 두 기둥을 겹쳐 그렸고, 기초도는
+        'A7 과 기초 공용' 이라며 앵커를 하나만 셌고, 카탈로그는 기둥 둘 · 판 둘을
+        샀다. 정밀 문형에 호이스트를 싣지 않는다 — 안쪽 기둥은 자기 판을 갖는다
+        (판 사이 틈은 tests/test_foundation.py)."""
+        self.assertNotIn("A7 과 기초 공용", self.body, "공용 기초라는 옛 주기가 남아 있다")
+        self.assertIn("pts:grid([CRAIL_X0],[-(CFENCE_YN+.10),RH_POST_IN])", self.body,
+                      "모노레일 앵커가 안쪽 기둥을 세지 않는다")
 
     def test_it_does_not_pretend_to_know_the_bolt_or_the_dead_load(self):
         """모르는 값을 적는 순간 도면이 근거를 잃는다.
@@ -925,8 +940,11 @@ class TestTheSpecificationAgreesAboutWhatWasHandedOver(unittest.TestCase):
 
     def test_the_clause_says_what_the_foundation_sheet_does_not_fix(self):
         """앵커 위치만 정한 도면을 받아 바로 타설하면 그 기초는 다시 깬다."""
-        self.assertIn("앵커볼트 규격·매입깊이·연단거리·기초 두께·배근은 정하지", self.rfq,
+        flat = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", self.rfq))
+        self.assertIn("앵커볼트 규격·매입깊이·연단거리·기초 두께·배근을 확정하지는 않는다", flat,
                       "1.2 가 D-602 의 한계를 밝히지 않는다")
+        self.assertIn("FAB-001 10.1 의 설계 기준", flat,
+                      "1.2 가 D-602 앵커 규격의 출처를 밝히지 않는다")
 
 
 if __name__ == "__main__":

@@ -329,10 +329,10 @@ class TestTheThermalResultsFollowThePhysics(unittest.TestCase):
                            "금속 스페이서가 안전하면 GFRP 를 쓸 이유가 없다")
 
     def test_the_wall_is_a_small_part_of_the_loss_budget(self):
-        """65 % 효율의 나머지가 벽이 아니라는 것이 파일럿 PT-05 의 근거다."""
+        """65 % 효율의 나머지가 벽이 아니다 — 그 나머지를 열수지가 센다 (HB2)."""
         _, ex = TH.run()
         w = ex["chamber_wall"]
-        self.assertLess(w["q_gfrp"] * w["area"] / 1000, 0.5 * 35.0)
+        self.assertLess(w["q_gfrp"] * w["area"] / 1000, 0.5 * TH.LOSS_BUDGET)
 
     def test_cooling_matches_the_console_lumped_solution(self):
         """콘솔의 LMTD 식과 과도해가 5 % 안에서 같아야 한다 — 다르면

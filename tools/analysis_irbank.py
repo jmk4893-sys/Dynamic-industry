@@ -8,22 +8,24 @@
 140 ℃ 에 닿을 때까지 소킹한다** 이기 때문에, 면내 편차는 두 곳을 동시에
 친다:
 
-    ① 체류시간이 늘어난다      → 처리량이 깎인다 (계약 60 장/h)
+    ① 체류시간이 늘어난다      → 처리량이 깎인다 (계약 58 장/h)
     ② 중앙이 넘친다            → 백시트가 녹는다 (PVDF 165 ℃)
 
 ②가 창을 정한다. 165 − 140 − 7(두께방향 오프셋) = **18 K** 밖에 없다.
 유리 열응력이 주는 21 K 보다 **더 좁다** — 유리보다 백시트가 먼저 진다.
 
 ── 현행 설계로는 닫히지 않는다 ────────────────────────────────────
-카탈로그의 램프는 **1,300 mm** 이고 패널 폭은 1,200 mm 다. 끝단 여유가
-50 mm 뿐이라 유한 선원의 끝에서 유속이 급락한다 — 폭 가장자리가 중앙의
-69 % 다. 균등 배치의 길이 방향 결손(끝단)까지 더하면 면내 편차가
-**87 K** 이고, 냉점을 140 에 올리면 백시트가 **235 ℃** 로 사라진다.
-체류는 327 초로 늘어 처리량이 49.5 장/h 로 떨어진다 — 계약이 깨진다.
+관습대로 램프를 패널 폭 1,400 + 끝단 여유 2×50 = **1,500 mm** 로 잡으면
+끝단 여유가 50 mm 뿐이라 유한 선원의 끝에서 유속이 급락한다 — 폭
+가장자리가 중앙의 68 % 다. 균등 배치의 길이 방향 결손(끝단)까지 더하면
+면내 편차가 **96 K** 이고, 냉점을 140 에 올리면 백시트가 **240 ℃** 로
+사라진다. 체류는 348 초로 늘어 처리량이 46.6 장/h 로 떨어진다 — 계약이
+깨진다. (숫자는 REV.21C 포락선 2,500 × 1,400 의 값 — 보고서 값은 run() 이
+낸다. 2,400 × 1,200 시절에는 1,300 mm · 87 K 였다.)
 
 ── 무엇이 듣고 무엇이 안 듣는가 ──────────────────────────────────
 · **램프 발열장**  가장 크게 듣는다. 결손이 램프 축을 따라 있기 때문이다
-· **길이방향 배치**  듣는다. 끝을 바깥으로 밀어 ±1,340 까지 쓴다
+· **길이방향 배치**  듣는다. 끝을 바깥으로 밀어 ±1,390 까지 쓴다
 · **내피 반사율**  크게 듣는다. 연마 STS 가 하는 일이 장식이 아니었다
 · **인접 뱅크 반피치 엇갈림**  **안 듣는다.** 오히려 나빠진다 — 편차의
   정체가 램프 사이 맥놀이가 아니라 가장자리 결손이라, 엇갈리면 끝쪽
@@ -48,10 +50,13 @@ from typing import NamedTuple
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
+import re  # noqa: E402
+
+import analysis_thermal as TH  # noqa: E402
 import cycle as CY  # noqa: E402
 import irbank as IR  # noqa: E402
 from analysis_thermal import Result  # noqa: E402
-from console_consts import const as c  # noqa: E402
+from console_consts import CONSOLE, const as c  # noqa: E402
 
 TAKT = round(CY.TAKT, 1)          # s 라인 사이클 (콘솔 thermalModel) — 피치가 이보다 짧아야 한다
 DWELL_MAX = TAKT * IR.DECKS       # s 체류 상한 = 택트 × 단수
@@ -69,8 +74,24 @@ NOW_N = IR.LAMPS // (IR.DECKS + 1)               # 뱅크당 램프 — 6뱅크 
 NOW_SPAN = IR.DECK_L - 0.30                      # 균등 배치 스팬 — 데크 안쪽 150
 NOW_LEN = c("PANEL_W") + 0.10                    # 관습 발열장 — 패널 폭 + 2×50
 NEW_LEN = IR.LAMP_LEN                            # 발열장 — 공동 폭 −100 · 단자는 벽 밖 (콘솔 LAMP_HEAT)
-# IR.optimize(8, length=NEW_LEN) — 면내 편차 최소 · 인접 뱅크 동일 위치 (엇갈림은 나빠진다)
-NEW_X = (-1.390, -1.062, -0.637, -0.213, 0.213, 0.637, 1.062, 1.390)
+
+
+def lamp_pos(n: int) -> tuple:
+    """콘솔 LAMP_POS 의 뱅크당 n 등 배치 — IR.optimize(n, length=NEW_LEN) 가 낸 값이다.
+
+    위치는 콘솔 한 곳에 산다. 옵션(8 뱅크 × 12)이 쓰는 12 등 배치도 같은 표에 있다 —
+    값을 여기 다시 적으면 둘 중 하나만 고쳐지는 날이 온다."""
+    src = CONSOLE.read_text(encoding="utf-8")
+    body = re.search(r"const LAMP_POS=\{(.*?)\};", src, re.S).group(1)
+    tab = {int(k): tuple(float(x) for x in v.split(","))
+           for k, v in re.findall(r"(\d+):\[([^\]]+)\]", body)}
+    return tab[n]
+
+
+# 면내 편차 최소 · 인접 뱅크 동일 위치 (엇갈림은 나빠진다) — 뱅크당 램프 수로 표에서 고른다
+NEW_X = lamp_pos(NOW_N)
+_T2 = TH.soak(TH.FLUX)
+BACK_LEAD = _T2["t_back"] - TH.T_TARGET          # K — 설계유속에서 백시트가 계면보다 앞서는 몫 (T2)
 RHO_SPEC = 0.40         # 내피 반사율 **하한** — 사양·검사·정비 항목
 RHO_POLISHED = 0.80     # 연마 STS304 #400 (ε 0.2) 의 실제값
 
@@ -80,9 +101,9 @@ def _case(lamps, rho):
     dwell, T = IR.soak_to_cold(f, T_TARGET)
     s = IR.stats(T)
     nx, ny = len(f.xs), len(f.ys)
-    # 백시트는 계면보다 두께 방향으로 앞선다. 설계유속 4,514 W/m² 에서
-    # 7.0 K 였으므로(CAL-001 T2) 국부 유속에 비례해 늘린다.
-    back = s["centre"] + 7.0 * f.E[nx // 2][ny // 2] / 4514.0
+    # 백시트는 계면보다 두께 방향으로 앞선다. 그 앞섬은 1 차원 해석(CAL-001 T2)이
+    # 설계유속에서 낸 값이고, 국부 유속에 비례해 늘린다.
+    back = s["centre"] + BACK_LEAD * f.E[nx // 2][ny // 2] / TH.FLUX
     # 처리량은 반올림하지 않은 택트로 낸다 — 표시용 54.3 으로 나누면 사양서의
     # 순생산(cycle.RATE_NET)과 소수 첫째 자리가 갈라진다.
     return dict(field=f, dwell=dwell, back=back, pitch=dwell / IR.DECKS,

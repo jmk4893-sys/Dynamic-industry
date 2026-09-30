@@ -31,16 +31,23 @@ DEFAULT = obj("MODEL_DEFAULT")
 RANGE = obj("MODEL_RANGE")
 
 
-def model(v: dict | None = None, knife_depth: float | None = None, **over) -> dict:
+def model(v: dict | None = None, knife_depth: float | None = None,
+          plant: dict | None = None, **over) -> dict:
     """콘솔 thermalModel(v) — 입력 한 벌에서 열수지·칼날·라인 사이클을 낸다.
 
     knife_depth 는 계단 깊이(mm, 첫 칼끝에서 마지막 칼끝까지)를 콘솔 MODEL 의
     값(KNIFE_DEPTH · 240) 대신 넣을 때 쓴다 — 단높이·단수를 바꿔 보는 계산기
     (knife_stepped.py)가 쓴다. 안 주면 콘솔과 같은 식·같은 값이다
     (tests/test_cycle.py 가 대조).
+
+    plant 는 MODEL 의 설비 가정(dT · lamps …)을 바꿔 본다. 사양서가 "같은
+    설비에서 온도만 바꾸면" · "같은 칼날로 램프만 줄이면" 을 적는 자리가
+    이것으로 계산된다 — 손으로 셈한 비교값은 설비가 바뀐 날 옛 값으로 남는다.
     """
     v = {**DEFAULT, **(v or {}), **over}
-    m = MODEL if knife_depth is None else {**MODEL, "knifeDepth": knife_depth}
+    m = {**MODEL, **(plant or {})}
+    if knife_depth is not None:
+        m["knifeDepth"] = knife_depth
     q = v["panelLength"] * v["panelWidth"] / 1e6 * m["arealCp"] * m["dT"]     # kJ/장
     rated = m["lamps"] * v["lampPower"]
     eta = v["heatEfficiency"] / 100
@@ -51,7 +58,8 @@ def model(v: dict | None = None, knife_depth: float | None = None, **over) -> di
     handling = m["rapidDistance"] / v["rapidSpeed"] + v["handlingTime"]
     lead = m["knifeDepth"] / v["knifeSpeed"]
     carrier = lead + v["panelLength"] / v["knifeSpeed"] + handling
-    line_cycle = max(pitch, carrier)
+    cells = m["cells"]                     # 칼날 셀 수 — 둘이면 칼날 사이클을 반으로 나눠 받는다
+    line_cycle = max(pitch, carrier / cells)
     ret_dist = m["knifeDepth"] + v["panelLength"]
     ret_time = ret_dist / v["knifeReturnSpeed"]
     peel = v["panelLength"] / v["knifeSpeed"]
@@ -60,7 +68,7 @@ def model(v: dict | None = None, knife_depth: float | None = None, **over) -> di
     window = target_cycle - lead - peel
     floor = ret_dist / window if window > 0 else float("inf")
     energy = q / (eta * 3600)                                                  # kWh/장
-    kl_cycle = max(pitch, knife)
+    kl_cycle = max(pitch, knife / cells)
     return dict(
         q=q, rated=rated, eta=eta, useful=useful, dwell=dwell, pitch=pitch,
         thermalRate=thermal_rate, handling=handling, leadTime=lead, peelTime=peel,
@@ -89,7 +97,7 @@ PITCH = _M["pitch"]                      # s 방출 피치
 RATE_THERMAL = _M["thermalRate"]         # 장/h 열공정 한계
 RATE_NOMINAL = _M["knifeLineRate"]       # 장/h 명목
 RATE_NET = net()                         # 장/h 순생산 (가동률 90 %)
-NET_TARGET = int(c("NET_TARGET"))        # 장/h 계약
+NET_TARGET = int(c("NET_TARGET")) * int(MODEL["cells"])   # 장/h 계약 — 옵션은 셀마다 표준의 계약
 AVAILABILITY = MODEL["availability"]
 Q_PANEL_KJ = _M["q"]                     # kJ/장
 USEFUL_KW = _M["useful"]                 # kW 유효 IR 출력

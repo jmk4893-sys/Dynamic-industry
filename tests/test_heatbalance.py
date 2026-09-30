@@ -1,6 +1,6 @@
 """열수지 — 제어체적이 닫히는가, 그리고 왜 닫혀야 하는가.
 
-이 검토의 결론은 숫자가 아니라 **프레임**이다: 30 kW 는 새지 않았고,
+이 검토의 결론은 숫자가 아니라 **프레임**이다: 손실 예산의 나머지는 새지 않았고,
 질문이 두 군데에서 틀려 있었다. 그 결론이 무너지는 방식은 셋이다.
 
   ① **제어체적이 안 닫힌다** — IN 은 OUT 의 합이어야 한다. 항 하나를
@@ -87,7 +87,7 @@ class TestTheTermsAreRight(unittest.TestCase):
         self.assertLess(abs(mass_based / q - 1), 0.01, "질량 가정과 열 가정이 1 % 밖으로 갈라졌다")
 
     def test_the_thermal_limit_rate_reproduces_the_console_useful_power(self):
-        """65 kW 가 어느 운전점의 값인지가 이 검토의 출발점이다."""
+        """콘솔의 '유효' (정격 × η) 가 어느 운전점의 값인지가 이 검토의 출발점이다."""
         self.assertAlmostEqual(HB.panel(HB.RATE_THERMAL),
                                HB.RATED_KW * HB.ETA_ASSUMED, delta=0.6)
         self.assertLess(HB.panel(HB.RATE_CONTRACT),

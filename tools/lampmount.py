@@ -1,6 +1,6 @@
 """램프 지지·관통 상세 — IR 뱅크 검토가 넘긴 RIR4 를 푼다.
 
-발열장을 1,300 → 2,200 으로 늘리고 단자를 측벽 밖으로 뺐다. 그 결정이
+발열장을 관습 1,500 → 2,400 으로 늘리고 단자를 측벽 밖으로 뺐다. 그 결정이
 남긴 상세가 이것이다. 넘길 때 "처짐 · 실링 · 그림자" 셋을 적었는데,
 풀어 보니 **적지 않은 둘이 더 크다**:
 
@@ -12,9 +12,9 @@
                     노출한다" 로 읽히면 램프가 일찍 검어진다**
 
 ── 처짐은 문제가 아니었다 ──────────────────────────────────────────
-Ø25 석영관 2.2 m 의 자중 처짐은 탄성으로 1.8 mm 다. 램프–패널 거리가
-310 mm 이므로 유속 변화는 0.6 % — IR 검토가 잡은 면내 편차 11 K 옆에서
-보이지 않는 값이다. **중간 지지가 필요 없다.** 필요 없으면 그림자도 없다.
+Ø25 석영관 2.4 m 의 자중 처짐은 탄성으로 2.3 mm 다. 램프–패널 거리가
+310 mm 이므로 유속 변화는 0.7 % — IR 검토가 잡은 면내 편차 9 K 옆에서
+보이지 않는 값이다. (숫자는 REV.21C 값 — 보고서 값은 run() 이 낸다.) **중간 지지가 필요 없다.** 필요 없으면 그림자도 없다.
 
 셋 중 둘이 서로를 지운 셈이다: 지지를 안 하니 그림자 문제가 사라진다.
 남는 것은 관의 처짐이 아니라 **관 안의 필라멘트 처짐**이고, 그것은
@@ -22,7 +22,7 @@
 것이 아니다.
 
 ── 관통이 사 오는 대가 ─────────────────────────────────────────────
-80 개소를 뚫는다. 열교는 작지만 **침기**가 크다. 챔버를 부압으로 두면
+96 개소를 뚫는다. 열교는 작지만 **침기**가 크다. 챔버를 부압으로 두면
 (연기를 잡으려면 그래야 한다) 그 구멍으로 찬 공기가 들어오고, 그것을
 140 ℃ 까지 데우는 것이 그대로 손실이다. 실링을 안 하면 벽 손실과 같은
 자릿수가 된다 — 효율 65 % 의 나머지를 찾는 일(R5)에 이 항이 들어간다.
@@ -41,7 +41,6 @@ import analysis_irbank as AIR  # noqa: E402
 import analysis_thermal as TH  # noqa: E402
 import irbank as IR  # noqa: E402
 from analysis_thermal import Req, Result  # noqa: E402
-import cycle as CY  # noqa: E402
 from console_consts import const as c  # noqa: E402
 
 # ── 램프 ─────────────────────────────────────────────────────────────
@@ -74,7 +73,8 @@ CD, RHO_AIR, CP_AIR = 0.62, 1.20, 1005.0
 CAV_W = IR.CAVITY_W * 1000           # 2,500 mm 관통부 사이 거리
 ALPHA_STS = 17.3e-6                  # 1/K STS304 내피 — 강재 중 가장 큰 쪽
 T_SKIN, T_COLD = c("T_TARGET"), 20.0
-LOSS_BUDGET = CY.model()["rated"] - CY.USEFUL_KW   # kW 정격 120 − 유효 78
+LOSS_BUDGET = TH.LOSS_BUDGET         # kW 정격 120 − 유효 78 — 열해석 T12 와 한 값
+SAG_MAX = 5.0                        # mm 처짐 상한 — 거리 310 에서 유속 1.6 %
 
 
 def _section():
@@ -173,15 +173,19 @@ def run():
     m, x_hot, x_cold = pinch()
     blocked, dT_shadow = shadow()
     float_req = diff + 4.0                        # 램프 길이 공차 ±2
+    spread = AIR.new()["spread"]                  # K IR 검토가 만든 면내 편차
+    gap = IR.BANK_GAP * 1000
+    dT_sag = SAG_MAX / gap * (T_SKIN - c("T_AMB"))   # 처짐 상한이 내는 온도차
 
     return [
-        Result("LM1", "석영관 자중 처짐 (2,200 스팬)", d, "mm", 5.0,
-               "유속 1.6 % 를 내는 처짐 — 면내 편차 예산 11 K 의 1/6",
+        Result("LM1", f"석영관 자중 처짐 ({HEAT_L:,.0f} 스팬)", d, "mm", SAG_MAX,
+               f"유속 {SAG_MAX/gap*100:.1f} % 를 내는 처짐 — {dT_sag:.1f} K 로 면내 "
+               f"편차 {spread:.0f} K 의 1/{spread/dT_sag:.0f}",
                f"Ø{OD:.0f}×{WALL:.1f}t · I {I:,.0f} mm⁴ · 관+필라멘트 "
                f"{M_LAMP:.2f} kg. **중간 지지가 필요 없다** — 필요 없으면 "
                f"그림자도 없다. 넘길 때 걱정한 셋 중 둘이 서로를 지웠다"),
         Result("LM2", "처짐이 유속에 주는 변화", dflux * 100, "%", 2.0,
-               "면내 편차 11 K 대비 무시할 수준의 상한",
+               f"면내 편차 {spread:.0f} K 대비 무시할 수준의 상한",
                f"선원은 1/h 로 떨어지므로 {d:.1f} mm 가 "
                f"{IR.BANK_GAP*1000:.0f} mm 거리에서 {dflux:.2%} 다. "
                f"남는 것은 관이 아니라 **관 안 필라멘트의 처짐**이고, 그것은 "
@@ -223,13 +227,13 @@ def run():
                "유리 허용 면내 편차 21 K",
                f"지지대는 가장 가까운 램프의 **직달을 통째로 지운다.** 그 자리 "
                f"유속의 {blocked:.0%} 가 직달이므로 그 줄만 {dT_shadow:.0f} K "
-               f"낮아진다 — IR 검토가 만든 11 K 를 지지대 하나가 넘긴다. "
+               f"낮아진다 — IR 검토가 만든 {spread:.0f} K 를 지지대 하나가 넘긴다. "
                f"LM1 이 지지를 없앴으므로 이 항은 **쓰지 않는 이유의 값**이다"),
     ], dict(sag=d, dflux=dflux, steel=steel, quartz=quartz, diff=diff,
             float_req=float_req, g_low=g_low, g_st=g_st, base_kw=base_kw,
             add_low=add_low, add_st=add_st, kw_seal=kw_seal, kw_raw=kw_raw,
             m3h=m3h, m3h_raw=m3h_raw, x_hot=x_hot, x_cold=x_cold,
-            mlen=1 / m, blocked=blocked, dT_shadow=dT_shadow)
+            mlen=1 / m, blocked=blocked, dT_shadow=dT_shadow, spread=spread)
 
 
 def requirements() -> list[Req]:
@@ -261,7 +265,7 @@ def requirements() -> list[Req]:
             "구매 사양 P-002-18 · 사양 6.3 · OI-16 · SAT 실측 (반영 완료)",
             "구매 사양 (조달 지침서 P-002-18) · 사양서 6.3 · 확인사항 OI-16 · SAT",
             f"관의 처짐은 {ex['sag']:.1f} mm 로 문제가 아니지만 **관 안 "
-            f"필라멘트**는 다르다 — 2.2 m 수평은 내부 지지 없이는 못 간다. "
+            f"필라멘트**는 다르다 — {HEAT_L/1000:.1f} m 수평은 내부 지지 없이는 못 간다. "
             f"봉착부는 발광부에서 {ex['x_hot']:.0f}~{ex['x_cold']:.0f} mm 창에 "
             f"들어와야 하는데 폭이 {ex['x_cold']-ex['x_hot']:.0f} mm 뿐이라 "
             f"우리가 위치를 잡을 문제가 아니다. **제조사가 봉착부 온도를 "
@@ -269,7 +273,7 @@ def requirements() -> list[Req]:
         Req("RLM5", "중간 지지 금지", "발광부 구간에 지지대를 두지 않는다",
             "F-002 제작도 주기 · 조립 지침서",
             f"폭 20 mm 지지대 하나가 그 줄에 {ex['dT_shadow']:.0f} K 차를 만든다 — "
-            f"IR 검토가 만든 11 K 를 혼자 깬다. 처짐이 {ex['sag']:.1f} mm 뿐이라 "
+            f"IR 검토가 만든 {ex['spread']:.0f} K 를 혼자 깬다. 처짐이 {ex['sag']:.1f} mm 뿐이라 "
             f"필요도 없다. **도면에 '지지 금지' 를 적지 않으면 현장이 좋은 뜻으로 "
             f"받쳐 놓는다** — 처지는 것이 보이면 사람은 받치고 싶어진다"),
     ]

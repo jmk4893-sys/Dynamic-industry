@@ -34,7 +34,7 @@ KEYS = ("q", "rated", "eta", "useful", "dwell", "pitch", "thermalRate", "handlin
 
 def js_function():
     src = CONSOLE.read_text(encoding="utf-8")
-    m = re.search(r"\n    function thermalModel\(v\)\{.*?\n    \}\n", src, re.S)
+    m = re.search(r"\n    function thermalModel\(v,plant\)\{.*?\n    \}\n", src, re.S)
     assert m, "콘솔에 thermalModel 이 없다"
     return m.group(0)
 
@@ -72,6 +72,24 @@ class TestTheMirrorIsTheConsole(unittest.TestCase):
             js, py = self._run_js(v), CY.model(v)
             for k in KEYS:
                 self.assertAlmostEqual(js[k], py[k], places=9, msg=f"{k} @ {v}")
+
+    def test_the_option_plant_matches_the_console_function(self):
+        """옵션은 thermalModel 에 설비(단수 · 램프 · 셀)를 넘겨 푼다 — 그 경로도 거울이어야 한다."""
+        if not self.node:
+            self.skipTest("node 가 없다")
+        tw = console_consts.layouts()["twin"]
+        plant = {"decks": tw["decks"], "lamps": tw["lamps"], "cells": tw["cells"]}
+        script = (f"const MODEL={json.dumps(CY.MODEL)};\n{js_function()}\n"
+                  f"process.stdout.write(JSON.stringify(thermalModel({json.dumps(CY.DEFAULT)},"
+                  f"{json.dumps(plant)})));")
+        with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as f:
+            f.write(script)
+        out = subprocess.run([self.node, f.name], capture_output=True, text=True, timeout=60)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        js, py = json.loads(out.stdout), CY.model(plant=plant)
+        for k in KEYS:
+            self.assertAlmostEqual(js[k], py[k], places=9, msg=f"{k}: js {js[k]} · py {py[k]}")
+        self.assertLess(py["pitch"], py["knifeLineCycle"], "옵션 가열실이 두 셀을 못 먹인다")
 
     def test_the_named_values_are_the_default_run(self):
         m = CY.model()

@@ -40,8 +40,12 @@ from typing import NamedTuple
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import therm as T  # noqa: E402
+import console_consts as CC  # noqa: E402
 import cycle as CY  # noqa: E402
+import glass_cool as GL  # noqa: E402  냉각 뱅크 분사 h (T8 · T14)
 from console_consts import const as c  # noqa: E402
+
+GL_STAG = 2.0             # 정체점 h / 분사 면평균 h — 분류 바로 밑은 평균보다 세게 식는다 (보수)
 
 
 class Result(NamedTuple):
@@ -78,15 +82,48 @@ class Req(NamedTuple):
 T_AMB = c("T_AMB")                  # 25 ℃
 T_TARGET = c("T_TARGET")            # 140 ℃ EVA/유리 계면
 DECKS = int(c("DECKS"))             # 5
-LAMPS = int(c("LAMPS"))             # 40
+LAMPS = int(c("LAMPS"))             # 48
 PANEL_L, PANEL_W = c("PANEL_L"), c("PANEL_W")
-PANEL_A = PANEL_L * PANEL_W         # 2.88 m²
+PANEL_A = PANEL_L * PANEL_W         # 3.50 m²
 LAMP_KW = CY.DEFAULT["lampPower"]                 # 콘솔 기본 입력 2.5 kW
 ETA = CY.DEFAULT["heatEfficiency"] / 100          # 0.65
-USEFUL_KW = LAMPS * LAMP_KW * ETA   # 78 kW
+RATED_KW = LAMPS * LAMP_KW          # 120 kW 설치정격
+USEFUL_KW = RATED_KW * ETA          # 78 kW
+# 손실 예산 = 정격 − 유효 (42 kW). T12 가 이 정의로 벽을 재고, 열수지(HB1)가
+# 이 뺄셈이 두 운전점을 섞은 것임을 밝힌다 — 정의를 고치기 전까지는 이 값이
+# 적힌 그대로의 예산이므로 한 곳에서만 낸다 (램프 지지 LM5 도 이것을 쓴다).
+LOSS_BUDGET = RATED_KW - USEFUL_KW
 FLUX = (USEFUL_KW * 1000 / DECKS) / PANEL_A     # W/m² 패널 양면 합
 DWELL = CY.DWELL                    # s 콘솔 열체류 (5장 소킹) — thermalModel 거울
 TAKT = CY.TAKT                      # s 콘솔 라인 사이클
+
+# 이 모듈을 표준 배치로 푸는가 (옵션은 variant 가 핀을 박고 다시 푼다). 사양서에 인쇄된
+# 표준의 숫자와 대조하는 문구는 표준에서만 쓴다.
+STD = CC.active() == "compact"
+_STD = CC.layouts()["compact"]
+
+
+def corner_flux(lamps: int, decks: int) -> float:
+    """콘솔 입력구간의 모서리 — 최소 패널 · 최대 램프 · 최대 효율 — 의 흡수유속 W/m²."""
+    R = CY.RANGE
+    kw_max, eta_max = R["lampPower"][1], R["heatEfficiency"][1] / 100
+    a_min = R["panelLength"][0] * R["panelWidth"][0] / 1e6
+    return (lamps * kw_max * eta_max * 1000 / decks) / a_min
+
+
+# 옵션은 단당 램프가 많다 (96/7 ≫ 48/5) — 같은 모서리에서 유속이 표준의 1.4 배라 백시트가
+# 녹는다. 그래서 IR 뱅크 SSR 에 상한을 건다 (총괄 결정): 흡수유속이 표준의 모서리 유속을
+# 넘지 않게, 패널 면적으로 뱅크 출력을 내린다. 표준에서는 상한이 모서리 유속 그 자체라
+# 아무 것도 바꾸지 않고, 옵션도 기본 패널에서는 풀린다 (그때 유속은 한참 아래다).
+Q_CORNER_STD = corner_flux(_STD["lamps"], _STD["decks"])
+
+
+def ssr_cap(area_m2: float) -> float:
+    """패널 면적에서의 뱅크 출력 상한 (0~1) — 흡수유속 ≤ 표준 모서리 유속."""
+    R = CY.RANGE
+    per = LAMPS * R["lampPower"][1] * R["heatEfficiency"][1] / 100 * 1000 / DECKS
+    return min(1.0, Q_CORNER_STD * area_m2 / per)
+
 
 # 백시트 상한. 콘솔 주석: PVDF 165 · PVF 195. **낮은 쪽을 쓴다** —
 # 어느 것이 붙어 올지는 폐패널이 정하지 우리가 정하지 않는다.
@@ -175,7 +212,7 @@ def panel():
 
     return [
         Result("T1", "계면 도달 지연 (FDM − 덩어리)", lag, "s", 0.05 * DWELL,
-               "설계 체류 222.6 s 의 5 % — 이보다 작아야 덩어리 모델을 쓴다",
+               f"설계 체류 {DWELL:.1f} s 의 5 % — 이보다 작아야 덩어리 모델을 쓴다",
                f"FDM {s['t_face']:.1f} s · 덩어리 {t_lump:.1f} s. 적층 "
                f"{st.thickness*1000:.2f} mm 는 열적으로 얇다 (Fo {fo:.0f} ≫ 1). "
                f"**덩어리 모델이 옳았다** — 이 해석의 첫 몫은 그것을 확인한 것이다"),
@@ -218,8 +255,13 @@ def dwell_floor():
     R = CY.RANGE
     kw_max, eta_max = R["lampPower"][1], R["heatEfficiency"][1] / 100
     a_min = R["panelLength"][0] * R["panelWidth"][0] / 1e6
-    q_worst = (LAMPS * kw_max * eta_max * 1000 / DECKS) / a_min
+    q_raw = corner_flux(LAMPS, DECKS)
+    cap = ssr_cap(a_min)
+    q_worst = q_raw * cap
     w = soak(round(q_worst, 3))
+    capped = (f" 옵션은 단당 램프가 {LAMPS / DECKS:.1f} 등이라 이 모서리 유속이 {q_raw:,.0f} W/m² 다 — "
+              f"SSR 상한 {cap:.0%} 로 표준의 모서리 유속 {Q_CORNER_STD:,.0f} W/m² 에 묶는다 "
+              f"(기본 패널에서는 상한 {ssr_cap(PANEL_A):.0%} — 풀린다)." if cap < 1 else "")
 
     return [
         Result("T4", "체류시간 하한 (백시트 설계한계)", t_des, "s", DWELL,
@@ -234,9 +276,9 @@ def dwell_floor():
                f"효율 {eta_max:.0%} — 콘솔 입력구간의 모서리. "
                f"유속 {q_worst:,.0f} W/m² 에서 계면 도달 {w['t_face']:.0f} s, "
                f"백시트 여유 {T_BACK_MAX-w['t_back']:.1f} K 뿐이다. **하한을 "
-               f"{t_des:.0f} s 로 두면 이 모서리가 막힌다** — 하한은 살려 둔다"),
+               f"{t_des:.0f} s 로 두면 이 모서리가 막힌다** — 하한은 살려 둔다.{capped}"),
     ], dict(q_cap=q_cap, t_cap=t_cap, q_des=q_des, t_des=t_des,
-            q_worst=q_worst, worst=w)
+            q_worst=q_worst, q_raw=q_raw, ssr_cap=cap, worst=w)
 
 
 # ── ③ 유리 열응력 — 승온과 급냉 ─────────────────────────────────────
@@ -269,8 +311,9 @@ def rfq_bound(decks: int) -> tuple[float, float, float]:
 def glass_stress():
     heat = soak(FLUX)["dt_glass"]
 
-    # 급냉 — 140 ℃ 유리를 25 ℃ 강제공랭에 넣는 순간이 가장 심하다
-    q = glass_cool_run()
+    # 급냉 — 140 ℃ 유리가 25 ℃ 분류를 만나는 순간이 가장 심하다. 분류 바로 밑(정체점)은
+    # 면평균보다 세게 식으므로 그 h 로 본다.
+    q = glass_cool_run(GL_STAG * GL.martin()["h"])
     st, r = q["stack"], q["run"]
     dt_q = r.peak(st.N // 2, 0)
 
@@ -281,7 +324,7 @@ def glass_stress():
         rows.append((n, (USEFUL_KW * 1000 / n) / PANEL_A, s["t_face"],
                      s["dt_glass"], _sigma(s["dt_glass"]), s["t_back"]))
 
-    b3, b5 = rfq_bound(3), rfq_bound(5)
+    b3, b5 = rfq_bound(3), rfq_bound(DECKS)
     return [
         Result("T6", "승온 중 유리 열응력 (과도해석)", _sigma(heat), "MPa", SIG_GL,
                "사양서 5.5항 설계허용 7 MPa — 발행된 값을 그대로 쓴다",
@@ -289,27 +332,31 @@ def glass_stress():
                f"**단수를 열응력이 정한 것이 아니다** — 3단에서도 여유가 "
                f"{SIG_GL/rows[0][4]:.0f} 배다. 사양서는 3단이 7.05 로 허용치를 "
                f"넘는다고 썼는데, 그것은 통과 모델의 상한이다 (T7)"),
-        Result("T7", "사양서 5.5항 보수 모델 재현 (5단)", b5[2], "MPa", SIG_GL,
-               "같은 허용 7 MPa — 사양서에 인쇄된 4.23 MPa 와 대조한다",
+        Result("T7", f"사양서 5.5항 보수 모델 재현 ({DECKS}단)", b5[2], "MPa", SIG_GL,
+               ("같은 허용 7 MPa — 사양서에 인쇄된 4.23 MPa 와 대조한다" if STD else
+                f"같은 허용 7 MPa — 사양서 5.5항의 보수 모델을 옵션 {DECKS}단 · {LAMPS}등에 그대로 건다"),
                f"플럭스 {b5[0]:.2f} kW/m² · ΔT {b5[1]:.1f} K → {b5[2]:.2f} MPa. "
                f"3단은 {b3[0]:.2f} kW/m² · {b3[1]:.1f} K → {b3[2]:.2f} MPa. "
-               f"**사양서 숫자가 그대로 재현된다** — 두 모델이 다른 것이지 "
-               f"어느 쪽이 계산을 틀린 것이 아니다. 과도해석은 이 상한의 "
+               + ("**사양서 숫자가 그대로 재현된다** — 두 모델이 다른 것이지 "
+                  "어느 쪽이 계산을 틀린 것이 아니다. " if STD else
+                  "단당 유효출력이 표준보다 커서 상한이 오르지만 허용 안이다. ")
+               + f"과도해석은 이 상한의 "
                f"{_sigma(heat)/b5[2]:.0%} 다: 유리는 열을 통과시키는 벽이 아니라 "
                f"양면에서 받아 머금는 판이기 때문이다"),
         Result("T8", "급냉 중 유리 열응력 (냉각 랙 투입 순간)", _sigma(dt_q),
                "MPa", SIG_GL,
                "같은 허용응력. 급냉은 표면이 인장이라 승온보다 위험하다",
-               f"140 ℃ 유리가 h {c('GCOOL_H'):.0f} W/(m²·K) 강제공랭을 만나는 "
-               f"순간 중심–표면 {dt_q:.2f} K. Bi {c('GCOOL_H')*T_GLASS/2/KTH['유리']:.3f} "
-               f"가 작아 충격이 서지 않는다 — 팬을 세게 돌려도 되는 근거다"),
+               f"140 ℃ 유리가 냉각 뱅크의 분류를 만나는 순간 — 정체점 h 를 분사 면평균 "
+               f"{GL.martin()['h']:.0f} 의 {GL_STAG:.0f} 배({q['h']:.0f} W/(m²·K))로 보아도 "
+               f"중심–표면 {dt_q:.2f} K. Bi {q['h']*T_GLASS/2/KTH['유리']:.3f} "
+               f"가 작아 충격이 서지 않는다 — 분사 속도를 올려도 되는 근거다"),
     ], dict(rows=rows, dt_quench=dt_q, heat=heat)
 
 
 # ── ④ 유리 냉각 랙 ──────────────────────────────────────────────────
 @functools.lru_cache(maxsize=4)
-def glass_cool_run():
-    h = c("GCOOL_H")
+def glass_cool_run(h: float | None = None):
+    h = c("GCOOL_H") if h is None else h
     st = T.Stack(T.Layer("유리", T_GLASS, KTH["유리"], RHO["유리"],
                          c("CP_GLASS") * 1000, n=12))
     bc = T.BC(h=h, t_inf=T_AMB)
@@ -338,8 +385,7 @@ def glass_cool():
         Result("T10", "냉각 랙 비오 수", bi, "—", 0.10,
                "Bi < 0.1 이면 덩어리 가정이 성립한다",
                f"h {h:.0f} W/(m²·K) · 유리 {T_GLASS*1000:.1f} mm. 콘솔이 쓴 "
-               f"LMTD 식이 **타당하다**. h 는 계산이 아니라 가정이므로 "
-               f"파일럿에서 실측한다 (PT-06)"),
+               f"LMTD 식이 **타당하다**. 그 h 를 무엇이 내는지는 T14 가 본다"),
     ], dict(t_cool=t_cool, lump=lump, bi=bi, need=need)
 
 
@@ -391,13 +437,13 @@ def chamber_wall():
     r_wall = (float(Tf[0]) - float(Tf[-1])) / q_field  # m²·K/W 벽 자체
 
     import parts as P
-    A = (2 * P.CHAMBER_L * 3860 + 2 * P.RACK_W * 3860
-         + P.CHAMBER_L * P.RACK_W) / 1e6               # m² 측·단·지붕
+    A = P.HC_AREA                                      # m² 측·단·지붕 — 카탈로그가 단열을 세는 그 면
 
-    # 열교 — GFRP 스페이서 60×60×12 @600 격자 210개 (P-002-16) 와
-    # 그것을 관통하는 M6. 다리 길이는 스페이서 두께 12 mm 다: 양쪽
-    # 강재는 열적으로 등온이라 저항이 스페이서에만 걸린다.
-    n_sp, a_sp, l_sp = 210, 0.060 * 0.060, 0.012
+    # 열교 — GFRP 스페이서 60×60×12 @600 격자 (P-002-16) 와 그것을 관통하는
+    # M6. 다리 길이는 스페이서 두께 12 mm 다: 양쪽 강재는 열적으로 등온이라
+    # 저항이 스페이서에만 걸린다. 개수는 카탈로그가 면에서 센 값이다.
+    n_sp = {p.pid: p for p in P.P}["P-002-16"].qty
+    a_sp, l_sp = 0.060 * 0.060, 0.012
     g_gfrp = 0.30 * a_sp / l_sp * n_sp                 # W/K  GFRP k 0.30
     g_bolt = 50.0 * 20e-6 / l_sp * n_sp                # M6 유효단면 20 mm²
     g_steel = 16.0 * a_sp / l_sp * n_sp                # 스페이서를 STS 로
@@ -412,19 +458,21 @@ def chamber_wall():
                "EN ISO 13732-1 금속 접촉 화상 문턱 · 부품 P-002-16 주석의 60 ℃",
                f"열교 없는 필드는 {t_field:.1f} ℃. 스페이서를 STS 로 바꾸면 "
                f"{t_steel:.0f} ℃ 로 **60 ℃ 를 넘는다** — 카탈로그가 GFRP 를 "
-               f"고른 이유가 확인된다. 다만 M6 관통볼트 210개가 스페이서를 "
+               f"고른 이유가 확인된다. 다만 M6 관통볼트 {n_sp}개가 스페이서를 "
                f"단락시켜 손실을 {q_gfrp/q_nobolt:.1f} 배로 만든다 (R4)"),
-        Result("T12", "가열실 벽 손실", q_gfrp * A / 1000, "kW", 35.0,
-               "정격 100 kW − 유효 65 kW = 손실 예산 35 kW",
+        Result("T12", "가열실 벽 손실", q_gfrp * A / 1000, "kW", LOSS_BUDGET,
+               f"정격 {RATED_KW:.0f} kW − 유효 {USEFUL_KW:.0f} kW = 손실 예산 "
+               f"{LOSS_BUDGET:.0f} kW",
                f"벽 {A:.1f} m² · 필드 {q_field:.1f} → 열교 포함 {q_gfrp:.1f} W/m². "
-               f"손실 예산의 {q_gfrp*A/1000/35:.0%} 만 벽이다. 나머지 "
-               f"{35-q_gfrp*A/1000:.1f} kW 는 배기·데크 열용량·반사손실인데 "
-               f"**아직 아무도 세지 않았다** — 효율 65 % 는 가정이지 결과가 "
-               f"아니다 (PT-05)"),
+               f"손실 예산의 {q_gfrp*A/1000/LOSS_BUDGET:.0%} 만 벽이다. 나머지 "
+               f"{LOSS_BUDGET-q_gfrp*A/1000:.1f} kW 는 새는 곳을 찾을 몫이 아니다 — "
+               f"열수지가 제어체적으로 세어 보니 그 뺄셈은 두 운전점을 섞은 값이고, "
+               f"패널을 빗나간 복사는 공동 안에서 되튀어 손실이 되지 않는다 (HB1 · HB2). "
+               f"효율 {ETA*100:.0f} % 는 결합효율의 가정이고 그 하한을 파일럿 PT-05 가 잰다"),
     ], dict(area=A, r_wall=r_wall, q_field=q_field, t_field=t_field,
             t_gfrp=t_gfrp, t_steel=t_steel, t_nobolt=t_nobolt,
             q_gfrp=q_gfrp, q_nobolt=q_nobolt, q_steel=q_steel,
-            g_gfrp=g_gfrp, g_bolt=g_bolt, g_steel=g_steel)
+            g_gfrp=g_gfrp, g_bolt=g_bolt, g_steel=g_steel, n_sp=n_sp)
 
 
 # ── ⑥ 칼날 카세트 ───────────────────────────────────────────────────
@@ -461,12 +509,39 @@ def cassette():
             stop=stop, budget=budget, panels=panels_needed)
 
 
+# ── ⑦ 냉각 뱅크 — 설계 h 를 무엇이 내는가 ───────────────────────────
+def glass_jets():
+    """T9 가 쓰는 GCOOL_H 를 냉각 뱅크의 분사가 내는지 — tools/glass_cool.py (Martin)."""
+    h = c("GCOOL_H")
+    jet = GL.martin()
+    return [
+        Result("T14", "냉각 뱅크 분사 h — 설계 h × 1.2 가 드는가", h * GL.H_MARGIN,
+               "W/(m²·K)", jet["h"],
+               f"Martin (1977) 원형 노즐 배열 · 설계 h {h:.0f} × {GL.H_MARGIN} "
+               f"(상관식 ±15 % · 뱅크 배분 ±5 %)",
+               f"IR 뱅크 자리 {GL.BANKS} 곳의 냉각 뱅크가 노즐 Ø{GL.JET_D*1000:.0f} "
+               f"@{GL.JET_S*1000:.0f} 로 {GL.JET_V:g} m/s 를 뿜는다 — H {GL.jet_gap()*1000:.0f} "
+               f"(H/D {jet['hd']:.1f} · f {jet['f']*100:.2f} % · Re {jet['re']:,.0f} · "
+               f"모두 상관식 범위 안) → h {jet['h']:.1f}, 급기 {GL.air_flow():.2f} m³/s. "
+               f"옆에서 부는 바람으로 같은 h 를 내려면 {GL.crossflow_q(h):.0f} m³/s — "
+               f"급기 필터 면 정격 {GL.filter_face()[0] * GL.FILTER_Q:.0f} m³/s 를 넘고, 경계층이 "
+               f"층류로 남으면 h 가 절반 아래다. 실측은 노즐판 한 칸으로 한다 (PT-06)"),
+    ], dict(jet=jet)
+
+
 # ── 이 해석이 만든 요구 ──────────────────────────────────────────────
 def requirements() -> list[Req]:
+    # R1 · R5 는 뒤따른 검토가 닫았다 — 그 값을 거기서 받아 적는다. 이 모듈이
+    # 먼저 읽히므로 두 검토는 여기서 늦게 부른다 (둘 다 이 모듈을 부른다).
+    import analysis_irbank as IRB
+    import heatbalance as HB
     _, gs = glass_stress()
     _, df = dwell_floor()
     _, cw = chamber_wall()
     _, ca = cassette()
+    ir_now, ir_new = IRB.now(), IRB.new()
+    hb = HB.balance()
+    wall_kw = cw['q_gfrp'] * cw['area'] / 1000
     return [
         Req("R1", "패널 면내 온도편차",
             f"≤ 18 K (백시트) · ≤ {DT_INPLANE:.0f} K (유리) — IR 뱅크 검토가 닫았다",
@@ -478,47 +553,55 @@ def requirements() -> list[Req]:
             f"백시트 융점 165 ℃ 가 165−140−7 = **18 K** 라는 더 좁은 창을 "
             f"준다 — 유리보다 백시트가 먼저 진다. 1 차원은 이 편차를 못 내므로 "
             f"별도 검토로 풀었다 (tools/analysis_irbank.py): 현행 배치는 "
-            f"87 K 로 4 배 넘겼고, 램프 발열장을 1,300 → 2,200 으로 늘리고 "
-            f"위치를 ±1,340 까지 밀어 11 K 로 내렸다. 실측은 PT-04 가 한다"),
+            f"{ir_now['spread']:.0f} K 로 {ir_now['spread']/DT_INPLANE:.1f} 배 "
+            f"넘겼고, 램프 발열장을 {IRB.NOW_LEN*1000:,.0f} → "
+            f"{IRB.NEW_LEN*1000:,.0f} 으로 늘리고 위치를 "
+            f"±{max(IRB.NEW_X)*1000:,.0f} 까지 밀어 {ir_new['spread']:.0f} K 로 "
+            f"내렸다. 실측은 PT-04 가 한다"),
         Req("R2", "체류시간 하한 fdmDwell",
             f"{df['t_des']:.0f} s (백시트 {T_BACK_DESIGN:.0f} ℃ 기준)",
             "콘솔 MODEL.fdmDwell · 제어 레시피",
             f"콘솔의 113.15 s 는 유도된 적 없는 값이다. 물리가 정하는 하한은 "
             f"백시트 융점이고, 여유 10 K 를 두면 {df['t_des']:.0f} s 다. "
-            f"입력구간 모서리(1600×800·3 kW·80 %)가 {df['worst']['t_face']:.0f} s "
+            f"입력구간 모서리({CY.RANGE['panelLength'][0]:.0f}×{CY.RANGE['panelWidth'][0]:.0f}·"
+            f"{CY.RANGE['lampPower'][1]:g} kW·{CY.RANGE['heatEfficiency'][1]:.0f} %)가 {df['worst']['t_face']:.0f} s "
             f"이므로 하한은 실제로 일한다 — 지우면 안 된다"),
         Req("R3", "CASSETTE_HANDLING_SAFE 조건",
             f"실측 60 ℃ 이하 · 냉각 하한 {ca['t_cool']:.0f} s",
             "PLC 인터록 · 안전 검토서",
             f"시간으로만 걸면 h 가정이 틀렸을 때 뜨거운 것을 사람에게 준다. "
             f"카세트 표면 열전대를 인터록 입력으로 쓰고, 시간은 하한으로만 "
-            f"둔다. 35 kg 은 인력 취급 한계를 넘으므로 지그가 먼저다"),
+            f"둔다. {c('CASS_MASS'):.0f} kg 은 인력 취급 한계를 넘으므로 지그가 먼저다"),
         Req("R4", "열교 스페이서 관통볼트",
             "M6 에 GFRP 부시 + 절연 와셔, 또는 볼트가 양 껍데기를 잇지 않을 것",
             "상세설계 · P-002-16 주석",
             f"GFRP 스페이서는 제 몫을 한다 (금속이면 외피가 "
-            f"{cw['t_steel']:.0f} ℃). 그런데 그것을 관통하는 M6 210개가 "
+            f"{cw['t_steel']:.0f} ℃). 그런데 그것을 관통하는 M6 {cw['n_sp']}개가 "
             f"스페이서를 단락시켜 손실을 {cw['q_gfrp']/cw['q_nobolt']:.1f} 배로 "
             f"올린다 — 스페이서만 있으면 {cw['q_nobolt']*cw['area']/1000:.1f} kW "
             f"인 것이 볼트까지 세면 {cw['q_gfrp']*cw['area']/1000:.1f} kW 다. "
             f"외피 온도는 여전히 안전하므로 **손실 문제이지 안전 문제는 아니다**"),
-        Req("R5", "실효 열효율 65 % 의 근거",
+        Req("R5", f"실효 열효율 {ETA*100:.0f} % 의 근거",
             "별도 수지로 해소 — tools/heatbalance.py (HB1~HB8 · RHB1~RHB5)",
             "사양서 5.1항 · 파일럿 PT-05",
-            f"벽 손실은 {cw['q_gfrp']*cw['area']/1000:.1f} kW 로 손실 예산 35 kW "
-            f"의 {cw['q_gfrp']*cw['area']/1000/35:.0%} 뿐이라 나머지 30 kW 를 찾으라고 "
-            f"넘겼는데, 제어체적으로 세어 보니 **질문이 틀려 있었다.** 65 kW 는 "
-            f"열공정 한계 80.9 장/h 의 값이고 라인은 60 장/h 로 돈다 — "
-            f"'100 − 65 = 35' 는 두 운전점을 뺀 값이다. 그리고 패널을 빗나간 "
-            f"복사는 연마 내피(ρ 0.8)에 되튀어 공동 안에서 **돈다** — 정상상태에서 "
-            f"계를 실제로 떠나는 것은 13.7 kW 뿐이고 효율은 78 % 다. 가정 65 % 는 "
-            f"보수측이므로 체류시간 계산은 그대로 둔다"),
+            f"벽 손실은 {wall_kw:.1f} kW 로 손실 예산 {LOSS_BUDGET:.0f} kW "
+            f"의 {wall_kw/LOSS_BUDGET:.0%} 뿐이라 나머지 "
+            f"{LOSS_BUDGET-wall_kw:.0f} kW 를 찾으라고 넘겼는데, 제어체적으로 "
+            f"세어 보니 **질문이 틀려 있었다.** {USEFUL_KW:.0f} kW 는 "
+            f"열공정 한계 {CY.RATE_THERMAL:.1f} 장/h 의 값이고 라인은 "
+            f"{float(CY.NET_TARGET):.0f} 장/h 로 돈다 — '{RATED_KW:.0f} − "
+            f"{USEFUL_KW:.0f} = {LOSS_BUDGET:.0f}' 는 두 운전점을 뺀 값이다. "
+            f"그리고 패널을 빗나간 복사는 연마 내피(ρ 0.8)에 되튀어 공동 안에서 "
+            f"**돈다** — 정상상태에서 계를 실제로 떠나는 것은 "
+            f"{hb['loss']:.1f} kW 뿐이고 효율은 {hb['eta']*100:.0f} % 다. 가정 "
+            f"{ETA*100:.0f} % 는 보수측이므로 체류시간 계산은 그대로 둔다"),
         Req("R6", "대류계수 h 실측",
-            "유리 랙 25 · 카세트 60 W/(m²·K) 를 실측으로 확정",
+            f"유리 랙 분사 h (설계 {c('GCOOL_H'):.0f} · 상관식 {GL.martin()['h']:.0f}) · "
+            f"카세트 60 W/(m²·K) 를 실측으로 확정",
             "파일럿 PT-06 · FAT",
-            "두 개 다 가정이다. 냉각 랙 단수와 카세트 인터록 시간이 이 "
-            "숫자에 달려 있다 — 랙은 여유가 2단 있어 견디지만, 카세트는 "
-            "여유가 없다"),
+            "유리 쪽은 이제 분사 상관식(Martin)이 뒷받침한다 — 냉각 뱅크 노즐판 한 칸으로 "
+            "재면 된다. 카세트 60 은 여전히 가정이다. 냉각 랙 단수와 카세트 인터록 시간이 "
+            "이 숫자에 달려 있다 — 랙은 여유가 2단 있어 견디지만, 카세트는 여유가 없다"),
     ]
 
 
@@ -526,7 +609,7 @@ def requirements() -> list[Req]:
 def run():
     rs, extra = [], {}
     for fn in (panel, dwell_floor, glass_stress, glass_cool,
-               chamber_wall, cassette):
+               chamber_wall, cassette, glass_jets):
         r, e = fn()
         rs += r
         extra[fn.__name__] = e

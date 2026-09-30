@@ -44,16 +44,26 @@ def part_obj(p: PT.Part) -> dict:
     }
 
 
+def anchor_obj(a) -> dict:
+    """기초 앵커군 한 줄 — 기초도 D-602 가 기호로 찾아 판 품번 · 규격 · 매입깊이 · 판 한 장의
+    앵커 수를 읽는다. 앵커 수는 판의 구멍 수다 (parts.anchor_fix 와 같은 규칙)."""
+    aid, eq, pid, size, hef, grade = a
+    holes = next(p for p in PT.P if p.pid == pid).shape.d["holes"]
+    return {"id": aid, "eq": eq, "part": pid, "size": size, "hef": hef, "grade": grade, "n": len(holes)}
+
+
 def block() -> str:
     parts = [part_obj(p) for p in PT.P]
     mods = [[m, PT.MODULE_NAME[m]] for m in PT.MODULES]
     steps = {m: [list(s) for s in PT.STEPS[m]] for m in PT.MODULES}
+    anchors = [anchor_obj(a) for a in PT.ANCHOR_GROUPS]
     j = lambda o: json.dumps(o, ensure_ascii=False, separators=(",", ":"))
     return "\n".join([
         OPEN,
         f"const PART_MODULES={j(mods)};",
         f"const PARTS={j(parts)};",
         f"const PART_STEPS={j(steps)};",
+        f"const ANCHORS={j(anchors)};",
         CLOSE,
     ])
 
