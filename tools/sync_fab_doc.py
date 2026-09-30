@@ -65,7 +65,10 @@ def sync(text: str) -> tuple[str, list[str]]:
         tds = [k for k, x in enumerate(parts_) if x.startswith("<td")]
         if len(tds) < 10:
             continue
-        for idx, val in ((5, f"{j['N']:.2f}"), (6, f"{j['V']:.2f}"), (7, f"{j['util']:.2f}")):
+        # 이름 칸도 계산기가 쓴다 — 경계 플랜지 관경이 풍량에서 나오게 된 날(Ø600 → 450)
+        # 값 열은 따라왔는데 'Ø600 플랜지' 라는 이름이 남았다.
+        for idx, val in ((1, j["name"]), (5, f"{j['N']:.2f}"), (6, f"{j['V']:.2f}"),
+                         (7, f"{j['util']:.2f}")):
             cur = re.search(r"<td[^>]*>(.*?)</td>", parts_[tds[idx]]).group(1)
             if cur != val:
                 parts_[tds[idx]] = parts_[tds[idx]].replace(">" + cur + "<", ">" + val + "<")

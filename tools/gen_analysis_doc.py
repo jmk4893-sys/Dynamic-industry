@@ -17,6 +17,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import airlock as AIR  # noqa: E402
+import exhaust as EXH  # noqa: E402
 import analysis_cycle as CYC  # noqa: E402
 import analysis_irbank as IRB  # noqa: E402
 import heatbalance as HBAL  # noqa: E402
@@ -613,6 +614,81 @@ def part4d() -> str:
 
 
 # ── 4e. 에어록 ───────────────────────────────────────────────────────
+# ── 4e-2. 배기 — 에어록이 열리는 순간을 배기가 감당한다 ─────────────────
+def _exhaust() -> str:
+    sh, hd, old = EXH.shutter(), EXH.hood(), EXH.legacy()
+    seg = "".join(
+        f'<tr><td>{esc(s["name"])}</td><td class="num">Ø{s["d"]:.0f}</td>'
+        f'<td class="num">{s["q"]:.3f}</td>'
+        f'<td class="num">{EXH.velocity(s["q"], s["d"]):.1f}</td>'
+        f'<td class="num">{EXH.velocity(s["lo"], s["d"]):.1f}</td></tr>'
+        for s in EXH.segments())
+    bands = "".join(
+        f'<tr{"" if b.ok else " class=" + chr(34) + "over" + chr(34)}><td class="k">{esc(b.id)}</td>'
+        f'<td>{esc(b.what)}</td><td class="num">Ø{b.d:.0f}</td><td class="num">{b.q:.3f}</td>'
+        f'<td class="num">{b.v:.1f}</td><td>{esc(b.note)}</td>'
+        f'<td>{"OK" if b.ok else "★ 대역 밖"}</td></tr>'
+        for b in EXH.checks())
+    rq = "".join(
+        f'<tr><td class="k">{esc(q.id)}</td><td>{esc(q.what)}</td>'
+        f'<td class="k">{esc(q.value)}</td><td>{esc(q.owner)}</td>'
+        f'<td>{md(q.why)}</td></tr>' for q in EXH.requirements())
+    return f"""
+  <h4 id="p8-2">8.2 배기 — 경계 덕트 Ø600 은 어떤 풍량에서 나왔나</h4>
+  <p>R-106 주기는 격리실을 걷어 내면서 이렇게 적었다 — <em>“그 순간의 배기를 배기
+    설계가 감당한다”</em>. 그런데 그 배기를 센 사람이 없었다. 콘솔의 헤더는 지선
+    Ø400 × 2 · 본관 Ø460 · 경계 플랜지 Ø600 이었고 셋 다 REV.20(53 m 라인 · 후처리 포함)의
+    치수였다. 사양서 1.4 는 <strong>배기 헤더를 2 셀 유량으로 정하라</strong>고 요구한다.
+    그 유량을 여기서 센다.</p>
+  <p><strong>① 가열실.</strong> 셔터가 다 닫혀 있으면 누설뿐이다
+    (<span class="m">{EXH.leak() * 3600:,.0f} m³/h</span> · −{EXH.DP_MAX:.0f} Pa). 그러나 포크가
+    들어가는 동안 셔터 한 장({sh['w'] * 1e3:,.0f} × {sh['h'] * 1e3:.0f})이 열리고, 위의
+    부력 교환유동이 개구 위쪽으로 챔버 가스를 <span class="m">{sh['q_ex']:.3f} m³/s</span>
+    밀어낸다. 그것을 가두려면 중립면을 개구 위끝까지 올려야 한다 — 개구 전체가 유입이
+    되는 유량은 적분에서 그대로 <strong>2√2 배</strong>
+    (<span class="m">{sh['q_buoy']:.3f} m³/s</span>)이고, 개구 면속도로 센 포집풍속 하한
+    (<span class="m">{sh['q_face']:.3f}</span>)보다 크다. PLC 가 막는 것은
+    <strong>같은 쪽 두 단</strong>이므로 투입·배출이 겹치면 두 장이다 —
+    가열실 지선은 <span class="m">{EXH.chamber():.3f} m³/s</span>.</p>
+  <p><strong>② 분리 셀.</strong> 계단 칼날 뒤를 따라가는 슬롯 후드가 칼날 폭
+    <span class="m">{hd['L'] * 1e3:,.0f}</span> 전체를 빤다. 가장 먼 발생점은 중앙 칼끝 —
+    계단 깊이 {c('KNIFE_DEPTH') * 1e3:.0f} 에 슬롯 물림 {EXH.HOOD_SETBACK * 1e3:.0f} 을 더한
+    <span class="m">{hd['X'] * 1e3:.0f}</span> 앞이다. 드립트레이가 플랜지 구실을 하므로
+    Q = 2.6·L·v·X = <span class="m">{hd['q']:.3f} m³/s</span> (셀마다).</p>
+  <div class="decide"><strong>총괄 결정 — 유량은 일정하게, 관경은 운반 속도로.</strong>
+    셔터가 닫혀 있는 동안 챔버는 봉쇄 유량을 낼 수 없다. 가열실 지선에 <strong>블리드 댐퍼</strong>를
+    두어 평소에는 실내 공기를 대고, 셔터가 열리면 닫아 그 몫을 챔버에서 뺀다 — 헤더와 경계는
+    늘 <span class="m">표준 {EXH.total(1):.2f} · 옵션 {EXH.total(2):.2f} m³/s</span>
+    ({EXH.total(1) * 3600:,.0f} · {EXH.total(2) * 3600:,.0f} m³/h)를 보고, 발주자 후처리도
+    흔들리지 않는다(OI-15). 관경은 EVA 흄이 쌓이지 않는 운반 속도
+    <span class="m">{EXH.V_MIN:.0f} ~ {EXH.V_MAX:.1f} m/s</span> 에서 가장 작은 표준 관경이다.
+    헤더 ②와 경계는 2 셀 유량으로 정했고 1 셀에서도 하한을 넘는다 — <strong>1 셀 운전의
+    저유량 제어가 블리드 없이 선다</strong>. 종전 Ø600 은 1 셀에서
+    <span class="m">{old['bound_1']:.1f} m/s</span>, 2 셀에서
+    <span class="m">{old['bound_2']:.1f} m/s</span> — 흄이 쌓이는 속도였다.</div>
+  <div class="tw"><table>
+    <caption>배기 구간 — 관경 · 설계 유량 · 속도</caption>
+    <thead><tr><th>구간</th><th class="num">관경</th><th class="num">유량 [m³/s]</th>
+      <th class="num">설계 [m/s]</th><th class="num">1 셀 [m/s]</th></tr></thead>
+    <tbody>{seg}</tbody>
+  </table></div>
+  <div class="tw"><table>
+    <caption>검토 — 운반 속도 대역 {EXH.V_MIN:.0f} ~ {EXH.V_MAX:.1f} m/s</caption>
+    <thead><tr><th>ID</th><th>항목</th><th class="num">관경</th><th class="num">유량</th>
+      <th class="num">속도</th><th>대역</th><th>판정</th></tr></thead>
+    <tbody>{bands}</tbody>
+  </table></div>
+  <div class="tw"><table>
+    <caption>이 검토가 만든 요구</caption>
+    <thead><tr><th>ID</th><th>무엇</th><th>값</th><th>받는 곳</th><th>왜</th></tr></thead>
+    <tbody>{rq}</tbody>
+  </table></div>
+  <p><strong>이 검토가 못 보는 것</strong> — 후드의 실제 포집(누름판·셀모듈 슈트가 흐름을
+    가른다 — 파일럿 배기·후드 장치가 잰다), 셔터가 열리는 과도구간, 덕트 압손과 팬 정압(경계
+    너머 발주자 설비), 셀모듈이 CE-201 위에서 내는 흄과 냉각 랙의 잔류 흄(둘 다 이 헤더에
+    물려 있지 않다 — OI-10 배출가스 성상이 정한다).</p>"""
+
+
 def part4e() -> str:
     rs, ex = AIR.run()
     o = ex["opts"]
@@ -721,6 +797,7 @@ def part4e() -> str:
     <thead><tr><th>ID</th><th>무엇</th><th>값</th><th>받는 곳</th><th>왜</th></tr></thead>
     <tbody>{rq}</tbody>
   </table></div>
+{_exhaust()}
 </div></div>"""
 
 
@@ -913,6 +990,13 @@ def part7() -> str:
     뱅크 출력을 패널 면적으로 묶어 표준이 검증한 유속에 맞춘다 (RO1).
     ② <strong>승강축 등급</strong> — 택트가 반이고 행정이 길어 너트 회전식을 한 등급 올린다 (RO2 · 9장).
     ③ <strong>12 등 배치</strong> — 뱅크당 12 등의 위치를 다시 풀었다; 편차가 표준의 절반이다 (RO3).</div>
+  <div class="note"><strong>배기는 표준이 이미 2 셀로 정했다 (8.2).</strong> 옵션은 셀 후드가 둘이라
+    경계 풍량이 <span class="m">{EXH.total(2):.2f} m³/s</span> ({EXH.total(2) * 3600:,.0f} m³/h) 다.
+    헤더 ②와 경계 Ø{EXH.D_HDR:.0f} 는 이 유량에서
+    <span class="m">{EXH.velocity(EXH.total(2), EXH.D_HDR):.1f} m/s</span> — 옵션이 더하는 것은 셀 지선 ·
+    가로관 · 셀 차단 댐퍼뿐이다. 한 셀을 세우면 그 셀의 댐퍼를 닫고 헤더는 표준 유량
+    (<span class="m">{EXH.velocity(EXH.total(1), EXH.D_HDR):.1f} m/s</span>)으로 돈다 — 운반 속도 하한
+    {EXH.V_MIN:.0f} m/s 위다.</div>
   {tables}
   <div class="tw"><table>
     <caption>옵션에서 값이 달라진 검토 · 옵션에만 있는 검토 — 근거와 읽는 법</caption>
@@ -953,11 +1037,12 @@ def build() -> str:
     hbs, _ = HBAL.run()
     als, _ = AIR.run()
     cys, _ = CYC.run()
+    exs = EXH.checks()
     checks = list(srs) + list(trs) + list(irs) + list(lms) + list(hbs) + list(als) + list(cys)
-    over = [r.id for r in checks if not r.ok]
+    over = [r.id for r in checks if not r.ok] + [b.id for b in exs if not b.ok]
     reqs = (len(TH.requirements()) + len(IRB.requirements())
             + len(LMT.requirements()) + len(HBAL.requirements())
-            + len(AIR.requirements()) + len(CYC.requirements()))
+            + len(AIR.requirements()) + len(CYC.requirements()) + len(EXH.requirements()))
     valid = len(fea.validate()) + len(therm.validate()) + len(AIR.validate())
     body = "\n".join([part1(), part2(), part3(), part4(), part4b(), part4c(),
                        part4d(), part4e(), part4f(), part5(), part6(), part7()])
@@ -970,7 +1055,7 @@ def build() -> str:
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#eceff1">
 <title>DG-HK60C 구조·열해석 보고서</title>
-<meta name="description" content="DG-HK60C 폐태양광 패널 분리설비의 구조·열해석 보고서 — 직접강성법 프레임 해석 · 1차원 과도 열전도 · 복사 유속과 면내 전도 · 부력 교환유동, 닫힌해 검증 {valid}건, 검토 {len(checks)}건과 해석이 만든 요구 {reqs}건.">
+<meta name="description" content="DG-HK60C 폐태양광 패널 분리설비의 구조·열해석 보고서 — 직접강성법 프레임 해석 · 1차원 과도 열전도 · 복사 유속과 면내 전도 · 부력 교환유동, 닫힌해 검증 {valid}건, 검토 {len(checks) + len(exs)}건과 해석이 만든 요구 {reqs}건.">
 {house_style()}
 <style>
   tr.over td{{background:var(--flag-sunk)}}
@@ -995,7 +1080,7 @@ def build() -> str:
     구조 <strong>{len(srs)} 건</strong> · 열 <strong>{len(trs)} 건</strong> ·
     IR 뱅크 <strong>{len(irs)} 건</strong> · 램프 지지 <strong>{len(lms)} 건</strong> ·
     열수지 <strong>{len(hbs)} 건</strong> · 에어록 <strong>{len(als)} 건</strong> ·
-    사이클 <strong>{len(cys)} 건</strong> ·
+    사이클 <strong>{len(cys)} 건</strong> · 배기 <strong>{len(exs)} 건</strong> ·
     닫힌해 검증 <strong>{valid} 건</strong> ·
     해석이 만든 요구 <strong>{reqs} 건</strong> ·
     검토 초과 <strong>{len(over)} 건</strong> ({' · '.join(over) if over else '없음'}).
