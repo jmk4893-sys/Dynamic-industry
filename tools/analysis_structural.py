@@ -178,21 +178,23 @@ def gantry():
 
 # ── ② HC-101 가열실 — 기둥 좌굴과 베이스 인장 ──────────────────────────
 def chamber():
-    """6기둥 랙. 자중 + 지진 수평 0.30W 에서 기둥이 견디는가.
+    """6기둥 랙 (콘솔 격자 RACK_COLS_X × 2). 자중 + 지진 수평 0.30W 에서 기둥이 견디는가.
 
     데크는 단마다 패널 5장(각 28.2 kg)을 받는다. 지진은 무게중심에
     수평으로 걸고, 그 전도모멘트를 기둥 축력으로 본다.
     """
-    L = M("DECK_L") + 2 * M("CL_WALL") + M("CL_DOOR")     # 3,780
-    W = M("RACK_W")                                        # 2,560
+    L = M("DECK_L") + 2 * M("CL_WALL") + M("CL_DOOR")     # 3,880
+    nx = round(c("RACK_COLS_X"))                           # 기둥 열 — 콘솔 3D · 기초도 A1 과 같은 격자
+    yc = M("RACK_COL_Y")                                   # 기둥 줄 ±1,150
     H = c("CDECK_Z0") * 1000 + c("CDECK_DZ") * 1000 * (c("DECKS") - 0.5) + 860
     col = fea.hsec(200, 200, 8, 12)
     tie = fea.boxsec(150, 100, 6)
     ang = fea.ANG if hasattr(fea, "ANG") else None        # 데크는 강성에 안 넣는다
 
     f = fea.Frame()
-    xs = (0.0, L / 2, L)
-    ys = (-W / 2 + 200, W / 2 - 200)
+    xs = tuple(L * i / (nx - 1) for i in range(nx))
+    ys = (-yc, yc)
+    ncol = len(xs) * len(ys)
     base, top = {}, {}
     for xx in xs:
         for yy in ys:
@@ -201,20 +203,20 @@ def chamber():
             f.beam(base[(xx, yy)], top[(xx, yy)], col)
             f.support(base[(xx, yy)])
     for yy in ys:                                          # 종방향 타이빔
-        f.beam(top[(xs[0], yy)], top[(xs[1], yy)], tie)
-        f.beam(top[(xs[1], yy)], top[(xs[2], yy)], tie)
+        for i in range(len(xs) - 1):
+            f.beam(top[(xs[i], yy)], top[(xs[i + 1], yy)], tie)
     for xx in xs:                                          # 횡방향 타이빔
         f.beam(top[(xx, ys[0])], top[(xx, ys[1])], tie)
 
     W_tot = F.kn(F.M_CHAMBER) * 1000                       # N
     seis = F.SEISMIC * W_tot
     for k in top:
-        f.force(top[k], fz=-W_tot / 6, fx=seis / 6)
+        f.force(top[k], fz=-W_tot / ncol, fx=seis / ncol)
     u = f.solve()
     drift = max(abs(u[n][0]) for n in top.values())
 
     mf = f.member_forces()
-    axial = max(abs(m[0]) for m in mf[:6])                 # 기둥 축력 N
+    axial = max(abs(m[0]) for m in mf[:ncol])              # 기둥 축력 N
     Pcr = fea.euler_buckling(col, H, k=0.7)                # 하단고정·상단핀
     lam = fea.slenderness(col, H, k=0.7)
 
@@ -222,19 +224,19 @@ def chamber():
         Result("S4", "가열실 기둥 최대 축력 / 오일러 좌굴하중",
                axial / 1000, "kN", Pcr / 1000,
                "탄성 좌굴하중 (유효길이계수 0.7)",
-               f"λ = {lam:.0f} · 한계 120 · 기둥 H-200×200 6본"),
+               f"λ = {lam:.0f} · 한계 120 · 기둥 H-200×200 {ncol}본"),
         Result("S5", "가열실 지진 층간변위 (0.30W)", drift, "mm", H / 200,
                "H/200 — 외피 이음과 셔터 궤도가 견디는 한계",
                f"H = {H:,.0f} mm · 자중 {F.M_CHAMBER/1000:.2f} t"),
         Result("S6", "가열실 기둥 세장비", lam, "—", 120.0,
                "KDS 압축재 세장비 상한 120",
                "좌굴이 강도보다 먼저 온다 — 그래서 단면이 이 크기다"),
-    ], dict(H=H, axial=axial, Pcr=Pcr, drift=drift)
+    ], dict(H=H, axial=axial, Pcr=Pcr, drift=drift, cols=sorted(base))
 
 
 # ── ③ VT-101 상판 — 진공은 외력이 아니다 ─────────────────────────────
 def table():
-    """상판 PL 20 + 리브 PL 10 @400, 기둥 □-150×150×6 4본.
+    """상판 PL 20 + 리브 PL 10 @400, 기둥 □-150×150×6 6본 (콘솔 격자 TBL_COLS_X × 2).
 
     **이 절은 두 번 틀린 뒤에 나왔다.** 기록해 둔다 — 같은 착각이 흔하다.
 
@@ -262,8 +264,18 @@ def table():
     top = fea.Sec(A, I / 4, I, (bf * tf ** 3 + hw * tw ** 3) / 3)
 
     f = fea.Frame()
-    xs, ys = (0.0, Lx / 2, Lx), (-Wy / 2 + 180, 0.0, Wy / 2 - 180)
-    # 기둥은 6본이다 — 4본에서 자중 처짐 0.378 이 나와 칼날 깊이 예산을 넘었다
+    # 기둥은 6본이다 — 4본에서 자중 처짐 0.378 이 나와 칼날 깊이 예산을 넘었다.
+    # 자리는 콘솔 격자(TBL_COLS_X 열 · 양 끝에서 TBL_INSET_X 안, 줄은 TBL_INSET_Y 안)
+    # 그대로다 — 3D · 기초도 A8 · 제작 지침서 J1 이 같은 자리를 쓴다.
+    nx, ix, iy = round(c("TBL_COLS_X")), M("TBL_INSET_X"), M("TBL_INSET_Y")
+    cxs = tuple(ix + (Lx - 2 * ix) * i / (nx - 1) for i in range(nx))
+    cys = (-Wy / 2 + iy, Wy / 2 - iy)
+    # 패널이 놓이는 자리 — 칼날 깊이는 여기서 잰다. 상판은 기둥 밖으로 TBL_INSET_X
+    # 만큼 내밀고, 패널은 그 안쪽에 앉는다.
+    px0 = (Lx - M("PANEL_L")) / 2
+    px1 = Lx - px0
+    xs = tuple(sorted({0.0, *cxs, px0, px1, Lx}))   # 상판 격자 — 내민 끝과 패널 끝까지
+    ys = (cys[0], 0.0, cys[1])
     g = {(x, y): f.node(x, y, zt) for x in xs for y in ys}
     for y in ys:
         for i in range(len(xs) - 1):
@@ -271,25 +283,43 @@ def table():
     for x in xs:
         for i in range(len(ys) - 1):
             f.beam(g[(x, ys[i])], g[(x, ys[i + 1])], top)
-    for x in xs:                                    # 기둥 6본 (0 · 중앙 · 끝)
-        for y in (ys[0], ys[-1]):
+    for x in cxs:                                   # 기둥 — 열마다 두 줄
+        for y in cys:
             b = f.node(x, y, 0.0)
             f.beam(b, g[(x, y)], col)
             f.support(b)
+    ncol = len(cxs) * len(cys)
 
-    # 하중 ① 박리 추력 — 패드가 패널을 잡고 있으므로 상판이 수평으로 밀린다
+    # 하중 ① 박리 추력 — 패드가 패널을 잡고 있으므로 상판이 수평으로 밀린다.
+    # 패드가 있는 자리(패널 밑)로만 들어온다.
+    under = {k: n for k, n in g.items() if px0 - 1e-6 <= k[0] <= px1 + 1e-6}
     P = F.F_PEEL_D * 1000
-    for k in g:
-        f.force(g[k], fx=P / len(g))
+    for n in under.values():
+        f.force(n, fx=P / len(under))
     # 하중 ② 자중 (상판·리브·패널). 패널 질량은 콘솔 면적질량에서 나온다 —
     # 28.2 로 적어 두었더니 그것이 어디서 온 값인지 아무도 모르게 됐다.
     m_panel = c("MASS_AREAL") * c("PANEL_L") * c("PANEL_W")      # 28.21 kg
     Wd = (F.M_TABLE * 0.5 + m_panel) * 9.80665
-    for k in g:
-        f.force(g[k], fz=-Wd / len(g))
+    # 자중은 절점의 분담 면적으로 나눈다. 격자가 기둥 열과 상판 끝(내민 200)을
+    # 함께 잡아 간격이 고르지 않다 — 똑같이 나누면 내민 끝 절점이 한가운데
+    # 절점만큼 받아 처짐을 세 배로 부풀린다.
+    def _trib(v, lo, hi):
+        out = []
+        for i, x in enumerate(v):
+            a = lo if i == 0 else (v[i - 1] + x) / 2
+            b = hi if i == len(v) - 1 else (x + v[i + 1]) / 2
+            out.append(b - a)
+        return out
+    tx, ty = _trib(xs, 0.0, Lx), _trib(ys, -Wy / 2, Wy / 2)
+    for i, x in enumerate(xs):
+        for j, y in enumerate(ys):
+            f.force(g[(x, y)], fz=-Wd * tx[i] * ty[j] / (Lx * Wy))
     u = f.solve()
     dx = max(abs(u[n][0]) for n in g.values())
-    dz = max(abs(u[n][2]) for n in g.values())
+    # 연직은 패널 밑에서 판정한다. 추력이 기둥 머리를 돌려 상판이 기울면 기둥
+    # 밖 내민 끝이 가장 크게 움직이지만 그 자리에는 패널이 없다 — 따로 적는다.
+    dz = max(abs(u[n][2]) for n in under.values())
+    dz_edge = max(abs(u[n][2]) for n in g.values())
 
     # 국부 — 패드 하나 주변의 판 휨. 압력차가 작용하는 자국과 립 반력이
     # 걸리는 원이 어긋나 생기는 국부 굽힘이다. 작지만 0 은 아니다.
@@ -299,15 +329,17 @@ def table():
     return [
         Result("S7", f"상판 수평 변위 (박리 추력 {F.F_PEEL_D:.2f} kN)", dx, "mm", 2.0,
                "갠트리 처짐과 합해 추력 경로 강성을 정한다 — 합계로 루프 고유진동수를 본다",
-               f"기둥 □-150×150×6 6본 · 상판 T단면 I={I/1e6:.1f}×10⁶ mm⁴"),
-        Result("S8", "상판 연직 처짐 (자중)", dz, "mm", 0.15,
+               f"기둥 □-150×150×6 {ncol}본 · 상판 T단면 I={I/1e6:.1f}×10⁶ mm⁴"),
+        Result("S8", "상판 연직 처짐 (자중 + 추력 기울기 · 패널 밑)", dz, "mm", 0.15,
                "칼날 깊이 예산 0.15 — 진공에 붙은 패널이 상판을 따라 처진다",
                f"자중 {Wd/1000:.2f} kN (그중 패널 {m_panel*9.80665/1000:.2f} kN) · "
-               f"진공은 내력이라 외력이 아니다 · 기둥 6본"),
+               f"진공은 내력이라 외력이 아니다 · 기둥 {ncol}본 · "
+               f"패널 밖 상판 끝 {dz_edge:.3f}"),
         Result("S9", "패드 주변 판 국부 처짐", dloc, "mm", 0.10,
                "전체 평면도의 절반 — 패드 자국과 립 원의 어긋남에서 온다",
                f"패드당 {Fpad/1000:.2f} kN · 판 t20 · 리브 격자 400×400"),
-    ], dict(dx=dx, dz=dz, dloc=dloc, I=I, Wd=Wd,
+    ], dict(dx=dx, dz=dz, dz_edge=dz_edge, dloc=dloc, I=I, Wd=Wd,
+            cols=[(x, y) for x in cxs for y in cys],
             w_panel=m_panel * 9.80665 / 1000)
 
 

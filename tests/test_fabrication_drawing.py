@@ -638,8 +638,11 @@ class TestTheArrangementSheetIsFabricationLevel(unittest.TestCase):
 
     def test_every_anchor_coordinate_comes_from_the_layout(self):
         """좌표를 손으로 적으면 배치를 옮길 때 3D 만 따라오고 기초는 옛 자리에 뚫는다."""
+        # 기둥 앵커(A1 · A2 · A8)는 3D 와 같은 기둥 격자 함수에서 나온다 — 격자가
+        # CTBL_CX · 스테이션 중심을 읽는다 (tests/test_column_grids.py).
         for name in ("CST.HC.x0", "CST.GC.x1", "CMAST_IN", "CMAST_OUT",
-                     "CRAIL_X0", "CRAIL_X1", "CGY", "CTBL_CX",
+                     "CRAIL_X0", "CRAIL_X1", "CGY", "tblColXs()", "tblColYs()",
+                     "rackColXs(CST.HC.cx,CST.HC.w)", "rackColXs(CST.GC.cx,CST.GC.w)",
                      "CE_X0", "CKC_SADDLE", "CKC_RACK_Y",
                      "CFENCE_YN", "FORK_HALF_STD"):
             self.assertIn(name, self.body, f"앵커 좌표가 {name} 에서 나오지 않는다")

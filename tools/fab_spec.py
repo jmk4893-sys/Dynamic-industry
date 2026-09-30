@@ -231,12 +231,16 @@ def _joints():
     # 박리 추력의 반작용이 흡착패드 → 상판 → 기둥 → 앵커로 내려온다.
     # F-005 는 "테이블은 패널 반력만 받는다" 고 적었지만, 그 패널 반력이
     # 곧 추력이다 — 작용·반작용 쌍이므로 양쪽 기초가 같은 크기를 받는다.
-    tbl_span_x, tbl_span_y, tbl_h = c("CARRIER_L") - 0.40, c("CARRIER_W") - 0.32, c("CZ")
-    V_tbl = F_PEEL_D / 4                                     # 기둥 4개 분담 전단
-    N_tbl = (F_PEEL_D * tbl_h) / tbl_span_x / 2              # 전도 짝힘 → 기둥당 인장
+    # 기둥 자리는 콘솔 격자 그대로 — 길이 방향 TBL_COLS_X 열 × 2 줄. 전도 짝힘은
+    # 양 끝 열이 받는다 (가운데 열은 중립축 위라 축력이 0).
+    tbl_cols = 2 * round(c("TBL_COLS_X"))
+    tbl_span_x = c("CARRIER_L") - 2 * c("TBL_INSET_X")      # 양 끝 열 간격
+    tbl_h = c("CZ")
+    V_tbl = F_PEEL_D / tbl_cols                              # 기둥 분담 전단
+    N_tbl = (F_PEEL_D * tbl_h) / tbl_span_x / 2              # 전도 짝힘 → 끝 열 기둥당 인장
     J.append(dict(id="J1", name="VT-101 기둥 ↔ 베이스플레이트", grade="8.8", n=4,
                   N=N_tbl / 4, V=V_tbl / 4, planes=1, minimum="M16",
-                  note=f"추력 반작용 {F_PEEL_D:.1f} kN · 팔길이 {tbl_h:.2f} m · 기둥간격 {tbl_span_x:.2f} m"))
+                  note=f"추력 반작용 {F_PEEL_D:.1f} kN · 기둥 {tbl_cols}본 · 팔길이 {tbl_h:.2f} m · 끝 열 간격 {tbl_span_x:.2f} m"))
 
     # ── J2 · KG-101 주행레일 문형 기둥 베이스 (기초 A7)
     # 칼날이 미는 쪽. 같은 추력이 레일 높이에서 걸린다.

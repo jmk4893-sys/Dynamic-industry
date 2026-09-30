@@ -183,6 +183,16 @@ def part3() -> str:
     잡으면 남는 외력은 <strong>패널 자중 {ex['table']['w_panel']:.2f} kN</strong> 뿐이다.
     한계까지 늘려 통과시키는 대신 물리를 다시 유도해서 얻은 답이다.</div>
 
+  <div class="note"><strong>상판 모델은 기둥이 실제로 서는 자리에 선다.</strong>
+    전에는 기둥 {len(ex['table']['cols'])} 본을 상판 양 끝에 세워 풀었는데, 3D · 기초도 A8 ·
+    제작 지침서 J1 의 기둥은 양 끝에서 <span class="m">{c("TBL_INSET_X") * 1000:.0f}</span> 안에 서 있었다.
+    이제 모두 콘솔의 한 격자(<span class="k">TBL_COLS_X</span> 열 × 2 줄)를 읽는다. 그러자
+    전에는 안 보이던 것이 보였다 — 박리 추력이 기둥 머리를 돌려 상판이 기울고, 기둥 밖으로
+    내민 상판 끝이 <span class="m">{ex['table']['dz_edge']:.3f} mm</span> 움직인다. 그 자리에는
+    패널이 없다. 칼날 깊이는 패널 밑에서 재므로 S8 은 패널 자리에서 판정한다
+    (<span class="m">{ex['table']['dz']:.3f} mm</span>). 자중은 절점의 분담 면적으로 나눈다 —
+    격자 간격이 고르지 않아 똑같이 나누면 내민 끝이 한가운데만큼 받는다.</div>
+
   <div class="decide"><strong>{"초과 항목 " + " · ".join(r.id for r in bad) if bad else "전 항목 만족"}
     — 총괄 결정 · S10: Z축 두 조를 폭의 베셀점에 둔다.</strong>
     잠긴 계단 칼날은 <strong>한 자루</strong>다. 일곱 칼끝을 카세트째 한 평면으로 연삭해도

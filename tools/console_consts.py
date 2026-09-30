@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import contextlib
+import json
 import math
 import pathlib
 import re
@@ -169,16 +170,45 @@ def _fmt(v):
     return str(int(v) if float(v).is_integer() else v)
 
 
+_PQ_CACHE: dict = {}
+
+
+def part_qty(console):
+    """콘솔 PARTS 블록(gen_parts_js 가 쓴다)의 품번 → 수량.
+
+    모듈표는 수량을 따로 세지 않고 카탈로그에서 읽는다 — `${PQ('P-004-04')}`.
+    VT-101 기둥이 모듈표에는 4, 카탈로그·해석에는 6 이던 것이 그렇게 닫혔다.
+    펼칠 때도 도면이 읽는 것과 같은 블록을 읽는다.
+    """
+    key = (hash(console), len(console))
+    hit = _PQ_CACHE.get(key)
+    if hit is None:
+        m = re.search(r"^const PARTS=(\[.*\]);$", console, re.M)
+        hit = {} if m is None else {p["id"]: p["q"] for p in json.loads(m.group(1))}
+        _PQ_CACHE.clear()
+        _PQ_CACHE[key] = hit
+    return hit
+
+
 def expand(console, extra=None):
-    """콘솔의 ${...} 중 상수만으로 풀리는 것을 값으로 바꾼다."""
+    """콘솔의 ${...} 중 상수만으로 풀리는 것을 값으로 바꾼다.
+
+    `${PQ('P-xxx-yy')}` 는 카탈로그 수량으로 푼다 — 카탈로그에 없는 품번은
+    그대로 둔다 (모르면 그대로 둔다)."""
     scope = env(console)
     if extra:
         scope.update(extra)
+    qty = part_qty(console)
+
+    def pq(m):
+        q = qty.get(m.group(1))
+        return m.group(0) if q is None else _fmt(q)
 
     def sub(m):
         v = value(m.group(1), scope)
         return m.group(0) if v is None else _fmt(v)
 
+    console = re.sub(r"\$\{PQ\('(P-\d{3}-\d{2})'\)\}", pq, console)
     return re.sub(r"\$\{([^{}]*)\}", sub, console)
 
 

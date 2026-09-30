@@ -1426,8 +1426,9 @@ class TestVacuumHoldingForce(unittest.TestCase):
         """존마다 압력센서·필터·체크밸브가 하나씩 — 열 하나가 한 존이다."""
         cols, _rows, _r = self._pads()
         self.assertEqual(cols, 6, "6존 진공이라고 적어 두고 존 수가 다르다")
+        listed = console_consts.expand(self.html)          # 모듈표 수량은 카탈로그에서 읽는다
         for part in ("진공압센서×6", "진공필터×6", "체크밸브×6"):
-            self.assertIn(part, self.html, f"제작도 목록에 {part} 가 없다")
+            self.assertIn(part, listed, f"제작도 목록에 {part} 가 없다")
         body = self._fn("carrier")
         self.assertIn("padXs()", body, "존별 매니폴드가 패드 열에서 유도되지 않는다")
 

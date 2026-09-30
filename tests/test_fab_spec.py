@@ -21,6 +21,7 @@ import unittest
 from . import _path  # noqa: F401
 
 import fab_spec as F
+import parts as PT
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SPEC = ROOT / "docs" / "dg-hk60-fab-spec.html"
@@ -276,10 +277,13 @@ class TestTheSpecificationCarriesTheDecisions(unittest.TestCase):
         self.assertIn("작용·반작용", self.html, "추력이 쌍이라는 판정이 없다")
         self.assertIn("한쪽만 설계하면 반대쪽이 뜬다", self.html)
         # 그리고 두 접합이 실제로 같은 설계 추력을 받아야 한다
+        # 기둥 수는 다르다 (테이블 6 · 갠트리 문형 4) — 같아야 하는 것은 총량이다.
         j1 = next(j for j in F.JOINTS if j["id"] == "J1")
         j2 = next(j for j in F.JOINTS if j["id"] == "J2")
-        self.assertAlmostEqual(j1["V"] * 4, j2["V"] * 4, places=9,
-                               msg="테이블과 갠트리가 다른 추력을 받고 있다")
+        self.assertAlmostEqual(j1["V"] * j1["n"] * PT.TABLE_COLS, F.F_PEEL_D, places=9,
+                               msg="테이블 기둥이 설계 추력을 다 받지 않는다")
+        self.assertAlmostEqual(j2["V"] * j2["n"] * 4, F.F_PEEL_D, places=9,
+                               msg="갠트리 문형 기둥이 설계 추력을 다 받지 않는다")
 
     def test_it_says_the_cassette_clamp_is_not_a_shear_member(self):
         """클램프를 전단재로 세면 설계추력 대비 1.15 밖에 안 된다."""
