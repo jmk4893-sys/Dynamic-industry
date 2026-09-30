@@ -18,6 +18,7 @@
  */
 import { chromium } from 'playwright';
 import { resolve } from 'node:path';
+import { browserPath } from './pw_browser.mjs';
 
 const file = process.argv[2] || 'docs/drawings/pv-preprocess-plant.html';
 
@@ -41,6 +42,7 @@ const FLOOR_M = 0.05;       // 이 높이 아래면 바닥에 닿은 것으로 �
 const MIN_MESHES = 1500;
 
 const browser = await chromium.launch({
+  executablePath: browserPath(),
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });

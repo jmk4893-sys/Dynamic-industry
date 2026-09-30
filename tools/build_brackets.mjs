@@ -17,6 +17,7 @@
 import { chromium } from 'playwright';
 import { resolve } from 'node:path';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { browserPath } from './pw_browser.mjs';
 
 const FILE = 'docs/drawings/pv-preprocess-plant.html';
 const DRY = process.argv.includes('--dry');
@@ -51,6 +52,7 @@ const b1 = src.indexOf(END);
 if (b0 < 0 || b1 < 0) { console.error(`✗ ${BEGIN} … ${END} 표식을 찾지 못했다`); process.exit(1); }
 
 const browser = await chromium.launch({
+  executablePath: browserPath(),
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });

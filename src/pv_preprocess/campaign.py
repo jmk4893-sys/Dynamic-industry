@@ -44,8 +44,30 @@ from dataclasses import dataclass
 #: 투입부 점유 (s) — 픽업·판정·반전·로봇 투입·정렬·인계까지
 INFEED_S = 40.0
 
-#: JBR-201 점유 (s) — 라인 병목
-JBR_S = 45.0
+#: JBR-201 인계 점유 (s) — 패널이 정반에 올라 **AFR 이 받을 때까지**.
+#:
+#: REV.59 에서 이 한 값이 두 가지를 겸하고 있었다는 것이 드러났다. 도면의 시각표는
+#: 셀 안의 일을 전부 직렬로 적어 두었고(칸 21 s + 고정 33 s = 54 s), `panels()` 는
+#: 그 54 s 를 **정반이 비는 시각**으로도 **AFR 이 받는 시각**으로도 썼다. 반출이
+#: 픽앤플레이스라면 맞지만, 이 셀은 `CV 저마킹 롤러` 6,550 mm(패널 2.6 장) 위에
+#: 있어 **패널이 나가는 동안 다음 장이 들어온다.** 두 시각을 갈랐다.
+JBR_S = 51.0
+
+#: 반출이 시작되는 시각 (s, 칸 안). 이때부터 패널이 정반을 떠난다.
+#: 도면 시각표의 「PASS 반출 또는 잠금 리젝트 격리」 시작점이다.
+JBR_EXIT_START_S = 44.0
+
+
+def jbr_block_s() -> float:
+    """정반이 다음 장을 받을 수 있게 되는 시각 (s) — **병목을 정하는 값**.
+
+    반출이 시작되고 패널 꼬리가 정반을 벗어나면 다음 장이 내려앉을 수 있다.
+    `JBR_S`(AFR 이 받는 시각)보다 이 값이 먼저 온다 — 그 사이 패널은 롤러 위에
+    있고 정반은 비어 있다. 셀 점유·병목·방출 주기는 전부 이쪽을 봐야 한다.
+
+    리터럴로 박지 않는다. 이송 속도가 바뀌면 꼬리가 빠지는 시간도 바뀐다.
+    """
+    return round(JBR_EXIT_START_S + accumulator_clear_s(), 2)
 
 #: AFR-101 이후 후단 점유 (s) — 프레임 분리·이송·연마·검사·버퍼 적재
 AFR_S = 39.03
@@ -138,7 +160,7 @@ def pace_offset_s() -> float:
     얼마까지 당길 수 있는지 말해 준다.
     """
     return round(max(accumulator_clear_s(),
-                     JBR_S - INFEED_S,
+                     jbr_block_s() - INFEED_S,
                      downstream_limited_takt_s() - INFEED_S), 2)
 
 
@@ -263,8 +285,10 @@ def panels(hold_s: float = RELEASE_HOLD_S) -> tuple[Panel, ...]:
             end = start + INFEED_S
             infeed_free = end
             jbr_start = max(end, jbr_free)
+            # 정반은 반출 꼬리가 빠지면 비고(jbr_free), AFR 은 그보다 늦게
+            # 받는다(jbr_end). 그 사이 패널은 CV 저마킹 롤러 위에 있다.
             jbr_end = jbr_start + JBR_S
-            jbr_free = jbr_end
+            jbr_free = jbr_start + jbr_block_s()
             release_gate = jbr_start + JBR_STOPPER_OFFSET_S + hold_s
             afr_start = max(jbr_end, afr_free)
             afr_end = afr_start + AFR_S
@@ -351,8 +375,12 @@ def cell_occupancy_s() -> tuple[tuple[str, float], ...]:
     §21 에서 GRM-401 을 플랜트 안으로 들여왔는데 병목 후보에는 안 들어가
     있었다. 그래서 이상 택트가 JBR 45.0 s 로 잡혔고, 실제로 라인을 묶는 것이
     무엇인지 가려져 있었다.
+
+    JBR 은 `JBR_S`(AFR 이 받는 시각)가 아니라 `jbr_block_s()`(정반이 비는
+    시각)로 센다. 점유란 **다음 장을 못 받는 시간**이고, 패널이 롤러 위로
+    나가고 나면 정반은 이미 비어 있다.
     """
-    return (("투입부", INFEED_S), ("JBR-201", JBR_S), ("AFR-101 후단", AFR_S),
+    return (("투입부", INFEED_S), ("JBR-201", jbr_block_s()), ("AFR-101 후단", AFR_S),
             ("GRM-401 유리제거", grm_equivalent_s()))
 
 
@@ -366,12 +394,51 @@ def bottleneck() -> str:
     return max(cell_occupancy_s(), key=lambda row: row[1])[0]
 
 
+def takt_floor_s(hold_s: float = RELEASE_HOLD_S) -> float:
+    """JBR 이 아무리 빨라져도 택트가 못 내려가는 값 (s).
+
+    방출 인터록(투입 + 스토퍼 + hold)과 **JBR 이 아닌** 셀 중 느린 쪽이다.
+    「헤드를 늘리면 얼마를 버는가」·「박리를 반으로 줄이면」 같은 물음은 전부
+    이 값이 답한다 — JBR 을 0 초로 만들어도 라인은 이보다 빨라지지 않는다.
+
+    이 함수가 없던 동안 그 답을 매번 손으로 스윕해 냈다(REV.59 의 3 헤드,
+    REV.61 의 크로스빔 안). 손으로 재면 재는 사람마다 답이 달라진다.
+    """
+    others = [v for name, v in cell_occupancy_s() if name != "JBR-201"]
+    return round(max(INFEED_S + JBR_STOPPER_OFFSET_S + hold_s, *others), 2)
+
+
+def jbr_headroom_s(hold_s: float = RELEASE_HOLD_S) -> float:
+    """JBR 을 0 초로 만들어 되찾을 수 있는 시간 (s) — **헤드 증설의 상금**.
+
+    지금 정반 점유 48.08 에서 바닥 48.00 을 빼면 0.08 s 다. 기구를 얼마나
+    보태든 이 이상은 없다.
+    """
+    return round(max(0.0, jbr_block_s() - takt_floor_s(hold_s)), 2)
+
+
 def release_takt_s(hold_s: float = RELEASE_HOLD_S) -> float:
     """다음 장 투입 주기 — 앞 장이 JBR 에 들어가 스토퍼가 작동하기까지.
 
     영상의 반복 주기와 같은 값이라 화면과 계산이 어긋나지 않는다.
+
+    **REV.58 정정.** 종전에는 `INFEED_S + JBR_STOPPER_OFFSET_S + hold_s` 만
+    돌려줬다. 그 식은 JBR 점유가 그 합보다 짧다는 것을 말없이 전제하고 있었고,
+    REV.57 까지는 참이었다(45.0 < 48.0). REV.58 에서 축 가속 한계를 지키려고
+    칸을 4 → 7 s 로 늘리며 JBR 이 54.0 s 가 되자 전제가 깨졌다 — 앞 장이 아직
+    JBR 을 물고 있으면 스토퍼까지 갈 수가 없으므로 48 s 마다 놓는 것이
+    불가능한데도 그렇게 적고 있었고, 그 값이 그대로 영상 반복 주기(pvCamWrap)로
+    나가 **화면이 라인보다 빠르게 도는** 상태였다.
+
+    방출은 인터록과 병목 중 **늦은 쪽**을 따른다. `panels()` 의 이산사건은
+    이미 그렇게 돌고 있었으므로(`jbr_start = max(end, jbr_free)`) 이 정정은
+    시뮬레이션을 바꾸지 않는다 — 어긋나 있던 요약값을 맞춘 것이다.
+
+    **REV.59.** 여기서 보는 것은 `JBR_S`(AFR 인계)가 아니라 `jbr_block_s()`
+    (정반 비움)다. 다음 장을 놓을 수 있느냐는 정반이 비었느냐이지 앞 장이
+    후단에 닿았느냐가 아니다.
     """
-    return INFEED_S + JBR_STOPPER_OFFSET_S + hold_s
+    return max(INFEED_S + JBR_STOPPER_OFFSET_S + hold_s, jbr_block_s())
 
 
 def summary(hold_s: float = RELEASE_HOLD_S) -> dict[str, float]:
@@ -389,7 +456,10 @@ def summary(hold_s: float = RELEASE_HOLD_S) -> dict[str, float]:
         "run_s": round(run_s, 2),
         "run_min": round(run_s / 60.0, 1),
         "throughput_per_h": round(len(processed) / (run_s / 3600.0), 1),
-        "takt_s": round((max(p.jbr_end for p in processed)
+        # 택트는 **셀이 새 장을 얼마나 자주 받느냐**다. `jbr_end`(AFR 인계)로
+        # 재면 인계가 늦어지는 것만으로 택트가 늘어난 것처럼 보인다 — REV.59 에서
+        # 두 시각을 가르며 드러났다. 정반이 비는 시각으로 잰다.
+        "takt_s": round((max(p.jbr_start + jbr_block_s() for p in processed)
                          - min(p.jbr_start for p in processed)) / len(processed), 2),
         "peak_wip": peak_wip(),
         "forklift_loads": sum(1 for e in forklift_events()

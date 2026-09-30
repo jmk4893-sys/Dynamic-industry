@@ -484,12 +484,83 @@ def plan_c() -> Plan:
         f"방출 보류 +{hold:g} s · 택트 {campaign.summary()['takt_s']:g} → {s['takt_s']:g} s",
         feed, capacity, round(capacity - feed, 1),
         f"전체 처리량 {campaign.summary()['throughput_per_h']:g} → {s['throughput_per_h']:g} 장/h, "
-        f"병목 JBR 가동률 {JBR_UTILISATION_BASE:.0%} → {campaign.JBR_S / s['takt_s']:.0%} 로 놀게 된다")
+        f"병목 JBR 가동률 {JBR_UTILISATION_BASE:.0%} → "
+        f"{campaign.jbr_block_s() / s['takt_s']:.0%} 로 놀게 된다")
 
 
 #: 기준 상태에서 병목(JBR)이 실제로 물려 있는 비율 — C안의 손실을 재는 기준.
-JBR_UTILISATION_BASE = campaign.JBR_S / campaign.summary()["takt_s"]
+#:
+#: **정반 점유**(`jbr_block_s()`)로 잰다. REV.59 에서 `JBR_S` 가 AFR 인계 시각이
+#: 되면서 이것으로 재면 105 % 가 나왔다 — 셀이 자기 택트보다 오래 물고 있다는
+#: 뜻이 되어 버린다. 가동률은 「다음 장을 못 받는 시간 ÷ 택트」다.
+JBR_UTILISATION_BASE = campaign.jbr_block_s() / campaign.summary()["takt_s"]
 
 
 def plans() -> tuple[Plan, Plan]:
     return (plan_b(), plan_c())
+
+
+# ── JBR-201 출력 조건 (하류 DG-HK60 투입 조건) ───────────────────────────
+# 발주자가 DG-HK60 의 투입 상태를 「프레임·정션박스·케이블 제거 후 라미네이트」로
+# 확정했다. 그 사양서가 정션박스 흔적 허용치를 적었고, 그것이 곧 **상류 JBR-201 의
+# 출력 조건**이다 — 눕혀 굽힌 리본 단부가 백시트 박리 중 구멍을 걸어 찢기 때문이다.
+#
+# 값의 출처는 이 저장소 안에 있다. 다시 유도하지 않았다 — 그 문서가 바뀌면 여기도
+# 같이 고쳐야 한다.
+
+#: 출처 문서와 그 안의 절.
+JBOX_TRACE_SOURCE = "docs/dg-hk60-rfq.html §4.2 · 발주자 확정"
+
+#: 리본 단부가 백시트 면 **위로** 나올 수 있는 최대 높이 (mm).
+RIBBON_STUB_MAX_MM = 5.0
+
+#: 접착 실리콘이 백시트 면에 남을 수 있는 최대 높이 (mm).
+SILICONE_RESIDUE_MAX_MM = 2.0
+
+#: 리본 단부를 백시트 위로 눕혀 굽히는 것은 허용하지 않는다.
+RIBBON_MAY_BE_LAID_OVER = False
+
+#: 케이블은 잔여를 허용하지 않는다 (프레임 실란트 잔여는 AFR 쪽 항목이라 여기 없다).
+CABLE_RESIDUE_ALLOWED = False
+
+#: 하류가 전제하는 적층 구성 — 백시트 두께는 JBR 절입 깊이와 직접 부딪친다.
+LAMINATE_BACKSHEET_MM = 0.30
+
+# 그 부딪침의 결말 (9/7 발주자 승인). JBR 절입 0.6±0.2 mm 가 백시트 0.30 mm 보다
+# 깊다는 것을 이 도면이 스스로 올렸고, 하류가 **절결을 받아들이는 쪽**으로 답했다 —
+# 권취는 폭 1,400 중 국부 구멍이고, 반대로 절입을 백시트 두께 안으로 줄이는 쪽은
+# 2,500 패널에서 그 공차를 지키기 어렵다. 그래서 기구는 그대로 두고, 절결이 **허용**
+# 조건으로 출력 사양에 들어온다. 허용에는 한도가 붙으므로 여기가 그 한도의 자리다.
+BACKSHEET_NOTCH_SOURCE = "docs/dg-hk60-rfq.html §4.2 · 발주자 승인 · 9/7"
+
+#: 절결이 있어도 되는 범위 — 정션박스 발자국 밖으로 나가면 안 된다.
+BACKSHEET_NOTCH_FOOTPRINT_ONLY = True
+
+#: 절결 깊이 상한 (mm · 백시트 면 기준). JBR 절입 공차 상단과 **같은 값**이다.
+BACKSHEET_NOTCH_MAX_MM = 0.8
+
+
+def jbox_trace_spec() -> tuple[tuple[str, str, str], ...]:
+    """출력 조건 — (항목, 사양, 왜 상류 조건인가).
+
+    수치는 위 상수에서 온다. 문장을 손으로 적으면 사양서와 갈라진다.
+    """
+    return (
+        ("리본 단부 돌출",
+         f"백시트 면 위 ≤ {RIBBON_STUB_MAX_MM:g} mm",
+         "튀어나온 단부는 박리 중 백시트를 걸어 찢는다"),
+        ("리본 단부 자세",
+         "백시트 위로 눕혀 굽히지 않는다"
+         if not RIBBON_MAY_BE_LAID_OVER else "눕힘 허용",
+         "눕힌 단부는 백시트 구멍을 걸어 찢는다 — 하류가 가장 먼저 적은 항목이다"),
+        ("케이블 잔여",
+         "없음" if not CABLE_RESIDUE_ALLOWED else "허용",
+         "권취 클램프와 장력에 걸린다"),
+        ("접착 실리콘 잔여",
+         f"백시트 면 위 ≤ {SILICONE_RESIDUE_MAX_MM:g} mm",
+         "핫나이프가 계면으로 들어가는 것을 방해한다"),
+        ("정션박스 자리 백시트 절결",
+         f"허용 — {'발자국 면적 이내 · ' if BACKSHEET_NOTCH_FOOTPRINT_ONLY else ''}"
+         f"깊이 ≤ {BACKSHEET_NOTCH_MAX_MM:g} mm",
+         "허용이지 무제한이 아니다 — 발자국 밖 절결과 더 깊은 절입은 권취를 찢는다"),
+    )

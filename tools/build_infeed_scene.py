@@ -7,7 +7,7 @@
 * **장면** — afu·robot 셀은 그대로, jbr 셀은 JB-201 인계 롤러(존 경계를 건너는
   하드웨어)까지만, afr·post·buffer·grm 셀과 그 하류의 시설·케이싱·브래킷은 숨긴다.
   형상을 지우지 않고 `visible=false` 로 끈다 — 원본 3D 는 손대지 않는다.
-* **시계** — 종단 체류 124.03 s 를 **방출 주기 48 s** 로 자른다. 40 s 에 JBR 이
+* **시계** — 종단 체류 130.03 s 를 **방출 주기 48.08 s** 로 자른다. 40 s 에 JBR 이
   받고 8 s 뒤 스토퍼가 물리는 순간이 다음 장의 시작이다. 단계 목록(Fs)은 이미
   40 s 에서 끝나므로 자를 것이 없다.
 * **시점** — 기본 시점을 통합라인에서 투입셀 전체로, 시점 버튼은 투입 구간의
@@ -125,6 +125,16 @@ def layout_panel(text: str) -> str:
     )
 
 
+def _lead() -> float:
+    """통합 설계도의 종단 체류 (s) — 배지·시각·스크럽의 앵커다.
+
+    리터럴 124.03 을 박아 두었더니 REV.59 에서 원본이 130.03 으로
+    바뀌자 앵커가 0 곳이 되어 생성이 멈췄다. 멈춘 것은 옳았지만
+    고칠 곳이 여기여야 할 이유는 없다 — 모델에서 낸다.
+    """
+    return campaign.INFEED_S + campaign.JBR_S + campaign.AFR_S
+
+
 def _once(text: str, old: str, new: str, what: str) -> str:
     n = text.count(old)
     if n != 1:
@@ -198,13 +208,13 @@ def build() -> str:
     t = text
     t = _once(t, "<title>태양광 전처리 통합 플랜트</title>",
               "<title>태양광 전처리 플랜트 · 투입 구간</title>", "제목")
-    t = _once(t, '<span class="viz-badge">124.03 s TRACE</span>',
+    t = _once(t, f'<span class="viz-badge">{_lead():g} s TRACE</span>',
               f'<span class="viz-badge">{takt:g} s TRACE · 투입 구간</span>', "배지")
     t = _once(t, "<h2 id=\"pv-v22-title\">태양광 패널 전처리 통합 플랜트</h2>",
               "<h2 id=\"pv-v22-title\">태양광 패널 전처리 플랜트 — 투입 구간 (FL-101 → RB-101 → JB-201)</h2>", "표제")
-    t = _once(t, '<div class="text-small tabular-nums" id="jb-time">0.00 / 124.03 s</div>',
+    t = _once(t, f'<div class="text-small tabular-nums" id="jb-time">0.00 / {_lead():g} s</div>',
               f'<div class="text-small tabular-nums" id="jb-time">0.00 / {takt:.2f} s</div>', "시계 표시")
-    t = _once(t, 'id="jb-scrub" type="range" min="0" max="124.03" step="0.05" value="0"',
+    t = _once(t, f'id="jb-scrub" type="range" min="0" max="{_lead():g}" step="0.05" value="0"',
               f'id="jb-scrub" type="range" min="0" max="{takt:g}" step="0.05" value="0"', "스크럽")
     t = _once(t, ",ci=nt+Lr", f",ci={takt:g}", "종단 시각 → 방출 주기")
     # 기본 시점 — 통합라인 대신 투입셀 전체

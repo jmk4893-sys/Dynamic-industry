@@ -20,6 +20,7 @@
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { browserPath } from './pw_browser.mjs';
 
 const PLANES = JSON.parse(readFileSync('out/casing-planes.json', 'utf-8'));
 const BAND_HALF = PLANES._limits.band;          // 월드 z = 플랜트 Y − 이 값
@@ -29,6 +30,7 @@ const file = process.argv[2] || 'docs/drawings/pv-preprocess-plant.html';
 const NOT_SHAPE = ['존 포락선', '참조', '투영', '스캔선', '(참조'];
 
 const browser = await chromium.launch({
+  executablePath: browserPath(),
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
