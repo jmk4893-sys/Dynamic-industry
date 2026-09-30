@@ -1005,8 +1005,9 @@ add("P-012-11", "M-012", "스키드 방호 커버", MESH(_SKID_L, 900, 4, 40, 3)
 _FENCE_H = 2400.0
 _FENCE_PITCH = 2000.0                                    # 메시 패널 1,960 + 기둥 40
 _CST = c("CST")
+LINE_LEN = (_CST.UL.x1 + c("CL_END")) * 1000             # 기계 전장 — 콘솔 compactLength()
 _FX0 = M("CFENCE_X0")
-_FX1 = (_CST.UL.x1 + c("CL_END")) * 1000 + 840            # 콘솔 compactLength() + 840
+_FX1 = LINE_LEN + 840                                    # 콘솔 CFENCE_X1
 _OPEN = 1050.0                                           # 양단 개구 반폭 — 광커튼 LC-001/002 구간
 _GATE_W = M("CSCART_L") + 300                            # CS-201 반출 게이트 — 카트 + 양쪽 150
 _GATE_X = (M("CE_X0") + M("CE_X1")) / 2
@@ -1053,6 +1054,7 @@ def _bays(runs, pitch):
 
 _runs, FENCE_GATES = _fence_runs()
 FENCE_LEN, FENCE_BAYS, FENCE_POSTS = _bays(_runs, _FENCE_PITCH)
+FENCE_BOX = (_FX1 - _FX0, FENCE_P + FENCE_N)             # 방호구획 외곽 (길이, 폭) — 사양서 3.2 · 8.1
 _ESTOP_EVERY = 15000.0                                   # 총괄 결정 — 방책 둘레 15 m 마다 비상정지 하나
 FENCE_ESTOPS = math.ceil(FENCE_LEN / _ESTOP_EVERY - 1e-9)
 

@@ -952,3 +952,49 @@ class TestTheSafetyIoBudgetFollowsTheAirlock(unittest.TestCase):
                       "7.1 의 안전 I/O 선언이 실행 모델의 예산과 다르다")
         self.assertIn(f"실사용 F-DI {used[M.FDI]}", plain,
                       "실사용 F-DI 가 모델과 다르다")
+
+
+class TestTheGuardEnvelopeIsTheFence(unittest.TestCase):
+    """방호구획 치수는 부품 카탈로그가 세는 방책에서 나온다.
+
+    3.2 한 문단이 납품 방호구획을 21,000 × 8,160 으로 적고, 몇 줄 아래에서 같은 방호
+    범위를 19,260 × 8,160 으로 적고 있었다 — 19,260 은 기계 전장이다. 방책을 세는 것은
+    카탈로그(M-013 · 콘솔 cFence 의 구간)이므로 사양서의 치수를 거기에 댄다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import parts
+        cls.P = parts
+        cls.plain = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", RFQ.read_text(encoding="utf-8")))
+
+    @staticmethod
+    def _n(s):
+        return int(s.replace(",", ""))
+
+    def test_every_guard_envelope_is_the_fence_box(self):
+        L, W = (round(v) for v in self.P.FENCE_BOX)
+        found = []
+        for m in re.finditer(r"(방호구획|방호 범위|안전펜스)[^×]{0,20}?(\d{1,2},\d{3}) × (\d{1,2},\d{3})",
+                             self.plain):
+            if "REV.20" in self.plain[max(0, m.start() - 20):m.start()]:
+                continue                                   # 선행 개정의 방호구획은 이력이다
+            found.append((m.group(1), self._n(m.group(2)), self._n(m.group(3))))
+        self.assertGreaterEqual(len(found), 3, f"방호구획 치수를 적은 자리가 줄었다: {found}")
+        for what, a, b in found:
+            self.assertEqual((a, b), (L, W), f"{what} {a:,} × {b:,} — 방책은 {L:,} × {W:,} 다")
+
+    def test_the_envelope_is_explained_from_the_machine(self):
+        """길이 = 기계 전장 + 앞뒤 여유 · 폭 = 라인 중심에서 양쪽 방책까지."""
+        m = re.search(r"기계 전장은 ([\d,]+) mm", self.plain)
+        self.assertIsNotNone(m, "3.2 가 기계 전장을 적지 않는다")
+        self.assertEqual(self._n(m.group(1)), round(self.P.LINE_LEN))
+        m = re.search(r"앞뒤로 ([\d,]+) · ([\d,]+) 을 더한", self.plain)
+        self.assertIsNotNone(m, "방호 범위의 길이가 어디서 오는지 적지 않는다")
+        front, back = self._n(m.group(1)), self._n(m.group(2))
+        self.assertEqual(front, round(-1000 * console_consts.const("CFENCE_X0")))
+        self.assertEqual(round(self.P.LINE_LEN) + front + back, round(self.P.FENCE_BOX[0]))
+        m = re.search(r"\+Y ([\d,]+) · 반출 쪽\(−Y\) ([\d,]+) mm", self.plain)
+        self.assertIsNotNone(m, "방호 범위의 폭을 양쪽으로 나눠 적지 않는다")
+        self.assertEqual((self._n(m.group(1)), self._n(m.group(2))),
+                         (round(self.P.FENCE_P), round(self.P.FENCE_N)))
