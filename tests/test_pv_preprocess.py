@@ -4039,6 +4039,172 @@ class TestKinematics(unittest.TestCase):
                          "메시 자기 플래그만 보는 옛 판정이 남아 있다")
 
 
+class TestTheChecksRefuseToPassOnNothing(unittest.TestCase):
+    """헤드리스 검사들이 **볼 것이 없을 때 통과하지 않는지** 본다.
+
+    이번 회차에 찾은 결함 넷이 전부 「검사는 있는데 엉뚱한 것을 본다」였다.
+    그래서 남은 검사들을 실제로 돌려 훑었더니, 더 나쁜 사촌이 있었다 —
+    **볼 것이 없으면 통과한다.** 두 자리를 변이 시험으로 실증했다.
+
+      · `check_sheet_fit` — 탭 하나 이름을 바꾸니 시트 **17 → 11 장**으로
+        줄어든 채 「✓ 시트 11장(탭 9)」로 통과했다. 커버리지 35 % 를 잃고도
+        초록이고, 성공 문장의 「탭 9」는 `TABS.length` 라서 거짓이었다.
+      · `check_cell_grid` — 존을 하나 늘리고 셀 태그를 안 달았더니 그 존만
+        「그룹 없음」으로 찍힌 채 「✓ 모든 셀이 자기 존 안에 있다」로 통과했다.
+        `bad = rows.filter((r) => r.c && …)` 의 `r.c &&` 가 **재지 못한 것을
+        판정에서 빼고** 있었다.
+
+    가드가 있는 쪽은 `check_bay_clearance`·`check_dynamics` 둘뿐이었고, 둘 다
+    내가 실제로 당한 뒤에 쓴 검사였다 — **가드는 다쳐 본 자리에만 있었다.**
+
+    이 시험은 그 가드가 도구에 남아 있는지 본다. 도구를 실제로 돌리는 것은
+    브라우저가 필요해 여기서 못 하므로(README 에 수동 명령으로 적혀 있다),
+    여기서는 가드의 **모양**을 지키고, 아래 두 시험이 모델 쪽에서 드리프트를
+    막는다.
+    """
+
+    def tool(self, name: str) -> str:
+        return (ROOT / "tools" / f"{name}.mjs").read_text(encoding="utf-8")
+
+    def test_the_cell_grid_counts_an_unmeasured_zone_as_a_defect(self):
+        tool = self.tool("check_cell_grid")
+        self.assertIn("const unmeasured = rows.filter((r) => !r.c);", tool,
+                      "못 잰 존을 모으지 않는다")
+        self.assertIn("unmeasured.length", tool.split("const bad =")[1],
+                      "못 잰 존이 판정에 안 들어간다")
+        self.assertIn("MIN_COVERAGE", tool, "시야 하한이 없다")
+
+    def test_the_sheet_check_matches_its_tab_list_against_the_drawing(self):
+        tool = self.tool("check_sheet_fit")
+        self.assertIn("document.querySelectorAll('[id^=\"pv-tab-\"]')", tool,
+                      "도면의 실제 탭을 세지 않는다")
+        self.assertIn("도면에 있는데 목록에 없다", tool,
+                      "새로 생긴 탭을 잡지 않는다")
+        self.assertIn("탭 ${visited}개", tool,
+                      "성공 문장이 TABS.length 를 찍으면 실제 커버리지를 숨긴다")
+        self.assertIn("if (!sheets) {", tool, "시트 0장을 통과시킨다")
+
+    def test_the_clearance_check_will_not_pass_without_workpieces(self):
+        tool = self.tool("check_clearance")
+        self.assertIn("MIN_WORKPIECE_MESHES", tool)
+        self.assertIn("result.dynamic < MIN_WORKPIECE_MESHES", tool,
+                      "공정물을 못 찾아도 통과한다")
+
+    def test_the_load_path_check_will_not_pass_without_meshes(self):
+        tool = self.tool("check_load_path")
+        self.assertIn("MIN_MESHES", tool)
+        self.assertIn("result.total < MIN_MESHES", tool)
+        # 판별력을 스스로 밝히는 줄 — 실측 99.4 % 다
+        self.assertIn("접지 덩어리가 메시", tool,
+                      "접지 덩어리 크기를 안 찍으면 초록을 과대해석한다")
+
+    def test_the_artifact_check_actually_compares_the_mesh_count(self):
+        """주석이 약속한 것을 코드가 하는지 본다.
+
+        오래 `got.meshes > 100` 만 보고 있었고 원본 메시 수를 읽는 곳이 아예
+        없었다 — 변환이 메시를 900 개 떨궈도 통과했다. 게다가 `!got.has3d ||`
+        때문에 씬 훅을 못 찾으면 요구를 건너뛰고 「3D 없음」으로 통과했는데,
+        **이 검사가 존재하는 이유가 바로 그 모양의 사고**였다.
+        """
+        tool = self.tool("check_artifact_render")
+        self.assertIn("sourceOf", tool, "원본을 찾지 않는다")
+        self.assertIn("got.meshes !== ref.meshes", tool, "메시 수를 대조하지 않는다")
+        self.assertIn("ref.has3d && !got.has3d", tool,
+                      "원본에 3D 가 있는데 발행본에 없는 경우를 통과시킨다")
+        self.assertNotIn("(!got.has3d || got.meshes > 100)", tool,
+                         "옛 판정이 남아 있다")
+
+
+class TestTheCheckerListsCannotDriftFromTheDrawing(unittest.TestCase):
+    """검사 도구가 **손으로 적은 목록**을 훑는 자리를 모델·도면에 묶는다.
+
+    도구 안의 목록과 파이썬 목록을 맞추는 것만으로는 부족하다 — 도면 쪽 이름이
+    같이 바뀌면 두 목록이 일치한 채로 시야가 0 이 된다. 그래서 여기서는
+    **도면**을 기준으로 잡는다.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = (ROOT / "docs" / "drawings"
+                    / "pv-preprocess-plant.html").read_text(encoding="utf-8")
+
+    def test_every_zone_has_a_cell_tag_in_the_scene(self):
+        """존을 늘리고 셀 태그를 잊으면 격자 검사가 그 존을 한 번도 안 잰다.
+
+        `check_cell_grid` 에 가드를 넣었지만 그 검사는 CI 에서 안 돈다. 그러니
+        같은 것을 여기서도 본다 — 존은 `layout.build_zones()` 에서 나오고,
+        태그는 씬의 `pvCell(g,k)` 이 단다.
+        """
+        for zone in layout.build_zones():
+            with self.subTest(zone=zone.key):
+                self.assertRegex(
+                    self.html, r"pvCell\([A-Za-z0-9_$]+,'" + re.escape(zone.key) + r"'\)",
+                    f"존 {zone.key} 에 셀 태그가 없다 — 격자 검사가 이 존을 안 잰다")
+
+    def test_the_tab_list_matches_the_drawing(self):
+        """`check_sheet_fit` 의 TABS 를 도면의 탭 집합과 양방향으로 맞춘다."""
+        tool = (ROOT / "tools" / "check_sheet_fit.mjs").read_text(encoding="utf-8")
+        body = tool[tool.index("const TABS = ["):]
+        listed = set(re.findall(r"'([^']+)'", body[:body.index("];")]))
+        drawn = set(re.findall(r"id=\"pv-tab-([a-z]+)\"", self.html))
+        self.assertTrue(drawn, "도면에서 탭을 못 찾았다 — 이 시험이 무력하다")
+        self.assertEqual(listed, drawn,
+                         "탭 목록이 도면과 다르다 — 빠진 탭은 안 열리고 "
+                         "새 탭은 한 번도 안 열린다")
+
+    def test_no_workpiece_can_excuse_itself(self):
+        """면제 낱말을 공정물 이름에서 읽으면 그 공정물은 무조건 면제된다.
+
+        `'팔레트 패널'` 이 `'팔레트'` 를, `'알루미늄 프레임'` 이 `'프레임'` 을
+        스스로 품고 있었고, 규칙이 `a.includes(w) || b.includes(w)` 였다 —
+        그 둘은 무엇을 얼마나 뚫어도 통과였다. 규칙을 받는 쪽(`b`)만 보게
+        고쳤으므로, 이 시험은 그 규칙이 되돌아오지 않는지 지킨다.
+        """
+        tool = (ROOT / "tools" / "check_clearance.mjs").read_text(encoding="utf-8")
+        self.assertIn("const isContact = (a, b) => contacts.some((w) => b.includes(w))",
+                      tool, "면제를 받는 쪽에서만 읽지 않는다")
+        self.assertNotIn("contacts.some((w) => a.includes(w)", tool,
+                         "공정물 라벨에서 면제를 읽는 옛 규칙이 남아 있다")
+
+    def test_the_contact_words_are_long_enough_to_mean_something(self):
+        """한 글자 면제 낱말은 아무 데나 걸린다.
+
+        `'조'` 는 조립·구조·제조에 다 걸리는데, 빼고 재보니 **잃는 면제가
+        하나도 없었다** — 위험만 있고 몫이 없었다. `'랙'` 은
+        `AFU-RJ-101 전손 리젝트 랙` 하나를 받치고 있었으므로 그 이름을 적었다.
+        """
+        for word in kinematics.DESIGN_CONTACTS + kinematics.PASS_THROUGH:
+            with self.subTest(word=word):
+                self.assertGreater(len(word), 1,
+                                   f"'{word}' 는 한 글자라 아무 라벨에나 걸린다")
+
+        # `check_casing_fit` 의 MOUNTS 는 파이썬과 안 묶인 **지역 목록**이라
+        # 위 루프가 못 본다. 여기서 같이 본다 — `'존'` 이 이 목록에도 있었다.
+        casing = (ROOT / "tools" / "check_casing_fit.mjs").read_text(encoding="utf-8")
+        body = casing[casing.index("const MOUNTS = ["):]
+        body = body[:body.index("];")]
+        # 주석줄을 먼저 걷어낸다 — 안 걷으면 근거에 적은 낱말을 목록으로 읽는다
+        # (처음에 그렇게 짰다가 이 시험이 자기 주석의 `'존'` 을 잡았다).
+        body = "\n".join(l for l in body.splitlines() if not l.strip().startswith("//"))
+        mounts = set(re.findall(r"'([^']+)'", body))
+        self.assertTrue(mounts, "케이싱 면제 목록을 못 읽었다 — 이 시험이 무력하다")
+        for word in sorted(mounts):
+            with self.subTest(casing_word=word):
+                self.assertGreater(len(word), 1,
+                                   f"케이싱 면제 '{word}' 가 한 글자다")
+
+    def test_the_named_exemptions_are_in_the_drawing(self):
+        """이번에 이름으로 적은 두 면제가 실제로 도면의 부재 이름이어야 한다.
+
+        없는 이름을 적으면 면제가 아니라 죽은 낱말이고, 그것을 근거로 빨간
+        것을 초록으로 돌린 셈이 된다.
+        """
+        for word in ("리젝트 랙", "지게차"):
+            with self.subTest(word=word):
+                self.assertIn(word, self.html,
+                              f"'{word}' 가 도면에 없다 — 죽은 면제다")
+
+
 class TestCrane(unittest.TestCase):
     """CRN-901 5 t 천장크레인 — 천장고 12,000 이 확정된 뒤의 인양 계통.
 

@@ -35,6 +35,15 @@ const OVERLAP_BY_DESIGN = {
   grm: 475,    // REV.53: BX-101 브리지가 버퍼 존 끝 너머 GBR 캐리지까지 닿는다
 };
 
+/** 셀에 귀속돼 **실제로 재어지는** 메시의 최소 비율.
+ *
+ *  `pvTransit()`(공정 중)·`pvSpans()`(시설·셀을 건너는 부재)는 존 판정에서
+ *  빠지는데, 그 둘에 상한이 없으면 씬을 전부 그렇게 표시해도 이 검사가
+ *  「✓ 모든 셀이 자기 존 안에 있다」고 말한다 — 한 셀도 재지 않은 채로.
+ *  현행은 0.824 다(메시 2,288 중 1,886). 0.70 은 여유를 두면서 붕괴를
+ *  잡는 자리이고, 정당한 이유로 내려갈 때는 그 이유와 함께 이 값을 내린다. */
+const MIN_COVERAGE = 0.70;
+
 const browser = await chromium.launch({
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
 });
@@ -52,6 +61,8 @@ const result = await page.evaluate(() => {
 
   const cells = {};       // cell → {x0,x1,n}
   let declared = 0;       // 셀에 안 속한다고 밝힌 메시
+  let transit = 0;        // 공정 중이라 존에 매이지 않는 메시
+  let total = 0;          // 씬의 메시 전부 — 이 검사가 자기 시야를 밝히는 값
   const loose = [];       // 태그 없는 메시
   const spanOf = (o) => {
     o.updateWorldMatrix(true, false);
@@ -83,7 +94,9 @@ const result = await page.evaluate(() => {
     return false;
   };
   host.__pvScene.scene.traverse((o) => {
-    if (!o.isMesh || !o.geometry || inTransit(o)) return;
+    if (!o.isMesh || !o.geometry) return;
+    total += 1;
+    if (inTransit(o)) { transit += 1; return; }
     if (spans(o)) { declared += 1; return; }
     const key = cellOf(o);
     const [x0, x1] = spanOf(o);
@@ -93,20 +106,20 @@ const result = await page.evaluate(() => {
     const c = cells[key];
     c.x0 = Math.min(c.x0, x0); c.x1 = Math.max(c.x1, x1); c.n += 1;
   });
-  return { zones, cells, loose, declared };
+  return { zones, cells, loose, declared, transit, total };
 });
 await browser.close();
 
 if (result.error) { console.error('✗ ' + result.error); process.exit(1); }
 if (errors.length) { console.error('✗ 페이지 오류:\n  ' + errors.join('\n  ')); process.exit(1); }
 
-const { zones, cells, loose, declared } = result;
+const { zones, cells, loose, declared, transit, total } = result;
 const mm = (m) => (m * 1000).toFixed(0);
 let worst = 0;
 const rows = [];
 for (const [key, z] of Object.entries(zones)) {
   const c = cells[key];
-  if (!c) { rows.push({ key, state: '미귀속', over: null }); continue; }
+  if (!c) { rows.push({ key, state: '그룹 없음', over: null }); continue; }
   const up = z[0] - c.x0;          // 상류로 넘친 양 (양수면 넘침)
   const down = c.x1 - z[1];        // 하류로 넘친 양
   const allow = (OVERLAP_BY_DESIGN[key] || 0) / 1000;
@@ -116,7 +129,10 @@ for (const [key, z] of Object.entries(zones)) {
   rows.push({ key, z, c, up, down, over, allow, excess });
 }
 
-console.log(`셀 그룹 ${Object.keys(cells).length} · 셀 아님으로 밝힌 메시 ${declared} · 태그 없는 메시 ${loose.length}`);
+const measured = Object.values(cells).reduce((a, c) => a + c.n, 0);
+console.log(`메시 ${total} — 셀에 귀속 ${measured} · 공정 중 ${transit} · 셀 아님으로 밝힘 ${declared}`
+  + ` · 태그 없음 ${loose.length}  (셀 그룹 ${Object.keys(cells).length})`);
+console.log(`시야 ${(measured / Math.max(1, total) * 100).toFixed(1)} % (하한 ${MIN_COVERAGE * 100} %)`);
 console.log(`\n${'존'.padEnd(8)} ${'존 X'.padStart(16)} ${'3D 실측 X'.padStart(16)} ${'상류넘침'.padStart(9)} ${'하류넘침'.padStart(9)}  메시`);
 for (const r of rows) {
   if (!r.c) { console.log(`${r.key.padEnd(8)} ${'—'.padStart(16)} ${'그룹 없음'.padStart(16)}`); continue; }
@@ -136,8 +152,27 @@ if (notCovered.length) {
 }
 
 const bad = rows.filter((r) => r.c && r.excess > 0.05);
-if (bad.length || notCovered.length) {
-  console.log(`\n✗ 격자 미정합 — 존을 넘는 셀 ${bad.length} · 최대 ${mm(worst)} mm · 미귀속 메시 ${notCovered.length}`);
+
+/* **못 잰 존은 결함이다.** 한때 `r.c &&` 가 그것을 판정에서 빼고 있었다 —
+   존을 하나 늘리고 메시 태그를 잊은 도면으로 재보니 그 존만 「그룹 없음」으로
+   찍힌 채 「✓ 모든 셀이 자기 존 안에 있다」로 통과했다. 재지 못한 것을 무(無)로
+   돌리면서 「모든」이라고 단정하는 상태였다. */
+const unmeasured = rows.filter((r) => !r.c);
+const blind = measured < MIN_COVERAGE * total;
+if (bad.length || notCovered.length || unmeasured.length || blind) {
+  if (unmeasured.length) {
+    console.log(`\n✗ 잰 적 없는 존 ${unmeasured.length} — ${unmeasured.map((r) => r.key).join(', ')}`
+      + '\n  존은 `layout.build_zones()` 에서 나오고 셀 태그는 씬의 `pvCell(g,k)` 이 단다.'
+      + ' 존을 늘렸으면 태그도 달아야 한다.');
+  }
+  if (blind) {
+    console.log(`\n✗ 시야가 ${(measured / Math.max(1, total) * 100).toFixed(1)} % 로 내려갔다`
+      + ` — 메시 ${total} 중 ${measured} 만 셀에 귀속됐다.`
+      + '\n  `pvTransit()`·`pvSpans()` 로 빼는 것이 늘면 검사가 볼 것이 없어진다.');
+  }
+  if (bad.length || notCovered.length) {
+    console.log(`\n✗ 격자 미정합 — 존을 넘는 셀 ${bad.length} · 최대 ${mm(worst)} mm · 미귀속 메시 ${notCovered.length}`);
+  }
   process.exit(1);
 }
 const allowed = rows.filter((r) => r.c && r.allow);
