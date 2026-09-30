@@ -462,9 +462,10 @@ class TestTheForkSheetIsOneDrawingForFour(unittest.TestCase):
         """넷 가운데 하나라도 빠지면 그 문형은 도면 없이 제작된다."""
         for tag in ("LI-101", "EX-101", "GL-101", "GU-101"):
             self.assertIn(tag, self.body, f"{tag} 가 설치 위치표에 없다")
-        for coord in ("CMAST_IN", "CMAST_OUT", "CST.DL.x1+.08", "CST.GC.x1+.34"):
-            self.assertIn(coord, self.flat.replace("+.08", "+.08"),
-                          f"{coord} 좌표가 배치에서 나오지 않는다")
+        # 3D · F-003 · D-602 가 같은 상수를 읽는다 — 식을 도면마다 적으면 한 곳만 옮겨 간다
+        for coord in ("CMAST_IN", "CMAST_OUT", "CMAST_GL", "CMAST_GU"):
+            self.assertIn(coord, self.flat, f"{coord} 좌표가 배치에서 나오지 않는다")
+        self.assertNotIn("CST.GC.x1+.34", self.flat, "F-003 이 GU-101 자리를 따로 적는다")
         self.assertIn("UNITS.length", self.body, "기수가 목록에서 나오지 않는다")
 
     def test_the_height_follows_the_deck_count(self):
@@ -640,11 +641,11 @@ class TestTheArrangementSheetIsFabricationLevel(unittest.TestCase):
         """좌표를 손으로 적으면 배치를 옮길 때 3D 만 따라오고 기초는 옛 자리에 뚫는다."""
         # 기둥 앵커(A1 · A2 · A8)는 3D 와 같은 기둥 격자 함수에서 나온다 — 격자가
         # CTBL_CX · 스테이션 중심을 읽는다 (tests/test_column_grids.py).
-        for name in ("CST.HC.x0", "CST.GC.x1", "CMAST_IN", "CMAST_OUT",
+        for name in ("CMAST_IN", "CMAST_OUT", "CMAST_GL", "CMAST_GU",
                      "CRAIL_X0", "CRAIL_X1", "CGY", "tblColXs()", "tblColYs()",
-                     "rackColXs(CST.HC.cx,CST.HC.w)", "rackColXs(CST.GC.cx,CST.GC.w)",
-                     "CE_X0", "CKC_SADDLE", "CKC_RACK_Y",
-                     "CFENCE_YN", "FORK_HALF_STD"):
+                     "rackColXs(CST.HC.cx,CST.HC.w)", "rackColXs(CST.GC.cx,CST.GC.w,GC_COL_INSET)",
+                     "CE_LEG_X0", "CE_LEG_Y1", "CKC_SADDLE", "CKC_RACK_Y", "QI_X", "RH_POST_IN",
+                     "CE_X0", "GATE_W", "FENCE_PITCH", "CFENCE_YN", "FORK_HALF_STD"):
             self.assertIn(name, self.body, f"앵커 좌표가 {name} 에서 나오지 않는다")
         # 평면 좌표계 자체도 방책선에서 나온다
         self.assertIn("PX=x=>33+(x-CFENCE_X0)*S", self.flat.replace(" ", ""))
@@ -686,15 +687,16 @@ class TestTheArrangementSheetIsFabricationLevel(unittest.TestCase):
                          ("compactView()", "배치 상태를 본다")):
             self.assertNotIn(bad, self.body, f"D-602 가 {why}")
 
-    def test_the_shared_foundation_is_not_counted_twice(self):
-        """RH-201 내측 기둥과 KG-101 레일 문형은 같은 자리다.
+    def test_the_monorail_inner_post_stands_on_its_own_plate(self):
+        """RH-201 안쪽 기둥은 KG-101 문형 기둥 바깥에 따로 선다.
 
-        3D 가 두 함수에서 각각 기둥을 세우므로 그대로 세면 앵커가 하나 더
-        잡히고, 기초가 있지도 않은 자리에 하나 더 들어간다."""
-        self.assertIn("A7 과 기초 공용", self.body,
-                      "공용 기초가 도면에 표시되지 않는다")
-        self.assertIn("pts:grid([CRAIL_X0],[-(CFENCE_YN+.10)])", self.body,
-                      "모노레일 앵커가 아직 내측 기둥을 중복해 센다")
+        한동안 두 기둥이 같은 좌표였다 — 3D 는 두 기둥을 겹쳐 그렸고, 기초도는
+        'A7 과 기초 공용' 이라며 앵커를 하나만 셌고, 카탈로그는 기둥 둘 · 판 둘을
+        샀다. 정밀 문형에 호이스트를 싣지 않는다 — 안쪽 기둥은 자기 판을 갖는다
+        (판 사이 틈은 tests/test_foundation.py)."""
+        self.assertNotIn("A7 과 기초 공용", self.body, "공용 기초라는 옛 주기가 남아 있다")
+        self.assertIn("pts:grid([CRAIL_X0],[-(CFENCE_YN+.10),RH_POST_IN])", self.body,
+                      "모노레일 앵커가 안쪽 기둥을 세지 않는다")
 
     def test_it_does_not_pretend_to_know_the_bolt_or_the_dead_load(self):
         """모르는 값을 적는 순간 도면이 근거를 잃는다.
@@ -933,8 +935,11 @@ class TestTheSpecificationAgreesAboutWhatWasHandedOver(unittest.TestCase):
 
     def test_the_clause_says_what_the_foundation_sheet_does_not_fix(self):
         """앵커 위치만 정한 도면을 받아 바로 타설하면 그 기초는 다시 깬다."""
-        self.assertIn("앵커볼트 규격·매입깊이·연단거리·기초 두께·배근은 정하지", self.rfq,
+        flat = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", self.rfq))
+        self.assertIn("앵커볼트 규격·매입깊이·연단거리·기초 두께·배근을 확정하지는 않는다", flat,
                       "1.2 가 D-602 의 한계를 밝히지 않는다")
+        self.assertIn("FAB-001 10.1 의 설계 기준", flat,
+                      "1.2 가 D-602 앵커 규격의 출처를 밝히지 않는다")
 
 
 if __name__ == "__main__":

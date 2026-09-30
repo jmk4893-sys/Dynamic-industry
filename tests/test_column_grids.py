@@ -82,7 +82,8 @@ class TestTheDrawingsStandOnTheGrid(unittest.TestCase):
 
     def test_the_3d_rack_columns(self):
         body = self._fn("cRack")
-        self.assertIn("for(constxofrackColXs(cx,L))for(constyof[-RACK_COL_Y,RACK_COL_Y]){column(", body)
+        self.assertIn("for(constxofrackColXs(cx,L,opt.inset||0))for(constyof[-RACK_COL_Y,RACK_COL_Y]){column(", body)
+        self.assertIn("plate:PLT(opt.plate)", body, "랙 기둥 판이 카탈로그 품번을 읽지 않는다")
         self.assertNotIn("[x0,x1])for(constyof[-1.15,1.15]", body)
 
     def test_the_front_view_draws_every_column_line(self):
@@ -93,19 +94,23 @@ class TestTheDrawingsStandOnTheGrid(unittest.TestCase):
         """D-602 의 앵커 점 수가 카탈로그의 베이스플레이트 수와 같아야 한다."""
         for gid, expr in (
             ("A1", "pts:grid(rackColXs(CST.HC.cx,CST.HC.w),[-RACK_COL_Y,RACK_COL_Y])"),
-            ("A2", "pts:grid(rackColXs(CST.GC.cx,CST.GC.w),[-RACK_COL_Y,RACK_COL_Y])"),
+            # 냉각 랙 끝기둥은 데크 끝에 선다 — 스테이션 끝에 세우면 GL·GU 포크 판과 겹친다
+            ("A2", "pts:grid(rackColXs(CST.GC.cx,CST.GC.w,GC_COL_INSET),[-RACK_COL_Y,RACK_COL_Y])"),
             ("A8", "pts:grid(tblColXs(),tblColYs())"),
         ):
             i = self.flat.find("{id:'%s'," % gid)
             self.assertGreater(i, 0, f"기초도 {gid} 를 찾지 못했다")
-            row = self.flat[i:self.flat.index("plate:", i)]
+            row = self.flat[i:self.flat.find("{id:'", i + 1)]
             self.assertIn(expr, row, f"기초도 {gid} 가 기둥 격자를 읽지 않는다")
         # 격자가 내는 점 수 = 카탈로그 베이스플레이트 수
         self.assertEqual(2 * round(c("TBL_COLS_X")), _qty("P-004-05"))
         self.assertEqual(2 * round(c("RACK_COLS_X")), _qty("P-002-02"))
         self.assertEqual(2 * round(c("RACK_COLS_X")), _qty("P-007-02"))
-        self.assertIn("plate:.36", re.search(r"\{id:'A8',[^\n]*", self.flat).group(0),
-                      "A8 베이스플레이트가 P-004-05 (PL 360) 와 다르다")
+        # 판 크기는 도면이 적지 않는다 — 앵커군 표의 품번으로 카탈로그 판을 읽는다
+        self.assertIn("returnObject.assign(g,{part:a.part,plate:PLT(a.part),anchor:a})", self.flat,
+                      "기초도의 판이 카탈로그 품번에서 오지 않는다")
+        self.assertIsNone(re.search(r"\{id:'A\d+',[^}]*plate:\.\d", self.flat),
+                          "기초도가 판 크기를 숫자로 적는다")
 
 
 class TestTheModulePanelCountsFromTheCatalog(unittest.TestCase):

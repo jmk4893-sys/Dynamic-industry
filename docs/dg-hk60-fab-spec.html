@@ -357,7 +357,7 @@
       강성·피로·최소규격이 지배하기 때문이다. 바뀐 것은 근거의 성격이다.</div>
     <div class="note"><strong>그래도 카탈로그는 개념설계가 유도한 형상이다.</strong> 제작사는 상세설계
       30 % 시점에 <strong>중량표</strong>를 제출한다. 카탈로그 값을 <span class="m">±15 %</span> 넘게
-      벗어나면 앵커와 기초를 다시 잡는다 — 여섯 개소 전부 콘크리트 콘 파괴가 지배하므로
+      벗어나면 앵커와 기초를 다시 잡는다 — 열네 군 전부 콘크리트 콘 파괴가 지배하므로
       자중이 늘면 <strong>매입깊이가 규격보다 먼저 움직인다</strong>.</div>
   </div></div>
 
@@ -684,8 +684,8 @@ F<sub>p,C</sub>  = 0.7·f<sub>ub</sub>·A<sub>s</sub>             설계 체결�
 <tr class="sub"><td></td><td colspan="5">기둥당 3.90 kN @ EL 1150 캔틸레버</td></tr>
 <tr><td class="k">C4</td><td>KG-101 문형 기둥 H-250×250×9/14</td><td>피로 — 필릿 용접 부착물 (등급 71)</td><td class="num">8.77 MPa</td><td class="num">52.31 MPa</td><td class="num">0.17</td></tr>
 <tr class="sub"><td></td><td colspan="5">레일 EL 1950 에서의 캔틸레버 휨</td></tr>
-<tr><td class="k">C6</td><td>RH-201 런웨이 빔 H-200×100×5.5/8</td><td>처짐 L/500 (호이스트 주행)</td><td class="num">0.15 mm</td><td class="num">6.36 mm</td><td class="num">0.02</td></tr>
-<tr class="sub"><td></td><td colspan="5">카세트+프레임 0.53 + 호이스트 0.27 kN · 지지 간격 3180</td></tr>
+<tr><td class="k">C6</td><td>RH-201 런웨이 빔 H-200×100×5.5/8</td><td>처짐 L/500 (호이스트 주행)</td><td class="num">0.10 mm</td><td class="num">5.62 mm</td><td class="num">0.02</td></tr>
+<tr class="sub"><td></td><td colspan="5">카세트+프레임 0.53 + 호이스트 0.27 kN · 지지 간격 2810</td></tr>
       </tbody>
     </table></div>
     <div class="note"><strong>C5 는 결번이다.</strong> WR-101 권취축(Ø60 h6)의 회전굽힘 피로였다 —
@@ -709,25 +709,43 @@ F<sub>p,C</sub>  = 0.7·f<sub>ub</sub>·A<sub>s</sub>             설계 체결�
   <h2><span>10</span>기초 앵커</h2>
   <div class="clause"><div class="n">10.1</div><div class="c">
     <p>배치도 <span class="k">D-602</span> 는 앵커 <em>위치</em>만 정하고 규격·매입깊이·연단거리·
-      기초 두께를 남겨 두었다. 여기서 닫는다.</p>
-    <div class="calc">N<sub>Rd,c</sub> = 7.7·√f<sub>ck</sub>·h<sub>ef</sub><sup>1.5</sup> / γ<sub>Mc</sub>     콘크리트 콘
-N<sub>Rd,p</sub> = π·d·h<sub>ef</sub>·τ<sub>Rk</sub> / γ<sub>Mc</sub>          접착
+      기초 두께를 남겨 두었다. 여기서 닫는다. 기호 · 규격 · 매입깊이 · 판 품번은 부품 카탈로그의
+      앵커군 표 한 곳에서 나오고, D-602 와 부품도의 체결 칸이 같은 표를 읽는다 — 한 장의 판에 서는
+      앵커 수는 그 판의 구멍 수다.</p>
+    <div class="calc">N<sub>Rd,c</sub> = 7.7·√f<sub>ck</sub>·h<sub>ef</sub><sup>1.5</sup> / γ<sub>Mc</sub>     콘크리트 콘 (앵커 1본)
+N<sub>Rd,p</sub> = π·d·h<sub>ef</sub>·τ<sub>Rk</sub> / γ<sub>Mc</sub>          접착 (앵커 1본)
+N<sub>Rd,c,g</sub> = N<sub>Rd,c</sub>·A<sub>c,N</sub>/A⁰<sub>c,N</sub>·ψ<sub>re,N</sub>     판 한 장의 군 — A⁰<sub>c,N</sub> = s<sub>cr</sub>², s<sub>cr</sub> = 3·h<sub>ef</sub>
+ψ<sub>re,N</sub> = 0.5 + h<sub>ef</sub>/200 ≤ 1              배근을 모르므로 무조건 곱한다 (안전측)
 f<sub>ck</sub> = 25 MPa (C25/30 최소) · τ<sub>Rk</sub> = 10.0 MPa · γ<sub>Mc</sub> = 1.5</div>
     <div class="tw"><table>
       <caption>접착식 앵커 — 기초별 규격과 배치 요구</caption>
-      <thead><tr><th>기초</th><th>설비</th><th>앵커</th><th class="num">h<sub>ef</sub></th>
+      <thead><tr><th>기초</th><th>설비 · 판</th><th>앵커</th><th class="num">h<sub>ef</sub></th>
         <th class="num">강재 kN</th><th class="num">콘 kN</th><th class="num">접착 kN</th><th>지배</th>
-        <th class="num">연단</th><th class="num">간격</th><th class="num">기초 t</th></tr></thead>
+        <th class="num">연단 c<sub>cr</sub></th><th class="num">판 구멍 / s<sub>cr</sub></th>
+        <th class="num">판당 kN</th><th class="num">기초 t</th></tr></thead>
       <tbody>
-<tr><td class="k">A2</td><td>HC-101 가열실</td><td class="k">M20 × 4</td><td class="num">170</td><td class="num">141.1</td><td class="num">56.9</td><td class="num">71.2</td><td class="k">콘크리트 콘</td><td class="num">255</td><td class="num">510</td><td class="num">300</td></tr>
-<tr><td class="k">A7</td><td>KG-101 주행레일 문형</td><td class="k">M24 × 4</td><td class="num">210</td><td class="num">254.2</td><td class="num">78.1</td><td class="num">105.6</td><td class="k">콘크리트 콘</td><td class="num">315</td><td class="num">630</td><td class="num">310</td></tr>
-<tr><td class="k">A8</td><td>VT-101 진공테이블</td><td class="k">M24 × 4</td><td class="num">210</td><td class="num">254.2</td><td class="num">78.1</td><td class="num">105.6</td><td class="k">콘크리트 콘</td><td class="num">315</td><td class="num">630</td><td class="num">310</td></tr>
-<tr><td class="k">A10</td><td>RH-201 모노레일 기둥</td><td class="k">M20 × 4</td><td class="num">170</td><td class="num">141.1</td><td class="num">56.9</td><td class="num">71.2</td><td class="k">콘크리트 콘</td><td class="num">255</td><td class="num">510</td><td class="num">300</td></tr>
-<tr><td class="k">A11</td><td>CE-201 횡인출</td><td class="k">M16 × 4</td><td class="num">125</td><td class="num">90.4</td><td class="num">35.9</td><td class="num">41.9</td><td class="k">콘크리트 콘</td><td class="num">188</td><td class="num">375</td><td class="num">300</td></tr>
-<tr><td class="k">A13</td><td>KC-301 카세트 새들</td><td class="k">M16 × 4</td><td class="num">125</td><td class="num">90.4</td><td class="num">35.9</td><td class="num">41.9</td><td class="k">콘크리트 콘</td><td class="num">188</td><td class="num">375</td><td class="num">300</td></tr>
+<tr><td class="k">A1</td><td>HC-101 가열실 랙 · P-002-02</td><td class="k">M20 × 4</td><td class="num">170</td><td class="num">141.1</td><td class="num">56.9</td><td class="num">71.2</td><td class="k">콘크리트 콘</td><td class="num">255</td><td class="num">280 / 510</td><td class="num">136.5</td><td class="num">300</td></tr>
+<tr><td class="k">A2</td><td>GC-101 냉각 랙 · P-007-02</td><td class="k">M20 × 4</td><td class="num">170</td><td class="num">141.1</td><td class="num">56.9</td><td class="num">71.2</td><td class="k">콘크리트 콘</td><td class="num">255</td><td class="num">280 / 510</td><td class="num">136.5</td><td class="num">300</td></tr>
+<tr><td class="k">A3</td><td>LI-101 투입 승강 포크 · P-003-02</td><td class="k">M20 × 4</td><td class="num">170</td><td class="num">141.1</td><td class="num">56.9</td><td class="num">71.2</td><td class="k">콘크리트 콘</td><td class="num">255</td><td class="num">100 / 510</td><td class="num">105.4</td><td class="num">300</td></tr>
+<tr><td class="k">A4</td><td>EX-101 방출 승강 포크 · P-003-02</td><td class="k">M20 × 4</td><td class="num">170</td><td class="num">141.1</td><td class="num">56.9</td><td class="num">71.2</td><td class="k">콘크리트 콘</td><td class="num">255</td><td class="num">100 / 510</td><td class="num">105.4</td><td class="num">300</td></tr>
+<tr><td class="k">A5</td><td>GL-101 유리 적입 포크 · P-003-02</td><td class="k">M20 × 4</td><td class="num">170</td><td class="num">141.1</td><td class="num">56.9</td><td class="num">71.2</td><td class="k">콘크리트 콘</td><td class="num">255</td><td class="num">100 / 510</td><td class="num">105.4</td><td class="num">300</td></tr>
+<tr><td class="k">A6</td><td>GU-101 유리 인출 포크 · P-003-02</td><td class="k">M20 × 4</td><td class="num">170</td><td class="num">141.1</td><td class="num">56.9</td><td class="num">71.2</td><td class="k">콘크리트 콘</td><td class="num">255</td><td class="num">100 / 510</td><td class="num">105.4</td><td class="num">300</td></tr>
+<tr><td class="k">A7</td><td>KG-101 주행레일 문형 · P-005-02</td><td class="k">M24 × 4</td><td class="num">210</td><td class="num">254.2</td><td class="num">78.1</td><td class="num">105.6</td><td class="k">콘크리트 콘</td><td class="num">315</td><td class="num">150 / 630</td><td class="num">165.8</td><td class="num">310</td></tr>
+<tr><td class="k">A8</td><td>VT-101 진공테이블 · P-004-05</td><td class="k">M24 × 4</td><td class="num">210</td><td class="num">254.2</td><td class="num">78.1</td><td class="num">105.6</td><td class="k">콘크리트 콘</td><td class="num">315</td><td class="num">250 / 630</td><td class="num">152.4</td><td class="num">310</td></tr>
+<tr><td class="k">A10</td><td>RH-201 모노레일 기둥 · P-006-03</td><td class="k">M20 × 4</td><td class="num">170</td><td class="num">141.1</td><td class="num">56.9</td><td class="num">71.2</td><td class="k">콘크리트 콘</td><td class="num">255</td><td class="num">264 / 510</td><td class="num">131.0</td><td class="num">300</td></tr>
+<tr><td class="k">A11</td><td>CE-201 횡인출 컨베이어 · P-008-03</td><td class="k">M12 × 2</td><td class="num">80</td><td class="num">48.6</td><td class="num">18.4</td><td class="num">20.1</td><td class="k">콘크리트 콘</td><td class="num">120</td><td class="num">120 / 240</td><td class="num">24.8</td><td class="num">300</td></tr>
+<tr><td class="k">A13</td><td>KC-301 카세트 새들 · P-006-07</td><td class="k">M16 × 4</td><td class="num">125</td><td class="num">90.4</td><td class="num">35.9</td><td class="num">41.9</td><td class="k">콘크리트 콘</td><td class="num">188</td><td class="num">960 / 375</td><td class="num">143.5</td><td class="num">300</td></tr>
+<tr><td class="k">A14</td><td>QI-301 검사 문형 · P-009-10</td><td class="k">M12 × 4</td><td class="num">80</td><td class="num">48.6</td><td class="num">18.4</td><td class="num">20.1</td><td class="k">콘크리트 콘</td><td class="num">120</td><td class="num">160 / 240</td><td class="num">45.9</td><td class="num">300</td></tr>
+<tr><td class="k">A15</td><td>방책 기둥 · P-013-02</td><td class="k">M10 × 2</td><td class="num">60</td><td class="num">33.4</td><td class="num">11.9</td><td class="num">12.6</td><td class="k">콘크리트 콘</td><td class="num">100</td><td class="num">80 / 180</td><td class="num">13.8</td><td class="num">300</td></tr>
+<tr><td class="k">A16</td><td>반출 게이트 기둥 · P-013-19</td><td class="k">M12 × 4</td><td class="num">80</td><td class="num">48.6</td><td class="num">18.4</td><td class="num">20.1</td><td class="k">콘크리트 콘</td><td class="num">120</td><td class="num">170 / 240</td><td class="num">48.2</td><td class="num">300</td></tr>
       </tbody>
     </table></div>
-    <div class="decide"><b>총괄 결정</b> — <strong>전 앵커에서 콘크리트측이 지배한다.</strong>
+    <div class="note"><strong>간격 칸은 판이 지킬 최소 간격이 아니다.</strong>
+      s<sub>cr</sub> = 3·h<sub>ef</sub> 는 이웃 앵커의 콘이 겹치지 않는 특성 간격이다. 판 구멍은 그보다
+      좁으므로(가열실 판 280 ↔ 510) 콘이 겹치고, 판 한 장의 내력은 앵커 수 × 단일 콘이 아니라
+      투영면적 비만큼이다 — <em>판당 kN</em> 칸이 그 값이다. 한동안 이 표가 510 을 배치 요구로 적은 채
+      판은 280 으로 뚫려 있었다. 판 구멍 간격은 5·d (제조사 최소 간격 가정) 이상으로 둔다.</div>
+    <div class="decide"><b>총괄 결정</b> — <strong>전 앵커에서 콘크리트측이 지배한다</strong> — 판 한 장의 군으로 보아도 같다.
       강재 내력이 콘 내력의 2~3 배이므로 앵커를 굵히는 것은 의미가 없다.
       성능을 정하는 것은 <strong>매입깊이 · 연단거리 · 기초 두께 · 콘크리트 강도</strong> 넷이고,
       그 넷을 표에 못 박았다. 기초는 <strong>C25/30 이상</strong>, 표의 두께 이상,

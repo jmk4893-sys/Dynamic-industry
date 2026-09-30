@@ -205,7 +205,7 @@ F_PEEL_D = F_PEEL_K * PSI_DYN * GAMMA_Q            # kN 설계값
 # 권취 문형은 계단 칼날 전환으로 철거돼 이제 셋이다.
 #
 # 제작사 중량표가 나오면 여기가 아니라 parts.py 의 형상을 고친다. 카탈로그가
-# ±15 % 를 벗어나면 앵커·기초를 다시 본다 — 여섯 개소 전부 콘크리트 콘
+# ±15 % 를 벗어나면 앵커·기초를 다시 본다 — 열네 군 전부 콘크리트 콘
 # 파괴가 지배하므로 매입깊이가 규격보다 먼저 움직인다.
 from parts import mass as _pm
 import knife_edge as KE  # noqa: E402  칼날 인서트 날끝 (D-502)
@@ -469,19 +469,16 @@ def anchor_bond(d_mm: float, hef_mm: float) -> float:
     return math.pi * d_mm * hef_mm * TAU_RK / 1000 / GAMMA_MC
 
 
+# 앵커군은 카탈로그 한 표(parts.ANCHOR_GROUPS)에서 읽는다 — 기초도 D-602 와 같은 줄이다.
+# 여기 손으로 적은 표는 가열실을 A2(기초도는 A1)로 불렀고, CE-201 을 M16 × 4 로 적었는데
+# 카탈로그 다리 판은 M12 구멍 둘이었다. 판 한 장의 앵커 수는 그 판의 구멍 수다.
+# A9 (WR-101 권취 문형) · A12 (BS-301 롤 새들) 는 결번 — 권취부 철거.
 ANCHORS = []
-for _aid, _eq, _d, _hef, _grade, _n in (
-    ("A2", "HC-101 가열실", 20, 170, "8.8", 4),
-    ("A7", "KG-101 주행레일 문형", 24, 210, "10.9", 4),
-    ("A8", "VT-101 진공테이블", 24, 210, "10.9", 4),
-    ("A10", "RH-201 모노레일 기둥", 20, 170, "8.8", 4),
-    ("A11", "CE-201 횡인출", 16, 125, "8.8", 4),
-    ("A13", "KC-301 카세트 새들", 16, 125, "8.8", 4),
-):
-    # A9 (WR-101 권취 문형) · A12 (BS-301 롤 새들) 는 결번 — 권취부 철거.
-    _size = f"M{_d}"
+for _aid, _eq, _pid, _size, _hef, _grade in _PT.ANCHOR_GROUPS:
+    _n = len(next(p for p in _PT.P if p.pid == _pid).shape.d["holes"])
+    _d = int(_size[1:])
     ANCHORS.append(dict(
-        id=_aid, eq=_eq, size=_size, hef=_hef, grade=_grade, n=_n,
+        id=_aid, eq=_eq, part=_pid, size=_size, hef=_hef, grade=_grade, n=_n,
         steel=bolt_tension(_size, _grade),
         cone=anchor_cone(_hef), bond=anchor_bond(_d, _hef),
         edge=max(1.5 * _hef, 100), spacing=max(3.0 * _hef, 150),
@@ -493,6 +490,36 @@ for _a in ANCHORS:
     _a["gov"] = min((_a["steel"], "강재"), (_a["cone"], "콘크리트 콘"),
                     (_a["bond"], "접착"))[1]
     _a["Nrd"] = min(_a["steel"], _a["cone"], _a["bond"])
+
+
+# ── 판 한 장의 앵커군 (EN 1992-4 7.2.1.4 · 7.2.1.6 투영면적법)
+# 위 표의 간격 3·hef 는 콘이 서로 겹치지 않는 특성 간격 s_cr 이지 판이 지켜야 할
+# 최소 간격이 아니다. 판 구멍은 그보다 좁다 (A1 판 280 ↔ s_cr 510) — 콘이 겹치므로
+# 판 한 장의 내력은 앵커 수 × 단일 콘이 아니라 투영면적 비만큼이다. 한동안 표가
+# '간격 510' 을 배치 요구로 적은 채 판은 280 으로 뚫려 있었다.
+# 연단은 c_cr 이상으로 요구하므로(연단 칸) 연단 감소 ψs 는 1 이다. 배근 조건은 모른다 —
+# 얕은 앵커(hef < 100)는 표피 박리 ψre = 0.5 + hef/200 을 무조건 곱한다(안전측).
+def _proj(coords, s_cr):
+    """한 방향 투영 길이 — 이웃 간격이 s_cr 보다 넓으면 콘이 겹치지 않는다."""
+    xs = sorted(set(coords))
+    return s_cr + sum(min(b - a, s_cr) for a, b in zip(xs, xs[1:]))
+
+
+for _a in ANCHORS:
+    _holes = next(p for p in _PT.P if p.pid == _a["part"]).shape.d["holes"]
+    _xs, _ys = [h[0] for h in _holes], [h[1] for h in _holes]
+    _d = int(_a["size"][1:])
+    _psi_re = min(1.0, 0.5 + _a["hef"] / 200)
+    _s_cr = 3.0 * _a["hef"]
+    _s_crp = min(7.3 * _d * math.sqrt(TAU_RK), _s_cr)       # 접착 특성 간격
+    _gaps = [b - a for v in (_xs, _ys) for a, b in zip(sorted(set(v)), sorted(set(v))[1:])]
+    _a["s_plate"] = min(_gaps) if _gaps else 0.0            # 판 구멍 최소 간격
+    _a["cone_g"] = _a["cone"] * _proj(_xs, _s_cr) * _proj(_ys, _s_cr) / _s_cr ** 2 * _psi_re
+    _a["bond_g"] = _a["bond"] * _proj(_xs, _s_crp) * _proj(_ys, _s_crp) / _s_crp ** 2 * _psi_re
+    _a["steel_g"] = _a["n"] * _a["steel"]
+    _a["gov_g"] = min((_a["steel_g"], "강재"), (_a["cone_g"], "콘크리트 콘"),
+                      (_a["bond_g"], "접착"))[1]
+    _a["Nrd_g"] = min(_a["steel_g"], _a["cone_g"], _a["bond_g"])
 
 
 # ── 6d. 체결 부품 규칙 ─────────────────────────────────────────────────
@@ -650,13 +677,15 @@ def report() -> str:
     add(f"  단위는 부재별 — 처짐 mm · 응력범위 MPa")
     add("")
     add("── 앵커 (EN 1992-4 · 접착식 · C25/30 이상) ────────────")
-    add(f"  {'기초':6s}{'설비':26s}{'규격':7s}{'hef':>6s}{'강재':>8s}"
-        f"{'콘':>8s}{'접착':>8s}{'지배':>10s}{'연단':>7s}{'간격':>7s}{'기초t':>7s}")
+    add(f"  {'기초':6s}{'설비':26s}{'규격':9s}{'hef':>6s}{'강재':>8s}"
+        f"{'콘':>8s}{'접착':>8s}{'지배':>10s}{'연단':>7s}{'판/scr':>11s}{'판당':>8s}{'기초t':>7s}")
     for a in ANCHORS:
-        add(f"  {a['id']:6s}{a['eq'][:24]:26s}{a['size']:7s}{a['hef']:6.0f}"
+        add(f"  {a['id']:6s}{a['eq'][:24]:26s}{a['size'] + '×' + str(a['n']):9s}{a['hef']:6.0f}"
             f"{a['steel']:8.1f}{a['cone']:8.1f}{a['bond']:8.1f}"
-            f"{a['gov']:>10s}{a['edge']:7.0f}{a['spacing']:7.0f}{a['slab']:7.0f}")
+            f"{a['gov']:>10s}{a['edge']:7.0f}{a['s_plate']:6.0f}/{a['spacing']:<4.0f}"
+            f"{a['Nrd_g']:8.1f}{a['slab']:7.0f}")
     add("  내력 kN · hef·연단·간격·기초두께 mm — 전 앵커에서 콘크리트측이 지배한다")
+    add("  판당 = 판 한 장의 군 내력 (투영면적 비 · ψre) — 판 구멍이 s_cr 보다 좁아 콘이 겹친다")
     add("")
     add("── 부재표 ──────────────────────────────────────────────")
     add(f"  {'모듈':7s}{'부재':22s}{'단면·두께':30s}{'재질':10s}")

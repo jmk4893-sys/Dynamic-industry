@@ -151,6 +151,33 @@ class TestTheBoltMathMatchesTheStandard(unittest.TestCase):
             self.assertGreaterEqual(a["edge"], 1.5 * a["hef"])
             self.assertGreaterEqual(a["slab"], a["hef"] + 100)
 
+    def test_a_plate_is_checked_as_a_group_not_as_n_single_cones(self):
+        """판 구멍은 s_cr = 3·hef 보다 좁다 — 콘이 겹치므로 판 한 장은 군으로 센다.
+
+        표가 한동안 '간격 510' 을 배치 요구로 적은 채 가열실 판은 280 으로 뚫려 있었다.
+        군 내력은 앵커 수 × 단일 콘보다 작아야 하고(겹침), 단일 콘보다는 커야 한다.
+        판 구멍 간격은 5·d (제조사 최소 간격 가정) 아래로 내려가지 않는다.
+        """
+        for a in F.ANCHORS:
+            d = int(a["size"][1:])
+            self.assertGreaterEqual(a["s_plate"], 5 * d, f"{a['id']} 판 구멍 간격이 5d 아래다")
+            self.assertEqual(a["gov_g"], "콘크리트 콘", f"{a['id']} 판의 지배 파괴가 바뀌었다")
+            self.assertGreater(a["Nrd_g"], a["cone"] * min(1.0, 0.5 + a["hef"] / 200) - 1e-9,
+                               f"{a['id']} 군 내력이 앵커 한 본보다 작다")
+            self.assertLessEqual(a["Nrd_g"], a["n"] * a["cone"] + 1e-9,
+                                 f"{a['id']} 군 내력이 앵커 수 × 단일 콘을 넘는다")
+            if a["s_plate"] < a["spacing"]:
+                self.assertLess(a["Nrd_g"], a["n"] * a["cone"] - 1e-6,
+                                f"{a['id']} 판 구멍이 s_cr 보다 좁은데 콘이 겹치지 않는다")
+
+    def test_the_group_resists_what_the_joint_table_puts_on_the_plate(self):
+        """접합부 표가 판에 거는 인장(볼트당 N × 판의 앵커 수)을 판 한 장의 군 내력이 받는다."""
+        by = {a["id"]: a for a in F.ANCHORS}
+        jt = {j["id"]: j for j in F.JOINTS}
+        for jid, aid in (("J1", "A8"), ("J2", "A7"), ("J6", "A1"), ("J11", "A15")):
+            a, j = by[aid], jt[jid]
+            self.assertLess(j["N"] * a["n"], a["Nrd_g"], f"{jid} → {aid} 판 인장이 군 내력을 넘는다")
+
 
 class TestTheSpecificationSaysWhatTheCalculatorComputed(unittest.TestCase):
     """표의 숫자를 손으로 고치면 여기서 먼저 실패한다."""
@@ -243,7 +270,10 @@ class TestTheSpecificationSaysWhatTheCalculatorComputed(unittest.TestCase):
             self.assertAlmostEqual(float(r[5]), a["cone"], delta=0.05, msg=f"{a['id']} 콘")
             self.assertEqual(r[7], a["gov"], f"{a['id']} 지배")
             self.assertAlmostEqual(float(r[8]), a["edge"], delta=0.5, msg=f"{a['id']} 연단")
-            self.assertAlmostEqual(float(r[10]), a["slab"], delta=0.5, msg=f"{a['id']} 기초두께")
+            self.assertEqual(r[9], f"{a['s_plate']:.0f} / {a['spacing']:.0f}", f"{a['id']} 판 구멍 간격")
+            self.assertAlmostEqual(float(r[10]), a["Nrd_g"], delta=0.05, msg=f"{a['id']} 판당 군 내력")
+            self.assertAlmostEqual(float(r[11]), a["slab"], delta=0.5, msg=f"{a['id']} 기초두께")
+            self.assertIn(a["part"], r[1], f"{a['id']} 판 품번이 표에 없다")
 
     def test_the_critical_check_table_matches(self):
         rows = [r for r in _cells(self.html, "정렬·피로 지배 부재") if len(r) == 6]

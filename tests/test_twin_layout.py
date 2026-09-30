@@ -402,7 +402,7 @@ class TestEachCellIsItsOwnMachine(unittest.TestCase):
         self.assertGreater(aisle_half - (half + .15 / 2) - wall / 2, .05,
                            "좁힌 문형으로도 가드 벽이 통로에 못 선다")
         # 두 문형 모두 배치가 정한 폭으로 부른다
-        for call in ("cFork(EXX,'EX',-1,", "cFork(CST.DL.x1+.08,'GL',1,"):
+        for call in ("cFork(EXX,'EX',-1,", "cFork(CMAST_GL,'GL',1,"):
             i = self.b.index(call)
             self.assertIn("cForkHalf()", self.b[i:i + 260],
                           f"{call} 이 배치를 보지 않는다")
