@@ -502,3 +502,40 @@ class TestTheAlignmentGuideNeverTouchesGlassWithSteel(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheCellModuleLineCarriesCellModules(unittest.TestCase):
+    """M-008 이 나르는 것은 셀모듈이다 — 유리는 테이블에 남아 GL-101 로 냉각 랙에 간다.
+
+    한동안 CE-201 · CS-201 의 부품 설명 · 조립 판정 · 구매 사양이 '유리' 를 나른다고
+    적고, 존재센서를 '유리 두께·존재 센서' 둘로 셌다. PLC 는 같은 자리에서 '셀
+    존재센서×4' 를 읽는다.
+    """
+
+    def test_nothing_in_m008_says_glass(self):
+        import procure as PR
+        for p in PT.P:
+            if p.mod != "M-008":
+                continue
+            for field in (p.name, p.note, p.fix):
+                self.assertNotIn("유리", field, f"{p.pid} {p.name}: {field}")
+            spec = PR.BUY_SPEC.get(p.pid)
+            if spec:
+                self.assertNotIn("유리", " ".join(spec), f"{p.pid} 구매 사양")
+        for _n, what, why, check in PT.STEPS["M-008"]:
+            self.assertNotIn("유리", what + why + check, "M-008 조립 순서")
+
+    def test_the_presence_sensors_are_the_ones_the_plc_reads(self):
+        import plc_model as M
+        want = {int(m.group(1)) for l in M.LEAVES
+                for m in [re.search(r"셀 존재센서×(\d+)", l.device)] if m}
+        self.assertEqual(len(want), 1, f"PLC 가 셀 존재센서를 둘 이상의 수로 센다: {want}")
+        p = {x.pid: x for x in PT.P}["P-008-11"]
+        self.assertEqual(PT.unit_qty(p), want.pop(), "카탈로그와 PLC 의 셀모듈 존재센서 수가 다르다")
+        self.assertIn("셀모듈", p.name)
+
+    def test_the_documents_no_longer_carry_the_glass_sensor(self):
+        for name in ("dg-hk60-assembly.html", "dg-hk60-procurement.html"):
+            html = (ROOT / "docs" / name).read_text(encoding="utf-8")
+            for old in ("유리 두께·존재 센서", "유리 존재·겹침", "유리가 옆으로 나가는 길"):
+                self.assertNotIn(old, html, f"{name} 에 '{old}' 가 남았다")
