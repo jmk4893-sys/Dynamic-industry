@@ -79,6 +79,11 @@ def value(expr, env):
 # 값이 같은 식으로 다시 풀리고, 카탈로그·조달·해석이 같은 코드로 옵션을 낸다.
 _PIN: dict = {}
 _ACTIVE = "compact"
+# env() 는 818 KB 콘솔을 정규식으로 훑고 식을 여러 바퀴 푼다. const() 가 부를 때마다
+# 그것을 다시 하면 카탈로그 한 벌에 2 초가 든다 — 표준과 옵션을 함께 풀면 곱절이다.
+# 본문과 핀이 같으면 답도 같으므로 둘을 열쇠로 기억한다. 콘솔을 고쳐 쓰면(--write)
+# 본문이 달라져 열쇠가 바뀌므로 옛 답이 남지 않는다.
+_ENV_CACHE: dict = {}
 
 # 배치 id → 콘솔의 설정 객체 이름
 LAYOUT_OBJ = {"compact": "HK60C", "twin": "HK120C"}
@@ -98,6 +103,10 @@ def env(console):
     배치 핀(layout())이 박혀 있으면 그 이름은 콘솔의 정의 대신 핀 값을 쓰고,
     거기서 파생되는 상수는 핀 값으로 다시 푼다.
     """
+    key = (hash(console), len(console), tuple(sorted(_PIN.items())))
+    hit = _ENV_CACHE.get(key)
+    if hit is not None:
+        return dict(hit)
     pend = {}
     for body in re.findall(r"\bconst ([^;\n]+);", console):
         for part in _split_top(body):
@@ -120,7 +129,10 @@ def env(console):
                 out["CST"], moved = cst, True
         if not moved:
             break
-    return out
+    if len(_ENV_CACHE) > 16:
+        _ENV_CACHE.clear()
+    _ENV_CACHE[key] = out
+    return dict(out)
 
 
 class _NS:
@@ -258,11 +270,17 @@ def const(name):
 def layouts(console=None):
     """배치 계열 설정 — {'compact': {...}, 'twin': {...}}. 숫자 필드만 편다.
 
-    핀이 박힌 채로 부르면 HK60C 의 `decks:DECKS` 가 핀 값으로 읽힌다 — 그래서
-    layout() 은 핀을 박기 전에 이 값을 먼저 읽는다.
+    **늘 핀 없이 푼다.** 핀이 박힌 채로 풀면 HK60C 의 `decks:DECKS` 가 핀 값으로
+    읽히고 HK120C 의 `lamps:2*LAMPS` 는 두 번 곱해진다 — 옵션 안에서 표준의 값을
+    물을 때(부하표가 분기를 가를 때) 표준이 옵션의 얼굴을 하고 나온다.
     """
+    global _PIN
     console = CONSOLE.read_text(encoding="utf-8") if console is None else console
-    return {lid: obj(name, console) for lid, name in LAYOUT_OBJ.items()}
+    saved, _PIN = _PIN, {}
+    try:
+        return {lid: obj(name, console) for lid, name in LAYOUT_OBJ.items()}
+    finally:
+        _PIN = saved
 
 
 def active():

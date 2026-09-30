@@ -19,6 +19,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import parts as PT  # noqa: E402
 from console_consts import const as c  # noqa: E402
+import option as OPT  # noqa: E402
 import procure as PR  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -293,7 +294,7 @@ def part2() -> str:
       (조립 지침서 6항). 나중에 세울 것이 먼저 도착하면 현장에 둘 자리가 없고,
       그것을 옮기느라 기중기를 두 번 부른다.</p>
     <p>차량은 <strong>남은 짐 가운데 가장 긴 것</strong>이 정하고, 그 차를 채운다.
-      7.5 m 런웨이 빔 하나 때문에 트레일러를 부르게 되면, 같은 차수의 다른 짐도
+      긴 빔 하나 때문에 트레일러를 부르게 되면, 같은 차수의 다른 짐도
       그 차에 싣는다 — 이미 부른 차를 비워 보내는 것이 가장 비싸다.</p>
     <div class="tw"><table>
       <caption>차량 제원 — 적재 한도는 정격의 {PR.LOAD_MARGIN:.0%}</caption>
@@ -398,6 +399,230 @@ def part3() -> str:
 </section>"""
 
 
+# ── 4부 · 옵션 DG-HK120C ───────────────────────────────────────────────
+def _mod_change(m: str) -> str:
+    """모듈 하나가 옵션에서 무엇이 달라지는가 — 두 카탈로그에서 읽는다."""
+    B, T = OPT.PT_B, OPT.PT_T
+    if m in B.PER_CELL:
+        return f"셀마다 한 벌 — 칼날 셀 {T.CELLS}개 (수량 ×{T.CELLS})"
+    if m == "M-002":
+        return (f"{B.DECKS} → {T.DECKS}단 · 램프 {B.LAMPS} → {T.LAMPS}등 · 외피 벽 "
+                f"{B._HC_WALL_H:,.0f} → {T._HC_WALL_H:,.0f} · 기둥 {B.RACK_TOP:,.0f} → {T.RACK_TOP:,.0f}")
+    if m == "M-003":
+        return (f"EX·GL 문형을 ±{T.M('FORK_HALF_TWIN'):,.0f} 로 죄고 횡이송 캔틸레버 {2 * T._TRAV} · 캐리지 "
+                f"{2 * T._TRAV} (행정 {T.TR_TRAVEL:,.0f} · 수직 {T.TR_STROKE:,.0f}) · 문형 높이 "
+                f"{B._FK_H:,.0f} → {T._FK_H:,.0f}")
+    if m == "M-006":
+        return (f"본선 {B._RH_L:,.0f} → {T._RH_L:,.0f} ({T.RH_N} 토막) · 레일면 EL {B.RH_Z:,.0f} → {T.RH_Z:,.0f} · "
+                f"H-{B.RH_SEC[0]} → H-{T.RH_SEC[0]} · 기둥 {len(B.RH_POSTS)} → {len(T.RH_POSTS)} · "
+                f"KC-101 매거진 {T.CELLS}조 · KC-301 포켓 {B.KC_SLOTS} → {T.KC_SLOTS}")
+    if m == "M-007":
+        return (f"{B.GCOOL_DECKS} → {T.GCOOL_DECKS}단 · 팬 {B.GC_FANS} → {T.GC_FANS} · "
+                f"필터 {B.GC_FILTERS} → {T.GC_FILTERS}")
+    if m == "M-011":
+        eb, et = OPT.EL_B.summary(), None
+        with OPT.pinned():
+            et = OPT.EL_T.summary()
+        return (f"연결부하 {eb['kw']:,.0f} → {et['kw']:,.0f} kW · 주회로 {eb['main_af']} → {et['main_af']} AF · "
+                f"MCC {B.CELLS} → {T.CELLS}면 · 간선 {B._TRAY_L / 1000:.0f} → {T._TRAY_L / 1000:.0f} m")
+    if m == "M-012":
+        return (f"펌프 {B.VAC_PUMPS} → {T.VAC_PUMPS} (1 예비) · 맥동 탱크 {B.CELLS} → {T.CELLS} · "
+                f"배관 {B._VAC_RUN / 1000:.0f} → {T._VAC_RUN / 1000:.0f} m")
+    if m == "M-013":
+        return (f"방책 둘레 {B.FENCE_LEN / 1000:.1f} → {T.FENCE_LEN / 1000:.1f} m (DL 구간만 넓어지는 계단) · "
+                f"게이트 {B.FENCE_GATES} → {T.FENCE_GATES} · 셀 가드 {T.CELLS}벌 · 터널 광커튼 {2 * T.CELLS}")
+    return "같다"
+
+
+def _pcell(p) -> str:
+    return "—" if p is None else f"{esc(p.shape.label())} ×{p.qty}"
+
+
+def part4() -> str:
+    B, T = OPT.PT_B, OPT.PT_T
+    tot = OPT.totals()
+    b, t = tot["base"], tot["opt"]
+
+    def row(label, key, fmt="{:,.0f}", unit=""):
+        d = t[key] - b[key]
+        sign = "+" if d > 0 else ""
+        return (f'<tr><th>{label}</th><td class="num">{fmt.format(b[key])}{unit}</td>'
+                f'<td class="num"><strong>{fmt.format(t[key])}{unit}</strong></td>'
+                f'<td class="num">{sign}{fmt.format(d)}{unit}</td></tr>')
+
+    summary = "".join([
+        row("품목", "items", unit=" 종"), row("부품 개수", "pieces", unit=" 개"),
+        row("총질량", "kg", unit=" kg"), row("정척", "bars", unit=" 본"), row("시트", "sheets", unit=" 매"),
+        row("운반", "trucks", unit=" 차"), row("구매품", "buy", unit=" 종"),
+        row("연결부하", "kw", unit=" kW"), row("주차단기", "af", unit=" AF"), row("변압기", "tr", unit=" kVA")])
+
+    mods = "".join(
+        f'<tr><td class="k">{esc(m)}</td><td>{esc(name)}</td>'
+        f'<td class="num">{nb} → {nt}</td><td class="num">{kb:,.0f} → {kt:,.0f}</td>'
+        f'<td class="num">{"+" if kt >= kb else ""}{kt - kb:,.0f}</td><td>{esc(_mod_change(m))}</td></tr>'
+        for m, name, kb, kt, nb, nt in OPT.modules())
+
+    deltas = OPT.part_deltas()
+    by: dict[str, list] = {}
+    for d in deltas:
+        by.setdefault(d.mod, []).append(d)
+    kinds: dict[str, int] = {}
+    for d in deltas:
+        kinds[d.kind] = kinds.get(d.kind, 0) + 1
+    detail = "".join(
+        f'<details><summary>{esc(m)} {esc(T.MODULE_NAME[m])} · {len(ds)} 종 · '
+        f'{sum(d.dkg for d in ds):+,.0f} kg</summary>'
+        f'<div class="tw"><table><caption>{esc(m)} 부품 차이</caption>'
+        f"<thead><tr><th>품번</th><th>명칭</th><th>구분</th><th>표준</th><th>옵션</th>"
+        f'<th class="num">개수 차</th><th class="num">kg 차</th></tr></thead><tbody>'
+        + "".join(f'<tr><td class="k">{esc(d.pid)}</td><td>{esc(d.name)}</td><td class="k">{esc(d.kind)}</td>'
+                  f'<td class="k">{_pcell(d.base)}</td><td class="k">{_pcell(d.opt)}</td>'
+                  f'<td class="num">{d.dqty:+d}</td><td class="num">{d.dkg:+,.1f}</td></tr>' for d in ds)
+        + "</tbody></table></div></details>"
+        for m, ds in by.items())
+
+    def _st(sb, st):
+        if not sb or not st or sb == st:
+            return f"{(st or sb):,.0f}"
+        return f"{sb:,.0f} → {st:,.0f}"
+
+    bars = "".join(
+        f'<tr><td class="k">{esc(mat)}</td><td>{esc(sec)}</td><td class="num">{_st(sb, st)}</td>'
+        f'<td class="num">{nb}</td><td class="num"><strong>{nt}</strong></td>'
+        f'<td class="num">{nt - nb:+d}</td><td class="num">{dkg:+,.0f}</td></tr>'
+        for mat, sec, sb, st, nb, nt, dkg in OPT.bar_deltas())
+    plates = "".join(
+        f'<tr><td class="k">{esc(mat)}</td><td class="num">{tt:g}</td>'
+        f'<td class="num">{(f"{sh[0]:,}×{sh[1]:,}" if sh else "—")}</td>'
+        f'<td class="num">{nb}</td><td class="num"><strong>{nt}</strong></td>'
+        f'<td class="num">{nt - nb:+d}</td><td class="num">{dkg:+,.0f}</td></tr>'
+        for mat, tt, sh, nb, nt, dkg in OPT.plate_deltas())
+
+    buys = OPT.buy_deltas()
+    new_buy = [x for x in buys if x[1] == 0]
+    buy_rows = "".join(
+        f'<tr><td class="k">{esc(p.pid)}</td><td><strong>{esc(p.name)}</strong></td>'
+        f'<td class="k">{esc(spec[0] if spec else "—")}</td>'
+        f'<td class="num">{nb}</td><td class="num"><strong>{nt}</strong></td><td class="num">{nt - nb:+d}</td>'
+        f'<td>{md(spec[1]) if spec else esc(p.note)}</td></tr>'
+        for p, nb, nt, spec in buys)
+
+    lb, lt = OPT.trucks()
+    trows = "".join(
+        f'<tr><td class="num"><strong>{x.seq}</strong></td><td>{esc(PR.STAGE_NAME[x.stage])}</td>'
+        f'<td class="k">{esc(x.truck.name)}</td><td class="num">{len(x.items)}</td>'
+        f'<td class="num">{x.kg:,.0f}</td><td class="num">{max(r[4] for r in x.items):,.0f}</td>'
+        f'<td>{esc(max(x.items, key=lambda r: r[3])[1])} '
+        f'<span class="k">{max(x.items, key=lambda r: r[3])[3]:,.0f} kg</span></td>'
+        f'<td>{esc(x.special)}</td></tr>'
+        for x in lt)
+    longest = max((r for x in lt for r in x.items), key=lambda r: r[4])
+
+    with OPT.pinned():
+        sp_t = dict(OPT.PR_T.SPARES)
+    spares = "".join(
+        f"<li><span class='k'>{esc(pid)}</span> {esc(PR.SPARES.get(pid, '—'))} → <strong>{esc(txt)}</strong></li>"
+        for pid, txt in sp_t.items() if PR.SPARES.get(pid) != txt)
+
+    bad = tot["unbuyable"]
+    bad_note = ("옵션도 <strong>살 수 없는 치수 0 건</strong>이다 — 7 단으로 높아진 외피는 시트가 한 장 더 "
+                "갈라지고(stock.py), 12 m 를 넘는 런웨이는 두 토막으로 이어 붙인다."
+                if not bad else f"<strong>옵션에 살 수 없는 치수 {len(bad)} 건</strong> — "
+                + esc(" · ".join(f"{a} {b_}" for a, b_, _ in bad)))
+
+    return f"""
+<section id="p4"><h2><span class="sn">4</span>옵션 DG-HK120C — 2셀 수평병렬</h2>
+
+  <div class="clause"><div class="n">4.1</div><div class="c">
+    <h3>옵션은 차이로 산다</h3>
+    <p>옵션 <strong>DG-HK120C</strong> 는 가열실 하나({T.DECKS}단 · {T.LAMPS}등)에 계단 칼날 셀
+      {T.CELLS}개를 수평으로 나란히 둔다 (검토서 DG-HK120C · 사양서 1.4항). 옵션의 카탈로그는
+      따로 적지 않는다 — 같은 부품 카탈로그를 콘솔 HK120C 의 뿌리 값(단수 · 램프 수 · 셀 수)으로
+      다시 풀어 표준과 나란히 놓는다 (<span class="k">tools/variant.py · tools/option.py</span>).
+      표준을 고치면 옵션도 같은 식으로 따라 움직인다.</p>
+    <div class="logic">옵션 발주 = 표준 발주 + (옵션 − 표준)
+옵션 견적 = 표준 견적 + 아래 표의 차이</div>
+    <div class="tw"><table>
+      <caption>표준과 옵션 — 한눈에</caption>
+      <thead><tr><th>항목</th><th class="num">표준 {esc(B.MODEL)}</th><th class="num">옵션 {esc(T.MODEL)}</th>
+        <th class="num">차이</th></tr></thead>
+      <tbody>{summary}</tbody>
+    </table></div>
+    <div class="note">{bad_note}</div>
+  </div></div>
+
+  <div class="clause"><div class="n">4.2</div><div class="c">
+    <h3>모듈별 차이</h3>
+    <p>칼날 셀에 딸린 세 모듈(<span class="k">{esc(" · ".join(B.PER_CELL))}</span>)은 셀마다 한 벌씩 서므로
+      통째로 곱해진다. 나머지는 공용이고, 단수 · 셀 간격 · 방책에서 치수가 다시 풀린다.</p>
+    <div class="tw"><table>
+      <caption>모듈별 품목 · 질량 — 표준 → 옵션</caption>
+      <thead><tr><th>모듈</th><th>이름 (옵션)</th><th class="num">품목</th><th class="num">질량 kg</th>
+        <th class="num">차이 kg</th><th>무엇이 바뀌나</th></tr></thead>
+      <tbody>{mods}</tbody>
+    </table></div>
+  </div></div>
+
+  <div class="clause"><div class="n">4.3</div><div class="c">
+    <h3>부품 차이 — {len(deltas)} 종</h3>
+    <p>옵션에만 있는 부품 <strong>{kinds.get("추가", 0)} 종</strong>, 수량만 달라진 부품
+      <strong>{kinds.get("수량", 0)} 종</strong>, 치수가 달라진 부품
+      <strong>{kinds.get("치수", 0) + kinds.get("수량·치수", 0)} 종</strong>이다. 치수가 달라진 부품은
+      부품도가 따로 선다 — 콘솔 부품도 탭의 옵션 도면을 쓴다.</p>
+    {detail}
+  </div></div>
+
+  <div class="clause"><div class="n">4.4</div><div class="c">
+    <h3>자재 차이 — 정척 · 시트</h3>
+    <p>차이는 절단 배치를 옵션으로 다시 푼 결과에서 낸다 — 표준 본수에 부재 길이 합을 더하면
+      12 m 짜리를 6 m 정척 두 본에 넣을 수 있다고 착각한다.</p>
+    <div class="tw"><table>
+      <caption>형강·강관·봉 — 달라진 것만</caption>
+      <thead><tr><th>재질</th><th>단면</th><th class="num">정척</th><th class="num">표준</th>
+        <th class="num">옵션</th><th class="num">차이</th><th class="num">순중량 차 kg</th></tr></thead>
+      <tbody>{bars}</tbody>
+    </table></div>
+    <div class="tw"><table>
+      <caption>판재 — 달라진 것만 (소입 재질은 사는 두께)</caption>
+      <thead><tr><th>재질</th><th class="num">두께</th><th class="num">시트</th><th class="num">표준</th>
+        <th class="num">옵션</th><th class="num">차이</th><th class="num">순중량 차 kg</th></tr></thead>
+      <tbody>{plates}</tbody>
+    </table></div>
+  </div></div>
+
+  <div class="clause"><div class="n">4.5</div><div class="c">
+    <h3>구매품 차이 — {len(buys)} 종</h3>
+    <p>옵션에만 있는 구매품 <strong>{len(new_buy)} 종</strong>
+      (<span class="k">{esc(" · ".join(p.pid for p, *_ in new_buy))}</span>)의 발주 사양은 이 표가 전부다.
+      나머지는 3부의 사양 그대로 수량만 달라진다.</p>
+    <div class="tw"><table>
+      <caption>구매품 — 수량이 달라진 것</caption>
+      <thead><tr><th>품번</th><th>명칭</th><th>계통</th><th class="num">표준</th><th class="num">옵션</th>
+        <th class="num">차이</th><th>정격·성능 (옵션)</th></tr></thead>
+      <tbody>{buy_rows}</tbody>
+    </table></div>
+  </div></div>
+
+  <div class="clause"><div class="n">4.6</div><div class="c">
+    <h3>운반 — 옵션 차수표</h3>
+    <p>표준 {len(lb)} 차가 옵션에서 <strong>{len(lt)} 차</strong>가 된다. 가장 긴 짐은
+      {esc(longest[1])} <span class="m">{longest[4]:,.0f}</span> 이다.</p>
+    <div class="tw"><table>
+      <caption>옵션 운반 차수 — 총 {len(lt)} 차 · {sum(x.kg for x in lt):,.0f} kg</caption>
+      <thead><tr><th>차수</th><th>세우는 단계</th><th>차량</th><th>품목</th><th>적재 kg</th>
+        <th>최장변</th><th>최중량 단품</th><th>비고</th></tr></thead>
+      <tbody>{trows}</tbody>
+    </table></div>
+  </div></div>
+
+  <div class="clause"><div class="n">4.7</div><div class="c">
+    <h3>예비품 — 셀마다 닳는 것은 셀 수만큼</h3>
+    <p>칼날 두 자루가 같은 속도로 닳는다. 셀에 딸린 소모품은 셀 수만큼, 램프는 10 % 규칙 그대로다.</p>
+    <ul>{spares}</ul>
+  </div></div>
+</section>"""
+
+
 def build() -> str:
     bl, pl = PR.bar_lots(), PR.plate_lots()
     loads = PR.truck_loads()
@@ -406,7 +631,7 @@ def build() -> str:
 
     toc = "".join(
         f'<li><a href="#p{i}"><b>{i}</b>{t}</a></li>'
-        for i, t in enumerate(["자재 발주표", "운반 분할", "구매품 사양"], start=1))
+        for i, t in enumerate(["자재 발주표", "운반 분할", "구매품 사양", "옵션 DG-HK120C"], start=1))
 
     return f"""<!doctype html>
 <html lang="ko">
@@ -438,7 +663,7 @@ def build() -> str:
   <p class="subtitle">부품 카탈로그를 <strong>살 수 있는 것과 실을 수 있는 것</strong>으로 바꾼다.
     정척 <strong>{sum(l.bars for l in bl)} 본</strong> · 시트 <strong>{sum(l.sheets for l in pl)} 매</strong> ·
     강재 <strong>{steel:,.0f} kg</strong> · 운반 <strong>{len(loads)} 차</strong> ·
-    구매품 <strong>{len(buy)} 종</strong>.</p>
+    구매품 <strong>{len(buy)} 종</strong>. 4부는 옵션 DG-HK120C(2셀 수평병렬)의 차이다.</p>
 
   <dl class="docref">
     <div><dt>문서번호</dt><dd>DG-HK60C-PRC-001</dd></div>
@@ -468,6 +693,7 @@ def build() -> str:
 {part1()}
 {part2()}
 {part3()}
+{part4()}
 
 <footer class="foot">
   <p><strong>DG-HK60C-PRC-001 Rev.0</strong> · 2026-09-06 · DYNAMIC INDUSTRY</p>
