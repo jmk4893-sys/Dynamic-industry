@@ -51,6 +51,15 @@ HARDENED = {
 # 잠근 채 한 평면으로 한 번 더 연삭하므로 그만큼 두껍게 온다 (D-502 두께 8 · 납품 8.1).
 DELIVERY_STOCK = {"P-005-15": KE.GRIND_STOCK, "P-005-16": KE.GRIND_STOCK}
 
+# 제작 예비품 — 칼날 인서트는 소모품이라 셀마다 두 벌을 예비로 둔다. 그 소재를 본품과
+# **한 소재 로트**로 사서 **한 열처리 배치**에 넣는다 (발주자 결정 9/30). 경도와 소입
+# 변형 이력이 같아야 교체한 조각이 나머지와 MC-401 한 평면 연삭에 한 번에 맞는다 —
+# 로트를 나누면 소재 성적서도 열처리 배치도 따로 돈다. 판재 로트는 본품에 이 수량을
+# 더해 산다. 한동안 예비 인서트는 예비품 목록에만 있고 그 소재는 아무도 사지 않았다.
+INSERT_SPARE_SETS = 2
+_QTY = {p.pid: p.qty for p in PT.P}
+MADE_SPARES = {pid: INSERT_SPARE_SETS * _QTY[pid] for pid in ("P-005-15", "P-005-16")}
+
 
 def stock_need(p, decarb: bool = True) -> float:
     """완성 두께에서 거꾸로 푼 소재 두께 — 유통 두께로 올리기 전.
@@ -81,6 +90,7 @@ def hardened_route() -> list[dict]:
         skin, grind = HARDENED[p.mat]
         extra = DELIVERY_STOCK.get(p.pid, 0.0)
         out.append(dict(pid=p.pid, name=p.name, mat=p.mat, qty=p.qty,
+                        spares=MADE_SPARES.get(p.pid, 0),
                         t=p.shape.d["t"], extra=extra, delivered=p.shape.d["t"] + extra,
                         skin=skin, grind=grind,
                         need=stock_need(p), need_ground=stock_need(p, decarb=False),
@@ -188,6 +198,7 @@ class PlateLot(NamedTuple):
     kg_net: float
     unbuyable: tuple       # 어떤 시트에도 안 들어가는 품번
     t_fin: tuple = ()      # 이 소재에서 나오는 완성 두께들
+    spares: int = 0        # 수량에 든 제작 예비품 — 본품과 한 로트로 산다 (MADE_SPARES)
 
 
 def _section_of(p) -> str:
@@ -219,11 +230,12 @@ def bar_lots() -> list[BarLot]:
     return out
 
 
-def plate_lots() -> list[PlateLot]:
+def plate_lots(spares: bool = True) -> list[PlateLot]:
     """판재를 재질 × 사는 두께로 묶고 시트 매수를 낸다.
 
     소입 재질은 완성 두께가 아니라 stock_t() 로 묶는다. 올릴 유통 두께가 없으면
-    풀어 낸 두께 그대로 두어 unbuyable() 이 잡게 한다."""
+    풀어 낸 두께 그대로 두어 unbuyable() 이 잡게 한다. 제작 예비품(MADE_SPARES)은
+    본품과 한 로트로 산다 — spares=False 는 예비 없이 셈한 비교값이다."""
     groups: dict[tuple, list] = {}
     for p in PT.P:
         if p.buy or p.shape.kind not in ("PL", "SLAB"):
@@ -232,12 +244,13 @@ def plate_lots() -> list[PlateLot]:
         t = stock_t(p)
         if t is None:
             t = round(stock_need(p), 1)
-        groups.setdefault((p.mat, t), []).append((g["L"], g["W"], p.qty, p))
+        extra = MADE_SPARES.get(p.pid, 0) if spares else 0
+        groups.setdefault((p.mat, t), []).append((g["L"], g["W"], p.qty + extra, p, extra))
 
     out = []
     for (mat, t), rows in sorted(groups.items(), key=lambda kv: (kv[0][0], kv[0][1])):
         sheets, sheet, bad = 0.0, None, []
-        for L, W, q, p in rows:
+        for L, W, q, p, _x in rows:
             sh, per = fit_plate(L, W, mat)
             if per == 0:
                 bad.append(p.pid)
@@ -245,11 +258,12 @@ def plate_lots() -> list[PlateLot]:
             sheet = sheet or sh
             sheets += q / per
         out.append(PlateLot(mat, t,
-                            tuple((L, W, q, p.pid) for L, W, q, p in rows),
+                            tuple((L, W, q, p.pid) for L, W, q, p, _x in rows),
                             sheet, math.ceil(sheets),
-                            sum(L * W * q for L, W, q, _ in rows) / 1e6,
-                            sum(p.kg * q for _, _, q, p in rows), tuple(bad),
-                            tuple(sorted({p.shape.d["t"] for _, _, _, p in rows}))))
+                            sum(L * W * q for L, W, q, _p, _x in rows) / 1e6,
+                            sum(p.kg * q for _L, _W, q, p, _x in rows), tuple(bad),
+                            tuple(sorted({p.shape.d["t"] for *_r, p, _x in rows})),
+                            sum(x for *_r, x in rows)))
     return out
 
 
@@ -547,8 +561,10 @@ if PT.TWIN:
 _C = PT.CELLS
 SPARES = {
     "P-002-18": f"IR 램프 {PT.LAMPS}등의 10 % = {round(PT.LAMPS / 10)}등",
-    "P-005-15": f"SKD11 인서트 (중앙) {2 * _C}개 — 먼저 무는 날이라 가장 먼저 닳는다",
-    "P-005-16": f"SKD11 인서트 (계단) {2 * 2 * PT.KNIFE_STEPS * _C}개 ({2 * _C}벌)",
+    "P-005-15": f"SKD11 인서트 (중앙) {MADE_SPARES['P-005-15']}개 — 먼저 무는 날이라 가장 먼저 닳는다 · "
+                "본품과 한 소재 로트 · 한 열처리 배치",
+    "P-005-16": f"SKD11 인서트 (계단) {MADE_SPARES['P-005-16']}개 ({INSERT_SPARE_SETS * _C}벌) · "
+                "본품과 한 소재 로트 · 한 열처리 배치",
     "P-005-17": f"카트리지 히터 (중앙) {_C}본",
     "P-005-18": f"카트리지 히터 (계단) {2 * _C}본",
     "P-005-27": f"모듈 판스프링 {4 * _C}장 — 들림을 받는 피로 소모품",

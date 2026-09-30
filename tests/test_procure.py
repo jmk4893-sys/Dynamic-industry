@@ -387,3 +387,86 @@ class TestHardenedStockIsNotBoughtAtFinishThickness(unittest.TestCase):
         for lot in PR.plate_lots():
             if lot.mat in PR.HARDENED:
                 self.assertIn(f'{lot.t:g} t · 완성', html, "발주표가 사는 두께와 완성 두께를 함께 적지 않는다")
+
+
+class TestTheSpareInsertsShareTheProductionLot(unittest.TestCase):
+    """예비 인서트는 본품과 한 소재 로트로 사서 한 열처리 배치에 넣는다 (발주자 결정 9/30).
+
+    경도와 소입 변형 이력이 같아야 교체한 조각이 나머지와 MC-401 한 평면 연삭에 한 번에
+    맞는다. 한동안 예비 인서트는 예비품 목록에만 있고 그 소재는 아무도 사지 않았다 —
+    판재 로트가 본품 수량만 셌다.
+    """
+
+    def _lot_of(self, lots, pid):
+        for lot in lots:
+            if pid in [x[-1] for x in lot.pieces]:
+                return lot
+        self.fail(f"{pid} 가 어느 판재 로트에도 없다")
+
+    def test_the_spares_are_sets_of_the_production_inserts(self):
+        qty = {p.pid: p.qty for p in PT.P}
+        self.assertEqual(sorted(PR.MADE_SPARES), ["P-005-15", "P-005-16"])
+        for pid, n in PR.MADE_SPARES.items():
+            self.assertEqual(n, PR.INSERT_SPARE_SETS * qty[pid], f"{pid} 예비가 본품의 벌 수가 아니다")
+
+    def test_the_spares_are_cut_from_the_same_lot(self):
+        qty = {p.pid: p.qty for p in PT.P}
+        lots = PR.plate_lots()
+        for pid, n in PR.MADE_SPARES.items():
+            lot = self._lot_of(lots, pid)
+            got = sum(q for _L, _W, q, x in lot.pieces if x == pid)
+            self.assertEqual(got, qty[pid] + n, f"{pid} 로트가 예비 {n} 개를 사지 않는다")
+        ins = {id(self._lot_of(lots, pid)) for pid in PR.MADE_SPARES}
+        self.assertEqual(len(ins), 1, "중앙과 계단 인서트가 서로 다른 로트다 — 한 로트로 산다")
+        lot = self._lot_of(lots, "P-005-15")
+        self.assertEqual(lot.spares, sum(PR.MADE_SPARES.values()))
+
+    def test_the_spares_change_only_the_insert_lot_and_are_really_bought(self):
+        with_, bare = PR.plate_lots(), PR.plate_lots(spares=False)
+        self.assertEqual(len(with_), len(bare))
+        ins = self._lot_of(with_, "P-005-15")
+        for a, b in zip(with_, bare):
+            if a is ins:
+                continue
+            self.assertEqual((a.mat, a.t, a.sheets, a.pieces), (b.mat, b.t, b.sheets, b.pieces),
+                             f"예비 인서트가 {a.mat} t{a.t:g} 로트를 바꿨다")
+        per = {}
+        for L, W, q, pid in ins.pieces:
+            per[pid] = PR.fit_plate(L, W, ins.mat)[1]
+        import math
+        self.assertEqual(ins.sheets, math.ceil(sum(q / per[pid] for _L, _W, q, pid in ins.pieces)))
+        base = self._lot_of(bare, "P-005-15")
+        self.assertGreater(ins.sheets, base.sheets, "예비를 더했는데 사는 평강이 늘지 않는다")
+
+    def test_the_spare_list_says_the_same_count_and_the_same_lot(self):
+        for pid, n in PR.MADE_SPARES.items():
+            txt = PR.SPARES[pid]
+            self.assertIn(f"{n}개", txt, f"{pid} 예비품 목록의 개수가 로트와 다르다")
+            self.assertIn("한 소재 로트", txt)
+            self.assertIn("한 열처리 배치", txt)
+
+    def test_the_guide_says_why_the_lot_grows(self):
+        html = GEN.OUT.read_text(encoding="utf-8")
+        lot = self._lot_of(PR.plate_lots(), "P-005-15")
+        bare = self._lot_of(PR.plate_lots(spares=False), "P-005-15")
+        self.assertIn("예비 인서트는 본품과 한 소재 로트로 사서 한 열처리 배치에 넣는다", html)
+        self.assertIn(f'<span class="m">{bare.sheets}</span> 본에서 <strong>{lot.sheets} 본</strong>', html)
+        qty = sum(p.qty for p in PT.P if p.pid in PR.MADE_SPARES)
+        self.assertIn(f'<td class="num">{qty} + 예비 {lot.spares}</td>', html,
+                      "풀이 표가 본품과 예비를 나눠 적지 않는다")
+        self.assertIn(f" (예비 {lot.spares})</td>", html, "발주표 조각 수가 예비를 말하지 않는다")
+
+    def test_the_fabrication_spec_keeps_the_heat_treatment_batch(self):
+        import fab_spec as F
+        use = F.MATERIALS["SKD11"]["use"]
+        self.assertIn("한 소재 로트", use)
+        self.assertIn("한 열처리 배치", use, "제작 지침서가 예비를 따로 열처리해도 된다고 읽힌다")
+
+    def test_the_option_keeps_two_sets_per_cell(self):
+        import option as O
+        import variant as V
+        opt = V.load(O.LID, "procure")["procure"]
+        self.assertEqual(opt.MADE_SPARES, {pid: 2 * n for pid, n in PR.MADE_SPARES.items()},
+                         "옵션은 칼날 두 자루가 같은 속도로 닳는다 — 예비도 셀 수만큼")
+        lot = [l for l in opt.plate_lots() if "P-005-15" in [x[-1] for x in l.pieces]][0]
+        self.assertEqual(lot.spares, sum(opt.MADE_SPARES.values()))

@@ -103,8 +103,11 @@ def hardened() -> str:
     for rs in groups.values():
         r = rs[0]
         dlv = f'{r["delivered"]:.1f}' + (f' (연삭 여유 {r["extra"]:g})' if r["extra"] else "")
+        qty, spare = sum(x["qty"] for x in rs), sum(x["spares"] for x in rs)
+        count = f"{qty} + 예비 {spare}" if spare else f"{qty}"
         rows.append(
             f'<tr><td class="k">{esc(" · ".join(x["pid"] for x in rs))} {esc(label(r))}</td>'
+            f'<td class="num">{count}</td>'
             f'<td class="num">{r["t"]:.1f}</td><td class="num">{dlv}</td>'
             f'<td class="num">{r["delivered"] + 2 * r["grind"]:.1f}</td>'
             f'<td class="num">{r["need"]:.1f}</td>'
@@ -115,9 +118,24 @@ def hardened() -> str:
     same = all(r["stock"] == r["stock_ground"] for r in route)
     tail = (f"흑피를 걷은 연삭 평강으로 사도 {' · '.join(ground)} 이라 사는 두께는 같다."
             if same else "흑피를 걷은 연삭 평강으로 사면 사는 두께가 달라진다 — 형태를 정하고 발주한다.")
+    # 예비 인서트는 본품과 한 로트 — 예비 없이 셈한 로트와 나란히 적어 사는 양이 왜 느는지 보인다
+    lot = {(l.mat, l.t): l for l in PR.plate_lots()}[(ins["mat"], ins["stock"])]
+    bare = {(l.mat, l.t): l for l in PR.plate_lots(spares=False)}[(ins["mat"], ins["stock"])]
+    spares = " · ".join(f'{r["name"].replace(r["mat"] + " ", "")} {r["spares"]}'
+                        for r in route if r["spares"])
+    unit = "평강" if lot.sheet and min(lot.sheet) <= 200 else "시트"
+    same_lot = (f"""
+    <div class="note"><strong>예비 인서트는 본품과 한 소재 로트로 사서 한 열처리 배치에 넣는다.</strong>
+      예비는 {esc(spares)} 개로 셀마다 {PR.INSERT_SPARE_SETS} 벌이다. 소모품이라 두는 것인데, 경도와 소입
+      변형 이력이 같아야 교체한 조각이 나머지와 MC-401 한 평면 연삭에 한 번에 맞는다. 로트를 나누면 소재
+      성적서도 열처리 배치도 따로 돈다. 그래서 t{lot.t:g} {unit}이 예비 없이 셈한
+      <span class="m">{bare.sheets}</span> 본에서 <strong>{lot.sheets} 본</strong>이 된다
+      (조각 {sum(q for *_x, q, _p in bare.pieces)} → {sum(q for *_x, q, _p in lot.pieces)}).
+      한동안 예비 인서트는 예비품 목록(3.3)에만 있고 그 소재는 아무도 사지 않았다.</div>"""
+                if lot.spares else "")
     return f"""<div class="tw"><table>
       <caption>소입 후 연삭하는 SKD11 — 사는 두께를 완성에서 거꾸로 푼다 (mm)</caption>
-      <thead><tr><th>품번</th><th class="num">완성</th><th class="num">납품</th>
+      <thead><tr><th>품번</th><th class="num">개수</th><th class="num">완성</th><th class="num">납품</th>
         <th class="num">+ 소입 변형 연삭</th><th class="num">+ 흑피 · 탈탄층</th><th class="num">소재</th></tr></thead>
       <tbody>{"".join(rows)}</tbody>
     </table></div>
@@ -127,7 +145,7 @@ def hardened() -> str:
       휜 것을 연삭하면 {ins["t"]:g} 이 남지 않는다. 여유는 면당 흑피 · 탈탄층
       <span class="m">{skin:g}</span> · 소입 변형 연삭 <span class="m">{grind:g}</span> 으로 잡았다.
       <strong>가정이다</strong> — 탈탄 깊이는 소재 성적서로, 소입 변형은 열처리사의 같은 형상 실적으로 확인한다.
-      {tail}</div>"""
+      {tail}</div>{same_lot}"""
 
 
 def part1() -> str:
@@ -151,7 +169,8 @@ def part1() -> str:
         f'<tr><td class="k">{esc(l.mat)}</td><td class="num">{thick(l)}</td>'
         f'<td class="k">{f"{l.sheet[0]:,}×{l.sheet[1]:,}" if l.sheet else "—"}</td>'
         f'<td class="num"><strong>{l.sheets}</strong></td>'
-        f'<td class="num">{sum(q for _, _, q, _ in l.pieces)}</td>'
+        f'<td class="num">{sum(q for _, _, q, _ in l.pieces)}'
+        f'{f" (예비 {l.spares})" if l.spares else ""}</td>'
         f'<td class="num">{l.area_net:,.2f}</td><td class="num">{l.kg_net:,.0f}</td></tr>'
         for l in pl)
 

@@ -49,7 +49,8 @@ MATERIALS = {
     "STS304":    dict(fy=205, fu=520, rho=7930, std="KS D 3705", use="가열실 내피·고온 습부·식품접촉 없음"),
     "SM45C":     dict(fy=343, fu=569, rho=7850, std="KS D 3752", use="핀·축류 (테이퍼 로케이팅핀·롤러축)"),
     "A6061-T6":  dict(fy=240, fu=290, rho=2700, std="KS D 6759", use="이동 경량부 (캐리지·포크 암)"),
-    "SKD11":     dict(fy=None, fu=None, rho=7700, std="KS D 3753", use="칼날 인서트 (HRC 58~60 · D-502) · 모듈 상한 스톱"),
+    "SKD11":     dict(fy=None, fu=None, rho=7700, std="KS D 3753",
+                      use="칼날 인서트 (HRC 58~60 · D-502 · 예비와 한 소재 로트 · 한 열처리 배치) · 모듈 상한 스톱"),
 }
 
 
