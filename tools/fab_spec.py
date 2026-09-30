@@ -210,6 +210,9 @@ from parts import mass as _pm
 import knife_edge as KE  # noqa: E402  칼날 인서트 날끝 (D-502)
 
 M_CHAMBER = _pm("M_CHAMBER")    # 가열실 일식 (골조·벽체·데크·IR)
+import parts as _PT  # noqa: E402
+RACK_TOP_M = _PT.RACK_TOP / 1000   # m 랙 지붕 — 옵션은 7 단이라 높다
+CHAMBER_CG_RATIO = 0.55            # 총괄 결정 — 가열실 무게중심 / 랙 높이
 M_GANTRY = _pm("M_GANTRY")      # 갠트리 이동부 (주행 문형·레일 제외)
 M_TABLE = _pm("M_TABLE")        # VT-101 상판·리브·기둥·진공계통
 
@@ -269,11 +272,15 @@ def _joints():
                   note=f"쐐기 클램프({c('CASS_CLAMP_KN')} kN×2)는 밀착용 — 전단은 핀 4개가 추력 전부를 받는다"))
 
     # ── J6 · HC-101 가열실 기둥 베이스
+    # 무게중심은 랙 높이의 55 % 로 본다 — 지붕·타이빔·상단 뱅크가 위에 몰려 있어 균등분포
+    # (50 %)보다 높다. 종전에는 2.40 m 를 값으로 적어 두어 단수가 오르면 옛 높이로 남았다
+    # (4.55 m 랙의 53 %). 전도 팔 2.30 m 는 평면이 정하므로 단수와 무관하다.
     w = kn(M_CHAMBER)
-    N_ch = (SEISMIC * w * 2.40) / 2.30 / 2 - GAMMA_G * w / 4   # 지진 인장 − 자중 압축
+    h_cg = CHAMBER_CG_RATIO * RACK_TOP_M
+    N_ch = (SEISMIC * w * h_cg) / 2.30 / 2 - GAMMA_G * w / 4   # 지진 인장 − 자중 압축
     J.append(dict(id="J6", name="HC-101 가열실 기둥 ↔ 베이스플레이트", grade="8.8", n=4,
                   N=max(N_ch, 0.0) / 4, V=SEISMIC * w / 4 / 4, planes=1, minimum="M20",
-                  note=f"자중 {M_CHAMBER/1000:.1f} t · 지진 {SEISMIC:.2f}W @ 무게중심 EL 2,400"))
+                  note=f"자중 {M_CHAMBER/1000:.1f} t · 지진 {SEISMIC:.2f}W @ 무게중심 EL {h_cg*1000:,.0f}"))
 
     # ── J7 · 가열실 데크 레일 ↔ 기둥 (내부 · 고온)
     deck_w = GAMMA_Q * (W_PANEL + kn(120))
@@ -416,11 +423,13 @@ def _critical():
 
     # C5 · 결번 — WR-101 권취축 피로. 권취부 철거로 검토 대상이 없어졌다.
 
-    # RH-201 런웨이 빔 — 이동하중 처짐
-    I_run = 1.87e7                            # H-200×100×5.5/8
-    run_span = 3000.0                         # 지지 간격
+    # RH-201 런웨이 빔 — 이동하중 처짐. 단면과 경간은 카탈로그가 고른다 (가장 긴 경간이
+    # 단면을 정한다 — 옵션은 통로에 기둥을 못 세워 경간이 세 배다).
+    _h, _b, _tw, _tf = _PT.RH_SEC
+    I_run = _PT._hb_i(*_PT.RH_SEC)            # 필렛을 뺀 판 조합 — 약간 작게 잡는다
+    run_span = _PT.RH_SPAN                    # 가장 긴 지지 간격
     C.append(dict(
-        id="C6", member="RH-201 런웨이 빔 H-200×100×5.5/8", mat="SS400",
+        id="C6", member=f"RH-201 런웨이 빔 H-{_h}×{_b}×{_tw:g}/{_tf:g}", mat="SS400",
         gov="처짐 L/500 (호이스트 주행)",
         value=beam_deflection(W_LIFT + kn(HOIST_KG), run_span, I_run),
         limit=run_span / 500, unit="mm",
@@ -547,7 +556,8 @@ MEMBERS = [
     ("M-005", "계단 카세트 홀더", f"BOX-{KE.CASS_W - KE.NOSE:.0f}×{KE.CASS_H:.0f}×6 ×7 · 인서트 t{KE.T:.0f} (코 {KE.NOSE:.0f} · D-502)", "SS400/SKD11",
      f"카트리지히터 홀 + 인서트 접시머리 {KE.SCREW} (헬리코일) · 이음은 용접하지 않는다 — 옆 틈 {KE.GAP:.0f}, 모듈마다 따로 뜬다"),
     ("M-005", "누름판", "PL 6 · PTFE 코팅", "STS304", "비가열 · 스프링 예압 20 N"),
-    ("M-006", "RH-201 런웨이 빔", "H-200×100×5.5/8", "SS400", "호이스트 이동하중 · 처짐 L/500 (카세트 전용)"),
+    ("M-006", "RH-201 런웨이 빔", "H-{}×{}×{:g}/{:g}".format(*_PT.RH_SEC), "SS400",
+     "호이스트 이동하중 · 처짐 L/500 (카세트 전용) — 가장 긴 경간이 단면을 고른다"),
     ("M-007", "냉각 랙 골조", "H-200×200×8/12", "SS400", "F-002 준용 — 지그 공용"),
     ("M-007", "측벽", "폴리카보네이트 t6", "PC", "방호 · 투시 (단열 아님)"),
     ("M-003", "포크 문형 기둥", "□-125×125×6", "SS400", "볼스크류 반력 + 편심"),

@@ -75,7 +75,7 @@ T_HOT, T_AMB = c("T_TARGET"), c("T_AMB")     # 140 · 25 ℃
 DECKS = int(c("DECKS"))
 TAKT = CY.TAKT                               # s 라인 사이클 (계단 칼날이 정한다 — 콘솔 thermalModel)
 N_DOOR = 2                                   # 사이클당 문 통과 — 방출 1 · 투입 1
-RATED_KW = int(c("LAMPS")) * 2.5              # 120 kW 설치정격
+RATED_KW = int(c("LAMPS")) * CY.DEFAULT["lampPower"]   # 120 kW 설치정격 — 램프 수 × 램프 정격
 
 # ── 개구 ─────────────────────────────────────────────────────────────
 OPEN_W = c("DECK_W") + 0.20                  # 1.88 m 셔터 폭 (P-002-20)
@@ -93,7 +93,7 @@ OPEN_H = 0.35                                # m 확정 개구 — 포락선 + �
 
 # ── 문이 열려 있는 시간 ──────────────────────────────────────────────
 REACH = c("CL_DOOR") + c("CL_WALL") + c("DECK_L") / 2     # 2.09 m 문면 → 데크 중심
-V_FORK = 0.50                                # m/s 2단 텔레스코픽 (적재 상태)
+V_FORK = PT.FORK_V                           # m/s 2단 텔레스코픽 (적재 상태) — 카탈로그가 쥔다
 V_DOOR = 0.60                                # m/s 공압 셔터
 DOOR_LAP = 0.10                              # m 개구 위 겹침 (씰 자리)
 T_SET = 1.0                                  # s 내려놓기·위치핀 정합

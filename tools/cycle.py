@@ -58,7 +58,8 @@ def model(v: dict | None = None, knife_depth: float | None = None,
     handling = m["rapidDistance"] / v["rapidSpeed"] + v["handlingTime"]
     lead = m["knifeDepth"] / v["knifeSpeed"]
     carrier = lead + v["panelLength"] / v["knifeSpeed"] + handling
-    line_cycle = max(pitch, carrier)
+    cells = m["cells"]                     # 칼날 셀 수 — 둘이면 칼날 사이클을 반으로 나눠 받는다
+    line_cycle = max(pitch, carrier / cells)
     ret_dist = m["knifeDepth"] + v["panelLength"]
     ret_time = ret_dist / v["knifeReturnSpeed"]
     peel = v["panelLength"] / v["knifeSpeed"]
@@ -67,7 +68,7 @@ def model(v: dict | None = None, knife_depth: float | None = None,
     window = target_cycle - lead - peel
     floor = ret_dist / window if window > 0 else float("inf")
     energy = q / (eta * 3600)                                                  # kWh/장
-    kl_cycle = max(pitch, knife)
+    kl_cycle = max(pitch, knife / cells)
     return dict(
         q=q, rated=rated, eta=eta, useful=useful, dwell=dwell, pitch=pitch,
         thermalRate=thermal_rate, handling=handling, leadTime=lead, peelTime=peel,
@@ -96,7 +97,7 @@ PITCH = _M["pitch"]                      # s 방출 피치
 RATE_THERMAL = _M["thermalRate"]         # 장/h 열공정 한계
 RATE_NOMINAL = _M["knifeLineRate"]       # 장/h 명목
 RATE_NET = net()                         # 장/h 순생산 (가동률 90 %)
-NET_TARGET = int(c("NET_TARGET"))        # 장/h 계약
+NET_TARGET = int(c("NET_TARGET")) * int(MODEL["cells"])   # 장/h 계약 — 옵션은 셀마다 표준의 계약
 AVAILABILITY = MODEL["availability"]
 Q_PANEL_KJ = _M["q"]                     # kJ/장
 USEFUL_KW = _M["useful"]                 # kW 유효 IR 출력

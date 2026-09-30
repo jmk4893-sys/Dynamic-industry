@@ -1766,7 +1766,7 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
         <tr><td class="k">FAT</td><td><strong>포크 왕복 시간</strong> — 문 열림 시간의 근거</td>
           <td>문 열림 ≤ 10.9 s — 포크 왕복 8.4 s 가 대부분 (에어록 손실이 이 시간에 선형이다)</td></tr>
         <tr><td class="k">FAT</td><td><strong>가열실 무부하 손실</strong> — 140 °C 에서 문 닫힘 유지 · 생산 개폐 (각 정상상태)</td>
-          <td>유지 전력 + 개폐 증분 ≤ 30.5 kW (η 0.65 가 계약 58 장/h 에서 허용하는 손실 · 계산 6.7 + 8.2 = 14.9 kW)</td></tr>
+          <td>유지 전력 + 개폐 증분 ≤ 30.5 kW (η 0.65 가 계약 58 장/h 에서 허용하는 손실 · 계산 6.6 + 8.2 = 14.8 kW)</td></tr>
         <tr><td class="k">SAT</td><td><strong>램프 봉착부 온도</strong> — 정격 운전 30 분 후</td>
           <td>250 ~ 350 °C (표본 4 등 · 접촉식 또는 열화상)</td></tr>
         <tr><td class="k">SAT</td><td>60장 연속 처리</td><td>P95 사이클 ≤ 55.9 s (계약 58 장/h · 가동률 90 % 의 사이클 — 명목 54.3 s)</td></tr>
@@ -1860,11 +1860,11 @@ OEE_VALID      = STOP_REASON_CODED ∧ TRACE_DB_OK ∧ PM_METER_OK ∧ OPC_UA_LI
           확인했고, <a href="#c3">3.4항</a>의 <strong>5단</strong> 랙은 여유가
           <span class="m">90 %</span>라 <span class="m">h</span>가 절반으로 틀려도 견딘다.</p>
         <p><em>해소</em>남은 것은 <strong>실효 열효율 65 %</strong>다. 벽 손실
-          <span class="m">5.6 kW</span>가 손실 예산 <span class="m">42 kW</span>(정격 120 − 유효 78)의
+          <span class="m">5.5 kW</span>가 손실 예산 <span class="m">42 kW</span>(정격 120 − 유효 78)의
           <span class="m">13 %</span>뿐이라 나머지 <span class="m">36 kW</span>의 행방을 물었는데,
           <span class="k">CAL-001</span> 열수지가 제어체적으로 세어 보니 그 뺄셈은 서로 다른
           두 운전점을 섞은 것이었다. 계약 <span class="m">58 장/h</span>에서 계를 실제로 떠나는
-          손실은 <span class="m">14.9 kW</span>(에어록 교환이 절반)이고 정상상태 효율은
+          손실은 <span class="m">14.8 kW</span>(에어록 교환이 절반)이고 정상상태 효율은
           <span class="m">79 %</span>라, 체류시간을 잡는 <span class="m">65 %</span>는 보수측이다.
           이 수지는 계산이다. 파일럿 벤치는 옆면이 열려 있어 챔버의 수지를 닫지 못하므로
           <span class="k">PT-05</span>는 벤치에서 결합효율의 <strong>하한</strong>을, 셔터 한 장을 단

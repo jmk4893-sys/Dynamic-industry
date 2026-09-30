@@ -40,6 +40,7 @@ from typing import NamedTuple
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import therm as T  # noqa: E402
+import console_consts as CC  # noqa: E402
 import cycle as CY  # noqa: E402
 from console_consts import const as c  # noqa: E402
 
@@ -92,6 +93,34 @@ LOSS_BUDGET = RATED_KW - USEFUL_KW
 FLUX = (USEFUL_KW * 1000 / DECKS) / PANEL_A     # W/m² 패널 양면 합
 DWELL = CY.DWELL                    # s 콘솔 열체류 (5장 소킹) — thermalModel 거울
 TAKT = CY.TAKT                      # s 콘솔 라인 사이클
+
+# 이 모듈을 표준 배치로 푸는가 (옵션은 variant 가 핀을 박고 다시 푼다). 사양서에 인쇄된
+# 표준의 숫자와 대조하는 문구는 표준에서만 쓴다.
+STD = CC.active() == "compact"
+_STD = CC.layouts()["compact"]
+
+
+def corner_flux(lamps: int, decks: int) -> float:
+    """콘솔 입력구간의 모서리 — 최소 패널 · 최대 램프 · 최대 효율 — 의 흡수유속 W/m²."""
+    R = CY.RANGE
+    kw_max, eta_max = R["lampPower"][1], R["heatEfficiency"][1] / 100
+    a_min = R["panelLength"][0] * R["panelWidth"][0] / 1e6
+    return (lamps * kw_max * eta_max * 1000 / decks) / a_min
+
+
+# 옵션은 단당 램프가 많다 (96/7 ≫ 48/5) — 같은 모서리에서 유속이 표준의 1.4 배라 백시트가
+# 녹는다. 그래서 IR 뱅크 SSR 에 상한을 건다 (총괄 결정): 흡수유속이 표준의 모서리 유속을
+# 넘지 않게, 패널 면적으로 뱅크 출력을 내린다. 표준에서는 상한이 모서리 유속 그 자체라
+# 아무 것도 바꾸지 않고, 옵션도 기본 패널에서는 풀린다 (그때 유속은 한참 아래다).
+Q_CORNER_STD = corner_flux(_STD["lamps"], _STD["decks"])
+
+
+def ssr_cap(area_m2: float) -> float:
+    """패널 면적에서의 뱅크 출력 상한 (0~1) — 흡수유속 ≤ 표준 모서리 유속."""
+    R = CY.RANGE
+    per = LAMPS * R["lampPower"][1] * R["heatEfficiency"][1] / 100 * 1000 / DECKS
+    return min(1.0, Q_CORNER_STD * area_m2 / per)
+
 
 # 백시트 상한. 콘솔 주석: PVDF 165 · PVF 195. **낮은 쪽을 쓴다** —
 # 어느 것이 붙어 올지는 폐패널이 정하지 우리가 정하지 않는다.
@@ -223,8 +252,13 @@ def dwell_floor():
     R = CY.RANGE
     kw_max, eta_max = R["lampPower"][1], R["heatEfficiency"][1] / 100
     a_min = R["panelLength"][0] * R["panelWidth"][0] / 1e6
-    q_worst = (LAMPS * kw_max * eta_max * 1000 / DECKS) / a_min
+    q_raw = corner_flux(LAMPS, DECKS)
+    cap = ssr_cap(a_min)
+    q_worst = q_raw * cap
     w = soak(round(q_worst, 3))
+    capped = (f" 옵션은 단당 램프가 {LAMPS / DECKS:.1f} 등이라 이 모서리 유속이 {q_raw:,.0f} W/m² 다 — "
+              f"SSR 상한 {cap:.0%} 로 표준의 모서리 유속 {Q_CORNER_STD:,.0f} W/m² 에 묶는다 "
+              f"(기본 패널에서는 상한 {ssr_cap(PANEL_A):.0%} — 풀린다)." if cap < 1 else "")
 
     return [
         Result("T4", "체류시간 하한 (백시트 설계한계)", t_des, "s", DWELL,
@@ -239,9 +273,9 @@ def dwell_floor():
                f"효율 {eta_max:.0%} — 콘솔 입력구간의 모서리. "
                f"유속 {q_worst:,.0f} W/m² 에서 계면 도달 {w['t_face']:.0f} s, "
                f"백시트 여유 {T_BACK_MAX-w['t_back']:.1f} K 뿐이다. **하한을 "
-               f"{t_des:.0f} s 로 두면 이 모서리가 막힌다** — 하한은 살려 둔다"),
+               f"{t_des:.0f} s 로 두면 이 모서리가 막힌다** — 하한은 살려 둔다.{capped}"),
     ], dict(q_cap=q_cap, t_cap=t_cap, q_des=q_des, t_des=t_des,
-            q_worst=q_worst, worst=w)
+            q_worst=q_worst, q_raw=q_raw, ssr_cap=cap, worst=w)
 
 
 # ── ③ 유리 열응력 — 승온과 급냉 ─────────────────────────────────────
@@ -286,7 +320,7 @@ def glass_stress():
         rows.append((n, (USEFUL_KW * 1000 / n) / PANEL_A, s["t_face"],
                      s["dt_glass"], _sigma(s["dt_glass"]), s["t_back"]))
 
-    b3, b5 = rfq_bound(3), rfq_bound(5)
+    b3, b5 = rfq_bound(3), rfq_bound(DECKS)
     return [
         Result("T6", "승온 중 유리 열응력 (과도해석)", _sigma(heat), "MPa", SIG_GL,
                "사양서 5.5항 설계허용 7 MPa — 발행된 값을 그대로 쓴다",
@@ -294,12 +328,15 @@ def glass_stress():
                f"**단수를 열응력이 정한 것이 아니다** — 3단에서도 여유가 "
                f"{SIG_GL/rows[0][4]:.0f} 배다. 사양서는 3단이 7.05 로 허용치를 "
                f"넘는다고 썼는데, 그것은 통과 모델의 상한이다 (T7)"),
-        Result("T7", "사양서 5.5항 보수 모델 재현 (5단)", b5[2], "MPa", SIG_GL,
-               "같은 허용 7 MPa — 사양서에 인쇄된 4.23 MPa 와 대조한다",
+        Result("T7", f"사양서 5.5항 보수 모델 재현 ({DECKS}단)", b5[2], "MPa", SIG_GL,
+               ("같은 허용 7 MPa — 사양서에 인쇄된 4.23 MPa 와 대조한다" if STD else
+                f"같은 허용 7 MPa — 사양서 5.5항의 보수 모델을 옵션 {DECKS}단 · {LAMPS}등에 그대로 건다"),
                f"플럭스 {b5[0]:.2f} kW/m² · ΔT {b5[1]:.1f} K → {b5[2]:.2f} MPa. "
                f"3단은 {b3[0]:.2f} kW/m² · {b3[1]:.1f} K → {b3[2]:.2f} MPa. "
-               f"**사양서 숫자가 그대로 재현된다** — 두 모델이 다른 것이지 "
-               f"어느 쪽이 계산을 틀린 것이 아니다. 과도해석은 이 상한의 "
+               + ("**사양서 숫자가 그대로 재현된다** — 두 모델이 다른 것이지 "
+                  "어느 쪽이 계산을 틀린 것이 아니다. " if STD else
+                  "단당 유효출력이 표준보다 커서 상한이 오르지만 허용 안이다. ")
+               + f"과도해석은 이 상한의 "
                f"{_sigma(heat)/b5[2]:.0%} 다: 유리는 열을 통과시키는 벽이 아니라 "
                f"양면에서 받아 머금는 판이기 때문이다"),
         Result("T8", "급냉 중 유리 열응력 (냉각 랙 투입 순간)", _sigma(dt_q),
@@ -396,13 +433,13 @@ def chamber_wall():
     r_wall = (float(Tf[0]) - float(Tf[-1])) / q_field  # m²·K/W 벽 자체
 
     import parts as P
-    A = (2 * P.CHAMBER_L * 3860 + 2 * P.RACK_W * 3860
-         + P.CHAMBER_L * P.RACK_W) / 1e6               # m² 측·단·지붕
+    A = P.HC_AREA                                      # m² 측·단·지붕 — 카탈로그가 단열을 세는 그 면
 
-    # 열교 — GFRP 스페이서 60×60×12 @600 격자 210개 (P-002-16) 와
-    # 그것을 관통하는 M6. 다리 길이는 스페이서 두께 12 mm 다: 양쪽
-    # 강재는 열적으로 등온이라 저항이 스페이서에만 걸린다.
-    n_sp, a_sp, l_sp = 210, 0.060 * 0.060, 0.012
+    # 열교 — GFRP 스페이서 60×60×12 @600 격자 (P-002-16) 와 그것을 관통하는
+    # M6. 다리 길이는 스페이서 두께 12 mm 다: 양쪽 강재는 열적으로 등온이라
+    # 저항이 스페이서에만 걸린다. 개수는 카탈로그가 면에서 센 값이다.
+    n_sp = {p.pid: p for p in P.P}["P-002-16"].qty
+    a_sp, l_sp = 0.060 * 0.060, 0.012
     g_gfrp = 0.30 * a_sp / l_sp * n_sp                 # W/K  GFRP k 0.30
     g_bolt = 50.0 * 20e-6 / l_sp * n_sp                # M6 유효단면 20 mm²
     g_steel = 16.0 * a_sp / l_sp * n_sp                # 스페이서를 STS 로
@@ -417,7 +454,7 @@ def chamber_wall():
                "EN ISO 13732-1 금속 접촉 화상 문턱 · 부품 P-002-16 주석의 60 ℃",
                f"열교 없는 필드는 {t_field:.1f} ℃. 스페이서를 STS 로 바꾸면 "
                f"{t_steel:.0f} ℃ 로 **60 ℃ 를 넘는다** — 카탈로그가 GFRP 를 "
-               f"고른 이유가 확인된다. 다만 M6 관통볼트 210개가 스페이서를 "
+               f"고른 이유가 확인된다. 다만 M6 관통볼트 {n_sp}개가 스페이서를 "
                f"단락시켜 손실을 {q_gfrp/q_nobolt:.1f} 배로 만든다 (R4)"),
         Result("T12", "가열실 벽 손실", q_gfrp * A / 1000, "kW", LOSS_BUDGET,
                f"정격 {RATED_KW:.0f} kW − 유효 {USEFUL_KW:.0f} kW = 손실 예산 "
@@ -431,7 +468,7 @@ def chamber_wall():
     ], dict(area=A, r_wall=r_wall, q_field=q_field, t_field=t_field,
             t_gfrp=t_gfrp, t_steel=t_steel, t_nobolt=t_nobolt,
             q_gfrp=q_gfrp, q_nobolt=q_nobolt, q_steel=q_steel,
-            g_gfrp=g_gfrp, g_bolt=g_bolt, g_steel=g_steel)
+            g_gfrp=g_gfrp, g_bolt=g_bolt, g_steel=g_steel, n_sp=n_sp)
 
 
 # ── ⑥ 칼날 카세트 ───────────────────────────────────────────────────
@@ -502,7 +539,8 @@ def requirements() -> list[Req]:
             "콘솔 MODEL.fdmDwell · 제어 레시피",
             f"콘솔의 113.15 s 는 유도된 적 없는 값이다. 물리가 정하는 하한은 "
             f"백시트 융점이고, 여유 10 K 를 두면 {df['t_des']:.0f} s 다. "
-            f"입력구간 모서리(1600×800·3 kW·80 %)가 {df['worst']['t_face']:.0f} s "
+            f"입력구간 모서리({CY.RANGE['panelLength'][0]:.0f}×{CY.RANGE['panelWidth'][0]:.0f}·"
+            f"{CY.RANGE['lampPower'][1]:g} kW·{CY.RANGE['heatEfficiency'][1]:.0f} %)가 {df['worst']['t_face']:.0f} s "
             f"이므로 하한은 실제로 일한다 — 지우면 안 된다"),
         Req("R3", "CASSETTE_HANDLING_SAFE 조건",
             f"실측 60 ℃ 이하 · 냉각 하한 {ca['t_cool']:.0f} s",
@@ -514,7 +552,7 @@ def requirements() -> list[Req]:
             "M6 에 GFRP 부시 + 절연 와셔, 또는 볼트가 양 껍데기를 잇지 않을 것",
             "상세설계 · P-002-16 주석",
             f"GFRP 스페이서는 제 몫을 한다 (금속이면 외피가 "
-            f"{cw['t_steel']:.0f} ℃). 그런데 그것을 관통하는 M6 210개가 "
+            f"{cw['t_steel']:.0f} ℃). 그런데 그것을 관통하는 M6 {cw['n_sp']}개가 "
             f"스페이서를 단락시켜 손실을 {cw['q_gfrp']/cw['q_nobolt']:.1f} 배로 "
             f"올린다 — 스페이서만 있으면 {cw['q_nobolt']*cw['area']/1000:.1f} kW "
             f"인 것이 볼트까지 세면 {cw['q_gfrp']*cw['area']/1000:.1f} kW 다. "

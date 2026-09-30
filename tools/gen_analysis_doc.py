@@ -17,6 +17,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import airlock as AIR  # noqa: E402
+import analysis_cycle as CYC  # noqa: E402
 import analysis_irbank as IRB  # noqa: E402
 import heatbalance as HBAL  # noqa: E402
 import lampmount as LMT  # noqa: E402
@@ -713,6 +714,52 @@ def part4e() -> str:
 </div></div>"""
 
 
+# ── 4f. 사이클 — 승강축 ────────────────────────────────────────────────
+def part4f() -> str:
+    rs, ex = CYC.run()
+    rq = "".join(
+        f'<tr><td class="k">{esc(q.id)}</td><td>{esc(q.what)}</td>'
+        f'<td class="k">{esc(q.value)}</td><td>{esc(q.owner)}</td>'
+        f'<td>{md(q.why)}</td></tr>' for q in CYC.requirements())
+    return f"""
+<div class="clause" id="p9"><div class="n">9</div><div class="c">
+  <h3>사이클 — 승강 포크는 스크류를 돌리지 않는다</h3>
+  <p>열해석은 가열실이 제때 데우는지를, 칼날 사이클은 박리가 제때 끝나는지를 본다.
+    그 사이를 잇는 것은 <strong>승강 포크</strong>다. LI·EX·GL·GU 네 문형이 한 택트에
+    한 번 패널을 공정 높이와 데크 사이로 옮기고, 가장 긴 경우 공정 높이 ↔ 최상단
+    <span class="m">{CYC.PT.LIFT_MAX:,.0f} mm</span> 를 오르내린다. <strong>이 왕복을 택트와
+    대 본 검토가 없었다.</strong></p>
+  <div class="warn"><strong>카탈로그의 승강축은 택트를 못 맞추고 있었다.</strong>
+    Ø32 리드 {CYC.OLD_LEAD:.0f} 볼스크류를 서보로 <em>돌리게</em> 적었는데, 지지 간격
+    <span class="m">{ex['span']:,.0f}</span> 짜리 스크류를 돌리면 휨 진동의 공진 — 위험속도 —
+    이 <span class="m">{ex['n_c']:,.0f} rpm</span> 이다. 허용 {CYC.N_FACTOR:.0%} 에 리드를 곱하면
+    <span class="m">{ex['v_old'] * 1000:.0f} mm/s</span> 이고, 그 속도로는 최장 왕복과 포크 출입만
+    <span class="m">{ex['t_old']:.0f} s</span> 로 택트 <span class="m">{CYC.CY.TAKT:.1f} s</span> 를
+    넘는다 (CY5). <strong>서보를 키워도 안 풀린다</strong> — 막는 것은 출력이 아니라 공진이다.</div>
+  <p><strong>그래서 너트를 돌린다</strong> (회전 너트식 · 스크류 양끝 고정). 스크류가
+    돌지 않으니 공진이 없고, 스크류에는 매단 하중의 인장만 걸린다. 속도는 택트의 85 % 에서
+    거꾸로 풀어 <span class="m">{CYC.PT.FORK_LIFT_V:.2f} m/s</span> 등급을 고르고, 리드는 볼너트
+    d·n 상한 안에 드는 가장 작은 것({CYC.PT.FORK_LEAD:.0f})을 쓴다. 서보는 캐리지에 실려
+    함께 오르내린다 — 케이블 캐리어가 붙는다.</p>
+  <div class="tw"><table>
+    <caption>검토 — 값 · 한계 · 이용률</caption>
+    <thead><tr><th>ID</th><th>항목</th><th class="num">값</th><th class="num">단위</th>
+      <th class="num">한계</th><th class="num">이용률</th><th>판정</th></tr></thead>
+    <tbody>{_rows(rs)}</tbody>
+  </table></div>
+  <div class="tw"><table>
+    <caption>근거와 읽는 법</caption>
+    <thead><tr><th>ID</th><th>한계의 근거</th><th>무엇을 뜻하는가</th></tr></thead>
+    <tbody>{_basis(rs)}</tbody>
+  </table></div>
+  <div class="tw"><table>
+    <caption>이 검토가 만든 요구</caption>
+    <thead><tr><th>ID</th><th>무엇</th><th>값</th><th>받는 곳</th><th>왜</th></tr></thead>
+    <tbody>{rq}</tbody>
+  </table></div>
+</div></div>"""
+
+
 # ── 5. 요구 ──────────────────────────────────────────────────────────
 def part5() -> str:
     rq = "".join(
@@ -720,7 +767,7 @@ def part5() -> str:
         f'<td class="k">{esc(q.value)}</td><td>{esc(q.owner)}</td>'
         f'<td>{md(q.why)}</td></tr>' for q in TH.requirements())
     return f"""
-<div class="clause" id="p9"><div class="n">9</div><div class="c">
+<div class="clause" id="p10"><div class="n">10</div><div class="c">
   <h3>이 해석이 만든 요구</h3>
   <p>결과에는 두 갈래가 있다. <strong>검토</strong>는 한계가 있어 통과·초과가 나오고,
     <strong>요구</strong>는 해석이 새로 만들어 낸 조건이라 아직 지킬 사람이 없다.
@@ -742,7 +789,7 @@ def part6() -> str:
     mu_env = KE.up(KE.mu_for(KE.ALPHA, lim["vh_env"]), 2)
     mu_gl = KE.up(KE.mu_for(KE.ALPHA, lim["vh_glass"]), 3)
     return f"""
-<div class="clause" id="p10"><div class="n">10</div><div class="c">
+<div class="clause" id="p11"><div class="n">11</div><div class="c">
   <h3>이 해석이 못 보는 것</h3>
   <p>해석의 한계를 적지 않으면 “해석했다”가 해석하지 않은 것까지 덮는다.
     아래는 <strong>이 두 해석기로는 원리적으로 볼 수 없는 것</strong>이며, 상세설계에서
@@ -795,6 +842,84 @@ def part6() -> str:
 </div></div>"""
 
 
+# ── 7. 옵션 DG-HK120C ────────────────────────────────────────────────
+def _opt_rows(rows) -> str:
+    out = []
+    for g, b, t in rows:
+        cls = "" if t.ok else ' class="over"'
+        bv = f"{b.value:,.3f}" if b is not None else "—"
+        bu = f"{b.util:.0%}" if b is not None else "—"
+        out.append(
+            f'<tr{cls}><td class="k">{esc(t.id)}</td><td>{md(t.what)}</td>'
+            f'<td class="num">{bv}</td><td class="num"><strong>{t.value:,.3f}</strong></td>'
+            f'<td class="num">{esc(t.unit)}</td><td class="num">{t.limit:,.3f}</td>'
+            f'<td class="num">{bu}</td><td class="num">{t.util:.0%}</td>'
+            f'<td>{"OK" if t.ok else "★ 초과"}</td></tr>')
+    return "".join(out)
+
+
+def part7() -> str:
+    import analysis_option as AO
+    cmp_ = AO.compare()
+    ext = [(g, b, t) for g, t, b in AO.extra()]
+    summ = AO.summary()
+    T = AO.PT_T
+    groups: dict[str, list] = {}
+    for g, b, t in cmp_ + ext:
+        groups.setdefault(g, []).append((g, b, t))
+    moved = [(g, b, t) for g, b, t in cmp_ if b is None or abs(t.value - b.value) > 1e-6 * max(1.0, abs(b.value))]
+    tables = "".join(
+        f"""<details{' open' if g in ('사이클', '전기') else ''}><summary>{esc(g)} — {len(rows)} 건</summary>
+    <div class="tw"><table>
+      <caption>{esc(g)} — 표준 → 옵션</caption>
+      <thead><tr><th>ID</th><th>항목</th><th class="num">표준</th><th class="num">옵션</th><th class="num">단위</th>
+        <th class="num">옵션 한계</th><th class="num">표준 이용률</th><th class="num">옵션 이용률</th><th>판정</th></tr></thead>
+      <tbody>{_opt_rows(rows)}</tbody>
+    </table></div></details>"""
+        for g, rows in groups.items())
+    basis = "".join(
+        f'<tr><td class="k">{esc(t.id)}</td><td>{md(t.basis)}</td><td>{md(t.note)}</td></tr>'
+        for g, b, t in moved + ext)
+    rq = "".join(
+        f'<tr><td class="k">{esc(q.id)}</td><td>{esc(q.what)}</td>'
+        f'<td class="k">{esc(q.value)}</td><td>{esc(q.owner)}</td>'
+        f'<td>{md(q.why)}</td></tr>' for q in AO.requirements())
+    with AO.pinned():
+        cy = AO.CY_T
+        takt, pitch, net = cy.TAKT, cy.PITCH, cy.RATE_NET
+    return f"""
+<div class="clause" id="p12"><div class="n">12</div><div class="c">
+  <h3>옵션 DG-HK120C — 2셀 수평병렬을 같은 해석기로</h3>
+  <p>옵션은 가열실 하나({T.DECKS}단 · {T.LAMPS}등)에 계단 칼날 셀 {T.CELLS}개를 나란히 둔다.
+    <strong>따로 해석하지 않는다</strong> — 위 1~11장의 검토를 <em>같은 코드로</em> 옵션의 뿌리 값에서
+    다시 풀어(<span class="k">tools/variant.py · analysis_option.py</span>) 표준 값과 나란히 놓는다.
+    택트 <span class="m">{takt:.2f} s</span> · 가열실 피치 <span class="m">{pitch:.2f} s</span> ·
+    순생산 <span class="m">{net:.1f} 장/h</span>. 검토 <strong>{summ['checks']} 건</strong> 중
+    옵션에서 새로 한계를 넘는 것은 <strong>{len(summ['new_over'])} 건</strong>
+    ({esc(' · '.join(summ['new_over'])) or '없음'})이고, 나머지 초과는 표준과 같은 자리 —
+    <em>“안 쓰는 안이 왜 안 되는가”</em> 를 보이는 행이다 (AL1 · HB5 · IR1~IR3 · CY5 등).</p>
+  <div class="warn"><strong>옵션을 풀자 결정 셋이 나왔다.</strong>
+    ① <strong>SSR 상한</strong> — 단당 램프가 표준의 1.4 배라 작은 패널에서 백시트가 녹는다(T5).
+    뱅크 출력을 패널 면적으로 묶어 표준이 검증한 유속에 맞춘다 (RO1).
+    ② <strong>승강축 등급</strong> — 택트가 반이고 행정이 길어 너트 회전식을 한 등급 올린다 (RO2 · 9장).
+    ③ <strong>12 등 배치</strong> — 뱅크당 12 등의 위치를 다시 풀었다; 편차가 표준의 절반이다 (RO3).</div>
+  {tables}
+  <div class="tw"><table>
+    <caption>옵션에서 값이 달라진 검토 · 옵션에만 있는 검토 — 근거와 읽는 법</caption>
+    <thead><tr><th>ID</th><th>한계의 근거</th><th>무엇을 뜻하는가</th></tr></thead>
+    <tbody>{basis}</tbody>
+  </table></div>
+  <div class="tw"><table>
+    <caption>옵션이 만든 요구</caption>
+    <thead><tr><th>ID</th><th>무엇</th><th>값</th><th>받는 곳</th><th>왜</th></tr></thead>
+    <tbody>{rq}</tbody>
+  </table></div>
+  <div class="note"><strong>이 장이 못 보는 것</strong> — 두 셀의 위상 경합(에어록 · 포크 · 모노레일 ·
+    냉각 랙 포크)은 사이클 합으로만 봤다. 최악 위상의 시간축 겹침은 검토서 OI-T1 이 상태머신
+    시뮬레이션으로 닫는다. 건물 유효높이(OI-T3)와 이중화 범위(OI-T4)는 해석이 아니라 합의다.</div>
+</div></div>"""
+
+
 def _chapters(body: str):
     """목차를 본문에서 뽑는다 — 손으로 적으면 반드시 갈라진다.
 
@@ -817,14 +942,15 @@ def build() -> str:
     lms, _ = LMT.run()
     hbs, _ = HBAL.run()
     als, _ = AIR.run()
-    checks = list(srs) + list(trs) + list(irs) + list(lms) + list(hbs) + list(als)
+    cys, _ = CYC.run()
+    checks = list(srs) + list(trs) + list(irs) + list(lms) + list(hbs) + list(als) + list(cys)
     over = [r.id for r in checks if not r.ok]
     reqs = (len(TH.requirements()) + len(IRB.requirements())
             + len(LMT.requirements()) + len(HBAL.requirements())
-            + len(AIR.requirements()))
+            + len(AIR.requirements()) + len(CYC.requirements()))
     valid = len(fea.validate()) + len(therm.validate()) + len(AIR.validate())
     body = "\n".join([part1(), part2(), part3(), part4(), part4b(), part4c(),
-                       part4d(), part4e(), part5(), part6()])
+                       part4d(), part4e(), part4f(), part5(), part6(), part7()])
     toc = "".join(f'<li><a href="#{pid}"><b>{n}</b>{esc(t)}</a></li>'
                   for pid, n, t in _chapters(body))
     return f"""<!doctype html>
@@ -859,9 +985,11 @@ def build() -> str:
     구조 <strong>{len(srs)} 건</strong> · 열 <strong>{len(trs)} 건</strong> ·
     IR 뱅크 <strong>{len(irs)} 건</strong> · 램프 지지 <strong>{len(lms)} 건</strong> ·
     열수지 <strong>{len(hbs)} 건</strong> · 에어록 <strong>{len(als)} 건</strong> ·
+    사이클 <strong>{len(cys)} 건</strong> ·
     닫힌해 검증 <strong>{valid} 건</strong> ·
     해석이 만든 요구 <strong>{reqs} 건</strong> ·
-    검토 초과 <strong>{len(over)} 건</strong> ({' · '.join(over) if over else '없음'}).</p>
+    검토 초과 <strong>{len(over)} 건</strong> ({' · '.join(over) if over else '없음'}).
+    12장은 옵션 DG-HK120C 를 같은 해석기로 다시 푼다.</p>
 
   <dl class="docref">
     <div><dt>문서번호</dt><dd>DG-HK60C-{DOC}</dd></div>
