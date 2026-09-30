@@ -11,9 +11,13 @@
 import io, pathlib, re, sys
 sys.path.insert(0, "src")
 from pv_preprocess import casing as C
+from pv_preprocess import layout as _L
 
 P = pathlib.Path("docs/drawings/pv-preprocess-plant.html")
-X0, Z0 = 24750.0, 3550.0          # 월드 원점 (플랜트 좌표 mm)
+# 월드 원점 (플랜트 좌표 mm). z 원점은 **라인 중심**이고, 라인 중심은 장비
+# 밴드의 절반이다 — 3,550 리터럴로 두면 밴드가 움직일 때 껍질 전체가 조용히
+# 어긋난다 (반전축을 돌려 밴드가 7,100 → 8,550 이 됐을 때 실제로 725 mm 어긋났다).
+X0, Z0 = 24750.0, _L.MACHINE_BAND_Y_MM / 2.0
 
 def wx(mm): return round((mm - X0) / 1000.0, 4)
 def wz(mm): return round((mm - Z0) / 1000.0, 4)
@@ -172,7 +176,7 @@ planes = {k: {"mount": round((C.MEASURED_FACE_MM[k] - Z0) / 1000.0, 4),
               "x0": round((C.zone_span_mm(k)[0] - X0) / 1000.0, 4),
               "x1": round((C.zone_span_mm(k)[1] - X0) / 1000.0, 4)}
           for k in C.CASED_ZONES}
-planes["_limits"] = {"band": round((3550 + 3550 - Z0) / 1000.0, 4),
+planes["_limits"] = {"band": round((_L.MACHINE_BAND_Y_MM - Z0) / 1000.0, 4),
                      "maxEncroach": C.MAX_ENCROACH_MM / 1000.0}
 pathlib.Path("out").mkdir(exist_ok=True)
 io.open("out/casing-planes.json", "w", encoding="utf-8").write(
