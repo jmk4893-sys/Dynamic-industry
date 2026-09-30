@@ -34,6 +34,13 @@ const EXEMPT = [
 const ADJACENCY_M = 0.03;   // 인접 판정 허용치
 const FLOOR_M = 0.05;       // 이 높이 아래면 바닥에 닿은 것으로 본다
 
+/** 씬에 있어야 하는 메시의 최소 개수 — 현행 2,288.
+ *
+ *  이 검사는 「접지 덩어리에 안 붙은 덩어리」를 세는 방식이라, 메시를 하나도
+ *  못 찾으면 떠 있는 덩어리도 0 이고 「✓ 모든 부재가 바닥까지 하중 경로를
+ *  갖는다」로 끝난다. 없는 것에 대해 참인 문장이다. 통과시키지 않는다. */
+const MIN_MESHES = 1500;
+
 const browser = await chromium.launch({
   executablePath: browserPath(),
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
@@ -113,7 +120,22 @@ const offenders = result.floating.filter(
   (f) => !f.labels.length || !f.labels.every((l) => EXEMPT.some((e) => l.includes(e))),
 );
 
+if (result.total < MIN_MESHES) {
+  console.error(`✗ 메시가 ${result.total} 개뿐이다 (하한 ${MIN_MESHES}) — 씬이 안 섰다.`
+    + '\n  이 상태의 「떠 있는 덩어리 없음」은 없는 것에 대해 참인 문장이다.');
+  process.exit(1);
+}
+
 console.log(`메시 ${result.total} · 연결 성분 ${result.components} · 접지 ${result.grounded}`);
+/* **이 검사가 무엇을 단정하는지 숫자로 밝힌다.** 묻는 것은 「각 부재에서 바닥까지
+   AABB 인접 사슬이 있는가」이고, 실측하면 2,288 중 2,274 가 접지 덩어리 **하나**
+   에 들어 있다. 덩어리가 그만큼 크면 개별 부재에 대해 이 검사가 말해 주는 것은
+   거의 없다 — 30 mm 안에서 무언가를 스치기만 하면 그 사슬에 들어간다. 진짜
+   지지 여부는 `mounting` 의 부재별 검토가 본다. 이 값을 찍어 두어야 초록을
+   과대해석하지 않는다. */
+const biggest = result.total - result.floating.reduce((a, f) => a + f.meshes, 0);
+console.log(`접지 덩어리가 메시 ${biggest} 를 품는다 (전체의 `
+  + `${(biggest / result.total * 100).toFixed(1)} %) — AABB 인접 사슬 기준이다`);
 console.log(`하중 경로 없음 ${result.floating.length}덩어리 (예외 허용 ${result.floating.length - offenders.length})`);
 for (const f of result.floating) {
   const mark = offenders.includes(f) ? '✗' : '·';

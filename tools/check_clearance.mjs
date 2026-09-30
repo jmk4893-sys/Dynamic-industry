@@ -37,8 +37,9 @@ const file = process.argv[2] || 'docs/drawings/pv-preprocess-plant.html';
 
 /** 설계상 접촉 — 무는·받는·미는 부재다. kinematics.DESIGN_CONTACTS 와 같다. */
 const DESIGN_CONTACTS = [
-  '클램프', '조', '스토퍼', '롤러', '지지', '진공', '포크', '손목', '푸셔', '패드',
-  '컨베이어', '셔틀', '캐리지', '레일', '적재대', '리프트', '팔레트', '랙',
+  '클램프', '스토퍼', '롤러', '지지', '진공', '포크', '손목', '푸셔', '패드',
+  '컨베이어', '셔틀', '캐리지', '레일', '적재대', '리프트', '팔레트',
+  '리젝트 랙', '지게차',
   '가위날', '노즐', '센서', '케이블', '슬라이드', '호스', '균열감시',
   '프레임', '정반', '베드', '브래킷', '유압', '인발', '기준 슈', 'RB-101', '포획빔',
   '칼날', '박리 계면',
@@ -47,7 +48,7 @@ const DESIGN_CONTACTS = [
 /** 통과 개구 — 공정물이 지나가라고 낸 구멍인데 3D 는 판으로 그린다.
  *  kinematics.PASS_THROUGH 와 같다. */
 const PASS_THROUGH = [
-  '가드', '게이트', '터널', '커튼', '개구', '슈트', '존', '참조', '투영', '스캔선', '바닥',
+  '가드', '게이트', '터널', '커튼', '개구', '슈트', '참조', '투영', '스캔선', '바닥',
 ];
 
 /** 공정 중인 물건 — src/pv_preprocess/kinematics.py 의 WORKPIECES 와 같다. */
@@ -55,6 +56,9 @@ const WORKPIECES = [
   '태양광 패널', '적재 패널', '팔레트 패널', 'JBOX 제거상태',
   '정션박스 형상', '검출 정션박스', '알루미늄 프레임', '박리 유리',
 ];
+
+/** 공정물로 잡혀야 하는 메시의 최소 개수 — 현행 29. 시야가 붕괴하면 멈춘다. */
+const MIN_WORKPIECE_MESHES = 20;
 
 const T0 = 0, T1 = 130, DT = 0.5;
 const TOL_M = 0.002;      // 이보다 얕은 겹침은 수치오차로 본다
@@ -135,7 +139,13 @@ const result = await page.evaluate(([t0, t1, dt, tol, contacts, work, pass]) => 
   };
   const carriers = meshes.map(carrierOf);
 
-  const isContact = (a, b) => contacts.some((w) => a.includes(w) || b.includes(w))
+  /* **면제는 받는 쪽에서만 읽는다.** `a` 는 공정물, `b` 는 부딪힌 설비다.
+     한때 `a.includes(w)` 도 보고 있었는데, 그러면 이름이 면제 낱말을 품은
+     공정물이 무엇을 얼마나 뚫든 통과한다 — `'팔레트 패널'`·`'알루미늄 프레임'`
+     이 그랬다. 면제는 「받는 것이 받는 부재다」라는 사실이어야 하고, 그것은
+     `b` 만 말할 수 있다. 고친 뒤 확인 필요가 0 → 6 쌍으로 드러났고, 여섯은
+     리젝트 랙과 지게차 두 자리였다 — 둘 다 이름을 적어 면제했다. */
+  const isContact = (a, b) => contacts.some((w) => b.includes(w))
     || pass.some((w) => b.includes(w));
 
   const hits = {};
@@ -210,6 +220,17 @@ const hard = result.hits.filter((h) => h.ring || !h.contact);
 const soft = result.hits.filter((h) => !h.ring && h.contact);
 
 console.log(`메시 ${result.meshes} · 공정물 메시 ${result.dynamic} · 프레임 ${result.frames}`);
+/* **공정물을 못 찾으면 통과가 아니다.** 판정은 공정물 × 설비 쌍만 돌기 때문에
+   `dynamic` 이 0 이면 쌍이 0 이고, 겹침 0 · 「✓ 공정 중인 물건이 설비를 뚫지
+   않는다」로 조용히 끝난다. WORKPIECES 는 모델과 집합으로 맞춰 두었지만, 그
+   시험은 두 목록이 같다는 것만 보증한다 — 도면 쪽 라벨이 같이 바뀌면 두 목록이
+   일치한 채로 시야가 0 이 된다. 현행 29 다. */
+if (result.dynamic < MIN_WORKPIECE_MESHES) {
+  console.error(`\n✗ 공정물 메시가 ${result.dynamic} 개뿐이다 (하한 ${MIN_WORKPIECE_MESHES})`
+    + ' — 판정은 공정물 × 설비 쌍만 도므로 이 상태의 「겹침 없음」은 뜻이 없다.'
+    + '\n  도면의 라벨이 바뀌었으면 kinematics.WORKPIECES 와 이 도구를 같이 고친다.');
+  process.exit(1);
+}
 console.log(`겹침 ${result.hits.length}쌍 — 설계상 접촉 ${soft.length} · 확인 필요 ${hard.length}`);
 for (const h of hard.slice(0, 20)) {
   console.log(`  ✗ ${String(h.mm).padStart(4)} mm @t=${String(h.t).padStart(5)}s ${h.ring ? '[링 단면 관통]' : '[관통]'} ${h.k}  @[${h.at}]`);

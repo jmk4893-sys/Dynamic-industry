@@ -35,7 +35,14 @@ const file = process.argv[2] || 'docs/drawings/pv-preprocess-plant.html';
 /** 시트 규약 폭 (사용자단위). fitSheet 의 하한과 같아야 한다. */
 const SHEET_W = 1400;
 
-/** 도면 묶음 탭 — id 는 pv-tab-<key>. */
+/** 도면 묶음 탭 — id 는 pv-tab-<key>.
+ *
+ *  **이 목록은 도면과 집합으로 맞춘다.** 손으로 적은 목록을 그냥 훑으면 검사가
+ *  두 방향으로 눈을 감는다. 빠진 탭은 `?` 만 찍고 넘어가고, 새로 생긴 탭은
+ *  애초에 목록에 없어 한 번도 안 열린다. 탭 하나 이름을 바꿔 재보니
+ *  **시트 17 → 11 장으로 줄어든 채 「✓ 시트 11장(탭 9)」로 통과**했다 —
+ *  커버리지 35 % 를 잃고도 초록이고, 성공 문장의 「탭 9」는 거짓이었다
+ *  (`TABS.length` 를 찍기 때문에 실제로 몇 개를 열었는지와 무관했다). */
 const TABS = ['fab', 'explode', 'layout', 'register', 'electrical', 'smart', 'mount', 'safety', 'ops'];
 
 const browser = await chromium.launch({
@@ -108,8 +115,24 @@ const pickView = (tab, value) => page.evaluate(([key, v]) => {
   select.dispatchEvent(new Event('change', { bubbles: true }));
 }, [tab, value]);
 
+/* 도면이 실제로 가진 탭을 먼저 센다 — 목록과 어긋나면 재기 전에 멈춘다. */
+const onPage = await page.evaluate(() => Array.from(
+  document.querySelectorAll('[id^="pv-tab-"]'), (b) => b.id.slice('pv-tab-'.length)));
+const wanted = new Set(TABS), seen = new Set(onPage);
+const gone = TABS.filter((t) => !seen.has(t));
+const extra = onPage.filter((t) => !wanted.has(t));
+if (gone.length || extra.length) {
+  console.error('✗ 탭 목록이 도면과 다르다 — 재기 전에 멈춘다.'
+    + (gone.length ? `\n  목록에 있는데 도면에 없다: ${gone.join(', ')}` : '')
+    + (extra.length ? `\n  도면에 있는데 목록에 없다(한 번도 안 열린다): ${extra.join(', ')}` : '')
+    + '\n  이 도구의 TABS 를 고친다 — 조용히 건너뛰면 커버리지가 줄어든 것을 아무도 모른다.');
+  await browser.close();
+  process.exit(1);
+}
+
 const offenders = [];
 let sheets = 0;
+let visited = 0;
 for (const tab of TABS) {
   const found = await page.evaluate((key) => {
     const button = document.getElementById('pv-tab-' + key);
@@ -117,7 +140,12 @@ for (const tab of TABS) {
     button.click();
     return true;
   }, tab);
-  if (!found) { console.log(`  ? ${tab} — 탭이 없다`); continue; }
+  if (!found) {   // 위에서 집합을 맞췄으므로 여기 오면 도면이 재는 중에 바뀐 것이다
+    console.error(`✗ ${tab} — 탭을 열지 못했다`);
+    await browser.close();
+    process.exit(1);
+  }
+  visited += 1;
   await page.waitForTimeout(420);
 
   for (const view of await sheetViews(tab)) {
@@ -158,5 +186,11 @@ if (offenders.length) {
   await browser.close();
   process.exit(1);
 }
-console.log(`\n✓ 시트 ${sheets}장(탭 ${TABS.length})이 폭 ${SHEET_W} 안에 들고 두 번 렌더해도 같은 프레임이다`);
+if (!sheets) {
+  console.error('\n✗ 시트를 한 장도 재지 못했다 — 다이얼로그가 안 열렸거나 svg.pv-sheet 가 없다.'
+    + '\n  감춰진 채로는 getBBox 가 0 을 돌려주므로 「넘치지 않음」으로 보인다. 통과시키지 않는다.');
+  await browser.close();
+  process.exit(1);
+}
+console.log(`\n✓ 시트 ${sheets}장(탭 ${visited}개를 열어 확인)이 폭 ${SHEET_W} 안에 들고 두 번 렌더해도 같은 프레임이다`);
 await browser.close();
