@@ -139,9 +139,25 @@ class TestTheOptionChapter(unittest.TestCase):
         cls.summary = AO.summary()
         cls.html = (ROOT / "docs" / "dg-hk60-analysis.html").read_text(encoding="utf-8")
 
-    def test_the_only_new_exceedance_is_the_rejected_alternative(self):
-        """옵션에서 새로 한계를 넘는 것은 표준이 이미 버린 안(단 피치 개구 B)뿐이어야 한다."""
-        self.assertEqual(self.summary["new_over"], ["AL2"], self.summary)
+    def test_the_option_adds_no_new_exceedance(self):
+        """옵션에서 새로 한계를 넘는 것은 없다.
+
+        한동안 'AL2(단 피치 개구 B)만 새로 넘는다' 고 적혀 있었다 — 옵션 에어록 손실을
+        옵션 모듈로, 그 허용(η 를 지키는 몫)을 **표준 열수지로** 셈한 잡종 결과였다.
+        analysis_thermal · airlock 이 함수 안에서 늦게 부르는 heatbalance 가 핀 아래에서
+        표준 모듈을 집었기 때문이다 (tools/variant.py 의 모듈 목록이 그것을 막는다)."""
+        self.assertEqual(self.summary["new_over"], [], self.summary)
+
+    def test_the_airlock_allowance_scales_with_the_option_throughput(self):
+        """에어록 몫은 처리량이 정한다 — 옵션 허용이 표준 허용과 같으면 열수지가 섞인 것이다."""
+        import airlock as AL_B
+        al_t = variant.load("twin", "airlock")["airlock"]
+        with variant.pinned("twin"):
+            t = {r.id: r for r in self.AO._results(al_t)}
+        b = {r.id: r for r in self.AO._results(AL_B)}
+        self.assertGreater(t["AL3"].limit, 1.8 * b["AL3"].limit,
+                           "옵션 에어록 허용이 표준 열수지에서 나왔다 — 모듈이 섞였다")
+        self.assertTrue(t["AL2"].ok, "옵션에서 단 피치 개구 B 가 한계를 넘는다")
 
     def test_the_report_carries_the_option_chapter_and_its_requirements(self):
         self.assertIn('<div class="clause" id="p12"><div class="n">12</div>', self.html)

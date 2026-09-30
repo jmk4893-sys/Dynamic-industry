@@ -221,6 +221,51 @@ class TestTheMonorailHeightIsTheConsoles(unittest.TestCase):
                       "콘솔 cRhZ 가 바뀌었다 — parts.py 의 거울을 다시 본다")
 
 
+class TestPinnedKeepsTheModuleGraphsApart(unittest.TestCase):
+    """핀 아래의 늦은 import 가 표준과 옵션 모듈을 섞지 않는다.
+
+    설계 모듈 몇은 함수 안에서 늦게 부른다 (analysis_thermal.requirements →
+    heatbalance · analysis_irbank, airlock.run → heatbalance). 핀만 쥐던 때는 둘 중 하나로
+    틀렸다 — 옵션 핀 아래에서 처음 불린 모듈이 sys.modules 에 남아 그 뒤 표준 계산이 옵션
+    값을 읽거나(에어록 전고 개구 673 → 1,178 kW), 표준 모듈이 먼저 있으면 옵션 계산이 표준
+    열수지를 집었다(옵션 에어록 허용 51.3 → 23.5 kW — 'AL2 새 초과' 의 정체)."""
+
+    PROBE = ("from tests import _path\n"
+             "import heatbalance, airlock\n"
+             "print(round(heatbalance.balance()['panel'], 6), round(airlock.solve()[0]['kw'], 6))\n")
+
+    def _py(self, code):
+        import pathlib
+        import sys
+        r = subprocess.run([sys.executable, "-c", code], cwd=pathlib.Path(__file__).resolve().parents[1],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout
+
+    def test_an_option_call_leaves_the_standard_untouched(self):
+        """새 인터프리터에서 — 옵션 함수가 먼저 돌아도 뒤의 표준 계산은 같은 값을 낸다."""
+        first = ("from tests import _path\n"
+                 "import variant\n"
+                 "th = variant.load('twin', 'analysis_thermal')['analysis_thermal']\n"
+                 "with variant.pinned('twin'):\n"
+                 "    th.requirements()\n")
+        self.assertEqual(self._py(first + self.PROBE.split("\n", 1)[1]), self._py(self.PROBE),
+                         "옵션 핀 아래에서 처음 불린 모듈이 표준 계산에 남았다")
+
+    def test_a_late_import_under_the_pin_sees_the_option(self):
+        """거꾸로 — 표준 모듈이 먼저 있어도 핀 안의 늦은 import 는 옵션 모듈을 받는다."""
+        import heatbalance as HB_B
+        variant.load("twin", "analysis_thermal")
+        with variant.pinned("twin"):
+            import heatbalance as HB_T
+            self.assertIsNot(HB_T, HB_B, "핀 안에서 표준 열수지를 집었다")
+            panel_t = HB_T.balance()["panel"]
+        import heatbalance as HB_again
+        self.assertIs(HB_again, HB_B, "핀을 나온 뒤 표준 모듈이 돌아오지 않았다")
+        self.assertAlmostEqual(panel_t / HB_B.balance()["panel"], C.layouts()["twin"]["cells"], places=6,
+                               msg="옵션 열수지의 패널 엔탈피가 처리량을 따라 커지지 않았다")
+
+
 class TestTheLoadScheduleIsTheConsoles(unittest.TestCase):
     """부하표 거울 — 표준은 콘솔 E-001 식 그대로, 옵션은 분기를 셀 수만큼."""
 

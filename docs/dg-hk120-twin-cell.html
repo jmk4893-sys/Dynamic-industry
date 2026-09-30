@@ -222,7 +222,7 @@
 
   <dl class="docref">
     <div><dt>문서번호</dt><dd id="docNo">—</dd></div>
-    <div><dt>개정</dt><dd>Rev.0</dd></div>
+    <div><dt>개정</dt><dd>Rev.1 · 2026-09-30</dd></div>
     <div><dt>상위 문서</dt><dd>DG-HK60-RFQ-001</dd></div>
     <div><dt>기준 배치</dt><dd>DG-HK60C</dd></div>
     <div><dt>성격</dt><dd>개념 검토</dd></div>
@@ -290,7 +290,7 @@
     <p>방출피치는 챔버 대수와 무관하다. 단수로도 나뉘지 않는다.</p>
     <div class="logic">피치 = 체류 ÷ 단수 = (단수 × Q ÷ 유효출력) ÷ 단수 = <strong>Q ÷ 유효출력</strong></div>
     <p>곧 가열실이 낼 수 있는 장수는 <strong>오직 유효출력이 정한다</strong>.
-      두 벌을 놓든 한 벌을 놓든, <span class="m">134.4 장/h</span> 를 먹이려면
+      두 벌을 놓든 한 벌을 놓든, <span class="m" id="nominal2">—</span> 를 먹이려면
       같은 유효출력이 필요하다. 두 벌 놓아서 얻는 것은 전력이 아니라
       <strong>껍데기·승강기·에어록·데크를 한 벌 더 사는 것</strong>뿐이다.</p>
     <div class="tw"><table>
@@ -469,7 +469,7 @@
       <span id="degraded" class="m">—</span> 장/h 를 낸다</strong>.</p>
     <div class="logic" id="redundancyLogic"></div>
     <div class="good"><strong>이것이 처리량 2배보다 팔기 쉬운 값일 수 있다.</strong>
-      발주처가 <span class="m">120 장/h</span> 를 원하지 않더라도,
+      발주처가 <span class="m" id="optTarget">—</span> 를 원하지 않더라도,
       <span class="m"><span id="contractText2">—</span> 를 절대 안 멈추고</span> 원한다면 같은 구성이 답이다.
       그때는 두 셀을 <span class="m">55 mm/s</span> 대신 더 낮은 속도로 돌려
       칼날 수명을 늘리는 운전도 가능하다.</div>
@@ -513,8 +513,14 @@
 
 <footer>
   <p><strong>이 문서는 발주 문서가 아니다.</strong> 개념 검토이며, 치수·용량·배치는
-    검토 제안값이다. 제작·발주에 인용할 수 없다. 발주가 결정되면
-    DG-HK60 사양서와 같은 형식의 기술사양서를 따로 발행한다.</p>
+    검토 제안값이다. 제작·발주에 인용할 수 없다. 이 구성의 발주 조건은 DG-HK60 사양서
+    1.4 항이 <strong>선택분</strong>으로 정하고, 물량·도면·해석은 이 검토서와 같은 모델에서
+    옵션 핀으로 다시 푼 조달 지침서 4 부 · 콘솔 도면 세트(옵션 · 단선도 E-001T) ·
+    해석 보고서 CAL-001 12 장이 낸다.</p>
+  <p><strong>Rev.1</strong> — 스테이션 길이·좁은 구간 방책을 현행 콘솔 값으로
+    (패널 2,400 시절의 3.00 · 3.78 · 3.38 · 3.40/4.20 이 남아 GA-201 다섯 칸이 전장에 못 미쳤다),
+    처리량 두 곳을 모델에서, 7 장 대가에 옵션 설계가 정한 다섯 가지(횡이송 문형 · 셀 가드 ·
+    승강축 · IR 출력 상한 · 수전)를 넣고, OI-T2 를 CAL-001 의 계산과 잇는다.</p>
   <p>처리량·열수지·응력 수치는 DG-HK60 운전 콘솔의 모델에서 같은 식으로 계산했다.
     셀 하나의 사이클, 면적열용량, FDM 도달시간, 유리 물성은 그 문서의 가정을
     그대로 쓰므로 <strong>그 가정이 바뀌면 이 문서도 함께 바뀐다</strong>.</p>
@@ -599,7 +605,12 @@
      카세트 = 계단 칼날 전폭 1,500, 문형 반폭 = 캐리어 반폭 + 340, 카트 = 패널 + 여유. */
   const GEO={len:M.hk60.length,gantryY:1.52,cassette:1.50,aisle:0,celly:0,
     forkY:1.22,forkS:.15,gantryS:.17,gap:.10,
-    trough:[1.00,3.20],cartY:3.50,cartW:1.50,skin:2.51,fenceD:4.60,dlLen:3.90};
+    trough:[1.00,3.20],cartY:3.50,cartW:1.50,skin:2.51,fenceD:4.60,dlLen:3.90,
+    /* 스테이션 길이 · 간격 · 좁은 구간 방책 — 콘솔 COMPACT_STATIONS · CL_CLEAR · CFENCE_Y 와
+       같다 (시험이 대조한다). 한동안 3.00 · 3.78 · 3.38 · 방책 3.40/4.20 이 남아 있었다 —
+       패널 2,400 시절의 값이라 다섯 칸을 더해도 전장 19,260 이 안 나왔다. */
+    ldLen:3.10,hcLen:3.88,gcLen:3.48,ulLen:3.10,clear:.30,fenceP:3.56,
+    forkTwin:1.05};                 // 옵션 EX·GL 문형 반폭 — 콘솔 FORK_HALF_TWIN (통로에 셀 가드가 서도록 죈다)
   GEO.aisleCass=GEO.cassette+2*.18;
   GEO.aisleFork=2*(GEO.forkY+GEO.forkS/2+GEO.gantryS/2+GEO.gap);
   GEO.aisle=Math.max(GEO.aisleCass,GEO.aisleFork);
@@ -724,11 +735,18 @@
    +`1 셀 정지 1 셀 × ${n2(M.cellCycle)} s → 택트 ${n2(M.cellCycle)} s → ${n1(3600/M.cellCycle)} 장/h · 90 % ${n1(degraded)} 장/h\n`
    +`계약값    ${M.contract} 장/h                                            → ${degraded>=M.contract?'충족':'미달'}`);
   setText('degraded',n1(degraded));
+  // 2.1 · 6.1 의 처리량 — 한동안 134.4 · 120 이 글자로 남아 있었다 (옛 사이클 · 모델명)
+  setText('nominal2',n1(nominal)+' 장/h');
+  setText('optTarget',(2*M.contract)+' 장/h');
 
   // ── 7장
   setHTML('costRows',[
     ['챔버 높이',`지붕 ${mm(M.hk60.roof)} → ${mm(pick.roof)} mm — 건물 유효높이·반입·크레인 재검토`,'구조'],
-    ['EX-101 횡이송축',`방출 포크에 ±${mm(GEO.celly)} mm y축이 새로 든다 — 두 셀에 번갈아 넣는다`,'신규 축'],
+    ['EX·GL 횡이송 문형',`방출(EX-101)·유리 적입(GL-101) 포크에 ±${mm(GEO.celly)} mm y축이 새로 든다 — 캔틸레버 문형 2 조가 두 셀에 번갈아 넣는다. 문형 반폭을 ±${mm(GEO.forkTwin)} 으로 죄어 통로에 셀 가드가 선다`,'신규 축'],
+    ['셀 가드',`두 셀 사이 통로에 가드 벽 — 한 셀을 정비하며 다른 셀을 돌린다 (방책 M-013)`,'안전'],
+    ['승강축',`LI·GU 승강이 한 등급 빠른 회전 너트식으로 오른다 — 택트가 반이고 행정이 길다 (CAL-001 RO2)`,'구매품'],
+    ['IR 출력 상한',`단당 램프가 많아 작은 패널에서 모서리 유속이 오른다 — SSR 이 패널 면적으로 뱅크 출력을 묶는다 (CAL-001 RO1)`,'제어'],
+    ['수전',`분기를 셀 수만큼 둔다 — 주차단기·변압기가 한 단계씩 오른다 (단선도 E-001T · CAL-001 RO4)`,'전기'],
     ['DL 셀 폭',`${mm(M.hk60.width)} → ${mm(2*GEO.halfW)} mm (DL 구간만) — 수평 병렬의 대가`,'배치'],
     ['소모품',`카세트 ${2*M.cells}벌 — 교환 빈도 2배 (백시트 롤은 없다)`,'운전'],
     ['모노레일 부하','두 셀의 카세트 반출이 1선을 공유 — 배타 인터록 필요','제어'],
@@ -741,8 +759,8 @@
      `두 셀이 같은 챔버에서 ${n1(takt)} s 간격으로 패널을 받는다. 방출·투입·복귀가 겹치는 최악 위상에서 택트가 유지되는지 확인되지 않았다.`,
      '두 셀의 상태머신을 시간축에 겹쳐 놓고 자원(에어록·포크·모노레일·냉각 랙 포크) 경합을 전수 검토한다. 필요하면 위상을 반 택트 어긋나게 고정한다.'],
     ['OI-T2','EX-101 횡이송 주기',
-     `방출 포크가 ±${mm(GEO.celly)} mm 를 왕복하며 두 셀에 번갈아 넣는다. 그 왕복시간이 택트 ${n1(takt)} s 안에 드는지 실측 근거가 없다.`,
-     '이송질량·가감속·정렬 반복도를 반영해 왕복시간을 산정하고, 넘으면 포크를 2조로 늘리거나 챔버 방출을 2구로 나눈다.'],
+     `방출·적입 포크가 ±${mm(GEO.celly)} mm 를 왕복하며 두 셀에 번갈아 넣는다. CAL-001 12 장이 가정 속도로 그 왕복을 풀어 택트 ${n1(takt)} s 안에 든다고 보였지만(CY8 · CY9) 가정 속도의 계산이다.`,
+     '옵션 FAT 에서 이송질량·가감속·정렬 반복도를 넣어 실측한다 (CAL-001 RO7). 넘으면 포크를 2조로 늘리거나 챔버 방출을 2구로 나눈다.'],
     ['OI-T3','건물 유효높이',
      `채택안의 챔버 지붕이 ${mm(pick.roof)} mm 다. 발주처 건물 유효높이가 미확인이며, 이 값이 단수를 직접 정한다.`,
      `실측 후 확정한다. 받지 못하면 ${alt?alt.decks+'단 · '+alt.lamps+'등':'저층안'} 으로 내리고 유리 열응력 여유를 다시 계산한다.`],
@@ -780,12 +798,12 @@
     const s=42, X=x=>70+x*s, Y=y=>0;            // Y 는 아래에서 다시 잡는다
     const H=2*GEO.halfW*s+130, mid=68+GEO.halfW*s;
     const Yy=y=>mid+y*s;
-    const ST=[['LD-101','투입 셔틀',3.00],['HC-101',pick.decks+'단 가열실',3.78],
-              ['DL-101','',GEO.dlLen],['GC-101','냉각 랙 '+pick.decks+'단',3.38],
-              ['UL-101','반출 셔틀',3.00]];
+    const ST=[['LD-101','투입 셔틀',GEO.ldLen],['HC-101',pick.decks+'단 가열실',GEO.hcLen],
+              ['DL-101','',GEO.dlLen],['GC-101','냉각 랙 '+pick.decks+'단',GEO.gcLen],
+              ['UL-101','반출 셔틀',GEO.ulLen]];
     const CO=[['#e4f1f4','#17679b'],['#fbe6dc','#c84c28'],['#fdf3dc','#a8790a'],
               ['#e2eefb','#228CC9'],['#e2f2e7','#278555']];
-    let g='',cur=.30,dlX=0,dlW=0;
+    let g='',cur=GEO.clear,dlX=0,dlW=0;
     ST.forEach(([code,name,len],i)=>{
       const [f,st]=CO[i], x=X(cur), w=len*s;
       if(code==='DL-101'){
@@ -816,12 +834,12 @@
         g+=R(x,top,w,hh,f,st,2)+T(x+w/2,Yy(0)-4,code,12.5,st,700)
           +T(x+w/2,Yy(0)+14,name+' · '+mm(len),10,st);
       }
-      cur+=len+.30;
+      cur+=len+GEO.clear;
     });
     /* 방책은 계단형이다 — DL 구간만 넓다. 직사각형으로 그리면 점유면적을
        과장하게 되고, 이 구성의 요지(넓어지는 것은 DL 하나)가 사라진다. */
-    const fy=GEO.halfW, nfP=3.40, nfN=4.20;      // 좁은 구간 — DG-HK60C 방책 그대로
-    const x0=X(0)-16,x1=X(GEO.len)+16,d0=dlX-10,d1=dlX+dlW+10;
+    const fy=GEO.halfW, nfP=GEO.fenceP, nfN=GEO.fenceD;   // 좁은 구간 — DG-HK60C 방책 그대로
+    const x0=X(0)-16,x1=X(GEO.len)+16,d0=dlX-.24*s,d1=dlX+dlW+.24*s;   // 계단 리턴은 DL 끝에서 240 (콘솔 DX0·DX1)
     const pt=(x,y)=>`${x.toFixed(1)} ${Yy(y).toFixed(1)}`;
     g+=`<path d="M${pt(x0,-nfP)}H${d0}V${Yy(-fy).toFixed(1)}H${d1}V${Yy(-nfP).toFixed(1)}H${x1}`
       +`V${Yy(nfN).toFixed(1)}H${d1}V${Yy(fy).toFixed(1)}H${d0}V${Yy(nfN).toFixed(1)}H${x0}Z" `
@@ -830,7 +848,7 @@
       +T(dlX+dlW/2,Yy(-fy)-9,'DL 구간만 '+mm(2*fy),10,'#8b9ba4')
       +`<path d="M${X(0)} ${(Yy(fy)+30).toFixed(1)}H${X(GEO.len)}" stroke="#17679b" stroke-width="1.1" marker-start="url(#ta)" marker-end="url(#ta)"/>`
       +T(X(GEO.len/2),Yy(fy)+24,'전장 '+mm(GEO.len)+' — DG-HK60C 와 같다',12,'#17679b',700)
-      +T(X(0),Yy(fy)+52,'중앙 통로가 두 셀의 카세트 인출 포락선 '+mm(1.44)+' 를 공유한다 · RH 모노레일 1선이 두 셀의 카세트 반출을 배타로 낸다 (4.3항)',10.5,'#4a7c66',400,'start')
+      +T(X(0),Yy(fy)+52,'중앙 통로가 두 셀의 카세트 인출 포락선 '+mm(GEO.cassette)+' 를 공유한다 · RH 모노레일 1선이 두 셀의 카세트 반출을 배타로 낸다 (4.3항)',10.5,'#4a7c66',400,'start')
       +T(X(0),Yy(fy)+70,'점유면적 '+n1(occupied)+' m² · 건물 외곽으로 잡으면 '+n1(bounding)+' m² — 넓어지는 것은 DL 하나다',10.5,'#6b7f8b',400,'start')
       +T(X(0),Yy(-fy)-30,'GA-201 · 평면 배치 (X 이송방향 · Y 횡방향 · 1 m = '+s+' px)',12.5,'#14202a',700,'start');
     setHTML('planPlate',SV(1180,Yy(fy)+92,g,'DG-HK120C 평면 배치도'));
@@ -841,12 +859,12 @@
     const s=44, X=x=>90+x*s, Z=z=>330-z*44;
     let g=T(X(0),Z(0)+46,'GA-202 · 가열실 높이 비교 (1 m = '+s+' px)',12.5,'#14202a',700,'start');
     const bar=(x0,decks,roof,tag,f,st)=>{
-      let o=R(X(x0),Z(roof),3.78*s,roof*44,f,st,2);
+      let o=R(X(x0),Z(roof),GEO.hcLen*s,roof*44,f,st,2);
       for(let k=0;k<decks;k++){const z=M.deckZ0+M.deckDz*(k+.5);
-        o+=L(X(x0)+6,Z(z),X(x0)+3.78*s-6,Z(z),st,1.1,'5 4');}
-      o+=T(X(x0)+3.78*s/2,Z(roof)-10,tag,11.5,st,700)
-        +T(X(x0)+3.78*s/2,Z(roof)+18,decks+'단',11,st,700)
-        +T(X(x0)+3.78*s/2,Z(0)+16,'지붕 '+mm(roof),10.5,'#425663');
+        o+=L(X(x0)+6,Z(z),X(x0)+GEO.hcLen*s-6,Z(z),st,1.1,'5 4');}
+      o+=T(X(x0)+GEO.hcLen*s/2,Z(roof)-10,tag,11.5,st,700)
+        +T(X(x0)+GEO.hcLen*s/2,Z(roof)+18,decks+'단',11,st,700)
+        +T(X(x0)+GEO.hcLen*s/2,Z(0)+16,'지붕 '+mm(roof),10.5,'#425663');
       return o;
     };
     // 검토선을 먼저 깐다 — 나중에 그리면 막대 이름표 위를 지나간다

@@ -15,6 +15,15 @@
 
 옵션 모듈의 함수가 부를 때 다시 상수를 읽는 경우가 있으므로, 옵션 모듈을
 쓰는 동안에는 pinned() 안에 있어야 한다.
+
+pinned() 는 핀만 쥐는 것이 아니라 **그 배치의 모듈 목록**을 sys.modules 에 올린다.
+설계 모듈 몇은 함수 안에서 늦게 부른다(analysis_thermal → heatbalance · irbank,
+airlock → heatbalance, analysis_structural → glass_follow). 핀만 쥐면 그 import 가
+둘 중 하나로 틀렸다 — 표준 모듈이 이미 있으면 옵션 계산이 표준 열수지를 집고,
+없으면 옵션 핀 아래에서 처음 불린 모듈이 sys.modules 에 남아 **그 뒤의 표준 계산이
+옵션 값을 읽었다** (에어록 전고 개구 673 kW 가 1,178 kW 로 바뀐 채 시험에 걸렸다).
+부르는 순서에 따라 결과가 달라지는 것이다. 그래서 핀 안에서는 옵션 목록만 보이고,
+핀 안에서 새로 불린 모듈은 옵션 목록으로 거두고, 나올 때 표준 목록을 되돌린다.
 """
 
 from __future__ import annotations
@@ -37,6 +46,10 @@ def _design_modules():
     return sorted(p.stem for p in HERE.glob("*.py") if p.stem not in _KEEP)
 
 
+# 배치마다 핀 아래에서 풀린 설계 모듈 — load() 가 채우고 pinned() 가 올린다.
+_REG: dict[str, dict] = {}
+
+
 def load(lid, *names):
     """배치 lid 로 names 모듈을 새로 불러 {이름: 모듈} 로 돌려준다."""
     design = _design_modules()
@@ -46,15 +59,28 @@ def load(lid, *names):
         with C.layout(lid):
             for n in names:
                 got[n] = importlib.import_module(n)
+            fresh = {n: sys.modules[n] for n in design if n in sys.modules}
     finally:
         for n in design:
             sys.modules.pop(n, None)
         sys.modules.update(saved)
+    _REG.setdefault(lid, {}).update(fresh)
     return got
 
 
 @contextlib.contextmanager
 def pinned(lid):
-    """옵션 모듈의 함수를 부르는 동안 그 배치의 핀을 유지한다."""
-    with C.layout(lid) as fields:
-        yield fields
+    """옵션 모듈의 함수를 부르는 동안 그 배치의 핀과 모듈 목록을 쥔다."""
+    design = _design_modules()
+    reg = _REG.setdefault(lid, {})
+    saved = {n: sys.modules.pop(n) for n in design if n in sys.modules}
+    sys.modules.update(reg)
+    try:
+        with C.layout(lid) as fields:
+            yield fields
+    finally:
+        for n in design:
+            m = sys.modules.pop(n, None)
+            if m is not None:
+                reg[n] = m              # 핀 아래에서 풀린 것은 이 배치의 것이다
+        sys.modules.update(saved)

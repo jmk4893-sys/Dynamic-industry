@@ -43,7 +43,8 @@ def const(name, src=None):
 
 
 GEO_INPUTS = ("gantryY", "cassette", "forkY", "forkS", "gantryS", "gap",
-              "cartY", "cartW", "skin", "fenceD", "dlLen")
+              "cartY", "cartW", "skin", "fenceD", "dlLen",
+              "ldLen", "hcLen", "gcLen", "ulLen", "clear", "fenceP", "forkTwin")
 
 
 def geo():
@@ -297,6 +298,74 @@ class TestTheLayoutKeepsWhatWasEarned(unittest.TestCase):
         """직사각형으로 그리면 점유면적을 과장한다."""
         s = study()
         self.assertIn("방책은 계단형이다", s)
+
+
+class TestTheLayoutIsTheConsoles(unittest.TestCase):
+    """GA-201 의 칸과 방책은 콘솔 압축·트윈 배치의 값이다 — 검토서가 새로 정하지 않는다.
+
+    Rev.0 은 스테이션 3.00 · 3.78 · 3.38 · 방책 3.40/4.20 을 적고 있었다. 패널 2,400 시절의
+    값이라 다섯 칸을 더해도 전장 19,260 에 못 미쳤고, 도면 아래 '전장 19,260' 과 한 장
+    안에서 갈라졌다. 숫자만 옮겨 적은 사본은 원본이 움직이면 그 자리에 남는다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = CONSOLE.read_text(encoding="utf-8")
+        cls.env = console_consts.env(cls.src)
+        body = re.search(r"const COMPACT_STATIONS=\[(.*?)\n\s*\];", cls.src, re.S).group(1)
+        cls.st = {code: console_consts.value(expr, cls.env) for code, expr in re.findall(
+            r"\['([A-Z]{2}-\d{3})',\s*(?:'[^']*'|`[^`]*`),\s*([^,]+),", body)}
+        cls.g = geo()
+
+    @staticmethod
+    def _hk60(name):
+        """모델 블록 hk60:{…} 안의 값 — 문서 첫 'width:' 는 CSS 다."""
+        return float(re.search(rf"hk60:\{{[^}}]*\b{name}:([\d.]+)", study()).group(1))
+
+    def test_the_stations_are_the_consoles(self):
+        for key, code in (("ldLen", "LD-101"), ("hcLen", "HC-101"), ("dlLen", "DL-101"),
+                          ("gcLen", "GC-101"), ("ulLen", "UL-101")):
+            self.assertAlmostEqual(self.g[key], self.st[code], places=6,
+                                   msg=f"검토서 {key} 가 콘솔 {code} 길이와 다르다")
+        self.assertAlmostEqual(self.g["clear"], console_consts.const("CL_CLEAR"), places=6)
+
+    def test_the_stations_add_up_to_the_stated_length(self):
+        """다섯 칸 + 간격 넷 + 끝벽 둘 = 전장. 더해서 안 맞으면 도면 한 장이 스스로 모순이다."""
+        total = sum(self.st.values()) + 4 * console_consts.const("CL_CLEAR") \
+            + 2 * console_consts.const("CL_END")
+        self.assertAlmostEqual(total, self._hk60("length"), places=6,
+                               msg="검토서 전장이 콘솔 압축 전장과 다르다")
+        g = self.g
+        drawn = g["clear"] + g["ldLen"] + g["hcLen"] + g["dlLen"] + g["gcLen"] + g["ulLen"] + 5 * g["clear"]
+        self.assertAlmostEqual(drawn, self._hk60("length"), places=6,
+                               msg="GA-201 이 그리는 칸이 전장을 채우지 못한다")
+
+    def test_the_narrow_fence_is_the_delivered_one(self):
+        self.assertAlmostEqual(self.g["fenceP"], console_consts.const("CFENCE_Y"), places=6)
+        self.assertAlmostEqual(self.g["fenceD"], console_consts.const("CFENCE_YN"), places=6)
+        self.assertAlmostEqual(self._hk60("width"), self.g["fenceP"] + self.g["fenceD"], places=6,
+                               msg="DG-HK60C 폭이 좁은 구간 방책의 합이 아니다")
+        self.assertIn("nfP=GEO.fenceP,nfN=GEO.fenceD", study().replace(" ", ""),
+                      "GA-201 이 방책을 배치 블록에서 읽지 않는다")
+
+    def test_the_twin_fence_and_pitch_are_the_consoles(self):
+        self.assertAlmostEqual(half_width(), console_consts.const("TWIN_FENCE"), places=6)
+        self.assertAlmostEqual(celly(), console_consts.const("TWIN_CELLY"), places=6)
+        self.assertAlmostEqual(aisle(), console_consts.const("TWIN_AISLE"), places=6)
+        self.assertAlmostEqual(self.g["forkTwin"], console_consts.const("FORK_HALF_TWIN"), places=6)
+
+    def test_the_plate_reads_its_numbers_from_the_model(self):
+        """GA-201 주석의 '인출 포락선 1,440' 은 mm(1.44) 로 박혀 있었다 — 카세트는 1,500 이다."""
+        s = study().replace(" ", "")
+        self.assertNotRegex(s, r"mm\([\d.]+\)", "도면 주석에 숫자를 그대로 넣었다")
+        self.assertAlmostEqual(self.g["cassette"], console_consts.const("KNIFE_W"), places=6)
+
+    def test_no_stale_rate_is_typed_into_the_prose(self):
+        """'134.4 장/h' 는 옛 사이클, '120 장/h' 는 모델명에서 온 글자였다."""
+        text = re.sub(r"<[^>]+>", "", study().split("<script")[0])
+        self.assertNotRegex(text, r"\d{2,3}\.\d\s*장/h", "처리량이 글자로 적혀 있다")
+        self.assertNotIn("120 장/h", text)
+        for anchor_id in ("nominal2", "optTarget"):
+            self.assertRegex(study(), rf"setText\('{anchor_id}'", f"{anchor_id} 를 채우는 코드가 없다")
 
 
 class TestTheStudyFollowsTheSteppedKnife(unittest.TestCase):

@@ -136,7 +136,11 @@ class TestRfqDocument(unittest.TestCase):
         self.assertIn("수평", body, "확장이 수평 병렬임을 밝히지 않았다")
         self.assertIn("DG-HK120C", body)
         self.assertIn("dg-hk120-twin-cell.html", body, "검토서 경로를 대지 않았다")
-        self.assertIn("범위 밖", body, "확장 설계가 본 용역 밖임을 못 박지 않았다")
+        # 확장 설계는 범위 밖이 아니라 선택분이다 — 행사 기한과 단가 규칙이 함께 있어야 한다
+        self.assertIn("본 용역의 선택분이다", body, "확장 설계가 선택분임을 밝히지 않았다")
+        self.assertIn("60 % 단계 검토가 끝나기 전까지", body, "선택분의 행사 기한이 없다")
+        self.assertIn("본체와 같은 인월 단가", body, "선택분 단가 규칙이 없다 — 옵션을 부풀릴 수 있다")
+        self.assertNotIn("범위 밖", body, "선택분으로 바꾼 확장을 다시 범위 밖이라 적었다")
 
         decks = re.search(r"<span class=\"m\">(\d+) → (\d+)</span>단", body)
         self.assertIsNotNone(decks, "확장 시 단수를 밝히지 않았다")
@@ -169,10 +173,50 @@ class TestRfqDocument(unittest.TestCase):
         aisle = re.search(r'셀 사이 통로 <span class="m">([\d,]+) mm</span>', body)
         self.assertIsNotNone(aisle, "셀 사이 통로 폭을 밝히지 않았다")
         self.assertIn("EX-101", body, "통로 폭을 정하는 장치를 대지 않았다")
-        self.assertEqual(aisle.group(1), "2,760",
-                         "통로 폭이 EX-101 포탈에서 나온 2,760 mm 가 아니다")
+        # 한동안 2,760 · 5,600 이 남아 있었다 — 콘솔 트윈 배치는 2,960 · 6,000 이다
+        self.assertEqual(aisle.group(1), f"{console_consts.const('TWIN_AISLE') * 1000:,.0f}",
+                         "통로 폭이 콘솔 TWIN_AISLE 과 다르다")
+        pitch = re.search(r'중심간 <span class="m">([\d,]+) mm</span>', body)
+        self.assertIsNotNone(pitch, "셀 중심간 거리를 밝히지 않았다")
+        self.assertEqual(pitch.group(1), f"{2 * console_consts.const('TWIN_CELLY') * 1000:,.0f}",
+                         "셀 중심간 거리가 콘솔 TWIN_CELLY 의 두 배가 아니다")
+        self.assertIn(f"±{console_consts.const('FORK_HALF_TWIN') * 1000:,.0f}", body,
+                      "옵션 횡이송 문형 반폭이 콘솔 FORK_HALF_TWIN 과 다르다")
         self.assertIn("aisleFork", study,
                       "검토서가 포크 포탈로 통로를 유도하지 않는다")
+
+    def test_the_option_handover_is_what_the_models_give(self):
+        """1.4 인계표의 옵션 물량·도번·전기·요구는 옵션 모델이 낸 값이어야 한다.
+
+        견적은 이 표로 한다 — 표가 모델과 갈라지면 입찰자는 없는 기계를 견적한다."""
+        import option as O
+        import analysis_option as AO
+        body = re.search(r'<div class="n">1\.4</div>(.*?)</div></div>', self.html, re.S).group(1)
+        t = O.totals()
+        b, o = t["base"], t["opt"]
+        flat = re.sub(r"<[^>]+>", "", body)
+        for label, key, fmt in (("품목", "items", "{:,.0f}"), ("정척", "bars", "{:,.0f}"),
+                                ("시트", "sheets", "{:,.0f}"), ("운반", "trucks", "{:,.0f}"),
+                                ("구매품", "buy", "{:,.0f}")):
+            self.assertIn(f"{label} {fmt.format(b[key])} → {fmt.format(o[key])}", flat, label)
+        self.assertIn(f"총질량 {b['kg'] / 1000:.1f} → {o['kg'] / 1000:.1f} t", flat)
+        reg = O.drawing_register()
+        self.assertIn(f"표준 부품도 {len(reg['same'])} 장", flat)
+        self.assertIn(f"{len(reg['new'])} 장이 새로 선다", flat)
+        with O.pinned():
+            e = O.EL_T.summary()
+        for tok in (f"연결부하 {e['kw']:.0f} kW", f"FLA {e['fla']:.0f} A", f"주차단기 {e['main_af']} AF",
+                    f"변압기 {e['tr_kva']:.0f} kVA", f"SCCR {e['sccr_ka']} kA"):
+            self.assertIn(tok, flat, tok)
+        ids = [q.id for q in AO.requirements()]
+        self.assertIn(f"{ids[0]}~{ids[-1]}", flat, "옵션 요구 범위가 CAL-001 12 장과 다르다")
+        tw = console_consts.layouts()["twin"]
+        self.assertIn(f"{int(tw['lamps'] // 2)} → {int(tw['lamps'])}", flat, "옵션 램프 수가 콘솔과 다르다")
+        # 옵션 순생산은 옵션 사이클 모델이 낸다 — 모델명(HK120)에서 온 120 이 아니다
+        import variant
+        cy_t = variant.load("twin", "cycle")["cycle"]
+        self.assertIn(f"{int(cy_t.RATE_NET)} 장/h", flat, "1.4 의 옵션 순생산이 옵션 사이클 모델과 다르다")
+        self.assertGreaterEqual(cy_t.RATE_NET, cy_t.NET_TARGET, "옵션 순생산이 옵션 계약(셀 수 × 표준)에 못 미친다")
 
     def test_the_handed_over_console_revision_is_the_one_on_disk(self):
         """사양서가 인계한다고 적은 개정과 콘솔이 스스로 붙이는 개정이 같아야 한다.
@@ -350,7 +394,8 @@ class TestRfqFiguresMatchTheConsole(unittest.TestCase):
         fla = apparent * 1000 / (3 ** 0.5 * volts)
 
         self.assertAlmostEqual(self._num(r"FLA ([\d.]+) A"), round(fla), delta=0.5)
-        self.assertAlmostEqual(self._num(r"([\d.]+) kVA"), apparent, delta=0.05)
+        # 부하표 합계 행의 피상전력 — 문서 첫 'kVA' 는 1.4 옵션 표(변압기)일 수 있다
+        self.assertAlmostEqual(self._num(r"kvar · ([\d.]+) kVA"), apparent, delta=0.05)
         self.assertAlmostEqual(
             self._num(rf"class=\"num\">([\d.]+)</td><td class=\"num\">{fla:.1f}"),
             active / apparent, delta=0.001,

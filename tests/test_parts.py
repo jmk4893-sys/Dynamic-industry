@@ -428,6 +428,20 @@ class TestHandoverCountsFollowTheCatalog(unittest.TestCase):
         self.assertIsNotNone(m)
         self.assertEqual(int(m.group(1)), self.total)
 
+    def test_the_readme_buy_count_is_the_specification_length(self):
+        """README 가 '구매품 사양 60종' 으로 남아 있었다 — 조달 지침서 3 부는 64 종을 적는다."""
+        import procure as PR
+        m = re.search(r"구매품 사양 (\d+)종", self.readme)
+        self.assertIsNotNone(m)
+        self.assertEqual(int(m.group(1)), len(PR.BUY_SPEC))
+        self.assertEqual(len(PR.BUY_SPEC), self.buy, "구매품 사양이 카탈로그 구매품 수와 다르다")
+
+    def test_the_readme_option_counts_are_the_registers(self):
+        import option as O
+        reg = O.drawing_register()
+        self.assertIn(f"표준 도면 {len(reg['same'])}장 공용", self.readme)
+        self.assertIn(f"T 도면 {len(reg['new'])}장", self.readme)
+
 
 class TestAssemblyStepsCountWhatTheCatalogHolds(unittest.TestCase):
     """조립 단계가 세는 수량은 그 부품의 수량이다.
