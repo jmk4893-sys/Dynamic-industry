@@ -160,3 +160,70 @@ def trucks() -> tuple[list, list]:
     with pinned():
         t = PR_T.truck_loads()
     return PR_B.truck_loads(), t
+
+
+# ── 옵션 도면 세트의 도번 ─────────────────────────────────────────────────
+# 도번은 형상을 가리킨다. 옵션 부품이 표준 부품과 형상·재질·표면이 같으면 같은
+# 도면을 쓰고(같은 도번), 하나라도 다르거나 옵션에만 있으면 도번 끝에 T 를 단다
+# (개정 REV.22T 의 T). 같은 도번에 다른 치수가 돌면 창고에서 섞인다 — 5,790 기둥
+# 자리에 4,550 기둥이 선다. 수량·주의는 도번이 아니라 기계(도면 세트)의 부품표에
+# 딸린다: 같은 도번을 두 세트에서 인쇄하면 형상은 같고 1대분 수량이 다르다.
+#
+# 모듈 조립도도 같은 규칙이다. 셀마다 서는 모듈(PER_CELL)은 **한 벌**을 비교한다 —
+# 옵션의 VT-101 은 표준 VT-101 과 같은 조립도를 두 벌 만드는 것이지 새 도면이 아니다.
+SUFFIX = "T"
+
+
+def _r(v):
+    """도면이 쓰는 자리수까지 — 부동소수 꼬리로 같은 형상이 달라 보이지 않게."""
+    if isinstance(v, float):
+        return round(v, 3)
+    if isinstance(v, (tuple, list)):
+        return tuple(_r(x) for x in v)
+    return v
+
+
+def geometry(p) -> tuple:
+    """부품도 한 장이 정하는 것 — 형상족 · 치수 · 재질 · 표면."""
+    d = {k: _r(v) for k, v in p.shape.d.items() if k != "name"}
+    return (p.shape.kind, tuple(sorted(d.items())), p.mat, p.finish)
+
+
+_BASE = {p.pid: p for p in PT_B.P}
+
+
+def part_no(p) -> str:
+    """옵션 부품 p 의 도번 — 표준과 같은 도면이면 품번 그대로, 아니면 품번 + T."""
+    b = _BASE.get(p.pid)
+    return p.pid if b is not None and geometry(b) == geometry(p) else p.pid + SUFFIX
+
+
+def module_cells(m: str) -> int:
+    """옵션에서 이 모듈이 몇 벌 서는가 — 셀마다 서는 모듈은 셀 수, 공용 모듈은 1."""
+    return PT_T.CELLS if m in PT_T.PER_CELL else 1
+
+
+def _unit(pt, p) -> int:
+    return pt.unit_qty(p) if p.mod in pt.PER_CELL else p.qty
+
+
+def _module_key(pt, m: str) -> tuple:
+    rows = tuple((p.pid, geometry(p), _unit(pt, p), p.fix, p.step)
+                 for p in pt.P if p.mod == m)
+    return rows, tuple(tuple(s) for s in pt.STEPS[m])
+
+
+def module_no(m: str, opt: bool = True) -> str:
+    """조립도 도번. 표준은 A-00x, 옵션은 한 벌이 표준과 같으면 같은 도번, 다르면 + T."""
+    no = "A-" + m[2:]
+    if not opt:
+        return no
+    same = m in PT_B.MODULES and _module_key(PT_B, m) == _module_key(PT_T, m)
+    return no if same else no + SUFFIX
+
+
+def drawing_register() -> dict:
+    """옵션 도면 세트의 도번 목록 — {'same': [...], 'new': [...], 'modules': {m: no}}."""
+    same = [p.pid for p in PT_T.P if part_no(p) == p.pid]
+    new = [part_no(p) for p in PT_T.P if part_no(p) != p.pid]
+    return dict(same=same, new=new, modules={m: module_no(m) for m in PT_T.MODULES})

@@ -5,8 +5,10 @@
 node 로 돌려 표준의 값을 대조한다.
 
 옵션 DG-HK120C 는 **분기를 셀 수만큼 둔다** (총괄 결정). 가열실은 하나지만 램프가
-두 배(96 등)이므로 IR 분기도 뱅크 절반씩 둘이고, 칼날 히터·서보·보조 분기도 셀마다
-선다. 분기 차단기 정격은 표준 그대로 두고 주회로·변압기만 다시 고른다 — 한 분기
+두 배(96 등)이므로 IR 분기도 뱅크를 셀 수로 나눠 받고, 칼날 히터·서보·보조 분기도
+셀마다 선다. IR 한 분기의 몫은 **옵션의 램프 수를 셀 수로 나눈 값**으로 콘솔 식을
+다시 푼다 — 표준 분기를 복사하면 램프가 정확히 두 배일 때만 맞는다. 분기 차단기
+정격은 표준 그대로 두고 주회로·변압기만 다시 고른다 — 한 분기
 IR-DB1 4P 200A 에 96 등 240 kW(365 A)를 걸 수 없기 때문이다. 서보·VFD 와 보조
 분기를 통째로 곱하는 것은 보수적이다: 공용인 LI·GU 포크와 셔틀 몫이 두 번 세지는
 대신, 표준에 없던 EX·GL 횡이송 8 축과 둘째 갠트리가 그 몫을 먹는다. 실제 수치는
@@ -29,6 +31,7 @@ class Branch(NamedTuple):
     pf: float
     df: float
     mccb: str
+    base: str = ""          # 옵션에서 나뉜 분기가 어느 표준 분기에서 왔는가 (표준은 자기 id)
 
     @property
     def amp(self) -> float:
@@ -59,21 +62,27 @@ AT_MARGIN = 1.25          # 콘솔 MAIN_AT — FLA 의 1.25 배 위 표준 정�
 SCCR_MARGIN = 1.2         # 콘솔 SCCR_KA — 예상 단락전류 상한의 1.2 배 위
 
 
-def base_branches() -> list[Branch]:
-    """콘솔 LOAD_SCHEDULE 를 **표준 배치의 값**으로 푼다 — 옵션 핀과 무관하다."""
+def base_branches(lamps: float | None = None) -> list[Branch]:
+    """콘솔 LOAD_SCHEDULE 를 **표준 배치의 값**으로 푼다 — 옵션 핀과 무관하다.
+
+    lamps 를 주면 콘솔 식의 LAMPS 자리에 그 값을 넣어 푼다 — 옵션 IR 분기 한 줄이
+    맡는 램프 수다. 식을 다시 푸는 것이므로 kW 와 부하명이 함께 따라온다."""
     body = re.search(r"const LOAD_SCHEDULE=\[(.*?)\n\s*\];", _SRC, re.S).group(1)
     with CC.layout("compact"):
         scope = CC.env(_SRC)
+    if lamps is not None:
+        scope = dict(scope, LAMPS=lamps)      # 캐시된 환경은 건드리지 않는다
     out = []
     for row in re.findall(r"\{(id:.*?)\}\s*,?\s*$", body, re.M):
         load = re.search(r"load:(?:'([^']*)'|`([^`]*)`)", row)
         load = load.group(1) if load.group(1) is not None else load.group(2)
         load = re.sub(r"\$\{([^{}]*)\}", lambda m: CC._fmt(CC.value(m.group(1), scope)), load)
         kw = CC.value(re.search(r"kW:([^,]+),", row).group(1), scope)
-        out.append(Branch(re.search(r"id:'([^']+)'", row).group(1), load, float(kw),
+        bid = re.search(r"id:'([^']+)'", row).group(1)
+        out.append(Branch(bid, load, float(kw),
                           float(re.search(r"pf:([\d.]+)", row).group(1)),
                           float(re.search(r"df:([\d.]+)", row).group(1)),
-                          re.search(r"mccb:'([^']+)'", row).group(1)))
+                          re.search(r"mccb:'([^']+)'", row).group(1), bid))
     return out
 
 
@@ -89,16 +98,25 @@ def _split_name(b: Branch, k: int, cells: int) -> tuple[str, str]:
 
 
 def branches() -> list[Branch]:
-    """활성 배치의 분기표. 표준은 콘솔 표 그대로, 옵션은 분기를 셀 수만큼 둔다."""
+    """활성 배치의 분기표. 표준은 콘솔 표 그대로, 옵션은 분기를 셀 수만큼 둔다.
+
+    IR 은 셀이 아니라 뱅크를 가른다 — 한 분기가 맡는 램프는 옵션 램프 수 ÷ 셀 수이고,
+    그 값으로 콘솔 식을 다시 풀어 kW 를 낸다. 나머지 분기(칼날 히터·서보·보조)는
+    셀마다 표준과 같은 것이 하나씩 선다."""
     base = base_branches()
     cells = int(CC.const("CELLS"))
     if cells == 1:
         return base
+    lamps, banks = CC.const("LAMPS"), int(CC.const("DECKS")) + 1
+    if lamps % cells or banks % cells:
+        raise ValueError(f"램프 {lamps:g} 등 · 뱅크 {banks} 를 셀 {cells} 로 나눌 수 없다 — IR 분기를 다시 짠다")
+    ir = {b.id: b for b in base_branches(lamps=lamps / cells)}
     out = []
     for b in base:
+        src = ir[b.id] if b.id.startswith("IR-") else b
         for k in range(cells):
-            i, load = _split_name(b, k, cells)
-            out.append(b._replace(id=i, load=load))
+            i, load = _split_name(src, k, cells)
+            out.append(src._replace(id=i, load=load, base=b.id))
     return out
 
 

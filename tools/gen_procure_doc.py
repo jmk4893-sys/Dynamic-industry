@@ -456,11 +456,17 @@ def part4() -> str:
         row("운반", "trucks", unit=" 차"), row("구매품", "buy", unit=" 종"),
         row("연결부하", "kw", unit=" kW"), row("주차단기", "af", unit=" AF"), row("변압기", "tr", unit=" kVA")])
 
+    def _asm(m):
+        no, n = OPT.module_no(m), OPT.module_cells(m)
+        return f'{no}{f" × {n} 벌" if n > 1 else ""}'
+
     mods = "".join(
         f'<tr><td class="k">{esc(m)}</td><td>{esc(name)}</td>'
+        f'<td class="k">{esc(_asm(m))}</td>'
         f'<td class="num">{nb} → {nt}</td><td class="num">{kb:,.0f} → {kt:,.0f}</td>'
         f'<td class="num">{"+" if kt >= kb else ""}{kt - kb:,.0f}</td><td>{esc(_mod_change(m))}</td></tr>'
         for m, name, kb, kt, nb, nt in OPT.modules())
+    reg = OPT.drawing_register()
 
     deltas = OPT.part_deltas()
     by: dict[str, list] = {}
@@ -473,9 +479,11 @@ def part4() -> str:
         f'<details><summary>{esc(m)} {esc(T.MODULE_NAME[m])} · {len(ds)} 종 · '
         f'{sum(d.dkg for d in ds):+,.0f} kg</summary>'
         f'<div class="tw"><table><caption>{esc(m)} 부품 차이</caption>'
-        f"<thead><tr><th>품번</th><th>명칭</th><th>구분</th><th>표준</th><th>옵션</th>"
+        f"<thead><tr><th>품번</th><th>옵션 도번</th><th>명칭</th><th>구분</th><th>표준</th><th>옵션</th>"
         f'<th class="num">개수 차</th><th class="num">kg 차</th></tr></thead><tbody>'
-        + "".join(f'<tr><td class="k">{esc(d.pid)}</td><td>{esc(d.name)}</td><td class="k">{esc(d.kind)}</td>'
+        + "".join(f'<tr><td class="k">{esc(d.pid)}</td>'
+                  f'<td class="k">{esc(OPT.part_no(d.opt)) if d.opt else "—"}</td>'
+                  f'<td>{esc(d.name)}</td><td class="k">{esc(d.kind)}</td>'
                   f'<td class="k">{_pcell(d.base)}</td><td class="k">{_pcell(d.opt)}</td>'
                   f'<td class="num">{d.dqty:+d}</td><td class="num">{d.dkg:+,.1f}</td></tr>' for d in ds)
         + "</tbody></table></div></details>"
@@ -554,10 +562,12 @@ def part4() -> str:
   <div class="clause"><div class="n">4.2</div><div class="c">
     <h3>모듈별 차이</h3>
     <p>칼날 셀에 딸린 세 모듈(<span class="k">{esc(" · ".join(B.PER_CELL))}</span>)은 셀마다 한 벌씩 서므로
-      통째로 곱해진다. 나머지는 공용이고, 단수 · 셀 간격 · 방책에서 치수가 다시 풀린다.</p>
+      통째로 곱해진다 — 조립도는 표준 것을 그대로 두 벌 만든다(도번이 같다). 나머지는 공용이고,
+      단수 · 셀 간격 · 방책에서 치수가 다시 풀린다. 한 벌이라도 표준과 다른 모듈은 조립도 도번 끝에
+      <span class="k">T</span> 가 붙는다.</p>
     <div class="tw"><table>
       <caption>모듈별 품목 · 질량 — 표준 → 옵션</caption>
-      <thead><tr><th>모듈</th><th>이름 (옵션)</th><th class="num">품목</th><th class="num">질량 kg</th>
+      <thead><tr><th>모듈</th><th>이름 (옵션)</th><th>조립도</th><th class="num">품목</th><th class="num">질량 kg</th>
         <th class="num">차이 kg</th><th>무엇이 바뀌나</th></tr></thead>
       <tbody>{mods}</tbody>
     </table></div>
@@ -567,8 +577,13 @@ def part4() -> str:
     <h3>부품 차이 — {len(deltas)} 종</h3>
     <p>옵션에만 있는 부품 <strong>{kinds.get("추가", 0)} 종</strong>, 수량만 달라진 부품
       <strong>{kinds.get("수량", 0)} 종</strong>, 치수가 달라진 부품
-      <strong>{kinds.get("치수", 0) + kinds.get("수량·치수", 0)} 종</strong>이다. 치수가 달라진 부품은
-      부품도가 따로 선다 — 콘솔 부품도 탭의 옵션 도면을 쓴다.</p>
+      <strong>{kinds.get("치수", 0) + kinds.get("수량·치수", 0)} 종</strong>이다.</p>
+    <p><strong>도번은 형상을 가리킨다.</strong> 옵션 도면 세트는 표준 부품도
+      <strong>{len(reg["same"])} 장</strong>을 그대로 쓰고 <strong>{len(reg["new"])} 장</strong>이 새로 선다 —
+      치수가 달라졌거나 옵션에만 있는 부품이며 도번 끝에 <span class="k">T</span> 가 붙는다
+      (<span class="k">{esc(reg["new"][0])}</span> …). 같은 도번에 다른 치수가 돌면 창고에서 섞인다.
+      도면은 콘솔 부품도·조립도 탭에서 <em>도면 세트 → 옵션</em> 으로 연다
+      (<span class="k">tools/gen_option_js.py</span> 가 이 카탈로그에서 찍는다).</p>
     {detail}
   </div></div>
 

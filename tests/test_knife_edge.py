@@ -254,7 +254,8 @@ class TestTheConceptTitleBlocksCarryTheirRevision(unittest.TestCase):
     def test_every_sheet_is_dated_after_its_revision_began(self):
         """REV.21C 는 09-05 에 섰다 — 그 전 날짜를 단 REV.21C 시트는 있을 수 없다."""
         # 조립도 시트는 도면번호를 변수(a.id)로 넘긴다
-        calls = re.findall(r"titleBlock\(('[^']+'|a\.id),.*?,'(\d{4}-\d{2}-\d{2})'(?:,HK60C\.rev,\d+)?\)", self.src)
+        # 옵션 시트(E-001T)는 옵션 개정 HK120C.rev 를 단다
+        calls = re.findall(r"titleBlock\(('[^']+'|a\.id),.*?,'(\d{4}-\d{2}-\d{2})'(?:,HK(?:60|120)C\.rev,\d+)?\)", self.src)
         names = {n.strip("'") for n, _ in calls}
         for sheet in ("E-001", "C-001 / C-101", "D-501", "D-601"):
             self.assertIn(sheet, names, f"{sheet} 가 날짜를 넘기지 않는다")

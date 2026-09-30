@@ -416,8 +416,14 @@ class TestDeliverableEquipment(unittest.TestCase):
         전압·전류·SCCR·도면번호는 모두 부하표와 변압기 제원에서 계산돼야 한다.
         """
         body = self._fn("dataPlate")
-        for expr in ("${LINE_V}", "Math.round(FLA)", "${SCCR_KA}", "${DWG_NO}"):
+        for expr in ("${LINE_V}", "Math.round(E.fla)", "${E.sccr}", "${E.no}"):
             self.assertIn(expr, body, f"명판이 {expr} 를 계산하지 않고 값을 박아 넣었다")
+        # 명판의 값은 부하표 한 벌(elecOf)에서 온다 — 트윈 기계는 옵션 부하표를 적는다
+        self.assertIn("const E=elecOf(twinView()?'opt':'std');", body,
+                      "트윈 기계의 명판이 표준 부하표의 전류를 적는다")
+        fn = self.html[self.html.index("    function elecOf(set){"):self.html.index("    function powerDrawing(){")]
+        for expr in ("fla:FLA", "sccr:SCCR_KA", "no:DWG_NO", "LOAD_OPT.sum"):
+            self.assertIn(expr, fn, f"부하표 한 벌이 {expr} 를 쓰지 않는다")
         self.assertNotRegex(
             body, r"'[^']*\b\d{3}A\b", "명판에 전류값이 문자열로 박혀 있다"
         )
