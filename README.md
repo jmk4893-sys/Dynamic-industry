@@ -36,6 +36,18 @@ Dynamic industry Development
 | [docs/drawings/ag-flotation-drawings.html](docs/drawings/ag-flotation-drawings.html) | **설계도 7매** — 공정 흐름도(필터프레스 라인 포함), 부선조 상세 단면도, 장치 대안 비교도, 중공축 급기 상세, 셀별 상세 3매 (브라우저로 열 것) |
 | [docs/drawings/ag-flotation-3d.html](docs/drawings/ag-flotation-3d.html) | **3D 조립·분해도** — 러퍼·스캐빈저·클리너 3단 스키드 + 농축조·필터프레스, 셀당 20개 부품 분해 (브라우저로 열 것) |
 
+### 신규라인 레이아웃 3D
+
+[docs/layout/new-line-layout-3d.html](docs/layout/new-line-layout-3d.html) — SolidCraft 원본
+`신규라인_layout.sc` 를 변환한 단독 3D 뷰어 (브라우저로 열 것, WebGL2). 로봇 이송 2대(FANUC
+R-1000iA/80F), reframe, 양면 8스핀들 가공기 2대, 대기 테이블 2대, 투입 모듈·배출 유리 적재.
+부품 표시 토글, 바디 클릭 정보, ISO/평면/정면/측면, X·Z 단면 지원.
+
+```bash
+pip install cadquery-ocp numpy
+python tools/sc_layout_to_3d.py 신규라인_layout.sc docs/layout/new-line-layout-3d.html
+```
+
 ### 사용법
 
 패키지가 `src/` 레이아웃이므로 설치 없이 실행할 때는 `PYTHONPATH=src` 를 붙인다.

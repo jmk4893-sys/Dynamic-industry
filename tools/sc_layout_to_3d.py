@@ -232,7 +232,7 @@ def pack_component(bodies):
         buf.write(b)
         buf.write(b"\0" * (-len(b) % 4))
     meta = {
-        "nv": int(len(pos)), "nt": int(len(idx)),
+        "nv": int(len(pos)), "nt": int(idx.size),
         "lo": [round(float(v), 3) for v in lo], "span": [round(float(v), 4) for v in span],
         "names": [b[0] for b in bodies],
         "colors": [[round(float(c), 3) for c in b[1]] for b in bodies],

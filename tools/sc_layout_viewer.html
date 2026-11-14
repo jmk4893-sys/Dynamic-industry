@@ -180,7 +180,7 @@ void main(){
   gl_Position = uVP * w;
 }`;
 const FS = `#version 300 es
-precision highp float;
+precision highp float; precision highp int;
 in vec3 vN; in vec3 vW; in vec3 vC; flat in uint vBody; in float vHi;
 uniform vec3 uEye; uniform vec2 uClip; uniform int uPick; uniform int uInst; uniform vec3 uAccent;
 out vec4 o;
