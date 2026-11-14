@@ -43,7 +43,9 @@ from OCP.STEPControl import STEPControl_Reader
 from OCP.TopAbs import TopAbs_FACE, TopAbs_REVERSED, TopAbs_SOLID
 from OCP.TopExp import TopExp_Explorer
 from OCP.TopLoc import TopLoc_Location
-from OCP.TopoDS import TopoDS
+from OCP.TopoDS import TopoDS, TopoDS_Shape
+from OCP.BRepTools import BRepTools
+from OCP.BRep import BRep_Builder
 
 DEFAULT_RGB = (0.62, 0.66, 0.70)
 LIN_DEFLECTION = 0.6      # mm
@@ -118,16 +120,27 @@ def decode_step_name(s: str) -> str:
 
 
 def read_step_solids(path: pathlib.Path) -> list:
+    """STEP → 솔리드 목록. 읽기가 느리므로(큰 파일은 수 분) 결과를 .brep 으로 캐시한다."""
+    cache = path.with_suffix(".brep")
+    if cache.exists():
+        shape = TopoDS_Shape()
+        BRepTools.Read_s(shape, str(cache), BRep_Builder())
+        return _solids(shape)
     Interface_Static.SetIVal_s("read.step.product.mode", 1)
     r = STEPControl_Reader()
     if r.ReadFile(str(path)) != IFSelect_RetDone:
         raise RuntimeError(f"STEP 읽기 실패: {path}")
     r.TransferRoots()
     shape = r.OneShape()
+    BRepTools.Write_s(shape, str(cache))
+    return _solids(shape)
+
+
+def _solids(shape) -> list:
     solids = []
     e = TopExp_Explorer(shape, TopAbs_SOLID)
     while e.More():
-        solids.append(TopoDS.Solid_s(e.Current()))
+        solids.append(TopoDS.Solid(e.Current()))
         e.Next()
     return solids
 
@@ -140,7 +153,7 @@ def tessellate(shape):
     base = 0
     e = TopExp_Explorer(shape, TopAbs_FACE)
     while e.More():
-        face = TopoDS.Face_s(e.Current())
+        face = TopoDS.Face(e.Current())
         loc = TopLoc_Location()
         tri = BRep_Tool.Triangulation_s(face, loc)
         e.Next()
